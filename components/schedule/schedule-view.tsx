@@ -27,7 +27,7 @@ import {
   updateShiftTypeDefaults,
   updateWorkWindow,
 } from "@/lib/schedule-api";
-import { useLeaveGuard } from "@/lib/use-leave-guard";
+import { replaceUrl, useLeaveGuard } from "@/lib/use-leave-guard";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
 import { usePageVisibility } from "@/lib/page-visibility";
 import { gapDayLabel, gapRange, gapsByDate } from "@/lib/schedule-gaps";
@@ -295,7 +295,8 @@ export function ScheduleView() {
     setPublishBlockedGaps(null);
     const url = new URL(window.location.href);
     url.searchParams.set("week", weekStart);
-    window.history.replaceState(null, "", url);
+    // 用 replaceUrl：离开提醒撤哨兵（history.back）时不会把旧的 ?week= 搬回来。
+    replaceUrl(url);
     void loadWeek(controller.signal);
     return () => controller.abort();
   }, [meError, weekStart, loadWeek]);

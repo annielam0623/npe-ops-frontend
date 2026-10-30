@@ -968,24 +968,33 @@ async function run() {
   from = (await mockLog()).length;
   const p404 = await swapOnce();
   await waitFor(`${cell(p404.target)}.querySelector('[data-slot-id]')`);
-  check("占用接口没上线(404)：照常能改、不弹、不报错", !!p404 && (await evaluate("return !document.querySelector('[data-schedule-locked]') && !document.body.innerText.includes('Request failed');")) && (await since(from, (e) => e.method === "PUT" && e.path.endsWith("/assign"))).length === 1);
+  check("占用接口没上线(404)：照常能改、不弹、不报错（改动先在页面上，没有单项 assign）", !!p404 && (await evaluate("return !document.querySelector('[data-schedule-locked]') && !document.body.innerText.includes('Request failed') && !!document.querySelector('[data-unsaved-summary]');")) && (await since(from, (e) => e.method === "PUT" && e.path.endsWith("/assign"))).length === 0);
+  await evaluate("document.querySelector('[data-week-discard]').click();");
+  await waitFor("!document.querySelector('[data-unsaved-summary]')");
 
   // 占得到：打开不占；第一次动手前占一次；后面的改动不再占；15 分钟（检查里改成 2 秒）没动手就放开。
   await ctl({ lockMode: "ok" });
   await openPage(`${APP}/schedule?week=2026-10-04`);
   await waitFor(`${cell("1|2026-10-04")}`);
-  await evaluate("window.__scheduleIdleExitS = 2;");
+  await evaluate("window.__scheduleIdleExitS = 2; window.__scheduleIdleRemindS = 2;");
   from = (await mockLog()).length;
   check("打开周表：不占用（没有 edit-lock 请求）", (await since(from, (e) => e.path.includes("/edit-lock"))).length === 0 && (await evaluate("return !document.querySelector('[data-schedule-locked]');")));
   const lp1 = await swapOnce();
   await waitFor(`${cell(lp1.target)}.querySelector('[data-slot-id]')`);
   const acq = await since(from, (e) => e.method === "POST" && e.path === "/api/schedule/weeks/2026-10-04/edit-lock");
-  check("第一次动手改：先 POST …/weeks/2026-10-04/edit-lock 占住，再 assign；没有弹提示", acq.length === 1 && (await since(from, (e) => e.method === "PUT" && e.path.endsWith("/assign"))).length === 1 && (await evaluate("return !document.querySelector('[data-schedule-locked]');")));
+  check("第一次动手改：先 POST …/weeks/2026-10-04/edit-lock 占住，改动放在页面上（没有单项 assign）；没有弹提示", acq.length === 1 && (await since(from, (e) => e.method === "PUT" && e.path.endsWith("/assign"))).length === 0 && (await evaluate("return !document.querySelector('[data-schedule-locked]');")));
   const lp2 = await swapOnce();
   if (lp2) await waitFor(`${cell(lp2.target)}.querySelector('[data-slot-id]')`);
   check("接着改第二次：不再去占（还是只有一次 edit-lock）", (await since(from, (e) => e.method === "POST" && e.path === "/api/schedule/weeks/2026-10-04/edit-lock")).length === 1);
+  // 第二次挪可能刚好挪回原样（暂存里就没有改动了）：再改一个时间，确保有没存的改动。
+  await setTime(`${cell("1|2026-10-04")}.querySelector('[data-slot-id]')`, "02:05");
+  await waitFor("!!document.querySelector('[data-unsaved-summary]')");
+  from = (await mockLog()).length;
   await waitFor(`false`, 4500);
-  check("最后一次动手后一段时间没动：放开（POST …/edit-lock/release）", (await since(from, (e) => e.path === "/api/schedule/weeks/2026-10-04/edit-lock/release")).length >= 1);
+  // B9 Q4（Annie「Q1–Q7 照推荐」）：有没存的改动时，没动作也不放开锁、不自动存，只出一行琥珀色提醒。
+  check("有没存的改动、一段时间没动（检查里 2 秒）：不放开锁、不自动存，出琥珀色提醒", (await since(from, (e) => e.path.endsWith("/edit-lock/release") || e.path.endsWith("/changes"))).length === 0 && (await evaluate("const n = document.querySelector('[data-idle-nudge]'); return !!n && n.textContent.includes('Click Save to keep your changes; they are not saved automatically.');")));
+  await saveWeek();
+  check("按 Save 存好：放开锁（POST …/edit-lock/release），提醒没了", (await waitFor("!document.querySelector('[data-idle-nudge]')")) && (await since(from, (e) => e.path === "/api/schedule/weeks/2026-10-04/edit-lock/release")).length >= 1);
   from = (await mockLog()).length;
   const lp3 = await swapOnce();
   if (lp3) await waitFor(`${cell(lp3.target)}.querySelector('[data-slot-id]')`);
@@ -1016,127 +1025,143 @@ async function run() {
   check("别人在改时点 Approve：弹同样的提示，没发 approve 请求", (await since(from, (e) => e.path.includes("confirmation-requests"))).length === 0);
   await ctl({ lockMode: "", confirm: false });
 
-  // ── 改时段时间：点编辑框外面 = 保留已选的时间；Esc / Cancel 才放弃（Annie 2026-10-20）──
+  // ── 改时间小窗（A8，Annie 2026-10-29「根本点不了」，Q1–Q4 照推荐）+ 整周 Save（B9 Q1：小窗的键叫 Done，只放到页面上）──
+  // 取代 10-20 的「点外面保留」：点外面不再存；没改直接关，改过出黄框 Unsaved changes（Done / Discard）。Esc 同点外面。
   await ctl({ lockMode: "", confirm: false, phase2: true, role: "supervisor", meName: "" });
   await openPage(`${APP}/schedule?week=${P2}`);
   await waitFor(`${cell("1|2026-12-07")}`);
   const slotA = `${cell("1|2026-12-07")}.querySelector('[data-slot-id]')`;
-  const timeBtn = (slot) => `${slot}.querySelector('button.font-mono')`;
-  const timePuts = async (n) => (await since(n, (e) => e.method === "PUT" && e.path.endsWith("/time")));
+  const popup = "document.querySelector('[data-time-popup]')";
+  const startIn = `${popup}.querySelector('input[aria-label="Start time"]')`;
+  const anyWrite = async (n) => since(n, (e) => e.method !== "GET" && !e.path.includes("edit-lock"));
   const openTime = async (slot) => {
-    await evaluate(`${timeBtn(slot)}.click();`);
-    await waitFor(`${slot}.querySelector('input[data-time-input]')`);
+    await evaluate(`${slot}.querySelector('button.font-mono').click();`);
+    await waitFor(popup);
   };
   from = (await mockLog()).length;
   await openTime(slotA);
-  await evaluate(`$setValue(${slotA}.querySelector('input[data-time-input]'), '09:15');`);
-  await evaluate(`document.body.click();`);
-  check(
-    "改时间后点外面：时间保留（格子写 9:15 AM、编辑框收起）",
-    await waitFor(`${slotA}.textContent.includes('9:15 AM') && !${slotA}.querySelector('input[data-time-input]')`),
-    await evaluate(`return ${slotA}.textContent;`),
-  );
-  let puts = await timePuts(from);
-  check("点外面保留：只发一次 PUT …/time、start_time 09:15", puts.length === 1 && puts[0].body.start_time === "09:15", JSON.stringify(puts));
-
-  from = (await mockLog()).length;
-  await openTime(slotA);
-  await evaluate(`document.body.click();`);
-  await waitFor(`!${slotA}.querySelector('input[data-time-input]')`);
-  check("没改就点外面：只收起，不发请求", (await timePuts(from)).length === 0);
+  check("小窗开着时，周表上别的格子被透明遮罩挡住（点不到）", await evaluate(`const b = document.querySelector('[data-time-popup-backdrop]'); const r = ${cell("2|2026-12-07")}.getBoundingClientRect(); return !!b && document.elementFromPoint(r.left + 5, r.top + 5) === b;`));
+  await evaluate("document.querySelector('[data-time-popup-backdrop]').click();");
+  check("没改就点外面：小窗直接收起，不发请求", (await waitFor(`!${popup}`)) && (await anyWrite(from)).length === 0);
 
   await openTime(slotA);
-  await evaluate(`const i = ${slotA}.querySelector('input[data-time-input]'); $setValue(i, '04:00'); i.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));`);
-  await waitFor(`!${slotA}.querySelector('input[data-time-input]')`);
-  check("Esc：放弃，时间还是 9:15 AM、没发请求", (await evaluate(`return ${slotA}.textContent.includes('9:15 AM');`)) && (await timePuts(from)).length === 0);
+  await evaluate(`$setValue(${startIn}, '09:15');`);
+  await evaluate(`${popup}.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));`);
+  check("改过按 Esc（同点外面）：不关，出黄框 Unsaved changes", await waitFor(`${popup} && ${popup}.querySelector('[data-time-popup-unsaved]')`));
+  await evaluate(`${popup}.querySelector('[data-time-popup-cancel]').click();`);
+  check("Discard：小窗收起，时间不变、没标记、不发请求", (await waitFor(`!${popup}`)) && (await evaluate(`return !${slotA}.textContent.includes('9:15 AM') && !${slotA}.dataset.mark;`)) && (await anyWrite(from)).length === 0);
 
   await openTime(slotA);
-  await evaluate(`$setValue(${slotA}.querySelector('input[data-time-input]'), '07:00'); $btn('Cancel', ${slotA}).click();`);
-  await waitFor(`!${slotA}.querySelector('input[data-time-input]')`);
-  check("Cancel 键：放弃，时间还是 9:15 AM、没发请求", (await evaluate(`return ${slotA}.textContent.includes('9:15 AM');`)) && (await timePuts(from)).length === 0);
+  await evaluate(`$setValue(${startIn}, '07:00');`);
+  await evaluate(`${popup}.querySelector('[data-time-popup-cancel]').click();`);
+  check("没点外面、直接按 Cancel：放弃，时间不变", (await waitFor(`!${popup}`)) && (await evaluate(`return !${slotA}.textContent.includes('7:00 AM');`)));
 
+  // ── 自绘时间选择器（Annie 2026-10-20「排班时间选择器 - 动手」）：在小窗里，列表开在输入框下面（inline）──
   await openTime(slotA);
-  await evaluate(`$setValue(${slotA}.querySelector('input[data-time-input]'), '');`);
-  await evaluate(`document.body.click();`);
-  await waitFor(`!${slotA}.querySelector('input[data-time-input]')`);
-  check("有一格被清空就点外面：收起，不存、不发请求", (await evaluate(`return ${slotA}.textContent.includes('9:15 AM');`)) && (await timePuts(from)).length === 0);
-
-  // 编辑 A 时直接点另一张卡的时间：A 的改动保留，B 的编辑框要开着（不能被 A 收起时一并关掉）。
-  await evaluate(`${cell("1|2026-12-08")}.querySelector('button[aria-label="Add a shift"]').click();`);
-  await waitFor(`${dlg} && ${dlg}.textContent.includes('Add shift')`);
-  await evaluate(`$btn('Add shift', ${dlg}).click();`);
-  const slotB = `${cell("1|2026-12-08")}.querySelector('[data-slot-id]')`;
-  await waitFor(`${slotB}`);
-  from = (await mockLog()).length;
-  await openTime(slotA);
-  await evaluate(`$setValue(${slotA}.querySelector('input[data-time-input]'), '09:30');`);
-  await evaluate(`${timeBtn(slotB)}.click();`);
-  check(
-    "编辑 A 时点 B 的时间：A 存上 9:30 AM、B 的编辑框开着",
-    await waitFor(`${slotA}.textContent.includes('9:30 AM') && !${slotA}.querySelector('input[data-time-input]') && !!${slotB}.querySelector('input[data-time-input]')`),
-    await evaluate(`return ${slotA}.textContent + ' / ' + !!${slotB}.querySelector('input[data-time-input]');`),
-  );
-
-  // ── 自绘时间选择器（Annie 2026-10-20「排班时间选择器 - 动手」）──
-  await openPage(`${APP}/schedule?week=${P2}`);
-  await waitFor(`${slotA}`);
-  const inp0 = `${slotA}.querySelectorAll('input[data-time-input]')[0]`;
-  const pop = `document.querySelector('[data-time-pop]')`;
-  const outside = async () => evaluate(`document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })); document.body.click();`);
-  const escape = async () => evaluate(`${inp0}.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));`);
-  const clickEl = (sel) => evaluate(`${pop}.querySelector('${sel}').click();`);
-  await openTime(slotA);
-  await evaluate(`${inp0}.click();`);
-  await waitFor(`${pop}`);
-  check("时间框是自绘的文字输入（不是浏览器自带的 type=time），点一下弹出列表", await evaluate(`return ${inp0}.type === 'text' && !document.querySelector('input[type=time]') && !!${pop};`));
+  const pickPop = `${popup}.querySelector('[data-time-pop]')`;
+  const clickEl = (sel) => evaluate(`${pickPop}.querySelector('${sel}').click();`);
+  await evaluate(`${startIn}.click();`);
+  await waitFor(pickPop);
+  check("时间框是自绘的文字输入（不是浏览器自带的 type=time），点一下弹出列表", await evaluate(`return ${startIn}.type === 'text' && !document.querySelector('input[type=time]') && !!${pickPop};`));
   check(
     "尺寸：输入框 ≥ 36px 高，下拉每行 40px 高",
-    await evaluate(`return ${inp0}.getBoundingClientRect().height >= 36 && ${pop}.querySelector('[data-hour="3"]').getBoundingClientRect().height === 40 && ${pop}.querySelector('[data-min="15"]').getBoundingClientRect().height === 40;`),
-    await evaluate(`return ${inp0}.getBoundingClientRect().height + ' / ' + ${pop}.querySelector('[data-hour="3"]').getBoundingClientRect().height;`),
+    await evaluate(`return ${startIn}.getBoundingClientRect().height >= 36 && ${pickPop}.querySelector('[data-hour="3"]').getBoundingClientRect().height === 40 && ${pickPop}.querySelector('[data-min="15"]').getBoundingClientRect().height === 40;`),
   );
-  check("当前 9:30 AM：9 / 30 / AM 是选中的", await evaluate(`return ${pop}.querySelector('[data-hour="9"]').getAttribute('aria-selected') === 'true' && ${pop}.querySelector('[data-min="30"]').getAttribute('aria-selected') === 'true' && ${pop}.querySelector('[data-period="AM"]').getAttribute('aria-selected') === 'true';`));
-  // 选中后固定：列表的滚动位置不变、列表不关、值立刻变
-  await evaluate(`const col = ${pop}.querySelector('[aria-label="Hour"]'); col.scrollTop = 120; window.__st = col.scrollTop;`);
+  const startNow = await evaluate(`return ${startIn}.dataset.value;`);
+  await evaluate(`const col = ${pickPop}.querySelector('[aria-label="Hour"]'); col.scrollTop = 120; window.__st = col.scrollTop;`);
   await clickEl('[data-hour="3"]');
   await sleep(150);
   check(
-    "点小时 3：值变 03:30、列表还开着、滚动位置不变（不会自己滑走）",
-    await evaluate(`const col = ${pop}.querySelector('[aria-label="Hour"]'); return ${inp0}.dataset.value === '03:30' && col.scrollTop === window.__st && window.__st > 0;`),
-    await evaluate(`const col = ${pop}.querySelector('[aria-label="Hour"]'); return ${inp0}.dataset.value + ' / ' + col.scrollTop + ' / ' + window.__st;`),
+    "点小时 3：值的小时变 03、列表还开着、滚动位置不变（不会自己滑走）",
+    await evaluate(`const col = ${pickPop}.querySelector('[aria-label="Hour"]'); return ${startIn}.dataset.value.startsWith('03:') && col.scrollTop === window.__st && window.__st > 0;`),
+    await evaluate(`const col = ${pickPop}?.querySelector('[aria-label="Hour"]'); return ${startIn}.dataset.value + ' / ' + col?.scrollTop + ' / ' + window.__st;`),
   );
-  await clickEl('[data-period="PM"]');
   await clickEl('[data-min="45"]');
   await sleep(100);
-  check("点 PM、45：值变 15:45、输入框写 3:45 PM", await evaluate(`return ${inp0}.dataset.value === '15:45' && ${inp0}.value === '3:45 PM';`), await evaluate(`return ${inp0}.dataset.value + ' / ' + ${inp0}.value;`));
-  // Esc：先只收起列表并退回打开时的时间，编辑框还在
-  from = (await mockLog()).length;
-  await escape();
+  // Esc：先只收起列表并退回打开时的时间，小窗还在
+  await evaluate(`${startIn}.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));`);
   await sleep(100);
-  check("Esc：列表收起、时间退回 09:30、时段卡的编辑框还开着、没发请求", (await evaluate(`return !${pop} && ${inp0}.dataset.value === '09:30' && !!${slotA}.querySelector('input[data-time-input]');`)) && (await timePuts(from)).length === 0);
-  // 点外面 = 保留
-  await evaluate(`${inp0}.click();`);
-  await waitFor(`${pop}`);
+  check("列表开着按 Esc：列表收起、时间退回打开时的值、小窗还开着", await evaluate(`return !${pickPop} && ${startIn}.dataset.value === '${startNow}' && !!${popup};`), await evaluate(`return ${startIn}.dataset.value;`));
+  await evaluate(`${startIn}.click();`);
+  await waitFor(pickPop);
   await clickEl('[data-hour="8"]');
-  await outside();
-  check("选了 8 点再点外面：存上 8:30 AM、编辑框和列表都收起", await waitFor(`${slotA}.textContent.includes('8:30 AM') && !${slotA}.querySelector('input[data-time-input]') && !${pop}`));
-  let tp = await timePuts(from);
-  check("只发一次 PUT …/time（start 08:30、end 不变 10:00）", tp.length === 1 && tp[0].body.start_time === "08:30" && tp[0].body.end_time === "10:00", JSON.stringify(tp));
+  await clickEl('[data-min="30"]');
+  await clickEl('[data-period="AM"]');
+  check("点 8、30、AM：值变 08:30，选了 AM 列表就收起", (await waitFor(`!${pickPop}`)) && (await evaluate(`return ${startIn}.dataset.value === '08:30' && ${startIn}.value === '8:30 AM';`)));
+  await evaluate(`${popup}.querySelector('[data-time-popup-done]').click();`);
+  check("Done：格子写 8:30 AM、标 time；不发请求（等整周 Save）", (await waitFor(`!${popup} && ${slotA}.textContent.includes('8:30 AM') && ${slotA}.dataset.mark === 'time'`)) && (await anyWrite(from)).length === 0);
   // 直接打字
-  from = (await mockLog()).length;
   await openTime(slotA);
-  await evaluate(`$setValue(${inp0}, '9:45 pm');`);
-  check("打字 9:45 pm：值立刻变 21:45", await evaluate(`return ${inp0}.dataset.value === '21:45';`));
-  await outside();
-  await waitFor(`${slotA}.textContent.includes('9:45 PM') && !${slotA}.querySelector('input[data-time-input]')`);
-  tp = await timePuts(from);
-  check("打字后点外面：存上 21:45", tp.length === 1 && tp[0].body.start_time === "21:45", JSON.stringify(tp));
+  await evaluate(`$setValue(${startIn}, '9:45 pm');`);
+  check("打字 9:45 pm：值立刻变 21:45", await evaluate(`return ${startIn}.dataset.value === '21:45';`));
+  await evaluate(`${popup}.querySelector('[data-time-popup-done]').click();`);
+  await waitFor(`!${popup} && ${slotA}.textContent.includes('9:45 PM')`);
   // 读不懂的字：退回原来的时间
-  from = (await mockLog()).length;
   await openTime(slotA);
-  await evaluate(`${inp0}.click(); $setValue(${inp0}, 'abc');`);
-  await outside();
-  await waitFor(`!${slotA}.querySelector('input[data-time-input]')`);
-  check("打了读不懂的字再点外面：时间不变（仍是 9:45 PM），不发请求", (await evaluate(`return ${slotA}.textContent.includes('9:45 PM');`)) && (await timePuts(from)).length === 0);
+  await evaluate(`${startIn}.click(); $setValue(${startIn}, 'abc');`);
+  await evaluate(`${popup}.querySelector('div').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));`);
+  await sleep(150);
+  check("打了读不懂的字：输入框退回 9:45 PM，值不变", await evaluate(`return ${startIn}.dataset.value === '21:45' && ${startIn}.value === '9:45 PM';`), await evaluate(`return ${startIn}.dataset.value + ' / ' + ${startIn}.value;`));
+  await evaluate(`${popup}.querySelector('[data-time-popup-cancel]').click();`);
+  await waitFor(`!${popup}`);
+  await saveWeek();
+  const tOps = (await changesLog()).at(-1)?.body.ops;
+  check("整周 Save：一条 time（start 21:45、end 不变 10:00）", tOps?.length === 1 && tOps[0].op === "time" && tOps[0].start_time === "21:45" && tOps[0].end_time === "10:00", JSON.stringify(tOps));
+
+  // ── 离开页面 / 换周：有没存的改动先问 Save / Don't save / Cancel（B9 ⑥）──
+  await setTime(slotA, "08:00");
+  await evaluate("document.querySelector('[aria-label=\"Next week\"]').click();");
+  check("有没存的改动时点 Next week：弹 Leave without saving?，写没存的改动", await waitFor("document.querySelector('[data-leave-dialog]')?.textContent.includes('1 change (1 time changed)')"));
+  await evaluate("$btn('Cancel', document.querySelector('[data-leave-dialog]')).click();");
+  check("Cancel：留在这一周，改动还在", (await waitFor("!document.querySelector('[data-leave-dialog]')")) && (await evaluate(`return location.search.includes('${P2}') && !!document.querySelector('[data-unsaved-summary]');`)));
+  await evaluate("document.querySelector('[aria-label=\"Next week\"]').click();");
+  await waitFor("document.querySelector('[data-leave-dialog]')");
+  await evaluate("document.querySelector('[data-leave-save]').click();");
+  check("Save：先存再换周", (await waitFor(`!document.querySelector('[data-leave-dialog]') && !location.search.includes('${P2}')`)) && (await changesLog()).at(-1)?.body.ops[0]?.start_time === "08:00", `${await evaluate("return location.search + ' | ' + (document.querySelector('[data-leave-dialog]')?.textContent || 'no dialog') + ' | ' + (document.querySelector('[data-save-status]')?.textContent || '');")} | ${JSON.stringify((await changesLog()).at(-1)?.body.ops)}`);
+  await evaluate("document.querySelector('[aria-label=\"Previous week\"]').click();");
+  await waitFor(`location.search.includes('${P2}') && ${slotA} && ${slotA}.textContent.includes('8:00 AM')`);
+  await setTime(slotA, "08:15");
+  await evaluate("document.querySelector('[aria-label=\"Next week\"]').click();");
+  check("改了再点 Next week：又弹 Leave without saving?", await waitFor("document.querySelector('[data-leave-dialog]')"), await evaluate("return (document.querySelector('[data-unsaved-summary]')?.textContent || 'clean') + ' | ' + location.search;"));
+  const nChanges = (await changesLog()).length;
+  await evaluate("document.querySelector('[data-leave-discard]').click();");
+  check("Don't save：不存，直接换周", (await waitFor(`!location.search.includes('${P2}')`)) && (await changesLog()).length === nChanges);
+
+  // ── 有没存的改动时 Publish：确认框写会先存，键叫 Save and publish（B9 Q2）。这一周有空档 ⇒ 用 admin（Publish anyway）──
+  await ctl({ role: "admin", meName: "" });
+  await openPage(`${APP}/schedule?week=${P2}`);
+  await waitFor(`${slotA}`);
+  await setTime(slotA, "08:20");
+  await evaluate("$btn('Publish').click();");
+  await waitFor("document.querySelector('[role=dialog] [data-publish-unsaved]')");
+  check("Publish 确认框：You have 1 unsaved change. They are saved first, then the week is published.；键 Save and publish…", await evaluate("const d = document.querySelector('[role=dialog]'); return d.querySelector('[data-publish-unsaved]').textContent.replace(/\\s+/g, ' ').includes('You have 1 unsaved change. They are saved first, then the week is published.') && !!$btn('Save and publish', d);"), await evaluate("return document.querySelector('[role=dialog]')?.textContent;"));
+  const nBefore = (await changesLog()).length;
+  await evaluate("$btn('Save and publish', document.querySelector('[role=dialog]')).click();");
+  check("Save and publish：先 POST …/changes，再发布", (await waitFor("!document.querySelector('[role=dialog]')")) && (await changesLog()).length === nBefore + 1);
+
+  // ── 409 stale：别人在我打开以后存过（Q7）：红字原话 + Reload / Keep editing ──
+  await setTime(slotA, "08:25");
+  await fetch(`${MOCK}/__bump?week=${P2}`);
+  check("409 stale：红字写后端原话，带 Reload（放弃我的改动）和 Keep editing", !(await saveWeek()) && (await evaluate("const e = document.querySelector('[data-save-error]'); return e.textContent.includes('This week was changed by someone else at 8:47 PM, after you opened it.') && !!e.querySelector('[data-stale-reload]') && !!e.querySelector('[data-stale-keep]');")));
+  await evaluate("document.querySelector('[data-stale-keep]').click();");
+  check("Keep editing：再按 Save 用库里最新的 version，存上", await saveWeek());
+
+  // ── 409 locked：别人占着锁（锁过期期间被别人拿走）：红字原话，改动留着 ──
+  await setTime(slotA, "08:35");
+  await ctl({ changesLocked: true });
+  check("409 locked：红字写后端原话，改动还在", !(await saveWeek()) && (await evaluate("return document.querySelector('[data-save-error]').textContent.includes('Sam is editing this week') && !!document.querySelector('[data-unsaved-summary]');")));
+  await ctl({ changesLocked: false });
+
+  // ── 指派的员工不在职：后端 400 原话（G218 新加），那一张标红。加一个 Veronica 的新班（create 带 employee_id，排第 1 条）──
+  await evaluate(`${cell("1|2026-12-09")}.querySelector('button[aria-label="Add a shift"]').click();`);
+  await waitFor(`${dlg} && ${dlg}.textContent.includes('Add shift')`);
+  await evaluate(`$btn('Add shift', ${dlg}).click();`);
+  await waitFor(`${cell("1|2026-12-09")}.querySelector('[data-mark=new]')`);
+  await ctl({ inactiveEmployee: 1 });
+  check("员工不在职：400 红字照后端原话（Change 1: Veronica is not an active employee…）", !(await saveWeek()) && (await evaluate("return document.querySelector('[data-save-error]').textContent.includes('Change 1: Veronica is not an active employee') && !!document.querySelector('[data-slot-error]');")), await evaluate("return document.querySelector('[data-save-error]')?.textContent;"));
+  await ctl({ inactiveEmployee: 0 });
+  await evaluate("document.querySelector('[data-week-discard]').click();");
+  await waitFor("!document.querySelector('[data-unsaved-summary]')");
 
   // 401：跳旧后台登录页。
   await ctl({ fail401: true, role: "superadmin" });
