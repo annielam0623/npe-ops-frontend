@@ -28,6 +28,13 @@
   - Annie 原话：「我要把所有这类自动保存改成手动的」。
     - 已派 9c 只读盘点全站「改了就自己存」的地方，出清单（Artifact），请 Annie 逐条定哪些改手动。
     - 除 Dispatch 外还没动手。
+    - 9c 交盘点：https://claude.ai/artifact/3GQ3waCB2X4jnEdxTRfefe （只读，没改代码）。
+      - 全站没有「打字防抖自动存」，也没有「定时器存」。
+      - A 类（失焦就存，推荐改按块 Save）：A1–A7。A8 排班「点外面也存」是 Annie 10-20 点名要的，推荐保留。
+      - B 类（选了 / 勾了 / 拖了马上存）：大多推荐保留，B1 / B4 / B5 / B6 / B8 / B9 要问。
+      - C 类（个人显示偏好）：保留。
+      - 后端基本不用改；A6 要「一次全存或全不存」、B9 改成整周一个 Save 时，才要后端接口。
+      - 待 Annie 定 6 个问题。
 - 59 交 ③ Forecast 数字不能点 preview 第 2 版（同链接 https://claude.ai/artifact/X9EXZjpgbKfPhxzeKR7c9c ，没改代码）。
   - 数字格一律不能点，第 1 版的 A1 / A2 已删。
   - 能编辑的空格从「—」改成绿色「+」，一直显示。
