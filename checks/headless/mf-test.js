@@ -680,7 +680,8 @@ async function run() {
   await evaluate("document.querySelector('[data-page-save]').click(); return 1;");
   const wReq = (await waitReq(before, "/api/dispatch/manifest/version"))[0];
   check("选 West Rim：PUT {tour: 3, version: west}", wReq?.body?.tour === 3 && wReq?.body?.version === "west", JSON.stringify(wReq));
-  await waitFor("document.querySelector('[data-version-select]').value === 'west'");
+  // 等存好重读完（绿字 Saved）再看列：只等下拉 = west 的话，存完到重读回来之间列还是旧的，会偶尔失败（main 上也有）。
+  await waitFor("document.querySelector('[data-version-select]').value === 'west' && !!document.querySelector('[data-page-saved]')");
   check("West Rim：列序 Order # / Time / Hotel / Phone / Last Name / First Name / Pax / Quantities / Lunch / Special Requirements，后面只有 Bus、没有 ✓",
     await evaluate(`return JSON.stringify(${headsOf("2041=A")}) === JSON.stringify(["Order #","Time","Hotel","Phone","Last Name","First Name","Pax","Quantities","Lunch","Special Requirements","Bus"]);`),
     await evaluate(`return JSON.stringify(${headsOf("2041=A")});`));
@@ -770,48 +771,83 @@ async function run() {
   check("整页没有合作公司名（partner）", await evaluate("return !/partner/i.test(document.querySelector('main').textContent);"));
   await ctl({ affiliate: false });
 
-  // ── Special Requirements 可编辑（Annie 2026-10-18；后端接口没上线时只读）──
+  // ── Special Requirements 可编辑（Annie 2026-10-18；后端接口没上线时只读）；2026-10-30 并进整页 Save（Annie「并进整页一起存 A 动手」）──
   await ctl({ notesEdit: true });
   await goto(`${APP}/dispatch/manifest?date=2026-10-05&tour=3`);
   await waitFor("document.querySelector('tr[data-guest=CHD1] [data-notes-cell]')");
   await helpers();
   const nc = (o) => `document.querySelector('tr[data-guest=${o}] [data-notes-cell]')`;
+  const pageSave = "document.querySelector('[data-page-save]').click(); return 1;";
   check("后端带了 notes_edited ⇒ 格子能点（鼠标是文字光标、title Click to edit）", await evaluate(`return ${nc("CHD1")}.className.includes('cursor-text') && ${nc("CHD1")}.title === 'Click to edit';`));
   before = (await mockLog()).length;
   await evaluate(`${nc("CHD1")}.click();`);
   await waitFor("document.querySelector('[data-notes-editor] textarea')");
-  check("点格子 ⇒ 出编辑框（Save / Cancel，没改过时没有 Reset）、最多 2000 字", await evaluate("const e = document.querySelector('[data-notes-editor]'); return e.querySelector('textarea').maxLength === 2000 && [...e.querySelectorAll('button')].map(b => b.textContent).join('|') === 'Save|Cancel';"));
+  check("点格子 ⇒ 出编辑框（Done / Cancel，没改过时没有 Reset）、最多 2000 字；Done 不是蓝色", await evaluate("const e = document.querySelector('[data-notes-editor]'); return e.querySelector('textarea').maxLength === 2000 && [...e.querySelectorAll('button')].map(b => b.textContent).join('|') === 'Done|Cancel' && getComputedStyle(e.querySelector('[data-notes-done]')).backgroundColor !== 'rgb(59, 130, 246)';"));
   await evaluate("document.querySelector('[data-notes-editor] button:nth-of-type(2)').click();");
   await sleep(250);
-  check("Cancel ⇒ 不存、编辑框关了", (await since(before, "/api/dispatch/manifests/guest-notes")).length === 0 && (await evaluate("return !document.querySelector('[data-notes-editor]');")));
+  check("Cancel ⇒ 不存、编辑框关了、没有暂存", (await since(before, "/api/dispatch/manifests/guest-notes")).length === 0 && (await evaluate("return !document.querySelector('[data-notes-editor]') && !document.querySelector('[data-notes-staged]') && document.querySelector('[data-page-save]').disabled;")));
   await evaluate(`${nc("CHD1")}.click();`);
   await waitFor("document.querySelector('[data-notes-editor] textarea')");
-  await evaluate("$setValue(document.querySelector('[data-notes-editor] textarea'), 'Wheelchair, front seat'); document.querySelector('[data-notes-save]').click();");
+  await evaluate("$setValue(document.querySelector('[data-notes-editor] textarea'), 'Wheelchair, front seat'); document.querySelector('[data-notes-done]').click();");
+  await sleep(400);
+  check("Done ⇒ 不发请求，格子显示新内容、琥珀色框、写 not saved", (await since(before, "/api/dispatch/manifests/guest-notes")).length === 0 && (await evaluate(`const c = ${nc("CHD1")}; return !document.querySelector('[data-notes-editor]') && c.textContent.includes('Wheelchair, front seat') && c.className.includes('outline-[#f59e0b]') && c.querySelector('[data-notes-staged]').textContent === 'not saved';`)));
+  check("Done 后整页 Save 变能点，工具条下写 Not saved yet: Special Requirements for CHD1", await evaluate("const u = document.querySelector('[data-page-unsaved]'); return !document.querySelector('[data-page-save]').disabled && !!u && u.textContent.includes('Special Requirements for CHD1');"));
+  await evaluate(pageSave);
   const nb = (await waitReq(before, "/api/dispatch/manifests/guest-notes"))[0];
-  check("Save ⇒ PUT guest-notes {guest_id: 1, notes}", nb?.body?.guest_id === 1 && nb?.body?.notes === "Wheelchair, front seat", JSON.stringify(nb));
-  check("存好重读：格子显示新内容（标黄）+ edited 小标记", await waitFor(`${nc("CHD1")} && ${nc("CHD1")}.textContent.includes('Wheelchair, front seat') && ${nc("CHD1")}.className.includes('fff200') && !!${nc("CHD1")}.querySelector('[data-notes-edited]')`));
+  check("整页 Save ⇒ PUT guest-notes {guest_id: 1, notes}", nb?.body?.guest_id === 1 && nb?.body?.notes === "Wheelchair, front seat", JSON.stringify(nb));
+  check("存好重读：格子显示新内容（标黄）+ edited 小标记，琥珀色没了、绿字 Saved", await waitFor(`${nc("CHD1")} && ${nc("CHD1")}.textContent.includes('Wheelchair, front seat') && ${nc("CHD1")}.className.includes('fff200') && !!${nc("CHD1")}.querySelector('[data-notes-edited]') && !${nc("CHD1")}.querySelector('[data-notes-staged]') && !!document.querySelector('[data-page-saved]')`));
   await evaluate(`${nc("CHD1")}.click();`);
   await waitFor("document.querySelector('[data-notes-editor] textarea')");
   check("改过的格子再点开 ⇒ 多一个 Reset to Rezdy", await evaluate("return !!document.querySelector('[data-notes-reset]');"));
   before = (await mockLog()).length;
-  await evaluate("$setValue(document.querySelector('[data-notes-editor] textarea'), ''); document.querySelector('[data-notes-save]').click();");
+  await evaluate("$setValue(document.querySelector('[data-notes-editor] textarea'), ''); document.querySelector('[data-notes-done]').click();");
+  await sleep(250);
+  check("清空再 Done ⇒ 格子先变空（没有黄底）、还标 not saved，不发请求", (await since(before, "/api/dispatch/manifests/guest-notes")).length === 0 && (await evaluate(`const c = ${nc("CHD1")}; return !c.className.includes('fff200') && !!c.querySelector('[data-notes-staged]') && !c.textContent.includes('Wheelchair');`)));
+  await evaluate(pageSave);
   const nd = (await waitReq(before, "/api/dispatch/manifests/guest-notes"))[0];
-  check("清空再 Save ⇒ 送 notes: ''（删除）", nd?.body?.notes === "", JSON.stringify(nd));
-  check("删空后格子是空的、没有黄底、仍有 edited 标记（和 Rezdy 原文不同）", await waitFor(`${nc("CHD1")} && ${nc("CHD1")}.textContent.trim() === 'edited' && !${nc("CHD1")}.className.includes('fff200')`));
+  check("整页 Save ⇒ 送 notes: ''（删除）", nd?.body?.notes === "", JSON.stringify(nd));
+  check("删空后格子是空的、没有黄底、仍有 edited 标记（和 Rezdy 原文不同）", await waitFor(`${nc("CHD1")} && ${nc("CHD1")}.textContent.trim() === 'edited' && !${nc("CHD1")}.className.includes('fff200') && !${nc("CHD1")}.querySelector('[data-notes-staged]')`));
   await evaluate(`${nc("CHD1")}.click();`);
   await waitFor("document.querySelector('[data-notes-reset]')");
   before = (await mockLog()).length;
   await evaluate("document.querySelector('[data-notes-reset]').click();");
+  await sleep(250);
+  check("Reset to Rezdy ⇒ 先不发请求，格子显示 Rezdy 原文、没有 edited、标 not saved", (await since(before, "/api/dispatch/manifests/guest-notes")).length === 0 && (await evaluate(`const c = ${nc("CHD1")}; return !document.querySelector('[data-notes-editor]') && !c.querySelector('[data-notes-edited]') && !!c.querySelector('[data-notes-staged]');`)));
+  await evaluate(pageSave);
   const nr = (await waitReq(before, "/api/dispatch/manifests/guest-notes"))[0];
-  check("Reset to Rezdy ⇒ 送 notes: null、edited 标记没了", nr?.body?.notes === null && (await waitFor(`${nc("CHD1")} && !${nc("CHD1")}.querySelector('[data-notes-edited]') && !document.querySelector('[data-notes-editor]')`)), JSON.stringify(nr));
+  check("整页 Save ⇒ 送 notes: null、edited 标记没了", nr?.body?.notes === null && (await waitFor(`${nc("CHD1")} && !${nc("CHD1")}.querySelector('[data-notes-edited]') && !${nc("CHD1")}.querySelector('[data-notes-staged]')`)), JSON.stringify(nr));
   // Rezdy 带进来的内容也能改（CHD2 原文 "1 Turkey ??"，三明治读不出的红字原文）
   await evaluate(`${nc("CHD2")}.click();`);
   await waitFor("document.querySelector('[data-notes-editor] textarea')");
   check("Rezdy 带进来的内容（CHD2 的原文）也在编辑框里、能改", await evaluate("return document.querySelector('[data-notes-editor] textarea').value === '1 Turkey ??';"));
-  // 存失败：原话显示在页面上方、编辑框留着
+  await evaluate("$setValue(document.querySelector('[data-notes-editor] textarea'), 'x'); document.querySelector('[data-notes-done]').click();");
+  await sleep(200);
+  // 有没存的备注时离开页面：Save / Don't save / Cancel
+  await evaluate("[...document.querySelectorAll('nav[aria-label=Back] a')].find(a => a.textContent.startsWith('Dispatch')).click(); return 1;");
+  await waitFor("document.querySelector('[data-leave-dialog]')", 3000);
+  check("有没存的备注时离开页面：弹 Leave without saving?，写 Special Requirements for CHD2", await evaluate("const d = document.querySelector('[data-leave-dialog]'); return d.textContent.includes('Special Requirements for CHD2') && location.pathname === '/dispatch/manifest';"));
+  await evaluate("$btn('Cancel', document.querySelector('[data-leave-dialog]')).click(); return 1;");
+  await sleep(300);
+  check("Cancel：留在这一页，备注的暂存还在", await evaluate(`return location.pathname === '/dispatch/manifest' && !!${nc("CHD2")}.querySelector('[data-notes-staged]');`));
+  // 存失败：红字写后端原话，暂存不丢
   await ctl({ notesFail: "That guest is no longer on the list. Reload the page." });
-  await evaluate("$setValue(document.querySelector('[data-notes-editor] textarea'), 'x'); document.querySelector('[data-notes-save]').click();");
-  check("存失败 ⇒ 页面上方写后端原话、编辑框还在", await waitFor("document.body.textContent.includes('That guest is no longer on the list') && document.querySelector('[data-notes-editor]')"));
+  before = (await mockLog()).length;
+  await evaluate(pageSave);
+  check("存失败 ⇒ 红字「Could not save: Special Requirements for CHD2: 后端原话」，格子还标 not saved、内容是 x", await waitFor(`(() => { const e = document.querySelector('[data-page-save-error]'); return !!e && e.textContent.startsWith('Could not save: Special Requirements for CHD2: That guest is no longer on the list.') && !!${nc("CHD2")}.querySelector('[data-notes-staged]') && ${nc("CHD2")}.textContent.startsWith('x') && !document.querySelector('[data-page-save]').disabled })()`));
+  await ctl({ notesFail: "" });
+  // 和换车一起存：先换车、后备注（主窗口 eb 2026-10-30；换车先于字号，e6 65972c5）
+  const cur3 = await evaluate("return document.querySelector('tr[data-guest=CHD3] select').value;");
+  const to3 = cur3 === "B" ? "A" : "B";
+  await evaluate(`
+    const sel = document.querySelector('tr[data-guest=CHD3] select');
+    Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(sel, '${to3}');
+    sel.dispatchEvent(new Event('change', { bubbles: true }));`);
+  await sleep(200);
+  before = (await mockLog()).length;
+  await evaluate(pageSave);
+  await waitFor("!!document.querySelector('[data-page-saved]')");
+  const notesOrder = (await mockLog()).slice(before).filter((e) => e.path === "/api/dispatch/manifests/guest-bus" || e.path === "/api/dispatch/manifests/guest-notes").map((e) => e.path.split("/").pop());
+  check("和换车一起存：先 guest-bus、再 guest-notes；存好绿字、没有暂存", JSON.stringify(notesOrder) === '["guest-bus","guest-notes"]' && (await evaluate(`return !document.querySelector('[data-notes-staged]') && !document.querySelector('[data-moved-from]') && ${nc("CHD2")}.textContent.startsWith('x');`)), JSON.stringify(notesOrder));
   await ctl({ notesFail: "", notesEdit: false });
 
   // 链接不全

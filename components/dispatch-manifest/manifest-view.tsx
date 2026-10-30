@@ -308,28 +308,6 @@ export function ManifestView() {
     else setActionError(describeError(error));
   }
 
-  /** 改 Special Requirements：存好再重读；存失败时错误显示在上面，抛出去让格子留着。 */
-  async function changeNotes(guest: ManifestGuest, notes: string | null) {
-    setActionError(null);
-    try {
-      await saveGuestNotes(guest.id, notes);
-    } catch (error) {
-      onActionError(error);
-      throw error;
-    }
-    if (!params) return;
-    try {
-      const data = await fetchManifest(params.date, params.tour);
-      setView({ kind: "ready", data });
-    } catch (error) {
-      if (isStatus(error, 401)) redirectToLogin();
-      else
-        setActionError(
-          `The note was saved, but the page could not be refreshed: ${describeError(error)} Reload the page.`,
-        );
-    }
-  }
-
   const data = view.kind === "ready" ? view.data : null;
   const dirty = !viewOnly && isDirty(pending);
 
@@ -366,6 +344,21 @@ export function ManifestView() {
         delete textSizes[busKey];
       else textSizes[busKey] = textSize;
       return { ...p, textSizes };
+    });
+    setSaveState({ kind: "idle" });
+  }
+
+  /**
+   * Special Requirements 按 Done / Reset to Rezdy（Annie 2026-10-30「并进整页一起存 A 动手」）：只放进暂存，整页 Save 才存。
+   * null = 恢复 Rezdy 原文；和库里一样（没改过又按 Reset、或改回原样）= 没改。
+   */
+  function changeNotes(guest: ManifestGuest, notes: string | null) {
+    const same = notes === null ? !guest.notes_edited : notes === guest.notes;
+    setPending((p) => {
+      const next = { ...p.notes };
+      if (same) delete next[guest.id];
+      else next[guest.id] = { notes, order: guest.order_number };
+      return { ...p, notes: next };
     });
     setSaveState({ kind: "idle" });
   }
@@ -415,6 +408,7 @@ export function ManifestView() {
       textSizes: { ...pending.textSizes },
       moves: { ...pending.moves },
       attractions: { ...pending.attractions },
+      notes: { ...pending.notes },
     };
     const fails: string[] = [];
     let unauthorized = false;
@@ -452,13 +446,21 @@ export function ManifestView() {
         delete next.moves[Number(id)];
       }
     }
+    // Special Requirements 放在换车之后发（主窗口 eb 2026-10-30）：每位客人一条 PUT，null = 恢复 Rezdy 原文。
+    for (const [id, n] of Object.entries(pending.notes)) {
+      if (
+        await attempt(`Special Requirements for ${n.order}`, () =>
+          saveGuestNotes(Number(id), n.notes),
+        )
+      )
+        delete next.notes[Number(id)];
+    }
     const placed = applyMoves(data, moved);
     for (const [busKey, textSize] of Object.entries(pending.textSizes)) {
       const bus = placed.blocks.find((b) => b.bus_key === busKey);
       // 已经不在这台车上的单（换走了、或换车没存上），整行的设定不送，免得后端 400。
       const onBus = new Set(
-        bus?.sections.flatMap((s) => s.guests.map((g) => g.order_number)) ??
-          [],
+        bus?.sections.flatMap((s) => s.guests.map((g) => g.order_number)) ?? [],
       );
       const rows = Object.fromEntries(
         Object.entries(textSize.rows).filter(([order]) => onBus.has(order)),
@@ -510,7 +512,8 @@ export function ManifestView() {
         (pending.version ? 1 : 0) +
         Object.keys(pending.textSizes).length +
         Object.keys(pending.moves).length +
-        Object.keys(pending.attractions).length;
+        Object.keys(pending.attractions).length +
+        Object.keys(pending.notes).length;
       const message = `Could not save: ${fails.join("; ")}. ${fails.length < total ? "The rest was saved. " : ""}What was not saved is still marked; click Save to try again.`;
       setSaveState({ kind: "error", message });
       return { error: message, data: fresh };
@@ -808,6 +811,7 @@ export function ManifestView() {
                   movedFrom,
                   attractions: pending.attractions,
                   stageAttraction,
+                  notes: pending.notes,
                   failed: saveState.kind === "error",
                 }}
               >
@@ -1020,7 +1024,7 @@ function BusCard({
   /** 这一车的 Print 键（partner 勾了 dispatch.view 也有，见上面 canPrint）。 */
   canPrint: boolean;
   onBusChange: (guest: ManifestGuest, label: string) => void;
-  onNotesChange: (guest: ManifestGuest, notes: string | null) => Promise<void>;
+  onNotesChange: (guest: ManifestGuest, notes: string | null) => void;
   onActionError: (e: unknown) => void;
   /** 按了 Done、还没整页 Save 的字号（Q2）。 */
   stagedTextSize: ManifestTextSize | undefined;
@@ -1335,7 +1339,7 @@ function GuestTable({
   data: ManifestData;
   sections: ManifestSection[];
   onBusChange: (guest: ManifestGuest, label: string) => void;
-  onNotesChange: (guest: ManifestGuest, notes: string | null) => Promise<void>;
+  onNotesChange: (guest: ManifestGuest, notes: string | null) => void;
   /** 有车、有 manifest 时才有黄框。 */
   attraction: {
     tourManifestId: number;
@@ -1517,7 +1521,9 @@ function SectionHeading({ section: s }: { section: ManifestSection }) {
 
 /**
  * Special Requirements 一格（Annie 2026-10-18「special requirment 那里改成可以编辑，带进来的内容也可以删除或者编辑」）：
- * 点格子改；清空再 Save = 删除；Cancel 不存；改过的格子有 edited 小标记，Reset to Rezdy 恢复原文。
+ * 点格子改；清空再 Done = 删除；Cancel 不改；改过的格子有 edited 小标记，Reset to Rezdy 恢复原文。
+ * 2026-10-30 并进整页 Save（Annie「并进整页一起存 A 动手」）：Done / Reset to Rezdy 只放进暂存，格子标琥珀色、写 not saved，
+ * 按整页 Save 才存；存不上的留着继续标。
  * 后端没带 `notes_edited`（编辑接口还没上线）时这一格只读，样子和以前一样。
  */
 function NotesCell({
@@ -1527,28 +1533,30 @@ function NotesCell({
   editing: textEditing,
 }: {
   guest: ManifestGuest;
-  onSave: (guest: ManifestGuest, notes: string | null) => Promise<void>;
+  /** 暂存（null = 恢复 Rezdy 原文）。 */
+  onSave: (guest: ManifestGuest, notes: string | null) => void;
   font: CellFont;
   /** G197 字号编辑中：点格子是选中，不打开备注编辑。 */
   editing: boolean;
 }) {
   const viewOnly = useViewOnly();
+  const { notes: stagedNotes } = useStage();
   const editable = !viewOnly && !textEditing && g.notes_edited !== undefined;
   const textEdit = font.edit("notes", g.order_number);
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState("");
-  const [busy, setBusy] = useState(false);
+  const staged = stagedNotes[g.id];
+  // 页面上显示的：暂存了就显示暂存的（恢复原文显示 Rezdy 原文），否则库里的。
+  const shown = staged
+    ? staged.notes === null
+      ? (g.rezdy_notes ?? "")
+      : staged.notes
+    : g.notes;
+  const edited = staged ? staged.notes !== null : !!g.notes_edited;
 
-  async function save(next: string | null) {
-    setBusy(true);
-    try {
-      await onSave(g, next);
-      setEditing(false);
-    } catch {
-      /* 错误已经显示在页面上方，格子留着让 staff 再试 */
-    } finally {
-      setBusy(false);
-    }
+  function done(next: string | null) {
+    onSave(g, next);
+    setEditing(false);
   }
 
   if (editing) {
@@ -1562,7 +1570,6 @@ function NotesCell({
           aria-label="Special Requirements"
           value={value}
           maxLength={2000}
-          disabled={busy}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Escape") setEditing(false);
@@ -1570,30 +1577,28 @@ function NotesCell({
           className="min-h-[46px] w-full resize-y rounded border border-[#888] px-1.5 py-[3px] font-[Arial,sans-serif] text-[13px] font-normal text-[#111]"
         />
         <div className="mt-1 flex items-center gap-1.5">
+          {/* Done 是白色（不是提交键，同 Text size 框的 Done）：真正存在整页 Save。 */}
           <button
             type="button"
-            data-notes-save
-            disabled={busy}
-            onClick={() => void save(value.trim())}
-            className="cursor-pointer rounded-[5px] bg-[#3b82f6] px-[9px] py-0.5 text-[11px] font-bold text-white disabled:opacity-60"
+            data-notes-done
+            onClick={() => done(value.trim())}
+            className="cursor-pointer rounded-[5px] border border-[#888] bg-white px-[9px] py-0.5 text-[11px] font-bold text-[#333]"
           >
-            Save
+            Done
           </button>
           <button
             type="button"
-            disabled={busy}
             onClick={() => setEditing(false)}
-            className="cursor-pointer rounded-[5px] border border-[#888] bg-white px-[9px] py-0.5 text-[11px] font-bold text-[#333] disabled:opacity-60"
+            className="cursor-pointer rounded-[5px] border border-[#888] bg-white px-[9px] py-0.5 text-[11px] font-bold text-[#333]"
           >
             Cancel
           </button>
-          {g.notes_edited ? (
+          {g.notes_edited || staged ? (
             <button
               type="button"
               data-notes-reset
-              disabled={busy}
-              onClick={() => void save(null)}
-              className="ml-auto cursor-pointer text-[11px] text-[#1d4ed8] underline disabled:opacity-60"
+              onClick={() => done(null)}
+              className="ml-auto cursor-pointer text-[11px] text-[#1d4ed8] underline"
             >
               Reset to Rezdy
             </button>
@@ -1606,12 +1611,13 @@ function NotesCell({
   return (
     <td
       data-notes-cell
+      data-notes-unsaved={staged ? "" : undefined}
       onClick={
         textEditing
           ? textEdit.onClick
           : editable
             ? () => {
-                setValue(g.notes);
+                setValue(shown);
                 setEditing(true);
               }
             : undefined
@@ -1620,11 +1626,12 @@ function NotesCell({
       className={cn(
         "border border-[#c8ced2] px-[7px] py-[3px] align-middle",
         textEdit.className,
-        g.notes && "bg-[#fff200]",
+        shown && "bg-[#fff200]",
         g.notes_check
           ? "min-w-[220px] whitespace-pre-wrap text-[#d00000]"
           : "whitespace-nowrap",
         editable && "cursor-text",
+        staged && UNSAVED_RING,
       )}
       title={
         g.notes_check
@@ -1634,13 +1641,18 @@ function NotesCell({
             : undefined
       }
     >
-      {g.notes}
-      {g.notes_edited ? (
+      {shown}
+      {edited ? (
         <span
           data-notes-edited
           className="ml-1.5 rounded-full bg-[#fed7aa] px-1.5 text-[10px] font-bold text-[#7c2d12]"
         >
           edited
+        </span>
+      ) : null}
+      {staged ? (
+        <span data-notes-staged className={cn(UNSAVED_TAG, "ml-1.5")}>
+          not saved
         </span>
       ) : null}
     </td>
@@ -1709,7 +1721,7 @@ function SectionRows({
   /** 节标题字号（Marcello 放大）。 */
   sectionPx: number;
   onBusChange: (guest: ManifestGuest, label: string) => void;
-  onNotesChange: (guest: ManifestGuest, notes: string | null) => Promise<void>;
+  onNotesChange: (guest: ManifestGuest, notes: string | null) => void;
   attraction: {
     tourManifestId: number;
     busKey: string;
@@ -2296,9 +2308,11 @@ function HowToUse() {
           manifest. Each bus on the Dispatch schedule gets its own block.
         </li>
         <li>
-          Changes to the Version, text size, a guest&rsquo;s bus and the yellow
-          boxes stay on the page, marked orange, until you click Save at the
-          top. Saved turns green; anything that could not be saved stays orange
+          Changes to the Version, text size, a guest&rsquo;s bus, the yellow
+          boxes and Special Requirements stay on the page, marked orange, until
+          you click Save at the top. To change Special Requirements, click the
+          cell, edit it and click Done; Reset to Rezdy brings back the Rezdy
+          text. Saved turns green; anything that could not be saved stays orange
           with the reason in red. If you print, download or leave the page
           first, it asks whether to save.
         </li>
