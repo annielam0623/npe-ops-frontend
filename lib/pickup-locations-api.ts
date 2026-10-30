@@ -1,5 +1,10 @@
 import { apiFetch } from "@/lib/api-client";
-import type { PickupLocation, PickupLocationInput } from "@/types";
+import type {
+  PickupLocation,
+  PickupLocationInput,
+  ShuttleRoute,
+  ShuttleSeason,
+} from "@/types";
 
 /**
  * 接客点（酒店）。全部接口 require_admin，staff 调 403。
@@ -58,4 +63,40 @@ export async function setPickupLocationTourDeparture(
 /** 硬删除。还在 Dispatch 排班里时 409（detail 说明哪几天）。 */
 export async function deletePickupLocation(id: number): Promise<void> {
   await apiFetch(`/api/pickup-locations/${id}`, { method: "DELETE" });
+}
+
+// ── Shuttle 站的时间 + 季节（preview v3，Annie「就可以动手了」）──────────────────
+// 形状照 preview「需要后端」B2 / B3b 暂定，后端定稿后核对。
+
+/** 全站共用的季节，按开始日期排。 */
+export async function fetchShuttleSeasons(
+  signal?: AbortSignal,
+): Promise<ShuttleSeason[]> {
+  const r = await apiFetch<{ seasons: ShuttleSeason[] }>(
+    "/api/pickup-locations/seasons",
+    { cache: "no-store", signal },
+  );
+  return r.seasons;
+}
+
+/** 整份换掉（一个事务）。重叠回 400，detail 是原话。新加的季节不带 id。 */
+export async function saveShuttleSeasons(
+  seasons: (Omit<ShuttleSeason, "id"> & { id?: number })[],
+): Promise<ShuttleSeason[]> {
+  const r = await apiFetch<{ seasons: ShuttleSeason[] }>(
+    "/api/pickup-locations/seasons",
+    { method: "PUT", body: { seasons } },
+  );
+  return r.seasons;
+}
+
+/** Route 下拉：Manifest setup 里的 Shuttle 产品。 */
+export async function fetchShuttleRoutes(
+  signal?: AbortSignal,
+): Promise<ShuttleRoute[]> {
+  const r = await apiFetch<{ routes: ShuttleRoute[] }>(
+    "/api/pickup-locations/shuttle-routes",
+    { cache: "no-store", signal },
+  );
+  return r.routes;
 }

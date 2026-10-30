@@ -113,6 +113,9 @@ export type {
   PickupLocationInput,
   PickupLogAction,
   PickupLogEntry,
+  PickupStopTime,
+  ShuttleRoute,
+  ShuttleSeason,
 } from "./pickup-locations";
 export type {
   MtlvTicketStatus,
