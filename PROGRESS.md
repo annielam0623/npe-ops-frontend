@@ -74,6 +74,13 @@
     - action_log 加「; notified N employee(s)」和 schedule_change_send。
   - ⚠️ 和 Annie 10-29 原话「重新发布只发给班有变化的人和他们的主管」可能对不上（notified 不含主管）。已问 57：主管是走 Notice，还是漏了。
   - 后端还在等 Annie 定：已点过 Looks good 的员工收到 Send to confirm 后，Responses 卡要不要重置成 no_answer（现在不重置）。
+- 62 报排班两个分支已对 G217：notify-wording c27ef65（worktree -sched1）、send-to-confirm 0e8c084（worktree -sched2，已合 c27ef65）。都不合 main，检查等 Node。
+  - 形状对得上，页面代码不用改。只改了模拟接口（staff 的 false / []、没邮箱原话）、类型注释、sch 套（加 409、只回 email 两条）。
+  - Notice 面板只把 body 当纯文本显示，文字变了也不用改。
+  - 待后端 ef 答（已转 57）：
+    - a 主管（确认框、按钮提示、发送框共三处提到 supervisors）；
+    - b 什么情况下没有 in_app，前端怎么提前知道；
+    - c 后端真正发的邮件 / 站内通知原文。
 
 ## 2026-10-29 晚 收工交接：前端主窗口 `今天前端主窗口-d2`[15266b]（家里电脑，Annie「做完写交接收工」）
 
