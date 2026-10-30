@@ -76,6 +76,7 @@ import {
   EMPTY_DRAFT,
   isDirty,
   localGaps,
+  newGapsByCard,
   opsOf,
   removeSlot,
   summaryOf,
@@ -707,6 +708,17 @@ export function ScheduleView() {
     if (orig) movedFrom.set(orig.id, orig.employee_id);
   }
   const counts = countChanges(draft);
+  // 卡片上直接标空档（置顶 17）：这次改动新造成的空档记到造成它的那张卡上，补上就没了。
+  const gapNotes =
+    readyWeek && derived
+      ? newGapsByCard(
+          weekStart,
+          readyWeek.slots,
+          derived.live,
+          draft,
+          settings.work_window,
+        )
+      : new Map();
   // 这周被排进时段、但名单里没有邮箱的人：发布时收不到邮件（只是提醒，不拦着发布）。
   const scheduledIds = new Set(liveSlots.map((s) => s.employee_id));
   const noEmailNames = employees
@@ -947,6 +959,7 @@ export function ScheduleView() {
                       marks: derived.marks,
                       movedFrom,
                       errorSlotId,
+                      gapNotes,
                     }
                   : undefined
               }
@@ -1802,6 +1815,7 @@ function WeekBody({
     marks: Map<number, SlotMark>;
     movedFrom: Map<number, number | null>;
     errorSlotId: number | null;
+    gapNotes: Map<number, ScheduleGap[]>;
   };
   onUndoDelete?: (slotId: number) => void;
   state: WeekState;
@@ -1870,6 +1884,7 @@ function WeekBody({
         marks={draftView?.marks}
         movedFrom={draftView?.movedFrom}
         errorSlotId={draftView?.errorSlotId ?? null}
+        gapNotes={draftView?.gapNotes}
         onUndoDelete={onUndoDelete}
         timeOff={state.week.time_off}
         shiftTypes={settings.shift_types}

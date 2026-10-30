@@ -30,7 +30,7 @@ import {
 } from "./config";
 import { sentTime } from "./send-changes-dialog";
 import { TimeEditPopup } from "./time-edit-popup";
-import type { SlotMark } from "./week-draft";
+import { gapSentence, type SlotMark } from "./week-draft";
 
 interface WeekGridProps {
   weekStart: string;
@@ -82,6 +82,8 @@ interface WeekGridProps {
   onUndoDelete?: (slotId: number) => void;
   /** 后端 400 指出的那一个班（op_index → slot）：标红。 */
   errorSlotId?: number | null;
+  /** 这张卡新造成的空档（页面上的改动算的，置顶 17）：卡片变红、写明空档多长。 */
+  gapNotes?: Map<number, ScheduleGap[]>;
   /** 已发布的周每个人改了什么（只给能改排班的人传）：行上出「N changes · Send to confirm」，改过的格子标琥珀色。 */
   pendingChanges?: SchedulePendingChange[];
   onSendChanges?: (employeeId: number) => void;
@@ -122,6 +124,7 @@ export function WeekGrid({
   movedFrom,
   onUndoDelete,
   errorSlotId = null,
+  gapNotes,
   pendingChanges,
   onSendChanges,
   sendBlocked = false,
@@ -217,6 +220,7 @@ export function WeekGrid({
             selected={selectedSlotId === slot.id}
             mark={marks?.get(slot.id)}
             error={errorSlotId === slot.id}
+            gaps={gapNotes?.get(slot.id)}
             onSelect={() =>
               setSelectedSlotId((id) => (id === slot.id ? null : slot.id))
             }
@@ -618,6 +622,7 @@ function SlotCard({
   selected,
   mark,
   error,
+  gaps,
   onSelect,
   onStartEdit,
   noting,
@@ -635,6 +640,8 @@ function SlotCard({
   mark?: SlotMark;
   /** 后端 400 指出的就是这一个：标红。 */
   error: boolean;
+  /** 这张卡新造成的空档：红框 + 淡红底，时间下面一句（Annie 10-30「这个格子就变红色，告诉排班的人有一小时的gap」）。 */
+  gaps?: ScheduleGap[];
   onSelect: () => void;
   /** 点时间：开改时间小窗（A8），传卡片元素量位置。 */
   onStartEdit: (anchor: HTMLElement | null) => void;
@@ -679,6 +686,9 @@ function SlotCard({
         deleted &&
           "border-dashed border-amber-400/70 bg-white/[.04] text-white/40 opacity-70",
         error && "border-red-500 ring-2 ring-red-500/70",
+        // 造成空档：红的优先于琥珀色（没存的改动）和删掉的灰。
+        gaps?.length &&
+          "border-2 border-solid border-red-500 bg-red-500/[.16] opacity-100 ring-0",
         live && "cursor-grab",
         selected && "ring-2 ring-sky-400/70",
       )}
@@ -740,6 +750,14 @@ function SlotCard({
       >
         {formatClock(slot.start_time)} – {formatClock(slot.end_time)}
       </button>
+      {gaps?.length ? (
+        <span
+          data-gap-note
+          className="text-[10.5px] leading-tight font-bold text-[#fecaca]"
+        >
+          {gapSentence(gaps)}
+        </span>
+      ) : null}
       {badRange && !deleted ? (
         <span className="text-[10px] text-amber-200">
           End isn&apos;t after start
