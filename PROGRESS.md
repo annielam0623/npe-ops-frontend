@@ -8,15 +8,36 @@
 
 > 规矩见 CLAUDE.md「问 Annie 要确认的事：给完整内容，并一直置顶」（2026-10-30）。每条都要能单独看懂。
 
-### 1. 导游短信原文（G215 导游页开关打开之前必须确认）
-- 是什么：Dispatch 给当天每位导游发一条短信，里面是他自己的导游页链接，12 小时有效。导游点开就能看到自己的车和客人。
-- 后端现在写的原文（app/services/guide_notice.py 的 notice_sms，还没经 Annie 确认）：
-  `NPE: Guide manifest for Fri, Oct 30, tap to open: https://…/l/<每人自己的链接>?date=2026-10-30`
-  - 日期照当天，格式是「星期, 月 日」。
-  - 和司机那条一样，司机写「Manifest」，导游写「Guide manifest」。
-  - 写得短是为了一条短信发得完，不被拆成两条、多收钱。
-- 要 Annie 定：这句可以吗？要改就给出想要的原句。
-- 另外：第一次真发给餐厅，也要她点头。
+### 1. Dispatch「Send to guide」样稿：5 条要定（e6 做，preview https://claude.ai/artifact/4hC4p7DrrwmEhNPsSFHwNB ）
+- 背景：
+  - Annie 10-30 对「要不要做 Send to guide 键」答「做」，已出样稿（模拟数据，没写代码）。
+  - 后端 GET /api/dispatch/guide-notice 和 POST /send 都已经有，带 page_open / page_off_text。
+  - 和司机那边有两处不一样：后端只按天记「上次谁几点发的」；没有「几台车没排导游」这个数。
+- ① 放在哪（Dispatch › Send 现在 Step 1 Send to drivers、Step 2 Morning Relay）：
+  - A. 放进 Step 1 司机那块下面，Step 1 改名「Send to drivers & guides」；点一次 Check the list，两份名单一起列，各自一个 Send texts now；
+  - B. 单独一步 Step 2「Send to guides」，Morning Relay 改 Step 3；
+  - C. Step 1 里和司机左右并排。
+  - 推荐 A：发的是同一种东西。B 要改大家熟悉的步数；C 太挤，手机排不下。
+- ② 导游短信原文（导游页开关打开前必须确认）：
+  - 现在：`NPE: Guide manifest for Fri, Oct 30, tap to open: https://confirm.nationalparkexpress.com/l/<每人自己的链接>?date=2026-10-30`
+  - 和司机那句「NPE: Manifest for Fri, Oct 30, tap to open: …」同一结构，只多「Guide」。再加字会变两条短信，长破折号会让整条按两倍计费。
+  - A. 就用这句；B. 给新原文（要在一条短信以内）。推荐 A。
+- ③ Send texts now 的颜色：
+  - 规矩是蓝色只给提交键，但司机那块现在 Send texts now 是绿色（照旧后台），Check the list 反而是蓝色。
+  - A. 导游这块照规矩：Send 蓝、Check the list 白底；司机那块一起改成一样（司机那块是样子调整，要同意）；
+  - B. 导游照司机现在的样子（绿 Send、蓝 Check）；
+  - C. 导游照规矩、司机不动，同一步里两块颜色不同。
+  - 推荐 A。
+- ④ 「已发过」怎么显示（全站统一是逐人淡黄行「Sent by 谁 on 时间」，但后端只按天记一次）：
+  - A. 照司机那块：框头写「Last sent 时间 by 谁（Texted N guides…）」，再发时确认框提醒「They will get it again」。不用等后端；
+  - B. 逐人显示「Sent by 谁 on 时间」，已发过的默认不勾。要后端加按人记录。
+  - 推荐 A：导游一天通常只发一次。以后要逐人，司机一起改。
+- ⑤ 没排导游的车要不要提示（司机那块会提示「N 台车还没排司机」，不拦发送）：
+  - A. 先不提示；
+  - B. 灰字提示「N tour buses have no guide yet」，不拦发送。要后端在 guide-notice 里加一个数。
+  - 推荐 B，后端加之前先按 A 上线。
+- 定了以后说「动手」，e6 从 main 拉 task/dispatch-send-to-guide 开工。
+- 另外：第一次真发，也要 Annie 点头。
 
 ### 4. 和「不直接去 Rezdy 拉单」冲突的五处（d2 10-29 报过，还没答）
 - 背景：Annie 10-29 定了订单流是 Order List → Main manifest → Dispatch / Tracking，不许跳过直接去 Rezdy 拉单，已写进 CLAUDE.md。
@@ -85,6 +106,7 @@
 - 附注：邮件里周的写法是「2026-10-04」（周日日期），不是「Oct 4 – 10」。想让员工看到「Oct 4 – 10」，要后端改邮件模板。
 
 ### 9. Bus Manifest 的 Special Requirements 编辑，自己存还是并进整页 Save（G125，Annie 要今天上线）
+- **Annie 10-30 答：「并进整页一起存」= 选 A。** 照规矩已问她「是否现在动手」，等她说动手再派；后端 G125 上 main 后才能真编辑。
 - 背景：
   - Annie 10-18 要求 Bus Manifest 每位客人的 Special Requirements 能改、能删。前端当时先做好了：点格子出编辑框，有 Save / Cancel / Reset to Rezdy（恢复原文），改过的格子带 edited 小标记。后端一直没做，所以这一格现在只读。
   - 后端今天重启 G125（78 做）。后端上线后，这一格就能编辑。
