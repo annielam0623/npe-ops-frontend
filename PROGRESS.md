@@ -231,6 +231,10 @@
     - 9c：Pickup Locations preview v2，加接人时间；
     - 9a：重发 Publish anyway / again 的后端活（原来给 c8，c8 不在了）。
   - 后端 main 还是 36dde18，Bus Manifest 还没推（要 Annie 在自己的终端推）。
+  - 9a：Publish anyway / again 交给 8e。
+    - 不加列、不做 migration；去掉两处 409；「发布时有空档」在读数据时现算。
+    - 排在 G216 后面，明天做。
+    - 通知规则定下来之前，重新发布先不发通知（主窗口同意），首次发布照旧。已问 Annie 通知规则。
 - **Annie 重启电脑前的交接（10-29 晚）**：
   - 后端 9a：Bus Manifest 正在推 main，West Rim 提交号由 20 发来；G216 重启后再合；B9 批量接口、Publish anyway 还没开工。
   - 前端重启后的下一步：
