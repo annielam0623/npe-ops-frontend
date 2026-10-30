@@ -415,11 +415,11 @@ async function run() {
   // 10-07 起拆两个标签（Annie）：Assign = Step 1 Guest lists、Step 2 Buses & drivers；
   // Send = Step 1 Send to drivers、Step 2 Morning Relay — text guests（原来的早班发送）。
   const rp = "document.querySelector('section[aria-label=\"Morning Relay — text guests\"]')";
-  const dp = "document.querySelector('section[aria-label=\"Send to drivers\"]')";
+  const dp = "document.querySelector('section[aria-label=\"Send to drivers & guides\"]')";
   const tabBtn = (name) => `document.getElementById('tab-${name}')`;
   const panel = (name) => `document.getElementById('panel-${name}')`;
   check("标签：默认 Assign，Send 那一页藏着，地址不带 tab", await evaluate(`return ${tabBtn("assign")}.getAttribute('aria-selected') === 'true' && ${tabBtn("send")}.getAttribute('aria-selected') === 'false' && !${panel("assign")}.hidden && ${panel("send")}.hidden && !location.search.includes('tab=');`));
-  check("Assign 里是 Guest lists → Buses & drivers；Send 里是 Send to drivers → Morning Relay — text guests", await evaluate(`const l = (p) => [...p.querySelectorAll('section[aria-label]')].map(s => s.getAttribute('aria-label')).filter(x => ['Guest lists', 'Buses & drivers', 'Send to drivers', 'Morning Relay — text guests'].includes(x)).join('|'); return l(${panel("assign")}) === 'Guest lists|Buses & drivers' && l(${panel("send")}) === 'Send to drivers|Morning Relay — text guests';`));
+  check("Assign 里是 Guest lists → Buses & drivers；Send 里是 Send to drivers & guides → Morning Relay — text guests", await evaluate(`const l = (p) => [...p.querySelectorAll('section[aria-label]')].map(s => s.getAttribute('aria-label')).filter(x => ['Guest lists', 'Buses & drivers', 'Send to drivers & guides', 'Morning Relay — text guests'].includes(x)).join('|'); return l(${panel("assign")}) === 'Guest lists|Buses & drivers' && l(${panel("send")}) === 'Send to drivers & guides|Morning Relay — text guests';`));
   await evaluate(`${tabBtn("send")}.click();`);
   await waitFor(`!${panel("send")}.hidden`);
   check("点 Send：显示 Send、藏 Assign，地址带 ?tab=send、日期还在", await evaluate(`return ${panel("assign")}.hidden && !${panel("send")}.hidden && new URLSearchParams(location.search).get('tab') === 'send' && new URLSearchParams(location.search).get('date') === '2026-10-05';`), await evaluate("return location.search;"));
@@ -495,16 +495,16 @@ async function run() {
   check("发送 502：弹窗关掉、重拉、面板写「可能已发」", (await since(b0, (e) => e.path === "/api/dispatch/relay-pull")).length >= 1 && (await evaluate(`return ${rp}.querySelector('[role=alert]').textContent.includes('Some texts may already have gone out');`)));
   await ctl({ relay502: false, relaySent: ["R1"] });
   // Send to drivers（后端 2026-10-10 `8cdacda`：按钮改名 Check the list、收起状态一行提示、每人一个勾选框）
-  check("没点 Check the list 也显示发给司机的原文（链接可点、新标签页）和导游那格（Annie 2026-10-15）", await evaluate(`const d = ${dp}.querySelector('[data-driver-text]'); const a = d && d.querySelector('a'); const g = ${dp}.querySelector('[data-guide-text]'); return !!d && d.textContent.startsWith('NPE: Your manifest for Mon, Oct 5 is ready.') && !!a && a.href === 'https://confirm.nationalparkexpress.com/driver?date=2026-10-05' && a.target === '_blank' && !!g && g.textContent.includes('Guides don’t get a text yet');`), await evaluate(`return ${dp}.textContent;`));
+  check("没点 Check the list 也显示发给司机的原文（链接可点、新标签页）和导游那格（Send to guide 以后写导游的原文）", await evaluate(`const d = ${dp}.querySelector('[data-driver-text]'); const a = d && d.querySelector('a'); const g = ${dp}.querySelector('[data-guide-text]'); return !!d && d.textContent.startsWith('NPE: Your manifest for Mon, Oct 5 is ready.') && !!a && a.href === 'https://confirm.nationalparkexpress.com/driver?date=2026-10-05' && a.target === '_blank' && !!g && g.textContent.startsWith('NPE guide Mon Oct 5: ');`), await evaluate(`return ${dp}.textContent;`));
   check("收起状态（没点开）就有一行提示：有发不了的司机时橙字数一下", await evaluate(`const t = ${dp}.textContent; return t.includes("1 driver can’t be texted — no mobile number or not in HR.") && !t.includes('Text each driver gets');`), await evaluate(`return ${dp}.textContent;`));
   // G123（Annie 2026-10-19「司机链接那句说明加，三处旧文字都改」）：Text to drivers 下面一句小字；旧文字去掉「login」。
-  check("Text to drivers 下面加一句：Each person gets their own link, valid for 12 hours … Send again to give a fresh one.（只在司机那张卡，导游那格不动）", await evaluate(`const d = ${dp}.querySelector('[data-driver-text]').parentElement; const n = d.querySelector('[data-driver-link-note]'); const g = ${dp}.querySelector('[data-guide-text]').parentElement; return !!n && n.textContent.replace(/\\s+/g, ' ').trim() === 'Each person gets their own link, valid for 12 hours from the moment you send. Send again to give a fresh one.' && !g.querySelector('[data-driver-link-note]') && g.textContent.includes('Guides don’t get a text yet');`), await evaluate(`return ${dp}.textContent;`));
-  check("旧文字改了：说明里没有「they log in first」，How to use 里没有「no login」", await evaluate(`const t = ${dp}.textContent.replace(/\\s+/g, ' '); return !t.includes('log in first') && !t.includes('no login') && t.includes('link opens their own manifest on their phone: the bus they drive') && t.includes('A driver with no mobile number, or not in HR, is listed with the reason.');`), await evaluate(`return ${dp}.textContent;`));
+  check("Text to drivers 下面加一句：Each person gets their own link, valid for 12 hours … Send again to give a fresh one.（导游那格也有同一句，Send to guide）", await evaluate(`const d = ${dp}.querySelector('[data-driver-text]').parentElement; const n = d.querySelector('[data-driver-link-note]'); const g = ${dp}.querySelector('[data-guide-text]').parentElement; return !!n && n.textContent.replace(/\\s+/g, ' ').trim() === 'Each person gets their own link, valid for 12 hours from the moment you send. Send again to give a fresh one.' && !g.querySelector('[data-driver-link-note]') && !!g.querySelector('[data-guide-link-note]');`), await evaluate(`return ${dp}.textContent;`));
+  check("旧文字改了：说明里没有「they log in first」，How to use 里没有「no login」", await evaluate(`const t = ${dp}.textContent.replace(/\\s+/g, ' '); return !t.includes('log in first') && !t.includes('no login') && t.includes('link opens their own page on their phone: the bus they are on') && t.includes('A driver or guide with no mobile number, or not in HR, is listed with the reason.');`), await evaluate(`return ${dp}.textContent;`));
   check("按钮叫 Check the list（不再叫 Send to driver）；How to use 写了勾选", await evaluate(`return !!$btn('Check the list', ${dp}) && !$btn('Send to driver', ${dp}) && ${dp}.textContent.includes('Drivers with a Morning Relay car are ticked; tick or untick anyone.');`));
   b0 = (await mockLog()).length;
   await evaluate(`$btn('Check the list', ${dp}).click();`);
   await waitFor(`${dp}.textContent.includes('selected.')`);
-  check("Check the list：先看名单（谁能发、发不了的原因、短信内容、没发过）", await evaluate(`const t = ${dp}.textContent; return t.includes('1 driver selected. Not sent yet for this day.') && t.includes('No mobile number in Human Resource') && t.includes('their own manifest on their phone') && t.includes('+17025550101');`) && (await since(b0, (e) => e.path === "/api/dispatch/driver-notice/send")).length === 0);
+  check("Check the list：先看名单（谁能发、发不了的原因、短信内容、没发过）", await evaluate(`const t = ${dp}.textContent; return t.includes('1 driver selected. Not sent yet for this day.') && t.includes('No mobile number in Human Resource') && t.includes('their own page on their phone') && t.includes('+17025550101');`) && (await since(b0, (e) => e.path === "/api/dispatch/driver-notice/send")).length === 0);
   check("勾选框：能发的默认勾上、发不了的灰掉不勾、表头全选是勾上的", await evaluate(`const c = (k) => ${dp}.querySelector('tr[data-key="' + k + '"] input[type=checkbox]'); const all = ${dp}.querySelector('th input[type=checkbox]'); return c('hr:1').checked && !c('hr:1').disabled && !c('hr:2').checked && c('hr:2').disabled && all.checked;`));
   await evaluate(`${dp}.querySelector('tr[data-key="hr:1"] input[type=checkbox]').click();`);
   check("取消勾选唯一能发的人：0 drivers selected、Send texts now 关着、全选跟着取消", await evaluate(`return ${dp}.textContent.includes('0 drivers selected.') && $btn('Send texts now', ${dp}).disabled && !${dp}.querySelector('th input[type=checkbox]').checked;`));
@@ -731,7 +731,7 @@ async function run() {
 
   // ── 审查修正：行在存的时候关着、Send to driver 先重读名单、存好后面板重建、浏览器后退也先问 ──
   {
-    const dp = "document.querySelector('section[aria-label=\"Send to drivers\"]')";
+    const dp = "document.querySelector('section[aria-label=\"Send to drivers & guides\"]')";
     await ctl({ driverAlt: false, saveDelay: 0, dayDelay: 0, failDay: false });
     await goto(`${APP}/dispatch?date=2026-10-05`);
     await waitFor("document.querySelector('.vrow')");
@@ -830,6 +830,61 @@ async function run() {
     await evaluate(`$btn('Cancel', ${dialog}).click();`);
     await waitFor(`!${dialog}`);
     await ctl({ driverPage: null, driver400: false });
+
+    // ── Send to guide（Annie 2026-10-30「1. 动手」，preview 4hC4p7DrrwmEhNPsSFHwNB Q1–Q5 照推荐 + 链接后面加一句）──
+    const gbox = `${dp}.querySelector('[aria-label="Send to guide"]')`;
+    const gSend = `${gbox}.querySelector('[data-guide-send]')`;
+    const gExtra = `${gbox}.querySelector('[data-guide-extra] input')`;
+    await openList();
+    check("Send to guide：点一次 Check the list，司机、导游两份名单一起列（导游在司机那块下面）", await waitFor(`!!${gbox}`) && (await evaluate(`const boxes = [...${dp}.querySelectorAll('[role=region]')].map((b) => b.getAttribute('aria-label')); return boxes.indexOf('Send to driver') >= 0 && boxes.indexOf('Send to guide') > boxes.indexOf('Send to driver');`)));
+    check("导游名单：能发的默认全勾、发不了的灰掉写原因；一个导游两台车写两行车", await evaluate(`const r = (k) => ${gbox}.querySelector('tr[data-guide-key="' + k + '"]'); return r('hr:21').querySelector('input').checked && r('hr:22').querySelector('input').checked && r('typed:SAM').querySelector('input').disabled && r('typed:SAM').textContent.includes('Typed in by hand, not in HR') && r('hr:21').children[3].querySelectorAll('div').length === 2 && ${gbox}.textContent.includes('2 guides selected. Not sent yet for this day.');`), await evaluate(`return ${gbox}.textContent;`));
+    check("颜色（Q3 A）：两个 Send texts now 都是蓝色，Check the list 白底；司机那块不再是绿色", await evaluate(`const blue = 'rgb(59, 130, 246)'; const d = $btn('Send texts now', ${dp}.querySelector('[aria-label="Send to driver"]')); return getComputedStyle(${gSend}).backgroundColor === blue && getComputedStyle(d).backgroundColor === blue && getComputedStyle($btn('Check the list', ${dp})).backgroundColor === 'rgb(255, 255, 255)';`));
+    // 链接后面加一句：实时剩几个字；超长、非 GSM 都挡住
+    check("加一句的输入框：空着写「60 characters left」", await evaluate(`return ${gbox}.querySelector('[data-guide-extra-left]')?.textContent === '60 characters left';`), await evaluate(`return ${gbox}.querySelector('[data-guide-extra]')?.textContent;`));
+    await evaluate(`$setValue(${gExtra}, 'Meet at Door 3 by 6:15');`);
+    check("打字：剩的字数跟着减（60 - 22 = 38）", await waitFor(`${gbox}.querySelector('[data-guide-extra-left]')?.textContent === '38 characters left'`));
+    await evaluate(`$setValue(${gExtra}, 'x'.repeat(61));`);
+    check("超长：红字 Too long: 1 character over，Send 不能按", await waitFor(`${gbox}.querySelector('[data-guide-extra-over]')?.textContent.includes('Too long: 1 character over.') && ${gSend}.disabled`));
+    await evaluate(`$setValue(${gExtra}, 'Meet at “Door 3” — 谢谢 🙂');`);
+    check("非 GSM 字符（弯引号、长破折号、中文、表情）：红字 Use plain English letters，Send 不能按", await waitFor(`${gbox}.querySelector('[data-guide-extra-bad]')?.textContent.startsWith('Use plain English letters.') && ${gSend}.disabled`), await evaluate(`return ${gbox}.querySelector('[data-guide-extra]')?.textContent;`));
+    await evaluate(`$setValue(${gExtra}, 'Meet at Door 3 by 6:15');`);
+    await waitFor(`!${gSend}.disabled`);
+    // 确认框：预览整条短信；发了才送
+    let g0 = (await mockLog()).length;
+    await evaluate(`${gSend}.click();`);
+    await waitFor(dialog);
+    check("Send texts now：先重读名单再确认；确认框预览整条短信（固定段 + 加的那句）", (await since(g0, (e) => e.path === "/api/dispatch/guide-notice")).length === 1 && (await evaluate(`const p = ${dialog}.querySelector('[data-guide-sms-preview]'); return !!p && p.textContent.includes('NPE guide Mon Oct 5: https://confirm.nationalparkexpress.com/l/<your-link> Meet at Door 3 by 6:15') && !!$btn('Text 2 guides', ${dialog});`)) && (await since(g0, (e) => e.path === "/api/dispatch/guide-notice/send")).length === 0, await evaluate(`return ${dialog}?.textContent;`));
+    await evaluate(`$btn('Text 2 guides', ${dialog}).click();`);
+    await waitFor(`!${dialog}`);
+    const gs = (await since(g0, (e) => e.path === "/api/dispatch/guide-notice/send"))[0]?.body;
+    check("发送：只发勾了的 key、带 extra", JSON.stringify(gs?.recipients) === '["hr:21","hr:22"]' && gs?.extra === "Meet at Door 3 by 6:15" && gs?.date === "2026-10-05", JSON.stringify(gs));
+    check("发完：绿字 ✓ Texted 2 guides、框头写 Last sent … by annie（重拉了名单）", await waitFor(`${dp}.querySelector('[data-guide-ok]')?.textContent === '✓ Texted 2 guides: KEVIN, MARIA.' && ${gbox}.textContent.includes('by annie (Texted 2 guides for 2026-10-05).')`), await evaluate(`return ${dp}.querySelector('[data-guide-ok]')?.textContent + ' | ' + ${gbox}.textContent.slice(0, 160);`));
+    // 再发：确认框提醒会再收到（Q4 A）
+    await evaluate(`${gSend}.click();`);
+    await waitFor(dialog);
+    check("再发：确认框写 Last sent … They will get it again.", await evaluate(`return ${dialog}.textContent.includes('They will get it again.');`));
+    // 后端 400：红字原话，Nothing was sent
+    await ctl({ guide400: true });
+    await evaluate(`$btn('Text 2 guides', ${dialog}).click();`);
+    await waitFor(`${dialog} && ${dialog}.querySelector('[role=alert]')`);
+    check("后端 400：确认框里红字写后端原话 + Nothing was sent.", await evaluate(`const a = ${dialog}.querySelector('[role=alert]'); return a.textContent.includes('Guide page is off. Turn it on in Page visibility before sending.') && a.textContent.includes('Nothing was sent.') && getComputedStyle(a).color === 'rgb(163, 45, 45)';`));
+    await evaluate(`$btn('Cancel', ${dialog}).click();`);
+    await waitFor(`!${dialog}`);
+    // 导游页开关关着：Send 灰掉，旁边灰字照后端原文
+    await ctl({ guide400: false, guidePage: false });
+    await openList();
+    await waitFor(`!!${gbox}`);
+    check("导游页关着：Send texts now 灰掉，旁边灰字照后端 page_off_text", await evaluate(`const n = ${gbox}.querySelector('[data-guide-page-off]'); return ${gSend}.disabled && !!n && n.textContent === 'Guide page is off. Turn it on in Page visibility before sending.' && getComputedStyle(n).color === 'rgb(107, 114, 128)';`));
+    await ctl({ guidePage: true });
+    await openList();
+    await waitFor(`!!${gbox}`);
+    check("导游页开着：Send 能点，没有灰字", await evaluate(`return !${gSend}.disabled && !${gbox}.querySelector('[data-guide-page-off]');`));
+    // 后端还不收 extra（没带 extra_max）：不出输入框
+    await ctl({ guideNoExtra: true });
+    await openList();
+    await waitFor(`!!${gbox}`);
+    check("后端没带 extra_max：不出加一句的输入框", await evaluate(`return !${gbox}.querySelector('[data-guide-extra]');`));
+    await ctl({ guidePage: null, guideNoExtra: false, guideSentAt: false });
 
     // 缺司机 / 缺接客站点的 relay 车整车不发（后端 G108）：车头标红写原因、确认框分会发 / 不会发、发完写没发的车
     await ctl({ relayBlocked: true, relaySent: [] });

@@ -2,6 +2,8 @@
 const http = require("http");
 // 截图用：环境变量 MOCK_CTL（JSON）在启动时预设控制项，例 MOCK_CTL='{"completed":true}'（shoot.js 起模拟接口时会带上环境变量）。
 const DRIVER_PAGE_OFF = "Driver page is off. Turn it on in Page visibility before sending.";
+const GUIDE_PAGE_OFF = "Guide page is off. Turn it on in Page visibility before sending.";
+const GUIDE_EXTRA_MAX = 60;
 const ctl = { completed: false, saveErr: "", fail401: false, pullStatus: "nothing", dayDelay: 0, failDay: false, altMeta: false, noMeta: false, relaySent: [], relayExtra: false, relayHotels: false, relayLater: [], relayRace: [], relayGone: [], relay409: false, relay502: false, driverFail: false, saveDelay: 0, driverAlt: false, relayBlocked: false, relayOnlyBad: false, relayBlockLate: false, foDraft: false, driverAllOk: false, emptyHoover: false,
   // G118 tour_car 轮（Hoover Dam）：tourCar = 这个团当天排了 bus_tour 车、有客人；tourCarNoCar = 排了团但当天一台 bus_tour 车都没排（整块挡住）；
   // tourCarBlocked = 排了车但没司机（这台车挡住，客人进 blocked_cars）。
@@ -449,6 +451,35 @@ http.createServer(async (req, res) => {
     if (ctl.driver502) return send(res, 502, { detail: "Bad gateway" });
     if (ctl.driver400) return send(res, 400, { detail: DRIVER_PAGE_OFF });
     return send(res, 200, { sent: ["FREDDY"], failed: ctl.driverFail ? [{ name: "BOB", error: "Twilio 21211" }] : [] });
+  }
+  // Send to guide（Annie 2026-10-30「1. 动手」；后端 57 在改：缩短固定段、extra、extra_max / preview_text、400 原话）。
+  // ctl.guidePage = null（默认，没带）| true | false；ctl.guideNoExtra = 后端还不收 extra（不带 extra_max）；
+  // ctl.guide400 = 发送时后端拒（原话）；ctl.guideFail = 有一位送不到；ctl.guideAlt = 重读时多一位导游。
+  if (p === "/api/dispatch/guide-notice") {
+    const fixed = `NPE guide ${q.date === "2026-10-05" ? "Mon Oct 5" : q.date}: https://confirm.nationalparkexpress.com/l/<your-link>`;
+    return send(res, 200, {
+      run_date: q.date,
+      ...(ctl.guidePage == null ? {} : { page_open: ctl.guidePage, page_off_text: GUIDE_PAGE_OFF }),
+      text: fixed,
+      ...(ctl.guideNoExtra ? {} : { preview_text: fixed, extra_max: GUIDE_EXTRA_MAX }),
+      last_sent: ctl.guideSentAt ? { at: "2026-10-05T13:05:00+00:00", by: "annie", label: "Texted 2 guides for 2026-10-05" } : null,
+      people: [
+        { key: "hr:21", name: "KEVIN", phone: "+17025550141", can_send: true, why: "", cars: [{ van: "2041", tour: "Antelope Canyon" }, { van: "2042", tour: "Antelope Canyon" }] },
+        { key: "hr:22", name: "MARIA", phone: "+17025550177", can_send: true, why: "", cars: [{ van: "2051", tour: "Grand Canyon South Rim" }] },
+        { key: "typed:SAM", name: "SAM", phone: "", can_send: false, why: "Typed in by hand, not in HR", cars: [{ van: "2070", tour: "West Rim" }] },
+        ...(ctl.guideAlt ? [{ key: "hr:23", name: "JASON", phone: "+17255550108", can_send: true, why: "", cars: [{ van: "2063", tour: "Zion & Bryce" }] }] : []),
+      ],
+    });
+  }
+  if (p === "/api/dispatch/guide-notice/send") {
+    const b = JSON.parse(await readRaw(req)); entry.body = b;
+    if (ctl.guide400) return send(res, 400, { detail: GUIDE_PAGE_OFF });
+    if (b.extra != null && b.extra.length > GUIDE_EXTRA_MAX) return send(res, 400, { detail: `The extra line is too long. Keep it to ${GUIDE_EXTRA_MAX} characters.` });
+    ctl.guideSentAt = true;
+    const names = { "hr:21": "KEVIN", "hr:22": "MARIA", "hr:23": "JASON" };
+    const sent = (b.recipients || []).map((k) => names[k]).filter(Boolean);
+    if (ctl.guideFail) return send(res, 200, { sent: sent.slice(1), failed: [{ name: sent[0], error: "Carrier rejected the number" }] });
+    return send(res, 200, { sent, failed: [] });
   }
   // Farm out（G40）：形状照后端真代码（2026-10-17 核对：routers/farm_out*.py、docs 第八节）。ctl.farmOut 开着才有，关着 404。
   // 真后端：GET 结算价 / 上车点 / 时刻表是 admin；这里的模拟用户当 admin 用，不单独模拟 403。
