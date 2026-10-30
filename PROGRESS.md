@@ -882,6 +882,8 @@ pe-ops-frontend-seat）。**等后端 8e 上 main 再合。**
     - **Annie 原话（2026-10-30，eb 转）：「6 7 7b 按推荐 动手」**。第 6 条选 A，就是上面四处文字。
     - 检查（Node v26.13.0，合了 main）：tsc 过；eslint 0 错误（2 个警告是别人的文件）；build 过；sch 200/200、nav 32/32。
       - sch 第一次在 Rules 的删除那步崩了（确认框还没出来就去点 Delete），和这次改动无关。重跑一次 200/200。
+      - **偶发失败（以后有空再修，eb 10-30 说现在不用管）**：sch-test.js 约 586 行，Rules 删除时 `waitFor(dlg)` 等到的可能还是上一个 Edit rule 框，接着 `$btn('Delete', dlg)` 找不到键 ⇒ TypeError: Cannot read properties of undefined (reading 'click')。修法：等框里出现 Delete 键再点。
+    - eb 回「合」，合 main。
     - 线上 main 原来的确认框写「No notifications are sent when you publish again.」，后端上线后已经不对，这个分支合进去就改掉。
 - **其余自动保存改手动 A2 / A7 / B8**（9c，`task/misc-manual-save`）：Annie 原话「4项全部动手」；盘点 https://claude.ai/artifact/3GQ3waCB2X4jnEdxTRfefe 。后端不用改。
   - A2 Manifests 每单 Cfm # 格：离开框不再存；改了格旁出蓝色 Save（照节标题 Cfm # 的样子；没改不出，免得一整列都是键），按 Save 或 Enter 才存，Esc 放回；存好框变绿 + 绿字 Saved，失败红字 Not saved: …、输入留着；有没存的格子离开页面先问。How to use 改了。
