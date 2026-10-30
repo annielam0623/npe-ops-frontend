@@ -10,6 +10,8 @@ import {
   useState,
 } from "react";
 
+import { byTick } from "@/lib/by-tick";
+import { usePermissions } from "@/lib/staff-permissions";
 import { ActionLogPanel } from "@/components/action-log/action-log-panel";
 import { fetchActionLog } from "@/lib/action-log";
 import { HowToUse } from "@/components/ui/how-to-use";
@@ -217,13 +219,24 @@ export function ContentStudioView() {
   );
   const shuttle = useShuttleData(module === "shuttle", redirectToLogin);
 
+  // 全部按照勾选（Annie 2026-10-30 置顶 10c）：开关开着按勾（settings.content，同后端接口），关着照旧；Super Admin 全过。
+  const tickPerms = usePermissions();
+  const tickPermsRef = useRef(tickPerms);
+  tickPermsRef.current = tickPerms;
   useEffect(() => {
+    // 权限读完再判断（开关开着时要按勾）。
+    if (!tickPerms.ready) return;
     const controller = new AbortController();
     setState({ kind: "loading" });
     (async () => {
       try {
         const user = await fetchCurrentUser(controller.signal);
-        if (!user.is_admin) {
+        if (
+          !byTick(tickPermsRef.current, "settings.content", {
+            legacy: user.is_admin,
+            superAdmin: !!user.is_superadmin,
+          })
+        ) {
           setState({ kind: "forbidden" });
           return;
         }
@@ -243,7 +256,7 @@ export function ContentStudioView() {
       }
     })();
     return () => controller.abort();
-  }, [reloadKey, redirectToLogin]);
+  }, [reloadKey, redirectToLogin, tickPerms.ready, tickPerms.active]);
 
   const studio: Studio = useMemo(
     () => ({

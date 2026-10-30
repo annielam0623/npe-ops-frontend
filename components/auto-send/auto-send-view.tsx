@@ -21,6 +21,8 @@ import {
   TH_CLASS,
   TR_CLASS,
 } from "@/components/pickup-locations/legacy-ui";
+import { byTick } from "@/lib/by-tick";
+import { usePermissions } from "@/lib/staff-permissions";
 import { ActionLogPanel } from "@/components/action-log/action-log-panel";
 import { fetchActionLog } from "@/lib/action-log";
 import type { ActionResult } from "@/components/ui/action-result";
@@ -168,7 +170,13 @@ export function AutoSendView() {
     }
   }, []);
 
+  // 全部按照勾选（Annie 2026-10-30 置顶 10c）：开关开着按勾（settings.auto_send，同后端接口），关着照旧；Super Admin 全过。
+  const tickPerms = usePermissions();
+  const tickPermsRef = useRef(tickPerms);
+  tickPermsRef.current = tickPerms;
   useEffect(() => {
+    // 权限读完再判断（开关开着时要按勾）。
+    if (!tickPerms.ready) return;
     const controller = new AbortController();
     const { signal } = controller;
     (async () => {
@@ -176,7 +184,12 @@ export function AutoSendView() {
         const me = await fetchCurrentUser(signal);
         if (signal.aborted) return;
         // 只对 Super Admin 开放（Annie 2026-10-24，后端 GET/PUT 对其他人 403）：不是就不请求接口。
-        if (!me.is_superadmin) {
+        if (
+          !byTick(tickPermsRef.current, "settings.auto_send", {
+            legacy: !!me.is_superadmin,
+            superAdmin: !!me.is_superadmin,
+          })
+        ) {
           setView({ kind: "forbidden" });
           return;
         }
@@ -190,7 +203,7 @@ export function AutoSendView() {
       }
     })();
     return () => controller.abort();
-  }, [reloadKey, redirectToLogin]);
+  }, [reloadKey, redirectToLogin, tickPerms.ready, tickPerms.active]);
 
   /** 存一份整份设置；成功后页面上的「已存」换成返回的，并重拉一次记录。 */
   async function save(config: AutoSendConfig): Promise<ActionResult> {

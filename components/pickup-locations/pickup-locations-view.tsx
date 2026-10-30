@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { byTick } from "@/lib/by-tick";
+import { usePermissions } from "@/lib/staff-permissions";
 import type { ActionResult } from "@/components/ui/action-result";
 import { BulkImportButton } from "@/components/ui/bulk-import";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -96,7 +98,13 @@ export function PickupLocationsView() {
     [redirectToLogin],
   );
 
+  // 全部按照勾选（Annie 2026-10-30 置顶 10c）：开关开着按勾（settings.pickup，同后端接口），关着照旧；Super Admin 全过。
+  const tickPerms = usePermissions();
+  const tickPermsRef = useRef(tickPerms);
+  tickPermsRef.current = tickPerms;
   useEffect(() => {
+    // 权限读完再判断（开关开着时要按勾）。
+    if (!tickPerms.ready) return;
     const controller = new AbortController();
     const { signal } = controller;
     setView({ kind: "loading" });
@@ -105,7 +113,12 @@ export function PickupLocationsView() {
         const me = await fetchCurrentUser(signal);
         if (signal.aborted) return;
         // 只有 admin 能管接客点（后端也会 403）。
-        if (!me.is_admin) {
+        if (
+          !byTick(tickPermsRef.current, "settings.pickup", {
+            legacy: me.is_admin,
+            superAdmin: !!me.is_superadmin,
+          })
+        ) {
           setView({ kind: "forbidden" });
           return;
         }
@@ -120,7 +133,7 @@ export function PickupLocationsView() {
       }
     })();
     return () => controller.abort();
-  }, [reloadKey, applyLoadError]);
+  }, [reloadKey, applyLoadError, tickPerms.ready, tickPerms.active]);
 
   useEffect(
     () => () => {

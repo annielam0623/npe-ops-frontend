@@ -151,6 +151,11 @@ export interface ScheduleWeek {
    */
   has_unsent_changes?: boolean;
   /**
+   * 这一周的版本（= schedule_weeks.updated_at，后端 G218）。整周 Save 时作 base_version 送回去：
+   * 打开以后别人改过 ⇒ 409 stale。
+   */
+  version?: string | null;
+  /**
    * 已发布的周，每个人和上次发布比改了什么（Annie 10-29「员工确认，同意推荐，动手」：发布前可以单独发给本人确认）。
    * 只列有改动的人；Publish again 后清空。没带 = 后端没上线（不出 Send to confirm）。
    * 后端 G217（ef，10-30 定稿）：只给有 schedule.edit 的人，staff 永远 []；草稿周 []；v128 之前发布的周永远 []。
@@ -183,6 +188,54 @@ export interface ScheduleSendChangesResult {
   sent_by: string;
   /** 后端 G217：["email"] 或 ["email", "in_app"]。 */
   channels: ("email" | "in_app")[];
+}
+
+/**
+ * 整周一个 Save（Annie 2026-10-29「4项全部动手」第 3 项，B9 Q1–Q7 照推荐；后端 G218）：
+ * POST /api/schedule/weeks/{week_start}/changes 的一条改动。`slot` 是已有的 id，或同一批里 create 的 ref（"n1"…）。
+ */
+export type ScheduleWeekOp =
+  | {
+      op: "create";
+      ref: string;
+      date: string;
+      shift_type: string;
+      start_time: string;
+      end_time: string;
+      employee_id: number | null;
+      note: string | null;
+    }
+  | { op: "assign"; slot: number | string; employee_id: number | null }
+  | { op: "time"; slot: number | string; start_time: string; end_time: string }
+  | { op: "note"; slot: number | string; note: string | null }
+  | { op: "delete"; slot: number | string };
+
+/** POST …/changes 成功的返回体。 */
+export interface ScheduleWeekChangesResult {
+  /** 存完以后的整周（含新的 version），直接换掉页面数据。 */
+  week: ScheduleWeek;
+  /** ref → 新建的 slot id。 */
+  created: Record<string, number>;
+  applied: number;
+  /** G217 以后改动不马上通知：永远 []。 */
+  notified: ScheduleNotified[];
+  /** 锁过期后被后端重新占住时是新 token（之后心跳 / release 用它）；没变就是原来的。 */
+  lock_token?: string | null;
+}
+
+/**
+ * POST …/changes 的出错回包（后端 G218）：409 code locked / stale / coverage_gap，400 带 op_index / slot。
+ * 409 stale 和 400 也带 lock_token（同成功回包）。
+ */
+export interface ScheduleWeekChangesError {
+  detail: string;
+  code?: string;
+  /** stale：库里最新的 version。 */
+  version?: string | null;
+  gaps?: ScheduleGap[];
+  op_index?: number;
+  slot?: number | string | null;
+  lock_token?: string | null;
 }
 
 /** POST /api/schedule/weeks/{week_start}/publish 发布成功的返回体。 */

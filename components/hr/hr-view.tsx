@@ -9,7 +9,13 @@ import { HowToUse } from "@/components/ui/how-to-use";
 import { ErrorBanner, Panel } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchCurrentUser } from "@/lib/auth-api";
-import { canEditHr, canSeeHr, describeHrWriteError } from "@/lib/permissions";
+import {
+  byTick,
+  canEditHr,
+  canSeeHr,
+  describeHrWriteError,
+} from "@/lib/permissions";
+import { usePermissions } from "@/lib/staff-permissions";
 import {
   bulkErrorOf,
   createHRProfile,
@@ -144,7 +150,12 @@ export function HRView() {
     [redirectToLogin],
   );
 
+  // 全部按照勾选（Annie 2026-10-30 置顶 10c）：改 HR 开关开着按勾（settings.hr.edit，同后端 settings_hr.py），关着照旧按角色。
+  const tickPerms = usePermissions();
+  const tickPermsRef = useRef(tickPerms);
+  tickPermsRef.current = tickPerms;
   useEffect(() => {
+    if (!tickPerms.ready) return;
     const controller = new AbortController();
     const { signal } = controller;
     setView({ kind: "loading" });
@@ -156,7 +167,12 @@ export function HRView() {
           setView({ kind: "forbidden" });
           return;
         }
-        setCanEdit(canEditHr(me));
+        setCanEdit(
+          byTick(tickPermsRef.current, "settings.hr.edit", {
+            legacy: canEditHr(me),
+            superAdmin: !!me.is_superadmin,
+          }),
+        );
         const profiles = await fetchHRProfiles(signal);
         if (!signal.aborted) setView({ kind: "ready", profiles });
       } catch (error) {
@@ -164,7 +180,7 @@ export function HRView() {
       }
     })();
     return () => controller.abort();
-  }, [reloadKey, applyLoadError]);
+  }, [reloadKey, applyLoadError, tickPerms.ready, tickPerms.active]);
 
   // 列布局：本机缓存先画，账号里的到了再覆盖；没存过（null）或读不到就保持本机的。
   useEffect(() => {

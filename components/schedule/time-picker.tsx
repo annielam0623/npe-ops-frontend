@@ -79,7 +79,10 @@ function join(h24: number, min: number): string {
 }
 
 const HOURS = Array.from({ length: 12 }, (_, i) => i + 1);
-const MINUTES = Array.from({ length: 60 / MINUTE_STEP }, (_, i) => i * MINUTE_STEP);
+const MINUTES = Array.from(
+  { length: 60 / MINUTE_STEP },
+  (_, i) => i * MINUTE_STEP,
+);
 
 export function TimePicker({
   value,
@@ -88,6 +91,7 @@ export function TimePicker({
   id,
   allowEmpty = false,
   className,
+  inline = false,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -97,6 +101,12 @@ export function TimePicker({
   allowEmpty?: boolean;
   /** 加在输入框上（主要用来定宽度）。 */
   className?: string;
+  /**
+   * 列表开在输入框正下方、占位置（把下面的键往下推，不浮在最上层盖住它们），选了 AM / PM 就收起。
+   * 改时间小窗和 Add shift 窗口用（Annie 2026-10-29 A8「根本点不了」，preview
+   * https://claude.ai/artifact/5jHSPfjGt9eD187iP8i2ut Q1–Q4 照推荐）；别处照旧浮在最上层。
+   */
+  inline?: boolean;
 }) {
   const popId = useId();
   const [text, setText] = useState(() => show(value));
@@ -134,7 +144,7 @@ export function TimePicker({
     if (open) return;
     valueAtOpen.current = latest.current.value;
     editing.current = true;
-    place();
+    if (!inline) place();
     setOpen(true);
   }
 
@@ -162,7 +172,10 @@ export function TimePicker({
     for (const col of [hourCol.current, minCol.current]) {
       const sel = col?.querySelector<HTMLElement>('[aria-selected="true"]');
       if (col && sel) {
-        col.scrollTop = Math.max(0, sel.offsetTop - col.clientHeight / 2 + ROW / 2);
+        col.scrollTop = Math.max(
+          0,
+          sel.offsetTop - col.clientHeight / 2 + ROW / 2,
+        );
       }
     }
   }, [open]);
@@ -175,6 +188,10 @@ export function TimePicker({
       finish();
     }
     document.addEventListener("pointerdown", onPointerDown, true);
+    if (inline) {
+      return () =>
+        document.removeEventListener("pointerdown", onPointerDown, true);
+    }
     window.addEventListener("resize", place);
     window.addEventListener("scroll", place, true);
     return () => {
@@ -182,7 +199,7 @@ export function TimePicker({
       window.removeEventListener("resize", place);
       window.removeEventListener("scroll", place, true);
     };
-  }, [open, finish, place]);
+  }, [open, finish, place, inline]);
 
   const cur = split(value);
   const h12 = cur ? cur.h24 % 12 || 12 : null;
@@ -221,7 +238,8 @@ export function TimePicker({
       e.preventDefault();
       openList();
       const base = cur ?? { h24: 9, min: 0 };
-      const total = base.h24 * 60 + base.min + (e.key === "ArrowUp" ? 1 : -1) * MINUTE_STEP;
+      const total =
+        base.h24 * 60 + base.min + (e.key === "ArrowUp" ? 1 : -1) * MINUTE_STEP;
       const wrapped = ((total % 1440) + 1440) % 1440;
       const v = join(Math.floor(wrapped / 60), wrapped % 60);
       setText(show(v));
@@ -234,6 +252,108 @@ export function TimePicker({
       "h-10 w-full shrink-0 cursor-pointer rounded-[6px] font-mono text-[15px] text-white/85 hover:bg-white/10",
       selected && "bg-sky-400 font-bold text-[#06101c] hover:bg-sky-400",
     );
+
+  const pop = (
+    <div
+      ref={popRef}
+      id={popId}
+      data-time-pop
+      role="dialog"
+      aria-label="Pick a time"
+      data-time-pop-inline={inline || undefined}
+      style={
+        inline
+          ? { width: POP_W }
+          : { left: pos?.left, top: pos?.top, width: POP_W }
+      }
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={(e) => e.stopPropagation()}
+      className={cn(
+        "flex gap-1.5 rounded-lg border border-white/25 bg-[#0b1727] p-2 text-white",
+        inline ? "mt-1" : "fixed z-[80] shadow-[0_10px_30px_rgba(0,0,0,.55)]",
+      )}
+    >
+      <div className="flex flex-col">
+        <div className="mb-0.5 text-center text-[10.5px] tracking-[.06em] text-white/60 uppercase">
+          Hour
+        </div>
+        <div
+          ref={hourCol}
+          role="listbox"
+          aria-label="Hour"
+          className="relative flex max-h-[240px] w-[64px] [scrollbar-width:thin] flex-col gap-0.5 overflow-y-auto overscroll-contain"
+        >
+          {HOURS.map((h) => (
+            <button
+              key={h}
+              type="button"
+              role="option"
+              data-hour={h}
+              aria-selected={h12 === h}
+              onClick={() => pick({ h12: h })}
+              className={item(h12 === h)}
+            >
+              {h}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="flex flex-col">
+        <div className="mb-0.5 text-center text-[10.5px] tracking-[.06em] text-white/60 uppercase">
+          Min
+        </div>
+        <div
+          ref={minCol}
+          role="listbox"
+          aria-label="Minute"
+          className="relative flex max-h-[240px] w-[64px] [scrollbar-width:thin] flex-col gap-0.5 overflow-y-auto overscroll-contain"
+        >
+          {minutes.map((m) => (
+            <button
+              key={m}
+              type="button"
+              role="option"
+              data-min={m}
+              aria-selected={cur?.min === m}
+              onClick={() => pick({ min: m })}
+              className={item(cur?.min === m)}
+            >
+              {String(m).padStart(2, "0")}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="flex flex-col">
+        <div className="mb-0.5 text-[10.5px]">&nbsp;</div>
+        <div
+          role="listbox"
+          aria-label="AM or PM"
+          className="flex w-[56px] flex-col gap-0.5"
+        >
+          {(["AM", "PM"] as const).map((p) => (
+            <button
+              key={p}
+              type="button"
+              role="option"
+              data-period={p}
+              aria-selected={pm === (p === "PM")}
+              onClick={() => {
+                pick({ pm: p === "PM" });
+                // inline：选了 AM / PM 就收起（A8 preview ②）。
+                if (inline) {
+                  editing.current = false;
+                  setOpen(false);
+                }
+              }}
+              className={item(pm === (p === "PM"))}
+            >
+              {p}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <>
@@ -273,90 +393,9 @@ export function TimePicker({
           className,
         )}
       />
-      {open && pos && typeof document !== "undefined"
-        ? createPortal(
-            <div
-              ref={popRef}
-              id={popId}
-              data-time-pop
-              role="dialog"
-              aria-label="Pick a time"
-              style={{ left: pos.left, top: pos.top, width: POP_W }}
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={(e) => e.stopPropagation()}
-              className="fixed z-[80] flex gap-1.5 rounded-lg border border-white/25 bg-[#0b1727] p-2 text-white shadow-[0_10px_30px_rgba(0,0,0,.55)]"
-            >
-              <div className="flex flex-col">
-                <div className="mb-0.5 text-center text-[10.5px] tracking-[.06em] text-white/60 uppercase">
-                  Hour
-                </div>
-                <div
-                  ref={hourCol}
-                  role="listbox"
-                  aria-label="Hour"
-                  className="relative flex max-h-[240px] w-[64px] flex-col gap-0.5 overflow-y-auto overscroll-contain [scrollbar-width:thin]"
-                >
-                  {HOURS.map((h) => (
-                    <button
-                      key={h}
-                      type="button"
-                      role="option"
-                      data-hour={h}
-                      aria-selected={h12 === h}
-                      onClick={() => pick({ h12: h })}
-                      className={item(h12 === h)}
-                    >
-                      {h}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="flex flex-col">
-                <div className="mb-0.5 text-center text-[10.5px] tracking-[.06em] text-white/60 uppercase">
-                  Min
-                </div>
-                <div
-                  ref={minCol}
-                  role="listbox"
-                  aria-label="Minute"
-                  className="relative flex max-h-[240px] w-[64px] flex-col gap-0.5 overflow-y-auto overscroll-contain [scrollbar-width:thin]"
-                >
-                  {minutes.map((m) => (
-                    <button
-                      key={m}
-                      type="button"
-                      role="option"
-                      data-min={m}
-                      aria-selected={cur?.min === m}
-                      onClick={() => pick({ min: m })}
-                      className={item(cur?.min === m)}
-                    >
-                      {String(m).padStart(2, "0")}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="flex flex-col">
-                <div className="mb-0.5 text-[10.5px]">&nbsp;</div>
-                <div role="listbox" aria-label="AM or PM" className="flex w-[56px] flex-col gap-0.5">
-                  {(["AM", "PM"] as const).map((p) => (
-                    <button
-                      key={p}
-                      type="button"
-                      role="option"
-                      data-period={p}
-                      aria-selected={pm === (p === "PM")}
-                      onClick={() => pick({ pm: p === "PM" })}
-                      className={item(pm === (p === "PM"))}
-                    >
-                      {p}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>,
-            document.body,
-          )
+      {open && inline ? pop : null}
+      {open && !inline && pos && typeof document !== "undefined"
+        ? createPortal(pop, document.body)
         : null}
     </>
   );

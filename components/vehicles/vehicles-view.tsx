@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { byTick } from "@/lib/by-tick";
+import { usePermissions } from "@/lib/staff-permissions";
 import type { ActionResult } from "@/components/ui/action-result";
 import {
   BTN_ADD_CLASS,
@@ -149,7 +151,13 @@ export function VehiclesView() {
     }
   }, []);
 
+  // 全部按照勾选（Annie 2026-10-30 置顶 10c）：开关开着按勾（settings.vehicles，同后端接口），关着照旧；Super Admin 全过。
+  const tickPerms = usePermissions();
+  const tickPermsRef = useRef(tickPerms);
+  tickPermsRef.current = tickPerms;
   useEffect(() => {
+    // 权限读完再判断（开关开着时要按勾）。
+    if (!tickPerms.ready) return;
     const controller = new AbortController();
     const { signal } = controller;
     setView({ kind: "loading" });
@@ -157,7 +165,12 @@ export function VehiclesView() {
       try {
         const me = await fetchCurrentUser(signal);
         if (signal.aborted) return;
-        if (!me.is_admin) {
+        if (
+          !byTick(tickPermsRef.current, "settings.vehicles", {
+            legacy: me.is_admin,
+            superAdmin: !!me.is_superadmin,
+          })
+        ) {
           setView({ kind: "forbidden" });
           return;
         }
@@ -171,7 +184,7 @@ export function VehiclesView() {
       }
     })();
     return () => controller.abort();
-  }, [reloadKey, redirectToLogin]);
+  }, [reloadKey, redirectToLogin, tickPerms.ready, tickPerms.active]);
 
   const vehicles = view.kind === "ready" ? view.vehicles : [];
   const columns = view.kind === "ready" ? view.columns : [];

@@ -8,19 +8,6 @@
 
 > 规矩见 CLAUDE.md「问 Annie 要确认的事：给完整内容，并一直置顶」（2026-10-30）。每条都要能单独看懂。
 
-### 1. Send to guide：Annie 已「同意推荐」，还差最终短信原文 + 「动手」
-- 已定（Annie 10-30「同意推荐」）：
-  - ① 放进 Step 1，司机那块下面，Step 1 改名「Send to drivers & guides」；
-  - ③ 照规矩，Send 蓝色、Check the list 白底，司机那块一起改；
-  - ④ 上面写一句「上次谁几点发的」；
-  - ⑤ 先不提示没排导游的车，等后端加了数再提示；
-  - 链接后面让 staff 加内容：选 A，把固定那段缩短。
-- 还要她确认短信原文（⚠️ 要后端改 guide_notice.py）。主窗口拟的：
-  - 新固定段：`NPE guide Fri Oct 30: <链接>`（约 115 个字符，剩约 44 个给 staff）；
-  - staff 加的内容接在链接后面，空一格；只能用英文字母、数字和普通标点，输入框实时显示还剩几个字，超了不能发。
-  - 司机那句不改。
-- 确认了说「动手」，派 e6，同时请后端改短信模板和 send 接口（收 staff 加的内容、检查长度）。
-
 ### 4. 和「不直接去 Rezdy 拉单」冲突的地方（Annie 要列出来看）
 - 规矩（Annie 10-29）：订单流是 Order List → Main manifest → Dispatch / Tracking，不许跳过前面直接去 Rezdy 拉单。
 - 现在页面上和 Rezdy 直接有关的有六处：
@@ -49,6 +36,23 @@
     - A. Annie 给一个测试用的 staff 账号（ZZ Test 开头），窗口用它登录走一遍（推荐）；
     - B. 窗口写好逐步清单，Annie 自己点。
   - 另外，ZZ Test 员工的邮箱要 Annie 给，要是只她本人收得到的。
+
+### 12. 排班：页面上有没存的改动时按 Send to confirm（62 提）
+- 现在：整周 Save 上线后，拖班、改时间都先放在页面上，按 Save 才存。Send to confirm 发出去的是「库里」跟上次发布比的改动。如果这个人还有改动在页面上、没按 Save，这些改动不会出现在发给他的内容里。
+- 为什么问：发出去的内容和页面上看到的不一样，他确认的不是最新的班。
+- 选法：
+  - A. 有没存的改动时，Send to confirm 键灰着，旁边灰字「Save first」，先按 Save 再发（推荐：最简单，不会发错；和 Bus Manifest 的 Farm out 键「Save your changes first」一个做法）；
+  - B. 点 Send to confirm 时先自动存，再打开发送框；
+  - C. 照现在，不管。
+
+### 14. Daily Operation Report：别人的报告怎么补充（新功能，要先 preview）
+- Annie 10-30 原话：「如果是edit的话，应该是都可以，如果去改另外一个人发布的，那staff就不可以，只能本人改，如果需要纠正什么的话在下面备注，或者更新最新进展就好了」
+- 主窗口查了后端：「本人改自己的，有 report.edit 的能改所有人的」，后端 10-26 就是这么做的（G187）。
+  - 前端没跟上：只给 supervisor / admin 改，staff 连自己的都改不了。这是 bug，派窗口修，样子不变。
+  - 09 上午盘点说「没有对应的勾」，说错了，勾是 report.edit。
+- 新功能：报告下面加「备注 / 最新进展」，谁都能加，不改原报告。后端现在没有这个接口（只有改整条报告的 PATCH）。
+  - 要不要做：做的话先出 preview（放哪、每条显示谁、几点、内容，会不会通知跟进人），再请后端加接口。
+  - 推荐做。
 
 ### 8. 可以上线后对着看的（不用答，验收时看）
 - Products 手动保存：09 问的 5 处细节，主窗口按盘点推荐定了，见 PROGRESS「2026-10-30」那节 09 的记录：
@@ -95,6 +99,28 @@
   - tour 原有的「✕ Cancel 回到表单」：点 Apply 后、存完之前 Cancel 是灰的，测试点得太快会点空。main 上刚好赶得及，这次多一个 hook 就赶不上了。
     - 改成等 Cancel 能点了再点；连跑 3 次都过。页面行为没变。
   - 等 eb 回「合」再合 main。
+
+## 2026-10-30 全部按照勾选 A + B（`task/perm-by-checkbox-ab`，工作窗口 `npe-ops-frontend-09`[8a0116]，主窗口 eb 派工；C 类 e6 做）—— **已合 main**（eb 回「合」）
+
+- 依据：Annie 置顶 10c「全部按照勾选」→「动手」（2026-10-30）。09 上午的只读盘点分 A / B / C，09 做 A + B。
+- 共用判断 `byTick`（[lib/by-tick.ts](lib/by-tick.ts)，lib/permissions.ts 也导出）：**已单独合 main cb073ba**，e6 的 C 类也用它。
+  - Super Admin 一律放行；员工权限总开关 staff_permissions 对这个人开着（perms.active）时只按勾，admin 不再自动有；
+  - 开关关着时照今天的规矩（legacy），页面和今天一模一样（主窗口 eb 同意：不用「关着时 can() 一律 true」，否则 9 页会一下子对所有员工打开）。
+  - 单元检查 checks/headless/by-tick-unit.mjs 10/10。
+- A：整页按勾（开关开着时；关着照旧按 admin，Auto Send 照旧只 Super Admin）：
+  - Pickup Locations settings.pickup；Products settings.products；Vehicles settings.vehicles；Content Studio settings.content；
+  - Farm out Partners / Timetable settings.farm_out（另有「谁看得到」开关 farm_out_settings，照旧）；Transfer & Charter quotation.rates_edit；Teams settings.users；Auto Send settings.auto_send。
+  - Products 页里 Bus Manifest setup / 7 Days Forecast 设置后端是 require_admin（按角色），所以只给 admin 显示那一块（今天整页只给 admin，所以开关关着时没区别）。
+- B：
+  - Staff Schedule：改（班、休假、编辑锁）schedule.edit；Publish / Publish again schedule.publish；Add employee 要 team.staff_add 加 schedule.edit（后端两个都要）。Publish anyway 照旧按 admin 角色（后端也是按角色）。
+  - Human Resource：改 settings.hr.edit（看照旧 canSeeHr）。
+  - Workspace TCQ 的「Rate card settings →」链接：quotation.rates_edit。
+  - **Daily Operation Report 列表的 canEdit 没改**：后端 PATCH 只要 require_staff，没有对应的勾；要不要加一个勾（例如 report.edit）要 Annie / 后端定。
+- 检查：
+  - 新检查套 perm 54/54：9 页 × 6 种（开关开着：员工没勾挡、员工勾了放、admin 没勾也挡、Super Admin 放；开关关着：admin 放、员工勾了照旧挡）。
+  - 合了最新 main（含 Staff Schedule 整周 Save 的 schedule-view 大改，自动合并，权限那几行核对过还在）后：perm 54/54、sch 249/249、hr 56/56、as 69/69、cs 152/152、fo-settings 110/110、products 219/219、ptt 44/44、pl 63/63、veh 47/47、tcq 80/80、teams 54/54、ws 58/58、nav 32/32；by-tick-unit 10/10；tsc 过；eslint 0 错；build 过。
+  - B 类（Schedule、HR、TCQ 链接）开关开着时的浏览器检查还没写，只有 byTick 的单元检查；现有各套（开关关着）照旧全过。
+- **下一步（明天）**：补 B 类开关开着时的浏览器检查（Staff Schedule 改 / 发布 / 加人、HR 编辑、Workspace TCQ 的 Rate card 链接：没勾看不到、勾了看得到、admin 没勾也看不到、Super Admin 看得到）。DOR 谁能改等 Annie 置顶第 14 条。打开 staff_permissions 开关前 Annie 先在 Team 页核对勾选。
 
 ## 2026-10-30 7 Days Forecast：数字格不能点、能编辑的空格改绿色 +（`task/forecast-no-click`，工作窗口 `npe-ops-frontend-e6`[047d88]，主窗口 eb 派工）
 
@@ -230,6 +256,59 @@
   - tsc 0 错；eslint 0 错、2 个警告（public/window-hscroll.js 原有的）；build 过。
   - eb 核对过，合 main。
   - 注：npm 11 的 `npm ci` 拦了 unrs-resolver 的 postinstall（提示 `npm install-scripts approve`），没批；tsc / eslint / build / 检查都不受影响。
+
+## 2026-10-30 排班整周一个 Save（B9 / G218）+ 改时间小窗（A8）（工作窗口 `npe-ops-frontend-62`[cd78c4]，eb 派）
+
+- 分支 **`task/schedule-week-save-main`**（worktree `C:\Code\npe-ops-frontend-weeksave`）。从最新 main 拉的。
+  - 原来的 `task/schedule-week-save` f252f50 是从旧版 send-to-confirm 拉的，合 main 会冲突、还会带进旧代码，所以没用；9c 的交接原文还在那条分支上。
+- 依据：
+  - Annie 10-29「你不会用缓存么」「4项全部动手」：第 3 项 = 排班整周一个 Save（B9 Q1–Q7 照推荐）+ A8 改时间小窗（照推荐，小窗的键改成 Done）。
+  - preview：B9 https://claude.ai/artifact/AY3vC6WaeLmTQgTx3BZi79 、A8 https://claude.ai/artifact/5jHSPfjGt9eD187iP8i2ut 。
+  - **B9 Q4 已同意**（eb 10-30：Annie 答「Q1–Q7 照推荐」，Q4 就是 10 分钟没动作只出琥珀色提醒、不自动存）。
+- 后端 G218 已上 main 4c5b3bf，接口照 `docs/interfaces/schedule-week-changes-2026-10-30.md` 对过：
+  - 出错回包是 `{detail: {detail, code, …}}`；
+  - ref 用 n1、n2…，合后端「1–40 个 ASCII 字母 / 数字 / _ . : -」的限制。
+- 做了：
+  - `components/schedule/week-draft.ts`（新，纯函数）：
+    - 暂存的 creates（临时负数 id）和对已有班的 edits；
+    - 叠出页面上要画的班和 moved / time / new / note / deleted 标记；
+    - 生成 ops（create 先，再 assign / time / note，最后 delete），记每条对应哪个班（400 op_index 标红）；
+    - 按页面上的班算空档（同后端算法）。
+  - `schedule-view.tsx`：
+    - 拖班 / 加删 / 改时间 / 备注只改暂存；
+    - 周导航那一排 Discard + Save（蓝），下面一行琥珀色「Not saved yet: N changes (…)」、绿色「✓ Saved · 时间」、红字后端原话（一样都不存，改动留着）；
+    - 409 stale 带 Reload / Keep editing；coverage_gap 列空档；
+    - 空档 / Day timeline 照页面上的算；
+    - Publish 有没存的改动时写「You have N unsaved changes. They are saved first, then the week is published.」，键「Save and publish（again）（anyway）」；
+    - 离开页面 / 换周弹 Save / Don't save / Cancel（复用 dispatch-manifest 的 LeaveDialog）；
+    - 10 分钟没动作琥珀色提醒（不自动存）；
+    - `?week=` 改用 `replaceUrl`（不然撤离开提醒的哨兵时会把旧的周搬回地址栏）；
+    - 等占锁时换了周，那一下作废。
+  - `use-schedule-edit-lock.ts`：有没存的改动时心跳一直带 edited:true、不做 15 分钟自动放开；交出 token、收回包里的新 lock_token；存好 / Discard 放开。
+  - `week-grid.tsx`：
+    - 卡片上琥珀色标记；删掉的灰掉划线、带 Undo；
+    - 搬走的原位置留淡的琥珀虚线影子；
+    - 400 指出的那张标红；
+    - 点时间开 A8 小窗；备注的 Save 改 Done（白色）。
+  - `time-edit-popup.tsx`（新，A8）：
+    - 卡片上方独立小窗（谁 · 哪天 · 什么班），Start / End 并排，Done（白）/ Cancel；
+    - 透明遮罩挡住别的格子；没改点外面直接关；改过出黄框 Unsaved changes + Done / Discard；Esc 同点外面。
+  - `time-picker.tsx` 加 `inline`：列表开在输入框下面、不盖键，选了 AM / PM 就收起。改时间小窗和 Add shift 窗口用（A8 Q4）；别处不动。
+  - Auto-fill：当前这一周放进暂存等 Save（Replace = 原来的班标删掉）；后面几周照旧直接建草稿（B9 Q6）。
+  - 休假（加 / 删）照旧马上存。
+- 检查：
+  - sch-mock 加 version 和 `POST …/changes`（locked / stale / coverage_gap / 400 op_index / 员工不在职），`/__bump`、`/__changes`；
+  - sch-test 改成「改 → Save → 查服务端」，新加 A8 小窗、标记、Undo、Discard、离开 / 换周拦截、Save and publish、stale / locked / 不在职、10 分钟提醒、Auto-fill 进暂存等；
+  - 顺手修了 Rules 删除那步的偶发失败（等框里出现 Delete 键再点）。
+  - 合了 main 96d130f（send-to-confirm）之后：tsc 过；eslint 0 错误；build 过；**sch 249/249、nav 32/32**（端口 3362 / 8962 / 9562）。
+- ⚠️ 要问 Annie / eb 的一点（没改）：有没存的改动时按 Send to confirm，发出去的只是**库里**的改动，页面上没存的那些不在里面（pending_changes 是后端按库里算的）。可以选：
+  - A. 先要求 Save（Send to confirm 灰着，写 Save first）；
+  - B. 发之前自动先存；
+  - C. 照现在。
+  这件是新样子，要先问 Annie。
+- eb 回「合」。合前拉的 main 进了 perm byTick / forecast 的代码，重跑：tsc 过、eslint 0 错误、sch 249/249、nav 32/32，合 main。
+- 「没存的改动时按 Send to confirm」那一点 eb 已放进 Annie 置顶第 12 条，这次不动。
+
 ## 2026-10-30 G215 前端：Send to driver「page is off」+ driver_page / guide_page 开关（工作窗口 `npe-ops-frontend-62`[cd78c4]，eb 派）
 
 - 分支 `task/g215-page-off`，worktree `C:\Code\npe-ops-frontend-g215`。检查都过了，等 eb 核对数字后合 main。
@@ -491,6 +570,13 @@
 - 后端 G218 已上 main 4c5b3bf（create 的 ref 限 1–40 个 ASCII 字符）。62 的 task/schedule-week-save-main 在收尾。
   - B9 Q4 的「10 分钟没存提醒」（琥珀色字，不自动存）是 Annie「Q1–Q7 照推荐」同意过的，已让 62 加回。
 - 10c 做法（09 提，主窗口同意）：共用 byTick——总开关 staff_permissions 对这个人开着就按勾，关着照今天按角色，Super Admin 全过。09 先单独合 byTick，e6 的 C 类也用它。
+- **Annie「1. 动手」（12:3x）**：Dispatch Send to guide。
+  - 5 处照推荐；短信缩短成「NPE guide Fri Oct 30: <link>」，staff 可在链接后加一句，限一条短信。
+  - 后端已发 57：改短信模板，send 收 extra，GET 回 extra_max / preview_text，400 英文 detail。
+  - 前端派 62 `task/dispatch-send-to-guide`，模拟接口先做。第一次真发要 Annie 点头。
+- Annie 原话「V131我已经执行了」：已转 57，G219 可以落地。前端 task/team-contacts 0ff97be 等后端上 main，合时补 Team 页 How to use 7 条。
+- **Annie 答置顶 13，原话「13 A」**：partner 不管勾什么，在 Bus Manifest 都只能看，照旧。e6 本来就按 A 做，不用改。
+- 62 week-save 已上 main 7da6786。
 ## 2026-10-29 晚 收工交接：前端主窗口 `今天前端主窗口-d2`[15266b]（家里电脑，Annie「做完写交接收工」）
 
 明天的主窗口先读这一节。细节在下面「2026-10-29 晚 主窗口 d2 开工核对」那一节，按时间逐条记。
