@@ -21,6 +21,28 @@
   - 现状：60 秒没操作就一块块自动存（AUTOSAVE_MS）；团块标题已有 Save（10-18 上线）；存完重读名单，造成「突然刷新」；存的同时继续改，新改的会被盖回去。
   - 方案：去掉自动存；每辆车 Edit ▼ 旁加 Save，有 Saving… / ✓ Saved / 红字 Not saved 三种状态；存完只更新这一块，不覆盖正在改的；How to use 第 5 条改写；后端不用改。
   - 待 Annie 定 Q1–Q4，都附推荐。动手后也不推 main，等 Annie 下令 push。
+  - ✅ **Annie 动手**（经 9a 转），原话：「我们现在来动手改自动保存吧，就是把每个小项的自动保存转成正常的一个小section的手动保存，这样效率高一些，除非是超过10分钟页面没有活动，那才需要自动保存一下」。
+    - 新规则：页面 10 分钟没有活动、而且有没存的改动时，自动存一次。
+    - 已派 59 `task/dispatch-manual-save`：Q1–Q4 和三个细节（怎么算没活动、离开提醒、自动存后的提示）先按推荐做，同时问 Annie。
+    - 「动手」只当开工，不当 push 令：做完只推分支，问过 Annie 再合 main。
+    - Annie 答了三个细节（经 9a 转），和推荐一致，已转 59：
+      - 原话：「没有在本页面有任何动作或者切到别的标签页，或者完全没动鼠标，可能听电话」，算没有活动；
+      - 有没存的改动时离开页面，要拦一下提示；
+      - 自动存完在页面上提示一句，用英文。
+      - 补一条，原话「saved用绿色」：✓ Saved 和 Auto-saved 都用绿色字，Save 键照旧是蓝色。已转 59。
+  - Annie 原话：「我要把所有这类自动保存改成手动的」。
+    - 已派 9c 只读盘点全站「改了就自己存」的地方，出清单（Artifact），请 Annie 逐条定哪些改手动。
+    - 除 Dispatch 外还没动手。
+    - 9c 交盘点：https://claude.ai/artifact/3GQ3waCB2X4jnEdxTRfefe （只读，没改代码）。
+      - 全站没有「打字防抖自动存」，也没有「定时器存」。
+      - A 类（失焦就存，推荐改按块 Save）：A1–A7。A8 排班「点外面也存」是 Annie 10-20 点名要的，推荐保留。
+      - B 类（选了 / 勾了 / 拖了马上存）：大多推荐保留，B1 / B4 / B5 / B6 / B8 / B9 要问。
+      - C 类（个人显示偏好）：保留。
+      - 后端基本不用改；A6 要「一次全存或全不存」、B9 改成整周一个 Save 时，才要后端接口。
+      - 待 Annie 定 6 个问题。
+      - A8 Annie 原话：「A8 需要在改时间的小页面上设置save，不要再点其他地方，根本点不了」。
+        - 改时间的小弹框加 Save / Cancel，不再「点外面就存」。
+        - 已派 9c 出 preview，并查「根本点不了」是不是 bug。还没动手。
 - 59 交 ③ Forecast 数字不能点 preview 第 2 版（同链接 https://claude.ai/artifact/X9EXZjpgbKfPhxzeKR7c9c ，没改代码）。
   - 数字格一律不能点，第 1 版的 A1 / A2 已删。
   - 能编辑的空格从「—」改成绿色「+」，一直显示。
@@ -44,6 +66,43 @@
   - 页面上没有发送键，所以只拦打印和下载。
   - 已问 Annie：Lankun 照定 5 去掉了 ✓ 列，屏幕上就看不到司机标的上车 / No show，要不要留在屏幕上。
   - 后端上 main 后：9c 合最新 main、重跑检查，主窗口核对后合 main。
+  - 后端 20 报：版式下拉加第四项 'west'（显示 West Rim），Annie 10-29 定西峡用。
+    - 列序：Order # / Time / Hotel / Phone / Last Name / First Name / Pax / Quantities / Special Requirements。没有 ✓ 列；排了餐厅才出 Lunch，放在 Special Requirements 左边。
+    - 后端要等 Annie 执行 migrate_v126 才推 main。已转 9c 加进分支。
+  - Annie 改 Bus Manifest 保存方式（经 9a 转），原话：「哦，下拉菜单用缓存不会么，点击save再一起存啊」。
+    - 版式下拉和当天字号改了先不存，按 Save 一起存。后端不用改。
+    - 已派 9c 出小 preview，同时问三条：离开拦、10 分钟自动存、Saved 用绿色。等 Annie「动手」。
+    - 后端 20 提醒：打印、Excel 按库里已存的版式出；改了没存就按 Print / Download，出来的是旧的。
+      - 后端不加 ?version=。
+      - preview 里问 Annie：先自动存，还是先提示。
+    - Annie 选「存在页面上，按 Save 才存」，原话：「我不要改一点存一点的方式，会导致整个页面很慢，放个save键，admin想什么时候存就什么时候存，除非要跳转到其他页面才需要拦截并询问是否保存」。
+      - Bus Manifest 不做 10 分钟自动存。
+      - 离开页面时拦一下，问要不要存。
+      - 已转 9c，还没「动手」。
+    - ⚠️ 9a 更正：它当初转的「下拉用缓存」，Annie 说的是盘点里的 B4 / B9，不是 Bus Manifest 版式（B2）。
+      - Annie 已定 B4：产品表的下拉也先暂存，和 Internal name 一起按 Save 存。
+      - Annie 已定 B9：排班改成整周一个 Save，原话「你不会用缓存么」。要后端批量保存接口，形状由前端起草（59 做完 Dispatch 后接）。
+      - B2 主窗口理解成同样暂存 + Save（Annie 在 d2 窗口那句话），正在跟 Annie 确认。确认前，9c 分支上的版式照旧选了马上存。
+      - 盘点剩下的问题由 d2 一次问完。
+      - Annie 在 9a 窗口逐条答了盘点的 6 条（9a 转）：
+        - 1：A1–A7 按推荐，改成按块 Save。
+        - 2：10 分钟自动存只用在 A6。
+        - 3：A8，原话「保留，但是成功的用绿色，失败的用红色，这个是规矩」。
+        - 4：B5 / B6 跟着块等 Save。
+        - 5：B8 按推荐，改成「选了 + ✓」。
+        - 6：原话「所有的下拉，拖拽---除了shortcut，都是先缓存，然后等保存」。所以 B1、B2、B9 都改成先暂存、按 Save 才存。
+      - 两条规矩已写进 CLAUDE.md：「成功绿色、失败红色」；「不要改一点存一点」。
+      - ⚠️ 跟 Annie 确认两处冲突，还要等她说「动手」：
+        - A8：她在 d2 这边说「不要再点其他地方，根本点不了」，在 9a 那边说「保留」；
+        - B4：她写了「B4 下拉保留马上存」，和总规则冲突。
+      - 9c 交 A8 preview v1：https://claude.ai/artifact/5jHSPfjGt9eD187iP8i2ut （没改代码）。
+        - 「根本点不了」是 bug：一点 Start，时间列表就盖住 End / Save / Cancel；要关列表只能点外面，点外面又马上存了。所以改完 Start 根本没机会改 End。
+        - 推荐：
+          - 格子上方弹一个独立小窗，Start / End 并排；
+          - 时间列表开在小窗里面，不盖住按钮；
+          - 只有按 Save 才存；
+          - 改了没存就点外面或按 Esc，出黄框「Unsaved changes」，可以选 Save / Discard。
+        - 待 Annie 定 Q1–Q4，都附推荐。
 - 后端 c8[fbbc9c] 报 G214 已上 main：代码 fa35f01，合并 43934d7，关包 d657a48。这就是 Dispatch「Not in HR」方案 B。
   - HR 存档后，今天及以后对得上的手填名改连到 HR 里的人，接口形状不变，前端不用改。
   - Dispatch 没有 Action Log 面板，新的 action「link_hr」对前端没有影响。
@@ -70,6 +129,11 @@
     - 面板加在 Settings › Navigation 和 Settings › Farm out Partners 两页。
     - 检查：dr 88、fo-settings 81、cp 18；tsc 0，eslint 0 错，build 过。
     - Timetable 页没加面板（日志是整个 Farm out 设置一份）。Annie 要的话再加。
+- 后端 c8 报 G203 ③ 第二批已上 main：合并 4c00a04，关包 a176ca4。③ 全部做完。
+  - Dispatch 日志：/api/dispatch/action-log?date=，要 dispatch.edit 权限。
+  - Driver Quick Replies 日志：/api/driver-quick-replies/action-log。
+  - link_hr 的 before / after 改成和排车保存一样的逐车格式。
+  - 已排给 59 `task/g203-batch4`，等它把 Dispatch 手动保存推完分支再做。
 - Annie（10-29 晚）原话：「我现在没有地方加staff的邮箱地址，电话等联络方式」。
   - 现状：
     - 前端只有 Add person 选「Create the account now」时能填 Email；邀请的没有这一格；Edit 改不了；没有电话。
