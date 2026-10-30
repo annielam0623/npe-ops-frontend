@@ -623,6 +623,9 @@
   - 存好：绿字「✓ Saved — …（N rows with errors were not saved.）」，预览收起；存不上：红字「Not saved — 原因」，
     `atomic` 的页面写「Not saved — nothing was changed.」；预览留着可再 Save。
   - 各页只写一个适配：哪些栏、按什么对上、调哪对接口，把后端预览换成 `BulkImportPreview`。
+  - HR 以外的页面一律走**标准接口形状**（`types/bulk-import.ts`：`<base>/preview` → `ImportPreviewResponse`、`<base>/commit` → `ImportCommitResult`，
+    `lib/bulk-import-api.ts`），前端用 `StandardImport`（atomic，页面只给 endpoint、栏名、模板）；模板用 `lib/csv.ts` 的 `csvBlob` 在浏览器里生成。
+  - 存好后各页用「静悄悄重拉」（不回 Loading），不然 Import 块、展开着的 Action Log 会被卸掉。
 - HR（`components/hr/import-panel.tsx` 改成适配）：键改名「⬆ Import」；去掉 overwrite 勾，一律 `overwrite=true`；
   模板 = Export to Excel（带现有的人）；`duplicate_in_file` 显示成 Error「Repeated above — skipped.」；
   `HRImportRow` 加可选 `errors` / `before`（后端给了就显示）；How to use 改写。atomic=false（HR commit 还不是事务）。
