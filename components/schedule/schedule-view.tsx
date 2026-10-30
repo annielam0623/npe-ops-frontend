@@ -32,6 +32,8 @@ import {
 } from "@/lib/schedule-api";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
 import { usePageVisibility } from "@/lib/page-visibility";
+import { byTick } from "@/lib/by-tick";
+import { usePermissions } from "@/lib/staff-permissions";
 import { gapDayLabel, gapRange, gapsByDate } from "@/lib/schedule-gaps";
 import { pushRecentShift } from "@/lib/schedule-recent";
 import type { Rule } from "@/lib/schedule-engine";
@@ -91,6 +93,8 @@ function weekRangeLabel(weekStart: string): string {
 }
 
 export function ScheduleView() {
+  // 全部按照勾选（Annie 2026-10-30 置顶 10c）：开关开着按勾（同后端接口），关着照旧按角色；Super Admin 全过。
+  const tickPerms = usePermissions();
   const [me, setMe] = useState<CurrentUser | null>(null);
   const [meError, setMeError] = useState<
     "loading" | "forbidden" | "error" | null
@@ -238,10 +242,24 @@ export function ScheduleView() {
         Failed to load Staff Schedule: {meErrorMessage}
       </ErrorBanner>
     );
-  if (!me || !settings) return <LoadingPanel />;
+  if (!me || !settings || !tickPerms.ready) return <LoadingPanel />;
 
-  const canEdit = me.is_supervisor === true;
-  const canAddEmployee = me.is_admin || canEdit;
+  const superAdmin = !!me.is_superadmin;
+  // 改班、休假、编辑锁：schedule.edit（后端 schedule.py 的 _edit）。
+  const canEdit = byTick(tickPerms, "schedule.edit", {
+    legacy: me.is_supervisor === true,
+    superAdmin,
+  });
+  // Add employee：后端要 team.staff_add 和 schedule.edit 两个都有（schedule.py:122）。
+  const canAddEmployee = tickPerms.active
+    ? superAdmin ||
+      (tickPerms.can("team.staff_add") && tickPerms.can("schedule.edit"))
+    : me.is_admin || me.is_supervisor === true || superAdmin;
+  // Publish / Publish again：schedule.publish（schedule.py:331）。
+  const canPublishTick = byTick(tickPerms, "schedule.publish", {
+    legacy: canEdit,
+    superAdmin,
+  });
   const activeEmployees = employees.filter((e) => e.is_active);
   // 当前登录的人在名单里对应谁：按名字对（后端 /api/me 没有邮箱），对上的那一行固定在最上面。
   const meName = me.display_name?.trim().toLowerCase();
@@ -493,7 +511,7 @@ export function ScheduleView() {
   // 有空档也能发布（Publish anyway）：只给 admin 及以上（Annie 2026-10-29 Q1）。supervisor 有空档时照旧先补人。
   const canPublishAnyway = me.is_admin === true || me.is_superadmin === true;
   // 已发布的周也能点 Publish again（Annie 2026-10-29 Q6「要留publish again，要允许改正错误」）；有空档时同样走 Publish anyway。
-  const canPublish = canEdit && (gaps.length === 0 || canPublishAnyway);
+  const canPublish = canPublishTick && (gaps.length === 0 || canPublishAnyway);
   const timelineDate =
     timelineDay?.week === weekStart ? timelineDay.date : shiftYmd(weekStart, 1);
   /** 跳到 Day timeline 的某一天（点空档提示 / 列头红点）。 */

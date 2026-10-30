@@ -4,6 +4,7 @@ import Link from "next/link";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 
 import { DARK_PRIMARY_BUTTON_CLASS } from "@/components/ui/buttons";
+import { byTick } from "@/lib/by-tick";
 import { describeError, isStatus } from "@/lib/api-errors";
 import {
   fetchQuotes,
@@ -13,6 +14,7 @@ import {
   quotePdfUrl,
 } from "@/lib/tcq-api";
 import { cn } from "@/lib/utils";
+import { usePermissions } from "@/lib/staff-permissions";
 import { fetchItem, updateItem } from "@/lib/workspace-api";
 import type { WorkspaceItem } from "@/types";
 import type {
@@ -126,6 +128,12 @@ export function TcqReview({
   onItem: (item: WorkspaceItem) => void;
   onUnauthorized: () => void;
 }) {
+  // 「Rate card settings →」链接：那一页要 quotation.rates_edit（全部按照勾选，置顶 10c；开关关着照旧按 admin）。
+  // Super Admin：开关对他不生效（perms.active 为 false），走 legacy，admin 本来就是 true。
+  const showRates = byTick(usePermissions(), "quotation.rates_edit", {
+    legacy: isAdmin,
+    superAdmin: false,
+  });
   const [draft, setDraft] = useState<TcqDraft>(() =>
     initialDraft(item.parsed, item.edited, item.title),
   );
@@ -346,7 +354,7 @@ export function TcqReview({
         }
         aside={
           <>
-            {isAdmin ? (
+            {showRates ? (
               <Link
                 href="/settings/transfer-charter"
                 className="font-semibold text-[#7dd3fc] hover:text-white"
