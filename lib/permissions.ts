@@ -1,5 +1,6 @@
 import { describeError, isStatus } from "@/lib/api-errors";
 import type { CurrentUser } from "@/types";
+export { byTick, type TickPerms } from "@/lib/by-tick";
 
 /**
  * 页面 / 侧栏的「谁能看、谁能改」判断都收在这个文件里（Annie 2026-10-18 要做「按人分配权限」，
