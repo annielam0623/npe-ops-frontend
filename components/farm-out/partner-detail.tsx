@@ -11,7 +11,12 @@ import {
   TH_CLASS,
   TR_CLASS,
 } from "@/components/pickup-locations/legacy-ui";
+import {
+  BulkImportButton,
+  StandardImport,
+} from "@/components/ui/bulk-import";
 import { describeError, isStatus } from "@/lib/api-errors";
+import { csvBlob } from "@/lib/csv";
 import {
   fetchPartnerLocations,
   savePartnerLocations,
@@ -33,6 +38,21 @@ interface LocationDraft {
   key: string;
 }
 
+/** ⬆ Import 的栏：key → 表头上的栏名（模板列名也用这个）。 */
+const IMPORT_FIELDS = [
+  ["hotel_name", "Hotel"],
+  ["spot", "Spot"],
+  ["address", "Address"],
+  ["map_link", "Map link"],
+] as const;
+const IMPORT_LABEL: Record<string, string> = Object.fromEntries(IMPORT_FIELDS);
+
+/** 和上次存 / 读的比，看表里有没有没存的改动（导入存好会重读，没存的会丢）。 */
+const snapshot = (locs: LocationDraft[]): string =>
+  JSON.stringify(
+    locs.map((l) => [l.id, l.hotel_name, l.spot, l.address, l.map_link]),
+  );
+
 let newKey = 0;
 const toLocationDrafts = (locs: FarmOutLocation[]): LocationDraft[] =>
   [...locs]
@@ -49,9 +69,12 @@ const toLocationDrafts = (locs: FarmOutLocation[]): LocationDraft[] =>
 /** 一家合作公司展开后：它自己的上车点表（结算价在列表里每个团一行直接改）（不连我们的 Pickup Locations，Annie 2026-10-15）。 */
 export function PartnerDetail({
   partnerId,
+  partnerName,
   onUnauthorized,
 }: {
   partnerId: number;
+  /** 模板文件名用。 */
+  partnerName: string;
   onUnauthorized: () => void;
 }) {
   const [locations, setLocations] = useState<LocationDraft[] | null>(null);
@@ -59,6 +82,8 @@ export function PartnerDetail({
   const [locResult, setLocResult] = useState<Result>(null);
   const [savingLocs, setSavingLocs] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  const [saved, setSaved] = useState("");
+  const [importOpen, setImportOpen] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -67,7 +92,9 @@ export function PartnerDetail({
       try {
         const l = await fetchPartnerLocations(partnerId);
         if (controller.signal.aborted) return;
-        setLocations(toLocationDrafts(l));
+        const drafts = toLocationDrafts(l);
+        setLocations(drafts);
+        setSaved(snapshot(drafts));
       } catch (error) {
         if (controller.signal.aborted) return;
         if (isStatus(error, 401)) onUnauthorized();
@@ -101,7 +128,9 @@ export function PartnerDetail({
           sort_order: i,
         })),
       );
-      setLocations(toLocationDrafts(saved));
+      const drafts = toLocationDrafts(saved);
+      setLocations(drafts);
+      setSaved(snapshot(drafts));
       setLocResult({ tone: "ok", text: "✓ Saved" });
     } catch (error) {
       if (isStatus(error, 401)) onUnauthorized();
@@ -147,6 +176,8 @@ export function PartnerDetail({
     );
   }
 
+  const dirty = snapshot(locations) !== saved;
+
   return (
     <div className="grid gap-5 px-4 py-4">
       {/* 上车点 */}
@@ -161,6 +192,16 @@ export function PartnerDetail({
           </span>
           <span className="ml-auto flex items-center gap-3">
             <ResultLine result={locResult} />
+            <span
+              title={
+                dirty ? "Save locations first — Import reloads the list." : ""
+              }
+            >
+              <BulkImportButton
+                onClick={() => setImportOpen(true)}
+                disabled={dirty || importOpen || savingLocs}
+              />
+            </span>
             <button
               type="button"
               className={BTN_BLUE}
@@ -171,6 +212,30 @@ export function PartnerDetail({
             </button>
           </span>
         </div>
+        {importOpen ? (
+          <StandardImport
+            title="Import pick-up locations"
+            help={
+              <>
+                <b>Hotel</b> finds the location (only this partner&apos;s);
+                hotels not on the list are added at the bottom. A blank cell
+                never clears what is stored.
+              </>
+            }
+            endpoint={`/api/farm-out/partners/${partnerId}/locations/import`}
+            labelOf={(k) => IMPORT_LABEL[k] ?? k}
+            template={() => ({
+              blob: csvBlob(
+                IMPORT_FIELDS.map(([, label]) => label),
+                locations.map((l) => IMPORT_FIELDS.map(([k]) => l[k])),
+              ),
+              filename: `${partnerName.replace(/[^\w-]+/g, "_")}_locations_template.csv`,
+            })}
+            onClose={() => setImportOpen(false)}
+            onSaved={() => setReloadKey((k) => k + 1)}
+            onUnauthorized={onUnauthorized}
+          />
+        ) : null}
         <div className="overflow-x-auto">
           <table className="w-full min-w-[820px] border-collapse text-[12px]">
             <thead>

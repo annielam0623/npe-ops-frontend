@@ -157,6 +157,52 @@ async function partnersChecks() {
   check("保存后新行拿到后端给的 id（重拉后仍在）", await evaluate("return $byLabel('Hotel name 2').value === 'ZZ Test Hotel';"));
   check("合作公司的上车点和我们的 Pickup Locations 不相关（没请求 /api/pickup-locations）", (await mockLog()).every((l) => !l.path.startsWith("/api/pickup-locations")));
 
+  // ── ⬆ Import 上车点（全站通用导入，Annie 2026-10-29「批量导入同意全部推荐。动手」；后端接口还没上，用 mock）──
+  {
+    const sec = "document.querySelector('[aria-label=\"Pick-up locations\"]')";
+    check("Import：Save locations 旁有 ⬆ Import（灰白，不是蓝的）", await evaluate(`const b = $btn('⬆ Import', ${sec}); return !!b && !b.disabled && $bg(b) !== 'rgb(59, 130, 246)';`));
+    await evaluate("$set($byLabel('Spot 1'), 'Changed'); return 1;");
+    check("表里有没存的改动：⬆ Import 灰掉（导入会重读、没存的会丢）", await waitFor(`$btn('⬆ Import', ${sec}).disabled`));
+    await evaluate("$set($byLabel('Spot 1'), 'Underground South Tour Lobby'); return 1;");
+    check("改回去：⬆ Import 又能点", await waitFor(`!$btn('⬆ Import', ${sec}).disabled`));
+    await evaluate(`
+      window.__blob = null; window.__download = null;
+      const orig = URL.createObjectURL;
+      URL.createObjectURL = (b) => { window.__blob = b; return orig(b); };
+      HTMLAnchorElement.prototype.click = function () { window.__download = this.download; };
+      $btn('⬆ Import', ${sec}).click(); return 1;`);
+    await waitFor("document.querySelector('[data-bulk-import]')");
+    await evaluate("$btn('⬇ Download template').click(); return 1;");
+    await waitFor("window.__download");
+    const tpl = await evaluate("return (await window.__blob.text()).replace(/^\\uFEFF/, '');");
+    const lines = tpl.split("\r\n");
+    check("模板：列名同表头、带上这家现有的 2 个上车点、文件名带合作公司名", lines[0] === "Hotel,Spot,Address,Map link" && lines.length === 3 && lines[1].startsWith("Bellagio Hotel,") && (await evaluate("return window.__download;")) === "Partner_A_locations_template.csv", JSON.stringify(lines));
+    let before = (await mockLog()).length;
+    {
+      const { root } = await cdp("DOM.getDocument", { depth: -1, pierce: true });
+      const { nodeId } = await cdp("DOM.querySelector", { nodeId: root.nodeId, selector: "[data-bulk-import] input[type=file]" });
+      await cdp("DOM.setFileInputFiles", { nodeId, files: [`${__dirname.replace(/\\/g, "/")}/fo-locations-import.csv`] });
+    }
+    await waitFor("document.querySelector('[data-bulk-counts]')");
+    let reqs = (await mockLog()).slice(before).filter((e) => e.path.includes("/locations/import/"));
+    check("预览：只调这家的 preview、带文件", reqs.length === 1 && reqs[0].path === "/api/farm-out/partners/1/locations/import/preview" && reqs[0].hasFile, JSON.stringify(reqs));
+    check("预览：New 1 / Will update 1 / No change 1 / Errors 1，栏名同表头", await evaluate("const t = document.querySelector('[data-bulk-counts]').textContent; const h = [...document.querySelectorAll('[data-bulk-import] thead th')].map(th => th.textContent); return t.includes('New: 1') && t.includes('Will update: 1') && t.includes('No change: 1') && t.includes('Errors: 1') && JSON.stringify(h) === JSON.stringify(['Import','Hotel','Spot','Address','Map link']);"));
+    check("预览：Spot 旧 → 新、Map link 错红字", await evaluate("const ch = [...document.querySelectorAll('[data-bulk-changed]')].map(e => e.textContent); const es = [...document.querySelectorAll('[data-bulk-error]')].map(e => e.textContent); return ch.includes('Underground South Tour Lobby → North Valet') && es.includes('Map link must start with https://.');"));
+    await ctl({ importFail: true });
+    await evaluate("$btn('Save 2 rows').click(); return 1;");
+    await waitFor("document.querySelector('[data-bulk-import] [role=alert]')?.textContent.includes('Not saved')");
+    check("存不上：红字 Not saved — nothing was changed，上车点表没动", await evaluate("const a = document.querySelector('[data-bulk-import] [role=alert]'); return a.textContent.startsWith('Not saved — nothing was changed.') && getComputedStyle(a).color === 'rgb(179, 38, 30)' && $byLabel('Spot 1').value === 'Underground South Tour Lobby';"));
+    await ctl({ importFail: false });
+    before = (await mockLog()).length;
+    await evaluate("$btn('Save 2 rows').click(); return 1;");
+    await waitFor("document.querySelector('[data-bulk-import] [role=status]')?.textContent.includes('Saved')");
+    check("Save：绿字 Saved — 1 new, 1 updated. 1 row with errors was not saved.；表重读出新酒店、Spot 改了", (await waitFor("$byLabel('Hotel name 3')?.value === 'ZZ Test Import Hotel' && $byLabel('Spot 1').value === 'North Valet'")) && (await evaluate("const s = document.querySelector('[data-bulk-import] [role=status]'); return s.textContent.includes('Saved — 1 new, 1 updated. 1 row with errors was not saved.') && getComputedStyle(s).color === 'rgb(30, 107, 67)';")) && (await mockLog()).slice(before).some((e) => e.path === "/api/farm-out/partners/1/locations/import/commit" && e.hasFile));
+    check("重读后表是存好的样子：⬆ Import 不灰（没有没存的改动）", await evaluate(`return !$btn('⬆ Import', ${sec}).disabled || !!document.querySelector('[data-bulk-import]');`));
+    await evaluate("$btn('Close', document.querySelector('[data-bulk-import]')).click(); return 1;");
+    check("Close：Import 块收起", await waitFor("!document.querySelector('[data-bulk-import]')"));
+    check("How to use 说明 ⬆ Import", await evaluate("return $txt().includes('To change or add many at once, click ⬆ Import');"));
+  }
+
   // 改名 / 停用
   await evaluate("$btn('Rename', $row('Partner B')).click(); return 1;");
   await waitFor("$byLabel('Partner name')");

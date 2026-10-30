@@ -3,7 +3,7 @@
 // 控制：POST /__ctl {reset, fail401, staff, unavailable, foVis（farm_out_settings 的档：staff / admin / super_admin_only；null = 后端还没登记）}；GET /__log。端口默认 8799（环境变量 MOCK_PORT 可改）。
 const http = require("http");
 
-const ctl = { fail401: false, staff: false, partner: false, unavailable: false, foVis: "staff", log403: false };
+const ctl = { fail401: false, staff: false, partner: false, unavailable: false, foVis: "staff", log403: false, importFail: false };
 const log = [];
 
 const TOURS = [
@@ -137,6 +137,22 @@ http
       const partner = partners.find((x) => x.id === Number(m[1]));
       Object.assign(partner, entry.body);
       return send(res, 200, { ok: true, partner });
+    }
+    // ⬆ Import（全站通用导入，标准接口形状见 types/bulk-import.ts；后端还没上）。
+    m = sub.match(/^\/partners\/(\d+)\/locations\/import\/(preview|commit)$/);
+    if (m) {
+      const pid = Number(m[1]);
+      entry.hasFile = /filename="fo-locations-import\.csv"/.test(entry.rawText || "");
+      if (m[2] === "preview") return send(res, 200, { columns: ["hotel_name", "spot", "address", "map_link"], rows: [
+        { status: "update", id: 101, values: { hotel_name: "Bellagio Hotel", spot: "North Valet", address: "", map_link: "" }, before: { spot: "Underground South Tour Lobby" }, changed: ["spot"], blanked: ["address", "map_link"], errors: [] },
+        { status: "unchanged", id: null, values: { hotel_name: "ZZ Test Hotel", spot: "Door 1", address: "1 Test St", map_link: "https://goo.gl/maps/zzz" }, before: {}, changed: [], blanked: [], errors: [] },
+        { status: "new", id: null, values: { hotel_name: "ZZ Test Import Hotel", spot: "Lobby", address: "2 Test St", map_link: "" }, before: {}, changed: [], blanked: [], errors: [] },
+        { status: "error", id: null, values: { hotel_name: "ZZ Bad Link", spot: "", address: "", map_link: "goo.gl/x" }, before: {}, changed: [], blanked: [], errors: [{ field: "map_link", message: "Map link must start with https://." }] },
+      ] });
+      if (ctl.importFail) return send(res, 500, { detail: "Database is busy" });
+      locations[pid].find((l) => l.id === 101).spot = "North Valet";
+      locations[pid].push({ id: nextLocId++, hotel_name: "ZZ Test Import Hotel", spot: "Lobby", address: "2 Test St", map_link: "", sort_order: locations[pid].length });
+      return send(res, 200, { created: 1, updated: 1, unchanged: 1, skipped: 1 });
     }
     m = sub.match(/^\/partners\/(\d+)\/(rates|locations|timetable(?:\/parse|\/apply|\/export\.csv)?)$/);
     if (m) {

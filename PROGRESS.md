@@ -609,6 +609,24 @@
 - 后端：f0 主窗口、bd 做 G203 / G208 / guide_notes、d0 做 G98 / G212。G203 第 ③④ 步（Dispatch 逐车、Schedule 等补写入，以及 Quick replies 新形状 /action-log）还在后端，路径到了再派前端接面板。
 - 空闲内存一直在 0.7–2 GB，一次最多开两个前端工作窗口。
 
+## 全站「上传表格自动填」：Farm out 合作公司上车点的 ⬆ Import（`task/import-farmout-locations`，从 `task/import-hr` 拉，2026-10-29 晚，工作窗口 `npe-ops-frontend-59`[678c38]，主窗口 d2 派工）—— **分支已推，没合 main（后端接口没上，先用 mock）**
+
+- Annie 原话（d2 转）：「批量导入同意全部推荐。动手」—— preview ⑤ 清单第 6 项。做法同 HR 那节（`StandardImport`，标准接口形状 `types/bulk-import.ts`）。
+- 改动（`components/farm-out/partner-detail.tsx`，Settings › Farm out Partners 展开 Locations）：
+  - 「Save locations」左边加 ⬆ Import；Import 块在上车点表上面。一家一份：按 **Hotel** 在这家里对上，没对上的加在最后。
+  - 表里有没存的改动时 ⬆ Import 灰掉（title 写「Save locations first — Import reloads the list.」）：导入存好会重读整张表，没存的会丢。
+  - 模板 = 这家现有的上车点（顺序同表），列 Hotel / Spot / Address / Map link，文件名 `<合作公司名>_locations_template.csv`。
+  - `PartnerDetail` 多一个 `partnerName`（模板文件名用）；How to use 那条加一句。
+- 检查：`fo-settings` 93/93（新加：⬆ Import 不是蓝的、有没存的改动时灰、改回去能点、模板列名 / 行数 / 文件名、预览只调这家的 preview、
+  数字和栏名、「旧 → 新」、Map link 错红字、存不上红字且表没动、存好绿字 + 表重读出新酒店、Close、How to use）；tsc 0、eslint 0 错、build 通过。
+- ⚠️ **需要后端**（Farm out Locations）：
+  1. `POST /api/farm-out/partners/{id}/locations/import/preview`（multipart `file`，只读，权限同 PUT locations）→ `ImportPreviewResponse`：
+     栏 key `hotel_name` / `spot` / `address` / `map_link`（表头 Hotel / Spot / Address / Map link）；按 hotel_name 在这家里对上（不分大小写），
+     没对上的 new（排在最后）；空格不改；Hotel 必填；文件里同名重复的第二行 error。
+  2. `POST /api/farm-out/partners/{id}/locations/import/commit`（同一个文件）：只写 new / update，**一个事务**；回 `ImportCommitResult`；
+     改动记进 Farm out 设置的 Action Log（同现在 PUT locations 的写法）。
+- 下一步：后端接口上 main → import-hr 先合 main → 合最新 main、重跑 fo-settings → 合 main。
+
 ## 全站「上传表格自动填」：通用 Import 块 + HR 换成通用样子（`task/import-hr`，2026-10-29 晚，工作窗口 `npe-ops-frontend-59`[678c38]，主窗口 d2 派工）—— **分支已推，没合 main（等后端补 HR 接口）**
 
 - Annie 原话：「但凡有材料需要输入的地方，都要支持表格，文档，图片上传」；问批量导入还是附件，答「上传表格自动填进去」。
