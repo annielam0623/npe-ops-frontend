@@ -119,6 +119,15 @@
   - 后端回来的值、原因都按纯文本显示（React 文字节点，没有 innerHTML），符合后端安全审查 SA-4。
   - hr-mock 照后端形状改；hr-test 加一项：旧值 +1 444 → +1 555、重复行原因只写一次、查不过的行写原因。
   - 检查（合了最新 main）：hr 56/56、pl 48/48、veh 33/33、nav 32/32；tsc 过；eslint 0 错（1 个 dispatch 里原有的警告）；build 过。
+  - **已合 main fbe5fd7**（eb 回「合」）。
+- **task/import-pickup**（worktree `C:\Code\npe-ops-frontend-09-pl`，从 origin 新开，合了含 import-hr 的 main，没有冲突）：
+  - 对后端 76de8f3 / pickup_locations.py：模板表头和后端认的完全一样（Hotel Name、Photo URL、Map image、Short (for SMS)、Details (email & guest page & AI Agent)、Aliases、Active、Tour bus departure），两个开关写 Yes / No。preview 每行多 row、整份多 counts；matched_alias 只在按别名对上时才有。commit 返回 {created, updated, unchanged, skipped}，整批一个事务。
+  - 前端代码不用改形状（59 已按标准形状做），只改了 import-panel 的说明（接口已上）。
+  - pl-mock 照后端补 row、counts，加两种情况：409（后端原话「Someone changed the hotel list while this file was being saved. Nothing was saved — check the preview again.」）、预览 400「Missing column: Hotel Name」。
+  - pl-test 加三项：后端回来的 `<b>Long</b>` 照字面显示、表里没有 b 元素（SA-4）；409 红字只写一遍「Nothing was saved」；预览 400 红字写后端原话、没有预览表和 Save。
+  - 检查（合了最新 main）：pl 63/63、hr 56/56、veh 33/33、nav 32/32；tsc 过；eslint 0 错（1 个 dispatch 里原有的警告）；build 过。prettier 只报 legacy-ui.tsx，这个文件本分支没改、main 上本来就是这样。
+  - 和 62 的 task/pickup-split（等后端 G211）改同一页：照 eb 说的，本分支先合，pickup-split 以后解冲突。
+- **task/import-vehicles**：eb 改派给 e6，09 不做。
 
 ## 2026-10-30 Bus Manifest 对后端最终接口形状（`task/bus-manifest-versions-fe-e6`，工作窗口 `npe-ops-frontend-e6`[047d88]，主窗口 eb 派工）
 
