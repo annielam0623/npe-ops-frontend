@@ -14,6 +14,9 @@ import type { LoadGate } from "./config";
  */
 export const BTN_BLUE =
   "h-8 cursor-pointer rounded-[9px] border border-[#3b82f6] bg-[#3b82f6] px-4 text-[12.5px] font-semibold whitespace-nowrap text-white hover:bg-[#2f76e8] disabled:cursor-not-allowed disabled:opacity-60";
+/** 列表行里的小号蓝色提交键（团价 Save、改名 Save name；蓝色只给提交键，Annie 2026-10-11 / 2026-10-29「要」）。 */
+export const BTN_BLUE_SMALL =
+  "h-[30px] cursor-pointer rounded-[7px] border-none bg-[#3b82f6] px-3 py-1 text-[11px] font-semibold whitespace-nowrap text-white hover:bg-[#2f76e8] disabled:cursor-not-allowed disabled:opacity-60";
 export const BTN_PLAIN =
   "inline-flex h-8 cursor-pointer items-center rounded-[7px] border-[0.5px] border-black/20 night:border-white/10 bg-paper night:bg-white/[.04] px-3 text-[12px] font-medium whitespace-nowrap text-[#1a1a1a] night:text-white/80 hover:bg-[#f5f5f3] night:hover:bg-white/[.08] disabled:cursor-not-allowed disabled:opacity-60";
 export const CELL_INPUT =

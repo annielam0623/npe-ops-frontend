@@ -4,6 +4,14 @@
 
 > 6d 交接（下面「2026-10-27 交接：前端主窗口 6d」那节）的后端需求已于 10/27 晚由 ad 转给家里后端主窗口 17。
 
+## Farm out Partners：团价 Save、改名 Save name 改成蓝色（`task/farmout-save-blue`，2026-10-29 晚，工作窗口 `npe-ops-frontend-59`[678c38]，Annie 直接定）—— **已合 main**
+
+- 59 报：这页团价那行的 Save 原来是黑色（Save locations 是蓝的），不合「蓝色只给提交键」。问 Annie 要不要改，Annie：「要」。
+- 改动：`components/farm-out/ui.tsx` 加 `BTN_BLUE_SMALL`（行内小号蓝键，大小同原来的黑键）；`partners-view.tsx` 团价 Save、改名 Save name 换成它。
+  「+ Add location」（加一行，不是提交）、「Add」加合作公司（照旧黑色 btn-add）没动。
+- 检查：`fo-settings` 83/83（新加两条：团价 Save、Save name 是蓝色）；tsc 0、eslint 0 错、build 通过。
+- `task/farmout-rate-items`（子项，没合）改的是同一个文件，合进最新 main 时一起带上。
+
 ## Bus Manifest 三版式 + G197 当天字号 前端（`task/bus-manifest-versions-fe`，2026-10-29 晚，工作窗口 `npe-ops-frontend-9c`[edc8ac]，主窗口 d2 派工）—— **分支已推，没合 main（⛔ 等后端 20 的 task/bus-manifest-versions 上 main）**
 
 - 依据：Annie 10-28「bus manifest里的推荐全ok」（= 动手），preview 第 8 版 https://claude.ai/artifact/GF2a4asfK9QWhzvCia45S2 ，规格见「10-28 收工交接」三c。
