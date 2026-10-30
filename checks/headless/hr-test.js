@@ -288,23 +288,38 @@ async function run() {
   reqs = await since(before, (e) => e.path === "/api/hr/export");
   check("导出：POST，用后端给的文件名", reqs[0]?.method === "POST" && (await evaluate("return window.__downloads[0];")) === "NPE_Driver_List_2026-10-03.xlsx");
 
-  // ── 导入 ──
-  await evaluate("$btn('Import from Excel').click();");
-  await waitFor("document.querySelector('input[type=file]')");
+  // ── 导入（全站通用 Import，Annie 2026-10-29「批量导游同意推荐。动手」）──
+  await evaluate("$btn('⬆ Import').click();");
+  await waitFor("document.querySelector('[data-bulk-import] input[type=file]')");
+  check("Import：没有「Also update people」勾（Q7）、⬆ Import 不是蓝的", await evaluate("return ![...document.querySelectorAll('label')].some(l => l.textContent.includes('Also update people')) && getComputedStyle($btn('⬆ Import')).backgroundColor !== 'rgb(59, 130, 246)';"));
+  // 下载模板 = Export to Excel（带现有的人）
   before = (await mockLog()).length;
-  await setFile("input[type=file]", "hr.csv");
-  await waitFor("document.body.textContent.includes('Already on the list: 1')");
+  await evaluate("window.__downloads = []; $btn('⬇ Download template').click();");
+  await waitFor("window.__downloads.length > 0");
+  reqs = await since(before, (e) => e.path === "/api/hr/export");
+  check("Download template：调 Export、下载后端给的文件", reqs.length === 1 && (await evaluate("return window.__downloads[0];")) === "NPE_Driver_List_2026-10-03.xlsx");
+  before = (await mockLog()).length;
+  await setFile("[data-bulk-import] input[type=file]", "hr.csv");
+  await waitFor("document.querySelector('[data-bulk-counts]')?.textContent.includes('Will update: 1')");
   reqs = await since(before, (e) => e.path === "/api/hr/import-preview");
-  check("预览：上传文件、overwrite=false", reqs[0]?.hasFile && reqs[0]?.overwrite === false);
-  check("预览：徽章、单选显示标签（后端给的是 full_time）", await evaluate("return document.body.textContent.includes('will import') && document.body.textContent.includes('skipped — already here') && document.body.textContent.includes('skipped — repeated above') && [...document.querySelectorAll('tr[data-status=new] td')].some(td => td.textContent === 'Full-Time');"));
-  await evaluate("[...document.querySelectorAll('label')].find(l => l.textContent.includes('Also update people')).querySelector('input').click();");
-  await waitFor("document.body.textContent.includes('Will update: 1')");
-  check("勾上更新：重新预览、按钮 Import and update 1、写哪些列", await evaluate("return !!$btn('Import and update 1') && document.body.textContent.includes('Columns that will be written: Mobile, Status, Assignment') && document.body.textContent.includes('will update — 1 field(s) (1 blank cell(s) left as-is)');"));
+  check("预览：上传文件、一律 overwrite=true（去掉勾）", reqs.length === 1 && reqs[0]?.hasFile && reqs[0]?.overwrite === true);
+  check("预览：数字 New 1 / Will update 1 / No change 0 / Errors 2", await evaluate("const t = document.querySelector('[data-bulk-counts]').textContent; return t.includes('New: 1') && t.includes('Will update: 1') && t.includes('No change: 0') && t.includes('Errors: 2');"));
+  check("预览：状态 New / Update / Error，单选显示标签（后端给 full_time）", await evaluate("const rs = [...document.querySelectorAll('[data-bulk-import] tbody tr[data-status]')].map(r => r.dataset.status); const t = document.querySelector('[data-bulk-import] table').textContent; return JSON.stringify(rs) === JSON.stringify(['new','update','error','error']) && t.includes('Full-Time') && !t.includes('full_time');"));
+  check("预览：改了的格子黄框、空格写 left as is", await evaluate("const r = document.querySelector('[data-bulk-import] tr[data-status=update]'); return r.querySelector('[data-bulk-changed]')?.textContent.includes('+1 555') && r.textContent.includes('blank in file — left as is');"));
+  check("预览（后端 G220 形状）：改了的格子写旧值 +1 444 → +1 555；重复行的原因只写一次；查不过的行写原因", await evaluate("const r = document.querySelector('[data-bulk-import] tr[data-status=update] [data-bulk-changed]'); const t = document.querySelector('[data-bulk-import] table').textContent; return !!r && r.textContent.replace(/\\s+/g, ' ').includes('+1 444 → +1 555') && t.split('Repeated above — skipped.').length === 2 && t.includes('Phone number looks wrong.');"));
+  check("预览：文件里重复的写 Repeated above、格子错红字写原因", await evaluate("const es = [...document.querySelectorAll('[data-bulk-error]')].map(e => e.textContent); return es.includes('Repeated above — skipped.') && es.includes('Phone number looks wrong.') && getComputedStyle(document.querySelector('[data-bulk-error]')).color === 'rgb(179, 38, 30)';"));
+  check("Save 键：蓝色、写 Save 2 rows（有错的不算）", await evaluate("const b = $btn('Save 2 rows'); return !!b && getComputedStyle(b).backgroundColor === 'rgb(59, 130, 246)';"));
+  // 存不上：红字 Not saved，预览留着（HR 后端还不是事务，不说 nothing was changed）
+  await ctl({ importFail: true });
+  await evaluate("$btn('Save 2 rows').click();");
+  await waitFor("document.querySelector('[data-bulk-import] [role=alert]')?.textContent.includes('Not saved')");
+  check("存不上：红字 Not saved — 原因，预览和 Save 键还在", await evaluate("const a = document.querySelector('[data-bulk-import] [role=alert]'); return a.textContent.includes('Not saved — ') && !a.textContent.includes('nothing was changed') && getComputedStyle(a).color === 'rgb(179, 38, 30)' && !!$btn('Save 2 rows');"));
+  await ctl({ importFail: false });
   before = (await mockLog()).length;
-  await evaluate("$btn('Import and update 1').click();");
-  await waitFor("document.body.textContent.includes('Imported 1, updated 1')");
+  await evaluate("$btn('Save 2 rows').click();");
+  await waitFor("document.querySelector('[data-bulk-import] [role=status]')?.textContent.includes('Saved')");
   reqs = await since(before, (e) => e.path === "/api/hr/import-commit");
-  check("导入：再传同一个文件和 overwrite；完成后预览收起、勾选复位", reqs[0]?.hasFile && reqs[0]?.overwrite === true && (await evaluate("return !document.body.textContent.includes('Will update:') && ![...document.querySelectorAll('label')].find(l => l.textContent.includes('Also update people')).querySelector('input').checked;")));
+  check("Save：再传同一个文件、overwrite=true；绿字 Saved — 1 new, 1 updated. 2 rows with errors were not saved.；预览收起", reqs.length === 1 && reqs[0]?.hasFile && reqs[0]?.overwrite === true && (await evaluate("const s = document.querySelector('[data-bulk-import] [role=status]'); return s.textContent.includes('Saved — 1 new, 1 updated. 2 rows with errors were not saved.') && getComputedStyle(s).color === 'rgb(30, 107, 67)' && !document.querySelector('[data-bulk-import] table');")));
   await evaluate("$btn('Close').click();");
 
   // ── 列顺序 / 列宽 ──
@@ -388,7 +403,7 @@ async function run() {
       const t = [...document.querySelectorAll('button')].map(b => b.textContent.trim());
       return document.body.textContent.includes('Alice Driver')
         && t.includes('Add person') && t.includes('Edit list') && t.includes('Export to Excel')
-        && t.includes('Import from Excel') && t.includes('Edit');
+        && t.includes('⬆ Import') && t.includes('Edit');
     `),
   );
   await evaluate("$btn('Add person').click();");
@@ -418,7 +433,7 @@ async function run() {
   await waitFor("document.body.textContent.includes('People —')");
   check("admin：仍有 Add person / Edit list / Export / Import", await evaluate(`
     const t = [...document.querySelectorAll('button')].map(b => b.textContent.trim());
-    return t.includes('Add person') && t.includes('Edit list') && t.includes('Export to Excel') && t.includes('Import from Excel');
+    return t.includes('Add person') && t.includes('Edit list') && t.includes('Export to Excel') && t.includes('⬆ Import');
   `));
   await ctl({ staff: true });
   await ctl({ staff: false, fail401: true });

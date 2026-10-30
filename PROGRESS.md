@@ -67,8 +67,41 @@
   - 照现在，通知所有主管；
   - 只通知真正管这个人的主管：要先在员工资料里加「主管是谁」一栏，后端加字段、前端加下拉，人员都要填一遍。
 - 主窗口推荐：先照现在（所有主管）上线；以后人力体系建好了，再改成只发给对应的主管。
+- 选「所有主管」的话，页面上三处字跟着改（62 已改在分支 task/schedule-notify-wording d3f3e42 上，没合 main）：
+  1. 确认框：
+     - 旧：「People whose shifts or time off changed since the last publish, and their supervisors, will get a system notification and an email. No one else is notified. This can't be undone.」
+     - 新：「People whose shifts or time off changed since the last publish will get a system notification and an email. All supervisors and admins (except you) get a notice listing the changes. No one else is notified. This can't be undone.」
+  2. 按钮鼠标提示：「Publish again: people whose shifts or time off changed, and all supervisors and admins, are notified.」
+  3. 成功提示：
+     - 一般：「Published again. Notified 1 person and 2 supervisors.」（数字照实际）
+     - 没有别的主管：「Published again. Notified 1 person.」
+     - 没人变：「Published again. No one's shifts or time off changed, so no one was notified.」
 
-### 7. 可以上线后对着看的（不用答，验收时看）
+### 7. 排班 Send to confirm 发送框里「对方收到什么」改成真实原文
+- 是什么：已发布的周改了某人的班，那一行有「Send to confirm」，点开是发送框。框里「What Jing gets」那段，现在是前端照 preview 写的：
+  「"Your schedule for Oct 4 – 10 has changed: Mon 10/05 is now Open 2:00 AM – 11:45 AM (was Open 2:00 AM – 12:00 PM). Please check and tap Looks good or Send my changes." The button opens the same confirm page they use on Wednesdays.」
+- 为什么问：
+  - 后端真正发出去的邮件不是这段话；
+  - 没有登录账号的员工收不到站内通知，只收邮件。
+- 改成（以 Jing、2026-10-04 这周为例，62 已改在分支 task/schedule-send-to-confirm 3a12965 上）：
+  - 收件：To: 📧 jing@… + 🔔 in-app notice（没有登录账号的只写 📧）
+  - What Jing gets:
+    - Subject: Please confirm your schedule changes — week of 2026-10-04
+    - Hi Jing,
+    - Your schedule for the week of 2026-10-04 has changed:
+    - • Mon 10/5: Open 2:00 AM – 12:00 PM → Open 2:00 AM – 11:45 AM（那天原来或现在没班，写 not scheduled；日期不补零，和后端邮件一致）
+    - Please check and confirm:
+    - [Confirm my schedule]
+    - 说明：The button opens the same confirm page they use on Wednesdays. The in-app notice has the same subject and lines.（后一句只在有登录账号时出现）
+  - 框底下一句：
+    - 旧：「Only Jing gets this. When you publish again, Jing (and their supervisor) still get the normal notice.」
+    - 新：「Only Jing gets this. When you publish again, Jing and all supervisors and admins still get the normal notice.」
+- 选法：
+  - 照这样，发送框显示真实原文（推荐：所见即所发）；
+  - 保留前端那段口语说明：页面上写的和实际发出的不一样。
+- 附注：邮件里周的写法是「2026-10-04」（周日日期），不是「Oct 4 – 10」。想让员工看到「Oct 4 – 10」，要后端改邮件模板。
+
+### 8. 可以上线后对着看的（不用答，验收时看）
 - Products 手动保存：09 问的 5 处细节，主窗口按盘点推荐定了，见 PROGRESS「2026-10-30」那节 09 的记录：
   - Bus Manifest setup 每个小项一个 Save；
   - 产品表改过的行才出 Save；
@@ -84,6 +117,16 @@
   - 合了 G215（af43877）和 Products 手动保存（e9e7764）之后的 main，没有冲突，重跑：
   - da 385/385（单独跑，SUITE_TIMEOUT_S=900；G215 加了 5 项）、nav 32/32；
   - tsc 0 错；eslint 0 错、2 个警告（原有的）；build 过。
+## 批量导入第一批接真接口（HR / Pickup / Vehicles，2026-10-30，工作窗口 `npe-ops-frontend-09`[8a0116]，主窗口 eb 派工）
+
+- 依据：Annie 10-29「批量导入同意全部推荐。动手」。前端 59 做好的三个分支，后端 G220 第一批已上 main（提交 3b9a964，合并 76de8f3，后端 66 做）。顺序：import-hr 先合，再 pickup、vehicles。
+- **task/import-hr**（这台电脑从 origin 新开，worktree `C:\Code\npe-ops-frontend-09-hr`）：
+  - 对后端 76de8f3 的形状：preview 每行多 row（Excel 行号）、errors、before；没通过检查的行 status "error"；文件里重复的行照旧 duplicate_in_file，errors 写「Repeated above — skipped.」；counts 多 error。commit 多 errors（个数）、error_rows [{row, message}]。overwrite 默认 true，空格不清值（后端第二道闸，tests/test_hr_import_rows.py 钉住）——59 原来要核实的这条已确认。
+  - 改了：types/hr.ts（status 加 error、row、counts.error、commit 的 errors / error_rows）；import-panel 认 error 状态；重复行的原因后端已经给，前端不再自己补第二句；before 里的单选也换成标签（full_time → Full-Time）；Save 后那句不再写「N skipped」（重复行在预览里已是 Error，通用块写「N rows with errors were not saved.」）。
+  - 标准形状 types/bulk-import.ts 补 row、counts（Pickup / Vehicles 用）；通用块 409 时不再在后端那句「Nothing was saved — check the preview again.」前面重复「nothing was changed」。
+  - 后端回来的值、原因都按纯文本显示（React 文字节点，没有 innerHTML），符合后端安全审查 SA-4。
+  - hr-mock 照后端形状改；hr-test 加一项：旧值 +1 444 → +1 555、重复行原因只写一次、查不过的行写原因。
+  - 检查（合了最新 main）：hr 56/56、pl 48/48、veh 33/33、nav 32/32；tsc 过；eslint 0 错（1 个 dispatch 里原有的警告）；build 过。
 
 ## 2026-10-30 Bus Manifest 对后端最终接口形状（`task/bus-manifest-versions-fe-e6`，工作窗口 `npe-ops-frontend-e6`[047d88]，主窗口 eb 派工）
 
@@ -1126,7 +1169,7 @@ pe-ops-frontend-bmv）：
 - 后端：f0 主窗口、bd 做 G203 / G208 / guide_notes、d0 做 G98 / G212。G203 第 ③④ 步（Dispatch 逐车、Schedule 等补写入，以及 Quick replies 新形状 /action-log）还在后端，路径到了再派前端接面板。
 - 空闲内存一直在 0.7–2 GB，一次最多开两个前端工作窗口。
 
-## Dispatch 取消自动保存，改成每台车 Edit 旁的 Save（`task/dispatch-manual-save`，2026-10-29 晚，工作窗口 `npe-ops-frontend-59`[678c38]，主窗口 d2 派工）—— **检查都过了，没合 main：推 main 被这台电脑的权限拦了（d2 转来的「4项全部动手」不算 Annie 本人在 59 下令），等 Annie 在 59 窗口直接说推，或她自己推**
+## Dispatch 取消自动保存，改成每台车 Edit 旁的 Save（`task/dispatch-manual-save`，2026-10-29 晚，工作窗口 `npe-ops-frontend-59`[678c38]，主窗口 d2 派工）—— **已合 main（2026-10-30 e6 接手，Annie 原话「推」，见最上面 e6 那节）**；原来：检查都过了，推 main 被权限拦，等 Annie 下令
 
 - 授权：preview https://claude.ai/artifact/18d91JAUbvdy87Bd1idDA5 ；Annie「我们现在来动手改自动保存吧，就是把每个小项的自动保存转成正常的一个小section的手动保存，这样效率高一些，除非是超过10分钟页面没有活动，那才需要自动保存一下」（经 9a、d2 转）。Q1–Q4 照推荐。
 - Annie 补的细节（经 9a、d2 转，原话）：
@@ -1160,6 +1203,33 @@ pe-ops-frontend-bmv）：
   - `run-all.js` 加了 `SUITE_TIMEOUT_S`（默认仍 480 秒）：da 一套接近 8 分钟，加检查后会撞上限。
 
 - 准备合 main（2026-10-29 晚，d2 转 Annie「4项全部动手」）：合最新 main（含 G203 第四批的 Dispatch Action Log，只 PROGRESS 冲突）后 tsc 0、eslint 0 错、build 通过、`da` 380/380（SUITE_TIMEOUT_S=900）；之后又合进 main 的 Restaurant 四栏（不碰 Dispatch），tsc 0。分支 `f81144c` 起已推，下一步只差 `git push origin task/dispatch-manual-save:main`。
+## 全站「上传表格自动填」：通用 Import 块 + HR 换成通用样子（`task/import-hr`，2026-10-29 晚，工作窗口 `npe-ops-frontend-59`[678c38]，主窗口 d2 派工）—— **分支已推，没合 main（等后端补 HR 接口）**
+
+- Annie 原话：「但凡有材料需要输入的地方，都要支持表格，文档，图片上传」；问批量导入还是附件，答「上传表格自动填进去」。
+  preview：https://claude.ai/artifact/MKtDUiYyUPZ1FcBJR3j4Lw 。动手原话：「批量导游同意推荐。动手」（指批量导入），Q1–Q7 全按推荐：
+  - Q1 先只做 Excel / CSV；Q2 有错的行不存，其余一次存（全成或全不存）；Q3 空格 = 不改；Q4 能改这页的人就能导入；
+  - Q5 模板带现有记录；Q6 Team 导入不建账号；Q7 HR 去掉「Also update people already on the list」勾。
+- 通用块 `components/ui/bulk-import.tsx`（`BulkImport` + `BulkImportButton`）：
+  - ⬆ Import 灰白键（蓝色只给提交键）；点开在页面里展开一块：⬇ Download template、Choose file、说明一段。
+  - 预览表第一列「Import」：New / Update / No change / Error；改了的格子黄框（后端给 before 时写「旧 → 新」）；
+    文件空格写「blank in file — left as is」；有错的整行淡红，格子的错红字写在格子下，整行的错（field=null）和 note 写在下一行。
+  - 数字行 New / Will update / No change / Errors（红，「won't be saved」）；蓝色「Save N rows」（只算 New + Update）。
+  - 存好：绿字「✓ Saved — …（N rows with errors were not saved.）」，预览收起；存不上：红字「Not saved — 原因」，
+    `atomic` 的页面写「Not saved — nothing was changed.」；预览留着可再 Save。
+  - 各页只写一个适配：哪些栏、按什么对上、调哪对接口，把后端预览换成 `BulkImportPreview`。
+  - HR 以外的页面一律走**标准接口形状**（`types/bulk-import.ts`：`<base>/preview` → `ImportPreviewResponse`、`<base>/commit` → `ImportCommitResult`，
+    `lib/bulk-import-api.ts`），前端用 `StandardImport`（atomic，页面只给 endpoint、栏名、模板）；模板用 `lib/csv.ts` 的 `csvBlob` 在浏览器里生成。
+  - 存好后各页用「静悄悄重拉」（不回 Loading），不然 Import 块、展开着的 Action Log 会被卸掉。
+- HR（`components/hr/import-panel.tsx` 改成适配）：键改名「⬆ Import」；去掉 overwrite 勾，一律 `overwrite=true`；
+  模板 = Export to Excel（带现有的人）；`duplicate_in_file` 显示成 Error「Repeated above — skipped.」；
+  `HRImportRow` 加可选 `errors` / `before`（后端给了就显示）；How to use 改写。atomic=false（HR commit 还不是事务）。
+- 检查：`hr` 55/55（模板、预览一律 overwrite=true、四种状态、单选标签、黄框 / 空格说明、错误红字、Save 蓝色、存不上红字、
+  存好绿字和预览收起）；tsc 0、eslint 0 错、build 通过。
+- ⚠️ **需要后端**（HR，已由 d2 转 9a）：
+  1. `/api/hr/import-preview` 每行回 `errors: [{field, message}]`（field=null 是整行的错，例如对不上、必填缺）、`before: {key: 改前的值}`；
+  2. `/api/hr/import-commit` 改成一个事务：有一行写失败就整份不写；接口到了前端把 HR 的 `atomic` 改成 true；
+  3. overwrite 可以默认 true / 去掉参数（前端现在一律传 true，去掉也兼容）。
+- 下一步：后端 HR 三条上 main 后，合最新 main、重跑 hr，合 main。Pickup Locations 在 `task/import-pickup`（见下一节）。Team 等联络方式动手 + 电话列；Restaurant 等 G215。
 
 ## G203 第四批：Dispatch 页加 Action Log、Driver Quick Replies 改读共用接口（`task/g203-batch4`，2026-10-29 晚，工作窗口 `npe-ops-frontend-59`[678c38]，主窗口 d2 派工）—— **已合 main**
 
