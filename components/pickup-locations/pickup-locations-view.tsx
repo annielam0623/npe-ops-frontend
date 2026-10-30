@@ -587,8 +587,8 @@ function HowToUse() {
       <li>
         Add a hotel: fill in Hotel Name (the only box you must fill) and
         whatever else you have, tick Tour bus pick-up, Shuttle stop, or both,
-        then click Add. &ldquo;✓ Added&rdquo; shows under the form and the
-        hotel appears in the list.
+        then click Add. &ldquo;✓ Added&rdquo; shows under the form and the hotel
+        appears in the list.
       </li>
       <li>
         The list has two blocks: Tour bus and Shuttle. A place that is both
@@ -613,10 +613,10 @@ function HowToUse() {
       </li>
       <li>
         Edit seasons: name each season with its From and To dates. Seasons
-        can&rsquo;t overlap. A gap after the last season is shown in yellow
-        but you can still save. Copy to next year adds next year&rsquo;s
-        seasons with the same dates. A season that a stop still uses
-        can&rsquo;t be deleted.
+        can&rsquo;t overlap. A gap after the last season is shown in yellow but
+        you can still save. Copy to next year adds next year&rsquo;s seasons
+        with the same dates. A season that a stop still uses can&rsquo;t be
+        deleted.
       </li>
       <li>
         If you leave the page with unsaved changes (a row or the seasons), you
@@ -644,8 +644,9 @@ function HowToUse() {
       </li>
       <li>
         Tour bus departure (only in the Tour bus block): tick it for a place
-        where guests board the tour bus directly (Treasure Island). Guests picked up there are left out when you
-        click Pull from manifests in Dispatch. It saves as soon as you click.
+        where guests board the tour bus directly (Treasure Island). Guests
+        picked up there are left out when you click Pull from manifests in
+        Dispatch. It saves as soon as you click.
       </li>
       <li>
         If the list is wider than the window, scroll it sideways to see the
