@@ -291,6 +291,9 @@
             - ✅ **Annie 动手**，原话：「shuttle改完Q8」「就可以动手了」。
               - 9c 出完 v3 后开工 task/pickup-split。
               - 后端 B1–B7（季节日期段要真用）已发 9a，明天排。
+              - 9a：已记进交接，公司电脑不用再找 bd 那 9 题。
+                - 迁移号：G215 用 v127（餐厅四栏 + 导游改餐，后端说在等 Annie 回答），G211 用 v128 以后，两件不能同时提交。
+                - v3 出来要转 9a。
           - 批量导入后端：9a 排明天。先做通用形状 + HR，再 Pickup → Team → Restaurant。
           - 顺带发现两个可能的 bug，已转 9a 核实：回程时间减 15 分钟前后不一致；Rezdy 自带时间可能被减了两次。
         - 前端派 9c `task/schedule-publish-anyway`，后端上 main 前不合 main。
