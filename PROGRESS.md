@@ -952,7 +952,9 @@
     - 子项全 ✕ 掉再存：这个团 items: []、别的团不带 items，列表里没有子项。
     - 前端先挡的重名 / 没价钱 / 不是数字，59 原来就有检查。
   - 检查：fo-settings 128/128、fod 46/46、nav 32/32；tsc 0 错；eslint 0 错、2 个原有警告；prettier 过；build 过。
-  - ⛔ 只推分支，不合 main：后端上线前生产库要先执行 v130，前端先合会出错。后端上 main 后再合最新 main、重跑、合 main。
+  - 后端 G221 已上 main（251ab576，合并 e664b68b），和 6a876f79 比 farm_out_settings / farm_out_common 一字没变。
+  - 合最新 main 后重跑：fo-settings 128/128、fod 46/46、nav 32/32；tsc 0 错；eslint 0 错、2 个原有警告；build 过。
+  - eb 转 Annie 要快：直接合 main。
 
 ## Bus Manifest 三版式 + G197 当天字号 前端（`task/bus-manifest-versions-fe`，2026-10-29 晚，工作窗口 `npe-ops-frontend-9c`[edc8ac]，主窗口 d2 派工）—— **分支已推，没合 main（⛔ 等后端 20 的 task/bus-manifest-versions 上 main）**
 
