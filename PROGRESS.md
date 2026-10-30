@@ -205,6 +205,11 @@
     - Shuttle 站已经在 Pickup Locations 里，先在页面上把 tour bus 和 Shuttle 分开。
     - 已排给 59 出 preview（G203 第四批之后），看纯前端能不能分、要不要后端加字段。
     - 已告诉 9a：新表方案先别开工。
+    - 59 交 preview：https://claude.ai/artifact/HTezuw3d3VnNSyo63VJEzN （没写代码）。
+      - 每个点加 Type（Tour bus / Shuttle），由 staff 选；页面分成上下两块。
+      - 还没选 Type 的点放在最上面的黄块里补。
+      - 需要后端 B1–B4：kind 列 migration、第一次归类名单先给 Annie 看、读写接口带 kind、日志记 Type。
+      - 待 Annie 定 Q1–Q5，都附推荐。
         - 前端派 9c `task/schedule-publish-anyway`，后端上 main 前不合 main。
         - 后端发 9a：allow_gaps、写日志、空档标记。
 - **Annie 定长期规则：订单流 Order List → Main Manifest → Dispatch / Tracking，不跳过前面直接去 Rezdy 拉单**。
