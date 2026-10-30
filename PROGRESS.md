@@ -350,6 +350,11 @@
   - ✅ 前端 cc7007b 已上 main（62）：可选字段、guide_candidates ?? []、存档送 ccl_line_id。和旧后端兼容。⚠️ 前端必须比后端先上，旧前端遇到 day 回 ccl 会崩。已通知 57 放行后端 C。
   - 后端 C 定稿：day 每辆车 ccl:{line_id, driver_text, guide_text, vehicle_text, is_driver_guide}|null。配对条件任一：四项全一样 / 司机一样 / 车号一样；只有 bus 字母对上、或配上多行的给 null。后端两种保存都是删了重插，前端必须原样送回所有字段（62 核过没漏）。
 - 排班「这周没收到过的人也发」已上 main 738f813（15:26），57 已告诉 Annie 可以按 11/01 那周的 Publish again。
+- ✅ Discord 名字修完：
+  - 后端 C ea2bb138（day 回 ccl，在前端 cc7007b 之后推）；
+  - 前端照 Annie 截图改写法 ebf8a03：HR 没有的名字框下写「CCL: JUAN · Not in HR」，不再写橙字。
+  - Annie 原话：「这个才是正确的样子，框里是staff手工打的」，之后答「对」。
+  - 重名（BRUCE）、车号不在 Vehicles 的照旧橙字，以后再问 Annie 要不要统一。
 ### 三、后端在做 / 明天
 - ef：Publish again 这次全员都发（这一周从没收到过的人也发；邮件列出他这一周的全部班 + 排班页链接，不带 PDF）。是 week_start 2026-11-01 那周（Annie：「就是要发下周一那份」「不管多晚都要完成」）。15:00 前上不了，后端做完为止，上 main 后 57 先通知 Annie 再按。前端不用改。
 - ef：空档只算将来（后端）；Test person is_test；往来记录。
