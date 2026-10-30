@@ -79,7 +79,10 @@ function join(h24: number, min: number): string {
 }
 
 const HOURS = Array.from({ length: 12 }, (_, i) => i + 1);
-const MINUTES = Array.from({ length: 60 / MINUTE_STEP }, (_, i) => i * MINUTE_STEP);
+const MINUTES = Array.from(
+  { length: 60 / MINUTE_STEP },
+  (_, i) => i * MINUTE_STEP,
+);
 
 export function TimePicker({
   value,
@@ -88,6 +91,7 @@ export function TimePicker({
   id,
   allowEmpty = false,
   className,
+  tone = "dark",
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -97,6 +101,8 @@ export function TimePicker({
   allowEmpty?: boolean;
   /** 加在输入框上（主要用来定宽度）。 */
   className?: string;
+  /** light：放在白卡片上（Pickup Locations 的时刻表）；弹出的列表照旧深色。 */
+  tone?: "dark" | "light";
 }) {
   const popId = useId();
   const [text, setText] = useState(() => show(value));
@@ -162,7 +168,10 @@ export function TimePicker({
     for (const col of [hourCol.current, minCol.current]) {
       const sel = col?.querySelector<HTMLElement>('[aria-selected="true"]');
       if (col && sel) {
-        col.scrollTop = Math.max(0, sel.offsetTop - col.clientHeight / 2 + ROW / 2);
+        col.scrollTop = Math.max(
+          0,
+          sel.offsetTop - col.clientHeight / 2 + ROW / 2,
+        );
       }
     }
   }, [open]);
@@ -221,7 +230,8 @@ export function TimePicker({
       e.preventDefault();
       openList();
       const base = cur ?? { h24: 9, min: 0 };
-      const total = base.h24 * 60 + base.min + (e.key === "ArrowUp" ? 1 : -1) * MINUTE_STEP;
+      const total =
+        base.h24 * 60 + base.min + (e.key === "ArrowUp" ? 1 : -1) * MINUTE_STEP;
       const wrapped = ((total % 1440) + 1440) % 1440;
       const v = join(Math.floor(wrapped / 60), wrapped % 60);
       setText(show(v));
@@ -269,7 +279,10 @@ export function TimePicker({
         }}
         onKeyDown={onKeyDown}
         className={cn(
-          "h-9 w-[112px] rounded-[6px] border border-white/25 bg-[#070f1a] px-2.5 font-mono text-[14px] font-semibold text-white [color-scheme:dark] placeholder:font-normal placeholder:text-white/35 focus:border-sky-400/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/60",
+          "rounded-[6px] border px-2.5 font-mono font-semibold placeholder:font-normal focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/60",
+          tone === "light"
+            ? "h-8 w-[104px] border-black/25 bg-white text-[13px] text-[#1a1a1a] [color-scheme:light] placeholder:text-black/35 focus:border-[#1a1a1a] night:border-white/25 night:bg-[#070f1a] night:text-white"
+            : "h-9 w-[112px] border-white/25 bg-[#070f1a] text-[14px] text-white [color-scheme:dark] placeholder:text-white/35 focus:border-sky-400/70",
           className,
         )}
       />
@@ -294,7 +307,7 @@ export function TimePicker({
                   ref={hourCol}
                   role="listbox"
                   aria-label="Hour"
-                  className="relative flex max-h-[240px] w-[64px] flex-col gap-0.5 overflow-y-auto overscroll-contain [scrollbar-width:thin]"
+                  className="relative flex max-h-[240px] w-[64px] [scrollbar-width:thin] flex-col gap-0.5 overflow-y-auto overscroll-contain"
                 >
                   {HOURS.map((h) => (
                     <button
@@ -319,7 +332,7 @@ export function TimePicker({
                   ref={minCol}
                   role="listbox"
                   aria-label="Minute"
-                  className="relative flex max-h-[240px] w-[64px] flex-col gap-0.5 overflow-y-auto overscroll-contain [scrollbar-width:thin]"
+                  className="relative flex max-h-[240px] w-[64px] [scrollbar-width:thin] flex-col gap-0.5 overflow-y-auto overscroll-contain"
                 >
                   {minutes.map((m) => (
                     <button
@@ -338,7 +351,11 @@ export function TimePicker({
               </div>
               <div className="flex flex-col">
                 <div className="mb-0.5 text-[10.5px]">&nbsp;</div>
-                <div role="listbox" aria-label="AM or PM" className="flex w-[56px] flex-col gap-0.5">
+                <div
+                  role="listbox"
+                  aria-label="AM or PM"
+                  className="flex w-[56px] flex-col gap-0.5"
+                >
                   {(["AM", "PM"] as const).map((p) => (
                     <button
                       key={p}

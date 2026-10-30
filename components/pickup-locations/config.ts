@@ -1,4 +1,8 @@
-import type { PickupLocation, PickupLocationInput } from "@/types";
+import type {
+  PickupLocation,
+  PickupLocationInput,
+  PickupStopTime,
+} from "@/types";
 
 /** 和后端 pickup_lookup.py 的上限一致（改一边要改另一边）。 */
 export const MAP_IMAGE_MAX_COUNT = 2;
@@ -14,6 +18,29 @@ export interface LocationDraft {
   instruction_short: string;
   instruction: string;
   aliases: string;
+  /** 类别两个勾（后端上线了才送出去，见 inputOf 的 withTypes）。 */
+  is_tour_bus: boolean;
+  is_shuttle: boolean;
+  /** Shuttle 站的小时刻表：一行一条线路的一班，每个季节一格。先暂存，按这一行的 Save 才存。 */
+  times: TimeRowDraft[];
+}
+
+/** 一格：时间、No service，或者两样都没有（= 这一季还没填）。 */
+export interface TimeCellDraft {
+  time: string;
+  noService: boolean;
+}
+
+/** 时刻表的一行（一条线路的第几班）。 */
+export interface TimeRowDraft {
+  /** React key（新加的行没有服务端的号）。 */
+  key: string;
+  /** null = 还没选线路。 */
+  manifest_id: number | null;
+  /** 按季节 id。 */
+  cells: Record<number, TimeCellDraft>;
+  /** 这次新加的（标琥珀色 new）。 */
+  isNew: boolean;
 }
 
 export function emptyDraft(): LocationDraft {
@@ -24,7 +51,56 @@ export function emptyDraft(): LocationDraft {
     instruction_short: "",
     instruction: "",
     aliases: "",
+    is_tour_bus: false,
+    is_shuttle: false,
+    times: [],
   };
+}
+
+/** 服务端的格子 → 时刻表的行：同一条线路同一班的各季合成一行，按线路出现的先后、班次排。 */
+export function timeRowsOf(
+  times: PickupStopTime[] | undefined,
+): TimeRowDraft[] {
+  const rows = new Map<string, TimeRowDraft>();
+  for (const t of times ?? []) {
+    const key = `${t.manifest_id}:${t.run_no}`;
+    const row = rows.get(key) ?? {
+      key,
+      manifest_id: t.manifest_id,
+      cells: {},
+      isNew: false,
+    };
+    row.cells[t.season_id] = {
+      time: t.no_service ? "" : (t.stop_time ?? ""),
+      noService: t.no_service,
+    };
+    rows.set(key, row);
+  }
+  return [...rows.values()];
+}
+
+/** 时刻表的行 → 送给后端的格子。没填的格子不送（= 还没填）；同一条线路按出现先后编班次。 */
+export function timesOf(
+  rows: TimeRowDraft[],
+): NonNullable<PickupLocationInput["times"]> {
+  const runs = new Map<number, number>();
+  const out: NonNullable<PickupLocationInput["times"]> = [];
+  for (const row of rows) {
+    if (row.manifest_id == null) continue;
+    const run = (runs.get(row.manifest_id) ?? 0) + 1;
+    runs.set(row.manifest_id, run);
+    for (const [sid, cell] of Object.entries(row.cells)) {
+      if (!cell.noService && !cell.time) continue;
+      out.push({
+        manifest_id: row.manifest_id,
+        run_no: run,
+        season_id: Number(sid),
+        stop_time: cell.noService ? null : cell.time,
+        no_service: cell.noService,
+      });
+    }
+  }
+  return out;
 }
 
 export function splitMapImages(value: string | null | undefined): string[] {
@@ -43,12 +119,28 @@ export function draftOf(loc: PickupLocation): LocationDraft {
     instruction_short: loc.instruction_short ?? "",
     instruction: loc.instruction ?? "",
     aliases: loc.aliases ?? "",
+    is_tour_bus: !!loc.is_tour_bus,
+    is_shuttle: !!loc.is_shuttle,
+    times: timeRowsOf(loc.times),
   };
 }
 
-/** 草稿 → 请求体：全部去首尾空格，地图图片去空行后按顺序换行拼起来。每次都传全 6 项。 */
-export function inputOf(draft: LocationDraft): PickupLocationInput {
+/**
+ * 草稿 → 请求体：全部去首尾空格，地图图片去空行后按顺序换行拼起来。每次都传全 6 项。
+ * withTypes（后端已经有类别）时连两个勾和 times 一起送，PUT 时 times 整份换掉。
+ */
+export function inputOf(
+  draft: LocationDraft,
+  withTypes = false,
+): PickupLocationInput {
   return {
+    ...(withTypes
+      ? {
+          is_tour_bus: draft.is_tour_bus,
+          is_shuttle: draft.is_shuttle,
+          times: draft.is_shuttle ? timesOf(draft.times) : [],
+        }
+      : {}),
     hotel_name: draft.hotel_name.trim(),
     photo_url: draft.photo_url.trim(),
     map_image_url: draft.map_images
@@ -149,6 +241,9 @@ export const LOG_FIELDS: readonly { key: string; label: string }[] = [
   { key: "aliases", label: "Aliases" },
   { key: "map_image_url", label: "Map image" },
   { key: "is_tour_departure", label: "Tour bus departure" },
+  { key: "is_tour_bus", label: "Type: Tour bus" },
+  { key: "is_shuttle", label: "Type: Shuttle" },
+  { key: "times", label: "Times" },
 ];
 
 const LOG_TIME_FORMAT = new Intl.DateTimeFormat("en-US", {
