@@ -51,6 +51,9 @@
   开关的可见性取值：staff / admin / super_admin_only（后端 dashboard-widgets，PUT `{widgets:{key:value}}`）。
 - **没做好 / 点进去报错 / 没内容的模块：只对 Super Admin 可见，挂「Soon」标签**（Annie 2026-10-26，原话：「我们还没有做好，或者点击了以后报错的没有内容的模块，就仅super admin可见，然后都打上soon的标签」）：
   侧栏、shortcut 条、页面里的入口都算；标签界面文字用英文「Soon」，样子照已有的 SOON 标签。做好了、Annie 验收过再去掉标签、按开关放开。
+- **订单流固定：Order List → Main Manifest → Dispatch / Tracking，不跳过前面直接去 Rezdy 拉单**（Annie 2026-10-29，原话：「不要直接去rezdy拉订单。写到工作里头。订单流是order list  - main manifest - dispatch / tracking --我马上要开通。不要跳跃过前面的程序直接去rezdy拉单。前端后端都要写到工作规范里去」）：
+  Dispatch、Tracking 等下游页面只用上一步给的单：Dispatch 从 Main Manifest 取单，Main Manifest 没有的就是没有；订单状态去 Order List 查。
+  前端不直接调 Rezdy，也不加「去 Rezdy 查 / check Rezdy」这类提示或绕路的取单逻辑；缺单要查原因就指向 Order List。后端规范同样写了这一条。
 - **蓝色按钮只用于提交**（Annie 2026-10-11）：全站蓝色的键统一作提交键（Send / Save / Upload / Insert 等）。
   计数、进度、状态（例如「0 of 10 done」）不做成胶囊，用普通文字，不用蓝色，不能看起来像按钮。
   例外：右下角 ↑↓ 这类功能键也用蓝色（Annie 2026-10-11：「反正也是功能键」，照旧后台的蓝色粗箭头）。
