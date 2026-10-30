@@ -95,6 +95,14 @@
       - ⚠️ 跟 Annie 确认两处冲突，还要等她说「动手」：
         - A8：她在 d2 这边说「不要再点其他地方，根本点不了」，在 9a 那边说「保留」；
         - B4：她写了「B4 下拉保留马上存」，和总规则冲突。
+      - 9c 交 A8 preview v1：https://claude.ai/artifact/5jHSPfjGt9eD187iP8i2ut （没改代码）。
+        - 「根本点不了」是 bug：一点 Start，时间列表就盖住 End / Save / Cancel；要关列表只能点外面，点外面又马上存了。所以改完 Start 根本没机会改 End。
+        - 推荐：
+          - 格子上方弹一个独立小窗，Start / End 并排；
+          - 时间列表开在小窗里面，不盖住按钮；
+          - 只有按 Save 才存；
+          - 改了没存就点外面或按 Esc，出黄框「Unsaved changes」，可以选 Save / Discard。
+        - 待 Annie 定 Q1–Q4，都附推荐。
 - 后端 c8[fbbc9c] 报 G214 已上 main：代码 fa35f01，合并 43934d7，关包 d657a48。这就是 Dispatch「Not in HR」方案 B。
   - HR 存档后，今天及以后对得上的手填名改连到 HR 里的人，接口形状不变，前端不用改。
   - Dispatch 没有 Action Log 面板，新的 action「link_hr」对前端没有影响。
