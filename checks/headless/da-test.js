@@ -1140,6 +1140,48 @@ async function run() {
   await sleep(200);
   check("换成没填座位数的车（退回 54 座）：59 > 54，立刻补开 Bus B，不用等存", (await evaluate(LETTERS(3))) === "A,B", await evaluate(LETTERS(3)));
   check("没填座位数的车：Seats 小块写 Not set in Vehicles，没有 + / −", await evaluate(`const b = ${seatBox}; return !!b && b.textContent.includes('Not set in Vehicles') && !b.querySelector('button');`), await evaluate(`return ${seatBox}?.textContent;`));
+  // ── CCL 原文存过、重开都还在（Annie 2026-10-30 选 C；「没有改变的地方当然应该保持原样」）：
+  // 10/31 ANTELOPE 司机 JUAN 对不上 HR ⇒ 框空着、下面橙字；存一次、重开，框下面那几行一个字不变。后端 92 的新形状：ctl.dayCcl。
+  {
+    await ctl({ dayCcl: true });
+    const hints = "return [...document.querySelectorAll('[data-ccl]')].map(e => e.dataset.ccl + '=' + e.textContent).join('|');";
+    const relayRow = "document.querySelector('section[data-sec=relay] .vrow')";
+    await goto(`${APP}/dispatch?date=2026-10-24`);
+    await waitFor(`[...document.querySelectorAll('[data-ccl]')].some(e => e.textContent.includes('JUAN'))`, 10000);
+    await helpers();
+    await evaluate(AUTOSAVE_OFF);
+    const before = await evaluate(hints);
+    check("CCL 预填：JUAN 对不上 HR ⇒ 司机框空着、下面橙字 no match；车对上了写灰字 CCL: 2555；导游 LANKUN 对不上也写橙字", before.includes("driver=CCL wrote JUAN - no match, pick the driver") && before.includes("vehicle=CCL: 2555") && before.includes("driver=CCL: GIA") && before.includes("guide=CCL wrote LANKUN - no match, pick the guide") && (await evaluate(`return ${relayRow}.querySelector('[data-f=driver]').value === '';`)), before);
+    // 没动过手的预填不自动存：在 West Rim 那台车写个备注（JUAN 那台、各名字格都不碰），整天存。
+    await evaluate(`const el = document.querySelector('section[data-sec="bus_tour:3"] .vrow [data-f=note]'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(el, 'ZZ Test note'); el.dispatchEvent(new Event('input', { bubbles: true }));`);
+    await sleep(200);
+    const s1 = await saveNow();
+    await sleep(600);
+    const sent = s1.flatMap((e) => e.body.rows.map((r) => r.ccl_line_id));
+    check("不改那一格就存：请求里三台车都带 ccl_line_id（370、371、372）", sent.includes(370) && sent.includes(371) && sent.includes(372), JSON.stringify(sent));
+    check("手打名原样送回：Jimmy Vegas 那台 driver_typed_name 还在", s1.some((e) => e.body.rows.some((r) => r.ccl_line_id === 372 && r.driver_typed_name === "Jimmy Vegas" && r.driver_hr_id == null)), JSON.stringify(s1.map((e) => e.body.rows)));
+    await goto(`${APP}/dispatch?date=2026-10-24`);
+    await waitFor(`[...document.querySelectorAll('[data-ccl]')].some(e => e.textContent.includes('JUAN'))`, 10000);
+    await helpers();
+    await evaluate(AUTOSAVE_OFF);
+    const after = await evaluate(hints);
+    check("存过、重开：框下面那几行跟存之前一模一样（橙字 JUAN / LANKUN、灰字 GIA / 2555、CCL: JIMMY · Not in HR）", after === before && before.includes("driver=CCL: JIMMY · Not in HR"), `before=${before} after=${after}`);
+    check("存过、重开：手打名的框还是 Jimmy Vegas (typed)", await evaluate("return [...document.querySelectorAll('section[data-sec=relay_2] .vrow [data-f=driver]')].some(s => s.selectedOptions[0]?.text === 'Jimmy Vegas (typed)');"));
+    check("存过的一天：没有 CCL 预填条（这份 CCL 已经用过）", !(await evaluate("return !!document.querySelector('section[aria-label=CCL]');")));
+    // 真改了的那一格才变：JUAN 那台选一个司机 ⇒ 橙字变灰字 CCL: JUAN；再存、再重开，关联还在（day 回的 ccl 带 line_id，原样送回）。
+    await pick(`${relayRow}.querySelector('[data-f=driver]')`, 1);
+    await sleep(200);
+    check("选了司机：JUAN 那行变灰字 CCL: JUAN，别的行不变", (await evaluate(hints)) === before.replace("driver=CCL wrote JUAN - no match, pick the driver", "driver=CCL: JUAN"), await evaluate(hints));
+    const s2 = await saveNow();
+    await sleep(600);
+    const sent2 = s2.flatMap((e) => e.body.rows.map((r) => r.ccl_line_id));
+    check("第二次存（存过的一天、ccl 只带 line_id 和原文）：照旧送回 ccl_line_id 370", sent2.includes(370), JSON.stringify(sent2));
+    await goto(`${APP}/dispatch?date=2026-10-24`);
+    await waitFor(`[...document.querySelectorAll('[data-ccl]')].some(e => e.textContent.includes('JUAN'))`, 10000);
+    check("再重开：JUAN 那行还是灰字 CCL: JUAN，LANKUN 橙字还在", (await evaluate(hints)) === before.replace("driver=CCL wrote JUAN - no match, pick the driver", "driver=CCL: JUAN"), await evaluate(hints));
+    await ctl({ dayCcl: false });
+  }
+
   // 自动填充 + CCL 确认：名单要两台、CCL 只给一台 ⇒ CCL 那台是 A（司机、车填好），B 空着（staff 去 farm out）
   await goto(`${APP}/dispatch?date=2026-10-12`);
   await waitFor(`document.querySelectorAll('[data-sec="bus_tour:3"] .vrow').length === 2`);

@@ -228,7 +228,20 @@ const prefills = {
   "2026-10-07": { import_id: 78, title: "NPE 10/7: Revision", status: "pending", is_revision: true, raw_content: "rev", applied: false,
     rows: [row({ shift: "relay", driver_hr_id: 2, vehicle_id: 12, ccl: ccl({ driver_text: "GIA", vehicle_text: "1328" }) }), row({ shift: "private_tour", driver_hr_id: 5, vehicle_id: 11, ccl: ccl({ line_id: 350, driver_text: "BRUCE W" }) })],
     unread: [], closures: [], changes: [{ kind: "changed", row_id: 901, ccl_row: 0, fields: ["driver", "vehicle"] }, { kind: "added", ccl_row: 1 }] },
+  // Annie 2026-10-30 选 C：HR 对不上的 CCL 名字（JUAN / LANKUN）存过、重开都还在框下面。没存过的一天，预填。
+  "2026-10-24": { import_id: 81, title: "NPE 10/24:", status: "pending", is_revision: false, raw_content: "NPE 10/24:\nRELAY JUAN - 2555\nWEST RIM GIA / LANKUN - 1960", applied: false,
+    rows: [
+      row({ shift: "relay", vehicle_id: 10, ccl: ccl({ line_id: 370, driver_text: "JUAN", vehicle_text: "2555" }) }),
+      // 记忆表里有「JIMMY → Jimmy Vegas」（以前手打过）：预填成手打名，框下面 CCL: JIMMY · Not in HR（Annie 给的模板）。
+      row({ shift: "relay_2", driver_typed_name: "Jimmy Vegas", vehicle_id: 11, ccl: ccl({ line_id: 372, driver_text: "JIMMY", vehicle_text: "2415" }) }),
+      row({ shift: "bus_tour", manifest_id: 3, driver_hr_id: 2, vehicle_id: 13, bus_label: "A", location_ids: [102], ccl: ccl({ line_id: 371, driver_text: "GIA", guide_text: "LANKUN", vehicle_text: "1960" }) }),
+    ],
+    unread: [], closures: [], changes: null },
 };
+// ctl.dayCcl：后端 92 的新形状——存过的一天，从 CCL 来的车在 GET /day 里也带 ccl（line_id、三段原文、is_driver_guide；后端 57 定稿：按同一 tour 区块里四项全同 / 司机同 / 车号同重新配对），
+// 存的时候按送来的 ccl_line_id 保留关联。默认关 = 旧后端（存过就没有 ccl）。
+const cclLines = Object.fromEntries(Object.values(prefills).flatMap((p) => p.rows.map((r) => r.ccl)).filter(Boolean).map((c) => [c.line_id, c]));
+const slimCcl = (id) => { const c = ctl.dayCcl && id != null ? cclLines[id] : null; return c ? { line_id: c.line_id, driver_text: c.driver_text, guide_text: c.guide_text, vehicle_text: c.vehicle_text, is_driver_guide: c.is_driver_guide } : undefined; };
 http.createServer(async (req, res) => {
   const url = new URL(req.url, "http://x");
   const p = url.pathname;
@@ -321,7 +334,7 @@ http.createServer(async (req, res) => {
     if (ctl.saveErr) return send(res, 400, { detail: ctl.saveErr });
     const unitOf = (r) => (r.shift === "relay" || r.shift === "relay_2" ? "relay" : r.shift === "bus_tour" ? `tour:${r.manifest_id}` : r.shift);
     const rest = (saved[b.date] ?? []).filter((r) => unitOf(r) !== b.unit);
-    const mine = b.rows.map((r) => row({ ...r, id: 2000 + ++sectionSeq, ccl: undefined, ccl_line_id: undefined, ...(r.farm_out ? { partner_name: r.partner_id === 1 ? "Partner A" : r.partner_id === 2 ? "Partner B" : null } : {}) }));
+    const mine = b.rows.map((r) => row({ ...r, id: 2000 + ++sectionSeq, ccl: slimCcl(r.ccl_line_id), ccl_line_id: undefined, ...(r.farm_out ? { partner_name: r.partner_id === 1 ? "Partner A" : r.partner_id === 2 ? "Partner B" : null } : {}) }));
     saved[b.date] = [...rest, ...mine];
     bump(b.date);
     const typed = b.rows.map((r) => r.driver_typed_name).filter(Boolean);
@@ -333,7 +346,7 @@ http.createServer(async (req, res) => {
     // saveDelay：模拟存得慢（测存的时候行里的框关着）。
     if (ctl.saveDelay) await new Promise((r) => setTimeout(r, ctl.saveDelay));
     if (ctl.saveErr) return send(res, 400, { detail: ctl.saveErr });
-    saved[b.date] = b.rows.map((r, i) => row({ ...r, id: 1000 + i, ccl: undefined, ccl_line_id: undefined, ...(r.farm_out ? { partner_name: r.partner_id === 1 ? "Partner A" : r.partner_id === 2 ? "Partner B" : null } : {}) }));
+    saved[b.date] = b.rows.map((r, i) => row({ ...r, id: 1000 + i, ccl: slimCcl(r.ccl_line_id), ccl_line_id: undefined, ...(r.farm_out ? { partner_name: r.partner_id === 1 ? "Partner A" : r.partner_id === 2 ? "Partner B" : null } : {}) }));
     bump(b.date);
     if (b.ccl_import_id && prefills[b.date]) prefills[b.date].status = "applied";
     const typed = b.rows.map((r) => r.driver_typed_name).filter(Boolean);

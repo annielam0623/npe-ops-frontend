@@ -227,7 +227,7 @@ function GuideSelect({
   const can = L.driver(row.driver_hr_id)?.position === "both";
   const cands = new Set(
     row.ccl && !row.ccl.is_driver_guide
-      ? row.ccl.guide_candidates.map((c) => c.id)
+      ? (row.ccl.guide_candidates ?? []).map((c) => c.id)
       : [],
   );
   const top: React.ReactNode[] = [];

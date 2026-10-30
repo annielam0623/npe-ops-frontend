@@ -35,6 +35,28 @@
   3. 编辑权限不变（同 2026-10-30 修的 dor-edit-own：本人改自己的、report.edit 改所有人的）。
 - 明天要做：展开一条报告时在下面列「Updates」（谁、什么时候、写了什么，旧的在前），加一个输入框 + 蓝色 Save（任何能看这条报告的人都能加，partner 没有）。页面位置照 DOR 现状 preview（https://claude.ai/artifact/9FgXaqe3voxgGGuJVQpTdC ）第 5 部分画虚线框的那个地方。文字一律当纯文本显示。按 Save 才存（Saving… / 绿字 Saved / 红字后端原话）。检查：dor 套 mock 加 updates，测列出、加一条、空文本 / 超长 400 原话、partner 没有输入框。
 
+## 2026-10-30 Dispatch：CCL 原文存过、重开都还在（`task/dispatch-ccl-hint-persist`，工作窗口 `npe-ops-frontend-62`[cd78c4]，eb 派）—— 已推分支，等后端 57 的 day.ccl 上 main 再合
+
+- 起因：Annie 发现 10/31 ANTELOPE 司机「JUAN」对不上 HR，Apply 以后框空着，存过、重开以后框下面那行 CCL 原文也没了。
+  Annie 原话：「名字在hr里没有的话就是我发给你的这张图的样子，在框下面，然后有个说明，staff再手动加到框里」（选 C，不是「自动填成手打名」的 A）；
+  「你要看存的时候有没有内容改变，如果没有改变的地方当然应该保持原样」。模板：Jimmy Vegas 那辆车（「Jimmy Vegas (typed)」+「CCL: JIMMY · Not in HR」）。
+- 查的结论（只读）：不是哪个提交改坏的，前后端从第一天起都是这样。
+  - 预填只会自动填两种名字：HR 对得上的人，和名字记忆表里以前手打过的写法（JIMMY → Jimmy Vegas 就是这样来的）。JUAN 两样都没有，所以框空着，下面橙字「CCL wrote JUAN - no match, pick the driver」。
+  - 以前 day 接口不回 ccl，存过、重开以后这行橙字就没了。G216 / G214 只会把手打名连到 HR，不会清空，与此无关。
+- 后端 57（C 定稿，审查中）：GET /api/dispatch/day 每辆车多 `ccl: {line_id, driver_text, guide_text, vehicle_text, is_driver_guide} | null`。
+  按同一 tour 区块里「四项全同 / 司机同 / 车号同」配上当天导入的 CCL 行；只有 bus 字母对得上、或配上了不止一行的，回 null。
+- 前端改动：
+  - `types/dispatch.ts` 的 DispatchCcl：line_id / is_driver_guide / route_label / ccl_note / 两个 candidates 改成可选（day 里只带一部分）。
+  - `vehicle-row.tsx` 导游候选人改成 `?? []`。不改的话，day 回来的 ccl 不带 guide_candidates 时整页会崩。
+  - `lib/dispatch-api.ts` 改成 `ccl_line_id: r.ccl?.line_id ?? null`。
+  - 显示逻辑（CclHint）不用改：选了人显示灰字「CCL: JUAN」，手打名加 Not in HR；空着显示橙字「… no match, pick the driver」；没有候选人就不列候选。
+- 核对保存送回的字段：整天和按段两种保存都走 postRows。GET /day 里能存的字段都原样送回，包括 driver_typed_name / guide_typed_name / ccl_line_id / order_number / seat_adjustment / farm_out。
+  driver_name / guide_name / partner_name 是后端只读的，不送。没发现漏送的字段。
+- 检查：
+  - mock 加了 `ctl.dayCcl`（照后端新形状，默认关 = 旧后端），新一天 2026-10-24 有三台车：JUAN 对不上；GIA + LANKUN（导游对不上）；JIMMY 记忆成手打名 Jimmy Vegas。
+  - 新检查 9 项：预填 → 只改别的车的备注 → 整天存 → 三台车都送 ccl_line_id，手打名也送回 → 重开以后框下面每一行一个字不差，手打框还是「Jimmy Vegas (typed)」→ 给 JUAN 选人，橙字变灰字「CCL: JUAN」，别的行不变 → 再存仍送 370 → 再重开仍一样。
+  - 结果：da 417/417；tsc 过；eslint 0 错误；build 过。端口 3362 / 8962 / 9562。
+
 ## 2026-10-30 Dispatch Send to guide（`task/dispatch-send-to-guide`，工作窗口 `npe-ops-frontend-62`[cd78c4]，eb 派）—— 已合 main
 
 - 依据：
