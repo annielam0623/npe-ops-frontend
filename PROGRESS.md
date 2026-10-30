@@ -245,6 +245,9 @@
   - Annie 答：「上传表格自动填进去」= 批量导入（A）。
     - 已派 59 出 preview：全站通用的导入做法，先拿 Team 联络方式当例子，再盘点全站要输入的页面、给先做哪几页的推荐。
     - 还没动手。
+    - Annie 原话：「从你挑的那几页开始，然后做个列表，看看接下来要做哪些」。
+      - 先做 Team、HR、Pickup Locations、Supplier › Restaurant 四页，再列出后面的先后顺序。
+      - 已转 59，preview 里四页都画出来。
 - **Annie 重启电脑前的交接（10-29 晚）**：
   - 后端 9a：Bus Manifest 正在推 main，West Rim 提交号由 20 发来；G216 重启后再合；B9 批量接口、Publish anyway 还没开工。
   - 前端重启后的下一步：
