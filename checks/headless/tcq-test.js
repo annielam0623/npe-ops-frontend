@@ -361,6 +361,7 @@ async function main() {
   });
   try {
     await run();
+    await runTicks();
   } finally {
     ws.close();
     chrome.kill();
@@ -373,3 +374,27 @@ main().catch((e) => {
   console.error(e);
   process.exit(2);
 });
+
+// ── 全部按照勾选（Annie 2026-10-30 置顶 10c）B 类：Workspace TCQ 审核页的「Rate card settings →」链接按 quotation.rates_edit ──
+async function runTicks() {
+  const ITEM = `${APP}/workspace/2001`;
+  const READY = "document.querySelector('[data-quote-block=\"SUV - 6 seats\"]')";
+  const BASE = ["dashboard.view", "workspace.use", "quotation.create"];
+  const CASES = [
+    // [说明, role, 开关开着?, 勾, 有链接]
+    ["开关开着、员工没勾 ⇒ 没有链接", "staff", true, [], false],
+    ["开关开着、员工勾了 quotation.rates_edit ⇒ 有链接", "staff", true, ["quotation.rates_edit"], true],
+    ["开关开着、admin 没勾 ⇒ 也没有", "admin", true, [], false],
+    ["Super Admin 没勾 ⇒ 有", "superadmin", true, [], true],
+    ["开关关着、admin ⇒ 照旧有", "admin", false, [], true],
+    ["开关关着、员工勾了 ⇒ 照旧没有", "staff", false, ["quotation.rates_edit"], false],
+  ];
+  for (const [name, role, switchOn, codes, link] of CASES) {
+    await ctl({ role, tick: { switchOn, codes: [...BASE, ...codes] } });
+    await open(ITEM, READY);
+    await sleep(300);
+    const got = await evaluate("return [...document.querySelectorAll('a')].some((a) => a.getAttribute('href') === '/settings/transfer-charter');");
+    check(`全部按照勾选 · Workspace Rate card 链接：${name}`, got === link, `有链接：${got}`);
+  }
+  await ctl({ role: "admin", tick: null });
+}
