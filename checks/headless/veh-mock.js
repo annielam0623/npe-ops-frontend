@@ -76,7 +76,7 @@ http.createServer(async (req, res) => {
       for (const r of rows) counts[r.status]++;
       return send(res, 200, { columns: ["van_no", "seats", "custom:1", "notes", "is_active"], rows, counts });
     }
-    if (ctl.importConflict) return send(res, 409, { detail: "Someone changed the vehicle list while this file was being saved. Nothing was saved - check the preview again." });
+    if (ctl.importConflict) return send(res, 409, { detail: "Someone changed the vehicle list while this file was being saved. Nothing was saved — check the preview again." });
     if (ctl.importFail) return send(res, 500, { detail: "Database is busy" });
     vehicles.find((v) => v.id === 1).custom["1"] = "ABC124"; vehicles.push({ id: nextId++, van_no: "ZZ Test Van", samsara_url: "", is_active: true, notes: "", seats: 15, scheduled_days: 0, custom: {} });
     return send(res, 200, {"created": 1, "updated": 1, "unchanged": 1, "skipped": 2});

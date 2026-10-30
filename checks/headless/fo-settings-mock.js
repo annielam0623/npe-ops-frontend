@@ -162,6 +162,32 @@ http
       Object.assign(partner, entry.body);
       return send(res, 200, { ok: true, partner });
     }
+    // ⬆ Import（G220 第二批，后端 task/bulk-import-backend c8c0b739：farm_out_settings.plan_location_import）。
+    // 只在这家的点里按 Hotel 对（不分大小写，不去掉 Hotel 字样）；每行带 row、回 counts；新建行的 changed = 文件里有值的栏；
+    // 公司不存在 / 文件错 400，写的时候撞上别人改 409，数据库写失败 500（都是后端原话）。
+    m = sub.match(/^\/partners\/(\d+)\/locations\/import\/(preview|commit)$/);
+    if (m) {
+      const pid = Number(m[1]);
+      entry.hasFile = /filename="fo-locations-import\.csv"/.test(entry.rawText || "");
+      if (!locations[pid]) return send(res, 400, { detail: "That partner could not be found. Reload the page and try again." });
+      if (ctl.importFileError) return send(res, 400, { detail: ctl.importFileError });
+      if (m[2] === "preview") {
+        const rows = [
+          { status: "update", id: 101, row: 2, values: { hotel_name: "Bellagio Hotel", spot: "North Valet", address: "", map_link: "" }, before: { spot: "Underground South Tour Lobby" }, changed: ["spot"], blanked: ["address", "map_link"], errors: [] },
+          { status: "unchanged", id: locations[pid].find((l) => l.hotel_name === "ZZ Test Hotel")?.id ?? null, row: 3, values: { hotel_name: "zz test hotel", spot: "Door 1", address: "1 Test St", map_link: "https://goo.gl/maps/zzz" }, before: {}, changed: [], blanked: [], errors: [] },
+          { status: "new", id: null, row: 4, values: { hotel_name: "ZZ Test Import Hotel", spot: "Lobby", address: "2 Test St", map_link: "" }, before: {}, changed: ["spot", "address"], blanked: [], errors: [] },
+          { status: "error", id: null, row: 5, values: { hotel_name: "ZZ Bad Link", spot: "", address: "", map_link: "goo.gl/x" }, before: {}, changed: [], blanked: [], errors: [{ field: "map_link", message: "The map link for ZZ Bad Link must start with http:// or https:// and have no spaces." }] },
+        ];
+        const counts = { new: 0, update: 0, unchanged: 0, error: 0 };
+        for (const r of rows) counts[r.status]++;
+        return send(res, 200, { columns: ["hotel_name", "spot", "address", "map_link"], rows, counts });
+      }
+      if (ctl.importConflict) return send(res, 409, { detail: "Someone changed this list while the file was being saved. Nothing was saved — check the preview again." });
+      if (ctl.importFail) return send(res, 500, { detail: "Could not save. Nothing was changed - try again." });
+      locations[pid].find((l) => l.id === 101).spot = "North Valet";
+      locations[pid].push({ id: nextLocId++, hotel_name: "ZZ Test Import Hotel", spot: "Lobby", address: "2 Test St", map_link: "", sort_order: locations[pid].length });
+      return send(res, 200, { created: 1, updated: 1, unchanged: 1, skipped: 1 });
+    }
     m = sub.match(/^\/partners\/(\d+)\/(rates|locations|timetable(?:\/parse|\/apply|\/export\.csv)?)$/);
     if (m) {
       const pid = Number(m[1]);

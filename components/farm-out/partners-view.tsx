@@ -659,6 +659,7 @@ export function PartnersView() {
                               <td colSpan={5} className="p-0">
                                 <PartnerDetail
                                   partnerId={p.id}
+                                  partnerName={p.name}
                                   onUnauthorized={redirectToLogin}
                                 />
                               </td>
@@ -739,7 +740,11 @@ function HowToUse() {
       <li>
         Locations opens this partner&apos;s own pick-up hotels (not linked to
         our Pickup Locations). Their order there is the order shown in Dispatch.
-        Click Save locations to keep your changes.
+        Click Save locations to keep your changes. To change or add many at
+        once, click ⬆ Import, then ⬇ Download template (this partner&apos;s
+        locations), change or add rows in Excel, choose the file, check the
+        preview and click Save. Rows are matched by Hotel; a blank cell never
+        clears a box; rows marked Error are not saved.
       </li>
       <li>
         Rename changes the name shown in this system. Deactivate hides the
