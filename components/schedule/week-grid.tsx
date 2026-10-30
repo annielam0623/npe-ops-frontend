@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { laToday, shiftYmd } from "@/lib/la-date";
 import { gapRangeShort } from "@/lib/schedule-gaps";
@@ -27,7 +27,8 @@ import {
   shiftCardClass,
   TIME_OFF_LABEL,
 } from "./config";
-import { TimePicker } from "./time-picker";
+import { TimeEditPopup } from "./time-edit-popup";
+import type { SlotMark } from "./week-draft";
 
 interface WeekGridProps {
   weekStart: string;
@@ -68,6 +69,17 @@ interface WeekGridProps {
   gapsByDay?: Map<string, ScheduleGap[]>;
   /** 点列头的红点：跳到下面 Day timeline 的那一天。 */
   onGapDay?: (date: string) => void;
+  /**
+   * 整周一个 Save（B9）：页面上没存的改动的标记（slot id → moved / time / new / note / deleted）。
+   * slots 已经是「库里的 + 暂存」（删掉的也在里面，带 deleted 标记）。
+   */
+  marks?: Map<number, SlotMark>;
+  /** 搬过的班原来在谁那一格（slot id → 原来的 employee_id）：原位置画一个淡的琥珀虚线影子。 */
+  movedFrom?: Map<number, number | null>;
+  /** 删掉还没存的班点 Undo。 */
+  onUndoDelete?: (slotId: number) => void;
+  /** 后端 400 指出的那一个班（op_index → slot）：标红。 */
+  errorSlotId?: number | null;
 }
 
 const COLS = "grid-cols-[130px_repeat(7,minmax(118px,1fr))]";
@@ -96,10 +108,17 @@ export function WeekGrid({
   onDeleteTimeOff,
   gapsByDay,
   onGapDay,
+  marks,
+  movedFrom,
+  onUndoDelete,
+  errorSlotId = null,
 }: WeekGridProps) {
   const [selectedSlotId, setSelectedSlotId] = useState<number | null>(null);
-  // 同一时间只能有一个时段在改时间（切去改别的 / 点外面 = 退出不存）。
-  const [editingSlotId, setEditingSlotId] = useState<number | null>(null);
+  // 改时间的小窗（A8）：哪一张卡、卡片元素（量位置）。同一时间只开一个。
+  const [timeEdit, setTimeEdit] = useState<{
+    slotId: number;
+    anchor: HTMLElement | null;
+  } | null>(null);
   // 同理：同一时间只有一个时段在改备注。
   const [notingSlotId, setNotingSlotId] = useState<number | null>(null);
   const [adding, setAdding] = useState<{
@@ -118,8 +137,8 @@ export function WeekGrid({
 
   function dropOn(slotId: number, date: string, employeeId: number | null) {
     const slot = slotById.get(slotId);
-    // 时段是属于某一天的：只能换给同一天的人，拖到别的天不动。
-    if (!slot || slot.date !== date) return;
+    // 时段是属于某一天的：只能换给同一天的人，拖到别的天不动。删掉还没存的班不能拖。
+    if (!slot || slot.date !== date || marks?.get(slotId)?.deleted) return;
     if (slot.employee_id === employeeId) return;
     onAssign(slotId, employeeId);
   }
@@ -134,7 +153,16 @@ export function WeekGrid({
     const cellSlots = slots.filter(
       (s) => s.date === date && s.employee_id === employeeId,
     );
+    // 搬走还没存的班：原位置留一个淡的琥珀虚线影子（preview ①）。
+    const ghosts = slots.filter(
+      (s) =>
+        s.date === date &&
+        movedFrom?.has(s.id) &&
+        movedFrom.get(s.id) === employeeId &&
+        s.employee_id !== employeeId,
+    );
     const key = `${employeeId ?? "needs"}|${date}`;
+    const live = cellSlots.filter((s) => !marks?.get(s.id)?.deleted);
     const targetable =
       canEdit && selectedSlot != null && selectedSlot.date === date;
     return (
@@ -149,7 +177,7 @@ export function WeekGrid({
         onClick={() => clickCell(date, employeeId)}
         onDropSlot={(slotId) => dropOn(slotId, date, employeeId)}
       >
-        {cellSlots.length === 0 && employeeId != null ? (
+        {live.length === 0 && employeeId != null ? (
           <OffOrTimeOffCard
             timeOff={(timeOff ?? []).find(
               (t) => t.employee_id === employeeId && t.date === date,
@@ -168,22 +196,35 @@ export function WeekGrid({
             }
             canEdit={canEdit}
             selected={selectedSlotId === slot.id}
-            editing={editingSlotId === slot.id}
+            mark={marks?.get(slot.id)}
+            error={errorSlotId === slot.id}
             onSelect={() =>
               setSelectedSlotId((id) => (id === slot.id ? null : slot.id))
             }
-            onStartEdit={() => setEditingSlotId(slot.id)}
-            // 点另一张卡的时间时，前一张的「点外面收起」晚一步到：只关自己，别把刚打开的那张关掉。
-            onStopEdit={() =>
-              setEditingSlotId((id) => (id === slot.id ? null : id))
-            }
-            onSaveTime={(start, end) => onUpdateTime(slot.id, start, end)}
+            onStartEdit={(anchor) => setTimeEdit({ slotId: slot.id, anchor })}
             noting={notingSlotId === slot.id}
             onStartNote={() => setNotingSlotId(slot.id)}
             onStopNote={() => setNotingSlotId(null)}
             onSaveNote={(note) => onSaveNote(slot.id, note)}
             onRemove={() => onDeleteSlot(slot.id)}
+            onUndoDelete={() => onUndoDelete?.(slot.id)}
           />
+        ))}
+        {ghosts.map((slot) => (
+          <div
+            key={`ghost-${slot.id}`}
+            data-moved-from={slot.id}
+            aria-hidden
+            className="flex flex-1 flex-col justify-center rounded-[6px] border border-dashed border-amber-400/60 px-2 py-1 text-[11px] leading-tight text-white/40"
+          >
+            <b className="text-[12.5px]">
+              {shiftTypes.find((t) => t.key === slot.shift_type)?.label ??
+                slot.shift_type}
+            </b>
+            <span className="font-mono text-[10.5px]">
+              {formatClock(slot.start_time)} – {formatClock(slot.end_time)}
+            </span>
+          </div>
         ))}
         {canEdit ? (
           <AddSlotButton onClick={() => setAdding({ date, employeeId })} />
@@ -285,6 +326,35 @@ export function WeekGrid({
           onClose={() => setAdding(null)}
         />
       ) : null}
+      {canEdit && timeEdit && slotById.get(timeEdit.slotId)
+        ? (() => {
+            const slot = slotById.get(timeEdit.slotId)!;
+            const who =
+              slot.employee_id == null
+                ? "Unassigned"
+                : (employees.find((e) => e.id === slot.employee_id)?.name ??
+                  "Someone");
+            const [y, m, d] = slot.date.split("-").map(Number);
+            const day = `${DAY_LABELS[new Date(Date.UTC(y, m - 1, d)).getUTCDay()]} ${m}/${d}`;
+            const type =
+              shiftTypes.find((t) => t.key === slot.shift_type)?.label ??
+              slot.shift_type;
+            return (
+              <TimeEditPopup
+                key={slot.id}
+                anchor={timeEdit.anchor}
+                title={`${who} · ${day} · ${type}`}
+                start={slot.start_time}
+                end={slot.end_time}
+                onDone={(start, end) => {
+                  onUpdateTime(slot.id, start, end);
+                  setTimeEdit(null);
+                }}
+                onClose={() => setTimeEdit(null)}
+              />
+            );
+          })()
+        : null}
       {canEdit && selectedSlot ? (
         <p className="mt-2 text-[11.5px] text-sky-300">
           Card selected — click a cell on{" "}
@@ -458,110 +528,156 @@ function AddSlotButton({ onClick }: { onClick: () => void }) {
   );
 }
 
+/** 卡片右上角的琥珀色小字：没存的改动（preview ①：moved / time / new / note）。 */
+function markWords(mark: SlotMark | undefined): string[] {
+  if (!mark || mark.deleted) return [];
+  if (mark.isNew) return ["new"];
+  return [
+    mark.moved ? "moved" : "",
+    mark.time ? "time" : "",
+    mark.note ? "note" : "",
+  ].filter(Boolean);
+}
+
 function SlotCard({
   slot,
   label,
   canEdit,
   selected,
-  editing,
+  mark,
+  error,
   onSelect,
   onStartEdit,
-  onStopEdit,
-  onSaveTime,
   noting,
   onStartNote,
   onStopNote,
   onSaveNote,
   onRemove,
+  onUndoDelete,
 }: {
   slot: ScheduleSlot;
   label: string;
   canEdit: boolean;
   selected: boolean;
-  editing: boolean;
+  /** 没存的改动（整周一个 Save）；undefined = 和库里一样。 */
+  mark?: SlotMark;
+  /** 后端 400 指出的就是这一个：标红。 */
+  error: boolean;
   onSelect: () => void;
-  onStartEdit: () => void;
-  onStopEdit: () => void;
-  onSaveTime: (start: string, end: string) => void;
+  /** 点时间：开改时间小窗（A8），传卡片元素量位置。 */
+  onStartEdit: (anchor: HTMLElement | null) => void;
   noting: boolean;
   onStartNote: () => void;
   onStopNote: () => void;
   onSaveNote: (note: string | null) => void;
   onRemove: () => void;
+  onUndoDelete: () => void;
 }) {
+  const cardRef = useRef<HTMLDivElement>(null);
   const badRange = hasBadTimeRange(slot.start_time, slot.end_time);
   const needs = slot.employee_id == null;
+  const deleted = mark?.deleted === true;
+  const words = markWords(mark);
+  const changed = words.length > 0;
+  const live = canEdit && !deleted;
   return (
     <div
-      draggable={canEdit && !editing}
+      ref={cardRef}
+      draggable={live}
       onDragStart={(e) => {
         e.dataTransfer.setData(SLOT_MIME, String(slot.id));
         e.dataTransfer.effectAllowed = "move";
       }}
       onClick={(e) => {
-        if (!canEdit || editing) return;
+        if (!live) return;
         e.stopPropagation();
         onSelect();
       }}
       data-slot-id={slot.id}
+      data-mark={deleted ? "deleted" : words.join(" ") || undefined}
+      data-slot-error={error || undefined}
       className={cn(
         "group/card flex flex-1 flex-col justify-center gap-0.5 rounded-[6px] border px-2 py-1 text-[11px] leading-tight",
         needs
           ? "border-dashed border-red-400/70 bg-red-500/[.1] text-red-200"
           : shiftCardClass(slot.shift_type),
         badRange && "border-amber-400/60 bg-amber-400/[.12]",
-        canEdit && "cursor-grab",
+        // 没存的改动：琥珀框（同 Bus Manifest 那份）；删掉的灰掉、琥珀虚线，名字和时间划线。
+        changed && "border-amber-400 ring-1 ring-amber-400/60",
+        deleted &&
+          "border-dashed border-amber-400/70 bg-white/[.04] text-white/40 opacity-70",
+        error && "border-red-500 ring-2 ring-red-500/70",
+        live && "cursor-grab",
         selected && "ring-2 ring-sky-400/70",
       )}
     >
       <div className="flex items-center justify-between gap-1">
-        <b className="text-[12.5px]">{label}</b>
-        {canEdit ? (
-          <button
-            type="button"
-            title="Remove this shift"
-            aria-label="Remove this shift"
-            onClick={(e) => {
-              e.stopPropagation();
-              onRemove();
-            }}
-            className="cursor-pointer rounded px-1 text-[13px] leading-none text-white/70 hover:bg-red-500/20 hover:text-red-200"
-          >
-            ×
-          </button>
-        ) : null}
+        <b className={cn("text-[12.5px]", deleted && "line-through")}>
+          {label}
+        </b>
+        <span className="flex items-center gap-1">
+          {words.length ? (
+            <span
+              data-mark-words
+              className="rounded bg-amber-400/20 px-1 text-[9.5px] font-bold text-amber-300"
+            >
+              {words.join(" · ")}
+            </span>
+          ) : null}
+          {canEdit && deleted ? (
+            <button
+              type="button"
+              data-undo-delete
+              title="Put this shift back"
+              onClick={(e) => {
+                e.stopPropagation();
+                onUndoDelete();
+              }}
+              className="cursor-pointer rounded px-1 text-[10.5px] font-semibold text-amber-300 hover:bg-amber-400/15"
+            >
+              Undo
+            </button>
+          ) : canEdit ? (
+            <button
+              type="button"
+              title="Remove this shift"
+              aria-label="Remove this shift"
+              onClick={(e) => {
+                e.stopPropagation();
+                onRemove();
+              }}
+              className="cursor-pointer rounded px-1 text-[13px] leading-none text-white/70 hover:bg-red-500/20 hover:text-red-200"
+            >
+              ×
+            </button>
+          ) : null}
+        </span>
       </div>
-      {editing ? (
-        <TimeEditor
-          slot={slot}
-          onSave={(s, e) => {
-            onSaveTime(s, e);
-            onStopEdit();
-          }}
-          onCancel={onStopEdit}
-        />
-      ) : (
-        <button
-          type="button"
-          disabled={!canEdit}
-          onClick={(e) => {
-            e.stopPropagation();
-            if (canEdit) onStartEdit();
-          }}
-          className={cn(
-            "w-fit text-left font-mono text-[10.5px] font-semibold whitespace-nowrap text-white",
-            canEdit && "cursor-text hover:text-sky-200 hover:underline",
-          )}
-        >
-          {formatClock(slot.start_time)} – {formatClock(slot.end_time)}
-        </button>
-      )}
-      {badRange ? (
+      <button
+        type="button"
+        disabled={!live}
+        onClick={(e) => {
+          e.stopPropagation();
+          if (live) onStartEdit(cardRef.current);
+        }}
+        className={cn(
+          "w-fit text-left font-mono text-[10.5px] font-semibold whitespace-nowrap",
+          deleted ? "text-white/40 line-through" : "text-white",
+          live && "cursor-text hover:text-sky-200 hover:underline",
+        )}
+      >
+        {formatClock(slot.start_time)} – {formatClock(slot.end_time)}
+      </button>
+      {badRange && !deleted ? (
         <span className="text-[10px] text-amber-200">
           End isn&apos;t after start
         </span>
       ) : null}
-      {noting ? (
+      {deleted ? (
+        <span className="text-[10px] text-amber-300">
+          Removed · not saved yet
+        </span>
+      ) : noting ? (
         <NoteEditor
           initial={slot.note ?? ""}
           onSave={(note) => {
@@ -592,7 +708,7 @@ function SlotCard({
             {slot.note}
           </span>
         )
-      ) : canEdit && !editing ? (
+      ) : canEdit ? (
         // 没有备注：悬停（或聚焦）这张卡才出现「+ note」，手机没有悬停就一直淡淡地显示。
         <button
           type="button"
@@ -610,7 +726,7 @@ function SlotCard({
   );
 }
 
-/** 改备注的小输入框：Enter / Save 存，Esc / Cancel / 点外面 = 不存；清空再存 = 删掉备注。 */
+/** 改备注的小输入框：Enter / Done 把备注放到页面上（整周 Save 才存，B9 Q1），Esc / Cancel / 点外面 = 不改；清空再 Done = 删掉备注。 */
 function NoteEditor({
   initial,
   onSave,
@@ -668,102 +784,14 @@ function NoteEditor({
           type="button"
           data-note-save
           onClick={save}
-          className="cursor-pointer rounded bg-blue-500 px-1.5 py-0.5 text-[10px] font-semibold text-white hover:bg-blue-400"
+          className="cursor-pointer rounded bg-white px-1.5 py-0.5 text-[10px] font-semibold text-[#0b1727] hover:bg-white/90"
         >
-          Save
+          Done
         </button>
         <button
           type="button"
           onClick={onCancel}
           className="cursor-pointer rounded border border-white/20 bg-white/[.06] px-1.5 py-0.5 text-[10px] font-semibold text-white/85 hover:bg-red-500/15 hover:text-red-200"
-        >
-          Cancel
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function TimeEditor({
-  slot,
-  onSave,
-  onCancel,
-}: {
-  slot: ScheduleSlot;
-  onSave: (start: string, end: string) => void;
-  onCancel: () => void;
-}) {
-  const [start, setStart] = useState(slot.start_time);
-  const [end, setEnd] = useState(slot.end_time);
-  const rootRef = useRef<HTMLDivElement>(null);
-  // 点外面时要拿到「此刻」选的时间：监听器只挂一次，所以用 ref 跟着最新值。
-  const latest = useRef({ start, end, onSave, onCancel });
-  latest.current = { start, end, onSave, onCancel };
-
-  // 点编辑框外面任何地方 = 保留已选的时间（Annie 2026-10-20：点外面时间要留下来）：
-  // 改过、两格都有值就存；没改过或有一格被清空就直接收起，不发请求。Esc / Cancel 才是放弃。
-  useEffect(() => {
-    function onOutsideClick(e: MouseEvent) {
-      const target = e.target as Element;
-      // 时间下拉是挂在 body 上的（不被格子裁掉），点它不算点外面。
-      if (target.closest?.("[data-time-pop]")) return;
-      if (rootRef.current && !rootRef.current.contains(target)) {
-        const {
-          start: s,
-          end: en,
-          onSave: save,
-          onCancel: cancel,
-        } = latest.current;
-        if (s && en && (s !== slot.start_time || en !== slot.end_time)) {
-          save(s, en);
-        } else {
-          cancel();
-        }
-      }
-    }
-    document.addEventListener("click", onOutsideClick);
-    return () => document.removeEventListener("click", onOutsideClick);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  function onEscape(e: KeyboardEvent) {
-    if (e.key === "Escape") {
-      e.stopPropagation();
-      onCancel();
-    }
-  }
-
-  return (
-    <div
-      ref={rootRef}
-      onClick={(e) => e.stopPropagation()}
-      onKeyDown={onEscape}
-      className="flex flex-col gap-1.5"
-    >
-      <TimePicker
-        ariaLabel="Start time"
-        value={start}
-        onChange={setStart}
-        className="w-full"
-      />
-      <TimePicker
-        ariaLabel="End time"
-        value={end}
-        onChange={setEnd}
-        className="w-full"
-      />
-      <div className="flex gap-1.5">
-        <button
-          type="button"
-          onClick={() => onSave(start, end)}
-          className="h-8 flex-1 cursor-pointer rounded bg-blue-500 px-2 text-[12px] font-semibold text-white hover:bg-blue-400"
-        >
-          Save
-        </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="h-8 flex-1 cursor-pointer rounded border border-white/20 bg-white/[.06] px-2 text-[12px] font-semibold text-white/85 hover:bg-red-500/15 hover:text-red-200"
         >
           Cancel
         </button>

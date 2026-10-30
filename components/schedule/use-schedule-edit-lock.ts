@@ -35,9 +35,15 @@ function nameFrom(detail: string): string | null {
 export function useScheduleEditLock({
   week,
   onUnauthorized,
+  dirty = false,
 }: {
   week: string;
   onUnauthorized: () => void;
+  /**
+   * 页面上有没存的改动（整周一个 Save，B9 Q4 推荐）：心跳一直带 edited:true，锁就不会被后端 16 分钟收走；
+   * 也不做 15 分钟自动放开（别人不会在中间改掉这一周）。存好 / Discard / 离开页面时由页面 release。
+   */
+  dirty?: boolean;
 }) {
   const heldRef = useRef<{ week: string; token: string } | null>(null);
   const pendingRef = useRef<Promise<EnsureResult> | null>(null);
@@ -47,6 +53,8 @@ export function useScheduleEditLock({
   const [holding, setHolding] = useState(false);
   const unauthorizedRef = useRef(onUnauthorized);
   unauthorizedRef.current = onUnauthorized;
+  const dirtyRef = useRef(dirty);
+  dirtyRef.current = dirty;
 
   const clear = useCallback(() => {
     heldRef.current = null;
@@ -111,7 +119,7 @@ export function useScheduleEditLock({
     const id = setInterval(async () => {
       const held = heldRef.current;
       if (!held) return;
-      const edited = editedRef.current;
+      const edited = editedRef.current || dirtyRef.current;
       editedRef.current = false;
       try {
         await scheduleLockHeartbeat(held.week, held.token, edited);
@@ -131,6 +139,8 @@ export function useScheduleEditLock({
       const v = (window as { __scheduleIdleExitS?: unknown })
         .__scheduleIdleExitS;
       const limit = (typeof v === "number" && v >= 0 ? v : IDLE_EXIT_S) * 1000;
+      // 有没存的改动：不放开（页面只出琥珀色提醒，不自动存，B9 Q4）。
+      if (dirtyRef.current) return;
       if (Date.now() - lastEditRef.current < limit) return;
       void release();
     }, 1000);
@@ -150,5 +160,28 @@ export function useScheduleEditLock({
     };
   }, []);
 
-  return { ensure, markEdited, release, holding };
+  /** 整周 Save 要带的 token（没占住 / 后端没有锁 = null）。 */
+  const token = useCallback(
+    (): string | null =>
+      heldRef.current?.week === week ? heldRef.current.token : null,
+    [week],
+  );
+
+  /**
+   * 整周 Save 的回包带了 lock_token（锁过期后被后端重新占住时是新的）：之后心跳 / release 换成它。
+   * 原来没占住的，现在算占住了。
+   */
+  const adoptToken = useCallback(
+    (next: string | null | undefined) => {
+      if (!next) return;
+      if (heldRef.current?.week === week && heldRef.current.token === next)
+        return;
+      heldRef.current = { week, token: next };
+      lastEditRef.current = Date.now();
+      setHolding(true);
+    },
+    [week],
+  );
+
+  return { ensure, markEdited, release, holding, token, adoptToken };
 }

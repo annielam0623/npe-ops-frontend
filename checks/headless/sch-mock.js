@@ -66,6 +66,12 @@ const employees = [
 ];
 
 let nextSlotId = 100;
+// 整周 Save（G218）：每周一个 version，时段一改就变；changesLog 记每次 POST …/changes 的 body（GET /__changes 读）。
+let versionSeq = 0;
+function bumpVersion(w) {
+  w.version = `v${++versionSeq}`;
+}
+const changesLog = [];
 function slot(date, shiftType, startTime, endTime, employeeId) {
   return {
     id: nextSlotId++,
@@ -213,7 +219,7 @@ function getOrCreateWeek(weekStart) {
 
 function weekPayload(weekData) {
   const g = gapsFor(weekData);
-  const out = { ...weekData, gaps: g, published_with_gaps: weekData.status === "published" && g.length > 0, has_unsent_changes: weekData.status === "published" && !!weekData.unsent && ctl.role !== "staff" };
+  const out = { ...weekData, gaps: g, published_with_gaps: weekData.status === "published" && g.length > 0, has_unsent_changes: weekData.status === "published" && !!weekData.unsent && ctl.role !== "staff", version: weekData.version || "v0" };
   delete out.unsent;
   delete out.snapshot;
   if (ctl.phase2) {
@@ -256,6 +262,12 @@ http
     const p = url.pathname;
     if (p === "/__log") return send(res, 200, log);
     if (p === "/__publishes") return send(res, 200, publishLog);
+    if (p === "/__changes") return send(res, 200, changesLog);
+    if (p === "/__bump") {
+      const w = weeks.get(url.searchParams.get("week"));
+      if (w) bumpVersion(w);
+      return send(res, 200, { version: w ? w.version : null });
+    }
     if (p === "/__ctl") {
       Object.assign(ctl, await readBody(req));
       if (ctl.confirmReset) {
@@ -475,6 +487,8 @@ http
     if (editMatch && req.method !== "GET" && ctl.role !== "staff") {
       const w = weeks.get(editMatch[1]);
       if (w && w.status === "published") w.unsent = true;
+      // 单项接口改了时段：version 跟着变（后端 G218：version = schedule_weeks.updated_at）。
+      if (w) bumpVersion(w);
     }
 
     const weekMatch = /^\/api\/schedule\/weeks\/(\d{4}-\d{2}-\d{2})$/.exec(p);
@@ -484,6 +498,84 @@ http
         return send(res, 403, { detail: "This week hasn't been published yet." });
       }
       return send(res, 200, weekPayload(weekData));
+    }
+
+    // ── 整周一个 Save（后端 G218，ef task/g218-week-save 57f250e，docs/interfaces/schedule-week-changes-2026-10-30.md）──
+    // 整批一个事务；409 locked / stale / coverage_gap、400 带 op_index（detail 句子从 1 数）。
+    // ctl.changesLocked = 别人占着锁；ctl.inactiveEmployee = 这个员工 id 不在职（批量里指派会被拒）；
+    // ctl.changesNewToken = 锁过期被重新占住时回的新 token。GET /__bump?week= 模拟别人存过（version 变）。
+    const changesMatch = /^\/api\/schedule\/weeks\/(\d{4}-\d{2}-\d{2})\/changes$/.exec(p);
+    if (changesMatch && req.method === "POST") {
+      if (ctl.role === "staff") return send(res, 403, { detail: "Only a supervisor or above can edit the schedule." });
+      const b = await readBody(req);
+      entry.body = b;
+      changesLog.push({ week: changesMatch[1], body: b });
+      const token = ctl.changesNewToken || b.lock_token || "lock-tok-1";
+      if (ctl.changesLocked) return send(res, 409, { detail: { detail: "Sam is editing this week (since 8:40 PM). Wait until Sam saves, then save again.", code: "locked" } });
+      if (!b || !Array.isArray(b.ops) || !b.ops.length) return send(res, 400, { detail: "Send at least one change." });
+      if (!b.base_version) return send(res, 400, { detail: "base_version is required." });
+      const weekData = getOrCreateWeek(changesMatch[1]);
+      const cur = weekData.version || "v0";
+      if (b.base_version !== cur) {
+        return send(res, 409, { detail: { detail: "This week was changed by someone else at 8:47 PM, after you opened it.", code: "stale", version: cur, lock_token: token } });
+      }
+      const work = weekData.slots.map((s) => ({ ...s }));
+      const created = {};
+      const refs = {};
+      const fail = (i, msg, slotRef) => send(res, 400, { detail: { detail: `Change ${i + 1}: ${msg}`, op_index: i, slot: slotRef ?? null, lock_token: token } });
+      const find = (ref) => (typeof ref === "string" ? work.find((s) => s.id === refs[ref]) : work.find((s) => s.id === ref));
+      const canWork = (empId, date) => {
+        if (empId == null) return null;
+        const emp = employees.find((e) => e.id === empId);
+        if (!emp) return "That employee doesn't exist.";
+        if (!emp.is_active || ctl.inactiveEmployee === empId) return `${emp.name} is not an active employee, so they can't be scheduled.`;
+        const off = timeOff.find((t) => t.employee_id === empId && t.date === date);
+        if (ctl.phase2 && off) return `${emp.name} has time off on ${date}, so they can't be scheduled that day.`;
+        return null;
+      };
+      for (let i = 0; i < b.ops.length; i++) {
+        const op = b.ops[i];
+        if (op.op === "create") {
+          if (!settings.shift_types.some((t) => t.key === op.shift_type)) return fail(i, "Unknown shift type.", op.ref);
+          const why = canWork(op.employee_id, op.date);
+          if (why) return fail(i, why, op.ref);
+          const s = slot(op.date, op.shift_type, op.start_time, op.end_time, op.employee_id ?? null);
+          s.note = op.note ?? null;
+          work.push(s);
+          if (op.ref) {
+            refs[op.ref] = s.id;
+            created[op.ref] = s.id;
+          }
+          continue;
+        }
+        const s = find(op.slot);
+        if (!s) return fail(i, "That shift no longer exists.", op.slot);
+        if (op.op === "assign") {
+          const why = canWork(op.employee_id, s.date);
+          if (why) return fail(i, why, op.slot);
+          s.employee_id = op.employee_id ?? null;
+        } else if (op.op === "time") {
+          s.start_time = op.start_time;
+          s.end_time = op.end_time;
+        } else if (op.op === "note") {
+          const n = normNote(op.note ?? "");
+          if (!n.ok) return fail(i, n.detail, op.slot);
+          s.note = n.value;
+        } else if (op.op === "delete") {
+          work.splice(work.indexOf(s), 1);
+        } else return fail(i, "Unknown change.", op.slot);
+      }
+      if (weekData.status === "published") {
+        const before = gapsFor(weekData).length;
+        const after = gapsFor({ ...weekData, slots: work });
+        if (after.length > before) {
+          return send(res, 409, { detail: { detail: "This would leave nobody on part of a published week. Nothing was saved.", code: "coverage_gap", gaps: after } });
+        }
+        weekData.unsent = true;
+      }
+      weekData.slots = work;
+      bumpVersion(weekData);
+      return send(res, 200, { week: weekPayload(weekData), created, applied: b.ops.length, notified: [], lock_token: token });
     }
 
     const slotsMatch = /^\/api\/schedule\/weeks\/(\d{4}-\d{2}-\d{2})\/slots$/.exec(p);
@@ -600,6 +692,7 @@ http
       weekData.snapshot = Object.fromEntries([...ids].map((id) => [id, shiftsOf(id)]));
       weekData.unsent = false;
       weekData.status = "published";
+      bumpVersion(weekData);
       weekData.published_at = new Date().toISOString();
       weekData.published_by = 1;
       const scheduledIds = new Set(weekData.slots.filter((s) => s.employee_id != null).map((s) => s.employee_id));
