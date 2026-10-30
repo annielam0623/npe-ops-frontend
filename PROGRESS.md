@@ -45,6 +45,17 @@
   - B. 点 Send to confirm 时先自动存，再打开发送框；
   - C. 照现在，不管。
 
+### 13. 外部合作方（partner，例如 CCL）勾了 dispatch.edit，能不能在 Bus Manifest 上改东西（e6 做 10c 时发现）
+- 现在：partner 打开 Bus Manifest 一律只看，勾了什么都一样。不能换车、改备注 / 景点黄框、调字号和版式，也没有整页 Save。这是照 Annie 10-27 原话做的：「合作方只能看manifest和订单，不能改或者选任何功能」。
+- 为什么问：
+  - 10c「全部按照勾选」：后端对勾了 dispatch.edit 的 partner 是放行的，页面却只读，两边不一致；
+  - Annie 10-30 又说「最关键是有没有这个功能，而不是这个职位」。
+  - 照勾放开，就和 10-27 那句冲突。
+- 选法：
+  - A. 照旧：partner 不管勾什么，Bus Manifest 都只看，不用改（推荐：10-27 说得很明确；前端多拦一层更保险。真要让 CCL 改，再单独开）；
+  - B. 照勾：partner 勾了 dispatch.edit 或 manifests.edit，就能在 Bus Manifest 换车、改备注、调字号 / 版式，和员工一样。Dispatch 排车页、Manifests 页、Orders 照旧只看。
+- 现在先按 A 做。
+
 ### 8. 可以上线后对着看的（不用答，验收时看）
 - Products 手动保存：09 问的 5 处细节，主窗口按盘点推荐定了，见 PROGRESS「2026-10-30」那节 09 的记录：
   - Bus Manifest setup 每个小项一个 Save；
