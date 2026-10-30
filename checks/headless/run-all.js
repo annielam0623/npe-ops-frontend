@@ -17,7 +17,8 @@ const APP_PORT = Number(process.env.APP_PORT) || 3198;
 const APP = `http://localhost:${APP_PORT}`;
 // 子进程（各套 mock / test）都读这几个变量；没设时它们的默认值就是 3198 / 8799。
 Object.assign(process.env, { MOCK_PORT: String(MOCK_PORT), MOCK_URL: `http://localhost:${MOCK_PORT}`, APP_URL: APP });
-const SUITE_TIMEOUT = 8 * 60 * 1000;
+// 每套最长时间；da 一套就接近 8 分钟，单独跑可以用 SUITE_TIMEOUT_S 放宽。
+const SUITE_TIMEOUT = (Number(process.env.SUITE_TIMEOUT_S) || 8 * 60) * 1000;
 const NL = String.fromCharCode(10);
 const CR = String.fromCharCode(13);
 

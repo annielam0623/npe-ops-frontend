@@ -118,11 +118,51 @@ async function run() {
   check("PUT 内容：manifest_ids [3,5]、staff_note、页脚原样", put1 && JSON.stringify(put1.manifest_ids) === "[3,5]" && put1.staff_note === "ZZ note" && put1.footer.startsWith("(TEXT) POC") && put1.name === "ZZ Test Bee's", JSON.stringify(put1));
   check("存好：✓ Saved、重读后 Lunch for: Antelope, South Rim、按键又灰了", await waitFor("const c = $card(\"ZZ Test Bee's\"); return c && c.textContent.includes('✓ Saved') && c.querySelector('[data-lunch-for]').textContent === 'Lunch for: Antelope, South Rim' && $btn('Save', c).disabled"), await evaluate("const c = $card(\"ZZ Test Bee's\"); return JSON.stringify({saved: c.textContent.includes('✓ Saved'), lf: c.querySelector('[data-lunch-for]').textContent, dis: $btn('Save', c).disabled, foot: $field(c, 'Contact / how to order').value, note: $field(c, 'Notes for staff').value});"));
 
+  // ── 四栏联系方式（导游页 v9 ④，Annie 10-29 动手；后端 20 3bcf395）──
+  {
+    const C = `$card("ZZ Test Bee's")`;
+    const labels = await evaluate(`return [...${C}.querySelectorAll('label')].filter(l => l.htmlFor).map(l => l.textContent.trim());`);
+    check("四栏放在 Lunch for 和页脚之间：Vendor name / Address / Phone / Text / Email / Contact / how to order / Notes for staff", JSON.stringify(labels) === JSON.stringify(["Vendor name", "Address", "Phone", "Text", "Email", "Contact / how to order", "Notes for staff"]), JSON.stringify(labels));
+    check(
+      "带出存好的：Address 原样，Phone 显示成好读的 (928) 555-0110，Text / Email 空着；下面写用在哪",
+      await evaluate(`const c = ${C}; return $field(c, 'Address').value === '1201 ZZ Test Ave, Tusayan, AZ 86023' && $field(c, 'Phone').value === '(928) 555-0110' && $field(c, 'Text').value === '' && $field(c, 'Email').value === '' && c.textContent.includes("The guide's Call button rings this number.") && c.textContent.includes("Mobile number for lunch updates by text.");`),
+    );
+    const putsBefore = (await calls("PUT", /restaurants\/1$/)).length;
+    await evaluate(`const c = ${C}; $set($field(c, 'Phone'), '555-01'); $set($field(c, 'Email'), 'orders@'); return 1;`);
+    await sleep(150);
+    await evaluate(`$btn('Save', ${C}).click(); return 1;`);
+    await sleep(300);
+    check(
+      "格式不对：Phone / Email 下面红字、框标红，上面红字 Not saved: …，没发请求",
+      (await calls("PUT", /restaurants\/1$/)).length === putsBefore &&
+        (await evaluate(`const c = ${C}; const pe = c.querySelector('[data-contact-error=phone]'); const ee = c.querySelector('[data-contact-error=email]'); return !!pe && pe.textContent.startsWith('Phone must be a phone number') && getComputedStyle(pe).color === 'rgb(163, 45, 45)' && !!ee && ee.textContent.startsWith("Email doesn't look like an email address") && !c.querySelector('[data-contact-error=text_number]') && c.textContent.includes('Not saved: Phone must be a phone number');`)),
+      await evaluate(`return ${C}.textContent;`),
+    );
+    await evaluate(`const c = ${C}; $set($field(c, 'Phone'), '(928) 555-0110'); $set($field(c, 'Text'), '928.555.0123'); $set($field(c, 'Email'), 'zz-orders@example.com'); return 1;`);
+    await sleep(150);
+    await evaluate(`$btn('Save', ${C}).click(); return 1;`);
+    check("改对了按 Save：发 PUT", await waitCall("PUT", /restaurants\/1$/, putsBefore + 1));
+    const putC = (await lastCall("PUT", /restaurants\/1$/))?.body;
+    check("PUT 带四栏（照打的送，后端存 E.164）", putC && putC.address === "1201 ZZ Test Ave, Tusayan, AZ 86023" && putC.phone === "(928) 555-0110" && putC.text_number === "928.555.0123" && putC.email === "zz-orders@example.com", JSON.stringify(putC));
+    check(
+      "存好：绿字 ✓ Saved，重读后 Text 显示成 (928) 555-0123、Email 照存",
+      await waitFor(`return (() => { const c = ${C}; return !!c && c.textContent.includes('✓ Saved') && $field(c, 'Text').value === '(928) 555-0123' && $field(c, 'Email').value === 'zz-orders@example.com' && $btn('Save', c).disabled; })()`),
+    );
+    // 清空：带 "" = 清掉
+    await evaluate(`const c = ${C}; $set($field(c, 'Address'), ''); $set($field(c, 'Email'), ''); return 1;`);
+    await sleep(150);
+    await evaluate(`$btn('Save', ${C}).click(); return 1;`);
+    await waitCall("PUT", /restaurants\/1$/, putsBefore + 2);
+    const putClear = (await lastCall("PUT", /restaurants\/1$/))?.body;
+    check("清空 Address / Email：PUT 带 \"\"（= 清掉），其余照送", putClear && putClear.address === "" && putClear.email === "" && putClear.text_number === "(928) 555-0123", JSON.stringify(putClear));
+    check("清空存好：重读后两栏空着、Phone / Text 还在", await waitFor(`return (() => { const c = ${C}; return !!c && $field(c, 'Address').value === '' && $field(c, 'Email').value === '' && $field(c, 'Phone').value === '(928) 555-0110' && $btn('Save', c).disabled; })()`));
+  }
+
   // 400 原话：名字清空 → 前端先拦；名字太长 → 后端原话
   await evaluate("$set($field($card(\"ZZ Test Bee's\"), 'Vendor name'), '   '); return 1;");
   await sleep(150);
   await evaluate("$btn('Save', $card(\"ZZ Test Bee's\")).click(); return 1;");
-  check("名字空着：写 Enter the restaurant name.、没发请求", (await waitFor("$card(\"ZZ Test Bee's\").textContent.includes('Enter the restaurant name.')")) && (await calls("PUT", /restaurants\/1$/)).length === 1);
+  check("名字空着：写 Enter the restaurant name.、没发请求", (await waitFor("$card(\"ZZ Test Bee's\").textContent.includes('Enter the restaurant name.')")) && (await calls("PUT", /restaurants\/1$/)).length === 3);
   await evaluate("$btn('Cancel', $card(\"ZZ Test Bee's\")).click(); return 1;");
   await ctl({ fail500: true });
   await evaluate("$set($field($card(\"ZZ Test Bee's\"), 'Notes for staff'), 'ZZ note 2'); return 1;");

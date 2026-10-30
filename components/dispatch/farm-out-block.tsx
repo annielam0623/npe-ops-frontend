@@ -3,6 +3,7 @@
 import { cn } from "@/lib/utils";
 import type { DispatchRow } from "@/types";
 
+import { RowSave, type UnitSaveState } from "./unit-save";
 import { EditMenu } from "./vehicle-row";
 import {
   timetableHasTour,
@@ -23,6 +24,7 @@ export function FarmOutBlock({
   disabled = false,
   onChange,
   onRemove,
+  save,
 }: {
   row: DispatchRow;
   partners: Loaded<FarmOutPartner[]>;
@@ -31,6 +33,8 @@ export function FarmOutBlock({
   disabled?: boolean;
   onChange: (next: DispatchRow) => void;
   onRemove: () => void;
+  /** 这台车所在单元的保存状态：Edit 旁边的 Save（Annie 2026-10-29）。 */
+  save?: UnitSaveState;
 }) {
   const list = partners.state === "ready" ? partners.data : [];
   const active = list.filter((p) => p.is_active || p.id === row.partner_id);
@@ -83,7 +87,7 @@ export function FarmOutBlock({
               Needs hotel for {needHotel} {needHotel === 1 ? "order" : "orders"}
             </span>
           ) : null}
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-2">
             <EditMenu
               clearLabel="Back to our bus"
               onClear={() =>
@@ -96,6 +100,7 @@ export function FarmOutBlock({
               }
               onRemove={onRemove}
             />
+            {save ? <RowSave s={save} /> : null}
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2.5 pt-[9px] text-[13px]">

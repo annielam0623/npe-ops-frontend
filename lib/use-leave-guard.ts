@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 /** 哨兵那一条历史记录上的记号。 */
 const SENTINEL_KEY = "__npeLeaveGuard";
@@ -45,21 +45,54 @@ export function replaceUrl(url: string | URL): void {
  * - 浏览器后退 / 前进是 popstate，地址已经变了才通知 ⇒ 先压一条同地址的哨兵记录，
  *   后退时落回本页那一条，问过再决定：留下就再前进回哨兵，离开就再后退一步。
  * 发送页用它：发送中跳走，剩下的批次没人看得到结果；排车页用它：没存的改动会丢。
+ *
+ * ask（可选）：站内链接 / 浏览器后退时不用 window.confirm，改调页面自己的弹窗（例如 Save / Don't save / Cancel），
+ * resolve(true) = 离开（页面已经存好或选了不存），false = 留下。关标签 / 刷新仍是浏览器自己的提示（字改不了）。
  */
-export function useLeaveGuard(active: boolean, message: string): void {
+export function useLeaveGuard(
+  active: boolean,
+  message: string,
+  ask?: () => Promise<boolean>,
+): void {
+  // 最新的 ask（不因为它变了就重挂哨兵）。
+  const askRef = useRef(ask);
+  useEffect(() => {
+    askRef.current = ask;
+  });
   useEffect(() => {
     if (!active) return;
     const warn = (e: BeforeUnloadEvent) => {
       e.preventDefault();
       e.returnValue = "";
     };
+    /** 页面弹窗答应离开后，再点一次原来的链接：这一次放行。 */
+    let bypass = false;
+    let asking = false;
     const guard = (e: MouseEvent) => {
+      if (bypass) return;
       const a = (e.target as Element | null)?.closest?.(
         "a[href]",
       ) as HTMLAnchorElement | null;
       if (!a || a.target === "_blank" || e.defaultPrevented) return;
       if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey)
         return;
+      const ask = askRef.current;
+      if (ask) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (asking) return;
+        asking = true;
+        void ask().then(async (leave) => {
+          asking = false;
+          if (!leave) return;
+          // 存好了 ⇒ 页面已经撤了提醒、正在退掉哨兵：等它落地再跳，不然会跳错地方。
+          if (removing) await removing;
+          bypass = true;
+          a.click();
+          bypass = false;
+        });
+        return;
+      }
       if (!window.confirm(message)) {
         e.preventDefault();
         e.stopPropagation();
@@ -99,6 +132,33 @@ export function useLeaveGuard(active: boolean, message: string): void {
       if (leaving || !pushed) return;
       const st = e.state as HistoryState | null;
       const onBase = st?.[BASE_KEY] === token;
+      const ask = askRef.current;
+      if (ask && onBase) {
+        // 先回到哨兵上（还在这一页），再问；答应离开就一次退两步（跳过本页那一条）。
+        e.stopImmediatePropagation();
+        ignoreNext = true;
+        window.history.forward();
+        if (asking) return;
+        asking = true;
+        void ask().then(async (leave) => {
+          asking = false;
+          if (!leave) return;
+          if (disposed) {
+            // 存好后提醒已撤、哨兵已退：落在本页那一条上，再退一步就是离开。
+            if (removing) await removing;
+            window.history.back();
+            return;
+          }
+          leaving = true;
+          window.history.go(-2);
+          // 前面没有记录：go(-2) 什么也不做 ⇒ 还在这一页。
+          fallback = setTimeout(() => {
+            const now = window.history.state as HistoryState | null;
+            if (!disposed && now?.[SENTINEL_KEY] === token) leaving = false;
+          }, 500);
+        });
+        return;
+      }
       if (window.confirm(message)) {
         leaving = true;
         // 长按后退选了更早的页：已经落在那一页了，交给 Next 照常处理。
