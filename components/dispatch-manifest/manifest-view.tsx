@@ -23,6 +23,7 @@ import {
   manifestPrintUrl,
   saveAttraction,
   saveGuestNotes,
+  saveManifestVersion,
   saveTextSize,
   setGuestBus,
 } from "@/lib/dispatch-manifest-api";
@@ -36,9 +37,14 @@ import { usePermissions } from "@/lib/staff-permissions";
 
 import { AffiliateCard } from "./affiliate-card";
 import {
+  LunchMismatchDialog,
+  type MismatchAction,
+} from "./lunch-mismatch-dialog";
+import {
   cellText,
   editCellClass,
   EMPTY_TEXT_SIZE,
+  HEAD_PX,
   isPicked,
   layerOf,
   type ManifestColumnKey,
@@ -56,8 +62,11 @@ import type {
   ManifestGoneGuest,
   ManifestGuest,
   ManifestLunch,
+  ManifestLunchMismatch,
+  ManifestRestaurant,
   ManifestSection,
   ManifestTextSize,
+  ManifestVersion,
   ManifestView as ManifestData,
 } from "@/types";
 
@@ -81,17 +90,83 @@ function ourOrders(data: ManifestData): number {
   return data.totals.guests - (data.affiliate?.totals.guests ?? 0);
 }
 
-const COLUMNS = [
-  "Order Number",
-  "Pick-up Time",
-  "Pick-up Location",
-  "Last Name",
-  "First Name",
-  "Customer Phone",
-  "#",
-  "Quantities",
-  "Special Requirements",
-] as const;
+/** 客人表的一列：列键（G197 存「整列」用，换版式不丢）+ 表头。 */
+interface Column {
+  key: ManifestColumnKey;
+  label: string;
+}
+
+/** General / Marcello 的列（Marcello = 字大的 General，定 14）。 */
+const GENERAL_COLUMNS: Column[] = [
+  { key: "order_number", label: "Order Number" },
+  { key: "pickup_time", label: "Pick-up Time" },
+  { key: "pickup_location", label: "Pick-up Location" },
+  { key: "last_name", label: "Last Name" },
+  { key: "first_name", label: "First Name" },
+  { key: "phone", label: "Customer Phone" },
+  { key: "pax", label: "#" },
+  { key: "ticket", label: "Quantities" },
+  { key: "notes", label: "Special Requirements" },
+];
+
+/** Lankun 的列序（定 5，同后端 LANKUN_COLUMNS）；没有 ✓ 列。 */
+const LANKUN_COLUMNS: Column[] = [
+  { key: "order_number", label: "Order #" },
+  { key: "pickup_time", label: "Time" },
+  { key: "pickup_location", label: "Hotel" },
+  { key: "phone", label: "Phone" },
+  { key: "ticket", label: "Ticket" },
+  { key: "pax", label: "Pax" },
+  { key: "last_name", label: "Last Name" },
+  { key: "first_name", label: "First Name" },
+  { key: "notes", label: "Special Requirements" },
+];
+
+/** West Rim 的列序（Annie 10-29，后端 20 转）：没有 ✓ 列。 */
+const WEST_COLUMNS: Column[] = [
+  { key: "order_number", label: "Order #" },
+  { key: "pickup_time", label: "Time" },
+  { key: "pickup_location", label: "Hotel" },
+  { key: "phone", label: "Phone" },
+  { key: "last_name", label: "Last Name" },
+  { key: "first_name", label: "First Name" },
+  { key: "pax", label: "Pax" },
+  { key: "ticket", label: "Quantities" },
+  { key: "notes", label: "Special Requirements" },
+];
+
+/**
+ * 这个版式的列（同后端 `version_columns()`）。排了餐厅的团（`lunch_column`）三个版式都出 Lunch，
+ * 放在 Special Requirements 左边（Q19 A、Q26）。
+ */
+function columnsFor(version: ManifestVersion, lunch: boolean): Column[] {
+  const cols = [
+    ...(version === "lankun"
+      ? LANKUN_COLUMNS
+      : version === "west"
+        ? WEST_COLUMNS
+        : GENERAL_COLUMNS),
+  ];
+  if (lunch)
+    cols.splice(
+      cols.findIndex((c) => c.key === "notes"),
+      0,
+      { key: "lunch", label: "Lunch" },
+    );
+  return cols;
+}
+
+const VERSIONS: { value: ManifestVersion; label: string }[] = [
+  { value: "general", label: "General" },
+  { value: "lankun", label: "Lankun" },
+  { value: "marcello", label: "Marcello" },
+  { value: "west", label: "West Rim" },
+];
+
+function versionOf(data: ManifestData): ManifestVersion {
+  const v = data.tour.manifest_version;
+  return v === "lankun" || v === "marcello" || v === "west" ? v : "general";
+}
 
 // 样子照旧后台 admin/tour_manifest.html（Annie 2026-10-07：和旧版一模一样）。
 /** .mf-nav a.back */
@@ -111,21 +186,11 @@ const TH =
   "border border-[#9aa] bg-[#e6eaee] px-1.5 py-1 text-left text-[9.5px] font-bold whitespace-nowrap";
 const TD =
   "border border-[#c8ced2] px-[7px] py-[3px] align-middle whitespace-nowrap";
+/** 名字、酒店、票型：太长就在格里换行，不截断（定 8）；单号、时间、电话、人数、餐不折行。 */
+const WRAP_TD =
+  "border border-[#c8ced2] px-[7px] py-[3px] align-middle whitespace-normal [overflow-wrap:anywhere]";
 /** 取消 / 改期那一块照旧的小字（不是车上的名单）。 */
 const TD_SMALL = cn(TD, "text-[13.5px]");
-
-/** 列键（G197 存「整列」用），顺序同 COLUMNS。 */
-const COLUMN_KEYS: ManifestColumnKey[] = [
-  "order_number",
-  "pickup_time",
-  "pickup_location",
-  "last_name",
-  "first_name",
-  "phone",
-  "pax",
-  "ticket",
-  "notes",
-];
 
 /** 合计行照纸本改名（G198 Q9）；后端打印 / Excel 那边由后端改。 */
 const FOOTER_LABEL: Record<string, string> = {
@@ -145,6 +210,14 @@ export function ManifestView() {
   const [view, setView] = useState<ViewState>({ kind: "loading" });
   const [reloadKey, setReloadKey] = useState(0);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [versionSaving, setVersionSaving] = useState(false);
+  const [versionSaved, setVersionSaved] = useState(false);
+  const [mismatch, setMismatch] = useState<{
+    action: MismatchAction;
+    orders: ManifestLunchMismatch[];
+    go: () => void;
+  } | null>(null);
+  const downloadRef = useRef<HTMLFormElement>(null);
   const redirectingRef = useRef(false);
   const router = useRouter();
   // partner 只看：不换车、不改备注 / 景点，导游页不出。
@@ -246,7 +319,52 @@ export function ManifestView() {
     }
   }
 
+  /** 版式下拉：选了马上存成这个团的（谁打开都一样，定 22），再重读照新版式画。 */
+  async function changeVersion(version: ManifestVersion) {
+    if (!params) return;
+    setActionError(null);
+    setVersionSaved(false);
+    setVersionSaving(true);
+    try {
+      await saveManifestVersion(params.tour, version);
+    } catch (error) {
+      setVersionSaving(false);
+      onActionError(error);
+      return;
+    }
+    try {
+      const data = await fetchManifest(params.date, params.tour);
+      setView({ kind: "ready", data });
+      setVersionSaved(true);
+    } catch (error) {
+      if (isStatus(error, 401)) redirectToLogin();
+      else
+        setActionError(
+          `The version was saved, but the page could not be refreshed: ${describeError(error)} Reload the page.`,
+        );
+    } finally {
+      setVersionSaving(false);
+    }
+  }
+
+  /**
+   * 打印 / 下载前：有餐不符的单就先弹提醒（定 12 / Q21），staff 按「… anyway」才继续；没有就直接做。
+   * 返回 true = 已拦下（调用方要 preventDefault）。
+   */
+  function guardMismatch(
+    action: MismatchAction,
+    orders: ManifestLunchMismatch[],
+    go: () => void,
+  ): boolean {
+    if (!orders.length) return false;
+    setMismatch({ action, orders, go });
+    return true;
+  }
+
   const data = view.kind === "ready" ? view.data : null;
+  const allMismatch = data
+    ? data.blocks.flatMap((b) => b.lunch_mismatch_orders ?? [])
+    : [];
   const backHref = params ? `/dispatch?date=${params.date}` : "/dispatch";
 
   return (
@@ -324,11 +442,28 @@ export function ManifestView() {
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
+                  {data.tour.manifest_version !== undefined ? (
+                    <VersionPicker
+                      version={versionOf(data)}
+                      readOnly={viewOnly}
+                      saving={versionSaving}
+                      onChange={(v) => void changeVersion(v)}
+                    />
+                  ) : null}
                   {canPrint && data.manifest && data.blocks.length > 0 ? (
                     <a
                       href={manifestPrintUrl(params.date, params.tour)}
                       target="_blank"
                       rel="noopener noreferrer"
+                      onClick={(e) => {
+                        const url = e.currentTarget.href;
+                        if (
+                          guardMismatch("print", allMismatch, () =>
+                            window.open(url, "_blank", "noopener,noreferrer"),
+                          )
+                        )
+                          e.preventDefault();
+                      }}
                       className="inline-flex h-8 items-center rounded-[9px] border border-[#3b82f6] bg-[#3b82f6] px-[15px] text-[12.5px] font-semibold text-white no-underline"
                     >
                       Print all buses
@@ -336,9 +471,19 @@ export function ManifestView() {
                   ) : null}
                   {viewOnly || !canDownload ? null : (
                     <form
+                      ref={downloadRef}
                       method="post"
                       action={MANIFEST_DOWNLOAD_URL}
                       className="m-0"
+                      onSubmit={(e) => {
+                        // form.submit() 不会再触发 onSubmit，所以「Download anyway」直接交。
+                        if (
+                          guardMismatch("download", allMismatch, () =>
+                            downloadRef.current?.submit(),
+                          )
+                        )
+                          e.preventDefault();
+                      }}
                     >
                       <input type="hidden" name="date" value={params.date} />
                       <input type="hidden" name="tour" value={params.tour} />
@@ -351,6 +496,15 @@ export function ManifestView() {
                       </button>
                     </form>
                   )}
+                  {versionSaved && !viewOnly ? (
+                    <span
+                      role="status"
+                      data-version-saved
+                      className="basis-full text-right text-[12px] text-[#94a3b8]"
+                    >
+                      Saved for {data.tour.name} · everyone gets this version
+                    </span>
+                  ) : null}
                 </div>
               </header>
 
@@ -403,6 +557,9 @@ export function ManifestView() {
                   onNotesChange={changeNotes}
                   onActionError={onActionError}
                   onSaved={() => setReloadKey((k) => k + 1)}
+                  onPrintGuard={(orders, go) =>
+                    guardMismatch("print", orders, go)
+                  }
                 />
               ))}
 
@@ -437,6 +594,19 @@ export function ManifestView() {
               {data.gone?.length ? <GoneCard gone={data.gone} /> : null}
 
               {viewOnly ? null : <HowToUse />}
+              {mismatch ? (
+                <LunchMismatchDialog
+                  action={mismatch.action}
+                  dateLabel={data.date_label}
+                  orders={mismatch.orders}
+                  onCancel={() => setMismatch(null)}
+                  onConfirm={() => {
+                    const { go } = mismatch;
+                    setMismatch(null);
+                    go();
+                  }}
+                />
+              ) : null}
             </>
           )}
         </div>
@@ -535,6 +705,7 @@ function BusCard({
   onNotesChange,
   onActionError,
   onSaved,
+  onPrintGuard,
 }: {
   data: ManifestData;
   params: { date: string; tour: number };
@@ -546,8 +717,12 @@ function BusCard({
   onNotesChange: (guest: ManifestGuest, notes: string | null) => Promise<void>;
   onActionError: (e: unknown) => void;
   onSaved: () => void;
+  /** 这一车有餐不符的单时先弹提醒；返回 true = 拦下了。 */
+  onPrintGuard: (orders: ManifestLunchMismatch[], go: () => void) => boolean;
 }) {
   const phone = usePhoneWidth();
+  const version = versionOf(data);
+  const columns = columnsFor(version, !!data.tour.lunch_column);
   const saved = block.text_size;
   const canEdit = !viewOnly && saved !== undefined;
   const [draft, setDraft] = useState<ManifestTextSize | null>(null);
@@ -586,7 +761,7 @@ function BusCard({
       p.kind === "page"
         ? "the whole page"
         : p.kind === "column"
-          ? `column “${COLUMNS[COLUMN_KEYS.indexOf(p.id)] ?? p.id}”`
+          ? `column “${columns.find((c) => c.key === p.id)?.label ?? p.id}”`
           : `row ${names.get(p.id) ?? p.id}`,
     )
     .join(", ");
@@ -614,6 +789,15 @@ function BusCard({
               href={manifestPrintUrl(params.date, params.tour, block.bus.id)}
               target="_blank"
               rel="noopener noreferrer"
+              onClick={(e) => {
+                const url = e.currentTarget.href;
+                if (
+                  onPrintGuard(block.lunch_mismatch_orders ?? [], () =>
+                    window.open(url, "_blank", "noopener,noreferrer"),
+                  )
+                )
+                  e.preventDefault();
+              }}
               className={BAND_LINK}
             >
               Print
@@ -710,9 +894,20 @@ function BusCard({
               : null
           }
         />
-        <Footer cells={block.footer} />
+        <Footer
+          cells={block.footer}
+          sandwich={block.restaurant?.totals ?? null}
+          big={version === "marcello"}
+        />
+        {block.restaurant ? (
+          <RestaurantBlock
+            restaurant={block.restaurant}
+            busNumber={block.bus_number}
+          />
+        ) : null}
       </section>
-      {block.lunch ? (
+      {/* Lankun 不另印午餐单，餐厅信息在合计下面（定 19）；General / Marcello 照旧（Q31）。 */}
+      {block.lunch && version !== "lankun" ? (
         <LunchSheet
           lunch={block.lunch}
           dateLabel={data.date_label}
@@ -721,6 +916,49 @@ function BusCard({
         />
       ) : null}
     </>
+  );
+}
+
+/**
+ * 版式下拉（定 22 选 B）：在 Print / Download 旁边，选了马上存成这个团的，谁打开都一样。
+ * 不用蓝色（蓝色只给提交键）。只读的人（partner）只看到文字。
+ */
+function VersionPicker({
+  version,
+  readOnly,
+  saving,
+  onChange,
+}: {
+  version: ManifestVersion;
+  readOnly: boolean;
+  saving: boolean;
+  onChange: (v: ManifestVersion) => void;
+}) {
+  const label = VERSIONS.find((v) => v.value === version)?.label ?? version;
+  if (readOnly)
+    return (
+      <span data-version-text className="text-[12.5px] text-[#cbd5e1]">
+        Version: {label}
+      </span>
+    );
+  return (
+    <label className="inline-flex h-8 items-center gap-1.5 rounded-[9px] border border-white/[.18] pr-1 pl-[11px] text-[12.5px] text-[#cbd5e1]">
+      Version:
+      <select
+        data-version-select
+        aria-label="Bus Manifest version"
+        value={version}
+        disabled={saving}
+        onChange={(e) => onChange(e.target.value as ManifestVersion)}
+        className="h-6 cursor-pointer rounded-md border-0 bg-transparent px-1 text-[12.5px] font-semibold text-white disabled:opacity-50 [&>option]:text-[#111]"
+      >
+        {VERSIONS.map((v) => (
+          <option key={v.value} value={v.value}>
+            {v.label}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
 
@@ -794,7 +1032,12 @@ function GuestTable({
   edit?: TextEdit | null;
 }) {
   const lettered = data.mode === "lettered";
-  const cols = COLUMNS.length + (lettered ? 1 : 0) + 1;
+  const version = versionOf(data);
+  const columns = columnsFor(version, !!data.tour.lunch_column);
+  // ✓（司机标的上车）：Lankun（定 5）和 West Rim 不要这一列。
+  const boarding = version !== "lankun" && version !== "west";
+  const cols = columns.length + (lettered ? 1 : 0) + (boarding ? 1 : 0);
+  const th = { fontSize: `${HEAD_PX[version].th}px` };
   if (sections.length === 0) {
     return (
       <p className="px-1 py-3.5 text-[13px] text-[#1a1a1a]">
@@ -804,7 +1047,7 @@ function GuestTable({
   }
   const font: CellFont = {
     style: (col, order) => {
-      const t = cellText(textSize, col, order, phone);
+      const t = cellText(textSize, col, order, phone, version);
       return { fontSize: t.fontSize, fontWeight: t.fontWeight };
     },
     edit: (col, order) => {
@@ -813,7 +1056,7 @@ function GuestTable({
         isPicked(edit.picks, "page") ||
         isPicked(edit.picks, "column", col) ||
         (order !== null && isPicked(edit.picks, "row", order));
-      const changed = cellText(textSize, col, order, false).changed;
+      const changed = cellText(textSize, col, order, false, version).changed;
       return {
         className: cn(editCellClass(selected, changed), "cursor-pointer"),
         onClick: () =>
@@ -837,14 +1080,16 @@ function GuestTable({
       >
         <thead>
           <tr>
-            {COLUMNS.map((c, i) => {
-              const key = COLUMN_KEYS[i];
+            {columns.map(({ key, label }) => {
               const picked = !!edit && isPicked(edit.picks, "column", key);
               return (
                 <th
-                  key={c}
+                  key={key}
+                  data-col={key}
+                  style={th}
                   className={cn(
                     TH,
+                    key === "lunch" && "text-center",
                     edit && "cursor-pointer",
                     picked && "outline-2 -outline-offset-2 outline-[#2563eb]",
                   )}
@@ -854,12 +1099,20 @@ function GuestTable({
                       : undefined
                   }
                 >
-                  {c}
+                  {label}
                 </th>
               );
             })}
-            {lettered ? <th className={TH}>Bus</th> : null}
-            <th className={TH}>✓</th>
+            {lettered ? (
+              <th className={TH} style={th}>
+                Bus
+              </th>
+            ) : null}
+            {boarding ? (
+              <th className={TH} style={th}>
+                ✓
+              </th>
+            ) : null}
           </tr>
         </thead>
         <tbody>
@@ -868,8 +1121,11 @@ function GuestTable({
               key={s.key}
               data={data}
               section={s}
+              columns={columns}
               cols={cols}
               lettered={lettered}
+              boarding={boarding}
+              sectionPx={HEAD_PX[version].section}
               onBusChange={onBusChange}
               onNotesChange={onNotesChange}
               attraction={attraction}
@@ -1075,11 +1331,52 @@ function NotesCell({
   );
 }
 
+/**
+ * Lunch 格（定 6 / 定 21）：一格里 B / T / V 三个固定位置，0 份留空，竖着对齐；没点餐 / 读不出写「-」（Q28）。
+ * 餐份数和 Pax 对不上（`lunch_mismatch`）整格红字浅红底（定 9 / Q28），只在屏幕上，纸上不印红（Q17）。
+ */
+function LunchCell({
+  guest: g,
+  font,
+}: {
+  guest: ManifestGuest;
+  font: CellFont;
+}) {
+  const e = font.edit("lunch", g.order_number);
+  return (
+    <td
+      data-lunch-cell
+      data-mismatch={g.lunch_mismatch || undefined}
+      onClick={e.onClick}
+      style={font.style("lunch", g.order_number)}
+      className={cn(
+        TD,
+        "border-x-2 border-x-[#444] text-center",
+        g.lunch_mismatch && "bg-[#ffe1e1] text-[#c00000]",
+        e.className,
+      )}
+    >
+      {g.lunch_slots ? (
+        <span className="inline-grid grid-cols-[repeat(3,2.6em)] gap-x-0.5 text-left align-middle">
+          {g.lunch_slots.map((x, i) => (
+            <span key={i}>{x}</span>
+          ))}
+        </span>
+      ) : (
+        "-"
+      )}
+    </td>
+  );
+}
+
 function SectionRows({
   data,
   section: s,
+  columns,
   cols,
   lettered,
+  boarding,
+  sectionPx,
   onBusChange,
   onNotesChange,
   attraction,
@@ -1088,8 +1385,13 @@ function SectionRows({
 }: {
   data: ManifestData;
   section: ManifestSection;
+  columns: Column[];
   cols: number;
   lettered: boolean;
+  /** 出不出 ✓ 列（Lankun 不出）。 */
+  boarding: boolean;
+  /** 节标题字号（Marcello 放大）。 */
+  sectionPx: number;
   onBusChange: (guest: ManifestGuest, label: string) => Promise<void>;
   onNotesChange: (guest: ManifestGuest, notes: string | null) => Promise<void>;
   attraction: {
@@ -1116,8 +1418,8 @@ function SectionRows({
       <tr>
         <td
           colSpan={cols}
-          className={cn(TD, "text-center text-[17px] font-extrabold")}
-          style={{ background: color }}
+          className={cn(TD, "text-center font-extrabold")}
+          style={{ background: color, fontSize: `${sectionPx}px` }}
         >
           <SectionHeading section={s} />
         </td>
@@ -1133,52 +1435,107 @@ function SectionRows({
               : undefined
           }
         >
-          {/* 纸本：单号同正文一样的大号粗体（G198 Q1），不再用等宽小字。 */}
-          <td {...cell("order_number", g)}>
-            {g.order_number}
-            {/* G65：主 Manifest 里找不到、原因不明的单：人数照算，橙字提醒去 Rezdy 查。 */}
-            {g.sync_status === "missing" ? (
-              <div
-                data-sync-missing
-                className="font-[Arial,sans-serif] text-[11px] font-bold text-[#c2410c]"
-              >
-                {g.sync_note || "Not in main manifest — check Rezdy"}
-              </div>
-            ) : null}
-          </td>
-          <td {...cell("pickup_time", g)}>{g.pickup_time}</td>
-          {(() => {
-            const c = cell("pickup_location", g);
-            return (
-              <td
-                {...c}
-                data-hotel-mark={marks[i] || undefined}
-                style={marks[i] ? { ...c.style, background: color } : c.style}
-              >
-                {g.pickup_location}
-              </td>
-            );
-          })()}
-          <td {...cell("last_name", g)}>{g.last_name}</td>
-          <td {...cell("first_name", g)}>{g.first_name}</td>
-          <td {...cell("phone", g)}>{g.phone}</td>
-          <td {...cell("pax", g, cn(TD, "text-center"))}>{g.pax}</td>
-          <td {...cell("ticket", g, cn(TD, g.ticket_hl && "bg-[#fff200]"))}>
-            {g.ticket}
-            {s.kind !== "tour" &&
-            !g.ticket.toUpperCase().includes(SHUTTLE_WORD[s.kind]) ? (
-              <b className="font-extrabold text-[#d00000]">
-                {" "}
-                {SHUTTLE_WORD[s.kind]}
-              </b>
-            ) : null}
-          </td>
-          <NotesCell
-            guest={g}
-            onSave={onNotesChange}
-            font={font}
-            editing={editing}
-          />
+          {columns.map(({ key }) => {
+            switch (key) {
+              case "order_number":
+                // 纸本：单号同正文一样的大号粗体（G198 Q1），不再用等宽小字。
+                return (
+                  <td key={key} {...cell("order_number", g)}>
+                    {g.order_number}
+                    {/* G65：主 Manifest 里找不到、原因不明的单：人数照算，橙字提醒去 Rezdy 查。 */}
+                    {g.sync_status === "missing" ? (
+                      <div
+                        data-sync-missing
+                        className="font-[Arial,sans-serif] text-[11px] font-bold text-[#c2410c]"
+                      >
+                        {g.sync_note || "Not in main manifest — check Rezdy"}
+                      </div>
+                    ) : null}
+                  </td>
+                );
+              case "pickup_time":
+                // 去掉 AM / PM（定 3）：只改显示，排序照原值。
+                return (
+                  <td key={key} {...cell("pickup_time", g)}>
+                    {g.pickup_time_short ?? g.pickup_time}
+                  </td>
+                );
+              case "pickup_location": {
+                // 酒店简称（定 7）；隔组标色照旧按订单原文比。名字长的在格里换行（定 8）。
+                const c = cell("pickup_location", g, WRAP_TD);
+                return (
+                  <td
+                    key={key}
+                    {...c}
+                    data-hotel-mark={marks[i] || undefined}
+                    title={
+                      g.hotel_short && g.hotel_short !== g.pickup_location
+                        ? g.pickup_location
+                        : undefined
+                    }
+                    style={
+                      marks[i] ? { ...c.style, background: color } : c.style
+                    }
+                  >
+                    {g.hotel_short ?? g.pickup_location}
+                  </td>
+                );
+              }
+              case "last_name":
+              case "first_name":
+                return (
+                  <td key={key} {...cell(key, g, WRAP_TD)}>
+                    {g[key]}
+                  </td>
+                );
+              case "phone":
+                return (
+                  <td key={key} {...cell("phone", g)}>
+                    {g.phone}
+                  </td>
+                );
+              case "pax":
+                return (
+                  <td key={key} {...cell("pax", g, cn(TD, "text-center"))}>
+                    {g.pax}
+                  </td>
+                );
+              case "ticket":
+                return (
+                  <td
+                    key={key}
+                    {...cell(
+                      "ticket",
+                      g,
+                      cn(WRAP_TD, g.ticket_hl && "bg-[#fff200]"),
+                    )}
+                  >
+                    {g.ticket}
+                    {s.kind !== "tour" &&
+                    !g.ticket.toUpperCase().includes(SHUTTLE_WORD[s.kind]) ? (
+                      <b className="font-extrabold text-[#d00000]">
+                        {" "}
+                        {SHUTTLE_WORD[s.kind]}
+                      </b>
+                    ) : null}
+                  </td>
+                );
+              case "lunch":
+                return <LunchCell key={key} guest={g} font={font} />;
+              case "notes":
+                return (
+                  <NotesCell
+                    key={key}
+                    guest={g}
+                    onSave={onNotesChange}
+                    font={font}
+                    editing={editing}
+                  />
+                );
+              default:
+                return null;
+            }
+          })}
           {lettered ? (
             <td className={TD}>
               <BusSelect
@@ -1188,17 +1545,19 @@ function SectionRows({
               />
             </td>
           ) : null}
-          <td className={TD}>
-            {g.boarding === "boarded" ? (
-              <span className="rounded-full bg-[#e6f4ec] px-[7px] py-px text-[11px] font-bold whitespace-nowrap text-[#1e6b43]">
-                ✓
-              </span>
-            ) : g.boarding === "no_show" ? (
-              <span className="rounded-full bg-[#fdeceb] px-[7px] py-px text-[11px] font-bold whitespace-nowrap text-[#b3261e]">
-                No show
-              </span>
-            ) : null}
-          </td>
+          {boarding ? (
+            <td className={TD}>
+              {g.boarding === "boarded" ? (
+                <span className="rounded-full bg-[#e6f4ec] px-[7px] py-px text-[11px] font-bold whitespace-nowrap text-[#1e6b43]">
+                  ✓
+                </span>
+              ) : g.boarding === "no_show" ? (
+                <span className="rounded-full bg-[#fdeceb] px-[7px] py-px text-[11px] font-bold whitespace-nowrap text-[#b3261e]">
+                  No show
+                </span>
+              ) : null}
+            </td>
+          ) : null}
         </tr>
       ))}
       {/* G198：开了 Cfm # 格的组（tour.confirm_box = false）整团不画黄框，号和时间在节标题里（Annie「把下面的cfm的小表去掉」）；其他团照旧。 */}
@@ -1372,7 +1731,56 @@ function AttractionBox({
   );
 }
 
-function Footer({ cells }: { cells: ManifestFooterCell[] }) {
+/**
+ * Lankun 合计一排下面的餐厅块（定 19 / Q30）：只放店名、Contact 两行（亮黄，同午餐单页脚）、这车 B / T / V 合计。
+ * 照后端打印模板的 .rest。
+ */
+function RestaurantBlock({
+  restaurant: r,
+  busNumber,
+}: {
+  restaurant: ManifestRestaurant;
+  busNumber: string;
+}) {
+  const t = r.totals;
+  return (
+    <div
+      data-restaurant
+      className="mt-2 max-w-[560px] border-2 border-[#444] text-[13px]"
+    >
+      <div className="flex justify-between gap-3 bg-[#fff200] px-2 py-[3px] text-[14px] font-extrabold">
+        <span>{r.title || r.name}</span>
+        <span>Bus {busNumber}</span>
+      </div>
+      {r.footer_lines.length ? (
+        <div className="border-t border-[#444] bg-[#ffff00] px-2 py-1 text-center leading-[1.35] font-extrabold">
+          {r.footer_lines.map((line, i) => (
+            <div key={i}>{line}</div>
+          ))}
+        </div>
+      ) : null}
+      <div
+        data-restaurant-totals
+        className="border-t border-[#444] px-2 py-[3px] font-bold [word-spacing:2px]"
+      >
+        This bus: <b>{t.total}</b> = {t.beef} B &nbsp;{t.turkey} T &nbsp;
+        {t.veggie} V
+      </div>
+    </div>
+  );
+}
+
+function Footer({
+  cells,
+  sandwich = null,
+  big = false,
+}: {
+  cells: ManifestFooterCell[];
+  /** Lankun：合计一排最后加 TOTAL SANDWICH（定 18，读不出的按 Turkey 算，后端算好）。 */
+  sandwich?: ManifestRestaurant["totals"] | null;
+  /** Marcello：合计一排的数字一起放大（Q24）。 */
+  big?: boolean;
+}) {
   if (!cells.length) return null;
   return (
     // .mf-foot：一排连在一起的格子
@@ -1390,11 +1798,31 @@ function Footer({ cells }: { cells: ManifestFooterCell[] }) {
           >
             {FOOTER_LABEL[c.label] ?? c.label}
           </span>
-          <span className="py-[3px] text-[22px] font-extrabold">
+          <span
+            className={cn(
+              "py-[3px] font-extrabold",
+              big ? "text-[27px]" : "text-[22px]",
+            )}
+          >
             {c.value ?? "—"}
           </span>
         </div>
       ))}
+      {sandwich ? (
+        <div
+          data-total-sandwich
+          className="flex min-w-[150px] flex-[2.2_1_0] flex-col items-center border-l-2 border-[#444]"
+        >
+          <span className="flex h-8 w-full items-center justify-center bg-[#fff200] px-[3px] py-0.5 text-center text-[11px] leading-[1.2] font-extrabold text-[#222] uppercase">
+            TOTAL SANDWICH
+          </span>
+          <span className="py-[3px] text-[17px] font-extrabold whitespace-nowrap">
+            <b className="mr-1.5 text-[22px]">{sandwich.total}</b>={" "}
+            {sandwich.beef} B &nbsp;{sandwich.turkey} T &nbsp;{sandwich.veggie}{" "}
+            V
+          </span>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -1587,6 +2015,18 @@ function HowToUse() {
           Red text under Special Requirements means the sandwiches could not be
           read, so the full Rezdy text is shown. Check the booking in Rezdy and
           tell the lunch place.
+        </li>
+        <li>
+          Version (next to Print all buses): General, Lankun, Marcello or West
+          Rim. It is saved for this tour, so everyone who opens it gets the same
+          one, on screen, when printed and in Excel. Hotel names use the first
+          Alias in Settings → Pickup Locations, and times have no AM / PM.
+        </li>
+        <li>
+          Tours with a lunch place have a Lunch column (B = Beef, T = Turkey, V
+          = Veggie). A red Lunch cell means the sandwiches don&rsquo;t add up to
+          the pax, or could not be read (-). Before you print or download, the
+          page lists these bookings; check them, or print / download anyway.
         </li>
         <li>
           Click Print on a bus (or Print all buses), then Print in the new tab.

@@ -4,6 +4,29 @@
 
 > 6d 交接（下面「2026-10-27 交接：前端主窗口 6d」那节）的后端需求已于 10/27 晚由 ad 转给家里后端主窗口 17。
 
+## Bus Manifest 三版式 + G197 当天字号 前端（`task/bus-manifest-versions-fe`，2026-10-29 晚，工作窗口 `npe-ops-frontend-9c`[edc8ac]，主窗口 d2 派工）—— **分支已推，没合 main（⛔ 等后端 20 的 task/bus-manifest-versions 上 main）**
+
+- 依据：Annie 10-28「bus manifest里的推荐全ok」（= 动手），preview 第 8 版 https://claude.ai/artifact/GF2a4asfK9QWhzvCia45S2 ，规格见「10-28 收工交接」三c。
+- 接口形状：照后端 WIP 分支 `origin/task/bus-manifest-versions`（f494b5b5 / 718639f4，只读看过）对的，比三c 更具体：
+  - GET manifest：`tour.manifest_version`（general / lankun / marcello）、`tour.lunch_column`；客人 `hotel_short` / `pickup_time_short` / `lunch_slots`（三格数组，null = 「-」）/ `lunch_mismatch`；
+    每车 `lunch_mismatch_orders`（[{order_number, guest, pax, lunch_text, bus_label, tour}]）、`restaurant`（只 Lankun：{name, title, footer_lines, totals{beef, turkey, veggie, total}}）、`text_size`、`text_size_history`。
+  - PUT `/api/dispatch/manifest/version` {tour, version} → {ok, version}；PUT `/api/dispatch/manifests/text-size` {tour_manifest_id, bus_label, text_size} → {ok, text_size, text_size_history}。
+  - ⚠️ 后端最终形状到了（d2 转）要再对一遍；字段没带时页面照旧（没 manifest_version 不出下拉、没 lunch_column 不出 Lunch 列）。
+- 做了什么（`components/dispatch-manifest/manifest-view.tsx`、`text-size.tsx`、新 `lunch-mismatch-dialog.tsx`、`lib/dispatch-manifest-api.ts`、`types/dispatch-manifest.ts`）：
+  1. 工具条 Print all buses 左边「Version: [General ▾]」下拉（不是蓝色），选了马上 PUT、重读，灰字「Saved for 团名 · everyone gets this version」；失败写后端原话、下拉回原值。partner 只出文字「Version: Lankun」。
+  2. 酒店印 `hotel_short`（悬停看订单原文）、时间印 `pickup_time_short`；隔组标色照旧按原文比。名字 / 酒店 / 票型太长在格里换行（定 8）。
+  3. 列按版式：General / Marcello 列序不变；Lankun = Order # / Time / Hotel / Phone / Ticket / Pax / Last / First / Lunch / Special Requirements（没有 ✓）。排了餐厅的团三版式都有 Lunch 列，放 Special Requirements 左边。
+  4. Lunch 格一格三个固定位置 B / T / V（0 份留空），读不出写「-」；`lunch_mismatch` 整格红字 #c00000 浅红底 #ffe1e1（人数格不标）。
+  5. Print all buses / 每车 Print / Download 前，有 `lunch_mismatch_orders` 就先弹提醒（黄框 + 表格，照 tickets-send/legacy-ui）：Bus / Tour、Order #、Guest、Pax、Lunch；蓝色「Print anyway / Download anyway」+ Cancel。Print all / Download 列全团，每车 Print 只列这一车。没有不符照常直接开。
+     本页没有「发送」键（发 manifest 的地方不在这页），所以只拦了打印 / 下载。
+  6. Lankun：合计一排最后加 TOTAL SANDWICH（「5 = 1 B 2 T 2 V」），下面餐厅块只放店名（NPE Lunch Box - 店名 · Bus）+ 两行 Contact（亮黄）+ 这车合计；不另出午餐表。General / Marcello 午餐表照旧。
+  7. G197：`text_size` 接 PUT /api/dispatch/manifests/text-size（只存这一天这个团这台车）；列键加 `lunch`。三版式默认字号：General / Lankun 正文 16.5px、人数 19px；Marcello 照打印放大比例 正文 21px、人数 24px、表头 12px、节标题 21px、合计数字 27px；调的 d 加在版式默认上。
+  8. Settings › Pickup Locations：Aliases 栏头加小字「First one is printed on the Bus Manifest」，编辑框说明加一句「The first one is printed on the Bus Manifest as the short hotel name. Leave empty to print the hotel name without “Hotel”.」（preview ①）。
+  - How to use 加两条（Version、Lunch 红格和打印前提醒）。
+- 检查（模拟接口，端口 MOCK 8797 / APP 3197 / CDP 9437）：tsc 0；eslint 0 错（2 个旧警告）；next build 过。headless：mf 159/159（新加的三版式检查：三版式列序、简称 / 去 AM PM、Lunch 三格、标红、打印 / 下载提醒 Cancel / anyway / 没不符不弹、PUT version / text-size 形状、Marcello 字号、Lankun 餐厅块、改版式失败、partner 只读文字）、man 320/320、pl 48/48（含新加的 Aliases 小字一项）、nav 32/32、da 367/367。
+- **加 West Rim 第四种版式**（d2 转后端 20，Annie 10-29 定西峡用）：value `west`，显示「West Rim」；列序 Order # / Time / Hotel / Phone / Last Name / First Name / Pax / Quantities /（排了餐厅才有 Lunch）/ Special Requirements，没有 ✓；字号默认同 General；午餐表照出，没有餐厅块。PUT version 形状不变。后端要等 Annie 执行 migrate_v126 才上 main。检查：tsc 0、eslint 0 错、build 过；mf 162/162（加 West Rim 3 项）、man 320/320。
+- 下一步：① 等 d2 转后端最终形状，有出入就改；② 后端 20 上 main 后，合最新 main、重跑 mf / man / pl / nav + build，再合 main；③ 上线后 Annie 线上验收，逐家核对印出来的酒店简称。
+
 ## 2026-10-29 晚 主窗口 `npe-ops-frontend-d2`[ec63f8] 开工核对（家里电脑）
 
 - main 拉到 8b14ed1，工作区干净。后端 origin/main 最新 2f014d28（0d 交接）：Bus Manifest 三版式、G212、G215 都还没上 main，前端照旧等接口形状。
@@ -153,6 +176,9 @@
   - link_hr 的 before / after 改成和排车保存一样的逐车格式。
   - 已排给 59 `task/g203-batch4`，等它把 Dispatch 手动保存推完分支再做。
   - 59 已推分支 e1c3666（da 373、qr 33；tsc 0，eslint 0 错）。⚠️ next build 内存不够崩了：C 盘满，页面文件长不出来。**没合 main**，等清完 C 盘再重跑 build 后合。
+  - ✅ 重启后 59 重跑全部检查，已合 main 2125361。
+    - build 过；da 373/373、qr 33/33；tsc 0，eslint 0 错。
+    - 等 Annie 线上验收：Dispatch 页最下面的改动记录、Driver Quick Replies 的改动记录。
 - Annie（10-29 晚）原话：「我现在没有地方加staff的邮箱地址，电话等联络方式」。
   - 现状：
     - 前端只有 Add person 选「Create the account now」时能填 Email；邀请的没有这一格；Edit 改不了；没有电话。
@@ -238,6 +264,47 @@
         - GET 周多 `published_with_gaps`：页面「Published with a gap」用它（没有时按「已发布 + 有空档」算）。
         - 日志后端每次发布 / 重新发布都写（schedule_weeks，publish / republish），前端不用改。
         - 检查：tsc / eslint / build 过；sch 194/194。**等 8e 通知上 main 后再合。**
+        - ✅ 后端 8e 已上 main（3252295）。9c 合最新 main → tsc / eslint / build、sch、nav 全过 → 合 main 上线（提交号见主窗口记录）。
+- **重启后（10-29 晚）**：主窗口新号 [15266b]。各窗口新号：59 [279f72]、9c [72d8d1]、9a [599ab6]、3d [683799]、20 [0fcef2]、8e [0bca1a]。
+  - 资源：C 盘 6 GB，D 盘也有页面文件，可用虚拟内存 15.4 GB，空闲内存 12.7 GB。
+  - 9c 已把 `task/schedule-publish-anyway` 收尾：c83d666，build 过，sch 193/193。等后端接口到了再合 main。
+  - 派工：
+    - 59：g203-batch4 重跑 build 后合 main；
+    - 9c：Pickup Locations preview v2，加接人时间；
+    - 9a：重发 Publish anyway / again 的后端活（原来给 c8，c8 不在了）。
+  - 后端 main 还是 36dde18，Bus Manifest 还没推（要 Annie 在自己的终端推）。
+  - 9a：Publish anyway / again 交给 8e。
+    - 不加列、不做 migration；去掉两处 409；「发布时有空档」在读数据时现算。
+    - 排在 G216 后面，明天做。
+    - 通知规则定下来之前，重新发布先不发通知（主窗口同意），首次发布照旧。已问 Annie 通知规则。
+    - 8e 发来接口形状（后端分支 d2bc2cf，还没上 main）。已转 9c 对照。
+      - POST publish {allow_gaps:true}：非 admin 回 403；已发布的周不再 409；响应加 republished / gaps / notified。
+      - GET 加 published_with_gaps。
+    - ✅ 8e 已上 main（3252295），形状没变。已派 9c 合前端 `task/schedule-publish-anyway`（f8f1ab4）。
+- Annie 原话（10-29 晚，说 staff 联络方式时）：「但凡有材料需要输入的地方，都要支持表格，文档，图片上传」。
+  - 记录，还没动手。
+  - 已问 Annie 两种意思：① 上传 Excel / CSV 批量导入，自动填进去；② 把文件、图片作为附件存在记录上。
+  - 还问了范围：从哪几页先做。
+  - Annie 答：「上传表格自动填进去」= 批量导入（A）。
+    - 已派 59 出 preview：全站通用的导入做法，先拿 Team 联络方式当例子，再盘点全站要输入的页面、给先做哪几页的推荐。
+    - 还没动手。
+    - Annie 原话：「从你挑的那几页开始，然后做个列表，看看接下来要做哪些」。
+      - 先做 Team、HR、Pickup Locations、Supplier › Restaurant 四页，再列出后面的先后顺序。
+      - 已转 59，preview 里四页都画出来。
+    - 59 交 preview：https://claude.ai/artifact/MKtDUiYyUPZ1FcBJR3j4Lw （没写代码）。
+      - 通用做法以 HR 现有的 Import 为底：后端出预览，按 Save 才写，空格不清空。
+      - 四页：Team（Email / Mobile，按 Username 对上）、HR、Pickup Locations（按 Hotel Name，也认 Aliases）、Restaurant（等 G215）。
+      - 后面的先后：Team → Pickup → HR → Restaurant → Vehicles → Farm out Locations → Farm out Rates。
+      - ✅ **Annie 动手**，原话：「批量导游同意推荐。动手」（指批量导入），Q1–Q7 全按推荐。
+        - 后端发 9a 排人。
+        - 前端派 59：先做通用组件 + HR（task/import-hr），再做 Pickup（task/import-pickup）。
+        - Team 等 staff 联络方式动手，Restaurant 等 G215。
+      - 每页要后端一对 import/preview、import/commit 接口。
+      - 待 Annie 定 Q1–Q7，都附推荐。
+- **Bus Manifest 三版式 + West Rim + G197 字号前端合 main**（9c，10-29 晚）：后端 6ddcf0e（合并 156ae23d）已上 main 并部署，v125 / v126 已在生产执行。
+  - 照 20 给的最终形状对过 `task/bus-manifest-versions-fe`：GET manifest 的 tour.manifest_version / lunch_column、客人 hotel_short / pickup_time_short / lunch_slots / lunch_mismatch、每车 lunch_mismatch_orders / restaurant / text_size / text_size_history；PUT manifest/version、PUT manifests/text-size；四种版式列序；客人排序由后端给。都对上，只删了前端字号列键里没用到的 `bus`（后端列键没有它）。
+  - 保存方式照 10-28 已动手的规格上线（版式选了马上存，字号在 Aa 框里 Save）；「整页暂存 + Save」那份 preview（XNA2wnz8SRcWcqxrANy1WX）Annie 还没说动手，之后另开分支。
+  - 检查：tsc / eslint / build 过；mf 162/162、man 320/320、pl 48/48、nav 32/32。
 - **Annie 重启电脑前的交接（10-29 晚）**：
   - 后端 9a：Bus Manifest 正在推 main，West Rim 提交号由 20 发来；G216 重启后再合；B9 批量接口、Publish anyway 还没开工。
   - 前端重启后的下一步：
@@ -253,7 +320,42 @@
   - 后端 20：Bus Manifest / West Rim 已合并审查完，本地 main 6ddcf0e（备份 origin/backup/bus-manifest-main-2026-10-29）。
     - 这是 Risk C 包，要 Annie 重启后在她自己的终端 `git push origin main`。
     - 推上去之前线上没有 'west'，前端 West Rim 先别放出来。
+  - ✅ 20 报：后端已上 main 并部署（6ddcf0e，合并 156ae23d），v125 / v126 已在生产执行。最终形状已转 9c。
+    - 9c 先停 pickup-split，把 `task/bus-manifest-versions-fe` 对形状、跑检查、合 main。
+    - 这次照 10-28 动手的规格上线（版式选了马上存）。「整页暂存 + Save」等 Annie 对那份 preview 说动手，另开分支改。
+    - ✅ 9c 已合 main 5a14bc3。
+      - 检查：mf 162、man 320、pl 48、nav 32；tsc / eslint / build 都过。
+      - 等 Annie 线上验收：四种版式、Lunch 格、餐数不符提醒、Lankun 餐厅块、字号、Aliases 栏头小字。
         - 主窗口提醒了 Annie 10-22 的规矩：除了 Boulder City，shuttle 都是 bus tour 沿路的站。
+        - 9c 交 v2（同一个链接）：
+          - 后端没有地方存「站几点」：接人时间是 Rezdy 时间减 15 分钟当场算的，只有回程时间存在 Manifest setup。
+          - v2 的做法：
+            - 按「站 × 线路」存时间；
+            - 每个点两个勾（Tour bus / Shuttle），可以都勾；
+            - Shuttle 块多一列 Times，Edit 里展开小时刻表。
+          - 需要后端 B1–B7：is_tour_bus / is_shuttle、新表 pickup_location_times、migration、第一次归类名单先给 Annie 看。
+          - 待 Annie 定 Q1–Q11。
+          - Annie 答，原话：「shuttle的问题，除了Q8之外都按照推荐。Q8，有季节，会按时间段分出来」。
+            - Q8：接人时间按季节的日期段分开。
+            - 已派 9c 出 v3。还没「动手」。
+            - ✅ **Annie 动手**，原话：「shuttle改完Q8」「就可以动手了」。
+              - 9c 出完 v3 后开工 task/pickup-split。
+              - 后端 B1–B7（季节日期段要真用）已发 9a，明天排。
+              - 9a：已记进交接，公司电脑不用再找 bd 那 9 题。
+                - 迁移号：G215 用 v127（餐厅四栏 + 导游改餐，后端说在等 Annie 回答），G211 用 v128 以后，两件不能同时提交。
+                - v3 出来要转 9a。
+              - 9c 交 v3（同一个链接）：
+                - 季节全站共用：Shuttle 卡头「Edit seasons」，有 Copy to next year；
+                - 时刻表是「线路 × 季节」；
+                - 重叠红字不让存，空档黄字可以存。
+                - 后端：shuttle_seasons + pickup_location_times。Q12–Q16 照推荐。
+                - 已转 9a。9c 已开工 task/pickup-split（worktree D:\npe-ops-frontend-seat）。
+              - ✅ 9c 做完 task/pickup-split 8a6169b，**没合 main**，等后端上 main。
+                - 检查：pl 80/80、nav 32/32、sch 176/176；tsc / eslint / build 都过。
+                - 暂定接口已转 9a。
+                - 和 59 的 import-pickup 会在 pickup-locations-view.tsx 冲突，已提醒 59。
+          - 批量导入后端：9a 排明天。先做通用形状 + HR，再 Pickup → Team → Restaurant。
+          - 顺带发现两个可能的 bug，已转 9a 核实：回程时间减 15 分钟前后不一致；Rezdy 自带时间可能被减了两次。
         - 前端派 9c `task/schedule-publish-anyway`，后端上 main 前不合 main。
         - 后端发 9a：allow_gaps、写日志、空档标记。
 - **Annie 定长期规则：订单流 Order List → Main Manifest → Dispatch / Tracking，不跳过前面直接去 Rezdy 拉单**。
@@ -577,6 +679,25 @@
 - 92[5f58db]、72[23ce9c] 都已收工，worktree 干净：C:\Code\npe-ops-frontend-g203、C:\Code\npe-ops-frontend-g208。
 - 后端：f0 主窗口、bd 做 G203 / G208 / guide_notes、d0 做 G98 / G212。G203 第 ③④ 步（Dispatch 逐车、Schedule 等补写入，以及 Quick replies 新形状 /action-log）还在后端，路径到了再派前端接面板。
 - 空闲内存一直在 0.7–2 GB，一次最多开两个前端工作窗口。
+
+## G203 第四批：Dispatch 页加 Action Log、Driver Quick Replies 改读共用接口（`task/g203-batch4`，2026-10-29 晚，工作窗口 `npe-ops-frontend-59`[678c38]，主窗口 d2 派工）—— **已合 main**
+
+- 后端 c8 已上 main（合并 4c00a04，关包 a176ca4）：
+  - `GET /api/dispatch/action-log?date=`（dispatch.edit）；
+  - `GET /api/driver-quick-replies/action-log`（admin）。
+- 改动：
+  - Dispatch（`components/dispatch/dispatch-view.tsx`，只加 import 和页面最底一块，没碰保存相关代码，免得和 `task/dispatch-manual-save` 打架）：
+    - 页面最底加共用面板，date 跟着页面日期走。
+    - refreshKey = 日期 + 这一天的 version：换日期、存好一块都会重读。
+    - partner、没有 dispatch.edit 的不出面板、不请求；后端 403 时只写一句灰字。
+  - Driver Quick Replies：改读 `/api/driver-quick-replies/action-log`，不再读旧的 `/log`。
+  - 旧形状转换（`legacyRows` / `legacyPage`、`fetchQuickReplyLog`、`QuickReplyLogEntry`）没人用了，删掉。
+  - `fetchActionLog` 加第 4 个参数 `extra`，放接口自己要的参数（Dispatch 的 date）。
+- 检查（mock，TEMP 放 D 盘）：
+  - `da` 373/373：Dispatch 面板收着不请求、展开带 date、3 行、旧条目 No before / after recorded、换日期重读、403 灰字、partner 不出不请求。
+  - `qr` 33/33：读新接口、不再读 /log、Reply / Shown to drivers 行、旧条目、403 灰字。
+  - tsc 0、eslint 0 错。
+  - 第一次 `next build` 因 C 盘满、虚拟内存不够崩了（不是代码问题）。重启后（d2 派）合最新 main 重跑：build 通过、tsc 0、eslint 0 错、`da` 373/373、`qr` 33/33，合 main。
 
 ## G203 第三批：Navigation、Farm out 设置两页加 Action Log 面板（`task/g203-batch3`，2026-10-29 晚，工作窗口 `npe-ops-frontend-59`[678c38]，主窗口 d2 派工）
 

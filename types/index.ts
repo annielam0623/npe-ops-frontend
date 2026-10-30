@@ -7,7 +7,7 @@ export {
   type QueryValue,
 } from "./api";
 export type { ActionLogPage, ActionLogRow } from "./action-log";
-export type { QuickReply, QuickReplyLogEntry } from "./quick-replies";
+export type { QuickReply } from "./quick-replies";
 export type { CurrentUser } from "./auth";
 export type {
   AccidentDetails,
@@ -207,14 +207,17 @@ export type {
   ManifestGoneGuest,
   ManifestGuest,
   ManifestLunch,
+  ManifestLunchMismatch,
   ManifestLunchRow,
   ManifestMode,
+  ManifestRestaurant,
   ManifestSection,
   ManifestSyncStatus,
   ManifestTextLayer,
   ManifestTextSize,
   ManifestTextSizeChange,
   ManifestTotals,
+  ManifestVersion,
   ManifestView,
 } from "./dispatch-manifest";
 export type {

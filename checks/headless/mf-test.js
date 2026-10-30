@@ -425,6 +425,146 @@ async function run() {
   await sleep(300);
   await ctl({ g198: false, textSize: false });
 
+  // ── Bus Manifest 三版式 + G197 当天字号（Annie 10-28「bus manifest里的推荐全ok」；mock bmv = 后端 task/bus-manifest-versions WIP 的形状）──
+  // 接着上面：A 车存着 Pick-up Location 整列 +3 Bold、CHD3 整行 +2。
+  await ctl({ g198: true, textSize: true, bmv: true, version: "general", versionFail: "" });
+  await goto(`${APP}/dispatch/manifest?date=2026-10-05&tour=3`);
+  await waitFor("document.querySelector('[data-version-select]')");
+  await helpers();
+  // 新标签页的链接、表单提交都截下来，只记录（不真开）。
+  const TRAP = `window.__opened = []; window.__submitted = 0; window.__links = [];
+    window.open = (u) => { window.__opened.push(String(u)); return null; };
+    HTMLFormElement.prototype.submit = function () { window.__submitted++; };
+    document.addEventListener('click', (e) => { const a = e.target.closest && e.target.closest('a[target=_blank]'); if (a) { window.__links.push({ href: a.href, prevented: e.defaultPrevented }); e.preventDefault(); } });
+    document.addEventListener('submit', (e) => { window.__links.push({ form: true, prevented: e.defaultPrevented }); e.preventDefault(); });
+    return 1;`;
+  await evaluate(TRAP);
+  const headsOf = (bus) => `[...document.querySelector('section[aria-label="Bus ${bus}"] thead tr').children].map(th => th.textContent.trim())`;
+  check("三版式 General：工具条有 Version 下拉（General / Lankun / Marcello / West Rim），选着 General，不是蓝色",
+    await evaluate("const s = document.querySelector('[data-version-select]'); const lab = s.closest('label'); return s.value === 'general' && JSON.stringify([...s.options].map(o => o.textContent)) === '[\"General\",\"Lankun\",\"Marcello\",\"West Rim\"]' && lab.textContent.startsWith('Version:') && getComputedStyle(lab).backgroundColor !== 'rgb(59, 130, 246)' && getComputedStyle(s).backgroundColor !== 'rgb(59, 130, 246)';"));
+  check("三版式 General：列序不变，Lunch 在 Special Requirements 左边（Q19 A），后面 Bus、✓",
+    await evaluate(`return JSON.stringify(${headsOf("2041=A")}) === JSON.stringify(["Order Number","Pick-up Time","Pick-up Location","Last Name","First Name","Customer Phone","#","Quantities","Lunch","Special Requirements","Bus","✓"]);`),
+    await evaluate(`return JSON.stringify(${headsOf("2041=A")});`));
+  check("三版式：酒店印简称（CHD3 MGM，悬停看原文 MGM Grand）、时间去掉 AM / PM（6:30）",
+    await evaluate("const r = document.querySelector('tr[data-guest=CHD3]'); return r.children[2].textContent === 'MGM' && r.children[2].title === 'MGM Grand' && r.children[1].textContent === '6:30';"));
+  check("三版式：Lunch 格 B / T / V 三个固定位置（CHD3「1 B ␣ 2 V」中间空着；CHD1 只有 T），读不出写「-」",
+    await evaluate("const c3 = document.querySelector('tr[data-guest=CHD3] [data-lunch-cell]'); const c1 = document.querySelector('tr[data-guest=CHD1] [data-lunch-cell]'); const c2 = document.querySelector('tr[data-guest=CHD2] [data-lunch-cell]'); const s3 = [...c3.querySelector('span').children].map(x => x.textContent); const s1 = [...c1.querySelector('span').children].map(x => x.textContent); return JSON.stringify(s3) === '[\"1 B\",\"\",\"2 V\"]' && JSON.stringify(s1) === '[\"\",\"2 T\",\"\"]' && c2.textContent === '-' && getComputedStyle(c3.querySelector('span')).display === 'inline-grid';"));
+  check("三版式：餐不符的单整格 Lunch 红字浅红底（CHD3、CHD2），对得上的照常（CHD1），人数格不标",
+    await evaluate("const cell = (o) => document.querySelector(`tr[data-guest=${o}] [data-lunch-cell]`); const red = (c) => getComputedStyle(c).color === 'rgb(192, 0, 0)' && getComputedStyle(c).backgroundColor === 'rgb(255, 225, 225)'; const pax = document.querySelector('tr[data-guest=CHD3]').children[6]; return red(cell('CHD3')) && red(cell('CHD2')) && !red(cell('CHD1')) && getComputedStyle(pax).backgroundColor !== 'rgb(255, 225, 225)';"));
+  check("三版式 General：午餐表照旧接在 A 车后面（Q31），没有餐厅块",
+    await evaluate("return !!document.querySelector('section[data-lunch]') && !document.querySelector('[data-restaurant]') && !document.querySelector('[data-total-sandwich]');"));
+  check("三版式 + G197：存的字号照画（Pick-up Location +3 = 19.5px，CHD3 整行 +2 = 21.5px）",
+    await evaluate("const r1 = document.querySelector('tr[data-guest=CHD1]'); const r3 = document.querySelector('tr[data-guest=CHD3]'); return getComputedStyle(r1.children[2]).fontSize === '19.5px' && getComputedStyle(r3.children[2]).fontSize === '21.5px' && getComputedStyle(r1.children[1]).fontSize === '16.5px';"));
+  // Print all：A 车有两单不符 ⇒ 先弹提醒，不开新标签
+  await evaluate("[...document.querySelectorAll('main a')].find(a => a.textContent.trim() === 'Print all buses').click(); return 1;");
+  await waitFor("document.querySelector('[data-lunch-mismatch-dialog]')", 3000);
+  check("Print all buses：有餐不符 ⇒ 先弹提醒，不开打印页",
+    await evaluate("const l = window.__links.at(-1); return !!document.querySelector('[data-lunch-mismatch-dialog]') && !!l && l.prevented && window.__opened.length === 0;"));
+  check("提醒框：标题 Print Bus Manifest · 日期；黄框写「2 bookings: lunch doesn't match pax.」；表里列出 CHD3（1 B 2 V）和 CHD2（-）、写 Bus / Tour",
+    await evaluate("const d = document.querySelector('[data-lunch-mismatch-dialog]'); const rows = [...d.querySelectorAll('tr[data-mismatch-row]')].map(r => [...r.children].map(td => td.textContent)); return d.querySelector('h2').textContent === 'Print Bus Manifest · Mon, Oct 5, 2026' && d.textContent.includes('2 bookings: lunch doesn’t match pax.') && rows.length === 2 && rows.some(r => r[1] === 'CHD3' && r[4] === '1 B 2 V' && r[0] === 'A · Antelope Canyon') && rows.some(r => r[1] === 'CHD2' && r[4] === '-');"),
+    await evaluate("return document.querySelector('[data-lunch-mismatch-dialog]')?.textContent;"));
+  check("提醒框：蓝色只有 Print anyway，Cancel 是浅色框",
+    await evaluate("const d = document.querySelector('[data-lunch-mismatch-dialog]'); const blues = [...d.querySelectorAll('button')].filter(b => getComputedStyle(b).backgroundColor === 'rgb(59, 130, 246)' || getComputedStyle(b).backgroundColor === 'rgb(24, 95, 165)').map(b => b.textContent.trim()); return JSON.stringify(blues) === '[\"Print anyway\"]' && !!$btn('Cancel', d);"),
+    await evaluate("const d = document.querySelector('[data-lunch-mismatch-dialog]'); return JSON.stringify([...d.querySelectorAll('button')].map(b => [b.textContent.trim(), getComputedStyle(b).backgroundColor]));"));
+  await evaluate("$btn('Cancel', document.querySelector('[data-lunch-mismatch-dialog]')).click(); return 1;");
+  await sleep(200);
+  check("Cancel：框关掉、没开打印页", await evaluate("return !document.querySelector('[data-lunch-mismatch-dialog]') && window.__opened.length === 0;"));
+  await evaluate("[...document.querySelectorAll('main a')].find(a => a.textContent.trim() === 'Print all buses').click(); return 1;");
+  await waitFor("document.querySelector('[data-mismatch-go]')", 3000);
+  await evaluate("document.querySelector('[data-mismatch-go]').click(); return 1;");
+  await sleep(200);
+  check("Print anyway：开整团的打印页（不带 bus），框关掉",
+    await evaluate("const u = window.__opened[0] || ''; return window.__opened.length === 1 && u.includes('/admin/dispatch/manifest/print?date=2026-10-05&tour=3') && !u.includes('bus=') && !document.querySelector('[data-lunch-mismatch-dialog]');"),
+    await evaluate("return JSON.stringify(window.__opened);"));
+  // 单车 Print：只列这一车的不符单（A 车 CHD3；CHD2 前面分到了 B 车）
+  await evaluate("[...document.querySelector('section[aria-label=\"Bus 2041=A\"]').querySelectorAll('a')].find(a => a.textContent.trim() === 'Print').click(); return 1;");
+  await waitFor("document.querySelector('[data-lunch-mismatch-dialog]')", 3000);
+  check("A 车 Print：只列这一车的不符单（CHD3）", await evaluate("const r = [...document.querySelectorAll('[data-lunch-mismatch-dialog] tr[data-mismatch-row]')].map(r => r.dataset.mismatchRow); return JSON.stringify(r) === '[\"CHD3\"]';"));
+  await evaluate("document.querySelector('[data-mismatch-go]').click(); return 1;");
+  await sleep(200);
+  check("A 车 Print anyway：开这一车的打印页（bus=41）", await evaluate("return (window.__opened.at(-1) || '').includes('bus=41');"), await evaluate("return JSON.stringify(window.__opened);"));
+  // Download：同样先弹，Download anyway 才交表单
+  await evaluate("[...document.querySelectorAll('main button')].find(b => b.textContent.trim() === 'Download').click(); return 1;");
+  await waitFor("document.querySelector('[data-lunch-mismatch-dialog]')", 3000);
+  check("Download：有餐不符 ⇒ 先弹提醒（Download Bus Manifest、按钮 Download anyway），表单没交",
+    await evaluate("const d = document.querySelector('[data-lunch-mismatch-dialog]'); return d.querySelector('h2').textContent.startsWith('Download Bus Manifest') && d.querySelector('[data-mismatch-go]').textContent.trim() === 'Download anyway' && window.__submitted === 0;"));
+  await evaluate("document.querySelector('[data-mismatch-go]').click(); return 1;");
+  await sleep(200);
+  check("Download anyway：交下载表单一次", await evaluate("return window.__submitted === 1 && !document.querySelector('[data-lunch-mismatch-dialog]');"));
+  // 换成 Lankun：PUT {tour, version}，重读后照 Lankun 画
+  before = (await mockLog()).length;
+  await evaluate("const s = document.querySelector('[data-version-select]'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, 'lankun'); s.dispatchEvent(new Event('change', { bubbles: true })); return 1;");
+  const vReq = (await waitReq(before, "/api/dispatch/manifest/version"))[0];
+  check("选 Lankun：PUT /api/dispatch/manifest/version {tour: 3, version: lankun}", vReq?.method === "PUT" && vReq?.body?.tour === 3 && vReq?.body?.version === "lankun", JSON.stringify(vReq));
+  check("存好：灰字写存给了哪个团、谁打开都是这个版本；下拉停在 Lankun",
+    await waitFor("document.querySelector('[data-version-saved]') && document.querySelector('[data-version-saved]').textContent === 'Saved for Antelope Canyon · everyone gets this version' && document.querySelector('[data-version-select]').value === 'lankun'"));
+  check("Lankun：列序 Order # / Time / Hotel / Phone / Ticket / Pax / Last / First / Lunch / Special Requirements（定 5），没有 ✓",
+    await evaluate(`return JSON.stringify(${headsOf("2041=A")}) === JSON.stringify(["Order #","Time","Hotel","Phone","Ticket","Pax","Last Name","First Name","Lunch","Special Requirements","Bus"]);`),
+    await evaluate(`return JSON.stringify(${headsOf("2041=A")});`));
+  check("Lankun：G197 整列字号跟着列键走（Hotel 那一列 +3 = 19.5px）",
+    await evaluate("return getComputedStyle(document.querySelector('tr[data-guest=CHD1]').children[2]).fontSize === '19.5px' && document.querySelector('tr[data-guest=CHD1]').children[2].textContent === 'Excalibur';"));
+  check("Lankun：不另出午餐表（定 19）；合计一排最后多一格 TOTAL SANDWICH（5 = 1 B 2 T 2 V）",
+    await evaluate("const t = document.querySelector('section[aria-label=\"Bus 2041=A\"] [data-total-sandwich]'); return !document.querySelector('section[data-lunch]') && !!t && t.textContent.replace(/\\s+/g, ' ').includes('TOTAL SANDWICH5= 1 B 2 T 2 V');"),
+    await evaluate("return document.querySelector('[data-total-sandwich]')?.textContent;"));
+  check("Lankun：合计下面的餐厅块只放店名（NPE Lunch Box - 店名 · Bus）、两行 Contact（亮黄）、这车合计",
+    await evaluate("const r = document.querySelector('section[aria-label=\"Bus 2041=A\"] [data-restaurant]'); const f = r.children[1]; return r.children[0].textContent === \"NPE Lunch Box - ZZ Test Bee'sBus 2041=A\" && f.children.length === 2 && getComputedStyle(f).backgroundColor === 'rgb(255, 255, 0)' && r.querySelector('[data-restaurant-totals]').textContent.replace(/\\s+/g, ' ').trim() === 'This bus: 5 = 1 B 2 T 2 V' && r.children.length === 3;"),
+    await evaluate("return document.querySelector('[data-restaurant]')?.textContent;"));
+  // Marcello：字大的 General
+  before = (await mockLog()).length;
+  await evaluate("const s = document.querySelector('[data-version-select]'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, 'marcello'); s.dispatchEvent(new Event('change', { bubbles: true })); return 1;");
+  await waitReq(before, "/api/dispatch/manifest/version");
+  await waitFor("document.querySelector('[data-version-select]').value === 'marcello' && !document.querySelector('[data-restaurant]')");
+  check("Marcello：列同 General（有 ✓），午餐表照旧，没有餐厅块",
+    await evaluate(`return JSON.stringify(${headsOf("2041=A")}) === JSON.stringify(["Order Number","Pick-up Time","Pick-up Location","Last Name","First Name","Customer Phone","#","Quantities","Lunch","Special Requirements","Bus","✓"]) && !!document.querySelector('section[data-lunch]') && !document.querySelector('[data-total-sandwich]');`));
+  check("Marcello：默认字大（正文 21px、人数 24px、表头 12px、节标题 21px），G197 调的照样加上（Pick-up Location +3 = 24px）",
+    await evaluate("const r = document.querySelector('tr[data-guest=CHD1]'); const th = document.querySelector('section[aria-label=\"Bus 2041=A\"] thead th'); const sec = [...document.querySelectorAll('section[aria-label=\"Bus 2041=A\"] td[colspan]')].find(td => td.textContent.startsWith('LOWER ANTELOPE')); return getComputedStyle(r.children[1]).fontSize === '21px' && getComputedStyle(r.children[6]).fontSize === '24px' && getComputedStyle(r.children[2]).fontSize === '24px' && getComputedStyle(th).fontSize === '12px' && getComputedStyle(sec).fontSize === '21px';"),
+    await evaluate("const r = document.querySelector('tr[data-guest=CHD1]'); return [1, 2, 6].map(i => getComputedStyle(r.children[i]).fontSize).join(',');"));
+  // 字号编辑：Lunch 列能单独选（列键 lunch），Save 照形状 PUT
+  await evaluate(`document.querySelector('section[aria-label="Bus 2041=A"] [data-text-size-button]').click(); return 1;`);
+  await waitFor("document.querySelector('[data-text-size-toolbar]')");
+  await evaluate("document.querySelector('section[aria-label=\"Bus 2041=A\"] thead th[data-col=lunch]').click(); return 1;");
+  await sleep(150);
+  await evaluate("document.querySelector('[data-text-size-toolbar] [aria-label=Bigger]').click(); return 1;");
+  await sleep(150);
+  check("G197 Lunch 整列可选：Picked 写 column “Lunch”、Lunch 格 +1（Marcello 21 → 22px）",
+    await evaluate("return document.querySelector('[data-text-size-toolbar]').textContent.includes('column “Lunch”') && getComputedStyle(document.querySelector('tr[data-guest=CHD1] [data-lunch-cell]')).fontSize === '22px';"));
+  before = (await mockLog()).length;
+  await evaluate("document.querySelector('[data-text-size-save]').click(); return 1;");
+  const ts2 = (await waitReq(before, "/api/dispatch/manifests/text-size"))[0];
+  check("G197 Save：PUT /api/dispatch/manifests/text-size {tour_manifest_id, bus_label, text_size{page, columns{lunch}, rows}}",
+    ts2?.method === "PUT" && ts2?.body?.tour_manifest_id === 12 && ts2?.body?.bus_label === "A" && ts2?.body?.text_size?.columns?.lunch?.d === 1 && "page" in (ts2?.body?.text_size || {}) && "rows" in (ts2?.body?.text_size || {}), JSON.stringify(ts2?.body));
+  await waitFor("!document.querySelector('[data-text-size-toolbar]')");
+  // 改版式失败：后端原话写在上方，下拉回到原来的
+  await ctl({ versionFail: "That tour is not in the bus tour list." });
+  await evaluate("const s = document.querySelector('[data-version-select]'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, 'general'); s.dispatchEvent(new Event('change', { bubbles: true })); return 1;");
+  check("改版式失败：页面上方写后端原话，下拉还是 Marcello",
+    await waitFor("document.querySelector('[role=alert]') && document.querySelector('[role=alert]').textContent.includes('That tour is not in the bus tour list.') && document.querySelector('[data-version-select]').value === 'marcello'"));
+  await ctl({ versionFail: "" });
+  // West Rim（Annie 10-29 定西峡用，后端 20 加的第四种）：列序 Order # / Time / Hotel / Phone / Last / First / Pax / Quantities / (Lunch) / Special Requirements，没有 ✓
+  before = (await mockLog()).length;
+  await evaluate("const s = document.querySelector('[data-version-select]'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, 'west'); s.dispatchEvent(new Event('change', { bubbles: true })); return 1;");
+  const wReq = (await waitReq(before, "/api/dispatch/manifest/version"))[0];
+  check("选 West Rim：PUT {tour: 3, version: west}", wReq?.body?.tour === 3 && wReq?.body?.version === "west", JSON.stringify(wReq));
+  await waitFor("document.querySelector('[data-version-select]').value === 'west'");
+  check("West Rim：列序 Order # / Time / Hotel / Phone / Last Name / First Name / Pax / Quantities / Lunch / Special Requirements，后面只有 Bus、没有 ✓",
+    await evaluate(`return JSON.stringify(${headsOf("2041=A")}) === JSON.stringify(["Order #","Time","Hotel","Phone","Last Name","First Name","Pax","Quantities","Lunch","Special Requirements","Bus"]);`),
+    await evaluate(`return JSON.stringify(${headsOf("2041=A")});`));
+  check("West Rim：格子按列键画（第 3 格是酒店简称、第 7 格是人数），字号同 General（16.5px），午餐表照出、没有餐厅块",
+    await evaluate("const r = document.querySelector('tr[data-guest=CHD3]'); return r.children[2].textContent === 'MGM' && r.children[6].textContent === '2' && getComputedStyle(document.querySelector('tr[data-guest=CHD1]').children[1]).fontSize === '16.5px' && !!document.querySelector('section[data-lunch]') && !document.querySelector('[data-restaurant]');"));
+  // 没有餐不符（团没排餐厅 ⇒ lunch_mismatch_orders []）：打印、下载都不弹，照常开 / 交
+  await ctl({ bmvClean: true });
+  await goto(`${APP}/dispatch/manifest?date=2026-10-05&tour=3`);
+  await waitFor("document.querySelector('[data-version-select]')");
+  await helpers();
+  await evaluate(TRAP);
+  await evaluate("[...document.querySelectorAll('main a')].find(a => a.textContent.trim() === 'Print all buses').click(); return 1;");
+  await sleep(300);
+  check("没有餐不符：Print all buses 不弹提醒，照常开新标签", await evaluate("const l = window.__links.at(-1); return !document.querySelector('[data-lunch-mismatch-dialog]') && !!l && !l.prevented;"), await evaluate("return JSON.stringify(window.__links);"));
+  await evaluate("[...document.querySelectorAll('main button')].find(b => b.textContent.trim() === 'Download').click(); return 1;");
+  await sleep(300);
+  check("没有餐不符：Download 不弹提醒，表单照常交", await evaluate("const l = window.__links.at(-1); return !document.querySelector('[data-lunch-mismatch-dialog]') && !!l && l.form && !l.prevented;"), await evaluate("return JSON.stringify(window.__links);"));
+  await ctl({ g198: false, textSize: false, bmv: false, bmvClean: false, version: "general" });
+
   // 后端上线后别的团（没开格）：每个 tour 节都带 show_cfm false，confirm_box true ⇒ 黄框照旧、节标题照旧。
   await ctl({ g198Plain: true });
   await goto(`${APP}/dispatch/manifest?date=2026-10-05&tour=3`);
@@ -500,7 +640,7 @@ async function run() {
   check("链接缺团：提示、不请求", (await since(before, "/api/dispatch/manifest")).length === 0);
 
   // ── partner（CCL）没勾 dispatch.edit / manifests.edit（勾了 dispatch.send 也不算）：Step 1 卡片和 manifest 页都不出改 / 传 / 打印，不请求写接口 ──
-  await ctl({ partner: true, partnerCodes: ["dispatch.view", "dispatch.send", "manifests.view"], notesEdit: true, textSize: true });
+  await ctl({ partner: true, partnerCodes: ["dispatch.view", "dispatch.send", "manifests.view"], notesEdit: true, textSize: true, bmv: true, version: "lankun" });
   before = (await mockLog()).length;
   await goto(`${APP}/dispatch`);
   const stepShown = await waitFor(`${card(3)}`, 60000);
@@ -525,6 +665,7 @@ async function run() {
   const attr = await evaluate("return [...document.querySelectorAll('[role=group][aria-label$=\"Confirmation Information\"] input')].map((i) => i.readOnly);");
   check("partner manifest 页：景点黄框的格子只读", attr.length === 0 || attr.every(Boolean), JSON.stringify(attr));
   check("partner manifest 页（G197）：看得到存好的字号，但没有 Text size 键、没有改动历史", await evaluate("const r = document.querySelector('tr[data-guest=CHD1]'); return !document.querySelector('[data-text-size-button]') && !document.querySelector('[data-text-size-history]') && getComputedStyle(r.children[2]).fontSize === '19.5px';"));
+  check("partner manifest 页（三版式）：只写「Version: Lankun」文字，没有下拉；照团存的 Lankun 画", await evaluate("const t = document.querySelector('[data-version-text]'); return !!t && t.textContent === 'Version: Lankun' && !document.querySelector('[data-version-select]') && !!document.querySelector('[data-restaurant]');"));
   await sleep(500);
   reqs = (await mockLog()).slice(before);
   check("partner manifest 页：一次写请求都没有", reqs.every((r) => r.method === "GET"), JSON.stringify(reqs.filter((r) => r.method !== "GET").map((r) => `${r.method} ${r.path}`)));
@@ -555,6 +696,6 @@ async function run() {
     await evaluate("const t = document.querySelector('main').textContent; return JSON.stringify({ print: t.includes('Print'), guide: t.includes('Guide view'), select: !!document.querySelector('main select'), busText: !!document.querySelector('[data-bus-text]'), howto: document.body.textContent.includes('Back returns to the page you came from'), download: !!document.querySelector('main form[action$=\"/manifest/download\"]') });"),
   );
   check("partner 勾 manifests.edit：备注格子点了也不进编辑", await evaluate(`const c = ${nc("CHD1")}; c && c.click(); await new Promise((r) => setTimeout(r, 300)); return !document.querySelector('[data-notes-editor]');`));
-  await ctl({ partner: false, partnerCodes: null, notesEdit: false, textSize: false });
+  await ctl({ partner: false, partnerCodes: null, notesEdit: false, textSize: false, bmv: false, version: "general" });
 }
 main().catch((e) => { console.error(e); process.exit(2); });
