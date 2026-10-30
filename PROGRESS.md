@@ -8,19 +8,6 @@
 
 > 规矩见 CLAUDE.md「问 Annie 要确认的事：给完整内容，并一直置顶」（2026-10-30）。每条都要能单独看懂。
 
-### 1. Send to guide：Annie 已「同意推荐」，还差最终短信原文 + 「动手」
-- 已定（Annie 10-30「同意推荐」）：
-  - ① 放进 Step 1，司机那块下面，Step 1 改名「Send to drivers & guides」；
-  - ③ 照规矩，Send 蓝色、Check the list 白底，司机那块一起改；
-  - ④ 上面写一句「上次谁几点发的」；
-  - ⑤ 先不提示没排导游的车，等后端加了数再提示；
-  - 链接后面让 staff 加内容：选 A，把固定那段缩短。
-- 还要她确认短信原文（⚠️ 要后端改 guide_notice.py）。主窗口拟的：
-  - 新固定段：`NPE guide Fri Oct 30: <链接>`（约 115 个字符，剩约 44 个给 staff）；
-  - staff 加的内容接在链接后面，空一格；只能用英文字母、数字和普通标点，输入框实时显示还剩几个字，超了不能发。
-  - 司机那句不改。
-- 确认了说「动手」，派 e6，同时请后端改短信模板和 send 接口（收 staff 加的内容、检查长度）。
-
 ### 4. 和「不直接去 Rezdy 拉单」冲突的地方（Annie 要列出来看）
 - 规矩（Annie 10-29）：订单流是 Order List → Main manifest → Dispatch / Tracking，不许跳过前面直接去 Rezdy 拉单。
 - 现在页面上和 Rezdy 直接有关的有六处：
@@ -514,6 +501,11 @@
 - 后端 G218 已上 main 4c5b3bf（create 的 ref 限 1–40 个 ASCII 字符）。62 的 task/schedule-week-save-main 在收尾。
   - B9 Q4 的「10 分钟没存提醒」（琥珀色字，不自动存）是 Annie「Q1–Q7 照推荐」同意过的，已让 62 加回。
 - 10c 做法（09 提，主窗口同意）：共用 byTick——总开关 staff_permissions 对这个人开着就按勾，关着照今天按角色，Super Admin 全过。09 先单独合 byTick，e6 的 C 类也用它。
+- **Annie「1. 动手」（12:3x）**：Dispatch Send to guide。
+  - 5 处照推荐；短信缩短成「NPE guide Fri Oct 30: <link>」，staff 可在链接后加一句，限一条短信。
+  - 后端已发 57：改短信模板，send 收 extra，GET 回 extra_max / preview_text，400 英文 detail。
+  - 前端派 62 `task/dispatch-send-to-guide`，模拟接口先做。第一次真发要 Annie 点头。
+- 62 week-save 已上 main 7da6786。
 ## 2026-10-29 晚 收工交接：前端主窗口 `今天前端主窗口-d2`[15266b]（家里电脑，Annie「做完写交接收工」）
 
 明天的主窗口先读这一节。细节在下面「2026-10-29 晚 主窗口 d2 开工核对」那一节，按时间逐条记。
