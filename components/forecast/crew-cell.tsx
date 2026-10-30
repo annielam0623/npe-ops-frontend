@@ -8,6 +8,7 @@ import {
   isPastDay,
   mainRouteName,
 } from "./config";
+import { AddPlus } from "./add-plus";
 import { ForecastReadOnly } from "./read-only";
 import { CREW_ROW_BG, colLine } from "./styles";
 
@@ -122,11 +123,8 @@ export function CrewCell({
             ))}
           </div>
         ) : (
-          <div className="text-white">—</div>
+          <AddPlus />
         )}
-        <div className="mt-1 text-sky-300 opacity-0 group-hover:opacity-100 group-focus:opacity-100">
-          + guide
-        </div>
       </button>
     </td>
   );

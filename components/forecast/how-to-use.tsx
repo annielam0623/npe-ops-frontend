@@ -21,7 +21,8 @@ export function HowToUse() {
           down by section and outbound / inbound shuttle, like Canyon Coach
           Lines&rsquo; sheet (a route with only one, like Valley of Fire, shows
           just the bold row). The sections and their order come from Settings →
-          Products → Bus Manifest setup.
+          Products → Bus Manifest setup. The numbers can&rsquo;t be clicked: to
+          open or close a tour, or change a cap, use Bus Manifest setup.
         </li>
         <li>
           A <b>-</b> means the tour doesn&rsquo;t run that day; a <b>0</b> means
@@ -39,12 +40,11 @@ export function HowToUse() {
         <li>
           <b>Crew notes</b>, <b>CCL major events</b>,{" "}
           <b>Pax (tour 1, tour 2)</b> and <b>Driver / Vehicle type</b> are typed
-          in by staff: click a cell from today on, type, and Save. Clear the
+          in by staff: click a cell from today on (an empty one shows a green{" "}
+          <b className="text-[#4ade80]">+</b>), type, and Save. Clear the
           text and Save to remove it. Point at a cell to see who wrote it and
-          when.{" "}
-          <b>Sunset depart times</b> and <b>Private tours</b> fill in by
-          themselves from the bookings. Notes stays
-          empty for now.
+          when. <b>Sunset depart times</b> and <b>Private tours</b> fill in by
+          themselves from the bookings. Notes stays empty for now.
         </li>
         <li>
           A vehicle number in red in the Driver / Guide row has no GPS (no
