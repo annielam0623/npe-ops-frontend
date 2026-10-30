@@ -19,7 +19,10 @@
 - 模拟接口 mf-mock 的 text-size 照后端补了两条 400 校验：列键不认识、订单不在这台车上。
 - mf-test 加了三项：先 guest-bus 后 text-size；B 车带 CHD3 整行、A 车不带；绿字 Saved、没有红字。跑完把模拟后端放回原样。
 - Lunch 不符提醒 / Save before printing? 的先后：main 上已经是先问存、存完用重读的数据再出餐不符框，没动。
-- ⏳ **检查还没跑**：这台公司电脑还没装 Node（eb 已请 Annie 装）。装好后在 worktree `C:\Code\ops-wt-e6` 先 `npm ci`，再跑 mf / man / pl / nav、tsc、eslint、build，之后合最新 main、重跑，然后合 main。
+- ✅ 检查（合了最新 main 之后，Node v26.13.0）：
+  - mf 185/185、man 322/322、pl 48/48、nav 32/32；
+  - tsc 0 错；eslint 0 错、2 个警告（public/window-hscroll.js 原有的）；build 过。
+  - 等 eb 核对后合 main。
 
 ## 2026-10-30 主窗口 `npe-ops-frontend-eb`[ba40bc] 开工核对（公司电脑）
 
