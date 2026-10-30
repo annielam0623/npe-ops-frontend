@@ -284,6 +284,10 @@
         - Team 等 staff 联络方式动手，Restaurant 等 G215。
       - 每页要后端一对 import/preview、import/commit 接口。
       - 待 Annie 定 Q1–Q7，都附推荐。
+- **Bus Manifest 三版式 + West Rim + G197 字号前端合 main**（9c，10-29 晚）：后端 6ddcf0e（合并 156ae23d）已上 main 并部署，v125 / v126 已在生产执行。
+  - 照 20 给的最终形状对过 `task/bus-manifest-versions-fe`：GET manifest 的 tour.manifest_version / lunch_column、客人 hotel_short / pickup_time_short / lunch_slots / lunch_mismatch、每车 lunch_mismatch_orders / restaurant / text_size / text_size_history；PUT manifest/version、PUT manifests/text-size；四种版式列序；客人排序由后端给。都对上，只删了前端字号列键里没用到的 `bus`（后端列键没有它）。
+  - 保存方式照 10-28 已动手的规格上线（版式选了马上存，字号在 Aa 框里 Save）；「整页暂存 + Save」那份 preview（XNA2wnz8SRcWcqxrANy1WX）Annie 还没说动手，之后另开分支。
+  - 检查：tsc / eslint / build 过；mf 162/162、man 320/320、pl 48/48、nav 32/32。
 - **Annie 重启电脑前的交接（10-29 晚）**：
   - 后端 9a：Bus Manifest 正在推 main，West Rim 提交号由 20 发来；G216 重启后再合；B9 批量接口、Publish anyway 还没开工。
   - 前端重启后的下一步：

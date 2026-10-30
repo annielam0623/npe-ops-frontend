@@ -33,7 +33,6 @@ export type ManifestColumnKey =
   | "pax"
   | "ticket"
   | "notes"
-  | "bus"
   | "boarding"
   | "lunch";
 
