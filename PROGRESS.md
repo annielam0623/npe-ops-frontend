@@ -306,6 +306,9 @@
   - ✅ 20 报：后端已上 main 并部署（6ddcf0e，合并 156ae23d），v125 / v126 已在生产执行。最终形状已转 9c。
     - 9c 先停 pickup-split，把 `task/bus-manifest-versions-fe` 对形状、跑检查、合 main。
     - 这次照 10-28 动手的规格上线（版式选了马上存）。「整页暂存 + Save」等 Annie 对那份 preview 说动手，另开分支改。
+    - ✅ 9c 已合 main 5a14bc3。
+      - 检查：mf 162、man 320、pl 48、nav 32；tsc / eslint / build 都过。
+      - 等 Annie 线上验收：四种版式、Lunch 格、餐数不符提醒、Lankun 餐厅块、字号、Aliases 栏头小字。
         - 主窗口提醒了 Annie 10-22 的规矩：除了 Boulder City，shuttle 都是 bus tour 沿路的站。
         - 9c 交 v2（同一个链接）：
           - 后端没有地方存「站几点」：接人时间是 Rezdy 时间减 15 分钟当场算的，只有回程时间存在 Manifest setup。
