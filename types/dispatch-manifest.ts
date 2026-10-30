@@ -172,7 +172,8 @@ export interface ManifestLunch {
 }
 
 /** Bus Manifest 版式：按团存，谁打开都一样（Annie 10-28 定 15 / 定 22）。 */
-export type ManifestVersion = "general" | "lankun" | "marcello";
+/** West Rim：Annie 10-29 定西峡用的版式（后端 20 加的第四种，migrate_v126）。 */
+export type ManifestVersion = "general" | "lankun" | "marcello" | "west";
 
 /** 餐不符的一单（每车 `lunch_mismatch_orders`）：发送 / 打印 / 下载前的提醒用。`lunch_text` 读不出时是「-」。 */
 export interface ManifestLunchMismatch {

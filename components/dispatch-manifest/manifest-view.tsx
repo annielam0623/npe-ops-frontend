@@ -122,12 +122,31 @@ const LANKUN_COLUMNS: Column[] = [
   { key: "notes", label: "Special Requirements" },
 ];
 
+/** West Rim 的列序（Annie 10-29，后端 20 转）：没有 ✓ 列。 */
+const WEST_COLUMNS: Column[] = [
+  { key: "order_number", label: "Order #" },
+  { key: "pickup_time", label: "Time" },
+  { key: "pickup_location", label: "Hotel" },
+  { key: "phone", label: "Phone" },
+  { key: "last_name", label: "Last Name" },
+  { key: "first_name", label: "First Name" },
+  { key: "pax", label: "Pax" },
+  { key: "ticket", label: "Quantities" },
+  { key: "notes", label: "Special Requirements" },
+];
+
 /**
  * 这个版式的列（同后端 `version_columns()`）。排了餐厅的团（`lunch_column`）三个版式都出 Lunch，
  * 放在 Special Requirements 左边（Q19 A、Q26）。
  */
 function columnsFor(version: ManifestVersion, lunch: boolean): Column[] {
-  const cols = [...(version === "lankun" ? LANKUN_COLUMNS : GENERAL_COLUMNS)];
+  const cols = [
+    ...(version === "lankun"
+      ? LANKUN_COLUMNS
+      : version === "west"
+        ? WEST_COLUMNS
+        : GENERAL_COLUMNS),
+  ];
   if (lunch)
     cols.splice(
       cols.findIndex((c) => c.key === "notes"),
@@ -141,11 +160,12 @@ const VERSIONS: { value: ManifestVersion; label: string }[] = [
   { value: "general", label: "General" },
   { value: "lankun", label: "Lankun" },
   { value: "marcello", label: "Marcello" },
+  { value: "west", label: "West Rim" },
 ];
 
 function versionOf(data: ManifestData): ManifestVersion {
   const v = data.tour.manifest_version;
-  return v === "lankun" || v === "marcello" ? v : "general";
+  return v === "lankun" || v === "marcello" || v === "west" ? v : "general";
 }
 
 // 样子照旧后台 admin/tour_manifest.html（Annie 2026-10-07：和旧版一模一样）。
@@ -1014,8 +1034,8 @@ function GuestTable({
   const lettered = data.mode === "lettered";
   const version = versionOf(data);
   const columns = columnsFor(version, !!data.tour.lunch_column);
-  // ✓（司机标的上车）：Lankun 不要这一列（定 5）。
-  const boarding = version !== "lankun";
+  // ✓（司机标的上车）：Lankun（定 5）和 West Rim 不要这一列。
+  const boarding = version !== "lankun" && version !== "west";
   const cols = columns.length + (lettered ? 1 : 0) + (boarding ? 1 : 0);
   const th = { fontSize: `${HEAD_PX[version].th}px` };
   if (sections.length === 0) {
@@ -1997,10 +2017,10 @@ function HowToUse() {
           tell the lunch place.
         </li>
         <li>
-          Version (next to Print all buses): General, Lankun or Marcello. It is
-          saved for this tour, so everyone who opens it gets the same one, on
-          screen, when printed and in Excel. Hotel names use the first Alias in
-          Settings → Pickup Locations, and times have no AM / PM.
+          Version (next to Print all buses): General, Lankun, Marcello or West
+          Rim. It is saved for this tour, so everyone who opens it gets the same
+          one, on screen, when printed and in Excel. Hotel names use the first
+          Alias in Settings → Pickup Locations, and times have no AM / PM.
         </li>
         <li>
           Tours with a lunch place have a Lunch column (B = Beef, T = Turkey, V

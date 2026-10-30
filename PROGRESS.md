@@ -4,6 +4,29 @@
 
 > 6d 交接（下面「2026-10-27 交接：前端主窗口 6d」那节）的后端需求已于 10/27 晚由 ad 转给家里后端主窗口 17。
 
+## Bus Manifest 三版式 + G197 当天字号 前端（`task/bus-manifest-versions-fe`，2026-10-29 晚，工作窗口 `npe-ops-frontend-9c`[edc8ac]，主窗口 d2 派工）—— **分支已推，没合 main（⛔ 等后端 20 的 task/bus-manifest-versions 上 main）**
+
+- 依据：Annie 10-28「bus manifest里的推荐全ok」（= 动手），preview 第 8 版 https://claude.ai/artifact/GF2a4asfK9QWhzvCia45S2 ，规格见「10-28 收工交接」三c。
+- 接口形状：照后端 WIP 分支 `origin/task/bus-manifest-versions`（f494b5b5 / 718639f4，只读看过）对的，比三c 更具体：
+  - GET manifest：`tour.manifest_version`（general / lankun / marcello）、`tour.lunch_column`；客人 `hotel_short` / `pickup_time_short` / `lunch_slots`（三格数组，null = 「-」）/ `lunch_mismatch`；
+    每车 `lunch_mismatch_orders`（[{order_number, guest, pax, lunch_text, bus_label, tour}]）、`restaurant`（只 Lankun：{name, title, footer_lines, totals{beef, turkey, veggie, total}}）、`text_size`、`text_size_history`。
+  - PUT `/api/dispatch/manifest/version` {tour, version} → {ok, version}；PUT `/api/dispatch/manifests/text-size` {tour_manifest_id, bus_label, text_size} → {ok, text_size, text_size_history}。
+  - ⚠️ 后端最终形状到了（d2 转）要再对一遍；字段没带时页面照旧（没 manifest_version 不出下拉、没 lunch_column 不出 Lunch 列）。
+- 做了什么（`components/dispatch-manifest/manifest-view.tsx`、`text-size.tsx`、新 `lunch-mismatch-dialog.tsx`、`lib/dispatch-manifest-api.ts`、`types/dispatch-manifest.ts`）：
+  1. 工具条 Print all buses 左边「Version: [General ▾]」下拉（不是蓝色），选了马上 PUT、重读，灰字「Saved for 团名 · everyone gets this version」；失败写后端原话、下拉回原值。partner 只出文字「Version: Lankun」。
+  2. 酒店印 `hotel_short`（悬停看订单原文）、时间印 `pickup_time_short`；隔组标色照旧按原文比。名字 / 酒店 / 票型太长在格里换行（定 8）。
+  3. 列按版式：General / Marcello 列序不变；Lankun = Order # / Time / Hotel / Phone / Ticket / Pax / Last / First / Lunch / Special Requirements（没有 ✓）。排了餐厅的团三版式都有 Lunch 列，放 Special Requirements 左边。
+  4. Lunch 格一格三个固定位置 B / T / V（0 份留空），读不出写「-」；`lunch_mismatch` 整格红字 #c00000 浅红底 #ffe1e1（人数格不标）。
+  5. Print all buses / 每车 Print / Download 前，有 `lunch_mismatch_orders` 就先弹提醒（黄框 + 表格，照 tickets-send/legacy-ui）：Bus / Tour、Order #、Guest、Pax、Lunch；蓝色「Print anyway / Download anyway」+ Cancel。Print all / Download 列全团，每车 Print 只列这一车。没有不符照常直接开。
+     本页没有「发送」键（发 manifest 的地方不在这页），所以只拦了打印 / 下载。
+  6. Lankun：合计一排最后加 TOTAL SANDWICH（「5 = 1 B 2 T 2 V」），下面餐厅块只放店名（NPE Lunch Box - 店名 · Bus）+ 两行 Contact（亮黄）+ 这车合计；不另出午餐表。General / Marcello 午餐表照旧。
+  7. G197：`text_size` 接 PUT /api/dispatch/manifests/text-size（只存这一天这个团这台车）；列键加 `lunch`。三版式默认字号：General / Lankun 正文 16.5px、人数 19px；Marcello 照打印放大比例 正文 21px、人数 24px、表头 12px、节标题 21px、合计数字 27px；调的 d 加在版式默认上。
+  8. Settings › Pickup Locations：Aliases 栏头加小字「First one is printed on the Bus Manifest」，编辑框说明加一句「The first one is printed on the Bus Manifest as the short hotel name. Leave empty to print the hotel name without “Hotel”.」（preview ①）。
+  - How to use 加两条（Version、Lunch 红格和打印前提醒）。
+- 检查（模拟接口，端口 MOCK 8797 / APP 3197 / CDP 9437）：tsc 0；eslint 0 错（2 个旧警告）；next build 过。headless：mf 159/159（新加的三版式检查：三版式列序、简称 / 去 AM PM、Lunch 三格、标红、打印 / 下载提醒 Cancel / anyway / 没不符不弹、PUT version / text-size 形状、Marcello 字号、Lankun 餐厅块、改版式失败、partner 只读文字）、man 320/320、pl 48/48（含新加的 Aliases 小字一项）、nav 32/32、da 367/367。
+- **加 West Rim 第四种版式**（d2 转后端 20，Annie 10-29 定西峡用）：value `west`，显示「West Rim」；列序 Order # / Time / Hotel / Phone / Last Name / First Name / Pax / Quantities /（排了餐厅才有 Lunch）/ Special Requirements，没有 ✓；字号默认同 General；午餐表照出，没有餐厅块。PUT version 形状不变。后端要等 Annie 执行 migrate_v126 才上 main。检查：tsc 0、eslint 0 错、build 过；mf 162/162（加 West Rim 3 项）、man 320/320。
+- 下一步：① 等 d2 转后端最终形状，有出入就改；② 后端 20 上 main 后，合最新 main、重跑 mf / man / pl / nav + build，再合 main；③ 上线后 Annie 线上验收，逐家核对印出来的酒店简称。
+
 ## 2026-10-29 晚 主窗口 `npe-ops-frontend-d2`[ec63f8] 开工核对（家里电脑）
 
 - main 拉到 8b14ed1，工作区干净。后端 origin/main 最新 2f014d28（0d 交接）：Bus Manifest 三版式、G212、G215 都还没上 main，前端照旧等接口形状。

@@ -440,8 +440,8 @@ async function run() {
     return 1;`;
   await evaluate(TRAP);
   const headsOf = (bus) => `[...document.querySelector('section[aria-label="Bus ${bus}"] thead tr').children].map(th => th.textContent.trim())`;
-  check("三版式 General：工具条有 Version 下拉（General / Lankun / Marcello），选着 General，不是蓝色",
-    await evaluate("const s = document.querySelector('[data-version-select]'); const lab = s.closest('label'); return s.value === 'general' && JSON.stringify([...s.options].map(o => o.textContent)) === '[\"General\",\"Lankun\",\"Marcello\"]' && lab.textContent.startsWith('Version:') && getComputedStyle(lab).backgroundColor !== 'rgb(59, 130, 246)' && getComputedStyle(s).backgroundColor !== 'rgb(59, 130, 246)';"));
+  check("三版式 General：工具条有 Version 下拉（General / Lankun / Marcello / West Rim），选着 General，不是蓝色",
+    await evaluate("const s = document.querySelector('[data-version-select]'); const lab = s.closest('label'); return s.value === 'general' && JSON.stringify([...s.options].map(o => o.textContent)) === '[\"General\",\"Lankun\",\"Marcello\",\"West Rim\"]' && lab.textContent.startsWith('Version:') && getComputedStyle(lab).backgroundColor !== 'rgb(59, 130, 246)' && getComputedStyle(s).backgroundColor !== 'rgb(59, 130, 246)';"));
   check("三版式 General：列序不变，Lunch 在 Special Requirements 左边（Q19 A），后面 Bus、✓",
     await evaluate(`return JSON.stringify(${headsOf("2041=A")}) === JSON.stringify(["Order Number","Pick-up Time","Pick-up Location","Last Name","First Name","Customer Phone","#","Quantities","Lunch","Special Requirements","Bus","✓"]);`),
     await evaluate(`return JSON.stringify(${headsOf("2041=A")});`));
@@ -540,6 +540,17 @@ async function run() {
   check("改版式失败：页面上方写后端原话，下拉还是 Marcello",
     await waitFor("document.querySelector('[role=alert]') && document.querySelector('[role=alert]').textContent.includes('That tour is not in the bus tour list.') && document.querySelector('[data-version-select]').value === 'marcello'"));
   await ctl({ versionFail: "" });
+  // West Rim（Annie 10-29 定西峡用，后端 20 加的第四种）：列序 Order # / Time / Hotel / Phone / Last / First / Pax / Quantities / (Lunch) / Special Requirements，没有 ✓
+  before = (await mockLog()).length;
+  await evaluate("const s = document.querySelector('[data-version-select]'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, 'west'); s.dispatchEvent(new Event('change', { bubbles: true })); return 1;");
+  const wReq = (await waitReq(before, "/api/dispatch/manifest/version"))[0];
+  check("选 West Rim：PUT {tour: 3, version: west}", wReq?.body?.tour === 3 && wReq?.body?.version === "west", JSON.stringify(wReq));
+  await waitFor("document.querySelector('[data-version-select]').value === 'west'");
+  check("West Rim：列序 Order # / Time / Hotel / Phone / Last Name / First Name / Pax / Quantities / Lunch / Special Requirements，后面只有 Bus、没有 ✓",
+    await evaluate(`return JSON.stringify(${headsOf("2041=A")}) === JSON.stringify(["Order #","Time","Hotel","Phone","Last Name","First Name","Pax","Quantities","Lunch","Special Requirements","Bus"]);`),
+    await evaluate(`return JSON.stringify(${headsOf("2041=A")});`));
+  check("West Rim：格子按列键画（第 3 格是酒店简称、第 7 格是人数），字号同 General（16.5px），午餐表照出、没有餐厅块",
+    await evaluate("const r = document.querySelector('tr[data-guest=CHD3]'); return r.children[2].textContent === 'MGM' && r.children[6].textContent === '2' && getComputedStyle(document.querySelector('tr[data-guest=CHD1]').children[1]).fontSize === '16.5px' && !!document.querySelector('section[data-lunch]') && !document.querySelector('[data-restaurant]');"));
   // 没有餐不符（团没排餐厅 ⇒ lunch_mismatch_orders []）：打印、下载都不弹，照常开 / 交
   await ctl({ bmvClean: true });
   await goto(`${APP}/dispatch/manifest?date=2026-10-05&tour=3`);

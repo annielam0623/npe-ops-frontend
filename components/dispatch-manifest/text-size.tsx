@@ -45,6 +45,7 @@ const BASE: Record<ManifestVersion, Base> = {
   general: { cell: [16.5, true], pax: [19, true] },
   lankun: { cell: [16.5, true], pax: [19, true] },
   marcello: { cell: [21, true], pax: [24, true] },
+  west: { cell: [16.5, true], pax: [19, true] },
 };
 
 /** 表头 / 节标题的字号（Marcello 一起放大，Q24）。 */
@@ -53,6 +54,7 @@ export const HEAD_PX: Record<ManifestVersion, { th: number; section: number }> =
     general: { th: 9.5, section: 17 },
     lankun: { th: 9.5, section: 17 },
     marcello: { th: 12, section: 21 },
+    west: { th: 9.5, section: 17 },
   };
 
 export const EMPTY_TEXT_SIZE: ManifestTextSize = {
