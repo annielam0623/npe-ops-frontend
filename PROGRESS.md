@@ -135,6 +135,10 @@
       - 两个开关放进 page-visibility。
     - 接口形状到了就派前端工作窗口；Restaurant 的导入接着做。
     - 20 报 G215 ④ 餐厅四栏已上 main 3bcf395（v127 已在生产执行）。已派 9c `task/restaurant-contacts`。
+    - ✅ 9c 已合 main 4b88ff9。
+      - 检查：restaurant 44、products 186、nav 32；tsc / eslint / build 都过。
+      - 等 Annie 验收。
+      - 9c 接着先做 misc-manual-save（不用等后端），再做排班整周 Save。
     - Dispatch Send to driver / guide 的「page is off」和两个开关，还等后端发形状。
 - ✅ **Annie「4项全部动手」**（10-29 晚），原话：「4项全部动手」。四项是：
   1. staff 联络方式（Q1–Q7 照推荐）：后端发 9a（phone 列 migration、改联络方式接口），前端派 59 `task/team-contacts`，再做 `task/import-team`。
