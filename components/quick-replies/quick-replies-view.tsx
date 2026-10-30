@@ -18,15 +18,13 @@ import {
 import type { ActionResult } from "@/components/ui/action-result";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ErrorBanner, Panel } from "@/components/ui/panel";
-import { legacyPage, legacyRows } from "@/lib/action-log";
+import { fetchActionLog } from "@/lib/action-log";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchCurrentUser } from "@/lib/auth-api";
 import {
   createQuickReply,
   deleteQuickReply,
   fetchQuickReplies,
-  fetchQuickReplyLog,
-  QUICK_REPLY_LOG_LIMIT,
   QUICK_REPLY_MAX,
   quickReplyProblem,
   reorderQuickReplies,
@@ -47,20 +45,6 @@ type Note = { tone: "ok" | "error"; text: string } | null;
 /** 提交键（Save / Add）：蓝色只给提交（Annie 2026-10-11）。 */
 const SUBMIT_CLASS =
   "inline-flex cursor-pointer items-center justify-center rounded-[7px] border-none bg-[#185FA5] font-semibold whitespace-nowrap text-white hover:bg-[#124d8a] disabled:cursor-not-allowed disabled:bg-[#aaa]";
-
-/** 日志里的字段（后端 action_log 实体 driver_quick_reply 整行 before / after）。 */
-const LOG_FIELDS = [
-  { key: "body", label: "Text" },
-  { key: "active", label: "Shown to drivers" },
-  { key: "sort_order", label: "Position" },
-];
-
-function logShow(key: string, value: unknown): string {
-  if (value === null || value === undefined) return "";
-  if (key === "active" && typeof value === "boolean") return value ? "On" : "Off";
-  if (Array.isArray(value)) return value.join(", ");
-  return String(value);
-}
 
 const charCount = (text: string) => [...text.trim()].length;
 
@@ -259,7 +243,9 @@ export function QuickRepliesView() {
           <p className="font-medium text-stone-800 night:text-white/90">
             Admin access required
           </p>
-          <p className="mt-1">Only admins can change the driver quick replies.</p>
+          <p className="mt-1">
+            Only admins can change the driver quick replies.
+          </p>
         </Panel>
       ) : view.kind === "error" ? (
         <ErrorBanner
@@ -406,11 +392,12 @@ export function QuickRepliesView() {
             <ActionLogPanel
               refreshKey={logVersion}
               onUnauthorized={redirectToLogin}
-              load={async (_before, signal) =>
-                legacyPage(
-                  await fetchQuickReplyLog(signal),
-                  QUICK_REPLY_LOG_LIMIT,
-                  (e) => legacyRows(e, { fields: LOG_FIELDS, show: logShow }),
+              // G203 第四批：后端共用读接口（admin），what = Reply / Position / Shown to drivers；旧的 /log 不再用。
+              load={(before, signal) =>
+                fetchActionLog(
+                  "/api/driver-quick-replies/action-log",
+                  before,
+                  signal,
                 )
               }
             />

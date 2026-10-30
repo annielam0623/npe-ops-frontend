@@ -10,16 +10,3 @@ export interface QuickReply {
   /** ISO；没改过为 null。 */
   updated_at: string | null;
 }
-
-/** GET /api/driver-quick-replies/log 的一条（fetch_log 旧形状，整行 before / after）。 */
-export interface QuickReplyLogEntry {
-  id: number;
-  entity_id: string | null;
-  label: string;
-  action: string;
-  before: Record<string, unknown> | null;
-  after: Record<string, unknown> | null;
-  actor: string;
-  actor_name: string;
-  created_at: string | null;
-}

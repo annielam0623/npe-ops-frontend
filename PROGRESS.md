@@ -53,6 +53,10 @@
       - 有没存的改动时离开页面，要拦一下提示；
       - 自动存完在页面上提示一句，用英文。
       - 补一条，原话「saved用绿色」：✓ Saved 和 Auto-saved 都用绿色字，Save 键照旧是蓝色。已转 59。
+    - ✅ 59 做完：分支 `task/dispatch-manual-save` c404b4d 已推，⛔ **没合 main，等 Annie 下令 push**（worktree D:\npe-ops-frontend-dms）。
+      - 检查：da 374/374（单独跑）；tsc 0，eslint 0 错，build 过；合最新 main 后重跑，结果一样。
+      - run-all.js 加了 SUITE_TIMEOUT_S。da 一套接近 8 分钟，合 main 前单独跑时设 SUITE_TIMEOUT_S=900。
+      - 已问 Annie 要不要上线。
   - Annie 原话：「我要把所有这类自动保存改成手动的」。
     - 已派 9c 只读盘点全站「改了就自己存」的地方，出清单（Artifact），请 Annie 逐条定哪些改手动。
     - 除 Dispatch 外还没动手。
@@ -83,6 +87,9 @@
   - 检查：tp 136/136、users 77/77、teams 单独跑 54/54；tsc 0，eslint 0 错，build 过。
   - 等 Annie 线上验收。
   - 后端缺口已发 9a：Team 页 Action Log（/api/team/action-log，_TEAM_LOG）要加 admin_users，删除记录才看得到。前端不用改。
+  - ✅ 3d 已上 main：合并 ee7ce2e，关包 9793f04。
+    - 删账号在 Team 页日志里拆成 6 行：Username / Display name / Email / Role / Status / Initials。
+    - 只有 superadmin 看得到。密码哈希、各种令牌都不出。
 - 9c 交 Bus Manifest 三版式 + G197 前端：分支 `task/bus-manifest-versions-fe`（a1e37bd）已推，**没合 main**，等后端 20 上 main。
   - 8 项都做了，接口照后端 WIP 分支 f494b5b5 / 718639f4 对过。
   - 检查：mf 159、man 320、pl 48、nav 32、da 367 全过；tsc 0，eslint 0 错，build 过。
@@ -92,6 +99,17 @@
   - 后端 20 报：版式下拉加第四项 'west'（显示 West Rim），Annie 10-29 定西峡用。
     - 列序：Order # / Time / Hotel / Phone / Last Name / First Name / Pax / Quantities / Special Requirements。没有 ✓ 列；排了餐厅才出 Lunch，放在 Special Requirements 左边。
     - 后端要等 Annie 执行 migrate_v126 才推 main。已转 9c 加进分支。
+    - ✅ 9c 已加进分支（8f85141，没合 main）：mf 162、man 320；tsc 0，eslint 0 错，build 过。打印和下载要等 20 上线。
+  - 9c 交「按 Save 才存」preview v1：https://claude.ai/artifact/XNA2wnz8SRcWcqxrANy1WX （分支代码没动）。
+    - 版式、字号、换车都先暂存，整页一个 Save；没存的改动标琥珀色。
+    - Aa 框里的 Save 改成 Done。
+    - 打印前问「Save before printing?」。
+    - 待 Annie 定 Q1–Q5，都附推荐。
+- B9 排班整周一个 Save：已派 9c 出 preview，并起草后端批量接口（原定 59，改给 9c）。
+  - 9c 交 preview + 接口草案：https://claude.ai/artifact/AY3vC6WaeLmTQgTx3BZi79 。
+    - 接口：POST /api/schedule/weeks/{ws}/changes，整批一个事务，冲突回 409 locked / stale。
+    - 已转 9a 排计划，还没动手。待 Annie 定 Q1–Q7，都附推荐。
+  - A8 preview 发了 v2（同一个链接），加了 Q4 四处对照。照实写：只有 Add shift 会挡东西，其余三处不用改，Q4 推荐改成只改 Add shift。已同时发 9a。
   - Annie 改 Bus Manifest 保存方式（经 9a 转），原话：「哦，下拉菜单用缓存不会么，点击save再一起存啊」。
     - 版式下拉和当天字号改了先不存，按 Save 一起存。后端不用改。
     - 已派 9c 出小 preview，同时问三条：离开拦、10 分钟自动存、Saved 用绿色。等 Annie「动手」。
@@ -118,6 +136,14 @@
       - ⚠️ 跟 Annie 确认两处冲突，还要等她说「动手」：
         - A8：她在 d2 这边说「不要再点其他地方，根本点不了」，在 9a 那边说「保留」；
         - B4：她写了「B4 下拉保留马上存」，和总规则冲突。
+      - 9c 交 A8 preview v1：https://claude.ai/artifact/5jHSPfjGt9eD187iP8i2ut （没改代码）。
+        - 「根本点不了」是 bug：一点 Start，时间列表就盖住 End / Save / Cancel；要关列表只能点外面，点外面又马上存了。所以改完 Start 根本没机会改 End。
+        - 推荐：
+          - 格子上方弹一个独立小窗，Start / End 并排；
+          - 时间列表开在小窗里面，不盖住按钮；
+          - 只有按 Save 才存；
+          - 改了没存就点外面或按 Esc，出黄框「Unsaved changes」，可以选 Save / Discard。
+        - 待 Annie 定 Q1–Q4，都附推荐。
 - 后端 c8[fbbc9c] 报 G214 已上 main：代码 fa35f01，合并 43934d7，关包 d657a48。这就是 Dispatch「Not in HR」方案 B。
   - HR 存档后，今天及以后对得上的手填名改连到 HR 里的人，接口形状不变，前端不用改。
   - Dispatch 没有 Action Log 面板，新的 action「link_hr」对前端没有影响。
@@ -149,6 +175,10 @@
   - Driver Quick Replies 日志：/api/driver-quick-replies/action-log。
   - link_hr 的 before / after 改成和排车保存一样的逐车格式。
   - 已排给 59 `task/g203-batch4`，等它把 Dispatch 手动保存推完分支再做。
+  - 59 已推分支 e1c3666（da 373、qr 33；tsc 0，eslint 0 错）。⚠️ next build 内存不够崩了：C 盘满，页面文件长不出来。**没合 main**，等清完 C 盘再重跑 build 后合。
+  - ✅ 重启后 59 重跑全部检查，已合 main 2125361。
+    - build 过；da 373/373、qr 33/33；tsc 0，eslint 0 错。
+    - 等 Annie 线上验收：Dispatch 页最下面的改动记录、Driver Quick Replies 的改动记录。
 - Annie（10-29 晚）原话：「我现在没有地方加staff的邮箱地址，电话等联络方式」。
   - 现状：
     - 前端只有 Add person 选「Create the account now」时能填 Email；邀请的没有这一格；Edit 改不了；没有电话。
@@ -179,6 +209,127 @@
         - 右上角数的是空档段数，不是天数；
         - 已发布的周，前端还显示「Publish again」，后端会回 409。
       - 待 Annie 定 Q1–Q6，都附推荐。
+      - ✅ **Annie 动手**，原话：「Q1-5 同意推荐，动手」。
+        - Q6，原话「要留publish again，要允许改正错误」：已发布的周保留 Publish again。
+        - 后端现在回 409，已请 9a 改成允许重新发布，通知怎么发请后端给推荐。
+        - 9a：排给 c8，G216 上 main 后接着做。
+          - 「发布时有空档」的标记如果要加列，就是 migration，要等 Bus Manifest 用完 v126 并请 Annie 过目，可能今晚上不了线。
+          - Q6 就是后端待办 G200 的 B。
+        - 9a 推荐的通知做法，已问 Annie：
+          - 重新发布只发给班有变化的人和他们的主管；
+          - 已发布的周改动时不再逐项发通知。
+          - G200 的 A（加休息日单独通知）还没答。
+- Annie 问 G211（Pickup Locations 把 tour bus 和 Shuttle 分开）做了没有：还没开工，在等她答 9 题。
+  - 9 题原文只在公司电脑 bd 的 scratchpad 里（会话 9277e179），家里拿不到。
+  - 主窗口定 ①：明天公司电脑的后端主窗口拿出原文和推荐，发前端主窗口，再一次问 Annie。已请 9a 写进交接，并把报告放进后端仓库。
+  - 后端待办里的要点：
+    - 新表 shuttle_stops + shuttle_stop_times；
+    - Risk C，迁移号用 v127 以后；
+    - 工作量：后端 2–3 天，前端 1–2 天。
+  - Annie 那句「除了 Vegas 每个站点上下车同一个地址」：不用分上车表和下车表。
+  - Annie 又说，原话：「我们已经把shuttle的点加进去了，只是混在一起而已，你就是按字面都可以排出来」。
+    - Shuttle 站已经在 Pickup Locations 里，先在页面上把 tour bus 和 Shuttle 分开。
+    - 已排给 59 出 preview（G203 第四批之后），看纯前端能不能分、要不要后端加字段。
+    - 已告诉 9a：新表方案先别开工。
+    - 59 交 preview：https://claude.ai/artifact/HTezuw3d3VnNSyo63VJEzN （没写代码）。
+      - 每个点加 Type（Tour bus / Shuttle），由 staff 选；页面分成上下两块。
+      - 还没选 Type 的点放在最上面的黄块里补。
+      - 需要后端 B1–B4：kind 列 migration、第一次归类名单先给 Annie 看、读写接口带 kind、日志记 Type。
+      - 待 Annie 定 Q1–Q5，都附推荐。
+      - Annie 原话：「需要把pick time都放进去」= Shuttle 站要带接人时间。还没动手。
+        - 要派工作窗口出 v2：查清时间现在存在哪；按线路、方向、季节怎么分；一个站既是 tour bus 又是 shuttle 怎么放。
+        - ⚠️ 派工消息没发出去：会话重启后 59 / 9c 都不在了。等新的前端工作窗口开了再派。
+- ⚠️ 会话重启（10-29 晚）：主窗口新号 `今天前端主窗口-d2`[d09e19]。前端工作窗口 59、9c 都不在了；后端只剩 3d[4c6864]、20[d3089d]，9a / c8 不在。
+  各分支状态：
+  - `task/dispatch-manual-save` c404b4d：已推，等 Annie 下令 push；
+  - `task/g203-batch4` e1c3666：已推，build 没过（内存不够），要重跑 build 后合；
+  - `task/bus-manifest-versions-fe` 8f85141：已推，等后端 20 上 main；
+  - `task/schedule-publish-anyway`：主窗口在重启前代提交成 WIP 并推送（54544b8，worktree D:\npe-ops-frontend-seat）。没跑检查，后端 allow_gaps 还没做。
+  - 更正：59 后来又在列表里出现了（新号 [bfc2aa]），重启前确认手上没有没提交的改动。
+  - 9c 也回来了（新号 [d7db37]），确认 54544b8 就是全部改动。
+    - tsc、eslint 都过了；sch 套件 193/193（5 次里 2 次开头加载慢时失败，重跑就过）。
+    - 重启后剩下：build、看一遍 diff、写正式提交说明，然后推分支。等后端 allow_gaps 的形状。
+- **重启后（10-29 晚）**：主窗口新号 [15266b]。各窗口新号：59 [279f72]、9c [72d8d1]、9a [599ab6]、3d [683799]、20 [0fcef2]、8e [0bca1a]。
+  - 资源：C 盘 6 GB，D 盘也有页面文件，可用虚拟内存 15.4 GB，空闲内存 12.7 GB。
+  - 9c 已把 `task/schedule-publish-anyway` 收尾：c83d666，build 过，sch 193/193。等后端接口到了再合 main。
+  - 派工：
+    - 59：g203-batch4 重跑 build 后合 main；
+    - 9c：Pickup Locations preview v2，加接人时间；
+    - 9a：重发 Publish anyway / again 的后端活（原来给 c8，c8 不在了）。
+  - 后端 main 还是 36dde18，Bus Manifest 还没推（要 Annie 在自己的终端推）。
+  - 9a：Publish anyway / again 交给 8e。
+    - 不加列、不做 migration；去掉两处 409；「发布时有空档」在读数据时现算。
+    - 排在 G216 后面，明天做。
+    - 通知规则定下来之前，重新发布先不发通知（主窗口同意），首次发布照旧。已问 Annie 通知规则。
+    - 8e 发来接口形状（后端分支 d2bc2cf，还没上 main）。已转 9c 对照。
+      - POST publish {allow_gaps:true}：非 admin 回 403；已发布的周不再 409；响应加 republished / gaps / notified。
+      - GET 加 published_with_gaps。
+- Annie 原话（10-29 晚，说 staff 联络方式时）：「但凡有材料需要输入的地方，都要支持表格，文档，图片上传」。
+  - 记录，还没动手。
+  - 已问 Annie 两种意思：① 上传 Excel / CSV 批量导入，自动填进去；② 把文件、图片作为附件存在记录上。
+  - 还问了范围：从哪几页先做。
+  - Annie 答：「上传表格自动填进去」= 批量导入（A）。
+    - 已派 59 出 preview：全站通用的导入做法，先拿 Team 联络方式当例子，再盘点全站要输入的页面、给先做哪几页的推荐。
+    - 还没动手。
+    - Annie 原话：「从你挑的那几页开始，然后做个列表，看看接下来要做哪些」。
+      - 先做 Team、HR、Pickup Locations、Supplier › Restaurant 四页，再列出后面的先后顺序。
+      - 已转 59，preview 里四页都画出来。
+    - 59 交 preview：https://claude.ai/artifact/MKtDUiYyUPZ1FcBJR3j4Lw （没写代码）。
+      - 通用做法以 HR 现有的 Import 为底：后端出预览，按 Save 才写，空格不清空。
+      - 四页：Team（Email / Mobile，按 Username 对上）、HR、Pickup Locations（按 Hotel Name，也认 Aliases）、Restaurant（等 G215）。
+      - 后面的先后：Team → Pickup → HR → Restaurant → Vehicles → Farm out Locations → Farm out Rates。
+      - ✅ **Annie 动手**，原话：「批量导游同意推荐。动手」（指批量导入），Q1–Q7 全按推荐。
+        - 后端发 9a 排人。
+        - 前端派 59：先做通用组件 + HR（task/import-hr），再做 Pickup（task/import-pickup）。
+        - Team 等 staff 联络方式动手，Restaurant 等 G215。
+      - 每页要后端一对 import/preview、import/commit 接口。
+      - 待 Annie 定 Q1–Q7，都附推荐。
+- **Annie 重启电脑前的交接（10-29 晚）**：
+  - 后端 9a：Bus Manifest 正在推 main，West Rim 提交号由 20 发来；G216 重启后再合；B9 批量接口、Publish anyway 还没开工。
+  - 前端重启后的下一步：
+    1. 59 跑 `task/g203-batch4` 的 build → 合最新 main → 重跑 da / qr → 合 main。临时目录放 D 盘。
+    2. 接手 `task/schedule-publish-anyway`，等后端 allow_gaps / Publish again 的接口。
+    3. 后端 Bus Manifest 上 main 后，`task/bus-manifest-versions-fe` 合最新 main、重跑检查后合 main。
+    4. Pickup Locations 分开 preview 出 v2，加接人时间（Annie 原话「需要把pick time都放进去」）。
+  - 等 Annie 的：
+    - Dispatch 手动保存要不要 push；
+    - 各 preview 的问题；
+    - 回「删」清 C 盘旧临时文件；
+    - 把虚拟内存挪到 D 盘（步骤已给她）。
+  - 后端 20：Bus Manifest / West Rim 已合并审查完，本地 main 6ddcf0e（备份 origin/backup/bus-manifest-main-2026-10-29）。
+    - 这是 Risk C 包，要 Annie 重启后在她自己的终端 `git push origin main`。
+    - 推上去之前线上没有 'west'，前端 West Rim 先别放出来。
+  - ✅ 20 报：后端已上 main 并部署（6ddcf0e，合并 156ae23d），v125 / v126 已在生产执行。最终形状已转 9c。
+    - 9c 先停 pickup-split，把 `task/bus-manifest-versions-fe` 对形状、跑检查、合 main。
+    - 这次照 10-28 动手的规格上线（版式选了马上存）。「整页暂存 + Save」等 Annie 对那份 preview 说动手，另开分支改。
+        - 主窗口提醒了 Annie 10-22 的规矩：除了 Boulder City，shuttle 都是 bus tour 沿路的站。
+        - 9c 交 v2（同一个链接）：
+          - 后端没有地方存「站几点」：接人时间是 Rezdy 时间减 15 分钟当场算的，只有回程时间存在 Manifest setup。
+          - v2 的做法：
+            - 按「站 × 线路」存时间；
+            - 每个点两个勾（Tour bus / Shuttle），可以都勾；
+            - Shuttle 块多一列 Times，Edit 里展开小时刻表。
+          - 需要后端 B1–B7：is_tour_bus / is_shuttle、新表 pickup_location_times、migration、第一次归类名单先给 Annie 看。
+          - 待 Annie 定 Q1–Q11。
+          - Annie 答，原话：「shuttle的问题，除了Q8之外都按照推荐。Q8，有季节，会按时间段分出来」。
+            - Q8：接人时间按季节的日期段分开。
+            - 已派 9c 出 v3。还没「动手」。
+            - ✅ **Annie 动手**，原话：「shuttle改完Q8」「就可以动手了」。
+              - 9c 出完 v3 后开工 task/pickup-split。
+              - 后端 B1–B7（季节日期段要真用）已发 9a，明天排。
+              - 9a：已记进交接，公司电脑不用再找 bd 那 9 题。
+                - 迁移号：G215 用 v127（餐厅四栏 + 导游改餐，后端说在等 Annie 回答），G211 用 v128 以后，两件不能同时提交。
+                - v3 出来要转 9a。
+              - 9c 交 v3（同一个链接）：
+                - 季节全站共用：Shuttle 卡头「Edit seasons」，有 Copy to next year；
+                - 时刻表是「线路 × 季节」；
+                - 重叠红字不让存，空档黄字可以存。
+                - 后端：shuttle_seasons + pickup_location_times。Q12–Q16 照推荐。
+                - 已转 9a。9c 已开工 task/pickup-split（worktree D:\npe-ops-frontend-seat）。
+          - 批量导入后端：9a 排明天。先做通用形状 + HR，再 Pickup → Team → Restaurant。
+          - 顺带发现两个可能的 bug，已转 9a 核实：回程时间减 15 分钟前后不一致；Rezdy 自带时间可能被减了两次。
+        - 前端派 9c `task/schedule-publish-anyway`，后端上 main 前不合 main。
+        - 后端发 9a：allow_gaps、写日志、空档标记。
 - **Annie 定长期规则：订单流 Order List → Main Manifest → Dispatch / Tracking，不跳过前面直接去 Rezdy 拉单**。
   - 原话：「不要直接去rezdy拉订单。写到工作里头。订单流是order list  - main manifest - dispatch / tracking --我马上要开通。不要跳跃过前面的程序直接去rezdy拉单。前端后端都要写到工作规范里去」
   - 前端已写进 CLAUDE.md「已定的决策」：远端 7fb1c50（别的窗口同时写的，内容更全）。主窗口自己写的那段重复了，已删掉。后端 9a 已写进后端 CLAUDE.md（f50aac5，Annie 看过条文回「写」），3 处已知冲突只登记，等动手。
@@ -500,6 +651,25 @@
 - 92[5f58db]、72[23ce9c] 都已收工，worktree 干净：C:\Code\npe-ops-frontend-g203、C:\Code\npe-ops-frontend-g208。
 - 后端：f0 主窗口、bd 做 G203 / G208 / guide_notes、d0 做 G98 / G212。G203 第 ③④ 步（Dispatch 逐车、Schedule 等补写入，以及 Quick replies 新形状 /action-log）还在后端，路径到了再派前端接面板。
 - 空闲内存一直在 0.7–2 GB，一次最多开两个前端工作窗口。
+
+## G203 第四批：Dispatch 页加 Action Log、Driver Quick Replies 改读共用接口（`task/g203-batch4`，2026-10-29 晚，工作窗口 `npe-ops-frontend-59`[678c38]，主窗口 d2 派工）—— **已合 main**
+
+- 后端 c8 已上 main（合并 4c00a04，关包 a176ca4）：
+  - `GET /api/dispatch/action-log?date=`（dispatch.edit）；
+  - `GET /api/driver-quick-replies/action-log`（admin）。
+- 改动：
+  - Dispatch（`components/dispatch/dispatch-view.tsx`，只加 import 和页面最底一块，没碰保存相关代码，免得和 `task/dispatch-manual-save` 打架）：
+    - 页面最底加共用面板，date 跟着页面日期走。
+    - refreshKey = 日期 + 这一天的 version：换日期、存好一块都会重读。
+    - partner、没有 dispatch.edit 的不出面板、不请求；后端 403 时只写一句灰字。
+  - Driver Quick Replies：改读 `/api/driver-quick-replies/action-log`，不再读旧的 `/log`。
+  - 旧形状转换（`legacyRows` / `legacyPage`、`fetchQuickReplyLog`、`QuickReplyLogEntry`）没人用了，删掉。
+  - `fetchActionLog` 加第 4 个参数 `extra`，放接口自己要的参数（Dispatch 的 date）。
+- 检查（mock，TEMP 放 D 盘）：
+  - `da` 373/373：Dispatch 面板收着不请求、展开带 date、3 行、旧条目 No before / after recorded、换日期重读、403 灰字、partner 不出不请求。
+  - `qr` 33/33：读新接口、不再读 /log、Reply / Shown to drivers 行、旧条目、403 灰字。
+  - tsc 0、eslint 0 错。
+  - 第一次 `next build` 因 C 盘满、虚拟内存不够崩了（不是代码问题）。重启后（d2 派）合最新 main 重跑：build 通过、tsc 0、eslint 0 错、`da` 373/373、`qr` 33/33，合 main。
 
 ## G203 第三批：Navigation、Farm out 设置两页加 Action Log 面板（`task/g203-batch3`，2026-10-29 晚，工作窗口 `npe-ops-frontend-59`[678c38]，主窗口 d2 派工）
 

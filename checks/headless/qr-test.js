@@ -245,13 +245,20 @@ async function run() {
   await waitFor(`!${dialog} && !${rowOf(4)}`);
   check("确认删除：DELETE、行没了", (await since(before, (e) => e.method === "DELETE" && e.path === "/api/driver-quick-replies/4")).length === 1 && !(await evaluate(`return !!${rowOf(4)};`)));
 
-  // ── Action Log（G203 共用面板，旧形状在前端拆行）──
+  // ── Action Log（G203 第四批：改读共用读接口 /api/driver-quick-replies/action-log，旧的 /log 不再用）──
   before = (await mockLog()).length;
   await evaluate("[...document.querySelectorAll('button')].find(b => b.textContent.includes('Action Log')).click();");
   await waitFor("document.querySelector('[data-action-log] tbody tr')");
   const rows = await evaluate("return [...document.querySelectorAll('[data-action-log] tbody tr')].map(r => [...r.children].map(c => c.textContent.trim().replace(/\\s+/g, ' ')));");
-  check("Action Log 展开才拉 /log?limit=50", (await since(before, (e) => e.path === "/api/driver-quick-replies/log")).some((e) => e.query === "?limit=50"));
-  check("日志：改字 旧 → 新、开关写 On → Off、删除只有旧值", rows.some((r) => r[2].endsWith("· Text") && r[3] === "I can't find you → I can't find you, call me") && rows.some((r) => r[2].endsWith("· Shown to drivers") && r[3] === "On → Off") && rows.some((r) => r[2] === "DeletedOld reply · Text" && r[3] === "Old reply"), JSON.stringify(rows.slice(-6)));
+  check("Action Log 展开才拉 /api/driver-quick-replies/action-log?limit=50，不再拉旧的 /log", (await since(before, (e) => e.path === "/api/driver-quick-replies/action-log")).some((e) => e.query === "?limit=50") && (await mockLog()).every((e) => e.path !== "/api/driver-quick-replies/log"));
+  check("日志：Reply 旧 → 新、Shown to drivers On → Off、删除只有旧值、旧条目 No before / after recorded", rows.some((r) => r[2].endsWith("· Reply") && r[3] === "I can't find you → I can't find you, call me") && rows.some((r) => r[2].endsWith("· Shown to drivers") && r[3] === "On → Off") && rows.some((r) => r[2].includes("Old reply") && r[2].endsWith("· Reply") && r[3] === "Old reply") && rows.some((r) => r[2].includes("Ancient reply") && r[3] === "No before / after recorded"), JSON.stringify(rows));
+  // 后端 403：一句灰字，不报错
+  await ctl({ log403: true });
+  await goto(`${APP}/settings/quick-replies`);
+  await waitFor("[...document.querySelectorAll('button')].some(b => b.textContent.includes('Action Log'))", 30000);
+  await evaluate("[...document.querySelectorAll('button')].find(b => b.textContent.includes('Action Log')).click();");
+  check("Action Log 403：只写 You don't have access，不报错、不出 Retry", (await waitFor("document.querySelector('[data-action-log]')?.textContent.includes(\"You don't have access\")")) && !(await evaluate("return document.querySelector('[data-action-log]').textContent.includes('Retry');")));
+  await ctl({ log403: false });
 
   // ── 读不到 / 权限 / 未登录 ──
   await ctl({ failLoad: true });
