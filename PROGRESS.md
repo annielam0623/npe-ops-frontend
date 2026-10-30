@@ -62,6 +62,11 @@
   2. Dispatch Arrange seats 车型标签错成「A 28 / A 20」，应该是 Lower 28 / Upper 20。
      - 前端 bug：seating.tsx:44 的 TYPE_SHORT 认 upper / lower，后端给的是 upper_antelope / lower_antelope。后端不用改。
      - 9c 已问 Annie：标签用 L / U（10-18 定的）还是 Lower / Upper 全称。等她答，再从 main 拉分支修。
+     - ✅ Annie 定全称并说动手，原话「空间足够大，所以用Lower 28 / Upper 20。动手」。9c 已合 main c8483aa（da 367/367，tsc / eslint / build 都过），等 Annie 线上验收。
+- Annie 问 Staff Schedule 为什么写「1 day with gaps」，下面又是「Gaps: none」。只回答了，没改代码：
+  - 空档在 Sat 11/07 的 2:00–8:00 AM。她改成 3am 的两个 Open 班在 Unassigned 行，不算覆盖；就算分给人，2:00–3:00 AM 也还是空着。
+  - 右上角的数字算的是整周，Day timeline 显示的是选中的 Mon 11/02。
+  - 主窗口建议：日期标签上给有空档的日子标红，右上角写明是哪天、点了跳过去。这算样子改动，要先出 preview，等 Annie 答要不要。
 - **Annie 定长期规则：订单流 Order List → Main Manifest → Dispatch / Tracking，不跳过前面直接去 Rezdy 拉单**。
   - 原话：「不要直接去rezdy拉订单。写到工作里头。订单流是order list  - main manifest - dispatch / tracking --我马上要开通。不要跳跃过前面的程序直接去rezdy拉单。前端后端都要写到工作规范里去」
   - 前端已写进 CLAUDE.md「已定的决策」：远端 7fb1c50（别的窗口同时写的，内容更全）。主窗口自己写的那段重复了，已删掉。后端已请 9a 写进后端规范。
