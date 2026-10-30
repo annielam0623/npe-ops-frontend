@@ -149,6 +149,9 @@
   4. 其余自动保存改手动：
      - 59 `task/products-manual-save`：A3 + B6、A4、A5 + B4、A6 + B5，A6 要 10 分钟自动存；
      - 9c `task/misc-manual-save`：A2、A7、B8。
+       - ✅ 已合 main 7efc5d2。
+         - 检查：man 322、cs 152、tk 129、nav 32；tsc / eslint / build 都过。
+         - 等 Annie 验收。
   - 资源：C 盘已清出 237 GB；可用虚拟内存只有 3.7 GB，已提醒两个窗口别同时跑 build。
 - Farm out 合作公司的团加子项：Annie 直接派给 59，原话：「帮我做的supplier那里的farm out partner的产品价格和种类里给我在每个tour都设置一个+号，让我可以添加子项，包括名字和价钱，不限添加的数量」。
   - 59 交 preview：https://claude.ai/artifact/4d8mgNzxThLC2FsmDpjwHN （没写代码）。
