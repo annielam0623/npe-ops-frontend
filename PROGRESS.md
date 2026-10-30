@@ -332,6 +332,22 @@
     - 发过的行写淡黄「Sent to … 时间」，键变 Send again；Publish again 后后端清掉，标记都没了。
   - 接口照 preview 暂定（`lib/schedule-api.ts` sendScheduleChanges）：GET 周带 `pending_changes[{employee_id, name, items[{date, before, after}], sent_at, sent_by}]`；POST `/api/schedule/weeks/{ws}/employees/{id}/send-changes` → `{sent_at, sent_by, channels}`；没邮箱 400。
   - 检查：tsc / eslint / build 过；sch 210/210（新加：行上标记、格子框、发送框内容、只有 Send 是蓝色、失败红字、发好绿字 + Sent by、只发本人、Send again、重开还在、Publish again 后清掉、没邮箱、staff 看不到）、nav 32/32。
+  - **2026-10-30 对后端 G217 清单**（工作窗口 `npe-ops-frontend-62`[cd78c4]，主窗口 eb 派；后端 ef 写、57 转，没上 main；worktree `C:\Code\npe-ops-frontend-sched2`）：
+    - 已先合 notify-wording c27ef65。那边改了 has_unsent_changes 对 staff 是 false，主管那件待定。
+    - 形状都对得上，页面代码不用改：
+      - pending_changes `[{employee_id,name,items[{date,before,after}],sent_at,sent_by}]`；
+      - send-changes 回 `{sent_at,sent_by,channels}`；
+      - 错误一律「Could not send: <原话> Nothing was sent.」红字，400 / 409 / 502 / 503 都走这里；
+      - 没邮箱时前端本来就先挡（黄框、Send 灰），和后端 400 原话一致。
+    - 改了：
+      - 类型注释：before / after 的写法（(Pre close)、一天两段用逗号、Time off (PTO|Sick|Personal)）、staff / 草稿 / v128 前是 []、channels 是 ["email"] 或 ["email","in_app"]。
+      - 模拟接口：staff 的 pending_changes 改成 []；没邮箱的原话照后端；加 sendFailStatus（409 等）、sendEmailOnly。
+      - sch 套：失败那条换成后端「没变化」原话；加 409 一条；加只回 email 时绿字写「(email)」一条。
+    - ⏸️ 待定，没改：
+      1. 发送框写死「To: 📧 邮箱 + 🔔 in-app notice」，可是后端可能只回 ["email"]。站内什么时候发不了（比如没登录账号），要问后端，看是不是按条件显示。发好以后的绿字照实际 channels 写，没问题。
+      2. 发送框底下那句「When you publish again, {name} (and their supervisor) still get the normal notice.」和主管那件一起等后端 ef 定。
+      3. 「What {name} gets」引的那段话是前端照 preview 写的，后端真正发的邮件 / 站内文字没给，要对一下。
+    - 检查还没跑（公司新电脑没装 Node）。不合 main，要等后端 G217 上 main。
 - **排班通知「改完再发」前端文字**（9c，`task/schedule-notify-wording`，worktree D:
 pe-ops-frontend-seat）。**等后端 8e 上 main 再合。**
   - Annie 原话：重新发布只发给班有变化的人和他们的主管「同意」；已发布的周改动不逐项发「改完再发」；「改动schedule当然应该是发布的时候通知」（休息日也等 Publish again 一起通知，不单独马上发）。

@@ -240,7 +240,8 @@ function weekPayload(weekData) {
   const out = { ...weekData, gaps: g, published_with_gaps: weekData.status === "published" && g.length > 0, has_unsent_changes: weekData.status === "published" && !!weekData.unsent && ctl.role !== "staff" };
   delete out.unsent;
   delete out.sent;
-  out.pending_changes = pendingChangesOf(weekData);
+  // 后端 G217：只给有 schedule.edit 的人，staff 永远 []。
+  out.pending_changes = ctl.role === "staff" ? [] : pendingChangesOf(weekData);
   delete out.snapshot;
   if (ctl.phase2) {
     const dates = datesOfWeek(weekData.week_start);
@@ -601,13 +602,14 @@ http
       if (ctl.role === "staff") return send(res, 403, { detail: "Only a supervisor or above can send schedule changes." });
       const emp = employees.find((e) => e.id === Number(sendMatch[2]));
       if (!emp) return send(res, 404, { detail: "No such employee." });
-      if (!emp.email) return send(res, 400, { detail: `${emp.name} has no email. Add it in Employees first.` });
-      if (ctl.sendFail) return send(res, 400, { detail: ctl.sendFail });
+      // 错误原话照后端 G217（ef）：400 没邮箱 / 没变化 / 非生产；409 要先 Publish again；502 / 503。ctl.sendFailStatus 默认 400。
+      if (!emp.email) return send(res, 400, { detail: `No email for ${emp.name}. Add it in Employees, then send.` });
+      if (ctl.sendFail) return send(res, ctl.sendFailStatus || 400, { detail: ctl.sendFail });
       const weekData = getOrCreateWeek(sendMatch[1]);
       const at = new Date().toISOString();
       weekData.sent = { ...(weekData.sent || {}), [emp.id]: { at, by: "ZZ Test" } };
       sendLog.push({ week: sendMatch[1], employee_id: emp.id });
-      return send(res, 200, { sent_at: at, sent_by: "ZZ Test", channels: ["email", "in_app"] });
+      return send(res, 200, { sent_at: at, sent_by: "ZZ Test", channels: ctl.sendEmailOnly ? ["email"] : ["email", "in_app"] });
     }
 
     const publishMatch = /^\/api\/schedule\/weeks\/(\d{4}-\d{2}-\d{2})\/publish$/.exec(p);

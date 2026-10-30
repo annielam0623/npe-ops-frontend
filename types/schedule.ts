@@ -152,7 +152,8 @@ export interface ScheduleWeek {
   has_unsent_changes?: boolean;
   /**
    * 已发布的周，每个人和上次发布比改了什么（Annie 10-29「员工确认，同意推荐，动手」：发布前可以单独发给本人确认）。
-   * 只列有改动的人；Publish again 后清空。后端暂定字段，没带 = 后端没上线（不出 Send to confirm）。
+   * 只列有改动的人；Publish again 后清空。没带 = 后端没上线（不出 Send to confirm）。
+   * 后端 G217（ef，10-30 定稿）：只给有 schedule.edit 的人，staff 永远 []；草稿周 []；v128 之前发布的周永远 []。
    */
   pending_changes?: SchedulePendingChange[];
 }
@@ -161,9 +162,12 @@ export interface ScheduleWeek {
 export interface SchedulePendingChange {
   employee_id: number;
   name: string;
-  /** 后端写好的字，例 before「Open 2:00 AM – 12:00 PM」、after「Time off」；新加的 before = null，删掉的 after = null。 */
+  /**
+   * 后端拼好的字，原样显示：例「Open 2:00 AM – 12:00 PM」「Open 2:00 AM – 12:00 PM (Pre close)」，一天两段用逗号连；
+   * 休假「Time off (PTO)」「Time off (Sick)」「Time off (Personal)」。原来没班 before = null，现在没班 after = null。
+   */
   items: { date: string; before: string | null; after: string | null }[];
-  /** 最近一次单独发给本人确认的时间 / 谁发的；没发过 = null。 */
+  /** 最近一次单独发给本人确认的时间 / 谁发的（名字）；没发过 = null。 */
   sent_at: string | null;
   sent_by: string | null;
 }
@@ -172,6 +176,7 @@ export interface SchedulePendingChange {
 export interface ScheduleSendChangesResult {
   sent_at: string;
   sent_by: string;
+  /** 后端 G217：["email"] 或 ["email", "in_app"]。 */
   channels: ("email" | "in_app")[];
 }
 

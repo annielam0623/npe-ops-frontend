@@ -435,13 +435,20 @@ async function run() {
     await evaluate(`const d = ${DLG}; const blues = [...d.querySelectorAll('button')].filter(b => ['rgb(59, 130, 246)', 'rgb(24, 95, 165)'].includes(getComputedStyle(b).backgroundColor)).map(b => b.textContent.trim()); return JSON.stringify(blues) === '["Send to Jing"]';`),
     await evaluate(`const d = ${DLG}; return JSON.stringify([...d.querySelectorAll('button')].map(b => [b.textContent.trim(), getComputedStyle(b).backgroundColor]));`),
   );
-  await ctl({ sendFail: "Jing's email was rejected (mailbox not found)." });
+  // 后端 G217 的原话：400 没变化、409 要先 Publish again（ef，10-30）。
+  await ctl({ sendFail: "Jing's schedule hasn't changed since the last publish, so there is nothing to send.", sendFailStatus: 400 });
   await evaluate(`${DLG}.querySelector('[data-send-changes-go]').click();`);
   check(
-    "发送失败：红字「Could not send: 后端原话 Nothing was sent.」，框还在、可以再按",
-    await waitFor(`(() => { const d = ${DLG}; const e = d.querySelector('[data-send-error]'); return !!e && e.textContent === "Could not send: Jing's email was rejected (mailbox not found). Nothing was sent." && getComputedStyle(e).color === 'rgb(163, 45, 45)' && !d.querySelector('[data-send-changes-go]').disabled; })()`),
+    "发送失败 400：红字「Could not send: 后端原话 Nothing was sent.」，框还在、可以再按",
+    await waitFor(`(() => { const d = ${DLG}; const e = d.querySelector('[data-send-error]'); return !!e && e.textContent === "Could not send: Jing's schedule hasn't changed since the last publish, so there is nothing to send. Nothing was sent." && getComputedStyle(e).color === 'rgb(163, 45, 45)' && !d.querySelector('[data-send-changes-go]').disabled; })()`),
   );
-  await ctl({ sendFail: "" });
+  await ctl({ sendFail: "Publish again first, then send changes.", sendFailStatus: 409 });
+  await evaluate(`${DLG}.querySelector('[data-send-changes-go]').click();`);
+  check(
+    "发送失败 409：红字「Could not send: Publish again first, then send changes. Nothing was sent.」",
+    await waitFor(`(() => { const e = ${DLG}.querySelector('[data-send-error]'); return !!e && e.textContent === 'Could not send: Publish again first, then send changes. Nothing was sent.' && getComputedStyle(e).color === 'rgb(163, 45, 45)'; })()`),
+  );
+  await ctl({ sendFail: "", sendFailStatus: 0 });
   const sendsBefore = (await (await fetch(`${MOCK}/__sends`)).json()).length;
   await evaluate(`${DLG}.querySelector('[data-send-changes-go]').click();`);
   check(
@@ -461,6 +468,14 @@ async function run() {
   await waitFor(`${cell("1|2026-10-04")}`);
   check("重新打开页面：提醒照样在（后端 has_unsent_changes）", await waitFor("!!document.querySelector('[data-unsent-changes]')"));
   check("重新打开页面：Sent to Jing / Send again 照样在（后端 sent_at）", await evaluate(`return (document.querySelector('[data-person-changes="4"]')?.textContent || '').includes('Send again');`));
+  // 后端 G217：channels 也可能只有 ["email"]，绿字照返回的写。
+  await ctl({ sendEmailOnly: true });
+  await evaluate(`document.querySelector('[data-send-to-confirm="4"]').click();`);
+  await waitFor(`${DLG}`);
+  await evaluate(`${DLG}.querySelector('[data-send-changes-go]').click();`);
+  check("Send again、后端只回 email：绿字结尾写 (email)，不写 in-app", await waitFor(`(() => { const ok = ${DLG}?.querySelector('[data-send-ok]'); return !!ok && ok.textContent.endsWith(' (email)'); })()`), await evaluate(`return ${DLG}?.textContent;`));
+  await evaluate(`$btn('Close', ${DLG}).click();`);
+  await ctl({ sendEmailOnly: false });
   await evaluate("$btn('Publish again').click();");
   await waitFor("document.querySelector('[role=dialog]')");
   await evaluate("$btn('Publish again', document.querySelector('[role=dialog]')).click();");
