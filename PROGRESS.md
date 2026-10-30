@@ -200,6 +200,10 @@
     - Risk C，迁移号用 v127 以后；
     - 工作量：后端 2–3 天，前端 1–2 天。
   - Annie 那句「除了 Vegas 每个站点上下车同一个地址」：不用分上车表和下车表。
+  - Annie 又说，原话：「我们已经把shuttle的点加进去了，只是混在一起而已，你就是按字面都可以排出来」。
+    - Shuttle 站已经在 Pickup Locations 里，先在页面上把 tour bus 和 Shuttle 分开。
+    - 已排给 59 出 preview（G203 第四批之后），看纯前端能不能分、要不要后端加字段。
+    - 已告诉 9a：新表方案先别开工。
         - 前端派 9c `task/schedule-publish-anyway`，后端上 main 前不合 main。
         - 后端发 9a：allow_gaps、写日志、空档标记。
 - **Annie 定长期规则：订单流 Order List → Main Manifest → Dispatch / Tracking，不跳过前面直接去 Rezdy 拉单**。
