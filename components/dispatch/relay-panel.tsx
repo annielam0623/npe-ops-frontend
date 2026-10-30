@@ -559,6 +559,8 @@ export function RelayPanel({
       const changed = driversKey(fresh) !== driversKey(drivers);
       setDrivers(fresh);
       setHint(fresh);
+      // 列名单之后有人把司机页关了：Send 键跟着灰掉、旁边出那句，不弹确认框。
+      if (fresh.page_open === false) return;
       const canSend = fresh.people.filter((p) => p.can_send).length;
       if (!canSend) {
         setDriverError(
@@ -627,6 +629,8 @@ export function RelayPanel({
     }
   }
 
+  // G215：司机页开关关着（只有明确 false 才算；旧后端不带这个字段照旧能发）。
+  const pageOff = drivers?.page_open === false;
   const lastText = drivers ? lastSentText(drivers) : null;
   const canText = drivers?.people.filter((p) => p.can_send) ?? [];
   const picked = drivers ? pickedPeople(drivers, skipped) : [];
@@ -717,16 +721,30 @@ export function RelayPanel({
             title="Send to driver"
             sub={`${plural(picked.length, "driver")} selected. ${lastText ?? "Not sent yet for this day."}`}
             action={
-              <button
-                type="button"
-                disabled={
-                  !picked.length || checkingDrivers || disabled || dirty
-                }
-                onClick={() => void askDrivers()}
-                className={RP_BTN_GREEN}
-              >
-                {checkingDrivers ? "Checking…" : "Send texts now"}
-              </button>
+              <span className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1">
+                {pageOff ? (
+                  <span
+                    data-driver-page-off
+                    className="text-[12.5px] text-[#6b7280]"
+                  >
+                    {drivers.page_off_text}
+                  </span>
+                ) : null}
+                <button
+                  type="button"
+                  disabled={
+                    pageOff ||
+                    !picked.length ||
+                    checkingDrivers ||
+                    disabled ||
+                    dirty
+                  }
+                  onClick={() => void askDrivers()}
+                  className={RP_BTN_GREEN}
+                >
+                  {checkingDrivers ? "Checking…" : "Send texts now"}
+                </button>
+              </span>
             }
           >
             {drivers.people.length ? (

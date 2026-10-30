@@ -1,6 +1,6 @@
 // 模拟后端：Settings → Human Resource。控制：POST /__ctl；GET /__log。
 const http = require("http");
-const ctl = { fail401: false, staff: false, supervisor: false, writeForbidden: false, prefMissing: false, schedule: false, bulkErr: false, fail500: false, samsaraDup: false };
+const ctl = { fail401: false, staff: false, supervisor: false, writeForbidden: false, prefMissing: false, schedule: false, bulkErr: false, fail500: false, samsaraDup: false, importFail: false };
 const log = [];
 const blank = {
   legal_name: "", nickname: "", phone: "", personal_email: "", date_of_birth: "",
@@ -42,7 +42,7 @@ function stateOf(p) {
   return { license_expiry_state: p.license_expires ? "ok" : "none", medical_expiry_state: p.medical_card_expires ? "ok" : "none" };
 }
 function previewRow(name, status, extra = {}) {
-  return { ...Object.fromEntries(Object.keys(blank).map((k) => [k, ""])), legal_name: name, status, changed: [], blanked: [], ...extra };
+  return { ...Object.fromEntries(Object.keys(blank).map((k) => [k, ""])), legal_name: name, status, errors: [], before: {}, changed: [], blanked: [], ...extra };
 }
 http.createServer(async (req, res) => {
   const url = new URL(req.url, "http://x");
@@ -126,19 +126,24 @@ http.createServer(async (req, res) => {
     entry.overwrite = overwrite;
     entry.hasFile = /filename="hr\.csv"/.test(raw);
     if (p === "/api/hr/import-commit") {
-      return send(res, 200, { imported: 1, updated: overwrite ? 1 : 0, unchanged: 0, skipped: overwrite ? 0 : 1, skipped_names: overwrite ? [] : ["Bob Guide"], vanished: 0 });
+      if (ctl.importFail) return send(res, 500, { detail: "Database is busy" });
+      // 后端 G220（76de8f3）：commit 多 errors（个数）和 error_rows [{row, message}]；文件里重复的行算 skipped。
+      return send(res, 200, { imported: 1, updated: overwrite ? 1 : 0, unchanged: 0, skipped: 1, skipped_names: overwrite ? ["ZZ Test New"] : ["Bob Guide"], vanished: 0, errors: 1, error_rows: [{ row: 5, message: "Phone number looks wrong." }] });
     }
     const rows = [
-      previewRow("ZZ Test New", "new", { employment_status: "full_time", assignments: "Morning Relay" }),
+      // 后端 G220（76de8f3）的形状：每行带 row（Excel 行号）、errors、before；查不过的行 status "error"、errors 的 field 是 null；
+      // 文件里重复的行照旧 duplicate_in_file，errors 写「Repeated above — skipped.」。
+      previewRow("ZZ Test New", "new", { row: 2, employment_status: "full_time", assignments: "Morning Relay" }),
       overwrite
-        ? previewRow("Bob Guide", "update", { phone: "+1 555", changed: ["phone"], blanked: ["employment_status"] })
-        : previewRow("Bob Guide", "exists", { phone: "+1 555" }),
-      previewRow("ZZ Test New", "duplicate_in_file"),
+        ? previewRow("Bob Guide", "update", { row: 3, phone: "+1 555", changed: ["phone"], blanked: ["employment_status"], before: { phone: "+1 444" } })
+        : previewRow("Bob Guide", "exists", { row: 3, phone: "+1 555" }),
+      previewRow("ZZ Test New", "duplicate_in_file", { row: 4, errors: [{ field: null, message: "Repeated above — skipped." }] }),
+      previewRow("ZZ Test Bad", "error", { row: 5, phone: "555-01", errors: [{ field: null, message: "Phone number looks wrong." }] }),
     ];
     return send(res, 200, {
       rows, headers: ["legal_name", "phone", "employment_status", "assignments"],
       file_columns: ["legal_name", "phone", "employment_status", "assignments"], overwrite,
-      counts: { new: 1, exists: overwrite ? 0 : 1, update: overwrite ? 1 : 0, unchanged: 0, duplicate: 1 },
+      counts: { new: 1, exists: overwrite ? 0 : 1, update: overwrite ? 1 : 0, unchanged: 0, duplicate: 1, error: 1 },
     });
   }
   send(res, 404, { detail: "mock: not found" });

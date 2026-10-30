@@ -360,6 +360,13 @@ export function sendRelayRound(
 
 export interface DriverNotice {
   run_date: string;
+  /**
+   * 司机页开没开（G215，开关 driver_page 设成 staff 才算开）。false：Send texts now 不能点，旁边灰字写 page_off_text，
+   * 后端也拒发（400）。没带这个字段（旧后端）= 照旧能发。
+   */
+  page_open?: boolean;
+  /** 开关关着时 Send 键旁边那句，后端原文。 */
+  page_off_text?: string;
   /** 发给司机的那句短信（只有链接）。 */
   text: string;
   last_sent: { at: string; by: string; label: string } | null;

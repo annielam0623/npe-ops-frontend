@@ -175,6 +175,48 @@ async function partnersChecks() {
     body = (await lastCall("PUT", /\/partners\/1\/rates$/))?.body;
     check("删一个再存：带原来的 id、少了 Senior", JSON.stringify(body.find((r) => r.manifest_id === 10).items.map((it) => [typeof it.id, it.name])) === JSON.stringify([["number", "Lunch"], ["number", "Skywalk ticket"]]), JSON.stringify(body));
     check("How to use 说明 ＋ 子项、不算进应付金额", await evaluate("return $txt().includes('Click ＋ on a tour to add an item under it') && $txt().includes('not added to the amount payable in Dispatch');"));
+
+    // 后端 G221（6a876f79）的几条 400：模拟后端照后端原话回，一条都不写（直接打模拟接口核对）
+    const putRates = async (pid, body) => {
+      const r = await fetch(`${MOCK}/api/farm-out/partners/${pid}/rates`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      return { status: r.status, body: await r.json() };
+    };
+    const getRates = async (pid) => (await fetch(`${MOCK}/api/farm-out/partners/${pid}/rates`)).json();
+    {
+      const b0 = await getRates(2);
+      const withItems = (items) => b0.map((r) => (r.manifest_id === 10 ? { ...r, items } : { manifest_id: r.manifest_id, tour_name: r.tour_name, adult_price: r.adult_price, child_price: r.child_price }));
+      const tries = [
+        [[{ id: null, name: " ", price: 5 }], "Every item on West Rim needs a name."],
+        [[{ id: null, name: "x".repeat(81), price: 5 }], "The item name on West Rim is 81 characters - the limit is 80."],
+        [[{ id: 801, name: "Lunch", price: 15 }, { id: null, name: "LUNCH", price: 5 }], "LUNCH is already on West Rim."],
+        [[{ id: 801, name: "Lunch", price: null }], "Enter a price for Lunch on West Rim."],
+        [[{ id: 999, name: "Water", price: 2 }], "An item in the price list no longer exists. Reload the page and try again."],
+      ];
+      const got = [];
+      for (const [items] of tries) got.push(await putRates(2, withItems(items)));
+      const after = await getRates(2);
+      check("模拟后端照 G221 原话回 400：名字空 / 超过 80 / 同团重名 / 没价钱 / 过期 id，一条都没写", got.every((g, i) => g.status === 400 && g.body.detail === tries[i][1]) && JSON.stringify(after) === JSON.stringify(b0), JSON.stringify(got.map((g) => g.body.detail)));
+    }
+
+    // 过期 id：编辑时别人把 Skywalk ticket 删了 ⇒ 按 Save 红字照后端原话，还在编辑、改的内容留着
+    {
+      const cur = await getRates(1);
+      await putRates(1, cur.map((r) => (r.manifest_id === 10 ? { ...r, items: r.items.filter((it) => it.name !== "Skywalk ticket").map(({ id, name, price }) => ({ id, name, price })) } : { manifest_id: r.manifest_id, tour_name: r.tour_name, adult_price: r.adult_price, child_price: r.child_price })));
+    }
+    await evaluate(`$btn('Edit', ${wr}).click(); return 1;`);
+    await waitFor("$byLabel('West Rim item 2 name')");
+    await evaluate("$set($byLabel('West Rim item 1 price'), '16'); return 1;");
+    await evaluate(`$btn('Save', ${wr}).click(); return 1;`);
+    check("过期 id（别人删了一个子项）：红字照后端原话，还在编辑、改的价钱留着", (await waitFor(`${wr}.querySelector('[role=alert]')?.textContent.includes('An item in the price list no longer exists. Reload the page and try again.')`)) && (await evaluate("return $byLabel('West Rim item 1 price').value === '16' && !!$byLabel('West Rim item 2 name');")), await evaluate(`return ${wr}.querySelector('[role=alert]')?.textContent;`));
+
+    // [] 删光：把子项全 ✕ 掉再存 ⇒ PUT 这个团 items: []，列表里这个团下面没有子项了
+    await evaluate("$byLabel('Remove Lunch').click(); return 1;");
+    await evaluate("$byLabel('Remove Skywalk ticket').click(); return 1;");
+    await waitFor("!$byLabel('West Rim item 1 name')");
+    await evaluate(`$btn('Save', ${wr}).click(); return 1;`);
+    await waitFor(`!$byLabel('West Rim adult price') && !document.querySelector('tr[data-rate-item^="Partner A|West Rim|"]')`);
+    body = (await lastCall("PUT", /\/partners\/1\/rates$/))?.body;
+    check("子项全删光再存：这个团 items: []、别的团不带 items，列表里没有子项了", JSON.stringify(body.find((r) => r.manifest_id === 10).items) === "[]" && !("items" in body.find((r) => r.manifest_id === 11)) && !(await evaluate(`return !!document.querySelector('tr[data-rate-item^="Partner A|West Rim|"]');`)), JSON.stringify(body));
   }
 
   // 展开 Partner A 的上车点
@@ -201,6 +243,131 @@ async function partnersChecks() {
   await sleep(300);
   check("保存后新行拿到后端给的 id（重拉后仍在）", await evaluate("return $byLabel('Hotel name 2').value === 'ZZ Test Hotel';"));
   check("合作公司的上车点和我们的 Pickup Locations 不相关（没请求 /api/pickup-locations）", (await mockLog()).every((l) => !l.path.startsWith("/api/pickup-locations")));
+
+  // ── ⬆ Import 上车点（全站通用导入，Annie 2026-10-29「批量导入同意全部推荐。动手」；后端 G220 第二批 c8c0b739 的形状）──
+  {
+    const sec = "document.querySelector('[aria-label=\"Pick-up locations\"]')";
+    check("Import：Save locations 旁有 ⬆ Import（灰白，不是蓝的）", await evaluate(`const b = $btn('⬆ Import', ${sec}); return !!b && !b.disabled && $bg(b) !== 'rgb(59, 130, 246)';`));
+    await evaluate("$set($byLabel('Spot 1'), 'Changed'); return 1;");
+    check("表里有没存的改动：⬆ Import 灰掉（导入会重读、没存的会丢）", await waitFor(`$btn('⬆ Import', ${sec}).disabled`));
+    await evaluate("$set($byLabel('Spot 1'), 'Underground South Tour Lobby'); return 1;");
+    check("改回去：⬆ Import 又能点", await waitFor(`!$btn('⬆ Import', ${sec}).disabled`));
+    await evaluate(`
+      window.__blob = null; window.__download = null;
+      const orig = URL.createObjectURL;
+      URL.createObjectURL = (b) => { window.__blob = b; return orig(b); };
+      HTMLAnchorElement.prototype.click = function () { window.__download = this.download; };
+      $btn('⬆ Import', ${sec}).click(); return 1;`);
+    await waitFor("document.querySelector('[data-bulk-import]')");
+    await evaluate("$btn('⬇ Download template').click(); return 1;");
+    await waitFor("window.__download");
+    const tpl = await evaluate("return (await window.__blob.text()).replace(/^\\uFEFF/, '');");
+    const lines = tpl.split("\r\n");
+    check("模板：列名同表头、带上这家现有的 2 个上车点、文件名带合作公司名", lines[0] === "Hotel,Spot,Address,Map link" && lines.length === 3 && lines[1].startsWith("Bellagio Hotel,") && (await evaluate("return window.__download;")) === "Partner_A_locations_template.csv", JSON.stringify(lines));
+    let before = (await mockLog()).length;
+    {
+      const { root } = await cdp("DOM.getDocument", { depth: -1, pierce: true });
+      const { nodeId } = await cdp("DOM.querySelector", { nodeId: root.nodeId, selector: "[data-bulk-import] input[type=file]" });
+      await cdp("DOM.setFileInputFiles", { nodeId, files: [`${__dirname.replace(/\\/g, "/")}/fo-locations-import.csv`] });
+    }
+    await waitFor("document.querySelector('[data-bulk-counts]')");
+    let reqs = (await mockLog()).slice(before).filter((e) => e.path.includes("/locations/import/"));
+    check("预览：只调这家的 preview、带文件", reqs.length === 1 && reqs[0].path === "/api/farm-out/partners/1/locations/import/preview" && reqs[0].hasFile, JSON.stringify(reqs));
+    check("预览：New 1 / Will update 1 / No change 1 / Errors 1，栏名同表头", await evaluate("const t = document.querySelector('[data-bulk-counts]').textContent; const h = [...document.querySelectorAll('[data-bulk-import] thead th')].map(th => th.textContent); return t.includes('New: 1') && t.includes('Will update: 1') && t.includes('No change: 1') && t.includes('Errors: 1') && JSON.stringify(h) === JSON.stringify(['Import','Hotel','Spot','Address','Map link']);"));
+    check("预览：Spot 旧 → 新、Map link 错红字", await evaluate("const ch = [...document.querySelectorAll('[data-bulk-changed]')].map(e => e.textContent); const es = [...document.querySelectorAll('[data-bulk-error]')].map(e => e.textContent); return ch.includes('Underground South Tour Lobby → North Valet') && es.includes('The map link for ZZ Bad Link must start with http:// or https:// and have no spaces.');"));
+    await ctl({ importFail: true });
+    await evaluate("$btn('Save 2 rows').click(); return 1;");
+    await waitFor("document.querySelector('[data-bulk-import] [role=alert]')?.textContent.includes('Not saved')");
+    check("存不上（500）：红字照后端原话，后端已经说了没存，不在前面再加 nothing was changed；上车点表没动", await evaluate("const a = document.querySelector('[data-bulk-import] [role=alert]'); return a.textContent === 'Not saved — Could not save. Nothing was changed - try again.' && getComputedStyle(a).color === 'rgb(179, 38, 30)' && $byLabel('Spot 1').value === 'Underground South Tour Lobby';"), await evaluate("return document.querySelector('[data-bulk-import] [role=alert]')?.textContent;"));
+    await ctl({ importFail: false, importConflict: true });
+    await evaluate("$btn('Save 2 rows').click(); return 1;");
+    await waitFor("document.querySelector('[data-bulk-import] [role=alert]')?.textContent.includes('Someone changed')");
+    check("撞上别人改（409）：红字照后端原话、只说一遍，预览留着", await evaluate("const a = document.querySelector('[data-bulk-import] [role=alert]'); return a.textContent === 'Not saved — Someone changed this list while the file was being saved. Nothing was saved — check the preview again.' && !!$btn('Save 2 rows');"), await evaluate("return document.querySelector('[data-bulk-import] [role=alert]')?.textContent;"));
+    await ctl({ importConflict: false });
+    before = (await mockLog()).length;
+    await evaluate("$btn('Save 2 rows').click(); return 1;");
+    await waitFor("document.querySelector('[data-bulk-import] [role=status]')?.textContent.includes('Saved')");
+    check("Save：绿字 Saved — 1 new, 1 updated. 1 row with errors was not saved.；表重读出新酒店、Spot 改了", (await waitFor("$byLabel('Hotel name 3')?.value === 'ZZ Test Import Hotel' && $byLabel('Spot 1').value === 'North Valet'")) && (await evaluate("const s = document.querySelector('[data-bulk-import] [role=status]'); return s.textContent.includes('Saved — 1 new, 1 updated. 1 row with errors was not saved.') && getComputedStyle(s).color === 'rgb(30, 107, 67)';")) && (await mockLog()).slice(before).some((e) => e.path === "/api/farm-out/partners/1/locations/import/commit" && e.hasFile));
+    check("重读后表是存好的样子：⬆ Import 不灰（没有没存的改动）", await evaluate(`return !$btn('⬆ Import', ${sec}).disabled || !!document.querySelector('[data-bulk-import]');`));
+    await evaluate("$btn('Close', document.querySelector('[data-bulk-import]')).click(); return 1;");
+    check("Close：Import 块收起", await waitFor("!document.querySelector('[data-bulk-import]')"));
+    check("How to use 说明 ⬆ Import", await evaluate("return $txt().includes('To change or add many at once, click ⬆ Import');"));
+    // 文件本身有问题：后端 400 一句英文，预览那里红字照原话，没有表、没有 Save
+    await ctl({ importFileError: "Missing column: Hotel" });
+    await evaluate(`$btn('⬆ Import', ${sec}).click(); return 1;`);
+    await waitFor("document.querySelector('[data-bulk-import] input[type=file]')");
+    {
+      const { root } = await cdp("DOM.getDocument", { depth: -1, pierce: true });
+      const { nodeId } = await cdp("DOM.querySelector", { nodeId: root.nodeId, selector: "[data-bulk-import] input[type=file]" });
+      await cdp("DOM.setFileInputFiles", { nodeId, files: [`${__dirname.replace(/\\/g, "/")}/fo-locations-import.csv`] });
+    }
+    check("文件读不了（400）：红字照后端原话，没有预览表、没有 Save", await waitFor("document.querySelector('[data-bulk-import] [role=alert]')?.textContent === 'Missing column: Hotel' && !document.querySelector('[data-bulk-import] table') && ![...document.querySelectorAll('[data-bulk-import] button')].some(b => b.textContent.startsWith('Save'))"), await evaluate("return document.querySelector('[data-bulk-import]')?.textContent;"));
+    await ctl({ importFileError: "" });
+    await evaluate("$btn('Close', document.querySelector('[data-bulk-import]')).click(); return 1;");
+    await waitFor("!document.querySelector('[data-bulk-import]')");
+  }
+
+  // ── ⬆ Import 结算价（全站通用导入，Annie 2026-10-29「批量导入同意全部推荐。动手」；后端 G220 第二批 c8c0b739 的形状）──
+  {
+    const card = "[...document.querySelectorAll('section')].find(s => s.querySelector('h2')?.textContent.includes('Partners & rates'))";
+    check("Import：Partners & rates 卡头有 ⬆ Import（灰白，不是蓝的）", await evaluate(`const b = $btn('⬆ Import', ${card}); return !!b && !b.disabled && $bg(b) !== 'rgb(59, 130, 246)';`));
+    await evaluate(`$btn('Edit', ${rrow("Partner A", "Zion")}).click(); return 1;`);
+    check("正在改一个团的价：⬆ Import 灰掉", await waitFor(`$btn('⬆ Import', ${card}).disabled`));
+    await evaluate(`$btn('Cancel', ${rrow("Partner A", "Zion")}).click(); return 1;`);
+    check("Cancel 后：⬆ Import 又能点", await waitFor(`!$btn('⬆ Import', ${card}).disabled`));
+    await evaluate(`
+      window.__blob = null; window.__download = null;
+      const orig = URL.createObjectURL;
+      URL.createObjectURL = (b) => { window.__blob = b; return orig(b); };
+      HTMLAnchorElement.prototype.click = function () { window.__download = this.download; };
+      $btn('⬆ Import', ${card}).click(); return 1;`);
+    await waitFor("document.querySelector('[data-bulk-import]')");
+    await evaluate("$btn('⬇ Download template').click(); return 1;");
+    await waitFor("window.__download");
+    const tpl = await evaluate("return (await window.__blob.text()).replace(/^\\uFEFF/, '');");
+    const lines = tpl.split("\r\n");
+    check("模板：Partner / Tour / Adult / Child，每家每个团一行带现在的价（前面改过的价、新加的公司没设的空着）", lines[0] === "Partner,Tour,Adult,Child" && lines.includes("Partner A,West Rim,105,95.5") && lines.includes("Partner A,Zion,120,") && lines.includes("ZZ Test Partner,Zion,,") && lines.length === 7 && (await evaluate("return window.__download;")) === "farm_out_rates_template.csv", JSON.stringify(lines));
+    let before = (await mockLog()).length;
+    {
+      const { root } = await cdp("DOM.getDocument", { depth: -1, pierce: true });
+      const { nodeId } = await cdp("DOM.querySelector", { nodeId: root.nodeId, selector: "[data-bulk-import] input[type=file]" });
+      await cdp("DOM.setFileInputFiles", { nodeId, files: [`${__dirname.replace(/\\/g, "/")}/fo-rates-import.csv`] });
+    }
+    await waitFor("document.querySelector('[data-bulk-counts]')");
+    let reqs = (await mockLog()).slice(before).filter((e) => e.path.startsWith("/api/farm-out/rates/import/"));
+    check("预览：只调 preview、带文件", reqs.length === 1 && reqs[0].path === "/api/farm-out/rates/import/preview" && reqs[0].hasFile, JSON.stringify(reqs));
+    check("预览：New 0 / Will update 2 / No change 1 / Errors 2，栏名 Partner / Tour / Adult / Child", await evaluate("const t = document.querySelector('[data-bulk-counts]').textContent; const h = [...document.querySelectorAll('[data-bulk-import] thead th')].map(th => th.textContent); return t.includes('New: 0') && t.includes('Will update: 2') && t.includes('No change: 1') && t.includes('Errors: 2') && JSON.stringify(h) === JSON.stringify(['Import','Partner','Tour','Adult','Child']);"));
+    check("预览：价钱 旧 → 新（没设的旧值写 —）、对不上的合作公司和不是数字的红字", await evaluate("const ch = [...document.querySelectorAll('[data-bulk-changed]')].map(e => e.textContent); const es = [...document.querySelectorAll('[data-bulk-error]')].map(e => e.textContent); return ch.includes('105.00 → 109.00') && ch.includes('— → 120.00') && es.includes('No partner called “Partner Z”.') && es.includes('The adult price must be a number such as 45 or 45.50.');"));
+    await ctl({ importFail: true });
+    await evaluate("$btn('Save 2 rows').click(); return 1;");
+    await waitFor("document.querySelector('[data-bulk-import] [role=alert]')?.textContent.includes('Not saved')");
+    check("存不上：红字 Not saved — nothing was changed，列表价钱没动", await evaluate(`const a = document.querySelector('[data-bulk-import] [role=alert]'); return a.textContent.startsWith('Not saved — nothing was changed.') && getComputedStyle(a).color === 'rgb(179, 38, 30)' && ${rrow("Partner A", "West Rim")}.textContent.includes('105');`));
+    await ctl({ importFail: false, importConflict: true });
+    await evaluate("$btn('Save 2 rows').click(); return 1;");
+    await waitFor("document.querySelector('[data-bulk-import] [role=alert]')?.textContent.includes('Someone changed')");
+    check("撞上别人改（409）：红字照后端原话、只说一遍，预览留着", await evaluate("const a = document.querySelector('[data-bulk-import] [role=alert]'); return a.textContent === 'Not saved — Someone changed this list while the file was being saved. Nothing was saved — check the preview again.' && !!$btn('Save 2 rows');"), await evaluate("return document.querySelector('[data-bulk-import] [role=alert]')?.textContent;"));
+    await ctl({ importConflict: false });
+    before = (await mockLog()).length;
+    await evaluate("$btn('Save 2 rows').click(); return 1;");
+    await waitFor("document.querySelector('[data-bulk-import] [role=status]')?.textContent.includes('Saved')");
+    check("Save：绿字 Saved — 2 updated. 2 rows with errors were not saved.；列表静悄悄重拉出新价、上车点还展开着", (await waitFor(`${rrow("Partner A", "West Rim")}.textContent.includes('109') && ${rrow("Partner A", "Zion")}.textContent.includes('120')`)) && (await evaluate("const s = document.querySelector('[data-bulk-import] [role=status]'); return s.textContent.includes('Saved — 2 updated. 2 rows with errors were not saved.') && getComputedStyle(s).color === 'rgb(30, 107, 67)' && !!document.querySelector('[aria-label=\"Pick-up locations\"]');")) && (await mockLog()).slice(before).some((e) => e.path === "/api/farm-out/rates/import/commit" && e.hasFile));
+    await evaluate("$btn('Close', document.querySelector('[data-bulk-import]')).click(); return 1;");
+    check("Close：Import 块收起", await waitFor("!document.querySelector('[data-bulk-import]')"));
+    check("How to use 说明 ⬆ Import 改价", await evaluate("return $txt().includes('To change many prices at once');"));
+    // 文件本身有问题：后端 400 一句英文，预览那里红字照原话，没有表、没有 Save
+    await ctl({ importFileError: "Missing column: Partner" });
+    await evaluate(`$btn('⬆ Import', ${card}).click(); return 1;`);
+    await waitFor("document.querySelector('[data-bulk-import] input[type=file]')");
+    {
+      const { root } = await cdp("DOM.getDocument", { depth: -1, pierce: true });
+      const { nodeId } = await cdp("DOM.querySelector", { nodeId: root.nodeId, selector: "[data-bulk-import] input[type=file]" });
+      await cdp("DOM.setFileInputFiles", { nodeId, files: [`${__dirname.replace(/\\/g, "/")}/fo-rates-import.csv`] });
+    }
+    check("文件读不了（400）：红字照后端原话，没有预览表、没有 Save", await waitFor("document.querySelector('[data-bulk-import] [role=alert]')?.textContent === 'Missing column: Partner' && !document.querySelector('[data-bulk-import] table') && ![...document.querySelectorAll('[data-bulk-import] button')].some(b => b.textContent.startsWith('Save'))"), await evaluate("return document.querySelector('[data-bulk-import]')?.textContent;"));
+    await ctl({ importFileError: "" });
+    await evaluate("$btn('Close', document.querySelector('[data-bulk-import]')).click(); return 1;");
+    await waitFor("!document.querySelector('[data-bulk-import]')");
+  }
 
   // 改名 / 停用
   await evaluate("$btn('Rename', $row('Partner B')).click(); return 1;");

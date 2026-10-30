@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { describeError, isStatus } from "@/lib/api-errors";
 import {
@@ -12,6 +12,7 @@ import {
   type ShuttleGroupOption,
   type ShuttleRoute,
 } from "@/lib/shuttle-routes-api";
+import { useLeaveGuard } from "@/lib/use-leave-guard";
 import { cn } from "@/lib/utils";
 
 import { SHUTTLE_SUBJECT_NOTE, SHUTTLE_VARS } from "./fields";
@@ -51,6 +52,21 @@ export function ShuttleRoutesPanel({
   const [reloadKey, setReloadKey] = useState(0);
   const onUnauthorizedRef = useRef(onUnauthorized);
   onUnauthorizedRef.current = onUnauthorized;
+  // 改了还没存的线路名（A7）：离开页面先问。
+  const [dirtyIds, setDirtyIds] = useState<ReadonlySet<number>>(new Set());
+  const onDirty = useCallback((id: number, dirty: boolean) => {
+    setDirtyIds((cur) => {
+      if (cur.has(id) === dirty) return cur;
+      const next = new Set(cur);
+      if (dirty) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }, []);
+  useLeaveGuard(
+    dirtyIds.size > 0,
+    "A route name you changed is not saved yet. Leave without saving?",
+  );
 
   useEffect(() => {
     const controller = new AbortController();
@@ -111,9 +127,11 @@ export function ShuttleRoutesPanel({
         Routes
       </div>
       <p className="mb-3 text-[11px] leading-[1.5] text-[#6B5E57] night:text-white/65">
-        A route is one shuttle group and direction (outbound / inbound).
-        Renaming a route only changes the name shown here — it does not move or
-        lose any saved text. There is no delete; switch Active off instead.
+        A route is one shuttle group and direction (outbound / inbound). To
+        rename a route, change the name and click Save next to it (or press
+        Enter); Esc puts the old name back. Renaming only changes the name shown
+        here — it does not move or lose any saved text. There is no delete;
+        switch Active off instead.
       </p>
 
       {routes.map((r) => (
@@ -126,6 +144,7 @@ export function ShuttleRoutesPanel({
             )
           }
           onUnauthorized={onUnauthorizedRef.current}
+          onDirty={onDirty}
         />
       ))}
       <AddRouteForm
@@ -197,19 +216,32 @@ function RouteRow({
   route,
   onSaved,
   onUnauthorized,
+  onDirty,
 }: {
   route: ShuttleRoute;
   onSaved: (r: ShuttleRoute) => void;
   onUnauthorized: () => void;
+  onDirty: (id: number, dirty: boolean) => void;
 }) {
   const [label, setLabel] = useState(route.label);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [savedFlash, setSavedFlash] = useState(false);
   useEffect(() => setLabel(route.label), [route.label]);
+  const dirty = label.trim() !== route.label;
+  useEffect(() => {
+    onDirty(route.id, dirty);
+  }, [route.id, dirty, onDirty]);
+  useEffect(() => () => onDirty(route.id, false), [route.id, onDirty]);
 
+  /** 线路名（自动保存盘点 A7，Annie「4项全部动手」）：按 Save 或 Enter 才存，离开框不存；Esc 放回原名。 */
   async function saveLabel() {
     const next = label.trim();
-    if (!next || next === route.label) {
+    if (!next) {
+      setError("Type a name for this route.");
+      return;
+    }
+    if (next === route.label) {
       setLabel(route.label);
       return;
     }
@@ -217,13 +249,15 @@ function RouteRow({
     setError("");
     try {
       onSaved(await updateShuttleRoute(route.id, { label: next }));
+      setSavedFlash(true);
+      setTimeout(() => setSavedFlash(false), 1400);
     } catch (e) {
       if (isStatus(e, 401)) {
         onUnauthorized();
         return;
       }
-      setLabel(route.label);
-      setError(describeError(e));
+      // 失败：打的字留着，红字写原因，可以再按 Save。
+      setError(`Not saved: ${describeError(e)}`);
     } finally {
       setBusy(false);
     }
@@ -249,19 +283,45 @@ function RouteRow({
     <div className="mb-2.5 overflow-hidden rounded-[10px] border border-black/10 bg-paper night:border-white/10 night:bg-white/[.04]">
       <div className="flex items-start justify-between gap-2.5 px-3.5 pt-2.5 pb-2.5">
         <div className="min-w-0 flex-1">
-          <input
-            type="text"
-            aria-label={`Rename ${route.label}`}
-            value={label}
-            disabled={busy}
-            onChange={(e) => setLabel(e.target.value)}
-            onBlur={() => void saveLabel()}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") e.currentTarget.blur();
-              if (e.key === "Escape") setLabel(route.label);
-            }}
-            className="w-full border-0 bg-transparent p-0 text-[12px] font-semibold text-[#1a1a1a] focus:outline-none night:text-white/90"
-          />
+          <span className="flex items-center gap-2">
+            <input
+              type="text"
+              aria-label={`Rename ${route.label}`}
+              value={label}
+              disabled={busy}
+              onChange={(e) => {
+                setLabel(e.target.value);
+                setError("");
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void saveLabel();
+                if (e.key === "Escape") {
+                  setLabel(route.label);
+                  setError("");
+                }
+              }}
+              className="min-w-0 flex-1 border-0 bg-transparent p-0 text-[12px] font-semibold text-[#1a1a1a] focus:outline-none night:text-white/90"
+            />
+            {dirty || busy ? (
+              <button
+                type="button"
+                data-route-save
+                disabled={busy}
+                onClick={() => void saveLabel()}
+                className="shrink-0 cursor-pointer rounded-md border border-[#3b82f6] bg-[#3b82f6] px-2.5 py-[2px] text-[11px] font-bold text-white disabled:cursor-default disabled:opacity-50"
+              >
+                {busy ? "Saving…" : "Save"}
+              </button>
+            ) : savedFlash ? (
+              <span
+                role="status"
+                data-route-saved
+                className="shrink-0 text-[11px] font-semibold text-[#047857] night:text-emerald-300"
+              >
+                Saved
+              </span>
+            ) : null}
+          </span>
           <div className="mt-px font-mono text-[10px] text-[#1a1a1a]/45 night:text-white/35">
             {route.group_display_name} · {route.direction}
           </div>
@@ -277,7 +337,10 @@ function RouteRow({
         </label>
       </div>
       {error ? (
-        <p className="px-3.5 pb-2 text-[11px] text-[#dc2626] night:text-red-300">
+        <p
+          role="alert"
+          className="px-3.5 pb-2 text-[11px] text-[#dc2626] night:text-red-300"
+        >
           {error}
         </p>
       ) : null}

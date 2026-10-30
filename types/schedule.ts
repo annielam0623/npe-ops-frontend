@@ -144,6 +144,12 @@ export interface ScheduleWeek {
   gaps: ScheduleGap[];
   /** 已发布、而且现在还有空档（后端 d2bc2cf）。gaps 照旧给所有能打开的人，staff 不显示由前端按角色藏。 */
   published_with_gaps?: boolean;
+  /**
+   * 已发布的周改过、还没按 Publish again（Annie 10-29「改完再发」：改动不逐项通知，Publish again 时一次发给班有变化的人和主管）。
+   * 后端 G217（ef，10-30 定稿）：只给有 schedule.edit 的人，staff 永远 false；草稿周 false；v128 之前发布的周只看时段。
+   * 没带（后端没上线）时前端只记这一次打开页面以后的改动。
+   */
+  has_unsent_changes?: boolean;
 }
 
 /** POST /api/schedule/weeks/{week_start}/publish 发布成功的返回体。 */
@@ -156,7 +162,17 @@ export interface SchedulePublishResult {
   republished?: boolean;
   /** 发布那一刻的空档（Publish anyway 时非空）。 */
   gaps?: ScheduleGap[];
+  /** Publish again 时只有班有变化的员工（后端 G217）；首次发布是这周排了班的人。 */
   notified: ScheduleNotified[];
+  /**
+   * 收到通知的主管层（后端 G217 ef，10-30；审查 SA-1 收窄）：在用的 supervisor / admin 里勾了 schedule.edit 的，superadmin 不看勾；去掉按的人自己；有人变了才有。
+   * 首次发布或没人变化时 []；本人的班也变了的只算在 notified 里。没带 = 后端没上线。
+   */
+  notified_supervisors?: {
+    user_id: number;
+    name: string;
+    channels: string[];
+  }[];
 }
 
 export interface ScheduleNotified {
