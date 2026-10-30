@@ -69,6 +69,7 @@
   - 后端 20 报：版式下拉加第四项 'west'（显示 West Rim），Annie 10-29 定西峡用。
     - 列序：Order # / Time / Hotel / Phone / Last Name / First Name / Pax / Quantities / Special Requirements。没有 ✓ 列；排了餐厅才出 Lunch，放在 Special Requirements 左边。
     - 后端要等 Annie 执行 migrate_v126 才推 main。已转 9c 加进分支。
+    - ✅ 9c 已加进分支（8f85141，没合 main）：mf 162、man 320；tsc 0，eslint 0 错，build 过。打印和下载要等 20 上线。
   - Annie 改 Bus Manifest 保存方式（经 9a 转），原话：「哦，下拉菜单用缓存不会么，点击save再一起存啊」。
     - 版式下拉和当天字号改了先不存，按 Save 一起存。后端不用改。
     - 已派 9c 出小 preview，同时问三条：离开拦、10 分钟自动存、Saved 用绿色。等 Annie「动手」。
