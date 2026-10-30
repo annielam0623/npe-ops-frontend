@@ -162,6 +162,7 @@
 - 本地连真实后端，**数据是生产数据**。
 - 新建 / 编辑 / 删除只动名字以 `ZZ Test` 开头的记录。
 - 发送类页面（Tickets / Morning / Tour 发送等）只用 Annie 提供的、只含她本人信息的文件。
+- 测试要用到收件邮箱的（ZZ Test 员工、生产上走一遍的通知等），一律用 azhou@nationalparkexpress.com（Annie 2026-10-30：「所有测试都用这个邮箱，记住了」）。
 - 不连真实后端时，用模拟接口 + headless Chrome 跑检查，把检查项和结果写进 PROGRESS.md。
 
 ## 下班交接
