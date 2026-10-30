@@ -46,6 +46,7 @@ import type {
   ScheduleEmployeeInput,
   ScheduleEmployeeUpdate,
   ScheduleGap,
+  SchedulePendingChange,
   SchedulePublishBlockedError,
   ScheduleSettings,
   ScheduleShiftType,
@@ -61,6 +62,7 @@ import { RulesView } from "./rules-view";
 import { CARD, CARD_HEADER, ICON_BTN, MUTED } from "./config";
 import { DayTimeline } from "./day-timeline";
 import { ScheduleLockedPanel } from "./lock-panel";
+import { SendChangesDialog } from "./send-changes-dialog";
 import { ResponsesCard } from "./responses-card";
 import { TimePicker } from "./time-picker";
 import { useScheduleEditLock } from "./use-schedule-edit-lock";
@@ -115,6 +117,18 @@ export function ScheduleView() {
     date: string;
   } | null>(null);
   const timelineRef = useRef<HTMLElement>(null);
+  /** 正在单独发给哪个人确认（Annie 10-29「员工确认」）。 */
+  const [sendingTo, setSendingTo] = useState<number | null>(null);
+  /** 发送成功后 +1：Responses 卡重拉（后端会把原来 Looks good 的人重置成 No answer，G217）。 */
+  const [responsesKey, setResponsesKey] = useState(0);
+  /** Responses 卡读到的每人回应（员工 id → answer）；发送框据此提醒「发送会重置 Looks good」（Annie 10-30 第 7b 条）。 */
+  const [responseAnswers, setResponseAnswers] = useState<
+    ReadonlyMap<number, string>
+  >(() => new Map());
+  // 换周先清空，免得拿上一周的回应（新的一周读到了 Responses 卡会再报上来）。
+  useEffect(() => {
+    setResponseAnswers(new Map());
+  }, [weekStart]);
   /** 这一次打开页面以后改过、还没 Publish again 的已发布周（后端没带 has_unsent_changes 时用）。 */
   const [unsentWeek, setUnsentWeek] = useState<string | null>(null);
   const [publishBanner, setPublishBanner] = useState<string | null>(null);
@@ -427,14 +441,17 @@ export function ScheduleView() {
       const result = await publishScheduleWeek(weekStart, { allowGaps });
       setConfirmingPublish(false);
       setPublishBlockedGaps(null);
-      // 重新发布只通知班有变化的人 + 主管层（后端 G217 ef：勾了 schedule.edit 的 supervisor / admin，superadmin 不看勾，去掉按的人自己）；
-      // 一个都没变就写明没人收到，不写「Notified 0 people」。主管 0 人时不写后半句。
+      // 重新发布只通知班有变化的人 + 能改排班的人（Annie 2026-10-30 10a「你别管是谁，我选谁就是谁，最关键是有没有这个功能，
+      // 而不是这个职位」：按 schedule.edit 权限，不提职位；后端 notified_supervisors 就是这些人，去掉按的人自己）。
+      // 一个都没变就写明没人收到，不写「Notified 0 people」。能改排班的人 0 个时不写后半句。
       const n = result.notified.length;
       const m = result.notified_supervisors?.length ?? 0;
       setPublishBanner(
         result.republished && n === 0
           ? "Published again. No one's shifts or time off changed, so no one was notified."
-          : `${result.republished ? "Published again" : "Published"}. Notified ${n} ${n === 1 ? "person" : "people"}${m ? ` and ${m} ${m === 1 ? "supervisor" : "supervisors"}` : ""}.`,
+          : result.republished
+            ? `Published again. Notified ${n} ${n === 1 ? "staff member" : "staff"}${m ? ` and ${m} ${m === 1 ? "schedule editor" : "schedule editors"}` : ""}.`
+            : `Published. Notified ${n} ${n === 1 ? "person" : "people"}.`,
       );
       setUnsentWeek(null);
       void loadWeek();
@@ -617,6 +634,13 @@ export function ScheduleView() {
               // 空档提示只给能改排班的人（Annie Q3：staff 看不到）。
               gapsByDay={canEdit ? gapDays : undefined}
               onGapDay={jumpToDay}
+              // 发布前单独发给本人确认：supervisor 及以上（能改排班的人），只在已发布的周。
+              pendingChanges={
+                canEdit && readyWeek?.status === "published"
+                  ? readyWeek.pending_changes
+                  : undefined
+              }
+              onSendChanges={setSendingTo}
             />
 
             {/* 周三确认下周排班的回应（Annie 2026-10-19）：接口没上线 / 这一周没发过确认就整块不显示。 */}
@@ -629,6 +653,8 @@ export function ScheduleView() {
                 employees={activeEmployees}
                 slots={readyWeek.slots}
                 shiftTypes={settings.shift_types}
+                reloadKey={responsesKey}
+                onAnswers={setResponseAnswers}
                 onChanged={() => void loadWeek(undefined, true)}
                 onUnauthorized={redirectToLogin}
                 beforeEdit={guardEdit}
@@ -737,6 +763,31 @@ export function ScheduleView() {
         />
       ) : null}
 
+      {sendingTo != null && readyWeek
+        ? (() => {
+            const emp = employees.find((e) => e.id === sendingTo);
+            const change = readyWeek.pending_changes?.find(
+              (p) => p.employee_id === sendingTo,
+            );
+            return emp && change ? (
+              <SendChangesDialog
+                weekStart={weekStart}
+                weekLabel={weekRangeLabel(weekStart)}
+                employee={emp}
+                change={change}
+                answeredLooksGood={
+                  responseAnswers.get(sendingTo) === "accepted"
+                }
+                onClose={() => setSendingTo(null)}
+                onSent={() => {
+                  void loadWeek(undefined, true);
+                  setResponsesKey((k) => k + 1);
+                }}
+                onUnauthorized={redirectToLogin}
+              />
+            ) : null;
+          })()
+        : null}
       {confirmingPublish ? (
         <ConfirmDialog
           title={
@@ -778,8 +829,8 @@ export function ScheduleView() {
           <p>
             {readyWeek?.status === "published"
               ? // 重新发布（Annie 10-29）：只通知班或休息日有变化的人 + 主管层；休息日也不单独马上发（「改动schedule当然应该是发布的时候通知」）。
-                // 主管 = 在用的 supervisor / admin 里勾了 schedule.edit 的，superadmin 不看勾；去掉按的人自己（后端 G217 ef 10-30，审查 SA-1 收窄）。
-                "People whose shifts or time off changed since the last publish will get a system notification and an email. Supervisors and admins who can edit the schedule (except you) get a notice listing the changes. No one else is notified. This can't be undone."
+                // 按权限不按职位（Annie 10-30 10a）：勾了 schedule.edit 的人都通知，去掉按的人自己。
+                "People whose shifts or time off changed since the last publish will get a system notification and an email. People who can edit the schedule (except you) get a notice listing the changes. No one else is notified. This can't be undone."
               : "Everyone scheduled this week will get a system notification and an email. This can't be undone."}
             {gaps.length
               ? " Publishing with a gap is written in the Action Log."
@@ -1263,7 +1314,7 @@ function PublishControl({
             : list.length
               ? "There is a gap in coverage. You can still publish: you will be asked to confirm."
               : republish
-                ? "Publish again: people whose shifts or time off changed, and supervisors and admins who can edit the schedule, are notified."
+                ? "Publish again: people whose shifts or time off changed, and people who can edit the schedule, are notified."
                 : undefined
         }
         className={DARK_PRIMARY_BUTTON_CLASS}
@@ -1291,6 +1342,8 @@ function WeekBody({
   onRetry,
   gapsByDay,
   onGapDay,
+  pendingChanges,
+  onSendChanges,
 }: {
   state: WeekState;
   weekStart: string;
@@ -1318,6 +1371,8 @@ function WeekBody({
   onRetry: () => void;
   gapsByDay?: Map<string, ScheduleGap[]>;
   onGapDay?: (date: string) => void;
+  pendingChanges?: SchedulePendingChange[];
+  onSendChanges?: (employeeId: number) => void;
 }) {
   if (state.kind === "loading") {
     return (
@@ -1365,6 +1420,8 @@ function WeekBody({
         onDeleteTimeOff={onDeleteTimeOff}
         gapsByDay={gapsByDay}
         onGapDay={onGapDay}
+        pendingChanges={pendingChanges}
+        onSendChanges={onSendChanges}
       />
     </section>
   );

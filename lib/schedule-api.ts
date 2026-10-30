@@ -6,6 +6,7 @@ import type {
   ScheduleEmployeesResponse,
   ScheduleOk,
   SchedulePublishResult,
+  ScheduleSendChangesResult,
   ScheduleSettings,
   ScheduleShiftType,
   ScheduleSlot,
@@ -202,5 +203,19 @@ export function publishScheduleWeek(
     opts.allowGaps
       ? { method: "POST", body: { allow_gaps: true } }
       : { method: "POST" },
+  );
+}
+
+/**
+ * 发布前把这个人改动的班单独发给本人确认（Annie 2026-10-29「员工确认，同意推荐，动手」）。只发本人，不发主管；
+ * 正式 Publish again 时照样再发。没有邮箱回 400 原话。形状照 preview https://claude.ai/artifact/NfWdfaxPUSS6SR8PGmxNrv 暂定。
+ */
+export function sendScheduleChanges(
+  weekStart: string,
+  employeeId: number,
+): Promise<ScheduleSendChangesResult> {
+  return apiFetch<ScheduleSendChangesResult>(
+    `/api/schedule/weeks/${weekStart}/employees/${employeeId}/send-changes`,
+    { method: "POST" },
   );
 }
