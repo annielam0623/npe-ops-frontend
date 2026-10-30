@@ -1318,8 +1318,9 @@ async function runTicks() {
     ["开关关着、员工勾了 ⇒ 照旧都不能", "staff", false, ALL, false, false, false],
   ];
   for (const [name, role, switchOn, codes, edit, add, publish] of CASES) {
-    await ctl({ role, meName: "", tick: { switchOn, codes: [...BASE, ...codes] } });
-    await goto(`${APP}/schedule?week=2027-01-03`);
+    await ctl({ fail401: false, rulesMissing: false, changesLocked: false, inactiveEmployee: 0, role, meName: "", tick: { switchOn, codes: [...BASE, ...codes] } });
+    // 2026-09-27：已发布、没有空档（有空档时只有 admin 能发布，会把「按勾」和「空档」混在一起）。
+    await goto(`${APP}/schedule?week=2026-09-27`);
     await waitFor("[...document.querySelectorAll('button')].some((b) => b.textContent.trim() === 'Next week')");
     await sleep(800);
     const got = await evaluate(`

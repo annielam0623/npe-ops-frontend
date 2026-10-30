@@ -463,7 +463,7 @@ async function runTicks() {
     ["开关关着、员工勾了 ⇒ 照旧不能改（这一页只给主管及以上）", { staff: true }, false, [...VIEW, "settings.hr.edit"], false],
   ];
   for (const [name, who, switchOn, codes, edit] of CASES) {
-    await ctl({ staff: false, supervisor: false, superadmin: false, ...who, tick: { switchOn, codes } });
+    await ctl({ fail401: false, staff: false, supervisor: false, superadmin: false, ...who, tick: { switchOn, codes } });
     await goto(`${APP}/settings/hr`);
     await waitFor("document.querySelector('main') && (document.body.textContent.includes('No access') || document.querySelectorAll('main table tbody tr').length > 0)");
     await sleep(600);

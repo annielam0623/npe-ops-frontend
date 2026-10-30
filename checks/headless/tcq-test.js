@@ -390,7 +390,7 @@ async function runTicks() {
     ["开关关着、员工勾了 ⇒ 照旧没有", "staff", false, ["quotation.rates_edit"], false],
   ];
   for (const [name, role, switchOn, codes, link] of CASES) {
-    await ctl({ role, tick: { switchOn, codes: [...BASE, ...codes] } });
+    await ctl({ unauth: false, role, tick: { switchOn, codes: [...BASE, ...codes] } });
     await open(ITEM, READY);
     await sleep(300);
     const got = await evaluate("return [...document.querySelectorAll('a')].some((a) => a.getAttribute('href') === '/settings/transfer-charter');");
