@@ -76,6 +76,27 @@
   - 等等。
   觉得键太多，可以改成按大块分。
 
+## 2026-10-30 Bus Manifest 对后端最终接口形状（`task/bus-manifest-versions-fe-e6`，工作窗口 `npe-ops-frontend-e6`[047d88]，主窗口 eb 派工）
+
+- **情况**：`task/bus-manifest-versions-fe` 的 5a14bc3 昨晚已经合进 main（6be2334），整页 Save 800358f 是在它之后做的。
+  所以不用再合分支，改成在最新 main 上对后端 156ae23 的接口形状（`git show 156ae23:tasks/ACTIVE.md`「接口形状」，另外看了 routers/tour_manifest.py、services/manifest_text_size.py）。
+- **逐个字段对，和前端一致**：
+  - GET 部分：`tour.manifest_version`（general / lankun / marcello / west）、`tour.lunch_column`；客人的 `hotel_short` / `pickup_time_short` / `lunch_slots`（null 写「-」）/ `lunch_mismatch`；每车的 `lunch_mismatch_orders` {order_number, guest, pax, lunch_text, bus_label, tour}；`restaurant`（只 Lankun 有，{name, title, footer_lines, totals{beef,turkey,veggie,total}}）；`text_size` {page, columns, rows}；`text_size_history` [{by, at, what}]。
+  - PUT `/api/dispatch/manifest/version` {tour, version} → {ok, version}。
+  - PUT `/api/dispatch/manifests/text-size` {tour_manifest_id, bus_label, text_size} → {ok, text_size, text_size_history}。前端不用这个返回，存完会整页重读。
+  - d 的范围 −2..+10 和前端 TEXT_MIN / TEXT_MAX 一致；前端用到的列键都在后端 COLUMN_KEYS 里（MANIFEST_COLUMNS 的键 + lunch）。
+- **只有一处出入，已改**：后端整行字号只收「这台车上现在的订单号」，否则 400「That booking is not on this bus any more」。
+  - 原来整页 Save 的顺序是先存字号、后存换车：客人换到新车、又在新车上调了那一行，按 Save 新车的字号会 400；从原车换走的单，整行设定也照样送给原车。
+  - 改法（[manifest-view.tsx](components/dispatch-manifest/manifest-view.tsx) `savePending`）：先存换车，再存字号；每台车只送换车后还在这台车上的订单号的整行（换车没存上的按原车算）。样子不变。
+- 模拟接口 mf-mock 的 text-size 照后端补了两条 400 校验：列键不认识、订单不在这台车上。
+- mf-test 加了三项：先 guest-bus 后 text-size；B 车带 CHD3 整行、A 车不带；绿字 Saved、没有红字。跑完把模拟后端放回原样。
+- Lunch 不符提醒 / Save before printing? 的先后：main 上已经是先问存、存完用重读的数据再出餐不符框，没动。
+- ✅ 检查（合了最新 main 之后，Node v26.13.0）：
+  - mf 185/185、man 322/322、pl 48/48、nav 32/32；
+  - tsc 0 错；eslint 0 错、2 个警告（public/window-hscroll.js 原有的）；build 过。
+  - eb 核对过，合 main。
+  - 注：npm 11 的 `npm ci` 拦了 unrs-resolver 的 postinstall（提示 `npm install-scripts approve`），没批；tsc / eslint / build / 检查都不受影响。
+
 ## 2026-10-30 主窗口 `npe-ops-frontend-eb`[ba40bc] 开工核对（公司电脑）
 
 - Annie 指定 eb 当今天的前端主窗口。本地 main 原来落后 151 个提交，已 pull 到 6cf0b40，工作区干净。
