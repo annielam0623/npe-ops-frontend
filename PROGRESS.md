@@ -61,6 +61,19 @@
   - 和 b0 定稿对过，只差改名。删在用季节回 409，页面原来就按红字处理，所以只补了模拟接口和 pl 套 1 条。
   - How to use 顺手改了第一条：Add 时要勾类别，「All Locations」改成「the list」。
   - 等两样：Node（跑检查），后端 G211 上 main（才合 main）。62 手上两个分支都停着。
+- 后端 57 转 G217 排班「改完再发」下游清单（ef 写的）：代码写完、测试绿，**还没上 main**，接口照前端 mock（f5e9486 / c5a3619）。
+  - GET /api/schedule/weeks/{ws} 加两个字段：
+    - has_unsent_changes；
+    - pending_changes[{employee_id,name,items[{date,before,after}],sent_at,sent_by}]，只给有 schedule.edit 的人。
+    - before / after 是后端拼好的文字，null = 那天没班。v128 之前发布的周，pending 永远是 []。
+  - POST …/employees/{id}/send-changes → {sent_at,sent_by,channels}。错误都是 detail 原话：400 ×3、404、409「Publish again first, then send changes.」、502、503。
+  - POST …/publish 重新发布：notified 只列有变化的员工，**不含主管**；发完 pending 和 Sent 清空。
+  - 静默变化：
+    - 已发布的周再改动，不再当场写 Notice、发站内通知、发邮件，都等 Publish again 一次发；
+    - Notice 里 schedule_changed 的 body 文字变了（「Mon 10/19: 旧 → 新」，主管看到前面带名字）；
+    - action_log 加「; notified N employee(s)」和 schedule_change_send。
+  - ⚠️ 和 Annie 10-29 原话「重新发布只发给班有变化的人和他们的主管」可能对不上（notified 不含主管）。已问 57：主管是走 Notice，还是漏了。
+  - 后端还在等 Annie 定：已点过 Looks good 的员工收到 Send to confirm 后，Responses 卡要不要重置成 no_answer（现在不重置）。
 
 ## 2026-10-29 晚 收工交接：前端主窗口 `今天前端主窗口-d2`[15266b]（家里电脑，Annie「做完写交接收工」）
 
