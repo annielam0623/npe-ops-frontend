@@ -4,6 +4,30 @@
 
 > 6d 交接（下面「2026-10-27 交接：前端主窗口 6d」那节）的后端需求已于 10/27 晚由 ad 转给家里后端主窗口 17。
 
+## 2026-10-30 G215 前端：Send to driver「page is off」+ driver_page / guide_page 开关（工作窗口 `npe-ops-frontend-62`[cd78c4]，eb 派）
+
+- 分支 `task/g215-page-off`，worktree `C:\Code\npe-ops-frontend-g215`。**还没合 main**：公司新电脑没装 Node（等 Annie 装，eb 通知），检查一项都没跑。
+- 后端 49c400a 对过形状：
+  - GET /api/dispatch/driver-notice 和 guide-notice 都多了 page_open、page_off_text。原文是「Driver page is off. Turn it on in Page visibility before sending.」
+  - 关着时 POST send 回 400，detail 就是这句。
+  - **只有设成 staff（Everyone）才算开**，admin 档也算关。
+- 做了：
+  - `lib/dispatch-api.ts`：DriverNotice 加 `page_open?`、`page_off_text?`。
+  - `components/dispatch/relay-panel.tsx`：
+    - page_open === false 时，Send texts now 灰掉，左边灰字照后端原文；
+    - 点 Send texts now 时先重读，重读到关着也不弹确认框；
+    - 字段缺省照旧；
+    - 400 用原来的确认框红字，显示 detail 加「Nothing was sent.」。
+  - `lib/page-visibility.ts`：加 driver_page「Driver page」、guide_page「Guide page」，默认 super_admin_only，紧跟 farm_out_dispatch。Page visibility 列表自动出这两行。
+- ⚠️ 和派工的差异：
+  - 前端没有 Send to guide 键，也没有 guide-notice 封装（G75 前端没做）。所以导游这边只加了开关。
+  - 新增 Send to guide 算新功能，要先 preview。已报 eb。
+- 检查（写好、未跑）：
+  - da 套加 5 项：关着灰键 + 灰字、点了不弹框不发、开着正常、列名单后被关、400 红字。
+  - ns 套行数改成 20，加两个新开关的位置、默认值，以及 PUT 形状（开 / 关回）。
+- 下一步：Node 装好后在 worktree 里 `npm ci`，合最新 main，跑 tsc / eslint / build + da（SUITE_TIMEOUT_S=900）/ nav / ns。把数字发 eb，问过再合 main。
+- 导游页开关不替 Annie 开：打开前她要先确认导游短信原文。
+
 ## 2026-10-30 主窗口 `npe-ops-frontend-eb`[ba40bc] 开工核对（公司电脑）
 
 - Annie 指定 eb 当今天的前端主窗口。本地 main 原来落后 151 个提交，已 pull 到 6cf0b40，工作区干净。
