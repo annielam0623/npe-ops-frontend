@@ -412,6 +412,19 @@
   - 开关关着时 403。
   - 提醒：第一次真发给餐厅，要 Annie 点头。
 - Annie 通知（经 57）：今天 10/30 下午 3 点收工，14:45 开始收尾，14:55 前推完，15:00 起不改文件。已转 09 / 62 / e6。
+- **Annie（11:5x）原话：「你检查一下我前天和昨天布置的任务还有哪些没有完成的，现在做了」**。主窗口查了 10-28、10-29 两天的交接。
+  - 前端现在就能做的，照 preview 推荐动手：
+    - 09 `task/manifest-farmout-button`：Bus Manifest 第二辆车 Farm out 键（preview 7uRp5FHfFTsnRYemrrm1Wf，Q1–Q5 照推荐）；
+    - e6 `task/forecast-no-click`：Forecast 数字不能点，能编辑的空格改绿「+」，细实线（preview X9EXZjpgbKfPhxzeKR7c9c v2，Q1 / Q2 照推荐）。
+  - 进行中：A8 改时间小窗跟着 G218 整周 Save，62 在做。
+  - 卡在后端，已问 57：
+    - Users / Team 第二步（admin 按层级，B1–B8）；
+    - Team Columns 键（user_prefs 白名单）；
+    - G219 staff 联络方式（team-contacts、import-team 等它）；
+    - G211 pickup-split；
+    - G221 等 v130；
+    - 导游页链接免登录。
+  - 等 Annie：Rezdy 冲突五处（置顶 4）。
 ## 2026-10-29 晚 收工交接：前端主窗口 `今天前端主窗口-d2`[15266b]（家里电脑，Annie「做完写交接收工」）
 
 明天的主窗口先读这一节。细节在下面「2026-10-29 晚 主窗口 d2 开工核对」那一节，按时间逐条记。
