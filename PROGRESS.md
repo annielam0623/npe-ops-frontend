@@ -192,6 +192,14 @@
           - 重新发布只发给班有变化的人和他们的主管；
           - 已发布的周改动时不再逐项发通知。
           - G200 的 A（加休息日单独通知）还没答。
+- Annie 问 G211（Pickup Locations 把 tour bus 和 Shuttle 分开）做了没有：还没开工，在等她答 9 题。
+  - 9 题原文只在公司电脑 bd 的 scratchpad 里（会话 9277e179），家里拿不到。
+  - 主窗口定 ①：明天公司电脑的后端主窗口拿出原文和推荐，发前端主窗口，再一次问 Annie。已请 9a 写进交接，并把报告放进后端仓库。
+  - 后端待办里的要点：
+    - 新表 shuttle_stops + shuttle_stop_times；
+    - Risk C，迁移号用 v127 以后；
+    - 工作量：后端 2–3 天，前端 1–2 天。
+  - Annie 那句「除了 Vegas 每个站点上下车同一个地址」：不用分上车表和下车表。
         - 前端派 9c `task/schedule-publish-anyway`，后端上 main 前不合 main。
         - 后端发 9a：allow_gaps、写日志、空档标记。
 - **Annie 定长期规则：订单流 Order List → Main Manifest → Dispatch / Tracking，不跳过前面直接去 Rezdy 拉单**。
