@@ -166,6 +166,52 @@
 - 这台电脑签出的文件是 CRLF，prettier --check 在原始 main 上也报 17 个文件，不是这次引进的。
 - 等 eb 回「合」再合 main。
 
+## 2026-10-30 收工交接：前端主窗口 `前端主窗口-eb`[b5cef8]（公司电脑，Annie 定今天 15:00 收工）
+
+明天的主窗口先读这一节，再读上面的「📌 等 Annie 确认」。逐条细节见下面「2026-10-30 主窗口 eb 开工核对」。
+
+### 一、今天上 main 的（都等 Annie 线上验收）
+- Bus Manifest：
+  - 先存换车再存字号 1711a4e；
+  - 存完不闪回旧版式 2fd3cd3；
+  - Special Requirements 并进整页 Save d90aa68（后端 G125 cc2c43ec 已上，现在能在线编辑）；
+  - 第二辆车 Farm out 键 f04cfed。
+- Dispatch：G215 page is off + Driver / Guide page 开关 c6d9cae；手动保存 f6d79cd。
+- Products 按 Save 才存 33df24c。
+- 批量导入：HR fbe5fd7、Pickup b277615、Vehicles a3102e1、Farm out 上车点 7fae286、结算价 ed03071。
+- 排班：
+  - Publish again 新说法 801544f；
+  - Send to confirm 96d130f；
+  - 整周一个 Save 7da6786；
+  - Save 被空档拒时红字可见、空档标出来 8e445a3。
+- Forecast 数字不能点、绿色 + d9e5ab1。
+- 全部按照勾选（10c）：byTick cb073ba、A+B 1f82190、B 类检查 109aa9c、C a665f25。总开关 staff_permissions 关着时页面不变；Annie 核对完 Team 勾选再打开。
+- Daily Operation Report 本人能改自己的 4f5fb6a。
+- 语言规定、「问 Annie 给完整内容并置顶」「附 preview 原文」都写进了 CLAUDE.md。
+
+### 二、做完、等后端或 Annie 才能合
+- 62 `task/pickup-split`：后端 G211 已上 e5aafb52，62 在合（今天合不完就明天第一件）。
+- 62 `task/dispatch-send-to-guide`：等后端 78 的 Send to guide（短信缩短 + extra）上 main；第一次真发要 Annie 点头。
+- e6 `task/farmout-rate-items-e6` a96553f：等后端 G221 上 main（v130 Annie 已执行，排在 G211 后面落地，要 release.py）。
+- e6 `task/schedule-person-history-fe` 32bfb99：等 ef 的往来记录（要迁移，SQL 等 Annie 过目）；另请后端在 confirmations 加 history_count。
+- 59 做的 `task/team-contacts` 0ff97be：等 G219 上 main（v131 Annie 已执行）。合时补 Team 页 How to use 7 条（原文在 57 的消息，PROGRESS 有要点）；建号接口的 detail 保持纯字符串。之后做 import-team。
+- 09 `task/rezdy-cleanup`：②③④⑤ 在做；① 不改（后端核过 Dispatch 自动同步只读 Main manifest）。
+
+### 三、后端还在做、前端要接的
+- ef：Publish 通知按 schedule.edit（不按职位）+ notified 只算真发出 + not_reached（task/republish-recipients-by-perm）。前端提示要照置顶 15 改，等 Annie 定原文。
+- 66：G212 B1 → B4 → B2 → B5；B3 改 409 + 计数前要先发前端形状（前端「Deactivate instead」要跟着改）；B6 / B7 明天。
+- 92：Team Columns 键 team_list_layout（格式同 hr_list_layout），上了派前端照 HR 页 Columns 接。
+- 78：G223 订单流核对已答（见置顶 16）。
+
+### 四、要 Annie 做的（不是答问题）
+- 排班员工收不到通知：在 Staff Schedule › Employees 框给 6 人填和登录账号一样的 email（后端会自动关联账号）。Jing 是哪个账号还没确认。
+- release.py：G211 / G221 落地时后端会提醒她。
+- 排班往来记录迁移 SQL 过目。
+
+### 五、窗口和端口
+- 09 [8a0116]：3309 / 8909 / 9509；62 [cd78c4]：3362 / 8962 / 9562；e6 [047d88]：3411 / 8911 / 9541。
+- 后端主窗口：今天的主窗口-57 [738bb6]。
+- 这台公司电脑今天新装 Node v26.13.0（.nvmrc 写 22），检查都没出 26 特有的问题。新开的窗口要先刷新 PATH。
 ## 2026-10-30 Bus Manifest 整页 Save 存完「闪回旧版式」（`task/manifest-version-flash`，工作窗口 `npe-ops-frontend-e6`[047d88]，主窗口 eb 派工）
 
 - 现象（09 发现）：换了版式按 Save，存完到重读回来之间，列先回到旧版式再变新的；mf「West Rim 列序」在 main 上偶尔失败也是它。
