@@ -116,6 +116,13 @@
       - 后端需求已转 9a。
       - 合并顺序：import-hr 先合。fo 两个分支后合的那个要解检查冲突；import-pickup 要和 pickup-split 解冲突。
       - worktree：-imx（5–7）、-imp（hr）、-impp（pickup）。
+      - 9a 已写进交接，明天排。
+  - G215（导游页 v9）：9a 说 v127 已在生产执行，今晚合并推送。
+    - 前端要接的（原来是 92 等，92 已不在）：
+      - Supplier › Restaurant 加 Address / Phone / Email / Text 四栏；
+      - 司机页 / 导游页开关关着时，Dispatch 的 Send to driver / guide 不能发，灰字写「page is off」；
+      - 两个开关放进 page-visibility。
+    - 接口形状到了就派前端工作窗口；Restaurant 的导入接着做。
 - Staff Schedule 空档提醒 + Publish anyway / again：✅ 9c 已合 main 09dafb9（sch 194、nav 32；tsc / eslint / build 都过）。等 Annie 验收；重新发布的通知规则还等她定。
   - Annie 在 9a 窗口答：重新发布只发给班有变化的人和他们的主管，原话「同意」。
     - 后端 8e 做，做完 G209 接着做，今晚做不完就明天。
