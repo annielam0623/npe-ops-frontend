@@ -42,6 +42,8 @@ import {
   type Roster,
   type RosterPerson,
 } from "@/lib/dispatch-roster-api";
+import { ActionLogPanel } from "@/components/action-log/action-log-panel";
+import { fetchActionLog } from "@/lib/action-log";
 import { usePermissions } from "@/lib/staff-permissions";
 import { replaceUrl, useLeaveGuard } from "@/lib/use-leave-guard";
 import { cn } from "@/lib/utils";
@@ -2603,6 +2605,23 @@ export function DispatchView() {
             ) : null}
           </>
         )}
+
+        {/* G203 第四批：这一天的排车改动记录（后端 dispatch.edit 才能读；partner、没有 edit 的不出、不请求）。
+            换日期、存好一块（day.version 变了）就重读。 */}
+        {day && !perms.isPartner && perms.can("dispatch.edit") ? (
+          <div className="mt-[18px]">
+            <ActionLogPanel
+              refreshKey={`${day.run_date}|${day.version ?? ""}`}
+              reloadOnOpen
+              onUnauthorized={redirectToLogin}
+              load={(before, signal) =>
+                fetchActionLog("/api/dispatch/action-log", before, signal, {
+                  date: day.run_date,
+                })
+              }
+            />
+          </div>
+        ) : null}
 
         {/* 旧 `.savebar`：内容栏里贴底（sticky）。改动自动保存（Annie 2026-10-15），这条只在存不上 / 出错时出现，写原因。 */}
         {actionError ? (

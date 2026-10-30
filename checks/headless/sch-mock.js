@@ -8,6 +8,7 @@ let nextTimeOffId = 1;
 const DEFAULT_TIMES = { open: ["02:00", "10:00"], mid: ["08:00", "17:00"], close: ["13:30", "21:30"] };
 let rulesDoc = { version: 1, rules: [], updated_at: null, updated_by: null };
 const log = [];
+const publishLog = []; // 每次 POST publish 的 body（检查 allow_gaps 用），GET /__publishes 读
 let confirmWeek = "";
 const confirmReqs = [
   { id: 901, employee_id: 2, shift_type: "mid", dayIdx: 3, status: "pending" },
@@ -211,7 +212,8 @@ function getOrCreateWeek(weekStart) {
 }
 
 function weekPayload(weekData) {
-  const out = { ...weekData, gaps: gapsFor(weekData) };
+  const g = gapsFor(weekData);
+  const out = { ...weekData, gaps: g, published_with_gaps: weekData.status === "published" && g.length > 0 };
   if (ctl.phase2) {
     const dates = datesOfWeek(weekData.week_start);
     out.time_off = timeOff.filter((t) => dates.includes(t.date));
@@ -251,6 +253,7 @@ http
     const url = new URL(req.url, "http://x");
     const p = url.pathname;
     if (p === "/__log") return send(res, 200, log);
+    if (p === "/__publishes") return send(res, 200, publishLog);
     if (p === "/__ctl") {
       Object.assign(ctl, await readBody(req));
       if (ctl.confirmReset) {
@@ -564,12 +567,22 @@ http
       }
       const weekData = getOrCreateWeek(publishMatch[1]);
       const gaps = gapsFor(weekData);
-      if (gaps.length > 0) {
+      // Publish anyway（preview 需要后端 B1）：body {allow_gaps: true}，只给 admin 及以上；supervisor 带了也 403。
+      const pubBody = await readBody(req).catch(() => null);
+      publishLog.push({ week: publishMatch[1], body: pubBody, role: ctl.role });
+      const allowGaps = !!(pubBody && pubBody.allow_gaps === true);
+      // 后端 d2bc2cf：不是 admin / superadmin 却带了 allow_gaps ⇒ 403，不管有没有空档。
+      if (allowGaps && !(ctl.role === "admin" || ctl.role === "superadmin")) {
+        return send(res, 403, { detail: "Only admins can publish with a gap. Fill the gap first." });
+      }
+      if (gaps.length > 0 && !allowGaps) {
         // 后端 HTTPException(400, {detail, gaps}) ⇒ 响应体 {detail: {detail, gaps}}。
         return send(res, 400, {
           detail: { detail: "Can't publish — there's a gap in coverage.", gaps },
         });
       }
+      // 已发布的周再 Publish：不再 409，成功；republished = true，notified 永远 []（通知规则等 Annie 定）。
+      const republished = weekData.status === "published";
       weekData.status = "published";
       weekData.published_at = new Date().toISOString();
       weekData.published_by = 1;
@@ -578,10 +591,13 @@ http
         .filter((e) => scheduledIds.has(e.id))
         .map((e) => ({ employee_id: e.id, name: e.name, channels: e.email ? ["in_app", "email"] : ["in_app"] }));
       return send(res, 200, {
+        week_start: publishMatch[1],
         status: "published",
         published_at: weekData.published_at,
         published_by: weekData.published_by,
-        notified,
+        republished,
+        gaps,
+        notified: republished ? [] : notified,
       });
     }
 

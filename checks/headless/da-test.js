@@ -1707,9 +1707,38 @@ async function run() {
     check("partner 勾了 dispatch.edit：名单照样只看、没有 Add", await evaluate("return document.querySelectorAll('[data-roster-side=driver] tr[data-roster-person]').length >= 5 && !document.querySelector('[data-roster-add]');"));
     const partnerWrites = (await since(b, (e) => e.method !== "GET")).map((e) => `${e.method} ${e.path}`);
     check("partner 勾了 dispatch.edit：一次写请求都没有（不同步、不拉取、不占编辑锁、不存 / 发）", partnerWrites.length === 0, JSON.stringify(partnerWrites));
+    check("G203 partner：没有 Action Log 面板、不请求 /api/dispatch/action-log", !(await evaluate("return [...document.querySelectorAll('main button')].some(b => b.textContent.includes('Action Log'));")) && (await mockLog()).every((e) => e.path !== "/api/dispatch/action-log"));
     await goto("about:blank");
     await sleep(500);
     await ctl({ partner: false, partnerPerms: null, roster: "off", rosterVis: null });
+
+    // ── G203 第四批：页面最底的 Action Log（/api/dispatch/action-log?date=，dispatch.edit）──
+    await openDispatch();
+    {
+      const toggle = "[...document.querySelectorAll('main button')].find(b => b.textContent.includes('Action Log'))";
+      const lb = (await mockLog()).length;
+      check("G203 Action Log：Dispatch 页最底有面板、收着不请求", (await evaluate(`return !!${toggle};`)) && (await mockLog()).slice(lb).every((e) => e.path !== "/api/dispatch/action-log"));
+      const d1 = await evaluate("return document.querySelector('input[aria-label=Day]').value;");
+      await evaluate(`${toggle}.click();`);
+      await waitFor("document.querySelectorAll('[data-action-log] tbody tr').length === 3", 20000);
+      const r1 = (await mockLog()).slice(lb).filter((e) => e.path === "/api/dispatch/action-log");
+      check("G203 Action Log：展开才请求一次、带这一天的 date、3 行（Bus Tour · South Rim · B › Guide / Morning Relay · 1 · car 2 › Driver）", r1.length === 1 && r1[0].q?.date === d1 && (await evaluate("const t = document.querySelector('[data-action-log]').textContent; return t.includes('Bus Tour · South Rim · B › Guide') && t.includes('Morning Relay · 1 · car 2 › Driver');")), JSON.stringify(r1));
+      check("G203 Action Log：旧条目 from / to 是 null → No before / after recorded", await evaluate("return [...document.querySelectorAll('[data-action-log] tbody tr')].some(r => r.textContent.includes('Farm out order ZZ1001') && r.textContent.includes('No before / after recorded'));"));
+      const lb2 = (await mockLog()).length;
+      await waitFor("!document.querySelector('button[aria-label=\"Next day\"]').disabled");
+      await evaluate("document.querySelector('button[aria-label=\"Next day\"]').click();");
+      await waitFor(`document.querySelector('input[aria-label=Day]').value !== ${JSON.stringify(d1)}`, 20000);
+      const d2 = await evaluate("return document.querySelector('input[aria-label=Day]').value;");
+      await waitFor(`document.querySelector('[data-action-log]')?.textContent.includes(${JSON.stringify(d2)})`, 20000);
+      const r2 = (await mockLog()).slice(lb2).filter((e) => e.path === "/api/dispatch/action-log");
+      check("G203 Action Log：换日期就重读，带新的 date", r2.length >= 1 && r2.at(-1).q?.date === d2, JSON.stringify(r2));
+      // 后端 403：一句灰字，不报错
+      await ctl({ dispatchLog403: true });
+      await openDispatch();
+      await evaluate(`${toggle}.click();`);
+      check("G203 Action Log 403：只写 You don't have access，不报错、不出 Retry", (await waitFor("document.querySelector('[data-action-log]')?.textContent.includes(\"You don't have access\")", 20000)) && !(await evaluate("return document.querySelector('[data-action-log]').textContent.includes('Retry');")));
+      await ctl({ dispatchLog403: false });
+    }
   }
 
   // ── partner（CCL）没勾 dispatch.edit（勾了 dispatch.send 也不算）：只看，不请求写接口和 Farm out 接口 ──

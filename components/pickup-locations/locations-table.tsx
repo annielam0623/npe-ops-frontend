@@ -96,6 +96,13 @@ export function LocationsTable({
               title="Internal spellings that resolve to this hotel. Never shown to a guest."
             >
               Aliases
+              {/* Bus Manifest 印酒店简称用第一个 alias（Annie 10-28 定 7，preview 第 8 版 ①）。 */}
+              <span
+                data-aliases-hint
+                className="block text-[10px] font-normal normal-case"
+              >
+                First one is printed on the Bus Manifest
+              </span>
             </th>
             <th className={cn(TH, "w-[12%]")}>Actions</th>
           </tr>

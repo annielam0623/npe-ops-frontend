@@ -279,6 +279,17 @@ http.createServer(async (req, res) => {
     return send(res, 200, person);
   }
   // G71 编辑锁（后端 docs/interfaces/dispatch-edit-lock-2026-10-15.md）。entry.resp 记下回给页面的，测试拿来比 token。
+    // G203 第四批：这一天的排车改动记录（后端 c8 4c00a04；date 必填，dispatch.edit）。
+    if (p === "/api/dispatch/action-log") {
+      if (ctl.dispatchLog403) return send(res, 403, { detail: "Permission required" });
+      const date = url.searchParams.get("date");
+      if (!date) return send(res, 422, { detail: "date is required" });
+      return send(res, 200, { next_cursor: null, entries: [
+        { id: "2-1", at: "2026-10-29T17:00:00+00:00", by: "Annie Z", action: "update", label: "Bus Tour", what: "Bus Tour · South Rim · B › Guide", from: "ZZ Test Guide One", to: "ZZ Test Guide Two" },
+        { id: "1-1", at: "2026-10-29T16:00:00+00:00", by: "Max", action: "update", label: "Morning Relay", what: "Morning Relay · 1 · car 2 › Driver", from: "ZZ Test Driver", to: "ZZ Test Driver Two" },
+        { id: "0-1", at: "2026-10-20T16:00:00+00:00", by: "Max", action: "update", label: "Farm out order ZZ1001", what: "Hotel " + date, from: null, to: null },
+      ] });
+    }
   if (p === "/api/dispatch/edit-lock") {
     const b = JSON.parse(await readRaw(req)); entry.body = b;
     if (ctl.acquireDelay) await new Promise((r) => setTimeout(r, ctl.acquireDelay));
