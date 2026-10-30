@@ -30,6 +30,28 @@
   - 等等。
   觉得键太多，可以改成按大块分。
 
+## 2026-10-30 排班发布后列出谁没收到（置顶 15，`task/schedule-not-reached`，工作窗口 `npe-ops-frontend-e6`[047d88]，主窗口 eb 派工）
+
+- 依据：Annie「同意」+「以上内容全都动手」（2026-10-30）。
+- 后端：ef 的通知修正已上 main 31a2f66。
+  - POST …/publish 回包里 notified 只列真发出去的；
+  - 新加 not_reached [{employee_id, name, reason}]，reason 是 "no email or login" 或 "email could not be sent"（schedule_notices.py 的常量，已核原话）；
+  - notified_supervisors 不变。
+- 改动：
+  - 新文件 [components/schedule/publish-notice.ts](components/schedule/publish-notice.ts)：拼提示句子，英文照 Annie 同意的原文：
+    - 都收到：「Published. Notified 6 people.」（照旧）；
+    - 有人没收到：「Published. Notified 4 people. 2 couldn't be reached: Jing, Anita (no email or login).」，没收到那段红字；两种原因混着时按原因分组，用「;」隔开；
+    - 都没收到：「Published, but no one was notified: Nadia, Veronica have no email or login. Add their email in Employees.」整句红字（红框）。只有发信失败时不写 Add their email；
+    - Publish again 同样写法，「Notified N staff and M schedule editors」照 62 的写法；员工没收到、主管收到时写「Notified M schedule editors.」。
+  - types/schedule.ts 加 not_reached。
+  - schedule-view.tsx 只改提示条：状态从字符串换成 {ok, unreached, allFailed}，渲染绿字 + 红字那段，或整条红框。
+- 检查：
+  - 新单元检查 checks/headless/publish-notice-unit.mjs，11/11（`node checks/headless/publish-notice-unit.mjs`）；
+  - sch-mock 的 publish 回包按 ctl.notReached 把人挪进 not_reached；
+  - sch 加 3 项：都收到绿色没红字、有人没收到（绿 + 红字原文）、谁都没收到（红框原文）；
+  - 结果：sch 266/266、nav 32/32；tsc 0 错；eslint 0 错、2 个原有警告；build 过。
+- eb 说 Annie 要快，检查过了就直接合 main。
+
 ## 2026-10-30 Bus Manifest Lankun：屏幕上加回 ✓ 列，打印照旧不要（`task/lankun-check-col`，工作窗口 `npe-ops-frontend-e6`[047d88]，主窗口 eb 派工）
 
 - 依据：
