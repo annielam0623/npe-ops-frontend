@@ -232,7 +232,7 @@ export function HistoryThread({
                 {time}
               </div>
               <div className="grid gap-[3px]">
-                <div className="font-semibold">
+                <div data-history-who className="font-semibold">
                   {e.by ?? "System"}
                   <span
                     data-history-tag
@@ -244,7 +244,7 @@ export function HistoryThread({
                     {tag}
                   </span>
                 </div>
-                <div className="grid gap-[3px]">
+                <div data-history-body className="grid gap-[3px]">
                   <Body e={e} name={name} shiftLabel={shiftLabel} />
                 </div>
               </div>
