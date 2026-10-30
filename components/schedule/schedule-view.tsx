@@ -61,6 +61,7 @@ import { AutoFillDialog } from "./auto-fill-dialog";
 import { EmployeesDialog } from "./employees-dialog";
 import { RulesView } from "./rules-view";
 import { CARD, CARD_HEADER, ICON_BTN, MUTED } from "./config";
+import { type PublishNotice, publishNotice } from "./publish-notice";
 import { DayTimeline } from "./day-timeline";
 import { ScheduleLockedPanel } from "./lock-panel";
 import { SendChangesDialog } from "./send-changes-dialog";
@@ -167,7 +168,9 @@ export function ScheduleView() {
   }, [weekStart]);
   /** 这一次打开页面以后改过、还没 Publish again 的已发布周（后端没带 has_unsent_changes 时用）。 */
   const [unsentWeek, setUnsentWeek] = useState<string | null>(null);
-  const [publishBanner, setPublishBanner] = useState<string | null>(null);
+  const [publishBanner, setPublishBanner] = useState<PublishNotice | null>(
+    null,
+  );
   const [publishBlockedGaps, setPublishBlockedGaps] = useState<
     SchedulePublishBlockedError["gaps"] | null
   >(null);
@@ -664,15 +667,8 @@ export function ScheduleView() {
       // 重新发布只通知班有变化的人 + 能改排班的人（Annie 2026-10-30 10a「你别管是谁，我选谁就是谁，最关键是有没有这个功能，
       // 而不是这个职位」：按 schedule.edit 权限，不提职位；后端 notified_supervisors 就是这些人，去掉按的人自己）。
       // 一个都没变就写明没人收到，不写「Notified 0 people」。能改排班的人 0 个时不写后半句。
-      const n = result.notified.length;
-      const m = result.notified_supervisors?.length ?? 0;
-      setPublishBanner(
-        result.republished && n === 0
-          ? "Published again. No one's shifts or time off changed, so no one was notified."
-          : result.republished
-            ? `Published again. Notified ${n} ${n === 1 ? "staff member" : "staff"}${m ? ` and ${m} ${m === 1 ? "schedule editor" : "schedule editors"}` : ""}.`
-            : `Published. Notified ${n} ${n === 1 ? "person" : "people"}.`,
-      );
+      // 没收到的人也列出来（Annie 置顶 15）：句子在 publish-notice.ts。
+      setPublishBanner(publishNotice(result));
       setUnsentWeek(null);
       void loadWeek();
       return { status: "ok" };
@@ -885,9 +881,30 @@ export function ScheduleView() {
               </div>
             ) : null}
 
-            {publishBanner ? (
-              <div className="rounded-[10px] border border-emerald-400/30 bg-emerald-400/10 px-4 py-2.5 text-[13px] text-emerald-200">
-                ✅ {publishBanner}
+            {publishBanner?.allFailed ? (
+              <div
+                role="alert"
+                data-publish-banner="none-notified"
+                className="rounded-[10px] border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-[13px] text-red-200"
+              >
+                ⚠️ {publishBanner.unreached}
+              </div>
+            ) : publishBanner ? (
+              <div
+                data-publish-banner={
+                  publishBanner.unreached ? "some-missed" : "ok"
+                }
+                className="rounded-[10px] border border-emerald-400/30 bg-emerald-400/10 px-4 py-2.5 text-[13px] text-emerald-200"
+              >
+                ✅ <span data-publish-ok>{publishBanner.ok}</span>
+                {publishBanner.unreached ? (
+                  <>
+                    {" "}
+                    <span data-publish-unreached className="text-red-300">
+                      {publishBanner.unreached}
+                    </span>
+                  </>
+                ) : null}
               </div>
             ) : null}
 

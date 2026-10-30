@@ -9,27 +9,10 @@
 > 规矩见 CLAUDE.md「问 Annie 要确认的事：给完整内容，并一直置顶」（2026-10-30）。每条都要能单独看懂。
 
 ### 10. 排班还要定的
-- 10d 生产上走一遍：Annie 原话「谁提出的谁走」，并给了测试邮箱 azhou@nationalparkexpress.com（「所有测试都用这个邮箱，记住了」，已写进 CLAUDE.md 测试一节）。
-  - 还差一个能登录生产 ops 的 ZZ Test staff 账号（用户名 + 密码），工作窗口的 headless 浏览器才能走。要 Annie 在 Team 页建好给出来，或者她自己按清单点。
-  - ZZ Test 排班员工的邮箱用 azhou@nationalparkexpress.com。
-
-### 17. 排班卡片上直接标出造成的空档（62 preview https://claude.ai/artifact/WVNc5X87zYyKyY6k47qyKU ）
-- 依据：Annie 原话「是否可以直接在排班的那个模块上显示出来不是更直观么」，又举例：「如果制造了gap，他选了时间时候一保存，这个格子就变红色，告诉排班的人有一小时的gap」。
-- 样子：改时间小窗按 Done 的那一刻现算空档。只要造成新的空档，这张卡红框、淡红底，写「This leaves a 1 hour gap (11:00 AM – 12:00 PM).」；两段空档写「This leaves 2 gaps: …」；补上后红色消失。
-- 要 Annie 定 3 题（原文见 preview）：
-  1. 拖班、删班造成的空档也这样标吗？A 也标（推荐）/ B 只有改时间才标；
-  2. 只标那张卡，还是那一整列也加淡红底？A 只标卡（推荐，列头本来就有红点）/ B 卡 + 整列；
-  3. 草稿周（还没发布）也标吗？A 两种周都标、只标新造成的（推荐）/ B 只标已发布的周。
-- 都按推荐就说「17 全按推荐 动手」，派 62。
-
-### 18. Dashboard Multi Orders 里「已回复、等客人」的卡怎么显示
-- Annie 10-30 截图问：「已经回复了的为什么还会显示在这里」。
-- 现在（10-01 定的设计）：号码 / 邮箱名下 ≥2 张没出发的单、来信对不上是哪张时进 Multi Orders。先 Reply 问是哪张，再 Assign；只回复没 Assign，卡就一直留着，绿点写「Replied · waiting for guest」，不算进红色未处理数字。
-- 选法：
-  - A. 照现在，一直留着，等 Assign / Take action 才消失；
-  - B. 回复后先收起来，客人再来信才重新出现；
-  - C. 留着，但排到最下面、颜色变淡，跟要处理的分开（推荐：不会忘，也不挡着要处理的）。
-- 同一张截图里另有两个 bug（62 在查，明天修）：卡片写「1 orders」——只剩 1 张单却还在 Multi Orders；英文单复数不对。
+- 10d 生产上走一遍：Annie 10-30 下午给了测试账号（用户名 ZZTest，密码在对话里，不写进仓库），已私下转 09。
+  - Annie 原话「09 同意。动手」（14:5x）。明天开工第一件：09 发逐步清单 → 给 Annie 看一眼 → 走，每步截图。
+  - ZZ Test 员工邮箱用 azhou@nationalparkexpress.com；那一周只排 ZZ Test 员工。
+  - 09 窗口要是重开，要重新问 Annie 要密码。
 
 ### 8. 可以上线后对着看的（不用答，验收时看）
 - Products 手动保存：09 问的 5 处细节，主窗口按盘点推荐定了，见 PROGRESS「2026-10-30」那节 09 的记录：
@@ -39,6 +22,27 @@
   - 等等。
   觉得键太多，可以改成按大块分。
 
+## 2026-10-30 排班发布后列出谁没收到（置顶 15，`task/schedule-not-reached`，工作窗口 `npe-ops-frontend-e6`[047d88]，主窗口 eb 派工）
+
+- 依据：Annie「同意」+「以上内容全都动手」（2026-10-30）。
+- 后端：ef 的通知修正已上 main 31a2f66。
+  - POST …/publish 回包里 notified 只列真发出去的；
+  - 新加 not_reached [{employee_id, name, reason}]，reason 是 "no email or login" 或 "email could not be sent"（schedule_notices.py 的常量，已核原话）；
+  - notified_supervisors 不变。
+- 改动：
+  - 新文件 [components/schedule/publish-notice.ts](components/schedule/publish-notice.ts)：拼提示句子，英文照 Annie 同意的原文：
+    - 都收到：「Published. Notified 6 people.」（照旧）；
+    - 有人没收到：「Published. Notified 4 people. 2 couldn't be reached: Jing, Anita (no email or login).」，没收到那段红字；两种原因混着时按原因分组，用「;」隔开；
+    - 都没收到：「Published, but no one was notified: Nadia, Veronica have no email or login. Add their email in Employees.」整句红字（红框）。只有发信失败时不写 Add their email；
+    - Publish again 同样写法，「Notified N staff and M schedule editors」照 62 的写法；员工没收到、主管收到时写「Notified M schedule editors.」。
+  - types/schedule.ts 加 not_reached。
+  - schedule-view.tsx 只改提示条：状态从字符串换成 {ok, unreached, allFailed}，渲染绿字 + 红字那段，或整条红框。
+- 检查：
+  - 新单元检查 checks/headless/publish-notice-unit.mjs，11/11（`node checks/headless/publish-notice-unit.mjs`）；
+  - sch-mock 的 publish 回包按 ctl.notReached 把人挪进 not_reached；
+  - sch 加 3 项：都收到绿色没红字、有人没收到（绿 + 红字原文）、谁都没收到（红框原文）；
+  - 结果：sch 266/266、nav 32/32；tsc 0 错；eslint 0 错、2 个原有警告；build 过。
+- eb 说 Annie 要快，检查过了就直接合 main。
 ## 2026-10-30 Multi Orders 1 orders（工作窗口 `npe-ops-frontend-62`[cd78c4]，主窗口 eb 派，只读调查，明天修，今天没改代码）
 
 - Annie 截图：Dashboard › Messages 的 Multi Orders 窗口里一张卡（Grzegorz J Kotula +12017577522），写「1 orders」·「Replied · waiting for guest」。
@@ -733,6 +737,13 @@
   - 57 补充：每天 03:00 PT 有自动对账（run_daily_reconciliation），漏推的单最晚第二天凌晨会补上。
 - 92 的 Team Columns 键（team_list_layout，GET / PUT /api/user-prefs/team_list_layout，同 hr_list_layout）已提交，排队上 main。
 - 62 pickup-split 上 main d34ce08。
+- **Annie 答置顶 18（Multi Orders 已回复的卡）**，原话：「为什么要等客人回复？ 我们已经回复了就要消失啊，客人再发回来才需要在这里显示」。
+  - 已回复的卡不显示，客人再来信才出现，和其他车道一致。
+  - 派 62 `task/multi-orders-hide-replied`，今天来不及就明天第一件。顺手修「1 orders」单复数，查「只剩 1 张单还在 Multi Orders」。
+- **Annie 答置顶 17，原话「17 全按推荐，动手」**：排班卡片上直接标空档。拖班 / 删班也标；只标卡；草稿周也标、只标新造成的。62 明天做 `task/schedule-gap-on-card`（排在 Multi Orders 后面）。
+- 后端 G224（DOR 最新进展，b0）形状到了，还没上 main（v133 等 Annie 过目执行）。原样已转 09，明天第一件用 mock 做：
+  - GET 报告详情多 updates[]；
+  - POST /api/operation-reports/{id}/updates {text}，只加不改不删，不发通知，partner 403。
 - 62 week-save 已上 main 7da6786。
 ## 2026-10-29 晚 收工交接：前端主窗口 `今天前端主窗口-d2`[15266b]（家里电脑，Annie「做完写交接收工」）
 
