@@ -930,7 +930,7 @@
       - 发送框底下：「Only {name} gets this. When you publish again, {name} and the people who can edit the schedule still get the normal notice.」；
       - 成功提示（Publish again）：「Published again. Notified 1 staff member and 2 schedule editors.」（复数 N staff / M schedule editors；能改排班的人 0 个时不写后半句）。第一次 Publish 照旧「Published. Notified N people.」。
       - 后端那边 eb 同时请 ef 改成「凡是勾了 schedule.edit 的人都通知，不看职位」。
-    - 合了 main 1c934a7 之后的提交。检查：tsc 过；eslint 0 错误；build 过；sch 220/220、nav 32/32（端口 3362 / 8962 / 9562）。等 eb 回「合」再合 main。
+    - 合了 main 1c934a7 之后的提交。检查：tsc 过；eslint 0 错误；build 过；sch 220/220、nav 32/32（端口 3362 / 8962 / 9562）。eb 回「合」（「schedule editors」那句可以），合 main。合前拉的 main 只多了文档，没重跑。
       - sch 套加 1 条查原文和底下那句。
     - 合了 notify-wording aa8de48 / d3f3e42（主管层、notified_supervisors）。sch-test 冲突手动拼过：先查「1 person and 2 supervisors」，再查「主管 0 人」（时间改成 11:15，免得和后面「没邮箱」那段的 11:30 撞），然后是「没邮箱」。
     - 检查（Node v26.13.0，已合 main）：tsc 过；eslint 0 错误；sch 215/215、nav 32/32。不合 main，要等后端 G217 上 main（后端 task/schedule-republish-notify）。
