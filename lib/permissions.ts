@@ -1,5 +1,6 @@
 import { describeError, isStatus } from "@/lib/api-errors";
 import type { CurrentUser } from "@/types";
+export { byTick, type TickPerms } from "@/lib/by-tick";
 
 /**
  * 页面 / 侧栏的「谁能看、谁能改」判断都收在这个文件里（Annie 2026-10-18 要做「按人分配权限」，
@@ -14,8 +15,8 @@ export function canSeeHr(me: PermissionUser): boolean {
 
 /**
  * Human Resource 的增删改、批量改、导入、导出：主管也能改（Annie 2026-10-17：「主管在 HR 里能改」）。
- * ⚠️ 后端的写接口目前仍然只有 admin；主管点了会 403，页面用 `describeHrWriteError` 给友好提示，
- * 后端开放后不用再改页面。
+ * 开关 staff_permissions 关着时的旧规矩；开着时 HR 页按 settings.hr.edit 的勾（byTick，置顶 10c）。后端写接口要 settings.hr.edit，
+ * 没勾的人点了会 403，页面用 `describeHrWriteError` 给友好提示。
  */
 export function canEditHr(me: PermissionUser): boolean {
   return canSeeHr(me);

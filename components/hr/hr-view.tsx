@@ -3,12 +3,19 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { ActionResult } from "@/components/ui/action-result";
+import { BulkImportButton } from "@/components/ui/bulk-import";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { HowToUse } from "@/components/ui/how-to-use";
 import { ErrorBanner, Panel } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchCurrentUser } from "@/lib/auth-api";
-import { canEditHr, canSeeHr, describeHrWriteError } from "@/lib/permissions";
+import {
+  byTick,
+  canEditHr,
+  canSeeHr,
+  describeHrWriteError,
+} from "@/lib/permissions";
+import { usePermissions } from "@/lib/staff-permissions";
 import {
   bulkErrorOf,
   createHRProfile,
@@ -143,7 +150,12 @@ export function HRView() {
     [redirectToLogin],
   );
 
+  // 全部按照勾选（Annie 2026-10-30 置顶 10c）：改 HR 开关开着按勾（settings.hr.edit，同后端 settings_hr.py），关着照旧按角色。
+  const tickPerms = usePermissions();
+  const tickPermsRef = useRef(tickPerms);
+  tickPermsRef.current = tickPerms;
   useEffect(() => {
+    if (!tickPerms.ready) return;
     const controller = new AbortController();
     const { signal } = controller;
     setView({ kind: "loading" });
@@ -155,7 +167,12 @@ export function HRView() {
           setView({ kind: "forbidden" });
           return;
         }
-        setCanEdit(canEditHr(me));
+        setCanEdit(
+          byTick(tickPermsRef.current, "settings.hr.edit", {
+            legacy: canEditHr(me),
+            superAdmin: !!me.is_superadmin,
+          }),
+        );
         const profiles = await fetchHRProfiles(signal);
         if (!signal.aborted) setView({ kind: "ready", profiles });
       } catch (error) {
@@ -163,7 +180,7 @@ export function HRView() {
       }
     })();
     return () => controller.abort();
-  }, [reloadKey, applyLoadError]);
+  }, [reloadKey, applyLoadError, tickPerms.ready, tickPerms.active]);
 
   // 列布局：本机缓存先画，账号里的到了再覆盖；没存过（null）或读不到就保持本机的。
   useEffect(() => {
@@ -434,9 +451,7 @@ export function HRView() {
       {/* .page-header：左边标题 + 一行说明，右边四个按钮（同旧页面）。 */}
       <div className="mb-[18px] flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="sr-only">
-            Human Resource
-          </h2>
+          <h2 className="sr-only">Human Resource</h2>
           <div className="mt-[3px] text-[12px] text-[#888] night:text-white/55">
             Driver and guide records — identity, license, employment.
           </div>
@@ -459,14 +474,10 @@ export function HRView() {
             >
               {exporting ? "Preparing…" : "Export to Excel"}
             </button>
-            <button
-              type="button"
+            <BulkImportButton
               onClick={() => setImportOpen(true)}
               disabled={editing}
-              className={HR_BTN_CLASS}
-            >
-              Import from Excel
-            </button>
+            />
             <button
               type="button"
               onClick={() => openDialog(null)}
@@ -744,7 +755,7 @@ const HOW_TO_ITEMS = [
   "Click Add person, fill in the form (Legal Name is required), then Save.",
   "Click Edit on a row to change one person, or Edit list to change many, then Save changes and Done.",
   "To remove someone: Edit → Delete. This cannot be undone.",
-  "Export to Excel downloads the list. Import from Excel loads a .csv or .xlsx with a Legal Name column.",
+  "Export to Excel downloads the list. ⬆ Import: Download template (the current list), change or add rows in Excel, choose the file, check the preview, then Save. Rows are matched by Legal Name; a blank cell never clears what is stored; rows with errors are not saved.",
   "Samsara Driver ID: enter each driver’s ID from Samsara once. Guest tracking uses it to follow the bus the driver is actually on. Two people cannot share an ID. Leave it blank if you are not sure.",
   "Drag a column title to move it, or drag its right edge to make it wider. Reset columns puts them back.",
 ];

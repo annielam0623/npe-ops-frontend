@@ -1010,6 +1010,30 @@ async function run() {
     await sleep(3500);
     check("离开以后剩下的批次不再发（只发出在路上的第一批）", (await sends(b0)).length === 1, String((await sends(b0)).length));
     await ctl({ morningDelay: 0 });
+    // ── 员工也按勾（Annie 2026-10-30 置顶 10c）：没勾 morning.send 预览照出、没有 Send to Selected；Super Admin 一项没勾也有 ──
+    promptConfirm = true;
+    for (const [label, opts, canSend] of [
+      ["员工只勾 morning.view", { staffPerms: ["morning.view"] }, false],
+      ["员工勾 morning.send", { staffPerms: ["morning.view", "morning.send"] }, true],
+      ["Super Admin（一项都没勾）", { staffPerms: null, superAdmin: true }, true],
+    ]) {
+      await ctl({ staffPerms: null, superAdmin: false, ...opts });
+      await goto(`${APP}/morning-pickup/send`);
+      await waitFor("document.querySelector('input[type=file]')");
+      await helpers();
+      {
+        const { root } = await cdp("DOM.getDocument", { depth: -1, pierce: true });
+        const { nodeId } = await cdp("DOM.querySelector", { nodeId: root.nodeId, selector: "input[type=file]" });
+        await cdp("DOM.setFileInputFiles", { nodeId, files: [`${DIR}/morning-zz.xlsx`] });
+      }
+      await sleep(200);
+      await evaluate("$btn('📂 Upload & Preview').click();");
+      const rows = await waitFor("!!document.querySelector('main tbody tr')");
+      await sleep(300);
+      const has = await evaluate("return !!$btn('📱 Send to Selected');");
+      check(`${label}：早班发送预览照出、${canSend ? "有" : "没有"} Send to Selected`, rows && has === canSend, String(has));
+    }
+    await ctl({ staffPerms: null, superAdmin: false });
     promptConfirm = false;
     ws.onmessage = orig;
   }

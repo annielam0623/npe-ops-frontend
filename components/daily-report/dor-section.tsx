@@ -11,6 +11,7 @@ import {
 } from "@/lib/daily-report-api";
 import { cn } from "@/lib/utils";
 import type {
+  CurrentUser,
   OperationReportCreateResult,
   OperationReportList,
   OperationReportPatch,
@@ -21,6 +22,7 @@ import { DOR_CHANGED_EVENT, TYPE_LABEL, TYPE_TEXT_CLASS } from "./config";
 import { LogIncidentDialog } from "./log-incident-dialog";
 import { ReportItem } from "./report-item";
 import { useDorVisible } from "./use-dor-visible";
+import { canEditReport, useReportEditor } from "./use-report-editor";
 import { VisibilityControl } from "@/components/ui/visibility-control";
 
 export const LOG_BUTTON_CLASS =
@@ -44,11 +46,12 @@ export function savedMessage(result: OperationReportCreateResult): string {
  */
 export function DorSection({
   onUnauthorized,
-  canEdit,
+  me,
   isSuperAdmin,
 }: {
   onUnauthorized: () => void;
-  canEdit: boolean;
+  /** 能不能改按每一条判断（本人改自己的、report.edit 改所有人的，见 use-report-editor.ts）。 */
+  me: CurrentUser;
   isSuperAdmin: boolean;
 }) {
   const { state, staffSees } = useDorVisible(onUnauthorized);
@@ -56,7 +59,7 @@ export function DorSection({
   return (
     <DorBlock
       onUnauthorized={onUnauthorized}
-      canEdit={canEdit}
+      me={me}
       // 只有 Super Admin 看得到「谁看得到」控件；员工看不到这块时（Super Admin 那边）画虚线框。
       isSuperAdmin={isSuperAdmin}
       hiddenFromStaff={isSuperAdmin && !staffSees}
@@ -71,17 +74,18 @@ type ListState =
 
 function DorBlock({
   onUnauthorized,
-  canEdit,
+  me,
   isSuperAdmin,
   hiddenFromStaff,
 }: {
   onUnauthorized: () => void;
-  canEdit: boolean;
+  me: CurrentUser;
   isSuperAdmin: boolean;
   /** 员工看不到（不是 Everyone）：黄色虚线边框，和别的实线板块区分开。 */
   hiddenFromStaff: boolean;
 }) {
   const [state, setState] = useState<ListState>({ kind: "loading" });
+  const editor = useReportEditor(me);
   const [assignees, setAssignees] = useState<ReportAssignee[]>([]);
   const [logging, setLogging] = useState(false);
   const [toast, setToast] = useState("");
@@ -108,14 +112,16 @@ function DorBlock({
     return () => controller.abort();
   }, [reloadKey, onUnauthorized]);
 
+  // 跟进人下拉：能改哪一条（哪怕只是自己登记的）都要用；partner 不能改，不读。
+  const editAny = !editor.partner;
   useEffect(() => {
-    if (!canEdit) return;
+    if (!editAny) return;
     const controller = new AbortController();
     fetchReportAssignees(controller.signal)
       .then(setAssignees)
       .catch(() => undefined);
     return () => controller.abort();
-  }, [canEdit]);
+  }, [editAny]);
 
   async function handlePatch(
     id: number,
@@ -199,7 +205,7 @@ function DorBlock({
               <ReportItem
                 key={report.id}
                 report={report}
-                canEdit={canEdit}
+                canEdit={canEditReport(report, editor)}
                 assignees={assignees}
                 onPatch={handlePatch}
               />

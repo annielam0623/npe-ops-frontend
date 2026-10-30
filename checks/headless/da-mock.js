@@ -1,6 +1,8 @@
 // 模拟后端：Dispatch Assignments。控制：POST /__ctl；GET /__log。
 const http = require("http");
+const staffPerm = require("./staff-perm-mock");
 // 截图用：环境变量 MOCK_CTL（JSON）在启动时预设控制项，例 MOCK_CTL='{"completed":true}'（shoot.js 起模拟接口时会带上环境变量）。
+const DRIVER_PAGE_OFF = "Driver page is off. Turn it on in Page visibility before sending.";
 const ctl = { completed: false, saveErr: "", fail401: false, pullStatus: "nothing", dayDelay: 0, failDay: false, altMeta: false, noMeta: false, relaySent: [], relayExtra: false, relayHotels: false, relayLater: [], relayRace: [], relayGone: [], relay409: false, relay502: false, driverFail: false, saveDelay: 0, driverAlt: false, relayBlocked: false, relayOnlyBad: false, relayBlockLate: false, foDraft: false, driverAllOk: false, emptyHoover: false,
   // G118 tour_car 轮（Hoover Dam）：tourCar = 这个团当天排了 bus_tour 车、有客人；tourCarNoCar = 排了团但当天一台 bus_tour 车都没排（整块挡住）；
   // tourCarBlocked = 排了车但没司机（这台车挡住，客人进 blocked_cars）。
@@ -243,6 +245,7 @@ http.createServer(async (req, res) => {
   const entry = { method: req.method, path: p, q };
   log.push(entry);
   if (ctl.fail401) return send(res, 401, { detail: "Authentication required" });
+  if (staffPerm(ctl, p, res, send)) return; // 10c：模拟员工权限总开关开着的员工 / Super Admin（staff-perm-mock.js）
   if (p === "/api/dispatch/day" && req.method === "GET") {
     if (ctl.dayDelay) await new Promise((r) => setTimeout(r, ctl.dayDelay));
     if (ctl.failDay) return send(res, 502, { detail: "Bad gateway" });
@@ -434,7 +437,8 @@ http.createServer(async (req, res) => {
     return send(res, 200, { round: b.round, sent: sentNow.length, failed: 0, already_sent: skipped.length, already_sent_orders: skipped, resent, not_on_round: notOnRound, checked_at: "2026-10-05T12:01:00+00:00", blocked_cars: bl, overridden_orders: bl.flatMap((c) => c.overridden_orders).filter((o) => sentNow.includes(o)),
       results: sentNow.map((o) => ({ order: `CHD${o}`, name: "ZZ Test Relay", phone: "+15550000009", pickup_time: "6:15 AM", sms_status: "sent:SM1", email_status: "", skipped: false })) });
   }
-  if (p === "/api/dispatch/driver-notice") return send(res, 200, { run_date: q.date, text: `NPE: Your manifest for Mon, Oct 5 is ready. Log in to see your bus and guests: https://confirm.nationalparkexpress.com/driver?date=${q.date}`, last_sent: ctl.driverSentAt ? { at: "2026-10-04T22:00:00+00:00", by: "annie", label: "Texted 1 driver" } : null,
+  // G215（后端 49c400a）：ctl.driverPage = null（默认，旧后端不带字段）| true | false（司机页开关关着，带后端原文）；ctl.driver400 = 发送时后端拒发。
+  if (p === "/api/dispatch/driver-notice") return send(res, 200, { run_date: q.date, ...(ctl.driverPage == null ? {} : { page_open: ctl.driverPage, page_off_text: DRIVER_PAGE_OFF }), text: `NPE: Your manifest for Mon, Oct 5 is ready. Log in to see your bus and guests: https://confirm.nationalparkexpress.com/driver?date=${q.date}`, last_sent: ctl.driverSentAt ? { at: "2026-10-04T22:00:00+00:00", by: "annie", label: "Texted 1 driver" } : null,
     people: [{ key: "hr:1", name: "FREDDY", phone: "+17025550101", can_send: true, why: "", cars: [{ shift: "relay", van: "768", tour: null }] },
              // driverAllOk：GIA 也能发（测收起状态的提示行显示 Last sent，而不是橙字）。
              ctl.driverAllOk
@@ -445,6 +449,7 @@ http.createServer(async (req, res) => {
   if (p === "/api/dispatch/driver-notice/send") {
     const b = JSON.parse(await readRaw(req)); entry.body = b; ctl.driverSentAt = true;
     if (ctl.driver502) return send(res, 502, { detail: "Bad gateway" });
+    if (ctl.driver400) return send(res, 400, { detail: DRIVER_PAGE_OFF });
     return send(res, 200, { sent: ["FREDDY"], failed: ctl.driverFail ? [{ name: "BOB", error: "Twilio 21211" }] : [] });
   }
   // Farm out（G40）：形状照后端真代码（2026-10-17 核对：routers/farm_out*.py、docs 第八节）。ctl.farmOut 开着才有，关着 404。

@@ -2,7 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { byTick } from "@/lib/by-tick";
+import { usePermissions } from "@/lib/staff-permissions";
 import type { ActionResult } from "@/components/ui/action-result";
+import { BulkImportButton } from "@/components/ui/bulk-import";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ErrorBanner, Panel } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
@@ -23,6 +26,7 @@ import { cn } from "@/lib/utils";
 import type { PickupLocation, ShuttleRoute, ShuttleSeason } from "@/types";
 
 import { ActionLog } from "./action-log";
+import { PickupImportPanel } from "./import-panel";
 import {
   draftOf,
   emptyDraft,
@@ -77,6 +81,7 @@ export function PickupLocationsView() {
   const [seasonsDirty, setSeasonsDirty] = useState(false);
   const [savedNote, setSavedNote] = useState<SavedNote>(null);
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
   const redirectingRef = useRef(false);
   const addOkTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -100,7 +105,13 @@ export function PickupLocationsView() {
     [redirectToLogin],
   );
 
+  // 全部按照勾选（Annie 2026-10-30 置顶 10c）：开关开着按勾（settings.pickup，同后端接口），关着照旧；Super Admin 全过。
+  const tickPerms = usePermissions();
+  const tickPermsRef = useRef(tickPerms);
+  tickPermsRef.current = tickPerms;
   useEffect(() => {
+    // 权限读完再判断（开关开着时要按勾）。
+    if (!tickPerms.ready) return;
     const controller = new AbortController();
     const { signal } = controller;
     setView({ kind: "loading" });
@@ -109,7 +120,12 @@ export function PickupLocationsView() {
         const me = await fetchCurrentUser(signal);
         if (signal.aborted) return;
         // 只有 admin 能管接客点（后端也会 403）。
-        if (!me.is_admin) {
+        if (
+          !byTick(tickPermsRef.current, "settings.pickup", {
+            legacy: me.is_admin,
+            superAdmin: !!me.is_superadmin,
+          })
+        ) {
           setView({ kind: "forbidden" });
           return;
         }
@@ -135,7 +151,7 @@ export function PickupLocationsView() {
       }
     })();
     return () => controller.abort();
-  }, [reloadKey, applyLoadError]);
+  }, [reloadKey, applyLoadError, tickPerms.ready, tickPerms.active]);
 
   useEffect(
     () => () => {
@@ -495,6 +511,15 @@ export function PickupLocationsView() {
             </div>
           ) : null}
 
+          {importOpen ? (
+            <PickupImportPanel
+              locations={locations}
+              onClose={() => setImportOpen(false)}
+              onSaved={() => void refresh()}
+              onUnauthorized={redirectToLogin}
+            />
+          ) : null}
+
           <LocationSections
             locations={locations}
             visible={visible}
@@ -525,6 +550,12 @@ export function PickupLocationsView() {
             onClassify={classify}
             savedNote={savedNote}
             onUnauthorized={redirectToLogin}
+            importButton={
+              <BulkImportButton
+                onClick={() => setImportOpen(true)}
+                disabled={view.kind !== "ready" || importOpen}
+              />
+            }
           />
 
           {view.kind === "ready" ? (
@@ -655,6 +686,13 @@ function HowToUse() {
       <li>
         Click ⬇ Export to download the active hotels as a CSV, all fields
         included (opens in Excel).
+      </li>
+      <li>
+        Change or add many hotels at once: click ⬆ Import, then ⬇ Download
+        template (every hotel, same columns). Change or add rows in Excel,
+        choose the file, check the preview, then click Save. Rows are matched by
+        Hotel Name or an alias; a blank cell never clears a box; rows marked
+        Error are not saved.
       </li>
     </LegacyHowTo>
   );

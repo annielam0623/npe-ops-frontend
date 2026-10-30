@@ -191,7 +191,10 @@ export function matchesSearch(loc: PickupLocation, search: string): boolean {
 // ── Export CSV（Annie 2026-10-22：全部字段、只导出 active 的酒店）────────────────
 
 /** CSV 的列顺序：和 PickupLocation 的 8 个字段一一对应。 */
-const CSV_FIELDS: readonly { key: keyof PickupLocation; label: string }[] = [
+export const CSV_FIELDS: readonly {
+  key: keyof PickupLocation;
+  label: string;
+}[] = [
   { key: "hotel_name", label: "Hotel Name" },
   { key: "photo_url", label: "Photo URL" },
   { key: "map_image_url", label: "Map image" },
@@ -210,6 +213,20 @@ function csvCellValue(value: PickupLocation[keyof PickupLocation]): string {
     return value ? "Yes" : "No";
   }
   return String(value);
+}
+
+/**
+ * ⬆ Import 的模板：全部酒店（含停用的），列同 Export（页面上的栏名），改了再传回来（Annie 2026-10-29 Q5：模板带现有记录）。
+ */
+export function buildPickupImportTemplate(
+  locations: readonly PickupLocation[],
+): { headers: string[]; rows: string[][] } {
+  return {
+    headers: CSV_FIELDS.map((f) => f.label),
+    rows: locations.map((loc) =>
+      CSV_FIELDS.map((f) => csvCellValue(loc[f.key])),
+    ),
+  };
 }
 
 /** 只导出当前启用（active）的酒店，全部 8 个字段。 */

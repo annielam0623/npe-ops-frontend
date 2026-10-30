@@ -1,340 +1,132 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
-
-import { isStatus } from "@/lib/api-errors";
+import {
+  BulkImport,
+  type BulkImportPreview,
+  type BulkImportRow,
+  type BulkImportStatus,
+} from "@/components/ui/bulk-import";
 import { describeHrWriteError } from "@/lib/permissions";
-import { commitHRImport, previewHRImport } from "@/lib/hr-api";
-import { cn } from "@/lib/utils";
+import {
+  commitHRImport,
+  downloadHRExport,
+  previewHRImport,
+} from "@/lib/hr-api";
 import type { HRImportPreview, HRImportResult, HRImportRow } from "@/types";
 
 import { choiceText, FIELD_BY_KEY, fieldLabel } from "./fields";
-import {
-  HR_BTN_CLASS,
-  HR_BTN_PRIMARY_CLASS,
-  HR_CARD_CLASS,
-  HR_CARD_HEADER_CLASS,
-  HR_CARD_TITLE_CLASS,
-} from "./legacy-ui";
-
-type PreviewState =
-  | { kind: "idle" }
-  | { kind: "loading" }
-  | { kind: "error"; message: string }
-  | { kind: "ready"; preview: HRImportPreview };
 
 interface ImportPanelProps {
   onClose: () => void;
-  /** 导入成功：父组件重拉列表和日志。 */
+  /** 存好了 / 下了模板（导出会记日志）：父组件重拉列表和日志。 */
   onImported: () => void;
   onUnauthorized: () => void;
 }
 
+/**
+ * HR 的 Import，用全站通用的 `BulkImport`（Annie 2026-10-29 动手，Q7：去掉「Also update people already on the list」勾）：
+ * 一律 overwrite=true —— 预览里 New / Update 分开写着，看过再按 Save；空格照旧不清空（后端规则）。
+ * 模板就是 Export to Excel（带现有的人，列名同 HR 表），按 Legal Name 对上，没对上的新建。
+ * 后端 G220（76de8f3）：每行带 errors / before，没通过检查的行 status "error"、提交时跳过，其余照存；
+ * 提交出错时不保证一行没写（不是整份回滚），所以失败时不说「nothing was changed」（atomic=false）。
+ */
 export function ImportPanel({
   onClose,
   onImported,
   onUnauthorized,
 }: ImportPanelProps) {
-  const fileId = useId();
-  const [file, setFile] = useState<File | null>(null);
-  const [overwrite, setOverwrite] = useState(false);
-  const [state, setState] = useState<PreviewState>({ kind: "idle" });
-  const [committing, setCommitting] = useState(false);
-  const [commitError, setCommitError] = useState<string | null>(null);
-  const [result, setResult] = useState<HRImportResult | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const onUnauthorizedRef = useRef(onUnauthorized);
-  onUnauthorizedRef.current = onUnauthorized;
-
-  // 选了文件或改了勾选就重新预览（只读，不写库）。
-  useEffect(() => {
-    if (!file) {
-      setState({ kind: "idle" });
-      return;
-    }
-    const controller = new AbortController();
-    setState({ kind: "loading" });
-    setCommitError(null);
-    previewHRImport(file, overwrite, controller.signal)
-      .then((preview) => setState({ kind: "ready", preview }))
-      .catch((error: unknown) => {
-        if (controller.signal.aborted) return;
-        if (isStatus(error, 401)) {
-          onUnauthorizedRef.current();
-          return;
-        }
-        setState({ kind: "error", message: describeHrWriteError(error) });
-      });
-    return () => controller.abort();
-  }, [file, overwrite]);
-
-  async function commit() {
-    if (!file || committing || state.kind !== "ready") return;
-    setCommitting(true);
-    setCommitError(null);
-    try {
-      const done = await commitHRImport(file, overwrite);
-      setResult(done);
-      // 导入完回到初始状态（同旧页面：勾选也复位）。
-      setFile(null);
-      setOverwrite(false);
-      if (inputRef.current) inputRef.current.value = "";
-      onImported();
-    } catch (error) {
-      if (isStatus(error, 401)) {
-        onUnauthorized();
-        return;
+  return (
+    <BulkImport
+      title="Import drivers & guides"
+      help={
+        <>
+          <b>Legal Name</b> finds the person; names not on the list are added as
+          new people. A blank cell never clears what is stored — to empty a
+          field, use <b>Edit list</b> or open that person.
+        </>
       }
-      setCommitError(`Nothing was imported: ${describeHrWriteError(error)}`);
-    } finally {
-      setCommitting(false);
-    }
-  }
-
-  const preview = state.kind === "ready" ? state.preview : null;
-  const writable = preview ? preview.counts.new + preview.counts.update : 0;
-
-  const importLabel = committing
-    ? "Importing…"
-    : preview?.overwrite && preview.counts.update > 0
-      ? `Import and update ${preview.counts.update}`
-      : "Import";
-
-  return (
-    <section aria-label="Import from Excel" className={HR_CARD_CLASS}>
-      <div className={HR_CARD_HEADER_CLASS}>
-        <h2 className={HR_CARD_TITLE_CLASS}>Import from Excel</h2>
-        <button
-          type="button"
-          onClick={onClose}
-          disabled={committing}
-          className={HR_BTN_CLASS}
-        >
-          Close
-        </button>
-      </div>
-      <div className="p-4 text-[#1a1a1a] night:text-white/90">
-        {/* .imp-row：选文件 + Import 键（同旧页面）。 */}
-        <div className="flex flex-wrap items-center gap-2.5">
-          <label htmlFor={fileId} className="sr-only">
-            Spreadsheet file
-          </label>
-          <input
-            ref={inputRef}
-            id={fileId}
-            type="file"
-            accept=".csv,.xlsx"
-            disabled={committing}
-            onChange={(e) => {
-              setResult(null);
-              setFile(e.target.files?.[0] ?? null);
-            }}
-            className="text-[13px]"
-          />
-          <button
-            type="button"
-            disabled={!preview || writable === 0 || committing}
-            onClick={() => void commit()}
-            className={HR_BTN_PRIMARY_CLASS}
-          >
-            {importLabel}
-          </button>
-        </div>
-        {/* .imp-ow */}
-        <label className="mt-2.5 flex cursor-pointer items-center gap-[7px] text-[12.5px] text-[#1a1a1a] select-none night:text-white/75">
-          <input
-            type="checkbox"
-            checked={overwrite}
-            disabled={committing}
-            onChange={(e) => setOverwrite(e.target.checked)}
-            className="h-[15px] w-[15px] cursor-pointer"
-          />
-          Also update people already on the list
-        </label>
-        <div className="mt-2 text-[11.5px] leading-[1.5] text-[#1a1a1a] night:text-white/35">
-          The file can be .csv or .xlsx. The first row must be a header row.
-          Columns are matched by name, not position — any order works, and extra
-          columns are ignored. <b>Legal Name is required</b>, and it is how a
-          row is matched to a person.
-          <br />
-          Without the box ticked, people already on the list are skipped and
-          never changed. With it ticked,{" "}
-          <b>
-            only columns present in your file are written, and only where your
-            file has a value
-          </b>
-          . A blank cell never clears what is stored — to empty a field, use{" "}
-          <b>Edit list</b> or open that person, where blank means what you
-          typed.
-        </div>
-
-        {result ? (
-          <p
-            role="status"
-            className="mt-2 text-[12.5px] text-[#1e6b43] night:text-emerald-300"
-          >
-            {resultText(result)}
-          </p>
-        ) : null}
-
-        {state.kind === "loading" ? (
-          <p className="mt-3 text-[12.5px] text-[#1a1a1a] night:text-white/55">
-            Reading the file…
-          </p>
-        ) : state.kind === "error" ? (
-          <p
-            role="alert"
-            className="mt-2 text-[12.5px] whitespace-pre-wrap text-[#b3261e] night:text-red-300"
-          >
-            {state.message}
-          </p>
-        ) : preview ? (
-          <>
-            {/* .imp-counts */}
-            <p className="mt-3 flex flex-wrap gap-3.5 text-[12.5px] text-[#1a1a1a] night:text-white/75">
-              <span>
-                New: <b className="tabular-nums">{preview.counts.new}</b>
-              </span>
-              {preview.overwrite ? (
-                <>
-                  <span>
-                    Will update:{" "}
-                    <b className="tabular-nums">{preview.counts.update}</b>
-                  </span>
-                  <span>
-                    No change:{" "}
-                    <b className="tabular-nums">{preview.counts.unchanged}</b>
-                  </span>
-                </>
-              ) : (
-                <span>
-                  Already on the list:{" "}
-                  <b className="tabular-nums">{preview.counts.exists}</b>
-                </span>
-              )}
-              <span>
-                Repeated in this file:{" "}
-                <b className="tabular-nums">{preview.counts.duplicate}</b>
-              </span>
-              {preview.overwrite ? (
-                <span className="text-[#7a5300] night:text-amber-200">
-                  Columns that will be written:{" "}
-                  <b>
-                    {preview.file_columns
-                      .filter((k) => k !== "legal_name")
-                      .map(fieldLabel)
-                      .join(", ") || "—"}
-                  </b>
-                </span>
-              ) : null}
-            </p>
-            {commitError ? (
-              <p
-                role="alert"
-                className="mt-2 text-[12.5px] whitespace-pre-wrap text-[#b3261e] night:text-red-300"
-              >
-                {commitError}
-              </p>
-            ) : null}
-            <div className="overflow-x-auto">
-              {/* table.prev */}
-              <table className="mt-3 w-full min-w-[700px] border-collapse text-[12px] text-[#1a1a1a] night:text-white/90">
-                <thead>
-                  <tr>
-                    <th className={PREV_TH}>Import</th>
-                    {preview.headers.map((k) => (
-                      <th key={k} className={PREV_TH}>
-                        {fieldLabel(k)}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {preview.rows.map((row, i) => (
-                    <PreviewRow key={i} row={row} headers={preview.headers} />
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </>
-        ) : null}
-      </div>
-    </section>
+      template={async () => {
+        const done = await downloadHRExport();
+        onImported();
+        return done;
+      }}
+      preview={async (file, signal) =>
+        toPreview(await previewHRImport(file, true, signal))
+      }
+      commit={async (file) => resultText(await commitHRImport(file, true))}
+      atomic={false}
+      describe={describeHrWriteError}
+      onClose={onClose}
+      onSaved={onImported}
+      onUnauthorized={onUnauthorized}
+    />
   );
 }
 
-/** table.prev th */
-const PREV_TH =
-  "border-b-[0.5px] border-black/[.08] night:border-white/10 bg-paper night:bg-white/[.03] px-2.5 py-[7px] text-left text-[10.5px] whitespace-nowrap text-[#1a1a1a] night:text-white/55 uppercase";
-
-function badgeText(row: HRImportRow): string {
-  const blank =
-    row.blanked.length > 0
-      ? ` (${row.blanked.length} blank cell(s) left as-is)`
-      : "";
+function statusOf(row: HRImportRow): BulkImportStatus {
+  if (row.errors?.length) return "error";
   switch (row.status) {
+    case "error":
+      return "error";
     case "new":
-      return "will import";
-    case "exists":
-      return "skipped — already here";
-    case "duplicate_in_file":
-      return "skipped — repeated above";
+      return "new";
     case "update":
-      return `will update — ${row.changed.length} field(s)${blank}`;
-    case "unchanged":
-      return `no change${blank}`;
+      return "update";
+    case "duplicate_in_file":
+      return "error";
     default:
-      return row.status;
+      // overwrite=true 时后端不回 exists；万一回了也是「不写」。
+      return "unchanged";
   }
 }
 
-function PreviewRow({ row, headers }: { row: HRImportRow; headers: string[] }) {
-  // 只有 new 和 update 会真的写库；其余灰掉（tr.skip）。会被覆盖的行淡黄（tr.upd），真会变的格子再描边。
-  const skip = row.status !== "new" && row.status !== "update";
-  const upd = row.status === "update";
-  const td = cn(
-    "border-b-[0.5px] border-black/[.06] night:border-white/10 px-2.5 py-[7px] whitespace-nowrap",
-    skip
-      ? "bg-[#fafafa] night:bg-white/[.03] text-[#999] night:text-white/35"
-      : "text-[#1a1a1a] night:text-white/90",
-    upd && "bg-[#fffdf5] night:bg-amber-400/10",
-  );
-  return (
-    <tr data-status={row.status}>
-      <td className={td}>{badgeText(row)}</td>
-      {headers.map((k) => {
-        const field = FIELD_BY_KEY[k];
-        const raw = row[k] ?? "";
-        // 后端给的单选是存的值（例如 full_time），这里换成标签，和多选一致。
-        const text =
-          field?.kind === "choice" ? (raw ? choiceText(field, raw) : "") : raw;
-        return (
-          <td
-            key={k}
-            className={cn(
-              td,
-              upd &&
-                row.changed.includes(k) &&
-                "font-semibold text-[#7a5300] shadow-[inset_0_0_0_1px_#d8a01f] night:text-amber-200",
-            )}
-          >
-            {text}
-          </td>
-        );
-      })}
-    </tr>
-  );
+function toPreview(p: HRImportPreview): BulkImportPreview {
+  const rows = p.rows.map((row): BulkImportRow => {
+    // 后端给的单选是存的值（例如 full_time），这里换成标签；改前的值（before）也一样。
+    const shown = (k: string, raw: string) => {
+      const field = FIELD_BY_KEY[k];
+      return field?.kind === "choice"
+        ? raw
+          ? choiceText(field, raw)
+          : ""
+        : raw;
+    };
+    const values: Record<string, string> = {};
+    for (const k of p.headers) values[k] = shown(k, row[k] ?? "");
+    const before = row.before
+      ? Object.fromEntries(
+          Object.entries(row.before).map(([k, v]) => [k, shown(k, v ?? "")]),
+        )
+      : undefined;
+    // 文件里重复的行：后端在 errors 里写「Repeated above — skipped.」（G220），万一没写再补一句。
+    const errors = [...(row.errors ?? [])];
+    if (row.status === "duplicate_in_file" && !errors.length) {
+      errors.push({ field: null, message: "Repeated above — skipped." });
+    }
+    return {
+      status: statusOf(row),
+      values,
+      before,
+      changed: row.changed,
+      blanked: row.blanked,
+      errors,
+    };
+  });
+  return {
+    columns: p.headers.map((k) => ({ key: k, label: fieldLabel(k) })),
+    rows,
+  };
 }
 
 function resultText(r: HRImportResult): string {
-  const parts = [`Imported ${r.imported}`];
-  if (r.updated) parts.push(`updated ${r.updated}`);
+  const parts: string[] = [];
+  if (r.imported) parts.push(`${r.imported} new`);
+  if (r.updated) parts.push(`${r.updated} updated`);
   if (r.unchanged) parts.push(`${r.unchanged} already matched`);
-  parts.push(
-    `skipped ${r.skipped}${r.skipped_names.length ? ` (${r.skipped_names.join(", ")})` : ""}`,
-  );
+  // 文件里重复的（skipped）和没通过检查的（errors）预览里都是 Error 行，Save 后面那句「N rows with errors were not saved.」
+  // 由通用块按预览写，这里不再重复。
   if (r.vanished) {
-    parts.push(`${r.vanished} were deleted by someone else and skipped`);
+    parts.push(`${r.vanished} deleted by someone else and skipped`);
   }
-  return `${parts.join(", ")}.`;
+  return `${parts.join(", ") || "nothing to change"}.`;
 }

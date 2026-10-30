@@ -10,6 +10,11 @@ export type { ActionLogPage, ActionLogRow } from "./action-log";
 export type { QuickReply } from "./quick-replies";
 export type { CurrentUser } from "./auth";
 export type {
+  ImportCommitResult,
+  ImportPreviewResponse,
+  ImportPreviewRow,
+} from "./bulk-import";
+export type {
   AccidentDetails,
   ComplaintAbout,
   DashboardWidget,
@@ -390,6 +395,8 @@ export type {
   ScheduleNotified,
   SchedulePublishBlockedError,
   SchedulePublishResult,
+  SchedulePendingChange,
+  ScheduleSendChangesResult,
   ScheduleSettings,
   ScheduleShiftType,
   ScheduleSlot,
@@ -400,6 +407,9 @@ export type {
   ScheduleTimeOffInput,
   ScheduleTimeOffKind,
   ScheduleWeek,
+  ScheduleWeekChangesError,
+  ScheduleWeekChangesResult,
+  ScheduleWeekOp,
   ScheduleWeekStatus,
   ScheduleWorkWindow,
   ScheduleWorkWindowInput,

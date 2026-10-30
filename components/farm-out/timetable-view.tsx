@@ -15,6 +15,8 @@ import {
   TH_CLASS,
   TR_CLASS,
 } from "@/components/pickup-locations/legacy-ui";
+import { byTick } from "@/lib/by-tick";
+import { usePermissions } from "@/lib/staff-permissions";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchCurrentUser } from "@/lib/auth-api";
 import {
@@ -111,14 +113,25 @@ export function TimetableView({ partnerId: fixedId }: { partnerId: number }) {
     );
   }
 
+  // 全部按照勾选（Annie 2026-10-30 置顶 10c）：开关开着按勾（settings.farm_out，同后端接口），关着照旧；Super Admin 全过。
+  const tickPerms = usePermissions();
+  const tickPermsRef = useRef(tickPerms);
+  tickPermsRef.current = tickPerms;
   useEffect(() => {
+    // 权限读完再判断（开关开着时要按勾）。
+    if (!tickPerms.ready) return;
     const controller = new AbortController();
     setGate({ kind: "loading" });
     (async () => {
       try {
         const me = await fetchCurrentUser(controller.signal);
         if (controller.signal.aborted) return;
-        if (!me.is_admin) {
+        if (
+          !byTick(tickPermsRef.current, "settings.farm_out", {
+            legacy: me.is_admin,
+            superAdmin: !!me.is_superadmin,
+          })
+        ) {
           setGate({ kind: "forbidden" });
           return;
         }
@@ -141,7 +154,7 @@ export function TimetableView({ partnerId: fixedId }: { partnerId: number }) {
       }
     })();
     return () => controller.abort();
-  }, [reloadKey, redirectToLogin, fixedId]);
+  }, [reloadKey, redirectToLogin, fixedId, tickPerms.ready, tickPerms.active]);
 
   // 拉这家的表（换页 = 换公司时，没存的改动和没 Apply 的上传都丢掉）。
   useEffect(() => {

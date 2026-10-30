@@ -8,6 +8,8 @@ import {
   useState,
 } from "react";
 
+import { byTick } from "@/lib/by-tick";
+import { usePermissions } from "@/lib/staff-permissions";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   CARD_CLASS,
@@ -27,7 +29,6 @@ import {
   fetchProductGroups,
   fetchProducts,
   setProductActive,
-  setProductBusTourType,
   setProductTourType,
   updateProduct,
 } from "@/lib/products-api";
@@ -61,11 +62,8 @@ import { ManifestSetupPanel } from "./manifest-setup-panel";
 import { sectionTourTypeLabel } from "./section-tour-type";
 import { MissingCard } from "./missing-card";
 import { ProductLog } from "./product-log";
-import {
-  type CellState,
-  type ProductField,
-  ProductsTable,
-} from "./products-table";
+import { ProductsTable, type RowDraft } from "./products-table";
+import { savedAt, type SaveState, UnsavedProvider } from "./unsaved";
 
 type ViewState =
   | { kind: "loading" }
@@ -75,8 +73,18 @@ type ViewState =
 
 const KEEP = "__keep__";
 
+/** 整页包一层：没存的块离开页面时一起问、Bus Manifest setup 10 分钟没活动自动存（./unsaved）。 */
 export function ProductsView() {
+  return (
+    <UnsavedProvider>
+      <ProductsPage />
+    </UnsavedProvider>
+  );
+}
+
+function ProductsPage() {
   const [view, setView] = useState<ViewState>({ kind: "loading" });
+  const [adminPanels, setAdminPanels] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   /** 「还没加进列表」只在打开页面时拉一次（加完不重画，同旧页面）；拉不到不影响列表。 */
   const [missing, setMissing] = useState<MissingProduct[] | null>(null);
@@ -89,7 +97,8 @@ export function ProductsView() {
   /** Bus Manifest setup 读到的设置：非门票产品的 Tour type 按节显示（后端 G130）。 */
   const [setupData, setSetupData] = useState<ManifestSetup | null>(null);
   const [bulkConfirm, setBulkConfirm] = useState(false);
-  const [cellStates, setCellStates] = useState<Record<string, CellState>>({});
+  /** 刚存好的产品行（换组后行挪到新组下面会重建，接着显示 Saved）。 */
+  const [rowSaved, setRowSaved] = useState<Record<number, SaveState>>({});
   const [busyId, setBusyId] = useState<number | null>(null);
   const [message, setMessage] = useState<{
     tone: "error" | "info";
@@ -129,7 +138,13 @@ export function ProductsView() {
     [redirectToLogin],
   );
 
+  // 全部按照勾选（Annie 2026-10-30 置顶 10c）：开关开着按勾（settings.products，同后端接口），关着照旧；Super Admin 全过。
+  const tickPerms = usePermissions();
+  const tickPermsRef = useRef(tickPerms);
+  tickPermsRef.current = tickPerms;
   useEffect(() => {
+    // 权限读完再判断（开关开着时要按勾）。
+    if (!tickPerms.ready) return;
     const controller = new AbortController();
     const { signal } = controller;
     setView({ kind: "loading" });
@@ -137,7 +152,12 @@ export function ProductsView() {
       try {
         const me = await fetchCurrentUser(signal);
         if (signal.aborted) return;
-        if (!me.is_admin) {
+        if (
+          !byTick(tickPermsRef.current, "settings.products", {
+            legacy: me.is_admin,
+            superAdmin: !!me.is_superadmin,
+          })
+        ) {
           setView({ kind: "forbidden" });
           return;
         }
@@ -146,6 +166,8 @@ export function ProductsView() {
           fetchProductGroups(signal),
         ]);
         if (signal.aborted) return;
+        // Bus Manifest setup 和 7 Days Forecast 设置后端是 require_admin（按角色，不按勾）：只有 admin 才出那一块。
+        setAdminPanels(!!me.is_admin || !!me.is_superadmin);
         setView({ kind: "ready", products, meta });
         fetchMissingProducts(signal)
           .then((list) => !signal.aborted && setMissing(list))
@@ -155,7 +177,7 @@ export function ProductsView() {
       }
     })();
     return () => controller.abort();
-  }, [reloadKey, applyLoadError]);
+  }, [reloadKey, applyLoadError, tickPerms.ready, tickPerms.active]);
 
   /** Groups 一块改了组以后：组清单、产品（组标题 / 顺序）、「Not in this list yet」都重拉（同旧页面 reloadGroupsAndProducts）。 */
   const reloadGroups = useCallback(async () => {
@@ -195,15 +217,6 @@ export function ProductsView() {
     }
   }, [applyLoadError]);
 
-  function setCell(key: string, state: CellState | null) {
-    setCellStates((all) => {
-      const next = { ...all };
-      if (state) next[key] = state;
-      else delete next[key];
-      return next;
-    });
-  }
-
   function patchProduct(id: number, patch: Partial<Product>) {
     setView((prev) =>
       prev.kind === "ready"
@@ -218,122 +231,61 @@ export function ProductsView() {
   }
 
   /**
-   * 每个商品排队保存：⚠️ PUT 是整体覆盖，两次 PUT 并发时先发的可能后到、把新值盖掉。
-   * confirmed 是最后存成功的三项，每次 PUT 发出时才在它上面改这一格（别的格没存好的值不带，
-   * 失败时就只是这一格的错）；desired 是页面上显示的值，用来判断失败后要不要改回。
+   * 一行的 Save（Annie 2026-10-29：下拉、输入都先放在页面上，按 Save 才存）：
+   * Internal name / Group / Category 有改的就一次 PUT（整体覆盖，三项都带这一行现在的值）；
+   * 门票产品的 Tour type 改了再单独 PATCH（PUT 不带它，互不覆盖）。存不上返回后端原话，这一行的改动留着、红字写在行里。
    */
-  const saveQueueRef = useRef(
-    new Map<
-      number,
-      {
-        chain: Promise<void>;
-        desired: ProductUpdateInput;
-        confirmed: ProductUpdateInput;
-      }
-    >(),
-  );
-
-  /** 改一格就存。失败时只把这一格改回原值并说明。 */
-  function saveField(p: Product, field: ProductField, value: string) {
-    const key = `${p.id}:${field}`;
-    const queues = saveQueueRef.current;
-    const current: ProductUpdateInput = {
-      internal_name: p.internal_name,
-      manifest_id: p.manifest_id,
-      booking_type: p.booking_type ?? "",
+  async function saveRow(p: Product, d: RowDraft): Promise<string | null> {
+    const sent: ProductUpdateInput = {
+      internal_name: d.internal_name,
+      manifest_id: d.manifest_id,
+      booking_type: d.booking_type,
     };
-    // 还有没存完的就接着上一次的值改（这一行的 p 可能是旧渲染的）。
-    const q = queues.get(p.id) ?? {
-      chain: Promise.resolve(),
-      desired: current,
-      confirmed: current,
-    };
-    queues.set(p.id, q);
-    const parsed =
-      field === "manifest_id" ? (value ? Number(value) : null) : value;
-    q.desired = { ...q.desired, [field]: parsed };
-    patchProduct(p.id, {
-      [field]: field === "booking_type" ? value || null : parsed,
-    });
-    setCell(key, "saving");
-    setMessage(null);
-
-    const run = async () => {
-      const sent = { ...q.confirmed, [field]: parsed };
-      try {
-        await updateProduct(p.id, sent);
-        q.confirmed = sent;
-        setCell(key, "saved");
-        setTimeout(() => setCell(key, null), 1400);
-        if (field === "manifest_id") {
-          // 换了组：重拉，让这一行挪到新组下面；Manifest setup 面板也跟着更新。
-          setSetupVersion((v) => v + 1);
-          void refresh();
-        } else {
-          setLogVersion((v) => v + 1);
-        }
-      } catch (error) {
-        if (isStatus(error, 401)) {
-          redirectToLogin();
-          return;
-        }
-        // 只改回这一格；人在排队期间又改了这一格就不动（那次保存会再试）。
-        if (q.desired[field] === parsed) {
-          const old = q.confirmed[field];
-          q.desired = { ...q.desired, [field]: old };
-          patchProduct(p.id, {
-            [field]: field === "booking_type" ? old || null : old,
-          });
-        }
-        setCell(key, "failed");
-        setMessage({
-          tone: "error",
-          text: `Could not save ${p.product_code}: ${describeError(error)}`,
-        });
-      }
-    };
-    const chained = q.chain.then(run);
-    q.chain = chained;
-    void chained.finally(() => {
-      // 排空了就丢掉，之后以重拉的数据为准。
-      if (queues.get(p.id)?.chain === chained) queues.delete(p.id);
-    });
-  }
-
-  /**
-   * Tour type 一格：门票产品存 ticket_tour_type，其他产品存 bus_tour_type（巴士团默认，自动发送按它发）。
-   * 都走单独的 PATCH，不进上面 PUT 的队列（PUT 不带这两个键，互不覆盖）。
-   * 保存中下拉是禁用的，同一个产品不会有两次并发。失败时改回原值并说明。
-   */
-  async function saveTourType(p: Product, value: string) {
-    const field = tourTypeField(p);
-    const key = `${p.id}:${field}`;
-    const before = p[field] ?? null;
-    const next = value || null;
-    patchProduct(p.id, { [field]: next });
-    setCell(key, "saving");
+    const putNeeded =
+      sent.internal_name !== p.internal_name ||
+      sent.manifest_id !== p.manifest_id ||
+      sent.booking_type !== (p.booking_type ?? "");
+    const tourNeeded =
+      d.booking_type === "ticket" &&
+      d.ticket_tour_type !== (p.ticket_tour_type ?? null);
     setMessage(null);
     try {
-      const saved =
-        field === "ticket_tour_type"
-          ? (await setProductTourType(p.id, next)).ticket_tour_type
-          : (await setProductBusTourType(p.id, next)).bus_tour_type;
-      patchProduct(p.id, { [field]: saved });
-      setCell(key, "saved");
-      setTimeout(() => setCell(key, null), 1400);
-      setLogVersion((v) => v + 1);
+      if (putNeeded) {
+        await updateProduct(p.id, sent);
+        patchProduct(p.id, {
+          internal_name: sent.internal_name,
+          manifest_id: sent.manifest_id,
+          booking_type: sent.booking_type || null,
+        });
+      }
+      if (tourNeeded) {
+        try {
+          const r = await setProductTourType(p.id, d.ticket_tour_type);
+          patchProduct(p.id, { ticket_tour_type: r.ticket_tour_type });
+        } catch (error) {
+          if (isStatus(error, 401)) throw error;
+          return `Could not save the tour type: ${describeError(error)}`;
+        }
+      }
     } catch (error) {
       if (isStatus(error, 401)) {
         redirectToLogin();
-        return;
+        return "";
       }
-      patchProduct(p.id, { [field]: before });
-      setCell(key, "failed");
-      setMessage({
-        tone: "error",
-        text: `Could not save the tour type of ${p.product_code}: ${describeError(error)}`,
-      });
+      return `Could not save: ${describeError(error)}`;
+    } finally {
+      setLogVersion((v) => v + 1);
     }
+    setRowSaved((m) => ({
+      ...m,
+      [p.id]: { kind: "saved", at: savedAt(), auto: false },
+    }));
+    if (putNeeded && sent.manifest_id !== p.manifest_id) {
+      // 换了组：重拉，让这一行挪到新组下面；Manifest setup 面板也跟着更新。
+      setSetupVersion((v) => v + 1);
+      void refresh();
+    }
+    return null;
   }
 
   async function toggleActive(p: Product) {
@@ -581,12 +533,14 @@ export function ProductsView() {
         />
       ) : null}
 
-      <ManifestSetupPanel
-        version={setupVersion}
-        onUnauthorized={redirectToLogin}
-        onData={setSetupData}
-        jumpTo={forecastJump}
-      />
+      {adminPanels ? (
+        <ManifestSetupPanel
+          version={setupVersion}
+          onUnauthorized={redirectToLogin}
+          onData={setSetupData}
+          jumpTo={forecastJump}
+        />
+      ) : null}
 
       {missing && missing.length ? (
         <MissingCard
@@ -754,7 +708,6 @@ export function ProductsView() {
           tourTypes={tourTypes}
           busTourTypes={busTourTypes}
           picked={picked}
-          cellStates={cellStates}
           busyId={busyId}
           placeholder={
             products.length === 0
@@ -793,8 +746,8 @@ export function ProductsView() {
               return next;
             });
           }}
-          onSave={(p, field, value) => saveField(p, field, value)}
-          onSaveTourType={(p, value) => void saveTourType(p, value)}
+          onSaveRow={saveRow}
+          rowSaved={rowSaved}
           busTourLabel={(p) => sectionTourTypeLabel(setupData, p)}
           onToggleActive={(p) => void toggleActive(p)}
           highlightId={highlightProductId}
@@ -837,11 +790,6 @@ export function ProductsView() {
       ) : null}
     </Shell>
   );
-}
-
-/** Tour type 那一格存哪个字段：门票产品存门票的，其他（巴士团等）存巴士团默认的。 */
-function tourTypeField(p: Product): "ticket_tour_type" | "bus_tour_type" {
-  return p.booking_type === "ticket" ? "ticket_tour_type" : "bus_tour_type";
 }
 
 /** ["a"] → "a"；["a", "b"] → "a and b"；["a", "b", "c"] → "a, b and c"。 */
@@ -889,10 +837,13 @@ function HowToUse() {
         with the reason under the product name.
       </li>
       <li>
-        Change one product: change its Group or Category and it saves by itself.
-        A new group moves the row under that group&rsquo;s heading. Internal
-        name saves when you click out of the box, and the box turns green. If a
-        save fails, a message tells you why and the old value comes back.
+        Change one product: change its Internal name, Group, Category or Tour
+        type. Changed boxes turn orange and a blue Save shows next to
+        Deactivate; nothing is saved until you click Save. Saved shows in green.
+        A new group moves the row under that group&rsquo;s heading. If a save
+        fails, the reason shows in red and your changes stay, so you can fix
+        them and click Save again. If you leave the page with changes not saved,
+        the page asks first.
       </li>
       <li>
         Change many at once: tick the boxes on the left (the box in the header
@@ -911,8 +862,9 @@ function HowToUse() {
         fills it in for you. A section without one is skipped by auto-send.
       </li>
       <li>
-        Tour type of ticket products saves by itself. To set many at once, tick
-        only ticket products and use the tour type menu in the black bar.
+        Tour type of ticket products saves with the row&rsquo;s Save. To set
+        many at once, tick only ticket products and use the tour type menu in
+        the black bar.
       </li>
       <li>
         No category yet: rows with an orange left edge have no category. Click
@@ -930,12 +882,12 @@ function HowToUse() {
         Display name (the name everyone sees), Category, and Order if you want a
         place other than last. Then click Add group. Reload the page to set it
         up in Manifest setup. Short name and Category cannot be changed later.
-        To rename a group, change its Display name and click out of the box. To
-        move it, change the number in Order: lower numbers come first, on every
-        page. Deactivate hides the group from the Group list when you set a
-        product&rsquo;s group. Products already in it, and their guests, keep
-        showing everywhere, and Reactivate brings it back. Groups cannot be
-        deleted.
+        To rename a group, change its Display name; to move it, change the
+        number in Order (lower numbers come first, on every page). Then click
+        the Save on that row. Deactivate hides the group from the Group list
+        when you set a product&rsquo;s group. Products already in it, and their
+        guests, keep showing everywhere, and Reactivate brings it back. Groups
+        cannot be deleted.
       </li>
       <li>
         If a list is wider than the window, scroll it sideways to see the

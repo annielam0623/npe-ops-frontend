@@ -12,12 +12,7 @@ import { formatClock, hasBadTimeRange } from "@/lib/schedule-time";
 import { cn } from "@/lib/utils";
 import type { ScheduleShiftType, ScheduleTimeOffKind } from "@/types";
 
-import {
-  DAY_LABELS,
-  INPUT,
-  shiftCardClass,
-  TIME_OFF_LABEL,
-} from "./config";
+import { DAY_LABELS, INPUT, shiftCardClass, TIME_OFF_LABEL } from "./config";
 import { TimePicker } from "./time-picker";
 
 export interface AddShiftInput {
@@ -259,7 +254,9 @@ export function AddShiftDialog({
 
           {isOff ? (
             <div className="flex flex-col gap-1.5">
-              <span className="text-[12px] font-medium text-white/75">Type</span>
+              <span className="text-[12px] font-medium text-white/75">
+                Type
+              </span>
               <div className="flex flex-wrap gap-1.5" role="radiogroup">
                 {TIME_OFF_KINDS.map((k) => (
                   <button
@@ -282,64 +279,68 @@ export function AddShiftDialog({
               </div>
             </div>
           ) : (
-          <div className="flex flex-col gap-1.5">
-            <span className="text-[12px] font-medium text-white/75">Shift</span>
-            <div className="flex flex-wrap gap-1.5" role="radiogroup">
-              {shiftTypes.map((t) => (
-                <button
-                  key={t.key}
-                  type="button"
-                  role="radio"
-                  aria-checked={typeKey === t.key}
-                  onClick={() => pickType(t)}
-                  className={cn(
-                    "cursor-pointer rounded-[6px] border px-3 py-1 text-[12.5px] font-bold",
-                    typeKey === t.key
-                      ? cn(shiftCardClass(t.key), "ring-2 ring-sky-400/70")
-                      : "border-white/20 text-white/80 hover:border-white/40",
-                  )}
-                >
-                  {t.label}
-                </button>
-              ))}
+            <div className="flex flex-col gap-1.5">
+              <span className="text-[12px] font-medium text-white/75">
+                Shift
+              </span>
+              <div className="flex flex-wrap gap-1.5" role="radiogroup">
+                {shiftTypes.map((t) => (
+                  <button
+                    key={t.key}
+                    type="button"
+                    role="radio"
+                    aria-checked={typeKey === t.key}
+                    onClick={() => pickType(t)}
+                    className={cn(
+                      "cursor-pointer rounded-[6px] border px-3 py-1 text-[12.5px] font-bold",
+                      typeKey === t.key
+                        ? cn(shiftCardClass(t.key), "ring-2 ring-sky-400/70")
+                        : "border-white/20 text-white/80 hover:border-white/40",
+                    )}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
           )}
 
           {!isOff ? (
-          <div className="flex flex-wrap items-end gap-2.5">
-            <label
-              htmlFor={startId}
-              className="flex flex-col gap-1 text-[12px] font-medium text-white/75"
-            >
-              Start
-              <TimePicker
-                id={startId}
-                ariaLabel="Start"
-                value={start}
-                onChange={setStart}
-                className="w-[132px]"
-              />
-            </label>
-            <label
-              htmlFor={endId}
-              className="flex flex-col gap-1 text-[12px] font-medium text-white/75"
-            >
-              End
-              <TimePicker
-                id={endId}
-                ariaLabel="End"
-                value={end}
-                onChange={setEnd}
-                className="w-[132px]"
-              />
-            </label>
-            {bad ? (
-              <span className="pb-2 text-[11.5px] text-amber-200">
-                End isn&apos;t after start
-              </span>
-            ) : null}
-          </div>
+            <div className="flex flex-wrap items-start gap-2.5">
+              <label
+                htmlFor={startId}
+                className="flex flex-col gap-1 text-[12px] font-medium text-white/75"
+              >
+                Start
+                <TimePicker
+                  id={startId}
+                  ariaLabel="Start"
+                  value={start}
+                  onChange={setStart}
+                  className="w-[132px]"
+                  inline
+                />
+              </label>
+              <label
+                htmlFor={endId}
+                className="flex flex-col gap-1 text-[12px] font-medium text-white/75"
+              >
+                End
+                <TimePicker
+                  id={endId}
+                  ariaLabel="End"
+                  value={end}
+                  onChange={setEnd}
+                  className="w-[132px]"
+                  inline
+                />
+              </label>
+              {bad ? (
+                <span className="pb-2 text-[11.5px] text-amber-200">
+                  End isn&apos;t after start
+                </span>
+              ) : null}
+            </div>
           ) : null}
 
           <label

@@ -10,6 +10,8 @@ let rulesDoc = { version: 1, rules: [], updated_at: null, updated_by: null };
 const log = [];
 const publishLog = []; // 每次 POST publish 的 body（检查 allow_gaps 用），GET /__publishes 读
 let confirmWeek = "";
+// Jing（4）这周的回应：null = 不在名单里。ctl.jingAccepted 设成 Looks good；Send to confirm 发送成功后后端把 accepted 重置成 no_answer（G217 ef）。
+let jingAnswer = null;
 const confirmReqs = [
   { id: 901, employee_id: 2, shift_type: "mid", dayIdx: 3, status: "pending" },
   { id: 902, employee_id: 2, shift_type: "open", dayIdx: 5, status: "pending" },
@@ -66,6 +68,12 @@ const employees = [
 ];
 
 let nextSlotId = 100;
+// 整周 Save（G218）：每周一个 version，时段一改就变；changesLog 记每次 POST …/changes 的 body（GET /__changes 读）。
+let versionSeq = 0;
+function bumpVersion(w) {
+  w.version = `v${++versionSeq}`;
+}
+const changesLog = [];
 function slot(date, shiftType, startTime, endTime, employeeId) {
   return {
     id: nextSlotId++,
@@ -211,9 +219,40 @@ function getOrCreateWeek(weekStart) {
   return created;
 }
 
+// 发布前单独发给本人确认（Annie 10-29「员工确认」）：每个人和上次发布比改了哪几天（只算时段，mock 不算休息日）。
+const clock = (hm) => { const [h, m] = hm.split(":").map(Number); return `${h % 12 === 0 ? 12 : h % 12}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`; };
+const shiftWord = (t) => t.charAt(0).toUpperCase() + t.slice(1);
+function pendingChangesOf(weekData) {
+  if (weekData.status !== "published" || !weekData.snapshot) return [];
+  const desc = (rows) => (rows.length ? rows.map(([, t, a, b]) => `${shiftWord(t)} ${clock(a)} – ${clock(b)}`).join(", ") : null);
+  const out = [];
+  const ids = new Set([...Object.keys(weekData.snapshot).map(Number), ...weekData.slots.map((s) => s.employee_id).filter((x) => x != null)]);
+  for (const id of ids) {
+    const before = JSON.parse(weekData.snapshot[id] || "[]");
+    const after = weekData.slots.filter((s) => s.employee_id === id).map((s) => [s.date, s.shift_type, s.start_time, s.end_time]);
+    const dates = [...new Set([...before, ...after].map((r) => r[0]))].sort();
+    const items = dates
+      .map((d) => ({ date: d, before: desc(before.filter((r) => r[0] === d)), after: desc(after.filter((r) => r[0] === d)) }))
+      .filter((i) => i.before !== i.after);
+    if (!items.length) continue;
+    const emp = employees.find((e) => e.id === id);
+    const sent = (weekData.sent || {})[id];
+    out.push({ employee_id: id, name: emp ? emp.name : `#${id}`, items, sent_at: sent ? sent.at : null, sent_by: sent ? sent.by : null,
+      // 后端 G217：has_login = 有登录账号才收站内通知。ctl.noLogin = 这些员工 id 没有账号。
+      has_login: !(ctl.noLogin || []).includes(id) });
+  }
+  return out;
+}
+const sendLog = [];
+
 function weekPayload(weekData) {
   const g = gapsFor(weekData);
-  const out = { ...weekData, gaps: g, published_with_gaps: weekData.status === "published" && g.length > 0 };
+  const out = { ...weekData, gaps: g, published_with_gaps: weekData.status === "published" && g.length > 0, has_unsent_changes: weekData.status === "published" && !!weekData.unsent && ctl.role !== "staff", version: weekData.version || "v0" };
+  delete out.unsent;
+  delete out.sent;
+  // 后端 G217：只给有 schedule.edit 的人，staff 永远 []。
+  out.pending_changes = ctl.role === "staff" ? [] : pendingChangesOf(weekData);
+  delete out.snapshot;
   if (ctl.phase2) {
     const dates = datesOfWeek(weekData.week_start);
     out.time_off = timeOff.filter((t) => dates.includes(t.date));
@@ -254,11 +293,27 @@ http
     const p = url.pathname;
     if (p === "/__log") return send(res, 200, log);
     if (p === "/__publishes") return send(res, 200, publishLog);
+    if (p === "/__changes") return send(res, 200, changesLog);
+    if (p === "/__bump") {
+      const w = weeks.get(url.searchParams.get("week"));
+      if (w) bumpVersion(w);
+      return send(res, 200, { version: w ? w.version : null });
+    }
+    if (p === "/__sends") return send(res, 200, sendLog);
     if (p === "/__ctl") {
       Object.assign(ctl, await readBody(req));
       if (ctl.confirmReset) {
         confirmReqs.forEach((r) => (r.status = "pending"));
         ctl.confirmReset = false;
+      }
+      if (ctl.jingAccepted !== undefined) {
+        jingAnswer = ctl.jingAccepted ? "accepted" : null;
+        delete ctl.jingAccepted;
+      }
+      // ctl.jingAnswer：直接设 Jing 的回应（"wants_changes" / "no_answer" / null = 不在名单）。
+      if (ctl.jingAnswer !== undefined) {
+        jingAnswer = ctl.jingAnswer;
+        delete ctl.jingAnswer;
       }
       return send(res, 200, ctl);
     }
@@ -269,6 +324,9 @@ http
     const entry = { method: req.method, path: p };
     log.push(entry);
     if (ctl.fail401) return send(res, 401, { detail: "Authentication required" });
+    // 全部按照勾选（置顶 10c）：ctl.tick = { switchOn, codes } 时回员工权限总开关和我的勾；没有 tick 照旧（接口 404 = 开关关着）。
+    if (ctl.tick && p === "/api/settings/dashboard-widgets") return send(res, 200, { readable: true, widgets: [{ key: "staff_permissions", label: "Staff permissions (ops gating)", visibility: ctl.tick.switchOn ? "staff" : "super_admin_only", default: "super_admin_only", visible_to_me: !!ctl.tick.switchOn }] });
+    if (ctl.tick && p === "/api/me/permissions") return send(res, 200, { is_superadmin: false, permissions: ctl.tick.codes.map((code) => ({ code, module: code.split(".")[0], wired: true })), default_home: "/dashboard" });
     if (p === "/api/me") return send(res, 200, meFor(ctl.role));
 
     // ── 排班按周编辑占用（Annie 2026-10-19「动手改才提示」；后端排班还没有这组接口，形状照 Dispatch 的 edit-lock）──
@@ -299,6 +357,7 @@ http
           { employee_id: 2, name: "Lizzie", answer: "wants_changes", answered_at: "2026-10-07T18:02:00+00:00",
             requests: confirmReqs.map((r) => ({ id: r.id, date: days[r.dayIdx], shift_type: r.shift_type, status: r.status })) },
           { employee_id: 3, name: "Nadia", answer: "no_answer", answered_at: null, requests: [] },
+          ...(jingAnswer ? [{ employee_id: 4, name: "Jing", answer: jingAnswer, answered_at: jingAnswer === "no_answer" ? null : "2026-10-07T17:00:00+00:00", requests: [] }] : []),
         ],
       });
     }
@@ -468,6 +527,15 @@ http
       return send(res, 200, e);
     }
 
+    // 已发布的周被改动（后端 8e「改完再发」）：记下有没发的改动，Publish again 时清掉。
+    const editMatch = /^\/api\/schedule\/weeks\/(\d{4}-\d{2}-\d{2})\/slots/.exec(p);
+    if (editMatch && req.method !== "GET" && ctl.role !== "staff") {
+      const w = weeks.get(editMatch[1]);
+      if (w && w.status === "published") w.unsent = true;
+      // 单项接口改了时段：version 跟着变（后端 G218：version = schedule_weeks.updated_at）。
+      if (w) bumpVersion(w);
+    }
+
     const weekMatch = /^\/api\/schedule\/weeks\/(\d{4}-\d{2}-\d{2})$/.exec(p);
     if (weekMatch && req.method === "GET") {
       const weekData = getOrCreateWeek(weekMatch[1]);
@@ -475,6 +543,87 @@ http
         return send(res, 403, { detail: "This week hasn't been published yet." });
       }
       return send(res, 200, weekPayload(weekData));
+    }
+
+    // ── 整周一个 Save（后端 G218，ef task/g218-week-save 57f250e，docs/interfaces/schedule-week-changes-2026-10-30.md）──
+    // 整批一个事务；409 locked / stale / coverage_gap、400 带 op_index（detail 句子从 1 数）。
+    // ctl.changesLocked = 别人占着锁；ctl.inactiveEmployee = 这个员工 id 不在职（批量里指派会被拒）；
+    // ctl.changesNewToken = 锁过期被重新占住时回的新 token。GET /__bump?week= 模拟别人存过（version 变）。
+    const changesMatch = /^\/api\/schedule\/weeks\/(\d{4}-\d{2}-\d{2})\/changes$/.exec(p);
+    if (changesMatch && req.method === "POST") {
+      if (ctl.role === "staff") return send(res, 403, { detail: "Only a supervisor or above can edit the schedule." });
+      const b = await readBody(req);
+      entry.body = b;
+      changesLog.push({ week: changesMatch[1], body: b });
+      const token = ctl.changesNewToken || b.lock_token || "lock-tok-1";
+      // ctl.changes404 = 生产后端还没部署 G218（这条路由不存在，FastAPI 回 404 {detail:"Not Found"}）。
+      if (ctl.changes404) return send(res, 404, { detail: "Not Found" });
+      if (ctl.changesLocked) return send(res, 409, { detail: { detail: "Sam is editing this week (since 8:40 PM). Wait until Sam saves, then save again.", code: "locked" } });
+      if (!b || !Array.isArray(b.ops) || !b.ops.length) return send(res, 400, { detail: "Send at least one change." });
+      if (!b.base_version) return send(res, 400, { detail: "base_version is required." });
+      const weekData = getOrCreateWeek(changesMatch[1]);
+      const cur = weekData.version || "v0";
+      if (b.base_version !== cur) {
+        return send(res, 409, { detail: { detail: "This week was changed by someone else at 8:47 PM, after you opened it.", code: "stale", version: cur, lock_token: token } });
+      }
+      const work = weekData.slots.map((s) => ({ ...s }));
+      const created = {};
+      const refs = {};
+      const fail = (i, msg, slotRef) => send(res, 400, { detail: { detail: `Change ${i + 1}: ${msg}`, op_index: i, slot: slotRef ?? null, lock_token: token } });
+      const find = (ref) => (typeof ref === "string" ? work.find((s) => s.id === refs[ref]) : work.find((s) => s.id === ref));
+      const canWork = (empId, date) => {
+        if (empId == null) return null;
+        const emp = employees.find((e) => e.id === empId);
+        if (!emp) return "That employee doesn't exist.";
+        if (!emp.is_active || ctl.inactiveEmployee === empId) return `${emp.name} is not an active employee, so they can't be scheduled.`;
+        const off = timeOff.find((t) => t.employee_id === empId && t.date === date);
+        if (ctl.phase2 && off) return `${emp.name} has time off on ${date}, so they can't be scheduled that day.`;
+        return null;
+      };
+      for (let i = 0; i < b.ops.length; i++) {
+        const op = b.ops[i];
+        if (op.op === "create") {
+          if (!settings.shift_types.some((t) => t.key === op.shift_type)) return fail(i, "Unknown shift type.", op.ref);
+          const why = canWork(op.employee_id, op.date);
+          if (why) return fail(i, why, op.ref);
+          const s = slot(op.date, op.shift_type, op.start_time, op.end_time, op.employee_id ?? null);
+          s.note = op.note ?? null;
+          work.push(s);
+          if (op.ref) {
+            refs[op.ref] = s.id;
+            created[op.ref] = s.id;
+          }
+          continue;
+        }
+        const s = find(op.slot);
+        if (!s) return fail(i, "That shift no longer exists.", op.slot);
+        if (op.op === "assign") {
+          const why = canWork(op.employee_id, s.date);
+          if (why) return fail(i, why, op.slot);
+          s.employee_id = op.employee_id ?? null;
+        } else if (op.op === "time") {
+          s.start_time = op.start_time;
+          s.end_time = op.end_time;
+        } else if (op.op === "note") {
+          const n = normNote(op.note ?? "");
+          if (!n.ok) return fail(i, n.detail, op.slot);
+          s.note = n.value;
+        } else if (op.op === "delete") {
+          work.splice(work.indexOf(s), 1);
+        } else return fail(i, "Unknown change.", op.slot);
+      }
+      if (weekData.status === "published") {
+        // 照后端 _new_gaps：只列这次改动造成的新空档（改动前就有的、被包住的不算）；原话照后端 EditGapError。
+        const before = gapsFor(weekData);
+        const fresh = gapsFor({ ...weekData, slots: work }).filter((g) => !before.some((b) => b.date === g.date && b.start_time <= g.start_time && g.end_time <= b.end_time));
+        if (fresh.length) {
+          return send(res, 409, { detail: { detail: "This change would leave a gap in coverage, so it wasn't saved.", code: "coverage_gap", gaps: fresh } });
+        }
+        weekData.unsent = true;
+      }
+      weekData.slots = work;
+      bumpVersion(weekData);
+      return send(res, 200, { week: weekPayload(weekData), created, applied: b.ops.length, notified: [], lock_token: token });
     }
 
     const slotsMatch = /^\/api\/schedule\/weeks\/(\d{4}-\d{2}-\d{2})\/slots$/.exec(p);
@@ -560,6 +709,23 @@ http
       return send(res, 200, s);
     }
 
+    const sendMatch = /^\/api\/schedule\/weeks\/(\d{4}-\d{2}-\d{2})\/employees\/(\d+)\/send-changes$/.exec(p);
+    if (sendMatch && req.method === "POST") {
+      if (ctl.role === "staff") return send(res, 403, { detail: "Only a supervisor or above can send schedule changes." });
+      const emp = employees.find((e) => e.id === Number(sendMatch[2]));
+      if (!emp) return send(res, 404, { detail: "No such employee." });
+      // 错误原话照后端 G217（ef）：400 没邮箱 / 没变化 / 非生产；409 要先 Publish again；502 / 503。ctl.sendFailStatus 默认 400。
+      if (!emp.email) return send(res, 400, { detail: `No email for ${emp.name}. Add it in Employees, then send.` });
+      if (ctl.sendFail) return send(res, ctl.sendFailStatus || 400, { detail: ctl.sendFail });
+      const weekData = getOrCreateWeek(sendMatch[1]);
+      const at = new Date().toISOString();
+      weekData.sent = { ...(weekData.sent || {}), [emp.id]: { at, by: "ZZ Test" } };
+      sendLog.push({ week: sendMatch[1], employee_id: emp.id });
+      // G217 ef（Annie 定「重置」）：发送成功后，原来点 Looks good 的人回到 No answer；wants_changes 不动。
+      if (emp.id === 4 && jingAnswer === "accepted") jingAnswer = "no_answer";
+      return send(res, 200, { sent_at: at, sent_by: "ZZ Test", channels: ctl.sendEmailOnly ? ["email"] : ["email", "in_app"] });
+    }
+
     const publishMatch = /^\/api\/schedule\/weeks\/(\d{4}-\d{2}-\d{2})\/publish$/.exec(p);
     if (publishMatch && req.method === "POST") {
       if (ctl.role === "staff") {
@@ -581,9 +747,18 @@ http
           detail: { detail: "Can't publish — there's a gap in coverage.", gaps },
         });
       }
-      // 已发布的周再 Publish：不再 409，成功；republished = true，notified 永远 []（通知规则等 Annie 定）。
+      // 已发布的周再 Publish：不再 409，成功；republished = true。
+      // 通知规则（Annie 10-29「同意」）：重新发布只发给班有变化的人（和他们的主管，mock 不算主管）。
       const republished = weekData.status === "published";
+      const shiftsOf = (id) => JSON.stringify(weekData.slots.filter((s) => s.employee_id === id).map((s) => [s.date, s.shift_type, s.start_time, s.end_time]).sort());
+      const before = weekData.snapshot || {};
+      const ids = new Set([...Object.keys(before).map(Number), ...weekData.slots.map((s) => s.employee_id).filter((x) => x != null)]);
+      const changed = new Set([...ids].filter((id) => (before[id] || "[]") !== shiftsOf(id)));
+      weekData.snapshot = Object.fromEntries([...ids].map((id) => [id, shiftsOf(id)]));
+      weekData.unsent = false;
+      weekData.sent = {};
       weekData.status = "published";
+      bumpVersion(weekData);
       weekData.published_at = new Date().toISOString();
       weekData.published_by = 1;
       const scheduledIds = new Set(weekData.slots.filter((s) => s.employee_id != null).map((s) => s.employee_id));
@@ -597,7 +772,10 @@ http
         published_by: weekData.published_by,
         republished,
         gaps,
-        notified: republished ? [] : notified,
+        notified: republished ? employees.filter((e) => changed.has(e.id)).map((e) => ({ employee_id: e.id, name: e.name, channels: e.email ? ["in_app", "email"] : ["in_app"] })) : notified,
+        // 后端 G217（ef，10-30）：有人变了才通知主管层（所有在用的 supervisor / admin / superadmin，去掉按的人）；首次发布 / 没人变 = []。
+        // ctl.noSupervisors：除了按的人没有别的主管（测主管 0 人时不写后半句）。
+        notified_supervisors: republished && changed.size && !ctl.noSupervisors ? [{ user_id: 91, name: "ZZ Test Sup A", channels: ["in_app", "email"] }, { user_id: 92, name: "ZZ Test Sup B", channels: ["in_app"] }] : [],
       });
     }
 

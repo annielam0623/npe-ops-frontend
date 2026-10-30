@@ -38,6 +38,8 @@ import {
 export type SavedNote = { id: number; text: string } | null;
 
 interface Props {
+  /** ⬆ Import 键（main 上 import-pickup 加的，放在 Export 旁边）；没传就不出。 */
+  importButton?: ReactNode;
   /** 全部（含停用）；分块、计数用。 */
   locations: PickupLocation[];
   /** 搜索后剩下的。 */
@@ -111,6 +113,7 @@ export function LocationSections(props: Props) {
       >
         ⬇ Export
       </button>
+      {props.importButton}
       <input
         type="text"
         inputMode="search"

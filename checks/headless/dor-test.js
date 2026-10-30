@@ -174,14 +174,36 @@ async function run() {
   await evaluate(`$btnIn($item(1), 'Details').click();`);
   check("展开 Details：Accident 详情 + 修改记录", await waitFor(`$item(1).textContent.includes('Hotel driveway') && $item(1).textContent.includes('Registered by Annie')`));
 
-  // ── 员工：只读 ──
+  // ── 员工：本人登记的能改，别人的只看（Annie 10-26 G187、10-30「只能本人改」；后端 _can_edit）──
+  // 登录的是 lizzie（id 8）：报告 2、3 是她登记的，1 是 Annie 登记的。
+  const editable = (id) => `!!$item(${id}).querySelector('select')`;
   await ctl({ reset: true, supervisor: false });
   before = (await mockLog()).length;
   await openDashboard();
   await waitFor(`$ids('${BLOCK}').length >= 2`);
-  check("员工：没有状态 / 跟进人下拉，跟进人显示为文字", await evaluate(`return !${sel}.querySelector('select') && ${sel}.textContent.includes('Follow-up: Annie');`));
-  check("员工：没指派的显示 not assigned yet", await evaluate(`return ${sel}.textContent.includes('not assigned yet');`));
-  check("员工不去拉跟进人名单", !(await mockLog()).slice(before).some((e) => e.path.endsWith("/assignees")));
+  check("员工（开关关着）：别人登记的（1，Annie）没有状态 / 跟进人下拉，跟进人显示为文字", await evaluate(`return !${editable(1)} && $item(1).textContent.includes('Follow-up: Annie');`));
+  check("员工（开关关着）：自己登记的（2、3）有状态 / 跟进人下拉，能改", await evaluate(`return ${editable(2)} && ${editable(3)};`));
+  check("员工：能改自己的，所以要拉跟进人名单", (await mockLog()).slice(before).some((e) => e.path.endsWith("/assignees")));
+  // 开关开着：只有 report.view ⇒ 只能改自己的；加了 report.edit ⇒ 都能改
+  await ctl({ supervisor: false, tick: { switchOn: true, codes: ["dashboard.view", "report.view"] } });
+  await openDashboard();
+  await waitFor(`$ids('${BLOCK}').length >= 2`);
+  check("开关开着、员工只有 report.view：只能改自己登记的（2、3），别人的（1）不能", await evaluate(`return !${editable(1)} && ${editable(2)} && ${editable(3)};`));
+  await ctl({ tick: { switchOn: true, codes: ["dashboard.view", "report.view", "report.edit"] } });
+  await openDashboard();
+  await waitFor(`$ids('${BLOCK}').length >= 2`);
+  check("开关开着、勾了 report.edit：别人登记的也能改", await evaluate(`return ${editable(1)} && ${editable(2)};`));
+  await ctl({ supervisor: true, tick: { switchOn: true, codes: ["dashboard.view", "report.view"] } });
+  await openDashboard();
+  await waitFor(`$ids('${BLOCK}').length >= 2`);
+  check("开关开着、主管没勾 report.edit：也只能改自己的", await evaluate(`return !${editable(1)} && ${editable(2)};`));
+  // partner：一律只能看（列表页）
+  await ctl({ supervisor: false, partner: true, tick: { switchOn: true, codes: ["report.view", "report.edit"] } });
+  await goto(`${APP}/daily-report`);
+  await waitFor("document.querySelectorAll('li[data-report-id]').length >= 2");
+  await helpers();
+  check("partner：自己的、别人的都不能改（勾了 report.edit 也不能）", await evaluate("return !document.querySelector('li[data-report-id] select');"));
+  await ctl({ partner: false, tick: null });
 
   // ── 3. 弹窗 ──
   await ctl({ supervisor: true, reset: true });

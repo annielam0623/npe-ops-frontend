@@ -175,56 +175,68 @@ async function run() {
   await evaluate("$setValue($q('main input[type=search],main input[inputmode=search]'), '');");
   await sleep(150);
 
-  // ── 单个修改 ──
+  // ── 单个修改：改了先放在这一行，按这一行的 Save 才存（Annie 2026-10-29「不要改一点存一点」；主窗口 eb 2026-10-30 定细节） ──
+  const rowQ = (code, sel) => `$prodRow('${code}').querySelector('${sel}')`;
+  check("没改过的行没有 Save", await evaluate(`return !${rowQ("UAC02", "[data-save-btn]")};`));
   let before = (await mockLog()).length;
-  await evaluate("$sel($prodRow('UAC02').querySelector('[aria-label^=\"Category for\"]'), 'ticket');");
+  await evaluate(`$sel(${rowQ("UAC02", '[aria-label^="Category for"]')}, 'ticket');`);
+  await sleep(500);
+  check("改分类：不发请求", (await since(before, (e) => e.path === "/api/settings/products/11")).length === 0);
+  check("改分类：这一行出蓝色 Save、琥珀色 Not saved yet，在 Deactivate 左边", await evaluate(`const b = ${rowQ("UAC02", "[data-save-btn]")}; const d = $btn('Deactivate', $prodRow('UAC02')); return !!b && !b.disabled && getComputedStyle(b).backgroundColor === 'rgb(59, 130, 246)' && !!${rowQ("UAC02", "[data-save-unsaved]")} && (b.compareDocumentPosition(d) & Node.DOCUMENT_POSITION_FOLLOWING) > 0;`));
+  check("改过的格描琥珀色", await evaluate(`return ${rowQ("UAC02", '[aria-label^="Category for"]')}.className.includes('fed7aa');`));
+  await evaluate(`const i = ${rowQ("UAC02", '[aria-label^="Internal name for"]')}; $setValue(i, 'ZZ VIP'); $blur(i);`);
+  await sleep(500);
+  check("内部名离开输入框也不存", (await since(before, (e) => e.path === "/api/settings/products/11")).length === 0);
+  await evaluate(`${rowQ("UAC02", "[data-save-btn]")}.click();`);
   let put = await waitPut(before, "/api/settings/products/11");
-  check("改分类：PUT 三项都传（整体覆盖）", put && put.body.booking_type === "ticket" && put.body.manifest_id === 1 && put.body.internal_name === "" && Object.keys(put.body).length === 3, JSON.stringify(put?.body));
-  await sleep(300);
+  await waitFor(`${rowQ("UAC02", "[data-save-ok]")}`);
+  check("按 Save：一次 PUT，三项都传（整体覆盖）", put && put.body.booking_type === "ticket" && put.body.manifest_id === 1 && put.body.internal_name === "ZZ VIP" && Object.keys(put.body).length === 3 && (await since(before, (e) => e.path === "/api/settings/products/11")).length === 1, JSON.stringify(put?.body));
+  check("存好：绿字 ✓ Saved，Save 键收起", await evaluate(`const ok = ${rowQ("UAC02", "[data-save-ok]")}; return ok.textContent.startsWith('✓ Saved') && getComputedStyle(ok).color === 'rgb(30, 107, 67)' && !${rowQ("UAC02", "[data-save-btn]")};`));
   check("改完缺分类提示消失", !(await evaluate("return document.body.textContent.includes('no category yet');")));
   before = (await mockLog()).length;
-  await evaluate("const i = $prodRow('UAC02').querySelector('[aria-label^=\"Internal name for\"]'); $setValue(i, 'ZZ VIP'); $blur(i);");
+  await evaluate(`const i = ${rowQ("UAC02", '[aria-label^="Internal name for"]')}; $setValue(i, 'FAIL');`);
+  await evaluate(`${rowQ("UAC02", "[data-save-btn]")}.click();`);
+  await waitFor(`${rowQ("UAC02", "[data-save-error]")}`);
+  check("存不上：这一行红字写原因，改的值留着、Save 还在", await evaluate(`const e = ${rowQ("UAC02", "[data-save-error]")}; return e.textContent.includes('Could not save') && getComputedStyle(e).color === 'rgb(179, 38, 30)' && ${rowQ("UAC02", '[aria-label^="Internal name for"]')}.value === 'FAIL' && !!${rowQ("UAC02", "[data-save-btn]")};`));
+  check("存不上：改过的格描红", await evaluate(`return ${rowQ("UAC02", '[aria-label^="Internal name for"]')}.className.includes('A32D2D');`));
+  // 一行连着改两格，一次存（不再排队发两个 PUT）。
+  before = (await mockLog()).length;
+  await evaluate(`$sel(${rowQ("UAC02", '[aria-label^="Category for"]')}, 'shuttle'); $setValue(${rowQ("UAC02", '[aria-label^="Internal name for"]')}, 'ZZ Serial');`);
+  check("再改：红字不留，回到 Not saved yet", await evaluate(`return !${rowQ("UAC02", "[data-save-error]")} && !!${rowQ("UAC02", "[data-save-unsaved]")};`));
+  await evaluate(`const i = ${rowQ("UAC02", '[aria-label^="Internal name for"]')}; i.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));`);
   put = await waitPut(before, "/api/settings/products/11");
-  check("内部名离开输入框才存", put && put.body.internal_name === "ZZ VIP" && put.body.booking_type === "ticket", JSON.stringify(put?.body));
-  await sleep(300);
-  await evaluate("const i = $prodRow('UAC02').querySelector('[aria-label^=\"Internal name for\"]'); $setValue(i, 'FAIL'); $blur(i);");
-  await waitFor("document.querySelector('[role=alert]')");
-  await sleep(200);
-  check("保存失败：说明原因、改回原值", (await evaluate("return $q('[role=alert]').textContent;")).includes("Could not save UAC02") && (await evaluate("return $prodRow('UAC02').querySelector('[aria-label^=\"Internal name for\"]').value;")) === "ZZ VIP");
-  await evaluate("$btn('Dismiss').click();");
-
-  // ── 同一行连着改两格：PUT 排队发，后一次带上前一次的值，旧 PUT 不会后落地盖掉新值 ──
-  await ctl({ slowNextProductPut: 1500 });
-  before = (await mockLog()).length;
-  await evaluate("$sel($prodRow('UAC02').querySelector('[aria-label^=\"Category for\"]'), 'shuttle');");
-  await sleep(200);
-  await evaluate("const i = $prodRow('UAC02').querySelector('[aria-label^=\"Internal name for\"]'); $setValue(i, 'ZZ Serial'); $blur(i);");
-  await sleep(500);
-  check("同一行排队：第一个 PUT 没回来前不发第二个", (await since(before, (e) => e.path === "/api/settings/products/11")).length === 1);
-  for (let i = 0; i < 60 && (await since(before, (e) => e.path === "/api/settings/products/11" && e.doneAt)).length < 2; i++) await sleep(150);
-  let puts = await since(before, (e) => e.path === "/api/settings/products/11");
-  check("同一行排队：第二个 PUT 带最新三项，在第一个落地后才到", puts.length === 2 && puts[1].body.booking_type === "shuttle" && puts[1].body.internal_name === "ZZ Serial" && puts[1].at >= puts[0].doneAt, JSON.stringify(puts.map((e) => [e.body, e.at, e.doneAt])));
+  await waitFor(`${rowQ("UAC02", "[data-save-ok]")}`);
+  check("Internal name 框里按 Enter = Save：一次 PUT 带两格的新值", put && put.body.booking_type === "shuttle" && put.body.internal_name === "ZZ Serial" && (await since(before, (e) => e.path === "/api/settings/products/11")).length === 1, JSON.stringify(put?.body));
   let saved = (await (await fetch(`${MOCK}/api/settings/products`)).json()).products.find((x) => x.id === 11);
-  check("同一行排队：后端最后是两格都改好的值", saved.booking_type === "shuttle" && saved.internal_name === "ZZ Serial", JSON.stringify(saved));
-  await sleep(300);
-  // 一格失败只改回那一格。
-  before = (await mockLog()).length;
-  await evaluate("$sel($prodRow('UAC02').querySelector('[aria-label^=\"Category for\"]'), 'bus_tour'); const i = $prodRow('UAC02').querySelector('[aria-label^=\"Internal name for\"]'); $setValue(i, 'FAIL'); $blur(i);");
-  await waitFor("document.querySelector('[role=alert]')");
-  for (let i = 0; i < 40 && (await since(before, (e) => e.path === "/api/settings/products/11" && e.doneAt)).length < 2; i++) await sleep(150);
-  await sleep(300);
-  check("一格失败只改回那一格：分类留着 bus_tour、内部名回 ZZ Serial", (await evaluate("return $prodRow('UAC02').querySelector('[aria-label^=\"Category for\"]').value;")) === "bus_tour" && (await evaluate("return $prodRow('UAC02').querySelector('[aria-label^=\"Internal name for\"]').value;")) === "ZZ Serial");
-  saved = (await (await fetch(`${MOCK}/api/settings/products`)).json()).products.find((x) => x.id === 11);
-  check("一格失败：后端存着 bus_tour + ZZ Serial", saved.booking_type === "bus_tour" && saved.internal_name === "ZZ Serial", JSON.stringify(saved));
-  await evaluate("$btn('Dismiss').click();");
+  check("后端存着 shuttle + ZZ Serial", saved.booking_type === "shuttle" && saved.internal_name === "ZZ Serial", JSON.stringify(saved));
+  // 别的行存好后整表重拉，不冲掉这一行没存的改动。
+  await evaluate(`$setValue(${rowQ("UAC02", '[aria-label^="Internal name for"]')}, 'ZZ Keep');`);
   const setupBefore = (await mockLog()).filter((e) => e.path === "/api/settings/manifest-setup").length;
   before = (await mockLog()).length;
-  await evaluate("$sel($prodRow('SHT01').querySelector('[aria-label^=\"Group for\"]'), '1');");
+  await evaluate(`$sel(${rowQ("SHT01", '[aria-label^="Group for"]')}, '1');`);
+  await sleep(400);
+  check("改组：按 Save 之前不发请求、行不挪", (await since(before, (e) => e.path === "/api/settings/products/12")).length === 0 && (await evaluate("return document.querySelectorAll('section:not([data-missing-card]) tbody tr td[colspan=\"7\"]')[0].textContent;")) === "Upper Antelope 2");
+  await evaluate(`${rowQ("SHT01", "[data-save-btn]")}.click();`);
   put = await waitPut(before, "/api/settings/products/12");
   await waitFor("document.querySelectorAll('section:not([data-missing-card]) tbody tr td[colspan=\"7\"]')[0].textContent === 'Upper Antelope 3'");
   check("改组：PUT manifest_id=1，行挪到新组下", put && put.body.manifest_id === 1, JSON.stringify(put?.body));
   await sleep(300);
+  check("改组：挪到新组下以后仍显示绿字 ✓ Saved", await evaluate(`return !!${rowQ("SHT01", "[data-save-ok]")};`));
   check("改组后 Manifest setup 面板重拉", (await mockLog()).filter((e) => e.path === "/api/settings/manifest-setup").length > setupBefore);
+  check("别的行存好、整表重拉：UAC02 没存的 ZZ Keep 还在", await evaluate(`return ${rowQ("UAC02", '[aria-label^="Internal name for"]')}.value === 'ZZ Keep' && !!${rowQ("UAC02", "[data-save-unsaved]")};`));
+  // 有没存的改动时点站内链接：先问 Save / Don't save / Cancel。
+  const link = "[...document.querySelectorAll('a[href^=\"/\"]')].find((a) => !a.target && !a.closest('main'))";
+  const urlBefore = await evaluate("return location.pathname;");
+  await evaluate(`${link}.click();`);
+  await waitFor("document.querySelector('[data-leave-dialog]')");
+  check("离开页面：弹 Leave without saving?，列出 product UAC02", await evaluate("const d = document.querySelector('[data-leave-dialog]'); return !!d && d.textContent.includes('Leave without saving?') && d.textContent.includes('product UAC02');"));
+  await evaluate("$btn('Cancel', document.querySelector('[data-leave-dialog]')).click();");
+  await sleep(400);
+  check("Cancel：留在本页，改动还在", (await evaluate("return location.pathname;")) === urlBefore && (await evaluate(`return ${rowQ("UAC02", '[aria-label^="Internal name for"]')}.value === 'ZZ Keep';`)));
+  await evaluate(`$setValue(${rowQ("UAC02", '[aria-label^="Internal name for"]')}, 'ZZ Serial');`);
+  await sleep(200);
+  check("改回已存的值：不算改动，Not saved yet 消失", await evaluate(`return !${rowQ("UAC02", "[data-save-unsaved]")};`));
+  let puts;
   before = (await mockLog()).length;
   await evaluate("$btn('Deactivate', $prodRow('UAC01')).click();");
   await waitFor("$prodRow('UAC01').textContent.includes('Inactive')");
@@ -304,31 +316,49 @@ async function run() {
 
   // ── Manifest setup ──
   check("Manifest setup：颜色块用当前颜色", (await evaluate("return [...document.querySelectorAll('span')].find(s => s.textContent === 'Upper Antelope' && s.style.background).style.background;")).includes("141, 183, 111"));
+  // 每一小项改了先放在页面上，按这一项的 Save 才存（Annie 2026-10-29；主窗口 eb 2026-10-30「每个带标题的小项一个 Save」）。
+  const saveIn = (zone) => `$q('[data-field=${zone}] [data-save-btn]').click();`;
+  const savedIn = (zone) => `!!$q('[data-field=${zone}] [data-save-ok]')`;
+  check("Bus Manifest setup：没改时 Save 是灰的、点不了", await evaluate("const b = $q('[data-field=color] [data-save-btn]'); return !!b && b.disabled;"));
   before = (await mockLog()).length;
   await evaluate("$btn('Use default grey').click();");
+  await sleep(400);
+  check("Use default grey：先不存，Save 变蓝、琥珀色 Not saved yet", (await since(before, (e) => e.path === "/api/settings/manifest-setup/groups/1")).length === 0 && (await evaluate("const b = $q('[data-field=color] [data-save-btn]'); return !b.disabled && getComputedStyle(b).backgroundColor === 'rgb(59, 130, 246)' && !!$q('[data-field=color] [data-save-unsaved]');")));
+  await evaluate(saveIn("color"));
   put = await waitPut(before, "/api/settings/manifest-setup/groups/1");
-  check("Use default grey：PUT color 空、lunch_note 原值", put && put.body.color === "" && put.body.lunch_note === "", JSON.stringify(put?.body));
+  await waitFor(savedIn("color"));
+  check("按 Save：PUT color 空、lunch_note 原值；绿字 ✓ Saved", put && put.body.color === "" && put.body.lunch_note === "" && (await evaluate("const ok = $q('[data-field=color] [data-save-ok]'); return ok.textContent.startsWith('✓ Saved') && getComputedStyle(ok).color === 'rgb(30, 107, 67)';")), JSON.stringify(put?.body));
   await sleep(200);
   const lunch = "[...document.querySelectorAll('textarea')].find(i => i.placeholder === '(TEXT) POC: name phone ...')";
   check("G198：午餐单那一行是能换行的两行框（textarea rows=2）", await evaluate(`const i = ${lunch}; return !!i && i.rows === 2;`));
-  await evaluate(`const i = ${lunch}; $setValue(i, 'BAD'); $blur(i);`);
-  await waitFor("[...document.querySelectorAll('[role=alert]')].some(a => a.textContent.includes('at most two lines'))");
-  check("午餐行保存失败：说明并改回", (await evaluate(`return ${lunch}.value;`)) === "");
   before = (await mockLog()).length;
-  await evaluate(`const i = ${lunch}; $setValue(i, 'ZZ POC Bee'); $blur(i);`);
+  await evaluate(`const i = ${lunch}; $setValue(i, 'BAD'); $blur(i);`);
+  await sleep(400);
+  check("午餐行离开输入框不存", (await since(before, (e) => e.path === "/api/settings/manifest-setup/groups/1")).length === 0);
+  await evaluate(saveIn("lunch"));
+  await waitFor("[...document.querySelectorAll('[role=alert]')].some(a => a.textContent.includes('at most two lines'))");
+  check("午餐行存不上：这一项红字写原话，框里的值留着", (await evaluate(`return ${lunch}.value;`)) === "BAD" && (await evaluate("const e = $q('[data-field=lunch] [data-save-error]'); return !!e && getComputedStyle(e).color === 'rgb(179, 38, 30)';")));
+  before = (await mockLog()).length;
+  await evaluate(`const i = ${lunch}; $setValue(i, 'ZZ POC Bee');`);
+  await evaluate(saveIn("lunch"));
   put = await waitPut(before, "/api/settings/manifest-setup/groups/1");
-  check("午餐行离开输入框保存", put && put.body.lunch_note === "ZZ POC Bee");
+  check("午餐行按 Save 存", put && put.body.lunch_note === "ZZ POC Bee");
   before = (await mockLog()).length;
   await evaluate("const c = $q('input[type=color]'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(c, '#112233'); c.dispatchEvent(new Event('input', { bubbles: true })); c.dispatchEvent(new Event('change', { bubbles: true }));");
+  await sleep(400);
+  check("选颜色：先不存，顶栏预览先变", (await since(before, (e) => e.path === "/api/settings/manifest-setup/groups/1")).length === 0 && (await evaluate("return [...document.querySelectorAll('span')].find(s => s.textContent === 'Upper Antelope' && s.style.background).style.background.includes('17, 34, 51');")));
+  await evaluate(saveIn("color"));
   put = await waitPut(before, "/api/settings/manifest-setup/groups/1");
-  check("选颜色：选定后保存（带上已存的午餐行）", put && put.body.color === "#112233" && put.body.lunch_note === "ZZ POC Bee", JSON.stringify(put?.body));
+  check("选颜色按 Save：PUT 带上已存的午餐行", put && put.body.color === "#112233" && put.body.lunch_note === "ZZ POC Bee", JSON.stringify(put?.body));
 
-  // ── 午餐行刚离开输入框（PUT 还没回来）就点 Use default grey：不把午餐行改回去 ──
+  // ── 午餐行按了 Save（PUT 还没回来）就改颜色再按 Save：同一个接口排队发，后发的带上刚存的午餐行 ──
   await ctl({ slowNextGroupPut: 1500 });
   before = (await mockLog()).length;
-  await evaluate(`const i = ${lunch}; $setValue(i, 'ZZ Lunch New'); $blur(i);`);
+  await evaluate(`const i = ${lunch}; $setValue(i, 'ZZ Lunch New');`);
+  await evaluate(saveIn("lunch"));
   await sleep(200);
   await evaluate("$btn('Use default grey').click();");
+  await evaluate(saveIn("color"));
   await sleep(500);
   check("组设置排队：第一个 PUT 没回来前不发第二个", (await since(before, (e) => e.path === "/api/settings/manifest-setup/groups/1")).length === 1);
   for (let i = 0; i < 60 && (await since(before, (e) => e.path === "/api/settings/manifest-setup/groups/1" && e.doneAt)).length < 2; i++) await sleep(150);
@@ -346,40 +376,47 @@ async function run() {
   await sleep(300);
   check("没改就不发请求", (await since(before, (e) => e.path === "/api/settings/manifest-setup/groups/1")).length === 0);
   await evaluate(`const i = ${perBus}; $setValue(i, '120'); $blur(i);`);
+  await evaluate(saveIn("perBus"));
   await waitFor("[...document.querySelectorAll('[role=alert]')].some(a => a.textContent.includes('between 1 and 99'))");
   check("超出 1–99：写后端原因，框里的值不动（同旧页面）", (await evaluate(`return ${perBus}.value;`)) === "120");
   before = (await mockLog()).length;
-  await evaluate(`const i = ${perBus}; $setValue(i, '40'); $blur(i);`);
+  await evaluate(`const i = ${perBus}; $setValue(i, '40');`);
+  await evaluate(`${perBus}.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));`);
   put = await waitPut(before, "/api/settings/manifest-setup/groups/1");
   await sleep(200);
-  check("改成 40：PUT 带 guests_per_bus 原文 + 现在的颜色和午餐行", put && put.body.guests_per_bus === "40" && put.body.lunch_note === "ZZ Lunch New" && put.body.color === "" && (await evaluate(`return ${perBus}.value;`)) === "40", JSON.stringify(put?.body));
+  check("改成 40、框里按 Enter = Save：PUT 带 guests_per_bus 原文 + 已存的颜色和午餐行", put && put.body.guests_per_bus === "40" && put.body.lunch_note === "ZZ Lunch New" && put.body.color === "" && (await evaluate(`return ${perBus}.value;`)) === "40", JSON.stringify(put?.body));
   before = (await mockLog()).length;
-  await evaluate(`const i = ${lunch}; $setValue(i, 'ZZ Lunch 2'); $blur(i);`);
+  await evaluate(`const i = ${lunch}; $setValue(i, 'ZZ Lunch 2');`);
+  await evaluate(saveIn("lunch"));
   put = await waitPut(before, "/api/settings/manifest-setup/groups/1");
   check("只改午餐行：不带 guests_per_bus（后端就不改它）", put && !("guests_per_bus" in put.body) && put.body.lunch_note === "ZZ Lunch 2", JSON.stringify(put?.body));
   before = (await mockLog()).length;
-  await evaluate(`const i = ${lunch}; $setValue(i, 'ZZ line 1\\nZZ line 2'); $blur(i);`);
+  await evaluate(`const i = ${lunch}; $setValue(i, 'ZZ line 1\\nZZ line 2');`);
+  await evaluate(saveIn("lunch"));
   put = await waitPut(before, "/api/settings/manifest-setup/groups/1");
   check("G198：两行照存（lunch_note 带换行）", put && put.body.lunch_note === "ZZ line 1\nZZ line 2", JSON.stringify(put?.body));
   await evaluate(`const i = ${lunch}; $setValue(i, 'A\\nB\\nC');`);
   check("G198：打第三行时并回第二行（框里最多两行）", (await evaluate(`return ${lunch}.value;`)) === "A\nB C", await evaluate(`return JSON.stringify(${lunch}.value);`));
   before = (await mockLog()).length;
-  await evaluate(`const i = ${lunch}; $setValue(i, 'ZZ Lunch 2'); $blur(i);`);
+  await evaluate(`const i = ${lunch}; $setValue(i, 'ZZ Lunch 2');`);
+  await evaluate(saveIn("lunch"));
   await waitPut(before, "/api/settings/manifest-setup/groups/1");
   check("G198 后端没上线（没有 cfm_sections）：没有 Cfm # box per section 这项", await evaluate("return !document.body.textContent.includes('Cfm # box per section');"));
   const own = "$q('[aria-label=\"Own block on the 7 Days Forecast\"]')";
   await evaluate(`const i = ${own}; $setValue(i, 'bus tour'); $blur(i);`);
+  await evaluate(saveIn("split"));
   await waitFor("[...document.querySelectorAll('[role=alert]')].some(a => a.textContent.includes('cannot be its own block'))");
   check("Own block 填默认节：写后端原因", true);
   before = (await mockLog()).length;
   await evaluate(`const i = ${own}; $setValue(i, ' SUNSET , ,Sky '); $blur(i);`);
+  await evaluate(saveIn("split"));
   put = await waitPut(before, "/api/settings/manifest-setup/groups/1/forecast-split-sections");
   await sleep(200);
   check("Own block：逗号分开、去空项后整组 PUT，框里显示后端返回的", put && JSON.stringify(put.body.sections) === '["SUNSET","Sky"]' && (await evaluate(`return ${own}.value;`)) === "SUNSET, Sky", JSON.stringify(put?.body));
   before = (await mockLog()).length;
   await evaluate(`const i = ${own}; $setValue(i, 'SUNSET,Sky'); $blur(i);`);
   await sleep(300);
-  check("Own block 内容没变（只是空格不同）：不发请求", (await since(before, (e) => e.path.endsWith("/forecast-split-sections"))).length === 0);
+  check("Own block 内容没变（只是空格不同）：不算改动、Save 灰着，不发请求", (await since(before, (e) => e.path.endsWith("/forecast-split-sections"))).length === 0 && (await evaluate("return $q('[data-field=split] [data-save-btn]').disabled;")));
   check("How to use 写了 Guests per bus 和 7 Days Forecast", await evaluate("const t = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Bus Manifest setup')).textContent; return t.includes('Guests per bus: how many guests one bus is opened for on Dispatch') && t.includes('Own block on the 7 Days Forecast');"));
 
   // ── Extras（后端 ad8b7ab，取代 Boxes；照旧 _manifest_setup_panel.html）──
@@ -390,22 +427,29 @@ async function run() {
   check("Type 下拉多一项 Extra: HELI", await evaluate("return [...$q('[aria-label=\"Type for UAC01\"]').options].map(o => o.textContent).join('|') === 'Tour|Shuttle outbound|Shuttle inbound|Shuttle round trip|Extra: HELI';"), await evaluate("return [...$q('[aria-label=\"Type for UAC01\"]').options].map(o => o.textContent).join('|');"));
   before = (await mockLog()).length;
   await evaluate(`const i = ${xName(1)}; $setValue(i, 'ZZX'); $blur(i);`);
+  await evaluate(saveIn("extras"));
   await sleep(300);
-  check("只填了名字：提示 fill in both、不发请求", (await evaluate("return document.body.textContent.includes('Not saved yet - fill in both the name and the seats.');")) && (await since(before, (e) => e.path.endsWith("/extras"))).length === 0);
+  check("只填了名字就按 Save：红字 fill in both、不发请求", (await evaluate("return $q('[data-field=extras] [data-save-error]').textContent.includes('fill in both the name and the seats');")) && (await since(before, (e) => e.path.endsWith("/extras"))).length === 0);
   await evaluate(`const i = ${xSeats(1)}; $setValue(i, '1000'); $blur(i);`);
+  await evaluate(saveIn("extras"));
   await waitFor("[...document.querySelectorAll('[role=alert]')].some(a => a.textContent.includes('between 1 and 999'))");
   check("座位超出：写后端原话", await evaluate("return [...document.querySelectorAll('[role=alert]')].some(a => a.textContent.includes('ZZX: seats must be a whole number between 1 and 999.'));"));
   before = (await mockLog()).length;
   await evaluate(`const i = ${xSeats(1)}; $setValue(i, '8'); $blur(i);`);
+  await evaluate(saveIn("extras"));
   put = await waitPut(before, "/api/settings/manifest-setup/groups/1/extras");
   await waitFor("document.querySelectorAll('[aria-label=\"Extra name\"]').length === 3");
   check("新加一个：整组 PUT（老的带 id，新的不带），存好后多一行空行、Type 下拉多 Extra: ZZX", JSON.stringify(put?.body) === '{"extras":[{"id":5,"name":"HELI","seats":"12"},{"name":"ZZX","seats":"8"}]}' && (await evaluate("return document.body.textContent.includes('Saved') && [...$q('[aria-label=\"Type for UAC01\"]').options].some(o => o.textContent === 'Extra: ZZX');")), JSON.stringify(put?.body));
   before = (await mockLog()).length;
   await evaluate("$sel($q('[aria-label=\"Type for UAC01\"]'), 'extra:5');");
+  await sleep(400);
+  check("Sections 表改了 Type：先不存，这一行写 Not saved yet、下面的 Save 变蓝", (await since(before, (e) => e.path === "/api/settings/manifest-setup/products/10")).length === 0 && (await evaluate("return $q('[aria-label=\"Type for UAC01\"]').closest('tr').textContent.includes('Not saved yet') && !$q('[data-field=sections] [data-save-btn]').disabled;")));
+  await evaluate(saveIn("sections"));
   put = await waitPut(before, "/api/settings/manifest-setup/products/10");
-  check("产品选 Extra: HELI：PUT kind tour + extra_id 5", put && put.body.kind === "tour" && put.body.extra_id === 5, JSON.stringify(put?.body));
+  check("产品选 Extra: HELI 按 Save：PUT kind tour + extra_id 5", put && put.body.kind === "tour" && put.body.extra_id === 5, JSON.stringify(put?.body));
   before = (await mockLog()).length;
   await evaluate(`$setValue(${xName(0)}, ''); const s = ${xSeats(0)}; $setValue(s, ''); $blur(s);`);
+  await evaluate(saveIn("extras"));
   put = await waitPut(before, "/api/settings/manifest-setup/groups/1/extras");
   await waitFor("$q('[aria-label=\"Type for UAC01\"]').value === 'tour'");
   check("清空 HELI 那一行 = 删掉：PUT 不带它，挂着它的产品变回 Tour、下拉没有 Extra: HELI", put && put.body.extras.length === 1 && put.body.extras[0].name === "ZZX" && (await evaluate("return $q('[aria-label=\"Type for UAC01\"]').value === 'tour' && ![...$q('[aria-label=\"Type for UAC01\"]').options].some(o => o.textContent === 'Extra: HELI');")), JSON.stringify(put?.body));
@@ -413,22 +457,26 @@ async function run() {
   check("Type 不是 Shuttle round trip：没有回程两格", await evaluate("return !$q('[aria-label=\"Return pickup time for UAC01\"]');"));
   before = (await mockLog()).length;
   await evaluate("$sel($q('[aria-label=\"Type for UAC01\"]'), 'roundtrip');");
+  await evaluate(saveIn("sections"));
   put = await waitPut(before, "/api/settings/manifest-setup/products/10");
   await waitFor("$q('[aria-label=\"Return pickup time for UAC01\"]')");
   check("选 Shuttle round trip：PUT kind roundtrip、extra_id null；出现回程时间 / 地点两格（空）", put && put.body.kind === "roundtrip" && put.body.extra_id === null && (await evaluate("return $q('[aria-label=\"Return pickup time for UAC01\"]').value === '' && $q('[aria-label=\"Return pickup place for UAC01\"]').placeholder === 'Return pickup place';")), JSON.stringify(put?.body));
   before = (await mockLog()).length;
   await evaluate("const t = $q('[aria-label=\"Return pickup time for UAC01\"]'); $setValue(t, ' 4:30 PM '); $blur(t);");
+  await evaluate(saveIn("sections"));
   put = await waitPut(before, "/api/settings/manifest-setup/products/10");
   await waitFor("$q('[aria-label=\"Return pickup time for UAC01\"]').value === '4:30 PM'");
-  check("回程时间离开格子就存：PUT 带 return_pickup_time，格子换成服务端存的值", put && put.body.return_pickup_time === " 4:30 PM " && put.body.kind === "roundtrip", JSON.stringify(put?.body));
+  check("回程时间按 Save 存：PUT 带 return_pickup_time，格子换成服务端存的值", put && put.body.return_pickup_time === " 4:30 PM " && put.body.kind === "roundtrip", JSON.stringify(put?.body));
   before = (await mockLog()).length;
   await evaluate("const t = $q('[aria-label=\"Return pickup place for UAC01\"]'); $setValue(t, 'Page Visitor Center'); $blur(t);");
+  await evaluate(saveIn("sections"));
   put = await waitPut(before, "/api/settings/manifest-setup/products/10");
-  check("回程地点离开格子就存（时间照带）", put && put.body.return_pickup_place === "Page Visitor Center" && put.body.return_pickup_time === "4:30 PM", JSON.stringify(put?.body));
+  check("回程地点按 Save 存（时间照带）", put && put.body.return_pickup_place === "Page Visitor Center" && put.body.return_pickup_time === "4:30 PM", JSON.stringify(put?.body));
   check("示意图：往返 shuttle 去程、回程各一节", await evaluate("const t = $q('[aria-label=\"Where each setting shows\"]').textContent; return t.includes('// OUTBOUND') && t.includes('// INBOUND');"));
   check("How to use 写了往返 shuttle", await evaluate("return [...document.querySelectorAll('details')].some(d => d.textContent.includes('pick Shuttle round trip, then fill Return pickup time and Return pickup place'));"));
   before = (await mockLog()).length;
   await evaluate("$sel($q('[aria-label=\"Type for UAC01\"]'), 'tour');");
+  await evaluate(saveIn("sections"));
   put = await waitPut(before, "/api/settings/manifest-setup/products/10");
   await waitFor("!$q('[aria-label=\"Return pickup time for UAC01\"]')");
   check("改回 Tour：回程两格藏起来", put && put.body.kind === "tour");
@@ -464,13 +512,16 @@ async function run() {
   await evaluate(`${msBox("UAC02")}.click();`);
   await sleep(100);
   // 把两个产品改回原样（Section 空、Type Tour），免得影响后面的检查。
+  check("批量里存不上的那一行：这次批量的值留在页面上（Not saved yet）", await evaluate(`return $q('[aria-label="Section for UAC02"]').value === 'early' && $q('[aria-label="Section for UAC02"]').closest('tr').textContent.includes('Not saved yet');`));
+  before = (await mockLog()).length;
   for (const code of ["UAC01", "UAC02"]) {
-    before = (await mockLog()).length;
-    await evaluate(`const t = $q('[aria-label="Section for ${code}"]'); $setValue(t, ''); $blur(t);`);
-    await sleep(500);
-    await evaluate(`$sel($q('[aria-label="Type for ${code}"]'), 'tour');`);
-    await sleep(500);
+    await evaluate(`const t = $q('[aria-label="Section for ${code}"]'); $setValue(t, ''); $sel($q('[aria-label="Type for ${code}"]'), 'tour');`);
   }
+  await sleep(200);
+  await evaluate(saveIn("sections"));
+  await waitFor(savedIn("sections"));
+  const backPuts = await since(before, (e) => e.method === "PUT" && /\/manifest-setup\/products\/\d+$/.test(e.path));
+  check("Sections 整张表一个 Save：改了两行，按一次 Save 两个 PUT（一个产品一个）", backPuts.length === 2 && backPuts.map((e) => e.path.split("/").pop()).join() === "10,11", JSON.stringify(backPuts.map((e) => e.path)));
   check("改回原样：两行 Section 空、Type Tour", await evaluate(`return ['UAC01', 'UAC02'].every((c) => $q('[aria-label="Section for ' + c + '"]').value === '' && $q('[aria-label="Type for ' + c + '"]').value === 'tour');`));
 
   // ── 地图（preview v4，Annie 2026-10-12「可以，做吧」）：左边编号 + 灰字，右边示意印刷页，指到哪亮哪 ──
@@ -503,20 +554,27 @@ async function run() {
   check("Section order：空框、占位 UPPER, LOWER, X；How to use 写了", await evaluate("return $q('[aria-label=\"Section order\"]').value === '' && $q('[aria-label=\"Section order\"]').placeholder === 'UPPER, LOWER, X' && [...document.querySelectorAll('details')].some(d => d.textContent.includes('Section order: type the section names from top to bottom'));"));
   before = (await mockLog()).length;
   await evaluate("const i = $q('[aria-label=\"Section order\"]'); $setValue(i, ' lower ,upper,, Bus Tour '); $blur(i);");
+  await sleep(300);
+  check("Section order 离开框不存", (await since(before, (e) => e.path === "/api/settings/manifest-setup/groups/1/section-order")).length === 0);
+  await evaluate(saveIn("order"));
   put = await waitPut(before, "/api/settings/manifest-setup/groups/1/section-order");
   await sleep(200);
-  check("离开框整组存：PUT sections 去空格去空项；框里换成服务端存的", JSON.stringify(put?.body) === '{"sections":["lower","upper","Bus Tour"]}' && (await evaluate("return $q('[aria-label=\"Section order\"]').value === 'lower, upper, Bus Tour';")), JSON.stringify(put?.body));
+  check("按 Save 整组存：PUT sections 去空格去空项；框里换成服务端存的", JSON.stringify(put?.body) === '{"sections":["lower","upper","Bus Tour"]}' && (await evaluate("return $q('[aria-label=\"Section order\"]').value === 'lower, upper, Bus Tour';")), JSON.stringify(put?.body));
   before = (await mockLog()).length;
   await evaluate("$blur($q('[aria-label=\"Section order\"]'));");
   await sleep(300);
   check("没改就不存", !(await since(before, (e) => e.path === "/api/settings/manifest-setup/groups/1/section-order")).length);
   before = (await mockLog()).length;
   await evaluate("const i = $q('[aria-label=\"Section order\"]'); $setValue(i, 'UPPER, upper'); $blur(i);");
+  await evaluate(saveIn("order"));
   await waitPut(before, "/api/settings/manifest-setup/groups/1/section-order");
   await sleep(200);
   check("重复：写服务端原话、框里的值不动", await evaluate("return document.body.textContent.includes('upper is in the list twice.') && $q('[aria-label=\"Section order\"]').value === 'UPPER, upper';"));
-  await evaluate("const i = $q('[aria-label=\"Section order\"]'); $setValue(i, ''); $blur(i);");
-  await waitFor("$q('[aria-label=\"Section order\"]').value === ''");
+  before = (await mockLog()).length;
+  await evaluate("const i = $q('[aria-label=\"Section order\"]'); $setValue(i, '');");
+  await evaluate(saveIn("order"));
+  await waitPut(before, "/api/settings/manifest-setup/groups/1/section-order");
+  await waitFor(savedIn("order"));
   await evaluate(hover("[data-field=order]"));
   await sleep(100);
   check("指到 3 Section order：右边 Bus Manifest 的节标题和 Forecast 的节行亮", await evaluate("const on = [...document.querySelectorAll('[data-zone][data-on]')]; return on.length >= 2 && on.every(z => z.getAttribute('data-zone').split(' ').includes('order'));"));
@@ -527,21 +585,29 @@ async function run() {
   check("Morning Relay round：下拉三项照接口、现值 1st Round；How to use 写了", await evaluate(`return [...${relaySel}.options].map(o => o.value + ':' + o.textContent).join('|') === ':Not on Morning Relay|relay:1st Round|relay_2:2nd Round' && ${relaySel}.value === 'relay' && [...document.querySelectorAll('details')].some(d => d.textContent.includes('Morning Relay round: pick the round whose relay cars bring this tour'));`));
   before = (await mockLog()).length;
   await evaluate(`$sel(${relaySel}, 'relay_2');`);
+  await sleep(300);
+  check("选了 2nd Round：先不存", (await since(before, (e) => e.path.endsWith("/relay-round"))).length === 0);
+  await evaluate(saveIn("relay"));
   put = await waitPut(before, "/api/settings/manifest-setup/groups/1/relay-round");
   await sleep(200);
   check("选 2nd Round：PUT relay_round=relay_2；右边 Dispatch 写 2nd Round", JSON.stringify(put?.body) === '{"relay_round":"relay_2"}' && (await evaluate("return $q('[data-zone=relay]').textContent.includes('2nd Round') && $q('[data-zone=relay]').textContent.includes('texted in this round');")), JSON.stringify(put?.body));
   before = (await mockLog()).length;
   await evaluate(`$sel(${relaySel}, '');`);
+  await evaluate(saveIn("relay"));
   put = await waitPut(before, "/api/settings/manifest-setup/groups/1/relay-round");
   await sleep(200);
   check("选 Not on Morning Relay：PUT 空串；右边写不进 relay", JSON.stringify(put?.body) === '{"relay_round":""}' && (await evaluate("return $q('[data-zone=relay]').textContent.includes('Not on Morning Relay: Upper Antelope guests are not in the relay.');")));
   await ctl({ relayFail: true });
   before = (await mockLog()).length;
   await evaluate(`$sel(${relaySel}, 'relay');`);
+  await evaluate(saveIn("relay"));
   await waitPut(before, "/api/settings/manifest-setup/groups/1/relay-round");
   await sleep(300);
-  check("存不上：写服务端原话、下拉改回已存的值", await evaluate(`return document.body.textContent.includes('Only admins can change the Morning Relay round.') && ${relaySel}.value === '';`));
+  check("存不上：这一项红字写服务端原话、下拉留着选的值", await evaluate(`return $q('[data-field=relay] [data-save-error]').textContent.includes('Only admins can change the Morning Relay round.') && ${relaySel}.value === 'relay';`));
   await ctl({ relayFail: false });
+  // 选回已存的值：不算改动（后面的检查要换页，不留没存的改动）。
+  await evaluate(`$sel(${relaySel}, '');`);
+  await sleep(150);
   await evaluate(hover("[data-field=relay]"));
   await sleep(100);
   check("指到 8 Morning Relay round：右边 Dispatch 那块亮", await evaluate("const on = [...document.querySelectorAll('[data-zone][data-on]')]; return on.length === 1 && on[0].dataset.zone === 'relay';"));
@@ -549,13 +615,61 @@ async function run() {
 
   before = (await mockLog()).length;
   await evaluate("const i = $q('[aria-label=\"Section for UAC01\"]'); $setValue(i, 'zz sec'); $blur(i);");
+  await evaluate(saveIn("sections"));
   put = await waitPut(before, "/api/settings/manifest-setup/products/10");
   await sleep(200);
-  check("节名离开输入框保存，显示后端规整后的值", put && put.body.section === "zz sec" && put.body.kind === "tour" && (await evaluate("return $q('[aria-label=\"Section for UAC01\"]').value;")) === "ZZ SEC");
+  check("节名按 Save 保存，显示后端规整后的值", put && put.body.section === "zz sec" && put.body.kind === "tour" && (await evaluate("return $q('[aria-label=\"Section for UAC01\"]').value;")) === "ZZ SEC");
   before = (await mockLog()).length;
   await evaluate("$sel($q('[aria-label=\"Type for UAC01\"]'), 'outbound');");
+  await evaluate(saveIn("sections"));
   put = await waitPut(before, "/api/settings/manifest-setup/products/10");
-  check("类型改了就存", put && put.body.kind === "outbound" && put.body.section === "ZZ SEC");
+  check("类型改了按 Save 存", put && put.body.kind === "outbound" && put.body.section === "ZZ SEC");
+
+  // ── 换团：有没存的改动先问 Save / Don't save / Cancel（主窗口 eb 2026-10-30，同离开页面） ──
+  const tourSel = "$q('[aria-label=\"Tour group\"]')";
+  await evaluate(`$setValue(${perBus}, '45');`);
+  await evaluate(`$sel(${tourSel}, '7');`);
+  await waitFor("document.querySelector('[data-leave-dialog]')");
+  check("换团：弹 Leave without saving?，列出 Upper Antelope: Guests per bus", await evaluate("return document.querySelector('[data-leave-dialog]').textContent.includes('Upper Antelope: Guests per bus');"));
+  await evaluate("$btn('Cancel', document.querySelector('[data-leave-dialog]')).click();");
+  await sleep(300);
+  check("换团 Cancel：还在 Upper Antelope，45 还在", (await evaluate(`return ${tourSel}.value;`)) === "1" && (await evaluate(`return ${perBus}.value;`)) === "45");
+  before = (await mockLog()).length;
+  await evaluate(`$sel(${tourSel}, '7');`);
+  await waitFor("document.querySelector('[data-leave-dialog]')");
+  await evaluate("document.querySelector('[data-leave-dialog] [data-leave-save]').click();");
+  put = await waitPut(before, "/api/settings/manifest-setup/groups/1");
+  await waitFor(`${tourSel}.value === '7'`);
+  check("换团选 Save：先存（PUT guests_per_bus 45）再换到 Private", put && put.body.guests_per_bus === "45" && (await evaluate(`return ${tourSel}.value;`)) === "7", JSON.stringify(put?.body));
+  await evaluate(`$sel(${tourSel}, '1');`);
+  await waitFor(`${tourSel}.value === '1'`);
+  await evaluate(`$setValue(${perBus}, '46');`);
+  before = (await mockLog()).length;
+  await evaluate(`$sel(${tourSel}, '7');`);
+  await waitFor("document.querySelector('[data-leave-dialog]')");
+  await evaluate("document.querySelector('[data-leave-dialog] [data-leave-discard]').click();");
+  await waitFor(`${tourSel}.value === '7'`);
+  await evaluate(`$sel(${tourSel}, '1');`);
+  await waitFor(`${tourSel}.value === '1'`);
+  check("换团选 Don't save：不存、换过去再回来是已存的 45", (await since(before, (e) => e.path === "/api/settings/manifest-setup/groups/1")).length === 0 && (await evaluate(`return ${perBus}.value;`)) === "45");
+
+  // ── 10 分钟没活动自动存（只有 Bus Manifest setup 面板）：用假时钟把 10 分钟缩成 1.5 秒 ──
+  await evaluate("window.__productsAutosaveMs = 1500;");
+  before = (await mockLog()).length;
+  await evaluate(`$setValue(${perBus}, '47'); $setValue($prodRow('UAC01').querySelector('[aria-label^="Internal name for"]'), 'ZZ Auto');`);
+  // 一直有鼠标活动：不存。
+  for (let i = 0; i < 6; i++) {
+    await evaluate("window.dispatchEvent(new MouseEvent('mousemove', { bubbles: true }));");
+    await sleep(400);
+  }
+  check("页面一直有活动：不自动存", (await since(before, (e) => e.path === "/api/settings/manifest-setup/groups/1")).length === 0);
+  put = await waitPut(before, "/api/settings/manifest-setup/groups/1");
+  await waitFor("[...document.querySelectorAll('[data-field=perBus] [data-save-ok]')].some(e => e.textContent.startsWith('✓ Auto-saved'))");
+  check("没活动满时间：Bus Manifest setup 没存的自动存（PUT guests_per_bus 47），绿字 ✓ Auto-saved 时间", put && put.body.guests_per_bus === "47" && (await evaluate("const ok = $q('[data-field=perBus] [data-save-ok]'); return /^✓ Auto-saved \\d{1,2}:\\d{2} [AP]M$/.test(ok.textContent) && getComputedStyle(ok).color === 'rgb(30, 107, 67)';")), await evaluate("return $q('[data-field=perBus] [data-save-control]')?.textContent;"));
+  await sleep(2000);
+  check("产品表不参加自动存：UAC01 的 ZZ Auto 没发请求、还写 Not saved yet", (await since(before, (e) => e.path === "/api/settings/products/10")).length === 0 && (await evaluate("return !!$prodRow('UAC01').querySelector('[data-save-unsaved]');")));
+  await evaluate("$setValue($prodRow('UAC01').querySelector('[aria-label^=\"Internal name for\"]'), 'UA Bus'); window.__productsAutosaveMs = undefined;");
+  await sleep(150);
 
   // ── 组清单里没带 categories（G141 之前的后端）：整张卡不显示、不报错，下拉照旧四个 ──
   check("组清单没带 categories：没有 Categories 卡、页面上没有 Not Found 之类的错误，Category 下拉仍是原来的四个", await evaluate("return !document.querySelector('[data-categories-card]') && !document.body.textContent.includes('Not Found') && [...$prodRow('UAC01').querySelector('[aria-label^=\"Category for\"]').options].map((o) => o.value).filter(Boolean).join() === 'bus_tour,shuttle,ticket,unmapped';"), await evaluate("return JSON.stringify({card: !!document.querySelector('[data-categories-card]'), alert: document.querySelector('[role=alert]')?.textContent, opts: [...$prodRow('UAC01').querySelector('[aria-label^=\\\"Category for\\\"]').options].map((o) => o.value)});"));
@@ -569,16 +683,23 @@ async function run() {
   check("Group 下拉不列停用的组（产品不在里面时）", await evaluate("return ![...$prodRow('UAC01').querySelectorAll('select')[0].options].some(o => o.textContent.includes('Old Group')) && ![...document.querySelectorAll('select[aria-label=\"Group for selected\"] option')].some(o => o.textContent.includes('Old Group'));"));
   const disp2 = `${gCard}.querySelector('[aria-label="Display name for shuttle_lv"]')`;
   before = (await mockLog()).length;
+  const gSave = (id) => `${gCard}.querySelector('[data-gid="${id}"] [data-save-btn]').click();`;
   await evaluate(`const i = ${disp2}; $setValue(i, 'Upper Antelope'); $blur(i);`);
+  await sleep(400);
+  check("Groups 改名：离开框不存，这一行出蓝色 Save（Deactivate 左边）", (await since(before, (e) => e.path === "/api/settings/products/groups/2")).length === 0 && (await evaluate(`const b = ${gCard}.querySelector('[data-gid="2"] [data-save-btn]'); return !!b && (b.compareDocumentPosition($btn('Deactivate', ${gCard}.querySelector('[data-gid="2"]'))) & Node.DOCUMENT_POSITION_FOLLOWING) > 0;`)));
+  await evaluate(gSave(2));
   await waitFor(`${gCard}.textContent.includes('already exists')`);
-  check("改名撞名：写服务端原话、框里改回原名", await evaluate(`return ${gCard}.textContent.includes('Could not save: A group called \"Upper Antelope\" already exists.') && ${disp2}.value === 'LV Shuttle';`), await evaluate(`return ${gCard}.textContent.slice(0, 400);`));
+  check("改名撞名：红字写服务端原话、框里留着改的名字", await evaluate(`return ${gCard}.querySelector('[data-gid="2"] [data-save-error]').textContent.includes('Could not save: A group called \"Upper Antelope\" already exists.') && ${disp2}.value === 'Upper Antelope';`), await evaluate(`return ${gCard}.textContent.slice(0, 400);`));
   before = (await mockLog()).length;
-  await evaluate(`const i = ${disp2}; $setValue(i, 'ZZ LV Shuttle'); $blur(i);`);
+  await evaluate(`const i = ${disp2}; $setValue(i, 'ZZ LV Shuttle');`);
+  await evaluate(`${disp2}.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));`);
   let gp = (await waitPut(before, "/api/settings/products/groups/2"));
   await waitFor("document.body.textContent.includes('ZZ LV Shuttle')");
+  check("改名、框里按 Enter = Save：绿字 ✓ Saved", await evaluate(`return !!${gCard}.querySelector('[data-gid="2"] [data-save-ok]');`));
   check("改名：PATCH 只带 display_name、产品的 Group 下拉跟着变成新名字", gp?.method === "PATCH" && JSON.stringify(gp.body) === '{"display_name":"ZZ LV Shuttle"}' && (await evaluate("return [...$prodRow('LEG01').querySelectorAll('select')[0].options].some(o => o.textContent === 'ZZ LV Shuttle') && ![...$prodRow('LEG01').querySelectorAll('select')[0].options].some(o => o.textContent === 'LV Shuttle');")), JSON.stringify(gp?.body));
   before = (await mockLog()).length;
   await evaluate(`const i = ${gCard}.querySelector('[aria-label="Order for shuttle_lv"]'); $setValue(i, '0'); $blur(i);`);
+  await evaluate(gSave(2));
   gp = (await waitPut(before, "/api/settings/products/groups/2"));
   await waitFor(`${gCard}.querySelector('[data-gid]').getAttribute('data-gid') === '2'`);
   check("改顺序：PATCH sort_order 数字、组表重排到最前", JSON.stringify(gp?.body) === '{"sort_order":0}', JSON.stringify(gp?.body));
@@ -637,16 +758,21 @@ async function run() {
     "Running days：Mon 没勾（划线），其余勾着；停开日期列出",
     await evaluate(`return ${dayBtn("Mon")}.getAttribute('aria-pressed') === 'false' && ${dayBtn("Tue")}.getAttribute('aria-pressed') === 'true' && !!document.querySelector('[data-closed-date="501"]') && document.querySelector('[data-closed-date="501"]').textContent.includes('ZZ Test holiday');`),
   );
+  // 9 星期几、10 每行平常的上限、11 逐单列出：一个 Save（在 List each order 下面，主窗口 eb 2026-10-30）；停开日期、日期段的 Add / Delete 照旧马上存。
+  const fSave = "$q('[data-forecast-save] [data-save-btn]').click();";
   let fBefore = (await mockLog()).length;
   await evaluate(`${dayBtn("Sun")}.click();`);
+  await sleep(400);
+  check("点 Sun：先不存，Sun 划掉、星期几那一排描琥珀色、Save 变蓝", (await since(fBefore, (e) => e.path.startsWith("/api/settings/forecast/"))).length === 0 && (await evaluate(`return ${dayBtn("Sun")}.getAttribute('aria-pressed') === 'false' && !!$q('[aria-label="Runs on"][data-changed]') && !$q('[data-forecast-save] [data-save-btn]').disabled;`)));
+  await evaluate(fSave);
   let fPut = await waitPut(fBefore, "/api/settings/forecast/run-days");
   check(
-    "点 Sun：PUT run-days 去掉 6（0 = Monday），马上存",
+    "按 Save：PUT run-days 去掉 6（0 = Monday）",
     JSON.stringify(fPut?.body) === JSON.stringify({ manifest_id: 1, section: "", weekdays: [1, 2, 3, 4, 5] }),
     JSON.stringify(fPut?.body),
   );
-  await waitFor(`${dayBtn("Sun")}.getAttribute('aria-pressed') === 'false'`);
-  check("重拉后 Sun 也划掉", await evaluate(`return ${dayBtn("Sun")}.getAttribute('aria-pressed') === 'false';`));
+  await waitFor("!!$q('[data-forecast-save] [data-save-ok]')");
+  check("重拉后 Sun 也划掉、绿字 ✓ Saved", await evaluate(`return ${dayBtn("Sun")}.getAttribute('aria-pressed') === 'false' && !$q('[aria-label="Runs on"][data-changed]');`));
 
   fBefore = (await mockLog()).length;
   await evaluate(`$setValue($q('[aria-label="Closed from"]'), '2026-12-24'); $setValue($q('[aria-label="Closed note"]'), 'ZZ Test Xmas');`);
@@ -670,18 +796,23 @@ async function run() {
   );
   fBefore = (await mockLog()).length;
   await evaluate(`const t = $q('[aria-label="LOWER time"]'); $setValue(t, '1p'); const m = $q('[aria-label="LOWER max guests"]'); $setValue(m, 'abc'); $blur(m);`);
+  await evaluate(fSave);
   await waitFor("document.body.textContent.includes('Max guests must be a number from 1 to 9999.')");
-  check("上限不是数字：不发请求，写原因", (await since(fBefore, (e) => e.path === "/api/settings/forecast/allotments")).length === 0 && (await evaluate("return document.body.textContent.includes('Max guests must be a number from 1 to 9999.');")));
+  check("上限不是数字：不发请求，红字写哪一行、原因", (await since(fBefore, (e) => e.path === "/api/settings/forecast/allotments")).length === 0 && (await evaluate("return $q('[data-forecast-save] [data-save-error]').textContent === 'LOWER: Max guests must be a number from 1 to 9999.';")));
   await evaluate(`const m = $q('[aria-label="LOWER max guests"]'); $setValue(m, '35'); $blur(m);`);
+  await sleep(300);
+  check("点出框不存", (await since(fBefore, (e) => e.path === "/api/settings/forecast/allotments")).length === 0);
+  await evaluate(fSave);
   fPut = await waitPut(fBefore, "/api/settings/forecast/allotments");
   check(
-    "LOWER 填 1p / 35、点出框：PUT allotments（按 manifest_id + row_label）",
+    "LOWER 填 1p / 35、按 Save：PUT allotments（按 manifest_id + row_label）",
     JSON.stringify(fPut?.body) === JSON.stringify({ manifest_id: 1, row_label: "LOWER", time_label: "1p", max_pax: 35 }),
     JSON.stringify(fPut?.body),
   );
-  await waitFor("$q('[aria-label=\"LOWER max guests\"]').value === '35' && !document.body.textContent.includes('Max guests must be a number')");
+  await waitFor("$q('[aria-label=\"LOWER max guests\"]').value === '35' && !document.body.textContent.includes('Max guests must be a number') && !!$q('[data-forecast-save] [data-save-ok]')");
   fBefore = (await mockLog()).length;
   await evaluate(`const t = $q('[aria-label="UPPER time"]'); $setValue(t, ''); const m = $q('[aria-label="UPPER max guests"]'); $setValue(m, ''); $blur(m);`);
+  await evaluate(fSave);
   await waitFor("$q('[aria-label=\"UPPER max guests\"]').value === ''");
   check(
     "UPPER 两格都清空：DELETE allotments?manifest_id=1&row_label=UPPER",
@@ -711,9 +842,12 @@ async function run() {
 
   fBefore = (await mockLog()).length;
   await evaluate(`$q('[aria-label="List each order on the 7 Days Forecast"]').click();`);
+  await sleep(300);
+  check("勾 List each order：先不存", (await since(fBefore, (e) => e.path === "/api/settings/forecast/order-detail")).length === 0);
+  await evaluate(fSave);
   fPut = await waitPut(fBefore, "/api/settings/forecast/order-detail");
   check(
-    "勾 List each order：PUT order-detail 整组（加上这一块）",
+    "按 Save：PUT order-detail 整组（加上这一块）",
     JSON.stringify(fPut?.body) === JSON.stringify({ blocks: [{ manifest_id: 1, section: "" }] }),
     JSON.stringify(fPut?.body),
   );
@@ -739,14 +873,25 @@ async function run() {
   );
   fBefore = (await mockLog()).length;
   await evaluate(`${dayBtn("Mon")}.click();`);
+  // 切回主块再切回来：没存的改动留着。
+  await evaluate("[...document.querySelectorAll('[role=tab]')][0].click();");
+  await sleep(150);
+  await evaluate("[...document.querySelectorAll('[role=tab]')][1].click();");
+  await sleep(150);
+  check("切块标签：SUNSET 没存的 Mon 留着", await evaluate(`return ${dayBtn("Mon")}.getAttribute('aria-pressed') === 'false';`));
+  await evaluate(fSave);
   fPut = await waitPut(fBefore, "/api/settings/forecast/run-days");
-  check("SUNSET 块点 Mon：section 是 SUNSET", fPut?.body?.section === "SUNSET" && JSON.stringify(fPut.body.weekdays) === "[1,2,3,4,5,6]", JSON.stringify(fPut?.body));
+  check("SUNSET 块点 Mon 按 Save：section 是 SUNSET", fPut?.body?.section === "SUNSET" && JSON.stringify(fPut.body.weekdays) === "[1,2,3,4,5,6]", JSON.stringify(fPut?.body));
+  await waitFor("!!$q('[data-forecast-save] [data-save-ok]')");
 
   await ctl({ forecastFail: "Only admins can change the Forecast settings." });
   await evaluate(`${dayBtn("Tue")}.click();`);
+  await evaluate(fSave);
   await waitFor("document.body.textContent.includes('Only admins can change the Forecast settings.')");
-  check("存不上：写后端原话", await evaluate("return document.body.textContent.includes('Only admins can change the Forecast settings.');"));
+  check("存不上：红字写后端原话、Tue 的改动留着", await evaluate(`return $q('[data-forecast-save] [data-save-error]').textContent.includes('Only admins can change the Forecast settings.') && ${dayBtn("Tue")}.getAttribute('aria-pressed') === 'false';`));
   await ctl({ forecastFail: "" });
+  await evaluate(`${dayBtn("Tue")}.click();`);
+  await sleep(150);
 
   check("指到 10 Max allotments：右边 Forecast 那块亮", await evaluate("$q('[data-field=allotments]').dispatchEvent(new MouseEvent('mouseover', { bubbles: true })); return true;") && (await waitFor("[...document.querySelectorAll('[data-zone][data-on]')].some(z => z.dataset.zone === 'allotments')")));
   check("How to use 写了 Running days / Max allotments / List each order", await evaluate("return [...document.querySelectorAll('details')].some(d => d.textContent.includes('How to use — Bus Manifest setup') && d.textContent.includes('Running days, Max allotments and List each order only change the 7 Days Forecast'));"));
@@ -759,9 +904,10 @@ async function run() {
   );
   fBefore = (await mockLog()).length;
   await evaluate("$q('[aria-label=\"List each order on the 7 Days Forecast\"]').click();");
+  await evaluate(fSave);
   fPut = await waitPut(fBefore, "/api/settings/forecast/order-detail");
   check(
-    "Private 勾 List each order：PUT 清单加上 {7, \"\"}，原来勾的 Upper Antelope 留着",
+    "Private 勾 List each order 按 Save：PUT 清单加上 {7, \"\"}，原来勾的 Upper Antelope 留着",
     JSON.stringify(fPut?.body) === JSON.stringify({ blocks: [{ manifest_id: 1, section: "" }, { manifest_id: 7, section: "" }] }),
     JSON.stringify(fPut?.body),
   );
@@ -815,9 +961,12 @@ async function run() {
   await waitFor("document.body.textContent.includes('lowercase letters, numbers and underscores')");
   check("code 不合规矩（Bad-Code）：照后端原话显示，没有多出一行", await evaluate(`return document.body.textContent.includes('Could not add: Code must be lowercase letters, numbers and underscores only') && ${catCard}.querySelectorAll('tr[data-category]').length === 5;`));
   // typeLabel 认显示名：产品选了 CHD Fee，下拉里显示 CHD Fee 不是 chd_fee
+  before = (await mockLog()).length;
   await evaluate(`$sel(${catSel("UAC02")}, 'chd_fee');`);
-  await waitFor(`${catSel("UAC02")}.value === 'chd_fee'`);
-  check("产品选了新 Category：下拉写显示名 CHD Fee，不是原始 key", await evaluate(`const sel = ${catSel("UAC02")}; return sel.options[sel.selectedIndex].textContent === 'CHD Fee';`));
+  await evaluate("$prodRow('UAC02').querySelector('[data-save-btn]').click();");
+  await waitPut(before, "/api/settings/products/11");
+  await waitFor("!!$prodRow('UAC02').querySelector('[data-save-ok]')");
+  check("产品选了新 Category（按 Save 存好）：下拉写显示名 CHD Fee，不是原始 key", await evaluate(`const sel = ${catSel("UAC02")}; return sel.value === 'chd_fee' && sel.options[sel.selectedIndex].textContent === 'CHD Fee';`));
   // 停用：确认 → 不再出现在别处的下拉，已经用着它的产品不变
   await evaluate(`$btn('Deactivate', ${catCard}.querySelector('tr[data-category=chd_fee]')).click();`);
   await waitFor(dialog);
@@ -967,10 +1116,16 @@ async function run() {
   check("G198：Cfm # box per section 列这一组的 tour 节（LOWER、Canyon X），已勾但没产品的 UPPER 也列出来好取消；班车节、没名字的默认节不列", (await evaluate(`return ${cfmRows};`)) === "Canyon X:false,LOWER:false,UPPER:true", await evaluate(`return ${cfmRows};`));
   before = (await mockLog()).length;
   await evaluate("document.querySelector('[data-cfm-section=\"LOWER\"] input').click();");
+  await sleep(300);
+  check("G198：勾 LOWER 先不存", (await since(before, (e) => e.path.endsWith("/cfm-sections"))).length === 0);
+  const cfmSave = "[...document.querySelectorAll('[data-field=sections]')].find((f) => f.querySelector('[data-cfm-section]')).querySelector('[data-save-btn]').click();";
+  await evaluate(cfmSave);
   put = await waitPut(before, "/api/settings/manifest-setup/groups/1/cfm-sections");
-  check("G198：勾 LOWER 马上存：PUT …/cfm-sections {sections:['UPPER','LOWER']}（整组替换），写 Saved", put && JSON.stringify(put.body.sections) === '["UPPER","LOWER"]' && (await waitFor("document.querySelector('[data-cfm-section=\"LOWER\"] input').checked")), JSON.stringify(put?.body));
+  check("G198：勾 LOWER 按 Save：PUT …/cfm-sections {sections:['UPPER','LOWER']}（整组替换）", put && JSON.stringify(put.body.sections) === '["UPPER","LOWER"]' && (await waitFor("document.querySelector('[data-cfm-section=\"LOWER\"] input').checked")), JSON.stringify(put?.body));
+  await waitFor("!![...document.querySelectorAll('[data-field=sections]')].find((f) => f.querySelector('[data-cfm-section]')).querySelector('[data-save-ok]')");
   before = (await mockLog()).length;
   await evaluate("document.querySelector('[data-cfm-section=\"UPPER\"] input').click();");
+  await evaluate(cfmSave);
   put = await waitPut(before, "/api/settings/manifest-setup/groups/1/cfm-sections");
   check("G198：取消 UPPER：sections 只剩 LOWER", put && JSON.stringify(put.body.sections) === '["LOWER"]', JSON.stringify(put?.body));
   await ctl({ cfmSections: ["LOWER", "ZZ Bad"] });
@@ -978,8 +1133,12 @@ async function run() {
   await waitFor("document.querySelector('[data-cfm-section]')", 30000);
   await helpers();
   await evaluate("document.querySelector('[data-cfm-section=\"Canyon X\"] input').click();");
+  await evaluate(cfmSave);
   await waitFor("[...document.querySelectorAll('[role=alert]')].some(a => a.textContent.includes('Unknown section'))");
-  check("G198：节名不对 400：红字写后端原话，勾选退回", await evaluate("return [...document.querySelectorAll('[role=alert]')].some(a => a.textContent.includes(\"Unknown section 'ZZ Bad'\")) && !document.querySelector('[data-cfm-section=\"Canyon X\"] input').checked;"));
+  check("G198：节名不对 400：红字写后端原话，勾选留着（等改了再存）", await evaluate("return [...document.querySelectorAll('[role=alert]')].some(a => a.textContent.includes(\"Unknown section 'ZZ Bad'\")) && document.querySelector('[data-cfm-section=\"Canyon X\"] input').checked;"));
+  // 取消勾选回到已存的：不算改动（下面要换页）。
+  await evaluate("document.querySelector('[data-cfm-section=\"Canyon X\"] input').click();");
+  await sleep(150);
   await ctl({ g198: false, cfmSections: ["UPPER"] });
 
   // ── G199：午餐店搬到 Supplier › Restaurant，Manifest setup 只读一行（后端带 lunch_restaurant 时）──
@@ -993,6 +1152,7 @@ async function run() {
   check("G199：示意图午餐单抬头 NPE Lunch Box - 店名", await evaluate("return document.body.textContent.includes(\"NPE Lunch Box - ZZ Test Bee's\");"));
   before = (await mockLog()).length;
   await evaluate(`const i = $q('[aria-label="Guests per bus"]'); $setValue(i, '50'); $blur(i);`);
+  await evaluate("$q('[data-field=perBus] [data-save-btn]').click();");
   put = await waitPut(before, "/api/settings/manifest-setup/groups/1");
   check("G199：存团的设定不再带 lunch_note", put && !("lunch_note" in put.body) && put.body.guests_per_bus === "50", JSON.stringify(put?.body));
   await ctl({ g199: false });
