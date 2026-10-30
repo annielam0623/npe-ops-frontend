@@ -159,6 +159,8 @@ async function trySave(ms = 900) {
   await evaluate(AUTOSAVE_OFF);
 }
 const saveState = "document.querySelector('[data-save-state]')?.textContent";
+/** Step 2 写存好了（手动 ✓ All changes saved · 时间，10 分钟没活动自动存的 ✓ Auto-saved 时间）。 */
+const savedOk = `/^✓ (All changes saved · |Auto-saved )\\d{1,2}:\\d{2} [AP]M$/.test(${saveState} ?? '')`;
 /** 有改动、等着自动存。 */
 const waiting = `(${saveState} === 'Unsaved changes')`;
 const saveError = "document.querySelector('[data-save-error]')?.textContent ?? ''";
@@ -261,20 +263,33 @@ async function run() {
   await trySave();
   check("存不上的同一份不再自己重试（staff 再改才试）", (await since(before, isSave)).length === 0);
   await pick(`${vrow(3)}.querySelector('[data-f=vehicle]')`, "11");
-  check("每个单元标题行有自己的 Save：改了的单元蓝键 + Unsaved changes，没改的灰键 + Saved", await evaluate(`const on = document.querySelector('[data-unit-save="relay"]'); const tour = document.querySelector('[data-unit-save="tour:3"]'); return on?.querySelector('[data-unit-state]').textContent === 'Unsaved changes' && !on.querySelector('button').disabled && tour?.querySelector('[data-unit-state]').textContent === 'Unsaved changes' && !tour.querySelector('button').disabled && [...document.querySelectorAll('[data-unit-save]')].filter((u) => u.querySelector('[data-unit-state]').textContent === 'Saved').every((u) => u.querySelector('button').disabled);`));
-  // 手动点 Morning Relay 的 Save：只存这一个单元（上面服务端拒绝时它存不上、同一份不会自动重试，手动点不受那个限制）。
+  check("单元标题行只留状态字（没有 Save 键）：改了的写 Unsaved changes，没改的写 Saved", await evaluate(`const on = document.querySelector('[data-unit-save="relay"]'); const tour = document.querySelector('[data-unit-save="tour:3"]'); return on?.querySelector('[data-unit-state]').textContent === 'Unsaved changes' && tour?.querySelector('[data-unit-state]').textContent === 'Unsaved changes' && [...document.querySelectorAll('[data-unit-save]')].every((u) => !u.querySelector('button')) && [...document.querySelectorAll('[data-unit-save]')].some((u) => u.querySelector('[data-unit-state]').textContent === 'Saved');`));
+  check("每台车 Edit 旁边有 Save（Annie 2026-10-29）：改了的单元每台车都是蓝键可点，没改的单元灰键点不了", await evaluate(`const rowsIn = (q) => [...document.querySelectorAll(q + ' .vrow')]; const relayRows = rowsIn('section[data-sec^=relay]'); const all = [...document.querySelectorAll('.vrow')]; const saveOf = (r) => r.querySelector('[data-row-save]'); const editOf = (r) => [...r.querySelectorAll('button')].find(b => b.textContent.trim().startsWith('Edit')); return relayRows.length > 0 && relayRows.every(r => saveOf(r) && !saveOf(r).disabled && getComputedStyle(saveOf(r)).backgroundColor === 'rgb(37, 99, 235)') && all.every(r => !!saveOf(r) && !!editOf(r) && editOf(r).compareDocumentPosition(saveOf(r)) & Node.DOCUMENT_POSITION_FOLLOWING) && [...document.querySelectorAll('[data-unit-save]')].filter(u => u.querySelector('[data-unit-state]').textContent === 'Saved').every(u => { const s = u.closest('section'); return !s || [...s.querySelectorAll('[data-row-save]')].every(b => b.disabled); });`));
+  // 手动点 Morning Relay 某台车的 Save：只存这一个单元（上面服务端拒绝时它存不上、同一份不会自动重试，手动点不受那个限制）。
   const bRelay = (await mockLog()).length;
-  await evaluate(`document.querySelector('[data-unit-save-btn="relay"]').click();`);
+  await ctl({ saveDelay: 1500 });
+  await evaluate(`document.querySelector('section[data-sec^=relay] [data-row-save]').click();`);
   const sv = (await waitReq(bRelay, isSave))[0]?.body;
+  // 存的那一会儿改别的团（它的车照常能改）：存完不被盖回去，那个团照旧 Unsaved changes
+  const tourVeh = "document.querySelector('section[data-sec^=bus_tour] .vrow [data-f=vehicle]')";
+  const tourWas = await evaluate(`return ${tourVeh}?.value ?? '';`);
+  const tourNew = tourWas === "10" ? "11" : "10";
+  check("存的时候：别的团的车照常能改（没关）", await evaluate(`return !!${tourVeh} && !${tourVeh}.matches(':disabled') && document.querySelector('[data-unit-save="relay"] [data-unit-state]').textContent === 'Saving…';`));
+  await pick(tourVeh, tourNew);
+  await waitFor(`document.querySelector('[data-unit-save="relay"] [data-unit-state]')?.textContent !== 'Saving…'`, 10000);
+  await ctl({ saveDelay: 0 });
   await sleep(300);
+  check("存的时候改了别的团：存完那个团的改动还在（没被盖回去）、照旧 Unsaved changes", (await evaluate(`return ${tourVeh}.value;`)) === tourNew && (await evaluate(`return document.querySelector('[data-unit-save="tour:3"] [data-unit-state]').textContent === 'Unsaved changes';`)), await evaluate(`return ${tourVeh}.value + ' was ' + ${JSON.stringify(tourWas)};`));
   check("点 Save 只存这一个单元：别的单元没动（没发 tour:3 的请求）", (await since(bRelay, isSave)).every((e) => e.body.unit === "relay"));
+  await waitFor(`document.querySelector('[data-unit-save="relay"] [data-unit-state]')?.textContent === 'Saved'`);
+  check("存好：这一块每台车的 Save 变灰、旁边写 ✓ Saved（一直留着）；别的单元照旧 Unsaved changes、没自动存", (await evaluate(`const r = [...document.querySelectorAll('section[data-sec^=relay] .vrow')]; return r.length > 0 && r.every(x => x.querySelector('[data-row-save]').disabled && x.querySelector('[data-row-save-state]')?.textContent === '✓ Saved') && document.querySelector('[data-unit-save="tour:3"] [data-unit-state]').textContent === 'Unsaved changes';`)) && (await since(bRelay, isSave)).length === 1);
   await saveNow();
   check("保存：按单元送（Morning Relay 这一块的车）、只送该送的字段（不送显示用的名字 / CCL 原文）", sv && sv.date === "2026-10-05" && sv.unit === "relay" && sv.rows.length === 1 && sv.rows[0].driver_typed_name === "ZZ Test Typed" && !("driver_name" in sv.rows[0]) && !("ccl" in sv.rows[0]) && sv.rows[0].ccl_line_id === null && !("ccl_import_id" in sv), JSON.stringify(sv));
   // G71：前面第一次改的时候占住了这一天，保存带着那个 token。
   const lk0 = (await mockLog()).filter((e) => e.path === "/api/dispatch/edit-lock" && e.resp).at(-1);
   check("G71 保存带 edit_token（第一次改的时候占到的那个）", !!lk0 && lk0.body.date === "2026-10-05" && lk0.body.version === "v1" && sv?.edit_token === lk0.resp.token, JSON.stringify([lk0, sv?.edit_token]));
-  await waitFor(`${saveState}?.startsWith('✓ All changes saved · ')`);
-  check("存好：Step 2 写 ✓ All changes saved · 时间、红条没了", await evaluate(`return /^✓ All changes saved · \\d{1,2}:\\d{2} [AP]M$/.test(${saveState}) && !document.querySelector('[data-save-error]');`), await evaluate(`return ${saveState};`));
+  await waitFor(`${saveState}?.startsWith('✓ Auto-saved ')`);
+  check("自动存好：Step 2 写 ✓ Auto-saved 时间（不弹框）、红条没了；那一块的车旁写 ✓ Auto-saved 时间", await evaluate(`return /^✓ Auto-saved \\d{1,2}:\\d{2} [AP]M$/.test(${saveState}) && !document.querySelector('[data-save-error]') && !document.querySelector('[role=dialog]') && /^Auto-saved \\d{1,2}:\\d{2} [AP]M$/.test(document.querySelector('[data-unit-save="tour:3"] [data-unit-state]').textContent) && [...document.querySelector('[data-unit-save="tour:3"]').closest('section').querySelectorAll('[data-row-save-state]')].every(x => x.textContent.startsWith('✓ Auto-saved '));`), await evaluate(`return ${saveState};`));
   check("保存成功：邮件没发出去时一直提示", await evaluate("return document.body.textContent.includes('The email to Annie about ZZ Test Typed (not in Human Resource) could not be sent. Please tell Annie.');"));
 
   // 换天 / 未保存
@@ -886,7 +901,7 @@ async function run() {
     await evaluate(AUTOSAVE_OFF);
     await sleep(200);
     check("存的时候：正在存的单元（Morning Relay）的每一行（fieldset）关着，下拉 / 备注 / 酒店小块 / Edit 都不能点；别的单元照常能改；Step 2 写 Saving…", await evaluate(`const inRelay = (r) => !!r.closest('section[data-sec^=relay]'); const rows = [...document.querySelectorAll('.vrow')]; const mine = rows.filter(inRelay); const others = rows.filter((r) => !inRelay(r)); return mine.length > 0 && others.length > 0 && mine.every(r => r.disabled) && mine.every(r => [...r.querySelectorAll('select, input, button')].every(el => el.matches(':disabled'))) && others.every(r => !r.disabled) && ${saveState} === 'Saving…' && document.querySelector('[data-unit-save="relay"] [data-unit-state]').textContent === 'Saving…';`));
-    await waitFor(`${saveState}?.startsWith('✓ All changes saved')`, 10000);
+    await waitFor(savedOk, 10000);
     await ctl({ saveDelay: 0 });
     // 'All changes saved' 先出来，存完还要再读一次 CCL（maybePrefill）才放开 busy：等行放开再判断（偶发的时序）。
     await waitFor("[...document.querySelectorAll('.vrow')].every(r => !r.disabled)", 5000);
@@ -1276,7 +1291,7 @@ async function run() {
     b = (await mockLog()).length;
     await pick(veh(0), "11");
     await saveNow();
-    await waitFor(`${saveState}?.startsWith('✓ All changes saved')`);
+    await waitFor(savedOk);
     lg = (await mockLog()).slice(b);
     iA = lg.findIndex(ACQ);
     const iS = lg.findIndex(isSave);
@@ -1440,8 +1455,8 @@ async function run() {
     const tokA = await lastToken();
     const autoS = (await waitReq(b, isSave))[0]?.body;
     await evaluate(AUTOSAVE_OFF);
-    await waitFor(`${saveState}?.startsWith('✓ All changes saved')`);
-    check("G71 停手够久：自己存（两处改动一起、带 token）、写 ✓ All changes saved", autoS?.edit_token === tokA && autoS.rows.find((r) => r.shift === "relay_2")?.vehicle_id === 10 && autoS.rows.find((r) => r.shift === "relay")?.vehicle_id === 10 && (await evaluate(`return !document.querySelector('[role=dialog]');`)), JSON.stringify(autoS));
+    await waitFor(`${saveState}?.startsWith('✓ Auto-saved ')`);
+    check("G71 没活动够久：自己存（两处改动一起、带 token）、写 ✓ Auto-saved 时间", autoS?.edit_token === tokA && autoS.rows.find((r) => r.shift === "relay_2")?.vehicle_id === 10 && autoS.rows.find((r) => r.shift === "relay")?.vehicle_id === 10 && (await evaluate(`return !document.querySelector('[role=dialog]');`)), JSON.stringify(autoS));
     // 加一台还没填的车（没司机的车也能存，不再被拦；这里不让它存，留着没存的改动）；15 分钟没动手 ⇒ 放开、写一句，改动留在页面上
     b = (await mockLog()).length;
     await evaluate(`$btn('+ Add vehicle', ${relay1}).click();`);
@@ -1458,7 +1473,25 @@ async function run() {
     await pick(veh(0), "11");
     check("G71 退出编辑后再改：重新占", (await waitReq(b, ACQ)).length === 1);
 
-    check("G71 How to use 写了 Only one person can edit a day at a time.", await evaluate("return document.body.textContent.replace(/\\s+/g, ' ').includes('Press Save on a block to save it; changes also save by themselves after a minute without activity. A red message says what to fix. Only one person can edit a day at a time.');"));
+    check("How to use 第 5 条照新规则（Annie 2026-10-29）：Edit 旁的 Save 存整个团、10 分钟没活动才自动存、离开先问", await evaluate("return document.body.textContent.replace(/\\s+/g, ' ').includes('Press Save next to Edit to save that tour — all its cars are saved together. Changes save by themselves only after 10 minutes without activity on the page. If you leave or change the day before saving, the page asks first. A red message says what to fix. Only one person can edit a day at a time.');"));
+
+    // ── 10 分钟没活动才自动存（Annie 2026-10-29）──
+    await open(D);
+    await evaluate("delete window.__dispatchAutosaveMs;");
+    b = (await mockLog()).length;
+    await pick(veh(0), "11");
+    await sleep(3000);
+    check("默认（不设等待时间）：改了停手 3 秒也不自动存，写 Unsaved changes", (await since(b, isSave)).length === 0 && (await evaluate(`return ${unsaved};`)));
+    // 用短的等待时间代替 10 分钟（mock 时钟）：一直有键盘 / 鼠标 / 触摸操作就不存，停下来才存
+    await evaluate("window.dispatchEvent(new Event('keydown')); window.__act = setInterval(() => { for (const t of ['mousemove', 'keydown', 'touchstart']) window.dispatchEvent(new Event(t)); }, 300); return 1;");
+    await evaluate("window.__dispatchAutosaveMs = 1500;");
+    await sleep(3500);
+    check("一直有鼠标 / 键盘 / 触摸操作（没改东西）：等待时间过了也不自动存", (await since(b, isSave)).length === 0 && (await evaluate(`return ${unsaved};`)));
+    await evaluate("clearInterval(window.__act); return 1;");
+    const idleS = (await waitReq(b, isSave))[0]?.body;
+    await evaluate(AUTOSAVE_OFF);
+    await waitFor(`${saveState}?.startsWith('✓ Auto-saved ')`);
+    check("停下来、没活动够久：自动存一次（按单元 POST /api/dispatch/section）、写 ✓ Auto-saved 时间", idleS?.unit === "relay" && (await since(b, isSave)).length === 1 && (await evaluate(`return /^✓ Auto-saved \\d{1,2}:\\d{2} [AP]M$/.test(${saveState});`)), JSON.stringify(idleS));
     await ctl(RESET);
     promptAnswer = null;
   }

@@ -109,6 +109,14 @@
   - 等等。
   觉得键太多，可以改成按大块分。
 
+## 2026-10-30 Dispatch 手动保存上线（`task/dispatch-manual-save-e6`，从 59 的 f243720 接手；工作窗口 `npe-ops-frontend-e6`[047d88]，主窗口 eb 派工）
+
+- Annie 2026-10-30 在主窗口里下令，原话：「Dispatch 手动保存，你说「推」才上线；推」。
+- 做了什么见下面「dispatch-manual-save」那节（59 写的）：取消自动保存、整页 Save、10 分钟没活动自动存、离开拦截、Saved 绿字。e6 没改代码，只合了最新 main（没有冲突）、重跑检查、合 main。
+- 检查（公司电脑，Node v26.13.0）：
+  - 合了 G215（af43877）和 Products 手动保存（e9e7764）之后的 main，没有冲突，重跑：
+  - da 385/385（单独跑，SUITE_TIMEOUT_S=900；G215 加了 5 项）、nav 32/32；
+  - tsc 0 错；eslint 0 错、2 个警告（原有的）；build 过。
 ## 批量导入第一批接真接口（HR / Pickup / Vehicles，2026-10-30，工作窗口 `npe-ops-frontend-09`[8a0116]，主窗口 eb 派工）
 
 - 依据：Annie 10-29「批量导入同意全部推荐。动手」。前端 59 做好的三个分支，后端 G220 第一批已上 main（提交 3b9a964，合并 76de8f3，后端 66 做）。顺序：import-hr 先合，再 pickup、vehicles。
@@ -1170,27 +1178,40 @@ pe-ops-frontend-bmv）：
 - 后端：f0 主窗口、bd 做 G203 / G208 / guide_notes、d0 做 G98 / G212。G203 第 ③④ 步（Dispatch 逐车、Schedule 等补写入，以及 Quick replies 新形状 /action-log）还在后端，路径到了再派前端接面板。
 - 空闲内存一直在 0.7–2 GB，一次最多开两个前端工作窗口。
 
-## 全站「上传表格自动填」：Pickup Locations 的 ⬆ Import（`task/import-pickup`，从 `task/import-hr` 拉，2026-10-29 晚，工作窗口 `npe-ops-frontend-59`[678c38]，主窗口 d2 派工）—— **分支已推，没合 main（后端接口没上，先用 mock）**
+## Dispatch 取消自动保存，改成每台车 Edit 旁的 Save（`task/dispatch-manual-save`，2026-10-29 晚，工作窗口 `npe-ops-frontend-59`[678c38]，主窗口 d2 派工）—— **已合 main（2026-10-30 e6 接手，Annie 原话「推」，见最上面 e6 那节）**；原来：检查都过了，推 main 被权限拦，等 Annie 下令
 
-- 做法、Annie 原话、Q1–Q7 同下一节（通用块 `components/ui/bulk-import.tsx`）。
+- 授权：preview https://claude.ai/artifact/18d91JAUbvdy87Bd1idDA5 ；Annie「我们现在来动手改自动保存吧，就是把每个小项的自动保存转成正常的一个小section的手动保存，这样效率高一些，除非是超过10分钟页面没有活动，那才需要自动保存一下」（经 9a、d2 转）。Q1–Q4 照推荐。
+- Annie 补的细节（经 9a、d2 转，原话）：
+  - 「没有在本页面有任何动作或者切到别的标签页，或者完全没动鼠标，可能听电话」；
+  - 有改动没存就离开要提示；
+  - 自动存完页面上提示一句（英文）；
+  - 「saved用绿色」。
+- ⛔ Annie 10-28「做完之后等我下令push的时候再push」：「动手」只当开工，**不合 main**。
 - 改动：
-  - All Locations 卡头 ⬇ Export 右边加 ⬆ Import；Import 块展开在 All Locations 卡上面（只看 importOpen，后台重拉列表时不会把选好的文件弄丢）；存好后用页面原来的 `refresh()` 静悄悄重拉（不闪 Loading，Action Log 展开着就重读）。
-  - `components/pickup-locations/import-panel.tsx`：模板 = 全部酒店（含停用的），列同 Export（`CSV_FIELDS`，页面栏名），文件名 `pickup_locations_template_<日期>.csv`；
-    按 Hotel Name 对上，也认 Aliases（预览写「Matched by alias “…”.」），没对上的新建；atomic=true。存好后重拉列表、Action Log 重读。
-  - `lib/csv.ts` 拆出 `csvBlob`（downloadCsv 照旧）；`config.ts` 加 `buildPickupImportTemplate`、导出 `CSV_FIELDS`；How to use 加一条。
-- 检查：`pl` 59/59（新加：卡头有 ⬆ Import 不是蓝的、模板列名 / 行数 / 文件名、预览只调 preview、四种状态和数字、「旧 → 新」、alias 说明、
-  空格说明、Short 太长红字、文件里重复、Save 蓝色、存不上红字「nothing was changed」、存好绿字 + 列表出新酒店 + Action Log 重读、Close 收起）；
-  tsc 0、eslint 0 错、build 通过。
-- ⚠️ **需要后端**（Pickup，已由 d2 转 9a；形状照全站标准 `types/bulk-import.ts` 的 `ImportPreviewRow` / `ImportPreviewResponse` / `ImportCommitResult`，前端用 `StandardImport`）：
-  1. `POST /api/pickup-locations/import/preview`（multipart `file`，.csv / .xlsx，require_admin）：只读；按表头名认栏（同 Export 的栏名），
-     回 `{columns: [文件里认出的栏 key], rows: [{status: new|update|unchanged|error, id, values, before, changed, blanked, errors: [{field, message}], matched_alias}]}`；
-     Active / Tour bus departure 的值写 Yes / No；空格不改（进 blanked）；校验同单个保存（Short ≤120、Map image ≤2、Alias 已属于别的酒店、重名），文件里同名重复的第二行 error。
-  2. `POST /api/pickup-locations/import/commit`（同一个文件）：重新解析，只写 new / update 行，**一个事务**，有一行失败整份不写；回 `{created, updated, unchanged, skipped}`；每格改动照现在的 Action Log 记。
-  3. Tour bus / Shuttle 分开（9c 的 `task/pickup-split`）上了以后，导入加 Type 那一栏。
-- ⚠️ 和 9c 的 `task/pickup-split`（8a6169b，没合 main）都改 `pickup-locations-view.tsx`：它换了 All Locations 卡、列表搬到 `location-sections.tsx`。
-  我只动了：一个 state、卡上面的 Import 块、卡头的 ⬆ Import 键、How to use 一条。谁后合 main，谁合进来解冲突（Import 键照放卡头）。
-- 下一步：后端两个接口上 main → 合最新 main（和 pickup-split 解冲突）→ 接真接口（mock 形状不变就不用改）→ 重跑 pl → 合 main。
+  - 每台车 Edit ▼ 旁边加 Save（`RowSave`，Morning Relay / 巴士团 / Private / Farm out 车都有）。
+    - 存的是这台车所在的整个单元（同一个 `POST /api/dispatch/section`），同一单元的 Save 一起变蓝。
+    - 没改是灰的；存的时候灰 + Saving…；存好写绿色 ✓ Saved，一直留到再改；存不上写红字 Not saved，原因照旧写在单元标题下面的红条。
+  - 单元标题行原来的 Save 键去掉，只留状态字（`UnitStatus`）：Unsaved changes / Saving… / Saved / Auto-saved 3:42 PM。
+  - 自动存：从「60 秒没操作」改成「页面 10 分钟没有活动、有没存的改动」才按单元存一次（`AUTOSAVE_MS`）。
+    - 活动 = 本页的键盘、鼠标（移动 / 点击）、滚轮、滚动、触摸；切到别的标签页照样计时。
+    - 存完 Step 2 和单元状态写绿色「Auto-saved 3:42 PM」，不弹框。
+  - 存完只换这一块：存的时候这一块又被改了，不拿存之前的样子盖回去，只换行 id。别的单元没存的改动照旧不碰。
+  - 离开 / 换日期的提醒照旧（现有 useLeaveGuard + 弹框）。
+  - How to use 第 5 条改写。
+  - Morning Relay 的 Actions 列从 84px 加宽到 150px，放 Edit + Save。
+  - 后端不用改。
+- 检查（mock）：
+  - `da` **374/374**（单独跑，`SUITE_TIMEOUT_S=900`）。新增 / 改的项：
+    - 标题行只留状态字；每台车 Edit 后面有 Save，改了的单元蓝键、没改的灰键；
+    - 点车旁 Save 只存这一单元、变 ✓ Saved、别的单元不自动存；
+    - 存的时候改别的团，存完改动还在；
+    - 自动存写 ✓ Auto-saved 时间、不弹框；
+    - 默认等待下停手 3 秒不存；一直有鼠标 / 键盘 / 触摸就不存，停下才存一次；
+    - How to use 新文字。
+  - tsc 0、eslint 0 错、`next build` 过。
+  - `run-all.js` 加了 `SUITE_TIMEOUT_S`（默认仍 480 秒）：da 一套接近 8 分钟，加检查后会撞上限。
 
+- 准备合 main（2026-10-29 晚，d2 转 Annie「4项全部动手」）：合最新 main（含 G203 第四批的 Dispatch Action Log，只 PROGRESS 冲突）后 tsc 0、eslint 0 错、build 通过、`da` 380/380（SUITE_TIMEOUT_S=900）；之后又合进 main 的 Restaurant 四栏（不碰 Dispatch），tsc 0。分支 `f81144c` 起已推，下一步只差 `git push origin task/dispatch-manual-save:main`。
 ## 全站「上传表格自动填」：通用 Import 块 + HR 换成通用样子（`task/import-hr`，2026-10-29 晚，工作窗口 `npe-ops-frontend-59`[678c38]，主窗口 d2 派工）—— **分支已推，没合 main（等后端补 HR 接口）**
 
 - Annie 原话：「但凡有材料需要输入的地方，都要支持表格，文档，图片上传」；问批量导入还是附件，答「上传表格自动填进去」。
