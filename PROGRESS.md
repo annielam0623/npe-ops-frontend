@@ -45,17 +45,6 @@
   - B. 点 Send to confirm 时先自动存，再打开发送框；
   - C. 照现在，不管。
 
-### 13. 外部合作方（partner，例如 CCL）勾了 dispatch.edit，能不能在 Bus Manifest 上改东西（e6 做 10c 时发现）
-- 现在：partner 打开 Bus Manifest 一律只看，勾了什么都一样。不能换车、改备注 / 景点黄框、调字号和版式，也没有整页 Save。这是照 Annie 10-27 原话做的：「合作方只能看manifest和订单，不能改或者选任何功能」。
-- 为什么问：
-  - 10c「全部按照勾选」：后端对勾了 dispatch.edit 的 partner 是放行的，页面却只读，两边不一致；
-  - Annie 10-30 又说「最关键是有没有这个功能，而不是这个职位」。
-  - 照勾放开，就和 10-27 那句冲突。
-- 选法：
-  - A. 照旧：partner 不管勾什么，Bus Manifest 都只看，不用改（推荐：10-27 说得很明确；前端多拦一层更保险。真要让 CCL 改，再单独开）；
-  - B. 照勾：partner 勾了 dispatch.edit 或 manifests.edit，就能在 Bus Manifest 换车、改备注、调字号 / 版式，和员工一样。Dispatch 排车页、Manifests 页、Orders 照旧只看。
-- 现在先按 A 做。
-
 ### 14. Daily Operation Report 列表：谁能改（09 做 10c 时发现）
 - 现在：页面只给 supervisor / admin 改；后端只要求是员工（任何登录的 staff 都能改），也没有对应的权限勾。
 - 为什么问：「全部按照勾选」要按勾判断，可是这一项没有勾可以按。
@@ -547,6 +536,7 @@
   - 后端已发 57：改短信模板，send 收 extra，GET 回 extra_max / preview_text，400 英文 detail。
   - 前端派 62 `task/dispatch-send-to-guide`，模拟接口先做。第一次真发要 Annie 点头。
 - Annie 原话「V131我已经执行了」：已转 57，G219 可以落地。前端 task/team-contacts 0ff97be 等后端上 main，合时补 Team 页 How to use 7 条。
+- **Annie 答置顶 13，原话「13 A」**：partner 不管勾什么，在 Bus Manifest 都只能看，照旧。e6 本来就按 A 做，不用改。
 - 62 week-save 已上 main 7da6786。
 ## 2026-10-29 晚 收工交接：前端主窗口 `今天前端主窗口-d2`[15266b]（家里电脑，Annie「做完写交接收工」）
 
