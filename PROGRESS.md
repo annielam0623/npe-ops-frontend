@@ -70,6 +70,10 @@
   - 空档在 Sat 11/07 的 2:00–8:00 AM。她改成 3am 的两个 Open 班在 Unassigned 行，不算覆盖；就算分给人，2:00–3:00 AM 也还是空着。
   - 右上角的数字算的是整周，Day timeline 显示的是选中的 Mon 11/02。
   - 主窗口建议：日期标签上给有空档的日子标红，右上角写明是哪天、点了跳过去。这算样子改动，要先出 preview，等 Annie 答要不要。
+  - Annie 原话：「排版问题，你要提醒是哪一天有问题，而不是让人去找问题在哪里，然后给admin选择，publish anyway」。
+    - 已派 9c 出 preview：写明哪天哪段有空档，点了跳过去；给 admin 一个「Publish anyway」。
+    - 9c 同时只读查后端发布接口有没有强制发布的参数。
+    - 还没动手。
 - **Annie 定长期规则：订单流 Order List → Main Manifest → Dispatch / Tracking，不跳过前面直接去 Rezdy 拉单**。
   - 原话：「不要直接去rezdy拉订单。写到工作里头。订单流是order list  - main manifest - dispatch / tracking --我马上要开通。不要跳跃过前面的程序直接去rezdy拉单。前端后端都要写到工作规范里去」
   - 前端已写进 CLAUDE.md「已定的决策」：远端 7fb1c50（别的窗口同时写的，内容更全）。主窗口自己写的那段重复了，已删掉。后端已请 9a 写进后端规范。
