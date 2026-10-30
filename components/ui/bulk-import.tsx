@@ -62,7 +62,8 @@ const STATUS_CLASS: Record<BulkImportStatus, string> = {
   new: "bg-[#e0ecff] text-[#1e40af] night:bg-blue-400/15 night:text-blue-200",
   update:
     "bg-[#fff4d6] text-[#7a5300] night:bg-amber-400/15 night:text-amber-200",
-  unchanged: "bg-[#f1f2f4] text-[#6b7280] night:bg-white/10 night:text-white/55",
+  unchanged:
+    "bg-[#f1f2f4] text-[#6b7280] night:bg-white/10 night:text-white/55",
   error: "bg-[#fde8e8] text-[#b3261e] night:bg-red-500/15 night:text-red-300",
 };
 

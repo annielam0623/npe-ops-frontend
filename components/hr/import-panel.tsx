@@ -40,8 +40,8 @@ export function ImportPanel({
       title="Import drivers & guides"
       help={
         <>
-          <b>Legal Name</b> finds the person; names not on the list are added
-          as new people. A blank cell never clears what is stored — to empty a
+          <b>Legal Name</b> finds the person; names not on the list are added as
+          new people. A blank cell never clears what is stored — to empty a
           field, use <b>Edit list</b> or open that person.
         </>
       }
