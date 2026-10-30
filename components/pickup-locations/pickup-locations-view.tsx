@@ -530,9 +530,8 @@ function HowToUse() {
         second picture.
       </li>
       <li>
-        Short (for SMS) goes in text messages. Details goes in the email, on
-        the guest page, and to the AI Agent. They are separate, so fill in
-        both.
+        Short (for SMS) goes in text messages. Details goes in the email, on the
+        guest page, and to the AI Agent. They are separate, so fill in both.
       </li>
       <li>
         Change a hotel: click ✏ Edit, change the boxes, then Save. Cancel closes

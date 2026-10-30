@@ -131,7 +131,9 @@ export function buildPickupImportTemplate(
 ): { headers: string[]; rows: string[][] } {
   return {
     headers: CSV_FIELDS.map((f) => f.label),
-    rows: locations.map((loc) => CSV_FIELDS.map((f) => csvCellValue(loc[f.key]))),
+    rows: locations.map((loc) =>
+      CSV_FIELDS.map((f) => csvCellValue(loc[f.key])),
+    ),
   };
 }
 
