@@ -475,7 +475,8 @@ http.createServer(async (req, res) => {
     const b = JSON.parse(await readRaw(req)); entry.body = b;
     if (ctl.guide400) return send(res, 400, { detail: GUIDE_PAGE_OFF });
     // 后端 78 的三种 400 原话（纯字符串）：非 GSM 字符 / 超长 / 换行。
-    if (b.extra != null && b.extra.trim().length > GUIDE_EXTRA_MAX) return send(res, 400, { detail: `Your note is ${b.extra.trim().length - GUIDE_EXTRA_MAX} character(s) too long for one text.` });
+    // 原话照后端 76992dd3 guide_notice.py（1 character / N characters）。
+    if (b.extra != null && b.extra.trim().length > GUIDE_EXTRA_MAX) { const over = b.extra.trim().length - GUIDE_EXTRA_MAX; return send(res, 400, { detail: `Your note is ${over} character${over === 1 ? "" : "s"} too long for one text.` }); }
     if (b.extra != null && b.extra.includes("\n")) return send(res, 400, { detail: "Keep your note on one line." });
     ctl.guideSentAt = true;
     const names = { "hr:21": "KEVIN", "hr:22": "MARIA", "hr:23": "JASON" };
