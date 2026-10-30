@@ -168,7 +168,11 @@ export interface SchedulePublishResult {
    * 收到通知的主管层（后端 G217 ef，10-30）：在用的 supervisor / admin / superadmin，去掉按的人自己；有人变了才有。
    * 首次发布或没人变化时 []；本人的班也变了的只算在 notified 里。没带 = 后端没上线。
    */
-  notified_supervisors?: { user_id: number; name: string; channels: string[] }[];
+  notified_supervisors?: {
+    user_id: number;
+    name: string;
+    channels: string[];
+  }[];
 }
 
 export interface ScheduleNotified {
