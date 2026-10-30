@@ -9,9 +9,10 @@
 > 规矩见 CLAUDE.md「问 Annie 要确认的事：给完整内容，并一直置顶」（2026-10-30）。每条都要能单独看懂。
 
 ### 10. 排班还要定的
-- 10d 生产上走一遍：Annie 原话「谁提出的谁走」，并给了测试邮箱 azhou@nationalparkexpress.com（「所有测试都用这个邮箱，记住了」，已写进 CLAUDE.md 测试一节）。
-  - 还差一个能登录生产 ops 的 ZZ Test staff 账号（用户名 + 密码），工作窗口的 headless 浏览器才能走。要 Annie 在 Team 页建好给出来，或者她自己按清单点。
-  - ZZ Test 排班员工的邮箱用 azhou@nationalparkexpress.com。
+- 10d 生产上走一遍：Annie 10-30 下午给了测试账号（用户名 ZZTest，密码在对话里，不写进仓库），已私下转 09。
+  - 明天 09 先写逐步清单给 Annie 看，同意后再走。
+  - ZZ Test 员工邮箱用 azhou@nationalparkexpress.com；那一周只排 ZZ Test 员工。
+  - 09 窗口要是重开，要重新问 Annie 要密码。
 
 ### 8. 可以上线后对着看的（不用答，验收时看）
 - Products 手动保存：09 问的 5 处细节，主窗口按盘点推荐定了，见 PROGRESS「2026-10-30」那节 09 的记录：
