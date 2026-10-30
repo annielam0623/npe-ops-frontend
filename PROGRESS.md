@@ -60,26 +60,24 @@
   - 屏幕和打印都去掉（现在的做法）。
 - 主窗口推荐：屏幕上留，打印去掉。
 
-### 6. 排班重新发布时，通知「哪些主管」
-- 背景：
-  - Annie 10-29 定：已发布的周改了班，按 Publish again 时只通知「班有变化的人和他们的主管」。
-  - 后端 ef（G217）核实：系统里没有记录「谁是谁的主管」（员工资料里没有这一栏）。
-- 后端现在的做法：有人班变了，就通知所有主管层的人（在用的 supervisor / admin / superadmin，不含按 Publish again 的人自己）。
-  - 主管收 Dashboard Notice 里一条「Ann — Mon 10/19: 旧 → 新」，有邮箱的另收一封邮件，标题「Schedule edited — week of 2026-10-25」。
-  - 没人变就谁都不发。
+### 6. 排班 Publish again 的通知对象写法（62 稿，分支 task/schedule-notify-wording 10286d2）
+- 现在：已发布的周改了以后按 Publish again，确认框写：
+  「People whose shifts or time off changed since the last publish, and their supervisors, will get a system notification and an email. No one else is notified. This can't be undone.」
+- 为什么问：
+  - 后端没有「谁是谁的主管」这份记录，实际是通知「能改排班的主管和 admin」：勾了 schedule.edit 的 supervisor / admin；superadmin 不看勾，照样收；按键的人自己不收。
+  - 只在确实有人的班变了时才发。主管收站内 Notice，有邮箱的另收邮件。
+  - 页面上的字要和实际一致。
 - 选法：
-  - 照现在，通知所有主管；
-  - 只通知真正管这个人的主管：要先在员工资料里加「主管是谁」一栏，后端加字段、前端加下拉，人员都要填一遍。
-- 主窗口推荐：先照现在（所有主管）上线；以后人力体系建好了，再改成只发给对应的主管。
-- 选「所有主管」的话，页面上三处字跟着改（62 已改在分支 task/schedule-notify-wording d3f3e42 上，没合 main）：
-  1. 确认框：
-     - 旧：「People whose shifts or time off changed since the last publish, and their supervisors, will get a system notification and an email. No one else is notified. This can't be undone.」
-     - 新：「People whose shifts or time off changed since the last publish will get a system notification and an email. All supervisors and admins (except you) get a notice listing the changes. No one else is notified. This can't be undone.」
-  2. 按钮鼠标提示：「Publish again: people whose shifts or time off changed, and all supervisors and admins, are notified.」
+  - A. 照后端现在的做法，字改成「能改排班的主管和 admin」（推荐：页面写的就是实际发生的；以后要分「谁的主管」，要后端先建主管关系）；
+  - B. 坚持只发给「他们的主管」：后端要先建主管关系，要等后端。
+- 选 A 时四处的新文字（完整原文）：
+  1. 确认框：「People whose shifts or time off changed since the last publish will get a system notification and an email. Supervisors and admins who can edit the schedule (except you) get a notice listing the changes. No one else is notified. This can't be undone.」
+  2. 按钮鼠标提示：「Publish again: people whose shifts or time off changed, and supervisors and admins who can edit the schedule, are notified.」
   3. 成功提示：
      - 一般：「Published again. Notified 1 person and 2 supervisors.」（数字照实际）
      - 没有别的主管：「Published again. Notified 1 person.」
      - 没人变：「Published again. No one's shifts or time off changed, so no one was notified.」
+  4. Send to confirm 发送框底下：「Only Jing gets this. When you publish again, Jing and the supervisors and admins who can edit the schedule still get the normal notice.」
 
 ### 7. 排班 Send to confirm 发送框里「对方收到什么」改成真实原文
 - 是什么：已发布的周改了某人的班，那一行有「Send to confirm」，点开是发送框。框里「What Jing gets」那段，现在是前端照 preview 写的：
@@ -104,6 +102,14 @@
   - 照这样，发送框显示真实原文（推荐：所见即所发）；
   - 保留前端那段口语说明：页面上写的和实际发出的不一样。
 - 附注：邮件里周的写法是「2026-10-04」（周日日期），不是「Oct 4 – 10」。想让员工看到「Oct 4 – 10」，要后端改邮件模板。
+
+### 7b. 排班 Send to confirm 发送框要不要提醒「会重置回应」（62 稿）
+- 现在：某人周三已经点了 Looks good，你又改了他的班、点 Send to confirm。发送成功后，后端删掉他的 Looks good，Responses 卡变回「No answer yet」（Annie 定的「重置」）。发送框里现在没有任何提示。
+- 为什么问：这是新文字。不提示的话，排班的人可能发完才发现回应没了。
+- 选法：
+  - A. 只在这个人原来是 Looks good 时，发送框多一行灰字：「Jing answered Looks good before. Sending this resets the answer to No answer, so Jing confirms again.」（推荐：发之前就知道会发生什么）
+  - B. 不加，发完 Responses 卡自己变。
+- 附注：选 A 不用后端加字段，Responses 卡已经有这份数据。
 
 ### 8. 可以上线后对着看的（不用答，验收时看）
 - Products 手动保存：09 问的 5 处细节，主窗口按盘点推荐定了，见 PROGRESS「2026-10-30」那节 09 的记录：
@@ -334,6 +340,15 @@
 - **Annie 答置顶第 9 条（G125 备注格存法）**，原话「并进整页一起存 A 动手」：
   - 选 A：备注格的 Save 改 Done，按整页 Save 一起存。
   - 已派 09 `task/manifest-notes-page-save`。后端 G125 由 78 做，Annie 要今天上线。
+- 后端 57 发 G220 第二批形状（Farm out 上车点 + 结算价导入，66 写，在分支上，还没上 main）：
+  - 上车点 POST /api/farm-out/partners/{id}/locations/import/preview|commit；
+  - 结算价 POST /api/farm-out/rates/import/preview|commit（只会 update / unchanged，不新建）；
+  - Vehicles 那条 409 也统一成长破折号。
+  - 已派 e6 先对 import-farmout-locations / import-farmout-rates 两个分支，只推分支，等后端上 main。
+- G217 重置：ef 已在后端本地 main 75ac102（还没推）。接口形状没变；前端要在发送成功后重拉 confirmations，已派 62。
+  - 主管通知收窄（SA-1）：只发给主管层里勾了 schedule.edit 的，superadmin 照收。62 在改页面说法，改完更新置顶第 6 条。
+- Annie 新提（Send to guide）：链接后面让 staff 自己加一点内容，限制在一条短信长度。
+  - 先记下、核可行性，没动手。主窗口算过：现在固定部分约 145 个字符，一条短信 160，只剩约 14 个字符。已向 Annie 列选法。
 ## 2026-10-29 晚 收工交接：前端主窗口 `今天前端主窗口-d2`[15266b]（家里电脑，Annie「做完写交接收工」）
 
 明天的主窗口先读这一节。细节在下面「2026-10-29 晚 主窗口 d2 开工核对」那一节，按时间逐条记。
