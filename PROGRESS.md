@@ -136,6 +136,16 @@
     - 接口形状到了就派前端工作窗口；Restaurant 的导入接着做。
     - 20 报 G215 ④ 餐厅四栏已上 main 3bcf395（v127 已在生产执行）。已派 9c `task/restaurant-contacts`。
     - Dispatch Send to driver / guide 的「page is off」和两个开关，还等后端发形状。
+- ✅ **Annie「4项全部动手」**（10-29 晚），原话：「4项全部动手」。四项是：
+  1. staff 联络方式（Q1–Q7 照推荐）：后端发 9a（phone 列 migration、改联络方式接口），前端派 59 `task/team-contacts`，再做 `task/import-team`。
+  2. Dispatch 手动保存 push：59 合最新 main、重跑检查后合 main。
+  3. 排班整周一个 Save（B9，Q1–Q7 照推荐）+ A8 改时间小窗（照推荐，小窗 Save 改成 Done）：
+     - 后端批量接口发 9a；
+     - 前端派 9c `task/schedule-week-save`，从 send-to-confirm 拉。
+  4. 其余自动保存改手动：
+     - 59 `task/products-manual-save`：A3 + B6、A4、A5 + B4、A6 + B5，A6 要 10 分钟自动存；
+     - 9c `task/misc-manual-save`：A2、A7、B8。
+  - 资源：C 盘已清出 237 GB；可用虚拟内存只有 3.7 GB，已提醒两个窗口别同时跑 build。
 - Farm out 合作公司的团加子项：Annie 直接派给 59，原话：「帮我做的supplier那里的farm out partner的产品价格和种类里给我在每个tour都设置一个+号，让我可以添加子项，包括名字和价钱，不限添加的数量」。
   - 59 交 preview：https://claude.ai/artifact/4d8mgNzxThLC2FsmDpjwHN （没写代码）。
     - 每个团行尾一个「＋」，子项（名字 + 价）数量不限；
