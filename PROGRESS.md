@@ -67,6 +67,21 @@
   - 等等。
   觉得键太多，可以改成按大块分。
 
+## 2026-10-30 Bus Manifest Lankun：屏幕上加回 ✓ 列，打印照旧不要（`task/lankun-check-col`，工作窗口 `npe-ops-frontend-e6`[047d88]，主窗口 eb 派工）
+
+- 依据：
+  - 9c 问过 Annie：Lankun 照定 5 去掉 ✓ 列后，屏幕上就看不到司机标的上车 / No show，要不要留在屏幕上。主窗口推荐「屏幕上留、打印去掉」。
+  - Annie 先答「都去掉」，2026-10-30 改成「5 按推荐动手」，以后面这句为准。样子是 Annie 定的，不另出 preview。
+- 改动（[manifest-view.tsx](components/dispatch-manifest/manifest-view.tsx)）：
+  - Lankun 也画 ✓ 列，位置同 General（最后一列，Bus 后面）；
+  - 表头和格子加 `print:hidden`，浏览器打印时不出；
+  - West Rim 照旧没有 ✓；
+  - 后端出的打印页和 Excel 不动。
+- 检查：
+  - mf：Lankun 列序那项改成最后有 ✓；新加 2 项：✓ 照旧画上车标记；模拟打印（CDP setEmulatedMedia print）时 ✓ 列表头和格子都藏。
+  - 结果：mf 215/215、man 326/326、nav 32/32；tsc 0 错；eslint 0 错、2 个原有警告；prettier 过；build 过。
+- 等 eb 回「合」。
+
 ## 2026-10-30 Daily Operation Report：本人能改自己的报告（`task/dor-edit-own`，工作窗口 `npe-ops-frontend-09`[8a0116]，主窗口 eb 派工，修 bug）—— 检查都过，等 eb 回「合」
 
 - 依据：Annie 10-30 原话「如果是edit的话，应该是都可以，如果去改另外一个人发布的，那staff就不可以，只能本人改」；后端 10-26 G187 已是这样（operation_reports.py `_can_edit`）。前端原来只给 supervisor / admin 状态和跟进人的下拉，员工连自己的都改不了。
