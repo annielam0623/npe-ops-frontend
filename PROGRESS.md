@@ -397,6 +397,10 @@
   - 10b「先上」：62 合 send-to-confirm；
   - 10c「动手」：09 做 A + B（task/perm-by-checkbox-ab），e6 做 C（task/perm-by-checkbox-c），各自做完手上的再接；
   - 10d「谁提出的谁走」：卡在登录，已问 Annie。
+- 后端 G219（staff 联络方式，78）：代码在 task/g219-staff-contacts，v131 等 Annie 执行。
+  - 形状照前端 0ff97be。
+  - 后端建议 Team 页 How to use 补 7 条（英文），合 team-contacts 时补进去，原文在 57 的消息里：Edit → Contact、Email 是职责通知地址、Mobile 暂时只存、HR 电话只读、邮箱已被用、电话格式、Add person 也有 Contact。
+  - 主窗口定：建号接口的 detail 保持纯字符串（前端 describeError 只认字符串），只有新的 contact 接口用 {field, message}。
 ## 2026-10-29 晚 收工交接：前端主窗口 `今天前端主窗口-d2`[15266b]（家里电脑，Annie「做完写交接收工」）
 
 明天的主窗口先读这一节。细节在下面「2026-10-29 晚 主窗口 d2 开工核对」那一节，按时间逐条记。
