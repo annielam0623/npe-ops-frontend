@@ -11,10 +11,7 @@ import {
   TH_CLASS,
   TR_CLASS,
 } from "@/components/pickup-locations/legacy-ui";
-import {
-  BulkImportButton,
-  StandardImport,
-} from "@/components/ui/bulk-import";
+import { BulkImportButton, StandardImport } from "@/components/ui/bulk-import";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { csvBlob } from "@/lib/csv";
 import {
