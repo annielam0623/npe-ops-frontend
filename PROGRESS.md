@@ -40,6 +40,7 @@
   - 列表每行加 is_tour_bus / is_shuttle / times[{product_id,route_label,run_no,season_id,stop_time "HH:MM" 或 null,no_service}]；
   - POST/PUT 收 is_tour_bus / is_shuttle / times，400 的 detail 是一句字符串；
   - 删掉还有站点在用的季节回 409。
+  - b0 还要求（后端规则附加条款第 5 条）：Pickup Locations 页的 How to use（pickup-locations-view.tsx 的 HowToUse）在同一批补上 G211 的说明——两个勾 / Needs a type；Shuttle 块的季节键和 Times 列；Edit 下的时刻表（No service、留空可以存）；Edit seasons（重叠不让存、空档提醒、Copy to next year）。分支上现在还没写。**待派**：等哪个工作窗口空出来，在 pickup-split 上和改名一起做。
 
 ## 2026-10-29 晚 收工交接：前端主窗口 `今天前端主窗口-d2`[15266b]（家里电脑，Annie「做完写交接收工」）
 
