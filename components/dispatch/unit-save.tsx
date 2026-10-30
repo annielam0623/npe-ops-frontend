@@ -12,15 +12,21 @@ export interface UnitSaveState {
   error: string | null;
   /** 页面整体不能改（别人在改 / 加载中），键也点不了。 */
   disabled: boolean;
+  /** 这次打开以来存好过：auto = 10 分钟没活动自动存的；at = 洛杉矶时间「3:42 PM」。再改就不显示（看 dirty）。 */
+  saved: { auto: boolean; at: string } | null;
   onSave: () => void;
 }
 
+/** 存好以后的那句话：手动「Saved」，自动「Auto-saved 3:42 PM」（Annie 2026-10-29）。 */
+function savedLabel(s: UnitSaveState): string {
+  return s.saved?.auto ? `Auto-saved ${s.saved.at}` : "Saved";
+}
+
 /**
- * 单元标题行右边的保存区（Annie 2026-10-18 看过预览说「动手」）：
- * 没改 = 灰键 + Saved；改了没存 = 蓝键 + Unsaved changes；存的时候 = 灰键 + Saving…。
- * 蓝色只给提交键，所以 Save 是蓝的。
+ * 团块标题行右边的保存状态（Annie 2026-10-29「动手」preview Q2：原来的 Save 键去掉，只留状态字；
+ * 存在每台车 Edit 旁边的 Save）。
  */
-export function UnitSave({
+export function UnitStatus({
   unit,
   s,
   tone = "light",
@@ -29,13 +35,17 @@ export function UnitSave({
   s: UnitSaveState;
   tone?: "light" | "dark";
 }) {
-  // 只看（partner）：没有保存这回事，整块不出。
   const viewOnly = useViewOnly();
   if (viewOnly) return null;
-  const label = s.saving ? "Saving…" : s.dirty ? "Unsaved changes" : "Saved";
-  const on = s.dirty && !s.saving && !s.disabled;
+  const label = s.saving
+    ? "Saving…"
+    : s.dirty
+      ? "Unsaved changes"
+      : s.saved
+        ? savedLabel(s)
+        : "Saved";
   return (
-    <span data-unit-save={unit} className="flex items-center gap-2.5">
+    <span data-unit-save={unit}>
       <span
         role="status"
         data-unit-state={s.saving ? "saving" : s.dirty ? "dirty" : "saved"}
@@ -52,13 +62,49 @@ export function UnitSave({
       >
         {label}
       </span>
+    </span>
+  );
+}
+
+/**
+ * 每台车 Edit ▼ 旁边的 Save（Annie 2026-10-29「动手」，preview 18d91JAUbvdy87Bd1idDA5）：
+ * 存的是这台车所在的整个单元（后端按单元整块存，Q1），同一单元的 Save 一起变蓝 / 一起变 Saved。
+ * 没改 = 灰；改了 = 蓝（提交键）；存的时候灰 + Saving…；存好 = ✓ Saved 一直留到再改（Q3）；存不上 = 红字 Not saved，原因在单元标题下面。
+ */
+export function RowSave({
+  s,
+  stack = false,
+}: {
+  s: UnitSaveState;
+  /** 窄的一列（Morning Relay 的 Actions 列）：状态字放在键下面。 */
+  stack?: boolean;
+}) {
+  const viewOnly = useViewOnly();
+  if (viewOnly) return null;
+  const on = s.dirty && !s.saving && !s.disabled;
+  const status = s.saving
+    ? { text: "Saving…", cls: "text-[#6b7280]" }
+    : s.dirty
+      ? s.error
+        ? { text: "Not saved", cls: "text-[#b3261e]" }
+        : null
+      : s.saved
+        ? { text: `✓ ${savedLabel(s)}`, cls: "text-[#157347]" }
+        : null;
+  return (
+    <span
+      className={cn(
+        "flex gap-2",
+        stack ? "flex-col items-end gap-1" : "items-center",
+      )}
+    >
       <button
         type="button"
-        data-unit-save-btn={unit}
+        data-row-save
         disabled={!on}
         onClick={s.onSave}
         className={cn(
-          "h-8 rounded-lg px-4 text-[13px] font-semibold",
+          "h-[34px] rounded-[7px] px-3.5 text-[13px] font-semibold",
           on
             ? "cursor-pointer bg-[#2563eb] text-white hover:bg-[#1d4ed8]"
             : "cursor-not-allowed bg-[#e9e9e6] text-[#6b7280]",
@@ -66,6 +112,17 @@ export function UnitSave({
       >
         Save
       </button>
+      {status ? (
+        <span
+          data-row-save-state
+          className={cn(
+            "text-[12px] font-semibold whitespace-nowrap",
+            status.cls,
+          )}
+        >
+          {status.text}
+        </span>
+      ) : null}
     </span>
   );
 }

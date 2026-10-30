@@ -7,6 +7,7 @@ import type {
   ManifestTextLayer,
   ManifestTextSize,
   ManifestTextSizeChange,
+  ManifestVersion,
 } from "@/types";
 
 /**
@@ -14,6 +15,8 @@ import type {
  * 三层 全页 / 整列（列键）/ 整行（订单号）；每层 `d`（整数 px，−2..+10，步长 1）+ `bold`（不设 = 跟下一层）。
  * 叠加：大小相加后夹在 −2..+10；粗细取最具体的一层（整行 > 整列 > 全页）。手机（< 600px）最多 +4，只在屏幕上，打印照存的。
  * 默认字号照纸本（G198 Q1）：正文 16.5px 粗体、人数 19px。
+ * 三版式各有默认（Annie 10-28 17:3x）：General / Lankun 同上；Marcello 是字大的 General，照打印模板放大
+ * （格里 10.5pt → 13.5pt、人数 16 → 20px）⇒ 屏幕上正文 21px、人数 24px。调过的 d 加在版式的默认上。
  */
 export const TEXT_MIN = -2;
 export const TEXT_MAX = 10;
@@ -30,13 +33,28 @@ export type ManifestColumnKey =
   | "pax"
   | "ticket"
   | "notes"
-  | "bus"
-  | "boarding";
+  | "boarding"
+  | "lunch";
 
-const BASE: Partial<Record<ManifestColumnKey, [px: number, bold: boolean]>> = {
-  pax: [19, true],
+type Base = {
+  cell: [px: number, bold: boolean];
+  pax: [px: number, bold: boolean];
 };
-const DEFAULT: [number, boolean] = [16.5, true];
+const BASE: Record<ManifestVersion, Base> = {
+  general: { cell: [16.5, true], pax: [19, true] },
+  lankun: { cell: [16.5, true], pax: [19, true] },
+  marcello: { cell: [21, true], pax: [24, true] },
+  west: { cell: [16.5, true], pax: [19, true] },
+};
+
+/** 表头 / 节标题的字号（Marcello 一起放大，Q24）。 */
+export const HEAD_PX: Record<ManifestVersion, { th: number; section: number }> =
+  {
+    general: { th: 9.5, section: 17 },
+    lankun: { th: 9.5, section: 17 },
+    marcello: { th: 12, section: 21 },
+    west: { th: 9.5, section: 17 },
+  };
 
 export const EMPTY_TEXT_SIZE: ManifestTextSize = {
   page: {},
@@ -52,8 +70,10 @@ export function cellText(
   col: ManifestColumnKey,
   order: string | null,
   phone: boolean,
+  version: ManifestVersion = "general",
 ): { fontSize: string; fontWeight: number; changed: boolean } {
-  const [px, baseBold] = BASE[col] ?? DEFAULT;
+  const base = BASE[version] ?? BASE.general;
+  const [px, baseBold] = col === "pax" ? base.pax : base.cell;
   const layers = ts
     ? [ts.page, ts.columns[col], order ? ts.rows[order] : undefined]
     : [];
@@ -159,7 +179,7 @@ const SEG = "inline-flex overflow-hidden rounded-[7px] border border-[#9aa]";
 const CHIP =
   "cursor-pointer border-r border-[#9aa] bg-white px-2.5 py-1 text-[12px] font-bold text-[#222] last:border-r-0 disabled:cursor-default disabled:opacity-40 aria-pressed:bg-[#1f2937] aria-pressed:text-white";
 
-/** 表格上方的编辑条（白底虚线框，同 preview）。蓝色只有 Save。 */
+/** 表格上方的编辑条（白底虚线框，同 preview）。Done 是白色：调好的字号留在页面上，跟整页 Save 一起存（Annie 10-29 Q2）。 */
 export function TextSizeToolbar({
   mode,
   onMode,
@@ -171,8 +191,7 @@ export function TextSizeToolbar({
   onResetSelection,
   onResetAll,
   onCancel,
-  onSave,
-  saving,
+  onDone,
 }: {
   mode: TextMode;
   onMode: (m: TextMode) => void;
@@ -184,8 +203,7 @@ export function TextSizeToolbar({
   onResetSelection: () => void;
   onResetAll: () => void;
   onCancel: () => void;
-  onSave: () => void;
-  saving: boolean;
+  onDone: () => void;
 }) {
   const any = picks.length > 0;
   const d = current.d ?? 0;
@@ -221,7 +239,7 @@ export function TextSizeToolbar({
         <button
           type="button"
           aria-label="Smaller"
-          disabled={!any || d <= TEXT_MIN || saving}
+          disabled={!any || d <= TEXT_MIN}
           onClick={() => onStep(-1)}
           className={CHIP}
         >
@@ -230,7 +248,7 @@ export function TextSizeToolbar({
         <button
           type="button"
           aria-label="Bigger"
-          disabled={!any || d >= TEXT_MAX || saving}
+          disabled={!any || d >= TEXT_MAX}
           onClick={() => onStep(1)}
           className={CHIP}
         >
@@ -248,7 +266,7 @@ export function TextSizeToolbar({
         <button
           type="button"
           aria-pressed={current.bold === false}
-          disabled={!any || saving}
+          disabled={!any}
           onClick={() => onBold(false)}
           className={CHIP}
         >
@@ -257,7 +275,7 @@ export function TextSizeToolbar({
         <button
           type="button"
           aria-pressed={current.bold === true}
-          disabled={!any || saving}
+          disabled={!any}
           onClick={() => onBold(true)}
           className={CHIP}
         >
@@ -267,7 +285,7 @@ export function TextSizeToolbar({
       <span className="flex-1" />
       <button
         type="button"
-        disabled={!any || saving}
+        disabled={!any}
         onClick={onResetSelection}
         className="cursor-pointer text-[12px] text-[#1d4ed8] underline disabled:cursor-default disabled:opacity-40"
       >
@@ -275,7 +293,6 @@ export function TextSizeToolbar({
       </button>
       <button
         type="button"
-        disabled={saving}
         onClick={onResetAll}
         className="cursor-pointer text-[12px] text-[#1d4ed8] underline disabled:opacity-40"
       >
@@ -283,7 +300,6 @@ export function TextSizeToolbar({
       </button>
       <button
         type="button"
-        disabled={saving}
         onClick={onCancel}
         className="cursor-pointer rounded-[7px] border border-[#9aa] bg-white px-2.5 py-1 text-[12px] font-bold text-[#222] disabled:opacity-60"
       >
@@ -291,12 +307,11 @@ export function TextSizeToolbar({
       </button>
       <button
         type="button"
-        data-text-size-save
-        disabled={saving}
-        onClick={onSave}
-        className="cursor-pointer rounded-[7px] border border-[#3b82f6] bg-[#3b82f6] px-3.5 py-1 text-[12px] font-bold text-white disabled:opacity-60"
+        data-text-size-done
+        onClick={onDone}
+        className="cursor-pointer rounded-[7px] border border-[#9aa] bg-white px-3.5 py-1 text-[12px] font-bold text-[#222]"
       >
-        {saving ? "Saving…" : "Save"}
+        Done
       </button>
       <span className="basis-full text-[#555]">
         Picked:{" "}

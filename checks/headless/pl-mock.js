@@ -1,6 +1,6 @@
 // 模拟后端：Pickup Locations 页。控制：POST /__ctl {fail401, staff, failList}；GET /__log。
 const http = require("http");
-const ctl = { fail401: false, staff: false, failList: false, depFail: false };
+const ctl = { fail401: false, staff: false, failList: false, depFail: false, importFail: false, importConflict: false, previewBad: false };
 const log = [];
 let nextId = 50;
 let locations = [
@@ -33,6 +33,26 @@ function readBody(req) {
     req.on("end", () => resolve(d ? JSON.parse(d) : null));
   });
 }
+function readRaw(req) {
+  return new Promise((resolve) => {
+    const chunks = [];
+    req.on("data", (c) => chunks.push(c));
+    req.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
+  });
+}
+// ⬆ Import（全站通用导入，后端还没上；形状是前端提给后端的，见 types/pickup-locations.ts PickupImportRow）。
+const IMPORT_PREVIEW = {
+  columns: ["hotel_name", "instruction_short", "aliases", "is_tour_departure"],
+  rows: [
+    { status: "update", id: 1, row: 2, values: { hotel_name: "Aria", instruction_short: "Tour lobby east", aliases: "", is_tour_departure: "No" }, before: { instruction_short: "Tour lobby" }, changed: ["instruction_short"], blanked: ["aliases"], errors: [], matched_alias: null },
+    { status: "update", id: 2, row: 3, values: { hotel_name: "RWLV", instruction_short: "", aliases: "ResortsWLD, RWLV", is_tour_departure: "Yes" }, before: { is_tour_departure: "No" }, changed: ["is_tour_departure"], blanked: ["instruction_short"], errors: [], matched_alias: "RWLV" },
+    { status: "new", id: null, row: 4, values: { hotel_name: "ZZ Test Import Inn", instruction_short: "Front door", aliases: "", is_tour_departure: "No" }, before: {}, changed: [], blanked: [], errors: [], matched_alias: null },
+    { status: "error", id: null, row: 5, values: { hotel_name: "ZZ Test <b>Long</b>", instruction_short: "x".repeat(130), aliases: "", is_tour_departure: "No" }, before: {}, changed: [], blanked: [], errors: [{ field: "instruction_short", message: "Short (for SMS) is 130 characters — the limit is 120." }], matched_alias: null },
+    { status: "error", id: null, row: 6, values: { hotel_name: "ZZ Test Import Inn", instruction_short: "", aliases: "", is_tour_departure: "" }, before: {}, changed: [], blanked: [], errors: [{ field: null, message: "Repeated above — skipped." }], matched_alias: null },
+  ],
+  // 后端 G220（76de8f3）：preview 多 counts；matched_alias 只在按别名对上时才有（这里照旧都给）。
+  counts: { new: 1, update: 2, unchanged: 0, error: 2 },
+};
 function validate(body, selfId) {
   if (body.instruction_short.length > 120) return `Short (for SMS) is ${body.instruction_short.length} characters — the limit is 120.`;
   if (body.map_image_url.split("\n").filter(Boolean).length > 2) return "Up to 2 map images per hotel";
@@ -55,6 +75,21 @@ http.createServer(async (req, res) => {
   log.push(entry);
   if (ctl.fail401) return send(res, 401, { detail: "Authentication required" });
   if (p === "/api/me") return send(res, 200, { id: 1, username: "zztest", display_name: "ZZ Test", initials: "ZT", role: ctl.staff ? "staff" : "admin", is_admin: !ctl.staff, is_superadmin: false });
+  if (p === "/api/pickup-locations/import/preview" || p === "/api/pickup-locations/import/commit") {
+    const raw = await readRaw(req);
+    entry.hasFile = /filename="pl-import\.csv"/.test(raw);
+    if (p.endsWith("/preview")) {
+      if (ctl.previewBad) return send(res, 400, { detail: "Missing column: Hotel Name" });
+      return send(res, 200, IMPORT_PREVIEW);
+    }
+    if (ctl.importFail) return send(res, 500, { detail: "Database is busy" });
+    // 后端原话（pickup_locations.py）：整批一个事务，中途有人改了酒店清单就 409、全回滚。
+    if (ctl.importConflict) return send(res, 409, { detail: "Someone changed the hotel list while this file was being saved. Nothing was saved — check the preview again." });
+    locations.find((l) => l.id === 1).instruction_short = "Tour lobby east";
+    locations.find((l) => l.id === 2).is_tour_departure = true;
+    locations.push({ id: nextId++, hotel_name: "ZZ Test Import Inn", photo_url: null, instruction: null, instruction_short: "Front door", aliases: "", map_image_url: "", is_active: true, is_tour_departure: false });
+    return send(res, 200, { created: 1, updated: 2, unchanged: 0, skipped: 2 });
+  }
   // G203 共用读接口（后端 3686fea）：第一页 + next_cursor，before=older 再给一页更早的。
   if (p === "/api/pickup-locations/action-log") {
     if (url.searchParams.get("before") === "older") return send(res, 200, { entries: OLDER, next_cursor: null });

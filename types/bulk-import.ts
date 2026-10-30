@@ -7,9 +7,11 @@ export interface ImportPreviewRow {
   status: "new" | "update" | "unchanged" | "error";
   /** 对上的记录；新建的是 null。 */
   id: number | null;
-  /** 显示用的文字（开关写 Yes / No）。 */
+  /** Excel 行号（后端 G220）。 */
+  row: number;
+  /** 显示用的文字（开关写 Yes / No）。原始文字：一律当纯文本显示（后端安全审查 SA-4）。 */
   values: Record<string, string>;
-  /** 要改的栏改前的值。 */
+  /** 要改的栏改前的值（只含改了的栏）。 */
   before: Record<string, string>;
   changed: string[];
   /** 文件里空着、不改的栏（空格不清空）。 */
@@ -24,6 +26,7 @@ export interface ImportPreviewResponse {
   /** 文件里认出的栏 key，按页面栏的顺序。 */
   columns: string[];
   rows: ImportPreviewRow[];
+  counts: { new: number; update: number; unchanged: number; error: number };
 }
 
 export interface ImportCommitResult {

@@ -233,8 +233,9 @@ export function BulkImport({
         error instanceof TypeError
           ? "Couldn't reach the server; try Save again."
           : describe(error);
+      // 409：后端那句本身就写了「Nothing was saved — check the preview again.」（G220），不再重复。
       setSaveError(
-        atomic
+        atomic && !isStatus(error, 409)
           ? `Not saved — nothing was changed. ${reason}`
           : `Not saved — ${reason}`,
       );

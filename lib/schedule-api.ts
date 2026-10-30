@@ -193,9 +193,14 @@ export function assignScheduleSlot(
  */
 export function publishScheduleWeek(
   weekStart: string,
+  opts: { allowGaps?: boolean } = {},
 ): Promise<SchedulePublishResult> {
+  // Publish anyway（Annie 2026-10-29 Q1：admin 及以上）：带 allow_gaps，有空档也发布；权限后端再判一次。
+  // 形状照 preview https://claude.ai/artifact/CJaXdFkBS5S4g97gjtxuD8 「需要后端」B1，后端定稿后核对。
   return apiFetch<SchedulePublishResult>(
     `/api/schedule/weeks/${weekStart}/publish`,
-    { method: "POST" },
+    opts.allowGaps
+      ? { method: "POST", body: { allow_gaps: true } }
+      : { method: "POST" },
   );
 }
