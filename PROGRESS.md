@@ -13,6 +13,15 @@
   - 其余分支等后端，见交接第三节。
 - 后端主窗口 a0 [af7bd1] 已通知，等它转来接口上 main 的提交号。本机后端仓库 `git fetch` 卡住，后端进度以 a0 的消息为准。
 - 资源：空闲内存 49.8 / 61.8 GB，空闲虚拟内存 55.5 GB；chrome 21 个进程、2.4 GB；node 没有在跑。
+- 后端主窗口回复（重启后改名 `npe-confirmation-service-57`，原 a0；origin/main 当时是 e447d6c）：
+  - ✅ Bus Manifest 三版式 + West Rim + G197 字号已上 main：合并提交 156ae23，关包提交 6ddcf0e。
+    - 接口形状以 `git show 156ae23:tasks/ACTIVE.md` 的「接口形状」一节为准，和 d0 10/28 发的那版有出入。
+    - 所以 `task/bus-manifest-versions-fe` 可以接着做：先对接口形状，再合最新 main、重跑检查，然后合 main。**待派。**
+  - 8e 排班 G217 没上：v128 已在生产执行，代码还没写，分支 task/schedule-republish-notify 24074eb。G218 排在 G217 后面。
+  - 这几项后端都还没开工：pickup-split G211（v129）、farm_out_rate_items G221（v130）、admin_users.phone + PUT contact G219（v131）。
+  - 全站导入 G220：HR 部分在 task/bulk-import-backend 6e1a796，还没过审；其余几个导入接口没做。
+  - 接人时间那两个疑似 bug：后端今天派窗口只读核实，结果会转过来。
+  - 后端今天先做 G215 司机页改餐 + Send message。
 
 ## 2026-10-29 晚 收工交接：前端主窗口 `今天前端主窗口-d2`[15266b]（家里电脑，Annie「做完写交接收工」）
 
