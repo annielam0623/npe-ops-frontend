@@ -22,9 +22,11 @@ import { InviteLinkField } from "@/components/users/invite-dialog";
 import { ModalCloseButton } from "@/components/users/modal-close-button";
 import {
   changeTeamAccountType,
+  contactFieldError,
   createTeamAccount,
   createTeamInvite,
   fetchTeamMember,
+  saveTeamContact,
   saveTeamMember,
 } from "@/lib/team-permissions-api";
 import { buildInviteUrl } from "@/lib/users-api";
@@ -36,6 +38,12 @@ import type {
   TeamSelection,
 } from "@/types";
 
+import {
+  contactErrors,
+  ContactSection,
+  EMPTY_CONTACT,
+  type ContactDraft,
+} from "./contact-section";
 import {
   ACCESS_NOTES,
   buildAccessGroups,
@@ -208,9 +216,17 @@ export function MemberFormDialog({
     password: "",
     displayName: "",
     initials: "",
-    email: "",
   });
   const [inviteUrl, setInviteUrl] = useState<string | null>(null);
+  // Contact（Email / Mobile）：编辑时从详情带出；saved = 打开时的值，没改就不调接口。
+  const [contact, setContact] = useState<ContactDraft>(EMPTY_CONTACT);
+  const [savedContact, setSavedContact] = useState<ContactDraft>(EMPTY_CONTACT);
+  /** 有 HR 档案的 driver / guide：HR 里的号；没有 = undefined。 */
+  const [hrPhone, setHrPhone] = useState<string | undefined>(undefined);
+  const [contactError, setContactError] = useState<{
+    field: "email" | "phone";
+    message: string;
+  } | null>(null);
 
   // 编辑：先拿这个人的完整勾选（列表里只有条数）。
   useEffect(() => {
@@ -227,6 +243,10 @@ export function MemberFormDialog({
             teamIds: new Set(detail.team_ids),
             home: detail.home_path ?? "",
           });
+          const c = { email: detail.email ?? "", phone: detail.phone ?? "" };
+          setContact(c);
+          setSavedContact(c);
+          setHrPhone(detail.hr_phone ?? undefined);
         }
       })
       .catch((err) => {
@@ -324,23 +344,44 @@ export function MemberFormDialog({
       : selection(state);
   }
 
+  const phoneLocked = hrPhone !== undefined;
+  const contactInvalid =
+    Object.keys(contactErrors(contact, phoneLocked)).length > 0;
+  /** 空的存 null；有 HR 档案的不带电话（照 HR）。 */
+  function contactBody() {
+    const email = contact.email.trim() || null;
+    return phoneLocked
+      ? { email }
+      : { email, phone: contact.phone.trim() || null };
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!form || saving) {
+    if (!form || saving || contactInvalid) {
       return;
     }
     setError(null);
+    setContactError(null);
     setSaving(true);
     try {
       if (mode.kind === "edit") {
+        // 先存联络方式：email 重了就停在这里，勾选也不存（和勾选一起按 Save）。
+        if (
+          contact.email.trim() !== savedContact.email.trim() ||
+          (!phoneLocked && contact.phone.trim() !== savedContact.phone.trim())
+        ) {
+          await saveTeamContact(mode.member.id, contactBody());
+          setSavedContact(contact);
+        }
         await saveTeamMember(mode.member.id, selection(form));
         onSaved();
         return;
       }
       if (signIn === "invite") {
-        const { invite_token: token } = await createTeamInvite(
-          newSelection(form),
-        );
+        const { invite_token: token } = await createTeamInvite({
+          ...newSelection(form),
+          ...contactBody(),
+        });
         setInviteUrl(buildInviteUrl(token));
         setSaving(false);
         onSaved();
@@ -352,11 +393,17 @@ export function MemberFormDialog({
         password: account.password,
         initials: account.initials.trim(),
         display_name: account.displayName.trim() || null,
-        email: account.email.trim() || null,
+        ...contactBody(),
       });
       onSaved();
       onClose();
     } catch (err) {
+      const field = contactFieldError(err);
+      if (field) {
+        setContactError(field);
+        setSaving(false);
+        return;
+      }
       const failure = toFailure(err);
       if (failure.status === "error") {
         setError(failure.message);
@@ -371,8 +418,8 @@ export function MemberFormDialog({
       ? "New external partner account"
       : "New back-office account"
     : [
+        // email 在 Contact 里了，标题下面只留 @用户名 和能不能登录。
         `@${mode.member.username}`,
-        mode.member.email,
         mode.member.pending_invite
           ? "Pending invite"
           : mode.member.can_login
@@ -475,6 +522,7 @@ export function MemberFormDialog({
                       onChange={changeAccountType}
                     />
                   ) : null}
+                  {/* Contact：编辑放最上面；Add person 放在「How will they sign in?」下面，两种方式都有。 */}
                   {isAdd ? (
                     <SignInSection
                       signIn={signIn}
@@ -483,6 +531,17 @@ export function MemberFormDialog({
                       onAccount={setAccount}
                     />
                   ) : null}
+                  <ContactSection
+                    value={contact}
+                    onChange={(next) => {
+                      setContact(next);
+                      setContactError(null);
+                    }}
+                    hrPhone={hrPhone}
+                    serverError={contactError}
+                    optional={isAdd}
+                    disabled={saving}
+                  />
 
                   <div className="flex flex-wrap items-center gap-2 rounded-[10px] border border-[#e5e7eb] bg-[#f8fafc] px-3 py-2.5">
                     <label
@@ -698,7 +757,7 @@ export function MemberFormDialog({
                 </button>
                 <button
                   type="submit"
-                  disabled={saving || !form}
+                  disabled={saving || !form || contactInvalid}
                   className={LEGACY_SAVE_BUTTON_CLASS}
                 >
                   {saving ? "Saving…" : submitLabel}
@@ -998,7 +1057,6 @@ function SignInSection({
     password: string;
     displayName: string;
     initials: string;
-    email: string;
   };
   onAccount: (value: typeof account) => void;
 }) {
@@ -1012,7 +1070,6 @@ function SignInSection({
     { key: "password", label: "Password", type: "password" },
     { key: "displayName", label: "Display name (optional)", type: "text" },
     { key: "initials", label: "Initials (optional)", type: "text" },
-    { key: "email", label: "Email (optional)", type: "email" },
   ];
   return (
     <Section title="How will they sign in?">

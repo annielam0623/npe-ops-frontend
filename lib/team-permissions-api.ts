@@ -1,4 +1,5 @@
 import { apiFetch } from "@/lib/api-client";
+import { ApiError } from "@/types";
 import type {
   AccountType,
   NewTeamAccount,
@@ -7,6 +8,7 @@ import type {
   TeamInviteResult,
   TeamMember,
   TeamMemberDetail,
+  TeamContactInput,
   TeamSelection,
 } from "@/types";
 
@@ -89,4 +91,36 @@ export function changeTeamAccountType(
     `/api/team/members/${id}/account-type`,
     { method: "PUT", cache: "no-store", body: { account_type: accountType } },
   );
+}
+
+/**
+ * 改 Email / Mobile（staff 联络方式，Annie 2026-10-29「4项全部动手」，preview https://claude.ai/artifact/83D67jt2oNb5V1TPkteEt9）。
+ * 只有 Super Admin；格式不对 / email 和别的账号重了回 400，detail 是 `{field: "email" | "phone", message}`（见 {@link contactFieldError}）。
+ */
+export function saveTeamContact(
+  id: number,
+  contact: TeamContactInput,
+): Promise<void> {
+  return apiFetch<void>(`/api/team/members/${id}/contact`, {
+    method: "PUT",
+    body: contact,
+  });
+}
+
+/** 400 的 detail 是 `{field, message}` 时，取出是哪一格出错（写在那一格下面）。 */
+export function contactFieldError(
+  error: unknown,
+): { field: "email" | "phone"; message: string } | null {
+  if (!(error instanceof ApiError) || error.status !== 400) return null;
+  const d = (error.body as { detail?: unknown } | null)?.detail;
+  if (d && typeof d === "object" && !Array.isArray(d)) {
+    const o = d as { field?: unknown; message?: unknown };
+    if (
+      (o.field === "email" || o.field === "phone") &&
+      typeof o.message === "string"
+    ) {
+      return { field: o.field, message: o.message };
+    }
+  }
+  return null;
 }

@@ -453,6 +453,7 @@ export function TeamView() {
             ? null
             : homeLabel(m.home_path),
         email: m.email,
+        noEmail: m.duties.length > 0 && !m.email?.trim(),
         onEdit: m.is_superadmin
           ? undefined
           : () =>
@@ -1053,6 +1054,14 @@ function TeamHowTo({ isSuperAdmin }: { isSuperAdmin: boolean }) {
               complaint), everyone ticked for that duty is notified, plus a
               department mailbox if it is ticked. Edit duties on a mailbox row
               changes only its duties.
+            </li>
+            <li>
+              Contact: Email and Mobile are at the top of Edit and Add person;
+              both are optional and are saved with the rest when you click Save.
+              Notifications go to the Email. A person with notification duties
+              but no email shows &quot;No email — misses notifications&quot;.
+              Drivers and guides linked to Human Resource use the phone number
+              from Human Resource; change it there.
             </li>
           </>
         ) : null}

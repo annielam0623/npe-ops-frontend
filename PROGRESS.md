@@ -4,6 +4,41 @@
 
 > 6d 交接（下面「2026-10-27 交接：前端主窗口 6d」那节）的后端需求已于 10/27 晚由 ad 转给家里后端主窗口 17。
 
+## 2026-10-29 收工交接：工作窗口 `npe-ops-frontend-59`[678c38]（d2 派「4项全部动手」三件，Annie「做完写交接收工」）
+
+- 【1】Dispatch 手动保存 `task/dispatch-manual-save`（`f243720`，worktree `D:
+pe-ops-frontend-dms`）：合最新 main、tsc / eslint / build、`da` 380/380 都过；
+  **推 main 被这台电脑的权限拦了**（「4项全部动手」是 d2 转的，不算 Annie 本人在 59 下令）。下一步：Annie 在 59 直接说推，或她自己 `git push origin task/dispatch-manual-save:main`（推前再合一次 main）。
+- 【2】staff 联络方式 `task/team-contacts`（本节所在分支，worktree `D:
+pe-ops-frontend-imx`）：前端做完，等后端（见下一节）。
+- 【2 续】Team 导入 `task/import-team`：**没开始**。
+- 【3】Products 自动保存改手动 `task/products-manual-save`：**没开始**。
+- 其余在等后端的分支：`task/import-hr`、`task/import-pickup`、`task/import-vehicles`、`task/import-farmout-locations`、`task/import-farmout-rates`（批量导入，后端 20 排）、`task/farmout-rate-items`（子项，后端 20 排，要 migration）。
+
+## staff 联络方式：Team 的 Edit / Add person 加 Contact（Email + Mobile）（`task/team-contacts`，2026-10-29 晚，工作窗口 `npe-ops-frontend-59`[678c38]，d2 转 Annie「4项全部动手」）—— **分支已推，没合 main（后端没上，先用 mock）**
+
+- preview https://claude.ai/artifact/83D67jt2oNb5V1TPkteEt9 ，Q1–Q7 全按推荐。
+- 改动：
+  - `components/team-permissions/contact-section.tsx`（新）：Contact 一块，Email + Mobile，都不必填；离开格子才查格式，红字在格子下
+    （「Email address looks wrong.」「Phone number looks wrong. Use 10 digits, or + and the country code.」），格式错 Save 灰；
+    后端说的错（email 重了）写在那一格下，再打字就消掉；有 HR 档案的 driver / guide（详情带 `hr_phone`）Mobile 只读显示 HR 的号 + 「Edit in Human Resource →」(/settings/hr)。
+  - `member-form-dialog.tsx`：Edit 时 Contact 在最上面（Copy access from 上面）；Add person 两种方式都有（在「How will they sign in?」下面），
+    「Create the account now」原来那格 Email (optional) 去掉（挪进 Contact）；标题下面不再写 email。
+    Save：联络方式改了先 `PUT /api/team/members/{id}/contact`（email 重了就停，勾选也不存），再存勾选；没改不调。邀请 / 建号的请求体带 `email`、`phone`。
+  - 列表：有通知职责却没 email 的人，名字下面黄签「No email — misses notifications」（`users-table.tsx` / `users-view.tsx` 的 `noEmail`）。How to use 加一条。
+  - 只有 Super Admin 能改（Edit / Add person 本来就只给 Super Admin）。
+- 检查：`tp` 149/149（新加 13 条 contact：黄签、Contact 在最上、格式红字 + Save 灰、email 重了写是谁且勾选没存、改字消错、
+  Save 带 email+phone 再存勾选、列表出新 email、没改不调 contact、HR 只读 + 链接、HR 的人不带 phone、补 email 黄签消失、Add person 有 Contact 没旧 Email 格、邀请带 email/phone）；
+  `users` 77/77；tsc 0、eslint 0 错、build 通过。检查套要先在 `checks/headless` 跑一次 `npm install`（puppeteer-core）。
+- ⚠️ **需要后端**（9a 已收，d2 发的）：
+  1. `admin_users` 加 `phone VARCHAR(30)`（migration，SQL 先给 Annie 看）；
+  2. `PUT /api/team/members/{id}/contact` `{email, phone?}`（require_superadmin；空存 null；没带 phone 就不改；格式不对 / email 重了回 400，
+     **detail 是 `{field: "email" | "phone", message}`**，重了的 message 写「That email address is already used by <名字> (@<用户名>).」）；
+  3. `GET /api/team/members` 每行带 `phone`；`GET /api/team/members/{id}` 带 `phone`，关联了 HR 档案的 driver / guide 另带 `hr_phone`；
+  4. `POST /api/team/members` 收 `phone`；`POST /api/team/invites` 收 `email`、`phone`（存在占位账号上）；
+  5. 改动记进 action_log，entity `team_member`，字段名「Email」「Mobile」。
+- 下一步：后端上 main → 对一下真接口形状（尤其 400 的 detail）→ 合最新 main、重跑 tp / users → 合 main。之后做 Team 导入（`task/import-team`，从 import-hr 拉）。
+
 ## Farm out Partners：团价 Save、改名 Save name 改成蓝色（`task/farmout-save-blue`，2026-10-29 晚，工作窗口 `npe-ops-frontend-59`[678c38]，Annie 直接定）—— **已合 main**
 
 - 59 报：这页团价那行的 Save 原来是黑色（Save locations 是蓝的），不合「蓝色只给提交键」。问 Annie 要不要改，Annie：「要」。

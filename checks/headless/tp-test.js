@@ -296,8 +296,88 @@ async function fill(page, label, value) {
   await click(page, "Create account", "dialog");
   await waitNoText(page, "How will they sign in?");
   b = await lastBody("POST /api/team/members");
-  check("create POST body", b && b.username === "zz.test.new" && b.password === "secret1" && b.display_name === "ZZ Test New" && b.initials === "" && b.email === null && b.items.length === 37 && !("account_type" in b), JSON.stringify(b && { ...b, items: b.items.length }));
+  check("create POST body", b && b.username === "zz.test.new" && b.password === "secret1" && b.display_name === "ZZ Test New" && b.initials === "" && b.email === null && b.phone === null && b.items.length === 37 && !("account_type" in b), JSON.stringify(b && { ...b, items: b.items.length }));
   await waitText(page, "ZZ Test New");
+
+  // ── staff 联络方式（Annie 2026-10-29「4项全部动手」，preview https://claude.ai/artifact/83D67jt2oNb5V1TPkteEt9）──
+  {
+    await ctl("noemail=4&hrphone=3");
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await waitText(page, "Grace Liu", 60000);
+    await page.waitForFunction(() => document.body.innerText.includes("No email — misses notifications"), { timeout: 15000 }).catch(() => {});
+    check("contact: list tags only people with duties but no email", (await rowText(page, "@mia")).includes("No email — misses notifications") && !(await rowText(page, "@grace")).includes("No email") && (await page.$$eval("[data-no-email]", (x) => x.length)) === 1);
+    await click(page, "Edit", "@grace");
+    await page.waitForSelector('[role="dialog"] [data-contact] input[type="email"]');
+    await page.waitForFunction(() => document.querySelector('[role="dialog"] [data-contact] input[type="email"]').value === "grace@example.com", { timeout: 10000 }).catch(() => {});
+    const contactVals = () => page.$$eval('[role="dialog"] [data-contact] input', (xs) => xs.map((x) => x.value));
+    check("contact: Edit shows Contact first with Email + Mobile; email no longer in the header line", JSON.stringify(await contactVals()) === JSON.stringify(["grace@example.com", ""]) && !(await page.$eval('[role="dialog"] h2 + p', (x) => x.innerText)).includes("grace@example.com") && (await dialogText(page)).indexOf("Contact") < (await dialogText(page)).indexOf("Copy access from"));
+    await fill(page, "Email", "grace@example");
+    await page.keyboard.press("Tab");
+    await fill(page, "Mobile", "555-01");
+    await page.keyboard.press("Tab");
+    await sleep(200);
+    const errs = () => page.$$eval('[role="dialog"] [data-contact-error]', (xs) => xs.map((x) => x.innerText));
+    check("contact: wrong format → red text under the box, Save greyed", JSON.stringify(await errs()) === JSON.stringify(["Email address looks wrong.", "Phone number looks wrong. Use 10 digits, or + and the country code."]) && (await page.$eval('[role="dialog"] button[type="submit"]', (b) => b.disabled)));
+    await fill(page, "Email", "kevin@example.com");
+    await fill(page, "Mobile", "(702) 555-0142");
+    await page.keyboard.press("Tab");
+    let logStart = (await ctl("log=1")).length;
+    await click(page, "Save", "dialog");
+    await page.waitForFunction(() => document.querySelector('[role="dialog"] [data-contact-error="email"]'), { timeout: 10000 }).catch(() => {});
+    let calls = (await ctl("log=1")).slice(logStart);
+    check("contact: email used by someone else → says who, dialog stays, access not saved", (await errs())[0] === "That email address is already used by Kevin Ho (@kevin)." && calls.some((l) => l.startsWith("PUT /api/team/members/2/contact")) && !calls.some((l) => l.startsWith("PUT /api/team/members/2 ")), JSON.stringify(calls));
+    await fill(page, "Email", "grace.new@example.com");
+    check("contact: typing again clears the backend error", (await errs()).length === 0);
+    logStart = (await ctl("log=1")).length;
+    await click(page, "Save", "dialog");
+    await waitNoText(page, "Copy access from");
+    calls = (await ctl("log=1")).slice(logStart);
+    b = await lastBody("PUT /api/team/members/2/contact");
+    check("contact: Save stores Email + Mobile together with the ticks", JSON.stringify(b) === JSON.stringify({ email: "grace.new@example.com", phone: "(702) 555-0142" }) && calls.some((l) => l.startsWith("PUT /api/team/members/2 ")), JSON.stringify(calls));
+    await waitText(page, "grace.new@example.com");
+    check("contact: list shows the new email", (await rowText(page, "@grace")).includes("grace.new@example.com"));
+    // 没改联络方式：不调 contact 接口
+    await click(page, "Edit", "@grace");
+    await waitText(page, "Copy access from");
+    await page.waitForFunction(() => document.querySelector('[role="dialog"] [data-contact] input[type="email"]').value === "grace.new@example.com", { timeout: 10000 }).catch(() => {});
+    logStart = (await ctl("log=1")).length;
+    await click(page, "Save", "dialog");
+    await waitNoText(page, "Copy access from");
+    calls = (await ctl("log=1")).slice(logStart);
+    check("contact: unchanged contact → contact API not called", !calls.some((l) => l.includes("/contact")) && calls.some((l) => l.startsWith("PUT /api/team/members/2 ")), JSON.stringify(calls));
+    // 有 HR 档案：电话照 HR、改不了、有链接；存的时候不带 phone
+    await click(page, "Edit", "@kevin");
+    await page.waitForSelector('[role="dialog"] [data-hr-link]');
+    check("contact: HR-linked person → Mobile from Human Resource, read only, link to HR", (await page.$eval('[role="dialog"] input[type="tel"]', (x) => x.readOnly && x.value === "(702) 555-0199")) && (await page.$eval('[role="dialog"] [data-hr-link]', (a) => a.getAttribute("href"))) === "/settings/hr" && (await dialogText(page)).includes("From Human Resource."));
+    await fill(page, "Email", "kevin.ho@example.com");
+    await click(page, "Save", "dialog");
+    await waitNoText(page, "Copy access from");
+    b = await lastBody("PUT /api/team/members/3/contact");
+    check("contact: HR-linked person's Save sends email only (no phone)", JSON.stringify(b) === JSON.stringify({ email: "kevin.ho@example.com" }), JSON.stringify(b));
+    // 补上 email：黄签消失
+    await click(page, "Edit", "@mia");
+    await waitText(page, "Copy access from");
+    await fill(page, "Email", "mia@example.com");
+    await click(page, "Save", "dialog");
+    await waitNoText(page, "Copy access from");
+    await page.waitForFunction(() => !document.querySelector("[data-no-email]"), { timeout: 15000 }).catch(() => {});
+    check("contact: after adding the email the yellow tag is gone", (await page.$$eval("[data-no-email]", (x) => x.length)) === 0);
+    // Add person：两种方式都有 Contact，发邀请时带 email / phone
+    await click(page, "+ Add person");
+    await waitText(page, "How will they sign in?");
+    check("contact: Add person (invite) has Contact (Optional) and no separate Email box", (await page.$$('[role="dialog"] [data-contact]')).length === 1 && (await dialogText(page)).includes("Optional") && !(await dialogText(page)).includes("Email (optional)"));
+    await fill(page, "Email", "zz.invite@example.com");
+    await fill(page, "Mobile", "+44 20 7946 0958");
+    await click(page, "Create invite link", "dialog");
+    await page.waitForSelector('[role="dialog"] input[readonly]');
+    b = await lastBody("POST /api/team/invites");
+    check("contact: invite body carries email + phone", b && b.email === "zz.invite@example.com" && b.phone === "+44 20 7946 0958", JSON.stringify(b && { email: b.email, phone: b.phone }));
+    await click(page, "Done", "dialog");
+    await waitNoText(page, "Share this link");
+    await page.evaluate(() => {
+      // 弹窗关了，没别的要做
+    });
+  }
 
   // ── 后端没带 default_items / home_path（G184 前的形状）：不崩、不预勾、首页列空 ──
   await ctl("reset=1&nodefault=1&nohome=1");

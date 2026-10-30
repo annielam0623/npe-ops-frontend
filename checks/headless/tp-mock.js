@@ -49,7 +49,8 @@ const log = [];
 function person(id, username, display_name, items, o = {}) {
   return { id, username, display_name, email: o.email === undefined ? `${username}@example.com` : o.email, role: o.role || "staff",
     is_active: o.is_active !== false, invite_used: o.invite_used !== false, items: [...items].sort(),
-    duties: o.duties || [], team_ids: o.team_ids || [], home_path: o.home_path || null };
+    duties: o.duties || [], team_ids: o.team_ids || [], home_path: o.home_path || null,
+    phone: o.phone || null, hr_phone: o.hr_phone || null };
 }
 function reset() {
   viewer = "superadmin"; detailFail = 0; delFail = ""; nohome = false; nodefault = false; acctype = false; typeFail = false; team500 = false; team403 = false;
@@ -74,7 +75,7 @@ reset();
 const row = (p) => {
   const r = { kind: "user", id: p.id, username: p.username, display_name: p.display_name, email: p.email,
     can_login: p.is_active && p.invite_used, pending_invite: !p.invite_used, is_superadmin: p.role === "superadmin",
-    team_ids: p.team_ids, item_count: p.items.length, duties: p.duties };
+    team_ids: p.team_ids, item_count: p.items.length, duties: p.duties, phone: p.phone };
   if (!nohome) r.home_path = p.home_path;
   if (acctype) r.account_type = p.role === "partner" ? "partner" : "staff";
   return r;
@@ -82,6 +83,7 @@ const row = (p) => {
 const detail = (p) => ({ id: p.id, username: p.username, display_name: p.display_name, email: p.email,
   can_login: p.is_active && p.invite_used, pending_invite: !p.invite_used, is_superadmin: p.role === "superadmin",
   items: p.items, duties: p.duties, team_ids: p.team_ids, home_path: p.home_path,
+  phone: p.phone, hr_phone: p.hr_phone,
   ...(acctype ? { account_type: p.role === "partner" ? "partner" : "staff" } : {}) });
 const BAD_TYPE = "Account type must be staff or partner.";
 const badType = (b) => acctype && b.account_type !== undefined && !["staff", "partner"].includes(b.account_type);
@@ -126,6 +128,8 @@ http.createServer((req, res) => {
       if (q.team403) team403 = q.team403 === "1";
       if (q.detailfail) detailFail = Number(q.detailfail);
       if (q.delfail) delFail = q.delfail === "0" ? "" : q.delfail;
+      if (q.noemail) people.find((x) => x.id === Number(q.noemail)).email = null;
+      if (q.hrphone) people.find((x) => x.id === Number(q.hrphone)).hr_phone = "(702) 555-0199";
       if (q.log) return send(res, 200, log);
       return send(res, 200, { ok: true });
     }
@@ -165,7 +169,7 @@ http.createServer((req, res) => {
         if (badType(body)) return send(res, 400, { detail: BAD_TYPE });
         const err = validate(body);
         if (err) return send(res, 400, { detail: err });
-        const np = person(nextId++, body.username, body.display_name || body.username, [], { role: body.account_type === "partner" ? "partner" : "staff" });
+        const np = person(nextId++, body.username, body.display_name || body.username, [], { role: body.account_type === "partner" ? "partner" : "staff", email: body.email ?? null, phone: body.phone ?? null });
         apply(np, np.role === "partner" ? { ...body, items: stripSend(body.items) } : body);
         people.push(np);
         return send(res, 201, { ok: true, id: np.id, member: detail(np) });
@@ -175,7 +179,7 @@ http.createServer((req, res) => {
         const err = validate(body);
         if (err) return send(res, 400, { detail: err });
         const token = "tptok" + nextId;
-        const np = person(nextId++, "__pending_" + token, null, [], { invite_used: false, is_active: false, email: null, role: body.account_type === "partner" ? "partner" : "staff" });
+        const np = person(nextId++, "__pending_" + token, null, [], { invite_used: false, is_active: false, email: body.email ?? null, phone: body.phone ?? null, role: body.account_type === "partner" ? "partner" : "staff" });
         apply(np, np.role === "partner" ? { ...body, items: stripSend(body.items) } : body);
         people.push(np);
         return send(res, 201, { ok: true, id: np.id, invite_url: "http://127.0.0.1:" + MOCK_PORT + "/register/" + token, invite_token: token, member: detail(np) });
@@ -196,6 +200,19 @@ http.createServer((req, res) => {
           apply(who, who.role === "partner" ? { ...body, items: stripSend(body.items) } : body);
           return send(res, 200, { ok: true, member: detail(who) });
         }
+      }
+      // staff 联络方式（前端提给后端的形状）：格式不对 / email 重了 400 {detail: {field, message}}；有 HR 档案的不收 phone。
+      const ctm = p.match(/^\/api\/team\/members\/(\d+)\/contact$/);
+      if (ctm && m === "PUT") {
+        const who = people.find((x) => x.id === Number(ctm[1]));
+        if (!who) return send(res, 404, { detail: "Member not found" });
+        const email = body.email;
+        if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return send(res, 400, { detail: { field: "email", message: "Email address looks wrong." } });
+        const other = email && people.find((x) => x.id !== who.id && (x.email || "").toLowerCase() === email.toLowerCase());
+        if (other) return send(res, 400, { detail: { field: "email", message: `That email address is already used by ${other.display_name} (@${other.username}).` } });
+        who.email = email;
+        if ("phone" in body) who.phone = body.phone;
+        return send(res, 200, { ok: true, member: detail(who) });
       }
       // 切换账号类型（后端 8a）：只 superadmin 能调；勾选不动；partner → staff 一律 role=staff。
       const am = p.match(/^\/api\/team\/members\/(\d+)\/account-type$/);
