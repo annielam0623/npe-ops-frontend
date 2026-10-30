@@ -264,6 +264,15 @@
     - 这是 Risk C 包，要 Annie 重启后在她自己的终端 `git push origin main`。
     - 推上去之前线上没有 'west'，前端 West Rim 先别放出来。
         - 主窗口提醒了 Annie 10-22 的规矩：除了 Boulder City，shuttle 都是 bus tour 沿路的站。
+        - 9c 交 v2（同一个链接）：
+          - 后端没有地方存「站几点」：接人时间是 Rezdy 时间减 15 分钟当场算的，只有回程时间存在 Manifest setup。
+          - v2 的做法：
+            - 按「站 × 线路」存时间；
+            - 每个点两个勾（Tour bus / Shuttle），可以都勾；
+            - Shuttle 块多一列 Times，Edit 里展开小时刻表。
+          - 需要后端 B1–B7：is_tour_bus / is_shuttle、新表 pickup_location_times、migration、第一次归类名单先给 Annie 看。
+          - 待 Annie 定 Q1–Q11。
+          - 顺带发现两个可能的 bug，已转 9a 核实：回程时间减 15 分钟前后不一致；Rezdy 自带时间可能被减了两次。
         - 前端派 9c `task/schedule-publish-anyway`，后端上 main 前不合 main。
         - 后端发 9a：allow_gaps、写日志、空档标记。
 - **Annie 定长期规则：订单流 Order List → Main Manifest → Dispatch / Tracking，不跳过前面直接去 Rezdy 拉单**。
