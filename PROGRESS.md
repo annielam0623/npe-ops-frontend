@@ -386,6 +386,9 @@
   - 成功回包 {week, created, applied, notified 永远 [], lock_token（锁重新占住时是新的）}。
   - 前端派 62 做 task/schedule-week-save，依据 Annie 10-29「4项全部动手」第 3 项。用模拟接口，只推分支，等后端上 main。
 - e6：Farm out 上车点导入上 main 7fae286；结算价 ed03071 检查过了，已回「合」。
+- 后端 G125（Special Requirements 编辑）已在后端本地 main，三审 PASS，等 Annie 跑 release.py。
+  - 多两种 400：请求没带 notes 键；有控制字符。09 核过前端 d90aa68，不用改。
+- 后端 G221（Farm out 每个团加子项）代码写完，等 Annie 执行 v130 才能上 main。已派 e6 让 task/farmout-rate-items 对形状、合 main 解冲突，只推分支。
 ## 2026-10-29 晚 收工交接：前端主窗口 `今天前端主窗口-d2`[15266b]（家里电脑，Annie「做完写交接收工」）
 
 明天的主窗口先读这一节。细节在下面「2026-10-29 晚 主窗口 d2 开工核对」那一节，按时间逐条记。
