@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 
 import {
   BTN_DELETE_CLASS,
@@ -292,6 +292,37 @@ const LA_TIME = new Intl.DateTimeFormat("en-US", {
 });
 
 const LABEL = "pt-[7px] text-[13px] font-bold text-[#333] night:text-white/80";
+/** 格式不对的那一栏下面的红字（同全站：失败红）。 */
+const FIELD_ERROR =
+  "mt-[3px] mb-0 text-[11.5px] font-semibold text-[#A32D2D] night:text-red-300";
+
+/**
+ * 电话显示成好读的样子：美国 / 加拿大号码（+1 开头 10 位）写「(928) 555-0110」，别的照原样。
+ * 存的时候照 staff 打的送，后端统一存 E.164。
+ */
+export function prettyPhone(value: string | undefined): string {
+  const v = value ?? "";
+  const m = /^\+1(\d{3})(\d{3})(\d{4})$/.exec(v);
+  return m ? `(${m[1]}) ${m[2]}-${m[3]}` : v;
+}
+
+/** 同后端：只许数字和空格 ( ) + - .，10–15 位数字；空 = 不填。不对返回原因。 */
+function phoneProblem(label: string, value: string): string | null {
+  const v = value.trim();
+  if (!v) return null;
+  const digits = v.replace(/\D/g, "").length;
+  if (/[^0-9\s()+\-.]/.test(v) || digits < 10 || digits > 15)
+    return `${label} must be a phone number: 10 to 15 digits (spaces, ( ) + - . are fine).`;
+  return null;
+}
+
+function emailProblem(value: string): string | null {
+  const v = value.trim();
+  if (!v) return null;
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)
+    ? null
+    : "Email doesn't look like an email address (name@example.com).";
+}
 const HINT = "mt-[3px] mb-0 text-[11.5px] text-[#555] night:text-white/55";
 
 function RestaurantCard({
@@ -321,6 +352,20 @@ function RestaurantCard({
   const [name, setName] = useState(restaurant?.name ?? "");
   const [footer, setFooter] = useState(restaurant?.footer ?? "");
   const [note, setNote] = useState(restaurant?.staff_note ?? "");
+  // 四栏联系方式（导游页 v9 ④）：电话显示成好读的格式。
+  const savedContact = {
+    address: restaurant?.address ?? "",
+    phone: prettyPhone(restaurant?.phone),
+    text_number: prettyPhone(restaurant?.text_number),
+    email: restaurant?.email ?? "",
+  };
+  const [contact, setContact] = useState(savedContact);
+  /** 按过 Save 以后才在格子下面写红字（打字时不吵）。 */
+  const [checked, setChecked] = useState(false);
+  /** 后端有这四栏（GET 带 address 键）；旧后端不出这四栏、也不送。 */
+  const hasContact = isNew
+    ? list.restaurants.length === 0 || "address" in list.restaurants[0]
+    : "address" in restaurant;
   const [ids, setIds] = useState<number[]>(savedIds);
   const [saving, setSaving] = useState(false);
   const idBase = `rest-${restaurant?.id ?? "new"}`;
@@ -330,7 +375,15 @@ function RestaurantCard({
     name !== restaurant.name ||
     footer !== restaurant.footer ||
     note !== restaurant.staff_note ||
-    ids.join(",") !== savedIds.join(",");
+    ids.join(",") !== savedIds.join(",") ||
+    (Object.keys(savedContact) as (keyof typeof savedContact)[]).some(
+      (k) => contact[k] !== savedContact[k],
+    );
+  const problems = {
+    phone: phoneProblem("Phone", contact.phone),
+    text_number: phoneProblem("Text", contact.text_number),
+    email: emailProblem(contact.email),
+  };
 
   // 停用的团不列，除非已经分给这家（好取消）。
   const tours = list.groups.filter((g) => g.is_active || ids.includes(g.id));
@@ -345,6 +398,8 @@ function RestaurantCard({
     setFooter(restaurant.footer);
     setNote(restaurant.staff_note);
     setIds(savedIds);
+    setContact(savedContact);
+    setChecked(false);
   }
 
   async function save() {
@@ -353,12 +408,31 @@ function RestaurantCard({
       onResult({ tone: "error", text: "Enter the restaurant name." });
       return;
     }
+    // 前端先查格式：不对就红字、不发请求（后端也会再查一次）。
+    setChecked(true);
+    const bad = Object.values(problems).filter(Boolean);
+    if (hasContact && bad.length) {
+      onResult({
+        tone: "error",
+        text: `Not saved: ${bad.join(" ")}`,
+      });
+      return;
+    }
     setSaving(true);
     const input: RestaurantInput = {
       name,
       footer,
       staff_note: note,
       manifest_ids: ids,
+      // 四栏每次都送（"" = 清空）。
+      ...(hasContact
+        ? {
+            address: contact.address.trim(),
+            phone: contact.phone.trim(),
+            text_number: contact.text_number.trim(),
+            email: contact.email.trim(),
+          }
+        : {}),
     };
     try {
       const s = isNew
@@ -492,6 +566,87 @@ function RestaurantCard({
             you save. A tour with no lunch vendor prints no lunch sheet.
           </p>
         </div>
+
+        {hasContact
+          ? (
+              [
+                [
+                  "address",
+                  "Address",
+                  "e.g. 1201 Main St, Tusayan, AZ 86023",
+                  "Shown to the guide under the restaurant name; tap opens the map.",
+                  200,
+                ],
+                [
+                  "phone",
+                  "Phone",
+                  "(928) 555-0110",
+                  "The guide's Call button rings this number.",
+                  30,
+                ],
+                [
+                  "text_number",
+                  "Text",
+                  "(928) 555-0123",
+                  "Mobile number for lunch updates by text. Leave blank if they don't take texts.",
+                  30,
+                ],
+                [
+                  "email",
+                  "Email",
+                  "orders@example.com",
+                  "Lunch updates are also emailed here. Leave blank to skip.",
+                  200,
+                ],
+              ] as const
+            ).map(([key, label, placeholder, hint, max]) => {
+              const problem =
+                checked && key !== "address" ? problems[key] : null;
+              return (
+                <Fragment key={key}>
+                  <label htmlFor={`${idBase}-${key}`} className={LABEL}>
+                    {label}
+                  </label>
+                  <div>
+                    <input
+                      id={`${idBase}-${key}`}
+                      data-contact={key}
+                      type={
+                        key === "email"
+                          ? "email"
+                          : key === "address"
+                            ? "text"
+                            : "tel"
+                      }
+                      value={contact[key]}
+                      maxLength={max}
+                      placeholder={placeholder}
+                      aria-invalid={problem ? true : undefined}
+                      onChange={(e) =>
+                        setContact((c) => ({ ...c, [key]: e.target.value }))
+                      }
+                      className={cn(
+                        FORM_INPUT_CLASS,
+                        "w-full max-w-[520px]",
+                        problem && "border-[#A32D2D] night:border-red-300",
+                      )}
+                    />
+                    {problem ? (
+                      <p
+                        role="alert"
+                        data-contact-error={key}
+                        className={FIELD_ERROR}
+                      >
+                        {problem}
+                      </p>
+                    ) : (
+                      <p className={HINT}>{hint}</p>
+                    )}
+                  </div>
+                </Fragment>
+              );
+            })
+          : null}
 
         <label htmlFor={`${idBase}-footer`} className={LABEL}>
           Contact / how to order

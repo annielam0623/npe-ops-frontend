@@ -398,6 +398,10 @@
           - 后端需求已转 9a。要确认 HR 的 overwrite=true 不会把空格当成清空（Q3：空格 = 不改）。
       - 每页要后端一对 import/preview、import/commit 接口。
       - 待 Annie 定 Q1–Q7，都附推荐。
+- **Supplier › Restaurant 加四栏 Address / Phone / Text / Email**（9c，`task/restaurant-contacts`）：Annie 10-29 已动手（导游页 v9 preview https://claude.ai/artifact/Lg9tRCRBgMq66jQumdbn31 ④）；后端 20 3bcf395、v127 已在生产。
+  - 四栏放在 Lunch for 和页脚之间，下面写用在哪（Call 拨 Phone、Text 单独收短信、Email 发邮件、Address 给导游开地图）；电话显示成 (928) 555-0110（+1 号码），别的照原样；照这一页原来的做法改了先放着、按卡上的 Save 才存。
+  - 前端先查格式（电话数字和空格 ( ) + - .，10–15 位；Email 要像 email）：不对那一栏下面红字、框标红，上面「Not saved: …」，不发请求；后端 400 原话照旧红字。四栏每次都送（"" = 清空）。旧后端（GET 不带 address）不出这四栏。
+  - 检查：tsc / eslint / build 过；restaurant 44/44（新加：四栏位置、带出存好的、格式错红字不发请求、PUT 带四栏、存好重读、清空）、products 186/186、nav 32/32。
 - **Bus Manifest 改了先放在页面上、按整页 Save 才存**（9c，`task/bus-manifest-page-save`，worktree D:
 pe-ops-frontend-bmv）：
   - Annie 原话：「bus manifest Q4 没存之前还是挪过去，缓存，然后等整页存。其他都走推荐。动手」。preview：https://claude.ai/artifact/XNA2wnz8SRcWcqxrANy1WX
