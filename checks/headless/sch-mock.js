@@ -10,6 +10,8 @@ let rulesDoc = { version: 1, rules: [], updated_at: null, updated_by: null };
 const log = [];
 const publishLog = []; // 每次 POST publish 的 body（检查 allow_gaps 用），GET /__publishes 读
 let confirmWeek = "";
+// Jing（4）这周的回应：null = 不在名单里。ctl.jingAccepted 设成 Looks good；Send to confirm 发送成功后后端把 accepted 重置成 no_answer（G217 ef）。
+let jingAnswer = null;
 const confirmReqs = [
   { id: 901, employee_id: 2, shift_type: "mid", dayIdx: 3, status: "pending" },
   { id: 902, employee_id: 2, shift_type: "open", dayIdx: 5, status: "pending" },
@@ -217,10 +219,39 @@ function getOrCreateWeek(weekStart) {
   return created;
 }
 
+// 发布前单独发给本人确认（Annie 10-29「员工确认」）：每个人和上次发布比改了哪几天（只算时段，mock 不算休息日）。
+const clock = (hm) => { const [h, m] = hm.split(":").map(Number); return `${h % 12 === 0 ? 12 : h % 12}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`; };
+const shiftWord = (t) => t.charAt(0).toUpperCase() + t.slice(1);
+function pendingChangesOf(weekData) {
+  if (weekData.status !== "published" || !weekData.snapshot) return [];
+  const desc = (rows) => (rows.length ? rows.map(([, t, a, b]) => `${shiftWord(t)} ${clock(a)} – ${clock(b)}`).join(", ") : null);
+  const out = [];
+  const ids = new Set([...Object.keys(weekData.snapshot).map(Number), ...weekData.slots.map((s) => s.employee_id).filter((x) => x != null)]);
+  for (const id of ids) {
+    const before = JSON.parse(weekData.snapshot[id] || "[]");
+    const after = weekData.slots.filter((s) => s.employee_id === id).map((s) => [s.date, s.shift_type, s.start_time, s.end_time]);
+    const dates = [...new Set([...before, ...after].map((r) => r[0]))].sort();
+    const items = dates
+      .map((d) => ({ date: d, before: desc(before.filter((r) => r[0] === d)), after: desc(after.filter((r) => r[0] === d)) }))
+      .filter((i) => i.before !== i.after);
+    if (!items.length) continue;
+    const emp = employees.find((e) => e.id === id);
+    const sent = (weekData.sent || {})[id];
+    out.push({ employee_id: id, name: emp ? emp.name : `#${id}`, items, sent_at: sent ? sent.at : null, sent_by: sent ? sent.by : null,
+      // 后端 G217：has_login = 有登录账号才收站内通知。ctl.noLogin = 这些员工 id 没有账号。
+      has_login: !(ctl.noLogin || []).includes(id) });
+  }
+  return out;
+}
+const sendLog = [];
+
 function weekPayload(weekData) {
   const g = gapsFor(weekData);
   const out = { ...weekData, gaps: g, published_with_gaps: weekData.status === "published" && g.length > 0, has_unsent_changes: weekData.status === "published" && !!weekData.unsent && ctl.role !== "staff", version: weekData.version || "v0" };
   delete out.unsent;
+  delete out.sent;
+  // 后端 G217：只给有 schedule.edit 的人，staff 永远 []。
+  out.pending_changes = ctl.role === "staff" ? [] : pendingChangesOf(weekData);
   delete out.snapshot;
   if (ctl.phase2) {
     const dates = datesOfWeek(weekData.week_start);
@@ -268,11 +299,21 @@ http
       if (w) bumpVersion(w);
       return send(res, 200, { version: w ? w.version : null });
     }
+    if (p === "/__sends") return send(res, 200, sendLog);
     if (p === "/__ctl") {
       Object.assign(ctl, await readBody(req));
       if (ctl.confirmReset) {
         confirmReqs.forEach((r) => (r.status = "pending"));
         ctl.confirmReset = false;
+      }
+      if (ctl.jingAccepted !== undefined) {
+        jingAnswer = ctl.jingAccepted ? "accepted" : null;
+        delete ctl.jingAccepted;
+      }
+      // ctl.jingAnswer：直接设 Jing 的回应（"wants_changes" / "no_answer" / null = 不在名单）。
+      if (ctl.jingAnswer !== undefined) {
+        jingAnswer = ctl.jingAnswer;
+        delete ctl.jingAnswer;
       }
       return send(res, 200, ctl);
     }
@@ -313,6 +354,7 @@ http
           { employee_id: 2, name: "Lizzie", answer: "wants_changes", answered_at: "2026-10-07T18:02:00+00:00",
             requests: confirmReqs.map((r) => ({ id: r.id, date: days[r.dayIdx], shift_type: r.shift_type, status: r.status })) },
           { employee_id: 3, name: "Nadia", answer: "no_answer", answered_at: null, requests: [] },
+          ...(jingAnswer ? [{ employee_id: 4, name: "Jing", answer: jingAnswer, answered_at: jingAnswer === "no_answer" ? null : "2026-10-07T17:00:00+00:00", requests: [] }] : []),
         ],
       });
     }
@@ -661,6 +703,23 @@ http
       return send(res, 200, s);
     }
 
+    const sendMatch = /^\/api\/schedule\/weeks\/(\d{4}-\d{2}-\d{2})\/employees\/(\d+)\/send-changes$/.exec(p);
+    if (sendMatch && req.method === "POST") {
+      if (ctl.role === "staff") return send(res, 403, { detail: "Only a supervisor or above can send schedule changes." });
+      const emp = employees.find((e) => e.id === Number(sendMatch[2]));
+      if (!emp) return send(res, 404, { detail: "No such employee." });
+      // 错误原话照后端 G217（ef）：400 没邮箱 / 没变化 / 非生产；409 要先 Publish again；502 / 503。ctl.sendFailStatus 默认 400。
+      if (!emp.email) return send(res, 400, { detail: `No email for ${emp.name}. Add it in Employees, then send.` });
+      if (ctl.sendFail) return send(res, ctl.sendFailStatus || 400, { detail: ctl.sendFail });
+      const weekData = getOrCreateWeek(sendMatch[1]);
+      const at = new Date().toISOString();
+      weekData.sent = { ...(weekData.sent || {}), [emp.id]: { at, by: "ZZ Test" } };
+      sendLog.push({ week: sendMatch[1], employee_id: emp.id });
+      // G217 ef（Annie 定「重置」）：发送成功后，原来点 Looks good 的人回到 No answer；wants_changes 不动。
+      if (emp.id === 4 && jingAnswer === "accepted") jingAnswer = "no_answer";
+      return send(res, 200, { sent_at: at, sent_by: "ZZ Test", channels: ctl.sendEmailOnly ? ["email"] : ["email", "in_app"] });
+    }
+
     const publishMatch = /^\/api\/schedule\/weeks\/(\d{4}-\d{2}-\d{2})\/publish$/.exec(p);
     if (publishMatch && req.method === "POST") {
       if (ctl.role === "staff") {
@@ -691,6 +750,7 @@ http
       const changed = new Set([...ids].filter((id) => (before[id] || "[]") !== shiftsOf(id)));
       weekData.snapshot = Object.fromEntries([...ids].map((id) => [id, shiftsOf(id)]));
       weekData.unsent = false;
+      weekData.sent = {};
       weekData.status = "published";
       bumpVersion(weekData);
       weekData.published_at = new Date().toISOString();
