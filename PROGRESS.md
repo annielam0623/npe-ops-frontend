@@ -64,6 +64,21 @@
   - 等等。
   觉得键太多，可以改成按大块分。
 
+## DOR 最新进展（G224）—— 明天第一件（工作窗口 `npe-ops-frontend-09`[8a0116]，主窗口 eb 2026-10-30 转 b0 的形状）
+
+- 依据：Annie 原话「如果需要纠正什么的话在下面备注，或者更新最新进展就好了」「加最新进展，任何人都可以加」「以上内容全都动手」。
+- 后端还没上 main（v133 等 Annie 过目执行）。前端先用 mock 做，后端上 main 后再合。
+- 接口形状（b0 定，原样照抄）：
+  1. GET /api/operation-reports/{id} → {report, history, updates}。updates = [{id, report_id, text, created_at（ISO，带 LA 时区）, created_by:{username, display_name}}]，旧的在前。
+  2. POST /api/operation-reports/{id}/updates {text}：
+     - 成功 201 {update:{同上}}；
+     - 400：空文本「Write the update before saving.」（missing:["text"]），超过 2000「The update is N characters - the limit is 2000.」；
+     - 404「That report does not exist.」；
+     - 403：板块没开「This section is not available yet.」，没 report.view 照旧那句，partner「Partners can read reports but cannot add updates.」；
+     - 只加，不改不删，不发通知。history 会多一条 action = add_update、changes 为空的，前端可以不显示。
+  3. 编辑权限不变（同 2026-10-30 修的 dor-edit-own：本人改自己的、report.edit 改所有人的）。
+- 明天要做：展开一条报告时在下面列「Updates」（谁、什么时候、写了什么，旧的在前），加一个输入框 + 蓝色 Save（任何能看这条报告的人都能加，partner 没有）。页面位置照 DOR 现状 preview（https://claude.ai/artifact/9FgXaqe3voxgGGuJVQpTdC ）第 5 部分画虚线框的那个地方。文字一律当纯文本显示。按 Save 才存（Saving… / 绿字 Saved / 红字后端原话）。检查：dor 套 mock 加 updates，测列出、加一条、空文本 / 超长 400 原话、partner 没有输入框。
+
 ## 2026-10-30 Daily Operation Report：本人能改自己的报告（`task/dor-edit-own`，工作窗口 `npe-ops-frontend-09`[8a0116]，主窗口 eb 派工，修 bug）—— 检查都过，等 eb 回「合」
 
 - 依据：Annie 10-30 原话「如果是edit的话，应该是都可以，如果去改另外一个人发布的，那staff就不可以，只能本人改」；后端 10-26 G187 已是这样（operation_reports.py `_can_edit`）。前端原来只给 supervisor / admin 状态和跟进人的下拉，员工连自己的都改不了。
