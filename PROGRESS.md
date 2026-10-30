@@ -70,6 +70,11 @@
     - 面板加在 Settings › Navigation 和 Settings › Farm out Partners 两页。
     - 检查：dr 88、fo-settings 81、cp 18；tsc 0，eslint 0 错，build 过。
     - Timetable 页没加面板（日志是整个 Farm out 设置一份）。Annie 要的话再加。
+- Annie（10-29 晚）原话：「我现在没有地方加staff的邮箱地址，电话等联络方式」。
+  - 现状：
+    - 前端只有 Add person 选「Create the account now」时能填 Email；邀请的没有这一格；Edit 改不了；没有电话。
+    - 后端 admin_users 只有 email 列，没有 phone；只在新建账号时收 email。
+  - 已派 59 出 preview（Team 页 Contact 一块 + 需要后端），还没动手。
 - Annie 问 Staff Schedule 为什么写「1 day with gaps」，下面又是「Gaps: none」。只回答了，没改代码：
   - 空档在 Sat 11/07 的 2:00–8:00 AM。她改成 3am 的两个 Open 班在 Unassigned 行，不算覆盖；就算分给人，2:00–3:00 AM 也还是空着。
   - 右上角的数字算的是整周，Day timeline 显示的是选中的 Mon 11/02。
