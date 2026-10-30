@@ -66,11 +66,36 @@
   - A. 能改排班的主管和 admin（后端现在就是这样，线上 801544f 的说法也是这个）；
   - B. 这个人自己的主管：要后端先在员工资料里建「主管是谁」，每个人都要填。
   - 推荐 A，以后人力体系建好再改 B。
-- 10b 单独发给某人确认，改成按人的往来记录（像聊天一样）：62 在出 preview。
-  - Send to confirm 现在这版（加了 7b）做好了，没合 main。要定：
-    - A. 先上现在这版，往来记录做好再加（推荐：现在就能单独发给某人确认）；
-    - B. 等往来记录做好一起上。
-- 10c 排班页按权限勾选判断谁能改 / 发布，原话「全部按照勾选」：这是决定，要再说一句「动手」。前端改成按 schedule.edit / schedule.publish，样子不变。
+- 10b 单独发给某人确认的「往来记录」（像聊天一样）：62 的 preview https://claude.ai/artifact/T98GQ9KfQuQfrEcMv6XgzM
+  - 内容：每人每周一条按时间排的记录，包括周三自动确认、回 Looks good / Send my changes、Send to confirm（带改动那几行）、主管 Approve / Decline、Publish again、重置。
+  - 要后端加 4 件：
+    1. 员工每次回复都留一条，不覆盖；
+    2. 每次发给这个人，都留下当时那几行；
+    3. 周三自动确认按人记；
+    4. 一个读接口 GET /api/schedule/weeks/{ws}/employees/{id}/history。
+  - 要 Annie 定 5 题（preview 上每题都写全了）：
+    1. 放哪：推荐两处都放（发送框里，和 Responses 卡上每人点 History 展开）；
+    2. 最新的在下面还是上面：推荐下面，像聊天；
+    3. 放哪些事：推荐发的、回的、主管处理、重置，不放每一下格子改动；
+    4. 只看这一周还是所有周：推荐只看这一周；
+    5. 现在这版 Send to confirm（task/schedule-send-to-confirm 613c039，含 7b，检查都过）先上，还是等记录一起上：推荐先上，后加记录不用改它。
+- 10c「全部按照勾选」：09 已只读盘点全站（前端 ca9a311 对后端 cc2c43ec，276 个写接口）。要 Annie 说「动手」。
+  - 背景：
+    - 后端规则：Super Admin 什么都过，其余所有人（含 admin）都按自己的勾判。
+    - 前端已有按勾工具，但有个总开关「staff_permissions」，默认只对 Super Admin 开，等于关着。关着时员工按键全给看，只靠后端挡。
+  - 对不上的有三类，约 20 个文件：
+    - A. 整页按 admin 角色挡，后端按勾：Pickup Locations、Products、Vehicles、Content Studio、Farm out Partners / Timetable、Transfer & Charter 设置、Teams、Auto Send（只给 superadmin）。
+      - 后果：没勾的 admin 进得去、一存就报错；勾了的员工进不去。
+    - B. 按角色给编辑键：Staff Schedule（supervisor）、Human Resource（admin / supervisor）、Daily Operation Report 列表（反过来：后端更宽，页面不给员工改）、Workspace 单子里的 Rate card 链接。
+    - C. 员工一律给键：Dispatch、Bus Manifest、Manifests、发送页（Tickets / Tour / Morning）和 Tracking 群发、Orders 详情。
+      - 后果：只勾了 .view 的人也看得到 Send / 编辑，点了报错。
+  - 对得上的约 13 处（Restaurant、Driver Quick Replies、Navigation、Users、Tasks、客人对话、Forecast 编辑、partner 只读等）。
+  - 改动：一个窗口 2–3 天，两个窗口约 1.5 天（A+B 一份、C 一份）。
+  - ⚠️ 上线顺序（推荐）：
+    1. 先改前端：总开关关着时，员工看不出差别，没人受影响；
+    2. Annie 在 Team 页核对每个员工、每个 admin 的勾；
+    3. 再打开总开关。
+    - 注意：admin 现在后端也按勾，没勾的 admin 今天已经会报错。
 - 10d 生产上走一遍，原话「我看不到zz test的班」：生产上现在没有 ZZ Test 的班。要走一遍得先在生产建 ZZ Test 员工（邮箱用 Annie 本人的）、排一周、发布。发布会真发通知。要定：
   - 谁来做：派窗口，还是 Annie 自己；
   - 用哪一周：那一周只能有 ZZ Test 员工的班。
@@ -97,7 +122,7 @@
   - mf-test 加一项：存完到重读回来之间每次页面变动都记 A 车列头，必须一直是 West Rim。改之前的代码上这项失败（记到一次 General 列头），改之后过。
   - mf 193/193 连跑 3 次都过；man 322/322、nav 32/32；tsc 0 错；eslint 0 错、2 个原有警告；build 过。
 
-## 2026-10-30 Bus Manifest：Special Requirements 并进整页 Save（`task/manifest-notes-page-save`，工作窗口 `npe-ops-frontend-09`[8a0116]，主窗口 eb 派工）—— 检查都过，等 eb 核对后合 main
+## 2026-10-30 Bus Manifest：Special Requirements 并进整页 Save（`task/manifest-notes-page-save`，工作窗口 `npe-ops-frontend-09`[8a0116]，主窗口 eb 派工）—— **已合 main d90aa68**（eb 回「合」）
 
 - 依据：Annie 10-18 要 Special Requirements 能改能删（NotesCell，PUT /api/dispatch/manifests/guest-notes {guest_id, notes}）；后端今天重启 G125（78 做）。主窗口问「自己当场存还是并进整页 Save」，Annie 原话「并进整页一起存 A 动手」（2026-10-30）。
 - 做了（[manifest-view.tsx](components/dispatch-manifest/manifest-view.tsx) NotesCell / changeNotes / savePending，[page-save.tsx](components/dispatch-manifest/page-save.tsx) Pending.notes）：
@@ -109,6 +134,8 @@
   - mf 192/192（连跑 3 次）、man 322/322、nav 32/32；tsc 过；eslint 0 错；build 过。
   - 顺手修的：mf 的「West Rim 列序」那项在 main 上也偶尔失败（3 次里 1 次）：存完到重读回来之间列还是旧版式。检查改成等绿字 Saved 再看，页面代码没动。页面上这一瞬间会先闪回旧版式的列，是现有的小问题，没改。
 - 只用模拟数据。
+- 后续：G125 后端上了 origin/main cc2c43ec，09 只读核对，前端页面对上了，不用改。mf-mock 的两种 400 照后端原话改（没带 notes 键、看不见的控制字符），mf 加两项（粘贴控制字符时红字照后端原话、暂存不丢；每条 PUT 都带 notes 键），mf 195/195、nav 32/32、tsc 过。`task/manifest-notes-key` 2e83aac，已合 main ca9a311（只动检查）。
+- 权限：备注编辑和换车一样，partner 按 manifests.edit 拦；员工没勾、partner 只勾 dispatch.edit 这两处小出入并进置顶 10c（「全部按照勾选」），等 Annie。
 
 ## 2026-10-30 Dispatch 手动保存上线（`task/dispatch-manual-save-e6`，从 59 的 f243720 接手；工作窗口 `npe-ops-frontend-e6`[047d88]，主窗口 eb 派工）
 
@@ -372,6 +399,46 @@
   - 7：发送框显示后端真实原文；
   - 7b：之前点过 Looks good 的人，发送框加灰字提醒「会重置」。
   - 已转 62：先合 notify-wording，再合 send-to-confirm（加 7b）。
+- 后端 G218（整周一个 Save）已开工（ef，task/g218-week-save），照前端草案做，两处不同：
+  - 已发布周出新空档回 409 coverage_gap，不是 400；
+  - 成功回包 {week, created, applied, notified 永远 [], lock_token（锁重新占住时是新的）}。
+  - 前端派 62 做 task/schedule-week-save，依据 Annie 10-29「4项全部动手」第 3 项。用模拟接口，只推分支，等后端上 main。
+- e6：Farm out 上车点导入上 main 7fae286；结算价 ed03071 检查过了，已回「合」。
+- 后端 G125（Special Requirements 编辑）已在后端本地 main，三审 PASS，等 Annie 跑 release.py。
+  - 多两种 400：请求没带 notes 键；有控制字符。09 核过前端 d90aa68，不用改。
+- 后端 G221（Farm out 每个团加子项）代码写完，等 Annie 执行 v130 才能上 main。已派 e6 让 task/farmout-rate-items 对形状、合 main 解冲突，只推分支。
+- 后端 G215 Driver & Guide（司机页改餐 + 发餐厅）已上 main：2e740001，合并 387bc972。
+  - 司机页是后端模板，前端不用改。新路由：POST /driver/api/lunch、GET /driver/api/restaurant/preview、POST /driver/api/restaurant/send。
+  - 开关关着时 403。
+  - 提醒：第一次真发给餐厅，要 Annie 点头。
+- Annie 通知（经 57）：今天 10/30 下午 3 点收工，14:45 开始收尾，14:55 前推完，15:00 起不改文件。已转 09 / 62 / e6。
+- **Annie（11:5x）原话：「你检查一下我前天和昨天布置的任务还有哪些没有完成的，现在做了」**。主窗口查了 10-28、10-29 两天的交接。
+  - 前端现在就能做的，照 preview 推荐动手：
+    - 09 `task/manifest-farmout-button`：Bus Manifest 第二辆车 Farm out 键（preview 7uRp5FHfFTsnRYemrrm1Wf，Q1–Q5 照推荐）；
+    - e6 `task/forecast-no-click`：Forecast 数字不能点，能编辑的空格改绿「+」，细实线（preview X9EXZjpgbKfPhxzeKR7c9c v2，Q1 / Q2 照推荐）。
+  - 进行中：A8 改时间小窗跟着 G218 整周 Save，62 在做。
+  - 卡在后端，已问 57：
+    - Users / Team 第二步（admin 按层级，B1–B8）；
+    - Team Columns 键（user_prefs 白名单）；
+    - G219 staff 联络方式（team-contacts、import-team 等它）；
+    - G211 pickup-split；
+    - G221 等 v130；
+    - 导游页链接免登录。
+  - 等 Annie：Rezdy 冲突五处（置顶 4）。
+- 57 回 6 项后端状态（11:50）：
+  1. Team 第二步 B1–B8：只上了删除账号（G212），按层级的写接口没做，今天派窗口能做多少做多少；
+  2. Team Columns 键：今天做，键名 "team_list_layout"，格式同 hr_list_layout。前端同意，上 main 后派人照 HR 页的 Columns 做法接；
+  3. G219 staff 联络方式：78 在做，v131 等 Annie 过目执行，今天不一定能上；
+  4. G211 pickup-split：代码、审查、测试都过了，排在 G218 后面落地，要 Annie 跑 release.py；
+  5. G221：排在 G211 后面落地，要 release.py；
+  6. 导游页链接免登录：G123 10/19 已上，不用再做。
+- Annie 原话「V130已经执行了」：已转 57。
+- 后端 66 核 G212 B1–B8（main 2e740001）：
+  - B8 完成；
+  - B1 有回退：admin 撤销邀请被 403，今天先修；
+  - B2 / B4 / B5 部分完成，今天按 B1 → B4 → B2 → B5 修；
+  - B3 要改成 409 + 计数：前端要同时改 Team 页「Deactivate instead」的判断，已请后端上之前先发形状，前后端一起上；
+  - B6 / B7（admin 按层级）没做，约半天，明天接着做。
 ## 2026-10-29 晚 收工交接：前端主窗口 `今天前端主窗口-d2`[15266b]（家里电脑，Annie「做完写交接收工」）
 
 明天的主窗口先读这一节。细节在下面「2026-10-29 晚 主窗口 d2 开工核对」那一节，按时间逐条记。
@@ -1328,6 +1395,73 @@ pe-ops-frontend-bmv）：
 - 92[5f58db]、72[23ce9c] 都已收工，worktree 干净：C:\Code\npe-ops-frontend-g203、C:\Code\npe-ops-frontend-g208。
 - 后端：f0 主窗口、bd 做 G203 / G208 / guide_notes、d0 做 G98 / G212。G203 第 ③④ 步（Dispatch 逐车、Schedule 等补写入，以及 Quick replies 新形状 /action-log）还在后端，路径到了再派前端接面板。
 - 空闲内存一直在 0.7–2 GB，一次最多开两个前端工作窗口。
+
+## 全站「上传表格自动填」：Farm out 合作公司上车点的 ⬆ Import（`task/import-farmout-locations`，从 `task/import-hr` 拉，2026-10-29 晚，工作窗口 `npe-ops-frontend-59`[678c38]，主窗口 d2 派工）—— **分支已推，没合 main（后端接口没上，先用 mock）**
+
+- Annie 原话（d2 转）：「批量导入同意全部推荐。动手」—— preview ⑤ 清单第 6 项。做法同 HR 那节（`StandardImport`，标准接口形状 `types/bulk-import.ts`）。
+- 改动（`components/farm-out/partner-detail.tsx`，Settings › Farm out Partners 展开 Locations）：
+  - 「Save locations」左边加 ⬆ Import；Import 块在上车点表上面。一家一份：按 **Hotel** 在这家里对上，没对上的加在最后。
+  - 表里有没存的改动时 ⬆ Import 灰掉（title 写「Save locations first — Import reloads the list.」）：导入存好会重读整张表，没存的会丢。
+  - 模板 = 这家现有的上车点（顺序同表），列 Hotel / Spot / Address / Map link，文件名 `<合作公司名>_locations_template.csv`。
+  - `PartnerDetail` 多一个 `partnerName`（模板文件名用）；How to use 那条加一句。
+- 检查：`fo-settings` 93/93（新加：⬆ Import 不是蓝的、有没存的改动时灰、改回去能点、模板列名 / 行数 / 文件名、预览只调这家的 preview、
+  数字和栏名、「旧 → 新」、Map link 错红字、存不上红字且表没动、存好绿字 + 表重读出新酒店、Close、How to use）；tsc 0、eslint 0 错、build 通过。
+- ⚠️ **需要后端**（Farm out Locations）：
+  1. `POST /api/farm-out/partners/{id}/locations/import/preview`（multipart `file`，只读，权限同 PUT locations）→ `ImportPreviewResponse`：
+     栏 key `hotel_name` / `spot` / `address` / `map_link`（表头 Hotel / Spot / Address / Map link）；按 hotel_name 在这家里对上（不分大小写），
+     没对上的 new（排在最后）；空格不改；Hotel 必填；文件里同名重复的第二行 error。
+  2. `POST /api/farm-out/partners/{id}/locations/import/commit`（同一个文件）：只写 new / update，**一个事务**；回 `ImportCommitResult`；
+     改动记进 Farm out 设置的 Action Log（同现在 PUT locations 的写法）。
+- 下一步：后端接口上 main → import-hr 先合 main → 合最新 main、重跑 fo-settings → 合 main。
+- **2026-10-30 e6 对后端 G220 第二批**（工作窗口 `npe-ops-frontend-e6`[047d88] 接手，分支 `task/import-farmout-locations-e6`，worktree `C:\Code\ops-wt-e6-import-farmout-locations`；主窗口 eb 派工）：
+  - 照后端 task/bulk-import-backend c8c0b739（farm_out_settings.py 的 plan_location_import、routers 的 _import_preview / _import_commit）核：
+    - 接口、列 key、表头（Hotel / Spot / Address / Map link）、只在这家里按 Hotel 对，和 59 的前端一致，页面代码不用改形状。
+  - 出入，已改：
+    - mock 补每行 row、counts，新建行的 changed；unchanged 行带对上的 id。
+    - Map link 错的原话改成后端的「The map link for <Hotel> must start with http:// or https:// and have no spaces.」。
+    - 加 409「Someone changed this list while the file was being saved. Nothing was saved — check the preview again.」、400（文件错 / 公司不存在）。
+    - 500 用后端原话「Could not save. Nothing was changed - try again.」。
+  - 共用块 [bulk-import.tsx](components/ui/bulk-import.tsx) 修一处：后端原话里已经有 nothing was changed / saved 时，前面不再加「Not saved — nothing was changed.」（原来 Farm out 500 会说两遍）。只改字，样子不变。
+  - fo-settings-test 加 / 改：500 红字只说一遍、409 红字照原话、400 红字照原话且没有表和 Save；Map link 错误原话。
+  - 检查（合了最新 main）：fo-settings 97/97、nav 32/32、hr 56/56、pl 63/63、veh 47/47（共用块改了，三套一起跑）；tsc 0 错；eslint 0 错、2 个原有警告；build 过。
+  - 后端 G220 第二批已上 main（5ada7a0，合并 ebc45bc）。和 c8c0b739 比，farm_out_settings、bulk_import、vehicles 都没变。
+  - 合最新 main 后，veh-mock / veh-test 的 409 原话跟后端改成长破折号。
+  - 重跑：fo-settings 97/97、hr 56/56、pl 63/63、veh 47/47、nav 32/32；tsc 0 错；eslint 0 错、2 个原有警告；build 过。等 eb 回「合」。
+
+## 全站「上传表格自动填」：Farm out 结算价的 ⬆ Import（`task/import-farmout-rates`，从 `task/import-hr` 拉，2026-10-29 晚，工作窗口 `npe-ops-frontend-59`[678c38]，主窗口 d2 派工）—— **分支已推，没合 main（后端接口没上，先用 mock）**
+
+- Annie 原话（d2 转）：「批量导入同意全部推荐。动手」—— preview ⑤ 清单第 7 项（每年调价时一次改完）。做法同 HR 那节（`StandardImport`，标准接口形状 `types/bulk-import.ts`）。
+- 改动（`components/farm-out/partners-view.tsx`）：
+  - 「Partners & rates」卡头加 ⬆ Import；Import 块在卡上面。**一份文件管全部合作公司**：列 Partner / Tour / Adult / Child，按 Partner + Tour 对上；
+    对不上的（没有这家公司 / 这个团）算 Error，**不新建**（加公司照旧用 + Add Partner，团来自产品）。空格不清空价钱。
+  - 正在改某个团的价时 ⬆ Import 灰掉（title「Save or cancel the price you are editing first.」）。
+  - 模板 = 每家每个团一行带现在的价（没设的空着），文件名 `farm_out_rates_template.csv`。
+  - 存好后 `refreshAll()` 静悄悄重拉合作公司和价钱（不回 Loading，Import 块和展开的上车点都留着）；Action Log 的 refreshKey 改成跟着导入走。How to use 加一条。
+- 检查：`fo-settings` 92/92（新加：卡头 ⬆ Import 不是蓝的、改价时灰、Cancel 后能点、模板列名 / 内容 / 文件名、预览只调 preview、数字和栏名、
+  「105 → 109」「— → 120」、对不上的公司和不是数字的红字、存不上红字且列表价没动、存好绿字 + 列表出新价 + 上车点还展开、Close、How to use）；
+  tsc 0、eslint 0 错、build 通过。
+- ⚠️ **需要后端**（Farm out Rates）：
+  1. `POST /api/farm-out/rates/import/preview`（multipart `file`，只读，权限同 PUT rates）→ `ImportPreviewResponse`：
+     栏 key `partner` / `tour_name` / `adult_price` / `child_price`（表头 Partner / Tour / Adult / Child）；按合作公司名 + 团名对上（不分大小写，含停用的公司）；
+     对不上的行 error（例如「No partner called “…”.」「No tour called “…” for this partner.」），不新建；价钱是数字（可带小数），空格不改；值和 before 用不带 $ 的数字文字；文件里同一家同一团重复的第二行 error。
+  2. `POST /api/farm-out/rates/import/commit`（同一个文件）：只写 update，**一个事务**；回 `ImportCommitResult`；改动记进 Farm out 设置的 Action Log（同 PUT rates）。
+- 下一步：后端接口上 main → import-hr 先合 main → 合最新 main、重跑 fo-settings → 合 main。和 `task/import-farmout-locations` 都改 fo-settings 检查套 / mock（不同位置），后合的那个合进来解冲突。
+- **2026-10-30 e6 对后端 G220 第二批**（工作窗口 `npe-ops-frontend-e6`[047d88] 接手，分支 `task/import-farmout-rates-e6`，worktree `C:\Code\ops-wt-e6-import-farmout-rates`；主窗口 eb 派工）：
+  - 照后端 task/bulk-import-backend c8c0b739（farm_out_settings.py 的 plan_rate_import、routers 的 _import_preview / _import_commit）核：
+    - 接口、列 key、表头（Partner / Tour / Adult / Child）、按合作公司名 + 团名对上、从不新建，和 59 的前端一致，页面代码不用改。
+  - 出入，已改 mock 和检查：
+    - 价钱在 values / before 里是两位小数的文字（"105.00"），预览显示「105.00 → 109.00」「— → 120.00」。
+    - 每行的 id 是对上的合作公司 id；补了 row、counts。
+    - 没价钱、文件也空的栏不算 blanked（库里没有值）。
+    - 价钱错的原话改成后端的「The adult price must be a number such as 45 or 45.50.」。
+    - 加 409（后端原话）、400（文件错）。
+  - fo-settings-test 加两项：409 红字照原话、只说一遍；400 红字照原话、没有表和 Save。
+  - 共用块「后端已说没存就不再加前缀」那处修在 import-farmout-locations 分支，这里没改；这里的 500 用的是不带那句的「Database is busy」，两支谁先合都不冲突。
+  - 检查（合了最新 main）：fo-settings 96/96、nav 32/32；tsc 0 错；eslint 0 错、2 个原有警告；build 过。
+  - 后端 G220 第二批已上 main（5ada7a0，合并 ebc45bc，形状同 c8c0b739）。
+  - 合了上车点那支上 main 之后的 main（7fae286）。fo-settings-test 两段导入检查在同一处冲突，解法：用 main 的文件，把结算价这段整段接在上车点那段后面，其余部分两边一样；mock 自动合上；PROGRESS 两节都留。
+  - 重跑：fo-settings 110/110（两段导入都在跑）、nav 32/32；tsc 0 错；eslint 0 错、2 个原有警告；build 过。等 eb 回「合」。
+  - task/farmout-rate-items 也改 partners-view.tsx，以后合它的时候解冲突。
 
 ## 全站「上传表格自动填」：Vehicles 的 ⬆ Import（`task/import-vehicles`，从 `task/import-hr` 拉，2026-10-29 晚，工作窗口 `npe-ops-frontend-59`[678c38]，主窗口 d2 派工）—— **分支已推，没合 main（后端接口没上，先用 mock）**
 

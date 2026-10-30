@@ -21,6 +21,7 @@ import {
 } from "@/components/pickup-locations/legacy-ui";
 import { ActionLogPanel } from "@/components/action-log/action-log-panel";
 import type { ActionResult } from "@/components/ui/action-result";
+import { BulkImportButton, StandardImport } from "@/components/ui/bulk-import";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ErrorBanner } from "@/components/ui/panel";
 import { fetchActionLog } from "@/lib/action-log";
@@ -34,6 +35,7 @@ import {
   updatePartner,
 } from "@/lib/farm-out-api";
 import { usePermissions } from "@/lib/staff-permissions";
+import { csvBlob } from "@/lib/csv";
 import { cn } from "@/lib/utils";
 import type { FarmOutPartner, FarmOutRate } from "@/types/farm-out";
 
@@ -53,6 +55,14 @@ import {
 } from "./ui";
 
 /** Settings → Farm out Partners：合作公司名单、改名、停用，展开改结算价和它自己的上车点。 */
+/** ⬆ Import 的栏：key → 模板 / 预览里的栏名。 */
+const RATE_IMPORT_LABEL: Record<string, string> = {
+  partner: "Partner",
+  tour_name: "Tour",
+  adult_price: "Adult",
+  child_price: "Child",
+};
+
 export function PartnersView() {
   const [gate, setGate] = useState<LoadGate>({ kind: "loading" });
   const [partners, setPartners] = useState<FarmOutPartner[]>([]);
@@ -83,8 +93,33 @@ export function PartnersView() {
     saving: boolean;
     error: string | null;
   } | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
+  const [logVersion, setLogVersion] = useState(0);
   const redirectToLogin = useRedirectToLogin();
   const perms = usePermissions();
+
+  /** 导入存好后静悄悄重拉（不回到 Loading，Import 块和展开的上车点都留着）。 */
+  const refreshAll = useCallback(async () => {
+    setLogVersion((v) => v + 1);
+    try {
+      const list = await fetchPartners();
+      const entries = await Promise.all(
+        list.map(async (p) => {
+          try {
+            return [p.id, await fetchPartnerRates(p.id)] as const;
+          } catch (error) {
+            if (isStatus(error, 401)) throw error;
+            return [p.id, "error"] as const;
+          }
+        }),
+      );
+      setPartners(list);
+      setRates(Object.fromEntries(entries));
+    } catch (error) {
+      if (isStatus(error, 401)) redirectToLogin();
+      else setActionError(`Could not reload the list: ${describeError(error)}`);
+    }
+  }, [redirectToLogin]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -295,9 +330,57 @@ export function PartnersView() {
             </div>
           ) : null}
 
+          {importOpen ? (
+            <StandardImport
+              title="Import rates"
+              help={
+                <>
+                  <b>Partner</b> and <b>Tour</b> find the row; a partner or tour
+                  not on the list is an error (add partners above). Adult and
+                  Child are numbers, e.g. 105. A blank cell never clears a
+                  price.
+                </>
+              }
+              endpoint="/api/farm-out/rates/import"
+              labelOf={(k) => RATE_IMPORT_LABEL[k] ?? k}
+              template={() => ({
+                blob: csvBlob(
+                  ["Partner", "Tour", "Adult", "Child"],
+                  partners.flatMap((p) => {
+                    const list = rates[p.id];
+                    return list === "error" || !list
+                      ? []
+                      : list.map((r) => [
+                          p.name,
+                          r.tour_name,
+                          r.adult_price ?? "",
+                          r.child_price ?? "",
+                        ]);
+                  }),
+                ),
+                filename: "farm_out_rates_template.csv",
+              })}
+              onClose={() => setImportOpen(false)}
+              onSaved={() => void refreshAll()}
+              onUnauthorized={redirectToLogin}
+            />
+          ) : null}
+
           <section className={CARD_CLASS}>
             <div className={CARD_HEADER_CLASS}>
               <h2 className={CARD_TITLE_CLASS}>Partners &amp; rates</h2>
+              <span
+                title={
+                  editingRate
+                    ? "Save or cancel the price you are editing first."
+                    : ""
+                }
+              >
+                <BulkImportButton
+                  onClick={() => setImportOpen(true)}
+                  disabled={importOpen || editingRate !== null}
+                />
+              </span>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[720px] border-collapse text-[12px]">
@@ -576,6 +659,7 @@ export function PartnersView() {
                               <td colSpan={5} className="p-0">
                                 <PartnerDetail
                                   partnerId={p.id}
+                                  partnerName={p.name}
                                   onUnauthorized={redirectToLogin}
                                 />
                               </td>
@@ -593,7 +677,7 @@ export function PartnersView() {
           {/* G203 第三批：Farm out 设置的改动记录（后端按 settings.farm_out，同写接口）；partner 后端 403，干脆不出。 */}
           {perms.isPartner || !perms.can("settings.farm_out") ? null : (
             <ActionLogPanel
-              refreshKey={0}
+              refreshKey={logVersion}
               reloadOnOpen
               onUnauthorized={redirectToLogin}
               load={(before, signal) =>
@@ -646,9 +730,21 @@ function HowToUse() {
         in Dispatch until you set one.
       </li>
       <li>
+        To change many prices at once (for example the yearly price change),
+        click ⬆ Import in Partners &amp; rates, then ⬇ Download template (every
+        partner and tour with today&apos;s prices). Change the prices in Excel,
+        choose the file, check the preview and click Save. Rows are matched by
+        Partner and Tour; a blank cell never clears a price; rows marked Error
+        are not saved.
+      </li>
+      <li>
         Locations opens this partner&apos;s own pick-up hotels (not linked to
         our Pickup Locations). Their order there is the order shown in Dispatch.
-        Click Save locations to keep your changes.
+        Click Save locations to keep your changes. To change or add many at
+        once, click ⬆ Import, then ⬇ Download template (this partner&apos;s
+        locations), change or add rows in Excel, choose the file, check the
+        preview and click Save. Rows are matched by Hotel; a blank cell never
+        clears a box; rows marked Error are not saved.
       </li>
       <li>
         Rename changes the name shown in this system. Deactivate hides the
