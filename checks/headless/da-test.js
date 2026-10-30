@@ -1151,7 +1151,7 @@ async function run() {
     await helpers();
     await evaluate(AUTOSAVE_OFF);
     const before = await evaluate(hints);
-    check("CCL 预填：JUAN 对不上 HR ⇒ 司机框空着、下面橙字 no match；车对上了写灰字 CCL: 2555；导游 LANKUN 对不上也写橙字", before.includes("driver=CCL wrote JUAN - no match, pick the driver") && before.includes("vehicle=CCL: 2555") && before.includes("driver=CCL: GIA") && before.includes("guide=CCL wrote LANKUN - no match, pick the guide") && (await evaluate(`return ${relayRow}.querySelector('[data-f=driver]').value === '';`)), before);
+    check("CCL 预填：JUAN 对不上 HR ⇒ 司机框空着、下面写 CCL: JUAN · Not in HR（同手打的 JIMMY，Annie 2026-10-30 截图，不写橙字）；车对上了写灰字 CCL: 2555；导游 LANKUN 对不上也写 CCL: LANKUN · Not in HR", !before.includes("no match") && before.includes("driver=CCL: JUAN · Not in HR") && before.includes("vehicle=CCL: 2555") && before.includes("driver=CCL: GIA") && before.includes("guide=CCL: LANKUN · Not in HR") && (await evaluate(`return [...document.querySelector('section[data-sec=relay] .vrow [data-ccl=driver]').querySelectorAll('span')].some(e => e.textContent === 'Not in HR');`)) && (await evaluate(`return ${relayRow}.querySelector('[data-f=driver]').value === '';`)), before);
     // 没动过手的预填不自动存：在 West Rim 那台车写个备注（JUAN 那台、各名字格都不碰），整天存。
     await evaluate(`const el = document.querySelector('section[data-sec="bus_tour:3"] .vrow [data-f=note]'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(el, 'ZZ Test note'); el.dispatchEvent(new Event('input', { bubbles: true }));`);
     await sleep(200);
@@ -1165,20 +1165,20 @@ async function run() {
     await helpers();
     await evaluate(AUTOSAVE_OFF);
     const after = await evaluate(hints);
-    check("存过、重开：框下面那几行跟存之前一模一样（橙字 JUAN / LANKUN、灰字 GIA / 2555、CCL: JIMMY · Not in HR）", after === before && before.includes("driver=CCL: JIMMY · Not in HR"), `before=${before} after=${after}`);
+    check("存过、重开：框下面那几行跟存之前一模一样（CCL: JUAN / LANKUN / JIMMY · Not in HR、CCL: GIA / 2555）", after === before && before.includes("driver=CCL: JIMMY · Not in HR"), `before=${before} after=${after}`);
     check("存过、重开：手打名的框还是 Jimmy Vegas (typed)", await evaluate("return [...document.querySelectorAll('section[data-sec=relay_2] .vrow [data-f=driver]')].some(s => s.selectedOptions[0]?.text === 'Jimmy Vegas (typed)');"));
     check("存过的一天：没有 CCL 预填条（这份 CCL 已经用过）", !(await evaluate("return !!document.querySelector('section[aria-label=CCL]');")));
     // 真改了的那一格才变：JUAN 那台选一个司机 ⇒ 橙字变灰字 CCL: JUAN；再存、再重开，关联还在（day 回的 ccl 带 line_id，原样送回）。
     await pick(`${relayRow}.querySelector('[data-f=driver]')`, 1);
     await sleep(200);
-    check("选了司机：JUAN 那行变灰字 CCL: JUAN，别的行不变", (await evaluate(hints)) === before.replace("driver=CCL wrote JUAN - no match, pick the driver", "driver=CCL: JUAN"), await evaluate(hints));
+    check("选了 HR 的司机：JUAN 那行变成 CCL: JUAN（没有 Not in HR），别的行不变", (await evaluate(hints)) === before.replace("driver=CCL: JUAN · Not in HR", "driver=CCL: JUAN"), await evaluate(hints));
     const s2 = await saveNow();
     await sleep(600);
     const sent2 = s2.flatMap((e) => e.body.rows.map((r) => r.ccl_line_id));
     check("第二次存（存过的一天、ccl 只带 line_id 和原文）：照旧送回 ccl_line_id 370", sent2.includes(370), JSON.stringify(sent2));
     await goto(`${APP}/dispatch?date=2026-10-24`);
     await waitFor(`[...document.querySelectorAll('[data-ccl]')].some(e => e.textContent.includes('JUAN'))`, 10000);
-    check("再重开：JUAN 那行还是灰字 CCL: JUAN，LANKUN 橙字还在", (await evaluate(hints)) === before.replace("driver=CCL wrote JUAN - no match, pick the driver", "driver=CCL: JUAN"), await evaluate(hints));
+    check("再重开：JUAN 那行还是 CCL: JUAN，LANKUN 的 CCL: LANKUN · Not in HR 还在", (await evaluate(hints)) === before.replace("driver=CCL: JUAN · Not in HR", "driver=CCL: JUAN"), await evaluate(hints));
     await ctl({ dayCcl: false });
   }
 

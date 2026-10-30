@@ -35,6 +35,18 @@
   3. 编辑权限不变（同 2026-10-30 修的 dor-edit-own：本人改自己的、report.edit 改所有人的）。
 - 明天要做：展开一条报告时在下面列「Updates」（谁、什么时候、写了什么，旧的在前），加一个输入框 + 蓝色 Save（任何能看这条报告的人都能加，partner 没有）。页面位置照 DOR 现状 preview（https://claude.ai/artifact/9FgXaqe3voxgGGuJVQpTdC ）第 5 部分画虚线框的那个地方。文字一律当纯文本显示。按 Save 才存（Saving… / 绿字 Saved / 红字后端原话）。检查：dor 套 mock 加 updates，测列出、加一条、空文本 / 超长 400 原话、partner 没有输入框。
 
+## 2026-10-30 Dispatch：HR 对不上的 CCL 名字改写成「CCL: JUAN · Not in HR」（`task/dispatch-ccl-nohr-hint`，工作窗口 `npe-ops-frontend-62`[cd78c4]，eb 派）—— 已合 main
+
+- Annie 又发了截图（经 57 → eb），原话：「这个才是正确的样子，框里是staff手工打的」。
+  截图：Bryce&Zion 司机框「Jimmy Vegas (typed)」，框下「CCL: JIMMY · Not in HR」（红色标签）；车框下「CCL: 2415」。
+- 改动在 `vehicle-row.tsx` 的 CclHint：
+  - HR 里根本没有这个名字（后端没给候选人）、框空着等 staff 手打的：框下面写「CCL: JUAN · Not in HR」，跟手打以后那一行写法一样，不再写橙字「CCL wrote JUAN - no match, pick the driver」。司机、导游都是这样。
+  - 照旧不改的两种：重名的（BRUCE → Bruce O / Bruce W，橙字「pick Bruce O or Bruce W」，以后再问 Annie）；车号不在 Vehicles 的（橙字）。
+  - 重名的候选人如果都被筛掉了（不能跑这个班、驾照挡住），照旧写橙字「no match」，不当成 HR 没有这个人。
+  - 存过、重开都在：靠方案 C（后端 day 回的 ccl，前端 cc7007b）。
+- 检查：da 2026-10-24 那几项改成测新写法（JUAN / LANKUN 是「CCL: … · Not in HR」、页面上没有「no match」；选了 HR 的人以后变成「CCL: JUAN」）。
+  结果：da 417/417、nav 32/32；tsc 过；eslint 过；build 过。端口 3362 / 8962 / 9562。
+
 ## 2026-10-30 Dispatch：CCL 原文存过、重开都还在（`task/dispatch-ccl-hint-persist`，工作窗口 `npe-ops-frontend-62`[cd78c4]，eb 派）—— 已推分支，等后端 57 的 day.ccl 上 main 再合
 
 - 起因：Annie 发现 10/31 ANTELOPE 司机「JUAN」对不上 HR，Apply 以后框空着，存过、重开以后框下面那行 CCL 原文也没了。

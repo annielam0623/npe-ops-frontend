@@ -587,17 +587,27 @@ function CclHint({
       </span>
     );
   }
-  const cands = (
+  const all =
     (field === "driver"
       ? c!.driver_candidates
       : field === "guide"
         ? c!.guide_candidates
-        : []) ?? []
-  ).filter((n) => {
+        : []) ?? [];
+  const cands = all.filter((n) => {
     if (field === "guide") return !!L.guide(n.id);
     const d = L.driver(n.id);
     return !!d && canRun(d, row.shift) && !d.license_blocked;
   });
+  // HR 里没有这个人（没有候选人）：框空着等 staff 手打，框下面跟手打了的一样写「CCL: JUAN · Not in HR」，
+  // 不写橙字（Annie 2026-10-30 截图：「这个才是正确的样子，框里是staff手工打的」）。存过、重开都在（day 回 ccl）。
+  // 重名（BRUCE → Bruce O / Bruce W）、车号不在 Vehicles 的照旧写橙字。
+  if (field !== "vehicle" && !all.length) {
+    return (
+      <span className={CCLTXT} data-ccl={field}>
+        CCL: <b>{text}</b> · <Pill tone="bad">Not in HR</Pill>
+      </span>
+    );
+  }
   return (
     <span
       className="relative pl-[23px] text-[12.5px] leading-[1.4] font-semibold text-[#c2410c] [&_b]:font-[650] [&_b]:text-[#c2410c]"
