@@ -109,6 +109,10 @@
     - 理解成清单 ⑤ 后面几页（Vehicles、Farm out Locations、Farm out Rates）也动手。
     - 已派 59，每页一个分支，从 import-hr 拉。
 - Staff Schedule 空档提醒 + Publish anyway / again：✅ 9c 已合 main 09dafb9（sch 194、nav 32；tsc / eslint / build 都过）。等 Annie 验收；重新发布的通知规则还等她定。
+  - Annie 在 9a 窗口答：重新发布只发给班有变化的人和他们的主管，原话「同意」。
+    - 后端 8e 做，做完 G209 接着做，今晚做不完就明天。
+    - 后端上线后，前端要改 Publish again 确认框那句「No notifications are sent when you publish again」和成功提示，排给 9c。
+  - 「已发布的周改动时不再逐项发通知」9a 还在问；「加休息日单独通知」也还没答。
     - 版式、字号、换车都先暂存，整页一个 Save；没存的改动标琥珀色。
     - Aa 框里的 Save 改成 Done。
     - 打印前问「Save before printing?」。
