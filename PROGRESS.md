@@ -76,6 +76,15 @@
   - 等等。
   觉得键太多，可以改成按大块分。
 
+## 2026-10-30 Dispatch 手动保存上线（`task/dispatch-manual-save-e6`，从 59 的 f243720 接手；工作窗口 `npe-ops-frontend-e6`[047d88]，主窗口 eb 派工）
+
+- Annie 2026-10-30 在主窗口里下令，原话：「Dispatch 手动保存，你说「推」才上线；推」。
+- 做了什么见下面「dispatch-manual-save」那节（59 写的）：取消自动保存、整页 Save、10 分钟没活动自动存、离开拦截、Saved 绿字。e6 没改代码，只合了最新 main（没有冲突）、重跑检查、合 main。
+- 检查（公司电脑，Node v26.13.0）：
+  - da 380/380（单独跑，SUITE_TIMEOUT_S=900）、nav 32/32；
+  - tsc 0 错；eslint 0 错、2 个警告（原有的）；build 过。
+- G215（62）当时还没合进 main；它也改 relay-panel，谁后合谁解冲突。
+
 ## 2026-10-30 Bus Manifest 对后端最终接口形状（`task/bus-manifest-versions-fe-e6`，工作窗口 `npe-ops-frontend-e6`[047d88]，主窗口 eb 派工）
 
 - **情况**：`task/bus-manifest-versions-fe` 的 5a14bc3 昨晚已经合进 main（6be2334），整页 Save 800358f 是在它之后做的。
