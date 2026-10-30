@@ -223,6 +223,18 @@
   - 9c 也回来了（新号 [d7db37]），确认 54544b8 就是全部改动。
     - tsc、eslint 都过了；sch 套件 193/193（5 次里 2 次开头加载慢时失败，重跑就过）。
     - 重启后剩下：build、看一遍 diff、写正式提交说明，然后推分支。等后端 allow_gaps 的形状。
+- **重启后（10-29 晚）**：主窗口新号 [15266b]。各窗口新号：59 [279f72]、9c [72d8d1]、9a [599ab6]、3d [683799]、20 [0fcef2]、8e [0bca1a]。
+  - 资源：C 盘 6 GB，D 盘也有页面文件，可用虚拟内存 15.4 GB，空闲内存 12.7 GB。
+  - 9c 已把 `task/schedule-publish-anyway` 收尾：c83d666，build 过，sch 193/193。等后端接口到了再合 main。
+  - 派工：
+    - 59：g203-batch4 重跑 build 后合 main；
+    - 9c：Pickup Locations preview v2，加接人时间；
+    - 9a：重发 Publish anyway / again 的后端活（原来给 c8，c8 不在了）。
+  - 后端 main 还是 36dde18，Bus Manifest 还没推（要 Annie 在自己的终端推）。
+  - 9a：Publish anyway / again 交给 8e。
+    - 不加列、不做 migration；去掉两处 409；「发布时有空档」在读数据时现算。
+    - 排在 G216 后面，明天做。
+    - 通知规则定下来之前，重新发布先不发通知（主窗口同意），首次发布照旧。已问 Annie 通知规则。
 - **Annie 重启电脑前的交接（10-29 晚）**：
   - 后端 9a：Bus Manifest 正在推 main，West Rim 提交号由 20 发来；G216 重启后再合；B9 批量接口、Publish anyway 还没开工。
   - 前端重启后的下一步：
