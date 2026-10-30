@@ -76,7 +76,55 @@
   - 等等。
   觉得键太多，可以改成按大块分。
 
-## Products 改成「按 Save 才存」（`task/products-manual-save`，2026-10-30，工作窗口 `npe-ops-frontend-09`[8a0116]，主窗口 eb 派工）—— 检查都过，等 eb 回话再合 main
+## 2026-10-30 Bus Manifest 对后端最终接口形状（`task/bus-manifest-versions-fe-e6`，工作窗口 `npe-ops-frontend-e6`[047d88]，主窗口 eb 派工）
+
+- **情况**：`task/bus-manifest-versions-fe` 的 5a14bc3 昨晚已经合进 main（6be2334），整页 Save 800358f 是在它之后做的。
+  所以不用再合分支，改成在最新 main 上对后端 156ae23 的接口形状（`git show 156ae23:tasks/ACTIVE.md`「接口形状」，另外看了 routers/tour_manifest.py、services/manifest_text_size.py）。
+- **逐个字段对，和前端一致**：
+  - GET 部分：`tour.manifest_version`（general / lankun / marcello / west）、`tour.lunch_column`；客人的 `hotel_short` / `pickup_time_short` / `lunch_slots`（null 写「-」）/ `lunch_mismatch`；每车的 `lunch_mismatch_orders` {order_number, guest, pax, lunch_text, bus_label, tour}；`restaurant`（只 Lankun 有，{name, title, footer_lines, totals{beef,turkey,veggie,total}}）；`text_size` {page, columns, rows}；`text_size_history` [{by, at, what}]。
+  - PUT `/api/dispatch/manifest/version` {tour, version} → {ok, version}。
+  - PUT `/api/dispatch/manifests/text-size` {tour_manifest_id, bus_label, text_size} → {ok, text_size, text_size_history}。前端不用这个返回，存完会整页重读。
+  - d 的范围 −2..+10 和前端 TEXT_MIN / TEXT_MAX 一致；前端用到的列键都在后端 COLUMN_KEYS 里（MANIFEST_COLUMNS 的键 + lunch）。
+- **只有一处出入，已改**：后端整行字号只收「这台车上现在的订单号」，否则 400「That booking is not on this bus any more」。
+  - 原来整页 Save 的顺序是先存字号、后存换车：客人换到新车、又在新车上调了那一行，按 Save 新车的字号会 400；从原车换走的单，整行设定也照样送给原车。
+  - 改法（[manifest-view.tsx](components/dispatch-manifest/manifest-view.tsx) `savePending`）：先存换车，再存字号；每台车只送换车后还在这台车上的订单号的整行（换车没存上的按原车算）。样子不变。
+- 模拟接口 mf-mock 的 text-size 照后端补了两条 400 校验：列键不认识、订单不在这台车上。
+- mf-test 加了三项：先 guest-bus 后 text-size；B 车带 CHD3 整行、A 车不带；绿字 Saved、没有红字。跑完把模拟后端放回原样。
+- Lunch 不符提醒 / Save before printing? 的先后：main 上已经是先问存、存完用重读的数据再出餐不符框，没动。
+- ✅ 检查（合了最新 main 之后，Node v26.13.0）：
+  - mf 185/185、man 322/322、pl 48/48、nav 32/32；
+  - tsc 0 错；eslint 0 错、2 个警告（public/window-hscroll.js 原有的）；build 过。
+  - eb 核对过，合 main。
+  - 注：npm 11 的 `npm ci` 拦了 unrs-resolver 的 postinstall（提示 `npm install-scripts approve`），没批；tsc / eslint / build / 检查都不受影响。
+## 2026-10-30 G215 前端：Send to driver「page is off」+ driver_page / guide_page 开关（工作窗口 `npe-ops-frontend-62`[cd78c4]，eb 派）
+
+- 分支 `task/g215-page-off`，worktree `C:\Code\npe-ops-frontend-g215`。检查都过了，等 eb 核对数字后合 main。
+- 后端 49c400a 对过形状：
+  - GET /api/dispatch/driver-notice 和 guide-notice 都多了 page_open、page_off_text。原文是「Driver page is off. Turn it on in Page visibility before sending.」
+  - 关着时 POST send 回 400，detail 就是这句。
+  - **只有设成 staff（Everyone）才算开**，admin 档也算关。
+- 做了：
+  - `lib/dispatch-api.ts`：DriverNotice 加 `page_open?`、`page_off_text?`。
+  - `components/dispatch/relay-panel.tsx`：
+    - page_open === false 时，Send texts now 灰掉，左边灰字照后端原文；
+    - 点 Send texts now 时先重读，重读到关着也不弹确认框；
+    - 字段缺省照旧；
+    - 400 用原来的确认框红字，显示 detail 加「Nothing was sent.」。
+  - `lib/page-visibility.ts`：加 driver_page「Driver page」、guide_page「Guide page」，默认 super_admin_only，紧跟 farm_out_dispatch。Page visibility 列表自动出这两行。
+- ⚠️ 和派工的差异：
+  - 前端没有 Send to guide 键，也没有 guide-notice 封装（G75 前端没做）。所以导游这边只加了开关。
+  - 新增 Send to guide 算新功能，要先 preview。已报 eb。
+- 检查（Node v26.13.0，公司电脑；先合了 main c5d47b3 之后的提交）：
+  - tsc 过；eslint 0 错误（2 个警告是别人的文件，原来就有）；build 过。
+  - da 378/378：新加 5 项，关着灰键 + 灰字、点了不弹框不发、开着正常、列名单后被关、400 红字。
+  - ns 49/49：行数改成 20，加两个新开关的位置、默认值，以及 PUT 形状（开 / 关回）。
+  - nav 32/32。
+  - 之后又合了一次 main（e6 的 Bus Manifest，只动 dispatch-manifest / mf 套），重跑了 tsc / eslint。
+  - eb 核对过数字，同意合 main。
+- ⚠️ 公司电脑的 prettier：git `core.autocrlf=true`，checkout 出来的文件是 CRLF，`npx prettier --check` 会连没改过的文件一起报。要加 `--end-of-line auto` 才只看真正的格式。另外 main 上原来就有几处没过 prettier（例如 relay-panel.tsx 的 badCars、pickup-locations/legacy-ui.tsx），不是这次改的，没动。
+- 导游页开关不替 Annie 开：打开前她要先确认导游短信原文。
+
+## Products 改成「按 Save 才存」（`task/products-manual-save`，2026-10-30，工作窗口 `npe-ops-frontend-09`[8a0116]，主窗口 eb 派工）—— **已合 main**（eb 2026-10-30 回「合」）
 
 - 为什么：Annie 10-29 原话「我要把所有这类自动保存改成手动的」「我不要改一点存一点的方式，会导致整个页面很慢，放个save键，admin想什么时候存就什么时候存，除非要跳转到其他页面才需要拦截并询问是否保存」「所有的下拉，拖拽---除了shortcut，都是先缓存，然后等保存」。动手指令：10-29 晚「4项全部动手」（第 4 项是这件）。盘点：https://claude.ai/artifact/3GQ3waCB2X4jnEdxTRfefe 的 A3+B6、A4、A5+B4、A6+B5。
 - 做了什么（提交 e9e7764，合 main 后 5999701）：
@@ -92,7 +140,7 @@
   3. 产品表每行一个 Save，只有这行改过才出现，放在 Deactivate 左边。
   4. Bus Manifest setup 顶上换团的下拉：有没存的改动时照离开页面拦（Save / Don't save / Cancel）。
   5. A6 每个带标题的小项一个 Save（甲），约 10 个，每个只调一个接口，不会存上一半，不用后端加「全存或全不存」的接口。Annie 要改成按大块（乙，5 个 Save）再说。
-- 检查（模拟接口 + headless Chrome；合最新 main 后重跑）：products 219/219、ptt 44/44、nav 32/32；tsc 过、eslint 0 错（2 个 public/ 里原有的警告）、build 过。Node 用的是 eb 装的 v26.13.0（.nvmrc 写 22），没见 Node 26 特有的报错。
+- 检查（模拟接口 + headless Chrome；合最新 main 后重跑，main 带进 Bus Manifest 65972c5 后再跑 products 219/219、nav 32/32）：products 219/219、ptt 44/44、nav 32/32；tsc 过、eslint 0 错（2 个 public/ 里原有的警告）、build 过。Node 用的是 eb 装的 v26.13.0（.nvmrc 写 22），没见 Node 26 特有的报错。
   - products 新加的检查：每块改了不发请求、按 Save 才发；Saved 绿（rgb 30,107,67）、失败红（rgb 179,38,30）；站内链接离开弹 Leave without saving?、Cancel 留下；换团 Cancel / Save（先存再换）/ Don't save（不存）；10 分钟自动存用假时钟（`window.__productsAutosaveMs`）缩成 1.5 秒：一直动鼠标不存、停下来才存、写 ✓ Auto-saved，产品表不参加。
   - 顺手修的：Forecast 那块存好后清草稿原来用的是开始存时的那份，存的那一两秒里又改的会被清掉；改成按当时的草稿清。
 - 没碰真后端，只用模拟数据。
@@ -181,6 +229,15 @@
   - 问「Looks good 重置」是什么：主窗口已解释。
   - 要导游短信原文：主窗口照后端 guide_notice.py 写给她看了，等她确认。
 
+- 后端 57 报 G220 批量导入第一批（HR + Pickup Locations + Vehicles）已上 main：提交 3b9a964，合并 76de8f3（66 做）。
+  - 形状照 ops 的 types/bulk-import.ts，多了 row、counts 两个键。
+  - ⚠️ values / before / errors 一律按纯文本显示，不许用 innerHTML（SA-4）。
+  - 和规格不一样的地方：
+    - Pickup 多两条检查：Hotel Name ≤ 200、Photo URL ≤ 500；
+    - 导入不改酒店名、不改车号（这两样是用来匹配的键）。
+  - HR：overwrite 默认 true，空格不清值；preview 多 errors / before / error 状态；commit 多 errors、error_rows；多两种 400（超过 5 MB、解压后超过 50 MB）。
+  - 前端待派：import-hr 37b19cc 先合 → import-pickup bd91c6f、import-vehicles d9d731a。Farm out 两个导入等 66 下一批。
+  - 资源：空闲内存 36 / 62 GB，CPU 13%。原想请 Annie 加 1 个窗口；09 做完 Products 空出来了，改派 09，不用加窗口。
 ## 2026-10-29 晚 收工交接：前端主窗口 `今天前端主窗口-d2`[15266b]（家里电脑，Annie「做完写交接收工」）
 
 明天的主窗口先读这一节。细节在下面「2026-10-29 晚 主窗口 d2 开工核对」那一节，按时间逐条记。
