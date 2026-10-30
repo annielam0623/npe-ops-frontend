@@ -276,6 +276,9 @@
   - 后端 20：Bus Manifest / West Rim 已合并审查完，本地 main 6ddcf0e（备份 origin/backup/bus-manifest-main-2026-10-29）。
     - 这是 Risk C 包，要 Annie 重启后在她自己的终端 `git push origin main`。
     - 推上去之前线上没有 'west'，前端 West Rim 先别放出来。
+  - ✅ 20 报：后端已上 main 并部署（6ddcf0e，合并 156ae23d），v125 / v126 已在生产执行。最终形状已转 9c。
+    - 9c 先停 pickup-split，把 `task/bus-manifest-versions-fe` 对形状、跑检查、合 main。
+    - 这次照 10-28 动手的规格上线（版式选了马上存）。「整页暂存 + Save」等 Annie 对那份 preview 说动手，另开分支改。
         - 主窗口提醒了 Annie 10-22 的规矩：除了 Boulder City，shuttle 都是 bus tour 沿路的站。
         - 9c 交 v2（同一个链接）：
           - 后端没有地方存「站几点」：接人时间是 Rezdy 时间减 15 分钟当场算的，只有回程时间存在 Manifest setup。
