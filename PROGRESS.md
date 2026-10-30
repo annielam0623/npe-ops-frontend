@@ -59,6 +59,15 @@
   - C. 两处都删，漏了的单只能等 Rezdy 下次推送。
 - ②③④⑤ 照「4 全按推荐 动手」，09 在做。gone_orders 那行灰字「cancelled / moved — 0 pax」留着。
 
+### 17. 排班卡片上直接标出造成的空档（62 preview https://claude.ai/artifact/WVNc5X87zYyKyY6k47qyKU ）
+- 依据：Annie 原话「是否可以直接在排班的那个模块上显示出来不是更直观么」，又举例：「如果制造了gap，他选了时间时候一保存，这个格子就变红色，告诉排班的人有一小时的gap」。
+- 样子：改时间小窗按 Done 的那一刻现算空档。只要造成新的空档，这张卡红框、淡红底，写「This leaves a 1 hour gap (11:00 AM – 12:00 PM).」；两段空档写「This leaves 2 gaps: …」；补上后红色消失。
+- 要 Annie 定 3 题（原文见 preview）：
+  1. 拖班、删班造成的空档也这样标吗？A 也标（推荐）/ B 只有改时间才标；
+  2. 只标那张卡，还是那一整列也加淡红底？A 只标卡（推荐，列头本来就有红点）/ B 卡 + 整列；
+  3. 草稿周（还没发布）也标吗？A 两种周都标、只标新造成的（推荐）/ B 只标已发布的周。
+- 都按推荐就说「17 全按推荐 动手」，派 62。
+
 ### 8. 可以上线后对着看的（不用答，验收时看）
 - Products 手动保存：09 问的 5 处细节，主窗口按盘点推荐定了，见 PROGRESS「2026-10-30」那节 09 的记录：
   - Bus Manifest setup 每个小项一个 Save；
@@ -677,6 +686,11 @@
   - ⑥ Main Manifest Sync Rezdy 留；
   - ① Dispatch 自动同步要等后端答停掉后会不会缺单，已问 57。
 - Annie 又说「5 按推荐动手」：现在置顶没有第 5 条（Lankun 已答），已问她指哪条。
+- Annie「5 按推荐动手」：指的是早先清单第 5 条 Lankun ✓ 列（主窗口编号乱了，已向 Annie 认错）。屏幕上留 ✓ 列、打印 / Excel 去掉，以这句为准，取代上午的「都去掉」。派 e6 `task/lankun-check-col`。
+- 09 rezdy-cleanup dbe8039：②③④⑤ 做完。① 和 Sync Rezdy 没动，gone_orders 灰字留着。重跑全过就直接合。
+- 62：save-clear 上 main 8e445a3；pickup-split b325dcd 检查过（pl 97、sch 263、nav 32），已回「合」；Send to guide 7b4d782 等后端；空档 preview 已交（置顶 17）。
+- Annie 确认 Jing 的邮箱是 jtian 那个账号，已转 57。
+- 391d6ea0 是 release.py 的交付编号（G211），不是提交号。
 - 62 week-save 已上 main 7da6786。
 ## 2026-10-29 晚 收工交接：前端主窗口 `今天前端主窗口-d2`[15266b]（家里电脑，Annie「做完写交接收工」）
 
