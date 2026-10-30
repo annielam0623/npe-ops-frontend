@@ -609,6 +609,31 @@
 - 后端：f0 主窗口、bd 做 G203 / G208 / guide_notes、d0 做 G98 / G212。G203 第 ③④ 步（Dispatch 逐车、Schedule 等补写入，以及 Quick replies 新形状 /action-log）还在后端，路径到了再派前端接面板。
 - 空闲内存一直在 0.7–2 GB，一次最多开两个前端工作窗口。
 
+## 全站「上传表格自动填」：通用 Import 块 + HR 换成通用样子（`task/import-hr`，2026-10-29 晚，工作窗口 `npe-ops-frontend-59`[678c38]，主窗口 d2 派工）—— **分支已推，没合 main（等后端补 HR 接口）**
+
+- Annie 原话：「但凡有材料需要输入的地方，都要支持表格，文档，图片上传」；问批量导入还是附件，答「上传表格自动填进去」。
+  preview：https://claude.ai/artifact/MKtDUiYyUPZ1FcBJR3j4Lw 。动手原话：「批量导游同意推荐。动手」（指批量导入），Q1–Q7 全按推荐：
+  - Q1 先只做 Excel / CSV；Q2 有错的行不存，其余一次存（全成或全不存）；Q3 空格 = 不改；Q4 能改这页的人就能导入；
+  - Q5 模板带现有记录；Q6 Team 导入不建账号；Q7 HR 去掉「Also update people already on the list」勾。
+- 通用块 `components/ui/bulk-import.tsx`（`BulkImport` + `BulkImportButton`）：
+  - ⬆ Import 灰白键（蓝色只给提交键）；点开在页面里展开一块：⬇ Download template、Choose file、说明一段。
+  - 预览表第一列「Import」：New / Update / No change / Error；改了的格子黄框（后端给 before 时写「旧 → 新」）；
+    文件空格写「blank in file — left as is」；有错的整行淡红，格子的错红字写在格子下，整行的错（field=null）和 note 写在下一行。
+  - 数字行 New / Will update / No change / Errors（红，「won't be saved」）；蓝色「Save N rows」（只算 New + Update）。
+  - 存好：绿字「✓ Saved — …（N rows with errors were not saved.）」，预览收起；存不上：红字「Not saved — 原因」，
+    `atomic` 的页面写「Not saved — nothing was changed.」；预览留着可再 Save。
+  - 各页只写一个适配：哪些栏、按什么对上、调哪对接口，把后端预览换成 `BulkImportPreview`。
+- HR（`components/hr/import-panel.tsx` 改成适配）：键改名「⬆ Import」；去掉 overwrite 勾，一律 `overwrite=true`；
+  模板 = Export to Excel（带现有的人）；`duplicate_in_file` 显示成 Error「Repeated above — skipped.」；
+  `HRImportRow` 加可选 `errors` / `before`（后端给了就显示）；How to use 改写。atomic=false（HR commit 还不是事务）。
+- 检查：`hr` 55/55（模板、预览一律 overwrite=true、四种状态、单选标签、黄框 / 空格说明、错误红字、Save 蓝色、存不上红字、
+  存好绿字和预览收起）；tsc 0、eslint 0 错、build 通过。
+- ⚠️ **需要后端**（HR，已由 d2 转 9a）：
+  1. `/api/hr/import-preview` 每行回 `errors: [{field, message}]`（field=null 是整行的错，例如对不上、必填缺）、`before: {key: 改前的值}`；
+  2. `/api/hr/import-commit` 改成一个事务：有一行写失败就整份不写；接口到了前端把 HR 的 `atomic` 改成 true；
+  3. overwrite 可以默认 true / 去掉参数（前端现在一律传 true，去掉也兼容）。
+- 下一步：后端 HR 三条上 main 后，合最新 main、重跑 hr，合 main。Pickup Locations 在 `task/import-pickup`（见下一节）。Team 等联络方式动手 + 电话列；Restaurant 等 G215。
+
 ## G203 第四批：Dispatch 页加 Action Log、Driver Quick Replies 改读共用接口（`task/g203-batch4`，2026-10-29 晚，工作窗口 `npe-ops-frontend-59`[678c38]，主窗口 d2 派工）—— **已合 main**
 
 - 后端 c8 已上 main（合并 4c00a04，关包 a176ca4）：
