@@ -237,7 +237,7 @@ const sendLog = [];
 
 function weekPayload(weekData) {
   const g = gapsFor(weekData);
-  const out = { ...weekData, gaps: g, published_with_gaps: weekData.status === "published" && g.length > 0, has_unsent_changes: weekData.status === "published" && !!weekData.unsent };
+  const out = { ...weekData, gaps: g, published_with_gaps: weekData.status === "published" && g.length > 0, has_unsent_changes: weekData.status === "published" && !!weekData.unsent && ctl.role !== "staff" };
   delete out.unsent;
   delete out.sent;
   out.pending_changes = pendingChangesOf(weekData);

@@ -146,7 +146,8 @@ export interface ScheduleWeek {
   published_with_gaps?: boolean;
   /**
    * 已发布的周改过、还没按 Publish again（Annie 10-29「改完再发」：改动不逐项通知，Publish again 时一次发给班有变化的人和主管）。
-   * 后端暂定字段；没带时前端只记这一次打开页面以后的改动。
+   * 后端 G217（ef，10-30 定稿）：只给有 schedule.edit 的人，staff 永远 false；草稿周 false；v128 之前发布的周只看时段。
+   * 没带（后端没上线）时前端只记这一次打开页面以后的改动。
    */
   has_unsent_changes?: boolean;
   /**
