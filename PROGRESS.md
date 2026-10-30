@@ -489,6 +489,30 @@
   3. `PUT` 同一接口每个团可带 `items`（整组替换、没带不动、校验同前端、一个事务、400 写原因）；
   4. 加 / 改 / 删子项记进 Farm out 设置的 Action Log，字段「团名 › 子项名」。
 - 下一步：后端上 main → 合最新 main、重跑 fo-settings / fod → 合 main。和 `task/import-farmout-rates` 都改 `partners-view.tsx` 和 fo-settings 检查套，后合的解冲突。
+- **2026-10-30 e6 对后端 G221**（工作窗口 `npe-ops-frontend-e6`[047d88] 接手 59 的 4c7fbb5，分支 `task/farmout-rate-items-e6`，worktree `C:\Code\ops-wt-e6-rate-items`；主窗口 eb 派工）：
+  - 合了最新 main（含今天上线的结算价导入 ed03071）。冲突都是两边各加的东西，都留下了：
+    - partners-view.tsx 三处：子项的辅助函数 + 导入的栏名表、savedRow 状态 + 导入的状态、How to use 两条；
+    - fo-settings-mock 的 ctl 两边开关合在一起；
+    - prettier 只是换行符问题，已改回。
+  - 照后端 task/g221-farmout-rate-items 6a876f79（farm_out_settings 的 _clean_rate_items / _replace_rate_items / put_rates / get_rates）核对，和前端 types/farm-out.ts 一致，页面代码不用改：
+    - GET 每团 items [{id, name, price（数字）, sort_order}]，按 sort_order 排；
+    - PUT 带 items 整组替换、没带或 null 不动、[] 删光，前端只给改的团带 items；
+    - 没有 Adult / Child 价的团也能有子项；前端名字 maxLength 80，同后端。
+  - mock 照后端补齐 400 原话，原来只有重名一条：
+    - 名字空「Every item on West Rim needs a name.」；
+    - 超过 80「The item name on West Rim is 81 characters - the limit is 80.」；
+    - 重名「LUNCH is already on West Rim.」；
+    - 没价钱「Enter a price for Lunch on West Rim.」；
+    - 价钱不是数字「The price for Lunch on West Rim must be a number such as 45 or 45.50.」；
+    - 过期 id「An item in the price list no longer exists. Reload the page and try again.」。
+    - 有一条不对就整份不写。
+  - fo-settings-test 加三项：
+    - 模拟后端五条 400 原话，一条都没写；
+    - 界面上过期 id（编辑时别人删了一个子项）：红字照后端原话，还在编辑，改的价钱留着；
+    - 子项全 ✕ 掉再存：这个团 items: []、别的团不带 items，列表里没有子项。
+    - 前端先挡的重名 / 没价钱 / 不是数字，59 原来就有检查。
+  - 检查：fo-settings 128/128、fod 46/46、nav 32/32；tsc 0 错；eslint 0 错、2 个原有警告；prettier 过；build 过。
+  - ⛔ 只推分支，不合 main：后端上线前生产库要先执行 v130，前端先合会出错。后端上 main 后再合最新 main、重跑、合 main。
 
 ## Bus Manifest 三版式 + G197 当天字号 前端（`task/bus-manifest-versions-fe`，2026-10-29 晚，工作窗口 `npe-ops-frontend-9c`[edc8ac]，主窗口 d2 派工）—— **分支已推，没合 main（⛔ 等后端 20 的 task/bus-manifest-versions 上 main）**
 
