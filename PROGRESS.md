@@ -349,6 +349,15 @@
   - 主管通知收窄（SA-1）：只发给主管层里勾了 schedule.edit 的，superadmin 照收。62 在改页面说法，改完更新置顶第 6 条。
 - Annie 新提（Send to guide）：链接后面让 staff 自己加一点内容，限制在一条短信长度。
   - 先记下、核可行性，没动手。主窗口算过：现在固定部分约 145 个字符，一条短信 160，只剩约 14 个字符。已向 Annie 列选法。
+- e6 报：Farm out 两个导入分支已对上后端 G220 第二批（后端分支 task/bulk-import-backend c8c0b739），只推分支，等后端上 main。
+  - import-farmout-locations-e6 519f0bc：共用块 bulk-import.tsx 改了一处，后端原话里有「nothing was changed / saved」就不再前面加一遍（只改字）。fo-settings 97、hr 56、pl 63、veh 47、nav 32，tsc / eslint / build 过。
+  - import-farmout-rates-e6 2f1d327：fo-settings 96、nav 32，tsc / eslint / build 过。
+  - 两个分支都改了 fo-settings 检查，后合的那个解冲突。
+- 端口撞车：e6 用 3309 时碰上 09 的 dev server，run-all 直接复用，测成了别人的代码，出了 3 项假 FAIL。今天起固定端口：
+  - 09：3309 / 8909 / 9509；
+  - 62：3362 / 8962 / 9562；
+  - e6：3411 / 8911 / 9541。
+- 62：排班两个分支改完重置和主管说法（notify-wording 10286d2、send-to-confirm 49b9548）。置顶第 6 条换成新稿，加了第 7b 条。
 ## 2026-10-29 晚 收工交接：前端主窗口 `今天前端主窗口-d2`[15266b]（家里电脑，Annie「做完写交接收工」）
 
 明天的主窗口先读这一节。细节在下面「2026-10-29 晚 主窗口 d2 开工核对」那一节，按时间逐条记。
