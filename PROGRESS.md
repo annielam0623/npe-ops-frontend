@@ -74,6 +74,18 @@
     - 已派 9c 出 preview：写明哪天哪段有空档，点了跳过去；给 admin 一个「Publish anyway」。
     - 9c 同时只读查后端发布接口有没有强制发布的参数。
     - 还没动手。
+    - 9c 交 preview v1：https://claude.ai/artifact/CJaXdFkBS5S4g97gjtxuD8 （没改代码）。
+      - 推荐做法：
+        - Publish 左边直接写哪天哪段有空档，点了跳过去；
+        - 日期键上标红点；
+        - 下面那行写明其他有空档的日子；
+        - 周表列头也标红点。
+      - 「Publish anyway」确认框逐段列出空档。
+      - 后端现在没有强制发布的参数（schedule.py:329 → services/schedule.py:856，有空档回 400）。要后端加：B1 allow_gaps、B2 写日志、B3 发布后带「有空档」标记。
+      - 9c 顺带查到两个 bug：
+        - 右上角数的是空档段数，不是天数；
+        - 已发布的周，前端还显示「Publish again」，后端会回 409。
+      - 待 Annie 定 Q1–Q6，都附推荐。
 - **Annie 定长期规则：订单流 Order List → Main Manifest → Dispatch / Tracking，不跳过前面直接去 Rezdy 拉单**。
   - 原话：「不要直接去rezdy拉订单。写到工作里头。订单流是order list  - main manifest - dispatch / tracking --我马上要开通。不要跳跃过前面的程序直接去rezdy拉单。前端后端都要写到工作规范里去」
   - 前端已写进 CLAUDE.md「已定的决策」：远端 7fb1c50（别的窗口同时写的，内容更全）。主窗口自己写的那段重复了，已删掉。后端 9a 已写进后端 CLAUDE.md（f50aac5，Annie 看过条文回「写」），3 处已知冲突只登记，等动手。
