@@ -75,6 +75,11 @@
     - 前端只有 Add person 选「Create the account now」时能填 Email；邀请的没有这一格；Edit 改不了；没有电话。
     - 后端 admin_users 只有 email 列，没有 phone；只在新建账号时收 email。
   - 已派 59 出 preview（Team 页 Contact 一块 + 需要后端），还没动手。
+  - 59 交 preview：https://claude.ai/artifact/83D67jt2oNb5V1TPkteEt9 （没写代码）。
+    - 方案：Edit 框和 Add person 加 Contact 一块（Email + Mobile）；列表只给「有职责却没 email」的人标黄签。
+    - ⚠️ 59 查到：Notification duties 发通知用的是账号 email（permissions.py:528）。有职责但没填 email 的人，现在会被悄悄跳过。
+    - 需要后端 B1–B5：phone 列 migration、改联络方式的接口、写日志、新建 / 邀请时也收、读的时候带出。
+    - 待 Annie 定 Q1–Q7，都附推荐。
 - Annie 问 Staff Schedule 为什么写「1 day with gaps」，下面又是「Gaps: none」。只回答了，没改代码：
   - 空档在 Sat 11/07 的 2:00–8:00 AM。她改成 3am 的两个 Open 班在 Unassigned 行，不算覆盖；就算分给人，2:00–3:00 AM 也还是空着。
   - 右上角的数字算的是整周，Day timeline 显示的是选中的 Mon 11/02。
