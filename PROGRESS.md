@@ -255,6 +255,10 @@
       - 通用做法以 HR 现有的 Import 为底：后端出预览，按 Save 才写，空格不清空。
       - 四页：Team（Email / Mobile，按 Username 对上）、HR、Pickup Locations（按 Hotel Name，也认 Aliases）、Restaurant（等 G215）。
       - 后面的先后：Team → Pickup → HR → Restaurant → Vehicles → Farm out Locations → Farm out Rates。
+      - ✅ **Annie 动手**，原话：「批量导游同意推荐。动手」（指批量导入），Q1–Q7 全按推荐。
+        - 后端发 9a 排人。
+        - 前端派 59：先做通用组件 + HR（task/import-hr），再做 Pickup（task/import-pickup）。
+        - Team 等 staff 联络方式动手，Restaurant 等 G215。
       - 每页要后端一对 import/preview、import/commit 接口。
       - 待 Annie 定 Q1–Q7，都附推荐。
 - **Annie 重启电脑前的交接（10-29 晚）**：
