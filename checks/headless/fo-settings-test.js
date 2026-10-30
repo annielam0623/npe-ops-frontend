@@ -113,6 +113,7 @@ async function partnersChecks() {
   const putsBefore = (await calls("PUT", /\/partners\/1\/rates$/)).length;
   await evaluate(`$btn('Edit', ${rrow("Partner A", "West Rim")}).click(); return 1;`);
   check("点 Edit：这一行变成两个输入框，带原价", await waitFor("$byLabel('West Rim child price')") && await evaluate("return $byLabel('West Rim adult price').value === '105.00' && $byLabel('West Rim child price').value === '95.00' && $byLabel('West Rim adult price').placeholder === 'not set';"));
+  check("团价那行的 Save 是蓝色提交键（Annie 2026-10-29「要」）", await evaluate("return $bg($btn('Save', document.querySelector('tr[data-rate-row=\"Partner A|West Rim\"]'))) === 'rgb(59, 130, 246)';"));
   await evaluate("$set($byLabel('West Rim child price'), 'abc'); $btn('Save', document.querySelector('tr[data-rate-row=\"Partner A|West Rim\"]')).click(); return 1;");
   check("价格写错：提示原因、没发请求", (await waitFor("$txt().includes('Prices must be numbers')")) && (await calls("PUT", /\/partners\/1\/rates$/)).length === putsBefore);
   await evaluate("$set($byLabel('West Rim child price'), '$95.5'); $btn('Save', document.querySelector('tr[data-rate-row=\"Partner A|West Rim\"]')).click(); return 1;");
@@ -204,6 +205,7 @@ async function partnersChecks() {
   // 改名 / 停用
   await evaluate("$btn('Rename', $row('Partner B')).click(); return 1;");
   await waitFor("$byLabel('Partner name')");
+  check("改名的 Save name 是蓝色提交键", await evaluate("return $bg($btn('Save name')) === 'rgb(59, 130, 246)';"));
   await evaluate("$set($byLabel('Partner name'), 'Partner B2'); $btn('Save name').click(); return 1;");
   check("改名：行上换成新名字", await waitFor("$row('Partner B2') && !$row('Partner B')"));
   check("PATCH 只带 name", JSON.stringify((await lastCall("PATCH", /\/partners\/2$/))?.body) === JSON.stringify({ name: "Partner B2" }));

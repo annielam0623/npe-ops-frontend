@@ -4,6 +4,13 @@
 
 > 6d 交接（下面「2026-10-27 交接：前端主窗口 6d」那节）的后端需求已于 10/27 晚由 ad 转给家里后端主窗口 17。
 
+## Farm out Partners：团价 Save、改名 Save name 改成蓝色（`task/farmout-save-blue`，2026-10-29 晚，工作窗口 `npe-ops-frontend-59`[678c38]，Annie 直接定）—— **已合 main**
+
+- 59 报：这页团价那行的 Save 原来是黑色（Save locations 是蓝的），不合「蓝色只给提交键」。问 Annie 要不要改，Annie：「要」。
+- 改动：`components/farm-out/ui.tsx` 加 `BTN_BLUE_SMALL`（行内小号蓝键，大小同原来的黑键）；`partners-view.tsx` 团价 Save、改名 Save name 换成它。
+  「+ Add location」（加一行，不是提交）、「Add」加合作公司（照旧黑色 btn-add）没动。
+- 检查：`fo-settings` 83/83（新加两条：团价 Save、Save name 是蓝色）；tsc 0、eslint 0 错、build 通过。
+- `task/farmout-rate-items`（子项，没合）改的是同一个文件，合进最新 main 时一起带上。
 ## Farm out 合作公司：每个团加子项（名字 + 价钱）（`task/farmout-rate-items`，2026-10-29 晚，工作窗口 `npe-ops-frontend-59`[678c38]，Annie 直接派）—— **分支已推，没合 main（后端还没上，先用 mock）**
 
 - Annie 原话：「帮我做的supplier那里的farm out partner的产品价格和种类里给我在每个tour都设置一个+号，让我可以添加子项，包括名字和价钱，不限添加的数量」。
@@ -23,7 +30,7 @@
   新加空行不马上标红、↑ 调顺序、✕ 删、PUT 只给改的团带 items 且顺序对、绿字 ✓ Saved 和显示顺序、再 Edit 带出子项、存不上红字内容留着、
   删一个再存带原 id、停用的合作公司子项照列没有 ＋、How to use；原来的「PUT 整张表」检查改成改的团带 `items: []`）；
   `fod` 46/46（Dispatch 转单不受影响）；tsc 0、eslint 0 错、build 通过。截图核对过和 preview 一样。
-- ⚠️ 这页团价那行的 Save 键是原来就有的黑色（不是蓝色，Save locations 是蓝的），这次没动，要统一另说。
+- 团价那行的 Save 原来是黑色，Annie「要」改蓝，已在 `task/farmout-save-blue` 先上 main；这个分支合 main 时已解冲突，子项编辑的 Save 也是蓝的。
 - ⚠️ **需要后端**（已发 9a，派给 20，排在批量导入的 Farm out 价格页后面，多半明天；要 migration，和 8e 的排班快照表排队）：
   1. 新表 `farm_out_rate_items`（partner_id、manifest_id、name VARCHAR(80)、price NUMERIC(10,2)、sort_order，同团 name 唯一），**SQL 先给 Annie 看**；
   2. `GET /api/farm-out/partners/{id}/rates` 每个团带 `items: [{id, name, price, sort_order}]`；
@@ -153,6 +160,8 @@
       - 司机页 / 导游页开关关着时，Dispatch 的 Send to driver / guide 不能发，灰字写「page is off」；
       - 两个开关放进 page-visibility。
     - 接口形状到了就派前端工作窗口；Restaurant 的导入接着做。
+    - 20 报 G215 ④ 餐厅四栏已上 main 3bcf395（v127 已在生产执行）。已派 9c `task/restaurant-contacts`。
+    - Dispatch Send to driver / guide 的「page is off」和两个开关，还等后端发形状。
 - Farm out 合作公司的团加子项：Annie 直接派给 59，原话：「帮我做的supplier那里的farm out partner的产品价格和种类里给我在每个tour都设置一个+号，让我可以添加子项，包括名字和价钱，不限添加的数量」。
   - 59 交 preview：https://claude.ai/artifact/4d8mgNzxThLC2FsmDpjwHN （没写代码）。
     - 每个团行尾一个「＋」，子项（名字 + 价）数量不限；
@@ -161,6 +170,12 @@
   - 待 Annie 定 Q1–Q6 并说「动手」，之后 59 从 main 拉 task/farmout-rate-items。和 import-farmout-rates 都改 partners-view.tsx。
   - Annie 回 59，原话：「farm out同意推荐。」= Q1–Q6 全按推荐。
     - 照规矩不算动手，59 已问她「是否现在动手」，还没写代码。
+    - ✅ Annie 已说「动手」（在 59 窗口）。
+      - 59 做完 `task/farmout-rate-items` b0c5a2e，没合 main，等后端。
+      - 检查：fo-settings 96、fod 46；tsc / eslint / build 都过。
+      - 后端：59 已直接发 9a，派给 20，排在 Farm out 价格导入后面。要 migration，SQL 先给 Annie 看。
+      - 和 import-farmout-rates 都改 partners-view.tsx，后合的那个解冲突。
+      - ⚠️ 这页团价那行的 Save 键原来是黑色的，不合「蓝色只给提交键」。已问 Annie 要不要改成蓝色。
 - Staff Schedule 空档提醒 + Publish anyway / again：✅ 9c 已合 main 09dafb9（sch 194、nav 32；tsc / eslint / build 都过）。等 Annie 验收；重新发布的通知规则还等她定。
   - Annie 在 9a 窗口答：重新发布只发给班有变化的人和他们的主管，原话「同意」。
     - 后端 8e 做，做完 G209 接着做，今晚做不完就明天。
@@ -184,6 +199,11 @@
           - 确认用周三确认页。
           - 待 Annie 定 Q1–Q6（Q1 就是「改了还没发」那句提示要不要）。
         - 后端需求已转 9a。
+        - ✅ **Annie 动手**，原话：「员工确认，同意推荐，动手」，Q1–Q6 全按推荐。
+          - 后端发 9a 给 8e。
+          - 前端派 9c `task/schedule-send-to-confirm`（从 notify-wording 拉），等 8e 上 main 再合。
+          - ✅ 9c 做完 f5e9486（sch 210、nav 32；tsc / eslint / build 都过），暂定形状已转 9a 给 8e 对照。
+          - 合并顺序：notify-wording 先合，再合 send-to-confirm。
 - Bus Manifest 整页 Save：✅ 9c 已合 main 800358f。
   - 检查：mf 182、man 320、nav 32；改了 useLeaveGuard，所以也跑了 da 373、tsend 54、tour 59。
   - 等 Annie 验收。

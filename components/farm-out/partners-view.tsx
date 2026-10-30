@@ -5,7 +5,6 @@ import { Fragment, useCallback, useEffect, useState } from "react";
 
 import {
   BTN_ADD_CLASS,
-  BTN_ADD_SMALL_CLASS,
   BTN_EDIT_CLASS,
   BTN_OFF_CLASS,
   BTN_ON_CLASS,
@@ -49,7 +48,13 @@ import {
   priceText,
 } from "./config";
 import { PartnerDetail } from "./partner-detail";
-import { CELL_INPUT, GateNotice, ResultLine, useRedirectToLogin } from "./ui";
+import {
+  BTN_BLUE_SMALL,
+  CELL_INPUT,
+  GateNotice,
+  ResultLine,
+  useRedirectToLogin,
+} from "./ui";
 
 /** Settings → Farm out Partners：合作公司名单、改名、停用，展开改结算价和它自己的上车点。 */
 const ITEM_ROW_CLASS = "bg-[#fbfbfa] night:bg-white/[.02]";
@@ -440,7 +445,7 @@ export function PartnersView() {
                                   />
                                   <button
                                     type="button"
-                                    className={BTN_ADD_SMALL_CLASS}
+                                    className={BTN_BLUE_SMALL}
                                     onClick={() => void saveRename()}
                                   >
                                     Save name
@@ -665,7 +670,7 @@ export function PartnersView() {
                                               editing.saving ||
                                               Object.keys(errs).length > 0
                                             }
-                                            className={BTN_ADD_SMALL_CLASS}
+                                            className={BTN_BLUE_SMALL}
                                             onClick={() =>
                                               void saveRateRow(p.id)
                                             }
