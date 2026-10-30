@@ -50,6 +50,24 @@
   3. 编辑权限不变（同 2026-10-30 修的 dor-edit-own：本人改自己的、report.edit 改所有人的）。
 - 明天要做：展开一条报告时在下面列「Updates」（谁、什么时候、写了什么，旧的在前），加一个输入框 + 蓝色 Save（任何能看这条报告的人都能加，partner 没有）。页面位置照 DOR 现状 preview（https://claude.ai/artifact/9FgXaqe3voxgGGuJVQpTdC ）第 5 部分画虚线框的那个地方。文字一律当纯文本显示。按 Save 才存（Saving… / 绿字 Saved / 红字后端原话）。检查：dor 套 mock 加 updates，测列出、加一条、空文本 / 超长 400 原话、partner 没有输入框。
 
+## 2026-10-30 Dispatch Send to guide（`task/dispatch-send-to-guide`，工作窗口 `npe-ops-frontend-62`[cd78c4]，eb 派）—— 已合 main
+
+- 依据：
+  - e6 的 preview https://claude.ai/artifact/4hC4p7DrrwmEhNPsSFHwNB ，**Annie 对 5 处「同意推荐」，之后「1. 动手」（2026-10-30）**。
+  - 另加：「最好可以在text里的链接后面可以让staff自己增加一点内容，但是限制在一条短信的长度」，选 A 缩短固定段。
+- 做了：
+  - Step 1 改名「Send to drivers & guides」。Check the list 一次列司机、导游两份名单，各自一个 Send texts now。
+  - 导游原文那格照 guide-notice 的 text。
+  - 两个 Send texts now 都改成蓝色，Check the list 白底（司机那块一起改）。
+  - 导游框头「Last sent … by …」；再发时确认框写「They will get it again.」；导游页开关关着时 Send 灰掉、旁边灰字照后端 page_off_text。
+  - 链接后面加一句：实时显示还剩几个字（extra_max）；超了、或有非 GSM 字符时红字、Send 不能按；确认框预览整条短信（preview_text + 那句）。
+    - GSM 表照后端 `app/services/gsm7.py` 逐字抄（`lib/sms-gsm.ts`），扩展字符算 2 位。
+  - 400 原话照后端，确认框红字 + Nothing was sent。
+  - How to use 改了。
+- 对过后端 76992dd3（合并 3d9f3116）：preview_text / extra_max / extra / 三种 400 原话（超长「1 character / N characters」）都对得上。
+- 检查：da 新加 18 条（两份名单、颜色、剩几个字、超长、非 GSM、确认框预览、只发勾了的 + extra、Last sent、再发提醒、400 红字、导游页关 / 开、后端不带 extra_max 不出输入框）。tsc 过；eslint 0 错误；build 过；da 408/408（SUITE_TIMEOUT_S=900）、nav 32/32（端口 3362 / 8962 / 9562）。
+- ⛔ 只用模拟数据测过，没在生产上点 Send texts now；**第一次真发给导游前要 Annie 点头**。导游页开关（guide_page）默认 Super Admin only，没开。
+
 ## 2026-10-30 去掉「直接去 Rezdy」+ 去掉 Sync Rezdy 键（工作窗口 `npe-ops-frontend-09`[8a0116]，主窗口 eb 派工）
 
 - `task/rezdy-cleanup` —— **已合 main 6a8a94d**。Annie 原话「4 全按推荐 动手」（规矩见 CLAUDE.md「订单流固定」），后端核过：
