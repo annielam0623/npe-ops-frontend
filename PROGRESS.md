@@ -119,6 +119,19 @@
   - 等等。
   觉得键太多，可以改成按大块分。
 
+## 2026-10-30 Bus Manifest：Special Requirements 并进整页 Save（`task/manifest-notes-page-save`，工作窗口 `npe-ops-frontend-09`[8a0116]，主窗口 eb 派工）—— 检查都过，等 eb 核对后合 main
+
+- 依据：Annie 10-18 要 Special Requirements 能改能删（NotesCell，PUT /api/dispatch/manifests/guest-notes {guest_id, notes}）；后端今天重启 G125（78 做）。主窗口问「自己当场存还是并进整页 Save」，Annie 原话「并进整页一起存 A 动手」（2026-10-30）。
+- 做了（[manifest-view.tsx](components/dispatch-manifest/manifest-view.tsx) NotesCell / changeNotes / savePending，[page-save.tsx](components/dispatch-manifest/page-save.tsx) Pending.notes）：
+  - 编辑框的 Save 改成 Done（白色，同 Text size 框的 Done），不发请求，只放进整页暂存；Cancel 照旧；Reset to Rezdy 也只暂存「恢复原文」（存时送 notes: null）。暂存了的格子再点开也有 Reset。
+  - 暂存的格子显示改后的内容（恢复原文的显示 Rezdy 原文）、琥珀色框、写 not saved；工具条下「Not saved yet: … Special Requirements for CHD1」；离开页面、打印 / 下载前照整页的规矩问。改回和库里一样 = 没改。Bus Manifest 不做 10 分钟自动存（照现状）。
+  - 整页 Save 顺序：版式 → 换车 → 备注（每位客人一条 PUT）→ 字号 → 黄框（换车先于字号是 e6 65972c5 定的）。失败红字「Could not save: Special Requirements for CHD2: 后端原话」，暂存不丢；存完整页重读，edited 小标记照后端 notes_edited。
+  - 后端没带 notes_edited 时照旧只读（所以可以先合 main）。How to use 那条整页 Save 的说明加上 Special Requirements。
+- 检查：mf 原有的备注检查改成「Done 不发请求 → 整页 Save 才 PUT」「Reset 送 null」「暂存琥珀色」「离开拦截」「失败红字暂存还在」「和换车一起存时先 guest-bus 后 guest-notes」。
+  - mf 192/192（连跑 3 次）、man 322/322、nav 32/32；tsc 过；eslint 0 错；build 过。
+  - 顺手修的：mf 的「West Rim 列序」那项在 main 上也偶尔失败（3 次里 1 次）：存完到重读回来之间列还是旧版式。检查改成等绿字 Saved 再看，页面代码没动。页面上这一瞬间会先闪回旧版式的列，是现有的小问题，没改。
+- 只用模拟数据。
+
 ## 2026-10-30 Dispatch 手动保存上线（`task/dispatch-manual-save-e6`，从 59 的 f243720 接手；工作窗口 `npe-ops-frontend-e6`[047d88]，主窗口 eb 派工）
 
 - Annie 2026-10-30 在主窗口里下令，原话：「Dispatch 手动保存，你说「推」才上线；推」。
