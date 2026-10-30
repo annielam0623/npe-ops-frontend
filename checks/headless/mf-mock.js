@@ -129,7 +129,8 @@ http.createServer(async (req, res) => {
     ctl.done = { completed_by: "Annie", completed_at: "2026-10-05T16:00:00+00:00" };
     return send(res, 200, { ok: true });
   }
-  if (p === "/api/dispatch/manifest") return send(res, 200, view());
+  // manifestDelayMs：GET 慢一点回来，好看「存完到重读回来之间」页面是什么样子。
+  if (p === "/api/dispatch/manifest") { if (ctl.manifestDelayMs) await new Promise((r) => setTimeout(r, ctl.manifestDelayMs)); return send(res, 200, view()); }
   // G35：排车页打开 / 换天先同步名单（form: date）。
   if (p === "/api/dispatch/manifests/sync") {
     const raw = await readRaw(req);

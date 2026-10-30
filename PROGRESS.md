@@ -60,50 +60,21 @@
   - 屏幕和打印都去掉（现在的做法）。
 - 主窗口推荐：屏幕上留，打印去掉。
 
-### 6. 排班重新发布时，通知「哪些主管」
-- 背景：
-  - Annie 10-29 定：已发布的周改了班，按 Publish again 时只通知「班有变化的人和他们的主管」。
-  - 后端 ef（G217）核实：系统里没有记录「谁是谁的主管」（员工资料里没有这一栏）。
-- 后端现在的做法：有人班变了，就通知所有主管层的人（在用的 supervisor / admin / superadmin，不含按 Publish again 的人自己）。
-  - 主管收 Dashboard Notice 里一条「Ann — Mon 10/19: 旧 → 新」，有邮箱的另收一封邮件，标题「Schedule edited — week of 2026-10-25」。
-  - 没人变就谁都不发。
-- 选法：
-  - 照现在，通知所有主管；
-  - 只通知真正管这个人的主管：要先在员工资料里加「主管是谁」一栏，后端加字段、前端加下拉，人员都要填一遍。
-- 主窗口推荐：先照现在（所有主管）上线；以后人力体系建好了，再改成只发给对应的主管。
-- 选「所有主管」的话，页面上三处字跟着改（62 已改在分支 task/schedule-notify-wording d3f3e42 上，没合 main）：
-  1. 确认框：
-     - 旧：「People whose shifts or time off changed since the last publish, and their supervisors, will get a system notification and an email. No one else is notified. This can't be undone.」
-     - 新：「People whose shifts or time off changed since the last publish will get a system notification and an email. All supervisors and admins (except you) get a notice listing the changes. No one else is notified. This can't be undone.」
-  2. 按钮鼠标提示：「Publish again: people whose shifts or time off changed, and all supervisors and admins, are notified.」
-  3. 成功提示：
-     - 一般：「Published again. Notified 1 person and 2 supervisors.」（数字照实际）
-     - 没有别的主管：「Published again. Notified 1 person.」
-     - 没人变：「Published again. No one's shifts or time off changed, so no one was notified.」
-
-### 7. 排班 Send to confirm 发送框里「对方收到什么」改成真实原文
-- 是什么：已发布的周改了某人的班，那一行有「Send to confirm」，点开是发送框。框里「What Jing gets」那段，现在是前端照 preview 写的：
-  「"Your schedule for Oct 4 – 10 has changed: Mon 10/05 is now Open 2:00 AM – 11:45 AM (was Open 2:00 AM – 12:00 PM). Please check and tap Looks good or Send my changes." The button opens the same confirm page they use on Wednesdays.」
-- 为什么问：
-  - 后端真正发出去的邮件不是这段话；
-  - 没有登录账号的员工收不到站内通知，只收邮件。
-- 改成（以 Jing、2026-10-04 这周为例，62 已改在分支 task/schedule-send-to-confirm 3a12965 上）：
-  - 收件：To: 📧 jing@… + 🔔 in-app notice（没有登录账号的只写 📧）
-  - What Jing gets:
-    - Subject: Please confirm your schedule changes — week of 2026-10-04
-    - Hi Jing,
-    - Your schedule for the week of 2026-10-04 has changed:
-    - • Mon 10/5: Open 2:00 AM – 12:00 PM → Open 2:00 AM – 11:45 AM（那天原来或现在没班，写 not scheduled；日期不补零，和后端邮件一致）
-    - Please check and confirm:
-    - [Confirm my schedule]
-    - 说明：The button opens the same confirm page they use on Wednesdays. The in-app notice has the same subject and lines.（后一句只在有登录账号时出现）
-  - 框底下一句：
-    - 旧：「Only Jing gets this. When you publish again, Jing (and their supervisor) still get the normal notice.」
-    - 新：「Only Jing gets this. When you publish again, Jing and all supervisors and admins still get the normal notice.」
-- 选法：
-  - 照这样，发送框显示真实原文（推荐：所见即所发）；
-  - 保留前端那段口语说明：页面上写的和实际发出的不一样。
-- 附注：邮件里周的写法是「2026-10-04」（周日日期），不是「Oct 4 – 10」。想让员工看到「Oct 4 – 10」，要后端改邮件模板。
+### 10. 排班：Annie 10-30 在 09 窗口答盘点 5 条后，还要她再确认的
+- Annie 原话：「1.改完以后通知涉及到的本人和主管    2. 单独发给某人，就像信息一样保留每次交流的过程不就好了，就是一个简单的log，上次回复了什么，最新的回复或者行动排进去就行了   3，通知后端赶快做啊 4. 全部按照勾选  5 我看不到zz test的班」
+- 10a「主管」指谁：
+  - A. 能改排班的主管和 admin（后端现在就是这样，线上 801544f 的说法也是这个）；
+  - B. 这个人自己的主管：要后端先在员工资料里建「主管是谁」，每个人都要填。
+  - 推荐 A，以后人力体系建好再改 B。
+- 10b 单独发给某人确认，改成按人的往来记录（像聊天一样）：62 在出 preview。
+  - Send to confirm 现在这版（加了 7b）做好了，没合 main。要定：
+    - A. 先上现在这版，往来记录做好再加（推荐：现在就能单独发给某人确认）；
+    - B. 等往来记录做好一起上。
+- 10c 排班页按权限勾选判断谁能改 / 发布，原话「全部按照勾选」：这是决定，要再说一句「动手」。前端改成按 schedule.edit / schedule.publish，样子不变。
+- 10d 生产上走一遍，原话「我看不到zz test的班」：生产上现在没有 ZZ Test 的班。要走一遍得先在生产建 ZZ Test 员工（邮箱用 Annie 本人的）、排一周、发布。发布会真发通知。要定：
+  - 谁来做：派窗口，还是 Annie 自己；
+  - 用哪一周：那一周只能有 ZZ Test 员工的班。
+- 3（G218 整周一个 Save）：09 已把原话转后端 57。
 
 ### 8. 可以上线后对着看的（不用答，验收时看）
 - Products 手动保存：09 问的 5 处细节，主窗口按盘点推荐定了，见 PROGRESS「2026-10-30」那节 09 的记录：
@@ -112,6 +83,32 @@
   - 换团先问要不要存；
   - 等等。
   觉得键太多，可以改成按大块分。
+
+## 2026-10-30 Bus Manifest 整页 Save 存完「闪回旧版式」（`task/manifest-version-flash`，工作窗口 `npe-ops-frontend-e6`[047d88]，主窗口 eb 派工）
+
+- 现象（09 发现）：换了版式按 Save，存完到重读回来之间，列先回到旧版式再变新的；mf「West Rim 列序」在 main 上偶尔失败也是它。
+- 原因：`savePending` 存完先把存上的从暂存拿掉，再去重读。重读回来之前页面按旧数据画，版式、字号、换车、备注、黄框都会闪回存之前的样子。
+- 改法（[manifest-view.tsx](components/dispatch-manifest/manifest-view.tsx)）：
+  - 重读回来后，拿掉暂存和换上新数据放在同一次（`flushSync`）。
+  - 用 `flushSync` 是因为「Save 再离开」接着就放行跳页，要等离开提醒撤了才跳得对。不加的话 mf「先存再去 Dispatch」不跳页。
+  - 重读失败时照旧拿掉存上的、红字叫 Reload。样子不变。
+- 检查：
+  - mf-mock 加 `manifestDelayMs`（重读慢 1.2 秒）。
+  - mf-test 加一项：存完到重读回来之间每次页面变动都记 A 车列头，必须一直是 West Rim。改之前的代码上这项失败（记到一次 General 列头），改之后过。
+  - mf 193/193 连跑 3 次都过；man 322/322、nav 32/32；tsc 0 错；eslint 0 错、2 个原有警告；build 过。
+
+## 2026-10-30 Bus Manifest：Special Requirements 并进整页 Save（`task/manifest-notes-page-save`，工作窗口 `npe-ops-frontend-09`[8a0116]，主窗口 eb 派工）—— 检查都过，等 eb 核对后合 main
+
+- 依据：Annie 10-18 要 Special Requirements 能改能删（NotesCell，PUT /api/dispatch/manifests/guest-notes {guest_id, notes}）；后端今天重启 G125（78 做）。主窗口问「自己当场存还是并进整页 Save」，Annie 原话「并进整页一起存 A 动手」（2026-10-30）。
+- 做了（[manifest-view.tsx](components/dispatch-manifest/manifest-view.tsx) NotesCell / changeNotes / savePending，[page-save.tsx](components/dispatch-manifest/page-save.tsx) Pending.notes）：
+  - 编辑框的 Save 改成 Done（白色，同 Text size 框的 Done），不发请求，只放进整页暂存；Cancel 照旧；Reset to Rezdy 也只暂存「恢复原文」（存时送 notes: null）。暂存了的格子再点开也有 Reset。
+  - 暂存的格子显示改后的内容（恢复原文的显示 Rezdy 原文）、琥珀色框、写 not saved；工具条下「Not saved yet: … Special Requirements for CHD1」；离开页面、打印 / 下载前照整页的规矩问。改回和库里一样 = 没改。Bus Manifest 不做 10 分钟自动存（照现状）。
+  - 整页 Save 顺序：版式 → 换车 → 备注（每位客人一条 PUT）→ 字号 → 黄框（换车先于字号是 e6 65972c5 定的）。失败红字「Could not save: Special Requirements for CHD2: 后端原话」，暂存不丢；存完整页重读，edited 小标记照后端 notes_edited。
+  - 后端没带 notes_edited 时照旧只读（所以可以先合 main）。How to use 那条整页 Save 的说明加上 Special Requirements。
+- 检查：mf 原有的备注检查改成「Done 不发请求 → 整页 Save 才 PUT」「Reset 送 null」「暂存琥珀色」「离开拦截」「失败红字暂存还在」「和换车一起存时先 guest-bus 后 guest-notes」。
+  - mf 192/192（连跑 3 次）、man 322/322、nav 32/32；tsc 过；eslint 0 错；build 过。
+  - 顺手修的：mf 的「West Rim 列序」那项在 main 上也偶尔失败（3 次里 1 次）：存完到重读回来之间列还是旧版式。检查改成等绿字 Saved 再看，页面代码没动。页面上这一瞬间会先闪回旧版式的列，是现有的小问题，没改。
+- 只用模拟数据。
 
 ## 2026-10-30 Dispatch 手动保存上线（`task/dispatch-manual-save-e6`，从 59 的 f243720 接手；工作窗口 `npe-ops-frontend-e6`[047d88]，主窗口 eb 派工）
 
@@ -343,6 +340,38 @@
   - 主管通知收窄（SA-1）：只发给主管层里勾了 schedule.edit 的，superadmin 照收。62 在改页面说法，改完更新置顶第 6 条。
 - Annie 新提（Send to guide）：链接后面让 staff 自己加一点内容，限制在一条短信长度。
   - 先记下、核可行性，没动手。主窗口算过：现在固定部分约 145 个字符，一条短信 160，只剩约 14 个字符。已向 Annie 列选法。
+- e6 报：Farm out 两个导入分支已对上后端 G220 第二批（后端分支 task/bulk-import-backend c8c0b739），只推分支，等后端上 main。
+  - import-farmout-locations-e6 519f0bc：共用块 bulk-import.tsx 改了一处，后端原话里有「nothing was changed / saved」就不再前面加一遍（只改字）。fo-settings 97、hr 56、pl 63、veh 47、nav 32，tsc / eslint / build 过。
+  - import-farmout-rates-e6 2f1d327：fo-settings 96、nav 32，tsc / eslint / build 过。
+  - 两个分支都改了 fo-settings 检查，后合的那个解冲突。
+- 端口撞车：e6 用 3309 时碰上 09 的 dev server，run-all 直接复用，测成了别人的代码，出了 3 项假 FAIL。今天起固定端口：
+  - 09：3309 / 8909 / 9509；
+  - 62：3362 / 8962 / 9562；
+  - e6：3411 / 8911 / 9541。
+- 62：排班两个分支改完重置和主管说法（notify-wording 10286d2、send-to-confirm 49b9548）。置顶第 6 条换成新稿，加了第 7b 条。
+- 下午上 main：
+  - 09 Special Requirements 并进整页 Save：d90aa68（Annie 原话「并进整页一起存 A 动手」）；
+  - e6 Bus Manifest 存完闪回旧版式修复：2fd3cd3（修 bug，样子不变；mf 193 连跑 3 次都过）。
+  - 09、62、e6 都待命。
+- ✅ 后端 G217 已上 origin/main 14cff41（04d28b7 → cc4da03 → 75ac102 → 14cff41）。
+  - ⚠️ 线上前端 Publish again 确认框还写「No notifications are sent when you publish again.」，后端上线后已经不对了，notify-wording 要尽快上。
+  - 已让 62 合最新 main、重跑检查。文字等 Annie 定置顶第 6、7、7b 条后再合。
+  - 后端 ef 接着做 G218（整周一个 Save）。
+- 09 在做 Staff Schedule 全流程只读盘点（Annie 问「staff的schadule有没有全部走通」）。
+- 09 交 Staff Schedule 全流程盘点（只读）：
+  - 主干算走通：编周 → 空档 → 发布 / 强制发布 → staff 看班 → 发布通知 → 周三确认 → Responses 卡，前后端都在 main。但没有在生产上完整走过一遍的记录。
+  - 差这几件：
+    1. 置顶第 6 条答了合 notify-wording；
+    2. 第 7、7b 条答了合 send-to-confirm；
+    3. 整周一个 Save 等后端 G218，前端还没写；
+    4. 前端「能不能改 / 发布」按角色判断，和后端按权限勾选不一致（新置顶第 10 条）；
+    5. 生产上用 ZZ Test 走一遍（新置顶第 11 条）。
+  - 周三自动发确认的总开关默认关，现在开没开要看库。
+- **Annie 答置顶第 6、7、7b 条**，原话「6 7 7b 按推荐 动手」（2026-10-30）：
+  - 6：Publish again 确认框等四处写「Supervisors and admins who can edit the schedule」；
+  - 7：发送框显示后端真实原文；
+  - 7b：之前点过 Looks good 的人，发送框加灰字提醒「会重置」。
+  - 已转 62：先合 notify-wording，再合 send-to-confirm（加 7b）。
 ## 2026-10-29 晚 收工交接：前端主窗口 `今天前端主窗口-d2`[15266b]（家里电脑，Annie「做完写交接收工」）
 
 明天的主窗口先读这一节。细节在下面「2026-10-29 晚 主窗口 d2 开工核对」那一节，按时间逐条记。
@@ -819,6 +848,37 @@
           - 后端需求已转 9a。要确认 HR 的 overwrite=true 不会把空格当成清空（Q3：空格 = 不改）。
       - 每页要后端一对 import/preview、import/commit 接口。
       - 待 Annie 定 Q1–Q7，都附推荐。
+- **排班通知「改完再发」前端文字**（9c，`task/schedule-notify-wording`，worktree D:
+pe-ops-frontend-seat）。**等后端 8e 上 main 再合。**
+  - Annie 原话：重新发布只发给班有变化的人和他们的主管「同意」；已发布的周改动不逐项发「改完再发」；「改动schedule当然应该是发布的时候通知」（休息日也等 Publish again 一起通知，不单独马上发）。
+  - 改了：Publish again 确认框「People whose shifts or time off changed since the last publish, and their supervisors, will get a system notification and an email. No one else is notified.」；成功「Published again. Notified N people.」，N = 0 写「No one's shifts or time off changed, so no one was notified.」；Publish again 鼠标提示同改。排班页别处没有「改了马上通知」的字。
+  - 新提示（**先给 Annie 看**）：已发布的周改了还没 Publish again 时，Publish again 旁琥珀色「Changes are not sent until you publish again.」。用后端暂定字段 `has_unsent_changes`（GET 周），没带时只记这一次打开页面以后的改动 ⇒ 需要后端加这个字段。
+  - 检查：tsc / eslint 过；sch 199/199、nav 32/32。
+  - **2026-10-30 对后端 G217 清单**（工作窗口 `npe-ops-frontend-62`[cd78c4]，主窗口 eb 派；后端 ef 写、57 转，代码写完、没上 main；公司电脑 worktree `C:\Code\npe-ops-frontend-sched1`）：
+    - `has_unsent_changes` 后端定了：只给有 schedule.edit 的人，staff 永远 false；草稿周 false。改了类型注释；模拟接口 staff 改回 false。页面本来就按这个字段显示，不用改。
+    - Publish again 的 notified 只列有变化的员工 `[{employee_id,name,channels}]`，没变化是 []。成功提示照 notified 的人数写，和 mock 一致。
+    - **主管（ef 10-30 答，eb 转）**：
+      - publish 多回 `notified_supervisors[{user_id,name,channels}]`。主管层是全体在用的 supervisor / admin / superadmin，去掉按 Publish again 的人自己。有人变了才发：站内 Notice，有邮箱的另发邮件。
+      - 和 Annie「他们的主管」不完全一样，后端在问她。前端先照后端做。
+      - 改了三处文字（**文字变了，要给 Annie 看**）：
+        - 确认框，旧：「People whose shifts or time off changed since the last publish, and their supervisors, will get a system notification and an email. No one else is notified. This can't be undone.」
+          新：「People whose shifts or time off changed since the last publish will get a system notification and an email. All supervisors and admins (except you) get a notice listing the changes. No one else is notified. This can't be undone.」
+        - 按钮提示，旧：「Publish again: people whose shifts or time off changed, and their supervisors, are notified.」
+          新：「Publish again: people whose shifts or time off changed, and all supervisors and admins, are notified.」
+        - 成功提示：「Published again. Notified N people and M supervisors.」，M = 0 去掉后半句；N = 0 照旧「…no one was notified.」。
+      - 模拟接口加 notified_supervisors（ctl.noSupervisors = 0 人）。sch 套改了 3 条，加了「主管 0 人」1 条。
+      - **10-30 晚，主管范围收窄**（后端审查 SA-1，ef 转 eb）：只发给主管层里勾了 schedule.edit 的账号；superadmin 不看勾，照样收。notified_supervisors 形状不变。文字跟着改（**要给 Annie 看，置顶第 6 条**）：
+        - 确认框：「…All supervisors and admins (except you) get a notice listing the changes.…」改成「…Supervisors and admins who can edit the schedule (except you) get a notice listing the changes.…」
+        - 按钮提示：「…and all supervisors and admins, are notified.」改成「…and supervisors and admins who can edit the schedule, are notified.」
+        - 成功提示不变：「Published again. Notified N people and M supervisors.」
+    - Notice 里 schedule_changed 的 body 改了文字：前端只把 body 当纯文本显示（notice-panel.tsx），没有按旧文字判断，不用改。
+    - 后端 G217 已上 origin/main 14cff41（eb 10-30 通知）。对过真代码：has_unsent_changes / pending_changes（含 has_login、sent_at、sent_by）、notified、notified_supervisors[{user_id,name,channels}] 都和前端一致。send-changes 多回一个 answer_reset，前端不用。
+    - **Annie 原话（2026-10-30，eb 转）：「6 7 7b 按推荐 动手」**。第 6 条选 A，就是上面四处文字。
+    - 检查（Node v26.13.0，合了 main）：tsc 过；eslint 0 错误（2 个警告是别人的文件）；build 过；sch 200/200、nav 32/32。
+      - sch 第一次在 Rules 的删除那步崩了（确认框还没出来就去点 Delete），和这次改动无关。重跑一次 200/200。
+      - **偶发失败（以后有空再修，eb 10-30 说现在不用管）**：sch-test.js 约 586 行，Rules 删除时 `waitFor(dlg)` 等到的可能还是上一个 Edit rule 框，接着 `$btn('Delete', dlg)` 找不到键 ⇒ TypeError: Cannot read properties of undefined (reading 'click')。修法：等框里出现 Delete 键再点。
+    - eb 回「合」，合 main。
+    - 线上 main 原来的确认框写「No notifications are sent when you publish again.」，后端上线后已经不对，这个分支合进去就改掉。
 - **其余自动保存改手动 A2 / A7 / B8**（9c，`task/misc-manual-save`）：Annie 原话「4项全部动手」；盘点 https://claude.ai/artifact/3GQ3waCB2X4jnEdxTRfefe 。后端不用改。
   - A2 Manifests 每单 Cfm # 格：离开框不再存；改了格旁出蓝色 Save（照节标题 Cfm # 的样子；没改不出，免得一整列都是键），按 Save 或 Enter 才存，Esc 放回；存好框变绿 + 绿字 Saved，失败红字 Not saved: …、输入留着；有没存的格子离开页面先问。How to use 改了。
   - A7 Content Studio › Shuttle routes 线路名：离开框不存；改了名字旁出蓝色 Save，按 Save 或 Enter 才存，Esc 放回；存好绿字 Saved，失败红字、打的字留着（原来会改回）；名字空着红字不发请求；离开页面先问；面板说明改了。
