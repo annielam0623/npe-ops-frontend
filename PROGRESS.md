@@ -134,6 +134,12 @@
   - 待 Annie 定 Q1–Q6 并说「动手」，之后 59 从 main 拉 task/farmout-rate-items。和 import-farmout-rates 都改 partners-view.tsx。
   - Annie 回 59，原话：「farm out同意推荐。」= Q1–Q6 全按推荐。
     - 照规矩不算动手，59 已问她「是否现在动手」，还没写代码。
+    - ✅ Annie 已说「动手」（在 59 窗口）。
+      - 59 做完 `task/farmout-rate-items` b0c5a2e，没合 main，等后端。
+      - 检查：fo-settings 96、fod 46；tsc / eslint / build 都过。
+      - 后端：59 已直接发 9a，派给 20，排在 Farm out 价格导入后面。要 migration，SQL 先给 Annie 看。
+      - 和 import-farmout-rates 都改 partners-view.tsx，后合的那个解冲突。
+      - ⚠️ 这页团价那行的 Save 键原来是黑色的，不合「蓝色只给提交键」。已问 Annie 要不要改成蓝色。
 - Staff Schedule 空档提醒 + Publish anyway / again：✅ 9c 已合 main 09dafb9（sch 194、nav 32；tsc / eslint / build 都过）。等 Annie 验收；重新发布的通知规则还等她定。
   - Annie 在 9a 窗口答：重新发布只发给班有变化的人和他们的主管，原话「同意」。
     - 后端 8e 做，做完 G209 接着做，今晚做不完就明天。
