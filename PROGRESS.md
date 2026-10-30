@@ -72,6 +72,13 @@
   - Annie 改 Bus Manifest 保存方式（经 9a 转），原话：「哦，下拉菜单用缓存不会么，点击save再一起存啊」。
     - 版式下拉和当天字号改了先不存，按 Save 一起存。后端不用改。
     - 已派 9c 出小 preview，同时问三条：离开拦、10 分钟自动存、Saved 用绿色。等 Annie「动手」。
+    - 后端 20 提醒：打印、Excel 按库里已存的版式出；改了没存就按 Print / Download，出来的是旧的。
+      - 后端不加 ?version=。
+      - preview 里问 Annie：先自动存，还是先提示。
+    - Annie 选「存在页面上，按 Save 才存」，原话：「我不要改一点存一点的方式，会导致整个页面很慢，放个save键，admin想什么时候存就什么时候存，除非要跳转到其他页面才需要拦截并询问是否保存」。
+      - Bus Manifest 不做 10 分钟自动存。
+      - 离开页面时拦一下，问要不要存。
+      - 已转 9c，还没「动手」。
 - 后端 c8[fbbc9c] 报 G214 已上 main：代码 fa35f01，合并 43934d7，关包 d657a48。这就是 Dispatch「Not in HR」方案 B。
   - HR 存档后，今天及以后对得上的手填名改连到 HR 里的人，接口形状不变，前端不用改。
   - Dispatch 没有 Action Log 面板，新的 action「link_hr」对前端没有影响。
