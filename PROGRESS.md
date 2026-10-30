@@ -24,7 +24,7 @@
 - Annie 10-30 晚原话：「其实我们在给司机这个链接的时候就应该把全部功能放进去，提前让他们知道要做哪些事情」。
 - 现在：前一天打开只看到名单和 Call / Text；Picked up / No show、Boarded、改餐 Change、联系餐厅要到当天才出现。Super Admin 的 /driver/preview 会画出来，但灰着。
 - 打算：司机前一天点短信链接，也像 preview 那样全部画出来，灰着不能点，旁边一句英文「Opens on Sat Oct 31」。导游页同理。
-- 已转 57 排 preview，出了转 Annie 看。
+- 后端登记为 G227，下次开工 92 先出 preview（复用模板的 preview 分支，导游页一起），57 发主窗口转 Annie。
 
 ### 8. 可以上线后对着看的（不用答，验收时看）
 - Products 手动保存：09 问的 5 处细节，主窗口按盘点推荐定了，见 PROGRESS「2026-10-30」那节 09 的记录：
