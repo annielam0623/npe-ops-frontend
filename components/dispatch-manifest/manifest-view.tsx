@@ -35,9 +35,12 @@ import { tourColorFor } from "@/lib/tour-colors";
 import { cn } from "@/lib/utils";
 import { PageLink } from "@/components/ui/page-link";
 import { useViewOnly, ViewOnly } from "@/components/ui/view-only";
+import { byTick } from "@/lib/permissions";
 import { usePermissions } from "@/lib/staff-permissions";
+import { usePageVisibility } from "@/lib/page-visibility";
 
 import { AffiliateCard } from "./affiliate-card";
+import { FarmOutButton, usePartners } from "./farm-out-button";
 import {
   applyMoves,
   attrKey,
@@ -258,9 +261,29 @@ export function ManifestView() {
   // 打印：后端打印页只要 dispatch.view（G208，Annie：partner 也能打印 manifest），partner 勾了就出。
   // Download 后端只给员工（require_staff），partner 一律不出（Annie 10-27「A 不能下载」）。
   const perms = usePermissions();
-  const viewOnly = perms.partnerLacks("manifests.edit");
+  // 员工也按勾（Annie 2026-10-30 置顶 10c「全部按照勾选」）：dispatch.edit 或 manifests.edit 任一勾了才能改（同后端）；
+  // 总开关关着照旧全给，Super Admin 全给。partner 照旧只看（Annie 10-27「合作方只能看」）。
+  const isSuperAdmin = usePageVisibility().isSuperAdmin;
+  const viewOnly =
+    perms.partnerLacks("manifests.edit") ||
+    !byTick(perms, ["dispatch.edit", "manifests.edit"], {
+      legacy: true,
+      superAdmin: isSuperAdmin,
+    });
   const canPrint = !viewOnly || !perms.partnerLacks("dispatch.view");
   const canDownload = !perms.isPartner;
+  // 第二辆车的 ⇄ Farm out（Annie 10-28「要」，preview Q1–Q5 照推荐）：开关同 Dispatch（farm_out_dispatch），要 dispatch.edit，partner 没有。
+  const farmOutOn =
+    usePageVisibility().visible("farm_out_dispatch") &&
+    !viewOnly &&
+    !perms.isPartner &&
+    perms.can("dispatch.edit");
+  const partners = usePartners(farmOutOn);
+  /** 刚转出去的车：页面上方黄条提醒去 Dispatch 选酒店、发通知（Q3），点 × 关掉。 */
+  const [farmedOut, setFarmedOut] = useState<{
+    bus: string;
+    partner: string;
+  } | null>(null);
 
   const redirectToLogin = useCallback(() => {
     if (!redirectingRef.current) {
@@ -812,6 +835,32 @@ export function ManifestView() {
                 </div>
               ) : null}
 
+              {farmedOut ? (
+                // Q3：转完提醒还要去 Dispatch 选酒店、发 Farm out 通知；点 × 关掉。
+                <div
+                  data-farm-out-done
+                  className="mb-3.5 flex flex-wrap items-center gap-x-3.5 gap-y-2 rounded-[10px] border border-[rgba(251,191,36,.34)] bg-[rgba(251,191,36,.10)] px-3.5 py-2.5 text-[13px] text-[#fde68a]"
+                >
+                  <span>
+                    Bus {farmedOut.bus} is farmed out to{" "}
+                    <b>{farmedOut.partner}</b>. Pick each order&rsquo;s hotel
+                    and send the farm out notice on{" "}
+                    <Link href={backHref} className="text-[#93c5fd] underline">
+                      Dispatch
+                    </Link>
+                    .
+                  </span>
+                  <button
+                    type="button"
+                    aria-label="Dismiss"
+                    onClick={() => setFarmedOut(null)}
+                    className="ml-auto text-[12px] text-[#fde68a] underline"
+                  >
+                    ×
+                  </button>
+                </div>
+              ) : null}
+
               <Stage.Provider
                 value={{
                   movedFrom,
@@ -821,12 +870,31 @@ export function ManifestView() {
                   failed: saveState.kind === "error",
                 }}
               >
-                {shown.blocks.map((block) => (
+                {shown.blocks.map((block, i) => (
                   <BusCard
                     key={block.bus.id}
                     data={shown}
                     params={params}
                     block={block}
+                    farmOut={
+                      // 只有第二辆车有（同 Dispatch 的规矩，Q1）。
+                      farmOutOn && i === 1 ? (
+                        <FarmOutButton
+                          date={params.date}
+                          tour={params.tour}
+                          block={block}
+                          partners={partners}
+                          blocked={dirty}
+                          onDone={(partner) => {
+                            setActionError(null);
+                            setFarmedOut({ bus: block.bus_number, partner });
+                            setReloadKey((k) => k + 1);
+                          }}
+                          onError={(m) => setActionError(m)}
+                          onUnauthorized={redirectToLogin}
+                        />
+                      ) : null
+                    }
                     viewOnly={viewOnly}
                     canPrint={canPrint}
                     onBusChange={stageMove}
@@ -1014,6 +1082,7 @@ function BusCard({
   data,
   params,
   block,
+  farmOut,
   viewOnly,
   canPrint,
   onBusChange,
@@ -1026,6 +1095,8 @@ function BusCard({
   data: ManifestData;
   params: { date: string; tour: number };
   block: ManifestBlock;
+  /** 第二辆车色条上的 ⇄ Farm out 键（没有 = null）。 */
+  farmOut: React.ReactNode;
   viewOnly: boolean;
   /** 这一车的 Print 键（partner 勾了 dispatch.view 也有，见上面 canPrint）。 */
   canPrint: boolean;
@@ -1145,6 +1216,7 @@ function BusCard({
               Text size not saved
             </span>
           ) : null}
+          {farmOut}
         </div>
         {!viewOnly && block.text_size_history ? (
           <TextSizeHistory history={block.text_size_history} />
@@ -1361,7 +1433,10 @@ function GuestTable({
   const version = versionOf(data);
   const columns = columnsFor(version, !!data.tour.lunch_column);
   // ✓（司机标的上车）：Lankun（定 5）和 West Rim 不要这一列。
-  const boarding = version !== "lankun" && version !== "west";
+  // ✓ 列（司机标的上车 / No show）：West Rim 没有；Lankun 只在屏幕上有、打印不出（Annie 2026-10-30「5 按推荐动手」：
+  // 屏幕上留、打印去掉；打印页和 Excel 是后端出的，照旧没有）。
+  const boarding = version !== "west";
+  const boardingClass = version === "lankun" ? "print:hidden" : "";
   const cols = columns.length + (lettered ? 1 : 0) + (boarding ? 1 : 0);
   const th = { fontSize: `${HEAD_PX[version].th}px` };
   if (sections.length === 0) {
@@ -1435,7 +1510,11 @@ function GuestTable({
               </th>
             ) : null}
             {boarding ? (
-              <th className={TH} style={th}>
+              <th
+                data-boarding-col
+                className={cn(TH, boardingClass)}
+                style={th}
+              >
                 ✓
               </th>
             ) : null}
@@ -1451,6 +1530,7 @@ function GuestTable({
               cols={cols}
               lettered={lettered}
               boarding={boarding}
+              boardingClass={boardingClass}
               sectionPx={HEAD_PX[version].section}
               onBusChange={onBusChange}
               onNotesChange={onNotesChange}
@@ -1710,6 +1790,7 @@ function SectionRows({
   cols,
   lettered,
   boarding,
+  boardingClass,
   sectionPx,
   onBusChange,
   onNotesChange,
@@ -1724,6 +1805,8 @@ function SectionRows({
   lettered: boolean;
   /** 出不出 ✓ 列（Lankun 不出）。 */
   boarding: boolean;
+  /** Lankun：✓ 列只在屏幕上（print:hidden）。 */
+  boardingClass: string;
   /** 节标题字号（Marcello 放大）。 */
   sectionPx: number;
   onBusChange: (guest: ManifestGuest, label: string) => void;
@@ -1776,15 +1859,7 @@ function SectionRows({
                 return (
                   <td key={key} {...cell("order_number", g)}>
                     {g.order_number}
-                    {/* G65：主 Manifest 里找不到、原因不明的单：人数照算，橙字提醒去 Rezdy 查。 */}
-                    {g.sync_status === "missing" ? (
-                      <div
-                        data-sync-missing
-                        className="font-[Arial,sans-serif] text-[11px] font-bold text-[#c2410c]"
-                      >
-                        {g.sync_note || "Not in main manifest — check Rezdy"}
-                      </div>
-                    ) : null}
+                    {/* G65 主 Manifest 里找不到的单不再另提醒「check Rezdy」（Annie 2026-10-30「4 全按推荐 动手」；订单流固定：状态查 Order List）。 */}
                   </td>
                 );
               case "pickup_time":
@@ -1880,7 +1955,7 @@ function SectionRows({
             </td>
           ) : null}
           {boarding ? (
-            <td className={TD}>
+            <td className={cn(TD, boardingClass)}>
               {g.boarding === "boarded" ? (
                 <span className="rounded-full bg-[#e6f4ec] px-[7px] py-px text-[11px] font-bold whitespace-nowrap text-[#1e6b43]">
                   ✓
@@ -2323,6 +2398,15 @@ function HowToUse() {
           first, it asks whether to save.
         </li>
         <li>
+          Farm out the second bus: click ⇄ Farm out on its colour bar, pick the
+          company and click Farm out. It takes effect right away (not with Save
+          at the top): the driver, vehicle and guide come off that bus and its
+          guests move to Affiliate at the bottom. Then pick each order&rsquo;s
+          hotel and send the farm out notice on Dispatch. To undo, use Back to
+          our bus on Dispatch. Save your other changes on this page first; the
+          button is greyed out until you do.
+        </li>
+        <li>
           If the tour has two or more buses, pick a bus for every guest in the
           Bus column; the guest moves to that bus right away (not saved until
           you click Save). Guests without a bus are marked orange and listed
@@ -2378,11 +2462,6 @@ function HowToUse() {
           at the bottom with 0 pax and the reason; it is not counted, printed or
           downloaded, and drivers and guides don&rsquo;t see it. If it comes
           back in Rezdy, it returns to its bus by itself.
-        </li>
-        <li>
-          Orange text under an order number (Not in main manifest — check Rezdy)
-          means the order is gone from the main manifest but we can&rsquo;t tell
-          why. Its guests still count. Check the order in Rezdy.
         </li>
       </ol>
     </details>

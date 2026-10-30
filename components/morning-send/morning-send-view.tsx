@@ -489,7 +489,8 @@ function MorningHowToUse() {
         different pickup times), neither row is sent for that order — it shows
         Listed twice in this file with different details. The rest of the file
         still sends normally. Reservations gets an email about the skipped order
-        so it doesn&apos;t get missed; check Rezdy and send that guest manually.
+        so it doesn&apos;t get missed; check the Order List and send that guest
+        manually.
       </li>
       <li>
         If the preview is wider than the window, a scrollbar shows along the

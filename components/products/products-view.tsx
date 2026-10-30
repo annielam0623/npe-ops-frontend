@@ -8,6 +8,8 @@ import {
   useState,
 } from "react";
 
+import { byTick } from "@/lib/by-tick";
+import { usePermissions } from "@/lib/staff-permissions";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   CARD_CLASS,
@@ -82,6 +84,7 @@ export function ProductsView() {
 
 function ProductsPage() {
   const [view, setView] = useState<ViewState>({ kind: "loading" });
+  const [adminPanels, setAdminPanels] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   /** 「还没加进列表」只在打开页面时拉一次（加完不重画，同旧页面）；拉不到不影响列表。 */
   const [missing, setMissing] = useState<MissingProduct[] | null>(null);
@@ -135,7 +138,13 @@ function ProductsPage() {
     [redirectToLogin],
   );
 
+  // 全部按照勾选（Annie 2026-10-30 置顶 10c）：开关开着按勾（settings.products，同后端接口），关着照旧；Super Admin 全过。
+  const tickPerms = usePermissions();
+  const tickPermsRef = useRef(tickPerms);
+  tickPermsRef.current = tickPerms;
   useEffect(() => {
+    // 权限读完再判断（开关开着时要按勾）。
+    if (!tickPerms.ready) return;
     const controller = new AbortController();
     const { signal } = controller;
     setView({ kind: "loading" });
@@ -143,7 +152,12 @@ function ProductsPage() {
       try {
         const me = await fetchCurrentUser(signal);
         if (signal.aborted) return;
-        if (!me.is_admin) {
+        if (
+          !byTick(tickPermsRef.current, "settings.products", {
+            legacy: me.is_admin,
+            superAdmin: !!me.is_superadmin,
+          })
+        ) {
           setView({ kind: "forbidden" });
           return;
         }
@@ -152,6 +166,8 @@ function ProductsPage() {
           fetchProductGroups(signal),
         ]);
         if (signal.aborted) return;
+        // Bus Manifest setup 和 7 Days Forecast 设置后端是 require_admin（按角色，不按勾）：只有 admin 才出那一块。
+        setAdminPanels(!!me.is_admin || !!me.is_superadmin);
         setView({ kind: "ready", products, meta });
         fetchMissingProducts(signal)
           .then((list) => !signal.aborted && setMissing(list))
@@ -161,7 +177,7 @@ function ProductsPage() {
       }
     })();
     return () => controller.abort();
-  }, [reloadKey, applyLoadError]);
+  }, [reloadKey, applyLoadError, tickPerms.ready, tickPerms.active]);
 
   /** Groups 一块改了组以后：组清单、产品（组标题 / 顺序）、「Not in this list yet」都重拉（同旧页面 reloadGroupsAndProducts）。 */
   const reloadGroups = useCallback(async () => {
@@ -517,12 +533,14 @@ function ProductsPage() {
         />
       ) : null}
 
-      <ManifestSetupPanel
-        version={setupVersion}
-        onUnauthorized={redirectToLogin}
-        onData={setSetupData}
-        jumpTo={forecastJump}
-      />
+      {adminPanels ? (
+        <ManifestSetupPanel
+          version={setupVersion}
+          onUnauthorized={redirectToLogin}
+          onData={setSetupData}
+          jumpTo={forecastJump}
+        />
+      ) : null}
 
       {missing && missing.length ? (
         <MissingCard

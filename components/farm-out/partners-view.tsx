@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Fragment, useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState, useRef } from "react";
 
 import {
   BTN_ADD_CLASS,
@@ -19,6 +19,7 @@ import {
   TH_CLASS,
   TR_CLASS,
 } from "@/components/pickup-locations/legacy-ui";
+import { byTick } from "@/lib/by-tick";
 import { ActionLogPanel } from "@/components/action-log/action-log-panel";
 import type { ActionResult } from "@/components/ui/action-result";
 import { BulkImportButton, StandardImport } from "@/components/ui/bulk-import";
@@ -195,7 +196,13 @@ export function PartnersView() {
     }
   }, [redirectToLogin]);
 
+  // 全部按照勾选（Annie 2026-10-30 置顶 10c）：开关开着按勾（settings.farm_out，同后端接口），关着照旧；Super Admin 全过。
+  const tickPerms = usePermissions();
+  const tickPermsRef = useRef(tickPerms);
+  tickPermsRef.current = tickPerms;
   useEffect(() => {
+    // 权限读完再判断（开关开着时要按勾）。
+    if (!tickPerms.ready) return;
     const controller = new AbortController();
     setGate({ kind: "loading" });
     (async () => {
@@ -203,7 +210,12 @@ export function PartnersView() {
         const me = await fetchCurrentUser(controller.signal);
         if (controller.signal.aborted) return;
         // 只有 admin 能管合作公司（后端也会 403）。
-        if (!me.is_admin) {
+        if (
+          !byTick(tickPermsRef.current, "settings.farm_out", {
+            legacy: me.is_admin,
+            superAdmin: !!me.is_superadmin,
+          })
+        ) {
           setGate({ kind: "forbidden" });
           return;
         }
@@ -231,7 +243,7 @@ export function PartnersView() {
       }
     })();
     return () => controller.abort();
-  }, [reloadKey, redirectToLogin]);
+  }, [reloadKey, redirectToLogin, tickPerms.ready, tickPerms.active]);
 
   const replace = useCallback((p: FarmOutPartner) => {
     setPartners((all) => all.map((x) => (x.id === p.id ? p : x)));

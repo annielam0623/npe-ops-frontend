@@ -8,82 +8,34 @@
 
 > 规矩见 CLAUDE.md「问 Annie 要确认的事：给完整内容，并一直置顶」（2026-10-30）。每条都要能单独看懂。
 
-### 1. Dispatch「Send to guide」样稿：5 条要定（e6 做，preview https://claude.ai/artifact/4hC4p7DrrwmEhNPsSFHwNB ）
-- 背景：
-  - Annie 10-30 对「要不要做 Send to guide 键」答「做」，已出样稿（模拟数据，没写代码）。
-  - 后端 GET /api/dispatch/guide-notice 和 POST /send 都已经有，带 page_open / page_off_text。
-  - 和司机那边有两处不一样：后端只按天记「上次谁几点发的」；没有「几台车没排导游」这个数。
-- ① 放在哪（Dispatch › Send 现在 Step 1 Send to drivers、Step 2 Morning Relay）：
-  - A. 放进 Step 1 司机那块下面，Step 1 改名「Send to drivers & guides」；点一次 Check the list，两份名单一起列，各自一个 Send texts now；
-  - B. 单独一步 Step 2「Send to guides」，Morning Relay 改 Step 3；
-  - C. Step 1 里和司机左右并排。
-  - 推荐 A：发的是同一种东西。B 要改大家熟悉的步数；C 太挤，手机排不下。
-- ② 导游短信原文（导游页开关打开前必须确认）：
-  - 现在：`NPE: Guide manifest for Fri, Oct 30, tap to open: https://confirm.nationalparkexpress.com/l/<每人自己的链接>?date=2026-10-30`
-  - 和司机那句「NPE: Manifest for Fri, Oct 30, tap to open: …」同一结构，只多「Guide」。再加字会变两条短信，长破折号会让整条按两倍计费。
-  - A. 就用这句；B. 给新原文（要在一条短信以内）。推荐 A。
-- ③ Send texts now 的颜色：
-  - 规矩是蓝色只给提交键，但司机那块现在 Send texts now 是绿色（照旧后台），Check the list 反而是蓝色。
-  - A. 导游这块照规矩：Send 蓝、Check the list 白底；司机那块一起改成一样（司机那块是样子调整，要同意）；
-  - B. 导游照司机现在的样子（绿 Send、蓝 Check）；
-  - C. 导游照规矩、司机不动，同一步里两块颜色不同。
-  - 推荐 A。
-- ④ 「已发过」怎么显示（全站统一是逐人淡黄行「Sent by 谁 on 时间」，但后端只按天记一次）：
-  - A. 照司机那块：框头写「Last sent 时间 by 谁（Texted N guides…）」，再发时确认框提醒「They will get it again」。不用等后端；
-  - B. 逐人显示「Sent by 谁 on 时间」，已发过的默认不勾。要后端加按人记录。
-  - 推荐 A：导游一天通常只发一次。以后要逐人，司机一起改。
-- ⑤ 没排导游的车要不要提示（司机那块会提示「N 台车还没排司机」，不拦发送）：
-  - A. 先不提示；
-  - B. 灰字提示「N tour buses have no guide yet」，不拦发送。要后端在 guide-notice 里加一个数。
-  - 推荐 B，后端加之前先按 A 上线。
-- 定了以后说「动手」，e6 从 main 拉 task/dispatch-send-to-guide 开工。
-- 另外：第一次真发，也要 Annie 点头。
+### 10. 排班还要定的
+- 10d 生产上走一遍：Annie 10-30 下午给了测试账号（用户名 ZZTest，密码在对话里，不写进仓库），已私下转 09。
+  - Annie 原话「09 同意。动手」（14:5x）。明天开工第一件：09 发逐步清单 → 给 Annie 看一眼 → 走，每步截图。
+  - ZZ Test 员工邮箱用 azhou@nationalparkexpress.com；那一周只排 ZZ Test 员工。
+  - 09 窗口要是重开，要重新问 Annie 要密码。
 
-### 4. 和「不直接去 Rezdy 拉单」冲突的五处（d2 10-29 报过，还没答）
-- 背景：Annie 10-29 定了订单流是 Order List → Main manifest → Dispatch / Tracking，不许跳过直接去 Rezdy 拉单，已写进 CLAUDE.md。
-- 现有页面里有五处和这条冲突，照规矩没擅自删：
-  1. Dispatch 的「Sync Rezdy」键：直接从 Rezdy 拉单；
-  2. 「Upload Rezdy CSV」：上传 Rezdy 导出的文件；
-  3. Dispatch 卡片上的「missing」那行：提醒 Rezdy 有、这里没有的单；
-  4. Bus Manifest 上的「check Rezdy」字样；
-  5. Morning 发送页里关于 Rezdy 文件的说明。
-- 要 Annie 定：每一处是删掉、改成指向 Order List / Main manifest，还是保留？
-- 主窗口推荐：
-  - 1、3、4 删掉，或者改成「去 Order List 查」；
-  - 2、5 先确认 Morning 发送现在还靠不靠 Rezdy 文件，再定。
-
-### 5. Bus Manifest 的 Lankun 版式要不要在屏幕上留 ✓ 列
-- 背景：Lankun 版式照 preview 第 8 版的定 5 去掉了 ✓ 列，打印出来是 Lankun 要的样子。
-- 问题：✓ 列是司机在司机页上标「已上车 / No show」后，manifest 上显示出来的那一格。去掉以后，Lankun 团在屏幕上就看不到谁上车了。
+### 19. Multi Orders：只剩 1 张没出发的单时怎么办（62 查到）
+- 现在：客人来信那一刻，他名下有 ≥2 张没出发的单，这条来信就不挂单，进 Multi Orders。之后一张出发了（或取消了），只剩 1 张，卡照样留在 Multi Orders，写「1 order」。
 - 选法：
-  - 屏幕上留 ✓ 列，只在打印时去掉；
-  - 屏幕和打印都去掉（现在的做法）。
-- 主窗口推荐：屏幕上留，打印去掉。
+  - A. 只剩 1 张时，后端自动把来信挂到那张单上，卡从 Multi Orders 消失，回到普通车道（推荐：不用人再点）；
+  - B. 照旧留在 Multi Orders，Assign 时默认选中那一张，点一下就挂；
+  - C. 0 张时（全都出发或取消）：推荐自动结掉，不再显示。
+- 另外：卡上「没出发的单」没排除取消的单，已转后端看。
 
-### 10. 排班：Annie 10-30 在 09 窗口答盘点 5 条后，还要她再确认的
-- Annie 原话：「1.改完以后通知涉及到的本人和主管    2. 单独发给某人，就像信息一样保留每次交流的过程不就好了，就是一个简单的log，上次回复了什么，最新的回复或者行动排进去就行了   3，通知后端赶快做啊 4. 全部按照勾选  5 我看不到zz test的班」
-- 10a「主管」指谁：
-  - A. 能改排班的主管和 admin（后端现在就是这样，线上 801544f 的说法也是这个）；
-  - B. 这个人自己的主管：要后端先在员工资料里建「主管是谁」，每个人都要填。
-  - 推荐 A，以后人力体系建好再改 B。
-- 10b 单独发给某人确认的「往来记录」（像聊天一样）：62 的 preview https://claude.ai/artifact/T98GQ9KfQuQfrEcMv6XgzM
-  - 内容：每人每周一条按时间排的记录，包括周三自动确认、回 Looks good / Send my changes、Send to confirm（带改动那几行）、主管 Approve / Decline、Publish again、重置。
-  - 要后端加 4 件：
-    1. 员工每次回复都留一条，不覆盖；
-    2. 每次发给这个人，都留下当时那几行；
-    3. 周三自动确认按人记；
-    4. 一个读接口 GET /api/schedule/weeks/{ws}/employees/{id}/history。
-  - 要 Annie 定 5 题（preview 上每题都写全了）：
-    1. 放哪：推荐两处都放（发送框里，和 Responses 卡上每人点 History 展开）；
-    2. 最新的在下面还是上面：推荐下面，像聊天；
-    3. 放哪些事：推荐发的、回的、主管处理、重置，不放每一下格子改动；
-    4. 只看这一周还是所有周：推荐只看这一周；
-    5. 现在这版 Send to confirm（task/schedule-send-to-confirm 613c039，含 7b，检查都过）先上，还是等记录一起上：推荐先上，后加记录不用改它。
-- 10c 排班页按权限勾选判断谁能改 / 发布，原话「全部按照勾选」：这是决定，要再说一句「动手」。前端改成按 schedule.edit / schedule.publish，样子不变。
-- 10d 生产上走一遍，原话「我看不到zz test的班」：生产上现在没有 ZZ Test 的班。要走一遍得先在生产建 ZZ Test 员工（邮箱用 Annie 本人的）、排一周、发布。发布会真发通知。要定：
-  - 谁来做：派窗口，还是 Annie 自己；
-  - 用哪一周：那一周只能有 ZZ Test 员工的班。
-- 3（G218 整周一个 Save）：09 已把原话转后端 57。
+### 20. 员工确认排班：发布前大家都能改和确认，发布后锁住（62 调查，要后端大改）
+- Annie 原话：「比如Jtian，她是staff但我给她一些admin的权限，我不让她编辑staff schedule，但是发给她确认排班的时候她是可以编辑的吧，这个时候应该开放给所有员工去修改和确认，发布以后才是不能给staff更改」
+- 现在正好反过来：
+  - 先发布，再让员工确认。周三发的是下一周的确认，那一周必须已发布；草稿周回「This week hasn't been published yet.」；确认窗口开到那一周开始。
+  - 员工确认时不能直接改排班：Looks good 只记「确认了」；Send my changes 只能提「加哪天什么班」（不能删、不能改时间），要有 schedule.edit 的人 Approve 才生效。
+  - 权限：登录的确认页要 schedule.view；短信 / 邮件里的免登录链接谁都能用；Approve 要 schedule.edit。Jtian 勾了 schedule.view 就能确认、提请求，不能 Approve。
+- 要 Annie 定两件：
+  1. 「员工能改」是哪一种：
+     - A. 员工在确认页直接改自己的班（加 / 删 / 改时间），马上生效；
+     - B. 照现在「提请求、主管 Approve」，挪到发布前做，再加上删班 / 改时间的请求（推荐：草稿期主管还在排，员工直接改容易互相打架、留出空档）。
+  2. 谁能用登录的确认页：
+     - 所有登录的员工，不看勾，只能看 / 改自己那一行（推荐：确认是每个人的事，不该被权限挡住）；
+     - 或者照勾，要 schedule.view。
+- 都要后端先改：确认挪到草稿周、周三发下一周草稿、发布那一刻关确认窗口。Publish again「只通知有变化的人」等以「上次发布」为基准的逻辑要一起重想。
 
 ### 8. 可以上线后对着看的（不用答，验收时看）
 - Products 手动保存：09 问的 5 处细节，主窗口按盘点推荐定了，见 PROGRESS「2026-10-30」那节 09 的记录：
@@ -93,6 +45,280 @@
   - 等等。
   觉得键太多，可以改成按大块分。
 
+## DOR 最新进展（G224）—— 明天第一件（工作窗口 `npe-ops-frontend-09`[8a0116]，主窗口 eb 2026-10-30 转 b0 的形状）
+
+- 依据：Annie 原话「如果需要纠正什么的话在下面备注，或者更新最新进展就好了」「加最新进展，任何人都可以加」「以上内容全都动手」。
+- 后端还没上 main（v133 等 Annie 过目执行）。前端先用 mock 做，后端上 main 后再合。
+- 接口形状（b0 定，原样照抄）：
+  1. GET /api/operation-reports/{id} → {report, history, updates}。updates = [{id, report_id, text, created_at（ISO，带 LA 时区）, created_by:{username, display_name}}]，旧的在前。
+  2. POST /api/operation-reports/{id}/updates {text}：
+     - 成功 201 {update:{同上}}；
+     - 400：空文本「Write the update before saving.」（missing:["text"]），超过 2000「The update is N characters - the limit is 2000.」；
+     - 404「That report does not exist.」；
+     - 403：板块没开「This section is not available yet.」，没 report.view 照旧那句，partner「Partners can read reports but cannot add updates.」；
+     - 只加，不改不删，不发通知。history 会多一条 action = add_update、changes 为空的，前端可以不显示。
+  3. 编辑权限不变（同 2026-10-30 修的 dor-edit-own：本人改自己的、report.edit 改所有人的）。
+- 明天要做：展开一条报告时在下面列「Updates」（谁、什么时候、写了什么，旧的在前），加一个输入框 + 蓝色 Save（任何能看这条报告的人都能加，partner 没有）。页面位置照 DOR 现状 preview（https://claude.ai/artifact/9FgXaqe3voxgGGuJVQpTdC ）第 5 部分画虚线框的那个地方。文字一律当纯文本显示。按 Save 才存（Saving… / 绿字 Saved / 红字后端原话）。检查：dor 套 mock 加 updates，测列出、加一条、空文本 / 超长 400 原话、partner 没有输入框。
+
+## 2026-10-30 去掉「直接去 Rezdy」+ 去掉 Sync Rezdy 键（工作窗口 `npe-ops-frontend-09`[8a0116]，主窗口 eb 派工）
+
+- `task/rezdy-cleanup` —— **已合 main 6a8a94d**。Annie 原话「4 全按推荐 动手」（规矩见 CLAUDE.md「订单流固定」），后端核过：
+  - ② Dispatch 团卡片 Upload Rezdy CSV 键、比对弹窗（csv-upload-dialog.tsx 删了）、How to use 那条、同步失败红字里那句去掉；后端接口留着。
+  - ③ 团卡片橙字「N orders not in main manifest — check Rezdy」去掉；灰字 cancelled / moved 留着。
+  - ④ Bus Manifest 单号下橙字「Not in main manifest — check Rezdy」和 How to use 那条去掉；sync_status / sync_note 挡住取消、改期客人的逻辑不动。
+  - ⑤ Morning 发送页 How to use「check Rezdy」改成「check the Order List」。
+  - ① Dispatch 打开 / 换天的 POST /api/dispatch/manifests/sync 不动（只读 Main manifest）。
+  - 检查：mf 205/205、da 393/393、mt 207/207、nav 32/32；tsc、eslint、build 过。原来测这几样的改成测「不出现」。
+- `task/rezdy-sync-remove`：Annie 原话「不留，彻底删掉」。
+  - Dispatch 上的手动 Sync Rezdy 键 10-17 已拿掉；这次去掉 Manifests 页那个，连同 Last updated from Rezdy、新单标绿、How to use 那条；sync-rezdy-button.tsx、lib/rezdy-sync-api.ts、types/rezdy-sync.ts 没人用了，删掉。
+  - 后端 92 在删 Sync Rezdy 的三个接口，要等这个分支先上 main。
+  - 检查：man 的 Sync Rezdy 检查改成测「不出现」；合最新 main 后 man 317/317、mt 207/207、da 393/393、nav 32/32；tsc、eslint、build 过。—— **已合 main**（提交号见主窗口记录）。
+
+## 2026-10-30 排班发布后列出谁没收到（置顶 15，`task/schedule-not-reached`，工作窗口 `npe-ops-frontend-e6`[047d88]，主窗口 eb 派工）
+
+- 依据：Annie「同意」+「以上内容全都动手」（2026-10-30）。
+- 后端：ef 的通知修正已上 main 31a2f66。
+  - POST …/publish 回包里 notified 只列真发出去的；
+  - 新加 not_reached [{employee_id, name, reason}]，reason 是 "no email or login" 或 "email could not be sent"（schedule_notices.py 的常量，已核原话）；
+  - notified_supervisors 不变。
+- 改动：
+  - 新文件 [components/schedule/publish-notice.ts](components/schedule/publish-notice.ts)：拼提示句子，英文照 Annie 同意的原文：
+    - 都收到：「Published. Notified 6 people.」（照旧）；
+    - 有人没收到：「Published. Notified 4 people. 2 couldn't be reached: Jing, Anita (no email or login).」，没收到那段红字；两种原因混着时按原因分组，用「;」隔开；
+    - 都没收到：「Published, but no one was notified: Nadia, Veronica have no email or login. Add their email in Employees.」整句红字（红框）。只有发信失败时不写 Add their email；
+    - Publish again 同样写法，「Notified N staff and M schedule editors」照 62 的写法；员工没收到、主管收到时写「Notified M schedule editors.」。
+  - types/schedule.ts 加 not_reached。
+  - schedule-view.tsx 只改提示条：状态从字符串换成 {ok, unreached, allFailed}，渲染绿字 + 红字那段，或整条红框。
+- 检查：
+  - 新单元检查 checks/headless/publish-notice-unit.mjs，11/11（`node checks/headless/publish-notice-unit.mjs`）；
+  - sch-mock 的 publish 回包按 ctl.notReached 把人挪进 not_reached；
+  - sch 加 3 项：都收到绿色没红字、有人没收到（绿 + 红字原文）、谁都没收到（红框原文）；
+  - 结果：sch 266/266、nav 32/32；tsc 0 错；eslint 0 错、2 个原有警告；build 过。
+- eb 说 Annie 要快，检查过了就直接合 main。
+## 2026-10-30 Multi Orders 1 orders（工作窗口 `npe-ops-frontend-62`[cd78c4]，主窗口 eb 派，只读调查，明天修，今天没改代码）
+
+- Annie 截图：Dashboard › Messages 的 Multi Orders 窗口里一张卡（Grzegorz J Kotula +12017577522），写「1 orders」·「Replied · waiting for guest」。
+- 查的是后端 origin/main（`app/routers/notifications.py` 2089–2125、`app/services/multi_orders.py`）和前端 `components/dashboard/multi-order-card.tsx`。
+
+**1. 为什么只有 1 张单还在 Multi Orders（不是前端算法问题）**
+- 「≥2 张没出发的单」只在**来信那一刻**判一次：`multi_orders.resolve_inbound()`（multi_orders.py 174–216）。≥2 张 ⇒ 这条来信 `booking_notes.order_number` 留 NULL，不挂单。
+- Multi Orders 窗口里出哪些卡，看的不是现在有几张单，而是这个号码 / 邮箱**还有没挂单的来信**：`_UNASSIGNED_SQL`（multi_orders.py 约 225–249）取 `order_number IS NULL` 的行，按地址一张卡（notifications.py 2093 `unassigned_threads`）。
+- 卡上的「名下没出发的单」是每次刷新现算的：`orders_for_address()` → `active_orders_for_phone/email`，条件只有 `tour_date >= today`（门票 `service_date >= today`）。
+- 所以：来信时他名下有 2 张，消息没挂单；之后其中一张出发了（团期过了今天），现在只剩 1 张。可是那条来信还是没挂单，卡就留在 Multi Orders，列表只剩 1 张。
+- 设计上卡片只有挂到某张单上才离开（Annie 2026-10-01 选 1，注释在 `_UNASSIGNED_SQL` 上方），后端没有「剩 1 张就自动挂」。
+- 附带发现：没出发的单只按日期过滤，**没排除取消的单**（bookings / tickets_reminders 两段 SQL 都没看状态）。如果有一张取消了，也会被算进「名下没出发的单」。是否要排除，要后端看。
+- 只剩 1 张时怎么办（要 Annie / 后端定，明天）：
+  - A. 自动挂到那一张单上，卡片离开 Multi Orders，对话进普通车道（按 resolve_inbound ③ 的规则选 module）。要后端改：刷新或定时把「只剩 1 张」的地址的 NULL 行补上单号。
+  - B. 照旧留在 Multi Orders，staff 点 Assign 挂到那一张（现在就能做）。前端可以在只剩 1 张时把 Assign 默认选中那一张。
+  - C. 0 张（都出发了）时怎么办也要一起定：现在照样留着，列表是空的。
+  - 推荐 A（后端改），因为只剩 1 张时已经不存在「哪张单」的问题；B 是前端能先做的过渡。
+
+**2. 「1 orders」单复数**
+- `components/dashboard/multi-order-card.tsx:192`：`{item.orders.length} orders` 写死了复数。应该是 1 = 「1 order」，其余「N orders」（0 张时也写「0 orders」或换一句，见上面 C）。
+- 修 bug、样子不变，明天直接改。
+
+**3. 已回复、等客人的卡为什么还在**
+- 是 10-01 定的设计：`waiting` = staff 回过、客人还没再来信（`multi_order_inbox.action_taken_at >= 最后一条来信`）。卡片标「Replied · waiting for guest」、不计入红胶囊、排在未处理的卡下面。
+- Annie 问「已经回复了的为什么还会显示在这里」：eb 已给三个选法（照旧 / 收起 / 留着但排到最下、变淡），等她答（置顶 18）。
+- **Annie 答置顶 18（2026-10-30，eb 转）：「为什么要等客人回复？ 我们已经回复了就要消失啊，客人再发回来才需要在这里显示」** ⇒ 选 B。
+  - 后端已经支持：`waiting` = 处理时刻 ≥ 最后一条客人来信。客人一再来信，waiting 自动变回 false，不用改后端。
+  - 前端做了（分支 `task/multi-orders-hide-replied`）：
+    - `messages-section.tsx`：Multi Orders 窗口滤掉 waiting 的卡；滤完没有卡就整个不出（照 10-01「只在有卡片时出现」）。
+    - `multi-order-card.tsx:192`：「1 order」/「N orders」。
+  - 检查：mt 套改了 2 条（等客人的卡不显示；红胶囊那条改成 3 张都欠处理），加 1 条（页面上没有「1 orders」）。tsc 过；eslint 0 错误；build 过；mt 208/208、nav 32/32、dr 88/88（端口 3362 / 8962 / 9562）。eb 说过了直接合。
+  - 「只剩 1 张单时自动挂上去」（上面第 1 点 A / B / C）还没定，这次没做。
+
+## 2026-10-30 排班卡片上直接标空档（`task/schedule-gap-on-card`，工作窗口 `npe-ops-frontend-62`[cd78c4]，eb 派；eb 更正时间后当天做完、合 main）
+
+- **Annie 原话（2026-10-30，eb 转）：「17 全按推荐，动手」**。preview https://claude.ai/artifact/WVNc5X87zYyKyY6k47qyKU ：
+  1. 拖班、删班也标（A）：拖到 Unassigned 的那张、删掉的那张（灰掉划线、带 Undo）都变红写同一句，点 Undo 恢复；
+  2. 只标那张卡，列头照旧红点（A）；
+  3. 草稿周也标，只标这次改动新造成的空档（A）。
+- 做法：按 Done、拖、删的那一刻，用 `week-draft.ts` 的 localGaps 算改前 / 改后，新出的空档记到这张卡上。
+  - 文字：「This leaves a 1 hour gap (11:00 AM – 12:00 PM).」；两段写「This leaves 2 gaps: … (1 hour) and … (45 minutes).」。
+  - 红框 + 淡红底 + 浅红字，红的优先于琥珀色；补上以后红色消失。按 Save 时后端照旧再判，以后端为准。
+- 做了：
+  - `week-draft.ts` 加 `newGapsByCard`：比「库里的班」和「页面上的班」各算一次空档，新出的空档记到这次改动过、原来覆盖着这段时间的那张卡上；
+  - 加 `gapSentence`：一段用形容词单数「a 9 hour 30 minute gap」，8 / 11 / 18 开头用 an；几段写「(1 hour)」「(45 minutes)」；
+  - `week-grid.tsx` 卡片 `gaps`：红框 + 淡红底 + 那一句（data-gap-note）；
+  - `schedule-view.tsx` 每次重算，经 draftView 传下去。
+- 检查：sch 加 6 条（改时间 1 段、两段、补上以后消失、删班变红、Undo 消失、拖到 Unassigned 变红 + 列头红点）。tsc 过；eslint 0 错误；build 过；sch 275/275、nav 32/32（端口 3362 / 8962 / 9562）。
+- Annie 后来加了「对过去的应该彻底放行」（只算洛杉矶时间现在以后的空档）：另开 `task/schedule-gaps-future-only` 做，见下一节。
+
+## 2026-10-30 排班空档只算「现在以后」（`task/schedule-gaps-future-only`，工作窗口 `npe-ops-frontend-62`[cd78c4]，eb 派）
+
+- **Annie 原话（2026-10-30，eb 转）：「schedule里对gap的要求，之应该对此刻起的将来设置，对过去的应该彻底放行」**。
+- 做了：
+  - `week-draft.ts` 加 `futureGaps(gaps, now)`：过去的日子整段不算；今天已经过去的那几段不算；今天跨过此刻的那段只留后半截。
+  - `newGapsByCard` 也只算现在以后的（卡片变红）。
+  - `schedule-view.tsx` 加洛杉矶「现在」：`laToday()` + `laMinuteOfDay()`，不用浏览器本地时间；每分钟、回到这个标签页时刷新。页面上显示的空档（周表列头红点、Gap 提示、Day timeline、Publish 前的确认框）都先过 `futureGaps`。后端返回的空档、409 被拒的空档也一样筛。
+  - 检查脚本能用 `window.__scheduleNow = "YYYY-MM-DDTHH:MM"` 固定此刻。
+- 后端也在改，以后端为准：现在后端还会按整周算空档、拦发布 / 拦已发布周的 Save，前端只是不显示过去的。后端改好以前，过去的空档仍可能让 Save / Publish 被拒（红字照样显示原话）。
+- 检查：
+  - sch 每次打开页面先把「现在」固定在 2026-09-01（模拟数据的周都在过去）；
+  - 加 2 条：过去的空档不标；今天跨过「现在」的那段只算后半截（Mon 10/05 7 PM ⇒ 只剩 7:00–9:30 PM）。
+  - tsc 过；eslint 0 错误；build 过；sch 277/277、nav 32/32（端口 3362 / 8962 / 9562）。
+
+## 2026-10-30 Bus Manifest Lankun：屏幕上加回 ✓ 列，打印照旧不要（`task/lankun-check-col`，工作窗口 `npe-ops-frontend-e6`[047d88]，主窗口 eb 派工）
+
+- 依据：
+  - 9c 问过 Annie：Lankun 照定 5 去掉 ✓ 列后，屏幕上就看不到司机标的上车 / No show，要不要留在屏幕上。主窗口推荐「屏幕上留、打印去掉」。
+  - Annie 先答「都去掉」，2026-10-30 改成「5 按推荐动手」，以后面这句为准。样子是 Annie 定的，不另出 preview。
+- 改动（[manifest-view.tsx](components/dispatch-manifest/manifest-view.tsx)）：
+  - Lankun 也画 ✓ 列，位置同 General（最后一列，Bus 后面）；
+  - 表头和格子加 `print:hidden`，浏览器打印时不出；
+  - West Rim 照旧没有 ✓；
+  - 后端出的打印页和 Excel 不动。
+- 检查：
+  - mf：Lankun 列序那项改成最后有 ✓；新加 2 项：✓ 照旧画上车标记；模拟打印（CDP setEmulatedMedia print）时 ✓ 列表头和格子都藏。
+  - 结果：mf 215/215、man 326/326、nav 32/32；tsc 0 错；eslint 0 错、2 个原有警告；prettier 过；build 过。
+- 等 eb 回「合」。
+
+## 2026-10-30 Daily Operation Report：本人能改自己的报告（`task/dor-edit-own`，工作窗口 `npe-ops-frontend-09`[8a0116]，主窗口 eb 派工，修 bug）—— 检查都过，等 eb 回「合」
+
+- 依据：Annie 10-30 原话「如果是edit的话，应该是都可以，如果去改另外一个人发布的，那staff就不可以，只能本人改」；后端 10-26 G187 已是这样（operation_reports.py `_can_edit`）。前端原来只给 supervisor / admin 状态和跟进人的下拉，员工连自己的都改不了。
+- 改了：新文件 [use-report-editor.ts](components/daily-report/use-report-editor.ts)，列表页和 Dashboard 块按**每一条**判断：Super Admin 全过；report.edit 改任何一条；否则要 report.view 且是自己登记的；partner 一律不能。员工权限总开关关着时 supervisor / admin 照旧改所有的，本人改自己的也生效。Dashboard 块员工也读跟进人名单（改自己的要用）。样子不变。
+- 列表接口的 created_by 只有 {username, display_name}、没有 id，按 username 对（系统里唯一；后端存的时候还会再判一次）。
+- **需要后端（小，不急）**：DOR 列表 GET 每行的 created_by 加 id，前端以后改成按 id 对（主窗口 eb 2026-10-30 同意先用 username）。
+- 检查：dor 60/60（新加：员工开关关着 / 开着只有 report.view 时只能改自己的 2、3，别人的 1 不能；勾了 report.edit 别人的也能改；主管没勾 report.edit 也只能改自己的；partner 勾了也都不能改）、dr 88/88、nav 32/32（合了最新 main 后重跑）；tsc 过；eslint 0 错；build 过。
+- 我上午的权限盘点写「DOR 没有对应的勾」是看错了：路由上只有 require_staff，真正的判断在服务层 _can_edit，用 report.edit。
+
+## 2026-10-30 10c C 类：员工一律给键、后端按勾的地方改成按勾（`task/perm-by-checkbox-c`，工作窗口 `npe-ops-frontend-e6`[047d88]，主窗口 eb 派工）
+
+- 依据：Annie 10-30 置顶 10c「全部按照勾选」→「动手」（经 eb 转）。09 上午盘点分三类，A + B 是 09 做，C 是 e6 做。
+- 规则：
+  - 都用 09 的 `byTick`（lib/by-tick.ts）判断：Super Admin 全过；总开关 staff_permissions 对这个人开着就按勾；
+  - 关着就照今天的判断（legacy）。C 类今天员工一律有，所以 legacy = true，开关关着时页面和今天一样；
+  - 新加 [lib/use-tick.ts](lib/use-tick.ts) 只是在组件里调 byTick 的小 hook，不是另一套规则；
+  - partner 照旧（只看、不发，partnerLacks 不动）；
+  - 页面级的等待由 PermissionGate 管（perms.ready 之前不画页面）；
+  - 样子不变，只改谁看得到键。
+- 改的地方：
+  - Dispatch（dispatch-view.tsx）：没勾 dispatch.edit 就进「只看」（同 partner 那套只看：没有 Pull from Discord、车行下拉关着、不占编辑锁）；没勾 dispatch.send 就没有 ② Send 标签。
+  - Bus Manifest（manifest-view.tsx）：dispatch.edit 或 manifests.edit 任一勾了才能改，没勾就只看（没有换车下拉、整页 Save）。
+  - Manifests（manifests-view.tsx）：
+    - manifests.edit 管上传确认号、Sync Rezdy、Cfm #；
+    - manifests.send 管团确认；
+    - broadcast.send 管 Send message。
+    - Columns / Export 这些照旧（只对 partner 藏）。
+  - 发送页：预览照出，没勾就没有 Send 键，别的不动。
+    - Tickets 发送（tickets-send/manifest-preview.tsx）：tickets.send；
+    - Tour 发送（tour-send/tour-preview.tsx）：tour.send；
+    - Morning 发送（morning-send/morning-preview.tsx）：morning.send。后端早班发送挂的是 morning.send（send.py `_morning_send`），所以 Morning 用它，不用 tour.send。
+  - Tracking 群发（tickets-tracking、tour-tracking）：没勾 broadcast.send 没有 📣 Broadcast。Morning tracking 没有群发。
+  - Orders 详情（order-detail-view.tsx）：
+    - 没勾 orders.edit 就没有 Edit / Unlock；
+    - 「Read-only — this order is stored in the new Rezdy table」那行只在后端说这单本来就改不了时才写，只是没勾不写。
+- Bus Manifest 的 partner：盘点里写了「partner 只勾 dispatch.edit 时后端放行，页面也一起对齐」。这和 Annie 10-27「合作方只能看…不能改或者选任何功能」冲突，e6 报给 eb 问 Annie。
+  - **Annie 定了 A**（经 eb 转，原话「13 A」）：partner 不管勾什么，Bus Manifest 都只看。照现在的做法，不改。
+- 检查：
+  - 新的共用 mock [checks/headless/staff-perm-mock.js](checks/headless/staff-perm-mock.js)：ctl.staffPerms = 勾了的项、ctl.superAdmin = Super Admin，模拟总开关开着的员工。
+  - 各套 mock 加一行接上：da、mf、man、tsend、tour、tt、tk、mt、orders。
+  - 每套都加了「只勾 .view 看不到、勾了看得到、Super Admin 一项没勾也看得到」：
+    - da 393/393（新 8 项）、mf 213/213、man 326/326、tsend 57/57、tour 62/62、tt 131/131、tk 132/132、mt 207/207、orders 38/38、nav 32/32；
+    - tsc 0 错；eslint 0 错、2 个原有警告；改过的文件 prettier 过；build 过。
+  - tour 原有的「✕ Cancel 回到表单」：点 Apply 后、存完之前 Cancel 是灰的，测试点得太快会点空。main 上刚好赶得及，这次多一个 hook 就赶不上了。
+    - 改成等 Cancel 能点了再点；连跑 3 次都过。页面行为没变。
+  - 等 eb 回「合」再合 main。
+
+## 2026-10-30 全部按照勾选 A + B（`task/perm-by-checkbox-ab`，工作窗口 `npe-ops-frontend-09`[8a0116]，主窗口 eb 派工；C 类 e6 做）—— **已合 main**（eb 回「合」）
+
+- 依据：Annie 置顶 10c「全部按照勾选」→「动手」（2026-10-30）。09 上午的只读盘点分 A / B / C，09 做 A + B。
+- 共用判断 `byTick`（[lib/by-tick.ts](lib/by-tick.ts)，lib/permissions.ts 也导出）：**已单独合 main cb073ba**，e6 的 C 类也用它。
+  - Super Admin 一律放行；员工权限总开关 staff_permissions 对这个人开着（perms.active）时只按勾，admin 不再自动有；
+  - 开关关着时照今天的规矩（legacy），页面和今天一模一样（主窗口 eb 同意：不用「关着时 can() 一律 true」，否则 9 页会一下子对所有员工打开）。
+  - 单元检查 checks/headless/by-tick-unit.mjs 10/10。
+- A：整页按勾（开关开着时；关着照旧按 admin，Auto Send 照旧只 Super Admin）：
+  - Pickup Locations settings.pickup；Products settings.products；Vehicles settings.vehicles；Content Studio settings.content；
+  - Farm out Partners / Timetable settings.farm_out（另有「谁看得到」开关 farm_out_settings，照旧）；Transfer & Charter quotation.rates_edit；Teams settings.users；Auto Send settings.auto_send。
+  - Products 页里 Bus Manifest setup / 7 Days Forecast 设置后端是 require_admin（按角色），所以只给 admin 显示那一块（今天整页只给 admin，所以开关关着时没区别）。
+- B：
+  - Staff Schedule：改（班、休假、编辑锁）schedule.edit；Publish / Publish again schedule.publish；Add employee 要 team.staff_add 加 schedule.edit（后端两个都要）。Publish anyway 照旧按 admin 角色（后端也是按角色）。
+  - Human Resource：改 settings.hr.edit（看照旧 canSeeHr）。
+  - Workspace TCQ 的「Rate card settings →」链接：quotation.rates_edit。
+  - **Daily Operation Report 列表的 canEdit 没改**：后端 PATCH 只要 require_staff，没有对应的勾；要不要加一个勾（例如 report.edit）要 Annie / 后端定。
+- 检查：
+  - 新检查套 perm 54/54：9 页 × 6 种（开关开着：员工没勾挡、员工勾了放、admin 没勾也挡、Super Admin 放；开关关着：admin 放、员工勾了照旧挡）。
+  - 合了最新 main（含 Staff Schedule 整周 Save 的 schedule-view 大改，自动合并，权限那几行核对过还在）后：perm 54/54、sch 249/249、hr 56/56、as 69/69、cs 152/152、fo-settings 110/110、products 219/219、ptt 44/44、pl 63/63、veh 47/47、tcq 80/80、teams 54/54、ws 58/58、nav 32/32；by-tick-unit 10/10；tsc 过；eslint 0 错；build 过。
+  - B 类（Schedule、HR、TCQ 链接）开关开着时的浏览器检查还没写，只有 byTick 的单元检查；现有各套（开关关着）照旧全过。
+- **下一步（明天）**：补 B 类开关开着时的浏览器检查（Staff Schedule 改 / 发布 / 加人、HR 编辑、Workspace TCQ 的 Rate card 链接：没勾看不到、勾了看得到、admin 没勾也看不到、Super Admin 看得到）。DOR 谁能改等 Annie 置顶第 14 条。打开 staff_permissions 开关前 Annie 先在 Team 页核对勾选。
+
+## 2026-10-30 7 Days Forecast：数字格不能点、能编辑的空格改绿色 +（`task/forecast-no-click`，工作窗口 `npe-ops-frontend-e6`[047d88]，主窗口 eb 派工）
+
+- 依据：
+  - Annie 10-28 原话「不能点就是不能点，你把能edit里的-都改成绿色的+就可以了。不要虚线框，全部细实线」；
+  - 59 的 preview 第 2 版 https://claude.ai/artifact/X9EXZjpgbKfPhxzeKR7c9c ；
+  - Q1 / Q2 照推荐；
+  - Annie 10-30「你检查一下我前天和昨天布置的任务还有哪些没有完成的，现在做了」（经 eb 转）。
+- 改动（components/forecast/）：
+  - 粗体人数格、Max allotments 格去掉按钮，只是数字，点了没反应。原来按钮带的内边距挪到格子上，行高不变。
+  - Q2：以前按天开 / 关团、改上限（G81）的记录照样生效，小黄点和鼠标提示（原因 / 谁 / 何时）照旧，挪到格子上。
+  - forecast-view 不再打开 DayRunningEditor / DayAllotmentEditor，也不再调 `PUT /api/forecast/day-running`、`day-allotment`。接口和那两个编辑框文件都留着，没删。
+  - 能编辑的空手写格（Crew notes、Notes、Pax、Driver / Vehicle type、CCL major events）从「—」改成一直显示的绿色「+」（新文件 add-plus.tsx，#4ade80），去掉鼠标移上去才出的「+ Add」。
+  - Q1：Driver / Guide 行照旧能点，没排导游的空格也是绿「+」，去掉「+ guide」。
+  - 过去的日子、只读格照旧是「—」。
+  - 虚线框：forecast 里本来就没有，不用改。
+  - How to use 第 2 条加一句：数字不能点，开关团、改上限去 Bus Manifest setup；第 5 条加一句：空格显示绿色 +。
+- fc-test：
+  - 原来的「G81 表上按天改」一整段（点粗体格 / 上限格、弹框、存、Back to automatic 等）换成新检查：
+    - 数字格没有按钮、鼠标不是手指、点了没弹框没请求；
+    - 旧的按天改照样显示（小黄点、title）；
+    - Action Log 照旧；
+    - 能编辑的空格是绿 +、写了字的没有 +；
+    - 过去 / 只读的是「—」；
+    - 只读格没有 +；
+    - Driver / Guide 能点、空格绿 +、点了打开排班框。
+  - 「清空再 Save」改成回到绿 +；「有 forecast.edit」改看手写格的按钮。
+- 检查：fc 181/181、nav 32/32；tsc 0 错；eslint 0 错、2 个原有警告；build 过。
+- 这台电脑签出的文件是 CRLF，prettier --check 在原始 main 上也报 17 个文件，不是这次引进的。
+- 等 eb 回「合」再合 main。
+
+## 2026-10-30 收工交接：前端主窗口 `前端主窗口-eb`[b5cef8]（公司电脑，Annie 定今天 15:00 收工）
+
+明天的主窗口先读这一节，再读上面的「📌 等 Annie 确认」。逐条细节见下面「2026-10-30 主窗口 eb 开工核对」。
+
+### 一、今天上 main 的（都等 Annie 线上验收）
+- Bus Manifest：
+  - 先存换车再存字号 1711a4e；
+  - 存完不闪回旧版式 2fd3cd3；
+  - Special Requirements 并进整页 Save d90aa68（后端 G125 cc2c43ec 已上，现在能在线编辑）；
+  - 第二辆车 Farm out 键 f04cfed。
+- Dispatch：G215 page is off + Driver / Guide page 开关 c6d9cae；手动保存 f6d79cd。
+- Products 按 Save 才存 33df24c。
+- 批量导入：HR fbe5fd7、Pickup b277615、Vehicles a3102e1、Farm out 上车点 7fae286、结算价 ed03071。
+- 排班：
+  - Publish again 新说法 801544f；
+  - Send to confirm 96d130f；
+  - 整周一个 Save 7da6786；
+  - Save 被空档拒时红字可见、空档标出来 8e445a3。
+- Forecast 数字不能点、绿色 + d9e5ab1。
+- 全部按照勾选（10c）：byTick cb073ba、A+B 1f82190、B 类检查 109aa9c、C a665f25。总开关 staff_permissions 关着时页面不变；Annie 核对完 Team 勾选再打开。
+- Daily Operation Report 本人能改自己的 4f5fb6a。
+- 语言规定、「问 Annie 给完整内容并置顶」「附 preview 原文」都写进了 CLAUDE.md。
+
+### 二、做完、等后端或 Annie 才能合
+- 62 `task/pickup-split`：后端 G211 已上 e5aafb52，62 在合（今天合不完就明天第一件）。
+- 62 `task/dispatch-send-to-guide`：等后端 78 的 Send to guide（短信缩短 + extra）上 main；第一次真发要 Annie 点头。
+- e6 `task/farmout-rate-items-e6` a96553f：等后端 G221 上 main（v130 Annie 已执行，排在 G211 后面落地，要 release.py）。
+- e6 `task/schedule-person-history-fe` 32bfb99：等 ef 的往来记录（要迁移，SQL 等 Annie 过目）；另请后端在 confirmations 加 history_count。
+- 59 做的 `task/team-contacts` 0ff97be：等 G219 上 main（v131 Annie 已执行）。合时补 Team 页 How to use 7 条（原文在 57 的消息，PROGRESS 有要点）；建号接口的 detail 保持纯字符串。之后做 import-team。
+- 09 `task/rezdy-cleanup`：②③④⑤ 在做；① 不改（后端核过 Dispatch 自动同步只读 Main manifest）。
+
+### 三、后端还在做、前端要接的
+- ef：Publish 通知按 schedule.edit（不按职位）+ notified 只算真发出 + not_reached（task/republish-recipients-by-perm）。前端提示要照置顶 15 改，等 Annie 定原文。
+- 66：G212 B1 → B4 → B2 → B5；B3 改 409 + 计数前要先发前端形状（前端「Deactivate instead」要跟着改）；B6 / B7 明天。
+- 92：Team Columns 键 team_list_layout（格式同 hr_list_layout），上了派前端照 HR 页 Columns 接。
+- 78：G223 订单流核对已答（见置顶 16）。
+
+### 四、要 Annie 做的（不是答问题）
+- 排班员工收不到通知：在 Staff Schedule › Employees 框给 6 人填和登录账号一样的 email（后端会自动关联账号）。Jing 是哪个账号还没确认。
+- release.py：G211 / G221 落地时后端会提醒她。
+- 排班往来记录迁移 SQL 过目。
+
+### 五、窗口和端口
+- 09 [8a0116]：3309 / 8909 / 9509；62 [cd78c4]：3362 / 8962 / 9562；e6 [047d88]：3411 / 8911 / 9541。
+- 后端主窗口：今天的主窗口-57 [738bb6]。
+- 这台公司电脑今天新装 Node v26.13.0（.nvmrc 写 22），检查都没出 26 特有的问题。新开的窗口要先刷新 PATH。
 ## 2026-10-30 Bus Manifest 整页 Save 存完「闪回旧版式」（`task/manifest-version-flash`，工作窗口 `npe-ops-frontend-e6`[047d88]，主窗口 eb 派工）
 
 - 现象（09 发现）：换了版式按 Save，存完到重读回来之间，列先回到旧版式再变新的；mf「West Rim 列序」在 main 上偶尔失败也是它。
@@ -106,7 +332,23 @@
   - mf-test 加一项：存完到重读回来之间每次页面变动都记 A 车列头，必须一直是 West Rim。改之前的代码上这项失败（记到一次 General 列头），改之后过。
   - mf 193/193 连跑 3 次都过；man 322/322、nav 32/32；tsc 0 错；eslint 0 错、2 个原有警告；build 过。
 
-## 2026-10-30 Bus Manifest：Special Requirements 并进整页 Save（`task/manifest-notes-page-save`，工作窗口 `npe-ops-frontend-09`[8a0116]，主窗口 eb 派工）—— 检查都过，等 eb 核对后合 main
+## 2026-10-30 Bus Manifest：第二辆车加 ⇄ Farm out 键（`task/manifest-farmout-button`，工作窗口 `npe-ops-frontend-09`[8a0116]，主窗口 eb 派工）—— 检查都过，等 eb 回「合」
+
+- 依据：Annie 10-28「要」（Bus Manifest 页第二辆车另加 Farm out 键）；10-29 晚 59 的 preview https://claude.ai/artifact/7uRp5FHfFTsnRYemrrm1Wf ；Annie 10-30「你检查一下我前天和昨天布置的任务还有哪些没有完成的，现在做了」，主窗口 eb 理解成照 preview 推荐动手。**Q1–Q5 一律照推荐，Annie 没逐条看过，上线验收时对照。**
+- 照推荐做的：
+  - Q1 键在第二辆车色条上，Print / Guide view / Aa Text size 旁边；第一辆没有，这一团只有一辆车时不出。
+  - Q2 点了弹框「Farm out Bus B?」：选合作公司（只列启用的；只有一家时已选好），写几单几人、司机会被拿掉，黄框提醒下一步；蓝色 Farm out **马上生效**，不并进整页 Save（做的是 Dispatch 那边的事）。
+  - Q3 转完页面上方黄条「Bus B is farmed out to 公司. Pick each order's hotel and send the farm out notice on Dispatch.」，点 × 关掉。
+  - Q4 撤销照旧在 Dispatch（Back to our bus）；Q5 选酒店、发通知不搬过来。
+- 不用改后端：占住这一天（POST /api/dispatch/edit-lock）→ 读这一天（GET /api/dispatch/day）→ 只存这一团（POST /api/dispatch/section，unit = tour:<团>；第二辆车标 farm_out + partner_id，清掉司机 / 车 / 导游 / 酒店，别的车原样）→ 放开（成功失败都放）→ 重读本页。合作公司读 GET /api/farm-out/partners。
+- 谁看得到：开关 farm_out_dispatch（同 Dispatch，默认只 Super Admin）、要 dispatch.edit（can）、partner 没有。
+- 我加的、preview 没写的：页面上有没存的改动（换车、备注……）时键灰着，提示「Save your changes first.」——转完整页重读，没存的改动会对不上。别人正在改这一天（409）、存失败时，红条写后端原话，什么都不改。没有合作公司时键灰着，提示「No farm out partners yet. An admin adds them in Supplier → Partners.」（同 Dispatch）。
+- How to use 加一条「Farm out the second bus: …」。
+- 新文件 [farm-out-button.tsx](components/dispatch-manifest/farm-out-button.tsx)；[manifest-view.tsx](components/dispatch-manifest/manifest-view.tsx) 接上键和黄条。
+- 检查（合了最新 main）：mf 209/209（新加：开关关着没键、开着只有第二辆车有、弹框内容、Cancel 不发请求、409 红条不存、存失败红条照样放锁、请求顺序 edit-lock → day → section → release → manifest、section 的 body、黄条和 ×、有没存改动时灰着、没合作公司灰着、How to use、partner 没键）、man 322/322、nav 32/32；tsc 过；eslint 0 错；build 过。
+- 只用模拟数据。
+
+## 2026-10-30 Bus Manifest：Special Requirements 并进整页 Save（`task/manifest-notes-page-save`，工作窗口 `npe-ops-frontend-09`[8a0116]，主窗口 eb 派工）—— **已合 main d90aa68**（eb 回「合」）
 
 - 依据：Annie 10-18 要 Special Requirements 能改能删（NotesCell，PUT /api/dispatch/manifests/guest-notes {guest_id, notes}）；后端今天重启 G125（78 做）。主窗口问「自己当场存还是并进整页 Save」，Annie 原话「并进整页一起存 A 动手」（2026-10-30）。
 - 做了（[manifest-view.tsx](components/dispatch-manifest/manifest-view.tsx) NotesCell / changeNotes / savePending，[page-save.tsx](components/dispatch-manifest/page-save.tsx) Pending.notes）：
@@ -118,6 +360,8 @@
   - mf 192/192（连跑 3 次）、man 322/322、nav 32/32；tsc 过；eslint 0 错；build 过。
   - 顺手修的：mf 的「West Rim 列序」那项在 main 上也偶尔失败（3 次里 1 次）：存完到重读回来之间列还是旧版式。检查改成等绿字 Saved 再看，页面代码没动。页面上这一瞬间会先闪回旧版式的列，是现有的小问题，没改。
 - 只用模拟数据。
+- 后续：G125 后端上了 origin/main cc2c43ec，09 只读核对，前端页面对上了，不用改。mf-mock 的两种 400 照后端原话改（没带 notes 键、看不见的控制字符），mf 加两项（粘贴控制字符时红字照后端原话、暂存不丢；每条 PUT 都带 notes 键），mf 195/195、nav 32/32、tsc 过。`task/manifest-notes-key` 2e83aac，已合 main ca9a311（只动检查）。
+- 权限：备注编辑和换车一样，partner 按 manifests.edit 拦；员工没勾、partner 只勾 dispatch.edit 这两处小出入并进置顶 10c（「全部按照勾选」），等 Annie。
 
 ## 2026-10-30 Dispatch 手动保存上线（`task/dispatch-manual-save-e6`，从 59 的 f243720 接手；工作窗口 `npe-ops-frontend-e6`[047d88]，主窗口 eb 派工）
 
@@ -179,6 +423,90 @@
   - tsc 0 错；eslint 0 错、2 个警告（public/window-hscroll.js 原有的）；build 过。
   - eb 核对过，合 main。
   - 注：npm 11 的 `npm ci` 拦了 unrs-resolver 的 postinstall（提示 `npm install-scripts approve`），没批；tsc / eslint / build / 检查都不受影响。
+
+## 2026-10-30 排班：有没存的改动时 Send to confirm 灰着、写 Save first（工作窗口 `npe-ops-frontend-62`[cd78c4]，eb 派，分支 `task/schedule-confirm-save-first`）
+
+- 依据：置顶 12，**Annie「同意」+「以上内容全都动手」（2026-10-30）**，选方案 A。
+  - 原因：发出去的是库里的改动，页面上没存的不在里面。所以先按 Save 再发。
+  - 做法同 Bus Manifest Farm out 键的「Save your changes first.」。
+- 做了：页面上有没存的改动时，每行的 Send to confirm / Send again 灰着，旁边灰字「Save first」，鼠标提示「Save your changes first.」。按 Save 存好（或 Discard）就恢复。
+  - week-grid 加 `sendBlocked`，schedule-view 传 `dirty`。
+- 检查：sch 加 3 条（有暂存时灰、写 Save first、提示原话；灰着点不开发送框；Save 后恢复）。没暂存照常的情况，原来那些 Send to confirm 检查都覆盖了。
+  - tsc 过；eslint 0 错误；build 过；sch 266/266、nav 32/32（端口 3362 / 8962 / 9562）。
+- eb 说过了直接合（Annie 要快）。
+
+## 2026-10-30 线上 bug：排班 Save 以后「Not saved yet」不消失（工作窗口 `npe-ops-frontend-62`[cd78c4]，eb 派，分支 `task/schedule-save-clear`）
+
+- Annie 原话：「staff scjedule页面，我save了以后，没有saved的提示还在那里，需要我自己去刷新浏览器，这个要改掉，点击save后这个消息要消失」。
+  - 后来在 ef 窗口说：「其实刚才是不让我存，因为有gap，但是这个提醒要到publish才能看到，是否可以直接在排班的那个模块上显示出来不是更直观么」。
+- 原因：
+  - 生产 action_log 12:00 起没有一条 schedule_week（57 只读查），说明整周 Save 一次都没成功。是已发布的周被后端以 409 coverage_gap 拒了（后端原话「This change would leave a gap in coverage, so it wasn't saved.」）。
+  - 前端其实出了红字，可是在页面最上面（周导航下面）；人在下面的周表 / Day timeline 按的 Save，看不到，只看到「Not saved yet」挂着。
+  - 刷新后那行没了，是因为暂存被丢了，改动并没有存上。
+  - 前端在后端回 200 时本来就会清掉，这一段没问题（对过后端 4c5b3bf 的真回包 {week, created, applied, notified: [], lock_token}）。
+- 修了（样子不变，不用 preview）：
+  1. 存失败时红字自己滚到屏幕中间（`SaveStatus` 里 scrollIntoView）。
+  2. 409 coverage_gap 回来的空档并进页面上的空档显示：周表列头红点、Day timeline 的日子红点跟着标。Discard 后一起消失。
+  3. 模拟接口照后端改：coverage_gap 原话照后端 EditGapError；只列这次造成的新空档（同后端 `_new_gaps`）。加 ctl.changes404（路由不在时回 404）。
+- 检查：sch 加 7 条（404 红字、真实回包下 Save 后提示消失 + 绿字、coverage_gap 没存上、红字滚到屏幕里、原话 + 空档、列头 / Day timeline 标出、Discard 清掉）。
+  - 因为 mock 的空档判断改严了，后面两条把时间往后推的检查改成往前推（08:25→08:15、08:35→08:10），测的东西不变。
+  - tsc 过；eslint 0 错误；build 过；sch 256/256、nav 32/32（端口 3362 / 8962 / 9562）。
+  - eb 回「合」。合前拉的 main 进了 e6 的 perm-c（也改了 sch 套），重跑：tsc 过、sch 263/263、nav 32/32，合 main。
+- 57 提的「12:08:41 同一个 slot 102 被 delete 两次（相隔 0.04 秒）」：那是旧前端（7da6786 之前）单项删除的请求。现在删班只改暂存，按 Save 才一次送出，这条路径已经没有了。
+- 第 2 件「编辑时就在格子上标空档」是新样子，先出 preview 给 Annie（Annie 例子：改时间造成 gap，按 Done 那一刻卡片变红、写「This leaves a 1 hour gap (11:00 AM – 12:00 PM).」）。
+
+## 2026-10-30 排班整周一个 Save（B9 / G218）+ 改时间小窗（A8）（工作窗口 `npe-ops-frontend-62`[cd78c4]，eb 派）
+
+- 分支 **`task/schedule-week-save-main`**（worktree `C:\Code\npe-ops-frontend-weeksave`）。从最新 main 拉的。
+  - 原来的 `task/schedule-week-save` f252f50 是从旧版 send-to-confirm 拉的，合 main 会冲突、还会带进旧代码，所以没用；9c 的交接原文还在那条分支上。
+- 依据：
+  - Annie 10-29「你不会用缓存么」「4项全部动手」：第 3 项 = 排班整周一个 Save（B9 Q1–Q7 照推荐）+ A8 改时间小窗（照推荐，小窗的键改成 Done）。
+  - preview：B9 https://claude.ai/artifact/AY3vC6WaeLmTQgTx3BZi79 、A8 https://claude.ai/artifact/5jHSPfjGt9eD187iP8i2ut 。
+  - **B9 Q4 已同意**（eb 10-30：Annie 答「Q1–Q7 照推荐」，Q4 就是 10 分钟没动作只出琥珀色提醒、不自动存）。
+- 后端 G218 已上 main 4c5b3bf，接口照 `docs/interfaces/schedule-week-changes-2026-10-30.md` 对过：
+  - 出错回包是 `{detail: {detail, code, …}}`；
+  - ref 用 n1、n2…，合后端「1–40 个 ASCII 字母 / 数字 / _ . : -」的限制。
+- 做了：
+  - `components/schedule/week-draft.ts`（新，纯函数）：
+    - 暂存的 creates（临时负数 id）和对已有班的 edits；
+    - 叠出页面上要画的班和 moved / time / new / note / deleted 标记；
+    - 生成 ops（create 先，再 assign / time / note，最后 delete），记每条对应哪个班（400 op_index 标红）；
+    - 按页面上的班算空档（同后端算法）。
+  - `schedule-view.tsx`：
+    - 拖班 / 加删 / 改时间 / 备注只改暂存；
+    - 周导航那一排 Discard + Save（蓝），下面一行琥珀色「Not saved yet: N changes (…)」、绿色「✓ Saved · 时间」、红字后端原话（一样都不存，改动留着）；
+    - 409 stale 带 Reload / Keep editing；coverage_gap 列空档；
+    - 空档 / Day timeline 照页面上的算；
+    - Publish 有没存的改动时写「You have N unsaved changes. They are saved first, then the week is published.」，键「Save and publish（again）（anyway）」；
+    - 离开页面 / 换周弹 Save / Don't save / Cancel（复用 dispatch-manifest 的 LeaveDialog）；
+    - 10 分钟没动作琥珀色提醒（不自动存）；
+    - `?week=` 改用 `replaceUrl`（不然撤离开提醒的哨兵时会把旧的周搬回地址栏）；
+    - 等占锁时换了周，那一下作废。
+  - `use-schedule-edit-lock.ts`：有没存的改动时心跳一直带 edited:true、不做 15 分钟自动放开；交出 token、收回包里的新 lock_token；存好 / Discard 放开。
+  - `week-grid.tsx`：
+    - 卡片上琥珀色标记；删掉的灰掉划线、带 Undo；
+    - 搬走的原位置留淡的琥珀虚线影子；
+    - 400 指出的那张标红；
+    - 点时间开 A8 小窗；备注的 Save 改 Done（白色）。
+  - `time-edit-popup.tsx`（新，A8）：
+    - 卡片上方独立小窗（谁 · 哪天 · 什么班），Start / End 并排，Done（白）/ Cancel；
+    - 透明遮罩挡住别的格子；没改点外面直接关；改过出黄框 Unsaved changes + Done / Discard；Esc 同点外面。
+  - `time-picker.tsx` 加 `inline`：列表开在输入框下面、不盖键，选了 AM / PM 就收起。改时间小窗和 Add shift 窗口用（A8 Q4）；别处不动。
+  - Auto-fill：当前这一周放进暂存等 Save（Replace = 原来的班标删掉）；后面几周照旧直接建草稿（B9 Q6）。
+  - 休假（加 / 删）照旧马上存。
+- 检查：
+  - sch-mock 加 version 和 `POST …/changes`（locked / stale / coverage_gap / 400 op_index / 员工不在职），`/__bump`、`/__changes`；
+  - sch-test 改成「改 → Save → 查服务端」，新加 A8 小窗、标记、Undo、Discard、离开 / 换周拦截、Save and publish、stale / locked / 不在职、10 分钟提醒、Auto-fill 进暂存等；
+  - 顺手修了 Rules 删除那步的偶发失败（等框里出现 Delete 键再点）。
+  - 合了 main 96d130f（send-to-confirm）之后：tsc 过；eslint 0 错误；build 过；**sch 249/249、nav 32/32**（端口 3362 / 8962 / 9562）。
+- ⚠️ 要问 Annie / eb 的一点（没改）：有没存的改动时按 Send to confirm，发出去的只是**库里**的改动，页面上没存的那些不在里面（pending_changes 是后端按库里算的）。可以选：
+  - A. 先要求 Save（Send to confirm 灰着，写 Save first）；
+  - B. 发之前自动先存；
+  - C. 照现在。
+  这件是新样子，要先问 Annie。
+- eb 回「合」。合前拉的 main 进了 perm byTick / forecast 的代码，重跑：tsc 过、eslint 0 错误、sch 249/249、nav 32/32，合 main。
+- 「没存的改动时按 Send to confirm」那一点 eb 已放进 Annie 置顶第 12 条，这次不动。
+
 ## 2026-10-30 G215 前端：Send to driver「page is off」+ driver_page / guide_page 开关（工作窗口 `npe-ops-frontend-62`[cd78c4]，eb 派）
 
 - 分支 `task/g215-page-off`，worktree `C:\Code\npe-ops-frontend-g215`。检查都过了，等 eb 核对数字后合 main。
@@ -389,6 +717,118 @@
 - 后端 G125（Special Requirements 编辑）已在后端本地 main，三审 PASS，等 Annie 跑 release.py。
   - 多两种 400：请求没带 notes 键；有控制字符。09 核过前端 d90aa68，不用改。
 - 后端 G221（Farm out 每个团加子项）代码写完，等 Annie 执行 v130 才能上 main。已派 e6 让 task/farmout-rate-items 对形状、合 main 解冲突，只推分支。
+- 后端 G215 Driver & Guide（司机页改餐 + 发餐厅）已上 main：2e740001，合并 387bc972。
+  - 司机页是后端模板，前端不用改。新路由：POST /driver/api/lunch、GET /driver/api/restaurant/preview、POST /driver/api/restaurant/send。
+  - 开关关着时 403。
+  - 提醒：第一次真发给餐厅，要 Annie 点头。
+- Annie 通知（经 57）：今天 10/30 下午 3 点收工，14:45 开始收尾，14:55 前推完，15:00 起不改文件。已转 09 / 62 / e6。
+- **Annie（11:5x）原话：「你检查一下我前天和昨天布置的任务还有哪些没有完成的，现在做了」**。主窗口查了 10-28、10-29 两天的交接。
+  - 前端现在就能做的，照 preview 推荐动手：
+    - 09 `task/manifest-farmout-button`：Bus Manifest 第二辆车 Farm out 键（preview 7uRp5FHfFTsnRYemrrm1Wf，Q1–Q5 照推荐）；
+    - e6 `task/forecast-no-click`：Forecast 数字不能点，能编辑的空格改绿「+」，细实线（preview X9EXZjpgbKfPhxzeKR7c9c v2，Q1 / Q2 照推荐）。
+  - 进行中：A8 改时间小窗跟着 G218 整周 Save，62 在做。
+  - 卡在后端，已问 57：
+    - Users / Team 第二步（admin 按层级，B1–B8）；
+    - Team Columns 键（user_prefs 白名单）；
+    - G219 staff 联络方式（team-contacts、import-team 等它）；
+    - G211 pickup-split；
+    - G221 等 v130；
+    - 导游页链接免登录。
+  - 等 Annie：Rezdy 冲突五处（置顶 4）。
+- 57 回 6 项后端状态（11:50）：
+  1. Team 第二步 B1–B8：只上了删除账号（G212），按层级的写接口没做，今天派窗口能做多少做多少；
+  2. Team Columns 键：今天做，键名 "team_list_layout"，格式同 hr_list_layout。前端同意，上 main 后派人照 HR 页的 Columns 做法接；
+  3. G219 staff 联络方式：78 在做，v131 等 Annie 过目执行，今天不一定能上；
+  4. G211 pickup-split：代码、审查、测试都过了，排在 G218 后面落地，要 Annie 跑 release.py；
+  5. G221：排在 G211 后面落地，要 release.py；
+  6. 导游页链接免登录：G123 10/19 已上，不用再做。
+- Annie 原话「V130已经执行了」：已转 57。
+- 后端 66 核 G212 B1–B8（main 2e740001）：
+  - B8 完成；
+  - B1 有回退：admin 撤销邀请被 403，今天先修；
+  - B2 / B4 / B5 部分完成，今天按 B1 → B4 → B2 → B5 修；
+  - B3 要改成 409 + 计数：前端要同时改 Team 页「Deactivate instead」的判断，已请后端上之前先发形状，前后端一起上；
+  - B6 / B7（admin 按层级）没做，约半天，明天接着做。
+- **Annie 逐条答置顶（2026-10-30 中午，原话）**：
+  - 1「同意推荐」：要她确认短信原文后再说「动手」；
+  - 4「列出来给我看」：已列进置顶 4；
+  - 5 Lankun ✓ 列「都去掉」：就是现在的做法，不用改；
+  - 8 语言规定「写」：已写进 CLAUDE.md；
+  - 10a「你别管是谁，我选谁就是谁，最关键是有没有这个功能，而不是这个职位」：通知按 schedule.edit 勾选，不按职位。已转后端 ef，前端 62 改说法；
+  - 10b「先上」：62 合 send-to-confirm；
+  - 10c「动手」：09 做 A + B（task/perm-by-checkbox-ab），e6 做 C（task/perm-by-checkbox-c），各自做完手上的再接；
+  - 10d「谁提出的谁走」：卡在登录，已问 Annie。
+- 后端 G219（staff 联络方式，78）：代码在 task/g219-staff-contacts，v131 等 Annie 执行。
+  - 形状照前端 0ff97be。
+  - 后端建议 Team 页 How to use 补 7 条（英文），合 team-contacts 时补进去，原文在 57 的消息里：Edit → Contact、Email 是职责通知地址、Mobile 暂时只存、HR 电话只读、邮箱已被用、电话格式、Add person 也有 Contact。
+  - 主窗口定：建号接口的 detail 保持纯字符串（前端 describeError 只认字符串），只有新的 contact 接口用 {field, message}。
+- 中午到下午上 main：
+  - 62 send-to-confirm 96d130f：含 7、7b，文字照 10a 写成按权限（schedule editors）；
+  - 09 Bus Manifest 第二辆车 Farm out 键 f04cfed：Q1–Q5 照推荐，Annie 没逐条看过。另加：有没存的改动时键灰着；黄条只在屏幕上，不进打印 / Excel。
+- 后端 G218 已上 main 4c5b3bf（create 的 ref 限 1–40 个 ASCII 字符）。62 的 task/schedule-week-save-main 在收尾。
+  - B9 Q4 的「10 分钟没存提醒」（琥珀色字，不自动存）是 Annie「Q1–Q7 照推荐」同意过的，已让 62 加回。
+- 10c 做法（09 提，主窗口同意）：共用 byTick——总开关 staff_permissions 对这个人开着就按勾，关着照今天按角色，Super Admin 全过。09 先单独合 byTick，e6 的 C 类也用它。
+- **Annie「1. 动手」（12:3x）**：Dispatch Send to guide。
+  - 5 处照推荐；短信缩短成「NPE guide Fri Oct 30: <link>」，staff 可在链接后加一句，限一条短信。
+  - 后端已发 57：改短信模板，send 收 extra，GET 回 extra_max / preview_text，400 英文 detail。
+  - 前端派 62 `task/dispatch-send-to-guide`，模拟接口先做。第一次真发要 Annie 点头。
+- Annie 原话「V131我已经执行了」：已转 57，G219 可以落地。前端 task/team-contacts 0ff97be 等后端上 main，合时补 Team 页 How to use 7 条。
+- **Annie 答置顶 13，原话「13 A」**：partner 不管勾什么，在 Bus Manifest 都只能看，照旧。e6 本来就按 A 做，不用改。
+- **Annie 10b 排班往来记录：「其他都同意推荐，动手」**。
+  - 范围另有原话：「只留本次排班的对话……从排班人发出信息开始，到publish的记录，一直到下次排班开始后开始新一轮信息」。
+  - 定下来：两处都放（发送框 + Responses 卡 History）；最新的在下面；记发的 / 回的 / 主管处理 / 重置；只看这一轮。
+  - 后端 4 件已发 57；前端等后端形状，明天派（62 做过 preview）。
+- 排班 Save 线上问题（Annie：Save 后「Not saved yet」不消失）：
+  - 原因是已发布的周 Save 被后端 409 coverage_gap 拒了，页面没让她看出原因。生产 action_log 显示 12:00 起整周 Save 没成功过。
+  - Annie 在 ef 窗口原话：「其实刚才是不让我存，因为有gap，但是这个提醒要到publish才能看到，是否可以直接在排班的那个模块上显示出来不是更直观么」，又举例：「比如说最后一个表格的时间选择，如果制造了gap，他选了时间时候一保存，这个格子就变红色，告诉排班的人有一小时的gap」。
+  - 派 62：① bug `task/schedule-save-clear`，被拒时红字写原因、列出空档；② 空档标在格子上，先出 preview。
+  - 12:08:41 slot 102 被 delete 两次，相隔 0.04 秒，是旧前端，62 顺手看。
+- 排班往来记录：ef 定了形状（后端分支 task/schedule-person-history，文档 docs/interfaces/schedule-person-history-2026-10-30.md），要迁移，SQL 请 Annie 过目，最快明天上 main。前端派 e6（perm-c 之后）用 mock 先做 `task/schedule-person-history-fe`，只推分支。
+- Annie 问「现在publish schedule员工可以收到么」，57 只读核了生产：**现在谁都收不到**。
+  - 在职 6 个排班员工都没有邮箱，也没关联登录账号，过去 14 天一条发布通知都没发出去。
+  - 页面「Notified 6」是误导：没有渠道的人也算进去了。ef 在改：只算真发出的，没收到的单独列出。前端提示要跟着改，新文字要先 preview。
+  - 解法：在排班页 Employees 框给每人填和登录账号一样的 email，后端会按 email 自动关联账号（schedule.py:265-304），填完邮件和站内通知都能收到。账号上的 email 已告诉 Annie；Jing 对应哪个账号，等她确认。
+  - 后端待办：先填邮箱、后建账号的人，要把 email 重新存一次才会关联。
+- e6 10c C 类（54ead3d）检查全过，已回「合」。09 B 类检查上 main 109aa9c。
+- **Annie「4 全按推荐 动手」**（Rezdy 冲突）：
+  - 09 做 ②③④⑤，`task/rezdy-cleanup`，dor-edit-own 之后；
+  - ⑥ Main Manifest Sync Rezdy 留；
+  - ① Dispatch 自动同步要等后端答停掉后会不会缺单，已问 57。
+- Annie 又说「5 按推荐动手」：现在置顶没有第 5 条（Lankun 已答），已问她指哪条。
+- Annie「5 按推荐动手」：指的是早先清单第 5 条 Lankun ✓ 列（主窗口编号乱了，已向 Annie 认错）。屏幕上留 ✓ 列、打印 / Excel 去掉，以这句为准，取代上午的「都去掉」。派 e6 `task/lankun-check-col`。
+- 09 rezdy-cleanup dbe8039：②③④⑤ 做完。① 和 Sync Rezdy 没动，gone_orders 灰字留着。重跑全过就直接合。
+- 62：save-clear 上 main 8e445a3；pickup-split b325dcd 检查过（pl 97、sch 263、nav 32），已回「合」；Send to guide 7b4d782 等后端；空档 preview 已交（置顶 17）。
+- Annie 确认 Jing 的邮箱是 jtian 那个账号，已转 57。
+- 391d6ea0 是 release.py 的交付编号（G211），不是提交号。
+- **Annie 答置顶 16（Sync Rezdy 键）原话「不留，彻底删掉」**：两处键（Dispatch ① 区、Main Manifest 页）都删，派 09。Dispatch 打开 / 换天的 /sync（只读 Main manifest）不动。后端接口删不删，已问 57。
+- **Annie 一并答复（约 14:00，原话「以上内容全都动手」）**：
+  - 10d：给测试邮箱 azhou@nationalparkexpress.com，「所有测试都用这个邮箱，记住了」，已写进 CLAUDE.md。还差 ZZ Test 登录账号。
+  - 12「同意」：派 62 `task/schedule-confirm-save-first`。
+  - 14「加最新进展，任何人都可以加」：后端已发 57（新表 + POST updates，迁移 SQL 给 Annie 过目），前端等形状，派 09。
+  - 15「同意」：派 e6 `task/schedule-not-reached`，用 mock，等 ef 上 main。
+  - 16「不留，删掉」：09 在删两处键；后端接口明天扫完调用方再删。
+  - 57 补充：每天 03:00 PT 有自动对账（run_daily_reconciliation），漏推的单最晚第二天凌晨会补上。
+- 92 的 Team Columns 键（team_list_layout，GET / PUT /api/user-prefs/team_list_layout，同 hr_list_layout）已提交，排队上 main。
+- 62 pickup-split 上 main d34ce08。
+- **Annie 答置顶 18（Multi Orders 已回复的卡）**，原话：「为什么要等客人回复？ 我们已经回复了就要消失啊，客人再发回来才需要在这里显示」。
+  - 已回复的卡不显示，客人再来信才出现，和其他车道一致。
+  - 派 62 `task/multi-orders-hide-replied`，今天来不及就明天第一件。顺手修「1 orders」单复数，查「只剩 1 张单还在 Multi Orders」。
+- **Annie 答置顶 17，原话「17 全按推荐，动手」**：排班卡片上直接标空档。拖班 / 删班也标；只标卡；草稿周也标、只标新造成的。62 明天做 `task/schedule-gap-on-card`（排在 Multi Orders 后面）。
+- 后端 G224（DOR 最新进展，b0）形状到了，还没上 main（v133 等 Annie 过目执行）。原样已转 09，明天第一件用 mock 做：
+- 主窗口看错时间：13:43 时以为快 15:00，跟 Annie 说了「快收工」，已更正。10d 和置顶 17 改成今天做。
+- 09：rezdy-cleanup 上 main 6a8a94d；rezdy-sync-remove 在跑检查，后端 92 等它上了再删三个 Sync Rezdy 接口；10d 清单在写。
+- 62：Multi Orders 已回复的卡隐藏 + 「1 order」单复数，上 main e2c13e7。调查写进 PROGRESS「Multi Orders 1 orders」，置顶 19。
+- e6：not_reached 上 main 12d8a11；Lankun ✓ 753e708。
+- **Annie 原话「schedule里对gap的要求，之应该对此刻起的将来设置，对过去的应该彻底放行」**：空档只算洛杉矶时间「现在以后」的。过去的日子、今天已经过去的小时一律不算，Save / Publish 不拦，也不标红。已转 57（后端改 _new_gaps 等），62 在 17 里照做。
+- 置顶 20：员工确认排班挪到发布前（62 调查），等 Annie 定 A / B 和权限。
+- **Annie：「我加了ZZTest和Leon在staff Schedule里用来做测试，不要把这两个人显示在dashbroad里」，选 A 并说「动手」**。
+  - 做法：排班员工加「Test person」勾。勾了的人 Dashboard 不显示、不算空档、排班页标「Test」，通知照发。
+  - 后端已发 57（schedule_employees.is_test，要迁移）；前端派 62 `task/schedule-test-person`，用 mock，等后端。
+- 62 上 main：卡片标空档 5a1dbed（17）、空档只算将来（前端）9b79a19。后端 ef 还在改，改好前 Save / Publish 仍按整周判断。
+- 09 rezdy-sync-remove 上 main e59375f，已通知后端可以删那三个接口。
+  - GET 报告详情多 updates[]；
+  - POST /api/operation-reports/{id}/updates {text}，只加不改不删，不发通知，partner 403。
+- 62 week-save 已上 main 7da6786。
 ## 2026-10-29 晚 收工交接：前端主窗口 `今天前端主窗口-d2`[15266b]（家里电脑，Annie「做完写交接收工」）
 
 明天的主窗口先读这一节。细节在下面「2026-10-29 晚 主窗口 d2 开工核对」那一节，按时间逐条记。
@@ -915,6 +1355,63 @@
           - 后端需求已转 9a。要确认 HR 的 overwrite=true 不会把空格当成清空（Q3：空格 = 不改）。
       - 每页要后端一对 import/preview、import/commit 接口。
       - 待 Annie 定 Q1–Q7，都附推荐。
+- **排班：发布前手动发给员工确认**（9c，`task/schedule-send-to-confirm`，从 `task/schedule-notify-wording` 拉，含文字那件）。**等后端 8e 上 main 再合（notify-wording 先合，再合这个）。**
+  - Annie 原话：「员工确认，同意推荐，动手」（preview https://claude.ai/artifact/NfWdfaxPUSS6SR8PGmxNrv ，Q1–Q6 全按推荐，Q1 那句「Changes are not sent until you publish again.」也要）。
+  - 做了：
+    - 已发布的周、能改排班的人（supervisor 及以上）：改过的人那一行名字下面琥珀色「N changes」+「Send to confirm」，改过的格子琥珀色框；
+    - 发送框（`components/schedule/send-changes-dialog.tsx`，照 tickets-send/legacy-ui）：表格只列改了的（哪天、原来划线、现在），To 邮箱 + 站内，对方收到的话；蓝色只有 Send to …；发好绿字 + 淡黄「Sent by 谁 on 时间」；失败红字后端原话；没邮箱黄框、Send 灰；
+    - 发过的行写淡黄「Sent to … 时间」，键变 Send again；Publish again 后后端清掉，标记都没了。
+  - 接口照 preview 暂定（`lib/schedule-api.ts` sendScheduleChanges）：GET 周带 `pending_changes[{employee_id, name, items[{date, before, after}], sent_at, sent_by}]`；POST `/api/schedule/weeks/{ws}/employees/{id}/send-changes` → `{sent_at, sent_by, channels}`；没邮箱 400。
+  - 检查：tsc / eslint / build 过；sch 210/210（新加：行上标记、格子框、发送框内容、只有 Send 是蓝色、失败红字、发好绿字 + Sent by、只发本人、Send again、重开还在、Publish again 后清掉、没邮箱、staff 看不到）、nav 32/32。
+  - **2026-10-30 对后端 G217 清单**（工作窗口 `npe-ops-frontend-62`[cd78c4]，主窗口 eb 派；后端 ef 写、57 转，没上 main；worktree `C:\Code\npe-ops-frontend-sched2`）：
+    - 已先合 notify-wording c27ef65。那边改了 has_unsent_changes 对 staff 是 false，主管那件待定。
+    - 形状都对得上，页面代码不用改：
+      - pending_changes `[{employee_id,name,items[{date,before,after}],sent_at,sent_by}]`；
+      - send-changes 回 `{sent_at,sent_by,channels}`；
+      - 错误一律「Could not send: <原话> Nothing was sent.」红字，400 / 409 / 502 / 503 都走这里；
+      - 没邮箱时前端本来就先挡（黄框、Send 灰），和后端 400 原话一致。
+    - 改了：
+      - 类型注释：before / after 的写法（(Pre close)、一天两段用逗号、Time off (PTO|Sick|Personal)）、staff / 草稿 / v128 前是 []、channels 是 ["email"] 或 ["email","in_app"]。
+      - 模拟接口：staff 的 pending_changes 改成 []；没邮箱的原话照后端；加 sendFailStatus（409 等）、sendEmailOnly。
+      - sch 套：失败那条换成后端「没变化」原话；加 409 一条；加只回 email 时绿字写「(email)」一条。
+    - 原来待定的三件，ef 10-30 答了（eb 转），已照着改（**文字变了，要给 Annie 看**）：
+      1. pending_changes 每项多 `has_login`。true 写「To: 📧 邮箱 + 🔔 in-app notice」，false 只写「To: 📧 邮箱」；没带当 true。模拟接口加 ctl.noLogin，sch 套加 1 条。
+      2. 发送框底下那句，旧：「Only {name} gets this. When you publish again, {name} (and their supervisor) still get the normal notice.」
+         新：「Only {name} gets this. When you publish again, {name} and all supervisors and admins still get the normal notice.」
+      3. 「What {name} gets」改成后端真正发的原文，前端不另写一套：
+         - 旧：「What {name} gets: “Your schedule for {Oct 4 – 10} has changed: Mon 10/05 is now … (was …). Please check and tap Looks good or Send my changes.” The button opens the same confirm page they use on Wednesdays.」
+         - 新：标题「Subject: Please confirm your schedule changes — week of 2026-10-04」，正文「Hi {name}, / Your schedule for the week of 2026-10-04 has changed: / • Mon 10/05: 原来 → 现在（没班写 not scheduled）/ Please check and confirm: / [Confirm my schedule]」。下面一句：「The button opens the same confirm page they use on Wednesdays.」；有登录账号的再加「The in-app notice has the same subject and lines.」。
+         - 日期：后端不补零（ef 10-30，schedule.py `day_label = f"{d:%a} {d.month}/{d.day}"`）。所以发送框里的表格和原文都改成「Mon 10/5」，一个框里只用一种写法；排班页别处原有的「Mon 10/05」不动。sch 215/215、nav 32/32、tsc 过。
+    - **10-30 晚，ef 两项改动（后端本地 main 75ac102，还没推）**：
+      1. 重置（Annie 定）：发送成功后，后端把原来点 Looks good（accepted）的人的回复删掉，Responses 卡变回 No answer；wants_changes 不动；发送失败不重置。接口形状没变。
+         - 前端原来只在换周时拉 confirmations，整周重拉不会刷新 Responses 卡。所以给 ResponsesCard 加了 `reloadKey`，发送成功后 +1，重拉一次。
+         - 模拟接口加 ctl.jingAccepted；发送成功后 accepted 变 no_answer。sch 套加 1 条：Jing 原来 Accepted，发送后变 No answer yet。
+         - 发送框里要不要提醒「会重置」：新文字，先不加，稿子交给 eb 放进置顶第 7 条问 Annie。
+      2. 主管范围收窄（审查 SA-1）：合了 notify-wording 10286d2（确认框、按钮提示）。发送框底下那句改成「Only {name} gets this. When you publish again, {name} and the supervisors and admins who can edit the schedule still get the normal notice.」（**要给 Annie 看，置顶第 6 条**）。
+      - 检查：tsc 过；eslint 过；sch 216/216、nav 32/32。notify-wording 那边 sch 200/200。
+    - 后端 G217 已上 origin/main 14cff41，对过真代码，形状一致（pending_changes 带 has_login / sent_at / sent_by；send-changes 多回的 answer_reset 前端不用）。
+    - **Annie 原话（2026-10-30，eb 转）：「6 7 7b 按推荐 动手」**：
+      - 第 7 条：发送框照后端原文，已做；
+      - 第 7b 条选 A：这个人当前是 Looks good 时，发送框多一行灰字「{name} answered Looks good before. Sending this resets the answer to No answer, so {name} confirms again.」，发好以后收起。
+    - 7b 怎么做的：
+      - 数据用 Responses 卡已有的，不加后端字段。ResponsesCard 加 `onAnswers`，每次读到回应就报给排班页（员工 id → answer），换周先清空；
+      - 发送框加 `answeredLooksGood`。
+      - sch 加 4 条：Looks good 出灰字；发好收起；没回不出；Wants changes 不出。模拟接口加 ctl.jingAnswer。
+    - 合了 main 801544f（notify-wording 已上线）。检查：tsc 过；eslint 0 错误；build 过；sch 220/220、nav 32/32（端口 3362 / 8962 / 9562）。
+    - Annie 在 09 窗口提了「单独发给某人」要保留每次往来的记录，像聊天一样一条条排。62 出了 preview https://claude.ai/artifact/T98GQ9KfQuQfrEcMv6XgzM 。
+    - **Annie 原话（2026-10-30，eb 转）**：
+      - 10a「主管指谁」：「你别管是谁，我选谁就是谁，最关键是有没有这个功能，而不是这个职位」；
+      - 10b：「先上」。往来记录以后另做，这次不做。
+    - 照 10a 改成按权限、不提职位：
+      - 确认框：「…People who can edit the schedule (except you) get a notice listing the changes.…」；
+      - 按钮提示：「Publish again: people whose shifts or time off changed, and people who can edit the schedule, are notified.」；
+      - 发送框底下：「Only {name} gets this. When you publish again, {name} and the people who can edit the schedule still get the normal notice.」；
+      - 成功提示（Publish again）：「Published again. Notified 1 staff member and 2 schedule editors.」（复数 N staff / M schedule editors；能改排班的人 0 个时不写后半句）。第一次 Publish 照旧「Published. Notified N people.」。
+      - 后端那边 eb 同时请 ef 改成「凡是勾了 schedule.edit 的人都通知，不看职位」。
+    - 合了 main 1c934a7 之后的提交。检查：tsc 过；eslint 0 错误；build 过；sch 220/220、nav 32/32（端口 3362 / 8962 / 9562）。eb 回「合」（「schedule editors」那句可以），合 main。合前拉的 main 只多了文档，没重跑。
+      - sch 套加 1 条查原文和底下那句。
+    - 合了 notify-wording aa8de48 / d3f3e42（主管层、notified_supervisors）。sch-test 冲突手动拼过：先查「1 person and 2 supervisors」，再查「主管 0 人」（时间改成 11:15，免得和后面「没邮箱」那段的 11:30 撞），然后是「没邮箱」。
+    - 检查（Node v26.13.0，已合 main）：tsc 过；eslint 0 错误；sch 215/215、nav 32/32。不合 main，要等后端 G217 上 main（后端 task/schedule-republish-notify）。
 - **排班通知「改完再发」前端文字**（9c，`task/schedule-notify-wording`，worktree D:
 pe-ops-frontend-seat）。**等后端 8e 上 main 再合。**
   - Annie 原话：重新发布只发给班有变化的人和他们的主管「同意」；已发布的周改动不逐项发「改完再发」；「改动schedule当然应该是发布的时候通知」（休息日也等 Publish again 一起通知，不单独马上发）。
@@ -946,6 +1443,53 @@ pe-ops-frontend-seat）。**等后端 8e 上 main 再合。**
       - **偶发失败（以后有空再修，eb 10-30 说现在不用管）**：sch-test.js 约 586 行，Rules 删除时 `waitFor(dlg)` 等到的可能还是上一个 Edit rule 框，接着 `$btn('Delete', dlg)` 找不到键 ⇒ TypeError: Cannot read properties of undefined (reading 'click')。修法：等框里出现 Delete 键再点。
     - eb 回「合」，合 main。
     - 线上 main 原来的确认框写「No notifications are sent when you publish again.」，后端上线后已经不对，这个分支合进去就改掉。
+- **Pickup Locations 分开 Tour bus / Shuttle + Shuttle 站接人时间（按季节）**（9c，`task/pickup-split`，worktree D:
+pe-ops-frontend-seat）：
+  - Annie 原话：「shuttle的问题，除了Q8之外都按照推荐。Q8，有季节，会按时间段分出来」「shuttle改完Q8」「就可以动手了」。preview v3：https://claude.ai/artifact/HTezuw3d3VnNSyo63VJEzN （季节新问题 Q12–Q16 先按推荐做）。
+  - 做了：
+    - 两个勾（Tour bus pick-up / Shuttle stop，可以都勾）；上下两块，一个搜索框；两种都是的点两块都出现、标 also …；「Tour bus departure」只在 Tour bus 块；
+    - Needs a type 黄条（只在有没归类的点时出，勾好按 Save）；Add 时至少勾一个；
+    - Shuttle 块：季节键（默认今天所在的季节，标 today）、Times 列（这一季的时间 / no service / no time yet，别的季节缺时间挂黄签，没有任何时间写 No times yet），季节表往后没接上时卡头黄字；
+    - Edit：名字下面两个勾；Shuttle 站下面展开「线路 × 季节」小时刻表（时间 / No service / 空），+ Add time，先暂存（Not saved yet），按这一行的 Save 连名字一起一个 PUT 整份 times；页面上看得出的错（没选线路、同线路同季同时间两次）红字不发请求；后端拒绝红字 + Nothing was saved，改动留着；存好绿字「✓ Saved … · N times」；
+    - Edit seasons：Name / From / To、+ Add season、Copy to next year、Save / Cancel；重叠红字不让存；后面没接上黄字可以存；
+    - 有没存的改动（编辑行改过、季节改过）离开页面先问（useLeaveGuard）。
+    - 后端还没有类别（GET 不带 is_tour_bus）时照旧一张 All Locations，所以先合也不出错。
+    - 排班页的 TimePicker 加了 `tone="light"`（白卡片用），排班页照旧。
+  - 接口形状照 preview「需要后端」暂定（`lib/pickup-locations-api.ts`）：GET 名单带 is_tour_bus / is_shuttle / times[{manifest_id, route_label, run_no, season_id, stop_time, no_service}]；PUT / POST 收同样字段（times 整份换）；GET/PUT `/api/pickup-locations/seasons`；GET `/api/pickup-locations/shuttle-routes`。**后端定稿后核对，后端上 main 后再合 main。**
+  - 59 的 `task/import-pickup` 也改 pickup-locations-view.tsx：本分支把列表搬进新文件 location-sections.tsx，view 里只换了那张卡、加了 Add 的两个勾和存 / 归类的处理。
+  - 检查：tsc / eslint / build 过；pl 80/80（新加 32 条：分块、两个勾、季节键、Times、时刻表暂存 / Save / 红字、季节重叠 / 空档、Copy to next year、Add 要勾类别）；nav 32/32；sch 176/176（TimePicker 改动）。
+  - **2026-10-30 对后端 b0 定稿 + 补 How to use**（工作窗口 `npe-ops-frontend-62`[cd78c4]，主窗口 eb 派；公司电脑 worktree `C:\Code\npe-ops-frontend-pickup`）：
+    - 改名：times[].manifest_id、ShuttleRoute.manifest_id 改成 `product_id`（值是 manifest_products.id，原样来回传）。改了类型、config.ts、shuttle-times.tsx、pl 模拟接口和检查。
+    - b0 定的其余形状和本分支原来的暂定一致，不用改：
+      - seasons GET/PUT `{seasons:[{id,name,starts_on,ends_on}]}`；
+      - shuttle-routes `{routes:[{product_id,label}]}`；
+      - 列表带 is_tour_bus / is_shuttle / times；stop_time "HH:MM"|null；
+      - 400 的 detail 是一句字符串。
+    - 新对上的一条：删掉还在用的季节，后端回 409。页面照原来的报错路子，红字「Could not save: <后端原话> Nothing was saved.」，编辑框不关、改动留着。模拟接口加了 409，pl 套加 1 条。
+    - How to use 补了 6 条（b0 要求）：
+      - 两个勾；
+      - 两块 + also；
+      - Needs a type；
+      - 季节键 / Times / 黄签；
+      - Edit 里的时刻表、+ Add time、先暂存按行 Save；
+      - Edit seasons（不能重叠、空档黄字可存、Copy to next year、在用的季节不能删），以及离开先问。
+      - 「Tour bus departure」注明只在 Tour bus 块；Add 那条加了勾类别；「appears in All Locations」改成「appears in the list」。
+      - pl 套加 1 条查这些句子。
+    - 检查（Node v26.13.0，已合 main 1711a4e 之前的提交）：tsc 过；eslint 0 错误（2 个警告是别人的文件）；build 过；pl 82/82（新加 2 条：季节 409、How to use）；nav 32/32。**不合 main**，要等后端 G211 上 main。合之前再合一次 main、重跑。
+    - ⚠️ 合 main 时要解冲突（09 转 eb 10-30）：import-pickup 已在 main（b277615），和本分支改同一页。两边都留着，跑完 pl、nav 再合。main 那边改了：
+      - pickup-locations-view.tsx：All Locations 标题这排加了 ⬆ Import 键和 Import 块（importOpen），How to use 多一条。本分支把那张卡换成了两块（location-sections.tsx），Import 键要挪到新的位置。
+      - config.ts：CSV_FIELDS 改成 export，加了 buildPickupImportTemplate。
+      - 新文件 import-panel.tsx。
+      - pl-mock.js / pl-test.js 加了导入部分，main 上是 pl 63/63。
+    - **10-30 下午合 main**（后端 G211 已上 origin/main e5aafb52，eb 转 b0；Annie「快点push和部署」）：
+      - 解冲突：
+        - view 两边的状态都留；Import 块放在两块列表上面；⬆ Import 键挪进 LocationSections 的工具栏（Export 旁边，新 prop `importButton`）。
+        - pl-mock 的 ctl 合并。
+        - time-picker 留 9c 的 `tone` 和 main 的 `inline` 两个参数，弹出列表用 main 的写法。
+        - PROGRESS 两边都留。
+      - 对过后端 e5aafb52 的真代码：shuttle-routes `{product_id, label}`；seasons `{id, name, starts_on, ends_on}`；GET 的 times 带 `{product_id, route_label, run_no, season_id, stop_time, no_service}`；PUT 收的同名。
+      - 检查：tsc 过；eslint 0 错误；build 过；pl 97/97、nav 32/32；sch 263/263（time-picker 改了，排班也跑）。端口 3362 / 8962 / 9562。
+      - eb 回「合」，合前拉的 main 没有新提交，合 main。
 - **其余自动保存改手动 A2 / A7 / B8**（9c，`task/misc-manual-save`）：Annie 原话「4项全部动手」；盘点 https://claude.ai/artifact/3GQ3waCB2X4jnEdxTRfefe 。后端不用改。
   - A2 Manifests 每单 Cfm # 格：离开框不再存；改了格旁出蓝色 Save（照节标题 Cfm # 的样子；没改不出，免得一整列都是键），按 Save 或 Enter 才存，Esc 放回；存好框变绿 + 绿字 Saved，失败红字 Not saved: …、输入留着；有没存的格子离开页面先问。How to use 改了。
   - A7 Content Studio › Shuttle routes 线路名：离开框不存；改了名字旁出蓝色 Save，按 Save 或 Enter 才存，Esc 放回；存好绿字 Saved，失败红字、打的字留着（原来会改回）；名字空着红字不发请求；离开页面先问；面板说明改了。

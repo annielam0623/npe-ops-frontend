@@ -1,4 +1,5 @@
 import { apiFetch } from "@/lib/api-client";
+import { ApiError } from "@/types";
 import type {
   ScheduleEmployee,
   ScheduleEmployeeInput,
@@ -6,6 +7,7 @@ import type {
   ScheduleEmployeesResponse,
   ScheduleOk,
   SchedulePublishResult,
+  ScheduleSendChangesResult,
   ScheduleSettings,
   ScheduleShiftType,
   ScheduleSlot,
@@ -15,6 +17,9 @@ import type {
   ScheduleTimeOff,
   ScheduleTimeOffInput,
   ScheduleWeek,
+  ScheduleWeekChangesError,
+  ScheduleWeekChangesResult,
+  ScheduleWeekOp,
   ScheduleWorkWindowInput,
 } from "@/types";
 
@@ -202,5 +207,61 @@ export function publishScheduleWeek(
     opts.allowGaps
       ? { method: "POST", body: { allow_gaps: true } }
       : { method: "POST" },
+  );
+}
+
+/**
+ * 整周一个 Save（Annie 2026-10-29「你不会用缓存么」「4项全部动手」第 3 项；B9 preview
+ * https://claude.ai/artifact/AY3vC6WaeLmTQgTx3BZi79 ，后端 G218）：页面上暂存的拖班 / 加删 / 改时间 / 备注，一次存完。
+ * 整批一个事务：一条不过就一样都不存。出错回包见 `ScheduleWeekChangesError`（`changesErrorOf` 读）：
+ * 409 locked / stale / coverage_gap、400 带 op_index。
+ */
+export function saveScheduleWeekChanges(
+  weekStart: string,
+  body: {
+    lock_token: string | null;
+    base_version: string | null;
+    ops: ScheduleWeekOp[];
+  },
+): Promise<ScheduleWeekChangesResult> {
+  return apiFetch<ScheduleWeekChangesResult>(
+    `/api/schedule/weeks/${weekStart}/changes`,
+    { method: "POST", body },
+  );
+}
+
+/**
+ * 读 …/changes 的出错回包。FastAPI 的 HTTPException(409, {...}) 回的是 {detail: {...}}，
+ * 也兼容直接平铺 {detail: "…", code, …}。读不出来 = null（照普通错误处理）。
+ */
+export function changesErrorOf(
+  error: unknown,
+): ScheduleWeekChangesError | null {
+  if (!(error instanceof ApiError)) return null;
+  const body = error.body as Record<string, unknown> | null;
+  if (!body || typeof body !== "object") return null;
+  const inner = body.detail;
+  if (inner && typeof inner === "object") {
+    const e = inner as Partial<ScheduleWeekChangesError>;
+    return typeof e.detail === "string"
+      ? (e as ScheduleWeekChangesError)
+      : null;
+  }
+  return typeof inner === "string"
+    ? ({ ...body, detail: inner } as ScheduleWeekChangesError)
+    : null;
+}
+
+/**
+ * 发布前把这个人改动的班单独发给本人确认（Annie 2026-10-29「员工确认，同意推荐，动手」）。只发本人，不发主管；
+ * 正式 Publish again 时照样再发。没有邮箱回 400 原话。形状照 preview https://claude.ai/artifact/NfWdfaxPUSS6SR8PGmxNrv 暂定。
+ */
+export function sendScheduleChanges(
+  weekStart: string,
+  employeeId: number,
+): Promise<ScheduleSendChangesResult> {
+  return apiFetch<ScheduleSendChangesResult>(
+    `/api/schedule/weeks/${weekStart}/employees/${employeeId}/send-changes`,
+    { method: "POST" },
   );
 }

@@ -341,6 +341,8 @@ async function run() {
   await evaluate(`$btn('Apply 2 changes', ${lane("last_minute")}).click();`);
   const lap = (await waitReq(before, (e) => e.path === "/send/tour-confirmation-apply"))[0]?.body;
   check("Last Minute Apply：lane last_minute", lap?.lane === "last_minute");
+  // Apply 存的时候 Cancel 是灰的：等存完、能点了再点（不然点空，偶发失败）。
+  await waitFor(`!!$btn('✕ Cancel', ${lane("last_minute")}) && !$btn('✕ Cancel', ${lane("last_minute")}).disabled`, 5000);
   await evaluate(`$btn('✕ Cancel', ${lane("last_minute")}).click();`);
   // 等表单出来再查（原来固定等 150ms，页面重渲染慢一点就偶发失败）。
   await waitFor(`!!${lane("last_minute")}.querySelector('form')`, 5000).catch(() => {});
@@ -388,6 +390,18 @@ async function run() {
   await ctl({ typesFail: false });
 
   // 401
+  // ── 员工也按勾（Annie 2026-10-30 置顶 10c）：没勾 tour.send 预览照出、没有 Send to All；Super Admin 一项没勾也有 ──
+  for (const [label, opts, canSend] of [
+    ["员工只勾 tour.view", { staffPerms: ["tour.view"] }, false],
+    ["员工勾 tour.send", { staffPerms: ["tour.view", "tour.send"] }, true],
+    ["Super Admin（一项都没勾）", { staffPerms: null, superAdmin: true }, true],
+  ]) {
+    await upload("normal", { staffPerms: null, superAdmin: false, ...opts });
+    const has = await evaluate(`return [...${lane("tour_confirmation")}.querySelectorAll('button')].some(b => /— \\d+ order/.test(b.textContent));`);
+    const rows = await evaluate(`return !!${lane("tour_confirmation")}.querySelector('tbody tr');`);
+    check(`${label}：Tour 发送预览照出、${canSend ? "有" : "没有"} Send to All`, rows && has === canSend, String(has));
+  }
+  await ctl({ staffPerms: null, superAdmin: false });
   await ctl({ fail401: true });
   await goto(`${APP}/tour-confirmation/send`);
   await waitFor("location.pathname === '/auth/login'");

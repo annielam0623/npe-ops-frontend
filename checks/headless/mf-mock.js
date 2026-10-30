@@ -1,5 +1,6 @@
 // 模拟后端：Tour manifest。控制：POST /__ctl {syncFail, syncSkipped, syncPast, busFail, allUploaded, done, pending, pendingOff, handledFail}；GET /__log。
 const http = require("http");
+const staffPerm = require("./staff-perm-mock");
 // affiliate: true ⇒ GET manifest 带 affiliate 组（被转单客人）；notesEdit: true ⇒ 客人带 notes_edited / rezdy_notes 且有 PUT guest-notes；notesFail: 该接口 400 的原话。
 const ctl = { syncFail: "", syncSkipped: false, syncPast: false, busFail: "", allUploaded: false, done: null, pending: [], pendingOff: false, handledFail: "", affiliate: false, notesEdit: false, notesFail: "", g198: false, g198Plain: false, textSize: false, textSizeFail: "", bmv: false, versionFail: "" };
 // bmv: true ⇒ Bus Manifest 三版式（后端 task/bus-manifest-versions WIP f494b5b5 的形状）：tour.manifest_version / lunch_column、
@@ -95,12 +96,33 @@ http.createServer(async (req, res) => {
   const entry = { method: req.method, path: p, q };
   log.push(entry);
   // partner（CCL）：Dispatch 的编辑勾了也只能看（PARTNER_HELD）；manifests.edit 按勾（后端 G177 P2）。partnerCodes 不给时没勾 manifests.edit。
+  if (staffPerm(ctl, p, res, send)) return; // 10c：模拟员工权限总开关开着的员工 / Super Admin（staff-perm-mock.js）
   if (ctl.partner) {
     if (p === "/api/me") return send(res, 200, { id: 90, username: "ccl_ops", display_name: "CCL", initials: "CC", role: "partner", is_admin: false, is_superadmin: false, is_supervisor: false });
     if (p === "/api/settings/dashboard-widgets") return send(res, 200, { readable: true, widgets: [] });
     if (p === "/api/me/permissions") return send(res, 200, { is_superadmin: false, permissions: (ctl.partnerCodes || ["dispatch.view", "dispatch.edit", "dispatch.send", "manifests.view"]).map((code) => ({ code, module: code.split(".")[0], wired: true })), default_home: "/dispatch" });
   }
   if (p === "/api/me") return send(res, 200, { id: 1, username: "zztest", display_name: "ZZ Test", initials: "ZT", role: "staff", is_admin: false, is_superadmin: false });
+  // 第二辆车的 ⇄ Farm out（preview 7uRp5FHfFTsnRYemrrm1Wf）：foVis = 开关 farm_out_dispatch 对我开着；foPartners = 合作公司；
+  // foLocked = 别人正在改这一天（edit-lock 409 的原话）；foSaveFail = section 400 的原话。
+  if (p === "/api/settings/dashboard-widgets" && ctl.foVis) return send(res, 200, { readable: true, widgets: [{ key: "farm_out_dispatch", label: "Dispatch · Farm out", visibility: "staff", default: "super_admin_only", visible_to_me: true }] });
+  if (p === "/api/farm-out/partners") return send(res, 200, ctl.foPartners || []);
+  if (p === "/api/dispatch/edit-lock" && req.method === "POST") {
+    entry.body = JSON.parse(await readRaw(req));
+    if (ctl.foLocked) return send(res, 409, { detail: ctl.foLocked });
+    return send(res, 200, { token: "zz-lock", stale: false, version: "v1" });
+  }
+  if (p === "/api/dispatch/edit-lock/release") { entry.body = JSON.parse(await readRaw(req)); return send(res, 200, { released: true }); }
+  if (p === "/api/dispatch/section" && req.method === "POST") {
+    entry.body = JSON.parse(await readRaw(req));
+    if (ctl.foSaveFail) return send(res, 400, { detail: ctl.foSaveFail });
+    return send(res, 200, { ok: true, unit: entry.body.unit, saved: entry.body.rows.length, ids: entry.body.rows.map((_, i) => 500 + i), version: "v2", typed_alert: null, typed_names: [] });
+  }
+  if (p === "/api/dispatch/day" && ctl.foVis && !ctl.partner) {
+    // 2026-10-05 团 3：两辆巴士团车（id 41 = A、42 = B，同 GET manifest 的 bus.id），再加一辆别的团的车（不该被送去）。
+    const row = (id, label, manifest_id, driver) => ({ id, shift: "bus_tour", driver_hr_id: 7, driver_typed_name: null, vehicle_id: id, manifest_id, custom_tour_name: null, guide_hr_id: null, guide_typed_name: null, bus_label: label, note: "", location_ids: [3], driver_name: driver, guide_name: null, ccl: null });
+    return send(res, 200, { run_date: q.date, today: q.date, rows: [row(41, "A", 3, "FREDDY"), row(42, "B", 3, "FREDDY"), row(43, "A", 9, "OTHER")], sections: [], orphans: [], drivers: [], vehicles: [], locations: [], tours: [], guides: [], copy_from: null, meta: { bus_tour_shift: "bus_tour" } });
+  }
   if (p === "/api/dispatch/day") {
     const LA = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Los_Angeles", year: "numeric", month: "2-digit", day: "2-digit" });
     const t = LA.format(new Date());
@@ -169,12 +191,17 @@ http.createServer(async (req, res) => {
   if (p === "/api/dispatch/manifests/guest-notes" && ctl.notesEdit) {
     const b = JSON.parse(await readRaw(req)); entry.body = b; entry.method = req.method;
     if (ctl.notesFail) return send(res, 400, { detail: ctl.notesFail });
+    // 后端 G125（cc2c43ec，tour_manifest.py）的两种 400，原话照抄：没带 notes 键；有看不见的控制字符（换行、Tab 照收）。
+    if (!("notes" in b)) return send(res, 400, { detail: "Send the notes text, or null to restore the Rezdy text." });
+    if (typeof b.notes === "string" && /[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/.test(b.notes))
+      return send(res, 400, { detail: "The notes contain a hidden control character (often from copy and paste). Retype that part and save again." });
     const g = state.guests.find((x) => x.id === b.guest_id);
     if (!g) return send(res, 404, { detail: "Guest not found." });
     if (g._rezdy === undefined) g._rezdy = g.notes;
     if (b.notes === null) { g.notes = g._rezdy; g._edited = false; }
     else { g.notes = b.notes; g._edited = true; }
-    return send(res, 200, { ok: true, id: g.id });
+    // 后端回 {ok, id, notes, rezdy_notes, notes_edited, notes_check}（前端存完整页重读，不读这些）。
+    return send(res, 200, { ok: true, id: g.id, notes: g.notes, rezdy_notes: g._rezdy, notes_edited: !!g._edited, notes_check: false });
   }
   if (p === "/api/dispatch/manifests/attraction") {
     const b = JSON.parse(await readRaw(req)); entry.body = b;

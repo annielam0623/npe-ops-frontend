@@ -24,6 +24,7 @@ import {
   updateTourConfirmation,
 } from "@/lib/tour-tracking-api";
 import { usePermissions } from "@/lib/staff-permissions";
+import { useTick } from "@/lib/use-tick";
 import { fetchUserPref, saveUserPref } from "@/lib/user-prefs-api";
 import { cn, takeSearchParam } from "@/lib/utils";
 import type {
@@ -120,7 +121,9 @@ export function TourTrackingView() {
   const [broadcastOpen, setBroadcastOpen] = useState(false);
   // partner 不能群发（Annie 2026-10-27「发送只能是我们内部员工发送」）：没有 📣 Broadcast 键。
   const perms = usePermissions();
-  const noBroadcast = perms.partnerLacks("broadcast.send");
+  // 员工也按勾（Annie 2026-10-30 置顶 10c）：没勾 broadcast.send 看不到群发键；总开关关着照旧全给，Super Admin 全给。
+  const canBroadcast = useTick("broadcast.send");
+  const noBroadcast = perms.partnerLacks("broadcast.send") || !canBroadcast;
   const [conversationId, setConversationId] = useState<number | null>(null);
   const [lunchId, setLunchId] = useState<number | null>(null);
   /** 状态下拉改了还没按 ✓ 的（按行 id）。 */

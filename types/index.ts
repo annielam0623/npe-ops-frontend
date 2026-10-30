@@ -113,6 +113,9 @@ export type {
   PickupLocationInput,
   PickupLogAction,
   PickupLogEntry,
+  PickupStopTime,
+  ShuttleRoute,
+  ShuttleSeason,
 } from "./pickup-locations";
 export type {
   MtlvTicketStatus,
@@ -368,11 +371,6 @@ export type {
   TcqVehicle,
 } from "./tcq";
 export type {
-  DispatchRezdySyncResult,
-  RezdyLastSynced,
-  RezdySyncResult,
-} from "./rezdy-sync";
-export type {
   DailyTask,
   StaffShiftToday,
   TaskFrequency,
@@ -392,6 +390,8 @@ export type {
   ScheduleNotified,
   SchedulePublishBlockedError,
   SchedulePublishResult,
+  SchedulePendingChange,
+  ScheduleSendChangesResult,
   ScheduleSettings,
   ScheduleShiftType,
   ScheduleSlot,
@@ -402,6 +402,9 @@ export type {
   ScheduleTimeOffInput,
   ScheduleTimeOffKind,
   ScheduleWeek,
+  ScheduleWeekChangesError,
+  ScheduleWeekChangesResult,
+  ScheduleWeekOp,
   ScheduleWeekStatus,
   ScheduleWorkWindow,
   ScheduleWorkWindowInput,

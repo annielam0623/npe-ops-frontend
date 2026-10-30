@@ -31,6 +31,7 @@ import { LOG_BUTTON_CLASS, savedMessage } from "./dor-section";
 import { LogIncidentDialog } from "./log-incident-dialog";
 import { ReportItem } from "./report-item";
 import { useDorVisible } from "./use-dor-visible";
+import { canEditReport, useReportEditor } from "./use-report-editor";
 
 const PAGE_SIZE = 50;
 
@@ -168,7 +169,8 @@ function Reports({
 }) {
   // partner 只能看（Annie 2026-10-27「合作方只能看…不能改或者选任何功能」）：不改状态 / 跟进人，不 Log an incident。
   const partner = usePermissions().partnerView;
-  const canEdit = !partner && !!(me.is_supervisor || me.is_admin);
+  // 能不能改按每一条判断（本人改自己的、report.edit 改所有人的，见 use-report-editor.ts）。
+  const editor = useReportEditor(me);
   const [filters, setFilters] = useState<Filters>(NO_FILTERS);
   // 搜索框输入防抖：停一下再查，不是每个字符一次请求。
   const [search, setSearch] = useState("");
@@ -374,7 +376,7 @@ function Reports({
           <ReportItem
             key={`${linked.id}-${linked.updated_at}`}
             report={linked}
-            canEdit={canEdit}
+            canEdit={canEditReport(linked, editor)}
             assignees={assignees}
             defaultExpanded
             onPatch={handlePatch}
@@ -403,7 +405,7 @@ function Reports({
                 <ReportItem
                   key={report.id}
                   report={report}
-                  canEdit={canEdit}
+                  canEdit={canEditReport(report, editor)}
                   assignees={assignees}
                   onPatch={handlePatch}
                 />

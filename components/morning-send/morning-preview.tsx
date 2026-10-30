@@ -13,6 +13,7 @@ import {
   TABLE_WRAP,
   YELLOW_BOX,
 } from "@/components/tickets-send/legacy-ui";
+import { useTick } from "@/lib/use-tick";
 import { cn } from "@/lib/utils";
 import type {
   MorningManifestRow,
@@ -65,6 +66,8 @@ export function MorningPreviewStep({
   sendError?: string;
   onStartOver: () => void;
 }) {
+  // 员工也按勾（Annie 2026-10-30 置顶 10c）：没勾 morning.send 看不到 Send 键；总开关关着照旧全给，Super Admin 全给。
+  const canSend = useTick("morning.send");
   const sendable = rows.filter((r) => !r.duplicate);
   const alreadySent = rows.filter((r) => r.duplicate);
   const partialCount = alreadySent.filter((r) => r.partial).length;
@@ -293,15 +296,17 @@ export function MorningPreviewStep({
           onChange={onSendTypeChange}
         />
         <div className="mt-2.5 flex flex-wrap items-center gap-2.5">
-          <button
-            type="button"
-            disabled={selected.size === 0 || badPax.length > 0}
-            onClick={onSend}
-            className={sendButtonClass("blue")}
-          >
-            {SEND_ICON[sendType]} Send to Selected ({sendTypeShort(sendType)}) —{" "}
-            {selected.size} order{selected.size === 1 ? "" : "s"}
-          </button>
+          {canSend ? (
+            <button
+              type="button"
+              disabled={selected.size === 0 || badPax.length > 0}
+              onClick={onSend}
+              className={sendButtonClass("blue")}
+            >
+              {SEND_ICON[sendType]} Send to Selected ({sendTypeShort(sendType)})
+              — {selected.size} order{selected.size === 1 ? "" : "s"}
+            </button>
+          ) : null}
           <button type="button" onClick={onStartOver} className={DARK_BUTTON}>
             ↩ Start Over
           </button>
