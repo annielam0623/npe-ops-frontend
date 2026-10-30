@@ -55,6 +55,20 @@
   计数、进度、状态（例如「0 of 10 done」）不做成胶囊，用普通文字，不用蓝色，不能看起来像按钮。
   例外：右下角 ↑↓ 这类功能键也用蓝色（Annie 2026-10-11：「反正也是功能键」，照旧后台的蓝色粗箭头）。
 - 暂不引入状态管理库和 UI 组件库。
+- **保存结果：成功绿色、失败红色**（Annie 2026-10-29，原话：「成功的用绿色，失败的用红色，这个是规矩」；同晚另一句「saved用绿色」）：
+  全站 Saved / Auto-saved / 发送成功这类结果字一律绿色，失败、Not saved 一律红字。Save 键本身照「蓝色按钮只用于提交」。
+- **不要改一点存一点：下拉、拖拽、输入都先暂存在页面上，按 Save 才存**（Annie 2026-10-29，原话：「我不要改一点存一点的方式，会导致整个页面很慢，放个save键，admin想什么时候存就什么时候存，除非要跳转到其他页面才需要拦截并询问是否保存」；
+  「所有的下拉，拖拽---除了shortcut，都是先缓存，然后等保存」）：
+  - 每块一个 Save，有 Saving… / Saved（绿）/ 红字报错；有没存的改动时离开页面（跳页、换日期、关标签页）要拦下来问是否保存。
+  - 例外：My shortcuts 的拖拽排序照旧马上存。开关（Active、页面可见性等）、打勾「做完 / 已处理」这类点一下就是结果的，照 2026-10-29 自动保存盘点（https://claude.ai/artifact/3GQ3waCB2X4jnEdxTRfefe）保留。
+  - 「10 分钟没活动自动存一次」只用在 Dispatch 和 Products › Bus Manifest setup（A6），别的页面不做。
+  - 新页面、新功能一律照这条做。
+- **订单流固定：Order List → Main manifest → Dispatch / Tracking，不许跳过前面的环节直接去 Rezdy 拉单**（Annie 2026-10-29，原话：
+  「不要直接去rezdy拉订单。写到工作里头。订单流是order list  - main manifest - dispatch / tracking --我马上要开通。不要跳跃过前面的程序直接去rezdy拉单。前端后端都要写到工作规范里去」；
+  同日另一句：「dispatch是从main manifest里取单的，如果main manifest里没有就是没有。而且这类订单应该是查order list，里头所有状态都标注了」）。
+  - Dispatch / Bus Manifest / Tracking 只从 Main manifest 取单；Main manifest 里没有的单就是没有，不另造「missing / 原因不明 / check Rezdy」一类提醒。
+  - 订单状态（取消、On Hold、改期等）一律查 Order List，那里都标注了；不靠猜，也不另去 Rezdy 查。
+  - 新页面、新功能要订单数据时，按这条流向从上一环取；拿不到就写进「需要后端」，不自己绕到 Rezdy。现有和这条冲突的地方先报给 Annie / 主窗口，不擅自删。
 - **页面对着旧版做，做到一模一样**（Annie 2026-10-07）：配色（旧后台是深色，`base.html` 的 `--bg:#06101c`）、
   版式、字体、文字都照旧模板，不自己发挥。之前做的浅色页面都不符合这一条。和旧页面有任何不同，都要先经 Annie 同意，
   同意过的写进 PROGRESS.md。旧页面没有的新功能（如 Dispatch 的 Assign / Send）也用旧后台的深色风格。

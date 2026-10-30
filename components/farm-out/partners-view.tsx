@@ -20,9 +20,11 @@ import {
   TH_CLASS,
   TR_CLASS,
 } from "@/components/pickup-locations/legacy-ui";
+import { ActionLogPanel } from "@/components/action-log/action-log-panel";
 import type { ActionResult } from "@/components/ui/action-result";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ErrorBanner } from "@/components/ui/panel";
+import { fetchActionLog } from "@/lib/action-log";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchCurrentUser } from "@/lib/auth-api";
 import {
@@ -32,6 +34,7 @@ import {
   savePartnerRates,
   updatePartner,
 } from "@/lib/farm-out-api";
+import { usePermissions } from "@/lib/staff-permissions";
 import { cn } from "@/lib/utils";
 import type { FarmOutPartner, FarmOutRate } from "@/types/farm-out";
 
@@ -76,6 +79,7 @@ export function PartnersView() {
     error: string | null;
   } | null>(null);
   const redirectToLogin = useRedirectToLogin();
+  const perms = usePermissions();
 
   useEffect(() => {
     const controller = new AbortController();
@@ -580,6 +584,22 @@ export function PartnersView() {
               </table>
             </div>
           </section>
+
+          {/* G203 第三批：Farm out 设置的改动记录（后端按 settings.farm_out，同写接口）；partner 后端 403，干脆不出。 */}
+          {perms.isPartner || !perms.can("settings.farm_out") ? null : (
+            <ActionLogPanel
+              refreshKey={0}
+              reloadOnOpen
+              onUnauthorized={redirectToLogin}
+              load={(before, signal) =>
+                fetchActionLog(
+                  "/api/farm-out/settings/action-log",
+                  before,
+                  signal,
+                )
+              }
+            />
+          )}
         </>
       ) : null}
 

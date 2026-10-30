@@ -57,6 +57,15 @@ http
     // Daily Operation Report 板块：对这个用户可见，没有未结记录（块本身的检查在 dor 套）。
     if (p === "/api/settings/dashboard-widgets") return send(res, 200, { readable: true, widgets: [{ key: "daily_operation_report", label: "Daily Operation Report", visibility: "staff", default: "super_admin_only", visible_to_me: true }, ...[["dashboard_stats", "Today at a glance"], ["dashboard_today_team", "Today's team"], ["dashboard_reply", "Reply pop-up in Messages"], ["farm_out_report", "Farm out Report"], ["sales_report", "Sales Report"], ["farm_out_settings", "Farm out settings"]].map(([key, label]) => ({ key, label, visibility: "staff", default: "super_admin_only", visible_to_me: true }))] });
     if (p === "/api/operation-reports") return send(res, 200, { items: [], counts: { complaint: 0, accident: 0, emergency: 0, total: 0 }, total: 0, limit: 50, offset: 0 });
+    // G203 第三批：Navigation 设置页的 Action Log（后端 c8 ee121ec，只给 superadmin）。10/29 前的旧记录是一整段「Groups」。
+    if (p === "/api/admin/nav-config/action-log") {
+      if (ctl.role !== "superadmin") return send(res, 403, { detail: "Superadmin access required" });
+      return send(res, 200, { next_cursor: null, entries: [
+        { id: "3-1", at: "2026-10-29T18:00:00+00:00", by: "Annie Z", action: "update", label: "Navigation", what: "Menu › Orders", from: "Orders", to: "Order list" },
+        { id: "2-1", at: "2026-10-29T17:00:00+00:00", by: "Annie Z", action: "update", label: "Navigation", what: "Item order › Group 1 (Operations)", from: "Dashboard, Forecast", to: "Dashboard, Workspace, Forecast" },
+        { id: "1-1", at: "2026-10-20T17:00:00+00:00", by: "Max", action: "update", label: "Navigation", what: "Groups", from: "Operations: Dashboard, Forecast", to: "Operations: Dashboard, Workspace, Forecast" },
+      ] });
+    }
     if (p === "/api/nav-config") return ctl.navConfig ? send(res, 200, ctl.navConfig) : send(res, 404, { detail: "Not Found" });
     if (p === "/api/admin/nav-config" && req.method === "PUT") {
       if (ctl.failNavSave) return send(res, 500, { detail: "mock nav save failed" });

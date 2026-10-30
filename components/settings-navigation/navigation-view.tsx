@@ -10,9 +10,11 @@ import {
   isNavModuleId,
   isPinnable,
 } from "@/components/nav/nav-config";
+import { ActionLogPanel } from "@/components/action-log/action-log-panel";
 import { useNav } from "@/components/nav/nav-context";
 import { CenteredPage } from "@/components/ui/centered-page";
 import { ErrorBanner } from "@/components/ui/panel";
+import { fetchActionLog } from "@/lib/action-log";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchCurrentUser } from "@/lib/auth-api";
 import {
@@ -111,6 +113,8 @@ export function NavigationSettingsView() {
   const [draft, setDraft] = useState<Draft | null>(null);
   const [saved, setSaved] = useState<string>("");
   const [saving, setSaving] = useState(false);
+  /** 存好一次 +1：Action Log 展开着就重拉。 */
+  const [savedCount, setSavedCount] = useState(0);
   const [note, setNote] = useState<{ ok: boolean; text: string } | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const redirectingRef = useRef(false);
@@ -196,6 +200,7 @@ export function NavigationSettingsView() {
     try {
       await saveNavConfig(config);
       setSaved(JSON.stringify(config));
+      setSavedCount((n) => n + 1);
       reloadConfig();
       setNote({ ok: true, text: "Saved. The menu is updated for everyone." });
     } catch (error) {
@@ -506,6 +511,16 @@ export function NavigationSettingsView() {
               </span>
             ) : null}
           </div>
+
+          {/* G203 第三批：这页的改动记录（后端 superadmin 才能读，同这页）。10/29 前的旧记录是一整段「Groups」，照原样显示。 */}
+          <ActionLogPanel
+            refreshKey={savedCount}
+            reloadOnOpen
+            onUnauthorized={redirectToLogin}
+            load={(before, signal) =>
+              fetchActionLog("/api/admin/nav-config/action-log", before, signal)
+            }
+          />
         </div>
       ) : null}
     </CenteredPage>

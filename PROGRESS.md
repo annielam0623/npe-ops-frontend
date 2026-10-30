@@ -14,29 +14,167 @@
 - 已派工（带全背景和 Annie 原话）：
   - `npe-ops-frontend-59`[678c38]：①②③ 三份 preview，只出 preview，不写代码；
   - `npe-ops-frontend-9c`[edc8ac]：④ Bus Manifest 三版式前端，分支 task/bus-manifest-versions-fe，worktree 里做；后端 20 上 main 前不合 main。
+- 59 交 ① Bus Manifest 第二辆车 Farm out 键 preview https://claude.ai/artifact/7uRp5FHfFTsnRYemrrm1Wf （没改代码）。
+  - 前端能直接用现有接口：编辑锁 → GET /api/dispatch/day → POST /api/dispatch/section → 释放锁；合作公司名单用 /api/farm-out/partners；后端不用改。开关照 farm_out_dispatch。
+  - 待 Annie 定 Q1–Q5，都附推荐。已转 Annie，等答复和「动手」。
+- 59 交 ② Dispatch 取消自动保存 + Save 键 preview https://claude.ai/artifact/18d91JAUbvdy87Bd1idDA5 （没改代码）。
+  - 现状：60 秒没操作就一块块自动存（AUTOSAVE_MS）；团块标题已有 Save（10-18 上线）；存完重读名单，造成「突然刷新」；存的同时继续改，新改的会被盖回去。
+  - 方案：去掉自动存；每辆车 Edit ▼ 旁加 Save，有 Saving… / ✓ Saved / 红字 Not saved 三种状态；存完只更新这一块，不覆盖正在改的；How to use 第 5 条改写；后端不用改。
+  - 待 Annie 定 Q1–Q4，都附推荐。动手后也不推 main，等 Annie 下令 push。
+  - ✅ **Annie 动手**（经 9a 转），原话：「我们现在来动手改自动保存吧，就是把每个小项的自动保存转成正常的一个小section的手动保存，这样效率高一些，除非是超过10分钟页面没有活动，那才需要自动保存一下」。
+    - 新规则：页面 10 分钟没有活动、而且有没存的改动时，自动存一次。
+    - 已派 59 `task/dispatch-manual-save`：Q1–Q4 和三个细节（怎么算没活动、离开提醒、自动存后的提示）先按推荐做，同时问 Annie。
+    - 「动手」只当开工，不当 push 令：做完只推分支，问过 Annie 再合 main。
+    - Annie 答了三个细节（经 9a 转），和推荐一致，已转 59：
+      - 原话：「没有在本页面有任何动作或者切到别的标签页，或者完全没动鼠标，可能听电话」，算没有活动；
+      - 有没存的改动时离开页面，要拦一下提示；
+      - 自动存完在页面上提示一句，用英文。
+      - 补一条，原话「saved用绿色」：✓ Saved 和 Auto-saved 都用绿色字，Save 键照旧是蓝色。已转 59。
+  - Annie 原话：「我要把所有这类自动保存改成手动的」。
+    - 已派 9c 只读盘点全站「改了就自己存」的地方，出清单（Artifact），请 Annie 逐条定哪些改手动。
+    - 除 Dispatch 外还没动手。
+    - 9c 交盘点：https://claude.ai/artifact/3GQ3waCB2X4jnEdxTRfefe （只读，没改代码）。
+      - 全站没有「打字防抖自动存」，也没有「定时器存」。
+      - A 类（失焦就存，推荐改按块 Save）：A1–A7。A8 排班「点外面也存」是 Annie 10-20 点名要的，推荐保留。
+      - B 类（选了 / 勾了 / 拖了马上存）：大多推荐保留，B1 / B4 / B5 / B6 / B8 / B9 要问。
+      - C 类（个人显示偏好）：保留。
+      - 后端基本不用改；A6 要「一次全存或全不存」、B9 改成整周一个 Save 时，才要后端接口。
+      - 待 Annie 定 6 个问题。
+      - A8 Annie 原话：「A8 需要在改时间的小页面上设置save，不要再点其他地方，根本点不了」。
+        - 改时间的小弹框加 Save / Cancel，不再「点外面就存」。
+        - 已派 9c 出 preview，并查「根本点不了」是不是 bug。还没动手。
+- 59 交 ③ Forecast 数字不能点 preview 第 2 版（同链接 https://claude.ai/artifact/X9EXZjpgbKfPhxzeKR7c9c ，没改代码）。
+  - 数字格一律不能点，第 1 版的 A1 / A2 已删。
+  - 能编辑的空格从「—」改成绿色「+」，一直显示。
+  - 全部细实线：真实页面本来就没有虚线框；过去日子、只读的空格照旧是灰「—」。
+  - 待 Annie 定：
+    - Q1 Driver / Guide 行还能不能点（推荐能，空格显示绿「+」）；
+    - Q2 G81 旧的按天开关团 / 上限记录照样生效吗（推荐生效）。
+  - 59 三份 preview 全部交齐，手上没活。
+- 后端 3d[bd0995] 报 G212 已上 main：合并 269c3ae，关包 88ae82c。
+  - 接口 DELETE /api/users/{id}，不带 body，只给 Super Admin。
+  - 返回：403 / 400（自己、superadmin、还连着 dispatch / task 记录）/ 404，都带 detail。
+  - 已派 59 `task/g212-delete-wire`：确认句改成「Delete <名字> permanently?」，对接口，检查过后合 main。Annie 10-29 已批，样子不变，不出 preview。
+- ✅ G212 前端对接已上 main：合并 3146d7a，功能提交 ea17959（59）。
+  - 确认句改成「Delete <名字> permanently?」；只有回「still linked」时才给「Deactivate instead」，别的失败原样显示后端 detail。
+  - 检查：tp 136/136、users 77/77、teams 单独跑 54/54；tsc 0，eslint 0 错，build 过。
+  - 等 Annie 线上验收。
+  - 后端缺口已发 9a：Team 页 Action Log（/api/team/action-log，_TEAM_LOG）要加 admin_users，删除记录才看得到。前端不用改。
+- 9c 交 Bus Manifest 三版式 + G197 前端：分支 `task/bus-manifest-versions-fe`（a1e37bd）已推，**没合 main**，等后端 20 上 main。
+  - 8 项都做了，接口照后端 WIP 分支 f494b5b5 / 718639f4 对过。
+  - 检查：mf 159、man 320、pl 48、nav 32、da 367 全过；tsc 0，eslint 0 错，build 过。
+  - 页面上没有发送键，所以只拦打印和下载。
+  - 已问 Annie：Lankun 照定 5 去掉了 ✓ 列，屏幕上就看不到司机标的上车 / No show，要不要留在屏幕上。
+  - 后端上 main 后：9c 合最新 main、重跑检查，主窗口核对后合 main。
+  - 后端 20 报：版式下拉加第四项 'west'（显示 West Rim），Annie 10-29 定西峡用。
+    - 列序：Order # / Time / Hotel / Phone / Last Name / First Name / Pax / Quantities / Special Requirements。没有 ✓ 列；排了餐厅才出 Lunch，放在 Special Requirements 左边。
+    - 后端要等 Annie 执行 migrate_v126 才推 main。已转 9c 加进分支。
+  - Annie 改 Bus Manifest 保存方式（经 9a 转），原话：「哦，下拉菜单用缓存不会么，点击save再一起存啊」。
+    - 版式下拉和当天字号改了先不存，按 Save 一起存。后端不用改。
+    - 已派 9c 出小 preview，同时问三条：离开拦、10 分钟自动存、Saved 用绿色。等 Annie「动手」。
+    - 后端 20 提醒：打印、Excel 按库里已存的版式出；改了没存就按 Print / Download，出来的是旧的。
+      - 后端不加 ?version=。
+      - preview 里问 Annie：先自动存，还是先提示。
+    - Annie 选「存在页面上，按 Save 才存」，原话：「我不要改一点存一点的方式，会导致整个页面很慢，放个save键，admin想什么时候存就什么时候存，除非要跳转到其他页面才需要拦截并询问是否保存」。
+      - Bus Manifest 不做 10 分钟自动存。
+      - 离开页面时拦一下，问要不要存。
+      - 已转 9c，还没「动手」。
+    - ⚠️ 9a 更正：它当初转的「下拉用缓存」，Annie 说的是盘点里的 B4 / B9，不是 Bus Manifest 版式（B2）。
+      - Annie 已定 B4：产品表的下拉也先暂存，和 Internal name 一起按 Save 存。
+      - Annie 已定 B9：排班改成整周一个 Save，原话「你不会用缓存么」。要后端批量保存接口，形状由前端起草（59 做完 Dispatch 后接）。
+      - B2 主窗口理解成同样暂存 + Save（Annie 在 d2 窗口那句话），正在跟 Annie 确认。确认前，9c 分支上的版式照旧选了马上存。
+      - 盘点剩下的问题由 d2 一次问完。
+      - Annie 在 9a 窗口逐条答了盘点的 6 条（9a 转）：
+        - 1：A1–A7 按推荐，改成按块 Save。
+        - 2：10 分钟自动存只用在 A6。
+        - 3：A8，原话「保留，但是成功的用绿色，失败的用红色，这个是规矩」。
+        - 4：B5 / B6 跟着块等 Save。
+        - 5：B8 按推荐，改成「选了 + ✓」。
+        - 6：原话「所有的下拉，拖拽---除了shortcut，都是先缓存，然后等保存」。所以 B1、B2、B9 都改成先暂存、按 Save 才存。
+      - 两条规矩已写进 CLAUDE.md：「成功绿色、失败红色」；「不要改一点存一点」。
+      - ⚠️ 跟 Annie 确认两处冲突，还要等她说「动手」：
+        - A8：她在 d2 这边说「不要再点其他地方，根本点不了」，在 9a 那边说「保留」；
+        - B4：她写了「B4 下拉保留马上存」，和总规则冲突。
+- 后端 c8[fbbc9c] 报 G214 已上 main：代码 fa35f01，合并 43934d7，关包 d657a48。这就是 Dispatch「Not in HR」方案 B。
+  - HR 存档后，今天及以后对得上的手填名改连到 HR 里的人，接口形状不变，前端不用改。
+  - Dispatch 没有 Action Log 面板，新的 action「link_hr」对前端没有影响。
+  - c8 建议给 HR 页 How to use 加一句，主窗口没采用：「只显示问题，不解释自动行为」。
+  - 已知边界：排车页开着没刷新的人再按 Save，会把旧的手填名存回去。
+  - Jimmy 那条（10/21 就已经在 HR 里）方案 B 修不到，9a 已转 Annie。
+- Annie 在 9c 窗口提了两件，**只记录，还没「动手」**：
+  1. Dispatch 卡片上「N orders not in main manifest — check Rezdy」那行不该出。
+     - Annie 原话：「我说过很多此了，dispatch是从main manifest里取单的，如果main manifest里没有就是没有。而且这类订单应该是查order list，里头所有状态都标注了」
+     - 前端：manifests-panel.tsx:663（c.missing_orders）。后端：counts_as_missing()。前后端都要改。
+     - 已发 9a 登记，请后端回改法。
+     - 9a 回改法，等 Annie「动手」：
+       - 这些单早就不算人数，Bus Manifest、司机页、导游页、打印都看不到（G65⑤），剩下的只有卡片上这个数字。
+       - 第一步：前端删 manifests-panel.tsx:663 那一行，可以单独先上线。
+       - 第二步：等 Bus Manifest 三版式（20）上 main 后，后端删 missing_orders 字段、删 counts_as_missing()、删 10-28 那句规则。同步时把单标成 missing、藏起来的逻辑不动。
+  2. Dispatch Arrange seats 车型标签错成「A 28 / A 20」，应该是 Lower 28 / Upper 20。
+     - 前端 bug：seating.tsx:44 的 TYPE_SHORT 认 upper / lower，后端给的是 upper_antelope / lower_antelope。后端不用改。
+     - 9c 已问 Annie：标签用 L / U（10-18 定的）还是 Lower / Upper 全称。等她答，再从 main 拉分支修。
+     - ✅ Annie 定全称并说动手，原话「空间足够大，所以用Lower 28 / Upper 20。动手」。9c 已合 main c8483aa（da 367/367，tsc / eslint / build 都过），等 Annie 线上验收。
+- 后端 c8 报 G203 ③ 第一批已上 main：合并 ee121ec，关包 de7992f。
+  - 新增两个读日志接口：/api/admin/nav-config/action-log（只给 superadmin）、/api/farm-out/settings/action-log（要 settings.farm_out，partner 403）。
+  - 已派 59 `task/g203-batch3` 给这两页加面板，检查过后合 main。
+  - ✅ 59 已合 main：合并 c128255，功能提交 7904fb8。
+    - 面板加在 Settings › Navigation 和 Settings › Farm out Partners 两页。
+    - 检查：dr 88、fo-settings 81、cp 18；tsc 0，eslint 0 错，build 过。
+    - Timetable 页没加面板（日志是整个 Farm out 设置一份）。Annie 要的话再加。
+- 后端 c8 报 G203 ③ 第二批已上 main：合并 4c00a04，关包 a176ca4。③ 全部做完。
+  - Dispatch 日志：/api/dispatch/action-log?date=，要 dispatch.edit 权限。
+  - Driver Quick Replies 日志：/api/driver-quick-replies/action-log。
+  - link_hr 的 before / after 改成和排车保存一样的逐车格式。
+  - 已排给 59 `task/g203-batch4`，等它把 Dispatch 手动保存推完分支再做。
+- Annie（10-29 晚）原话：「我现在没有地方加staff的邮箱地址，电话等联络方式」。
+  - 现状：
+    - 前端只有 Add person 选「Create the account now」时能填 Email；邀请的没有这一格；Edit 改不了；没有电话。
+    - 后端 admin_users 只有 email 列，没有 phone；只在新建账号时收 email。
+  - 已派 59 出 preview（Team 页 Contact 一块 + 需要后端），还没动手。
+  - 59 交 preview：https://claude.ai/artifact/83D67jt2oNb5V1TPkteEt9 （没写代码）。
+    - 方案：Edit 框和 Add person 加 Contact 一块（Email + Mobile）；列表只给「有职责却没 email」的人标黄签。
+    - ⚠️ 59 查到：Notification duties 发通知用的是账号 email（permissions.py:528）。有职责但没填 email 的人，现在会被悄悄跳过。
+    - 需要后端 B1–B5：phone 列 migration、改联络方式的接口、写日志、新建 / 邀请时也收、读的时候带出。
+    - 待 Annie 定 Q1–Q7，都附推荐。
+- Annie 问 Staff Schedule 为什么写「1 day with gaps」，下面又是「Gaps: none」。只回答了，没改代码：
+  - 空档在 Sat 11/07 的 2:00–8:00 AM。她改成 3am 的两个 Open 班在 Unassigned 行，不算覆盖；就算分给人，2:00–3:00 AM 也还是空着。
+  - 右上角的数字算的是整周，Day timeline 显示的是选中的 Mon 11/02。
+  - 主窗口建议：日期标签上给有空档的日子标红，右上角写明是哪天、点了跳过去。这算样子改动，要先出 preview，等 Annie 答要不要。
+  - Annie 原话：「排版问题，你要提醒是哪一天有问题，而不是让人去找问题在哪里，然后给admin选择，publish anyway」。
+    - 已派 9c 出 preview：写明哪天哪段有空档，点了跳过去；给 admin 一个「Publish anyway」。
+    - 9c 同时只读查后端发布接口有没有强制发布的参数。
+    - 还没动手。
+    - 9c 交 preview v1：https://claude.ai/artifact/CJaXdFkBS5S4g97gjtxuD8 （没改代码）。
+      - 推荐做法：
+        - Publish 左边直接写哪天哪段有空档，点了跳过去；
+        - 日期键上标红点；
+        - 下面那行写明其他有空档的日子；
+        - 周表列头也标红点。
+      - 「Publish anyway」确认框逐段列出空档。
+      - 后端现在没有强制发布的参数（schedule.py:329 → services/schedule.py:856，有空档回 400）。要后端加：B1 allow_gaps、B2 写日志、B3 发布后带「有空档」标记。
+      - 9c 顺带查到两个 bug：
+        - 右上角数的是空档段数，不是天数；
+        - 已发布的周，前端还显示「Publish again」，后端会回 409。
+      - 待 Annie 定 Q1–Q6，都附推荐。
+- **Annie 定长期规则：订单流 Order List → Main Manifest → Dispatch / Tracking，不跳过前面直接去 Rezdy 拉单**。
+  - 原话：「不要直接去rezdy拉订单。写到工作里头。订单流是order list  - main manifest - dispatch / tracking --我马上要开通。不要跳跃过前面的程序直接去rezdy拉单。前端后端都要写到工作规范里去」
+  - 前端已写进 CLAUDE.md「已定的决策」：远端 7fb1c50（别的窗口同时写的，内容更全）。主窗口自己写的那段重复了，已删掉。后端 9a 已写进后端 CLAUDE.md（f50aac5，Annie 看过条文回「写」），3 处已知冲突只登记，等动手。
+  - 主窗口查到现在前端和这条冲突的两处，已报 Annie，等她定、说「动手」：
+    - Dispatch ① Assign 的「Sync Rezdy」键：lib/rezdy-sync-api.ts syncDispatchFromRezdy → /api/dispatch/manifests/rezdy-sync，先按 Rezdy 更新订单再同步名单。
+    - Dispatch Step 1 每个团的「Upload Rezdy CSV」后备（lib/dispatch-manifest-api.ts previewUpload / applyUpload；manifests-panel.tsx:727 等）。
+    - 9c 补查到的：
+      - manifests-panel.tsx:663 卡片上的 missing 那一行；
+      - manifest-view.tsx:1145 / 1620「Not in main manifest — check Rezdy」；
+      - Morning 发送页要求上传 Rezdy 导出文件的说明。
+  - Main Manifest 自己的「Sync Rezdy」（/api/manifests/rezdy-sync）属于订单流上游，不冲突。
 - 今晚待派（原清单）：① ⭐ Bus Manifest 第二辆车 Farm out 键 preview；② Dispatch 取消自动保存 + Save 键 preview（做完不推，等 Annie 下令）；③ Forecast 数字不能点 preview（改 X9EXZjpgbKfPhxzeKR7c9c）；④ Bus Manifest 三版式前端照 10-28 交接三c 的形状先做，后端上 main 后再合。
 
-## Bus Manifest 三版式 + G197 当天字号 前端（`task/bus-manifest-versions-fe`，2026-10-29 晚，工作窗口 `npe-ops-frontend-9c`[edc8ac]，主窗口 d2 派工）—— **分支已推，没合 main（⛔ 等后端 20 的 task/bus-manifest-versions 上 main）**
+## Arrange seats 团类型标签改成 Upper / Lower（`task/seat-type-labels`，2026-10-29 晚，工作窗口 `npe-ops-frontend-9c`[edc8ac]）—— 已合 main
 
-- 依据：Annie 10-28「bus manifest里的推荐全ok」（= 动手），preview 第 8 版 https://claude.ai/artifact/GF2a4asfK9QWhzvCia45S2 ，规格见「10-28 收工交接」三c。
-- 接口形状：照后端 WIP 分支 `origin/task/bus-manifest-versions`（f494b5b5 / 718639f4，只读看过）对的，比三c 更具体：
-  - GET manifest：`tour.manifest_version`（general / lankun / marcello）、`tour.lunch_column`；客人 `hotel_short` / `pickup_time_short` / `lunch_slots`（三格数组，null = 「-」）/ `lunch_mismatch`；
-    每车 `lunch_mismatch_orders`（[{order_number, guest, pax, lunch_text, bus_label, tour}]）、`restaurant`（只 Lankun：{name, title, footer_lines, totals{beef, turkey, veggie, total}}）、`text_size`、`text_size_history`。
-  - PUT `/api/dispatch/manifest/version` {tour, version} → {ok, version}；PUT `/api/dispatch/manifests/text-size` {tour_manifest_id, bus_label, text_size} → {ok, text_size, text_size_history}。
-  - ⚠️ 后端最终形状到了（d2 转）要再对一遍；字段没带时页面照旧（没 manifest_version 不出下拉、没 lunch_column 不出 Lunch 列）。
-- 做了什么（`components/dispatch-manifest/manifest-view.tsx`、`text-size.tsx`、新 `lunch-mismatch-dialog.tsx`、`lib/dispatch-manifest-api.ts`、`types/dispatch-manifest.ts`）：
-  1. 工具条 Print all buses 左边「Version: [General ▾]」下拉（不是蓝色），选了马上 PUT、重读，灰字「Saved for 团名 · everyone gets this version」；失败写后端原话、下拉回原值。partner 只出文字「Version: Lankun」。
-  2. 酒店印 `hotel_short`（悬停看订单原文）、时间印 `pickup_time_short`；隔组标色照旧按原文比。名字 / 酒店 / 票型太长在格里换行（定 8）。
-  3. 列按版式：General / Marcello 列序不变；Lankun = Order # / Time / Hotel / Phone / Ticket / Pax / Last / First / Lunch / Special Requirements（没有 ✓）。排了餐厅的团三版式都有 Lunch 列，放 Special Requirements 左边。
-  4. Lunch 格一格三个固定位置 B / T / V（0 份留空），读不出写「-」；`lunch_mismatch` 整格红字 #c00000 浅红底 #ffe1e1（人数格不标）。
-  5. Print all buses / 每车 Print / Download 前，有 `lunch_mismatch_orders` 就先弹提醒（黄框 + 表格，照 tickets-send/legacy-ui）：Bus / Tour、Order #、Guest、Pax、Lunch；蓝色「Print anyway / Download anyway」+ Cancel。Print all / Download 列全团，每车 Print 只列这一车。没有不符照常直接开。
-     本页没有「发送」键（发 manifest 的地方不在这页），所以只拦了打印 / 下载。
-  6. Lankun：合计一排最后加 TOTAL SANDWICH（「5 = 1 B 2 T 2 V」），下面餐厅块只放店名（NPE Lunch Box - 店名 · Bus）+ 两行 Contact（亮黄）+ 这车合计；不另出午餐表。General / Marcello 午餐表照旧。
-  7. G197：`text_size` 接 PUT /api/dispatch/manifests/text-size（只存这一天这个团这台车）；列键加 `lunch`。三版式默认字号：General / Lankun 正文 16.5px、人数 19px；Marcello 照打印放大比例 正文 21px、人数 24px、表头 12px、节标题 21px、合计数字 27px；调的 d 加在版式默认上。
-  8. Settings › Pickup Locations：Aliases 栏头加小字「First one is printed on the Bus Manifest」，编辑框说明加一句「The first one is printed on the Bus Manifest as the short hotel name. Leave empty to print the hotel name without “Hotel”.」（preview ①）。
-  - How to use 加两条（Version、Lunch 红格和打印前提醒）。
-- 检查（模拟接口，端口 MOCK 8797 / APP 3197 / CDP 9437）：tsc 0；eslint 0 错（2 个旧警告）；next build 过。headless：mf 159/159（新加的三版式检查：三版式列序、简称 / 去 AM PM、Lunch 三格、标红、打印 / 下载提醒 Cancel / anyway / 没不符不弹、PUT version / text-size 形状、Marcello 字号、Lankun 餐厅块、改版式失败、partner 只读文字）、man 320/320、pl 48/48（含新加的 Aliases 小字一项）、nav 32/32、da 367/367。
-- 下一步：① 等 d2 转后端最终形状，有出入就改；② 后端 20 上 main 后，合最新 main、重跑 mf / man / pl / nav + build，再合 main；③ 上线后 Annie 线上验收，逐家核对印出来的酒店简称。
+- Annie（截图 10/19 Dispatch）：「这里的三个节，X是对的，A28应该是Lower 28， A20应该是Upper20」；问写法后：「空间足够大，所以用Lower 28 / Upper 20。动手」。
+- 原因：`components/dispatch/seating.tsx` 的 TYPE_SHORT 只认 upper / lower，后端给的键是 upper_antelope / lower_antelope，对不上就取最后一段首字母，两个都成了「A」。
+- 改：upper_antelope / upper → Upper，lower_antelope / lower → Lower，antelope_x 照旧 X；排序 Upper、Lower、X。只改前端，后端不用动。
+- 检查：tsc 0；eslint 0 错（2 个旧警告）；build 过；da 367/367（mock 改成后端真键，检查改成 All 4|Upper 2|Lower 2）。
 
 ## 2026-10-29 收工交接：前端主窗口 `前端主窗口-11`[dce8d7]（公司电脑，Annie「收工」，晚上家里接着做）
 
@@ -339,6 +477,28 @@
 - 92[5f58db]、72[23ce9c] 都已收工，worktree 干净：C:\Code\npe-ops-frontend-g203、C:\Code\npe-ops-frontend-g208。
 - 后端：f0 主窗口、bd 做 G203 / G208 / guide_notes、d0 做 G98 / G212。G203 第 ③④ 步（Dispatch 逐车、Schedule 等补写入，以及 Quick replies 新形状 /action-log）还在后端，路径到了再派前端接面板。
 - 空闲内存一直在 0.7–2 GB，一次最多开两个前端工作窗口。
+
+## G203 第三批：Navigation、Farm out 设置两页加 Action Log 面板（`task/g203-batch3`，2026-10-29 晚，工作窗口 `npe-ops-frontend-59`[678c38]，主窗口 d2 派工）
+
+- 后端 c8 已上 main（合并 ee121ec，关包 de7992f）：`GET /api/admin/nav-config/action-log`（superadmin）、`GET /api/farm-out/settings/action-log`（settings.farm_out，partner 403），形状同前两批。
+- 改动（共用面板，样子照前两批，不出 preview）：
+  - Settings › Navigation（`components/settings-navigation/navigation-view.tsx`）：Save 条下面加面板；这页本来只有 Super Admin 进得去，面板也就只给 Super Admin。存好一次 refreshKey +1，展开着就重拉。10/29 前的旧「Groups」大段照原样显示。
+  - Settings › Farm out Partners（`components/farm-out/partners-view.tsx`）：名单下面加面板；partner、没勾 settings.farm_out 的不出面板。旧条目 from / to 是 null，共用面板本来就写「No before / after recorded」。后端 403 时面板只写一句灰字，不报错。
+  - Farm out Timetable 页没加（日志接口是整个 Farm out 设置一份，放在设置入口页）。
+- 检查（mock）：
+  - `dr` 88/88：Navigation 面板 3 行 + admin 看不到面板。
+  - `fo-settings` 81/81：展开才请求、3 行、旧条目 No before / after recorded、403 灰字不报错、partner 不出面板不请求。
+  - `cp` 18/18；tsc 0、eslint 0 错、`next build` 过。
+
+## G212 彻底删除账号：前端对接（`task/g212-delete-wire`，2026-10-29 晚，工作窗口 `npe-ops-frontend-59`[678c38]，主窗口 d2 派工）
+
+- 依据：Annie 10-29 已批 G212（c8 转），第 3 条改成「不用输入用户名，弹 Delete xxx permanently?，点确认就删」，其余照推荐。后端 3d 已上 main（合并 269c3ae）：`DELETE /api/users/{id}`，不带 body。
+- 改动（样子不变，不出 preview）：
+  - `components/users/delete-person-dialog.tsx`：标题「Delete this person?」改成「Delete <名字> permanently?」，下面一行小字只留 @用户名；确认键照旧「Yes」。
+  - 「Deactivate instead」只在后端回「This account is still linked to dispatch or task records…」（原文含 still linked）时出现；不能删 superadmin / 不能删自己 / 403 / 404 只原样显示后端的话、Yes 灰掉。
+  - 接口本来就是 `DELETE /api/users/{id}`（`lib/users-api.ts`），不用改；401 照 apiFetch 跳登录；Delete 只给 Super Admin 照旧。
+- 检查（mock）：`tp-mock` 按后端原话补 400 linked / self / super、403、404 五种；`tp` 136/136（新增 4 项）、`users` 77/77、`teams` 单独跑 54/54；tsc 0、eslint 0 错、`next build` 过。
+- ⚠️ **需要后端**：删除写进 action_log 的 entity 是 `admin_users`，但 Team 页 Action Log 读的 `/api/team/action-log`（后端 `team_api.py` 的 `_TEAM_LOG`）只含 `team_member` / `team_contact`，**删除记录现在在 Team 页面板上看不到**。要后端在 `_TEAM_LOG` 加 `LogSource("admin_users")`，前端不用改。
 
 ## Users 和 Team 并成一页 + Edit 框里彻底删除账号（`task/team-users-merge`，2026-10-28 晚，工作窗口 `npe-ops-frontend-72`[23ce9c]，主窗口 11 派工）—— **分支已推，没合 main**
 
