@@ -441,14 +441,17 @@ export function ScheduleView() {
       const result = await publishScheduleWeek(weekStart, { allowGaps });
       setConfirmingPublish(false);
       setPublishBlockedGaps(null);
-      // 重新发布只通知班有变化的人 + 主管层（后端 G217 ef：勾了 schedule.edit 的 supervisor / admin，superadmin 不看勾，去掉按的人自己）；
-      // 一个都没变就写明没人收到，不写「Notified 0 people」。主管 0 人时不写后半句。
+      // 重新发布只通知班有变化的人 + 能改排班的人（Annie 2026-10-30 10a「你别管是谁，我选谁就是谁，最关键是有没有这个功能，
+      // 而不是这个职位」：按 schedule.edit 权限，不提职位；后端 notified_supervisors 就是这些人，去掉按的人自己）。
+      // 一个都没变就写明没人收到，不写「Notified 0 people」。能改排班的人 0 个时不写后半句。
       const n = result.notified.length;
       const m = result.notified_supervisors?.length ?? 0;
       setPublishBanner(
         result.republished && n === 0
           ? "Published again. No one's shifts or time off changed, so no one was notified."
-          : `${result.republished ? "Published again" : "Published"}. Notified ${n} ${n === 1 ? "person" : "people"}${m ? ` and ${m} ${m === 1 ? "supervisor" : "supervisors"}` : ""}.`,
+          : result.republished
+            ? `Published again. Notified ${n} ${n === 1 ? "staff member" : "staff"}${m ? ` and ${m} ${m === 1 ? "schedule editor" : "schedule editors"}` : ""}.`
+            : `Published. Notified ${n} ${n === 1 ? "person" : "people"}.`,
       );
       setUnsentWeek(null);
       void loadWeek();
@@ -826,8 +829,8 @@ export function ScheduleView() {
           <p>
             {readyWeek?.status === "published"
               ? // 重新发布（Annie 10-29）：只通知班或休息日有变化的人 + 主管层；休息日也不单独马上发（「改动schedule当然应该是发布的时候通知」）。
-                // 主管 = 在用的 supervisor / admin 里勾了 schedule.edit 的，superadmin 不看勾；去掉按的人自己（后端 G217 ef 10-30，审查 SA-1 收窄）。
-                "People whose shifts or time off changed since the last publish will get a system notification and an email. Supervisors and admins who can edit the schedule (except you) get a notice listing the changes. No one else is notified. This can't be undone."
+                // 按权限不按职位（Annie 10-30 10a）：勾了 schedule.edit 的人都通知，去掉按的人自己。
+                "People whose shifts or time off changed since the last publish will get a system notification and an email. People who can edit the schedule (except you) get a notice listing the changes. No one else is notified. This can't be undone."
               : "Everyone scheduled this week will get a system notification and an email. This can't be undone."}
             {gaps.length
               ? " Publishing with a gap is written in the Action Log."
@@ -1311,7 +1314,7 @@ function PublishControl({
             : list.length
               ? "There is a gap in coverage. You can still publish: you will be asked to confirm."
               : republish
-                ? "Publish again: people whose shifts or time off changed, and supervisors and admins who can edit the schedule, are notified."
+                ? "Publish again: people whose shifts or time off changed, and people who can edit the schedule, are notified."
                 : undefined
         }
         className={DARK_PRIMARY_BUTTON_CLASS}

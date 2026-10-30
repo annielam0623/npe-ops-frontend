@@ -958,7 +958,17 @@
       - 发送框加 `answeredLooksGood`。
       - sch 加 4 条：Looks good 出灰字；发好收起；没回不出；Wants changes 不出。模拟接口加 ctl.jingAnswer。
     - 合了 main 801544f（notify-wording 已上线）。检查：tsc 过；eslint 0 错误；build 过；sch 220/220、nav 32/32（端口 3362 / 8962 / 9562）。
-    - ⏸️ **先不合 main**（eb 10-30）：Annie 在 09 窗口提了「单独发给某人」要保留每次往来的记录，像聊天一样一条条排。eb 在问她先上这版、记录以后加，还是等记录做好一起上。62 在出这个记录的 preview。
+    - Annie 在 09 窗口提了「单独发给某人」要保留每次往来的记录，像聊天一样一条条排。62 出了 preview https://claude.ai/artifact/T98GQ9KfQuQfrEcMv6XgzM 。
+    - **Annie 原话（2026-10-30，eb 转）**：
+      - 10a「主管指谁」：「你别管是谁，我选谁就是谁，最关键是有没有这个功能，而不是这个职位」；
+      - 10b：「先上」。往来记录以后另做，这次不做。
+    - 照 10a 改成按权限、不提职位：
+      - 确认框：「…People who can edit the schedule (except you) get a notice listing the changes.…」；
+      - 按钮提示：「Publish again: people whose shifts or time off changed, and people who can edit the schedule, are notified.」；
+      - 发送框底下：「Only {name} gets this. When you publish again, {name} and the people who can edit the schedule still get the normal notice.」；
+      - 成功提示（Publish again）：「Published again. Notified 1 staff member and 2 schedule editors.」（复数 N staff / M schedule editors；能改排班的人 0 个时不写后半句）。第一次 Publish 照旧「Published. Notified N people.」。
+      - 后端那边 eb 同时请 ef 改成「凡是勾了 schedule.edit 的人都通知，不看职位」。
+    - 合了 main 1c934a7 之后的提交。检查：tsc 过；eslint 0 错误；build 过；sch 220/220、nav 32/32（端口 3362 / 8962 / 9562）。等 eb 回「合」再合 main。
       - sch 套加 1 条查原文和底下那句。
     - 合了 notify-wording aa8de48 / d3f3e42（主管层、notified_supervisors）。sch-test 冲突手动拼过：先查「1 person and 2 supervisors」，再查「主管 0 人」（时间改成 11:15，免得和后面「没邮箱」那段的 11:30 撞），然后是「没邮箱」。
     - 检查（Node v26.13.0，已合 main）：tsc 过；eslint 0 错误；sch 215/215、nav 32/32。不合 main，要等后端 G217 上 main（后端 task/schedule-republish-notify）。

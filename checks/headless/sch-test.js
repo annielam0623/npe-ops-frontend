@@ -398,12 +398,12 @@ async function run() {
     await evaluate("return !!$btn('Publish again') && !$btn('Publish again').disabled;"),
   );
   check("刚发布、还没改：没有「Changes are not sent」提醒", await evaluate("return !document.querySelector('[data-unsent-changes]');"));
-  check("Publish again 鼠标提示：写只通知班有变化的人和所有主管（后端 G217）", await evaluate("return $btn('Publish again').title === 'Publish again: people whose shifts or time off changed, and supervisors and admins who can edit the schedule, are notified.';"));
+  check("Publish again 鼠标提示：写只通知班有变化的人和所有主管（后端 G217）", await evaluate("return $btn('Publish again').title === 'Publish again: people whose shifts or time off changed, and people who can edit the schedule, are notified.';"));
   await evaluate("$btn('Publish again').click();");
   await waitFor("document.querySelector('[role=dialog]')");
   check(
     "二次发布的确认框：只通知班有变化的人 + 所有主管（除了自己，后端 G217），别人不通知；不出「没有邮箱」提醒",
-    await evaluate("const t = document.querySelector('[role=dialog]').textContent; return t.includes('People whose shifts or time off changed since the last publish will get a system notification and an email. Supervisors and admins who can edit the schedule (except you) get a notice listing the changes. No one else is notified.') && !t.includes('their supervisor') && !t.includes('Everyone scheduled this week') && !t.includes('No notifications are sent') && !document.querySelector('[role=dialog] [data-publish-no-email]');"),
+    await evaluate("const t = document.querySelector('[role=dialog]').textContent; return t.includes('People whose shifts or time off changed since the last publish will get a system notification and an email. People who can edit the schedule (except you) get a notice listing the changes. No one else is notified.') && !t.includes('their supervisor') && !t.includes('Everyone scheduled this week') && !t.includes('No notifications are sent') && !document.querySelector('[role=dialog] [data-publish-no-email]');"),
   );
   await evaluate("$btn('Publish again', document.querySelector('[role=dialog]')).click();");
   check("没改就重新发布：写「Published again. No one's shifts or time off changed, so no one was notified.」，不写 Notified 0", await waitFor("document.body.innerText.includes(\"Published again. No one's shifts or time off changed, so no one was notified.\") && !document.body.innerText.includes('Notified 0')"));
@@ -433,7 +433,7 @@ async function run() {
   // 后端 G217（ef 10-30）：对方收到的是后端的原文，前端不另写一套
   check(
     "发送框「What Jing gets」照后端原文：标题 Please confirm your schedule changes — week of 2026-10-04、Hi Jing、每行「Mon 10/5:（不补零，同后端）原来 → 现在」、Please check and confirm、[Confirm my schedule]；底下写能改排班的主管和 admin、不写 their supervisor",
-    await evaluate(`const d = ${DLG}; const p = d.querySelector('[data-send-preview]').innerText; const lines = p.split('\\n').map((l) => l.trim()); return lines.includes('Subject: Please confirm your schedule changes — week of 2026-10-04') && lines.includes('Hi Jing,') && lines.includes('Your schedule for the week of 2026-10-04 has changed:') && lines.some((l) => /^• Mon 10\\/5: .+ → .*11:45 AM/.test(l)) && lines.includes('Please check and confirm:') && lines.includes('[Confirm my schedule]') && !p.includes('Looks good') && d.textContent.replace(/\\s+/g, ' ').includes('When you publish again, Jing and the supervisors and admins who can edit the schedule still get the normal notice.') && !d.textContent.includes('their supervisor');`),
+    await evaluate(`const d = ${DLG}; const p = d.querySelector('[data-send-preview]').innerText; const lines = p.split('\\n').map((l) => l.trim()); return lines.includes('Subject: Please confirm your schedule changes — week of 2026-10-04') && lines.includes('Hi Jing,') && lines.includes('Your schedule for the week of 2026-10-04 has changed:') && lines.some((l) => /^• Mon 10\\/5: .+ → .*11:45 AM/.test(l)) && lines.includes('Please check and confirm:') && lines.includes('[Confirm my schedule]') && !p.includes('Looks good') && d.textContent.replace(/\\s+/g, ' ').includes('When you publish again, Jing and the people who can edit the schedule still get the normal notice.') && !d.textContent.includes('their supervisor');`),
     await evaluate(`return ${DLG}.querySelector('[data-send-preview]')?.innerText;`),
   );
   // has_login:false（没有登录账号）：只写邮箱，不写站内
@@ -529,7 +529,7 @@ async function run() {
   await evaluate("$btn('Publish again').click();");
   await waitFor("document.querySelector('[role=dialog]')");
   await evaluate("$btn('Publish again', document.querySelector('[role=dialog]')).click();");
-  check("改过再 Publish again：只通知班变了的那一个人 + 2 位主管，写「Published again. Notified 1 person and 2 supervisors.」，提醒没了", await waitFor("document.body.innerText.includes('Published again. Notified 1 person and 2 supervisors.') && !document.querySelector('[data-unsent-changes]')"));
+  check("改过再 Publish again：只通知班变了的那一个人 + 2 位主管，写「Published again. Notified 1 staff member and 2 schedule editors.」，提醒没了", await waitFor("document.body.innerText.includes('Published again. Notified 1 staff member and 2 schedule editors.') && !document.querySelector('[data-unsent-changes]')"));
   check("Publish again 以后：行上的标记、改过的格子框都清掉", await waitFor("!document.querySelector('[data-person-changes]') && !document.querySelector('[data-changed]')"));
   // 除了按的人没有别的主管：后半句不写
   await ctl({ noSupervisors: true });
@@ -541,7 +541,7 @@ async function run() {
   await evaluate("$btn('Publish again').click();");
   await waitFor("document.querySelector('[role=dialog]')");
   await evaluate("$btn('Publish again', document.querySelector('[role=dialog]')).click();");
-  check("主管 0 人：只写「Published again. Notified 1 person.」，不写 and 0 supervisors", await waitFor("document.body.innerText.includes('Published again. Notified 1 person.') && !document.body.innerText.includes('supervisors.')"));
+  check("主管 0 人：只写「Published again. Notified 1 staff member.」，不写 and 0 supervisors", await waitFor("document.body.innerText.includes('Published again. Notified 1 staff member.') && !document.body.innerText.includes('schedule editor')"));
   await ctl({ noSupervisors: false });
   // 没有邮箱：黄框、Send 灰着
   const jingEmail = (await (await fetch(`${MOCK}/api/schedule/employees`)).json()).employees.find((e) => e.id === 4).email;
