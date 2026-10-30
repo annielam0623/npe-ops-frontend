@@ -238,6 +238,9 @@
     - 不加列、不做 migration；去掉两处 409；「发布时有空档」在读数据时现算。
     - 排在 G216 后面，明天做。
     - 通知规则定下来之前，重新发布先不发通知（主窗口同意），首次发布照旧。已问 Annie 通知规则。
+    - 8e 发来接口形状（后端分支 d2bc2cf，还没上 main）。已转 9c 对照。
+      - POST publish {allow_gaps:true}：非 admin 回 403；已发布的周不再 409；响应加 republished / gaps / notified。
+      - GET 加 published_with_gaps。
 - Annie 原话（10-29 晚，说 staff 联络方式时）：「但凡有材料需要输入的地方，都要支持表格，文档，图片上传」。
   - 记录，还没动手。
   - 已问 Annie 两种意思：① 上传 Excel / CSV 批量导入，自动填进去；② 把文件、图片作为附件存在记录上。
