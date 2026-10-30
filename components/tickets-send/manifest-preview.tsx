@@ -4,6 +4,7 @@ import {
   UploadComparePanel,
 } from "@/components/ui/upload-compare-panel";
 import { sendBatchHref } from "@/lib/send-log-api";
+import { useTick } from "@/lib/use-tick";
 import { cn } from "@/lib/utils";
 import type {
   TicketsManifestRow,
@@ -88,6 +89,8 @@ export function ManifestPreview({
   apply: ApplyState;
   onApply: () => void;
 }) {
+  // 员工也按勾（Annie 2026-10-30 置顶 10c）：没勾 tickets.send 看不到 Send 键；总开关关着照旧全给，Super Admin 全给。
+  const canSend = useTick("tickets.send");
   const { rows } = batch;
   // 文件里第二次出现的同一单不发，也不给 Send anyway（客人只收一条）。
   const duplicateIndexes = rows.flatMap((r, i) =>
@@ -355,20 +358,22 @@ export function ManifestPreview({
           onChange={onSendTypeChange}
         />
         <div className="flex flex-wrap items-center gap-2.5">
-          <button
-            type="button"
-            disabled={
-              toSend === 0 ||
-              blocked.length > 0 ||
-              sendDisabled ||
-              maybeSent !== null
-            }
-            onClick={onSend}
-            className={sendButtonClass("orange")}
-          >
-            {SEND_ICON[sendType]} Send {toSend} Reminder
-            {toSend === 1 ? "" : "s"} ({sendTypeShort(sendType)})
-          </button>
+          {canSend ? (
+            <button
+              type="button"
+              disabled={
+                toSend === 0 ||
+                blocked.length > 0 ||
+                sendDisabled ||
+                maybeSent !== null
+              }
+              onClick={onSend}
+              className={sendButtonClass("orange")}
+            >
+              {SEND_ICON[sendType]} Send {toSend} Reminder
+              {toSend === 1 ? "" : "s"} ({sendTypeShort(sendType)})
+            </button>
+          ) : null}
           <button
             type="button"
             // Apply 存的时候不能换批：存完的结果会盖回旧的预览。
@@ -385,7 +390,9 @@ export function ManifestPreview({
             noun="reminder"
             theme="orange"
             confirmed={maybeSent.confirmed}
-            viewHref={maybeSent.batchId ? sendBatchHref(maybeSent.batchId) : null}
+            viewHref={
+              maybeSent.batchId ? sendBatchHref(maybeSent.batchId) : null
+            }
             sendLogLink
           />
         ) : null}

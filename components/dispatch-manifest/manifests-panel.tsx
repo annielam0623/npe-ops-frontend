@@ -14,15 +14,11 @@ import { StepBox } from "@/components/dispatch/step-box";
 import { BusIcon } from "@/components/dispatch/icons";
 import { describeError, isStatus } from "@/lib/api-errors";
 import {
-  applyUpload,
   fetchManifestCards,
   fetchPending,
   markGuestListsDone,
   markPendingHandled,
-  previewUpload,
-  type UploadDiff,
 } from "@/lib/dispatch-manifest-api";
-import { CsvUploadDialog } from "@/components/dispatch-manifest/csv-upload-dialog";
 import { PendingChanges } from "@/components/dispatch-manifest/pending-changes";
 import { LA_TIME_ZONE } from "@/lib/la-date";
 import { resolveTourColor } from "@/lib/tour-colors";
@@ -103,7 +99,6 @@ export function ManifestsPanel({
   onCompletedState,
   showEmpty,
   onToggleEmpty,
-  onUploaded,
 }: {
   date: string;
   /** 变了就重读卡片（排车页每次保存 / 重读之后、点过 Completed：车数读的是已保存的排车）。 */
@@ -141,27 +136,10 @@ export function ManifestsPanel({
   /** 没客人的团（No guests yet）展开没有；Step 2 跟着同一个开关（Annie 2026-10-15）。 */
   showEmpty: boolean;
   onToggleEmpty: () => void;
-  /** 上传 CSV 并 Apply 了：排车页重读卡片和车下面的名单。 */
-  onUploaded?: () => void;
 }) {
   // 只看（partner，排车页给的）：不上传、不出 Completed 之后的变化（那是 staff 标「已处理」用的，也不去读）。
   const viewOnly = useViewOnly();
   const [state, setState] = useState<CardsState>({ kind: "loading" });
-  // 上传 Rezdy CSV（后备）：选文件 → 比对（不写库）→ 弹窗 → Apply。
-  const fileRef = useRef<HTMLInputElement>(null);
-  const uploadTourRef = useRef<number | null>(null);
-  const [uploading, setUploading] = useState<number | null>(null);
-  const [uploadErr, setUploadErr] = useState<{
-    mid: number;
-    text: string;
-  } | null>(null);
-  const [diff, setDiff] = useState<{
-    mid: number;
-    title: string;
-    file: File;
-    diff: UploadDiff;
-  } | null>(null);
-  const [applied, setApplied] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const onUnauthorizedRef = useRef(onUnauthorized);
   onUnauthorizedRef.current = onUnauthorized;
@@ -239,53 +217,6 @@ export function ManifestsPanel({
     setPendingKey((k) => k + 1);
   }
 
-  function pickFile(mid: number) {
-    uploadTourRef.current = mid;
-    setUploadErr(null);
-    setApplied(null);
-    if (fileRef.current) {
-      fileRef.current.value = "";
-      fileRef.current.click();
-    }
-  }
-
-  async function onFile(file: File | undefined) {
-    const mid = uploadTourRef.current;
-    if (!file || mid == null) return;
-    const title =
-      state.kind === "ready"
-        ? (state.cards.find((c) => c.manifest_id === mid)?.title ?? "Tour")
-        : "Tour";
-    setUploading(mid);
-    try {
-      const d = await previewUpload(date, mid, file);
-      setDiff({ mid, title, file, diff: d });
-    } catch (e) {
-      if (isStatus(e, 401)) onUnauthorized();
-      else setUploadErr({ mid, text: describeError(e) });
-    } finally {
-      setUploading(null);
-    }
-  }
-
-  async function applyDiff() {
-    if (!diff) return;
-    let r;
-    try {
-      r = await applyUpload(date, diff.mid, diff.file);
-    } catch (e) {
-      if (isStatus(e, 401)) {
-        onUnauthorized();
-        return;
-      }
-      throw new Error(describeError(e));
-    }
-    setApplied(`${diff.title}: applied — ${r.rows} orders, ${r.pax} pax.`);
-    setDiff(null);
-    setReloadKey((k) => k + 1);
-    onUploaded?.();
-  }
-
   const pendingByTour = new Map<number, number>();
   for (const p of pending)
     pendingByTour.set(
@@ -307,43 +238,13 @@ export function ManifestsPanel({
         <p className="m-0">
           Click Assign Bus (Check the bus once buses are assigned) on a tour to
           check its buses, drivers and hotels.
-          {applied ? (
-            <span className="ml-1.5 text-[#86efac]" role="status" data-applied>
-              {applied}
-            </span>
-          ) : null}
         </p>
       }
     >
-      <input
-        ref={fileRef}
-        type="file"
-        accept=".csv"
-        hidden
-        data-upload-input
-        onChange={(e) => void onFile(e.target.files?.[0])}
-      />
-      {diff ? (
-        <CsvUploadDialog
-          tourTitle={diff.title}
-          fileName={diff.file.name}
-          diff={diff.diff}
-          onApply={applyDiff}
-          onCancel={() => setDiff(null)}
-        />
-      ) : null}
       <SyncNotes
         sync={sync}
         cards={state.kind === "ready" ? state.cards : []}
       />
-      {uploadErr ? (
-        <p role="alert" className={cn(DARK_ERR, "m-0")} data-upload-error>
-          {(state.kind === "ready"
-            ? state.cards.find((c) => c.manifest_id === uploadErr.mid)?.title
-            : null) ?? "Tour"}
-          : could not read this file. {uploadErr.text}
-        </p>
-      ) : null}
       {pendingError ? (
         <p role="alert" className={cn(DARK_ERR, "m-0")}>
           Could not load the changes after Completed: {pendingError}
@@ -382,8 +283,6 @@ export function ManifestsPanel({
               date={date}
               onAssignBus={() => onAssignBus(c.manifest_id)}
               onSeatGuests={() => onSeatGuests?.(c.manifest_id)}
-              onUpload={viewOnly ? undefined : () => pickFile(c.manifest_id)}
-              uploading={uploading === c.manifest_id}
               viewOnly={viewOnly}
             />
           );
@@ -595,8 +494,6 @@ function Card({
   date,
   onAssignBus,
   onSeatGuests,
-  onUpload,
-  uploading,
   viewOnly = false,
 }: {
   card: ManifestCard;
@@ -607,9 +504,6 @@ function Card({
   date: string;
   onAssignBus: () => void;
   onSeatGuests: () => void;
-  /** 同步失败时的后备：上传这个团的 Rezdy CSV。没有 = 不出这个键（只看）。 */
-  onUpload?: () => void;
-  uploading: boolean;
   /** 只看：Assign Bus 一律写 Check the bus（只是跳到 Step 2 看），没有 Arrange seats。 */
   viewOnly?: boolean;
 }) {
@@ -659,16 +553,8 @@ function Card({
           {busText(c.buses)} ·{" "}
           {c.uploaded ? `${c.pax} guests loaded` : "No guests loaded"}
         </div>
-        {/* G65 只增不删：主 Manifest 里找不到的单（照算人数）橙字；取消 / 改期留在名单上的单灰字（0 人）。 */}
-        {c.missing_orders ? (
-          <div
-            data-card-missing
-            className="mt-[3px] text-[12.5px] font-[650] text-[#c2410c]"
-          >
-            {c.missing_orders} order{c.missing_orders === 1 ? "" : "s"} not in
-            main manifest — check Rezdy
-          </div>
-        ) : null}
+        {/* G65：取消 / 改期留在名单上的单灰字（0 人）。主 Manifest 里找不到的单不再另提醒「check Rezdy」
+            （Annie 2026-10-30「4 全按推荐 动手」；订单流固定：Main manifest 里没有就是没有，状态查 Order List）。 */}
         {c.gone_orders ? (
           <div data-card-gone className="mt-[3px] text-[12.5px] text-[#57534e]">
             {c.gone_orders} cancelled / moved — 0 pax, listed on the manifest
@@ -714,17 +600,6 @@ function Card({
         {warn?.solve === "seat" && !viewOnly ? (
           <button type="button" onClick={onSeatGuests} className={TM_BTN_BLUE}>
             Arrange seats
-          </button>
-        ) : null}
-        {onUpload ? (
-          <button
-            type="button"
-            onClick={onUpload}
-            disabled={uploading}
-            className={TM_BTN}
-            data-upload-csv
-          >
-            {uploading ? "Reading…" : "Upload Rezdy CSV"}
           </button>
         ) : null}
       </div>
@@ -775,11 +650,6 @@ function HowToUse() {
           Click Open manifest to check the guests, print, or fill in the
           Antelope confirmation #.
         </li>
-        <li>
-          If the lists cannot be updated (a red message above the cards),
-          download that tour&rsquo;s CSV from Rezdy and click Upload Rezdy CSV
-          on the tour. Excel files are not accepted.
-        </li>
         <li>When the day is done, click Completed at the bottom of Step 2.</li>
       </ol>
     </details>
@@ -800,9 +670,7 @@ function SyncNotes({
       <p role="alert" className={cn(DARK_ERR, "m-0")}>
         Could not update the guest lists from the Manifests page: {sync.error}{" "}
         The lists below may be out of date. Reload the page to try again. If it
-        keeps failing, download each tour&rsquo;s CSV from Rezdy and click
-        Upload Rezdy CSV on that tour below (upload it as is; Excel files are
-        not accepted).
+        keeps failing, check the Manifests page.
       </p>
     );
   const title = new Map(cards.map((c) => [c.manifest_id, c.title]));

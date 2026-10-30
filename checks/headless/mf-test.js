@@ -152,9 +152,9 @@ async function run() {
   }
   check("已上传的卡：同旧版只写车数和人数（不放午餐 / 单数 / 上传人，Annie 2026-10-08）、团名下橙字写问题（Check the bus 改版 cb3887d：不再挂右上角标签）、Open manifest 链接（已切换：ops 的 manifest 页）", await evaluate(`const t = ${card(3)}.textContent; return t.includes('2 guests awaiting seat assignment') && !t.includes('not on a bus') && !t.includes('CSV loaded') && t.includes('2 buses assigned · 8 guests loaded') && !t.includes('Turkey') && !t.includes('orders') && !t.includes('by Annie') && ${card(3)}.querySelector('a').getAttribute('href') === '/dispatch/manifest?date=${tomorrow}&tour=3';`));
   check("面板是 Step 1 Guest lists；排了车的卡 Check the bus（描边）、没排车的卡 Assign Bus（实心，Annie 2026-10-13）", await evaluate(`return !!document.querySelector('section[aria-label="Guest lists"]') && !!$btn('Check the bus', ${card(3)}) && !$btn('Assign Bus', ${card(3)}) && !!$btn('Assign Bus', ${card(5)}) && !$btn('Check the bus', ${card(5)}) && $btn('Assign Bus', ${card(5)}).className.includes('bg-') && !$btn('Assign Bus', ${card(5)}).className.includes('bg-white');`));
-  check("没有名单的卡：No guests yet、没有车；上传只剩后备的 Upload Rezdy CSV（没有旧的 Re-upload CSV），文件框藏着", await evaluate(`const t = ${card(5)}.textContent; return t.includes('No guests yet') && t.includes('No bus assigned · No guests loaded') && !!$btn('Upload Rezdy CSV', ${card(5)}) && !$btn('Re-upload CSV', ${card(3)}) && document.querySelector('input[type=file]').hidden;`));
+  check("没有名单的卡：No guests yet、没有车；没有 Upload Rezdy CSV、也没有旧的 Re-upload CSV", await evaluate(`const t = ${card(5)}.textContent; return t.includes('No guests yet') && t.includes('No bus assigned · No guests loaded') && !$btn('Upload Rezdy CSV', ${card(5)}) && !$btn('Re-upload CSV', ${card(3)}) && !document.querySelector('[data-upload-input]');`));
   check("有名单、没问题的卡：右上角 Guests loaded", await evaluate(`return ${card(7)}.textContent.includes('Guests loaded');`));
-  check("G65 卡片：主 Manifest 找不到的单橙字、取消 / 改期的单灰字（0 人、还在 manifest 上）", await evaluate(`const m = ${card(3)}.querySelector('[data-card-missing]'); const g = ${card(3)}.querySelector('[data-card-gone]'); return !!m && m.textContent.includes('1 order not in main manifest — check Rezdy') && m.className.includes('c2410c') && !!g && g.textContent.includes('2 cancelled / moved — 0 pax, listed on the manifest') && !${card(7)}.querySelector('[data-card-missing], [data-card-gone]');`), await evaluate(`return ${card(3)}.textContent;`));
+  check("G65 卡片：不再写橙字「N orders not in main manifest — check Rezdy」（Annie 2026-10-30「4 全按推荐 动手」：订单流固定，不再叫人去 Rezdy）；取消 / 改期的单照旧灰字（0 人、还在 manifest 上）", await evaluate(`const g = ${card(3)}.querySelector('[data-card-gone]'); return !${card(3)}.querySelector('[data-card-missing]') && !${card(3)}.textContent.includes('check Rezdy') && !!g;`));
   // ── 没客人的团收起来（Annie 2026-10-15）──
   const s1Toggle = "[...document.querySelector('section[aria-label=\"Guest lists\"]').querySelectorAll('button[aria-expanded]')].find(b => b.textContent.includes('with no guests yet'))";
   check("Step 1：没客人的团（5）收进最下面一行「▸ 1 tour with no guests yet — 团名」，卡片藏着", await evaluate(`const b = ${s1Toggle}; return !!b && b.getAttribute('aria-expanded') === 'false' && /1\\s*tour with no guests yet/.test(b.textContent) && !!${card(5)}.closest('[data-empty-tours]') && ${card(5)}.closest('[hidden]') && !${card(3)}.closest('[hidden]') && !${card(7)}.closest('[hidden]');`), await evaluate(`return ${s1Toggle}?.textContent;`));
@@ -189,44 +189,10 @@ async function run() {
   await goto(`${APP}/dispatch?date=2026-10-05`);
   await waitFor(`${card(3)} && [...document.querySelectorAll('[role=alert]')].some(a => a.textContent.includes('Could not update the guest lists'))`);
   await helpers();
-  check("同步失败：卡片照常显示，红字说名单可能是旧的、指到卡片上的 Upload Rezdy CSV（不再去旧网站）", await evaluate("const t = [...document.querySelectorAll('[role=alert]')].map(a => a.textContent).join(' '); return t.includes('Could not update the guest lists from the Manifests page') && t.includes('may be out of date') && t.includes('click Upload Rezdy CSV on that tour below') && t.includes('Excel files are not accepted') && !t.includes('confirm.nationalparkexpress.com');") && !!(await evaluate(`return !!${card(3)};`)));
+  check("同步失败：卡片照常显示，红字说名单可能是旧的、请再试或看 Manifests 页（不再叫人上传 Rezdy CSV）（Annie 2026-10-30「4 全按推荐 动手」：订单流固定，不再叫人去 Rezdy）", await evaluate("const t = [...document.querySelectorAll('[role=alert]')].map(a => a.textContent).join(' '); return t.includes('Could not update the guest lists from the Manifests page') && t.includes('may be out of date') && t.includes('check the Manifests page') && !t.includes('Rezdy') && !t.includes('confirm.nationalparkexpress.com');") && !!(await evaluate(`return !!${card(3)};`)));
 
-  // ── 同步失败的后备：每个团上传 Rezdy CSV（Annie 2026-10-15 晚，经后端 4f 转）──
-  const pick = (mid, name) => `$btn('Upload Rezdy CSV', ${card(mid)}).click(); const i = document.querySelector('[data-upload-input]'); const dt = new DataTransfer(); dt.items.add(new File(['Order,Pax'], '${name}', { type: 'text/csv' })); i.files = dt.files; i.dispatchEvent(new Event('change', { bubbles: true })); return 1;`;
-  check("每张卡片都有 Upload Rezdy CSV（白键，不是蓝色）、文件框只收 .csv", await evaluate(`return [3, 7].every(id => { const b = $btn('Upload Rezdy CSV', document.querySelector('[data-card="' + id + '"]')); return !!b && getComputedStyle(b).backgroundColor !== 'rgb(59, 130, 246)'; }) && document.querySelector('[data-upload-input]').getAttribute('accept') === '.csv';`));
-  before = (await mockLog()).length;
-  await evaluate(pick(3, "lower-antelope.csv"));
-  await waitFor("document.querySelector('[data-upload-diff]')");
-  const pv = (await since(before, "/api/dispatch/manifests/preview"))[0];
-  check("选了文件：POST preview 带日期、团、文件名，还没 apply", pv?.method === "POST" && pv?.date === "2026-10-05" && pv?.manifest_id === "3" && pv?.filename === "lower-antelope.csv" && !(await since(before, "/api/dispatch/manifests/apply")).length, JSON.stringify(pv));
-  check("比对弹窗：团名 · 文件名 · 5 orders, 11 pax · 3 changes, 2 unchanged；Added / Removed / Changed 三行（彩色字、不是胶囊）", await evaluate("const d = document.querySelector('[data-upload-diff]').textContent; const rows = [...document.querySelectorAll('[data-diff-row]')].map(r => r.dataset.diffRow).join(','); const td = document.querySelector('[data-diff-row=added] td'); return d.includes('Antelope Canyon · new CSV') && d.includes('lower-antelope.csv') && d.includes('5 orders, 11 pax · 3 changes, 2 unchanged') && rows === 'added,removed,changed' && getComputedStyle(td).backgroundColor === 'rgba(0, 0, 0, 0)';"), await evaluate("return document.querySelector('[data-upload-diff]')?.textContent;"));
-  check("Removed 写原来的车和司机标记；Changed 写改了什么；客人名字里的 HTML 当文字", await evaluate("const t = (k) => document.querySelector('[data-diff-row=' + k + ']').textContent; return t('removed').includes('Was on Bus A · Driver marked boarded') && t('changed').includes('pax 2 → 4') && t('added').includes('ZZ Test New <b>x</b>') && !document.querySelector('[data-diff-row=added] b');"));
-  check("Apply 键是蓝色、写 Apply 3 changes", await evaluate("const b = $btn('Apply 3 changes'); return !!b && getComputedStyle(b).backgroundColor === 'rgb(59, 130, 246)';"));
-  await evaluate("$btn('Cancel', document.querySelector('[data-upload-diff]').parentElement).click(); return 1;");
-  await sleep(150);
-  check("Cancel：弹窗关掉、没有 apply", !(await evaluate("return !!document.querySelector('[data-upload-diff]');")) && !(await since(before, "/api/dispatch/manifests/apply")).length);
-  await evaluate(pick(3, "lower-antelope.csv"));
-  await waitFor("document.querySelector('[data-upload-diff]')");
-  await ctl({ applyFail: "Could not save. Nothing was half-written - try again." });
-  await evaluate("$btn('Apply 3 changes').click(); return 1;");
-  await waitFor("document.querySelector('[data-upload-diff]')?.parentElement.textContent.includes('Nothing was half-written')");
-  check("Apply 失败：弹窗留着、写后端原话", await evaluate("return !!document.querySelector('[data-upload-diff]') && document.querySelector('[data-upload-diff]').parentElement.textContent.includes('Could not save. Nothing was half-written - try again.');"));
-  await ctl({ applyFail: "" });
-  before = (await mockLog()).length;
-  await evaluate("$btn('Apply 3 changes').click(); return 1;");
-  await waitFor("document.querySelector('[data-applied]')");
-  const ap = (await since(before, "/api/dispatch/manifests/apply"))[0];
-  check("Apply：文件再传一次（同团、同文件）、弹窗关掉、写 applied 几单几人、重读卡片", ap?.manifest_id === "3" && ap?.filename === "lower-antelope.csv" && ap?.date === "2026-10-05" && (await evaluate("return !document.querySelector('[data-upload-diff]') && document.querySelector('[data-applied]').textContent === 'Antelope Canyon: applied — 5 orders, 11 pax.';")) && (await since(before, "/api/dispatch/manifests")).some((l) => l.method === "GET"), JSON.stringify(ap));
-  await evaluate(pick(7, "hoover.xlsx"));
-  await waitFor("document.querySelector('[data-upload-error]')");
-  check("传 Excel：不弹窗、红字写团名和后端原话", await evaluate("const t = document.querySelector('[data-upload-error]').textContent; return !document.querySelector('[data-upload-diff]') && t.includes('Hoover Dam: could not read this file.') && t.includes('Only the CSV downloaded from Rezdy can be uploaded here.');"));
-  await ctl({ noChanges: true });
-  await evaluate(pick(7, "hoover.csv"));
-  await waitFor("document.querySelector('[data-no-changes]')");
-  check("文件和现在一样：写 No changes、键写 Apply", await evaluate("return document.querySelector('[data-no-changes]').textContent.includes('No changes: the file matches the list already loaded.') && !!$btn('Apply');"));
-  await evaluate("document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })); return 1;");
-  await sleep(150);
-  check("Esc 关掉弹窗", !(await evaluate("return !!document.querySelector('[data-upload-diff]');")));
+  // ── 同步失败的后备「Upload Rezdy CSV」去掉了（Annie 2026-10-30「4 全按推荐 动手」：订单流固定，不再叫人去 Rezdy） ──
+  check("卡片上没有 Upload Rezdy CSV、页面上没有上传文件框", await evaluate("return ![...document.querySelectorAll('button')].some((b) => b.textContent.includes('Upload Rezdy CSV')) && !document.querySelector('[data-upload-csv]') && !document.querySelector('[data-upload-input]');"));
   await ctl({ syncFail: "", noChanges: false });
   before = (await mockLog()).length;
   await goto(`${APP}/dispatch?date=2026-10-05`);
@@ -266,7 +232,7 @@ async function run() {
   await goto(`${APP}/dispatch?date=2026-10-05`);
   await waitFor("document.querySelector('[data-guest-lists-done]')");
   check("Completed 是共享、持久的：重新打开还在", await evaluate("return document.querySelector('[data-guest-lists-done]').textContent.includes('Dispatch completed by Annie');"));
-  check("How to use 精简后仍写了：同步失败时在这里上传 Rezdy CSV（不再去旧网站）、不收 Excel、Completed 在 Step 2 底下", await evaluate("const t = document.querySelector('section[aria-label=\"Guest lists\"] details').textContent.replace(/\\s+/g, ' '); return t.includes('click Upload Rezdy CSV on the tour') && t.includes('Excel files are not accepted') && !t.includes('confirm.nationalparkexpress.com') && t.includes('click Completed at the bottom of Step 2');"));
+  check("How to use：不再写上传 Rezdy CSV（Annie 2026-10-30「4 全按推荐 动手」：订单流固定，不再叫人去 Rezdy），Completed 在 Step 2 底下", await evaluate("const t = document.querySelector('section[aria-label=\"Guest lists\"] details').textContent.replace(/\\s+/g, ' '); return !t.includes('Upload Rezdy CSV') && !t.includes('Rezdy') && !t.includes('confirm.nationalparkexpress.com') && t.includes('click Completed at the bottom of Step 2');"));
   await ctl({ allUploaded: false, done: null });
   await goto(`${APP}/dispatch?date=2026-10-05`);
   await waitFor(`${card(3)}`);
@@ -309,7 +275,7 @@ async function run() {
   await waitFor(`${card(3)}`);
   await sleep(300);
   check("接口还没上线（404）：不显示那一块、也不报错", !(await evaluate("return !!document.querySelector('[data-pending]') || [...document.querySelectorAll('[role=alert]')].some(a => a.textContent.includes('changes after Completed'));")));
-  check("How to use 精简成 4 条（Annie 2026-10-15 精简成 5 条，10-17 拿掉 Sync Rezdy 键时去掉那一条），写了 Completed 在 Step 2 底下", await evaluate("const d = document.querySelector('section[aria-label=\"Guest lists\"] details'); return d.querySelectorAll('li').length === 4 && d.textContent.replace(/\\s+/g, ' ').includes('When the day is done, click Completed at the bottom of Step 2.');"));
+  check("How to use 精简成 3 条（Annie 2026-10-15 精简成 5 条，10-17 拿掉 Sync Rezdy 键时去掉一条，10-30 拿掉上传 Rezdy CSV 再去掉一条），写了 Completed 在 Step 2 底下", await evaluate("const d = document.querySelector('section[aria-label=\"Guest lists\"] details'); return d.querySelectorAll('li').length === 3 && d.textContent.replace(/\\s+/g, ' ').includes('When the day is done, click Completed at the bottom of Step 2.');"));
   await ctl({ pendingOff: false, pending: [], done: null });
   await goto(`${APP}/dispatch?date=2026-10-05`);
   await waitFor(`${card(3)}`);
@@ -329,9 +295,9 @@ async function run() {
   check("shuttle 节：票种后加红色 OUTBOUND", await evaluate("return [...document.querySelectorAll('tr[data-guest=CHD9] td')].some(td => td.textContent === 'Shuttle OUTBOUND');"));
   check("票种有 + 标黄、三明治读不出红字原文", await evaluate("const r = document.querySelector('tr[data-guest=CHD2]'); return [...r.children].some(td => td.className.includes('fff200') && td.textContent.includes('+')) && [...r.children].some(td => td.className.includes('d00000') && td.title.includes('Sandwiches could not be read'));"));
   check("司机标了上车显示 ✓", await evaluate("return [...document.querySelector('tr[data-guest=CHD3]').children].at(-1).textContent === '✓';"));
-  check("G65：主 Manifest 找不到的单，单号下橙字原因、人数照算（仍在车上）", await evaluate("const r = document.querySelector('tr[data-guest=CHD3]'); const f = r && r.querySelector('[data-sync-missing]'); return !!f && f.textContent === 'Not in main manifest — check Rezdy' && f.className.includes('c2410c') && r.closest('section').getAttribute('aria-label') === 'Bus 2041=A' && [...r.children][6].textContent === '2' && !document.querySelector('tr[data-guest=CHD1] [data-sync-missing]');"));
+  check("G65：主 Manifest 找不到的单，单号下不再写橙字「Not in main manifest — check Rezdy」（Annie 2026-10-30「4 全按推荐 动手」：订单流固定，不再叫人去 Rezdy），人数照算（仍在车上）", await evaluate("const r = document.querySelector('tr[data-guest=CHD3]'); return !!r && !r.querySelector('[data-sync-missing]') && !document.body.textContent.includes('check Rezdy') && r.closest('section').getAttribute('aria-label') === 'Bus 2041=A';"));
   check("G65：取消 / 改期单独一块在最下面（How to use 之前）：0 (was N)、原来的车、原因；不在车上和 Not on a bus 里", await evaluate("const s = document.querySelector('section[data-gone]'); if (!s) return false; const c = s.querySelector('tr[data-gone-row=CHD21]'); const m = s.querySelector('tr[data-gone-row=CHD22]'); const after = [...document.querySelectorAll('section[aria-label^=\"Bus\"], section[aria-label=\"Not on a bus yet\"]')].every(x => x.compareDocumentPosition(s) & Node.DOCUMENT_POSITION_FOLLOWING); return s.textContent.includes('Cancelled / moved · 2 orders') && s.textContent.includes('0 pax — not counted, not printed') && c.textContent.includes('0(was 3)') && c.textContent.includes('Cancelled in Rezdy (Oct 14, 8:12 PM)') && [...c.children][5].textContent === 'A' && m.textContent.includes('Moved to 10/15 South Rim') && [...m.children][5].textContent === '—' && !document.querySelector('tr[data-guest=CHD21], tr[data-guest=CHD22]') && after;"), await evaluate("return document.querySelector('section[data-gone]')?.textContent;"));
-  check("G65：页头总数不含取消 / 改期（仍是 4 orders, 8 pax）、How to use 写了只增不删和橙字", await evaluate("const t = document.body.textContent; return t.includes('4 orders, 8 pax') && t.includes('Orders are never taken off the list by an update.') && t.includes('means the order is gone from the main manifest but we');"));
+  check("G65：页头总数不含取消 / 改期（仍是 4 orders, 8 pax）、How to use 写了只增不删、不再写「check Rezdy」那条（Annie 2026-10-30）", await evaluate("const t = document.body.textContent; return t.includes('4 orders, 8 pax') && t.includes('Orders are never taken off the list by an update.') && !t.includes('means the order is gone from the main manifest but we') && !t.includes('check Rezdy');"));
   check("没分车的客人：Not on a bus yet 区块、下拉标橙", await evaluate("const s = document.querySelector('section[aria-label=\"Not on a bus yet\"]'); return s && s.textContent.includes('Not on a bus yet · 2 pax') && s.querySelector('select').className.includes('e0a63a');"));
   check("Footer 格子：照接口顺序画、null 显示 —、Extra 的 SEATS LEFT 格另一种底色", await evaluate("const b = document.querySelector('section[aria-label=\"Bus 2041=A\"]'); return b.textContent.includes('AVAILABLE SEATS LEFT—') && b.textContent.indexOf('Heli SEATS LEFT') > b.textContent.indexOf('AVAILABLE SEATS LEFT') && b.textContent.indexOf('INBOUND') > b.textContent.indexOf('Heli SEATS LEFT') && [...b.querySelectorAll('span')].some(s => s.textContent === 'Heli SEATS LEFT' && s.className.includes('ddd0f0'));"), await evaluate("return document.querySelector('section[aria-label=\"Bus 2041=A\"]').textContent.slice(-200);"));
   // ── G198 第 1 步（不靠后端）：纸本字号、酒店隔组标色、合计行改名 ──
@@ -624,9 +590,16 @@ async function run() {
   check("整页 Save：PUT /api/dispatch/manifest/version {tour: 3, version: lankun}", vReq?.method === "PUT" && vReq?.body?.tour === 3 && vReq?.body?.version === "lankun", JSON.stringify(vReq));
   check("存好：绿字 ✓ Saved，Unsaved 没了；下拉停在 Lankun",
     await waitFor("!!document.querySelector('[data-page-saved]') && !document.querySelector('[data-version-unsaved]') && document.querySelector('[data-version-select]').value === 'lankun'"));
-  check("Lankun：列序 Order # / Time / Hotel / Phone / Ticket / Pax / Last / First / Lunch / Special Requirements（定 5），没有 ✓",
-    await evaluate(`return JSON.stringify(${headsOf("2041=A")}) === JSON.stringify(["Order #","Time","Hotel","Phone","Ticket","Pax","Last Name","First Name","Lunch","Special Requirements","Bus"]);`),
+  // Annie 2026-10-30「5 按推荐动手」：Lankun 的 ✓ 列屏幕上留（看得到司机标的上车 / No show），打印去掉。
+  check("Lankun：列序 Order # / Time / Hotel / Phone / Ticket / Pax / Last / First / Lunch / Special Requirements（定 5），屏幕上最后有 ✓",
+    await evaluate(`return JSON.stringify(${headsOf("2041=A")}) === JSON.stringify(["Order #","Time","Hotel","Phone","Ticket","Pax","Last Name","First Name","Lunch","Special Requirements","Bus","✓"]);`),
     await evaluate(`return JSON.stringify(${headsOf("2041=A")});`));
+  check("Lankun：✓ 列照旧画司机标的上车（CHD3 boarded ⇒ ✓）", await evaluate("const r = document.querySelector('tr[data-guest=CHD3]'); return r.lastElementChild.textContent.trim() === '✓';"));
+  await cdp("Emulation.setEmulatedMedia", { media: "print" });
+  await sleep(200);
+  check("Lankun：打印时 ✓ 列不出（表头和格子都藏）", await evaluate("const th = document.querySelector('section[aria-label=\"Bus 2041=A\"] th[data-boarding-col]'); const td = document.querySelector('tr[data-guest=CHD3]').lastElementChild; return !!th && getComputedStyle(th).display === 'none' && getComputedStyle(td).display === 'none';"));
+  await cdp("Emulation.setEmulatedMedia", { media: "" });
+  await sleep(200);
   check("Lankun：G197 整列字号跟着列键走（Hotel 那一列 +3 = 19.5px）",
     await evaluate("return getComputedStyle(document.querySelector('tr[data-guest=CHD1]').children[2]).fontSize === '19.5px' && document.querySelector('tr[data-guest=CHD1]').children[2].textContent === 'Excalibur';"));
   check("Lankun：不另出午餐表（定 19）；合计一排最后多一格 TOTAL SANDWICH（5 = 1 B 2 T 2 V）",
@@ -1009,5 +982,21 @@ async function run() {
   );
   check("partner 勾 manifests.edit：备注格子点了也不进编辑", await evaluate(`const c = ${nc("CHD1")}; c && c.click(); await new Promise((r) => setTimeout(r, 300)); return !document.querySelector('[data-notes-editor]');`));
   await ctl({ partner: false, partnerCodes: null, notesEdit: false, textSize: false, bmv: false, version: "general", foVis: false, foPartners: [] });
+
+  // ── 员工也按勾（Annie 2026-10-30 置顶 10c）：Bus Manifest 要 dispatch.edit 或 manifests.edit 任一才能改（同后端）；Super Admin 全有 ──
+  for (const [label, opts, canEdit] of [
+    ["员工只勾 dispatch.view / manifests.view", { staffPerms: ["dispatch.view", "manifests.view"] }, false],
+    ["员工勾 dispatch.edit", { staffPerms: ["dispatch.view", "dispatch.edit"] }, true],
+    ["员工勾 manifests.edit", { staffPerms: ["dispatch.view", "manifests.view", "manifests.edit"] }, true],
+    ["Super Admin（一项都没勾）", { staffPerms: null, superAdmin: true }, true],
+  ]) {
+    await ctl({ staffPerms: null, superAdmin: false, ...opts });
+    await goto(`${APP}/dispatch/manifest?date=2026-10-05&tour=3`);
+    await waitFor("document.querySelector('section[aria-label^=\"Bus\"]')", 60000);
+    await helpers();
+    const st = await evaluate("return { select: !!document.querySelector('section[aria-label^=\"Bus\"] select'), save: !!document.querySelector('[data-page-save]') };");
+    check(`${label}：Bus Manifest ${canEdit ? "能改（有换车下拉、整页 Save）" : "只看（没有换车下拉、没有整页 Save）"}`, st.select === canEdit && st.save === canEdit, JSON.stringify(st));
+  }
+  await ctl({ staffPerms: null, superAdmin: false });
 }
 main().catch((e) => { console.error(e); process.exit(2); });

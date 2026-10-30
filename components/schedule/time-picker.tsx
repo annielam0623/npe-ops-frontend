@@ -91,6 +91,7 @@ export function TimePicker({
   id,
   allowEmpty = false,
   className,
+  tone = "dark",
   inline = false,
 }: {
   value: string;
@@ -101,6 +102,8 @@ export function TimePicker({
   allowEmpty?: boolean;
   /** 加在输入框上（主要用来定宽度）。 */
   className?: string;
+  /** light：放在白卡片上（Pickup Locations 的时刻表）；弹出的列表照旧深色。 */
+  tone?: "dark" | "light";
   /**
    * 列表开在输入框正下方、占位置（把下面的键往下推，不浮在最上层盖住它们），选了 AM / PM 就收起。
    * 改时间小窗和 Add shift 窗口用（Annie 2026-10-29 A8「根本点不了」，preview
@@ -389,7 +392,10 @@ export function TimePicker({
         }}
         onKeyDown={onKeyDown}
         className={cn(
-          "h-9 w-[112px] rounded-[6px] border border-white/25 bg-[#070f1a] px-2.5 font-mono text-[14px] font-semibold text-white [color-scheme:dark] placeholder:font-normal placeholder:text-white/35 focus:border-sky-400/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/60",
+          "rounded-[6px] border px-2.5 font-mono font-semibold placeholder:font-normal focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/60",
+          tone === "light"
+            ? "h-8 w-[104px] border-black/25 bg-white text-[13px] text-[#1a1a1a] [color-scheme:light] placeholder:text-black/35 focus:border-[#1a1a1a] night:border-white/25 night:bg-[#070f1a] night:text-white"
+            : "h-9 w-[112px] border-white/25 bg-[#070f1a] text-[14px] text-white [color-scheme:dark] placeholder:text-white/35 focus:border-sky-400/70",
           className,
         )}
       />

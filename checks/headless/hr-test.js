@@ -111,6 +111,7 @@ async function main() {
 
   try {
     await run();
+    await runTicks();
   } finally {
     ws.close();
     chrome.kill();
@@ -447,3 +448,27 @@ main().catch((e) => {
   console.error(e);
   process.exit(2);
 });
+
+// ── 全部按照勾选（Annie 2026-10-30 置顶 10c）B 类：Human Resource 的改（Add person / Edit list）按 settings.hr.edit ──
+// 看这一页照旧按角色（主管及以上，canSeeHr），所以「员工」只能测开关关着时照旧看不到。
+async function runTicks() {
+  const VIEW = ["dashboard.view", "settings.hr.view"];
+  const CASES = [
+    // [说明, 角色 ctl, 开关开着?, 勾, 能改]
+    ["开关开着、主管没勾 settings.hr.edit ⇒ 不能改", { supervisor: true }, true, VIEW, false],
+    ["开关开着、主管勾了 settings.hr.edit ⇒ 能改", { supervisor: true }, true, [...VIEW, "settings.hr.edit"], true],
+    ["开关开着、admin 没勾 ⇒ 也不能改", {}, true, VIEW, false],
+    ["Super Admin 没勾 ⇒ 能改", { superadmin: true }, true, VIEW, true],
+    ["开关关着、主管 ⇒ 照旧能改", { supervisor: true }, false, [], true],
+    ["开关关着、员工勾了 ⇒ 照旧不能改（这一页只给主管及以上）", { staff: true }, false, [...VIEW, "settings.hr.edit"], false],
+  ];
+  for (const [name, who, switchOn, codes, edit] of CASES) {
+    await ctl({ fail401: false, staff: false, supervisor: false, superadmin: false, ...who, tick: { switchOn, codes } });
+    await goto(`${APP}/settings/hr`);
+    await waitFor("document.querySelector('main') && (document.body.textContent.includes('No access') || document.querySelectorAll('main table tbody tr').length > 0)");
+    await sleep(600);
+    const got = await evaluate("const bs = [...document.querySelectorAll('button')].map((b) => b.textContent.trim()); return bs.includes('Add person') || bs.includes('Edit list');");
+    check(`全部按照勾选 · Human Resource：${name}`, got === edit, `能改：${got}`);
+  }
+  await ctl({ staff: false, supervisor: false, superadmin: false, tick: null });
+}

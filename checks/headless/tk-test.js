@@ -672,6 +672,19 @@ async function run() {
   await goto(`${APP}/tickets-reminder/send`);
   await waitFor("[...document.querySelectorAll('a')].some(a => a.textContent.includes('View Tracking'))");
   check("门票发送页 View Tracking（已切换）→ ops 新 tracking 页", (await evaluate("return [...document.querySelectorAll('a')].find(a => a.textContent.includes('View Tracking')).getAttribute('href');")) === "/tickets-reminder/tracking");
+  // ── 员工也按勾（Annie 2026-10-30 置顶 10c）：没勾 broadcast.send 看不到 📣 Broadcast；Super Admin 一项没勾也有 ──
+  for (const [label, opts, canBroadcast] of [
+    ["员工只勾 tickets.view", { staffPerms: ["tickets.view"] }, false],
+    ["员工勾 broadcast.send", { staffPerms: ["tickets.view", "broadcast.send"] }, true],
+    ["Super Admin（一项都没勾）", { staffPerms: null, superAdmin: true }, true],
+  ]) {
+    await ctl({ staffPerms: null, superAdmin: false, ...opts });
+    await openPage(`${APP}/tickets-reminder/tracking`);
+    await sleep(800);
+    const has = await evaluate("return !!$btn('📣 Broadcast');");
+    check(`${label}：${canBroadcast ? "有" : "没有"} 📣 Broadcast`, has === canBroadcast, String(has));
+  }
+  await ctl({ staffPerms: null, superAdmin: false });
   await ctl({ fail401: true });
   await goto(`${APP}/tickets-reminder/tracking`);
   await waitFor("location.pathname === '/auth/login'");

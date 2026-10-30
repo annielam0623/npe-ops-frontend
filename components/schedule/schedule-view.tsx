@@ -12,7 +12,13 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ErrorBanner, Panel } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchCurrentUser } from "@/lib/auth-api";
-import { isYmd, laToday, shiftYmd, weekStartYmd } from "@/lib/la-date";
+import {
+  isYmd,
+  laMinuteOfDay,
+  laToday,
+  shiftYmd,
+  weekStartYmd,
+} from "@/lib/la-date";
 import {
   addScheduleEmployee,
   changesErrorOf,
@@ -30,6 +36,8 @@ import {
 import { replaceUrl, useLeaveGuard } from "@/lib/use-leave-guard";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
 import { usePageVisibility } from "@/lib/page-visibility";
+import { byTick } from "@/lib/by-tick";
+import { usePermissions } from "@/lib/staff-permissions";
 import { gapDayLabel, gapRange, gapsByDate } from "@/lib/schedule-gaps";
 import { pushRecentShift } from "@/lib/schedule-recent";
 import type { Rule } from "@/lib/schedule-engine";
@@ -59,6 +67,7 @@ import { AutoFillDialog } from "./auto-fill-dialog";
 import { EmployeesDialog } from "./employees-dialog";
 import { RulesView } from "./rules-view";
 import { CARD, CARD_HEADER, ICON_BTN, MUTED } from "./config";
+import { type PublishNotice, publishNotice } from "./publish-notice";
 import { DayTimeline } from "./day-timeline";
 import { ScheduleLockedPanel } from "./lock-panel";
 import { SendChangesDialog } from "./send-changes-dialog";
@@ -73,6 +82,9 @@ import {
   EMPTY_DRAFT,
   isDirty,
   localGaps,
+  futureGaps,
+  newGapsByCard,
+  type LaNow,
   opsOf,
   removeSlot,
   summaryOf,
@@ -103,6 +115,23 @@ type SaveState =
       gaps?: ScheduleGap[];
     };
 
+/**
+ * 洛杉矶的此刻（日期 + 第几分钟）。检查脚本可以设 window.__scheduleNow = "YYYY-MM-DDTHH:MM" 固定成某个时刻
+ *（模拟数据的周都在过去，不固定的话空档全被当成过去的放行掉）。
+ */
+function readLaNow(): LaNow {
+  const o =
+    typeof window !== "undefined"
+      ? (window as { __scheduleNow?: unknown }).__scheduleNow
+      : undefined;
+  const m =
+    typeof o === "string"
+      ? /^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})$/.exec(o)
+      : null;
+  if (m) return { date: m[1], minute: Number(m[2]) * 60 + Number(m[3]) };
+  return { date: laToday(), minute: laMinuteOfDay() };
+}
+
 /** 10 分钟没动作只出提醒、不自动存（B9 Q4；只有 Dispatch 和 Bus Manifest setup 才自动存）。检查脚本可以设 window.__scheduleIdleRemindS 改短。 */
 const IDLE_REMIND_S = 10 * 60;
 
@@ -123,6 +152,8 @@ function weekRangeLabel(weekStart: string): string {
 }
 
 export function ScheduleView() {
+  // 全部按照勾选（Annie 2026-10-30 置顶 10c）：开关开着按勾（同后端接口），关着照旧按角色；Super Admin 全过。
+  const tickPerms = usePermissions();
   const [me, setMe] = useState<CurrentUser | null>(null);
   const [meError, setMeError] = useState<
     "loading" | "forbidden" | "error" | null
@@ -163,7 +194,9 @@ export function ScheduleView() {
   }, [weekStart]);
   /** 这一次打开页面以后改过、还没 Publish again 的已发布周（后端没带 has_unsent_changes 时用）。 */
   const [unsentWeek, setUnsentWeek] = useState<string | null>(null);
-  const [publishBanner, setPublishBanner] = useState<string | null>(null);
+  const [publishBanner, setPublishBanner] = useState<PublishNotice | null>(
+    null,
+  );
   const [publishBlockedGaps, setPublishBlockedGaps] = useState<
     SchedulePublishBlockedError["gaps"] | null
   >(null);
@@ -186,6 +219,17 @@ export function ScheduleView() {
   /** 上一次 Save 送出去的 ops 对应哪个班（400 op_index → 标红哪一格）。 */
   const slotOfRef = useRef<number[]>([]);
   const dirty = isDirty(draft);
+  // 空档只算洛杉矶「现在以后」（Annie 2026-10-30「对过去的应该彻底放行」）：每分钟、回到这个标签页时刷新一次。
+  const [laNow, setLaNow] = useState<LaNow>(readLaNow);
+  useEffect(() => {
+    const tick = () => setLaNow(readLaNow());
+    const id = setInterval(tick, 60_000);
+    window.addEventListener("focus", tick);
+    return () => {
+      clearInterval(id);
+      window.removeEventListener("focus", tick);
+    };
+  }, []);
   /** 现在看的是哪一周（异步回来时判断有没有换周）。 */
   const weekRef = useRef(weekStart);
   weekRef.current = weekStart;
@@ -329,10 +373,24 @@ export function ScheduleView() {
         Failed to load Staff Schedule: {meErrorMessage}
       </ErrorBanner>
     );
-  if (!me || !settings) return <LoadingPanel />;
+  if (!me || !settings || !tickPerms.ready) return <LoadingPanel />;
 
-  const canEdit = me.is_supervisor === true;
-  const canAddEmployee = me.is_admin || canEdit;
+  const superAdmin = !!me.is_superadmin;
+  // 改班、休假、编辑锁：schedule.edit（后端 schedule.py 的 _edit）。
+  const canEdit = byTick(tickPerms, "schedule.edit", {
+    legacy: me.is_supervisor === true,
+    superAdmin,
+  });
+  // Add employee：后端要 team.staff_add 和 schedule.edit 两个都有（schedule.py:122）。
+  const canAddEmployee = tickPerms.active
+    ? superAdmin ||
+      (tickPerms.can("team.staff_add") && tickPerms.can("schedule.edit"))
+    : me.is_admin || me.is_supervisor === true || superAdmin;
+  // Publish / Publish again：schedule.publish（schedule.py:331）。
+  const canPublishTick = byTick(tickPerms, "schedule.publish", {
+    legacy: canEdit,
+    superAdmin,
+  });
   const activeEmployees = employees.filter((e) => e.is_active);
   // 当前登录的人在名单里对应谁：按名字对（后端 /api/me 没有邮箱），对上的那一行固定在最上面。
   const meName = me.display_name?.trim().toLowerCase();
@@ -646,15 +704,8 @@ export function ScheduleView() {
       // 重新发布只通知班有变化的人 + 能改排班的人（Annie 2026-10-30 10a「你别管是谁，我选谁就是谁，最关键是有没有这个功能，
       // 而不是这个职位」：按 schedule.edit 权限，不提职位；后端 notified_supervisors 就是这些人，去掉按的人自己）。
       // 一个都没变就写明没人收到，不写「Notified 0 people」。能改排班的人 0 个时不写后半句。
-      const n = result.notified.length;
-      const m = result.notified_supervisors?.length ?? 0;
-      setPublishBanner(
-        result.republished && n === 0
-          ? "Published again. No one's shifts or time off changed, so no one was notified."
-          : result.republished
-            ? `Published again. Notified ${n} ${n === 1 ? "staff member" : "staff"}${m ? ` and ${m} ${m === 1 ? "schedule editor" : "schedule editors"}` : ""}.`
-            : `Published. Notified ${n} ${n === 1 ? "person" : "people"}.`,
-      );
+      // 没收到的人也列出来（Annie 置顶 15）：句子在 publish-notice.ts。
+      setPublishBanner(publishNotice(result));
       setUnsentWeek(null);
       void loadWeek();
       return { status: "ok" };
@@ -693,21 +744,51 @@ export function ScheduleView() {
     if (orig) movedFrom.set(orig.id, orig.employee_id);
   }
   const counts = countChanges(draft);
+  // 卡片上直接标空档（置顶 17）：这次改动新造成的空档记到造成它的那张卡上，补上就没了。
+  const gapNotes =
+    readyWeek && derived
+      ? newGapsByCard(
+          weekStart,
+          readyWeek.slots,
+          derived.live,
+          draft,
+          settings.work_window,
+          laNow,
+        )
+      : new Map();
   // 这周被排进时段、但名单里没有邮箱的人：发布时收不到邮件（只是提醒，不拦着发布）。
   const scheduledIds = new Set(liveSlots.map((s) => s.employee_id));
   const noEmailNames = employees
     .filter((e) => scheduledIds.has(e.id) && !e.email)
     .map((e) => e.name);
   // 空档：有没存的改动时照页面上的算，存的时候以后端为准（B9 Q3）。
-  const gaps =
+  // Save 被 409 coverage_gap 拒了：后端列的那几段也并进来（周表列头红点、Day timeline 跟着标），两边算得不一样也不会漏。
+  const baseGaps =
     readyWeek && dirty
       ? localGaps(weekStart, liveSlots, settings.work_window)
       : (readyWeek?.gaps ?? []);
+  const rejectedGaps =
+    dirty && saveState.kind === "error" ? (saveState.gaps ?? []) : [];
+  const gaps = futureGaps(
+    [
+      ...baseGaps,
+      ...rejectedGaps.filter(
+        (g) =>
+          !baseGaps.some(
+            (b) =>
+              b.date === g.date &&
+              b.start_time === g.start_time &&
+              b.end_time === g.end_time,
+          ),
+      ),
+    ],
+    laNow,
+  );
   const gapDays = gapsByDate(gaps);
   // 有空档也能发布（Publish anyway）：只给 admin 及以上（Annie 2026-10-29 Q1）。supervisor 有空档时照旧先补人。
   const canPublishAnyway = me.is_admin === true || me.is_superadmin === true;
   // 已发布的周也能点 Publish again（Annie 2026-10-29 Q6「要留publish again，要允许改正错误」）；有空档时同样走 Publish anyway。
-  const canPublish = canEdit && (gaps.length === 0 || canPublishAnyway);
+  const canPublish = canPublishTick && (gaps.length === 0 || canPublishAnyway);
   const timelineDate =
     timelineDay?.week === weekStart ? timelineDay.date : shiftYmd(weekStart, 1);
   /** 跳到 Day timeline 的某一天（点空档提示 / 列头红点）。 */
@@ -852,9 +933,30 @@ export function ScheduleView() {
               </div>
             ) : null}
 
-            {publishBanner ? (
-              <div className="rounded-[10px] border border-emerald-400/30 bg-emerald-400/10 px-4 py-2.5 text-[13px] text-emerald-200">
-                ✅ {publishBanner}
+            {publishBanner?.allFailed ? (
+              <div
+                role="alert"
+                data-publish-banner="none-notified"
+                className="rounded-[10px] border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-[13px] text-red-200"
+              >
+                ⚠️ {publishBanner.unreached}
+              </div>
+            ) : publishBanner ? (
+              <div
+                data-publish-banner={
+                  publishBanner.unreached ? "some-missed" : "ok"
+                }
+                className="rounded-[10px] border border-emerald-400/30 bg-emerald-400/10 px-4 py-2.5 text-[13px] text-emerald-200"
+              >
+                ✅ <span data-publish-ok>{publishBanner.ok}</span>
+                {publishBanner.unreached ? (
+                  <>
+                    {" "}
+                    <span data-publish-unreached className="text-red-300">
+                      {publishBanner.unreached}
+                    </span>
+                  </>
+                ) : null}
               </div>
             ) : null}
 
@@ -897,6 +999,7 @@ export function ScheduleView() {
                       marks: derived.marks,
                       movedFrom,
                       errorSlotId,
+                      gapNotes,
                     }
                   : undefined
               }
@@ -908,6 +1011,8 @@ export function ScheduleView() {
                   : undefined
               }
               onSendChanges={setSendingTo}
+              // 有没存的改动：Send to confirm 灰着、写 Save first（置顶 12 方案 A）。
+              sendBlocked={dirty}
             />
 
             {/* 周三确认下周排班的回应（Annie 2026-10-19）：接口没上线 / 这一周没发过确认就整块不显示。 */}
@@ -1201,10 +1306,18 @@ function SaveStatus({
   onReload: () => void;
   onKeepEditing: () => void;
 }) {
+  // 存失败：红字滚到屏幕中间。Save 键和红字在页面最上面，人常常在下面的周表 / Day timeline 那里，
+  // 看不到红字只看到「Not saved yet」还挂着（Annie 2026-10-30「save了以后，没有saved的提示还在那里」，原因是 409 coverage_gap）。
+  const errorRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (state.kind === "error")
+      errorRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }, [state]);
   return (
     <div data-save-status className="-mt-2 flex flex-col gap-1.5 text-[13px]">
       {state.kind === "error" ? (
         <div
+          ref={errorRef}
           role="alert"
           data-save-error
           className="rounded-[10px] border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-red-200"
@@ -1734,6 +1847,7 @@ function WeekBody({
   onUndoDelete,
   pendingChanges,
   onSendChanges,
+  sendBlocked,
 }: {
   /** 整周一个 Save：页面上要画的班（库里的 + 暂存）和标记；没有 = 照库里的画。 */
   draftView?: {
@@ -1741,6 +1855,7 @@ function WeekBody({
     marks: Map<number, SlotMark>;
     movedFrom: Map<number, number | null>;
     errorSlotId: number | null;
+    gapNotes: Map<number, ScheduleGap[]>;
   };
   onUndoDelete?: (slotId: number) => void;
   state: WeekState;
@@ -1771,6 +1886,7 @@ function WeekBody({
   onGapDay?: (date: string) => void;
   pendingChanges?: SchedulePendingChange[];
   onSendChanges?: (employeeId: number) => void;
+  sendBlocked?: boolean;
 }) {
   if (state.kind === "loading") {
     return (
@@ -1808,6 +1924,7 @@ function WeekBody({
         marks={draftView?.marks}
         movedFrom={draftView?.movedFrom}
         errorSlotId={draftView?.errorSlotId ?? null}
+        gapNotes={draftView?.gapNotes}
         onUndoDelete={onUndoDelete}
         timeOff={state.week.time_off}
         shiftTypes={settings.shift_types}
@@ -1824,6 +1941,7 @@ function WeekBody({
         onGapDay={onGapDay}
         pendingChanges={pendingChanges}
         onSendChanges={onSendChanges}
+        sendBlocked={sendBlocked}
       />
     </section>
   );

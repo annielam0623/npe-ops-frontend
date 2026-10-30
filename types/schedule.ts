@@ -259,6 +259,15 @@ export interface SchedulePublishResult {
     name: string;
     channels: string[];
   }[];
+  /**
+   * 没收到的人（后端 ef task/republish-recipients-by-perm 8a77c4e，还没上 main；Annie 置顶 15）：
+   * notified 只列真发出去的，这里是该通知却没通知到的。没带 = 后端没上线。
+   */
+  not_reached?: {
+    employee_id: number;
+    name: string;
+    reason: string;
+  }[];
 }
 
 export interface ScheduleNotified {

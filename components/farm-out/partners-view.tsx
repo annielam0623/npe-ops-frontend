@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Fragment, useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState, useRef } from "react";
 
 import {
   BTN_ADD_CLASS,
@@ -19,6 +19,7 @@ import {
   TH_CLASS,
   TR_CLASS,
 } from "@/components/pickup-locations/legacy-ui";
+import { byTick } from "@/lib/by-tick";
 import { ActionLogPanel } from "@/components/action-log/action-log-panel";
 import type { ActionResult } from "@/components/ui/action-result";
 import { BulkImportButton, StandardImport } from "@/components/ui/bulk-import";
@@ -37,7 +38,11 @@ import {
 import { usePermissions } from "@/lib/staff-permissions";
 import { csvBlob } from "@/lib/csv";
 import { cn } from "@/lib/utils";
-import type { FarmOutPartner, FarmOutRate } from "@/types/farm-out";
+import type {
+  FarmOutPartner,
+  FarmOutRate,
+  FarmOutRateItem,
+} from "@/types/farm-out";
 
 import {
   gateFromError,
@@ -55,6 +60,70 @@ import {
 } from "./ui";
 
 /** Settings → Farm out Partners：合作公司名单、改名、停用，展开改结算价和它自己的上车点。 */
+const ITEM_ROW_CLASS = "bg-[#fbfbfa] night:bg-white/[.02]";
+const ITEM_ERROR_CLASS =
+  "mt-0.5 block text-left text-[11px] text-[#b3261e] night:text-red-300";
+const BAD_INPUT = "border-[#dc2626] bg-[#fef2f2] night:bg-red-500/10";
+
+function move<T>(all: T[], i: number, dir: -1 | 1): T[] {
+  if (i + dir < 0 || i + dir >= all.length) return all;
+  const next = [...all];
+  [next[i], next[i + dir]] = [next[i + dir], next[i]];
+  return next;
+}
+
+/** 编辑中的一个子项（价钱先存成输入的文字，Save 时才解析）。 */
+interface ItemDraft {
+  key: string;
+  id: number | null;
+  name: string;
+  price: string;
+}
+
+let itemKey = 0;
+const toItemDrafts = (items: FarmOutRateItem[] | undefined): ItemDraft[] =>
+  (items ?? []).map((it) => ({
+    key: `item-${itemKey++}`,
+    id: it.id,
+    name: it.name,
+    price: priceText(it.price),
+  }));
+const blankItem = (): ItemDraft => ({
+  key: `item-${itemKey++}`,
+  id: null,
+  name: "",
+  price: "",
+});
+
+/** 子项的错：名字、价钱都必填，同一个团里名字不重复（不分大小写）。 */
+function itemErrors(
+  items: ItemDraft[],
+): Record<string, { name?: string; price?: string }> {
+  const out: Record<string, { name?: string; price?: string }> = {};
+  const seen = new Set<string>();
+  for (const it of items) {
+    const e: { name?: string; price?: string } = {};
+    const name = it.name.trim();
+    if (!name) e.name = "Enter a name.";
+    else if (seen.has(name.toLowerCase()))
+      e.name = `${name} is already on this tour.`;
+    else seen.add(name.toLowerCase());
+    const price = parsePriceInput(it.price);
+    if (price === null) e.price = "Enter a price.";
+    else if (price === undefined)
+      e.price = "Price must be a number, e.g. 15 or 15.50.";
+    if (e.name || e.price) out[it.key] = e;
+  }
+  return out;
+}
+
+/** PUT 时别的团不带 items（后端「没带就不动」）。 */
+const rateOnly = (r: FarmOutRate): FarmOutRate => ({
+  manifest_id: r.manifest_id,
+  tour_name: r.tour_name,
+  adult_price: r.adult_price,
+  child_price: r.child_price,
+});
 /** ⬆ Import 的栏：key → 模板 / 预览里的栏名。 */
 const RATE_IMPORT_LABEL: Record<string, string> = {
   partner: "Partner",
@@ -90,9 +159,15 @@ export function PartnersView() {
     manifestId: number;
     adult: string;
     child: string;
+    /** 这个团的子项（加 / 改 / 删 / 调顺序都先放在这里，和价钱一起 Save）。 */
+    items: ItemDraft[];
+    /** 按过一次 Save：之后子项的错才显示成红字。 */
+    tried: boolean;
     saving: boolean;
     error: string | null;
   } | null>(null);
+  /** 刚存好的团（`<合作公司 id>|<团 id>`）：团名旁边写绿字 ✓ Saved，再编辑就去掉。 */
+  const [savedRow, setSavedRow] = useState<string | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [logVersion, setLogVersion] = useState(0);
   const redirectToLogin = useRedirectToLogin();
@@ -121,7 +196,13 @@ export function PartnersView() {
     }
   }, [redirectToLogin]);
 
+  // 全部按照勾选（Annie 2026-10-30 置顶 10c）：开关开着按勾（settings.farm_out，同后端接口），关着照旧；Super Admin 全过。
+  const tickPerms = usePermissions();
+  const tickPermsRef = useRef(tickPerms);
+  tickPermsRef.current = tickPerms;
   useEffect(() => {
+    // 权限读完再判断（开关开着时要按勾）。
+    if (!tickPerms.ready) return;
     const controller = new AbortController();
     setGate({ kind: "loading" });
     (async () => {
@@ -129,7 +210,12 @@ export function PartnersView() {
         const me = await fetchCurrentUser(controller.signal);
         if (controller.signal.aborted) return;
         // 只有 admin 能管合作公司（后端也会 403）。
-        if (!me.is_admin) {
+        if (
+          !byTick(tickPermsRef.current, "settings.farm_out", {
+            legacy: me.is_admin,
+            superAdmin: !!me.is_superadmin,
+          })
+        ) {
           setGate({ kind: "forbidden" });
           return;
         }
@@ -157,7 +243,7 @@ export function PartnersView() {
       }
     })();
     return () => controller.abort();
-  }, [reloadKey, redirectToLogin]);
+  }, [reloadKey, redirectToLogin, tickPerms.ready, tickPerms.active]);
 
   const replace = useCallback((p: FarmOutPartner) => {
     setPartners((all) => all.map((x) => (x.id === p.id ? p : x)));
@@ -217,22 +303,37 @@ export function PartnersView() {
     if (adult === undefined || child === undefined) {
       setEditingRate({
         ...e,
+        tried: true,
         error: "Prices must be numbers like 105 or 105.00.",
       });
       return;
     }
-    setEditingRate({ ...e, saving: true, error: null });
+    if (Object.keys(itemErrors(e.items)).length > 0) {
+      setEditingRate({ ...e, tried: true, error: null });
+      return;
+    }
+    setEditingRate({ ...e, tried: true, saving: true, error: null });
     try {
       const saved = await savePartnerRates(
         partnerId,
         list.map((r) =>
           r.manifest_id === e.manifestId
-            ? { ...r, adult_price: adult, child_price: child }
-            : r,
+            ? {
+                ...rateOnly(r),
+                adult_price: adult,
+                child_price: child,
+                items: e.items.map((it) => ({
+                  id: it.id,
+                  name: it.name.trim(),
+                  price: parsePriceInput(it.price) as number,
+                })),
+              }
+            : rateOnly(r),
         ),
       );
       setRates((all) => ({ ...all, [partnerId]: saved }));
       setEditingRate(null);
+      setSavedRow(`${partnerId}|${e.manifestId}`);
     } catch (error) {
       if (isStatus(error, 401)) redirectToLogin();
       else setEditingRate({ ...e, saving: false, error: describeError(error) });
@@ -543,114 +644,372 @@ export function PartnersView() {
                                 editingRate.manifestId === r.manifest_id
                                   ? editingRate
                                   : null;
+                              const startEdit = (addItem: boolean) => {
+                                setSavedRow(null);
+                                setEditingRate({
+                                  partnerId: p.id,
+                                  manifestId: r.manifest_id,
+                                  adult: priceText(r.adult_price),
+                                  child: priceText(r.child_price),
+                                  items: [
+                                    ...toItemDrafts(r.items),
+                                    ...(addItem ? [blankItem()] : []),
+                                  ],
+                                  tried: false,
+                                  saving: false,
+                                  error: null,
+                                });
+                              };
+                              const errs = editing?.tried
+                                ? itemErrors(editing.items)
+                                : {};
+                              // 用最新的 state 改（连着点 ↑ 再点 ＋ Add item 不会互相盖掉）。
+                              const patchItems = (
+                                next: (items: ItemDraft[]) => ItemDraft[],
+                              ) =>
+                                setEditingRate((cur) =>
+                                  cur
+                                    ? {
+                                        ...cur,
+                                        items: next(cur.items),
+                                        error: null,
+                                      }
+                                    : cur,
+                                );
                               return (
-                                <tr
-                                  key={r.manifest_id}
-                                  className={cn(
-                                    TR_CLASS,
-                                    !p.is_active && "opacity-60",
-                                  )}
-                                  data-rate-row={`${p.name}|${r.tour_name}`}
-                                >
-                                  <td className={cn(TD_CLASS, "pl-6")}>
-                                    {r.tour_name}
-                                    {editing?.error ? (
-                                      <span
-                                        role="alert"
-                                        className="ml-2 text-[12px] text-[#A32D2D] night:text-red-300"
-                                      >
-                                        {editing.error}
-                                      </span>
-                                    ) : null}
-                                  </td>
-                                  {(["adult", "child"] as const).map((kind) => {
-                                    const price =
-                                      kind === "adult"
-                                        ? r.adult_price
-                                        : r.child_price;
-                                    return (
-                                      <td
-                                        key={kind}
-                                        className={cn(
-                                          TD_CLASS,
-                                          "text-right tabular-nums",
-                                        )}
-                                      >
-                                        {editing ? (
-                                          <input
-                                            type="text"
-                                            inputMode="decimal"
-                                            aria-label={`${r.tour_name} ${kind} price`}
-                                            placeholder="not set"
-                                            value={editing[kind]}
-                                            onChange={(e) =>
-                                              setEditingRate({
-                                                ...editing,
-                                                [kind]: e.target.value,
-                                                error: null,
-                                              })
-                                            }
-                                            className={cn(
-                                              CELL_INPUT,
-                                              "w-[88px] text-right",
-                                            )}
-                                          />
-                                        ) : price == null ? (
-                                          <span className="text-[#A32D2D] italic night:text-red-300">
-                                            not set
-                                          </span>
-                                        ) : (
-                                          `$${price.toFixed(2)}`
-                                        )}
-                                      </td>
-                                    );
-                                  })}
-                                  <td className={TD_CLASS} />
-                                  <td
+                                <Fragment key={r.manifest_id}>
+                                  <tr
                                     className={cn(
-                                      TD_CLASS,
-                                      "whitespace-nowrap",
+                                      TR_CLASS,
+                                      !p.is_active && "opacity-60",
                                     )}
+                                    data-rate-row={`${p.name}|${r.tour_name}`}
                                   >
-                                    {!p.is_active ? null : editing ? (
-                                      <span className="inline-flex gap-1.5">
-                                        <button
-                                          type="button"
-                                          disabled={editing.saving}
-                                          className={BTN_BLUE_SMALL}
-                                          onClick={() => void saveRateRow(p.id)}
+                                    <td className={cn(TD_CLASS, "pl-6")}>
+                                      {r.tour_name}
+                                      {savedRow ===
+                                      `${p.id}|${r.manifest_id}` ? (
+                                        <span
+                                          role="status"
+                                          className="ml-2 text-[12px] font-semibold text-[#1e6b43] night:text-emerald-300"
                                         >
-                                          {editing.saving ? "Saving…" : "Save"}
-                                        </button>
-                                        <button
-                                          type="button"
-                                          className={BTN_EDIT_CLASS}
-                                          onClick={() => setEditingRate(null)}
+                                          ✓ Saved
+                                        </span>
+                                      ) : null}
+                                      {editing?.error ? (
+                                        <span
+                                          role="alert"
+                                          className="ml-2 text-[12px] text-[#A32D2D] night:text-red-300"
                                         >
-                                          Cancel
-                                        </button>
-                                      </span>
-                                    ) : (
-                                      <button
-                                        type="button"
-                                        aria-label={`Edit ${r.tour_name} prices`}
-                                        className={BTN_EDIT_CLASS}
-                                        onClick={() =>
-                                          setEditingRate({
-                                            partnerId: p.id,
-                                            manifestId: r.manifest_id,
-                                            adult: priceText(r.adult_price),
-                                            child: priceText(r.child_price),
-                                            saving: false,
-                                            error: null,
-                                          })
-                                        }
-                                      >
-                                        Edit
-                                      </button>
+                                          {editing.error}
+                                        </span>
+                                      ) : null}
+                                    </td>
+                                    {(["adult", "child"] as const).map(
+                                      (kind) => {
+                                        const price =
+                                          kind === "adult"
+                                            ? r.adult_price
+                                            : r.child_price;
+                                        return (
+                                          <td
+                                            key={kind}
+                                            className={cn(
+                                              TD_CLASS,
+                                              "text-right tabular-nums",
+                                            )}
+                                          >
+                                            {editing ? (
+                                              <input
+                                                type="text"
+                                                inputMode="decimal"
+                                                aria-label={`${r.tour_name} ${kind} price`}
+                                                placeholder="not set"
+                                                value={editing[kind]}
+                                                onChange={(e) =>
+                                                  setEditingRate({
+                                                    ...editing,
+                                                    [kind]: e.target.value,
+                                                    error: null,
+                                                  })
+                                                }
+                                                className={cn(
+                                                  CELL_INPUT,
+                                                  "w-[88px] text-right",
+                                                )}
+                                              />
+                                            ) : price == null ? (
+                                              <span className="text-[#A32D2D] italic night:text-red-300">
+                                                not set
+                                              </span>
+                                            ) : (
+                                              `$${price.toFixed(2)}`
+                                            )}
+                                          </td>
+                                        );
+                                      },
                                     )}
-                                  </td>
-                                </tr>
+                                    <td className={TD_CLASS} />
+                                    <td
+                                      className={cn(
+                                        TD_CLASS,
+                                        "whitespace-nowrap",
+                                      )}
+                                    >
+                                      {!p.is_active ? null : editing ? (
+                                        <span className="inline-flex gap-1.5">
+                                          <button
+                                            type="button"
+                                            disabled={
+                                              editing.saving ||
+                                              Object.keys(errs).length > 0
+                                            }
+                                            className={BTN_BLUE_SMALL}
+                                            onClick={() =>
+                                              void saveRateRow(p.id)
+                                            }
+                                          >
+                                            {editing.saving
+                                              ? "Saving…"
+                                              : "Save"}
+                                          </button>
+                                          <button
+                                            type="button"
+                                            className={BTN_EDIT_CLASS}
+                                            onClick={() => setEditingRate(null)}
+                                          >
+                                            Cancel
+                                          </button>
+                                        </span>
+                                      ) : (
+                                        <span className="inline-flex gap-1.5">
+                                          <button
+                                            type="button"
+                                            aria-label={`Edit ${r.tour_name} prices`}
+                                            className={BTN_EDIT_CLASS}
+                                            onClick={() => startEdit(false)}
+                                          >
+                                            Edit
+                                          </button>
+                                          <button
+                                            type="button"
+                                            aria-label={`Add an item to ${r.tour_name}`}
+                                            title="Add an item (name and price)"
+                                            className={cn(
+                                              BTN_EDIT_CLASS,
+                                              "font-bold",
+                                            )}
+                                            onClick={() => startEdit(true)}
+                                          >
+                                            ＋
+                                          </button>
+                                        </span>
+                                      )}
+                                    </td>
+                                  </tr>
+                                  {editing
+                                    ? editing.items.map((it, i) => (
+                                        <tr
+                                          key={it.key}
+                                          className={cn(
+                                            TR_CLASS,
+                                            ITEM_ROW_CLASS,
+                                          )}
+                                          data-rate-item-edit={i + 1}
+                                        >
+                                          <td className={cn(TD_CLASS, "pl-12")}>
+                                            <span className="mr-1 text-[#9ca3af]">
+                                              ↳
+                                            </span>
+                                            <input
+                                              type="text"
+                                              aria-label={`${r.tour_name} item ${i + 1} name`}
+                                              placeholder="Item name"
+                                              maxLength={80}
+                                              autoFocus={
+                                                !it.name &&
+                                                i === editing.items.length - 1
+                                              }
+                                              value={it.name}
+                                              onChange={(e) =>
+                                                patchItems((all) =>
+                                                  all.map((x) =>
+                                                    x.key === it.key
+                                                      ? {
+                                                          ...x,
+                                                          name: e.target.value,
+                                                        }
+                                                      : x,
+                                                  ),
+                                                )
+                                              }
+                                              className={cn(
+                                                CELL_INPUT,
+                                                "w-[200px]",
+                                                errs[it.key]?.name && BAD_INPUT,
+                                              )}
+                                            />
+                                            {errs[it.key]?.name ? (
+                                              <span
+                                                data-item-error
+                                                className={ITEM_ERROR_CLASS}
+                                              >
+                                                {errs[it.key].name}
+                                              </span>
+                                            ) : null}
+                                          </td>
+                                          <td
+                                            colSpan={2}
+                                            className={cn(
+                                              TD_CLASS,
+                                              "text-right whitespace-nowrap",
+                                            )}
+                                          >
+                                            <input
+                                              type="text"
+                                              inputMode="decimal"
+                                              aria-label={`${r.tour_name} item ${i + 1} price`}
+                                              placeholder="0.00"
+                                              value={it.price}
+                                              onChange={(e) =>
+                                                patchItems((all) =>
+                                                  all.map((x) =>
+                                                    x.key === it.key
+                                                      ? {
+                                                          ...x,
+                                                          price: e.target.value,
+                                                        }
+                                                      : x,
+                                                  ),
+                                                )
+                                              }
+                                              className={cn(
+                                                CELL_INPUT,
+                                                "w-[88px] text-right",
+                                                errs[it.key]?.price &&
+                                                  BAD_INPUT,
+                                              )}
+                                            />
+                                            <span className="ml-1.5 inline-flex gap-1">
+                                              <button
+                                                type="button"
+                                                aria-label={`Move ${it.name || `item ${i + 1}`} up`}
+                                                disabled={i === 0}
+                                                className={BTN_EDIT_CLASS}
+                                                onClick={() =>
+                                                  patchItems((all) =>
+                                                    move(all, i, -1),
+                                                  )
+                                                }
+                                              >
+                                                ↑
+                                              </button>
+                                              <button
+                                                type="button"
+                                                aria-label={`Move ${it.name || `item ${i + 1}`} down`}
+                                                disabled={
+                                                  i === editing.items.length - 1
+                                                }
+                                                className={BTN_EDIT_CLASS}
+                                                onClick={() =>
+                                                  patchItems((all) =>
+                                                    move(all, i, 1),
+                                                  )
+                                                }
+                                              >
+                                                ↓
+                                              </button>
+                                              <button
+                                                type="button"
+                                                aria-label={`Remove ${it.name || `item ${i + 1}`}`}
+                                                className="cursor-pointer border-none bg-transparent px-1 text-[13px] font-bold text-[#A32D2D] night:text-red-300"
+                                                onClick={() =>
+                                                  patchItems((all) =>
+                                                    all.filter(
+                                                      (x) => x.key !== it.key,
+                                                    ),
+                                                  )
+                                                }
+                                              >
+                                                ✕
+                                              </button>
+                                            </span>
+                                            {errs[it.key]?.price ? (
+                                              <span
+                                                data-item-error
+                                                className={ITEM_ERROR_CLASS}
+                                              >
+                                                {errs[it.key].price}
+                                              </span>
+                                            ) : null}
+                                          </td>
+                                          <td className={TD_CLASS} />
+                                          <td className={TD_CLASS} />
+                                        </tr>
+                                      ))
+                                    : (r.items ?? []).map((it) => (
+                                        <tr
+                                          key={it.id ?? it.name}
+                                          className={cn(
+                                            TR_CLASS,
+                                            ITEM_ROW_CLASS,
+                                            !p.is_active && "opacity-60",
+                                          )}
+                                          data-rate-item={`${p.name}|${r.tour_name}|${it.name}`}
+                                        >
+                                          <td className={cn(TD_CLASS, "pl-12")}>
+                                            <span className="mr-1 text-[#9ca3af]">
+                                              ↳
+                                            </span>
+                                            {it.name}
+                                          </td>
+                                          <td
+                                            colSpan={2}
+                                            className={cn(
+                                              TD_CLASS,
+                                              "text-right tabular-nums",
+                                            )}
+                                          >
+                                            ${it.price.toFixed(2)}
+                                          </td>
+                                          <td className={TD_CLASS} />
+                                          <td className={TD_CLASS} />
+                                        </tr>
+                                      ))}
+                                  {editing ? (
+                                    <tr
+                                      className={cn(TR_CLASS, ITEM_ROW_CLASS)}
+                                    >
+                                      <td
+                                        colSpan={5}
+                                        className={cn(TD_CLASS, "pl-12")}
+                                      >
+                                        <button
+                                          type="button"
+                                          className="cursor-pointer border-none bg-transparent p-0 text-[12px] font-semibold text-[#1f4e79] hover:underline night:text-sky-300"
+                                          onClick={() =>
+                                            setEditingRate((cur) =>
+                                              cur
+                                                ? {
+                                                    ...cur,
+                                                    items: [
+                                                      ...cur.items,
+                                                      blankItem(),
+                                                    ],
+                                                    // 新加的空行不马上标红，下次 Save 再查。
+                                                    tried: false,
+                                                    error: null,
+                                                  }
+                                                : cur,
+                                            )
+                                          }
+                                        >
+                                          ＋ Add item
+                                        </button>
+                                      </td>
+                                    </tr>
+                                  ) : null}
+                                </Fragment>
                               );
                             })
                           )}
@@ -728,6 +1087,13 @@ function HowToUse() {
         even tours with no price yet. Click Edit on a tour row, change the
         prices and click Save. A tour with no price cannot get a payable amount
         in Dispatch until you set one.
+      </li>
+      <li>
+        Click ＋ on a tour to add an item under it — a name and a price per
+        person (for example Lunch 15.00). Add as many as you need with ＋ Add
+        item; ↑↓ changes the order and ✕ removes one. Items are saved together
+        with the Adult and Child prices when you click Save. They are a price
+        list only and are not added to the amount payable in Dispatch.
       </li>
       <li>
         To change many prices at once (for example the yearly price change),

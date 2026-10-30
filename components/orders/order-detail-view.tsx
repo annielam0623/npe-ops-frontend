@@ -19,6 +19,7 @@ import {
 } from "@/lib/orders-api";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
 import { usePermissions } from "@/lib/staff-permissions";
+import { useTick } from "@/lib/use-tick";
 import { cn } from "@/lib/utils";
 import { PageLink } from "@/components/ui/page-link";
 import type { OrderDetail, OrderPatch } from "@/types";
@@ -82,6 +83,8 @@ export function OrderDetailView({ orderNumber }: { orderNumber: string }) {
   // partner 只能看（Annie 2026-10-27「合作方只能看manifest和订单，不能改或者选任何功能」）：
   // 不出 Edit / Unlock、How to use、Agent & Commission（N2 B）、Farm out、条码的 show、Raw Rezdy。员工照旧。
   const partner = usePermissions().partnerView;
+  // 员工也按勾（Annie 2026-10-30 置顶 10c）：没勾 orders.edit 就没有 Edit / Unlock；总开关关着照旧全给，Super Admin 全给。
+  const canEditOrder = useTick("orders.edit");
   const reload = useCallback(
     async (signal?: AbortSignal, quiet = false) => {
       const seq = ++seqRef.current;
@@ -136,8 +139,13 @@ export function OrderDetailView({ orderNumber }: { orderNumber: string }) {
         </div>
       ) : (
         <OrderBody
-          order={partner ? { ...state.order, editable: false } : state.order}
+          order={
+            partner || !canEditOrder
+              ? { ...state.order, editable: false }
+              : state.order
+          }
           partner={partner}
+          storedReadOnly={!state.order.editable}
           onSaved={() => void reload(undefined, true)}
           onUnauthorized={redirectToLogin}
         />
@@ -149,11 +157,14 @@ export function OrderDetailView({ orderNumber }: { orderNumber: string }) {
 function OrderBody({
   order: o,
   partner,
+  storedReadOnly,
   onSaved,
   onUnauthorized,
 }: {
   order: OrderDetail;
   partner: boolean;
+  /** 后端说这单本来就改不了（新 Rezdy 表）：才写 Read-only 那句；只是没勾 orders.edit 不写。 */
+  storedReadOnly: boolean;
   onSaved: () => void;
   onUnauthorized: () => void;
 }) {
@@ -189,7 +200,7 @@ function OrderBody({
           {o.source}
         </span>
       </header>
-      {!o.editable && !partner ? (
+      {storedReadOnly && !partner ? (
         // 旧页 .od-warn 是 #B3261E，深色底上看不清，用浅一点的红。
         <p className="mt-1.5 mb-4 text-[11px] text-[#f87171]">
           Read-only — this order is stored in the new Rezdy table. Confirmation
