@@ -334,6 +334,15 @@
 - **Annie 答置顶第 9 条（G125 备注格存法）**，原话「并进整页一起存 A 动手」：
   - 选 A：备注格的 Save 改 Done，按整页 Save 一起存。
   - 已派 09 `task/manifest-notes-page-save`。后端 G125 由 78 做，Annie 要今天上线。
+- 后端 57 发 G220 第二批形状（Farm out 上车点 + 结算价导入，66 写，在分支上，还没上 main）：
+  - 上车点 POST /api/farm-out/partners/{id}/locations/import/preview|commit；
+  - 结算价 POST /api/farm-out/rates/import/preview|commit（只会 update / unchanged，不新建）；
+  - Vehicles 那条 409 也统一成长破折号。
+  - 已派 e6 先对 import-farmout-locations / import-farmout-rates 两个分支，只推分支，等后端上 main。
+- G217 重置：ef 已在后端本地 main 75ac102（还没推）。接口形状没变；前端要在发送成功后重拉 confirmations，已派 62。
+  - 主管通知收窄（SA-1）：只发给主管层里勾了 schedule.edit 的，superadmin 照收。62 在改页面说法，改完更新置顶第 6 条。
+- Annie 新提（Send to guide）：链接后面让 staff 自己加一点内容，限制在一条短信长度。
+  - 先记下、核可行性，没动手。主窗口算过：现在固定部分约 145 个字符，一条短信 160，只剩约 14 个字符。已向 Annie 列选法。
 ## 2026-10-29 晚 收工交接：前端主窗口 `今天前端主窗口-d2`[15266b]（家里电脑，Annie「做完写交接收工」）
 
 明天的主窗口先读这一节。细节在下面「2026-10-29 晚 主窗口 d2 开工核对」那一节，按时间逐条记。
