@@ -3,14 +3,14 @@
 // 控制：POST /__ctl {reset, fail401, staff, unavailable, foVis（farm_out_settings 的档：staff / admin / super_admin_only；null = 后端还没登记）}；GET /__log。端口默认 8799（环境变量 MOCK_PORT 可改）。
 const http = require("http");
 
-const ctl = { fail401: false, staff: false, partner: false, unavailable: false, foVis: "staff", log403: false };
+const ctl = { fail401: false, staff: false, partner: false, unavailable: false, foVis: "staff", log403: false, itemsFail: false };
 const log = [];
 
 const TOURS = [
   { manifest_id: 10, tour_name: "West Rim" },
   { manifest_id: 11, tour_name: "Zion" },
 ];
-let partners, rates, locations, cells, tourMeta, nextPartnerId, nextLocId;
+let partners, rates, locations, cells, tourMeta, nextPartnerId, nextLocId, nextItemId;
 
 function reset() {
   partners = [
@@ -22,7 +22,7 @@ function reset() {
       { manifest_id: 10, tour_name: "West Rim", adult_price: 105, child_price: 95 },
       { manifest_id: 11, tour_name: "Zion", adult_price: null, child_price: null },
     ],
-    2: TOURS.map((t) => ({ ...t, adult_price: 110, child_price: 99 })),
+    2: TOURS.map((t) => ({ ...t, adult_price: 110, child_price: 99, items: t.manifest_id === 10 ? [{ id: 801, name: "Lunch", price: 15, sort_order: 0 }] : [] })),
   };
   locations = {
     1: [
@@ -41,6 +41,7 @@ function reset() {
   ];
   nextPartnerId = 50;
   nextLocId = 500;
+  nextItemId = 900;
 }
 reset();
 
@@ -145,7 +146,18 @@ http
       if (what === "rates") {
         if (req.method === "PUT") {
           if (entry.body.some((r) => "infant_price" in r)) return send(res, 400, { detail: "no infant price" });
-          rates[pid] = entry.body;
+          // 子项（Farm out 团的子项，后端还没上）：带了 items 就整组替换（顺序 = sort_order），没带就保留原来的；同团名字重复 400。
+          for (const r of entry.body) {
+            const names = (r.items || []).map((it) => it.name.toLowerCase());
+            const dup = names.find((n, i) => names.indexOf(n) !== i);
+            if (dup) return send(res, 400, { detail: `${r.items.find((it) => it.name.toLowerCase() === dup).name} is already on ${r.tour_name}.` });
+          }
+          if (ctl.itemsFail) return send(res, 500, { detail: "Database is busy" });
+          const old = rates[pid] || [];
+          rates[pid] = entry.body.map((r) => ({
+            ...r,
+            items: r.items ? r.items.map((it, i) => ({ id: it.id ?? nextItemId++, name: it.name, price: it.price, sort_order: i })) : (old.find((o) => o.manifest_id === r.manifest_id)?.items || []),
+          }));
           return send(res, 200, { ok: true, rates: rates[pid] });
         }
         return send(res, 200, rates[pid]);

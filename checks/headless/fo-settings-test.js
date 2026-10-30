@@ -122,15 +122,59 @@ async function partnersChecks() {
   await evaluate("$set($byLabel('Zion adult price'), '120'); $btn('Save', document.querySelector('tr[data-rate-row=\"Partner A|Zion\"]')).click(); return 1;");
   await waitFor(`${rrow("Partner A", "Zion")}.textContent.includes('$120.00')`);
   const rateBody = (await lastCall("PUT", /\/partners\/1\/rates$/))?.body;
-  check("PUT 整张表：West Rim 105 / 95.5，Zion 120 / null，不带婴儿", JSON.stringify(rateBody) === JSON.stringify([
+  check("PUT 整张表：West Rim 105 / 95.5（没改的团不带 items），Zion 120 / null + items []（改的那个团整组带子项），不带婴儿", JSON.stringify(rateBody) === JSON.stringify([
     { manifest_id: 10, tour_name: "West Rim", adult_price: 105, child_price: 95.5 },
-    { manifest_id: 11, tour_name: "Zion", adult_price: 120, child_price: null },
+    { manifest_id: 11, tour_name: "Zion", adult_price: 120, child_price: null, items: [] },
   ]), JSON.stringify(rateBody));
   check("Zion 儿童价仍是 not set", await evaluate(`return ${rrow("Partner A", "Zion")}.cells[2].textContent.includes('not set');`));
   await evaluate(`$btn('Edit', ${rrow("Partner A", "Zion")}).click(); return 1;`);
   await waitFor("$byLabel('Zion adult price')");
   await evaluate(`$btn('Cancel', ${rrow("Partner A", "Zion")}).click(); return 1;`);
   check("Cancel：不发请求、回到显示状态", await waitFor("!$byLabel('Zion adult price')") && (await calls("PUT", /\/partners\/1\/rates$/)).length === putsBefore + 2);
+
+  // ── 团的子项（Annie 2026-10-29「farm out同意推荐。」「动手」；后端还没上，用 mock）──
+  {
+    const irow = (partner, tour, name) => `document.querySelector('tr[data-rate-item="${partner}|${tour}|${name}"]')`;
+    const wr = rrow("Partner A", "West Rim");
+    check("子项：缩进列在团下面，价钱 $15.00（Partner B West Rim 有 Lunch）", await evaluate(`const r = ${irow("Partner B", "West Rim", "Lunch")}; return !!r && r.textContent.includes('↳') && r.textContent.includes('$15.00') && r.previousElementSibling.dataset.rateRow === 'Partner B|West Rim';`));
+    check("每个团行尾有 ＋（灰白，不是蓝的）", await evaluate(`const b = $btn('＋', ${wr}); return !!b && $bg(b) !== 'rgb(59, 130, 246)' && b.getAttribute('aria-label') === 'Add an item to West Rim' && !!$btn('＋', ${rrow("Partner A", "Zion")});`));
+    let before = (await calls("PUT", /\/partners\/1\/rates$/)).length;
+    await evaluate(`$btn('＋', ${wr}).click(); return 1;`);
+    check("点 ＋：这个团进编辑（带原价）、下面多一行空子项、光标在名字格", (await waitFor("$byLabel('West Rim item 1 name')")) && (await evaluate("return $byLabel('West Rim adult price').value === '105.00' && $byLabel('West Rim item 1 name').value === '' && document.activeElement === $byLabel('West Rim item 1 name') && !!$btn('＋ Add item');")));
+    await evaluate(`$btn('Save', ${wr}).click(); return 1;`);
+    check("空子项按 Save：红字 Enter a name. / Enter a price.，Save 灰，没发请求", (await waitFor("[...document.querySelectorAll('[data-item-error]')].map(e => e.textContent).join('|') === 'Enter a name.|Enter a price.'")) && (await evaluate(`return $btn('Save', ${wr}).disabled && getComputedStyle(document.querySelector('[data-item-error]')).color === 'rgb(179, 38, 30)';`)) && (await calls("PUT", /\/partners\/1\/rates$/)).length === before);
+    await evaluate("$set($byLabel('West Rim item 1 name'), 'Lunch'); $set($byLabel('West Rim item 1 price'), '15'); $btn('＋ Add item').click(); return 1;");
+    await waitFor("$byLabel('West Rim item 2 name')");
+    await evaluate("$set($byLabel('West Rim item 2 name'), 'lunch'); $set($byLabel('West Rim item 2 price'), 'abc'); return 1;");
+    check("＋ Add item 加的空行不马上标红（下次 Save 再查）", await evaluate("return !document.querySelector('[data-item-error]');"));
+    await evaluate(`$btn('Save', ${wr}).click(); return 1;`);
+    check("按 Save：同团名字重复（不分大小写）、价钱不是数字 → 红字、没发请求", await waitFor("[...document.querySelectorAll('[data-item-error]')].map(e => e.textContent).join('|') === 'lunch is already on this tour.|Price must be a number, e.g. 15 or 15.50.'"));
+    await evaluate("$set($byLabel('West Rim item 2 name'), 'Skywalk ticket'); $set($byLabel('West Rim item 2 price'), '$36'); $btn('＋ Add item').click(); return 1;");
+    await waitFor("$byLabel('West Rim item 3 name')");
+    await evaluate("$set($byLabel('West Rim item 3 name'), 'Senior (65+)'); $set($byLabel('West Rim item 3 price'), '99'); $byLabel('Move Senior (65+) up').click(); $btn('＋ Add item').click(); return 1;");
+    await waitFor("$byLabel('West Rim item 4 name')");
+    check("改好后红字消失、Save 能点；↑ 把 Senior 调到第 2", await evaluate(`return !document.querySelector('[data-item-error]') && !$btn('Save', ${wr}).disabled && $byLabel('West Rim item 2 name').value === 'Senior (65+)' && $byLabel('West Rim item 3 name').value === 'Skywalk ticket';`));
+    await evaluate("$byLabel('Remove item 4').click(); return 1;");
+    check("✕ 删掉第 4 行空的", await waitFor("!$byLabel('West Rim item 4 name')"));
+    await evaluate(`$btn('Save', ${wr}).click(); return 1;`);
+    await waitFor(`${irow("Partner A", "West Rim", "Skywalk ticket")}`);
+    let body = (await lastCall("PUT", /\/partners\/1\/rates$/))?.body;
+    check("Save：子项和价钱一起 PUT，顺序 = 调过的顺序，新子项 id 为 null；别的团不带 items", JSON.stringify(body.find((r) => r.manifest_id === 10).items) === JSON.stringify([{ id: null, name: "Lunch", price: 15 }, { id: null, name: "Senior (65+)", price: 99 }, { id: null, name: "Skywalk ticket", price: 36 }]) && !("items" in body.find((r) => r.manifest_id === 11)), JSON.stringify(body));
+    check("存好：团名旁绿字 ✓ Saved，子项按顺序缩进显示", await evaluate(`const s = ${wr}.querySelector('[role=status]'); const names = [...document.querySelectorAll('tr[data-rate-item^="Partner A|West Rim|"]')].map(r => r.dataset.rateItem.split('|')[2]); return !!s && s.textContent === '✓ Saved' && getComputedStyle(s).color === 'rgb(30, 107, 67)' && JSON.stringify(names) === JSON.stringify(['Lunch','Senior (65+)','Skywalk ticket']) && ${irow("Partner A", "West Rim", "Senior (65+)")}.textContent.includes('$99.00');`));
+    await evaluate(`$btn('Edit', ${wr}).click(); return 1;`);
+    await waitFor("$byLabel('West Rim item 3 name')");
+    check("再点 Edit：子项带出来、绿字去掉", await evaluate(`return $byLabel('West Rim item 1 price').value === '15.00' && !${wr}.querySelector('[role=status]');`));
+    await evaluate("$byLabel('Remove Senior (65+)').click(); return 1;");
+    await ctl({ itemsFail: true });
+    await evaluate(`$btn('Save', ${wr}).click(); return 1;`);
+    check("存不上：红字写原因，还在编辑、改的内容留着", (await waitFor(`${wr}.querySelector('[role=alert]')?.textContent.includes('Database is busy')`)) && (await evaluate("return !!$byLabel('West Rim item 2 name') && $byLabel('West Rim item 2 name').value === 'Skywalk ticket' && !$byLabel('West Rim item 3 name');")));
+    await ctl({ itemsFail: false });
+    await evaluate(`$btn('Save', ${wr}).click(); return 1;`);
+    await waitFor(`!$byLabel('West Rim item 1 name') && !${irow("Partner A", "West Rim", "Senior (65+)")}`);
+    body = (await lastCall("PUT", /\/partners\/1\/rates$/))?.body;
+    check("删一个再存：带原来的 id、少了 Senior", JSON.stringify(body.find((r) => r.manifest_id === 10).items.map((it) => [typeof it.id, it.name])) === JSON.stringify([["number", "Lunch"], ["number", "Skywalk ticket"]]), JSON.stringify(body));
+    check("How to use 说明 ＋ 子项、不算进应付金额", await evaluate("return $txt().includes('Click ＋ on a tour to add an item under it') && $txt().includes('not added to the amount payable in Dispatch');"));
+  }
 
   // 展开 Partner A 的上车点
   await evaluate("$btn('Locations', $row('Partner A')).click(); return 1;");
@@ -168,6 +212,7 @@ async function partnersChecks() {
   await evaluate("$btn('Deactivate', document.querySelector('[role=dialog]')).click(); return 1;");
   check("停用：状态变 Inactive、出现 Reactivate", await waitFor("$row('Partner B2').textContent.includes('Inactive') && $btn('Reactivate', $row('Partner B2'))"));
   check("PATCH is_active=false", (await lastCall("PATCH", /\/partners\/2$/))?.body?.is_active === false);
+  check("停用的合作公司：子项照样列着、没有 ＋", await evaluate("return !!document.querySelector('tr[data-rate-item=\"Partner B2|West Rim|Lunch\"]') && !$btn('＋', document.querySelector('tr[data-rate-row=\"Partner B2|West Rim\"]'));"));
   await evaluate("$btn('Reactivate', $row('Partner B2')).click(); return 1;");
   check("恢复：不用确认、变回 Active", await waitFor("$row('Partner B2').textContent.includes('Active') && !$row('Partner B2').textContent.includes('Inactive')"));
 

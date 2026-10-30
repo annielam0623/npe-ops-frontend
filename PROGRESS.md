@@ -4,6 +4,33 @@
 
 > 6d 交接（下面「2026-10-27 交接：前端主窗口 6d」那节）的后端需求已于 10/27 晚由 ad 转给家里后端主窗口 17。
 
+## Farm out 合作公司：每个团加子项（名字 + 价钱）（`task/farmout-rate-items`，2026-10-29 晚，工作窗口 `npe-ops-frontend-59`[678c38]，Annie 直接派）—— **分支已推，没合 main（后端还没上，先用 mock）**
+
+- Annie 原话：「帮我做的supplier那里的farm out partner的产品价格和种类里给我在每个tour都设置一个+号，让我可以添加子项，包括名字和价钱，不限添加的数量」。
+  preview：https://claude.ai/artifact/4d8mgNzxThLC2FsmDpjwHN 。Annie：「farm out同意推荐。」→ 问是否动手 →「动手」。Q1–Q6 全按推荐：
+  - Q1 只当价目表，不算进 Dispatch 应付金额 / Farm out Report；Q2 都当每人价；Q3 一个价；Q4 按添加先后，编辑时 ↑↓ 调；
+  - Q5 合作公司停用，子项照样留着、列着（没有 ＋，同没有 Edit）；Q6 结算价 ⬆ Import 这次不带子项。
+- 改动（`components/farm-out/partners-view.tsx`、`types/farm-out.ts` 加 `FarmOutRateItem`、`FarmOutRate.items?`）：
+  - 每个团行尾 Edit 右边加灰白「＋」（aria-label「Add an item to <团名>」）；子项缩进（↳）列在团下面，价钱放在 Adult / Child 合起来那格（`$15.00`）。
+  - 点「＋」= 打开这个团的编辑 + 最下面多一行空子项（光标在名字格）；「＋ Add item」再加，不限数量；↑↓ 调顺序；✕ 删一行。
+    子项和 Adult / Child 一起按 Save 存（照「不要改一点存一点」），Cancel 全不存。
+  - 校验：名字、价钱必填；价钱规则同 Adult / Child（数字、最多两位小数、可写 $）；同团名字不重复（不分大小写）。按 Save 才查，
+    红字写在格子下、Save 灰；之后「＋ Add item」加的空行不马上标红，下次 Save 再查。
+  - 存好团名旁绿字「✓ Saved」（再编辑就去掉）；存不上红字写后端原因，编辑内容留着。
+  - PUT：改的那个团带 `items`（整组，数组顺序 = sort_order，新的 id 为 null），别的团不带 `items`（后端「没带就不动」）。
+  - 子项的改都用最新 state 改（连点 ↑ 再点 ＋ Add item 不会互相盖掉）。How to use 加一条。
+- 检查：`fo-settings` 96/96（新加：子项缩进显示、＋ 不是蓝的、点 ＋ 进编辑带空行和光标、空子项红字不发请求、重复名字和价钱错红字、
+  新加空行不马上标红、↑ 调顺序、✕ 删、PUT 只给改的团带 items 且顺序对、绿字 ✓ Saved 和显示顺序、再 Edit 带出子项、存不上红字内容留着、
+  删一个再存带原 id、停用的合作公司子项照列没有 ＋、How to use；原来的「PUT 整张表」检查改成改的团带 `items: []`）；
+  `fod` 46/46（Dispatch 转单不受影响）；tsc 0、eslint 0 错、build 通过。截图核对过和 preview 一样。
+- ⚠️ 这页团价那行的 Save 键是原来就有的黑色（不是蓝色，Save locations 是蓝的），这次没动，要统一另说。
+- ⚠️ **需要后端**（已发 9a，派给 20，排在批量导入的 Farm out 价格页后面，多半明天；要 migration，和 8e 的排班快照表排队）：
+  1. 新表 `farm_out_rate_items`（partner_id、manifest_id、name VARCHAR(80)、price NUMERIC(10,2)、sort_order，同团 name 唯一），**SQL 先给 Annie 看**；
+  2. `GET /api/farm-out/partners/{id}/rates` 每个团带 `items: [{id, name, price, sort_order}]`；
+  3. `PUT` 同一接口每个团可带 `items`（整组替换、没带不动、校验同前端、一个事务、400 写原因）；
+  4. 加 / 改 / 删子项记进 Farm out 设置的 Action Log，字段「团名 › 子项名」。
+- 下一步：后端上 main → 合最新 main、重跑 fo-settings / fod → 合 main。和 `task/import-farmout-rates` 都改 `partners-view.tsx` 和 fo-settings 检查套，后合的解冲突。
+
 ## Bus Manifest 三版式 + G197 当天字号 前端（`task/bus-manifest-versions-fe`，2026-10-29 晚，工作窗口 `npe-ops-frontend-9c`[edc8ac]，主窗口 d2 派工）—— **分支已推，没合 main（⛔ 等后端 20 的 task/bus-manifest-versions 上 main）**
 
 - 依据：Annie 10-28「bus manifest里的推荐全ok」（= 动手），preview 第 8 版 https://claude.ai/artifact/GF2a4asfK9QWhzvCia45S2 ，规格见「10-28 收工交接」三c。
