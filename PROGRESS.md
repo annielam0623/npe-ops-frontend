@@ -281,6 +281,9 @@
             - Shuttle 块多一列 Times，Edit 里展开小时刻表。
           - 需要后端 B1–B7：is_tour_bus / is_shuttle、新表 pickup_location_times、migration、第一次归类名单先给 Annie 看。
           - 待 Annie 定 Q1–Q11。
+          - Annie 答，原话：「shuttle的问题，除了Q8之外都按照推荐。Q8，有季节，会按时间段分出来」。
+            - Q8：接人时间按季节的日期段分开。
+            - 已派 9c 出 v3。还没「动手」。
           - 顺带发现两个可能的 bug，已转 9a 核实：回程时间减 15 分钟前后不一致；Rezdy 自带时间可能被减了两次。
         - 前端派 9c `task/schedule-publish-anyway`，后端上 main 前不合 main。
         - 后端发 9a：allow_gaps、写日志、空档标记。
