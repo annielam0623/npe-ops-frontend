@@ -135,7 +135,21 @@
       - 两个开关放进 page-visibility。
     - 接口形状到了就派前端工作窗口；Restaurant 的导入接着做。
     - 20 报 G215 ④ 餐厅四栏已上 main 3bcf395（v127 已在生产执行）。已派 9c `task/restaurant-contacts`。
+    - ✅ 9c 已合 main 4b88ff9。
+      - 检查：restaurant 44、products 186、nav 32；tsc / eslint / build 都过。
+      - 等 Annie 验收。
+      - 9c 接着先做 misc-manual-save（不用等后端），再做排班整周 Save。
     - Dispatch Send to driver / guide 的「page is off」和两个开关，还等后端发形状。
+- ✅ **Annie「4项全部动手」**（10-29 晚），原话：「4项全部动手」。四项是：
+  1. staff 联络方式（Q1–Q7 照推荐）：后端发 9a（phone 列 migration、改联络方式接口），前端派 59 `task/team-contacts`，再做 `task/import-team`。
+  2. Dispatch 手动保存 push：59 合最新 main、重跑检查后合 main。
+  3. 排班整周一个 Save（B9，Q1–Q7 照推荐）+ A8 改时间小窗（照推荐，小窗 Save 改成 Done）：
+     - 后端批量接口发 9a；
+     - 前端派 9c `task/schedule-week-save`，从 send-to-confirm 拉。
+  4. 其余自动保存改手动：
+     - 59 `task/products-manual-save`：A3 + B6、A4、A5 + B4、A6 + B5，A6 要 10 分钟自动存；
+     - 9c `task/misc-manual-save`：A2、A7、B8。
+  - 资源：C 盘已清出 237 GB；可用虚拟内存只有 3.7 GB，已提醒两个窗口别同时跑 build。
 - Farm out 合作公司的团加子项：Annie 直接派给 59，原话：「帮我做的supplier那里的farm out partner的产品价格和种类里给我在每个tour都设置一个+号，让我可以添加子项，包括名字和价钱，不限添加的数量」。
   - 59 交 preview：https://claude.ai/artifact/4d8mgNzxThLC2FsmDpjwHN （没写代码）。
     - 每个团行尾一个「＋」，子项（名字 + 价）数量不限；
@@ -388,6 +402,10 @@
           - 后端需求已转 9a。要确认 HR 的 overwrite=true 不会把空格当成清空（Q3：空格 = 不改）。
       - 每页要后端一对 import/preview、import/commit 接口。
       - 待 Annie 定 Q1–Q7，都附推荐。
+- **Supplier › Restaurant 加四栏 Address / Phone / Text / Email**（9c，`task/restaurant-contacts`）：Annie 10-29 已动手（导游页 v9 preview https://claude.ai/artifact/Lg9tRCRBgMq66jQumdbn31 ④）；后端 20 3bcf395、v127 已在生产。
+  - 四栏放在 Lunch for 和页脚之间，下面写用在哪（Call 拨 Phone、Text 单独收短信、Email 发邮件、Address 给导游开地图）；电话显示成 (928) 555-0110（+1 号码），别的照原样；照这一页原来的做法改了先放着、按卡上的 Save 才存。
+  - 前端先查格式（电话数字和空格 ( ) + - .，10–15 位；Email 要像 email）：不对那一栏下面红字、框标红，上面「Not saved: …」，不发请求；后端 400 原话照旧红字。四栏每次都送（"" = 清空）。旧后端（GET 不带 address）不出这四栏。
+  - 检查：tsc / eslint / build 过；restaurant 44/44（新加：四栏位置、带出存好的、格式错红字不发请求、PUT 带四栏、存好重读、清空）、products 186/186、nav 32/32。
 - **Bus Manifest 改了先放在页面上、按整页 Save 才存**（9c，`task/bus-manifest-page-save`，worktree D:
 pe-ops-frontend-bmv）：
   - Annie 原话：「bus manifest Q4 没存之前还是挪过去，缓存，然后等整页存。其他都走推荐。动手」。preview：https://claude.ai/artifact/XNA2wnz8SRcWcqxrANy1WX

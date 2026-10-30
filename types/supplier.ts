@@ -8,6 +8,15 @@ export interface LunchRestaurant {
   /** 最多两行，用 \n 分开。 */
   footer: string;
   staff_note: string;
+  /**
+   * 四栏联系方式（导游页 v9 ④，Annie 10-29 动手；后端 20 3bcf395、v127）：没填是 ""。
+   * phone / text_number 是 E.164（例 +19285550110）。Phone ⇒ 导游页 Call；Text 是单独收短信的号码（和 Phone 分开）；
+   * Email ⇒ 发邮件；Address ⇒ 导游页餐厅名下面、点了开地图。旧后端没有这几个键。
+   */
+  address?: string;
+  phone?: string;
+  text_number?: string;
+  email?: string;
   /** 没人改过是 ""。 */
   updated_by: string;
   updated_at: string | null;
@@ -32,6 +41,11 @@ export interface RestaurantInput {
   name: string;
   footer: string;
   staff_note: string;
+  /** PUT 不带 = 那栏不动；带 "" = 清空。电话两栏收数字和空格 ( ) + - .，10–15 位；不对后端回 400 原话。 */
+  address?: string;
+  phone?: string;
+  text_number?: string;
+  email?: string;
   /** 整组替换；从别家送过来的团挪到这家。 */
   manifest_ids: number[];
 }
