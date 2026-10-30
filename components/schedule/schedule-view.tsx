@@ -46,6 +46,7 @@ import type {
   ScheduleEmployeeInput,
   ScheduleEmployeeUpdate,
   ScheduleGap,
+  SchedulePendingChange,
   SchedulePublishBlockedError,
   ScheduleSettings,
   ScheduleShiftType,
@@ -61,6 +62,7 @@ import { RulesView } from "./rules-view";
 import { CARD, CARD_HEADER, ICON_BTN, MUTED } from "./config";
 import { DayTimeline } from "./day-timeline";
 import { ScheduleLockedPanel } from "./lock-panel";
+import { SendChangesDialog } from "./send-changes-dialog";
 import { ResponsesCard } from "./responses-card";
 import { TimePicker } from "./time-picker";
 import { useScheduleEditLock } from "./use-schedule-edit-lock";
@@ -115,6 +117,8 @@ export function ScheduleView() {
     date: string;
   } | null>(null);
   const timelineRef = useRef<HTMLElement>(null);
+  /** 正在单独发给哪个人确认（Annie 10-29「员工确认」）。 */
+  const [sendingTo, setSendingTo] = useState<number | null>(null);
   /** 这一次打开页面以后改过、还没 Publish again 的已发布周（后端没带 has_unsent_changes 时用）。 */
   const [unsentWeek, setUnsentWeek] = useState<string | null>(null);
   const [publishBanner, setPublishBanner] = useState<string | null>(null);
@@ -615,6 +619,13 @@ export function ScheduleView() {
               // 空档提示只给能改排班的人（Annie Q3：staff 看不到）。
               gapsByDay={canEdit ? gapDays : undefined}
               onGapDay={jumpToDay}
+              // 发布前单独发给本人确认：supervisor 及以上（能改排班的人），只在已发布的周。
+              pendingChanges={
+                canEdit && readyWeek?.status === "published"
+                  ? readyWeek.pending_changes
+                  : undefined
+              }
+              onSendChanges={setSendingTo}
             />
 
             {/* 周三确认下周排班的回应（Annie 2026-10-19）：接口没上线 / 这一周没发过确认就整块不显示。 */}
@@ -735,6 +746,25 @@ export function ScheduleView() {
         />
       ) : null}
 
+      {sendingTo != null && readyWeek
+        ? (() => {
+            const emp = employees.find((e) => e.id === sendingTo);
+            const change = readyWeek.pending_changes?.find(
+              (p) => p.employee_id === sendingTo,
+            );
+            return emp && change ? (
+              <SendChangesDialog
+                weekStart={weekStart}
+                weekLabel={weekRangeLabel(weekStart)}
+                employee={emp}
+                change={change}
+                onClose={() => setSendingTo(null)}
+                onSent={() => void loadWeek(undefined, true)}
+                onUnauthorized={redirectToLogin}
+              />
+            ) : null;
+          })()
+        : null}
       {confirmingPublish ? (
         <ConfirmDialog
           title={
@@ -1288,6 +1318,8 @@ function WeekBody({
   onRetry,
   gapsByDay,
   onGapDay,
+  pendingChanges,
+  onSendChanges,
 }: {
   state: WeekState;
   weekStart: string;
@@ -1315,6 +1347,8 @@ function WeekBody({
   onRetry: () => void;
   gapsByDay?: Map<string, ScheduleGap[]>;
   onGapDay?: (date: string) => void;
+  pendingChanges?: SchedulePendingChange[];
+  onSendChanges?: (employeeId: number) => void;
 }) {
   if (state.kind === "loading") {
     return (
@@ -1362,6 +1396,8 @@ function WeekBody({
         onDeleteTimeOff={onDeleteTimeOff}
         gapsByDay={gapsByDay}
         onGapDay={onGapDay}
+        pendingChanges={pendingChanges}
+        onSendChanges={onSendChanges}
       />
     </section>
   );

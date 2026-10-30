@@ -211,10 +211,36 @@ function getOrCreateWeek(weekStart) {
   return created;
 }
 
+// 发布前单独发给本人确认（Annie 10-29「员工确认」）：每个人和上次发布比改了哪几天（只算时段，mock 不算休息日）。
+const clock = (hm) => { const [h, m] = hm.split(":").map(Number); return `${h % 12 === 0 ? 12 : h % 12}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`; };
+const shiftWord = (t) => t.charAt(0).toUpperCase() + t.slice(1);
+function pendingChangesOf(weekData) {
+  if (weekData.status !== "published" || !weekData.snapshot) return [];
+  const desc = (rows) => (rows.length ? rows.map(([, t, a, b]) => `${shiftWord(t)} ${clock(a)} – ${clock(b)}`).join(", ") : null);
+  const out = [];
+  const ids = new Set([...Object.keys(weekData.snapshot).map(Number), ...weekData.slots.map((s) => s.employee_id).filter((x) => x != null)]);
+  for (const id of ids) {
+    const before = JSON.parse(weekData.snapshot[id] || "[]");
+    const after = weekData.slots.filter((s) => s.employee_id === id).map((s) => [s.date, s.shift_type, s.start_time, s.end_time]);
+    const dates = [...new Set([...before, ...after].map((r) => r[0]))].sort();
+    const items = dates
+      .map((d) => ({ date: d, before: desc(before.filter((r) => r[0] === d)), after: desc(after.filter((r) => r[0] === d)) }))
+      .filter((i) => i.before !== i.after);
+    if (!items.length) continue;
+    const emp = employees.find((e) => e.id === id);
+    const sent = (weekData.sent || {})[id];
+    out.push({ employee_id: id, name: emp ? emp.name : `#${id}`, items, sent_at: sent ? sent.at : null, sent_by: sent ? sent.by : null });
+  }
+  return out;
+}
+const sendLog = [];
+
 function weekPayload(weekData) {
   const g = gapsFor(weekData);
   const out = { ...weekData, gaps: g, published_with_gaps: weekData.status === "published" && g.length > 0, has_unsent_changes: weekData.status === "published" && !!weekData.unsent };
   delete out.unsent;
+  delete out.sent;
+  out.pending_changes = pendingChangesOf(weekData);
   delete out.snapshot;
   if (ctl.phase2) {
     const dates = datesOfWeek(weekData.week_start);
@@ -256,6 +282,7 @@ http
     const p = url.pathname;
     if (p === "/__log") return send(res, 200, log);
     if (p === "/__publishes") return send(res, 200, publishLog);
+    if (p === "/__sends") return send(res, 200, sendLog);
     if (p === "/__ctl") {
       Object.assign(ctl, await readBody(req));
       if (ctl.confirmReset) {
@@ -569,6 +596,20 @@ http
       return send(res, 200, s);
     }
 
+    const sendMatch = /^\/api\/schedule\/weeks\/(\d{4}-\d{2}-\d{2})\/employees\/(\d+)\/send-changes$/.exec(p);
+    if (sendMatch && req.method === "POST") {
+      if (ctl.role === "staff") return send(res, 403, { detail: "Only a supervisor or above can send schedule changes." });
+      const emp = employees.find((e) => e.id === Number(sendMatch[2]));
+      if (!emp) return send(res, 404, { detail: "No such employee." });
+      if (!emp.email) return send(res, 400, { detail: `${emp.name} has no email. Add it in Employees first.` });
+      if (ctl.sendFail) return send(res, 400, { detail: ctl.sendFail });
+      const weekData = getOrCreateWeek(sendMatch[1]);
+      const at = new Date().toISOString();
+      weekData.sent = { ...(weekData.sent || {}), [emp.id]: { at, by: "ZZ Test" } };
+      sendLog.push({ week: sendMatch[1], employee_id: emp.id });
+      return send(res, 200, { sent_at: at, sent_by: "ZZ Test", channels: ["email", "in_app"] });
+    }
+
     const publishMatch = /^\/api\/schedule\/weeks\/(\d{4}-\d{2}-\d{2})\/publish$/.exec(p);
     if (publishMatch && req.method === "POST") {
       if (ctl.role === "staff") {
@@ -599,6 +640,7 @@ http
       const changed = new Set([...ids].filter((id) => (before[id] || "[]") !== shiftsOf(id)));
       weekData.snapshot = Object.fromEntries([...ids].map((id) => [id, shiftsOf(id)]));
       weekData.unsent = false;
+      weekData.sent = {};
       weekData.status = "published";
       weekData.published_at = new Date().toISOString();
       weekData.published_by = 1;

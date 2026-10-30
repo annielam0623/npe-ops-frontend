@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import type {
   ScheduleEmployee,
   ScheduleGap,
+  SchedulePendingChange,
   ScheduleShiftType,
   ScheduleSlot,
   ScheduleTimeOff,
@@ -27,6 +28,7 @@ import {
   shiftCardClass,
   TIME_OFF_LABEL,
 } from "./config";
+import { sentTime } from "./send-changes-dialog";
 import { TimePicker } from "./time-picker";
 
 interface WeekGridProps {
@@ -68,6 +70,9 @@ interface WeekGridProps {
   gapsByDay?: Map<string, ScheduleGap[]>;
   /** 点列头的红点：跳到下面 Day timeline 的那一天。 */
   onGapDay?: (date: string) => void;
+  /** 已发布的周每个人改了什么（只给能改排班的人传）：行上出「N changes · Send to confirm」，改过的格子标琥珀色。 */
+  pendingChanges?: SchedulePendingChange[];
+  onSendChanges?: (employeeId: number) => void;
 }
 
 const COLS = "grid-cols-[130px_repeat(7,minmax(118px,1fr))]";
@@ -96,6 +101,8 @@ export function WeekGrid({
   onDeleteTimeOff,
   gapsByDay,
   onGapDay,
+  pendingChanges,
+  onSendChanges,
 }: WeekGridProps) {
   const [selectedSlotId, setSelectedSlotId] = useState<number | null>(null);
   // 同一时间只能有一个时段在改时间（切去改别的 / 点外面 = 退出不存）。
@@ -137,10 +144,16 @@ export function WeekGrid({
     const key = `${employeeId ?? "needs"}|${date}`;
     const targetable =
       canEdit && selectedSlot != null && selectedSlot.date === date;
+    const changed =
+      employeeId != null &&
+      !!pendingChanges
+        ?.find((p) => p.employee_id === employeeId)
+        ?.items.some((i) => i.date === date);
     return (
       <Cell
         key={key}
         cellKey={key}
+        changed={changed}
         today={date === today}
         mine={employeeId != null && employeeId === meId}
         needs={employeeId == null}
@@ -255,6 +268,10 @@ export function WeekGrid({
             employee={e}
             mine={e.id === meId}
             cells={dates.map((date) => renderCell(date, e.id))}
+            change={pendingChanges?.find((p) => p.employee_id === e.id)}
+            onSendChanges={
+              onSendChanges ? () => onSendChanges(e.id) : undefined
+            }
           />
         ))}
       </div>
@@ -300,10 +317,15 @@ function PersonRow({
   employee,
   mine,
   cells,
+  change,
+  onSendChanges,
 }: {
   employee: ScheduleEmployee;
   mine: boolean;
   cells: React.ReactNode[];
+  /** 这个人这周和上次发布不一样（Annie 10-29「员工确认」）。 */
+  change?: SchedulePendingChange;
+  onSendChanges?: () => void;
 }) {
   return (
     <>
@@ -320,6 +342,32 @@ function PersonRow({
           />
           <span className="min-w-0 break-words">{employee.name}</span>
         </span>
+        {change && change.items.length > 0 && onSendChanges ? (
+          <span
+            data-person-changes={employee.id}
+            className="mt-1 flex flex-wrap items-center gap-1 pl-[17px]"
+          >
+            {change.sent_at ? (
+              // 发过了：淡黄标签（同发送页的「Sent by … on …」）。
+              <span className="rounded-md bg-[#FAEEDA] px-1.5 py-px text-[10px] whitespace-nowrap text-[#BA7517]">
+                Sent to {employee.name} {sentTime(change.sent_at)}
+              </span>
+            ) : (
+              <span className="rounded-full bg-amber-500/20 px-[7px] text-[10px] font-bold whitespace-nowrap text-amber-300">
+                {change.items.length}{" "}
+                {change.items.length === 1 ? "change" : "changes"}
+              </span>
+            )}
+            <button
+              type="button"
+              data-send-to-confirm={employee.id}
+              onClick={onSendChanges}
+              className="cursor-pointer rounded-[6px] border border-sky-300/45 px-[7px] py-px text-[10.5px] font-semibold whitespace-nowrap text-sky-300 hover:bg-sky-300/10"
+            >
+              {change.sent_at ? "Send again" : "Send to confirm"}
+            </button>
+          </span>
+        ) : null}
       </div>
       {cells}
     </>
@@ -328,6 +376,7 @@ function PersonRow({
 
 function Cell({
   cellKey,
+  changed = false,
   today,
   mine,
   needs,
@@ -346,11 +395,14 @@ function Cell({
   onClick: () => void;
   onDropSlot: (slotId: number) => void;
   children: React.ReactNode;
+  /** 已发布后改过、还没 Publish again 的格子：琥珀色框。 */
+  changed?: boolean;
 }) {
   const [dragOver, setDragOver] = useState(false);
   return (
     <div
       data-cell={cellKey}
+      data-changed={changed || undefined}
       onClick={targetable ? onClick : undefined}
       onDragOver={
         canEdit
@@ -373,6 +425,7 @@ function Cell({
       }
       className={cn(
         "group relative flex min-h-[52px] flex-col gap-[2px] rounded-[6px] p-0",
+        changed && "outline-2 outline-offset-[-2px] outline-amber-500",
         today && "bg-sky-400/[.05]",
         mine && "bg-sky-400/[.08]",
         needs && "bg-red-500/[.04]",

@@ -415,13 +415,74 @@ async function run() {
   await evaluate(`$setValue(${jingMonPub}.querySelector('input[data-time-input]'), '11:45');`);
   await evaluate(`$btn('Save', ${jingMonPub}).click();`);
   check("已发布的周改了一处：Publish again 旁边琥珀色「Changes are not sent until you publish again.」", await waitFor("document.querySelector('[data-unsent-changes]')?.textContent === 'Changes are not sent until you publish again.' && getComputedStyle(document.querySelector('[data-unsent-changes]')).color === 'rgb(252, 211, 77)'"));
+
+  // 发布前单独发给本人确认（Annie 10-29「员工确认，同意推荐，动手」）
+  const DLG = "document.querySelector('[data-send-changes-dialog]')";
+  check(
+    "改了的人那一行：琥珀色「1 change」+「Send to confirm」，改过的格子标琥珀色框；没改的人没有",
+    await waitFor(`document.querySelector('[data-person-changes="4"]')?.textContent === '1 changeSend to confirm' && document.querySelector('[data-cell="4|2026-10-05"]').hasAttribute('data-changed') && document.querySelectorAll('[data-person-changes]').length === 1 && document.querySelectorAll('[data-changed]').length === 1`),
+    await evaluate("return [...document.querySelectorAll('[data-person-changes]')].map(e => e.textContent).join('|');"),
+  );
+  await evaluate(`document.querySelector('[data-send-to-confirm="4"]').click();`);
+  await waitFor(DLG);
+  check(
+    "Send to confirm：发送框标题写人名，表格只列改了的那天（原来划线 → 现在 11:45 AM），写 To 邮箱 + 站内，只发本人",
+    await evaluate(`const d = ${DLG}; const r = d.querySelector('[data-change-row="2026-10-05"]'); return d.querySelector('h2').textContent === 'Send Jing their changes to confirm' && d.querySelectorAll('[data-change-row]').length === 1 && r.textContent.startsWith('Mon 10/05') && r.children[2].textContent.includes('11:45 AM') && getComputedStyle(r.children[1]).textDecorationLine === 'line-through' && d.textContent.includes('To: 📧') && d.textContent.includes('in-app notice') && d.textContent.includes('Only Jing gets this.');`),
+    await evaluate(`return ${DLG}.textContent;`),
+  );
+  check(
+    "发送框：蓝色只有 Send to Jing",
+    await evaluate(`const d = ${DLG}; const blues = [...d.querySelectorAll('button')].filter(b => ['rgb(59, 130, 246)', 'rgb(24, 95, 165)'].includes(getComputedStyle(b).backgroundColor)).map(b => b.textContent.trim()); return JSON.stringify(blues) === '["Send to Jing"]';`),
+    await evaluate(`const d = ${DLG}; return JSON.stringify([...d.querySelectorAll('button')].map(b => [b.textContent.trim(), getComputedStyle(b).backgroundColor]));`),
+  );
+  await ctl({ sendFail: "Jing's email was rejected (mailbox not found)." });
+  await evaluate(`${DLG}.querySelector('[data-send-changes-go]').click();`);
+  check(
+    "发送失败：红字「Could not send: 后端原话 Nothing was sent.」，框还在、可以再按",
+    await waitFor(`(() => { const d = ${DLG}; const e = d.querySelector('[data-send-error]'); return !!e && e.textContent === "Could not send: Jing's email was rejected (mailbox not found). Nothing was sent." && getComputedStyle(e).color === 'rgb(163, 45, 45)' && !d.querySelector('[data-send-changes-go]').disabled; })()`),
+  );
+  await ctl({ sendFail: "" });
+  const sendsBefore = (await (await fetch(`${MOCK}/__sends`)).json()).length;
+  await evaluate(`${DLG}.querySelector('[data-send-changes-go]').click();`);
+  check(
+    "发好：绿字「✓ Sent to Jing · 时间 (email + in-app)」、淡黄「Sent by … on …」、键变 Close",
+    await waitFor(`(() => { const d = ${DLG}; const ok = d.querySelector('[data-send-ok]'); return !!ok && ok.textContent.startsWith('✓ Sent to Jing · ') && ok.textContent.endsWith(' (email + in-app)') && getComputedStyle(ok).color === 'rgb(21, 128, 61)' && d.querySelector('[data-sent-by]').textContent.startsWith('Sent by ZZ Test on') && !!$btn('Close', d) && !d.querySelector('[data-send-changes-go]'); })()`),
+    await evaluate(`return ${DLG}.textContent;`),
+  );
+  const sends = (await (await fetch(`${MOCK}/__sends`)).json()).slice(sendsBefore);
+  check("只发本人：POST …/employees/4/send-changes 一次", sends.length === 1 && sends[0].employee_id === 4 && sends[0].week === "2026-10-04", JSON.stringify(sends));
+  await evaluate(`$btn('Close', ${DLG}).click();`);
+  check(
+    "关掉以后：那一行写淡黄「Sent to Jing 时间」，键变 Send again",
+    await waitFor(`(document.querySelector('[data-person-changes="4"]')?.textContent || '').startsWith('Sent to Jing ') && document.querySelector('[data-person-changes="4"]').textContent.endsWith('Send again')`),
+    await evaluate(`return document.querySelector('[data-person-changes="4"]')?.textContent;`),
+  );
   await openPage(`${APP}/schedule?week=2026-10-04`);
   await waitFor(`${cell("1|2026-10-04")}`);
   check("重新打开页面：提醒照样在（后端 has_unsent_changes）", await waitFor("!!document.querySelector('[data-unsent-changes]')"));
+  check("重新打开页面：Sent to Jing / Send again 照样在（后端 sent_at）", await evaluate(`return (document.querySelector('[data-person-changes="4"]')?.textContent || '').includes('Send again');`));
   await evaluate("$btn('Publish again').click();");
   await waitFor("document.querySelector('[role=dialog]')");
   await evaluate("$btn('Publish again', document.querySelector('[role=dialog]')).click();");
   check("改过再 Publish again：只通知班变了的那一个人，写「Published again. Notified 1 person.」，提醒没了", await waitFor("document.body.innerText.includes('Published again. Notified 1 person.') && !document.querySelector('[data-unsent-changes]')"));
+  check("Publish again 以后：行上的标记、改过的格子框都清掉", await waitFor("!document.querySelector('[data-person-changes]') && !document.querySelector('[data-changed]')"));
+  // 没有邮箱：黄框、Send 灰着
+  const jingEmail = (await (await fetch(`${MOCK}/api/schedule/employees`)).json()).employees.find((e) => e.id === 4).email;
+  await fetch(`${MOCK}/api/schedule/employees/4`, { method: "PUT", body: JSON.stringify({ email: "" }) });
+  const jingMonPub2 = `${cell("4|2026-10-05")}.querySelector('[data-slot-id]')`;
+  await evaluate(`${jingMonPub2}.querySelector('button.font-mono').click();`);
+  await waitFor(`${jingMonPub2}.querySelector('input[data-time-input]')`);
+  await evaluate(`$setValue(${jingMonPub2}.querySelector('input[data-time-input]'), '11:30');`);
+  await evaluate(`$btn('Save', ${jingMonPub2}).click();`);
+  await waitFor(`document.querySelector('[data-send-to-confirm="4"]')`);
+  // 名单是打开页面时读的（真用时在 Employees 里改会刷新）：重新打开。
+  await openPage(`${APP}/schedule?week=2026-10-04`);
+  await waitFor(`document.querySelector('[data-send-to-confirm="4"]')`);
+  await evaluate(`document.querySelector('[data-send-to-confirm="4"]').click();`);
+  await waitFor(DLG);
+  check("没有邮箱：黄框「No email for Jing. Add it in Employees, then send.」，Send to Jing 灰着", await evaluate(`const d = ${DLG}; return !!d.querySelector('[data-no-email]') && d.querySelector('[data-no-email]').textContent.startsWith('No email for Jing. Add it in Employees, then send.') && d.querySelector('[data-send-changes-go]').disabled;`));
+  await evaluate(`$btn('Cancel', ${DLG}).click();`);
+  await fetch(`${MOCK}/api/schedule/employees/4`, { method: "PUT", body: JSON.stringify({ email: jingEmail }) });
 
   // ── Publish anyway（Q1 admin 及以上）：整周空的 2027-01-03（7 天都是空档）──
   await ctl({ role: "admin", meName: "" });
@@ -483,6 +544,7 @@ async function run() {
   await openPage(`${APP}/schedule?week=2026-10-04`);
   await waitFor(`${cell("4|2026-10-05")}`);
   check("staff 能看已发布的这一周（不是 403 提示）", !(await text()).includes("hasn't been published"));
+  check("staff 看不到 Send to confirm、N changes、改过的格子框", await evaluate("return !document.querySelector('[data-person-changes]') && !document.querySelector('[data-send-to-confirm]') && !document.querySelector('[data-changed]');"));
   check(
     "staff 看不到 Publish / Add employee / + / × / Unassigned",
     await evaluate(`

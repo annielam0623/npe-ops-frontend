@@ -387,6 +387,8 @@ export type {
   ScheduleNotified,
   SchedulePublishBlockedError,
   SchedulePublishResult,
+  SchedulePendingChange,
+  ScheduleSendChangesResult,
   ScheduleSettings,
   ScheduleShiftType,
   ScheduleSlot,

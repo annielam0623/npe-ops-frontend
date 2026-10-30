@@ -324,6 +324,14 @@
           - 后端需求已转 9a。要确认 HR 的 overwrite=true 不会把空格当成清空（Q3：空格 = 不改）。
       - 每页要后端一对 import/preview、import/commit 接口。
       - 待 Annie 定 Q1–Q7，都附推荐。
+- **排班：发布前手动发给员工确认**（9c，`task/schedule-send-to-confirm`，从 `task/schedule-notify-wording` 拉，含文字那件）。**等后端 8e 上 main 再合（notify-wording 先合，再合这个）。**
+  - Annie 原话：「员工确认，同意推荐，动手」（preview https://claude.ai/artifact/NfWdfaxPUSS6SR8PGmxNrv ，Q1–Q6 全按推荐，Q1 那句「Changes are not sent until you publish again.」也要）。
+  - 做了：
+    - 已发布的周、能改排班的人（supervisor 及以上）：改过的人那一行名字下面琥珀色「N changes」+「Send to confirm」，改过的格子琥珀色框；
+    - 发送框（`components/schedule/send-changes-dialog.tsx`，照 tickets-send/legacy-ui）：表格只列改了的（哪天、原来划线、现在），To 邮箱 + 站内，对方收到的话；蓝色只有 Send to …；发好绿字 + 淡黄「Sent by 谁 on 时间」；失败红字后端原话；没邮箱黄框、Send 灰；
+    - 发过的行写淡黄「Sent to … 时间」，键变 Send again；Publish again 后后端清掉，标记都没了。
+  - 接口照 preview 暂定（`lib/schedule-api.ts` sendScheduleChanges）：GET 周带 `pending_changes[{employee_id, name, items[{date, before, after}], sent_at, sent_by}]`；POST `/api/schedule/weeks/{ws}/employees/{id}/send-changes` → `{sent_at, sent_by, channels}`；没邮箱 400。
+  - 检查：tsc / eslint / build 过；sch 210/210（新加：行上标记、格子框、发送框内容、只有 Send 是蓝色、失败红字、发好绿字 + Sent by、只发本人、Send again、重开还在、Publish again 后清掉、没邮箱、staff 看不到）、nav 32/32。
 - **排班通知「改完再发」前端文字**（9c，`task/schedule-notify-wording`，worktree D:
 pe-ops-frontend-seat）。**等后端 8e 上 main 再合。**
   - Annie 原话：重新发布只发给班有变化的人和他们的主管「同意」；已发布的周改动不逐项发「改完再发」；「改动schedule当然应该是发布的时候通知」（休息日也等 Publish again 一起通知，不单独马上发）。

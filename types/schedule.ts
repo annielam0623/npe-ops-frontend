@@ -149,6 +149,29 @@ export interface ScheduleWeek {
    * 后端暂定字段；没带时前端只记这一次打开页面以后的改动。
    */
   has_unsent_changes?: boolean;
+  /**
+   * 已发布的周，每个人和上次发布比改了什么（Annie 10-29「员工确认，同意推荐，动手」：发布前可以单独发给本人确认）。
+   * 只列有改动的人；Publish again 后清空。后端暂定字段，没带 = 后端没上线（不出 Send to confirm）。
+   */
+  pending_changes?: SchedulePendingChange[];
+}
+
+/** 一个人这周和上次发布不一样的地方。 */
+export interface SchedulePendingChange {
+  employee_id: number;
+  name: string;
+  /** 后端写好的字，例 before「Open 2:00 AM – 12:00 PM」、after「Time off」；新加的 before = null，删掉的 after = null。 */
+  items: { date: string; before: string | null; after: string | null }[];
+  /** 最近一次单独发给本人确认的时间 / 谁发的；没发过 = null。 */
+  sent_at: string | null;
+  sent_by: string | null;
+}
+
+/** POST …/employees/{id}/send-changes 成功的返回体。 */
+export interface ScheduleSendChangesResult {
+  sent_at: string;
+  sent_by: string;
+  channels: ("email" | "in_app")[];
 }
 
 /** POST /api/schedule/weeks/{week_start}/publish 发布成功的返回体。 */
