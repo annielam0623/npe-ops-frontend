@@ -427,13 +427,13 @@ async function run() {
   await waitFor(DLG);
   check(
     "Send to confirm：发送框标题写人名，表格只列改了的那天（原来划线 → 现在 11:45 AM），写 To 邮箱 + 站内，只发本人",
-    await evaluate(`const d = ${DLG}; const r = d.querySelector('[data-change-row="2026-10-05"]'); return d.querySelector('h2').textContent === 'Send Jing their changes to confirm' && d.querySelectorAll('[data-change-row]').length === 1 && r.textContent.startsWith('Mon 10/05') && r.children[2].textContent.includes('11:45 AM') && getComputedStyle(r.children[1]).textDecorationLine === 'line-through' && d.textContent.includes('To: 📧') && d.textContent.includes('in-app notice') && d.textContent.includes('Only Jing gets this.');`),
+    await evaluate(`const d = ${DLG}; const r = d.querySelector('[data-change-row="2026-10-05"]'); return d.querySelector('h2').textContent === 'Send Jing their changes to confirm' && d.querySelectorAll('[data-change-row]').length === 1 && r.textContent.startsWith('Mon 10/5') && !r.textContent.startsWith('Mon 10/05') && r.children[2].textContent.includes('11:45 AM') && getComputedStyle(r.children[1]).textDecorationLine === 'line-through' && d.textContent.includes('To: 📧') && d.textContent.includes('in-app notice') && d.textContent.includes('Only Jing gets this.');`),
     await evaluate(`return ${DLG}.textContent;`),
   );
   // 后端 G217（ef 10-30）：对方收到的是后端的原文，前端不另写一套
   check(
-    "发送框「What Jing gets」照后端原文：标题 Please confirm your schedule changes — week of 2026-10-04、Hi Jing、每行「Mon 10/05: 原来 → 现在」、Please check and confirm、[Confirm my schedule]；底下写所有主管、不写 their supervisor",
-    await evaluate(`const d = ${DLG}; const p = d.querySelector('[data-send-preview]').innerText; const lines = p.split('\\n').map((l) => l.trim()); return lines.includes('Subject: Please confirm your schedule changes — week of 2026-10-04') && lines.includes('Hi Jing,') && lines.includes('Your schedule for the week of 2026-10-04 has changed:') && lines.some((l) => /^• Mon 10\\/05: .+ → .*11:45 AM/.test(l)) && lines.includes('Please check and confirm:') && lines.includes('[Confirm my schedule]') && !p.includes('Looks good') && d.textContent.includes('When you publish again, Jing and all supervisors and admins still get the normal notice.') && !d.textContent.includes('their supervisor');`),
+    "发送框「What Jing gets」照后端原文：标题 Please confirm your schedule changes — week of 2026-10-04、Hi Jing、每行「Mon 10/5:（不补零，同后端）原来 → 现在」、Please check and confirm、[Confirm my schedule]；底下写所有主管、不写 their supervisor",
+    await evaluate(`const d = ${DLG}; const p = d.querySelector('[data-send-preview]').innerText; const lines = p.split('\\n').map((l) => l.trim()); return lines.includes('Subject: Please confirm your schedule changes — week of 2026-10-04') && lines.includes('Hi Jing,') && lines.includes('Your schedule for the week of 2026-10-04 has changed:') && lines.some((l) => /^• Mon 10\\/5: .+ → .*11:45 AM/.test(l)) && lines.includes('Please check and confirm:') && lines.includes('[Confirm my schedule]') && !p.includes('Looks good') && d.textContent.includes('When you publish again, Jing and all supervisors and admins still get the normal notice.') && !d.textContent.includes('their supervisor');`),
     await evaluate(`return ${DLG}.querySelector('[data-send-preview]')?.innerText;`),
   );
   // has_login:false（没有登录账号）：只写邮箱，不写站内

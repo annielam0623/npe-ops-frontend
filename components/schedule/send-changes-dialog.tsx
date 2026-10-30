@@ -24,10 +24,13 @@ import type { ScheduleEmployee, SchedulePendingChange } from "@/types";
 
 import { DAY_LABELS } from "./config";
 
-/** "2026-11-02" → "Mon 11/02" */
+/**
+ * "2026-10-05" → "Mon 10/5"：不补零，照后端邮件 / 站内通知的写法（schedule.py day_label，ef 10-30）。
+ * 发送框里表格和「What X gets」原文都用这一种，排班页别处的日期格式不动。
+ */
 function dayLabel(date: string): string {
   const [y, m, d] = date.split("-").map(Number);
-  return `${DAY_LABELS[new Date(Date.UTC(y, m - 1, d)).getUTCDay()]} ${date.slice(5).replace("-", "/")}`;
+  return `${DAY_LABELS[new Date(Date.UTC(y, m - 1, d)).getUTCDay()]} ${m}/${d}`;
 }
 
 /** "Oct 29, 9:42 PM"（洛杉矶时间）。 */
