@@ -33,6 +33,20 @@
   - 要不要做：做的话先出 preview（放哪、每条显示谁、几点、内容，会不会通知跟进人），再请后端加接口。
   - 推荐做。
 
+### 15. 排班发布后的提示，要写出「谁没收到」（新文字）
+- 现在：Publish / Publish again 后，页面写「Published. Notified 6 people.」。实际 6 人都没有邮箱、也没关联账号，一条都没发出去。
+- 后端 ef 在改（task/republish-recipients-by-perm，还没上 main）：
+  - notified 只算真发出去的人；
+  - 新加 not_reached，列出没收到的人和原因，原因两种：
+    - 「no email or login」：没邮箱也没账号；
+    - 「email could not be sent」：有邮箱，但这次没发成。
+- 主窗口拟的提示（英文原文）：
+  - 都收到：「Published. Notified 6 people.」（照旧）
+  - 有人没收到：「Published. Notified 4 people. 2 couldn't be reached: Jing, Anita (no email or login).」，没收到那一段用红字；
+  - 都没收到：「Published, but no one was notified: Nadia, Veronica, Lizzie, Jing, Jessica, Anita have no email or login. Add their email in Employees.」，红字；
+  - Publish again 照同样写法，后面接「… and M schedule editors」。
+- 要 Annie 定：这样写行不行。行就说「15 动手」，后端上 main 后前端接。
+
 ### 8. 可以上线后对着看的（不用答，验收时看）
 - Products 手动保存：09 问的 5 处细节，主窗口按盘点推荐定了，见 PROGRESS「2026-10-30」那节 09 的记录：
   - Bus Manifest setup 每个小项一个 Save；
