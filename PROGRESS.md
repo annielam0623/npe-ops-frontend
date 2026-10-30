@@ -64,10 +64,14 @@
      - 9c 已问 Annie：标签用 L / U（10-18 定的）还是 Lower / Upper 全称。等她答，再从 main 拉分支修。
 - **Annie 定长期规则：订单流 Order List → Main Manifest → Dispatch / Tracking，不跳过前面直接去 Rezdy 拉单**。
   - 原话：「不要直接去rezdy拉订单。写到工作里头。订单流是order list  - main manifest - dispatch / tracking --我马上要开通。不要跳跃过前面的程序直接去rezdy拉单。前端后端都要写到工作规范里去」
-  - 前端已写进 CLAUDE.md「已定的决策」；后端已请 9a 写进后端规范。
+  - 前端已写进 CLAUDE.md「已定的决策」：远端 7fb1c50（别的窗口同时写的，内容更全）。主窗口自己写的那段重复了，已删掉。后端已请 9a 写进后端规范。
   - 主窗口查到现在前端和这条冲突的两处，已报 Annie，等她定、说「动手」：
     - Dispatch ① Assign 的「Sync Rezdy」键：lib/rezdy-sync-api.ts syncDispatchFromRezdy → /api/dispatch/manifests/rezdy-sync，先按 Rezdy 更新订单再同步名单。
-    - Dispatch Step 1 每个团的「Upload Rezdy CSV」后备（lib/dispatch-manifest-api.ts previewUpload / applyUpload）。
+    - Dispatch Step 1 每个团的「Upload Rezdy CSV」后备（lib/dispatch-manifest-api.ts previewUpload / applyUpload；manifests-panel.tsx:727 等）。
+    - 9c 补查到的：
+      - manifests-panel.tsx:663 卡片上的 missing 那一行；
+      - manifest-view.tsx:1145 / 1620「Not in main manifest — check Rezdy」；
+      - Morning 发送页要求上传 Rezdy 导出文件的说明。
   - Main Manifest 自己的「Sync Rezdy」（/api/manifests/rezdy-sync）属于订单流上游，不冲突。
 - 今晚待派（原清单）：① ⭐ Bus Manifest 第二辆车 Farm out 键 preview；② Dispatch 取消自动保存 + Save 键 preview（做完不推，等 Annie 下令）；③ Forecast 数字不能点 preview（改 X9EXZjpgbKfPhxzeKR7c9c）；④ Bus Manifest 三版式前端照 10-28 交接三c 的形状先做，后端上 main 后再合。
 
