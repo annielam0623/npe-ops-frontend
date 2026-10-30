@@ -609,6 +609,25 @@
 - 后端：f0 主窗口、bd 做 G203 / G208 / guide_notes、d0 做 G98 / G212。G203 第 ③④ 步（Dispatch 逐车、Schedule 等补写入，以及 Quick replies 新形状 /action-log）还在后端，路径到了再派前端接面板。
 - 空闲内存一直在 0.7–2 GB，一次最多开两个前端工作窗口。
 
+## 全站「上传表格自动填」：Farm out 结算价的 ⬆ Import（`task/import-farmout-rates`，从 `task/import-hr` 拉，2026-10-29 晚，工作窗口 `npe-ops-frontend-59`[678c38]，主窗口 d2 派工）—— **分支已推，没合 main（后端接口没上，先用 mock）**
+
+- Annie 原话（d2 转）：「批量导入同意全部推荐。动手」—— preview ⑤ 清单第 7 项（每年调价时一次改完）。做法同 HR 那节（`StandardImport`，标准接口形状 `types/bulk-import.ts`）。
+- 改动（`components/farm-out/partners-view.tsx`）：
+  - 「Partners & rates」卡头加 ⬆ Import；Import 块在卡上面。**一份文件管全部合作公司**：列 Partner / Tour / Adult / Child，按 Partner + Tour 对上；
+    对不上的（没有这家公司 / 这个团）算 Error，**不新建**（加公司照旧用 + Add Partner，团来自产品）。空格不清空价钱。
+  - 正在改某个团的价时 ⬆ Import 灰掉（title「Save or cancel the price you are editing first.」）。
+  - 模板 = 每家每个团一行带现在的价（没设的空着），文件名 `farm_out_rates_template.csv`。
+  - 存好后 `refreshAll()` 静悄悄重拉合作公司和价钱（不回 Loading，Import 块和展开的上车点都留着）；Action Log 的 refreshKey 改成跟着导入走。How to use 加一条。
+- 检查：`fo-settings` 92/92（新加：卡头 ⬆ Import 不是蓝的、改价时灰、Cancel 后能点、模板列名 / 内容 / 文件名、预览只调 preview、数字和栏名、
+  「105 → 109」「— → 120」、对不上的公司和不是数字的红字、存不上红字且列表价没动、存好绿字 + 列表出新价 + 上车点还展开、Close、How to use）；
+  tsc 0、eslint 0 错、build 通过。
+- ⚠️ **需要后端**（Farm out Rates）：
+  1. `POST /api/farm-out/rates/import/preview`（multipart `file`，只读，权限同 PUT rates）→ `ImportPreviewResponse`：
+     栏 key `partner` / `tour_name` / `adult_price` / `child_price`（表头 Partner / Tour / Adult / Child）；按合作公司名 + 团名对上（不分大小写，含停用的公司）；
+     对不上的行 error（例如「No partner called “…”.」「No tour called “…” for this partner.」），不新建；价钱是数字（可带小数），空格不改；值和 before 用不带 $ 的数字文字；文件里同一家同一团重复的第二行 error。
+  2. `POST /api/farm-out/rates/import/commit`（同一个文件）：只写 update，**一个事务**；回 `ImportCommitResult`；改动记进 Farm out 设置的 Action Log（同 PUT rates）。
+- 下一步：后端接口上 main → import-hr 先合 main → 合最新 main、重跑 fo-settings → 合 main。和 `task/import-farmout-locations` 都改 fo-settings 检查套 / mock（不同位置），后合的那个合进来解冲突。
+
 ## 全站「上传表格自动填」：通用 Import 块 + HR 换成通用样子（`task/import-hr`，2026-10-29 晚，工作窗口 `npe-ops-frontend-59`[678c38]，主窗口 d2 派工）—— **分支已推，没合 main（等后端补 HR 接口）**
 
 - Annie 原话：「但凡有材料需要输入的地方，都要支持表格，文档，图片上传」；问批量导入还是附件，答「上传表格自动填进去」。

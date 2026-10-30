@@ -3,7 +3,7 @@
 // 控制：POST /__ctl {reset, fail401, staff, unavailable, foVis（farm_out_settings 的档：staff / admin / super_admin_only；null = 后端还没登记）}；GET /__log。端口默认 8799（环境变量 MOCK_PORT 可改）。
 const http = require("http");
 
-const ctl = { fail401: false, staff: false, partner: false, unavailable: false, foVis: "staff", log403: false };
+const ctl = { fail401: false, staff: false, partner: false, unavailable: false, foVis: "staff", log403: false, importFail: false };
 const log = [];
 
 const TOURS = [
@@ -116,6 +116,21 @@ http
     if (ctl.staff) return send(res, 403, { detail: "Admin access required" });
 
     const sub = p.slice("/api/farm-out".length);
+    // ⬆ Import 结算价（全站通用导入，标准接口形状见 types/bulk-import.ts；后端还没上）。按 Partner + Tour 对上，对不上算错。
+    if (sub === "/rates/import/preview" || sub === "/rates/import/commit") {
+      entry.hasFile = /filename="fo-rates-import\.csv"/.test(entry.rawText || "");
+      if (sub.endsWith("/preview")) return send(res, 200, { columns: ["partner", "tour_name", "adult_price", "child_price"], rows: [
+        { status: "update", id: null, values: { partner: "Partner A", tour_name: "West Rim", adult_price: "109", child_price: "95" }, before: { adult_price: "105" }, changed: ["adult_price"], blanked: [], errors: [] },
+        { status: "update", id: null, values: { partner: "Partner A", tour_name: "Zion", adult_price: "120", child_price: "" }, before: { adult_price: "" }, changed: ["adult_price"], blanked: ["child_price"], errors: [] },
+        { status: "unchanged", id: null, values: { partner: "Partner B", tour_name: "West Rim", adult_price: "110", child_price: "99" }, before: {}, changed: [], blanked: [], errors: [] },
+        { status: "error", id: null, values: { partner: "Partner Z", tour_name: "Zion", adult_price: "100", child_price: "90" }, before: {}, changed: [], blanked: [], errors: [{ field: "partner", message: "No partner called “Partner Z”." }] },
+        { status: "error", id: null, values: { partner: "Partner B", tour_name: "Zion", adult_price: "abc", child_price: "90" }, before: {}, changed: [], blanked: [], errors: [{ field: "adult_price", message: "Adult must be a number, e.g. 105." }] },
+      ] });
+      if (ctl.importFail) return send(res, 500, { detail: "Database is busy" });
+      rates[1].find((r) => r.manifest_id === 10).adult_price = 109;
+      rates[1].find((r) => r.manifest_id === 11).adult_price = 120;
+      return send(res, 200, { created: 0, updated: 2, unchanged: 1, skipped: 2 });
+    }
     if (sub === "/partners" && req.method === "GET") return send(res, 200, partners);
     if (sub === "/partners" && req.method === "POST") {
       const name = (entry.body.name || "").trim();
