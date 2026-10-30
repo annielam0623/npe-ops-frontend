@@ -63,7 +63,7 @@ function historyLine(entry: OperationReportHistoryEntry): string {
 
 /**
  * 一条记录（Dashboard 块和 View reports 页共用）：类型 · 对谁 · 订单号 · 一句话 · 状态 · 跟进人。
- * 主管及以上（canEdit）可改状态和跟进人，其他人只看。展开才去取详情里的修改记录。
+ * 能改的人（canEdit：本人登记的、或有 report.edit，见 use-report-editor.ts）可改状态和跟进人，其他人只看。展开才去取详情里的修改记录。
  */
 export function ReportItem({
   report,
