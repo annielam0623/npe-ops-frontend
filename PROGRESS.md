@@ -609,6 +609,23 @@
 - 后端：f0 主窗口、bd 做 G203 / G208 / guide_notes、d0 做 G98 / G212。G203 第 ③④ 步（Dispatch 逐车、Schedule 等补写入，以及 Quick replies 新形状 /action-log）还在后端，路径到了再派前端接面板。
 - 空闲内存一直在 0.7–2 GB，一次最多开两个前端工作窗口。
 
+## 全站「上传表格自动填」：Vehicles 的 ⬆ Import（`task/import-vehicles`，从 `task/import-hr` 拉，2026-10-29 晚，工作窗口 `npe-ops-frontend-59`[678c38]，主窗口 d2 派工）—— **分支已推，没合 main（后端接口没上，先用 mock）**
+
+- Annie 原话（d2 转）：「批量导入同意全部推荐。动手」—— preview ⑤ 清单第 5 项。做法同 HR 那节（通用块 `StandardImport`，标准接口形状 `types/bulk-import.ts`）。
+- 改动：All Vehicles 卡头 Edit all 右边加 ⬆ Import（Edit all 编辑中不出）；Import 块在卡上面；How to use 加一条。
+  - `components/vehicles/import-panel.tsx`：模板 = 全部车（含停用的），列同页面：Vehicle、Live GPS、Seats、没隐藏的自加列、Note、Status（Active / Inactive），
+    文件名 `vehicles_template_<日期>.csv`；按 Vehicle（车号）对上，没对上的新建；改车号不走导入（叫去 ✏ Edit）。
+  - 存好后用页面原来的 `refresh()` 静悄悄重拉（不闪 Loading，Action Log 展开着就重读）。
+- 检查：`veh` 45/45（新加：卡头 ⬆ Import 不是蓝的、模板列名 / 行数 / 文件名、预览只调 preview、四种状态和数字、栏名、「ABC123 → ABC124」、
+  Seats 错红字、文件里重复、Save 蓝色、存不上红字「nothing was changed」、存好绿字 + 列表出新车 + Action Log 重读、How to use、Close）；
+  tsc 0、eslint 0 错、build 通过。
+- ⚠️ **需要后端**（Vehicles）：
+  1. `POST /api/settings/vehicles/import/preview`（multipart `file`，.csv / .xlsx，require_admin，只读）→ `ImportPreviewResponse`：
+     栏 key：`van_no` / `samsara_url` / `seats` / `notes` / `is_active`（值写 Active / Inactive）/ 自加列 `custom:<列 id>`（按列名认，隐藏列也认）；
+     按 van_no 对上（同页面的车号规则），没对上的 new；空格不改；校验同单个保存（Samsara 网址开头、Seats 整数、Note ≤500、自加列 ≤200、车号 ≤30）；文件里同车号重复的第二行 error。
+  2. `POST /api/settings/vehicles/import/commit`（同一个文件）：只写 new / update 行，**一个事务**；回 `ImportCommitResult`；每格改动照现在的 Action Log 记。
+- 下一步：后端两个接口上 main → import-hr 先合 main → 合最新 main、重跑 veh → 合 main。
+
 ## 全站「上传表格自动填」：通用 Import 块 + HR 换成通用样子（`task/import-hr`，2026-10-29 晚，工作窗口 `npe-ops-frontend-59`[678c38]，主窗口 d2 派工）—— **分支已推，没合 main（等后端补 HR 接口）**
 
 - Annie 原话：「但凡有材料需要输入的地方，都要支持表格，文档，图片上传」；问批量导入还是附件，答「上传表格自动填进去」。

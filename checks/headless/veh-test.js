@@ -124,6 +124,11 @@ async function main() {
 // ── Settings → Vehicles 检查（拼在 harness-head.js 后面运行） ──
 const dialog = "document.querySelector('[role=dialog]')";
 const row = (id) => `document.querySelector('tr[data-id="${id}"]')`;
+async function setFile(selector, file) {
+  const { root } = await cdp("DOM.getDocument", { depth: -1, pierce: true });
+  const { nodeId } = await cdp("DOM.querySelector", { nodeId: root.nodeId, selector });
+  await cdp("DOM.setFileInputFiles", { nodeId, files: [`${__dirname.replace(/\\/g, "/")}/${file}`] });
+}
 async function since(before, filter) { return (await mockLog()).slice(before).filter(filter); }
 async function waitReq(before, filter) {
   for (let i = 0; i < 40; i++) { const s = await since(before, filter); if (s.length) return s; await sleep(150); }
@@ -296,6 +301,52 @@ async function run() {
   await waitFor("document.body.textContent.includes('Added column')");
   vrows = await vehLogRows();
   check("日志：自加列写后端给的列名、加列动作只有新值", vrows.some((r) => r[2] === "Edited768 · Plate" && r[3] === "(empty) → ABC123") && vrows.some((r) => r[2] === "Added columnPlate · Column" && r[3] === "Plate"), JSON.stringify(vrows));
+
+  // ── ⬆ Import（全站通用导入，Annie 2026-10-29「批量导入同意全部推荐。动手」；后端接口还没上，用 mock）──
+  await openPage(`${APP}/settings/vehicles`);
+  await evaluate(`
+    window.__blob = null; window.__download = null;
+    const orig = URL.createObjectURL;
+    URL.createObjectURL = (b) => { window.__blob = b; return orig(b); };
+    HTMLAnchorElement.prototype.click = function () { window.__download = this.download; };
+  `);
+  check("Import：卡头有 ⬆ Import（灰白，不是蓝的），收着时没有 Import 块", await evaluate("const b = $btn('⬆ Import'); return !!b && getComputedStyle(b).backgroundColor !== 'rgb(59, 130, 246)' && !document.querySelector('[data-bulk-import]');"));
+  await evaluate("$btn('⬆ Import').click();");
+  await waitFor("document.querySelector('[data-bulk-import]')");
+  await evaluate("$btn('⬇ Download template').click();");
+  await waitFor("window.__download");
+  {
+    const tpl = await evaluate("return (await window.__blob.text()).replace(/^\\uFEFF/, '');");
+    const lines = tpl.split("\r\n");
+    check("模板：列名同页面栏名、带上现有的全部记录、文件名", lines[0] === "Vehicle,Live GPS,Seats,Plate,Note,Status" && lines.length - 1 === ((await (await fetch(`${MOCK}/api/settings/vehicles`)).json()).vehicles.length) && /^vehicles_template_\d{4}-\d{2}-\d{2}\.csv$/.test(await evaluate("return window.__download;")), JSON.stringify(lines.slice(0, 2)));
+  }
+  let ib = (await mockLog()).length;
+  await setFile("[data-bulk-import] input[type=file]", "veh-import.csv");
+  await waitFor("document.querySelector('[data-bulk-counts]')");
+  let ireqs = await since(ib, (e) => e.path.startsWith("/api/settings/vehicles/import/"));
+  check("预览：上传文件、只调 preview（不写）", ireqs.length === 1 && ireqs[0].path === "/api/settings/vehicles/import/preview" && ireqs[0].hasFile, JSON.stringify(ireqs));
+  check("预览：New 1 / Will update 1 / No change 1 / Errors 2，栏名用页面上的", await evaluate("const t = document.querySelector('[data-bulk-counts]').textContent; const h = [...document.querySelectorAll('[data-bulk-import] thead th')].map(th => th.textContent); return t.includes('New: 1') && t.includes('Will update: 1') && t.includes('No change: 1') && t.includes('Errors: 2') && JSON.stringify(h) === \"[\\\"Import\\\",\\\"Vehicle\\\",\\\"Seats\\\",\\\"Plate\\\",\\\"Note\\\",\\\"Status\\\"]\";"));
+  check("预览：改了的格子写 旧 → 新", await evaluate("const ch = [...document.querySelectorAll('[data-bulk-changed]')].map(e => e.textContent); return ch.includes(\"ABC123 → ABC124\");"));
+  check("预览：有错的红字写原因", await evaluate("const es = [...document.querySelectorAll('[data-bulk-error]')].map(e => e.textContent); return es.includes(\"Seats must be a whole number.\") && es.includes(\"Repeated above — skipped.\");"));
+  check("Save 键：蓝色 Save 2 rows", await evaluate("const b = $btn('Save 2 rows'); return !!b && getComputedStyle(b).backgroundColor === 'rgb(59, 130, 246)';"));
+  await ctl({ importFail: true });
+  await evaluate("$btn('Save 2 rows').click();");
+  await waitFor("document.querySelector('[data-bulk-import] [role=alert]')?.textContent.includes('Not saved')");
+  check("存不上：红字 Not saved — nothing was changed（一个事务），预览留着", await evaluate("const a = document.querySelector('[data-bulk-import] [role=alert]'); return a.textContent.startsWith('Not saved — nothing was changed.') && getComputedStyle(a).color === 'rgb(179, 38, 30)' && !!$btn('Save 2 rows');"));
+  await ctl({ importFail: false });
+  // 先展开 Action Log（收着不请求），存好后应重读
+  await evaluate("if (!document.querySelector('[data-action-log] tbody tr')) [...document.querySelectorAll('button')].find(b => b.textContent.includes('Action Log')).click();");
+  await waitFor("document.querySelector('[data-action-log] tbody tr')");
+  ib = (await mockLog()).length;
+  await evaluate("$btn('Save 2 rows').click();");
+  await waitFor("document.querySelector('[data-bulk-import] [role=status]')?.textContent.includes('Saved')");
+  await waitFor("[...document.querySelectorAll('tbody tr')].some(tr => !tr.closest('[data-bulk-import]') && !tr.closest('[data-action-log]') && tr.textContent.includes(\"ZZ Test Van\"))");
+  ireqs = await since(ib, (e) => e.path === "/api/settings/vehicles/import/commit");
+  check("Save：传同一个文件；绿字 Saved — 1 new, 1 updated. 2 rows with errors were not saved.；预览收起、列表出新记录", ireqs.length === 1 && ireqs[0].hasFile && (await evaluate("const s = document.querySelector('[data-bulk-import] [role=status]'); return s.textContent.includes(\"Saved — 1 new, 1 updated. 2 rows with errors were not saved.\") && getComputedStyle(s).color === 'rgb(30, 107, 67)' && !document.querySelector('[data-bulk-import] table');")));
+  check("Save 后 Action Log 重读", (await since(ib, (e) => e.path.endsWith("/action-log"))).length >= 1);
+  check("How to use 说明 ⬆ Import", await evaluate("return document.body.textContent.includes(\"Change or add many vehicles at once: click \\u2b06 Import\");"));
+  await evaluate("$btn('Close', document.querySelector('[data-bulk-import]')).click();");
+  check("Close：Import 块收起", await waitFor("!document.querySelector('[data-bulk-import]')"));
 
   // 权限 / 未登录
   await ctl({ staff: true });
