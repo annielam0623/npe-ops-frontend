@@ -47,6 +47,18 @@
   - Publish again 照同样写法，后面接「… and M schedule editors」。
 - 要 Annie 定：这样写行不行。行就说「15 动手」，后端上 main 后前端接。
 
+### 16. Dispatch 上的 Sync Rezdy 键留不留（Rezdy 第 4 条的更正）
+- 更正：主窗口原来说「① Dispatch 打开时自动同步 Rezdy」，说错了。
+  - 后端核过：Dispatch 打开 / 换天时只读 Main manifest，不连 Rezdy，本来就合规矩，不改。删了 Dispatch 会看不到新单、取消、改期。
+- 订单的路线（后端原话整理）：
+  - Rezdy 推送 → Order List（唯一接 Rezdy 的地方）→ Main manifest → Dispatch 团名单（打开 Dispatch 时复制一份过来）→ Bus Manifest / 司机页 / 导游页 / 打印；
+  - Main manifest 就是 Order List 里「已确认、这一天的」那部分订单，按团分好给人看，它自己不存单，每次打开都去 Order List 现查。
+- 要定的：Dispatch ① 区和 Main Manifest 页各有一个 Sync Rezdy 键，是同一套。它先让 Rezdy 把这一天重新对一遍（更新 Order List），再往下走同一条路。用来补漏：Rezdy 推送漏了的单。
+  - A. 两处都留，只当补漏用（推荐：它也是先更新 Order List，没有跳过前面的环节）；
+  - B. 只留 Main Manifest 页的，Dispatch 上的删；
+  - C. 两处都删，漏了的单只能等 Rezdy 下次推送。
+- ②③④⑤ 照「4 全按推荐 动手」，09 在做。gone_orders 那行灰字「cancelled / moved — 0 pax」留着。
+
 ### 8. 可以上线后对着看的（不用答，验收时看）
 - Products 手动保存：09 问的 5 处细节，主窗口按盘点推荐定了，见 PROGRESS「2026-10-30」那节 09 的记录：
   - Bus Manifest setup 每个小项一个 Save；
