@@ -117,6 +117,9 @@
       - 合并顺序：import-hr 先合。fo 两个分支后合的那个要解检查冲突；import-pickup 要和 pickup-split 解冲突。
       - worktree：-imx（5–7）、-imp（hr）、-impp（pickup）。
       - 9a 已写进交接，明天排。
+      - Annie 在 59 窗口说「通知后端做」，59 已经直接把整套需求发给 9a，和主窗口发的是同一份。
+        - 都不要 migration；Team、Restaurant 不在这次范围。
+        - 每个接口上 main 后，9a 通知 59 和主窗口，59 接真接口、重跑检查、合 main（import-hr 先合）。
   - G215（导游页 v9）：9a 说 v127 已在生产执行，今晚合并推送。
     - 前端要接的（原来是 92 等，92 已不在）：
       - Supplier › Restaurant 加 Address / Phone / Email / Text 四栏；
