@@ -930,7 +930,11 @@ pe-ops-frontend-seat）。**等后端 8e 上 main 再合。**
         - 按钮提示：「…and all supervisors and admins, are notified.」改成「…and supervisors and admins who can edit the schedule, are notified.」
         - 成功提示不变：「Published again. Notified N people and M supervisors.」
     - Notice 里 schedule_changed 的 body 改了文字：前端只把 body 当纯文本显示（notice-panel.tsx），没有按旧文字判断，不用改。
-    - 检查（Node v26.13.0，已合 main）：tsc 过；eslint 0 错误；sch 200/200、nav 32/32。不合 main，要等后端 G217 上 main（后端在 task/schedule-republish-notify）。
+    - 后端 G217 已上 origin/main 14cff41（eb 10-30 通知）。对过真代码：has_unsent_changes / pending_changes（含 has_login、sent_at、sent_by）、notified、notified_supervisors[{user_id,name,channels}] 都和前端一致。send-changes 多回一个 answer_reset，前端不用。
+    - **Annie 原话（2026-10-30，eb 转）：「6 7 7b 按推荐 动手」**。第 6 条选 A，就是上面四处文字。
+    - 检查（Node v26.13.0，合了 main）：tsc 过；eslint 0 错误（2 个警告是别人的文件）；build 过；sch 200/200、nav 32/32。
+      - sch 第一次在 Rules 的删除那步崩了（确认框还没出来就去点 Delete），和这次改动无关。重跑一次 200/200。
+    - 线上 main 原来的确认框写「No notifications are sent when you publish again.」，后端上线后已经不对，这个分支合进去就改掉。
 - **其余自动保存改手动 A2 / A7 / B8**（9c，`task/misc-manual-save`）：Annie 原话「4项全部动手」；盘点 https://claude.ai/artifact/3GQ3waCB2X4jnEdxTRfefe 。后端不用改。
   - A2 Manifests 每单 Cfm # 格：离开框不再存；改了格旁出蓝色 Save（照节标题 Cfm # 的样子；没改不出，免得一整列都是键），按 Save 或 Enter 才存，Esc 放回；存好框变绿 + 绿字 Saved，失败红字 Not saved: …、输入留着；有没存的格子离开页面先问。How to use 改了。
   - A7 Content Studio › Shuttle routes 线路名：离开框不存；改了名字旁出蓝色 Save，按 Save 或 Enter 才存，Esc 放回；存好绿字 Saved，失败红字、打的字留着（原来会改回）；名字空着红字不发请求；离开页面先问；面板说明改了。
