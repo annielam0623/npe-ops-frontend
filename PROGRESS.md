@@ -79,6 +79,11 @@
       - Bus Manifest 不做 10 分钟自动存。
       - 离开页面时拦一下，问要不要存。
       - 已转 9c，还没「动手」。
+    - ⚠️ 9a 更正：它当初转的「下拉用缓存」，Annie 说的是盘点里的 B4 / B9，不是 Bus Manifest 版式（B2）。
+      - Annie 已定 B4：产品表的下拉也先暂存，和 Internal name 一起按 Save 存。
+      - Annie 已定 B9：排班改成整周一个 Save，原话「你不会用缓存么」。要后端批量保存接口，形状由前端起草（59 做完 Dispatch 后接）。
+      - B2 主窗口理解成同样暂存 + Save（Annie 在 d2 窗口那句话），正在跟 Annie 确认。确认前，9c 分支上的版式照旧选了马上存。
+      - 盘点剩下的问题由 d2 一次问完。
 - 后端 c8[fbbc9c] 报 G214 已上 main：代码 fa35f01，合并 43934d7，关包 d657a48。这就是 Dispatch「Not in HR」方案 B。
   - HR 存档后，今天及以后对得上的手填名改连到 HR 里的人，接口形状不变，前端不用改。
   - Dispatch 没有 Action Log 面板，新的 action「link_hr」对前端没有影响。
