@@ -294,6 +294,12 @@
               - 9a：已记进交接，公司电脑不用再找 bd 那 9 题。
                 - 迁移号：G215 用 v127（餐厅四栏 + 导游改餐，后端说在等 Annie 回答），G211 用 v128 以后，两件不能同时提交。
                 - v3 出来要转 9a。
+              - 9c 交 v3（同一个链接）：
+                - 季节全站共用：Shuttle 卡头「Edit seasons」，有 Copy to next year；
+                - 时刻表是「线路 × 季节」；
+                - 重叠红字不让存，空档黄字可以存。
+                - 后端：shuttle_seasons + pickup_location_times。Q12–Q16 照推荐。
+                - 已转 9a。9c 已开工 task/pickup-split（worktree D:\npe-ops-frontend-seat）。
           - 批量导入后端：9a 排明天。先做通用形状 + HR，再 Pickup → Team → Restaurant。
           - 顺带发现两个可能的 bug，已转 9a 核实：回程时间减 15 分钟前后不一致；Rezdy 自带时间可能被减了两次。
         - 前端派 9c `task/schedule-publish-anyway`，后端上 main 前不合 main。
