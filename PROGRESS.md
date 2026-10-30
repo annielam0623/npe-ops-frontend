@@ -9,43 +9,9 @@
 > 规矩见 CLAUDE.md「问 Annie 要确认的事：给完整内容，并一直置顶」（2026-10-30）。每条都要能单独看懂。
 
 ### 10. 排班还要定的
-- 10d 生产上走一遍：Annie 原话「谁提出的谁走」（是 09 提出的）。
-  - ⚠️ 卡在登录：工作窗口的 headless 浏览器没有登录生产 ops 的账号，走不了。
-  - 选法：
-    - A. Annie 给一个测试用的 staff 账号（ZZ Test 开头），窗口用它登录走一遍（推荐）；
-    - B. 窗口写好逐步清单，Annie 自己点。
-  - 另外，ZZ Test 员工的邮箱要 Annie 给，要是只她本人收得到的。
-
-### 12. 排班：页面上有没存的改动时按 Send to confirm（62 提）
-- 现在：整周 Save 上线后，拖班、改时间都先放在页面上，按 Save 才存。Send to confirm 发出去的是「库里」跟上次发布比的改动。如果这个人还有改动在页面上、没按 Save，这些改动不会出现在发给他的内容里。
-- 为什么问：发出去的内容和页面上看到的不一样，他确认的不是最新的班。
-- 选法：
-  - A. 有没存的改动时，Send to confirm 键灰着，旁边灰字「Save first」，先按 Save 再发（推荐：最简单，不会发错；和 Bus Manifest 的 Farm out 键「Save your changes first」一个做法）；
-  - B. 点 Send to confirm 时先自动存，再打开发送框；
-  - C. 照现在，不管。
-
-### 14. Daily Operation Report：别人的报告怎么补充（新功能，要先 preview）
-- Annie 10-30 原话：「如果是edit的话，应该是都可以，如果去改另外一个人发布的，那staff就不可以，只能本人改，如果需要纠正什么的话在下面备注，或者更新最新进展就好了」
-- 主窗口查了后端：「本人改自己的，有 report.edit 的能改所有人的」，后端 10-26 就是这么做的（G187）。
-  - 前端没跟上：只给 supervisor / admin 改，staff 连自己的都改不了。这是 bug，派窗口修，样子不变。
-  - 09 上午盘点说「没有对应的勾」，说错了，勾是 report.edit。
-- 新功能：报告下面加「备注 / 最新进展」，谁都能加，不改原报告。后端现在没有这个接口（只有改整条报告的 PATCH）。
-  - 要不要做：做的话先出 preview（放哪、每条显示谁、几点、内容，会不会通知跟进人），再请后端加接口。
-  - 推荐做。
-
-### 15. 排班发布后的提示，要写出「谁没收到」（新文字）
-- 现在：Publish / Publish again 后，页面写「Published. Notified 6 people.」。实际 6 人都没有邮箱、也没关联账号，一条都没发出去。
-- 后端 ef 在改（task/republish-recipients-by-perm，还没上 main）：
-  - notified 只算真发出去的人；
-  - 新加 not_reached，列出没收到的人和原因，原因两种：
-    - 「no email or login」：没邮箱也没账号；
-    - 「email could not be sent」：有邮箱，但这次没发成。
-- 主窗口拟的提示（英文原文）：
-  - 都收到：「Published. Notified 6 people.」（照旧）
-  - 有人没收到：「Published. Notified 4 people. 2 couldn't be reached: Jing, Anita (no email or login).」，没收到那一段用红字；
-  - 都没收到：「Published, but no one was notified: Nadia, Veronica, Lizzie, Jing, Jessica, Anita have no email or login. Add their email in Employees.」，红字；
-  - Publish again 照同样写法，后面接「… and M schedule editors」。
-- 要 Annie 定：这样写行不行。行就说「15 动手」，后端上 main 后前端接。
+- 10d 生产上走一遍：Annie 原话「谁提出的谁走」，并给了测试邮箱 azhou@nationalparkexpress.com（「所有测试都用这个邮箱，记住了」，已写进 CLAUDE.md 测试一节）。
+  - 还差一个能登录生产 ops 的 ZZ Test staff 账号（用户名 + 密码），工作窗口的 headless 浏览器才能走。要 Annie 在 Team 页建好给出来，或者她自己按清单点。
+  - ZZ Test 排班员工的邮箱用 azhou@nationalparkexpress.com。
 
 ### 17. 排班卡片上直接标出造成的空档（62 preview https://claude.ai/artifact/WVNc5X87zYyKyY6k47qyKU ）
 - 依据：Annie 原话「是否可以直接在排班的那个模块上显示出来不是更直观么」，又举例：「如果制造了gap，他选了时间时候一保存，这个格子就变红色，告诉排班的人有一小时的gap」。
@@ -680,6 +646,15 @@
 - Annie 确认 Jing 的邮箱是 jtian 那个账号，已转 57。
 - 391d6ea0 是 release.py 的交付编号（G211），不是提交号。
 - **Annie 答置顶 16（Sync Rezdy 键）原话「不留，彻底删掉」**：两处键（Dispatch ① 区、Main Manifest 页）都删，派 09。Dispatch 打开 / 换天的 /sync（只读 Main manifest）不动。后端接口删不删，已问 57。
+- **Annie 一并答复（约 14:00，原话「以上内容全都动手」）**：
+  - 10d：给测试邮箱 azhou@nationalparkexpress.com，「所有测试都用这个邮箱，记住了」，已写进 CLAUDE.md。还差 ZZ Test 登录账号。
+  - 12「同意」：派 62 `task/schedule-confirm-save-first`。
+  - 14「加最新进展，任何人都可以加」：后端已发 57（新表 + POST updates，迁移 SQL 给 Annie 过目），前端等形状，派 09。
+  - 15「同意」：派 e6 `task/schedule-not-reached`，用 mock，等 ef 上 main。
+  - 16「不留，删掉」：09 在删两处键；后端接口明天扫完调用方再删。
+  - 57 补充：每天 03:00 PT 有自动对账（run_daily_reconciliation），漏推的单最晚第二天凌晨会补上。
+- 92 的 Team Columns 键（team_list_layout，GET / PUT /api/user-prefs/team_list_layout，同 hr_list_layout）已提交，排队上 main。
+- 62 pickup-split 上 main d34ce08。
 - 62 week-save 已上 main 7da6786。
 ## 2026-10-29 晚 收工交接：前端主窗口 `今天前端主窗口-d2`[15266b]（家里电脑，Annie「做完写交接收工」）
 
