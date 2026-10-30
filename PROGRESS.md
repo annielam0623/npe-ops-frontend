@@ -66,6 +66,10 @@
 - 后端 c8 报 G203 ③ 第一批已上 main：合并 ee121ec，关包 de7992f。
   - 新增两个读日志接口：/api/admin/nav-config/action-log（只给 superadmin）、/api/farm-out/settings/action-log（要 settings.farm_out，partner 403）。
   - 已派 59 `task/g203-batch3` 给这两页加面板，检查过后合 main。
+  - ✅ 59 已合 main：合并 c128255，功能提交 7904fb8。
+    - 面板加在 Settings › Navigation 和 Settings › Farm out Partners 两页。
+    - 检查：dr 88、fo-settings 81、cp 18；tsc 0，eslint 0 错，build 过。
+    - Timetable 页没加面板（日志是整个 Farm out 设置一份）。Annie 要的话再加。
 - Annie 问 Staff Schedule 为什么写「1 day with gaps」，下面又是「Gaps: none」。只回答了，没改代码：
   - 空档在 Sat 11/07 的 2:00–8:00 AM。她改成 3am 的两个 Open 班在 Unassigned 行，不算覆盖；就算分给人，2:00–3:00 AM 也还是空着。
   - 右上角的数字算的是整周，Day timeline 显示的是选中的 Mon 11/02。
