@@ -186,6 +186,9 @@ export function ScheduleView() {
   /** 上一次 Save 送出去的 ops 对应哪个班（400 op_index → 标红哪一格）。 */
   const slotOfRef = useRef<number[]>([]);
   const dirty = isDirty(draft);
+  /** 现在看的是哪一周（异步回来时判断有没有换周）。 */
+  const weekRef = useRef(weekStart);
+  weekRef.current = weekStart;
 
   const redirectingRef = useRef(false);
   const redirectToLogin = useCallback(() => {
@@ -387,7 +390,10 @@ export function ScheduleView() {
     if (week.kind !== "ready" || saveState.kind === "saving") return;
     const serverSlots = week.week.slots;
     setActionError(null);
+    const startedOn = weekStart;
     if (!(await guardEdit())) return;
+    // 等占锁的时候换了周：这一下作废（不然会落到新的那一周上）。
+    if (weekRef.current !== startedOn) return;
     setDraft((d) => fn(d, serverSlots));
     editLock.markEdited();
     lastChangeRef.current = Date.now();

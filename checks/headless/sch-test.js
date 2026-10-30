@@ -147,6 +147,8 @@ async function setTime(slotExpr, start, end) {
   if (end) await evaluate(`$setValue(document.querySelector('[data-time-popup] input[aria-label="End time"]'), '${end}');`);
   await evaluate("document.querySelector('[data-time-popup-done]').click();");
   await waitFor("!document.querySelector('[data-time-popup]')");
+  // 第一次动手要先占锁（一个请求），改动落到页面上要等一下。
+  await sleep(400);
 }
 
 async function run() {
@@ -771,7 +773,8 @@ async function run() {
   await evaluate(`$btn('Save rule', ${dlg}).click();`);
   check("编辑：改成 10 小时", await waitFor("document.querySelector('[data-rules-view]').textContent.includes('At least 10 hours between two shifts')"));
   await evaluate("$btn('Delete', document.querySelector('[data-rule-row]')).click();");
-  await waitFor(`${dlg}`);
+  // 等的是删除确认框（上一个 Edit rule 框可能还没关掉）：框里出现 Delete 键再点。
+  await waitFor(`${dlg} && !${dlg}.textContent.includes('Edit rule') && !!$btn('Delete', ${dlg})`);
   await evaluate(`$btn('Delete', ${dlg}).click();`);
   check("删除：列表回到空状态", await waitFor("document.querySelector('[data-rules-view]').textContent.includes('No rules yet')"));
 
@@ -1229,9 +1232,11 @@ async function run() {
   check("打了读不懂的字：输入框退回 9:45 PM，值不变", await evaluate(`return ${startIn}.dataset.value === '21:45' && ${startIn}.value === '9:45 PM';`), await evaluate(`return ${startIn}.dataset.value + ' / ' + ${startIn}.value;`));
   await evaluate(`${popup}.querySelector('[data-time-popup-cancel]').click();`);
   await waitFor(`!${popup}`);
+  const slotAId = Number(await evaluate(`return ${slotA}.dataset.slotId;`));
+  const endBefore = (await (await fetch(`${MOCK}/api/schedule/weeks/${P2}`)).json()).slots.find((s) => s.id === slotAId)?.end_time;
   await saveWeek();
   const tOps = (await changesLog()).at(-1)?.body.ops;
-  check("整周 Save：一条 time（start 21:45、end 不变 10:00）", tOps?.length === 1 && tOps[0].op === "time" && tOps[0].start_time === "21:45" && tOps[0].end_time === "10:00", JSON.stringify(tOps));
+  check("整周 Save：一条 time（start 21:45、end 不变）", tOps?.length === 1 && tOps[0].op === "time" && tOps[0].start_time === "21:45" && tOps[0].end_time === endBefore, JSON.stringify(tOps));
 
   // ── 离开页面 / 换周：有没存的改动先问 Save / Don't save / Cancel（B9 ⑥）──
   await setTime(slotA, "08:00");

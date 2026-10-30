@@ -162,6 +162,58 @@
   - tsc 0 错；eslint 0 错、2 个警告（public/window-hscroll.js 原有的）；build 过。
   - eb 核对过，合 main。
   - 注：npm 11 的 `npm ci` 拦了 unrs-resolver 的 postinstall（提示 `npm install-scripts approve`），没批；tsc / eslint / build / 检查都不受影响。
+
+## 2026-10-30 排班整周一个 Save（B9 / G218）+ 改时间小窗（A8）（工作窗口 `npe-ops-frontend-62`[cd78c4]，eb 派）
+
+- 分支 **`task/schedule-week-save-main`**（worktree `C:\Code\npe-ops-frontend-weeksave`）。从最新 main 拉的。
+  - 原来的 `task/schedule-week-save` f252f50 是从旧版 send-to-confirm 拉的，合 main 会冲突、还会带进旧代码，所以没用；9c 的交接原文还在那条分支上。
+- 依据：
+  - Annie 10-29「你不会用缓存么」「4项全部动手」：第 3 项 = 排班整周一个 Save（B9 Q1–Q7 照推荐）+ A8 改时间小窗（照推荐，小窗的键改成 Done）。
+  - preview：B9 https://claude.ai/artifact/AY3vC6WaeLmTQgTx3BZi79 、A8 https://claude.ai/artifact/5jHSPfjGt9eD187iP8i2ut 。
+  - **B9 Q4 已同意**（eb 10-30：Annie 答「Q1–Q7 照推荐」，Q4 就是 10 分钟没动作只出琥珀色提醒、不自动存）。
+- 后端 G218 已上 main 4c5b3bf，接口照 `docs/interfaces/schedule-week-changes-2026-10-30.md` 对过：
+  - 出错回包是 `{detail: {detail, code, …}}`；
+  - ref 用 n1、n2…，合后端「1–40 个 ASCII 字母 / 数字 / _ . : -」的限制。
+- 做了：
+  - `components/schedule/week-draft.ts`（新，纯函数）：
+    - 暂存的 creates（临时负数 id）和对已有班的 edits；
+    - 叠出页面上要画的班和 moved / time / new / note / deleted 标记；
+    - 生成 ops（create 先，再 assign / time / note，最后 delete），记每条对应哪个班（400 op_index 标红）；
+    - 按页面上的班算空档（同后端算法）。
+  - `schedule-view.tsx`：
+    - 拖班 / 加删 / 改时间 / 备注只改暂存；
+    - 周导航那一排 Discard + Save（蓝），下面一行琥珀色「Not saved yet: N changes (…)」、绿色「✓ Saved · 时间」、红字后端原话（一样都不存，改动留着）；
+    - 409 stale 带 Reload / Keep editing；coverage_gap 列空档；
+    - 空档 / Day timeline 照页面上的算；
+    - Publish 有没存的改动时写「You have N unsaved changes. They are saved first, then the week is published.」，键「Save and publish（again）（anyway）」；
+    - 离开页面 / 换周弹 Save / Don't save / Cancel（复用 dispatch-manifest 的 LeaveDialog）；
+    - 10 分钟没动作琥珀色提醒（不自动存）；
+    - `?week=` 改用 `replaceUrl`（不然撤离开提醒的哨兵时会把旧的周搬回地址栏）；
+    - 等占锁时换了周，那一下作废。
+  - `use-schedule-edit-lock.ts`：有没存的改动时心跳一直带 edited:true、不做 15 分钟自动放开；交出 token、收回包里的新 lock_token；存好 / Discard 放开。
+  - `week-grid.tsx`：
+    - 卡片上琥珀色标记；删掉的灰掉划线、带 Undo；
+    - 搬走的原位置留淡的琥珀虚线影子；
+    - 400 指出的那张标红；
+    - 点时间开 A8 小窗；备注的 Save 改 Done（白色）。
+  - `time-edit-popup.tsx`（新，A8）：
+    - 卡片上方独立小窗（谁 · 哪天 · 什么班），Start / End 并排，Done（白）/ Cancel；
+    - 透明遮罩挡住别的格子；没改点外面直接关；改过出黄框 Unsaved changes + Done / Discard；Esc 同点外面。
+  - `time-picker.tsx` 加 `inline`：列表开在输入框下面、不盖键，选了 AM / PM 就收起。改时间小窗和 Add shift 窗口用（A8 Q4）；别处不动。
+  - Auto-fill：当前这一周放进暂存等 Save（Replace = 原来的班标删掉）；后面几周照旧直接建草稿（B9 Q6）。
+  - 休假（加 / 删）照旧马上存。
+- 检查：
+  - sch-mock 加 version 和 `POST …/changes`（locked / stale / coverage_gap / 400 op_index / 员工不在职），`/__bump`、`/__changes`；
+  - sch-test 改成「改 → Save → 查服务端」，新加 A8 小窗、标记、Undo、Discard、离开 / 换周拦截、Save and publish、stale / locked / 不在职、10 分钟提醒、Auto-fill 进暂存等；
+  - 顺手修了 Rules 删除那步的偶发失败（等框里出现 Delete 键再点）。
+  - 合了 main 96d130f（send-to-confirm）之后：tsc 过；eslint 0 错误；build 过；**sch 249/249、nav 32/32**（端口 3362 / 8962 / 9562）。
+- ⚠️ 要问 Annie / eb 的一点（没改）：有没存的改动时按 Send to confirm，发出去的只是**库里**的改动，页面上没存的那些不在里面（pending_changes 是后端按库里算的）。可以选：
+  - A. 先要求 Save（Send to confirm 灰着，写 Save first）；
+  - B. 发之前自动先存；
+  - C. 照现在。
+  这件是新样子，要先问 Annie。
+- 下一步：eb 回「合」再合 main（合前拉 main，有代码进来就重跑 sch、nav）。
+
 ## 2026-10-30 G215 前端：Send to driver「page is off」+ driver_page / guide_page 开关（工作窗口 `npe-ops-frontend-62`[cd78c4]，eb 派）
 
 - 分支 `task/g215-page-off`，worktree `C:\Code\npe-ops-frontend-g215`。检查都过了，等 eb 核对数字后合 main。
