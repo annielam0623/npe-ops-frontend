@@ -1239,6 +1239,18 @@ pe-ops-frontend-bmv）：
   2. `POST /api/farm-out/partners/{id}/locations/import/commit`（同一个文件）：只写 new / update，**一个事务**；回 `ImportCommitResult`；
      改动记进 Farm out 设置的 Action Log（同现在 PUT locations 的写法）。
 - 下一步：后端接口上 main → import-hr 先合 main → 合最新 main、重跑 fo-settings → 合 main。
+- **2026-10-30 e6 对后端 G220 第二批**（工作窗口 `npe-ops-frontend-e6`[047d88] 接手，分支 `task/import-farmout-locations-e6`，worktree `C:\Code\ops-wt-e6-import-farmout-locations`；主窗口 eb 派工）：
+  - 照后端 task/bulk-import-backend c8c0b739（farm_out_settings.py 的 plan_location_import、routers 的 _import_preview / _import_commit）核：
+    - 接口、列 key、表头（Hotel / Spot / Address / Map link）、只在这家里按 Hotel 对，和 59 的前端一致，页面代码不用改形状。
+  - 出入，已改：
+    - mock 补每行 row、counts，新建行的 changed；unchanged 行带对上的 id。
+    - Map link 错的原话改成后端的「The map link for <Hotel> must start with http:// or https:// and have no spaces.」。
+    - 加 409「Someone changed this list while the file was being saved. Nothing was saved — check the preview again.」、400（文件错 / 公司不存在）。
+    - 500 用后端原话「Could not save. Nothing was changed - try again.」。
+  - 共用块 [bulk-import.tsx](components/ui/bulk-import.tsx) 修一处：后端原话里已经有 nothing was changed / saved 时，前面不再加「Not saved — nothing was changed.」（原来 Farm out 500 会说两遍）。只改字，样子不变。
+  - fo-settings-test 加 / 改：500 红字只说一遍、409 红字照原话、400 红字照原话且没有表和 Save；Map link 错误原话。
+  - 检查（合了最新 main）：fo-settings 97/97、nav 32/32、hr 56/56、pl 63/63、veh 47/47（共用块改了，三套一起跑）；tsc 0 错；eslint 0 错、2 个原有警告；build 过。
+  - ⛔ 后端还没上 main，只推分支。后端上 main 后合最新 main、重跑、合 main。
 
 ## 全站「上传表格自动填」：Vehicles 的 ⬆ Import（`task/import-vehicles`，从 `task/import-hr` 拉，2026-10-29 晚，工作窗口 `npe-ops-frontend-59`[678c38]，主窗口 d2 派工）—— **分支已推，没合 main（后端接口没上，先用 mock）**
 
