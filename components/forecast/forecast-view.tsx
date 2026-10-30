@@ -12,8 +12,6 @@ import {
   fetchCanyonSnapshot,
   fetchForecast60Day,
   refreshCanyonSnapshot,
-  saveDayAllotment,
-  saveDayRunning,
   saveForecastCell,
 } from "@/lib/forecast-api";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
@@ -21,7 +19,6 @@ import { usePermissions } from "@/lib/staff-permissions";
 import type {
   CanyonSnapshot,
   Forecast60Day,
-  ForecastBlock,
   ForecastCellMeta,
   ForecastCellResult,
   ForecastPlanGuide,
@@ -30,18 +27,7 @@ import type {
 import { ActionLog } from "./action-log";
 import { CclOtherPanel } from "./ccl-other-panel";
 import { CellEditor } from "./cell-editor";
-import {
-  allotmentAbbreviations,
-  closedReason,
-  formatLongDate,
-  formatMetaTime,
-  isClosedDay,
-} from "./config";
-import {
-  DayAllotmentEditor,
-  type AllotmentChange,
-} from "./day-allotment-editor";
-import { DayRunningEditor } from "./day-running-editor";
+import { formatLongDate, formatMetaTime } from "./config";
 import { ForecastGrid, type CellTarget } from "./forecast-grid";
 import { GuideEditor } from "./guide-editor";
 import { HowToUse } from "./how-to-use";
@@ -108,9 +94,6 @@ export function ForecastView() {
   const [hideZero, setHideZero] = useState(false);
   const [editorTarget, setEditorTarget] = useState<EditorTarget | null>(null);
   const [cellTarget, setCellTarget] = useState<CellTarget | null>(null);
-  // G81：点粗体人数格 / Max allotments 格（只存块的身份和第几天，数据永远从最新的 view 里取）。
-  const [runningTarget, setRunningTarget] = useState<EditorTarget | null>(null);
-  const [allotTarget, setAllotTarget] = useState<EditorTarget | null>(null);
   // 表上存了一处就 +1：Action Log 展开着就重拉。
   const [logKey, setLogKey] = useState(0);
   // Antelope 剩余座位快照（后端 bbff78d）：null = 后端没上线 / 读失败 ⇒ 那一行照旧。页面打开只读快照，不触发 Rezdy。
@@ -213,47 +196,6 @@ export function ForecastView() {
       // 存已经成功了；重拉失败就保留现在的表，staff 刷新页面即可。
     }
     setLogKey((k) => k + 1);
-  }
-
-  async function handleSaveRunning(
-    target: EditorTarget,
-    date: string,
-    running: boolean | null,
-    reason: string,
-  ) {
-    try {
-      await saveDayRunning({
-        date,
-        manifest_id: target.manifestId,
-        section: target.section,
-        running,
-        reason,
-      });
-    } finally {
-      // 400 / 409 之类说明别人刚改过：也重拉，让页面跟后端一致。
-      await refreshQuietly();
-    }
-  }
-
-  async function handleSaveAllotments(
-    target: EditorTarget,
-    date: string,
-    changes: AllotmentChange[],
-  ) {
-    try {
-      // 一档一档存；中途出错就停在那一档，前面存好的下面 finally 里重拉就看得到。
-      for (const change of changes) {
-        await saveDayAllotment({
-          date,
-          manifest_id: target.manifestId,
-          row_label: change.rowLabel,
-          time_label: change.timeLabel,
-          max_pax: change.maxPax,
-        });
-      }
-    } finally {
-      await refreshQuietly();
-    }
   }
 
   function updateCrewGuides(
@@ -408,14 +350,6 @@ export function ForecastView() {
               b.section === cellTarget.section,
           )?.cells?.[cellTarget.rowKey]?.[cellTarget.dayIndex] ?? "")
       : "";
-  const findBlock = (t: EditorTarget | null): ForecastBlock | null =>
-    data && t
-      ? (data.blocks.find(
-          (b) => b.manifest_id === t.manifestId && b.section === t.section,
-        ) ?? null)
-      : null;
-  const runningBlock = findBlock(runningTarget);
-  const allotBlock = findBlock(allotTarget);
   const editorBlock =
     data && editorTarget
       ? data.blocks.find(
@@ -573,20 +507,6 @@ export function ForecastView() {
                   setEditorTarget({ manifestId, section, dayIndex })
                 }
                 onOpenCell={setCellTarget}
-                onOpenRunning={(block, dayIndex) =>
-                  setRunningTarget({
-                    manifestId: block.manifest_id,
-                    section: block.section,
-                    dayIndex,
-                  })
-                }
-                onOpenAllotment={(block, dayIndex) =>
-                  setAllotTarget({
-                    manifestId: block.manifest_id,
-                    section: block.section,
-                    dayIndex,
-                  })
-                }
               />
             </ForecastReadOnly.Provider>
 
@@ -652,49 +572,6 @@ export function ForecastView() {
             handleSaveCell(cellTarget, data.days[cellTarget.dayIndex], value)
           }
           onClose={() => setCellTarget(null)}
-        />
-      ) : null}
-
-      {!readOnly && data && runningTarget && runningBlock ? (
-        <DayRunningEditor
-          key={`${runningTarget.manifestId}:${runningTarget.section}:${runningTarget.dayIndex}`}
-          title={runningBlock.name}
-          subtitle={formatLongDate(data.days[runningTarget.dayIndex])}
-          closed={isClosedDay(runningBlock, runningTarget.dayIndex)}
-          reason={closedReason(runningBlock, runningTarget.dayIndex)}
-          meta={runningBlock.running_meta?.[runningTarget.dayIndex] ?? null}
-          cclClosed={(() => {
-            const crew = runningBlock.crew[runningTarget.dayIndex];
-            return crew?.source === "ccl" && crew.closed;
-          })()}
-          onSave={(running, reason) =>
-            handleSaveRunning(
-              runningTarget,
-              data.days[runningTarget.dayIndex],
-              running,
-              reason,
-            )
-          }
-          onClose={() => setRunningTarget(null)}
-        />
-      ) : null}
-
-      {!readOnly && data && allotTarget && allotBlock?.allotments ? (
-        <DayAllotmentEditor
-          key={`${allotTarget.manifestId}:${allotTarget.section}:${allotTarget.dayIndex}`}
-          title={`Max allotments · ${allotBlock.name}`}
-          subtitle={formatLongDate(data.days[allotTarget.dayIndex])}
-          allotments={allotBlock.allotments}
-          dayIndex={allotTarget.dayIndex}
-          abbreviations={allotmentAbbreviations(allotBlock.allotments)}
-          onSave={(changes) =>
-            handleSaveAllotments(
-              allotTarget,
-              data.days[allotTarget.dayIndex],
-              changes,
-            )
-          }
-          onClose={() => setAllotTarget(null)}
         />
       ) : null}
     </main>

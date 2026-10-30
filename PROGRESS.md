@@ -109,6 +109,36 @@
   - 等等。
   觉得键太多，可以改成按大块分。
 
+## 2026-10-30 7 Days Forecast：数字格不能点、能编辑的空格改绿色 +（`task/forecast-no-click`，工作窗口 `npe-ops-frontend-e6`[047d88]，主窗口 eb 派工）
+
+- 依据：
+  - Annie 10-28 原话「不能点就是不能点，你把能edit里的-都改成绿色的+就可以了。不要虚线框，全部细实线」；
+  - 59 的 preview 第 2 版 https://claude.ai/artifact/X9EXZjpgbKfPhxzeKR7c9c ；
+  - Q1 / Q2 照推荐；
+  - Annie 10-30「你检查一下我前天和昨天布置的任务还有哪些没有完成的，现在做了」（经 eb 转）。
+- 改动（components/forecast/）：
+  - 粗体人数格、Max allotments 格去掉按钮，只是数字，点了没反应。原来按钮带的内边距挪到格子上，行高不变。
+  - Q2：以前按天开 / 关团、改上限（G81）的记录照样生效，小黄点和鼠标提示（原因 / 谁 / 何时）照旧，挪到格子上。
+  - forecast-view 不再打开 DayRunningEditor / DayAllotmentEditor，也不再调 `PUT /api/forecast/day-running`、`day-allotment`。接口和那两个编辑框文件都留着，没删。
+  - 能编辑的空手写格（Crew notes、Notes、Pax、Driver / Vehicle type、CCL major events）从「—」改成一直显示的绿色「+」（新文件 add-plus.tsx，#4ade80），去掉鼠标移上去才出的「+ Add」。
+  - Q1：Driver / Guide 行照旧能点，没排导游的空格也是绿「+」，去掉「+ guide」。
+  - 过去的日子、只读格照旧是「—」。
+  - 虚线框：forecast 里本来就没有，不用改。
+  - How to use 第 2 条加一句：数字不能点，开关团、改上限去 Bus Manifest setup；第 5 条加一句：空格显示绿色 +。
+- fc-test：
+  - 原来的「G81 表上按天改」一整段（点粗体格 / 上限格、弹框、存、Back to automatic 等）换成新检查：
+    - 数字格没有按钮、鼠标不是手指、点了没弹框没请求；
+    - 旧的按天改照样显示（小黄点、title）；
+    - Action Log 照旧；
+    - 能编辑的空格是绿 +、写了字的没有 +；
+    - 过去 / 只读的是「—」；
+    - 只读格没有 +；
+    - Driver / Guide 能点、空格绿 +、点了打开排班框。
+  - 「清空再 Save」改成回到绿 +；「有 forecast.edit」改看手写格的按钮。
+- 检查：fc 181/181、nav 32/32；tsc 0 错；eslint 0 错、2 个原有警告；build 过。
+- 这台电脑签出的文件是 CRLF，prettier --check 在原始 main 上也报 17 个文件，不是这次引进的。
+- 等 eb 回「合」再合 main。
+
 ## 2026-10-30 Bus Manifest 整页 Save 存完「闪回旧版式」（`task/manifest-version-flash`，工作窗口 `npe-ops-frontend-e6`[047d88]，主窗口 eb 派工）
 
 - 现象（09 发现）：换了版式按 Save，存完到重读回来之间，列先回到旧版式再变新的；mf「West Rim 列序」在 main 上偶尔失败也是它。
