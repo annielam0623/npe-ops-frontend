@@ -281,52 +281,60 @@
 - 这台电脑签出的文件是 CRLF，prettier --check 在原始 main 上也报 17 个文件，不是这次引进的。
 - 等 eb 回「合」再合 main。
 
-## 2026-10-30 收工交接：前端主窗口 `前端主窗口-eb`[b5cef8]（公司电脑，Annie 定今天 15:00 收工）
+## 2026-10-30 收工交接：前端主窗口 `前端主窗口-eb`[b5cef8]（公司电脑，14:45 收尾，15:00 收工）
 
-明天的主窗口先读这一节，再读上面的「📌 等 Annie 确认」。逐条细节见下面「2026-10-30 主窗口 eb 开工核对」。
+明天的主窗口先读这一节，再读最上面「📌 等 Annie 确认」。逐条细节见下面「2026-10-30 主窗口 eb 开工核对」。
 
 ### 一、今天上 main 的（都等 Annie 线上验收）
 - Bus Manifest：
   - 先存换车再存字号 1711a4e；
-  - 存完不闪回旧版式 2fd3cd3；
-  - Special Requirements 并进整页 Save d90aa68（后端 G125 cc2c43ec 已上，现在能在线编辑）；
-  - 第二辆车 Farm out 键 f04cfed。
-- Dispatch：G215 page is off + Driver / Guide page 开关 c6d9cae；手动保存 f6d79cd。
-- Products 按 Save 才存 33df24c。
+  - 存完不闪回 2fd3cd3；
+  - Special Requirements 并进整页 Save d90aa68（G125 后端已上，能在线编辑）；
+  - 第二辆车 Farm out 键 f04cfed；
+  - Lankun ✓ 列只在屏幕上 753e708。
+- Dispatch：G215 page is off + 两个开关 c6d9cae；手动保存 f6d79cd；Send to guide（短信缩短 + staff 加一句）1467032。⛔ 第一次真发导游要 Annie 点头。
+- Products 按 Save 才存 33df24c；Forecast 数字不能点 d9e5ab1。
 - 批量导入：HR fbe5fd7、Pickup b277615、Vehicles a3102e1、Farm out 上车点 7fae286、结算价 ed03071。
+- Farm out 每个团加子项 31928c3；上车点拆分 G211 d34ce08。
 - 排班：
   - Publish again 新说法 801544f；
   - Send to confirm 96d130f；
-  - 整周一个 Save 7da6786；
-  - Save 被空档拒时红字可见、空档标出来 8e445a3。
-- Forecast 数字不能点、绿色 + d9e5ab1。
-- 全部按照勾选（10c）：byTick cb073ba、A+B 1f82190、B 类检查 109aa9c、C a665f25。总开关 staff_permissions 关着时页面不变；Annie 核对完 Team 勾选再打开。
-- Daily Operation Report 本人能改自己的 4f5fb6a。
-- 语言规定、「问 Annie 给完整内容并置顶」「附 preview 原文」都写进了 CLAUDE.md。
+  - 整周 Save 7da6786；
+  - Save 被空档拒红字可见 8e445a3；
+  - 有暂存时 Send to confirm「Save first」bdf97bb；
+  - 卡片标空档 5a1dbed；
+  - 空档只算将来（前端）9b79a19；
+  - 发布后列出谁没收到 12d8a11。
+- 全部按照勾选：byTick cb073ba、A+B 1f82190、B 检查 109aa9c、C a665f25。总开关 staff_permissions 关着时页面不变；Annie 核对完 Team 勾选再打开。
+- DOR 本人能改自己的 4f5fb6a。
+- Dashboard Multi Orders：已回复的卡不显示 + 「1 order」 e2c13e7。
+- Rezdy：清理 6a8a94d（删 Upload Rezdy CSV、两处 check Rezdy、Morning 那句）；删 Sync Rezdy 键 e59375f（后端 92 在删三个接口）。
+- CLAUDE.md 新规矩：语言（跟 Annie 中文、系统文字英文）；问 Annie 要给完整内容、置顶、附 preview 原文；测试邮箱 azhou@nationalparkexpress.com（ZZTest 排班员工例外，用 annzhouyy@msn.com）。
 
-### 二、做完、等后端或 Annie 才能合
-- 62 `task/pickup-split`：后端 G211 已上 e5aafb52，62 在合（今天合不完就明天第一件）。
-- 62 `task/dispatch-send-to-guide`：等后端 78 的 Send to guide（短信缩短 + extra）上 main；第一次真发要 Annie 点头。
-- e6 `task/farmout-rate-items-e6` a96553f：等后端 G221 上 main（v130 Annie 已执行，排在 G211 后面落地，要 release.py）。
-- e6 `task/schedule-person-history-fe` 32bfb99：等 ef 的往来记录（要迁移，SQL 等 Annie 过目）；另请后端在 confirmations 加 history_count。
-- 59 做的 `task/team-contacts` 0ff97be：等 G219 上 main（v131 Annie 已执行）。合时补 Team 页 How to use 7 条（原文在 57 的消息，PROGRESS 有要点）；建号接口的 detail 保持纯字符串。之后做 import-team。
-- 09 `task/rezdy-cleanup`：②③④⑤ 在做；① 不改（后端核过 Dispatch 自动同步只读 Main manifest）。
+### 二、做完、等后端上 main 才能合
+- 62 `task/schedule-test-person` bb3bfdd：等 is_test（v134，SQL 等 Annie 过目）。
+- e6 `task/schedule-person-history-fe` 32bfb99：等 ef 往来记录（v132）+ history_count。
+- 59 `task/team-contacts` 0ff97be：等 G219（v131 Annie 已执行）。合时补 Team 页 How to use 7 条；之后做 import-team。
+- 09 明天第一件：DOR 最新进展 G224（形状在 PROGRESS「DOR 最新进展（G224）」，等 v133）。
 
-### 三、后端还在做、前端要接的
-- ef：Publish 通知按 schedule.edit（不按职位）+ notified 只算真发出 + not_reached（task/republish-recipients-by-perm）。前端提示要照置顶 15 改，等 Annie 定原文。
-- 66：G212 B1 → B4 → B2 → B5；B3 改 409 + 计数前要先发前端形状（前端「Deactivate instead」要跟着改）；B6 / B7 明天。
-- 92：Team Columns 键 team_list_layout（格式同 hr_list_layout），上了派前端照 HR 页 Columns 接。
-- 78：G223 订单流核对已答（见置顶 16）。
+### 三、后端在做 / 明天
+- ef：Publish again 这次全员都发（这一周从没收到过的人也发），目标 14:50 前上 main。上了后端先通知 Annie 再按。前端不用改。
+- ef：空档只算将来（后端）；Test person is_test；往来记录。
+- 66：G212 B1 → B4 → B2 → B5；B3 改 409 前先发前端形状（Team「Deactivate instead」要跟着改）；B6 / B7 明天。
+- 92：Team Columns 键 team_list_layout，上了派前端照 HR 页接。
+- 后端登记：周三确认挪到发布前（G138 原设计，见置顶 20），明天出方案；Multi Orders 只剩 1 张自动挂 / 0 张自动结（Annie 19 动手），等她答要不要排除取消单一起做。
 
-### 四、要 Annie 做的（不是答问题）
-- 排班员工收不到通知：在 Staff Schedule › Employees 框给 6 人填和登录账号一样的 email（后端会自动关联账号）。Jing 是哪个账号还没确认。
-- release.py：G211 / G221 落地时后端会提醒她。
-- 排班往来记录迁移 SQL 过目。
+### 四、10d 生产上走一遍（09）
+- Annie 已在 09 窗口放行登录；第 0 步只看已走完（2027-02-07 那周是空的草稿）。
+- 卡住：ZZTest 账号是 staff，总开关关着时页面上改不了排班，等 Annie 把 ZZTest 改成 supervisor（推荐）。
+- 测试员工：ZZTest（annzhouyy@msn.com）和 Leon（lxu@）。跳过 Publish again。
+- 密码不在任何文件里，09 窗口重开要重新问 Annie。
 
 ### 五、窗口和端口
 - 09 [8a0116]：3309 / 8909 / 9509；62 [cd78c4]：3362 / 8962 / 9562；e6 [047d88]：3411 / 8911 / 9541。
 - 后端主窗口：今天的主窗口-57 [738bb6]。
-- 这台公司电脑今天新装 Node v26.13.0（.nvmrc 写 22），检查都没出 26 特有的问题。新开的窗口要先刷新 PATH。
+- 这台电脑 Node v26.13.0（.nvmrc 写 22），没出 26 特有的问题。新开的窗口要先刷新 PATH。
+- 主窗口今天看错过一次时间（13:43 以为快 15:00）。要看时间用 PowerShell Get-Date（Pacific）。
 ## 2026-10-30 Bus Manifest 整页 Save 存完「闪回旧版式」（`task/manifest-version-flash`，工作窗口 `npe-ops-frontend-e6`[047d88]，主窗口 eb 派工）
 
 - 现象（09 发现）：换了版式按 Save，存完到重读回来之间，列先回到旧版式再变新的；mf「West Rim 列序」在 main 上偶尔失败也是它。
