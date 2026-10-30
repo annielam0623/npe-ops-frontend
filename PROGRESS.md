@@ -8,23 +8,6 @@
 
 > 规矩见 CLAUDE.md「问 Annie 要确认的事：给完整内容，并一直置顶」（2026-10-30）。每条都要能单独看懂。
 
-### 4. 和「不直接去 Rezdy 拉单」冲突的地方（Annie 要列出来看）
-- 规矩（Annie 10-29）：订单流是 Order List → Main manifest → Dispatch / Tracking，不许跳过前面直接去 Rezdy 拉单。
-- 现在页面上和 Rezdy 直接有关的有六处：
-  1. **Dispatch 打开 / 换天时自动同步 Rezdy**（manifests-panel.tsx:303，Annie 10-17 拿掉了手动键，自动同步还在）：Dispatch 自己去 Rezdy 拉单。
-     - 推荐：改成只从 Main manifest 取，不自己同步。⚠️ 要后端一起改。
-  2. **Dispatch 每个团卡片的「Upload Rezdy CSV」**（manifests-panel.tsx:727，同步失败时的后备）：上传 Rezdy 导出的文件来补单。
-     - 推荐：删掉。Main manifest 里没有就是没有。
-  3. **Dispatch 团卡片上的橙字「N orders not in main manifest — check Rezdy」**（manifests-panel.tsx:669）：Rezdy 有、Main manifest 没有的单。
-     - 推荐：删掉。
-  4. **Bus Manifest 订单号下面的橙字「Not in main manifest — check Rezdy」**（manifest-view.tsx:1785，How to use 2383 也有）。
-     - 推荐：删掉。
-  5. **Morning 发送页 How to use 第 x 条**（morning-send-view.tsx:492）：「…Reservations gets an email about the skipped order so it doesn't get missed; check Rezdy and send that guest manually.」
-     - 推荐：「check Rezdy」改成「check the Order List」。
-  6. **Main Manifest 页的 Sync Rezdy 键**（manifests-view.tsx:573）：Main manifest 从 Rezdy 取单。这一环本来就是订单流的入口。
-     - 推荐：保留。是否改成从 Order List 取，要后端先确认 Order List 和 Main manifest 的关系。
-- 要 Annie 逐条答：删 / 改 / 留。
-
 ### 10. 排班还要定的
 - 10d 生产上走一遍：Annie 原话「谁提出的谁走」（是 09 提出的）。
   - ⚠️ 卡在登录：工作窗口的 headless 浏览器没有登录生产 ops 的账号，走不了。
@@ -544,6 +527,17 @@
   - 派 62：① bug `task/schedule-save-clear`，被拒时红字写原因、列出空档；② 空档标在格子上，先出 preview。
   - 12:08:41 slot 102 被 delete 两次，相隔 0.04 秒，是旧前端，62 顺手看。
 - 排班往来记录：ef 定了形状（后端分支 task/schedule-person-history，文档 docs/interfaces/schedule-person-history-2026-10-30.md），要迁移，SQL 请 Annie 过目，最快明天上 main。前端派 e6（perm-c 之后）用 mock 先做 `task/schedule-person-history-fe`，只推分支。
+- Annie 问「现在publish schedule员工可以收到么」，57 只读核了生产：**现在谁都收不到**。
+  - 在职 6 个排班员工都没有邮箱，也没关联登录账号，过去 14 天一条发布通知都没发出去。
+  - 页面「Notified 6」是误导：没有渠道的人也算进去了。ef 在改：只算真发出的，没收到的单独列出。前端提示要跟着改，新文字要先 preview。
+  - 解法：在排班页 Employees 框给每人填和登录账号一样的 email，后端会按 email 自动关联账号（schedule.py:265-304），填完邮件和站内通知都能收到。账号上的 email 已告诉 Annie；Jing 对应哪个账号，等她确认。
+  - 后端待办：先填邮箱、后建账号的人，要把 email 重新存一次才会关联。
+- e6 10c C 类（54ead3d）检查全过，已回「合」。09 B 类检查上 main 109aa9c。
+- **Annie「4 全按推荐 动手」**（Rezdy 冲突）：
+  - 09 做 ②③④⑤，`task/rezdy-cleanup`，dor-edit-own 之后；
+  - ⑥ Main Manifest Sync Rezdy 留；
+  - ① Dispatch 自动同步要等后端答停掉后会不会缺单，已问 57。
+- Annie 又说「5 按推荐动手」：现在置顶没有第 5 条（Lankun 已答），已问她指哪条。
 - 62 week-save 已上 main 7da6786。
 ## 2026-10-29 晚 收工交接：前端主窗口 `今天前端主窗口-d2`[15266b]（家里电脑，Annie「做完写交接收工」）
 
