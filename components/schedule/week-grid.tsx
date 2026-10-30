@@ -85,6 +85,11 @@ interface WeekGridProps {
   /** 已发布的周每个人改了什么（只给能改排班的人传）：行上出「N changes · Send to confirm」，改过的格子标琥珀色。 */
   pendingChanges?: SchedulePendingChange[];
   onSendChanges?: (employeeId: number) => void;
+  /**
+   * 页面上有没存的改动（整周一个 Save）：Send to confirm 灰着、旁边灰字 Save first。发出去的是库里的改动，
+   * 没存的不在里面（Annie 2026-10-30 置顶 12「同意」，方案 A）。
+   */
+  sendBlocked?: boolean;
 }
 
 const COLS = "grid-cols-[130px_repeat(7,minmax(118px,1fr))]";
@@ -119,6 +124,7 @@ export function WeekGrid({
   errorSlotId = null,
   pendingChanges,
   onSendChanges,
+  sendBlocked = false,
 }: WeekGridProps) {
   const [selectedSlotId, setSelectedSlotId] = useState<number | null>(null);
   // 改时间的小窗（A8）：哪一张卡、卡片元素（量位置）。同一时间只开一个。
@@ -313,6 +319,7 @@ export function WeekGrid({
             onSendChanges={
               onSendChanges ? () => onSendChanges(e.id) : undefined
             }
+            sendBlocked={sendBlocked}
           />
         ))}
       </div>
@@ -389,6 +396,7 @@ function PersonRow({
   cells,
   change,
   onSendChanges,
+  sendBlocked = false,
 }: {
   employee: ScheduleEmployee;
   mine: boolean;
@@ -396,6 +404,7 @@ function PersonRow({
   /** 这个人这周和上次发布不一样（Annie 10-29「员工确认」）。 */
   change?: SchedulePendingChange;
   onSendChanges?: () => void;
+  sendBlocked?: boolean;
 }) {
   return (
     <>
@@ -432,10 +441,20 @@ function PersonRow({
               type="button"
               data-send-to-confirm={employee.id}
               onClick={onSendChanges}
-              className="cursor-pointer rounded-[6px] border border-sky-300/45 px-[7px] py-px text-[10.5px] font-semibold whitespace-nowrap text-sky-300 hover:bg-sky-300/10"
+              disabled={sendBlocked}
+              title={sendBlocked ? "Save your changes first." : undefined}
+              className="cursor-pointer rounded-[6px] border border-sky-300/45 px-[7px] py-px text-[10.5px] font-semibold whitespace-nowrap text-sky-300 hover:bg-sky-300/10 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {change.sent_at ? "Send again" : "Send to confirm"}
             </button>
+            {sendBlocked ? (
+              <span
+                data-send-save-first
+                className="text-[10px] whitespace-nowrap text-white/55"
+              >
+                Save first
+              </span>
+            ) : null}
           </span>
         ) : null}
       </div>

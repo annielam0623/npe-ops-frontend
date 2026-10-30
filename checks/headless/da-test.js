@@ -1181,7 +1181,7 @@ async function run() {
   await openPage(`${APP}/dispatch?date=2026-10-05`);
   await waitFor("[...document.querySelectorAll('details')].some(d => d.textContent.includes('How to use — Guest lists'))", 15000);
   check("Dispatch 上没有 Sync Rezdy 键（Step 1 / Step 2 都没有）", await evaluate("return !document.querySelector('[data-rezdy-sync]') && !document.querySelector('[aria-label=\"Sync Rezdy\"]');"));
-  check("Step 1 How to use 不再写 Rezdy 键，失败后备（Upload Rezdy CSV）那条还在", await evaluate("const t = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Guest lists')).textContent; return !t.includes('Rezdy button next to Guest lists') && t.includes('Upload Rezdy CSV');"));
+  check("Step 1 How to use 不再写 Rezdy 键，也不再写上传 Rezdy CSV（Annie 2026-10-30「4 全按推荐 动手」：订单流固定，不再叫人去 Rezdy）", await evaluate("const t = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Guest lists')).textContent; return !t.includes('Rezdy button next to Guest lists') && !t.includes('Upload Rezdy CSV');"));
   // ── Schedule check 浮窗（Annie 2026-10-17 夜）：取消顶部提醒条；浮窗跟着屏幕；Fix 带你到那台车；没客人的团沉底 ──
   await evaluate("try { localStorage.removeItem('dispatch-schedule-check-open'); } catch {}");
   await openPage(`${APP}/dispatch?date=2026-10-17`);

@@ -504,6 +504,21 @@ async function run() {
     await waitFor(`document.querySelector('[data-person-changes="4"]')?.textContent === '1 changeSend to confirm' && document.querySelector('[data-cell="4|2026-10-05"]').hasAttribute('data-changed') && document.querySelectorAll('[data-person-changes]').length === 1 && document.querySelectorAll('[data-changed]').length === 1`),
     await evaluate("return [...document.querySelectorAll('[data-person-changes]')].map(e => e.textContent).join('|');"),
   );
+  // 置顶 12（Annie 10-30「同意」，方案 A）：页面上有没存的改动时，Send to confirm 灰着、旁边灰字 Save first；Save 后恢复。
+  const stc = "document.querySelector('[data-send-to-confirm=\"4\"]')";
+  const jingSlot = `${cell("4|2026-10-05")}.querySelector('[data-slot-id]')`;
+  await setTime(jingSlot, "11:50");
+  await waitFor("!!document.querySelector('[data-unsaved-summary]')");
+  check("有没存的改动：Send to confirm 灰着，旁边灰字 Save first，鼠标提示 Save your changes first.", await evaluate(`const b = ${stc}; const n = document.querySelector('[data-person-changes="4"] [data-send-save-first]'); return b.disabled && b.title === 'Save your changes first.' && !!n && n.textContent === 'Save first';`), await evaluate("return document.querySelector('[data-person-changes=\"4\"]')?.outerHTML.slice(0, 400);"));
+  await evaluate(`${stc}.click();`);
+  await sleep(200);
+  check("灰着点不开发送框", await evaluate(`return !${DLG};`));
+  await saveWeek();
+  check("按 Save 存好：Send to confirm 恢复能点，Save first 没了", await waitFor(`!${stc}.disabled && !document.querySelector('[data-send-save-first]') && !${stc}.title`));
+  // 改回 11:45 存好，后面的检查照原来的时间
+  await setTime(jingSlot, "11:45");
+  await saveWeek();
+  await waitFor(`!${stc}.disabled`);
   await evaluate(`document.querySelector('[data-send-to-confirm="4"]').click();`);
   await waitFor(DLG);
   check(
@@ -621,7 +636,36 @@ async function run() {
   await waitFor("document.querySelector('[role=dialog]')");
   await evaluate("$btn('Publish again', document.querySelector('[role=dialog]')).click();");
   check("主管 0 人：只写「Published again. Notified 1 staff member.」，不写 and 0 supervisors", await waitFor("document.body.innerText.includes('Published again. Notified 1 staff member.') && !document.body.innerText.includes('schedule editor')"));
+  check("都收到：提示条绿色、没有红字那段", await evaluate("const b = document.querySelector('[data-publish-banner]'); return !!b && b.dataset.publishBanner === 'ok' && !b.querySelector('[data-publish-unreached]');"));
   await ctl({ noSupervisors: false });
+
+  // ── 置顶 15（Annie 2026-10-30「同意」「以上内容全都动手」）：发布后列出谁没收到（后端 ef not_reached，mock）──
+  async function republishWith(time, opts) {
+    await ctl(opts);
+    await setTime(jingMonPub, time);
+    await saveWeek();
+    await waitFor("!!document.querySelector('[data-unsent-changes]')");
+    await evaluate("$btn('Publish again').click();");
+    await waitFor("document.querySelector('[role=dialog]')");
+    await evaluate("$btn('Publish again', document.querySelector('[role=dialog]')).click();");
+    await waitFor("!!document.querySelector('[data-publish-banner]') && !document.querySelector('[role=dialog]')");
+  }
+  // 有人没收到：绿字照旧写通知了谁，后面红字写没收到的人和原因
+  await republishWith("11:30", { notReached: { 4: "no email or login" } });
+  check(
+    "有人没收到：绿字「Published again. Notified 2 schedule editors.」，后面红字「1 couldn't be reached: Jing (no email or login).」",
+    await evaluate("const b = document.querySelector('[data-publish-banner]'); const ok = b.querySelector('[data-publish-ok]'); const r = b.querySelector('[data-publish-unreached]'); return b.dataset.publishBanner === 'some-missed' && ok.textContent === 'Published again. Notified 2 schedule editors.' && !!r && r.textContent === \"1 couldn't be reached: Jing (no email or login).\" && getComputedStyle(r).color !== getComputedStyle(ok).color && r.className.includes('text-red');"),
+    await evaluate("return document.querySelector('[data-publish-banner]')?.innerText;"),
+  );
+  // 谁都没收到：整句红字
+  await republishWith("11:45", { notReached: { 4: "no email or login" }, noneReached: true });
+  check(
+    "谁都没收到：红框整句红字「Published again, but no one was notified: Jing has no email or login. Add their email in Employees.」",
+    await evaluate("const b = document.querySelector('[data-publish-banner]'); return b.dataset.publishBanner === 'none-notified' && b.getAttribute('role') === 'alert' && b.textContent.trim() === '⚠️ Published again, but no one was notified: Jing has no email or login. Add their email in Employees.' && b.className.includes('text-red') && b.className.includes('border-red');"),
+    await evaluate("return document.querySelector('[data-publish-banner]')?.innerText;"),
+  );
+  // 放回原样（后面的检查按 Jing 周一 11:15 写）
+  await republishWith("11:15", { notReached: null, noneReached: false });
 
   // 线上 bug（Annie 10-30「其实刚才是不让我存，因为有gap，但是这个提醒要到publish才能看到」）：
   // 已发布的周，Save 会造成新空档 ⇒ 后端 409 {detail:{detail, code:"coverage_gap", gaps}}。红字原话 + 列出哪天几点，Not saved yet 留着。
