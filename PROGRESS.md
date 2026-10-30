@@ -116,6 +116,9 @@
   - Annie 定，原话「改完再发」：已发布的周改动时不逐项发，等按 Publish again 时一次发给有变化的人和他们的主管。
     - 后端 8e 一起做。
     - 前端文字已派 9c `task/schedule-notify-wording`，等 8e 上 main 再合。新加的「改了还没发」提示先给 Annie 看。
+  - 「加 / 改休息日要不要单独通知本人和主管」（G200 A），Annie 答「要」。
+    - 已转 9a 和前两条一起排给 8e。
+    - 请 8e 定清楚：已发布的周里加休息日，是马上单独通知，还是等 Publish again。
 - Bus Manifest 整页 Save：✅ 9c 已合 main 800358f。
   - 检查：mf 182、man 320、nav 32；改了 useLeaveGuard，所以也跑了 da 373、tsend 54、tour 59。
   - 等 Annie 验收。
