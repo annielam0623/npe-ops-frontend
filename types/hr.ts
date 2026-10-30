@@ -75,6 +75,10 @@ export type HRImportRow = Record<string, string> & {
   changed: string[];
   /** 文件里为空、因此不写的字段 key。 */
   blanked: string[];
+  /** 这一行的错（后端还没给，已写进「需要后端」）；field = null 是整行的错。 */
+  errors?: { field: string | null; message: string }[];
+  /** 要改的字段改前的值（后端还没给）：有了预览写「旧 → 新」。 */
+  before?: Record<string, string>;
 };
 
 export interface HRImportPreview {

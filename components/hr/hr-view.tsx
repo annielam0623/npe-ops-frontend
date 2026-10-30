@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { ActionResult } from "@/components/ui/action-result";
+import { BulkImportButton } from "@/components/ui/bulk-import";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { HowToUse } from "@/components/ui/how-to-use";
 import { ErrorBanner, Panel } from "@/components/ui/panel";
@@ -459,14 +460,10 @@ export function HRView() {
             >
               {exporting ? "Preparing…" : "Export to Excel"}
             </button>
-            <button
-              type="button"
+            <BulkImportButton
               onClick={() => setImportOpen(true)}
               disabled={editing}
-              className={HR_BTN_CLASS}
-            >
-              Import from Excel
-            </button>
+            />
             <button
               type="button"
               onClick={() => openDialog(null)}
@@ -744,7 +741,7 @@ const HOW_TO_ITEMS = [
   "Click Add person, fill in the form (Legal Name is required), then Save.",
   "Click Edit on a row to change one person, or Edit list to change many, then Save changes and Done.",
   "To remove someone: Edit → Delete. This cannot be undone.",
-  "Export to Excel downloads the list. Import from Excel loads a .csv or .xlsx with a Legal Name column.",
+  "Export to Excel downloads the list. ⬆ Import: Download template (the current list), change or add rows in Excel, choose the file, check the preview, then Save. Rows are matched by Legal Name; a blank cell never clears what is stored; rows with errors are not saved.",
   "Samsara Driver ID: enter each driver’s ID from Samsara once. Guest tracking uses it to follow the bus the driver is actually on. Two people cannot share an ID. Leave it blank if you are not sure.",
   "Drag a column title to move it, or drag its right edge to make it wider. Reset columns puts them back.",
 ];

@@ -1,6 +1,6 @@
 // 模拟后端：Settings → Human Resource。控制：POST /__ctl；GET /__log。
 const http = require("http");
-const ctl = { fail401: false, staff: false, supervisor: false, writeForbidden: false, prefMissing: false, schedule: false, bulkErr: false, fail500: false, samsaraDup: false };
+const ctl = { fail401: false, staff: false, supervisor: false, writeForbidden: false, prefMissing: false, schedule: false, bulkErr: false, fail500: false, samsaraDup: false, importFail: false };
 const log = [];
 const blank = {
   legal_name: "", nickname: "", phone: "", personal_email: "", date_of_birth: "",
@@ -126,6 +126,7 @@ http.createServer(async (req, res) => {
     entry.overwrite = overwrite;
     entry.hasFile = /filename="hr\.csv"/.test(raw);
     if (p === "/api/hr/import-commit") {
+      if (ctl.importFail) return send(res, 500, { detail: "Database is busy" });
       return send(res, 200, { imported: 1, updated: overwrite ? 1 : 0, unchanged: 0, skipped: overwrite ? 0 : 1, skipped_names: overwrite ? [] : ["Bob Guide"], vanished: 0 });
     }
     const rows = [
@@ -134,11 +135,13 @@ http.createServer(async (req, res) => {
         ? previewRow("Bob Guide", "update", { phone: "+1 555", changed: ["phone"], blanked: ["employment_status"] })
         : previewRow("Bob Guide", "exists", { phone: "+1 555" }),
       previewRow("ZZ Test New", "duplicate_in_file"),
+      // 通用导入：后端以后每行回出错原因（现在还没有，mock 先按要的形状给）。
+      previewRow("ZZ Test Bad", "new", { phone: "555-01", errors: [{ field: "phone", message: "Phone number looks wrong." }] }),
     ];
     return send(res, 200, {
       rows, headers: ["legal_name", "phone", "employment_status", "assignments"],
       file_columns: ["legal_name", "phone", "employment_status", "assignments"], overwrite,
-      counts: { new: 1, exists: overwrite ? 0 : 1, update: overwrite ? 1 : 0, unchanged: 0, duplicate: 1 },
+      counts: { new: 2, exists: overwrite ? 0 : 1, update: overwrite ? 1 : 0, unchanged: 0, duplicate: 1 },
     });
   }
   send(res, 404, { detail: "mock: not found" });
