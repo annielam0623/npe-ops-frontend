@@ -539,8 +539,8 @@ async function run() {
   puts = await waitReq(cellBefore, (e) => e.path === "/api/forecast/cells");
   await waitFor(`!${dialog}`);
   check(
-    "清空再 Save：value 是空（删掉），格子回到 —；后端回 null 时间，页头 Updated by 不乱改",
-    puts.length === 1 && puts[0].body.value === "" && (await evaluate(`return ${cclTd(4, "Crew notes", DAYS[2])}.textContent.trim().startsWith('—') && document.querySelector('[data-updated-by]').textContent.includes('Updated by ZZ Test Staff · Oct 9');`)),
+    "清空再 Save：value 是空（删掉），格子回到绿色 +；后端回 null 时间，页头 Updated by 不乱改",
+    puts.length === 1 && puts[0].body.value === "" && (await evaluate(`return !!${cclTd(4, "Crew notes", DAYS[2])}.querySelector('[data-add-plus]') && document.querySelector('[data-updated-by]').textContent.includes('Updated by ZZ Test Staff · Oct 9');`)),
     JSON.stringify(puts.map((e) => e.body)),
   );
 
@@ -562,215 +562,87 @@ async function run() {
   await openPage(`${APP}/forecast`);
   check("刷新：major events 还在", await evaluate(`return ${cclTd(12, "CCL major events", DAYS[3])}.textContent.includes('ZZ Test event');`));
 
-  // ── G81：表上按天改 + Action Log（后端 f0 2026-10-16；Annie 看预览同意：所有 staff 能改）──
+  // ── 数字格不能点（Annie 2026-10-28「不能点就是不能点，你把能edit里的-都改成绿色的+就可以了」，preview 第 2 版，10-30 动手）──
+  // 按天开 / 关团、按天改上限不再在 Forecast 上改；以前改过的（G81）照样生效，小黄点、鼠标提示照旧；Action Log 照旧。
   await openPage(`${APP}/forecast`);
-  const runBtn = (block, day, section = "") => `${totalCell(block, day, section)}.querySelector('button[data-edit="running"]')`;
-  const allotBtn = (day) => `${cclTd(11, "Max allotments", day)}.querySelector('button[data-edit="allotment"]')`;
   const dot = (cell) => `${cell}.querySelector('[data-day-edited]')`;
   check(
-    "按天改：今天和以后的粗体人数格 / Max allotments 格可点；过去的日子不能点；还没手改过没有小黄点",
-    await evaluate(`return !!${runBtn(9, DAYS[3])} && !!${runBtn(9, TODAY)} && !${runBtn(9, DAYS[0])} && !!${allotBtn(TODAY)} && !${allotBtn(DAYS[0])} && !document.querySelector('[data-day-edited]');`),
+    "数字格一律不能点：粗体人数格、Max allotments 格里都没有按钮，鼠标不是手指；还没手改过没有小黄点",
+    await evaluate(`const cells = [...document.querySelectorAll('td[data-kind="total-cell"], td[data-kind="allotments"]')]; return cells.length > 20 && cells.every(c => !c.querySelector('button') && getComputedStyle(c).cursor !== 'pointer') && !document.querySelector('[data-day-edited]');`),
+  );
+  let dayBefore = (await mockLog()).length;
+  await evaluate(`${totalCell(9, TODAY)}.click(); ${cclTd(11, "Max allotments", TODAY)}.click(); return 1;`);
+  await sleep(400);
+  check(
+    "点今天的粗体人数格、Max allotments 格：没弹框、没发请求",
+    !(await evaluate(`return !!${dialog};`)) && (await since(dayBefore, (e) => e.path.startsWith("/api/forecast/day-"))).length === 0,
   );
   check(
-    "Action Log 默认收起（只有一行标题，没有表）",
+    "Action Log 照旧（默认收起，只有一行标题，没有表）",
     await evaluate(`const b = [...document.querySelectorAll('button')].find(b => b.textContent.includes('Action Log')); return !!b && b.getAttribute('aria-expanded') === 'false' && !document.querySelector('[data-action-log]');`),
   );
 
-  // 关一天：Ghost Tour（全 0）DAYS[3] 不开团 + 原因
-  let dayBefore = (await mockLog()).length;
-  await evaluate(`${runBtn(9, DAYS[3])}.click();`);
-  await waitFor(dialog);
-  await helpers();
-  check(
-    "点粗体格：弹框标题是团名，没手改过没有 Back to automatic，没改东西 Save 灰着",
-    await evaluate(`const d = ${dialog}; return d.textContent.includes('Ghost Tour') && !d.textContent.includes('Back to automatic') && $btn('Save', d).disabled;`),
-  );
-  await evaluate(`${dialog}.querySelector('input[value="closed"]').click();`);
-  await sleep(100);
-  await evaluate(`$setValue(${dialog}.querySelector('input[aria-label="Reason"]'), '  ZZ Test canyon closed  '); $btn('Save', ${dialog}).click();`);
-  let dayPuts = await waitReq(dayBefore, (e) => e.path === "/api/forecast/day-running");
-  check(
-    "选 Not running 写原因 Save：PUT /api/forecast/day-running，带 date / manifest_id / section / running:false / reason（去首尾空格）",
-    dayPuts.length === 1 && JSON.stringify(dayPuts[0].body) === JSON.stringify({ date: DAYS[3], manifest_id: 9, section: "", running: false, reason: "ZZ Test canyon closed" }),
-    JSON.stringify(dayPuts.map((e) => e.body)),
-  );
-  await waitFor(`!${dialog}`);
+  // 以前在 Forecast 上按天改过的照样生效（Q2）：小黄点、鼠标提示照旧，只是格子不能点
+  const putMock = (path, body) => fetch(`${MOCK}${path}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  await putMock("/api/forecast/day-running", { date: DAYS[3], manifest_id: 9, section: "", running: false, reason: "ZZ Test canyon closed" });
+  await putMock("/api/forecast/day-allotment", { date: TODAY, manifest_id: 11, row_label: "Lower", time_label: "1p", max_pax: 20 });
+  await openPage(`${APP}/forecast`);
   await waitFor(dot(totalCell(9, DAYS[3])));
   check(
-    "存好：框关掉、整张表重拉——这格写 -、右上角小黄点、鼠标移上去写原因 / 谁 / 何时",
-    await evaluate(`const c = ${totalCell(9, DAYS[3])}; return !${dialog} && c.textContent.trim() === '-' && !!c.querySelector('[data-day-edited]') && c.querySelector('button').title === 'Not running - ZZ Test canyon closed · by ZZ Test Staff, Oct 16, 11:00 AM';`),
-    await evaluate(`return ${runBtn(9, DAYS[3])}.title;`),
+    "旧的按天关团照样生效：这格写 -、右上角小黄点、鼠标移上去写原因 / 谁 / 何时，没有按钮",
+    await evaluate(`const c = ${totalCell(9, DAYS[3])}; return c.textContent.trim() === '-' && !!c.querySelector('[data-day-edited]') && c.title === 'Not running - ZZ Test canyon closed · by ZZ Test Staff, Oct 16, 11:00 AM' && !c.querySelector('button');`),
+    await evaluate(`return ${totalCell(9, DAYS[3])}.title;`),
   );
-
-  // 再点：有 Back to automatic；撤掉
-  await evaluate(`${runBtn(9, DAYS[3])}.click();`);
-  await waitFor(dialog);
-  await helpers();
   check(
-    "再点这一格：默认选着 Not running、原因还在、多了 Back to automatic",
-    await evaluate(`const d = ${dialog}; return d.querySelector('input[value="closed"]').checked && d.querySelector('input[aria-label="Reason"]').value === 'ZZ Test canyon closed' && d.textContent.includes('Back to automatic');`),
+    "旧的按天改上限照样生效：Lower 剩 6、补黄字 /20 1p、小黄点、title 写谁 / 何时，没有按钮",
+    await evaluate(`const td = ${cclTd(11, "Max allotments", TODAY)}; return td.querySelector('[data-allot="Lower"]').textContent.replace(/\\s+/g, ' ').trim() === 'L 6 /20 1p' && !!td.querySelector('[data-day-edited]') && td.title === 'Lower: 20 @ 1p · by ZZ Test Staff, Oct 16, 11:00 AM' && !td.querySelector('button');`),
+    await evaluate(`const td = ${cclTd(11, "Max allotments", TODAY)}; return td.textContent + ' | ' + td.title;`),
   );
-  dayBefore = (await mockLog()).length;
-  await evaluate(`${dialog}.querySelector('input[value="auto"]').click();`);
-  await sleep(100);
-  await evaluate(`$btn('Save', ${dialog}).click();`);
-  dayPuts = await waitReq(dayBefore, (e) => e.path === "/api/forecast/day-running");
-  await waitFor(`!${dialog}`);
-  await waitFor(`!${dot(totalCell(9, DAYS[3]))}`);
-  check(
-    "Back to automatic：running:null，小黄点没了，格子回到 0",
-    dayPuts.length === 1 && dayPuts[0].body.running === null && (await evaluate(`return ${totalCell(9, DAYS[3])}.textContent.trim() === '0';`)),
-    JSON.stringify(dayPuts.map((e) => e.body)),
-  );
-
-  // 后端拒绝：框不关、写后端原话
-  await ctl({ dayFail: "Past days cannot be changed." });
-  await evaluate(`${runBtn(9, DAYS[4])}.click();`);
-  await waitFor(dialog);
-  await helpers();
-  await evaluate(`${dialog}.querySelector('input[value="closed"]').click();`);
-  await sleep(100);
-  await evaluate(`$btn('Save', ${dialog}).click();`);
-  await waitFor(`${dialog} && ${dialog}.querySelector('[role=alert]')`);
-  check(
-    "保存失败：框还在、写后端原话；格子没变",
-    await evaluate(`return ${dialog}.querySelector('[role=alert]').textContent.includes('Past days cannot be changed.') && !${dot(totalCell(9, DAYS[4]))};`),
-  );
-  await ctl({ dayFail: "" });
-  await evaluate(`$btn('Cancel', ${dialog}).click();`);
-  await waitFor(`!${dialog}`);
-
-  // CCL 写了 Closed 的那天（West Rim DAYS[5]）：选 Running 存得进去但不生效
-  await evaluate(`${runBtn(3, DAYS[5])}.click();`);
-  await waitFor(dialog);
-  await helpers();
-  await evaluate(`${dialog}.querySelector('input[value="open"]').click();`);
-  await sleep(100);
-  check("CCL 写了 Closed 的那天选 Running：框里黄条说明仍然关着", await evaluate(`return !!${dialog}.querySelector('[data-ccl-note]');`));
-  dayBefore = (await mockLog()).length;
-  await evaluate(`$btn('Save', ${dialog}).click();`);
-  dayPuts = await waitReq(dayBefore, (e) => e.path === "/api/forecast/day-running");
-  await waitFor(`!${dialog}`);
-  await waitFor(dot(totalCell(3, DAYS[5])));
-  check(
-    "存了 running:true，但那天还是 -（CCL 的 Closed 压过手动开团），有小黄点",
-    dayPuts[0]?.body.running === true && (await evaluate(`return ${totalCell(3, DAYS[5])}.textContent.trim() === '-';`)),
-  );
-  await evaluate(`${runBtn(3, DAYS[5])}.click();`);
-  await waitFor(dialog);
-  await helpers();
-  await evaluate(`${dialog}.querySelector('input[value="auto"]').click();`);
-  await sleep(100);
-  await evaluate(`$btn('Save', ${dialog}).click();`);
-  await waitFor(`!${dialog}`);
-  await waitFor(`!${dot(totalCell(3, DAYS[5]))}`);
-
-  // Max allotments：今天 Antelope Lower 35 → 20（时间 1p 原样传回）
-  check(
-    "Max allotments 格：3 档平时的样子不变（U 18 / L 21 / X 30）",
-    await evaluate(`return [...${cclTd(11, "Max allotments", TODAY)}.querySelectorAll('[data-allot]')].map(d => d.textContent.trim()).join('|') === 'U 18|L 21|X 30';`),
-  );
-  dayBefore = (await mockLog()).length;
-  await evaluate(`${allotBtn(TODAY)}.click();`);
-  await waitFor(dialog);
-  await helpers();
-  check(
-    "点 Max allotments 格：三档各有 Max / Time 两个框，现在的值填好，写着 Usual；Save 灰着",
-    await evaluate(`const d = ${dialog}; return d.querySelector('input[aria-label="Lower max"]').value === '35' && d.querySelector('input[aria-label="Lower time"]').value === '1p' && d.querySelector('input[aria-label="Upper max"]').value === '30' && d.textContent.includes('Usual: 35 · 1p') && $btn('Save', d).disabled;`),
-  );
-  await evaluate(`$setValue(${dialog}.querySelector('input[aria-label="Lower max"]'), 'abc');`);
-  await sleep(100);
-  check("上限不是 1–9999 的整数：写提示、Save 灰着", await evaluate(`return ${dialog}.textContent.includes('whole number from 1 to 9999') && $btn('Save', ${dialog}).disabled;`));
-  await evaluate(`$setValue(${dialog}.querySelector('input[aria-label="Lower max"]'), '20'); $btn('Save', ${dialog}).click();`);
-  dayPuts = await waitReq(dayBefore, (e) => e.path === "/api/forecast/day-allotment");
-  check(
-    "只改了 Lower：只发一条 PUT /api/forecast/day-allotment，带这天现在的时间 1p（不传时间会变空）",
-    dayPuts.length === 1 && JSON.stringify(dayPuts[0].body) === JSON.stringify({ date: TODAY, manifest_id: 11, row_label: "Lower", time_label: "1p", max_pax: 20 }),
-    JSON.stringify(dayPuts.map((e) => e.body)),
-  );
-  await waitFor(`!${dialog}`);
-  await waitFor(dot(cclTd(11, "Max allotments", TODAY)));
-  check(
-    "存好：重拉后 Lower 剩 6、补黄字 /20 1p，右上角小黄点，title 写谁 / 何时",
-    await evaluate(`const td = ${cclTd(11, "Max allotments", TODAY)}; return td.querySelector('[data-allot="Lower"]').textContent.replace(/\\s+/g, ' ').trim() === 'L 6 /20 1p' && !!td.querySelector('[data-day-edited]') && td.querySelector('button').title === 'Lower: 20 @ 1p · by ZZ Test Staff, Oct 16, 11:00 AM';`),
-    await evaluate(`return ${cclTd(11, "Max allotments", TODAY)}.textContent;`),
-  );
-
-  // Back to usual
-  dayBefore = (await mockLog()).length;
-  await evaluate(`${allotBtn(TODAY)}.click();`);
-  await waitFor(dialog);
-  await helpers();
-  check(
-    "再点：只有改过的那一档（Lower）有 Back to usual，写着谁改的",
-    await evaluate(`const d = ${dialog}; return [...d.querySelectorAll('button')].filter(b => b.textContent.trim() === 'Back to usual').length === 1 && d.textContent.includes('Changed here by ZZ Test Staff');`),
-  );
-  await evaluate(`$btn('Back to usual', ${dialog}).click();`);
-  await sleep(100);
-  await evaluate(`$btn('Save', ${dialog}).click();`);
-  dayPuts = await waitReq(dayBefore, (e) => e.path === "/api/forecast/day-allotment");
-  check(
-    "Back to usual + Save：max_pax:null，小黄点没了，Lower 回到 21",
-    dayPuts.length === 1 && dayPuts[0].body.max_pax === null && dayPuts[0].body.row_label === "Lower" && (await waitFor(`!${dot(cclTd(11, "Max allotments", TODAY))}`)) && (await evaluate(`return ${cclTd(11, "Max allotments", TODAY)}.querySelector('[data-allot="Lower"]').textContent.replace(/\\s+/g, ' ').trim() === 'L 21';`)),
-    JSON.stringify(dayPuts.map((e) => e.body)),
-  );
-
-  // Action Log
+  // Action Log 能展开、新的在上
   await evaluate(`[...document.querySelectorAll('button')].find(b => b.textContent.includes('Action Log')).click();`);
   await waitFor("document.querySelector('[data-action-log] tbody tr')");
-  const logRows = () => evaluate(`return [...document.querySelectorAll('[data-action-log] tbody tr')].map(r => [...r.children].map(c => c.textContent.trim().replace(/\\s+/g, ' ')));`);
-  let rows = await logRows();
+  const logRows = await evaluate(`return [...document.querySelectorAll('[data-action-log] tbody tr')].map(r => [...r.children].map(c => c.textContent.trim().replace(/\\s+/g, ' ')));`);
   check(
-    "展开 Action Log：先拉最近 50 条，新的在上（最上面是刚撤掉的 Lower）；G203 共用面板列 When / Who / What / From → To，团名和日子并进 What",
-    rows.length === 50 && rows[0][1] === "ZZ Test Staff" && rows[0][2].startsWith("ChangedAntelope Canyon · ") && rows[0][2].endsWith(" · Lower limit") && rows[0][3] === "20 @ 1p → Auto" && (await evaluate(`return [...document.querySelectorAll('[data-action-log] thead th')].map(t => t.textContent).join('|');`)) === "When|Who|What|From → To",
-    JSON.stringify(rows[0]),
+    "展开 Action Log：列 When / Who / What / From → To，最上面是刚才的 Lower 上限",
+    logRows.length >= 2 && logRows[0][2].startsWith("ChangedAntelope Canyon · ") && logRows[0][2].endsWith(" · Lower limit") && (await evaluate(`return [...document.querySelectorAll('[data-action-log] thead th')].map(t => t.textContent).join('|');`)) === "When|Who|What|From → To",
+    JSON.stringify(logRows[0]),
   );
-  check(
-    "往下找得到刚才关 Ghost Tour 的记录（Auto → Closed - ZZ Test canyon closed）",
-    rows.some((r) => r[2].startsWith("ChangedGhost Tour · ") && r[2].endsWith(" · Running") && r[3] === "Auto → Closed - ZZ Test canyon closed"),
-    JSON.stringify(rows.slice(0, 8)),
-  );
-  dayBefore = (await mockLog()).length;
-  await evaluate(`$btn('Show more').click();`);
-  await waitFor("document.querySelectorAll('[data-action-log] tbody tr').length > 50");
-  rows = await logRows();
-  const moreReq = (await since(dayBefore, (e) => e.path === "/api/forecast/action-log"))[0];
-  check(
-    "Show more：往后再翻一页，共 61 条（6 条新的 + 55 条老的）后按钮没了",
-    rows.length === 61 && !!moreReq && (await evaluate(`return !$btn('Show more');`)),
-    String(rows.length),
-  );
+  // 放回原样，别影响后面
+  await putMock("/api/forecast/day-running", { date: DAYS[3], manifest_id: 9, section: "", running: null, reason: "" });
+  await putMock("/api/forecast/day-allotment", { date: TODAY, manifest_id: 11, row_label: "Lower", time_label: "1p", max_pax: null });
 
-  // 展开着时再改一处，Log 跟着刷新（回到第一页，新的在上）
-  await evaluate(`${runBtn(9, DAYS[6])}.click();`);
-  await waitFor(dialog);
-  await helpers();
-  await evaluate(`${dialog}.querySelector('input[value="closed"]').click();`);
-  await sleep(100);
-  await evaluate(`$btn('Save', ${dialog}).click();`);
-  await waitFor(`!${dialog}`);
-  await sleep(600);
-  rows = await logRows();
+  // 能编辑的空格：一直显示绿色 +；过去的日子、只读的空格照旧 —
+  await openPage(`${APP}/forecast`);
   check(
-    "Action Log 展开着时在表上存了一处：Log 刷新，最上面是新的（没写原因 ⇒ Closed）",
-    rows.length === 50 && rows[0][2].startsWith("ChangedGhost Tour · ") && rows[0][3] === "Auto → Closed",
-    JSON.stringify(rows[0]),
+    "能编辑的空手写格（今天起）：一直显示绿色 +（不用鼠标移上去），没有 — 和 + Add",
+    await evaluate(`const cells = [...document.querySelectorAll('td[data-kind="cell"]')].filter(td => !td.querySelector('button').textContent.replace('+', '').trim()); return cells.length > 5 && cells.every(td => { const p = td.querySelector('[data-add-plus]'); return !!p && p.textContent === '+' && getComputedStyle(p).color === 'rgb(74, 222, 128)' && getComputedStyle(p).opacity === '1' && !td.textContent.includes('—') && !td.textContent.includes('Add'); });`),
   );
-  // 清掉这一处，别影响后面
-  await evaluate(`${runBtn(9, DAYS[6])}.click();`);
-  await waitFor(dialog);
-  await helpers();
-  await evaluate(`${dialog}.querySelector('input[value="auto"]').click();`);
-  await sleep(100);
-  await evaluate(`$btn('Save', ${dialog}).click();`);
-  await waitFor(`!${dialog}`);
+  check(
+    "写了字的手写格照旧显示字、没有绿 +",
+    await evaluate(`const cells = [...document.querySelectorAll('td[data-kind="cell"]')].filter(td => td.querySelector('button').textContent.replace('+', '').trim()); return cells.length >= 1 && cells.every(td => !td.querySelector('[data-add-plus]'));`),
+  );
+  check(
+    "过去的日子、只读的空格：照旧 —，没有绿 +，不能点",
+    await evaluate(`const past = [...document.querySelectorAll('td[data-kind="cell-past"], td[data-kind="crew-plan-past"], td[data-kind="crew-ccl"]')]; return past.length > 0 && past.every(td => !td.querySelector('[data-add-plus]') && !td.querySelector('button')) && past.filter(td => td.textContent.trim() === '—').length > 0;`),
+  );
+  check(
+    "数字格、Session / 出发时间 / Private 逐单这些只读格没有绿 +",
+    await evaluate(`return ![...document.querySelectorAll('td[data-kind="total-cell"], td[data-kind="allotments"], td[data-kind="session"], td[data-kind="orders"]')].some(td => td.querySelector('[data-add-plus]'));`),
+  );
+  check(
+    "Driver / Guide 行（Q1）：照旧能点；没排导游的空格显示绿色 +，没有 + guide",
+    await evaluate(`const cells = [...document.querySelectorAll('td[data-kind="crew-plan"]')]; const empty = cells.filter(td => !!td.querySelector('[data-add-plus]')); return cells.length > 0 && cells.every(td => !!td.querySelector('button')) && empty.length > 0 && empty.every(td => !td.textContent.includes('—') && !td.textContent.includes('guide'));`),
+  );
+  await evaluate(`[...document.querySelectorAll('td[data-kind="crew-plan"]')].find(td => td.querySelector('[data-add-plus]')).querySelector('button').click(); return 1;`);
+  check("点没排导游的绿 +：照旧打开导游排班框", await waitFor(dialog));
+  await openPage(`${APP}/forecast`);
 
   // 后端有 G63 但没有 G81：表照旧，不能点，没有 Action Log
   await ctl({ noG81: true });
   await openPage(`${APP}/forecast`);
   check(
-    "后端没有 G81（没带 running_meta / day_meta）：粗体格、Max allotments 格不能点，没有 Action Log，没有小黄点",
-    await evaluate(`return !${runBtn(9, DAYS[3])} && !${allotBtn(TODAY)} && ![...document.querySelectorAll('button')].find(b => b.textContent.includes('Action Log')) && !document.querySelector('[data-day-edited]') && ${cclTd(11, "Max allotments", TODAY)}.querySelectorAll('[data-allot]').length === 3;`),
+    "后端没有 G81（没带 running_meta / day_meta）：数字格不能点，没有 Action Log，没有小黄点",
+    await evaluate(`return !document.querySelector('td[data-kind="total-cell"] button, td[data-kind="allotments"] button') && ![...document.querySelectorAll('button')].find(b => b.textContent.includes('Action Log')) && !document.querySelector('[data-day-edited]') && ${cclTd(11, "Max allotments", TODAY)}.querySelectorAll('[data-allot]').length === 3;`),
   );
   await ctl({ noG81: false });
 
@@ -1058,7 +930,7 @@ async function run() {
   await ctl({ perms: ["forecast.view", "forecast.edit"] });
   await goto(`${APP}/forecast`);
   await waitFor("document.querySelector('table')");
-  check("有 forecast.edit：Refresh 和编辑格子都在", await waitFor("document.querySelector('[data-canyon-refresh]') && document.querySelector('table button[data-edit]') && document.querySelector('td[data-kind=\"crew-plan\"]')"));
+  check("有 forecast.edit：Refresh 和编辑格子都在", await waitFor("document.querySelector('[data-canyon-refresh]') && document.querySelector('td[data-kind=\"cell\"] button') && document.querySelector('td[data-kind=\"crew-plan\"]')"));
 
   // ── 外部账号 partner（CCL，Annie 2026-10-26 方案 B）：总开关关着也按勾 ──
   // partner 首页（Annie 2026-10-27「动手」）：/dashboard 就是 partner 首页（整张 Forecast），不看 dashboard.view、不看 default_home；

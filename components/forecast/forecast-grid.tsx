@@ -16,6 +16,7 @@ import {
   canyonProductFor,
   type CanyonCell,
 } from "./canyon";
+import { AddPlus } from "./add-plus";
 import { CrewCell } from "./crew-cell";
 import { ForecastReadOnly } from "./read-only";
 import {
@@ -137,8 +138,6 @@ export function ForecastGrid({
   hideZero,
   onOpenEditor,
   onOpenCell,
-  onOpenRunning,
-  onOpenAllotment,
   canyon,
 }: {
   data: Forecast60Day;
@@ -147,8 +146,6 @@ export function ForecastGrid({
   onOpenEditor: (manifestId: number, section: string, dayIndex: number) => void;
   onOpenCell: (target: CellTarget) => void;
   /** G81：点粗体人数格 / Max allotments 格，改这一天。 */
-  onOpenRunning: (block: ForecastBlock, dayIndex: number) => void;
-  onOpenAllotment: (block: ForecastBlock, dayIndex: number) => void;
   /** Antelope 剩余座位快照；null = 后端没上线 / 读失败 ⇒ 这一行照旧（Max allotments）。 */
   canyon: CanyonSnapshot | null;
 }) {
@@ -258,8 +255,6 @@ export function ForecastGrid({
                 useTiers={useTiers}
                 onOpenEditor={onOpenEditor}
                 onOpenCell={onOpenCell}
-                onOpenRunning={onOpenRunning}
-                onOpenAllotment={onOpenAllotment}
                 canyon={canyon}
               />
             );
@@ -277,8 +272,6 @@ function Block({
   useTiers,
   onOpenEditor,
   onOpenCell,
-  onOpenRunning,
-  onOpenAllotment,
   canyon,
 }: {
   data: Forecast60Day;
@@ -287,13 +280,10 @@ function Block({
   useTiers: boolean;
   onOpenEditor: (manifestId: number, section: string, dayIndex: number) => void;
   onOpenCell: (target: CellTarget) => void;
-  onOpenRunning: (block: ForecastBlock, dayIndex: number) => void;
-  onOpenAllotment: (block: ForecastBlock, dayIndex: number) => void;
   /** Antelope 剩余座位快照；null = 后端没上线 / 读失败 ⇒ 这一行照旧（Max allotments）。 */
   canyon: CanyonSnapshot | null;
 }) {
   const { days, today } = data;
-  const readOnly = useContext(ForecastReadOnly);
   const extra = cclExtraRows(block);
   // 块的粗分隔线画在这块第一行上（有 CCL 的「上面那行」时是它，否则是粗体人数行）。
   const totalTop = extra.before.length
@@ -307,7 +297,6 @@ function Block({
       block={block}
       top={i === 0 && row === extra.before[0]}
       onOpenCell={onOpenCell}
-      onOpenAllotment={onOpenAllotment}
       canyon={canyon}
     />
   );
@@ -339,11 +328,8 @@ function Block({
             : null;
           const swatch = tier ? tierSwatch(tier.color) : null;
           const runMeta = block.running_meta?.[i] ?? null;
-          // 接口带了 running_meta（后端 G81 上线）才给点；过去的日子只读。
-          const editable =
-            !readOnly &&
-            block.running_meta !== undefined &&
-            !isPastDay(day, today);
+          // 数字格一律不能点（Annie 2026-10-28「不能点就是不能点」）：按天开 / 关团不再在 Forecast 上改，
+          // 以前改过的（G81）照样生效，小黄点和鼠标提示照旧。
           const text = cellValue(value, closed);
           return (
             <td
@@ -353,33 +339,20 @@ function Block({
               data-section={block.section}
               data-kind="total-cell"
               data-closed={closed || undefined}
-              title={closed ? closedReason(block, i) || undefined : undefined}
-              className={`${totalTop} relative text-center font-bold tabular-nums ${colLine(isToday)}`}
+              title={
+                runMeta
+                  ? describeRunningMeta(runMeta)
+                  : closed
+                    ? closedReason(block, i) || undefined
+                    : undefined
+              }
+              className={`${totalTop} relative px-1 py-1.5 text-center font-bold tabular-nums ${colLine(isToday)}`}
               style={{
                 backgroundColor: swatch ? swatch.bg : TOTAL_ROW_BG,
                 color: swatch ? swatch.text : undefined,
               }}
             >
-              {editable ? (
-                <button
-                  type="button"
-                  data-edit="running"
-                  aria-label={`Edit whether ${block.name} runs on ${formatLongDate(day)}`}
-                  title={
-                    runMeta
-                      ? describeRunningMeta(runMeta)
-                      : closed
-                        ? closedReason(block, i) || undefined
-                        : undefined
-                  }
-                  onClick={() => onOpenRunning(block, i)}
-                  className="block h-full w-full px-1 py-1.5 font-bold hover:bg-white/[.08] focus:bg-white/[.1] focus:outline-none"
-                >
-                  <Num text={text} />
-                </button>
-              ) : (
-                <Num text={text} />
-              )}
+              <Num text={text} />
               {runMeta ? <EditedDot /> : null}
             </td>
           );
@@ -474,7 +447,6 @@ function CclRow({
   block,
   top,
   onOpenCell,
-  onOpenAllotment,
   canyon,
 }: {
   row: CclExtraRow;
@@ -482,12 +454,10 @@ function CclRow({
   block: ForecastBlock;
   top: boolean;
   onOpenCell: (target: CellTarget) => void;
-  onOpenAllotment: (block: ForecastBlock, dayIndex: number) => void;
   /** Antelope 剩余座位快照；null = 后端没上线 / 读失败 ⇒ 这一行照旧（Max allotments）。 */
   canyon: CanyonSnapshot | null;
 }) {
   const { days, today } = data;
-  const readOnly = useContext(ForecastReadOnly);
   const border = top
     ? "border-t-[3px] border-white/25"
     : "border-t border-white/10";
@@ -575,8 +545,6 @@ function CclRow({
               block={block}
               dayIndex={i}
               abbreviations={abbreviations!}
-              editable={!readOnly && !isPastDay(day, today)}
-              onOpen={() => onOpenAllotment(block, i)}
             />
           );
         }
@@ -747,16 +715,12 @@ function AllotmentCell({
   block,
   dayIndex,
   abbreviations,
-  editable,
-  onOpen,
 }: {
   day: string;
   className: string;
   block: ForecastBlock;
   dayIndex: number;
   abbreviations: Map<string, string>;
-  editable: boolean;
-  onOpen: () => void;
 }) {
   const lines = isClosedDay(block, dayIndex)
     ? []
@@ -764,12 +728,7 @@ function AllotmentCell({
         (a) => a.max[dayIndex] !== null && a.max[dayIndex] !== undefined,
       );
   const edited = (block.allotments ?? []).filter((a) => a.day_meta?.[dayIndex]);
-  // 接口带了 day_meta（后端 G81 上线）、这天开团、有档可改才给点；过去的日子只读。
-  const canEdit =
-    editable &&
-    !isClosedDay(block, dayIndex) &&
-    Boolean(block.allotments?.length) &&
-    block.allotments!.every((a) => a.day_meta !== undefined);
+  // 数字格一律不能点（Annie 2026-10-28）：按天改上限不再在 Forecast 上改，以前改过的照样生效，小黄点和鼠标提示照旧。
   const content = lines.length ? (
     <div className="inline-block text-left text-white">
       {lines.map((a) => {
@@ -804,32 +763,20 @@ function AllotmentCell({
     <td
       data-day={day}
       data-kind="allotments"
-      className={`${className} relative ${canEdit ? "p-0" : "px-1 py-1"} text-[9.5px] leading-[1.35] tracking-[-.01em] whitespace-nowrap tabular-nums`}
+      title={
+        edited.length
+          ? edited
+              .map(
+                (a) =>
+                  `${a.label}: ${describeAllotmentMeta(a.day_meta![dayIndex]!)}`,
+              )
+              .join("\n")
+          : undefined
+      }
+      className={`${className} relative px-1 py-1 text-[9.5px] leading-[1.35] tracking-[-.01em] whitespace-nowrap tabular-nums`}
       style={{ backgroundColor: CREW_ROW_BG }}
     >
-      {canEdit ? (
-        <button
-          type="button"
-          data-edit="allotment"
-          aria-label={`Edit max allotments for ${block.name} on ${formatLongDate(day)}`}
-          title={
-            edited.length
-              ? edited
-                  .map(
-                    (a) =>
-                      `${a.label}: ${describeAllotmentMeta(a.day_meta![dayIndex]!)}`,
-                  )
-                  .join("\n")
-              : undefined
-          }
-          onClick={onOpen}
-          className="block w-full px-1 py-1 hover:bg-white/[.06] focus:bg-white/[.08] focus:outline-none"
-        >
-          {content}
-        </button>
-      ) : (
-        content
-      )}
+      {content}
       {edited.length ? <EditedDot /> : null}
     </td>
   );
@@ -889,12 +836,7 @@ function TextCell({
         aria-label={`Edit ${label}`}
         className="group block w-full px-1.5 py-1.5 text-left hover:bg-white/[.06] focus:bg-white/[.08] focus:outline-none"
       >
-        {content}
-        {value ? null : (
-          <div className="mt-1 text-[10px] text-sky-300 opacity-0 group-hover:opacity-100 group-focus:opacity-100">
-            + Add
-          </div>
-        )}
+        {value ? content : <AddPlus />}
       </button>
     </td>
   );
