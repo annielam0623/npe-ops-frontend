@@ -333,6 +333,10 @@
                 - 重叠红字不让存，空档黄字可以存。
                 - 后端：shuttle_seasons + pickup_location_times。Q12–Q16 照推荐。
                 - 已转 9a。9c 已开工 task/pickup-split（worktree D:\npe-ops-frontend-seat）。
+              - ✅ 9c 做完 task/pickup-split 8a6169b，**没合 main**，等后端上 main。
+                - 检查：pl 80/80、nav 32/32、sch 176/176；tsc / eslint / build 都过。
+                - 暂定接口已转 9a。
+                - 和 59 的 import-pickup 会在 pickup-locations-view.tsx 冲突，已提醒 59。
           - 批量导入后端：9a 排明天。先做通用形状 + HR，再 Pickup → Team → Restaurant。
           - 顺带发现两个可能的 bug，已转 9a 核实：回程时间减 15 分钟前后不一致；Rezdy 自带时间可能被减了两次。
         - 前端派 9c `task/schedule-publish-anyway`，后端上 main 前不合 main。
