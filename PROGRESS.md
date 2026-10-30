@@ -84,7 +84,7 @@
   - 检查：mt 套改了 2 条（等客人的卡不显示；红胶囊那条改成 3 张都欠处理），加 1 条（页面上没有「1 orders」）。tsc 过；eslint 0 错误；build 过；mt 208/208、nav 32/32、dr 88/88（端口 3362 / 8962 / 9562）。eb 说过了直接合。
   - 「只剩 1 张单时自动挂上去」（上面第 1 点 A / B / C）还没定，这次没做。
 
-## 明天第一件：排班卡片上直接标空档（`task/schedule-gap-on-card`）
+## 2026-10-30 排班卡片上直接标空档（`task/schedule-gap-on-card`，工作窗口 `npe-ops-frontend-62`[cd78c4]，eb 派；eb 更正时间后当天做完、合 main）
 
 - **Annie 原话（2026-10-30，eb 转）：「17 全按推荐，动手」**。preview https://claude.ai/artifact/WVNc5X87zYyKyY6k47qyKU ：
   1. 拖班、删班也标（A）：拖到 Unassigned 的那张、删掉的那张（灰掉划线、带 Undo）都变红写同一句，点 Undo 恢复；
@@ -93,6 +93,13 @@
 - 做法：按 Done、拖、删的那一刻，用 `week-draft.ts` 的 localGaps 算改前 / 改后，新出的空档记到这张卡上。
   - 文字：「This leaves a 1 hour gap (11:00 AM – 12:00 PM).」；两段写「This leaves 2 gaps: … (1 hour) and … (45 minutes).」。
   - 红框 + 淡红底 + 浅红字，红的优先于琥珀色；补上以后红色消失。按 Save 时后端照旧再判，以后端为准。
+- 做了：
+  - `week-draft.ts` 加 `newGapsByCard`：比「库里的班」和「页面上的班」各算一次空档，新出的空档记到这次改动过、原来覆盖着这段时间的那张卡上；
+  - 加 `gapSentence`：一段用形容词单数「a 9 hour 30 minute gap」，8 / 11 / 18 开头用 an；几段写「(1 hour)」「(45 minutes)」；
+  - `week-grid.tsx` 卡片 `gaps`：红框 + 淡红底 + 那一句（data-gap-note）；
+  - `schedule-view.tsx` 每次重算，经 draftView 传下去。
+- 检查：sch 加 6 条（改时间 1 段、两段、补上以后消失、删班变红、Undo 消失、拖到 Unassigned 变红 + 列头红点）。tsc 过；eslint 0 错误；build 过；sch 275/275、nav 32/32（端口 3362 / 8962 / 9562）。
+- Annie 后来加了「对过去的应该彻底放行」（只算洛杉矶时间现在以后的空档）：另开 `task/schedule-gaps-future-only` 做，见下一节。
 
 ## 2026-10-30 Bus Manifest Lankun：屏幕上加回 ✓ 列，打印照旧不要（`task/lankun-check-col`，工作窗口 `npe-ops-frontend-e6`[047d88]，主窗口 eb 派工）
 
