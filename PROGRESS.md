@@ -22,7 +22,8 @@
 - ✅ 检查（合了最新 main 之后，Node v26.13.0）：
   - mf 185/185、man 322/322、pl 48/48、nav 32/32；
   - tsc 0 错；eslint 0 错、2 个警告（public/window-hscroll.js 原有的）；build 过。
-  - 等 eb 核对后合 main。
+  - eb 核对过，合 main。
+  - 注：npm 11 的 `npm ci` 拦了 unrs-resolver 的 postinstall（提示 `npm install-scripts approve`），没批；tsc / eslint / build / 检查都不受影响。
 
 ## 2026-10-30 主窗口 `npe-ops-frontend-eb`[ba40bc] 开工核对（公司电脑）
 
