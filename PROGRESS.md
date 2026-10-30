@@ -335,6 +335,9 @@
   - Annie 原话：「手打是可以加到hr，但是不能把第一次出现就给屏蔽掉啊，而且也不知道哪里出了问题，就一个司机不见了」。
     - ⚠️ 主窗口先转成了 A（自动填进框），转错了，已叫停。Annie 再说：「名字在hr里没有的话就是我发给你的这张图的样子，在框下面，然后有个说明，staff再手动加到框里」。
     - ⇒ 方案 C：后端 GET /api/dispatch/day 每辆 CCL 车回 ccl:{driver_text, guide_text, vehicle_text}，存过、重开都在；前端 CclHint 已会显示，62 核对 / 接（task/dispatch-ccl-hint-persist）。赶 10/31。10/31 那辆车照旧要手打一次 JUAN。
+  - ✅ 前端 cc7007b 已上 main（62）：可选字段、guide_candidates ?? []、存档送 ccl_line_id。和旧后端兼容。⚠️ 前端必须比后端先上，旧前端遇到 day 回 ccl 会崩。已通知 57 放行后端 C。
+  - 后端 C 定稿：day 每辆车 ccl:{line_id, driver_text, guide_text, vehicle_text, is_driver_guide}|null。配对条件任一：四项全一样 / 司机一样 / 车号一样；只有 bus 字母对上、或配上多行的给 null。后端两种保存都是删了重插，前端必须原样送回所有字段（62 核过没漏）。
+- 排班「这周没收到过的人也发」已上 main 738f813（15:26），57 已告诉 Annie 可以按 11/01 那周的 Publish again。
 ### 三、后端在做 / 明天
 - ef：Publish again 这次全员都发（这一周从没收到过的人也发；邮件列出他这一周的全部班 + 排班页链接，不带 PDF）。是 week_start 2026-11-01 那周（Annie：「就是要发下周一那份」「不管多晚都要完成」）。15:00 前上不了，后端做完为止，上 main 后 57 先通知 Annie 再按。前端不用改。
 - ef：空档只算将来（后端）；Test person is_test；往来记录。
