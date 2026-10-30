@@ -53,6 +53,7 @@ node run-all.js --keep-dev   # 跑完不关 next dev
 | orders | /orders、/orders/[订单号] |
 | pl | /settings/pickup-locations |
 | products | /settings/products |
+| perm | 全部按照勾选（置顶 10c）：9 个 Settings 页整页按勾（开关开 / 关、没勾 / 勾了、admin 没勾、Super Admin）；另有单元检查 by-tick-unit.mjs |
 | qr | /settings/quick-replies（G98 司机快捷回复：增 / 改 / 开关 / ↑↓ 排序 / 页内确认删除 / 前端先挡 / 400 原话 / 403 / Action Log） |
 | ptt | /settings/products 的 Tour type 列（单个 / 批量 / Action Log） |
 | sales | /sales-report |
