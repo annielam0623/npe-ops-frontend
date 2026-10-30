@@ -53,7 +53,12 @@
   - A3 + B6、A4、A5 + B4、A6 + B5；
   - A6 要做 10 分钟没活动自动存一次。
   - 后端不用改，明天可以直接做。
-- Dispatch 的 Send to driver / guide「page is off」+ 司机页 / 导游页两个开关（G215）：等后端发形状。
+- Dispatch 的 Send to driver / guide「page is off」+ 司机页 / 导游页两个开关（G215）：
+  - ✅ 后端已上 main 49c400a（9a 收工后转来），**明天派前端**。
+  - GET /api/dispatch/driver-notice、/api/dispatch/guide-notice 各多 page_open（bool）、page_off_text（Send 键旁边显示的那句）。开关关着时后端拒发（400）。
+  - 开关 key：driver_page / guide_page，在 GET /api/settings/dashboard-widgets 里，默认 super_admin_only。照 farm_out_dispatch 放进现有的 page-visibility，不另出 preview。
+  - 导游页、司机页本身是后端模板，前端不用做。
+  - 打开导游页开关前，Annie 要先确认 guide_notice 的短信原文；第一次真发给餐厅也要她点头。
 
 ### 五、等 Annie 的
 - 导游页开关打开前，确认导游短信那一句。
