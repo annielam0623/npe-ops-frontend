@@ -218,7 +218,20 @@
   - `task/dispatch-manual-save` c404b4d：已推，等 Annie 下令 push；
   - `task/g203-batch4` e1c3666：已推，build 没过（内存不够），要重跑 build 后合；
   - `task/bus-manifest-versions-fe` 8f85141：已推，等后端 20 上 main；
-  - `task/schedule-publish-anyway`：**还没提交**，改动在 worktree D:\npe-ops-frontend-seat 里，新窗口接手先提交、推送。
+  - `task/schedule-publish-anyway`：主窗口在重启前代提交成 WIP 并推送（54544b8，worktree D:\npe-ops-frontend-seat）。没跑检查，后端 allow_gaps 还没做。
+  - 更正：59 后来又在列表里出现了（新号 [bfc2aa]），重启前确认手上没有没提交的改动。9c 没再出现。
+- **Annie 重启电脑前的交接（10-29 晚）**：
+  - 后端 9a：Bus Manifest 正在推 main，West Rim 提交号由 20 发来；G216 重启后再合；B9 批量接口、Publish anyway 还没开工。
+  - 前端重启后的下一步：
+    1. 59 跑 `task/g203-batch4` 的 build → 合最新 main → 重跑 da / qr → 合 main。临时目录放 D 盘。
+    2. 接手 `task/schedule-publish-anyway`，等后端 allow_gaps / Publish again 的接口。
+    3. 后端 Bus Manifest 上 main 后，`task/bus-manifest-versions-fe` 合最新 main、重跑检查后合 main。
+    4. Pickup Locations 分开 preview 出 v2，加接人时间（Annie 原话「需要把pick time都放进去」）。
+  - 等 Annie 的：
+    - Dispatch 手动保存要不要 push；
+    - 各 preview 的问题；
+    - 回「删」清 C 盘旧临时文件；
+    - 把虚拟内存挪到 D 盘（步骤已给她）。
         - 主窗口提醒了 Annie 10-22 的规矩：除了 Boulder City，shuttle 都是 bus tour 沿路的站。
         - 前端派 9c `task/schedule-publish-anyway`，后端上 main 前不合 main。
         - 后端发 9a：allow_gaps、写日志、空档标记。
