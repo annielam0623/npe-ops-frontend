@@ -22,15 +22,6 @@
   3. 草稿周（还没发布）也标吗？A 两种周都标、只标新造成的（推荐）/ B 只标已发布的周。
 - 都按推荐就说「17 全按推荐 动手」，派 62。
 
-### 18. Dashboard Multi Orders 里「已回复、等客人」的卡怎么显示
-- Annie 10-30 截图问：「已经回复了的为什么还会显示在这里」。
-- 现在（10-01 定的设计）：号码 / 邮箱名下 ≥2 张没出发的单、来信对不上是哪张时进 Multi Orders。先 Reply 问是哪张，再 Assign；只回复没 Assign，卡就一直留着，绿点写「Replied · waiting for guest」，不算进红色未处理数字。
-- 选法：
-  - A. 照现在，一直留着，等 Assign / Take action 才消失；
-  - B. 回复后先收起来，客人再来信才重新出现；
-  - C. 留着，但排到最下面、颜色变淡，跟要处理的分开（推荐：不会忘，也不挡着要处理的）。
-- 同一张截图里另有两个 bug（62 在查，明天修）：卡片写「1 orders」——只剩 1 张单却还在 Multi Orders；英文单复数不对。
-
 ### 8. 可以上线后对着看的（不用答，验收时看）
 - Products 手动保存：09 问的 5 处细节，主窗口按盘点推荐定了，见 PROGRESS「2026-10-30」那节 09 的记录：
   - Bus Manifest setup 每个小项一个 Save；
@@ -690,6 +681,9 @@
   - 57 补充：每天 03:00 PT 有自动对账（run_daily_reconciliation），漏推的单最晚第二天凌晨会补上。
 - 92 的 Team Columns 键（team_list_layout，GET / PUT /api/user-prefs/team_list_layout，同 hr_list_layout）已提交，排队上 main。
 - 62 pickup-split 上 main d34ce08。
+- **Annie 答置顶 18（Multi Orders 已回复的卡）**，原话：「为什么要等客人回复？ 我们已经回复了就要消失啊，客人再发回来才需要在这里显示」。
+  - 已回复的卡不显示，客人再来信才出现，和其他车道一致。
+  - 派 62 `task/multi-orders-hide-replied`，今天来不及就明天第一件。顺手修「1 orders」单复数，查「只剩 1 张单还在 Multi Orders」。
 - 62 week-save 已上 main 7da6786。
 ## 2026-10-29 晚 收工交接：前端主窗口 `今天前端主窗口-d2`[15266b]（家里电脑，Annie「做完写交接收工」）
 
