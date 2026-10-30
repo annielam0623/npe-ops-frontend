@@ -311,6 +311,19 @@
   - HR：overwrite 默认 true，空格不清值；preview 多 errors / before / error 状态；commit 多 errors、error_rows；多两种 400（超过 5 MB、解压后超过 50 MB）。
   - 前端待派：import-hr 37b19cc 先合 → import-pickup bd91c6f、import-vehicles d9d731a。Farm out 两个导入等 66 下一批。
   - 资源：空闲内存 36 / 62 GB，CPU 13%。原想请 Annie 加 1 个窗口；09 做完 Products 空出来了，改派 09，不用加窗口。
+- **今天上 main 的（截至 10:05，都等 Annie 线上验收）**：
+  - Bus Manifest 先存换车再存字号：65972c5，main 1711a4e（e6）；
+  - G215 page is off + Driver page / Guide page 开关：main c6d9cae（62）；
+  - Products 按 Save 才存：e9e7764，main 33df24c（09）；
+  - HR 导入接真接口：fbe5fd7（09）；
+  - Dispatch 手动保存：main f6d79cd（e6，Annie 原话「推」）；
+  - Pickup 导入：b277615（09）；
+  - Vehicles 导入：a3102e1（e6）。
+  - 提交号都已发后端 57。
+- 等后端的分支（62 手上）：
+  - task/schedule-notify-wording d3f3e42、task/schedule-send-to-confirm a6836c1：等 G217 推 origin，还要 Annie 定置顶第 6、7 条；
+  - task/pickup-split 1dd8801：等 G211，合时要解和 import-pickup 的冲突。
+- 09、e6 待命。
 ## 2026-10-29 晚 收工交接：前端主窗口 `今天前端主窗口-d2`[15266b]（家里电脑，Annie「做完写交接收工」）
 
 明天的主窗口先读这一节。细节在下面「2026-10-29 晚 主窗口 d2 开工核对」那一节，按时间逐条记。
