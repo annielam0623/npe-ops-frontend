@@ -677,11 +677,19 @@ async function run() {
   before = (await mockLog()).length;
   await evaluate("const s = document.querySelector('[data-version-select]'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, 'west'); s.dispatchEvent(new Event('change', { bubbles: true })); return 1;");
   await sleep(150);
+  // 存完到重读回来之间（mock 让重读慢 1.2 秒）：每次页面变动都记一下 A 车的列头，看有没有闪回旧版式。
+  await ctl({ manifestDelayMs: 1200 });
+  await evaluate(`window.__heads = []; window.__headsObs = new MutationObserver(() => { const s = document.querySelector('section[aria-label="Bus 2041=A"] thead tr'); if (s) window.__heads.push(JSON.stringify(${headsOf("2041=A")})); }); window.__headsObs.observe(document.querySelector('main'), { childList: true, subtree: true, characterData: true }); return 1;`);
   await evaluate("document.querySelector('[data-page-save]').click(); return 1;");
   const wReq = (await waitReq(before, "/api/dispatch/manifest/version"))[0];
   check("选 West Rim：PUT {tour: 3, version: west}", wReq?.body?.tour === 3 && wReq?.body?.version === "west", JSON.stringify(wReq));
-  // 等存好重读完（绿字 Saved）再看列：只等下拉 = west 的话，存完到重读回来之间列还是旧的，会偶尔失败（main 上也有）。
-  await waitFor("document.querySelector('[data-version-select]').value === 'west' && !!document.querySelector('[data-page-saved]')");
+  await waitFor("document.querySelector('[data-version-select]').value === 'west' && !!document.querySelector('[data-page-saved]')", 8000);
+  await ctl({ manifestDelayMs: 0 });
+  {
+    const west = JSON.stringify(["Order #","Time","Hotel","Phone","Last Name","First Name","Pax","Quantities","Lunch","Special Requirements","Bus"]);
+    const seen = await evaluate("window.__headsObs.disconnect(); return [...new Set(window.__heads)];");
+    check("存完到重读回来之间：列一直是 West Rim，不闪回旧版式", Array.isArray(seen) && seen.length >= 1 && seen.every((h) => h === west), JSON.stringify(seen));
+  }
   check("West Rim：列序 Order # / Time / Hotel / Phone / Last Name / First Name / Pax / Quantities / Lunch / Special Requirements，后面只有 Bus、没有 ✓",
     await evaluate(`return JSON.stringify(${headsOf("2041=A")}) === JSON.stringify(["Order #","Time","Hotel","Phone","Last Name","First Name","Pax","Quantities","Lunch","Special Requirements","Bus"]);`),
     await evaluate(`return JSON.stringify(${headsOf("2041=A")});`));

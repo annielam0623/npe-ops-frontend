@@ -10,6 +10,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { flushSync } from "react-dom";
 
 import { fmtShort } from "@/components/dispatch/config";
 import { hasInAppHistory } from "@/components/nav/in-app-history";
@@ -495,11 +496,11 @@ export function ManifestView() {
       redirectToLogin();
       return { error: "Signed out.", data: null };
     }
-    setPending(next);
+    // 存上的那几样等重读回来再从暂存里拿掉，和新数据同一次换上：先拿掉的话，重读回来之前页面按旧数据画，
+    // 版式、字号、换车、备注会先闪回存之前的样子（09 发现，mf「West Rim 列序」偶尔失败也是它）。
     let fresh: ManifestData | null = null;
     try {
       fresh = await fetchManifest(params.date, params.tour);
-      setView({ kind: "ready", data: fresh });
     } catch (error) {
       if (isStatus(error, 401)) redirectToLogin();
       else
@@ -507,6 +508,11 @@ export function ManifestView() {
           `Saved, but the page could not be refreshed: ${describeError(error)} Reload the page.`,
         );
     }
+    // 当场画完（离开提醒跟着撤掉），再交回去：「Save 再离开」接着就放行跳页，要等提醒撤了才跳得对。
+    flushSync(() => {
+      setPending(next);
+      if (fresh) setView({ kind: "ready", data: fresh });
+    });
     if (fails.length) {
       const total =
         (pending.version ? 1 : 0) +

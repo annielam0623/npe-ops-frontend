@@ -119,6 +119,19 @@
   - 等等。
   觉得键太多，可以改成按大块分。
 
+## 2026-10-30 Bus Manifest 整页 Save 存完「闪回旧版式」（`task/manifest-version-flash`，工作窗口 `npe-ops-frontend-e6`[047d88]，主窗口 eb 派工）
+
+- 现象（09 发现）：换了版式按 Save，存完到重读回来之间，列先回到旧版式再变新的；mf「West Rim 列序」在 main 上偶尔失败也是它。
+- 原因：`savePending` 存完先把存上的从暂存拿掉，再去重读。重读回来之前页面按旧数据画，版式、字号、换车、备注、黄框都会闪回存之前的样子。
+- 改法（[manifest-view.tsx](components/dispatch-manifest/manifest-view.tsx)）：
+  - 重读回来后，拿掉暂存和换上新数据放在同一次（`flushSync`）。
+  - 用 `flushSync` 是因为「Save 再离开」接着就放行跳页，要等离开提醒撤了才跳得对。不加的话 mf「先存再去 Dispatch」不跳页。
+  - 重读失败时照旧拿掉存上的、红字叫 Reload。样子不变。
+- 检查：
+  - mf-mock 加 `manifestDelayMs`（重读慢 1.2 秒）。
+  - mf-test 加一项：存完到重读回来之间每次页面变动都记 A 车列头，必须一直是 West Rim。改之前的代码上这项失败（记到一次 General 列头），改之后过。
+  - mf 193/193 连跑 3 次都过；man 322/322、nav 32/32；tsc 0 错；eslint 0 错、2 个原有警告；build 过。
+
 ## 2026-10-30 Bus Manifest：Special Requirements 并进整页 Save（`task/manifest-notes-page-save`，工作窗口 `npe-ops-frontend-09`[8a0116]，主窗口 eb 派工）—— 检查都过，等 eb 核对后合 main
 
 - 依据：Annie 10-18 要 Special Requirements 能改能删（NotesCell，PUT /api/dispatch/manifests/guest-notes {guest_id, notes}）；后端今天重启 G125（78 做）。主窗口问「自己当场存还是并进整页 Save」，Annie 原话「并进整页一起存 A 动手」（2026-10-30）。
