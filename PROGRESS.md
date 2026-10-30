@@ -821,6 +821,11 @@
 - e6：not_reached 上 main 12d8a11；Lankun ✓ 753e708。
 - **Annie 原话「schedule里对gap的要求，之应该对此刻起的将来设置，对过去的应该彻底放行」**：空档只算洛杉矶时间「现在以后」的。过去的日子、今天已经过去的小时一律不算，Save / Publish 不拦，也不标红。已转 57（后端改 _new_gaps 等），62 在 17 里照做。
 - 置顶 20：员工确认排班挪到发布前（62 调查），等 Annie 定 A / B 和权限。
+- **Annie：「我加了ZZTest和Leon在staff Schedule里用来做测试，不要把这两个人显示在dashbroad里」，选 A 并说「动手」**。
+  - 做法：排班员工加「Test person」勾。勾了的人 Dashboard 不显示、不算空档、排班页标「Test」，通知照发。
+  - 后端已发 57（schedule_employees.is_test，要迁移）；前端派 62 `task/schedule-test-person`，用 mock，等后端。
+- 62 上 main：卡片标空档 5a1dbed（17）、空档只算将来（前端）9b79a19。后端 ef 还在改，改好前 Save / Publish 仍按整周判断。
+- 09 rezdy-sync-remove 上 main e59375f，已通知后端可以删那三个接口。
   - GET 报告详情多 updates[]；
   - POST /api/operation-reports/{id}/updates {text}，只加不改不删，不发通知，partner 403。
 - 62 week-save 已上 main 7da6786。
