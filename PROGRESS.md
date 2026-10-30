@@ -89,7 +89,7 @@
     - Subject: Please confirm your schedule changes — week of 2026-10-04
     - Hi Jing,
     - Your schedule for the week of 2026-10-04 has changed:
-    - • Mon 10/05: Open 2:00 AM – 12:00 PM → Open 2:00 AM – 11:45 AM（那天原来或现在没班，写 not scheduled）
+    - • Mon 10/5: Open 2:00 AM – 12:00 PM → Open 2:00 AM – 11:45 AM（那天原来或现在没班，写 not scheduled；日期不补零，和后端邮件一致）
     - Please check and confirm:
     - [Confirm my schedule]
     - 说明：The button opens the same confirm page they use on Wednesdays. The in-app notice has the same subject and lines.（后一句只在有登录账号时出现）
