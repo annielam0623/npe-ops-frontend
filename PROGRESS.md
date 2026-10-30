@@ -122,7 +122,7 @@
   - mf-test 加一项：存完到重读回来之间每次页面变动都记 A 车列头，必须一直是 West Rim。改之前的代码上这项失败（记到一次 General 列头），改之后过。
   - mf 193/193 连跑 3 次都过；man 322/322、nav 32/32；tsc 0 错；eslint 0 错、2 个原有警告；build 过。
 
-## 2026-10-30 Bus Manifest：Special Requirements 并进整页 Save（`task/manifest-notes-page-save`，工作窗口 `npe-ops-frontend-09`[8a0116]，主窗口 eb 派工）—— 检查都过，等 eb 核对后合 main
+## 2026-10-30 Bus Manifest：Special Requirements 并进整页 Save（`task/manifest-notes-page-save`，工作窗口 `npe-ops-frontend-09`[8a0116]，主窗口 eb 派工）—— **已合 main d90aa68**（eb 回「合」）
 
 - 依据：Annie 10-18 要 Special Requirements 能改能删（NotesCell，PUT /api/dispatch/manifests/guest-notes {guest_id, notes}）；后端今天重启 G125（78 做）。主窗口问「自己当场存还是并进整页 Save」，Annie 原话「并进整页一起存 A 动手」（2026-10-30）。
 - 做了（[manifest-view.tsx](components/dispatch-manifest/manifest-view.tsx) NotesCell / changeNotes / savePending，[page-save.tsx](components/dispatch-manifest/page-save.tsx) Pending.notes）：
@@ -134,6 +134,8 @@
   - mf 192/192（连跑 3 次）、man 322/322、nav 32/32；tsc 过；eslint 0 错；build 过。
   - 顺手修的：mf 的「West Rim 列序」那项在 main 上也偶尔失败（3 次里 1 次）：存完到重读回来之间列还是旧版式。检查改成等绿字 Saved 再看，页面代码没动。页面上这一瞬间会先闪回旧版式的列，是现有的小问题，没改。
 - 只用模拟数据。
+- 后续：G125 后端上了 origin/main cc2c43ec，09 只读核对，前端页面对上了，不用改。mf-mock 的两种 400 照后端原话改（没带 notes 键、看不见的控制字符），mf 加两项（粘贴控制字符时红字照后端原话、暂存不丢；每条 PUT 都带 notes 键），mf 195/195、nav 32/32、tsc 过。`task/manifest-notes-key` 2e83aac，已合 main ca9a311（只动检查）。
+- 权限：备注编辑和换车一样，partner 按 manifests.edit 拦；员工没勾、partner 只勾 dispatch.edit 这两处小出入并进置顶 10c（「全部按照勾选」），等 Annie。
 
 ## 2026-10-30 Dispatch 手动保存上线（`task/dispatch-manual-save-e6`，从 59 的 f243720 接手；工作窗口 `npe-ops-frontend-e6`[047d88]，主窗口 eb 派工）
 
