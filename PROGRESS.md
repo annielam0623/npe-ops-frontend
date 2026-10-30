@@ -516,6 +516,7 @@
   - 5 处照推荐；短信缩短成「NPE guide Fri Oct 30: <link>」，staff 可在链接后加一句，限一条短信。
   - 后端已发 57：改短信模板，send 收 extra，GET 回 extra_max / preview_text，400 英文 detail。
   - 前端派 62 `task/dispatch-send-to-guide`，模拟接口先做。第一次真发要 Annie 点头。
+- Annie 原话「V131我已经执行了」：已转 57，G219 可以落地。前端 task/team-contacts 0ff97be 等后端上 main，合时补 Team 页 How to use 7 条。
 - 62 week-save 已上 main 7da6786。
 ## 2026-10-29 晚 收工交接：前端主窗口 `今天前端主窗口-d2`[15266b]（家里电脑，Annie「做完写交接收工」）
 
