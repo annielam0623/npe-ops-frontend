@@ -213,7 +213,9 @@ function getOrCreateWeek(weekStart) {
 
 function weekPayload(weekData) {
   const g = gapsFor(weekData);
-  const out = { ...weekData, gaps: g, published_with_gaps: weekData.status === "published" && g.length > 0 };
+  const out = { ...weekData, gaps: g, published_with_gaps: weekData.status === "published" && g.length > 0, has_unsent_changes: weekData.status === "published" && !!weekData.unsent };
+  delete out.unsent;
+  delete out.snapshot;
   if (ctl.phase2) {
     const dates = datesOfWeek(weekData.week_start);
     out.time_off = timeOff.filter((t) => dates.includes(t.date));
@@ -468,6 +470,13 @@ http
       return send(res, 200, e);
     }
 
+    // 已发布的周被改动（后端 8e「改完再发」）：记下有没发的改动，Publish again 时清掉。
+    const editMatch = /^\/api\/schedule\/weeks\/(\d{4}-\d{2}-\d{2})\/slots/.exec(p);
+    if (editMatch && req.method !== "GET" && ctl.role !== "staff") {
+      const w = weeks.get(editMatch[1]);
+      if (w && w.status === "published") w.unsent = true;
+    }
+
     const weekMatch = /^\/api\/schedule\/weeks\/(\d{4}-\d{2}-\d{2})$/.exec(p);
     if (weekMatch && req.method === "GET") {
       const weekData = getOrCreateWeek(weekMatch[1]);
@@ -581,8 +590,15 @@ http
           detail: { detail: "Can't publish — there's a gap in coverage.", gaps },
         });
       }
-      // 已发布的周再 Publish：不再 409，成功；republished = true，notified 永远 []（通知规则等 Annie 定）。
+      // 已发布的周再 Publish：不再 409，成功；republished = true。
+      // 通知规则（Annie 10-29「同意」）：重新发布只发给班有变化的人（和他们的主管，mock 不算主管）。
       const republished = weekData.status === "published";
+      const shiftsOf = (id) => JSON.stringify(weekData.slots.filter((s) => s.employee_id === id).map((s) => [s.date, s.shift_type, s.start_time, s.end_time]).sort());
+      const before = weekData.snapshot || {};
+      const ids = new Set([...Object.keys(before).map(Number), ...weekData.slots.map((s) => s.employee_id).filter((x) => x != null)]);
+      const changed = new Set([...ids].filter((id) => (before[id] || "[]") !== shiftsOf(id)));
+      weekData.snapshot = Object.fromEntries([...ids].map((id) => [id, shiftsOf(id)]));
+      weekData.unsent = false;
       weekData.status = "published";
       weekData.published_at = new Date().toISOString();
       weekData.published_by = 1;
@@ -597,7 +613,7 @@ http
         published_by: weekData.published_by,
         republished,
         gaps,
-        notified: republished ? [] : notified,
+        notified: republished ? employees.filter((e) => changed.has(e.id)).map((e) => ({ employee_id: e.id, name: e.name, channels: e.email ? ["in_app", "email"] : ["in_app"] })) : notified,
       });
     }
 

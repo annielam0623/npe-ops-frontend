@@ -144,6 +144,11 @@ export interface ScheduleWeek {
   gaps: ScheduleGap[];
   /** 已发布、而且现在还有空档（后端 d2bc2cf）。gaps 照旧给所有能打开的人，staff 不显示由前端按角色藏。 */
   published_with_gaps?: boolean;
+  /**
+   * 已发布的周改过、还没按 Publish again（Annie 10-29「改完再发」：改动不逐项通知，Publish again 时一次发给班有变化的人和主管）。
+   * 后端暂定字段；没带时前端只记这一次打开页面以后的改动。
+   */
+  has_unsent_changes?: boolean;
 }
 
 /** POST /api/schedule/weeks/{week_start}/publish 发布成功的返回体。 */

@@ -324,6 +324,12 @@
           - 后端需求已转 9a。要确认 HR 的 overwrite=true 不会把空格当成清空（Q3：空格 = 不改）。
       - 每页要后端一对 import/preview、import/commit 接口。
       - 待 Annie 定 Q1–Q7，都附推荐。
+- **排班通知「改完再发」前端文字**（9c，`task/schedule-notify-wording`，worktree D:
+pe-ops-frontend-seat）。**等后端 8e 上 main 再合。**
+  - Annie 原话：重新发布只发给班有变化的人和他们的主管「同意」；已发布的周改动不逐项发「改完再发」；「改动schedule当然应该是发布的时候通知」（休息日也等 Publish again 一起通知，不单独马上发）。
+  - 改了：Publish again 确认框「People whose shifts or time off changed since the last publish, and their supervisors, will get a system notification and an email. No one else is notified.」；成功「Published again. Notified N people.」，N = 0 写「No one's shifts or time off changed, so no one was notified.」；Publish again 鼠标提示同改。排班页别处没有「改了马上通知」的字。
+  - 新提示（**先给 Annie 看**）：已发布的周改了还没 Publish again 时，Publish again 旁琥珀色「Changes are not sent until you publish again.」。用后端暂定字段 `has_unsent_changes`（GET 周），没带时只记这一次打开页面以后的改动 ⇒ 需要后端加这个字段。
+  - 检查：tsc / eslint 过；sch 199/199、nav 32/32。
 - **Bus Manifest 改了先放在页面上、按整页 Save 才存**（9c，`task/bus-manifest-page-save`，worktree D:
 pe-ops-frontend-bmv）：
   - Annie 原话：「bus manifest Q4 没存之前还是挪过去，缓存，然后等整页存。其他都走推荐。动手」。preview：https://claude.ai/artifact/XNA2wnz8SRcWcqxrANy1WX

@@ -115,6 +115,8 @@ export function ScheduleView() {
     date: string;
   } | null>(null);
   const timelineRef = useRef<HTMLElement>(null);
+  /** 这一次打开页面以后改过、还没 Publish again 的已发布周（后端没带 has_unsent_changes 时用）。 */
+  const [unsentWeek, setUnsentWeek] = useState<string | null>(null);
   const [publishBanner, setPublishBanner] = useState<string | null>(null);
   const [publishBlockedGaps, setPublishBlockedGaps] = useState<
     SchedulePublishBlockedError["gaps"] | null
@@ -236,6 +238,13 @@ export function ScheduleView() {
     ? [meEmployee, ...activeEmployees.filter((e) => e.id !== meEmployee.id)]
     : activeEmployees;
 
+  /** 改好一处：编辑锁记一笔；已发布的周还要记「改了还没发」（Annie「改完再发」）。 */
+  function markEdited() {
+    editLock.markEdited();
+    if (week.kind === "ready" && week.week.status === "published")
+      setUnsentWeek(weekStart);
+  }
+
   /** 动手改之前先占住这一周；别人占着 ⇒ 弹提示、返回 false（这一下不做）。 */
   async function guardEdit(): Promise<boolean> {
     const r = await editLock.ensure();
@@ -255,7 +264,7 @@ export function ScheduleView() {
     if (!(await guardEdit())) return;
     try {
       await action();
-      editLock.markEdited();
+      markEdited();
     } catch (error) {
       if (isStatus(error, 401)) {
         redirectToLogin();
@@ -339,7 +348,7 @@ export function ScheduleView() {
         kind: input.kind,
         note: input.note,
       });
-      editLock.markEdited();
+      markEdited();
     } catch (error) {
       if (isStatus(error, 401)) {
         redirectToLogin();
@@ -418,12 +427,14 @@ export function ScheduleView() {
       const result = await publishScheduleWeek(weekStart, { allowGaps });
       setConfirmingPublish(false);
       setPublishBlockedGaps(null);
-      // 重新发布后端不发通知（notified 永远 []）：不写「Notified 0 people」，免得像是发漏了。
+      // 重新发布只通知班有变化的人和他们的主管（Annie 10-29「同意」）；一个都没变就写明没人收到，不写「Notified 0 people」。
+      const n = result.notified.length;
       setPublishBanner(
-        result.republished
-          ? "Published again."
-          : `Published. Notified ${result.notified.length} ${result.notified.length === 1 ? "person" : "people"}.`,
+        result.republished && n === 0
+          ? "Published again. No one's shifts or time off changed, so no one was notified."
+          : `${result.republished ? "Published again" : "Published"}. Notified ${n} ${n === 1 ? "person" : "people"}.`,
       );
+      setUnsentWeek(null);
       void loadWeek();
       return { status: "ok" };
     } catch (error) {
@@ -619,7 +630,7 @@ export function ScheduleView() {
                 onChanged={() => void loadWeek(undefined, true)}
                 onUnauthorized={redirectToLogin}
                 beforeEdit={guardEdit}
-                onEdited={editLock.markEdited}
+                onEdited={markEdited}
               />
             ) : null}
 
@@ -637,6 +648,17 @@ export function ScheduleView() {
                           {readyWeek.published_at
                             ? ` · ${new Date(readyWeek.published_at).toLocaleString("en-US", { timeZone: "America/Los_Angeles" })}`
                             : ""}
+                        </span>
+                      ) : null}
+                      {readyWeek.status === "published" &&
+                      (readyWeek.has_unsent_changes ??
+                        unsentWeek === weekStart) ? (
+                        // 改完再发（Annie 10-29）：已发布的周改了不逐项通知，提醒按 Publish again 才发出去。
+                        <span
+                          data-unsent-changes
+                          className="text-[12px] font-semibold text-[#fcd34d]"
+                        >
+                          Changes are not sent until you publish again.
                         </span>
                       ) : null}
                       <PublishControl
@@ -753,8 +775,8 @@ export function ScheduleView() {
           ) : null}
           <p>
             {readyWeek?.status === "published"
-              ? // 重新发布：后端不发通知（notified 永远 []，通知规则等 Annie 定），这里不能写会发邮件。
-                "The week stays published with your latest changes. No notifications are sent when you publish again."
+              ? // 重新发布（Annie 10-29）：只通知班或休息日有变化的人和他们的主管；休息日也不单独马上发（「改动schedule当然应该是发布的时候通知」）。
+                "People whose shifts or time off changed since the last publish, and their supervisors, will get a system notification and an email. No one else is notified. This can't be undone."
               : "Everyone scheduled this week will get a system notification and an email. This can't be undone."}
             {gaps.length
               ? " Publishing with a gap is written in the Action Log."
@@ -1238,7 +1260,7 @@ function PublishControl({
             : list.length
               ? "There is a gap in coverage. You can still publish: you will be asked to confirm."
               : republish
-                ? "Publish this week again (no notifications are sent)."
+                ? "Publish again: people whose shifts or time off changed, and their supervisors, are notified."
                 : undefined
         }
         className={DARK_PRIMARY_BUTTON_CLASS}
