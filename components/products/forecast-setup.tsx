@@ -8,11 +8,14 @@ import {
   INPUT,
   MapField,
   SELECT,
-  Saved,
   TD,
   TH,
-  useSavedFlag,
 } from "@/components/products/setup-ui";
+import {
+  CHANGED_RING,
+  SaveControl,
+  useBlockSave,
+} from "@/components/products/unsaved";
 import { describeError, isStatus } from "@/lib/api-errors";
 import {
   addAllotmentDates,
@@ -80,6 +83,107 @@ export function ForecastSetupFields({
   const onFailRef = useRef(onFail);
   onFailRef.current = onFail;
 
+  // 9 星期几、10 每行平常的上限、11 逐单列出：改了先放在页面上，这三项一个 Save（Annie 2026-10-29「不要改一点存一点」；
+  // 主窗口 eb 2026-10-30 定合成一个 Save、参加 Bus Manifest setup 的 10 分钟自动存）。几块（Own block）各自的改动都留着，切标签不丢。
+  // 停开日期、按日期段另设上限的 Add / Delete 本来就是按键，照旧马上存。
+  const [runEdits, setRunEdits] = useState<Record<string, number[]>>({});
+  const [capEdits, setCapEdits] = useState<Record<string, CapDraft>>({});
+  const [listEdits, setListEdits] = useState<Record<string, boolean>>({});
+  const changes = settings
+    ? pendingChanges(settings, manifestId, runEdits, capEdits, listEdits)
+    : { run: [], caps: [], list: [] };
+  const dirty =
+    changes.run.length + changes.caps.length + changes.list.length > 0;
+  const saver = useBlockSave({
+    id: `setup:${manifestId}:forecast`,
+    label:
+      "7 Days Forecast settings (running days, max allotments, list each order)",
+    dirty,
+    auto: true,
+    draftKey: JSON.stringify(changes),
+    doSave: async () => {
+      if (!settings) return null;
+      for (const c of changes.caps) {
+        if (!c.time && !c.max) continue;
+        const n = Number(c.max);
+        if (!/^\d+$/.test(c.max) || n < 1 || n > 9999)
+          return `${c.row}: Max guests must be a number from 1 to 9999.`;
+      }
+      let err: string | null = null;
+      onStart();
+      try {
+        for (const r of changes.run)
+          await saveRunDays({
+            manifest_id: manifestId,
+            section: r.section,
+            weekdays: r.weekdays,
+          });
+        for (const c of changes.caps) {
+          if (!c.time && !c.max) {
+            if (c.existed) await deleteAllotment(manifestId, c.row);
+          } else {
+            await saveAllotment({
+              manifest_id: manifestId,
+              row_label: c.row,
+              time_label: c.time,
+              max_pax: Number(c.max),
+            });
+          }
+        }
+        if (changes.list.length) {
+          const on = new Map(changes.list.map((l) => [l.section, l.on]));
+          await saveOrderDetailBlocks([
+            ...settings.order_detail_blocks.filter(
+              (b) => !(b.manifest_id === manifestId && on.has(b.section)),
+            ),
+            ...changes.list
+              .filter((l) => l.on)
+              .map((l) => ({ manifest_id: manifestId, section: l.section })),
+          ]);
+        }
+      } catch (e) {
+        if (isStatus(e, 401)) {
+          onFailRef.current(e);
+          return "";
+        }
+        err = describeError(e);
+      }
+      // 存上的那几项：重拉后和已存的一样，草稿里去掉；没存上的留着。
+      try {
+        const fresh = await fetchForecastSettings();
+        setSettings(fresh);
+        // 按现在的草稿去掉（存的那一两秒里又改的不丢）。
+        setRunEdits((m) =>
+          pick(
+            m,
+            pendingChanges(fresh, manifestId, m, {}, {}).run.map(
+              (r) => r.section,
+            ),
+          ),
+        );
+        setCapEdits((m) =>
+          pick(
+            m,
+            pendingChanges(fresh, manifestId, {}, m, {}).caps.map((c) =>
+              capKey(c.row),
+            ),
+          ),
+        );
+        setListEdits((m) =>
+          pick(
+            m,
+            pendingChanges(fresh, manifestId, {}, {}, m).list.map(
+              (l) => l.section,
+            ),
+          ),
+        );
+      } catch (e) {
+        if (!err) err = describeError(e);
+      }
+      return err;
+    },
+  });
+
   useEffect(() => {
     const controller = new AbortController();
     fetchForecastSettings(controller.signal)
@@ -112,7 +216,8 @@ export function ForecastSetupFields({
 
   const blocks = settings.blocks.filter((b) => b.manifest_id === manifestId);
   if (!blocks.length) return null;
-  const block = blocks.find((b) => b.section === section) ?? blocks[0];
+  const fb = blocks.find((b) => b.section === section) ?? blocks[0];
+  const saving = saver.state.kind === "saving";
 
   /** 一次写操作：出错把后端原话写在这几项上面，成功就整份重拉。 */
   async function run(action: () => Promise<unknown>): Promise<boolean> {
@@ -151,11 +256,11 @@ export function ForecastSetupFields({
               key={b.section}
               type="button"
               role="tab"
-              aria-selected={b.section === block.section}
+              aria-selected={b.section === fb.section}
               onClick={() => setSection(b.section)}
               className={cn(
                 "h-7 rounded-[6px] px-2.5 text-[12px]",
-                b.section === block.section
+                b.section === fb.section
                   ? "bg-[#1a1a1a] font-semibold text-white night:bg-white/90 night:text-[#06101c]"
                   : "border-[0.5px] border-black/25 bg-paper text-[#1a1a1a] night:border-white/10 night:bg-white/[.04] night:text-white/80",
               )}
@@ -176,57 +281,60 @@ export function ForecastSetupFields({
       ) : null}
 
       <RunDaysField
-        key={`run:${block.section}`}
-        block={block}
+        key={`run:${fb.section}`}
+        block={fb}
         settings={settings}
-        busy={busy}
+        weekdays={
+          runEdits[fb.section] ??
+          savedWeekdays(settings, manifestId, fb.section)
+        }
+        onWeekdays={(w) => setRunEdits((m) => ({ ...m, [fb.section]: w }))}
+        changed={changes.run.some((r) => r.section === fb.section)}
+        busy={busy || saving}
         field={field}
         run={run}
       />
       <AllotmentsField
-        key={`allot:${block.section}`}
-        block={block}
+        key={`allot:${fb.section}`}
+        block={fb}
         settings={settings}
-        busy={busy}
+        capEdits={capEdits}
+        onCap={(row, d) => setCapEdits((m) => ({ ...m, [capKey(row)]: d }))}
+        changedRows={changes.caps.map((c) => capKey(c.row))}
+        busy={busy || saving}
         field={field}
         run={run}
       />
       <MapField
         {...field("orderList")}
         title="List each order on the 7 Days Forecast"
-        hint="Not printed. Tick it for tours like Private, where the Forecast lists every order (CHD#, pax, tour, pick-up place and time) under the tour. Most tours leave it off. It saves right away."
+        hint="Not printed. Tick it for tours like Private, where the Forecast lists every order (CHD#, pax, tour, pick-up place and time) under the tour. Most tours leave it off. Click Save below to keep it."
       >
-        <label className="flex items-center gap-2 text-[12.5px]">
+        <label
+          className={cn(
+            "flex items-center gap-2 self-start rounded-[6px] text-[12.5px]",
+            changes.list.some((l) => l.section === fb.section) && CHANGED_RING,
+          )}
+        >
           <input
             type="checkbox"
             aria-label="List each order on the 7 Days Forecast"
-            disabled={busy}
-            checked={settings.order_detail_blocks.some(
-              (b) =>
-                b.manifest_id === manifestId && b.section === block.section,
-            )}
+            disabled={busy || saving}
+            checked={
+              listEdits[fb.section] ??
+              savedList(settings, manifestId, fb.section)
+            }
             onChange={(event) => {
-              const others = settings.order_detail_blocks.filter(
-                (b) =>
-                  !(
-                    b.manifest_id === manifestId && b.section === block.section
-                  ),
-              );
-              void run(() =>
-                saveOrderDetailBlocks(
-                  event.target.checked
-                    ? [
-                        ...others,
-                        { manifest_id: manifestId, section: block.section },
-                      ]
-                    : others,
-                ),
-              );
+              const on = event.target.checked;
+              setListEdits((m) => ({ ...m, [fb.section]: on }));
             }}
           />
           List each order
         </label>
       </MapField>
+      <div data-forecast-save className="px-2.5">
+        <SaveControl block={saver} />
+      </div>
 
       {unmatched.length ? (
         <UnmatchedBox
@@ -246,42 +354,38 @@ type Run = (action: () => Promise<unknown>) => Promise<boolean>;
 function RunDaysField({
   block,
   settings,
+  weekdays,
+  onWeekdays,
+  changed,
   busy,
   field,
   run,
 }: {
   block: ForecastSettingsBlock;
   settings: ForecastSettings;
+  /** 页面上现在的星期几（含没存的改动）。 */
+  weekdays: number[];
+  onWeekdays: (w: number[]) => void;
+  changed: boolean;
   busy: boolean;
   field: FieldProps;
   run: Run;
 }) {
-  const [saved, flashSaved] = useSavedFlag();
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [note, setNote] = useState("");
   const same = (x: { manifest_id: number; section: string }) =>
     x.manifest_id === block.manifest_id && x.section === block.section;
-  const weekdays = settings.run_days.find(same)?.weekdays ?? ALL_WEEKDAYS;
   const closed = settings.closed_dates
     .filter(same)
     .sort((a, b) => a.date_from.localeCompare(b.date_from));
 
-  async function toggle(day: number) {
-    const next = weekdays.includes(day)
-      ? weekdays.filter((d) => d !== day)
-      : [...weekdays, day].sort();
-    if (
-      await run(() =>
-        saveRunDays({
-          manifest_id: block.manifest_id,
-          section: block.section,
-          weekdays: next,
-        }),
-      )
-    ) {
-      flashSaved();
-    }
+  function toggle(day: number) {
+    onWeekdays(
+      weekdays.includes(day)
+        ? weekdays.filter((d) => d !== day)
+        : [...weekdays, day].sort(),
+    );
   }
 
   async function add() {
@@ -307,12 +411,16 @@ function RunDaysField({
     <MapField
       {...field("runDays")}
       title="Running days"
-      hint='Not printed. On the 7 Days Forecast a day this tour does not run shows "-" instead of 0. Untick a weekday it never runs (it saves right away); add dates it is closed (one day or a range).'
+      hint='Not printed. On the 7 Days Forecast a day this tour does not run shows "-" instead of 0. Untick a weekday it never runs and click Save below; add dates it is closed (one day or a range, Add saves it).'
     >
       <div
         role="group"
         aria-label="Runs on"
-        className="flex flex-wrap items-center gap-1.5"
+        data-changed={changed || undefined}
+        className={cn(
+          "flex flex-wrap items-center gap-1.5 self-start rounded-[7px]",
+          changed && CHANGED_RING,
+        )}
       >
         {WEEKDAYS.map((name, day) => {
           const on = weekdays.includes(day);
@@ -322,7 +430,7 @@ function RunDaysField({
               type="button"
               aria-pressed={on}
               disabled={busy}
-              onClick={() => void toggle(day)}
+              onClick={() => toggle(day)}
               className={cn(
                 "h-7 rounded-[6px] px-2.5 text-[12px] disabled:opacity-60",
                 on
@@ -334,7 +442,6 @@ function RunDaysField({
             </button>
           );
         })}
-        <Saved show={saved} />
       </div>
       <div className="mt-1 overflow-x-auto">
         <table className="min-w-[520px] border-collapse text-[12px]">
@@ -417,12 +524,20 @@ function RunDaysField({
 function AllotmentsField({
   block,
   settings,
+  capEdits,
+  onCap,
+  changedRows,
   busy,
   field,
   run,
 }: {
   block: ForecastSettingsBlock;
   settings: ForecastSettings;
+  /** 没存的改动（键见 capKey）。 */
+  capEdits: Record<string, CapDraft>;
+  onCap: (row: string, d: CapDraft) => void;
+  /** 改了没存的行（capKey）。 */
+  changedRows: string[];
   busy: boolean;
   field: FieldProps;
   run: Run;
@@ -432,8 +547,6 @@ function AllotmentsField({
       a.manifest_id === block.manifest_id &&
       block.rows.some((r) => sameLabel(r, a.row_label)),
   );
-  const normal = (row: string) =>
-    mine.find((a) => a.date_from === null && sameLabel(a.row_label, row));
   const dated = mine
     .filter((a) => a.date_from !== null)
     .sort((a, b) => (a.date_from ?? "").localeCompare(b.date_from ?? ""));
@@ -442,7 +555,7 @@ function AllotmentsField({
     <MapField
       {...field("allotments")}
       title="Max allotments"
-      hint="Not printed. The most guests a row can take each day, and its time slot. The 7 Days Forecast shows the cap and how many seats are left (red when oversold). Type both and click outside the box to save; clear both to remove the cap."
+      hint="Not printed. The most guests a row can take each day, and its time slot. The 7 Days Forecast shows the cap and how many seats are left (red when oversold). Type both and click Save below; clear both to remove the cap."
     >
       {block.rows.length ? (
         <div className="overflow-x-auto">
@@ -452,20 +565,60 @@ function AllotmentsField({
                 <th className={TH}>Row</th>
                 <th className={TH}>Time</th>
                 <th className={TH}>Max guests</th>
-                <th className={TH} />
               </tr>
             </thead>
             <tbody>
-              {block.rows.map((row) => (
-                <NormalCapRow
-                  key={`${row}:${normal(row)?.time_label ?? ""}:${normal(row)?.max_pax ?? ""}`}
-                  manifestId={block.manifest_id}
-                  row={row}
-                  current={normal(row)}
-                  busy={busy}
-                  run={run}
-                />
-              ))}
+              {block.rows.map((row) => {
+                const d =
+                  capEdits[capKey(row)] ??
+                  savedCap(settings, block.manifest_id, row);
+                const changed = changedRows.includes(capKey(row));
+                return (
+                  <tr
+                    key={row}
+                    data-allot-row={row}
+                    data-changed={changed || undefined}
+                  >
+                    <td className={cn(TD, "font-semibold")}>{row}</td>
+                    <td className={TD}>
+                      <input
+                        type="text"
+                        aria-label={`${row} time`}
+                        value={d.time}
+                        maxLength={20}
+                        placeholder="1p"
+                        disabled={busy}
+                        onChange={(event) =>
+                          onCap(row, { ...d, time: event.target.value })
+                        }
+                        className={cn(
+                          INPUT,
+                          "w-[80px]",
+                          changed && CHANGED_RING,
+                        )}
+                      />
+                    </td>
+                    <td className={TD}>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        aria-label={`${row} max guests`}
+                        value={d.max}
+                        placeholder="No cap"
+                        disabled={busy}
+                        onChange={(event) =>
+                          onCap(row, { ...d, max: event.target.value })
+                        }
+                        className={cn(
+                          INPUT,
+                          "w-[80px]",
+                          changed && CHANGED_RING,
+                        )}
+                      />
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -483,100 +636,6 @@ function AllotmentsField({
         />
       ) : null}
     </MapField>
-  );
-}
-
-function NormalCapRow({
-  manifestId,
-  row,
-  current,
-  busy,
-  run,
-}: {
-  manifestId: number;
-  row: string;
-  current: ForecastAllotmentSetting | undefined;
-  busy: boolean;
-  run: Run;
-}) {
-  const [time, setTime] = useState(current?.time_label ?? "");
-  const [max, setMax] = useState(current ? String(current.max_pax) : "");
-  const [problem, setProblem] = useState<string | null>(null);
-  const [saved, flashSaved] = useSavedFlag();
-
-  async function save() {
-    const t = time.trim();
-    const m = max.trim();
-    if (
-      t === (current?.time_label ?? "") &&
-      m === (current ? String(current.max_pax) : "")
-    ) {
-      return;
-    }
-    setProblem(null);
-    if (!t && !m) {
-      if (current && (await run(() => deleteAllotment(manifestId, row)))) {
-        flashSaved();
-      }
-      return;
-    }
-    const n = Number(m);
-    if (!/^\d+$/.test(m) || n < 1 || n > 9999) {
-      setProblem("Max guests must be a number from 1 to 9999.");
-      return;
-    }
-    if (
-      await run(() =>
-        saveAllotment({
-          manifest_id: manifestId,
-          row_label: row,
-          time_label: t,
-          max_pax: n,
-        }),
-      )
-    ) {
-      flashSaved();
-    }
-  }
-
-  return (
-    <tr data-allot-row={row}>
-      <td className={cn(TD, "font-semibold")}>{row}</td>
-      <td className={TD}>
-        <input
-          type="text"
-          aria-label={`${row} time`}
-          value={time}
-          maxLength={20}
-          placeholder="1p"
-          disabled={busy}
-          onChange={(event) => setTime(event.target.value)}
-          onBlur={() => void save()}
-          className={cn(INPUT, "w-[80px]")}
-        />
-      </td>
-      <td className={TD}>
-        <input
-          type="text"
-          inputMode="numeric"
-          aria-label={`${row} max guests`}
-          value={max}
-          placeholder="No cap"
-          disabled={busy}
-          onChange={(event) => setMax(event.target.value)}
-          onBlur={() => void save()}
-          className={cn(INPUT, "w-[80px]")}
-        />
-      </td>
-      <td className={TD}>
-        <Saved show={saved} />
-        {problem ? (
-          <span className="text-[12px] text-[#b3261e] night:text-red-300">
-            {problem}
-          </span>
-        ) : null}
-      </td>
-    </tr>
   );
 }
 
@@ -756,7 +815,14 @@ function DatedCaps({
 /** 存过、但节改了名对不上的设置：照后端说的删法删（4f 2026-10-15）。 */
 /** 稳定的身份（不依赖数组下标），Products 页顶部提醒区用它拼跳转目标的 DOM id。 */
 export function unmatchedSettingKey(u: ForecastUnmatchedSetting): string {
-  return [u.kind, u.manifest_id, u.section ?? "", u.row_label ?? "", u.id ?? "", u.date_from ?? ""].join(":");
+  return [
+    u.kind,
+    u.manifest_id,
+    u.section ?? "",
+    u.row_label ?? "",
+    u.id ?? "",
+    u.date_from ?? "",
+  ].join(":");
 }
 
 function UnmatchedBox({
@@ -815,25 +881,25 @@ function UnmatchedBox({
           const itemKey = unmatchedSettingKey(u);
           const isHighlighted = highlightKey === itemKey;
           return (
-          <li
-            key={itemKey}
-            id={`unmatched-${itemKey}`}
-            ref={isHighlighted ? highlightRef : undefined}
-            className={cn(
-              "flex flex-wrap items-center gap-2 rounded-[6px]",
-              isHighlighted && "bg-[#f0d080]/40 night:bg-amber-400/25",
-            )}
-          >
-            <span>{u.label}</span>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => void run(() => remove(u))}
-              className={DELETE_BUTTON}
+            <li
+              key={itemKey}
+              id={`unmatched-${itemKey}`}
+              ref={isHighlighted ? highlightRef : undefined}
+              className={cn(
+                "flex flex-wrap items-center gap-2 rounded-[6px]",
+                isHighlighted && "bg-[#f0d080]/40 night:bg-amber-400/25",
+              )}
             >
-              Delete
-            </button>
-          </li>
+              <span>{u.label}</span>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void run(() => remove(u))}
+                className={DELETE_BUTTON}
+              >
+                Delete
+              </button>
+            </li>
           );
         })}
       </ul>
@@ -844,4 +910,95 @@ function UnmatchedBox({
 /** 行名不分大小写（后端同样按不分大小写认）。 */
 function sameLabel(a: string, b: string): boolean {
   return a.trim().toLowerCase() === b.trim().toLowerCase();
+}
+
+/** 一行平常上限的草稿（输入框原文）。 */
+interface CapDraft {
+  time: string;
+  max: string;
+}
+
+/** 草稿按行名认（不分大小写，同后端）。 */
+function capKey(row: string): string {
+  return row.trim().toLowerCase();
+}
+
+function savedWeekdays(
+  s: ForecastSettings,
+  manifestId: number,
+  section: string,
+): number[] {
+  return (
+    s.run_days.find(
+      (x) => x.manifest_id === manifestId && x.section === section,
+    )?.weekdays ?? ALL_WEEKDAYS
+  );
+}
+
+function savedCap(s: ForecastSettings, manifestId: number, row: string) {
+  const a = s.allotments.find(
+    (x) =>
+      x.manifest_id === manifestId &&
+      x.date_from === null &&
+      sameLabel(x.row_label, row),
+  );
+  return {
+    time: a?.time_label ?? "",
+    max: a ? String(a.max_pax) : "",
+    existed: !!a,
+  };
+}
+
+function savedList(
+  s: ForecastSettings,
+  manifestId: number,
+  section: string,
+): boolean {
+  return s.order_detail_blocks.some(
+    (b) => b.manifest_id === manifestId && b.section === section,
+  );
+}
+
+/** 草稿里和已存的不一样的那几项（这个团的；行名、节名都照后端现在的块）。 */
+function pendingChanges(
+  s: ForecastSettings,
+  manifestId: number,
+  runEdits: Record<string, number[]>,
+  capEdits: Record<string, CapDraft>,
+  listEdits: Record<string, boolean>,
+) {
+  const blocks = s.blocks.filter((b) => b.manifest_id === manifestId);
+  const run: { section: string; weekdays: number[] }[] = [];
+  const list: { section: string; on: boolean }[] = [];
+  const caps: { row: string; time: string; max: string; existed: boolean }[] =
+    [];
+  for (const b of blocks) {
+    const w = runEdits[b.section];
+    if (
+      w &&
+      [...w].sort().join() !==
+        [...savedWeekdays(s, manifestId, b.section)].sort().join()
+    )
+      run.push({ section: b.section, weekdays: [...w].sort() });
+    const on = listEdits[b.section];
+    if (on !== undefined && on !== savedList(s, manifestId, b.section))
+      list.push({ section: b.section, on });
+    for (const row of b.rows) {
+      const d = capEdits[capKey(row)];
+      if (!d) continue;
+      const cur = savedCap(s, manifestId, row);
+      const time = d.time.trim();
+      const max = d.max.trim();
+      if (time !== cur.time || max !== cur.max)
+        caps.push({ row, time, max, existed: cur.existed });
+    }
+  }
+  return { run, caps, list };
+}
+
+/** 只留这几个键（存好的草稿去掉）。 */
+function pick<T>(m: Record<string, T>, keys: string[]): Record<string, T> {
+  const out: Record<string, T> = {};
+  for (const k of keys) if (k in m) out[k] = m[k];
+  return out;
 }

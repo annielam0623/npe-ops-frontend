@@ -66,15 +66,22 @@ export interface HRBulkResult {
   unchanged?: number;
 }
 
+/** error：这一行没通过检查，提交时跳过（后端 G220 76de8f3）。 */
 export type HRImportStatus =
-  "new" | "exists" | "update" | "unchanged" | "duplicate_in_file";
+  "new" | "exists" | "update" | "unchanged" | "duplicate_in_file" | "error";
 
 export type HRImportRow = Record<string, string> & {
   status: HRImportStatus;
+  /** Excel 行号（后端 G220）。 */
+  row: number;
   /** 将要写入的字段 key。 */
   changed: string[];
   /** 文件里为空、因此不写的字段 key。 */
   blanked: string[];
+  /** 这一行的错（后端 G220）；field = null 是整行的错。文件里重复的行写「Repeated above — skipped.」。 */
+  errors?: { field: string | null; message: string }[];
+  /** 要改的字段改前的值（后端 G220，只有 changed 那几栏）：预览写「旧 → 新」。 */
+  before?: Record<string, string>;
 };
 
 export interface HRImportPreview {
@@ -89,6 +96,7 @@ export interface HRImportPreview {
     update: number;
     unchanged: number;
     duplicate: number;
+    error: number;
   };
 }
 
@@ -96,7 +104,11 @@ export interface HRImportResult {
   imported: number;
   updated: number;
   unchanged: number;
+  /** 文件里重复、跳过的行（overwrite=true 时）。 */
   skipped: number;
   skipped_names: string[];
   vanished: number;
+  /** 没通过检查、没存的行数和原因（后端 G220：只回行号和原因）。 */
+  errors: number;
+  error_rows: { row: number; message: string }[];
 }

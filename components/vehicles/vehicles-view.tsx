@@ -23,6 +23,7 @@ import {
   TR_CLASS,
   TR_HOVER,
 } from "@/components/pickup-locations/legacy-ui";
+import { BulkImportButton } from "@/components/ui/bulk-import";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ErrorBanner, Panel } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
@@ -46,6 +47,7 @@ import {
 import type { Vehicle, VehicleColumn, VehicleInput } from "@/types";
 
 import { ExtraColumns } from "./extra-columns";
+import { VehicleImportPanel } from "./import-panel";
 import { VehicleLog } from "./vehicle-log";
 
 type ViewState =
@@ -137,6 +139,7 @@ export function VehiclesView() {
   const [busyId, setBusyId] = useState<number | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [logVersion, setLogVersion] = useState(0);
+  const [importOpen, setImportOpen] = useState(false);
   const redirectingRef = useRef(false);
 
   const redirectToLogin = useCallback(() => {
@@ -555,6 +558,16 @@ export function VehiclesView() {
             </div>
           ) : null}
 
+          {importOpen ? (
+            <VehicleImportPanel
+              vehicles={vehicles}
+              columns={columns}
+              onClose={() => setImportOpen(false)}
+              onSaved={() => void refresh()}
+              onUnauthorized={redirectToLogin}
+            />
+          ) : null}
+
           <section className={CARD_CLASS}>
             <div className={CARD_HEADER_CLASS}>
               <h2 className={CARD_TITLE_CLASS}>All Vehicles</h2>
@@ -600,6 +613,12 @@ export function VehiclesView() {
                   >
                     Edit all
                   </button>
+                )}
+                {bulk ? null : (
+                  <BulkImportButton
+                    onClick={() => setImportOpen(true)}
+                    disabled={view.kind !== "ready" || importOpen}
+                  />
                 )}
                 <input
                   type="text"
@@ -1071,6 +1090,13 @@ function HowToUse() {
         scheduled with it stay as they are, and guests who already have its
         tracking link can still open the map. Reactivate brings it back.
         Vehicles are never deleted.
+      </li>
+      <li>
+        Change or add many vehicles at once: click ⬆ Import, then ⬇ Download
+        template (every vehicle, same columns). Change or add rows in Excel,
+        choose the file, check the preview, then click Save. Rows are matched by
+        the vehicle number; a blank cell never clears a box; rows marked Error
+        are not saved.
       </li>
       <li>
         If the list is wider than the window, scroll it sideways to see the

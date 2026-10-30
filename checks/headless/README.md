@@ -24,6 +24,7 @@ node run-all.js --keep-dev   # 跑完不关 next dev
   | `MOCK_PORT` | 8799 | 模拟接口端口（各套 mock 监听、test 连） |
   | `APP_URL` / `MOCK_URL` | `http://localhost:3198` / `http://localhost:8799` | 单独跑某套时 test 用的地址；`run-all.js` 会按上面两个自动设好 |
   | `CDP_PORT` | 9333（fod 9334） | 用固定调试端口的那些套的 Chrome 端口 |
+  | `SUITE_TIMEOUT_S` | 480 | 只给 `run-all.js`：每套最长跑多少秒（da 接近 8 分钟，单独跑时可以设 720） |
 
   例：`MOCK_PORT=8899 APP_PORT=3298 CDP_PORT=9433 node run-all.js tp users teams`（Git Bash 写法）。
   `teams` 套的 Chrome 每次用临时目录、端口由 Chrome 自己挑；`tp` / `users` 用 puppeteer，也不占固定调试端口。

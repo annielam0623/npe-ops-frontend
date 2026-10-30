@@ -19,8 +19,9 @@ import type {
 /**
  * Bus Manifest 页「改了先放在页面上，按整页 Save 才存」（Annie 2026-10-29：「bus manifest Q4 没存之前还是挪过去，缓存，
  * 然后等整页存。其他都走推荐。动手」；preview https://claude.ai/artifact/XNA2wnz8SRcWcqxrANy1WX ）：
- * 版式、字号、换车、每节的黄框都先记在这里；整页 Save 依次调现有接口（版式 → 字号 → 换车 → 黄框），
- * 存上的拿掉，没存上的留着继续标琥珀色。Special Requirements 照旧有自己的 Save（Q5）。
+ * 版式、字号、换车、每节的黄框、Special Requirements 都先记在这里；整页 Save 依次调现有接口（版式 → 换车 → 备注 → 字号 → 黄框），
+ * 存上的拿掉，没存上的留着继续标琥珀色。Special Requirements 也并进整页 Save（Annie 2026-10-30「并进整页一起存 A 动手」：
+ * 格子里的 Save 改成 Done，先暂存、标琥珀色，存的时候放在换车之后发）。
  */
 
 export type AttrValues = {
@@ -42,6 +43,8 @@ export interface Pending {
     string,
     { busKey: string; section: string; title: string; values: AttrValues }
   >;
+  /** 按客人 id：改过的 Special Requirements（null = 恢复 Rezdy 原文，"" = 删空）；order 是单号（写在提示里）。 */
+  notes: Record<number, { notes: string | null; order: string }>;
 }
 
 export const EMPTY_PENDING: Pending = {
@@ -49,6 +52,7 @@ export const EMPTY_PENDING: Pending = {
   textSizes: {},
   moves: {},
   attractions: {},
+  notes: {},
 };
 
 export function isDirty(p: Pending): boolean {
@@ -56,7 +60,8 @@ export function isDirty(p: Pending): boolean {
     p.version !== null ||
     Object.keys(p.textSizes).length > 0 ||
     Object.keys(p.moves).length > 0 ||
-    Object.keys(p.attractions).length > 0
+    Object.keys(p.attractions).length > 0 ||
+    Object.keys(p.notes).length > 0
   );
 }
 
@@ -191,6 +196,11 @@ export function pendingSummary(
     out.push(
       `${attrs.length} confirmation box${attrs.length === 1 ? "" : "es"} (${attrs.map((a) => a.title).join(", ")})`,
     );
+  const notes = Object.values(p.notes);
+  if (notes.length)
+    out.push(
+      `Special Requirements for ${notes.map((n) => n.order).join(", ")}`,
+    );
   return out;
 }
 
@@ -205,6 +215,8 @@ export interface StageCtx {
     section: ManifestSection,
     values: AttrValues,
   ) => void;
+  /** 改过、还没存的 Special Requirements（按客人 id）。 */
+  notes: Pending["notes"];
   /** 存失败的那几样（Save 后还在 pending 里）：标得更醒目。 */
   failed: boolean;
 }
@@ -213,6 +225,7 @@ export const Stage = createContext<StageCtx>({
   movedFrom: new Map(),
   attractions: {},
   stageAttraction: () => {},
+  notes: {},
   failed: false,
 });
 export const useStage = () => useContext(Stage);
