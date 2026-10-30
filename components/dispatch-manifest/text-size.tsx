@@ -179,7 +179,7 @@ const SEG = "inline-flex overflow-hidden rounded-[7px] border border-[#9aa]";
 const CHIP =
   "cursor-pointer border-r border-[#9aa] bg-white px-2.5 py-1 text-[12px] font-bold text-[#222] last:border-r-0 disabled:cursor-default disabled:opacity-40 aria-pressed:bg-[#1f2937] aria-pressed:text-white";
 
-/** 表格上方的编辑条（白底虚线框，同 preview）。蓝色只有 Save。 */
+/** 表格上方的编辑条（白底虚线框，同 preview）。Done 是白色：调好的字号留在页面上，跟整页 Save 一起存（Annie 10-29 Q2）。 */
 export function TextSizeToolbar({
   mode,
   onMode,
@@ -191,8 +191,7 @@ export function TextSizeToolbar({
   onResetSelection,
   onResetAll,
   onCancel,
-  onSave,
-  saving,
+  onDone,
 }: {
   mode: TextMode;
   onMode: (m: TextMode) => void;
@@ -204,8 +203,7 @@ export function TextSizeToolbar({
   onResetSelection: () => void;
   onResetAll: () => void;
   onCancel: () => void;
-  onSave: () => void;
-  saving: boolean;
+  onDone: () => void;
 }) {
   const any = picks.length > 0;
   const d = current.d ?? 0;
@@ -241,7 +239,7 @@ export function TextSizeToolbar({
         <button
           type="button"
           aria-label="Smaller"
-          disabled={!any || d <= TEXT_MIN || saving}
+          disabled={!any || d <= TEXT_MIN}
           onClick={() => onStep(-1)}
           className={CHIP}
         >
@@ -250,7 +248,7 @@ export function TextSizeToolbar({
         <button
           type="button"
           aria-label="Bigger"
-          disabled={!any || d >= TEXT_MAX || saving}
+          disabled={!any || d >= TEXT_MAX}
           onClick={() => onStep(1)}
           className={CHIP}
         >
@@ -268,7 +266,7 @@ export function TextSizeToolbar({
         <button
           type="button"
           aria-pressed={current.bold === false}
-          disabled={!any || saving}
+          disabled={!any}
           onClick={() => onBold(false)}
           className={CHIP}
         >
@@ -277,7 +275,7 @@ export function TextSizeToolbar({
         <button
           type="button"
           aria-pressed={current.bold === true}
-          disabled={!any || saving}
+          disabled={!any}
           onClick={() => onBold(true)}
           className={CHIP}
         >
@@ -287,7 +285,7 @@ export function TextSizeToolbar({
       <span className="flex-1" />
       <button
         type="button"
-        disabled={!any || saving}
+        disabled={!any}
         onClick={onResetSelection}
         className="cursor-pointer text-[12px] text-[#1d4ed8] underline disabled:cursor-default disabled:opacity-40"
       >
@@ -295,7 +293,6 @@ export function TextSizeToolbar({
       </button>
       <button
         type="button"
-        disabled={saving}
         onClick={onResetAll}
         className="cursor-pointer text-[12px] text-[#1d4ed8] underline disabled:opacity-40"
       >
@@ -303,7 +300,6 @@ export function TextSizeToolbar({
       </button>
       <button
         type="button"
-        disabled={saving}
         onClick={onCancel}
         className="cursor-pointer rounded-[7px] border border-[#9aa] bg-white px-2.5 py-1 text-[12px] font-bold text-[#222] disabled:opacity-60"
       >
@@ -311,12 +307,11 @@ export function TextSizeToolbar({
       </button>
       <button
         type="button"
-        data-text-size-save
-        disabled={saving}
-        onClick={onSave}
-        className="cursor-pointer rounded-[7px] border border-[#3b82f6] bg-[#3b82f6] px-3.5 py-1 text-[12px] font-bold text-white disabled:opacity-60"
+        data-text-size-done
+        onClick={onDone}
+        className="cursor-pointer rounded-[7px] border border-[#9aa] bg-white px-3.5 py-1 text-[12px] font-bold text-[#222]"
       >
-        {saving ? "Saving…" : "Save"}
+        Done
       </button>
       <span className="basis-full text-[#555]">
         Picked:{" "}

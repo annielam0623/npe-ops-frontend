@@ -318,6 +318,21 @@
           - 后端需求已转 9a。要确认 HR 的 overwrite=true 不会把空格当成清空（Q3：空格 = 不改）。
       - 每页要后端一对 import/preview、import/commit 接口。
       - 待 Annie 定 Q1–Q7，都附推荐。
+- **Bus Manifest 改了先放在页面上、按整页 Save 才存**（9c，`task/bus-manifest-page-save`，worktree D:
+pe-ops-frontend-bmv）：
+  - Annie 原话：「bus manifest Q4 没存之前还是挪过去，缓存，然后等整页存。其他都走推荐。动手」。preview：https://claude.ai/artifact/XNA2wnz8SRcWcqxrANy1WX
+  - 做了：
+    - Q1 整页一个 Save（蓝色，工具条最前面、Version 左边，没改动时灰的）；版式、字号、换车、黄框都先记在页面上（`components/dispatch-manifest/page-save.tsx`）。
+    - Q2 Aa Text size 框里的 Save 改成白色 Done：收起这一排，调好的留在页面上，色条写「Text size not saved」。
+    - Q3 有没存的改动时按 Print all / 单车 Print / Download：先问「Save before printing / downloading?」（Save and print / Save and download、Cancel）；存好后照新数据再看餐不符。
+    - Q4（改了推荐）换车没存之前客人就挪到新车（同一节，没有就新起一节；原车那节空了拿掉），下拉琥珀色、写「from A · not saved」；换回原车 = 没改。各节标题 / 合计行的人数、Lankun 的餐厅块是库里的，按 Save 重读后才对。
+    - Q5 黄框并进整页 Save（琥珀色框 + not saved）；Special Requirements 自己的 Save 不动。
+    - 版式下拉：选了马上照新版式画，琥珀色框 + Unsaved，整页 Save 才存。
+    - 工具条下面一句：琥珀色「Not saved yet: …」/ 绿色「✓ Saved · 时间」/ 红色「Could not save: 哪一样: 后端原话. The rest was saved.」，没存上的继续标。
+    - 整页 Save 依次调现有接口：version → text-size（每车）→ guest-bus（逐位）→ attraction（每个黄框），不加批量接口；最后重读一次。
+    - 离开页面（侧栏、Back、Dispatch 键、浏览器后退）：Save / Don't save / Cancel（`useLeaveGuard` 加了可选的 `ask`，别的页面照旧 window.confirm）；关标签 / 刷新是浏览器自己的提示。
+    - 不做 10 分钟自动存。
+  - 检查：tsc / eslint / build 过；mf 182/182（新加：Save 灰 / 蓝、换车不发请求马上挪、换回 = 没改、整页 Save、存失败红字留标记、黄框暂存、Text size Done、版式暂存 / 失败、打印 / 下载前先问、离开 Cancel / Save / Don't save）、man 320/320、nav 32/32；da 373/373、tsend 54/54、tour 59/59（useLeaveGuard 改动）。
 - **Bus Manifest 三版式 + West Rim + G197 字号前端合 main**（9c，10-29 晚）：后端 6ddcf0e（合并 156ae23d）已上 main 并部署，v125 / v126 已在生产执行。
   - 照 20 给的最终形状对过 `task/bus-manifest-versions-fe`：GET manifest 的 tour.manifest_version / lunch_column、客人 hotel_short / pickup_time_short / lunch_slots / lunch_mismatch、每车 lunch_mismatch_orders / restaurant / text_size / text_size_history；PUT manifest/version、PUT manifests/text-size；四种版式列序；客人排序由后端给。都对上，只删了前端字号列键里没用到的 `bus`（后端列键没有它）。
   - 保存方式照 10-28 已动手的规格上线（版式选了马上存，字号在 Aa 框里 Save）；「整页暂存 + Save」那份 preview（XNA2wnz8SRcWcqxrANy1WX）Annie 还没说动手，之后另开分支。
