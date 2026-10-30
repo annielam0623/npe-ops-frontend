@@ -101,6 +101,10 @@
     - 后端要等 Annie 执行 migrate_v126 才推 main。已转 9c 加进分支。
     - ✅ 9c 已加进分支（8f85141，没合 main）：mf 162、man 320；tsc 0，eslint 0 错，build 过。打印和下载要等 20 上线。
   - 9c 交「按 Save 才存」preview v1：https://claude.ai/artifact/XNA2wnz8SRcWcqxrANy1WX （分支代码没动）。
+  - ✅ **Annie 动手**，原话：「bus manifest Q4 没存之前还是挪过去，缓存，然后等整页存。其他都走推荐。动手」。
+    - Q4：换车在页面上马上挪过去，按整页 Save 才存。其余照推荐。
+    - 已派 9c `task/bus-manifest-page-save`，排在合 schedule-publish-anyway 之后。
+  - 批量导入后端：9a 明天排，开工第一件先核「overwrite=true 时空格会不会清掉原值」。
     - 版式、字号、换车都先暂存，整页一个 Save；没存的改动标琥珀色。
     - Aa 框里的 Save 改成 Done。
     - 打印前问「Save before printing?」。
@@ -299,6 +303,11 @@
         - 后端发 9a 排人。
         - 前端派 59：先做通用组件 + HR（task/import-hr），再做 Pickup（task/import-pickup）。
         - Team 等 staff 联络方式动手，Restaurant 等 G215。
+        - 59 做完两个分支，都没合 main，等后端：
+          - `task/import-hr` 9c57c59：通用块 components/ui/bulk-import.tsx + HR。hr 55/55，tsc / eslint / build 都过。
+          - `task/import-pickup` 947617c：从 import-hr 拉的。pl 59/59，tsc / eslint / build 都过。
+          - 合并顺序：import-hr 先合，import-pickup 后合。
+          - 后端需求已转 9a。要确认 HR 的 overwrite=true 不会把空格当成清空（Q3：空格 = 不改）。
       - 每页要后端一对 import/preview、import/commit 接口。
       - 待 Annie 定 Q1–Q7，都附推荐。
 - **Bus Manifest 三版式 + West Rim + G197 字号前端合 main**（9c，10-29 晚）：后端 6ddcf0e（合并 156ae23d）已上 main 并部署，v125 / v126 已在生产执行。
