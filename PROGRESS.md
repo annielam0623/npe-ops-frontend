@@ -22,6 +22,21 @@
   - C. 0 张时（全都出发或取消）：推荐自动结掉，不再显示。
 - 另外：卡上「没出发的单」没排除取消的单，已转后端看。
 
+### 20. 员工确认排班：发布前大家都能改和确认，发布后锁住（62 调查，要后端大改）
+- Annie 原话：「比如Jtian，她是staff但我给她一些admin的权限，我不让她编辑staff schedule，但是发给她确认排班的时候她是可以编辑的吧，这个时候应该开放给所有员工去修改和确认，发布以后才是不能给staff更改」
+- 现在正好反过来：
+  - 先发布，再让员工确认。周三发的是下一周的确认，那一周必须已发布；草稿周回「This week hasn't been published yet.」；确认窗口开到那一周开始。
+  - 员工确认时不能直接改排班：Looks good 只记「确认了」；Send my changes 只能提「加哪天什么班」（不能删、不能改时间），要有 schedule.edit 的人 Approve 才生效。
+  - 权限：登录的确认页要 schedule.view；短信 / 邮件里的免登录链接谁都能用；Approve 要 schedule.edit。Jtian 勾了 schedule.view 就能确认、提请求，不能 Approve。
+- 要 Annie 定两件：
+  1. 「员工能改」是哪一种：
+     - A. 员工在确认页直接改自己的班（加 / 删 / 改时间），马上生效；
+     - B. 照现在「提请求、主管 Approve」，挪到发布前做，再加上删班 / 改时间的请求（推荐：草稿期主管还在排，员工直接改容易互相打架、留出空档）。
+  2. 谁能用登录的确认页：
+     - 所有登录的员工，不看勾，只能看 / 改自己那一行（推荐：确认是每个人的事，不该被权限挡住）；
+     - 或者照勾，要 schedule.view。
+- 都要后端先改：确认挪到草稿周、周三发下一周草稿、发布那一刻关确认窗口。Publish again「只通知有变化的人」等以「上次发布」为基准的逻辑要一起重想。
+
 ### 8. 可以上线后对着看的（不用答，验收时看）
 - Products 手动保存：09 问的 5 处细节，主窗口按盘点推荐定了，见 PROGRESS「2026-10-30」那节 09 的记录：
   - Bus Manifest setup 每个小项一个 Save；
@@ -761,6 +776,8 @@
 - 09：rezdy-cleanup 上 main 6a8a94d；rezdy-sync-remove 在跑检查，后端 92 等它上了再删三个 Sync Rezdy 接口；10d 清单在写。
 - 62：Multi Orders 已回复的卡隐藏 + 「1 order」单复数，上 main e2c13e7。调查写进 PROGRESS「Multi Orders 1 orders」，置顶 19。
 - e6：not_reached 上 main 12d8a11；Lankun ✓ 753e708。
+- **Annie 原话「schedule里对gap的要求，之应该对此刻起的将来设置，对过去的应该彻底放行」**：空档只算洛杉矶时间「现在以后」的。过去的日子、今天已经过去的小时一律不算，Save / Publish 不拦，也不标红。已转 57（后端改 _new_gaps 等），62 在 17 里照做。
+- 置顶 20：员工确认排班挪到发布前（62 调查），等 Annie 定 A / B 和权限。
   - GET 报告详情多 updates[]；
   - POST /api/operation-reports/{id}/updates {text}，只加不改不删，不发通知，partner 403。
 - 62 week-save 已上 main 7da6786。
