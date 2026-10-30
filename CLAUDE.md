@@ -55,6 +55,12 @@
   计数、进度、状态（例如「0 of 10 done」）不做成胶囊，用普通文字，不用蓝色，不能看起来像按钮。
   例外：右下角 ↑↓ 这类功能键也用蓝色（Annie 2026-10-11：「反正也是功能键」，照旧后台的蓝色粗箭头）。
 - 暂不引入状态管理库和 UI 组件库。
+- **订单流固定：Order List → Main manifest → Dispatch / Tracking，不许跳过前面的环节直接去 Rezdy 拉单**（Annie 2026-10-29，原话：
+  「不要直接去rezdy拉订单。写到工作里头。订单流是order list  - main manifest - dispatch / tracking --我马上要开通。不要跳跃过前面的程序直接去rezdy拉单。前端后端都要写到工作规范里去」；
+  同日另一句：「dispatch是从main manifest里取单的，如果main manifest里没有就是没有。而且这类订单应该是查order list，里头所有状态都标注了」）。
+  - Dispatch / Bus Manifest / Tracking 只从 Main manifest 取单；Main manifest 里没有的单就是没有，不另造「missing / 原因不明 / check Rezdy」一类提醒。
+  - 订单状态（取消、On Hold、改期等）一律查 Order List，那里都标注了；不靠猜，也不另去 Rezdy 查。
+  - 新页面、新功能要订单数据时，按这条流向从上一环取；拿不到就写进「需要后端」，不自己绕到 Rezdy。现有和这条冲突的地方先报给 Annie / 主窗口，不擅自删。
 - **页面对着旧版做，做到一模一样**（Annie 2026-10-07）：配色（旧后台是深色，`base.html` 的 `--bg:#06101c`）、
   版式、字体、文字都照旧模板，不自己发挥。之前做的浅色页面都不符合这一条。和旧页面有任何不同，都要先经 Annie 同意，
   同意过的写进 PROGRESS.md。旧页面没有的新功能（如 Dispatch 的 Assign / Send）也用旧后台的深色风格。
