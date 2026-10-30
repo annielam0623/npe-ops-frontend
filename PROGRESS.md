@@ -577,11 +577,17 @@
       - 类型注释：before / after 的写法（(Pre close)、一天两段用逗号、Time off (PTO|Sick|Personal)）、staff / 草稿 / v128 前是 []、channels 是 ["email"] 或 ["email","in_app"]。
       - 模拟接口：staff 的 pending_changes 改成 []；没邮箱的原话照后端；加 sendFailStatus（409 等）、sendEmailOnly。
       - sch 套：失败那条换成后端「没变化」原话；加 409 一条；加只回 email 时绿字写「(email)」一条。
-    - ⏸️ 待定，没改：
-      1. 发送框写死「To: 📧 邮箱 + 🔔 in-app notice」，可是后端可能只回 ["email"]。站内什么时候发不了（比如没登录账号），要问后端，看是不是按条件显示。发好以后的绿字照实际 channels 写，没问题。
-      2. 发送框底下那句「When you publish again, {name} (and their supervisor) still get the normal notice.」和主管那件一起等后端 ef 定。
-      3. 「What {name} gets」引的那段话是前端照 preview 写的，后端真正发的邮件 / 站内文字没给，要对一下。
-    - 检查还没跑（公司新电脑没装 Node）。不合 main，要等后端 G217 上 main。
+    - 原来待定的三件，ef 10-30 答了（eb 转），已照着改（**文字变了，要给 Annie 看**）：
+      1. pending_changes 每项多 `has_login`。true 写「To: 📧 邮箱 + 🔔 in-app notice」，false 只写「To: 📧 邮箱」；没带当 true。模拟接口加 ctl.noLogin，sch 套加 1 条。
+      2. 发送框底下那句，旧：「Only {name} gets this. When you publish again, {name} (and their supervisor) still get the normal notice.」
+         新：「Only {name} gets this. When you publish again, {name} and all supervisors and admins still get the normal notice.」
+      3. 「What {name} gets」改成后端真正发的原文，前端不另写一套：
+         - 旧：「What {name} gets: “Your schedule for {Oct 4 – 10} has changed: Mon 10/05 is now … (was …). Please check and tap Looks good or Send my changes.” The button opens the same confirm page they use on Wednesdays.」
+         - 新：标题「Subject: Please confirm your schedule changes — week of 2026-10-04」，正文「Hi {name}, / Your schedule for the week of 2026-10-04 has changed: / • Mon 10/05: 原来 → 现在（没班写 not scheduled）/ Please check and confirm: / [Confirm my schedule]」。下面一句：「The button opens the same confirm page they use on Wednesdays.」；有登录账号的再加「The in-app notice has the same subject and lines.」。
+         - 日期写法用前端现有的「Mon 10/05」（补零）。后端举例是「Mon 10/19」，看不出补不补零，要问后端。
+      - sch 套加 1 条查原文和底下那句。
+    - 合了 notify-wording aa8de48 / d3f3e42（主管层、notified_supervisors）。sch-test 冲突手动拼过：先查「1 person and 2 supervisors」，再查「主管 0 人」（时间改成 11:15，免得和后面「没邮箱」那段的 11:30 撞），然后是「没邮箱」。
+    - 检查（Node v26.13.0，已合 main）：tsc 过；eslint 0 错误；sch 215/215、nav 32/32。不合 main，要等后端 G217 上 main（后端 task/schedule-republish-notify）。
 - **排班通知「改完再发」前端文字**（9c，`task/schedule-notify-wording`，worktree D:
 pe-ops-frontend-seat）。**等后端 8e 上 main 再合。**
   - Annie 原话：重新发布只发给班有变化的人和他们的主管「同意」；已发布的周改动不逐项发「改完再发」；「改动schedule当然应该是发布的时候通知」（休息日也等 Publish again 一起通知，不单独马上发）。
@@ -591,9 +597,18 @@ pe-ops-frontend-seat）。**等后端 8e 上 main 再合。**
   - **2026-10-30 对后端 G217 清单**（工作窗口 `npe-ops-frontend-62`[cd78c4]，主窗口 eb 派；后端 ef 写、57 转，代码写完、没上 main；公司电脑 worktree `C:\Code\npe-ops-frontend-sched1`）：
     - `has_unsent_changes` 后端定了：只给有 schedule.edit 的人，staff 永远 false；草稿周 false。改了类型注释；模拟接口 staff 改回 false。页面本来就按这个字段显示，不用改。
     - Publish again 的 notified 只列有变化的员工 `[{employee_id,name,channels}]`，没变化是 []。成功提示照 notified 的人数写，和 mock 一致。
-    - ⏸️ **主管那件没定**：后端说 notified「不含主管」。可是确认框写「…and their supervisors, will get a system notification and an email」，鼠标提示也写了 supervisors（照 Annie「发给有变化的人和他们的主管」）。后端 ef 在核：发什么渠道、发给哪些主管、notified 列不列主管。**这两句和「Notified N people」先不动，后端定了再改。**
+    - **主管（ef 10-30 答，eb 转）**：
+      - publish 多回 `notified_supervisors[{user_id,name,channels}]`。主管层是全体在用的 supervisor / admin / superadmin，去掉按 Publish again 的人自己。有人变了才发：站内 Notice，有邮箱的另发邮件。
+      - 和 Annie「他们的主管」不完全一样，后端在问她。前端先照后端做。
+      - 改了三处文字（**文字变了，要给 Annie 看**）：
+        - 确认框，旧：「People whose shifts or time off changed since the last publish, and their supervisors, will get a system notification and an email. No one else is notified. This can't be undone.」
+          新：「People whose shifts or time off changed since the last publish will get a system notification and an email. All supervisors and admins (except you) get a notice listing the changes. No one else is notified. This can't be undone.」
+        - 按钮提示，旧：「Publish again: people whose shifts or time off changed, and their supervisors, are notified.」
+          新：「Publish again: people whose shifts or time off changed, and all supervisors and admins, are notified.」
+        - 成功提示：「Published again. Notified N people and M supervisors.」，M = 0 去掉后半句；N = 0 照旧「…no one was notified.」。
+      - 模拟接口加 notified_supervisors（ctl.noSupervisors = 0 人）。sch 套改了 3 条，加了「主管 0 人」1 条。
     - Notice 里 schedule_changed 的 body 改了文字：前端只把 body 当纯文本显示（notice-panel.tsx），没有按旧文字判断，不用改。
-    - 检查还没跑（公司新电脑没装 Node）。不合 main，要等后端 G217 上 main。
+    - 检查（Node v26.13.0，已合 main）：tsc 过；eslint 0 错误；sch 200/200、nav 32/32。不合 main，要等后端 G217 上 main（后端在 task/schedule-republish-notify）。
 - **其余自动保存改手动 A2 / A7 / B8**（9c，`task/misc-manual-save`）：Annie 原话「4项全部动手」；盘点 https://claude.ai/artifact/3GQ3waCB2X4jnEdxTRfefe 。后端不用改。
   - A2 Manifests 每单 Cfm # 格：离开框不再存；改了格旁出蓝色 Save（照节标题 Cfm # 的样子；没改不出，免得一整列都是键），按 Save 或 Enter 才存，Esc 放回；存好框变绿 + 绿字 Saved，失败红字 Not saved: …、输入留着；有没存的格子离开页面先问。How to use 改了。
   - A7 Content Studio › Shuttle routes 线路名：离开框不存；改了名字旁出蓝色 Save，按 Save 或 Enter 才存，Esc 放回；存好绿字 Saved，失败红字、打的字留着（原来会改回）；名字空着红字不发请求；离开页面先问；面板说明改了。

@@ -104,15 +104,14 @@ export function SendChangesDialog({
     }
   }
 
-  const said = change.items
-    .map((i) =>
-      i.after == null
-        ? `${dayLabel(i.date)} ${i.before} is removed`
-        : i.before == null
-          ? `${dayLabel(i.date)} is now ${i.after}`
-          : `${dayLabel(i.date)} is now ${i.after} (was ${i.before})`,
-    )
-    .join(". ");
+  // 对方收到的原文照后端 G217（ef，10-30）：每行「Mon 10/19: 原来 → 现在」，没班写 not scheduled；{week} = 周日日期。
+  const lines = change.items.map(
+    (i) =>
+      `${dayLabel(i.date)}: ${i.before ?? "not scheduled"} → ${i.after ?? "not scheduled"}`,
+  );
+  const subject = `Please confirm your schedule changes — week of ${weekStart}`;
+  // 没带 has_login（后端没上线）当有：照旧写邮箱 + 站内。
+  const inApp = change.has_login !== false;
 
   return (
     <Modal
@@ -181,14 +180,25 @@ export function SendChangesDialog({
           </div>
         ) : (
           <>
-            <p className="mb-3 text-[12.5px] text-[#1a1a1a]">
-              <b>To:</b> 📧 {employee.email} &nbsp;+&nbsp; 🔔 in-app notice
+            <p data-send-to className="mb-3 text-[12.5px] text-[#1a1a1a]">
+              <b>To:</b> 📧 {employee.email}
+              {inApp ? <>&nbsp;+&nbsp; 🔔 in-app notice</> : null}
             </p>
-            <div className={BLUE_BOX}>
-              <b>What {name} gets:</b> &ldquo;Your schedule for {weekLabel} has
-              changed: {said}. Please check and tap <b>Looks good</b> or{" "}
-              <b>Send my changes</b>.&rdquo; The button opens the same confirm
-              page they use on Wednesdays.
+            <div data-send-preview className={BLUE_BOX}>
+              <b>What {name} gets:</b>
+              <div className="mt-1">
+                <b>Subject:</b> {subject}
+              </div>
+              <div className="mt-1.5 whitespace-pre-line">
+                {`Hi ${name},\nYour schedule for the week of ${weekStart} has changed:\n${lines.map((l) => `• ${l}`).join("\n")}\nPlease check and confirm:`}
+              </div>
+              <div className="mt-1 font-semibold">[Confirm my schedule]</div>
+              <div className="mt-1.5">
+                The button opens the same confirm page they use on Wednesdays.
+                {inApp
+                  ? " The in-app notice has the same subject and lines."
+                  : null}
+              </div>
             </div>
           </>
         )}
@@ -214,8 +224,8 @@ export function SendChangesDialog({
           </p>
         ) : null}
         <p className="mb-3 text-[11.5px] text-[#555]">
-          Only {name} gets this. When you publish again, {name} (and their
-          supervisor) still get the normal notice.
+          Only {name} gets this. When you publish again, {name} and all
+          supervisors and admins still get the normal notice.
         </p>
         <div className="flex justify-end gap-2.5">
           {sent ? (

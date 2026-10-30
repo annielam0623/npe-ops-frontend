@@ -229,7 +229,9 @@ function pendingChangesOf(weekData) {
     if (!items.length) continue;
     const emp = employees.find((e) => e.id === id);
     const sent = (weekData.sent || {})[id];
-    out.push({ employee_id: id, name: emp ? emp.name : `#${id}`, items, sent_at: sent ? sent.at : null, sent_by: sent ? sent.by : null });
+    out.push({ employee_id: id, name: emp ? emp.name : `#${id}`, items, sent_at: sent ? sent.at : null, sent_by: sent ? sent.by : null,
+      // 后端 G217：has_login = 有登录账号才收站内通知。ctl.noLogin = 这些员工 id 没有账号。
+      has_login: !(ctl.noLogin || []).includes(id) });
   }
   return out;
 }
@@ -658,6 +660,9 @@ http
         republished,
         gaps,
         notified: republished ? employees.filter((e) => changed.has(e.id)).map((e) => ({ employee_id: e.id, name: e.name, channels: e.email ? ["in_app", "email"] : ["in_app"] })) : notified,
+        // 后端 G217（ef，10-30）：有人变了才通知主管层（所有在用的 supervisor / admin / superadmin，去掉按的人）；首次发布 / 没人变 = []。
+        // ctl.noSupervisors：除了按的人没有别的主管（测主管 0 人时不写后半句）。
+        notified_supervisors: republished && changed.size && !ctl.noSupervisors ? [{ user_id: 91, name: "ZZ Test Sup A", channels: ["in_app", "email"] }, { user_id: 92, name: "ZZ Test Sup B", channels: ["in_app"] }] : [],
       });
     }
 

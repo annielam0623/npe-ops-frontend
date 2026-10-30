@@ -170,6 +170,11 @@ export interface SchedulePendingChange {
   /** 最近一次单独发给本人确认的时间 / 谁发的（名字）；没发过 = null。 */
   sent_at: string | null;
   sent_by: string | null;
+  /**
+   * 这个人有没有登录账号（后端 G217 ef，10-30）：true 才会收到站内通知，发送框写「📧 邮箱 + 🔔 in-app notice」；
+   * false 只写「📧 邮箱」。没带 = 后端没上线，当 true。邮箱有没有照旧看员工名单。
+   */
+  has_login?: boolean;
 }
 
 /** POST …/employees/{id}/send-changes 成功的返回体。 */
@@ -190,7 +195,17 @@ export interface SchedulePublishResult {
   republished?: boolean;
   /** 发布那一刻的空档（Publish anyway 时非空）。 */
   gaps?: ScheduleGap[];
+  /** Publish again 时只有班有变化的员工（后端 G217）；首次发布是这周排了班的人。 */
   notified: ScheduleNotified[];
+  /**
+   * 收到通知的主管层（后端 G217 ef，10-30）：在用的 supervisor / admin / superadmin，去掉按的人自己；有人变了才有。
+   * 首次发布或没人变化时 []；本人的班也变了的只算在 notified 里。没带 = 后端没上线。
+   */
+  notified_supervisors?: {
+    user_id: number;
+    name: string;
+    channels: string[];
+  }[];
 }
 
 export interface ScheduleNotified {
