@@ -607,6 +607,10 @@ pe-ops-frontend-seat）。**等后端 8e 上 main 再合。**
           新：「Publish again: people whose shifts or time off changed, and all supervisors and admins, are notified.」
         - 成功提示：「Published again. Notified N people and M supervisors.」，M = 0 去掉后半句；N = 0 照旧「…no one was notified.」。
       - 模拟接口加 notified_supervisors（ctl.noSupervisors = 0 人）。sch 套改了 3 条，加了「主管 0 人」1 条。
+      - **10-30 晚，主管范围收窄**（后端审查 SA-1，ef 转 eb）：只发给主管层里勾了 schedule.edit 的账号；superadmin 不看勾，照样收。notified_supervisors 形状不变。文字跟着改（**要给 Annie 看，置顶第 6 条**）：
+        - 确认框：「…All supervisors and admins (except you) get a notice listing the changes.…」改成「…Supervisors and admins who can edit the schedule (except you) get a notice listing the changes.…」
+        - 按钮提示：「…and all supervisors and admins, are notified.」改成「…and supervisors and admins who can edit the schedule, are notified.」
+        - 成功提示不变：「Published again. Notified N people and M supervisors.」
     - Notice 里 schedule_changed 的 body 改了文字：前端只把 body 当纯文本显示（notice-panel.tsx），没有按旧文字判断，不用改。
     - 检查（Node v26.13.0，已合 main）：tsc 过；eslint 0 错误；sch 200/200、nav 32/32。不合 main，要等后端 G217 上 main（后端在 task/schedule-republish-notify）。
 - **其余自动保存改手动 A2 / A7 / B8**（9c，`task/misc-manual-save`）：Annie 原话「4项全部动手」；盘点 https://claude.ai/artifact/3GQ3waCB2X4jnEdxTRfefe 。后端不用改。
