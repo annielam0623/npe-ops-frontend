@@ -169,12 +169,17 @@ http.createServer(async (req, res) => {
   if (p === "/api/dispatch/manifests/guest-notes" && ctl.notesEdit) {
     const b = JSON.parse(await readRaw(req)); entry.body = b; entry.method = req.method;
     if (ctl.notesFail) return send(res, 400, { detail: ctl.notesFail });
+    // 后端 G125（cc2c43ec，tour_manifest.py）的两种 400，原话照抄：没带 notes 键；有看不见的控制字符（换行、Tab 照收）。
+    if (!("notes" in b)) return send(res, 400, { detail: "Send the notes text, or null to restore the Rezdy text." });
+    if (typeof b.notes === "string" && /[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/.test(b.notes))
+      return send(res, 400, { detail: "The notes contain a hidden control character (often from copy and paste). Retype that part and save again." });
     const g = state.guests.find((x) => x.id === b.guest_id);
     if (!g) return send(res, 404, { detail: "Guest not found." });
     if (g._rezdy === undefined) g._rezdy = g.notes;
     if (b.notes === null) { g.notes = g._rezdy; g._edited = false; }
     else { g.notes = b.notes; g._edited = true; }
-    return send(res, 200, { ok: true, id: g.id });
+    // 后端回 {ok, id, notes, rezdy_notes, notes_edited, notes_check}（前端存完整页重读，不读这些）。
+    return send(res, 200, { ok: true, id: g.id, notes: g.notes, rezdy_notes: g._rezdy, notes_edited: !!g._edited, notes_check: false });
   }
   if (p === "/api/dispatch/manifests/attraction") {
     const b = JSON.parse(await readRaw(req)); entry.body = b;

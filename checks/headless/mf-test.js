@@ -843,6 +843,21 @@ async function run() {
   await evaluate(pageSave);
   check("存失败 ⇒ 红字「Could not save: Special Requirements for CHD2: 后端原话」，格子还标 not saved、内容是 x", await waitFor(`(() => { const e = document.querySelector('[data-page-save-error]'); return !!e && e.textContent.startsWith('Could not save: Special Requirements for CHD2: That guest is no longer on the list.') && !!${nc("CHD2")}.querySelector('[data-notes-staged]') && ${nc("CHD2")}.textContent.startsWith('x') && !document.querySelector('[data-page-save]').disabled })()`));
   await ctl({ notesFail: "" });
+  // 后端 G125 的 400（cc2c43ec）：粘贴进来的看不见的控制字符 ⇒ 红字照后端原话，暂存不丢；换行照收。
+  await evaluate(`${nc("CHD2")}.click();`);
+  await waitFor("document.querySelector('[data-notes-editor] textarea')");
+  await evaluate("$setValue(document.querySelector('[data-notes-editor] textarea'), 'Wheel\\u0007chair\\nfront'); document.querySelector('[data-notes-done]').click();");
+  await sleep(200);
+  before = (await mockLog()).length;
+  await evaluate(pageSave);
+  check("控制字符 400 ⇒ 红字照后端原话「The notes contain a hidden control character …」，暂存还在", await waitFor(`(() => { const e = document.querySelector('[data-page-save-error]'); return !!e && e.textContent.startsWith('Could not save: Special Requirements for CHD2: The notes contain a hidden control character (often from copy and paste). Retype that part and save again.') && !!${nc("CHD2")}.querySelector('[data-notes-staged]') })()`));
+  const ctrlReq = (await since(before, "/api/dispatch/manifests/guest-notes"))[0];
+  check("每条 PUT guest-notes 都带 notes 键（后端 G125：不带键回 400，不当成恢复原文）", !!ctrlReq && "notes" in ctrlReq.body && typeof ctrlReq.body.notes === "string", JSON.stringify(ctrlReq?.body));
+  // 改回 x（不带控制字符），后面和换车一起存
+  await evaluate(`${nc("CHD2")}.click();`);
+  await waitFor("document.querySelector('[data-notes-editor] textarea')");
+  await evaluate("$setValue(document.querySelector('[data-notes-editor] textarea'), 'x'); document.querySelector('[data-notes-done]').click();");
+  await sleep(200);
   // 和换车一起存：先换车、后备注（主窗口 eb 2026-10-30；换车先于字号，e6 65972c5）
   const cur3 = await evaluate("return document.querySelector('tr[data-guest=CHD3] select').value;");
   const to3 = cur3 === "B" ? "A" : "B";
