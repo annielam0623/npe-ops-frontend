@@ -77,6 +77,18 @@ export const VISIBILITY_KEYS = {
     where: "Dispatch → Farm out button and Send farm out notice",
     default: "super_admin_only",
   },
+  // G215（Annie：「你可以把整个导游页，司机页都设个开关，我们测试好了再打开」）：司机 / 导游从短信链接进的 /driver、/guide 整页。
+  // 后端只认 staff（Everyone）为开；关着时那两页打不开，Dispatch 的 Send to driver 也发不了。staff 在后台的预览不受影响。
+  driver_page: {
+    label: "Driver page",
+    where: "/driver and Dispatch → Send to driver. Opens only on Everyone",
+    default: "super_admin_only",
+  },
+  guide_page: {
+    label: "Guide page",
+    where: "/guide and Send to guide. Opens only on Everyone",
+    default: "super_admin_only",
+  },
   // 还没做好（Annie 2026-10-26「我们还没有做好……就仅super admin可见，然后都打上soon的标签」）
   quotation: {
     label: "Quotation",

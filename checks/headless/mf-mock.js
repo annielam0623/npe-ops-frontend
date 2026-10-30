@@ -1,7 +1,10 @@
 // 模拟后端：Tour manifest。控制：POST /__ctl {syncFail, syncSkipped, syncPast, busFail, allUploaded, done, pending, pendingOff, handledFail}；GET /__log。
 const http = require("http");
 // affiliate: true ⇒ GET manifest 带 affiliate 组（被转单客人）；notesEdit: true ⇒ 客人带 notes_edited / rezdy_notes 且有 PUT guest-notes；notesFail: 该接口 400 的原话。
-const ctl = { syncFail: "", syncSkipped: false, syncPast: false, busFail: "", allUploaded: false, done: null, pending: [], pendingOff: false, handledFail: "", affiliate: false, notesEdit: false, notesFail: "", g198: false, g198Plain: false, textSize: false, textSizeFail: "" };
+const ctl = { syncFail: "", syncSkipped: false, syncPast: false, busFail: "", allUploaded: false, done: null, pending: [], pendingOff: false, handledFail: "", affiliate: false, notesEdit: false, notesFail: "", g198: false, g198Plain: false, textSize: false, textSizeFail: "", bmv: false, versionFail: "" };
+// bmv: true ⇒ Bus Manifest 三版式（后端 task/bus-manifest-versions WIP f494b5b5 的形状）：tour.manifest_version / lunch_column、
+// 客人 hotel_short / pickup_time_short / lunch_slots / lunch_mismatch、每车 lunch_mismatch_orders / restaurant（只 Lankun）；
+// PUT /api/dispatch/manifest/version。versionFail：该接口 400 的原话；partner 一律 403。
 const log = [];
 function send(res, status, body) { res.statusCode = status; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify(body)); }
 function readRaw(req) { return new Promise((r) => { const c = []; req.on("data", (d) => c.push(d)); req.on("end", () => r(Buffer.concat(c).toString("utf8"))); }); }
@@ -14,9 +17,19 @@ const state = {
   attraction: { checkin_time: "8:00", pax_text: "", tour_time: "", confirmation_no: "" },
   textSize: { A: { page: {}, columns: { pickup_location: { d: 3, bold: true } }, rows: {} }, B: { page: {}, columns: {}, rows: {} } },
   textHistory: [{ by: "Veronica", at: "Oct 26, 4:12 PM", what: "Pick-up Location column +3 px, Bold" }],
+  version: "general",
 };
+// 三版式的客人字段：CHD3 点了 1 B 2 V、只有 2 人 ⇒ 餐不符；CHD2 读不出 ⇒「-」、不符；CHD9（shuttle）不带餐。
+const BMV = {
+  CHD1: { hotel_short: "Excalibur", lunch_slots: ["", "2 T", ""], lunch_mismatch: false },
+  CHD2: { hotel_short: "Excalibur", lunch_slots: null, lunch_mismatch: true },
+  CHD3: { hotel_short: "MGM", lunch_slots: ["1 B", "", "2 V"], lunch_mismatch: true },
+  CHD9: { hotel_short: "Excalibur", lunch_slots: null, lunch_mismatch: false },
+};
+const bmvGuest = (g) => (ctl.bmv ? { ...g, pickup_time_short: g.pickup_time.replace(/\s*[AP]M$/i, ""), ...(BMV[g.order_number] || {}) } : g);
+const mismatchOrders = (gs, label) => ctl.bmvClean ? [] : gs.filter((g) => BMV[g.order_number]?.lunch_mismatch).map((g) => ({ order_number: g.order_number, guest: g.name, pax: g.pax, lunch_text: BMV[g.order_number].lunch_slots ? BMV[g.order_number].lunch_slots.filter(Boolean).join(" ") : "-", bus_label: label, tour: "Antelope Canyon" }));
 // 二期（Special Requirements 可编辑）：后端上线后客人才带 notes_edited / rezdy_notes。
-const pub = (g) => (ctl.notesEdit && g._rezdy !== undefined ? { ...g, notes_edited: !!g._edited, rezdy_notes: g._rezdy } : ctl.notesEdit ? { ...g, notes_edited: false, rezdy_notes: g.notes } : g);
+const pub = (g0) => { const g = bmvGuest(g0); return ctl.notesEdit && g._rezdy !== undefined ? { ...g, notes_edited: !!g._edited, rezdy_notes: g._rezdy } : ctl.notesEdit ? { ...g, notes_edited: false, rezdy_notes: g.notes } : g; };
 function view() {
   const sec = (gs0, withAttr) => ({ key: "LOWER ANTELOPE", kind: "tour", title: "LOWER ANTELOPE", heading: `LOWER ANTELOPE {${gs0.reduce((a, g) => a + g.pax, 0)}}`, name: "", pax: gs0.reduce((a, g) => a + g.pax, 0), color: "#bfe3b0", guests: gs0.map(pub),
     ...(withAttr ? { attraction: state.attraction, attraction_filled: true } : {}),
@@ -32,16 +45,19 @@ function view() {
   const onA = state.guests.filter((g) => g.bus_label === "A");
   const onB = state.guests.filter((g) => g.bus_label === "B");
   const un = state.guests.filter((g) => !g.bus_label);
-  const shuttle = { key: "SHUTTLE OUT", kind: "outbound", title: "SHUTTLE OUT", heading: "SHUTTLE: LAS TO PAGE // OUTBOUND 2 PAX", name: "", pax: 2, color: "#f8c9a0", guests: [guest(9, "CHD9", { ticket: "Shuttle" })], attraction: { checkin_time: "", pax_text: "", tour_time: "", confirmation_no: "" }, attraction_filled: false };
+  const shuttle = { key: "SHUTTLE OUT", kind: "outbound", title: "SHUTTLE OUT", heading: "SHUTTLE: LAS TO PAGE // OUTBOUND 2 PAX", name: "", pax: 2, color: "#f8c9a0", guests: [pub(guest(9, "CHD9", { ticket: "Shuttle" }))], attraction: { checkin_time: "", pax_text: "", tour_time: "", confirmation_no: "" }, attraction_filled: false };
   const block = (id, label, gs, extraSecs = []) => ({ bus: { id, bus_label: label, van: "20" + id, seats: 56, driver: "FREDDY", guide: "" }, bus_key: label, bus_number: `20${id}=${label}`,
     sections: gs.length ? [sec(gs, true), ...extraSecs] : extraSecs, totals: { pax: 0, guests: 0, boarded: 0, no_show: 0 },
     footer: [{ label: "TOTAL # OF PAX", value: 56, custom: false }, { label: "BUS SEATS LEFT", value: null, custom: false }, { label: "Heli SEATS LEFT", value: 4, custom: true }, { label: "INBOUND", value: 0, custom: false }, { label: "BUS SEATS USED", value: 6, custom: false }, { label: "NO LUNCH (INCL. SHUTTLE)", value: 2, custom: false }], empty_notes: false,
     ...(ctl.g198 ? { lunch: label === "A" ? { sections: [{ title: "LOWER ANTELOPE 1:00P - 4 PAX", rows: [{ name: "ZZ Test1", pax: 2, turkey: 2, veggie: 0, beef: 0, defaulted: true }, { name: "ZZ Test3", pax: 2, turkey: 1, veggie: 1, beef: 0, defaulted: false }] }], totals: { pax: 4, turkey: 3, veggie: 1, beef: 0 }, note: "(TEXT) POC: ZZ TEST 555-0100\nCALL no later than 7pm, night before  555-0101", title: "NPE Lunch Box - ZZ Test Bee's", restaurant: "ZZ Test Bee's" } : null } : {}),
-    ...(ctl.textSize ? { text_size: state.textSize[label], text_size_history: state.textHistory } : {}) });
+    ...(ctl.textSize ? { text_size: state.textSize[label], text_size_history: state.textHistory } : {}),
+    ...(ctl.bmv ? { lunch_mismatch_orders: mismatchOrders(gs, label),
+      restaurant: state.version === "lankun" ? { name: "ZZ Test Bee's", title: "NPE Lunch Box - ZZ Test Bee's", footer_lines: ["(TEXT) POC: ZZ TEST 555-0100", "CALL no later than 7pm, night before"], totals: { beef: 1, turkey: 2, veggie: 2, total: 5 } } : null } : {}) });
   return { run_date: "2026-10-05", date_label: "Mon, Oct 5, 2026",
     tour: { id: 3, name: "Antelope Canyon", color: "#8db76f", band_color: "#8db76f", section_color: "#d9ead0", lunch_note: "",
       // 后端 1b2ea12a：开了 Cfm # 格的组 confirm_box = false（整团不出黄框），其他组 true。
-      ...(ctl.g198 ? { confirm_box: false } : ctl.g198Plain ? { confirm_box: true } : {}) },
+      ...(ctl.g198 ? { confirm_box: false } : ctl.g198Plain ? { confirm_box: true } : {}),
+      ...(ctl.bmv ? { manifest_version: state.version, lunch_column: true } : {}) },
     shuttle_colors: { outbound: "#f8c9a0", inbound: "#b9d3f0" },
     extra_row_color: "#f8cbad",
     manifest: { id: 12, file_name: "ant.csv", uploaded_at: "2026-10-04T21:14:02+00:00", uploaded_by: "Annie" },
@@ -74,7 +90,7 @@ http.createServer(async (req, res) => {
   const p = url.pathname;
   const q = Object.fromEntries(url.searchParams);
   if (p === "/__log") return send(res, 200, log);
-  if (p === "/__ctl") { Object.assign(ctl, JSON.parse(await readRaw(req))); return send(res, 200, ctl); }
+  if (p === "/__ctl") { const b = JSON.parse(await readRaw(req)); if (b.version) { state.version = b.version; delete b.version; } Object.assign(ctl, b); return send(res, 200, ctl); }
   if (p === "/auth/login") { res.setHeader("Content-Type", "text/html"); return res.end("LOGIN"); }
   const entry = { method: req.method, path: p, q };
   log.push(entry);
@@ -167,9 +183,21 @@ http.createServer(async (req, res) => {
   if (p === "/api/dispatch/manifests/text-size" && ctl.textSize) {
     const b = JSON.parse(await readRaw(req)); entry.body = b;
     if (ctl.textSizeFail) return send(res, 400, { detail: ctl.textSizeFail });
+    // 同后端 manifest_text_size.clean（156ae23）：列键只认 MANIFEST_COLUMNS 的键 + lunch；整行只收这台车上现在的订单号。
+    const COLS = ["order_number", "pickup_time", "pickup_location", "last_name", "first_name", "phone", "pax", "ticket", "notes", "boarding", "lunch"];
+    if (Object.keys(b.text_size?.columns || {}).some((k) => !COLS.includes(k))) return send(res, 400, { detail: "That column is not on the manifest. Reload the page and try again." });
+    const onBus = new Set(state.guests.filter((g) => (g.bus_label || "") === b.bus_label).map((g) => g.order_number));
+    if (Object.keys(b.text_size?.rows || {}).some((k) => !onBus.has(k))) return send(res, 400, { detail: "That booking is not on this bus any more. Reload the page and try again." });
     state.textSize[b.bus_label] = b.text_size;
     state.textHistory = [{ by: "ZZ Test Staff", at: "just now", what: "Changed" }, ...state.textHistory].slice(0, 5);
-    return send(res, 200, { ok: true });
+    return send(res, 200, { ok: true, text_size: b.text_size, text_size_history: state.textHistory });
+  }
+  if (p === "/api/dispatch/manifest/version" && ctl.bmv) {
+    const b = JSON.parse(await readRaw(req)); entry.body = b; entry.method = req.method;
+    if (ctl.partner) return send(res, 403, { detail: "Partners can only view." });
+    if (ctl.versionFail) return send(res, 400, { detail: ctl.versionFail });
+    state.version = b.version;
+    return send(res, 200, { ok: true, version: b.version });
   }
   if (p === "/admin/dispatch/manifest/guide") { res.setHeader("Content-Type", "text/html"); return res.end(`<html><title>GUIDE ${q.bus}</title><body>GUIDE</body></html>`); }
   if (p === "/admin/dispatch/manifest/print") { res.setHeader("Content-Type", "text/html"); return res.end(`<html><title>PRINT ${q.date} ${q.tour} ${q.bus ?? "all"}</title><body>PRINT</body></html>`); }

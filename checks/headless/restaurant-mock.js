@@ -15,6 +15,11 @@ function reset() {
       name: "ZZ Test Bee's",
       footer: "(TEXT) POC: ZZ TEST 555-0100 & ZZ TEST 555-0101\nCALL no later than 7pm, night before  555-0102",
       staff_note: "",
+      // 四栏（后端 20 3bcf395 / v127）：电话存 E.164，没填是 ""。
+      address: "1201 ZZ Test Ave, Tusayan, AZ 86023",
+      phone: "+19285550110",
+      text_number: "",
+      email: "",
       updated_by: "Annie",
       updated_at: "2026-10-27T23:12:00+00:00",
     },
@@ -75,6 +80,29 @@ function cleanIds(v) {
   if (v == null) return [];
   if (!Array.isArray(v) || v.some((m) => !Number.isInteger(m))) throw new Bad("The tour list could not be read. Please reload the page.");
   return [...new Set(v)].sort((a, b) => a - b);
+}
+// 四栏的检查 / 规整（照后端 20 的规则：电话数字和空格 ( ) + - .，10–15 位，存 E.164；email 要像 email）。
+function cleanPhone(label, v) {
+  const s = String(v || "").trim();
+  if (!s) return "";
+  const digits = s.replace(/\D/g, "");
+  if (/[^0-9\s()+\-.]/.test(s) || digits.length < 10 || digits.length > 15) throw new Bad(`${label} must be a phone number with 10 to 15 digits.`);
+  if (s.startsWith("+")) return `+${digits}`;
+  return digits.length === 10 ? `+1${digits}` : `+${digits}`;
+}
+function cleanEmail(v) {
+  const s = String(v || "").trim();
+  if (!s) return "";
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s)) throw new Bad("Email is not a valid email address.");
+  return s;
+}
+function contactOf(b, cur) {
+  const out = {};
+  if ("address" in b || !cur) out.address = String(b.address || "").trim();
+  if ("phone" in b || !cur) out.phone = cleanPhone("Phone", b.phone);
+  if ("text_number" in b || !cur) out.text_number = cleanPhone("Text", b.text_number);
+  if ("email" in b || !cur) out.email = cleanEmail(b.email);
+  return out;
 }
 const taken = (name, except) => restaurants.some((r) => r.name.toLowerCase() === name.toLowerCase() && r.id !== except);
 function assign(rid, ids) {
@@ -141,7 +169,7 @@ http
         const f = { name: cleanName(b.name), footer: cleanFooter(b.footer), staff_note: cleanNote(b.staff_note) };
         const ids = cleanIds(b.manifest_ids);
         if (taken(f.name)) throw new Bad(`There is already a restaurant called ${f.name}.`);
-        const r = { id: nextId++, ...f, updated_by: "ZZ Test", updated_at: stamp() };
+        const r = { id: nextId++, ...f, ...contactOf(b, null), updated_by: "ZZ Test", updated_at: stamp() };
         restaurants.push(r);
         const moved = assign(r.id, ids);
         return send(res, 200, { ok: true, id: r.id, ...f, manifest_ids: ids, moved_from: moved });
@@ -155,7 +183,9 @@ http
         const cur = groups.filter((g) => g.restaurant_id === r.id).map((g) => g.id);
         const ids = "manifest_ids" in b ? cleanIds(b.manifest_ids) : cur;
         const moved = ids.join(",") !== cur.join(",") ? assign(r.id, ids) : {};
-        if (f.name !== r.name || f.footer !== r.footer || f.staff_note !== r.staff_note) Object.assign(r, f, { updated_by: "ZZ Test", updated_at: stamp() });
+        const c = contactOf(b, r);
+        const contactChanged = Object.keys(c).some((k) => c[k] !== r[k]);
+        if (f.name !== r.name || f.footer !== r.footer || f.staff_note !== r.staff_note || contactChanged) Object.assign(r, f, c, { updated_by: "ZZ Test", updated_at: stamp() });
         return send(res, 200, { ok: true, id: r.id, ...f, manifest_ids: ids, ...(Object.keys(moved).length ? { moved_from: moved } : {}) });
       }
       if (r && req.method === "DELETE") {
