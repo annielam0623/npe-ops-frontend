@@ -434,6 +434,8 @@ export function ScheduleView() {
         if (inner && typeof inner === "object") {
           const blocked = inner as SchedulePublishBlockedError;
           if (blocked.gaps) setPublishBlockedGaps(blocked.gaps);
+          // 页面上没看到、后端却查出空档（例如别人刚改过这一周）：重新读这一周，空档提示马上出来，admin 可以接着 Publish anyway。
+          void loadWeek();
           return {
             status: "error",
             message: blocked.detail || describeError(error),

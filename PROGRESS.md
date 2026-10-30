@@ -223,6 +223,15 @@
   - 9c 也回来了（新号 [d7db37]），确认 54544b8 就是全部改动。
     - tsc、eslint 都过了；sch 套件 193/193（5 次里 2 次开头加载慢时失败，重跑就过）。
     - 重启后剩下：build、看一遍 diff、写正式提交说明，然后推分支。等后端 allow_gaps 的形状。
+    - ✅ 重启后 9c（新号 [72d8d1]）做完：合最新 main → build 过 → 看过 diff → sch 193/193 → 推分支。**后端上 main 前不合 main。**
+      - 做了什么（Annie「Q1-5 同意推荐，动手」+ Q6「要留publish again，要允许改正错误」）：
+        - Publish 左边写「Gap: Mon 10/05 · nobody 5:00–9:30 PM」（超过 3 段写 +N more），点了跳到 Day timeline 那一天；原来的「N day(s) with gaps」数的是段数，已换掉。
+        - Day timeline 日期键、周表列头标红点；下面写「Gaps on <这天>: … · Other days: …」；有空档的那天多一行红色 Nobody，写原因（Unassigned 里的班 / 没有班）。
+        - admin 及以上有空档也能按 Publish，确认框「Publish with a coverage gap?」逐段列空档，蓝色提交键「Publish anyway」，送 `POST …/publish {allow_gaps: true}`。supervisor 灰键，鼠标停上去写原因；staff 看不到任何空档提示（Q3）。
+        - 已发布的周保留 Publish again；还有空档时写「Published with a gap」，走同一个框（「Publish again anyway」）。补上人后后端 gaps 变空就消失（Q4）。
+        - 后端发布时查出页面上没有的空档（400）：重新读这一周，提示马上出来。
+      - 检查：tsc / eslint / build 过；sch 193/193（新加空档提示、跳转、红点、Nobody 行、确认框、allow_gaps 请求、权限的检查）。mock 照 preview B1：allow_gaps 只给 admin 及以上，supervisor 带了回 403。
+      - 等后端：allow_gaps 的真形状（B1）、写日志（B2，Q2）、Publish again 不再回 409（G200 的 B）。到了以后核对 `lib/schedule-api.ts` publishScheduleWeek 再合 main。
 - **Annie 重启电脑前的交接（10-29 晚）**：
   - 后端 9a：Bus Manifest 正在推 main，West Rim 提交号由 20 发来；G216 重启后再合；B9 批量接口、Publish anyway 还没开工。
   - 前端重启后的下一步：
