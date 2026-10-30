@@ -232,6 +232,12 @@
         - 后端发布时查出页面上没有的空档（400）：重新读这一周，提示马上出来。
       - 检查：tsc / eslint / build 过；sch 193/193（新加空档提示、跳转、红点、Nobody 行、确认框、allow_gaps 请求、权限的检查）。mock 照 preview B1：allow_gaps 只给 admin 及以上，supervisor 带了回 403。
       - 等后端：allow_gaps 的真形状（B1）、写日志（B2，Q2）、Publish again 不再回 409（G200 的 B）。到了以后核对 `lib/schedule-api.ts` publishScheduleWeek 再合 main。
+      - 后端 8e 定了形状（后端 `task/schedule-publish-anyway` d2bc2cf，还没上 main），9c 已对上：
+        - 请求 `{allow_gaps: true}` 一致，不用改；非 admin 带了回 403「Only admins can publish with a gap. Fill the gap first.」（不管有没有空档），mock 照改。
+        - 成功响应多 `republished`、`gaps`；重新发布 `notified` 永远 []（通知规则等 Annie 定）⇒ 重新发布成功写「Published again.」，不写「Notified 0 people」；确认框改写「No notifications are sent when you publish again」，不出「没有邮箱」提醒；Publish again 键的鼠标提示同改。
+        - GET 周多 `published_with_gaps`：页面「Published with a gap」用它（没有时按「已发布 + 有空档」算）。
+        - 日志后端每次发布 / 重新发布都写（schedule_weeks，publish / republish），前端不用改。
+        - 检查：tsc / eslint / build 过；sch 194/194。**等 8e 通知上 main 后再合。**
 - **Annie 重启电脑前的交接（10-29 晚）**：
   - 后端 9a：Bus Manifest 正在推 main，West Rim 提交号由 20 发来；G216 重启后再合；B9 批量接口、Publish anyway 还没开工。
   - 前端重启后的下一步：

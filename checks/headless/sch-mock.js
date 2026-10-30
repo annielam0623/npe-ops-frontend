@@ -212,7 +212,8 @@ function getOrCreateWeek(weekStart) {
 }
 
 function weekPayload(weekData) {
-  const out = { ...weekData, gaps: gapsFor(weekData) };
+  const g = gapsFor(weekData);
+  const out = { ...weekData, gaps: g, published_with_gaps: weekData.status === "published" && g.length > 0 };
   if (ctl.phase2) {
     const dates = datesOfWeek(weekData.week_start);
     out.time_off = timeOff.filter((t) => dates.includes(t.date));
@@ -570,8 +571,9 @@ http
       const pubBody = await readBody(req).catch(() => null);
       publishLog.push({ week: publishMatch[1], body: pubBody, role: ctl.role });
       const allowGaps = !!(pubBody && pubBody.allow_gaps === true);
-      if (allowGaps && gaps.length > 0 && !(ctl.role === "admin" || ctl.role === "superadmin")) {
-        return send(res, 403, { detail: "Only an admin can publish with a gap in coverage." });
+      // 后端 d2bc2cf：不是 admin / superadmin 却带了 allow_gaps ⇒ 403，不管有没有空档。
+      if (allowGaps && !(ctl.role === "admin" || ctl.role === "superadmin")) {
+        return send(res, 403, { detail: "Only admins can publish with a gap. Fill the gap first." });
       }
       if (gaps.length > 0 && !allowGaps) {
         // 后端 HTTPException(400, {detail, gaps}) ⇒ 响应体 {detail: {detail, gaps}}。
@@ -579,6 +581,8 @@ http
           detail: { detail: "Can't publish — there's a gap in coverage.", gaps },
         });
       }
+      // 已发布的周再 Publish：不再 409，成功；republished = true，notified 永远 []（通知规则等 Annie 定）。
+      const republished = weekData.status === "published";
       weekData.status = "published";
       weekData.published_at = new Date().toISOString();
       weekData.published_by = 1;
@@ -587,10 +591,13 @@ http
         .filter((e) => scheduledIds.has(e.id))
         .map((e) => ({ employee_id: e.id, name: e.name, channels: e.email ? ["in_app", "email"] : ["in_app"] }));
       return send(res, 200, {
+        week_start: publishMatch[1],
         status: "published",
         published_at: weekData.published_at,
         published_by: weekData.published_by,
-        notified,
+        republished,
+        gaps,
+        notified: republished ? [] : notified,
       });
     }
 

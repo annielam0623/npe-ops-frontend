@@ -399,9 +399,12 @@ async function run() {
   );
   await evaluate("$btn('Publish again').click();");
   await waitFor("document.querySelector('[role=dialog]')");
-  check("二次发布的确认框文案提到 again", (await evaluate("return document.querySelector('[role=dialog]').textContent;")).includes("again"));
+  check(
+    "二次发布的确认框：写明重新发布不发通知，不再说会发邮件、不出「没有邮箱」提醒",
+    await evaluate("const t = document.querySelector('[role=dialog]').textContent; return t.includes('No notifications are sent when you publish again') && !t.includes('will get a system notification') && !document.querySelector('[role=dialog] [data-publish-no-email]');"),
+  );
   await evaluate("$btn('Publish again', document.querySelector('[role=dialog]')).click();");
-  check("二次发布成功", await waitFor("document.body.innerText.includes('Published. Notified')"));
+  check("二次发布成功：写「Published again.」，不写「Notified 0 people」（后端重新发布不发通知）", await waitFor("document.body.innerText.includes('Published again.') && !document.body.innerText.includes('Notified 0')"));
 
   // ── Publish anyway（Q1 admin 及以上）：整周空的 2027-01-03（7 天都是空档）──
   await ctl({ role: "admin", meName: "" });
@@ -446,8 +449,8 @@ async function run() {
   await openPage(`${APP}/schedule?week=2027-01-03`);
   await waitFor("document.querySelector('[data-gap-summary]')");
   check("supervisor：有空档时 Publish again 灰着、写原因", await evaluate("const b = $btn('Publish again'); return !!b && b.disabled && b.title.includes('Only admins can publish with a gap');"));
-  // supervisor 绕过页面直接带 allow_gaps：后端 403（mock 照 preview 的 B1）
-  // （这条只验 mock 的约定，真后端的权限由后端测）
+  const supDirect = await fetch(`${MOCK}/api/schedule/weeks/2027-01-03/publish`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ allow_gaps: true }) });
+  check("supervisor 绕过页面带 allow_gaps：403 + 后端原话（mock 照后端 d2bc2cf）", supDirect.status === 403 && (await supDirect.json()).detail === "Only admins can publish with a gap. Fill the gap first.");
   // staff：已发布的这一周看得到，但看不到任何空档提示（Q3）
   await ctl({ role: "staff", meName: "Jing" });
   await openPage(`${APP}/schedule?week=2027-01-03`);

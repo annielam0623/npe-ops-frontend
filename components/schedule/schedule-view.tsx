@@ -418,8 +418,11 @@ export function ScheduleView() {
       const result = await publishScheduleWeek(weekStart, { allowGaps });
       setConfirmingPublish(false);
       setPublishBlockedGaps(null);
+      // 重新发布后端不发通知（notified 永远 []）：不写「Notified 0 people」，免得像是发漏了。
       setPublishBanner(
-        `Published. Notified ${result.notified.length} ${result.notified.length === 1 ? "person" : "people"}.`,
+        result.republished
+          ? "Published again."
+          : `Published. Notified ${result.notified.length} ${result.notified.length === 1 ? "person" : "people"}.`,
       );
       void loadWeek();
       return { status: "ok" };
@@ -641,6 +644,10 @@ export function ScheduleView() {
                         canPublish={canPublish}
                         canPublishAnyway={canPublishAnyway}
                         republish={readyWeek.status === "published"}
+                        publishedWithGaps={
+                          readyWeek.published_with_gaps ??
+                          (readyWeek.status === "published" && gaps.length > 0)
+                        }
                         onJump={jumpToDay}
                         onClick={() => setConfirmingPublish(true)}
                       />
@@ -745,15 +752,15 @@ export function ScheduleView() {
             </div>
           ) : null}
           <p>
-            Everyone scheduled this week will get a system notification and an
-            email
-            {readyWeek?.status === "published" ? " again" : ""}. This can&apos;t
-            be undone.
+            {readyWeek?.status === "published"
+              ? // 重新发布：后端不发通知（notified 永远 []，通知规则等 Annie 定），这里不能写会发邮件。
+                "The week stays published with your latest changes. No notifications are sent when you publish again."
+              : "Everyone scheduled this week will get a system notification and an email. This can't be undone."}
             {gaps.length
               ? " Publishing with a gap is written in the Action Log."
               : ""}
           </p>
-          {noEmailNames.length > 0 ? (
+          {noEmailNames.length > 0 && readyWeek?.status !== "published" ? (
             <p
               data-publish-no-email
               className="mt-3 rounded-[8px] border border-[rgba(250,204,21,.5)] bg-[rgba(253,224,71,.14)] px-3 py-2 text-[13px] text-[#fde68a]"
@@ -1168,6 +1175,7 @@ function PublishControl({
   canPublish,
   canPublishAnyway,
   republish,
+  publishedWithGaps,
   onJump,
   onClick,
 }: {
@@ -1177,6 +1185,8 @@ function PublishControl({
   canPublishAnyway: boolean;
   /** 这一周已经发布过：按一次等于「重新发布 + 重发通知」（Annie Q6：保留，用来改正错误）。 */
   republish: boolean;
+  /** 后端 published_with_gaps（已发布、现在还有空档）；没有这个字段时按「已发布 + 有空档」算。 */
+  publishedWithGaps: boolean;
   onJump: (date: string) => void;
   onClick: () => void;
 }) {
@@ -1195,7 +1205,7 @@ function PublishControl({
             className="inline-block size-2 rounded-full bg-red-500"
           />
           <span>
-            {republish
+            {publishedWithGaps
               ? "Published with a gap"
               : list.length > 1
                 ? "Gaps"
@@ -1228,7 +1238,7 @@ function PublishControl({
             : list.length
               ? "There is a gap in coverage. You can still publish: you will be asked to confirm."
               : republish
-                ? "Publish again and notify everyone scheduled this week."
+                ? "Publish this week again (no notifications are sent)."
                 : undefined
         }
         className={DARK_PRIMARY_BUTTON_CLASS}
