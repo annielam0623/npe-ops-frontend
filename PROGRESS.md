@@ -101,6 +101,10 @@
     - 后端要等 Annie 执行 migrate_v126 才推 main。已转 9c 加进分支。
     - ✅ 9c 已加进分支（8f85141，没合 main）：mf 162、man 320；tsc 0，eslint 0 错，build 过。打印和下载要等 20 上线。
   - 9c 交「按 Save 才存」preview v1：https://claude.ai/artifact/XNA2wnz8SRcWcqxrANy1WX （分支代码没动）。
+  - ✅ **Annie 动手**，原话：「bus manifest Q4 没存之前还是挪过去，缓存，然后等整页存。其他都走推荐。动手」。
+    - Q4：换车在页面上马上挪过去，按整页 Save 才存。其余照推荐。
+    - 已派 9c `task/bus-manifest-page-save`，排在合 schedule-publish-anyway 之后。
+  - 批量导入后端：9a 明天排，开工第一件先核「overwrite=true 时空格会不会清掉原值」。
     - 版式、字号、换车都先暂存，整页一个 Save；没存的改动标琥珀色。
     - Aa 框里的 Save 改成 Done。
     - 打印前问「Save before printing?」。
