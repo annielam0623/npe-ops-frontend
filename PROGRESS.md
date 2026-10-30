@@ -538,6 +538,12 @@
   - 范围另有原话：「只留本次排班的对话……从排班人发出信息开始，到publish的记录，一直到下次排班开始后开始新一轮信息」。
   - 定下来：两处都放（发送框 + Responses 卡 History）；最新的在下面；记发的 / 回的 / 主管处理 / 重置；只看这一轮。
   - 后端 4 件已发 57；前端等后端形状，明天派（62 做过 preview）。
+- 排班 Save 线上问题（Annie：Save 后「Not saved yet」不消失）：
+  - 原因是已发布的周 Save 被后端 409 coverage_gap 拒了，页面没让她看出原因。生产 action_log 显示 12:00 起整周 Save 没成功过。
+  - Annie 在 ef 窗口原话：「其实刚才是不让我存，因为有gap，但是这个提醒要到publish才能看到，是否可以直接在排班的那个模块上显示出来不是更直观么」，又举例：「比如说最后一个表格的时间选择，如果制造了gap，他选了时间时候一保存，这个格子就变红色，告诉排班的人有一小时的gap」。
+  - 派 62：① bug `task/schedule-save-clear`，被拒时红字写原因、列出空档；② 空档标在格子上，先出 preview。
+  - 12:08:41 slot 102 被 delete 两次，相隔 0.04 秒，是旧前端，62 顺手看。
+- 排班往来记录：ef 定了形状（后端分支 task/schedule-person-history，文档 docs/interfaces/schedule-person-history-2026-10-30.md），要迁移，SQL 请 Annie 过目，最快明天上 main。前端派 e6（perm-c 之后）用 mock 先做 `task/schedule-person-history-fe`，只推分支。
 - 62 week-save 已上 main 7da6786。
 ## 2026-10-29 晚 收工交接：前端主窗口 `今天前端主窗口-d2`[15266b]（家里电脑，Annie「做完写交接收工」）
 
