@@ -772,10 +772,18 @@ http
         published_by: weekData.published_by,
         republished,
         gaps,
-        notified: republished ? employees.filter((e) => changed.has(e.id)).map((e) => ({ employee_id: e.id, name: e.name, channels: e.email ? ["in_app", "email"] : ["in_app"] })) : notified,
+        // 置顶 15（后端 ef task/republish-recipients-by-perm）：notified 只列真发出去的；ctl.notReached = {员工 id: 原因} 的人挪到 not_reached。
+        ...(() => {
+          const all = republished ? employees.filter((e) => changed.has(e.id)).map((e) => ({ employee_id: e.id, name: e.name, channels: e.email ? ["in_app", "email"] : ["in_app"] })) : notified;
+          const nr = ctl.notReached || {};
+          return {
+            notified: all.filter((p) => !(p.employee_id in nr)),
+            ...(ctl.notReached ? { not_reached: all.filter((p) => p.employee_id in nr).map((p) => ({ employee_id: p.employee_id, name: p.name, reason: nr[p.employee_id] })) } : {}),
+          };
+        })(),
         // 后端 G217（ef，10-30）：有人变了才通知主管层（所有在用的 supervisor / admin / superadmin，去掉按的人）；首次发布 / 没人变 = []。
         // ctl.noSupervisors：除了按的人没有别的主管（测主管 0 人时不写后半句）。
-        notified_supervisors: republished && changed.size && !ctl.noSupervisors ? [{ user_id: 91, name: "ZZ Test Sup A", channels: ["in_app", "email"] }, { user_id: 92, name: "ZZ Test Sup B", channels: ["in_app"] }] : [],
+        notified_supervisors: republished && changed.size && !ctl.noSupervisors && !ctl.noneReached ? [{ user_id: 91, name: "ZZ Test Sup A", channels: ["in_app", "email"] }, { user_id: 92, name: "ZZ Test Sup B", channels: ["in_app"] }] : [],
       });
     }
 
