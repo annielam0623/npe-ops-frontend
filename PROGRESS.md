@@ -166,6 +166,8 @@
         - ✅ **Annie 动手**，原话：「员工确认，同意推荐，动手」，Q1–Q6 全按推荐。
           - 后端发 9a 给 8e。
           - 前端派 9c `task/schedule-send-to-confirm`（从 notify-wording 拉），等 8e 上 main 再合。
+          - ✅ 9c 做完 f5e9486（sch 210、nav 32；tsc / eslint / build 都过），暂定形状已转 9a 给 8e 对照。
+          - 合并顺序：notify-wording 先合，再合 send-to-confirm。
 - Bus Manifest 整页 Save：✅ 9c 已合 main 800358f。
   - 检查：mf 182、man 320、nav 32；改了 useLeaveGuard，所以也跑了 da 373、tsend 54、tour 59。
   - 等 Annie 验收。
