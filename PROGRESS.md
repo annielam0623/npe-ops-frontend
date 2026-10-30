@@ -113,6 +113,12 @@
     - 后端 8e 做，做完 G209 接着做，今晚做不完就明天。
     - 后端上线后，前端要改 Publish again 确认框那句「No notifications are sent when you publish again」和成功提示，排给 9c。
   - 「已发布的周改动时不再逐项发通知」9a 还在问；「加休息日单独通知」也还没答。
+  - Annie 定，原话「改完再发」：已发布的周改动时不逐项发，等按 Publish again 时一次发给有变化的人和他们的主管。
+    - 后端 8e 一起做。
+    - 前端文字已派 9c `task/schedule-notify-wording`，等 8e 上 main 再合。新加的「改了还没发」提示先给 Annie 看。
+- Bus Manifest 整页 Save：✅ 9c 已合 main 800358f。
+  - 检查：mf 182、man 320、nav 32；改了 useLeaveGuard，所以也跑了 da 373、tsend 54、tour 59。
+  - 等 Annie 验收。
     - 版式、字号、换车都先暂存，整页一个 Save；没存的改动标琥珀色。
     - Aa 框里的 Save 改成 Done。
     - 打印前问「Save before printing?」。
