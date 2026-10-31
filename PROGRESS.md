@@ -2171,7 +2171,7 @@ pe-ops-frontend-bmv）：
         - 后端发 9a：allow_gaps、写日志、空档标记。
 - **Annie 定长期规则：订单流 Order List → Main Manifest → Dispatch / Tracking，不跳过前面直接去 Rezdy 拉单**。
   - 原话：「不要直接去rezdy拉订单。写到工作里头。订单流是order list  - main manifest - dispatch / tracking --我马上要开通。不要跳跃过前面的程序直接去rezdy拉单。前端后端都要写到工作规范里去」
-  - 前端已写进 CLAUDE.md「已定的决策」：远端 7fb1c50（别的窗口同时写的，内容更全）。主窗口自己写的那段重复了，已删掉。后端 9a 已写进后端 CLAUDE.md（f50aac5，Annie 看过条文回「写」），3 处已知冲突只登记，等动手。Add hotel：Annie 选 H（白底 Save 蓝字半粗「~~~~~ Shuttle Pick up ~~~~~」）；「占了的还是发灰，正常的就500，你把页面上400的都改成500」+「dispatch这一页」⇒ 正常酒店名黑色 500、被占的灰；Dispatch 页 400 字改 500。四件都定了，等动手（91）。
+  - 前端已写进 CLAUDE.md「已定的决策」：远端 7fb1c50（别的窗口同时写的，内容更全）。主窗口自己写的那段重复了，已删掉。后端 9a 已写进后端 CLAUDE.md（f50aac5，Annie 看过条文回「写」），3 处已知冲突只登记，等动手。
   - 主窗口查到现在前端和这条冲突的两处，已报 Annie，等她定、说「动手」：
     - Dispatch ① Assign 的「Sync Rezdy」键：lib/rezdy-sync-api.ts syncDispatchFromRezdy → /api/dispatch/manifests/rezdy-sync，先按 Rezdy 更新订单再同步名单。
     - Dispatch Step 1 每个团的「Upload Rezdy CSV」后备（lib/dispatch-manifest-api.ts previewUpload / applyUpload；manifests-panel.tsx:727 等）。
