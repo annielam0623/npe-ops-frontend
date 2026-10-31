@@ -13,6 +13,8 @@
 - Annie 截图（「22 hotels with no Morning Relay · 1st Round vehicle」里列了 Boulder City / Bryce / Kanab / Page / Zion 等 shuttle 站），原话「morning relay只放vegas的酒店，shuttle那些不要放进来」。
 - 改：components/dispatch/config.ts 的 activeLocs 只算 is_tour_bus === true 的点（后端 306f63d8 已带）；这条提醒和 Morning Relay 面板的覆盖数（covered / total）都用它。后端一个点都没带 is_tour_bus 时照旧全算。
 - Treasure Island：查过 PROGRESS 没有 Annie 的定论（说明那句「the tours start from Treasure Island」是解释各轮分开算），照旧算进去；TI 两个类别都勾，所以还在。要不要从这条里拿掉，已回 98 问。
+  - 2026-10-31 Annie 答「A」：勾了「Tour bus departure」的点（TI）不算进「no Morning Relay vehicle」这条（也不算进 Relay 覆盖数）。还没动手（「A」是选方案，不算动手指令）。
+  - 需要后端：Dispatch 当天数据的 locations（app/services/dispatch.py 约 473–480 行，现在只带 id / hotel_name / is_active / is_tour_bus / is_shuttle）加上 is_tour_departure。前端改法：activeLocs 再排除 is_tour_departure === true；后端没带这个键时照旧，所以前端可以先上。
 - 「Changes save by themselves」改对（Dispatch 10/30 已改手动 Save f6d79cd）：Schedule check 底部改成「Changes are saved when you press Save; …」；CCL 改版黄条里那句改成「Press Save afterwards to keep the changes.」。How to use 第 5 条（10 分钟没动才自动存）本来就对，没动。
 - 检查：da 428/428（新 1 项：hotelGroups 时这条只列 Las Vegas、shuttle 站和没归类的不列；没字段时照旧那项原来就有；底部说明那项改成新字）、tsc / eslint / build 过。
 
