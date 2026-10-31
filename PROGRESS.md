@@ -101,6 +101,22 @@
 - Annie 对 v3 又两条（都还不是动手）：
   - 经 98：「排班那个，一般是accept之前，decline在后」⇒ 成对的键同意在前：Accept / Decline、Approve / Decline。preview 已改，写代码也照这个顺序。
   - 直接对 e6 说：「员工之间的改动就发给相关人员就好了，排版人和super admin只需要在管理界面看见他们的action就好。就像你preview的一样」⇒ 通知（站内 + 邮件）只发相关员工：换班请求发对方，对方回复发提请求的人，排班的人批了发提请求的人（换班两人都发），Publish 时关掉的发本人（和还在等的对方）；改天上、提加班发出时没人收。排班的人和 Super Admin 不收通知，只在 Staff Schedule 周表（亮黄格子）、Responses 卡、History 里看。preview 加了「谁会收到通知」一节。后端 G138 通知收件人要照这条，已转 98 让她转 57 / 4e。
+- **Annie 答 v3 并动手**（直接对 e6 说）：「题 1. 排班周三确认：周四中午 12 点过了以后怎么办？ 过了就按照返回回来多少就按照多少排，没有返回的就是默认同意   题2 A」，随后「动手」。
+  ⇒ 过了周四 12:00 PM 员工页只读、没回的算 Looks good（排班的人那边 counted_accepted）；加班只能从已有班次选。preview 加了「④b 过了周四中午 12 点」。
+  - 新题 3（换班到期限时对方还没回）还没答：A 算对方同意、交给排班的人（推荐）/ B 自动关。后端 4e 做成开关，默认 A；前端只显示后端给的状态（peer_timed_out 时写「Lizzie didn't reply — waiting for approval」），两种都不用改前端。
+
+## 2026-10-30 晚 G138 周三确认改版：前端用 mock 做（`task/schedule-weekly-confirm`，工作窗口 `npe-ops-frontend-e6`[047d88]）—— 已推分支，等后端 G138 上 main
+
+- 接口照 4e 2026-10-30 晚「G138 后端最终接口」（发给 e6 / 98 / 57）：员工 GET 带 deadline / open / closed_reason / employees / slots（整周所有人，含空班、mine）/ time_off（别人的 kind=null）/ my_requests / requests_for_me；POST changes {requests: swap{my_slot_id,their_slot_id} | move{my_slot_id,date} | add{date,shift_type}}；POST requests/{id}/answer {answer}。
+- **员工页做完（第 1 步，abaede9）**：components/schedule/confirm-view.tsx 重写，lib/schedule-confirm-api.ts 换成新形状。
+  - 同线上周表：130px 人名列 + 7 天，一人一行，班次卡颜色 / 时间同 week-grid；自己那行白框、(you)；别人的休假只写 Off。
+  - 只有自己的卡片能拖（⠿）：拖到别人有班的卡片 = 换班（那格一分为二「Jing request / Lizzie original」，原来的变淡）；拖到自己没班的那天 = 改天上；自己 off 的格子 hover 出「+ Work this day」→ 只能选已有班次 = 加班。手机：点自己的卡片再点目标。
+  - 改动先攒在页面上（「3 changes, not sent yet」+ Your changes 列表带 ✕），离开页面拦下来问；按蓝色 Send my changes 才发，发好绿字「✓ Sent · 时间」。Looks good 不是蓝的（照 preview）。
+  - 期限行「Please confirm by Thu, Oct 29, 12:00 PM」；过了期限 / 已发布 / 这周开始了：蓝色提示、只读（没有按钮、⠿、+ Work this day）。
+  - 别人找我换班：黄色提示 + 我那格一分为二，Accept（蓝）在前、Decline 在后。
+  - 检查：sc 34/34（重写）、sch 277/277、tsc / eslint 过。confirm-board.tsx 留着（Responses 卡还在用）。
+- **下一步（第 2 步，排班的人那边）**：Responses 卡改读新形状（people[].answer 多 counted_accepted「No answer — counted as Looks good」、顶层 requests[] 平铺、每条 Approve / Decline 同意在前、换班 awaiting_peer 时写 Waiting for Lizzie 不能批）；周表亮黄格子按 requests 的 my_slot / their_slot / date 画（换班一分为二、改天、加班）；首次 Publish 确认框数 pending + awaiting_peer；History 新 5 种 kind 的说法。lib 里 ConfirmationPerson / WeekConfirmations 现在是旧形状（标了 TODO(G138)）。
+- 后端 G138 上 main 后：合最新 main、对着真接口核一遍字段、跑 sc / sch / nav / build，问过 98 再合。
 
 ## 2026-10-30 晚 7 Days Forecast：左边一列名字统一 15px 半粗（置顶 31，`task/forecast-label-size`，工作窗口 `npe-ops-frontend-09`[8a0116]，主窗口 98 派）—— 已合 main
 
