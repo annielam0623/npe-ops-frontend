@@ -68,6 +68,8 @@ export interface TeamMemberUser {
   account_type?: AccountType;
   /** 手机（staff 联络方式，后端加 admin_users.phone 以后带；没带 = 还没上）。 */
   phone?: string | null;
+  /** 关联了 HR 档案的司机 / 导游：HR 里的电话（后端 G219，名单也带）；其余 null。 */
+  hr_phone?: string | null;
 }
 
 export interface TeamMemberContact {
