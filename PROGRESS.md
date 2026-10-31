@@ -33,12 +33,6 @@
 ### 26. 09 问：你说的「之前的设计稿」是哪一份
 - 09 窗口没收到过这件事的上下文，已在 09 窗口问过 Annie，还没回。请在 09 窗口直接答，或告诉 98 转达。
 
-### 24. Content Studio「Team Messages」要不要放周三确认邮件
-- 后端 4e 设计 G228 时，把「周三确认排班」的邮件（主题「Confirm your schedule — week of Sun, Nov 1」、开头「Your schedule for the week of … is up. Please confirm it:」）也列进了这张卡。Annie 当时同意的三类里，排班邮件只说了首次发布 / Publish again / Send to confirm。
-- 选法：
-  - A. 放进来，四组排班邮件都能改（推荐：同一类邮件放一起；以后周三确认挪到发布前时文字可能要改，到时 Annie 自己改就行）；
-  - B. 先不放，等周三确认改版（G138）定了再说。
-
 ### 8. 可以上线后对着看的（不用答，验收时看）
 - Products 手动保存：09 问的 5 处细节，主窗口按盘点推荐定了，见 PROGRESS「2026-10-30」那节 09 的记录：
   - Bus Manifest setup 每个小项一个 Save；
@@ -55,7 +49,8 @@
   - 置顶 22（G227 司机页 / 导游页前一天画出全部功能）移走：没出 preview，Annie 对 92 原话「我要92把司机页现在做完，我等着测试啊」，已上 main f51d40a1，Annie 用 AnnieTest 测，等她反馈。
   - 今晚后端已派好（等 Annie「今晚破例」）：team_list_layout、G212 四项、删 Sync Rezdy 接口、空档只算将来；G219 → 往来记录 + history_count → G224；/guide/preview；is_test 今晚只出 v134 SQL 草稿。每件上 main 57 发 98。
 - 09 回：dor-updates 等 v133；10d 只做完第 0 步，等 Annie 叫再开始（只排 ZZTest + Leon，2027-02-07 那周，不做 Publish again）。端口都关了。
-- 62 已关，两件（content-team-messages、schedule-test-person）等 Annie 开新窗口再派。
+- 62 已关：content-team-messages（G228）派给 e6（空着），4e 原文整段转过去；schedule-test-person 不用新窗口，等后端 is_test 上 main 再派人合。
+- 置顶 24 答了（Annie 在 eb 窗口原话「要」）⇒ 选 A：周三确认邮件 sched_weekly_confirm_subject / _intro 放进 Team Messages，四组排班邮件都能改。已转 e6、57、4e。
 
 
 ## G228 Content Studio「Team Messages」后端设计（4e，2026-10-30 晚，只读，main f51d40a1）—— 给前端 62 的接手窗口用
