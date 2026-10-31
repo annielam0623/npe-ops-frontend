@@ -32,6 +32,12 @@
 - 打算：司机前一天点短信链接，也像 preview 那样全部画出来，灰着不能点，旁边一句英文「Opens on Sat Oct 31」。导游页同理。
 - 后端登记为 G227，下次开工 92 先出 preview（复用模板的 preview 分支，导游页一起），57 发主窗口转 Annie。
 
+### 24. Content Studio「Team Messages」要不要放周三确认邮件
+- 后端 4e 设计 G228 时，把「周三确认排班」的邮件（主题「Confirm your schedule — week of Sun, Nov 1」、开头「Your schedule for the week of … is up. Please confirm it:」）也列进了这张卡。Annie 当时同意的三类里，排班邮件只说了首次发布 / Publish again / Send to confirm。
+- 选法：
+  - A. 放进来，四组排班邮件都能改（推荐：同一类邮件放一起；以后周三确认挪到发布前时文字可能要改，到时 Annie 自己改就行）；
+  - B. 先不放，等周三确认改版（G138）定了再说。
+
 ### 8. 可以上线后对着看的（不用答，验收时看）
 - Products 手动保存：09 问的 5 处细节，主窗口按盘点推荐定了，见 PROGRESS「2026-10-30」那节 09 的记录：
   - Bus Manifest setup 每个小项一个 Save；
@@ -40,6 +46,30 @@
   - 等等。
   觉得键太多，可以改成按大块分。
 
+
+## G228 Content Studio「Team Messages」后端设计（4e，2026-10-30 晚，只读，main f51d40a1）—— 给前端 62 的接手窗口用
+
+- 读写接口不新开：
+  - 读：GET /api/template-settings（全部 tmpl__ 键，带 value / label / updated_at / updated_by），前端按下面 23 个键过滤；
+  - 写：POST /api/template-settings/save {key, value}（settings.content），Team Messages 的键先过 team_messages.validate()，不过回 400 英文 detail，前端原样标红；
+  - 预览：前端本地替换变量。要和服务端一致的渲染，可以请后端给 POST /api/template-settings/preview 加 module="team"。
+- 23 个键（都是 tmpl__global__ 开头，种子是今天代码里的原文）：
+  - SMS：field_driver_sms（必填，{date}{link}）、field_guide_sms（必填，{date}{link}，staff note 由代码接）；
+  - Restaurant：rest_title（必填·短信，{date}）、rest_total_label（可空）、rest_changed_label（可空）、rest_questions（可空，{guide}{guide_phone}）、rest_email_subject（必填，{tour}）；
+  - Schedule Email（{week} 渲染成「Sun, Nov 1」；排班键只允许 {name}{week}，主题只允许 {week}）：
+    - sched_greeting（可空）；
+    - sched_week_subject（必填）、sched_week_intro（可空）、sched_week_empty（可空）、sched_week_link_text（必填）；
+    - sched_changed_subject（必填）、sched_edited_subject（必填）、sched_changed_intro（可空）、sched_edited_intro（可空）、sched_changed_footer（可空）；
+    - sched_confirm_changes_subject（必填）、sched_confirm_changes_intro（可空）、sched_confirm_changes_ask（可空）、sched_confirm_link_text（必填，和周三确认共用）；
+    - sched_weekly_confirm_subject（必填）、sched_weekly_confirm_intro（可空）。
+- 保存校验（英文 detail）：
+  - 必填留空：「<Label> can't be blank.」；
+  - 不允许的变量：「Unknown placeholder {foo}. You can use: …」；
+  - 短信键：只收 GSM-7「This has a character texts can't send (…).」；{link} 正好一个；按真实长度链接量 ≤160，超了「Too long for one text by N characters.」。
+- 严格读取：缺键或必填为空就不发送，回 503「Team Messages text isn't set up in Content Studio. Nothing was sent.」；发布在 commit 前读，读失败就不发布。
+- 站内 Notice 标题、正文一律不动。
+- 种子迁移暂定 v135（排在 v134 之后，等迁移所有权，SQL 给 Annie 过目）。后端约 1 天，开工由 57 派。
+- 待 Annie 定：周三确认邮件（sched_weekly_confirm_*）要不要放进这张卡，见置顶 24。
 ## DOR 最新进展（G224）—— 明天第一件（工作窗口 `npe-ops-frontend-09`[8a0116]，主窗口 eb 2026-10-30 转 b0 的形状）
 
 - 依据：Annie 原话「如果需要纠正什么的话在下面备注，或者更新最新进展就好了」「加最新进展，任何人都可以加」「以上内容全都动手」。
