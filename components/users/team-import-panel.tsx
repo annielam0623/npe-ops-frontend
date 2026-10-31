@@ -73,6 +73,8 @@ export function TeamImportPanel({
         </>
       }
       endpoint="/api/team/contacts/import"
+      // 不建账号（Q6）：后端 status 只有 update / unchanged / error，数字里不写 New（同 preview ③-1）。
+      canCreate={false}
       labelOf={(k) => LABEL[k] ?? k}
       template={() => {
         const t = buildTeamImportTemplate(members);

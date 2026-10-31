@@ -13,7 +13,10 @@ import type {
   ActionFailure,
   ActionResult,
 } from "@/components/ui/action-result";
-import { ActionLogPanel } from "@/components/action-log/action-log-panel";
+import {
+  ActionLogPanel,
+  type ActionVerb,
+} from "@/components/action-log/action-log-panel";
 import { CenteredPage } from "@/components/ui/centered-page";
 import { BulkImportButton } from "@/components/ui/bulk-import";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -813,6 +816,7 @@ export function TeamView() {
                 refreshKey={logVersion}
                 reloadOnOpen
                 onUnauthorized={redirectToLogin}
+                verbs={TEAM_LOG_VERBS}
                 load={(before, signal) =>
                   fetchActionLog("/api/team/action-log", before, signal)
                 }
@@ -1142,6 +1146,11 @@ function UsersDialogs({
       );
   }
 }
+
+/** Team 日志里 ⬆ Import 写的每人一条（后端 64：action "import"）。 */
+const TEAM_LOG_VERBS: Record<string, ActionVerb> = {
+  import: { label: "Imported", tone: "change" },
+};
 
 /** 折叠的英文说明（同原来 Team 页的蓝框）；两页的说明并成一份。 */
 function TeamHowTo({ isSuperAdmin }: { isSuperAdmin: boolean }) {

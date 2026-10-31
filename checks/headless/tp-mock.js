@@ -44,7 +44,7 @@ const ADMIN = ALL.filter((c) => c !== "settings.schedule");
 const DUTIES = [["guest_messages", "Guest messages"], ["complaints", "Complaints"], ["accidents_emergencies", "Accidents & emergencies"], ["cancellations", "Cancellations"], ["refunds", "Refunds"], ["dispatching", "Dispatching"], ["finance", "Finance"], ["products_suppliers", "Products & suppliers"], ["quotations", "Quotations"]];
 const TEAMS = [{ id: 1, name: "Reservations", color: "#2563eb" }, { id: 2, name: "Operations", color: "#15803d" }, { id: 3, name: "Morning", color: "#b45309" }, { id: 4, name: "Tickets", color: "#dc2626" }, { id: 5, name: "Dispatch", color: "#7c3aed" }];
 
-let viewer, nohome, nodefault, acctype, typeFail, team500, team403, detailFail, delFail, contact404, importBad, importFail, people, contact, nextId;
+let viewer, nohome, nodefault, acctype, typeFail, team500, team403, detailFail, delFail, contact404, importBad, importFail, importConflict, people, contact, nextId;
 // Team 页 Columns（后端 92）：账号里存的 team_list_layout（JSON 字符串；null = 没存过）；teamLayout404 = 后端还没认这个键。
 let teamLayout = null, teamLayout404 = false;
 const log = [];
@@ -59,7 +59,7 @@ function person(id, username, display_name, items, o = {}) {
 function reset() {
   teamLayout = null; teamLayout404 = false;
   extraLog.length = 0;
-  viewer = "superadmin"; detailFail = 0; delFail = ""; contact404 = false; importBad = false; importFail = false; nohome = false; nodefault = false; acctype = false; typeFail = false; team500 = false; team403 = false;
+  viewer = "superadmin"; detailFail = 0; delFail = ""; contact404 = false; importBad = false; importFail = false; importConflict = false; nohome = false; nodefault = false; acctype = false; typeFail = false; team500 = false; team403 = false;
   people = [
     person(1, "annie", "Annie", ALL, { role: "superadmin", team_ids: [1, 2] }),
     person(2, "grace", "Grace Liu", ADMIN, { role: "admin", duties: ["complaints", "refunds"], team_ids: [1] }),
@@ -140,6 +140,7 @@ http.createServer((req, res) => {
       if (q.noemail) people.find((x) => x.id === Number(q.noemail)).email = null;
       if (q.importbad) importBad = q.importbad === "1";
       if (q.importfail) importFail = q.importfail === "1";
+      if (q.importconflict) importConflict = q.importconflict === "1";
       if (q.hrphone) people.find((x) => x.id === Number(q.hrphone)).hr_phone = "(702) 555-0199";
       if (q.log) return send(res, 200, log);
       return send(res, 200, { ok: true });
@@ -156,22 +157,33 @@ http.createServer((req, res) => {
       if (viewer !== "superadmin") return send(res, 403, { detail: "Superadmin access required" });
       if (!/filename="team-import.csv"/.test(raw)) return send(res, 400, { detail: "No file uploaded" });
       if (p.endsWith("/preview")) {
-        if (importBad) return send(res, 400, { detail: "Missing column: Username" });
+        if (importBad) return send(res, 400, { detail: "Missing column: Username." });
         const R = (row, status, id, values, o = {}) => ({ row, status, id, values, before: o.before || {}, changed: o.changed || [], blanked: o.blanked || [], errors: o.errors || [] });
         const rows = [
           R(2, "update", 2, { username: "grace", name: "Grace Liu", email: "grace@example.com", phone: "(702) 555-0142" }, { before: { phone: "" }, changed: ["phone"] }),
           R(3, "update", 7, { username: "ben", name: "Ben Staff", email: "ben.new@example.com", phone: "" }, { before: { email: "ben@example.com" }, changed: ["email"], blanked: ["phone"] }),
           R(4, "unchanged", 3, { username: "kevin", name: "Kevin Ho", email: "kevin@example.com", phone: "" }),
           R(5, "error", 4, { username: "mia", name: "Mia Chen", email: "kevin@example.com", phone: "" }, { errors: [{ field: "email", message: "That email address is already used by Kevin Ho (@kevin)." }] }),
-          R(6, "error", null, { username: "sofya", name: "", email: "s@example.com", phone: "" }, { errors: [{ field: null, message: "No one with username “sofya”. Did you mean sofia (Sofia Ruiz)? Fix it in the file and upload again." }] }),
+          // 后端 64（task/team-contacts-import 3953c04b）的原话：对不上的人 field = "username"；文件里重复 field = null。
+          R(6, "error", null, { username: "sofya", name: "", email: "s@example.com", phone: "" }, { errors: [{ field: "username", message: "No one with username “sofya”. Did you mean sofia (Sofia Ruiz)? Fix it in the file and upload again." }] }),
           R(7, "error", 8, { username: "chloe", name: "Chloe Staff", email: "", phone: "555-01" }, { errors: [{ field: "phone", message: "Phone number looks wrong. Use 10 digits, or + and the country code." }] }),
+          R(8, "error", null, { username: "", name: "Nobody", email: "n@example.com", phone: "" }, { errors: [{ field: "username", message: "Username is required." }] }),
+          R(9, "error", 9, { username: "ethan", name: "Ethan Staff", email: "ben.new@example.com", phone: "" }, { errors: [{ field: "email", message: "That email address is already used by Ben Staff (@ben) in row 3 of this file." }] }),
+          R(10, "error", 2, { username: "grace", name: "Grace Liu", email: "", phone: "" }, { errors: [{ field: null, message: "Repeated above — skipped." }] }),
+          R(11, "error", 10, { username: "fiona", name: "Fiona Staff", email: "", phone: "(702) 555-0100" }, { errors: [{ field: "phone", message: "Mobile comes from Human Resource — change it there." }] }),
         ];
-        return send(res, 200, { columns: ["username", "name", "email", "phone"], rows, counts: { new: 0, update: 2, unchanged: 1, error: 3 } });
+        // status 只有 update / unchanged / error（Team 导入不建账号，没有 new）。
+        return send(res, 200, { columns: ["username", "name", "email", "phone"], rows, counts: { new: 0, update: 2, unchanged: 1, error: 7 } });
       }
       if (importFail) return send(res, 500, { detail: "Database is busy" });
+      // 后端 64 原话：两个人同时改到同一个 email（唯一约束）⇒ 409，整份回滚。
+      if (importConflict) return send(res, 409, { detail: "Someone changed an email address while this file was being saved. Nothing was saved — check the preview again." });
       people.find((x) => x.id === 2).phone = "(702) 555-0142";
       people.find((x) => x.id === 7).email = "ben.new@example.com";
-      return send(res, 200, { created: 0, updated: 2, unchanged: 1, skipped: 3 });
+      // 每人一条 action_log，action "import"（Team 日志面板读得到）。
+      extraLog.unshift({ id: `${20 + extraLog.length}-1`, at: "2026-10-30T21:00:00+00:00", by: "Annie Z", action: "import", label: "grace", what: "Mobile", from: "", to: "(702) 555-0142" });
+      extraLog.unshift({ id: `${20 + extraLog.length}-1`, at: "2026-10-30T21:00:00+00:00", by: "Annie Z", action: "import", label: "ben", what: "Email", from: "ben@example.com", to: "ben.new@example.com" });
+      return send(res, 200, { created: 0, updated: 2, unchanged: 1, skipped: 7 });
     }
     const body = raw ? JSON.parse(raw) : null;
     if (viewer === "anon") return send(res, 401, { detail: "Authentication required" });

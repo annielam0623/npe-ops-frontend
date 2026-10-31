@@ -297,6 +297,23 @@
     - 文件里重复的用户名：「Repeated above — skipped.」。
     - commit 一个事务；每格改动记进 team_member 的 action_log（Email / Mobile）。
   - 下一步：后端上 main → 对真接口核形状（栏 key 是不是 username / name / email / phone）→ 合最新 main、重跑 tp / users / teams / nav → 合 main。
+  - ✅ 2026-10-30 晚 照 64 的最终形状改（98 派；只读核了后端分支 origin/task/team-contacts-import 3953c04b 的 team_contacts_import.py、team_api.py、bulk_import.py）：
+    - 栏 key 就是 username / name / email / phone，前端不用改。表头别名由后端认（Username 也认 User name / Login；Name 也认 Display name；Email 也认 E-mail / Email address；Mobile 也认 Phone / Mobile phone / Cell），前端模板照旧写 Username / Name / Email / Mobile。
+    - status 只有 update / unchanged / error：通用 Import 块加可选 `canCreate`（默认 true，别的页不变），Team 传 false，数字里不写 New（同 preview ③-1）。
+    - mock 改成后端原话（逐字；Email address looks wrong. 这条前端 G219 那边已经测过，mock 里没再放一行）：
+      - Username is required.
+      - No one with username “x”. Did you mean y (Name)? Fix it in the file and upload again.（field = username）
+      - Email address looks wrong.
+      - That email address is already used by Name (@user).（还有 … in row N of this file.）
+      - Phone number looks wrong. Use 10 digits, or + and the country code.
+      - Mobile comes from Human Resource — change it there.
+      - Repeated above — skipped.（field = null）
+      - 400 是纯字符串（例如「Missing column: Username.」）；409「Someone changed an email address while this file was being saved. Nothing was saved — check the preview again.」；
+      - commit {created: 0, updated, unchanged, skipped}。
+    - Team 日志：后端每人一条 action "import"。users-view.tsx 给 ActionLogPanel 加 verbs {import: Imported}，面板上写「Imported」。
+    - tp：改 6 条（数字不写 New、7 种原话逐字、存好的句子、400 原话带句号），加 2 条（409 原话红字只写一遍、预览留着；日志 action import 写 Imported）。结果 tp 175/175、users 77/77、teams 54/54、nav 32/32、pl 97/97、hr 62/62、fo-settings 128/128、veh 47/47（通用 Import 块加了 canCreate，别的导入页一起重跑）；tsc 0、eslint 0 错、build 通过。
+    - 合了最新 main（只有 PROGRESS.md 冲突，两边都留）。
+    - 下一步：64 上 main 后合最新 main、重跑 tp / users / teams / nav，就能合 main（前端不用再改）。
 
 
 ## G228 Content Studio「Team Messages」后端设计（4e，2026-10-30 晚，只读，main f51d40a1）—— 给前端 62 的接手窗口用

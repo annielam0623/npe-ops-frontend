@@ -939,11 +939,20 @@ async function fill(page, label, value) {
     check("import preview: counts and column names (Username / Name / Email / Mobile)", await page.evaluate(() => {
       const t = document.querySelector("[data-bulk-counts]").textContent;
       const h = [...document.querySelectorAll("[data-bulk-import] thead th")].map((th) => th.textContent);
-      return t.includes("Will update: 2") && t.includes("No change: 1") && t.includes("Errors: 3") && JSON.stringify(h) === JSON.stringify(["Import", "Username", "Name", "Email", "Mobile"]);
+      return t.includes("Will update: 2") && t.includes("No change: 1") && t.includes("Errors: 7") && !t.includes("New:") && JSON.stringify(h) === JSON.stringify(["Import", "Username", "Name", "Email", "Mobile"]);
     }), await page.evaluate(() => [...document.querySelectorAll("[data-bulk-import] thead th")].map((th) => th.textContent).join("|")));
-    check("import preview: errors in red (email used by, no one with username, phone format)", await page.evaluate(() => {
+    // 后端 64（task/team-contacts-import 3953c04b）的原话，逐字。
+    check("import preview: backend error wording shown verbatim in red (7 kinds)", await page.evaluate(() => {
       const es = [...document.querySelectorAll("[data-bulk-error]")].map((e) => e.textContent);
-      return es.includes("That email address is already used by Kevin Ho (@kevin).") && es.some((e) => e.startsWith("No one with username “sofya”. Did you mean sofia")) && es.includes("Phone number looks wrong. Use 10 digits, or + and the country code.");
+      return [
+        "That email address is already used by Kevin Ho (@kevin).",
+        "No one with username “sofya”. Did you mean sofia (Sofia Ruiz)? Fix it in the file and upload again.",
+        "Phone number looks wrong. Use 10 digits, or + and the country code.",
+        "Username is required.",
+        "That email address is already used by Ben Staff (@ben) in row 3 of this file.",
+        "Repeated above — skipped.",
+        "Mobile comes from Human Resource — change it there.",
+      ].every((m) => es.includes(m));
     }), await page.evaluate(() => JSON.stringify([...document.querySelectorAll("[data-bulk-error]")].map((e) => e.textContent))));
     check("import preview: changed cells old → new, blank cell left as is", await page.evaluate(() => {
       const ch = [...document.querySelectorAll("[data-bulk-changed]")].map((e) => e.textContent);
@@ -956,7 +965,12 @@ async function fill(page, label, value) {
       const a = document.querySelector("[data-bulk-import] [role=alert]");
       return !!a && a.textContent.startsWith("Not saved — nothing was changed.") && getComputedStyle(a).color === "rgb(179, 38, 30)";
     })) && !!(await page.$("[data-bulk-import] table")));
-    await ctl("importfail=0");
+    await ctl("importfail=0&importconflict=1");
+    await click(page, "Save 2 rows");
+    await page.waitForFunction(() => document.querySelector("[data-bulk-import] [role=alert]")?.textContent.includes("Someone changed"), { timeout: 10000 }).catch(() => {});
+    const conflictText = await page.evaluate(() => document.querySelector("[data-bulk-import] [role=alert]")?.textContent ?? "");
+    check("import save 409: backend wording once in red, preview stays", conflictText === "Not saved — Someone changed an email address while this file was being saved. Nothing was saved — check the preview again." && !!(await page.$("[data-bulk-import] table")), conflictText);
+    await ctl("importconflict=0");
     logStart = (await ctl("log=1")).length;
     await click(page, "Save 2 rows");
     await page.waitForFunction(() => document.querySelector("[data-bulk-import] [role=status]")?.textContent.includes("Saved"), { timeout: 10000 }).catch(() => {});
@@ -964,15 +978,21 @@ async function fill(page, label, value) {
     calls = (await ctl("log=1")).slice(logStart);
     const savedText = await page.evaluate(() => document.querySelector("[data-bulk-import] [role=status]")?.textContent ?? "");
     check(
-      "import save: commit once; green Saved — 2 updated. 3 rows with errors were not saved.; list reloads with the new email",
-      calls.filter((l) => l.startsWith("POST /api/team/contacts/import/commit")).length === 1 && savedText.includes("Saved — 2 updated. 3 rows with errors were not saved.") &&
+      "import save: commit once; green Saved — 2 updated. 7 rows with errors were not saved.; list reloads with the new email",
+      calls.filter((l) => l.startsWith("POST /api/team/contacts/import/commit")).length === 1 && savedText.includes("Saved — 2 updated. 7 rows with errors were not saved.") &&
         (await page.$eval("[data-bulk-import] [role=status]", (s) => getComputedStyle(s).color === "rgb(30, 107, 67)")) && ((await rowText(page, "@ben")) ?? "").includes("ben.new@example.com"),
       savedText,
     );
+    // 日志：后端每人一条 action "import"，Team 日志面板写 Imported。
+    await page.evaluate(() => [...document.querySelectorAll("button")].find((b) => b.textContent.includes("Action Log")).click());
+    await page.waitForFunction(() => [...document.querySelectorAll("[data-action-log] tbody tr")].some((r) => r.innerText.includes("Imported")), { timeout: 15000 }).catch(() => {});
+    const impRow = await page.evaluate(() => [...document.querySelectorAll("[data-action-log] tbody tr")].find((r) => r.innerText.includes("ben"))?.innerText ?? "");
+    check("import: Team Action Log shows action import as Imported (ben · Email old → new)", impRow.includes("Imported") && impRow.includes("Email") && impRow.includes("ben.new@example.com") && !impRow.includes("import "), impRow);
+    await page.evaluate(() => [...document.querySelectorAll("button")].find((b) => b.textContent.includes("Action Log")).click());
     await ctl("importbad=1");
     await (await page.$("[data-bulk-import] input[type=file]")).uploadFile(path.join(__dirname, "team-import.csv"));
-    await page.waitForFunction(() => document.querySelector("[data-bulk-import]").textContent.includes("Missing column: Username"), { timeout: 10000 }).catch(() => {});
-    check("import preview 400: backend wording in red, no table, no Save", await page.$eval("[data-bulk-import]", (b) => b.textContent.includes("Missing column: Username") && !b.querySelector("table") && ![...b.querySelectorAll("button")].some((x) => x.innerText.startsWith("Save "))));
+    await page.waitForFunction(() => document.querySelector("[data-bulk-import]").textContent.includes("Missing column: Username."), { timeout: 10000 }).catch(() => {});
+    check("import preview 400: backend wording in red, no table, no Save", await page.$eval("[data-bulk-import]", (b) => b.textContent.includes("Missing column: Username.") && !b.querySelector("table") && ![...b.querySelectorAll("button")].some((x) => x.innerText.startsWith("Save "))));
     await ctl("importbad=0");
     await page.evaluate(() => [...document.querySelectorAll("[data-bulk-import] button")].find((b) => b.innerText.includes("Close")).click());
     await waitFor(page, async () => !(await page.$("[data-bulk-import]")));
