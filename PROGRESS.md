@@ -375,7 +375,7 @@
   - 重名（BRUCE）、车号不在 Vehicles 的照旧橙字，以后再问 Annie 要不要统一。
 - 加班（Annie：「后端在加班做，你也是」）：
   - 09 `task/dor-updates`（G224 mock）；
-  - 62 `task/driver-preview-link`：Dispatch 标题行的 Driver / Guide page preview 链接，Annie「1. 马上上线」；
+  - 62 Driver page preview 链接已上 main 82b44d4（Dispatch 标题行，只 Super Admin，同源 /driver/preview?date=）。Guide 的没加：后端没有按天的 /guide/preview，已请 57 加，上了前端加一行；
   - e6 `task/team-columns`（team_list_layout mock）。
 - Annie「2 content studio那个同意你的推荐。动手」：Content Studio 加三类发出去的文字——①司机 / 导游短信、②改餐发餐厅消息、③排班邮件。司机页界面文字不放。62 先出 preview；后端 57 列模板位置、tmpl__ 键、变量。
 ### 三、后端在做 / 明天
