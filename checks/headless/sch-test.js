@@ -718,8 +718,11 @@ async function run() {
     await evaluate(`$btn('Close', ${DLG}).click();`);
 
     // 位置 B：Responses 卡每人一行 History (N)，点开在下面展开，再点收起
+    const histBefore = (await mockLog()).length;
     await openPage(`${APP}/schedule?week=2026-10-04`);
     await waitFor(`document.querySelector('[data-history-toggle="4"]')`);
+    await sleep(800);
+    check("History (N) 直接用 confirmations 的 history_count：打开页面不逐人读记录（Annie 2026-10-31 嫌慢）", (await mockLog()).slice(histBefore).filter((e) => /\/employees\/\d+\/history$/.test(e.path)).length === 0, JSON.stringify((await mockLog()).slice(histBefore).filter((e) => e.path.endsWith("/history")).map((e) => e.path)));
     const toggles = await evaluate(`return [...document.querySelectorAll('[data-history-toggle]')].map(b => [b.dataset.historyToggle, b.textContent]);`);
     check("Responses 卡：每人一行一个 History (N)（N = 记录条数，没有的写 0），不是蓝色键", toggles.length >= 2 && toggles.some(([id, t]) => id === "4" && t === `History (${KINDS.length + 2})`) && toggles.filter(([id]) => id !== "4").every(([, t]) => t === "History (0)") && (await evaluate(`return getComputedStyle(document.querySelector('[data-history-toggle="4"]')).backgroundColor !== 'rgb(59, 130, 246)';`)), JSON.stringify(toggles));
     await evaluate(`document.querySelector('[data-history-toggle="4"]').click();`);
@@ -727,6 +730,12 @@ async function run() {
     check("点开：这一人下面整行展开，同一份记录（同样的顺序），键变 Hide history", JSON.stringify(await evaluate(`return ${kindsIn("document.querySelector('[data-history-row=\"4\"]')")};`)) === JSON.stringify([...KINDS, "changes_sent", "answer_reset"]) && (await evaluate(`return document.querySelector('[data-history-toggle="4"]').textContent === 'Hide history';`)));
     await evaluate(`document.querySelector('[data-history-toggle="4"]').click();`);
     check("再点：收起", await waitFor(`!document.querySelector('[data-history-row="4"]')`));
+    check("点开才读这个人的记录：只读了 Jing（4）一次", JSON.stringify((await mockLog()).slice(histBefore).filter((e) => e.path.endsWith("/history")).map((e) => e.path)) === JSON.stringify(["/api/schedule/weeks/2026-10-04/employees/4/history"]), JSON.stringify((await mockLog()).slice(histBefore).filter((e) => e.path.endsWith("/history")).map((e) => e.path)));
+    // 旧后端没带 history_count：照旧一进来逐人读、算出 N
+    await ctl({ noHistoryCount: true });
+    await openPage(`${APP}/schedule?week=2026-10-04`);
+    check("旧后端（没有 history_count）：照旧逐人读，Jing 还是 History (N)", await waitFor(`(document.querySelector('[data-history-toggle="4"]')?.textContent || '') === 'History (${KINDS.length + 2})'`));
+    await ctl({ noHistoryCount: false });
     const other = toggles.find(([id]) => id !== "4")[0];
     await evaluate(`document.querySelector('[data-history-toggle="${other}"]').click();`);
     check("没有记录的人：展开写一句灰字 Nothing yet for this week.", await waitFor(`(document.querySelector('[data-history-row="${other}"] [data-history-empty]')?.textContent || '').startsWith('Nothing yet for this week.')`));

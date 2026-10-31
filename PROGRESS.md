@@ -8,6 +8,13 @@
 
 
 
+
+## 2026-10-31 排班页 History (N) 直接用 history_count（`task/history-count`，工作窗口 `npe-ops-frontend-e6`[047d88]，主窗口 98 派）—— 已合 main
+
+- 起因：Annie 说点开页面变慢；Responses 卡原来一进来就逐人读一次往来记录来算 History (N)。
+- 改成：confirmations 每行带的 history_count 直接显示 N，点开 History 才读那个人的记录；后端没带 history_count（旧后端）照旧逐人读。样子不变。
+- 检查：sch 300/300（新 3 项：打开页面不逐人读、点开只读那一个人、旧后端照旧）、nav、tsc / eslint / build 过。
+
 ## 2026-10-31 排班类 Notice 只写一句（`task/schedule-notice-short`，工作窗口 `npe-ops-frontend-e6`[047d88]，主窗口 98 派）—— 已合 main
 
 - Annie 原话（截图：Notice history 里「Schedule edited — week of 2026-11-01」下面十几行改动）：「notice里不需要显示详情，这里只是给个提示你的schedule发布了，给个see my schedule的链接就好了」。
