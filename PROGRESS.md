@@ -78,6 +78,26 @@
   - 后端：G138 等排班往来记录上 main 才开工（约下次开工）；PDF 排在 G228 后。PDF 前端基本不用做，只是「The full team schedule is attached.」会成为 Team Messages 卡多一个键，键名定了 57 通知。
   - 前端派 e6：先出 G138 preview（员工确认页、原来那个人怎么同意、排班的人 Responses 卡的状态），换班 C 的样子 Annie 还没看过，看过再用 mock 做。4e 已把 G138 完整方案发 e6。
 
+## 2026-10-30 晚 Content Studio Save 全改蓝色（置顶 28，`task/content-studio-blue-save`，工作窗口 `npe-ops-frontend-e6`[047d88]，主窗口 98 派）—— 已合 main
+
+- preview：https://claude.ai/artifact/VhN6zyiGzuZ3bwsg42DXAc 。Annie 原话（经 98）：「Content Studio 同意全部推荐。动手」（3 题都 A）。
+- 卡片底部 Save（studio-cards.tsx 的 CardFooter，6 个模块所有文字卡）：
+  - 改成蓝色 #3b82f6，同 Products 的 SAVE_BUTTON；没改动时灰的、点不了，改了才变蓝；
+  - 存的时候键旁边灰字「Saving…」；存好键旁边绿字「✓ Saved · 9:12 PM」，一直留到再改；
+  - 存不上：键还是蓝的（可以再点），下面红字写原因（后端原话，原来就有）。
+  - 去掉了整个键变绿「Saved ✓」/ 变红「Error」、2 秒复原的做法。
+- Tickets 团型的 Create / Save、Shuttle 的 Add route 也改成蓝色。Shuttle 线路名的 Save 本来就是蓝的，没动。
+- Cancel、Reset to Default、+ Add、Insert、↑↓、🗑 等不是提交的键保持不蓝。How to use 那句改成「A green ✓ Saved next to the button means it is stored」。
+- 检查：cs 159/159（新加 7 项：没改动灰的点不了、改了能点、Insert/Cancel 不蓝、存好绿字带时间、存好回灰、Create 蓝、Add route 蓝）、nav 32/32、tsc、eslint 0 error（2 个旧 warning）、build 过。
+- G228 分支（task/content-team-messages-e6）合 main 时要用同样的蓝色 Save：它用的是同一个 CardFooter，合并时照这次的写法解冲突。
+
+## 2026-10-30 晚 G138 周三确认 preview v2（置顶 30 重画，e6）
+
+- v1（https://claude.ai/artifact/TCweQYTQc2FykafjxaTgJo ）Annie 否了：「你的做法员工根本就看不懂，你直接把网上排好的schedule就一摸一样地给他们，让他们自己可以拖自己那天有班的格子到她想换的那天」。
+- v2：https://claude.ai/artifact/X2bdxVr42yXA6CS8FEEiCc 。员工、原来那个人、排班的人都看线上那张周表；只能拖自己的卡片；拖到别人有班的格子 = 换（先问他），拖到自己没班的那天 = 改天上。
+- Annie 答 v2（经 98）原话：「排班除了第4点，要求周四中午12点以前确认回。  三件事都对。提加班直接把off那天打开就好，然后让发排班的人批复就可以」。还不是动手。
+- 下一步 v3：员工页写回复期限「Please confirm by Thu 11/5, 12:00 PM」（照「提醒、不卡发布」画，问她要不要到点自动关）；画「把自己 off 那天打开、加一个班 → 排班的人 Approve / Decline」两边的样子。「接班」不做。
+
 ## 2026-10-30 晚 7 Days Forecast：左边一列名字统一 15px 半粗（置顶 31，`task/forecast-label-size`，工作窗口 `npe-ops-frontend-09`[8a0116]，主窗口 98 派）—— 已合 main
 
 - Annie 原话（按时间）：「我觉得你把7 days里的字体做得太杂乱了，第一行的栏目里，大写的应该统一尺寸，其他小写的名称也应该统一size，结果你弄的大大小小的」→「3.1  outbound和inbound的size要一样大，下面的driver和notes也要跟out和in一样大」→「然后0是我故意缩小并灰色的，不需要改」→ 对着线上截图「这几个再大一点，统一尺寸」→ **「15px 半粗 动手」**（经 98）。
