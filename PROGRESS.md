@@ -49,6 +49,20 @@
   3. 编辑权限不变（同 2026-10-30 修的 dor-edit-own：本人改自己的、report.edit 改所有人的）。
 - 明天要做：展开一条报告时在下面列「Updates」（谁、什么时候、写了什么，旧的在前），加一个输入框 + 蓝色 Save（任何能看这条报告的人都能加，partner 没有）。页面位置照 DOR 现状 preview（https://claude.ai/artifact/9FgXaqe3voxgGGuJVQpTdC ）第 5 部分画虚线框的那个地方。文字一律当纯文本显示。按 Save 才存（Saving… / 绿字 Saved / 红字后端原话）。检查：dor 套 mock 加 updates，测列出、加一条、空文本 / 超长 400 原话、partner 没有输入框。
 
+## 2026-10-30 置顶 21：Dispatch 标题行加「Driver page preview ↗」（`task/driver-preview-link`，工作窗口 `npe-ops-frontend-62`[cd78c4]，eb 派）—— 已合 main
+
+- Annie 原话（经 57 → eb）：「让前端加入口」；中途 eb 叫停过一次（Annie 问是不是要放进 Content Studio 做模块），随后 Annie「1. 马上上线」：照原计划放 Dispatch 标题行，Content Studio 模块另说。
+- 做法：
+  - Dispatch 标题行右边、Today 键后面加一个普通链接「Driver page preview ↗」（浅灰字，hover 变白加下划线，不是蓝键），新标签页打开。
+  - 链接是 `/driver/preview?date=<当前日期>`，换天跟着换。只给 Super Admin（`usePageVisibility().isSuperAdmin`）。
+  - 用同源路径：ops 自己没有 /driver，经 next.config 的 fallback 原样转给后端，同 Bus Manifest 打印，用的是 ops 这一个登录（直接写 confirm 域名就要再登录一次）。
+  - 后端 `/driver/preview` 本身只认 Super Admin、只读（field.py 278 行）。
+- 「Guide page preview ↗」没加：后端没有按天的导游页预览，只有按车的 `/admin/dispatch/manifest/guide?bus=<车>`，必须带车号，Tour manifests 每辆车已经有这个入口。
+  要按天的导游预览，得后端先加一个（同 /driver/preview：不带人列出当天的导游，带人显示那位导游的页面），写进「需要后端」，由 eb 转。
+- mock：`/api/me` 的 is_superadmin 改成跟 `ctl.superAdmin`（以前写死 false，那条「Super Admin 一项没勾也全有」的检查是靠员工默认全给才过的）。
+- 检查：新 3 项（admin 看不到；Super Admin 看得到，href / 新标签页 / 在 header 里；换天 href 跟着换）。
+  结果：da 420/420、nav 32/32；tsc 过；eslint 过；build 过。端口 3362 / 8962 / 9562。
+
 ## 2026-10-30 Dispatch：HR 对不上的 CCL 名字改写成「CCL: JUAN · Not in HR」（`task/dispatch-ccl-nohr-hint`，工作窗口 `npe-ops-frontend-62`[cd78c4]，eb 派）—— 已合 main
 
 - Annie 又发了截图（经 57 → eb），原话：「这个才是正确的样子，框里是staff手工打的」。

@@ -272,7 +272,7 @@ http.createServer(async (req, res) => {
     if (p === "/api/settings/dashboard-widgets") return send(res, 200, { readable: true, widgets: [{ key: "farm_out_dispatch", label: "Dispatch · Farm out", visibility: "staff", default: "super_admin_only", visible_to_me: true }, ...(ctl.rosterVis ? [{ key: "dispatch_roster", label: "Dispatch: driver / guide roster", visibility: ctl.rosterVis, default: "super_admin_only", visible_to_me: ctl.rosterVis === "staff" }] : [])] });
     if (p === "/api/me/permissions") return send(res, 200, { is_superadmin: false, permissions: (ctl.partnerPerms || ["dispatch.view", "dispatch.edit", "dispatch.send", "manifests.view"]).map((code) => ({ code, module: code.split(".")[0], wired: true })), default_home: "/dispatch" });
   }
-  if (p === "/api/me") return send(res, 200, { id: 1, username: "annie", display_name: "Annie", initials: "AZ", role: "admin", is_admin: true, is_superadmin: false });
+  if (p === "/api/me") return send(res, 200, { id: 1, username: "annie", display_name: "Annie", initials: "AZ", role: "admin", is_admin: true, is_superadmin: !!ctl.superAdmin });
   if (p === "/api/settings/dashboard-widgets") {
     if (!ctl.foVis && !ctl.rosterVis) return send(res, 404, { detail: "Not Found" });
     return send(res, 200, { readable: true, widgets: [
