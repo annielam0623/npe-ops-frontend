@@ -393,12 +393,22 @@ async function run() {
       await sleep(250);
       ids.push(...(await evaluate("return [...document.querySelectorAll('[data-team-card]')].map(c => c.dataset.teamCard + '|' + c.textContent.includes('tmpl__global__' + c.dataset.teamCard));")));
     }
-    const WANT = ["field_driver_sms", "field_guide_sms", "rest_title", "rest_total_label", "rest_changed_label", "rest_questions", "rest_email_subject", "sched_greeting", "sched_week_subject", "sched_week_intro", "sched_week_empty", "sched_week_link_text", "sched_changed_subject", "sched_edited_subject", "sched_changed_intro", "sched_edited_intro", "sched_changed_footer", "sched_confirm_changes_subject", "sched_confirm_changes_intro", "sched_confirm_changes_ask", "sched_confirm_link_text", "sched_weekly_confirm_subject", "sched_weekly_confirm_intro"];
-    check("列出 23 个键（含周三确认两个），每张卡写键名 tmpl__global__…", ids.length === 23 && JSON.stringify(ids.map((x) => x.split("|")[0])) === JSON.stringify(WANT) && ids.every((x) => x.endsWith("|true")), JSON.stringify(ids));
+    const WANT = ["field_driver_sms", "field_guide_sms", "rest_title", "rest_total_label", "rest_changed_label", "rest_questions", "rest_email_subject", "sched_greeting", "sched_week_subject", "sched_week_intro", "sched_week_empty", "sched_week_link_text", "sched_changed_subject", "sched_edited_subject", "sched_changed_intro", "sched_edited_intro", "sched_changed_footer", "sched_pdf_attached_note", "sched_confirm_changes_subject", "sched_confirm_changes_intro", "sched_confirm_changes_ask", "sched_confirm_link_text", "sched_weekly_confirm_subject", "sched_weekly_confirm_intro"];
+    check("列出 24 个键（含周三确认两个、PDF 附件那句），每张卡写键名 tmpl__global__…", ids.length === 24 && JSON.stringify(ids.map((x) => x.split("|")[0])) === JSON.stringify(WANT) && ids.every((x) => x.endsWith("|true")), JSON.stringify(ids));
     check(
-      "Schedule Email 分五组，Publish again 那组写 Notice 标题不在这里改（第 3 题 A）；预览里 {week} 是 Sun, Nov 1",
-      await evaluate("const g = [...document.querySelectorAll('[data-team-group]')].map(s => s.dataset.teamGroup); const p = document.querySelector('[data-team-preview=week]'); return g.length === 5 && g[4] === 'Wednesday: confirm the week' && document.querySelector('[data-team-group=\"Publish again (changes)\"]').textContent.includes('The Dashboard Notice keeps its own title') && !!p && p.textContent.includes('Subject: Your schedule — week of Sun, Nov 1') && p.textContent.includes('Hi Maria,');"),
+      "Schedule Email 分六组，Publish again 那组写 Notice 标题不在这里改（第 3 题 A）；预览里 {week} 是 Sun, Nov 1",
+      await evaluate("const g = [...document.querySelectorAll('[data-team-group]')].map(s => s.dataset.teamGroup); const p = document.querySelector('[data-team-preview=week]'); return g.length === 6 && g[5] === 'Wednesday: confirm the week' && document.querySelector('[data-team-group=\"Publish again (changes)\"]').textContent.includes('The Dashboard Notice keeps its own title') && !!p && p.textContent.includes('Subject: Your schedule — week of Sun, Nov 1') && p.textContent.includes('Hi Maria,');"),
     );
+
+    // 第 24 个键：PDF 附件那句（首次发布、Publish again 邮件最后，在 Open my schedule 链接后面）；只允许 {week}
+    {
+      const pdf = await evaluate("const c = document.querySelector('[data-team-card=sched_pdf_attached_note]'); const w = document.querySelector('[data-team-preview=week]').innerText.trim().split('\\n').filter(Boolean); const ch = document.querySelector('[data-team-preview=changed]').innerText.trim().split('\\n').filter(Boolean); return { card: !!c && c.textContent.includes('PDF attachment note') && c.textContent.includes('not sent until the PDF goes live') && c.querySelector('textarea').value === 'The full team schedule is attached.', weekLast: w[w.length - 2], weekLink: w[w.length - 3], changedLast: ch[ch.length - 1] };");
+      check("PDF 附件那句：一张卡（写明 PDF 上线前不会发出去），预览里排在 Open my schedule 后面、Publish again 邮件最后", pdf.card && pdf.weekLink === "Open my schedule" && pdf.weekLast === "The full team schedule is attached." && pdf.changedLast === "The full team schedule is attached.", JSON.stringify(pdf));
+      const r = await fetch(`${MOCK}/api/template-settings/save`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ key: "tmpl__global__sched_pdf_attached_note", value: "Hi {name}, attached." }) });
+      const r2 = await fetch(`${MOCK}/api/template-settings/save`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ key: "tmpl__global__sched_pdf_attached_note", value: "" }) });
+      check("PDF 附件那句：只允许 {week}（{name} 回 400），留空能存", r.status === 400 && (await r.json()).detail === "Unknown placeholder {name}. You can use: {week}." && r2.status === 200);
+      await fetch(`${MOCK}/api/template-settings/save`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ key: "tmpl__global__sched_pdf_attached_note", value: "The full team schedule is attached." }) });
+    }
 
     // 司机 / 导游短信：字数按真实链接量；导游写还剩几个字给 staff 的那句
     await evaluate("$tab('Driver & Guide SMS'); return 1;");

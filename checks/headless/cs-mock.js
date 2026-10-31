@@ -141,6 +141,7 @@ const TEAM = [
   ["sched_changed_intro", "Schedule changed intro", "Your schedule for the week of {week} has changed:", false, SCHED, ""],
   ["sched_edited_intro", "Schedule edited intro", "The schedule for the week of {week} has changed:", false, SCHED, ""],
   ["sched_changed_footer", "Schedule changed footer", "You can see this in the Notice panel on your Dashboard.", false, SCHED, ""],
+  ["sched_pdf_attached_note", "PDF attachment note", "The full team schedule is attached.", false, SUBJ, ""],
   ["sched_confirm_changes_subject", "Confirm changes subject", "Please confirm your schedule changes — week of {week}", true, SUBJ, ""],
   ["sched_confirm_changes_intro", "Confirm changes intro", "Your schedule for the week of {week} has changed:", false, SCHED, ""],
   ["sched_confirm_changes_ask", "Confirm changes ask", "Please check and confirm:", false, SCHED, ""],

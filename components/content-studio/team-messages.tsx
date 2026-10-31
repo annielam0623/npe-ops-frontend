@@ -168,6 +168,16 @@ const SCHED_GROUPS: SchedGroup[] = [
     ],
   },
   {
+    // 第 24 个键（4e 定，Annie 同意排班 PDF 照 preview 推荐）：首次发布、Publish again 附整周 PDF 的那些邮件最后一句。
+    title: "PDF attachment (first publish and Publish again)",
+    fields: [
+      sentence("sched_pdf_attached_note", "PDF attachment note", ["{week}"], {
+        allowed: ["{week}"],
+        hint: 'The last line of the first-publish and Publish again emails that carry the full team schedule as a PDF, after the "Open my schedule" link. Leave empty to drop it. Saved now, but not sent until the PDF goes live.',
+      }),
+    ],
+  },
+  {
     title: "Send to confirm (changes)",
     email: "confirm",
     fields: [
@@ -565,6 +575,7 @@ export function TeamMessagesPreview({
             <Line text={v("sched_week_intro")} />
             <ShiftList />
             {link(v("sched_week_link_text"))}
+            <Line text={v("sched_pdf_attached_note")} />
             <div className={FIXED}>
               <i>If they have no shifts, the list is replaced by:</i>{" "}
               {v("sched_week_empty")}
@@ -587,6 +598,7 @@ export function TeamMessagesPreview({
             <Line text={v("sched_changed_intro")} />
             <ShiftList />
             <Line text={v("sched_changed_footer")} />
+            <Line text={v("sched_pdf_attached_note")} />
           </div>
         </div>
         <div className={BOX} data-team-preview="confirm">

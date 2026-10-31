@@ -162,6 +162,29 @@
     - 对键名、label、400 原话（{link} 那句已确认）；
     - 要和服务端完全一样的渲染，可以请后端给 /api/template-settings/preview 加 module="team"，再换掉本地替换；
     - 合最新 main、重跑 cs，再合 main。
+  - **加第 24 个键**（98 派，4e 定，Annie 同意排班 PDF 照 preview 推荐）：tmpl__global__sched_pdf_attached_note。
+    - 种子「The full team schedule is attached.」，可空，只允许 {week}。
+    - 放在 Schedule Email 新的一组「PDF attachment (first publish and Publish again)」，label「PDF attachment note」。卡上写明：最后一句、可留空、PDF 上线前存着不会发出去。
+    - 预览：首次发布邮件排在「Open my schedule」链接后面；Publish again 邮件排在最后。
+    - mock 加这个键；cs-test 键数改 24、组数改 6，加 2 项（卡和预览位置；{name} 回 400、留空能存）。
+    - 结果：cs 171/171；tsc 0 错；eslint 0 错、2 个原有警告；build 过。
+
+## 2026-10-30 晚 G138 周三确认改版：前端 preview（工作窗口 `npe-ops-frontend-e6`[047d88]，主窗口 98 派工）—— 只出了 preview，Annie 答完置顶 30 再写代码
+
+- 依据：Annie「排班的问题同意全部推荐。动手」（经 57 转）：换班 C、Q1–Q4 见 preview 顶部。后端完整方案是 4e 发来的（main ea960347 起的设计，迁移暂定 v136，排在 G228 后面）。
+- preview：https://claude.ai/artifact/TCweQYTQc2FykafjxaTgJo （模拟数据）。七块：
+  - ① 周三发草稿的通知；
+  - ② 员工确认页：只有自己一行，Looks good / Send my changes；请求有 Add、Drop、Change time、Swap，先放页面上，一起发；
+  - ②b 点 Swap 选跟谁换：为换班开的口子，只在这一步列出那天同事的名字 + 班次 + 时间，can't be reached 的灰掉；
+  - ③ 原来那个人页面顶部的「Requests for you」（Accept / Decline）；
+  - ④ 排班的人：Responses 卡逐条状态、changed_since_sent + Send again、空草稿提示、Publish 确认框、周表一格一分为二、往来记录新记录种类；
+  - ⑤ 发布后；⑥ 和线上的对照表；⑦ 4 题。
+- 要 Annie 点头的 4 题（置顶 30，98 已转）：①选人时露那天同事的班（推荐 A）；②换班要不要「接班」（推荐 A，两种都有）；③已发布周 Send to confirm 留不留 Looks good（推荐 A）；④员工页写不写回复截止日（推荐 A）。
+- 4e 已确认前端补的 3 处照做：
+  - Publish 确认框前端自己从 confirmations.people[].requests 数，pending 和 awaiting_peer 都算还没处理完；
+  - 周表亮黄格子照旧能 Approve / Decline，走同一个接口；
+  - 往来记录新 kind：change_requested（detail 带 request_kind: remove / time）、swap_requested、swap_agreed、swap_declined_by_peer、request_closed_on_publish，v136 一起改 CHECK；add 照旧记成 requested。
+- 下一步：Annie 答完置顶 30，用 mock 写代码（分支从 main 拉，会和 task/schedule-person-history-fe 的往来记录接上）。
 
 ## 2026-10-30 置顶 21：Dispatch 标题行加「Driver page preview ↗」（`task/driver-preview-link`，工作窗口 `npe-ops-frontend-62`[cd78c4]，eb 派）—— 已合 main
 
