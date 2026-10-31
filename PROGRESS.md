@@ -105,6 +105,9 @@
 - 91 preview：https://claude.ai/artifact/MyYTZjQzmJLaWckQjPxVGd 。题 (a) 10 分钟没动算离线（推荐）/ 登录没过期就算 / 改 5 或 30 分钟；(b) 对方在 Notice 出 Message 卡带 Reply / Got it（推荐）/ Messages 新窗口 / 新收件箱；(c) 没 Email 照发站内、黄字提醒（推荐）/ 不让发；(d) 能回复、站内 + 邮件（推荐）/ 不能回 / 回邮件也算；(e) 只列员工（推荐）/ 所有能登录的；(f) 加开关默认只 SA（推荐）/ 不加。需要后端 7 条（last_seen_at 迁移、GET /api/team/online、staff_messages 表 + POST 发消息 + Notice + 邮件、回复、读、开关、日志），等 Annie 答完再转 57。
 - 要查：现在 Today's team 列谁（res = 当天排班上的人？）；后端有没有「谁在线 / 最近活动」；站内发消息用什么（后端有 Messages Team Board？）。91 做完 2/3 + 1/3 布局后先查、出 preview，缺的写需要后端。
 
+### 37. Bus Manifest 页改动记录（Action Log）
+- Annie 问「刚才我问的问题，bus manifest的改动log在哪里看」⇒ 现在哪里都看不到（后端记了，没有读接口，前端没面板）。Annie：「做」。e6 先出 preview（位置照 Dispatch 页底部、每条写法、谁能看）；后端 57 / 21 准备 GET /api/dispatch/manifest/action-log。
+
 ### 8. 可以上线后对着看的（不用答，验收时看）
 - Products 手动保存：09 问的 5 处细节，主窗口按盘点推荐定了，见 PROGRESS「2026-10-30」那节 09 的记录：
   - Bus Manifest setup 每个小项一个 Save；
