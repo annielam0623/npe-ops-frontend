@@ -419,6 +419,34 @@
     - Today's team 关着时任务块整行。
     - 结果：tasks 128/128、dr 88/88、nav 32/32；tsc 0、eslint 0 错、build 通过。
   - ⚠️ 和 `task/schedule-test-person` 都改了 tasks-test.js / tasks-mock.js，后合的那条要两边都留、重跑 tasks；Today's team 的 is_test 过滤在 today-team-section.tsx，这条没碰。
+- `task/dispatch-ccl-notice`（worktree `C:\Code\ops-wt-91-ccl`）—— Dispatch：CCL 通知 + Add hotel 分隔行 / 字重，**已合 main**
+  - Annie 原话（10-31 凌晨，91 窗口，按先后）：
+    - CCL：
+      - 「我现在是不是需要把pull from discord放到巴士前面，因为第一件事情应该是检查CCL的消息来了没有」「主要是点check the bus 就会跳过apply ccl的变动」；
+      - 「这样吧，如果CCL有变动现需要apply的，就在你给的这个位置出个通知，直接点击查看，跳转到下面的apply change的card里」；
+      - 「加在assign和send的框下面，做的漂亮一些」；
+      - 「样样子 1 · 左边琥珀色条 + Discord 图标」。
+    - Add hotel：
+      - 「Dispatch 点「Add hotel」里分割shuttle pick up的分割用灰色也太不显眼了吧」；
+      - 「~~~~~shuttle Pick up ~~~~~~，用save键的那个颜色」，选「H」；
+      - 「然后酒店名字的颜色不要用灰色，换成黑色」「那就是字体太细了，你加粗一点点点」「占了的还是发灰，正常的就500，你把页面上400的都改成500」「dispatch这一页」；
+    - 最后「动手」。
+  - preview：CCL https://claude.ai/artifact/PmUDb4Cbxb72XThPEPzfQn （v3 样子 1）；Add hotel https://claude.ai/artifact/TWJUhJcMkrgzpxigBNNAU6 （v3 H、v4 500）。
+  - 做法：
+    - CCL 通知（dispatch-view.tsx 的 CclNotice）：
+      - ① Assign / ② Send 步骤框正下方，只在有没 Apply 的 CCL 改版时出现；
+      - 样子：左边 4px 琥珀色条 + 浅琥珀渐变底 + Discord 图标，粗标题「CCL posted N changes for Sat, Oct 31」，小字「Not applied yet — the buses below still show the saved plan.」；
+      - 右边琥珀描边「Review changes ↓」（不是蓝色）：回到 Assign、把 Apply changes 卡打开、滚过去、黄框闪 2 秒（卡外包了 #ccl-apply-card）。
+      - 点卡上的 Not now：卡收起，通知留着（revisionLater），Apply 或换天才消失。
+      - Pull from Discord、Apply 卡本身都不搬。
+    - Add hotel（vehicle-row.tsx）：
+      - 分隔行改成「~~~~~ Shuttle Pick up ~~~~~」，Save 蓝 #3b82f6、半粗（!font-semibold，压过整页的 option 500）；
+      - 正常的酒店名黑字；被占的照旧浏览器的灰。
+    - Dispatch 整页 500：Shell 的 main 加 font-medium 和 [&_option]:font-medium（Chrome 只认 option 自己的粗细）。
+  - 检查：da 改 2 条、加 6 条：
+    - 分隔行文字 / 蓝色 / 600 / 不斜体；正常酒店名黑字 500、整页 500；
+    - 通知位置 / 文字 / 不是蓝键；Not now 后通知还在；Review 打开卡并滚到眼前；Apply 后通知消失。
+    - 结果：da 433/433、nav 32/32、dr 88/88；tsc 0、eslint 0 错、build 通过。
 - `task/import-team`（98 派：照 preview ③-1 和 import-pickup 用 mock 做，推分支、**不合 main**；worktree `C:\Code\ops-wt-91-impteam`）—— 等后端接口
   - 依据：全站「上传表格自动填」preview https://claude.ai/artifact/MKtDUiYyUPZ1FcBJR3j4Lw ③-1，Annie「批量导游同意推荐。动手」，Q1–Q7 全按推荐（Team：只改 Email / Mobile、按 Username 对上、不建账号、空格不改、有错的行不存、只给 Super Admin）。
   - 改动：

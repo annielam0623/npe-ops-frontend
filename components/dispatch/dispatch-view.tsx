@@ -347,6 +347,11 @@ export function DispatchView() {
   const [doneTick, setDoneTick] = useState(0);
   /** 点过 Completed：步骤条的 ② Send 闪 2 秒。 */
   const [flashSend, setFlashSend] = useState(false);
+  // CCL 改版：点了 Not now 卡收起，但步骤框下面的通知留着，直到 Apply（Annie 2026-10-31 动手，preview PmUDb4Cbxb72XThPEPzfQn v3 样子 1）。
+  const [revisionLater, setRevisionLater] = useState(false);
+  // 点通知的「Review changes ↓」：Apply changes 卡黄框闪 2 秒。
+  const [flashCcl, setFlashCcl] = useState(false);
+  const flashCclTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const flashSendTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // 异步回调里要读最新的值。
   const stateRef = useRef({ rows, base, day, prefill });
@@ -467,6 +472,7 @@ export function DispatchView() {
   const prefillInner = useCallback(async (date: string) => {
     if (viewOnlyRef.current) return;
     setBanner("none");
+    setRevisionLater(false);
     setPrefill(null);
     setClosures([]);
     setCclImportId(null);
@@ -558,6 +564,7 @@ export function DispatchView() {
         setLoadError(null);
         setPrefill(null);
         setBanner("none");
+        setRevisionLater(false);
         setCclImportId(null);
         setManifestVersion((v) => v + 1);
         if (d.run_date !== stateRef.current.day?.run_date) {
@@ -954,6 +961,21 @@ export function DispatchView() {
   }
 
   /** 换标签：只换显示（两边都留着，没存的改动、拉过的名单都在），地址里记 ?tab=。 */
+  /** 步骤框下面 CCL 通知的「Review changes ↓」：回到 Assign、把收起的 Apply changes 卡打开，滚过去闪 2 秒。 */
+  function reviewCclChanges() {
+    if (tab !== "assign") switchTab("assign");
+    setBanner("revision");
+    setRevisionLater(false);
+    requestAnimationFrame(() =>
+      document
+        .getElementById("ccl-apply-card")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" }),
+    );
+    if (flashCclTimerRef.current) clearTimeout(flashCclTimerRef.current);
+    setFlashCcl(true);
+    flashCclTimerRef.current = setTimeout(() => setFlashCcl(false), 2000);
+  }
+
   function switchTab(next: Tab) {
     setTab(next);
     const url = new URL(window.location.href);
@@ -1426,6 +1448,7 @@ export function DispatchView() {
     edit(next);
     setCclImportId(prefill.import_id);
     setBanner("none");
+    setRevisionLater(false);
   }
 
   function addVehicle(shift: string, tour: number | null, order?: string) {
@@ -1695,6 +1718,16 @@ export function DispatchView() {
               </div>
             ) : null}
 
+            {(banner === "revision" || revisionLater) &&
+            prefill?.changes?.length &&
+            day ? (
+              <CclNotice
+                count={prefill.changes.length}
+                day={day.run_date}
+                onReview={reviewCclChanges}
+              />
+            ) : null}
+
             {/* 两个标签都留着（hidden），来回切不丢没存的改动、拉过的名单。
               Assign：1 Guest lists → 2 Buses & drivers（后端 G29 第一批的前两步）。
               步骤框之间 18px（旧 `.dstep{margin-bottom:18px}`）。 */}
@@ -1889,14 +1922,25 @@ export function DispatchView() {
                 {viewOnly ? null : <HowToUse />}
 
                 {banner !== "none" && prefill ? (
-                  <CclBanner
-                    kind={banner}
-                    prefill={prefill}
-                    rows={rows}
-                    L={L}
-                    onApply={applyRevision}
-                    onLater={() => setBanner("none")}
-                  />
+                  <div
+                    id="ccl-apply-card"
+                    className={cn(
+                      "scroll-mt-24 rounded-[12px] transition-shadow",
+                      flashCcl && "ring-[3px] ring-[#fbbf24]",
+                    )}
+                  >
+                    <CclBanner
+                      kind={banner}
+                      prefill={prefill}
+                      rows={rows}
+                      L={L}
+                      onApply={applyRevision}
+                      onLater={() => {
+                        if (banner === "revision") setRevisionLater(true);
+                        setBanner("none");
+                      }}
+                    />
+                  </div>
                 ) : null}
 
                 {!day.drivers.length && !viewOnly ? (
@@ -2794,7 +2838,14 @@ function Shell({
 }) {
   // 底色、外边距由整站外框（照 base.html）给；白卡片里的字靠 text-stone-800 以外各自写死的颜色。
   return (
-    <main className={cn("text-stone-800", gutter && "min-[1301px]:pr-[330px]")}>
+    // Dispatch 整页常规粗细的字一律 500（Annie 2026-10-31「你把页面上400的都改成500」「dispatch这一页」）；
+    // 下拉里的选项 Chrome 只认 option 自己的粗细，所以也给 option 设。
+    <main
+      className={cn(
+        "font-medium text-stone-800 [&_option]:font-medium",
+        gutter && "min-[1301px]:pr-[330px]",
+      )}
+    >
       {children}
     </main>
   );
@@ -2854,6 +2905,50 @@ function ClockIcon() {
 }
 
 /** Pull from Discord 上的 Discord 标志（旧 `.btn-discord .dico`）。 */
+/**
+ * 步骤框正下方的 CCL 通知（Annie 2026-10-31「加在assign和send的框下面，做的漂亮一些」，选「样子 1 · 左边琥珀色条 + Discord 图标」）：
+ * 只在 CCL 有改版还没 Apply 时出现；点「Review changes ↓」滚到下面 Step 2 的 Apply changes 卡。琥珀描边键，不是蓝色（蓝色只给提交）。
+ */
+function CclNotice({
+  count,
+  day,
+  onReview,
+}: {
+  count: number;
+  day: string;
+  onReview: () => void;
+}) {
+  return (
+    <div
+      role="status"
+      data-ccl-notice
+      className="mb-[18px] flex flex-wrap items-center gap-3.5 rounded-[14px] border border-l-4 border-[rgba(251,191,36,.35)] border-l-[#fbbf24] bg-[linear-gradient(90deg,rgba(251,191,36,.12),rgba(251,191,36,.04))] px-[18px] py-3"
+    >
+      <span
+        aria-hidden
+        className="flex size-[34px] flex-none items-center justify-center rounded-[10px] bg-[#5865F2] text-white"
+      >
+        <DiscordIcon />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-[14.5px] font-bold text-white">
+          CCL posted {count} change{count === 1 ? "" : "s"} for {fmtShort(day)}
+        </span>
+        <span className="mt-0.5 block text-[12px] text-[#fde68a]">
+          Not applied yet — the buses below still show the saved plan.
+        </span>
+      </span>
+      <button
+        type="button"
+        onClick={onReview}
+        className="flex-none cursor-pointer rounded-[9px] border border-[#fbbf24] bg-transparent px-3.5 py-1.5 text-[12.5px] font-bold whitespace-nowrap text-[#fbbf24] hover:bg-[rgba(251,191,36,.12)]"
+      >
+        Review changes ↓
+      </button>
+    </div>
+  );
+}
+
 function DiscordIcon() {
   return (
     <svg
