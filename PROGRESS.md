@@ -145,6 +145,13 @@
 
 ## 2026-10-30 排班：每个人的往来记录 前端（`task/schedule-person-history-fe`，工作窗口 `npe-ops-frontend-e6`[047d88]，主窗口 eb 派工）—— **只推分支，没合 main（等后端 ef task/schedule-person-history 上 main，要 Annie 先过目迁移 SQL）**
 
+- **2026-10-31 合 main 上线**（98 转：后端往来记录已上 main origin 0365d4ce / 合并 78a24170，v132 生产已执行）。对真接口核过（只读后端）：
+  - GET …/employees/{id}/history → {week_start, employee_id, name, events}；events 每条一定带 lines / channels（可能是 []），detail 里 title / failed / answer / via / request 平铺到顶层，空值不给键——前端已在 fetchPersonHistory 补齐。
+  - 和文档不同两处都不用改前端：① published 那条 lines 现在是整周的班 ⇒ 照 Lines 一行一条列出（和 republished 一样）；② 第一次收到整周的人标题「Your schedule changed」或（16 今晚改后）「Your schedule」 ⇒ 前端照原样写「{name} got: 标题」，两种都行。
+  - confirmations 每行的 history_count 前端暂时没用（History (N) 还是逐人读一次记录算），以后要省请求再改。
+  - G138 那 5 种新事件后端还没写，前端有说法、没收到就不显示。
+  - 合最新 main 后：sch 297/297、nav 32/32、sc 21/21、tsc / eslint（0 error）/ build 过。没带 G138 的 schedule-weekly-confirm。
+
 - **2026-10-30 晚 G138 新 5 种已加**（98 转 Annie「所有窗口今天手上的工作必须全部做完」）：change_requested（request_kind move「Asked to move Thu 10/8 Close to Fri 10/9」/ add「Asked for an extra shift Wed 10/7 Open」）、swap_requested「Asked to swap Sun 10/4 Close ↔ Veronica’s Thu 10/8 Close · waiting for Veronica」、swap_agreed（绿）、swap_declined_by_peer（红）、request_closed_on_publish（灰字）。字段名是前端先定的：request（目标）、from_slot（原来的 / 给出的班）、request_kind、peer（另一个人的名字）——4e / 44 确认后端照这个名字、放在 events[] 顶层（44 2026-10-30：_event_out 把 detail 平铺）。44 提醒：空值（None / [] / ""）是缺键不是 null ⇒ fetchPersonHistory 里统一补齐（lines / channels 缺 = []，by / peer / from_slot 缺 = null），mock 里 request_closed_on_publish 那条照缺键写。合了最新 main；sch 272/272。
 
 - 依据：
