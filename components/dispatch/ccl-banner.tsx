@@ -51,7 +51,7 @@ export function CclBanner({
     const n = p.changes?.length ?? 0;
     title = `CCL posted a change “${p.title}” · ${n} ${n === 1 ? "change" : "changes"}`;
     text =
-      "Nothing on this day changes until you press Apply changes. Hotels you already picked stay. Changes save by themselves." +
+      "Nothing on this day changes until you press Apply changes. Hotels you already picked stay. Press Save afterwards to keep the changes." +
       unreadNote;
     const byId = new Map(rows.map((r) => [r.id, r]));
     items = (p.changes ?? []).flatMap((c) => {

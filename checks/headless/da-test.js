@@ -536,7 +536,7 @@ async function run() {
   await waitFor(dialog);
   check("再发一次：确认框说上次已发、会再收到", await evaluate(`return ${dialog}.textContent.includes('They will get it again.');`));
   await evaluate(`$btn('Cancel', ${dialog}).click();`);
-  check("页面说明按步骤写；右栏：保存不发、manifest / Send 都读存好的排车", await evaluate("const t = document.body.textContent.replace(/\\s+/g, ' '); return t.includes('Assign the buses, drivers and hotels, then Send: driver texts first, then guests’ morning pickup texts.') && t.includes('Saving does not text guests or drivers. Changes save by themselves; tour manifests and the Send tab use the saved schedule.') && !t.includes('Save schedule');"));
+  check("页面说明按步骤写；右栏：保存不发、manifest / Send 都读存好的排车", await evaluate("const t = document.body.textContent.replace(/\\s+/g, ' '); return t.includes('Assign the buses, drivers and hotels, then Send: driver texts first, then guests’ morning pickup texts.') && t.includes('Saving does not text guests or drivers. Changes are saved when you press Save; tour manifests and the Send tab use the saved schedule.') && !t.includes('Save schedule');"));
   check("司机的错误只写在 Send to drivers，不写在早班发送那一块", await evaluate(`return !${rp}.querySelector('[role=alert]') || !${rp}.querySelector('[role=alert]').textContent.includes('drivers');`));
 
   // ── Morning Relay 勾选 / Send anyway / 不重复发（后端 G61，2026-10-15）──
@@ -1975,6 +1975,11 @@ async function run() {
       div > 0 && top.every((t) => LV.includes(t)) && bottom.length > 0 && bottom.every((t) => SH.includes(t)) && az(top) && az(bottom) && !got.some((o) => o.t === "Old Motel") && bottom.includes("Kanab – Visitor Center"),
       JSON.stringify(got.map((o) => o.t)));
     check("分隔行 Shuttle pick up：不能选、没有值、斜体", div > 0 && got[div].x === true && got[div].v === "" && got[div].i === "italic", JSON.stringify(got[div]));
+    // Schedule check「N hotels with no Morning Relay · … vehicle」只算 Las Vegas 的点（Annie 2026-10-31「morning relay只放vegas的酒店，shuttle那些不要放进来」）
+    {
+      const relayIssue = await evaluate("const li = [...document.querySelectorAll('[aria-label=\"Schedule check\"] [aria-label=Issues] > li')].find(l => l.textContent.includes('with no Morning Relay')); if (!li) return null; const b = [...li.querySelectorAll('button')].find(x => x.textContent.startsWith('View ')); if (b) b.click(); return li.textContent;");
+      check("Schedule check 没有 Relay 车的酒店：只列 Las Vegas（aria 在），St George / Page / Kanab 这些 shuttle 站和没归类的都不列", !!relayIssue && relayIssue.includes("aria") && !SH.some((n) => relayIssue.includes(n)), String(relayIssue));
+    }
     await ctl({ hotelGroups: false });
     await goto("about:blank");
     await sleep(300);
