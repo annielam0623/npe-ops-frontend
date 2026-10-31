@@ -229,16 +229,16 @@ const FOOTER_LABEL: Record<string, string> = {
  * 一个团、一天的 manifest，照纸本版式（同旧页面 /admin/dispatch/manifest）。
  * 车来自排车页已保存的排车，客人从主 Manifest 同步（G35，打开排车页时）。
  */
-/** Bus Manifest 的动作名（后端 action_log 的 action）；没列的照原样、蓝色。 */
+/**
+ * Bus Manifest 的动作名（后端 64 逐个核过的 action 值，2026-10-30）：print / export / apply_upload / sync / seat_move 是一句话的记录
+ * （what = 那句话、label 空）；Special Requirements / Text size / 导游午餐 / Version 都是 update（共用的 Changed）。
+ */
 const MANIFEST_LOG_VERBS: Record<string, ActionVerb> = {
   print: { label: "Printed", tone: "change" },
-  download: { label: "Downloaded", tone: "change" },
-  upload: { label: "Uploaded", tone: "add" },
+  export: { label: "Downloaded", tone: "change" },
+  apply_upload: { label: "Uploaded", tone: "add" },
   sync: { label: "Synced", tone: "add" },
-  complete: { label: "Marked Completed", tone: "add" },
-  reopen: { label: "Reopened", tone: "change" },
   seat_move: { label: "Moved", tone: "change" },
-  pending_handled: { label: "Pending change handled", tone: "delete" },
 };
 
 export function ManifestView() {

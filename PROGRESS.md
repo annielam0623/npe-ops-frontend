@@ -10,9 +10,9 @@
 ## 2026-10-30 晚 Bus Manifest 改动记录（Action Log）（`task/manifest-action-log`，工作窗口 `npe-ops-frontend-e6`[047d88]，主窗口 98 派）—— 已推分支，等后端读接口
 
 - Annie 问「bus manifest的改动log在哪里看」⇒「做」。preview https://claude.ai/artifact/YEgERHNDiL45TCkbzyJisa ；Annie 原话「同意所有推荐。动手」：a 打印 / 下载也列；b manifests.edit 或 dispatch.edit 才看得到（同能改这页的人，partner 没有）；c 只看当前这个团。
-- 做了：/dispatch/manifest 页最下面（How to use 后面）放共用 ActionLogPanel，同 Dispatch 页；说明一行「Changes to the Bus Manifest for 团名 on 日期. Newest first.」；GET /api/dispatch/manifest/action-log?date=&tour=&limit=50；整页 Save 存好后展开着就重读；动作名 print → Printed、download → Downloaded、upload / sync、complete → Marked Completed、reopen、seat_move → Moved、pending_handled → Pending change handled（后端的 action 名是前端先猜的，接口出来后对一遍）。
+- 做了：/dispatch/manifest 页最下面（How to use 后面）放共用 ActionLogPanel，同 Dispatch 页；说明一行「Changes to the Bus Manifest for 团名 on 日期. Newest first.」；GET /api/dispatch/manifest/action-log?date=&tour=&limit=50；整页 Save 存好后展开着就重读；动作名照后端 64 逐个核过的值（2026-10-30）：print → Printed、export → Downloaded、apply_upload → Uploaded、sync → Synced、seat_move → Moved（这几类 what 是一句话、label 空）；Special Requirements / Text size / 导游午餐 / Version 都是 update → Changed（label 是一句说明，what = 字段）。Completed / pending handled 不在这个接口（属于 Dispatch 面板）。
 - 检查：mf 209/209（新加 4 项：收着不请求、展开带 date + tour、各条文字、partner 没有）、tsc / eslint 过。
-- **需要后端**：GET /api/dispatch/manifest/action-log?date=YYYY-MM-DD&tour=<id>（+ before / limit），返回 {entries, next_cursor} 同其他 action-log；要 manifests.edit 或 dispatch.edit；entries 包括 tour_manifest（print / download / upload / sync / complete / seat_move / pending_handled）、tour_manifest_guest（Special Requirements）、manifest_version、manifest_text_size、guide_lunch、manifest_time_settings。98 已让 57 / 21 做。接口上 main 后：对 action 名、跑 mf / nav / build，再合 main。
+- **后端**：64 已做 task/bus-manifest-action-log（fba63e86），形状 {entries, next_cursor}、date + tour 必填、manifests.edit 或 dispatch.edit、partner 403；审查完上 main 再发提交号，上了就合。⚠️ 后端本来就没记的（64 已报 57）：Bus Manifest 上给客人换车（guest-bus）、保存景点确认号（attraction）——这两样不会出现在记录里。
 
 ## 2026-10-30 晚 收工交接：前端主窗口-98 [94e9c6]（家里，23:00 收尾）
 

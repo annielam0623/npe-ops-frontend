@@ -295,12 +295,12 @@ async function run() {
     const lb = (await mockLog()).length;
     check("Action Log：页面最下面（How to use 后面）有面板、收着不请求", (await evaluate(`const t = ${toggle}; return !!t && !!(document.body.textContent.indexOf('How to use') < document.body.textContent.lastIndexOf('Action Log'));`)) && (await mockLog()).slice(lb).every((e) => e.path !== "/api/dispatch/manifest/action-log"));
     await evaluate(`${toggle}.click();`);
-    await waitFor("document.querySelector('[data-manifest-log] [data-action-log]') && document.querySelector('[data-manifest-log]').textContent.includes('Text size')");
+    await waitFor("document.querySelector('[data-manifest-log] [data-action-log]') && document.querySelector('[data-manifest-log]').textContent.includes('Version')");
     const r1 = (await mockLog()).slice(lb).filter((e) => e.path === "/api/dispatch/manifest/action-log");
     check("Action Log：展开才请求一次，带这一天的 date 和这个团的 tour", r1.length === 1 && r1[0].q?.date === "2026-10-05" && r1[0].q?.tour === "3", JSON.stringify(r1.map((e) => e.q)));
     check(
-      "Action Log：说明写团名 + 日期；Text size 13.5 → 15、Moved Smith ×2 Bus A → Bus B、Printed Bus A、Pending change handled（打印也列）",
-      await evaluate("const t = document.querySelector('[data-manifest-log]').textContent; return t.includes('Changes to the Bus Manifest for Antelope Canyon on Mon, Oct 5') && t.includes('Text size') && t.includes('13.5') && t.includes('15') && t.includes('Moved') && t.includes('Smith ×2 (CHD2)') && t.includes('Bus A') && t.includes('Bus B') && t.includes('Printed') && t.includes('Pending change handled');"),
+      "Action Log：说明写团名 + 日期；Size 13.5 → 15、Version、Special Requirements 前后（Changed）；打印 / 下载 / 挪座位 / 上传是一句话，小标签 Printed / Downloaded / Moved / Uploaded（64 核过的 action：print / export / seat_move / apply_upload）",
+      await evaluate("const el = document.querySelector('[data-manifest-log]'); const t = el.textContent; const badges = [...el.querySelectorAll('td span.inline-block')].map(s => s.textContent); return t.includes('Changes to the Bus Manifest for Antelope Canyon on Mon, Oct 5') && t.includes('Whole page › Size (px)') && t.includes('13.5') && t.includes('Version') && t.includes('Lankun') && t.includes('Wheelchair, front seat please') && t.includes('Printed manifest 2026-10-05 tour #3: 2 bus(es), 8 pax · Layout: Lankun') && t.includes('2026-10-05 tour #3: 2 guest row(s) -> Bus B') && ['Changed', 'Printed', 'Downloaded', 'Moved', 'Uploaded'].every(b => badges.includes(b)) && !badges.includes('export') && !badges.includes('apply_upload');"),
       await evaluate("return document.querySelector('[data-manifest-log]').textContent.slice(0, 500);"),
     );
     await evaluate(`${toggle}.click();`);

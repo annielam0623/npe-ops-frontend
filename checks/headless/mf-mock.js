@@ -138,17 +138,22 @@ http.createServer(async (req, res) => {
     if (ctl.pendingOff) return send(res, 404, { detail: "Not Found" });
     return send(res, 200, { run_date: q.date, items: ctl.pending });
   }
-  // Bus Manifest 改动记录（Annie 2026-10-30「同意所有推荐。动手」；读接口等后端 57 / 21，形状同其他 action-log）：date + tour 必填。
+  // Bus Manifest 改动记录（Annie 2026-10-30「同意所有推荐。动手」；后端 64 task/bus-manifest-action-log fba63e86 的形状）：date + tour 必填（不对 400）。
+  // 打印 / 下载 / 上传 / 同步 / 挪座位：what 是一句话、from / to = null；字段改动：what = 字段，from / to = 前后。
   if (p === "/api/dispatch/manifest/action-log") {
     if (ctl.mlog403) return send(res, 403, { detail: "Permission required" });
     const date = url.searchParams.get("date");
     const tour = url.searchParams.get("tour");
     if (!date || !tour) return send(res, 422, { detail: "date and tour are required" });
     return send(res, 200, { next_cursor: null, entries: [
-      { id: "5-1", at: "2026-10-04T23:41:00+00:00", by: "Annie Z", action: "update", label: "Bus Manifest", what: "Text size", from: "13.5", to: "15" },
-      { id: "4-1", at: "2026-10-04T23:30:00+00:00", by: "Max", action: "seat_move", label: "Smith ×2 (CHD2)", what: "Smith ×2 (CHD2)", from: "Bus A", to: "Bus B" },
-      { id: "3-1", at: "2026-10-04T23:10:00+00:00", by: "Leon", action: "print", label: "Bus A", what: "Bus A", from: null, to: null },
-      { id: "2-1", at: "2026-10-04T23:00:00+00:00", by: "Max", action: "pending_handled", label: "Johnson ×3 (CHD21)", what: "Johnson ×3 (CHD21) cancelled — removed from Bus B", from: null, to: null },
+      { id: "7-0", at: "2026-10-04T23:41:00+00:00", by: "Annie Z", action: "update", label: "Text size for 2026-10-05 tour #3 (Bus A)", what: "Whole page › Size (px)", from: "13.5", to: "15" },
+      { id: "6-0", at: "2026-10-04T23:38:00+00:00", by: "Annie Z", action: "update", label: "Bus Manifest version for tour #3: general -> lankun", what: "Version", from: "General", to: "Lankun" },
+      { id: "5-0", at: "2026-10-04T23:22:00+00:00", by: "Max", action: "update", label: "2026-10-05 tour #3: Special Requirements edited for Smith (CHD2)", what: "Special Requirements", from: "Wheelchair", to: "Wheelchair, front seat please" },
+      { id: "5-1", at: "2026-10-04T23:22:00+00:00", by: "Max", action: "update", label: "2026-10-05 tour #3: Special Requirements edited for Smith (CHD2)", what: "Edited by staff", from: "No (Rezdy text)", to: "Yes" },
+      { id: "4-0", at: "2026-10-04T23:10:00+00:00", by: "Leon", action: "print", label: "", what: "Printed manifest 2026-10-05 tour #3: 2 bus(es), 8 pax · Layout: Lankun", from: null, to: null },
+      { id: "3-0", at: "2026-10-04T23:05:00+00:00", by: "Leon", action: "export", label: "", what: "Downloaded manifest 2026-10-05 tour #3: 8 rows · Layout: Lankun", from: null, to: null },
+      { id: "2-0", at: "2026-10-04T23:00:00+00:00", by: "Max", action: "seat_move", label: "", what: "2026-10-05 tour #3: 2 guest row(s) -> Bus B", from: null, to: null },
+      { id: "1-0", at: "2026-10-04T22:50:00+00:00", by: "Max", action: "apply_upload", label: "", what: "2026-10-05 tour #3: 8 rows, 8 pax (+2 / -1 / ~3)", from: null, to: null },
     ] });
   }
   if (p === "/api/dispatch/pending/handled") {
