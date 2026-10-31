@@ -202,6 +202,15 @@
   - 经 98：「排班那个，一般是accept之前，decline在后」⇒ 成对的键同意在前：Accept / Decline、Approve / Decline。preview 已改，写代码也照这个顺序。
   - 直接对 e6 说：「员工之间的改动就发给相关人员就好了，排版人和super admin只需要在管理界面看见他们的action就好。就像你preview的一样」⇒ 通知（站内 + 邮件）只发相关员工：换班请求发对方，对方回复发提请求的人，排班的人批了发提请求的人（换班两人都发），Publish 时关掉的发本人（和还在等的对方）；改天上、提加班发出时没人收。排班的人和 Super Admin 不收通知，只在 Staff Schedule 周表（亮黄格子）、Responses 卡、History 里看。preview 加了「谁会收到通知」一节。后端 G138 通知收件人要照这条，已转 98 让她转 57 / 4e。
 
+## 2026-10-30 晚 全站添加键：先加在页面上的灰绿、直接存的蓝色（`task/add-button-green`，工作窗口 `npe-ops-frontend-09`[8a0116]，主窗口 98 派）—— 已合 main
+
+- Annie 原话（按时间）：「这一页，既然现在我们把保存键都改成蓝色，那添加键应该换个颜色了，比如说橙色？」→「全部统一用绿色吧，你出个preview」→「这个绿色可以偏莫兰蒂一些么」→「蓝色也可以淡一点么」→「算了，好丑，还是恢复原来的蓝吧。然后把add 弄成A 灰绿」→ **「1. 如果直接点了就可以不需要再次保存的可以保留蓝色2.动手」**；Products ⑦⑧ 的 Add（直接存）问她要不要也改灰绿，答「B」= 保持蓝色。规矩已写进 CLAUDE.md（98 改）。
+- preview：https://claude.ai/artifact/6MBBkmz2rBo1egAPJGpr5g （第 5 版）。
+- 灰绿 #6b8e74、白字（先加在页面上、还要按 Save 才存）：Dispatch 和 Private 的 + Add vehicle（原深蓝 #13284a / 白底描边）、Farm out 的 + Add location（原黑）、Pickup Shuttle times 的 + Add time / + Add season（原白底描边）、Auto-send 的 + Add time / + Add email、Content Studio 的 + Add template / + Add line / + Add step（原白底虚线框）、排班规则弹窗的 + Add shift（原深灰）、加班弹窗的 Add shift（原蓝）。共用常量：`components/ui/buttons.ts` 的 `DARK_ADD_BUTTON_CLASS`、pickup `legacy-ui` 的 `BTN_ADD_GREEN_SMALL_CLASS`、dispatch `ADDVAN_ADD`。
+- 改成蓝色 #3b82f6（直接存，照「蓝色只用于提交」）：Pickup / Vehicles / Farm out 的 Add（原黑 #1a1a1a，新常量 `BTN_SUBMIT_CLASS`）、Vehicles 的 Add column（原白底描边）、Products 的 Add category / Add group / 没归类卡 Add（原黑）、Dashboard 任务的 Add（原深蓝 #185FA5）、Quick replies 的 Add reply 和同页 Save（原深蓝 #185FA5）、Users 的 Create link（原藏青 #1a3a5c）、Team 新建时的 Create account / Create invite link（原藏青；编辑时的 Save 照旧藏青）。
+- 不动：本来就是蓝色的直接存键（Products ⑦⑧ Add、Content Studio Add route / Create、加员工弹窗 Add、Add day off、TCQ Add、Add guide）；只打开弹窗 / 加一行空表单、本身不存东西的（+ Add employee、+ Add rule、HR Add person、TCQ + Add vehicle / event / place、+ Add a restaurant、+ Add a shortcut）。
+- 检查：as 69、cs 159、da 427、fo-settings 129、fod 46、pl 97、products 219、qr 33、restaurant 44、sch 279、tasks 127、tcq 86、teams 54、veh 47、ws 58、perm 54、nav 32 全过（新加 4 条：+ Add vehicle 灰绿、Add shift 灰绿、Add day off 蓝、+ Add location 灰绿；改 2 条旧颜色：Farm out Add 黑→蓝、Add reply 深蓝→蓝）。users 套本机缺 puppeteer-core 跑不起来（跟这次无关）。tsc / build 过，eslint 0 错。
+
 ## 2026-10-30 晚 7 Days Forecast：左边一列名字统一 15px 半粗（置顶 31，`task/forecast-label-size`，工作窗口 `npe-ops-frontend-09`[8a0116]，主窗口 98 派）—— 已合 main
 
 - Annie 原话（按时间）：「我觉得你把7 days里的字体做得太杂乱了，第一行的栏目里，大写的应该统一尺寸，其他小写的名称也应该统一size，结果你弄的大大小小的」→「3.1  outbound和inbound的size要一样大，下面的driver和notes也要跟out和in一样大」→「然后0是我故意缩小并灰色的，不需要改」→ 对着线上截图「这几个再大一点，统一尺寸」→ **「15px 半粗 动手」**（经 98）。
