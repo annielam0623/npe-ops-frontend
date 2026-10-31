@@ -8,6 +8,8 @@ export type UserPrefKey =
   | "tickets_col_order"
   /** HR 列表的列顺序 / 列宽（后端 2026-10-04 起认）。 */
   | "hr_list_layout"
+  /** Team 页的列顺序 / 列宽（后端 92，格式同 hr_list_layout：{order, widths}）。 */
+  | "team_list_layout"
   /** Manifests 两个标签各自的列选择：JSON 字段键数组（ops 自己的格式）；`[]` = 用后端默认列。 */
   | "manifest_cols_bus"
   | "manifest_cols_tickets"

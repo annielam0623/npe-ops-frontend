@@ -4,7 +4,38 @@
 
 > 6d 交接（下面「2026-10-27 交接：前端主窗口 6d」那节）的后端需求已于 10/27 晚由 ad 转给家里后端主窗口 17。
 
-> **明天的主窗口：先读「2026-10-30 收工交接：前端主窗口 前端主窗口-eb」那一节（搜这个标题），再看下面置顶。**
+> **明天（10/31，周末时间表）的主窗口：先读下面「2026-10-30 晚 收工交接：前端主窗口-98」，再看置顶。eb 那两节是更早的。**
+
+## 2026-10-30 晚 收工交接：前端主窗口-98 [94e9c6]（家里，23:00 收尾）
+
+规矩新加（都已写进 CLAUDE.md / 已转各窗口）：
+- Annie「我没有回答的问题你不要滚动问了」：新问题第一次问写完整，没答的只留置顶，不在每次回复重复列。
+- 这两天按周末时间表（Annie「我把电脑带回家了……执行周末的时间表」），今晚 23:00 收尾。
+- 排班里成对的键同意在前、拒绝在后（Accept / Decline、Approve / Decline）。
+
+### 一、今晚上 main 的（等 Annie 线上验收）
+- 7 Days Forecast 左列 15px 半粗 3dc1b3a（09；名字长折两行，左列宽不变）。
+- Content Studio 全部 Save 蓝色 + 灰色不可点 + 绿字 ✓ Saved 8437c0b（e6）。
+- Team：日志面板动作后马上刷新 e1c6ddb；Contact（G219）e9a5204（含 404 修复 1857afa）；Columns c0d9f90（都 91）。
+- Dispatch：Guide page preview ↗ 98c08dd；Add hotel 分组 db06d7f（等后端 21 带 is_tour_bus 后自动生效）（都 91）。
+- 后端上了、前端不用改：空档只算将来、G212 B1/B2/B4/B5、G225 Multi Orders、删三个 rezdy-sync 接口、/guide/preview。
+
+### 二、做完在分支、等后端上 main 才合
+- e6 `task/content-team-messages-e6` 9c1a40e（G228，24 个键；合时 Save 照 8437c0b 的 CardFooter 写法）：等 v135 + G228。
+- e6 `task/schedule-weekly-confirm` 40ecc20（G138 员工页 + 排班的人那边）：等后端 G138（排在 16 的 schedule-history 之后）。History 5 种说法等 schedule-person-history-fe 合了再加。
+- 91 `task/import-team` 2ec4179：等 64 的 team/contacts/import（64 的 task/team-contacts-import，测试 + 两审后上 main）。64 已发形状：multipart 字段 file；SA only；标准 bulk_import，status 只有 update / unchanged / error（没有 new）；表头按名字认（Username 必填，也认 User name / Login；Email 也认 E-mail / Email address；Mobile 也认 Phone / Mobile phone / Cell）；errors 原话见 64 消息（Username is required. / No one with username “x”. Did you mean y (Name)? Fix it in the file and upload again. / Email address looks wrong. / That email address is already used by Name (@user). / … in row N of this file. / Phone number looks wrong. Use 10 digits, or + and the country code. / Mobile comes from Human Resource — change it there. / field null「Repeated above — skipped.」）；commit {created:0, updated, unchanged, skipped}；400 文件问题纯字符串；409「Someone changed an email address while this file was being saved. Nothing was saved — check the preview again.」；日志进 /api/team/action-log action=import；模板前端用 /api/team/members 生成。明天 91 对 mock 的原话和 409。
+- 91 `task/schedule-test-person` 30d2f10：等 is_test（v134）。
+- 09 `task/dor-updates`：等 v133 + G224。
+- e6 `task/schedule-person-history-fe` 32bfb99：等往来记录（v132）+ history_count。
+
+### 三、等 Annie 的（详见置顶）
+- 29 rest_total_label 可空吗；32 添加键灰绿（题 2 弹窗里的 Add / Create 用不用绿 + 是否动手，09 在问）；33 整套打印没做完的题；35 Today's tasks 对不上批准的版式（91 在查，明早第一件）；e6 问的「请求画在 Responses 卡还是主周表」（推荐 A 留 Responses 卡，98 已转 Annie，没答）。
+- Bus Manifest 页没有 Action Log（后端 21 问的）：已告诉 Annie 要后端读接口 + 前端面板，算新功能，等她说要不要做。
+- Send to guide 第一次真发前要 Annie 点头；导游页开关还是 Super Admin only。
+
+### 四、窗口
+- 前端：09（Forecast / 颜色 preview、10d 等 Annie 叫）、e6（G228、G138）、91（Team、导入、Dispatch）。ZZTest 测试账号 Annie 自己处理，不再问。
+- 后端主窗口：今天的主窗口-57；子窗口 64 / 4e / 16 / ea / 21。
 
 > **🔁 2026-10-30 晚 主窗口 eb 交接给新主窗口（Annie 回家后开新主窗口，eb 对话太长）**
 > 1. 先读「2026-10-30 收工交接：前端主窗口 前端主窗口-eb」那一节，含「三b、加班后补」。
@@ -26,18 +57,43 @@
 
 > 规矩见 CLAUDE.md「问 Annie 要确认的事：给完整内容，并一直置顶」（2026-10-30）。每条都要能单独看懂。
 
-### 25. 10d 排班测试：ZZTest 测完要不要把账号改回 staff（09 问）
-- 下午 Annie 把 ZZTest（员工 id 8）的登录账号改成了 supervisor，这样页面上才有 Save / Publish，10d 测试要用。
-- 选法：A. 测完改回 staff（推荐：测试账号权限不留得比需要的大）；B. 一直保持 supervisor，以后测排班还能用。
+### 29. Restaurant 的「total」字样能不能留空（e6 问）
+- preview 稿里 rest_total_label（餐厅消息里数字后面的「total」）画成必填；后端 4e 定的是可空：留空就只显示数字，不显示这个词。e6 照后端做成了可空。
+- 选法：A. 可空（推荐：照后端，留空也不影响意思）；B. 改回必填。
 
-### 26. 09 问：你说的「之前的设计稿」是哪一份
-- 09 窗口没收到过这件事的上下文，已在 09 窗口问过 Annie，还没回。请在 09 窗口直接答，或告诉 98 转达。
+### 30. G138 周三确认改版 preview 的 4 题（e6 做，https://claude.ai/artifact/TCweQYTQc2FykafjxaTgJo ）
+- **Annie 在 e6 窗口答 v3 并动手**，原话：「题 1. 排班周三确认：周四中午 12 点过了以后怎么办？ 过了就按照返回回来多少就按照多少排，没有返回的就是默认同意   题2 A」，随后「动手」⇒ 过期员工页只读、没回算 Looks good；加班只能选已有班次；通知只发相关员工（原话「员工之间的改动就发给相关人员就好了，排版人和super admin只需要在管理界面看见他们的action就好。就像你preview的一样」）。e6 开 task/schedule-weekly-confirm 用 mock 做，等后端 G138 再合。已转 57 / 4e。还剩题 3（换班到期对方没回：算同意 / 自动关）在 e6 窗口问。
+- 4e 已把 G138 最终接口整份发 e6（以那份为准）：员工读接口给整周所有班 + 名字（别人休假只写 Off，不给邮箱 / 电话）；deadline 带时区 ISO + open + closed_reason（past_deadline / published / started）；请求 swap / move / add，状态 awaiting_peer / pending / peer_declined / approved / declined / closed；对方回复 POST /api/schedule/confirmation/requests/{id}/answer {answer: accept|decline}；confirmations 多 counted_accepted；题 3 后端做成开关默认 A。后端代码下次开工写（等 16 的 schedule-history 上 main）。
+- **Annie 晚上答 v2**，原话：「排班除了第4点，要求周四中午12点以前确认回。  三件事都对。提加班直接把off那天打开就好，然后让发排班的人批复就可以」⇒ (a)(b)(c) 对；员工页写「周四中午 12 点前确认」；提加班 = 员工把自己 off 那天打开，交排班的人批；不做接班。e6 出 v3（同一链接）：顶上「Please confirm by Thu 11/5, 12:00 PM」（自动算那周的周四 12 点 LA）；off 格子「+ Work this day」选班次 → 亮黄「+ extra shift · asked」→ 排班的人 Approve / Decline。新题：① 过了 12 点 A 只是提醒、晚回标 late（推荐）/ B 到点员工页只读；② 加班班次 A 只能从已有班次选（推荐）/ B 可改时间。Annie 原话「排班那个，一般是accept之前，decline在后」⇒ 所有成对键同意在前、拒绝在后，e6 改 preview。已转 57 / 4e。不算动手。
+- **Annie 晚上否了这版**，原话：「30. 你的做法员工根本就看不懂，你直接把网上排好的schedule就一摸一样地给他们，让他们自己可以拖自己那天有班的格子到她想换的那天」⇒ 员工确认页 = 线上排好的周表原样（所有人的班都看得到，推翻 Q4），员工拖自己的格子到想换的那天；之后照 Q5 C。e6 重画 preview，已告诉 57 / 4e。下面 4 题作废。e6 出 v2：https://claude.ai/artifact/X2bdxVr42yXA6CS8FEEiCc 。请 Annie 看三件对不对：(a) 员工看到线上那张周表，只能拖自己的卡片；(b) 拖到别人有班的格子 = 跟他换、先问他，拖到自己没班的那天 = 改天上、直接给排班的人；(c) 原来那个人、排班的人都在同一张表的格子上点 Accept / Approve。「接班」先不做；加班 / 删班 / 改时间请求这版没画。
+- 内容：周三发草稿通知；员工确认页（只看自己一行，Looks good / Send my changes）；Swap 选人框；原来那个人的「Requests for you」；排班的人的 Responses 卡；发布后；和线上的对照表。全是模拟数据，没写代码。
+- 题 1 选换班对象时，让员工看到那一天同事的班吗：A. 只在点 Swap 选人时列出那天同事的名字 + 班次 + 时间，关掉框又只看自己那行（推荐，口子最小）；B. 不显示名字，只显示哪些时段有人，系统定跟谁换。
+- 题 2 换班要不要有「我来接你这个班」（Take over：Jing 上 Lizzie 那个班，Lizzie 那天不上）：A. Swap 和 Take over 都有，都先问原来那个人再给排班的人 Approve（推荐）；B. 只有对换，多上用 Ask for an extra shift、少上用 Drop。
+- 题 3 已发布周的 Send to confirm，员工那边留不留「Looks good」：A. 留，点了 Responses 卡写 Accepted（推荐）；B. 什么键都不留，只是通知。
+- 题 4 员工页写不写「请在周几前回」：A. 顶部写「Please answer by Fri 11/6」，只提醒、不卡发布（推荐）；B. 只写「Please answer before the schedule is published.」
+- e6 另外加了 3 处假设，已发 4e 核对：第一次 Publish 的确认框列出没处理完的请求；周表亮黄格子照旧能 Approve / Decline；往来记录多几种（换班、改时间、发布时关掉）。
 
-### 24. Content Studio「Team Messages」要不要放周三确认邮件
-- 后端 4e 设计 G228 时，把「周三确认排班」的邮件（主题「Confirm your schedule — week of Sun, Nov 1」、开头「Your schedule for the week of … is up. Please confirm it:」）也列进了这张卡。Annie 当时同意的三类里，排班邮件只说了首次发布 / Publish again / Send to confirm。
-- 选法：
-  - A. 放进来，四组排班邮件都能改（推荐：同一类邮件放一起；以后周三确认挪到发布前时文字可能要改，到时 Annie 自己改就行）；
-  - B. 先不放，等周三确认改版（G138）定了再说。
+### 32. 全站「添加 / 新建」键统一绿色（09 出 preview；橙色那版作废）
+- **Annie 定**（原话）：「算了，好丑，还是恢复原来的蓝吧。然后把add 弄成A 灰绿」⇒ Save 等蓝色照旧 #3b82f6（题 3 作废）；全站添加 / 新建键灰绿 #6b8e74 白字。只剩题 2（弹窗里直接存的 Add / Create 用灰绿还是留蓝），09 连「是否动手」一起在问。动手后 98 改 CLAUDE.md 颜色规矩。
+- Annie 又说「这个绿色可以偏莫兰蒂一些么」「蓝色也可以淡一点么」⇒ preview 第 4 版：题 1 灰绿 A #6b8e74（推荐）/ B #9bb3a2 / C #56735f；新题 3 全站 Save / Send / Upload / Insert / Publish 和右下 ↑↓ 改灰蓝：A #5b7fa6 白字（推荐）/ B #8aa4c2 深蓝字 / C #46658a 白字。
+- Annie 晚上截图 Products › Bus Manifest setup（⑦ Running days、⑧ Different cap 的 Add），原话「这一页，既然现在我们把保存键都改成蓝色，那添加键应该换个颜色了，比如说橙色？」
+- 要定：只改 Products 这一页，还是全站「添加 / 新建」键都橙色（含 Content Studio 刚改蓝的 Create / Add route）；橙色色号要和这页的橙色编号圈、⑨ 橙框分得开。09 出 preview：https://claude.ai/artifact/6MBBkmz2rBo1egAPJGpr5g 。题 1 色号：A 琥珀 #f59e0b 深棕字（推荐）/ B 深橙 #d97706 白字 / C 浅橙 #fb923c 深字；题 2 范围：A 只 Products / B 全站添加新建都橙（推荐，改 CLAUDE.md 颜色规矩；弹窗里按了就存的 Add / Create 也算添加用橙，推荐）。
+- Annie 先问「其他页的添加是什么颜色」（09 查：黑 #1a1a1a 旧 btn-add 在 Pickup / Vehicles / Farm out / Products / HR；蓝在 Content Studio / Schedule / Add guide / TCQ / Quick replies；任务深蓝、Users 藏青、Add column 浅灰），然后原话「全部统一用绿色吧，你出个preview」⇒ 范围全站，橙色作废。preview 第 2 版同一链接。题 1 色号：A #16a34a 白字（推荐）/ B #22c55e 深绿字 / C #15803d 白字；题 2 弹窗里按了就存的 Add / Create：A 也绿（推荐）/ B 保留蓝。要改 CLAUDE.md 加「绿色按钮 = 添加 / 新建」。
+
+### 33. 整套打印（Relay → Bus Manifest → 餐单）没做完（74 已关，对照 preview https://claude.ai/artifact/SdQnVF583dux5Kvmu5XibJ ，A4 样张 https://claude.ai/artifact/DiVdqcEYCxpUyiHEBEVT4w ）
+- 现在线上：排了餐厅的团，每车 Bus Manifest 后面跟一张竖排午餐单（Bee's 纸本样子；Lankun 不另印，餐厅信息放下方），屏幕 + 打印都有。
+- 没做：新样子（整套顺序 RELAY SPLITS 总表竖 → 每车 Relay 单竖 → 每团 Bus Manifest 横 + 紧跟餐单横、T / RB / V 三表并排、Last / First 同 Manifest 顺序、份数写在种类旁）。Annie「选A」定餐单样子（第 9 版），没说动手。
+- Annie 10-30 晚答（原话「q7选B   Q20 按照staff在选酒店时的排序来   总表里红色的close就是不开」）：Q7 B（Antelope 右下角节颜色图例不加）；Q20 = A（用当天排车页 staff 给每车排的站序 dispatch_stop.sort_order）；Q18 BZ · CLOSE = Boulder 当天不开。
+- 还没答：对照 preview 其余 Q（Q1–Q6、Q8–Q17、Q19）、✓ 列留不留、West / South / Hoover 后面要不要也跟餐单。
+
+### 34. 接站点下拉：bus tour 和 shuttle 分开（91 出 preview）
+- Annie 在 91 窗口答（原话）：「第一个问题同意A，Farm out就放farm out的酒店就好了，其他的不管 第二个问题，不存在这种情况，你就按照las vegas和其他地方来分就好了，其他地方一律算shuttle 第三个问题A」⇒ 只改 Dispatch「Add hotel」、所有班次分组；Las Vegas（按 Tour bus 勾判断，91 在确认）在上，其余全算 Shuttle；不加搜索。之后 Annie 在后端主窗口「动手」（57 转）⇒ 后端 21 加字段，前端派 91 task/dispatch-hotel-groups（is_tour_bus = Las Vegas，其余全算 Shuttle）。
+- Annie 10-30 晚原话：「然后在pick up酒店的下拉菜单里，把bus tour的接站点和shuttle的分开，也就是las vegas的放上面，然后用shuttle pick up这行字隔开，shuttle的站点排下面，不然staff太难找了，然后都是按照A-Z排序」
+- 91 查清：只有 Dispatch 每辆车的「Add hotel」（vehicle-row.tsx）一个下拉；Pickup Locations 已有 is_tour_bus / is_shuttle（G211），但 Dispatch 当天 locations 没带 ⇒ 需要后端在 dispatch.py 那段 SELECT 加这两个字段。preview：https://claude.ai/artifact/Bud9mmZivp9ddK5cAd5QLV 。题 (a) 只改 Add hotel、所有班次都分组（推荐）/ 按班次只列一类；(b) 两个都勾的两组都出、都没勾的放最下面「Type not set」（推荐）；(c) 照旧不加搜索框（推荐）/ 改成能打字搜。
+
+### 35. Today's tasks 版式不是最后批准的样子（91 在对照）
+- Annie 10-30 晚原话：「Today’s tasks的版式也不是我们最后aprove的样子」
+- 批准的是 G202 preview v3 https://claude.ai/artifact/3ktywUdNA5AHHP5zY47a2w （v3「对」、「186-对，动手」）；前端 10/27 上 main 400393e。91 只读对照 preview 和现在代码列差异（哪次提交改的），明天第一件接着。
 
 ### 8. 可以上线后对着看的（不用答，验收时看）
 - Products 手动保存：09 问的 5 处细节，主窗口按盘点推荐定了，见 PROGRESS「2026-10-30」那节 09 的记录：
@@ -47,6 +103,42 @@
   - 等等。
   觉得键太多，可以改成按大块分。
 
+## 2026-10-30 Team 页 Columns（拖表头换顺序、拖边改宽、存进账号）（`task/team-columns`，工作窗口 `npe-ops-frontend-e6`[047d88]，主窗口 eb 派工）—— **只推分支，等后端 92 的 team_list_layout 上 main 再合**
+
+- 依据：10-28 Users / Team 合并 preview v3 Annie「动手」那批里的「Columns（收列）键」，当时等后端 user_prefs 白名单。
+  - Annie 今晚「后端在加班做，你也是」（经 eb 转）。
+- 后端 92 的形状（还没上 main）：
+  - GET /api/user-prefs/team_list_layout → {key, value: str|null}；
+  - PUT 同一路径 {"value": "<JSON 字符串 {order, widths}>"} → staff 200 {ok:true}，partner 403；
+  - 用法同 HR 的 hr_list_layout。
+- 做法照 HR 页（people-table / hr-view）：
+  - 新文件 [components/users/layout.ts](components/users/layout.ts)：七列 person / role / status / teams / access / duties / home，normalize 同 HR（不认识的丢掉、缺的插回、宽 40–2000）。
+  - [users-table.tsx](components/users/users-table.tsx)：
+    - 表头和每行的格子都按存的顺序画，Actions 固定最后；
+    - 表头拖到另一个表头上换位置（左 / 右落点蓝线），右边 7px 拖柄改宽，松手才存；
+    - Access / Notification duties / Home page 只给 Super Admin，没有时跳过，存的顺序照用；
+    - 能拖时表格用 w-max min-w-full（同 HR），设的宽才不被摊回去。
+  - [users-view.tsx](components/users/users-view.tsx)：
+    - 本机缓存先画，账号里的到了再覆盖；后端 404 时只存本机，说明写「saved in this browser.」；
+    - 工具条加一句「Drag titles to reorder, drag edges to resize — saved to your account.」和白底「Reset columns」；
+    - 部门邮箱行也按同一个顺序画；
+    - How to use 加一条 Columns；
+    - partner 不出（usePermissions().partnerView；partner 本来也打不开这页）。
+  - lib/user-prefs-api.ts 加 team_list_layout 键。
+- 检查：
+  - tp-mock 加 GET / PUT team_list_layout（partner PUT 403、`teamlayout404=1` 模拟后端没上、`teamlayout=get` 读存的值）。
+  - tp-test 加 9 项：
+    - 默认顺序；说明和 Reset 不是蓝键；
+    - 拖 Status 到 Person 前存进账号；表头和格子一起动；
+    - 拖 Teams 边改宽、存实际宽度；清本机缓存重开后顺序和宽度从账号读回；
+    - Reset columns；admin 没有那三列、存的顺序照用；
+    - 后端 404 存本机；partner 没有 Columns。
+  - 结果：tp 146/146、teams 54/54、users 77/77、nav 32/32；tsc 0 错；eslint 0 错、2 个原有警告；改过的文件 prettier 过；build 过。
+- 下一步：后端 92 上 main 后核一遍形状，合最新 main、重跑 tp / users，再合 main。
+- ✅ 2026-10-30 晚：91 接手合 main（98 派；e6 在忙 G138）。
+  - 后端 team_list_layout 上 main（d16264d4），只读核过：键在 ALLOWED_PREF_KEYS 里；GET 回 {key, value}；PUT {value: 字符串}，原样存，最长 4000 字，不是字符串回 400；partner PUT 403（PARTNER_READ_ONLY_PREF_KEYS）。和 e6 的 mock 一样，前端对 partner 本来也不读不存。
+  - 合最新 main 时 users-view.tsx（logVersion 和 layout 两段 state）、tp-mock.js（contact404 / extraLog / hrphone 和 teamLayout 几处）、PROGRESS.md 有冲突，都是两边都留。
+  - 合 main 后：tp 161/161、users 77/77、teams 54/54、nav 32/32；tsc 0、eslint 0 错、build 通过；已合 main。
 ## 2026-10-30 晚 主窗口 `npe-ops-frontend-98`[94e9c6] 开工核对（家里，接 eb）
 
 - main 干净；6 条前端分支都已推，都等后端（team-contacts / dor-updates / schedule-test-person / schedule-person-history-fe / team-columns / content-team-messages）。
@@ -55,7 +147,134 @@
   - 置顶 22（G227 司机页 / 导游页前一天画出全部功能）移走：没出 preview，Annie 对 92 原话「我要92把司机页现在做完，我等着测试啊」，已上 main f51d40a1，Annie 用 AnnieTest 测，等她反馈。
   - 今晚后端已派好（等 Annie「今晚破例」）：team_list_layout、G212 四项、删 Sync Rezdy 接口、空档只算将来；G219 → 往来记录 + history_count → G224；/guide/preview；is_test 今晚只出 v134 SQL 草稿。每件上 main 57 发 98。
 - 09 回：dor-updates 等 v133；10d 只做完第 0 步，等 Annie 叫再开始（只排 ZZTest + Leon，2027-02-07 那周，不做 Publish again）。端口都关了。
-- 62 已关，两件（content-team-messages、schedule-test-person）等 Annie 开新窗口再派。
+- 62 已关：content-team-messages（G228）派给 e6（空着），4e 原文整段转过去；schedule-test-person 不用新窗口，等后端 is_test 上 main 再派人合。
+- 置顶 24 答了（Annie 在 eb 窗口原话「要」）⇒ 选 A：周三确认邮件 sched_weekly_confirm_subject / _intro 放进 Team Messages，四组排班邮件都能改。已转 e6、57、4e。
+- 新工作窗口 `npe-ops-frontend-91`[9c93e4] 报到 ⇒ 接管 59 的 task/team-contacts、62 的 task/schedule-test-person：合最新 main、重跑检查、推分支，准备 Team 页 How to use 7 条（57 直接把原文发 91）；后端上 main 后再合。
+- Annie（经 57）原话：「告诉大家我把电脑带回家了，所以接下来的两天都执行周末的时间表」⇒ 10/30、10/31 这台电脑当家里那台用。收尾时间 Annie 再定（经 57）：「晚上11点开始收尾」⇒ 23:00。已转 e6 / 09 / 91。
+- 91 回：task/team-contacts 8436d85、task/schedule-test-person 30d2f10 都合了最新 main、检查全过、已推，等后端。91 待命。
+- 置顶 26 答了：「之前的设计稿」是周三确认 + 换班（Annie 原话见置顶 27）。09 找到两份设计稿，做法不同 ⇒ 新开置顶 27，已转 57（G138 方案相关）。
+- e6 回：G228 用 mock 做完，task/content-team-messages-e6 639f987（已合最新 main；cs 169/169、nav 32/32、tsc / eslint / build 过），没合 main，等 v135 + G228。两处和 preview 不同 ⇒ 置顶 28、29。{link} 不是正好一个的 400 原话后端没给，mock 先写「Put {link} in exactly once.」；57 回后端就用这句，已转 4e、e6。rest_total_label 等 Annie 答置顶 29，答了转 57。
+- 09 转 Annie 测试账号按角色分开：ZZtest（staff）、ZZtest-D、ZZtest-G、ZZtest-DG、ZZtest-S（主管），Annie「对，是5个。可以」。之后 Annie 在 91 窗口原话「不要再问同zztest的事情，我会处理，其他问题都回答了」⇒ 置顶 25 移走，测试账号由 Annie 自己处理，各窗口不再问。
+- 后端「空档只算将来」上 main（origin 9886202c，合并 ea960347）：Save / Publish / GET 周的 gaps 只算洛杉矶「现在」以后。前端 9b79a19 已经是同一口径（周表红点、Gap 提示、Day timeline、卡片、Publish 确认框都先过 futureGaps），不用再改。
+- 置顶 31 移走（Forecast 字号）：Annie 原话依次为「3.1  outbound和inbound的size要一样大，下面的driver和notes也要跟out和in一样大」「然后0是我故意缩小并灰色的，不需要改」、截图「这几个再大一点，统一尺寸」、「15px 半粗 动手」。09 已上 main（代码 3dc1b3a，PROGRESS 573c23a）：左列全部 15px / 600（含黄色路线名）；0、表头日期、格子数字不动。09 自己定的一处：左列宽 190px 不变，名字太长时折两行（同 Private tours 那行），已告诉 Annie。
+- 置顶 28 移走（Content Studio 蓝色 Save）：Annie「28同意推荐」，看 preview（https://claude.ai/artifact/VhN6zyiGzuZ3bwsg42DXAc ）后「Content Studio 同意全部推荐。动手」⇒ 没改动灰色、改了变蓝；按钮旁绿字 ✓ Saved / 红字报错；Create / Add route 也变蓝。派 e6 task/content-studio-blue-save。
+- Annie 新规矩（原话「我没有回答的问题你不要滚动问了」「把对话弄得超级长」）：没答的只留置顶，不在每次回复重复列。CLAUDE.md 已改，已转各窗口和 57。
+- 后端 G225 Multi Orders 上 main（origin 7a69b185，合并 54fdd81f），前端不用改：卡片只算 confirmed 的单（读 Order List）；每 10 分钟，只剩 1 张单自动挂上，0 张挂到最后发给他的那张并亮起；「<2 张不显示」没做。multi_trip 卡可能还列已取消团期，后端已登记。
+- 后端 G212 B1 / B2 / B4 / B5 上 main（origin 86faf30b，合并 1f967bad）：admin 可撤销没接受的邀请；/api/team/members 加 role / is_active / initials / invite_token（只 SA、只未接受）/ is_self；停用 / 启用 / 改角色 / 重置链接 / invite 进 Team action-log；删账号快照带 teams。B3（409 + 计数，先发 detail 写法）、B6 / B7 还没做。⇒ 派 91 只读核对前端 Team 页要不要跟着改。
+  - 91 核完：现在不出错。B1 admin 的 Cancel invite 前端一直有（users-table.tsx:469-487），现在能成功；Delete 真账号只在 SA 的 Edit 框里，和后端一致。B4 / B2 日志动作名 update / create / delete 前端已有说法。
+  - B5：前端现在先拉 /api/users，SA 再拉 /api/team/members + 逐人拉 /api/team/members/{id}（users-view.tsx:158-190）。members 是 require_superadmin，等 B6 放开给 admin 后两种人一起改只读 members。需要后端（备选，已转 57）：members 带 items 或 Access 汇总，省掉逐人请求；日志 Role 值小写，后端加 values 映射。
+  - 派 91 小修 task/team-log-refresh：Team 日志面板开着时，动作成功后 refreshKey +1，新条目马上出（样子不变）。
+  - B3 上之前后端先发 409 detail，前端 Delete 报错 + Deactivate instead 跟着改。
+- **置顶 27 答了**（Annie 原话，经 57：「排班的问题同意全部推荐。动手」）：换班选 C，先问原来那个人，同意后再由排班的人 Approve（= G138 Q5）。G138 Q1–Q4 也照推荐：发布时没处理的请求统一关掉并通知本人；发布后员工不能再提请求，已发布周的 Send to confirm 保留、只通知；周三 9 点自动发下周草稿，空的不发；确认页只显示自己的班，提加班选日期 + 班次。排班 PDF 5 问照 preview（https://claude.ai/artifact/GF9VbsKsybevpKMQztB9GK ）推荐。
+  - 后端：G138 等排班往来记录上 main 才开工（约下次开工）；PDF 排在 G228 后。PDF 前端基本不用做，只是「The full team schedule is attached.」会成为 Team Messages 卡多一个键。4e 定了：第 24 个键 tmpl__global__sched_pdf_attached_note，可空、只许 {week}，Schedule Email 页，label「PDF attachment note」，在首次发布 / Publish again 邮件「Open my schedule」之后；PDF 上线前存着不用。已转 e6 加卡。e6 已加（task/content-team-messages-e6 9c1a40e，cs 171/171、tsc / eslint / build 过）。G138：4e 认可 e6 preview 补的 3 处（Publish 确认框前端从 requests 数 pending + awaiting_peer；亮黄格子照旧能点；往来记录加 5 种 kind，v136 改 CHECK）。Annie 答置顶 30 前不写代码。
+  - 前端派 e6：先出 G138 preview（员工确认页、原来那个人怎么同意、排班的人 Responses 卡的状态），换班 C 的样子 Annie 还没看过，看过再用 mock 做。4e 已把 G138 完整方案发 e6。
+
+## 2026-10-30 晚 Content Studio Save 全改蓝色（置顶 28，`task/content-studio-blue-save`，工作窗口 `npe-ops-frontend-e6`[047d88]，主窗口 98 派）—— 已合 main
+
+- preview：https://claude.ai/artifact/VhN6zyiGzuZ3bwsg42DXAc 。Annie 原话（经 98）：「Content Studio 同意全部推荐。动手」（3 题都 A）。
+- 卡片底部 Save（studio-cards.tsx 的 CardFooter，6 个模块所有文字卡）：
+  - 改成蓝色 #3b82f6，同 Products 的 SAVE_BUTTON；没改动时灰的、点不了，改了才变蓝；
+  - 存的时候键旁边灰字「Saving…」；存好键旁边绿字「✓ Saved · 9:12 PM」，一直留到再改；
+  - 存不上：键还是蓝的（可以再点），下面红字写原因（后端原话，原来就有）。
+  - 去掉了整个键变绿「Saved ✓」/ 变红「Error」、2 秒复原的做法。
+- Tickets 团型的 Create / Save、Shuttle 的 Add route 也改成蓝色。Shuttle 线路名的 Save 本来就是蓝的，没动。
+- Cancel、Reset to Default、+ Add、Insert、↑↓、🗑 等不是提交的键保持不蓝。How to use 那句改成「A green ✓ Saved next to the button means it is stored」。
+- 检查：cs 159/159（新加 7 项：没改动灰的点不了、改了能点、Insert/Cancel 不蓝、存好绿字带时间、存好回灰、Create 蓝、Add route 蓝）、nav 32/32、tsc、eslint 0 error（2 个旧 warning）、build 过。
+- G228 分支（task/content-team-messages-e6）合 main 时要用同样的蓝色 Save：它用的是同一个 CardFooter，合并时照这次的写法解冲突。
+  - 2026-10-30 晚 e6 已做（98 转 Annie「所有窗口今天手上的工作必须全部做完」）：G228 分支合了最新 main（含 8437c0b），studio-cards.tsx 冲突照蓝色 Save 写法解（CardFooter 仍 export）；Team Messages 卡也换成蓝色 Save + 绿字「✓ Saved · 时间」（不再 2 秒复原）；cs 检查跟着改，Copy from Default 那项改成等到换好（偶尔 150ms 读到旧字）。cs 178/178、nav 32/32、tsc / eslint / build 过。还是等 v135 + G228 上 main 再合。
+
+## 2026-10-30 晚 G138 周三确认 preview v2（置顶 30 重画，e6）
+
+- v1（https://claude.ai/artifact/TCweQYTQc2FykafjxaTgJo ）Annie 否了：「你的做法员工根本就看不懂，你直接把网上排好的schedule就一摸一样地给他们，让他们自己可以拖自己那天有班的格子到她想换的那天」。
+- v2：https://claude.ai/artifact/X2bdxVr42yXA6CS8FEEiCc 。员工、原来那个人、排班的人都看线上那张周表；只能拖自己的卡片；拖到别人有班的格子 = 换（先问他），拖到自己没班的那天 = 改天上。
+- Annie 答 v2（经 98）原话：「排班除了第4点，要求周四中午12点以前确认回。  三件事都对。提加班直接把off那天打开就好，然后让发排班的人批复就可以」。还不是动手。
+- v3 已出（同一链接，21:27）：员工页写「Please confirm by Thu 11/5, 12:00 PM」（按周自动算，只是提醒）；自己 off 的格子「+ Work this day」→ 选班次 → 亮黄「+ extra shift · asked」→ 排班的人在格子上 Approve / Decline。「接班」不做。
+- v3 新问 Annie 2 题（已发 98）：① 周四 12 点过后 A 只是提醒（推荐，晚回标 late）/ B 到点员工页变只读；② 加班班次 A 只能从已有班次选（推荐）/ B 还能改时间。答了、Annie 说「动手」才用 mock 做。
+- Annie 对 v3 又两条（都还不是动手）：
+  - 经 98：「排班那个，一般是accept之前，decline在后」⇒ 成对的键同意在前：Accept / Decline、Approve / Decline。preview 已改，写代码也照这个顺序。
+  - 直接对 e6 说：「员工之间的改动就发给相关人员就好了，排版人和super admin只需要在管理界面看见他们的action就好。就像你preview的一样」⇒ 通知（站内 + 邮件）只发相关员工：换班请求发对方，对方回复发提请求的人，排班的人批了发提请求的人（换班两人都发），Publish 时关掉的发本人（和还在等的对方）；改天上、提加班发出时没人收。排班的人和 Super Admin 不收通知，只在 Staff Schedule 周表（亮黄格子）、Responses 卡、History 里看。preview 加了「谁会收到通知」一节。后端 G138 通知收件人要照这条，已转 98 让她转 57 / 4e。
+
+## 2026-10-30 晚 7 Days Forecast：左边一列名字统一 15px 半粗（置顶 31，`task/forecast-label-size`，工作窗口 `npe-ops-frontend-09`[8a0116]，主窗口 98 派）—— 已合 main
+
+- Annie 原话（按时间）：「我觉得你把7 days里的字体做得太杂乱了，第一行的栏目里，大写的应该统一尺寸，其他小写的名称也应该统一size，结果你弄的大大小小的」→「3.1  outbound和inbound的size要一样大，下面的driver和notes也要跟out和in一样大」→「然后0是我故意缩小并灰色的，不需要改」→ 对着线上截图「这几个再大一点，统一尺寸」→ **「15px 半粗 动手」**（经 98）。
+- preview：https://claude.ai/artifact/W2L6ofADCfCfH9LPZYkkpd （第 5 版，现在 / 13 / 14 / 15px 并排，她选 15px）。
+- 改了什么（`components/forecast/forecast-grid.tsx`，常量 `LABEL_SIZE`）：左边一列所有名字——黄色路线名、产品行（Outbound / Inbound / Upper / Lower / X…）、Driver / Guide、Crew notes、Notes、Max allotments、Private 那几行等——电脑上一律 15px、font-weight 600；路线名照旧黄色（原来粗体 700，现在也是 600）。
+- 不动的：格子里的 0（10px 灰）、表头日期（12.5px）、格子里的数字（12.5px，她没答要不要跟着变大，按原样）、手机上的字号（列窄）。
+- 左列宽度不变（190px）：15px 后「Grand Canyon West · Sunset」放不下、压到第一天的格子上，所以路线名和产品行名太长时折成两行（和 Private tours 那行一样），不加宽。
+- 检查：fc 184/184（新加 3 条：左列四类行全部 15px / 600、路线名黄色；长路线名折行不压格子、左列宽度不变；表头日期和数字仍 12.5px）、nav 32/32；tsc / eslint / build 过。
+
+## 2026-10-30 晚 工作窗口 `npe-ops-frontend-91`[9c93e4]（98 派：接管 team-contacts、schedule-test-person，都不合 main）
+
+- `task/team-contacts` → **8436d85**（worktree `C:\Code\ops-wt-91-contacts`）：
+  - 合最新 main（只有 PROGRESS.md 冲突；保留 main 的内容，把 59 那节「staff 联络方式」接在后面，去掉 59 已过时的 10-29 收工交接；代码自动合上）；
+  - Team 页 How to use：原来 59 写的那一条 Contact 换成后端 57 发来的 7 条英文原文（照原文、照顺序，只给 Super Admin 看，跟原来一样）；
+  - 检查：tp 149/149、users 77/77、nav 32/32、teams 54/54；tsc 0、eslint 0 错（2 个旧 warning）、build 通过；已推分支。
+  - 下一步：G219 上 main 后对着真接口核一遍：PUT …/contact 回 {ok, member}；400 的 detail 是 {field, message}；create-member / invite 的错误还是纯字符串。核完回 98「可以合」，98 说合再合。
+  - ✅ 2026-10-30 晚 G219 上 main（后端 acbae995），对着后端代码只读核了一遍（没在生产上试）：
+    - PUT /api/team/members/{id}/contact：只有 Super Admin 能调；body {email, phone?}，没带 phone 就不改；回 {ok, member}。
+    - 400 的 detail 是 {field, message}；格式错的文字和前端一字不差（EMAIL_WRONG / PHONE_WRONG）；电话规则一样：10 位、1 开头的 11 位，或 + 开头 8–15 位；email 重了写「That email address is already used by <名字> (@<用户名>).」。
+    - 名单和单人详情都带 phone、hr_phone；建号 / 邀请的错误 detail 还是纯字符串，前端照旧按字符串显示。
+    - **对不上的一处，已修**：账号已经不在了时，后端回 404，detail 也是 {field, message}。前端原来只在 400 时读这个形状，会显示成「Request failed (404 Not Found).」；现在 400 / 404 都认，把后端原话写在 Email 下面。tp 加一条。
+  - 合最新 main 后：tp 151/151、users 77/77、teams 54/54、nav 32/32；tsc 0、eslint 0 错、build 通过。98 派的是「核对无误就合 main 上线」，已合 main。
+- `task/schedule-test-person` → **30d2f10**（worktree `C:\Code\npe-ops-frontend-testperson`）：
+  - 合最新 main 没有冲突（排班这几天的改动 62 在 bb3bfdd 之前已经合进来了，这次只合进来 dispatch / farm-out 的 48 个提交）；
+  - 检查：sch 281/281、sc 21/21、tasks 128/128、dr 88/88、ns 49/49；tsc 0、eslint 0 错、build 通过；已推分支。
+  - 下一步：后端 is_test（v134）上 main 后对真接口核一遍，再合。
+- 端口：91 用 3491 / 8891 / 9591（排班这一组）、3492 / 8892 / 9592（Team 这一组），跑完都关了。
+- G212 B1 / B2 / B4 / B5 前端只读核对（98 派）：现在不会出错，不用改。清单已发 98：B5 改用 /api/team/members 等 B6；Role 的值显示成小写，要改的话是后端 _TEAM_LOG 加 values 映射。
+- `task/team-log-refresh` → **0e9a8fd**（98 派的小修，样子不变；worktree `C:\Code\ops-wt-91-logref`）：
+  - 改法：Team 页日志面板的 refreshKey 原来写死 0，改成 logVersion；refreshList 和发重置链接成功后 +1。停用、恢复、改角色、重置链接、取消邀请、删除、邀请、Edit 保存都走这两处，日志开着时新的那条马上出来。
+  - tp 检查套加一条：日志开着时点 Reactivate，新的 Status 行自动出现在最上面；把修改去掉，这条确实会失败。
+  - 检查：tp 137/137、users 77/77、teams 54/54、nav 32/32；tsc 0、eslint 0 错、build 通过；合最新 main 后重跑同样全过，98 说合（「两件都照规矩合 main 上线」），已合 main。端口 3493 / 8893 / 9593 已关。
+- `task/guide-preview-link`（98 派；交接里早定的「/guide/preview 上 main → 加链接」，Driver 那个 Annie 已同意，不用出 preview；worktree `C:\Code\ops-wt-91-guide`）：
+  - Dispatch 标题行「Driver page preview ↗」右边加「Guide page preview ↗」：同源 `/guide/preview?date=<当前日期>`，新标签页，只给 Super Admin，样子和 Driver 那个一样。
+  - 不用改 next.config：ops 没有 /guide 路径，跟 /driver/preview 一样走 fallback 转给后端（后端 be1f4447）。
+  - da 检查套加 3 条：admin 看不到、Super Admin 看得到（写法同 Driver、紧挨在它右边）、换天后 href 跟着换。
+  - 检查：da 423/423、dr 88/88、nav 32/32；tsc 0、eslint 0 错、build 通过。端口 3494 / 8894 / 9594 已关。
+  - 98 说合（「两件都照规矩合 main 上线」）：合最新 main 后重跑 da / dr / nav，过了合 main。
+- `task/dispatch-hotel-groups`（98 派；worktree `C:\Code\ops-wt-91-hotels`）—— Dispatch「Add hotel」分 Las Vegas / Shuttle pick up 两组，已合 main
+  - Annie 原话：「然后在pick up酒店的下拉菜单里，把bus tour的接站点和shuttle的分开，也就是las vegas的放上面，然后用shuttle pick up这行字隔开，shuttle的站点排下面，不然staff太难找了，然后都是按照A-Z排序」。
+  - preview https://claude.ai/artifact/Bud9mmZivp9ddK5cAd5QLV 。Annie 在 91 窗口答：「第一个问题同意A，Farm out就放farm out的酒店就好了，其他的不管 第二个问题，不存在这种情况，你就按照las vegas和其他地方来分就好了，其他地方一律算shuttle 第三个问题A」。
+  - 「动手」：Annie 在后端主窗口说的（57 转 98，98 转 91）。
+  - 做法（只改 `components/dispatch/vehicle-row.tsx` 的 StopSelect，所有班次共用）：
+    - is_tour_bus === true = Las Vegas，放上面，A–Z（不分大小写），不写标题；
+    - 其余（false / null）放在灰色斜体、不能选的「Shuttle pick up」下面，A–Z；下面那组空的时候不出分隔行；
+    - 停用的不出、本车已有的不出、被别的车占的灰掉写「- 谁」，照旧；不加搜索框；Farm out 的「Choose hotel…」不动。
+    - 后端还没带 is_tour_bus 时（一个点都没这个键）照旧：后端的顺序、不分组。`types/dispatch.ts` 的 locations 加可选 is_tour_bus / is_shuttle。
+  - 检查：da-mock 加 `hotelGroups`（带两个勾，含小写名字、null、停用的）。da 加 3 条：没字段时照旧；分组且两组各自 A–Z、停用的不列、null 进下面；分隔行不能选、value 空、斜体。
+    结果：da 426/426、nav 32/32；tsc 0、eslint 0 错、build 通过。端口 3497 / 8897 / 9597 已关。
+  - ⚠️ 需要后端（98 已派后端 21）：Dispatch 当天数据的 locations 每个点带 is_tour_bus / is_shuttle（NULL 回 null）。上 main 以前前端照旧不分组，上了自动分组，不用再改前端。
+- 🔍 **Today's tasks 版式和最后批准的不一样（Annie「Today's tasks的版式也不是我们最后aprove的样子」，98 派 91 只读查）—— 查了一半，明天第一件接着查**
+  - 最后批准的：G202 preview v3 https://claude.ai/artifact/3ktywUdNA5AHHP5zY47a2w （v3「对」，「186-对，动手」）。v3 里的样子：
+    - 员工 My tasks：标题「My tasks · 6:00 AM–2:30 PM」+「N of M done」+ Hide；两句说明（Fixed, time-based…／Finish these before your shift ends…）。下面从上到下：
+      - Anytime（虚线框，没有就不出）；
+      - Overdue（红框，几条全显示）；
+      - 收起的「▸ Earlier today · N done」；
+      - 一列按截止时间排、框里一次露 3 条、打开停在下一条没做的。
+      - 每行：勾、标题（交接的带 YESTERDAY 标签）、Open X →、「From 谁 · 时间 · note」、优先级点、By / Due in / Overdue 胶囊、Pass over。
+      - 右边并排 Notice。
+    - 主管 Today's tasks · all shifts：「· N of M done」，两句说明；上面一块 Handovers（最近 24 小时 + 更早没 Done 的，YESTERDAY 标签、finish by、older than 24 h）；下面同样一列 3 条。
+      - 每行：勾、优先级点、标题、Open X →、是谁的（或 All shift）、过期才出红胶囊、Finish-by 时间框。
+      - 最下面「+ Add a task」。
+    - 没有时段（AM / PM）卡、没有 NOW、不写现在几点。
+  - 现在 main 的代码：已经是 v3 的结构，没看到被后来的提交改回 AM / PM。
+    - `components/tasks/timeline.tsx`（VISIBLE_ROWS = 3，Anytime / Overdue / Earlier today / 一列），注释写的就是 v3；
+    - `supervisor-view.tsx`（Handovers + TaskTimeline + AddTaskRow）、`employee-view.tsx`（标题带班次时间、Hide、两句说明、TaskTimeline）。
+    - components/tasks 最后一次改是 bb3106e（G202 本身）。之后 Dashboard 的提交（7c95792、9bb2b4e、17397f3、52c65ae、c42e896、df8baec、033fe26 等）没碰 components/tasks。
+    - ⇒ **代码层面没找到和 v3 不一样的结构**。不一样多半在**样子**上（字号、间距、并排位置、Dashboard 里块的顺序 / 宽度），或者后端字段没来、有几样显示不出来（见下）。还没截图对照。
+  - G202 后端（只读，后端 origin/main）：**B1–B5 都没上**。
+    - pass-over 不收 finish_by，tasks.py:86 的注释写「G202 以后要改成 finish_by 语义」；
+    - 没有 next_shift_start / next_work_date；
+    - 交接窗口仍是 24 小时（daily_tasks.py `_PASS_OVER_WINDOW`）。
+    - ⇒ preview 里这几样现在本来就不会出现：
+      - Pass over 弹窗的 Finish by 存不上，也没有按接收人班次的默认时间 / 范围；
+      - 交接任务照原来的截止时间排，不按 finish by；
+      - Handovers 里没有「finish by …」，也没有 older than 24 h 的那几条；
+      - Notice 交接那条没有「Finish by 1:00 PM」。
+  - 明天接着做：
+    1. 用 mock 起 Dashboard（员工、主管两种），截图和 v3 并排，逐条列样子上的不同（字号、间距、并排、Handovers 位置、Add a task 位置等）；
+    2. 请 Annie 指一下她看到哪里不对（线上截图最好），对上了再出改法 preview；
+    3. 后端 G202 B1–B5 要不要现在排，问 98。
 
 
 ## G228 Content Studio「Team Messages」后端设计（4e，2026-10-30 晚，只读，main f51d40a1）—— 给前端 62 的接手窗口用
@@ -1143,6 +1362,30 @@
   - 9c 关进程时按「chrome-profile」宽匹配，可能顺带关了别人的 headless Chrome，检查断了重跑就行。
 - 后端：主窗口 9a [599ab6]；子窗口 8e（排班）、20（导入、Farm out 子项）、3d。
 - 资源：C 盘 237 GB 空，D 盘也有页面文件；可用虚拟内存只有 3.7 GB 左右，两个窗口别同时跑 build。
+
+## staff 联络方式：Team 的 Edit / Add person 加 Contact（Email + Mobile）（`task/team-contacts`，2026-10-29 晚，工作窗口 `npe-ops-frontend-59`[678c38]，d2 转 Annie「4项全部动手」）—— **分支已推，没合 main（后端没上，先用 mock）**
+
+- preview https://claude.ai/artifact/83D67jt2oNb5V1TPkteEt9 ，Q1–Q7 全按推荐。
+- 改动：
+  - `components/team-permissions/contact-section.tsx`（新）：Contact 一块，Email + Mobile，都不必填；离开格子才查格式，红字在格子下
+    （「Email address looks wrong.」「Phone number looks wrong. Use 10 digits, or + and the country code.」），格式错 Save 灰；
+    后端说的错（email 重了）写在那一格下，再打字就消掉；有 HR 档案的 driver / guide（详情带 `hr_phone`）Mobile 只读显示 HR 的号 + 「Edit in Human Resource →」(/settings/hr)。
+  - `member-form-dialog.tsx`：Edit 时 Contact 在最上面（Copy access from 上面）；Add person 两种方式都有（在「How will they sign in?」下面），
+    「Create the account now」原来那格 Email (optional) 去掉（挪进 Contact）；标题下面不再写 email。
+    Save：联络方式改了先 `PUT /api/team/members/{id}/contact`（email 重了就停，勾选也不存），再存勾选；没改不调。邀请 / 建号的请求体带 `email`、`phone`。
+  - 列表：有通知职责却没 email 的人，名字下面黄签「No email — misses notifications」（`users-table.tsx` / `users-view.tsx` 的 `noEmail`）。How to use 加一条。
+  - 只有 Super Admin 能改（Edit / Add person 本来就只给 Super Admin）。
+- 检查：`tp` 149/149（新加 13 条 contact：黄签、Contact 在最上、格式红字 + Save 灰、email 重了写是谁且勾选没存、改字消错、
+  Save 带 email+phone 再存勾选、列表出新 email、没改不调 contact、HR 只读 + 链接、HR 的人不带 phone、补 email 黄签消失、Add person 有 Contact 没旧 Email 格、邀请带 email/phone）；
+  `users` 77/77；tsc 0、eslint 0 错、build 通过。检查套要先在 `checks/headless` 跑一次 `npm install`（puppeteer-core）。
+- ⚠️ **需要后端**（9a 已收，d2 发的）：
+  1. `admin_users` 加 `phone VARCHAR(30)`（migration，SQL 先给 Annie 看）；
+  2. `PUT /api/team/members/{id}/contact` `{email, phone?}`（require_superadmin；空存 null；没带 phone 就不改；格式不对 / email 重了回 400，
+     **detail 是 `{field: "email" | "phone", message}`**，重了的 message 写「That email address is already used by <名字> (@<用户名>).」）；
+  3. `GET /api/team/members` 每行带 `phone`；`GET /api/team/members/{id}` 带 `phone`，关联了 HR 档案的 driver / guide 另带 `hr_phone`；
+  4. `POST /api/team/members` 收 `phone`；`POST /api/team/invites` 收 `email`、`phone`（存在占位账号上）；
+  5. 改动记进 action_log，entity `team_member`，字段名「Email」「Mobile」。
+- 下一步：后端上 main → 对一下真接口形状（尤其 400 的 detail）→ 合最新 main、重跑 tp / users → 合 main。之后做 Team 导入（`task/import-team`，从 import-hr 拉）。
 
 ## Farm out Partners：团价 Save、改名 Save name 改成蓝色（`task/farmout-save-blue`，2026-10-29 晚，工作窗口 `npe-ops-frontend-59`[678c38]，Annie 直接定）—— **已合 main**
 

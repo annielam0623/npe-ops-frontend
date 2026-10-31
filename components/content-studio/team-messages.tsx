@@ -275,15 +275,21 @@ function problems(f: TeamField, value: string): string[] {
 const smsLen = (f: TeamField, value: string) =>
   gsmLength(fill(value.trim(), f.sms === "guide" ? GUIDE_SAMPLE : SAMPLE));
 
-/** 一个键一张卡：文本框、Insert、短信字数、红字、Cancel / Save（Saving… / Saved ✓ / 红字后端原话）。 */
+/** 一个键一张卡：文本框、Insert、短信字数、红字、Cancel / 蓝色 Save（旁边 Saving… / 绿字 ✓ Saved · 时间 / 下面红字后端原话）。 */
+const SAVED_TIME = new Intl.DateTimeFormat("en-US", {
+  hour: "numeric",
+  minute: "2-digit",
+  timeZone: "America/Los_Angeles",
+});
+
 function TeamCard({ field, studio }: { field: TeamField; studio: Studio }) {
   const key = PREFIX + field.id;
   const value = studio.draft(key);
   const dirty = value !== studio.savedValue(key);
   const ref = useRef<HTMLTextAreaElement>(null);
   const [state, setState] = useState<SaveState>("idle");
+  const [savedAt, setSavedAt] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const issues = problems(field, value);
   const len = field.sms ? smsLen(field, value) : 0;
 
@@ -309,12 +315,10 @@ function TeamCard({ field, studio }: { field: TeamField; studio: Studio }) {
     if (result.failed.length) {
       setState("error");
       setError(result.failed[0].message);
-    } else setState("saved");
-    if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(
-      () => setState("idle"),
-      result.failed.length ? 2500 : 2000,
-    );
+    } else {
+      setState("saved");
+      setSavedAt(SAVED_TIME.format(new Date()));
+    }
   }
 
   return (
@@ -390,6 +394,7 @@ function TeamCard({ field, studio }: { field: TeamField; studio: Studio }) {
         <CardFooter
           dirty={dirty}
           state={state}
+          savedAt={savedAt}
           meta={editedLine(studio.saved[key])}
           extraError={error}
           onCancel={() => {

@@ -190,6 +190,9 @@ async function run() {
   const smsCard = "SMS body — tours WITH lunch";
   check("短信：变量提醒、字数按示例展开、Last edited by", await evaluate(`return $card('${smsCard}').textContent.includes('Do not remove or modify') && /≈ \\d+ \\/ 300 chars \\(with the variables filled in\\)/.test($card('${smsCard}').textContent) && $card('${smsCard}').textContent.includes('Last edited by annie');`));
   check("没改过的显示 Original", await evaluate("return $card('SMS body — tours WITHOUT lunch').textContent.includes('Original');"));
+  // 蓝色 Save（Annie 2026-10-30「Content Studio 同意全部推荐。动手」）：没改动灰的、点不了；改了变蓝
+  const saveBtn = (card) => `$card(${JSON.stringify(card)}).querySelector('[data-save-btn]')`;
+  check("没改动：Save 灰的、点不了", await evaluate(`const b = ${saveBtn(smsCard)}; return !!b && b.disabled && b.textContent === 'Save' && b.className.includes('bg-[#3b82f6]') && b.className.includes('disabled:bg-[#e9e9e6]');`));
   const ta = `$card('${smsCard}').querySelector('textarea')`;
   await evaluate(`${ta}.dispatchEvent(new FocusEvent('focusin', { bubbles: true })); $setValue(${ta}, 'Hi {name}\\nline2 {label} {date}');`);
   await sleep(100);
@@ -200,12 +203,15 @@ async function run() {
   await evaluate(`$btn('+ url', $card('${smsCard}')).click();`);
   await sleep(100);
   check("Insert 按钮插入变量", (await evaluate(`return ${ta}.value;`)).includes("{url}"));
+  check("有改动：Save 蓝的、能点", await evaluate(`return !${saveBtn(smsCard)}.disabled;`));
+  check("Insert、Cancel 不是蓝的", await evaluate(`return ![...$card('${smsCard}').querySelectorAll('button')].some(b => b.textContent !== 'Save' && b.className.includes('3b82f6'));`));
   let before = (await mockLog()).length;
   await evaluate(`$btn('Save', $card('${smsCard}')).click();`);
   let saves = await waitSaves(before, 1);
   check("保存：POST key + value", saves.length === 1 && saves[0].body.key === "tmpl__global__tc_sms_with_lunch" && saves[0].body.value.includes("{url}"), JSON.stringify(saves));
-  await waitFor(`$card('${smsCard}').textContent.includes('Saved ✓')`);
-  check("Saved ✓、改为本人编辑", await evaluate(`return $card('${smsCard}').textContent.includes('Last edited by zztest');`));
+  check("存好：键旁边绿字「✓ Saved · 时间」", await waitFor(`(() => { const o = $card('${smsCard}').querySelector('[data-save-ok]'); return !!o && /^✓ Saved · \\d{1,2}:\\d\\d [AP]M$/.test(o.textContent) && o.className.includes('1e6b43'); })()`));
+  check("存好后没改动：Save 回到灰的", await evaluate(`return ${saveBtn(smsCard)}.disabled && ${saveBtn(smsCard)}.textContent === 'Save';`));
+  check("改为本人编辑", await evaluate(`return $card('${smsCard}').textContent.includes('Last edited by zztest');`));
   // 短信模板最多 300 个字符（示例展开后）、只能普通字符（Annie 2026-10-15）。{url} 的示例 49 字。
   const smsCounter = (card) => evaluate(`const p = [...$card(${JSON.stringify(card)}).querySelectorAll('p')].find(p => p.textContent.startsWith('≈ ')); return p ? { text: p.textContent.trim(), red: p.className.includes('c0392b') } : null;`);
   const cardErr = (card) => evaluate(`const t = $card(${JSON.stringify(card)}).textContent; return t.includes('before saving') ? t : '';`);
@@ -370,7 +376,7 @@ async function run() {
     const card = (id) => `document.querySelector('[data-team-card="${id}"]')`;
     const ta = (id) => `${card(id)}.querySelector('textarea')`;
     const issues = (id) => evaluate(`return ${card(id)}.querySelector('[data-team-issues]')?.textContent ?? '';`);
-    const saveBtn = (id) => `[...${card(id)}.querySelectorAll('button')].find(b => /^(Save|Saving…|Saved ✓|Error)$/.test(b.textContent.trim()))`;
+    const saveBtn = (id) => `${card(id)}.querySelector('[data-save-btn]')`;
     const setText = (id, v) => evaluate(`$setValue(${ta(id)}, ${JSON.stringify(v)}); return 1;`);
     const clickSave = (id) => evaluate(`${saveBtn(id)}.click(); return 1;`);
     const saves = async (before) => since(before, (e) => e.path === "/api/template-settings/save" && e.body);
@@ -419,13 +425,13 @@ async function run() {
       await evaluate(`return ${card("field_driver_sms")}.querySelector('[data-team-sms-len]')?.textContent + ' | ' + ${card("field_guide_sms")}.querySelector('[data-team-note-left]')?.textContent;`),
     );
 
-    // 改了存：只存这一张卡，按钮绿色 Saved ✓，右边预览跟着变
+    // 改了存：只存这一张卡，蓝色 Save 旁边绿字「✓ Saved · 时间」（Content Studio 蓝色 Save，8437c0b），右边预览跟着变
     let before = (await mockLog()).length;
     await setText("field_driver_sms", "NPE: Your manifest {date}: {link}");
     check("改了：预览马上变（没存也看得到）", await waitFor("(document.querySelector('[data-team-preview=driver]')?.textContent || '').includes('NPE: Your manifest Sat, Oct 31: https://')"));
     await clickSave("field_driver_sms");
     const s1 = await waitSaves(before, 1);
-    check("Save：只存这一张卡 POST {key, value}，按钮绿色 Saved ✓", s1.length === 1 && s1[0].body.key === P + "field_driver_sms" && s1[0].body.value === "NPE: Your manifest {date}: {link}" && (await waitFor(`${saveBtn("field_driver_sms")}?.textContent.trim() === 'Saved ✓'`)), JSON.stringify(s1.map((e) => e.body)));
+    check("Save：只存这一张卡 POST {key, value}，键旁边绿字 ✓ Saved · 时间、Save 回到灰的", s1.length === 1 && s1[0].body.key === P + "field_driver_sms" && s1[0].body.value === "NPE: Your manifest {date}: {link}" && (await waitFor(`/^✓ Saved · \\d{1,2}:\\d\\d [AP]M$/.test(${card("field_driver_sms")}.querySelector('[data-save-ok]')?.textContent ?? '') && ${saveBtn("field_driver_sms")}.disabled`)), JSON.stringify(s1.map((e) => e.body)));
 
     // 页面先挡住的：必填留空、不认识的变量、短信超长、特殊字符、{link} 没有（都不发请求）
     for (const [label, value, want] of [
@@ -449,8 +455,8 @@ async function run() {
     before = (await mockLog()).length;
     await clickSave("field_driver_sms");
     check(
-      "后端 400：红字原样写后端的 detail，按钮红色 Error，改的字留着",
-      (await waitFor(`(${card("field_driver_sms")}.querySelector('[role=alert]')?.textContent || '') === "Driver text can't be blank."`)) && (await evaluate(`return ${saveBtn("field_driver_sms")}.textContent.trim() === 'Error' && ${ta("field_driver_sms")}.value === 'NPE manifest {date}: {link}';`)),
+      "后端 400：红字原样写后端的 detail，Save 还是蓝的能再点，改的字留着",
+      (await waitFor(`(${card("field_driver_sms")}.querySelector('[role=alert]')?.textContent || '') === "Driver text can't be blank."`)) && (await evaluate(`return !${saveBtn("field_driver_sms")}.disabled && ${ta("field_driver_sms")}.value === 'NPE manifest {date}: {link}';`)),
       await evaluate(`return ${card("field_driver_sms")}.querySelector('[role=alert]')?.textContent;`),
     );
     await ctl({ teamSaveFail: "" });
@@ -538,8 +544,8 @@ async function run() {
   check("保存 Partner A 标题：只写 partner_a 的键", fsaves.length === 1 && fsaves[0].body.key === "tmpl__farmout__partner_a__email_subject" && fsaves[0].body.value === 'A2 {tour_name}', JSON.stringify(fsaves.map((e) => e.body)));
   // Copy from Default
   await evaluate(`$btn('Copy from Default').click();`);
-  await sleep(150);
-  check("Copy from Default：标题换回 Default 的文字（还没存）", await evaluate("return $card('Email subject').querySelector('textarea').value === 'Your {tour_name} pick-up on {tour_date}';"));
+  // 存完那一下 Copy from Default 偶尔还没就绪（第一次跑 150ms 后读到旧字）：等到换好为止
+  check("Copy from Default：标题换回 Default 的文字（还没存）", await waitFor("$card('Email subject').querySelector('textarea').value === 'Your {tour_name} pick-up on {tour_date}'") || (await evaluate("$btn('Copy from Default').click(); return 1;"), await waitFor("$card('Email subject').querySelector('textarea').value === 'Your {tour_name} pick-up on {tour_date}'")));
   // 打错的变量：标红、不让存
   await evaluate(`$setValue($card('Email body').querySelector('textarea'), 'Hi {pickup_spt} at {tour_name}');`);
   await sleep(120);
@@ -688,6 +694,7 @@ async function run() {
 
   // 加一条新路线：选第二个 shuttle group（Page），方向 Outbound
   before = (await mockLog()).length;
+  check("Add route 是蓝色提交键", await evaluate("return $btn('Add').className.includes('bg-[#3b82f6]');"));
   await evaluate(
     "window.$setSelect(document.querySelector('select[aria-label=\"Shuttle group\"]'), 'Page Shuttle'); window.$setValue(document.querySelector('input[aria-label=\"Route label\"]'), 'Page Shuttle — Outbound'); $btn('Add').click();",
   );
@@ -874,6 +881,7 @@ async function run() {
   await evaluate(`$setValue(${newForm}.querySelectorAll('input')[0], 'ZZ Test Horseshoe Bend');`);
   check("Code 按 Name 自动填（小写、空格变 _）", (await evaluate(`return ${newForm}.querySelectorAll('input')[1].value;`)) === "zz_test_horseshoe_bend");
   await evaluate(`$setValue(${newForm}.querySelectorAll('input')[1], 'canyon_x');`);
+  check("Create 是蓝色提交键", await evaluate(`return $btn('Create', ${newForm}).className.includes('bg-[#3b82f6]');`));
   before = (await mockLog()).length;
   await evaluate(`$btn('Create', ${newForm}).click();`);
   await waitFor(`${newForm}.querySelector('[role=alert]')`);

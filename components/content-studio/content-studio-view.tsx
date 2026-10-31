@@ -1052,7 +1052,7 @@ const HOW_TO_ITEMS = [
   "Click a module, then a tab (Global, Email, SMS, Guest Page …).",
   "Click in a box and type. The Preview on the right updates as you type.",
   "Keep the { } variables such as {name}; add one with the buttons after Insert:.",
-  "Click Save on the card. Saved ✓ means it is stored; unsaved changes are lost when you leave.",
+  "Click Save on the card. A green ✓ Saved next to the button means it is stored; unsaved changes are lost when you leave.",
   "Cancel only undoes changes you have not saved.",
   "Team Messages: texts to drivers, guides, restaurants and staff. Driver and guide texts must fit in one SMS with the link filled in, keep exactly one {link}, and use plain characters only. Subjects, the texts and link text can't be empty; the other lines can be left empty to drop them.",
 ];
