@@ -124,6 +124,12 @@
   - Team 页 How to use：原来 59 写的那一条 Contact 换成后端 57 发来的 7 条英文原文（照原文、照顺序，只给 Super Admin 看，跟原来一样）；
   - 检查：tp 149/149、users 77/77、nav 32/32、teams 54/54；tsc 0、eslint 0 错（2 个旧 warning）、build 通过；已推分支。
   - 下一步：G219 上 main 后对着真接口核一遍：PUT …/contact 回 {ok, member}；400 的 detail 是 {field, message}；create-member / invite 的错误还是纯字符串。核完回 98「可以合」，98 说合再合。
+  - ✅ 2026-10-30 晚 G219 上 main（后端 acbae995），对着后端代码只读核了一遍（没在生产上试）：
+    - PUT /api/team/members/{id}/contact：只有 Super Admin 能调；body {email, phone?}，没带 phone 就不改；回 {ok, member}。
+    - 400 的 detail 是 {field, message}；格式错的文字和前端一字不差（EMAIL_WRONG / PHONE_WRONG）；电话规则一样：10 位、1 开头的 11 位，或 + 开头 8–15 位；email 重了写「That email address is already used by <名字> (@<用户名>).」。
+    - 名单和单人详情都带 phone、hr_phone；建号 / 邀请的错误 detail 还是纯字符串，前端照旧按字符串显示。
+    - **对不上的一处，已修**：账号已经不在了时，后端回 404，detail 也是 {field, message}。前端原来只在 400 时读这个形状，会显示成「Request failed (404 Not Found).」；现在 400 / 404 都认，把后端原话写在 Email 下面。tp 加一条。
+  - 合最新 main 后：tp 151/151、users 77/77、teams 54/54、nav 32/32；tsc 0、eslint 0 错、build 通过。98 派的是「核对无误就合 main 上线」，已合 main。
 - `task/schedule-test-person` → **30d2f10**（worktree `C:\Code\npe-ops-frontend-testperson`）：
   - 合最新 main 没有冲突（排班这几天的改动 62 在 bb3bfdd 之前已经合进来了，这次只合进来 dispatch / farm-out 的 48 个提交）；
   - 检查：sch 281/281、sc 21/21、tasks 128/128、dr 88/88、ns 49/49；tsc 0、eslint 0 错、build 通过；已推分支。
