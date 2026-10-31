@@ -1056,12 +1056,31 @@ function TeamHowTo({ isSuperAdmin }: { isSuperAdmin: boolean }) {
               changes only its duties.
             </li>
             <li>
-              Contact: Email and Mobile are at the top of Edit and Add person;
-              both are optional and are saved with the rest when you click Save.
-              Notifications go to the Email. A person with notification duties
-              but no email shows &quot;No email — misses notifications&quot;.
-              Drivers and guides linked to Human Resource use the phone number
-              from Human Resource; change it there.
+              Edit a person → Contact (top of the form): type Email and Mobile,
+              then Save. Both are optional. Leave a box empty to clear it.
+            </li>
+            <li>
+              Email is where duty notifications go. A person with duties but no
+              email gets a yellow No email tag and misses those notifications.
+            </li>
+            <li>Mobile is stored only for now; nothing is sent to it yet.</li>
+            <li>
+              Drivers and guides with an HR file show the HR phone, read-only.
+              To change it, use Edit in Human Resource.
+            </li>
+            <li>
+              If you see &apos;That email address is already used by …&apos;,
+              that email belongs to the account named. Use a different one or
+              fix the other account first.
+            </li>
+            <li>
+              Phone format: 10 digits (US), or + and the country code. Spaces,
+              dashes, dots and brackets are fine.
+            </li>
+            <li>
+              Add person: Contact is there for both ways (create now / invite
+              link). An invite keeps the email and mobile you typed after the
+              person registers.
             </li>
           </>
         ) : null}
