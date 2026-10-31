@@ -148,7 +148,7 @@
     - 要统一成蓝色，就要整个 Content Studio 一起改，属于样子调整，要另问 Annie。
   - 检查：
     - cs-mock 加 23 个键（label 带 [Team Messages]）和后端 4e 的保存校验、400 原话（「<Label> can't be blank.」「Unknown placeholder {foo}. You can use: …」「This has a character texts can't send (…).」「Too long for one text by N characters.」）；
-    - {link} 不是正好一个时的原话后端没给，mock 先写「Put {link} in exactly once.」，后端上了再对；
+    - {link} 不是正好一个时的原话：mock 写的「Put {link} in exactly once.」，后端 57 / 4e 确认就用这句（经 98 转）；
     - ctl.teamSaveFail 模拟后端拒。
     - cs-test 加 16 项：
       - 首页卡、三个标签、23 个键和键名、五组和 Notice 说明；
@@ -159,7 +159,7 @@
       - 可空键留空能存；离开页面拦截。
     - 结果：cs 169/169、nav 32/32；tsc 0 错；eslint 0 错、2 个原有警告；改过的文件 prettier 过；build 过。
   - 下一步：后端 v135 + G228 上 main 后：
-    - 对键名、label、400 原话（特别是 {link} 那句）；
+    - 对键名、label、400 原话（{link} 那句已确认）；
     - 要和服务端完全一样的渲染，可以请后端给 /api/template-settings/preview 加 module="team"，再换掉本地替换；
     - 合最新 main、重跑 cs，再合 main。
 
