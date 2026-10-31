@@ -393,6 +393,7 @@ async function run() {
   check("Unassigned 的加班窗口标题写 Unassigned，默认勾上点的那一天（Sat 10/10）", await evaluate(`return ${dlg}.textContent.includes('Unassigned') && ${dlg}.querySelectorAll('[data-day][aria-pressed=true]').length === 1 && ${dlg}.querySelector('[data-day="2026-10-10"]').getAttribute('aria-pressed') === 'true';`));
   check("时间默认是工作时段 02:00 – 21:30", await evaluate(`const t = ${dlg}.querySelectorAll('input[data-time-input]'); return t[0].dataset.value === '02:00' && t[1].dataset.value === '21:30';`));
   await evaluate(`[...${dlg}.querySelectorAll('button[role=radio]')].find(b => b.textContent.trim() === 'Mid').click();`);
+  check("加班弹窗的 Add shift 只是先排在周表上（整周 Save 才存）⇒ 灰绿添加键（Annie 2026-10-30）", await evaluate(`return getComputedStyle($btn('Add shift', ${dlg})).backgroundColor === 'rgb(107, 142, 116)';`));
   await evaluate(`$btn('Add shift', ${dlg}).click();`);
   check("Unassigned 周六加了一个 Mid 时段（先放在页面上，标琥珀色 new）", await waitFor(`${needsSat}.textContent.includes('Mid') && ${needsSat}.querySelector('[data-slot-id]').dataset.mark === 'new'`));
   check("新时段的时间 = 工作时段 2:00 AM – 9:30 PM", (await evaluate(`return ${needsSat}.textContent;`)).includes("2:00 AM – 9:30 PM"));
@@ -1024,7 +1025,9 @@ async function run() {
   await waitFor(`${dlg} && ${dlg}.querySelector('[data-mode=off]')`);
   await evaluate(`${dlg}.querySelector('[data-mode=off]').click();`);
   check("二期：Time off 模式：标题 Add time off、有 PTO / Sick / Personal 三个选项", await evaluate(`return ${dlg}.textContent.includes('Add time off') && ['PTO', 'Sick', 'Personal'].every(t => $btn(t, ${dlg})) && !${dlg}.querySelector('input[data-time-input]');`));
-  await evaluate(`${dlg}.querySelector('[data-kind=sick]').click(); $setValue(${dlg}.querySelector('[data-note-input]'), 'Back Thursday'); $btn('Add day off', ${dlg}).click();`);
+  await evaluate(`${dlg}.querySelector('[data-kind=sick]').click(); $setValue(${dlg}.querySelector('[data-note-input]'), 'Back Thursday');`);
+  check("Add day off 直接存进系统 ⇒ 照旧蓝色提交键（Annie 2026-10-30）", await evaluate(`return getComputedStyle($btn('Add day off', ${dlg})).backgroundColor === 'rgb(59, 130, 246)';`));
+  await evaluate(`$btn('Add day off', ${dlg}).click();`);
   check("二期：录好 ⇒ 格子写 Sick + 备注 Back Thursday，窗口关了", await waitFor(`${hasText(`${cell("2|2026-12-08")}.querySelector('[data-time-off=sick]')`, "Sick")} && ${hasText(`${cell("2|2026-12-08")}.querySelector('[data-time-off=sick]')`, "Back Thursday")} && !${dlg}`));
   check("二期：休假格子比 Off 深一档的黄、主管有 ×", await evaluate(`const el = ${cell("2|2026-12-08")}.querySelector('[data-time-off]'); return getComputedStyle(el).backgroundColor.includes('0.28') && !!el.querySelector('[data-remove-time-off]');`));
   check("二期：同一天没有 Off 格子", await evaluate(`return !${cell("2|2026-12-08")}.querySelector('[data-off]');`));

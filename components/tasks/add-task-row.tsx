@@ -94,7 +94,7 @@ export function AddTaskRow({
             value={assignee}
             onChange={(event) => setAssignee(event.target.value)}
             disabled={busy || shifts.length === 0}
-            className="max-w-full min-w-0 rounded-md border border-white/15 bg-white/[.04] px-2 py-1 text-[12.5px] text-white outline-none [color-scheme:dark] focus:border-[#185FA5] disabled:opacity-50"
+            className="max-w-full min-w-0 rounded-md border border-white/15 bg-white/[.04] px-2 py-1 text-[12.5px] text-white [color-scheme:dark] outline-none focus:border-[#185FA5] disabled:opacity-50"
           >
             <option value={EVERYONE}>Everyone on shift today</option>
             {shifts.map((shift) => (
@@ -112,14 +112,14 @@ export function AddTaskRow({
             value={dueTime}
             onChange={(event) => setDueTime(event.target.value)}
             disabled={busy}
-            className="rounded-md border border-white/15 bg-white/[.04] px-2 py-1 text-[12.5px] text-white outline-none [color-scheme:dark] focus:border-[#185FA5] disabled:opacity-60"
+            className="rounded-md border border-white/15 bg-white/[.04] px-2 py-1 text-[12.5px] text-white [color-scheme:dark] outline-none focus:border-[#185FA5] disabled:opacity-60"
           />
         </span>
         <button
           type="button"
           onClick={() => void submit()}
           disabled={busy || !title.trim()}
-          className="rounded-lg border border-[#185FA5] bg-[#185FA5] px-3.5 py-1.5 text-[12.5px] font-bold text-white hover:bg-[#1468a0] disabled:cursor-default disabled:opacity-40"
+          className="rounded-lg border border-[#3b82f6] bg-[#3b82f6] px-3.5 py-1.5 text-[12.5px] font-bold text-white hover:bg-[#2f76e8] disabled:cursor-default disabled:opacity-40"
         >
           {busy ? "Adding…" : "Add"}
         </button>

@@ -9,7 +9,7 @@ import { useViewOnly } from "@/components/ui/view-only";
 
 import { secOf, type Lookup } from "./config";
 import { BusIcon } from "./icons";
-import { ADDVAN, BANNER, TM_BTN } from "./legacy-styles";
+import { ADDVAN_ADD, BANNER, TM_BTN } from "./legacy-styles";
 
 /** 这些车坐得下几位："56 + 24 = 80 seats" / "14 seats" / 有车没填座位数是 null。 */
 export function seatsSummary(seats: (number | null)[]): {
@@ -200,7 +200,7 @@ export function PrivateOrderCards({
                 hidden={viewOnly}
                 disabled={disabled}
                 onClick={() => onAdd(o.order_number)}
-                className={cn(ADDVAN, "mt-3.5")}
+                className={cn(ADDVAN_ADD, "mt-3.5")}
               >
                 + Add vehicle
               </button>
@@ -231,7 +231,7 @@ export function PrivateOrderCards({
               hidden={viewOnly}
               disabled={disabled}
               onClick={() => onAdd()}
-              className={cn(ADDVAN, "mt-3.5")}
+              className={cn(ADDVAN_ADD, "mt-3.5")}
             >
               + Add vehicle
             </button>
@@ -249,7 +249,7 @@ export function PrivateOrderCards({
             hidden={viewOnly}
             disabled={disabled}
             onClick={() => onAdd()}
-            className={ADDVAN}
+            className={ADDVAN_ADD}
           >
             + Add vehicle
           </button>

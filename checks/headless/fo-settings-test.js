@@ -92,7 +92,7 @@ async function partnersChecks() {
   await ctl({ reset: true, fail401: false, staff: false, unavailable: false });
   check("合作公司页打开", await open(URL, "document.querySelector('tr[data-partner]')"));
   check("计数 2 partners、两家公司都在", await evaluate("return $txt().includes('2 partners') && !!$row('Partner A') && !!$row('Partner B');"));
-  check("添加键是深色（不是蓝色）", await evaluate("const b = $btn('Add'); return $bg(b) === 'rgb(26, 26, 26)';"));
+  check("Add 直接存进系统 ⇒ 蓝色提交键（Annie 2026-10-30：直接存的 Add 保留蓝色；先加在页面上的才是灰绿）", await evaluate("const b = $btn('Add'); return $bg(b) === 'rgb(59, 130, 246)';"));
 
   // 添加
   await evaluate("$set($byLabel('New partner name'), 'ZZ Test Partner'); $btn('Add').click(); return 1;");
@@ -226,6 +226,7 @@ async function partnersChecks() {
 
   // 上车点
   check("上车点按顺序列出", await evaluate("return $byLabel('Hotel name 1').value === 'Bellagio' && $byLabel('Hotel name 2').value === 'Venetian' && $byLabel('Spot 1').value === 'Underground South Tour Lobby' && $byLabel('Map link 2').value === 'https://goo.gl/maps/bbb';"));
+  check("+ Add location 先加在页面上（按 Save locations 才存）⇒ 灰绿添加键 #6b8e74（Annie 2026-10-30）", await evaluate("return $bg($btn('+ Add location')) === 'rgb(107, 142, 116)';"));
   await evaluate("$set($byLabel('Hotel name 1'), 'Bellagio Hotel'); $btn('+ Add location').click(); return 1;");
   await waitFor("$byLabel('Hotel name 3')");
   await evaluate("$btn('Save locations').click(); return 1;");

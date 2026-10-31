@@ -65,7 +65,7 @@ const WARN_BAR =
   "border-t border-[#fecaca] night:border-red-500/30 bg-[#fef2f2] night:bg-red-500/10 px-3.5 py-[5px] text-[11px] text-[#dc2626] night:text-red-300";
 /** .dyn-add-btn */
 const ADD_BTN =
-  "cursor-pointer rounded-[6px] border border-dashed border-[#aaa] bg-paper night:bg-white/[.04] px-3 py-1 text-[11px] text-[#1a1a1a] night:text-white/90 hover:border-[#1a1a1a] night:hover:border-white/40";
+  "cursor-pointer rounded-[6px] border border-[#6b8e74] bg-[#6b8e74] text-white hover:bg-[#5d7d66] px-3 py-1 text-[11px] font-semibold";
 /** .dyn-step-group */
 const STEP_GROUP =
   "mb-2 rounded-[8px] border border-[#e5e7eb] night:border-white/10 bg-paper night:bg-white/[.03] px-3 py-2.5 hover:border-[#ccc] night:hover:border-white/10";

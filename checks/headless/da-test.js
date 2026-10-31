@@ -229,6 +229,7 @@ async function run() {
   check("手填弹框取消：下拉回原值", (await evaluate(`return ${vrow(0)}.querySelector('[data-f=driver]').value;`)) === "__typed");
 
   // 加车 / 默认站点 / 酒店锁
+  check("+ Add vehicle 先加在页面上（按 Save 才存）⇒ 灰绿添加键（Annie 2026-10-30）", await evaluate(`return getComputedStyle($btn('+ Add vehicle', ${sec("West Rim Bus Tour")})).backgroundColor === 'rgb(107, 142, 116)';`));
   await evaluate(`$btn('+ Add vehicle', ${sec("West Rim Bus Tour")}).click();`);
   await sleep(150);
   check("团块 + Add vehicle：带团、带默认站点、站点编号、Usual stops filled in", await evaluate(`const r = ${vrow(3)}; return r && r.textContent.includes('Usual stops filled in') && [...r.querySelectorAll('[data-drop]')].map(b => b.textContent.replace('✕','').trim()).join('|') === '1MGM|2Treasure Island';`));

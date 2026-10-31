@@ -22,7 +22,8 @@
 
 ### 二、做完在分支、等后端上 main 才合
 - e6 `task/content-team-messages-e6` 9c1a40e（G228，24 个键；合时 Save 照 8437c0b 的 CardFooter 写法）：等 v135 + G228。
-- e6 `task/schedule-weekly-confirm` 40ecc20（G138 员工页 + 排班的人那边）：等后端 G138（排在 16 的 schedule-history 之后）。History 5 种说法等 schedule-person-history-fe 合了再加。
+- e6 `task/schedule-weekly-confirm` 045dc56（history-fe 9f9c185：后端缺键当空值读）（G138 员工页 + 排班的人那边，已含 history-fe ea11a20 的 5 种说法）：等后端 G138（排在 16 的 schedule-history 之后）。History 事件字段名已转 4e 核对。
+- e6 `task/content-team-messages-e6` c275ed7 已合最新 main（蓝色 Save）。
 - 91 `task/import-team` 2ec4179：等 64 的 team/contacts/import（64 的 task/team-contacts-import，测试 + 两审后上 main）。64 已发形状：multipart 字段 file；SA only；标准 bulk_import，status 只有 update / unchanged / error（没有 new）；表头按名字认（Username 必填，也认 User name / Login；Email 也认 E-mail / Email address；Mobile 也认 Phone / Mobile phone / Cell）；errors 原话见 64 消息（Username is required. / No one with username “x”. Did you mean y (Name)? Fix it in the file and upload again. / Email address looks wrong. / That email address is already used by Name (@user). / … in row N of this file. / Phone number looks wrong. Use 10 digits, or + and the country code. / Mobile comes from Human Resource — change it there. / field null「Repeated above — skipped.」）；commit {created:0, updated, unchanged, skipped}；400 文件问题纯字符串；409「Someone changed an email address while this file was being saved. Nothing was saved — check the preview again.」；日志进 /api/team/action-log action=import；模板前端用 /api/team/members 生成。明天 91 对 mock 的原话和 409。
 - 91 `task/schedule-test-person` 30d2f10：等 is_test（v134）。
 - 09 `task/dor-updates`：等 v133 + G224。
@@ -92,9 +93,17 @@
 - 91 查清：只有 Dispatch 每辆车的「Add hotel」（vehicle-row.tsx）一个下拉；Pickup Locations 已有 is_tour_bus / is_shuttle（G211），但 Dispatch 当天 locations 没带 ⇒ 需要后端在 dispatch.py 那段 SELECT 加这两个字段。preview：https://claude.ai/artifact/Bud9mmZivp9ddK5cAd5QLV 。题 (a) 只改 Add hotel、所有班次都分组（推荐）/ 按班次只列一类；(b) 两个都勾的两组都出、都没勾的放最下面「Type not set」（推荐）；(c) 照旧不加搜索框（推荐）/ 改成能打字搜。
 
 ### 35. Today's tasks 版式不是最后批准的样子（91 在对照）
-- 91 对照 preview：https://claude.ai/artifact/9fChzY2Z1ThUdJgKk4cbNo 。Annie 原话「我看到tasks了，关键是它不需要占整行啊，一半就够」⇒ 照 v3（已动手）改回：员工 My tasks + Notice 并排各半宽在最上面、Messages 在下面、去掉 🔔 那条。派 91 task/tasks-half-width。
+- 后端 G202 已上 main fa9dba14（v137 已执行），91 只读核完和前端一致，前端 400393e 自动生效（Finish by 等）。PUT …/due 仍收 {due_at}，有交接时改最新交接的 finish_by。
+- 91 对照 preview：https://claude.ai/artifact/9fChzY2Z1ThUdJgKk4cbNo 。Annie 原话「我看到tasks了，关键是它不需要占整行啊，一半就够」⇒ 照 v3（已动手）改回：员工 My tasks + Notice 并排各半宽在最上面、Messages 在下面、去掉 🔔 那条。派 91 task/tasks-half-width。随后 Annie 改（原话）「你把task和 today's team放在一起，task 战2/3，team占1/3」⇒ 任务块 2/3 + Today's team 1/3 同一排，Notice 回最上面整行，Messages 不动；91 截图 preview 给 Annie 看了再合。
 - Annie 10-30 晚原话：「Today’s tasks的版式也不是我们最后aprove的样子」
 - 批准的是 G202 preview v3 https://claude.ai/artifact/3ktywUdNA5AHHP5zY47a2w （v3「对」、「186-对，动手」）；前端 10/27 上 main 400393e。91 只读对照 preview 和现在代码列差异（哪次提交改的），明天第一件接着。
+
+### 36. Today's team 也显示登录了的其他员工，点名字能发消息（新功能，先 preview）
+- Annie 10-30 晚原话：「然后today's team的显示，除了res，登录了网站的其他员工也在这里显示，然后可以点击他们发消息」
+- Annie 补充原话「站内消息，同时可以发邮件通知这条消息的内容」⇒ 站内消息 + 邮件（全文）给对方。
+- Annie 在 91 窗口答（原话）「Q1  30分钟   Q2 A 在notice里，都属于给自己看的   Q3 A   Q4 A 站内回复，不用邮件   Q5 A  Q6 A」⇒ 30 分钟没动算离线；消息进对方 Notice；没 Email 照发站内 + 黄字；Notice 卡上站内回复、回复不发邮件；只列员工；加开关默认只 SA。没说动手。后端清单已改两处（30 分钟、reply 只写 Notice）转 57。Annie 补「在线员工包括teams里的人」⇒ 在线名单按 Team 账号算，不按排班表，已转 57。
+- 91 preview：https://claude.ai/artifact/MyYTZjQzmJLaWckQjPxVGd 。题 (a) 10 分钟没动算离线（推荐）/ 登录没过期就算 / 改 5 或 30 分钟；(b) 对方在 Notice 出 Message 卡带 Reply / Got it（推荐）/ Messages 新窗口 / 新收件箱；(c) 没 Email 照发站内、黄字提醒（推荐）/ 不让发；(d) 能回复、站内 + 邮件（推荐）/ 不能回 / 回邮件也算；(e) 只列员工（推荐）/ 所有能登录的；(f) 加开关默认只 SA（推荐）/ 不加。需要后端 7 条（last_seen_at 迁移、GET /api/team/online、staff_messages 表 + POST 发消息 + Notice + 邮件、回复、读、开关、日志），等 Annie 答完再转 57。
+- 要查：现在 Today's team 列谁（res = 当天排班上的人？）；后端有没有「谁在线 / 最近活动」；站内发消息用什么（后端有 Messages Team Board？）。91 做完 2/3 + 1/3 布局后先查、出 preview，缺的写需要后端。
 
 ### 8. 可以上线后对着看的（不用答，验收时看）
 - Products 手动保存：09 问的 5 处细节，主窗口按盘点推荐定了，见 PROGRESS「2026-10-30」那节 09 的记录：
@@ -193,6 +202,15 @@
 - Annie 对 v3 又两条（都还不是动手）：
   - 经 98：「排班那个，一般是accept之前，decline在后」⇒ 成对的键同意在前：Accept / Decline、Approve / Decline。preview 已改，写代码也照这个顺序。
   - 直接对 e6 说：「员工之间的改动就发给相关人员就好了，排版人和super admin只需要在管理界面看见他们的action就好。就像你preview的一样」⇒ 通知（站内 + 邮件）只发相关员工：换班请求发对方，对方回复发提请求的人，排班的人批了发提请求的人（换班两人都发），Publish 时关掉的发本人（和还在等的对方）；改天上、提加班发出时没人收。排班的人和 Super Admin 不收通知，只在 Staff Schedule 周表（亮黄格子）、Responses 卡、History 里看。preview 加了「谁会收到通知」一节。后端 G138 通知收件人要照这条，已转 98 让她转 57 / 4e。
+
+## 2026-10-30 晚 全站添加键：先加在页面上的灰绿、直接存的蓝色（`task/add-button-green`，工作窗口 `npe-ops-frontend-09`[8a0116]，主窗口 98 派）—— 已合 main
+
+- Annie 原话（按时间）：「这一页，既然现在我们把保存键都改成蓝色，那添加键应该换个颜色了，比如说橙色？」→「全部统一用绿色吧，你出个preview」→「这个绿色可以偏莫兰蒂一些么」→「蓝色也可以淡一点么」→「算了，好丑，还是恢复原来的蓝吧。然后把add 弄成A 灰绿」→ **「1. 如果直接点了就可以不需要再次保存的可以保留蓝色2.动手」**；Products ⑦⑧ 的 Add（直接存）问她要不要也改灰绿，答「B」= 保持蓝色。规矩已写进 CLAUDE.md（98 改）。
+- preview：https://claude.ai/artifact/6MBBkmz2rBo1egAPJGpr5g （第 5 版）。
+- 灰绿 #6b8e74、白字（先加在页面上、还要按 Save 才存）：Dispatch 和 Private 的 + Add vehicle（原深蓝 #13284a / 白底描边）、Farm out 的 + Add location（原黑）、Pickup Shuttle times 的 + Add time / + Add season（原白底描边）、Auto-send 的 + Add time / + Add email、Content Studio 的 + Add template / + Add line / + Add step（原白底虚线框）、排班规则弹窗的 + Add shift（原深灰）、加班弹窗的 Add shift（原蓝）。共用常量：`components/ui/buttons.ts` 的 `DARK_ADD_BUTTON_CLASS`、pickup `legacy-ui` 的 `BTN_ADD_GREEN_SMALL_CLASS`、dispatch `ADDVAN_ADD`。
+- 改成蓝色 #3b82f6（直接存，照「蓝色只用于提交」）：Pickup / Vehicles / Farm out 的 Add（原黑 #1a1a1a，新常量 `BTN_SUBMIT_CLASS`）、Vehicles 的 Add column（原白底描边）、Products 的 Add category / Add group / 没归类卡 Add（原黑）、Dashboard 任务的 Add（原深蓝 #185FA5）、Quick replies 的 Add reply 和同页 Save（原深蓝 #185FA5）、Users 的 Create link（原藏青 #1a3a5c）、Team 新建时的 Create account / Create invite link（原藏青；编辑时的 Save 照旧藏青）。
+- 不动：本来就是蓝色的直接存键（Products ⑦⑧ Add、Content Studio Add route / Create、加员工弹窗 Add、Add day off、TCQ Add、Add guide）；只打开弹窗 / 加一行空表单、本身不存东西的（+ Add employee、+ Add rule、HR Add person、TCQ + Add vehicle / event / place、+ Add a restaurant、+ Add a shortcut）。
+- 检查：as 69、cs 159、da 427、fo-settings 129、fod 46、pl 97、products 219、qr 33、restaurant 44、sch 279、tasks 127、tcq 86、teams 54、veh 47、ws 58、perm 54、nav 32 全过（新加 4 条：+ Add vehicle 灰绿、Add shift 灰绿、Add day off 蓝、+ Add location 灰绿；改 2 条旧颜色：Farm out Add 黑→蓝、Add reply 深蓝→蓝）。users 套本机缺 puppeteer-core 跑不起来（跟这次无关）。tsc / build 过，eslint 0 错。
 
 ## 2026-10-30 晚 7 Days Forecast：左边一列名字统一 15px 半粗（置顶 31，`task/forecast-label-size`，工作窗口 `npe-ops-frontend-09`[8a0116]，主窗口 98 派）—— 已合 main
 
@@ -309,7 +327,17 @@
 - 站内 Notice 标题、正文一律不动。
 - 种子迁移暂定 v135（排在 v134 之后，等迁移所有权，SQL 给 Annie 过目）。后端约 1 天，开工由 57 派。
 - 待 Annie 定：周三确认邮件（sched_weekly_confirm_*）要不要放进这张卡，见置顶 24。
-## DOR 最新进展（G224）—— 明天第一件（工作窗口 `npe-ops-frontend-09`[8a0116]，主窗口 eb 2026-10-30 转 b0 的形状）
+## DOR 最新进展（G224）—— **已合 main 上线**（后端 G224 上 main 72a812ef / aaa863bb、v133 已在生产执行，98 2026-10-30 晚通知）（工作窗口 `npe-ops-frontend-09`[8a0116]，主窗口 eb 2026-10-30 转 b0 的形状）
+
+- **2026-10-30 做完（09）**：分支 `task/dor-updates`（a0872fc，从 main e6fd22e 拉），已推，**没合 main**。
+  - 展开一条报告后，修改记录下面列 Updates（谁 · 什么时候 · 原文，旧的在前，换行照原样）；输入框最多 2000 字 + 蓝色 Save，Saving… / 绿字 Saved / 红字后端原话，失败时输入的内容留着。
+  - 能看的人都能加（包括自己不能改状态的那条）；partner 只看，没有输入框。Dashboard 块和 /daily-report 页都有。修改记录里的 add_update 不显示。
+  - 改的文件：`components/daily-report/report-item.tsx`、`dor-section.tsx`、`reports-view.tsx`、`lib/daily-report-api.ts`（addReportUpdate）、`types/daily-report.ts`、`types/index.ts`、`checks/headless/dor-mock.js` / `dor-test.js`。
+  - 检查：dor 75/75（新加 16 条），dr 88/88，nav 32/32，tsc、build 过，eslint 0 错（2 个警告在没改的文件里，main 本来就有）。
+  - **为什么不能先合**（eb 2026-10-30）：后端没上时页面照样出输入框，staff 按 Save 会 404 红字，等于上了一个点了报错的功能。
+  - **下一步**：等 Annie 执行 v133、后端 G224 上 main，eb 通知后：分支合最新 main → 重跑 dor / dr / nav / tsc / eslint / build → 合 main。合之前最好在生产上用 ZZ Test 的报告加一条看一眼。
+  - **2026-10-30 晚合 main（09）**：只读核对后端 origin/main：GET 详情带 `updates`（旧的在前，`{id, report_id, text, created_at, created_by:{username, display_name}}`），POST `/api/operation-reports/{id}/updates` 201 `{update}`，400 原话「Write the update before saving.」/「The update is N characters - the limit is 2000.」，partner 403「Partners can read reports but cannot add updates.」，history 记 `add_update`，和前端 mock 一致。合最新 main 后 dor 75/75、dr 88/88、nav 32/32，tsc / eslint / build 过。还没在生产上用 ZZ Test 报告实际加过一条。
+
 
 - 依据：Annie 原话「如果需要纠正什么的话在下面备注，或者更新最新进展就好了」「加最新进展，任何人都可以加」「以上内容全都动手」。
 - 后端还没上 main（v133 等 Annie 过目执行）。前端先用 mock 做，后端上 main 后再合。
