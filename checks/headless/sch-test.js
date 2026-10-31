@@ -1325,6 +1325,11 @@ async function run() {
     await evaluate("const c = document.querySelector('[data-split=\"904\"]'); return c.textContent.includes('Waiting for Jing') && !c.querySelector('button') && !document.querySelector('[data-approve=\"904\"]') && document.querySelector('[data-response=\"3\"]').textContent.includes('⇄ Sun Close ↔ Veronica\\'s Thu Close: Veronica agreed — waiting for you') && document.querySelector('[data-response=\"2\"]').textContent.includes('Waiting for Jing');"),
     await evaluate("return document.querySelector('[data-response=\"3\"]')?.textContent + ' | ' + document.querySelector('[data-split=\"904\"]')?.textContent;"),
   );
+  check(
+    "改天上（move）：Jing 的 Mon 变淡「asked to move」，Wed 出亮黄「Jing asked · moved from Mon」，下面 Approve / Decline",
+    await evaluate("const mon = document.querySelector('[data-rcell=\"4|2026-10-05\"]'); const wed = document.querySelector('[data-rcell=\"4|2026-10-07\"]'); const card = wed.querySelector('[data-req-card=pending]'); return [...mon.querySelectorAll('div')].some((d) => d.className.includes('opacity-40') && d.textContent.includes('asked to move')) && !!card && card.textContent.includes('Jing asked · moved from Mon') && !!document.querySelector('[data-approve=\"905\"]') && !!document.querySelector('[data-decline=\"905\"]');"),
+    await evaluate("return document.querySelector('[data-rcell=\"4|2026-10-07\"]')?.textContent ?? 'none';"),
+  );
   from = (await mockLog()).length;
   await evaluate("document.querySelector('[data-approve=\"903\"]').click();");
   await waitFor("!document.querySelector('[data-split=\"903\"]')");

@@ -48,7 +48,7 @@ let confirmWeek = "";
 let jingAnswer = null;
 let savedWeekStatus = null;
 // ctl.confirmSwaps：再加两条换班——903 Nadia 的 Sun ↔ Veronica 的 Thu（Veronica 已同意，等批）；904 Lizzie 的 Tue ↔ Jing 的 Fri（等 Jing 回）。
-const swapState = { 903: "pending", 904: "awaiting_peer" };
+const swapState = { 903: "pending", 904: "awaiting_peer", 905: "pending" };
 const SWAPS = [
   { id: 903, from: [3, "Nadia", "2026-10-04"], peer: [1, "Veronica", "2026-10-08"] },
   { id: 904, from: [2, "Lizzie", "2026-10-06"], peer: [4, "Jing", "2026-10-09"] },
@@ -58,13 +58,17 @@ function confirmSwaps(ws) {
   const wk = weeks.get(ws);
   const find = (emp, date) => wk?.slots.find((x) => x.employee_id === emp && x.date === date);
   const rs = (x) => ({ id: x.id, date: x.date, shift_type: x.shift_type, start_time: x.start_time, end_time: x.end_time });
-  return SWAPS.flatMap((w) => {
+  // 905：Jing 的 Mon Close 改到 Wed（move，等批）
+  const jm = find(4, "2026-10-05");
+  const move = jm ? [{ id: 905, kind: "move", status: swapState[905], from: { employee_id: 4, name: "Jing" }, my_slot: rs(jm), their_slot: null, peer: null,
+    date: "2026-10-07", shift_type: null, peer_timed_out: false, created_at: "2026-10-07T18:20:00+00:00", decided_at: null }] : [];
+  return [...move, ...SWAPS.flatMap((w) => {
     const a = find(w.from[0], w.from[2]);
     const b = find(w.peer[0], w.peer[2]);
     if (!a || !b) return [];
     return [{ id: w.id, kind: "swap", status: swapState[w.id], from: { employee_id: w.from[0], name: w.from[1] }, my_slot: rs(a), their_slot: rs(b),
       peer: { employee_id: w.peer[0], name: w.peer[1] }, date: null, shift_type: null, peer_timed_out: false, created_at: "2026-10-07T18:10:00+00:00", decided_at: null }];
-  });
+  })];
 }
 const confirmReqs = [
   { id: 901, employee_id: 2, shift_type: "mid", dayIdx: 3, status: "pending" },
