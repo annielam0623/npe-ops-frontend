@@ -165,7 +165,13 @@ function day(date) {
     // seats：Settings → Vehicles 填的座位数（2026-10-16 紧急加的字段），没填是 null。1960（id 13）填了 59，专给开车窗那组检查用。
     vehicles: [{ id: 10, van_no: "768", has_tracking: true, seats: null }, { id: 11, van_no: "2056", has_tracking: false, seats: null }, { id: 12, van_no: "1328", has_tracking: true, seats: null }, { id: 13, van_no: "1960", has_tracking: true, seats: 59 },
       ...(date === PRIVATE_DAY ? [{ id: 14, van_no: "612", has_tracking: true, seats: 14 }, { id: 15, van_no: "22", has_tracking: true, seats: 24 }, { id: 16, van_no: "41", has_tracking: true, seats: 56 }] : [])],
-    locations: [{ id: 100, name: "Excalibur", active: true }, { id: 101, name: "MGM", active: true }, { id: 102, name: "Treasure Island", active: true }, { id: 103, name: "Old Motel", active: false }],
+    // ctl.hotelGroups：后端 21 给每个点带 is_tour_bus / is_shuttle（Add hotel 分 Las Vegas / Shuttle pick up 两组）；默认不带 = 后端还没上。
+    locations: ctl.hotelGroups ? [
+      { id: 100, name: "Excalibur", active: true, is_tour_bus: true, is_shuttle: false }, { id: 101, name: "MGM", active: true, is_tour_bus: true, is_shuttle: false },
+      { id: 102, name: "Treasure Island", active: true, is_tour_bus: true, is_shuttle: false }, { id: 103, name: "Old Motel", active: false, is_tour_bus: true, is_shuttle: false },
+      { id: 104, name: "St George – Main St", active: true, is_tour_bus: false, is_shuttle: true }, { id: 105, name: "aria", active: true, is_tour_bus: true, is_shuttle: false },
+      { id: 106, name: "Kanab – Visitor Center", active: true, is_tour_bus: null, is_shuttle: null }, { id: 107, name: "Page – Lake Powell Blvd", active: true, is_tour_bus: false, is_shuttle: true },
+    ] : [{ id: 100, name: "Excalibur", active: true }, { id: 101, name: "MGM", active: true }, { id: 102, name: "Treasure Island", active: true }, { id: 103, name: "Old Motel", active: false }],
     tours: [{ id: 3, display_name: "West Rim Bus Tour", is_active: true, own_section: true, time_note: null, default_location_ids: [101, 102] }, { id: 4, display_name: "Hoover Dam", is_active: true, own_section: true, time_note: null, default_location_ids: [] }, { id: 9, display_name: "Old Tour", is_active: false, own_section: false, time_note: null, default_location_ids: [] }],
     guides: [{ id: 2, name: "GIA" }, { id: 6, name: "PAM" }],
     ...(ctl.noMeta ? {} : { meta: ctl.altMeta ? {
@@ -272,7 +278,7 @@ http.createServer(async (req, res) => {
     if (p === "/api/settings/dashboard-widgets") return send(res, 200, { readable: true, widgets: [{ key: "farm_out_dispatch", label: "Dispatch · Farm out", visibility: "staff", default: "super_admin_only", visible_to_me: true }, ...(ctl.rosterVis ? [{ key: "dispatch_roster", label: "Dispatch: driver / guide roster", visibility: ctl.rosterVis, default: "super_admin_only", visible_to_me: ctl.rosterVis === "staff" }] : [])] });
     if (p === "/api/me/permissions") return send(res, 200, { is_superadmin: false, permissions: (ctl.partnerPerms || ["dispatch.view", "dispatch.edit", "dispatch.send", "manifests.view"]).map((code) => ({ code, module: code.split(".")[0], wired: true })), default_home: "/dispatch" });
   }
-  if (p === "/api/me") return send(res, 200, { id: 1, username: "annie", display_name: "Annie", initials: "AZ", role: "admin", is_admin: true, is_superadmin: false });
+  if (p === "/api/me") return send(res, 200, { id: 1, username: "annie", display_name: "Annie", initials: "AZ", role: "admin", is_admin: true, is_superadmin: !!ctl.superAdmin });
   if (p === "/api/settings/dashboard-widgets") {
     if (!ctl.foVis && !ctl.rosterVis) return send(res, 404, { detail: "Not Found" });
     return send(res, 200, { readable: true, widgets: [

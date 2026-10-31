@@ -737,7 +737,7 @@ function BroadcastPanel({
           <button
             type="button"
             onClick={() => onReveal(upTo + 1)}
-            className="cursor-pointer rounded-[7px] border border-[#d0d0d0] bg-paper px-3 py-[5px] text-[12px] text-[#1a1a1a] hover:border-[#1a1a1a] night:border-white/10 night:bg-white/[.04] night:text-white/90 night:hover:border-white/40"
+            className="cursor-pointer rounded-[7px] border border-[#6b8e74] bg-[#6b8e74] px-3 py-[5px] text-[12px] font-semibold text-white hover:bg-[#5d7d66]"
           >
             + Add template
           </button>
@@ -1025,6 +1025,6 @@ const HOW_TO_ITEMS = [
   "Click a module, then a tab (Global, Email, SMS, Guest Page …).",
   "Click in a box and type. The Preview on the right updates as you type.",
   "Keep the { } variables such as {name}; add one with the buttons after Insert:.",
-  "Click Save on the card. Saved ✓ means it is stored; unsaved changes are lost when you leave.",
+  "Click Save on the card. A green ✓ Saved next to the button means it is stored; unsaved changes are lost when you leave.",
   "Cancel only undoes changes you have not saved.",
 ];

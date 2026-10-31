@@ -135,6 +135,15 @@ async function fill(page, label, value) {
     const alReqs = (await ctl("log=1")).slice(alBefore).filter((l) => l.startsWith("GET /api/team/action-log"));
     const alRows = await page.$$eval("[data-action-log] tbody tr", (rows) => rows.length);
     check("G203 Action Log：页面最底，展开才请求 /api/team/action-log、显示 2 行", alReqs.length === 1 && alRows === 2, `${alReqs.length} req, ${alRows} rows`);
+    // 日志开着时做一个动作（恢复 @uma）：新的那条自动出现，不用收起再展开。
+    await page.evaluate(() => [...[...document.querySelectorAll("tbody tr")].find((r) => r.innerText.includes("@uma")).querySelectorAll("button")]
+      .find((b) => b.innerText.includes("Reactivate")).click());
+    await page.waitForFunction(() => document.querySelectorAll("[data-action-log] tbody tr").length === 3, { timeout: 20000 }).catch(() => {});
+    await page.waitForFunction(() => ![...document.querySelectorAll("tbody tr")].find((r) => r.innerText.includes("@uma"))?.innerText.includes("Reactivate"), { timeout: 20000 }).catch(() => {});
+    const alTop = await page.$eval("[data-action-log] tbody tr", (r) => r.innerText).catch(() => "");
+    const umaRow = await rowText(page, "@uma");
+    check("Action Log open → Reactivate → new Status row appears on top by itself",
+      (await page.$$eval("[data-action-log] tbody tr", (rows) => rows.length)) === 3 && alTop.includes("Status") && alTop.includes("Inactive → Active") && !umaRow.includes("Reactivate"), `${alTop} | ${umaRow}`);
     await page.evaluate(() => [...document.querySelectorAll("button")].find((b) => b.textContent.includes("Action Log")).click());
   }
   // 侧栏默认收起成窄条：先点开。
@@ -296,8 +305,94 @@ async function fill(page, label, value) {
   await click(page, "Create account", "dialog");
   await waitNoText(page, "How will they sign in?");
   b = await lastBody("POST /api/team/members");
-  check("create POST body", b && b.username === "zz.test.new" && b.password === "secret1" && b.display_name === "ZZ Test New" && b.initials === "" && b.email === null && b.items.length === 37 && !("account_type" in b), JSON.stringify(b && { ...b, items: b.items.length }));
+  check("create POST body", b && b.username === "zz.test.new" && b.password === "secret1" && b.display_name === "ZZ Test New" && b.initials === "" && b.email === null && b.phone === null && b.items.length === 37 && !("account_type" in b), JSON.stringify(b && { ...b, items: b.items.length }));
   await waitText(page, "ZZ Test New");
+
+  // ── staff 联络方式（Annie 2026-10-29「4项全部动手」，preview https://claude.ai/artifact/83D67jt2oNb5V1TPkteEt9）──
+  {
+    await ctl("noemail=4&hrphone=3");
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await waitText(page, "Grace Liu", 60000);
+    await page.waitForFunction(() => document.body.innerText.includes("No email — misses notifications"), { timeout: 15000 }).catch(() => {});
+    check("contact: list tags only people with duties but no email", (await rowText(page, "@mia")).includes("No email — misses notifications") && !(await rowText(page, "@grace")).includes("No email") && (await page.$$eval("[data-no-email]", (x) => x.length)) === 1);
+    await click(page, "Edit", "@grace");
+    await page.waitForSelector('[role="dialog"] [data-contact] input[type="email"]');
+    await page.waitForFunction(() => document.querySelector('[role="dialog"] [data-contact] input[type="email"]').value === "grace@example.com", { timeout: 10000 }).catch(() => {});
+    const contactVals = () => page.$$eval('[role="dialog"] [data-contact] input', (xs) => xs.map((x) => x.value));
+    check("contact: Edit shows Contact first with Email + Mobile; email no longer in the header line", JSON.stringify(await contactVals()) === JSON.stringify(["grace@example.com", ""]) && !(await page.$eval('[role="dialog"] h2 + p', (x) => x.innerText)).includes("grace@example.com") && (await dialogText(page)).indexOf("Contact") < (await dialogText(page)).indexOf("Copy access from"));
+    await fill(page, "Email", "grace@example");
+    await page.keyboard.press("Tab");
+    await fill(page, "Mobile", "555-01");
+    await page.keyboard.press("Tab");
+    await sleep(200);
+    const errs = () => page.$$eval('[role="dialog"] [data-contact-error]', (xs) => xs.map((x) => x.innerText));
+    check("contact: wrong format → red text under the box, Save greyed", JSON.stringify(await errs()) === JSON.stringify(["Email address looks wrong.", "Phone number looks wrong. Use 10 digits, or + and the country code."]) && (await page.$eval('[role="dialog"] button[type="submit"]', (b) => b.disabled)));
+    await fill(page, "Email", "kevin@example.com");
+    await fill(page, "Mobile", "(702) 555-0142");
+    await page.keyboard.press("Tab");
+    let logStart = (await ctl("log=1")).length;
+    await click(page, "Save", "dialog");
+    await page.waitForFunction(() => document.querySelector('[role="dialog"] [data-contact-error="email"]'), { timeout: 10000 }).catch(() => {});
+    let calls = (await ctl("log=1")).slice(logStart);
+    check("contact: email used by someone else → says who, dialog stays, access not saved", (await errs())[0] === "That email address is already used by Kevin Ho (@kevin)." && calls.some((l) => l.startsWith("PUT /api/team/members/2/contact")) && !calls.some((l) => l.startsWith("PUT /api/team/members/2 ")), JSON.stringify(calls));
+    await fill(page, "Email", "grace.new@example.com");
+    check("contact: typing again clears the backend error", (await errs()).length === 0);
+    // 账号已经不在了：后端回 404，detail 也是 {field, message}，照原话写在 Email 下面（不是 Request failed (404)）。
+    await ctl("contact404=1");
+    await click(page, "Save", "dialog");
+    await page.waitForFunction(() => document.querySelector('[role="dialog"] [data-contact-error="email"]'), { timeout: 10000 }).catch(() => {});
+    check("contact: 404 {field, message} → backend wording under Email, dialog stays", (await errs())[0] === "That account is not on the Team page any more. Reload the page.", JSON.stringify(await errs()));
+    await fill(page, "Email", "grace.new@example.com");
+    logStart = (await ctl("log=1")).length;
+    await click(page, "Save", "dialog");
+    await waitNoText(page, "Copy access from");
+    calls = (await ctl("log=1")).slice(logStart);
+    b = await lastBody("PUT /api/team/members/2/contact");
+    check("contact: Save stores Email + Mobile together with the ticks", JSON.stringify(b) === JSON.stringify({ email: "grace.new@example.com", phone: "(702) 555-0142" }) && calls.some((l) => l.startsWith("PUT /api/team/members/2 ")), JSON.stringify(calls));
+    await waitText(page, "grace.new@example.com");
+    check("contact: list shows the new email", (await rowText(page, "@grace")).includes("grace.new@example.com"));
+    // 没改联络方式：不调 contact 接口
+    await click(page, "Edit", "@grace");
+    await waitText(page, "Copy access from");
+    await page.waitForFunction(() => document.querySelector('[role="dialog"] [data-contact] input[type="email"]').value === "grace.new@example.com", { timeout: 10000 }).catch(() => {});
+    logStart = (await ctl("log=1")).length;
+    await click(page, "Save", "dialog");
+    await waitNoText(page, "Copy access from");
+    calls = (await ctl("log=1")).slice(logStart);
+    check("contact: unchanged contact → contact API not called", !calls.some((l) => l.includes("/contact")) && calls.some((l) => l.startsWith("PUT /api/team/members/2 ")), JSON.stringify(calls));
+    // 有 HR 档案：电话照 HR、改不了、有链接；存的时候不带 phone
+    await click(page, "Edit", "@kevin");
+    await page.waitForSelector('[role="dialog"] [data-hr-link]');
+    check("contact: HR-linked person → Mobile from Human Resource, read only, link to HR", (await page.$eval('[role="dialog"] input[type="tel"]', (x) => x.readOnly && x.value === "(702) 555-0199")) && (await page.$eval('[role="dialog"] [data-hr-link]', (a) => a.getAttribute("href"))) === "/settings/hr" && (await dialogText(page)).includes("From Human Resource."));
+    await fill(page, "Email", "kevin.ho@example.com");
+    await click(page, "Save", "dialog");
+    await waitNoText(page, "Copy access from");
+    b = await lastBody("PUT /api/team/members/3/contact");
+    check("contact: HR-linked person's Save sends email only (no phone)", JSON.stringify(b) === JSON.stringify({ email: "kevin.ho@example.com" }), JSON.stringify(b));
+    // 补上 email：黄签消失
+    await click(page, "Edit", "@mia");
+    await waitText(page, "Copy access from");
+    await fill(page, "Email", "mia@example.com");
+    await click(page, "Save", "dialog");
+    await waitNoText(page, "Copy access from");
+    await page.waitForFunction(() => !document.querySelector("[data-no-email]"), { timeout: 15000 }).catch(() => {});
+    check("contact: after adding the email the yellow tag is gone", (await page.$$eval("[data-no-email]", (x) => x.length)) === 0);
+    // Add person：两种方式都有 Contact，发邀请时带 email / phone
+    await click(page, "+ Add person");
+    await waitText(page, "How will they sign in?");
+    check("contact: Add person (invite) has Contact (Optional) and no separate Email box", (await page.$$('[role="dialog"] [data-contact]')).length === 1 && (await dialogText(page)).includes("Optional") && !(await dialogText(page)).includes("Email (optional)"));
+    await fill(page, "Email", "zz.invite@example.com");
+    await fill(page, "Mobile", "+44 20 7946 0958");
+    await click(page, "Create invite link", "dialog");
+    await page.waitForSelector('[role="dialog"] input[readonly]');
+    b = await lastBody("POST /api/team/invites");
+    check("contact: invite body carries email + phone", b && b.email === "zz.invite@example.com" && b.phone === "+44 20 7946 0958", JSON.stringify(b && { email: b.email, phone: b.phone }));
+    await click(page, "Done", "dialog");
+    await waitNoText(page, "Share this link");
+    await page.evaluate(() => {
+      // 弹窗关了，没别的要做
+    });
+  }
 
   // ── 后端没带 default_items / home_path（G184 前的形状）：不崩、不预勾、首页列空 ──
   await ctl("reset=1&nodefault=1&nohome=1");
@@ -697,6 +792,109 @@ async function fill(page, label, value) {
   check("admin Invite Staff: basic dialog + default note", (await dialogText(page)).includes("New staff get the default staff permissions"));
   const teamCalls2 = (await ctl("log=1")).slice(logStart).filter((l) => l.includes("/api/team/")).length;
   check("admin Invite Staff never calls Team API", teamCalls2 === 0, `got ${teamCalls2}`);
+
+  // ── Columns（10-28 合并 preview v3「动手」那批；后端 92 的 team_list_layout，同 HR 的 hr_list_layout）──
+  {
+    const heads = () => page.$$eval("th[data-team-col]", (ths) => ths.map((t) => t.dataset.teamCol));
+    const savedLayout = async () => {
+      const v = (await ctl("teamlayout=get")).value;
+      return v ? JSON.parse(v) : null;
+    };
+    const dragHead = (from, to) =>
+      page.evaluate(
+        async (from, to) => {
+          const src = document.querySelector(`th[data-team-col="${from}"]`);
+          const dst = document.querySelector(`th[data-team-col="${to}"]`);
+          const dt = new DataTransfer();
+          const r = dst.getBoundingClientRect();
+          src.dispatchEvent(new DragEvent("dragstart", { bubbles: true, dataTransfer: dt }));
+          await new Promise((res) => setTimeout(res, 50));
+          dst.dispatchEvent(new DragEvent("dragover", { bubbles: true, cancelable: true, dataTransfer: dt, clientX: r.left + 2 }));
+          await new Promise((res) => setTimeout(res, 50));
+          dst.dispatchEvent(new DragEvent("drop", { bubbles: true, cancelable: true, dataTransfer: dt, clientX: r.left + 2 }));
+          src.dispatchEvent(new DragEvent("dragend", { bubbles: true, dataTransfer: dt }));
+        },
+        from,
+        to,
+      );
+    const DEFAULT = ["person", "role", "status", "teams", "access", "duties", "home"];
+    await ctl("reset=1");
+    await page.goto(PAGE, { waitUntil: "domcontentloaded" });
+    await page.evaluate(() => localStorage.removeItem("npe.team_list_layout"));
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await waitText(page, "Grace Liu", 60000);
+    await page.waitForSelector("th[data-team-col]");
+    check("Columns: default order Person / Role / Status / Teams / Access / Notification duties / Home page", JSON.stringify(await heads()) === JSON.stringify(DEFAULT), JSON.stringify(await heads()));
+    check(
+      "Columns: note says saved to your account; Reset columns is a plain button (not blue)",
+      await page.evaluate(() => {
+        const n = document.querySelector("[data-team-columns-note]");
+        const b = document.querySelector("[data-team-columns-reset]");
+        return !!n && n.textContent.includes("saved to your account.") && !!b && getComputedStyle(b).backgroundColor !== "rgb(59, 130, 246)";
+      }),
+    );
+    // 拖表头：Status 拖到 Person 前面
+    await dragHead("status", "person");
+    await waitFor(page, async () => (await savedLayout())?.order?.[0] === "status");
+    const afterDrag = await savedLayout();
+    check("drag Status onto Person: saved order starts with status (PUT team_list_layout {value: JSON string})", afterDrag?.order?.join(",") === "status,person,role,teams,access,duties,home", JSON.stringify(afterDrag));
+    check("drag: headers and cells move together (first cell of Grace's row is her Status)", JSON.stringify((await heads()).slice(0, 2)) === '["status","person"]' && (await page.evaluate(() => [...document.querySelectorAll("tr")].find((r) => r.innerText.includes("Grace Liu")).cells[0].innerText.includes("Active"))));
+    // 改宽：拖 Teams 右边 +80px
+    const before = await page.$eval('th[data-team-col="teams"]', (t) => t.getBoundingClientRect().width);
+    await page.evaluate(async () => {
+      const h = document.querySelector('[data-resizer="teams"]');
+      const r = h.getBoundingClientRect();
+      h.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, clientX: r.left, clientY: r.top }));
+      document.dispatchEvent(new MouseEvent("mousemove", { bubbles: true, clientX: r.left + 80, clientY: r.top }));
+      await new Promise((res) => setTimeout(res, 50));
+      document.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, clientX: r.left + 80, clientY: r.top }));
+    });
+    await waitFor(page, async () => (await savedLayout())?.widths?.teams > 0);
+    const afterResize = await savedLayout();
+    check("drag the Teams edge: width saved (about 80px wider)", Math.abs((afterResize?.widths?.teams ?? 0) - (before + 80)) <= 12 && afterResize.order[0] === "status", `${before} → ${JSON.stringify(afterResize)}`);
+    // 重开还在（清掉本机缓存，确定是从账号读回来的）
+    await page.evaluate(() => localStorage.removeItem("npe.team_list_layout"));
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await waitText(page, "Grace Liu", 60000);
+    await waitFor(page, async () => (await heads())[0] === "status");
+    check(
+      "reopen: order and width come back from the account",
+      (await heads())[0] === "status" && (await page.$eval('col[data-col="teams"]', (c) => parseInt(c.style.width, 10))) === afterResize.widths.teams,
+      JSON.stringify(await heads()),
+    );
+    // Reset columns
+    await page.click("[data-team-columns-reset]");
+    await waitFor(page, async () => (await savedLayout())?.order?.[0] === "person");
+    check("Reset columns: default order, no widths, saved", JSON.stringify(await heads()) === JSON.stringify(DEFAULT) && JSON.stringify((await savedLayout())?.widths) === "{}");
+    // admin（不是 Super Admin）：没有那三列，存的顺序照用
+    await dragHead("teams", "person");
+    await waitFor(page, async () => (await savedLayout())?.order?.[0] === "teams");
+    await ctl("viewer=admin");
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await waitText(page, "Grace Liu", 60000);
+    await waitFor(page, async () => (await heads())[0] === "teams");
+    check("admin: no Access / duties / Home page columns, saved order still used", JSON.stringify(await heads()) === '["teams","person","role","status"]', JSON.stringify(await heads()));
+    // 后端还没认这个键（404）：存在本机，写 saved in this browser.
+    await ctl("reset=1&teamlayout404=1");
+    await page.evaluate(() => localStorage.removeItem("npe.team_list_layout"));
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await waitText(page, "Grace Liu", 60000);
+    await waitFor(page, async () => (await page.$eval("[data-team-columns-note]", (n) => n.textContent)).includes("saved in this browser."));
+    await dragHead("role", "person");
+    await sleep(400);
+    check(
+      "backend without team_list_layout (404): note says saved in this browser, order kept in this browser",
+      (await page.$eval("[data-team-columns-note]", (n) => n.textContent)).includes("saved in this browser.") &&
+        (await page.evaluate(() => JSON.parse(localStorage.getItem("npe.team_list_layout") || "{}").order?.[0])) === "role",
+    );
+    // partner：Team 页打不开，也就没有 Columns
+    await ctl("reset=1&viewer=partner");
+    await page.goto(PAGE, { waitUntil: "domcontentloaded" });
+    await sleep(2500);
+    check("partner: no Columns (no Reset columns, no draggable titles)", !(await page.$("[data-team-columns-reset]")) && !(await page.$('th[data-team-col][draggable="true"]')));
+    await ctl("reset=1");
+    await page.evaluate(() => localStorage.removeItem("npe.team_list_layout"));
+  }
 
   check("no page errors", consoleErrors.length === 0, consoleErrors.join(" | "));
   await browser.close();

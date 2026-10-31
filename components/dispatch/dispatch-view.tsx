@@ -95,6 +95,7 @@ import {
   HOWTO_SUMMARY,
   MUTED,
   TM_BTN,
+  ADDVAN_ADD,
 } from "./legacy-styles";
 import { BusIcon } from "./icons";
 import { Rail, useCheckOpen } from "./rail";
@@ -1576,6 +1577,31 @@ export function DispatchView() {
             >
               Today
             </button>
+            {/* 置顶 21（Annie 2026-10-30「让前端加入口」）：只给 Super Admin。后端 /driver/preview 只读、只认 Super Admin；
+                ops 自己没有 /driver，经 next.config 的 fallback 原样转给后端（同 Bus Manifest 打印，用的是 ops 这一个登录）。
+                导游页同理：后端 /guide/preview（be1f4447）不带 hr_id 是选人页，写法和司机那个一样。 */}
+            {isSuperAdmin && day ? (
+              <>
+                <a
+                  href={`/driver/preview?date=${day.run_date}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  data-driver-preview
+                  className="ml-1 text-[13px] font-semibold text-[#cbd5e1] underline-offset-2 hover:text-white hover:underline"
+                >
+                  Driver page preview ↗
+                </a>
+                <a
+                  href={`/guide/preview?date=${day.run_date}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  data-guide-preview
+                  className="ml-1 text-[13px] font-semibold text-[#cbd5e1] underline-offset-2 hover:text-white hover:underline"
+                >
+                  Guide page preview ↗
+                </a>
+              </>
+            ) : null}
           </div>
         </header>
 
@@ -2458,7 +2484,7 @@ export function DispatchView() {
                                       onClick={() =>
                                         addVehicle(s.shift, s.manifest_id)
                                       }
-                                      className={cn(ADDVAN, "mt-3.5")}
+                                      className={cn(ADDVAN_ADD, "mt-3.5")}
                                     >
                                       + Add vehicle
                                     </button>

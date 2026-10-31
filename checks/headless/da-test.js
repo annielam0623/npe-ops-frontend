@@ -229,6 +229,7 @@ async function run() {
   check("手填弹框取消：下拉回原值", (await evaluate(`return ${vrow(0)}.querySelector('[data-f=driver]').value;`)) === "__typed");
 
   // 加车 / 默认站点 / 酒店锁
+  check("+ Add vehicle 先加在页面上（按 Save 才存）⇒ 灰绿添加键（Annie 2026-10-30）", await evaluate(`return getComputedStyle($btn('+ Add vehicle', ${sec("West Rim Bus Tour")})).backgroundColor === 'rgb(107, 142, 116)';`));
   await evaluate(`$btn('+ Add vehicle', ${sec("West Rim Bus Tour")}).click();`);
   await sleep(150);
   check("团块 + Add vehicle：带团、带默认站点、站点编号、Usual stops filled in", await evaluate(`const r = ${vrow(3)}; return r && r.textContent.includes('Usual stops filled in') && [...r.querySelectorAll('[data-drop]')].map(b => b.textContent.replace('✕','').trim()).join('|') === '1MGM|2Treasure Island';`));
@@ -1952,6 +1953,56 @@ async function run() {
     await sleep(500);
   }
   await ctl({ staffPerms: null, superAdmin: false });
+
+  // ── Add hotel 分组（Annie 2026-10-30 动手，preview https://claude.ai/artifact/Bud9mmZivp9ddK5cAd5QLV ）：
+  //    Tour bus 勾 = Las Vegas 在上 A–Z；灰字「Shuttle pick up」不能选；其余（含 null）在下 A–Z；后端没带字段时照旧 ──
+  {
+    const sel = "document.querySelector('.vrow [data-f=addstop]')";
+    const LV = ["aria", "Excalibur", "MGM", "Treasure Island"];
+    const SH = ["Kanab – Visitor Center", "Page – Lake Powell Blvd", "St George – Main St"];
+    await goto(`${APP}/dispatch?date=2026-10-18`);
+    await waitFor(sel, 60000);
+    check("Add hotel 没带 is_tour_bus（后端还没上）：照旧不分组、没有 Shuttle pick up", await evaluate(`return !${opts(sel)}.includes('Shuttle pick up');`), await evaluate(`return ${opts(sel)};`));
+    await ctl({ hotelGroups: true });
+    await goto(`${APP}/dispatch?date=2026-10-18`);
+    await waitFor(sel, 60000);
+    const got = await evaluate(`return [...${sel}.options].map(o => ({ t: o.text.replace(/ - .*$| \\(also .*\\)$/, ''), x: o.disabled, v: o.value, i: getComputedStyle(o).fontStyle }));`);
+    const div = got.findIndex((o) => o.t === "Shuttle pick up");
+    const top = got.slice(1, div).map((o) => o.t);
+    const bottom = got.slice(div + 1).map((o) => o.t);
+    const az = (xs) => xs.every((x, i) => i === 0 || xs[i - 1].localeCompare(x, "en", { sensitivity: "base" }) <= 0);
+    check("Add hotel 分组：Tour bus 的在上面（A–Z、不分大小写）、Shuttle 和没勾的（null）在下面（A–Z）、停用的不列",
+      div > 0 && top.every((t) => LV.includes(t)) && bottom.length > 0 && bottom.every((t) => SH.includes(t)) && az(top) && az(bottom) && !got.some((o) => o.t === "Old Motel") && bottom.includes("Kanab – Visitor Center"),
+      JSON.stringify(got.map((o) => o.t)));
+    check("分隔行 Shuttle pick up：不能选、没有值、斜体", div > 0 && got[div].x === true && got[div].v === "" && got[div].i === "italic", JSON.stringify(got[div]));
+    await ctl({ hotelGroups: false });
+    await goto("about:blank");
+    await sleep(300);
+  }
+
+  // ── 置顶 21：司机页预览入口（Annie 2026-10-30「让前端加入口」）：只给 Super Admin，带当前日期，新标签页 ──
+  {
+    const link = "document.querySelector('[data-driver-preview]')";
+    const glink = "document.querySelector('[data-guide-preview]')";
+    await goto(`${APP}/dispatch?date=2026-10-18`);
+    await waitFor("document.querySelector('.vrow')", 60000);
+    await sleep(1500);
+    check("不是 Super Admin（admin）：没有 Driver page preview", !(await evaluate(`return !!${link};`)));
+    check("不是 Super Admin（admin）：没有 Guide page preview", !(await evaluate(`return !!${glink};`)));
+    await ctl({ superAdmin: true });
+    await goto(`${APP}/dispatch?date=2026-10-18`);
+    await waitFor(link, 20000);
+    check("Super Admin：标题行右边有 Driver page preview ↗，链接带当前日期、同源 /driver/preview、新标签页、不是按钮", await evaluate(`const a = ${link}; return a.tagName === 'A' && a.textContent === 'Driver page preview ↗' && a.getAttribute('href') === '/driver/preview?date=2026-10-18' && a.target === '_blank' && a.rel.includes('noopener') && !!a.closest('header');`), await evaluate(`return ${link}?.outerHTML;`));
+    check("Super Admin：Driver 旁边有 Guide page preview ↗，同样写法、同源 /guide/preview 带当前日期、新标签页", await evaluate(`const a = ${glink}, d = ${link}; return a.tagName === 'A' && a.textContent === 'Guide page preview ↗' && a.getAttribute('href') === '/guide/preview?date=2026-10-18' && a.target === '_blank' && a.rel.includes('noopener') && a.className === d.className && d.nextElementSibling === a;`), await evaluate(`return ${glink}?.outerHTML;`));
+    await waitFor("!document.querySelector('button[aria-label=\"Next day\"]').disabled");
+    await evaluate("document.querySelector('button[aria-label=\"Next day\"]').click();");
+    await waitFor("location.search === '?date=2026-10-19'");
+    check("换天：链接跟着换成 2026-10-19", await waitFor(`${link}?.getAttribute('href') === '/driver/preview?date=2026-10-19'`, 10000));
+    check("换天：Guide 链接也跟着换成 2026-10-19", await waitFor(`${glink}?.getAttribute('href') === '/guide/preview?date=2026-10-19'`, 10000));
+    await ctl({ superAdmin: false });
+    await goto("about:blank");
+    await sleep(300);
+  }
 
   // 401
   await ctl({ fail401: true });

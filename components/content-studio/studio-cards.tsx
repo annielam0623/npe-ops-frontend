@@ -65,7 +65,7 @@ const WARN_BAR =
   "border-t border-[#fecaca] night:border-red-500/30 bg-[#fef2f2] night:bg-red-500/10 px-3.5 py-[5px] text-[11px] text-[#dc2626] night:text-red-300";
 /** .dyn-add-btn */
 const ADD_BTN =
-  "cursor-pointer rounded-[6px] border border-dashed border-[#aaa] bg-paper night:bg-white/[.04] px-3 py-1 text-[11px] text-[#1a1a1a] night:text-white/90 hover:border-[#1a1a1a] night:hover:border-white/40";
+  "cursor-pointer rounded-[6px] border border-[#6b8e74] bg-[#6b8e74] text-white hover:bg-[#5d7d66] px-3 py-1 text-[11px] font-semibold";
 /** .dyn-step-group */
 const STEP_GROUP =
   "mb-2 rounded-[8px] border border-[#e5e7eb] night:border-white/10 bg-paper night:bg-white/[.03] px-3 py-2.5 hover:border-[#ccc] night:hover:border-white/10";
@@ -99,10 +99,24 @@ function editedLine(s: TemplateSetting | undefined): ReactNode {
   );
 }
 
-/** 卡片底部：Cancel（有改动才能点，先确认）+ Save（Saving… → Saved ✓ / Error）。 */
+/** 蓝色提交键，同 Products 的 SAVE_BUTTON（Annie 2026-10-30「Content Studio 同意全部推荐。动手」）：没改动时灰的、点不了。 */
+const CARD_SAVE_BUTTON =
+  "cursor-pointer rounded-[6px] border border-[#3b82f6] bg-[#3b82f6] px-3.5 py-1 text-[11px] font-semibold text-white transition-all hover:bg-[#2f76e8] disabled:cursor-not-allowed disabled:border-[#d3d1c7] disabled:bg-[#e9e9e6] disabled:text-[#6b7280] night:disabled:border-white/10 night:disabled:bg-white/[.06] night:disabled:text-white/40";
+
+const SAVED_TIME = new Intl.DateTimeFormat("en-US", {
+  hour: "numeric",
+  minute: "2-digit",
+  timeZone: "America/Los_Angeles",
+});
+
+/**
+ * 卡片底部：Cancel（有改动才能点，先确认）+ 蓝色 Save（没改动灰的）。
+ * 结果写在键旁边：Saving… 灰字、存好绿字「✓ Saved · 9:12 PM」一直留到再改；存不上下面红字写后端原话。
+ */
 function CardFooter({
   dirty,
   state,
+  savedAt,
   onSave,
   onCancel,
   meta,
@@ -110,6 +124,7 @@ function CardFooter({
 }: {
   dirty: boolean;
   state: SaveState;
+  savedAt?: string | null;
   onSave: () => void;
   onCancel: () => void;
   meta?: ReactNode;
@@ -123,38 +138,37 @@ function CardFooter({
         <span className="text-[10px] text-[#1a1a1a] night:text-white/35">
           {meta}
         </span>
-        <span>
+        <span className="inline-flex flex-wrap items-center gap-1.5">
+          {state === "saving" ? (
+            <span className="text-[11px] text-[#6b7280] night:text-white/50">
+              Saving…
+            </span>
+          ) : state === "saved" && !dirty && savedAt ? (
+            <span
+              role="status"
+              data-save-ok
+              className="text-[11px] font-semibold whitespace-nowrap text-[#1e6b43] night:text-emerald-300"
+            >
+              ✓ Saved · {savedAt}
+            </span>
+          ) : null}
           <button
             type="button"
             disabled={!dirty || state === "saving"}
             title="Discard the unsaved changes on this card and restore the last saved version"
             onClick={() => setConfirming(true)}
-            className="mr-1.5 cursor-pointer rounded-[6px] border border-[#d3d1c7] bg-paper px-3 py-1 text-[11px] font-medium text-[#1a1a1a] transition-all hover:enabled:border-[#a8a49b] hover:enabled:bg-[#f1f0eb] hover:enabled:text-[#1a1a1a] disabled:cursor-default disabled:opacity-30 night:bg-white/[.04] night:text-white/65 night:hover:enabled:bg-white/[.03] night:hover:enabled:text-white/90"
+            className="cursor-pointer rounded-[6px] border border-[#d3d1c7] bg-paper px-3 py-1 text-[11px] font-medium text-[#1a1a1a] transition-all hover:enabled:border-[#a8a49b] hover:enabled:bg-[#f1f0eb] hover:enabled:text-[#1a1a1a] disabled:cursor-default disabled:opacity-30 night:bg-white/[.04] night:text-white/65 night:hover:enabled:bg-white/[.03] night:hover:enabled:text-white/90"
           >
             Cancel
           </button>
           <button
             type="button"
-            disabled={state === "saving"}
+            data-save-btn
+            disabled={!dirty || state === "saving"}
             onClick={onSave}
-            className={cn(
-              "cursor-pointer rounded-[6px] border px-3.5 py-1 text-[11px] font-medium transition-all",
-              state === "saved"
-                ? "border-[#3B6D11] bg-[#EAF3DE] text-[#3B6D11] night:bg-emerald-400/10 night:text-emerald-300"
-                : state === "error"
-                  ? "border-[#dc2626] bg-[#fef2f2] text-[#dc2626] night:border-red-500/30 night:bg-red-500/10 night:text-red-300"
-                  : state === "saving"
-                    ? "cursor-not-allowed border-[#1a1a1a] bg-paper text-[#1a1a1a] opacity-50 night:border-white/40 night:bg-white/[.04] night:text-white/90"
-                    : "border-[#1a1a1a] bg-paper text-[#1a1a1a] hover:bg-[#1a1a1a] hover:text-white night:border-white/40 night:bg-white/[.04] night:text-white/90",
-            )}
+            className={CARD_SAVE_BUTTON}
           >
-            {state === "saving"
-              ? "Saving…"
-              : state === "saved"
-                ? "Saved ✓"
-                : state === "error"
-                  ? "Error"
-                  : "Save"}
+            Save
           </button>
         </span>
       </div>
@@ -188,11 +202,11 @@ function CardFooter({
   );
 }
 
-/** 保存的通用流程：先校验，再存，按钮状态 2 秒后复原。 */
+/** 保存的通用流程：先校验，再存；存好记下时间（绿字一直留到再改）。 */
 function useCardSave(studio: Studio) {
   const [state, setState] = useState<SaveState>("idle");
+  const [savedAt, setSavedAt] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   async function run(keys: string[], validate?: () => string | null) {
     const problem = validate?.() ?? null;
     if (problem) {
@@ -211,14 +225,10 @@ function useCardSave(studio: Studio) {
       );
     } else {
       setState("saved");
+      setSavedAt(SAVED_TIME.format(new Date()));
     }
-    if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(
-      () => setState("idle"),
-      result.failed.length ? 2500 : 2000,
-    );
   }
-  return { state, error, run };
+  return { state, savedAt, error, run };
 }
 
 /** 文本框旁边的「Insert:」按钮：在光标处插入变量。 */
@@ -269,7 +279,7 @@ export function TextFieldCard({
 }) {
   const value = studio.draft(field.key);
   const dirty = value !== studio.savedValue(field.key);
-  const { state, error, run } = useCardSave(studio);
+  const { state, savedAt, error, run } = useCardSave(studio);
   const ref = useRef<HTMLTextAreaElement>(null);
   const smsText = field.sms
     ? fillSample(value.trim(), { ...SAMPLE, ...field.smsSample })
@@ -377,6 +387,7 @@ export function TextFieldCard({
       <CardFooter
         dirty={dirty}
         state={state}
+        savedAt={savedAt}
         meta={editedLine(studio.saved[field.key])}
         extraError={error}
         onCancel={() =>
@@ -413,7 +424,7 @@ export function InputsCard({
   studio: Studio;
   global?: boolean;
 }) {
-  const { state, error, run } = useCardSave(studio);
+  const { state, savedAt, error, run } = useCardSave(studio);
   const keys = rows.map((r) => r.key);
   const dirty = keys.some((k) => studio.draft(k) !== studio.savedValue(k));
   const last = rows
@@ -444,6 +455,7 @@ export function InputsCard({
       <CardFooter
         dirty={dirty}
         state={state}
+        savedAt={savedAt}
         meta={editedLine(last)}
         extraError={error}
         onCancel={() =>
@@ -591,7 +603,7 @@ export function LinesCard({
   const value = studio.draft(field.key);
   const [lines, setLines] = useState<string[]>(() => toLines(value));
   const [drag, setDrag] = useState<number | null>(null);
-  const { state, error, run } = useCardSave(studio);
+  const { state, savedAt, error, run } = useCardSave(studio);
   // 外面的值变了（撤销 / 保存后），本地行跟着变；本地编辑中的空行不因此丢失。
   const lastJoined = useRef(join(lines));
   if (value !== lastJoined.current && value !== join(lines)) {
@@ -674,6 +686,7 @@ export function LinesCard({
       <CardFooter
         dirty={dirty}
         state={state}
+        savedAt={savedAt}
         meta={editedLine(studio.saved[field.key])}
         extraError={error}
         onCancel={() =>
@@ -706,7 +719,7 @@ export function PrepStepsCard({
     ...Array.from({ length: PREP_STEPS }, (_, i) => (hasAny(i) ? i + 1 : 0)),
   );
   const [shown, setShown] = useState(initialShown);
-  const { state, error, run } = useCardSave(studio);
+  const { state, savedAt, error, run } = useCardSave(studio);
   const all = keys.flat();
   const dirty = all.some((k) => studio.draft(k) !== studio.savedValue(k));
 
@@ -791,6 +804,7 @@ export function PrepStepsCard({
       <CardFooter
         dirty={dirty}
         state={state}
+        savedAt={savedAt}
         extraError={error}
         onCancel={() =>
           all.forEach((k) => studio.setDraft(k, studio.savedValue(k)))
@@ -816,7 +830,7 @@ function puOrder(raw: string): string[] {
 export function PickupOrderCard({ studio }: { studio: Studio }) {
   const order = puOrder(studio.draft(PU_ORDER_KEY));
   const [drag, setDrag] = useState<number | null>(null);
-  const { state, error, run } = useCardSave(studio);
+  const { state, savedAt, error, run } = useCardSave(studio);
   const dirty =
     order.join(",") !== puOrder(studio.savedValue(PU_ORDER_KEY)).join(",");
   const set = (next: string[]) => studio.setDraft(PU_ORDER_KEY, next.join(","));
@@ -889,6 +903,7 @@ export function PickupOrderCard({ studio }: { studio: Studio }) {
       <CardFooter
         dirty={dirty}
         state={state}
+        savedAt={savedAt}
         meta={editedLine(studio.saved[PU_ORDER_KEY])}
         extraError={error}
         onCancel={() =>
@@ -920,7 +935,7 @@ export function BroadcastSlotCard({
   const builtin = index <= BC_BUILTIN;
   const dirty =
     title !== studio.savedValue(tKey) || body !== studio.savedValue(bKey);
-  const { state, error, run } = useCardSave(studio);
+  const { state, savedAt, error, run } = useCardSave(studio);
   const [deleting, setDeleting] = useState(false);
   const ref = useRef<HTMLTextAreaElement>(null);
   const smsText = fillSample(body.trim());
@@ -1000,6 +1015,7 @@ export function BroadcastSlotCard({
       <CardFooter
         dirty={dirty}
         state={state}
+        savedAt={savedAt}
         extraError={error}
         onCancel={() => {
           studio.setDraft(tKey, studio.savedValue(tKey));

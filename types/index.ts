@@ -161,6 +161,7 @@ export type {
   PermItem,
   PermModule,
   TeamCatalog,
+  TeamContactInput,
   TeamInviteResult,
   TeamMember,
   TeamMemberContact,

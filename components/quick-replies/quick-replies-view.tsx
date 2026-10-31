@@ -44,7 +44,7 @@ type Note = { tone: "ok" | "error"; text: string } | null;
 
 /** 提交键（Save / Add）：蓝色只给提交（Annie 2026-10-11）。 */
 const SUBMIT_CLASS =
-  "inline-flex cursor-pointer items-center justify-center rounded-[7px] border-none bg-[#185FA5] font-semibold whitespace-nowrap text-white hover:bg-[#124d8a] disabled:cursor-not-allowed disabled:bg-[#aaa]";
+  "inline-flex cursor-pointer items-center justify-center rounded-[7px] border-none bg-[#3b82f6] font-semibold whitespace-nowrap text-white hover:bg-[#2f76e8] disabled:cursor-not-allowed disabled:bg-[#aaa]";
 
 const charCount = (text: string) => [...text.trim()].length;
 

@@ -117,7 +117,7 @@ export function ResetLinkDialog({
               autoFocus
               onClick={handleCreate}
               disabled={creating}
-              className={LEGACY_SAVE_BUTTON_CLASS}
+              className="cursor-pointer rounded-[8px] border-0 bg-[#3b82f6] px-5 py-2.5 text-[14px] font-semibold text-white hover:bg-[#2f76e8] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {creating ? "Creating…" : "Create link"}
             </button>
@@ -167,7 +167,7 @@ function ResetLinkField({ url }: { url: string }) {
         <button
           type="button"
           onClick={handleCopy}
-          className={`${LEGACY_SAVE_BUTTON_CLASS} whitespace-nowrap !px-4 !py-2.5 !text-[13px]`}
+          className={`${LEGACY_SAVE_BUTTON_CLASS} !px-4 !py-2.5 !text-[13px] whitespace-nowrap`}
         >
           {copyState === "copied" ? "✓ Copied" : "Copy link"}
         </button>
