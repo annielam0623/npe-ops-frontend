@@ -101,6 +101,7 @@
 ### 36. Today's team 也显示登录了的其他员工，点名字能发消息（新功能，先 preview）
 - Annie 10-30 晚原话：「然后today's team的显示，除了res，登录了网站的其他员工也在这里显示，然后可以点击他们发消息」
 - Annie 补充原话「站内消息，同时可以发邮件通知这条消息的内容」⇒ 站内消息 + 邮件（全文）给对方。
+- 91 preview：https://claude.ai/artifact/MyYTZjQzmJLaWckQjPxVGd 。题 (a) 10 分钟没动算离线（推荐）/ 登录没过期就算 / 改 5 或 30 分钟；(b) 对方在 Notice 出 Message 卡带 Reply / Got it（推荐）/ Messages 新窗口 / 新收件箱；(c) 没 Email 照发站内、黄字提醒（推荐）/ 不让发；(d) 能回复、站内 + 邮件（推荐）/ 不能回 / 回邮件也算；(e) 只列员工（推荐）/ 所有能登录的；(f) 加开关默认只 SA（推荐）/ 不加。需要后端 7 条（last_seen_at 迁移、GET /api/team/online、staff_messages 表 + POST 发消息 + Notice + 邮件、回复、读、开关、日志），等 Annie 答完再转 57。
 - 要查：现在 Today's team 列谁（res = 当天排班上的人？）；后端有没有「谁在线 / 最近活动」；站内发消息用什么（后端有 Messages Team Board？）。91 做完 2/3 + 1/3 布局后先查、出 preview，缺的写需要后端。
 
 ### 8. 可以上线后对着看的（不用答，验收时看）
