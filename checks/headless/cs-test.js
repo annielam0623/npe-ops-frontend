@@ -190,6 +190,9 @@ async function run() {
   const smsCard = "SMS body — tours WITH lunch";
   check("短信：变量提醒、字数按示例展开、Last edited by", await evaluate(`return $card('${smsCard}').textContent.includes('Do not remove or modify') && /≈ \\d+ \\/ 300 chars \\(with the variables filled in\\)/.test($card('${smsCard}').textContent) && $card('${smsCard}').textContent.includes('Last edited by annie');`));
   check("没改过的显示 Original", await evaluate("return $card('SMS body — tours WITHOUT lunch').textContent.includes('Original');"));
+  // 蓝色 Save（Annie 2026-10-30「Content Studio 同意全部推荐。动手」）：没改动灰的、点不了；改了变蓝
+  const saveBtn = (card) => `$card(${JSON.stringify(card)}).querySelector('[data-save-btn]')`;
+  check("没改动：Save 灰的、点不了", await evaluate(`const b = ${saveBtn(smsCard)}; return !!b && b.disabled && b.textContent === 'Save' && b.className.includes('bg-[#3b82f6]') && b.className.includes('disabled:bg-[#e9e9e6]');`));
   const ta = `$card('${smsCard}').querySelector('textarea')`;
   await evaluate(`${ta}.dispatchEvent(new FocusEvent('focusin', { bubbles: true })); $setValue(${ta}, 'Hi {name}\\nline2 {label} {date}');`);
   await sleep(100);
@@ -200,12 +203,15 @@ async function run() {
   await evaluate(`$btn('+ url', $card('${smsCard}')).click();`);
   await sleep(100);
   check("Insert 按钮插入变量", (await evaluate(`return ${ta}.value;`)).includes("{url}"));
+  check("有改动：Save 蓝的、能点", await evaluate(`return !${saveBtn(smsCard)}.disabled;`));
+  check("Insert、Cancel 不是蓝的", await evaluate(`return ![...$card('${smsCard}').querySelectorAll('button')].some(b => b.textContent !== 'Save' && b.className.includes('3b82f6'));`));
   let before = (await mockLog()).length;
   await evaluate(`$btn('Save', $card('${smsCard}')).click();`);
   let saves = await waitSaves(before, 1);
   check("保存：POST key + value", saves.length === 1 && saves[0].body.key === "tmpl__global__tc_sms_with_lunch" && saves[0].body.value.includes("{url}"), JSON.stringify(saves));
-  await waitFor(`$card('${smsCard}').textContent.includes('Saved ✓')`);
-  check("Saved ✓、改为本人编辑", await evaluate(`return $card('${smsCard}').textContent.includes('Last edited by zztest');`));
+  check("存好：键旁边绿字「✓ Saved · 时间」", await waitFor(`(() => { const o = $card('${smsCard}').querySelector('[data-save-ok]'); return !!o && /^✓ Saved · \\d{1,2}:\\d\\d [AP]M$/.test(o.textContent) && o.className.includes('1e6b43'); })()`));
+  check("存好后没改动：Save 回到灰的", await evaluate(`return ${saveBtn(smsCard)}.disabled && ${saveBtn(smsCard)}.textContent === 'Save';`));
+  check("改为本人编辑", await evaluate(`return $card('${smsCard}').textContent.includes('Last edited by zztest');`));
   // 短信模板最多 300 个字符（示例展开后）、只能普通字符（Annie 2026-10-15）。{url} 的示例 49 字。
   const smsCounter = (card) => evaluate(`const p = [...$card(${JSON.stringify(card)}).querySelectorAll('p')].find(p => p.textContent.startsWith('≈ ')); return p ? { text: p.textContent.trim(), red: p.className.includes('c0392b') } : null;`);
   const cardErr = (card) => evaluate(`const t = $card(${JSON.stringify(card)}).textContent; return t.includes('before saving') ? t : '';`);
@@ -546,6 +552,7 @@ async function run() {
 
   // 加一条新路线：选第二个 shuttle group（Page），方向 Outbound
   before = (await mockLog()).length;
+  check("Add route 是蓝色提交键", await evaluate("return $btn('Add').className.includes('bg-[#3b82f6]');"));
   await evaluate(
     "window.$setSelect(document.querySelector('select[aria-label=\"Shuttle group\"]'), 'Page Shuttle'); window.$setValue(document.querySelector('input[aria-label=\"Route label\"]'), 'Page Shuttle — Outbound'); $btn('Add').click();",
   );
@@ -732,6 +739,7 @@ async function run() {
   await evaluate(`$setValue(${newForm}.querySelectorAll('input')[0], 'ZZ Test Horseshoe Bend');`);
   check("Code 按 Name 自动填（小写、空格变 _）", (await evaluate(`return ${newForm}.querySelectorAll('input')[1].value;`)) === "zz_test_horseshoe_bend");
   await evaluate(`$setValue(${newForm}.querySelectorAll('input')[1], 'canyon_x');`);
+  check("Create 是蓝色提交键", await evaluate(`return $btn('Create', ${newForm}).className.includes('bg-[#3b82f6]');`));
   before = (await mockLog()).length;
   await evaluate(`$btn('Create', ${newForm}).click();`);
   await waitFor(`${newForm}.querySelector('[role=alert]')`);

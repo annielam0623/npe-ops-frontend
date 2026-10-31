@@ -254,6 +254,8 @@ export function TeamView() {
   const [layoutScope, setLayoutScope] = useState<"account" | "browser">(
     "account",
   );
+  // 递增即让开着的 Action Log 重拉第一页（停用 / 改角色 / 重置链接等成功之后，新的那条马上出来）。
+  const [logVersion, setLogVersion] = useState(0);
 
   const redirectingRef = useRef(false);
 
@@ -349,6 +351,8 @@ export function TeamView() {
 
   /** 操作成功后重新拉列表，不切回整页 Loading，避免列表闪一下。 */
   const refreshList = useCallback(async () => {
+    // 调到这里的都是刚做成的操作：日志里已经有新的一条。
+    setLogVersion((v) => v + 1);
     try {
       const data = await fetchPage(isSuperAdmin);
       setView((prev) => (prev.kind === "ready" ? { ...prev, ...data } : prev));
@@ -399,6 +403,7 @@ export function TeamView() {
   async function handleCreateResetLink(user: AdminUser): Promise<ResetOutcome> {
     try {
       const { reset_token: token } = await createResetLink(user.id);
+      setLogVersion((v) => v + 1);
       return { status: "ok", url: buildResetUrl(token) };
     } catch (error) {
       return toActionError(error);
@@ -528,6 +533,7 @@ export function TeamView() {
             ? null
             : homeLabel(m.home_path),
         email: m.email,
+        noEmail: m.duties.length > 0 && !m.email?.trim(),
         onEdit: m.is_superadmin
           ? undefined
           : () =>
@@ -777,7 +783,7 @@ export function TeamView() {
             {/* 改动记录（G203，/api/team/action-log 只给 Super Admin）。 */}
             {view.isSuperAdmin ? (
               <ActionLogPanel
-                refreshKey={0}
+                refreshKey={logVersion}
                 reloadOnOpen
                 onUnauthorized={redirectToLogin}
                 load={(before, signal) =>
@@ -1170,6 +1176,33 @@ function TeamHowTo({ isSuperAdmin }: { isSuperAdmin: boolean }) {
               complaint), everyone ticked for that duty is notified, plus a
               department mailbox if it is ticked. Edit duties on a mailbox row
               changes only its duties.
+            </li>
+            <li>
+              Edit a person → Contact (top of the form): type Email and Mobile,
+              then Save. Both are optional. Leave a box empty to clear it.
+            </li>
+            <li>
+              Email is where duty notifications go. A person with duties but no
+              email gets a yellow No email tag and misses those notifications.
+            </li>
+            <li>Mobile is stored only for now; nothing is sent to it yet.</li>
+            <li>
+              Drivers and guides with an HR file show the HR phone, read-only.
+              To change it, use Edit in Human Resource.
+            </li>
+            <li>
+              If you see &apos;That email address is already used by …&apos;,
+              that email belongs to the account named. Use a different one or
+              fix the other account first.
+            </li>
+            <li>
+              Phone format: 10 digits (US), or + and the country code. Spaces,
+              dashes, dots and brackets are fine.
+            </li>
+            <li>
+              Add person: Contact is there for both ways (create now / invite
+              link). An invite keeps the email and mobile you typed after the
+              person registers.
             </li>
           </>
         ) : null}

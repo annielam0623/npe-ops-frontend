@@ -1956,18 +1956,22 @@ async function run() {
   // ── 置顶 21：司机页预览入口（Annie 2026-10-30「让前端加入口」）：只给 Super Admin，带当前日期，新标签页 ──
   {
     const link = "document.querySelector('[data-driver-preview]')";
+    const glink = "document.querySelector('[data-guide-preview]')";
     await goto(`${APP}/dispatch?date=2026-10-18`);
     await waitFor("document.querySelector('.vrow')", 60000);
     await sleep(1500);
     check("不是 Super Admin（admin）：没有 Driver page preview", !(await evaluate(`return !!${link};`)));
+    check("不是 Super Admin（admin）：没有 Guide page preview", !(await evaluate(`return !!${glink};`)));
     await ctl({ superAdmin: true });
     await goto(`${APP}/dispatch?date=2026-10-18`);
     await waitFor(link, 20000);
     check("Super Admin：标题行右边有 Driver page preview ↗，链接带当前日期、同源 /driver/preview、新标签页、不是按钮", await evaluate(`const a = ${link}; return a.tagName === 'A' && a.textContent === 'Driver page preview ↗' && a.getAttribute('href') === '/driver/preview?date=2026-10-18' && a.target === '_blank' && a.rel.includes('noopener') && !!a.closest('header');`), await evaluate(`return ${link}?.outerHTML;`));
+    check("Super Admin：Driver 旁边有 Guide page preview ↗，同样写法、同源 /guide/preview 带当前日期、新标签页", await evaluate(`const a = ${glink}, d = ${link}; return a.tagName === 'A' && a.textContent === 'Guide page preview ↗' && a.getAttribute('href') === '/guide/preview?date=2026-10-18' && a.target === '_blank' && a.rel.includes('noopener') && a.className === d.className && d.nextElementSibling === a;`), await evaluate(`return ${glink}?.outerHTML;`));
     await waitFor("!document.querySelector('button[aria-label=\"Next day\"]').disabled");
     await evaluate("document.querySelector('button[aria-label=\"Next day\"]').click();");
     await waitFor("location.search === '?date=2026-10-19'");
     check("换天：链接跟着换成 2026-10-19", await waitFor(`${link}?.getAttribute('href') === '/driver/preview?date=2026-10-19'`, 10000));
+    check("换天：Guide 链接也跟着换成 2026-10-19", await waitFor(`${glink}?.getAttribute('href') === '/guide/preview?date=2026-10-19'`, 10000));
     await ctl({ superAdmin: false });
     await goto("about:blank");
     await sleep(300);

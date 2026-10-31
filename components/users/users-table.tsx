@@ -54,6 +54,11 @@ export interface RowExtras {
   home: ReactNode;
   /** 原来 Team 页在名字下面写的邮箱。 */
   email?: string | null;
+  /**
+   * 有通知职责却没填 email：名字下面出黄签「No email — misses notifications」
+   * （staff 联络方式 Q6 A，只标会漏收通知的人）。
+   */
+  noEmail?: boolean;
   /** 开 Team 的权限框（Access、Teams、职责、首页、账号类型；Delete 在框最下面）。没有 = 不能编辑。 */
   onEdit?: () => void;
 }
@@ -343,6 +348,14 @@ function UserRow({
                   @{user.username} · {user.initials?.trim() || "—"}
                   {extra?.email ? ` · ${extra.email}` : ""}
                 </div>
+                {extra?.noEmail ? (
+                  <span
+                    data-no-email
+                    className="mt-1 inline-block rounded-full border border-[#e7b75a] bg-[#fdf6e7] px-2 text-[11px] font-bold text-[#8a5a00] night:border-amber-400/30 night:bg-amber-400/10 night:text-amber-200"
+                  >
+                    No email — misses notifications
+                  </span>
+                ) : null}
               </>
             )}
           </div>

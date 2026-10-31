@@ -436,7 +436,7 @@ function AddRouteForm({
             type="button"
             disabled={busy}
             onClick={() => void add()}
-            className="cursor-pointer rounded-[6px] border border-[#1a1a1a] bg-paper px-3 py-1 text-[11px] font-medium text-[#1a1a1a] hover:enabled:bg-[#1a1a1a] hover:enabled:text-white disabled:opacity-50 night:border-white/40 night:bg-white/[.04] night:text-white/90"
+            className="cursor-pointer rounded-[6px] border border-[#3b82f6] bg-[#3b82f6] px-3 py-1 text-[11px] font-semibold text-white hover:enabled:bg-[#2f76e8] disabled:cursor-default disabled:opacity-50"
           >
             {busy ? "Adding…" : "Add"}
           </button>
