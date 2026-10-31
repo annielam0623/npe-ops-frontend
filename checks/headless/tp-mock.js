@@ -45,6 +45,8 @@ const DUTIES = [["guest_messages", "Guest messages"], ["complaints", "Complaints
 const TEAMS = [{ id: 1, name: "Reservations", color: "#2563eb" }, { id: 2, name: "Operations", color: "#15803d" }, { id: 3, name: "Morning", color: "#b45309" }, { id: 4, name: "Tickets", color: "#dc2626" }, { id: 5, name: "Dispatch", color: "#7c3aed" }];
 
 let viewer, nohome, nodefault, acctype, typeFail, team500, team403, detailFail, delFail, people, contact, nextId;
+// Team 页 Columns（后端 92）：账号里存的 team_list_layout（JSON 字符串；null = 没存过）；teamLayout404 = 后端还没认这个键。
+let teamLayout = null, teamLayout404 = false;
 const log = [];
 function person(id, username, display_name, items, o = {}) {
   return { id, username, display_name, email: o.email === undefined ? `${username}@example.com` : o.email, role: o.role || "staff",
@@ -52,6 +54,7 @@ function person(id, username, display_name, items, o = {}) {
     duties: o.duties || [], team_ids: o.team_ids || [], home_path: o.home_path || null };
 }
 function reset() {
+  teamLayout = null; teamLayout404 = false;
   viewer = "superadmin"; detailFail = 0; delFail = ""; nohome = false; nodefault = false; acctype = false; typeFail = false; team500 = false; team403 = false;
   people = [
     person(1, "annie", "Annie", ALL, { role: "superadmin", team_ids: [1, 2] }),
@@ -126,6 +129,8 @@ http.createServer((req, res) => {
       if (q.team403) team403 = q.team403 === "1";
       if (q.detailfail) detailFail = Number(q.detailfail);
       if (q.delfail) delFail = q.delfail === "0" ? "" : q.delfail;
+      if (q.teamlayout404) teamLayout404 = q.teamlayout404 === "1";
+      if (q.teamlayout === "get") return send(res, 200, { value: teamLayout });
       if (q.log) return send(res, 200, log);
       return send(res, 200, { ok: true });
     }
@@ -137,6 +142,16 @@ http.createServer((req, res) => {
     ] });
     const body = raw ? JSON.parse(raw) : null;
     if (viewer === "anon") return send(res, 401, { detail: "Authentication required" });
+    // 后端 92：GET → {key, value}；PUT {value: "<JSON 字符串>"} → staff 200 {ok:true}，partner 403。
+    if (p === "/api/user-prefs/team_list_layout") {
+      if (teamLayout404) return send(res, 404, { detail: "Not Found" });
+      if (m === "GET") return send(res, 200, { key: "team_list_layout", value: teamLayout });
+      if (m === "PUT") {
+        if (viewer === "partner") return send(res, 403, { detail: "Not available for partner accounts." });
+        teamLayout = body && typeof body.value === "string" ? body.value : null;
+        return send(res, 200, { ok: true });
+      }
+    }
     if (p === "/api/me") {
       return send(res, 200, { id: viewer === "superadmin" ? 1 : 2, username: viewer === "superadmin" ? "annie" : "grace",
         display_name: "Viewer", initials: "VW", role: viewer, is_admin: true, is_superadmin: viewer === "superadmin", is_supervisor: true });

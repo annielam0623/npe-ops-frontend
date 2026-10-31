@@ -24,6 +24,39 @@
   - 等等。
   觉得键太多，可以改成按大块分。
 
+## 2026-10-30 Team 页 Columns（拖表头换顺序、拖边改宽、存进账号）（`task/team-columns`，工作窗口 `npe-ops-frontend-e6`[047d88]，主窗口 eb 派工）—— **只推分支，等后端 92 的 team_list_layout 上 main 再合**
+
+- 依据：10-28 Users / Team 合并 preview v3 Annie「动手」那批里的「Columns（收列）键」，当时等后端 user_prefs 白名单。
+  - Annie 今晚「后端在加班做，你也是」（经 eb 转）。
+- 后端 92 的形状（还没上 main）：
+  - GET /api/user-prefs/team_list_layout → {key, value: str|null}；
+  - PUT 同一路径 {"value": "<JSON 字符串 {order, widths}>"} → staff 200 {ok:true}，partner 403；
+  - 用法同 HR 的 hr_list_layout。
+- 做法照 HR 页（people-table / hr-view）：
+  - 新文件 [components/users/layout.ts](components/users/layout.ts)：七列 person / role / status / teams / access / duties / home，normalize 同 HR（不认识的丢掉、缺的插回、宽 40–2000）。
+  - [users-table.tsx](components/users/users-table.tsx)：
+    - 表头和每行的格子都按存的顺序画，Actions 固定最后；
+    - 表头拖到另一个表头上换位置（左 / 右落点蓝线），右边 7px 拖柄改宽，松手才存；
+    - Access / Notification duties / Home page 只给 Super Admin，没有时跳过，存的顺序照用；
+    - 能拖时表格用 w-max min-w-full（同 HR），设的宽才不被摊回去。
+  - [users-view.tsx](components/users/users-view.tsx)：
+    - 本机缓存先画，账号里的到了再覆盖；后端 404 时只存本机，说明写「saved in this browser.」；
+    - 工具条加一句「Drag titles to reorder, drag edges to resize — saved to your account.」和白底「Reset columns」；
+    - 部门邮箱行也按同一个顺序画；
+    - How to use 加一条 Columns；
+    - partner 不出（usePermissions().partnerView；partner 本来也打不开这页）。
+  - lib/user-prefs-api.ts 加 team_list_layout 键。
+- 检查：
+  - tp-mock 加 GET / PUT team_list_layout（partner PUT 403、`teamlayout404=1` 模拟后端没上、`teamlayout=get` 读存的值）。
+  - tp-test 加 9 项：
+    - 默认顺序；说明和 Reset 不是蓝键；
+    - 拖 Status 到 Person 前存进账号；表头和格子一起动；
+    - 拖 Teams 边改宽、存实际宽度；清本机缓存重开后顺序和宽度从账号读回；
+    - Reset columns；admin 没有那三列、存的顺序照用；
+    - 后端 404 存本机；partner 没有 Columns。
+  - 结果：tp 146/146、teams 54/54、users 77/77、nav 32/32；tsc 0 错；eslint 0 错、2 个原有警告；改过的文件 prettier 过；build 过。
+- 下一步：后端 92 上 main 后核一遍形状，合最新 main、重跑 tp / users，再合 main。
+
 ## DOR 最新进展（G224）—— 明天第一件（工作窗口 `npe-ops-frontend-09`[8a0116]，主窗口 eb 2026-10-30 转 b0 的形状）
 
 - 依据：Annie 原话「如果需要纠正什么的话在下面备注，或者更新最新进展就好了」「加最新进展，任何人都可以加」「以上内容全都动手」。
