@@ -302,6 +302,24 @@
     - 一样的：时间线本身（Anytime / Overdue / Earlier today / 一列 3 条 / 每行）、主管那块的结构和行样子、Add a task。
     - 后端没来造成的（已转 57）：Handovers 的 YESTERDAY / finish by / older than 24 h；Notice 交接的 Finish by；Pass over 的 Finish by 存不上。
     - 改回 v3 的做法写在 preview ④，等 Annie 看过、说「动手」。
+- `task/tasks-half-width`（worktree `C:\Code\ops-wt-91-half`）—— Dashboard 任务块 2/3 + Today's team 1/3，**已合 main**
+  - Annie 原话，按先后：
+    - 「我看到tasks了，关键是它不需要占整行啊，一半就够」；
+    - 接着改成「你把task和 today's team放在一起，task 战2/3，team占1/3」（取代先做的 Notice 并排版，那版没合，已撤）；
+    - 看了 preview https://claude.ai/artifact/Ve87rbWTfvBY1WveinkU7Y 以后，在 91 窗口说「两件都动手」。
+  - 做法（只改 `components/dashboard/dashboard-view.tsx`、`components/tasks/employee-view.tsx`）：
+    - 任务块（主管 Today's tasks / 员工 My tasks）和 Today's team 同一排：flex，任务 flex-[2]、Today's team flex-1，等高；
+    - 高度上限 68vh，内容多时卡内滚动；
+    - 只有一块时（Today's team 开关对这个人关着、或没有 schedule.view）占满整行（列用 empty:hidden，Today's team 读不到时返回 null 也不留空）；手机上一列。
+    - Notice、统计行、Messages 位置不动；主管那块里面的内容不变。
+    - 员工 My tasks 去掉「🔔 N overdue · N due within the hour」（只用到 summarizeUrgent，到点提醒小窗是另一个组件，照旧）。
+  - 检查：tasks 改 4 条 + 加 1 条：
+    - 🔔 条不在；
+    - 员工 / 主管任务块是 Notice 宽度的 55–75%；
+    - Today's team 同一排、在右边、等高、1/3；
+    - Today's team 关着时任务块整行。
+    - 结果：tasks 128/128、dr 88/88、nav 32/32；tsc 0、eslint 0 错、build 通过。
+  - ⚠️ 和 `task/schedule-test-person` 都改了 tasks-test.js / tasks-mock.js，后合的那条要两边都留、重跑 tasks；Today's team 的 is_test 过滤在 today-team-section.tsx，这条没碰。
 
 
 ## G228 Content Studio「Team Messages」后端设计（4e，2026-10-30 晚，只读，main f51d40a1）—— 给前端 62 的接手窗口用
