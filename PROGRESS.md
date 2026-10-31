@@ -8,6 +8,11 @@
 
 
 
+## 2026-10-31 Dispatch Tour bus 选酒店处加「今天 Shuttle 的 pick up」（派给工作窗口 91，主窗口 98）—— 做 preview，等 Annie 动手
+- Annie 原话：「在dipatch的tour bus 选择酒店那里加上请选择今天shuttle的pick up here，如果这一天这台车有shuttle的话，永远默认在第一台车选择，如果staff在第二台车选择的话也算」；补充「也算的意思是不阻拦」。
+- 理解（待 91 核对代码后出 preview 确认）：当天 Tour bus 车有 Shuttle 时，在车的选酒店处提示 staff 选今天 Shuttle 的接站点；默认放在第一台车；staff 在第二台车选也允许，不报错、不拦。
+- 待核对：怎么判断「这一天这台车有 shuttle」（数据从 Main manifest 取）；选的 Shuttle 点存在哪里、要不要后端。
+
 ## 2026-10-31 Dispatch Schedule check：没有 Relay 车的酒店只算 Las Vegas（`task/relay-check-vegas-only`，工作窗口 `npe-ops-frontend-e6`[047d88]，主窗口 98 派）—— 已合 main
 
 - Annie 截图（「22 hotels with no Morning Relay · 1st Round vehicle」里列了 Boulder City / Bryce / Kanab / Page / Zion 等 shuttle 站），原话「morning relay只放vegas的酒店，shuttle那些不要放进来」。
