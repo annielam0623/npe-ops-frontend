@@ -183,6 +183,29 @@
   - da 检查套加 3 条：admin 看不到、Super Admin 看得到（写法同 Driver、紧挨在它右边）、换天后 href 跟着换。
   - 检查：da 423/423、dr 88/88、nav 32/32；tsc 0、eslint 0 错、build 通过。端口 3494 / 8894 / 9594 已关。
   - 98 说合（「两件都照规矩合 main 上线」）：合最新 main 后重跑 da / dr / nav，过了合 main。
+- `task/import-team`（98 派：照 preview ③-1 和 import-pickup 用 mock 做，推分支、**不合 main**；worktree `C:\Code\ops-wt-91-impteam`）—— 等后端接口
+  - 依据：全站「上传表格自动填」preview https://claude.ai/artifact/MKtDUiYyUPZ1FcBJR3j4Lw ③-1，Annie「批量导游同意推荐。动手」，Q1–Q7 全按推荐（Team：只改 Email / Mobile、按 Username 对上、不建账号、空格不改、有错的行不存、只给 Super Admin）。
+  - 改动：
+    - 新文件 `components/users/team-import-panel.tsx`：用通用 `StandardImport`，endpoint `/api/team/contacts/import`。
+      - 模板（csv）：Username / Name / Email / Mobile，带现有的人（不含待接受的邀请和部门邮箱），按 username 排；有 HR 档案的 Mobile 填 HR 的号；文件名 `team_contacts_template_<日期>.csv`。
+    - `users-view.tsx`：标题右边 Add person 左边加灰白「⬆ Import」（只给 Super Admin，权限那一份读到了才出）；点开在 How to use 下面展开 Import 块；存好以后静悄悄重拉名单，日志跟着刷新。How to use 加一条（Super Admin）。
+    - `types/team-permissions.ts`：TeamMemberUser 加可选 `hr_phone`（后端 G219 名单本来就带）。
+  - 检查：tp-mock 加 preview / commit（标准形状，只给 Super Admin，`importbad=1` → 400、`importfail=1` → 500），新文件 `checks/headless/team-import.csv`。tp 加 13 条：
+    - Super Admin 有 Import 键、不是蓝的；标题和说明；
+    - 模板的列和行数、不含待接受的邀请和部门邮箱、文件名；
+    - 只调 preview；数字和栏名；三种红字（email 被用了、没这个用户名 + Did you mean、电话格式）；
+    - 旧 → 新、空格 left as is；
+    - 存不上红字、预览留着；存好绿字、名单出新 email；
+    - 预览 400 原话；Close 收起；admin 没有键。
+  - 结果：tp 173/173、users 77/77、teams 54/54、nav 32/32；tsc 0、eslint 0 错、build 通过。
+  - ⚠️ **需要后端**（98 已转 57 排）：`POST /api/team/contacts/import/preview|commit`。
+    - 标准 bulk_import 形状（types/bulk-import.ts），require_superadmin；按 username 对上，只收 email / phone，Name 不改。
+    - 对不上的算 error（field=null），带「Did you mean …?」；不建账号。
+    - 校验和文字复用 team_contacts（EMAIL_WRONG / PHONE_WRONG、「That email address is already used by …」）；email 重复要查文件里和库里两边。
+    - 有 hr_phone 的人：电话和 HR 不同算 error「Mobile comes from Human Resource — change it there.」，相同算没变。
+    - 文件里重复的用户名：「Repeated above — skipped.」。
+    - commit 一个事务；每格改动记进 team_member 的 action_log（Email / Mobile）。
+  - 下一步：后端上 main → 对真接口核形状（栏 key 是不是 username / name / email / phone）→ 合最新 main、重跑 tp / users / teams / nav → 合 main。
 
 
 ## G228 Content Studio「Team Messages」后端设计（4e，2026-10-30 晚，只读，main f51d40a1）—— 给前端 62 的接手窗口用

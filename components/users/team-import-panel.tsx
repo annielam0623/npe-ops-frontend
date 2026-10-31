@@ -66,17 +66,20 @@ export function TeamImportPanel({
       help={
         <>
           <b>Username</b> finds the person; only Email and Mobile are changed
-          (Name is there to help you find people). Usernames not on the list
-          are errors: add new people with Add person. A blank cell never clears
-          what is stored — to empty a box, use Edit. Drivers and guides with an
-          HR file keep the phone from Human Resource.
+          (Name is there to help you find people). Usernames not on the list are
+          errors: add new people with Add person. A blank cell never clears what
+          is stored — to empty a box, use Edit. Drivers and guides with an HR
+          file keep the phone from Human Resource.
         </>
       }
       endpoint="/api/team/contacts/import"
       labelOf={(k) => LABEL[k] ?? k}
       template={() => {
         const t = buildTeamImportTemplate(members);
-        return { blob: csvBlob(t.headers, t.rows), filename: templateFilename() };
+        return {
+          blob: csvBlob(t.headers, t.rows),
+          filename: templateFilename(),
+        };
       }}
       onClose={onClose}
       onSaved={onSaved}
