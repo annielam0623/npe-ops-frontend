@@ -125,6 +125,12 @@
   - 改法：Team 页日志面板的 refreshKey 原来写死 0，改成 logVersion；refreshList 和发重置链接成功后 +1。停用、恢复、改角色、重置链接、取消邀请、删除、邀请、Edit 保存都走这两处，日志开着时新的那条马上出来。
   - tp 检查套加一条：日志开着时点 Reactivate，新的 Status 行自动出现在最上面；把修改去掉，这条确实会失败。
   - 检查：tp 137/137、users 77/77、teams 54/54、nav 32/32；tsc 0、eslint 0 错、build 通过；已推分支，等 98 说合再合。端口 3493 / 8893 / 9593 已关。
+- `task/guide-preview-link`（98 派；交接里早定的「/guide/preview 上 main → 加链接」，Driver 那个 Annie 已同意，不用出 preview；worktree `C:\Code\ops-wt-91-guide`）：
+  - Dispatch 标题行「Driver page preview ↗」右边加「Guide page preview ↗」：同源 `/guide/preview?date=<当前日期>`，新标签页，只给 Super Admin，样子和 Driver 那个一样。
+  - 不用改 next.config：ops 没有 /guide 路径，跟 /driver/preview 一样走 fallback 转给后端（后端 be1f4447）。
+  - da 检查套加 3 条：admin 看不到、Super Admin 看得到（写法同 Driver、紧挨在它右边）、换天后 href 跟着换。
+  - 检查：da 423/423、dr 88/88、nav 32/32；tsc 0、eslint 0 错、build 通过。端口 3494 / 8894 / 9594 已关。
+  - 推 main 要 Annie 亲口说：98 推 main 被权限检查拦过，91 不替它推。分支已推，等 Annie 一句「合」。
 
 
 ## G228 Content Studio「Team Messages」后端设计（4e，2026-10-30 晚，只读，main f51d40a1）—— 给前端 62 的接手窗口用
