@@ -705,15 +705,17 @@ async function run() {
   check("不挂单卡①：今天没出发的那张显示 Today", card.includes("Today"), card);
   check("一单多团期卡：1 order · 2 dates 徽章 + 逐行团期（含明天那行）",
     await evaluate("return document.body.textContent.includes('1 order · 2 dates') && document.body.textContent.includes('Bryce Canyon') && document.body.textContent.includes('Departs tomorrow');"));
-  check("等客人的卡：显示 Replied · waiting for guest，不显示等待时长",
-    await evaluate(`return document.querySelector('${sel(MULTI_WAITING)}').textContent.includes('Replied') && document.querySelector('${sel(MULTI_WAITING)}').textContent.includes('waiting for guest');`));
+  // Annie 2026-10-30 答置顶 18：「我们已经回复了就要消失啊，客人再发回来才需要在这里显示」（取代 10-01 的「回过也留着」）。
+  check("已回复、在等客人的卡（waiting）不显示，没有 Replied · waiting for guest",
+    await evaluate(`return !document.querySelector('${sel(MULTI_WAITING)}') && !document.body.textContent.includes('waiting for guest');`));
+  check("单数写 order：页面上没有「1 orders」", await evaluate("return !document.body.textContent.includes('1 orders');"));
 
   const multiHeader = await evaluate(`
     const label = [...document.querySelectorAll('span')].find(s => s.textContent.trim() === 'Multi Orders');
     return label ? label.closest('div').textContent : '';
   `);
-  check("Multi Orders 的红胶囊不算在等客人的卡（4 张卡只有 3 张欠处理）",
-    multiHeader.includes("3") && multiHeader.includes("4"), multiHeader);
+  check("Multi Orders 只剩 3 张欠处理的卡（等客人的那张不算、也不画）",
+    multiHeader.includes("3") && !multiHeader.includes("4"), multiHeader);
 
   // Reply：空着先报错，再发成功——面板收起、立即重拉（不等 60 秒）。
   before = (await mockLog()).filter((e) => e.path === "/api/notifications/unhandled").length;
@@ -1010,6 +1012,30 @@ async function run() {
     await sleep(3500);
     check("离开以后剩下的批次不再发（只发出在路上的第一批）", (await sends(b0)).length === 1, String((await sends(b0)).length));
     await ctl({ morningDelay: 0 });
+    // ── 员工也按勾（Annie 2026-10-30 置顶 10c）：没勾 morning.send 预览照出、没有 Send to Selected；Super Admin 一项没勾也有 ──
+    promptConfirm = true;
+    for (const [label, opts, canSend] of [
+      ["员工只勾 morning.view", { staffPerms: ["morning.view"] }, false],
+      ["员工勾 morning.send", { staffPerms: ["morning.view", "morning.send"] }, true],
+      ["Super Admin（一项都没勾）", { staffPerms: null, superAdmin: true }, true],
+    ]) {
+      await ctl({ staffPerms: null, superAdmin: false, ...opts });
+      await goto(`${APP}/morning-pickup/send`);
+      await waitFor("document.querySelector('input[type=file]')");
+      await helpers();
+      {
+        const { root } = await cdp("DOM.getDocument", { depth: -1, pierce: true });
+        const { nodeId } = await cdp("DOM.querySelector", { nodeId: root.nodeId, selector: "input[type=file]" });
+        await cdp("DOM.setFileInputFiles", { nodeId, files: [`${DIR}/morning-zz.xlsx`] });
+      }
+      await sleep(200);
+      await evaluate("$btn('📂 Upload & Preview').click();");
+      const rows = await waitFor("!!document.querySelector('main tbody tr')");
+      await sleep(300);
+      const has = await evaluate("return !!$btn('📱 Send to Selected');");
+      check(`${label}：早班发送预览照出、${canSend ? "有" : "没有"} Send to Selected`, rows && has === canSend, String(has));
+    }
+    await ctl({ staffPerms: null, superAdmin: false });
     promptConfirm = false;
     ws.onmessage = orig;
   }

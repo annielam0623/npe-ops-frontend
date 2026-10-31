@@ -144,6 +144,98 @@ export interface ScheduleWeek {
   gaps: ScheduleGap[];
   /** 已发布、而且现在还有空档（后端 d2bc2cf）。gaps 照旧给所有能打开的人，staff 不显示由前端按角色藏。 */
   published_with_gaps?: boolean;
+  /**
+   * 已发布的周改过、还没按 Publish again（Annie 10-29「改完再发」：改动不逐项通知，Publish again 时一次发给班有变化的人和主管）。
+   * 后端 G217（ef，10-30 定稿）：只给有 schedule.edit 的人，staff 永远 false；草稿周 false；v128 之前发布的周只看时段。
+   * 没带（后端没上线）时前端只记这一次打开页面以后的改动。
+   */
+  has_unsent_changes?: boolean;
+  /**
+   * 这一周的版本（= schedule_weeks.updated_at，后端 G218）。整周 Save 时作 base_version 送回去：
+   * 打开以后别人改过 ⇒ 409 stale。
+   */
+  version?: string | null;
+  /**
+   * 已发布的周，每个人和上次发布比改了什么（Annie 10-29「员工确认，同意推荐，动手」：发布前可以单独发给本人确认）。
+   * 只列有改动的人；Publish again 后清空。没带 = 后端没上线（不出 Send to confirm）。
+   * 后端 G217（ef，10-30 定稿）：只给有 schedule.edit 的人，staff 永远 []；草稿周 []；v128 之前发布的周永远 []。
+   */
+  pending_changes?: SchedulePendingChange[];
+}
+
+/** 一个人这周和上次发布不一样的地方。 */
+export interface SchedulePendingChange {
+  employee_id: number;
+  name: string;
+  /**
+   * 后端拼好的字，原样显示：例「Open 2:00 AM – 12:00 PM」「Open 2:00 AM – 12:00 PM (Pre close)」，一天两段用逗号连；
+   * 休假「Time off (PTO)」「Time off (Sick)」「Time off (Personal)」。原来没班 before = null，现在没班 after = null。
+   */
+  items: { date: string; before: string | null; after: string | null }[];
+  /** 最近一次单独发给本人确认的时间 / 谁发的（名字）；没发过 = null。 */
+  sent_at: string | null;
+  sent_by: string | null;
+  /**
+   * 这个人有没有登录账号（后端 G217 ef，10-30）：true 才会收到站内通知，发送框写「📧 邮箱 + 🔔 in-app notice」；
+   * false 只写「📧 邮箱」。没带 = 后端没上线，当 true。邮箱有没有照旧看员工名单。
+   */
+  has_login?: boolean;
+}
+
+/** POST …/employees/{id}/send-changes 成功的返回体。 */
+export interface ScheduleSendChangesResult {
+  sent_at: string;
+  sent_by: string;
+  /** 后端 G217：["email"] 或 ["email", "in_app"]。 */
+  channels: ("email" | "in_app")[];
+}
+
+/**
+ * 整周一个 Save（Annie 2026-10-29「4项全部动手」第 3 项，B9 Q1–Q7 照推荐；后端 G218）：
+ * POST /api/schedule/weeks/{week_start}/changes 的一条改动。`slot` 是已有的 id，或同一批里 create 的 ref（"n1"…）。
+ */
+export type ScheduleWeekOp =
+  | {
+      op: "create";
+      ref: string;
+      date: string;
+      shift_type: string;
+      start_time: string;
+      end_time: string;
+      employee_id: number | null;
+      note: string | null;
+    }
+  | { op: "assign"; slot: number | string; employee_id: number | null }
+  | { op: "time"; slot: number | string; start_time: string; end_time: string }
+  | { op: "note"; slot: number | string; note: string | null }
+  | { op: "delete"; slot: number | string };
+
+/** POST …/changes 成功的返回体。 */
+export interface ScheduleWeekChangesResult {
+  /** 存完以后的整周（含新的 version），直接换掉页面数据。 */
+  week: ScheduleWeek;
+  /** ref → 新建的 slot id。 */
+  created: Record<string, number>;
+  applied: number;
+  /** G217 以后改动不马上通知：永远 []。 */
+  notified: ScheduleNotified[];
+  /** 锁过期后被后端重新占住时是新 token（之后心跳 / release 用它）；没变就是原来的。 */
+  lock_token?: string | null;
+}
+
+/**
+ * POST …/changes 的出错回包（后端 G218）：409 code locked / stale / coverage_gap，400 带 op_index / slot。
+ * 409 stale 和 400 也带 lock_token（同成功回包）。
+ */
+export interface ScheduleWeekChangesError {
+  detail: string;
+  code?: string;
+  /** stale：库里最新的 version。 */
+  version?: string | null;
+  gaps?: ScheduleGap[];
+  op_index?: number;
+  slot?: number | string | null;
+  lock_token?: string | null;
 }
 
 /** POST /api/schedule/weeks/{week_start}/publish 发布成功的返回体。 */
@@ -156,7 +248,26 @@ export interface SchedulePublishResult {
   republished?: boolean;
   /** 发布那一刻的空档（Publish anyway 时非空）。 */
   gaps?: ScheduleGap[];
+  /** Publish again 时只有班有变化的员工（后端 G217）；首次发布是这周排了班的人。 */
   notified: ScheduleNotified[];
+  /**
+   * 收到通知的主管层（后端 G217 ef，10-30；审查 SA-1 收窄）：在用的 supervisor / admin 里勾了 schedule.edit 的，superadmin 不看勾；去掉按的人自己；有人变了才有。
+   * 首次发布或没人变化时 []；本人的班也变了的只算在 notified 里。没带 = 后端没上线。
+   */
+  notified_supervisors?: {
+    user_id: number;
+    name: string;
+    channels: string[];
+  }[];
+  /**
+   * 没收到的人（后端 ef task/republish-recipients-by-perm 8a77c4e，还没上 main；Annie 置顶 15）：
+   * notified 只列真发出去的，这里是该通知却没通知到的。没带 = 后端没上线。
+   */
+  not_reached?: {
+    employee_id: number;
+    name: string;
+    reason: string;
+  }[];
 }
 
 export interface ScheduleNotified {

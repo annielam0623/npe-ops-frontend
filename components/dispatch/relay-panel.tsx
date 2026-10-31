@@ -21,14 +21,18 @@ import { describeError, isStatus } from "@/lib/api-errors";
 import {
   type DriverNotice,
   fetchDriverNotice,
+  fetchGuideNotice,
   fetchRelayPull,
   fetchRelaySendPreview,
+  type GuideNotice,
   type RelayGuest,
   type RelayPull,
   sendDriverNotice,
+  sendGuideNotice,
   sendRelayRound,
 } from "@/lib/dispatch-api";
 import { LA_TIME_ZONE } from "@/lib/la-date";
+import { gsmLength, nonGsmChars } from "@/lib/sms-gsm";
 import { cn } from "@/lib/utils";
 
 import {
@@ -133,7 +137,9 @@ interface Pick {
   setAgain: (list: RelayGuest[], on: boolean) => void;
 }
 
-function lastSentText(d: DriverNotice): string | null {
+function lastSentText(d: {
+  last_sent: DriverNotice["last_sent"];
+}): string | null {
   return d.last_sent
     ? `Last sent ${LAST_FORMAT.format(new Date(d.last_sent.at))}${d.last_sent.by ? ` by ${d.last_sent.by}` : ""}${d.last_sent.label ? ` (${d.last_sent.label})` : ""}.`
     : null;
@@ -217,9 +223,16 @@ function linkify(text: string) {
 
 /**
  * 发给司机 / 导游的原文，打开这一天就显示，不用先点 Check the list（Annie 2026-10-15：「还是要显示一下发给司机和导游的内容是什么」）。
- * 司机的原文是后端拼好的（`GET /api/dispatch/driver-notice` 的 text，链接在最后）；导游现在不发（后端：导游账号还没建）。
+ * 司机的原文是后端拼好的（`GET /api/dispatch/driver-notice` 的 text，链接在最后）；导游的照 guide-notice 的 text
+ *（Send to guide，Annie 2026-10-30「1. 动手」）。导游的还没读到（接口没上线 / 出错）时照旧写「还不发」。
  */
-function OutgoingTexts({ text }: { text: string }) {
+function OutgoingTexts({
+  text,
+  guideText,
+}: {
+  text: string;
+  guideText?: string | null;
+}) {
   return (
     <div data-outgoing-texts className="mb-3 grid gap-2 sm:grid-cols-2">
       <div className="rounded-lg border border-white/10 bg-white/[.04] px-3 py-2">
@@ -245,12 +258,31 @@ function OutgoingTexts({ text }: { text: string }) {
         <div className="mb-1 text-[12px] font-semibold text-[#cbd5e1]">
           Text to guides
         </div>
-        <p
-          data-guide-text
-          className="m-0 text-[13px] leading-relaxed text-[#94a3b8]"
-        >
-          Guides don&rsquo;t get a text yet — guide logins aren&rsquo;t set up.
-        </p>
+        {guideText ? (
+          <>
+            <p
+              data-guide-text
+              className="m-0 text-[13px] leading-relaxed text-[#e2e8f0]"
+            >
+              {linkify(guideText)}
+            </p>
+            <p
+              data-guide-link-note
+              className="m-0 mt-1.5 text-[12px] leading-relaxed text-[#94a3b8]"
+            >
+              Each person gets their own link, valid for 12 hours from the
+              moment you send. Send again to give a fresh one.
+            </p>
+          </>
+        ) : (
+          <p
+            data-guide-text
+            className="m-0 text-[13px] leading-relaxed text-[#94a3b8]"
+          >
+            Guides don&rsquo;t get a text yet — guide logins aren&rsquo;t set
+            up.
+          </p>
+        )}
       </div>
     </div>
   );
@@ -262,6 +294,15 @@ const RP_BTN =
 /** 旧 `.rp-box .rp-btn.green`：白框里的发送键，跟 Step 1 / 2 同一个尺寸。 */
 const RP_BTN_GREEN =
   "h-8 rounded-[7px] border border-[#16a34a] bg-[#16a34a] px-3 text-[13px] font-semibold whitespace-nowrap text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3b82f6] disabled:cursor-not-allowed disabled:opacity-50";
+/**
+ * Step 1 的两个发送键（Send texts now，司机 / 导游）：蓝色，蓝色只给提交键（Annie 2026-10-11）。
+ * Send to guide preview Q3 选 A（Annie 2026-10-30「1. 动手」）：司机那块原来的绿色一起改成蓝。
+ */
+const RP_BTN_SEND =
+  "h-8 rounded-[7px] border border-[#3b82f6] bg-[#3b82f6] px-3 text-[13px] font-semibold whitespace-nowrap text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3b82f6] disabled:cursor-not-allowed disabled:opacity-50";
+/** Check the list：只是列名单（不发），白底（同上 Q3）。 */
+const RP_BTN_WHITE =
+  "h-[30px] rounded-lg border border-[#cbd5e1] bg-white px-3 text-[12.5px] font-semibold whitespace-nowrap text-[#1a1a1a] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3b82f6] disabled:cursor-not-allowed disabled:opacity-50";
 /** 旧 `.rp-sub`。 */
 const RP_SUB = "text-[12.5px] text-[#94a3b8]";
 /** 旧 `.rp-empty`（白框里）。 */
@@ -309,6 +350,10 @@ export function RelayPanel({
   const [driverError, setDriverError] = useState<string | null>(null);
   /** 收起状态那一行提示用的名单：打开这一天就自动拉一次（不用点 Check the list），点开 / 发完跟着更新。 */
   const [hint, setHint] = useState<DriverNotice | null>(null);
+  /** 导游短信原文那格用（打开这一天就拉一次；读不到 = 照旧写「还不发」）。 */
+  const [guideHint, setGuideHint] = useState<GuideNotice | null>(null);
+  /** 点一次 Check the list：司机、导游两份名单一起列（Send to guide preview Q1 A）。每点一次 +1，导游那块跟着重读。 */
+  const [guideListKey, setGuideListKey] = useState(0);
   /**
    * 这次取消勾选的司机 key。记「没勾的」而不是「勾了的」：默认全勾，重读名单后新出现的能发的人
    * 也是勾上的（同旧页面每次渲染都从全勾开始）。
@@ -344,6 +389,11 @@ export function RelayPanel({
     fetchDriverNotice(date)
       .then((d) => {
         if (alive) setHint(d);
+      })
+      .catch(() => {});
+    fetchGuideNotice(date)
+      .then((g) => {
+        if (alive) setGuideHint(g);
       })
       .catch(() => {});
     return () => {
@@ -559,6 +609,8 @@ export function RelayPanel({
       const changed = driversKey(fresh) !== driversKey(drivers);
       setDrivers(fresh);
       setHint(fresh);
+      // 列名单之后有人把司机页关了：Send 键跟着灰掉、旁边出那句，不弹确认框。
+      if (fresh.page_open === false) return;
       const canSend = fresh.people.filter((p) => p.can_send).length;
       if (!canSend) {
         setDriverError(
@@ -627,6 +679,8 @@ export function RelayPanel({
     }
   }
 
+  // G215：司机页开关关着（只有明确 false 才算；旧后端不带这个字段照旧能发）。
+  const pageOff = drivers?.page_open === false;
   const lastText = drivers ? lastSentText(drivers) : null;
   const canText = drivers?.people.filter((p) => p.can_send) ?? [];
   const picked = drivers ? pickedPeople(drivers, skipped) : [];
@@ -658,30 +712,37 @@ export function RelayPanel({
     <>
       <StepBox
         n={1}
-        title="Send to drivers"
+        // Send to guide（Annie 2026-10-30「1. 动手」，preview Q1 A）：导游放进 Step 1，司机那块下面。
+        title="Send to drivers & guides"
         desc={
           <>
             <p>
-              <b>What the driver gets:</b> one text message with a link. The
-              link opens <b>their own manifest on their phone</b>: the bus they
-              drive and the guests on it for this day.
+              <b>What they get:</b> one text message with a link. The link opens{" "}
+              <b>their own page on their phone</b>: the bus they are on and the
+              guests on it for this day.
             </p>
             <p>
-              Relay drivers and tour bus drivers both get it. Guests get nothing
-              from this step. Click Check the list to see who will get it before
-              anything is sent.
+              Drivers get the driver page, guides get the guide page. Guests get
+              nothing from this step. Click Check the list to see who will get
+              it before anything is sent.
             </p>
           </>
         }
       >
-        {hint ? <OutgoingTexts text={hint.text} /> : null}
+        {hint ? (
+          <OutgoingTexts text={hint.text} guideText={guideHint?.text} />
+        ) : null}
         <div className="flex flex-wrap items-baseline gap-3">
-          {/* 旧页面 2026-10-10 改名（`8cdacda`）：点了只是列出名单，真正发送是下面的 Send texts now。 */}
+          {/* 旧页面 2026-10-10 改名（`8cdacda`）：点了只是列出名单，真正发送是下面的 Send texts now。
+              点一次同时列司机、导游两份名单。 */}
           <button
             type="button"
             disabled={loadingDrivers || disabled}
-            onClick={() => void loadDrivers()}
-            className={RP_BTN}
+            onClick={() => {
+              void loadDrivers();
+              setGuideListKey((k) => k + 1);
+            }}
+            className={RP_BTN_WHITE}
           >
             Check the list
           </button>
@@ -690,16 +751,25 @@ export function RelayPanel({
 
         <details className={RP_HOWTO}>
           <summary className={HOWTO_SUMMARY}>
-            📖 How to use — Send to drivers
+            📖 How to use — Send to drivers &amp; guides
           </summary>
           <ol className={HOWTO_OL}>
             <li>
-              Click Check the list, then Send texts now. Drivers with a Morning
-              Relay car are ticked; tick or untick anyone.
+              Click Check the list: the drivers and the guides are listed in two
+              tables. Each table has its own Send texts now.
             </li>
             <li>
-              A driver with no mobile number, or not in HR, is listed with the
-              reason. Fix it in Human Resource, then Check the list again.
+              Drivers with a Morning Relay car are ticked; tick or untick
+              anyone. All guides who can be texted are ticked.
+            </li>
+            <li>
+              A driver or guide with no mobile number, or not in HR, is listed
+              with the reason. Fix it in Human Resource, then Check the list
+              again.
+            </li>
+            <li>
+              Guides: you can add a short line after the link. It must fit in
+              one text message and use plain English letters.
             </li>
             <li>You can only send for today or tomorrow.</li>
           </ol>
@@ -717,16 +787,30 @@ export function RelayPanel({
             title="Send to driver"
             sub={`${plural(picked.length, "driver")} selected. ${lastText ?? "Not sent yet for this day."}`}
             action={
-              <button
-                type="button"
-                disabled={
-                  !picked.length || checkingDrivers || disabled || dirty
-                }
-                onClick={() => void askDrivers()}
-                className={RP_BTN_GREEN}
-              >
-                {checkingDrivers ? "Checking…" : "Send texts now"}
-              </button>
+              <span className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1">
+                {pageOff ? (
+                  <span
+                    data-driver-page-off
+                    className="text-[12.5px] text-[#6b7280]"
+                  >
+                    {drivers.page_off_text}
+                  </span>
+                ) : null}
+                <button
+                  type="button"
+                  disabled={
+                    pageOff ||
+                    !picked.length ||
+                    checkingDrivers ||
+                    disabled ||
+                    dirty
+                  }
+                  onClick={() => void askDrivers()}
+                  className={RP_BTN_SEND}
+                >
+                  {checkingDrivers ? "Checking…" : "Send texts now"}
+                </button>
+              </span>
             }
           >
             {drivers.people.length ? (
@@ -785,6 +869,15 @@ export function RelayPanel({
             )}
           </Box>
         ) : null}
+
+        <GuideBox
+          date={date}
+          listKey={guideListKey}
+          disabled={disabled}
+          dirty={dirty}
+          onUnauthorized={onUnauthorized}
+          onLoaded={setGuideHint}
+        />
       </StepBox>
 
       <StepBox
@@ -1039,9 +1132,10 @@ export function RelayPanel({
                     >
                       {plural(badCars.length, "car")} blocked (
                       {badCars
-                        .map((b) =>
-                          b.car.van ||
-                          (b.car.id != null ? `#${b.car.id}` : "This tour"),
+                        .map(
+                          (b) =>
+                            b.car.van ||
+                            (b.car.id != null ? `#${b.car.id}` : "This tour"),
                         )
                         .join(", ")}
                       ): their guests will not be texted. Fix them on the Assign
@@ -1201,6 +1295,378 @@ export function RelayPanel({
             <p>
               {confirm.skipped} selected driver(s) will NOT receive this
               message.
+            </p>
+          ) : null}
+          {confirm.lastText ? (
+            <p>{confirm.lastText} They will get it again.</p>
+          ) : null}
+        </ConfirmDialog>
+      ) : null}
+    </>
+  );
+}
+
+/**
+ * Send to guide（G75 后端早有；Annie 2026-10-30 对 preview https://claude.ai/artifact/4hC4p7DrrwmEhNPsSFHwNB 5 处「同意推荐」，
+ * 之后「1. 动手」）：Step 1 司机那块下面，同一个 Check the list 列出名单，自己一个 Send texts now。
+ * - 能发的导游默认全勾；发不了的整行灰字、写原因。一个导游带两台车只收一条（后端合好的）。
+ * - 导游页开关（guide_page）关着：Send 灰掉，旁边灰字照后端 page_off_text（同 G215 司机那块）。
+ * - 框头写「Last sent 时间 by 谁（…）」，再发时确认框提醒「They will get it again」（Q4 A，照司机那块）。
+ * - 链接后面 staff 可以加一句（Annie「最好可以在text里的链接后面可以让staff自己增加一点内容，但是限制在一条短信的长度」，
+ *   选 A 缩短固定段）：实时显示还剩几个字；超了、或有非 GSM 字符（中文、表情、弯引号、长破折号）时红字、Send 不能按。
+ *   确认框里预览整条短信。后端没带 extra_max（还不收 extra）时不出输入框。
+ * ⚠️ Send 是真发（ops 连生产后端）。第一次真发给导游前要 Annie 点头。
+ */
+function GuideBox({
+  date,
+  listKey,
+  disabled,
+  dirty,
+  onUnauthorized,
+  onLoaded,
+}: {
+  date: string;
+  /** 父组件每点一次 Check the list 就 +1：0 = 还没点过，不列名单。 */
+  listKey: number;
+  disabled: boolean;
+  /** 排车页有没存的改动：发送键关着（同司机那块）。 */
+  dirty: boolean;
+  onUnauthorized: () => void;
+  /** 读到名单就报给父组件（Text to guides 那格的原文）。 */
+  onLoaded: (g: GuideNotice) => void;
+}) {
+  const [guides, setGuides] = useState<GuideNotice | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [okText, setOkText] = useState<string | null>(null);
+  const [skipped, setSkipped] = useState<ReadonlySet<string>>(new Set());
+  const [extra, setExtra] = useState("");
+  const [confirm, setConfirm] = useState<{
+    names: string[];
+    keys: string[];
+    skipped: number;
+    lastText: string | null;
+    changed: boolean;
+    sms: string;
+  } | null>(null);
+
+  const keyOf = (g: GuideNotice) =>
+    JSON.stringify(
+      g.people.map((p) => [p.key, p.name, p.phone, p.can_send, p.why, p.cars]),
+    );
+
+  async function load(keepMessages = false) {
+    setLoading(true);
+    if (!keepMessages) {
+      setError(null);
+      setOkText(null);
+    }
+    try {
+      const g = await fetchGuideNotice(date);
+      setGuides(g);
+      onLoaded(g);
+      setSkipped(new Set());
+    } catch (e) {
+      if (isStatus(e, 401)) onUnauthorized();
+      else setError(`Could not load the guides: ${describeError(e)}`);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // 点 Check the list（listKey 变了）才列名单。
+  useEffect(() => {
+    if (listKey > 0) void load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listKey]);
+
+  if (!guides) {
+    return error ? (
+      <p role="alert" data-guide-error className={cn(DARK_ERR, "m-0")}>
+        {error}
+      </p>
+    ) : loading ? (
+      <p className={cn(RP_HINT, "m-0")}>Loading the guides…</p>
+    ) : null;
+  }
+
+  const pageOff = guides.page_open === false;
+  const canText = guides.people.filter((p) => p.can_send);
+  const picked = canText.filter((p) => !skipped.has(p.key));
+  const allPicked = canText.length > 0 && picked.length === canText.length;
+  const lastText = lastSentText(guides);
+  const extraMax = guides.extra_max;
+  const extraText = extra.trim();
+  const bad = nonGsmChars(extra);
+  const left = extraMax != null ? extraMax - gsmLength(extraText) : null;
+  const extraBlocked = bad.length > 0 || (left != null && left < 0);
+  const smsOf = (g: GuideNotice) =>
+    `${g.preview_text ?? g.text}${extraText ? ` ${extraText}` : ""}`;
+
+  function toggle(key: string, on: boolean) {
+    setSkipped((s) => {
+      const next = new Set(s);
+      if (on) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
+  /** 点 Send texts now：先重读名单（期间存过排车就换成新的并说一句），再确认。 */
+  async function ask() {
+    if (!guides) return;
+    setChecking(true);
+    setError(null);
+    setOkText(null);
+    try {
+      const fresh = await fetchGuideNotice(date);
+      const changed = keyOf(fresh) !== keyOf(guides);
+      setGuides(fresh);
+      onLoaded(fresh);
+      if (fresh.page_open === false) return;
+      const can = fresh.people.filter((p) => p.can_send);
+      if (!can.length) {
+        setError(
+          changed
+            ? "The guide list changed and no guide can be texted now. Check the table."
+            : "No guide can be texted for this day.",
+        );
+        return;
+      }
+      const chosen = can.filter((p) => !skipped.has(p.key));
+      if (!chosen.length) {
+        setError("No guides selected.");
+        return;
+      }
+      setConfirm({
+        names: chosen.map((p) => p.name),
+        keys: chosen.map((p) => p.key),
+        skipped: can.length - chosen.length,
+        lastText: lastSentText(fresh),
+        changed,
+        sms: smsOf(fresh),
+      });
+    } catch (e) {
+      if (isStatus(e, 401)) onUnauthorized();
+      else setError(`Could not check the guides: ${describeError(e)}`);
+    } finally {
+      setChecking(false);
+    }
+  }
+
+  async function send(keys: string[]): Promise<ActionResult> {
+    try {
+      const res = await sendGuideNotice(date, keys, extraText);
+      setConfirm(null);
+      setOkText(
+        res.sent.length
+          ? `✓ Texted ${plural(res.sent.length, "guide")}: ${res.sent.join(", ")}.`
+          : null,
+      );
+      setError(
+        res.failed.length
+          ? `Not delivered to: ${res.failed.map((f) => `${f.name} (${f.error})`).join(", ")}`
+          : null,
+      );
+      await load(true);
+      return { status: "ok" };
+    } catch (e) {
+      if (isStatus(e, 401)) {
+        onUnauthorized();
+        return { status: "redirecting" };
+      }
+      if (isStatus(e, 400) || isStatus(e, 409)) {
+        return {
+          status: "error",
+          message: `${describeError(e)} Nothing was sent.`,
+        };
+      }
+      // 断开 / 5xx：导游可能已经收到了。关掉弹窗、重拉名单看 Last sent。
+      setConfirm(null);
+      await load(true);
+      setError(
+        `${e instanceof TypeError ? "Lost contact with the server." : describeError(e)} Some guides may already have been texted — check “Last sent” before sending again.`,
+      );
+      return { status: "ok" };
+    }
+  }
+
+  return (
+    <>
+      {error ? (
+        <p role="alert" data-guide-error className={cn(DARK_ERR, "m-0")}>
+          {error}
+        </p>
+      ) : null}
+      {okText ? (
+        <p data-guide-ok className="m-0 text-[12.5px] text-[#4ade80]">
+          {okText}
+        </p>
+      ) : null}
+      <Box
+        label="Send to guide"
+        title="Send to guide"
+        sub={`${plural(picked.length, "guide")} selected. ${lastText ?? "Not sent yet for this day."}`}
+        action={
+          <span className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1">
+            {pageOff ? (
+              <span
+                data-guide-page-off
+                className="text-[12.5px] text-[#6b7280]"
+              >
+                {guides.page_off_text}
+              </span>
+            ) : null}
+            <button
+              type="button"
+              data-guide-send
+              disabled={
+                pageOff ||
+                extraBlocked ||
+                !picked.length ||
+                checking ||
+                disabled ||
+                dirty
+              }
+              onClick={() => void ask()}
+              className={RP_BTN_SEND}
+            >
+              {checking ? "Checking…" : "Send texts now"}
+            </button>
+          </span>
+        }
+      >
+        {extraMax != null ? (
+          <div
+            data-guide-extra
+            className="flex flex-col gap-1 border-b border-[#e5e7eb] px-[18px] py-2.5 text-[12.5px]"
+          >
+            <label
+              htmlFor={`guide-extra-${date}`}
+              className="font-semibold text-[#1a1a1a]"
+            >
+              Add a line after the link (optional)
+            </label>
+            <input
+              id={`guide-extra-${date}`}
+              type="text"
+              value={extra}
+              onChange={(e) => setExtra(e.target.value)}
+              placeholder="e.g. Meet at Door 3 by 6:15"
+              className={cn(
+                "h-8 max-w-[560px] rounded-[7px] border bg-white px-2 text-[13px] text-[#111]",
+                extraBlocked ? "border-[#dc2626]" : "border-black/25",
+              )}
+            />
+            {bad.length ? (
+              <span
+                data-guide-extra-bad
+                className="font-semibold text-[#A32D2D]"
+              >
+                Use plain English letters. These can&rsquo;t go in a text:{" "}
+                {bad.join(" ")}
+              </span>
+            ) : left != null && left < 0 ? (
+              <span
+                data-guide-extra-over
+                className="font-semibold text-[#A32D2D]"
+              >
+                Too long: {plural(-left, "character")} over. It must fit in one
+                text message.
+              </span>
+            ) : (
+              <span data-guide-extra-left className="text-[#6b7280]">
+                {plural(left ?? 0, "character")} left
+              </span>
+            )}
+          </div>
+        ) : null}
+        {guides.people.length ? (
+          <Table
+            head={["Guide", "Mobile", "Buses", "Can text?"]}
+            lead={
+              <input
+                type="checkbox"
+                aria-label="Select all guides"
+                checked={allPicked}
+                disabled={!canText.length}
+                onChange={(e) =>
+                  setSkipped(
+                    e.target.checked
+                      ? new Set()
+                      : new Set(canText.map((p) => p.key)),
+                  )
+                }
+              />
+            }
+          >
+            {guides.people.map((p) => (
+              <tr
+                key={p.key}
+                data-guide-key={p.key}
+                className={p.can_send ? "" : "text-[#9ca3af]"}
+              >
+                <td className={cn(TD, RP_PAD, CHK_CELL)}>
+                  <input
+                    type="checkbox"
+                    aria-label={`Text ${p.name}`}
+                    checked={p.can_send && !skipped.has(p.key)}
+                    disabled={!p.can_send}
+                    onChange={(e) => toggle(p.key, e.target.checked)}
+                  />
+                </td>
+                <td className={cn(TD, RP_PAD)}>{p.name}</td>
+                <td className={cn(TD, RP_PAD, MONO)}>{p.phone || "—"}</td>
+                <td className={cn(TD, RP_PAD)}>
+                  {p.cars.map((c, j) => (
+                    <div key={j}>
+                      {[c.tour, c.van].filter(Boolean).join(" · ")}
+                    </div>
+                  ))}
+                </td>
+                <td
+                  className={cn(
+                    TD,
+                    p.can_send ? "" : "text-[12px] text-[#8a5a00]",
+                  )}
+                >
+                  {p.can_send ? "Yes" : p.why}
+                </td>
+              </tr>
+            ))}
+          </Table>
+        ) : (
+          <p className={RP_EMPTY}>No guides on the schedule for this day.</p>
+        )}
+      </Box>
+      {confirm ? (
+        <ConfirmDialog
+          title="Text the guides?"
+          confirmLabel={`Text ${plural(confirm.names.length, "guide")}`}
+          busyLabel="Sending…"
+          onClose={() => setConfirm(null)}
+          onConfirm={() => send(confirm.keys)}
+        >
+          {confirm.changed ? (
+            <p className="font-medium text-[#8a5a00]">
+              The guide list changed since it was shown (the schedule was
+              saved). The table now shows the current list.
+            </p>
+          ) : null}
+          <p>
+            Text <b>{plural(confirm.names.length, "guide")}</b> the link to
+            their page for <b>{date}</b>: {confirm.names.join(", ")}?
+          </p>
+          <p
+            data-guide-sms-preview
+            className="rounded-[8px] border border-black/10 bg-[#f8fafc] px-3 py-2 text-[12.5px]"
+          >
+            <b>Text:</b> {confirm.sms}
+          </p>
+          {confirm.skipped ? (
+            <p>
+              {confirm.skipped} selected guide(s) will NOT receive this message.
             </p>
           ) : null}
           {confirm.lastText ? (

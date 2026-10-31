@@ -124,6 +124,11 @@ async function main() {
 // ── Pickup Locations 检查（拼在 harness-head.js 后面运行） ──
 const dialog = "document.querySelector('[role=dialog]')";
 const rowOf = (name) => `[...document.querySelectorAll('tbody tr')].find(tr => tr.children[0].textContent.startsWith(${JSON.stringify(name)}))`;
+async function setFile(selector, file) {
+  const { root } = await cdp("DOM.getDocument", { depth: -1, pierce: true });
+  const { nodeId } = await cdp("DOM.querySelector", { nodeId: root.nodeId, selector });
+  await cdp("DOM.setFileInputFiles", { nodeId, files: [`${__dirname.replace(/\\/g, "/")}/${file}`] });
+}
 async function since(before, filter) {
   return (await mockLog()).slice(before).filter(filter);
 }
@@ -312,6 +317,62 @@ async function run() {
   check("存不了：写原因、勾还原", await evaluate(`return document.body.textContent.includes('Could not change Tour bus departure for Resorts World: Admin access required') && ${depBox("Resorts World")}.checked === true;`));
   await ctl({ depFail: false });
   check("How to use 说明 Tour bus departure", await evaluate("return document.body.textContent.includes('Guests picked up there are left out when you click Pull from manifests in Dispatch.');"));
+  // ── ⬆ Import（全站通用导入，Annie 2026-10-29「批量导游同意推荐。动手」；后端 G220 76de8f3，模拟接口照后端形状）──
+  await ctl({ failList: false });
+  await openPage(`${APP}/settings/pickup-locations`);
+  await evaluate(`
+    window.__blob = null; window.__download = null;
+    const orig = URL.createObjectURL;
+    URL.createObjectURL = (b) => { window.__blob = b; return orig(b); };
+    HTMLAnchorElement.prototype.click = function () { window.__download = this.download; };
+  `);
+  check("Import：All Locations 标题这排有 ⬆ Import（灰白，不是蓝的），收着时没有 Import 块", await evaluate("const b = $btn('⬆ Import'); return !!b && getComputedStyle(b).backgroundColor !== 'rgb(59, 130, 246)' && !document.querySelector('[data-bulk-import]');"));
+  await evaluate("$btn('⬆ Import').click();");
+  await waitFor("document.querySelector('[data-bulk-import]')");
+  await evaluate("$btn('⬇ Download template').click();");
+  await waitFor("window.__download");
+  const tpl = await evaluate("return (await window.__blob.text()).replace(/^\\uFEFF/, '');");
+  const tplLines = tpl.split("\r\n");
+  check("模板：列名同页面栏名、含停用的酒店（行数 = 页面上的 N locations）、文件名 pickup_locations_template_*.csv", tplLines[0] === "Hotel Name,Photo URL,Map image,Short (for SMS),Details (email & guest page & AI Agent),Aliases,Active,Tour bus departure" && tplLines.length - 1 === (await (await fetch(`${MOCK}/api/pickup-locations`)).json()).locations.length && tpl.includes("ZZ Test Qzx") && /^pickup_locations_template_\d{4}-\d{2}-\d{2}\.csv$/.test(await evaluate("return window.__download;")), JSON.stringify(tplLines.slice(0, 2)));
+  let ib = (await mockLog()).length;
+  await setFile("[data-bulk-import] input[type=file]", "pl-import.csv");
+  await waitFor("document.querySelector('[data-bulk-counts]')");
+  let ireqs = await since(ib, (e) => e.path.startsWith("/api/pickup-locations/import/"));
+  check("预览：上传文件、只调 preview（不写）", ireqs.length === 1 && ireqs[0].path === "/api/pickup-locations/import/preview" && ireqs[0].hasFile, JSON.stringify(ireqs));
+  check("预览：New 1 / Will update 2 / No change 0 / Errors 2，栏名用页面上的", await evaluate("const t = document.querySelector('[data-bulk-counts]').textContent; const h = [...document.querySelectorAll('[data-bulk-import] thead th')].map(th => th.textContent); return t.includes('New: 1') && t.includes('Will update: 2') && t.includes('No change: 0') && t.includes('Errors: 2') && JSON.stringify(h) === JSON.stringify(['Import','Hotel Name','Short (for SMS)','Aliases','Tour bus departure']);"));
+  check("预览：改了的格子写 旧 → 新、alias 对上写 Matched by alias、空格 left as is", await evaluate("const ch = [...document.querySelectorAll('[data-bulk-changed]')].map(e => e.textContent); const t = document.querySelector('[data-bulk-import] table').textContent; return ch.includes('Tour lobby → Tour lobby east') && ch.includes('No → Yes') && t.includes('Matched by alias “RWLV”.') && t.includes('blank in file — left as is');"));
+  check("预览：Short 太长红字写原因、文件里重复写 Repeated above", await evaluate("const es = [...document.querySelectorAll('[data-bulk-error]')].map(e => e.textContent); return es.includes('Short (for SMS) is 130 characters — the limit is 120.') && es.includes('Repeated above — skipped.');"));
+  check("后端回来的原文当纯文本显示（后端安全审查 SA-4）：<b>Long</b> 照字面写出，表里没有 b 元素", await evaluate("const t = document.querySelector('[data-bulk-import] table'); return t.textContent.includes('ZZ Test <b>Long</b>') && !t.querySelector('b');"));
+  check("Save 键：蓝色 Save 3 rows", await evaluate("const b = $btn('Save 3 rows'); return !!b && getComputedStyle(b).backgroundColor === 'rgb(59, 130, 246)';"));
+  await ctl({ importFail: true });
+  await evaluate("$btn('Save 3 rows').click();");
+  await waitFor("document.querySelector('[data-bulk-import] [role=alert]')?.textContent.includes('Not saved')");
+  check("存不上：红字 Not saved — nothing was changed（一个事务），预览留着", await evaluate("const a = document.querySelector('[data-bulk-import] [role=alert]'); return a.textContent.startsWith('Not saved — nothing was changed.') && getComputedStyle(a).color === 'rgb(179, 38, 30)' && !!$btn('Save 3 rows');"));
+  await ctl({ importFail: false, importConflict: true });
+  await evaluate("$btn('Save 3 rows').click();");
+  await waitFor("document.querySelector('[data-bulk-import] [role=alert]')?.textContent.includes('Someone changed')");
+  check("409（后端 G220 原话）：红字只写一遍 Nothing was saved — check the preview again.，不再在前面加 nothing was changed", await evaluate("const a = document.querySelector('[data-bulk-import] [role=alert]').textContent; return a === 'Not saved — Someone changed the hotel list while this file was being saved. Nothing was saved — check the preview again.';"), await evaluate("return document.querySelector('[data-bulk-import] [role=alert]').textContent;"));
+  await ctl({ importConflict: false });
+  // 先展开 Action Log（收着不请求），存好后应重读
+  await evaluate("[...document.querySelectorAll('button')].find(b => b.textContent.includes('Action Log')).click();");
+  await waitFor("document.querySelector('[data-action-log] tbody tr')");
+  ib = (await mockLog()).length;
+  await evaluate("$btn('Save 3 rows').click();");
+  await waitFor("document.querySelector('[data-bulk-import] [role=status]')?.textContent.includes('Saved')");
+  await waitFor(`${rowOf("ZZ Test Import Inn")}`);
+  ireqs = await since(ib, (e) => e.path === "/api/pickup-locations/import/commit");
+  check("Save：传同一个文件；绿字 Saved — 1 new, 2 updated. 2 rows with errors were not saved.；列表重拉出新酒店、Aria 的 Short 改了", ireqs.length === 1 && ireqs[0].hasFile && (await evaluate(`const s = document.querySelector('[data-bulk-import] [role=status]'); return s.textContent.includes('Saved — 1 new, 2 updated. 2 rows with errors were not saved.') && getComputedStyle(s).color === 'rgb(30, 107, 67)' && !document.querySelector('[data-bulk-import] table') && ${rowOf("Aria")}.textContent.includes('Tour lobby east');`)));
+  check("Save 后 Action Log 重读", (await since(ib, (e) => e.path === "/api/pickup-locations/action-log")).length >= 1);
+  check("How to use 说明 ⬆ Import", await evaluate("return document.body.textContent.includes('Change or add many hotels at once: click ⬆ Import');"));
+  // 400（后端原话，例如缺 Hotel Name 这一栏）：读不了的文件红字写后端那句，不出预览。
+  await ctl({ previewBad: true });
+  await setFile("[data-bulk-import] input[type=file]", "pl-import.csv");
+  await waitFor("document.querySelector('[data-bulk-import]').textContent.includes('Missing column: Hotel Name')");
+  check("预览 400：红字写后端原话 Missing column: Hotel Name，没有预览表、没有 Save", await evaluate("const b = document.querySelector('[data-bulk-import]'); return b.textContent.includes('Missing column: Hotel Name') && !b.querySelector('table') && !$btn('Save ');"));
+  await ctl({ previewBad: false });
+  await evaluate("$btn('Close', document.querySelector('[data-bulk-import]')).click();");
+  check("Close：Import 块收起", await waitFor("!document.querySelector('[data-bulk-import]')"));
+
   await ctl({ failList: false, staff: true });
   await goto(`${APP}/settings/pickup-locations`);
   await waitFor("document.body.textContent.includes('Admin access required')");
@@ -321,6 +382,172 @@ async function run() {
   await waitFor("location.pathname === '/auth/login'");
   check("未登录跳旧后台登录页", (await evaluate("return location.href;")).startsWith(`${APP}/auth/login?next=`));
   await ctl({ fail401: false });
+  // ── 分开 Tour bus / Shuttle + Shuttle 站时间（preview v3，Annie「shuttle改完Q8」「就可以动手了」）──
+  await openPage(`${APP}/settings/pickup-locations`);
+  await waitRows(3);
+  check("后端没有类别时：照旧一张 All Locations，没有季节键", await evaluate("return document.body.textContent.includes('All Locations') && !document.querySelector('[data-block]') && !document.querySelector('[data-season-tabs]');"));
+  await ctl({ split: true });
+  const SEASONS = (await (await fetch(`${MOCK}/api/pickup-locations/seasons`)).json()).seasons;
+  const SUMMER = SEASONS[0].name;
+  const WINTER = SEASONS[1].name;
+  await openPage(`${APP}/settings/pickup-locations`);
+  await waitFor("document.querySelector('[data-block=shuttle] [data-times-cell]')");
+  await helpers();
+  const blockNames = (b) => `[...document.querySelectorAll('[data-block=${b}] tbody tr')].map(tr => tr.children[0].textContent)`;
+  check("Needs a type 黄条：只有还没归类的 The Strat", await evaluate(`const n = ${blockNames("needs-type")}; return n.length === 1 && n[0].startsWith('The Strat');`));
+  check(
+    "Tour bus 块：Bellagio、Treasure Island（标 also Shuttle），没有 Shuttle 站",
+    await evaluate(`const n = ${blockNames("tour")}; return n.length === 2 && n[0].startsWith('Bellagio') && n[1].includes('Treasure Island') && n[1].includes('also Shuttle');`),
+    await evaluate(`return JSON.stringify(${blockNames("tour")});`),
+  );
+  check(
+    "Shuttle 块：St George、Kanab、Treasure Island（标 also Tour bus）；按字段分，不按名字",
+    await evaluate(`const n = ${blockNames("shuttle")}; return n.length === 3 && n.some(x => x.startsWith('St George')) && n.some(x => x.startsWith('Kanab')) && n.some(x => x.includes('Treasure Island') && x.includes('also Tour bus'));`),
+    await evaluate(`return JSON.stringify(${blockNames("shuttle")});`),
+  );
+  check("「Tour bus departure」勾只在 Tour bus 块（v2 Q3）", await evaluate("return document.querySelector('[data-block=tour]').textContent.includes('Tour bus departure') && !document.querySelector('[data-block=shuttle]').textContent.includes('Tour bus departure');"));
+  check("Shuttle 块第一列叫 Stop，多一列 Times", await evaluate(`const h = [...document.querySelectorAll('[data-block=shuttle] thead th')].map(t => t.textContent); return h[0] === 'Stop' && h[1] === 'Times — ${SUMMER}';`));
+  check(
+    "季节键：默认选今天所在的季节（标 today），后面还有一季",
+    await evaluate(`const t = [...document.querySelectorAll('[data-season-tab]')]; return t.length === 2 && t[0].getAttribute('aria-pressed') === 'true' && t[0].textContent.includes('${SUMMER}') && t[0].textContent.includes('today') && t[1].textContent.includes('${WINTER}');`),
+  );
+  const sgRow = `[...document.querySelectorAll('[data-block=shuttle] tbody tr')].find(tr => tr.children[0].textContent.startsWith('St George'))`;
+  check(
+    "St George 的 Times（这一季）：Las Vegas → St George 9:45 AM、St George → Las Vegas 3:30 PM，另一季缺一个挂黄签",
+    await evaluate(`const t = ${sgRow}.children[1].textContent; return t.includes('Las Vegas → St George9:45 AM') && t.includes('St George → Las Vegas3:30 PM') && t.includes('${WINTER}: 1 time missing');`),
+    await evaluate(`return ${sgRow}.children[1].textContent;`),
+  );
+  check("Kanab 还没有任何时间：写 No times yet", await evaluate("return [...document.querySelectorAll('[data-block=shuttle] tbody tr')].find(tr => tr.children[0].textContent.startsWith('Kanab')).children[1].textContent === 'No times yet';"));
+  check("How to use 补了 G211（b0 要求）：两个勾、两块 + also、Needs a type、季节键 / Times、+ Add time 先暂存、Edit seasons、离开先问；Tour bus departure 注明只在 Tour bus 块", await evaluate("const t = document.body.textContent.replace(/\\s+/g, ' '); return ['tick Tour bus pick-up, Shuttle stop, or both, then click Add.', 'The list has two blocks: Tour bus and Shuttle.', 'marked “also Shuttle” or “also Tour bus”', 'Needs a type: a yellow bar lists places with neither box ticked.', 'today’s season is picked first and marked today', 'Click + Add time for another route or run.', 'until you click Save on that row.', 'Seasons can’t overlap.', 'Copy to next year adds next year’s seasons with the same dates.', 'A season that a stop still uses can’t be deleted.', 'you are asked first.', 'Tour bus departure (only in the Tour bus block)'].every((s) => t.includes(s));"));
+  check("季节表后面没接上：Shuttle 卡头黄字提醒", await evaluate("return !!document.querySelector('[data-season-gap]') && document.querySelector('[data-season-gap]').textContent.includes('No season after ' ) && document.querySelector('[data-season-gap]').textContent.includes(' yet');"));
+  await evaluate("document.querySelectorAll('[data-season-tab]')[1].click();");
+  await sleep(200);
+  check(
+    `切到 ${WINTER}：St George 10:15 AM、另一条写 no time yet；Treasure Island 的 Zion 线写 no service`,
+    await evaluate(`const t = ${sgRow}.children[1].textContent; const ti = [...document.querySelectorAll('[data-block=shuttle] tbody tr')].find(tr => tr.children[0].textContent.includes('Treasure Island')).children[1].textContent; return t.includes('10:15 AM') && t.includes('no time yet') && ti.includes('Las Vegas → Zionno service') && document.querySelector('[data-block=shuttle] thead th:nth-child(2)').textContent === 'Times — ${WINTER}';`),
+  );
+  await evaluate("document.querySelectorAll('[data-season-tab]')[0].click();");
+
+  // Needs a type：勾好按 Save
+  const strat = "document.querySelector('[data-block=needs-type] tbody tr')";
+  check("Needs a type：一个都没勾时 Save 灰着", await evaluate(`return $btn('Save', ${strat}).disabled;`));
+  before = (await mockLog()).length;
+  await evaluate(`${strat}.querySelectorAll('input[type=checkbox]')[1].click();`);
+  await evaluate(`$btn('Save', ${strat}).click();`);
+  await waitFor("!document.querySelector('[data-block=needs-type]')");
+  const classifyPut = (await since(before, (e) => e.method === "PUT"))[0];
+  check("勾 Shuttle stop 按 Save：PUT 带 is_shuttle true / is_tour_bus false，其余字段照原样", classifyPut?.body?.is_shuttle === true && classifyPut.body.is_tour_bus === false && classifyPut.body.hotel_name === "The Strat" && classifyPut.body.instruction_short === "Strat", JSON.stringify(classifyPut?.body));
+  check("全部归好：黄条不见，The Strat 到了 Shuttle 块，绿字 ✓ Saved The Strat", await waitFor(`${blockNames("shuttle")}.some(x => x.startsWith('The Strat')) && document.querySelector('[data-block=shuttle] [data-saved-note]')?.textContent === '✓ Saved The Strat' && getComputedStyle(document.querySelector('[data-saved-note]')).color === 'rgb(21, 128, 61)'`));
+
+  // Edit 下的时刻表
+  await evaluate(`$btn('✏ Edit', ${sgRow}).click();`);
+  await waitFor("document.querySelector('[data-times-editor]')");
+  const ed = "document.querySelector('[data-times-editor]')";
+  check("Edit St George：名字下面两个勾（Shuttle 勾着），下面展开时刻表：2 行、每季一列", await evaluate(`const r = document.querySelector('[data-edit-row]'); const c = r.querySelectorAll('[data-type-checks] input'); return c.length === 2 && !c[0].checked && c[1].checked && ${ed}.querySelectorAll('[data-time-row]').length === 2 && ${ed}.querySelectorAll('thead th').length === 4 && ${ed}.textContent.includes('${SUMMER}') && ${ed}.textContent.includes('${WINTER}');`));
+  check("缺的那一格：淡黄底 + 黄字「St George → Las Vegas has no Winter … time」，仍然可以存", await evaluate(`return ${ed}.querySelectorAll('[data-empty]').length === 1 && ${ed}.querySelector('[data-times-missing]').textContent.includes('St George → Las Vegas has no ${WINTER} time');`));
+  check("还没改：不写 Not saved yet", await evaluate(`return !${ed}.querySelector('[data-times-unsaved]');`));
+  await evaluate(`$btn('+ Add time', ${ed}).click();`);
+  await sleep(100);
+  const newRow = `[...${ed}.querySelectorAll('[data-time-row]')][2]`;
+  check("+ Add time：多一行标 new，写「Not saved yet: 1 time added」（先暂存）", await evaluate(`return ${newRow}.textContent.includes('new') && ${ed}.querySelector('[data-times-unsaved]').textContent.startsWith('Not saved yet: 1 time added');`));
+  await evaluate(`const s = ${newRow}.querySelector('select'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, '14'); s.dispatchEvent(new Event('change', { bubbles: true }));`);
+  await evaluate(`$setValue(${newRow}.querySelectorAll('input[data-time-input]')[0], '10:00');`);
+  await evaluate(`${newRow}.querySelectorAll('[data-time-cell]')[1].querySelector('input[type=checkbox]').click();`);
+  await sleep(150);
+  check("No service 勾上：那一格变成 No service", await evaluate(`return ${newRow}.querySelectorAll('[data-time-cell]')[1].textContent.startsWith('No service');`));
+  check("还没按 Save：一个请求都没发（暂存）", (await since(before, (e) => e.method === "PUT")).length === 1);
+  before = (await mockLog()).length;
+  await evaluate("$btn('Save', document.querySelector('[data-edit-row]')).click();");
+  await waitFor("!document.querySelector('[data-times-editor]')");
+  const timesPut = (await since(before, (e) => e.method === "PUT"))[0];
+  const tms = timesPut?.body?.times || [];
+  check(
+    "按 Save：一个 PUT 连名字一起送整份 times（3 + 新的 2 格），新的 Page 线 Summer 10:00、Winter No service",
+    tms.length === 5 && tms.some((t) => t.product_id === 14 && t.season_id === SEASONS[0].id && t.stop_time === "10:00" && !t.no_service) && tms.some((t) => t.product_id === 14 && t.season_id === SEASONS[1].id && t.no_service && t.stop_time === null) && timesPut.body.hotel_name === "St George – Main St" && timesPut.body.is_shuttle === true,
+    JSON.stringify(timesPut?.body),
+  );
+  check("存好：绿字「✓ Saved St George – Main St · 5 times」，Times 列出现 Las Vegas → Page 10:00 AM", await waitFor(`document.querySelector('[data-block=shuttle] [data-saved-note]')?.textContent === '✓ Saved St George – Main St · 5 times' && ${sgRow}.children[1].textContent.includes('Las Vegas → Page10:00 AM')`));
+
+  // 页面上就看得出来的错：不发请求，红字
+  await evaluate(`$btn('✏ Edit', ${sgRow}).click();`);
+  await waitFor("document.querySelector('[data-times-editor]')");
+  await evaluate(`$btn('+ Add time', ${ed}).click();`);
+  await sleep(100);
+  const dupRow = `[...${ed}.querySelectorAll('[data-time-row]')].pop()`;
+  await evaluate(`const s = ${dupRow}.querySelector('select'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, '11'); s.dispatchEvent(new Event('change', { bubbles: true }));`);
+  await evaluate(`$setValue(${dupRow}.querySelectorAll('input[data-time-input]')[0], '09:45');`);
+  await sleep(150);
+  check("同一条线路同一季同一个时间写两次：时刻表里马上红字", await evaluate(`return ${ed}.querySelector('[data-times-error]')?.textContent === 'Las Vegas → St George 9:45 AM is listed twice in ${SUMMER}.';`));
+  before = (await mockLog()).length;
+  await evaluate("$btn('Save', document.querySelector('[data-edit-row]')).click();");
+  await sleep(300);
+  check("这时按 Save：不发请求、红字「Could not save: …」、改动留着", (await since(before, (e) => e.method === "PUT")).length === 0 && (await evaluate(`return document.querySelector('[data-edit-row] [role=alert]')?.textContent.startsWith('Could not save: Las Vegas → St George 9:45 AM is listed twice') && !!${ed};`)));
+  await evaluate("$btn('Cancel', document.querySelector('[data-edit-row]')).click();");
+  await sleep(150);
+
+  // 后端拒绝：一样都不存，红字，改动留着
+  await ctl({ timesFail: true });
+  const kanab = "[...document.querySelectorAll('[data-block=shuttle] tbody tr')].find(tr => tr.children[0].textContent.startsWith('Kanab'))";
+  await evaluate(`$btn('✏ Edit', ${kanab}).click();`);
+  await waitFor("document.querySelector('[data-times-editor]')");
+  await evaluate("$btn('Save', document.querySelector('[data-edit-row]')).click();");
+  check("后端回 400：红字后端原话 + Nothing was saved，编辑行和时刻表还在", await waitFor("document.querySelector('[data-edit-row] [role=alert]')?.textContent === 'Could not save: Las Vegas → St George is listed twice for one season. Nothing was saved.' && !!document.querySelector('[data-times-editor]')"));
+  await ctl({ timesFail: false });
+  await evaluate("$btn('Cancel', document.querySelector('[data-edit-row]')).click();");
+  await sleep(150);
+
+  // Edit seasons
+  await evaluate("$btn('Edit seasons').click();");
+  await waitFor("document.querySelector('[data-seasons-editor]')");
+  const se = "document.querySelector('[data-seasons-editor]')";
+  check("Edit seasons：两季，后面没接上写黄字（可以存）", await evaluate(`return ${se}.querySelectorAll('[data-season-row]').length === 2 && ${se}.querySelector('[data-seasons-gap]').textContent.includes('You can still save');`));
+  await evaluate(`$setValue(${se}.querySelectorAll('[data-season-row]')[1].querySelectorAll('input[type=date]')[0], '${SEASONS[0].starts_on}');`);
+  await sleep(150);
+  check("改成重叠：红字写哪两季、哪几天重叠，两个日期框标红", await evaluate(`return ${se}.querySelector('[data-seasons-overlap]')?.textContent.includes('${SUMMER} and ${WINTER} overlap') && [...${se}.querySelectorAll('input[type=date]')].filter(i => getComputedStyle(i).borderTopColor === 'rgb(220, 38, 38)').length === 4;`));
+  before = (await mockLog()).length;
+  await evaluate(`$btn('Save', ${se}).click();`);
+  await sleep(300);
+  check("重叠时按 Save：不发请求，红字 Could not save … Nothing was saved", (await since(before, (e) => e.method === "PUT")).length === 0 && (await evaluate(`return ${se}.querySelector('[data-seasons-error]').textContent.startsWith('Could not save: ${SUMMER} and ${WINTER} overlap');`)));
+  await evaluate(`$btn('Cancel', ${se}).click();`);
+  await sleep(150);
+  // 删掉还在用的季节：后端 409（b0 定稿），红字照原话 + Nothing was saved，编辑框不关、改动留着
+  await evaluate("$btn('Edit seasons').click();");
+  await waitFor("document.querySelector('[data-seasons-editor]')");
+  await evaluate(`${se}.querySelectorAll('[data-season-row]')[0].querySelector('[aria-label="Remove this season"]').click();`);
+  await sleep(100);
+  before = (await mockLog()).length;
+  await evaluate(`$btn('Save', ${se}).click();`);
+  await waitFor(`${se}?.querySelector('[data-seasons-error]')`);
+  check("删掉还在用的季节：409 红字写后端原话 + Nothing was saved，编辑框还开着、只剩一季", (await since(before, (e) => e.method === "PUT" && e.path.endsWith("/seasons"))).length === 1 && (await evaluate(`const t = ${se}.querySelector('[data-seasons-error]').textContent; return t.includes('${SUMMER} still has stop times. Remove them first.') && t.includes('Nothing was saved') && ${se}.querySelectorAll('[data-season-row]').length === 1;`)));
+  await evaluate(`$btn('Cancel', ${se}).click();`);
+  await sleep(150);
+  await evaluate("$btn('Edit seasons').click();");
+  await waitFor("document.querySelector('[data-seasons-editor]')");
+  await evaluate(`$btn('Copy to next year', ${se}).click();`);
+  await sleep(100);
+  const copied = await evaluate(`return [...${se}.querySelectorAll('[data-season-row]')].map(r => [...r.querySelectorAll('input')].map(i => i.value).join('|'));`);
+  check(
+    "Copy to next year：最后一年开始的季节都加一年（名字的年份、起止日期都加一）",
+    copied.length === 4 && copied[2] === `Summer ${Number(SUMMER.slice(-4)) + 1}|${Number(SEASONS[0].starts_on.slice(0, 4)) + 1}${SEASONS[0].starts_on.slice(4)}|${Number(SEASONS[0].ends_on.slice(0, 4)) + 1}${SEASONS[0].ends_on.slice(4)}` && copied[3].startsWith(`Winter ${Number(WINTER.slice(-4)) + 1}|`),
+    JSON.stringify(copied),
+  );
+  before = (await mockLog()).length;
+  await evaluate(`$btn('Save', ${se}).click();`);
+  await waitFor("!document.querySelector('[data-seasons-editor]')");
+  const seasonPut = (await since(before, (e) => e.method === "PUT" && e.path.endsWith("/seasons")))[0];
+  check("Save：PUT 整份季节（旧的带 id，新的不带）", seasonPut?.body?.seasons?.length === 4 && seasonPut.body.seasons.filter((x) => x.id).length === 2, JSON.stringify(seasonPut?.body));
+
+  // 新加：先勾类别
+  await evaluate("$setValue(document.querySelector('#new-name'), 'ZZ Test Shuttle Stop');");
+  await evaluate("$btn('Add').click();");
+  check("Add 不勾类别：红字 Tick Tour bus pick-up, Shuttle stop, or both.", await waitFor("document.body.textContent.includes('Tick Tour bus pick-up, Shuttle stop, or both.')"));
+  await evaluate("document.querySelector('[data-add-type] #new-shuttle').click();");
+  before = (await mockLog()).length;
+  await evaluate("$btn('Add').click();");
+  await waitFor("document.body.textContent.includes('✓ Added')");
+  const addPost = (await since(before, (e) => e.method === "POST"))[0];
+  check("勾 Shuttle stop 再 Add：POST 带 is_shuttle true", addPost?.body?.is_shuttle === true && addPost.body.is_tour_bus === false, JSON.stringify(addPost?.body));
+  await ctl({ split: false });
 }
 
 main().catch((e) => {

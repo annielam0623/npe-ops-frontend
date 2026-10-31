@@ -21,8 +21,11 @@ import {
   saveManifestCfm,
 } from "@/lib/manifests-api";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
+import { useLeaveGuard } from "@/lib/use-leave-guard";
 import { fetchUserPref, saveUserPref } from "@/lib/user-prefs-api";
 import { OTHER_TOUR_COLOR, resolveTourColor } from "@/lib/tour-colors";
+import { usePageVisibility } from "@/lib/page-visibility";
+import { byTick } from "@/lib/permissions";
 import { usePermissions } from "@/lib/staff-permissions";
 import { cn } from "@/lib/utils";
 import { useViewOnly, ViewOnly } from "@/components/ui/view-only";
@@ -33,8 +36,6 @@ import type {
   ManifestRow,
   ManifestTabKey,
 } from "@/types";
-
-import { SyncRezdyButton } from "@/components/rezdy-sync/sync-rezdy-button";
 
 import { CfmUploadPanel } from "./cfm-upload-panel";
 import {
@@ -111,11 +112,19 @@ export function ManifestsView() {
   // partner 只能看（Annie 2026-10-27「合作方只能看manifest和订单，不能改或者选任何功能，比如加colum之类的」）：
   // 勾了 manifests.edit 也不上传确认号、不改 Cfm #、不 Sync Rezdy；Columns、拖表头、Export CSV、Show hidden rows 都不出。
   // 发送（团确认 / 门票提醒 / Send message）partner 一律没有（Annie「发送只能是我们内部员工发送」），也就没有勾选框。员工照旧。
+  // 员工也按勾（Annie 2026-10-30 置顶 10c「全部按照勾选」）：总开关对他开着时，没勾 manifests.edit 就只看，
+  // 没勾 manifests.send / broadcast.send 就没有对应的发送；关着照旧全给，Super Admin 全给。
   const perms = usePermissions();
+  const isSuperAdmin = usePageVisibility().isSuperAdmin;
+  const tick = (code: string) =>
+    byTick(perms, code, { legacy: true, superAdmin: isSuperAdmin });
   const noFeatures = perms.partnerView;
-  const viewOnly = perms.partnerLacks("manifests.edit");
-  const noConfirm = perms.partnerLacks("manifests.send");
-  const noMessage = perms.partnerLacks("broadcast.send");
+  const viewOnly =
+    perms.partnerLacks("manifests.edit") || !tick("manifests.edit");
+  const noConfirm =
+    perms.partnerLacks("manifests.send") || !tick("manifests.send");
+  const noMessage =
+    perms.partnerLacks("broadcast.send") || !tick("broadcast.send");
   const noSend = noConfirm && noMessage;
   const [date, setDate] = useState("");
   const [tab, setTab] = useState<ManifestTabKey>("bus");
@@ -129,8 +138,6 @@ export function ManifestsView() {
   const [data, setData] = useState<ManifestPage | null>(null);
   const [state, setState] = useState<LoadState | null>({ kind: "loading" });
   const [reloadKey, setReloadKey] = useState(0);
-  /** Sync Rezdy 刚加进来的单（订单号）：重读后标绿几秒（How to use 写的）。 */
-  const [fresh, setFresh] = useState<ReadonlySet<string>>(new Set());
   const [picking, setPicking] = useState(false);
   const [uploadingCfm, setUploadingCfm] = useState(false);
   /**
@@ -367,6 +374,22 @@ export function ManifestsView() {
     }
   }
 
+  /** 改了还没存的 Cfm # 格（按行）：离开页面先问（全站规矩，A2）。 */
+  const [dirtyCfm, setDirtyCfm] = useState<ReadonlySet<string>>(new Set());
+  const onCfmDirty = useCallback((rowKey: string, dirty: boolean) => {
+    setDirtyCfm((cur) => {
+      if (cur.has(rowKey) === dirty) return cur;
+      const next = new Set(cur);
+      if (dirty) next.add(rowKey);
+      else next.delete(rowKey);
+      return next;
+    });
+  }, []);
+  useLeaveGuard(
+    dirtyCfm.size > 0,
+    "A Cfm # you typed is not saved yet. Leave without saving?",
+  );
+
   function onCfmSaved(rowKey: string, values: ManifestRow["values"]) {
     setData((d) =>
       d
@@ -553,21 +576,7 @@ export function ManifestsView() {
               <span className="text-[12px] text-[#94a3b8] night:text-white/45">
                 {loading ? "Loading…" : null}
               </span>
-              {/* Sync Rezdy（后端 G70，Annie 2026-10-15）：这一排最右边；点完重读列表，新单标绿几秒。 */}
-              {viewOnly ? null : (
-                <SyncRezdyButton
-                  kind="manifests"
-                  date={date}
-                  today={laToday()}
-                  onUnauthorized={redirectToLogin}
-                  onSynced={(r) => {
-                    setFresh(new Set(r.new));
-                    setReloadKey((k) => k + 1);
-                    if (r.new.length)
-                      window.setTimeout(() => setFresh(new Set()), 4000);
-                  }}
-                />
-              )}
+              {/* Sync Rezdy 键去掉了（Annie 2026-10-30「不留，彻底删掉」；订单流固定：订单从 Order List 进 Main manifest）。 */}
             </div>
 
             {/* 页名「Manifest」和顶栏重复，只留给读屏（Annie 2026-10-19：保留顶栏那个，页内重复的去掉）。 */}
@@ -925,7 +934,6 @@ export function ManifestsView() {
                   fields={fields}
                   selected={selected}
                   highlight={highlight}
-                  fresh={fresh}
                   selectable={!noSend}
                   onToggle={toggleRows}
                   onSelectUnsent={selectUnsent}
@@ -933,6 +941,7 @@ export function ManifestsView() {
                     noFeatures ? undefined : (next) => void reorderFields(next)
                   }
                   onCfmSaved={onCfmSaved}
+                  onCfmDirty={onCfmDirty}
                   onUnauthorized={redirectToLogin}
                 />
               </section>
@@ -1157,12 +1166,12 @@ function ManifestTable({
   fields,
   selected,
   highlight,
-  fresh,
   selectable,
   onToggle,
   onSelectUnsent,
   onReorder,
   onCfmSaved,
+  onCfmDirty,
   onUnauthorized,
 }: {
   data: ManifestPage;
@@ -1171,8 +1180,6 @@ function ManifestTable({
   selected: ReadonlySet<string>;
   /** 搜索跳过来的那一行，标黄。 */
   highlight: string | null;
-  /** Sync Rezdy 刚加进来的单（订单号），标绿。 */
-  fresh: ReadonlySet<string>;
   /** 有勾选框（勾选只为发送；partner 什么都不能发时没有）。 */
   selectable: boolean;
   onToggle: (rowKeys: readonly string[], on: boolean) => void;
@@ -1181,6 +1188,8 @@ function ManifestTable({
   /** 拖表头换了顺序：新的整列顺序。没有 = 表头不能拖（partner）。 */
   onReorder?: (fields: string[]) => void;
   onCfmSaved: (rowKey: string, values: ManifestRow["values"]) => void;
+  /** 某一行的 Cfm # 改了没存 / 存好了。 */
+  onCfmDirty: (rowKey: string, dirty: boolean) => void;
   onUnauthorized: () => void;
 }) {
   // partner 不能发时没有勾选；Cfm # 能不能改由格子自己看 ViewOnly（manifests.edit）。
@@ -1233,18 +1242,15 @@ function ManifestTable({
         key={r.row_key}
         data-row={r.row_key}
         data-highlight={r.row_key === highlight ? "" : undefined}
-        data-fresh={fresh.has(r.order_number) ? "" : undefined}
         className={cn(
           "border-b-[0.5px] border-black/[.06] align-middle last:border-b-0 night:border-white/[.06]",
           r.row_key === highlight
             ? "bg-[#fff3cd] hover:bg-[#ffecb3] night:bg-amber-400/15 night:hover:bg-amber-400/20"
-            : fresh.has(r.order_number)
-              ? "bg-[#dcfce7] transition-colors night:bg-emerald-400/15"
-              : sentTickets
-                ? "bg-[#fff8e1] hover:bg-[#fff3cd] night:bg-amber-400/[.06] night:hover:bg-amber-400/10"
-                : missingCfm
-                  ? "bg-[#fdeceb] hover:bg-[#fbdedb] night:bg-rose-400/10 night:hover:bg-rose-400/15"
-                  : "hover:bg-[#fafaf8] night:hover:bg-white/[.03]",
+            : sentTickets
+              ? "bg-[#fff8e1] hover:bg-[#fff3cd] night:bg-amber-400/[.06] night:hover:bg-amber-400/10"
+              : missingCfm
+                ? "bg-[#fdeceb] hover:bg-[#fbdedb] night:bg-rose-400/10 night:hover:bg-rose-400/15"
+                : "hover:bg-[#fafaf8] night:hover:bg-white/[.03]",
         )}
       >
         <td className="w-9 p-0">
@@ -1285,6 +1291,7 @@ function ManifestTable({
               <CfmInput
                 row={r}
                 onSaved={onCfmSaved}
+                onDirty={onCfmDirty}
                 onUnauthorized={onUnauthorized}
               />
             ) : (
@@ -1481,14 +1488,19 @@ function Cell({
 
 type CfmState = "saving" | "saved" | "failed";
 
-/** staff 的确认号：离开输入框或按 Enter 存，Esc 放弃；失败写原因、保留输入。 */
+/**
+ * staff 的确认号（自动保存盘点 A2，Annie「4项全部动手」）：照节标题 Cfm # 的样子，改了以后格旁出蓝色 Save，
+ * 按 Save 或 Enter 才存（离开框不再存）；Esc 放弃。存好闪绿「Saved」，失败红字写原因、保留输入。
+ */
 function CfmInput({
   row,
   onSaved,
+  onDirty,
   onUnauthorized,
 }: {
   row: ManifestRow;
   onSaved: (rowKey: string, values: ManifestRow["values"]) => void;
+  onDirty: (rowKey: string, dirty: boolean) => void;
   onUnauthorized: () => void;
 }) {
   const stored = row.values[STAFF_CFM_KEY];
@@ -1499,9 +1511,16 @@ function CfmInput({
   const [error, setError] = useState("");
   const viewOnly = useViewOnly();
   useEffect(() => setText(storedText), [storedText]);
+  const dirty = !viewOnly && text.trim() !== storedText;
+  const rowKey = row.row_key;
+  useEffect(() => {
+    onDirty(rowKey, dirty);
+  }, [rowKey, dirty, onDirty]);
+  // 这一行不在了（换天 / 换标签）：不算没存的。
+  useEffect(() => () => onDirty(rowKey, false), [rowKey, onDirty]);
 
   async function save() {
-    if (viewOnly) return;
+    if (viewOnly || status === "saving") return;
     const next = text.trim();
     if (next === storedText) {
       setText(storedText);
@@ -1542,37 +1561,61 @@ function CfmInput({
 
   return (
     <div className="flex flex-col gap-0.5">
-      <input
-        type="text"
-        aria-label={`Cfm # for ${row.order_number} ${row.product_code}`}
-        value={text}
-        maxLength={100}
-        placeholder={viewOnly ? "" : "Add #"}
-        readOnly={viewOnly}
-        disabled={status === "saving"}
-        onChange={(e) => setText(e.target.value)}
-        onBlur={() => void save()}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") e.currentTarget.blur();
-          if (e.key === "Escape") {
-            setText(storedText);
-            setStatus(null);
-            setError("");
-          }
-        }}
-        className={cn(
-          // 旧页 .inline-edit：无框、底下一条虚线；存的状态用底线和底色表示。
-          "w-[90px] border-b bg-transparent px-0.5 py-px font-[inherit] text-[12px] text-[#1a1a1a] placeholder:text-[#ccc] focus:border-solid focus:outline-none night:text-white night:placeholder:text-white/30",
-          status === "saving" &&
-            "border-amber-400 bg-amber-50 night:border-amber-400/60 night:bg-amber-400/10",
-          status === "saved" &&
-            "border-emerald-500 bg-emerald-50 night:border-emerald-400/60 night:bg-emerald-400/10",
-          status === "failed" &&
-            "border-red-400 bg-red-50 night:border-red-400/60 night:bg-red-400/10",
-          !status &&
-            "border-dashed border-black/20 focus:border-black/50 night:border-white/25 night:focus:border-white/60",
-        )}
-      />
+      <span className="inline-flex items-center gap-1">
+        <input
+          type="text"
+          aria-label={`Cfm # for ${row.order_number} ${row.product_code}`}
+          value={text}
+          maxLength={100}
+          placeholder={viewOnly ? "" : "Add #"}
+          readOnly={viewOnly}
+          disabled={status === "saving"}
+          onChange={(e) => {
+            setText(e.target.value);
+            if (status === "failed") setStatus(null);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") void save();
+            if (e.key === "Escape") {
+              setText(storedText);
+              setStatus(null);
+              setError("");
+            }
+          }}
+          className={cn(
+            // 旧页 .inline-edit：无框、底下一条虚线；存的状态用底线和底色表示。
+            "w-[90px] border-b bg-transparent px-0.5 py-px font-[inherit] text-[12px] text-[#1a1a1a] placeholder:text-[#ccc] focus:border-solid focus:outline-none night:text-white night:placeholder:text-white/30",
+            status === "saving" &&
+              "border-amber-400 bg-amber-50 night:border-amber-400/60 night:bg-amber-400/10",
+            status === "saved" &&
+              "border-emerald-500 bg-emerald-50 night:border-emerald-400/60 night:bg-emerald-400/10",
+            status === "failed" &&
+              "border-red-400 bg-red-50 night:border-red-400/60 night:bg-red-400/10",
+            !status &&
+              "border-dashed border-black/20 focus:border-black/50 night:border-white/25 night:focus:border-white/60",
+          )}
+        />
+        {dirty || status === "saving" ? (
+          // 照节标题 Cfm # 的 Save（蓝色提交键）；改了才出，免得一整列都是键。
+          <button
+            type="button"
+            data-cfm-save
+            onClick={() => void save()}
+            disabled={status === "saving"}
+            className="cursor-pointer rounded-md border border-[#3b82f6] bg-[#3b82f6] px-2 py-px text-[11px] font-bold whitespace-nowrap text-white disabled:cursor-default disabled:opacity-50"
+          >
+            {status === "saving" ? "Saving…" : "Save"}
+          </button>
+        ) : status === "saved" ? (
+          <span
+            role="status"
+            data-cfm-saved
+            className="text-[11px] font-semibold text-[#047857] night:text-emerald-300"
+          >
+            Saved
+          </span>
+        ) : null}
+      </span>
       {error ? (
         <span
           role="alert"
@@ -1593,17 +1636,6 @@ function ManifestsHowToUse() {
         <>
           Pick a day with ‹ › or the date box, or click <b>Today</b>. Cancelled
           orders are left out.
-        </>,
-        // Sync Rezdy 那几条照预览第 3 版的建议文字（Annie 2026-10-15）。
-        <>
-          <b>Sync Rezdy</b> (the Rezdy button at the far right of the top row):
-          pick the day, then click it. The list reloads. The text next to the
-          button changes to &ldquo;Last updated from Rezdy&rdquo; with the time,
-          your name and what changed. New orders are highlighted for a few
-          seconds. Cancelled orders leave the list. If it says &ldquo;Could not
-          reach Rezdy&rdquo;, nothing was changed. Wait a minute and click the
-          sync button again. Past days cannot be synced; the button is greyed
-          out.
         </>,
         <>
           <b>Search</b>: type an order #, guest name, phone or email. It looks
@@ -1632,9 +1664,11 @@ function ManifestsHowToUse() {
         </>,
         <>
           <b>Cfm #</b>: if the Cfm # column is shown, type the confirmation
-          number in the box and click out of it (or press Enter) to save. The
-          box turns green when saved. Rezdy&apos;s own confirmation number is a
-          separate, read-only column.
+          number in the box, then click <b>Save</b> next to it (or press Enter).
+          Clicking out of the box does not save; Esc puts the old number back.
+          The box turns green and shows Saved when it is saved; if it can&apos;t
+          be saved, the reason shows in red. Rezdy&apos;s own confirmation
+          number is a separate, read-only column.
         </>,
         <>
           Tick orders. Tick a section header to select that section, or{" "}

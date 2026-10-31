@@ -49,7 +49,7 @@ function postRows(rows: DispatchRow[]) {
     bus_label: r.bus_label,
     note: r.note,
     location_ids: r.location_ids,
-    ccl_line_id: r.ccl ? r.ccl.line_id : null,
+    ccl_line_id: r.ccl?.line_id ?? null,
     // Farm out（G40）：只有 Farm out 车才带这两个字段（普通车不带，后端没上线时请求和以前一模一样）。
     // 点了 Back to our bus 的车明确送 false，免得后端留着旧的 Farm out。
     ...(r.farm_out
@@ -360,6 +360,13 @@ export function sendRelayRound(
 
 export interface DriverNotice {
   run_date: string;
+  /**
+   * 司机页开没开（G215，开关 driver_page 设成 staff 才算开）。false：Send texts now 不能点，旁边灰字写 page_off_text，
+   * 后端也拒发（400）。没带这个字段（旧后端）= 照旧能发。
+   */
+  page_open?: boolean;
+  /** 开关关着时 Send 键旁边那句，后端原文。 */
+  page_off_text?: string;
   /** 发给司机的那句短信（只有链接）。 */
   text: string;
   last_sent: { at: string; by: string; label: string } | null;
@@ -394,6 +401,57 @@ export function sendDriverNotice(
   return apiFetch(`${API}/driver-notice/send`, {
     method: "POST",
     body: { date, recipients },
+    cache: "no-store",
+  });
+}
+
+/**
+ * Send to guide（G75 后端早有；前端 Annie 2026-10-30「1. 动手」，preview https://claude.ai/artifact/4hC4p7DrrwmEhNPsSFHwNB
+ * 5 处照推荐）：给当天每台 bus tour 车的导游发一条短信，里面是他自己导游页的链接。一个导游带两台车只收一条。
+ * 后端 57 在改（eb 10-30 转）：短信固定段缩短、send 收可选 extra、GET 多回 extra_max / preview_text、超长 / 非法字符 400。
+ */
+export interface GuideNotice {
+  run_date: string;
+  /** 导游页开没开（开关 guide_page 设成 staff 才算开）。false：Send texts now 灰掉，旁边灰字 page_off_text，后端也拒发。 */
+  page_open?: boolean;
+  page_off_text?: string;
+  /** 发给导游的那句短信（链接是示例）。 */
+  text: string;
+  /** 固定段（不含 staff 加的那句），预览整条短信用；没带 = 用 text。 */
+  preview_text?: string;
+  /** staff 在链接后面最多能加几个字（凑满一条短信）；没带 = 后端还不收 extra，不出输入框。 */
+  extra_max?: number;
+  last_sent: { at: string; by: string; label: string } | null;
+  people: {
+    key: string;
+    name: string;
+    phone: string;
+    can_send: boolean;
+    why: string;
+    cars: { van: string | null; tour: string | null }[];
+  }[];
+}
+
+/** Send to guide 会发给谁、发什么（只读）。 */
+export function fetchGuideNotice(date: string): Promise<GuideNotice> {
+  return apiFetch<GuideNotice>(`${API}/guide-notice`, {
+    cache: "no-store",
+    query: { date },
+  });
+}
+
+/**
+ * ⚠️ 真实发送：给这一天排了车、能发的导游发短信。同一天同时只能一个人发（409）；导游页关着 400。
+ * `extra`：staff 在链接后面加的一句（可选，空就不带）。超长 / 非法字符后端 400 英文原话。
+ */
+export function sendGuideNotice(
+  date: string,
+  recipients: string[],
+  extra: string,
+): Promise<{ sent: string[]; failed: { name: string; error: string }[] }> {
+  return apiFetch(`${API}/guide-notice/send`, {
+    method: "POST",
+    body: { date, recipients, ...(extra ? { extra } : {}) },
     cache: "no-store",
   });
 }

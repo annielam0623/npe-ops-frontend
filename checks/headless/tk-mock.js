@@ -1,5 +1,6 @@
 // 模拟后端：Tickets Tracking 页用到的接口。控制：POST /__ctl {fail401, bump}；GET /__log。
 const http = require("http");
+const staffPerm = require("./staff-perm-mock");
 
 const today = new Intl.DateTimeFormat("en-CA", {
   timeZone: "America/Los_Angeles",
@@ -9,7 +10,7 @@ const today = new Intl.DateTimeFormat("en-CA", {
 }).format(new Date());
 const iso = (msAgo) => new Date(Date.now() - msAgo).toISOString();
 const H = 3600_000;
-const ctl = { fail401: false, bcAlready: [], bcRace: [], bcBusy: false, bcCheckFail: 0 };
+const ctl = { statusFail: "", fail401: false, bcAlready: [], bcRace: [], bcBusy: false, bcCheckFail: 0 };
 // G62 群发查重：check 回的 checked_at；已收过的每单「谁、几点」发的（洛杉矶 Oct 9, 3:00 PM）。
 const BC_CHECKED_AT = `${today}T16:00:00+00:00`;
 const bcSent = (o) => ({ order_number: o, sent_at: "2026-10-09T22:00:00+00:00", sent_by: "veronica" });
@@ -81,6 +82,7 @@ http.createServer(async (req, res) => {
   const entry = { method: req.method, path: p, query: url.search };
   log.push(entry);
   if (ctl.fail401) return send(res, 401, { detail: "Authentication required" });
+  if (staffPerm(ctl, p, res, send)) return; // 10c：模拟员工权限总开关开着的员工 / Super Admin（staff-perm-mock.js）
   if (p === "/api/user-prefs/tickets_col_order") {
     if (req.method === "PUT") { const b = JSON.parse(await readRaw(req)); entry.body = b; ctl.pref = b.value; return send(res, 200, { ok: true }); }
     return send(res, 200, { key: "tickets_col_order", value: ctl.pref ?? null });
@@ -97,6 +99,7 @@ http.createServer(async (req, res) => {
     const body = JSON.parse(await readRaw(req));
     entry.body = body;
     if (!["yes", "pending", "reschedule_req", "cancel"].includes(body.confirmation)) return send(res, 400, { detail: "Invalid confirmation value" });
+    if (ctl.statusFail) return send(res, 400, { detail: ctl.statusFail });
     rows.filter((r) => r.order_number === body.chd_number && r.tour_date === body.service_date).forEach((r) => (r.confirmation_status = body.confirmation));
     return send(res, 200, { ok: true });
   }

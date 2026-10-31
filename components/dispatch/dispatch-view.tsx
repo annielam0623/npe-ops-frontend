@@ -44,6 +44,7 @@ import {
 } from "@/lib/dispatch-roster-api";
 import { ActionLogPanel } from "@/components/action-log/action-log-panel";
 import { fetchActionLog } from "@/lib/action-log";
+import { byTick } from "@/lib/permissions";
 import { usePermissions } from "@/lib/staff-permissions";
 import { replaceUrl, useLeaveGuard } from "@/lib/use-leave-guard";
 import { cn } from "@/lib/utils";
@@ -105,7 +106,7 @@ import {
   type TourNeed,
   withoutAutoWindows,
 } from "./bus-windows";
-import { UnitError, UnitSave } from "./unit-save";
+import { UnitError, UnitStatus } from "./unit-save";
 import {
   ArrangeBoard,
   seatNotes,
@@ -126,12 +127,23 @@ type Banner = "none" | "prefill" | "revision";
 type Pending = { kind: "leave"; to: string } | { kind: "copy" } | null;
 
 /**
- * 停手多久自动保存（Annie 2026-10-15 去掉整天的 Save 键、改动自动保存；2026-10-18 改成每个单元自己的 Save 键，
- * 自动保存退成后备：页面 60 秒没有任何操作才存）。
+ * 页面多久没有活动才自动存（Annie 2026-10-15 去掉整天的 Save 键、改动自动保存；2026-10-18 改成每个单元自己的 Save 键，
+ * 自动保存退成后备、60 秒；2026-10-29「把每个小项的自动保存转成正常的一个小section的手动保存……除非是超过10分钟页面没有活动，
+ * 那才需要自动保存一下」）。没有活动 = 这个页面没有键盘、鼠标、触摸操作；切到别的标签页也算没有活动，计时照走。
  */
-const AUTOSAVE_MS = 60000;
+const AUTOSAVE_MS = 10 * 60 * 1000;
 
-/** headless 检查（checks/headless/da-test.js）可以设 window.__dispatchAutosaveMs 改等待时间；staff 一律 3 秒。 */
+/** 算「有活动」的事件（键盘、鼠标、点击、滚动、触摸；Annie 2026-10-29「没有在本页面有任何动作……或者完全没动鼠标」）。 */
+const ACTIVITY_EVENTS = [
+  "keydown",
+  "mousedown",
+  "mousemove",
+  "wheel",
+  "scroll",
+  "touchstart",
+] as const;
+
+/** headless 检查（checks/headless/da-test.js）可以设 window.__dispatchAutosaveMs 改等待时间；staff 一律 10 分钟。 */
 function autosaveDelay(): number {
   const v = (window as { __dispatchAutosaveMs?: unknown }).__dispatchAutosaveMs;
   return typeof v === "number" && v >= 0 ? v : AUTOSAVE_MS;
@@ -218,6 +230,10 @@ export function DispatchView() {
   /** 按单元保存：正在存的单元（只锁它）/ 每个单元挡下来的原因（原文）/ 自动保存存不上的那份行（不重试）。 */
   const [unitBusy, setUnitBusy] = useState<Record<string, boolean>>({});
   const [unitError, setUnitError] = useState<Record<string, string>>({});
+  /** 这次打开这一天以来存好过的单元（✓ Saved / Auto-saved 3:42 PM 一直留到再改，preview Q3）。换天清掉。 */
+  const [unitSaved, setUnitSaved] = useState<
+    Record<string, { auto: boolean; at: string }>
+  >({});
   const unitBusyRef = useRef<Set<string>>(new Set());
   const unitFailRef = useRef<Record<string, string>>({});
   const [prefill, setPrefill] = useState<DispatchPrefill | null>(null);
@@ -259,8 +275,14 @@ export function DispatchView() {
   // ② Send partner 一律不出（Annie「发送只能是我们内部员工发送」）。
   // Farm out 对 partner 关（Annie 2026-10-27「关」）：键、车下的名单、Farm out 车都不出，也不读合作公司名单（后端名单只给员工）。
   const perms = usePermissions();
-  const viewOnly = perms.partnerLacks("dispatch.edit");
-  const canSend = !perms.partnerLacks("dispatch.send");
+  // 员工也按勾（Annie 2026-10-30 置顶 10c「全部按照勾选」「动手」）：总开关对他开着时，没勾 dispatch.edit 就是只看、
+  // 没勾 dispatch.send 就没有 Send 标签；关着照旧全给（legacy）。Super Admin 全给。partner 照旧只看、不发。
+  const isSuperAdmin = usePageVisibility().isSuperAdmin;
+  const tick = (code: string) =>
+    byTick(perms, code, { legacy: true, superAdmin: isSuperAdmin });
+  const viewOnly =
+    perms.partnerLacks("dispatch.edit") || !tick("dispatch.edit");
+  const canSend = !perms.partnerLacks("dispatch.send") && tick("dispatch.send");
   const viewOnlyRef = useRef(viewOnly);
   viewOnlyRef.current = viewOnly;
   const farmOutVisible =
@@ -539,8 +561,9 @@ export function DispatchView() {
         setManifestVersion((v) => v + 1);
         if (d.run_date !== stateRef.current.day?.run_date) {
           setNeed({});
-          // 换天：上一天的「All changes saved」不留。
+          // 换天：上一天的「All changes saved」「✓ Saved」不留。
           setSaved(null);
+          setUnitSaved({});
         }
         const url = new URL(window.location.href);
         url.searchParams.set("date", d.run_date);
@@ -1089,7 +1112,7 @@ export function DispatchView() {
    * 别的单元的行和没存的改动都不碰（所以不重读整天，只换这一块的行 id、已存的底稿和版本）。只锁正在存的单元。
    * 缺司机的前端先挡（后端放宽落地后去掉）；服务端拒绝就把原文写在这个单元的标题下面。
    */
-  async function saveUnit(unit: string): Promise<boolean> {
+  async function saveUnit(unit: string, auto = false): Promise<boolean> {
     const cur = stateRef.current;
     const d = cur.day;
     if (
@@ -1102,7 +1125,11 @@ export function DispatchView() {
     )
       return false;
     // 打开的是 CCL 预填的一天：按单元存不会把这份 CCL 记成「已采用」，所以第一次存还是整天存。
-    if (cclImportId != null) return save();
+    if (cclImportId != null) {
+      const ok = await save();
+      if (ok) markSaved([...new Set(stateRef.current.rows.map(unitOf))], auto);
+      return ok;
+    }
     const date = d.run_date;
     const toSave = unitRowsOf(cur.rows, unit);
     const got = await lock.ensure();
@@ -1123,9 +1150,27 @@ export function DispatchView() {
         return true;
       }
       const savedRows = toSave.map((r, i) => cloneRow({ ...r, id: j.ids[i] }));
+      // 存的那一两秒里这一块又被改了（加 / 删 / 改了某台车）：不拿存之前的样子盖回去，
+      // 只把行 id 换成存好的新 id（按旧 id 对），改的内容留着、Save 照旧是蓝的。
+      const unitNow = latest.rows.filter(
+        (r) => unitOf(r) === unit && !isAutoWindow(r),
+      );
+      const untouched =
+        unitNow.length === toSave.length &&
+        unitNow.every((r, i) => r === toSave[i]);
+      const newId = new Map<number, number>();
+      toSave.forEach((r, i) => {
+        if (r.id != null) newId.set(r.id, j.ids[i]);
+      });
       let k = 0;
       const nextRows = latest.rows.map((r) =>
-        unitOf(r) === unit && !isAutoWindow(r) ? (savedRows[k++] ?? r) : r,
+        unitOf(r) !== unit || isAutoWindow(r)
+          ? r
+          : untouched
+            ? (savedRows[k++] ?? r)
+            : r.id != null && newId.has(r.id)
+              ? { ...r, id: newId.get(r.id)! }
+              : r,
       );
       const nextBase = [
         ...latest.base.filter((r) => unitOf(r) !== unit),
@@ -1146,7 +1191,12 @@ export function DispatchView() {
       setManifestVersion((v) => v + 1);
       const names = j.typed_names ?? [];
       const foNotified = j.farm_out?.already_notified ?? [];
-      flashSaved(`All changes saved · ${savedTime()}`);
+      flashSaved(
+        auto
+          ? `Auto-saved ${savedTime()}`
+          : `All changes saved · ${savedTime()}`,
+      );
+      markSaved([unit], auto);
       if (
         names.length &&
         (j.typed_alert === "failed" || j.typed_alert === "not_set_up")
@@ -1189,8 +1239,17 @@ export function DispatchView() {
   const saveUnitRef = useRef(saveUnit);
   saveUnitRef.current = saveUnit;
 
-  // 自动保存（Annie 2026-10-15；2026-10-18 退成后备）：staff 改了、页面 60 秒没有任何操作，才把没存的单元一个个存掉。
-  // 存不上的同一份不再重试，staff 再改才试。
+  function markSaved(units: string[], auto: boolean) {
+    const at = savedTime();
+    setUnitSaved((m) => {
+      const next = { ...m };
+      for (const u of units) next[u] = { auto, at };
+      return next;
+    });
+  }
+
+  // 自动保存（Annie 2026-10-15；2026-10-18 退成后备；2026-10-29 改成 10 分钟）：staff 改了没存、页面 10 分钟没有活动，
+  // 才把没存的单元一个个存掉（同一个 POST /api/dispatch/section）。存不上的同一份不再重试，staff 再改才试。
   const anyUnitBusy = Object.keys(unitBusy).length > 0;
   const autosaveBlocked =
     busy || anyUnitBusy || loading || stale || !!readOnlyText || !!endedText;
@@ -1198,6 +1257,17 @@ export function DispatchView() {
   useEffect(() => {
     lastChangeRef.current = Date.now();
   }, [rows]);
+  useEffect(() => {
+    const touch = () => {
+      lastChangeRef.current = Date.now();
+    };
+    for (const e of ACTIVITY_EVENTS)
+      window.addEventListener(e, touch, { passive: true, capture: true });
+    return () => {
+      for (const e of ACTIVITY_EVENTS)
+        window.removeEventListener(e, touch, { capture: true });
+    };
+  }, []);
   useEffect(() => {
     if (!pendingSave || autosaveBlocked) return;
     const key = JSON.stringify(rows);
@@ -1209,8 +1279,9 @@ export function DispatchView() {
         // 打开的是 CCL 预填的一天：只有整天保存才会把这份 CCL 记成「已采用」，所以照旧整天存。
         if (cclImportId != null) {
           if (key === lastFailRef.current) return;
-          if (!(await saveRef.current()))
-            lastFailRef.current = JSON.stringify(stateRef.current.rows);
+          if (await saveRef.current())
+            markSaved([...new Set(stateRef.current.rows.map(unitOf))], true);
+          else lastFailRef.current = JSON.stringify(stateRef.current.rows);
           return;
         }
         const { rows: now, base: was } = stateRef.current;
@@ -1222,7 +1293,7 @@ export function DispatchView() {
             unitFailRef.current[u] === JSON.stringify(unitRowsOf(cur.rows, u))
           )
             continue;
-          if (!(await saveUnitRef.current(u)))
+          if (!(await saveUnitRef.current(u, true)))
             unitFailRef.current[u] = JSON.stringify(
               unitRowsOf(stateRef.current.rows, u),
             );
@@ -1434,6 +1505,7 @@ export function DispatchView() {
     dirty: unitDirty(base, rows, unit),
     saving: !!unitBusy[unit],
     error: unitError[unit] ?? null,
+    saved: unitSaved[unit] ?? null,
     disabled:
       viewOnly ||
       navDisabled ||
@@ -1504,6 +1576,20 @@ export function DispatchView() {
             >
               Today
             </button>
+            {/* 置顶 21（Annie 2026-10-30「让前端加入口」）：只给 Super Admin。后端 /driver/preview 只读、只认 Super Admin；
+                ops 自己没有 /driver，经 next.config 的 fallback 原样转给后端（同 Bus Manifest 打印，用的是 ops 这一个登录）。
+                后端没有导游页预览（field.py 只有 /driver/preview），所以只有这一个。 */}
+            {isSuperAdmin && day ? (
+              <a
+                href={`/driver/preview?date=${day.run_date}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                data-driver-preview
+                className="ml-1 text-[13px] font-semibold text-[#cbd5e1] underline-offset-2 hover:text-white hover:underline"
+              >
+                Driver page preview ↗
+              </a>
+            ) : null}
           </div>
         </header>
 
@@ -1658,7 +1744,6 @@ export function DispatchView() {
                 version={manifestVersion + doneTick}
                 sync={syncInfo?.date === day.run_date ? syncInfo : null}
                 // 上传 Rezdy CSV 并 Apply 了：重读卡片和车下面的名单（同上）。
-                onUploaded={() => setManifestVersion((v) => v + 1)}
                 onUnauthorized={redirectToLogin}
                 onAssignBus={(mid) => assignBus(mid)}
                 showEmpty={showEmpty}
@@ -1909,6 +1994,7 @@ export function DispatchView() {
                         },
                         onRemove: () => edit(rows.filter((_, j) => j !== i)),
                         orders: day.private_orders,
+                        save: unitSaveState(unitOf(rows[i])),
                       });
                       const renderSec = (s: Sec, cardIdx: number) => {
                         // G82：后端带了 Rezdy 订单 => Private Tour 按订单分卡（上面订单 / 团名，下面这张订单的车）。
@@ -1930,7 +2016,11 @@ export function DispatchView() {
                                     <span className="mr-auto text-[14px] font-semibold text-[#cfe0f2]">
                                       {s.title}
                                     </span>
-                                    <UnitSave unit={unit} s={us} tone="dark" />
+                                    <UnitStatus
+                                      unit={unit}
+                                      s={us}
+                                      tone="dark"
+                                    />
                                   </div>
                                   {us.dirty ? (
                                     <UnitError
@@ -2152,7 +2242,7 @@ export function DispatchView() {
                                   </span>
                                 ))}
                               </span>
-                              <UnitSave unit={unit} s={unitSaveState(unit)} />
+                              <UnitStatus unit={unit} s={unitSaveState(unit)} />
                             </div>
                             {unitSaveState(unit).dirty ? (
                               <UnitError
@@ -2222,7 +2312,7 @@ export function DispatchView() {
                                     </div>
                                   ) : null}
                                   {relay ? (
-                                    <div className="grid grid-cols-[minmax(0,1.3fr)_minmax(0,0.85fr)_minmax(0,1.35fr)_84px] gap-[18px] border-b border-[#e5e7eb] pt-3 pb-2 text-[11px] font-[650] tracking-[.06em] text-[#1a1a1a] uppercase max-[860px]:hidden">
+                                    <div className="grid grid-cols-[minmax(0,1.3fr)_minmax(0,0.85fr)_minmax(0,1.35fr)_150px] gap-[18px] border-b border-[#e5e7eb] pt-3 pb-2 text-[11px] font-[650] tracking-[.06em] text-[#1a1a1a] uppercase max-[860px]:hidden">
                                       <span>Driver</span>
                                       <span>Vehicle</span>
                                       <span>Hotel pickup stops</span>
@@ -2289,6 +2379,7 @@ export function DispatchView() {
                                               )
                                             }
                                             onRemove={props.onRemove}
+                                            save={props.save}
                                           />
                                         ) : (
                                           <VanBlock
@@ -2792,9 +2883,11 @@ function HowToUse() {
           page.
         </li>
         <li>
-          Press Save on a block to save it; changes also save by themselves
-          after a minute without activity. A red message says what to fix. Only
-          one person can edit a day at a time.
+          Press Save next to Edit to save that tour &mdash; all its cars are
+          saved together. Changes save by themselves only after 10 minutes
+          without activity on the page. If you leave or change the day before
+          saving, the page asks first. A red message says what to fix. Only one
+          person can edit a day at a time.
         </li>
       </ol>
     </details>

@@ -6,6 +6,8 @@ import { useViewOnly } from "@/components/ui/view-only";
 import { cn } from "@/lib/utils";
 import type { DispatchPrivateOrder, DispatchRow } from "@/types";
 
+import { RowSave, type UnitSaveState } from "./unit-save";
+
 import {
   alsoDriving as alsoBy,
   alsoOnVans as alsoOn,
@@ -225,7 +227,7 @@ function GuideSelect({
   const can = L.driver(row.driver_hr_id)?.position === "both";
   const cands = new Set(
     row.ccl && !row.ccl.is_driver_guide
-      ? row.ccl.guide_candidates.map((c) => c.id)
+      ? (row.ccl.guide_candidates ?? []).map((c) => c.id)
       : [],
   );
   const top: React.ReactNode[] = [];
@@ -585,17 +587,27 @@ function CclHint({
       </span>
     );
   }
-  const cands = (
+  const all =
     (field === "driver"
       ? c!.driver_candidates
       : field === "guide"
         ? c!.guide_candidates
-        : []) ?? []
-  ).filter((n) => {
+        : []) ?? [];
+  const cands = all.filter((n) => {
     if (field === "guide") return !!L.guide(n.id);
     const d = L.driver(n.id);
     return !!d && canRun(d, row.shift) && !d.license_blocked;
   });
+  // HR 里没有这个人（没有候选人）：框空着等 staff 手打，框下面跟手打了的一样写「CCL: JUAN · Not in HR」，
+  // 不写橙字（Annie 2026-10-30 截图：「这个才是正确的样子，框里是staff手工打的」）。存过、重开都在（day 回 ccl）。
+  // 重名（BRUCE → Bruce O / Bruce W）、车号不在 Vehicles 的照旧写橙字。
+  if (field !== "vehicle" && !all.length) {
+    return (
+      <span className={CCLTXT} data-ccl={field}>
+        CCL: <b>{text}</b> · <Pill tone="bad">Not in HR</Pill>
+      </span>
+    );
+  }
   return (
     <span
       className="relative pl-[23px] text-[12.5px] leading-[1.4] font-semibold text-[#c2410c] [&_b]:font-[650] [&_b]:text-[#c2410c]"
@@ -806,6 +818,8 @@ export interface RowProps {
   farmOutOff?: string;
   /** G82：当天的 Rezdy Private 订单；有 = Private 行显示 Order 下拉（后端没上线时没有，照旧只有 Tour 下拉）。 */
   orders?: DispatchPrivateOrder[];
+  /** 这台车所在单元的保存状态：给了就在 Edit 旁边出 Save（Annie 2026-10-29，存整个单元）。 */
+  save?: UnitSaveState;
 }
 
 /** fieldset 去掉浏览器默认的边框、内边距和 min-width（不然窄屏会撑破格子）。 */
@@ -892,6 +906,7 @@ export function RelayRow({
   disabled = false,
   onChange,
   onRemove,
+  save,
 }: RowProps) {
   const row = rows[idx];
   const drv = L.driver(row.driver_hr_id);
@@ -908,7 +923,7 @@ export function RelayRow({
       disabled={disabled}
       className={cn(
         ROW_RESET,
-        "vrow grid grid-cols-[minmax(0,1.3fr)_minmax(0,0.85fr)_minmax(0,1.35fr)_84px] items-start gap-[18px] border-b border-[#e5e7eb] py-3.5 last-of-type:border-b-0 max-[860px]:grid-cols-1 max-[860px]:items-stretch max-[860px]:gap-[9px]",
+        "vrow grid grid-cols-[minmax(0,1.3fr)_minmax(0,0.85fr)_minmax(0,1.35fr)_150px] items-start gap-[18px] border-b border-[#e5e7eb] py-3.5 last-of-type:border-b-0 max-[860px]:grid-cols-1 max-[860px]:items-stretch max-[860px]:gap-[9px]",
       )}
     >
       <div className={CELL}>
@@ -960,10 +975,13 @@ export function RelayRow({
           }
         />
       </div>
-      <EditMenu
-        onClear={() => onChange({ ...row, location_ids: [] })}
-        onRemove={onRemove}
-      />
+      <div className="flex items-start justify-end gap-2 max-[860px]:justify-start">
+        <EditMenu
+          onClear={() => onChange({ ...row, location_ids: [] })}
+          onRemove={onRemove}
+        />
+        {save ? <RowSave s={save} stack /> : null}
+      </div>
     </fieldset>
   );
 }
@@ -1102,6 +1120,7 @@ export function VanBlock({
   onFarmOut,
   farmOutOff,
   orders,
+  save,
 }: RowProps) {
   const viewOnly = useViewOnly();
   const row = rows[idx];
@@ -1262,6 +1281,7 @@ export function VanBlock({
               onClear={() => onChange({ ...row, location_ids: [] })}
               onRemove={onRemove}
             />
+            {save ? <RowSave s={save} /> : null}
           </div>
         </div>
         {row.shift !== META.bus_tour_shift ? (

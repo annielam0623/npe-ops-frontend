@@ -47,6 +47,14 @@ export interface TicketsTableProps {
   onOpenConversation: (row: TicketsTrackingRow) => void;
   onToggleAction: (row: TicketsTrackingRow, want: "on" | "off") => void;
   onChangeStatus: (row: TicketsTrackingRow, value: string) => void;
+  /**
+   * 状态下拉选了还没按 ✓ 的（按行 id，自动保存盘点 B8：和 Tour Tracking 一样「选了 + ✓」才存）。
+   * value = null：撤回（✕ 或选回原来的）。
+   */
+  drafts: ReadonlyMap<number, string>;
+  onDraft: (row: TicketsTrackingRow, value: string | null) => void;
+  /** 刚存好的那一行（闪绿字 Saved）。 */
+  savedId: number | null;
   /** 正在保存的单（Take action / 状态），防连点。 */
   busyId: number | null;
   now: number;
@@ -60,6 +68,9 @@ export function TicketsTable({
   onOpenConversation,
   onToggleAction,
   onChangeStatus,
+  drafts,
+  onDraft,
+  savedId,
   busyId,
   now,
   placeholder,
@@ -190,6 +201,9 @@ export function TicketsTable({
                     onOpenConversation={onOpenConversation}
                     onToggleAction={onToggleAction}
                     onChangeStatus={onChangeStatus}
+                    draft={drafts.get(row.id)}
+                    onDraft={onDraft}
+                    justSaved={savedId === row.id}
                   />
                 ))}
               </tr>
@@ -264,6 +278,9 @@ function Cell({
   onOpenConversation,
   onToggleAction,
   onChangeStatus,
+  draft,
+  onDraft,
+  justSaved,
 }: {
   columnKey: ColumnKey;
   row: TicketsTrackingRow;
@@ -273,6 +290,9 @@ function Cell({
   onOpenConversation: (row: TicketsTrackingRow) => void;
   onToggleAction: (row: TicketsTrackingRow, want: "on" | "off") => void;
   onChangeStatus: (row: TicketsTrackingRow, value: string) => void;
+  draft: string | undefined;
+  onDraft: (row: TicketsTrackingRow, value: string | null) => void;
+  justSaved: boolean;
 }) {
   const style = floated
     ? { boxShadow: `inset 3px 0 0 ${WHATSAPP_GREEN}` }
@@ -357,7 +377,10 @@ function Cell({
         <StatusSelect
           row={row}
           disabled={busy}
-          onChange={(value) => onChangeStatus(row, value)}
+          draft={draft}
+          justSaved={justSaved}
+          onDraft={(value) => onDraft(row, value)}
+          onSave={() => draft !== undefined && onChangeStatus(row, draft)}
         />
       );
       break;
@@ -391,39 +414,86 @@ function Cell({
   );
 }
 
+/**
+ * 状态（自动保存盘点 B8，Annie「4项全部动手」）：照 Tour Tracking「选了 + ✓」——下拉选了先不存，旁边出 ✓ / ✕，
+ * 按 ✓ 才存，✕ 撤回；存好闪绿字 Saved，失败上面红字、改动留着可以再按 ✓。
+ */
 function StatusSelect({
   row,
   disabled,
-  onChange,
+  draft,
+  justSaved,
+  onDraft,
+  onSave,
 }: {
   row: TicketsTrackingRow;
   disabled: boolean;
-  onChange: (value: string) => void;
+  draft: string | undefined;
+  justSaved: boolean;
+  onDraft: (value: string | null) => void;
+  onSave: () => void;
 }) {
-  const value = row.confirmation_status || "pending";
+  const saved = row.confirmation_status || "pending";
+  const value = draft ?? saved;
   const known = STATUS_OPTIONS.some((o) => o.value === value);
   return (
-    <select
-      aria-label={`Status for ${row.order_number}`}
-      value={value}
-      disabled={disabled}
-      onChange={(event) => onChange(event.target.value)}
-      className={cn(
-        "cursor-pointer rounded border-none bg-transparent px-1 py-0.5 font-[inherit] text-[13px] font-bold tracking-[.3px] focus:outline-1 focus:outline-[#1a3a5c] disabled:opacity-60",
-        STATUS_CLASS[value] ?? "text-[#2a3a4a]",
-      )}
-    >
-      {/* 下拉里没有的现值（改期申请等）照实显示，只读，不能选回去。 */}
-      {!known ? (
-        <option value={value} disabled>
-          {value === "reschedule_req" ? "↻ Reschedule" : value}
-        </option>
+    <span className="inline-flex items-center gap-1 whitespace-nowrap">
+      <select
+        aria-label={`Status for ${row.order_number}`}
+        value={value}
+        disabled={disabled}
+        onChange={(event) =>
+          onDraft(event.target.value === saved ? null : event.target.value)
+        }
+        className={cn(
+          "cursor-pointer rounded border-none bg-transparent px-1 py-0.5 font-[inherit] text-[13px] font-bold tracking-[.3px] focus:outline-1 focus:outline-[#1a3a5c] disabled:opacity-60",
+          STATUS_CLASS[value] ?? "text-[#2a3a4a]",
+        )}
+      >
+        {/* 下拉里没有的现值（改期申请等）照实显示，只读，不能选回去。 */}
+        {!known ? (
+          <option value={value} disabled>
+            {value === "reschedule_req" ? "↻ Reschedule" : value}
+          </option>
+        ) : null}
+        {STATUS_OPTIONS.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+      {draft !== undefined ? (
+        <>
+          <button
+            type="button"
+            aria-label={`Save status for ${row.order_number}`}
+            title="Save"
+            disabled={disabled}
+            onClick={onSave}
+            className="inline-flex size-5 cursor-pointer items-center justify-center rounded border-none bg-[#1a3a5c] text-[11px] text-white hover:bg-[#0f2740] disabled:opacity-50"
+          >
+            ✓
+          </button>
+          <button
+            type="button"
+            aria-label={`Undo status for ${row.order_number}`}
+            title="Undo"
+            disabled={disabled}
+            onClick={() => onDraft(null)}
+            className="inline-flex size-5 cursor-pointer items-center justify-center rounded border-none bg-[#eee] text-[11px] text-[#1a1a1a] hover:bg-[#ddd] disabled:opacity-50"
+          >
+            ✕
+          </button>
+        </>
+      ) : justSaved ? (
+        <span
+          role="status"
+          data-status-saved
+          className="text-[11px] font-semibold text-[#047857]"
+        >
+          Saved
+        </span>
       ) : null}
-      {STATUS_OPTIONS.map((o) => (
-        <option key={o.value} value={o.value}>
-          {o.label}
-        </option>
-      ))}
-    </select>
+    </span>
   );
 }

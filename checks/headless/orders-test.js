@@ -272,6 +272,22 @@ async function run() {
   await evaluate(SEL);
   check("partner 订单详情：转单的单也不出 Farm out 卡片", await evaluate("return !document.querySelector('[data-farm-out-view]');"));
   await ctl({ partner: null });
+
+  // ── 员工也按勾（Annie 2026-10-30 置顶 10c）：没勾 orders.edit 没有 Edit / Unlock，也不写 Read-only 那行；Super Admin 全有 ──
+  for (const [label, opts, canEdit] of [
+    ["员工只勾 orders.view", { staffPerms: ["orders.view"] }, false],
+    ["员工勾 orders.edit", { staffPerms: ["orders.view", "orders.edit"] }, true],
+    ["Super Admin（一项都没勾）", { staffPerms: null, superAdmin: true }, true],
+  ]) {
+    await ctl({ staffPerms: null, superAdmin: false, ...opts });
+    await goto(`${APP}/orders/CHDTESTORDER1`);
+    await waitFor("!!document.querySelector('section[aria-label=\"Price\"]')", 60000);
+    await helpers();
+    await sleep(500);
+    const st = await evaluate("return { edit: [...document.querySelectorAll('main button')].some((b) => ['Edit', 'Unlock'].includes(b.textContent.trim())), readOnlyLine: document.querySelector('main').textContent.includes('Read-only — this order') };");
+    check(`${label}：订单详情 ${canEdit ? "有" : "没有"} Edit / Unlock，不写 Read-only 那行`, st.edit === canEdit && !st.readOnlyLine, JSON.stringify(st));
+  }
+  await ctl({ staffPerms: null, superAdmin: false });
   await ctl({ fail401: true });
   await goto(`${APP}/orders`);
   await waitFor("location.pathname === '/auth/login'");

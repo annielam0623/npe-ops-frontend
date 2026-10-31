@@ -22,7 +22,9 @@ import { describeError, isStatus } from "@/lib/api-errors";
 import { toggleTakeAction } from "@/lib/booking-notes-api";
 import { isYmd, laToday, shiftYmd } from "@/lib/la-date";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
+import { useLeaveGuard } from "@/lib/use-leave-guard";
 import { usePermissions } from "@/lib/staff-permissions";
+import { useTick } from "@/lib/use-tick";
 import { fetchUserPref, saveUserPref } from "@/lib/user-prefs-api";
 import {
   buildTicketsExportUrl,
@@ -115,7 +117,9 @@ export function TicketsTrackingView() {
   const [broadcastOpen, setBroadcastOpen] = useState(false);
   // partner 不能群发（Annie 2026-10-27「发送只能是我们内部员工发送」）：没有 📣 Broadcast 键。
   const perms = usePermissions();
-  const noBroadcast = perms.partnerLacks("broadcast.send");
+  // 员工也按勾（Annie 2026-10-30 置顶 10c）：没勾 broadcast.send 看不到群发键；总开关关着照旧全给，Super Admin 全给。
+  const canBroadcast = useTick("broadcast.send");
+  const noBroadcast = perms.partnerLacks("broadcast.send") || !canBroadcast;
   const [conversationId, setConversationId] = useState<number | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
   /** 自动刷新时消息数变多的单（提示条）；关掉以后等下一次有新消息再出现。 */
@@ -292,6 +296,23 @@ export function TicketsTrackingView() {
     }
   }
 
+  /** 状态下拉选了还没按 ✓ 的（按行 id，B8）。 */
+  const [drafts, setDrafts] = useState<ReadonlyMap<number, string>>(new Map());
+  const [savedId, setSavedId] = useState<number | null>(null);
+  function setDraft(row: TicketsTrackingRow, value: string | null) {
+    setDrafts((d) => {
+      const next = new Map(d);
+      if (value === null) next.delete(row.id);
+      else next.set(row.id, value);
+      return next;
+    });
+  }
+  // 选了状态没按 ✓ 就离开页面：先问（全站规矩）。
+  useLeaveGuard(
+    drafts.size > 0,
+    "A status you picked is not saved yet (click ✓ to save it). Leave without saving?",
+  );
+
   async function changeStatus(row: TicketsTrackingRow, value: string) {
     if (busyId !== null || state.kind !== "ready") {
       return;
@@ -319,6 +340,10 @@ export function TicketsTrackingView() {
         serviceDate: row.tour_date,
         confirmation: value,
       });
+      // 存好了才收起 ✓ / ✕，闪一下绿字；失败时改动留着（下面 catch），可以再按 ✓。
+      setDraft(row, null);
+      setSavedId(row.id);
+      setTimeout(() => setSavedId((id) => (id === row.id ? null : id)), 1400);
       await load(dateRef.current, true);
     } catch (error) {
       if (isStatus(error, 401)) {
@@ -676,6 +701,9 @@ export function TicketsTrackingView() {
               onOpenConversation={(row) => setConversationId(row.id)}
               onToggleAction={(row, want) => void toggleAction(row, want)}
               onChangeStatus={(row, value) => void changeStatus(row, value)}
+              drafts={drafts}
+              onDraft={setDraft}
+              savedId={savedId}
               busyId={busyId}
               now={now}
               placeholder={placeholder}
@@ -687,7 +715,7 @@ export function TicketsTrackingView() {
               title="How to use — Tickets Reminder Tracking"
               items={[
                 "Pick the service date. Click a tour button to see one product only. The search box finds an order #, name or phone.",
-                "To change a guest’s status, pick it in the Status column. It saves right away.",
+                "To change a guest’s status, pick it in the Status column, then click ✓ next to it to save (✕ puts it back). Saved shows in green; if it can’t be saved, the reason shows in red at the top.",
                 "Click a Notes or WhatsApp cell to read the guest’s messages and reply. Click Take action when it is handled. SMS can be at most 300 characters, plain characters only (no emoji, curly quotes or long dashes); if it is longer, send it by email.",
                 "☰ Columns chooses what shows on the page. Untick a page column to hide it. Under From the uploaded file, tick any column of the manifest you uploaded to show it. Reset to default brings back the normal page. Your choice is saved to your account, so it follows you to another computer.",
                 "Drag a column header to move it. Drag its right edge to make it wider.",

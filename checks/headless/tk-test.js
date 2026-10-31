@@ -202,27 +202,52 @@ async function run() {
   // ── 拖列宽、自动列宽、窗口底部浮条（Annie 2026-10-14）──
   await resizeChecks({ evaluate, check, sleep, page: "tk", refresh: async () => { await evaluate("$btn('↻ Refresh').click();"); await sleep(1200); }, skipWidths: { Notes: "200px", WhatsApp: "180px" } });
 
-  // ── 改状态 ──
+  // ── 改状态（自动保存盘点 B8，Annie「4项全部动手」）：和 Tour Tracking 一样「选了 + ✓」才存 ──
+  const okBtn = `document.querySelector('[aria-label="Save status for CHDZZ2"]')`;
+  const undoBtn = `document.querySelector('[aria-label="Undo status for CHDZZ2"]')`;
+  const statusPosts = async (from) => since(from, (e) => e.path === "/api/tickets-reminder/update-status");
   let before = (await mockLog()).length;
+  check("没改：没有 ✓ / ✕", await evaluate(`return !${okBtn} && !${undoBtn};`));
   await selectValue(`tbody tr:nth-child(3) select`, "yes");
-  await sleep(500);
-  let posts = await since(before, (e) => e.path === "/api/tickets-reminder/update-status");
-  check("改状态：POST update-status（CHD 号 + 服务日期 + yes）", posts.length === 1 && posts[0].body.chd_number === "CHDZZ2" && posts[0].body.service_date === today && posts[0].body.confirmation === "yes", JSON.stringify(posts));
+  await sleep(400);
+  check("选了 Yes：不发请求（先放着），旁边出 ✓ / ✕", (await statusPosts(before)).length === 0 && (await evaluate(`return !!${okBtn} && !!${undoBtn};`)));
+  await evaluate(`${undoBtn}.click();`);
+  await sleep(200);
+  check("✕：撤回原来的状态、✓ / ✕ 收起、不发请求", (await statusPosts(before)).length === 0 && (await evaluate(`return document.querySelectorAll('tbody select')[2].value !== 'yes' && !${okBtn};`)));
+  await selectValue(`tbody tr:nth-child(3) select`, "yes");
+  await sleep(200);
+  await evaluate(`${okBtn}.click();`);
+  await sleep(600);
+  let posts = await statusPosts(before);
+  check("按 ✓：POST update-status（CHD 号 + 服务日期 + yes）", posts.length === 1 && posts[0].body.chd_number === "CHDZZ2" && posts[0].body.service_date === today && posts[0].body.confirmation === "yes", JSON.stringify(posts));
+  check("存好：✓ / ✕ 收起、旁边绿字 Saved", await evaluate(`const s = document.querySelectorAll('tbody tr')[2].querySelector('[data-status-saved]'); return !${okBtn} && !!s && s.textContent === 'Saved' && getComputedStyle(s).color === 'rgb(4, 120, 87)';`));
   stats = await evaluate("return $t('section[aria-label=Summary] > div').join('|');");
   check("改完统计跟着变（YES 3）", stats.includes("3YES"), stats);
+  // 存失败：红字写原因，改动留着、✓ 还在
+  await ctl({ statusFail: "That order is locked by another user." });
   before = (await mockLog()).length;
   await selectValue(`tbody tr:nth-child(3) select`, "cancel");
-  await sleep(500);
-  posts = await since(before, (e) => e.path === "/api/tickets-reminder/update-status");
-  check("选 Cancel：后端已支持（2026-10-06），POST 带 confirmation=cancel", posts.length === 1 && posts[0].body.confirmation === "cancel", JSON.stringify(posts));
-  check("选 Cancel 成功：下拉显示 Cancel、不弹错误", (await evaluate("const s=document.querySelectorAll('tbody select')[2]; return s.value;")) === "cancel" && !(await evaluate("return !!document.querySelector('[role=alert]');")));
+  await sleep(200);
+  await evaluate(`${okBtn}.click();`);
+  await sleep(600);
+  check("存失败：上面红字写原因，下拉还是 Cancel、✓ 还在可以再按", await evaluate(`const a = document.querySelector('[role=alert]'); return !!a && a.textContent.includes('That order is locked by another user.') && document.querySelectorAll('tbody select')[2].value === 'cancel' && !!${okBtn};`));
+  await ctl({ statusFail: "" });
+  before = (await mockLog()).length;
+  await evaluate(`${okBtn}.click();`);
+  await sleep(600);
+  posts = await statusPosts(before);
+  check("再按 ✓：Cancel 存上（后端已支持 2026-10-06，POST 带 confirmation=cancel）", posts.length === 1 && posts[0].body.confirmation === "cancel", JSON.stringify(posts));
+  check("Cancel 存好：下拉显示 Cancel、✓ 收起", (await evaluate("const s=document.querySelectorAll('tbody select')[2]; return s.value;")) === "cancel" && !(await evaluate(`return !!${okBtn};`)));
   stats = await evaluate("return $t('section[aria-label=Summary] > div').join('|');");
   check("改完统计跟着变（Cancelled 1）", stats.includes("1Cancelled"), stats);
   // 改回 yes：后面的群发 / 人群计数检查都按这一单仍是 yes 写的，不在这里扩大范围。
   before = (await mockLog()).length;
   await selectValue(`tbody tr:nth-child(3) select`, "yes");
-  await sleep(500);
-  check("改回 yes：后面的检查不受这一步影响", (await since(before, (e) => e.path === "/api/tickets-reminder/update-status")).length === 1);
+  await sleep(200);
+  await evaluate(`${okBtn}.click();`);
+  await sleep(600);
+  check("改回 yes：后面的检查不受这一步影响", (await statusPosts(before)).length === 1);
+  await evaluate("const a = document.querySelector('[role=alert]'); const b = a && [...a.querySelectorAll('button')].find(x => /Dismiss/.test(x.textContent)); if (b) b.click(); return 1;");
 
   // ── 对话（门票来源） ──
   before = (await mockLog()).length;
@@ -647,6 +672,19 @@ async function run() {
   await goto(`${APP}/tickets-reminder/send`);
   await waitFor("[...document.querySelectorAll('a')].some(a => a.textContent.includes('View Tracking'))");
   check("门票发送页 View Tracking（已切换）→ ops 新 tracking 页", (await evaluate("return [...document.querySelectorAll('a')].find(a => a.textContent.includes('View Tracking')).getAttribute('href');")) === "/tickets-reminder/tracking");
+  // ── 员工也按勾（Annie 2026-10-30 置顶 10c）：没勾 broadcast.send 看不到 📣 Broadcast；Super Admin 一项没勾也有 ──
+  for (const [label, opts, canBroadcast] of [
+    ["员工只勾 tickets.view", { staffPerms: ["tickets.view"] }, false],
+    ["员工勾 broadcast.send", { staffPerms: ["tickets.view", "broadcast.send"] }, true],
+    ["Super Admin（一项都没勾）", { staffPerms: null, superAdmin: true }, true],
+  ]) {
+    await ctl({ staffPerms: null, superAdmin: false, ...opts });
+    await openPage(`${APP}/tickets-reminder/tracking`);
+    await sleep(800);
+    const has = await evaluate("return !!$btn('📣 Broadcast');");
+    check(`${label}：${canBroadcast ? "有" : "没有"} 📣 Broadcast`, has === canBroadcast, String(has));
+  }
+  await ctl({ staffPerms: null, superAdmin: false });
   await ctl({ fail401: true });
   await goto(`${APP}/tickets-reminder/tracking`);
   await waitFor("location.pathname === '/auth/login'");

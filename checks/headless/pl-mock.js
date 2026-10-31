@@ -1,6 +1,6 @@
 // 模拟后端：Pickup Locations 页。控制：POST /__ctl {fail401, staff, failList}；GET /__log。
 const http = require("http");
-const ctl = { fail401: false, staff: false, failList: false, depFail: false };
+const ctl = { fail401: false, staff: false, failList: false, depFail: false, split: false, timesFail: false, importFail: false, importConflict: false, previewBad: false };
 const log = [];
 let nextId = 50;
 let locations = [
@@ -21,6 +21,53 @@ const entries = [
   { id: 1, entity_id: "3", label: "ZZ Test", action: "deactivate", before: { is_active: true }, after: { is_active: false }, actor: "max", actor_name: "Max", created_at: "2026-09-29T16:00:00" },
 ];
 
+// ── split（preview v3 Pickup 分开 + Shuttle 站时间）：POST /__ctl {split:true} 换成下面这份数据 ──
+// 形状照 preview「需要后端」B1–B3b 暂定。季节按今天（LA）算：Summer = 今天前 30 天到后 3 天，Winter = 接着 120 天，之后没接上。
+const ymd = (d) => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Los_Angeles" }).format(d);
+const plusDays = (s, n) => { const [y, m, d] = s.split("-").map(Number); return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10); };
+const TODAY = ymd(new Date());
+const ROUTES = [
+  { product_id: 11, label: "Las Vegas → St George" },
+  { product_id: 12, label: "Las Vegas → Zion" },
+  { product_id: 13, label: "St George → Las Vegas" },
+  { product_id: 14, label: "Las Vegas → Page" },
+];
+const routeLabel = (id) => ROUTES.find((r) => r.product_id === id)?.label ?? `#${id}`;
+let seasons = [];
+let nextSeasonId = 3;
+const tm = (product_id, run_no, season_id, stop_time) => ({ product_id, route_label: routeLabel(product_id), run_no, season_id, stop_time, no_service: stop_time === null });
+function splitData() {
+  seasons = [
+    { id: 1, name: `Summer ${plusDays(TODAY, -30).slice(0, 4)}`, starts_on: plusDays(TODAY, -30), ends_on: plusDays(TODAY, 3) },
+    { id: 2, name: `Winter ${plusDays(TODAY, 4).slice(0, 4)}`, starts_on: plusDays(TODAY, 4), ends_on: plusDays(TODAY, 124) },
+  ];
+  const base = { photo_url: null, instruction: "Meet at the front entrance", aliases: "", map_image_url: "", is_active: true, is_tour_departure: false };
+  return [
+    { ...base, id: 1, hotel_name: "Bellagio", instruction_short: "Bell", is_tour_bus: true, is_shuttle: false, times: [] },
+    { ...base, id: 2, hotel_name: "Treasure Island", instruction_short: "TI", is_tour_departure: true, is_tour_bus: true, is_shuttle: true, times: [tm(11, 1, 1, "07:00"), tm(11, 1, 2, "07:30"), tm(12, 1, 1, "06:30"), tm(12, 1, 2, null)] },
+    { ...base, id: 3, hotel_name: "St George – Main St", instruction_short: "St George", is_tour_bus: false, is_shuttle: true, times: [tm(11, 1, 1, "09:45"), tm(11, 1, 2, "10:15"), tm(13, 1, 1, "15:30")] },
+    { ...base, id: 4, hotel_name: "Kanab – Visitor Center", instruction_short: "Kanab", is_tour_bus: false, is_shuttle: true, times: [] },
+    { ...base, id: 5, hotel_name: "The Strat", instruction_short: "Strat", is_tour_bus: null, is_shuttle: null, times: [] },
+  ];
+}
+function overlapError(list) {
+  const s = [...list].sort((a, b) => a.starts_on.localeCompare(b.starts_on));
+  for (let i = 1; i < s.length; i++) if (s[i].starts_on <= s[i - 1].ends_on) return `${s[i - 1].name} and ${s[i].name} overlap.`;
+  return null;
+}
+function timesError(times) {
+  const seen = new Set();
+  for (const t of times) {
+    if (!seasons.some((x) => x.id === t.season_id)) return "That season does not exist.";
+    if (!ROUTES.some((r) => r.product_id === t.product_id)) return "That route is not a shuttle product.";
+    if (!t.no_service && !/^\d\d:\d\d$/.test(t.stop_time || "")) return "Time is not valid.";
+    const k = `${t.product_id}|${t.run_no}|${t.season_id}`;
+    if (seen.has(k)) return `${routeLabel(t.product_id)} is listed twice for one season.`;
+    seen.add(k);
+  }
+  return null;
+}
+
 function send(res, status, body) {
   res.statusCode = status;
   res.setHeader("Content-Type", "application/json");
@@ -33,6 +80,26 @@ function readBody(req) {
     req.on("end", () => resolve(d ? JSON.parse(d) : null));
   });
 }
+function readRaw(req) {
+  return new Promise((resolve) => {
+    const chunks = [];
+    req.on("data", (c) => chunks.push(c));
+    req.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
+  });
+}
+// ⬆ Import（全站通用导入，后端还没上；形状是前端提给后端的，见 types/pickup-locations.ts PickupImportRow）。
+const IMPORT_PREVIEW = {
+  columns: ["hotel_name", "instruction_short", "aliases", "is_tour_departure"],
+  rows: [
+    { status: "update", id: 1, row: 2, values: { hotel_name: "Aria", instruction_short: "Tour lobby east", aliases: "", is_tour_departure: "No" }, before: { instruction_short: "Tour lobby" }, changed: ["instruction_short"], blanked: ["aliases"], errors: [], matched_alias: null },
+    { status: "update", id: 2, row: 3, values: { hotel_name: "RWLV", instruction_short: "", aliases: "ResortsWLD, RWLV", is_tour_departure: "Yes" }, before: { is_tour_departure: "No" }, changed: ["is_tour_departure"], blanked: ["instruction_short"], errors: [], matched_alias: "RWLV" },
+    { status: "new", id: null, row: 4, values: { hotel_name: "ZZ Test Import Inn", instruction_short: "Front door", aliases: "", is_tour_departure: "No" }, before: {}, changed: [], blanked: [], errors: [], matched_alias: null },
+    { status: "error", id: null, row: 5, values: { hotel_name: "ZZ Test <b>Long</b>", instruction_short: "x".repeat(130), aliases: "", is_tour_departure: "No" }, before: {}, changed: [], blanked: [], errors: [{ field: "instruction_short", message: "Short (for SMS) is 130 characters — the limit is 120." }], matched_alias: null },
+    { status: "error", id: null, row: 6, values: { hotel_name: "ZZ Test Import Inn", instruction_short: "", aliases: "", is_tour_departure: "" }, before: {}, changed: [], blanked: [], errors: [{ field: null, message: "Repeated above — skipped." }], matched_alias: null },
+  ],
+  // 后端 G220（76de8f3）：preview 多 counts；matched_alias 只在按别名对上时才有（这里照旧都给）。
+  counts: { new: 1, update: 2, unchanged: 0, error: 2 },
+};
 function validate(body, selfId) {
   if (body.instruction_short.length > 120) return `Short (for SMS) is ${body.instruction_short.length} characters — the limit is 120.`;
   if (body.map_image_url.split("\n").filter(Boolean).length > 2) return "Up to 2 map images per hotel";
@@ -49,16 +116,55 @@ http.createServer(async (req, res) => {
   const url = new URL(req.url, "http://x");
   const p = url.pathname;
   if (p === "/__log") return send(res, 200, log);
-  if (p === "/__ctl") { Object.assign(ctl, await readBody(req)); return send(res, 200, ctl); }
+  if (p === "/__ctl") {
+    const b = await readBody(req);
+    if (b && b.split && !ctl.split) locations = splitData();
+    Object.assign(ctl, b);
+    return send(res, 200, ctl);
+  }
   if (p === "/auth/login") { res.setHeader("Content-Type", "text/html"); return res.end("LOGIN"); }
   const entry = { method: req.method, path: p, query: url.search };
   log.push(entry);
   if (ctl.fail401) return send(res, 401, { detail: "Authentication required" });
   if (p === "/api/me") return send(res, 200, { id: 1, username: "zztest", display_name: "ZZ Test", initials: "ZT", role: ctl.staff ? "staff" : "admin", is_admin: !ctl.staff, is_superadmin: false });
+  if (p === "/api/pickup-locations/import/preview" || p === "/api/pickup-locations/import/commit") {
+    const raw = await readRaw(req);
+    entry.hasFile = /filename="pl-import\.csv"/.test(raw);
+    if (p.endsWith("/preview")) {
+      if (ctl.previewBad) return send(res, 400, { detail: "Missing column: Hotel Name" });
+      return send(res, 200, IMPORT_PREVIEW);
+    }
+    if (ctl.importFail) return send(res, 500, { detail: "Database is busy" });
+    // 后端原话（pickup_locations.py）：整批一个事务，中途有人改了酒店清单就 409、全回滚。
+    if (ctl.importConflict) return send(res, 409, { detail: "Someone changed the hotel list while this file was being saved. Nothing was saved — check the preview again." });
+    locations.find((l) => l.id === 1).instruction_short = "Tour lobby east";
+    locations.find((l) => l.id === 2).is_tour_departure = true;
+    locations.push({ id: nextId++, hotel_name: "ZZ Test Import Inn", photo_url: null, instruction: null, instruction_short: "Front door", aliases: "", map_image_url: "", is_active: true, is_tour_departure: false });
+    return send(res, 200, { created: 1, updated: 2, unchanged: 0, skipped: 2 });
+  }
   // G203 共用读接口（后端 3686fea）：第一页 + next_cursor，before=older 再给一页更早的。
   if (p === "/api/pickup-locations/action-log") {
     if (url.searchParams.get("before") === "older") return send(res, 200, { entries: OLDER, next_cursor: null });
     return send(res, 200, { entries: ACTION_LOG, next_cursor: "older" });
+  }
+  if (p === "/api/pickup-locations/seasons") {
+    if (!ctl.split) return send(res, 404, { detail: "Not Found" });
+    if (req.method === "PUT") {
+      const body = await readBody(req);
+      entry.body = body;
+      const err = overlapError(body.seasons);
+      if (err) return send(res, 400, { detail: err });
+      // b0 定稿：删掉还有站在用的季节 ⇒ 409，detail 一句话。
+      const keep = new Set(body.seasons.map((x) => x.id).filter(Boolean));
+      const used = seasons.find((s) => !keep.has(s.id) && locations.some((l) => (l.times ?? []).some((t) => t.season_id === s.id)));
+      if (used) return send(res, 409, { detail: `${used.name} still has stop times. Remove them first.` });
+      seasons = body.seasons.map((x) => ({ ...x, id: x.id ?? nextSeasonId++ }));
+    }
+    return send(res, 200, { seasons: [...seasons].sort((a, b) => a.starts_on.localeCompare(b.starts_on)) });
+  }
+  if (p === "/api/pickup-locations/shuttle-routes") {
+    if (!ctl.split) return send(res, 404, { detail: "Not Found" });
+    return send(res, 200, { routes: ROUTES });
   }
   if (p === "/api/pickup-locations" && req.method === "GET") {
     if (ctl.failList) return send(res, 500, { detail: "Internal Server Error" });
@@ -67,9 +173,9 @@ http.createServer(async (req, res) => {
   if (p === "/api/pickup-locations" && req.method === "POST") {
     const body = await readBody(req);
     entry.body = body;
-    const err = validate(body);
+    const err = validate(body) || (ctl.split && !body.is_tour_bus && !body.is_shuttle ? "Pick Tour bus, Shuttle, or both." : null);
     if (err) return send(res, 400, { detail: err });
-    const loc = { id: nextId++, ...body, is_active: true };
+    const loc = { id: nextId++, ...body, is_active: true, ...(ctl.split ? { times: [] } : {}) };
     locations.push(loc);
     return send(res, 200, { id: loc.id, hotel_name: loc.hotel_name });
   }
@@ -77,9 +183,11 @@ http.createServer(async (req, res) => {
   if (m && req.method === "PUT") {
     const body = await readBody(req);
     entry.body = body;
-    const err = validate(body, Number(m[1]));
+    const err = validate(body, Number(m[1])) || (ctl.split && body.times ? timesError(body.times) : null) || (ctl.split && ctl.timesFail ? "Las Vegas → St George is listed twice for one season." : null);
     if (err) return send(res, 400, { detail: err });
-    Object.assign(locations.find((l) => l.id === Number(m[1])), body);
+    const loc = locations.find((l) => l.id === Number(m[1]));
+    Object.assign(loc, body);
+    if (ctl.split && body.times) loc.times = body.times.map((t) => ({ ...t, route_label: routeLabel(t.product_id) }));
     return send(res, 200, { success: true });
   }
   if (m && req.method === "DELETE") {

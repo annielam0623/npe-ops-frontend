@@ -69,6 +69,11 @@ interface AutoFillDialogProps {
   onClose: () => void;
   /** 建好草稿：回到排班页刷新 + 提示。 */
   onDone: (message: string) => void;
+  /**
+   * 当前这一周（排班页正在看的那一周）填出来的班交给页面暂存、等整周 Save（Annie 2026-10-29 B9 Q6）；
+   * 后面几周照旧直接建草稿。没传 = 照旧全部直接建。replace = 这一周原来的班要删掉。
+   */
+  onDraftThisWeek?: (made: Proposal["create"], replace: boolean) => void;
 }
 
 function planOf(week: ScheduleWeek, employees: ScheduleEmployee[]): WeekPlan {
@@ -103,6 +108,7 @@ export function AutoFillDialog({
   settings,
   onClose,
   onDone,
+  onDraftThisWeek,
 }: AutoFillDialogProps) {
   const titleId = useId();
   const pressedOnBackdropRef = useRef(false);
@@ -237,9 +243,16 @@ export function AutoFillDialog({
     setStep({ kind: "creating" });
     let made = 0;
     let weeksMade = 0;
+    // 当前这一周：放到页面上等整周 Save（B9 Q6），不直接建。
+    let onPage = 0;
     try {
       for (const p of proposals) {
         if (p.skipped) continue;
+        if (onDraftThisWeek && p.weekStart === weekStart) {
+          onDraftThisWeek(p.create, mode === "replace");
+          onPage = p.create.length;
+          continue;
+        }
         await bulkCreateSlots(p.weekStart, {
           replace: mode === "replace",
           slots: p.create.map((s) => ({
@@ -261,8 +274,14 @@ export function AutoFillDialog({
       return;
     }
     const skipped = proposals.filter((p) => p.skipped).length;
+    const skippedText = skipped
+      ? ` (${skipped} published week${skipped === 1 ? "" : "s"} skipped)`
+      : "";
+    const pageText = `Put ${onPage} shift${onPage === 1 ? "" : "s"} on this week. Click Save to keep them.`;
     onDone(
-      `Created ${made} draft shift${made === 1 ? "" : "s"} for ${weeksMade} week${weeksMade === 1 ? "" : "s"}${skipped ? ` (${skipped} published week${skipped === 1 ? "" : "s"} skipped)` : ""}. Nothing is published and nobody was notified.`,
+      weeksMade
+        ? `${onPage ? `${pageText} ` : ""}Created ${made} draft shift${made === 1 ? "" : "s"} for ${weeksMade}${onPage ? " other" : ""} week${weeksMade === 1 ? "" : "s"}${skippedText}. Nothing is published and nobody was notified.`
+        : `${pageText}${skippedText ? ` ${skippedText.trim()}.` : ""} Nothing is published and nobody was notified.`,
     );
   }
 

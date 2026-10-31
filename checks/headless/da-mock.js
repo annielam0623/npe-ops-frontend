@@ -1,6 +1,10 @@
 // 模拟后端：Dispatch Assignments。控制：POST /__ctl；GET /__log。
 const http = require("http");
+const staffPerm = require("./staff-perm-mock");
 // 截图用：环境变量 MOCK_CTL（JSON）在启动时预设控制项，例 MOCK_CTL='{"completed":true}'（shoot.js 起模拟接口时会带上环境变量）。
+const DRIVER_PAGE_OFF = "Driver page is off. Turn it on in Page visibility before sending.";
+const GUIDE_PAGE_OFF = "Guide page is off. Turn it on in Page visibility before sending.";
+const GUIDE_EXTRA_MAX = 60;
 const ctl = { completed: false, saveErr: "", fail401: false, pullStatus: "nothing", dayDelay: 0, failDay: false, altMeta: false, noMeta: false, relaySent: [], relayExtra: false, relayHotels: false, relayLater: [], relayRace: [], relayGone: [], relay409: false, relay502: false, driverFail: false, saveDelay: 0, driverAlt: false, relayBlocked: false, relayOnlyBad: false, relayBlockLate: false, foDraft: false, driverAllOk: false, emptyHoover: false,
   // G118 tour_car 轮（Hoover Dam）：tourCar = 这个团当天排了 bus_tour 车、有客人；tourCarNoCar = 排了团但当天一台 bus_tour 车都没排（整块挡住）；
   // tourCarBlocked = 排了车但没司机（这台车挡住，客人进 blocked_cars）。
@@ -224,7 +228,20 @@ const prefills = {
   "2026-10-07": { import_id: 78, title: "NPE 10/7: Revision", status: "pending", is_revision: true, raw_content: "rev", applied: false,
     rows: [row({ shift: "relay", driver_hr_id: 2, vehicle_id: 12, ccl: ccl({ driver_text: "GIA", vehicle_text: "1328" }) }), row({ shift: "private_tour", driver_hr_id: 5, vehicle_id: 11, ccl: ccl({ line_id: 350, driver_text: "BRUCE W" }) })],
     unread: [], closures: [], changes: [{ kind: "changed", row_id: 901, ccl_row: 0, fields: ["driver", "vehicle"] }, { kind: "added", ccl_row: 1 }] },
+  // Annie 2026-10-30 选 C：HR 对不上的 CCL 名字（JUAN / LANKUN）存过、重开都还在框下面。没存过的一天，预填。
+  "2026-10-24": { import_id: 81, title: "NPE 10/24:", status: "pending", is_revision: false, raw_content: "NPE 10/24:\nRELAY JUAN - 2555\nWEST RIM GIA / LANKUN - 1960", applied: false,
+    rows: [
+      row({ shift: "relay", vehicle_id: 10, ccl: ccl({ line_id: 370, driver_text: "JUAN", vehicle_text: "2555" }) }),
+      // 记忆表里有「JIMMY → Jimmy Vegas」（以前手打过）：预填成手打名，框下面 CCL: JIMMY · Not in HR（Annie 给的模板）。
+      row({ shift: "relay_2", driver_typed_name: "Jimmy Vegas", vehicle_id: 11, ccl: ccl({ line_id: 372, driver_text: "JIMMY", vehicle_text: "2415" }) }),
+      row({ shift: "bus_tour", manifest_id: 3, driver_hr_id: 2, vehicle_id: 13, bus_label: "A", location_ids: [102], ccl: ccl({ line_id: 371, driver_text: "GIA", guide_text: "LANKUN", vehicle_text: "1960" }) }),
+    ],
+    unread: [], closures: [], changes: null },
 };
+// ctl.dayCcl：后端 92 的新形状——存过的一天，从 CCL 来的车在 GET /day 里也带 ccl（line_id、三段原文、is_driver_guide；后端 57 定稿：按同一 tour 区块里四项全同 / 司机同 / 车号同重新配对），
+// 存的时候按送来的 ccl_line_id 保留关联。默认关 = 旧后端（存过就没有 ccl）。
+const cclLines = Object.fromEntries(Object.values(prefills).flatMap((p) => p.rows.map((r) => r.ccl)).filter(Boolean).map((c) => [c.line_id, c]));
+const slimCcl = (id) => { const c = ctl.dayCcl && id != null ? cclLines[id] : null; return c ? { line_id: c.line_id, driver_text: c.driver_text, guide_text: c.guide_text, vehicle_text: c.vehicle_text, is_driver_guide: c.is_driver_guide } : undefined; };
 http.createServer(async (req, res) => {
   const url = new URL(req.url, "http://x");
   const p = url.pathname;
@@ -243,6 +260,7 @@ http.createServer(async (req, res) => {
   const entry = { method: req.method, path: p, q };
   log.push(entry);
   if (ctl.fail401) return send(res, 401, { detail: "Authentication required" });
+  if (staffPerm(ctl, p, res, send)) return; // 10c：模拟员工权限总开关开着的员工 / Super Admin（staff-perm-mock.js）
   if (p === "/api/dispatch/day" && req.method === "GET") {
     if (ctl.dayDelay) await new Promise((r) => setTimeout(r, ctl.dayDelay));
     if (ctl.failDay) return send(res, 502, { detail: "Bad gateway" });
@@ -254,7 +272,7 @@ http.createServer(async (req, res) => {
     if (p === "/api/settings/dashboard-widgets") return send(res, 200, { readable: true, widgets: [{ key: "farm_out_dispatch", label: "Dispatch · Farm out", visibility: "staff", default: "super_admin_only", visible_to_me: true }, ...(ctl.rosterVis ? [{ key: "dispatch_roster", label: "Dispatch: driver / guide roster", visibility: ctl.rosterVis, default: "super_admin_only", visible_to_me: ctl.rosterVis === "staff" }] : [])] });
     if (p === "/api/me/permissions") return send(res, 200, { is_superadmin: false, permissions: (ctl.partnerPerms || ["dispatch.view", "dispatch.edit", "dispatch.send", "manifests.view"]).map((code) => ({ code, module: code.split(".")[0], wired: true })), default_home: "/dispatch" });
   }
-  if (p === "/api/me") return send(res, 200, { id: 1, username: "annie", display_name: "Annie", initials: "AZ", role: "admin", is_admin: true, is_superadmin: false });
+  if (p === "/api/me") return send(res, 200, { id: 1, username: "annie", display_name: "Annie", initials: "AZ", role: "admin", is_admin: true, is_superadmin: !!ctl.superAdmin });
   if (p === "/api/settings/dashboard-widgets") {
     if (!ctl.foVis && !ctl.rosterVis) return send(res, 404, { detail: "Not Found" });
     return send(res, 200, { readable: true, widgets: [
@@ -316,7 +334,7 @@ http.createServer(async (req, res) => {
     if (ctl.saveErr) return send(res, 400, { detail: ctl.saveErr });
     const unitOf = (r) => (r.shift === "relay" || r.shift === "relay_2" ? "relay" : r.shift === "bus_tour" ? `tour:${r.manifest_id}` : r.shift);
     const rest = (saved[b.date] ?? []).filter((r) => unitOf(r) !== b.unit);
-    const mine = b.rows.map((r) => row({ ...r, id: 2000 + ++sectionSeq, ccl: undefined, ccl_line_id: undefined, ...(r.farm_out ? { partner_name: r.partner_id === 1 ? "Partner A" : r.partner_id === 2 ? "Partner B" : null } : {}) }));
+    const mine = b.rows.map((r) => row({ ...r, id: 2000 + ++sectionSeq, ccl: slimCcl(r.ccl_line_id), ccl_line_id: undefined, ...(r.farm_out ? { partner_name: r.partner_id === 1 ? "Partner A" : r.partner_id === 2 ? "Partner B" : null } : {}) }));
     saved[b.date] = [...rest, ...mine];
     bump(b.date);
     const typed = b.rows.map((r) => r.driver_typed_name).filter(Boolean);
@@ -328,7 +346,7 @@ http.createServer(async (req, res) => {
     // saveDelay：模拟存得慢（测存的时候行里的框关着）。
     if (ctl.saveDelay) await new Promise((r) => setTimeout(r, ctl.saveDelay));
     if (ctl.saveErr) return send(res, 400, { detail: ctl.saveErr });
-    saved[b.date] = b.rows.map((r, i) => row({ ...r, id: 1000 + i, ccl: undefined, ccl_line_id: undefined, ...(r.farm_out ? { partner_name: r.partner_id === 1 ? "Partner A" : r.partner_id === 2 ? "Partner B" : null } : {}) }));
+    saved[b.date] = b.rows.map((r, i) => row({ ...r, id: 1000 + i, ccl: slimCcl(r.ccl_line_id), ccl_line_id: undefined, ...(r.farm_out ? { partner_name: r.partner_id === 1 ? "Partner A" : r.partner_id === 2 ? "Partner B" : null } : {}) }));
     bump(b.date);
     if (b.ccl_import_id && prefills[b.date]) prefills[b.date].status = "applied";
     const typed = b.rows.map((r) => r.driver_typed_name).filter(Boolean);
@@ -434,7 +452,8 @@ http.createServer(async (req, res) => {
     return send(res, 200, { round: b.round, sent: sentNow.length, failed: 0, already_sent: skipped.length, already_sent_orders: skipped, resent, not_on_round: notOnRound, checked_at: "2026-10-05T12:01:00+00:00", blocked_cars: bl, overridden_orders: bl.flatMap((c) => c.overridden_orders).filter((o) => sentNow.includes(o)),
       results: sentNow.map((o) => ({ order: `CHD${o}`, name: "ZZ Test Relay", phone: "+15550000009", pickup_time: "6:15 AM", sms_status: "sent:SM1", email_status: "", skipped: false })) });
   }
-  if (p === "/api/dispatch/driver-notice") return send(res, 200, { run_date: q.date, text: `NPE: Your manifest for Mon, Oct 5 is ready. Log in to see your bus and guests: https://confirm.nationalparkexpress.com/driver?date=${q.date}`, last_sent: ctl.driverSentAt ? { at: "2026-10-04T22:00:00+00:00", by: "annie", label: "Texted 1 driver" } : null,
+  // G215（后端 49c400a）：ctl.driverPage = null（默认，旧后端不带字段）| true | false（司机页开关关着，带后端原文）；ctl.driver400 = 发送时后端拒发。
+  if (p === "/api/dispatch/driver-notice") return send(res, 200, { run_date: q.date, ...(ctl.driverPage == null ? {} : { page_open: ctl.driverPage, page_off_text: DRIVER_PAGE_OFF }), text: `NPE: Your manifest for Mon, Oct 5 is ready. Log in to see your bus and guests: https://confirm.nationalparkexpress.com/driver?date=${q.date}`, last_sent: ctl.driverSentAt ? { at: "2026-10-04T22:00:00+00:00", by: "annie", label: "Texted 1 driver" } : null,
     people: [{ key: "hr:1", name: "FREDDY", phone: "+17025550101", can_send: true, why: "", cars: [{ shift: "relay", van: "768", tour: null }] },
              // driverAllOk：GIA 也能发（测收起状态的提示行显示 Last sent，而不是橙字）。
              ctl.driverAllOk
@@ -445,7 +464,40 @@ http.createServer(async (req, res) => {
   if (p === "/api/dispatch/driver-notice/send") {
     const b = JSON.parse(await readRaw(req)); entry.body = b; ctl.driverSentAt = true;
     if (ctl.driver502) return send(res, 502, { detail: "Bad gateway" });
+    if (ctl.driver400) return send(res, 400, { detail: DRIVER_PAGE_OFF });
     return send(res, 200, { sent: ["FREDDY"], failed: ctl.driverFail ? [{ name: "BOB", error: "Twilio 21211" }] : [] });
+  }
+  // Send to guide（Annie 2026-10-30「1. 动手」；后端 57 在改：缩短固定段、extra、extra_max / preview_text、400 原话）。
+  // ctl.guidePage = null（默认，没带）| true | false；ctl.guideNoExtra = 后端还不收 extra（不带 extra_max）；
+  // ctl.guide400 = 发送时后端拒（原话）；ctl.guideFail = 有一位送不到；ctl.guideAlt = 重读时多一位导游。
+  if (p === "/api/dispatch/guide-notice") {
+    const fixed = `NPE guide ${q.date === "2026-10-05" ? "Mon Oct 5" : q.date}: https://confirm.nationalparkexpress.com/l/<your-link>`;
+    return send(res, 200, {
+      run_date: q.date,
+      ...(ctl.guidePage == null ? {} : { page_open: ctl.guidePage, page_off_text: GUIDE_PAGE_OFF }),
+      text: fixed,
+      ...(ctl.guideNoExtra ? {} : { preview_text: fixed.replace("<your-link>", "xxxxxxxxxxxxxxxx"), extra_max: GUIDE_EXTRA_MAX }),
+      last_sent: ctl.guideSentAt ? { at: "2026-10-05T13:05:00+00:00", by: "annie", label: "Texted 2 guides for 2026-10-05" } : null,
+      people: [
+        { key: "hr:21", name: "KEVIN", phone: "+17025550141", can_send: true, why: "", cars: [{ van: "2041", tour: "Antelope Canyon" }, { van: "2042", tour: "Antelope Canyon" }] },
+        { key: "hr:22", name: "MARIA", phone: "+17025550177", can_send: true, why: "", cars: [{ van: "2051", tour: "Grand Canyon South Rim" }] },
+        { key: "typed:SAM", name: "SAM", phone: "", can_send: false, why: "Typed in by hand, not in HR", cars: [{ van: "2070", tour: "West Rim" }] },
+        ...(ctl.guideAlt ? [{ key: "hr:23", name: "JASON", phone: "+17255550108", can_send: true, why: "", cars: [{ van: "2063", tour: "Zion & Bryce" }] }] : []),
+      ],
+    });
+  }
+  if (p === "/api/dispatch/guide-notice/send") {
+    const b = JSON.parse(await readRaw(req)); entry.body = b;
+    if (ctl.guide400) return send(res, 400, { detail: GUIDE_PAGE_OFF });
+    // 后端 78 的三种 400 原话（纯字符串）：非 GSM 字符 / 超长 / 换行。
+    // 原话照后端 76992dd3 guide_notice.py（1 character / N characters）。
+    if (b.extra != null && b.extra.trim().length > GUIDE_EXTRA_MAX) { const over = b.extra.trim().length - GUIDE_EXTRA_MAX; return send(res, 400, { detail: `Your note is ${over} character${over === 1 ? "" : "s"} too long for one text.` }); }
+    if (b.extra != null && b.extra.includes("\n")) return send(res, 400, { detail: "Keep your note on one line." });
+    ctl.guideSentAt = true;
+    const names = { "hr:21": "KEVIN", "hr:22": "MARIA", "hr:23": "JASON" };
+    const sent = (b.recipients || []).map((k) => names[k]).filter(Boolean);
+    if (ctl.guideFail) return send(res, 200, { sent: sent.slice(1), failed: [{ name: sent[0], error: "Carrier rejected the number" }] });
+    return send(res, 200, { sent, failed: [] });
   }
   // Farm out（G40）：形状照后端真代码（2026-10-17 核对：routers/farm_out*.py、docs 第八节）。ctl.farmOut 开着才有，关着 404。
   // 真后端：GET 结算价 / 上车点 / 时刻表是 admin；这里的模拟用户当 admin 用，不单独模拟 403。

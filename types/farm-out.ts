@@ -35,12 +35,29 @@ export interface FarmOutPartner {
   is_active: boolean;
 }
 
+/**
+ * 一个团下面的子项（名字 + 每人价），只当价目表看，不算进应付金额
+ * （Annie 2026-10-29「farm out同意推荐。」「动手」，preview https://claude.ai/artifact/4d8mgNzxThLC2FsmDpjwHN）。
+ */
+export interface FarmOutRateItem {
+  /** 新加的没有 id。 */
+  id: number | null;
+  name: string;
+  price: number;
+  sort_order?: number;
+}
+
 export interface FarmOutRate {
   manifest_id: number;
   tour_name: string;
   /** null = 没设。 */
   adult_price: number | null;
   child_price: number | null;
+  /**
+   * 子项，按 sort_order 排。后端还没上时没有这个键（当 []）。
+   * PUT 时带了就整组替换（数组顺序 = sort_order），没带就不动。
+   */
+  items?: FarmOutRateItem[];
 }
 
 export interface FarmOutLocation {
