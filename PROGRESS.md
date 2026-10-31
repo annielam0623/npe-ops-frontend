@@ -116,6 +116,9 @@
 ### 37. Bus Manifest 页改动记录（Action Log）
 - Annie 问「刚才我问的问题，bus manifest的改动log在哪里看」⇒ 现在哪里都看不到（后端记了，没有读接口，前端没面板）。Annie：「做」。e6 先出 preview（位置照 Dispatch 页底部、每条写法、谁能看）；后端 64 做 GET /api/dispatch/manifest/action-log。e6 preview：https://claude.ai/artifact/YEgERHNDiL45TCkbzyJisa 。题 a 打印 / 下载也列（推荐）/ 不列；b 谁能看：manifests.edit 或 dispatch.edit（推荐）/ 能打开的都能看 / 只 SA；c 只看当前团（推荐）/ 当天所有团。Annie 在 e6 窗口「同意所有推荐。动手」⇒ e6 task/manifest-action-log 用 mock 做，后端 64 照带 tour 的接口做。
 
+### 38. 排班 Notice 不显示改动明细，只留提示 + See my schedule
+- Annie 截图 Notice history「Schedule edited — week of 2026-11-01」列了十几行明细，原话「notice里不需要显示详情，这里只是给个提示你的schedule发布了，给个see my schedule的链接就好了」。e6 查明细从哪来、出改前改后截图，Annie 点头再合。
+
 ### 8. 可以上线后对着看的（不用答，验收时看）
 - Products 手动保存：09 问的 5 处细节，主窗口按盘点推荐定了，见 PROGRESS「2026-10-30」那节 09 的记录：
   - Bus Manifest setup 每个小项一个 Save；
