@@ -6,6 +6,22 @@
 
 > **明天的主窗口：先读「2026-10-30 收工交接：前端主窗口 前端主窗口-eb」那一节（搜这个标题），再看下面置顶。**
 
+> **🔁 2026-10-30 晚 主窗口 eb 交接给新主窗口（Annie 回家后开新主窗口，eb 对话太长）**
+> 1. 先读「2026-10-30 收工交接：前端主窗口 前端主窗口-eb」那一节，含「三b、加班后补」。
+> 2. 现在的窗口（ListAgents）：
+>    - 前端工作窗口剩 **09**、**e6**；**62 已关**。62 的分支要派新窗口接：`task/content-team-messages`（G228，只开了分支，PROGRESS 写了做法）、`task/schedule-test-person` bb3bfdd（等后端 is_test）。
+>    - 后端主窗口是「今天的主窗口-57」。另有后端子窗口 64 / 9c / 4e / 16 / ea。
+> 3. 回家第一批：
+>    - 确认 Annie 按了 11/01 那周的 Publish again、6 人都收到（后端 738f813 已上）；
+>    - 10d 生产上走一遍（09，Annie 已在 09 窗口放行，跳过 Publish again；测试员工 ZZTest = annzhouyy@msn.com、Leon）；
+>    - 跟进后端上 main：G219（v131 已执行）→ 合 59 的 task/team-contacts；G224（v133）→ 合 09 的 task/dor-updates；is_test（v134）→ 合 test-person；往来记录（v132）→ 合 e6 的 history-fe；92 的 team_list_layout → 合 e6 的 team-columns；/guide/preview → 加 Guide page preview 链接。
+>    - 后端明天出方案、要转 Annie 过目的：G138 周三确认挪到发布前（Annie 已动手）、G227 司机页前一天画出全部功能、G228 键名和接口。
+> 4. 规矩提醒：
+>    - 跟 Annie 说中文；问她的事写完整、附 preview 原文；答过的不再挂着；
+>    - 看时间用 PowerShell Get-Date（eb 今天看错过一次）；
+>    - 写 PROGRESS 插入时先确认行号非空（eb 今天插错过一次）；
+>    - 别把员工邮箱、密码写进仓库。
+
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
 > 规矩见 CLAUDE.md「问 Annie 要确认的事：给完整内容，并一直置顶」（2026-10-30）。每条都要能单独看懂。
