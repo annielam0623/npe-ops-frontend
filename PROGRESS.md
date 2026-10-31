@@ -31,14 +31,20 @@
 - 选法：A. 可空（推荐：照后端，留空也不影响意思）；B. 改回必填。
 
 ### 30. G138 周三确认改版 preview 的 4 题（e6 做，https://claude.ai/artifact/TCweQYTQc2FykafjxaTgJo ）
-- **Annie 22:1x 答 v2**，原话：「排班除了第4点，要求周四中午12点以前确认回。  三件事都对。提加班直接把off那天打开就好，然后让发排班的人批复就可以」⇒ (a)(b)(c) 对；员工页写「周四中午 12 点前确认」；提加班 = 员工把自己 off 那天打开，交排班的人批；不做接班。e6 出 v3（同一链接）：顶上「Please confirm by Thu 11/5, 12:00 PM」（自动算那周的周四 12 点 LA）；off 格子「+ Work this day」选班次 → 亮黄「+ extra shift · asked」→ 排班的人 Approve / Decline。新题：① 过了 12 点 A 只是提醒、晚回标 late（推荐）/ B 到点员工页只读；② 加班班次 A 只能从已有班次选（推荐）/ B 可改时间。Annie 原话「排班那个，一般是accept之前，decline在后」⇒ 所有成对键同意在前、拒绝在后，e6 改 preview。已转 57 / 4e。不算动手。
-- **Annie 21:3x 否了这版**，原话：「30. 你的做法员工根本就看不懂，你直接把网上排好的schedule就一摸一样地给他们，让他们自己可以拖自己那天有班的格子到她想换的那天」⇒ 员工确认页 = 线上排好的周表原样（所有人的班都看得到，推翻 Q4），员工拖自己的格子到想换的那天；之后照 Q5 C。e6 重画 preview，已告诉 57 / 4e。下面 4 题作废。e6 出 v2：https://claude.ai/artifact/X2bdxVr42yXA6CS8FEEiCc 。请 Annie 看三件对不对：(a) 员工看到线上那张周表，只能拖自己的卡片；(b) 拖到别人有班的格子 = 跟他换、先问他，拖到自己没班的那天 = 改天上、直接给排班的人；(c) 原来那个人、排班的人都在同一张表的格子上点 Accept / Approve。「接班」先不做；加班 / 删班 / 改时间请求这版没画。
+- **Annie 在 e6 窗口答 v3 并动手**，原话：「题 1. 排班周三确认：周四中午 12 点过了以后怎么办？ 过了就按照返回回来多少就按照多少排，没有返回的就是默认同意   题2 A」，随后「动手」⇒ 过期员工页只读、没回算 Looks good；加班只能选已有班次；通知只发相关员工（原话「员工之间的改动就发给相关人员就好了，排版人和super admin只需要在管理界面看见他们的action就好。就像你preview的一样」）。e6 开 task/schedule-weekly-confirm 用 mock 做，等后端 G138 再合。已转 57 / 4e。还剩题 3（换班到期对方没回：算同意 / 自动关）在 e6 窗口问。
+- 4e 已把 G138 最终接口整份发 e6（以那份为准）：员工读接口给整周所有班 + 名字（别人休假只写 Off，不给邮箱 / 电话）；deadline 带时区 ISO + open + closed_reason（past_deadline / published / started）；请求 swap / move / add，状态 awaiting_peer / pending / peer_declined / approved / declined / closed；对方回复 POST /api/schedule/confirmation/requests/{id}/answer {answer: accept|decline}；confirmations 多 counted_accepted；题 3 后端做成开关默认 A。后端代码下次开工写（等 16 的 schedule-history 上 main）。
+- **Annie 晚上答 v2**，原话：「排班除了第4点，要求周四中午12点以前确认回。  三件事都对。提加班直接把off那天打开就好，然后让发排班的人批复就可以」⇒ (a)(b)(c) 对；员工页写「周四中午 12 点前确认」；提加班 = 员工把自己 off 那天打开，交排班的人批；不做接班。e6 出 v3（同一链接）：顶上「Please confirm by Thu 11/5, 12:00 PM」（自动算那周的周四 12 点 LA）；off 格子「+ Work this day」选班次 → 亮黄「+ extra shift · asked」→ 排班的人 Approve / Decline。新题：① 过了 12 点 A 只是提醒、晚回标 late（推荐）/ B 到点员工页只读；② 加班班次 A 只能从已有班次选（推荐）/ B 可改时间。Annie 原话「排班那个，一般是accept之前，decline在后」⇒ 所有成对键同意在前、拒绝在后，e6 改 preview。已转 57 / 4e。不算动手。
+- **Annie 晚上否了这版**，原话：「30. 你的做法员工根本就看不懂，你直接把网上排好的schedule就一摸一样地给他们，让他们自己可以拖自己那天有班的格子到她想换的那天」⇒ 员工确认页 = 线上排好的周表原样（所有人的班都看得到，推翻 Q4），员工拖自己的格子到想换的那天；之后照 Q5 C。e6 重画 preview，已告诉 57 / 4e。下面 4 题作废。e6 出 v2：https://claude.ai/artifact/X2bdxVr42yXA6CS8FEEiCc 。请 Annie 看三件对不对：(a) 员工看到线上那张周表，只能拖自己的卡片；(b) 拖到别人有班的格子 = 跟他换、先问他，拖到自己没班的那天 = 改天上、直接给排班的人；(c) 原来那个人、排班的人都在同一张表的格子上点 Accept / Approve。「接班」先不做；加班 / 删班 / 改时间请求这版没画。
 - 内容：周三发草稿通知；员工确认页（只看自己一行，Looks good / Send my changes）；Swap 选人框；原来那个人的「Requests for you」；排班的人的 Responses 卡；发布后；和线上的对照表。全是模拟数据，没写代码。
 - 题 1 选换班对象时，让员工看到那一天同事的班吗：A. 只在点 Swap 选人时列出那天同事的名字 + 班次 + 时间，关掉框又只看自己那行（推荐，口子最小）；B. 不显示名字，只显示哪些时段有人，系统定跟谁换。
 - 题 2 换班要不要有「我来接你这个班」（Take over：Jing 上 Lizzie 那个班，Lizzie 那天不上）：A. Swap 和 Take over 都有，都先问原来那个人再给排班的人 Approve（推荐）；B. 只有对换，多上用 Ask for an extra shift、少上用 Drop。
 - 题 3 已发布周的 Send to confirm，员工那边留不留「Looks good」：A. 留，点了 Responses 卡写 Accepted（推荐）；B. 什么键都不留，只是通知。
 - 题 4 员工页写不写「请在周几前回」：A. 顶部写「Please answer by Fri 11/6」，只提醒、不卡发布（推荐）；B. 只写「Please answer before the schedule is published.」
 - e6 另外加了 3 处假设，已发 4e 核对：第一次 Publish 的确认框列出没处理完的请求；周表亮黄格子照旧能 Approve / Decline；往来记录多几种（换班、改时间、发布时关掉）。
+
+### 32. Add 键改橙色（09 出 preview）
+- Annie 晚上截图 Products › Bus Manifest setup（⑦ Running days、⑧ Different cap 的 Add），原话「这一页，既然现在我们把保存键都改成蓝色，那添加键应该换个颜色了，比如说橙色？」
+- 要定：只改 Products 这一页，还是全站「添加 / 新建」键都橙色（含 Content Studio 刚改蓝的 Create / Add route）；橙色色号要和这页的橙色编号圈、⑨ 橙框分得开。09 出 preview：https://claude.ai/artifact/6MBBkmz2rBo1egAPJGpr5g 。题 1 色号：A 琥珀 #f59e0b 深棕字（推荐）/ B 深橙 #d97706 白字 / C 浅橙 #fb923c 深字；题 2 范围：A 只 Products / B 全站添加新建都橙（推荐，改 CLAUDE.md 颜色规矩；弹窗里按了就存的 Add / Create 也算添加用橙，推荐）。
 
 ### 8. 可以上线后对着看的（不用答，验收时看）
 - Products 手动保存：09 问的 5 处细节，主窗口按盘点推荐定了，见 PROGRESS「2026-10-30」那节 09 的记录：
@@ -98,6 +104,9 @@
 - Annie 答 v2（经 98）原话：「排班除了第4点，要求周四中午12点以前确认回。  三件事都对。提加班直接把off那天打开就好，然后让发排班的人批复就可以」。还不是动手。
 - v3 已出（同一链接，21:27）：员工页写「Please confirm by Thu 11/5, 12:00 PM」（按周自动算，只是提醒）；自己 off 的格子「+ Work this day」→ 选班次 → 亮黄「+ extra shift · asked」→ 排班的人在格子上 Approve / Decline。「接班」不做。
 - v3 新问 Annie 2 题（已发 98）：① 周四 12 点过后 A 只是提醒（推荐，晚回标 late）/ B 到点员工页变只读；② 加班班次 A 只能从已有班次选（推荐）/ B 还能改时间。答了、Annie 说「动手」才用 mock 做。
+- Annie 对 v3 又两条（都还不是动手）：
+  - 经 98：「排班那个，一般是accept之前，decline在后」⇒ 成对的键同意在前：Accept / Decline、Approve / Decline。preview 已改，写代码也照这个顺序。
+  - 直接对 e6 说：「员工之间的改动就发给相关人员就好了，排版人和super admin只需要在管理界面看见他们的action就好。就像你preview的一样」⇒ 通知（站内 + 邮件）只发相关员工：换班请求发对方，对方回复发提请求的人，排班的人批了发提请求的人（换班两人都发），Publish 时关掉的发本人（和还在等的对方）；改天上、提加班发出时没人收。排班的人和 Super Admin 不收通知，只在 Staff Schedule 周表（亮黄格子）、Responses 卡、History 里看。preview 加了「谁会收到通知」一节。后端 G138 通知收件人要照这条，已转 98 让她转 57 / 4e。
 
 ## 2026-10-30 晚 7 Days Forecast：左边一列名字统一 15px 半粗（置顶 31，`task/forecast-label-size`，工作窗口 `npe-ops-frontend-09`[8a0116]，主窗口 98 派）—— 已合 main
 
