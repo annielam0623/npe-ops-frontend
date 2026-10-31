@@ -98,6 +98,58 @@ async function openDashboard() {
   await helpers();
 }
 
+// ── Today's team 在线同事 + 站内消息（Annie 2026-10-30「两件都动手」；后端没上，mock 照前端提的形状）──
+async function runMessaging() {
+  const msgs = async () => (await fetch(`${MOCK}/__messages`)).json();
+  const row = (name) => `document.querySelector('[data-team-row="${name}"]')`;
+  // 员工 Lizzie，开关默认只 Super Admin：不出 Online now，名字不能点
+  await ctl({ reset: true, fail401: false, failGet: false, notReady: false, now: null, perms: null, legacyShape: false, handoverAgeH: null, confirmNotices: false, me: "lizzie", supervisor: false, admin: false, superadmin: false, notices: true, teamOnline: true, directMsg: true, gates: "open", gateVis: { team_messages_direct: "super_admin_only" } });
+  await openDashboard();
+  await waitFor("document.querySelector('[data-today-team] [data-team-row]')", 20000);
+  await sleep(1500);
+  check("消息功能开关（默认只 Super Admin）：员工没有 Online now、名字不能点", await evaluate("return !document.querySelector('[data-online-now]') && !document.querySelector('[data-team-message]');"));
+  // 开给员工
+  await ctl({ gates: "open", gateVis: { team_messages_direct: "staff", dashboard_today_team: "staff" } });
+  await openDashboard();
+  await waitFor("document.querySelector('[data-online-now]')", 20000);
+  check("Online now：登录了、不在排班名单里的员工（ZZ Test Admin、Mia），A–Z；排班的人（Jing）不重复；没在线的（Omar）不出", await evaluate("const r = [...document.querySelectorAll('[data-online-row]')].map(x => x.dataset.onlineRow); return JSON.stringify(r) === JSON.stringify(['Mia', 'ZZ Test Admin']);"), await evaluate("return JSON.stringify([...document.querySelectorAll('[data-online-row]')].map(x => x.dataset.onlineRow));"));
+  check("排班名单里对上账号的人名字能点、在线的有绿点；自己那一行不能点", await evaluate(`return !!${row("Jing")}?.querySelector('[data-team-message]') && !!${row("Jing")}?.querySelector('[data-team-online]') && !!${row("Nadia")}?.querySelector('[data-team-message]') && !${row("Nadia")}?.querySelector('[data-team-online]') && !${row("Lizzie")}?.querySelector('[data-team-message]');`));
+  // 点 Mia（没登记 Email）：黄字，Send 蓝色，先灰
+  await evaluate("document.querySelector('[data-online-row=\"Mia\"] button').click();");
+  await waitFor("document.querySelector('[data-team-message-dialog]')");
+  check("发消息小框：标题 Message Mia；没 Email 写黄字；Send 是蓝色、没写字时灰", await evaluate("const d = document.querySelector('[data-team-message-dialog]'); const send = [...d.querySelectorAll('button')].find(b => b.textContent === 'Send'); return d.querySelector('h2').textContent === 'Message Mia' && d.querySelector('[data-no-email]').textContent.includes('No email on file') && getComputedStyle(send).backgroundColor === 'rgb(59, 130, 246)' && send.disabled;"));
+  await evaluate("const t = document.querySelector('[data-team-message-dialog] textarea'); const set = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set; set.call(t, 'ZZ test: please check the 3pm list'); t.dispatchEvent(new Event('input', { bubbles: true }));");
+  await sleep(200);
+  await evaluate("[...document.querySelectorAll('[data-team-message-dialog] button')].find(b => b.textContent === 'Send').click();");
+  await waitFor("document.querySelector('[data-team-message-dialog] [role=status]')");
+  let m = await msgs();
+  check("Send：POST /api/team/messages {to_user_id: 34, body}；绿字 Sent（没 Email 不写 emailed）", m.length === 1 && m[0].kind === "send" && m[0].to_user_id === 34 && m[0].body === "ZZ test: please check the 3pm list" && (await evaluate("const s = document.querySelector('[data-team-message-dialog] [role=status]'); return s.textContent === '✓ Sent.' && getComputedStyle(s).color === 'rgb(74, 222, 128)';")), JSON.stringify(m));
+  await evaluate("[...document.querySelectorAll('[data-team-message-dialog] button')].find(b => b.textContent === 'Close').click();");
+  // 点 Jing（排班名单里、有 Email）
+  await evaluate(`${row("Jing")}.querySelector('[data-team-message]').click();`);
+  await waitFor("document.querySelector('[data-team-message-dialog]')");
+  check("排班的人也能点：Message Jing，有 Email 不出黄字，写 also gets it by email", await evaluate("const d = document.querySelector('[data-team-message-dialog]'); return d.querySelector('h2').textContent === 'Message Jing' && !d.querySelector('[data-no-email]') && d.textContent.includes('gets it by email');"));
+  await evaluate("[...document.querySelectorAll('[data-team-message-dialog] button')].find(b => b.textContent === 'Cancel').click();");
+  // Notice 里的站内消息（昨天来的也在）：Message 标签、全文、Reply 站内回复
+  await waitFor("document.querySelector('[data-message-body]')", 15000);
+  check("Notice：同事的站内消息（昨天来的、没读）显示，标签 Message，全文分行", await evaluate("const b = document.querySelector('[data-message-body]'); const li = b.closest('li'); return li.textContent.includes('Jing sent you a message') && li.textContent.toLowerCase().includes('message') && b.textContent.includes('They asked about bags.');"));
+  await evaluate("[...document.querySelector('[data-message-body]').closest('li').querySelectorAll('button')].find(b => b.textContent === 'Reply').click();");
+  await waitFor("document.querySelector('textarea[aria-label=Reply]')");
+  await evaluate("const t = document.querySelector('textarea[aria-label=Reply]'); const set = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set; set.call(t, 'ZZ test: on it'); t.dispatchEvent(new Event('input', { bubbles: true }));");
+  await sleep(200);
+  await evaluate("[...document.querySelector('[data-message-body]').closest('li').querySelectorAll('button')].find(b => b.textContent === 'Send').click();");
+  await waitFor("document.querySelector('[data-message-body]').closest('li').querySelector('[role=status]')");
+  m = await msgs();
+  check("Reply：POST /api/team/messages/7/reply {body}，绿字 Reply sent", m.some((x) => x.kind === "reply" && x.id === 7 && x.body === "ZZ test: on it") && (await evaluate("return document.querySelector('[data-message-body]').closest('li').querySelector('[role=status]').textContent === '✓ Reply sent.';")), JSON.stringify(m));
+  // 后端没上（404）：不出 Online now，名字不能点，Today's team 照旧
+  await ctl({ teamOnline: false });
+  await openDashboard();
+  await waitFor("document.querySelector('[data-today-team] [data-team-row]')", 20000);
+  await sleep(1500);
+  check("后端在线名单没上（404）：Today's team 照旧，不出 Online now、名字不能点", await evaluate("return !document.querySelector('[data-online-now]') && !document.querySelector('[data-team-message]');"));
+  await ctl({ reset: true, teamOnline: false, directMsg: false, gates: "open", gateVis: {} });
+}
+
 async function run() {
   await ctl({ reset: true, me: "lizzie", supervisor: false, fail401: false, failGet: false, notReady: false, now: null });
   let from = (await mockLog()).length;
@@ -549,6 +601,7 @@ async function main() {
 
   try {
     await run();
+    await runMessaging();
   } finally {
     ws.close();
     chrome.kill();

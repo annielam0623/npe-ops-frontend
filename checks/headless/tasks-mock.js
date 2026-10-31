@@ -332,6 +332,12 @@ function freshSchedNotices() {
   ];
 }
 let schedNotices = freshSchedNotices();
+const teamMessages = [];
+const directMsgNotices = [{
+  id: 50, type: "message", title: "Jing sent you a message", body: "Can you call the 2pm pickup guest?\nThey asked about bags.",
+  created_at: new Date(Date.now() - 20 * 3600 * 1000).toISOString(), is_read: false, read_at: null,
+  ref: { kind: "message", message_id: 7, from_user_id: 31 }, link: null, actions: [],
+}];
 
 // 后端 G138 实际发的两类通知（字符串以 npe-confirmation-service schedule_confirm.py / schedule.py 为准）。
 // 2026-10-22 后端核实：/api/notices 压根不下发 actions 字段（任何 category 都没有），这里故意不带，
@@ -366,6 +372,8 @@ function noticesWire(list, url) {
       const o = { id: n.id, kind: n.type, title: n.title, created_at: n.created_at, read: !!n.is_read };
       if ("body" in n) o.body = n.body;
       if ("link" in n) o.href = n.link;
+      // 站内消息（后端要加）：ref 带 message_id，Reply 用。
+      if (n.type === "message") o.ref = n.ref;
       return o;
     }),
   };
@@ -467,7 +475,7 @@ http
         if (!ctl.superadmin) return send(res, 403, { detail: "Super Admin access required." });
         Object.assign(ctl.gateVis, b.widgets || {});
       }
-      const extra = [["dashboard_stats", "Today at a glance"], ["dashboard_today_team", "Today's team"], ["dashboard_reply", "Reply pop-up in Messages"], ["dashboard_notice", "Notice"], ["dashboard_tasks", "Tasks"]].flatMap(([key, label]) => {
+      const extra = [["dashboard_stats", "Today at a glance"], ["dashboard_today_team", "Today's team"], ["dashboard_reply", "Reply pop-up in Messages"], ["dashboard_notice", "Notice"], ["dashboard_tasks", "Tasks"], ["team_messages_direct", "Today's team: online staff + messages"]].flatMap(([key, label]) => {
         const vis = ctl.gateVis[key] ?? (ctl.gates === "open" ? "staff" : null);
         // 三档（后端 2026-10-25）：staff = 所有人；admin = admin 和 Super Admin；super_admin_only = 只 Super Admin。
         const seen = vis === "staff" || ctl.superadmin || (vis === "admin" && ctl.admin);
@@ -483,16 +491,42 @@ http
     }
     if (p === "/api/operation-reports") return send(res, 200, { items: [], counts: { complaint: 0, accident: 0, emergency: 0, total: 0 }, total: 0, limit: 50, offset: 0 });
 
+    // Today's team 在线同事 + 站内消息（前端提的形状，后端 57 排）：ctl.teamOnline 开着才有接口。
+    if (p === "/api/team/online" && req.method === "GET") {
+      if (!ctl.teamOnline) return send(res, 404, { detail: "mock: not found" });
+      return send(res, 200, { people: [
+        { id: 31, display_name: "Jing", username: "jing", online: true, last_seen_at: new Date().toISOString(), has_email: true },
+        { id: 32, display_name: "Nadia", username: "nadia", online: false, last_seen_at: null, has_email: false },
+        { id: 33, display_name: "ZZ Test Admin", username: "zz.admin", online: true, last_seen_at: new Date().toISOString(), has_email: true },
+        { id: 34, display_name: "Mia", username: "mia", online: true, last_seen_at: new Date().toISOString(), has_email: false },
+        { id: 35, display_name: "Omar", username: "omar", online: false, last_seen_at: null, has_email: true },
+      ] });
+    }
+    if (p === "/api/team/messages" && req.method === "POST") {
+      const b = await readBody(req);
+      teamMessages.push({ kind: "send", ...b });
+      if (ctl.msgFail) return send(res, 400, { detail: "Write a message first." });
+      return send(res, 200, { ok: true, emailed: b.to_user_id !== 34 && b.to_user_id !== 32 });
+    }
+    const replyMatch = p.match(/^\/api\/team\/messages\/(\d+)\/reply$/);
+    if (replyMatch && req.method === "POST") {
+      const b = await readBody(req);
+      teamMessages.push({ kind: "reply", id: Number(replyMatch[1]), ...b });
+      return send(res, 200, { ok: true });
+    }
+    if (p === "/__messages") return send(res, 200, teamMessages);
     // 排班类提醒（Notice 面板）。ctl.notices 开着才有这个接口；关着返回 404，模拟「后端还没上线」。
     if (p === "/api/notices" && req.method === "GET") {
       if (!ctl.notices) return send(res, 404, { detail: "mock: not found" });
       // confirmNotices：再带上后端 G138 实际发的两类（schedule_confirm_request / schedule_confirm_declined）。
-      const items = ctl.confirmNotices ? [...schedNotices, ...confirmNotices()] : schedNotices;
+      const base = ctl.confirmNotices ? [...schedNotices, ...confirmNotices()] : schedNotices;
+      // directMsg：同事昨天发来的站内消息（type message，没读就一直在 Notice，不只今天的）。
+      const items = ctl.directMsg ? [...base, ...directMsgNotices.filter((n) => !n.is_read)] : base;
       return send(res, 200, noticesWire(items, url));
     }
     const readMatch = p.match(/^\/api\/notices\/(\d+)\/read$/);
     if (readMatch && req.method === "POST") {
-      const n = schedNotices.find((x) => x.id === Number(readMatch[1]));
+      const n = [...schedNotices, ...directMsgNotices].find((x) => x.id === Number(readMatch[1]));
       if (n) { n.is_read = true; n.read_at = new Date().toISOString(); }
       return send(res, 200, { ok: true, unread_count: schedNotices.filter((x) => !x.is_read).length });
     }

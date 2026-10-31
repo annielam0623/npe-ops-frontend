@@ -24,6 +24,7 @@ import {
   WIDGET_REPLY,
   WIDGET_STATS,
   WIDGET_TASKS,
+  WIDGET_TEAM_MESSAGES,
   WIDGET_TODAY_TEAM,
   WIDGET_WEEK_SCHEDULE,
   WidgetStaffSwitch,
@@ -259,6 +260,16 @@ function ReadyBody({
                 staffSwitch={staffSwitch(WIDGET_TODAY_TEAM)}
                 hiddenFromStaff={
                   isSuperAdmin && !gates[WIDGET_TODAY_TEAM].staffSees
+                }
+                messaging={
+                  gates[WIDGET_TEAM_MESSAGES].visible
+                    ? {
+                        staffSwitch: staffSwitch(WIDGET_TEAM_MESSAGES),
+                        hiddenFromStaff:
+                          isSuperAdmin &&
+                          !gates[WIDGET_TEAM_MESSAGES].staffSees,
+                      }
+                    : undefined
                 }
               />
             </div>

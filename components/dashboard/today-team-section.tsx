@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import {
   personDotColor,
@@ -16,8 +16,18 @@ import {
   fetchScheduleWeek,
 } from "@/lib/schedule-api";
 import { formatClock } from "@/lib/schedule-time";
+import {
+  fetchTeamPeople,
+  personName,
+  type TeamPerson,
+} from "@/lib/team-messages-api";
 import { cn } from "@/lib/utils";
 import type { ScheduleEmployee, ScheduleSettings, ScheduleWeek } from "@/types";
+
+import { TeamMessageDialog } from "./team-message-dialog";
+
+/** 在线名单多久重拉一次。 */
+const PEOPLE_POLL_MS = 60_000;
 
 type State =
   | { kind: "loading" }
@@ -42,14 +52,43 @@ export function TodayTeamSection({
   onUnauthorized,
   staffSwitch,
   hiddenFromStaff,
+  messaging,
 }: {
   onUnauthorized: () => void;
   /** Super Admin 的「员工可见」开关（新板块默认只 Super Admin 可见，Annie 2026-10-25）；其他人不传。 */
   staffSwitch?: React.ReactNode;
   /** 还没放给员工（Super Admin 才看得到）：黄色虚线框，同 DOR。 */
   hiddenFromStaff?: boolean;
+  /**
+   * 在线同事 + 点名字发站内消息（Annie 2026-10-30「两件都动手」；新功能，开关 team_messages_direct 默认只 Super Admin）。
+   * 不传 = 对我关着：照旧只列排班的人，名字不能点。
+   */
+  messaging?: { staffSwitch?: ReactNode; hiddenFromStaff?: boolean };
 }) {
   const [state, setState] = useState<State>({ kind: "loading" });
+  const [people, setPeople] = useState<TeamPerson[] | null>(null);
+  const [writeTo, setWriteTo] = useState<TeamPerson | null>(null);
+  const messagingOn = !!messaging;
+
+  // 在线名单：Team 页的员工账号（不只排班的人），30 分钟内有操作算在线；接口没上 / 403 时安静地不出这一组。
+  useEffect(() => {
+    if (!messagingOn) return;
+    const controller = new AbortController();
+    const load = () =>
+      fetchTeamPeople(controller.signal)
+        .then(setPeople)
+        .catch((error: unknown) => {
+          if (controller.signal.aborted) return;
+          if (isStatus(error, 401)) onUnauthorized();
+          else setPeople(null);
+        });
+    void load();
+    const timer = setInterval(() => void load(), PEOPLE_POLL_MS);
+    return () => {
+      controller.abort();
+      clearInterval(timer);
+    };
+  }, [messagingOn, onUnauthorized]);
   const [reloadKey, setReloadKey] = useState(0);
   const [today] = useState(() => laToday());
 
@@ -138,18 +177,120 @@ export function TodayTeamSection({
           </button>
         </p>
       ) : (
-        <TeamRows state={state} today={today} />
+        <TeamRows
+          state={state}
+          today={today}
+          accounts={messagingOn ? people : null}
+          onPick={setWriteTo}
+        />
       )}
+      {messagingOn && people ? (
+        <OnlineNow
+          people={people}
+          scheduled={state.kind === "ready" ? state.employees : []}
+          staffSwitch={messaging?.staffSwitch}
+          hiddenFromStaff={messaging?.hiddenFromStaff}
+          onPick={setWriteTo}
+        />
+      ) : null}
+      {writeTo ? (
+        <TeamMessageDialog
+          person={writeTo}
+          onClose={() => setWriteTo(null)}
+          onUnauthorized={onUnauthorized}
+        />
+      ) : null}
     </section>
+  );
+}
+
+/** 排班表上的人按名字对上 Team 账号（排班员工和登录账号是两张表，只有名字一样）。 */
+function matchPerson(
+  name: string,
+  people: readonly TeamPerson[] | null,
+): TeamPerson | undefined {
+  const key = name.trim().toLowerCase();
+  return people?.find(
+    (p) =>
+      personName(p).toLowerCase() === key || p.username.toLowerCase() === key,
+  );
+}
+
+/**
+ * 排班的人下面一组「Online now」：登录了网站、不在上面排班名单里的其他员工（Annie「除了res，登录了网站的其他员工也在这里显示」
+ * 「在线员工包括teams里的人」），按名字 A–Z，点名字发消息。
+ */
+function OnlineNow({
+  people,
+  scheduled,
+  staffSwitch,
+  hiddenFromStaff,
+  onPick,
+}: {
+  people: TeamPerson[];
+  scheduled: ScheduleEmployee[];
+  staffSwitch?: ReactNode;
+  hiddenFromStaff?: boolean;
+  onPick: (p: TeamPerson) => void;
+}) {
+  const onScheduled = new Set(
+    scheduled
+      .map((e) => matchPerson(e.name, people)?.id)
+      .filter((id): id is number => id != null),
+  );
+  const online = people
+    .filter((p) => p.online && !onScheduled.has(p.id))
+    .sort((a, b) => personName(a).localeCompare(personName(b), "en"));
+  return (
+    <div
+      data-online-now
+      data-staff-hidden={hiddenFromStaff || undefined}
+      className={cn(
+        "mt-3 border-t border-white/[.12] pt-2.5",
+        hiddenFromStaff &&
+          "rounded-[8px] border border-dashed border-[#fbbf24]/50 px-2 pb-1",
+      )}
+    >
+      <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+        <h3 className="flex items-center gap-1.5 text-[12.5px] font-bold text-white/80">
+          <span aria-hidden className="size-2 rounded-full bg-[#4ade80]" />
+          Online now
+        </h3>
+        {staffSwitch}
+      </div>
+      {online.length === 0 ? (
+        <p className="px-2 text-[12px] text-white/40">No one else is online.</p>
+      ) : (
+        <ul className="flex flex-col">
+          {online.map((p) => (
+            <li key={p.id} data-online-row={personName(p)}>
+              <button
+                type="button"
+                onClick={() => onPick(p)}
+                title={`Message ${personName(p)}`}
+                className="w-full cursor-pointer rounded-[6px] px-2 py-[5px] text-left text-[13px] font-semibold text-white hover:bg-white/[.06]"
+              >
+                {personName(p)}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
 
 function TeamRows({
   state,
   today,
+  accounts,
+  onPick,
 }: {
   state: Extract<State, { kind: "ready" }>;
   today: string;
+  /** 在线名单（消息功能关着 / 读不到时 null：名字不能点）。 */
+  accounts: TeamPerson[] | null;
+  onPick: (p: TeamPerson) => void;
 }) {
   const label = (key: string) =>
     state.settings.shift_types.find((t) => t.key === key)?.label ?? key;
@@ -171,6 +312,7 @@ function TeamRows({
     <ul className="flex flex-col">
       {people.map((e) => {
         const mine = e.name.trim().toLowerCase() === state.meName;
+        const account = mine ? undefined : matchPerson(e.name, accounts);
         const mySlots = slots.filter((s) => s.employee_id === e.id);
         const off = (state.week.time_off ?? []).find(
           (t) => t.employee_id === e.id && t.date === today,
@@ -189,7 +331,26 @@ function TeamRows({
                 className="h-2.5 w-2.5 shrink-0 rounded-full"
                 style={{ backgroundColor: personDotColor(e.id) }}
               />
-              {e.name}
+              {account ? (
+                <button
+                  type="button"
+                  data-team-message={e.name}
+                  onClick={() => onPick(account)}
+                  title={`Message ${e.name}`}
+                  className="cursor-pointer text-left font-semibold text-white underline-offset-2 hover:underline"
+                >
+                  {e.name}
+                </button>
+              ) : (
+                e.name
+              )}
+              {account?.online ? (
+                <span
+                  data-team-online
+                  title="Online now"
+                  className="size-[7px] shrink-0 rounded-full bg-[#4ade80]"
+                />
+              ) : null}
             </span>
             {mySlots.length === 0 ? (
               <span

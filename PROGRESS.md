@@ -323,6 +323,49 @@
     - Today's team 关着时任务块整行。
     - 结果：tasks 128/128、dr 88/88、nav 32/32；tsc 0、eslint 0 错、build 通过。
   - ⚠️ 和 `task/schedule-test-person` 都改了 tasks-test.js / tasks-mock.js，后合的那条要两边都留、重跑 tasks；Today's team 的 is_test 过滤在 today-team-section.tsx，这条没碰。
+- `task/team-online-messages`（worktree `C:\Code\ops-wt-91-online`）—— Today's team 在线同事 + 站内消息，用 mock 做，**没合 main，等后端**
+  - Annie 原话：
+    - 「然后today's team的显示，除了res，登录了网站的其他员工也在这里显示，然后可以点击他们发消息」；
+    - 「站内消息，同时可以发邮件通知这条消息的内容」；
+    - preview https://claude.ai/artifact/MyYTZjQzmJLaWckQjPxVGd 六题：「Q1  30分钟   Q2 A 在notice里，都属于给自己看的   Q3 A   Q4 A 站内回复，不用邮件   Q5 A  Q6 A」；
+    - 补一句「在线员工包括teams里的人」；
+    - 最后「两件都动手」。
+  - 做法：
+    - `lib/team-messages-api.ts`（新）：GET /api/team/online、POST /api/team/messages、POST /api/team/messages/{id}/reply（形状见文件头）。
+    - `components/dashboard/today-team-section.tsx`：
+      - 新 prop messaging（开关对我开着才传）；
+      - 排班的人按名字对上 Team 账号，名字能点（自己除外），在线的带绿点；
+      - 下面一组「Online now」：在线、不在排班名单里的员工，A–Z，点名字发消息；
+      - 在线名单每 60 秒重拉；接口 404 / 出错时不出这一组、名字不能点。
+    - `components/dashboard/team-message-dialog.tsx`（新）：「Message <name>」小框，同 Pass over 的样子。
+      - 没 Email 写黄字「No email on file — they'll only see it in their Notice.」；
+      - 蓝色 Send；成功绿字「✓ Sent — also emailed.」/「✓ Sent.」；失败红字「Not sent — …」。
+    - Notice：type `message` 的通知没读就一直在，不只今天的；标签「Message」，全文；
+      - Reply 在卡里展开输入框，蓝色 Send，只发站内（POST …/reply）；
+      - Got it 照旧。
+    - 开关：`lib/page-visibility.ts` 加 `team_messages_direct`（默认 super_admin_only），`widget-gates.tsx` 加 WIDGET_TEAM_MESSAGES；Super Admin 在 Online now 那一行看到开关。
+  - 检查：tasks-mock 加 /api/team/online、/api/team/messages、reply、`directMsg`（昨天来的站内消息，带 ref.message_id）。tasks-test 加 runMessaging 11 条：
+    - 开关默认员工看不到；在线名单 A–Z、不重复、不在线的不出；
+    - 名字能点 / 绿点 / 自己不能点；
+    - 小框黄字、蓝色 Send、发送请求和绿字；
+    - 排班的人也能点；
+    - Notice 消息卡、Reply 请求和绿字；
+    - 后端 404 时照旧。
+    - 结果：tsc 0、eslint 0 错、build 通过。tasks 在 23:5x 跑时消息 11 条前 10 条过、Reply 那条修了 mock（ref 要透传）。
+    - 00:00 以后重跑，「Notice 只放今天的」那几条旧检查因为 mock 的通知是「15 分钟 / 1 小时前」跨了洛杉矶午夜而失败（和这次改动无关），**01:00 以后要重跑 tasks 确认全过**。
+  - ⚠️ 需要后端（已请 98 转 57）：
+    1. admin_users.last_seen_at（migration）。
+    2. GET /api/team/online：
+       - 回 {people:[{id, display_name, username, online, last_seen_at, has_email}]}，是 Team 页的员工账号（不只排班的人），不含合作方、司机、导游和自己；
+       - online = 30 分钟内有操作。
+    3. POST /api/team/messages {to_user_id, body} → {ok, emailed}：
+       - 写一条收件人的 Notice（kind `message`，title「X sent you a message」，body 全文）；
+       - 同时发邮件到 Team Email（Reply-To 发信人）。
+    4. POST /api/team/messages/{id}/reply {body} → {ok}：只写原发信人的 Notice，不发邮件。
+    5. **/api/notices 对 kind `message` 的条目要带 `ref: {kind:"message", message_id, from_user_id}`**（现在接口不发 ref，Reply 要用 message_id）。
+    6. 开关 key `team_messages_direct` 登记进 dashboard-widgets，默认 super_admin_only。
+    7. 发消息和回复记进 action_log。
+  - 下一步：后端上 main → 对真接口核形状 → 合最新 main、重跑 tasks / dr / nav → 合 main。
 
 
 ## G228 Content Studio「Team Messages」后端设计（4e，2026-10-30 晚，只读，main f51d40a1）—— 给前端 62 的接手窗口用
