@@ -376,7 +376,14 @@
     5. **/api/notices 对 kind `message` 的条目要带 `ref: {kind:"message", message_id, from_user_id}`**（现在接口不发 ref，Reply 要用 message_id）。
     6. 开关 key `team_messages_direct` 登记进 dashboard-widgets，默认 super_admin_only。
     7. 发消息和回复记进 action_log。
-  - 下一步：后端上 main → 对真接口核形状 → 合最新 main、重跑 tasks / dr / nav → 合 main。
+  - ✅ 2026-10-31 00:1x：照后端 21 发来的最终形状改了 mock / 类型 / 检查：
+    - 在线名单只列在线的人（online 恒 true），排班里没在线的人名字不能点；
+    - 开关没开 403 时不出 Online now；
+    - send 回 {ok, id, emailed}，400 原话红字；
+    - ref 带 from_display_name。
+    - tasks 的午夜问题已在 main 6ba6866 修好（mock 通知的「现在」跨午夜也算今天），合进来了。
+    - 结果：tasks 139/139、dr 88/88、nav 32/32；tsc 0、eslint 0 错、build 通过。
+  - 下一步：后端 21 等 Annie 执行 v138 后上 main → 对真接口再核一遍 → 合最新 main、重跑 tasks / dr / nav → 合 main。
 
 
 ## G228 Content Studio「Team Messages」后端设计（4e，2026-10-30 晚，只读，main f51d40a1）—— 给前端 62 的接手窗口用

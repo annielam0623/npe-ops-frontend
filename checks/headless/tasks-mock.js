@@ -345,7 +345,7 @@ const teamMessages = [];
 const directMsgNotices = [{
   id: 50, type: "message", title: "Jing sent you a message", body: "Can you call the 2pm pickup guest?\nThey asked about bags.",
   created_at: new Date(Date.now() - 20 * 3600 * 1000).toISOString(), is_read: false, read_at: null,
-  ref: { kind: "message", message_id: 7, from_user_id: 31 }, link: null, actions: [],
+  ref: { kind: "message", message_id: 7, from_user_id: 31, from_display_name: "Jing" }, link: null, actions: [],
 }];
 
 // 后端 G138 实际发的两类通知（字符串以 npe-confirmation-service schedule_confirm.py / schedule.py 为准）。
@@ -503,25 +503,26 @@ http
     // Today's team 在线同事 + 站内消息（前端提的形状，后端 57 排）：ctl.teamOnline 开着才有接口。
     if (p === "/api/team/online" && req.method === "GET") {
       if (!ctl.teamOnline) return send(res, 404, { detail: "mock: not found" });
-      return send(res, 200, { people: [
-        { id: 31, display_name: "Jing", username: "jing", online: true, last_seen_at: new Date().toISOString(), has_email: true },
-        { id: 32, display_name: "Nadia", username: "nadia", online: false, last_seen_at: null, has_email: false },
-        { id: 33, display_name: "ZZ Test Admin", username: "zz.admin", online: true, last_seen_at: new Date().toISOString(), has_email: true },
-        { id: 34, display_name: "Mia", username: "mia", online: true, last_seen_at: new Date().toISOString(), has_email: false },
-        { id: 35, display_name: "Omar", username: "omar", online: false, last_seen_at: null, has_email: true },
+      // 后端 21：只列 30 分钟内来过的（online 恒 true），开关没对我开 ⇒ 403。
+      if (ctl.teamOnline === "403") return send(res, 403, { detail: "This section is not available yet." });
+      const seen = new Date().toISOString();
+      return send(res, 200, { online_minutes: 30, people: [
+        { id: 31, display_name: "Jing", username: "jing", role: "staff", online: true, last_seen_at: seen, has_email: true },
+        { id: 33, display_name: "ZZ Test Admin", username: "zz.admin", role: "admin", online: true, last_seen_at: seen, has_email: true },
+        { id: 34, display_name: "Mia", username: "mia", role: "staff", online: true, last_seen_at: seen, has_email: false },
       ] });
     }
     if (p === "/api/team/messages" && req.method === "POST") {
       const b = await readBody(req);
       teamMessages.push({ kind: "send", ...b });
       if (ctl.msgFail) return send(res, 400, { detail: "Write a message first." });
-      return send(res, 200, { ok: true, emailed: b.to_user_id !== 34 && b.to_user_id !== 32 });
+      return send(res, 200, { ok: true, id: 100 + teamMessages.length, emailed: b.to_user_id !== 34 });
     }
     const replyMatch = p.match(/^\/api\/team\/messages\/(\d+)\/reply$/);
     if (replyMatch && req.method === "POST") {
       const b = await readBody(req);
       teamMessages.push({ kind: "reply", id: Number(replyMatch[1]), ...b });
-      return send(res, 200, { ok: true });
+      return send(res, 200, { ok: true, id: 100 + teamMessages.length });
     }
     if (p === "/__messages") return send(res, 200, teamMessages);
     // 排班类提醒（Notice 面板）。ctl.notices 开着才有这个接口；关着返回 404，模拟「后端还没上线」。
