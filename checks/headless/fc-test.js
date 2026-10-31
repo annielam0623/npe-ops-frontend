@@ -254,6 +254,20 @@ async function run() {
     await evaluate(`return document.querySelector('td[data-block="3"][data-kind="crew-ccl"][data-day="${DAYS[5]}"]').textContent.includes('Closed: Road closed for weather');`),
   );
 
+  // ── 最左一列字号统一（Annie 2026-10-30「15px 半粗 动手」，preview 第 5 版）──
+  check(
+    "左列所有名字（黄色路线名、产品行、Driver / Guide、Crew notes、Notes 等）都是 15px、半粗 600，路线名照旧黄色",
+    await evaluate(`const tds = [...document.querySelectorAll('tbody tr[data-kind] > td:first-child')]; const kinds = new Set(tds.map((td) => td.closest('tr').dataset.kind)); const bad = tds.filter((td) => { const s = getComputedStyle(td); return s.fontSize !== '15px' || s.fontWeight !== '600'; }).map((td) => td.closest('tr').dataset.kind + ':' + td.textContent.trim().slice(0, 20)); return tds.length > 20 && ['total', 'sub', 'crew', 'ccl'].every((k) => kinds.has(k)) && bad.length === 0 && getComputedStyle(${totalRow(3)}.firstElementChild).color === 'rgb(250, 204, 21)' || JSON.stringify(bad);`) === true,
+  );
+  check(
+    "左列宽度不变；长路线名（Grand Canyon West · Sunset）折行，不压到第一天的格子上",
+    await evaluate(`const td = ${totalRow(7, "Sunset")}.firstElementChild; const next = td.nextElementSibling; return td.getBoundingClientRect().width <= 191 && td.scrollWidth <= td.clientWidth + 1 && td.getBoundingClientRect().right <= next.getBoundingClientRect().left + 1 && td.getBoundingClientRect().height > 30;`),
+  );
+  check(
+    "表头日期和格子里的数字不动（12.5px）",
+    await evaluate(`return getComputedStyle(document.querySelector('thead th[data-day]')).fontSize === '12.5px' && getComputedStyle(${totalCell(3, TODAY)}).fontSize === '12.5px';`),
+  );
+
   // ── forecast-sections：单独成块的节（Grand Canyon West · Sunset，和主块共用 manifest_id 7）──
   check(
     "主块和 Sunset 块都渲染，各自的 Total 和名字对（(manifest_id, section) 当 key，不互相覆盖）",

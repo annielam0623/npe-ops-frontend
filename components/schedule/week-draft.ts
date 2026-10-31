@@ -1,4 +1,4 @@
-import { minutesOf } from "@/lib/schedule-time";
+import { formatClock, minutesOf } from "@/lib/schedule-time";
 import { shiftYmd } from "@/lib/la-date";
 import type { ScheduleGap, ScheduleSlot, ScheduleWeekOp } from "@/types";
 
@@ -324,4 +324,130 @@ export function localGaps(
       gaps.push({ date, start_time: hhmm(cursor), end_time: hhmm(winEnd) });
   }
   return gaps;
+}
+
+/**
+ * 卡片上直接标空档（Annie 2026-10-30「17 全按推荐，动手」，preview https://claude.ai/artifact/WVNc5X87zYyKyY6k47qyKU ）：
+ * 页面上的改动**新造成**的空档（改之前库里没有的），记到造成它的那张卡上 —— 这张卡在库里原来有人、覆盖着这段时间，
+ * 现在被挪走 / 删掉 / 改了时间。拖班、删班、改时间都算（Q1 A）；只标那张卡（Q2 A）；草稿周也标、只标新造成的（Q3 A）。
+ * 纯函数，每次重算：补上以后自然就没了。按 Save 时后端照旧再判，以后端为准。
+ */
+export function newGapsByCard(
+  weekStart: string,
+  serverSlots: readonly ScheduleSlot[],
+  liveSlots: readonly ScheduleSlot[],
+  d: WeekDraft,
+  work: { start_time: string; end_time: string },
+  now?: LaNow,
+): Map<number, ScheduleGap[]> {
+  const out = new Map<number, ScheduleGap[]>();
+  if (!isDirty(d)) return out;
+  const before = localGaps(weekStart, serverSlots, work);
+  const after = now
+    ? futureGaps(localGaps(weekStart, liveSlots, work), now)
+    : localGaps(weekStart, liveSlots, work);
+  const fresh = after.filter(
+    (g) =>
+      !before.some(
+        (b) =>
+          b.date === g.date &&
+          b.start_time <= g.start_time &&
+          g.end_time <= b.end_time,
+      ),
+  );
+  for (const g of fresh) {
+    for (const id of Object.keys(d.edits).map(Number)) {
+      const orig = serverSlots.find((s) => s.id === id);
+      if (!orig || orig.date !== g.date || orig.employee_id == null) continue;
+      // 原来覆盖着这段空档（有交集）：就是它造成的。
+      if (orig.start_time < g.end_time && g.start_time < orig.end_time) {
+        out.set(id, [...(out.get(id) ?? []), g]);
+      }
+    }
+  }
+  return out;
+}
+
+/** 「1 hour」「45 minutes」「1 hour 30 minutes」。 */
+function durationText(min: number): string {
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return [
+    h ? `${h} ${h === 1 ? "hour" : "hours"}` : "",
+    m ? `${m} ${m === 1 ? "minute" : "minutes"}` : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
+/** 「11:00 AM – 12:00 PM」；同是上午 / 下午时前面的不写：「4:15 – 5:00 PM」。 */
+function rangeText(start: string, end: string): string {
+  const a = formatClock(start);
+  const b = formatClock(end);
+  const [at, ap] = a.split(" ");
+  const [, bp] = b.split(" ");
+  return ap === bp ? `${at} – ${b}` : `${a} – ${b}`;
+}
+
+const minutesBetween = (g: ScheduleGap) =>
+  (minutesOf(g.end_time) ?? 0) - (minutesOf(g.start_time) ?? 0);
+
+/**
+ * 卡片上那一句（preview ②③）：
+ * 一段：「This leaves a 1 hour gap (11:00 AM – 12:00 PM).」（形容词用单数：a 1 hour 30 minute gap；8 / 11 / 18 开头用 an）；
+ * 几段：「This leaves 2 gaps: 11:00 AM – 12:00 PM (1 hour) and 4:15 – 5:00 PM (45 minutes).」。
+ */
+export function gapSentence(gaps: readonly ScheduleGap[]): string {
+  if (gaps.length === 1) {
+    const g = gaps[0];
+    const min = minutesBetween(g);
+    const h = Math.floor(min / 60);
+    const m = min % 60;
+    const adj = [h ? `${h} hour` : "", m ? `${m} minute` : ""]
+      .filter(Boolean)
+      .join(" ");
+    const article = /^(8|11|18)\b/.test(adj) ? "an" : "a";
+    return `This leaves ${article} ${adj} gap (${rangeText(g.start_time, g.end_time)}).`;
+  }
+  const parts = gaps.map(
+    (g) =>
+      `${rangeText(g.start_time, g.end_time)} (${durationText(minutesBetween(g))})`,
+  );
+  const list =
+    parts.length === 2
+      ? parts.join(" and ")
+      : `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`;
+  return `This leaves ${gaps.length} gaps: ${list}.`;
+}
+
+/** 洛杉矶的此刻：日期 + 一天里的第几分钟。 */
+export interface LaNow {
+  date: string;
+  minute: number;
+}
+
+/**
+ * 空档只算「现在以后」（Annie 2026-10-30「schedule里对gap的要求，之应该对此刻起的将来设置，对过去的应该彻底放行」）：
+ * 过去的日子整段不算；今天跨过此刻的那段只留后半截；今天已经过去的那几段不算。用洛杉矶时间，不用浏览器本地时间。
+ * 后端也在改，以后端为准。
+ */
+export function futureGaps(
+  gaps: readonly ScheduleGap[],
+  now: LaNow,
+): ScheduleGap[] {
+  const hhmm = (m: number) =>
+    `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+  const out: ScheduleGap[] = [];
+  for (const g of gaps) {
+    if (g.date < now.date) continue;
+    if (g.date > now.date) {
+      out.push(g);
+      continue;
+    }
+    const end = minutesOf(g.end_time) ?? 0;
+    if (end <= now.minute) continue;
+    const start = minutesOf(g.start_time) ?? 0;
+    out.push(start >= now.minute ? g : { ...g, start_time: hhmm(now.minute) });
+  }
+  return out;
 }

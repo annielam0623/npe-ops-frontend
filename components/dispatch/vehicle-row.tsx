@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { useViewOnly } from "@/components/ui/view-only";
 import { cn } from "@/lib/utils";
-import type { DispatchPrivateOrder, DispatchRow } from "@/types";
+import type { DispatchDay, DispatchPrivateOrder, DispatchRow } from "@/types";
 
 import { RowSave, type UnitSaveState } from "./unit-save";
 
@@ -227,7 +227,7 @@ function GuideSelect({
   const can = L.driver(row.driver_hr_id)?.position === "both";
   const cands = new Set(
     row.ccl && !row.ccl.is_driver_guide
-      ? row.ccl.guide_candidates.map((c) => c.id)
+      ? (row.ccl.guide_candidates ?? []).map((c) => c.id)
       : [],
   );
   const top: React.ReactNode[] = [];
@@ -442,6 +442,18 @@ function StopSelect({
       else if (row.shift === META.bus_tour_shift) shared.set(l, who);
     }
   });
+  const option = (l: DispatchDay["locations"][number]) => (
+    <option key={l.id} value={l.id} disabled={taken.has(l.id)}>
+      {l.name}
+      {taken.has(l.id) ? ` - ${taken.get(l.id)}` : ""}
+      {shared.has(l.id) ? ` (also ${shared.get(l.id)})` : ""}
+    </option>
+  );
+  const { lasVegas, shuttle } = groupStops(
+    L.day.locations.filter(
+      (l) => l.active !== false && !row.location_ids.includes(l.id),
+    ),
+  );
   return (
     <select
       data-f="addstop"
@@ -452,17 +464,41 @@ function StopSelect({
       style={{ backgroundImage: ADDSTOP_CARET }}
     >
       <option value="">Add hotel</option>
-      {L.day.locations
-        .filter((l) => l.active !== false && !row.location_ids.includes(l.id))
-        .map((l) => (
-          <option key={l.id} value={l.id} disabled={taken.has(l.id)}>
-            {l.name}
-            {taken.has(l.id) ? ` - ${taken.get(l.id)}` : ""}
-            {shared.has(l.id) ? ` (also ${shared.get(l.id)})` : ""}
+      {lasVegas.map(option)}
+      {shuttle ? (
+        <>
+          <option
+            value=""
+            disabled
+            data-stop-divider
+            className="text-[#9ca3af] italic"
+          >
+            Shuttle pick up
           </option>
-        ))}
+          {shuttle.map(option)}
+        </>
+      ) : null}
     </select>
   );
+}
+
+/**
+ * 加酒店的下拉分两组（Annie 2026-10-30「las vegas的放上面，然后用shuttle pick up这行字隔开，shuttle的站点排下面…都是按照A-Z排序」，
+ * preview https://claude.ai/artifact/Bud9mmZivp9ddK5cAd5QLV ，(b)「按照las vegas和其他地方来分…其他地方一律算shuttle」）：
+ * Pickup Locations 勾了 Tour bus 的 = Las Vegas，放上面；其余（含 null）放「Shuttle pick up」下面；两组各自 A–Z。
+ * 后端还没带 is_tour_bus（一个点都没有这个键）时照旧：后端的顺序、不分组（shuttle 为 null）。
+ */
+function groupStops<T extends DispatchDay["locations"][number]>(
+  locations: T[],
+): { lasVegas: T[]; shuttle: T[] | null } {
+  if (!locations.some((l) => l.is_tour_bus !== undefined)) {
+    return { lasVegas: locations, shuttle: null };
+  }
+  const az = (a: T, b: T) =>
+    a.name.localeCompare(b.name, "en", { sensitivity: "base" });
+  const lasVegas = locations.filter((l) => l.is_tour_bus === true).sort(az);
+  const shuttle = locations.filter((l) => l.is_tour_bus !== true).sort(az);
+  return { lasVegas, shuttle: shuttle.length ? shuttle : null };
 }
 
 // 照旧页面 `.vrow select` / `.todo` / `.bad` / `.need` / `.addstop`。
@@ -587,17 +623,27 @@ function CclHint({
       </span>
     );
   }
-  const cands = (
+  const all =
     (field === "driver"
       ? c!.driver_candidates
       : field === "guide"
         ? c!.guide_candidates
-        : []) ?? []
-  ).filter((n) => {
+        : []) ?? [];
+  const cands = all.filter((n) => {
     if (field === "guide") return !!L.guide(n.id);
     const d = L.driver(n.id);
     return !!d && canRun(d, row.shift) && !d.license_blocked;
   });
+  // HR 里没有这个人（没有候选人）：框空着等 staff 手打，框下面跟手打了的一样写「CCL: JUAN · Not in HR」，
+  // 不写橙字（Annie 2026-10-30 截图：「这个才是正确的样子，框里是staff手工打的」）。存过、重开都在（day 回 ccl）。
+  // 重名（BRUCE → Bruce O / Bruce W）、车号不在 Vehicles 的照旧写橙字。
+  if (field !== "vehicle" && !all.length) {
+    return (
+      <span className={CCLTXT} data-ccl={field}>
+        CCL: <b>{text}</b> · <Pill tone="bad">Not in HR</Pill>
+      </span>
+    );
+  }
   return (
     <span
       className="relative pl-[23px] text-[12.5px] leading-[1.4] font-semibold text-[#c2410c] [&_b]:font-[650] [&_b]:text-[#c2410c]"

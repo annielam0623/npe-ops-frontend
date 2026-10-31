@@ -3,14 +3,14 @@
 // 控制：POST /__ctl {reset, fail401, staff, unavailable, foVis（farm_out_settings 的档：staff / admin / super_admin_only；null = 后端还没登记）}；GET /__log。端口默认 8799（环境变量 MOCK_PORT 可改）。
 const http = require("http");
 
-const ctl = { fail401: false, staff: false, partner: false, unavailable: false, foVis: "staff", log403: false, importFail: false, importConflict: false, importFileError: "" };
+const ctl = { fail401: false, staff: false, partner: false, unavailable: false, foVis: "staff", log403: false, itemsFail: false, importFail: false, importConflict: false, importFileError: "" };
 const log = [];
 
 const TOURS = [
   { manifest_id: 10, tour_name: "West Rim" },
   { manifest_id: 11, tour_name: "Zion" },
 ];
-let partners, rates, locations, cells, tourMeta, nextPartnerId, nextLocId;
+let partners, rates, locations, cells, tourMeta, nextPartnerId, nextLocId, nextItemId;
 
 function reset() {
   partners = [
@@ -22,7 +22,7 @@ function reset() {
       { manifest_id: 10, tour_name: "West Rim", adult_price: 105, child_price: 95 },
       { manifest_id: 11, tour_name: "Zion", adult_price: null, child_price: null },
     ],
-    2: TOURS.map((t) => ({ ...t, adult_price: 110, child_price: 99 })),
+    2: TOURS.map((t) => ({ ...t, adult_price: 110, child_price: 99, items: t.manifest_id === 10 ? [{ id: 801, name: "Lunch", price: 15, sort_order: 0 }] : [] })),
   };
   locations = {
     1: [
@@ -41,6 +41,7 @@ function reset() {
   ];
   nextPartnerId = 50;
   nextLocId = 500;
+  nextItemId = 900;
 }
 reset();
 
@@ -195,7 +196,35 @@ http
       if (what === "rates") {
         if (req.method === "PUT") {
           if (entry.body.some((r) => "infant_price" in r)) return send(res, 400, { detail: "no infant price" });
-          rates[pid] = entry.body;
+          // 子项（G221，后端 task/g221-farmout-rate-items 6a876f79 的 _clean_rate_items / put_rates）：
+          // 带了 items 就整组替换（顺序 = sort_order），没带或 null 就不动，[] = 删光。逐项查：名字必填、≤80、同团不重名（不分大小写）、
+          // 价钱必填且是数字；最后查带来的 id 还在不在这家这个团。有一条不对就 400、一条都不写（后端原话）。
+          const tourName = (r) => TOURS.find((t) => t.manifest_id === r.manifest_id)?.tour_name ?? r.tour_name;
+          for (const r of entry.body) {
+            if (r.items == null) continue;
+            const tour = tourName(r);
+            const seen = new Set();
+            for (const it of r.items) {
+              const name = String(it.name ?? "").trim();
+              if (!name) return send(res, 400, { detail: `Every item on ${tour} needs a name.` });
+              if (name.length > 80) return send(res, 400, { detail: `The item name on ${tour} is ${name.length} characters - the limit is 80.` });
+              if (seen.has(name.toLowerCase())) return send(res, 400, { detail: `${name} is already on ${tour}.` });
+              seen.add(name.toLowerCase());
+              if (it.price === null || it.price === undefined || it.price === "") return send(res, 400, { detail: `Enter a price for ${name} on ${tour}.` });
+              if (typeof it.price === "boolean" || !Number.isFinite(Number(it.price))) return send(res, 400, { detail: `The price for ${name} on ${tour} must be a number such as 45 or 45.50.` });
+            }
+          }
+          for (const r of entry.body) {
+            if (r.items == null) continue;
+            const mine = new Set(((rates[pid] || []).find((o) => o.manifest_id === r.manifest_id)?.items || []).map((it) => it.id));
+            if (r.items.some((it) => it.id != null && !mine.has(it.id))) return send(res, 400, { detail: "An item in the price list no longer exists. Reload the page and try again." });
+          }
+          if (ctl.itemsFail) return send(res, 500, { detail: "Database is busy" });
+          const old = rates[pid] || [];
+          rates[pid] = entry.body.map((r) => ({
+            ...r,
+            items: r.items ? r.items.map((it, i) => ({ id: it.id ?? nextItemId++, name: it.name, price: it.price, sort_order: i })) : (old.find((o) => o.manifest_id === r.manifest_id)?.items || []),
+          }));
           return send(res, 200, { ok: true, rates: rates[pid] });
         }
         return send(res, 200, rates[pid]);

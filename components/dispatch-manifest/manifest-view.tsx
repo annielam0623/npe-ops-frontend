@@ -1433,7 +1433,10 @@ function GuestTable({
   const version = versionOf(data);
   const columns = columnsFor(version, !!data.tour.lunch_column);
   // ✓（司机标的上车）：Lankun（定 5）和 West Rim 不要这一列。
-  const boarding = version !== "lankun" && version !== "west";
+  // ✓ 列（司机标的上车 / No show）：West Rim 没有；Lankun 只在屏幕上有、打印不出（Annie 2026-10-30「5 按推荐动手」：
+  // 屏幕上留、打印去掉；打印页和 Excel 是后端出的，照旧没有）。
+  const boarding = version !== "west";
+  const boardingClass = version === "lankun" ? "print:hidden" : "";
   const cols = columns.length + (lettered ? 1 : 0) + (boarding ? 1 : 0);
   const th = { fontSize: `${HEAD_PX[version].th}px` };
   if (sections.length === 0) {
@@ -1507,7 +1510,11 @@ function GuestTable({
               </th>
             ) : null}
             {boarding ? (
-              <th className={TH} style={th}>
+              <th
+                data-boarding-col
+                className={cn(TH, boardingClass)}
+                style={th}
+              >
                 ✓
               </th>
             ) : null}
@@ -1523,6 +1530,7 @@ function GuestTable({
               cols={cols}
               lettered={lettered}
               boarding={boarding}
+              boardingClass={boardingClass}
               sectionPx={HEAD_PX[version].section}
               onBusChange={onBusChange}
               onNotesChange={onNotesChange}
@@ -1782,6 +1790,7 @@ function SectionRows({
   cols,
   lettered,
   boarding,
+  boardingClass,
   sectionPx,
   onBusChange,
   onNotesChange,
@@ -1796,6 +1805,8 @@ function SectionRows({
   lettered: boolean;
   /** 出不出 ✓ 列（Lankun 不出）。 */
   boarding: boolean;
+  /** Lankun：✓ 列只在屏幕上（print:hidden）。 */
+  boardingClass: string;
   /** 节标题字号（Marcello 放大）。 */
   sectionPx: number;
   onBusChange: (guest: ManifestGuest, label: string) => void;
@@ -1848,15 +1859,7 @@ function SectionRows({
                 return (
                   <td key={key} {...cell("order_number", g)}>
                     {g.order_number}
-                    {/* G65：主 Manifest 里找不到、原因不明的单：人数照算，橙字提醒去 Rezdy 查。 */}
-                    {g.sync_status === "missing" ? (
-                      <div
-                        data-sync-missing
-                        className="font-[Arial,sans-serif] text-[11px] font-bold text-[#c2410c]"
-                      >
-                        {g.sync_note || "Not in main manifest — check Rezdy"}
-                      </div>
-                    ) : null}
+                    {/* G65 主 Manifest 里找不到的单不再另提醒「check Rezdy」（Annie 2026-10-30「4 全按推荐 动手」；订单流固定：状态查 Order List）。 */}
                   </td>
                 );
               case "pickup_time":
@@ -1952,7 +1955,7 @@ function SectionRows({
             </td>
           ) : null}
           {boarding ? (
-            <td className={TD}>
+            <td className={cn(TD, boardingClass)}>
               {g.boarding === "boarded" ? (
                 <span className="rounded-full bg-[#e6f4ec] px-[7px] py-px text-[11px] font-bold whitespace-nowrap text-[#1e6b43]">
                   ✓
@@ -2459,11 +2462,6 @@ function HowToUse() {
           at the bottom with 0 pax and the reason; it is not counted, printed or
           downloaded, and drivers and guides don&rsquo;t see it. If it comes
           back in Rezdy, it returns to its bus by itself.
-        </li>
-        <li>
-          Orange text under an order number (Not in main manifest — check Rezdy)
-          means the order is gone from the main manifest but we can&rsquo;t tell
-          why. Its guests still count. Check the order in Rezdy.
         </li>
       </ol>
     </details>

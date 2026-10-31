@@ -4,16 +4,20 @@ import type { FarmOutOrder } from "./farm-out";
 
 export type DispatchShift = "relay" | "relay_2" | "bus_tour" | "private_tour";
 
+/**
+ * CCL 原文。预填 / 改版的行全都有；存过的一天（GET /day，Annie 2026-10-30 选 C：存过、重开都还要看到 CCL 写的名字）
+ * 只带三段原文，其余可能没有。
+ */
 export interface DispatchCcl {
-  line_id: number;
+  line_id?: number | null;
   driver_text: string | null;
   guide_text: string | null;
   vehicle_text: string | null;
-  is_driver_guide: boolean;
-  route_label: string | null;
-  ccl_note: string | null;
-  driver_candidates: { id: number; name: string }[];
-  guide_candidates: { id: number; name: string }[];
+  is_driver_guide?: boolean;
+  route_label?: string | null;
+  ccl_note?: string | null;
+  driver_candidates?: { id: number; name: string }[];
+  guide_candidates?: { id: number; name: string }[];
 }
 
 /** 一台车（一行）。页面上的工作副本也是这个形状。 */
@@ -124,7 +128,14 @@ export interface DispatchDay {
     has_tracking: boolean;
     seats: number | null;
   }[];
-  locations: { id: number; name: string; active: boolean }[];
+  locations: {
+    id: number;
+    name: string;
+    active: boolean;
+    /** Pickup Locations 的 Tour bus 勾（后端 21 加）：true = Las Vegas，「Add hotel」放上面；false / null = Shuttle。没带 = 后端还没上，不分组。 */
+    is_tour_bus?: boolean | null;
+    is_shuttle?: boolean | null;
+  }[];
   tours: {
     id: number;
     display_name: string;

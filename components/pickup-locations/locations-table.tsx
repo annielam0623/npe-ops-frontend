@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 
 import { cn } from "@/lib/utils";
-import type { PickupLocation } from "@/types";
+import type { PickupLocation, ShuttleRoute, ShuttleSeason } from "@/types";
 
 import {
   ALIASES_MAX,
@@ -28,12 +28,30 @@ import {
   TR_HOVER,
 } from "./legacy-ui";
 import { MapImageInputs } from "./location-fields";
+import { AlsoTag, TypeChecks } from "./location-type";
+import { TimesCell, TimesEditor } from "./shuttle-times";
 
 /** 一行正在编辑的状态：草稿、保存中、保存失败的原因。 */
 export interface EditState {
   draft: LocationDraft;
   saving: boolean;
   error: string | null;
+  /** 打开编辑时的样子：和 draft 不一样 = 有没存的改动（时刻表写「Not saved yet」、离开页面先问）。 */
+  original?: LocationDraft;
+}
+
+/**
+ * 表格用在哪一块（preview v3）：all = 后端还没有类别时照旧一张 All Locations；
+ * tour = Tour bus 那块（有「Tour bus departure」勾）；shuttle = Shuttle 那块（没有那个勾，多一列 Times，Edit 下面展开时刻表）。
+ */
+export type TableVariant = "all" | "tour" | "shuttle";
+
+/** Shuttle 块要的：正在看哪一季、还没结束的季节、线路下拉和线路名。 */
+export interface ShuttleTableProps {
+  seasonId: number | null;
+  seasons: ShuttleSeason[];
+  routes: ShuttleRoute[];
+  names: Map<number, string>;
 }
 
 /** .loc-tbl thead td：表头字色（旧模板 #999，2026-10-14 改 #1a1a1a）。 */
@@ -59,6 +77,8 @@ export function LocationsTable({
   onToggleActive,
   onTourDeparture,
   onDelete,
+  variant = "all",
+  shuttle,
 }: {
   locations: PickupLocation[];
   /** 打开编辑的行（按 id）；搜索时草稿保留。 */
@@ -73,14 +93,31 @@ export function LocationsTable({
   onToggleActive: (loc: PickupLocation) => void;
   onTourDeparture: (loc: PickupLocation, on: boolean) => void;
   onDelete: (loc: PickupLocation) => void;
+  variant?: TableVariant;
+  /** variant = shuttle 时给。 */
+  shuttle?: ShuttleTableProps;
 }) {
+  const isShuttle = variant === "shuttle";
+  const cols = isShuttle ? 8 : 7;
+  const seasonName = shuttle?.seasons.find(
+    (x) => x.id === shuttle.seasonId,
+  )?.name;
   return (
     <div className="overflow-x-auto">
       <table className="w-full border-collapse text-[12px]">
         <thead>
           <tr>
-            <th className={cn(TH, "w-[13%]")}>Hotel Name</th>
-            <th className={cn(TH, "w-[16%]")}>Photo URL</th>
+            <th className={cn(TH, "w-[13%]")}>
+              {isShuttle ? "Stop" : "Hotel Name"}
+            </th>
+            {isShuttle ? (
+              <th className={cn(TH, "w-[19%] bg-amber-300/10")}>
+                Times{seasonName ? ` — ${seasonName}` : ""}
+              </th>
+            ) : null}
+            <th className={cn(TH, isShuttle ? "w-[12%]" : "w-[16%]")}>
+              Photo URL
+            </th>
             <th
               className={cn(TH, "w-[15%]")}
               title="The picture itself, shown inline to the guest. Not the same as Photo URL, which is a page they click."
@@ -111,7 +148,7 @@ export function LocationsTable({
           {placeholder ? (
             <tr>
               <td
-                colSpan={7}
+                colSpan={cols}
                 className="p-5 text-center text-[#1a1a1a] night:text-white/35"
               >
                 {placeholder}
@@ -122,15 +159,21 @@ export function LocationsTable({
               edits[loc.id] ? (
                 <EditRow
                   key={loc.id}
+                  id={loc.id}
                   edit={edits[loc.id]}
                   onChange={(draft) => onDraftChange(loc.id, draft)}
                   onSave={() => onSave(loc.id)}
                   onCancel={() => onCancel(loc.id)}
+                  variant={variant}
+                  shuttle={shuttle}
+                  cols={cols}
                 />
               ) : (
                 <ViewRow
                   key={loc.id}
                   loc={loc}
+                  variant={variant}
+                  shuttle={shuttle}
                   busy={busyId === loc.id}
                   onEdit={() => onEdit(loc)}
                   onToggleActive={() => onToggleActive(loc)}
@@ -152,6 +195,8 @@ function Dash() {
 
 function ViewRow({
   loc,
+  variant,
+  shuttle,
   busy,
   onEdit,
   onToggleActive,
@@ -159,6 +204,8 @@ function ViewRow({
   onDelete,
 }: {
   loc: PickupLocation;
+  variant: TableVariant;
+  shuttle?: ShuttleTableProps;
   busy: boolean;
   onEdit: () => void;
   onToggleActive: () => void;
@@ -176,19 +223,38 @@ function ViewRow({
             Inactive
           </span>
         ) : null}
-        <label
-          title="Guests picked up here board the tour bus directly and are not in the Morning Relay."
-          className="mt-1 flex items-center gap-[5px] text-[11px] whitespace-nowrap text-[#1a1a1a] night:text-white/75"
-        >
-          <input
-            type="checkbox"
-            checked={!!loc.is_tour_departure}
-            disabled={busy}
-            onChange={(e) => onTourDeparture(e.target.checked)}
-          />
-          Tour bus departure
-        </label>
+        {variant === "tour" && loc.is_shuttle ? (
+          <AlsoTag>also Shuttle</AlsoTag>
+        ) : null}
+        {variant === "shuttle" && loc.is_tour_bus ? (
+          <AlsoTag>also Tour bus</AlsoTag>
+        ) : null}
+        {/* 「Tour bus departure」只跟团车有关，Shuttle 块不出（v2 Q3）。 */}
+        {variant !== "shuttle" ? (
+          <label
+            title="Guests picked up here board the tour bus directly and are not in the Morning Relay."
+            className="mt-1 flex items-center gap-[5px] text-[11px] whitespace-nowrap text-[#1a1a1a] night:text-white/75"
+          >
+            <input
+              type="checkbox"
+              checked={!!loc.is_tour_departure}
+              disabled={busy}
+              onChange={(e) => onTourDeparture(e.target.checked)}
+            />
+            Tour bus departure
+          </label>
+        ) : null}
       </td>
+      {variant === "shuttle" && shuttle ? (
+        <td className={cn(TD_CLASS, "bg-amber-300/[.06] text-[12px]")}>
+          <TimesCell
+            loc={loc}
+            seasonId={shuttle.seasonId}
+            seasons={shuttle.seasons}
+            names={shuttle.names}
+          />
+        </td>
+      ) : null}
       <td className={cn(TD_CLASS, "[overflow-wrap:anywhere]")}>
         {loc.photo_url ? (
           photoHref ? (
@@ -294,115 +360,165 @@ function MapThumb({ url }: { url: string }) {
 }
 
 function EditRow({
+  id,
   edit,
   onChange,
   onSave,
   onCancel,
+  variant,
+  shuttle,
+  cols,
 }: {
+  id: number;
   edit: EditState;
   onChange: (draft: LocationDraft) => void;
   onSave: () => void;
   onCancel: () => void;
+  variant: TableVariant;
+  shuttle?: ShuttleTableProps;
+  cols: number;
 }) {
   const { draft, saving, error } = edit;
   const set = <K extends keyof LocationDraft>(
     key: K,
     value: LocationDraft[K],
   ) => onChange({ ...draft, [key]: value });
+  const showTimes = variant === "shuttle" && !!shuttle && draft.is_shuttle;
+  const timesDirty =
+    !!edit.original &&
+    JSON.stringify(draft.times) !== JSON.stringify(edit.original.times);
   return (
-    <tr className={cn(TR_CLASS, TR_HOVER)}>
-      <td className={TD_CLASS}>
-        <input
-          type="text"
-          aria-label="Hotel name"
-          value={draft.hotel_name}
-          disabled={saving}
-          onChange={(event) => set("hotel_name", event.target.value)}
-          className={INLINE_INPUT_CLASS}
-        />
-      </td>
-      <td className={TD_CLASS}>
-        <input
-          type="text"
-          aria-label="Photo URL"
-          value={draft.photo_url}
-          maxLength={URL_MAX}
-          disabled={saving}
-          onChange={(event) => set("photo_url", event.target.value)}
-          className={INLINE_INPUT_CLASS}
-        />
-      </td>
-      <td className={TD_CLASS}>
-        <MapImageInputs
-          images={draft.map_images}
-          disabled={saving}
-          onChange={(images) => set("map_images", images)}
-          idPrefix="edit"
-          inline
-        />
-      </td>
-      <td className={TD_CLASS}>
-        <input
-          type="text"
-          aria-label="Short (for SMS)"
-          value={draft.instruction_short}
-          maxLength={SHORT_MAX}
-          disabled={saving}
-          onChange={(event) => set("instruction_short", event.target.value)}
-          className={INLINE_INPUT_CLASS}
-        />
-      </td>
-      <td className={TD_CLASS}>
-        <input
-          type="text"
-          aria-label="Details"
-          value={draft.instruction}
-          disabled={saving}
-          onChange={(event) => set("instruction", event.target.value)}
-          className={INLINE_INPUT_CLASS}
-        />
-      </td>
-      <td className={TD_CLASS}>
-        <input
-          type="text"
-          aria-label="Aliases"
-          value={draft.aliases}
-          maxLength={ALIASES_MAX}
-          disabled={saving}
-          placeholder="comma-separated"
-          title="Internal spellings that should resolve to this hotel. Never shown to a guest. Only needed when the spelling shares no word with the hotel name."
-          onChange={(event) => set("aliases", event.target.value)}
-          className={INLINE_INPUT_CLASS}
-        />
-      </td>
-      <td className={TD_CLASS}>
-        <div className="flex flex-wrap gap-1.5">
-          <button
-            type="button"
-            onClick={onSave}
+    <Fragment>
+      <tr className={cn(TR_CLASS, TR_HOVER)} data-edit-row={id}>
+        <td className={TD_CLASS}>
+          <input
+            type="text"
+            aria-label="Hotel name"
+            value={draft.hotel_name}
             disabled={saving}
-            className={BTN_ADD_SMALL_CLASS}
-          >
-            {saving ? "Saving…" : "Save"}
-          </button>
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={saving}
-            className={BTN_EDIT_CLASS}
-          >
-            Cancel
-          </button>
-        </div>
-        {error ? (
-          <p
-            role="alert"
-            className="mt-1.5 text-[11px] [overflow-wrap:anywhere] text-[#A32D2D] night:text-red-300"
-          >
-            {error}
-          </p>
+            onChange={(event) => set("hotel_name", event.target.value)}
+            className={INLINE_INPUT_CLASS}
+          />
+          {variant !== "all" ? (
+            <div className="mt-1.5">
+              <TypeChecks
+                compact
+                idPrefix={`edit-${variant}-${id}`}
+                tourBus={draft.is_tour_bus}
+                shuttle={draft.is_shuttle}
+                disabled={saving}
+                onChange={(t) => onChange({ ...draft, ...t })}
+              />
+            </div>
+          ) : null}
+        </td>
+        {variant === "shuttle" ? (
+          <td className={cn(TD_CLASS, "bg-amber-300/[.06]")}>
+            {showTimes ? (
+              <span className="text-[12px] font-semibold text-[#2563eb] night:text-sky-300">
+                Editing below ↓
+              </span>
+            ) : null}
+          </td>
         ) : null}
-      </td>
-    </tr>
+        <td className={TD_CLASS}>
+          <input
+            type="text"
+            aria-label="Photo URL"
+            value={draft.photo_url}
+            maxLength={URL_MAX}
+            disabled={saving}
+            onChange={(event) => set("photo_url", event.target.value)}
+            className={INLINE_INPUT_CLASS}
+          />
+        </td>
+        <td className={TD_CLASS}>
+          <MapImageInputs
+            images={draft.map_images}
+            disabled={saving}
+            onChange={(images) => set("map_images", images)}
+            idPrefix="edit"
+            inline
+          />
+        </td>
+        <td className={TD_CLASS}>
+          <input
+            type="text"
+            aria-label="Short (for SMS)"
+            value={draft.instruction_short}
+            maxLength={SHORT_MAX}
+            disabled={saving}
+            onChange={(event) => set("instruction_short", event.target.value)}
+            className={INLINE_INPUT_CLASS}
+          />
+        </td>
+        <td className={TD_CLASS}>
+          <input
+            type="text"
+            aria-label="Details"
+            value={draft.instruction}
+            disabled={saving}
+            onChange={(event) => set("instruction", event.target.value)}
+            className={INLINE_INPUT_CLASS}
+          />
+        </td>
+        <td className={TD_CLASS}>
+          <input
+            type="text"
+            aria-label="Aliases"
+            value={draft.aliases}
+            maxLength={ALIASES_MAX}
+            disabled={saving}
+            placeholder="comma-separated"
+            title="Internal spellings that should resolve to this hotel. Never shown to a guest. Only needed when the spelling shares no word with the hotel name."
+            onChange={(event) => set("aliases", event.target.value)}
+            className={INLINE_INPUT_CLASS}
+          />
+        </td>
+        <td className={TD_CLASS}>
+          <div className="flex flex-wrap gap-1.5">
+            <button
+              type="button"
+              onClick={onSave}
+              disabled={saving}
+              className={BTN_ADD_SMALL_CLASS}
+            >
+              {saving ? "Saving…" : "Save"}
+            </button>
+            <button
+              type="button"
+              onClick={onCancel}
+              disabled={saving}
+              className={BTN_EDIT_CLASS}
+            >
+              Cancel
+            </button>
+          </div>
+          {error ? (
+            <p
+              role="alert"
+              className="mt-1.5 text-[11px] [overflow-wrap:anywhere] text-[#A32D2D] night:text-red-300"
+            >
+              {error}
+            </p>
+          ) : null}
+        </td>
+      </tr>
+      {showTimes ? (
+        <tr className="bg-blue-500/[.05]" data-times-row={id}>
+          <td colSpan={cols} className="px-4 pt-1 pb-3.5">
+            <TimesEditor
+              rows={draft.times}
+              seasons={shuttle!.seasons}
+              routes={shuttle!.routes}
+              names={shuttle!.names}
+              disabled={saving}
+              dirty={timesDirty}
+              onChange={(times) => set("times", times)}
+            />
+          </td>
+        </tr>
+      ) : null}
+    </Fragment>
   );
 }

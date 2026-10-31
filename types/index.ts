@@ -113,6 +113,9 @@ export type {
   PickupLocationInput,
   PickupLogAction,
   PickupLogEntry,
+  PickupStopTime,
+  ShuttleRoute,
+  ShuttleSeason,
 } from "./pickup-locations";
 export type {
   MtlvTicketStatus,
@@ -157,6 +160,7 @@ export type {
   PermItem,
   PermModule,
   TeamCatalog,
+  TeamContactInput,
   TeamInviteResult,
   TeamMember,
   TeamMemberContact,
@@ -367,11 +371,6 @@ export type {
   TcqSettings,
   TcqVehicle,
 } from "./tcq";
-export type {
-  DispatchRezdySyncResult,
-  RezdyLastSynced,
-  RezdySyncResult,
-} from "./rezdy-sync";
 export type {
   DailyTask,
   StaffShiftToday,

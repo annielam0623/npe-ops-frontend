@@ -66,6 +66,8 @@ export interface TeamMemberUser {
   home_path?: string | null;
   /** 后端还没上线时没有这个字段：页面不出任何类型选项，和以前一样。 */
   account_type?: AccountType;
+  /** 手机（staff 联络方式，后端加 admin_users.phone 以后带；没带 = 还没上）。 */
+  phone?: string | null;
 }
 
 export interface TeamMemberContact {
@@ -92,6 +94,20 @@ export interface TeamMemberDetail {
   home_path: string | null;
   /** 后端 8a 起带；superadmin 那行是 "staff"，靠 is_superadmin 区分。 */
   account_type?: AccountType;
+  /** 手机（staff 联络方式）。 */
+  phone?: string | null;
+  /**
+   * 关联了 Human Resource 档案的 driver / guide：HR 里的电话（Team 这里只显示，去 HR 改，
+   * Annie 2026-10-29 Q3 A）。没关联 = null / 不带。
+   */
+  hr_phone?: string | null;
+}
+
+/** PUT /api/team/members/{id}/contact：空的存 null。 */
+export interface TeamContactInput {
+  email: string | null;
+  /** 有 HR 档案的不带（电话照 HR）。 */
+  phone?: string | null;
 }
 
 /** PUT /api/team/members/{id}、POST /api/team/invites 的请求体：四样整组替换，没给 = 没有。 */
@@ -107,6 +123,9 @@ export interface TeamSelection {
 /** POST /api/team/invites 的请求体；account_type 只在后端支持时才带（默认 staff）。 */
 export interface NewTeamInvite extends TeamSelection {
   account_type?: AccountType;
+  /** 发邀请时填的联络方式，先存在占位账号上（Annie 2026-10-29 Team 联络方式 Q7 A）。 */
+  email?: string | null;
+  phone?: string | null;
 }
 
 export interface NewTeamAccount extends NewTeamInvite {
@@ -115,6 +134,7 @@ export interface NewTeamAccount extends NewTeamInvite {
   initials: string;
   display_name: string | null;
   email: string | null;
+  phone?: string | null;
 }
 
 export interface TeamInviteResult {
