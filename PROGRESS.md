@@ -87,6 +87,10 @@
     - 后端 404 存本机；partner 没有 Columns。
   - 结果：tp 146/146、teams 54/54、users 77/77、nav 32/32；tsc 0 错；eslint 0 错、2 个原有警告；改过的文件 prettier 过；build 过。
 - 下一步：后端 92 上 main 后核一遍形状，合最新 main、重跑 tp / users，再合 main。
+- ✅ 2026-10-30 晚：91 接手合 main（98 派；e6 在忙 G138）。
+  - 后端 team_list_layout 上 main（d16264d4），只读核过：键在 ALLOWED_PREF_KEYS 里；GET 回 {key, value}；PUT {value: 字符串}，原样存，最长 4000 字，不是字符串回 400；partner PUT 403（PARTNER_READ_ONLY_PREF_KEYS）。和 e6 的 mock 一样，前端对 partner 本来也不读不存。
+  - 合最新 main 时 users-view.tsx（logVersion 和 layout 两段 state）、tp-mock.js（contact404 / extraLog / hrphone 和 teamLayout 几处）、PROGRESS.md 有冲突，都是两边都留。
+  - 合 main 后：tp 161/161、users 77/77、teams 54/54、nav 32/32；tsc 0、eslint 0 错、build 通过；已合 main。
 ## 2026-10-30 晚 主窗口 `npe-ops-frontend-98`[94e9c6] 开工核对（家里，接 eb）
 
 - main 干净；6 条前端分支都已推，都等后端（team-contacts / dor-updates / schedule-test-person / schedule-person-history-fe / team-columns / content-team-messages）。
