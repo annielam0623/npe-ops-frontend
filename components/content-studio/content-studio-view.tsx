@@ -20,6 +20,7 @@ import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchCurrentUser } from "@/lib/auth-api";
 import { usePageVisibility } from "@/lib/page-visibility";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
+import { useLeaveGuard } from "@/lib/use-leave-guard";
 import {
   fetchTemplateSettings,
   previewTixPrepare,
@@ -78,9 +79,15 @@ import {
   type Studio,
   TextFieldCard,
 } from "./studio-cards";
+import {
+  TEAM_TABS,
+  TeamMessagesPanel,
+  TeamMessagesPreview,
+  type TeamTab,
+} from "./team-messages";
 import { TixTourPicker } from "./tix-tour-picker";
 
-type Module = "tc" | "tix" | "bc" | "fo" | "shuttle";
+type Module = "tc" | "tix" | "bc" | "fo" | "shuttle" | "team";
 
 /** 票的图标：线条图标，浅灰色（Annie 2026-10-16：不要红色的 🎟️ 表情符号）。 */
 function TicketIcon() {
@@ -158,6 +165,16 @@ const MODULES: {
     // 后端还是旧版（接口 404）时回到旧的路线面板，标签栏不显示（见下面 tabs）。
     tabs: [...SHUTTLE_TABS],
     accent: "#0ea5e9",
+  },
+  {
+    // G228（Annie 2026-10-30「23 全按推荐 动手」，第 4 题 A：一张卡放全部）。发给我们自己人和合作方的，跟上面给客人的分开。
+    key: "team",
+    icon: "🧑‍✈️",
+    title: "Team Messages",
+    tag: "SMS / Email",
+    text: "Manage the texts we send to our own team and partners: the driver and guide texts from Dispatch, the lunch update to restaurants, and the schedule emails.",
+    tabs: [...TEAM_TABS],
+    accent: "#eab308",
   },
 ];
 
@@ -334,6 +351,11 @@ export function ContentStudioView() {
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, [dirtyCount]);
 
+  useLeaveGuard(
+    dirtyCount > 0,
+    "You have unsaved changes in Content Studio. Leave without saving?",
+  );
+
   if (state.kind !== "ready") {
     return (
       <Shell>
@@ -376,7 +398,9 @@ export function ContentStudioView() {
     <Shell
       dirtyCount={dirtyCount}
       preview={
-        module === "shuttle" && shuttleReady ? (
+        module === "team" ? (
+          <TeamMessagesPreview tab={tabName as TeamTab} studio={studio} />
+        ) : module === "shuttle" && shuttleReady ? (
           <ShuttlePreview
             tab={tabName as ShuttleTab}
             data={shuttleReady.data}
@@ -480,7 +504,10 @@ export function ContentStudioView() {
             </div>
           ) : null}
 
-          {module !== "bc" && tabName === "Global" ? (
+          {module === "team" ? (
+            <TeamMessagesPanel tab={tabName as TeamTab} studio={studio} />
+          ) : null}
+          {module !== "bc" && module !== "team" && tabName === "Global" ? (
             <section>
               {/* .global-toggle-bar */}
               <button
@@ -1027,4 +1054,5 @@ const HOW_TO_ITEMS = [
   "Keep the { } variables such as {name}; add one with the buttons after Insert:.",
   "Click Save on the card. Saved ✓ means it is stored; unsaved changes are lost when you leave.",
   "Cancel only undoes changes you have not saved.",
+  "Team Messages: texts to drivers, guides, restaurants and staff. Driver and guide texts must fit in one SMS with the link filled in, keep exactly one {link}, and use plain characters only. Subjects, the texts and link text can't be empty; the other lines can be left empty to drop them.",
 ];

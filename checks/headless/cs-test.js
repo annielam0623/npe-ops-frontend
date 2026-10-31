@@ -364,6 +364,138 @@ async function run() {
   const t3saved = (await mockLog()).filter((e) => e.path === "/api/template-settings/save" && e.body?.key === "tmpl__bcast__tour__t3__body").at(-1)?.body.value;
   check("群发模板改成普通字符：不红、能存", sc && !sc.red && saved >= 1 && t3saved === 'Hi {first_name}, café señor - "3"' && !(await cardErr(t3)), JSON.stringify({ sc, saved, t3saved }));
 
+  // ── G228 Team Messages（Annie 2026-10-30「23 全按推荐 动手」、置顶 24「要」；后端 4e 设计，mock）──
+  {
+    const P = "tmpl__global__";
+    const card = (id) => `document.querySelector('[data-team-card="${id}"]')`;
+    const ta = (id) => `${card(id)}.querySelector('textarea')`;
+    const issues = (id) => evaluate(`return ${card(id)}.querySelector('[data-team-issues]')?.textContent ?? '';`);
+    const saveBtn = (id) => `[...${card(id)}.querySelectorAll('button')].find(b => /^(Save|Saving…|Saved ✓|Error)$/.test(b.textContent.trim()))`;
+    const setText = (id, v) => evaluate(`$setValue(${ta(id)}, ${JSON.stringify(v)}); return 1;`);
+    const clickSave = (id) => evaluate(`${saveBtn(id)}.click(); return 1;`);
+    const saves = async (before) => since(before, (e) => e.path === "/api/template-settings/save" && e.body);
+
+    await goto(`${APP}/settings/content-studio`);
+    await waitFor("document.body.textContent.includes('Team Messages')", 60000);
+    await h();
+    check(
+      "首页第六张卡 Team Messages（🧑‍✈️、SMS / Email、说明写给我们自己人和合作方）",
+      await evaluate("const b = [...document.querySelectorAll('button')].find(b => b.textContent.includes('Team Messages')); return !!b && b.textContent.includes('🧑‍✈️') && b.textContent.includes('SMS / Email') && b.textContent.includes('our own team and partners');"),
+    );
+    await evaluate("$open('Team Messages');");
+    await waitFor(`!!${card("field_driver_sms")}`);
+    check("三个标签页：Driver & Guide SMS / Restaurant / Schedule Email", JSON.stringify(await evaluate("return [...document.querySelectorAll('[role=tab]')].map(t => t.textContent);")) === JSON.stringify(["Driver & Guide SMS", "Restaurant", "Schedule Email"]));
+
+    // 23 个键都列出来（三个标签页加起来），每张卡写键名、种子原文
+    const ids = [];
+    for (const t of ["Driver & Guide SMS", "Restaurant", "Schedule Email"]) {
+      await evaluate(`$tab(${JSON.stringify(t)}); return 1;`);
+      await sleep(250);
+      ids.push(...(await evaluate("return [...document.querySelectorAll('[data-team-card]')].map(c => c.dataset.teamCard + '|' + c.textContent.includes('tmpl__global__' + c.dataset.teamCard));")));
+    }
+    const WANT = ["field_driver_sms", "field_guide_sms", "rest_title", "rest_total_label", "rest_changed_label", "rest_questions", "rest_email_subject", "sched_greeting", "sched_week_subject", "sched_week_intro", "sched_week_empty", "sched_week_link_text", "sched_changed_subject", "sched_edited_subject", "sched_changed_intro", "sched_edited_intro", "sched_changed_footer", "sched_confirm_changes_subject", "sched_confirm_changes_intro", "sched_confirm_changes_ask", "sched_confirm_link_text", "sched_weekly_confirm_subject", "sched_weekly_confirm_intro"];
+    check("列出 23 个键（含周三确认两个），每张卡写键名 tmpl__global__…", ids.length === 23 && JSON.stringify(ids.map((x) => x.split("|")[0])) === JSON.stringify(WANT) && ids.every((x) => x.endsWith("|true")), JSON.stringify(ids));
+    check(
+      "Schedule Email 分五组，Publish again 那组写 Notice 标题不在这里改（第 3 题 A）；预览里 {week} 是 Sun, Nov 1",
+      await evaluate("const g = [...document.querySelectorAll('[data-team-group]')].map(s => s.dataset.teamGroup); const p = document.querySelector('[data-team-preview=week]'); return g.length === 5 && g[4] === 'Wednesday: confirm the week' && document.querySelector('[data-team-group=\"Publish again (changes)\"]').textContent.includes('The Dashboard Notice keeps its own title') && !!p && p.textContent.includes('Subject: Your schedule — week of Sun, Nov 1') && p.textContent.includes('Hi Maria,');"),
+    );
+
+    // 司机 / 导游短信：字数按真实链接量；导游写还剩几个字给 staff 的那句
+    await evaluate("$tab('Driver & Guide SMS'); return 1;");
+    await waitFor(`!!${card("field_driver_sms")}`);
+    check(
+      "司机短信：种子原文、字数 ≈ 139 / 160（日期 + 95 字的链接）；导游：还剩 42 个字给 staff 的那句",
+      await evaluate(`return ${ta("field_driver_sms")}.value === 'NPE: Manifest for {date}, tap to open: {link}' && ${card("field_driver_sms")}.querySelector('[data-team-sms-len]').textContent.startsWith('≈ 139 / 160') && ${card("field_guide_sms")}.querySelector('[data-team-note-left]').textContent === 'Characters left for the staff note: 42';`),
+      await evaluate(`return ${card("field_driver_sms")}.querySelector('[data-team-sms-len]')?.textContent + ' | ' + ${card("field_guide_sms")}.querySelector('[data-team-note-left]')?.textContent;`),
+    );
+
+    // 改了存：只存这一张卡，按钮绿色 Saved ✓，右边预览跟着变
+    let before = (await mockLog()).length;
+    await setText("field_driver_sms", "NPE: Your manifest {date}: {link}");
+    check("改了：预览马上变（没存也看得到）", await waitFor("(document.querySelector('[data-team-preview=driver]')?.textContent || '').includes('NPE: Your manifest Sat, Oct 31: https://')"));
+    await clickSave("field_driver_sms");
+    const s1 = await waitSaves(before, 1);
+    check("Save：只存这一张卡 POST {key, value}，按钮绿色 Saved ✓", s1.length === 1 && s1[0].body.key === P + "field_driver_sms" && s1[0].body.value === "NPE: Your manifest {date}: {link}" && (await waitFor(`${saveBtn("field_driver_sms")}?.textContent.trim() === 'Saved ✓'`)), JSON.stringify(s1.map((e) => e.body)));
+
+    // 页面先挡住的：必填留空、不认识的变量、短信超长、特殊字符、{link} 没有（都不发请求）
+    for (const [label, value, want] of [
+      ["必填留空", "", "Can't be empty."],
+      ["不认识的变量", "Go {foo}: {link}", "Not a variable we know: {foo}. You can use: {date}, {link}."],
+      ["短信超长", "x".repeat(80) + " {link}", "Too long for one text (176 / 160 with the link filled in)."],
+      ["特殊字符", "Hi 😀 {link}", "SMS can't use these characters: 😀."],
+      ["{link} 没有", "NPE {date}", "{link} is missing."],
+    ]) {
+      before = (await mockLog()).length;
+      await setText("field_driver_sms", value);
+      const shown = await issues("field_driver_sms");
+      await clickSave("field_driver_sms");
+      await sleep(300);
+      check(`页面先挡：${label} ⇒ 红字「${want}」、按 Save 不发请求`, shown.includes(want) && (await saves(before)).length === 0, shown);
+    }
+
+    // 后端 400：detail 原样标红（页面没挡住的那种由 mock 的 teamSaveFail 模拟）
+    await setText("field_driver_sms", "NPE manifest {date}: {link}");
+    await ctl({ teamSaveFail: "Driver text can't be blank." });
+    before = (await mockLog()).length;
+    await clickSave("field_driver_sms");
+    check(
+      "后端 400：红字原样写后端的 detail，按钮红色 Error，改的字留着",
+      (await waitFor(`(${card("field_driver_sms")}.querySelector('[role=alert]')?.textContent || '') === "Driver text can't be blank."`)) && (await evaluate(`return ${saveBtn("field_driver_sms")}.textContent.trim() === 'Error' && ${ta("field_driver_sms")}.value === 'NPE manifest {date}: {link}';`)),
+      await evaluate(`return ${card("field_driver_sms")}.querySelector('[role=alert]')?.textContent;`),
+    );
+    await ctl({ teamSaveFail: "" });
+
+    // mock 照后端 4e 的 400 原话（直接打接口核对）：必填留空、不认识的变量、短信超长、GSM
+    const post = async (key, value) => {
+      const r = await fetch(`${MOCK}/api/template-settings/save`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ key: P + key, value }) });
+      return [r.status, (await r.json()).detail];
+    };
+    const got = [
+      await post("sched_week_subject", " "),
+      await post("field_driver_sms", "Go {foo} {link}"),
+      await post("field_driver_sms", "x".repeat(80) + " {link}"),
+      await post("rest_title", "Lunch 😀 {date}"),
+      await post("sched_week_subject", "Hi {name} {week}"),
+    ];
+    check(
+      "模拟后端 400 原话：<Label> can't be blank. / Unknown placeholder {foo}. You can use: {date}, {link}. / Too long for one text by N characters. / This has a character texts can't send (…). / 主题只允许 {week}",
+      JSON.stringify(got) === JSON.stringify([
+        [400, "Schedule email subject can't be blank."],
+        [400, "Unknown placeholder {foo}. You can use: {date}, {link}."],
+        [400, "Too long for one text by 16 characters."],
+        [400, "This has a character texts can't send (😀)."],
+        [400, "Unknown placeholder {name}. You can use: {week}."],
+      ]),
+      JSON.stringify(got),
+    );
+
+    // 可空的键：留空能存（餐厅 total 那个字）
+    await evaluate("$tab('Restaurant'); return 1;");
+    await waitFor(`!!${card("rest_total_label")}`);
+    before = (await mockLog()).length;
+    await setText("rest_total_label", "");
+    check("餐厅预览：total 那个字留空就只显示数字", await waitFor("(document.querySelector('[data-team-preview=restaurant]')?.textContent || '').includes('Veggie 2 - 16')"));
+    await clickSave("rest_total_label");
+    const s2 = await waitSaves(before, 1);
+    check("可空的键留空能存（POST value \"\"）", s2.length === 1 && s2[0].body.key === P + "rest_total_label" && s2[0].body.value === "", JSON.stringify(s2.map((e) => e.body)));
+
+    // 离开页面拦截：有没存的改动时点站内链接，先问（这里答「不走」，还在本页）
+    await evaluate("$tab('Driver & Guide SMS'); return 1;");
+    await waitFor(`!!${card("field_guide_sms")}`);
+    await setText("field_guide_sms", "NPE guide {date} (changed): {link}");
+    await evaluate("window.__asked = 0; window.confirm = (m) => { window.__asked++; window.__askText = m; return false; }; return 1;");
+    await evaluate("const a = [...document.querySelectorAll('a[href]')].find(a => a.getAttribute('href') === '/dashboard'); a.click(); return 1;");
+    await sleep(600);
+    check(
+      "有没存的改动时点站内链接：先问 Leave without saving?，答不走就还在 Content Studio、改的字还在",
+      (await evaluate("return window.__asked;")) === 1 && (await evaluate("return location.pathname;")) === "/settings/content-studio" && (await evaluate(`return ${ta("field_guide_sms")}.value;`)) === "NPE guide {date} (changed): {link}" && (await evaluate("return window.__askText;")).includes("Leave without saving?"),
+      String(await evaluate("return window.__askText;")),
+    );
+    // 放回原样，后面的检查照旧
+    await setText("field_guide_sms", "NPE guide {date}: {link}");
+    await sleep(200);
+  }
+
   // ── Farm out Notice（每家合作公司一份）──
   await goto(`${APP}/settings/content-studio`);
   await waitFor("document.body.textContent.includes('Farm out Notice')");

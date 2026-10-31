@@ -120,6 +120,62 @@ const tixTypes = TIX_KEYS.map((key, i) => ({ id: i + 1, key, label: `${key} full
 const TIX_FIELDS = ["checkin_location", "checkin_minutes", "maps_url", "apple_maps_url", "location_photo", "extra_notes",
   ...[1, 2, 3].flatMap((n) => ["label", "url", "note"].map((p) => `prep_${n}_${p}`))];
 
+// ── G228 Team Messages（后端 4e 设计，还没上 main）：23 个键、种子原文、必填 / 变量 / 短信规则 ──
+// [id, label, 种子, 必填, 允许的变量, 短信（driver / guide 要 {link}、按真实链接量 160）]
+const SUBJ = ["{week}"], SCHED = ["{name}", "{week}"];
+const TEAM = [
+  ["field_driver_sms", "Driver text", "NPE: Manifest for {date}, tap to open: {link}", true, ["{date}", "{link}"], "sms"],
+  ["field_guide_sms", "Guide text", "NPE guide {date}: {link}", true, ["{date}", "{link}"], "sms"],
+  ["rest_title", "Restaurant first line", "NPE lunch update - {date}", true, ["{date}"], "gsm"],
+  ["rest_total_label", "Restaurant total label", "total", false, [], "gsm"],
+  ["rest_changed_label", "Restaurant changes label", "Changed today:", false, [], "gsm"],
+  ["rest_questions", "Restaurant questions line", "Questions: {guide} {guide_phone}", false, ["{guide}", "{guide_phone}"], "gsm"],
+  ["rest_email_subject", "Restaurant email subject", "NPE lunch update - {tour}", true, ["{tour}"], ""],
+  ["sched_greeting", "Schedule greeting", "Hi {name},", false, SCHED, ""],
+  ["sched_week_subject", "Schedule email subject", "Your schedule — week of {week}", true, SUBJ, ""],
+  ["sched_week_intro", "Schedule intro", "Here is your schedule for the week of {week}:", false, SCHED, ""],
+  ["sched_week_empty", "Schedule no shifts", "No shifts this week.", false, SCHED, ""],
+  ["sched_week_link_text", "Schedule link text", "Open my schedule", true, SCHED, ""],
+  ["sched_changed_subject", "Schedule changed subject", "Your schedule changed — week of {week}", true, SUBJ, ""],
+  ["sched_edited_subject", "Schedule edited subject", "Schedule edited — week of {week}", true, SUBJ, ""],
+  ["sched_changed_intro", "Schedule changed intro", "Your schedule for the week of {week} has changed:", false, SCHED, ""],
+  ["sched_edited_intro", "Schedule edited intro", "The schedule for the week of {week} has changed:", false, SCHED, ""],
+  ["sched_changed_footer", "Schedule changed footer", "You can see this in the Notice panel on your Dashboard.", false, SCHED, ""],
+  ["sched_confirm_changes_subject", "Confirm changes subject", "Please confirm your schedule changes — week of {week}", true, SUBJ, ""],
+  ["sched_confirm_changes_intro", "Confirm changes intro", "Your schedule for the week of {week} has changed:", false, SCHED, ""],
+  ["sched_confirm_changes_ask", "Confirm changes ask", "Please check and confirm:", false, SCHED, ""],
+  ["sched_confirm_link_text", "Confirm link text", "Confirm my schedule", true, SCHED, ""],
+  ["sched_weekly_confirm_subject", "Weekly confirm subject", "Confirm your schedule — week of {week}", true, SUBJ, ""],
+  ["sched_weekly_confirm_intro", "Weekly confirm intro", "Your schedule for the week of {week} is up. Please confirm it:", false, SCHED, ""],
+];
+const TEAM_RULES = {};
+for (const [id, label, seed, required, allowed, kind] of TEAM) {
+  const key = `tmpl__global__${id}`;
+  settings.push({ ...s(key, seed), label: `[Team Messages] ${label}` });
+  TEAM_RULES[key] = { label, required, allowed, kind };
+}
+const GSM_BASIC = new Set(Array.from("@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ !\"#¤%&'()*+,-./0123456789:;<=>?¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ§¿abcdefghijklmnopqrstuvwxyzäöñüà"));
+const GSM_EXT = new Set(Array.from("^{}\\[~]|€"));
+/** 同后端 team_messages.validate()：不过回 400 英文 detail（4e 的原话）。 */
+function teamProblem(key, value) {
+  const r = TEAM_RULES[key];
+  if (!r) return null;
+  if (r.required && !String(value).trim()) return `${r.label} can't be blank.`;
+  const unknown = (String(value).match(/\{[^}]*\}/g) || []).find((v) => !r.allowed.includes(v));
+  if (unknown) return `Unknown placeholder ${unknown}. You can use: ${r.allowed.join(", ") || "(none)"}.`;
+  if (r.kind === "sms" || r.kind === "gsm") {
+    const bad = [...new Set(Array.from(String(value)).filter((c) => !GSM_BASIC.has(c) && !GSM_EXT.has(c)))];
+    if (bad.length) return `This has a character texts can't send (${bad.join(" ")}).`;
+  }
+  if (r.kind === "sms") {
+    const n = (String(value).match(/\{link\}/g) || []).length;
+    if (n !== 1) return "Put {link} in exactly once.";
+    const filled = String(value).trim().replace(/\{date\}/g, "Sat, Oct 31").replace(/\{link\}/g, "x".repeat(95));
+    const len = Array.from(filled).reduce((a, c) => a + (GSM_EXT.has(c) ? 2 : 1), 0);
+    if (len > 160) return `Too long for one text by ${len - 160} characters.`;
+  }
+  return null;
+}
 const byKey = Object.fromEntries(settings.map((r) => [r.key, r]));
 function send(res, status, body) {
   res.statusCode = status;
@@ -154,7 +210,13 @@ http.createServer(async (req, res) => {
     entry.body = body;
     if (!body.key.startsWith("tmpl__")) return send(res, 400, { detail: "Invalid key prefix" });
     if (!byKey[body.key]) return send(res, 404, { detail: `Settings key not seeded: ${body.key}` });
+    // ctl.teamSaveFail：后端拒了一个页面没挡住的（例如别的规则），原话照回。
+    if (TEAM_RULES[body.key] && ctl.teamSaveFail) return send(res, 400, { detail: ctl.teamSaveFail });
+    const teamErr = teamProblem(body.key, body.value);
+    if (teamErr) return send(res, 400, { detail: teamErr });
     byKey[body.key].value = body.value;
+    byKey[body.key].updated_by = "zztest";
+    byKey[body.key].updated_at = "2026-10-30T20:00:00";
     return send(res, 200, { ok: true, key: body.key });
   }
   if (p === "/api/template-settings/preview") {

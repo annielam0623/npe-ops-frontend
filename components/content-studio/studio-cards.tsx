@@ -40,7 +40,7 @@ export interface Studio {
   setActive: (key: string | null) => void;
 }
 
-type SaveState = "idle" | "saving" | "saved" | "error";
+export type SaveState = "idle" | "saving" | "saved" | "error";
 
 // 旧模板 settings_templates.html 的卡片样式照抄（Annie 2026-10-07：和旧版一模一样）。
 // ⚠️ cn 只拼字符串、不做 Tailwind 合并：边框色、底色不能在两处都写。
@@ -84,7 +84,7 @@ const LA_TIME = new Intl.DateTimeFormat("en-US", {
 });
 
 /** 后端给的 updated_at 不带时区（UTC）：补上 Z 再按洛杉矶显示。 */
-function editedLine(s: TemplateSetting | undefined): ReactNode {
+export function editedLine(s: TemplateSetting | undefined): ReactNode {
   if (!s?.updated_by) return <span>Original</span>;
   const iso =
     s.updated_at && !/[zZ]|[+-]\d\d:?\d\d$/.test(s.updated_at)
@@ -100,7 +100,7 @@ function editedLine(s: TemplateSetting | undefined): ReactNode {
 }
 
 /** 卡片底部：Cancel（有改动才能点，先确认）+ Save（Saving… → Saved ✓ / Error）。 */
-function CardFooter({
+export function CardFooter({
   dirty,
   state,
   onSave,
@@ -222,7 +222,7 @@ function useCardSave(studio: Studio) {
 }
 
 /** 文本框旁边的「Insert:」按钮：在光标处插入变量。 */
-function InsertBar({
+export function InsertBar({
   vars,
   onInsert,
 }: {
@@ -505,7 +505,7 @@ function templateSms(filled: string, typed: string) {
 }
 
 /** .field-card：抬头（标签 + 键名，Global 的右边一个 ⚠ Global）、红色提醒条、正文。 */
-function CardShell({
+export function CardShell({
   label,
   keyName,
   global,

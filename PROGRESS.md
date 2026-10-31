@@ -125,6 +125,43 @@
   - 右边 Preview 栏照 preview 稿画短信 / 邮件的样子；How to use 加一段。
 - 检查：在 `checks/headless/cs-mock.js` / `cs-test.js` 里加 Team Messages 的模拟键和检查（字数、剩余字数、拒空、{link} 一次、Save 只存那一张卡）。
 - 只推分支，不合 main，等后端接口上了再对键名、再合。
+- **2026-10-30 晚 e6 接手做完（mock）**（工作窗口 `npe-ops-frontend-e6`[047d88]，主窗口 98 派工；分支 `task/content-team-messages-e6`，worktree `C:\Code\ops-wt-e6-ctm`，已合最新 main）：
+  - 依据：
+    - Annie「23 全按推荐 动手」「2 content studio那个同意你的推荐。动手」；
+    - 置顶 24「要」：周三确认两个键放进来，23 个键全上；
+    - 键名、种子、必填、变量、400 原话照后端 4e 的设计（上面「G228 … 后端设计」一节 + 98 转来的种子原文）。
+  - 改动：
+    - 新文件 [components/content-studio/team-messages.tsx](components/content-studio/team-messages.tsx)：
+      - 三个标签页 Driver & Guide SMS / Restaurant / Schedule Email，每个键一张卡；Schedule Email 分五组，Publish again 那组写明 Notice 标题不在这里改（第 3 题 A）；
+      - 必填：司机 / 导游短信、餐厅第一行和邮件主题、所有排班主题、两个链接文字（同后端，rest_total_label 照后端是可空，preview 稿里画成必填的那处按后端）；
+      - 页面先查，红字写在框下、不发请求：必填留空「Can't be empty.」、不认识的变量（照后端的允许清单）、短信 GSM-7、{link} 正好一个、按真实链接（约 95 字）量 ≤160；
+      - 导游卡写「Characters left for the staff note: N」；
+      - 存不上：后端 400 的 detail 原样红字，按钮红 Error，改的字留着；改字后红字消掉；
+      - 右边 Preview 栏照 preview 稿画手机短信、餐厅邮件、四封排班邮件（用草稿，没存也看得到；{week} 示例写 Sun, Nov 1）。
+    - content-studio-view.tsx：
+      - 首页第六张卡「Team Messages」（🧑‍✈️、SMS / Email）；
+      - How to use 加一条；
+      - 加 useLeaveGuard：有没存的改动时点站内链接先问（原来只有关标签页 / 刷新才拦），整个 Content Studio 一起受益。
+    - studio-cards.tsx：CardShell / CardFooter / InsertBar / editedLine / SaveState 改成 export，样子不变。
+  - 和派工说法不一样、要告诉 98 的：
+    - Save 键用的是 Content Studio 现有的白底黑边（CardFooter，Annie 看过的 preview 也是这个样子），没改成蓝色。
+    - 要统一成蓝色，就要整个 Content Studio 一起改，属于样子调整，要另问 Annie。
+  - 检查：
+    - cs-mock 加 23 个键（label 带 [Team Messages]）和后端 4e 的保存校验、400 原话（「<Label> can't be blank.」「Unknown placeholder {foo}. You can use: …」「This has a character texts can't send (…).」「Too long for one text by N characters.」）；
+    - {link} 不是正好一个时的原话后端没给，mock 先写「Put {link} in exactly once.」，后端上了再对；
+    - ctl.teamSaveFail 模拟后端拒。
+    - cs-test 加 16 项：
+      - 首页卡、三个标签、23 个键和键名、五组和 Notice 说明；
+      - 预览 {week}=Sun, Nov 1；司机字数 139/160、导游还剩 42；改了预览马上变；
+      - Save 只存一张卡、绿色 Saved ✓；
+      - 页面先挡五种（留空 / 不认识的变量 / 超长 / 特殊字符 / 没有 {link}），都不发请求；
+      - 后端 400 原样红字；mock 的 400 原话五条；
+      - 可空键留空能存；离开页面拦截。
+    - 结果：cs 169/169、nav 32/32；tsc 0 错；eslint 0 错、2 个原有警告；改过的文件 prettier 过；build 过。
+  - 下一步：后端 v135 + G228 上 main 后：
+    - 对键名、label、400 原话（特别是 {link} 那句）；
+    - 要和服务端完全一样的渲染，可以请后端给 /api/template-settings/preview 加 module="team"，再换掉本地替换；
+    - 合最新 main、重跑 cs，再合 main。
 
 ## 2026-10-30 置顶 21：Dispatch 标题行加「Driver page preview ↗」（`task/driver-preview-link`，工作窗口 `npe-ops-frontend-62`[cd78c4]，eb 派）—— 已合 main
 
