@@ -22,7 +22,8 @@
 
 ### 二、做完在分支、等后端上 main 才合
 - e6 `task/content-team-messages-e6` 9c1a40e（G228，24 个键；合时 Save 照 8437c0b 的 CardFooter 写法）：等 v135 + G228。
-- e6 `task/schedule-weekly-confirm` 40ecc20（G138 员工页 + 排班的人那边）：等后端 G138（排在 16 的 schedule-history 之后）。History 5 种说法等 schedule-person-history-fe 合了再加。
+- e6 `task/schedule-weekly-confirm` 8663c5c（G138 员工页 + 排班的人那边，已含 history-fe ea11a20 的 5 种说法）：等后端 G138（排在 16 的 schedule-history 之后）。History 事件字段名已转 4e 核对。
+- e6 `task/content-team-messages-e6` c275ed7 已合最新 main（蓝色 Save）。
 - 91 `task/import-team` 2ec4179：等 64 的 team/contacts/import（64 的 task/team-contacts-import，测试 + 两审后上 main）。64 已发形状：multipart 字段 file；SA only；标准 bulk_import，status 只有 update / unchanged / error（没有 new）；表头按名字认（Username 必填，也认 User name / Login；Email 也认 E-mail / Email address；Mobile 也认 Phone / Mobile phone / Cell）；errors 原话见 64 消息（Username is required. / No one with username “x”. Did you mean y (Name)? Fix it in the file and upload again. / Email address looks wrong. / That email address is already used by Name (@user). / … in row N of this file. / Phone number looks wrong. Use 10 digits, or + and the country code. / Mobile comes from Human Resource — change it there. / field null「Repeated above — skipped.」）；commit {created:0, updated, unchanged, skipped}；400 文件问题纯字符串；409「Someone changed an email address while this file was being saved. Nothing was saved — check the preview again.」；日志进 /api/team/action-log action=import；模板前端用 /api/team/members 生成。明天 91 对 mock 的原话和 409。
 - 91 `task/schedule-test-person` 30d2f10：等 is_test（v134）。
 - 09 `task/dor-updates`：等 v133 + G224。
