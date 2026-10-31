@@ -7,6 +7,19 @@
 > **明天（10/31，周末时间表）的主窗口：先读下面「2026-10-30 晚 收工交接：前端主窗口-98」，再看置顶。eb 那两节是更早的。**
 
 
+
+## 2026-10-31 排班类 Notice 只写一句（`task/schedule-notice-short`，工作窗口 `npe-ops-frontend-e6`[047d88]，主窗口 98 派）—— 已合 main
+
+- Annie 原话（截图：Notice history 里「Schedule edited — week of 2026-11-01」下面十几行改动）：「notice里不需要显示详情，这里只是给个提示你的schedule发布了，给个see my schedule的链接就好了」。
+- preview https://claude.ai/artifact/8kzkHpbv4omcMjXo21FYzA 。Annie 补：「第一条那个，应该是published」；最后「按照推荐。动手」（确认类链接照旧 Review my schedule →）。
+- 查过：明细是后端写进 notice body 的（schedule_notices.py _upsert_notice），前端照原样显示 ⇒ 前端按类型只显示一句，不用后端改；后端存的正文、邮件、排班页都不动。
+- 做了（components/dashboard/notice-panel.tsx noticeDisplay，Notice 卡和 Notice history 共用）：
+  - schedule_published：Your schedule for the week of Sun, Nov 1 has been published.
+  - schedule_changed：标题「Schedule edited — …」（主管）显示成「Schedule published — …」+ The schedule for the week of Sun, Nov 1 has been published.；「Your schedule — …」（第一次收到整周）同 published；其余（Your schedule changed）Your schedule for the week of Sun, Nov 1 has changed.
+  - schedule_confirm_request：Please confirm your schedule for the week of Sun, Nov 1.（链接照旧 Review my schedule →）
+  - schedule_confirm_declined 和别的类型照后端 title + body。日期取 ref.week_start，没有就看链接 ?week=。
+- 检查：tasks 131/131（改 1 项、新 3 项：确认类一句、Schedule edited 显示成 published 不列明细、Notice history 一样）、nav 32/32、tsc / eslint / build 过。
+
 ## 2026-10-30 晚 排班 Publish again 整周没变时说清楚（`task/publish-nothing-changed`，工作窗口 `npe-ops-frontend-e6`[047d88]，主窗口 98 派）—— 已合 main
 
 - Annie 原话（经 57）：「那你要提醒发送人这个班一点都没有变啊，不能静默处理」。

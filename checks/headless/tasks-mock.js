@@ -354,6 +354,8 @@ function confirmNotices() {
   return [
     mk(5, "schedule_confirm_request", "Please confirm your schedule for Oct 25 – Oct 31", "Open the schedule and tap Accept or Change.", 600 * 1000),
     mk(6, "schedule_confirm_declined", "Your requested shift on Mon Oct 26 was declined", "Mon 10/26 Mid was not approved.", 300 * 1000),
+    // 主管收的 Publish again 明细（后端 schedule_notices.py 把逐条改动写进 body）：页面上只写一句、标题显示成 published（Annie 2026-10-31）。
+    mk(9, "schedule_changed", "Schedule edited — week of 2026-10-25", "Jessica — Fri 10/30: Close 11:30 AM – 9:30 PM → Close 1:30 PM – 9:30 PM\nLizzie — Sat 10/31: not scheduled → Mid 10:00 AM – 6:00 PM", 250 * 1000),
     // Daily Operation Report 登记后的通知（后端设计稿 §6.4）：link 去 /daily-report?id=。
     { ...mk(7, "operation_report", "Accident logged: ZZ Bus 3", "Minor scrape in the hotel driveway.", 200 * 1000), ref: { kind: "operation_report", id: 12 }, link: "/daily-report?id=12" },
     // 将来后端加的不认识的类型，字段还缺着（没有 body / link / actions / ref）：面板不能崩，按 title 降级显示。
