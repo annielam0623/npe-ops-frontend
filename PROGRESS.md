@@ -274,6 +274,15 @@
     1. 用 mock 起 Dashboard（员工、主管两种），截图和 v3 并排，逐条列样子上的不同（字号、间距、并排、Handovers 位置、Add a task 位置等）；
     2. 请 Annie 指一下她看到哪里不对（线上截图最好），对上了再出改法 preview；
     3. 后端 G202 B1–B5 要不要现在排，问 98。
+  - ✅ 2026-10-30 晚做完（Annie「我不接受，今晚全部做完」）：用 mock 截员工、主管两种 Dashboard，做成对照 preview https://claude.ai/artifact/9fChzY2Z1ThUdJgKk4cbNo （左 v3、右现在、逐条表）。没改代码。
+    - 不一样的：
+      1. 员工 My tasks 和 Notice 在 v3 是左右并排；现在 Notice 在最上面横排占满一行，My tasks 在 Messages 下面也占满一行（dashboard-view.tsx；f4cda06 10-24 Notice 横排、9b5e96b 10-25 Messages 挪到 My tasks 前，都早于 v3，G202 没挪回去）；
+      2. 所以 My tasks 是整行宽，v3 是半宽；
+      3. My tasks 里多一条「🔔 N overdue · N due within the hour」（employee-view.tsx 约 146 行，962d212 第一版就有），v3 没有；
+      4. Messages 放在哪，v3 没画，要 Annie 定。
+    - 一样的：时间线本身（Anytime / Overdue / Earlier today / 一列 3 条 / 每行）、主管那块的结构和行样子、Add a task。
+    - 后端没来造成的（已转 57）：Handovers 的 YESTERDAY / finish by / older than 24 h；Notice 交接的 Finish by；Pass over 的 Finish by 存不上。
+    - 改回 v3 的做法写在 preview ④，等 Annie 看过、说「动手」。
 
 
 ## G228 Content Studio「Team Messages」后端设计（4e，2026-10-30 晚，只读，main f51d40a1）—— 给前端 62 的接手窗口用
