@@ -385,6 +385,8 @@ http
       if (!ctl.confirm) return send(res, 404, { detail: "Not Found" });
       confirmWeek = cm[1];
       const days = datesOfWeek(cm[1]);
+      // 后端 schedule-history：每行带 history_count（ctl.history 开着、ctl.noHistoryCount 没开 = 新后端）
+      const withCount = (p) => (ctl.history && !ctl.noHistoryCount ? { ...p, history_count: historyOf(cm[1], p.employee_id).length } : p);
       return send(res, 200, {
         sent_at: "2026-10-07T16:00:00+00:00",
         people: [
@@ -393,7 +395,7 @@ http
             requests: confirmReqs.map((r) => ({ id: r.id, date: days[r.dayIdx], shift_type: r.shift_type, status: r.status })) },
           { employee_id: 3, name: "Nadia", answer: "no_answer", answered_at: null, requests: [] },
           ...(jingAnswer ? [{ employee_id: 4, name: "Jing", answer: jingAnswer, answered_at: jingAnswer === "no_answer" ? null : "2026-10-07T17:00:00+00:00", requests: [] }] : []),
-        ],
+        ].map(withCount),
       });
     }
     const am = /^\/api\/schedule\/confirmation-requests\/(\d+)\/(approve|decline)$/.exec(p);

@@ -64,6 +64,8 @@ export interface ConfirmationPerson {
   answer: ConfirmAnswer | "no_answer";
   answered_at: string | null;
   requests: ConfirmRequest[];
+  /** 这个人这一周有几条往来记录（后端 schedule-history，History (N) 直接用，不用逐人读）；旧后端没有。 */
+  history_count?: number;
 }
 
 export interface WeekConfirmations {

@@ -263,6 +263,7 @@ export function ResponsesCard({
                 weekStart={weekStart}
                 employeeId={p.employee_id}
                 name={p.name}
+                historyCount={p.history_count}
                 withHistory={canEdit}
                 shiftLabel={shiftLabel}
                 onUnauthorized={onUnauthorized}
@@ -320,6 +321,7 @@ function ResponseRow({
   weekStart,
   employeeId,
   name,
+  historyCount,
   withHistory,
   shiftLabel,
   onUnauthorized,
@@ -329,6 +331,8 @@ function ResponseRow({
   weekStart: string;
   employeeId: number;
   name: string;
+  /** 后端 confirmations 每行带的条数：有就直接显示，点开 History 才读这个人的记录（Annie 2026-10-31 嫌页面慢）。 */
+  historyCount?: number;
   withHistory: boolean;
   shiftLabel: (key: string) => string;
   onUnauthorized: () => void;
@@ -336,21 +340,30 @@ function ResponseRow({
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
+  // 有 history_count：点开才读；旧后端没带：照旧一进来就读，用来算 N。
+  const counted = typeof historyCount === "number";
   const state = usePersonHistory(
     weekStart,
     employeeId,
     onUnauthorized,
-    withHistory,
+    withHistory && (!counted || open),
     reloadKey,
   );
   const show = withHistory && state.kind !== "hidden";
+  const n = counted
+    ? open && state.kind === "ready"
+      ? state.events.length
+      : historyCount
+    : state.kind === "ready"
+      ? state.events.length
+      : null;
   return (
     <>
       <tr data-response={employeeId}>
         {children}
         {withHistory ? (
           <td className="border-b border-white/10 px-3 py-2 text-right whitespace-nowrap">
-            {show && state.kind !== "loading" ? (
+            {show && (counted || state.kind !== "loading") ? (
               <button
                 type="button"
                 data-history-toggle={employeeId}
@@ -360,7 +373,7 @@ function ResponseRow({
               >
                 {open
                   ? "Hide history"
-                  : `History${state.kind === "ready" ? ` (${state.events.length})` : ""}`}
+                  : `History${n === null ? "" : ` (${n})`}`}
               </button>
             ) : null}
           </td>
