@@ -9066,7 +9066,7 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
   - **② 勾选为主、角色兜底**：一个人**勾了**某项 ⇒ 不管他的角色原来能不能做，都放行；**没勾** ⇒ 按角色原来的规矩。
     现状对照：后端路由今天只看勾（除 Super Admin）；ops 前端在员工权限总开关 `staff_permissions` 关着时只看角色（`lib/by-tick.ts` 的 `legacy`）、开着时只看勾。
     例：ZZTest 是 staff、勾了 schedule.edit / schedule.publish，总开关关着 ⇒ 排班页按角色不给 Save / Publish（10d 卡在这里）；照 Annie 这条应当给。
-    请后端定判定口径（建议：放行 = 勾了 **或** 角色原本允许；partner 不变，照旧只按勾 + 白名单；Super Admin 照旧全放），并告诉 ops 总开关以后还要不要、管什么。ops 前端 `byTick` 跟着改（`legacy || 勾了`），等 Annie「动手」再改。
+    请后端定判定口径（建议：放行 = 勾了 **或** 角色原本允许；partner 不变，照旧只按勾 + 白名单；Super Admin 照旧全放），并告诉 ops 总开关以后还要不要、管什么。ops 前端已改（Annie 2026-10-31 回「要」）：分支 `task/perm-tick-or-role`，`byTick` 总开关关着时 = 角色 || 勾了（开着时含义不动、partner / Super Admin 不变），排班 Add employee 同理、Publish 兜底改按角色；**推了分支、没合 main，等后端口径定了一起上**（前端先放开会出按了 403 的键）。检查：by-tick-unit 14/14、perm 63/63、sch 304/304、tcq 87/87、tp 175/175 等 13 套过；tsc / eslint / build 过。
   - **要 Annie 知道的后果**：角色兜底 ⇒ 取消勾选拿不走角色本来就有的功能（例：supervisor 不勾 schedule.edit 也照样能改排班）。
 
 - 🟠 **Dispatch 按单元保存（2026-10-18，Annie 原话：「这个可以让后端做，后端是服务需求的，没有做不做之说」）**：Annie 要把保存键拿回来，每个「单元」一个保存键，做一步存一步（自动保存留着当后备）。**单元** = Morning Relay 一个单元（1st + 2nd Round 一起）、每个巴士团一个单元（不管几台车）、Private Tour 一个单元；点保存就存这个单元里所有的车，不管完没完成。现在只有 `POST /api/dispatch/day` 整天覆盖。需要一个「只存一个单元」的接口（形状请后端定，ops 照接；建议 `POST /api/dispatch/section`，body：`date`、`unit`（`relay` / `tour:<manifest_id>` / `private_tour`）、`rows`（只这个单元的行，字段同 `/day`）、`edit_token`、`ccl_import_id`；服务端只替换这个单元的行、别的单元一行不动，校验同 `/day`（缺司机 400 等），返回形状同 `/day` 并带回这个单元存好后的行 id；G71 编辑锁照常；farm out 的撤销提醒 / 座位调整 / Private 订单号等 `/day` 里的副作用对这个单元照做）。**ops 前端等这个接口才开发（Annie 已说「动手」，被后端接口挡住）。** Annie 2026-10-18 定：自动保存留着当后备，**页面 60 秒内没有任何操作（不 active）才自动存**，自动存时也只锁正在存的那个单元。预览 https://claude.ai/artifact/1hEvytQJKRupnXARfoBatR 的 K。

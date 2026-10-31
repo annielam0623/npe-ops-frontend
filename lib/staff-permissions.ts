@@ -194,6 +194,8 @@ export interface Permissions {
   can: (code: string) => boolean;
   /** 任一项有就行。 */
   canAny: (codes: readonly string[]) => boolean;
+  /** 不管总开关，真的勾了其中任一项（没读到 = 没勾）。总开关关着时 byTick 用它「勾了就给、角色兜底」（Annie 2026-10-31）。 */
+  tickedAny: (codes: readonly string[]) => boolean;
   /** 能打开这个路径吗（按 ROUTE_PERMISSIONS）。 */
   canOpen: (path: string) => boolean;
   /** Settings › Team 里给这个人设的首页（没有 dashboard.view 的人登录后去这里）。 */
@@ -238,23 +240,30 @@ export function usePermissions(): Permissions {
     vis.loaded &&
     !vis.isSuperAdmin &&
     (isPartner || vis.visible("staff_permissions"));
+  // 总开关关着也读勾：byTick「勾了就给、角色兜底」（Annie 2026-10-31）。Super Admin 不用读。
+  const loadTicks = vis.loaded && !vis.isSuperAdmin;
   const [snap, setSnap] = useState(snapshot);
   useEffect(() => {
-    if (!switchOn) return;
+    if (!loadTicks) return;
     const listener = () => setSnap(snapshot);
     listeners.add(listener);
     void ensureLoaded().then(listener);
     return () => {
       listeners.delete(listener);
     };
-  }, [switchOn]);
+  }, [loadTicks]);
 
-  const ready = vis.loaded && (!switchOn || snap.loaded);
+  const ready = vis.loaded && (!loadTicks || snap.loaded);
   // 读失败：员工照旧（不藏）；partner 什么都不给看（codes 是空的）。
   const active =
     switchOn && snap.loaded && (snap.ok ? !snap.isSuperAdmin : isPartner);
   const can = (code: string) => !active || snap.codes.has(code);
   const canAny = (codes: readonly string[]) => codes.some(can);
+  const tickedAny = (codes: readonly string[]) =>
+    snap.loaded &&
+    snap.ok &&
+    !snap.isSuperAdmin &&
+    codes.some((c) => snap.codes.has(c));
   const partnerView = isPartner && !vis.isSuperAdmin;
   const partnerLacks = (code: string) =>
     partnerView &&
@@ -266,6 +275,7 @@ export function usePermissions(): Permissions {
     active,
     can,
     canAny,
+    tickedAny,
     canOpen: (path) => {
       if (partnerView && isPartnerClosedPage(path)) return false;
       const need = requiredForPath(path);

@@ -157,7 +157,9 @@ const CASES = [
   ["开关开着、admin 没勾 ⇒ 也挡住", "admin", true, false, false],
   ["Super Admin 没勾 ⇒ 放行", "superadmin", true, false, true],
   ["开关关着、admin ⇒ 照旧放行", "admin", false, false, true],
-  ["开关关着、员工勾了 ⇒ 照旧挡住（不是 admin）", "staff", false, true, false],
+  // 勾了就给、角色兜底（Annie 2026-10-31）
+  ["开关关着、员工勾了 ⇒ 勾了就给：放行", "staff", false, true, true],
+  ["开关关着、员工没勾 ⇒ 照角色挡住（不是 admin）", "staff", false, false, false],
 ];
 
 async function loads(page, api, allowed) {

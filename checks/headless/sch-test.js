@@ -1559,7 +1559,12 @@ async function runTicks() {
     ["开关开着、admin 没勾 ⇒ 都不能", "admin", true, [], false, false, false],
     ["Super Admin 没勾 ⇒ 都能", "superadmin", true, [], true, true, true],
     ["开关关着、主管 ⇒ 照旧都能", "supervisor", false, [], true, true, true],
-    ["开关关着、员工勾了 ⇒ 照旧都不能", "staff", false, ALL, false, false, false],
+    // 勾了就给、角色兜底（Annie 2026-10-31）：开关关着也按勾放行，没勾的照角色。
+    ["开关关着、员工三个都勾了 ⇒ 勾了就给：都能", "staff", false, ALL, true, true, true],
+    ["开关关着、员工只勾 schedule.edit ⇒ 能改；不能加人、不能发布", "staff", false, ["schedule.edit"], true, false, false],
+    ["开关关着、员工勾 edit + publish（同 ZZTest）⇒ 能改、能发布；不能加人", "staff", false, ["schedule.edit", "schedule.publish"], true, false, true],
+    ["开关关着、员工没勾 ⇒ 照角色：都不能", "staff", false, [], false, false, false],
+    ["开关关着、主管没勾 ⇒ 角色兜底：照旧都能", "supervisor", false, [], true, true, true],
   ];
   for (const [name, role, switchOn, codes, edit, add, publish] of CASES) {
     await ctl({ fail401: false, rulesMissing: false, changesLocked: false, inactiveEmployee: 0, role, meName: "", tick: { switchOn, codes: [...BASE, ...codes] } });

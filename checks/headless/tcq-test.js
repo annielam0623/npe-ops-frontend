@@ -387,7 +387,9 @@ async function runTicks() {
     ["开关开着、admin 没勾 ⇒ 也没有", "admin", true, [], false],
     ["Super Admin 没勾 ⇒ 有", "superadmin", true, [], true],
     ["开关关着、admin ⇒ 照旧有", "admin", false, [], true],
-    ["开关关着、员工勾了 ⇒ 照旧没有", "staff", false, ["quotation.rates_edit"], false],
+    // 勾了就给、角色兜底（Annie 2026-10-31）
+    ["开关关着、员工勾了 ⇒ 勾了就给：有链接", "staff", false, ["quotation.rates_edit"], true],
+    ["开关关着、员工没勾 ⇒ 照角色没有", "staff", false, [], false],
   ];
   for (const [name, role, switchOn, codes, link] of CASES) {
     await ctl({ unauth: false, role, tick: { switchOn, codes: [...BASE, ...codes] } });

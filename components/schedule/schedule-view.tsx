@@ -385,10 +385,15 @@ export function ScheduleView() {
   const canAddEmployee = tickPerms.active
     ? superAdmin ||
       (tickPerms.can("team.staff_add") && tickPerms.can("schedule.edit"))
-    : me.is_admin || me.is_supervisor === true || superAdmin;
+    : me.is_admin ||
+      me.is_supervisor === true ||
+      superAdmin ||
+      // 勾了就给、角色兜底（Annie 2026-10-31）：两项都勾了也能加。
+      (tickPerms.tickedAny(["team.staff_add"]) &&
+        tickPerms.tickedAny(["schedule.edit"]));
   // Publish / Publish again：schedule.publish（schedule.py:331）。
   const canPublishTick = byTick(tickPerms, "schedule.publish", {
-    legacy: canEdit,
+    legacy: me.is_supervisor === true,
     superAdmin,
   });
   const activeEmployees = employees.filter((e) => e.is_active);
