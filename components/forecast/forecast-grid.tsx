@@ -55,6 +55,13 @@ import {
   TOTAL_ROW_BG,
 } from "./styles";
 
+/**
+ * 最左一列的名字（黄色路线名、产品行、Driver / Guide、Crew notes、Notes 等）一律同一字号、半粗
+ * （Annie 2026-10-30「15px 半粗 动手」，preview 第 5 版）。手机上照旧（列窄，见 PHONE_QUERY）。
+ * 左列宽度不变：路线名太长（如 Grand Canyon West · Sunset）和产品行名太长就折成两行，不压到格子上。
+ */
+const LABEL_SIZE = "sm:text-[15px] sm:font-semibold";
+
 /** 点一个手写格子要改的东西（G63）：块的格子带 manifestId / section；整页一行（major_events）不带。 */
 export interface CellTarget {
   rowKey: ForecastBlockCellKey | ForecastPageCellKey;
@@ -309,7 +316,7 @@ function Block({
         data-kind="total"
       >
         <td
-          className={`sticky left-0 z-10 max-sm:shadow-[inset_-2px_0_0_rgba(255,255,255,.4)] ${totalTop} px-2 py-1.5 align-middle font-bold text-[#facc15] max-sm:leading-tight sm:whitespace-nowrap`}
+          className={`sticky left-0 z-10 max-sm:shadow-[inset_-2px_0_0_rgba(255,255,255,.4)] ${totalTop} px-2 py-1.5 align-middle font-bold text-[#facc15] leading-tight ${LABEL_SIZE}`}
           style={{ backgroundColor: TOTAL_ROW_BG }}
         >
           {block.name}
@@ -368,7 +375,7 @@ function Block({
           data-label={row.label}
         >
           <td
-            className="sticky left-0 z-10 border-t border-white/10 py-1 pr-2 pl-3 text-white max-sm:text-[10px] max-sm:leading-tight max-sm:whitespace-nowrap max-sm:shadow-[inset_-2px_0_0_rgba(255,255,255,.4)] sm:pl-6 sm:whitespace-nowrap"
+            className={`sticky left-0 z-10 border-t border-white/10 py-1 pr-2 pl-3 text-white max-sm:text-[10px] max-sm:leading-tight max-sm:whitespace-nowrap max-sm:shadow-[inset_-2px_0_0_rgba(255,255,255,.4)] sm:pl-6 sm:leading-tight ${LABEL_SIZE}`}
             style={{ backgroundColor: SUB_ROW_BG }}
           >
             {row.label}
@@ -414,7 +421,7 @@ function Block({
         data-kind="crew"
       >
         <td
-          className="sticky left-0 z-10 border-t border-white/10 py-1.5 pr-2 pl-3 text-left align-middle text-xs font-medium text-white max-sm:leading-tight max-sm:shadow-[inset_-2px_0_0_rgba(255,255,255,.4)] sm:pl-6 sm:whitespace-nowrap"
+          className={`sticky left-0 z-10 border-t border-white/10 py-1.5 pr-2 pl-3 text-left align-middle text-xs font-medium text-white max-sm:leading-tight max-sm:shadow-[inset_-2px_0_0_rgba(255,255,255,.4)] sm:pl-6 sm:whitespace-nowrap ${LABEL_SIZE}`}
           style={{ backgroundColor: CREW_ROW_BG }}
         >
           Driver / Guide
@@ -476,7 +483,7 @@ function CclRow({
     >
       <td
         // 逐单列订单那行可能很高：行名靠上，不然居中会被挤到屏幕外（Annie 2026-10-15 截图）。
-        className={`sticky left-0 z-10 max-sm:shadow-[inset_-2px_0_0_rgba(255,255,255,.4)] ${border} py-1.5 pr-2 pl-3 text-left ${row.kind === "orders" ? "align-top" : "align-middle"} text-xs font-medium text-white max-sm:leading-tight sm:pl-6 ${row.kind === "orders" ? "" : "sm:whitespace-nowrap"}`}
+        className={`sticky left-0 z-10 max-sm:shadow-[inset_-2px_0_0_rgba(255,255,255,.4)] ${border} py-1.5 pr-2 pl-3 text-left ${row.kind === "orders" ? "align-top" : "align-middle"} text-xs font-medium text-white max-sm:leading-tight sm:pl-6 ${row.kind === "orders" ? "" : "sm:whitespace-nowrap"} ${LABEL_SIZE}`}
         style={{ backgroundColor: CREW_ROW_BG }}
       >
         {seatsMode ? "Session" : row.label}

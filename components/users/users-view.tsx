@@ -210,6 +210,8 @@ export function TeamView() {
   const [show, setShow] = useState<ShowFilter>("all");
   // 递增即重新校验身份并拉取列表（首次加载、Retry）。
   const [reloadKey, setReloadKey] = useState(0);
+  // 递增即让开着的 Action Log 重拉第一页（停用 / 改角色 / 重置链接等成功之后，新的那条马上出来）。
+  const [logVersion, setLogVersion] = useState(0);
 
   const redirectingRef = useRef(false);
 
@@ -274,6 +276,8 @@ export function TeamView() {
 
   /** 操作成功后重新拉列表，不切回整页 Loading，避免列表闪一下。 */
   const refreshList = useCallback(async () => {
+    // 调到这里的都是刚做成的操作：日志里已经有新的一条。
+    setLogVersion((v) => v + 1);
     try {
       const data = await fetchPage(isSuperAdmin);
       setView((prev) => (prev.kind === "ready" ? { ...prev, ...data } : prev));
@@ -324,6 +328,7 @@ export function TeamView() {
   async function handleCreateResetLink(user: AdminUser): Promise<ResetOutcome> {
     try {
       const { reset_token: token } = await createResetLink(user.id);
+      setLogVersion((v) => v + 1);
       return { status: "ok", url: buildResetUrl(token) };
     } catch (error) {
       return toActionError(error);
@@ -679,7 +684,7 @@ export function TeamView() {
             {/* 改动记录（G203，/api/team/action-log 只给 Super Admin）。 */}
             {view.isSuperAdmin ? (
               <ActionLogPanel
-                refreshKey={0}
+                refreshKey={logVersion}
                 reloadOnOpen
                 onUnauthorized={redirectToLogin}
                 load={(before, signal) =>

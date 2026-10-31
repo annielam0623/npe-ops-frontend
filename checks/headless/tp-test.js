@@ -135,6 +135,15 @@ async function fill(page, label, value) {
     const alReqs = (await ctl("log=1")).slice(alBefore).filter((l) => l.startsWith("GET /api/team/action-log"));
     const alRows = await page.$$eval("[data-action-log] tbody tr", (rows) => rows.length);
     check("G203 Action Log：页面最底，展开才请求 /api/team/action-log、显示 2 行", alReqs.length === 1 && alRows === 2, `${alReqs.length} req, ${alRows} rows`);
+    // 日志开着时做一个动作（恢复 @uma）：新的那条自动出现，不用收起再展开。
+    await page.evaluate(() => [...[...document.querySelectorAll("tbody tr")].find((r) => r.innerText.includes("@uma")).querySelectorAll("button")]
+      .find((b) => b.innerText.includes("Reactivate")).click());
+    await page.waitForFunction(() => document.querySelectorAll("[data-action-log] tbody tr").length === 3, { timeout: 20000 }).catch(() => {});
+    await page.waitForFunction(() => ![...document.querySelectorAll("tbody tr")].find((r) => r.innerText.includes("@uma"))?.innerText.includes("Reactivate"), { timeout: 20000 }).catch(() => {});
+    const alTop = await page.$eval("[data-action-log] tbody tr", (r) => r.innerText).catch(() => "");
+    const umaRow = await rowText(page, "@uma");
+    check("Action Log open → Reactivate → new Status row appears on top by itself",
+      (await page.$$eval("[data-action-log] tbody tr", (rows) => rows.length)) === 3 && alTop.includes("Status") && alTop.includes("Inactive → Active") && !umaRow.includes("Reactivate"), `${alTop} | ${umaRow}`);
     await page.evaluate(() => [...document.querySelectorAll("button")].find((b) => b.textContent.includes("Action Log")).click());
   }
   // 侧栏默认收起成窄条：先点开。
