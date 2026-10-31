@@ -386,6 +386,22 @@
 - 92：Team Columns 键 team_list_layout，上了派前端照 HR 页接。
 - 周三确认改版（G138 原设计）：Annie「20那个，同意推荐，动手」——挪到发布前、提请求 + Approve（加删班 / 改时间请求）、登录确认页所有员工可用只看 / 改自己那行。后端明天出方案和影响面，给 Annie 过一眼再做，前端派 62 / e6；Multi Orders 只剩 1 张自动挂 / 0 张自动结（Annie 19 动手），Annie 也答了「multi那个，同意排除」（排除取消的单，照 Order List 状态），两件合成一包，明天派。
 
+### 三b、加班后补（15:00 以后，Annie：「后端在加班做，你也是」，最后「行了，收工回家做」）
+- 上 main：
+  - 排班「这周没收到过的人也发」后端 738f813；
+  - Discord 名字方案 C：后端 ea2bb138 + 前端 cc7007b、ebf8a03（框下一直显示「CCL: JUAN · Not in HR」）；
+  - Farm out 子项 31928c3；
+  - Driver page preview 链接 82b44d4（Guide 的等后端 /guide/preview，下次开工）。
+- 只推分支、等后端：
+  - 09 task/dor-updates（G224，等 v133）；
+  - e6 task/team-columns（等 92 team_list_layout）；
+  - 62 task/content-team-messages（G228，Annie「23 全按推荐 动手」，刚开始搭）。
+- 后端登记：G227（司机页前一天画出全部功能，92 先出 preview）、G228（Content Studio Team Messages）、/guide/preview。
+- 回家第一件：
+  - 确认 Annie 按了 11/01 那周的 Publish again，6 人都收到；
+  - 10d 排班测试（09）；
+  - 跟进 G219 / v133 / v134 / 往来记录的迁移和上 main。
+
 ### 四、10d 生产上走一遍（09）
 - Annie 已在 09 窗口放行登录；第 0 步只看已走完（2027-02-07 那周是空的草稿）。
 - Annie 已把 ZZTest 改成 supervisor（页面上有 Save / Publish 了）。Annie 在 09 窗口原话：「行吧，测试的事情我们晚上回家再做。现在先保证我今天能把刚改好的schedule能够让staff都收到」⇒ 今晚家里接着走，2027-02-07 那周现在还是空的。
