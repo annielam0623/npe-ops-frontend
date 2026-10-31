@@ -106,7 +106,7 @@
 - 要查：现在 Today's team 列谁（res = 当天排班上的人？）；后端有没有「谁在线 / 最近活动」；站内发消息用什么（后端有 Messages Team Board？）。91 做完 2/3 + 1/3 布局后先查、出 preview，缺的写需要后端。
 
 ### 37. Bus Manifest 页改动记录（Action Log）
-- Annie 问「刚才我问的问题，bus manifest的改动log在哪里看」⇒ 现在哪里都看不到（后端记了，没有读接口，前端没面板）。Annie：「做」。e6 先出 preview（位置照 Dispatch 页底部、每条写法、谁能看）；后端 57 / 21 准备 GET /api/dispatch/manifest/action-log。
+- Annie 问「刚才我问的问题，bus manifest的改动log在哪里看」⇒ 现在哪里都看不到（后端记了，没有读接口，前端没面板）。Annie：「做」。e6 先出 preview（位置照 Dispatch 页底部、每条写法、谁能看）；后端 64 做 GET /api/dispatch/manifest/action-log。e6 preview：https://claude.ai/artifact/YEgERHNDiL45TCkbzyJisa 。题 a 打印 / 下载也列（推荐）/ 不列；b 谁能看：manifests.edit 或 dispatch.edit（推荐）/ 能打开的都能看 / 只 SA；c 只看当前团（推荐）/ 当天所有团。
 
 ### 8. 可以上线后对着看的（不用答，验收时看）
 - Products 手动保存：09 问的 5 处细节，主窗口按盘点推荐定了，见 PROGRESS「2026-10-30」那节 09 的记录：
