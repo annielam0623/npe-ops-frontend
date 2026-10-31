@@ -770,7 +770,7 @@ async function run() {
     "已发布的周还有空档：Publish again 也走同一个确认框（Publish again with a coverage gap? / Publish again anyway，Q6 保留 Publish again）",
     await evaluate("const d = document.querySelector('[role=dialog]'); return d.querySelector('h2').textContent === 'Publish again with a coverage gap?' && !!$btn('Publish again anyway', d);"),
   );
-  await evaluate("$btn('Cancel', document.querySelector('[role=dialog]')).click();");
+  await evaluate("const d = document.querySelector('[role=dialog]'); if (d) $btn('Cancel', d).click();");
   await sleep(200);
   // supervisor 打开同一周：照样看到提醒，但 Publish again 灰着
   await ctl({ role: "supervisor", meName: "" });
@@ -1163,6 +1163,26 @@ async function run() {
     await evaluate(`const a = [...document.querySelectorAll('[data-responses-grid] [data-req-card=pending]')]; const btns = [...a[0].parentElement.querySelectorAll('button')].map((b) => b.textContent); return a.length === 2 && a.every((e) => e.textContent.includes('Lizzie asked · extra shift')) && a[0].className.includes('bg-[rgba(253,224,71,.28)]') && !!document.querySelector('[data-rcell="2|2026-10-07"] [data-req-card]') && !!document.querySelector('[data-rcell="2|2026-10-09"] [data-req-card]') && btns.join('/') === 'Approve/Decline' && document.querySelector('[data-approve="901"]').className.includes('3b82f6') && !document.querySelector('[data-decline="901"]').className.includes('3b82f6');`),
     await evaluate("return document.querySelector('[data-responses-grid]')?.innerText.slice(0, 500) ?? 'none';"),
   );
+  // 第一次 Publish 的确认框：列出还没处理完的请求（G138，前端从 confirmations 自己数 pending + awaiting_peer）；Publish again 不列
+  await evaluate("$btn('Publish').click();");
+  await waitFor("document.querySelector('[role=dialog]')");
+  check("已发布的周 Publish again：确认框不列还没处理的请求", await evaluate("return document.querySelector('[role=dialog]').textContent.includes('again') && !document.querySelector('[data-publish-open-requests]');"));
+  await evaluate("$btn('Cancel', document.querySelector('[role=dialog]')).click();");
+  await ctl({ draftWeek: "2026-10-04" });
+  await openPage(`${APP}/schedule?week=2026-10-04`);
+  await waitFor("document.querySelector('[data-responses-grid]')");
+  await evaluate("$btn('Publish').click();");
+  await waitFor("document.querySelector('[data-publish-open-requests]')");
+  check(
+    "第一次 Publish 确认框：2 requests are still open. Publishing closes them and tells each person: Lizzie 两条",
+    await evaluate("const t = document.querySelector('[data-publish-open-requests]')?.innerText ?? ''; return t.includes('2 requests are still open. Publishing closes them and tells each person:') && t.includes('Lizzie: + Wed Mid (extra shift)') && t.includes('Lizzie: + Fri Open (extra shift)');"),
+    await evaluate("return document.querySelector('[data-publish-open-requests]')?.innerText ?? document.querySelector('[role=dialog]')?.innerText ?? 'no dialog';"),
+  );
+  await evaluate("const d = document.querySelector('[role=dialog]'); if (d) $btn('Cancel', d).click();");
+  await waitFor("!document.querySelector('[role=dialog]')");
+  await ctl({ restoreWeek: true });
+  await openPage(`${APP}/schedule?week=2026-10-04`);
+  await waitFor("document.querySelector('[data-approve=\"901\"]')");
   let from = (await mockLog()).length;
   await evaluate("document.querySelector('[data-approve=\"901\"]').click();");
   await waitFor("!document.querySelector('[data-approve=\"901\"]')");

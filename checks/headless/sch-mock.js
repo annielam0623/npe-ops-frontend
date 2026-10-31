@@ -12,6 +12,7 @@ const publishLog = []; // 每次 POST publish 的 body（检查 allow_gaps 用�
 let confirmWeek = "";
 // Jing（4）这周的回应：null = 不在名单里。ctl.jingAccepted 设成 Looks good；Send to confirm 发送成功后后端把 accepted 重置成 no_answer（G217 ef）。
 let jingAnswer = null;
+let savedWeekStatus = null;
 const confirmReqs = [
   { id: 901, employee_id: 2, shift_type: "mid", dayIdx: 3, status: "pending" },
   { id: 902, employee_id: 2, shift_type: "open", dayIdx: 5, status: "pending" },
@@ -305,6 +306,22 @@ http
       if (ctl.confirmReset) {
         confirmReqs.forEach((r) => (r.status = "pending"));
         ctl.confirmReset = false;
+      }
+      // ctl.draftWeek：把这一周临时当草稿（测第一次 Publish 的确认框）；ctl.restoreWeek：改回原来的状态。
+      if (ctl.draftWeek) {
+        const w = weeks.get(ctl.draftWeek);
+        if (w) {
+          savedWeekStatus = { ws: ctl.draftWeek, status: w.status, published_at: w.published_at };
+          w.status = "draft";
+          w.published_at = null;
+        }
+        delete ctl.draftWeek;
+      }
+      if (ctl.restoreWeek && savedWeekStatus) {
+        const w = weeks.get(savedWeekStatus.ws);
+        if (w) Object.assign(w, { status: savedWeekStatus.status, published_at: savedWeekStatus.published_at });
+        savedWeekStatus = null;
+        delete ctl.restoreWeek;
       }
       if (ctl.jingAccepted !== undefined) {
         jingAnswer = ctl.jingAccepted ? "accepted" : null;

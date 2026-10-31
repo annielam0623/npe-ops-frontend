@@ -57,6 +57,11 @@ function when(iso: string | null | undefined): string {
   return Number.isNaN(d.getTime()) ? "" : WHEN.format(d);
 }
 
+/** ymd 是 weekStart 之后的第几天（0–6）。 */
+function shiftDays(weekStart: string, ymd: string): number {
+  return Math.round((Date.parse(ymd) - Date.parse(weekStart)) / 86400000);
+}
+
 function md(ymd: string): string {
   return `${Number(ymd.slice(5, 7))}/${Number(ymd.slice(8, 10))}`;
 }
@@ -105,6 +110,7 @@ export function ResponsesCard({
   onEdited,
   reloadKey = 0,
   onAnswers,
+  onOpenRequests,
 }: {
   weekStart: string;
   /**
@@ -117,6 +123,8 @@ export function ResponsesCard({
    * 用在 Send to confirm 发送框：这个人当前是 Looks good 时提醒「发送会重置」（Annie 10-30 第 7b 条）。
    */
   onAnswers?: (answers: ReadonlyMap<number, string>) => void;
+  /** 每次读到都报上去：还没处理完的请求（一条一行），第一次 Publish 的确认框列出来。 */
+  onOpenRequests?: (lines: readonly string[]) => void;
   canEdit: boolean;
   employees: ScheduleEmployee[];
   slots: ScheduleSlot[];
@@ -183,6 +191,31 @@ export function ResponsesCard({
     },
     [beforeEdit, onEdited, load, onChanged, onUnauthorized],
   );
+
+  const requestText = useCallback(
+    (r: ConfirmRequest) => {
+      const slotText = (s: RequestSlot | null) =>
+        s ? `${DAY_LABELS[shiftDays(weekStart, s.date)] ?? md(s.date)} ${shiftTypes.find((t) => t.key === s.shift_type)?.label ?? s.shift_type}` : "";
+      const day = (d: string | null) =>
+        d ? (DAY_LABELS[shiftDays(weekStart, d)] ?? md(d)) : "";
+      const type = (k: string | null) =>
+        k ? (shiftTypes.find((t) => t.key === k)?.label ?? k) : "";
+      return r.kind === "swap"
+        ? `⇄ ${slotText(r.my_slot)} ↔ ${r.peer?.name ?? ""}'s ${slotText(r.their_slot)}`
+        : r.kind === "move"
+          ? `→ ${slotText(r.my_slot)} to ${day(r.date)}`
+          : `+ ${day(r.date)} ${type(r.shift_type)} (extra shift)`;
+    },
+    [weekStart, shiftTypes],
+  );
+
+  useEffect(() => {
+    onOpenRequests?.(
+      (data?.requests ?? [])
+        .filter((r) => OPEN_STATUSES.has(r.status))
+        .map((r) => `${r.from.name}: ${requestText(r)}`),
+    );
+  }, [data, onOpenRequests, requestText]);
 
   const dates = useMemo(
     () => DAY_LABELS.map((_, i) => shiftYmd(weekStart, i)),
@@ -279,14 +312,6 @@ export function ResponsesCard({
     return Number.isNaN(t) ? data.deadline : DEADLINE_FMT.format(t);
   })();
 
-  const slotText = (s: RequestSlot | null) =>
-    s ? `${dayOf(s.date)} ${typeLabel(s.shift_type)}` : "";
-  const requestText = (r: ConfirmRequest) =>
-    r.kind === "swap"
-      ? `⇄ ${slotText(r.my_slot)} ↔ ${r.peer?.name ?? ""}'s ${slotText(r.their_slot)}`
-      : r.kind === "move"
-        ? `→ ${slotText(r.my_slot)} to ${r.date ? dayOf(r.date) : ""}`
-        : `+ ${r.date ? dayOf(r.date) : ""} ${r.shift_type ? typeLabel(r.shift_type) : ""} (extra shift)`;
 
   const buttons = (r: ConfirmRequest) =>
     canEdit && r.status === "pending" ? (

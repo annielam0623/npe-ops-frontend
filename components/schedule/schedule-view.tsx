@@ -189,8 +189,11 @@ export function ScheduleView() {
     ReadonlyMap<number, string>
   >(() => new Map());
   // 换周先清空，免得拿上一周的回应（新的一周读到了 Responses 卡会再报上来）。
+  /** Responses 卡读到的还没处理完的请求（pending + awaiting_peer），一条一行；第一次 Publish 的确认框列出来（G138，4e 确认前端自己数）。 */
+  const [openRequests, setOpenRequests] = useState<readonly string[]>([]);
   useEffect(() => {
     setResponseAnswers(new Map());
+    setOpenRequests([]);
   }, [weekStart]);
   /** 这一次打开页面以后改过、还没 Publish again 的已发布周（后端没带 has_unsent_changes 时用）。 */
   const [unsentWeek, setUnsentWeek] = useState<string | null>(null);
@@ -1027,6 +1030,7 @@ export function ScheduleView() {
                 shiftTypes={settings.shift_types}
                 reloadKey={responsesKey}
                 onAnswers={setResponseAnswers}
+                onOpenRequests={setOpenRequests}
                 onChanged={() => void loadWeek(undefined, true)}
                 onUnauthorized={redirectToLogin}
                 beforeEdit={guardEdit}
@@ -1213,6 +1217,27 @@ export function ScheduleView() {
               ? " Publishing with a gap is written in the Action Log."
               : ""}
           </p>
+          {openRequests.length > 0 && readyWeek?.status !== "published" ? (
+            <div
+              data-publish-open-requests
+              className="mt-3 rounded-[8px] border border-[rgba(250,204,21,.5)] bg-[rgba(253,224,71,.14)] px-3 py-2 text-[13px] text-[#fde68a]"
+            >
+              <p>
+                {openRequests.length}{" "}
+                {openRequests.length === 1
+                  ? "request is still open"
+                  : "requests are still open"}
+                . Publishing closes{" "}
+                {openRequests.length === 1 ? "it" : "them"} and tells each
+                person:
+              </p>
+              <ul className="mt-1 list-disc pl-5">
+                {openRequests.map((t, i) => (
+                  <li key={i}>{t}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
           {noEmailNames.length > 0 && readyWeek?.status !== "published" ? (
             <p
               data-publish-no-email
