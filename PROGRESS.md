@@ -54,6 +54,19 @@
 - 新工作窗口 `npe-ops-frontend-91`[9c93e4] 报到 ⇒ 接管 59 的 task/team-contacts、62 的 task/schedule-test-person：合最新 main、重跑检查、推分支，准备 Team 页 How to use 7 条（57 直接把原文发 91）；后端上 main 后再合。
 - Annie（经 57）原话：「告诉大家我把电脑带回家了，所以接下来的两天都执行周末的时间表」⇒ 10/30、10/31 这台电脑当家里那台用。收尾时间 Annie 再定（经 57）：「晚上11点开始收尾」⇒ 23:00。已转 e6 / 09 / 91。
 
+## 2026-10-30 晚 工作窗口 `npe-ops-frontend-91`[9c93e4]（98 派：接管 team-contacts、schedule-test-person，都不合 main）
+
+- `task/team-contacts` → **8436d85**（worktree `C:\Code\ops-wt-91-contacts`）：
+  - 合最新 main（只有 PROGRESS.md 冲突；保留 main 的内容，把 59 那节「staff 联络方式」接在后面，去掉 59 已过时的 10-29 收工交接；代码自动合上）；
+  - Team 页 How to use：原来 59 写的那一条 Contact 换成后端 57 发来的 7 条英文原文（照原文、照顺序，只给 Super Admin 看，跟原来一样）；
+  - 检查：tp 149/149、users 77/77、nav 32/32、teams 54/54；tsc 0、eslint 0 错（2 个旧 warning）、build 通过；已推分支。
+  - 下一步：G219 上 main 后对着真接口核一遍：PUT …/contact 回 {ok, member}；400 的 detail 是 {field, message}；create-member / invite 的错误还是纯字符串。核完回 98「可以合」，98 说合再合。
+- `task/schedule-test-person` → **30d2f10**（worktree `C:\Code\npe-ops-frontend-testperson`）：
+  - 合最新 main 没有冲突（排班这几天的改动 62 在 bb3bfdd 之前已经合进来了，这次只合进来 dispatch / farm-out 的 48 个提交）；
+  - 检查：sch 281/281、sc 21/21、tasks 128/128、dr 88/88、ns 49/49；tsc 0、eslint 0 错、build 通过；已推分支。
+  - 下一步：后端 is_test（v134）上 main 后对真接口核一遍，再合。
+- 端口：91 用 3491 / 8891 / 9591（排班这一组）、3492 / 8892 / 9592（Team 这一组），跑完都关了。
+
 
 ## G228 Content Studio「Team Messages」后端设计（4e，2026-10-30 晚，只读，main f51d40a1）—— 给前端 62 的接手窗口用
 
