@@ -97,6 +97,10 @@
 - Annie 10-30 晚原话：「Today’s tasks的版式也不是我们最后aprove的样子」
 - 批准的是 G202 preview v3 https://claude.ai/artifact/3ktywUdNA5AHHP5zY47a2w （v3「对」、「186-对，动手」）；前端 10/27 上 main 400393e。91 只读对照 preview 和现在代码列差异（哪次提交改的），明天第一件接着。
 
+### 36. Today's team 也显示登录了的其他员工，点名字能发消息（新功能，先 preview）
+- Annie 10-30 晚原话：「然后today's team的显示，除了res，登录了网站的其他员工也在这里显示，然后可以点击他们发消息」
+- 要查：现在 Today's team 列谁（res = 当天排班上的人？）；后端有没有「谁在线 / 最近活动」；站内发消息用什么（后端有 Messages Team Board？）。91 做完 2/3 + 1/3 布局后先查、出 preview，缺的写需要后端。
+
 ### 8. 可以上线后对着看的（不用答，验收时看）
 - Products 手动保存：09 问的 5 处细节，主窗口按盘点推荐定了，见 PROGRESS「2026-10-30」那节 09 的记录：
   - Bus Manifest setup 每个小项一个 Save；
