@@ -6,15 +6,38 @@
 
 > **明天的主窗口：先读「2026-10-30 收工交接：前端主窗口 前端主窗口-eb」那一节（搜这个标题），再看下面置顶。**
 
+> **🔁 2026-10-30 晚 主窗口 eb 交接给新主窗口（Annie 回家后开新主窗口，eb 对话太长）**
+> 1. 先读「2026-10-30 收工交接：前端主窗口 前端主窗口-eb」那一节，含「三b、加班后补」。
+> 2. 现在的窗口（ListAgents）：
+>    - 前端工作窗口剩 **09**、**e6**；**62 已关**。62 的分支要派新窗口接：`task/content-team-messages`（G228，只开了分支，PROGRESS 写了做法）、`task/schedule-test-person` bb3bfdd（等后端 is_test）。
+>    - 后端主窗口是「今天的主窗口-57」。另有后端子窗口 64 / 9c / 4e / 16 / ea。
+> 3. 回家第一批：
+>    - 确认 Annie 按了 11/01 那周的 Publish again、6 人都收到（后端 738f813 已上）；
+>    - 10d 生产上走一遍（09，Annie 已在 09 窗口放行，跳过 Publish again；测试员工 ZZTest = annzhouyy@msn.com、Leon）；
+>    - 跟进后端上 main：G219（v131 已执行）→ 合 59 的 task/team-contacts；G224（v133）→ 合 09 的 task/dor-updates；is_test（v134）→ 合 test-person；往来记录（v132）→ 合 e6 的 history-fe；92 的 team_list_layout → 合 e6 的 team-columns；/guide/preview → 加 Guide page preview 链接。
+>    - 后端明天出方案、要转 Annie 过目的：G138 周三确认挪到发布前（Annie 已动手）、G227 司机页前一天画出全部功能、G228 键名和接口（后端 4e 在做设计，eb 已把 92 的原始资料和 Annie 四条决定转给 4e，4e 做完会发新主窗口）。
+> 4. 规矩提醒：
+>    - 跟 Annie 说中文；问她的事写完整、附 preview 原文；答过的不再挂着；
+>    - 看时间用 PowerShell Get-Date（eb 今天看错过一次）；
+>    - 写 PROGRESS 插入时先确认行号非空（eb 今天插错过一次）；
+>    - 别把员工邮箱、密码写进仓库。
+
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
 > 规矩见 CLAUDE.md「问 Annie 要确认的事：给完整内容，并一直置顶」（2026-10-30）。每条都要能单独看懂。
 
-### 22. 司机页 / 导游页：前一天打开就把全部功能画出来（后端模板，要先 preview）
-- Annie 10-30 晚原话：「其实我们在给司机这个链接的时候就应该把全部功能放进去，提前让他们知道要做哪些事情」。
-- 现在：前一天打开只看到名单和 Call / Text；Picked up / No show、Boarded、改餐 Change、联系餐厅要到当天才出现。Super Admin 的 /driver/preview 会画出来，但灰着。
-- 打算：司机前一天点短信链接，也像 preview 那样全部画出来，灰着不能点，旁边一句英文「Opens on Sat Oct 31」。导游页同理。
-- 后端登记为 G227，下次开工 92 先出 preview（复用模板的 preview 分支，导游页一起），57 发主窗口转 Annie。
+### 25. 10d 排班测试：ZZTest 测完要不要把账号改回 staff（09 问）
+- 下午 Annie 把 ZZTest（员工 id 8）的登录账号改成了 supervisor，这样页面上才有 Save / Publish，10d 测试要用。
+- 选法：A. 测完改回 staff（推荐：测试账号权限不留得比需要的大）；B. 一直保持 supervisor，以后测排班还能用。
+
+### 26. 09 问：你说的「之前的设计稿」是哪一份
+- 09 窗口没收到过这件事的上下文，已在 09 窗口问过 Annie，还没回。请在 09 窗口直接答，或告诉 98 转达。
+
+### 24. Content Studio「Team Messages」要不要放周三确认邮件
+- 后端 4e 设计 G228 时，把「周三确认排班」的邮件（主题「Confirm your schedule — week of Sun, Nov 1」、开头「Your schedule for the week of … is up. Please confirm it:」）也列进了这张卡。Annie 当时同意的三类里，排班邮件只说了首次发布 / Publish again / Send to confirm。
+- 选法：
+  - A. 放进来，四组排班邮件都能改（推荐：同一类邮件放一起；以后周三确认挪到发布前时文字可能要改，到时 Annie 自己改就行）；
+  - B. 先不放，等周三确认改版（G138）定了再说。
 
 ### 8. 可以上线后对着看的（不用答，验收时看）
 - Products 手动保存：09 问的 5 处细节，主窗口按盘点推荐定了，见 PROGRESS「2026-10-30」那节 09 的记录：
@@ -24,6 +47,40 @@
   - 等等。
   觉得键太多，可以改成按大块分。
 
+## 2026-10-30 晚 主窗口 `npe-ops-frontend-98`[94e9c6] 开工核对（家里，接 eb）
+
+- main 干净；6 条前端分支都已推，都等后端（team-contacts / dor-updates / schedule-test-person / schedule-person-history-fe / team-columns / content-team-messages）。
+- 后端 57 回（20:2x）：
+  - 11/01 那周 Annie 15:49 按了 Publish again，action_log「notified 6 employee(s) and 13 supervisor(s), not reached 0」，6 个员工都收到 ✅。
+  - 置顶 22（G227 司机页 / 导游页前一天画出全部功能）移走：没出 preview，Annie 对 92 原话「我要92把司机页现在做完，我等着测试啊」，已上 main f51d40a1，Annie 用 AnnieTest 测，等她反馈。
+  - 今晚后端已派好（等 Annie「今晚破例」）：team_list_layout、G212 四项、删 Sync Rezdy 接口、空档只算将来；G219 → 往来记录 + history_count → G224；/guide/preview；is_test 今晚只出 v134 SQL 草稿。每件上 main 57 发 98。
+- 09 回：dor-updates 等 v133；10d 只做完第 0 步，等 Annie 叫再开始（只排 ZZTest + Leon，2027-02-07 那周，不做 Publish again）。端口都关了。
+- 62 已关，两件（content-team-messages、schedule-test-person）等 Annie 开新窗口再派。
+
+
+## G228 Content Studio「Team Messages」后端设计（4e，2026-10-30 晚，只读，main f51d40a1）—— 给前端 62 的接手窗口用
+
+- 读写接口不新开：
+  - 读：GET /api/template-settings（全部 tmpl__ 键，带 value / label / updated_at / updated_by），前端按下面 23 个键过滤；
+  - 写：POST /api/template-settings/save {key, value}（settings.content），Team Messages 的键先过 team_messages.validate()，不过回 400 英文 detail，前端原样标红；
+  - 预览：前端本地替换变量。要和服务端一致的渲染，可以请后端给 POST /api/template-settings/preview 加 module="team"。
+- 23 个键（都是 tmpl__global__ 开头，种子是今天代码里的原文）：
+  - SMS：field_driver_sms（必填，{date}{link}）、field_guide_sms（必填，{date}{link}，staff note 由代码接）；
+  - Restaurant：rest_title（必填·短信，{date}）、rest_total_label（可空）、rest_changed_label（可空）、rest_questions（可空，{guide}{guide_phone}）、rest_email_subject（必填，{tour}）；
+  - Schedule Email（{week} 渲染成「Sun, Nov 1」；排班键只允许 {name}{week}，主题只允许 {week}）：
+    - sched_greeting（可空）；
+    - sched_week_subject（必填）、sched_week_intro（可空）、sched_week_empty（可空）、sched_week_link_text（必填）；
+    - sched_changed_subject（必填）、sched_edited_subject（必填）、sched_changed_intro（可空）、sched_edited_intro（可空）、sched_changed_footer（可空）；
+    - sched_confirm_changes_subject（必填）、sched_confirm_changes_intro（可空）、sched_confirm_changes_ask（可空）、sched_confirm_link_text（必填，和周三确认共用）；
+    - sched_weekly_confirm_subject（必填）、sched_weekly_confirm_intro（可空）。
+- 保存校验（英文 detail）：
+  - 必填留空：「<Label> can't be blank.」；
+  - 不允许的变量：「Unknown placeholder {foo}. You can use: …」；
+  - 短信键：只收 GSM-7「This has a character texts can't send (…).」；{link} 正好一个；按真实长度链接量 ≤160，超了「Too long for one text by N characters.」。
+- 严格读取：缺键或必填为空就不发送，回 503「Team Messages text isn't set up in Content Studio. Nothing was sent.」；发布在 commit 前读，读失败就不发布。
+- 站内 Notice 标题、正文一律不动。
+- 种子迁移暂定 v135（排在 v134 之后，等迁移所有权，SQL 给 Annie 过目）。后端约 1 天，开工由 57 派。
+- 待 Annie 定：周三确认邮件（sched_weekly_confirm_*）要不要放进这张卡，见置顶 24。
 ## DOR 最新进展（G224）—— 明天第一件（工作窗口 `npe-ops-frontend-09`[8a0116]，主窗口 eb 2026-10-30 转 b0 的形状）
 
 - 依据：Annie 原话「如果需要纠正什么的话在下面备注，或者更新最新进展就好了」「加最新进展，任何人都可以加」「以上内容全都动手」。
