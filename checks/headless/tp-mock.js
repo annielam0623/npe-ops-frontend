@@ -46,12 +46,15 @@ const TEAMS = [{ id: 1, name: "Reservations", color: "#2563eb" }, { id: 2, name:
 
 let viewer, nohome, nodefault, acctype, typeFail, team500, team403, detailFail, delFail, people, contact, nextId;
 const log = [];
+// 停用 / 恢复成功后多出来的 Action Log 行（新的在上），reset 清空。
+const extraLog = [];
 function person(id, username, display_name, items, o = {}) {
   return { id, username, display_name, email: o.email === undefined ? `${username}@example.com` : o.email, role: o.role || "staff",
     is_active: o.is_active !== false, invite_used: o.invite_used !== false, items: [...items].sort(),
     duties: o.duties || [], team_ids: o.team_ids || [], home_path: o.home_path || null };
 }
 function reset() {
+  extraLog.length = 0;
   viewer = "superadmin"; detailFail = 0; delFail = ""; nohome = false; nodefault = false; acctype = false; typeFail = false; team500 = false; team403 = false;
   people = [
     person(1, "annie", "Annie", ALL, { role: "superadmin", team_ids: [1, 2] }),
@@ -132,6 +135,7 @@ http.createServer((req, res) => {
     log.push(`${m} ${p} ${raw}`);
     // G203 第二批：共用读接口（后端 f76d5e9），只给 Super Admin。
     if (p === "/api/team/action-log") return send(res, 200, { next_cursor: null, entries: [
+      ...extraLog,
       { id: "2-1", at: "2026-10-28T17:00:00+00:00", by: "Annie Z", action: "update", label: "Grace Liu", what: "Team", from: "Ops", to: "Sales" },
       { id: "1-1", at: "2026-10-27T17:00:00+00:00", by: "Max", action: "update", label: "Ben", what: "Display name", from: "Benny", to: "Ben" },
     ] });
@@ -245,6 +249,16 @@ http.createServer((req, res) => {
         return send(res, 200, { ok: true });
       }
       who.is_active = false;
+      extraLog.unshift({ id: `${10 + extraLog.length}-1`, at: "2026-10-30T20:00:00+00:00", by: "Annie Z", action: "update", label: who.username, what: "Status", from: "Active", to: "Inactive" });
+      return send(res, 200, { ok: true });
+    }
+    // G212 B4：恢复也记进 Team 的 Action Log。
+    const ra = p.match(/^\/api\/users\/(\d+)\/reactivate$/);
+    if (ra && m === "POST") {
+      const who = people.find((x) => x.id === Number(ra[1]));
+      if (!who) return send(res, 404, { detail: "User not found" });
+      who.is_active = true;
+      extraLog.unshift({ id: `${10 + extraLog.length}-1`, at: "2026-10-30T20:00:00+00:00", by: "Annie Z", action: "update", label: who.username, what: "Status", from: "Inactive", to: "Active" });
       return send(res, 200, { ok: true });
     }
     if (p === "/api/admin/teams" && m === "GET") return send(res, 200, TEAMS.map((t) => ({ ...t, description: null, member_count: 0, created_at: null })));
