@@ -376,7 +376,7 @@
 - 加班（Annie：「后端在加班做，你也是」）：
   - 09 `task/dor-updates` a0872fc 做完（dor 75、dr 88、nav 32，tsc / build 过），等 v133 + G224 上 main 再合（先合会出一个点了 404 的输入框）；
   - 62 Driver page preview 链接已上 main 82b44d4（Dispatch 标题行，只 Super Admin，同源 /driver/preview?date=）。Guide 的没加：后端没有按天的 /guide/preview，后端改到下次开工做（78），上 main 后前端加一行；
-  - e6 `task/team-columns`（team_list_layout mock）。
+  - e6 `task/team-columns` 5f2f316 做完（tp 146、teams 54、users 77、nav 32，tsc / build 过），等 92 的 team_list_layout 上 main 再合。
 - Annie「2 content studio那个同意你的推荐。动手」：Content Studio 加三类发出去的文字——①司机 / 导游短信、②改餐发餐厅消息、③排班邮件。司机页界面文字不放。62 先出 preview；后端 57 列模板位置、tmpl__ 键、变量。
 ### 三、后端在做 / 明天
 - ef：Publish again 这次全员都发（这一周从没收到过的人也发；邮件列出他这一周的全部班 + 排班页链接，不带 PDF）。是 week_start 2026-11-01 那周（Annie：「就是要发下周一那份」「不管多晚都要完成」）。15:00 前上不了，后端做完为止，上 main 后 57 先通知 Annie 再按。前端不用改。
