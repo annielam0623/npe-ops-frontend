@@ -183,6 +183,18 @@
   - da 检查套加 3 条：admin 看不到、Super Admin 看得到（写法同 Driver、紧挨在它右边）、换天后 href 跟着换。
   - 检查：da 423/423、dr 88/88、nav 32/32；tsc 0、eslint 0 错、build 通过。端口 3494 / 8894 / 9594 已关。
   - 98 说合（「两件都照规矩合 main 上线」）：合最新 main 后重跑 da / dr / nav，过了合 main。
+- `task/dispatch-hotel-groups`（98 派；worktree `C:\Code\ops-wt-91-hotels`）—— Dispatch「Add hotel」分 Las Vegas / Shuttle pick up 两组，已合 main
+  - Annie 原话：「然后在pick up酒店的下拉菜单里，把bus tour的接站点和shuttle的分开，也就是las vegas的放上面，然后用shuttle pick up这行字隔开，shuttle的站点排下面，不然staff太难找了，然后都是按照A-Z排序」。
+  - preview https://claude.ai/artifact/Bud9mmZivp9ddK5cAd5QLV 。Annie 在 91 窗口答：「第一个问题同意A，Farm out就放farm out的酒店就好了，其他的不管 第二个问题，不存在这种情况，你就按照las vegas和其他地方来分就好了，其他地方一律算shuttle 第三个问题A」。
+  - 「动手」：Annie 在后端主窗口说的（57 转 98，98 转 91）。
+  - 做法（只改 `components/dispatch/vehicle-row.tsx` 的 StopSelect，所有班次共用）：
+    - is_tour_bus === true = Las Vegas，放上面，A–Z（不分大小写），不写标题；
+    - 其余（false / null）放在灰色斜体、不能选的「Shuttle pick up」下面，A–Z；下面那组空的时候不出分隔行；
+    - 停用的不出、本车已有的不出、被别的车占的灰掉写「- 谁」，照旧；不加搜索框；Farm out 的「Choose hotel…」不动。
+    - 后端还没带 is_tour_bus 时（一个点都没这个键）照旧：后端的顺序、不分组。`types/dispatch.ts` 的 locations 加可选 is_tour_bus / is_shuttle。
+  - 检查：da-mock 加 `hotelGroups`（带两个勾，含小写名字、null、停用的）。da 加 3 条：没字段时照旧；分组且两组各自 A–Z、停用的不列、null 进下面；分隔行不能选、value 空、斜体。
+    结果：da 426/426、nav 32/32；tsc 0、eslint 0 错、build 通过。端口 3497 / 8897 / 9597 已关。
+  - ⚠️ 需要后端（98 已派后端 21）：Dispatch 当天数据的 locations 每个点带 is_tour_bus / is_shuttle（NULL 回 null）。上 main 以前前端照旧不分组，上了自动分组，不用再改前端。
 
 
 ## G228 Content Studio「Team Messages」后端设计（4e，2026-10-30 晚，只读，main f51d40a1）—— 给前端 62 的接手窗口用
