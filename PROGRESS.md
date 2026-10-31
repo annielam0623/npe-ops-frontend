@@ -42,9 +42,10 @@
 - 题 4 员工页写不写「请在周几前回」：A. 顶部写「Please answer by Fri 11/6」，只提醒、不卡发布（推荐）；B. 只写「Please answer before the schedule is published.」
 - e6 另外加了 3 处假设，已发 4e 核对：第一次 Publish 的确认框列出没处理完的请求；周表亮黄格子照旧能 Approve / Decline；往来记录多几种（换班、改时间、发布时关掉）。
 
-### 32. Add 键改橙色（09 出 preview）
+### 32. 全站「添加 / 新建」键统一绿色（09 出 preview；橙色那版作废）
 - Annie 晚上截图 Products › Bus Manifest setup（⑦ Running days、⑧ Different cap 的 Add），原话「这一页，既然现在我们把保存键都改成蓝色，那添加键应该换个颜色了，比如说橙色？」
 - 要定：只改 Products 这一页，还是全站「添加 / 新建」键都橙色（含 Content Studio 刚改蓝的 Create / Add route）；橙色色号要和这页的橙色编号圈、⑨ 橙框分得开。09 出 preview：https://claude.ai/artifact/6MBBkmz2rBo1egAPJGpr5g 。题 1 色号：A 琥珀 #f59e0b 深棕字（推荐）/ B 深橙 #d97706 白字 / C 浅橙 #fb923c 深字；题 2 范围：A 只 Products / B 全站添加新建都橙（推荐，改 CLAUDE.md 颜色规矩；弹窗里按了就存的 Add / Create 也算添加用橙，推荐）。
+- Annie 先问「其他页的添加是什么颜色」（09 查：黑 #1a1a1a 旧 btn-add 在 Pickup / Vehicles / Farm out / Products / HR；蓝在 Content Studio / Schedule / Add guide / TCQ / Quick replies；任务深蓝、Users 藏青、Add column 浅灰），然后原话「全部统一用绿色吧，你出个preview」⇒ 范围全站，橙色作废。preview 第 2 版同一链接。题 1 色号：A #16a34a 白字（推荐）/ B #22c55e 深绿字 / C #15803d 白字；题 2 弹窗里按了就存的 Add / Create：A 也绿（推荐）/ B 保留蓝。要改 CLAUDE.md 加「绿色按钮 = 添加 / 新建」。
 
 ### 8. 可以上线后对着看的（不用答，验收时看）
 - Products 手动保存：09 问的 5 处细节，主窗口按盘点推荐定了，见 PROGRESS「2026-10-30」那节 09 的记录：
