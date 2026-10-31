@@ -52,6 +52,7 @@
 - 62 已关：content-team-messages（G228）派给 e6（空着），4e 原文整段转过去；schedule-test-person 不用新窗口，等后端 is_test 上 main 再派人合。
 - 置顶 24 答了（Annie 在 eb 窗口原话「要」）⇒ 选 A：周三确认邮件 sched_weekly_confirm_subject / _intro 放进 Team Messages，四组排班邮件都能改。已转 e6、57、4e。
 - 新工作窗口 `npe-ops-frontend-91`[9c93e4] 报到 ⇒ 接管 59 的 task/team-contacts、62 的 task/schedule-test-person：合最新 main、重跑检查、推分支，准备 Team 页 How to use 7 条（57 直接把原文发 91）；后端上 main 后再合。
+- Annie（经 57）原话：「告诉大家我把电脑带回家了，所以接下来的两天都执行周末的时间表」⇒ 10/30、10/31 这台电脑当家里那台用，22:30 开始收尾。已转 e6 / 09 / 91。
 
 
 ## G228 Content Studio「Team Messages」后端设计（4e，2026-10-30 晚，只读，main f51d40a1）—— 给前端 62 的接手窗口用
