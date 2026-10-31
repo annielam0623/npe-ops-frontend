@@ -22,7 +22,8 @@
 
 ### 二、做完在分支、等后端上 main 才合
 - e6 `task/content-team-messages-e6` 9c1a40e（G228，24 个键；合时 Save 照 8437c0b 的 CardFooter 写法）：等 v135 + G228。
-- e6 `task/schedule-weekly-confirm` 40ecc20（G138 员工页 + 排班的人那边）：等后端 G138（排在 16 的 schedule-history 之后）。History 5 种说法等 schedule-person-history-fe 合了再加。
+- e6 `task/schedule-weekly-confirm` 8663c5c（G138 员工页 + 排班的人那边，已含 history-fe ea11a20 的 5 种说法）：等后端 G138（排在 16 的 schedule-history 之后）。History 事件字段名已转 4e 核对。
+- e6 `task/content-team-messages-e6` c275ed7 已合最新 main（蓝色 Save）。
 - 91 `task/import-team` 2ec4179：等 64 的 team/contacts/import（64 的 task/team-contacts-import，测试 + 两审后上 main）。64 已发形状：multipart 字段 file；SA only；标准 bulk_import，status 只有 update / unchanged / error（没有 new）；表头按名字认（Username 必填，也认 User name / Login；Email 也认 E-mail / Email address；Mobile 也认 Phone / Mobile phone / Cell）；errors 原话见 64 消息（Username is required. / No one with username “x”. Did you mean y (Name)? Fix it in the file and upload again. / Email address looks wrong. / That email address is already used by Name (@user). / … in row N of this file. / Phone number looks wrong. Use 10 digits, or + and the country code. / Mobile comes from Human Resource — change it there. / field null「Repeated above — skipped.」）；commit {created:0, updated, unchanged, skipped}；400 文件问题纯字符串；409「Someone changed an email address while this file was being saved. Nothing was saved — check the preview again.」；日志进 /api/team/action-log action=import；模板前端用 /api/team/members 生成。明天 91 对 mock 的原话和 409。
 - 91 `task/schedule-test-person` 30d2f10：等 is_test（v134）。
 - 09 `task/dor-updates`：等 v133 + G224。
@@ -92,8 +93,16 @@
 - 91 查清：只有 Dispatch 每辆车的「Add hotel」（vehicle-row.tsx）一个下拉；Pickup Locations 已有 is_tour_bus / is_shuttle（G211），但 Dispatch 当天 locations 没带 ⇒ 需要后端在 dispatch.py 那段 SELECT 加这两个字段。preview：https://claude.ai/artifact/Bud9mmZivp9ddK5cAd5QLV 。题 (a) 只改 Add hotel、所有班次都分组（推荐）/ 按班次只列一类；(b) 两个都勾的两组都出、都没勾的放最下面「Type not set」（推荐）；(c) 照旧不加搜索框（推荐）/ 改成能打字搜。
 
 ### 35. Today's tasks 版式不是最后批准的样子（91 在对照）
+- 后端 21：G202 B1–B5 字段名全部同前端 types/tasks.ts 暂定名，前端不用改；在审查，等 Annie 执行 v137 再上 main。PUT …/due 仍收 {due_at}，有交接时改最新交接的 finish_by。
+- 91 对照 preview：https://claude.ai/artifact/9fChzY2Z1ThUdJgKk4cbNo 。Annie 原话「我看到tasks了，关键是它不需要占整行啊，一半就够」⇒ 照 v3（已动手）改回：员工 My tasks + Notice 并排各半宽在最上面、Messages 在下面、去掉 🔔 那条。派 91 task/tasks-half-width。随后 Annie 改（原话）「你把task和 today's team放在一起，task 战2/3，team占1/3」⇒ 任务块 2/3 + Today's team 1/3 同一排，Notice 回最上面整行，Messages 不动；91 截图 preview 给 Annie 看了再合。
 - Annie 10-30 晚原话：「Today’s tasks的版式也不是我们最后aprove的样子」
 - 批准的是 G202 preview v3 https://claude.ai/artifact/3ktywUdNA5AHHP5zY47a2w （v3「对」、「186-对，动手」）；前端 10/27 上 main 400393e。91 只读对照 preview 和现在代码列差异（哪次提交改的），明天第一件接着。
+
+### 36. Today's team 也显示登录了的其他员工，点名字能发消息（新功能，先 preview）
+- Annie 10-30 晚原话：「然后today's team的显示，除了res，登录了网站的其他员工也在这里显示，然后可以点击他们发消息」
+- Annie 补充原话「站内消息，同时可以发邮件通知这条消息的内容」⇒ 站内消息 + 邮件（全文）给对方。
+- 91 preview：https://claude.ai/artifact/MyYTZjQzmJLaWckQjPxVGd 。题 (a) 10 分钟没动算离线（推荐）/ 登录没过期就算 / 改 5 或 30 分钟；(b) 对方在 Notice 出 Message 卡带 Reply / Got it（推荐）/ Messages 新窗口 / 新收件箱；(c) 没 Email 照发站内、黄字提醒（推荐）/ 不让发；(d) 能回复、站内 + 邮件（推荐）/ 不能回 / 回邮件也算；(e) 只列员工（推荐）/ 所有能登录的；(f) 加开关默认只 SA（推荐）/ 不加。需要后端 7 条（last_seen_at 迁移、GET /api/team/online、staff_messages 表 + POST 发消息 + Notice + 邮件、回复、读、开关、日志），等 Annie 答完再转 57。
+- 要查：现在 Today's team 列谁（res = 当天排班上的人？）；后端有没有「谁在线 / 最近活动」；站内发消息用什么（后端有 Messages Team Board？）。91 做完 2/3 + 1/3 布局后先查、出 preview，缺的写需要后端。
 
 ### 8. 可以上线后对着看的（不用答，验收时看）
 - Products 手动保存：09 问的 5 处细节，主窗口按盘点推荐定了，见 PROGRESS「2026-10-30」那节 09 的记录：
@@ -274,6 +283,15 @@
     1. 用 mock 起 Dashboard（员工、主管两种），截图和 v3 并排，逐条列样子上的不同（字号、间距、并排、Handovers 位置、Add a task 位置等）；
     2. 请 Annie 指一下她看到哪里不对（线上截图最好），对上了再出改法 preview；
     3. 后端 G202 B1–B5 要不要现在排，问 98。
+  - ✅ 2026-10-30 晚做完（Annie「我不接受，今晚全部做完」）：用 mock 截员工、主管两种 Dashboard，做成对照 preview https://claude.ai/artifact/9fChzY2Z1ThUdJgKk4cbNo （左 v3、右现在、逐条表）。没改代码。
+    - 不一样的：
+      1. 员工 My tasks 和 Notice 在 v3 是左右并排；现在 Notice 在最上面横排占满一行，My tasks 在 Messages 下面也占满一行（dashboard-view.tsx；f4cda06 10-24 Notice 横排、9b5e96b 10-25 Messages 挪到 My tasks 前，都早于 v3，G202 没挪回去）；
+      2. 所以 My tasks 是整行宽，v3 是半宽；
+      3. My tasks 里多一条「🔔 N overdue · N due within the hour」（employee-view.tsx 约 146 行，962d212 第一版就有），v3 没有；
+      4. Messages 放在哪，v3 没画，要 Annie 定。
+    - 一样的：时间线本身（Anytime / Overdue / Earlier today / 一列 3 条 / 每行）、主管那块的结构和行样子、Add a task。
+    - 后端没来造成的（已转 57）：Handovers 的 YESTERDAY / finish by / older than 24 h；Notice 交接的 Finish by；Pass over 的 Finish by 存不上。
+    - 改回 v3 的做法写在 preview ④，等 Annie 看过、说「动手」。
 
 
 ## G228 Content Studio「Team Messages」后端设计（4e，2026-10-30 晚，只读，main f51d40a1）—— 给前端 62 的接手窗口用
