@@ -96,7 +96,8 @@
 - v1（https://claude.ai/artifact/TCweQYTQc2FykafjxaTgJo ）Annie 否了：「你的做法员工根本就看不懂，你直接把网上排好的schedule就一摸一样地给他们，让他们自己可以拖自己那天有班的格子到她想换的那天」。
 - v2：https://claude.ai/artifact/X2bdxVr42yXA6CS8FEEiCc 。员工、原来那个人、排班的人都看线上那张周表；只能拖自己的卡片；拖到别人有班的格子 = 换（先问他），拖到自己没班的那天 = 改天上。
 - Annie 答 v2（经 98）原话：「排班除了第4点，要求周四中午12点以前确认回。  三件事都对。提加班直接把off那天打开就好，然后让发排班的人批复就可以」。还不是动手。
-- 下一步 v3：员工页写回复期限「Please confirm by Thu 11/5, 12:00 PM」（照「提醒、不卡发布」画，问她要不要到点自动关）；画「把自己 off 那天打开、加一个班 → 排班的人 Approve / Decline」两边的样子。「接班」不做。
+- v3 已出（同一链接，21:27）：员工页写「Please confirm by Thu 11/5, 12:00 PM」（按周自动算，只是提醒）；自己 off 的格子「+ Work this day」→ 选班次 → 亮黄「+ extra shift · asked」→ 排班的人在格子上 Approve / Decline。「接班」不做。
+- v3 新问 Annie 2 题（已发 98）：① 周四 12 点过后 A 只是提醒（推荐，晚回标 late）/ B 到点员工页变只读；② 加班班次 A 只能从已有班次选（推荐）/ B 还能改时间。答了、Annie 说「动手」才用 mock 做。
 
 ## 2026-10-30 晚 7 Days Forecast：左边一列名字统一 15px 半粗（置顶 31，`task/forecast-label-size`，工作窗口 `npe-ops-frontend-09`[8a0116]，主窗口 98 派）—— 已合 main
 
