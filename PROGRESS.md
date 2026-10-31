@@ -78,6 +78,15 @@
   - 后端：G138 等排班往来记录上 main 才开工（约下次开工）；PDF 排在 G228 后。PDF 前端基本不用做，只是「The full team schedule is attached.」会成为 Team Messages 卡多一个键，键名定了 57 通知。
   - 前端派 e6：先出 G138 preview（员工确认页、原来那个人怎么同意、排班的人 Responses 卡的状态），换班 C 的样子 Annie 还没看过，看过再用 mock 做。4e 已把 G138 完整方案发 e6。
 
+## 2026-10-30 晚 7 Days Forecast：左边一列名字统一 15px 半粗（置顶 31，`task/forecast-label-size`，工作窗口 `npe-ops-frontend-09`[8a0116]，主窗口 98 派）—— 已合 main
+
+- Annie 原话（按时间）：「我觉得你把7 days里的字体做得太杂乱了，第一行的栏目里，大写的应该统一尺寸，其他小写的名称也应该统一size，结果你弄的大大小小的」→「3.1  outbound和inbound的size要一样大，下面的driver和notes也要跟out和in一样大」→「然后0是我故意缩小并灰色的，不需要改」→ 对着线上截图「这几个再大一点，统一尺寸」→ **「15px 半粗 动手」**（经 98）。
+- preview：https://claude.ai/artifact/W2L6ofADCfCfH9LPZYkkpd （第 5 版，现在 / 13 / 14 / 15px 并排，她选 15px）。
+- 改了什么（`components/forecast/forecast-grid.tsx`，常量 `LABEL_SIZE`）：左边一列所有名字——黄色路线名、产品行（Outbound / Inbound / Upper / Lower / X…）、Driver / Guide、Crew notes、Notes、Max allotments、Private 那几行等——电脑上一律 15px、font-weight 600；路线名照旧黄色（原来粗体 700，现在也是 600）。
+- 不动的：格子里的 0（10px 灰）、表头日期（12.5px）、格子里的数字（12.5px，她没答要不要跟着变大，按原样）、手机上的字号（列窄）。
+- 左列宽度不变（190px）：15px 后「Grand Canyon West · Sunset」放不下、压到第一天的格子上，所以路线名和产品行名太长时折成两行（和 Private tours 那行一样），不加宽。
+- 检查：fc 184/184（新加 3 条：左列四类行全部 15px / 600、路线名黄色；长路线名折行不压格子、左列宽度不变；表头日期和数字仍 12.5px）、nav 32/32；tsc / eslint / build 过。
+
 ## 2026-10-30 晚 工作窗口 `npe-ops-frontend-91`[9c93e4]（98 派：接管 team-contacts、schedule-test-person，都不合 main）
 
 - `task/team-contacts` → **8436d85**（worktree `C:\Code\ops-wt-91-contacts`）：
