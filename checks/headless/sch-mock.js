@@ -13,6 +13,25 @@ let confirmWeek = "";
 // Jing（4）这周的回应：null = 不在名单里。ctl.jingAccepted 设成 Looks good；Send to confirm 发送成功后后端把 accepted 重置成 no_answer（G217 ef）。
 let jingAnswer = null;
 let savedWeekStatus = null;
+// ctl.confirmSwaps：再加两条换班——903 Nadia 的 Sun ↔ Veronica 的 Thu（Veronica 已同意，等批）；904 Lizzie 的 Tue ↔ Jing 的 Fri（等 Jing 回）。
+const swapState = { 903: "pending", 904: "awaiting_peer" };
+const SWAPS = [
+  { id: 903, from: [3, "Nadia", "2026-10-04"], peer: [1, "Veronica", "2026-10-08"] },
+  { id: 904, from: [2, "Lizzie", "2026-10-06"], peer: [4, "Jing", "2026-10-09"] },
+];
+function confirmSwaps(ws) {
+  if (!ctl.confirmSwaps || ws !== "2026-10-04") return [];
+  const wk = weeks.get(ws);
+  const find = (emp, date) => wk?.slots.find((x) => x.employee_id === emp && x.date === date);
+  const rs = (x) => ({ id: x.id, date: x.date, shift_type: x.shift_type, start_time: x.start_time, end_time: x.end_time });
+  return SWAPS.flatMap((w) => {
+    const a = find(w.from[0], w.from[2]);
+    const b = find(w.peer[0], w.peer[2]);
+    if (!a || !b) return [];
+    return [{ id: w.id, kind: "swap", status: swapState[w.id], from: { employee_id: w.from[0], name: w.from[1] }, my_slot: rs(a), their_slot: rs(b),
+      peer: { employee_id: w.peer[0], name: w.peer[1] }, date: null, shift_type: null, peer_timed_out: false, created_at: "2026-10-07T18:10:00+00:00", decided_at: null }];
+  });
+}
 const confirmReqs = [
   { id: 901, employee_id: 2, shift_type: "mid", dayIdx: 3, status: "pending" },
   { id: 902, employee_id: 2, shift_type: "open", dayIdx: 5, status: "pending" },
@@ -379,15 +398,20 @@ http
           { employee_id: 3, name: "Nadia", answer: "counted_accepted", answered_at: null },
           ...(jingAnswer ? [{ employee_id: 4, name: "Jing", answer: jingAnswer, answered_at: jingAnswer === "no_answer" ? null : "2026-10-07T17:00:00+00:00" }] : []),
         ],
-        requests: confirmReqs.map((r) => ({
+        requests: [...confirmSwaps(cm[1]), ...confirmReqs.map((r) => ({
           id: r.id, kind: "add", status: r.status, from: { employee_id: 2, name: "Lizzie" }, my_slot: null, their_slot: null, peer: null,
           date: days[r.dayIdx], shift_type: r.shift_type, peer_timed_out: false, created_at: "2026-10-07T18:02:00+00:00", decided_at: null,
-        })),
+        }))],
       });
     }
     const am = /^\/api\/schedule\/confirmation-requests\/(\d+)\/(approve|decline)$/.exec(p);
     if (am && req.method === "POST") {
       if (!ctl.confirm) return send(res, 404, { detail: "Not Found" });
+      if (swapState[am[1]]) {
+        if (swapState[am[1]] === "awaiting_peer") return send(res, 409, { detail: "Jing hasn't answered yet." });
+        swapState[am[1]] = am[2] === "approve" ? "approved" : "declined";
+        return send(res, 200, { ok: true });
+      }
       const r = confirmReqs.find((x) => x.id === Number(am[1]));
       if (!r) return send(res, 404, { detail: "Request not found." });
       r.status = am[2] === "approve" ? "approved" : "declined";

@@ -1192,6 +1192,29 @@ async function run() {
   await evaluate("document.querySelector('[data-decline=\"902\"]').click();");
   await waitFor("document.querySelector('[data-responses] [data-asked=declined]')");
   check("Decline：发 POST …/902/decline；表里写红字 Declined，周表没有亮黄卡片了（没有要处理的就不出表）", (await since(from, (e) => e.path === "/api/schedule/confirmation-requests/902/decline")).length === 1 && (await evaluate("const d = document.querySelector('[data-responses] [data-asked=declined]'); return d.textContent.includes('+ Fri Open (extra shift): Declined') && d.querySelector('span').className.includes('red') && !document.querySelector('[data-responses-grid]') && !document.querySelector('[data-approve]');")));
+  // 换班（G138）：903 Veronica 已同意 → 一分为二 + Veronica agreed + Approve / Decline；904 还在等 Jing → 只写 Waiting for Jing，不能批
+  await ctl({ confirmSwaps: true, confirmReset: true });
+  await openPage(`${APP}/schedule?week=2026-10-04`);
+  await waitFor("document.querySelector('[data-split=\"903\"]')");
+  check(
+    "换班等批：Veronica 的 Thu 一分为二「Nadia request / Veronica original」，写 Veronica agreed，下面 Approve 在前、Decline 在后",
+    await evaluate("const c = document.querySelector('[data-split=\"903\"]'); const t = c.textContent; return t.includes('Nadia request') && t.includes('Veronica original') && t.includes('Veronica agreed') && [...c.querySelectorAll('button')].map((b) => b.textContent).join('/') === 'Approve/Decline';"),
+    await evaluate("return document.querySelector('[data-split=\"903\"]')?.textContent ?? 'none';"),
+  );
+  check(
+    "换班两边：Nadia 原来的 Sun 变淡「↔ Veronica」；Veronica 那行 Sun、Nadia 那行 Thu 出亮黄「↔ from …」",
+    await evaluate("const nSun = document.querySelector('[data-rcell=\"3|2026-10-04\"]'); const vSun = document.querySelector('[data-rcell=\"1|2026-10-04\"]'); const nThu = document.querySelector('[data-rcell=\"3|2026-10-08\"]'); return [...nSun.querySelectorAll('div')].some((d) => d.className.includes('opacity-40') && d.textContent.includes('↔ Veronica')) && vSun.querySelector('[data-req-card]').textContent.includes('↔ from Nadia') && nThu.querySelector('[data-req-card]').textContent.includes('↔ from Veronica');"),
+  );
+  check(
+    "还在等对方的换班：格子写 Waiting for Jing、没有 Approve；表里 Nadia 那条写 Veronica agreed — waiting for you",
+    await evaluate("const c = document.querySelector('[data-split=\"904\"]'); return c.textContent.includes('Waiting for Jing') && !c.querySelector('button') && !document.querySelector('[data-approve=\"904\"]') && document.querySelector('[data-response=\"3\"]').textContent.includes('⇄ Sun Close ↔ Veronica\\'s Thu Close: Veronica agreed — waiting for you') && document.querySelector('[data-response=\"2\"]').textContent.includes('Waiting for Jing');"),
+    await evaluate("return document.querySelector('[data-response=\"3\"]')?.textContent + ' | ' + document.querySelector('[data-split=\"904\"]')?.textContent;"),
+  );
+  from = (await mockLog()).length;
+  await evaluate("document.querySelector('[data-approve=\"903\"]').click();");
+  await waitFor("!document.querySelector('[data-split=\"903\"]')");
+  check("Approve 换班：POST …/903/approve；那格不再一分为二，表里写 Approved", (await since(from, (e) => e.path === "/api/schedule/confirmation-requests/903/approve")).length === 1 && (await evaluate("return document.querySelector('[data-response=\"3\"]').textContent.includes('Approved');")));
+  await ctl({ confirmSwaps: false });
   // 员工（只读）不显示 Responses。
   await ctl({ role: "staff", meName: "Jing" });
   await openPage(`${APP}/schedule?week=2026-10-04`);
