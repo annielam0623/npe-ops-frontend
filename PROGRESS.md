@@ -133,7 +133,7 @@
 - Annie 截图 Notice history「Schedule edited — week of 2026-11-01」列了十几行明细，原话「notice里不需要显示详情，这里只是给个提示你的schedule发布了，给个see my schedule的链接就好了」。e6 查清：明细是后端写进 body 的，前端按 kind（schedule_published / changed / confirm_request / confirm_declined）换成一句即可，不用后端改。preview：https://claude.ai/artifact/8kzkHpbv4omcMjXo21FYzA 。题：确认类 Notice 链接 A 照旧「Review my schedule →」（推荐）/ B 也改「See my schedule →」。Annie 补「第一条那个，应该是published」（Schedule edited 在 Notice 里显示成 published），随后「按照推荐。动手」⇒ e6 task/schedule-notice-short。
 
 ### 39. Dispatch：Check the bus 会跳过 Apply CCL 的变动（91 出 preview）
-- Annie 原话「我现在是不是需要把pull from discord放到巴士前面，因为第一件事情应该是检查CCL的消息来了没有」「主要是点check the bus 就会跳过apply ccl的变动」。打开页面会自动拉一次 Discord，但结果 / Apply 在 Step 2 顶上，Step 1 卡片的 Check the bus 直接跳到车块、跳过它。91 查清后出 preview。
+- Annie 原话「我现在是不是需要把pull from discord放到巴士前面，因为第一件事情应该是检查CCL的消息来了没有」「主要是点check the bus 就会跳过apply ccl的变动」。打开页面会自动拉一次 Discord，但结果 / Apply 在 Step 2 顶上，Step 1 卡片的 Check the bus 直接跳到车块、跳过它。91 preview：https://claude.ai/artifact/PmUDb4Cbxb72XThPEPzfQn 。推荐 A1（最上面一整条 CCL 状态 + Pull + Apply）+ B1（Check the bus 照跳）+ C1（团块顶上写这个团的 CCL 变动 + Apply，整份套用）+ D1（不自动 Apply，Not now 只收清单、提醒留着）。不需要后端。等 Annie。
 
 ### 8. 可以上线后对着看的（不用答，验收时看）
 - Products 手动保存：09 问的 5 处细节，主窗口按盘点推荐定了，见 PROGRESS「2026-10-30」那节 09 的记录：
