@@ -11,6 +11,18 @@ let nextHistoryId = 100;
 function addDays(ymd, n) { const [y, m, d] = ymd.split("-").map(Number); return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10); }
 function historyOf(week, id) {
   const key = `${week}|${id}`;
+  // ctl.historyG138：Nadia（3）一整套 G138 新的 5 种（换班 / 改天上 / 加班 / 发布时关掉）
+  if (id === 3 && ctl.historyG138 && !histories[key]?.g138) {
+    const slot = (n, t) => ({ date: addDays(week, n), shift_type: t });
+    histories[key] = Object.assign([
+      { id: 31, at: "2026-10-28T20:00:00+00:00", kind: "change_requested", by: "Nadia", by_kind: "employee", lines: [], channels: [], via: "login", request_kind: "move", from_slot: slot(4, "close"), request: slot(5, "close") },
+      { id: 32, at: "2026-10-28T20:00:01+00:00", kind: "change_requested", by: "Nadia", by_kind: "employee", lines: [], channels: [], via: "login", request_kind: "add", request: slot(3, "open") },
+      { id: 33, at: "2026-10-28T20:00:02+00:00", kind: "swap_requested", by: "Nadia", by_kind: "employee", lines: [], channels: [], request_kind: "swap", from_slot: slot(0, "close"), request: slot(4, "close"), peer: "Veronica" },
+      { id: 34, at: "2026-10-28T22:10:00+00:00", kind: "swap_agreed", by: "Veronica", by_kind: "employee", lines: [], channels: [], request_kind: "swap", from_slot: slot(0, "close"), request: slot(4, "close"), peer: "Nadia" },
+      { id: 35, at: "2026-10-28T22:30:00+00:00", kind: "swap_declined_by_peer", by: "Lizzie", by_kind: "employee", lines: [], channels: [], request_kind: "swap", from_slot: slot(2, "close"), request: slot(1, "mid"), peer: "Nadia" },
+      { id: 36, at: "2026-10-31T17:00:00+00:00", kind: "request_closed_on_publish", by: null, by_kind: "system", lines: [], channels: [], request_kind: "add", request: slot(3, "open") },
+    ], { g138: true });
+  }
   if (!histories[key]) {
     histories[key] = id !== 4 ? [] : [
       { id: 1, at: "2026-10-28T16:00:03+00:00", kind: "confirm_sent", by: null, by_kind: "system", lines: [], channels: ["email", "in_app"], title: `Please confirm your schedule — week of ${week}` },

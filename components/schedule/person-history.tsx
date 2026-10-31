@@ -93,6 +93,8 @@ function Body({
   const req = e.request
     ? `${dayLabel(e.request.date)} ${shiftLabel(e.request.shift_type)}`
     : "";
+  const slotText = (s: { date: string; shift_type: string } | null | undefined) =>
+    s ? `${dayLabel(s.date)} ${shiftLabel(s.shift_type)}` : "";
   const via =
     e.via === "link" ? "from the link" : e.via === "login" ? "logged in" : "";
   const failed = e.failed?.length ? (
@@ -176,6 +178,53 @@ function Body({
       return (
         <span>
           <span className={BAD}>Declined</span> {req}
+        </span>
+      );
+    // G138：换班、改天上、加班（4e 2026-10-30 晚「最终接口」）
+    case "change_requested":
+      return (
+        <span>
+          {e.request_kind === "move" ? (
+            <>
+              <span className={CHANGE}>Asked to move</span> {slotText(e.from_slot)}{" "}
+              to {e.request ? dayLabel(e.request.date) : ""}
+            </>
+          ) : (
+            <>
+              <span className={CHANGE}>Asked for an extra shift</span> {req}
+            </>
+          )}
+          {via ? <span className={SUB}> · {via}</span> : null}
+        </span>
+      );
+    case "swap_requested":
+      return (
+        <span>
+          <span className={CHANGE}>Asked to swap</span> {slotText(e.from_slot)}{" "}
+          ↔ {e.peer ?? ""}&rsquo;s {req}
+          <span className={SUB}> · waiting for {e.peer ?? "them"}</span>
+        </span>
+      );
+    case "swap_agreed":
+      return (
+        <span>
+          <span className={GOOD}>Agreed to swap</span> {req} ↔{" "}
+          {e.peer ?? ""}&rsquo;s {slotText(e.from_slot)}
+          <span className={SUB}> · waiting for approval</span>
+        </span>
+      );
+    case "swap_declined_by_peer":
+      return (
+        <span>
+          <span className={BAD}>Declined the swap</span> {req} ↔{" "}
+          {e.peer ?? ""}&rsquo;s {slotText(e.from_slot)}
+        </span>
+      );
+    case "request_closed_on_publish":
+      return (
+        <span className={SUB}>
+          Request closed when the week was published
+          {req ? `: ${req}` : ""}.
         </span>
       );
     default:

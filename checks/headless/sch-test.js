@@ -659,6 +659,27 @@ async function run() {
     await evaluate(`document.querySelector('[data-history-toggle="${other}"]').click();`);
     check("没有记录的人：展开写一句灰字 Nothing yet for this week.", await waitFor(`(document.querySelector('[data-history-row="${other}"] [data-history-empty]')?.textContent || '').startsWith('Nothing yet for this week.')`));
 
+    // G138 新的 5 种（4e 2026-10-30 晚：change_requested move / add、swap_requested、swap_agreed、swap_declined_by_peer、request_closed_on_publish）
+    await ctl({ historyG138: true });
+    await openPage(`${APP}/schedule?week=2026-10-04`);
+    await waitFor(`document.querySelector('[data-history-toggle="3"]')`);
+    await evaluate(`document.querySelector('[data-history-toggle="3"]').click();`);
+    await waitFor(`document.querySelectorAll('[data-history-row="3"] [data-history-event]').length === 6`);
+    {
+      const t = await evaluate(`return [...document.querySelectorAll('[data-history-row="3"] [data-history-event]')].map(e => e.dataset.historyEvent + ' | ' + e.querySelector('[data-history-body]').innerText.replace(/\\s+/g, ' ').trim());`);
+      const want = [
+        "change_requested | Asked to move Thu 10/8 Close to Fri 10/9 · logged in",
+        "change_requested | Asked for an extra shift Wed 10/7 Open · logged in",
+        "swap_requested | Asked to swap Sun 10/4 Close ↔ Veronica’s Thu 10/8 Close · waiting for Veronica",
+        "swap_agreed | Agreed to swap Thu 10/8 Close ↔ Nadia’s Sun 10/4 Close · waiting for approval",
+        "swap_declined_by_peer | Declined the swap Mon 10/5 Mid ↔ Nadia’s Tue 10/6 Close",
+        "request_closed_on_publish | Request closed when the week was published: Wed 10/7 Open.",
+      ];
+      check("History（G138）：换班 / 改天上 / 加班 / 发布时关掉，5 种新记录照英文写清楚", JSON.stringify(t) === JSON.stringify(want), JSON.stringify(t));
+      check("History（G138）：Asked 琥珀色、Agreed 绿、Declined 红；系统关掉的灰字", await evaluate(`const ev = [...document.querySelectorAll('[data-history-row="3"] [data-history-event]')]; const col = (e, w) => getComputedStyle([...e.querySelectorAll('span')].find(s => s.textContent === w)).color; return col(ev[2], 'Asked to swap') === 'rgb(186, 117, 23)' && col(ev[3], 'Agreed to swap') === 'rgb(21, 128, 61)' && col(ev[4], 'Declined the swap') === 'rgb(163, 45, 45)' && ev[5].dataset.byKind === 'system';`));
+    }
+    await ctl({ historyG138: false });
+
     // 读不到：红字写后端原话
     await ctl({ historyFail: "ZZ Test history is down." });
     await openPage(`${APP}/schedule?week=2026-10-04`);
