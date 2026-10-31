@@ -26,6 +26,11 @@ import {
   ConfirmBoard,
 } from "./confirm-board";
 import { CARD, CARD_HEADER, DAY_LABELS, MUTED } from "./config";
+import {
+  HistoryError,
+  HistoryThread,
+  usePersonHistory,
+} from "./person-history";
 
 const WHEN = new Intl.DateTimeFormat("en-US", {
   timeZone: "America/Los_Angeles",
@@ -208,6 +213,8 @@ export function ResponsesCard({
   );
 
   const dates = DAY_LABELS.map((_, i) => shiftYmd(weekStart, i));
+  const shiftLabel = (key: string) =>
+    shiftTypes.find((t) => t.key === key)?.label ?? key;
   const askText = (p: WeekConfirmations["people"][number]) => {
     const rs = p.requests.filter((r) => r.status !== "approved");
     if (!rs.length) return "—";
@@ -242,11 +249,26 @@ export function ResponsesCard({
               <th className="border-b border-white/10 px-3 py-2">
                 What they asked
               </th>
+              {canEdit ? (
+                <th className="border-b border-white/10 px-3 py-2">
+                  <span className="sr-only">History</span>
+                </th>
+              ) : null}
             </tr>
           </thead>
           <tbody>
             {data.people.map((p) => (
-              <tr key={p.employee_id} data-response={p.employee_id}>
+              <ResponseRow
+                key={p.employee_id}
+                weekStart={weekStart}
+                employeeId={p.employee_id}
+                name={p.name}
+                historyCount={p.history_count}
+                withHistory={canEdit}
+                shiftLabel={shiftLabel}
+                onUnauthorized={onUnauthorized}
+                reloadKey={reloadKey}
+              >
                 <td className="border-b border-white/10 px-3 py-2">{p.name}</td>
                 <td className="border-b border-white/10 px-3 py-2">
                   {p.answer === "accepted" ? (
@@ -269,7 +291,7 @@ export function ResponsesCard({
                 <td className="border-b border-white/10 px-3 py-2 text-white/75">
                   {askText(p)}
                 </td>
-              </tr>
+              </ResponseRow>
             ))}
           </tbody>
         </table>
@@ -288,5 +310,91 @@ export function ResponsesCard({
         />
       ) : null}
     </section>
+  );
+}
+
+/**
+ * Responses 卡上的一行，后面一个「History (N)」（往来记录位置 B，Annie 2026-10-30「动手」）：点开在下面一整行展开，再点收起。
+ * 只给能改排班的人（后端要 schedule.edit；403 / 404 就不出这个键）。
+ */
+function ResponseRow({
+  weekStart,
+  employeeId,
+  name,
+  historyCount,
+  withHistory,
+  shiftLabel,
+  onUnauthorized,
+  reloadKey,
+  children,
+}: {
+  weekStart: string;
+  employeeId: number;
+  name: string;
+  /** 后端 confirmations 每行带的条数：有就直接显示，点开 History 才读这个人的记录（Annie 2026-10-31 嫌页面慢）。 */
+  historyCount?: number;
+  withHistory: boolean;
+  shiftLabel: (key: string) => string;
+  onUnauthorized: () => void;
+  reloadKey: number;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  // 有 history_count：点开才读；旧后端没带：照旧一进来就读，用来算 N。
+  const counted = typeof historyCount === "number";
+  const state = usePersonHistory(
+    weekStart,
+    employeeId,
+    onUnauthorized,
+    withHistory && (!counted || open),
+    reloadKey,
+  );
+  const show = withHistory && state.kind !== "hidden";
+  const n = counted
+    ? open && state.kind === "ready"
+      ? state.events.length
+      : historyCount
+    : state.kind === "ready"
+      ? state.events.length
+      : null;
+  return (
+    <>
+      <tr data-response={employeeId}>
+        {children}
+        {withHistory ? (
+          <td className="border-b border-white/10 px-3 py-2 text-right whitespace-nowrap">
+            {show && (counted || state.kind !== "loading") ? (
+              <button
+                type="button"
+                data-history-toggle={employeeId}
+                aria-expanded={open}
+                onClick={() => setOpen((o) => !o)}
+                className="cursor-pointer text-[12.5px] text-sky-300 underline"
+              >
+                {open
+                  ? "Hide history"
+                  : `History${n === null ? "" : ` (${n})`}`}
+              </button>
+            ) : null}
+          </td>
+        ) : null}
+      </tr>
+      {show && open ? (
+        <tr data-history-row={employeeId}>
+          <td colSpan={4} className="border-b border-white/10 px-3 pb-3">
+            {state.kind === "error" ? (
+              <HistoryError message={state.message} />
+            ) : state.kind === "ready" ? (
+              <HistoryThread
+                name={name}
+                weekStart={weekStart}
+                events={state.events}
+                shiftLabel={shiftLabel}
+              />
+            ) : null}
+          </td>
+        </tr>
+      ) : null}
+    </>
   );
 }

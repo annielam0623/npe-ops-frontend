@@ -114,6 +114,7 @@ export function BulkImport({
   preview,
   commit,
   atomic,
+  canCreate = true,
   describe,
   onClose,
   onSaved,
@@ -130,6 +131,8 @@ export function BulkImport({
   commit: (file: File) => Promise<string>;
   /** 后端整份一个事务：失败时能说「nothing was changed」。 */
   atomic: boolean;
+  /** false = 这页导入不建新记录（Team：只改已有的人），数字里不写 New。 */
+  canCreate?: boolean;
   describe: (error: unknown) => string;
   onClose: () => void;
   /** 存好了：父组件重拉列表、日志。 */
@@ -319,9 +322,11 @@ export function BulkImport({
           </p>
         ) : ready ? (
           <p className="flex flex-wrap gap-3.5 text-[12.5px]" data-bulk-counts>
-            <span>
-              New: <b className="tabular-nums">{count("new")}</b>
-            </span>
+            {canCreate ? (
+              <span>
+                New: <b className="tabular-nums">{count("new")}</b>
+              </span>
+            ) : null}
             <span>
               Will update: <b className="tabular-nums">{count("update")}</b>
             </span>
@@ -537,6 +542,7 @@ export function StandardImport({
   endpoint,
   labelOf,
   template,
+  canCreate,
   onClose,
   onSaved,
   onUnauthorized,
@@ -547,6 +553,7 @@ export function StandardImport({
   endpoint: string;
   labelOf: (key: string) => string;
   template: () => { blob: Blob; filename: string };
+  canCreate?: boolean;
   onClose: () => void;
   onSaved: () => void;
   onUnauthorized: () => void;
@@ -563,6 +570,7 @@ export function StandardImport({
         importResultText(await commitImport(endpoint, file))
       }
       atomic
+      canCreate={canCreate}
       describe={describeError}
       onClose={onClose}
       onSaved={onSaved}
