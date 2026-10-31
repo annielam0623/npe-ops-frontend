@@ -328,6 +328,12 @@ async function fill(page, label, value) {
     check("contact: email used by someone else → says who, dialog stays, access not saved", (await errs())[0] === "That email address is already used by Kevin Ho (@kevin)." && calls.some((l) => l.startsWith("PUT /api/team/members/2/contact")) && !calls.some((l) => l.startsWith("PUT /api/team/members/2 ")), JSON.stringify(calls));
     await fill(page, "Email", "grace.new@example.com");
     check("contact: typing again clears the backend error", (await errs()).length === 0);
+    // 账号已经不在了：后端回 404，detail 也是 {field, message}，照原话写在 Email 下面（不是 Request failed (404)）。
+    await ctl("contact404=1");
+    await click(page, "Save", "dialog");
+    await page.waitForFunction(() => document.querySelector('[role="dialog"] [data-contact-error="email"]'), { timeout: 10000 }).catch(() => {});
+    check("contact: 404 {field, message} → backend wording under Email, dialog stays", (await errs())[0] === "That account is not on the Team page any more. Reload the page.", JSON.stringify(await errs()));
+    await fill(page, "Email", "grace.new@example.com");
     logStart = (await ctl("log=1")).length;
     await click(page, "Save", "dialog");
     await waitNoText(page, "Copy access from");

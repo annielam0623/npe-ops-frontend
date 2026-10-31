@@ -107,11 +107,14 @@ export function saveTeamContact(
   });
 }
 
-/** 400 的 detail 是 `{field, message}` 时，取出是哪一格出错（写在那一格下面）。 */
+/**
+ * detail 是 `{field, message}` 时，取出是哪一格出错（写在那一格下面）。后端 G219 格式错 / email 重了回 400，
+ * 账号已经不在了回 404，两种都是这个形状。
+ */
 export function contactFieldError(
   error: unknown,
 ): { field: "email" | "phone"; message: string } | null {
-  if (!(error instanceof ApiError) || error.status !== 400) return null;
+  if (!(error instanceof ApiError) || (error.status !== 400 && error.status !== 404)) return null;
   const d = (error.body as { detail?: unknown } | null)?.detail;
   if (d && typeof d === "object" && !Array.isArray(d)) {
     const o = d as { field?: unknown; message?: unknown };

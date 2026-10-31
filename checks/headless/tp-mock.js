@@ -44,7 +44,7 @@ const ADMIN = ALL.filter((c) => c !== "settings.schedule");
 const DUTIES = [["guest_messages", "Guest messages"], ["complaints", "Complaints"], ["accidents_emergencies", "Accidents & emergencies"], ["cancellations", "Cancellations"], ["refunds", "Refunds"], ["dispatching", "Dispatching"], ["finance", "Finance"], ["products_suppliers", "Products & suppliers"], ["quotations", "Quotations"]];
 const TEAMS = [{ id: 1, name: "Reservations", color: "#2563eb" }, { id: 2, name: "Operations", color: "#15803d" }, { id: 3, name: "Morning", color: "#b45309" }, { id: 4, name: "Tickets", color: "#dc2626" }, { id: 5, name: "Dispatch", color: "#7c3aed" }];
 
-let viewer, nohome, nodefault, acctype, typeFail, team500, team403, detailFail, delFail, people, contact, nextId;
+let viewer, nohome, nodefault, acctype, typeFail, team500, team403, detailFail, delFail, contact404, people, contact, nextId;
 const log = [];
 function person(id, username, display_name, items, o = {}) {
   return { id, username, display_name, email: o.email === undefined ? `${username}@example.com` : o.email, role: o.role || "staff",
@@ -53,7 +53,7 @@ function person(id, username, display_name, items, o = {}) {
     phone: o.phone || null, hr_phone: o.hr_phone || null };
 }
 function reset() {
-  viewer = "superadmin"; detailFail = 0; delFail = ""; nohome = false; nodefault = false; acctype = false; typeFail = false; team500 = false; team403 = false;
+  viewer = "superadmin"; detailFail = 0; delFail = ""; contact404 = false; nohome = false; nodefault = false; acctype = false; typeFail = false; team500 = false; team403 = false;
   people = [
     person(1, "annie", "Annie", ALL, { role: "superadmin", team_ids: [1, 2] }),
     person(2, "grace", "Grace Liu", ADMIN, { role: "admin", duties: ["complaints", "refunds"], team_ids: [1] }),
@@ -127,6 +127,7 @@ http.createServer((req, res) => {
       if (q.team500) team500 = q.team500 === "1";
       if (q.team403) team403 = q.team403 === "1";
       if (q.detailfail) detailFail = Number(q.detailfail);
+      if (q.contact404) contact404 = q.contact404 === "1";
       if (q.delfail) delFail = q.delfail === "0" ? "" : q.delfail;
       if (q.noemail) people.find((x) => x.id === Number(q.noemail)).email = null;
       if (q.hrphone) people.find((x) => x.id === Number(q.hrphone)).hr_phone = "(702) 555-0199";
@@ -205,7 +206,8 @@ http.createServer((req, res) => {
       const ctm = p.match(/^\/api\/team\/members\/(\d+)\/contact$/);
       if (ctm && m === "PUT") {
         const who = people.find((x) => x.id === Number(ctm[1]));
-        if (!who) return send(res, 404, { detail: "Member not found" });
+        // 后端 G219（acbae995）：账号不在了也是 {field, message}，status 404。
+        if (!who || contact404) { contact404 = false; return send(res, 404, { detail: { field: "email", message: "That account is not on the Team page any more. Reload the page." } }); }
         const email = body.email;
         if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return send(res, 400, { detail: { field: "email", message: "Email address looks wrong." } });
         const other = email && people.find((x) => x.id !== who.id && (x.email || "").toLowerCase() === email.toLowerCase());
