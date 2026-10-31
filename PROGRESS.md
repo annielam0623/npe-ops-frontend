@@ -26,11 +26,12 @@
 
 > 规矩见 CLAUDE.md「问 Annie 要确认的事：给完整内容，并一直置顶」（2026-10-30）。每条都要能单独看懂。
 
-### 22. 司机页 / 导游页：前一天打开就把全部功能画出来（后端模板，要先 preview）
-- Annie 10-30 晚原话：「其实我们在给司机这个链接的时候就应该把全部功能放进去，提前让他们知道要做哪些事情」。
-- 现在：前一天打开只看到名单和 Call / Text；Picked up / No show、Boarded、改餐 Change、联系餐厅要到当天才出现。Super Admin 的 /driver/preview 会画出来，但灰着。
-- 打算：司机前一天点短信链接，也像 preview 那样全部画出来，灰着不能点，旁边一句英文「Opens on Sat Oct 31」。导游页同理。
-- 后端登记为 G227，下次开工 92 先出 preview（复用模板的 preview 分支，导游页一起），57 发主窗口转 Annie。
+### 25. 10d 排班测试：ZZTest 测完要不要把账号改回 staff（09 问）
+- 下午 Annie 把 ZZTest（员工 id 8）的登录账号改成了 supervisor，这样页面上才有 Save / Publish，10d 测试要用。
+- 选法：A. 测完改回 staff（推荐：测试账号权限不留得比需要的大）；B. 一直保持 supervisor，以后测排班还能用。
+
+### 26. 09 问：你说的「之前的设计稿」是哪一份
+- 09 窗口没收到过这件事的上下文，已在 09 窗口问过 Annie，还没回。请在 09 窗口直接答，或告诉 98 转达。
 
 ### 24. Content Studio「Team Messages」要不要放周三确认邮件
 - 后端 4e 设计 G228 时，把「周三确认排班」的邮件（主题「Confirm your schedule — week of Sun, Nov 1」、开头「Your schedule for the week of … is up. Please confirm it:」）也列进了这张卡。Annie 当时同意的三类里，排班邮件只说了首次发布 / Publish again / Send to confirm。
@@ -45,6 +46,16 @@
   - 换团先问要不要存；
   - 等等。
   觉得键太多，可以改成按大块分。
+
+## 2026-10-30 晚 主窗口 `npe-ops-frontend-98`[94e9c6] 开工核对（家里，接 eb）
+
+- main 干净；6 条前端分支都已推，都等后端（team-contacts / dor-updates / schedule-test-person / schedule-person-history-fe / team-columns / content-team-messages）。
+- 后端 57 回（20:2x）：
+  - 11/01 那周 Annie 15:49 按了 Publish again，action_log「notified 6 employee(s) and 13 supervisor(s), not reached 0」，6 个员工都收到 ✅。
+  - 置顶 22（G227 司机页 / 导游页前一天画出全部功能）移走：没出 preview，Annie 对 92 原话「我要92把司机页现在做完，我等着测试啊」，已上 main f51d40a1，Annie 用 AnnieTest 测，等她反馈。
+  - 今晚后端已派好（等 Annie「今晚破例」）：team_list_layout、G212 四项、删 Sync Rezdy 接口、空档只算将来；G219 → 往来记录 + history_count → G224；/guide/preview；is_test 今晚只出 v134 SQL 草稿。每件上 main 57 发 98。
+- 09 回：dor-updates 等 v133；10d 只做完第 0 步，等 Annie 叫再开始（只排 ZZTest + Leon，2027-02-07 那周，不做 Publish again）。端口都关了。
+- 62 已关，两件（content-team-messages、schedule-test-person）等 Annie 开新窗口再派。
 
 
 ## G228 Content Studio「Team Messages」后端设计（4e，2026-10-30 晚，只读，main f51d40a1）—— 给前端 62 的接手窗口用
