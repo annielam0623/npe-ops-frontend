@@ -105,6 +105,46 @@
   - 等等。
   觉得键太多，可以改成按大块分。
 
+## 2026-10-30 排班：每个人的往来记录 前端（`task/schedule-person-history-fe`，工作窗口 `npe-ops-frontend-e6`[047d88]，主窗口 eb 派工）—— **只推分支，没合 main（等后端 ef task/schedule-person-history 上 main，要 Annie 先过目迁移 SQL）**
+
+- **2026-10-30 晚 G138 新 5 种已加**（98 转 Annie「所有窗口今天手上的工作必须全部做完」）：change_requested（request_kind move「Asked to move Thu 10/8 Close to Fri 10/9」/ add「Asked for an extra shift Wed 10/7 Open」）、swap_requested「Asked to swap Sun 10/4 Close ↔ Veronica’s Thu 10/8 Close · waiting for Veronica」、swap_agreed（绿）、swap_declined_by_peer（红）、request_closed_on_publish（灰字）。字段名是前端先定的：request（目标）、from_slot（原来的 / 给出的班）、request_kind、peer（另一个人的名字）——已请 98 转 4e 核对，后端用别的名字就照改。合了最新 main；sch 272/272。
+
+- 依据：
+  - preview（62 做的）https://claude.ai/artifact/T98GQ9KfQuQfrEcMv6XgzM ；
+  - Annie 原话「单独发给某人，就像信息一样保留每次交流的过程不就好了，就是一个简单的log……」「只留本次排班的对话……」「其他都同意推荐，动手」；
+  - Q1–Q5 照推荐：两处都放、最新的在最下面、记发的 / 回的 / 主管处理 / 重置（不记格子改动）、只看这一周。
+- 后端形状：ef 的约定文档 `docs/interfaces/schedule-person-history-2026-10-30.md`（后端仓库 origin/task/schedule-person-history）。
+  - `GET /api/schedule/weeks/{ws}/employees/{id}/history`，要 schedule.edit；
+  - 返回 {week_start, employee_id, name, events[]}，从旧到新；kind 9 种；by_kind 定颜色。
+- 做了什么（新文件为主，避开 62 在改的 schedule-view / schedule-api / types/schedule）：
+  - [types/schedule-history.ts](types/schedule-history.ts)、[lib/schedule-history-api.ts](lib/schedule-history-api.ts)。
+  - [components/schedule/person-history.tsx](components/schedule/person-history.tsx)：一个组件两处共用。
+    - `HistoryThread` 画记录：标题「History with X · week of …」+「newest at the bottom」，打开滚到底，最多 420px 高自己滚。
+    - `usePersonHistory` 读接口：403 / 404 不显示；别的错红字「Could not load the history: 后端原话」。
+    - `PersonHistory` 给发送框用。
+  - 颜色照 preview：system 灰标签、员工本人整行绿底（标签写 staff）、用排班页的人蓝字标签（写 supervisor）。
+  - 结果字：Looks good / Approved 绿，Send my changes / Asked for 琥珀，Declined、Not delivered 红。
+  - 9 种的英文写法：
+    - confirm_sent「Sent the weekly confirm (channels): title」；
+    - published / republished「Published (again) (channels). X got: title」+ 那几行；
+    - changes_sent「Sent to confirm (channels):」+ 那几行；
+    - answer_reset「X’s Looks good was reset to No answer.」（灰）；
+    - answered「Looks good / Send my changes · from the link / logged in」；
+    - requested「Asked for Wed 10/7 Mid」；
+    - approved / declined「Approved / Declined Wed 10/7 Mid」；
+    - failed「Not delivered: in-app」。
+  - lines / title 照后端原文显示，都是 React 文字节点。
+  - 位置 A：send-changes-dialog.tsx 改动表下面、发送原文上面；发送成功后重读一次。
+  - 位置 B：responses-card.tsx 每人一行最后一格「History (N)」（不是蓝色键，只给能改排班的人），点开下面整行展开，键变「Hide history」，再点收起。
+    - N 要每人读一次 history 才知道：一张卡 N 个请求。人多了慢的话，请后端在 confirmations 里每人带一个 history_count（需要后端，可选）。
+- 检查：
+  - sch-mock 加 history 接口：ctl.history 开才有，staff 403，ctl.historyFail 500；Jing 默认一整套 9 种；开着时 Send to confirm 会追加 changes_sent / answer_reset。
+  - sch-test 加 14 项：
+    - 两处都出、位置对；顺序；滚到底；9 种文字；颜色；
+    - 发送后重读最新在下面；History (N) 和展开收起；空记录灰字；读不到红字原话；
+    - staff 没有；后端 404 两处都不出。
+  - 结果：sch 270/270、nav 32/32；tsc 0 错；eslint 0 错、2 个原有警告；新文件 prettier 过；build 过。
+- 下一步：后端上 main 后，对 ef 的真形状再核一遍（特别是 lines 的日期写法、via、failed），合最新 main（会和 62 的排班 Save 修复、空档 preview 有冲突，到时解），重跑 sch，再合 main。
 ## 2026-10-30 Team 页 Columns（拖表头换顺序、拖边改宽、存进账号）（`task/team-columns`，工作窗口 `npe-ops-frontend-e6`[047d88]，主窗口 eb 派工）—— **只推分支，等后端 92 的 team_list_layout 上 main 再合**
 
 - 依据：10-28 Users / Team 合并 preview v3 Annie「动手」那批里的「Columns（收列）键」，当时等后端 user_prefs 白名单。
@@ -212,7 +252,7 @@
   - Responses 卡改读 4e 最终形状（people 只有回应、requests[] 平铺）：Answer 列多「No answer — counted as Looks good」（counted_accepted）；What they asked 列每条请求 + 状态（Waiting for Lizzie / Lizzie agreed — waiting for you / Waiting for you / Approved 绿 / Declined 红 / Lizzie declined / Closed when published）；表头写 Answer by 期限 / Deadline passed、N requests；empty_draft 时写一句。
   - 卡里那张班次 × 天的旧表（confirm-board.tsx，已删）换成同线上周表的一人一行表：改天上 / 加班画亮黄卡片、换班一分为二，等处理的下面 Approve（蓝）在前、Decline 在后；awaiting_peer 只写 Waiting for Lizzie。
   - 检查：sch 277/277（Responses 那段改成新形状）、sc 34/34、tsc / eslint 过。
-  - **还没做**：① ~~换班进检查套~~ 已做：ctl.confirmSwaps 加两条换班（903 等批：一分为二 + Veronica agreed + Approve / Decline；904 等 Jing：只写 Waiting for Jing、没有 Approve），sch 283/283；改天上（move）的格子还没进 sch 检查套（员工页 sc 有）；② ~~首次 Publish 确认框~~ 已做：第一次 Publish 的确认框列「2 requests are still open. Publishing closes them and tells each person:」+ 每条「Lizzie: + Wed Mid (extra shift)」，Publish again 不列（sch 279/279）；③ History 新 5 种 kind 的说法；④ preview ③ 画的是「就在排班页那张表上」亮黄，现在亮黄在 Responses 卡自己的周表里（同现在的位置）——明天先问 98 / Annie 要不要挪进主周表（week-grid.tsx），不问不动。
+  - **还没做**：① ~~换班进检查套~~ 已做：ctl.confirmSwaps 加两条换班（903 等批：一分为二 + Veronica agreed + Approve / Decline；904 等 Jing：只写 Waiting for Jing、没有 Approve），sch 283/283；改天上（move）的格子还没进 sch 检查套（员工页 sc 有）；② ~~首次 Publish 确认框~~ 已做：第一次 Publish 的确认框列「2 requests are still open. Publishing closes them and tells each person:」+ 每条「Lizzie: + Wed Mid (extra shift)」，Publish again 不列（sch 279/279）；③ ~~History 新 5 种~~ 已做：加在 task/schedule-person-history-fe（ea11a20），再把 history-fe 合进本分支，Responses 卡每行照旧有 History (N)，Approve / Decline 之后 History 重读；sch 299/299、sc 34/34、nav 32/32；④ preview ③ 画的是「就在排班页那张表上」亮黄，现在亮黄在 Responses 卡自己的周表里（同现在的位置）——明天先问 98 / Annie 要不要挪进主周表（week-grid.tsx），不问不动。
 - 后端 G138 上 main 后：合最新 main、对着真接口核一遍字段、跑 sc / sch / nav / build，问过 98 再合。
 
 ## 2026-10-30 晚 7 Days Forecast：左边一列名字统一 15px 半粗（置顶 31，`task/forecast-label-size`，工作窗口 `npe-ops-frontend-09`[8a0116]，主窗口 98 派）—— 已合 main

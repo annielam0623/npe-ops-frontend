@@ -5,6 +5,40 @@ const http = require("http");
 const ctl = { fail401: false, role: "supervisor", meName: "", rulesMissing: false, phase2: false };
 let timeOff = []; // {id, employee_id, date, kind, note}
 let nextTimeOffId = 1;
+// 往来记录（ctl.history）：`${week}|${employee_id}` → events（从旧到新）。Jing（4）默认一整套 9 种，别人空。
+const histories = {};
+let nextHistoryId = 100;
+function addDays(ymd, n) { const [y, m, d] = ymd.split("-").map(Number); return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10); }
+function historyOf(week, id) {
+  const key = `${week}|${id}`;
+  // ctl.historyG138：Nadia（3）一整套 G138 新的 5 种（换班 / 改天上 / 加班 / 发布时关掉）
+  if (id === 3 && ctl.historyG138 && !histories[key]?.g138) {
+    const slot = (n, t) => ({ date: addDays(week, n), shift_type: t });
+    histories[key] = Object.assign([
+      { id: 31, at: "2026-10-28T20:00:00+00:00", kind: "change_requested", by: "Nadia", by_kind: "employee", lines: [], channels: [], via: "login", request_kind: "move", from_slot: slot(4, "close"), request: slot(5, "close") },
+      { id: 32, at: "2026-10-28T20:00:01+00:00", kind: "change_requested", by: "Nadia", by_kind: "employee", lines: [], channels: [], via: "login", request_kind: "add", request: slot(3, "open") },
+      { id: 33, at: "2026-10-28T20:00:02+00:00", kind: "swap_requested", by: "Nadia", by_kind: "employee", lines: [], channels: [], request_kind: "swap", from_slot: slot(0, "close"), request: slot(4, "close"), peer: "Veronica" },
+      { id: 34, at: "2026-10-28T22:10:00+00:00", kind: "swap_agreed", by: "Veronica", by_kind: "employee", lines: [], channels: [], request_kind: "swap", from_slot: slot(0, "close"), request: slot(4, "close"), peer: "Nadia" },
+      { id: 35, at: "2026-10-28T22:30:00+00:00", kind: "swap_declined_by_peer", by: "Lizzie", by_kind: "employee", lines: [], channels: [], request_kind: "swap", from_slot: slot(2, "close"), request: slot(1, "mid"), peer: "Nadia" },
+      { id: 36, at: "2026-10-31T17:00:00+00:00", kind: "request_closed_on_publish", by: null, by_kind: "system", lines: [], channels: [], request_kind: "add", request: slot(3, "open") },
+    ], { g138: true });
+  }
+  if (!histories[key]) {
+    histories[key] = id !== 4 ? [] : [
+      { id: 1, at: "2026-10-28T16:00:03+00:00", kind: "confirm_sent", by: null, by_kind: "system", lines: [], channels: ["email", "in_app"], title: `Please confirm your schedule — week of ${week}` },
+      { id: 2, at: "2026-10-28T21:14:00+00:00", kind: "answered", by: "Jing", by_kind: "employee", lines: [], channels: [], answer: "accepted", via: "link" },
+      { id: 3, at: "2026-10-29T17:05:00+00:00", kind: "changes_sent", by: "Annie Z", by_kind: "staff", lines: ["Mon 11/2: Open 2:00 AM – 12:00 PM → Open 2:00 AM – 11:45 AM"], channels: ["email", "in_app"], title: `Please confirm your schedule changes — week of ${week}`, failed: ["in_app"] },
+      { id: 4, at: "2026-10-29T17:05:01+00:00", kind: "answer_reset", by: "Annie Z", by_kind: "staff", lines: [], channels: [] },
+      { id: 5, at: "2026-10-29T18:30:00+00:00", kind: "answered", by: "Jing", by_kind: "employee", lines: [], channels: [], answer: "wants_changes", via: "login" },
+      { id: 6, at: "2026-10-29T18:30:01+00:00", kind: "requested", by: "Jing", by_kind: "employee", lines: [], channels: [], via: "login", request: { date: addDays(week, 3), shift_type: "mid" } },
+      { id: 7, at: "2026-10-29T20:10:00+00:00", kind: "approved", by: "Max", by_kind: "staff", lines: [], channels: [], request: { date: addDays(week, 3), shift_type: "mid" } },
+      { id: 8, at: "2026-10-29T20:11:00+00:00", kind: "declined", by: "Max", by_kind: "staff", lines: [], channels: [], request: { date: addDays(week, 5), shift_type: "close" } },
+      { id: 9, at: "2026-10-29T22:02:00+00:00", kind: "published", by: "Annie Z", by_kind: "staff", lines: [], channels: ["email"], title: `Your schedule — week of ${week}` },
+      { id: 10, at: "2026-10-30T15:00:00+00:00", kind: "republished", by: "Annie Z", by_kind: "staff", lines: ["Mon 11/2: Open 2:00 AM – 12:00 PM → Open 2:00 AM – 11:45 AM", "Wed 11/4: not scheduled → Mid 10:00 AM – 6:00 PM"], channels: ["email", "in_app"], title: `Your schedule changed — week of ${week}` },
+    ];
+  }
+  return histories[key];
+}
 const DEFAULT_TIMES = { open: ["02:00", "10:00"], mid: ["08:00", "17:00"], close: ["13:30", "21:30"] };
 let rulesDoc = { version: 1, rules: [], updated_at: null, updated_by: null };
 const log = [];
@@ -757,6 +791,19 @@ http
       return send(res, 200, s);
     }
 
+    // ── 每个人这一周的往来记录（后端 ef task/schedule-person-history 的约定形状，还没上 main）──
+    // ctl.history 没开 = 后端还没上（404）；staff（没有 schedule.edit）403；ctl.historyFail = 500 原话。
+    // Jing（4）默认一整套 9 种；别人没有记录。Send to confirm 发送成功会追加 changes_sent（重置了 Looks good 再加 answer_reset）。
+    const hm = /^\/api\/schedule\/weeks\/(\d{4}-\d{2}-\d{2})\/employees\/(\d+)\/history$/.exec(p);
+    if (hm && req.method === "GET") {
+      if (!ctl.history) return send(res, 404, { detail: "Not Found" });
+      if (ctl.role === "staff") return send(res, 403, { detail: "You don't have access to schedule.edit." });
+      if (ctl.historyFail) return send(res, 500, { detail: ctl.historyFail });
+      const emp = employees.find((e) => e.id === Number(hm[2]));
+      if (!emp) return send(res, 404, { detail: "No such employee." });
+      return send(res, 200, { week_start: hm[1], employee_id: emp.id, name: emp.name, events: historyOf(hm[1], emp.id) });
+    }
+
     const sendMatch = /^\/api\/schedule\/weeks\/(\d{4}-\d{2}-\d{2})\/employees\/(\d+)\/send-changes$/.exec(p);
     if (sendMatch && req.method === "POST") {
       if (ctl.role === "staff") return send(res, 403, { detail: "Only a supervisor or above can send schedule changes." });
@@ -769,6 +816,10 @@ http
       const at = new Date().toISOString();
       weekData.sent = { ...(weekData.sent || {}), [emp.id]: { at, by: "ZZ Test" } };
       sendLog.push({ week: sendMatch[1], employee_id: emp.id });
+      // 往来记录：这次发的那几行（照后端 changes_sent）；重置了 Looks good 再记一条 answer_reset。
+      const sentLines = (pendingChangesOf(weekData).find((c) => c.employee_id === emp.id)?.items || []).map((i) => `${i.date}: ${i.before ?? "not scheduled"} → ${i.after ?? "removed"}`);
+      if (ctl.history) historyOf(sendMatch[1], emp.id).push({ id: nextHistoryId++, at, kind: "changes_sent", by: "ZZ Test", by_kind: "staff", lines: sentLines, channels: ctl.sendEmailOnly ? ["email"] : ["email", "in_app"], title: `Please confirm your schedule changes — week of ${sendMatch[1]}` });
+      if (ctl.history && emp.id === 4 && jingAnswer === "accepted") historyOf(sendMatch[1], emp.id).push({ id: nextHistoryId++, at, kind: "answer_reset", by: "ZZ Test", by_kind: "staff", lines: [], channels: [] });
       // G217 ef（Annie 定「重置」）：发送成功后，原来点 Looks good 的人回到 No answer；wants_changes 不动。
       if (emp.id === 4 && jingAnswer === "accepted") jingAnswer = "no_answer";
       return send(res, 200, { sent_at: at, sent_by: "ZZ Test", channels: ctl.sendEmailOnly ? ["email"] : ["email", "in_app"] });
