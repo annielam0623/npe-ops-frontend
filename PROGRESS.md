@@ -15,7 +15,7 @@
 >    - 确认 Annie 按了 11/01 那周的 Publish again、6 人都收到（后端 738f813 已上）；
 >    - 10d 生产上走一遍（09，Annie 已在 09 窗口放行，跳过 Publish again；测试员工 ZZTest = annzhouyy@msn.com、Leon）；
 >    - 跟进后端上 main：G219（v131 已执行）→ 合 59 的 task/team-contacts；G224（v133）→ 合 09 的 task/dor-updates；is_test（v134）→ 合 test-person；往来记录（v132）→ 合 e6 的 history-fe；92 的 team_list_layout → 合 e6 的 team-columns；/guide/preview → 加 Guide page preview 链接。
->    - 后端明天出方案、要转 Annie 过目的：G138 周三确认挪到发布前（Annie 已动手）、G227 司机页前一天画出全部功能、G228 键名和接口。
+>    - 后端明天出方案、要转 Annie 过目的：G138 周三确认挪到发布前（Annie 已动手）、G227 司机页前一天画出全部功能、G228 键名和接口（后端 4e 在做设计，eb 已把 92 的原始资料和 Annie 四条决定转给 4e，4e 做完会发新主窗口）。
 > 4. 规矩提醒：
 >    - 跟 Annie 说中文；问她的事写完整、附 preview 原文；答过的不再挂着；
 >    - 看时间用 PowerShell Get-Date（eb 今天看错过一次）；
