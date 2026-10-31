@@ -124,7 +124,7 @@
 - `task/team-log-refresh` → **0e9a8fd**（98 派的小修，样子不变；worktree `C:\Code\ops-wt-91-logref`）：
   - 改法：Team 页日志面板的 refreshKey 原来写死 0，改成 logVersion；refreshList 和发重置链接成功后 +1。停用、恢复、改角色、重置链接、取消邀请、删除、邀请、Edit 保存都走这两处，日志开着时新的那条马上出来。
   - tp 检查套加一条：日志开着时点 Reactivate，新的 Status 行自动出现在最上面；把修改去掉，这条确实会失败。
-  - 检查：tp 137/137、users 77/77、teams 54/54、nav 32/32；tsc 0、eslint 0 错、build 通过；已推分支，等 98 说合再合。端口 3493 / 8893 / 9593 已关。
+  - 检查：tp 137/137、users 77/77、teams 54/54、nav 32/32；tsc 0、eslint 0 错、build 通过；合最新 main 后重跑同样全过，98 说合（「两件都照规矩合 main 上线」），已合 main。端口 3493 / 8893 / 9593 已关。
 
 
 ## G228 Content Studio「Team Messages」后端设计（4e，2026-10-30 晚，只读，main f51d40a1）—— 给前端 62 的接手窗口用
