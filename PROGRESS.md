@@ -16,6 +16,18 @@
 - 打算：司机前一天点短信链接，也像 preview 那样全部画出来，灰着不能点，旁边一句英文「Opens on Sat Oct 31」。导游页同理。
 - 后端登记为 G227，下次开工 92 先出 preview（复用模板的 preview 分支，导游页一起），57 发主窗口转 Annie。
 
+### 23. Content Studio「Team Messages」（G228，62 preview https://claude.ai/artifact/MoGjKubqRq3bZks9zvTNSC ）
+- 依据：Annie「2 content studio那个同意你的推荐。动手」。先出 preview，看了再做。
+- 样子：首页第 6 张大卡「Team Messages」，三个标签页：
+  - Driver & Guide SMS：字数条按 160 算，导游卡显示 staff note 还能写几个字，下面有手机样子预览；
+  - Restaurant：5 处固定字；
+  - Schedule Email：问候 + 四组邮件，班次列表由系统生成。
+- 要 Annie 定 4 题：
+  1. 主题、短信正文、链接文字能不能留空：A 必填，清空红字「Can't be empty.」不让存，问候 / 说明 / 页脚可留空（推荐）/ B 都能留空；
+  2. 排班邮件的 {week} 改成好读日期吗：A 改成「Sun, Nov 1」，后端小改（推荐）/ B 照旧「2026-11-01」；
+  3. Notice 标题开不开放：A 只开放邮件主题，Notice 标题写死（推荐，后端靠标题认排班通知）/ B 也开放，后端先换认法；
+  4. 放哪、叫什么：A 一张卡「Team Messages」放全部，跟给客人的 5 张卡分开（推荐）/ B 拆成「Dispatch Messages」「Schedule Emails」两张 / C 换名字。
+
 ### 8. 可以上线后对着看的（不用答，验收时看）
 - Products 手动保存：09 问的 5 处细节，主窗口按盘点推荐定了，见 PROGRESS「2026-10-30」那节 09 的记录：
   - Bus Manifest setup 每个小项一个 Save；
