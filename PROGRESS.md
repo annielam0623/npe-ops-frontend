@@ -16,18 +16,6 @@
 - 打算：司机前一天点短信链接，也像 preview 那样全部画出来，灰着不能点，旁边一句英文「Opens on Sat Oct 31」。导游页同理。
 - 后端登记为 G227，下次开工 92 先出 preview（复用模板的 preview 分支，导游页一起），57 发主窗口转 Annie。
 
-### 23. Content Studio「Team Messages」（G228，62 preview https://claude.ai/artifact/MoGjKubqRq3bZks9zvTNSC ）
-- 依据：Annie「2 content studio那个同意你的推荐。动手」。先出 preview，看了再做。
-- 样子：首页第 6 张大卡「Team Messages」，三个标签页：
-  - Driver & Guide SMS：字数条按 160 算，导游卡显示 staff note 还能写几个字，下面有手机样子预览；
-  - Restaurant：5 处固定字；
-  - Schedule Email：问候 + 四组邮件，班次列表由系统生成。
-- 要 Annie 定 4 题：
-  1. 主题、短信正文、链接文字能不能留空：A 必填，清空红字「Can't be empty.」不让存，问候 / 说明 / 页脚可留空（推荐）/ B 都能留空；
-  2. 排班邮件的 {week} 改成好读日期吗：A 改成「Sun, Nov 1」，后端小改（推荐）/ B 照旧「2026-11-01」；
-  3. Notice 标题开不开放：A 只开放邮件主题，Notice 标题写死（推荐，后端靠标题认排班通知）/ B 也开放，后端先换认法；
-  4. 放哪、叫什么：A 一张卡「Team Messages」放全部，跟给客人的 5 张卡分开（推荐）/ B 拆成「Dispatch Messages」「Schedule Emails」两张 / C 换名字。
-
 ### 8. 可以上线后对着看的（不用答，验收时看）
 - Products 手动保存：09 问的 5 处细节，主窗口按盘点推荐定了，见 PROGRESS「2026-10-30」那节 09 的记录：
   - Bus Manifest setup 每个小项一个 Save；
@@ -390,6 +378,7 @@
   - 62 Driver page preview 链接已上 main 82b44d4（Dispatch 标题行，只 Super Admin，同源 /driver/preview?date=）。Guide 的没加：后端没有按天的 /guide/preview，后端改到下次开工做（78），上 main 后前端加一行；
   - e6 `task/team-columns` 5f2f316 做完（tp 146、teams 54、users 77、nav 32，tsc / build 过），等 92 的 team_list_layout 上 main 再合。
 - Annie「2 content studio那个同意你的推荐。动手」：Content Studio 加三类发出去的文字——①司机 / 导游短信、②改餐发餐厅消息、③排班邮件。司机页界面文字不放。62 先出 preview；后端 57 列模板位置、tmpl__ 键、变量。
+- **Annie「23 全按推荐 动手」**：Content Studio「Team Messages」（G228）。必填项拒空；{week} 改「Sun, Nov 1」；只开放邮件主题；一张卡。已转 57 排后端；62 先用 mock 搭 `task/content-team-messages`。preview：https://claude.ai/artifact/MoGjKubqRq3bZks9zvTNSC
 ### 三、后端在做 / 明天
 - ef：Publish again 这次全员都发（这一周从没收到过的人也发；邮件列出他这一周的全部班 + 排班页链接，不带 PDF）。是 week_start 2026-11-01 那周（Annie：「就是要发下周一那份」「不管多晚都要完成」）。15:00 前上不了，后端做完为止，上 main 后 57 先通知 Annie 再按。前端不用改。
 - ef：空档只算将来（后端）；Test person is_test；往来记录。
