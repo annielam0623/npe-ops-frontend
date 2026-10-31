@@ -107,6 +107,16 @@
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 40. Dispatch Tour bus 选今天的 Shuttle 上车点（91，preview https://claude.ai/artifact/BewNcepgfaJMDPDMvo2Pdz ，2026-10-31 问）
+- 已定：第二台车选也算，不拦（Annie「也算的意思是不阻拦」）。
+- 查清：Dispatch 只读 Tour bus 团，不知道当天有没有 Shuttle 客人、搭哪个团；选的 Shuttle 站就是车上普通站（location_ids），不用新字段。
+- (a) 怎么知道有 Shuttle：A 后端从 Main manifest 带当天 Shuttle 客人数，有才提示（推荐）／B 每天都提示／C Settings 标团。
+- (b) 第一台车是哪个团：A 后端告诉哪个团（推荐，后端给不了先用 B）／B 最上面团的第一台车／C 每个团都提示。
+- (c) 什么算选好：A 任意车上有一个 Shuttle 站就算（推荐）／B 必须指定站。
+- (d) Schedule check 列「Shuttle pick-up not chosen」+ Fix：A 要（推荐，不拦保存）／B 不要。
+- (e) 样子：A 第一台车 Add hotel 换成琥珀细框「Select today's shuttle pick-up…」+ 小字（推荐）／B 旁边琥珀小标签。
+- 需要后端（选 A 时）：Dispatch 当天数据加 shuttle 摘要 {pax, manifest_ids}，从 Main manifest 的 Shuttle 组算。
+
 > 规矩见 CLAUDE.md「问 Annie 要确认的事：给完整内容，并一直置顶」（2026-10-30）。每条都要能单独看懂。
 
 ### 29. Restaurant 的「total」字样能不能留空（e6 问）
