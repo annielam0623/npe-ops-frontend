@@ -737,7 +737,7 @@ function BroadcastPanel({
           <button
             type="button"
             onClick={() => onReveal(upTo + 1)}
-            className="cursor-pointer rounded-[7px] border border-[#d0d0d0] bg-paper px-3 py-[5px] text-[12px] text-[#1a1a1a] hover:border-[#1a1a1a] night:border-white/10 night:bg-white/[.04] night:text-white/90 night:hover:border-white/40"
+            className="cursor-pointer rounded-[7px] border border-[#6b8e74] bg-[#6b8e74] px-3 py-[5px] text-[12px] font-semibold text-white hover:bg-[#5d7d66]"
           >
             + Add template
           </button>

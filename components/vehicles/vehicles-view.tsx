@@ -6,7 +6,7 @@ import { byTick } from "@/lib/by-tick";
 import { usePermissions } from "@/lib/staff-permissions";
 import type { ActionResult } from "@/components/ui/action-result";
 import {
-  BTN_ADD_CLASS,
+  BTN_SUBMIT_CLASS,
   BTN_EDIT_CLASS,
   BTN_OFF_CLASS,
   BTN_ON_CLASS,
@@ -535,7 +535,7 @@ export function VehiclesView() {
               <button
                 type="submit"
                 disabled={adding || view.kind !== "ready"}
-                className={BTN_ADD_CLASS}
+                className={BTN_SUBMIT_CLASS}
               >
                 {adding ? "Adding…" : "Add"}
               </button>
