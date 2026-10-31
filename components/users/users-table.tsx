@@ -1,6 +1,14 @@
 "use client";
 
-import { type ReactNode, useEffect, useState } from "react";
+import {
+  type DragEvent,
+  Fragment,
+  type MouseEvent as ReactMouseEvent,
+  type ReactNode,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 import { cn } from "@/lib/utils";
 import type { AdminUser, AssignableRole, Team, UserRole } from "@/types";
@@ -15,6 +23,14 @@ import {
   isPending,
   normalizeRole,
 } from "./config";
+import {
+  EXTRA_COLUMNS,
+  MIN_COL_WIDTH,
+  TEAM_COLUMN_LABEL,
+  type TeamColumn,
+  type TeamLayout,
+  defaultTeamLayout,
+} from "./layout";
 
 export interface UserRowActions {
   onEditName: (user: AdminUser) => void;
@@ -62,6 +78,9 @@ interface UsersTableProps extends UserRowActions {
   extras?: ReadonlyMap<number, RowExtras>;
   /** 表尾多出的行（Super Admin 看到的部门邮箱），列数要和表头一样。 */
   extraRows?: ReactNode;
+  /** 列顺序 / 列宽（team_list_layout）。给了 onLayoutChange 才能拖表头、拖边改宽。 */
+  layout?: TeamLayout;
+  onLayoutChange?: (layout: TeamLayout) => void;
 }
 
 // 样式照旧页面 settings_users.html 的行内 style。
@@ -91,31 +110,155 @@ export function UsersTable({
   busyUserId,
   extras,
   extraRows,
+  layout = defaultTeamLayout(),
+  onLayoutChange,
   ...actions
 }: UsersTableProps) {
+  // 只给 Super Admin 的三列：没有 extras 时跳过（顺序照存的，只是不画）。
+  const columns = layout.order.filter((k) => !!extras || !EXTRA_COLUMNS.has(k));
+  const [dragging, setDragging] = useState<TeamColumn | null>(null);
+  const [drop, setDrop] = useState<{ key: TeamColumn; after: boolean } | null>(
+    null,
+  );
+  /** 正在拖的列宽（松手才存）。 */
+  const [liveWidth, setLiveWidth] = useState<{
+    key: TeamColumn;
+    px: number;
+  } | null>(null);
+  const resizingRef = useRef(false);
+
+  function finishDrop() {
+    if (onLayoutChange && dragging && drop && drop.key !== dragging) {
+      const order = layout.order.filter((k) => k !== dragging);
+      order.splice(order.indexOf(drop.key) + (drop.after ? 1 : 0), 0, dragging);
+      onLayoutChange({ ...layout, order });
+    }
+    setDragging(null);
+    setDrop(null);
+  }
+
+  function startResize(event: ReactMouseEvent, key: TeamColumn) {
+    if (!onLayoutChange) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const th = (event.currentTarget as HTMLElement).parentElement;
+    if (!th) return;
+    const startX = event.clientX;
+    const startW = th.getBoundingClientRect().width;
+    resizingRef.current = true;
+    let px = startW;
+    function move(e: MouseEvent) {
+      px = Math.max(MIN_COL_WIDTH, Math.round(startW + e.clientX - startX));
+      setLiveWidth({ key, px });
+    }
+    function up() {
+      document.removeEventListener("mousemove", move);
+      document.removeEventListener("mouseup", up);
+      resizingRef.current = false;
+      setLiveWidth(null);
+      const measured = th
+        ? Math.round(th.getBoundingClientRect().width)
+        : Math.round(px);
+      onLayoutChange?.({
+        ...layout,
+        widths: { ...layout.widths, [key]: Math.max(MIN_COL_WIDTH, measured) },
+      });
+    }
+    document.addEventListener("mousemove", move);
+    document.addEventListener("mouseup", up);
+  }
+
+  const widthOf = (key: TeamColumn) =>
+    liveWidth?.key === key ? liveWidth.px : layout.widths[key];
+
   return (
     <div className="overflow-x-auto rounded-[12px] bg-paper shadow-[0_1px_6px_rgba(0,0,0,.08)] night:bg-white/[.04]">
       <table
         className={cn(
-          "w-full border-collapse",
+          // 能拖宽时同 HR 页（w-max min-w-full）：设的列宽才不会被摊回去；至少还是占满整行。
+          onLayoutChange
+            ? "w-max min-w-full border-collapse"
+            : "w-full border-collapse",
           extras ? "min-w-[1180px]" : "min-w-[900px]",
         )}
       >
+        <colgroup>
+          {columns.map((key) => (
+            <col
+              key={key}
+              data-col={key}
+              style={widthOf(key) ? { width: widthOf(key) } : undefined}
+            />
+          ))}
+          <col />
+        </colgroup>
         <thead>
           <tr className="border-b border-[#e5e7eb] bg-paper night:border-white/10 night:bg-white/[.03]">
-            <th className={cn(TH_CLASS, "text-left")}>Person</th>
-            <th className={cn(TH_CLASS, "text-left")}>Role</th>
-            <th className={cn(TH_CLASS, "text-left")}>Status</th>
-            <th className={cn(TH_CLASS, "text-left")}>Teams</th>
-            {extras ? (
-              <>
-                <th className={cn(TH_CLASS, "text-left")}>Access</th>
-                <th className={cn(TH_CLASS, "text-left")}>
-                  Notification duties
+            {columns.map((key) =>
+              onLayoutChange ? (
+                <th
+                  key={key}
+                  scope="col"
+                  data-team-col={key}
+                  draggable
+                  onDragStart={(event: DragEvent) => {
+                    if (resizingRef.current) {
+                      event.preventDefault();
+                      return;
+                    }
+                    event.dataTransfer.effectAllowed = "move";
+                    event.dataTransfer.setData("text/plain", key);
+                    setDragging(key);
+                  }}
+                  onDragOver={(event: DragEvent) => {
+                    if (!dragging) return;
+                    event.preventDefault();
+                    const rect = (
+                      event.currentTarget as HTMLElement
+                    ).getBoundingClientRect();
+                    setDrop({
+                      key,
+                      after: event.clientX > rect.left + rect.width / 2,
+                    });
+                  }}
+                  onDrop={(event: DragEvent) => {
+                    event.preventDefault();
+                    finishDrop();
+                  }}
+                  onDragEnd={() => {
+                    setDragging(null);
+                    setDrop(null);
+                  }}
+                  className={cn(
+                    TH_CLASS,
+                    "relative cursor-grab text-left select-none",
+                    dragging === key && "opacity-45",
+                    drop?.key === key &&
+                      dragging !== key &&
+                      (drop.after
+                        ? "shadow-[inset_-3px_0_0_#3b82f6]"
+                        : "shadow-[inset_3px_0_0_#3b82f6]"),
+                  )}
+                >
+                  {TEAM_COLUMN_LABEL[key]}
+                  <span
+                    aria-hidden
+                    data-resizer={key}
+                    onMouseDown={(e) => startResize(e, key)}
+                    className="absolute top-0 right-0 h-full w-[7px] cursor-col-resize hover:bg-[rgba(59,130,246,.35)]"
+                  />
                 </th>
-                <th className={cn(TH_CLASS, "text-left")}>Home page</th>
-              </>
-            ) : null}
+              ) : (
+                <th
+                  key={key}
+                  scope="col"
+                  data-team-col={key}
+                  className={cn(TH_CLASS, "text-left")}
+                >
+                  {TEAM_COLUMN_LABEL[key]}
+                </th>
+              ),
+            )}
             <th className={cn(TH_CLASS, "text-center")}>Actions</th>
           </tr>
         </thead>
@@ -137,7 +280,7 @@ export function UsersTable({
               roles={roles}
               busy={busyUserId === user.id}
               actions={actions}
-              withExtras={!!extras}
+              columns={columns}
               extra={extras?.get(user.id)}
             />
           ))}
@@ -156,7 +299,7 @@ function UserRow({
   roles,
   busy,
   actions,
-  withExtras,
+  columns,
   extra,
 }: {
   user: AdminUser;
@@ -166,19 +309,14 @@ function UserRow({
   roles: readonly AssignableRole[];
   busy: boolean;
   actions: UserRowActions;
-  withExtras: boolean;
+  /** 这一行按哪些列、什么顺序画（同表头）。 */
+  columns: readonly TeamColumn[];
   extra: RowExtras | undefined;
 }) {
   const pending = isPending(user);
   const role = normalizeRole(user.role);
-
-  return (
-    <tr
-      className={cn(
-        "border-b border-[#f3f4f6] night:border-white/10",
-        !pending && !user.is_active && "opacity-55",
-      )}
-    >
+  const cells: Record<TeamColumn, ReactNode> = {
+    person: (
       <td className="px-4 py-3.5">
         <div className="flex items-center gap-3">
           <div
@@ -223,7 +361,8 @@ function UserRow({
           </div>
         </div>
       </td>
-
+    ),
+    role: (
       <td className="px-4 py-3.5">
         {canChangeRole ? (
           <RoleSelect
@@ -238,8 +377,8 @@ function UserRow({
         )}
         {/* partner 的角色不能在这里改（后端 400）：类型在 Edit 框里的 Account type 换（只给 Super Admin）。 */}
       </td>
-
-      {/* Invited By / Joined 放在 Status 下面一行小字（合并 Team 页 Q7，少两列）。 */}
+    ),
+    status: (
       <td className="px-4 py-3.5">
         <StatusBadge user={user} />
         <div
@@ -251,7 +390,8 @@ function UserRow({
             : `Joined ${formatJoinedDate(user)}${user.created_by ? ` · by ${user.created_by}` : ""}`}
         </div>
       </td>
-
+    ),
+    teams: (
       <td className="px-4 py-3.5">
         <TeamChips
           user={user}
@@ -260,20 +400,32 @@ function UserRow({
           onClick={() => actions.onAssignTeams(user)}
         />
       </td>
+    ),
+    access: (
+      <td className="px-4 py-3.5 text-[13px] whitespace-nowrap tabular-nums">
+        {extra?.access ?? MUTED}
+      </td>
+    ),
+    duties: (
+      <td className="max-w-[220px] px-4 py-3.5 text-[13px] text-[#4b5563] night:text-white/55">
+        {extra?.duties ?? MUTED}
+      </td>
+    ),
+    home: (
+      <td className="px-4 py-3.5 text-[13px]">{extra ? extra.home : null}</td>
+    ),
+  };
 
-      {withExtras ? (
-        <>
-          <td className="px-4 py-3.5 text-[13px] whitespace-nowrap tabular-nums">
-            {extra?.access ?? MUTED}
-          </td>
-          <td className="max-w-[220px] px-4 py-3.5 text-[13px] text-[#4b5563] night:text-white/55">
-            {extra?.duties ?? MUTED}
-          </td>
-          <td className="px-4 py-3.5 text-[13px]">
-            {extra ? extra.home : null}
-          </td>
-        </>
-      ) : null}
+  return (
+    <tr
+      className={cn(
+        "border-b border-[#f3f4f6] night:border-white/10",
+        !pending && !user.is_active && "opacity-55",
+      )}
+    >
+      {columns.map((key) => (
+        <Fragment key={key}>{cells[key]}</Fragment>
+      ))}
 
       <td className="px-4 py-3.5">
         <div className="flex justify-center gap-2">

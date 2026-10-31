@@ -793,6 +793,109 @@ async function fill(page, label, value) {
   const teamCalls2 = (await ctl("log=1")).slice(logStart).filter((l) => l.includes("/api/team/")).length;
   check("admin Invite Staff never calls Team API", teamCalls2 === 0, `got ${teamCalls2}`);
 
+  // ── Columns（10-28 合并 preview v3「动手」那批；后端 92 的 team_list_layout，同 HR 的 hr_list_layout）──
+  {
+    const heads = () => page.$$eval("th[data-team-col]", (ths) => ths.map((t) => t.dataset.teamCol));
+    const savedLayout = async () => {
+      const v = (await ctl("teamlayout=get")).value;
+      return v ? JSON.parse(v) : null;
+    };
+    const dragHead = (from, to) =>
+      page.evaluate(
+        async (from, to) => {
+          const src = document.querySelector(`th[data-team-col="${from}"]`);
+          const dst = document.querySelector(`th[data-team-col="${to}"]`);
+          const dt = new DataTransfer();
+          const r = dst.getBoundingClientRect();
+          src.dispatchEvent(new DragEvent("dragstart", { bubbles: true, dataTransfer: dt }));
+          await new Promise((res) => setTimeout(res, 50));
+          dst.dispatchEvent(new DragEvent("dragover", { bubbles: true, cancelable: true, dataTransfer: dt, clientX: r.left + 2 }));
+          await new Promise((res) => setTimeout(res, 50));
+          dst.dispatchEvent(new DragEvent("drop", { bubbles: true, cancelable: true, dataTransfer: dt, clientX: r.left + 2 }));
+          src.dispatchEvent(new DragEvent("dragend", { bubbles: true, dataTransfer: dt }));
+        },
+        from,
+        to,
+      );
+    const DEFAULT = ["person", "role", "status", "teams", "access", "duties", "home"];
+    await ctl("reset=1");
+    await page.goto(PAGE, { waitUntil: "domcontentloaded" });
+    await page.evaluate(() => localStorage.removeItem("npe.team_list_layout"));
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await waitText(page, "Grace Liu", 60000);
+    await page.waitForSelector("th[data-team-col]");
+    check("Columns: default order Person / Role / Status / Teams / Access / Notification duties / Home page", JSON.stringify(await heads()) === JSON.stringify(DEFAULT), JSON.stringify(await heads()));
+    check(
+      "Columns: note says saved to your account; Reset columns is a plain button (not blue)",
+      await page.evaluate(() => {
+        const n = document.querySelector("[data-team-columns-note]");
+        const b = document.querySelector("[data-team-columns-reset]");
+        return !!n && n.textContent.includes("saved to your account.") && !!b && getComputedStyle(b).backgroundColor !== "rgb(59, 130, 246)";
+      }),
+    );
+    // 拖表头：Status 拖到 Person 前面
+    await dragHead("status", "person");
+    await waitFor(page, async () => (await savedLayout())?.order?.[0] === "status");
+    const afterDrag = await savedLayout();
+    check("drag Status onto Person: saved order starts with status (PUT team_list_layout {value: JSON string})", afterDrag?.order?.join(",") === "status,person,role,teams,access,duties,home", JSON.stringify(afterDrag));
+    check("drag: headers and cells move together (first cell of Grace's row is her Status)", JSON.stringify((await heads()).slice(0, 2)) === '["status","person"]' && (await page.evaluate(() => [...document.querySelectorAll("tr")].find((r) => r.innerText.includes("Grace Liu")).cells[0].innerText.includes("Active"))));
+    // 改宽：拖 Teams 右边 +80px
+    const before = await page.$eval('th[data-team-col="teams"]', (t) => t.getBoundingClientRect().width);
+    await page.evaluate(async () => {
+      const h = document.querySelector('[data-resizer="teams"]');
+      const r = h.getBoundingClientRect();
+      h.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, clientX: r.left, clientY: r.top }));
+      document.dispatchEvent(new MouseEvent("mousemove", { bubbles: true, clientX: r.left + 80, clientY: r.top }));
+      await new Promise((res) => setTimeout(res, 50));
+      document.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, clientX: r.left + 80, clientY: r.top }));
+    });
+    await waitFor(page, async () => (await savedLayout())?.widths?.teams > 0);
+    const afterResize = await savedLayout();
+    check("drag the Teams edge: width saved (about 80px wider)", Math.abs((afterResize?.widths?.teams ?? 0) - (before + 80)) <= 12 && afterResize.order[0] === "status", `${before} → ${JSON.stringify(afterResize)}`);
+    // 重开还在（清掉本机缓存，确定是从账号读回来的）
+    await page.evaluate(() => localStorage.removeItem("npe.team_list_layout"));
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await waitText(page, "Grace Liu", 60000);
+    await waitFor(page, async () => (await heads())[0] === "status");
+    check(
+      "reopen: order and width come back from the account",
+      (await heads())[0] === "status" && (await page.$eval('col[data-col="teams"]', (c) => parseInt(c.style.width, 10))) === afterResize.widths.teams,
+      JSON.stringify(await heads()),
+    );
+    // Reset columns
+    await page.click("[data-team-columns-reset]");
+    await waitFor(page, async () => (await savedLayout())?.order?.[0] === "person");
+    check("Reset columns: default order, no widths, saved", JSON.stringify(await heads()) === JSON.stringify(DEFAULT) && JSON.stringify((await savedLayout())?.widths) === "{}");
+    // admin（不是 Super Admin）：没有那三列，存的顺序照用
+    await dragHead("teams", "person");
+    await waitFor(page, async () => (await savedLayout())?.order?.[0] === "teams");
+    await ctl("viewer=admin");
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await waitText(page, "Grace Liu", 60000);
+    await waitFor(page, async () => (await heads())[0] === "teams");
+    check("admin: no Access / duties / Home page columns, saved order still used", JSON.stringify(await heads()) === '["teams","person","role","status"]', JSON.stringify(await heads()));
+    // 后端还没认这个键（404）：存在本机，写 saved in this browser.
+    await ctl("reset=1&teamlayout404=1");
+    await page.evaluate(() => localStorage.removeItem("npe.team_list_layout"));
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await waitText(page, "Grace Liu", 60000);
+    await waitFor(page, async () => (await page.$eval("[data-team-columns-note]", (n) => n.textContent)).includes("saved in this browser."));
+    await dragHead("role", "person");
+    await sleep(400);
+    check(
+      "backend without team_list_layout (404): note says saved in this browser, order kept in this browser",
+      (await page.$eval("[data-team-columns-note]", (n) => n.textContent)).includes("saved in this browser.") &&
+        (await page.evaluate(() => JSON.parse(localStorage.getItem("npe.team_list_layout") || "{}").order?.[0])) === "role",
+    );
+    // partner：Team 页打不开，也就没有 Columns
+    await ctl("reset=1&viewer=partner");
+    await page.goto(PAGE, { waitUntil: "domcontentloaded" });
+    await sleep(2500);
+    check("partner: no Columns (no Reset columns, no draggable titles)", !(await page.$("[data-team-columns-reset]")) && !(await page.$('th[data-team-col][draggable="true"]')));
+    await ctl("reset=1");
+    await page.evaluate(() => localStorage.removeItem("npe.team_list_layout"));
+  }
+
   check("no page errors", consoleErrors.length === 0, consoleErrors.join(" | "));
   await browser.close();
   console.log(failures ? `\n${failures} FAILED` : "\nALL PASS");

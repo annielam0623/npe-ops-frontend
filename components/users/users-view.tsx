@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import type {
   ActionFailure,
@@ -33,7 +40,9 @@ import {
   fetchTeamMembers,
   saveContactDuties,
 } from "@/lib/team-permissions-api";
+import { usePermissions } from "@/lib/staff-permissions";
 import { fetchTeams } from "@/lib/teams-api";
+import { fetchUserPref, saveUserPref } from "@/lib/user-prefs-api";
 import {
   buildInviteUrl,
   buildResetUrl,
@@ -69,6 +78,13 @@ import {
   normalizeRole,
   supportsSupervisor,
 } from "./config";
+import {
+  type TeamColumn,
+  type TeamLayout,
+  defaultTeamLayout,
+  normalizeTeamLayout,
+  parseTeamLayout,
+} from "./layout";
 import { DeletePersonDialog } from "./delete-person-dialog";
 import { DisplayNameDialog } from "./display-name-dialog";
 import { InviteDialog, type InviteOutcome } from "./invite-dialog";
@@ -118,6 +134,26 @@ type DialogState =
   /** Edit 框最下面的 Delete 点了：小确认框；Cancel 回到 Edit 框。 */
   | { kind: "delete-person"; user: AdminUser; member: TeamMemberUser }
   | null;
+
+const LAYOUT_PREF = "team_list_layout";
+/** 本机缓存：先用它马上画表，账号里的到了再覆盖（同 HR 页）。 */
+const LAYOUT_CACHE = "npe.team_list_layout";
+
+function readCachedLayout(): TeamLayout | null {
+  try {
+    return parseTeamLayout(window.localStorage.getItem(LAYOUT_CACHE));
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedLayout(layout: TeamLayout) {
+  try {
+    window.localStorage.setItem(LAYOUT_CACHE, JSON.stringify(layout));
+  } catch {
+    // 无痕窗口等存不了就算了，只是下次不记得。
+  }
+}
 
 /** 「Show」下拉：只看某一类（人多了好找）。 */
 type ShowFilter = "all" | "active" | "pending" | "inactive" | "partners";
@@ -210,6 +246,14 @@ export function TeamView() {
   const [show, setShow] = useState<ShowFilter>("all");
   // 递增即重新校验身份并拉取列表（首次加载、Retry）。
   const [reloadKey, setReloadKey] = useState(0);
+  // Columns（10-28 合并 preview v3「动手」那批，等后端白名单的那一项）：拖表头换顺序、拖边改宽，存进账号的 team_list_layout。
+  // partner 不出（后端 PUT 对 partner 403）。
+  const partnerView = usePermissions().partnerView;
+  const [layout, setLayout] = useState<TeamLayout>(defaultTeamLayout);
+  /** 账号里存不了（后端还没认 team_list_layout，404）时只存在本机。 */
+  const [layoutScope, setLayoutScope] = useState<"account" | "browser">(
+    "account",
+  );
   // 递增即让开着的 Action Log 重拉第一页（停用 / 改角色 / 重置链接等成功之后，新的那条马上出来）。
   const [logVersion, setLogVersion] = useState(0);
 
@@ -236,6 +280,37 @@ export function TeamView() {
     },
     [redirectToLogin],
   );
+
+  // 列布局：本机缓存先画，账号里的到了再覆盖；没存过（null）或读不到就保持本机的。
+  useEffect(() => {
+    if (partnerView) return;
+    const cached = readCachedLayout();
+    if (cached) setLayout(cached);
+    const controller = new AbortController();
+    fetchUserPref(LAYOUT_PREF, controller.signal)
+      .then((text) => {
+        const remote = parseTeamLayout(text);
+        if (remote) {
+          setLayout(remote);
+          writeCachedLayout(remote);
+        }
+      })
+      .catch((error: unknown) => {
+        if (isStatus(error, 404)) setLayoutScope("browser");
+      });
+    return () => controller.abort();
+  }, [partnerView]);
+
+  function changeLayout(next: TeamLayout) {
+    const normalized = normalizeTeamLayout(next);
+    setLayout(normalized);
+    writeCachedLayout(normalized);
+    saveUserPref(LAYOUT_PREF, JSON.stringify(normalized)).catch(
+      (error: unknown) => {
+        if (isStatus(error, 404)) setLayoutScope("browser");
+      },
+    );
+  }
 
   useEffect(() => {
     const controller = new AbortController();
@@ -640,6 +715,27 @@ export function TeamView() {
                     : ""}
                 </span>
               ) : null}
+              {partnerView ? null : (
+                <>
+                  <span
+                    data-team-columns-note
+                    className="text-[12px] text-[#8ea3b8]"
+                  >
+                    Drag titles to reorder, drag edges to resize —{" "}
+                    {layoutScope === "account"
+                      ? "saved to your account."
+                      : "saved in this browser."}
+                  </span>
+                  <button
+                    type="button"
+                    data-team-columns-reset
+                    onClick={() => changeLayout(defaultTeamLayout())}
+                    className="h-8 cursor-pointer rounded-[7px] border border-[#d1d5db] bg-paper px-2.5 text-[12.5px] text-[#1a1a1a] night:border-white/10 night:bg-white/[.04] night:text-white/90"
+                  >
+                    Reset columns
+                  </button>
+                </>
+              )}
             </div>
             {notice ? (
               <p
@@ -660,11 +756,14 @@ export function TeamView() {
                 roles={assignableRolesFor(view.withSupervisor)}
                 busyUserId={busyUserId}
                 extras={extras}
+                layout={layout}
+                onLayoutChange={partnerView ? undefined : changeLayout}
                 extraRows={visibleContacts.map((c) => (
                   <ContactRow
                     key={`c${c.id}`}
                     contact={c}
                     duties={dutyNames(c.duties)}
+                    columns={layout.order}
                     onEdit={() => setDialog({ kind: "contact", contact: c })}
                   />
                 ))}
@@ -807,46 +906,59 @@ const MUTED = <span className="text-[#9ca3af] night:text-white/35">—</span>;
 function ContactRow({
   contact,
   duties,
+  columns,
   onEdit,
 }: {
   contact: TeamMemberContact;
   duties: string | null;
+  /** 同表头的列顺序（只有 Super Admin 看得到这些行，那时七列都有）。 */
+  columns: readonly TeamColumn[];
   onEdit: () => void;
 }) {
+  const person = (
+    <td className="px-4 py-3.5">
+      <div className="flex items-center gap-3">
+        <div
+          aria-hidden
+          className="flex size-[38px] shrink-0 items-center justify-center rounded-full bg-[#0e7490] text-[15px] font-bold text-white"
+        >
+          ✉
+        </div>
+        <div className="min-w-0">
+          <div className="text-[14px] font-semibold text-[#1a1a2e] night:text-white/90">
+            {contact.name}
+            <span className="ml-1.5 inline-block rounded-[6px] bg-[#e0f2fe] px-[7px] py-px align-middle text-[11px] font-semibold whitespace-nowrap text-[#075985]">
+              Department mailbox
+            </span>
+          </div>
+          <div className="mt-px text-[11px] break-all text-[#1a1a1a] night:text-white/35">
+            {contact.email}
+          </div>
+        </div>
+      </div>
+    </td>
+  );
   return (
     <tr
       data-contact-row
       className="border-b border-[#f3f4f6] night:border-white/10"
     >
-      <td className="px-4 py-3.5">
-        <div className="flex items-center gap-3">
-          <div
-            aria-hidden
-            className="flex size-[38px] shrink-0 items-center justify-center rounded-full bg-[#0e7490] text-[15px] font-bold text-white"
+      {columns.map((key) =>
+        key === "person" ? (
+          <Fragment key={key}>{person}</Fragment>
+        ) : key === "duties" ? (
+          <td
+            key={key}
+            className="max-w-[220px] px-4 py-3.5 text-[13px] text-[#4b5563] night:text-white/55"
           >
-            ✉
-          </div>
-          <div className="min-w-0">
-            <div className="text-[14px] font-semibold text-[#1a1a2e] night:text-white/90">
-              {contact.name}
-              <span className="ml-1.5 inline-block rounded-[6px] bg-[#e0f2fe] px-[7px] py-px align-middle text-[11px] font-semibold whitespace-nowrap text-[#075985]">
-                Department mailbox
-              </span>
-            </div>
-            <div className="mt-px text-[11px] break-all text-[#1a1a1a] night:text-white/35">
-              {contact.email}
-            </div>
-          </div>
-        </div>
-      </td>
-      <td className="px-4 py-3.5">{MUTED}</td>
-      <td className="px-4 py-3.5">{MUTED}</td>
-      <td className="px-4 py-3.5">{MUTED}</td>
-      <td className="px-4 py-3.5">{MUTED}</td>
-      <td className="max-w-[220px] px-4 py-3.5 text-[13px] text-[#4b5563] night:text-white/55">
-        {duties ?? MUTED}
-      </td>
-      <td className="px-4 py-3.5">{MUTED}</td>
+            {duties ?? MUTED}
+          </td>
+        ) : (
+          <td key={key} className="px-4 py-3.5">
+            {MUTED}
+          </td>
+        ),
+      )}
       <td className="px-4 py-3.5">
         <div className="flex justify-center">
           <button
@@ -1023,6 +1135,11 @@ function TeamHowTo({ isSuperAdmin }: { isSuperAdmin: boolean }) {
         <li>
           Find someone: type in the search box, or pick Show to see only active
           people, pending invites, inactive accounts or partners.
+        </li>
+        <li>
+          Columns: drag a column title onto another to move it, or drag the
+          right edge of a title to change its width. This is saved to your
+          account. Reset columns puts them back.
         </li>
         <li>
           Teams: click the team names in a person&apos;s row (or + Add), tick
