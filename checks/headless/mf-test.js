@@ -289,6 +289,22 @@ async function run() {
   await waitFor("document.querySelector('section[aria-label^=\"Bus\"]')");
   await helpers();
   check("直接打开：‹ Back 和「Dispatch · 日子」都去排车页的这一天", await evaluate("const as = [...document.querySelectorAll('nav[aria-label=Back] a')]; return as.length === 2 && as[0].textContent === '‹ Back' && as.every(a => a.getAttribute('href') === '/dispatch?date=2026-10-05') && as[1].textContent === 'Dispatch · Mon, Oct 5';"));
+  // 改动记录（Annie 2026-10-30「同意所有推荐。动手」）：页面最下面，同 Dispatch 页；只看这个团、打印也列、能改这页的人才有
+  {
+    const toggle = "[...document.querySelectorAll('[data-manifest-log] button')].find(b => b.textContent.includes('Action Log'))";
+    const lb = (await mockLog()).length;
+    check("Action Log：页面最下面（How to use 后面）有面板、收着不请求", (await evaluate(`const t = ${toggle}; return !!t && !!(document.body.textContent.indexOf('How to use') < document.body.textContent.lastIndexOf('Action Log'));`)) && (await mockLog()).slice(lb).every((e) => e.path !== "/api/dispatch/manifest/action-log"));
+    await evaluate(`${toggle}.click();`);
+    await waitFor("document.querySelector('[data-manifest-log] [data-action-log]') && document.querySelector('[data-manifest-log]').textContent.includes('Text size')");
+    const r1 = (await mockLog()).slice(lb).filter((e) => e.path === "/api/dispatch/manifest/action-log");
+    check("Action Log：展开才请求一次，带这一天的 date 和这个团的 tour", r1.length === 1 && r1[0].q?.date === "2026-10-05" && r1[0].q?.tour === "3", JSON.stringify(r1.map((e) => e.q)));
+    check(
+      "Action Log：说明写团名 + 日期；Text size 13.5 → 15、Moved Smith ×2 Bus A → Bus B、Printed Bus A、Pending change handled（打印也列）",
+      await evaluate("const t = document.querySelector('[data-manifest-log]').textContent; return t.includes('Changes to the Bus Manifest for Antelope Canyon on Mon, Oct 5') && t.includes('Text size') && t.includes('13.5') && t.includes('15') && t.includes('Moved') && t.includes('Smith ×2 (CHD2)') && t.includes('Bus A') && t.includes('Bus B') && t.includes('Printed') && t.includes('Pending change handled');"),
+      await evaluate("return document.querySelector('[data-manifest-log]').textContent.slice(0, 500);"),
+    );
+    await evaluate(`${toggle}.click();`);
+  }
   check("How to use 写了 Back / Dispatch 两个键", await evaluate("return document.body.textContent.includes('Back returns to the page you came from. The Dispatch button opens Dispatch on this manifest');"));
   check("页头：团名、日期、单数 / 人数 / 文件", await evaluate("return document.querySelector('h1').textContent === 'Antelope Canyon' && document.body.textContent.includes('Mon, Oct 5, 2026 · 4 orders, 8 pax · ant.csv');"));
   check("每台车一块：色条（司机、BUS #）、节标题用节颜色", await evaluate("const b = document.querySelector('section[aria-label=\"Bus 2041=A\"]'); return !!b && b.textContent.includes('FREDDY') && b.textContent.includes('BUS #: 2041=A') && [...b.querySelectorAll('td')].some(td => td.textContent === 'LOWER ANTELOPE - 4 PAX' && td.style.background.includes('191, 227, 176'));"));
@@ -940,6 +956,7 @@ async function run() {
   await goto(`${APP}/dispatch/manifest?date=2026-10-05&tour=3`);
   const mShown = await waitFor("document.querySelector('section[aria-label^=\"Bus\"]')", 60000);
   await helpers();
+  check("partner manifest 页：没有 Action Log、不请求改动记录", (await evaluate("return !document.querySelector('[data-manifest-log]');")) && (await mockLog()).slice(before).every((e) => e.path !== "/api/dispatch/manifest/action-log"));
   check("partner manifest 页：名单照常显示", mShown && (await evaluate("return document.body.textContent.includes('Mon, Oct 5, 2026 · 4 orders, 8 pax');")));
   check(
     "partner manifest 页（G208）：有 Print all buses / 每车 Print（后端打印页只要 dispatch.view）；没有 Download / Guide view、换车下拉、How to use",

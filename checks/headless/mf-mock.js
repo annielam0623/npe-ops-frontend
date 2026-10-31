@@ -138,6 +138,19 @@ http.createServer(async (req, res) => {
     if (ctl.pendingOff) return send(res, 404, { detail: "Not Found" });
     return send(res, 200, { run_date: q.date, items: ctl.pending });
   }
+  // Bus Manifest 改动记录（Annie 2026-10-30「同意所有推荐。动手」；读接口等后端 57 / 21，形状同其他 action-log）：date + tour 必填。
+  if (p === "/api/dispatch/manifest/action-log") {
+    if (ctl.mlog403) return send(res, 403, { detail: "Permission required" });
+    const date = url.searchParams.get("date");
+    const tour = url.searchParams.get("tour");
+    if (!date || !tour) return send(res, 422, { detail: "date and tour are required" });
+    return send(res, 200, { next_cursor: null, entries: [
+      { id: "5-1", at: "2026-10-04T23:41:00+00:00", by: "Annie Z", action: "update", label: "Bus Manifest", what: "Text size", from: "13.5", to: "15" },
+      { id: "4-1", at: "2026-10-04T23:30:00+00:00", by: "Max", action: "seat_move", label: "Smith ×2 (CHD2)", what: "Smith ×2 (CHD2)", from: "Bus A", to: "Bus B" },
+      { id: "3-1", at: "2026-10-04T23:10:00+00:00", by: "Leon", action: "print", label: "Bus A", what: "Bus A", from: null, to: null },
+      { id: "2-1", at: "2026-10-04T23:00:00+00:00", by: "Max", action: "pending_handled", label: "Johnson ×3 (CHD21)", what: "Johnson ×3 (CHD21) cancelled — removed from Bus B", from: null, to: null },
+    ] });
+  }
   if (p === "/api/dispatch/pending/handled") {
     const b = JSON.parse(await readRaw(req)); entry.body = b;
     if (ctl.handledFail) return send(res, 400, { detail: ctl.handledFail });
