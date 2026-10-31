@@ -10,16 +10,6 @@
 
 > 规矩见 CLAUDE.md「问 Annie 要确认的事：给完整内容，并一直置顶」（2026-10-30）。每条都要能单独看懂。
 
-### 21. ops 里加「Driver page preview」入口（Annie 10-30 晚原话「让前端加入口」，经 57 转）
-- 现状：司机页是后端网页（/driver），Super Admin 预览是 https://confirm.nationalparkexpress.com/driver/preview，可带 ?date=YYYY-MM-DD 和 ?hr_id=，只读。ops 里没有任何地方链到它，Annie 找不到。导游页有同样的预览就一起加。
-- Annie 已在 Page visibility 把 Driver page 打开。
-- 主窗口拟的做法（下次开工先给 Annie 看一眼放哪，再做）：
-  - 只给 Super Admin；
-  - 放在 Dispatch 页标题行右边一个链接「Driver page preview ↗」（导游页同样一个），新标签页打开，自动带上 Dispatch 当前选的日期；
-  - 不是蓝色键，是普通链接。
-  - 另一个选法是放侧栏。
-
-
 ### 22. 司机页 / 导游页：前一天打开就把全部功能画出来（后端模板，要先 preview）
 - Annie 10-30 晚原话：「其实我们在给司机这个链接的时候就应该把全部功能放进去，提前让他们知道要做哪些事情」。
 - 现在：前一天打开只看到名单和 Call / Text；Picked up / No show、Boarded、改餐 Change、联系餐厅要到当天才出现。Super Admin 的 /driver/preview 会画出来，但灰着。
@@ -369,6 +359,11 @@
   - 前端照 Annie 截图改写法 ebf8a03：HR 没有的名字框下写「CCL: JUAN · Not in HR」，不再写橙字。
   - Annie 原话：「这个才是正确的样子，框里是staff手工打的」，之后答「对」。
   - 重名（BRUCE）、车号不在 Vehicles 的照旧橙字，以后再问 Annie 要不要统一。
+- 加班（Annie：「后端在加班做，你也是」）：
+  - 09 `task/dor-updates`（G224 mock）；
+  - 62 `task/driver-preview-link`：Dispatch 标题行的 Driver / Guide page preview 链接，Annie「1. 马上上线」；
+  - e6 `task/team-columns`（team_list_layout mock）。
+- Annie「2 content studio那个同意你的推荐。动手」：Content Studio 加三类发出去的文字——①司机 / 导游短信、②改餐发餐厅消息、③排班邮件。司机页界面文字不放。62 先出 preview；后端 57 列模板位置、tmpl__ 键、变量。
 ### 三、后端在做 / 明天
 - ef：Publish again 这次全员都发（这一周从没收到过的人也发；邮件列出他这一周的全部班 + 排班页链接，不带 PDF）。是 week_start 2026-11-01 那周（Annie：「就是要发下周一那份」「不管多晚都要完成」）。15:00 前上不了，后端做完为止，上 main 后 57 先通知 Annie 再按。前端不用改。
 - ef：空档只算将来（后端）；Test person is_test；往来记录。
