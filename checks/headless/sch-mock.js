@@ -352,13 +352,20 @@ http
       const days = datesOfWeek(cm[1]);
       return send(res, 200, {
         sent_at: "2026-10-07T16:00:00+00:00",
+        // G138 形状（4e 2026-10-30 晚「最终接口」）：people 只有回应，请求平铺在 requests 里。
+        deadline: "2026-10-01T12:00:00-07:00",
+        past_deadline: false,
+        empty_draft: false,
         people: [
-          { employee_id: 1, name: "Veronica", answer: "accepted", answered_at: "2026-10-07T16:41:00+00:00", requests: [] },
-          { employee_id: 2, name: "Lizzie", answer: "wants_changes", answered_at: "2026-10-07T18:02:00+00:00",
-            requests: confirmReqs.map((r) => ({ id: r.id, date: days[r.dayIdx], shift_type: r.shift_type, status: r.status })) },
-          { employee_id: 3, name: "Nadia", answer: "no_answer", answered_at: null, requests: [] },
-          ...(jingAnswer ? [{ employee_id: 4, name: "Jing", answer: jingAnswer, answered_at: jingAnswer === "no_answer" ? null : "2026-10-07T17:00:00+00:00", requests: [] }] : []),
+          { employee_id: 1, name: "Veronica", answer: "accepted", answered_at: "2026-10-07T16:41:00+00:00" },
+          { employee_id: 2, name: "Lizzie", answer: "wants_changes", answered_at: "2026-10-07T18:02:00+00:00" },
+          { employee_id: 3, name: "Nadia", answer: "counted_accepted", answered_at: null },
+          ...(jingAnswer ? [{ employee_id: 4, name: "Jing", answer: jingAnswer, answered_at: jingAnswer === "no_answer" ? null : "2026-10-07T17:00:00+00:00" }] : []),
         ],
+        requests: confirmReqs.map((r) => ({
+          id: r.id, kind: "add", status: r.status, from: { employee_id: 2, name: "Lizzie" }, my_slot: null, their_slot: null, peer: null,
+          date: days[r.dayIdx], shift_type: r.shift_type, peer_timed_out: false, created_at: "2026-10-07T18:02:00+00:00", decided_at: null,
+        })),
       });
     }
     const am = /^\/api\/schedule\/confirmation-requests\/(\d+)\/(approve|decline)$/.exec(p);

@@ -1154,24 +1154,24 @@ async function run() {
   await openPage(`${APP}/schedule?week=2026-10-04`);
   await waitFor("document.querySelector('[data-responses]')");
   check(
-    "Responses：三个人的回应（Veronica Accepted、Lizzie Wants changes、Nadia No answer yet），写想加的班",
-    await evaluate(`const r = (id) => document.querySelector('[data-response="' + id + '"]')?.textContent ?? ''; return r(1).includes('Accepted') && r(2).includes('Wants changes') && r(2).includes('Wed Mid') && r(2).includes('Fri Open') && r(3).includes('No answer yet');`),
+    "Responses（G138）：Veronica Accepted、Lizzie Wants changes + 每条请求和状态、Nadia 过了期限写 No answer — counted as Looks good；表头写 Answer by 期限、2 requests",
+    await evaluate(`const r = (id) => document.querySelector('[data-response="' + id + '"]')?.textContent ?? ''; const meta = document.querySelector('[data-responses-meta]').textContent; return r(1).includes('Accepted') && r(2).includes('Wants changes') && r(2).includes('+ Wed Mid (extra shift): Waiting for you') && r(2).includes('+ Fri Open (extra shift): Waiting for you') && r(3).includes('No answer — counted as Looks good') && meta.includes('Answer by Thu, Oct 1, 12:00 PM') && meta.includes('2 requests');`),
     await evaluate("return document.querySelector('[data-responses]')?.textContent ?? 'none';"),
   );
   check(
-    "亮黄色想加的班：Lizzie 两条，在周三 Mid、周五 Open 的格子里，各有 Approve / Decline",
-    await evaluate(`const a = [...document.querySelectorAll('[data-responses] [data-added=pending]')]; const bg = getComputedStyle(a[0] ?? document.body).backgroundColor; return a.length === 2 && a.every((e) => e.textContent.includes('Lizzie') && e.textContent.includes('asked')) && bg === 'rgb(252, 211, 77)' && document.querySelectorAll('[data-approve]').length === 2 && document.querySelectorAll('[data-decline]').length === 2;`),
-    await evaluate("return [...document.querySelectorAll('[data-responses] [data-added]')].map((e) => e.dataset.added + ':' + e.textContent).join(' | ');"),
+    "同线上周表的亮黄卡片：Lizzie 那行周三、周五各一张「Lizzie asked · extra shift」，下面 Approve（蓝）在前、Decline 在后",
+    await evaluate(`const a = [...document.querySelectorAll('[data-responses-grid] [data-req-card=pending]')]; const btns = [...a[0].parentElement.querySelectorAll('button')].map((b) => b.textContent); return a.length === 2 && a.every((e) => e.textContent.includes('Lizzie asked · extra shift')) && a[0].className.includes('bg-[rgba(253,224,71,.28)]') && !!document.querySelector('[data-rcell="2|2026-10-07"] [data-req-card]') && !!document.querySelector('[data-rcell="2|2026-10-09"] [data-req-card]') && btns.join('/') === 'Approve/Decline' && document.querySelector('[data-approve="901"]').className.includes('3b82f6') && !document.querySelector('[data-decline="901"]').className.includes('3b82f6');`),
+    await evaluate("return document.querySelector('[data-responses-grid]')?.innerText.slice(0, 500) ?? 'none';"),
   );
   let from = (await mockLog()).length;
   await evaluate("document.querySelector('[data-approve=\"901\"]').click();");
   await waitFor("!document.querySelector('[data-approve=\"901\"]')");
-  check("Approve：发 POST …/confirmation-requests/901/approve；那一条不再是亮黄色，只剩周五 Open 一条", (await since(from, (e) => e.path === "/api/schedule/confirmation-requests/901/approve")).length === 1 && (await evaluate("return document.querySelectorAll('[data-responses] [data-added=pending]').length === 1;")));
+  check("Approve：发 POST …/confirmation-requests/901/approve；那一条不再是亮黄色，表里写 Approved", (await since(from, (e) => e.path === "/api/schedule/confirmation-requests/901/approve")).length === 1 && (await evaluate("return document.querySelectorAll('[data-responses-grid] [data-req-card=pending]').length === 1 && document.querySelector('[data-response=\"2\"]').textContent.includes('+ Wed Mid (extra shift): Approved');")));
   check("Approve 之后这一周重新拉了一次（周三 Mid 多了 Lizzie 的正式时段）", (await since(from, (e) => e.path === "/api/schedule/weeks/2026-10-04")).length >= 1);
   from = (await mockLog()).length;
   await evaluate("document.querySelector('[data-decline=\"902\"]').click();");
-  await waitFor("document.querySelector('[data-responses] [data-added=declined]')");
-  check("Decline：发 POST …/902/decline；那一条变成划掉的 declined，没有 Approve / Decline 键", (await since(from, (e) => e.path === "/api/schedule/confirmation-requests/902/decline")).length === 1 && (await evaluate("const d = document.querySelector('[data-responses] [data-added=declined]'); return d.textContent.includes('declined') && !d.querySelector('button') && !document.querySelector('[data-approve]');")));
+  await waitFor("document.querySelector('[data-responses] [data-asked=declined]')");
+  check("Decline：发 POST …/902/decline；表里写红字 Declined，周表没有亮黄卡片了（没有要处理的就不出表）", (await since(from, (e) => e.path === "/api/schedule/confirmation-requests/902/decline")).length === 1 && (await evaluate("const d = document.querySelector('[data-responses] [data-asked=declined]'); return d.textContent.includes('+ Fri Open (extra shift): Declined') && d.querySelector('span').className.includes('red') && !document.querySelector('[data-responses-grid]') && !document.querySelector('[data-approve]');")));
   // 员工（只读）不显示 Responses。
   await ctl({ role: "staff", meName: "Jing" });
   await openPage(`${APP}/schedule?week=2026-10-04`);

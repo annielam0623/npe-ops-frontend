@@ -115,7 +115,11 @@
   - 期限行「Please confirm by Thu, Oct 29, 12:00 PM」；过了期限 / 已发布 / 这周开始了：蓝色提示、只读（没有按钮、⠿、+ Work this day）。
   - 别人找我换班：黄色提示 + 我那格一分为二，Accept（蓝）在前、Decline 在后。
   - 检查：sc 34/34（重写）、sch 277/277、tsc / eslint 过。confirm-board.tsx 留着（Responses 卡还在用）。
-- **下一步（第 2 步，排班的人那边）**：Responses 卡改读新形状（people[].answer 多 counted_accepted「No answer — counted as Looks good」、顶层 requests[] 平铺、每条 Approve / Decline 同意在前、换班 awaiting_peer 时写 Waiting for Lizzie 不能批）；周表亮黄格子按 requests 的 my_slot / their_slot / date 画（换班一分为二、改天、加班）；首次 Publish 确认框数 pending + awaiting_peer；History 新 5 种 kind 的说法。lib 里 ConfirmationPerson / WeekConfirmations 现在是旧形状（标了 TODO(G138)）。
+- **第 2 步（排班的人那边）做了一半**：
+  - Responses 卡改读 4e 最终形状（people 只有回应、requests[] 平铺）：Answer 列多「No answer — counted as Looks good」（counted_accepted）；What they asked 列每条请求 + 状态（Waiting for Lizzie / Lizzie agreed — waiting for you / Waiting for you / Approved 绿 / Declined 红 / Lizzie declined / Closed when published）；表头写 Answer by 期限 / Deadline passed、N requests；empty_draft 时写一句。
+  - 卡里那张班次 × 天的旧表（confirm-board.tsx，已删）换成同线上周表的一人一行表：改天上 / 加班画亮黄卡片、换班一分为二，等处理的下面 Approve（蓝）在前、Decline 在后；awaiting_peer 只写 Waiting for Lizzie。
+  - 检查：sch 277/277（Responses 那段改成新形状）、sc 34/34、tsc / eslint 过。
+  - **还没做**：① sch mock 只有 add 两条，换班 / 改天上的格子画法还没进检查套；② 首次 Publish 确认框数 pending + awaiting_peer（「2 requests are still open…」）；③ History 新 5 种 kind 的说法；④ preview ③ 画的是「就在排班页那张表上」亮黄，现在亮黄在 Responses 卡自己的周表里（同现在的位置）——明天先问 98 / Annie 要不要挪进主周表（week-grid.tsx），不问不动。
 - 后端 G138 上 main 后：合最新 main、对着真接口核一遍字段、跑 sc / sch / nav / build，问过 98 再合。
 
 ## 2026-10-30 晚 7 Days Forecast：左边一列名字统一 15px 半粗（置顶 31，`task/forecast-label-size`，工作窗口 `npe-ops-frontend-09`[8a0116]，主窗口 98 派）—— 已合 main

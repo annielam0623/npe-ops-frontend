@@ -109,30 +109,26 @@ export type ChangeRequestBody =
   | { kind: "move"; my_slot_id: number; date: string }
   | { kind: "add"; date: string; shift_type: string };
 
-/**
- * 排班的人这一边（Responses 卡）。TODO(G138)：改成 4e 最终接口的 people[].answer 多 counted_accepted、
- * 顶层 requests[] 平铺；现在 Responses 卡还按第一版的 people[].requests 读。
- */
-export interface LegacyConfirmRequest {
-  id: number;
-  date: string;
-  shift_type: string;
-  status: "pending" | "approved" | "declined";
-}
-
+/** 排班的人这一边（Responses 卡）：每人的回应。counted_accepted = 过了期限没回，算 Looks good。 */
 export interface ConfirmationPerson {
   employee_id: number;
   name: string;
-  /** 还没回是字符串 "no_answer"，不是 null（后端 `week_confirmations` 原样返回）。 */
   answer: ConfirmAnswer | "no_answer" | "counted_accepted";
   answered_at: string | null;
-  requests: LegacyConfirmRequest[];
+  sent_at?: string | null;
+  changed_since_sent?: boolean;
 }
 
 export interface WeekConfirmations {
   /** 周三通知发出的时间；还没发 = null。 */
   sent_at: string | null;
+  deadline?: string | null;
+  past_deadline?: boolean;
+  /** 周三那次因为草稿是空的没发。 */
+  empty_draft?: boolean;
   people: ConfirmationPerson[];
+  /** 这一周全部的请求，平铺一份。 */
+  requests: ConfirmRequest[];
 }
 
 /** 接口还没上线：404 / 405 / 501 都当没有这个功能。 */
