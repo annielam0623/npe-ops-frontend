@@ -6,6 +6,14 @@
 
 > **明天（10/31，周末时间表）的主窗口：先读下面「2026-10-30 晚 收工交接：前端主窗口-98」，再看置顶。eb 那两节是更早的。**
 
+
+## 2026-10-30 晚 排班 Publish again 整周没变时说清楚（`task/publish-nothing-changed`，工作窗口 `npe-ops-frontend-e6`[047d88]，主窗口 98 派）—— 已合 main
+
+- Annie 原话（经 57）：「那你要提醒发送人这个班一点都没有变啊，不能静默处理」。
+- 确认框：已发布的周、页面上没有没存的改动、has_unsent_changes = false（后端没带时用这次打开页面后有没有改过）⇒ 加一句琥珀色「Nothing has changed since the last publish, so no one will be notified.」，Publish again 照旧能按（没说要挡）。
+- 按完：后端 82 在 publish 返回加 nothing_changed（bool，82 定的名字；等 16 的 schedule-history-r3 上 main 才开始给）。true ⇒ 结果写「Nothing has changed since the last publish, so no one was notified.」；没有这个字段（旧后端）照旧「Published again. No one's shifts or time off changed, so no one was notified.」。
+- 检查：sch 281/281（新 3 项：确认框那句 + 键能按、nothing_changed 时的结果、旧后端照旧）、tsc / eslint / build 过。
+
 ## 2026-10-30 晚 收工交接：前端主窗口-98 [94e9c6]（家里，23:00 收尾）
 
 规矩新加（都已写进 CLAUDE.md / 已转各窗口）：

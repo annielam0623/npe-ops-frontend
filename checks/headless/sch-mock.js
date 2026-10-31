@@ -771,6 +771,8 @@ http
         published_at: weekData.published_at,
         published_by: weekData.published_by,
         republished,
+        // 后端 82：Publish again 且整周一点没变 ⇒ true（ctl.noNothingChanged = 旧后端，不带这个字段）
+        ...(ctl.noNothingChanged ? {} : { nothing_changed: republished && changed.size === 0 }),
         gaps,
         // 置顶 15（后端 ef task/republish-recipients-by-perm）：notified 只列真发出去的；ctl.notReached = {员工 id: 原因} 的人挪到 not_reached。
         ...(() => {
