@@ -34,7 +34,16 @@
   - 等等。
   觉得键太多，可以改成按大块分。
 
-## DOR 最新进展（G224）—— 明天第一件（工作窗口 `npe-ops-frontend-09`[8a0116]，主窗口 eb 2026-10-30 转 b0 的形状）
+## DOR 最新进展（G224）—— 前端做完，分支 `task/dor-updates` 已推，等后端上 main 再合（工作窗口 `npe-ops-frontend-09`[8a0116]，主窗口 eb 2026-10-30 转 b0 的形状）
+
+- **2026-10-30 做完（09）**：分支 `task/dor-updates`（a0872fc，从 main e6fd22e 拉），已推，**没合 main**。
+  - 展开一条报告后，修改记录下面列 Updates（谁 · 什么时候 · 原文，旧的在前，换行照原样）；输入框最多 2000 字 + 蓝色 Save，Saving… / 绿字 Saved / 红字后端原话，失败时输入的内容留着。
+  - 能看的人都能加（包括自己不能改状态的那条）；partner 只看，没有输入框。Dashboard 块和 /daily-report 页都有。修改记录里的 add_update 不显示。
+  - 改的文件：`components/daily-report/report-item.tsx`、`dor-section.tsx`、`reports-view.tsx`、`lib/daily-report-api.ts`（addReportUpdate）、`types/daily-report.ts`、`types/index.ts`、`checks/headless/dor-mock.js` / `dor-test.js`。
+  - 检查：dor 75/75（新加 16 条），dr 88/88，nav 32/32，tsc、build 过，eslint 0 错（2 个警告在没改的文件里，main 本来就有）。
+  - **为什么不能先合**（eb 2026-10-30）：后端没上时页面照样出输入框，staff 按 Save 会 404 红字，等于上了一个点了报错的功能。
+  - **下一步**：等 Annie 执行 v133、后端 G224 上 main，eb 通知后：分支合最新 main → 重跑 dor / dr / nav / tsc / eslint / build → 合 main。合之前最好在生产上用 ZZ Test 的报告加一条看一眼。
+
 
 - 依据：Annie 原话「如果需要纠正什么的话在下面备注，或者更新最新进展就好了」「加最新进展，任何人都可以加」「以上内容全都动手」。
 - 后端还没上 main（v133 等 Annie 过目执行）。前端先用 mock 做，后端上 main 后再合。
