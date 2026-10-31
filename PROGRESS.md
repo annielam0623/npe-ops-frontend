@@ -93,7 +93,7 @@
 
 ### 35. Today's tasks 版式不是最后批准的样子（91 在对照）
 - 后端 21：G202 B1–B5 字段名全部同前端 types/tasks.ts 暂定名，前端不用改；在审查，等 Annie 执行 v137 再上 main。PUT …/due 仍收 {due_at}，有交接时改最新交接的 finish_by。
-- 91 对照 preview：https://claude.ai/artifact/9fChzY2Z1ThUdJgKk4cbNo 。Annie 原话「我看到tasks了，关键是它不需要占整行啊，一半就够」⇒ 照 v3（已动手）改回：员工 My tasks + Notice 并排各半宽在最上面、Messages 在下面、去掉 🔔 那条。派 91 task/tasks-half-width。
+- 91 对照 preview：https://claude.ai/artifact/9fChzY2Z1ThUdJgKk4cbNo 。Annie 原话「我看到tasks了，关键是它不需要占整行啊，一半就够」⇒ 照 v3（已动手）改回：员工 My tasks + Notice 并排各半宽在最上面、Messages 在下面、去掉 🔔 那条。派 91 task/tasks-half-width。随后 Annie 改（原话）「你把task和 today's team放在一起，task 战2/3，team占1/3」⇒ 任务块 2/3 + Today's team 1/3 同一排，Notice 回最上面整行，Messages 不动；91 截图 preview 给 Annie 看了再合。
 - Annie 10-30 晚原话：「Today’s tasks的版式也不是我们最后aprove的样子」
 - 批准的是 G202 preview v3 https://claude.ai/artifact/3ktywUdNA5AHHP5zY47a2w （v3「对」、「186-对，动手」）；前端 10/27 上 main 400393e。91 只读对照 preview 和现在代码列差异（哪次提交改的），明天第一件接着。
 
