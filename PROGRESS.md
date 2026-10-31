@@ -195,6 +195,37 @@
   - 检查：da-mock 加 `hotelGroups`（带两个勾，含小写名字、null、停用的）。da 加 3 条：没字段时照旧；分组且两组各自 A–Z、停用的不列、null 进下面；分隔行不能选、value 空、斜体。
     结果：da 426/426、nav 32/32；tsc 0、eslint 0 错、build 通过。端口 3497 / 8897 / 9597 已关。
   - ⚠️ 需要后端（98 已派后端 21）：Dispatch 当天数据的 locations 每个点带 is_tour_bus / is_shuttle（NULL 回 null）。上 main 以前前端照旧不分组，上了自动分组，不用再改前端。
+- 🔍 **Today's tasks 版式和最后批准的不一样（Annie「Today's tasks的版式也不是我们最后aprove的样子」，98 派 91 只读查）—— 查了一半，明天第一件接着查**
+  - 最后批准的：G202 preview v3 https://claude.ai/artifact/3ktywUdNA5AHHP5zY47a2w （v3「对」，「186-对，动手」）。v3 里的样子：
+    - 员工 My tasks：标题「My tasks · 6:00 AM–2:30 PM」+「N of M done」+ Hide；两句说明（Fixed, time-based…／Finish these before your shift ends…）。下面从上到下：
+      - Anytime（虚线框，没有就不出）；
+      - Overdue（红框，几条全显示）；
+      - 收起的「▸ Earlier today · N done」；
+      - 一列按截止时间排、框里一次露 3 条、打开停在下一条没做的。
+      - 每行：勾、标题（交接的带 YESTERDAY 标签）、Open X →、「From 谁 · 时间 · note」、优先级点、By / Due in / Overdue 胶囊、Pass over。
+      - 右边并排 Notice。
+    - 主管 Today's tasks · all shifts：「· N of M done」，两句说明；上面一块 Handovers（最近 24 小时 + 更早没 Done 的，YESTERDAY 标签、finish by、older than 24 h）；下面同样一列 3 条。
+      - 每行：勾、优先级点、标题、Open X →、是谁的（或 All shift）、过期才出红胶囊、Finish-by 时间框。
+      - 最下面「+ Add a task」。
+    - 没有时段（AM / PM）卡、没有 NOW、不写现在几点。
+  - 现在 main 的代码：已经是 v3 的结构，没看到被后来的提交改回 AM / PM。
+    - `components/tasks/timeline.tsx`（VISIBLE_ROWS = 3，Anytime / Overdue / Earlier today / 一列），注释写的就是 v3；
+    - `supervisor-view.tsx`（Handovers + TaskTimeline + AddTaskRow）、`employee-view.tsx`（标题带班次时间、Hide、两句说明、TaskTimeline）。
+    - components/tasks 最后一次改是 bb3106e（G202 本身）。之后 Dashboard 的提交（7c95792、9bb2b4e、17397f3、52c65ae、c42e896、df8baec、033fe26 等）没碰 components/tasks。
+    - ⇒ **代码层面没找到和 v3 不一样的结构**。不一样多半在**样子**上（字号、间距、并排位置、Dashboard 里块的顺序 / 宽度），或者后端字段没来、有几样显示不出来（见下）。还没截图对照。
+  - G202 后端（只读，后端 origin/main）：**B1–B5 都没上**。
+    - pass-over 不收 finish_by，tasks.py:86 的注释写「G202 以后要改成 finish_by 语义」；
+    - 没有 next_shift_start / next_work_date；
+    - 交接窗口仍是 24 小时（daily_tasks.py `_PASS_OVER_WINDOW`）。
+    - ⇒ preview 里这几样现在本来就不会出现：
+      - Pass over 弹窗的 Finish by 存不上，也没有按接收人班次的默认时间 / 范围；
+      - 交接任务照原来的截止时间排，不按 finish by；
+      - Handovers 里没有「finish by …」，也没有 older than 24 h 的那几条；
+      - Notice 交接那条没有「Finish by 1:00 PM」。
+  - 明天接着做：
+    1. 用 mock 起 Dashboard（员工、主管两种），截图和 v3 并排，逐条列样子上的不同（字号、间距、并排、Handovers 位置、Add a task 位置等）；
+    2. 请 Annie 指一下她看到哪里不对（线上截图最好），对上了再出改法 preview；
+    3. 后端 G202 B1–B5 要不要现在排，问 98。
 
 
 ## G228 Content Studio「Team Messages」后端设计（4e，2026-10-30 晚，只读，main f51d40a1）—— 给前端 62 的接手窗口用
