@@ -25,6 +25,12 @@ const BTN_ADD_BASE =
   "cursor-pointer rounded-[7px] border-none bg-[#1a1a1a] font-semibold whitespace-nowrap text-white hover:bg-[#333] disabled:cursor-not-allowed disabled:opacity-60";
 /** .btn-add */
 export const BTN_ADD_CLASS = cn(BTN_ADD_BASE, "h-9 px-5 text-[13px]");
+/** 直接存进系统的 Add（Pickup / Vehicles / Farm out 新增那一行）：蓝色提交键（Annie 2026-10-30，见 CLAUDE.md）。 */
+export const BTN_SUBMIT_CLASS =
+  "h-9 cursor-pointer rounded-[7px] border-none bg-[#3b82f6] text-white hover:bg-[#2f76e8] px-5 text-[13px] font-semibold whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-60";
+/** 先加在页面上、还要按 Save 的小号添加键（+ Add location / + Add time / + Add season）：灰绿。 */
+export const BTN_ADD_GREEN_SMALL_CLASS =
+  "cursor-pointer rounded-[6px] border-[0.5px] border-[#6b8e74] bg-[#6b8e74] text-white hover:bg-[#5d7d66] px-2.5 py-[3px] text-[11px] whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50";
 /** 表格编辑行里的 Save（旧模板行内 style：11px、4px 12px、高 30px）。 */
 export const BTN_ADD_SMALL_CLASS = cn(
   BTN_ADD_BASE,
@@ -104,7 +110,9 @@ export function LegacyPageHeader({
   count?: ReactNode;
 }) {
   return (
-    <div className={count ? "mb-[18px] flex items-center justify-end" : undefined}>
+    <div
+      className={count ? "mb-[18px] flex items-center justify-end" : undefined}
+    >
       <h2 className="sr-only">{title}</h2>
       {count ? (
         <span className="text-[12px] text-[#aaa] night:text-white/35">

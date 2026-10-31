@@ -37,6 +37,14 @@ export function publishNotice(result: SchedulePublishResult): PublishNotice {
   const missed = result.not_reached ?? [];
   const again = !!result.republished;
 
+  // 整周一点没变（后端 82 nothing_changed；Annie 2026-10-30「那你要提醒发送人这个班一点都没有变啊，不能静默处理」）
+  if (result.nothing_changed)
+    return {
+      ok: "Nothing has changed since the last publish, so no one was notified.",
+      unreached: null,
+      allFailed: false,
+    };
+
   if (again && n === 0 && m === 0 && missed.length === 0)
     return {
       ok: "Published again. No one's shifts or time off changed, so no one was notified.",

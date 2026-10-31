@@ -13,7 +13,6 @@ import {
   formatHHMM,
   passOverReceiver,
   summarizeDone,
-  summarizeUrgent,
 } from "./config";
 import { PassOverDialog } from "./pass-over-dialog";
 import {
@@ -62,7 +61,6 @@ export function EmployeeTasks({
   const [error, setError] = useState("");
 
   const { done, total } = summarizeDone(tasks);
-  const { overdue, dueSoon } = summarizeUrgent(tasks, now);
 
   async function toggle(task: DailyTask) {
     if (togglingId !== null) return;
@@ -141,18 +139,6 @@ export function EmployeeTasks({
           {nextTitle} and accepted.
         </p>
       </div>
-
-      {overdue > 0 || dueSoon > 0 ? (
-        <p className="mt-3.5 flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[.03] px-3.5 py-2 text-[13px] font-semibold">
-          🔔{" "}
-          {[
-            overdue > 0 ? `${overdue} overdue` : null,
-            dueSoon > 0 ? `${dueSoon} due within the hour` : null,
-          ]
-            .filter(Boolean)
-            .join(" · ")}
-        </p>
-      ) : null}
 
       {error ? (
         <p role="alert" className="mt-3 text-[12.5px] text-[#f87171]">

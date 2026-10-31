@@ -377,6 +377,7 @@ function Reports({
             key={`${linked.id}-${linked.updated_at}`}
             report={linked}
             canEdit={canEditReport(linked, editor)}
+            canAddUpdate={!editor.partner}
             assignees={assignees}
             defaultExpanded
             onPatch={handlePatch}
@@ -406,6 +407,7 @@ function Reports({
                   key={report.id}
                   report={report}
                   canEdit={canEditReport(report, editor)}
+                  canAddUpdate={!editor.partner}
                   assignees={assignees}
                   onPatch={handlePatch}
                 />

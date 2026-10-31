@@ -206,6 +206,7 @@ function DorBlock({
                 key={report.id}
                 report={report}
                 canEdit={canEditReport(report, editor)}
+                canAddUpdate={!editor.partner}
                 assignees={assignees}
                 onPatch={handlePatch}
               />

@@ -203,6 +203,11 @@ async function run() {
   await waitFor("document.querySelectorAll('li[data-report-id]').length >= 2");
   await helpers();
   check("partner：自己的、别人的都不能改（勾了 report.edit 也不能）", await evaluate("return !document.querySelector('li[data-report-id] select');"));
+  await evaluate(H2);
+  await evaluate(`$btnIn($item(1), 'Details').click();`);
+  await waitFor(`$item(1).querySelector('[data-update-id]')`);
+  check("partner：展开能看 Updates，但没有输入框和 Save（G224）", await evaluate(`return $item(1).querySelectorAll('[data-update-id]').length === 2 && !$item(1).querySelector('[data-report-updates] textarea') && !$item(1).querySelector('[data-update-save]');`));
+  check("partner：没有发 POST updates", !(await mockLog()).some((e) => e.method === "POST" && e.path.endsWith("/updates")));
   await ctl({ partner: false, tick: null });
 
   // ── 3. 弹窗 ──
@@ -359,6 +364,52 @@ async function run() {
   await goto(`${APP}/daily-report?id=3`);
   await waitFor(`$item(3) && $item(3).textContent.includes('Registered by Annie')`);
   check("?id=3：那条置顶并自动展开（带修改记录）", await evaluate(`return document.querySelector('main li[data-report-id]').dataset.reportId === '3';`));
+
+  // ── 5b. Updates（G224）：展开后列出，从旧到新；能看的人都能加一条 ──
+  const upd = (id) => `$item(${id}).querySelector('[data-report-updates]')`;
+  const updBox = (id) => `${upd(id)}.querySelector('textarea')`;
+  await goto(`${APP}/daily-report`);
+  await waitFor(`document.querySelectorAll('li[data-report-id]').length >= 3`);
+  await helpers();
+  await evaluate(H2);
+  await evaluate(`$btnIn($item(1), 'Details').click(); $btnIn($item(3), 'Details').click();`);
+  await waitFor(`$item(1).querySelectorAll('[data-update-id]').length === 2 && $item(3).querySelector('[data-report-updates]')?.textContent.includes('No updates yet.')`);
+  check("Updates：展开后列出两条，从旧到新，写谁 · 什么时候", await evaluate(`const li = [...$item(1).querySelectorAll('[data-update-id]')]; return li.map((e) => e.dataset.updateId).join(',') === '1,2' && li[0].textContent.includes('Annie · ') && li[0].textContent.includes('ZZ Called the hotel') && li[1].textContent.includes('Jing · ');`));
+  check("Updates：换行照原样显示（纯文字）", await evaluate(`const p = $item(1).querySelector('[data-update-id="2"] p'); return getComputedStyle(p).whiteSpace === 'pre-wrap' && p.textContent.includes(String.fromCharCode(10));`));
+  check("Updates：修改记录里不显示 add_update", await evaluate(`const t = $item(1).textContent; return t.includes('History: Registered by Annie') && !t.includes('Edited by') && !t.includes('add_update');`));
+  check("Updates：Save 是蓝色提交键，输入框最多 2000 字", await evaluate(`return getComputedStyle(${upd(1)}.querySelector('[data-update-save]')).backgroundColor === 'rgb(59, 130, 246)' && ${updBox(1)}.maxLength === 2000;`));
+  check("Updates：没有的那条写 No updates yet.", await evaluate(`return ${upd(3)}.textContent.includes('No updates yet.');`));
+  before = (await mockLog()).length;
+  await evaluate(`${upd(1)}.querySelector('[data-update-save]').click();`);
+  check("Updates：空着按 Save → 红字写后端原话", (await waitFor(`${upd(1)}.querySelector('[role=alert]')?.textContent === 'Write the update before saving.'`)) && (await evaluate(`return getComputedStyle(${upd(1)}.querySelector('[role=alert]')).color === 'rgb(248, 113, 113)';`)));
+  await evaluate(`$setValue(${updBox(1)}, '  ZZ Insurance replied, claim closed.  ');`);
+  await evaluate(`${upd(1)}.querySelector('[data-update-save]').click();`);
+  check("Updates：Save 后写绿色 Saved，新的一条排在最后，输入框清空", (await waitFor(`${upd(1)}.querySelector('[data-update-saved]')`)) && (await evaluate(`const li = [...$item(1).querySelectorAll('[data-update-id]')]; return li.length === 3 && li[2].textContent.includes('Lizzie · ') && li[2].textContent.includes('ZZ Insurance replied, claim closed.') && ${updBox(1)}.value === '' && getComputedStyle(${upd(1)}.querySelector('[data-update-saved]')).color === 'rgb(74, 222, 128)';`)));
+  const ups = (await mockLog()).slice(before).filter((e) => e.method === "POST" && e.path === "/api/operation-reports/1/updates");
+  check("Updates：POST /api/operation-reports/1/updates，请求体只有 text（去掉首尾空格）", ups.length === 2 && JSON.stringify(ups[1].body) === '{"text":"ZZ Insurance replied, claim closed."}', JSON.stringify(ups.map((e) => e.body)));
+  check("Updates：加一条不发 PATCH（不改报告本身）", !(await mockLog()).slice(before).some((e) => e.method === "PATCH"));
+  // 绕过 maxLength 直接塞 2001 字，后端回 400 原话
+  await evaluate(`$setValue(${updBox(1)}, 'x'.repeat(2001));`);
+  await evaluate(`${upd(1)}.querySelector('[data-update-save]').click();`);
+  check("Updates：超过 2000 字 → 红字写后端原话", await waitFor(`${upd(1)}.querySelector('[role=alert]')?.textContent === 'The update is 2001 characters - the limit is 2000.'`));
+  check("Updates：失败时输入的内容留着", await evaluate(`return ${updBox(1)}.value.length === 2001;`));
+  // 别人登记、自己不能改的那条，也能加 Updates（能看就能加）
+  await ctl({ supervisor: false });
+  await goto(`${APP}/daily-report`);
+  await waitFor(`document.querySelectorAll('li[data-report-id]').length >= 3`);
+  await helpers();
+  await evaluate(H2);
+  await evaluate(`$btnIn($item(1), 'Details').click();`);
+  await waitFor(`${upd(1)} && ${updBox(1)}`);
+  check("员工：别人登记的（不能改状态）也能加 Updates", await evaluate(`return !$item(1).querySelector('select') && !!${upd(1)}.querySelector('[data-update-save]');`));
+  // 后端 G224 上线前详情没有 updates：写 No updates yet.，不崩
+  await ctl({ supervisor: true, noUpdates: true });
+  await goto(`${APP}/daily-report?id=1`);
+  await waitFor(`document.querySelector('li[data-report-id="1"]')?.textContent.includes('Registered by Annie')`);
+  await helpers();
+  await evaluate(H2);
+  check("详情没有 updates 字段（后端没上）：写 No updates yet.，不崩", await waitFor(`$item(1).querySelector('[data-report-updates]')?.textContent.includes('No updates yet.')`));
+  await ctl({ noUpdates: false });
 
   await ctl({ visible: false });
   before = (await mockLog()).length;

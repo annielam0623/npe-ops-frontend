@@ -393,6 +393,7 @@ async function run() {
   check("Unassigned 的加班窗口标题写 Unassigned，默认勾上点的那一天（Sat 10/10）", await evaluate(`return ${dlg}.textContent.includes('Unassigned') && ${dlg}.querySelectorAll('[data-day][aria-pressed=true]').length === 1 && ${dlg}.querySelector('[data-day="2026-10-10"]').getAttribute('aria-pressed') === 'true';`));
   check("时间默认是工作时段 02:00 – 21:30", await evaluate(`const t = ${dlg}.querySelectorAll('input[data-time-input]'); return t[0].dataset.value === '02:00' && t[1].dataset.value === '21:30';`));
   await evaluate(`[...${dlg}.querySelectorAll('button[role=radio]')].find(b => b.textContent.trim() === 'Mid').click();`);
+  check("加班弹窗的 Add shift 只是先排在周表上（整周 Save 才存）⇒ 灰绿添加键（Annie 2026-10-30）", await evaluate(`return getComputedStyle($btn('Add shift', ${dlg})).backgroundColor === 'rgb(107, 142, 116)';`));
   await evaluate(`$btn('Add shift', ${dlg}).click();`);
   check("Unassigned 周六加了一个 Mid 时段（先放在页面上，标琥珀色 new）", await waitFor(`${needsSat}.textContent.includes('Mid') && ${needsSat}.querySelector('[data-slot-id]').dataset.mark === 'new'`));
   check("新时段的时间 = 工作时段 2:00 AM – 9:30 PM", (await evaluate(`return ${needsSat}.textContent;`)).includes("2:00 AM – 9:30 PM"));
@@ -523,8 +524,17 @@ async function run() {
     "二次发布的确认框：只通知班有变化的人 + 所有主管（除了自己，后端 G217），别人不通知；不出「没有邮箱」提醒",
     await evaluate("const t = document.querySelector('[role=dialog]').textContent; return t.includes('People whose shifts or time off changed since the last publish will get a system notification and an email. People who can edit the schedule (except you) get a notice listing the changes. No one else is notified.') && !t.includes('their supervisor') && !t.includes('Everyone scheduled this week') && !t.includes('No notifications are sent') && !document.querySelector('[role=dialog] [data-publish-no-email]');"),
   );
+  // Annie 2026-10-30「那你要提醒发送人这个班一点都没有变啊，不能静默处理」：整周没变（has_unsent_changes = false）时确认框先说不会通知谁，键照旧能按
+  check("整周没变时 Publish again 确认框：写 Nothing has changed since the last publish, so no one will be notified.，Publish again 照旧能按", await evaluate("const d = document.querySelector('[role=dialog]'); const n = d.querySelector('[data-publish-nothing-changed]'); return !!n && n.textContent.replace(/\\s+/g, ' ').trim() === 'Nothing has changed since the last publish, so no one will be notified.' && !$btn('Publish again', d).disabled;"));
   await evaluate("$btn('Publish again', document.querySelector('[role=dialog]')).click();");
-  check("没改就重新发布：写「Published again. No one's shifts or time off changed, so no one was notified.」，不写 Notified 0", await waitFor("document.body.innerText.includes(\"Published again. No one's shifts or time off changed, so no one was notified.\") && !document.body.innerText.includes('Notified 0')"));
+  check("按完（后端带 nothing_changed: true）：写 Nothing has changed since the last publish, so no one was notified.，不写 Notified 0", await waitFor("document.body.innerText.includes('Nothing has changed since the last publish, so no one was notified.') && !document.body.innerText.includes('Notified 0')"));
+  // 旧后端（没有 nothing_changed）：照旧那句
+  await ctl({ noNothingChanged: true });
+  await evaluate("$btn('Publish again').click();");
+  await waitFor("document.querySelector('[role=dialog]')");
+  await evaluate("$btn('Publish again', document.querySelector('[role=dialog]')).click();");
+  check("旧后端没带 nothing_changed：照旧写「Published again. No one's shifts or time off changed, so no one was notified.」，不写 Notified 0", await waitFor("document.body.innerText.includes(\"Published again. No one's shifts or time off changed, so no one was notified.\") && !document.body.innerText.includes('Notified 0')"));
+  await ctl({ noNothingChanged: false });
 
   // 改完再发（Annie 10-29「改完再发」）：已发布的周改了，提醒按 Publish again 才发出去
   const jingMonPub = `${cell("4|2026-10-05")}.querySelector('[data-slot-id]')`;
@@ -654,6 +664,121 @@ async function run() {
   await waitFor(DLG);
   check("7b：Jing 是 Wants changes 时发送框不出提醒", await evaluate(`return !${DLG}.querySelector('[data-answer-reset-note]');`));
   await evaluate(`$btn('Cancel', ${DLG}).click();`);
+
+  // ── 每个人的往来记录（Annie 2026-10-30「动手」，preview T98GQ9KfQuQfrEcMv6XgzM；后端 ef 约定形状，mock）──
+  {
+    const KINDS = ["confirm_sent", "answered", "changes_sent", "answer_reset", "answered", "requested", "approved", "declined", "published", "republished"];
+    const kindsIn = (root) => `[...${root}.querySelectorAll('[data-history-event]')].map(e => e.dataset.historyEvent)`;
+    await ctl({ history: true, jingAnswer: "accepted" });
+    await openPage(`${APP}/schedule?week=2026-10-04`);
+    await waitFor(`document.querySelector('[data-send-to-confirm="4"]')`);
+    await evaluate(`document.querySelector('[data-send-to-confirm="4"]').click();`);
+    await waitFor(`${DLG} && ${DLG}.querySelector('[data-history-event]')`);
+    check(
+      "往来记录（位置 A）：发送框里改动表下面、发送原文上面；标题 History with Jing · week of 2026-10-04 · newest at the bottom",
+      await evaluate(`const d = ${DLG}; const h = d.querySelector('[data-history]'); const t = d.querySelector('[data-change-row]'); const p = d.querySelector('[data-send-preview]'); return !!h && !!(t.compareDocumentPosition(h) & Node.DOCUMENT_POSITION_FOLLOWING) && !!(h.compareDocumentPosition(p) & Node.DOCUMENT_POSITION_FOLLOWING) && h.textContent.startsWith('History with Jing · week of 2026-10-04newest at the bottom');`),
+    );
+    check("从旧到新、最新的在最下面（后端给的顺序照排）", JSON.stringify(await evaluate(`return ${kindsIn(DLG)};`)) === JSON.stringify(KINDS), JSON.stringify(await evaluate(`return ${kindsIn(DLG)};`)));
+    check("打开时滚到最下面", await evaluate(`const h = ${DLG}.querySelector('[data-history]'); return h.scrollHeight <= h.clientHeight || h.scrollTop + h.clientHeight >= h.scrollHeight - 2;`));
+    {
+      const texts = await evaluate(`return [...${DLG}.querySelectorAll('[data-history-event]')].map(e => e.querySelector('[data-history-who]').firstChild.textContent + ' | ' + e.querySelector('[data-history-tag]').textContent + ' | ' + e.querySelector('[data-history-body]').innerText.replace(/\\s+/g, ' ').trim());`);
+      const want = [
+        ["confirm_sent", "System | system | Sent the weekly confirm (email + in-app): Please confirm your schedule — week of 2026-10-04"],
+        ["answered", "Jing | staff | Looks good · from the link"],
+        ["changes_sent", "Annie Z | supervisor | Sent to confirm (email + in-app): Mon 11/2: Open 2:00 AM – 12:00 PM → Open 2:00 AM – 11:45 AM Not delivered: in-app"],
+        ["answer_reset", "Annie Z | supervisor | Jing’s Looks good was reset to No answer."],
+        ["answered", "Jing | staff | Send my changes · logged in"],
+        ["requested", "Jing | staff | Asked for Wed 10/7 Mid · logged in"],
+        ["approved", "Max | supervisor | Approved Wed 10/7 Mid"],
+        ["declined", "Max | supervisor | Declined Fri 10/9 Close"],
+        ["published", "Annie Z | supervisor | Published (email). Jing got: Your schedule — week of 2026-10-04"],
+        ["republished", "Annie Z | supervisor | Published again (email + in-app). Jing got: Your schedule changed — week of 2026-10-04 Mon 11/2: Open 2:00 AM – 12:00 PM → Open 2:00 AM – 11:45 AM Wed 11/4: not scheduled → Mid 10:00 AM – 6:00 PM"],
+      ];
+      const bad = want.filter(([, w], i) => texts[i] !== w);
+      check("9 种记录的文字（英文）：发的写渠道和原文、回的写 Looks good / Send my changes 和从哪进来、主管写 Approved / Declined 哪天哪个班、重置一句灰字、没发出去的红字", bad.length === 0, JSON.stringify(bad.map(([k, w]) => [k, w, texts[want.findIndex((x) => x[1] === w)]])));
+    }
+    check(
+      "颜色：员工本人那几条绿底、标签 system 灰 / staff 绿 / supervisor 蓝；Looks good / Approved 绿、Send my changes / Asked for 琥珀、Declined / Not delivered 红",
+      await evaluate(`
+        const d = ${DLG}; const ev = [...d.querySelectorAll('[data-history-event]')];
+        const bg = (e) => getComputedStyle(e).backgroundColor; const col = (e) => e && getComputedStyle(e).color;
+        const word = (e, w) => [...e.querySelectorAll('span')].find(s => s.textContent === w);
+        const mine = ev.filter(e => e.dataset.byKind === 'employee');
+        const tags = Object.fromEntries(ev.map(e => [e.dataset.byKind, col(e.querySelector('[data-history-tag]'))]));
+        return mine.length === 3 && mine.every(e => bg(e) === 'rgb(242, 248, 246)') && ev.filter(e => e.dataset.byKind !== 'employee').every(e => bg(e) !== 'rgb(242, 248, 246)')
+          && tags.system === 'rgb(71, 85, 105)' && tags.employee === 'rgb(15, 118, 110)' && tags.staff === 'rgb(24, 95, 165)'
+          && col(word(ev[1], 'Looks good')) === 'rgb(21, 128, 61)' && col(word(ev[6], 'Approved')) === 'rgb(21, 128, 61)'
+          && col(word(ev[4], 'Send my changes')) === 'rgb(186, 117, 23)' && col(word(ev[5], 'Asked for')) === 'rgb(186, 117, 23)'
+          && col(word(ev[7], 'Declined')) === 'rgb(163, 45, 45)' && col(ev[2].querySelector('[data-history-failed]')) === 'rgb(163, 45, 45)';`),
+    );
+    // 发出去以后：重读，最新那条（这次的 changes_sent + 重置）排在最下面
+    await evaluate(`${DLG}.querySelector('[data-send-changes-go]').click();`);
+    await waitFor(`${DLG}?.querySelector('[data-send-ok]')`);
+    check("发送成功：记录重读，最下面是这次的 Sent to confirm 和 Looks good 被重置", await waitFor(`(() => { const k = ${kindsIn(DLG)}; return k.length === ${KINDS.length + 2} && k[k.length - 2] === 'changes_sent' && k[k.length - 1] === 'answer_reset'; })()`), JSON.stringify(await evaluate(`return ${kindsIn(DLG)};`)));
+    await evaluate(`$btn('Close', ${DLG}).click();`);
+
+    // 位置 B：Responses 卡每人一行 History (N)，点开在下面展开，再点收起
+    await openPage(`${APP}/schedule?week=2026-10-04`);
+    await waitFor(`document.querySelector('[data-history-toggle="4"]')`);
+    const toggles = await evaluate(`return [...document.querySelectorAll('[data-history-toggle]')].map(b => [b.dataset.historyToggle, b.textContent]);`);
+    check("Responses 卡：每人一行一个 History (N)（N = 记录条数，没有的写 0），不是蓝色键", toggles.length >= 2 && toggles.some(([id, t]) => id === "4" && t === `History (${KINDS.length + 2})`) && toggles.filter(([id]) => id !== "4").every(([, t]) => t === "History (0)") && (await evaluate(`return getComputedStyle(document.querySelector('[data-history-toggle="4"]')).backgroundColor !== 'rgb(59, 130, 246)';`)), JSON.stringify(toggles));
+    await evaluate(`document.querySelector('[data-history-toggle="4"]').click();`);
+    await waitFor(`document.querySelector('[data-history-row="4"] [data-history-event]')`);
+    check("点开：这一人下面整行展开，同一份记录（同样的顺序），键变 Hide history", JSON.stringify(await evaluate(`return ${kindsIn("document.querySelector('[data-history-row=\"4\"]')")};`)) === JSON.stringify([...KINDS, "changes_sent", "answer_reset"]) && (await evaluate(`return document.querySelector('[data-history-toggle="4"]').textContent === 'Hide history';`)));
+    await evaluate(`document.querySelector('[data-history-toggle="4"]').click();`);
+    check("再点：收起", await waitFor(`!document.querySelector('[data-history-row="4"]')`));
+    const other = toggles.find(([id]) => id !== "4")[0];
+    await evaluate(`document.querySelector('[data-history-toggle="${other}"]').click();`);
+    check("没有记录的人：展开写一句灰字 Nothing yet for this week.", await waitFor(`(document.querySelector('[data-history-row="${other}"] [data-history-empty]')?.textContent || '').startsWith('Nothing yet for this week.')`));
+
+    // G138 新的 5 种（4e 2026-10-30 晚：change_requested move / add、swap_requested、swap_agreed、swap_declined_by_peer、request_closed_on_publish）
+    await ctl({ historyG138: true });
+    await openPage(`${APP}/schedule?week=2026-10-04`);
+    await waitFor(`document.querySelector('[data-history-toggle="3"]')`);
+    await evaluate(`document.querySelector('[data-history-toggle="3"]').click();`);
+    await waitFor(`document.querySelectorAll('[data-history-row="3"] [data-history-event]').length === 6`);
+    {
+      const t = await evaluate(`return [...document.querySelectorAll('[data-history-row="3"] [data-history-event]')].map(e => e.dataset.historyEvent + ' | ' + e.querySelector('[data-history-body]').innerText.replace(/\\s+/g, ' ').trim());`);
+      const want = [
+        "change_requested | Asked to move Thu 10/8 Close to Fri 10/9 · logged in",
+        "change_requested | Asked for an extra shift Wed 10/7 Open · logged in",
+        "swap_requested | Asked to swap Sun 10/4 Close ↔ Veronica’s Thu 10/8 Close · waiting for Veronica",
+        "swap_agreed | Agreed to swap Thu 10/8 Close ↔ Nadia’s Sun 10/4 Close · waiting for approval",
+        "swap_declined_by_peer | Declined the swap Mon 10/5 Mid ↔ Nadia’s Tue 10/6 Close",
+        "request_closed_on_publish | Request closed when the week was published: Wed 10/7 Open.",
+      ];
+      check("History（G138）：换班 / 改天上 / 加班 / 发布时关掉，5 种新记录照英文写清楚", JSON.stringify(t) === JSON.stringify(want), JSON.stringify(t));
+      check("History（G138）：Asked 琥珀色、Agreed 绿、Declined 红；系统关掉的灰字", await evaluate(`const ev = [...document.querySelectorAll('[data-history-row="3"] [data-history-event]')]; const col = (e, w) => getComputedStyle([...e.querySelectorAll('span')].find(s => s.textContent === w)).color; return col(ev[2], 'Asked to swap') === 'rgb(186, 117, 23)' && col(ev[3], 'Agreed to swap') === 'rgb(21, 128, 61)' && col(ev[4], 'Declined the swap') === 'rgb(163, 45, 45)' && ev[5].dataset.byKind === 'system';`));
+    }
+    await ctl({ historyG138: false });
+
+    // 读不到：红字写后端原话
+    await ctl({ historyFail: "ZZ Test history is down." });
+    await openPage(`${APP}/schedule?week=2026-10-04`);
+    await waitFor(`document.querySelector('[data-history-toggle="4"]')`);
+    await evaluate(`document.querySelector('[data-history-toggle="4"]').click();`);
+    check("History 读不到：红字 Could not load the history: + 后端原话", await waitFor(`(() => { const e = document.querySelector('[data-history-row="4"] [data-history-error]'); return !!e && e.textContent === 'Could not load the history: ZZ Test history is down.' && getComputedStyle(e).color === 'rgb(163, 45, 45)'; })()`));
+    await ctl({ historyFail: "" });
+
+    // 没有 schedule.edit（staff）：没有 History 键
+    await ctl({ role: "staff" });
+    await openPage(`${APP}/schedule?week=2026-10-04`);
+    await sleep(1500);
+    check("staff（不能改排班）：没有 History 键、没有记录", await evaluate("return !document.querySelector('[data-history-toggle]') && !document.querySelector('[data-history]');"));
+    await ctl({ role: "supervisor" });
+
+    // 后端还没上（404）：两处都不出，也不报错
+    await ctl({ history: false });
+    await openPage(`${APP}/schedule?week=2026-10-04`);
+    await waitFor(`document.querySelector('[data-responses]')`);
+    await sleep(800);
+    check("后端还没上（404）：Responses 卡没有 History 键", await evaluate("return !document.querySelector('[data-history-toggle]') && !document.querySelector('[data-history-error]');"));
+    await evaluate(`document.querySelector('[data-send-to-confirm="4"]').click();`);
+    await waitFor(DLG);
+    await sleep(600);
+    check("后端还没上（404）：发送框里也没有记录、不报错", await evaluate(`return !${DLG}.querySelector('[data-history]') && !${DLG}.querySelector('[data-history-error]');`));
+    await evaluate(`$btn('Cancel', ${DLG}).click();`);
+  }
   await ctl({ confirm: false, jingAnswer: null });
   await openPage(`${APP}/schedule?week=2026-10-04`);
   await waitFor(`document.querySelector('[data-send-to-confirm="4"]')`);
@@ -1024,7 +1149,9 @@ async function run() {
   await waitFor(`${dlg} && ${dlg}.querySelector('[data-mode=off]')`);
   await evaluate(`${dlg}.querySelector('[data-mode=off]').click();`);
   check("二期：Time off 模式：标题 Add time off、有 PTO / Sick / Personal 三个选项", await evaluate(`return ${dlg}.textContent.includes('Add time off') && ['PTO', 'Sick', 'Personal'].every(t => $btn(t, ${dlg})) && !${dlg}.querySelector('input[data-time-input]');`));
-  await evaluate(`${dlg}.querySelector('[data-kind=sick]').click(); $setValue(${dlg}.querySelector('[data-note-input]'), 'Back Thursday'); $btn('Add day off', ${dlg}).click();`);
+  await evaluate(`${dlg}.querySelector('[data-kind=sick]').click(); $setValue(${dlg}.querySelector('[data-note-input]'), 'Back Thursday');`);
+  check("Add day off 直接存进系统 ⇒ 照旧蓝色提交键（Annie 2026-10-30）", await evaluate(`return getComputedStyle($btn('Add day off', ${dlg})).backgroundColor === 'rgb(59, 130, 246)';`));
+  await evaluate(`$btn('Add day off', ${dlg}).click();`);
   check("二期：录好 ⇒ 格子写 Sick + 备注 Back Thursday，窗口关了", await waitFor(`${hasText(`${cell("2|2026-12-08")}.querySelector('[data-time-off=sick]')`, "Sick")} && ${hasText(`${cell("2|2026-12-08")}.querySelector('[data-time-off=sick]')`, "Back Thursday")} && !${dlg}`));
   check("二期：休假格子比 Off 深一档的黄、主管有 ×", await evaluate(`const el = ${cell("2|2026-12-08")}.querySelector('[data-time-off]'); return getComputedStyle(el).backgroundColor.includes('0.28') && !!el.querySelector('[data-remove-time-off]');`));
   check("二期：同一天没有 Off 格子", await evaluate(`return !${cell("2|2026-12-08")}.querySelector('[data-off]');`));
