@@ -268,7 +268,7 @@
 - 置顶 31 移走（Forecast 字号）：Annie 原话依次为「3.1  outbound和inbound的size要一样大，下面的driver和notes也要跟out和in一样大」「然后0是我故意缩小并灰色的，不需要改」、截图「这几个再大一点，统一尺寸」、「15px 半粗 动手」。09 已上 main（代码 3dc1b3a，PROGRESS 573c23a）：左列全部 15px / 600（含黄色路线名）；0、表头日期、格子数字不动。09 自己定的一处：左列宽 190px 不变，名字太长时折两行（同 Private tours 那行），已告诉 Annie。
 - 置顶 28 移走（Content Studio 蓝色 Save）：Annie「28同意推荐」，看 preview（https://claude.ai/artifact/VhN6zyiGzuZ3bwsg42DXAc ）后「Content Studio 同意全部推荐。动手」⇒ 没改动灰色、改了变蓝；按钮旁绿字 ✓ Saved / 红字报错；Create / Add route 也变蓝。派 e6 task/content-studio-blue-save。
 - Annie 新规矩（原话「我没有回答的问题你不要滚动问了」「把对话弄得超级长」）：没答的只留置顶，不在每次回复重复列。CLAUDE.md 已改，已转各窗口和 57。
-- 10/31（周六）13:45 核时间：现在是白天，按周末时间表 22:30 收尾。「勾选为主、role 兜底」+ 接 7 个勾（Annie「要，现在就交给后端」）后端派 64 调查，再问 Annie 开工 + 总开关留不留；前端 09 只读准备，等 Annie 动手。
+- 10/31（周六）13:45 核时间：现在是白天，按周末时间表 22:30 收尾。「勾选为主、role 兜底」+ 接 7 个勾（Annie「要，现在就交给后端」）后端派 64 调查，再问 Annie 开工 + 总开关留不留；前端 09 做了 tick OR role（aa8d053，没合 main）。Annie 随后在 64 窗口改成「只看勾，不兜底」（role 兜底会让 10 个 admin 拿回 settings.auto_send、Lei / Anthony / Connie / Daniel 拿回发送等 24–28 项）⇒ 规则：非 SA 一律照 /api/me/permissions 的勾，SA 全放行，legacy 不参与；总开关「留着」，含义 Annie 要重新定。09 已停，等 Annie 动手再改分支，总开关含义定前不合 main。
 - 后端 G225 Multi Orders 上 main（origin 7a69b185，合并 54fdd81f），前端不用改：卡片只算 confirmed 的单（读 Order List）；每 10 分钟，只剩 1 张单自动挂上，0 张挂到最后发给他的那张并亮起；「<2 张不显示」没做。multi_trip 卡可能还列已取消团期，后端已登记。
 - 后端 G212 B1 / B2 / B4 / B5 上 main（origin 86faf30b，合并 1f967bad）：admin 可撤销没接受的邀请；/api/team/members 加 role / is_active / initials / invite_token（只 SA、只未接受）/ is_self；停用 / 启用 / 改角色 / 重置链接 / invite 进 Team action-log；删账号快照带 teams。B3（409 + 计数，先发 detail 写法）、B6 / B7 还没做。⇒ 派 91 只读核对前端 Team 页要不要跟着改。
   - 91 核完：现在不出错。B1 admin 的 Cancel invite 前端一直有（users-table.tsx:469-487），现在能成功；Delete 真账号只在 SA 的 Edit 框里，和后端一致。B4 / B2 日志动作名 update / create / delete 前端已有说法。
