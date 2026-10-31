@@ -26,22 +26,23 @@
 
 > 规矩见 CLAUDE.md「问 Annie 要确认的事：给完整内容，并一直置顶」（2026-10-30）。每条都要能单独看懂。
 
-### 25. 10d 排班测试：ZZTest 测完要不要把账号改回 staff（09 问）
-- 下午 Annie 把 ZZTest（员工 id 8）的登录账号改成了 supervisor，这样页面上才有 Save / Publish，10d 测试要用。
-- 选法：A. 测完改回 staff（推荐：测试账号权限不留得比需要的大）；B. 一直保持 supervisor，以后测排班还能用。
+### 25. 测试账号：按角色分开建（09 在问 Annie 细节，只记录，没动手、没建账号）
+- 下午 Annie 把 ZZTest（员工 id 8）的登录账号改成了 supervisor，10d 测试要用。
+- Annie 10-30 晚在 09 窗口原话：「其实我应该用3个测试账号，ZZtest，ZZtest-D  ZZtest-G   ZZtest-DG  ZZtest-S。第一个是staff，然后是司机，导游，司兼导和主管」。
+- 按这个意思：ZZtest = staff、ZZtest-D = 司机、ZZtest-G = 导游、ZZtest-DG = 司机兼导游、ZZtest-S = 主管 ⇒ ZZTest 改回 staff，10d 里的主管操作（Save / Publish / Send to confirm）由 ZZtest-S 做。
+- 个数：Annie 答「对，是5个。可以」⇒ 5 个。「可以」答的是哪题不清楚，按规矩不算动手，09 在问。
+- 还没定：5 个账号谁来建（Annie 自己在 Team 页建，还是让窗口建）、每个用什么邮箱（测试邮箱规矩是 azhou@nationalparkexpress.com，ZZTest 排班员工例外用 annzhouyy@msn.com）。
 
-### 27. 周三确认：别人把自己的班放进来时，要不要问原来那个人同意
-- Annie 10-30 晚在 09 窗口原话：「就是周三发出去给staff确认他们的schedule，然后接受就dianaccept，也可以把自己的小模块放到她想上班的那天，然后改天的那个时段就会出现原来那个人和新放进来的人，然后这个改动会发给原来的这个人，问她是否同意，他们就自行商定。我记得以前出过设计稿的」
-- 有两份设计稿，做法不一样：
-  - ①「Staff Schedule 按人显示」第 12 版，最后一节「第二期预览：周三确认 + 换班」：https://claude.ai/artifact/WEjYE6tKZoYZoVpvy5rQ9N 。拖到别人的格子，拆成「Jing request / Lizzie original」，**两个人都 Accept 才生效**，有人 Decline 就恢复原样。当时记为二期，没做（要后端 G102）。
-  - ②「Wednesday Schedule Confirmation」v3：https://claude.ai/artifact/WR2LTx5YTFSmZ9HoMyiFPH 。现在线上照这份做（10-19 Annie「现在动手」）：新加的人亮黄，**由排班的人 Approve / Decline，不问原来那个人**。
-- 你描述的是 ①，线上是 ②。后端 57 正在出的 G138 方案（周三确认挪到发布前 + 提请求 + Approve，在等你答 Q1–Q4）是照 ② 往下做的。
+### 28. Content Studio「Team Messages」的 Save 键：白底黑边还是蓝色（e6 问）
+- e6 用 mock 做完了（分支 task/content-team-messages-e6 639f987，没合 main）。Save 键用的是 Content Studio 现有卡片的白底黑边 Save，Annie 看过的 preview（https://claude.ai/artifact/MoGjKubqRq3bZks9zvTNSC ）也是这个样子。
+- 规矩是「蓝色按钮只用于提交（Send / Save …）」，照规矩 Save 应该是蓝的；但只改这张卡会和 Content Studio 其他五张卡不一样。
 - 选法：
-  - A. 按 ① 改：原来那个人收到通知、可以同意 / 不同意，两个人都同意才生效（排班的人还要不要最后 Approve，要再定）。要后端 G102，G138 方案要跟着改。
-  - B. 维持 ②：排班的人决定，不问原来那个人。
-  - C. 两个都要：先问原来那个人，她同意了再交给排班的人 Approve。
-- 推荐：C（staff 自己商量，最后排班的人把关），具体先让后端在 G138 方案里一起出 preview 再定。
-- 后端 57 已在它那边问 Annie，作为 G138 的 Q5（同一个问题，答一次就行，两边同步）。
+  - A. 整个 Content Studio 的 Save 都改成蓝色（推荐：符合全站规矩；样子调整，先给 Annie 看 preview）；
+  - B. 照 preview 保持白底黑边，和 Content Studio 现在一致。
+
+### 29. Restaurant 的「total」字样能不能留空（e6 问）
+- preview 稿里 rest_total_label（餐厅消息里数字后面的「total」）画成必填；后端 4e 定的是可空：留空就只显示数字，不显示这个词。e6 照后端做成了可空。
+- 选法：A. 可空（推荐：照后端，留空也不影响意思）；B. 改回必填。
 
 ### 8. 可以上线后对着看的（不用答，验收时看）
 - Products 手动保存：09 问的 5 处细节，主窗口按盘点推荐定了，见 PROGRESS「2026-10-30」那节 09 的记录：
@@ -65,6 +66,17 @@
 - Annie（经 57）原话：「告诉大家我把电脑带回家了，所以接下来的两天都执行周末的时间表」⇒ 10/30、10/31 这台电脑当家里那台用。收尾时间 Annie 再定（经 57）：「晚上11点开始收尾」⇒ 23:00。已转 e6 / 09 / 91。
 - 91 回：task/team-contacts 8436d85、task/schedule-test-person 30d2f10 都合了最新 main、检查全过、已推，等后端。91 待命。
 - 置顶 26 答了：「之前的设计稿」是周三确认 + 换班（Annie 原话见置顶 27）。09 找到两份设计稿，做法不同 ⇒ 新开置顶 27，已转 57（G138 方案相关）。
+- e6 回：G228 用 mock 做完，task/content-team-messages-e6 639f987（已合最新 main；cs 169/169、nav 32/32、tsc / eslint / build 过），没合 main，等 v135 + G228。两处和 preview 不同 ⇒ 置顶 28、29。{link} 不是正好一个的 400 原话后端没给，mock 先写「Put {link} in exactly once.」；57 回后端就用这句，已转 4e、e6。rest_total_label 等 Annie 答置顶 29，答了转 57。
+- 09 转 Annie 测试账号按角色分开（5 个）⇒ 置顶 25 改写，只记录。
+- 后端「空档只算将来」上 main（origin 9886202c，合并 ea960347）：Save / Publish / GET 周的 gaps 只算洛杉矶「现在」以后。前端 9b79a19 已经是同一口径（周表红点、Gap 提示、Day timeline、卡片、Publish 确认框都先过 futureGaps），不用再改。
+- 后端 G212 B1 / B2 / B4 / B5 上 main（origin 86faf30b，合并 1f967bad）：admin 可撤销没接受的邀请；/api/team/members 加 role / is_active / initials / invite_token（只 SA、只未接受）/ is_self；停用 / 启用 / 改角色 / 重置链接 / invite 进 Team action-log；删账号快照带 teams。B3（409 + 计数，先发 detail 写法）、B6 / B7 还没做。⇒ 派 91 只读核对前端 Team 页要不要跟着改。
+  - 91 核完：现在不出错。B1 admin 的 Cancel invite 前端一直有（users-table.tsx:469-487），现在能成功；Delete 真账号只在 SA 的 Edit 框里，和后端一致。B4 / B2 日志动作名 update / create / delete 前端已有说法。
+  - B5：前端现在先拉 /api/users，SA 再拉 /api/team/members + 逐人拉 /api/team/members/{id}（users-view.tsx:158-190）。members 是 require_superadmin，等 B6 放开给 admin 后两种人一起改只读 members。需要后端（备选，已转 57）：members 带 items 或 Access 汇总，省掉逐人请求；日志 Role 值小写，后端加 values 映射。
+  - 派 91 小修 task/team-log-refresh：Team 日志面板开着时，动作成功后 refreshKey +1，新条目马上出（样子不变）。
+  - B3 上之前后端先发 409 detail，前端 Delete 报错 + Deactivate instead 跟着改。
+- **置顶 27 答了**（Annie 原话，经 57：「排班的问题同意全部推荐。动手」）：换班选 C，先问原来那个人，同意后再由排班的人 Approve（= G138 Q5）。G138 Q1–Q4 也照推荐：发布时没处理的请求统一关掉并通知本人；发布后员工不能再提请求，已发布周的 Send to confirm 保留、只通知；周三 9 点自动发下周草稿，空的不发；确认页只显示自己的班，提加班选日期 + 班次。排班 PDF 5 问照 preview（https://claude.ai/artifact/GF9VbsKsybevpKMQztB9GK ）推荐。
+  - 后端：G138 等排班往来记录上 main 才开工（约下次开工）；PDF 排在 G228 后。PDF 前端基本不用做，只是「The full team schedule is attached.」会成为 Team Messages 卡多一个键，键名定了 57 通知。
+  - 前端派 e6：先出 G138 preview（员工确认页、原来那个人怎么同意、排班的人 Responses 卡的状态），换班 C 的样子 Annie 还没看过，看过再用 mock 做。4e 已把 G138 完整方案发 e6。
 
 ## 2026-10-30 晚 工作窗口 `npe-ops-frontend-91`[9c93e4]（98 派：接管 team-contacts、schedule-test-person，都不合 main）
 
@@ -78,6 +90,11 @@
   - 检查：sch 281/281、sc 21/21、tasks 128/128、dr 88/88、ns 49/49；tsc 0、eslint 0 错、build 通过；已推分支。
   - 下一步：后端 is_test（v134）上 main 后对真接口核一遍，再合。
 - 端口：91 用 3491 / 8891 / 9591（排班这一组）、3492 / 8892 / 9592（Team 这一组），跑完都关了。
+- G212 B1 / B2 / B4 / B5 前端只读核对（98 派）：现在不会出错，不用改。清单已发 98：B5 改用 /api/team/members 等 B6；Role 的值显示成小写，要改的话是后端 _TEAM_LOG 加 values 映射。
+- `task/team-log-refresh` → **0e9a8fd**（98 派的小修，样子不变；worktree `C:\Code\ops-wt-91-logref`）：
+  - 改法：Team 页日志面板的 refreshKey 原来写死 0，改成 logVersion；refreshList 和发重置链接成功后 +1。停用、恢复、改角色、重置链接、取消邀请、删除、邀请、Edit 保存都走这两处，日志开着时新的那条马上出来。
+  - tp 检查套加一条：日志开着时点 Reactivate，新的 Status 行自动出现在最上面；把修改去掉，这条确实会失败。
+  - 检查：tp 137/137、users 77/77、teams 54/54、nav 32/32；tsc 0、eslint 0 错、build 通过；已推分支，等 98 说合再合。端口 3493 / 8893 / 9593 已关。
 
 
 ## G228 Content Studio「Team Messages」后端设计（4e，2026-10-30 晚，只读，main f51d40a1）—— 给前端 62 的接手窗口用
