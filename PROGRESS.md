@@ -6,6 +6,14 @@
 
 > **明天（10/31，周末时间表）的主窗口：先读下面「2026-10-30 晚 收工交接：前端主窗口-98」，再看置顶。eb 那两节是更早的。**
 
+
+## 2026-10-30 晚 排班 Publish again 整周没变时说清楚（`task/publish-nothing-changed`，工作窗口 `npe-ops-frontend-e6`[047d88]，主窗口 98 派）—— 已合 main
+
+- Annie 原话（经 57）：「那你要提醒发送人这个班一点都没有变啊，不能静默处理」。
+- 确认框：已发布的周、页面上没有没存的改动、has_unsent_changes = false（后端没带时用这次打开页面后有没有改过）⇒ 加一句琥珀色「Nothing has changed since the last publish, so no one will be notified.」，Publish again 照旧能按（没说要挡）。
+- 按完：后端 82 在 publish 返回加 nothing_changed（bool，82 定的名字；等 16 的 schedule-history-r3 上 main 才开始给）。true ⇒ 结果写「Nothing has changed since the last publish, so no one was notified.」；没有这个字段（旧后端）照旧「Published again. No one's shifts or time off changed, so no one was notified.」。
+- 检查：sch 281/281（新 3 项：确认框那句 + 键能按、nothing_changed 时的结果、旧后端照旧）、tsc / eslint / build 过。
+
 ## 2026-10-30 晚 收工交接：前端主窗口-98 [94e9c6]（家里，23:00 收尾）
 
 规矩新加（都已写进 CLAUDE.md / 已转各窗口）：
@@ -107,6 +115,9 @@
 
 ### 37. Bus Manifest 页改动记录（Action Log）
 - Annie 问「刚才我问的问题，bus manifest的改动log在哪里看」⇒ 现在哪里都看不到（后端记了，没有读接口，前端没面板）。Annie：「做」。e6 先出 preview（位置照 Dispatch 页底部、每条写法、谁能看）；后端 64 做 GET /api/dispatch/manifest/action-log。e6 preview：https://claude.ai/artifact/YEgERHNDiL45TCkbzyJisa 。题 a 打印 / 下载也列（推荐）/ 不列；b 谁能看：manifests.edit 或 dispatch.edit（推荐）/ 能打开的都能看 / 只 SA；c 只看当前团（推荐）/ 当天所有团。Annie 在 e6 窗口「同意所有推荐。动手」⇒ e6 task/manifest-action-log 用 mock 做，后端 64 照带 tour 的接口做。
+
+### 38. 排班 Notice 不显示改动明细，只留提示 + See my schedule
+- Annie 截图 Notice history「Schedule edited — week of 2026-11-01」列了十几行明细，原话「notice里不需要显示详情，这里只是给个提示你的schedule发布了，给个see my schedule的链接就好了」。e6 查明细从哪来、出改前改后截图，Annie 点头再合。
 
 ### 8. 可以上线后对着看的（不用答，验收时看）
 - Products 手动保存：09 问的 5 处细节，主窗口按盘点推荐定了，见 PROGRESS「2026-10-30」那节 09 的记录：

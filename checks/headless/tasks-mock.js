@@ -6,6 +6,14 @@ const http = require("http");
 const H = 3600 * 1000;
 const isoAgo = (ago) => new Date(Date.now() - ago).toISOString();
 const todayLA = new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
+// 通知和交接的「现在」：洛杉矶今天还不到 1:30 AM 时挪到今天 1:30 AM，「15 分钟 / 1 小时前」的通知才不会跨过午夜变成昨天
+// （00:00–01:00 跑 tasks 时「只放今天的」那几条会挂，98 2026-10-31 要求改成任何时候跑都过）。只给通知 / 交接用，任务本身不动。
+function noticeNow() {
+  const now = Date.now();
+  const [h, m] = new Date(now).toLocaleTimeString("en-GB", { timeZone: "America/Los_Angeles", hour: "2-digit", minute: "2-digit", hour12: false }).split(":").map(Number);
+  const mins = (h % 24) * 60 + m;
+  return mins >= 90 ? now : now + (90 - mins) * 60000;
+}
 
 function __unused_send(res, status, body) {
   res.statusCode = status;
@@ -187,7 +195,8 @@ function freshTasks() {
     to_display_name: "Lizzie",
     note: "Shuttle guide needs a text before the 2pm pickup — didn’t get to it before I left.",
     // 交接只显示 24 小时内的（Annie 2026-10-25）：按真实时钟放在 50 分钟前；ctl.handoverAgeH 改成几小时前（测超过 24 小时不显示）。
-    at: new Date(Date.now() - (ctl.handoverAgeH ?? 50 / 60) * 3600 * 1000).toISOString(),
+    // 默认 50 分钟前（按 noticeNow，跨午夜也是今天）；handoverAgeH（测「超过 24 小时不显示」）按真实时间算，不挪。
+    at: new Date(ctl.handoverAgeH != null ? Date.now() - ctl.handoverAgeH * 3600 * 1000 : noticeNow() - (50 / 60) * 3600 * 1000).toISOString(),
     accepted_at: null,
     accepted_by_username: null,
     accepted_by_display_name: null,
@@ -318,7 +327,7 @@ function buildToday() {
 
 // 排班提醒：时间用「今天」之外的日子 + 今天，覆盖 "Thu 10:42 AM" 和 "12:05 PM" 两种写法。
 function freshSchedNotices() {
-  const now = new Date();
+  const now = new Date(noticeNow());
   const ago = (ms) => new Date(now.getTime() - ms).toISOString();
   const mk = (id, type, title, body, createdAt) => ({
     id, type, title, body, created_at: createdAt, is_read: false, read_at: null,
@@ -343,7 +352,7 @@ const directMsgNotices = [{
 // 2026-10-22 后端核实：/api/notices 压根不下发 actions 字段（任何 category 都没有），这里故意不带，
 // 用来测前端缺字段时的兜底（lib/notices-api.ts fetchNotices 里补 ?? []）。
 function confirmNotices() {
-  const now = Date.now();
+  const now = noticeNow();
   const mk = (id, type, title, body, ago) => ({
     id, type, title, body, created_at: new Date(now - ago).toISOString(), is_read: false, read_at: null,
     ref: { kind: "week", week_start: "2026-10-25" }, link: "/schedule?week=2026-10-25",

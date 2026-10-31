@@ -524,8 +524,17 @@ async function run() {
     "二次发布的确认框：只通知班有变化的人 + 所有主管（除了自己，后端 G217），别人不通知；不出「没有邮箱」提醒",
     await evaluate("const t = document.querySelector('[role=dialog]').textContent; return t.includes('People whose shifts or time off changed since the last publish will get a system notification and an email. People who can edit the schedule (except you) get a notice listing the changes. No one else is notified.') && !t.includes('their supervisor') && !t.includes('Everyone scheduled this week') && !t.includes('No notifications are sent') && !document.querySelector('[role=dialog] [data-publish-no-email]');"),
   );
+  // Annie 2026-10-30「那你要提醒发送人这个班一点都没有变啊，不能静默处理」：整周没变（has_unsent_changes = false）时确认框先说不会通知谁，键照旧能按
+  check("整周没变时 Publish again 确认框：写 Nothing has changed since the last publish, so no one will be notified.，Publish again 照旧能按", await evaluate("const d = document.querySelector('[role=dialog]'); const n = d.querySelector('[data-publish-nothing-changed]'); return !!n && n.textContent.replace(/\\s+/g, ' ').trim() === 'Nothing has changed since the last publish, so no one will be notified.' && !$btn('Publish again', d).disabled;"));
   await evaluate("$btn('Publish again', document.querySelector('[role=dialog]')).click();");
-  check("没改就重新发布：写「Published again. No one's shifts or time off changed, so no one was notified.」，不写 Notified 0", await waitFor("document.body.innerText.includes(\"Published again. No one's shifts or time off changed, so no one was notified.\") && !document.body.innerText.includes('Notified 0')"));
+  check("按完（后端带 nothing_changed: true）：写 Nothing has changed since the last publish, so no one was notified.，不写 Notified 0", await waitFor("document.body.innerText.includes('Nothing has changed since the last publish, so no one was notified.') && !document.body.innerText.includes('Notified 0')"));
+  // 旧后端（没有 nothing_changed）：照旧那句
+  await ctl({ noNothingChanged: true });
+  await evaluate("$btn('Publish again').click();");
+  await waitFor("document.querySelector('[role=dialog]')");
+  await evaluate("$btn('Publish again', document.querySelector('[role=dialog]')).click();");
+  check("旧后端没带 nothing_changed：照旧写「Published again. No one's shifts or time off changed, so no one was notified.」，不写 Notified 0", await waitFor("document.body.innerText.includes(\"Published again. No one's shifts or time off changed, so no one was notified.\") && !document.body.innerText.includes('Notified 0')"));
+  await ctl({ noNothingChanged: false });
 
   // 改完再发（Annie 10-29「改完再发」）：已发布的周改了，提醒按 Publish again 才发出去
   const jingMonPub = `${cell("4|2026-10-05")}.querySelector('[data-slot-id]')`;
