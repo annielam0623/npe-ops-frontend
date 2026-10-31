@@ -20,7 +20,8 @@ function historyOf(week, id) {
       { id: 33, at: "2026-10-28T20:00:02+00:00", kind: "swap_requested", by: "Nadia", by_kind: "employee", lines: [], channels: [], request_kind: "swap", from_slot: slot(0, "close"), request: slot(4, "close"), peer: "Veronica" },
       { id: 34, at: "2026-10-28T22:10:00+00:00", kind: "swap_agreed", by: "Veronica", by_kind: "employee", lines: [], channels: [], request_kind: "swap", from_slot: slot(0, "close"), request: slot(4, "close"), peer: "Nadia" },
       { id: 35, at: "2026-10-28T22:30:00+00:00", kind: "swap_declined_by_peer", by: "Lizzie", by_kind: "employee", lines: [], channels: [], request_kind: "swap", from_slot: slot(2, "close"), request: slot(1, "mid"), peer: "Nadia" },
-      { id: 36, at: "2026-10-31T17:00:00+00:00", kind: "request_closed_on_publish", by: null, by_kind: "system", lines: [], channels: [], request_kind: "add", request: slot(3, "open") },
+      // 照后端 _event_out：空值不给键（没有 by / lines / channels / peer / from_slot）
+      { id: 36, at: "2026-10-31T17:00:00+00:00", kind: "request_closed_on_publish", by_kind: "system", request_kind: "add", request: slot(3, "open") },
     ], { g138: true });
   }
   if (!histories[key]) {
