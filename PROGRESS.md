@@ -326,7 +326,7 @@
 - 站内 Notice 标题、正文一律不动。
 - 种子迁移暂定 v135（排在 v134 之后，等迁移所有权，SQL 给 Annie 过目）。后端约 1 天，开工由 57 派。
 - 待 Annie 定：周三确认邮件（sched_weekly_confirm_*）要不要放进这张卡，见置顶 24。
-## DOR 最新进展（G224）—— 前端做完，分支 `task/dor-updates` 已推，等后端上 main 再合（工作窗口 `npe-ops-frontend-09`[8a0116]，主窗口 eb 2026-10-30 转 b0 的形状）
+## DOR 最新进展（G224）—— **已合 main 上线**（后端 G224 上 main 72a812ef / aaa863bb、v133 已在生产执行，98 2026-10-30 晚通知）（工作窗口 `npe-ops-frontend-09`[8a0116]，主窗口 eb 2026-10-30 转 b0 的形状）
 
 - **2026-10-30 做完（09）**：分支 `task/dor-updates`（a0872fc，从 main e6fd22e 拉），已推，**没合 main**。
   - 展开一条报告后，修改记录下面列 Updates（谁 · 什么时候 · 原文，旧的在前，换行照原样）；输入框最多 2000 字 + 蓝色 Save，Saving… / 绿字 Saved / 红字后端原话，失败时输入的内容留着。
@@ -335,6 +335,7 @@
   - 检查：dor 75/75（新加 16 条），dr 88/88，nav 32/32，tsc、build 过，eslint 0 错（2 个警告在没改的文件里，main 本来就有）。
   - **为什么不能先合**（eb 2026-10-30）：后端没上时页面照样出输入框，staff 按 Save 会 404 红字，等于上了一个点了报错的功能。
   - **下一步**：等 Annie 执行 v133、后端 G224 上 main，eb 通知后：分支合最新 main → 重跑 dor / dr / nav / tsc / eslint / build → 合 main。合之前最好在生产上用 ZZ Test 的报告加一条看一眼。
+  - **2026-10-30 晚合 main（09）**：只读核对后端 origin/main：GET 详情带 `updates`（旧的在前，`{id, report_id, text, created_at, created_by:{username, display_name}}`），POST `/api/operation-reports/{id}/updates` 201 `{update}`，400 原话「Write the update before saving.」/「The update is N characters - the limit is 2000.」，partner 403「Partners can read reports but cannot add updates.」，history 记 `add_update`，和前端 mock 一致。合最新 main 后 dor 75/75、dr 88/88、nav 32/32，tsc / eslint / build 过。还没在生产上用 ZZ Test 报告实际加过一条。
 
 
 - 依据：Annie 原话「如果需要纠正什么的话在下面备注，或者更新最新进展就好了」「加最新进展，任何人都可以加」「以上内容全都动手」。
