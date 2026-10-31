@@ -9054,6 +9054,20 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
 
 由 Annie 转给后端窗口。（2026-10-14 起 Annie 让 ops 直接发后端窗口。）
 
+- 🔴 **Team 权限：还没接上的 7 项接上，并且「勾了就算、角色兜底」**（2026-10-31，工作窗口 09 查出、Annie 让「现在就交给后端」；经主窗口 98 转后端）
+  - **Annie 原话**：「要，现在就交给后端。我的要求是：虽然role的规则里没有这个功能，但是我单独把这个功能勾选了，那就以勾选的为主，也就是说role是兜底的功能」
+  - **① 接线**：Settings › Team 里挂「Not active yet」的 5 个模块，原因是这 7 项没有路由单独 `require_perm` / `checked_in_code`（按后端本地 main `b0073ec5` 的 `app/` 统计，58 项里 51 项已接上）：
+    - Dashboard：`dashboard.view`
+    - Manifests：`manifests.export`
+    - Forms：`forms.view`、`forms.edit`
+    - Reports：`reports.export`、`reports.send_daily`
+    - Settings：`settings.forecast`（只在 `require_any_perm("settings.forecast", "settings.products")` 里，单独取消拦不住人；Settings 其余 12 项都已接上）
+  - **② 勾选为主、角色兜底**：一个人**勾了**某项 ⇒ 不管他的角色原来能不能做，都放行；**没勾** ⇒ 按角色原来的规矩。
+    现状对照：后端路由今天只看勾（除 Super Admin）；ops 前端在员工权限总开关 `staff_permissions` 关着时只看角色（`lib/by-tick.ts` 的 `legacy`）、开着时只看勾。
+    例：ZZTest 是 staff、勾了 schedule.edit / schedule.publish，总开关关着 ⇒ 排班页按角色不给 Save / Publish（10d 卡在这里）；照 Annie 这条应当给。
+    请后端定判定口径（建议：放行 = 勾了 **或** 角色原本允许；partner 不变，照旧只按勾 + 白名单；Super Admin 照旧全放），并告诉 ops 总开关以后还要不要、管什么。ops 前端 `byTick` 跟着改（`legacy || 勾了`），等 Annie「动手」再改。
+  - **要 Annie 知道的后果**：角色兜底 ⇒ 取消勾选拿不走角色本来就有的功能（例：supervisor 不勾 schedule.edit 也照样能改排班）。
+
 - 🟠 **Dispatch 按单元保存（2026-10-18，Annie 原话：「这个可以让后端做，后端是服务需求的，没有做不做之说」）**：Annie 要把保存键拿回来，每个「单元」一个保存键，做一步存一步（自动保存留着当后备）。**单元** = Morning Relay 一个单元（1st + 2nd Round 一起）、每个巴士团一个单元（不管几台车）、Private Tour 一个单元；点保存就存这个单元里所有的车，不管完没完成。现在只有 `POST /api/dispatch/day` 整天覆盖。需要一个「只存一个单元」的接口（形状请后端定，ops 照接；建议 `POST /api/dispatch/section`，body：`date`、`unit`（`relay` / `tour:<manifest_id>` / `private_tour`）、`rows`（只这个单元的行，字段同 `/day`）、`edit_token`、`ccl_import_id`；服务端只替换这个单元的行、别的单元一行不动，校验同 `/day`（缺司机 400 等），返回形状同 `/day` 并带回这个单元存好后的行 id；G71 编辑锁照常；farm out 的撤销提醒 / 座位调整 / Private 订单号等 `/day` 里的副作用对这个单元照做）。**ops 前端等这个接口才开发（Annie 已说「动手」，被后端接口挡住）。** Annie 2026-10-18 定：自动保存留着当后备，**页面 60 秒内没有任何操作（不 active）才自动存**，自动存时也只锁正在存的那个单元。预览 https://claude.ai/artifact/1hEvytQJKRupnXARfoBatR 的 K。
 - 🟠 **Arrange seats 订单加 `tour_type`（2026-10-18，Annie 要求）**：羚羊谷的 Arrange seats 要在车列顶上放 Upper / Lower / X 三个筛选键，筛出同一种 tour 的客人整体挪到另一台车。现在 `GET /api/dispatch/seating` 每张订单没有这个类型。需要每张订单带一个字段（建议 `tour_type`：`upper` / `lower` / `x` 或后端现有写法，没有就 null；来源 = Products 里设的 Tour type，或订单自己的产品，请后端定并说明）。**ops 前端等这个字段才开发（Annie 已说「动手」，被后端字段挡住）。** Annie 2026-10-18 定：筛选键**每台车都放**，键名就用 **U / L / X**（旁边写人数）。预览 K 下面的 L。
 - 🟠 **G71 自动保存不放锁**（2026-10-15 深夜，Annie 定「自动保存停手 3 秒存 + 请后端改成自动保存不放锁」；ops 自动保存已上线）：现在 `POST /api/dispatch/day` 存好就放开编辑锁，自动保存每 3 秒一存，存完别人就能占这一天。
