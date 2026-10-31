@@ -95,6 +95,7 @@ import {
   HOWTO_SUMMARY,
   MUTED,
   TM_BTN,
+  ADDVAN_ADD,
 } from "./legacy-styles";
 import { BusIcon } from "./icons";
 import { Rail, useCheckOpen } from "./rail";
@@ -2483,7 +2484,7 @@ export function DispatchView() {
                                       onClick={() =>
                                         addVehicle(s.shift, s.manifest_id)
                                       }
-                                      className={cn(ADDVAN, "mt-3.5")}
+                                      className={cn(ADDVAN_ADD, "mt-3.5")}
                                     >
                                       + Add vehicle
                                     </button>

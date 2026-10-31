@@ -82,13 +82,26 @@ export interface OperationReportHistoryChange {
 export interface OperationReportHistoryEntry {
   at: string;
   by: string;
-  action: "create" | "update";
+  /** add_update：加了一条 Updates（G224），changes 为空，前端不显示。 */
+  action: "create" | "update" | "add_update";
   changes: OperationReportHistoryChange[];
+}
+
+/** 报告下面的一条 Updates（G224）：只能加，不能改、删。 */
+export interface OperationReportUpdate {
+  id: number;
+  report_id: number;
+  text: string;
+  /** 带偏移的 ISO 时间（洛杉矶）。 */
+  created_at: string;
+  created_by: ReportPerson;
 }
 
 export interface OperationReportDetail {
   report: OperationReport;
   history: OperationReportHistoryEntry[];
+  /** 从旧到新。后端 G224 上线前没有这个字段。 */
+  updates?: OperationReportUpdate[];
 }
 
 export interface OperationReportInput {

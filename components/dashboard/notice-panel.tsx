@@ -52,6 +52,69 @@ export function formatNoticeWhen(iso: string): string {
   return `${fmt.format(date)}, ${clock}`;
 }
 
+const WEEK_DAY = new Intl.DateTimeFormat("en-US", {
+  timeZone: "UTC",
+  weekday: "short",
+  month: "short",
+  day: "numeric",
+});
+
+/** Notice 对应的那一周（ref.week_start，没有就看链接里的 ?week=），写成「the week of Sun, Nov 1」。 */
+function weekPhrase(notice: ApiNotice): string {
+  const fromRef = notice.ref?.week_start;
+  const ymd =
+    typeof fromRef === "string"
+      ? fromRef
+      : (/[?&]week=(\d{4}-\d{2}-\d{2})/.exec(notice.link ?? "")?.[1] ?? null);
+  if (!ymd || !/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return "this week";
+  const [y, m, d] = ymd.split("-").map(Number);
+  return `the week of ${WEEK_DAY.format(new Date(Date.UTC(y, m - 1, d)))}`;
+}
+
+/**
+ * 卡片 / 历史里显示的标题和正文。排班类只写一句、不列逐条改动（Annie 2026-10-31「notice里不需要显示详情，
+ * 这里只是给个提示你的schedule发布了，给个see my schedule的链接就好了」，preview https://claude.ai/artifact/8kzkHpbv4omcMjXo21FYzA ）：
+ * 后端 body 里的明细（schedule_notices.py）不显示，排班页和邮件里照旧。主管收的「Schedule edited」显示成 published
+ * （Annie：「第一条那个，应该是published」）。被拒那条只有一句结果、别的类型，照后端 title + body。
+ */
+export function noticeDisplay(notice: ApiNotice): {
+  title: string;
+  body: string;
+} {
+  const week = weekPhrase(notice);
+  switch (notice.type) {
+    case "schedule_published":
+      return {
+        title: notice.title,
+        body: `Your schedule for ${week} has been published.`,
+      };
+    case "schedule_changed":
+      if (notice.title.startsWith("Schedule edited"))
+        return {
+          title: notice.title.replace(/^Schedule edited/, "Schedule published"),
+          body: `The schedule for ${week} has been published.`,
+        };
+      // Publish again 时第一次收到整周的人：标题「Your schedule — week of …」
+      if (notice.title.startsWith("Your schedule —"))
+        return {
+          title: notice.title,
+          body: `Your schedule for ${week} has been published.`,
+        };
+      return {
+        title: notice.title,
+        body: `Your schedule for ${week} has changed.`,
+      };
+    case "schedule_confirm_request":
+    case "schedule_confirm":
+      return {
+        title: notice.title,
+        body: `Please confirm your schedule for ${week}.`,
+      };
+    default:
+      return { title: notice.title, body: notice.body };
+  }
+}
+
 /** 卡片 / 历史里的类型标签。 */
 export function noticeKindLabel(notice: ApiNotice): string {
   return KIND_LABEL[notice.type] ?? "Notice";
@@ -301,21 +364,22 @@ function ScheduleRow({
   notice: ApiNotice;
   onGotIt: (notice: ApiNotice) => void;
 }) {
+  const shown = noticeDisplay(notice);
   return (
     <>
       <div className="min-w-0">
         <Kind>{noticeKindLabel(notice)}</Kind>
         <p className="text-[13.5px] leading-[1.4] font-semibold">
-          {notice.title}
+          {shown.title}
         </p>
       </div>
       <span className="text-[11.5px] whitespace-nowrap tabular-nums">
         {formatNoticeWhen(notice.created_at)}
       </span>
-      {notice.body ? (
+      {shown.body ? (
         // body 是纯文本、行与行之间 \n：当文本显示，不当 HTML。
         <p className="col-span-2 text-[12.5px] leading-[1.55] whitespace-pre-line">
-          {notice.body}
+          {shown.body}
         </p>
       ) : null}
       <div className="col-span-2 mt-0.5 flex items-center gap-3.5">

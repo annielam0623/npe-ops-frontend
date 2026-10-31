@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Fragment, useCallback, useEffect, useState, useRef } from "react";
 
 import {
-  BTN_ADD_CLASS,
+  BTN_SUBMIT_CLASS,
   BTN_EDIT_CLASS,
   BTN_OFF_CLASS,
   BTN_ON_CLASS,
@@ -412,7 +412,7 @@ export function PartnersView() {
               <button
                 type="submit"
                 disabled={adding}
-                className={cn(BTN_ADD_CLASS)}
+                className={BTN_SUBMIT_CLASS}
               >
                 {adding ? "Adding…" : "Add"}
               </button>

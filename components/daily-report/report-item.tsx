@@ -3,12 +3,13 @@
 import { useEffect, useState } from "react";
 
 import { describeError } from "@/lib/api-errors";
-import { fetchOperationReport } from "@/lib/daily-report-api";
+import { addReportUpdate, fetchOperationReport } from "@/lib/daily-report-api";
 import { cn } from "@/lib/utils";
 import type {
   OperationReport,
   OperationReportHistoryEntry,
   OperationReportPatch,
+  OperationReportUpdate,
   ReportAssignee,
   ReportStatus,
 } from "@/types";
@@ -51,6 +52,9 @@ function describeChange(
   return `${change.field} changed`;
 }
 
+/** Updates 一条最多多少字（后端 G224 同一个上限）。 */
+const UPDATE_MAX = 2000;
+
 function historyLine(entry: OperationReportHistoryEntry): string {
   const what =
     entry.action === "create"
@@ -64,16 +68,20 @@ function historyLine(entry: OperationReportHistoryEntry): string {
 /**
  * 一条记录（Dashboard 块和 View reports 页共用）：类型 · 对谁 · 订单号 · 一句话 · 状态 · 跟进人。
  * 能改的人（canEdit：本人登记的、或有 report.edit，见 use-report-editor.ts）可改状态和跟进人，其他人只看。展开才去取详情里的修改记录。
+ * 展开后下面列 Updates（G224，从旧到新），能看的人都能加一条（canAddUpdate；partner 不能），只能加不能改、删。
  */
 export function ReportItem({
   report,
   canEdit,
+  canAddUpdate,
   assignees,
   defaultExpanded = false,
   onPatch,
 }: {
   report: OperationReport;
   canEdit: boolean;
+  /** 能不能加 Updates：能看就能加，partner 不能（G224）。 */
+  canAddUpdate: boolean;
   assignees: ReportAssignee[];
   defaultExpanded?: boolean;
   /** 返回错误文字；成功返回 null。 */
@@ -84,6 +92,12 @@ export function ReportItem({
     null,
   );
   const [historyError, setHistoryError] = useState("");
+  const [updates, setUpdates] = useState<OperationReportUpdate[] | null>(null);
+  const [draft, setDraft] = useState("");
+  const [updateState, setUpdateState] = useState<
+    "idle" | "saving" | "saved" | "error"
+  >("idle");
+  const [updateError, setUpdateError] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -94,7 +108,10 @@ export function ReportItem({
     const controller = new AbortController();
     setHistoryError("");
     fetchOperationReport(report.id, controller.signal)
-      .then((detail) => setHistory(detail.history))
+      .then((detail) => {
+        setHistory(detail.history);
+        setUpdates(detail.updates ?? []);
+      })
       .catch((err) => {
         if (!controller.signal.aborted) setHistoryError(describeError(err));
       });
@@ -110,7 +127,24 @@ export function ReportItem({
     setBusy(false);
   }
 
+  async function saveUpdate() {
+    if (updateState === "saving") return;
+    setUpdateState("saving");
+    setUpdateError("");
+    try {
+      const added = await addReportUpdate(report.id, draft.trim());
+      setUpdates((list) => [...(list ?? []), added]);
+      setDraft("");
+      setUpdateState("saved");
+    } catch (err) {
+      setUpdateError(describeError(err));
+      setUpdateState("error");
+    }
+  }
+
   const rows = detailRows(report);
+  // 加 Updates 在修改记录里是 add_update、没有 changes，不显示（Updates 下面已经列了）。
+  const historyShown = history?.filter((h) => h.action !== "add_update");
   const followUpId = report.follow_up?.id;
   const subject = report.headline || report.subject_name || "";
 
@@ -241,9 +275,76 @@ export function ReportItem({
           <div>
             {historyError
               ? `History unavailable: ${historyError}`
-              : history
-                ? `History: ${history.map(historyLine).join(" → ")}`
+              : historyShown
+                ? `History: ${historyShown.map(historyLine).join(" → ")}`
                 : "Loading history…"}
+          </div>
+          <div data-report-updates className="mt-2">
+            <div className="mb-1 text-[11px] font-bold tracking-[.06em] text-white/45 uppercase">
+              Updates
+            </div>
+            {updates === null ? (
+              historyError ? null : (
+                <p className="m-0">Loading updates…</p>
+              )
+            ) : updates.length ? (
+              <ul className="m-0 flex list-none flex-col gap-1.5 p-0">
+                {updates.map((u) => (
+                  <li key={u.id} data-update-id={u.id}>
+                    <div className="text-[11.5px] text-white/50">
+                      {u.created_by.display_name} · {formatWhen(u.created_at)}
+                    </div>
+                    <p className="m-0 text-[13px] break-words whitespace-pre-wrap text-[#f8fafc]">
+                      {u.text}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="m-0">No updates yet.</p>
+            )}
+            {canAddUpdate && updates !== null ? (
+              <div className="mt-2">
+                <textarea
+                  aria-label={`Add an update to report ${report.id}`}
+                  value={draft}
+                  maxLength={UPDATE_MAX}
+                  rows={2}
+                  placeholder="Add an update…"
+                  disabled={updateState === "saving"}
+                  onChange={(e) => {
+                    setDraft(e.target.value);
+                    if (updateState !== "saving") setUpdateState("idle");
+                  }}
+                  className="w-full resize-y rounded-md border border-white/25 bg-[#0f2238] px-2 py-1.5 text-[13px] text-[#f8fafc] [color-scheme:dark] placeholder:text-white/35 disabled:opacity-60"
+                />
+                <div className="mt-1 flex items-center gap-2.5">
+                  <button
+                    type="button"
+                    data-update-save
+                    onClick={() => void saveUpdate()}
+                    disabled={updateState === "saving"}
+                    className="rounded-[9px] border border-[#3b82f6] bg-[#3b82f6] px-3.5 py-[5px] text-[12.5px] font-bold text-white hover:bg-[#2f76e8] disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    Save
+                  </button>
+                  {updateState === "saving" ? (
+                    <span className="text-xs text-white/60">Saving…</span>
+                  ) : updateState === "saved" ? (
+                    <span data-update-saved className="text-xs text-[#4ade80]">
+                      Saved
+                    </span>
+                  ) : updateState === "error" ? (
+                    <span role="alert" className="text-xs text-[#f87171]">
+                      {updateError}
+                    </span>
+                  ) : null}
+                  <span className="ml-auto text-[11px] text-white/40">
+                    {draft.length} / {UPDATE_MAX}
+                  </span>
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
       ) : null}

@@ -21,7 +21,10 @@ export const ADDVAN =
   "h-[34px] rounded-[7px] border border-[#cbd2dc] bg-paper px-3.5 text-[13px] font-medium text-[#111827] hover:bg-[#f4f5f7] disabled:cursor-not-allowed disabled:opacity-50";
 /** 空卡片里那个深蓝的 + Add vehicle（旧 `.emptystate .addvan`）。 */
 export const ADDVAN_DARK =
-  "h-[34px] rounded-[7px] border border-[#13284a] bg-[#13284a] px-[15px] text-[13px] font-semibold text-white hover:bg-[#1d3a66] disabled:cursor-not-allowed disabled:opacity-50";
+  "h-[34px] rounded-[7px] border border-[#6b8e74] bg-[#6b8e74] text-white hover:bg-[#5d7d66] px-[15px] text-[13px] font-semibold disabled:cursor-not-allowed disabled:opacity-50";
+/** 其他地方的 + Add vehicle：灰绿添加键（Annie 2026-10-30，先加在页面上、按 Save 才存）。 */
+export const ADDVAN_ADD =
+  "h-[34px] rounded-[7px] border border-[#6b8e74] bg-[#6b8e74] text-white hover:bg-[#5d7d66] px-3.5 text-[13px] font-semibold disabled:cursor-not-allowed disabled:opacity-50";
 
 // ── How to use（旧 `.howto` / `.rp-howto`：深底上自带浅蓝底）──
 export const HOWTO =
