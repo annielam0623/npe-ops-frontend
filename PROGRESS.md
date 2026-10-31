@@ -30,8 +30,17 @@
 - 下午 Annie 把 ZZTest（员工 id 8）的登录账号改成了 supervisor，这样页面上才有 Save / Publish，10d 测试要用。
 - 选法：A. 测完改回 staff（推荐：测试账号权限不留得比需要的大）；B. 一直保持 supervisor，以后测排班还能用。
 
-### 26. 09 问：你说的「之前的设计稿」是哪一份
-- 09 窗口没收到过这件事的上下文，已在 09 窗口问过 Annie，还没回。请在 09 窗口直接答，或告诉 98 转达。
+### 27. 周三确认：别人把自己的班放进来时，要不要问原来那个人同意
+- Annie 10-30 晚在 09 窗口原话：「就是周三发出去给staff确认他们的schedule，然后接受就dianaccept，也可以把自己的小模块放到她想上班的那天，然后改天的那个时段就会出现原来那个人和新放进来的人，然后这个改动会发给原来的这个人，问她是否同意，他们就自行商定。我记得以前出过设计稿的」
+- 有两份设计稿，做法不一样：
+  - ①「Staff Schedule 按人显示」第 12 版，最后一节「第二期预览：周三确认 + 换班」：https://claude.ai/artifact/WEjYE6tKZoYZoVpvy5rQ9N 。拖到别人的格子，拆成「Jing request / Lizzie original」，**两个人都 Accept 才生效**，有人 Decline 就恢复原样。当时记为二期，没做（要后端 G102）。
+  - ②「Wednesday Schedule Confirmation」v3：https://claude.ai/artifact/WR2LTx5YTFSmZ9HoMyiFPH 。现在线上照这份做（10-19 Annie「现在动手」）：新加的人亮黄，**由排班的人 Approve / Decline，不问原来那个人**。
+- 你描述的是 ①，线上是 ②。后端 57 正在出的 G138 方案（周三确认挪到发布前 + 提请求 + Approve，在等你答 Q1–Q4）是照 ② 往下做的。
+- 选法：
+  - A. 按 ① 改：原来那个人收到通知、可以同意 / 不同意，两个人都同意才生效（排班的人还要不要最后 Approve，要再定）。要后端 G102，G138 方案要跟着改。
+  - B. 维持 ②：排班的人决定，不问原来那个人。
+  - C. 两个都要：先问原来那个人，她同意了再交给排班的人 Approve。
+- 推荐：C（staff 自己商量，最后排班的人把关），具体先让后端在 G138 方案里一起出 preview 再定。
 
 ### 8. 可以上线后对着看的（不用答，验收时看）
 - Products 手动保存：09 问的 5 处细节，主窗口按盘点推荐定了，见 PROGRESS「2026-10-30」那节 09 的记录：
@@ -53,6 +62,8 @@
 - 置顶 24 答了（Annie 在 eb 窗口原话「要」）⇒ 选 A：周三确认邮件 sched_weekly_confirm_subject / _intro 放进 Team Messages，四组排班邮件都能改。已转 e6、57、4e。
 - 新工作窗口 `npe-ops-frontend-91`[9c93e4] 报到 ⇒ 接管 59 的 task/team-contacts、62 的 task/schedule-test-person：合最新 main、重跑检查、推分支，准备 Team 页 How to use 7 条（57 直接把原文发 91）；后端上 main 后再合。
 - Annie（经 57）原话：「告诉大家我把电脑带回家了，所以接下来的两天都执行周末的时间表」⇒ 10/30、10/31 这台电脑当家里那台用。收尾时间 Annie 再定（经 57）：「晚上11点开始收尾」⇒ 23:00。已转 e6 / 09 / 91。
+- 91 回：task/team-contacts 8436d85、task/schedule-test-person 30d2f10 都合了最新 main、检查全过、已推，等后端。91 待命。
+- 置顶 26 答了：「之前的设计稿」是周三确认 + 换班（Annie 原话见置顶 27）。09 找到两份设计稿，做法不同 ⇒ 新开置顶 27，已转 57（G138 方案相关）。
 
 ## 2026-10-30 晚 工作窗口 `npe-ops-frontend-91`[9c93e4]（98 派：接管 team-contacts、schedule-test-person，都不合 main）
 
