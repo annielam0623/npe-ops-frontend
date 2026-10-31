@@ -98,6 +98,9 @@
 - Annie 答 v2（经 98）原话：「排班除了第4点，要求周四中午12点以前确认回。  三件事都对。提加班直接把off那天打开就好，然后让发排班的人批复就可以」。还不是动手。
 - v3 已出（同一链接，21:27）：员工页写「Please confirm by Thu 11/5, 12:00 PM」（按周自动算，只是提醒）；自己 off 的格子「+ Work this day」→ 选班次 → 亮黄「+ extra shift · asked」→ 排班的人在格子上 Approve / Decline。「接班」不做。
 - v3 新问 Annie 2 题（已发 98）：① 周四 12 点过后 A 只是提醒（推荐，晚回标 late）/ B 到点员工页变只读；② 加班班次 A 只能从已有班次选（推荐）/ B 还能改时间。答了、Annie 说「动手」才用 mock 做。
+- Annie 对 v3 又两条（都还不是动手）：
+  - 经 98：「排班那个，一般是accept之前，decline在后」⇒ 成对的键同意在前：Accept / Decline、Approve / Decline。preview 已改，写代码也照这个顺序。
+  - 直接对 e6 说：「员工之间的改动就发给相关人员就好了，排版人和super admin只需要在管理界面看见他们的action就好。就像你preview的一样」⇒ 通知（站内 + 邮件）只发相关员工：换班请求发对方，对方回复发提请求的人，排班的人批了发提请求的人（换班两人都发），Publish 时关掉的发本人（和还在等的对方）；改天上、提加班发出时没人收。排班的人和 Super Admin 不收通知，只在 Staff Schedule 周表（亮黄格子）、Responses 卡、History 里看。preview 加了「谁会收到通知」一节。后端 G138 通知收件人要照这条，已转 98 让她转 57 / 4e。
 
 ## 2026-10-30 晚 7 Days Forecast：左边一列名字统一 15px 半粗（置顶 31，`task/forecast-label-size`，工作窗口 `npe-ops-frontend-09`[8a0116]，主窗口 98 派）—— 已合 main
 
