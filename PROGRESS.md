@@ -39,6 +39,36 @@
   3. 编辑权限不变（同 2026-10-30 修的 dor-edit-own：本人改自己的、report.edit 改所有人的）。
 - 明天要做：展开一条报告时在下面列「Updates」（谁、什么时候、写了什么，旧的在前），加一个输入框 + 蓝色 Save（任何能看这条报告的人都能加，partner 没有）。页面位置照 DOR 现状 preview（https://claude.ai/artifact/9FgXaqe3voxgGGuJVQpTdC ）第 5 部分画虚线框的那个地方。文字一律当纯文本显示。按 Save 才存（Saving… / 绿字 Saved / 红字后端原话）。检查：dor 套 mock 加 updates，测列出、加一条、空文本 / 超长 400 原话、partner 没有输入框。
 
+## 2026-10-30 Content Studio「Team Messages」模块（`task/content-team-messages`，工作窗口 `npe-ops-frontend-62`[cd78c4]，eb 派）—— 只开了分支，代码还没写，回家接着做
+
+- preview：https://claude.ai/artifact/MoGjKubqRq3bZks9zvTNSC（模拟数据；Annie 原话「23 全按推荐 动手」，收工时「行了，收工回家做」）。四题都按推荐定了：
+  1. 主题、短信正文、链接文字必填，清空就红字「Can't be empty.」、不让存；问候、说明、页脚可以留空，留空那句就不出现；
+  2. {week} 改成「Sun, Nov 1」（后端改）；
+  3. 只开放邮件主题，Notice 标题写死在代码里；
+  4. 一张卡「Team Messages」，三个标签：Driver & Guide SMS / Restaurant / Schedule Email。
+- 后端还在排计划，接口没定（eb 会转）。键名先照 92 列的：`tmpl__global__` 前缀加
+  - field_driver_sms / field_guide_sms
+  - rest_title / rest_total_label / rest_changed_label / rest_questions / rest_email_subject
+  - sched_greeting
+  - sched_week_subject / _intro / _empty / _link_text
+  - sched_changed_subject / sched_edited_subject / sched_changed_intro / sched_edited_intro / sched_changed_footer
+  - sched_confirm_changes_subject / _intro / _ask、sched_confirm_link_text
+  - sched_weekly_confirm_subject / _intro
+  前缀 92 写的是 `tmpl__global__<area>_<piece>`，餐厅、排班那几个的 area 怎么写，等接口定了再对。
+- 已查清的现有写法（下一步照这个搭）：
+  - 读存都走 `lib/template-settings-api.ts`（fetchTemplateSettings / saveTemplateSetting，按键一个个存），`content-studio-view.tsx` 里的 `studio` 对象管草稿和已存的值。
+  - 首页的模块列表是 `MODULES`（content-studio-view.tsx:106），`type Module` 在 83 行；模块里按 `tabName` 分支渲染（530 行起）。
+  - 卡片用 `studio-cards.tsx` 的 CardShell / CardFooter / useCardSave / InsertBar。这几个现在没 export，打算 export 出来，在新文件 `components/content-studio/team-messages.tsx` 里写 Team Messages 的卡片。
+  - 现有短信卡（TextFieldCard）按 300 字算，不合用。新卡要：
+    - 按一条短信 160 字算（GSM 双位字符用 `lib/sms-gsm.ts`），量的时候填进日期和约 95 字符的真实链接；
+    - {link} 必须正好出现一次；
+    - 导游卡多一行「Characters left for the staff note: N」；
+    - 必填的卡拒空；
+    - 未知变量红字（strictVars）。
+  - 右边 Preview 栏照 preview 稿画短信 / 邮件的样子；How to use 加一段。
+- 检查：在 `checks/headless/cs-mock.js` / `cs-test.js` 里加 Team Messages 的模拟键和检查（字数、剩余字数、拒空、{link} 一次、Save 只存那一张卡）。
+- 只推分支，不合 main，等后端接口上了再对键名、再合。
+
 ## 2026-10-30 置顶 21：Dispatch 标题行加「Driver page preview ↗」（`task/driver-preview-link`，工作窗口 `npe-ops-frontend-62`[cd78c4]，eb 派）—— 已合 main
 
 - Annie 原话（经 57 → eb）：「让前端加入口」；中途 eb 叫停过一次（Annie 问是不是要放进 Content Studio 做模块），随后 Annie「1. 马上上线」：照原计划放 Dispatch 标题行，Content Studio 模块另说。
