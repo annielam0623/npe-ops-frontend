@@ -147,6 +147,7 @@
 ## 2026-10-31 夜 新需求：羚羊谷 Bus Manifest 三个 canyon 排序 / 分页（91 记录，出 preview）
 - 11/1 凌晨 Annie「动手」（选「两件都动手」）：顺序 + 分页都拖拽（A），(1)–(4) 照推荐；后端已派 57，91 前端先用 mock 做，后端上 main 再合。整页 preview https://claude.ai/artifact/Txr893UKjC71txRfFJkdfd
 - ⛔ 后来 Annie 在 57 窗口改定（57 把两个说法摆在一起问，她选）：只管这一次——拖拽的顺序和分页只管当次查看 / 打印 / 下载，不存，重开回默认；默认 LOWER → UPPER → CANYON X 同一页；Driver / Guide 页照默认；今晚做。⇒ 不加列、不迁移、没有 PUT / Action Log / Save 键；GET 带 canyon_sections + 默认 canyon_pages；打印 / Excel 下载时把拖拽结果当参数传（参数名 57 定）。分页、New page 虚线、2+ tour section 才出、Shuttle 不算照旧。已转 91。
+- 64 定接口（后端 task/canyon-order，排在 21 → 44 之后）：GET tour 带 canyon_sections / canyon_pages（≥2 tour section 才带）；打印 GET .../print 和 Excel POST .../download 带 layout（JSON string[][]）；范围含 Hoover Dam（Annie 确认）。默认顺序来自 Products › Manifest setup 新设置「Bus Manifest section order」（groups[].bus_section_order，PUT .../groups/{id}/bus-section-order，admin，Annie 自己填）；没填时照旧按最早接人时间。前端 91 加这一格（照 Section order 写法，Save 存），合前截图给 Annie。
 - Annie 在 91 窗口原话：「在羚羊谷的bus manifest里的是否可以给staff多一个选项，可以选择三个canyon的顺序，选择排在同一页或者两页，然后默认的排序改为lower upper X」
 - 91 只读查：Bus Manifest 各节顺序由后端 tour_manifest.py _sections() 定（最早接人时间优先，同时间按 CSV 顺序；按 G198 故意不跟 Manifest setup 的 section_order）；分页 paginate()、打印 / Excel 也是后端出。⇒ 改默认顺序、让 staff 选顺序、同页 / 分页都要后端（排序 + 分页 + 存选择），前端只加控件。
 - 91 合完 Shuttle 后出 preview 和题（设置按天 / 按团 / 永久默认；「两页」是三个各一页还是 Lower + Upper 一页、X 一页），交主窗口问 Annie。未动手。
