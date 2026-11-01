@@ -1,9 +1,13 @@
 "use client";
 
+import { useState } from "react";
+
 import { formatClock } from "@/components/tasks/config";
 import { PageLink } from "@/components/ui/page-link";
+import { describeError } from "@/lib/api-errors";
 import { LA_TIME_ZONE, laToday } from "@/lib/la-date";
 import type { ApiNotice } from "@/lib/notices-api";
+import { MESSAGE_MAX, replyTeamMessage } from "@/lib/team-messages-api";
 import { cn } from "@/lib/utils";
 import type { DailyTask } from "@/types";
 
@@ -17,6 +21,8 @@ const KIND_LABEL: Record<string, string> = {
   schedule_confirm_request: "Confirm your schedule",
   schedule_confirm: "Confirm your schedule",
   operation_report: "Incident logged",
+  // 同事在 Today's team 点名字发来的站内消息（Annie 2026-10-30「两件都动手」）。
+  message: "Message",
 };
 
 const CLOCK = new Intl.DateTimeFormat("en-US", {
@@ -50,6 +56,69 @@ export function formatNoticeWhen(iso: string): string {
   const fmt =
     day.slice(0, 4) === today.slice(0, 4) ? MONTH_DAY : MONTH_DAY_YEAR;
   return `${fmt.format(date)}, ${clock}`;
+}
+
+const WEEK_DAY = new Intl.DateTimeFormat("en-US", {
+  timeZone: "UTC",
+  weekday: "short",
+  month: "short",
+  day: "numeric",
+});
+
+/** Notice 对应的那一周（ref.week_start，没有就看链接里的 ?week=），写成「the week of Sun, Nov 1」。 */
+function weekPhrase(notice: ApiNotice): string {
+  const fromRef = notice.ref?.week_start;
+  const ymd =
+    typeof fromRef === "string"
+      ? fromRef
+      : (/[?&]week=(\d{4}-\d{2}-\d{2})/.exec(notice.link ?? "")?.[1] ?? null);
+  if (!ymd || !/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return "this week";
+  const [y, m, d] = ymd.split("-").map(Number);
+  return `the week of ${WEEK_DAY.format(new Date(Date.UTC(y, m - 1, d)))}`;
+}
+
+/**
+ * 卡片 / 历史里显示的标题和正文。排班类只写一句、不列逐条改动（Annie 2026-10-31「notice里不需要显示详情，
+ * 这里只是给个提示你的schedule发布了，给个see my schedule的链接就好了」，preview https://claude.ai/artifact/8kzkHpbv4omcMjXo21FYzA ）：
+ * 后端 body 里的明细（schedule_notices.py）不显示，排班页和邮件里照旧。主管收的「Schedule edited」显示成 published
+ * （Annie：「第一条那个，应该是published」）。被拒那条只有一句结果、别的类型，照后端 title + body。
+ */
+export function noticeDisplay(notice: ApiNotice): {
+  title: string;
+  body: string;
+} {
+  const week = weekPhrase(notice);
+  switch (notice.type) {
+    case "schedule_published":
+      return {
+        title: notice.title,
+        body: `Your schedule for ${week} has been published.`,
+      };
+    case "schedule_changed":
+      if (notice.title.startsWith("Schedule edited"))
+        return {
+          title: notice.title.replace(/^Schedule edited/, "Schedule published"),
+          body: `The schedule for ${week} has been published.`,
+        };
+      // Publish again 时第一次收到整周的人：标题「Your schedule — week of …」
+      if (notice.title.startsWith("Your schedule —"))
+        return {
+          title: notice.title,
+          body: `Your schedule for ${week} has been published.`,
+        };
+      return {
+        title: notice.title,
+        body: `Your schedule for ${week} has changed.`,
+      };
+    case "schedule_confirm_request":
+    case "schedule_confirm":
+      return {
+        title: notice.title,
+        body: `Please confirm your schedule for ${week}.`,
+      };
+    default:
+      return { title: notice.title, body: notice.body };
+  }
 }
 
 /** 卡片 / 历史里的类型标签。 */
@@ -301,21 +370,25 @@ function ScheduleRow({
   notice: ApiNotice;
   onGotIt: (notice: ApiNotice) => void;
 }) {
+  if (notice.type === "message") {
+    return <MessageRow notice={notice} onGotIt={onGotIt} />;
+  }
+  const shown = noticeDisplay(notice);
   return (
     <>
       <div className="min-w-0">
         <Kind>{noticeKindLabel(notice)}</Kind>
         <p className="text-[13.5px] leading-[1.4] font-semibold">
-          {notice.title}
+          {shown.title}
         </p>
       </div>
       <span className="text-[11.5px] whitespace-nowrap tabular-nums">
         {formatNoticeWhen(notice.created_at)}
       </span>
-      {notice.body ? (
+      {shown.body ? (
         // body 是纯文本、行与行之间 \n：当文本显示，不当 HTML。
         <p className="col-span-2 text-[12.5px] leading-[1.55] whitespace-pre-line">
-          {notice.body}
+          {shown.body}
         </p>
       ) : null}
       <div className="col-span-2 mt-0.5 flex items-center gap-3.5">
@@ -337,6 +410,132 @@ function ScheduleRow({
             Got it
           </button>
         ) : null}
+      </div>
+    </>
+  );
+}
+
+/**
+ * 同事发来的站内消息：全文、Reply（站内回复，只写对方的 Notice，不发邮件——Annie「Q4 A 站内回复，不用邮件」）、Got it。
+ * 后端的消息 id 在 ref.message_id（没有就用通知 id 也找不到，这时不出 Reply）。
+ */
+function MessageRow({
+  notice,
+  onGotIt,
+}: {
+  notice: ApiNotice;
+  onGotIt: (notice: ApiNotice) => void;
+}) {
+  const messageId =
+    typeof notice.ref?.message_id === "number" ? notice.ref.message_id : null;
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState("");
+  const [state, setState] = useState<
+    | { kind: "idle" }
+    | { kind: "sending" }
+    | { kind: "sent" }
+    | { kind: "error"; message: string }
+  >({ kind: "idle" });
+
+  async function send() {
+    const body = text.trim();
+    if (!body || messageId == null || state.kind === "sending") return;
+    setState({ kind: "sending" });
+    try {
+      await replyTeamMessage(messageId, body);
+      setState({ kind: "sent" });
+      setText("");
+      setOpen(false);
+    } catch (err) {
+      setState({ kind: "error", message: describeError(err) });
+    }
+  }
+
+  return (
+    <>
+      <div className="min-w-0">
+        <Kind>{noticeKindLabel(notice)}</Kind>
+        <p className="text-[13.5px] leading-[1.4] font-semibold">
+          {notice.title}
+        </p>
+      </div>
+      <span className="text-[11.5px] whitespace-nowrap tabular-nums">
+        {formatNoticeWhen(notice.created_at)}
+      </span>
+      {notice.body ? (
+        <p
+          data-message-body
+          className="col-span-2 text-[12.5px] leading-[1.55] whitespace-pre-line"
+        >
+          {notice.body}
+        </p>
+      ) : null}
+      {open ? (
+        <div className="col-span-2 mt-1 flex flex-col gap-1.5">
+          <textarea
+            aria-label="Reply"
+            value={text}
+            onChange={(e) => setText(e.target.value.slice(0, MESSAGE_MAX))}
+            rows={3}
+            disabled={state.kind === "sending"}
+            placeholder="Write a reply…"
+            className="block w-full resize-none rounded-lg border border-white/15 bg-white/[.04] px-2.5 py-1.5 text-[12.5px] text-white outline-none focus:border-[#185FA5]"
+          />
+        </div>
+      ) : null}
+      {state.kind === "sent" ? (
+        <p
+          role="status"
+          className="col-span-2 text-[12px] font-semibold text-[#4ade80]"
+        >
+          ✓ Reply sent.
+        </p>
+      ) : state.kind === "error" ? (
+        <p role="alert" className="col-span-2 text-[12px] text-[#f87171]">
+          Not sent — {state.message}
+        </p>
+      ) : null}
+      <div className="col-span-2 mt-0.5 flex items-center gap-3.5">
+        {messageId != null ? (
+          open ? (
+            <>
+              <button
+                type="button"
+                onClick={() => void send()}
+                disabled={!text.trim() || state.kind === "sending"}
+                className="cursor-pointer rounded-md border border-[#3b82f6] bg-[#3b82f6] px-3 py-[3px] text-[12px] font-semibold text-white hover:bg-[#2f76e8] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {state.kind === "sending" ? "Sending…" : "Send"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                disabled={state.kind === "sending"}
+                className="cursor-pointer text-[12px] font-semibold text-white/60 hover:text-white"
+              >
+                Cancel
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(true);
+                setState({ kind: "idle" });
+              }}
+              className="cursor-pointer text-[12.5px] font-semibold text-[#38bdf8] hover:text-[#7dd3fc]"
+            >
+              Reply
+            </button>
+          )
+        ) : null}
+        <button
+          type="button"
+          onClick={() => onGotIt(notice)}
+          className="cursor-pointer rounded-md border border-white/10 px-2.5 py-[3px] text-[12px] font-semibold hover:border-white/35"
+        >
+          Got it
+        </button>
       </div>
     </>
   );

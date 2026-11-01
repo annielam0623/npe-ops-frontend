@@ -19,6 +19,7 @@ import { describeError, isStatus } from "@/lib/api-errors";
 import {
   ATTR_LEN,
   fetchManifest,
+  CANYON_PARAM,
   MANIFEST_DOWNLOAD_URL,
   manifestGuideUrl,
   manifestPrintUrl,
@@ -35,19 +36,27 @@ import { tourColorFor } from "@/lib/tour-colors";
 import { cn } from "@/lib/utils";
 import { PageLink } from "@/components/ui/page-link";
 import { useViewOnly, ViewOnly } from "@/components/ui/view-only";
+import {
+  type ActionVerb,
+  ActionLogPanel,
+} from "@/components/action-log/action-log-panel";
+import { fetchActionLog } from "@/lib/action-log";
 import { byTick } from "@/lib/permissions";
 import { usePermissions } from "@/lib/staff-permissions";
 import { usePageVisibility } from "@/lib/page-visibility";
 
 import { AffiliateCard } from "./affiliate-card";
 import { FarmOutButton, usePartners } from "./farm-out-button";
+import { CanyonOrderPicker } from "./canyon-order";
 import {
+  applyCanyonOrder,
   applyMoves,
   attrKey,
   type AttrValues,
   EMPTY_PENDING,
   isDirty,
   LeaveDialog,
+  newPageBefore,
   type Pending,
   pendingSummary,
   SaveFirstDialog,
@@ -224,6 +233,18 @@ const FOOTER_LABEL: Record<string, string> = {
  * 一个团、一天的 manifest，照纸本版式（同旧页面 /admin/dispatch/manifest）。
  * 车来自排车页已保存的排车，客人从主 Manifest 同步（G35，打开排车页时）。
  */
+/**
+ * Bus Manifest 的动作名（后端 64 逐个核过的 action 值，2026-10-30）：print / export / apply_upload / sync / seat_move 是一句话的记录
+ * （what = 那句话、label 空）；Special Requirements / Text size / 导游午餐 / Version 都是 update（共用的 Changed）。
+ */
+const MANIFEST_LOG_VERBS: Record<string, ActionVerb> = {
+  print: { label: "Printed", tone: "change" },
+  export: { label: "Downloaded", tone: "change" },
+  apply_upload: { label: "Uploaded", tone: "add" },
+  sync: { label: "Synced", tone: "add" },
+  seat_move: { label: "Moved", tone: "change" },
+};
+
 export function ManifestView() {
   const [params, setParams] = useState<{ date: string; tour: number } | null>(
     null,
@@ -267,7 +288,6 @@ export function ManifestView() {
   const viewOnly =
     perms.partnerLacks("manifests.edit") ||
     !byTick(perms, ["dispatch.edit", "manifests.edit"], {
-      legacy: true,
       superAdmin: isSuperAdmin,
     });
   const canPrint = !viewOnly || !perms.partnerLacks("dispatch.view");
@@ -334,6 +354,17 @@ export function ManifestView() {
 
   const data = view.kind === "ready" ? view.data : null;
   const dirty = !viewOnly && isDirty(pending);
+  /**
+   * Canyon order 拖出来的顺序和分页（置顶 41，Annie 2026-11-01 改定「只管这一次」）：只在这一页上，不存、不算没存的改动；
+   * 打印 / 下载时带给后端；换天、换团、重开页面都回到后端给的默认。整页 Save 重读后照旧保留。
+   */
+  const [canyon, setCanyon] = useState<{
+    key: string;
+    pages: string[][];
+  } | null>(null);
+  const canyonKey = params ? `${params.date}|${params.tour}` : "";
+  const canyonPages =
+    canyon && canyon.key === canyonKey ? canyon.pages : data?.tour.canyon_pages;
 
   /** 换车（Q4 改了：没存之前就在页面上挪到新车）。换回库里那辆 = 没改。 */
   function stageMove(guest: ManifestGuest, label: string) {
@@ -598,17 +629,19 @@ export function ManifestView() {
   const busOrders = (busKey: string) => (d: ManifestData) =>
     d.blocks.find((b) => b.bus_key === busKey)?.lunch_mismatch_orders ?? [];
 
-  /** 页面上画的样子 = 库里的 + 没存的版式 / 换车。 */
+  /** 页面上画的样子 = 库里的 + 没存的版式 / Canyon order / 换车。 */
   const shown = data
-    ? applyMoves(
-        pending.version
-          ? {
-              ...data,
-              tour: { ...data.tour, manifest_version: pending.version },
-            }
-          : data,
-        pending.moves,
-      )
+    ? (() => {
+        const tour = {
+          ...data.tour,
+          ...(pending.version ? { manifest_version: pending.version } : {}),
+          ...(canyonPages ? { canyon_pages: canyonPages } : {}),
+        };
+        return applyMoves(
+          applyCanyonOrder({ ...data, tour }, tour.canyon_pages),
+          pending.moves,
+        );
+      })()
     : null;
   const savedBus = data ? savedBusOf(data) : new Map<number, string>();
   const movedFrom = new Map(
@@ -723,9 +756,21 @@ export function ManifestView() {
                       onChange={stageVersion}
                     />
                   ) : null}
+                  {shown?.tour.canyon_pages && data.tour.canyon_sections ? (
+                    <CanyonOrderPicker
+                      pages={shown.tour.canyon_pages}
+                      readOnly={viewOnly}
+                      onChange={(pages) => setCanyon({ key: canyonKey, pages })}
+                    />
+                  ) : null}
                   {canPrint && data.manifest && data.blocks.length > 0 ? (
                     <a
-                      href={manifestPrintUrl(params.date, params.tour)}
+                      href={manifestPrintUrl(
+                        params.date,
+                        params.tour,
+                        undefined,
+                        canyonPages,
+                      )}
                       target="_blank"
                       rel="noopener noreferrer"
                       onClick={(e) => {
@@ -760,6 +805,13 @@ export function ManifestView() {
                     >
                       <input type="hidden" name="date" value={params.date} />
                       <input type="hidden" name="tour" value={params.tour} />
+                      {canyonPages ? (
+                        <input
+                          type="hidden"
+                          name={CANYON_PARAM}
+                          value={JSON.stringify(canyonPages)}
+                        />
+                      ) : null}
                       <button
                         type="submit"
                         disabled={!data.manifest}
@@ -940,6 +992,32 @@ export function ManifestView() {
               {data.gone?.length ? <GoneCard gone={data.gone} /> : null}
 
               {viewOnly ? null : <HowToUse />}
+              {/* 改动记录（Annie 2026-10-30「同意所有推荐。动手」，preview https://claude.ai/artifact/YEgERHNDiL45TCkbzyJisa ）：
+                  页面最下面，同 Dispatch 页那块；只看当前这个团（c）、打印 / 下载也列（a）、能改这页的人才看得到（b）。 */}
+              {viewOnly || !params ? null : (
+                <div className="mt-6" data-manifest-log>
+                  <ActionLogPanel
+                    refreshKey={`${params.date}|${params.tour}|${saveState.kind === "saved" ? saveState.at : ""}`}
+                    reloadOnOpen
+                    onUnauthorized={redirectToLogin}
+                    verbs={MANIFEST_LOG_VERBS}
+                    note={
+                      <>
+                        Changes to the Bus Manifest for <b>{data.tour.name}</b>{" "}
+                        on <b>{data.date_label}</b>. Newest first.
+                      </>
+                    }
+                    load={(before, signal) =>
+                      fetchActionLog(
+                        "/api/dispatch/manifest/action-log",
+                        before,
+                        signal,
+                        { date: params.date, tour: String(params.tour) },
+                      )
+                    }
+                  />
+                </div>
+              )}
               {saveFirst ? (
                 <SaveFirstDialog
                   action={saveFirst.action}
@@ -1164,7 +1242,12 @@ function BusCard({
           </span>
           {data.manifest && canPrint ? (
             <a
-              href={manifestPrintUrl(params.date, params.tour, block.bus.id)}
+              href={manifestPrintUrl(
+                params.date,
+                params.tour,
+                block.bus.id,
+                data.tour.canyon_pages,
+              )}
               target="_blank"
               rel="noopener noreferrer"
               onClick={(e) => {
@@ -1439,6 +1522,8 @@ function GuestTable({
   const boardingClass = version === "lankun" ? "print:hidden" : "";
   const cols = columns.length + (lettered ? 1 : 0) + (boarding ? 1 : 0);
   const th = { fontSize: `${HEAD_PX[version].th}px` };
+  // Canyon order 分页的地方（置顶 41 题 3 A）：屏幕上画一条「New page」虚线；真正换页在后端的打印页。
+  const breaks = newPageBefore(sections, data.tour.canyon_pages);
   if (sections.length === 0) {
     return (
       <p className="px-1 py-3.5 text-[13px] text-[#1a1a1a]">
@@ -1526,6 +1611,7 @@ function GuestTable({
               key={s.key}
               data={data}
               section={s}
+              newPage={breaks.has(s.key)}
               columns={columns}
               cols={cols}
               lettered={lettered}
@@ -1786,6 +1872,7 @@ function LunchCell({
 function SectionRows({
   data,
   section: s,
+  newPage = false,
   columns,
   cols,
   lettered,
@@ -1800,6 +1887,8 @@ function SectionRows({
 }: {
   data: ManifestData;
   section: ManifestSection;
+  /** Canyon order：这一节从新的一页开始，前面画「New page」虚线（只在屏幕上）。 */
+  newPage?: boolean;
   columns: Column[];
   cols: number;
   lettered: boolean;
@@ -1832,6 +1921,15 @@ function SectionRows({
   };
   return (
     <>
+      {newPage ? (
+        <tr data-new-page className="print:hidden">
+          <td colSpan={cols} className="border-0 bg-white p-0">
+            <div className="flex items-center gap-2.5 px-1.5 py-[9px] text-[11px] leading-none font-semibold tracking-[.08em] text-[#6b7280] uppercase before:flex-1 before:border-t-2 before:border-dashed before:border-[#9ca3af] before:content-[''] after:flex-1 after:border-t-2 after:border-dashed after:border-[#9ca3af] after:content-['']">
+              New page
+            </div>
+          </td>
+        </tr>
+      ) : null}
       <tr>
         <td
           colSpan={cols}
@@ -2428,6 +2526,15 @@ function HowToUse() {
           opens it gets the same one, on screen, when printed and in Excel.
           Hotel names use the first Alias in Settings → Pickup Locations, and
           times have no AM / PM.
+        </li>
+        <li>
+          Canyon order (Section order on some tours), next to Version: drag a
+          canyon up or down to change the order, into another page to print it
+          there, or onto the dashed box to start a new page. It only changes
+          this Print or Download and is not saved: reload the page to go back to
+          the default order (set in Settings → Products). A dashed New page line
+          shows where the printout starts a new page. Shuttle sections stay at
+          the end; the Driver and Guide pages always use the default order.
         </li>
         <li>
           Tours with a lunch place have a Lunch column (B = Beef, T = Turkey, V

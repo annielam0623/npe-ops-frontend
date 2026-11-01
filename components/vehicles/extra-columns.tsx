@@ -12,6 +12,7 @@ import {
   CARD_TITLE_CLASS,
   INLINE_INPUT_BASE,
   resultClass,
+  BTN_SUBMIT_CLASS,
 } from "@/components/pickup-locations/legacy-ui";
 import { cn } from "@/lib/utils";
 import {
@@ -111,7 +112,7 @@ export function ExtraColumns({
         <button
           type="submit"
           disabled={busy !== null}
-          className={BTN_EDIT_CLASS}
+          className={BTN_SUBMIT_CLASS}
         >
           {busy === "add" ? "Adding…" : "Add column"}
         </button>

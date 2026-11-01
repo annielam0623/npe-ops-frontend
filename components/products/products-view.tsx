@@ -154,7 +154,6 @@ function ProductsPage() {
         if (signal.aborted) return;
         if (
           !byTick(tickPermsRef.current, "settings.products", {
-            legacy: me.is_admin,
             superAdmin: !!me.is_superadmin,
           })
         ) {
@@ -166,7 +165,8 @@ function ProductsPage() {
           fetchProductGroups(signal),
         ]);
         if (signal.aborted) return;
-        // Bus Manifest setup 和 7 Days Forecast 设置后端是 require_admin（按角色，不按勾）：只有 admin 才出那一块。
+        // Bus Manifest setup 后端 /api/settings/manifest-setup/* 仍是 require_admin（按角色，64 2026-11-01）：只有 admin 才出那一块；
+        // 里面的 7 Days Forecast 几项另按 settings.forecast 的勾（manifest-setup-panel.tsx）。
         setAdminPanels(!!me.is_admin || !!me.is_superadmin);
         setView({ kind: "ready", products, meta });
         fetchMissingProducts(signal)

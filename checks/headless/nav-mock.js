@@ -1,5 +1,6 @@
 // 模拟后端：Dispatch 单子页只需要 /api/me。控制：POST /__ctl {fail401, role}。
 const http = require("http");
+const { permsBody } = require("./role-standard");
 const ctl = { fail401: false, forbid: false, admin: false, supervisor: false };
 const log = [];
 function send(res, status, body) { res.statusCode = status; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify(body)); }
@@ -17,6 +18,8 @@ http.createServer(async (req, res) => {
   if (p === "/admin/settings/hr/save" && req.method === "POST") { res.setHeader("Set-Cookie", "flash=saved; Path=/; HttpOnly"); res.statusCode = 303; res.setHeader("Location", "/admin/settings/hr"); return res.end(); }
   if (ctl.fail401) return send(res, 401, { detail: "Authentication required" });
   if (ctl.forbid) return send(res, 403, { detail: "Staff access required" });
+  // 只看勾（2026-11-01）：按角色标准回。
+  if (p === "/api/me/permissions") return send(res, 200, permsBody(ctl.admin ? "admin" : ctl.supervisor ? "supervisor" : "staff"));
   if (p === "/api/me") return send(res, 200, { id: 1, username: "zztest", display_name: "ZZ Test", initials: "ZT", role: ctl.admin ? "admin" : ctl.supervisor ? "supervisor" : "staff", is_admin: ctl.admin, is_superadmin: false, is_supervisor: ctl.admin || ctl.supervisor });
   if (p === "/api/dispatch/manifest") return send(res, 500, { detail: "mock" });
   send(res, 404, { detail: "mock: not found" });

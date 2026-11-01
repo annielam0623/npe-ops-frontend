@@ -90,9 +90,18 @@ function Body({
   name: string;
   shiftLabel: (key: string) => string;
 }) {
+  // move 的批准 / 拒绝只带目标日（shift_type 是 null），swap 什么都不带（后端 G138 5aeadbbb）。
   const req = e.request
-    ? `${dayLabel(e.request.date)} ${shiftLabel(e.request.shift_type)}`
-    : "";
+    ? [
+        e.request_kind === "move" ? "the move to" : "",
+        dayLabel(e.request.date),
+        e.request.shift_type ? shiftLabel(e.request.shift_type) : "",
+      ]
+        .filter(Boolean)
+        .join(" ")
+    : e.request_kind === "swap"
+      ? "the swap"
+      : "";
   const slotText = (s: { date: string; shift_type: string } | null | undefined) =>
     s ? `${dayLabel(s.date)} ${shiftLabel(s.shift_type)}` : "";
   const via =

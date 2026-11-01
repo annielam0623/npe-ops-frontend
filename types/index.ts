@@ -31,6 +31,7 @@ export type {
   OperationReportNotification,
   OperationReportPatch,
   OperationReportQuery,
+  OperationReportUpdate,
   PoliceReport,
   ReportAssignee,
   ReportPerson,

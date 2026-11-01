@@ -2,6 +2,7 @@
 // 计价照后端 app/services/tcq_pricing.py / tcq_quote.build_quote 抄的（简化：不做读取，parsed 是写死的）。
 // 控制：POST /__ctl {role, unauth, failPreview, reset}；GET /__log 看请求。
 const http = require("http");
+const { permsBody } = require("./role-standard");
 
 const ctl = { role: "admin", unauth: false, failPreview: "" };
 const log = [];
@@ -274,6 +275,8 @@ http
     // 全部按照勾选（置顶 10c）：ctl.tick = { switchOn, codes } 时回员工权限总开关和我的勾；没有 tick 照旧（接口 404 = 开关关着）。
     if (ctl.tick && p === "/api/settings/dashboard-widgets") return send(res, 200, { readable: true, widgets: [{ key: "staff_permissions", label: "Staff permissions (ops gating)", visibility: ctl.tick.switchOn ? "staff" : "super_admin_only", default: "super_admin_only", visible_to_me: !!ctl.tick.switchOn }] });
     if (ctl.tick && p === "/api/me/permissions") return send(res, 200, { is_superadmin: false, permissions: ctl.tick.codes.map((code) => ({ code, module: code.split(".")[0], wired: true })), default_home: "/dashboard" });
+    // 只看勾（2026-11-01）：没设 tick 时按角色标准回。
+    if (p === "/api/me/permissions") return send(res, 200, permsBody(ctl.role));
     if (p === "/api/me") return send(res, 200, { id: 1, username: "zztest", display_name: "ZZ Test", initials: "ZT", role: ctl.role, is_admin: ctl.role !== "staff", is_superadmin: ctl.role === "superadmin" });
     if (ctl.unauth && (p.startsWith("/api/workspace") || p.startsWith("/api/tcq") || p.startsWith("/api/settings"))) return send(res, 401, { detail: "Not authenticated" });
     if (p.startsWith("/api/user-prefs/")) return send(res, 200, { key: p.split("/").pop(), value: null });

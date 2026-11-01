@@ -337,10 +337,19 @@ export interface Analysis {
   coverage: { shift: string; covered: number; total: number }[];
   driversUsed: number;
   dup: Map<number, { key: string; n: number }>;
+  /** 巴士团还没选 Shuttle 上车点：这个团第一台车的行号 → Shuttle 客人数（车上「Add hotel」右边出提示）。 */
+  shuttleAsk: Map<number, number>;
 }
 
 /** 右栏 Schedule check、顶部统计（同旧页面 render / renderRail 的口径）。 */
-export function analyze(rows: DispatchRow[], L: Lookup): Analysis {
+/**
+ * shuttlePax：团（manifest_id）→ 当天 Bus manifest 里 Shuttle 节（outbound / inbound）的人数；没读到的团不提醒。
+ */
+export function analyze(
+  rows: DispatchRow[],
+  L: Lookup,
+  shuttlePax?: Record<number, number>,
+): Analysis {
   const day = L.day;
   const sectionKey = (s: { shift: string; manifest_id: number | null }) =>
     secOf(s);
@@ -369,7 +378,16 @@ export function analyze(rows: DispatchRow[], L: Lookup): Analysis {
   const byKey = new Map(sections.map((s) => [s.key, s]));
   const blockName = (r: DispatchRow) => byKey.get(secOf(r))?.name || r.shift;
   const covName = (c: string) => byKey.get(c)?.name || "the relay round";
-  const activeLocs = day.locations.filter((l) => l.active !== false);
+  // Morning Relay 只接 Las Vegas 的酒店（Annie 2026-10-31「morning relay只放vegas的酒店，shuttle那些不要放进来」）：
+  // 只算 is_tour_bus === true 的点；后端还没带 is_tour_bus（一个点都没有这个键）时照旧全算。
+  // 勾了「Tour bus departure」的点（TI）不算：团车在那里直接上客（Annie 2026-10-31 选 A，11-01「动手」）。
+  const vegasKnown = day.locations.some((l) => l.is_tour_bus !== undefined);
+  const activeLocs = day.locations.filter(
+    (l) =>
+      l.active !== false &&
+      (!vegasKnown || l.is_tour_bus === true) &&
+      l.is_tour_departure !== true,
+  );
 
   const issues: RailIssue[] = [];
   const noDrv = rows.flatMap((r, i) => (hasDriver(r) ? [] : [i]));
@@ -401,6 +419,35 @@ export function analyze(rows: DispatchRow[], L: Lookup): Analysis {
       sec: c,
     });
   });
+
+  // Shuttle 上车点（Annie 2026-10-31，preview BewNcepgfaJMDPDMvo2Pdz v3 样子 1 + Schedule check）：这个团当天有 Shuttle 客人、
+  // 这个团哪台车都还没有 Shuttle 站（Pickup Locations 没勾 Tour bus 的点）时提醒；默认第一台车，在别的车选了也算（不拦）。
+  // 后端没带 is_tour_bus 时分不出 Shuttle 站，不提醒。
+  const shuttleAsk = new Map<number, number>();
+  if (vegasKnown && shuttlePax) {
+    const shuttleStop = new Set(
+      day.locations.filter((l) => l.is_tour_bus !== true).map((l) => l.id),
+    );
+    for (const s of day.sections) {
+      if (s.shift !== META.bus_tour_shift || s.manifest_id == null) continue;
+      const pax = shuttlePax[s.manifest_id] ?? 0;
+      if (pax <= 0) continue;
+      const key = sectionKey(s);
+      const mine = rows.flatMap((r, i) =>
+        secOf(r) === key && !r.farm_out ? [i] : [],
+      );
+      if (
+        mine.some((i) => rows[i].location_ids.some((l) => shuttleStop.has(l)))
+      )
+        continue;
+      if (mine.length) shuttleAsk.set(mine[0], pax);
+      issues.push({
+        title: `${s.title}: shuttle pick-up not chosen`,
+        detail: `${pax} shuttle guest${pax === 1 ? "" : "s"} · pick a Shuttle stop on any bus of this tour.`,
+        ...(mine.length ? { idx: mine[0], field: "addstop" } : { sec: key }),
+      });
+    }
+  }
 
   const seen = new Set<string>();
   rows.forEach((row, idx) => {
@@ -538,6 +585,7 @@ export function analyze(rows: DispatchRow[], L: Lookup): Analysis {
       total: activeLocs.length,
     })),
     driversUsed: usedDrivers.size,
+    shuttleAsk,
     dup,
   };
 }

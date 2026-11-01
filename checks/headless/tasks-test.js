@@ -98,8 +98,78 @@ async function openDashboard() {
   await helpers();
 }
 
+// ── Today's team 在线同事 + 站内消息（Annie 2026-10-30「两件都动手」；后端没上，mock 照前端提的形状）──
+async function runMessaging() {
+  const msgs = async () => (await fetch(`${MOCK}/__messages`)).json();
+  const row = (name) => `document.querySelector('[data-team-row="${name}"]')`;
+  // 员工 Lizzie，开关默认只 Super Admin：不出 Online now，名字不能点
+  await ctl({ reset: true, fail401: false, failGet: false, notReady: false, now: null, perms: null, legacyShape: false, handoverAgeH: null, confirmNotices: false, me: "lizzie", supervisor: false, admin: false, superadmin: false, notices: true, teamOnline: true, directMsg: true, gates: "open", gateVis: { team_messages_direct: "super_admin_only" } });
+  await openDashboard();
+  await waitFor("document.querySelector('[data-today-team] [data-team-row]')", 20000);
+  await sleep(1500);
+  check("消息功能开关（默认只 Super Admin）：员工没有 Online now、名字不能点", await evaluate("return !document.querySelector('[data-online-now]') && !document.querySelector('[data-team-message]');"));
+  // 开给员工
+  await ctl({ gates: "open", gateVis: { team_messages_direct: "staff", dashboard_today_team: "staff" } });
+  await openDashboard();
+  await waitFor("document.querySelector('[data-online-now]')", 20000);
+  check("Online now：登录了、不在排班名单里的员工（ZZ Test Admin、Mia），A–Z；排班的人（Jing）不重复", await evaluate("const r = [...document.querySelectorAll('[data-online-row]')].map(x => x.dataset.onlineRow); return JSON.stringify(r) === JSON.stringify(['Mia', 'ZZ Test Admin']);"), await evaluate("return JSON.stringify([...document.querySelectorAll('[data-online-row]')].map(x => x.dataset.onlineRow));"));
+  check("排班名单里在线的人（Jing）名字能点、带绿点；没在线的（Nadia）不能点；自己那一行不能点", await evaluate(`return !!${row("Jing")}?.querySelector('[data-team-message]') && !!${row("Jing")}?.querySelector('[data-team-online]') && !${row("Nadia")}?.querySelector('[data-team-message]') && !${row("Lizzie")}?.querySelector('[data-team-message]');`));
+  // 点 Mia（没登记 Email）：黄字，Send 蓝色，先灰
+  await evaluate("document.querySelector('[data-online-row=\"Mia\"] button').click();");
+  await waitFor("document.querySelector('[data-team-message-dialog]')");
+  check("发消息小框：标题 Message Mia；没 Email 写黄字；Send 是蓝色、没写字时灰", await evaluate("const d = document.querySelector('[data-team-message-dialog]'); const send = [...d.querySelectorAll('button')].find(b => b.textContent === 'Send'); return d.querySelector('h2').textContent === 'Message Mia' && d.querySelector('[data-no-email]').textContent.includes('No email on file') && getComputedStyle(send).backgroundColor === 'rgb(59, 130, 246)' && send.disabled;"));
+  await evaluate("const t = document.querySelector('[data-team-message-dialog] textarea'); const set = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set; set.call(t, 'ZZ test: please check the 3pm list'); t.dispatchEvent(new Event('input', { bubbles: true }));");
+  await sleep(200);
+  await evaluate("[...document.querySelectorAll('[data-team-message-dialog] button')].find(b => b.textContent === 'Send').click();");
+  await waitFor("document.querySelector('[data-team-message-dialog] [role=status]')");
+  let m = await msgs();
+  check("Send：POST /api/team/messages {to_user_id: 34, body}；绿字 Sent（没 Email 不写 emailed）", m.length === 1 && m[0].kind === "send" && m[0].to_user_id === 34 && m[0].body === "ZZ test: please check the 3pm list" && (await evaluate("const s = document.querySelector('[data-team-message-dialog] [role=status]'); return s.textContent === '✓ Sent.' && getComputedStyle(s).color === 'rgb(74, 222, 128)';")), JSON.stringify(m));
+  await evaluate("[...document.querySelectorAll('[data-team-message-dialog] button')].find(b => b.textContent === 'Close').click();");
+  // 点 Jing（排班名单里、有 Email）
+  await evaluate(`${row("Jing")}.querySelector('[data-team-message]').click();`);
+  await waitFor("document.querySelector('[data-team-message-dialog]')");
+  check("排班的人也能点：Message Jing，有 Email 不出黄字，写 also gets it by email", await evaluate("const d = document.querySelector('[data-team-message-dialog]'); return d.querySelector('h2').textContent === 'Message Jing' && !d.querySelector('[data-no-email]') && d.textContent.includes('gets it by email');"));
+  await evaluate("[...document.querySelectorAll('[data-team-message-dialog] button')].find(b => b.textContent === 'Cancel').click();");
+  // Notice 里的站内消息（昨天来的也在）：Message 标签、全文、Reply 站内回复
+  await waitFor("document.querySelector('[data-message-body]')", 15000);
+  check("Notice：同事的站内消息（昨天来的、没读）显示，标签 Message，全文分行", await evaluate("const b = document.querySelector('[data-message-body]'); const li = b.closest('li'); return li.textContent.includes('Jing sent you a message') && li.textContent.toLowerCase().includes('message') && b.textContent.includes('They asked about bags.');"));
+  await evaluate("[...document.querySelector('[data-message-body]').closest('li').querySelectorAll('button')].find(b => b.textContent === 'Reply').click();");
+  await waitFor("document.querySelector('textarea[aria-label=Reply]')");
+  await evaluate("const t = document.querySelector('textarea[aria-label=Reply]'); const set = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set; set.call(t, 'ZZ test: on it'); t.dispatchEvent(new Event('input', { bubbles: true }));");
+  await sleep(200);
+  await evaluate("[...document.querySelector('[data-message-body]').closest('li').querySelectorAll('button')].find(b => b.textContent === 'Send').click();");
+  await waitFor("document.querySelector('[data-message-body]').closest('li').querySelector('[role=status]')");
+  m = await msgs();
+  check("Reply：POST /api/team/messages/7/reply {body}，绿字 Reply sent", m.some((x) => x.kind === "reply" && x.id === 7 && x.body === "ZZ test: on it") && (await evaluate("return document.querySelector('[data-message-body]').closest('li').querySelector('[role=status]').textContent === '✓ Reply sent.';")), JSON.stringify(m));
+  // 发送失败：后端 400 原话红字
+  await evaluate(`${row("Jing")}.querySelector('[data-team-message]').click();`);
+  await waitFor("document.querySelector('[data-team-message-dialog]')");
+  await ctl({ msgFail: true });
+  await evaluate("const t = document.querySelector('[data-team-message-dialog] textarea'); const set = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set; set.call(t, 'x'); t.dispatchEvent(new Event('input', { bubbles: true }));");
+  await sleep(200);
+  await evaluate("[...document.querySelectorAll('[data-team-message-dialog] button')].find(b => b.textContent === 'Send').click();");
+  await waitFor("document.querySelector('[data-team-message-dialog] [role=alert]')");
+  check("发送失败：红字 Not sent — 后端原话", await evaluate("return document.querySelector('[data-team-message-dialog] [role=alert]').textContent === 'Not sent — Write a message first.';"));
+  await ctl({ msgFail: false });
+  await evaluate("[...document.querySelectorAll('[data-team-message-dialog] button')].find(b => b.textContent === 'Cancel').click();");
+  // 开关没对我开（后端 403）：不出 Online now，名字不能点
+  await ctl({ teamOnline: "403" });
+  await openDashboard();
+  await waitFor("document.querySelector('[data-today-team] [data-team-row]')", 20000);
+  await sleep(1500);
+  check("在线名单 403（开关没对我开）：Today's team 照旧，不出 Online now、名字不能点", await evaluate("return !document.querySelector('[data-online-now]') && !document.querySelector('[data-team-message]');"));
+  // 后端没上（404）：不出 Online now，名字不能点，Today's team 照旧
+  await ctl({ teamOnline: false });
+  await openDashboard();
+  await waitFor("document.querySelector('[data-today-team] [data-team-row]')", 20000);
+  await sleep(1500);
+  check("后端在线名单没上（404）：Today's team 照旧，不出 Online now、名字不能点", await evaluate("return !document.querySelector('[data-online-now]') && !document.querySelector('[data-team-message]');"));
+  await ctl({ reset: true, teamOnline: false, directMsg: false, gates: "open", gateVis: {} });
+}
+
 async function run() {
-  await ctl({ reset: true, me: "lizzie", supervisor: false, fail401: false, failGet: false, notReady: false, now: null });
+  // testPerson：名单里多一个测试用的人（is_test），每天有班；Dashboard 两块都不该出现他（Annie 2026-10-30 选 A）。
+  await ctl({ reset: true, me: "lizzie", supervisor: false, fail401: false, failGet: false, notReady: false, now: null, testPerson: true });
   let from = (await mockLog()).length;
   await openDashboard();
 
@@ -117,7 +187,7 @@ async function run() {
   })());
   check("标题：My tasks · 9:30 AM–5:30 PM（后端 24 小时 09:30 转成 12 小时），不写现在几点、没有 NOW（G202）", await evaluate("const t = $tasksSection().querySelector('h2').textContent; return t.includes('My tasks · 9:30 AM–5:30 PM') && !/now/i.test(t) && !$tasksSection().textContent.includes('NOW');"), await evaluate("return $tasksSection().querySelector('h2').textContent;"));
   check("汇总行 2 of 6 done（6 条角色任务，不含待接受的那条）", await evaluate("return $tasksSection().textContent.includes('2 of 6 done');"));
-  check("汇总条：1 overdue · 2 due within the hour", await evaluate("return $tasksSection().textContent.includes('1 overdue') && $tasksSection().textContent.includes('2 due within the hour');"), await evaluate("return $tasksSection().textContent.slice(0, 400);"));
+  check("🔔 汇总条去掉了（G202 v3 没有；Annie 2026-10-30 改回 v3）", await evaluate("const t = $tasksSection().textContent; return !t.includes('due within the hour') && !t.includes('🔔');"), await evaluate("return $tasksSection().textContent.slice(0, 400);"));
   check("超时的 Send Last mins Confirmation：Overdue · was due 2:00 PM，标红底", await evaluate("const li = $li('Send Last mins Confirmation'); return li.textContent.includes('Overdue') && li.textContent.includes('2:00 PM') && li.dataset.dueStatus === 'overdue';"));
   check("已完成的两条有删除线、Done 徽章", await evaluate("const li = $li('South Lunch'); return li.querySelector('input[type=checkbox]').checked && li.textContent.includes('Done');"));
   // ── Notice 面板（Annie 2026-10-19）：待接受的交接在这里，不在 My tasks 里 ──
@@ -126,11 +196,12 @@ async function run() {
   check("My tasks 里没有黄色「Passed over to you」那一块，待接受的那条也不在清单里", await evaluate("return !$tasksSection().textContent.includes('Passed over to you') && !$li('Check Shuttle and remind Tour Guide for Shuttle Pickup', $tasksSection());"));
   check("Notice 里只有 Accept 一个按钮，没有 Decline", await evaluate(`const b = [...${NOTICE}.querySelectorAll('button')].map(x => x.textContent.trim()); return b.includes('Accept') && !b.some(t => /decline/i.test(t));`));
   check("后端没有排班提醒接口（404）：Notice 只有交接这一条、写 1 new，没有 Mark all as read", await evaluate(`const t = ${NOTICE}.textContent; return t.includes('1 new') && !t.includes('Mark all as read') && !t.includes('Schedule');`));
-  check("区块顺序（Annie 2026-10-24 定死）：My shortcuts → Notice（紧挨着、整行宽）→ 统计块 → Messages → My tasks（员工）", await evaluate(`const s = document.querySelector('section[aria-label="My shortcuts"]').getBoundingClientRect(); const n = ${NOTICE}.getBoundingClientRect(); const st = document.querySelector('[data-stats-row]').getBoundingClientRect(); const t = $tasksSection().getBoundingClientRect(); const m = document.getElementById('messages-title').getBoundingClientRect(); const main = document.querySelector('main').getBoundingClientRect(); return s.bottom <= n.top + 1 && n.top - s.bottom < 40 && n.width > main.width * 0.75 && n.bottom <= st.top + 1 && st.bottom <= m.top + 1 && m.bottom <= t.top + 1 && t.width > main.width * 0.75;`), await evaluate(`const g = (e) => Math.round(e.getBoundingClientRect().top); return JSON.stringify([g(document.querySelector('section[aria-label="My shortcuts"]')), g(${NOTICE}), g(document.querySelector('[data-stats-row]')), g($tasksSection()), g(document.getElementById('messages-title'))]);`));
+  check("区块顺序：My shortcuts → Notice（紧挨着、整行宽）→ 统计块 → Messages → My tasks（员工，占 2/3）", await evaluate(`const s = document.querySelector('section[aria-label="My shortcuts"]').getBoundingClientRect(); const n = ${NOTICE}.getBoundingClientRect(); const st = document.querySelector('[data-stats-row]').getBoundingClientRect(); const t = $tasksSection().getBoundingClientRect(); const m = document.getElementById('messages-title').getBoundingClientRect(); const main = document.querySelector('main').getBoundingClientRect(); return s.bottom <= n.top + 1 && n.top - s.bottom < 40 && n.width > main.width * 0.75 && n.bottom <= st.top + 1 && st.bottom <= m.top + 1 && m.bottom <= t.top + 1 && t.width > n.width * 0.55 && t.width < n.width * 0.75;`), await evaluate(`const g = (e) => Math.round(e.getBoundingClientRect().top); return JSON.stringify([g(document.querySelector('section[aria-label="My shortcuts"]')), g(${NOTICE}), g(document.querySelector('[data-stats-row]')), g($tasksSection()), g(document.getElementById('messages-title')), Math.round($tasksSection().getBoundingClientRect().width)]);`));
   // ── Today's team（Annie 2026-10-24「可以只显示今日，整周的放在页面最下面」；05 2026-10-25 定整行宽、Full week 滚到底部整周块）──
   await waitFor("document.querySelectorAll('[data-team-row]').length === 5", 8000);
-  check("Today's team：整行宽，在 My tasks 下面、Daily Operation Report 上面；整周 Schedule 在最底部", await evaluate(`const g = (s) => document.querySelector(s).getBoundingClientRect(); const team = g('[data-today-team]'); const t = $tasksSection().getBoundingClientRect(); const dor = g('section[aria-label="Daily Operation Report"]'); const sch = g('[data-dashboard-schedule]'); const main = document.querySelector('main').getBoundingClientRect(); const secs = [...document.querySelectorAll('main section')]; return t.bottom <= team.top + 1 && team.bottom <= dor.top + 1 && dor.bottom <= sch.top + 1 && team.width > main.width * 0.75 && secs[secs.length - 1].hasAttribute('data-dashboard-schedule');`));
+  check("Today's team 和 My tasks 同一排：任务 2/3 在左、Today's team 1/3 在右、等高；下面 Daily Operation Report；整周 Schedule 在最底部（Annie 2026-10-30）", await evaluate(`const g = (s) => document.querySelector(s).getBoundingClientRect(); const team = g('[data-today-team]'); const t = $tasksSection().getBoundingClientRect(); const dor = g('section[aria-label="Daily Operation Report"]'); const sch = g('[data-dashboard-schedule]'); const main = document.querySelector('main').getBoundingClientRect(); const secs = [...document.querySelectorAll('main section')]; return Math.abs(team.top - t.top) < 2 && Math.abs(team.bottom - t.bottom) < 2 && team.left >= t.right && team.width > main.width * 0.25 && team.width < main.width * 0.4 && t.width > team.width * 1.8 && team.bottom <= dor.top + 1 && dor.bottom <= sch.top + 1 && secs[secs.length - 1].hasAttribute('data-dashboard-schedule');`), await evaluate(`const r = (e) => { const b = e.getBoundingClientRect(); return [Math.round(b.left), Math.round(b.top), Math.round(b.width), Math.round(b.height)]; }; return JSON.stringify([r($tasksSection()), r(document.querySelector('[data-today-team]'))]);`));
   check("Today's team：每人一行（5 人），今天上班的在前；Lizzie Mid 9:30 AM – 5:30 PM，没排班的写 Off", await evaluate("const rows = [...document.querySelectorAll('[data-team-row]')]; const l = document.querySelector('[data-team-row=Lizzie]'); const offs = rows.filter((r) => r.querySelector('[data-team-off]')); const firstOff = rows.findIndex((r) => r.querySelector('[data-team-off]')); return rows.length === 5 && l.textContent.includes('Mid') && l.textContent.includes('9:30 AM – 5:30 PM') && offs.length === 2 && offs.every((r) => r.textContent.includes('Off')) && firstOff === 3;"), await evaluate("return [...document.querySelectorAll('[data-team-row]')].map((r) => r.textContent).join(' | ');"));
+  check("测试用的人（is_test）：Today's team 和整周 Schedule 里都没有 ZZ Test Person", await evaluate("return ![...document.querySelectorAll('[data-team-row]')].some((r) => r.textContent.includes('ZZ Test Person')) && !document.querySelector('[aria-label=Schedule]').textContent.includes('ZZ Test Person');"));
   check("Today's team：自己那一行（Lizzie）淡蓝底", await evaluate("return document.querySelector('[data-team-row=Lizzie]').className.includes('bg-sky-400');"));
   await evaluate("window.scrollTo(0, 0); [...document.querySelectorAll('[data-today-team] button')].find((b) => b.textContent.includes('Full week')).click();");
   await sleep(1200);
@@ -228,7 +299,7 @@ async function run() {
   await evaluate("document.querySelector('[data-notice-history]').closest('[role=dialog]').querySelector('[aria-label=Close]').click();");
   await sleep(200);
   check("关掉历史回到 Notice（今天的 4 条还在）", await evaluate(`return !document.querySelector('[data-notice-history]') && [...${NOTICE}.querySelectorAll('li')].length === 4;`));
-  check("排班提醒的正文按文本显示（换行保留），没有正文的不画空行", await evaluate(`const lis = [...${NOTICE}.querySelectorAll('li')]; const a = lis.find(l => l.textContent.includes('Oct 23')); const b = lis.find(l => l.textContent.includes('Oct 22')); return a.textContent.includes('you were added.') && a.textContent.includes('you were removed.') && !!a.querySelector('p.whitespace-pre-line') && !b.querySelector('p.whitespace-pre-line');`));
+  check("排班提醒只写一句（Annie 2026-10-31「notice里不需要显示详情」）：Your schedule for the week of Sun, Oct 18 has changed.，不列逐条改动", await evaluate(`const lis = [...${NOTICE}.querySelectorAll('li')]; const a = lis.find(l => l.textContent.includes('Oct 23')); const b = lis.find(l => l.textContent.includes('Oct 22')); return a.textContent.includes('Your schedule for the week of Sun, Oct 18 has changed.') && !a.textContent.includes('you were added.') && !a.textContent.includes('you were removed.') && b.textContent.includes('Your schedule for the week of Sun, Oct 18 has changed.');`), await evaluate(`return ${NOTICE}.textContent;`));
   check("排班提醒有 See my schedule 链接（去 /schedule）和 Got it", await evaluate(`const li = [...${NOTICE}.querySelectorAll('li')].find(l => l.textContent.includes('Oct 23')); const a = li.querySelector('a'); return !!a && a.textContent.includes('See my schedule') && a.getAttribute('href').includes('schedule') && !!$btn('Got it', li);`));
   from = (await mockLog()).length;
   await evaluate(`$btn('Got it', [...${NOTICE}.querySelectorAll('li')].find(l => l.textContent.includes('Oct 23'))).click();`);
@@ -266,6 +337,13 @@ async function run() {
   await sleep(150);
   check("schedule_confirm_request：标签 Confirm your schedule，链接 Review my schedule →（去 /schedule）", await evaluate(`const li = [...${NOTICE}.querySelectorAll('li')].find(l => l.textContent.includes('Oct 25 – Oct 31')); if (!li) return false; const a = li.querySelector('a'); return li.textContent.includes('Confirm your schedule') && !!a && a.textContent.includes('Review my schedule') && a.getAttribute('href').includes('/schedule');`), await evaluate(`return ${NOTICE}.textContent;`));
   check("schedule_confirm_declined：标签 Notice，按后端 title + body 通用显示，链接 See my schedule →", await evaluate(`const li = [...${NOTICE}.querySelectorAll('li')].find(l => l.textContent.includes('Mon Oct 26')); if (!li) return false; const a = li.querySelector('a'); return li.textContent.includes('Notice') && !li.textContent.includes('Confirm your schedule') && li.textContent.includes('was not approved.') && !!a && a.textContent.includes('See my schedule') && !!$btn('Got it', li);`), await evaluate(`return ${NOTICE}.textContent;`));
+  check("schedule_confirm_request 只写一句：Please confirm your schedule for the week of Sun, Oct 25.（后端那句 Open the schedule… 不显示）", await evaluate(`const li = [...${NOTICE}.querySelectorAll('li')].find(l => l.textContent.includes('Oct 25 – Oct 31')); return !!li && li.textContent.includes('Please confirm your schedule for the week of Sun, Oct 25.') && !li.textContent.includes('tap Accept or Change');`));
+  check("主管收的 Schedule edited：标题显示成 Schedule published — week of 2026-10-25，一句 The schedule for the week of Sun, Oct 25 has been published.，不列 Jessica / Lizzie 那些行，链接 See my schedule →", await evaluate(`const li = [...${NOTICE}.querySelectorAll('li')].find(l => l.textContent.includes('week of 2026-10-25')); if (!li) return false; const a = li.querySelector('a'); return li.textContent.includes('Schedule published — week of 2026-10-25') && !li.textContent.includes('Schedule edited') && li.textContent.includes('The schedule for the week of Sun, Oct 25 has been published.') && !li.textContent.includes('Jessica') && !li.textContent.includes('Lizzie —') && !!a && a.textContent.includes('See my schedule') && !!$btn('Got it', li);`), await evaluate(`return ${NOTICE}.textContent;`));
+  await evaluate("document.querySelector('[data-check-history]').click();");
+  await waitFor("document.querySelector('[data-notice-history] [data-history-item=\"9\"]')", 8000);
+  check("Notice history 也一样：Schedule published — week of 2026-10-25 + 一句，不列明细", await evaluate("const li = document.querySelector('[data-notice-history] [data-history-item=\"9\"]'); return !!li && li.textContent.includes('Schedule published — week of 2026-10-25') && li.textContent.includes('The schedule for the week of Sun, Oct 25 has been published.') && !li.textContent.includes('Jessica');"), await evaluate("return document.querySelector('[data-notice-history] [data-history-item=\"9\"]')?.textContent ?? 'none';"));
+  await evaluate("document.querySelector('[data-notice-history]').closest('[role=dialog]').querySelector('[aria-label=Close]').click();");
+  await sleep(200);
 
   check("operation_report：标签 Incident logged，链接 Open report → 去 /daily-report?id=12，有 Got it", await evaluate(`const li = [...${NOTICE}.querySelectorAll('li')].find(l => l.textContent.includes('Accident logged')); if (!li) return false; const a = li.querySelector('a'); return li.textContent.includes('Incident logged') && !!a && a.textContent.includes('Open report') && a.getAttribute('href') === '/daily-report?id=12' && !!$btn('Got it', li);`), await evaluate(`return ${NOTICE}.textContent;`));
   check("不认识的类型、缺 body / link / actions：不崩，标签 Notice + 标题，有 Got it，没有链接", await evaluate(`const li = [...${NOTICE}.querySelectorAll('li')].find(l => l.textContent.includes('ZZ Unknown kind notice')); if (!li) return false; return li.textContent.includes('Notice') && !li.querySelector('a') && !!$btn('Got it', li);`), await evaluate(`return ${NOTICE}.textContent;`));
@@ -276,7 +354,7 @@ async function run() {
   await waitFor(`${NOTICE} && $tasksSection()`);
   await helpers();
   check("主管视角：统计块没有 Handover to accept（主管没有这个概念），其余三项在", await evaluate("const keys = [...document.querySelectorAll('[data-stat]')].map((b) => b.dataset.stat); return keys.join() === 'messages,tasks,reports';"), await evaluate("return document.querySelector('[data-stats-row]')?.textContent;"));
-  check("主管视角：Notice 整行宽、在 shortcuts 下面，统计块在它下面，整行任务框在 Messages 下面", await evaluate(`const s = document.querySelector('section[aria-label="My shortcuts"]').getBoundingClientRect(); const n = ${NOTICE}.getBoundingClientRect(); const st = document.querySelector('[data-stats-row]').getBoundingClientRect(); const m = document.getElementById('messages-title').getBoundingClientRect(); const t = $tasksSection().getBoundingClientRect(); const main = document.querySelector('main').getBoundingClientRect(); return n.top >= s.bottom - 1 && n.width > main.width * 0.75 && st.top >= n.bottom - 1 && m.top >= st.bottom - 1 && t.top >= m.bottom - 1 && t.width > main.width * 0.7;`), await evaluate(`const n = ${NOTICE}.getBoundingClientRect(); const main = document.querySelector('main').getBoundingClientRect(); return JSON.stringify([n.width, main.width]);`));
+  check("主管视角：Notice 整行宽、在 shortcuts 下面，统计块在它下面，任务框在 Messages 下面、占 2/3，右边 Today's team 同一排", await evaluate(`const s = document.querySelector('section[aria-label="My shortcuts"]').getBoundingClientRect(); const n = ${NOTICE}.getBoundingClientRect(); const st = document.querySelector('[data-stats-row]').getBoundingClientRect(); const m = document.getElementById('messages-title').getBoundingClientRect(); const t = $tasksSection().getBoundingClientRect(); const team = document.querySelector('[data-today-team]').getBoundingClientRect(); const main = document.querySelector('main').getBoundingClientRect(); return n.top >= s.bottom - 1 && n.width > main.width * 0.75 && st.top >= n.bottom - 1 && m.top >= st.bottom - 1 && t.top >= m.bottom - 1 && t.width > n.width * 0.55 && t.width < n.width * 0.75 && Math.abs(team.top - t.top) < 2 && team.left >= t.right;`), await evaluate(`const n = ${NOTICE}.getBoundingClientRect(); const main = document.querySelector('main').getBoundingClientRect(); return JSON.stringify([n.width, main.width, $tasksSection().getBoundingClientRect().width]);`));
 
   // ── 主管视角 ──
   await ctl({ reset: true, me: "annie", supervisor: true, fail401: false, failGet: false, notReady: false, notices: false, confirmNotices: false });
@@ -460,6 +538,7 @@ async function run() {
   check("统计行设成 Admins · admin：看得到统计行、没有控件", await evaluate("return !!document.querySelector('[data-stats-row]') && !document.querySelector('[data-visibility-control]');"));
   // ── Notice / 任务块的开关（Annie 2026-10-25「把task和notice都加上开关」）：默认 Everyone，key 读不到也当 Everyone ──
   check("Notice / 任务开关（key 未登记）· 员工：Notice、My tasks 照旧都在（默认 Everyone）", await (async () => { await ctl({ admin: false, supervisor: false, gateVis: {} }); await openDashboard(); return evaluate(`return !!${NOTICE} && !!document.querySelector('section[aria-label="My tasks"]') && !document.querySelector('[data-visibility-control]');`); })());
+  check("Today's team 对员工关着：My tasks 占满整行，不留空位", await (async () => { await ctl({ admin: false, supervisor: false, gateVis: { dashboard_today_team: "super_admin_only" } }); await openDashboard(); const r = await evaluate(`const t = $tasksSection().getBoundingClientRect(); const n = ${NOTICE}.getBoundingClientRect(); return !document.querySelector('[data-today-team]') && t.width > n.width * 0.95;`); await ctl({ gateVis: { dashboard_today_team: "staff" } }); return r; })());
   await ctl({ reset: true, me: "annie", supervisor: true, admin: false, notices: true, gates: "unregistered", superadmin: true, gateVis: {} });
   await openDashboard();
   await waitFor(`${NOTICE} && $vcur($tasksSection())`, 8000);
@@ -548,6 +627,7 @@ async function main() {
 
   try {
     await run();
+    await runMessaging();
   } finally {
     ws.close();
     chrome.kill();

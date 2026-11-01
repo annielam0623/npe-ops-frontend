@@ -126,12 +126,12 @@ const scenarios = {
     const href = await evaluate("location.href");
     check("anon redirected to ops login proxy, next is path-only", decodeURIComponent(href) === BASE + "/auth/login?next=/settings/teams", href);
 
-    // 2. staff → Admin access required, list never requested
+    // 2. staff → no settings.users tick (ticks only, Annie 2026-11-01) → blocked at the door, list never requested
     resetLog();
     await setRole("staff");
     await open("/settings/teams");
-    await waitFor("__t.text().includes('Admin access required')", "forbidden message");
-    check("staff sees 'Admin access required'", true);
+    await waitFor("!!document.querySelector('[data-no-access]')", "no-access message");
+    check("staff blocked at the door (You don't have access to this page.)", true);
     check("staff: /api/admin/teams never requested", !readLog().some((e) => e.path === "/api/admin/teams"));
     check("staff: no + New Team button", !(await t("!!__t.btn('+ New Team')")));
 

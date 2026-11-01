@@ -152,8 +152,10 @@ function weekRangeLabel(weekStart: string): string {
 }
 
 export function ScheduleView() {
-  // 全部按照勾选（Annie 2026-10-30 置顶 10c）：开关开着按勾（同后端接口），关着照旧按角色；Super Admin 全过。
+  // 只看勾（Annie 2026-11-01「动手」）：除 Super Admin 外只照 /api/me/permissions；Publish anyway 后端仍按角色（admin / SA）。
   const tickPerms = usePermissions();
+  const tickPermsRef = useRef(tickPerms);
+  tickPermsRef.current = tickPerms;
   const [me, setMe] = useState<CurrentUser | null>(null);
   const [meError, setMeError] = useState<
     "loading" | "forbidden" | "error" | null
@@ -300,6 +302,8 @@ export function ScheduleView() {
 
   // 身份 + 设置 + 名单：和具体哪一周无关，只在打开页面 / 手动重试时加载一次。
   useEffect(() => {
+    // 权限读完再拉名单（停用的人要不要一起拉看 schedule.edit 的勾）。
+    if (!tickPerms.ready) return;
     const controller = new AbortController();
     const { signal } = controller;
     setMeError("loading");
@@ -309,7 +313,13 @@ export function ScheduleView() {
         if (signal.aborted) return;
         const [scheduleSettings, scheduleEmployees] = await Promise.all([
           fetchScheduleSettings(signal),
-          fetchScheduleEmployees(signal, user.is_supervisor === true),
+          // 停用的人：后端按 schedule.edit 给（64 2026-11-01）。
+          fetchScheduleEmployees(
+            signal,
+            byTick(tickPermsRef.current, "schedule.edit", {
+              superAdmin: !!user.is_superadmin,
+            }),
+          ),
         ]);
         if (signal.aborted) return;
         try {
@@ -334,7 +344,7 @@ export function ScheduleView() {
       }
     })();
     return () => controller.abort();
-  }, [reloadKey, redirectToLogin]);
+  }, [reloadKey, redirectToLogin, tickPerms.ready]);
 
   const loadWeek = useCallback(
     async (signal?: AbortSignal, quiet = false) => {
@@ -381,17 +391,14 @@ export function ScheduleView() {
   const superAdmin = !!me.is_superadmin;
   // 改班、休假、编辑锁：schedule.edit（后端 schedule.py 的 _edit）。
   const canEdit = byTick(tickPerms, "schedule.edit", {
-    legacy: me.is_supervisor === true,
     superAdmin,
   });
   // Add employee：后端要 team.staff_add 和 schedule.edit 两个都有（schedule.py:122）。
-  const canAddEmployee = tickPerms.active
-    ? superAdmin ||
-      (tickPerms.can("team.staff_add") && tickPerms.can("schedule.edit"))
-    : me.is_admin || me.is_supervisor === true || superAdmin;
+  const canAddEmployee =
+    superAdmin ||
+    (tickPerms.can("team.staff_add") && tickPerms.can("schedule.edit"));
   // Publish / Publish again：schedule.publish（schedule.py:331）。
   const canPublishTick = byTick(tickPerms, "schedule.publish", {
-    legacy: canEdit,
     superAdmin,
   });
   const activeEmployees = employees.filter((e) => e.is_active);
@@ -747,6 +754,8 @@ export function ScheduleView() {
     if (orig) movedFrom.set(orig.id, orig.employee_id);
   }
   const counts = countChanges(draft);
+  // 测试用的人（Annie 2026-10-30 选 A）：不算进空档。
+  const testIds = new Set(employees.filter((e) => e.is_test).map((e) => e.id));
   // 卡片上直接标空档（置顶 17）：这次改动新造成的空档记到造成它的那张卡上，补上就没了。
   const gapNotes =
     readyWeek && derived
@@ -757,6 +766,7 @@ export function ScheduleView() {
           draft,
           settings.work_window,
           laNow,
+          testIds,
         )
       : new Map();
   // 这周被排进时段、但名单里没有邮箱的人：发布时收不到邮件（只是提醒，不拦着发布）。
@@ -766,9 +776,10 @@ export function ScheduleView() {
     .map((e) => e.name);
   // 空档：有没存的改动时照页面上的算，存的时候以后端为准（B9 Q3）。
   // Save 被 409 coverage_gap 拒了：后端列的那几段也并进来（周表列头红点、Day timeline 跟着标），两边算得不一样也不会漏。
+  // 有测试用的人（is_test）时也自己算：他们的班不算覆盖（后端改好以前后端的 gaps 还算着他们）。
   const baseGaps =
-    readyWeek && dirty
-      ? localGaps(weekStart, liveSlots, settings.work_window)
+    readyWeek && (dirty || testIds.size > 0)
+      ? localGaps(weekStart, liveSlots, settings.work_window, testIds)
       : (readyWeek?.gaps ?? []);
   const rejectedGaps =
     dirty && saveState.kind === "error" ? (saveState.gaps ?? []) : [];
@@ -1237,6 +1248,19 @@ export function ScheduleView() {
                 ))}
               </ul>
             </div>
+          ) : null}
+          {readyWeek?.status === "published" &&
+          !dirty &&
+          (readyWeek.has_unsent_changes ?? unsentWeek === weekStart) ===
+            false ? (
+            // Annie 2026-10-30「那你要提醒发送人这个班一点都没有变啊，不能静默处理」：整周没变，Publish again 照旧能按，先说清楚不会通知谁。
+            <p
+              data-publish-nothing-changed
+              className="mt-3 font-semibold text-[#BA7517] night:text-amber-200"
+            >
+              Nothing has changed since the last publish, so no one will be
+              notified.
+            </p>
           ) : null}
           {noEmailNames.length > 0 && readyWeek?.status !== "published" ? (
             <p

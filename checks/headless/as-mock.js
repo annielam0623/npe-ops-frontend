@@ -2,6 +2,7 @@
 // 控制：POST /__ctl {fail401, staff, unreadable, failGet, failPut（400 的那句话）, slowPut（ms）, runs（"empty" | "default"）, config（整份换掉）, reset}；
 // GET /__log（每个请求 {method, path, body}）。
 const http = require("http");
+const { permsBody } = require("./role-standard");
 const ctl = { fail401: false, staff: false, admin: false, unreadable: false, failPut: "", slowPut: 0, runs: "default", failGet: false };
 const log = [];
 
@@ -75,6 +76,8 @@ http.createServer(async (req, res) => {
   if (p === "/api/settings/auto-send/action-log") return send(res, 200, { next_cursor: null, entries: [{ id: "2-1", at: "2026-10-28T17:00:00+00:00", by: "Annie Z", action: "update", label: "ZZ Test item", what: "Name", from: "Old", to: "New" }, { id: "1-1", at: "2026-10-27T17:00:00+00:00", by: "Max", action: "create", label: "ZZ Test item", what: "Name", from: null, to: "Old" }] });
   if (ctl.fail401) return send(res, 401, { detail: "Authentication required" });
   // 默认是 Super Admin：auto-send 只对 Super Admin 开放（Annie 2026-10-24），admin / staff 打接口都是 403。
+  // 只看勾（2026-11-01）：按角色标准回（admin 标准里没有 settings.auto_send）。
+  if (p === "/api/me/permissions") return send(res, 200, permsBody(ctl.staff ? "staff" : ctl.admin ? "admin" : "superadmin"));
   if (p === "/api/me") return send(res, 200, { id: 1, username: "zztest", display_name: "ZZ Test", initials: "ZT", role: ctl.staff ? "staff" : ctl.admin ? "admin" : "superadmin", is_admin: !ctl.staff, is_superadmin: !ctl.staff && !ctl.admin });
   if (p === "/api/settings/auto-send" && req.method === "GET") {
     if (ctl.staff || ctl.admin) return send(res, 403, { detail: "Super Admin access required" });

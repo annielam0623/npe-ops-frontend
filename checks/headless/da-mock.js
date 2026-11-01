@@ -168,7 +168,7 @@ function day(date) {
     // ctl.hotelGroups：后端 21 给每个点带 is_tour_bus / is_shuttle（Add hotel 分 Las Vegas / Shuttle pick up 两组）；默认不带 = 后端还没上。
     locations: ctl.hotelGroups ? [
       { id: 100, name: "Excalibur", active: true, is_tour_bus: true, is_shuttle: false }, { id: 101, name: "MGM", active: true, is_tour_bus: true, is_shuttle: false },
-      { id: 102, name: "Treasure Island", active: true, is_tour_bus: true, is_shuttle: false }, { id: 103, name: "Old Motel", active: false, is_tour_bus: true, is_shuttle: false },
+      { id: 102, name: "Treasure Island", active: true, is_tour_bus: true, is_shuttle: false, is_tour_departure: true }, { id: 103, name: "Old Motel", active: false, is_tour_bus: true, is_shuttle: false },
       { id: 104, name: "St George – Main St", active: true, is_tour_bus: false, is_shuttle: true }, { id: 105, name: "aria", active: true, is_tour_bus: true, is_shuttle: false },
       { id: 106, name: "Kanab – Visitor Center", active: true, is_tour_bus: null, is_shuttle: null }, { id: 107, name: "Page – Lake Powell Blvd", active: true, is_tour_bus: false, is_shuttle: true },
     ] : [{ id: 100, name: "Excalibur", active: true }, { id: 101, name: "MGM", active: true }, { id: 102, name: "Treasure Island", active: true }, { id: 103, name: "Old Motel", active: false }],
@@ -583,6 +583,11 @@ http.createServer(async (req, res) => {
       { id: 21, manifest_id: 3, tour: "West Rim Bus Tour", order_number: "SG4", kind: "added", detail: "2 pax · 6:40 AM Bellagio", old_bus: null, relay: "", created_at: "2026-10-10T03:42:00+00:00" },
       { id: 22, manifest_id: 3, tour: "West Rim Bus Tour", order_number: "SG3", kind: "changed", detail: "pax 2 → 3; pickup 6:30 AM TI → 6:40 AM Bellagio", old_bus: "B", relay: "", created_at: "2026-10-10T04:05:00+00:00" },
     ] });
+  }
+  // ctl.shuttlePax：这个团当天 Bus manifest 的 Shuttle outbound 人数（另有 1 位 inbound 没上车）；默认不给 = 404，排车页不出 Shuttle 提示。
+  if (p === "/api/dispatch/manifest") {
+    if (!ctl.shuttlePax || q.tour !== "3") return send(res, 404, { detail: "mock: not found" });
+    return send(res, 200, { run_date: q.date, blocks: [{ sections: [{ kind: "tour", pax: 9 }, { kind: "outbound", pax: ctl.shuttlePax }] }], unplaced: { sections: [{ kind: "inbound", pax: 1 }] } });
   }
   if (p === "/api/dispatch/manifests") {
     const card = (id, title) => ({ manifest_id: id, title, uploaded: false, guests: 0, pax: 0, buses: 0, not_on_bus: 0, lunch: null, uploaded_at: null, uploaded_by: null, mode: "single" });

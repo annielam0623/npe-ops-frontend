@@ -31,7 +31,33 @@ const bmvGuest = (g) => (ctl.bmv ? { ...g, pickup_time_short: g.pickup_time.repl
 const mismatchOrders = (gs, label) => ctl.bmvClean ? [] : gs.filter((g) => BMV[g.order_number]?.lunch_mismatch).map((g) => ({ order_number: g.order_number, guest: g.name, pax: g.pax, lunch_text: BMV[g.order_number].lunch_slots ? BMV[g.order_number].lunch_slots.filter(Boolean).join(" ") : "-", bus_label: label, tour: "Antelope Canyon" }));
 // 二期（Special Requirements 可编辑）：后端上线后客人才带 notes_edited / rezdy_notes。
 const pub = (g0) => { const g = bmvGuest(g0); return ctl.notesEdit && g._rezdy !== undefined ? { ...g, notes_edited: !!g._edited, rezdy_notes: g._rezdy } : ctl.notesEdit ? { ...g, notes_edited: false, rezdy_notes: g.notes } : g; };
+// canyon: true ⇒ Antelope 三个 canyon（置顶 41 Canyon order）：tour 带 canyon_sections / canyon_pages，两台车按存好的顺序排节；
+// 拖拽只管这一次（Annie 11-01 改定）：后端只给默认，不存；打印 / 下载带参数。
+const CANYONS = ["LOWER ANTELOPE", "UPPER ANTELOPE", "CANYON X"];
+function canyonView() {
+  // canyonHoover：Hoover Dam 这类（BUS TOUR / HD RAFT / BOULDER CITY，64 说也出）：只换 tour 带的两个键，看页头写 Section order。
+  const names = ctl.canyonHoover ? ["BUS TOUR", "HD RAFT", "BOULDER CITY"] : CANYONS;
+  const pages = [names];
+  const order = pages.flat();
+  let n = 100;
+  const g = (bus, time) => { n++; return pub(guest(n, "CHD" + n, { first_name: "ZZ", last_name: "Test" + n, name: "ZZ Test" + n, pickup_time: time, bus_label: bus, pax: 1 })); };
+  const sec = (title, color, times, bus, kind = "tour") => { const gs = times.map((t) => g(bus, t)); const pax = gs.length;
+    return { key: title, kind, title, heading: kind === "tour" ? `${title} - ${pax} PAX` : `SHUTTLE: LAS TO PAGE // OUTBOUND ${pax} PAX`, name: "", pax, color, guests: gs, attraction: { checkin_time: "", pax_text: "", tour_time: "", confirmation_no: "" }, attraction_filled: false }; };
+  const sortSecs = (secs) => [...secs].sort((a, b) => (a.kind !== "tour" ? 99 : order.indexOf(a.title)) - (b.kind !== "tour" ? 99 : order.indexOf(b.title)));
+  const blockOf = (id, label, secs) => ({ bus: { id, bus_label: label, van: String(id), seats: 56, driver: "ZZ TEST DRIVER", guide: "" }, bus_key: label, bus_number: `${id}=${label}`, sections: sortSecs(secs), totals: { pax: 0, guests: 0, boarded: 0, no_show: 0 }, footer: [], empty_notes: false });
+  return { run_date: "2026-10-05", date_label: "Mon, Oct 5, 2026",
+    tour: { id: 3, name: "Antelope Canyon", color: "#8db76f", band_color: "#8db76f", section_color: "#d9ead0", lunch_note: "", confirm_box: false,
+      ...(ctl.bmv ? { manifest_version: state.version, lunch_column: false } : {}), canyon_sections: names, canyon_pages: pages },
+    shuttle_colors: { outbound: "#f8c9a0", inbound: "#b9d3f0" }, extra_row_color: "#f8cbad",
+    manifest: { id: 12, file_name: "ant.csv", uploaded_at: "2026-10-04T21:14:02+00:00", uploaded_by: "Annie" }, mode: "lettered", bus_labels: ["A", "B"],
+    blocks: [
+      blockOf(2041, "A", [sec("UPPER ANTELOPE", "#f6c6d6", ["6:10 AM", "6:25 AM"], "A"), sec("LOWER ANTELOPE", "#bfe3b0", ["6:20 AM", "6:35 AM"], "A"), sec("CANYON X", "#c9ece6", ["6:45 AM"], "A"), sec("SHUTTLE OUT", "#f8c9a0", ["7:30 AM"], "A", "outbound")]),
+      blockOf(2042, "B", [sec("CANYON X", "#c9ece6", ["6:05 AM"], "B"), sec("LOWER ANTELOPE", "#bfe3b0", ["6:15 AM", "6:40 AM"], "B")]),
+    ],
+    unplaced: { sections: [], totals: { pax: 0, guests: 0, boarded: 0, no_show: 0 }, empty_notes: false }, totals: { pax: 12, guests: 12, boarded: 0, no_show: 0 }, gone: [] };
+}
 function view() {
+  if (ctl.canyon) return canyonView();
   const sec = (gs0, withAttr) => ({ key: "LOWER ANTELOPE", kind: "tour", title: "LOWER ANTELOPE", heading: `LOWER ANTELOPE {${gs0.reduce((a, g) => a + g.pax, 0)}}`, name: "", pax: gs0.reduce((a, g) => a + g.pax, 0), color: "#bfe3b0", guests: gs0.map(pub),
     ...(withAttr ? { attraction: state.attraction, attraction_filled: true } : {}),
     // G198 后端 8a 的形状：A 车开了格、有时间有号（heading 后端拼好）；B 车开了格、没时间没号；Not on a bus 那块当没开格（heading 照旧）。
@@ -137,6 +163,24 @@ http.createServer(async (req, res) => {
   if (p === "/api/dispatch/pending") {
     if (ctl.pendingOff) return send(res, 404, { detail: "Not Found" });
     return send(res, 200, { run_date: q.date, items: ctl.pending });
+  }
+  // Bus Manifest 改动记录（Annie 2026-10-30「同意所有推荐。动手」；后端 64 task/bus-manifest-action-log fba63e86 的形状）：date + tour 必填（不对 400）。
+  // 打印 / 下载 / 上传 / 同步 / 挪座位：what 是一句话、from / to = null；字段改动：what = 字段，from / to = 前后。
+  if (p === "/api/dispatch/manifest/action-log") {
+    if (ctl.mlog403) return send(res, 403, { detail: "Permission required" });
+    const date = url.searchParams.get("date");
+    const tour = url.searchParams.get("tour");
+    if (!date || !tour) return send(res, 422, { detail: "date and tour are required" });
+    return send(res, 200, { next_cursor: null, entries: [
+      { id: "7-0", at: "2026-10-04T23:41:00+00:00", by: "Annie Z", action: "update", label: "Text size for 2026-10-05 tour #3 (Bus A)", what: "Whole page › Size (px)", from: "13.5", to: "15" },
+      { id: "6-0", at: "2026-10-04T23:38:00+00:00", by: "Annie Z", action: "update", label: "Bus Manifest version for tour #3: general -> lankun", what: "Version", from: "General", to: "Lankun" },
+      { id: "5-0", at: "2026-10-04T23:22:00+00:00", by: "Max", action: "update", label: "2026-10-05 tour #3: Special Requirements edited for Smith (CHD2)", what: "Special Requirements", from: "Wheelchair", to: "Wheelchair, front seat please" },
+      { id: "5-1", at: "2026-10-04T23:22:00+00:00", by: "Max", action: "update", label: "2026-10-05 tour #3: Special Requirements edited for Smith (CHD2)", what: "Edited by staff", from: "No (Rezdy text)", to: "Yes" },
+      { id: "4-0", at: "2026-10-04T23:10:00+00:00", by: "Leon", action: "print", label: "", what: "Printed manifest 2026-10-05 tour #3: 2 bus(es), 8 pax · Layout: Lankun", from: null, to: null },
+      { id: "3-0", at: "2026-10-04T23:05:00+00:00", by: "Leon", action: "export", label: "", what: "Downloaded manifest 2026-10-05 tour #3: 8 rows · Layout: Lankun", from: null, to: null },
+      { id: "2-0", at: "2026-10-04T23:00:00+00:00", by: "Max", action: "seat_move", label: "", what: "2026-10-05 tour #3: 2 guest row(s) -> Bus B", from: null, to: null },
+      { id: "1-0", at: "2026-10-04T22:50:00+00:00", by: "Max", action: "apply_upload", label: "", what: "2026-10-05 tour #3: 8 rows, 8 pax (+2 / -1 / ~3)", from: null, to: null },
+    ] });
   }
   if (p === "/api/dispatch/pending/handled") {
     const b = JSON.parse(await readRaw(req)); entry.body = b;

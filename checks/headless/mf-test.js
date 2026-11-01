@@ -289,6 +289,22 @@ async function run() {
   await waitFor("document.querySelector('section[aria-label^=\"Bus\"]')");
   await helpers();
   check("直接打开：‹ Back 和「Dispatch · 日子」都去排车页的这一天", await evaluate("const as = [...document.querySelectorAll('nav[aria-label=Back] a')]; return as.length === 2 && as[0].textContent === '‹ Back' && as.every(a => a.getAttribute('href') === '/dispatch?date=2026-10-05') && as[1].textContent === 'Dispatch · Mon, Oct 5';"));
+  // 改动记录（Annie 2026-10-30「同意所有推荐。动手」）：页面最下面，同 Dispatch 页；只看这个团、打印也列、能改这页的人才有
+  {
+    const toggle = "[...document.querySelectorAll('[data-manifest-log] button')].find(b => b.textContent.includes('Action Log'))";
+    const lb = (await mockLog()).length;
+    check("Action Log：页面最下面（How to use 后面）有面板、收着不请求", (await evaluate(`const t = ${toggle}; return !!t && !!(document.body.textContent.indexOf('How to use') < document.body.textContent.lastIndexOf('Action Log'));`)) && (await mockLog()).slice(lb).every((e) => e.path !== "/api/dispatch/manifest/action-log"));
+    await evaluate(`${toggle}.click();`);
+    await waitFor("document.querySelector('[data-manifest-log] [data-action-log]') && document.querySelector('[data-manifest-log]').textContent.includes('Version')");
+    const r1 = (await mockLog()).slice(lb).filter((e) => e.path === "/api/dispatch/manifest/action-log");
+    check("Action Log：展开才请求一次，带这一天的 date 和这个团的 tour", r1.length === 1 && r1[0].q?.date === "2026-10-05" && r1[0].q?.tour === "3", JSON.stringify(r1.map((e) => e.q)));
+    check(
+      "Action Log：说明写团名 + 日期；Size 13.5 → 15、Version、Special Requirements 前后（Changed）；打印 / 下载 / 挪座位 / 上传是一句话，小标签 Printed / Downloaded / Moved / Uploaded（64 核过的 action：print / export / seat_move / apply_upload）",
+      await evaluate("const el = document.querySelector('[data-manifest-log]'); const t = el.textContent; const badges = [...el.querySelectorAll('td span.inline-block')].map(s => s.textContent); return t.includes('Changes to the Bus Manifest for Antelope Canyon on Mon, Oct 5') && t.includes('Whole page › Size (px)') && t.includes('13.5') && t.includes('Version') && t.includes('Lankun') && t.includes('Wheelchair, front seat please') && t.includes('Printed manifest 2026-10-05 tour #3: 2 bus(es), 8 pax · Layout: Lankun') && t.includes('2026-10-05 tour #3: 2 guest row(s) -> Bus B') && ['Changed', 'Printed', 'Downloaded', 'Moved', 'Uploaded'].every(b => badges.includes(b)) && !badges.includes('export') && !badges.includes('apply_upload');"),
+      await evaluate("return document.querySelector('[data-manifest-log]').textContent.slice(0, 500);"),
+    );
+    await evaluate(`${toggle}.click();`);
+  }
   check("How to use 写了 Back / Dispatch 两个键", await evaluate("return document.body.textContent.includes('Back returns to the page you came from. The Dispatch button opens Dispatch on this manifest');"));
   check("页头：团名、日期、单数 / 人数 / 文件", await evaluate("return document.querySelector('h1').textContent === 'Antelope Canyon' && document.body.textContent.includes('Mon, Oct 5, 2026 · 4 orders, 8 pax · ant.csv');"));
   check("每台车一块：色条（司机、BUS #）、节标题用节颜色", await evaluate("const b = document.querySelector('section[aria-label=\"Bus 2041=A\"]'); return !!b && b.textContent.includes('FREDDY') && b.textContent.includes('BUS #: 2041=A') && [...b.querySelectorAll('td')].some(td => td.textContent === 'LOWER ANTELOPE - 4 PAX' && td.style.background.includes('191, 227, 176'));"));
@@ -940,6 +956,7 @@ async function run() {
   await goto(`${APP}/dispatch/manifest?date=2026-10-05&tour=3`);
   const mShown = await waitFor("document.querySelector('section[aria-label^=\"Bus\"]')", 60000);
   await helpers();
+  check("partner manifest 页：没有 Action Log、不请求改动记录", (await evaluate("return !document.querySelector('[data-manifest-log]');")) && (await mockLog()).slice(before).every((e) => e.path !== "/api/dispatch/manifest/action-log"));
   check("partner manifest 页：名单照常显示", mShown && (await evaluate("return document.body.textContent.includes('Mon, Oct 5, 2026 · 4 orders, 8 pax');")));
   check(
     "partner manifest 页（G208）：有 Print all buses / 每车 Print（后端打印页只要 dispatch.view）；没有 Download / Guide view、换车下拉、How to use",
@@ -982,6 +999,78 @@ async function run() {
   );
   check("partner 勾 manifests.edit：备注格子点了也不进编辑", await evaluate(`const c = ${nc("CHD1")}; c && c.click(); await new Promise((r) => setTimeout(r, 300)); return !document.querySelector('[data-notes-editor]');`));
   await ctl({ partner: false, partnerCodes: null, notesEdit: false, textSize: false, bmv: false, version: "general", foVis: false, foPartners: [] });
+
+  // ── Canyon order（置顶 41，Annie 2026-11-01「两件都动手」，整页 preview https://claude.ai/artifact/Txr893UKjC71txRfFJkdfd ）：
+  //    页头 Version 旁；小框按页分组，拖卡片换顺序 / 换页 / 新的一页；Annie 11-01 改定「只管这一次」：不存、没有 Save，
+  //    打印 / 下载带 layout 参数（后端 64 定）；屏幕上画 New page 虚线 ──
+  {
+    const URL3 = `${APP}/dispatch/manifest?date=2026-10-05&tour=3`;
+    const secs = (bus) => `return [...document.querySelector('section[aria-label="Bus ${bus}"]').querySelectorAll('tbody tr')].map((r) => r.hasAttribute('data-new-page') ? 'NP' : r.cells.length === 1 ? (r.textContent.trim().startsWith('SHUTTLE') ? 'SHUTTLE' : r.textContent.trim().split(' - ')[0]) : null).filter(Boolean).join('|');`;
+    const dnd = (from, to, where) => `const f = document.querySelector('${from}'); const t = document.querySelector('${to}'); const dt = new DataTransfer();
+      f.dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer: dt })); await new Promise((r) => setTimeout(r, 80));
+      const b = t.getBoundingClientRect(); const y = '${where}' === 'top' ? b.top + 2 : b.bottom - 2;
+      t.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: dt, clientY: y })); await new Promise((r) => setTimeout(r, 80));
+      t.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: dt, clientY: y })); await new Promise((r) => setTimeout(r, 80));
+      if (f.isConnected) f.dispatchEvent(new DragEvent('dragend', { bubbles: true, dataTransfer: dt })); return 1;`;
+    await ctl({ canyon: false, bmv: true, version: "general", versionFail: "", partner: false });
+    await goto(URL3);
+    await waitFor("document.querySelector('section[aria-label^=\"Bus\"]')", 60000);
+    await helpers();
+    check("Canyon order：后端没带 canyon_pages（只有一节 / 没上线）⇒ 页头没有这个键", !(await evaluate("return !!document.querySelector('[data-canyon-order]');")));
+    await ctl({ canyon: true });
+    await goto(URL3);
+    await waitFor("document.querySelector('[data-canyon-order]')", 60000);
+    await helpers();
+    const head = await evaluate("const c = document.querySelector('[data-canyon-order]'); const v = document.querySelector('[data-version-select]').closest('label'); return { text: c.textContent, after: !!(v.compareDocumentPosition(c) & Node.DOCUMENT_POSITION_FOLLOWING), border: getComputedStyle(c).borderTopColor, bg: getComputedStyle(c).backgroundColor };");
+    check("Canyon order 在 Version 旁边：「Canyon order: Lower → Upper → X · 1 page」，没改时白边、不是蓝色", head.text === "Canyon order:Lower → Upper → X · 1 page" && head.after && head.border !== "rgb(245, 158, 11)" && head.bg !== "rgb(59, 130, 246)", JSON.stringify(head));
+    check("默认顺序：两台车都按 LOWER → UPPER → CANYON X，Shuttle 在最后，没有 New page 线", (await evaluate(secs("2041=A"))) === "LOWER ANTELOPE|UPPER ANTELOPE|CANYON X|SHUTTLE" && (await evaluate(secs("2042=B"))) === "LOWER ANTELOPE|CANYON X", (await evaluate(secs("2041=A"))) + " / " + (await evaluate(secs("2042=B"))));
+    await evaluate("document.querySelector('[data-canyon-open]').click(); return 1;");
+    await waitFor("document.querySelector('[data-canyon-box]')");
+    const box = await evaluate("const b = document.querySelector('[data-canyon-box]'); return { pages: [...b.querySelectorAll('[data-canyon-page]')].map((p) => [...p.querySelectorAll('[data-canyon-card]')].map((c) => c.dataset.canyonCard)), text: b.textContent, done: getComputedStyle(b.querySelector('[data-canyon-done]')).backgroundColor };");
+    check("打开小框：PAGE 1 三张卡（LOWER / UPPER / CANYON X）、最下面虚线框、Done 是白色", JSON.stringify(box.pages) === '[["LOWER ANTELOPE","UPPER ANTELOPE","CANYON X"]]' && box.text.includes("PAGE 1") && box.text.includes("Drag a canyon here to print it on a new page") && box.text.includes("Shuttle sections stay at the end.") && box.done === "rgb(255, 255, 255)", JSON.stringify(box));
+    let before = (await mockLog()).length;
+    await evaluate(dnd('[data-canyon-card="CANYON X"]', "[data-canyon-newpage]", "top"));
+    await sleep(300);
+    const st1 = await evaluate("const c = document.querySelector('[data-canyon-order]'); return { text: c.querySelector('[data-canyon-open]').textContent, un: !!document.querySelector('[data-canyon-unsaved]'), border: getComputedStyle(c).borderTopColor, save: !document.querySelector('[data-page-save]').disabled, note: document.querySelector('[data-page-unsaved]')?.textContent ?? '', pages: [...document.querySelectorAll('[data-canyon-page]')].map((p) => [...p.querySelectorAll('[data-canyon-card]')].map((x) => x.dataset.canyonCard)) };");
+    check("把 CANYON X 拖到虚线框：小框变 PAGE 1 / PAGE 2，页头「Lower → Upper → X · 2 pages」；不存：没有 Unsaved、边框不变、Save 照旧灰着、工具条没有没存的提示",
+      JSON.stringify(st1.pages) === '[["LOWER ANTELOPE","UPPER ANTELOPE"],["CANYON X"]]' && st1.text === "Lower → Upper → X · 2 pages" && !st1.un && st1.border !== "rgb(245, 158, 11)" && !st1.save && st1.note === "", JSON.stringify(st1));
+    check("拖了不发任何写请求", (await mockLog()).slice(before).every((e) => e.method === "GET"), JSON.stringify((await mockLog()).slice(before).map((e) => e.method + " " + e.path)));
+    check("页面马上照新的画：Bus A 在 CANYON X 前面一条 New page 线；Bus B 先 LOWER、再 New page、再 CANYON X", (await evaluate(secs("2041=A"))) === "LOWER ANTELOPE|UPPER ANTELOPE|NP|CANYON X|SHUTTLE" && (await evaluate(secs("2042=B"))) === "LOWER ANTELOPE|NP|CANYON X", (await evaluate(secs("2041=A"))) + " / " + (await evaluate(secs("2042=B"))));
+    check("New page 线：灰色虚线、写 New page、打印不出（print:hidden）", await evaluate("const r = document.querySelector('tr[data-new-page]'); const d = r.querySelector('div'); return d.textContent.trim().toUpperCase() === 'NEW PAGE' && getComputedStyle(d, '::before').borderTopStyle === 'dashed' && r.className.includes('print:hidden');"));
+    await evaluate(dnd('[data-canyon-card="UPPER ANTELOPE"]', '[data-canyon-page="0"]', "top"));
+    await sleep(300);
+    check("在同一页里把 UPPER 拖到 LOWER 上面：「Upper → Lower → X · 2 pages」，两台车跟着换", (await evaluate("return document.querySelector('[data-canyon-open]').textContent;")) === "Upper → Lower → X · 2 pages" && (await evaluate(secs("2041=A"))) === "UPPER ANTELOPE|LOWER ANTELOPE|NP|CANYON X|SHUTTLE", await evaluate(secs("2041=A")));
+    await evaluate("document.querySelector('[data-canyon-done]').click(); return 1;");
+    check("Done：小框关上，页面照拖好的画", await evaluate("return !document.querySelector('[data-canyon-box]');") && (await evaluate(secs("2041=A"))) === "UPPER ANTELOPE|LOWER ANTELOPE|NP|CANYON X|SHUTTLE");
+    const want = JSON.stringify([["UPPER ANTELOPE", "LOWER ANTELOPE"], ["CANYON X"]]);
+    const links = await evaluate("const as = [...document.querySelectorAll('main a[href*=\"/manifest/print\"]')].map((a) => new URL(a.href).searchParams.get('layout')); const f = document.querySelector('main form[action$=\"/manifest/download\"] input[name=layout]'); return { prints: as, download: f ? f.value : null };");
+    check("打印（整团、每台车）和 Download 都带拖好的顺序和分页（layout，JSON）", links.prints.length >= 3 && links.prints.every((x) => x === want) && links.download === want, JSON.stringify(links));
+    await goto(URL3);
+    await waitFor("document.querySelector('[data-canyon-order]')", 60000);
+    check("重新打开页面：回到默认 Lower → Upper → X · 1 page（不存）", (await evaluate("return document.querySelector('[data-canyon-open]').textContent;")) === "Lower → Upper → X · 1 page" && (await evaluate(secs("2041=A"))) === "LOWER ANTELOPE|UPPER ANTELOPE|CANYON X|SHUTTLE");
+    await evaluate("document.querySelector('[data-canyon-open]').click(); return 1;");
+    await waitFor("document.querySelector('[data-canyon-box]')");
+    await evaluate(dnd('[data-canyon-card="CANYON X"]', "[data-canyon-newpage]", "top"));
+    await sleep(300);
+    await evaluate(dnd('[data-canyon-card="CANYON X"]', '[data-canyon-page="0"]', "bottom"));
+    await sleep(300);
+    check("把 CANYON X 拖回 PAGE 1：空的 PAGE 2 自己消失，「Lower → Upper → X · 1 page」", (await evaluate("return [...document.querySelectorAll('[data-canyon-page]')].length;")) === 1 && (await evaluate("return document.querySelector('[data-canyon-open]').textContent;")) === "Lower → Upper → X · 1 page" && !(await evaluate("return !!document.querySelector('tr[data-new-page]');")));
+    check("How to use 写了 Canyon order", await evaluate("return document.body.textContent.replace(/\\s+/g, ' ').includes('Canyon order (Section order on some tours), next to Version: drag a canyon up or down to change the order, into another page to print it there, or onto the dashed box to start a new page. It only changes this Print or Download and is not saved: reload the page to go back to the default order (set in Settings → Products).');"));
+    await ctl({ staffPerms: ["dispatch.view", "manifests.view"], superAdmin: false });
+    await goto(URL3);
+    await waitFor("document.querySelector('section[aria-label^=\"Bus\"]')", 60000);
+    await helpers();
+    check("只能看的人：一行字「Canyon order: Lower → Upper → X · 1 page」，没有拖的键", (await evaluate("return document.querySelector('[data-canyon-text]')?.textContent ?? '';")) === "Canyon order: Lower → Upper → X · 1 page" && !(await evaluate("return !!document.querySelector('[data-canyon-open]');")));
+    await ctl({ staffPerms: null, canyonHoover: true });
+    await goto(URL3);
+    await waitFor("document.querySelector('[data-canyon-order]')", 60000);
+    await evaluate("document.querySelector('[data-canyon-open]').click(); return 1;");
+    await waitFor("document.querySelector('[data-canyon-box]')");
+    check("Hoover Dam 这类（BUS TOUR / HD RAFT / BOULDER CITY）：叫 Section order「Bus Tour → HD Raft → Boulder City · 1 page」，虚线框写 Drag a section here", (await evaluate("return document.querySelector('[data-canyon-order]').textContent;")) === "Section order:Bus Tour → HD Raft → Boulder City · 1 page" && (await evaluate("return document.querySelector('[data-canyon-newpage]').textContent;")) === "Drag a section here to print it on a new page", await evaluate("return document.querySelector('[data-canyon-order]').textContent;"));
+    await ctl({ staffPerms: null, canyon: false, canyonHoover: false, bmv: false, version: "general" });
+    await goto("about:blank");
+    await sleep(300);
+  }
 
   // ── 员工也按勾（Annie 2026-10-30 置顶 10c）：Bus Manifest 要 dispatch.edit 或 manifests.edit 任一才能改（同后端）；Super Admin 全有 ──
   for (const [label, opts, canEdit] of [

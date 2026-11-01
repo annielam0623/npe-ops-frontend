@@ -35,7 +35,7 @@ import {
   matchesSearch,
 } from "./config";
 import {
-  BTN_ADD_CLASS,
+  BTN_SUBMIT_CLASS,
   CARD_CLASS,
   CARD_HEADER_CLASS,
   CARD_TITLE_CLASS,
@@ -122,7 +122,6 @@ export function PickupLocationsView() {
         // 只有 admin 能管接客点（后端也会 403）。
         if (
           !byTick(tickPermsRef.current, "settings.pickup", {
-            legacy: me.is_admin,
             superAdmin: !!me.is_superadmin,
           })
         ) {
@@ -482,7 +481,7 @@ export function PickupLocationsView() {
                 <button
                   type="submit"
                   disabled={adding || view.kind !== "ready"}
-                  className={BTN_ADD_CLASS}
+                  className={BTN_SUBMIT_CLASS}
                 >
                   {adding ? "Adding…" : "Add"}
                 </button>

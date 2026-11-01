@@ -758,7 +758,11 @@ export function MemberFormDialog({
                 <button
                   type="submit"
                   disabled={saving || !form || contactInvalid}
-                  className={LEGACY_SAVE_BUTTON_CLASS}
+                  className={
+                    isAdd
+                      ? "cursor-pointer rounded-[8px] border-0 bg-[#3b82f6] px-5 py-2.5 text-[14px] font-semibold text-white hover:bg-[#2f76e8] disabled:cursor-not-allowed disabled:opacity-60"
+                      : LEGACY_SAVE_BUTTON_CLASS
+                  }
                 >
                   {saving ? "Saving…" : submitLabel}
                 </button>

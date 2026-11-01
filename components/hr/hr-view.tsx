@@ -11,8 +11,6 @@ import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchCurrentUser } from "@/lib/auth-api";
 import {
   byTick,
-  canEditHr,
-  canSeeHr,
   describeHrWriteError,
 } from "@/lib/permissions";
 import { usePermissions } from "@/lib/staff-permissions";
@@ -163,13 +161,17 @@ export function HRView() {
       try {
         const me = await fetchCurrentUser(signal);
         if (signal.aborted) return;
-        if (!canSeeHr(me)) {
+        // 只看勾（Annie 2026-11-01「动手」）：看 = settings.hr.view，改 = settings.hr.edit。
+        if (
+          !byTick(tickPermsRef.current, "settings.hr.view", {
+            superAdmin: !!me.is_superadmin,
+          })
+        ) {
           setView({ kind: "forbidden" });
           return;
         }
         setCanEdit(
           byTick(tickPermsRef.current, "settings.hr.edit", {
-            legacy: canEditHr(me),
             superAdmin: !!me.is_superadmin,
           }),
         );

@@ -135,6 +135,8 @@ export interface DispatchDay {
     /** Pickup Locations 的 Tour bus 勾（后端 21 加）：true = Las Vegas，「Add hotel」放上面；false / null = Shuttle。没带 = 后端还没上，不分组。 */
     is_tour_bus?: boolean | null;
     is_shuttle?: boolean | null;
+    /** Pickup Locations 的「Tour bus departure」勾（TI）：团车在这里直接上客，不算进 Morning Relay 检查。没带 = 后端还没上。 */
+    is_tour_departure?: boolean | null;
   }[];
   tours: {
     id: number;

@@ -139,6 +139,7 @@ export function EmployeesDialog({
                     style={{ backgroundColor: personDotColor(e.id) }}
                   />
                   {e.name}
+                  {e.is_test ? <TestTag /> : null}
                   {e.is_active ? null : (
                     <span className="text-[11px] font-normal">
                       (deactivated)
@@ -152,7 +153,21 @@ export function EmployeesDialog({
                     No email — gets no publish email
                   </span>
                 )}
-                <span className="flex gap-1.5">
+                <span className="flex flex-wrap items-center gap-1.5">
+                  {/* 测试用的人（Annie 2026-10-30 选 A）：点一下就存（同 Deactivate），不出现在 Dashboard、不算空档。 */}
+                  <label className="mr-1 flex cursor-pointer items-center gap-1.5 text-[12px] text-white/75">
+                    <input
+                      type="checkbox"
+                      data-test-person={e.id}
+                      checked={!!e.is_test}
+                      onChange={(ev) =>
+                        void run(() =>
+                          onUpdate(e.id, { is_test: ev.target.checked }),
+                        )
+                      }
+                    />
+                    Test person — hidden from Dashboard
+                  </label>
                   <button
                     type="button"
                     onClick={() => {
@@ -307,5 +322,17 @@ function AddRow({
         {saving ? "Adding…" : "Add"}
       </button>
     </form>
+  );
+}
+
+/** 测试用的人旁边的小标签：灰色（不用蓝，蓝色只给提交键）。排班表和 Employees 框共用。 */
+export function TestTag() {
+  return (
+    <span
+      data-test-tag
+      className="rounded bg-white/10 px-1 text-[10px] font-semibold text-white/60"
+    >
+      Test
+    </span>
   );
 }

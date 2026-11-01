@@ -17,7 +17,7 @@ import {
 import { fetchCurrentUser } from "@/lib/auth-api";
 import { usePageVisibility } from "@/lib/page-visibility";
 import { canSeeSettingsItem } from "@/lib/permissions";
-import { usePermissions } from "@/lib/staff-permissions";
+import { requiredForPath, usePermissions } from "@/lib/staff-permissions";
 import { opensInOps, pageHref } from "@/lib/page-switch";
 import { cn } from "@/lib/utils";
 import type { CurrentUser } from "@/types";
@@ -270,7 +270,13 @@ function OpenNav({
   const visibleItems = (items: NavItem[]) =>
     me
       ? items
-          .filter((i) => canSeeSettingsItem(me, i))
+          // 只看勾（Annie 2026-11-01「动手」）：页面有权限码的只按勾（下面 canOpen）；
+          // 后端还按角色挡的页（Team、Notifications、Quick Replies、Supplier……）照旧按角色。
+          .filter(
+            (i) =>
+              Array.isArray(requiredForPath(i.href ?? "")) ||
+              canSeeSettingsItem(me, i),
+          )
           .filter((i) => !i.superadminOnly || me.is_superadmin)
           .filter((i) => !i.visibilityKey || vis.visible(i.visibilityKey))
           .filter((i) => perms.canOpen(i.href ?? ""))

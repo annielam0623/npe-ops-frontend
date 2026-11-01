@@ -4,7 +4,7 @@ import Link from "next/link";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 
 import { DARK_PRIMARY_BUTTON_CLASS } from "@/components/ui/buttons";
-import { byTick } from "@/lib/by-tick";
+import { useTick } from "@/lib/use-tick";
 import { describeError, isStatus } from "@/lib/api-errors";
 import {
   fetchQuotes,
@@ -14,7 +14,6 @@ import {
   quotePdfUrl,
 } from "@/lib/tcq-api";
 import { cn } from "@/lib/utils";
-import { usePermissions } from "@/lib/staff-permissions";
 import { fetchItem, updateItem } from "@/lib/workspace-api";
 import type { WorkspaceItem } from "@/types";
 import type {
@@ -119,21 +118,15 @@ type Msg = { ok: boolean; text: string } | null;
  */
 export function TcqReview({
   item,
-  isAdmin,
   onItem,
   onUnauthorized,
 }: {
   item: WorkspaceItem;
-  isAdmin: boolean;
   onItem: (item: WorkspaceItem) => void;
   onUnauthorized: () => void;
 }) {
-  // 「Rate card settings →」链接：那一页要 quotation.rates_edit（全部按照勾选，置顶 10c；开关关着照旧按 admin）。
-  // Super Admin：开关对他不生效（perms.active 为 false），走 legacy，admin 本来就是 true。
-  const showRates = byTick(usePermissions(), "quotation.rates_edit", {
-    legacy: isAdmin,
-    superAdmin: false,
-  });
+  // 「Rate card settings →」链接：那一页要 quotation.rates_edit（只看勾，Annie 2026-11-01「动手」）。
+  const showRates = useTick("quotation.rates_edit");
   const [draft, setDraft] = useState<TcqDraft>(() =>
     initialDraft(item.parsed, item.edited, item.title),
   );

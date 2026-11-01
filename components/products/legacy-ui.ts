@@ -65,9 +65,9 @@ export const BULK_CLEAR_CLASS =
 /** .bulk-hint */
 export const BULK_HINT_CLASS = "text-[11px] text-[#999] night:text-white/35";
 
-/** .btn-add（这一页是小号：6px 16px、12px） */
+/** .btn-add（这一页是小号：6px 16px、12px）。点了直接存 ⇒ 蓝色提交键（Annie 2026-10-30，见 CLAUDE.md）。 */
 export const PROD_BTN_ADD_CLASS =
-  "cursor-pointer rounded-[7px] border-none bg-[#1a1a1a] px-4 py-1.5 text-[12px] font-semibold whitespace-nowrap text-white hover:enabled:bg-[#333] disabled:cursor-not-allowed disabled:opacity-45";
+  "cursor-pointer rounded-[7px] border-none bg-[#3b82f6] px-4 py-1.5 text-[12px] font-semibold whitespace-nowrap text-white hover:enabled:bg-[#2f76e8] disabled:cursor-not-allowed disabled:opacity-45";
 
 /** .pill-off */
 export const PILL_OFF_CLASS =

@@ -29,6 +29,7 @@ import {
   TIME_OFF_LABEL,
 } from "./config";
 import { sentTime } from "./send-changes-dialog";
+import { TestTag } from "./employees-dialog";
 import { TimeEditPopup } from "./time-edit-popup";
 import { gapSentence, type SlotMark } from "./week-draft";
 
@@ -424,6 +425,7 @@ function PersonRow({
             style={{ backgroundColor: personDotColor(employee.id) }}
           />
           <span className="min-w-0 break-words">{employee.name}</span>
+          {employee.is_test ? <TestTag /> : null}
         </span>
         {change && change.items.length > 0 && onSendChanges ? (
           <span

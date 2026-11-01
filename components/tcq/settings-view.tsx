@@ -135,7 +135,6 @@ export function TcqSettingsView() {
         if (signal.aborted) return;
         if (
           !byTick(tickPermsRef.current, "quotation.rates_edit", {
-            legacy: me.is_admin,
             superAdmin: !!me.is_superadmin,
           })
         ) {

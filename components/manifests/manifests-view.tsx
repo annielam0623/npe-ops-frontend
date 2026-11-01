@@ -117,7 +117,7 @@ export function ManifestsView() {
   const perms = usePermissions();
   const isSuperAdmin = usePageVisibility().isSuperAdmin;
   const tick = (code: string) =>
-    byTick(perms, code, { legacy: true, superAdmin: isSuperAdmin });
+    byTick(perms, code, { superAdmin: isSuperAdmin });
   const noFeatures = perms.partnerView;
   const viewOnly =
     perms.partnerLacks("manifests.edit") || !tick("manifests.edit");

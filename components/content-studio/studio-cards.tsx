@@ -40,7 +40,7 @@ export interface Studio {
   setActive: (key: string | null) => void;
 }
 
-type SaveState = "idle" | "saving" | "saved" | "error";
+export type SaveState = "idle" | "saving" | "saved" | "error";
 
 // 旧模板 settings_templates.html 的卡片样式照抄（Annie 2026-10-07：和旧版一模一样）。
 // ⚠️ cn 只拼字符串、不做 Tailwind 合并：边框色、底色不能在两处都写。
@@ -65,7 +65,7 @@ const WARN_BAR =
   "border-t border-[#fecaca] night:border-red-500/30 bg-[#fef2f2] night:bg-red-500/10 px-3.5 py-[5px] text-[11px] text-[#dc2626] night:text-red-300";
 /** .dyn-add-btn */
 const ADD_BTN =
-  "cursor-pointer rounded-[6px] border border-dashed border-[#aaa] bg-paper night:bg-white/[.04] px-3 py-1 text-[11px] text-[#1a1a1a] night:text-white/90 hover:border-[#1a1a1a] night:hover:border-white/40";
+  "cursor-pointer rounded-[6px] border border-[#6b8e74] bg-[#6b8e74] text-white hover:bg-[#5d7d66] px-3 py-1 text-[11px] font-semibold";
 /** .dyn-step-group */
 const STEP_GROUP =
   "mb-2 rounded-[8px] border border-[#e5e7eb] night:border-white/10 bg-paper night:bg-white/[.03] px-3 py-2.5 hover:border-[#ccc] night:hover:border-white/10";
@@ -84,7 +84,7 @@ const LA_TIME = new Intl.DateTimeFormat("en-US", {
 });
 
 /** 后端给的 updated_at 不带时区（UTC）：补上 Z 再按洛杉矶显示。 */
-function editedLine(s: TemplateSetting | undefined): ReactNode {
+export function editedLine(s: TemplateSetting | undefined): ReactNode {
   if (!s?.updated_by) return <span>Original</span>;
   const iso =
     s.updated_at && !/[zZ]|[+-]\d\d:?\d\d$/.test(s.updated_at)
@@ -113,7 +113,7 @@ const SAVED_TIME = new Intl.DateTimeFormat("en-US", {
  * 卡片底部：Cancel（有改动才能点，先确认）+ 蓝色 Save（没改动灰的）。
  * 结果写在键旁边：Saving… 灰字、存好绿字「✓ Saved · 9:12 PM」一直留到再改；存不上下面红字写后端原话。
  */
-function CardFooter({
+export function CardFooter({
   dirty,
   state,
   savedAt,
@@ -232,7 +232,7 @@ function useCardSave(studio: Studio) {
 }
 
 /** 文本框旁边的「Insert:」按钮：在光标处插入变量。 */
-function InsertBar({
+export function InsertBar({
   vars,
   onInsert,
 }: {
@@ -517,7 +517,7 @@ function templateSms(filled: string, typed: string) {
 }
 
 /** .field-card：抬头（标签 + 键名，Global 的右边一个 ⚠ Global）、红色提醒条、正文。 */
-function CardShell({
+export function CardShell({
   label,
   keyName,
   global,

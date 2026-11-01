@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Fragment, useCallback, useEffect, useState, useRef } from "react";
 
 import {
-  BTN_ADD_CLASS,
+  BTN_SUBMIT_CLASS,
   BTN_EDIT_CLASS,
   BTN_OFF_CLASS,
   BTN_ON_CLASS,
@@ -212,7 +212,6 @@ export function PartnersView() {
         // 只有 admin 能管合作公司（后端也会 403）。
         if (
           !byTick(tickPermsRef.current, "settings.farm_out", {
-            legacy: me.is_admin,
             superAdmin: !!me.is_superadmin,
           })
         ) {
@@ -412,7 +411,7 @@ export function PartnersView() {
               <button
                 type="submit"
                 disabled={adding}
-                className={cn(BTN_ADD_CLASS)}
+                className={BTN_SUBMIT_CLASS}
               >
                 {adding ? "Adding…" : "Add"}
               </button>

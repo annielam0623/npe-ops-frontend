@@ -45,7 +45,7 @@ export interface ScheduleHistoryEvent {
   /** answered / requested：从哪进来的。 */
   via?: "login" | "link";
   /** requested / approved / declined：哪天哪个班。G138：move 的目标日、add 的那天、swap 对方的那个班。 */
-  request?: { date: string; shift_type: string };
+  request?: { date: string; shift_type: string | null };
   /** G138：move / add / swap。 */
   request_kind?: "move" | "add" | "swap";
   /** G138：move 原来那天的班、swap 提请求的人给出的班。 */

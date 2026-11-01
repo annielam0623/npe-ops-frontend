@@ -291,6 +291,8 @@ export function localGaps(
   weekStart: string,
   slots: readonly ScheduleSlot[],
   work: { start_time: string; end_time: string },
+  /** 测试用的人（is_test，Annie 2026-10-30 选 A）：他们的班不算覆盖。 */
+  skip?: ReadonlySet<number>,
 ): ScheduleGap[] {
   const winStart = minutesOf(work.start_time);
   const winEnd = minutesOf(work.end_time);
@@ -301,7 +303,10 @@ export function localGaps(
   for (let i = 0; i < 7; i++) {
     const date = shiftYmd(weekStart, i);
     const covered = slots
-      .filter((s) => s.date === date && s.employee_id != null)
+      .filter(
+        (s) =>
+          s.date === date && s.employee_id != null && !skip?.has(s.employee_id),
+      )
       .map((s) => [minutesOf(s.start_time), minutesOf(s.end_time)] as const)
       .filter(
         (p): p is readonly [number, number] =>
@@ -339,13 +344,14 @@ export function newGapsByCard(
   d: WeekDraft,
   work: { start_time: string; end_time: string },
   now?: LaNow,
+  skip?: ReadonlySet<number>,
 ): Map<number, ScheduleGap[]> {
   const out = new Map<number, ScheduleGap[]>();
   if (!isDirty(d)) return out;
-  const before = localGaps(weekStart, serverSlots, work);
+  const before = localGaps(weekStart, serverSlots, work, skip);
   const after = now
-    ? futureGaps(localGaps(weekStart, liveSlots, work), now)
-    : localGaps(weekStart, liveSlots, work);
+    ? futureGaps(localGaps(weekStart, liveSlots, work, skip), now)
+    : localGaps(weekStart, liveSlots, work, skip);
   const fresh = after.filter(
     (g) =>
       !before.some(

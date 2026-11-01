@@ -1,6 +1,7 @@
 // 模拟后端：Staff Schedule（阶段二，拖拽排班版）。控制：POST /__ctl {role}；GET /__log。
 // role: "staff" | "supervisor" | "admin" | "superadmin"（默认 supervisor，方便直接测排班）。
 const http = require("http");
+const { permsBody } = require("./role-standard");
 // phase2: true ⇒ 二期字段（备注 note / 休假 time_off / 班次默认时间）和接口都开（POST /__ctl {phase2:true}）。
 const ctl = { fail401: false, role: "supervisor", meName: "", rulesMissing: false, phase2: false };
 let timeOff = []; // {id, employee_id, date, kind, note}
@@ -22,6 +23,9 @@ function historyOf(week, id) {
       { id: 35, at: "2026-10-28T22:30:00+00:00", kind: "swap_declined_by_peer", by: "Lizzie", by_kind: "employee", lines: [], channels: [], request_kind: "swap", from_slot: slot(2, "close"), request: slot(1, "mid"), peer: "Nadia" },
       // 照后端 _event_out：空值不给键（没有 by / lines / channels / peer / from_slot）
       { id: 36, at: "2026-10-31T17:00:00+00:00", kind: "request_closed_on_publish", by_kind: "system", request_kind: "add", request: slot(3, "open") },
+      // 后端 5aeadbbb 主管批准 / 拒绝：move 只带目标日（shift_type null），swap 不带 request
+      { id: 37, at: "2026-10-31T18:00:00+00:00", kind: "approved", by: "Max", by_kind: "staff", lines: [], channels: [], request_kind: "move", request: { date: addDays(week, 5), shift_type: null } },
+      { id: 38, at: "2026-10-31T18:01:00+00:00", kind: "declined", by: "Max", by_kind: "staff", lines: [], channels: [], request_kind: "swap" },
     ], { g138: true });
   }
   if (!histories[key]) {
@@ -402,6 +406,8 @@ http
     // 全部按照勾选（置顶 10c）：ctl.tick = { switchOn, codes } 时回员工权限总开关和我的勾；没有 tick 照旧（接口 404 = 开关关着）。
     if (ctl.tick && p === "/api/settings/dashboard-widgets") return send(res, 200, { readable: true, widgets: [{ key: "staff_permissions", label: "Staff permissions (ops gating)", visibility: ctl.tick.switchOn ? "staff" : "super_admin_only", default: "super_admin_only", visible_to_me: !!ctl.tick.switchOn }] });
     if (ctl.tick && p === "/api/me/permissions") return send(res, 200, { is_superadmin: false, permissions: ctl.tick.codes.map((code) => ({ code, module: code.split(".")[0], wired: true })), default_home: "/dashboard" });
+    // 只看勾（2026-11-01）：没设 tick 时按角色标准回（同后端开关关着、标准内全勾）。
+    if (p === "/api/me/permissions") return send(res, 200, permsBody(ctl.role));
     if (p === "/api/me") return send(res, 200, meFor(ctl.role));
 
     // ── 排班按周编辑占用（Annie 2026-10-19「动手改才提示」；后端排班还没有这组接口，形状照 Dispatch 的 edit-lock）──
@@ -425,6 +431,8 @@ http
       if (!ctl.confirm) return send(res, 404, { detail: "Not Found" });
       confirmWeek = cm[1];
       const days = datesOfWeek(cm[1]);
+      // 后端 schedule-history：每行带 history_count（ctl.history 开着、ctl.noHistoryCount 没开 = 新后端）
+      const withCount = (p) => (ctl.history && !ctl.noHistoryCount ? { ...p, history_count: historyOf(cm[1], p.employee_id).length } : p);
       return send(res, 200, {
         sent_at: "2026-10-07T16:00:00+00:00",
         // G138 形状（4e 2026-10-30 晚「最终接口」）：people 只有回应，请求平铺在 requests 里。
@@ -436,7 +444,7 @@ http
           { employee_id: 2, name: "Lizzie", answer: "wants_changes", answered_at: "2026-10-07T18:02:00+00:00" },
           { employee_id: 3, name: "Nadia", answer: "counted_accepted", answered_at: null },
           ...(jingAnswer ? [{ employee_id: 4, name: "Jing", answer: jingAnswer, answered_at: jingAnswer === "no_answer" ? null : "2026-10-07T17:00:00+00:00" }] : []),
-        ],
+        ].map(withCount),
         requests: [...confirmSwaps(cm[1]), ...confirmReqs.map((r) => ({
           id: r.id, kind: "add", status: r.status, from: { employee_id: 2, name: "Lizzie" }, my_slot: null, their_slot: null, peer: null,
           date: days[r.dayIdx], shift_type: r.shift_type, peer_timed_out: false, created_at: "2026-10-07T18:02:00+00:00", decided_at: null,
@@ -611,6 +619,8 @@ http
         e.email = em;
       }
       if (b.is_active !== undefined) e.is_active = !!b.is_active;
+      // 测试用的人（Annie 2026-10-30 选 A，后端 57 在加 schedule_employees.is_test）
+      if (b.is_test !== undefined) e.is_test = !!b.is_test;
       return send(res, 200, e);
     }
 
@@ -875,6 +885,8 @@ http
         published_at: weekData.published_at,
         published_by: weekData.published_by,
         republished,
+        // 后端 82：Publish again 且整周一点没变 ⇒ true（ctl.noNothingChanged = 旧后端，不带这个字段）
+        ...(ctl.noNothingChanged ? {} : { nothing_changed: republished && changed.size === 0 }),
         gaps,
         // 置顶 15（后端 ef task/republish-recipients-by-perm）：notified 只列真发出去的；ctl.notReached = {员工 id: 原因} 的人挪到 not_reached。
         ...(() => {

@@ -6,6 +6,14 @@ const http = require("http");
 const H = 3600 * 1000;
 const isoAgo = (ago) => new Date(Date.now() - ago).toISOString();
 const todayLA = new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
+// 通知和交接的「现在」：洛杉矶今天还不到 1:30 AM 时挪到今天 1:30 AM，「15 分钟 / 1 小时前」的通知才不会跨过午夜变成昨天
+// （00:00–01:00 跑 tasks 时「只放今天的」那几条会挂，98 2026-10-31 要求改成任何时候跑都过）。只给通知 / 交接用，任务本身不动。
+function noticeNow() {
+  const now = Date.now();
+  const [h, m] = new Date(now).toLocaleTimeString("en-GB", { timeZone: "America/Los_Angeles", hour: "2-digit", minute: "2-digit", hour12: false }).split(":").map(Number);
+  const mins = (h % 24) * 60 + m;
+  return mins >= 90 ? now : now + (90 - mins) * 60000;
+}
 
 function __unused_send(res, status, body) {
   res.statusCode = status;
@@ -187,7 +195,8 @@ function freshTasks() {
     to_display_name: "Lizzie",
     note: "Shuttle guide needs a text before the 2pm pickup — didn’t get to it before I left.",
     // 交接只显示 24 小时内的（Annie 2026-10-25）：按真实时钟放在 50 分钟前；ctl.handoverAgeH 改成几小时前（测超过 24 小时不显示）。
-    at: new Date(Date.now() - (ctl.handoverAgeH ?? 50 / 60) * 3600 * 1000).toISOString(),
+    // 默认 50 分钟前（按 noticeNow，跨午夜也是今天）；handoverAgeH（测「超过 24 小时不显示」）按真实时间算，不挪。
+    at: new Date(ctl.handoverAgeH != null ? Date.now() - ctl.handoverAgeH * 3600 * 1000 : noticeNow() - (50 / 60) * 3600 * 1000).toISOString(),
     accepted_at: null,
     accepted_by_username: null,
     accepted_by_display_name: null,
@@ -318,7 +327,7 @@ function buildToday() {
 
 // 排班提醒：时间用「今天」之外的日子 + 今天，覆盖 "Thu 10:42 AM" 和 "12:05 PM" 两种写法。
 function freshSchedNotices() {
-  const now = new Date();
+  const now = new Date(noticeNow());
   const ago = (ms) => new Date(now.getTime() - ms).toISOString();
   const mk = (id, type, title, body, createdAt) => ({
     id, type, title, body, created_at: createdAt, is_read: false, read_at: null,
@@ -332,12 +341,18 @@ function freshSchedNotices() {
   ];
 }
 let schedNotices = freshSchedNotices();
+const teamMessages = [];
+const directMsgNotices = [{
+  id: 50, type: "message", title: "Jing sent you a message", body: "Can you call the 2pm pickup guest?\nThey asked about bags.",
+  created_at: new Date(Date.now() - 20 * 3600 * 1000).toISOString(), is_read: false, read_at: null,
+  ref: { kind: "message", message_id: 7, from_user_id: 31, from_display_name: "Jing" }, link: null, actions: [],
+}];
 
 // 后端 G138 实际发的两类通知（字符串以 npe-confirmation-service schedule_confirm.py / schedule.py 为准）。
 // 2026-10-22 后端核实：/api/notices 压根不下发 actions 字段（任何 category 都没有），这里故意不带，
 // 用来测前端缺字段时的兜底（lib/notices-api.ts fetchNotices 里补 ?? []）。
 function confirmNotices() {
-  const now = Date.now();
+  const now = noticeNow();
   const mk = (id, type, title, body, ago) => ({
     id, type, title, body, created_at: new Date(now - ago).toISOString(), is_read: false, read_at: null,
     ref: { kind: "week", week_start: "2026-10-25" }, link: "/schedule?week=2026-10-25",
@@ -345,6 +360,8 @@ function confirmNotices() {
   return [
     mk(5, "schedule_confirm_request", "Please confirm your schedule for Oct 25 – Oct 31", "Open the schedule and tap Accept or Change.", 600 * 1000),
     mk(6, "schedule_confirm_declined", "Your requested shift on Mon Oct 26 was declined", "Mon 10/26 Mid was not approved.", 300 * 1000),
+    // 主管收的 Publish again 明细（后端 schedule_notices.py 把逐条改动写进 body）：页面上只写一句、标题显示成 published（Annie 2026-10-31）。
+    mk(9, "schedule_changed", "Schedule edited — week of 2026-10-25", "Jessica — Fri 10/30: Close 11:30 AM – 9:30 PM → Close 1:30 PM – 9:30 PM\nLizzie — Sat 10/31: not scheduled → Mid 10:00 AM – 6:00 PM", 250 * 1000),
     // Daily Operation Report 登记后的通知（后端设计稿 §6.4）：link 去 /daily-report?id=。
     { ...mk(7, "operation_report", "Accident logged: ZZ Bus 3", "Minor scrape in the hotel driveway.", 200 * 1000), ref: { kind: "operation_report", id: 12 }, link: "/daily-report?id=12" },
     // 将来后端加的不认识的类型，字段还缺着（没有 body / link / actions / ref）：面板不能崩，按 title 降级显示。
@@ -366,6 +383,8 @@ function noticesWire(list, url) {
       const o = { id: n.id, kind: n.type, title: n.title, created_at: n.created_at, read: !!n.is_read };
       if ("body" in n) o.body = n.body;
       if ("link" in n) o.href = n.link;
+      // DG-4（后端 21，98 2026-11-01 转）：每条都带 ref——消息类是 {kind: "message", message_id, …}（Reply 用），其余一律 null。
+      o.ref = n.type === "message" ? n.ref : null;
       return o;
     }),
   };
@@ -434,7 +453,7 @@ http
 
     // 排班块（Dashboard 最底部，整周）：本周（按请求的周）给一份已发布的排班；下下周以后没发布。
     if (p === "/api/settings/schedule") return send(res, 200, { work_window: { start_time: "02:00", end_time: "21:30" }, shift_types: [{ key: "open", label: "Open", sort_order: 1, is_active: true }, { key: "mid", label: "Mid", sort_order: 2, is_active: true }, { key: "close", label: "Close", sort_order: 3, is_active: true }] });
-    if (p === "/api/schedule/employees") return send(res, 200, { employees: [["Veronica", 1], ["Lizzie", 2], ["Nadia", 3], ["Jing", 4], ["Anita", 5]].map(([name, id]) => ({ id, name, email: name.toLowerCase() + "@nationalparkexpress.com", is_active: true })) });
+    if (p === "/api/schedule/employees") return send(res, 200, { employees: [["Veronica", 1], ["Lizzie", 2], ["Nadia", 3], ["Jing", 4], ["Anita", 5]].map(([name, id]) => ({ id, name, email: name.toLowerCase() + "@nationalparkexpress.com", is_active: true })).concat(ctl.testPerson ? [{ id: 7, name: "ZZ Test Person", email: "zztest@example.test", is_active: true, is_test: true }] : []) });
     const wk = /^\/api\/schedule\/weeks\/(\d{4}-\d{2}-\d{2})$/.exec(p);
     if (wk) {
       if (Date.parse(wk[1]) - Date.now() > 8 * 86400000) return send(res, 200, { week_start: wk[1], status: "draft", published_at: null, published_by: null, copied_from: null, slots: [], gaps: [] });
@@ -444,6 +463,8 @@ http
         { id: id++, date, shift_type: "open", start_time: "02:00", end_time: "10:00", employee_id: i % 2 ? 4 : 1 },
         { id: id++, date, shift_type: "mid", start_time: "09:30", end_time: "17:30", employee_id: 2 },
         { id: id++, date, shift_type: "close", start_time: "13:30", end_time: "21:30", employee_id: i % 3 ? 3 : 5 },
+        // ctl.testPerson：测试用的人（is_test，Annie 2026-10-30 选 A）每天一个班；Dashboard 不该出现他。
+        ...(ctl.testPerson ? [{ id: id++, date, shift_type: "mid", start_time: "08:00", end_time: "16:00", employee_id: 7 }] : []),
       ]);
       return send(res, 200, { week_start: wk[1], status: "published", published_at: "2026-10-16T18:00:00+00:00", published_by: 1, copied_from: null, slots, gaps: [] });
     }
@@ -467,7 +488,7 @@ http
         if (!ctl.superadmin) return send(res, 403, { detail: "Super Admin access required." });
         Object.assign(ctl.gateVis, b.widgets || {});
       }
-      const extra = [["dashboard_stats", "Today at a glance"], ["dashboard_today_team", "Today's team"], ["dashboard_reply", "Reply pop-up in Messages"], ["dashboard_notice", "Notice"], ["dashboard_tasks", "Tasks"]].flatMap(([key, label]) => {
+      const extra = [["dashboard_stats", "Today at a glance"], ["dashboard_today_team", "Today's team"], ["dashboard_reply", "Reply pop-up in Messages"], ["dashboard_notice", "Notice"], ["dashboard_tasks", "Tasks"], ["team_messages_direct", "Today's team: online staff + messages"]].flatMap(([key, label]) => {
         const vis = ctl.gateVis[key] ?? (ctl.gates === "open" ? "staff" : null);
         // 三档（后端 2026-10-25）：staff = 所有人；admin = admin 和 Super Admin；super_admin_only = 只 Super Admin。
         const seen = vis === "staff" || ctl.superadmin || (vis === "admin" && ctl.admin);
@@ -483,16 +504,43 @@ http
     }
     if (p === "/api/operation-reports") return send(res, 200, { items: [], counts: { complaint: 0, accident: 0, emergency: 0, total: 0 }, total: 0, limit: 50, offset: 0 });
 
+    // Today's team 在线同事 + 站内消息（前端提的形状，后端 57 排）：ctl.teamOnline 开着才有接口。
+    if (p === "/api/team/online" && req.method === "GET") {
+      if (!ctl.teamOnline) return send(res, 404, { detail: "mock: not found" });
+      // 后端 21：只列 30 分钟内来过的（online 恒 true），开关没对我开 ⇒ 403。
+      if (ctl.teamOnline === "403") return send(res, 403, { detail: "This section is not available yet." });
+      const seen = new Date().toISOString();
+      return send(res, 200, { online_minutes: 30, people: [
+        { id: 31, display_name: "Jing", username: "jing", role: "staff", online: true, last_seen_at: seen, has_email: true },
+        { id: 33, display_name: "ZZ Test Admin", username: "zz.admin", role: "admin", online: true, last_seen_at: seen, has_email: true },
+        { id: 34, display_name: "Mia", username: "mia", role: "staff", online: true, last_seen_at: seen, has_email: false },
+      ] });
+    }
+    if (p === "/api/team/messages" && req.method === "POST") {
+      const b = await readBody(req);
+      teamMessages.push({ kind: "send", ...b });
+      if (ctl.msgFail) return send(res, 400, { detail: "Write a message first." });
+      return send(res, 200, { ok: true, id: 100 + teamMessages.length, emailed: b.to_user_id !== 34 });
+    }
+    const replyMatch = p.match(/^\/api\/team\/messages\/(\d+)\/reply$/);
+    if (replyMatch && req.method === "POST") {
+      const b = await readBody(req);
+      teamMessages.push({ kind: "reply", id: Number(replyMatch[1]), ...b });
+      return send(res, 200, { ok: true, id: 100 + teamMessages.length });
+    }
+    if (p === "/__messages") return send(res, 200, teamMessages);
     // 排班类提醒（Notice 面板）。ctl.notices 开着才有这个接口；关着返回 404，模拟「后端还没上线」。
     if (p === "/api/notices" && req.method === "GET") {
       if (!ctl.notices) return send(res, 404, { detail: "mock: not found" });
       // confirmNotices：再带上后端 G138 实际发的两类（schedule_confirm_request / schedule_confirm_declined）。
-      const items = ctl.confirmNotices ? [...schedNotices, ...confirmNotices()] : schedNotices;
+      const base = ctl.confirmNotices ? [...schedNotices, ...confirmNotices()] : schedNotices;
+      // directMsg：同事昨天发来的站内消息（type message，没读就一直在 Notice，不只今天的）。
+      const items = ctl.directMsg ? [...base, ...directMsgNotices.filter((n) => !n.is_read)] : base;
       return send(res, 200, noticesWire(items, url));
     }
     const readMatch = p.match(/^\/api\/notices\/(\d+)\/read$/);
     if (readMatch && req.method === "POST") {
-      const n = schedNotices.find((x) => x.id === Number(readMatch[1]));
+      const n = [...schedNotices, ...directMsgNotices].find((x) => x.id === Number(readMatch[1]));
       if (n) { n.is_read = true; n.read_at = new Date().toISOString(); }
       return send(res, 200, { ok: true, unread_count: schedNotices.filter((x) => !x.is_read).length });
     }

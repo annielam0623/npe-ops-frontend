@@ -31,6 +31,12 @@ export interface ScheduleEmployee {
   name: string;
   email: string;
   is_active: boolean;
+  /**
+   * 测试用的人（Annie 2026-10-30「我加了ZZTest和Leon在staff Schedule里用来做测试，不要把这两个人显示在dashbroad里」，选 A）：
+   * 不出现在 Dashboard 的 Today's team 和整周排班里；不算进空档；排班页照常显示、名字旁一个灰色「Test」。通知照发。
+   * 后端 schedule_employees.is_test（57 在做，要迁移）；没带 = 不是。
+   */
+  is_test?: boolean;
 }
 
 /** PUT /api/schedule/employees/{id} 的请求体（supervisor 及以上）：没传的字段不动；email 传空字符串 = 清掉。 */
@@ -38,6 +44,7 @@ export interface ScheduleEmployeeUpdate {
   name?: string;
   email?: string;
   is_active?: boolean;
+  is_test?: boolean;
 }
 
 /** GET /api/schedule/employees 的返回体（包了一层）。 */
@@ -246,6 +253,11 @@ export interface SchedulePublishResult {
   published_by: number;
   /** 这一周之前已经发布过（Publish again）。后端 d2bc2cf：重新发布不发通知，notified 永远是 []。 */
   republished?: boolean;
+  /**
+   * Publish again 时整周一点没变（后端 82：有上次发布的快照，之后谁的班 / 休息都没改、也没有排了班却没通知过的人）⇒ 谁都不通知。
+   * 后端上线前没有这个字段，当 false。
+   */
+  nothing_changed?: boolean;
   /** 发布那一刻的空档（Publish anyway 时非空）。 */
   gaps?: ScheduleGap[];
   /** Publish again 时只有班有变化的员工（后端 G217）；首次发布是这周排了班的人。 */

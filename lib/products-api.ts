@@ -192,6 +192,20 @@ export function saveSectionOrder(
 }
 
 /**
+ * Bus Manifest 各节的默认顺序（置顶 41，后端 64）：整组替换；[] = 清掉（照旧按最早接客时间）。不分大小写，BUS TOUR 也能排；
+ * 没列的节在后面 A–Z。不是这个团的节 / 重复 / 超过 20 个 ⇒ 400 + 原话。只有 admin 能改。
+ */
+export function saveBusSectionOrder(
+  manifestId: number,
+  sections: string[],
+): Promise<{ ok: true; sections: string[] }> {
+  return apiFetch(`${SETUP_API}/groups/${manifestId}/bus-section-order`, {
+    method: "PUT",
+    body: { sections },
+  });
+}
+
+/**
  * 一节的默认 tour type（后端 G130）：`tourType` null / "" = 清掉（自动发送跳过这一节）。只有 admin 能改；
  * 这一节在这个团里没有 Tour 产品、或键不在 `tour_types` 里 400 + 原话。
  */

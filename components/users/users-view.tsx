@@ -13,8 +13,12 @@ import type {
   ActionFailure,
   ActionResult,
 } from "@/components/ui/action-result";
-import { ActionLogPanel } from "@/components/action-log/action-log-panel";
+import {
+  ActionLogPanel,
+  type ActionVerb,
+} from "@/components/action-log/action-log-panel";
 import { CenteredPage } from "@/components/ui/centered-page";
+import { BulkImportButton } from "@/components/ui/bulk-import";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ErrorBanner, Panel } from "@/components/ui/panel";
 import { AddPersonDialog } from "@/components/team-permissions/add-person-dialog";
@@ -90,6 +94,7 @@ import { DisplayNameDialog } from "./display-name-dialog";
 import { InviteDialog, type InviteOutcome } from "./invite-dialog";
 import { ResetLinkDialog, type ResetOutcome } from "./reset-link-dialog";
 import { RoleLegend } from "./role-legend";
+import { TeamImportPanel } from "./team-import-panel";
 import { UsersTable, type RowExtras } from "./users-table";
 
 /** Super Admin 才读的 /api/team 那一份（权限、职责、首页、部门邮箱）。 */
@@ -256,6 +261,8 @@ export function TeamView() {
   );
   // 递增即让开着的 Action Log 重拉第一页（停用 / 改角色 / 重置链接等成功之后，新的那条马上出来）。
   const [logVersion, setLogVersion] = useState(0);
+  // ⬆ Import 那一块展开着（只给 Super Admin）。
+  const [importOpen, setImportOpen] = useState(false);
 
   const redirectingRef = useRef(false);
 
@@ -614,25 +621,48 @@ export function TeamView() {
             </p>
           </div>
           {view.kind === "ready" ? (
-            <button
-              type="button"
-              onClick={() =>
-                setDialog(
-                  view.isSuperAdmin
-                    ? { kind: "add-person" }
-                    : { kind: "invite" },
-                )
-              }
-              className="flex cursor-pointer items-center gap-2 rounded-[8px] border-0 bg-[linear-gradient(135deg,#1a6b3c,#27ae60)] px-5 py-2.5 text-[14px] font-semibold text-white"
-            >
-              <span aria-hidden>+</span>
-              Add person
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              {/* ⬆ Import（preview ③-1）：只给 Super Admin，权限那一份读到了才有名单做模板。 */}
+              {view.isSuperAdmin && view.team ? (
+                <BulkImportButton
+                  onClick={() => setImportOpen(true)}
+                  disabled={importOpen}
+                />
+              ) : null}
+              <button
+                type="button"
+                onClick={() =>
+                  setDialog(
+                    view.isSuperAdmin
+                      ? { kind: "add-person" }
+                      : { kind: "invite" },
+                  )
+                }
+                className="flex cursor-pointer items-center gap-2 rounded-[8px] border-0 bg-[linear-gradient(135deg,#1a6b3c,#27ae60)] px-5 py-2.5 text-[14px] font-semibold text-white"
+              >
+                <span aria-hidden>+</span>
+                Add person
+              </button>
+            </div>
           ) : null}
         </header>
 
         {view.kind === "ready" ? (
           <TeamHowTo isSuperAdmin={isSuperAdmin} />
+        ) : null}
+
+        {view.kind === "ready" &&
+        view.isSuperAdmin &&
+        view.team &&
+        importOpen ? (
+          <div className="mb-5">
+            <TeamImportPanel
+              members={view.team.members}
+              onClose={() => setImportOpen(false)}
+              onSaved={() => void refreshList()}
+              onUnauthorized={redirectToLogin}
+            />
+          </div>
         ) : null}
 
         {actionError && view.kind === "ready" ? (
@@ -786,6 +816,7 @@ export function TeamView() {
                 refreshKey={logVersion}
                 reloadOnOpen
                 onUnauthorized={redirectToLogin}
+                verbs={TEAM_LOG_VERBS}
                 load={(before, signal) =>
                   fetchActionLog("/api/team/action-log", before, signal)
                 }
@@ -1116,6 +1147,11 @@ function UsersDialogs({
   }
 }
 
+/** Team 日志里 ⬆ Import 写的每人一条（后端 64：action "import"）。 */
+const TEAM_LOG_VERBS: Record<string, ActionVerb> = {
+  import: { label: "Imported", tone: "change" },
+};
+
 /** 折叠的英文说明（同原来 Team 页的蓝框）；两页的说明并成一份。 */
 function TeamHowTo({ isSuperAdmin }: { isSuperAdmin: boolean }) {
   return (
@@ -1203,6 +1239,12 @@ function TeamHowTo({ isSuperAdmin }: { isSuperAdmin: boolean }) {
               Add person: Contact is there for both ways (create now / invite
               link). An invite keeps the email and mobile you typed after the
               person registers.
+            </li>
+            <li>
+              Change many people&apos;s Email and Mobile at once: click ⬆
+              Import, then ⬇ Download template (it lists everyone), edit it and
+              choose the file. Check the preview, then click Save. Rows with
+              errors are not saved.
             </li>
           </>
         ) : null}
