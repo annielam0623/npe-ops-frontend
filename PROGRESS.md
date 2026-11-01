@@ -109,11 +109,12 @@
 
 ## 2026-10-31 夜 后端今晚全部落完（Annie 定，57 转，约凌晨 3–4 点）
 - 后端主目录顺序 → 前端对应分支：
-  1. 16 排班往来记录隔离 → e6 task/schedule-person-history-fe；
+  1. 16 排班往来记录隔离 → e6 前端早已在 main（5259338），落了只核字段；
   2. 82 is_test → 91 task/schedule-test-person；
   3. 64 勾选权限 464ee553 → 09 task/perm-tick-or-role（还要 Annie 答题 A/B/C + 动手）；
   4. 21 站内消息 → 91 task/team-online-messages；
   5. 44 is_tour_departure → e6 da 排除 TI（要 Annie 动手）；44 G138 → e6 task/schedule-weekly-confirm。
+- G228 前端已合 main 58ea7db（e6；tsc / eslint / build、cs 178/178、nav 32/32；24 键对过后端）。线上读值要登录，请 Annie 在 Content Studio › Team Messages 看一眼（只看不改）。
 - 每件落完 57 报提交号，主窗口 98 叫对应窗口合最新 main、跑检查、合 main。
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
