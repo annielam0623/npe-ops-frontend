@@ -152,6 +152,17 @@
 - 11-01 Annie 在 91 窗口答：「长期默认，第二个由staff来决定」⇒ 设置是这个团的长期默认（每天、每台车都用）；分不分页由 staff 在页面上自己勾。
 - 91 出 preview https://claude.ai/artifact/SuSZPJVnMTUUirXhnpGZ4x ：页头 Version 旁加「Canyon order」键 + 小框（↑↓ 换顺序、两节中间勾「Start a new page here」、Done 白色，整页 Save 才存）；默认 LOWER → UPPER → CANYON X、都不勾。剩 4 题见置顶 41。要后端（存设置 + _sections() 排序 + paginate() 换页 + 读写接口）。未动手。
 
+## 2026-11-01 Bus Manifest：Canyon order 拖拽（`task/canyon-order`，工作窗口 91，主窗口 98 派）—— **只推分支，等后端 64 task/canyon-order 上 main 再合**
+- Annie「动手」（98 转：「两件都动手」）。之后 Annie 在 57 窗口改定（98 转）：**只管这一次**——拖出来的顺序和分页只管这一次的查看、打印、下载，不存、没有 Save，重开页面回默认；Driver / Guide 页照默认。范围加 Hoover Dam（BUS TOUR / HD RAFT / BOULDER CITY）。默认顺序由 Annie 在 Products › Manifest setup 新格子「Bus Manifest section order」填，没填 = 照旧按最早接客时间。
+- 后端接口（64）：GET manifest 的 tour 带 canyon_sections / canyon_pages（≥2 个 tour 节才带）；打印 GET 参数、Excel 表单字段 `layout` = JSON string[][]；Manifest setup groups[].bus_section_order、PUT groups/{id}/bus-section-order {sections}。
+- 前端：
+  - Bus Manifest 页头 Version 旁「Canyon order: Lower → Upper → X · 1 page ▾」（节名不含 canyon 的团写 Section order），小框 PAGE 1 / PAGE 2 拖卡片换顺序 / 换页 / 拖到虚线框新的一页，空页自动消失；页面马上照新顺序排、分页处画「New page」虚线（print:hidden）；打印（整团 / 每台车）和 Download 带 layout；只能看的人只有一行字。不算没存的改动（没有 Unsaved、不拦离开）。
+  - Products › Manifest setup：Section order 下面加「Bus Manifest section order」（同款输入，先放在页面上按 Save 才存，10 分钟自动存照 useBlockSave）；How to use 加一句；Section order 的说明在新格子出现时改成「on Manifests and the 7 Days Forecast (the Bus Manifest uses the box below)」。
+  - Bus Manifest How to use 改成：拖动调顺序 / 换页；只管这一次 Print / Download、不存；刷新回默认（Settings → Products 里设）。
+- 截图（给 Annie）：Products 新格子、Bus Manifest 拖拽框真实样子，见 98 转的链接。
+- 检查：tsc / build 过、eslint 0 错；mf 225/225（Canyon 一组 16 项，含 Hoover 叫 Section order）、products 225/225（新格子 6 项）、nav 32/32。
+- 合 main 前：后端上 main 后对着真接口核 canyon_sections / layout / bus_section_order，合最新 main 重跑 mf / products / nav。
+
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
 ### 41. Bus Manifest：Antelope 三个 canyon 的顺序和分页（91，preview https://claude.ai/artifact/SuSZPJVnMTUUirXhnpGZ4x ，2026-11-01 问）

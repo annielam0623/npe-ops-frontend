@@ -251,9 +251,22 @@ export const ATTR_LEN = {
 } as const;
 
 /** 后端渲染的打印页（新标签打开；每打开一次后端记一条打印日志）。bus 是 dispatch_assignment.id。 */
-export function manifestPrintUrl(date: string, tour: number, bus?: number) {
+/**
+ * Canyon order（置顶 41，Annie 2026-11-01 在 57 窗口改定「只管这一次」）：staff 拖出来的顺序和分页不存，
+ * 打印（GET 参数）、Excel 下载（表单字段）时作为 `layout` 带给后端（JSON string[][]，每页一串节名；不带 = 默认）。
+ * 后端 64 定的形状（task/canyon-order）。
+ */
+export const CANYON_PARAM = "layout";
+
+export function manifestPrintUrl(
+  date: string,
+  tour: number,
+  bus?: number,
+  canyonPages?: string[][],
+) {
   const q = new URLSearchParams({ date, tour: String(tour) });
   if (bus !== undefined) q.set("bus", String(bus));
+  if (canyonPages?.length) q.set(CANYON_PARAM, JSON.stringify(canyonPages));
   return `/admin/dispatch/manifest/print?${q.toString()}`;
 }
 

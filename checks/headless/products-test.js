@@ -1157,6 +1157,43 @@ async function run() {
   check("G199：存团的设定不再带 lunch_note", put && !("lunch_note" in put.body) && put.body.guests_per_bus === "50", JSON.stringify(put?.body));
   await ctl({ g199: false });
 
+  // ── Bus Manifest section order（置顶 41，后端 64）：照 Section order 那格的写法；先放在页面上，按 Save 才存 ──
+  {
+    const BI = "$q('[aria-label=\"Bus Manifest section order\"]')";
+    const BS = `${BI}.parentElement.querySelector('[data-save-btn]')`;
+    const PATH = "/api/settings/manifest-setup/groups/1/bus-section-order";
+    await goto(`${APP}/settings/products`);
+    await waitFor("!!$q('[aria-label=\"Section order\"]')", 30000);
+    await h();
+    check("Bus Manifest section order：后端没带 bus_section_order ⇒ 不出这一格", !(await evaluate(`return !!${BI};`)));
+    await ctl({ busOrder: true });
+    await goto(`${APP}/settings/products`);
+    await waitFor("!!$q('[aria-label=\"Bus Manifest section order\"]')", 30000);
+    await h();
+    check("Bus Manifest section order：在 Section order 下面，空框、占位 LOWER, UPPER, X；How to use 写了",
+      await evaluate(`const i = ${BI}; const o = $q('[aria-label="Section order"]'); return i.value === '' && i.placeholder === 'LOWER, UPPER, X' && !!(o.compareDocumentPosition(i) & Node.DOCUMENT_POSITION_FOLLOWING) && [...document.querySelectorAll('details')].some(d => d.textContent.replace(/\\s+/g, ' ').includes('Bus Manifest section order works the same way for the Bus Manifest'));`));
+    before = (await mockLog()).length;
+    await evaluate(`const i = ${BI}; $setValue(i, ' lower ,upper,, Canyon X '); $blur(i);`);
+    await sleep(300);
+    check("Bus Manifest section order：改了先放在页面上，离开框不存；Save 亮起", (await since(before, (e) => e.path === PATH)).length === 0 && (await evaluate(`return !${BS}.disabled;`)));
+    await evaluate(`${BS}.click();`);
+    put = await waitPut(before, PATH);
+    await sleep(200);
+    check("按 Save 整组存：PUT sections 去空格去空项；框里换成服务端存的", JSON.stringify(put?.body) === '{"sections":["lower","upper","Canyon X"]}' && (await evaluate(`return ${BI}.value === 'lower, upper, Canyon X' && !!${BI}.parentElement.querySelector('[data-save-ok]');`)), JSON.stringify(put?.body));
+    before = (await mockLog()).length;
+    await evaluate(`const i = ${BI}; $setValue(i, 'LOWER, NOPE');`);
+    await evaluate(`${BS}.click();`);
+    await waitPut(before, PATH);
+    await sleep(200);
+    check("不是这个团的节：写服务端原话、框里的值不动", await evaluate(`return document.body.textContent.includes('NOPE is not a section of this tour. Check the Section column of its products.') && ${BI}.value === 'LOWER, NOPE';`));
+    before = (await mockLog()).length;
+    await evaluate(`const i = ${BI}; $setValue(i, '');`);
+    await evaluate(`${BS}.click();`);
+    put = await waitPut(before, PATH);
+    check("清空再存：PUT []（回到按最早接客时间）", JSON.stringify(put?.body) === '{"sections":[]}', JSON.stringify(put?.body));
+    await ctl({ busOrder: false });
+  }
+
   await ctl({ staff: false, fail401: true });
   await goto(`${APP}/settings/products`);
   await waitFor("location.pathname === '/auth/login'");

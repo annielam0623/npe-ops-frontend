@@ -286,6 +286,13 @@ export interface ManifestView {
     manifest_version?: ManifestVersion;
     /** 出不出 Lunch 列（排了餐厅的团才出，三个版式都出）。 */
     lunch_column?: boolean;
+    /**
+     * Canyon order（置顶 41，Annie 2026-11-01「两件都动手」）：团里有两节以上 tour 节时才带。
+     * canyon_sections = 这个团可能有的 tour 节名（Manifest setup）；canyon_pages = 默认的顺序和分页（每页一串节名：
+     * LOWER → UPPER → CANYON X、一页），恰好盖住 canyon_sections。staff 拖了只管这一次，不存（Annie 11-01 改定）。没带 = 后端没上线或只有一节，不出 Canyon order。
+     */
+    canyon_sections?: string[];
+    canyon_pages?: string[][];
   };
   shuttle_colors: { outbound: string; inbound: string };
   /** Extra 客人整行的底色（后端 `EXTRA_ROW_COLOR`）。 */

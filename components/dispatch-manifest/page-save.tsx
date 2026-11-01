@@ -161,6 +161,85 @@ export function applyMoves(
   };
 }
 
+/**
+ * 节名的短写（页头用）：去掉 ANTELOPE / CANYON 两个字，首字母大写，两个字母以内照旧大写；
+ * 「LOWER ANTELOPE」→ Lower、「CANYON X」→ X、「HD RAFT」→ HD Raft、「BOULDER CITY」→ Boulder City。
+ */
+export function canyonShort(title: string): string {
+  const words = title
+    .split(/\s+/)
+    .filter((w) => w && !/^(ANTELOPE|CANYON)$/i.test(w));
+  const use = words.length ? words : title.split(/\s+/);
+  return use
+    .map((w) =>
+      w.length <= 2
+        ? w.toUpperCase()
+        : w[0].toUpperCase() + w.slice(1).toLowerCase(),
+    )
+    .join(" ");
+}
+
+/** 「Lower → Upper → X · 1 page」。 */
+/** Antelope 的节叫 canyon；Hoover Dam（BUS TOUR / HD RAFT / BOULDER CITY）这类叫 section。 */
+export function canyonNoun(sections: string[]): "canyon" | "section" {
+  return sections.some((t) => /\b(ANTELOPE|CANYON)\b/i.test(t))
+    ? "canyon"
+    : "section";
+}
+
+export function canyonSummary(pages: string[][]): string {
+  const n = pages.length;
+  return `${pages.flat().map(canyonShort).join(" → ")} · ${n} page${n === 1 ? "" : "s"}`;
+}
+
+/**
+ * 按 Canyon order 排每台车的节（同后端）：列在里面的 tour 节照顺序，没列到的 tour 节在后面，Shuttle 最后；同一档保持原来的先后。
+ * 拖了马上在页面上照新顺序画（只管这一次，不存）。
+ */
+export function applyCanyonOrder(
+  data: ManifestData,
+  pages: string[][] | undefined,
+): ManifestData {
+  if (!pages?.length) return data;
+  const order = pages.flat();
+  const rank = (s: ManifestSection) =>
+    s.kind !== "tour"
+      ? 2000
+      : order.includes(s.title)
+        ? order.indexOf(s.title)
+        : 1000;
+  const sort = (sections: ManifestSection[]) =>
+    sections
+      .map((s, i) => ({ s, i }))
+      .sort((a, b) => rank(a.s) - rank(b.s) || a.i - b.i)
+      .map((x) => x.s);
+  return {
+    ...data,
+    blocks: data.blocks.map((b) => ({ ...b, sections: sort(b.sections) })),
+    unplaced: { ...data.unplaced, sections: sort(data.unplaced.sections) },
+  };
+}
+
+/** 这几节里哪几节前面要换页（屏幕上画「New page」线）：这一节的页号比前面已经出现的 tour 节大。这台车没有的节自然跳过。 */
+export function newPageBefore(
+  sections: ManifestSection[],
+  pages: string[][] | undefined,
+): Set<string> {
+  const out = new Set<string>();
+  if (!pages || pages.length < 2) return out;
+  const pageOf = new Map<string, number>();
+  pages.forEach((p, i) => p.forEach((t) => pageOf.set(t, i)));
+  let last: number | null = null;
+  for (const s of sections) {
+    if (s.kind !== "tour") continue;
+    const pg = pageOf.get(s.title);
+    if (pg === undefined) continue;
+    if (last !== null && pg > last) out.add(s.key);
+    last = pg;
+  }
+  return out;
+}
+
 /** 工具条下面那一句：哪几样还没存。 */
 export function pendingSummary(
   p: Pending,

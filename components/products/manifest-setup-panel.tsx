@@ -8,6 +8,7 @@ import {
   fetchManifestSetup,
   saveCfmSections,
   saveForecastSplitSections,
+  saveBusSectionOrder,
   saveSectionOrder,
   saveManifestExtras,
   saveManifestGroup,
@@ -276,6 +277,7 @@ function GroupEditor({
   const [perBusEdit, setPerBusEdit] = useState<string | null>(null);
   const [splitEdit, setSplitEdit] = useState<string | null>(null);
   const [orderEdit, setOrderEdit] = useState<string | null>(null);
+  const [busOrderEdit, setBusOrderEdit] = useState<string | null>(null);
   const [relayEdit, setRelayEdit] = useState<string | null>(null);
   const [cfmEdit, setCfmEdit] = useState<string[] | null>(null);
   const [tourTypeEdits, setTourTypeEdits] = useState<Record<string, string>>(
@@ -300,6 +302,7 @@ function GroupEditor({
   const perBus = perBusEdit ?? String(group.guests_per_bus);
   const split = splitEdit ?? group.forecast_split_sections.join(", ");
   const order = orderEdit ?? (group.section_order ?? []).join(", ");
+  const busOrder = busOrderEdit ?? (group.bus_section_order ?? []).join(", ");
   const relay = relayEdit ?? group.relay_round ?? "";
   const cfmOn = cfmEdit ?? group.cfm_sections ?? [];
   const extras = extrasEdit ?? savedExtras;
@@ -476,6 +479,27 @@ function GroupEditor({
         const d = await saveSectionOrder(group.id, splitList(order));
         onGroupChange({ ...groupRef.current, section_order: d.sections });
         setOrderEdit(null);
+        return null;
+      } catch (e) {
+        return failText(e);
+      }
+    },
+  });
+
+  // 「Bus Manifest section order」（置顶 41，后端 64）：同 Section order 那格的写法，逗号分开，整组替换；先放在页面上，按 Save 才存。
+  const busOrderBlock = useBlockSave({
+    id: sid("busorder"),
+    label: label("Bus Manifest section order"),
+    dirty:
+      splitList(busOrder).join(", ") !==
+      (group.bus_section_order ?? []).join(", "),
+    draftKey: busOrder,
+    auto: true,
+    doSave: async () => {
+      try {
+        const d = await saveBusSectionOrder(group.id, splitList(busOrder));
+        onGroupChange({ ...groupRef.current, bus_section_order: d.sections });
+        setBusOrderEdit(null);
         return null;
       } catch (e) {
         return failText(e);
@@ -1058,7 +1082,7 @@ function GroupEditor({
             {...field("order")}
             sub
             title="Section order"
-            hint="Not printed as text: the order the sections come in, top to bottom, on the Bus Manifest, Manifests and the 7 Days Forecast. Type the section names separated by commas (for example UPPER, LOWER, X) and click Save. Sections you leave out come after, A to Z. Shuttles always come last, outbound before inbound. Leave it empty to keep the old order."
+            hint={`Not printed as text: the order the sections come in, top to bottom, on ${group.bus_section_order !== undefined ? "Manifests and the 7 Days Forecast (the Bus Manifest uses the box below)" : "the Bus Manifest, Manifests and the 7 Days Forecast"}. Type the section names separated by commas (for example UPPER, LOWER, X) and click Save. Sections you leave out come after, A to Z. Shuttles always come last, outbound before inbound. Leave it empty to keep the old order.`}
           >
             <div className="flex items-center gap-3">
               <input
@@ -1081,6 +1105,38 @@ function GroupEditor({
               <SaveControl block={orderBlock} className="shrink-0" />
             </div>
           </MapField>
+
+          {group.bus_section_order !== undefined ? (
+            <MapField
+              {...field("order")}
+              sub
+              title="Bus Manifest section order"
+              hint="The default order of the sections, top to bottom, on the Bus Manifest, its printout, Excel and lunch sheet, and on the Driver and Guide pages. Type the section names separated by commas (for example LOWER, UPPER, X) and click Save. Sections you leave out come after, A to Z. Shuttles always come last. Leave it empty to keep the earliest pickup first. On the Bus Manifest, staff can still drag a different order for one print or download."
+            >
+              <div className="flex items-center gap-3">
+                <input
+                  type="text"
+                  aria-label="Bus Manifest section order"
+                  value={busOrder}
+                  maxLength={1200}
+                  placeholder="LOWER, UPPER, X"
+                  disabled={busOrderBlock.state.kind === "saving"}
+                  onChange={(event) => setBusOrderEdit(event.target.value)}
+                  onKeyDown={(event) =>
+                    event.key === "Enter" &&
+                    busOrderBlock.dirty &&
+                    busOrderBlock.save()
+                  }
+                  className={cn(
+                    INPUT,
+                    "w-full",
+                    busOrderBlock.dirty && CHANGED_RING,
+                  )}
+                />
+                <SaveControl block={busOrderBlock} className="shrink-0" />
+              </div>
+            </MapField>
+          ) : null}
 
           <MapField
             {...field("extras")}
@@ -1402,7 +1458,10 @@ function GroupEditor({
             UPPER, LOWER, X), and click Save. The Forecast rows and the sections
             on Manifests follow this order. Sections you leave out come after, A
             to Z. Shuttles always come last, outbound before inbound. Leave the
-            box empty to keep the old order.
+            box empty to keep the old order. Bus Manifest section order works
+            the same way for the Bus Manifest, its printout, Excel, lunch sheet
+            and the Driver and Guide pages; empty keeps the earliest pickup
+            first.
           </li>
           <li>
             Settings for other pages (open the box under Lunch{" "}
