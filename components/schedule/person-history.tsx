@@ -104,6 +104,17 @@ function Body({
       : "";
   const slotText = (s: { date: string; shift_type: string } | null | undefined) =>
     s ? `${dayLabel(s.date)} ${shiftLabel(s.shift_type)}` : "";
+  // 换班的两个人两个班（16 2026-11-01：from_slot / request 按提请求的人的视角，requester + peer）；没带全时 null，照旧写法。
+  const swapPair =
+    e.request_kind === "swap" && e.requester && e.peer && e.from_slot && e.request
+      ? `${e.requester}\u2019s ${slotText(e.from_slot)} \u2194 ${e.peer}\u2019s ${req}`
+      : null;
+  // move 带了原来那天的班：「the move Thu 10/8 Close to Fri 10/9」。
+  const moveText =
+    e.request_kind === "move" && e.from_slot && e.request
+      ? `the move ${slotText(e.from_slot)} to ${dayLabel(e.request.date)}`
+      : null;
+  const decided = swapPair ? `the swap: ${swapPair}` : (moveText ?? req);
   const via =
     e.via === "link" ? "from the link" : e.via === "login" ? "logged in" : "";
   const failed = e.failed?.length ? (
@@ -180,13 +191,13 @@ function Body({
     case "approved":
       return (
         <span>
-          <span className={GOOD}>Approved</span> {req}
+          <span className={GOOD}>Approved</span> {decided}
         </span>
       );
     case "declined":
       return (
         <span>
-          <span className={BAD}>Declined</span> {req}
+          <span className={BAD}>Declined</span> {decided}
         </span>
       );
     // G138：换班、改天上、加班（4e 2026-10-30 晚「最终接口」）
@@ -233,7 +244,7 @@ function Body({
       return (
         <span className={SUB}>
           Request closed when the week was published
-          {req ? `: ${req}` : ""}.
+          {swapPair ? `: swap ${swapPair}` : decided ? `: ${decided}` : ""}.
         </span>
       );
     default:

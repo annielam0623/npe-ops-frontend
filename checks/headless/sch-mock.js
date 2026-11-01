@@ -26,6 +26,10 @@ function historyOf(week, id) {
       // 后端 5aeadbbb 主管批准 / 拒绝：move 只带目标日（shift_type null），swap 不带 request
       { id: 37, at: "2026-10-31T18:00:00+00:00", kind: "approved", by: "Max", by_kind: "staff", lines: [], channels: [], request_kind: "move", request: { date: addDays(week, 5), shift_type: null } },
       { id: 38, at: "2026-10-31T18:01:00+00:00", kind: "declined", by: "Max", by_kind: "staff", lines: [], channels: [], request_kind: "swap" },
+      // 16 2026-11-01 补全后：换班带 requester + peer + 两个班，move 带原来那天的班
+      { id: 39, at: "2026-10-31T18:02:00+00:00", kind: "approved", by: "Max", by_kind: "staff", lines: [], channels: [], request_kind: "swap", from_slot: slot(0, "close"), request: slot(4, "close"), peer: "Veronica", requester: "Nadia" },
+      { id: 40, at: "2026-10-31T18:03:00+00:00", kind: "declined", by: "Max", by_kind: "staff", lines: [], channels: [], request_kind: "move", from_slot: slot(4, "close"), request: slot(5, "close") },
+      { id: 41, at: "2026-10-31T18:04:00+00:00", kind: "request_closed_on_publish", by_kind: "system", request_kind: "swap", from_slot: slot(0, "close"), request: slot(4, "close"), peer: "Veronica", requester: "Nadia" },
     ], { g138: true });
   }
   if (!histories[key]) {

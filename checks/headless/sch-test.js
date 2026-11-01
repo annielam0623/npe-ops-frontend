@@ -762,7 +762,7 @@ async function run() {
     await openPage(`${APP}/schedule?week=2026-10-04`);
     await waitFor(`document.querySelector('[data-history-toggle="3"]')`);
     await evaluate(`document.querySelector('[data-history-toggle="3"]').click();`);
-    await waitFor(`document.querySelectorAll('[data-history-row="3"] [data-history-event]').length === 8`);
+    await waitFor(`document.querySelectorAll('[data-history-row="3"] [data-history-event]').length === 11`);
     {
       const t = await evaluate(`return [...document.querySelectorAll('[data-history-row="3"] [data-history-event]')].map(e => e.dataset.historyEvent + ' | ' + e.querySelector('[data-history-body]').innerText.replace(/\\s+/g, ' ').trim());`);
       const want = [
@@ -774,6 +774,9 @@ async function run() {
         "request_closed_on_publish | Request closed when the week was published: Wed 10/7 Open.",
         "approved | Approved the move to Fri 10/9",
         "declined | Declined the swap",
+        "approved | Approved the swap: Nadia’s Sun 10/4 Close ↔ Veronica’s Thu 10/8 Close",
+        "declined | Declined the move Thu 10/8 Close to Fri 10/9",
+        "request_closed_on_publish | Request closed when the week was published: swap Nadia’s Sun 10/4 Close ↔ Veronica’s Thu 10/8 Close.",
       ];
       check("History（G138）：换班 / 改天上 / 加班 / 发布时关掉，5 种新记录照英文写清楚", JSON.stringify(t) === JSON.stringify(want), JSON.stringify(t));
       check("History（G138）：Asked 琥珀色、Agreed 绿、Declined 红；系统关掉的灰字", await evaluate(`const ev = [...document.querySelectorAll('[data-history-row="3"] [data-history-event]')]; const col = (e, w) => getComputedStyle([...e.querySelectorAll('span')].find(s => s.textContent === w)).color; return col(ev[2], 'Asked to swap') === 'rgb(186, 117, 23)' && col(ev[3], 'Agreed to swap') === 'rgb(21, 128, 61)' && col(ev[4], 'Declined the swap') === 'rgb(163, 45, 45)' && ev[5].dataset.byKind === 'system';`));

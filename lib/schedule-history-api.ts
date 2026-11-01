@@ -30,6 +30,7 @@ function normalizeEvent(e: Partial<ScheduleHistoryEvent>): ScheduleHistoryEvent 
     lines: e.lines ?? [],
     channels: e.channels ?? [],
     peer: e.peer ?? null,
+    requester: e.requester ?? null,
     from_slot: e.from_slot ?? null,
   } as ScheduleHistoryEvent;
 }

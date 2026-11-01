@@ -50,8 +50,10 @@ export interface ScheduleHistoryEvent {
   request_kind?: "move" | "add" | "swap";
   /** G138：move 原来那天的班、swap 提请求的人给出的班。 */
   from_slot?: { date: string; shift_type: string } | null;
-  /** G138：换班的另一个人（提请求的人看到对方，对方看到提请求的人）。 */
+  /** G138：by 以外的那一方（16 2026-11-01）；主管批准 / 拒绝、发布时关掉的换班 = 对方。 */
   peer?: string | null;
+  /** G138：提请求的人（只在换班的 approved / declined / request_closed_on_publish 上）。 */
+  requester?: string | null;
 }
 
 export interface ScheduleHistory {
