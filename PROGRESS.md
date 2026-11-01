@@ -173,7 +173,8 @@
      11/1 凌晨 Annie「动手」（主窗口问动哪件，她选「两件都动手」：权限只看勾 + 羚羊谷）⇒ 09 改只看勾（样子不变），A/B/C 和 Team 页特批标记不做、等另答。
      ✅ 前端已合 main c374e85（task/perm-ticks-only；48 套全过）。10d 排班生产测试仍卡：ZZTest 是 staff，schedule.edit / publish / team.staff_add 属特批，总开关只开给 SA 所以不算。解法 ① ZZTest 改 supervisor（推荐）② 开关开给 staff 层（不推荐）。按 Annie「不要再问同zztest的事情，我会处理」不问她，等她自己改。
   4. 21 站内消息 → 91 task/team-online-messages；✅ 后端已上 main dc28ff78（/api/notices 每条加 ref，非消息为 null；开关 team_messages_direct 默认只 SA 可见）。前端已合 main 34e93fc（91；接口对过，ref null 能处理；tasks 143/143、dr 88/88、nav 32/32；没发真消息）。
-  5. 44 is_tour_departure → e6 da 排除 TI（要 Annie 动手）；44 G138 → e6 task/schedule-weekly-confirm。
+  5. 44 is_tour_departure → e6 da 排除 TI（要 Annie 动手）；44 G138 → e6 task/schedule-weekly-confirm。✅ G138 后端已上 main（5aeadbbb / 合并 31dd5eea / 关包 3e86aca7，v136 已执行），后端今晚全部落完。e6 合前端中。
+- Annie 新指示（57 转）：「出现 X Canyon的地方统统改成 Canyon X」，前后端统一。后端 44 改生产数据（7 个产品分节名、manifest_section_tour_types、Forecast row_label，SQL 由 Annie 执行）。前端扫过（git grep -i，含 x_canyon / xcanyon）：代码、mock、测试、PROGRESS 都没有 X Canyon，写死的都已是 Canyon X ⇒ 前端不用改，数据改完显示自动跟着变。
 - G228 前端已合 main 58ea7db（e6；tsc / eslint / build、cs 178/178、nav 32/32；24 键对过后端）。线上读值要登录，请 Annie 在 Content Studio › Team Messages 看一眼（只看不改）。
 - 每件落完 57 报提交号，主窗口 98 叫对应窗口合最新 main、跑检查、合 main。
 
