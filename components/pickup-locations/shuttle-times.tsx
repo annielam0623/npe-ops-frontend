@@ -19,7 +19,11 @@ import { cn } from "@/lib/utils";
 import type { PickupLocation, ShuttleRoute, ShuttleSeason } from "@/types";
 
 import { type TimeRowDraft, timeRowsOf } from "./config";
-import { BTN_ADD_SMALL_CLASS, BTN_EDIT_CLASS } from "./legacy-ui";
+import {
+  BTN_ADD_GREEN_SMALL_CLASS,
+  BTN_ADD_SMALL_CLASS,
+  BTN_EDIT_CLASS,
+} from "./legacy-ui";
 
 /**
  * Shuttle 站的接人时间（preview v3 https://claude.ai/artifact/HTezuw3d3VnNSyo63VJEzN ，
@@ -464,7 +468,7 @@ export function TimesEditor({
               },
             ])
           }
-          className={SMALL_BTN}
+          className={BTN_ADD_GREEN_SMALL_CLASS}
         >
           + Add time
         </button>
@@ -675,7 +679,7 @@ export function SeasonsEditor({
               { key: `new-${++newKey}`, name: "", starts_on: "", ends_on: "" },
             ])
           }
-          className={SMALL_BTN}
+          className={BTN_ADD_GREEN_SMALL_CLASS}
         >
           + Add season
         </button>

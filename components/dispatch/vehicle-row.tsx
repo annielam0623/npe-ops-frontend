@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { useViewOnly } from "@/components/ui/view-only";
 import { cn } from "@/lib/utils";
-import type { DispatchPrivateOrder, DispatchRow } from "@/types";
+import type { DispatchDay, DispatchPrivateOrder, DispatchRow } from "@/types";
 
 import { RowSave, type UnitSaveState } from "./unit-save";
 
@@ -442,6 +442,24 @@ function StopSelect({
       else if (row.shift === META.bus_tour_shift) shared.set(l, who);
     }
   });
+  const option = (l: DispatchDay["locations"][number]) => (
+    // 正常的酒店名黑字（Annie 2026-10-31「酒店名字的颜色不要用灰色，换成黑色」「占了的还是发灰」）；被占的照旧浏览器的灰。
+    <option
+      key={l.id}
+      value={l.id}
+      disabled={taken.has(l.id)}
+      className={taken.has(l.id) ? undefined : "text-black"}
+    >
+      {l.name}
+      {taken.has(l.id) ? ` - ${taken.get(l.id)}` : ""}
+      {shared.has(l.id) ? ` (also ${shared.get(l.id)})` : ""}
+    </option>
+  );
+  const { lasVegas, shuttle } = groupStops(
+    L.day.locations.filter(
+      (l) => l.active !== false && !row.location_ids.includes(l.id),
+    ),
+  );
   return (
     <select
       data-f="addstop"
@@ -452,17 +470,73 @@ function StopSelect({
       style={{ backgroundImage: ADDSTOP_CARET }}
     >
       <option value="">Add hotel</option>
-      {L.day.locations
-        .filter((l) => l.active !== false && !row.location_ids.includes(l.id))
-        .map((l) => (
-          <option key={l.id} value={l.id} disabled={taken.has(l.id)}>
-            {l.name}
-            {taken.has(l.id) ? ` - ${taken.get(l.id)}` : ""}
-            {shared.has(l.id) ? ` (also ${shared.get(l.id)})` : ""}
+      {lasVegas.map(option)}
+      {shuttle ? (
+        <>
+          <option
+            value=""
+            disabled
+            data-stop-divider
+            // Annie 2026-10-31：「~~~~~shuttle Pick up ~~~~~~，用save键的那个颜色」，preview TWJUhJcMkrgzpxigBNNAU6 选 H。
+            className="!font-semibold text-[#3b82f6]"
+          >
+            ~~~~~ Shuttle Pick up ~~~~~
           </option>
-        ))}
+          {shuttle.map(option)}
+        </>
+      ) : null}
     </select>
   );
+}
+
+/**
+ * 「Add hotel」右边的 Shuttle 上车点提示（Annie 2026-10-31 选样子 1：琥珀字 + 指向下拉的小箭头，无框；
+ * preview https://claude.ai/artifact/BewNcepgfaJMDPDMvo2Pdz v3）。
+ */
+function ShuttleHint({ pax }: { pax: number }) {
+  return (
+    <span
+      data-shuttle-hint
+      className="inline-flex items-center gap-[7px] text-[12.5px] font-semibold text-[#b45309]"
+    >
+      <svg
+        width="14"
+        height="14"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="#d97706"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        aria-hidden="true"
+        className="flex-none"
+      >
+        <path d="M15 18l-6-6 6-6" />
+      </svg>
+      Select today’s shuttle pick-up here
+      <span className="font-medium text-[#6b7280]">
+        · {pax} shuttle guest{pax === 1 ? "" : "s"}
+      </span>
+    </span>
+  );
+}
+
+/**
+ * 加酒店的下拉分两组（Annie 2026-10-30「las vegas的放上面，然后用shuttle pick up这行字隔开，shuttle的站点排下面…都是按照A-Z排序」，
+ * preview https://claude.ai/artifact/Bud9mmZivp9ddK5cAd5QLV ，(b)「按照las vegas和其他地方来分…其他地方一律算shuttle」）：
+ * Pickup Locations 勾了 Tour bus 的 = Las Vegas，放上面；其余（含 null）放「Shuttle pick up」下面；两组各自 A–Z。
+ * 后端还没带 is_tour_bus（一个点都没有这个键）时照旧：后端的顺序、不分组（shuttle 为 null）。
+ */
+function groupStops<T extends DispatchDay["locations"][number]>(
+  locations: T[],
+): { lasVegas: T[]; shuttle: T[] | null } {
+  if (!locations.some((l) => l.is_tour_bus !== undefined)) {
+    return { lasVegas: locations, shuttle: null };
+  }
+  const az = (a: T, b: T) =>
+    a.name.localeCompare(b.name, "en", { sensitivity: "base" });
+  const lasVegas = locations.filter((l) => l.is_tour_bus === true).sort(az);
+  const shuttle = locations.filter((l) => l.is_tour_bus !== true).sort(az);
+  return { lasVegas, shuttle: shuttle.length ? shuttle : null };
 }
 
 // 照旧页面 `.vrow select` / `.todo` / `.bad` / `.need` / `.addstop`。
@@ -820,6 +894,8 @@ export interface RowProps {
   orders?: DispatchPrivateOrder[];
   /** 这台车所在单元的保存状态：给了就在 Edit 旁边出 Save（Annie 2026-10-29，存整个单元）。 */
   save?: UnitSaveState;
+  /** 这个团还没选 Shuttle 上车点、这是第一台车：值是 Shuttle 客人数，「Add hotel」右边出提示。 */
+  shuttleAsk?: number;
 }
 
 /** fieldset 去掉浏览器默认的边框、内边距和 min-width（不然窄屏会撑破格子）。 */
@@ -1121,6 +1197,7 @@ export function VanBlock({
   farmOutOff,
   orders,
   save,
+  shuttleAsk,
 }: RowProps) {
   const viewOnly = useViewOnly();
   const row = rows[idx];
@@ -1351,14 +1428,32 @@ export function VanBlock({
                 Usual stops filled in
               </span>
             ) : null}
-            <StopSelect
-              rows={rows}
-              idx={idx}
-              L={L}
-              onAdd={(id) =>
-                onChange({ ...row, location_ids: [...row.location_ids, id] })
-              }
-            />
+            {shuttleAsk && !viewOnly ? (
+              // 提示放在下拉右边同一行（Annie「这么宽的地方，难道不可以放在选择框的右边么」）。
+              <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1">
+                <StopSelect
+                  rows={rows}
+                  idx={idx}
+                  L={L}
+                  onAdd={(id) =>
+                    onChange({
+                      ...row,
+                      location_ids: [...row.location_ids, id],
+                    })
+                  }
+                />
+                <ShuttleHint pax={shuttleAsk} />
+              </div>
+            ) : (
+              <StopSelect
+                rows={rows}
+                idx={idx}
+                L={L}
+                onAdd={(id) =>
+                  onChange({ ...row, location_ids: [...row.location_ids, id] })
+                }
+              />
+            )}
             <Chips
               row={row}
               L={L}

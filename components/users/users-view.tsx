@@ -1,13 +1,24 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import type {
   ActionFailure,
   ActionResult,
 } from "@/components/ui/action-result";
-import { ActionLogPanel } from "@/components/action-log/action-log-panel";
+import {
+  ActionLogPanel,
+  type ActionVerb,
+} from "@/components/action-log/action-log-panel";
 import { CenteredPage } from "@/components/ui/centered-page";
+import { BulkImportButton } from "@/components/ui/bulk-import";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ErrorBanner, Panel } from "@/components/ui/panel";
 import { AddPersonDialog } from "@/components/team-permissions/add-person-dialog";
@@ -33,7 +44,9 @@ import {
   fetchTeamMembers,
   saveContactDuties,
 } from "@/lib/team-permissions-api";
+import { usePermissions } from "@/lib/staff-permissions";
 import { fetchTeams } from "@/lib/teams-api";
+import { fetchUserPref, saveUserPref } from "@/lib/user-prefs-api";
 import {
   buildInviteUrl,
   buildResetUrl,
@@ -69,11 +82,19 @@ import {
   normalizeRole,
   supportsSupervisor,
 } from "./config";
+import {
+  type TeamColumn,
+  type TeamLayout,
+  defaultTeamLayout,
+  normalizeTeamLayout,
+  parseTeamLayout,
+} from "./layout";
 import { DeletePersonDialog } from "./delete-person-dialog";
 import { DisplayNameDialog } from "./display-name-dialog";
 import { InviteDialog, type InviteOutcome } from "./invite-dialog";
 import { ResetLinkDialog, type ResetOutcome } from "./reset-link-dialog";
 import { RoleLegend } from "./role-legend";
+import { TeamImportPanel } from "./team-import-panel";
 import { UsersTable, type RowExtras } from "./users-table";
 
 /** Super Admin 才读的 /api/team 那一份（权限、职责、首页、部门邮箱）。 */
@@ -118,6 +139,26 @@ type DialogState =
   /** Edit 框最下面的 Delete 点了：小确认框；Cancel 回到 Edit 框。 */
   | { kind: "delete-person"; user: AdminUser; member: TeamMemberUser }
   | null;
+
+const LAYOUT_PREF = "team_list_layout";
+/** 本机缓存：先用它马上画表，账号里的到了再覆盖（同 HR 页）。 */
+const LAYOUT_CACHE = "npe.team_list_layout";
+
+function readCachedLayout(): TeamLayout | null {
+  try {
+    return parseTeamLayout(window.localStorage.getItem(LAYOUT_CACHE));
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedLayout(layout: TeamLayout) {
+  try {
+    window.localStorage.setItem(LAYOUT_CACHE, JSON.stringify(layout));
+  } catch {
+    // 无痕窗口等存不了就算了，只是下次不记得。
+  }
+}
 
 /** 「Show」下拉：只看某一类（人多了好找）。 */
 type ShowFilter = "all" | "active" | "pending" | "inactive" | "partners";
@@ -210,6 +251,18 @@ export function TeamView() {
   const [show, setShow] = useState<ShowFilter>("all");
   // 递增即重新校验身份并拉取列表（首次加载、Retry）。
   const [reloadKey, setReloadKey] = useState(0);
+  // Columns（10-28 合并 preview v3「动手」那批，等后端白名单的那一项）：拖表头换顺序、拖边改宽，存进账号的 team_list_layout。
+  // partner 不出（后端 PUT 对 partner 403）。
+  const partnerView = usePermissions().partnerView;
+  const [layout, setLayout] = useState<TeamLayout>(defaultTeamLayout);
+  /** 账号里存不了（后端还没认 team_list_layout，404）时只存在本机。 */
+  const [layoutScope, setLayoutScope] = useState<"account" | "browser">(
+    "account",
+  );
+  // 递增即让开着的 Action Log 重拉第一页（停用 / 改角色 / 重置链接等成功之后，新的那条马上出来）。
+  const [logVersion, setLogVersion] = useState(0);
+  // ⬆ Import 那一块展开着（只给 Super Admin）。
+  const [importOpen, setImportOpen] = useState(false);
 
   const redirectingRef = useRef(false);
 
@@ -234,6 +287,37 @@ export function TeamView() {
     },
     [redirectToLogin],
   );
+
+  // 列布局：本机缓存先画，账号里的到了再覆盖；没存过（null）或读不到就保持本机的。
+  useEffect(() => {
+    if (partnerView) return;
+    const cached = readCachedLayout();
+    if (cached) setLayout(cached);
+    const controller = new AbortController();
+    fetchUserPref(LAYOUT_PREF, controller.signal)
+      .then((text) => {
+        const remote = parseTeamLayout(text);
+        if (remote) {
+          setLayout(remote);
+          writeCachedLayout(remote);
+        }
+      })
+      .catch((error: unknown) => {
+        if (isStatus(error, 404)) setLayoutScope("browser");
+      });
+    return () => controller.abort();
+  }, [partnerView]);
+
+  function changeLayout(next: TeamLayout) {
+    const normalized = normalizeTeamLayout(next);
+    setLayout(normalized);
+    writeCachedLayout(normalized);
+    saveUserPref(LAYOUT_PREF, JSON.stringify(normalized)).catch(
+      (error: unknown) => {
+        if (isStatus(error, 404)) setLayoutScope("browser");
+      },
+    );
+  }
 
   useEffect(() => {
     const controller = new AbortController();
@@ -274,6 +358,8 @@ export function TeamView() {
 
   /** 操作成功后重新拉列表，不切回整页 Loading，避免列表闪一下。 */
   const refreshList = useCallback(async () => {
+    // 调到这里的都是刚做成的操作：日志里已经有新的一条。
+    setLogVersion((v) => v + 1);
     try {
       const data = await fetchPage(isSuperAdmin);
       setView((prev) => (prev.kind === "ready" ? { ...prev, ...data } : prev));
@@ -324,6 +410,7 @@ export function TeamView() {
   async function handleCreateResetLink(user: AdminUser): Promise<ResetOutcome> {
     try {
       const { reset_token: token } = await createResetLink(user.id);
+      setLogVersion((v) => v + 1);
       return { status: "ok", url: buildResetUrl(token) };
     } catch (error) {
       return toActionError(error);
@@ -453,6 +540,7 @@ export function TeamView() {
             ? null
             : homeLabel(m.home_path),
         email: m.email,
+        noEmail: m.duties.length > 0 && !m.email?.trim(),
         onEdit: m.is_superadmin
           ? undefined
           : () =>
@@ -533,25 +621,48 @@ export function TeamView() {
             </p>
           </div>
           {view.kind === "ready" ? (
-            <button
-              type="button"
-              onClick={() =>
-                setDialog(
-                  view.isSuperAdmin
-                    ? { kind: "add-person" }
-                    : { kind: "invite" },
-                )
-              }
-              className="flex cursor-pointer items-center gap-2 rounded-[8px] border-0 bg-[linear-gradient(135deg,#1a6b3c,#27ae60)] px-5 py-2.5 text-[14px] font-semibold text-white"
-            >
-              <span aria-hidden>+</span>
-              Add person
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              {/* ⬆ Import（preview ③-1）：只给 Super Admin，权限那一份读到了才有名单做模板。 */}
+              {view.isSuperAdmin && view.team ? (
+                <BulkImportButton
+                  onClick={() => setImportOpen(true)}
+                  disabled={importOpen}
+                />
+              ) : null}
+              <button
+                type="button"
+                onClick={() =>
+                  setDialog(
+                    view.isSuperAdmin
+                      ? { kind: "add-person" }
+                      : { kind: "invite" },
+                  )
+                }
+                className="flex cursor-pointer items-center gap-2 rounded-[8px] border-0 bg-[linear-gradient(135deg,#1a6b3c,#27ae60)] px-5 py-2.5 text-[14px] font-semibold text-white"
+              >
+                <span aria-hidden>+</span>
+                Add person
+              </button>
+            </div>
           ) : null}
         </header>
 
         {view.kind === "ready" ? (
           <TeamHowTo isSuperAdmin={isSuperAdmin} />
+        ) : null}
+
+        {view.kind === "ready" &&
+        view.isSuperAdmin &&
+        view.team &&
+        importOpen ? (
+          <div className="mb-5">
+            <TeamImportPanel
+              members={view.team.members}
+              onClose={() => setImportOpen(false)}
+              onSaved={() => void refreshList()}
+              onUnauthorized={redirectToLogin}
+            />
+          </div>
         ) : null}
 
         {actionError && view.kind === "ready" ? (
@@ -634,6 +745,27 @@ export function TeamView() {
                     : ""}
                 </span>
               ) : null}
+              {partnerView ? null : (
+                <>
+                  <span
+                    data-team-columns-note
+                    className="text-[12px] text-[#8ea3b8]"
+                  >
+                    Drag titles to reorder, drag edges to resize —{" "}
+                    {layoutScope === "account"
+                      ? "saved to your account."
+                      : "saved in this browser."}
+                  </span>
+                  <button
+                    type="button"
+                    data-team-columns-reset
+                    onClick={() => changeLayout(defaultTeamLayout())}
+                    className="h-8 cursor-pointer rounded-[7px] border border-[#d1d5db] bg-paper px-2.5 text-[12.5px] text-[#1a1a1a] night:border-white/10 night:bg-white/[.04] night:text-white/90"
+                  >
+                    Reset columns
+                  </button>
+                </>
+              )}
             </div>
             {notice ? (
               <p
@@ -654,11 +786,14 @@ export function TeamView() {
                 roles={assignableRolesFor(view.withSupervisor)}
                 busyUserId={busyUserId}
                 extras={extras}
+                layout={layout}
+                onLayoutChange={partnerView ? undefined : changeLayout}
                 extraRows={visibleContacts.map((c) => (
                   <ContactRow
                     key={`c${c.id}`}
                     contact={c}
                     duties={dutyNames(c.duties)}
+                    columns={layout.order}
                     onEdit={() => setDialog({ kind: "contact", contact: c })}
                   />
                 ))}
@@ -678,9 +813,10 @@ export function TeamView() {
             {/* 改动记录（G203，/api/team/action-log 只给 Super Admin）。 */}
             {view.isSuperAdmin ? (
               <ActionLogPanel
-                refreshKey={0}
+                refreshKey={logVersion}
                 reloadOnOpen
                 onUnauthorized={redirectToLogin}
+                verbs={TEAM_LOG_VERBS}
                 load={(before, signal) =>
                   fetchActionLog("/api/team/action-log", before, signal)
                 }
@@ -801,46 +937,59 @@ const MUTED = <span className="text-[#9ca3af] night:text-white/35">—</span>;
 function ContactRow({
   contact,
   duties,
+  columns,
   onEdit,
 }: {
   contact: TeamMemberContact;
   duties: string | null;
+  /** 同表头的列顺序（只有 Super Admin 看得到这些行，那时七列都有）。 */
+  columns: readonly TeamColumn[];
   onEdit: () => void;
 }) {
+  const person = (
+    <td className="px-4 py-3.5">
+      <div className="flex items-center gap-3">
+        <div
+          aria-hidden
+          className="flex size-[38px] shrink-0 items-center justify-center rounded-full bg-[#0e7490] text-[15px] font-bold text-white"
+        >
+          ✉
+        </div>
+        <div className="min-w-0">
+          <div className="text-[14px] font-semibold text-[#1a1a2e] night:text-white/90">
+            {contact.name}
+            <span className="ml-1.5 inline-block rounded-[6px] bg-[#e0f2fe] px-[7px] py-px align-middle text-[11px] font-semibold whitespace-nowrap text-[#075985]">
+              Department mailbox
+            </span>
+          </div>
+          <div className="mt-px text-[11px] break-all text-[#1a1a1a] night:text-white/35">
+            {contact.email}
+          </div>
+        </div>
+      </div>
+    </td>
+  );
   return (
     <tr
       data-contact-row
       className="border-b border-[#f3f4f6] night:border-white/10"
     >
-      <td className="px-4 py-3.5">
-        <div className="flex items-center gap-3">
-          <div
-            aria-hidden
-            className="flex size-[38px] shrink-0 items-center justify-center rounded-full bg-[#0e7490] text-[15px] font-bold text-white"
+      {columns.map((key) =>
+        key === "person" ? (
+          <Fragment key={key}>{person}</Fragment>
+        ) : key === "duties" ? (
+          <td
+            key={key}
+            className="max-w-[220px] px-4 py-3.5 text-[13px] text-[#4b5563] night:text-white/55"
           >
-            ✉
-          </div>
-          <div className="min-w-0">
-            <div className="text-[14px] font-semibold text-[#1a1a2e] night:text-white/90">
-              {contact.name}
-              <span className="ml-1.5 inline-block rounded-[6px] bg-[#e0f2fe] px-[7px] py-px align-middle text-[11px] font-semibold whitespace-nowrap text-[#075985]">
-                Department mailbox
-              </span>
-            </div>
-            <div className="mt-px text-[11px] break-all text-[#1a1a1a] night:text-white/35">
-              {contact.email}
-            </div>
-          </div>
-        </div>
-      </td>
-      <td className="px-4 py-3.5">{MUTED}</td>
-      <td className="px-4 py-3.5">{MUTED}</td>
-      <td className="px-4 py-3.5">{MUTED}</td>
-      <td className="px-4 py-3.5">{MUTED}</td>
-      <td className="max-w-[220px] px-4 py-3.5 text-[13px] text-[#4b5563] night:text-white/55">
-        {duties ?? MUTED}
-      </td>
-      <td className="px-4 py-3.5">{MUTED}</td>
+            {duties ?? MUTED}
+          </td>
+        ) : (
+          <td key={key} className="px-4 py-3.5">
+            {MUTED}
+          </td>
+        ),
+      )}
       <td className="px-4 py-3.5">
         <div className="flex justify-center">
           <button
@@ -998,6 +1147,11 @@ function UsersDialogs({
   }
 }
 
+/** Team 日志里 ⬆ Import 写的每人一条（后端 64：action "import"）。 */
+const TEAM_LOG_VERBS: Record<string, ActionVerb> = {
+  import: { label: "Imported", tone: "change" },
+};
+
 /** 折叠的英文说明（同原来 Team 页的蓝框）；两页的说明并成一份。 */
 function TeamHowTo({ isSuperAdmin }: { isSuperAdmin: boolean }) {
   return (
@@ -1017,6 +1171,11 @@ function TeamHowTo({ isSuperAdmin }: { isSuperAdmin: boolean }) {
         <li>
           Find someone: type in the search box, or pick Show to see only active
           people, pending invites, inactive accounts or partners.
+        </li>
+        <li>
+          Columns: drag a column title onto another to move it, or drag the
+          right edge of a title to change its width. This is saved to your
+          account. Reset columns puts them back.
         </li>
         <li>
           Teams: click the team names in a person&apos;s row (or + Add), tick
@@ -1053,6 +1212,39 @@ function TeamHowTo({ isSuperAdmin }: { isSuperAdmin: boolean }) {
               complaint), everyone ticked for that duty is notified, plus a
               department mailbox if it is ticked. Edit duties on a mailbox row
               changes only its duties.
+            </li>
+            <li>
+              Edit a person → Contact (top of the form): type Email and Mobile,
+              then Save. Both are optional. Leave a box empty to clear it.
+            </li>
+            <li>
+              Email is where duty notifications go. A person with duties but no
+              email gets a yellow No email tag and misses those notifications.
+            </li>
+            <li>Mobile is stored only for now; nothing is sent to it yet.</li>
+            <li>
+              Drivers and guides with an HR file show the HR phone, read-only.
+              To change it, use Edit in Human Resource.
+            </li>
+            <li>
+              If you see &apos;That email address is already used by …&apos;,
+              that email belongs to the account named. Use a different one or
+              fix the other account first.
+            </li>
+            <li>
+              Phone format: 10 digits (US), or + and the country code. Spaces,
+              dashes, dots and brackets are fine.
+            </li>
+            <li>
+              Add person: Contact is there for both ways (create now / invite
+              link). An invite keeps the email and mobile you typed after the
+              person registers.
+            </li>
+            <li>
+              Change many people&apos;s Email and Mobile at once: click ⬆
+              Import, then ⬇ Download template (it lists everyone), edit it and
+              choose the file. Check the preview, then click Save. Rows with
+              errors are not saved.
             </li>
           </>
         ) : null}

@@ -8,6 +8,7 @@ import type {
   OperationReportList,
   OperationReportPatch,
   OperationReportQuery,
+  OperationReportUpdate,
   OperationReport,
   ReportAssignee,
 } from "@/types";
@@ -80,6 +81,18 @@ export async function updateOperationReport(
     { method: "PATCH", body: patch },
   );
   return result.report;
+}
+
+/** 加一条 Updates（G224）。text 最多 2000 字；partner 后端回 403。 */
+export async function addReportUpdate(
+  id: number,
+  text: string,
+): Promise<OperationReportUpdate> {
+  const result = await apiFetch<{ update: OperationReportUpdate }>(
+    `/api/operation-reports/${id}/updates`,
+    { method: "POST", body: { text } },
+  );
+  return result.update;
 }
 
 export async function fetchReportAssignees(

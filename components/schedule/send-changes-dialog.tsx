@@ -23,6 +23,7 @@ import { cn } from "@/lib/utils";
 import type { ScheduleEmployee, SchedulePendingChange } from "@/types";
 
 import { DAY_LABELS } from "./config";
+import { PersonHistory } from "./person-history";
 
 /**
  * "2026-10-05" → "Mon 10/5"：不补零，照后端邮件 / 站内通知的写法（schedule.py day_label，ef 10-30）。
@@ -181,6 +182,16 @@ export function SendChangesDialog({
               </tbody>
             </table>
           </div>
+        </div>
+        {/* 这个人这一周的往来记录（Annie 2026-10-30「动手」，位置 A：改动表下面）；发好以后重读，最新那条在最下面。 */}
+        <div className="mb-3">
+          <PersonHistory
+            weekStart={weekStart}
+            employeeId={employee.id}
+            name={name}
+            onUnauthorized={onUnauthorized}
+            reloadKey={result?.kind === "ok" ? 1 : 0}
+          />
         </div>
         {noEmail ? (
           <div data-no-email className={YELLOW_BOX}>

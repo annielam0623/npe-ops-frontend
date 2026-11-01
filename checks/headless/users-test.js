@@ -147,17 +147,17 @@ async function rowText(page, s) {
   await click(page, "✏️ Name", "Bob B");
   await page.waitForSelector('[role="dialog"] input');
   const input = await page.$('[role="dialog"] input');
-  await input.click({ clickCount: 3 });
+  await input.click({ clickCount: 3, count: 3 }); // puppeteer-core 25 起叫 count，旧版叫 clickCount
   await input.type("   ");
   await click(page, "Save", "dialog");
   await waitText(page, "Display name cannot be empty.");
   check("empty name blocked client-side", true);
-  await input.click({ clickCount: 3 });
+  await input.click({ clickCount: 3, count: 3 }); // puppeteer-core 25 起叫 count，旧版叫 clickCount
   await input.type("FAIL");
   await click(page, "Save", "dialog");
   await waitText(page, "Simulated failure");
   check("backend detail shown in dialog", true);
-  await input.click({ clickCount: 3 });
+  await input.click({ clickCount: 3, count: 3 }); // puppeteer-core 25 起叫 count，旧版叫 clickCount
   await input.type("ZZ Test Bobby");
   await click(page, "Save", "dialog");
   await waitText(page, "ZZ Test Bobby");

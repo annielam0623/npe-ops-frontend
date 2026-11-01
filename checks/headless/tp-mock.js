@@ -44,15 +44,22 @@ const ADMIN = ALL.filter((c) => c !== "settings.schedule");
 const DUTIES = [["guest_messages", "Guest messages"], ["complaints", "Complaints"], ["accidents_emergencies", "Accidents & emergencies"], ["cancellations", "Cancellations"], ["refunds", "Refunds"], ["dispatching", "Dispatching"], ["finance", "Finance"], ["products_suppliers", "Products & suppliers"], ["quotations", "Quotations"]];
 const TEAMS = [{ id: 1, name: "Reservations", color: "#2563eb" }, { id: 2, name: "Operations", color: "#15803d" }, { id: 3, name: "Morning", color: "#b45309" }, { id: 4, name: "Tickets", color: "#dc2626" }, { id: 5, name: "Dispatch", color: "#7c3aed" }];
 
-let viewer, nohome, nodefault, acctype, typeFail, team500, team403, detailFail, delFail, people, contact, nextId;
+let viewer, nohome, nodefault, acctype, typeFail, team500, team403, detailFail, delFail, contact404, importBad, importFail, importConflict, people, contact, nextId;
+// Team 页 Columns（后端 92）：账号里存的 team_list_layout（JSON 字符串；null = 没存过）；teamLayout404 = 后端还没认这个键。
+let teamLayout = null, teamLayout404 = false;
 const log = [];
+// 停用 / 恢复成功后多出来的 Action Log 行（新的在上），reset 清空。
+const extraLog = [];
 function person(id, username, display_name, items, o = {}) {
   return { id, username, display_name, email: o.email === undefined ? `${username}@example.com` : o.email, role: o.role || "staff",
     is_active: o.is_active !== false, invite_used: o.invite_used !== false, items: [...items].sort(),
-    duties: o.duties || [], team_ids: o.team_ids || [], home_path: o.home_path || null };
+    duties: o.duties || [], team_ids: o.team_ids || [], home_path: o.home_path || null,
+    phone: o.phone || null, hr_phone: o.hr_phone || null };
 }
 function reset() {
-  viewer = "superadmin"; detailFail = 0; delFail = ""; nohome = false; nodefault = false; acctype = false; typeFail = false; team500 = false; team403 = false;
+  teamLayout = null; teamLayout404 = false;
+  extraLog.length = 0;
+  viewer = "superadmin"; detailFail = 0; delFail = ""; contact404 = false; importBad = false; importFail = false; importConflict = false; nohome = false; nodefault = false; acctype = false; typeFail = false; team500 = false; team403 = false;
   people = [
     person(1, "annie", "Annie", ALL, { role: "superadmin", team_ids: [1, 2] }),
     person(2, "grace", "Grace Liu", ADMIN, { role: "admin", duties: ["complaints", "refunds"], team_ids: [1] }),
@@ -74,7 +81,7 @@ reset();
 const row = (p) => {
   const r = { kind: "user", id: p.id, username: p.username, display_name: p.display_name, email: p.email,
     can_login: p.is_active && p.invite_used, pending_invite: !p.invite_used, is_superadmin: p.role === "superadmin",
-    team_ids: p.team_ids, item_count: p.items.length, duties: p.duties };
+    team_ids: p.team_ids, item_count: p.items.length, duties: p.duties, phone: p.phone };
   if (!nohome) r.home_path = p.home_path;
   if (acctype) r.account_type = p.role === "partner" ? "partner" : "staff";
   return r;
@@ -82,6 +89,7 @@ const row = (p) => {
 const detail = (p) => ({ id: p.id, username: p.username, display_name: p.display_name, email: p.email,
   can_login: p.is_active && p.invite_used, pending_invite: !p.invite_used, is_superadmin: p.role === "superadmin",
   items: p.items, duties: p.duties, team_ids: p.team_ids, home_path: p.home_path,
+  phone: p.phone, hr_phone: p.hr_phone,
   ...(acctype ? { account_type: p.role === "partner" ? "partner" : "staff" } : {}) });
 const BAD_TYPE = "Account type must be staff or partner.";
 const badType = (b) => acctype && b.account_type !== undefined && !["staff", "partner"].includes(b.account_type);
@@ -125,18 +133,70 @@ http.createServer((req, res) => {
       if (q.team500) team500 = q.team500 === "1";
       if (q.team403) team403 = q.team403 === "1";
       if (q.detailfail) detailFail = Number(q.detailfail);
+      if (q.contact404) contact404 = q.contact404 === "1";
       if (q.delfail) delFail = q.delfail === "0" ? "" : q.delfail;
+      if (q.teamlayout404) teamLayout404 = q.teamlayout404 === "1";
+      if (q.teamlayout === "get") return send(res, 200, { value: teamLayout });
+      if (q.noemail) people.find((x) => x.id === Number(q.noemail)).email = null;
+      if (q.importbad) importBad = q.importbad === "1";
+      if (q.importfail) importFail = q.importfail === "1";
+      if (q.importconflict) importConflict = q.importconflict === "1";
+      if (q.hrphone) people.find((x) => x.id === Number(q.hrphone)).hr_phone = "(702) 555-0199";
       if (q.log) return send(res, 200, log);
       return send(res, 200, { ok: true });
     }
     log.push(`${m} ${p} ${raw}`);
     // G203 第二批：共用读接口（后端 f76d5e9），只给 Super Admin。
     if (p === "/api/team/action-log") return send(res, 200, { next_cursor: null, entries: [
+      ...extraLog,
       { id: "2-1", at: "2026-10-28T17:00:00+00:00", by: "Annie Z", action: "update", label: "Grace Liu", what: "Team", from: "Ops", to: "Sales" },
       { id: "1-1", at: "2026-10-27T17:00:00+00:00", by: "Max", action: "update", label: "Ben", what: "Display name", from: "Benny", to: "Ben" },
     ] });
+    // Team ⬆ Import（全站通用导入，preview ③-1）：后端还没有，照 types/bulk-import.ts 的标准形状模拟。
+    if (p === "/api/team/contacts/import/preview" || p === "/api/team/contacts/import/commit") {
+      if (viewer !== "superadmin") return send(res, 403, { detail: "Superadmin access required" });
+      if (!/filename="team-import.csv"/.test(raw)) return send(res, 400, { detail: "No file uploaded" });
+      if (p.endsWith("/preview")) {
+        if (importBad) return send(res, 400, { detail: "Missing column: Username." });
+        const R = (row, status, id, values, o = {}) => ({ row, status, id, values, before: o.before || {}, changed: o.changed || [], blanked: o.blanked || [], errors: o.errors || [] });
+        const rows = [
+          R(2, "update", 2, { username: "grace", name: "Grace Liu", email: "grace@example.com", phone: "(702) 555-0142" }, { before: { phone: "" }, changed: ["phone"] }),
+          R(3, "update", 7, { username: "ben", name: "Ben Staff", email: "ben.new@example.com", phone: "" }, { before: { email: "ben@example.com" }, changed: ["email"], blanked: ["phone"] }),
+          R(4, "unchanged", 3, { username: "kevin", name: "Kevin Ho", email: "kevin@example.com", phone: "" }),
+          R(5, "error", 4, { username: "mia", name: "Mia Chen", email: "kevin@example.com", phone: "" }, { errors: [{ field: "email", message: "That email address is already used by Kevin Ho (@kevin)." }] }),
+          // 后端 64（task/team-contacts-import 3953c04b）的原话：对不上的人 field = "username"；文件里重复 field = null。
+          R(6, "error", null, { username: "sofya", name: "", email: "s@example.com", phone: "" }, { errors: [{ field: "username", message: "No one with username “sofya”. Did you mean sofia (Sofia Ruiz)? Fix it in the file and upload again." }] }),
+          R(7, "error", 8, { username: "chloe", name: "Chloe Staff", email: "", phone: "555-01" }, { errors: [{ field: "phone", message: "Phone number looks wrong. Use 10 digits, or + and the country code." }] }),
+          R(8, "error", null, { username: "", name: "Nobody", email: "n@example.com", phone: "" }, { errors: [{ field: "username", message: "Username is required." }] }),
+          R(9, "error", 9, { username: "ethan", name: "Ethan Staff", email: "ben.new@example.com", phone: "" }, { errors: [{ field: "email", message: "That email address is already used by Ben Staff (@ben) in row 3 of this file." }] }),
+          R(10, "error", 2, { username: "grace", name: "Grace Liu", email: "", phone: "" }, { errors: [{ field: null, message: "Repeated above — skipped." }] }),
+          R(11, "error", 10, { username: "fiona", name: "Fiona Staff", email: "", phone: "(702) 555-0100" }, { errors: [{ field: "phone", message: "Mobile comes from Human Resource — change it there." }] }),
+        ];
+        // status 只有 update / unchanged / error（Team 导入不建账号，没有 new）。
+        return send(res, 200, { columns: ["username", "name", "email", "phone"], rows, counts: { new: 0, update: 2, unchanged: 1, error: 7 } });
+      }
+      if (importFail) return send(res, 500, { detail: "Database is busy" });
+      // 后端 64 原话：两个人同时改到同一个 email（唯一约束）⇒ 409，整份回滚。
+      if (importConflict) return send(res, 409, { detail: "Someone changed an email address while this file was being saved. Nothing was saved — check the preview again." });
+      people.find((x) => x.id === 2).phone = "(702) 555-0142";
+      people.find((x) => x.id === 7).email = "ben.new@example.com";
+      // 每人一条 action_log，action "import"（Team 日志面板读得到）。
+      extraLog.unshift({ id: `${20 + extraLog.length}-1`, at: "2026-10-30T21:00:00+00:00", by: "Annie Z", action: "import", label: "grace", what: "Mobile", from: "", to: "(702) 555-0142" });
+      extraLog.unshift({ id: `${20 + extraLog.length}-1`, at: "2026-10-30T21:00:00+00:00", by: "Annie Z", action: "import", label: "ben", what: "Email", from: "ben@example.com", to: "ben.new@example.com" });
+      return send(res, 200, { created: 0, updated: 2, unchanged: 1, skipped: 7 });
+    }
     const body = raw ? JSON.parse(raw) : null;
     if (viewer === "anon") return send(res, 401, { detail: "Authentication required" });
+    // 后端 92：GET → {key, value}；PUT {value: "<JSON 字符串>"} → staff 200 {ok:true}，partner 403。
+    if (p === "/api/user-prefs/team_list_layout") {
+      if (teamLayout404) return send(res, 404, { detail: "Not Found" });
+      if (m === "GET") return send(res, 200, { key: "team_list_layout", value: teamLayout });
+      if (m === "PUT") {
+        if (viewer === "partner") return send(res, 403, { detail: "Not available for partner accounts." });
+        teamLayout = body && typeof body.value === "string" ? body.value : null;
+        return send(res, 200, { ok: true });
+      }
+    }
     if (p === "/api/me") {
       return send(res, 200, { id: viewer === "superadmin" ? 1 : 2, username: viewer === "superadmin" ? "annie" : "grace",
         display_name: "Viewer", initials: "VW", role: viewer, is_admin: true, is_superadmin: viewer === "superadmin", is_supervisor: true });
@@ -165,7 +225,7 @@ http.createServer((req, res) => {
         if (badType(body)) return send(res, 400, { detail: BAD_TYPE });
         const err = validate(body);
         if (err) return send(res, 400, { detail: err });
-        const np = person(nextId++, body.username, body.display_name || body.username, [], { role: body.account_type === "partner" ? "partner" : "staff" });
+        const np = person(nextId++, body.username, body.display_name || body.username, [], { role: body.account_type === "partner" ? "partner" : "staff", email: body.email ?? null, phone: body.phone ?? null });
         apply(np, np.role === "partner" ? { ...body, items: stripSend(body.items) } : body);
         people.push(np);
         return send(res, 201, { ok: true, id: np.id, member: detail(np) });
@@ -175,7 +235,7 @@ http.createServer((req, res) => {
         const err = validate(body);
         if (err) return send(res, 400, { detail: err });
         const token = "tptok" + nextId;
-        const np = person(nextId++, "__pending_" + token, null, [], { invite_used: false, is_active: false, email: null, role: body.account_type === "partner" ? "partner" : "staff" });
+        const np = person(nextId++, "__pending_" + token, null, [], { invite_used: false, is_active: false, email: body.email ?? null, phone: body.phone ?? null, role: body.account_type === "partner" ? "partner" : "staff" });
         apply(np, np.role === "partner" ? { ...body, items: stripSend(body.items) } : body);
         people.push(np);
         return send(res, 201, { ok: true, id: np.id, invite_url: "http://127.0.0.1:" + MOCK_PORT + "/register/" + token, invite_token: token, member: detail(np) });
@@ -196,6 +256,20 @@ http.createServer((req, res) => {
           apply(who, who.role === "partner" ? { ...body, items: stripSend(body.items) } : body);
           return send(res, 200, { ok: true, member: detail(who) });
         }
+      }
+      // staff 联络方式（前端提给后端的形状）：格式不对 / email 重了 400 {detail: {field, message}}；有 HR 档案的不收 phone。
+      const ctm = p.match(/^\/api\/team\/members\/(\d+)\/contact$/);
+      if (ctm && m === "PUT") {
+        const who = people.find((x) => x.id === Number(ctm[1]));
+        // 后端 G219（acbae995）：账号不在了也是 {field, message}，status 404。
+        if (!who || contact404) { contact404 = false; return send(res, 404, { detail: { field: "email", message: "That account is not on the Team page any more. Reload the page." } }); }
+        const email = body.email;
+        if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return send(res, 400, { detail: { field: "email", message: "Email address looks wrong." } });
+        const other = email && people.find((x) => x.id !== who.id && (x.email || "").toLowerCase() === email.toLowerCase());
+        if (other) return send(res, 400, { detail: { field: "email", message: `That email address is already used by ${other.display_name} (@${other.username}).` } });
+        who.email = email;
+        if ("phone" in body) who.phone = body.phone;
+        return send(res, 200, { ok: true, member: detail(who) });
       }
       // 切换账号类型（后端 8a）：只 superadmin 能调；勾选不动；partner → staff 一律 role=staff。
       const am = p.match(/^\/api\/team\/members\/(\d+)\/account-type$/);
@@ -245,6 +319,16 @@ http.createServer((req, res) => {
         return send(res, 200, { ok: true });
       }
       who.is_active = false;
+      extraLog.unshift({ id: `${10 + extraLog.length}-1`, at: "2026-10-30T20:00:00+00:00", by: "Annie Z", action: "update", label: who.username, what: "Status", from: "Active", to: "Inactive" });
+      return send(res, 200, { ok: true });
+    }
+    // G212 B4：恢复也记进 Team 的 Action Log。
+    const ra = p.match(/^\/api\/users\/(\d+)\/reactivate$/);
+    if (ra && m === "POST") {
+      const who = people.find((x) => x.id === Number(ra[1]));
+      if (!who) return send(res, 404, { detail: "User not found" });
+      who.is_active = true;
+      extraLog.unshift({ id: `${10 + extraLog.length}-1`, at: "2026-10-30T20:00:00+00:00", by: "Annie Z", action: "update", label: who.username, what: "Status", from: "Inactive", to: "Active" });
       return send(res, 200, { ok: true });
     }
     if (p === "/api/admin/teams" && m === "GET") return send(res, 200, TEAMS.map((t) => ({ ...t, description: null, member_count: 0, created_at: null })));

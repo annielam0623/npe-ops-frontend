@@ -230,19 +230,40 @@ function ReadyBody({
           replySwitch={staffSwitch(WIDGET_REPLY, "Reply pop-up")}
         />
       ) : null}
-      {showTasks ? (
-        <TasksSection
-          model={tasks}
-          onUnauthorized={onUnauthorized}
-          gate={blockGate(WIDGET_TASKS)}
-        />
-      ) : null}
-      {gates[WIDGET_TODAY_TEAM].visible && showSchedule ? (
-        <TodayTeamSection
-          onUnauthorized={onUnauthorized}
-          staffSwitch={staffSwitch(WIDGET_TODAY_TEAM)}
-          hiddenFromStaff={isSuperAdmin && !gates[WIDGET_TODAY_TEAM].staffSees}
-        />
+      {/* 任务块和 Today's team 同一排：任务 2/3、Today's team 1/3、等高（Annie 2026-10-30「你把task和 today's team放在一起，task 战2/3，team占1/3」）。
+          卡高上限 68vh，内容多时卡内滚动；只有一块时（例如 Today's team 对我关着）占满整行；手机上一列。 */}
+      {showTasks || (gates[WIDGET_TODAY_TEAM].visible && showSchedule) ? (
+        <div
+          data-tasks-row
+          className="mb-[18px] flex flex-col gap-[18px] lg:flex-row lg:items-stretch"
+        >
+          {showTasks ? (
+            <div
+              data-tasks-col
+              className="min-w-0 empty:hidden lg:flex-[2] [&>section]:!mb-0 lg:[&>section]:h-full lg:[&>section]:max-h-[68vh] lg:[&>section]:overflow-y-auto"
+            >
+              <TasksSection
+                model={tasks}
+                onUnauthorized={onUnauthorized}
+                gate={blockGate(WIDGET_TASKS)}
+              />
+            </div>
+          ) : null}
+          {gates[WIDGET_TODAY_TEAM].visible && showSchedule ? (
+            <div
+              data-team-col
+              className="min-w-0 empty:hidden lg:flex-1 [&>section]:!mb-0 lg:[&>section]:h-full lg:[&>section]:max-h-[68vh] lg:[&>section]:overflow-y-auto"
+            >
+              <TodayTeamSection
+                onUnauthorized={onUnauthorized}
+                staffSwitch={staffSwitch(WIDGET_TODAY_TEAM)}
+                hiddenFromStaff={
+                  isSuperAdmin && !gates[WIDGET_TODAY_TEAM].staffSees
+                }
+              />
+            </div>
+          ) : null}
+        </div>
       ) : null}
       {/* 新板块默认只 Super Admin 可见（Annie 2026-10-24）：对我不可见时整块不画。 */}
       {perms.can("report.view") ? (

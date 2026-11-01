@@ -165,7 +165,13 @@ function day(date) {
     // seats：Settings → Vehicles 填的座位数（2026-10-16 紧急加的字段），没填是 null。1960（id 13）填了 59，专给开车窗那组检查用。
     vehicles: [{ id: 10, van_no: "768", has_tracking: true, seats: null }, { id: 11, van_no: "2056", has_tracking: false, seats: null }, { id: 12, van_no: "1328", has_tracking: true, seats: null }, { id: 13, van_no: "1960", has_tracking: true, seats: 59 },
       ...(date === PRIVATE_DAY ? [{ id: 14, van_no: "612", has_tracking: true, seats: 14 }, { id: 15, van_no: "22", has_tracking: true, seats: 24 }, { id: 16, van_no: "41", has_tracking: true, seats: 56 }] : [])],
-    locations: [{ id: 100, name: "Excalibur", active: true }, { id: 101, name: "MGM", active: true }, { id: 102, name: "Treasure Island", active: true }, { id: 103, name: "Old Motel", active: false }],
+    // ctl.hotelGroups：后端 21 给每个点带 is_tour_bus / is_shuttle（Add hotel 分 Las Vegas / Shuttle pick up 两组）；默认不带 = 后端还没上。
+    locations: ctl.hotelGroups ? [
+      { id: 100, name: "Excalibur", active: true, is_tour_bus: true, is_shuttle: false }, { id: 101, name: "MGM", active: true, is_tour_bus: true, is_shuttle: false },
+      { id: 102, name: "Treasure Island", active: true, is_tour_bus: true, is_shuttle: false }, { id: 103, name: "Old Motel", active: false, is_tour_bus: true, is_shuttle: false },
+      { id: 104, name: "St George – Main St", active: true, is_tour_bus: false, is_shuttle: true }, { id: 105, name: "aria", active: true, is_tour_bus: true, is_shuttle: false },
+      { id: 106, name: "Kanab – Visitor Center", active: true, is_tour_bus: null, is_shuttle: null }, { id: 107, name: "Page – Lake Powell Blvd", active: true, is_tour_bus: false, is_shuttle: true },
+    ] : [{ id: 100, name: "Excalibur", active: true }, { id: 101, name: "MGM", active: true }, { id: 102, name: "Treasure Island", active: true }, { id: 103, name: "Old Motel", active: false }],
     tours: [{ id: 3, display_name: "West Rim Bus Tour", is_active: true, own_section: true, time_note: null, default_location_ids: [101, 102] }, { id: 4, display_name: "Hoover Dam", is_active: true, own_section: true, time_note: null, default_location_ids: [] }, { id: 9, display_name: "Old Tour", is_active: false, own_section: false, time_note: null, default_location_ids: [] }],
     guides: [{ id: 2, name: "GIA" }, { id: 6, name: "PAM" }],
     ...(ctl.noMeta ? {} : { meta: ctl.altMeta ? {
@@ -577,6 +583,11 @@ http.createServer(async (req, res) => {
       { id: 21, manifest_id: 3, tour: "West Rim Bus Tour", order_number: "SG4", kind: "added", detail: "2 pax · 6:40 AM Bellagio", old_bus: null, relay: "", created_at: "2026-10-10T03:42:00+00:00" },
       { id: 22, manifest_id: 3, tour: "West Rim Bus Tour", order_number: "SG3", kind: "changed", detail: "pax 2 → 3; pickup 6:30 AM TI → 6:40 AM Bellagio", old_bus: "B", relay: "", created_at: "2026-10-10T04:05:00+00:00" },
     ] });
+  }
+  // ctl.shuttlePax：这个团当天 Bus manifest 的 Shuttle outbound 人数（另有 1 位 inbound 没上车）；默认不给 = 404，排车页不出 Shuttle 提示。
+  if (p === "/api/dispatch/manifest") {
+    if (!ctl.shuttlePax || q.tour !== "3") return send(res, 404, { detail: "mock: not found" });
+    return send(res, 200, { run_date: q.date, blocks: [{ sections: [{ kind: "tour", pax: 9 }, { kind: "outbound", pax: ctl.shuttlePax }] }], unplaced: { sections: [{ kind: "inbound", pax: 1 }] } });
   }
   if (p === "/api/dispatch/manifests") {
     const card = (id, title) => ({ manifest_id: id, title, uploaded: false, guests: 0, pax: 0, buses: 0, not_on_bus: 0, lunch: null, uploaded_at: null, uploaded_by: null, mode: "single" });
