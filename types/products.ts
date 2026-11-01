@@ -182,6 +182,11 @@ export interface ManifestSetupGroup {
    */
   section_order: string[];
   /**
+   * Bus Manifest 各节的默认顺序（置顶 41 后端 64，task/canyon-order）：Bus Manifest 页、打印、Excel、午餐单、司机页、导游页都按它；
+   * 和 section_order 分开。[] = 没填（照旧按最早接客时间）。后端没上线时没有这个键（不出这一格）。
+   */
+  bus_section_order?: string[];
+  /**
    * Morning Relay 第几轮（后端 7c 减 15，Annie 2026-10-14：分轮按团、不按时间）："relay" / "relay_2" / null = 不进 Relay。
    * 后端没上线时没有这个键。
    */

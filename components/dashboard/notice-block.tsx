@@ -137,7 +137,12 @@ function useApiNotices(onUnauthorized: () => void) {
       const list = await fetchNotices();
       // 有按钮要点的（B 期交接 handover_*）这次不接：交接仍走 /api/tasks/today，不在这里重复显示。
       setSchedule(
-        list.filter((n) => !n.is_read && n.actions.length === 0 && isToday(n)),
+        list.filter(
+          (n) =>
+            !n.is_read &&
+            // 同事发来的站内消息（type message）没读就一直在，不只今天的（Annie「Q2 A 在notice里」）。
+            (n.type === "message" || (n.actions.length === 0 && isToday(n))),
+        ),
       );
       setAvailable(true);
     } catch (error) {

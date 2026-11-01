@@ -1990,6 +1990,8 @@ async function run() {
     {
       const relayIssue = await evaluate("const li = [...document.querySelectorAll('[aria-label=\"Schedule check\"] [aria-label=Issues] > li')].find(l => l.textContent.includes('with no Morning Relay')); if (!li) return null; const b = [...li.querySelectorAll('button')].find(x => x.textContent.startsWith('View ')); if (b) b.click(); return li.textContent;");
       check("Schedule check 没有 Relay 车的酒店：只列 Las Vegas（aria 在），St George / Page / Kanab 这些 shuttle 站和没归类的都不列", !!relayIssue && relayIssue.includes("aria") && !SH.some((n) => relayIssue.includes(n)), String(relayIssue));
+      // 勾了「Tour bus departure」的点（TI）也不列：团车在 TI 直接上客（Annie 2026-10-31 选 A，11-01「动手」）
+      check("Schedule check 没有 Relay 车的酒店：勾了 Tour bus departure 的 Treasure Island 不列", !!relayIssue && relayIssue.includes("aria") && !relayIssue.split("Fix ›").pop().includes("Treasure Island"), String(relayIssue));
     }
     await ctl({ hotelGroups: false });
     await goto("about:blank");

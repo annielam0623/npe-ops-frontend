@@ -1,6 +1,7 @@
 // 模拟后端：Products 页。控制：POST /__ctl {fail401, staff, failMissing}；GET /__log。
 const http = require("http");
 const ctl = { fail401: false, staff: false, failMissing: false, slowNextProductPut: 0, slowNextGroupPut: 0, noRelay: false, relayFail: false, failSection: 0, categories: false, forecastSettings: false, forecastFail: "", g198: false, cfmSections: ["UPPER"], g199: false };
+let busOrder = [];
 // 7 Days Forecast 设置（后端 G63）：团 1 有主块和单独成块的 SUNSET。
 let fcNextId = 600;
 const fc = {
@@ -213,6 +214,9 @@ http.createServer(async (req, res) => {
     return send(res, 200, { success: true, is_active: body.active });
   }
   const S = "/api/settings/manifest-setup";
+  // busOrder：后端 64 的 Bus Manifest section order（置顶 41）：groups[] 带 bus_section_order；默认不带 = 后端没上线。
+  if (p === S && ctl.busOrder)
+    return send(res, 200, { ...setup, groups: setup.groups.map((g, i) => ({ ...g, bus_section_order: i === 0 ? busOrder : [] })) });
   if (p === S) {
     // G198（后端 8a bbf3d08）：groups[] 带 cfm_sections；第一组多几个有名字的节（LOWER / Canyon X 是 tour，PAGE 是班车）。
     if (ctl.g198) {
@@ -281,6 +285,21 @@ http.createServer(async (req, res) => {
     const out = body.sections.map((s) => s.trim()).filter(Boolean);
     if (out.some((s) => s.toLowerCase() === "bus tour")) return send(res, 400, { detail: "BUS TOUR is the main part of the tour - it cannot be its own block." });
     setup.groups[0].forecast_split_sections = out;
+    return send(res, 200, { ok: true, sections: out });
+  }
+  // Bus Manifest section order（后端 64）：整组替换；不是这个团的节（这里拿 NOPE 当）/ 重复 / 超过 20 个 ⇒ 400 原话。
+  m = p.match(/^\/api\/settings\/manifest-setup\/groups\/(\d+)\/bus-section-order$/);
+  if (m) {
+    const body = await readBody(req);
+    entry.body = body;
+    const out = body.sections.map((s) => s.trim()).filter(Boolean);
+    const seen = new Set();
+    for (const s of out) {
+      if (s.toUpperCase() === "NOPE") return send(res, 400, { detail: `${s} is not a section of this tour. Check the Section column of its products.` });
+      if (seen.has(s.toLowerCase())) return send(res, 400, { detail: `${s} is in the list twice.` });
+      seen.add(s.toLowerCase());
+    }
+    busOrder = out;
     return send(res, 200, { ok: true, sections: out });
   }
   // Section order（后端 G50）：整组替换；不分大小写不能重复，最多 20 个。
