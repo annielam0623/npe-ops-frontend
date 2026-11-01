@@ -139,7 +139,7 @@
   2. 82 is_test → 91 task/schedule-test-person；✅ 后端已上 main 2442b21a（GET 员工带 is_test；POST / PUT 只收 true/false；周排班 gaps 不算测试的人）。✅ 91 已合前端上 main（11-01，合最新 main 后 tsc / build 过、eslint 0 错；sch 304/304、tasks 132/132、dr 88/88、nav 32/32）：Dashboard Today's team / 整周排班不出 is_test 的人；排班页名字旁灰色「Test」；Employees 框每人一个勾「Test person — hidden from Dashboard」（点了就存）。等 Annie 线上把 ZZTest、Leon 勾上验收。
   3. 64 勾选权限 464ee553 → 09 task/perm-tick-or-role（还要 Annie 答题 A/B/C + 动手）；✅ 后端已上 main a987105a（role_standards staff 36 / supervisor 44 / admin 57；文档 team-permissions-v2-2026-10-24.md「2026-10-31 update」）。前端没改前，开关关着的人会看到会 403 的键。
      11/1 凌晨 Annie「动手」（主窗口问动哪件，她选「两件都动手」：权限只看勾 + 羚羊谷）⇒ 09 改只看勾（样子不变），A/B/C 和 Team 页特批标记不做、等另答。
-  4. 21 站内消息 → 91 task/team-online-messages；
+  4. 21 站内消息 → 91 task/team-online-messages；✅ 后端已上 main dc28ff78（/api/notices 每条加 ref，非消息为 null；开关 team_messages_direct 默认只 SA 可见）。91 合前端中。
   5. 44 is_tour_departure → e6 da 排除 TI（要 Annie 动手）；44 G138 → e6 task/schedule-weekly-confirm。
 - G228 前端已合 main 58ea7db（e6；tsc / eslint / build、cs 178/178、nav 32/32；24 键对过后端）。线上读值要登录，请 Annie 在 Content Studio › Team Messages 看一眼（只看不改）。
 - 每件落完 57 报提交号，主窗口 98 叫对应窗口合最新 main、跑检查、合 main。
