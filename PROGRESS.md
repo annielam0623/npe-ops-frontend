@@ -563,7 +563,7 @@
     - 合了最新 main（只有 PROGRESS.md 冲突，两边都留）。
     - 下一步：64 上 main 后合最新 main、重跑 tp / users / teams / nav，就能合 main（前端不用再改）。
     - ✅ 2026-10-31 后端上 main（cfdb5332）：对真接口只读核过，形状同 3953c04b，只多了「email 只差大小写、电话只差写法算没变」（后端 CR-1），前端不用改；合最新 main 重跑后合 main。
-- `task/team-online-messages`（worktree `C:\Code\ops-wt-91-online`）—— Today's team 在线同事 + 站内消息，用 mock 做，**没合 main，等后端**
+- `task/team-online-messages`（worktree `C:\Code\ops-wt-91-online`）—— Today's team 在线同事 + 站内消息 —— **11-01 已合 main**（后端 21 dc28ff78；对着 21 发的接口核过：GET /api/team/online、POST messages / reply 形状一致；/api/notices 的 ref 非消息是 null，mock 照改、前端不出错。合最新 main 后 tsc / build 过、eslint 0 错，tasks 143/143、dr 88/88、nav 32/32。开关 team_messages_direct 默认只有 Super Admin）
   - Annie 原话：
     - 「然后today's team的显示，除了res，登录了网站的其他员工也在这里显示，然后可以点击他们发消息」；
     - 「站内消息，同时可以发邮件通知这条消息的内容」；
