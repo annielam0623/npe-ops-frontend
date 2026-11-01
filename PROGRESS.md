@@ -109,6 +109,8 @@
 
 ### 40. Dispatch Tour bus 选今天的 Shuttle 上车点（91，preview https://claude.ai/artifact/BewNcepgfaJMDPDMvo2Pdz ，2026-10-31 问）
 - 已定：第二台车选也算，不拦（Annie「也算的意思是不阻拦」）。
+- v2 重查（91，同一链接最上面「v2 · 重查后」）：Products 的 Bus Manifest setup 用 manifest_section_kind 把 Shuttle 归到团（后端 manifest_setup.py:28-29）；Main manifest 和 Bus manifest 里 Shuttle 是团的 outbound / inbound 节，带人数、bus_label（tour_manifest.py:750-790；前端 fetchManifest）。⇒ 团有 Shuttle 节、人数 > 0 才在这个团第一台车提示；任一台车上有 Shuttle 站就算选好；第二台车选不拦。不需要后端。
+- v2 剩两题：(1) 样子 A 第一台车 Add hotel 换琥珀细框「Select today's shuttle pick-up…」+ 小字（推荐）／B 旁边琥珀小标签；(2) Schedule check 列「<团>: shuttle pick-up not chosen (N shuttle guests)」+ Fix：A 要（推荐，不拦保存）／B 不要。
 - ⚠️ 91 第一版调查 Annie 判不合格（原话：「91的结论是不对的，在main manifest里把shuttle算在bus tour里，在product里也是归在各自共享的bus里，dispatch在bus manifest里也是可以分辨出shuttle并且进行分类和排列，所以这个调查是不合格的」）。下面 (a)–(e) 和「需要后端」作废，91 重查后重出题目。
 - ~~查清：Dispatch 只读 Tour bus 团，不知道当天有没有 Shuttle 客人、搭哪个团~~（错）；选的 Shuttle 站就是车上普通站（location_ids），不用新字段。
 - (a) 怎么知道有 Shuttle：A 后端从 Main manifest 带当天 Shuttle 客人数，有才提示（推荐）／B 每天都提示／C Settings 标团。
