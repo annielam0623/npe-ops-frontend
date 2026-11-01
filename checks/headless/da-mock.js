@@ -168,7 +168,7 @@ function day(date) {
     // ctl.hotelGroups：后端 21 给每个点带 is_tour_bus / is_shuttle（Add hotel 分 Las Vegas / Shuttle pick up 两组）；默认不带 = 后端还没上。
     locations: ctl.hotelGroups ? [
       { id: 100, name: "Excalibur", active: true, is_tour_bus: true, is_shuttle: false }, { id: 101, name: "MGM", active: true, is_tour_bus: true, is_shuttle: false },
-      { id: 102, name: "Treasure Island", active: true, is_tour_bus: true, is_shuttle: false }, { id: 103, name: "Old Motel", active: false, is_tour_bus: true, is_shuttle: false },
+      { id: 102, name: "Treasure Island", active: true, is_tour_bus: true, is_shuttle: false, is_tour_departure: true }, { id: 103, name: "Old Motel", active: false, is_tour_bus: true, is_shuttle: false },
       { id: 104, name: "St George – Main St", active: true, is_tour_bus: false, is_shuttle: true }, { id: 105, name: "aria", active: true, is_tour_bus: true, is_shuttle: false },
       { id: 106, name: "Kanab – Visitor Center", active: true, is_tour_bus: null, is_shuttle: null }, { id: 107, name: "Page – Lake Powell Blvd", active: true, is_tour_bus: false, is_shuttle: true },
     ] : [{ id: 100, name: "Excalibur", active: true }, { id: 101, name: "MGM", active: true }, { id: 102, name: "Treasure Island", active: true }, { id: 103, name: "Old Motel", active: false }],

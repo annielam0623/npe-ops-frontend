@@ -121,6 +121,12 @@ export const VISIBILITY_KEYS = {
     where: "Dashboard",
     default: "super_admin_only",
   },
+  // Today's team 的在线同事 + 点名字发站内消息（Annie 2026-10-30「两件都动手」，Q6 A：新功能先只 Super Admin）。
+  team_messages_direct: {
+    label: "Dashboard · Today's team: online staff + messages",
+    where: "Dashboard",
+    default: "super_admin_only",
+  },
   daily_operation_report: {
     label: "Daily Operation Report",
     where: "Dashboard block and /daily-report",

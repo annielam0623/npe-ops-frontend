@@ -18,6 +18,7 @@ export const WIDGET_REPLY = "dashboard_reply";
 export const WIDGET_NOTICE = "dashboard_notice";
 export const WIDGET_TASKS = "dashboard_tasks";
 export const WIDGET_WEEK_SCHEDULE = "dashboard_week_schedule";
+export const WIDGET_TEAM_MESSAGES = "team_messages_direct";
 
 export type GateKey =
   | typeof WIDGET_STATS
@@ -25,7 +26,8 @@ export type GateKey =
   | typeof WIDGET_REPLY
   | typeof WIDGET_NOTICE
   | typeof WIDGET_TASKS
-  | typeof WIDGET_WEEK_SCHEDULE;
+  | typeof WIDGET_WEEK_SCHEDULE
+  | typeof WIDGET_TEAM_MESSAGES;
 
 /** 传给板块自己画的部分：Super Admin 的控件（其他人 null）+ 员工看不到时画黄色虚线框。 */
 export interface BlockGate {
@@ -59,6 +61,7 @@ export function useWidgetGates(
     [WIDGET_NOTICE]: gate(WIDGET_NOTICE),
     [WIDGET_TASKS]: gate(WIDGET_TASKS),
     [WIDGET_WEEK_SCHEDULE]: gate(WIDGET_WEEK_SCHEDULE),
+    [WIDGET_TEAM_MESSAGES]: gate(WIDGET_TEAM_MESSAGES),
   };
 }
 

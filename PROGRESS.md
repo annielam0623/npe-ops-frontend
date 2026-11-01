@@ -46,7 +46,9 @@
 - Treasure Island：查过 PROGRESS 没有 Annie 的定论（说明那句「the tours start from Treasure Island」是解释各轮分开算），照旧算进去；TI 两个类别都勾，所以还在。要不要从这条里拿掉，已回 98 问。
   - 2026-10-31 Annie 答「A」：勾了「Tour bus departure」的点（TI）不算进「no Morning Relay vehicle」这条（也不算进 Relay 覆盖数）。还没动手（「A」是选方案，不算动手指令）。
   - 需要后端：Dispatch 当天数据的 locations（app/services/dispatch.py 约 473–480 行，现在只带 id / hotel_name / is_active / is_tour_bus / is_shuttle）加上 is_tour_departure。前端改法：activeLocs 再排除 is_tour_departure === true；后端没带这个键时照旧，所以前端可以先上。
+  - 2026-11-01 Annie「动手」（98 转：她回的是「Treasure Island 标记上线后，前端『Schedule check 不算 TI』那件 e6 还没改代码，要等你说『动手』」；也直接在 e6 窗口说了「动手」）。已改（`task/relay-skip-tour-departure`）：types/dispatch.ts 加 is_tour_departure；config.ts 的 activeLocs 再排除 is_tour_departure === true，后端没带这个键时照旧，所以先合 main，后端 44 上了自动生效。说明那句「the tours start from Treasure Island」没动。检查：da 441/441（新 1 项：mock 里 TI 带 is_tour_departure，Fix 名单里没有 TI）、tsc / eslint / build 过。
   - 主窗口-98 已转后端 57（10/31）：57 派给 44，单开 worktree 做、不碰迁移，排在 4e 后面落主目录；上线后 57 报提交号。前端等 Annie「动手」。
+  - 11/1 凌晨 Annie「动手」⇒ e6 改（前端可先合 main，后端没带键时照旧）。✅ 前端 8110bd6（da 441/441）；后端 is_tour_departure 已上 main（合并 fa8e1ee9 / 关包 0f908d84；生产 TI 已勾）⇒ 线上已生效。
 - 「Changes save by themselves」改对（Dispatch 10/30 已改手动 Save f6d79cd）：Schedule check 底部改成「Changes are saved when you press Save; …」；CCL 改版黄条里那句改成「Press Save afterwards to keep the changes.」。How to use 第 5 条（10 分钟没动才自动存）本来就对，没动。
 - 检查：da 428/428（新 1 项：hotelGroups 时这条只列 Las Vegas、shuttle 站和没归类的不列；没字段时照旧那项原来就有；底部说明那项改成新字）、tsc / eslint / build 过。
 
@@ -139,13 +141,17 @@
   2. 82 is_test → 91 task/schedule-test-person；✅ 后端已上 main 2442b21a（GET 员工带 is_test；POST / PUT 只收 true/false；周排班 gaps 不算测试的人）。✅ 91 已合前端上 main（11-01，合最新 main 后 tsc / build 过、eslint 0 错；sch 304/304、tasks 132/132、dr 88/88、nav 32/32）：Dashboard Today's team / 整周排班不出 is_test 的人；排班页名字旁灰色「Test」；Employees 框每人一个勾「Test person — hidden from Dashboard」（点了就存）。等 Annie 线上把 ZZTest、Leon 勾上验收。
   3. 64 勾选权限 464ee553 → 09 task/perm-tick-or-role（还要 Annie 答题 A/B/C + 动手）；✅ 后端已上 main a987105a（role_standards staff 36 / supervisor 44 / admin 57；文档 team-permissions-v2-2026-10-24.md「2026-10-31 update」）。前端没改前，开关关着的人会看到会 403 的键。
      11/1 凌晨 Annie「动手」（主窗口问动哪件，她选「两件都动手」：权限只看勾 + 羚羊谷）⇒ 09 改只看勾（样子不变），A/B/C 和 Team 页特批标记不做、等另答。
-  4. 21 站内消息 → 91 task/team-online-messages；
+  4. 21 站内消息 → 91 task/team-online-messages；✅ 后端已上 main dc28ff78（/api/notices 每条加 ref，非消息为 null；开关 team_messages_direct 默认只 SA 可见）。前端已合 main 34e93fc（91；接口对过，ref null 能处理；tasks 143/143、dr 88/88、nav 32/32；没发真消息）。
   5. 44 is_tour_departure → e6 da 排除 TI（要 Annie 动手）；44 G138 → e6 task/schedule-weekly-confirm。
 - G228 前端已合 main 58ea7db（e6；tsc / eslint / build、cs 178/178、nav 32/32；24 键对过后端）。线上读值要登录，请 Annie 在 Content Studio › Team Messages 看一眼（只看不改）。
 - 每件落完 57 报提交号，主窗口 98 叫对应窗口合最新 main、跑检查、合 main。
 
 ## 2026-10-31 夜 新需求：羚羊谷 Bus Manifest 三个 canyon 排序 / 分页（91 记录，出 preview）
 - 11/1 凌晨 Annie「动手」（选「两件都动手」）：顺序 + 分页都拖拽（A），(1)–(4) 照推荐；后端已派 57，91 前端先用 mock 做，后端上 main 再合。整页 preview https://claude.ai/artifact/Txr893UKjC71txRfFJkdfd
+- ⛔ 后来 Annie 在 57 窗口改定（57 把两个说法摆在一起问，她选）：只管这一次——拖拽的顺序和分页只管当次查看 / 打印 / 下载，不存，重开回默认；默认 LOWER → UPPER → CANYON X 同一页；Driver / Guide 页照默认；今晚做。⇒ 不加列、不迁移、没有 PUT / Action Log / Save 键；GET 带 canyon_sections + 默认 canyon_pages；打印 / Excel 下载时把拖拽结果当参数传（参数名 57 定）。分页、New page 虚线、2+ tour section 才出、Shuttle 不算照旧。已转 91。
+- 64 定接口（后端 task/canyon-order，排在 21 → 44 之后）：GET tour 带 canyon_sections / canyon_pages（≥2 tour section 才带）；打印 GET .../print 和 Excel POST .../download 带 layout（JSON string[][]）；范围含 Hoover Dam（Annie 确认）。默认顺序来自 Products › Manifest setup 新设置「Bus Manifest section order」（groups[].bus_section_order，PUT .../groups/{id}/bus-section-order，admin，Annie 自己填）；没填时照旧按最早接人时间。前端 91 加这一格（照 Section order 写法，Save 存），合前截图给 Annie。
+- 91 前端做完 task/canyon-order ba829ca（没合 main，等 64 后端）：Bus Manifest 拖拽框（不存、无 Save，打印 / 下载带 layout，New page 虚线，非 canyon 的团叫「Section order」）；Products 加「Bus Manifest section order」格（Save 存）；Section order 提示改成「on Manifests and the 7 Days Forecast (the Bus Manifest uses the box below)」。mf 225/225、products 225/225、nav 32/32。截图给 Annie：https://claude.ai/artifact/XqRU9GK7zQMNgEmHMHnc3R
+- ✅ 后端已上 main ad7cae1c（合并 842d17ef）。生产 bus_section_order 还空，Annie 自己填前默认仍按接人时间。91 合前端中。
 - Annie 在 91 窗口原话：「在羚羊谷的bus manifest里的是否可以给staff多一个选项，可以选择三个canyon的顺序，选择排在同一页或者两页，然后默认的排序改为lower upper X」
 - 91 只读查：Bus Manifest 各节顺序由后端 tour_manifest.py _sections() 定（最早接人时间优先，同时间按 CSV 顺序；按 G198 故意不跟 Manifest setup 的 section_order）；分页 paginate()、打印 / Excel 也是后端出。⇒ 改默认顺序、让 staff 选顺序、同页 / 分页都要后端（排序 + 分页 + 存选择），前端只加控件。
 - 91 合完 Shuttle 后出 preview 和题（设置按天 / 按团 / 永久默认；「两页」是三个各一页还是 Lower + Upper 一页、X 一页），交主窗口问 Annie。未动手。
@@ -571,6 +577,56 @@
     - 合了最新 main（只有 PROGRESS.md 冲突，两边都留）。
     - 下一步：64 上 main 后合最新 main、重跑 tp / users / teams / nav，就能合 main（前端不用再改）。
     - ✅ 2026-10-31 后端上 main（cfdb5332）：对真接口只读核过，形状同 3953c04b，只多了「email 只差大小写、电话只差写法算没变」（后端 CR-1），前端不用改；合最新 main 重跑后合 main。
+- `task/team-online-messages`（worktree `C:\Code\ops-wt-91-online`）—— Today's team 在线同事 + 站内消息 —— **11-01 已合 main**（后端 21 dc28ff78；对着 21 发的接口核过：GET /api/team/online、POST messages / reply 形状一致；/api/notices 的 ref 非消息是 null，mock 照改、前端不出错。合最新 main 后 tsc / build 过、eslint 0 错，tasks 143/143、dr 88/88、nav 32/32。开关 team_messages_direct 默认只有 Super Admin）
+  - Annie 原话：
+    - 「然后today's team的显示，除了res，登录了网站的其他员工也在这里显示，然后可以点击他们发消息」；
+    - 「站内消息，同时可以发邮件通知这条消息的内容」；
+    - preview https://claude.ai/artifact/MyYTZjQzmJLaWckQjPxVGd 六题：「Q1  30分钟   Q2 A 在notice里，都属于给自己看的   Q3 A   Q4 A 站内回复，不用邮件   Q5 A  Q6 A」；
+    - 补一句「在线员工包括teams里的人」；
+    - 最后「两件都动手」。
+  - 做法：
+    - `lib/team-messages-api.ts`（新）：GET /api/team/online、POST /api/team/messages、POST /api/team/messages/{id}/reply（形状见文件头）。
+    - `components/dashboard/today-team-section.tsx`：
+      - 新 prop messaging（开关对我开着才传）；
+      - 排班的人按名字对上 Team 账号，名字能点（自己除外），在线的带绿点；
+      - 下面一组「Online now」：在线、不在排班名单里的员工，A–Z，点名字发消息；
+      - 在线名单每 60 秒重拉；接口 404 / 出错时不出这一组、名字不能点。
+    - `components/dashboard/team-message-dialog.tsx`（新）：「Message <name>」小框，同 Pass over 的样子。
+      - 没 Email 写黄字「No email on file — they'll only see it in their Notice.」；
+      - 蓝色 Send；成功绿字「✓ Sent — also emailed.」/「✓ Sent.」；失败红字「Not sent — …」。
+    - Notice：type `message` 的通知没读就一直在，不只今天的；标签「Message」，全文；
+      - Reply 在卡里展开输入框，蓝色 Send，只发站内（POST …/reply）；
+      - Got it 照旧。
+    - 开关：`lib/page-visibility.ts` 加 `team_messages_direct`（默认 super_admin_only），`widget-gates.tsx` 加 WIDGET_TEAM_MESSAGES；Super Admin 在 Online now 那一行看到开关。
+  - 检查：tasks-mock 加 /api/team/online、/api/team/messages、reply、`directMsg`（昨天来的站内消息，带 ref.message_id）。tasks-test 加 runMessaging 11 条：
+    - 开关默认员工看不到；在线名单 A–Z、不重复、不在线的不出；
+    - 名字能点 / 绿点 / 自己不能点；
+    - 小框黄字、蓝色 Send、发送请求和绿字；
+    - 排班的人也能点；
+    - Notice 消息卡、Reply 请求和绿字；
+    - 后端 404 时照旧。
+    - 结果：tsc 0、eslint 0 错、build 通过。tasks 在 23:5x 跑时消息 11 条前 10 条过、Reply 那条修了 mock（ref 要透传）。
+    - 00:00 以后重跑，「Notice 只放今天的」那几条旧检查因为 mock 的通知是「15 分钟 / 1 小时前」跨了洛杉矶午夜而失败（和这次改动无关），**01:00 以后要重跑 tasks 确认全过**。
+  - ⚠️ 需要后端（已请 98 转 57）：
+    1. admin_users.last_seen_at（migration）。
+    2. GET /api/team/online：
+       - 回 {people:[{id, display_name, username, online, last_seen_at, has_email}]}，是 Team 页的员工账号（不只排班的人），不含合作方、司机、导游和自己；
+       - online = 30 分钟内有操作。
+    3. POST /api/team/messages {to_user_id, body} → {ok, emailed}：
+       - 写一条收件人的 Notice（kind `message`，title「X sent you a message」，body 全文）；
+       - 同时发邮件到 Team Email（Reply-To 发信人）。
+    4. POST /api/team/messages/{id}/reply {body} → {ok}：只写原发信人的 Notice，不发邮件。
+    5. **/api/notices 对 kind `message` 的条目要带 `ref: {kind:"message", message_id, from_user_id}`**（现在接口不发 ref，Reply 要用 message_id）。
+    6. 开关 key `team_messages_direct` 登记进 dashboard-widgets，默认 super_admin_only。
+    7. 发消息和回复记进 action_log。
+  - ✅ 2026-10-31 00:1x：照后端 21 发来的最终形状改了 mock / 类型 / 检查：
+    - 在线名单只列在线的人（online 恒 true），排班里没在线的人名字不能点；
+    - 开关没开 403 时不出 Online now；
+    - send 回 {ok, id, emailed}，400 原话红字；
+    - ref 带 from_display_name。
+    - tasks 的午夜问题已在 main 6ba6866 修好（mock 通知的「现在」跨午夜也算今天），合进来了。
+    - 结果：tasks 139/139、dr 88/88、nav 32/32；tsc 0、eslint 0 错、build 通过。
+  - 下一步：后端 21 等 Annie 执行 v138 后上 main → 对真接口再核一遍 → 合最新 main、重跑 tasks / dr / nav → 合 main。
 
 
 ## G228 Content Studio「Team Messages」后端设计（4e，2026-10-30 晚，只读，main f51d40a1）—— 给前端 62 的接手窗口用
