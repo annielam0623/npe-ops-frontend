@@ -381,8 +381,8 @@ function noticesWire(list, url) {
       const o = { id: n.id, kind: n.type, title: n.title, created_at: n.created_at, read: !!n.is_read };
       if ("body" in n) o.body = n.body;
       if ("link" in n) o.href = n.link;
-      // 站内消息（后端要加）：ref 带 message_id，Reply 用。
-      if (n.type === "message") o.ref = n.ref;
+      // DG-4（后端 21，98 2026-11-01 转）：每条都带 ref——消息类是 {kind: "message", message_id, …}（Reply 用），其余一律 null。
+      o.ref = n.type === "message" ? n.ref : null;
       return o;
     }),
   };
