@@ -46,6 +46,7 @@
 - Treasure Island：查过 PROGRESS 没有 Annie 的定论（说明那句「the tours start from Treasure Island」是解释各轮分开算），照旧算进去；TI 两个类别都勾，所以还在。要不要从这条里拿掉，已回 98 问。
   - 2026-10-31 Annie 答「A」：勾了「Tour bus departure」的点（TI）不算进「no Morning Relay vehicle」这条（也不算进 Relay 覆盖数）。还没动手（「A」是选方案，不算动手指令）。
   - 需要后端：Dispatch 当天数据的 locations（app/services/dispatch.py 约 473–480 行，现在只带 id / hotel_name / is_active / is_tour_bus / is_shuttle）加上 is_tour_departure。前端改法：activeLocs 再排除 is_tour_departure === true；后端没带这个键时照旧，所以前端可以先上。
+  - 2026-11-01 Annie「动手」（98 转：她回的是「Treasure Island 标记上线后，前端『Schedule check 不算 TI』那件 e6 还没改代码，要等你说『动手』」；也直接在 e6 窗口说了「动手」）。已改（`task/relay-skip-tour-departure`）：types/dispatch.ts 加 is_tour_departure；config.ts 的 activeLocs 再排除 is_tour_departure === true，后端没带这个键时照旧，所以先合 main，后端 44 上了自动生效。说明那句「the tours start from Treasure Island」没动。检查：da 441/441（新 1 项：mock 里 TI 带 is_tour_departure，Fix 名单里没有 TI）、tsc / eslint / build 过。
   - 主窗口-98 已转后端 57（10/31）：57 派给 44，单开 worktree 做、不碰迁移，排在 4e 后面落主目录；上线后 57 报提交号。前端等 Annie「动手」。
   - 11/1 凌晨 Annie「动手」⇒ e6 改（前端可先合 main，后端没带键时照旧）。
 - 「Changes save by themselves」改对（Dispatch 10/30 已改手动 Save f6d79cd）：Schedule check 底部改成「Changes are saved when you press Save; …」；CCL 改版黄条里那句改成「Press Save afterwards to keep the changes.」。How to use 第 5 条（10 分钟没动才自动存）本来就对，没动。
