@@ -47,6 +47,7 @@
   - 2026-10-31 Annie 答「A」：勾了「Tour bus departure」的点（TI）不算进「no Morning Relay vehicle」这条（也不算进 Relay 覆盖数）。还没动手（「A」是选方案，不算动手指令）。
   - 需要后端：Dispatch 当天数据的 locations（app/services/dispatch.py 约 473–480 行，现在只带 id / hotel_name / is_active / is_tour_bus / is_shuttle）加上 is_tour_departure。前端改法：activeLocs 再排除 is_tour_departure === true；后端没带这个键时照旧，所以前端可以先上。
   - 主窗口-98 已转后端 57（10/31）：57 派给 44，单开 worktree 做、不碰迁移，排在 4e 后面落主目录；上线后 57 报提交号。前端等 Annie「动手」。
+  - 11/1 凌晨 Annie「动手」⇒ e6 改（前端可先合 main，后端没带键时照旧）。
 - 「Changes save by themselves」改对（Dispatch 10/30 已改手动 Save f6d79cd）：Schedule check 底部改成「Changes are saved when you press Save; …」；CCL 改版黄条里那句改成「Press Save afterwards to keep the changes.」。How to use 第 5 条（10 分钟没动才自动存）本来就对，没动。
 - 检查：da 428/428（新 1 项：hotelGroups 时这条只列 Las Vegas、shuttle 站和没归类的不列；没字段时照旧那项原来就有；底部说明那项改成新字）、tsc / eslint / build 过。
 
@@ -139,7 +140,7 @@
   2. 82 is_test → 91 task/schedule-test-person；✅ 后端已上 main 2442b21a（GET 员工带 is_test；POST / PUT 只收 true/false；周排班 gaps 不算测试的人）。✅ 91 已合前端上 main（11-01，合最新 main 后 tsc / build 过、eslint 0 错；sch 304/304、tasks 132/132、dr 88/88、nav 32/32）：Dashboard Today's team / 整周排班不出 is_test 的人；排班页名字旁灰色「Test」；Employees 框每人一个勾「Test person — hidden from Dashboard」（点了就存）。等 Annie 线上把 ZZTest、Leon 勾上验收。
   3. 64 勾选权限 464ee553 → 09 task/perm-tick-or-role（还要 Annie 答题 A/B/C + 动手）；✅ 后端已上 main a987105a（role_standards staff 36 / supervisor 44 / admin 57；文档 team-permissions-v2-2026-10-24.md「2026-10-31 update」）。前端没改前，开关关着的人会看到会 403 的键。
      11/1 凌晨 Annie「动手」（主窗口问动哪件，她选「两件都动手」：权限只看勾 + 羚羊谷）⇒ 09 改只看勾（样子不变），A/B/C 和 Team 页特批标记不做、等另答。
-  4. 21 站内消息 → 91 task/team-online-messages；
+  4. 21 站内消息 → 91 task/team-online-messages；✅ 后端已上 main dc28ff78（/api/notices 每条加 ref，非消息为 null；开关 team_messages_direct 默认只 SA 可见）。91 合前端中。
   5. 44 is_tour_departure → e6 da 排除 TI（要 Annie 动手）；44 G138 → e6 task/schedule-weekly-confirm。
 - G228 前端已合 main 58ea7db（e6；tsc / eslint / build、cs 178/178、nav 32/32；24 键对过后端）。线上读值要登录，请 Annie 在 Content Studio › Team Messages 看一眼（只看不改）。
 - 每件落完 57 报提交号，主窗口 98 叫对应窗口合最新 main、跑检查、合 main。
