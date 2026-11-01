@@ -106,6 +106,15 @@
 >    - 写 PROGRESS 插入时先确认行号非空（eb 今天插错过一次）；
 >    - 别把员工邮箱、密码写进仓库。
 
+## 2026-10-31 夜 后端今晚全部落完（Annie 定，57 转，约凌晨 3–4 点）
+- 后端主目录顺序 → 前端对应分支：
+  1. 16 排班往来记录隔离 → e6 task/schedule-person-history-fe；
+  2. 82 is_test → 91 task/schedule-test-person；
+  3. 64 勾选权限 464ee553 → 09 task/perm-tick-or-role（还要 Annie 答题 A/B/C + 动手）；
+  4. 21 站内消息 → 91 task/team-online-messages；
+  5. 44 is_tour_departure → e6 da 排除 TI（要 Annie 动手）；44 G138 → e6 task/schedule-weekly-confirm。
+- 每件落完 57 报提交号，主窗口 98 叫对应窗口合最新 main、跑检查、合 main。
+
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
 ### 40. Dispatch Tour bus 选今天的 Shuttle 上车点（91，preview https://claude.ai/artifact/BewNcepgfaJMDPDMvo2Pdz ，2026-10-31 问）
@@ -297,7 +306,7 @@
 - 10/31 64 报最终规则（Annie 已定，后端 task/perm-tick-or-role 464ee553，待合 main）：总开关 staff_permissions 对这个人开（visible_to_me=true）→ 勾全部生效；关 → 只算勾里在他 role 标准以内的；role 标准不加权限。标准：staff = v119 36 项；supervisor = staff + schedule.edit / schedule.publish / tasks.view_all / tasks.manage / report.edit / team.staff_add / settings.hr.view / settings.schedule；admin = 除 settings.auto_send 外全部。开关只有 SA 能拨，默认只 SA。partner 照旧，SA 全放行。
   前端要做（09）：① 非 SA 只看 /api/me/permissions，去掉 by-tick.ts active / legacy；③ 5 项新接上（dashboard.view / manifests.export / forms.view / reports.export / settings.forecast），Team 页不再 Not active yet；④ 没 forms.edit 藏 /forms、Work Sheet / Guide Sheet 编辑保存控件；⑤ 没 reports.export 藏 Sales Report 导出键；② Team 页标「特批」勾（catalog.role_standards）是新样子，要 preview。主窗口已问 Annie 是否动手。
   09 只读核对：/forms 只有两张链接卡，没东西可藏；Work Sheet / Guide Sheet 不存系统（只存浏览器 / 本地文件），没 forms.edit 时提议全部只读、藏 Save file / Open file / Clear / Reset / 加删行，留 Save as PDF；Sales Report 一个 Export CSV；另 Farm out Report Export CSV（后端已拦，前端要藏）、Bus Manifest 下载（manifests.export，后端已拦）、Manifests 页 Export CSV（纯前端）。第 3 条前端自动跟后端 wired，不用改。第 1 条还要把侧栏 Settings（canSeeHr / canSeeSettingsItem）、Products setAdminPanels(is_admin) 改成看勾，09 找 64 对码。问 Annie 4 题：Work Sheet 只读后留不留 Save as PDF、要不要一句提示；Farm out 导出跟 reports.export；Bus Manifest 下载 + Manifests 页 Export CSV 跟 manifests.export；1–4 + 这些是否动手。
-  64 给了控件 ↔ 码对照（09 记在分支 task/perm-tick-or-role 5a8fdc9 的 PROGRESS）：前端查和后端同一个码；后端还看 role 的，前端也照旧看 role。改看勾：侧栏 Settings 各项、HR view / edit、Products Forecast 设置、排班读停用员工、Workspace Rate card 链接。照旧看 role / SA：/settings/users、/settings/team、Products Bus Manifest setup、/notifications、Quick replies、Supplier restaurant、Workspace settings、排班 Publish anyway。这些要改看勾的话是后端新活（57）。
+  64 给了控件 ↔ 码对照（09 记在分支 task/perm-tick-or-role 5a8fdc9 的 PROGRESS）：前端查和后端同一个码；后端还看 role 的，前端也照旧看 role。改看勾：侧栏 Settings 各项、HR view / edit、Products Forecast 设置、排班读停用员工、Workspace Rate card 链接。照旧看 role / SA：Team 页（/settings/users 10-28 已并进 Team，只做跳转；账号列表 / 重设密码 / 改名 / 停用 admin 可用，权限 / 职责 / 组只有 SA；Annie 指出「users已经跟team合并了」，09 已更正 c6c570a）、Products Bus Manifest setup、/notifications、Quick replies、Supplier restaurant、Workspace settings、排班 Publish anyway。这些要改看勾的话是后端新活（57）。
 - 后端 G225 Multi Orders 上 main（origin 7a69b185，合并 54fdd81f），前端不用改：卡片只算 confirmed 的单（读 Order List）；每 10 分钟，只剩 1 张单自动挂上，0 张挂到最后发给他的那张并亮起；「<2 张不显示」没做。multi_trip 卡可能还列已取消团期，后端已登记。
 - 后端 G212 B1 / B2 / B4 / B5 上 main（origin 86faf30b，合并 1f967bad）：admin 可撤销没接受的邀请；/api/team/members 加 role / is_active / initials / invite_token（只 SA、只未接受）/ is_self；停用 / 启用 / 改角色 / 重置链接 / invite 进 Team action-log；删账号快照带 teams。B3（409 + 计数，先发 detail 写法）、B6 / B7 还没做。⇒ 派 91 只读核对前端 Team 页要不要跟着改。
   - 91 核完：现在不出错。B1 admin 的 Cancel invite 前端一直有（users-table.tsx:469-487），现在能成功；Delete 真账号只在 SA 的 Edit 框里，和后端一致。B4 / B2 日志动作名 update / create / delete 前端已有说法。
