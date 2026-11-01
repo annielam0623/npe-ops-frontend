@@ -350,13 +350,14 @@ async function run() {
   await ctl({ staff: true });
   from = (await mockLog()).length;
   await openPage();
-  await waitFor("document.body.textContent.includes('Super Admin access required')");
-  check("staff：Super Admin access required、不拉设置", (await evaluate("return document.body.textContent.includes('Super Admin access required') && !$switch();")) && (await since(from, isGet)).length === 0);
+  // 只看勾（2026-11-01）：没有 settings.auto_send 的勾 ⇒ 页面门口就拦（You don't have access to this page.）。
+  await waitFor("document.querySelector('[data-no-access]')");
+  check("staff：没有 settings.auto_send ⇒ 门口拦住、不拉设置", (await evaluate("return !!document.querySelector('[data-no-access]') && !$switch();")) && (await since(from, isGet)).length === 0);
   await ctl({ staff: false, admin: true });
   from = (await mockLog()).length;
   await openPage();
-  await waitFor("document.body.textContent.includes('Super Admin access required')");
-  check("普通 admin：Super Admin access required、不拉设置、没有报错条", (await evaluate("return document.body.textContent.includes('Only Super Admins can change auto-send.') && !$switch() && !document.body.textContent.includes('Could not load');")) && (await since(from, isGet)).length === 0);
+  await waitFor("document.querySelector('[data-no-access]')");
+  check("普通 admin（标准里没有 settings.auto_send）：门口拦住、不拉设置、没有报错条", (await evaluate("return !!document.querySelector('[data-no-access]') && !$switch() && !document.body.textContent.includes('Could not load');")) && (await since(from, isGet)).length === 0);
   await ctl({ admin: false, fail401: true });
   await goto(`${APP}/settings/auto-send`);
   await waitFor("location.pathname === '/auth/login'");

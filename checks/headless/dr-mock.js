@@ -1,6 +1,7 @@
 // 模拟后端：dashboard 改版阶段一（侧栏、My shortcuts、Messages 每窗两张、Settings → Navigation）。
 // 控制：POST /__ctl {role, navConfig, failSave, failNavSave, shortcuts}；GET /__log 看请求。
 const http = require("http");
+const { permsBody } = require("./role-standard");
 
 const ctl = { role: "staff", navConfig: null, failSave: false, failNavSave: false, unhandled403: false };
 let stored = null; // dashboard_shortcuts 的 value（字符串），null = 没存过
@@ -48,6 +49,8 @@ http
     const body = req.method === "PUT" || req.method === "POST" ? await readBody(req) : null;
     log.push({ method: req.method, path: p, body });
     if (p === "/admin/dashboard") { res.setHeader("Content-Type", "text/html"); return res.end("<h1>LEGACY DASHBOARD</h1>"); }
+    // 只看勾（2026-11-01）：按角色标准回。
+    if (p === "/api/me/permissions") return send(res, 200, permsBody(ctl.role));
     if (p === "/api/me") {
       return send(res, 200, {
         id: 1, username: "zztest", display_name: "ZZ Test", initials: "ZT", role: ctl.role,

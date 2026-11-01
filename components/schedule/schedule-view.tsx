@@ -152,8 +152,10 @@ function weekRangeLabel(weekStart: string): string {
 }
 
 export function ScheduleView() {
-  // 全部按照勾选（Annie 2026-10-30 置顶 10c）：开关开着按勾（同后端接口），关着照旧按角色；Super Admin 全过。
+  // 只看勾（Annie 2026-11-01「动手」）：除 Super Admin 外只照 /api/me/permissions；Publish anyway 后端仍按角色（admin / SA）。
   const tickPerms = usePermissions();
+  const tickPermsRef = useRef(tickPerms);
+  tickPermsRef.current = tickPerms;
   const [me, setMe] = useState<CurrentUser | null>(null);
   const [meError, setMeError] = useState<
     "loading" | "forbidden" | "error" | null
@@ -297,6 +299,8 @@ export function ScheduleView() {
 
   // 身份 + 设置 + 名单：和具体哪一周无关，只在打开页面 / 手动重试时加载一次。
   useEffect(() => {
+    // 权限读完再拉名单（停用的人要不要一起拉看 schedule.edit 的勾）。
+    if (!tickPerms.ready) return;
     const controller = new AbortController();
     const { signal } = controller;
     setMeError("loading");
@@ -306,7 +310,13 @@ export function ScheduleView() {
         if (signal.aborted) return;
         const [scheduleSettings, scheduleEmployees] = await Promise.all([
           fetchScheduleSettings(signal),
-          fetchScheduleEmployees(signal, user.is_supervisor === true),
+          // 停用的人：后端按 schedule.edit 给（64 2026-11-01）。
+          fetchScheduleEmployees(
+            signal,
+            byTick(tickPermsRef.current, "schedule.edit", {
+              superAdmin: !!user.is_superadmin,
+            }),
+          ),
         ]);
         if (signal.aborted) return;
         try {
@@ -331,7 +341,7 @@ export function ScheduleView() {
       }
     })();
     return () => controller.abort();
-  }, [reloadKey, redirectToLogin]);
+  }, [reloadKey, redirectToLogin, tickPerms.ready]);
 
   const loadWeek = useCallback(
     async (signal?: AbortSignal, quiet = false) => {
@@ -378,17 +388,14 @@ export function ScheduleView() {
   const superAdmin = !!me.is_superadmin;
   // 改班、休假、编辑锁：schedule.edit（后端 schedule.py 的 _edit）。
   const canEdit = byTick(tickPerms, "schedule.edit", {
-    legacy: me.is_supervisor === true,
     superAdmin,
   });
   // Add employee：后端要 team.staff_add 和 schedule.edit 两个都有（schedule.py:122）。
-  const canAddEmployee = tickPerms.active
-    ? superAdmin ||
-      (tickPerms.can("team.staff_add") && tickPerms.can("schedule.edit"))
-    : me.is_admin || me.is_supervisor === true || superAdmin;
+  const canAddEmployee =
+    superAdmin ||
+    (tickPerms.can("team.staff_add") && tickPerms.can("schedule.edit"));
   // Publish / Publish again：schedule.publish（schedule.py:331）。
   const canPublishTick = byTick(tickPerms, "schedule.publish", {
-    legacy: canEdit,
     superAdmin,
   });
   const activeEmployees = employees.filter((e) => e.is_active);

@@ -1,19 +1,17 @@
-// 单元检查：「全部按照勾选」的共用判断 byTick（lib/by-tick.ts，Annie 2026-10-30 置顶 10c）。node checks/headless/by-tick-unit.mjs
+// 单元检查：共用判断 byTick（lib/by-tick.ts）。只看勾（Annie 2026-10-31「只看勾，不兜底」，2026-11-01「动手」）。node checks/headless/by-tick-unit.mjs
 import { byTick } from "../../lib/by-tick.ts";
 
-const perms = (active, codes) => ({ active, canAny: (cs) => cs.some((c) => codes.includes(c)) });
+// usePermissions 的样子：读到了（active）只认列表；读不到（active=false）员工照旧不藏。
+const perms = (active, codes) => ({ active, canAny: (cs) => !active || cs.some((c) => codes.includes(c)) });
 const cases = [
   // [说明, perms, codes, opts, 应得]
-  ["开关开着、没勾 ⇒ 看不到", perms(true, []), "settings.pickup", { legacy: false, superAdmin: false }, false],
-  ["开关开着、勾了 ⇒ 看得到", perms(true, ["settings.pickup"]), "settings.pickup", { legacy: false, superAdmin: false }, true],
-  ["开关开着、admin 没勾 ⇒ 也看不到", perms(true, []), "settings.pickup", { legacy: true, superAdmin: false }, false],
-  ["开关开着、勾了的不是 admin ⇒ 看得到", perms(true, ["settings.pickup"]), "settings.pickup", { legacy: false, superAdmin: false }, true],
-  ["Super Admin ⇒ 一律看得到（开关开着、没勾）", perms(true, []), "settings.pickup", { legacy: false, superAdmin: true }, true],
-  ["Super Admin ⇒ 一律看得到（开关关着）", perms(false, []), "settings.pickup", { legacy: false, superAdmin: true }, true],
-  ["开关关着 ⇒ 照旧：admin 看得到", perms(false, []), "settings.pickup", { legacy: true, superAdmin: false }, true],
-  ["开关关着 ⇒ 照旧：不是 admin 看不到（勾了也一样）", perms(false, ["settings.pickup"]), "settings.pickup", { legacy: false, superAdmin: false }, false],
-  ["几个码任一勾了就行", perms(true, ["manifests.edit"]), ["dispatch.edit", "manifests.edit"], { legacy: false, superAdmin: false }, true],
-  ["几个码都没勾 ⇒ 看不到", perms(true, ["dispatch.view"]), ["dispatch.edit", "manifests.edit"], { legacy: true, superAdmin: false }, false],
+  ["没勾 ⇒ 看不到", perms(true, []), "settings.pickup", { superAdmin: false }, false],
+  ["勾了 ⇒ 看得到", perms(true, ["settings.pickup"]), "settings.pickup", { superAdmin: false }, true],
+  ["勾的是别的项 ⇒ 看不到", perms(true, ["settings.vehicles"]), "settings.pickup", { superAdmin: false }, false],
+  ["Super Admin ⇒ 一律看得到", perms(true, []), "settings.pickup", { superAdmin: true }, true],
+  ["权限读不到 ⇒ 员工照旧不藏（后端照样挡）", perms(false, []), "settings.pickup", { superAdmin: false }, true],
+  ["几个码任一勾了就行", perms(true, ["manifests.edit"]), ["dispatch.edit", "manifests.edit"], { superAdmin: false }, true],
+  ["几个码都没勾 ⇒ 看不到", perms(true, ["dispatch.view"]), ["dispatch.edit", "manifests.edit"], { superAdmin: false }, false],
 ];
 let bad = 0;
 for (const [name, p, codes, opts, want] of cases) {

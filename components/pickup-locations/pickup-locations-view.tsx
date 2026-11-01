@@ -122,7 +122,6 @@ export function PickupLocationsView() {
         // 只有 admin 能管接客点（后端也会 403）。
         if (
           !byTick(tickPermsRef.current, "settings.pickup", {
-            legacy: me.is_admin,
             superAdmin: !!me.is_superadmin,
           })
         ) {

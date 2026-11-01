@@ -1575,8 +1575,10 @@ async function runTicks() {
     ["开关开着、员工只勾 schedule.edit ⇒ 能改；不能加人（还要 team.staff_add）、不能发布", "staff", true, ["schedule.edit"], true, false, false],
     ["开关开着、admin 没勾 ⇒ 都不能", "admin", true, [], false, false, false],
     ["Super Admin 没勾 ⇒ 都能", "superadmin", true, [], true, true, true],
-    ["开关关着、主管 ⇒ 照旧都能", "supervisor", false, [], true, true, true],
-    ["开关关着、员工勾了 ⇒ 照旧都不能", "staff", false, ALL, false, false, false],
+    // 只看勾（Annie 2026-11-01「动手」）：前端不读开关、不按角色兜底，只认 /api/me/permissions 回的列表。
+    ["开关关着、主管没勾 ⇒ 也都不能（不兜底）", "supervisor", false, [], false, false, false],
+    ["开关关着、员工勾了 ⇒ 都能（只看勾）", "staff", false, ALL, true, true, true],
+    ["员工勾 edit + publish（同 ZZTest）⇒ 能改、能发布；不能加人", "staff", false, ["schedule.edit", "schedule.publish"], true, false, true],
   ];
   for (const [name, role, switchOn, codes, edit, add, publish] of CASES) {
     await ctl({ fail401: false, rulesMissing: false, changesLocked: false, inactiveEmployee: 0, role, meName: "", tick: { switchOn, codes: [...BASE, ...codes] } });

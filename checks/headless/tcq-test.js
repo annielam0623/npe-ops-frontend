@@ -223,8 +223,9 @@ async function run() {
   await ctl({ role: "staff" });
   await open(ITEM, READY);
   check("staff：没有 Rate card settings 链接，其余照常", await evaluate("return ![...document.querySelectorAll('a')].some(a => a.getAttribute('href') === '/settings/transfer-charter') && !!$btn('Generate quote');"));
-  await open(`${APP}/settings/transfer-charter`, "document.querySelector('main') && $txt().includes('Admin access required')");
-  check("staff 打开设置：Admin access required", await evaluate("return $txt().includes('Admin access required');"));
+  // 只看勾（2026-11-01）：没有 quotation.rates_edit ⇒ 门口拦（You don't have access to this page.）。
+  await open(`${APP}/settings/transfer-charter`, "document.querySelector('[data-no-access]')");
+  check("staff 打开设置：没有 quotation.rates_edit ⇒ 门口拦住", await evaluate("return !!document.querySelector('[data-no-access]');"));
   await ctl({ role: "admin" });
 
   // ── Settings → Transfer & Charter ──
@@ -386,8 +387,9 @@ async function runTicks() {
     ["开关开着、员工勾了 quotation.rates_edit ⇒ 有链接", "staff", true, ["quotation.rates_edit"], true],
     ["开关开着、admin 没勾 ⇒ 也没有", "admin", true, [], false],
     ["Super Admin 没勾 ⇒ 有", "superadmin", true, [], true],
-    ["开关关着、admin ⇒ 照旧有", "admin", false, [], true],
-    ["开关关着、员工勾了 ⇒ 照旧没有", "staff", false, ["quotation.rates_edit"], false],
+    // 只看勾（Annie 2026-11-01「动手」）：不按角色兜底、不读开关。
+    ["开关关着、admin 没勾 ⇒ 没有（不兜底）", "admin", false, [], false],
+    ["开关关着、员工勾了 ⇒ 有（只看勾）", "staff", false, ["quotation.rates_edit"], true],
   ];
   for (const [name, role, switchOn, codes, link] of CASES) {
     await ctl({ unauth: false, role, tick: { switchOn, codes: [...BASE, ...codes] } });

@@ -85,7 +85,6 @@ export function TeamsView() {
         // staff 不去拉列表（后端也会 403）。
         if (
           !byTick(tickPermsRef.current, "settings.users", {
-            legacy: me.is_admin,
             superAdmin: !!me.is_superadmin,
           })
         ) {

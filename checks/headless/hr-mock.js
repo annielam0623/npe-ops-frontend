@@ -1,5 +1,6 @@
 // 模拟后端：Settings → Human Resource。控制：POST /__ctl；GET /__log。
 const http = require("http");
+const { permsBody } = require("./role-standard");
 const ctl = { fail401: false, staff: false, supervisor: false, writeForbidden: false, prefMissing: false, schedule: false, bulkErr: false, fail500: false, samsaraDup: false, importFail: false };
 const log = [];
 const blank = {
@@ -56,6 +57,8 @@ http.createServer(async (req, res) => {
   // 全部按照勾选（置顶 10c）：ctl.tick = { switchOn, codes } 时回员工权限总开关和我的勾；没有 tick 照旧（接口 404 = 开关关着）。
   if (ctl.tick && p === "/api/settings/dashboard-widgets") return send(res, 200, { readable: true, widgets: [{ key: "staff_permissions", label: "Staff permissions (ops gating)", visibility: ctl.tick.switchOn ? "staff" : "super_admin_only", default: "super_admin_only", visible_to_me: !!ctl.tick.switchOn }] });
   if (ctl.tick && p === "/api/me/permissions") return send(res, 200, { is_superadmin: false, permissions: ctl.tick.codes.map((code) => ({ code, module: code.split(".")[0], wired: true })), default_home: "/dashboard" });
+  // 只看勾（2026-11-01）：没设 tick 时按角色标准回。
+  if (p === "/api/me/permissions") return send(res, 200, permsBody(ctl.superadmin ? "superadmin" : ctl.staff ? "staff" : ctl.supervisor ? "supervisor" : "admin"));
   if (p === "/api/me") return send(res, 200, { id: 1, username: "zztest", display_name: "ZZ Test", initials: "ZT", role: ctl.superadmin ? "superadmin" : ctl.staff ? "staff" : ctl.supervisor ? "supervisor" : "admin", is_admin: !ctl.staff && !ctl.supervisor, is_superadmin: !!ctl.superadmin, is_supervisor: !ctl.staff });
   if (p === "/api/user-prefs/hr_list_layout") {
     if (ctl.prefMissing) return send(res, 404, { detail: "Unknown preference key" });

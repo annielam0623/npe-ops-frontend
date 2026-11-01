@@ -45,6 +45,7 @@ import {
   useAskUnsaved,
   useBlockSave,
 } from "@/components/products/unsaved";
+import { useTick } from "@/lib/use-tick";
 import type {
   ManifestExtra,
   ManifestSectionKind,
@@ -257,6 +258,9 @@ function GroupEditor({
   onFail: (e: unknown) => void;
   focusUnmatchedKey?: string | null;
 }) {
+  // 7 Days Forecast 那几项（开团日 / 停团日 / 座位上限）：后端 8 个写接口是 settings.forecast（64 a987105a，原 require_admin），
+  // 没勾就不出（只看勾，Annie 2026-11-01「动手」）；整块 Bus Manifest setup 照旧 admin（manifest-setup 接口按角色）。
+  const canForecast = useTick("settings.forecast");
   const otherSettingsRef = useRef<HTMLDetailsElement>(null);
   useEffect(() => {
     if (focusUnmatchedKey && otherSettingsRef.current) {
@@ -1307,13 +1311,15 @@ function GroupEditor({
                 </div>
               </MapField>
 
-              <ForecastSetupFields
-                manifestId={group.id}
-                field={field}
-                onStart={onStart}
-                onFail={onFail}
-                focusUnmatchedKey={focusUnmatchedKey}
-              />
+              {canForecast ? (
+                <ForecastSetupFields
+                  manifestId={group.id}
+                  field={field}
+                  onStart={onStart}
+                  onFail={onFail}
+                  focusUnmatchedKey={focusUnmatchedKey}
+                />
+              ) : null}
             </div>
           </details>
         </div>

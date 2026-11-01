@@ -3,6 +3,7 @@
 // Role comes from cookie "session=<role>"; no cookie => 401 JSON.
 import http from "node:http";
 import fs from "node:fs";
+import roleStandard from "./role-standard.js";
 
 import { fileURLToPath } from "node:url";
 const LOG = process.env.MOCK_LOG || fileURLToPath(new URL("./mock.log", import.meta.url));
@@ -40,6 +41,8 @@ const server = http.createServer(async (req, res) => {
   if (!r) return send(res, 401, { detail: "Authentication required" });
   const isAdmin = r === "admin" || r === "superadmin";
 
+  // 只看勾（2026-11-01）：按角色标准回。
+  if (req.method === "GET" && url.pathname === "/api/me/permissions") return send(res, 200, roleStandard.permsBody(r));
   if (req.method === "GET" && url.pathname === "/api/me") {
     return send(res, 200, { id: 1, username: r, display_name: r, initials: "XX", role: r, is_admin: isAdmin, is_superadmin: r === "superadmin" });
   }

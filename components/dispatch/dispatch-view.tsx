@@ -280,7 +280,7 @@ export function DispatchView() {
   // 没勾 dispatch.send 就没有 Send 标签；关着照旧全给（legacy）。Super Admin 全给。partner 照旧只看、不发。
   const isSuperAdmin = usePageVisibility().isSuperAdmin;
   const tick = (code: string) =>
-    byTick(perms, code, { legacy: true, superAdmin: isSuperAdmin });
+    byTick(perms, code, { superAdmin: isSuperAdmin });
   const viewOnly =
     perms.partnerLacks("dispatch.edit") || !tick("dispatch.edit");
   const canSend = !perms.partnerLacks("dispatch.send") && tick("dispatch.send");

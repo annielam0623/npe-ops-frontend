@@ -2,6 +2,7 @@
 // 前提：mock 在 8799，next dev 在 3198（API_PROXY_TARGET 和 LEGACY 都指向 mock）。
 const { spawn } = require("child_process");
 const path = require("path");
+const { STANDARD } = require("./role-standard");
 
 const CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe";
 const APP = process.env.APP_URL || "http://localhost:3198";
@@ -390,16 +391,18 @@ async function run() {
   check("加载失败：显示后端原因和 Retry", await evaluate("return document.body.textContent.includes('misconfigured') && [...document.querySelectorAll('button')].some(b => b.textContent === 'Retry');"));
   await ctl({ fail500: false, staff: true });
   await goto(`${APP}/settings/hr`);
-  await waitFor("document.body.textContent.includes('No access')");
-  check("staff：No access（不是 Admin access required）", await evaluate("return document.body.textContent.includes('No access') && !document.body.textContent.includes('Edit list');"));
+  // 只看勾（2026-11-01）：没有 settings.hr.view ⇒ 门口拦（You don't have access to this page.）。
+  await waitFor("document.querySelector('[data-no-access]')");
+  check("staff：没有 settings.hr.view ⇒ 门口拦住、没有 Edit list", await evaluate("return !!document.querySelector('[data-no-access]') && !document.body.textContent.includes('Edit list');"));
 
   // 主管（supervisor）：能看所有字段，也能改（Annie 2026-10-17）；后端写接口还只给 admin 时，页面给友好提示。
-  await ctl({ staff: false, supervisor: true, writeForbidden: true });
+  // 只看勾（2026-11-01）：主管标准里只有 settings.hr.view；这里当作 Super Admin 给他特批了 settings.hr.edit、开关对他开着。
+  await ctl({ staff: false, supervisor: true, writeForbidden: true, tick: { switchOn: true, codes: [...STANDARD.supervisor, "settings.hr.edit"] } });
   await goto(`${APP}/settings/hr`);
   await waitFor("document.body.textContent.includes('People —')");
   await helpers();
   check(
-    "主管：看得到名单，也有 Add person / Edit list / Export / Import / 行尾 Edit",
+    "主管（特批了 settings.hr.edit）：看得到名单，也有 Add person / Edit list / Export / Import / 行尾 Edit",
     await evaluate(`
       const t = [...document.querySelectorAll('button')].map(b => b.textContent.trim());
       return document.body.textContent.includes('Alice Driver')
@@ -429,7 +432,7 @@ async function run() {
     `),
   );
   check("切到 Schedule example 时 People 表藏起来", await evaluate("return [...document.querySelectorAll('div[hidden]')].some(d => d.textContent.includes('People —'));"));
-  await ctl({ supervisor: false });
+  await ctl({ supervisor: false, tick: null });
   await goto(`${APP}/settings/hr`);
   await waitFor("document.body.textContent.includes('People —')");
   check("admin：仍有 Add person / Edit list / Export / Import", await evaluate(`
@@ -450,7 +453,7 @@ main().catch((e) => {
 });
 
 // ── 全部按照勾选（Annie 2026-10-30 置顶 10c）B 类：Human Resource 的改（Add person / Edit list）按 settings.hr.edit ──
-// 看这一页照旧按角色（主管及以上，canSeeHr），所以「员工」只能测开关关着时照旧看不到。
+// 只看勾（2026-11-01）：看这一页 = settings.hr.view，改 = settings.hr.edit。
 async function runTicks() {
   const VIEW = ["dashboard.view", "settings.hr.view"];
   const CASES = [
@@ -459,8 +462,9 @@ async function runTicks() {
     ["开关开着、主管勾了 settings.hr.edit ⇒ 能改", { supervisor: true }, true, [...VIEW, "settings.hr.edit"], true],
     ["开关开着、admin 没勾 ⇒ 也不能改", {}, true, VIEW, false],
     ["Super Admin 没勾 ⇒ 能改", { superadmin: true }, true, VIEW, true],
-    ["开关关着、主管 ⇒ 照旧能改", { supervisor: true }, false, [], true],
-    ["开关关着、员工勾了 ⇒ 照旧不能改（这一页只给主管及以上）", { staff: true }, false, [...VIEW, "settings.hr.edit"], false],
+    // 只看勾（Annie 2026-11-01「动手」）：看 = settings.hr.view、改 = settings.hr.edit，不按角色兜底。
+    ["开关关着、主管没勾 settings.hr.edit ⇒ 不能改（不兜底）", { supervisor: true }, false, VIEW, false],
+    ["开关关着、员工勾了 hr.view + hr.edit ⇒ 能改（只看勾）", { staff: true }, false, [...VIEW, "settings.hr.edit"], true],
   ];
   for (const [name, who, switchOn, codes, edit] of CASES) {
     await ctl({ fail401: false, staff: false, supervisor: false, superadmin: false, ...who, tick: { switchOn, codes } });

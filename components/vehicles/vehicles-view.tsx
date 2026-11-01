@@ -167,7 +167,6 @@ export function VehiclesView() {
         if (signal.aborted) return;
         if (
           !byTick(tickPermsRef.current, "settings.vehicles", {
-            legacy: me.is_admin,
             superAdmin: !!me.is_superadmin,
           })
         ) {

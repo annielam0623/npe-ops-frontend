@@ -186,7 +186,6 @@ export function AutoSendView() {
         // 只对 Super Admin 开放（Annie 2026-10-24，后端 GET/PUT 对其他人 403）：不是就不请求接口。
         if (
           !byTick(tickPermsRef.current, "settings.auto_send", {
-            legacy: !!me.is_superadmin,
             superAdmin: !!me.is_superadmin,
           })
         ) {

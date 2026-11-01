@@ -1,6 +1,7 @@
 // 模拟后端：Daily Operation Report（形状按后端设计稿 §3 / §11，2026-10-24；最终样例出来后核对字段名）。
 // 控制：POST /__ctl {supervisor, superadmin, partner, tick: {switchOn, codes}, putFail, visible, widgets404, reports403, notifyOff, notifyError, noUpdates, reset}；GET /__log。
 const http = require("http");
+const { permsBody } = require("./role-standard");
 
 const ctl = { supervisor: true, superadmin: false, putFail: false, visible: true, widgets404: false, reports403: false, notifyOff: true, notifyError: false };
 const log = [];
@@ -76,6 +77,9 @@ http.createServer(async (req, res) => {
 
   if (ctl.tick && p === "/api/me/permissions")
     return send(res, 200, { is_superadmin: false, permissions: ctl.tick.codes.map((code) => ({ code, module: code.split(".")[0], wired: true })), default_home: "/dashboard" });
+  // 只看勾（2026-11-01）：没设 tick 时按角色标准回（partner 不在这里回，照旧 404 = 什么都不给）。
+  if (p === "/api/me/permissions" && !ctl.partner)
+    return send(res, 200, permsBody(ctl.superadmin ? "superadmin" : ctl.supervisor ? "supervisor" : "staff"));
   if (p === "/api/me")
     return send(res, 200, { id: 8, username: "lizzie", display_name: "Lizzie", initials: "L", role: ctl.partner ? "partner" : ctl.supervisor ? "supervisor" : "staff", is_admin: ctl.superadmin, is_superadmin: ctl.superadmin, is_supervisor: ctl.supervisor });
 

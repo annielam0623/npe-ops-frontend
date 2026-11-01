@@ -28,10 +28,9 @@ export function useReportEditor(me: CurrentUser | null): ReportEditor {
   return {
     partner: perms.partnerView,
     all: byTick(perms, "report.edit", {
-      legacy: !!(me?.is_supervisor || me?.is_admin),
       superAdmin,
     }),
-    own: byTick(perms, "report.view", { legacy: true, superAdmin }),
+    own: byTick(perms, "report.view", { superAdmin }),
     username: me?.username ?? "",
   };
 }

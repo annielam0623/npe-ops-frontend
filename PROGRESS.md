@@ -8,6 +8,26 @@
 
 
 
+## 2026-11-01 凌晨 权限「只看勾」（`task/perm-ticks-only`，工作窗口 09，主窗口 98 派）—— 已合 main
+- **Annie 原话**：10-31 在 64 窗口定「只看勾，不兜底」；11-01 凌晨主窗口 98 转「动手」（98 问「两件里动手哪件」，Annie 选「两件都动手」，其一就是权限只看勾）。
+  取代 10-31 晚的「勾了 OR role」（分支 `task/perm-tick-or-role` aa8d053，**没合、作废**）。后端 64 规则已上 main（a987105a）。
+- **规则**（64）：除 Super Admin 外，前端只照 `GET /api/me/permissions` 回的列表（后端已算好：角色标准内的勾 + 特批开关对他开着时的特批勾），
+  不叠角色、不读总开关 `staff_permissions`；Super Admin 全显示；partner 照旧（勾 ∩ 只读白名单）。后端还按角色挡的接口前端照旧按角色。
+- **改了什么**：
+  - `lib/by-tick.ts` 去掉 `legacy`，`byTick(perms, codes, { superAdmin })`；`lib/use-tick.ts` 去掉 legacy 参数；所有调用处去掉 `legacy:`。
+  - `lib/staff-permissions.ts`：除 Super Admin 外都读 `/api/me/permissions`（不再看总开关），`ready` 等它读完；读失败员工照旧不藏（后端照样挡）、partner 什么都不给。
+    `/settings/users`、`/settings/team` 改成不按勾拦（null）：后端 /api/users/* 照角色 admin、/api/team/* 只有 SA，页面自己按 is_admin 挡。
+  - 侧栏 Settings（`nav/app-frame.tsx`）：有权限码的页只按勾；没有码、后端按角色的（Team、Notifications、Driver Quick Replies、Supplier……）照旧 `canSeeSettingsItem`。
+  - HR：打开 = settings.hr.view、改 = settings.hr.edit（删了 `canSeeHr` / `canEditHr`）。⚠️ 主管的角色标准里**没有** settings.hr.edit ⇒ 主管默认只能看 HR、不能改，要 Super Admin 特批 + 开关。
+  - Products：Bus Manifest setup 整块照旧 admin（manifest-setup 接口 require_admin）；里面的 7 Days Forecast 几项另按 settings.forecast（`manifest-setup-panel.tsx`）。
+  - 排班：读停用员工按 schedule.edit；+ Add employee = team.staff_add 且 schedule.edit；Publish anyway 照旧 admin / SA。
+  - Workspace：Rate card 链接 = quotation.rates_edit（去掉 isAdmin 传参）。
+  - 没勾的页面门口统一显示「You don't have access to this page.」（PermissionGate），不再走到各页自己的「Admin access required」。
+- **没做（等 Annie 另答）**：题 A / B / C（Work Sheet 只读、Farm out 导出、Manifest 两个导出键）、Team 页标「特批」。
+- **检查**：tsc 无错、eslint 0 错误（1 条旧警告）、build 过；by-tick-unit 7/7；headless 48 套全过（as 69、dr 88、hr 62、tcq 86、teams 54、perm 54、sch 305、nav 32、dor 75、da 440 等）。
+  模拟后端新增 `checks/headless/role-standard.js`（照抄后端 ROLE_STANDARD），sch / hr / dor / nav / tcq / teams / as / dr 的 mock 默认按角色标准回 `/api/me/permissions`；
+  旧预期「开关关着照旧按角色」全部改成「只看勾」。
+
 ## 2026-10-31 Dispatch Tour bus 选今天的 Shuttle 上车点（`task/dispatch-shuttle-hint`，工作窗口 91，主窗口 98）—— Annie「动手」，已做
 - Annie 在 91 窗口原话：「动手」（题都定了：样子 1；Schedule check 那条要）。preview https://claude.ai/artifact/BewNcepgfaJMDPDMvo2Pdz v3。
 - 做法：Dispatch 每次读 Step 1 团卡片后，按有客人的巴士团读当天 Bus manifest（`GET /api/dispatch/manifest`），把 kind outbound / inbound 的节人数加起来（车上的 + 没上车的；Farm out 的不算）。这个团有 Shuttle 客人、团里哪台车（不算 Farm out 车）都还没有 Shuttle 站（Pickup Locations 没勾 Tour bus 的点）⇒

@@ -14,7 +14,6 @@ import { CenteredPage } from "@/components/ui/centered-page";
 import { DARK_PRIMARY_BUTTON_CLASS } from "@/components/ui/buttons";
 import { plex } from "@/components/ui/dark-page";
 import { describeError, isStatus } from "@/lib/api-errors";
-import { fetchCurrentUser } from "@/lib/auth-api";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
 import { cn } from "@/lib/utils";
 import {
@@ -44,7 +43,6 @@ type View =
       item: WorkspaceItem;
       statuses: WorkspaceStatus[];
       colleagues: WorkspaceColleague[];
-      isAdmin: boolean;
     };
 
 const FIELD =
@@ -75,16 +73,13 @@ export function WorkspaceItemView({ id }: { id: number }) {
       fetchItem(id, signal),
       fetchStatuses(signal),
       fetchColleagues(signal),
-      // 只用来决定显不显示「Rate card settings →」（设置页 admin 才进得去）；拿不到当作不是 admin。
-      fetchCurrentUser(signal).catch(() => null),
     ])
-      .then(([item, statuses, colleagues, me]) =>
+      .then(([item, statuses, colleagues]) =>
         setView({
           kind: "ready",
           item,
           statuses,
           colleagues,
-          isAdmin: !!me?.is_admin,
         }),
       )
       .catch((error) => {
@@ -128,7 +123,6 @@ export function WorkspaceItemView({ id }: { id: number }) {
             item={view.item}
             statuses={view.statuses}
             colleagues={view.colleagues}
-            isAdmin={view.isAdmin}
             onItem={(item) =>
               setView((v) => (v.kind === "ready" ? { ...v, item } : v))
             }
@@ -169,14 +163,12 @@ function Ready({
   item,
   statuses,
   colleagues,
-  isAdmin,
   onItem,
   onUnauthorized,
 }: {
   item: WorkspaceItem;
   statuses: WorkspaceStatus[];
   colleagues: WorkspaceColleague[];
-  isAdmin: boolean;
   onItem: (item: WorkspaceItem) => void;
   onUnauthorized: () => void;
 }) {
@@ -386,7 +378,6 @@ function Ready({
       {item.destination_code === "tcq" ? (
         <TcqReview
           item={item}
-          isAdmin={isAdmin}
           onItem={onItem}
           onUnauthorized={onUnauthorized}
         />

@@ -250,7 +250,6 @@ export function ContentStudioView() {
         const user = await fetchCurrentUser(controller.signal);
         if (
           !byTick(tickPermsRef.current, "settings.content", {
-            legacy: user.is_admin,
             superAdmin: !!user.is_superadmin,
           })
         ) {

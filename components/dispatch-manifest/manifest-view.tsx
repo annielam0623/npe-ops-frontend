@@ -284,7 +284,6 @@ export function ManifestView() {
   const viewOnly =
     perms.partnerLacks("manifests.edit") ||
     !byTick(perms, ["dispatch.edit", "manifests.edit"], {
-      legacy: true,
       superAdmin: isSuperAdmin,
     });
   const canPrint = !viewOnly || !perms.partnerLacks("dispatch.view");

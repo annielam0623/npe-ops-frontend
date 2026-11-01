@@ -8,20 +8,6 @@ export { byTick, type TickPerms } from "@/lib/by-tick";
  */
 type PermissionUser = Pick<CurrentUser, "is_admin" | "is_supervisor">;
 
-/** Human Resource：supervisor 及以上能看，所有字段（Annie 2026-10-17：内部系统，不脱敏）。 */
-export function canSeeHr(me: PermissionUser): boolean {
-  return me.is_admin || me.is_supervisor === true;
-}
-
-/**
- * Human Resource 的增删改、批量改、导入、导出：主管也能改（Annie 2026-10-17：「主管在 HR 里能改」）。
- * 开关 staff_permissions 关着时的旧规矩；开着时 HR 页按 settings.hr.edit 的勾（byTick，置顶 10c）。后端写接口要 settings.hr.edit，
- * 没勾的人点了会 403，页面用 `describeHrWriteError` 给友好提示。
- */
-export function canEditHr(me: PermissionUser): boolean {
-  return canSeeHr(me);
-}
-
 /** HR 写操作出错时的文字：被后端拒绝（403）给友好提示，其余错误照旧用后端原话。 */
 export function describeHrWriteError(error: unknown): string {
   if (isStatus(error, 403)) {
@@ -30,7 +16,11 @@ export function describeHrWriteError(error: unknown): string {
   return describeError(error);
 }
 
-/** 侧栏 Settings 组：admin 看全部；主管只看到标了 `supervisorVisible` 的项（目前只有 Human Resource）。 */
+/**
+ * 侧栏 Settings 组里**后端还按角色挡**的页（Team、Notifications、Quick Replies、Supplier……）：admin 看全部；
+ * 主管只看到标了 `supervisorVisible` 的项。有权限码的页（lib/staff-permissions.ts ROUTE_PERMISSIONS）只按勾，不走这里
+ * （只看勾，Annie 2026-11-01「动手」；HR 看 settings.hr.view、改 settings.hr.edit）。
+ */
 export function canSeeSettingsItem(
   me: PermissionUser,
   item: { supervisorVisible?: boolean },

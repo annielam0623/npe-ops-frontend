@@ -150,14 +150,16 @@ const PAGES = [
   ["/settings/teams", "settings.users", "/api/admin/teams"],
   ["/settings/auto-send", "settings.auto_send", "/api/settings/auto-send"],
 ];
+// 只看勾（Annie 2026-10-31「只看勾，不兜底」，2026-11-01「动手」）：/api/me/permissions 回的是后端算好的生效列表，
+// 前端不叠角色、不读总开关。「勾了」= 生效列表里有这一项。
 // [说明, role, switchOn, 勾了自己那一项?, 应该放行?]
 const CASES = [
-  ["开关开着、员工没勾 ⇒ 挡住", "staff", true, false, false],
-  ["开关开着、员工勾了 ⇒ 放行", "staff", true, true, true],
-  ["开关开着、admin 没勾 ⇒ 也挡住", "admin", true, false, false],
-  ["Super Admin 没勾 ⇒ 放行", "superadmin", true, false, true],
-  ["开关关着、admin ⇒ 照旧放行", "admin", false, false, true],
-  ["开关关着、员工勾了 ⇒ 照旧挡住（不是 admin）", "staff", false, true, false],
+  ["员工没勾 ⇒ 挡住", "staff", false, false, false],
+  ["员工勾了 ⇒ 放行", "staff", false, true, true],
+  ["admin 没勾 ⇒ 也挡住（不再按角色兜底）", "admin", false, false, false],
+  ["admin 勾了 ⇒ 放行", "admin", false, true, true],
+  ["Super Admin 没勾 ⇒ 放行", "superadmin", false, false, true],
+  ["开关开着也一样：员工没勾 ⇒ 挡住（前端不读开关）", "staff", true, false, false],
 ];
 
 async function loads(page, api, allowed) {
@@ -175,8 +177,7 @@ async function loads(page, api, allowed) {
 async function run() {
   for (const [name, role, switchOn, ticked, allowed] of CASES) {
     for (const [page, code, api] of PAGES) {
-      // Auto Send 开关关着时照旧只给 Super Admin（今天的规矩）：admin 也挡住。
-      const want = page === "/settings/auto-send" && !switchOn && role === "admin" ? false : allowed;
+      const want = allowed;
       // 每页勾的只有自己那一项，外加 dashboard.view（别的页不放行，免得把「没勾」测成「勾了别的」）。
       await ctl({ role, switchOn, codes: ["dashboard.view", ...(ticked ? [code] : [])] });
       const got = await loads(page, api, want);

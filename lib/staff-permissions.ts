@@ -10,8 +10,9 @@ import { usePageVisibility } from "@/lib/page-visibility";
  * https://claude.ai/artifact/AmaVXWDo7joP2RfRPfhAQr 说「动手」，Q1–Q8 按建议）。
  *
  * - 数据：后端 `GET /api/me/permissions` → 我在 Settings › Team 被勾了哪些项（Super Admin 返回全部）。
- * - 总开关：`/api/settings/dashboard-widgets` 的 `staff_permissions`（默认 super_admin_only = 实际关，
- *   Super Admin 本来就看全部）。对我 visible_to_me=true 才按勾藏；关着、读不到、权限接口出错都照旧（不藏）。
+ * - 只看勾（Annie 2026-10-31「只看勾，不兜底」，2026-11-01「动手」；后端 64 a987105a）：除 Super Admin 外一律按这份列表藏，
+ *   不叠角色、不读总开关 staff_permissions——后端回的已经是生效的那份（角色标准内的勾 + 开关对他开着时的特批勾）。
+ *   读不到 / 出错：员工照旧不藏（后端照样挡），partner 什么都不给看。
  * - 一律按勾藏，不看 `wired`（Q4 A）：批次之间入口不会忽隐忽现。
  * - 外部账号（`/api/me` 的 role = "partner"，例如 CCL，Annie 2026-10-26 选方案 B）：不管总开关，一律按勾；
  *   权限读不到就什么都不给看。
@@ -80,9 +81,10 @@ const ROUTE_PERMISSIONS: readonly (readonly [
   ["/settings/farm-out-timetable", ["settings.farm_out"]],
   ["/settings/vehicles", ["settings.vehicles"]],
   ["/settings/auto-send", ["settings.auto_send"]],
-  ["/settings/users", ["settings.users"]],
-  // 合并后的 Team 页（原来的 Users）：同 settings.users。
-  ["/settings/team", ["settings.users"]],
+  // 合并后的 Team 页（原来的 Users）：后端 /api/users/* 照角色 require_admin、/api/team/* 只有 Super Admin（64 2026-11-01），
+  // 不按勾拦，页面自己按 is_admin 挡。
+  ["/settings/users", null],
+  ["/settings/team", null],
   ["/settings/teams", ["settings.users"]],
   ["/settings/hr", ["settings.hr.view"]],
   ["/settings/transfer-charter", ["quotation.rates_edit"]],
@@ -227,32 +229,30 @@ const PARTNER_HOME = "/dashboard";
 
 /**
  * 员工的客人对话也按 messages.view / reply 的勾（主窗口 ad 2026-10-27：先确认 37 个员工都勾了再开）。
- * true = 员工也按勾（staff_permissions 总开关对他开着时；关着照旧全给）。false = 员工照旧，只有 partner 按勾。
+ * true = 员工也按勾（只看勾以后一律按勾）。false = 员工照旧，只有 partner 按勾。
  */
 const STAFF_MESSAGES_BY_TICK = true;
 
 export function usePermissions(): Permissions {
   const vis = usePageVisibility();
   const isPartner = vis.me?.role === "partner";
-  const switchOn =
-    vis.loaded &&
-    !vis.isSuperAdmin &&
-    (isPartner || vis.visible("staff_permissions"));
+  // 只看勾：除 Super Admin 外都读（不再看总开关）。
+  const loadTicks = vis.loaded && !vis.isSuperAdmin;
   const [snap, setSnap] = useState(snapshot);
   useEffect(() => {
-    if (!switchOn) return;
+    if (!loadTicks) return;
     const listener = () => setSnap(snapshot);
     listeners.add(listener);
     void ensureLoaded().then(listener);
     return () => {
       listeners.delete(listener);
     };
-  }, [switchOn]);
+  }, [loadTicks]);
 
-  const ready = vis.loaded && (!switchOn || snap.loaded);
+  const ready = vis.loaded && (!loadTicks || snap.loaded);
   // 读失败：员工照旧（不藏）；partner 什么都不给看（codes 是空的）。
   const active =
-    switchOn && snap.loaded && (snap.ok ? !snap.isSuperAdmin : isPartner);
+    loadTicks && snap.loaded && (snap.ok ? !snap.isSuperAdmin : isPartner);
   const can = (code: string) => !active || snap.codes.has(code);
   const canAny = (codes: readonly string[]) => codes.some(can);
   const partnerView = isPartner && !vis.isSuperAdmin;

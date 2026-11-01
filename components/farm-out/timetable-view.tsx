@@ -128,7 +128,6 @@ export function TimetableView({ partnerId: fixedId }: { partnerId: number }) {
         if (controller.signal.aborted) return;
         if (
           !byTick(tickPermsRef.current, "settings.farm_out", {
-            legacy: me.is_admin,
             superAdmin: !!me.is_superadmin,
           })
         ) {

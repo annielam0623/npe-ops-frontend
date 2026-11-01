@@ -1,6 +1,7 @@
 // 模拟后端：Staff Schedule（阶段二，拖拽排班版）。控制：POST /__ctl {role}；GET /__log。
 // role: "staff" | "supervisor" | "admin" | "superadmin"（默认 supervisor，方便直接测排班）。
 const http = require("http");
+const { permsBody } = require("./role-standard");
 // phase2: true ⇒ 二期字段（备注 note / 休假 time_off / 班次默认时间）和接口都开（POST /__ctl {phase2:true}）。
 const ctl = { fail401: false, role: "supervisor", meName: "", rulesMissing: false, phase2: false };
 let timeOff = []; // {id, employee_id, date, kind, note}
@@ -362,6 +363,8 @@ http
     // 全部按照勾选（置顶 10c）：ctl.tick = { switchOn, codes } 时回员工权限总开关和我的勾；没有 tick 照旧（接口 404 = 开关关着）。
     if (ctl.tick && p === "/api/settings/dashboard-widgets") return send(res, 200, { readable: true, widgets: [{ key: "staff_permissions", label: "Staff permissions (ops gating)", visibility: ctl.tick.switchOn ? "staff" : "super_admin_only", default: "super_admin_only", visible_to_me: !!ctl.tick.switchOn }] });
     if (ctl.tick && p === "/api/me/permissions") return send(res, 200, { is_superadmin: false, permissions: ctl.tick.codes.map((code) => ({ code, module: code.split(".")[0], wired: true })), default_home: "/dashboard" });
+    // 只看勾（2026-11-01）：没设 tick 时按角色标准回（同后端开关关着、标准内全勾）。
+    if (p === "/api/me/permissions") return send(res, 200, permsBody(ctl.role));
     if (p === "/api/me") return send(res, 200, meFor(ctl.role));
 
     // ── 排班按周编辑占用（Annie 2026-10-19「动手改才提示」；后端排班还没有这组接口，形状照 Dispatch 的 edit-lock）──

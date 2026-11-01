@@ -212,7 +212,6 @@ export function PartnersView() {
         // 只有 admin 能管合作公司（后端也会 403）。
         if (
           !byTick(tickPermsRef.current, "settings.farm_out", {
-            legacy: me.is_admin,
             superAdmin: !!me.is_superadmin,
           })
         ) {
