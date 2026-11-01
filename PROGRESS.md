@@ -9072,7 +9072,7 @@ Email / SMS 标签、★、状态下拉（改期只读、Cancel 选项）、确�
   - **后端 64 给的控件 ↔ 权限码清单**（2026-10-31，按 464ee553 实际路由依赖；原则：后端查哪个码前端就看哪个码，后端还按角色的前端也照角色，否则错拦 / 403）：
     - 前端只看 `GET /api/me/permissions` 的列表（后端已把总开关算进去：开关对某人开 = 他的勾全算；关 = 只算角色标准内的勾，标准在 `GET /api/team/catalog` 的 `role_standards`）；前端不用读总开关来判断，Team 页可选标「特批、开关关着不生效」（新样子，要 preview）。
     - 侧栏 Settings：content-studio → settings.content；pickup-locations → settings.pickup；products → settings.products；farm-out-partners / timetable → settings.farm_out；vehicles → settings.vehicles；auto-send → settings.auto_send；hr → settings.hr.view；transfer-charter → quotation.rates_edit；schedule 设置 → settings.schedule。
-      `/settings/users`（旧页，/api/users/* require_admin）**照角色 admin / SA**；`/settings/team`（/api/team/* require_superadmin）**只有 SA**；`/settings/teams` 写 = settings.users，GET /api/teams 任何员工。
+      Team 页（`/settings/team`，Users 已于 10-28 并进来，`/settings/users` 只是跳转）：打开 + 账号名单 / 重置密码 / 改名 / 停用走 /api/users/*（require_admin）**照角色 admin / SA**；改权限 / 职责 / 团队走 /api/team/*（require_superadmin）**只有 SA**（Annie 10-31 提醒「users已经跟team合并了」）；`/settings/teams` 写 = settings.users，GET /api/teams 任何员工。
     - HR：看 settings.hr.view、改 settings.hr.edit。
     - Products：7 Days Forecast 设置块 = 读 settings.forecast 或 settings.products、8 个写接口 settings.forecast（464ee553 新改，原 require_admin）；**Bus Manifest setup 块仍 require_admin，照 is_admin**。
     - 照旧按角色 / SA、不改：/notifications（PUT、action-log 只 SA）、Quick replies（require_admin）、Supplier restaurant（require_admin）、Workspace settings 页（require_admin）、Staff Schedule 的 Publish anyway（allow_gaps，admin / SA，`schedule.py:394`）、dashboard-widgets 的「admin」可见性值。
