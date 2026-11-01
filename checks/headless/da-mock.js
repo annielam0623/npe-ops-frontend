@@ -584,6 +584,11 @@ http.createServer(async (req, res) => {
       { id: 22, manifest_id: 3, tour: "West Rim Bus Tour", order_number: "SG3", kind: "changed", detail: "pax 2 → 3; pickup 6:30 AM TI → 6:40 AM Bellagio", old_bus: "B", relay: "", created_at: "2026-10-10T04:05:00+00:00" },
     ] });
   }
+  // ctl.shuttlePax：这个团当天 Bus manifest 的 Shuttle outbound 人数（另有 1 位 inbound 没上车）；默认不给 = 404，排车页不出 Shuttle 提示。
+  if (p === "/api/dispatch/manifest") {
+    if (!ctl.shuttlePax || q.tour !== "3") return send(res, 404, { detail: "mock: not found" });
+    return send(res, 200, { run_date: q.date, blocks: [{ sections: [{ kind: "tour", pax: 9 }, { kind: "outbound", pax: ctl.shuttlePax }] }], unplaced: { sections: [{ kind: "inbound", pax: 1 }] } });
+  }
   if (p === "/api/dispatch/manifests") {
     const card = (id, title) => ({ manifest_id: id, title, uploaded: false, guests: 0, pax: 0, buses: 0, not_on_bus: 0, lunch: null, uploaded_at: null, uploaded_by: null, mode: "single" });
     // 2026-10-09（Check the bus 改版 cb3887d）：3 车够但还有人没分到车 ⇒ Seat guests；4 要多开一台车 ⇒ Check the bus 实心。

@@ -8,7 +8,38 @@
 
 
 
-## 2026-10-31 Dispatch Tour bus 选酒店处加「今天 Shuttle 的 pick up」（派给工作窗口 91，主窗口 98）—— 做 preview，等 Annie 动手
+## 2026-10-31 Antelope Bus Manifest：三个 canyon 的顺序可选、同一页 / 分页，默认 Lower → Upper → X（Annie 在 91 窗口提，**只记录，还没 preview、没动手**）
+- Annie 原话：「在羚羊谷的bus manifest里的是否可以给staff多一个选项，可以选择三个canyon的顺序，选择排在同一页或者两页，然后默认的排序改为lower upper X」
+- 91 只读核对后端：Bus Manifest 的节顺序由后端 `tour_manifest.py` `_sections()` 定（按各节最早接客时间，同时间按 CSV 先后；注释写明不跟 Manifest setup 的 section_order，G198「不统一，各看各的」）；分页 `paginate()` / `ROWS_PER_PAGE_BY_VERSION` 也在后端，打印 / Excel 由后端出。⇒ 改默认顺序、可选顺序、同一页 / 分页都要后端（排序 + 分页 + 存选择），前端只加控件。
+- 下一步：91 出 preview（待问：设置管一天一团 / 一台车 / 长期默认；「两页」是每个 canyon 各一页，还是 Lower + Upper 一页、X 一页），经 98 问 Annie。
+
+## 2026-10-31 Dispatch Tour bus 选今天的 Shuttle 上车点（`task/dispatch-shuttle-hint`，工作窗口 91，主窗口 98）—— Annie「动手」，已做
+- Annie 在 91 窗口原话：「动手」（题都定了：样子 1；Schedule check 那条要）。preview https://claude.ai/artifact/BewNcepgfaJMDPDMvo2Pdz v3。
+- 做法：Dispatch 每次读 Step 1 团卡片后，按有客人的巴士团读当天 Bus manifest（`GET /api/dispatch/manifest`），把 kind outbound / inbound 的节人数加起来（车上的 + 没上车的；Farm out 的不算）。这个团有 Shuttle 客人、团里哪台车（不算 Farm out 车）都还没有 Shuttle 站（Pickup Locations 没勾 Tour bus 的点）⇒
+  - 第一台车「Add hotel」右边同一行：琥珀字 #b45309 半粗 + 指向下拉的小箭头、无框「Select today’s shuttle pick-up here · N shuttle guests」（人数灰字）；
+  - 右栏 Schedule check 一条「<团名>: shuttle pick-up not chosen」+ 小字「N shuttle guests · pick a Shuttle stop on any bus of this tour.」，Fix 跳第一台车、光标在 Add hotel；不拦保存。
+  - 任一台车选了 Shuttle 站，提示和那条一起消失（第二台车选也算）。
+  - 读不到 Bus manifest、后端没带 is_tour_bus 时都不提醒。
+- 文件：`components/dispatch/config.ts`（analyze 加 shuttlePax 参数、shuttleAsk）、`vehicle-row.tsx`（ShuttleHint）、`dispatch-view.tsx`（读 Shuttle 人数）；检查 `checks/headless/da-mock.js`（ctl.shuttlePax）、`da-test.js`（Shuttle 一组 8 项）。
+- 不需要后端。
+#### 原置顶 40. Dispatch Tour bus 选今天的 Shuttle 上车点（91，preview https://claude.ai/artifact/BewNcepgfaJMDPDMvo2Pdz ，2026-10-31 问）
+- 已定：第二台车选也算，不拦（Annie「也算的意思是不阻拦」）。
+- v2 重查（91，同一链接最上面「v2 · 重查后」）：Products 的 Bus Manifest setup 用 manifest_section_kind 把 Shuttle 归到团（后端 manifest_setup.py:28-29）；Main manifest 和 Bus manifest 里 Shuttle 是团的 outbound / inbound 节，带人数、bus_label（tour_manifest.py:750-790；前端 fetchManifest）。⇒ 团有 Shuttle 节、人数 > 0 才在这个团第一台车提示；任一台车上有 Shuttle 站就算选好；第二台车选不拦。不需要后端。
+- v2 剩两题：(1) 样子 A 第一台车 Add hotel 换琥珀细框「Select today's shuttle pick-up…」+ 小字（推荐）／B 旁边琥珀小标签；(2) Schedule check 列「<团>: shuttle pick-up not chosen (N shuttle guests)」+ Fix：A 要（推荐，不拦保存）／B 不要。
+- Annie 对 (1) 原话（附截图，Add hotel 下拉右边整片空着）：「这么宽的地方，难道不可以放在选择框的右边么」⇒ 91 出 v3：下拉原样，提示放在下拉右边同一行。(2) Annie 答「要」（Schedule check 列一条 + Fix，不拦保存）。还没动手。
+- v3（同一链接最上面绿框）：提示放下拉右边，只在第一台车、团有 Shuttle 客人且没选时出现。剩 (1) 样子：样子 1 琥珀字 + 指向下拉的小箭头、无框（推荐）／样子 2 浅琥珀底细框填满右边空处。
+- Annie 答 (1)「1」⇒ 样子 1。全部题已定，等「动手」。
+- ⚠️ 91 第一版调查 Annie 判不合格（原话：「91的结论是不对的，在main manifest里把shuttle算在bus tour里，在product里也是归在各自共享的bus里，dispatch在bus manifest里也是可以分辨出shuttle并且进行分类和排列，所以这个调查是不合格的」）。下面 (a)–(e) 和「需要后端」作废，91 重查后重出题目。
+- ~~查清：Dispatch 只读 Tour bus 团，不知道当天有没有 Shuttle 客人、搭哪个团~~（错）；选的 Shuttle 站就是车上普通站（location_ids），不用新字段。
+- (a) 怎么知道有 Shuttle：A 后端从 Main manifest 带当天 Shuttle 客人数，有才提示（推荐）／B 每天都提示／C Settings 标团。
+- (b) 第一台车是哪个团：A 后端告诉哪个团（推荐，后端给不了先用 B）／B 最上面团的第一台车／C 每个团都提示。
+- (c) 什么算选好：A 任意车上有一个 Shuttle 站就算（推荐）／B 必须指定站。
+- (d) Schedule check 列「Shuttle pick-up not chosen」+ Fix：A 要（推荐，不拦保存）／B 不要。
+- (e) 样子：A 第一台车 Add hotel 换成琥珀细框「Select today's shuttle pick-up…」+ 小字（推荐）／B 旁边琥珀小标签。
+- 需要后端（选 A 时）：Dispatch 当天数据加 shuttle 摘要 {pax, manifest_ids}，从 Main manifest 的 Shuttle 组算。
+
+
+## 2026-10-31 Dispatch Tour bus 选酒店处加「今天 Shuttle 的 pick up」（派给工作窗口 91，主窗口 98）—— 做 preview（已完成，见上一节）
 - Annie 原话：「在dipatch的tour bus 选择酒店那里加上请选择今天shuttle的pick up here，如果这一天这台车有shuttle的话，永远默认在第一台车选择，如果staff在第二台车选择的话也算」；补充「也算的意思是不阻拦」。
 - 理解（待 91 核对代码后出 preview 确认）：当天 Tour bus 车有 Shuttle 时，在车的选酒店处提示 staff 选今天 Shuttle 的接站点；默认放在第一台车；staff 在第二台车选也允许，不报错、不拦。
 - 待核对：怎么判断「这一天这台车有 shuttle」（数据从 Main manifest 取）；选的 Shuttle 点存在哪里、要不要后端。
@@ -107,22 +138,6 @@
 >    - 别把员工邮箱、密码写进仓库。
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
-
-### 40. Dispatch Tour bus 选今天的 Shuttle 上车点（91，preview https://claude.ai/artifact/BewNcepgfaJMDPDMvo2Pdz ，2026-10-31 问）
-- 已定：第二台车选也算，不拦（Annie「也算的意思是不阻拦」）。
-- v2 重查（91，同一链接最上面「v2 · 重查后」）：Products 的 Bus Manifest setup 用 manifest_section_kind 把 Shuttle 归到团（后端 manifest_setup.py:28-29）；Main manifest 和 Bus manifest 里 Shuttle 是团的 outbound / inbound 节，带人数、bus_label（tour_manifest.py:750-790；前端 fetchManifest）。⇒ 团有 Shuttle 节、人数 > 0 才在这个团第一台车提示；任一台车上有 Shuttle 站就算选好；第二台车选不拦。不需要后端。
-- v2 剩两题：(1) 样子 A 第一台车 Add hotel 换琥珀细框「Select today's shuttle pick-up…」+ 小字（推荐）／B 旁边琥珀小标签；(2) Schedule check 列「<团>: shuttle pick-up not chosen (N shuttle guests)」+ Fix：A 要（推荐，不拦保存）／B 不要。
-- Annie 对 (1) 原话（附截图，Add hotel 下拉右边整片空着）：「这么宽的地方，难道不可以放在选择框的右边么」⇒ 91 出 v3：下拉原样，提示放在下拉右边同一行。(2) Annie 答「要」（Schedule check 列一条 + Fix，不拦保存）。还没动手。
-- v3（同一链接最上面绿框）：提示放下拉右边，只在第一台车、团有 Shuttle 客人且没选时出现。剩 (1) 样子：样子 1 琥珀字 + 指向下拉的小箭头、无框（推荐）／样子 2 浅琥珀底细框填满右边空处。
-- Annie 答 (1)「1」⇒ 样子 1。全部题已定，等「动手」。
-- ⚠️ 91 第一版调查 Annie 判不合格（原话：「91的结论是不对的，在main manifest里把shuttle算在bus tour里，在product里也是归在各自共享的bus里，dispatch在bus manifest里也是可以分辨出shuttle并且进行分类和排列，所以这个调查是不合格的」）。下面 (a)–(e) 和「需要后端」作废，91 重查后重出题目。
-- ~~查清：Dispatch 只读 Tour bus 团，不知道当天有没有 Shuttle 客人、搭哪个团~~（错）；选的 Shuttle 站就是车上普通站（location_ids），不用新字段。
-- (a) 怎么知道有 Shuttle：A 后端从 Main manifest 带当天 Shuttle 客人数，有才提示（推荐）／B 每天都提示／C Settings 标团。
-- (b) 第一台车是哪个团：A 后端告诉哪个团（推荐，后端给不了先用 B）／B 最上面团的第一台车／C 每个团都提示。
-- (c) 什么算选好：A 任意车上有一个 Shuttle 站就算（推荐）／B 必须指定站。
-- (d) Schedule check 列「Shuttle pick-up not chosen」+ Fix：A 要（推荐，不拦保存）／B 不要。
-- (e) 样子：A 第一台车 Add hotel 换成琥珀细框「Select today's shuttle pick-up…」+ 小字（推荐）／B 旁边琥珀小标签。
-- 需要后端（选 A 时）：Dispatch 当天数据加 shuttle 摘要 {pax, manifest_ids}，从 Main manifest 的 Shuttle 组算。
 
 > 规矩见 CLAUDE.md「问 Annie 要确认的事：给完整内容，并一直置顶」（2026-10-30）。每条都要能单独看懂。
 

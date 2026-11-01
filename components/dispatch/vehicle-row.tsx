@@ -490,6 +490,37 @@ function StopSelect({
 }
 
 /**
+ * 「Add hotel」右边的 Shuttle 上车点提示（Annie 2026-10-31 选样子 1：琥珀字 + 指向下拉的小箭头，无框；
+ * preview https://claude.ai/artifact/BewNcepgfaJMDPDMvo2Pdz v3）。
+ */
+function ShuttleHint({ pax }: { pax: number }) {
+  return (
+    <span
+      data-shuttle-hint
+      className="inline-flex items-center gap-[7px] text-[12.5px] font-semibold text-[#b45309]"
+    >
+      <svg
+        width="14"
+        height="14"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="#d97706"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        aria-hidden="true"
+        className="flex-none"
+      >
+        <path d="M15 18l-6-6 6-6" />
+      </svg>
+      Select today’s shuttle pick-up here
+      <span className="font-medium text-[#6b7280]">
+        · {pax} shuttle guest{pax === 1 ? "" : "s"}
+      </span>
+    </span>
+  );
+}
+
+/**
  * 加酒店的下拉分两组（Annie 2026-10-30「las vegas的放上面，然后用shuttle pick up这行字隔开，shuttle的站点排下面…都是按照A-Z排序」，
  * preview https://claude.ai/artifact/Bud9mmZivp9ddK5cAd5QLV ，(b)「按照las vegas和其他地方来分…其他地方一律算shuttle」）：
  * Pickup Locations 勾了 Tour bus 的 = Las Vegas，放上面；其余（含 null）放「Shuttle pick up」下面；两组各自 A–Z。
@@ -863,6 +894,8 @@ export interface RowProps {
   orders?: DispatchPrivateOrder[];
   /** 这台车所在单元的保存状态：给了就在 Edit 旁边出 Save（Annie 2026-10-29，存整个单元）。 */
   save?: UnitSaveState;
+  /** 这个团还没选 Shuttle 上车点、这是第一台车：值是 Shuttle 客人数，「Add hotel」右边出提示。 */
+  shuttleAsk?: number;
 }
 
 /** fieldset 去掉浏览器默认的边框、内边距和 min-width（不然窄屏会撑破格子）。 */
@@ -1164,6 +1197,7 @@ export function VanBlock({
   farmOutOff,
   orders,
   save,
+  shuttleAsk,
 }: RowProps) {
   const viewOnly = useViewOnly();
   const row = rows[idx];
@@ -1394,14 +1428,32 @@ export function VanBlock({
                 Usual stops filled in
               </span>
             ) : null}
-            <StopSelect
-              rows={rows}
-              idx={idx}
-              L={L}
-              onAdd={(id) =>
-                onChange({ ...row, location_ids: [...row.location_ids, id] })
-              }
-            />
+            {shuttleAsk && !viewOnly ? (
+              // 提示放在下拉右边同一行（Annie「这么宽的地方，难道不可以放在选择框的右边么」）。
+              <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1">
+                <StopSelect
+                  rows={rows}
+                  idx={idx}
+                  L={L}
+                  onAdd={(id) =>
+                    onChange({
+                      ...row,
+                      location_ids: [...row.location_ids, id],
+                    })
+                  }
+                />
+                <ShuttleHint pax={shuttleAsk} />
+              </div>
+            ) : (
+              <StopSelect
+                rows={rows}
+                idx={idx}
+                L={L}
+                onAdd={(id) =>
+                  onChange({ ...row, location_ids: [...row.location_ids, id] })
+                }
+              />
+            )}
             <Chips
               row={row}
               L={L}
