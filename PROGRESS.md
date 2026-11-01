@@ -159,6 +159,7 @@
 - (3)「新的一页」管哪：A 打印照勾换页，页面上在那里画虚线写「New page」，Excel 不变（推荐）／B 只管打印、页面不显示。
 - (4) 谁能改：A 同 Version，有 Bus Manifest 编辑权的 staff 都能改，记 Action Log（推荐）／B 只有 Admin / Super Admin。
 - 不加开关（Bus Manifest 上的选项，不是没跑过的新业务）。要后端，等 Annie 答完、说「动手」再派。
+- 11-01 Annie 原话：「同意全部推荐。但是在start a new page here,  应该用更直观的说明」⇒ (1)–(4) 都定 A。91 出 v2（同一链接最上面绿框）剩一题：两节中间那行怎么写——写法 1「UPPER prints [On the same page | On a new page]」二选一（推荐）／写法 2 打勾「Print CANYON X on a new page」／写法 3 小框按 PAGE 1 / PAGE 2 分组，「Move … to the next page ↓」「Join page 1 ↑」。还没动手。
 
 > 规矩见 CLAUDE.md「问 Annie 要确认的事：给完整内容，并一直置顶」（2026-10-30）。每条都要能单独看懂。
 
