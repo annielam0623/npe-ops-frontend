@@ -112,6 +112,7 @@
 - v2 重查（91，同一链接最上面「v2 · 重查后」）：Products 的 Bus Manifest setup 用 manifest_section_kind 把 Shuttle 归到团（后端 manifest_setup.py:28-29）；Main manifest 和 Bus manifest 里 Shuttle 是团的 outbound / inbound 节，带人数、bus_label（tour_manifest.py:750-790；前端 fetchManifest）。⇒ 团有 Shuttle 节、人数 > 0 才在这个团第一台车提示；任一台车上有 Shuttle 站就算选好；第二台车选不拦。不需要后端。
 - v2 剩两题：(1) 样子 A 第一台车 Add hotel 换琥珀细框「Select today's shuttle pick-up…」+ 小字（推荐）／B 旁边琥珀小标签；(2) Schedule check 列「<团>: shuttle pick-up not chosen (N shuttle guests)」+ Fix：A 要（推荐，不拦保存）／B 不要。
 - Annie 对 (1) 原话（附截图，Add hotel 下拉右边整片空着）：「这么宽的地方，难道不可以放在选择框的右边么」⇒ 91 出 v3：下拉原样，提示放在下拉右边同一行。(2) Annie 答「要」（Schedule check 列一条 + Fix，不拦保存）。还没动手。
+- v3（同一链接最上面绿框）：提示放下拉右边，只在第一台车、团有 Shuttle 客人且没选时出现。剩 (1) 样子：样子 1 琥珀字 + 指向下拉的小箭头、无框（推荐）／样子 2 浅琥珀底细框填满右边空处。
 - ⚠️ 91 第一版调查 Annie 判不合格（原话：「91的结论是不对的，在main manifest里把shuttle算在bus tour里，在product里也是归在各自共享的bus里，dispatch在bus manifest里也是可以分辨出shuttle并且进行分类和排列，所以这个调查是不合格的」）。下面 (a)–(e) 和「需要后端」作废，91 重查后重出题目。
 - ~~查清：Dispatch 只读 Tour bus 团，不知道当天有没有 Shuttle 客人、搭哪个团~~（错）；选的 Shuttle 站就是车上普通站（location_ids），不用新字段。
 - (a) 怎么知道有 Shuttle：A 后端从 Main manifest 带当天 Shuttle 客人数，有才提示（推荐）／B 每天都提示／C Settings 标团。
