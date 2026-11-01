@@ -343,9 +343,19 @@ async function run() {
   await evaluate("document.querySelector('button[aria-label=\"Next day\"]').click();");
   await waitFor("document.querySelector('section[aria-label=CCL]')");
   check("存过的一天有改版：琥珀条列 Changed / Added，不动页面", await evaluate(`const t = document.querySelector('section[aria-label=CCL]').textContent; return t.includes('CCL posted a change “NPE 10/7: Revision” · 2 changes') && t.includes('Changed Morning Relay: driver FREDDY → GIA; vehicle 768 → 1328') && t.includes('Added Private Tour: Bruce W, vehicle 2056') && !(${waiting});`));
+  // 步骤框下面的 CCL 通知（Annie 2026-10-31 动手，样子 1）：有没 Apply 的改版才出现；Not now 后还在；Review changes ↓ 把卡打开滚过去
+  check("CCL 通知：在 ① Assign / ② Send 步骤框正下方，写 CCL posted 2 changes for <日期>，琥珀描边键 Review changes ↓（不是蓝色）", await evaluate("const n = document.querySelector('[data-ccl-notice]'); const steps = document.getElementById('dispatch-steps'); const b = n && [...n.querySelectorAll('button')].find(x => x.textContent.includes('Review changes')); return !!n && n.textContent.includes('CCL posted 2 changes for') && n.getBoundingClientRect().top >= steps.getBoundingClientRect().bottom - 1 && n.getBoundingClientRect().top - steps.getBoundingClientRect().bottom < 40 && !!b && getComputedStyle(b).backgroundColor !== 'rgb(59, 130, 246)';"));
+  await evaluate("$btn('Not now', document.querySelector('section[aria-label=CCL]')).click();");
+  await sleep(200);
+  check("点 Not now：Apply 卡收起，步骤框下面的通知还在", await evaluate("return !document.querySelector('section[aria-label=CCL]') && !!document.querySelector('[data-ccl-notice]');"));
+  await evaluate("[...document.querySelector('[data-ccl-notice]').querySelectorAll('button')].find(x => x.textContent.includes('Review changes')).click();");
+  await waitFor("document.querySelector('section[aria-label=CCL]')");
+  await sleep(700);
+  check("点 Review changes ↓：Apply 卡重新打开、滚到眼前、黄框闪", await evaluate("const c = document.getElementById('ccl-apply-card'); const r = c.getBoundingClientRect(); return !!c.querySelector('section[aria-label=CCL]') && r.top < innerHeight && r.bottom > 0 && getComputedStyle(c).boxShadow !== 'none';"));
   check("都读懂了（改版没有读不懂的行）：CCL 原文默认收起", await evaluate("const s = document.querySelector('section[aria-label=CCL]'); return !s.querySelector('pre') && !!$btn('View CCL’s message', s);"));
   await evaluate("$btn('Apply changes').click();");
   await sleep(200);
+  check("Apply 以后步骤框下面的 CCL 通知不见了", await evaluate("return !document.querySelector('[data-ccl-notice]');"));
   check("Apply changes：只改司机 / 车、加车、酒店留着、算未保存", await evaluate(`return ${vrow(0)}.querySelector('[data-f=driver]').value === '2' && ${vrow(0)}.querySelector('[data-f=vehicle]').value === '12' && ${vrow(0)}.textContent.includes('Excalibur') && document.querySelectorAll('.vrow').length === 2 && ${waiting};`));
   // 停手 3 秒前就换天：先问；Leave without saving 不存
   before = (await mockLog()).length;
@@ -536,7 +546,7 @@ async function run() {
   await waitFor(dialog);
   check("再发一次：确认框说上次已发、会再收到", await evaluate(`return ${dialog}.textContent.includes('They will get it again.');`));
   await evaluate(`$btn('Cancel', ${dialog}).click();`);
-  check("页面说明按步骤写；右栏：保存不发、manifest / Send 都读存好的排车", await evaluate("const t = document.body.textContent.replace(/\\s+/g, ' '); return t.includes('Assign the buses, drivers and hotels, then Send: driver texts first, then guests’ morning pickup texts.') && t.includes('Saving does not text guests or drivers. Changes save by themselves; tour manifests and the Send tab use the saved schedule.') && !t.includes('Save schedule');"));
+  check("页面说明按步骤写；右栏：保存不发、manifest / Send 都读存好的排车", await evaluate("const t = document.body.textContent.replace(/\\s+/g, ' '); return t.includes('Assign the buses, drivers and hotels, then Send: driver texts first, then guests’ morning pickup texts.') && t.includes('Saving does not text guests or drivers. Changes are saved when you press Save; tour manifests and the Send tab use the saved schedule.') && !t.includes('Save schedule');"));
   check("司机的错误只写在 Send to drivers，不写在早班发送那一块", await evaluate(`return !${rp}.querySelector('[role=alert]') || !${rp}.querySelector('[role=alert]').textContent.includes('drivers');`));
 
   // ── Morning Relay 勾选 / Send anyway / 不重复发（后端 G61，2026-10-15）──
@@ -1962,20 +1972,59 @@ async function run() {
     const SH = ["Kanab – Visitor Center", "Page – Lake Powell Blvd", "St George – Main St"];
     await goto(`${APP}/dispatch?date=2026-10-18`);
     await waitFor(sel, 60000);
-    check("Add hotel 没带 is_tour_bus（后端还没上）：照旧不分组、没有 Shuttle pick up", await evaluate(`return !${opts(sel)}.includes('Shuttle pick up');`), await evaluate(`return ${opts(sel)};`));
+    check("Add hotel 没带 is_tour_bus（后端还没上）：照旧不分组、没有 Shuttle Pick up", await evaluate(`return !${opts(sel)}.includes('Shuttle Pick up');`), await evaluate(`return ${opts(sel)};`));
     await ctl({ hotelGroups: true });
     await goto(`${APP}/dispatch?date=2026-10-18`);
     await waitFor(sel, 60000);
-    const got = await evaluate(`return [...${sel}.options].map(o => ({ t: o.text.replace(/ - .*$| \\(also .*\\)$/, ''), x: o.disabled, v: o.value, i: getComputedStyle(o).fontStyle }));`);
-    const div = got.findIndex((o) => o.t === "Shuttle pick up");
+    const got = await evaluate(`return [...${sel}.options].map(o => ({ t: o.text.replace(/ - .*$| \\(also .*\\)$/, ''), x: o.disabled, v: o.value, i: getComputedStyle(o).fontStyle, c: getComputedStyle(o).color, w: getComputedStyle(o).fontWeight }));`);
+    const div = got.findIndex((o) => o.t === "~~~~~ Shuttle Pick up ~~~~~");
     const top = got.slice(1, div).map((o) => o.t);
     const bottom = got.slice(div + 1).map((o) => o.t);
     const az = (xs) => xs.every((x, i) => i === 0 || xs[i - 1].localeCompare(x, "en", { sensitivity: "base" }) <= 0);
     check("Add hotel 分组：Tour bus 的在上面（A–Z、不分大小写）、Shuttle 和没勾的（null）在下面（A–Z）、停用的不列",
       div > 0 && top.every((t) => LV.includes(t)) && bottom.length > 0 && bottom.every((t) => SH.includes(t)) && az(top) && az(bottom) && !got.some((o) => o.t === "Old Motel") && bottom.includes("Kanab – Visitor Center"),
       JSON.stringify(got.map((o) => o.t)));
-    check("分隔行 Shuttle pick up：不能选、没有值、斜体", div > 0 && got[div].x === true && got[div].v === "" && got[div].i === "italic", JSON.stringify(got[div]));
+    check("分隔行「~~~~~ Shuttle Pick up ~~~~~」：不能选、没有值、Save 键的蓝色、半粗、不是斜体（Annie 2026-10-31 选 H）", div > 0 && got[div].x === true && got[div].v === "" && got[div].c === "rgb(59, 130, 246)" && got[div].w === "600" && got[div].i === "normal", JSON.stringify(got[div]));
+    check("正常的酒店名黑字、500；Dispatch 整页常规字 500（Annie「你把页面上400的都改成500」）", got.filter((o, i) => i > 0 && i !== div && !o.x).every((o) => o.c === "rgb(0, 0, 0)" && o.w === "500") && (await evaluate("return getComputedStyle(document.querySelector('main')).fontWeight === '500';")), JSON.stringify(got));
+    // Schedule check「N hotels with no Morning Relay · … vehicle」只算 Las Vegas 的点（Annie 2026-10-31「morning relay只放vegas的酒店，shuttle那些不要放进来」）
+    {
+      const relayIssue = await evaluate("const li = [...document.querySelectorAll('[aria-label=\"Schedule check\"] [aria-label=Issues] > li')].find(l => l.textContent.includes('with no Morning Relay')); if (!li) return null; const b = [...li.querySelectorAll('button')].find(x => x.textContent.startsWith('View ')); if (b) b.click(); return li.textContent;");
+      check("Schedule check 没有 Relay 车的酒店：只列 Las Vegas（aria 在），St George / Page / Kanab 这些 shuttle 站和没归类的都不列", !!relayIssue && relayIssue.includes("aria") && !SH.some((n) => relayIssue.includes(n)), String(relayIssue));
+    }
     await ctl({ hotelGroups: false });
+    await goto("about:blank");
+    await sleep(300);
+  }
+
+  // ── Shuttle 上车点提示（Annie 2026-10-31 动手，preview https://claude.ai/artifact/BewNcepgfaJMDPDMvo2Pdz v3 样子 1 + Schedule check）：
+  //    团当天 Bus manifest 有 Shuttle 客人、哪台车都还没有 Shuttle 站 ⇒ 第一台车「Add hotel」右边琥珀字 + 右栏一条；别的车选了也算 ──
+  {
+    const hint = "document.querySelectorAll('[data-shuttle-hint]')";
+    const issue = "[...document.querySelectorAll('[aria-label=\"Schedule check\"] [aria-label=Issues] > li')].find(l => l.textContent.includes('shuttle pick-up not chosen'))";
+    const load = async () => { await goto(`${APP}/dispatch?date=2026-10-19`); await waitFor("document.querySelector('.vrow')", 60000); await sleep(2000); await helpers(); };
+    await ctl({ hotelGroups: true, shuttlePax: 0 });
+    await load();
+    check("Shuttle：Bus manifest 读不到（404）⇒ 不出提示、右栏没有这条", (await evaluate(`return ${hint}.length;`)) === 0 && !(await evaluate(`return !!${issue};`)));
+    await ctl({ hotelGroups: false, shuttlePax: 6 });
+    await load();
+    check("Shuttle：后端没带 is_tour_bus（分不出 Shuttle 站）⇒ 不出提示", (await evaluate(`return ${hint}.length;`)) === 0 && !(await evaluate(`return !!${issue};`)));
+    await ctl({ hotelGroups: true, shuttlePax: 6 });
+    await load();
+    const h = await evaluate(`const hs = ${hint}; if (hs.length !== 1) return { n: hs.length }; const el = hs[0]; const row = el.closest('.vrow'); const s = getComputedStyle(el); const sel = row.querySelector('[data-f=addstop]'); return { n: 1, idx: row.dataset.idx, text: el.textContent, c: s.color, w: s.fontWeight, box: s.borderTopWidth + '/' + s.backgroundColor, right: el.getBoundingClientRect().left >= sel.getBoundingClientRect().right - 1, sameLine: Math.abs(el.getBoundingClientRect().top + el.offsetHeight / 2 - (sel.getBoundingClientRect().top + sel.offsetHeight / 2)) < 8, svg: !!el.querySelector('svg') };`);
+    check("Shuttle 提示只在第一台车（Bus A）、Add hotel 右边同一行，文字「Select today’s shuttle pick-up here · 7 shuttle guests」（outbound 6 + inbound 1）",
+      h.n === 1 && h.idx === "0" && /^Select today’s shuttle pick-up heres*· 7 shuttle guests$/.test(h.text) && h.right && h.sameLine, JSON.stringify(h));
+    check("Shuttle 提示样子 1：琥珀字（#b45309）半粗、带小箭头、没有框也没有底色", h.c === "rgb(180, 83, 9)" && h.w === "600" && h.svg && h.box === "0px/rgba(0, 0, 0, 0)", JSON.stringify(h));
+    const it = await evaluate(`const li = ${issue}; return li ? li.textContent : null;`);
+    check("Schedule check 一条「West Rim Bus Tour: shuttle pick-up not chosen」+「7 shuttle guests · pick a Shuttle stop on any bus of this tour.」",
+      !!it && it.includes("West Rim Bus Tour: shuttle pick-up not chosen") && it.includes("7 shuttle guests · pick a Shuttle stop on any bus of this tour."), String(it));
+    await evaluate(`window.scrollTo(0, document.body.scrollHeight); ${issue}.querySelector('[data-issue-fix]').click();`);
+    await sleep(900);
+    check("点 Fix ⇒ 跳到第一台车、光标在 Add hotel", await evaluate(`return document.activeElement === ${vrow(0)}.querySelector('[data-f=addstop]');`), await evaluate("return document.activeElement?.outerHTML.slice(0, 80);"));
+    await pick(`${vrow(1)}.querySelector('[data-f=addstop]')`, 104);
+    await sleep(400);
+    check("在第二台车（Bus B）选了 St George – Main St（Shuttle 站）也算 ⇒ 提示和右栏那条都消失、不报错",
+      (await evaluate(`return ${hint}.length;`)) === 0 && !(await evaluate(`return !!${issue};`)) && (await evaluate(`return ${vrow(1)}.textContent.includes('St George');`)));
+    await ctl({ hotelGroups: false, shuttlePax: 0 });
     await goto("about:blank");
     await sleep(300);
   }

@@ -35,6 +35,11 @@ import { tourColorFor } from "@/lib/tour-colors";
 import { cn } from "@/lib/utils";
 import { PageLink } from "@/components/ui/page-link";
 import { useViewOnly, ViewOnly } from "@/components/ui/view-only";
+import {
+  type ActionVerb,
+  ActionLogPanel,
+} from "@/components/action-log/action-log-panel";
+import { fetchActionLog } from "@/lib/action-log";
 import { byTick } from "@/lib/permissions";
 import { usePermissions } from "@/lib/staff-permissions";
 import { usePageVisibility } from "@/lib/page-visibility";
@@ -224,6 +229,18 @@ const FOOTER_LABEL: Record<string, string> = {
  * 一个团、一天的 manifest，照纸本版式（同旧页面 /admin/dispatch/manifest）。
  * 车来自排车页已保存的排车，客人从主 Manifest 同步（G35，打开排车页时）。
  */
+/**
+ * Bus Manifest 的动作名（后端 64 逐个核过的 action 值，2026-10-30）：print / export / apply_upload / sync / seat_move 是一句话的记录
+ * （what = 那句话、label 空）；Special Requirements / Text size / 导游午餐 / Version 都是 update（共用的 Changed）。
+ */
+const MANIFEST_LOG_VERBS: Record<string, ActionVerb> = {
+  print: { label: "Printed", tone: "change" },
+  export: { label: "Downloaded", tone: "change" },
+  apply_upload: { label: "Uploaded", tone: "add" },
+  sync: { label: "Synced", tone: "add" },
+  seat_move: { label: "Moved", tone: "change" },
+};
+
 export function ManifestView() {
   const [params, setParams] = useState<{ date: string; tour: number } | null>(
     null,
@@ -940,6 +957,32 @@ export function ManifestView() {
               {data.gone?.length ? <GoneCard gone={data.gone} /> : null}
 
               {viewOnly ? null : <HowToUse />}
+              {/* 改动记录（Annie 2026-10-30「同意所有推荐。动手」，preview https://claude.ai/artifact/YEgERHNDiL45TCkbzyJisa ）：
+                  页面最下面，同 Dispatch 页那块；只看当前这个团（c）、打印 / 下载也列（a）、能改这页的人才看得到（b）。 */}
+              {viewOnly || !params ? null : (
+                <div className="mt-6" data-manifest-log>
+                  <ActionLogPanel
+                    refreshKey={`${params.date}|${params.tour}|${saveState.kind === "saved" ? saveState.at : ""}`}
+                    reloadOnOpen
+                    onUnauthorized={redirectToLogin}
+                    verbs={MANIFEST_LOG_VERBS}
+                    note={
+                      <>
+                        Changes to the Bus Manifest for <b>{data.tour.name}</b>{" "}
+                        on <b>{data.date_label}</b>. Newest first.
+                      </>
+                    }
+                    load={(before, signal) =>
+                      fetchActionLog(
+                        "/api/dispatch/manifest/action-log",
+                        before,
+                        signal,
+                        { date: params.date, tour: String(params.tour) },
+                      )
+                    }
+                  />
+                </div>
+              )}
               {saveFirst ? (
                 <SaveFirstDialog
                   action={saveFirst.action}

@@ -360,6 +360,8 @@ function confirmNotices() {
   return [
     mk(5, "schedule_confirm_request", "Please confirm your schedule for Oct 25 – Oct 31", "Open the schedule and tap Accept or Change.", 600 * 1000),
     mk(6, "schedule_confirm_declined", "Your requested shift on Mon Oct 26 was declined", "Mon 10/26 Mid was not approved.", 300 * 1000),
+    // 主管收的 Publish again 明细（后端 schedule_notices.py 把逐条改动写进 body）：页面上只写一句、标题显示成 published（Annie 2026-10-31）。
+    mk(9, "schedule_changed", "Schedule edited — week of 2026-10-25", "Jessica — Fri 10/30: Close 11:30 AM – 9:30 PM → Close 1:30 PM – 9:30 PM\nLizzie — Sat 10/31: not scheduled → Mid 10:00 AM – 6:00 PM", 250 * 1000),
     // Daily Operation Report 登记后的通知（后端设计稿 §6.4）：link 去 /daily-report?id=。
     { ...mk(7, "operation_report", "Accident logged: ZZ Bus 3", "Minor scrape in the hotel driveway.", 200 * 1000), ref: { kind: "operation_report", id: 12 }, link: "/daily-report?id=12" },
     // 将来后端加的不认识的类型，字段还缺着（没有 body / link / actions / ref）：面板不能崩，按 title 降级显示。
@@ -451,7 +453,7 @@ http
 
     // 排班块（Dashboard 最底部，整周）：本周（按请求的周）给一份已发布的排班；下下周以后没发布。
     if (p === "/api/settings/schedule") return send(res, 200, { work_window: { start_time: "02:00", end_time: "21:30" }, shift_types: [{ key: "open", label: "Open", sort_order: 1, is_active: true }, { key: "mid", label: "Mid", sort_order: 2, is_active: true }, { key: "close", label: "Close", sort_order: 3, is_active: true }] });
-    if (p === "/api/schedule/employees") return send(res, 200, { employees: [["Veronica", 1], ["Lizzie", 2], ["Nadia", 3], ["Jing", 4], ["Anita", 5]].map(([name, id]) => ({ id, name, email: name.toLowerCase() + "@nationalparkexpress.com", is_active: true })) });
+    if (p === "/api/schedule/employees") return send(res, 200, { employees: [["Veronica", 1], ["Lizzie", 2], ["Nadia", 3], ["Jing", 4], ["Anita", 5]].map(([name, id]) => ({ id, name, email: name.toLowerCase() + "@nationalparkexpress.com", is_active: true })).concat(ctl.testPerson ? [{ id: 7, name: "ZZ Test Person", email: "zztest@example.test", is_active: true, is_test: true }] : []) });
     const wk = /^\/api\/schedule\/weeks\/(\d{4}-\d{2}-\d{2})$/.exec(p);
     if (wk) {
       if (Date.parse(wk[1]) - Date.now() > 8 * 86400000) return send(res, 200, { week_start: wk[1], status: "draft", published_at: null, published_by: null, copied_from: null, slots: [], gaps: [] });
@@ -461,6 +463,8 @@ http
         { id: id++, date, shift_type: "open", start_time: "02:00", end_time: "10:00", employee_id: i % 2 ? 4 : 1 },
         { id: id++, date, shift_type: "mid", start_time: "09:30", end_time: "17:30", employee_id: 2 },
         { id: id++, date, shift_type: "close", start_time: "13:30", end_time: "21:30", employee_id: i % 3 ? 3 : 5 },
+        // ctl.testPerson：测试用的人（is_test，Annie 2026-10-30 选 A）每天一个班；Dashboard 不该出现他。
+        ...(ctl.testPerson ? [{ id: id++, date, shift_type: "mid", start_time: "08:00", end_time: "16:00", employee_id: 7 }] : []),
       ]);
       return send(res, 200, { week_start: wk[1], status: "published", published_at: "2026-10-16T18:00:00+00:00", published_by: 1, copied_from: null, slots, gaps: [] });
     }

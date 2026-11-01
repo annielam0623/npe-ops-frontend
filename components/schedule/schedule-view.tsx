@@ -744,6 +744,8 @@ export function ScheduleView() {
     if (orig) movedFrom.set(orig.id, orig.employee_id);
   }
   const counts = countChanges(draft);
+  // 测试用的人（Annie 2026-10-30 选 A）：不算进空档。
+  const testIds = new Set(employees.filter((e) => e.is_test).map((e) => e.id));
   // 卡片上直接标空档（置顶 17）：这次改动新造成的空档记到造成它的那张卡上，补上就没了。
   const gapNotes =
     readyWeek && derived
@@ -754,6 +756,7 @@ export function ScheduleView() {
           draft,
           settings.work_window,
           laNow,
+          testIds,
         )
       : new Map();
   // 这周被排进时段、但名单里没有邮箱的人：发布时收不到邮件（只是提醒，不拦着发布）。
@@ -763,9 +766,10 @@ export function ScheduleView() {
     .map((e) => e.name);
   // 空档：有没存的改动时照页面上的算，存的时候以后端为准（B9 Q3）。
   // Save 被 409 coverage_gap 拒了：后端列的那几段也并进来（周表列头红点、Day timeline 跟着标），两边算得不一样也不会漏。
+  // 有测试用的人（is_test）时也自己算：他们的班不算覆盖（后端改好以前后端的 gaps 还算着他们）。
   const baseGaps =
-    readyWeek && dirty
-      ? localGaps(weekStart, liveSlots, settings.work_window)
+    readyWeek && (dirty || testIds.size > 0)
+      ? localGaps(weekStart, liveSlots, settings.work_window, testIds)
       : (readyWeek?.gaps ?? []);
   const rejectedGaps =
     dirty && saveState.kind === "error" ? (saveState.gaps ?? []) : [];

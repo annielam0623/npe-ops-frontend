@@ -31,6 +31,12 @@ export interface ScheduleEmployee {
   name: string;
   email: string;
   is_active: boolean;
+  /**
+   * 测试用的人（Annie 2026-10-30「我加了ZZTest和Leon在staff Schedule里用来做测试，不要把这两个人显示在dashbroad里」，选 A）：
+   * 不出现在 Dashboard 的 Today's team 和整周排班里；不算进空档；排班页照常显示、名字旁一个灰色「Test」。通知照发。
+   * 后端 schedule_employees.is_test（57 在做，要迁移）；没带 = 不是。
+   */
+  is_test?: boolean;
 }
 
 /** PUT /api/schedule/employees/{id} 的请求体（supervisor 及以上）：没传的字段不动；email 传空字符串 = 清掉。 */
@@ -38,6 +44,7 @@ export interface ScheduleEmployeeUpdate {
   name?: string;
   email?: string;
   is_active?: boolean;
+  is_test?: boolean;
 }
 
 /** GET /api/schedule/employees 的返回体（包了一层）。 */
