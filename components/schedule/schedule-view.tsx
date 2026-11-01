@@ -1213,6 +1213,19 @@ export function ScheduleView() {
               ? " Publishing with a gap is written in the Action Log."
               : ""}
           </p>
+          {readyWeek?.status === "published" &&
+          !dirty &&
+          (readyWeek.has_unsent_changes ?? unsentWeek === weekStart) ===
+            false ? (
+            // Annie 2026-10-30「那你要提醒发送人这个班一点都没有变啊，不能静默处理」：整周没变，Publish again 照旧能按，先说清楚不会通知谁。
+            <p
+              data-publish-nothing-changed
+              className="mt-3 font-semibold text-[#BA7517] night:text-amber-200"
+            >
+              Nothing has changed since the last publish, so no one will be
+              notified.
+            </p>
+          ) : null}
           {noEmailNames.length > 0 && readyWeek?.status !== "published" ? (
             <p
               data-publish-no-email

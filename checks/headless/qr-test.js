@@ -144,7 +144,7 @@ async function run() {
   check("关掉的一行淡灰、写 Off — drivers don't see it；开关 aria-checked", await evaluate(`return ${rowOf(3)}.hasAttribute('data-off') && ${rowOf(3)}.textContent.includes("Off — drivers don't see it") && ${rowOf(3)}.querySelector('[role=switch]').getAttribute('aria-checked') === 'false' && ${rowOf(1)}.querySelector('[role=switch]').getAttribute('aria-checked') === 'true';`));
   check("What the driver sees：只列开着的", JSON.stringify(await driverSees()) === JSON.stringify(["2 minutes away", "Stay where you are"]), JSON.stringify(await driverSees()));
   check("每行写 x / 80", await evaluate(`return ${rowOf(1)}.textContent.includes('14 / 80');`));
-  check("蓝色只给提交：Add reply（有字时）是蓝的，开关 / ↑↓ / Edit 不是", await evaluate("$setValue(document.getElementById('new-quick-reply'), 'x'); await new Promise(r => setTimeout(r, 100)); const blue = (b) => getComputedStyle(b).backgroundColor === 'rgb(24, 95, 165)'; return blue($btn('Add reply')) && ![...document.querySelectorAll('li[data-reply-id] button')].some(blue);"));
+  check("蓝色只给提交：Add reply（有字时）是蓝的，开关 / ↑↓ / Edit 不是", await evaluate("$setValue(document.getElementById('new-quick-reply'), 'x'); await new Promise(r => setTimeout(r, 100)); const blue = (b) => getComputedStyle(b).backgroundColor === 'rgb(59, 130, 246)'; return blue($btn('Add reply')) && ![...document.querySelectorAll('li[data-reply-id] button')].some(blue);"));
   check("Action Log 收起、在页面最底", await evaluate("const s = [...document.querySelectorAll('main section')].pop(); return s.textContent.includes('Action Log') && !document.querySelector('[data-action-log]');"));
 
   // ── 新加：前端先挡 ──

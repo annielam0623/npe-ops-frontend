@@ -50,7 +50,7 @@ type View =
 const SAVE_BTN =
   "h-9 cursor-pointer rounded-[7px] bg-[#3b82f6] px-5 text-[13px] font-semibold whitespace-nowrap text-white hover:bg-[#2f76e8] disabled:cursor-not-allowed disabled:opacity-60";
 const ADD_BTN =
-  "cursor-pointer rounded-[6px] border border-dashed border-black/30 bg-paper px-2.5 py-[3px] text-[12px] text-[#1a1a1a] hover:bg-[#f5f5f3] disabled:cursor-not-allowed disabled:opacity-50 night:border-white/20 night:bg-white/[.04] night:text-white/80";
+  "cursor-pointer rounded-[6px] border border-[#6b8e74] bg-[#6b8e74] text-white hover:bg-[#5d7d66] px-2.5 py-[3px] text-[12px] font-semibold disabled:cursor-not-allowed disabled:opacity-50";
 const CHIP =
   "inline-flex items-center gap-1 rounded-[6px] border-[0.5px] border-black/20 bg-[#fafaf9] py-0.5 pr-1 pl-2 font-mono text-[12px] text-[#1a1a1a] night:border-white/15 night:bg-white/[.06] night:text-white/85";
 const LABEL = "text-[12px] font-semibold text-[#1a1a1a] night:text-white/85";

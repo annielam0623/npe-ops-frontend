@@ -443,7 +443,13 @@ function StopSelect({
     }
   });
   const option = (l: DispatchDay["locations"][number]) => (
-    <option key={l.id} value={l.id} disabled={taken.has(l.id)}>
+    // 正常的酒店名黑字（Annie 2026-10-31「酒店名字的颜色不要用灰色，换成黑色」「占了的还是发灰」）；被占的照旧浏览器的灰。
+    <option
+      key={l.id}
+      value={l.id}
+      disabled={taken.has(l.id)}
+      className={taken.has(l.id) ? undefined : "text-black"}
+    >
       {l.name}
       {taken.has(l.id) ? ` - ${taken.get(l.id)}` : ""}
       {shared.has(l.id) ? ` (also ${shared.get(l.id)})` : ""}
@@ -471,9 +477,10 @@ function StopSelect({
             value=""
             disabled
             data-stop-divider
-            className="text-[#9ca3af] italic"
+            // Annie 2026-10-31：「~~~~~shuttle Pick up ~~~~~~，用save键的那个颜色」，preview TWJUhJcMkrgzpxigBNNAU6 选 H。
+            className="!font-semibold text-[#3b82f6]"
           >
-            Shuttle pick up
+            ~~~~~ Shuttle Pick up ~~~~~
           </option>
           {shuttle.map(option)}
         </>

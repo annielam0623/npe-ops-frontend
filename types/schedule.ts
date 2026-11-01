@@ -246,6 +246,11 @@ export interface SchedulePublishResult {
   published_by: number;
   /** 这一周之前已经发布过（Publish again）。后端 d2bc2cf：重新发布不发通知，notified 永远是 []。 */
   republished?: boolean;
+  /**
+   * Publish again 时整周一点没变（后端 82：有上次发布的快照，之后谁的班 / 休息都没改、也没有排了班却没通知过的人）⇒ 谁都不通知。
+   * 后端上线前没有这个字段，当 false。
+   */
+  nothing_changed?: boolean;
   /** 发布那一刻的空档（Publish anyway 时非空）。 */
   gaps?: ScheduleGap[];
   /** Publish again 时只有班有变化的员工（后端 G217）；首次发布是这周排了班的人。 */

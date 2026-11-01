@@ -5,6 +5,7 @@ import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import {
   DARK_PRIMARY_BUTTON_CLASS,
   DARK_SECONDARY_BUTTON_CLASS,
+  DARK_ADD_BUTTON_CLASS,
 } from "@/components/ui/buttons";
 import { shiftYmd } from "@/lib/la-date";
 import type { RecentShift } from "@/lib/schedule-recent";
@@ -403,7 +404,10 @@ export function AddShiftDialog({
             <button
               type="submit"
               disabled={!canAdd}
-              className={DARK_PRIMARY_BUTTON_CLASS}
+              // 加班次只是先排在周表上（整周 Save 才存）⇒ 灰绿添加键；Day off 直接存 ⇒ 蓝色提交键。
+              className={
+                isOff ? DARK_PRIMARY_BUTTON_CLASS : DARK_ADD_BUTTON_CLASS
+              }
             >
               {isOff
                 ? days.size > 1

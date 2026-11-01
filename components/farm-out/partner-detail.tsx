@@ -3,13 +3,13 @@
 import { useCallback, useEffect, useState } from "react";
 
 import {
-  BTN_ADD_SMALL_CLASS,
   BTN_DELETE_CLASS,
   BTN_EDIT_CLASS,
   TBODY_CLASS,
   TD_CLASS,
   TH_CLASS,
   TR_CLASS,
+  BTN_ADD_GREEN_SMALL_CLASS,
 } from "@/components/pickup-locations/legacy-ui";
 import { BulkImportButton, StandardImport } from "@/components/ui/bulk-import";
 import { describeError, isStatus } from "@/lib/api-errors";
@@ -317,7 +317,7 @@ export function PartnerDetail({
         <div className="mt-2">
           <button
             type="button"
-            className={BTN_ADD_SMALL_CLASS}
+            className={BTN_ADD_GREEN_SMALL_CLASS}
             onClick={() =>
               setLocations((all) => [
                 ...(all ?? []),

@@ -6,6 +6,7 @@ import type { ActionResult } from "@/components/ui/action-result";
 import {
   DARK_PRIMARY_BUTTON_CLASS,
   DARK_SECONDARY_BUTTON_CLASS,
+  DARK_ADD_BUTTON_CLASS,
 } from "@/components/ui/buttons";
 import type { DayIndex, Rule, RuleType } from "@/lib/schedule-engine";
 import { cn } from "@/lib/utils";
@@ -495,7 +496,7 @@ function Fields({
                     ],
                   })
                 }
-                className={cn(DARK_SECONDARY_BUTTON_CLASS, "w-fit")}
+                className={cn(DARK_ADD_BUTTON_CLASS, "w-fit")}
               >
                 + Add shift
               </button>

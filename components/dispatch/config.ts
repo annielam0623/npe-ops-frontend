@@ -369,7 +369,12 @@ export function analyze(rows: DispatchRow[], L: Lookup): Analysis {
   const byKey = new Map(sections.map((s) => [s.key, s]));
   const blockName = (r: DispatchRow) => byKey.get(secOf(r))?.name || r.shift;
   const covName = (c: string) => byKey.get(c)?.name || "the relay round";
-  const activeLocs = day.locations.filter((l) => l.active !== false);
+  // Morning Relay 只接 Las Vegas 的酒店（Annie 2026-10-31「morning relay只放vegas的酒店，shuttle那些不要放进来」）：
+  // 只算 is_tour_bus === true 的点；后端还没带 is_tour_bus（一个点都没有这个键）时照旧全算。
+  const vegasKnown = day.locations.some((l) => l.is_tour_bus !== undefined);
+  const activeLocs = day.locations.filter(
+    (l) => l.active !== false && (!vegasKnown || l.is_tour_bus === true),
+  );
 
   const issues: RailIssue[] = [];
   const noDrv = rows.flatMap((r, i) => (hasDriver(r) ? [] : [i]));

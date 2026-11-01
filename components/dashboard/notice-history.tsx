@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 
 import {
   formatNoticeWhen,
+  noticeDisplay,
   noticeKindLabel,
   noticeLinkLabel,
 } from "./notice-panel";
@@ -177,6 +178,7 @@ function HistoryRow({
   notice: ApiNotice;
   onGotIt: (notice: ApiNotice) => void;
 }) {
+  const shown = noticeDisplay(notice);
   return (
     <li
       data-history-item={notice.id}
@@ -190,14 +192,14 @@ function HistoryRow({
           notice.is_read ? "bg-[#28a745]" : "bg-[#dc3545]",
         )}
       />
-      <b className="min-w-0 font-semibold">{notice.title}</b>
+      <b className="min-w-0 font-semibold">{shown.title}</b>
       <span className="text-[12px] whitespace-nowrap text-white/75 tabular-nums">
         {formatNoticeWhen(notice.created_at)}
       </span>
       <span className="col-start-2 col-end-4 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-white/70">
         <span>{noticeKindLabel(notice)}</span>
-        {notice.body ? (
-          <span className="whitespace-pre-line">· {notice.body}</span>
+        {shown.body ? (
+          <span className="whitespace-pre-line">· {shown.body}</span>
         ) : null}
         {notice.link ? (
           <PageLink

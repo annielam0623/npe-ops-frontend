@@ -1,5 +1,5 @@
 // 模拟后端：Daily Operation Report（形状按后端设计稿 §3 / §11，2026-10-24；最终样例出来后核对字段名）。
-// 控制：POST /__ctl {supervisor, superadmin, partner, tick: {switchOn, codes}, putFail, visible, widgets404, reports403, notifyOff, notifyError, reset}；GET /__log。
+// 控制：POST /__ctl {supervisor, superadmin, partner, tick: {switchOn, codes}, putFail, visible, widgets404, reports403, notifyOff, notifyError, noUpdates, reset}；GET /__log。
 const http = require("http");
 
 const ctl = { supervisor: true, superadmin: false, putFail: false, visible: true, widgets404: false, reports403: false, notifyOff: true, notifyError: false };
@@ -29,6 +29,15 @@ function seed() {
       created_by: person(9), created_at: "2026-10-22T10:00:00-07:00", updated_at: "2026-10-22T11:00:00-07:00", resolved_at: "2026-10-22T11:00:00-07:00", resolved_by: "jing", details: {} },
   ];
 }
+// Updates（G224）：只能加，从旧到新。
+function seedUpdates() {
+  return [
+    { id: 1, report_id: 1, text: "ZZ Called the hotel, no damage to their gate.", created_at: "2026-10-24T07:30:00-07:00", created_by: person(7) },
+    { id: 2, report_id: 1, text: "ZZ Photos sent to the insurance company.\nWaiting for reply.", created_at: "2026-10-24T09:05:00-07:00", created_by: person(9) },
+  ];
+}
+let updates = seedUpdates();
+let nextUpdateId = 3;
 let reports = seed();
 let nextId = 5;
 const tokens = new Map();
@@ -57,7 +66,7 @@ http.createServer(async (req, res) => {
   if (p === "/__log") return send(res, 200, log);
   if (p === "/__ctl") {
     const body = JSON.parse((await raw(req)) || "{}");
-    if (body.reset) { reports = seed(); nextId = 5; tokens.clear(); log.length = 0; }
+    if (body.reset) { reports = seed(); nextId = 5; updates = seedUpdates(); nextUpdateId = 3; tokens.clear(); log.length = 0; }
     Object.assign(ctl, body, { reset: undefined });
     return send(res, 200, ctl);
   }
@@ -97,7 +106,24 @@ http.createServer(async (req, res) => {
     if (m && req.method === "GET") {
       const r = reports.find((x) => x.id === Number(m[1]));
       if (!r) return send(res, 404, { detail: "That report does not exist." });
-      return send(res, 200, { report: r, history: [{ at: r.created_at, by: "Annie", action: "create", changes: [] }, ...(r.status !== "open" ? [{ at: r.updated_at, by: "Annie", action: "update", changes: [{ field: "status", from: "open", to: r.status }] }] : [])] });
+      const mine = updates.filter((u) => u.report_id === r.id);
+      // 加过 Updates 的，修改记录里多一条 add_update（changes 为空，前端不显示）。
+      const added = mine.map((u) => ({ at: u.created_at, by: u.created_by.display_name, action: "add_update", changes: [] }));
+      return send(res, 200, { report: r, history: [{ at: r.created_at, by: "Annie", action: "create", changes: [] }, ...(r.status !== "open" ? [{ at: r.updated_at, by: "Annie", action: "update", changes: [{ field: "status", from: "open", to: r.status }] }] : []), ...added], ...(ctl.noUpdates ? {} : { updates: mine }) });
+    }
+    const mu = p.match(/^\/api\/operation-reports\/(\d+)\/updates$/);
+    if (mu && req.method === "POST") {
+      const body = JSON.parse((await raw(req)) || "{}");
+      entry.body = body;
+      if (ctl.partner) return send(res, 403, { detail: "Partners can read reports but cannot add updates." });
+      const r = reports.find((x) => x.id === Number(mu[1]));
+      if (!r) return send(res, 404, { detail: "That report does not exist." });
+      const text = typeof body.text === "string" ? body.text.trim() : "";
+      if (!text) return send(res, 400, { detail: "Write the update before saving.", missing: ["text"] });
+      if (text.length > 2000) return send(res, 400, { detail: `The update is ${text.length} characters - the limit is 2000.` });
+      const u = { id: nextUpdateId++, report_id: r.id, text, created_at: "2026-10-24T12:45:00-07:00", created_by: person(8) };
+      updates.push(u);
+      return send(res, 201, { update: u });
     }
     if (m && req.method === "PATCH") {
       const body = JSON.parse(await raw(req));
