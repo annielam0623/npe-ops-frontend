@@ -147,8 +147,18 @@
 - Annie 在 91 窗口原话：「在羚羊谷的bus manifest里的是否可以给staff多一个选项，可以选择三个canyon的顺序，选择排在同一页或者两页，然后默认的排序改为lower upper X」
 - 91 只读查：Bus Manifest 各节顺序由后端 tour_manifest.py _sections() 定（最早接人时间优先，同时间按 CSV 顺序；按 G198 故意不跟 Manifest setup 的 section_order）；分页 paginate()、打印 / Excel 也是后端出。⇒ 改默认顺序、让 staff 选顺序、同页 / 分页都要后端（排序 + 分页 + 存选择），前端只加控件。
 - 91 合完 Shuttle 后出 preview 和题（设置按天 / 按团 / 永久默认；「两页」是三个各一页还是 Lower + Upper 一页、X 一页），交主窗口问 Annie。未动手。
+- 11-01 Annie 在 91 窗口答：「长期默认，第二个由staff来决定」⇒ 设置是这个团的长期默认（每天、每台车都用）；分不分页由 staff 在页面上自己勾。
+- 91 出 preview https://claude.ai/artifact/SuSZPJVnMTUUirXhnpGZ4x ：页头 Version 旁加「Canyon order」键 + 小框（↑↓ 换顺序、两节中间勾「Start a new page here」、Done 白色，整页 Save 才存）；默认 LOWER → UPPER → CANYON X、都不勾。剩 4 题见置顶 41。要后端（存设置 + _sections() 排序 + paginate() 换页 + 读写接口）。未动手。
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
+
+### 41. Bus Manifest：Antelope 三个 canyon 的顺序和分页（91，preview https://claude.ai/artifact/SuSZPJVnMTUUirXhnpGZ4x ，2026-11-01 问）
+- 已定：长期默认；分页 staff 自己定（Annie「长期默认，第二个由staff来决定」）。样子：页头 Version 旁「Canyon order: Lower → Upper → X · 1 page ▾」，点开小框 ↑↓ 换顺序、两节中间勾「Start a new page here」，整页 Save 才存。
+- (1) 哪些团出现：A 团里有两节以上（不算 Shuttle）就出现，今天只有 Antelope（推荐）／B 只给 Antelope。
+- (2) 顺序用在哪：A 页面、打印、Excel、司机页、导游页都照选好的顺序（推荐）／B 只管打印。
+- (3)「新的一页」管哪：A 打印照勾换页，页面上在那里画虚线写「New page」，Excel 不变（推荐）／B 只管打印、页面不显示。
+- (4) 谁能改：A 同 Version，有 Bus Manifest 编辑权的 staff 都能改，记 Action Log（推荐）／B 只有 Admin / Super Admin。
+- 不加开关（Bus Manifest 上的选项，不是没跑过的新业务）。要后端，等 Annie 答完、说「动手」再派。
 
 > 规矩见 CLAUDE.md「问 Annie 要确认的事：给完整内容，并一直置顶」（2026-10-30）。每条都要能单独看懂。
 
