@@ -158,7 +158,7 @@
 - 11-01 Annie 在 91 窗口答：「长期默认，第二个由staff来决定」⇒ 设置是这个团的长期默认（每天、每台车都用）；分不分页由 staff 在页面上自己勾。
 - 91 出 preview https://claude.ai/artifact/SuSZPJVnMTUUirXhnpGZ4x ：页头 Version 旁加「Canyon order」键 + 小框（↑↓ 换顺序、两节中间勾「Start a new page here」、Done 白色，整页 Save 才存）；默认 LOWER → UPPER → CANYON X、都不勾。剩 4 题见置顶 41。要后端（存设置 + _sections() 排序 + paginate() 换页 + 读写接口）。未动手。
 
-## 2026-11-01 Bus Manifest：Canyon order 拖拽（`task/canyon-order`，工作窗口 91，主窗口 98 派）—— **只推分支，等后端 64 task/canyon-order 上 main 再合**
+## 2026-11-01 Bus Manifest：Canyon order 拖拽（`task/canyon-order`，工作窗口 91，主窗口 98 派）—— **11-01 已合 main**（后端 64 ad7cae1c；只读核过：打印 layout 查询参数、下载 layout 表单字段、tour.canyon_sections / canyon_pages、groups[].bus_section_order、PUT bus-section-order → {ok, sections}。合最新 main 后 tsc / build 过、eslint 0 错，mf 225/225、products 225/225、nav 32/32。生产的 Bus Manifest section order 还空着，等 Annie 自己填）
 - Annie「动手」（98 转：「两件都动手」）。之后 Annie 在 57 窗口改定（98 转）：**只管这一次**——拖出来的顺序和分页只管这一次的查看、打印、下载，不存、没有 Save，重开页面回默认；Driver / Guide 页照默认。范围加 Hoover Dam（BUS TOUR / HD RAFT / BOULDER CITY）。默认顺序由 Annie 在 Products › Manifest setup 新格子「Bus Manifest section order」填，没填 = 照旧按最早接客时间。
 - 后端接口（64）：GET manifest 的 tour 带 canyon_sections / canyon_pages（≥2 个 tour 节才带）；打印 GET 参数、Excel 表单字段 `layout` = JSON string[][]；Manifest setup groups[].bus_section_order、PUT groups/{id}/bus-section-order {sections}。
 - 前端：
