@@ -106,6 +106,15 @@
 >    - 写 PROGRESS 插入时先确认行号非空（eb 今天插错过一次）；
 >    - 别把员工邮箱、密码写进仓库。
 
+## 2026-10-31 夜 后端今晚全部落完（Annie 定，57 转，约凌晨 3–4 点）
+- 后端主目录顺序 → 前端对应分支：
+  1. 16 排班往来记录隔离 → e6 task/schedule-person-history-fe；
+  2. 82 is_test → 91 task/schedule-test-person；
+  3. 64 勾选权限 464ee553 → 09 task/perm-tick-or-role（还要 Annie 答题 A/B/C + 动手）；
+  4. 21 站内消息 → 91 task/team-online-messages；
+  5. 44 is_tour_departure → e6 da 排除 TI（要 Annie 动手）；44 G138 → e6 task/schedule-weekly-confirm。
+- 每件落完 57 报提交号，主窗口 98 叫对应窗口合最新 main、跑检查、合 main。
+
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
 ### 40. Dispatch Tour bus 选今天的 Shuttle 上车点（91，preview https://claude.ai/artifact/BewNcepgfaJMDPDMvo2Pdz ，2026-10-31 问）
