@@ -8,6 +8,16 @@
 
 
 
+## 2026-11-01 凌晨 10d 生产排班测试：先放着，等 Annie 自己改好 ZZTest（工作窗口 09）
+- **做到哪**：只做了只读核对，生产上什么都没改、没发。2027-02-07 那周仍是空草稿。
+- **卡在哪**：c374e85（只看勾）上线后只读核对：ZZTest（role = staff）的 `/api/me/permissions` 排班相关只有 `schedule.view`，排班页没有 Save / Publish / + Add employee（前端照后端，正确）。
+  原因：它勾的 schedule.edit / schedule.publish / team.staff_add 不在 staff 的角色标准里，算**特批**；特批总开关 `staff_permissions` 现在是 super_admin_only ⇒ 特批不生效（后端 64 a987105a 的规则）。
+- **两种解法**（Annie 自己处理，Annie 原话「不要再问同zztest的事情，我会处理」，所有窗口都不问她）：
+  ① 把 ZZTest 的 role 改成 supervisor（supervisor 标准本来就有 schedule.edit / publish / team.staff_add），只影响这一个测试账号——推荐；
+  ② 把总开关对 staff 这一档打开——所有员工的特批都会生效，不推荐。**总开关不要动**（98）。
+- **之后**：Annie 改好后，09 先只读核对能看到 Save / Publish，再照原计划走（只排 ZZTest + Leon、2027-02-07 那周、跳过 Publish again）。
+  真按 Publish 之前，先在 09 窗口跟 Annie 说清楚通知谁（所有 Super Admin 会收到提醒和邮件，后端 7cdffbe7）、发什么内容，她点头才按。
+
 ## 2026-11-01 凌晨 权限「只看勾」（`task/perm-ticks-only`，工作窗口 09，主窗口 98 派）—— 已合 main
 - **Annie 原话**：10-31 在 64 窗口定「只看勾，不兜底」；11-01 凌晨主窗口 98 转「动手」（98 问「两件里动手哪件」，Annie 选「两件都动手」，其一就是权限只看勾）。
   取代 10-31 晚的「勾了 OR role」（分支 `task/perm-tick-or-role` aa8d053，**没合、作废**）。后端 64 规则已上 main（a987105a）。
