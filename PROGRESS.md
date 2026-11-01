@@ -109,7 +109,7 @@
 
 ## 2026-10-31 夜 后端今晚全部落完（Annie 定，57 转，约凌晨 3–4 点）
 - 后端主目录顺序 → 前端对应分支：
-  1. 16 排班往来记录隔离 → e6 前端早已在 main（5259338），落了只核字段；✅ 后端已上 main（96cf6f63 / 合并 a3db95cd / 关包 4698e8ac）：往来记录写失败不连累发布，排班邮件标题「Your schedule」。e6 核线上字段中。
+  1. 16 排班往来记录隔离 → e6 前端早已在 main（5259338），落了只核字段；✅ 后端已上 main（96cf6f63 / 合并 a3db95cd / 关包 4698e8ac）：往来记录写失败不连累发布，排班邮件标题「Your schedule」。e6 对 origin/main 代码核过：读出格式不变，前端不用改；往来记录里收整周的人标题「Your schedule — week of …」，其余「Your schedule changed — week of …」，前端原样显示。
   2. 82 is_test → 91 task/schedule-test-person；
   3. 64 勾选权限 464ee553 → 09 task/perm-tick-or-role（还要 Annie 答题 A/B/C + 动手）；
   4. 21 站内消息 → 91 task/team-online-messages；
