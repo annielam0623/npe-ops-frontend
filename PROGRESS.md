@@ -161,6 +161,7 @@
 - 不加开关（Bus Manifest 上的选项，不是没跑过的新业务）。要后端，等 Annie 答完、说「动手」再派。
 - 11-01 Annie 原话：「同意全部推荐。但是在start a new page here,  应该用更直观的说明」⇒ (1)–(4) 都定 A。91 出 v2（同一链接最上面绿框）剩一题：两节中间那行怎么写——写法 1「UPPER prints [On the same page | On a new page]」二选一（推荐）／写法 2 打勾「Print CANYON X on a new page」／写法 3 小框按 PAGE 1 / PAGE 2 分组，「Move … to the next page ↓」「Join page 1 ↑」。还没动手。
 - 11-01 Annie 原话：「给他们拖拽不是更好么」⇒ 91 出 v3（同一链接最上面）：去掉 ↑↓ 和中间那行，小框按纸分 PAGE 1 / PAGE 2 …，拖 canyon 上下换顺序、拖进另一页的框 = 印在那页、拖到最下面虚线框「Drag a canyon here to print it on a new page」= 新的一页，拖空的页自动消失；拖完暂存，整页 Save 才存。剩一题：A 顺序和分页都用拖（推荐）／B 只有顺序用拖、分页照 v2 写法 1。还没动手。
+- 11-01 Annie 答「A」⇒ 顺序和分页都用拖。全部题已定，等「动手」。动手后先要后端：每团存 canyon 顺序 + 分页（页 = 节名列表的列表）、_sections() 按顺序排、paginate() 按页换页（当天没有的节跳过、不出空页）、GET /api/dispatch/manifest 的 tour 带设置和可选节名、写接口同 PUT manifest/version 并记 Action Log；前端再接。
 
 > 规矩见 CLAUDE.md「问 Annie 要确认的事：给完整内容，并一直置顶」（2026-10-30）。每条都要能单独看懂。
 
