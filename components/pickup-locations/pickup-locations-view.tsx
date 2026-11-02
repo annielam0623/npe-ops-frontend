@@ -8,6 +8,7 @@ import type { ActionResult } from "@/components/ui/action-result";
 import { BulkImportButton } from "@/components/ui/bulk-import";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ErrorBanner, Panel } from "@/components/ui/panel";
+import { usePhoneCollapse } from "@/components/ui/phone";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchCurrentUser } from "@/lib/auth-api";
 import {
@@ -67,6 +68,8 @@ export function PickupLocationsView() {
   const [reloadKey, setReloadKey] = useState(0);
   const [search, setSearch] = useState("");
   const [addDraft, setAddDraft] = useState<LocationDraft>(emptyDraft);
+  // 手机上 + Add New Location 默认收起（Annie 2026-11-01 手机版规则）。
+  const addFold = usePhoneCollapse();
   const [adding, setAdding] = useState(false);
   const [addResult, setAddResult] = useState<AddResult>(null);
   const [edits, setEdits] = useState<Record<number, EditState>>({});
@@ -435,20 +438,35 @@ export function PickupLocationsView() {
         </ErrorBanner>
       ) : (
         <>
-          <HowToUse />
+          {/* How to use：电脑上照旧在最上面；手机上放到页面最底（Annie 2026-11-01 手机版规则）。 */}
+          <div className="max-sm:hidden">
+            <HowToUse />
+          </div>
 
           <section className={CARD_CLASS}>
             <div className={CARD_HEADER_CLASS}>
-              <h2 className={CARD_TITLE_CLASS}>+ Add New Location</h2>
+              <h2 className={CARD_TITLE_CLASS}>
+                <button
+                  type="button"
+                  onClick={addFold.toggle}
+                  aria-expanded={addFold.open}
+                  data-phone-fold="add-location"
+                  className="flex w-full items-center gap-2 text-left sm:pointer-events-none"
+                >
+                  + Add New Location
+                  {addFold.caret}
+                </button>
+              </h2>
             </div>
             <form
+              className={addFold.hide}
               onSubmit={(event) => {
                 event.preventDefault();
                 void addLocation();
               }}
             >
               {/* .add-form：4 列（最后一列 auto），6 个格子 + Add 键依次排。 */}
-              <div className="grid grid-cols-[1fr_1fr_1fr_auto] items-end gap-3 px-5 py-[18px]">
+              <div className="grid grid-cols-1 items-end gap-3 px-5 py-[18px] max-sm:px-4 sm:grid-cols-[1fr_1fr_1fr_auto]">
                 <LocationFields
                   draft={addDraft}
                   disabled={adding || view.kind !== "ready"}
@@ -459,7 +477,7 @@ export function PickupLocationsView() {
                   // 类别：至少勾一个（v3 ④）。Shuttle 站的时间加好以后用 Edit 填。
                   <div
                     data-add-type
-                    className="col-span-3 flex flex-wrap items-center gap-x-3 gap-y-1"
+                    className="flex flex-wrap items-center gap-x-3 gap-y-1 sm:col-span-3"
                   >
                     <span className="text-[13px] font-medium text-[#1a1a1a] night:text-white/80">
                       Type *
@@ -560,6 +578,9 @@ export function PickupLocationsView() {
           {view.kind === "ready" ? (
             <ActionLog version={logVersion} onUnauthorized={redirectToLogin} />
           ) : null}
+          <div className="sm:hidden">
+            <HowToUse />
+          </div>
         </>
       )}
 

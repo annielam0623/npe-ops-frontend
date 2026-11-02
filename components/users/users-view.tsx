@@ -21,6 +21,7 @@ import { CenteredPage } from "@/components/ui/centered-page";
 import { BulkImportButton } from "@/components/ui/bulk-import";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ErrorBanner, Panel } from "@/components/ui/panel";
+import { PhoneMore, usePhoneInfo } from "@/components/ui/phone";
 import { AddPersonDialog } from "@/components/team-permissions/add-person-dialog";
 import {
   buildAccessGroups,
@@ -246,6 +247,8 @@ export function TeamView() {
   const [actionError, setActionError] = useState<string | null>(null);
   // 删除 / 停用成功后的一句绿字。
   const [notice, setNotice] = useState<string | null>(null);
+  // 手机上页头那句灰字收进标题后的「i」（Annie 2026-11-01 手机版规则）。
+  const headInfo = usePhoneInfo("About this page");
   const [busyUserId, setBusyUserId] = useState<number | null>(null);
   const [search, setSearch] = useState("");
   const [show, setShow] = useState<ShowFilter>("all");
@@ -609,12 +612,20 @@ export function TeamView() {
 
   return (
     <main className="text-stone-800 night:text-white/90">
-      <CenteredPage className="flex flex-col py-7 max-lg:px-8">
-        <header className="mb-7 flex flex-wrap items-center justify-between gap-3">
+      <CenteredPage className="flex flex-col py-7 max-lg:px-8 max-sm:px-0 max-sm:py-1">
+        <header className="mb-7 flex flex-wrap items-center justify-between gap-3 max-sm:mb-3">
           <div>
             {/* 旧页面标题是 #1a1a2e，放在深色底上看不见；按深色底换成旧后台的浅色字。 */}
-            <h1 className="m-0 text-[22px] font-bold text-[#f8fafc]">Team</h1>
-            <p className="mt-1 text-[13px] text-[#6b7280] night:text-white/55">
+            <h1 className="m-0 text-[22px] font-bold text-[#f8fafc] max-sm:text-[19px]">
+              Team
+              {headInfo.button}
+            </h1>
+            <p
+              className={cn(
+                "mt-1 text-[13px] text-[#6b7280] night:text-white/55",
+                headInfo.hide,
+              )}
+            >
               {isSuperAdmin
                 ? "Everyone who can sign in to NPE Operations: their role, teams and what they can do."
                 : "Everyone who can sign in to NPE Operations. Only a Super Admin can change permissions or delete an account."}
@@ -624,10 +635,12 @@ export function TeamView() {
             <div className="flex flex-wrap items-center gap-2">
               {/* ⬆ Import（preview ③-1）：只给 Super Admin，权限那一份读到了才有名单做模板。 */}
               {view.isSuperAdmin && view.team ? (
-                <BulkImportButton
-                  onClick={() => setImportOpen(true)}
-                  disabled={importOpen}
-                />
+                <PhoneMore>
+                  <BulkImportButton
+                    onClick={() => setImportOpen(true)}
+                    disabled={importOpen}
+                  />
+                </PhoneMore>
               ) : null}
               <button
                 type="button"
@@ -647,8 +660,11 @@ export function TeamView() {
           ) : null}
         </header>
 
+        {/* How to use：电脑上照旧在这里；手机上放到页面最底（Annie 2026-11-01 手机版规则）。 */}
         {view.kind === "ready" ? (
-          <TeamHowTo isSuperAdmin={isSuperAdmin} />
+          <div className="max-sm:hidden">
+            <TeamHowTo isSuperAdmin={isSuperAdmin} />
+          </div>
         ) : null}
 
         {view.kind === "ready" &&
@@ -749,7 +765,7 @@ export function TeamView() {
                 <>
                   <span
                     data-team-columns-note
-                    className="text-[12px] text-[#8ea3b8]"
+                    className="text-[12px] text-[#8ea3b8] max-sm:hidden"
                   >
                     Drag titles to reorder, drag edges to resize —{" "}
                     {layoutScope === "account"
@@ -760,7 +776,7 @@ export function TeamView() {
                     type="button"
                     data-team-columns-reset
                     onClick={() => changeLayout(defaultTeamLayout())}
-                    className="h-8 cursor-pointer rounded-[7px] border border-[#d1d5db] bg-paper px-2.5 text-[12.5px] text-[#1a1a1a] night:border-white/10 night:bg-white/[.04] night:text-white/90"
+                    className="h-8 cursor-pointer rounded-[7px] border border-[#d1d5db] bg-paper px-2.5 text-[12.5px] text-[#1a1a1a] max-sm:hidden night:border-white/10 night:bg-white/[.04] night:text-white/90"
                   >
                     Reset columns
                   </button>
@@ -822,6 +838,9 @@ export function TeamView() {
                 }
               />
             ) : null}
+            <div className="mt-5 sm:hidden">
+              <TeamHowTo isSuperAdmin={isSuperAdmin} />
+            </div>
           </>
         ) : null}
       </CenteredPage>

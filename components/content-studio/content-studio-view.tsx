@@ -16,6 +16,7 @@ import { ActionLogPanel } from "@/components/action-log/action-log-panel";
 import { fetchActionLog } from "@/lib/action-log";
 import { HowToUse } from "@/components/ui/how-to-use";
 import { ErrorBanner, Panel } from "@/components/ui/panel";
+import { PhoneOneLine } from "@/components/ui/phone";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchCurrentUser } from "@/lib/auth-api";
 import { usePageVisibility } from "@/lib/page-visibility";
@@ -396,6 +397,7 @@ export function ContentStudioView() {
   return (
     <Shell
       dirtyCount={dirtyCount}
+      phonePreview={!!mod}
       preview={
         module === "team" ? (
           <TeamMessagesPreview tab={tabName as TeamTab} studio={studio} />
@@ -975,22 +977,27 @@ function Shell({
   children,
   dirtyCount = 0,
   preview,
+  phonePreview = true,
 }: {
   children: ReactNode;
   dirtyCount?: number;
   preview?: ReactNode;
+  /** 手机上还没选模块时不放空的预览框。 */
+  phonePreview?: boolean;
 }) {
   return (
     // .studio-layout：左右分栏铺满内容区（抵消外框的内边距），各自滚动。
-    <main className="-m-4 flex h-[calc(100vh-64px)] overflow-hidden text-stone-800 sm:-m-7 night:text-white/90">
+    // 手机上（Annie 2026-11-01 手机版规则）：不分栏、整页上下滚，不再左右晃；
+    // 编辑区拆开（contents），预览排在编辑内容下面、How to use 和 Action Log 上面。
+    <main className="-m-4 flex h-[calc(100vh-64px)] overflow-hidden text-stone-800 max-sm:m-0 max-sm:h-auto max-sm:flex-col max-sm:overflow-visible sm:-m-7 night:text-white/90">
       {/* .studio-editor */}
-      <div className="w-[55%] min-w-[380px] overflow-y-auto border-r border-black/[.08] px-6 py-5 night:border-white/10">
+      <div className="w-[55%] min-w-[380px] overflow-y-auto border-r border-black/[.08] px-6 py-5 max-sm:contents night:border-white/10">
         {/* 只有 ops 有：线上生效的提醒和未保存计数（旧页面没有这一行）。 */}
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-2 text-[11px] text-[#94a3b8] night:text-white/45">
-          <span>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2 text-[11px] text-[#94a3b8] max-sm:mb-3 night:text-white/45">
+          <PhoneOneLine className="min-w-0 max-sm:flex-1">
             ⚠️ Every Save changes the live text right away: the next email, SMS
             or guest page uses it. Saved text cannot be recovered.
-          </span>
+          </PhoneOneLine>
           {dirtyCount ? (
             <span className="font-semibold text-[#fbbf24]">
               {dirtyCount} unsaved change(s)
@@ -998,26 +1005,28 @@ function Shell({
           ) : null}
         </div>
         {children}
-        <HowToUse
-          title="How to use — Content Studio"
-          items={HOW_TO_ITEMS}
-          warning={
-            <>
-              Cards marked ⚠ Global change the text for every tour.
-              <br />
-              ⚠️ Save turns to Error: nothing was saved, click Save again.
-              <br />
-              ⚠️ Check-in minutes before tour time (Tickets, Guest Page tab) is
-              not guest text. It sets the Check-in Time worked out when a Rezdy
-              CSV is uploaded for that tour.
-              <br />
-              ⚠️ Shuttle: the Email, SMS and Guest Page tabs are shared by every
-              shuttle route. The next shuttle confirmation sent from Manifests
-              uses them.
-            </>
-          }
-        />
-        <div className="mt-4">
+        <div className="max-sm:order-2 max-sm:mt-4">
+          <HowToUse
+            title="How to use — Content Studio"
+            items={HOW_TO_ITEMS}
+            warning={
+              <>
+                Cards marked ⚠ Global change the text for every tour.
+                <br />
+                ⚠️ Save turns to Error: nothing was saved, click Save again.
+                <br />
+                ⚠️ Check-in minutes before tour time (Tickets, Guest Page tab)
+                is not guest text. It sets the Check-in Time worked out when a
+                Rezdy CSV is uploaded for that tour.
+                <br />
+                ⚠️ Shuttle: the Email, SMS and Guest Page tabs are shared by
+                every shuttle route. The next shuttle confirmation sent from
+                Manifests uses them.
+              </>
+            }
+          />
+        </div>
+        <div className="mt-4 max-sm:order-2">
           <ActionLogPanel
             refreshKey={0}
             reloadOnOpen
@@ -1032,7 +1041,12 @@ function Shell({
         </div>
       </div>
       {/* .studio-preview */}
-      <div className="flex w-[45%] flex-col overflow-y-auto bg-[#e8e4de] night:bg-white/[.03]">
+      <div
+        className={cn(
+          "flex w-[45%] flex-col overflow-y-auto bg-[#e8e4de] max-sm:order-1 max-sm:mt-4 max-sm:w-full max-sm:overflow-visible max-sm:rounded-[12px] night:bg-white/[.03]",
+          !phonePreview && "max-sm:hidden",
+        )}
+      >
         <div className="sticky top-0 z-10 flex shrink-0 items-center justify-between border-b border-black/[.08] bg-[#e8e4de] px-4 py-2.5 night:border-white/10 night:bg-[#0b1724]">
           <span className="text-[11px] font-semibold tracking-[0.07em] text-[#1a1a1a] uppercase night:text-white/50">
             Preview
