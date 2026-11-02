@@ -174,7 +174,8 @@
      ✅ 前端已合 main c374e85（task/perm-ticks-only；48 套全过）。10d 排班生产测试仍卡：ZZTest 是 staff，schedule.edit / publish / team.staff_add 属特批，总开关只开给 SA 所以不算。解法 ① ZZTest 改 supervisor（推荐）② 开关开给 staff 层（不推荐）。按 Annie「不要再问同zztest的事情，我会处理」不问她，等她自己改。
   4. 21 站内消息 → 91 task/team-online-messages；✅ 后端已上 main dc28ff78（/api/notices 每条加 ref，非消息为 null；开关 team_messages_direct 默认只 SA 可见）。前端已合 main 34e93fc（91；接口对过，ref null 能处理；tasks 143/143、dr 88/88、nav 32/32；没发真消息）。
   5. 44 is_tour_departure → e6 da 排除 TI（要 Annie 动手）；44 G138 → e6 task/schedule-weekly-confirm。✅ G138 后端已上 main（5aeadbbb / 合并 31dd5eea / 关包 3e86aca7，v136 已执行），后端今晚全部落完。✅ 前端已合 main 9f5da48（e6；sch 312/312 等全过；没发布）。已转 57；57 说这是 16 的 g138-history-notify（Annie 昨晚定今天做，16 先找 Annie 开工确认），补：schedule_history.KINDS 缺 5 种（change_requested / swap_requested / swap_agreed / swap_declined_by_peer / request_closed_on_publish），补了前端自动显示。
-- Annie 新指示（57 转）：「出现 X Canyon的地方统统改成 Canyon X」，前后端统一。后端 44 改生产数据（7 个产品分节名、manifest_section_tour_types、Forecast row_label，SQL 由 Annie 执行）。前端扫过（git grep -i，含 x_canyon / xcanyon）：代码、mock、测试、PROGRESS 都没有 X Canyon，写死的都已是 Canyon X ⇒ 前端不用改，数据改完显示自动跟着变。
+- Annie 新指示（57 转）：「出现 X Canyon的地方统统改成 Canyon X」，前后端统一。后端 44 改生产数据（7 个产品分节名、manifest_section_tour_types、Forecast row_label，SQL 由 Annie 执行）。前端扫过（git grep -i，含 x_canyon / xcanyon）：代码、mock、测试、PROGRESS 都没有 X Canyon，写死的都已是 Canyon X ⇒ 前端不用改，数据改完显示自动跟着变。✅ 数据已改（Annie 执行 SQL，44 只读核过）+ 后端代码已上 main（合并 38ac985d / 关包 3e97604c）。91 登录不了线上，请 Annie 自己看 Bus Manifest 和 Products › Manifest setup。
+- G138 往来记录 5 种事件：16 分支 task/g138-history-notify aae0a8aa，e6 核过一致；前端 17abd37 已在 main，16 落了自动显示。
 - G228 前端已合 main 58ea7db（e6；tsc / eslint / build、cs 178/178、nav 32/32；24 键对过后端）。线上读值要登录，请 Annie 在 Content Studio › Team Messages 看一眼（只看不改）。
 - 每件落完 57 报提交号，主窗口 98 叫对应窗口合最新 main、跑检查、合 main。
 
