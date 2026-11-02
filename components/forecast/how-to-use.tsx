@@ -68,6 +68,13 @@ export function HowToUse() {
           no bookings at all in the next 60 days, to make the table shorter.
         </li>
         <li>
+          <b>View saved forecast</b>: the page saves a copy of the forecast
+          every night at 11:55 PM (Los Angeles time). Pick a past date to see
+          the forecast as it was that night. A saved forecast is read only and
+          doesn&rsquo;t show Antelope seats; use <b>Back to today</b> to return
+          to the live page.
+        </li>
+        <li>
           Lines CCL posted that don&rsquo;t match any route (Private Tour, lines
           we couldn&rsquo;t read) are listed in the collapsed panel below the
           table instead.

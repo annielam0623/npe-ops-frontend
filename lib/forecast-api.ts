@@ -177,3 +177,27 @@ export function refreshCanyonSnapshot(): Promise<CanyonSnapshot> {
     cache: "no-store",
   });
 }
+
+export interface ForecastHistorySnapshot {
+  date: string;
+  taken_at: string;
+  forecast: Forecast60Day;
+}
+
+/** GET /api/forecast/history：存过快照的日子，新的在前（权限 forecast.view）。 */
+export function fetchForecastHistoryDates(
+  signal?: AbortSignal,
+): Promise<{ dates: string[] }> {
+  return apiFetch("/api/forecast/history", { cache: "no-store", signal });
+}
+
+/** GET /api/forecast/history/{date}：当晚 23:55 PT 的 60-day，内容同 fetchForecast60Day。 */
+export function fetchForecastHistory(
+  date: string,
+  signal?: AbortSignal,
+): Promise<ForecastHistorySnapshot> {
+  return apiFetch(`/api/forecast/history/${date}`, {
+    cache: "no-store",
+    signal,
+  });
+}

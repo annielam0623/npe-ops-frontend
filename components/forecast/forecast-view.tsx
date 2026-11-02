@@ -11,6 +11,9 @@ import {
   deleteGuidePlan,
   fetchCanyonSnapshot,
   fetchForecast60Day,
+  fetchForecastHistory,
+  fetchForecastHistoryDates,
+  type ForecastHistorySnapshot,
   refreshCanyonSnapshot,
   saveForecastCell,
 } from "@/lib/forecast-api";
@@ -30,6 +33,7 @@ import { CellEditor } from "./cell-editor";
 import { formatLongDate, formatMetaTime } from "./config";
 import { ForecastGrid, type CellTarget } from "./forecast-grid";
 import { GuideEditor } from "./guide-editor";
+import { HistoryBanner, HistoryPicker } from "./history-bar";
 import { HowToUse } from "./how-to-use";
 import { Legend } from "./legend";
 import { ForecastReadOnly } from "./read-only";
@@ -86,7 +90,26 @@ export function ForecastView() {
   // 员工权限：没有 forecast.edit 只能看（后端 17 2026-10-26）——Refresh 不显示，表上的编辑框都打不开。
   // partner 一律只能看，勾了也一样（Annie 2026-10-27「合作方只能看…不能改或者选任何功能」）。
   const perms = usePermissions();
+  // 回看历史（PREVIEW）：historyDate = 选了哪一天；snapshot = 那天的快照。
+  const [historyDates, setHistoryDates] = useState<string[]>([]);
+  const [historyDate, setHistoryDate] = useState<string | null>(null);
+  const [snapshot, setSnapshot] = useState<ForecastHistorySnapshot | null>(null);
+  const [variant, setVariant] = useState<"a" | "b">("a");
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    setVariant(q.get("pv") === "b" ? "b" : "a");
+    if (q.get("hist")) setHistoryDate(q.get("hist"));
+    fetchForecastHistoryDates().then((r) => setHistoryDates(r.dates), () => {});
+  }, []);
+  useEffect(() => {
+    if (!historyDate) { setSnapshot(null); return; }
+    const c = new AbortController();
+    fetchForecastHistory(historyDate, c.signal).then((s) => setSnapshot(s), () => {});
+    return () => c.abort();
+  }, [historyDate]);
+  const viewingHistory = !!(historyDate && snapshot);
   const readOnly =
+    viewingHistory ||
     !perms.can("forecast.edit") || perms.partnerLacks("forecast.edit");
   const [view, setView] = useState<ViewState>({ kind: "loading" });
   const [reloadKey, setReloadKey] = useState(0);
@@ -339,7 +362,14 @@ export function ForecastView() {
     applyCellResult(target, result);
   }
 
-  const data = view.kind === "ready" ? view.data : null;
+  const liveData = view.kind === "ready" ? view.data : null;
+  const data = viewingHistory ? snapshot!.forecast : liveData;
+  const picker = historyDates.length ? (
+    <HistoryPicker dates={historyDates} value={historyDate} onChange={setHistoryDate} compact={variant === "b"} />
+  ) : null;
+  const banner = viewingHistory ? (
+    <HistoryBanner date={snapshot!.date} takenAt={snapshot!.taken_at} onBack={() => setHistoryDate(null)} slim={variant === "b"} />
+  ) : null;
   const cellValueNow =
     data && cellTarget
       ? cellTarget.rowKey === "major_events"
@@ -383,6 +413,7 @@ export function ForecastView() {
             <h1 className="mt-1 text-[28px] leading-[1.1] font-bold tracking-[-.03em] max-sm:mt-0 md:text-[34px]">
               7 Days Forecast
             </h1>
+            {variant === "a" ? picker : null}
           </div>
           {/* 不限宽：一行放得下就不折（Annie 2026-10-13，全站页头说明同一规矩）。 */}
           <p className="mt-2 text-sm leading-[1.65] text-white max-sm:hidden">
@@ -392,6 +423,7 @@ export function ForecastView() {
           </p>
         </header>
 
+        {variant === "a" ? banner : null}
         {view.kind === "loading" ? <DarkPanel>Loading...</DarkPanel> : null}
         {view.kind === "forbidden" ? (
           <DarkPanel>
@@ -423,7 +455,7 @@ export function ForecastView() {
               </div>
             ) : null}
 
-            {canyon ? (
+            {canyon && !viewingHistory ? (
               <div
                 data-canyon-bar
                 className="-mt-1 flex flex-wrap items-center gap-3 text-[12.5px] text-white max-sm:contents"
@@ -484,6 +516,7 @@ export function ForecastView() {
                   />
                   Hide rows that are all 0
                 </label>
+                {variant === "b" ? picker : null}
                 {canFullscreen ? (
                   <button
                     type="button"
@@ -497,12 +530,13 @@ export function ForecastView() {
               </div>
             </div>
 
+            {variant === "b" ? banner : null}
             <ForecastReadOnly.Provider value={readOnly}>
               <ForecastGrid
                 data={data}
                 colorByVehicle={colorByVehicle}
                 hideZero={hideZero}
-                canyon={canyon}
+                canyon={viewingHistory ? null : canyon}
                 onOpenEditor={(manifestId, section, dayIndex) =>
                   setEditorTarget({ manifestId, section, dayIndex })
                 }
@@ -512,7 +546,7 @@ export function ForecastView() {
 
             {/* 接口没带 running_meta（后端 G81 没上线）时不显示，免得展开只得到 Not Found。
                 partner 后端 403（G208），同 Manifests 干脆不出。 */}
-            {!perms.partnerView &&
+            {!viewingHistory && !perms.partnerView &&
             data.blocks.some((b) => b.running_meta !== undefined) ? (
               <ActionLog refreshKey={logKey} />
             ) : null}
