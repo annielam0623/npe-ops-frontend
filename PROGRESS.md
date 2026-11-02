@@ -313,6 +313,11 @@
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 50. Sales Report 插队 + CHD 组放回 Main manifest（2026-11-02）
+- Annie 原话：「紧急插个队，把sales report做出来」。24 问她指哪种：A 修现有 /sales-report（10/23 上线，按 Group → section → 产品，Orders / Pax / $，只 SA 可见挂 Soon）／B 做一份新报表（先出 preview）／C 把删掉的按 agent 月表周表加回来。她没选，接着说：「你先把CHD这个group 先放回main manifest」。
+- 背景：CHD 组（booking_type='unmapped'，只有 PFYF01 收款行）是 10-18 照 Annie「这个产品不是 tour，不应该出现在 manifest 里」由后端 G111 挡掉的。后端同一个函数还管自动发送、Manifests 发送、Dispatch 同步、Forecast、接客时间提醒、电话 AI。前端现在只能在 Manifests 的 Show hidden rows 里看到这些行。
+- 问 Annie 范围：A 只放回 Main manifest 页上显示（发送、Dispatch、Forecast、电话 AI 照旧不算；推荐）／B 全部恢复成 10-18 以前那样。已转 37 先只读评估，并核 Sales Report 现在算不算 CHD 组。没答复前不改代码。
+
 ### 48. Notice 跟 CCL 交流，可选个人或 team（2026-11-01 晚，11/2 做）
 - Annie 原话（09 窗口）：「2 可以跟CCL用notice交流，发的时候可以选个人，也可以选team」「CCl也算一个team」；开关「开放给员工由我来决定，你不要再问了」（各窗口不再问开关）。
 - 现状：partner 不在 /api/team/online，调接口 403，收不到消息；PartnerHome 只有问候语和 Forecast。
