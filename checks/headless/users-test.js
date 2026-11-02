@@ -307,7 +307,30 @@ async function rowText(page, s) {
   await sleep(300);
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   check("no page-level horizontal overflow at 390px", overflow <= 0, `overflow ${overflow}`);
+  // 手机版（Annie 2026-11-01 手机版规则）：页头说明进「i」、拖列提示不显示、How to use 在最底
+  const phone = await page.evaluate(() => {
+    const vis = (e) => !!e && e.getBoundingClientRect().height > 0;
+    const how = [...document.querySelectorAll("details")].find((d) => /How to use/.test(d.textContent) && vis(d));
+    const table = document.querySelector("table");
+    return {
+      intro: vis([...document.querySelectorAll("header p")].find((p) => /Everyone who can sign in/.test(p.textContent))),
+      info: vis(document.querySelector("header [data-phone-info]")),
+      note: vis(document.querySelector("[data-team-columns-note]")),
+      howBelow: !!how && !!table && how.getBoundingClientRect().top > table.getBoundingClientRect().bottom,
+    };
+  });
+  check("phone: intro behind i, drag note hidden, How to use below the table", !phone.intro && phone.info && !phone.note && phone.howBelow, JSON.stringify(phone));
+  await page.click("header [data-phone-info]");
+  await sleep(200);
+  check("phone: tap i shows the intro", await page.evaluate(() => [...document.querySelectorAll("header p")].some((p) => /Everyone who can sign in/.test(p.textContent) && p.getBoundingClientRect().height > 0)));
   await page.setViewport({ width: 1300, height: 900 });
+  await sleep(300);
+  const desk = await page.evaluate(() => {
+    const vis = (e) => !!e && e.getBoundingClientRect().height > 0;
+    const how = [...document.querySelectorAll("details")].find((d) => /How to use/.test(d.textContent) && vis(d));
+    return { note: vis(document.querySelector("[data-team-columns-note]")), howAbove: !!how && how.getBoundingClientRect().top < document.querySelector("table").getBoundingClientRect().top };
+  });
+  check("desktop: drag note and How to use on top unchanged", desk.note && desk.howAbove, JSON.stringify(desk));
 
   // ── teams 403（后端 G177 P3：admin 没勾 settings.users 读不了团队）：页面照常、用户列表在，Teams 列写「—」，不报整页错 ──
   await ctl("viewer=admin&teams403=1");

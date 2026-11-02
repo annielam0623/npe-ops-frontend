@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { Pin, type MapZone } from "@/components/products/manifest-setup-map";
+import { usePhoneInfo } from "@/components/ui/phone";
 import { cn } from "@/lib/utils";
 
 /** Bus Manifest setup 面板和它的 Forecast 设置（G63）共用的样式和外框。 */
@@ -80,6 +81,8 @@ export function MapField({
   children: React.ReactNode;
 }) {
   const on = active === zone;
+  // 手机上灰字说明收进标题后的「i」（Annie 2026-11-01 手机版规则）。
+  const info = usePhoneInfo(`About ${title}`);
   return (
     <div
       data-field={zone}
@@ -102,8 +105,11 @@ export function MapField({
         <Pin zone={zone} />
       )}
       <div className="flex min-w-0 flex-col gap-1">
-        <h3 className={SUBHEAD}>{title}</h3>
-        <p className={cn(HINT, "m-0 leading-[1.5]")}>{hint}</p>
+        <div className="flex items-center">
+          <h3 className={SUBHEAD}>{title}</h3>
+          {info.button}
+        </div>
+        <p className={cn(HINT, "m-0 leading-[1.5]", info.hide)}>{hint}</p>
         {children}
       </div>
     </div>

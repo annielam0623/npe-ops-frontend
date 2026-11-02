@@ -5,6 +5,7 @@ import { useState, type ReactNode } from "react";
 import { laToday } from "@/lib/la-date";
 import { seasonOn } from "@/lib/shuttle-seasons";
 import { downloadCsv } from "@/lib/csv";
+import { PhoneMore } from "@/components/ui/phone";
 import { cn } from "@/lib/utils";
 import type { PickupLocation, ShuttleRoute, ShuttleSeason } from "@/types";
 
@@ -101,19 +102,22 @@ export function LocationSections(props: Props) {
           {visible.length} of {locations.length}
         </span>
       ) : null}
-      <button
-        type="button"
-        onClick={() => {
-          const csv = buildPickupLocationsCsv(locations);
-          downloadCsv(pickupLocationsCsvFilename(), csv.headers, csv.rows);
-        }}
-        disabled={!locations.some((loc) => loc.is_active)}
-        title="CSV of the active hotels (opens in Excel)"
-        className={BTN_EXPORT}
-      >
-        ⬇ Export
-      </button>
-      {props.importButton}
+      {/* 手机上 Export / Import 收进「⋯」（Annie 2026-11-01 手机版规则）。 */}
+      <PhoneMore>
+        <button
+          type="button"
+          onClick={() => {
+            const csv = buildPickupLocationsCsv(locations);
+            downloadCsv(pickupLocationsCsvFilename(), csv.headers, csv.rows);
+          }}
+          disabled={!locations.some((loc) => loc.is_active)}
+          title="CSV of the active hotels (opens in Excel)"
+          className={BTN_EXPORT}
+        >
+          ⬇ Export
+        </button>
+        {props.importButton}
+      </PhoneMore>
       <input
         type="text"
         inputMode="search"

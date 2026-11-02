@@ -242,6 +242,20 @@ async function run() {
   await goto(`${APP}/send-log?batch=404`);
   await waitFor("document.querySelectorAll('[data-batch]').length === 2");
   check("?batch= 不存在：列表照常", await evaluate("return document.querySelectorAll('[data-batch]').length === 2;"));
+  // 手机版（Annie 2026-11-01 手机版规则）：5 张统计卡一行、两块的说明进「i」、整页不左右晃
+  await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+  await goto(`${APP}/send-log`);
+  await waitFor("document.querySelectorAll('[data-batch]').length === 2");
+  await sleep(300);
+  check("手机：5 张统计卡排一行", await evaluate("const bs = [...document.querySelectorAll('button[aria-pressed]')].filter(b => /Total Sent|Tour Conf|Morning|Tickets|MTLV/.test(b.textContent)); return bs.length === 5 && new Set(bs.map(b => Math.round(b.getBoundingClientRect().top))).size === 1;"));
+  check("手机：Send batches 说明收进「i」", await evaluate("const s = document.querySelector('[aria-label=\"Send batches\"]'); const t = [...s.querySelectorAll('span')].find(x => /One block per click/.test(x.textContent)); return !!s.querySelector('[data-phone-info]') && t.getBoundingClientRect().height === 0;"));
+  check("手机：整页不左右晃", await evaluate("return document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1;"));
+  await evaluate("document.querySelector('[aria-label=\"Send batches\"] [data-phone-info]').click();");
+  await sleep(200);
+  check("手机：点「i」出说明", await evaluate("const s = document.querySelector('[aria-label=\"Send batches\"]'); return [...s.querySelectorAll('span')].some(x => /One block per click/.test(x.textContent) && x.getBoundingClientRect().height > 0);"));
+  await cdp("Emulation.clearDeviceMetricsOverride");
+  await sleep(300);
+  check("电脑：说明照旧直接显示", await evaluate("const s = document.querySelector('[aria-label=\"Send batches\"]'); return [...s.querySelectorAll('span')].some(x => /One block per click/.test(x.textContent) && x.getBoundingClientRect().height > 0) && s.querySelector('[data-phone-info]').getBoundingClientRect().height === 0;"));
   // ── Order Log ──
   await goto(`${APP}/order-log`);
   await waitFor("document.body.textContent.includes('CHD1')");

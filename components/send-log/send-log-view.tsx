@@ -413,7 +413,8 @@ function StatCards({
     { key: "mtlv", label: "MTLV", value: data?.stats.mtlv },
   ];
   return (
-    <div className="mb-[18px] flex flex-wrap gap-2.5">
+    // 手机上 5 张卡排一行（Annie 2026-11-01 手机版规则）。
+    <div className="mb-[18px] flex flex-wrap gap-2.5 max-sm:mb-3 max-sm:flex-nowrap max-sm:gap-1.5">
       {cards.map((card) => (
         <button
           key={card.key || "total"}
@@ -421,7 +422,7 @@ function StatCards({
           aria-pressed={active === card.key}
           onClick={() => onSelect(card.key)}
           className={cn(
-            "min-w-[100px] cursor-pointer rounded-[10px] border-[0.5px] bg-paper px-5 py-3 text-center transition-shadow night:bg-white/[.04]",
+            "min-w-[100px] cursor-pointer rounded-[10px] border-[0.5px] bg-paper px-5 py-3 text-center transition-shadow max-sm:min-w-0 max-sm:flex-1 max-sm:px-1 max-sm:py-2 night:bg-white/[.04]",
             active === card.key
               ? "border-[#1a1a1a] shadow-[0_0_0_2px_#1a1a1a] night:border-white/40"
               : "border-black/10 hover:shadow-[0_2px_8px_rgba(0,0,0,0.12)] night:border-white/10",
@@ -429,13 +430,13 @@ function StatCards({
         >
           <div
             className={cn(
-              "text-[22px] font-bold tabular-nums",
+              "text-[22px] font-bold tabular-nums max-sm:text-[18px] max-sm:leading-tight",
               CARD_NUM_COLOR[card.key],
             )}
           >
             {card.value ?? "—"}
           </div>
-          <div className="mt-0.5 text-[11px] text-[#1a1a1a] night:text-white/35">
+          <div className="mt-0.5 text-[11px] text-[#1a1a1a] max-sm:text-[10px] max-sm:leading-[1.15] night:text-white/35">
             {card.label}
           </div>
         </button>

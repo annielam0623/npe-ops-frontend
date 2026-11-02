@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchSendBatch, fetchSendBatches } from "@/lib/send-log-api";
 import { cn } from "@/lib/utils";
+import { usePhoneInfo } from "@/components/ui/phone";
 import type {
   SendBatch,
   SendBatchDelivery,
@@ -46,6 +47,8 @@ export function SendBatches({
   onUnauthorized: () => void;
 }) {
   const [list, setList] = useState<ListState>({ kind: "loading" });
+  // 手机上标题后的说明收进「i」（Annie 2026-11-01 手机版规则）。
+  const info = usePhoneInfo("About send batches");
   const [open, setOpen] = useState<ReadonlySet<number>>(
     () => new Set(target ? [target] : []),
   );
@@ -144,11 +147,14 @@ export function SendBatches({
       aria-label="Send batches"
       className="mb-[18px] overflow-hidden rounded-xl border-[0.5px] border-black/10 bg-paper night:border-white/10 night:bg-white/[.04]"
     >
-      <div className="flex items-center gap-2 border-b-[0.5px] border-black/[.08] bg-[#FAEEDA] px-4 py-2.5 night:border-white/10 night:bg-amber-400/10">
-        <h2 className="text-[13px] font-semibold text-[#7C4A00] night:text-amber-200">
+      <div className="flex items-center gap-2 border-b-[0.5px] border-black/[.08] bg-[#FAEEDA] px-4 py-2.5 max-sm:flex-wrap night:border-white/10 night:bg-amber-400/10">
+        <h2 className="text-[13px] font-semibold whitespace-nowrap text-[#7C4A00] night:text-amber-200">
           📦 Send batches
+          {info.button}
         </h2>
-        <span className="text-[11px] font-normal text-[#9a6a2a]">
+        <span
+          className={cn("text-[11px] font-normal text-[#9a6a2a]", info.hide)}
+        >
           One block per click on Send in Tickets Reminder or Tour Confirmation.
           Click a block to open it.
         </span>

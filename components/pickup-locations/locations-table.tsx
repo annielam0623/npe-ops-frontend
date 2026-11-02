@@ -104,7 +104,8 @@ export function LocationsTable({
   )?.name;
   return (
     <div className="overflow-x-auto">
-      <table className="w-full border-collapse text-[12px]">
+      {/* 手机上表格不挤成一字一行：给个最小宽度，左右滑着看。 */}
+      <table className="w-full border-collapse text-[12px] max-sm:min-w-[760px]">
         <thead>
           <tr>
             <th className={cn(TH, "w-[13%]")}>
