@@ -324,6 +324,18 @@
 - 检查：tsc 0、eslint 0 错（2 旧警告）、build 过；nav 32/32、dr 88/88、tasks 144/144（第一次跑有 3 条 Dashboard 窄屏宽度检查没过，用 main 原版对照和改后重跑都 144/144，判断是那几条不稳定、跟颜色无关）。
 - 旧分支 task/manifests-dot-orange 作废（被这条取代）。
 
+## 2026-11-02 Main manifest：CHD（Admin fee）行不能勾、不进发送（`task/manifests-sendable`，工作窗口 91，主窗口 24 派）—— 第一步已合 main；admin_fee 标签等 Annie 看 preview
+- Annie 原话（经 37 / 24 转）：「你先把CHD这个group 先放回main manifest」（范围答「A」后「动手」）；「不发送，它是一个Admin fee，不参与排团，但是要追踪是否购买和收款」；「统计销售要把这个费用统计进去，但是需要单独的一个项目」「我的意思是在main manifest里单独设一项」「不要放到现有的行程里，它是单独的一个tag」。
+- 后端 d8（`task/chd-main-manifest`，G232）：GET /api/manifests 加 tab=admin_fee；tabs[] / pills[] / rows[] 加 sendable，rows 另有 reason / reason_label；没带 sendable 当 true。后端等第二步（admin_fee 标签）合 main 后才推。
+- **第一步（已合 main）**：
+  - `ManifestRow.sendable` / `ManifestTab.sendable` / `ManifestPill.sendable`；`config.ts` 的 `canSend(row)`（没带 = true）。
+  - sendable:false 的行没有勾选框（同 Show hidden rows 里的行）；表头 Select all、节标题全选、Select all unsent tours、操作条的「几单 · 几人」和发送名单都不带它。原因：后端逐行复核，一批里夹一条整批 400。
+  - tabs[].sendable=false 的标签（admin_fee）先不显示，等 Annie 看 preview。
+  - man-mock 加 `unsendable: [单号]`（新后端：带 sendable、发送夹着就 400）；man-test 加 5 项。
+  - 检查：tsc / eslint 0 错、build 过；man 327/327、mf 225/225、da 446/446、nav 38/38。
+- **第二步（admin_fee 标签）**：preview https://claude.ai/artifact/2whv5SmmkPvJzeWUDBw3Fu （真页面接模拟数据截图）。代码在本 worktree 的 stash「g232-step2-preview」（标签放出来、整个标签没有勾选和发送条、灰色说明条、man-mock 的 adminFee 开关），Annie 同意后再接着做。3 题见置顶 50。
+- 需要后端：user_prefs 白名单加 `manifest_cols_admin_fee`（这个标签的 Columns 才存得住；没有时页面写「Could not load your saved columns」并用默认列）。
+
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
 ### 50. Sales Report 插队 + CHD 组放回 Main manifest（2026-11-02）
@@ -333,7 +345,9 @@
 - Annie 答：「A」（只放回 Main manifest 显示，发送 / Dispatch / Forecast / 电话 AI 照旧不算）。随后 Annie 原话「动手」⇒ 已转 37 按 A 开工（优先）。前端 Manifests 要不要跟着改，等 37 的方案。
 - 37 派后端 d8（最优先）。预定形状：CHD 行进正常 rows[]，每行带 sendable + reason_label（"The group is Unmapped"），CHD 行 sendable:false；Bus 标签多一个 CHD 胶囊。前端必须把 sendable:false 的行排除出勾选、Select unsent、全选，否则整批发送失败。⇒ 已派 91 task/manifests-sendable（没带字段当 true，可以先合 main）；后端等 24 说「前端已上」再推。胶囊人数：Annie 答（37 转）「不发送，它是一个Admin fee，不参与排团，但是要追踪是否购买和收款。」⇒ 不加进 Bus / 当天总数，只算自己的胶囊；Main manifest 上要能看到买没买、收没收款（d8 查收款字段；样子变了的话 91 先出 preview）。
 - 37 核过：Sales Report /amount/products 本来就算 CHD 组和 PFYF01（不看 manifest 筛选；$ 只算 confirmed；Gray Line 6 张收款单都算进去了）。所以 Annie 觉得报表缺 CHD 的话，原因在别处，要问她看到了什么。Annie 又说（37 转）「统计销售要把这个费用统计进去，但是需要单独的一个项目」：后端 sales_breakdown.py 已经把 PFYF01 放在 CHD 组下，单独一行 + 组小计、算进 grand_total；24 查前端 breakdown-table 没有过滤 unmapped，应该已经单独显示。⚠️ 37 更正：这句说的是 Main manifest，Annie 原话「我的意思是在main manifest里单独设一项」⇒ CHD 在 Main manifest 有自己的标签页（和 Bus / Tickets / Shuttle 并排，用组名），不是 Bus 里的胶囊；不发送、人数不算进总数、显示买没买 / 收没收款。Annie 再确认「不要放到现有的行程里，它是单独的一个tag」。91 先出 preview 给 Annie。Sales Report 两边都不改，也不问 Annie（37：她没报 Sales Report 有问题）。
-- d8 定字段（后端 task/chd-main-manifest，等 24 说「前端已上」再推）：/api/manifests 新标签 admin_fee（名 = unmapped 组名，现在 CHD），tabs / pills / rows 带 sendable，rows 带 reason / reason_label（"Admin fee - not sent, not dispatched"），没有 sections；收款列 status / item_amount / order_total / total_paid / total_due；hidden 那块不再有 unmapped 行。91 分两步：① 排除 sendable=false + 总数只加 sendable 标签 + admin_fee 标签先不显示，合后通知 37 推；② admin_fee 标签 preview 给 Annie，同意后放出。37 改：d8 等 ② 上 main 后才推（不留 CHD 行看不到的空档），24 发「前端已上 (step 2)」+ SHA 给 37。preview 最优先。Pax 里收款单各算 50 / 75 人，37 问过她一次，未答。另外 37 更正：「10-18 CHD 漏进 Dispatch」没有记录，Dispatch 同步只建 bus_tour 组，CHD 怎样都不会排进车里。Sales Report 要哪种（A / B / C）还没答。
+- d8 定字段（后端 task/chd-main-manifest，等 24 说「前端已上」再推）：/api/manifests 新标签 admin_fee（名 = unmapped 组名，现在 CHD），tabs / pills / rows 带 sendable，rows 带 reason / reason_label（"Admin fee - not sent, not dispatched"），没有 sections；收款列 status / item_amount / order_total / total_paid / total_due；hidden 那块不再有 unmapped 行。91 分两步：① 排除 sendable=false + 总数只加 sendable 标签 + admin_fee 标签先不显示，合后通知 37 推；② admin_fee 标签 preview 给 Annie，同意后放出。37 改：d8 等 ② 上 main 后才推（不留 CHD 行看不到的空档），24 发「前端已上 (step 2)」+ SHA 给 37。preview 最优先。
+- 91：第一步已合 main fe5b184（man 327、mf 225、da 446、nav 38）。preview https://claude.ai/artifact/2whv5SmmkPvJzeWUDBw3Fu ：CHD 标签在 Bus Tour、Tickets 后面，灰色说明条，白表格（Order # / Guest / Agent / Product / Pax / Status / Amount / Order total / Paid / Due），没有勾选和发送条，Columns / Export 照常。3 题问 Annie：① 没收齐款的行（Due≠0）整行淡红（推荐 B）/ 不标；② 数字只写单数不写 pax（推荐 B）/ 照写 pax；③ 说明条文字用 91 写的那段（推荐 A）/ 不要说明条。需要后端：user_prefs 白名单加 manifest_cols_admin_fee（已转 37）。
+- Annie 看 preview 原话：「CHD tag那里，每个CHDgroup下面的产品都是有产品名称的」⇒ 24 理解为按产品名分开显示（每个产品一个胶囊、Product 列显示全名）。91 核真实产品清单（37 曾说 CHD 组只有 PFYF01，要核）、改 preview，看后端胶囊要不要加到产品一级。91 查：代码里 unmapped 组只有 PFYF01（Manual Admin Item），费用项名在 quantities[].optionLabel；Bus 胶囊本来就是组一级不是产品一级。已请 37 / d8 只读查生产库（unmapped 组和产品名、60 天订单、optionLabel），判断是 ① 多个有名字的产品（按产品出胶囊）还是 ② 只有 PFYF01、费用项在选项里（加 Fee item 列）。Annie 发 Products 截图 ⇒ ①：CHD 组 3 个产品 PLU3N8（Upgrade）、PXLTL1（Mystical Ante upg…）、PFYF01（Reschedule Fee）。91 用真名改 preview（按产品胶囊 vs 只靠 Product 列，做成一题）；37 / d8 确认 3 个都进 admin_fee、准备产品级胶囊。d8 查生产：只一个 unmapped 组 id 20 CHD；PXLTL1 全名「Mystical Ante upgrade fee」；PFYF01 行都有 tour_date，PLU3N8（3 单）/ PXLTL1（26 单）tour_date 全 NULL ⇒ 现在哪天都不出现，37 在问 Annie 放哪天；PFYF01 费用项 Rescheduling 181 / Upgrade 65 / Tour Service 6 / Hotel Pickup 1，37 在问要不要 Fee item 列；产品级胶囊 d8 约 30–45 分钟。Pax 里收款单各算 50 / 75 人，37 问过她一次，未答。另外 37 更正：「10-18 CHD 漏进 Dispatch」没有记录，Dispatch 同步只建 bus_tour 组，CHD 怎样都不会排进车里。Sales Report 要哪种（A / B / C）还没答。
 
 ### 48. Notice 跟 CCL 交流，可选个人或 team（2026-11-01 晚，11/2 做）
 - Annie 原话（09 窗口）：「2 可以跟CCL用notice交流，发的时候可以选个人，也可以选team」「CCl也算一个team」；开关「开放给员工由我来决定，你不要再问了」（各窗口不再问开关）。
@@ -343,7 +357,8 @@
 - 91 preview https://claude.ai/artifact/CjrpyLgPdDhE4f7FHs9gWH（Today's team 加「✉ New message」；发消息选 A person / A team，CCL 标 PARTNER；CCL 首页一块 Notice + 单独 /notice 页，顶栏「Notice (N)」）。6 题：① team 消息的回复：A 回发信人 + 抄送 team 其他人（推荐）／B 只回发信人；② Got it：A 各人按各人（推荐）／B 一人按全 team 收；③ 「A person」名单：A 全部在用员工 + CCL，在线标 online（推荐）／B 只在线员工 + 全部 CCL；④ CCL 主动发：A 只能回复／B 能发，只选 NPE team（推荐）／C team 或个人；⑤ team 消息发邮件：A 每人一封，回复只站内（推荐）／B 只站内；⑥ CCL 首页 Notice：A 留一块只放新消息 + Open Notice →（推荐）／B 只一行「2 new messages」／C 什么都不加。后端要的已转 57。
 - 2026-11-02 Annie 答 ①–④（在后端主窗口 37 那里答，37 转 24）：① A ② A ③ A ④ **C**（CCL 能主动发，发给 NPE 的 team 或某个人，CCL 看得到全部 NPE 员工名字）。⑤ ⑥ 还没答，37 已问过一次，不再追问；⑥ 只涉及前端。37 请 Annie 开新的后端窗口出 G231 接口方案（带 security-auditor）。91 按 ④ C 更新 preview。还没「动手」。
 - 91 已更新 preview（同一链接）：① ② ③ 标「已定 A」，④ 标「已定 C」；新加 ⑥「CCL 主动发消息」（A team 只列 NPE 的 team；A person 列全部在用 NPE 员工 + 所在 team，不列 CCL 自己）。91 自己定的一处，等 Annie 看：CCL 那边的名单不显示谁在线（在线算员工内部信息）。给后端的（partner 取 team 清单、取员工名单（只要名字 + team）、发给 team 或个人）已转 37。
-- Annie 对后端「CCL方案确认，动手」⇒ 64 在 task/g231-notice-ccl 写（迁移 v140，Annie 执行后推）。预定接口：GET /api/team/directory（员工 / partner 两种返回，partner 不给 online）、POST /api/team/messages {to_user_id | to_team_id}、…/reply、…/thread、Notice 接口对 partner 开放（只收 message）。真实 team 名：Operations、Tour Confirmation、Morning Pickup、Tickets Reminder、CCL。已转 91，排在 CHD 后。前端动手：24 在问 Annie（题 5、6 + CCL 不显示在线）。
+- Annie 对后端「CCL方案确认，动手」⇒ 64 在 task/g231-notice-ccl 写（迁移 v140，Annie 执行后推）。预定接口：GET /api/team/directory（员工 / partner 两种返回，partner 不给 online）、POST /api/team/messages {to_user_id | to_team_id}、…/reply、…/thread、Notice 接口对 partner 开放（只收 message）。真实 team 名：Operations、Tour Confirmation、Morning Pickup、Tickets Reminder、CCL。已转 91，排在 CHD 后。前端动手：24 在问 Annie（题 5、6 + CCL 不显示在线）。37 转来最终形状（审查中，等 v140），已转 91；邮件后端已按题 5 A 做（第一条每人一封，回复只站内）。
+- 2026-11-02 Annie 答（24 窗口原话）：「题5 A  题6 有消息就自动出现在页顶吧」⇒ ⑤ A（后端不用改）；⑥ 新做法：有新消息时自动出现在 CCL 页面顶上，不留固定块。还没答「CCL 不显示在线」，没动手。⚠️ Annie 不满 91 同时挂 CHD 和 CCL（原话「你又让它做CCL的页面，又让它做我紧急的事情？」）⇒ Notice-CCL 整件改交 e6（改 preview ④），91 只做 CHD。91 已在交接前改好 ④；新 2 题 Annie 答（原话）「6a B  6b A」⇒ Home / 7 Days Forecast / Farm out Dispatch 每页顶上都出（Notice 页不重复），放消息卡可直接 Reply / Got it。剩「CCL 不显示在线」+ 动手。
 
 ### 44. 全站手机版重新设计（派 e6 调查 + preview，2026-11-01）
 - Annie 原话：「而且我们的divce版本要重新设计一下了，太多说明和介绍的东西占了半个手机屏」；主窗口问范围，她选「全站一起（推荐）」：一套统一手机版规则，所有页面照做，新页面也照做。
