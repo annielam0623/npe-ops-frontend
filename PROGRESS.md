@@ -6,6 +6,25 @@
 
 > **下一个主窗口：先读下面「2026-11-01 晚 收工交接：前端主窗口-98」，再看置顶「📌 等 Annie 确认」。更早的交接是 10-30 晚那节。**
 
+## 2026-11-02 dr 84/88 修好：手机上 Dashboard 的 My shortcuts 条最右边的药丸被裁（`task/dr-check-fix`，工作窗口 09，主窗口 24 派）—— 已合 main 461955e
+- 现象：dr 那 4 条宽度检查（520 / 420px 药丸被裁、越窄越大）不过；二分：23c1764 的上一个提交 88/88，23c1764（手机版第一批）起 84/88。
+- 原因：23c1764 给整个内容区加了 [data-phone-compact]（手机上按钮统一左右 10px），Dashboard 的 My shortcuts 条在内容区里，条里的 × / … 键被撑宽，条按自己的 em 尺寸算宽度对不上，最右边的药丸被切掉一截。是页面真问题，不是检查过时。
+- 修法：components/nav/shortcut-strip.tsx 条里的 8 个键都加 data-phone-keep（不吃统一缩小，照条自己设计的尺寸）。电脑版不受影响；共用件没改。
+- 检查：合最新 main 后 tsc 0、eslint 0 错（2 旧警告）、build 过；dr 88/88、nav 38/38、tasks 144/144。
+
+## 2026-11-02 手机版第 ③ 批（`task/mobile-phase3`，工作窗口 09，主窗口 24 派）—— 已合 main
+- 背景：Annie 11/1「而且我们的divce版本要重新设计一下了，太多说明和介绍的东西占了半个手机屏」，选全站一起改，答完题说「动手」（e6 窗口）。规则见 CLAUDE.md「手机版统一规则」，只在屏宽 < 640px 生效。第 ③ 批 24 派给 09：Schedule 工具条、Bus Manifest、发送页、Tickets / Tour Tracking 的统计和提示。照 Annie 定的规则搬，不另出 preview。
+- 改了（只有手机，电脑版 1440 宽改前 / 改后截图逐像素一样；Schedule 只差「Gap 9:55 / 9:52」这个按当前时间算的字）：
+  - Staff Schedule：一行只放 ‹ 日期 ›；This week / Next week / Auto-fill / Employees / + Add employee 收进「⋯」，Discard / Save 露在外面；原来整页横晃 7px（日期那排太宽），修好。只能看的人没有 ⋯，This week / Next week 照旧在日期后面。
+  - Bus Manifest：Print all buses / Download 收进「⋯」；黄框（没订单、没排车、转完 farm out）压一行 + More；How to use 放到 Action Log 下面（页面最底）。
+  - 三个发送页（共用 legacy-ui）：右上角浮着的 View Tracking 会压住卡片标题，手机上改成卡片上方靠右的小键；上传说明（Required columns / Upload the CSV exactly…）和 Last Minute 那句红字说明进标题后的「i」；预览里黄框 / 蓝框压一行 + More，红框（发不了、算不出人数）照旧全文；结果页的数字一行；Tour 页两段 How to use 手机上都放页面最底。
+  - Tickets Tracking：原来整页撑到 700px 宽、左右晃，修好；顶栏标语手机上不显示、标题一行；团按钮一行左右滑；6 张统计卡一行；Columns / Download CSV / Upload 进「⋯」（浅色页的 ⋯ 用深色字边）；Drag to reorder 提示不显示。
+  - Tour Tracking：团按钮一行左右滑；7 张统计卡一行（午餐那块自己一行）；搜索框单独一行；Columns / Download CSV / Upload 进「⋯」；拖动提示不显示。
+- 判断（24 同意）：发送弹窗 / 确认弹窗里的黄框（Leave without saving、lunch mismatch、Manifests send-dialogs 等）不压一行——弹窗里的提示就是要人看的主要内容，压了要多点一下才看得全。
+- 没动共用件（components/ui/phone.tsx、lib/phone.ts、globals.css）。Dispatch 的 relay-panel / farm-out 通知弹窗是 e6 第一批的页，没碰。
+- 检查：合最新 main（含 e6 ①②）后 tsc 0、eslint 0 错（2 旧警告）、build 过；sch 316/316、mf 230/230、tsend 61/61、tour 65/65、mt 215/215、tk 135/135、tt 134/134、nav 38/38、da 446/446、man 322/322、fc 196/196、os 68/68、sc 34/34（各加了手机项：不横晃、⋯ 里有哪些、i 收说明、一行提示、How to use 在最底，再切回电脑查照旧）。tour / mf 各改了一处检查脚本：表单里第一个键现在是「i」、黄条里第一个键是 More，改成直接点 Upload / Dismiss。
+- ⚠️ dr 84/88：Dashboard shortcut 条 520 / 420px 那 4 条宽度检查不过；纯 main（0a278c2）上跑也是同样 4 条不过，不是这批引起的，报 24。→ 已查明并修好，见上面「dr 84/88 修好」一节。
+
 ## 2026-11-02 主窗口 `npe-ops-frontend-24`[d1dbae] 开工，接 98
 - Annie 指定 24 做 11/2 主窗口。98 已交接，从现在起不再派工，收到的消息都转给 24。
 - 98 交接里补充的（PROGRESS 11/1 晚那节没写的）：
@@ -20,10 +39,14 @@
 - 窗口：前端工作窗口 09、91、e6；后端主窗口 57，后端工作窗口 64、44；37 多半是今天的后端主窗口（98 说），已问它确认。
 - 资源：空闲内存 46.8 / 63 GB；node 0 个；chrome 28 个进程，约 4.1 GB。
 - 已发 e6：报开工和分支名，接着做手机版第二批。
+- 手机版第二批全部上线：e6 ①② 1472142，09 ③ 87b5b97（dr 84/88 的 shortcut 宽度 4 条纯 main 也不过，派 09 查）。
 - 37 确认：它是今天的后端主窗口（接 57），后端 44 / 64 经它回报。37 更正 98 的说法：Forecast 补数据（G229）还没派，等 Annie 答数据格式 / 上传方式 / 补的日子要不要标出来。G231 Notice ↔ CCL 等 Annie 答 91 preview 的 6 题。64 在做 G233（前端已经做了）、G232（排班邮件附 PDF，页面不变）。
 - G230 Send Log 按组分页接口格式（44 出，还没上线，Risk C，Annie 确认后才推 main）：逐条 send-log 每行加 batch_id；新增 GET /api/notifications/send-log/groups（筛选同逐条接口 + page / page_size≤100；组里任一条符合就列，一组不切开；返回 total / total_groups / stats / groups[{batch_id, started_at(_label), module, tour_type, tour_label, tour_date, send_type, sent_by, summary, matched_rows, matched_orders≤20, batch_id 为 null 时带 rows}]）；展开照旧 /api/send-batches/{id}；不是团的组 tour_label 是 Morning Pickup / Guest reply / Broadcast / Farm-out notice。已转 91 对着 preview 核字段。Annie 还没「动手」，题 3、4 没答，所以不写代码。
   - 91 核过（preview v2 不用改）：组头、分页、计数、统计、单条都够。缺 1（题 3 不管选哪个都要）：组展开时分不出哪几条符合筛选，send-batches 的行也缺列 ⇒ 请后端加 GET /api/notifications/send-log/groups/{batch_id}/rows?<筛选>，回 SendLogRow + matched。缺 2（只有题 4 选全部展开才要）：groups 接口加 include_rows=1。小问题：不是团的组 module 回什么值。三件都已转 37。
   - 44 答（37 转）：缺 1 照做 GET …/groups/{batch_id}/rows，每行 = 逐条行 + id / batch_id / matched，没这个 batch 回 404；缺 2 只有 Annie 选全部展开才做；module 一定有值：morning_pickup / farm_out / broadcast_* / reply_*（tour_label 是 Guest reply）等。/groups、/rows 等 Annie 确认 Risk C 后一起上线。已转 91（reply 先照 preview 用「Other」，换新标签要先问 Annie）。
+  - 2026-11-02 后端 G230 已上线 main 34c8993f：/groups、/groups/{id}/rows 可用，逐条加 batch_id，新的发送都建批次；旧数据等 Annie 跑补批次 SQL（44 在给她）。前端整页折叠还等 Annie 答题 3、4 + 动手；动手后 24 打算派 09（91 只做 CHD）。
+  - 2026-11-02 补批次 SQL 已在生产跑完（37 转）：Annie 跑的，44 只读核对 0 行没组，47,957 行 / 6,651 组；另有 17 个旧空组（ids 358–1199，10/14–10/30 没发出东西的批次），/groups 不返回，前端不用特殊处理。前端整页折叠可直接用 /groups + /groups/{id}/rows，不用为 batch_id 为空做后备。仍等 Annie 题 3、4 + 动手。
+  - 2026-11-02 Annie 原话「题3题4，同意推荐，动手」⇒ 题 3 A（筛选时组里只放符合的，写「1 of 6 in this send match」）、题 4 A（默认收起，搜单号 / View this send 进来自动展开）。已派 09（task/send-log-groups），整份背景已发。新模块（下一条）已在动手时问 Annie。
   - 91 记的，Annie 说动手时一起问（现在先不问）：前端 Send Log 只认 3 个模块（components/send-log/config.ts：Tour Conf、Morning P/U、Tickets）。所有发送都进组以后会多出 last_minute / farm_out / broadcast_* / reply_*。组头可以写「Other」，但 Module 下拉筛不出这几类，统计卡也不单独算。要问：Module 下拉和统计卡要不要加这几类（加的话先出 preview），以及 reply_* 换不换成自己的标签。
 - 手机版第二批分工：e6 做 ① Pickup Locations / Products / Team、② Send Log / Workspace / Content Studio（task/mobile-phase2，worktree C:\Code\ops-wt-e6-mob2）；09 做 ③ Schedule 工具条 / Bus Manifest / 发送页 / Tickets・Tour Tracking（task/mobile-phase3）。共用的 phone.tsx / lib/phone.ts / globals.css 要改的话先报 24 协调。Send Log 只改手机上的样子，不动页面结构（91 之后要改成折叠组）。
 
@@ -325,6 +348,11 @@
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 51. 订单搜索显示整单 + 一点跳到 Main manifest 并预先勾选（2026-11-02，Annie 对后端 37 说，方案阶段，没动手）
+- A 原话：「…显示整个订单包括些什么，有没有add on，有没有reschedule fee，所有的订单里的项目都要包含进去」。现状：后端订单详情接口 LIMIT 1；前端 order-detail-view 的 Ticket Breakdown / Raw items 只显示第一项，order-lookup-api 把搜索结果每单压成第一行（线上已有的漏洞）。后端打算详情加 items（全部项）、列表每单加一句小结。例：CHDEFSJ2C。
+- B 原话：「如果需要resend confirmation或者reminder的话，再给一个链接可以一点击就进到该订单所属的main manifest页面上，停留在该订单上，订单默认勾选」。后端给 manifest_link {date, tab, pill, row_keys[]} 或 null（不在 Main manifest 上就不给链接，提示去 Order List 看状态）。
+- e6 只读结果（已转 37）：date / tab / pill 已经接受，要加 ?row=<row_key>（标黄、滚到、只预勾能发的行，用过删掉，不在这页出黄字）；row_key 就是发送接口用的键；建议后端改给 manifest_links[]（一单的行可能分在几个 tab / pill 上）。估时：A preview 半天 + 代码半天到一天，B 约一天，合计约 2 天；B 要等 91 的 CHD 分支合 main。等接口形状和 Annie 动手，之后先出 preview。
+
 ### 50. Sales Report 插队 + CHD 组放回 Main manifest（2026-11-02）
 - Annie 原话：「紧急插个队，把sales report做出来」。24 问她指哪种：A 修现有 /sales-report（10/23 上线，按 Group → section → 产品，Orders / Pax / $，只 SA 可见挂 Soon）／B 做一份新报表（先出 preview）／C 把删掉的按 agent 月表周表加回来。她没选，接着说：「你先把CHD这个group 先放回main manifest」。
 - 背景：CHD 组（booking_type='unmapped'，只有 PFYF01 收款行）是 10-18 照 Annie「这个产品不是 tour，不应该出现在 manifest 里」由后端 G111 挡掉的。后端同一个函数还管自动发送、Manifests 发送、Dispatch 同步、Forecast、接客时间提醒、电话 AI。前端现在只能在 Manifests 的 Show hidden rows 里看到这些行。
@@ -333,7 +361,10 @@
 - 37 派后端 d8（最优先）。预定形状：CHD 行进正常 rows[]，每行带 sendable + reason_label（"The group is Unmapped"），CHD 行 sendable:false；Bus 标签多一个 CHD 胶囊。前端必须把 sendable:false 的行排除出勾选、Select unsent、全选，否则整批发送失败。⇒ 已派 91 task/manifests-sendable（没带字段当 true，可以先合 main）；后端等 24 说「前端已上」再推。胶囊人数：Annie 答（37 转）「不发送，它是一个Admin fee，不参与排团，但是要追踪是否购买和收款。」⇒ 不加进 Bus / 当天总数，只算自己的胶囊；Main manifest 上要能看到买没买、收没收款（d8 查收款字段；样子变了的话 91 先出 preview）。
 - 37 核过：Sales Report /amount/products 本来就算 CHD 组和 PFYF01（不看 manifest 筛选；$ 只算 confirmed；Gray Line 6 张收款单都算进去了）。所以 Annie 觉得报表缺 CHD 的话，原因在别处，要问她看到了什么。Annie 又说（37 转）「统计销售要把这个费用统计进去，但是需要单独的一个项目」：后端 sales_breakdown.py 已经把 PFYF01 放在 CHD 组下，单独一行 + 组小计、算进 grand_total；24 查前端 breakdown-table 没有过滤 unmapped，应该已经单独显示。⚠️ 37 更正：这句说的是 Main manifest，Annie 原话「我的意思是在main manifest里单独设一项」⇒ CHD 在 Main manifest 有自己的标签页（和 Bus / Tickets / Shuttle 并排，用组名），不是 Bus 里的胶囊；不发送、人数不算进总数、显示买没买 / 收没收款。Annie 再确认「不要放到现有的行程里，它是单独的一个tag」。91 先出 preview 给 Annie。Sales Report 两边都不改，也不问 Annie（37：她没报 Sales Report 有问题）。
 - d8 定字段（后端 task/chd-main-manifest，等 24 说「前端已上」再推）：/api/manifests 新标签 admin_fee（名 = unmapped 组名，现在 CHD），tabs / pills / rows 带 sendable，rows 带 reason / reason_label（"Admin fee - not sent, not dispatched"），没有 sections；收款列 status / item_amount / order_total / total_paid / total_due；hidden 那块不再有 unmapped 行。91 分两步：① 排除 sendable=false + 总数只加 sendable 标签 + admin_fee 标签先不显示，合后通知 37 推；② admin_fee 标签 preview 给 Annie，同意后放出。37 改：d8 等 ② 上 main 后才推（不留 CHD 行看不到的空档），24 发「前端已上 (step 2)」+ SHA 给 37。preview 最优先。
-- 91：第一步已合 main fe5b184（man 327、mf 225、da 446、nav 38）。preview https://claude.ai/artifact/2whv5SmmkPvJzeWUDBw3Fu ：CHD 标签在 Bus Tour、Tickets 后面，灰色说明条，白表格（Order # / Guest / Agent / Product / Pax / Status / Amount / Order total / Paid / Due），没有勾选和发送条，Columns / Export 照常。3 题问 Annie：① 没收齐款的行（Due≠0）整行淡红（推荐 B）/ 不标；② 数字只写单数不写 pax（推荐 B）/ 照写 pax；③ 说明条文字用 91 写的那段（推荐 A）/ 不要说明条。需要后端：user_prefs 白名单加 manifest_cols_admin_fee（已转 37）。Pax 里收款单各算 50 / 75 人，37 问过她一次，未答。另外 37 更正：「10-18 CHD 漏进 Dispatch」没有记录，Dispatch 同步只建 bus_tour 组，CHD 怎样都不会排进车里。Sales Report 要哪种（A / B / C）还没答。
+- 91：第一步已合 main fe5b184（man 327、mf 225、da 446、nav 38）。preview https://claude.ai/artifact/2whv5SmmkPvJzeWUDBw3Fu ：CHD 标签在 Bus Tour、Tickets 后面，灰色说明条，白表格（Order # / Guest / Agent / Product / Pax / Status / Amount / Order total / Paid / Due），没有勾选和发送条，Columns / Export 照常。3 题问 Annie：① 没收齐款的行（Due≠0）整行淡红（推荐 B）/ 不标；② 数字只写单数不写 pax（推荐 B）/ 照写 pax；③ 说明条文字用 91 写的那段（推荐 A）/ 不要说明条。需要后端：user_prefs 白名单加 manifest_cols_admin_fee（已转 37）。
+- Annie 看 preview 原话：「CHD tag那里，每个CHDgroup下面的产品都是有产品名称的」⇒ 24 理解为按产品名分开显示（每个产品一个胶囊、Product 列显示全名）。91 核真实产品清单（37 曾说 CHD 组只有 PFYF01，要核）、改 preview，看后端胶囊要不要加到产品一级。91 查：代码里 unmapped 组只有 PFYF01（Manual Admin Item），费用项名在 quantities[].optionLabel；Bus 胶囊本来就是组一级不是产品一级。已请 37 / d8 只读查生产库（unmapped 组和产品名、60 天订单、optionLabel），判断是 ① 多个有名字的产品（按产品出胶囊）还是 ② 只有 PFYF01、费用项在选项里（加 Fee item 列）。Annie 发 Products 截图 ⇒ ①：CHD 组 3 个产品 PLU3N8（Upgrade）、PXLTL1（Mystical Ante upg…）、PFYF01（Reschedule Fee）。91 用真名改 preview（按产品胶囊 vs 只靠 Product 列，做成一题）；37 / d8 确认 3 个都进 admin_fee、准备产品级胶囊。d8 查生产：只一个 unmapped 组 id 20 CHD；PXLTL1 全名「Mystical Ante upgrade fee」；PFYF01 行都有 tour_date，PLU3N8（3 单）/ PXLTL1（26 单）tour_date 全 NULL ⇒ 现在哪天都不出现，37 在问 Annie 放哪天；PFYF01 费用项 Rescheduling 181 / Upgrade 65 / Tour Service 6 / Hotel Pickup 1，37 在问要不要 Fee item 列；产品级胶囊 d8 约 30–45 分钟。
+- d8 最终字段（31aef9a3，等前端第二步）：admin_fee 标签 label CHD、胶囊 g:20；rows 加 shown_on；新列 fee_item（Rezdy optionLabel，金额 > 0）进默认列；Annie 定 PLU3N8 / PXLTL1 显示在下单日（生产：PLU3N8 11/01 3 单，PXLTL1 10/12 12 单、10/23 14 单）。37 还在问：PFYF01 的 Upgrade Fee 单要不要也挪到下单日。91 改 preview（加 Fee item、行上显示 reason_label）。preview v2 新题 0（按产品胶囊 A 推荐 / 只靠 Product 列 B）+ 题 1–3 等 Annie。Pax 里收款单各算 50 / 75 人，37 问过她一次，未答。另外 37 更正：「10-18 CHD 漏进 Dispatch」没有记录，Dispatch 同步只建 bus_tour 组，CHD 怎样都不会排进车里。Sales Report 要哪种（A / B / C）还没答。
+- 题 0 Annie 答（91 转）：「CHD要胶囊，每个产品一个」⇒ A，每个产品一个胶囊（不算动手）。后端要改：admin_fee 胶囊 key p:<product_code>、label 用 internal name、sendable:false、?pill=p:<code> 只回该产品；已转 37 / d8，注明还没动手。前端不用改。还等题 1–3 + 动手。
 
 ### 48. Notice 跟 CCL 交流，可选个人或 team（2026-11-01 晚，11/2 做）
 - Annie 原话（09 窗口）：「2 可以跟CCL用notice交流，发的时候可以选个人，也可以选team」「CCl也算一个team」；开关「开放给员工由我来决定，你不要再问了」（各窗口不再问开关）。
@@ -344,7 +375,7 @@
 - 2026-11-02 Annie 答 ①–④（在后端主窗口 37 那里答，37 转 24）：① A ② A ③ A ④ **C**（CCL 能主动发，发给 NPE 的 team 或某个人，CCL 看得到全部 NPE 员工名字）。⑤ ⑥ 还没答，37 已问过一次，不再追问；⑥ 只涉及前端。37 请 Annie 开新的后端窗口出 G231 接口方案（带 security-auditor）。91 按 ④ C 更新 preview。还没「动手」。
 - 91 已更新 preview（同一链接）：① ② ③ 标「已定 A」，④ 标「已定 C」；新加 ⑥「CCL 主动发消息」（A team 只列 NPE 的 team；A person 列全部在用 NPE 员工 + 所在 team，不列 CCL 自己）。91 自己定的一处，等 Annie 看：CCL 那边的名单不显示谁在线（在线算员工内部信息）。给后端的（partner 取 team 清单、取员工名单（只要名字 + team）、发给 team 或个人）已转 37。
 - Annie 对后端「CCL方案确认，动手」⇒ 64 在 task/g231-notice-ccl 写（迁移 v140，Annie 执行后推）。预定接口：GET /api/team/directory（员工 / partner 两种返回，partner 不给 online）、POST /api/team/messages {to_user_id | to_team_id}、…/reply、…/thread、Notice 接口对 partner 开放（只收 message）。真实 team 名：Operations、Tour Confirmation、Morning Pickup、Tickets Reminder、CCL。已转 91，排在 CHD 后。前端动手：24 在问 Annie（题 5、6 + CCL 不显示在线）。37 转来最终形状（审查中，等 v140），已转 91；邮件后端已按题 5 A 做（第一条每人一封，回复只站内）。
-- 2026-11-02 Annie 答（24 窗口原话）：「题5 A  题6 有消息就自动出现在页顶吧」⇒ ⑤ A（后端不用改）；⑥ 新做法：有新消息时自动出现在 CCL 页面顶上，不留固定块。还没答「CCL 不显示在线」，没动手。⚠️ Annie 不满 91 同时挂 CHD 和 CCL（原话「你又让它做CCL的页面，又让它做我紧急的事情？」）⇒ Notice-CCL 整件改交 e6（改 preview ④），91 只做 CHD。
+- 2026-11-02 Annie 答（24 窗口原话）：「题5 A  题6 有消息就自动出现在页顶吧」⇒ ⑤ A（后端不用改）；⑥ 新做法：有新消息时自动出现在 CCL 页面顶上，不留固定块。还没答「CCL 不显示在线」，没动手。⚠️ Annie 不满 91 同时挂 CHD 和 CCL（原话「你又让它做CCL的页面，又让它做我紧急的事情？」）⇒ Notice-CCL 整件改交 e6（改 preview ④），91 只做 CHD。91 已在交接前改好 ④；新 2 题 Annie 答（原话）「6a B  6b A」⇒ Home / 7 Days Forecast / Farm out Dispatch 每页顶上都出（Notice 页不重复），放消息卡可直接 Reply / Got it。剩「CCL 不显示在线」+ 动手。
 
 ### 44. 全站手机版重新设计（派 e6 调查 + preview，2026-11-01）
 - Annie 原话：「而且我们的divce版本要重新设计一下了，太多说明和介绍的东西占了半个手机屏」；主窗口问范围，她选「全站一起（推荐）」：一套统一手机版规则，所有页面照做，新页面也照做。

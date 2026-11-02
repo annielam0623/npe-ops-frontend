@@ -13,6 +13,7 @@ import {
   TABLE_WRAP,
   YELLOW_BOX,
 } from "@/components/tickets-send/legacy-ui";
+import { PhoneOneLine } from "@/components/ui/phone";
 import { useTick } from "@/lib/use-tick";
 import { cn } from "@/lib/utils";
 import type {
@@ -278,9 +279,11 @@ export function MorningPreviewStep({
       <div className="mb-5">
         {farmOutLeftOut > 0 ? (
           <p data-farm-out-left-out className={cn(YELLOW_BOX, "mb-3")}>
-            {farmOutLeftOut} farmed-out{" "}
-            {farmOutLeftOut === 1 ? "guest is" : "guests are"} left out — they
-            get the farm out notice instead.
+            <PhoneOneLine>
+              {farmOutLeftOut} farmed-out{" "}
+              {farmOutLeftOut === 1 ? "guest is" : "guests are"} left out — they
+              get the farm out notice instead.
+            </PhoneOneLine>
           </p>
         ) : null}
         {badPax.length > 0 ? (

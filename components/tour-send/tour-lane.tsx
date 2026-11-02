@@ -47,6 +47,8 @@ import {
 } from "./config";
 import { type TourBatch, TourPreview } from "./tour-preview";
 import { TourResults, type TourSendStop } from "./tour-results";
+import { usePhoneInfo } from "@/components/ui/phone";
+import { cn } from "@/lib/utils";
 
 type Step =
   | { kind: "form" }
@@ -413,6 +415,8 @@ export function TourLaneSection({
   }
 
   const closeDialog = useCallback(() => setDialog(null), []);
+  // 手机上上传说明（和 Last Minute 那句红字）收进标题后的「i」（手机版规则）。
+  const info = usePhoneInfo("About this upload");
 
   return (
     <div data-lane={lane}>
@@ -427,9 +431,17 @@ export function TourLaneSection({
             }}
             className={SEND_CARD}
           >
-            <h2 className={SEND_CARD_TITLE}>{cfg.title}</h2>
+            <h2 className={SEND_CARD_TITLE}>
+              {cfg.title}
+              {info.button}
+            </h2>
             {lane === "last_minute" ? (
-              <p className="-mt-2 mb-3.5 text-[12px] font-semibold text-[#c0392b]">
+              <p
+                className={cn(
+                  "-mt-2 mb-3.5 text-[12px] font-semibold text-[#c0392b]",
+                  info.hide,
+                )}
+              >
                 For orders placed within the cancellation window, or after 6 PM
                 the day before the tour — skip reconfirmation; send directly to
                 lunch selection &amp; pickup details.
@@ -482,7 +494,7 @@ export function TourLaneSection({
                 />
               </label>
             </div>
-            <p className={FORM_HINT}>
+            <p className={cn(FORM_HINT, info.hide)}>
               Required columns: Order Number, First Name, Last Name, Email,
               Customer Phone, Pick-up Time, Pick-up Location
             </p>

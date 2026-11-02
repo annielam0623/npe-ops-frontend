@@ -393,7 +393,7 @@ export function TicketsSendView() {
   const closeDialog = useCallback(() => setDialog(null), []);
 
   return (
-    <main className="text-stone-800">
+    <main data-phone-compact className="text-stone-800">
       <TrackingButton href="/tickets-reminder/tracking" color="bg-[#6d5bd0]" />
       <SendPageHeader title="Tickets Reminder — Send" />
 

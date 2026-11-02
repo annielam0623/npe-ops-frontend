@@ -157,7 +157,8 @@ async function upload(scenario, extra = {}, l = "tour_confirmation", file = `wes
   await fill(l, "grand_canyon_west", DATE);
   await setFile(`[data-lane="${l}"] input[type=file]`, file);
   await sleep(200);
-  await evaluate(`$btn('', ${lane(l)}.querySelector('form [type=submit]').parentElement).click();`);
+  // 点 Upload & Preview 本身（表单里第一个键现在是手机版标题后的「i」）。
+  await evaluate(`${lane(l)}.querySelector('form [type=submit]').click();`);
   await waitFor(`${lane(l)}.querySelector('tbody tr')`);
 }
 async function clickSend(l = "tour_confirmation") {
@@ -402,6 +403,19 @@ async function run() {
     check(`${label}：Tour 发送预览照出、${canSend ? "有" : "没有"} Send to All`, rows && has === canSend, String(has));
   }
   await ctl({ staffPerms: null, superAdmin: false });
+  // ── 手机版第 ③ 批（Annie 2026-11-01 手机版规则）：两段 How to use 都在页面最底；上传说明和 Last Minute 红字进 i ──
+  await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+  await goto(`${APP}/tour-confirmation/send`);
+  await waitFor("document.querySelectorAll('[data-lane]').length === 2", 30000);
+  await sleep(600);
+  check("手机：不左右晃；两段 How to use 都在 Last Minute 那块下面", await evaluate(`const vis = (el) => !!el && el.getBoundingClientRect().height > 0 && el.getBoundingClientRect().width > 0; const noSway = document.documentElement.scrollWidth <= innerWidth + 1; const btn = (t, root = document) => [...root.querySelectorAll('button, a')].find((b) => b.textContent.trim().startsWith(t)); const lm = document.querySelector('[data-lane=last_minute]').getBoundingClientRect().bottom; const hs = [...document.querySelectorAll('details')].filter((d) => d.textContent.includes('How to use')); return noSway && hs.length === 2 && hs.every((d) => d.getBoundingClientRect().top >= lm);`));
+  check("手机：Last Minute 红字和 Required columns 默认收着，点 i 才出", await evaluate(`const vis = (el) => !!el && el.getBoundingClientRect().height > 0 && el.getBoundingClientRect().width > 0; const noSway = document.documentElement.scrollWidth <= innerWidth + 1; const btn = (t, root = document) => [...root.querySelectorAll('button, a')].find((b) => b.textContent.trim().startsWith(t)); const lane = document.querySelector('[data-lane=last_minute]'); const red = [...lane.querySelectorAll('p')].find((p) => p.textContent.includes('cancellation window')); const before = vis(red); lane.querySelector('[data-phone-info]').click(); await new Promise((r) => setTimeout(r, 200)); return !before && vis(red);`));
+  await cdp("Emulation.clearDeviceMetricsOverride");
+  await goto(`${APP}/tour-confirmation/send`);
+  await waitFor("document.querySelectorAll('[data-lane]').length === 2", 30000);
+  await sleep(400);
+  check("电脑：How to use — Tour Confirmation 照旧在第一块里、Last Minute 红字直接显示", await evaluate(`const vis = (el) => !!el && el.getBoundingClientRect().height > 0 && el.getBoundingClientRect().width > 0; const noSway = document.documentElement.scrollWidth <= innerWidth + 1; const btn = (t, root = document) => [...root.querySelectorAll('button, a')].find((b) => b.textContent.trim().startsWith(t)); const h = [...document.querySelectorAll('details')].find((d) => d.textContent.includes('How to use — Tour Confirmation')); const red = [...document.querySelectorAll('p')].find((p) => p.textContent.includes('cancellation window')); return !!h && !!h.closest('[data-lane=tour_confirmation]') && vis(red);`));
+
   await ctl({ fail401: true });
   await goto(`${APP}/tour-confirmation/send`);
   await waitFor("location.pathname === '/auth/login'");

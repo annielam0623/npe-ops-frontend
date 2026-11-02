@@ -685,6 +685,16 @@ async function run() {
     check(`${label}：${canBroadcast ? "有" : "没有"} 📣 Broadcast`, has === canBroadcast, String(has));
   }
   await ctl({ staffPerms: null, superAdmin: false });
+  // ── 手机版第 ③ 批（Annie 2026-11-01 手机版规则）：整页不横晃、统计一行、团按钮一行、Columns / Download / Upload 进 ⋯、拖动提示不显示 ──
+  await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+  await goto(`${APP}/tickets-reminder/tracking`);
+  await waitFor("document.querySelector('thead th') && document.querySelector('[aria-label=\"Filter by tour\"]')", 30000);
+  await sleep(600);
+  check("手机：Tickets Tracking 整页不左右晃", await evaluate(`const vis = (el) => !!el && el.getBoundingClientRect().height > 0 && el.getBoundingClientRect().width > 0; const noSway = document.documentElement.scrollWidth <= innerWidth + 1; const btn = (t, root = document) => [...root.querySelectorAll('button, a')].find((b) => b.textContent.trim().startsWith(t)); return noSway;`), await evaluate("return document.documentElement.scrollWidth + ' > ' + innerWidth;"));
+  check("手机：6 张统计卡一行、团按钮一行", await evaluate(`const c = [...document.querySelector('section[aria-label="Summary"]').children]; const p = [...document.querySelector('[aria-label="Filter by tour"]').children]; return c.length === 6 && new Set(c.map((x) => Math.round(x.getBoundingClientRect().top))).size === 1 && new Set(p.map((x) => Math.round(x.getBoundingClientRect().top))).size === 1;`));
+  check("手机：Download CSV / Upload 不在外面、有 ⋯；拖动提示不显示", await evaluate(`const vis = (el) => !!el && el.getBoundingClientRect().height > 0 && el.getBoundingClientRect().width > 0; const noSway = document.documentElement.scrollWidth <= innerWidth + 1; const btn = (t, root = document) => [...root.querySelectorAll('button, a')].find((b) => b.textContent.trim().startsWith(t)); const out = [...document.querySelectorAll('main a, main button')].filter((b) => /Download CSV|⬆ Upload/.test(b.textContent) && vis(b) && !b.closest('[data-phone-more-menu]')); const drag = [...document.querySelectorAll('span')].find((s) => s.textContent.includes('Drag to reorder')); return out.length === 0 && vis(document.querySelector('[data-phone-more]')) && !vis(drag);`));
+  await cdp("Emulation.clearDeviceMetricsOverride");
+
   await ctl({ fail401: true });
   await goto(`${APP}/tickets-reminder/tracking`);
   await waitFor("location.pathname === '/auth/login'");

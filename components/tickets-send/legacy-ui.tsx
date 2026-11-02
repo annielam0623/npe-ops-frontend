@@ -66,7 +66,10 @@ export function SendPageHeader({ title }: { title: string }) {
   return <h1 className="sr-only">{title}</h1>;
 }
 
-/** 右上角浮着的 View Tracking（.btn-tracking-page）；底色每页不同。 */
+/**
+ * 右上角浮着的 View Tracking（.btn-tracking-page）；底色每页不同。
+ * 手机上不浮（会压住卡片标题），改成卡片上面靠右的一个小键（Annie 2026-11-01 手机版规则）。
+ */
 export function TrackingButton({
   href,
   color,
@@ -79,7 +82,7 @@ export function TrackingButton({
     <PageLink
       href={href}
       className={cn(
-        "fixed top-[72px] right-6 z-[100] inline-flex h-[38px] items-center gap-[7px] rounded-[9px] px-4 text-[13px] font-[650] text-white no-underline shadow-[0_2px_16px_rgba(0,0,0,.30)] transition-all duration-[180ms] hover:opacity-[.88] hover:shadow-[0_4px_20px_rgba(0,0,0,.40)]",
+        "fixed top-[72px] right-6 z-[100] inline-flex h-[38px] items-center gap-[7px] rounded-[9px] px-4 text-[13px] font-[650] text-white no-underline shadow-[0_2px_16px_rgba(0,0,0,.30)] transition-all duration-[180ms] hover:opacity-[.88] hover:shadow-[0_4px_20px_rgba(0,0,0,.40)] max-sm:static max-sm:mb-2 max-sm:ml-auto max-sm:flex max-sm:h-8 max-sm:w-fit max-sm:px-3 max-sm:text-[12px]",
         color,
       )}
     >
@@ -197,18 +200,25 @@ export function ResultStat({
   className?: string;
 }) {
   return (
-    <div className="rounded-lg bg-paper px-[18px] py-2.5 text-center">
+    <div className="rounded-lg bg-paper px-[18px] py-2.5 text-center max-sm:min-w-0 max-sm:flex-1 max-sm:px-1 max-sm:py-1.5">
       <div
         data-stat
-        className={cn("text-[22px] font-bold tabular-nums", className)}
+        className={cn(
+          "text-[22px] font-bold tabular-nums max-sm:text-[18px]",
+          className,
+        )}
       >
         {value}
       </div>
-      <div className="mt-0.5 text-[11px] text-[#1a1a1a]">{label}</div>
+      <div className="mt-0.5 text-[11px] text-[#1a1a1a] max-sm:text-[10px] max-sm:leading-tight">
+        {label}
+      </div>
     </div>
   );
 }
-export const RESULT_SUMMARY = "mb-4 flex flex-wrap gap-4";
+/** 手机上几格排一行（同 Tracking 的统计卡，手机版规则）。 */
+export const RESULT_SUMMARY =
+  "mb-4 flex flex-wrap gap-4 max-sm:flex-nowrap max-sm:gap-1.5";
 
 /** 发送中的进度（ops 才有：分小批发送）。 */
 export function SendProgress({

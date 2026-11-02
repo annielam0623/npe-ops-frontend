@@ -1064,6 +1064,14 @@ async function run() {
   }
 
   // ── 未登录 ──
+  // ── 手机版第 ③ 批：Morning Pickup 发送页——上传说明进 i、View Tracking 不浮 ──
+  await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+  await goto(`${APP}/morning-pickup/send`);
+  await waitFor("document.querySelector('input[type=file]')", 30000);
+  await sleep(500);
+  check("手机：Morning 发送页不左右晃、View Tracking 不浮、Required columns 进 i", await evaluate(`const vis = (el) => !!el && el.getBoundingClientRect().height > 0 && el.getBoundingClientRect().width > 0; const noSway = document.documentElement.scrollWidth <= innerWidth + 1; const btn = (t, root = document) => [...root.querySelectorAll('button, a')].find((b) => b.textContent.trim().startsWith(t)); const hint = [...document.querySelectorAll('p')].find((p) => p.textContent.includes('Required columns')); return noSway && getComputedStyle(btn('View Tracking')).position === 'static' && !vis(hint) && vis(document.querySelector('[data-phone-info]'));`));
+  await cdp("Emulation.clearDeviceMetricsOverride");
+
   await ctl({ fail401: true });
   await goto(`${APP}/morning-pickup/tracking`);
   await waitFor("location.pathname === '/auth/login'");

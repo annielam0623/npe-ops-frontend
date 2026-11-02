@@ -13,6 +13,7 @@ import {
   TR,
   YELLOW_BOX,
 } from "@/components/tickets-send/legacy-ui";
+import { PhoneOneLine } from "@/components/ui/phone";
 import { noAddressStats } from "@/components/tickets-send/config";
 import { sendBatchHref } from "@/lib/send-log-api";
 import { cn } from "@/lib/utils";
@@ -253,19 +254,24 @@ export function TourResults({
       {/* 旧页面的 Send Report 在结果卡下面（#skip-report）。 */}
       {noEmail.length || noPhone.length ? (
         <div className={cn(YELLOW_BOX, "-mt-2 mb-5")}>
-          <p className="font-semibold">⚠️ Send Report - Skipped Items:</p>
-          {noEmail.length ? (
-            <p className="pl-2">
-              • Email skipped (no email):{" "}
-              {noEmail.map((r) => r.order).join(", ")}
-            </p>
-          ) : null}
-          {noPhone.length ? (
-            <p className="pl-2">
-              • SMS skipped (no number):{" "}
-              {noPhone.map((r) => r.order).join(", ")}
-            </p>
-          ) : null}
+          {/* 手机上压成一行 + More（手机版规则）；电脑上照旧一段一行。 */}
+          <PhoneOneLine>
+            <span className="font-semibold sm:block">
+              ⚠️ Send Report - Skipped Items:{" "}
+            </span>
+            {noEmail.length ? (
+              <span className="sm:block sm:pl-2">
+                • Email skipped (no email):{" "}
+                {noEmail.map((r) => r.order).join(", ")}{" "}
+              </span>
+            ) : null}
+            {noPhone.length ? (
+              <span className="sm:block sm:pl-2">
+                • SMS skipped (no number):{" "}
+                {noPhone.map((r) => r.order).join(", ")}
+              </span>
+            ) : null}
+          </PhoneOneLine>
         </div>
       ) : null}
     </>
