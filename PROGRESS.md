@@ -388,6 +388,7 @@
 - 2026-11-02 Annie 答（24 窗口原话）：「题5 A  题6 有消息就自动出现在页顶吧」⇒ ⑤ A（后端不用改）；⑥ 新做法：有新消息时自动出现在 CCL 页面顶上，不留固定块。还没答「CCL 不显示在线」，没动手。⚠️ Annie 不满 91 同时挂 CHD 和 CCL（原话「你又让它做CCL的页面，又让它做我紧急的事情？」）⇒ Notice-CCL 整件改交 e6（改 preview ④），91 只做 CHD。91 已在交接前改好 ④；新 2 题 Annie 答（原话）「6a B  6b A」⇒ Home / 7 Days Forecast / Farm out Dispatch 每页顶上都出（Notice 页不重复），放消息卡可直接 Reply / Got it。剩「CCL 不显示在线」+ 动手。
 - Annie 看 preview 问「farm out为什么要通知CCL？」并说明「Farm out就是把这几个客人卖给其他公司的车上去了，跟CCL都没有关系了」。24 查：preview 把「Farm out Dispatch」画成 CCL 顶栏里的页面、6a 也写了它，但前端没有这个页面；Farm out 是转给别的合作公司，Farm out Notice 只发客人（后端 farm_out_notice.py），不通知 CCL。已请 e6 改 preview：核 CCL 实际能开的页面，顶栏和 6a 只写真实页面，6a 结论 B 不变（CCL 能进的每页顶上都出）。
   - e6 已改 preview（同一链接，版本 1793651438-0f8c，没写代码）：只读核 staff-permissions.ts + partner-frame.tsx——partner 只按 Team 页的勾、只能看；永远打不开 3 个 /send 页和 Farm out Report；Home 就是整张 7 Days Forecast（顶栏不另列）；前端没有 Farm out Dispatch 页。生产上 CCL 勾了哪些查不到，按 Annie 10-27「合作方只能看manifest和订单」画成 Home · Manifests · Orders · Notice。6a 仍 B，页名改成 Home、Manifests、Orders；④-2 换成 Manifests 页。全文已无 Farm。仍等题 7 + 动手。
+- Annie 新说法（24 窗口原话）：「CCL我已经取消了Partner的身份，所以不要再标Partner在他们的名字后面了」⇒ 不再在 CCL 名字后面标 Partner。已请 e6 去掉 preview 里的 PARTNER / Partner 标签，并只读核 CCL 账号现在的 role、列出影响（partner 顶栏 / 单独 /notice / 页顶 Notice 块是否还适用、题 6 / 6a / 6b / 7 是否还算数）；已告诉 37 查 G231 partner 版接口还要不要。没动手。
 
 ### 44. 全站手机版重新设计（派 e6 调查 + preview，2026-11-01）
 - Annie 原话：「而且我们的divce版本要重新设计一下了，太多说明和介绍的东西占了半个手机屏」；主窗口问范围，她选「全站一起（推荐）」：一套统一手机版规则，所有页面照做，新页面也照做。
