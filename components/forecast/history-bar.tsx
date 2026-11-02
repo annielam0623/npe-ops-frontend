@@ -49,42 +49,56 @@ export function HistoryPicker({
   );
 }
 
-/** 看历史时页面顶上的横条：看的是哪一天、几点存的、只读、回到今天。 */
-export function HistoryBanner({
-  date,
-  takenAt,
-  onBack,
-  slim = false,
+/** 表格左上角的翻页箭头：‹ 往历史翻一张快照，› 往后翻，翻到最新就回到今天（实时）。没有更早 / 已是今天 ⇒ 箭头变灰。 */
+export function HistoryArrows({
+  dates,
+  value,
+  onChange,
 }: {
-  date: string;
-  takenAt: string;
-  onBack: () => void;
-  slim?: boolean;
+  dates: string[];
+  value: string | null;
+  onChange: (date: string | null) => void;
 }) {
+  // dates 新的在前；value = null 是今天。
+  const at = value === null ? -1 : dates.indexOf(value);
+  const older = at + 1 < dates.length ? dates[at + 1] : undefined;
+  const newer = at < 0 ? undefined : at === 0 ? null : dates[at - 1];
+  const btn =
+    "flex h-8 w-8 items-center justify-center rounded-md border pb-0.5 text-[26px] leading-none font-bold";
+  const on = "cursor-pointer border-white/50 text-white hover:bg-white/15";
+  const off = "cursor-not-allowed border-white/10 text-white/25";
+  const label = value
+    ? new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" }).format(new Date(value + "T00:00:00Z"))
+    : "Today";
   return (
-    <div
-      data-history-banner
-      role="status"
-      className={
-        slim
-          ? "flex flex-wrap items-center gap-3 border-l-4 border-[#f59e0b] bg-[#f59e0b]/10 px-4 py-2 text-[13px] text-white"
-          : "flex flex-wrap items-center gap-3 rounded-[14px] border border-[#f59e0b]/60 bg-[#f59e0b]/15 px-5 py-3 text-sm text-white"
-      }
-    >
-      <span aria-hidden>🕘</span>
-      <span>
-        <b className="text-[#fcd34d]">
-          Viewing saved forecast from {formatLongDate(date)}
-        </b>{" "}
-        · saved {formatTakenAt(takenAt)} · read only
-      </span>
+    <div data-history-arrows className="flex items-center justify-between gap-1">
       <button
         type="button"
-        data-history-back
-        onClick={onBack}
-        className="ml-auto cursor-pointer rounded-md border border-white/40 px-3 py-1 text-[12.5px] font-semibold text-white hover:bg-white/10"
+        data-history-older
+        aria-label="Previous saved day"
+        title={older ? "Previous saved day" : "No earlier saved forecast"}
+        disabled={!older}
+        onClick={() => older && onChange(older)}
+        className={`${btn} ${older ? on : off}`}
       >
-        ← Back to today
+        ‹
+      </button>
+      <div className="text-center leading-tight">
+        <div className={`text-[12.5px] font-semibold ${value ? "text-[#fcd34d]" : "text-white"}`}>{label}</div>
+        <div className={`text-[9px] font-normal ${value ? "text-[#fcd34d]" : "text-white/60"}`}>
+          {value ? "Saved · read only" : "Live"}
+        </div>
+      </div>
+      <button
+        type="button"
+        data-history-newer
+        aria-label={newer === null ? "Back to today" : "Next saved day"}
+        title={newer === undefined ? "This is today" : newer === null ? "Back to today" : "Next saved day"}
+        disabled={newer === undefined}
+        onClick={() => newer !== undefined && onChange(newer)}
+        className={`${btn} ${newer !== undefined ? on : off}`}
+      >
+        ›
       </button>
     </div>
   );

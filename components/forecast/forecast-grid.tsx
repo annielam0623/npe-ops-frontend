@@ -146,6 +146,8 @@ export function ForecastGrid({
   onOpenEditor,
   onOpenCell,
   canyon,
+  corner,
+  history = false,
 }: {
   data: Forecast60Day;
   colorByVehicle: boolean;
@@ -155,6 +157,10 @@ export function ForecastGrid({
   /** G81：点粗体人数格 / Max allotments 格，改这一天。 */
   /** Antelope 剩余座位快照；null = 后端没上线 / 读失败 ⇒ 这一行照旧（Max allotments）。 */
   canyon: CanyonSnapshot | null;
+  /** PREVIEW：左上角格子里的内容（回看历史的箭头）。 */
+  corner?: React.ReactNode;
+  /** PREVIEW：看的是快照 ⇒ 第一天表头标 Saved（琥珀色），不标 Today。 */
+  history?: boolean;
 }) {
   const blocks = hideZero
     ? data.blocks.filter((b) => !isAllZero(b.total))
@@ -219,8 +225,10 @@ export function ForecastGrid({
             <th
               scope="col"
               className="sticky top-0 left-0 z-30 border-b border-white/10 px-2 py-2 text-left max-sm:shadow-[inset_-2px_0_0_rgba(255,255,255,.4),inset_0_-2px_0_rgba(255,255,255,.4)]"
-              style={{ backgroundColor: HEADER_BG }}
-            />
+              style={{ backgroundColor: history ? "#3a2a0a" : HEADER_BG }}
+            >
+              {corner}
+            </th>
             {data.days.map((day) => {
               const isToday = day === data.today;
               return (
@@ -230,16 +238,16 @@ export function ForecastGrid({
                   data-day={day}
                   data-today={isToday || undefined}
                   className={`sticky top-0 z-20 border-b border-white/10 px-1 py-2 text-center font-semibold whitespace-nowrap max-sm:shadow-[inset_0_-2px_0_rgba(255,255,255,.4)] ${colLine(isToday)} ${
-                    isToday ? "text-sky-200" : "text-white"
+                    isToday ? (history ? "text-[#fcd34d]" : "text-sky-200") : "text-white"
                   }`}
                   style={{
-                    backgroundColor: isToday ? HEADER_TODAY_BG : HEADER_BG,
+                    backgroundColor: isToday ? (history ? "#3a2a0a" : HEADER_TODAY_BG) : HEADER_BG,
                   }}
                 >
                   {formatHeaderDay(day)}
                   {isToday ? (
-                    <div className="text-[9px] font-normal text-sky-300/80">
-                      Today
+                    <div className={`text-[9px] font-normal ${history ? "text-[#fcd34d]" : "text-sky-300/80"}`}>
+                      {history ? "Saved" : "Today"}
                     </div>
                   ) : null}
                 </th>

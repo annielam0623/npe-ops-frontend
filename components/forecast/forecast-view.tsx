@@ -33,7 +33,7 @@ import { CellEditor } from "./cell-editor";
 import { formatLongDate, formatMetaTime } from "./config";
 import { ForecastGrid, type CellTarget } from "./forecast-grid";
 import { GuideEditor } from "./guide-editor";
-import { HistoryBanner, HistoryPicker } from "./history-bar";
+import { HistoryArrows, HistoryPicker } from "./history-bar";
 import { HowToUse } from "./how-to-use";
 import { Legend } from "./legend";
 import { ForecastReadOnly } from "./read-only";
@@ -367,8 +367,8 @@ export function ForecastView() {
   const picker = historyDates.length ? (
     <HistoryPicker dates={historyDates} value={historyDate} onChange={setHistoryDate} compact={variant === "b"} />
   ) : null;
-  const banner = viewingHistory ? (
-    <HistoryBanner date={snapshot!.date} takenAt={snapshot!.taken_at} onBack={() => setHistoryDate(null)} slim={variant === "b"} />
+  const corner = historyDates.length ? (
+    <HistoryArrows dates={historyDates} value={historyDate} onChange={setHistoryDate} />
   ) : null;
   const cellValueNow =
     data && cellTarget
@@ -413,7 +413,6 @@ export function ForecastView() {
             <h1 className="mt-1 text-[28px] leading-[1.1] font-bold tracking-[-.03em] max-sm:mt-0 md:text-[34px]">
               7 Days Forecast
             </h1>
-            {variant === "a" ? picker : null}
           </div>
           {/* 不限宽：一行放得下就不折（Annie 2026-10-13，全站页头说明同一规矩）。 */}
           <p className="mt-2 text-sm leading-[1.65] text-white max-sm:hidden">
@@ -423,7 +422,6 @@ export function ForecastView() {
           </p>
         </header>
 
-        {variant === "a" ? banner : null}
         {view.kind === "loading" ? <DarkPanel>Loading...</DarkPanel> : null}
         {view.kind === "forbidden" ? (
           <DarkPanel>
@@ -530,13 +528,14 @@ export function ForecastView() {
               </div>
             </div>
 
-            {variant === "b" ? banner : null}
             <ForecastReadOnly.Provider value={readOnly}>
               <ForecastGrid
                 data={data}
                 colorByVehicle={colorByVehicle}
                 hideZero={hideZero}
                 canyon={viewingHistory ? null : canyon}
+                corner={corner}
+                history={viewingHistory}
                 onOpenEditor={(manifestId, section, dayIndex) =>
                   setEditorTarget({ manifestId, section, dayIndex })
                 }
