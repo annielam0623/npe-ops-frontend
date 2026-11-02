@@ -6,6 +6,12 @@
 
 > **下一个主窗口：先读下面「2026-11-01 晚 收工交接：前端主窗口-98」，再看置顶「📌 等 Annie 确认」。更早的交接是 10-30 晚那节。**
 
+## 2026-11-02 dr 84/88 修好：手机上 Dashboard 的 My shortcuts 条最右边的药丸被裁（`task/dr-check-fix`，工作窗口 09，主窗口 24 派）—— 已合 main 461955e
+- 现象：dr 那 4 条宽度检查（520 / 420px 药丸被裁、越窄越大）不过；二分：23c1764 的上一个提交 88/88，23c1764（手机版第一批）起 84/88。
+- 原因：23c1764 给整个内容区加了 [data-phone-compact]（手机上按钮统一左右 10px），Dashboard 的 My shortcuts 条在内容区里，条里的 × / … 键被撑宽，条按自己的 em 尺寸算宽度对不上，最右边的药丸被切掉一截。是页面真问题，不是检查过时。
+- 修法：components/nav/shortcut-strip.tsx 条里的 8 个键都加 data-phone-keep（不吃统一缩小，照条自己设计的尺寸）。电脑版不受影响；共用件没改。
+- 检查：合最新 main 后 tsc 0、eslint 0 错（2 旧警告）、build 过；dr 88/88、nav 38/38、tasks 144/144。
+
 ## 2026-11-02 手机版第 ③ 批（`task/mobile-phase3`，工作窗口 09，主窗口 24 派）—— 已合 main
 - 背景：Annie 11/1「而且我们的divce版本要重新设计一下了，太多说明和介绍的东西占了半个手机屏」，选全站一起改，答完题说「动手」（e6 窗口）。规则见 CLAUDE.md「手机版统一规则」，只在屏宽 < 640px 生效。第 ③ 批 24 派给 09：Schedule 工具条、Bus Manifest、发送页、Tickets / Tour Tracking 的统计和提示。照 Annie 定的规则搬，不另出 preview。
 - 改了（只有手机，电脑版 1440 宽改前 / 改后截图逐像素一样；Schedule 只差「Gap 9:55 / 9:52」这个按当前时间算的字）：
@@ -17,7 +23,7 @@
 - 判断（24 同意）：发送弹窗 / 确认弹窗里的黄框（Leave without saving、lunch mismatch、Manifests send-dialogs 等）不压一行——弹窗里的提示就是要人看的主要内容，压了要多点一下才看得全。
 - 没动共用件（components/ui/phone.tsx、lib/phone.ts、globals.css）。Dispatch 的 relay-panel / farm-out 通知弹窗是 e6 第一批的页，没碰。
 - 检查：合最新 main（含 e6 ①②）后 tsc 0、eslint 0 错（2 旧警告）、build 过；sch 316/316、mf 230/230、tsend 61/61、tour 65/65、mt 215/215、tk 135/135、tt 134/134、nav 38/38、da 446/446、man 322/322、fc 196/196、os 68/68、sc 34/34（各加了手机项：不横晃、⋯ 里有哪些、i 收说明、一行提示、How to use 在最底，再切回电脑查照旧）。tour / mf 各改了一处检查脚本：表单里第一个键现在是「i」、黄条里第一个键是 More，改成直接点 Upload / Dismiss。
-- ⚠️ dr 84/88：Dashboard shortcut 条 520 / 420px 那 4 条宽度检查不过；纯 main（0a278c2）上跑也是同样 4 条不过，不是这批引起的，报 24。
+- ⚠️ dr 84/88：Dashboard shortcut 条 520 / 420px 那 4 条宽度检查不过；纯 main（0a278c2）上跑也是同样 4 条不过，不是这批引起的，报 24。→ 已查明并修好，见上面「dr 84/88 修好」一节。
 
 ## 2026-11-02 主窗口 `npe-ops-frontend-24`[d1dbae] 开工，接 98
 - Annie 指定 24 做 11/2 主窗口。98 已交接，从现在起不再派工，收到的消息都转给 24。
