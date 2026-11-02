@@ -209,6 +209,10 @@
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 44. 全站手机版重新设计（派 e6 调查 + preview，2026-11-01）
+- Annie 原话：「而且我们的divce版本要重新设计一下了，太多说明和介绍的东西占了半个手机屏」；主窗口问范围，她选「全站一起（推荐）」：一套统一手机版规则，所有页面照做，新页面也照做。
+- e6：手机尺寸截各主要页面、量说明 / How to use / 提示条 / shortcut 条占多高，提统一规则（1–2 种），挑 3–4 页做「现在 / 改后」对比 preview。电脑版不变。等 preview 和题。
+
 ### 43. 7 Days Forecast 回看历史（09，preview https://claude.ai/artifact/KgRH1xVmZ7QVgS5KnZ1wJC ，2026-11-01 问）
 - preview 代码在 task/forecast-history-preview 74e36f1（不合 main）。日期从 /api/forecast/history 取，第一项 Today (live)；过去日子只读，不出 Refresh、Antelope seats；琥珀横条「Viewing saved forecast from <date> · saved <time> PT · read only」+ 灰框「← Back to today」；没快照时不出日期选择。How to use 加一条（原文见 09 回报）。
 - 题 1 样子：甲 A 日期选择在标题右边、横条在页头下整块琥珀（推荐）／乙 B 放右边选项排（Full screen 左边「History」）、细横条贴表格。
