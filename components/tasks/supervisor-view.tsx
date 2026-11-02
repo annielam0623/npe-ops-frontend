@@ -274,17 +274,15 @@ function SupervisorTaskRow({
         <PriorityDot task={task} />
         <span
           className={cn(
-            "min-w-0 flex-1 truncate text-[12.5px] font-medium",
+            "min-w-0 flex-1 text-[12.5px] font-medium break-words",
             task.done && "text-white/40 line-through",
           )}
-          title={task.title}
         >
           {task.title}
         </span>
         <span data-task-who className="shrink-0 text-[11px] text-white/40">
           {task.assigned_to_display_name ?? "All shift"}
         </span>
-        {status === "overdue" ? <DueTag task={task} now={now} /> : null}
         {/* Anytime 卡里的任务：没有截止时间写 When free 之类，每小时重复的写 Every hour（preview 第 2 版）。 */}
         {task.frequency === "hourly" || (!dueAt && task.due_note) ? (
           <span className="shrink-0 text-[11.5px] text-white/50">
