@@ -314,6 +314,7 @@ export function ShortcutStrip({
         </PageLink>
         {fixedOne ? null : (
           <button
+            data-phone-keep
             type="button"
             aria-label={`Remove ${labels[id]} from shortcuts`}
             disabled={saving || !live}
@@ -330,6 +331,7 @@ export function ShortcutStrip({
 
   const moreButton = (live: boolean) => (
     <button
+      data-phone-keep
       type="button"
       {...(live ? {} : { "data-m-more": "" })}
       aria-label="More shortcuts"
@@ -368,6 +370,7 @@ export function ShortcutStrip({
         hideLabel={short || (live && fit.hideLabels)}
       />
       <button
+        data-phone-keep
         type="button"
         aria-label={`Remove ${labels[TRACKING_WIDGET_ID]} from shortcuts`}
         disabled={saving || !live}
@@ -391,6 +394,8 @@ export function ShortcutStrip({
       allowed(id),
   );
 
+  // 条里的键都带 data-phone-keep：Dashboard 的条在内容区（[data-phone-compact]）里，手机上的统一缩小会把 × / … 撑宽，
+  // 条按自己的 em 尺寸算宽度，撑宽了最右边的药丸就被裁掉（dr 宽度检查 520 / 420px，手机版第一批 23c1764 起）。
   return (
     <section
       aria-label="My shortcuts"
@@ -522,6 +527,7 @@ export function ShortcutStrip({
           Couldn&rsquo;t save ({saveError.replace(/\.$/, "")}). Back to how it
           was.
           <button
+            data-phone-keep
             type="button"
             disabled={saving}
             onClick={retrySave}
@@ -601,6 +607,7 @@ function ShortcutMenu({
                 {labels[id]}
               </PageLink>
               <button
+                data-phone-keep
                 type="button"
                 aria-label={`Remove ${labels[id]} from shortcuts`}
                 disabled={saving}
@@ -615,6 +622,7 @@ function ShortcutMenu({
         </>
       ) : null}
       <button
+        data-phone-keep
         type="button"
         role="menuitem"
         aria-expanded={adding}
@@ -635,6 +643,7 @@ function ShortcutMenu({
           ) : (
             addable.map((id) => (
               <button
+                data-phone-keep
                 key={id}
                 type="button"
                 role="menuitem"
@@ -651,6 +660,7 @@ function ShortcutMenu({
       ) : null}
       <div className="my-1 border-t border-white/10" />
       <button
+        data-phone-keep
         type="button"
         role="menuitem"
         disabled={saving}
