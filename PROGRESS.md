@@ -268,12 +268,18 @@
 - ⇒ 开关 team_messages_direct 何时打开由 Annie 自己定，各窗口不再问。
 - ⇒ **新需求（未动手、要先 preview、要后端）**：Notice 也能跟 CCL 交流；发的时候可以选「个人」或「team」，CCL 算一个 team。现在 91 核过：名单只有内部员工，partner 调接口 403、收不到消息、partner Dashboard 没这块 ⇒ 要后端放开 partner 收发、加「发给 team」（团队清单从哪来、CCL team 包含哪些账号）。交主窗口 98 派工 / 转后端。
 
+## 2026-11-01 晚 Settings › Products 输入框提示字改浅（`task/products-placeholder`，工作窗口 91，主窗口 98 派）—— Annie「动手」，已合 main
+- Annie 原话：「在product设置里头，你在输入框里设置的提示词颜色太深了，那个灰色要再浅一点，让人一看就知道是没填的，现在给人感觉是已经填好了」；看 preview（https://claude.ai/artifact/L6ig9u3yXFbdffLc68ASxk）后：「再加上斜体来区别吧」「然后字体小一些」「11px，大写的在小一号」「同意定稿 11px。动手」「全大写的10px」。
+- 原来：Products 的框没设提示字颜色，用 Tailwind 默认「字色 50%」，白卡片上约 #878684，像已经填好了。
+- 做了：`products-view.tsx` 的 Shell（整页外框）给里面所有 input / textarea 的提示字 #94a3b8、斜体、11px；提示字全是大写字母的框（Section order「UPPER, LOWER, X」、Bus Manifest section order「LOWER, UPPER, X」、Forecast 单独一块「SUNSET」、每个产品的 Section 框＝default section）加 `capsPlaceholder()`（`setup-ui.tsx`）→ 10px。填进去的字照旧 13px；点进框提示字照旧消失（globals.css 那条优先）。只改 Products；全站要不要一起改见置顶 49。
+- 检查：tsc / eslint（components/products）0 错、next build 过；用 build 出来的 CSS + headless Chrome 量：一般提示 11px rgb(148,163,184) italic、全大写 10px、textarea 11px、Products 外的框不变（默认 16px 字色 50%）、focus 后透明。
+
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
-### 49. Products 输入框提示字（placeholder）太深（派 91 出 preview，2026-11-01 晚）
-- Annie 原话：「在product设置里头，你在输入框里设置的提示词颜色太深了，那个灰色要再浅一点，让人一看就知道是没填的，现在给人感觉是已经填好了」
-- 91：查现用色、出「现在 / 改浅」对比 preview，问只改 Products 还是全站统一。未动手。
-- preview https://claude.ai/artifact/L6ig9u3yXFbdffLc68ASxk（现用约 #878684，Tailwind 默认字色 50%；全站另有十来处各写各的灰）。题 1 Annie 在 91 窗口答：「再加上斜体来区别吧」⇒ 丙：浅灰 #94a3b8 + 斜体。Annie 又加：「然后字体小一些」⇒ 题 1b Annie 答「11px，大写的在小一号」⇒ 定稿：#94a3b8 斜体，一般 11px，全大写的（LOWER, UPPER, X、SUNSET）10px，填的字照旧 13px。题 2 只改 Products（B）还是全站白卡片一起改（A，推荐）：未答。未动手。
+### 49. 输入框提示字的新样子要不要全站一起用（91，2026-11-01 晚）
+- Products 已按 Annie 定稿改好上 main（#94a3b8 斜体，一般 11px，全大写 10px；见当天记录）。还没答的只剩：全站白卡片上的输入框要不要也改成这样？
+  - A 全站一起改（推荐）：没填的框全站长得一样，各处自己写的灰色（#999、#aaa、#ccc、#9ca3af、stone-400 等十来处）也统一掉；深色底上的框（顶栏搜索、Dispatch 等，白色 30–35%）和全深色主题不动。
+  - B 只改 Products（现状）：别的页面照旧偏深、深浅不一。
 
 ### 48. Notice 跟 CCL 交流，可选个人或 team（2026-11-01 晚，11/2 做）
 - Annie 原话（09 窗口）：「2 可以跟CCL用notice交流，发的时候可以选个人，也可以选team」「CCl也算一个team」；开关「开放给员工由我来决定，你不要再问了」（各窗口不再问开关）。

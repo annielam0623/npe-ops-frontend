@@ -33,6 +33,7 @@ import {
 import { ForecastSetupFields } from "@/components/products/forecast-setup";
 import {
   BUTTON,
+  capsPlaceholder,
   HINT,
   INPUT,
   MapField,
@@ -1095,6 +1096,7 @@ function GroupEditor({
                 value={order}
                 maxLength={1200}
                 placeholder="UPPER, LOWER, X"
+                {...capsPlaceholder("UPPER, LOWER, X")}
                 disabled={orderBlock.state.kind === "saving"}
                 onChange={(event) => setOrderEdit(event.target.value)}
                 onKeyDown={(event) =>
@@ -1124,6 +1126,7 @@ function GroupEditor({
                   value={busOrder}
                   maxLength={1200}
                   placeholder="LOWER, UPPER, X"
+                  {...capsPlaceholder("LOWER, UPPER, X")}
                   disabled={busOrderBlock.state.kind === "saving"}
                   onChange={(event) => setBusOrderEdit(event.target.value)}
                   onKeyDown={(event) =>
@@ -1350,6 +1353,7 @@ function GroupEditor({
                     value={split}
                     maxLength={400}
                     placeholder="SUNSET"
+                    {...capsPlaceholder("SUNSET")}
                     disabled={splitBlock.state.kind === "saving"}
                     onChange={(event) => setSplitEdit(event.target.value)}
                     onKeyDown={(event) =>
@@ -1672,6 +1676,7 @@ function SectionRow({
           value={draft.section}
           maxLength={60}
           placeholder={setup.default_section}
+          {...capsPlaceholder(setup.default_section)}
           disabled={disabled}
           onChange={(event) => onDraft({ section: event.target.value })}
           className={cn(INPUT, "w-full min-w-[120px]", ring("section"))}

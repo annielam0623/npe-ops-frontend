@@ -11,6 +11,12 @@ import { cn } from "@/lib/utils";
 /** .ms-tbl input / .ms-row input[type=text] */
 export const INPUT =
   "h-7 rounded-[6px] border-[0.5px] border-black/25 night:border-white/10 bg-paper night:bg-white/[.04] px-2 text-[13px] font-normal text-[#1a1a1a] night:text-white/90 focus:outline-none disabled:opacity-60";
+/** 提示字全是大写字母时（LOWER, UPPER, X / SUNSET）加的属性：再小一号（products-view 的 Shell）。 */
+export function capsPlaceholder(text: string | null | undefined) {
+  return text && /[A-Z]/.test(text) && text === text.toUpperCase()
+    ? { "data-caps-placeholder": "" }
+    : {};
+}
 /** .ms-tbl select */
 export const SELECT =
   "h-7 rounded-[6px] border-[0.5px] border-black/25 night:border-white/10 bg-paper night:bg-white/[.04] text-[12.5px] text-[#1a1a1a] night:text-white/90";

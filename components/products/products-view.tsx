@@ -801,7 +801,9 @@ function joinAnd(parts: string[]): string {
 
 function Shell({ count, children }: { count?: string; children: ReactNode }) {
   return (
-    <main className="text-stone-800 night:text-white/90">
+    // 提示字浅灰斜体、比填的字小，一看就知道没填（Annie 2026-11-01：「那个灰色要再浅一点，让人一看就知道是没填的」
+    // 「再加上斜体来区别吧」「11px，大写的在小一号」）。全大写的提示（capsPlaceholder）10px。
+    <main className="text-stone-800 night:text-white/90 [&_:is(input,textarea)::placeholder]:text-[11px] [&_:is(input,textarea)::placeholder]:text-[#94a3b8] [&_:is(input,textarea)::placeholder]:italic [&_[data-caps-placeholder]::placeholder]:text-[10px]">
       <LegacyPageHeader title="🏷️ Products" count={count} />
       {children}
     </main>
