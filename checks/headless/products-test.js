@@ -1210,14 +1210,15 @@ async function run() {
   const noSideScroll = "document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1";
   check("手机：黄框说明只显示一行 + More", await evaluate("const o = document.querySelector('[data-attn-row] [data-phone-oneline]'); return !!o && o.getBoundingClientRect().height < 30 && /More/.test(o.textContent);"));
   check("手机：Bus Manifest setup 各项灰字说明收起、标题后有「i」", await evaluate("const f = document.querySelector('[data-field]'); if (!f) return 'skip'; const p = f.querySelector('p'); return p.getBoundingClientRect().height === 0 && !!f.querySelector('[data-phone-info]');").then((v) => v === true || v === "skip"));
-  check("手机：How to use 在 Products 表下面", await evaluate(`const ts = [...document.querySelectorAll('table')]; const t = ts[ts.length - 1].getBoundingClientRect().bottom + scrollY; return ${howTop} > t;`));
+  const howProducts = howTop.replace("/How to use/", "/How to use — Products/");
+  check("手机：How to use 在 Products 表下面", await evaluate(`const ts = [...document.querySelectorAll('table')]; const t = ts[ts.length - 1].getBoundingClientRect().bottom + scrollY; return ${howProducts} > t;`));
   check("手机：整页不左右晃", await evaluate(`return ${noSideScroll};`));
   await evaluate("document.querySelector('[data-attn-row] [data-phone-oneline] button').click();");
   await sleep(200);
   check("手机：点 More 看全文", await evaluate("return document.querySelector('[data-attn-row] [data-phone-oneline]').getBoundingClientRect().height > 30;"));
   await cdp("Emulation.clearDeviceMetricsOverride");
   await sleep(300);
-  check("电脑：How to use 照旧在上面、说明照旧全显示", (await evaluate(`return ${howTop} < document.querySelector('table').getBoundingClientRect().top + scrollY;`)) && (await evaluate("const f = document.querySelector('[data-field]'); return !f || f.querySelector('p').getBoundingClientRect().height > 0;")));
+  check("电脑：How to use 照旧在上面、说明照旧全显示", (await evaluate(`return ${howProducts} < document.querySelector('table').getBoundingClientRect().top + scrollY;`)) && (await evaluate("const f = document.querySelector('[data-field]'); return !f || f.querySelector('p').getBoundingClientRect().height > 0;")));
 }
 
 main().catch((e) => {
