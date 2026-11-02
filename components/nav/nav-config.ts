@@ -101,6 +101,8 @@ const MODULES: readonly NavModule[] = [
     group: "Operations",
     label: "Dashboard",
     href: "/dashboard",
+    // 只给常用页面上色、各不相同（Annie 2026-11-01「我要在常用的给颜色区分」，preview 第 7 版「动手」）；不常用的不设 dot（灰）。
+    dot: "#f472b6",
   },
   {
     // My Workspace（后端 G66，Annie 2026-10-14）：旧后台没有这一页。
@@ -115,12 +117,14 @@ const MODULES: readonly NavModule[] = [
     group: "Operations",
     label: "7 Days Forecast",
     href: "/forecast",
+    dot: "#ef4444",
   },
   {
     id: "manifests",
     group: "Operations",
     label: "Manifests",
     href: "/manifests",
+    dot: "#fb923c",
   },
   { id: "orders", group: "Operations", label: "Orders", href: "/orders" },
   {
@@ -145,6 +149,7 @@ const MODULES: readonly NavModule[] = [
     group: "Operations",
     label: "Forms",
     href: "/forms",
+    dot: "#2dd4bf",
     match: ["/dispatch/work-sheet", "/dispatch/guide-sheet"],
   },
   {
@@ -160,7 +165,6 @@ const MODULES: readonly NavModule[] = [
     label: "Daily Operation Report",
     href: "/daily-report",
     upcoming: true,
-    dot: "#fbbf24",
   },
   {
     // Farm out 转单报表（Annie 2026-10-15 看预览同意，侧栏 Operations 组），旧后台没有。
@@ -204,7 +208,8 @@ const MODULES: readonly NavModule[] = [
     group: "Notifications",
     label: "Broadcast",
     href: "/broadcasting-log",
-    dot: "#f97316",
+    // 白（原来的橙和 Manifests 撞色，Annie 2026-11-01 preview 第 7 版）。
+    dot: "#f8fafc",
     neverActive: true,
   },
   {
