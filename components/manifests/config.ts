@@ -127,6 +127,11 @@ export function isSelectable(row: ManifestRow, tab: ManifestTabKey): boolean {
   );
 }
 
+/** 能勾、能发（没带 sendable 的旧后端 ⇒ 能）。CHD 组的行不能（见 ManifestRow.sendable）。 */
+export function canSend(row: ManifestRow): boolean {
+  return row.sendable !== false;
+}
+
 export function paxOf(row: ManifestRow): number {
   const v = row.values.pax;
   return typeof v === "number" ? v : Number(v) || 0;

@@ -15,6 +15,8 @@ export interface ManifestCounts {
 export interface ManifestTab extends ManifestCounts {
   key: ManifestTabKey;
   label: string;
+  /** 这个标签能不能发（admin_fee = CHD 组的 Admin fee 是 false；后端 G232）。旧后端没有 ⇒ 当 true。 */
+  sendable?: boolean;
 }
 
 /** 胶囊：Bus = Products 的 Group（`g:<id>` / `g:none`）；Tickets = 门票 tour type（`t:<key>` / `t:none`）。 */
@@ -27,6 +29,8 @@ export interface ManifestPill extends ManifestCounts {
    * 旧后端没有这个字段时不会出现在 JSON 里，等同 null。
    */
   color?: string | null;
+  /** 这颗胶囊能不能发（CHD 组 = Admin fee，false；后端 G232）。旧后端没有 ⇒ 当 true。 */
+  sendable?: boolean;
 }
 
 /** 值的显示方式。`money` 是数字，币种在 `currency` 字段；`datetime` 是带时区的 ISO。 */
@@ -68,6 +72,15 @@ export interface ManifestRow {
    * 发 Send tour confirmation 时后端自动用这个产品的 Content Studio Shuttle 模板。旧后端没有 ⇒ 当团行。
    */
   shuttle?: boolean;
+  /**
+   * 这一行能不能勾、能不能发（后端 G232）。CHD 组的行（改期费 / 手续费，不是真客人）是 false：
+   * Annie 2026-11-02「不发送，它是一个Admin fee，不参与排团，但是要追踪是否购买和收款」。
+   * 后端发送时逐行复核，一批里夹一条就整批失败，所以前端不让勾。旧后端没有这个字段 ⇒ 当 true。
+   */
+  sendable?: boolean;
+  reason?: string;
+  /** 不能发的原因，例如 "The group is Unmapped"。 */
+  reason_label?: string;
   /** 只含 `fields` 里的键。 */
   values: Record<string, ManifestValue>;
 }

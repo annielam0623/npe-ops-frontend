@@ -162,6 +162,9 @@ function sendGate(keys) {
   if (ctl.failOnCall && sendCalls === ctl.failOnCall) return [502, { detail: "Bad gateway" }];
   if (ctl.sendFail === "400") return [400, { detail: "These guests are no longer on this day: CHD9999. Reload the page. Nothing was sent." }];
   if (ctl.sendFail === "502") return [502, { detail: "Bad gateway" }];
+  // G232：后端逐行复核，一批里夹一条不能发的行（CHD 组）整批 400。
+  const unsendable = keys.filter((k) => (ctl.unsendable ?? []).includes(byKey(k)?.order_number));
+  if (unsendable.length) return [400, { detail: "These guests are no longer on this date. Reload the page. Nothing was sent." }];
   const missing = keys.filter((k) => !byKey(k));
   if (missing.length) return [400, { detail: `Not on this day: ${missing.join(", ")}` }];
   return null;
@@ -243,7 +246,13 @@ function page(url) {
         // G36：returnLeg 开着时把 CHD1002 当成往返 shuttle 的回程那一行。
         leg: ctl.returnLeg && r.order_number === "CHD1002" ? "return" : null,
         // G189：shuttleRows 里的单带 shuttle: true（后端每行的 shuttle 标记），其余 false；没设 = 旧后端，不带这个字段。
-        ...(ctl.shuttleRows ? { shuttle: ctl.shuttleRows.includes(r.order_number) } : {}) };
+        ...(ctl.shuttleRows ? { shuttle: ctl.shuttleRows.includes(r.order_number) } : {}),
+        // G232：unsendable 设了 = 新后端，每行带 sendable；列表里的单 false + 原因。没设 = 旧后端，不带。
+        ...(ctl.unsendable
+          ? ctl.unsendable.includes(r.order_number)
+            ? { sendable: false, reason: "unmapped_group", reason_label: "The group is Unmapped" }
+            : { sendable: true }
+          : {}) };
     });
   const tabs = ["bus", "tickets"].map((k) => ({ key: k, label: k === "bus" ? "Bus Tour" : "Tickets - SelfDrive", ...counts(dayRows.filter((r) => r.tab === k)) }));
   // 分节：只有 Antelope（g:3）、只在 sections 开着时；后端规则是行已经按节排好。

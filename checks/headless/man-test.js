@@ -603,6 +603,29 @@ async function run() {
   check("整个单元格可点：点勾选框外面的单元格也能勾上 CHD1002", await evaluate("const lab = $box('CHD1002').closest('label'); const r = lab.getBoundingClientRect(); return r.width >= 30 && r.height >= 34;") && (await evaluate("$box('CHD1002').closest('label').click(); return $box('CHD1002').checked;")));
   await evaluate("$btn('Clear', $bar()).click();");
 
+  // ── G232 不能发的行（CHD 组 = Admin fee，Annie 2026-11-02「不发送」）：sendable:false 不能勾 ──
+  await ctl({ unsendable: ["CHD1002"] });
+  await openPage(`${APP}/manifests`);
+  await waitFor("document.querySelectorAll('tr[data-section]').length === 2 && $box('CHD1001')");
+  check("sendable:false 的行没有勾选框（同 Hidden rows），行照样显示；能发的行照旧有", await evaluate("const tr = document.querySelector('tr[data-row^=\"CHD1002\"]'); const lab = tr.querySelector('td label'); return !!tr && lab.hidden && getComputedStyle(lab).display === 'none' && !!$box('CHD1001') && !$box('CHD1001').closest('label').hidden;"));
+  check("只有不能发的行的那一节：节标题的全选关着", await evaluate("const s = document.querySelector('tr[data-section=\"outbound:SHUTTLE: LAS VEGAS → PAGE\"] input'); return s.disabled && !s.checked;"));
+  await evaluate("document.querySelector('thead th input').click();");
+  await sleep(100);
+  check("Select all 不带不能发的行：1 order selected · 2 pax，表头 Select all 显示勾上", await evaluate("return $bar().textContent.includes('1 order selected · 2 pax') && document.querySelector('thead th input').checked;"));
+  await evaluate("$btn('Clear', $bar()).click();");
+  await ctl({ clearTour: true });
+  await openPage(`${APP}/manifests`);
+  await waitFor("$box('CHD1001')");
+  await evaluate("document.querySelector('thead th button').click();");
+  await sleep(100);
+  check("Select unsent 不带不能发的行（CHD1002 没发过也不勾）", await evaluate("return $box('CHD1001').checked && $bar().textContent.includes('1 order selected · 2 pax');"));
+  await evaluate("$btn('Send tour confirmation', $bar()).click();");
+  await waitFor("$dialog()");
+  check("发送名单里没有不能发的行", await evaluate("return !!$dialog().querySelector('[data-pick=\"CHD1001\"]') && !$dialog().querySelector('[data-pick=\"CHD1002\"]') && !$dialog().textContent.includes('CHD1002');"));
+  await evaluate("$btn('Cancel', $dialog())?.click() ?? $btn('Close', $dialog())?.click();");
+  await waitFor("!$dialog()");
+  await ctl({ unsendable: null, resetSent: true });
+
   // ── G198 Main Manifest 的 Cfm # 格（后端 8a bbf3d08；preview 4p4g9f2M8hNXBB7UPRxWqd ③）──
   await ctl({ g198: true });
   await openPage(`${APP}/manifests`);

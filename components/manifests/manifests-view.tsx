@@ -35,6 +35,7 @@ import type {
   ManifestHiddenRow,
   ManifestPage,
   ManifestRow,
+  ManifestTab,
   ManifestTabKey,
 } from "@/types";
 
@@ -49,6 +50,7 @@ import {
   isTabKey,
   parseSavedFields,
   paxOf,
+  canSend,
   plural,
   PREF_KEY,
   requestFields,
@@ -337,7 +339,7 @@ export function ManifestsView() {
     setSelected(
       new Set(
         (shown?.rows ?? [])
-          .filter((row) => !sentAt(row, tab))
+          .filter((row) => canSend(row) && !sentAt(row, tab))
           .map((row) => row.row_key),
       ),
     );
@@ -422,15 +424,17 @@ export function ManifestsView() {
       ?.scrollIntoView({ block: "center" });
   }, [highlight, highlightShown]);
   const legacyCount = shown ? shown.rows.filter(isLegacy).length : 0;
-  const tabs =
+  // 不能发的标签（admin_fee = CHD 组的 Admin fee，后端 G232）先不显示：样子还没给 Annie 看过。
+  const tabs = (
     data?.tabs ??
-    TAB_KEYS.map((key) => ({
+    TAB_KEYS.map((key): ManifestTab => ({
       key,
       label: TAB_FALLBACK_LABEL[key],
       rows: 0,
       orders: 0,
       pax: 0,
-    }));
+    }))
+  ).filter((t) => t.sendable !== false);
   const currentPill = shown?.pills.find((p) => p.key === shown.pill);
   const fields = shown ? shownFields(shown, savedHere) : [];
   // 隐藏行：只在勾了开关、响应里有 hidden 块时才有；有行才出灰色胶囊，没有行写一句小字。
@@ -441,15 +445,19 @@ export function ManifestsView() {
   const isSavedKey = (k: string) => !savedHere || savedHere.includes(k);
   const denied = shown ? shown.denied.filter(isSavedKey) : [];
   const unknown = shown ? shown.unknown.filter(isSavedKey) : [];
-  // 勾了以后 Cfm # 被清掉的门票行不再算勾着（发不出去）。
+  // 勾了以后 Cfm # 被清掉的门票行不再算勾着（发不出去）；不能发的行（CHD 组，canSend）也不算。
   const pickedRows = shown
-    ? shown.rows.filter((r) => selected.has(r.row_key) && isSelectable(r, tab))
+    ? shown.rows.filter(
+        (r) => selected.has(r.row_key) && canSend(r) && isSelectable(r, tab),
+      )
     : [];
   const pickedPax = pickedRows.reduce((n, r) => n + paxOf(r), 0);
   const pickedOrders = new Set(pickedRows.map((r) => r.order_number)).size;
   // 勾了、但门票还没填 Cfm # 的行：点发送时先拦一道，不悄悄漏发。
   const missingPicked = shown
-    ? shown.rows.filter((r) => selected.has(r.row_key) && !isSelectable(r, tab))
+    ? shown.rows.filter(
+        (r) => selected.has(r.row_key) && canSend(r) && !isSelectable(r, tab),
+      )
     : [];
   // 这页门票里有没有还没填 Cfm # 的行（不看有没有勾）：表格上方要不要出黄字提示。
   const anyMissingCfm =
@@ -1215,8 +1223,10 @@ function ManifestTable({
     const at = rest.indexOf(to) + (forward ? 1 : 0);
     onReorder?.([...rest.slice(0, at), from, ...rest.slice(at)]);
   }
+  // 能勾的行（CHD 组的行不能勾，Select all / 节的全选都不带它们）。
+  const pickable = data.rows.filter(canSend);
   const allOn =
-    data.rows.length > 0 && data.rows.every((r) => selected.has(r.row_key));
+    pickable.length > 0 && pickable.every((r) => selected.has(r.row_key));
   const sections = data.sections ?? [];
   // 团胶囊「g:<id>」里的 id，存节的 Cfm # 用（G198）。
   const pillGroupId = /^g:(\d+)$/.exec(data.pill ?? "")?.[1];
@@ -1262,8 +1272,9 @@ function ManifestTable({
       >
         <td className="w-9 p-0">
           {/* 整个单元格都能点（Annie 2026-10-18：勾选框太小太难点中）。 */}
+          {/* 不能发的行（CHD 组）没有勾选框，同 Show hidden rows 里的行。 */}
           <label
-            hidden={viewOnly}
+            hidden={viewOnly || !canSend(r)}
             className="flex min-h-9 cursor-pointer items-center justify-center px-2.5 py-1.5"
           >
             <input
@@ -1334,10 +1345,10 @@ function ManifestTable({
                   type="checkbox"
                   className={CHECK_BIG}
                   checked={allOn}
-                  disabled={!data.rows.length}
+                  disabled={!pickable.length}
                   onChange={(e) =>
                     onToggle(
-                      data.rows.map((r) => r.row_key),
+                      pickable.map((r) => r.row_key),
                       e.target.checked,
                     )
                   }
@@ -1347,7 +1358,7 @@ function ManifestTable({
               <button
                 type="button"
                 hidden={viewOnly}
-                disabled={!data.rows.length}
+                disabled={!pickable.length}
                 onClick={onSelectUnsent}
                 className="ml-2 cursor-pointer text-[#1a1a1a] disabled:cursor-not-allowed disabled:opacity-50 night:text-white/85"
               >
@@ -1414,7 +1425,7 @@ function ManifestTable({
           {sections.length
             ? sections.flatMap((sec) => {
                 const rows = data.rows.filter((r) => r.section === sec.key);
-                const keys = rows.map((r) => r.row_key);
+                const keys = rows.filter(canSend).map((r) => r.row_key);
                 const on =
                   keys.length > 0 && keys.every((k) => selected.has(k));
                 const bg = sectionBg(
