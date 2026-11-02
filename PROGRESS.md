@@ -361,6 +361,7 @@
 - Annie 答权限题（24 窗口原话，没动手）：「一直跟team走」（= B，人的权限 = 所在 team 的勾 + 个人，改 team 马上生效）；两个 team「那就两个team的功能都有」（并集）；「没选的功能键都藏」（不只下载键）；Tracking / Settings 导出归哪：「什么意思」⇒ 24 解释了大意，请 e6 在 preview 里写全（列具体键 + 选项 + 推荐）。另请 e6 补题：team 给了、个人想去掉怎么办。已转 37 请后端只读估算 team 权限的形状和工作量（要改 permissions.py 算法和存储）。
   - 37：44 只读出后端设计和工作量（team 勾存储 + 可选个人去掉两种、合起来顺序、team 勾接口和「勾从哪来」、action_log、迁移不改现有权限、只读数 team 和多 team 人数），出好转来对 preview。「角色标准还卡不卡 team 给的勾」由 37 在它窗口问 Annie，e6 不问（已告诉 e6）。
   - 「角色标准还卡不卡 team 给的勾」Annie 在 24 窗口答（原话）「受」⇒ 权限 = (各 team 勾 ∪ 个人勾) ∩ 角色标准。已转 37 / 44，37 不再问。
+  - e6 权限 preview https://claude.ai/artifact/Y6iUsnesJLDwSvHJdqTrpp （按已定 1–3 改，没写代码）：Teams 页每个 team 加灰「Access」键（同 Team 页权限表，蓝 Save 马上对全员生效）；个人弹窗每勾写来源（from CCL, Operations / Personal / 红字 removed for …）；没勾的键不出（动手前给每页完整对照表）；CCL Dashboard 样子。剩题 4a–4f（Farm out Report CSV 跟 Export Reports / Manifests CSV + Bus Manifest 下载跟 Export Manifests / 三个 Tracking CSV 跟 Export Orders / HR 导出跟 Edit HR / Pickup Locations 导出跟 Settings: Pickup locations / Farm out Timetable 跟 Settings: Farm-out，都推荐 A）、题 5 个人可单独去掉（推荐 A）、题 6 Today's team 不跟排班勾（推荐 B）。24 已发 Annie。
 
 ### 52. 司机页 Farm out 客人那一栏改用 Affiliate 的叫法（2026-11-02，Annie 提，没动手）
 - Annie 原话：「我原来说过Farm out的客人是要出现在bus manifest和司机的pick up list里，然后用个好听的名字掩盖把客人卖了的行为」。
