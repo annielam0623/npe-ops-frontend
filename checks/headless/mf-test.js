@@ -919,7 +919,7 @@ async function run() {
   const sec = foLog.find((e) => e.path === "/api/dispatch/section")?.body;
   check("section：只送团 3（unit tour:3、两辆车），带 edit_token；第二辆车 farm_out + partner_id 5、司机 / 车 / 导游 / 酒店清空；第一辆原样", !!sec && sec.unit === "tour:3" && sec.edit_token === "zz-lock" && sec.rows.length === 2 && sec.rows[1].id === 42 && sec.rows[1].farm_out === true && sec.rows[1].partner_id === 5 && sec.rows[1].bus_label === "B" && sec.rows[1].driver_hr_id === null && sec.rows[1].vehicle_id === null && sec.rows[1].guide_hr_id === null && sec.rows[1].location_ids.length === 0 && sec.rows[0].id === 41 && sec.rows[0].driver_hr_id === 7 && !("farm_out" in sec.rows[0]), JSON.stringify(sec));
   check("转完：页面上方黄条「Bus 2042=B is farmed out to ZZ Test Partner Tours」带 Dispatch 链接，× 关掉", await evaluate("const b = document.querySelector('[data-farm-out-done]'); return b.textContent.includes('Bus 2042=B is farmed out to ZZ Test Partner Tours') && b.querySelector('a').getAttribute('href') === '/dispatch?date=2026-10-05';"));
-  await evaluate("document.querySelector('[data-farm-out-done] button').click();");
+  await evaluate("document.querySelector('[data-farm-out-done] button[aria-label=Dismiss]').click();");
   await sleep(150);
   check("点 × 黄条收起", await evaluate("return !document.querySelector('[data-farm-out-done]');"));
   // 页面上有没存的改动：键灰着（先存再转）
@@ -1087,5 +1087,22 @@ async function run() {
     check(`${label}：Bus Manifest ${canEdit ? "能改（有换车下拉、整页 Save）" : "只看（没有换车下拉、没有整页 Save）"}`, st.select === canEdit && st.save === canEdit, JSON.stringify(st));
   }
   await ctl({ staffPerms: null, superAdmin: false });
+
+  // ── 手机版第 ③ 批（Annie 2026-11-01 手机版规则）：Print all buses / Download 收进「⋯」、How to use 在最底、不横晃 ──
+  await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+  await goto(`${APP}/dispatch/manifest?date=2026-10-05&tour=3`);
+  await waitFor("document.querySelector('section[aria-label^=\"Bus\"]')", 60000);
+  await sleep(600);
+  check("手机：Bus Manifest 整页不左右晃", await evaluate(`const vis = (el) => !!el && el.getBoundingClientRect().height > 0 && el.getBoundingClientRect().width > 0; const noSway = document.documentElement.scrollWidth <= innerWidth + 1; const btn = (t, root = document) => [...root.querySelectorAll('button, a')].find((b) => b.textContent.trim().startsWith(t)); return noSway;`));
+  check("手机：Print all buses / Download 不在外面，⋯ 和 Save 看得见", await evaluate(`const vis = (el) => !!el && el.getBoundingClientRect().height > 0 && el.getBoundingClientRect().width > 0; const noSway = document.documentElement.scrollWidth <= innerWidth + 1; const btn = (t, root = document) => [...root.querySelectorAll('button, a')].find((b) => b.textContent.trim().startsWith(t)); const out = [...document.querySelectorAll('header a, header button')].filter((b) => /Print all buses|^Download$/.test(b.textContent.trim()) && vis(b) && !b.closest('[data-phone-more-menu]')); return out.length === 0 && vis(document.querySelector('header [data-phone-more]')) && vis(document.querySelector('[data-page-save]'));`));
+  await evaluate("document.querySelector('header [data-phone-more]').click();");
+  await sleep(300);
+  check("手机：点 ⋯ 有 Print all buses 和 Download", await evaluate(`const m = document.querySelector('[data-phone-more-menu]'); return !!m && /Print all buses/.test(m.textContent) && /Download/.test(m.textContent);`));
+  check("手机：How to use 在 Action Log 下面（页面最底）", await evaluate(`const h = [...document.querySelectorAll('details')].find((d) => d.textContent.includes('How to use — Tour manifest')); const l = document.querySelector('[data-manifest-log]'); return !!h && !!l && h.getBoundingClientRect().top > l.getBoundingClientRect().top;`));
+  await cdp("Emulation.clearDeviceMetricsOverride");
+  await goto(`${APP}/dispatch/manifest?date=2026-10-05&tour=3`);
+  await waitFor("document.querySelector('section[aria-label^=\"Bus\"]')", 60000);
+  await sleep(500);
+  check("电脑：Print all buses / Download 照旧在页头，没有 ⋯；How to use 在 Action Log 上面", await evaluate(`const vis = (el) => !!el && el.getBoundingClientRect().height > 0 && el.getBoundingClientRect().width > 0; const noSway = document.documentElement.scrollWidth <= innerWidth + 1; const btn = (t, root = document) => [...root.querySelectorAll('button, a')].find((b) => b.textContent.trim().startsWith(t)); const h = [...document.querySelectorAll('details')].find((d) => d.textContent.includes('How to use — Tour manifest')); return vis(btn('Print all buses')) && vis(btn('Download')) && !vis(document.querySelector('header [data-phone-more]')) && h.getBoundingClientRect().top < document.querySelector('[data-manifest-log]').getBoundingClientRect().top;`));
 }
 main().catch((e) => { console.error(e); process.exit(2); });

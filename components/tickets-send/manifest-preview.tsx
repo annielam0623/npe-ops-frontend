@@ -3,6 +3,7 @@ import {
   CompareBadge,
   UploadComparePanel,
 } from "@/components/ui/upload-compare-panel";
+import { PhoneOneLine } from "@/components/ui/phone";
 import { sendBatchHref } from "@/lib/send-log-api";
 import { useTick } from "@/lib/use-tick";
 import { cn } from "@/lib/utils";
@@ -317,11 +318,13 @@ export function ManifestPreview({
         {/* Check-in Time 是算出来的（Rezdy 原文件，或模板里空着的格子）：蓝条说按几分钟算的，同旧页面。 */}
         {batch.checkinNote ? (
           <p role="status" className={BLUE_BOX}>
-            ℹ️ {batch.checkinNote}
+            <PhoneOneLine>ℹ️ {batch.checkinNote}</PhoneOneLine>
           </p>
         ) : null}
         {batch.warning ? (
-          <p className={YELLOW_BOX}>⚠️ {batch.warning}</p>
+          <p className={YELLOW_BOX}>
+            <PhoneOneLine>⚠️ {batch.warning}</PhoneOneLine>
+          </p>
         ) : null}
         {blocked.length ? (
           <div role="alert" className={RED_BOX}>

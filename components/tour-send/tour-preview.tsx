@@ -19,6 +19,7 @@ import {
   TR,
   YELLOW_BOX,
 } from "@/components/tickets-send/legacy-ui";
+import { PhoneOneLine } from "@/components/ui/phone";
 import {
   type ApplyState,
   CompareBadge,
@@ -371,22 +372,29 @@ export function TourPreview({
         ) : null}
         {batch.warning || noEmail.length || noPhone.length ? (
           <div data-testid="missing-info" className={YELLOW_BOX}>
-            {batch.warning ? <p>⚠️ {batch.warning}</p> : null}
-            {noEmail.length || noPhone.length ? (
-              <p>⚠️ Some bookings have missing information:</p>
-            ) : null}
-            {noEmail.length ? (
-              <p className="pl-2">
-                • <strong>No email</strong> (email will be skipped):{" "}
-                {noEmail.join(", ")}
-              </p>
-            ) : null}
-            {noPhone.length ? (
-              <p className="pl-2">
-                • <strong>No phone</strong> (SMS will be skipped):{" "}
-                {noPhone.join(", ")}
-              </p>
-            ) : null}
+            {/* 手机上压成一行 + More（手机版规则）：电脑上照旧一段一行，手机上接成一段。 */}
+            <PhoneOneLine>
+              {batch.warning ? (
+                <span className="sm:block">⚠️ {batch.warning} </span>
+              ) : null}
+              {noEmail.length || noPhone.length ? (
+                <span className="sm:block">
+                  ⚠️ Some bookings have missing information:{" "}
+                </span>
+              ) : null}
+              {noEmail.length ? (
+                <span className="sm:block sm:pl-2">
+                  • <strong>No email</strong> (email will be skipped):{" "}
+                  {noEmail.join(", ")}{" "}
+                </span>
+              ) : null}
+              {noPhone.length ? (
+                <span className="sm:block sm:pl-2">
+                  • <strong>No phone</strong> (SMS will be skipped):{" "}
+                  {noPhone.join(", ")}
+                </span>
+              ) : null}
+            </PhoneOneLine>
           </div>
         ) : null}
         <p className={cn("mb-2 text-[12px]", meta.tone)}>{meta.text}</p>

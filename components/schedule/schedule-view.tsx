@@ -10,6 +10,7 @@ import {
 import { CenteredPage } from "@/components/ui/centered-page";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ErrorBanner, Panel } from "@/components/ui/panel";
+import { PhoneMore } from "@/components/ui/phone";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchCurrentUser } from "@/lib/auth-api";
 import {
@@ -812,8 +813,8 @@ export function ScheduleView() {
   }
 
   return (
-    <main className="text-white/90">
-      <CenteredPage className="flex flex-col gap-5">
+    <main data-phone-compact className="text-white/90">
+      <CenteredPage className="flex flex-col gap-5 max-sm:gap-3">
         <div className="flex flex-wrap items-center justify-end gap-3">
           <h1 className="sr-only">Staff Schedule</h1>
           <WorkWindowControl
@@ -1238,9 +1239,8 @@ export function ScheduleView() {
                 {openRequests.length === 1
                   ? "request is still open"
                   : "requests are still open"}
-                . Publishing closes{" "}
-                {openRequests.length === 1 ? "it" : "them"} and tells each
-                person:
+                . Publishing closes {openRequests.length === 1 ? "it" : "them"}{" "}
+                and tells each person:
               </p>
               <ul className="mt-1 list-disc pl-5">
                 {openRequests.map((t, i) => (
@@ -1712,9 +1712,38 @@ function WeekNav({
   /** 整周一个 Save（B9 preview ①）：Save + Discard，放在 Auto-fill 左边。 */
   saveControls?: React.ReactNode;
 }) {
+  // 手机版（Annie 2026-11-01 手机版规则）：一行只放 ‹ 日期 ›；This week / Next week、Auto-fill、Employees、+ Add employee
+  // 收进右边那排的「⋯」，Discard / Save 照旧露在外面。没有右边那排（只能看的人）时 This week / Next week 照旧放在日期后面。
+  const editRow = Boolean(canEdit && (onAddEmployee || saveControls));
+  const jumpButtons = (inMenu: boolean) => (
+    <>
+      <button
+        type="button"
+        onClick={() => onChange(weekStartYmd(laToday()))}
+        className={cn(
+          DARK_SECONDARY_BUTTON_CLASS,
+          "whitespace-nowrap",
+          inMenu ? "sm:hidden" : cn("ml-1", editRow && "max-sm:hidden"),
+        )}
+      >
+        This week
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange(shiftYmd(weekStartYmd(laToday()), 7))}
+        className={cn(
+          DARK_SECONDARY_BUTTON_CLASS,
+          "whitespace-nowrap",
+          inMenu ? "sm:hidden" : editRow && "max-sm:hidden",
+        )}
+      >
+        Next week
+      </button>
+    </>
+  );
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3">
-      <div className="flex items-center gap-2">
+    <div className="flex flex-wrap items-center justify-between gap-3 max-sm:gap-2">
+      <div className="flex min-w-0 items-center gap-2 max-sm:flex-wrap">
         <button
           type="button"
           aria-label="Previous week"
@@ -1723,7 +1752,7 @@ function WeekNav({
         >
           ‹
         </button>
-        <span className="min-w-[180px] text-center text-[15px] font-semibold text-white">
+        <span className="min-w-[180px] text-center text-[15px] font-semibold text-white max-sm:min-w-0 max-sm:text-[14px] max-sm:whitespace-nowrap">
           {weekRangeLabel(weekStart)}
         </span>
         <button
@@ -1734,57 +1763,47 @@ function WeekNav({
         >
           ›
         </button>
-        <button
-          type="button"
-          onClick={() => onChange(weekStartYmd(laToday()))}
-          className={cn(DARK_SECONDARY_BUTTON_CLASS, "ml-1")}
-        >
-          This week
-        </button>
-        <button
-          type="button"
-          onClick={() => onChange(shiftYmd(weekStartYmd(laToday()), 7))}
-          className={DARK_SECONDARY_BUTTON_CLASS}
-        >
-          Next week
-        </button>
+        {jumpButtons(false)}
       </div>
-      {canEdit && (onAddEmployee || saveControls) ? (
+      {editRow ? (
         <div className="flex flex-wrap items-center gap-2">
           {saveControls}
-          {onAutoFill ? (
-            <button
-              type="button"
-              onClick={onAutoFill}
-              disabled={autoFillDisabled}
-              title={
-                autoFillDisabled
-                  ? "Turn on some rules in the Rules tab first."
-                  : "Fill this week (or the next 4 weeks) by the rules"
-              }
-              className={DARK_SECONDARY_BUTTON_CLASS}
-            >
-              Auto-fill
-            </button>
-          ) : null}
-          {onManageEmployees ? (
-            <button
-              type="button"
-              onClick={onManageEmployees}
-              className={DARK_SECONDARY_BUTTON_CLASS}
-            >
-              Employees
-            </button>
-          ) : null}
-          {onAddEmployee ? (
-            <button
-              type="button"
-              onClick={onAddEmployee}
-              className={DARK_SECONDARY_BUTTON_CLASS}
-            >
-              + Add employee
-            </button>
-          ) : null}
+          <PhoneMore label="More schedule actions">
+            {jumpButtons(true)}
+            {onAutoFill ? (
+              <button
+                type="button"
+                onClick={onAutoFill}
+                disabled={autoFillDisabled}
+                title={
+                  autoFillDisabled
+                    ? "Turn on some rules in the Rules tab first."
+                    : "Fill this week (or the next 4 weeks) by the rules"
+                }
+                className={DARK_SECONDARY_BUTTON_CLASS}
+              >
+                Auto-fill
+              </button>
+            ) : null}
+            {onManageEmployees ? (
+              <button
+                type="button"
+                onClick={onManageEmployees}
+                className={DARK_SECONDARY_BUTTON_CLASS}
+              >
+                Employees
+              </button>
+            ) : null}
+            {onAddEmployee ? (
+              <button
+                type="button"
+                onClick={onAddEmployee}
+                className={DARK_SECONDARY_BUTTON_CLASS}
+              >
+                + Add employee
+              </button>
+            ) : null}
+          </PhoneMore>
         </div>
       ) : null}
     </div>

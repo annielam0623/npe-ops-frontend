@@ -357,6 +357,22 @@ async function run() {
     check(`${label}：门票发送预览照出、${canSend ? "有" : "没有"} Send 键`, rows && has === canSend, String(has));
   }
   await ctl({ staffPerms: null, superAdmin: false });
+
+  // ── 手机版第 ③ 批（Annie 2026-11-01 手机版规则）：View Tracking 不浮着压标题、上传说明进 i、黄 / 蓝框一行、红框照旧全文 ──
+  await ctl({ staffPerms: null, superAdmin: false });
+  await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+  await goto(`${APP}/tickets-reminder/send`);
+  await waitFor("document.querySelector('input[type=file]')", 30000);
+  await sleep(500);
+  check("手机：发送页不左右晃；View Tracking 不浮（在卡片上面）", await evaluate(`const vis = (el) => !!el && el.getBoundingClientRect().height > 0 && el.getBoundingClientRect().width > 0; const noSway = document.documentElement.scrollWidth <= innerWidth + 1; const btn = (t, root = document) => [...root.querySelectorAll('button, a')].find((b) => b.textContent.trim().startsWith(t)); const t = btn('View Tracking'); const card = document.querySelector('input[type=file]').closest('form'); return noSway && getComputedStyle(t).position === 'static' && t.getBoundingClientRect().bottom <= card.getBoundingClientRect().top + 1;`));
+  check("手机：上传说明默认收着，点标题后的 i 才出", await evaluate(`const vis = (el) => !!el && el.getBoundingClientRect().height > 0 && el.getBoundingClientRect().width > 0; const noSway = document.documentElement.scrollWidth <= innerWidth + 1; const btn = (t, root = document) => [...root.querySelectorAll('button, a')].find((b) => b.textContent.trim().startsWith(t)); const hint = [...document.querySelectorAll('p')].find((p) => p.textContent.includes('Upload the CSV exactly')); const before = vis(hint); document.querySelector('[data-phone-info]').click(); await new Promise((r) => setTimeout(r, 200)); return !before && vis(hint);`));
+  await upload("blocked");
+  check("手机：黄框 / 蓝框压成一行 + More；红框（发不了）照旧全文", await evaluate(`const ones = [...document.querySelectorAll('[data-phone-oneline]')]; const red = document.querySelector('main [role=alert]'); return ones.length >= 2 && ones.every((o) => o.dataset.phoneOneline === 'closed' && o.getBoundingClientRect().height < 30) && !red.querySelector('[data-phone-oneline]') && red.getBoundingClientRect().height > 60;`));
+  await cdp("Emulation.clearDeviceMetricsOverride");
+  await goto(`${APP}/tickets-reminder/send`);
+  await waitFor("document.querySelector('input[type=file]')", 30000);
+  await sleep(400);
+  check("电脑：View Tracking 照旧浮在右上角；上传说明直接显示", await evaluate(`const vis = (el) => !!el && el.getBoundingClientRect().height > 0 && el.getBoundingClientRect().width > 0; const noSway = document.documentElement.scrollWidth <= innerWidth + 1; const btn = (t, root = document) => [...root.querySelectorAll('button, a')].find((b) => b.textContent.trim().startsWith(t)); const hint = [...document.querySelectorAll('p')].find((p) => p.textContent.includes('Upload the CSV exactly')); return getComputedStyle(btn('View Tracking')).position === 'fixed' && vis(hint) && !vis(document.querySelector('[data-phone-info]'));`));
 }
 
 main().catch((e) => { console.error(e); process.exit(2); });

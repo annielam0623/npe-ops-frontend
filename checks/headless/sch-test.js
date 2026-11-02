@@ -1608,6 +1608,23 @@ async function run() {
   await evaluate("document.querySelector('[data-week-discard]').click();");
   await waitFor("!document.querySelector('[data-unsaved-summary]')");
 
+  // ── 手机版第 ③ 批（Annie 2026-11-01 手机版规则）：一行 ‹ 日期 ›，This week / Next week / Auto-fill / Employees / + Add employee 收进「⋯」，Save 露在外面，整页不横晃 ──
+  await ctl({ fail401: false, role: "superadmin" });
+  await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+  await goto(`${APP}/schedule`);
+  await waitFor("document.querySelector('[data-week-save]')", 30000);
+  await sleep(600);
+  check("手机：Schedule 整页不左右晃", await evaluate(`const vis = (el) => !!el && el.getBoundingClientRect().height > 0 && el.getBoundingClientRect().width > 0; const noSway = document.documentElement.scrollWidth <= innerWidth + 1; const btn = (t, root = document) => [...root.querySelectorAll('button, a')].find((b) => b.textContent.trim().startsWith(t)); return noSway;`), await evaluate("return document.documentElement.scrollWidth + ' > ' + innerWidth;"));
+  check("手机：‹ 日期 › 一行；This week / Next week 不在外面；Save 和 ⋯ 看得见", await evaluate(`const vis = (el) => !!el && el.getBoundingClientRect().height > 0 && el.getBoundingClientRect().width > 0; const noSway = document.documentElement.scrollWidth <= innerWidth + 1; const btn = (t, root = document) => [...root.querySelectorAll('button, a')].find((b) => b.textContent.trim().startsWith(t)); const p = document.querySelector('[aria-label="Previous week"]').getBoundingClientRect(), n = document.querySelector('[aria-label="Next week"]').getBoundingClientRect(); const outside = [...document.querySelectorAll('button')].filter((b) => b.textContent.trim() === 'This week' && vis(b) && !b.closest('[data-phone-more-menu]')); return Math.abs(p.top - n.top) < 2 && outside.length === 0 && vis(document.querySelector('[data-week-save]')) && vis(document.querySelector('[data-phone-more]'));`));
+  await evaluate("document.querySelector('[data-phone-more]').click();");
+  await sleep(300);
+  check("手机：点 ⋯ 列出 This week、Next week、Employees、+ Add employee", await evaluate(`const m = document.querySelector('[data-phone-more-menu]'); return !!m && ['This week', 'Next week', 'Employees', '+ Add employee'].every((t) => [...m.querySelectorAll('button')].some((b) => b.textContent.trim() === t && b.getBoundingClientRect().height > 0));`));
+  await cdp("Emulation.clearDeviceMetricsOverride");
+  await goto(`${APP}/schedule`);
+  await waitFor("document.querySelector('[data-week-save]')", 30000);
+  await sleep(500);
+  check("电脑：This week / Next week 照旧排在日期后面，没有 ⋯", await evaluate(`const vis = (el) => !!el && el.getBoundingClientRect().height > 0 && el.getBoundingClientRect().width > 0; const noSway = document.documentElement.scrollWidth <= innerWidth + 1; const btn = (t, root = document) => [...root.querySelectorAll('button, a')].find((b) => b.textContent.trim().startsWith(t)); return vis(btn('This week')) && vis(btn('Next week')) && !vis(document.querySelector('[data-phone-more]'));`));
+
   // 401：跳旧后台登录页。
   await ctl({ fail401: true, role: "superadmin" });
   await goto(`${APP}/schedule`);

@@ -62,7 +62,7 @@ import {
 import { LunchDialog } from "./lunch-dialog";
 import { TourTable } from "./tour-table";
 import { PageShortcutBar } from "@/components/nav/page-shortcut-bar";
-import { PhoneShortcutStar } from "@/components/ui/phone";
+import { PhoneMore, PhoneShortcutStar } from "@/components/ui/phone";
 import { PageLink } from "@/components/ui/page-link";
 import { TourUploadDialog } from "./tour-upload-dialog";
 
@@ -370,6 +370,7 @@ export function TourTrackingView() {
   return (
     // 整页照旧页面 tracking_tour.html（不套站点外框）：沙色底 #f4f0e6、64px 绿色顶栏、IBM Plex Sans。
     <main
+      data-phone-compact
       className={cn(
         trackingFont.className,
         "min-h-screen bg-[#f4f0e6] text-[14px] leading-[normal] font-medium text-[#1f2d25]",
@@ -377,7 +378,7 @@ export function TourTrackingView() {
     >
       {/* 最上面的 My shortcuts 条（Annie 2026-10-19 「tour tracking 动手」）；页面原来的 ← Back 去掉，只留条里的。 */}
       <PageShortcutBar />
-      <div className="relative flex h-16 items-center justify-between overflow-hidden bg-[linear-gradient(135deg,#1a3a2a_0%,#2f5e46_60%,#3a7055_100%)] px-6 shadow-[0_4px_20px_rgba(26,58,42,0.3)]">
+      <div className="relative flex h-16 items-center justify-between overflow-hidden bg-[linear-gradient(135deg,#1a3a2a_0%,#2f5e46_60%,#3a7055_100%)] px-6 shadow-[0_4px_20px_rgba(26,58,42,0.3)] max-sm:h-14 max-sm:px-3">
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0"
@@ -388,9 +389,9 @@ export function TourTrackingView() {
           aria-hidden
           className="pointer-events-none absolute right-0 -bottom-[18px] left-0 h-9 rounded-[50%_50%_0_0/100%_100%_0_0] bg-[#f4f0e6]"
         />
-        <div className="relative z-[1] flex items-center gap-3.5">
+        <div className="relative z-[1] flex min-w-0 items-center gap-3.5 max-sm:gap-2">
           <PhoneShortcutStar />
-          <h1 className="text-[17px] font-bold tracking-[.2px] text-white">
+          <h1 className="text-[17px] font-bold tracking-[.2px] text-white max-sm:truncate max-sm:text-[15px]">
             Tour Confirmation Tracking
           </h1>
         </div>
@@ -402,7 +403,7 @@ export function TourTrackingView() {
         </div>
       </div>
 
-      <div className="mx-auto w-full px-6 pt-7 pb-6">
+      <div className="mx-auto w-full px-6 pt-7 pb-6 max-sm:px-3 max-sm:pt-3">
         {state.kind === "forbidden" ? (
           <TrackingNotice>
             <p className="font-semibold text-[#1a3a2a]">
@@ -412,7 +413,7 @@ export function TourTrackingView() {
           </TrackingNotice>
         ) : (
           <>
-            <div className="mb-4 flex items-center gap-2">
+            <div className="mb-4 flex items-center gap-2 max-sm:mb-2.5 max-sm:gap-1.5">
               <button
                 type="button"
                 aria-label="Previous day"
@@ -427,7 +428,7 @@ export function TourTrackingView() {
                 aria-label="Tour date"
                 value={date}
                 onChange={(e) => changeDate(e.target.value)}
-                className="min-w-[130px] cursor-pointer rounded-lg border border-[#d0e0d4] bg-paper px-3 py-[5px] text-center font-[inherit] text-[13px] font-semibold shadow-[0_1px_4px_rgba(26,58,42,0.07)] outline-none focus:border-[#2f5e46]"
+                className="min-w-[130px] cursor-pointer rounded-lg border border-[#d0e0d4] bg-paper px-3 py-[5px] text-center font-[inherit] text-[13px] font-semibold shadow-[0_1px_4px_rgba(26,58,42,0.07)] outline-none focus:border-[#2f5e46] max-sm:w-[124px] max-sm:min-w-0 max-sm:px-1.5"
               />
               <button
                 type="button"
@@ -491,7 +492,8 @@ export function TourTrackingView() {
               <div
                 role="group"
                 aria-label="Filter by tour"
-                className="mb-4 flex flex-wrap gap-1.5"
+                // 手机上排成一行、左右滑（手机版规则：统计一行）。
+                className="mb-4 flex flex-wrap gap-1.5 max-sm:mb-2.5 max-sm:flex-nowrap max-sm:overflow-x-auto"
               >
                 <TourPillButton
                   active={!tourFilter}
@@ -515,7 +517,8 @@ export function TourTrackingView() {
 
             <section
               aria-label="Summary"
-              className="mb-4 flex flex-wrap items-stretch gap-2.5"
+              // 手机上 7 格排一行（午餐那块自己一行）。
+              className="mb-4 flex flex-wrap items-stretch gap-2.5 max-sm:mb-2.5 max-sm:grid max-sm:grid-cols-7 max-sm:gap-1"
             >
               <StatCard
                 label="Total"
@@ -576,7 +579,7 @@ export function TourTrackingView() {
                 }
               />
               {stats?.lunch.length ? (
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-2 max-sm:col-span-7 max-sm:gap-1">
                   {stats.lunch.map((g) => (
                     <div
                       key={g.label}
@@ -597,7 +600,7 @@ export function TourTrackingView() {
               ) : null}
             </section>
 
-            <div className="mb-3.5 flex flex-wrap items-center gap-2.5">
+            <div className="mb-3.5 flex flex-wrap items-center gap-2.5 max-sm:mb-2.5 max-sm:gap-1.5">
               <span className="text-[12px] whitespace-nowrap text-[#1a1a1a]">
                 {data ? `${filtered.length} records` : "— records"}
               </span>
@@ -607,7 +610,7 @@ export function TourTrackingView() {
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search order #, name, phone…"
                 aria-label="Search"
-                className="w-[220px] rounded-lg border border-[#d0e0d4] bg-white/90 px-3 py-1.5 font-[inherit] text-[13px] shadow-[0_1px_4px_rgba(26,58,42,0.06)] outline-none focus:border-[#2f5e46] [&::-webkit-search-cancel-button]:appearance-none"
+                className="w-[220px] rounded-lg border border-[#d0e0d4] bg-white/90 px-3 py-1.5 font-[inherit] text-[13px] shadow-[0_1px_4px_rgba(26,58,42,0.06)] outline-none focus:border-[#2f5e46] max-sm:order-first max-sm:w-full max-sm:basis-full [&::-webkit-search-cancel-button]:appearance-none"
               />
               <select
                 aria-label="Status"
@@ -621,35 +624,41 @@ export function TourTrackingView() {
                   </option>
                 ))}
               </select>
-              <ColumnPicker
-                columns={SYSTEM_COLUMNS}
-                prefs={vis}
-                headers={headers}
-                note="Hidden columns and uploaded-file columns are saved in this browser only. Column order (drag the headers) is saved to your account."
-                onChange={updateVis}
-                onReset={() => updateVis({ hide: [], file: [] })}
-                buttonClassName={BTN}
-                menuTop={34}
-              />
-              <a
-                href={date ? buildTourExportUrl(date) : undefined}
-                title="Everything for this date: every column of the uploaded manifest, then the status columns"
-                className={cn(
-                  BTN,
-                  "border-[#378ADD] text-[#185fa5] hover:border-[#378ADD] hover:bg-[#eaf3fc]",
-                )}
+              {/* 手机上 Columns / Download CSV / Upload 收进「⋯」（手机版规则：次要按钮）；浅色页，⋯ 用深色字和边。 */}
+              <PhoneMore
+                label="More actions"
+                className="[&_[data-phone-more]]:border-[#d0e0d4] [&_[data-phone-more]]:bg-paper [&_[data-phone-more]]:text-[#1a3a2a]"
               >
-                ⬇ Download CSV
-              </a>
-              <button
-                type="button"
-                onClick={() => setUploadOpen(true)}
-                disabled={!date || !tourTypes.length}
-                title="Add orders that were not sent from this system"
-                className="inline-flex cursor-pointer items-center gap-[5px] rounded-lg border-none bg-[#378ADD] px-[13px] py-[5px] font-[inherit] text-[12px] font-semibold text-white shadow-[0_1px_4px_rgba(26,58,42,0.07)] hover:bg-[#2b74c0] disabled:opacity-60"
-              >
-                ⬆ Upload
-              </button>
+                <ColumnPicker
+                  columns={SYSTEM_COLUMNS}
+                  prefs={vis}
+                  headers={headers}
+                  note="Hidden columns and uploaded-file columns are saved in this browser only. Column order (drag the headers) is saved to your account."
+                  onChange={updateVis}
+                  onReset={() => updateVis({ hide: [], file: [] })}
+                  buttonClassName={BTN}
+                  menuTop={34}
+                />
+                <a
+                  href={date ? buildTourExportUrl(date) : undefined}
+                  title="Everything for this date: every column of the uploaded manifest, then the status columns"
+                  className={cn(
+                    BTN,
+                    "border-[#378ADD] text-[#185fa5] hover:border-[#378ADD] hover:bg-[#eaf3fc]",
+                  )}
+                >
+                  ⬇ Download CSV
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setUploadOpen(true)}
+                  disabled={!date || !tourTypes.length}
+                  title="Add orders that were not sent from this system"
+                  className="inline-flex cursor-pointer items-center gap-[5px] rounded-lg border-none bg-[#378ADD] px-[13px] py-[5px] font-[inherit] text-[12px] font-semibold text-white shadow-[0_1px_4px_rgba(26,58,42,0.07)] hover:bg-[#2b74c0] disabled:opacity-60"
+                >
+                  ⬆ Upload
+                </button>
+              </PhoneMore>
               <button
                 type="button"
                 onClick={() => date && void load(date, false)}
@@ -711,7 +720,8 @@ export function TourTrackingView() {
                     </button>
                   </span>
                 ) : null}
-                <span className="ml-auto text-[11px] whitespace-nowrap text-[#9ED3A9]">
+                {/* 纯操作提示：手机上不显示（手机版规则）。 */}
+                <span className="ml-auto text-[11px] whitespace-nowrap text-[#9ED3A9] max-sm:hidden">
                   ⇆ Drag to reorder · ↔ Drag to resize
                 </span>
               </div>
@@ -869,7 +879,7 @@ function TourPillButton({
       onClick={onClick}
       title="Orders that replied / all orders"
       className={cn(
-        "cursor-pointer rounded-full border px-[13px] py-[5px] text-[12px] font-semibold whitespace-nowrap",
+        "cursor-pointer rounded-full border px-[13px] py-[5px] text-[12px] font-semibold whitespace-nowrap max-sm:shrink-0",
         active
           ? "border-transparent bg-[linear-gradient(135deg,#2f5e46,#1a3a2a)] text-white shadow-[0_3px_10px_rgba(47,94,70,0.25)]"
           : "border-[#d0e0d4] bg-white/85 text-[#2f5e46] shadow-[0_1px_3px_rgba(26,58,42,0.06)] hover:border-[#4f7f62] hover:bg-[#d4e8d8]",
@@ -907,19 +917,19 @@ function StatCard({
     <>
       <div
         className={cn(
-          "text-[22px] leading-[1.2] font-extrabold text-[#1f2d25]",
+          "text-[22px] leading-[1.2] font-extrabold text-[#1f2d25] max-sm:text-[16px]",
           valueClass,
         )}
       >
         {value ?? "—"}
       </div>
-      <div className="mt-0.5 text-[11px] font-medium text-[#1a1a1a]">
+      <div className="mt-0.5 text-[11px] font-medium text-[#1a1a1a] max-sm:text-[9px] max-sm:leading-tight">
         {label}
       </div>
     </>
   );
   const cls = cn(
-    "flex min-w-[80px] cursor-pointer flex-col justify-center rounded-[12px] border px-5 py-2.5 text-center shadow-[0_2px_8px_rgba(26,58,42,0.07)] transition-[box-shadow,border-color] duration-150 hover:border-[#4f7f62] hover:shadow-[0_4px_14px_rgba(26,58,42,0.12)]",
+    "flex min-w-[80px] cursor-pointer flex-col justify-center rounded-[12px] border px-5 py-2.5 text-center shadow-[0_2px_8px_rgba(26,58,42,0.07)] transition-[box-shadow,border-color] duration-150 hover:border-[#4f7f62] hover:shadow-[0_4px_14px_rgba(26,58,42,0.12)] max-sm:min-w-0 max-sm:rounded-[9px] max-sm:px-0.5 max-sm:py-1",
     active
       ? "border-[1.5px] border-[#2f5e46] bg-[#d4e8d8]"
       : "border-[#d0e0d4] bg-white/90",

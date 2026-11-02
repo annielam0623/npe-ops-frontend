@@ -61,7 +61,7 @@ import {
 } from "./config";
 import { TicketsTable } from "./tickets-table";
 import { PageShortcutBar } from "@/components/nav/page-shortcut-bar";
-import { PhoneShortcutStar } from "@/components/ui/phone";
+import { PhoneMore, PhoneShortcutStar } from "@/components/ui/phone";
 import { UploadDialog } from "./upload-dialog";
 
 type LoadState =
@@ -419,6 +419,7 @@ export function TicketsTrackingView() {
   return (
     // 整页照旧页面 tracking_tickets.html（不套站点外框）：浅灰底 #f0f4f8、88px 星空顶栏、IBM Plex Sans。
     <main
+      data-phone-compact
       className={cn(
         trackingFont.className,
         "min-h-screen bg-[#f0f4f8] text-[14px] leading-[normal] font-medium text-[#1a2a3a]",
@@ -439,8 +440,8 @@ export function TicketsTrackingView() {
         </div>
       ) : (
         <>
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#dde3ea] bg-paper px-5 py-2.5 shadow-[0_1px_6px_rgba(26,42,60,0.06)]">
-            <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#dde3ea] bg-paper px-5 py-2.5 shadow-[0_1px_6px_rgba(26,42,60,0.06)] max-sm:px-3 max-sm:py-2">
+            <div className="flex items-center gap-2 max-sm:gap-1.5">
               <button
                 type="button"
                 aria-pressed={!!date && date === today}
@@ -471,7 +472,7 @@ export function TicketsTrackingView() {
                 aria-label="Service date"
                 value={date}
                 onChange={(event) => changeDate(event.target.value)}
-                className="h-[30px] min-w-[150px] cursor-pointer rounded-[7px] border border-[#dde3ea] bg-paper px-2.5 font-[inherit] text-[13px] font-bold text-[#1a3a5c] [&::-webkit-calendar-picker-indicator]:hidden"
+                className="h-[30px] min-w-[150px] cursor-pointer rounded-[7px] border border-[#dde3ea] bg-paper px-2.5 font-[inherit] text-[13px] font-bold text-[#1a3a5c] max-sm:w-[116px] max-sm:min-w-0 max-sm:px-1.5 [&::-webkit-calendar-picker-indicator]:hidden"
               />
               <button
                 type="button"
@@ -518,7 +519,8 @@ export function TicketsTrackingView() {
             <div
               role="group"
               aria-label="Filter by tour"
-              className="flex flex-wrap gap-1.5 border-b border-[#dde3ea] bg-paper px-5 py-2"
+              // 手机上排成一行、左右滑（手机版规则：统计一行）。
+              className="flex flex-wrap gap-1.5 border-b border-[#dde3ea] bg-paper px-5 py-2 max-sm:flex-nowrap max-sm:overflow-x-auto max-sm:px-3"
             >
               <ProductPill
                 active={!product}
@@ -544,7 +546,7 @@ export function TicketsTrackingView() {
 
           <section
             aria-label="Summary"
-            className="flex flex-wrap gap-2.5 px-5 py-3"
+            className="flex flex-wrap gap-2.5 px-5 py-3 max-sm:flex-nowrap max-sm:gap-1 max-sm:px-3 max-sm:py-2"
           >
             <StatCard
               label="Total Orders"
@@ -580,42 +582,49 @@ export function TicketsTrackingView() {
             />
           </section>
 
-          <div className="flex items-center justify-start gap-2 px-5 pt-2 pb-3">
+          <div className="flex items-center justify-start gap-2 px-5 pt-2 pb-3 max-sm:flex-wrap max-sm:px-3 max-sm:pt-1 max-sm:pb-2">
             <input
               type="search"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="🔍  Search order #, name, phone…"
               aria-label="Search"
-              className="box-border h-8 w-[240px] rounded-lg border border-[#cbd5e1] bg-paper px-3 font-[inherit] text-[12px] text-[#1a1a1a] outline-none [&::-webkit-search-cancel-button]:appearance-none"
+              className="box-border h-8 w-[240px] rounded-lg border border-[#cbd5e1] bg-paper px-3 font-[inherit] text-[12px] text-[#1a1a1a] outline-none max-sm:w-[calc(100%-52px)] max-sm:min-w-0 [&::-webkit-search-cancel-button]:appearance-none"
             />
-            <ColumnPicker
-              columns={SYSTEM_COLUMNS}
-              prefs={prefs}
-              headers={headers}
-              onChange={updatePrefs}
-              // 同旧页面 resetCols()：只复原显示哪些列（系统列全显示、上传列全不显示），不动列的顺序。
-              onReset={() => updatePrefs({ ...prefs, hide: [], file: [] })}
-              note="Saved to your account."
-              buttonClassName={cn(REFRESH_BTN, "h-8 px-3.5")}
-              menuTop={36}
-            />
-            <a
-              href={date ? buildTicketsExportUrl(date) : undefined}
-              title="Everything for this date: every column of the uploaded manifest, then the status columns"
-              className="inline-flex h-8 cursor-pointer items-center rounded-[7px] border border-[#378ADD] bg-transparent px-3.5 text-[13px] font-semibold text-[#85B7EB] no-underline hover:bg-[rgba(55,138,221,0.14)]"
+            {/* 手机上 Columns / Download CSV / Upload 收进「⋯」（手机版规则：次要按钮）。 */}
+            <PhoneMore
+              label="More actions"
+              // 浅色页：⋯ 用深色字和边（共用件默认是深色页的样子）。
+              className="[&_[data-phone-more]]:border-[#cbd5e1] [&_[data-phone-more]]:bg-paper [&_[data-phone-more]]:text-[#1a3a5c]"
             >
-              ⬇ Download CSV
-            </a>
-            <button
-              type="button"
-              onClick={() => setUploadOpen(true)}
-              disabled={!date}
-              title="Add orders that were not sent from this system"
-              className="h-8 cursor-pointer rounded-[7px] border-none bg-[#378ADD] px-3.5 text-[13px] font-semibold text-white hover:bg-[#2b74c0] disabled:opacity-60"
-            >
-              ⬆ Upload
-            </button>
+              <ColumnPicker
+                columns={SYSTEM_COLUMNS}
+                prefs={prefs}
+                headers={headers}
+                onChange={updatePrefs}
+                // 同旧页面 resetCols()：只复原显示哪些列（系统列全显示、上传列全不显示），不动列的顺序。
+                onReset={() => updatePrefs({ ...prefs, hide: [], file: [] })}
+                note="Saved to your account."
+                buttonClassName={cn(REFRESH_BTN, "h-8 px-3.5")}
+                menuTop={36}
+              />
+              <a
+                href={date ? buildTicketsExportUrl(date) : undefined}
+                title="Everything for this date: every column of the uploaded manifest, then the status columns"
+                className="inline-flex h-8 cursor-pointer items-center rounded-[7px] border border-[#378ADD] bg-transparent px-3.5 text-[13px] font-semibold text-[#85B7EB] no-underline hover:bg-[rgba(55,138,221,0.14)]"
+              >
+                ⬇ Download CSV
+              </a>
+              <button
+                type="button"
+                onClick={() => setUploadOpen(true)}
+                disabled={!date}
+                title="Add orders that were not sent from this system"
+                className="h-8 cursor-pointer rounded-[7px] border-none bg-[#378ADD] px-3.5 text-[13px] font-semibold text-white hover:bg-[#2b74c0] disabled:opacity-60"
+              >
+                ⬆ Upload
+              </button>
+            </PhoneMore>
             <button
               type="button"
               onClick={() => date && void load(date, false)}
@@ -689,12 +698,13 @@ export function TicketsTrackingView() {
                   </button>
                 </span>
               ) : null}
-              <span className="ml-auto text-[11px] whitespace-nowrap text-[#b3d9f7]">
+              {/* 纯操作提示：手机上不显示（手机版规则）。 */}
+              <span className="ml-auto text-[11px] whitespace-nowrap text-[#b3d9f7] max-sm:hidden">
                 ⇆ Drag to reorder · ↔ Drag to resize
               </span>
             </div>
           </div>
-          <div className="overflow-x-auto px-5 pb-6">
+          <div className="overflow-x-auto px-5 pb-6 max-sm:px-3">
             <TicketsTable
               rows={filtered}
               columns={columns}
@@ -794,7 +804,7 @@ const NAV_BTN =
  */
 function HeroHeader() {
   return (
-    <div className="relative flex h-[88px] items-center gap-3.5 overflow-hidden bg-[linear-gradient(135deg,#040d1a_0%,#071428_35%,#0d2045_65%,#123366_100%)] px-6 text-white shadow-[0_6px_28px_rgba(0,0,0,0.45)]">
+    <div className="relative flex h-[88px] items-center gap-3.5 overflow-hidden bg-[linear-gradient(135deg,#040d1a_0%,#071428_35%,#0d2045_65%,#123366_100%)] px-6 text-white shadow-[0_6px_28px_rgba(0,0,0,0.45)] max-sm:h-14 max-sm:gap-2 max-sm:px-3">
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 opacity-60"
@@ -864,11 +874,12 @@ function HeroHeader() {
         </svg>
       </div>
       <PhoneShortcutStar className="relative z-[3]" />
-      <div className="relative z-[3] flex-1">
-        <h1 className="m-0 text-[20px] font-bold tracking-[1px] uppercase [text-shadow:0_2px_14px_rgba(95,168,255,0.35)]">
+      <div className="relative z-[3] min-w-0 flex-1">
+        <h1 className="m-0 text-[20px] font-bold tracking-[1px] uppercase [text-shadow:0_2px_14px_rgba(95,168,255,0.35)] max-sm:truncate max-sm:text-[15px] max-sm:tracking-normal">
           Tickets Reminder Log
         </h1>
-        <div className="mt-0.5 text-[13px] font-medium tracking-[.5px] text-[rgba(180,200,230,0.8)]">
+        {/* 标语：手机上不显示（手机版规则：页头介绍不占地方）。 */}
+        <div className="mt-0.5 text-[13px] font-medium tracking-[.5px] text-[rgba(180,200,230,0.8)] max-sm:hidden">
           Stay on top of every ticket. Never miss a guest.
         </div>
       </div>
@@ -921,7 +932,7 @@ function ProductPill({
       onClick={onClick}
       title="Guests who replied YES / all guests"
       className={cn(
-        "inline-flex h-14 min-w-[80px] cursor-pointer flex-col items-center justify-center rounded-lg border px-3.5 text-[13px] whitespace-nowrap transition-all duration-150",
+        "inline-flex h-14 min-w-[80px] cursor-pointer flex-col items-center justify-center rounded-lg border px-3.5 text-[13px] whitespace-nowrap transition-all duration-150 max-sm:h-11 max-sm:min-w-0 max-sm:shrink-0 max-sm:px-2.5 max-sm:text-[12px]",
         active
           ? "border-[#185FA5] bg-[rgba(24,95,165,0.25)] text-white"
           : "border-[#14395f] bg-[#f5f8fc] text-[#1a1a1a] hover:border-[#1a3a5c] hover:bg-[#f0f4ff] hover:text-[#1a3a5c]",
@@ -954,12 +965,17 @@ function StatCard({
   return (
     <div
       title={title}
-      className="flex min-w-[76px] flex-col items-center rounded-[10px] border-[1.5px] border-[#dde3ea] bg-paper px-3.5 py-2 shadow-[0_1px_4px_rgba(26,42,60,0.06)]"
+      className="flex min-w-[76px] flex-col items-center rounded-[10px] border-[1.5px] border-[#dde3ea] bg-paper px-3.5 py-2 shadow-[0_1px_4px_rgba(26,42,60,0.06)] max-sm:min-w-0 max-sm:flex-1 max-sm:px-0.5 max-sm:py-1"
     >
-      <div className={cn("text-[26px] leading-[1.1] font-bold", valueClass)}>
+      <div
+        className={cn(
+          "text-[26px] leading-[1.1] font-bold max-sm:text-[17px]",
+          valueClass,
+        )}
+      >
         {value ?? "—"}
       </div>
-      <div className="mt-0.5 text-[12px] font-semibold tracking-[.5px] text-[#1a1a1a] uppercase">
+      <div className="mt-0.5 text-[12px] font-semibold tracking-[.5px] text-[#1a1a1a] uppercase max-sm:text-center max-sm:text-[8.5px] max-sm:leading-tight max-sm:tracking-normal">
         {label}
       </div>
     </div>

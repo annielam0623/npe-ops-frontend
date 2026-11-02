@@ -15,6 +15,7 @@ import { flushSync } from "react-dom";
 import { fmtShort } from "@/components/dispatch/config";
 import { hasInAppHistory } from "@/components/nav/in-app-history";
 import { ErrorBanner } from "@/components/ui/panel";
+import { PhoneMore, PhoneOneLine } from "@/components/ui/phone";
 import { describeError, isStatus } from "@/lib/api-errors";
 import {
   ATTR_LEN,
@@ -663,8 +664,9 @@ export function ManifestView() {
 
   return (
     <ViewOnly.Provider value={viewOnly}>
-      <main className="text-stone-800">
-        <div>
+      <main data-phone-compact className="text-stone-800">
+        {/* 手机上整页排成一列，How to use 用 order 放到最底（Annie 2026-11-01 手机版规则）。 */}
+        <div className="max-sm:flex max-sm:flex-col">
           {/* 后端 G29 第 5 条（2026-10-05）：‹ Back 回到点进来的那一页（排车页回去还是那一天、原来的位置）；
             直接打开的 ⇒ 去排车页的这一天。Dispatch · <日子> 不管从哪来都打开排车页的这一天。 */}
           <nav aria-label="Back" className="flex flex-wrap gap-2">
@@ -763,64 +765,67 @@ export function ManifestView() {
                       onChange={(pages) => setCanyon({ key: canyonKey, pages })}
                     />
                   ) : null}
-                  {canPrint && data.manifest && data.blocks.length > 0 ? (
-                    <a
-                      href={manifestPrintUrl(
-                        params.date,
-                        params.tour,
-                        undefined,
-                        canyonPages,
-                      )}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={(e) => {
-                        const url = e.currentTarget.href;
-                        if (
-                          guardOutput("print", allOrders, () =>
-                            window.open(url, "_blank", "noopener,noreferrer"),
+                  {/* 手机上 Print all buses / Download 收进「⋯」（手机版规则：次要按钮）。 */}
+                  <PhoneMore label="Print or download">
+                    {canPrint && data.manifest && data.blocks.length > 0 ? (
+                      <a
+                        href={manifestPrintUrl(
+                          params.date,
+                          params.tour,
+                          undefined,
+                          canyonPages,
+                        )}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => {
+                          const url = e.currentTarget.href;
+                          if (
+                            guardOutput("print", allOrders, () =>
+                              window.open(url, "_blank", "noopener,noreferrer"),
+                            )
                           )
-                        )
-                          e.preventDefault();
-                      }}
-                      className="inline-flex h-8 items-center rounded-[9px] border border-[#3b82f6] bg-[#3b82f6] px-[15px] text-[12.5px] font-semibold text-white no-underline"
-                    >
-                      Print all buses
-                    </a>
-                  ) : null}
-                  {viewOnly || !canDownload ? null : (
-                    <form
-                      ref={downloadRef}
-                      method="post"
-                      action={MANIFEST_DOWNLOAD_URL}
-                      className="m-0"
-                      onSubmit={(e) => {
-                        // form.submit() 不会再触发 onSubmit，所以「Download anyway」直接交。
-                        if (
-                          guardOutput("download", allOrders, () =>
-                            downloadRef.current?.submit(),
-                          )
-                        )
-                          e.preventDefault();
-                      }}
-                    >
-                      <input type="hidden" name="date" value={params.date} />
-                      <input type="hidden" name="tour" value={params.tour} />
-                      {canyonPages ? (
-                        <input
-                          type="hidden"
-                          name={CANYON_PARAM}
-                          value={JSON.stringify(canyonPages)}
-                        />
-                      ) : null}
-                      <button
-                        type="submit"
-                        disabled={!data.manifest}
-                        className="inline-flex h-8 cursor-pointer items-center rounded-[9px] border border-white/[.18] bg-transparent px-[13px] text-[12.5px] text-[#cbd5e1] hover:bg-white/[.07] disabled:cursor-default disabled:opacity-50"
+                            e.preventDefault();
+                        }}
+                        className="inline-flex h-8 items-center rounded-[9px] border border-[#3b82f6] bg-[#3b82f6] px-[15px] text-[12.5px] font-semibold text-white no-underline"
                       >
-                        Download
-                      </button>
-                    </form>
-                  )}
+                        Print all buses
+                      </a>
+                    ) : null}
+                    {viewOnly || !canDownload ? null : (
+                      <form
+                        ref={downloadRef}
+                        method="post"
+                        action={MANIFEST_DOWNLOAD_URL}
+                        className="m-0"
+                        onSubmit={(e) => {
+                          // form.submit() 不会再触发 onSubmit，所以「Download anyway」直接交。
+                          if (
+                            guardOutput("download", allOrders, () =>
+                              downloadRef.current?.submit(),
+                            )
+                          )
+                            e.preventDefault();
+                        }}
+                      >
+                        <input type="hidden" name="date" value={params.date} />
+                        <input type="hidden" name="tour" value={params.tour} />
+                        {canyonPages ? (
+                          <input
+                            type="hidden"
+                            name={CANYON_PARAM}
+                            value={JSON.stringify(canyonPages)}
+                          />
+                        ) : null}
+                        <button
+                          type="submit"
+                          disabled={!data.manifest}
+                          className="inline-flex h-8 cursor-pointer items-center rounded-[9px] border border-white/[.18] bg-transparent px-[13px] text-[12.5px] text-[#cbd5e1] hover:bg-white/[.07] disabled:cursor-default disabled:opacity-50"
+                        >
+                          Download
+                        </button>
+                      </form>
+                    )}
+                  </PhoneMore>
                   {/* 存好绿、失败红、有没存的琥珀色（全站规矩）。 */}
                   {viewOnly ? null : saveState.kind === "error" ? (
                     <span
@@ -891,9 +896,9 @@ export function ManifestView() {
                 // Q3：转完提醒还要去 Dispatch 选酒店、发 Farm out 通知；点 × 关掉。
                 <div
                   data-farm-out-done
-                  className="mb-3.5 flex flex-wrap items-center gap-x-3.5 gap-y-2 rounded-[10px] border border-[rgba(251,191,36,.34)] bg-[rgba(251,191,36,.10)] px-3.5 py-2.5 text-[13px] text-[#fde68a]"
+                  className="mb-3.5 flex flex-wrap items-center gap-x-3.5 gap-y-2 rounded-[10px] border border-[rgba(251,191,36,.34)] bg-[rgba(251,191,36,.10)] px-3.5 py-2.5 text-[13px] text-[#fde68a] max-sm:flex-nowrap"
                 >
-                  <span>
+                  <PhoneOneLine className="max-sm:min-w-0 max-sm:flex-1">
                     Bus {farmedOut.bus} is farmed out to{" "}
                     <b>{farmedOut.partner}</b>. Pick each order&rsquo;s hotel
                     and send the farm out notice on{" "}
@@ -901,7 +906,7 @@ export function ManifestView() {
                       Dispatch
                     </Link>
                     .
-                  </span>
+                  </PhoneOneLine>
                   <button
                     type="button"
                     aria-label="Dismiss"
@@ -991,7 +996,11 @@ export function ManifestView() {
 
               {data.gone?.length ? <GoneCard gone={data.gone} /> : null}
 
-              {viewOnly ? null : <HowToUse />}
+              {viewOnly ? null : (
+                <div className="max-sm:order-last">
+                  <HowToUse />
+                </div>
+              )}
               {/* 改动记录（Annie 2026-10-30「同意所有推荐。动手」，preview https://claude.ai/artifact/YEgERHNDiL45TCkbzyJisa ）：
                   页面最下面，同 Dispatch 页那块；只看当前这个团（c）、打印 / 下载也列（a）、能改这页的人才看得到（b）。 */}
               {viewOnly || !params ? null : (
@@ -1443,8 +1452,13 @@ function VersionPicker({
   );
 }
 
+/** 黄框提示：手机上压成一行 + More（手机版规则）。 */
 function Warn({ children }: { children: React.ReactNode }) {
-  return <p className={WARN}>{children}</p>;
+  return (
+    <p className={WARN}>
+      <PhoneOneLine>{children}</PhoneOneLine>
+    </p>
+  );
 }
 
 function Person({ label, value }: { label: string; value: string }) {

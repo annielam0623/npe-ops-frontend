@@ -17,8 +17,11 @@ import type { TourTypeOption } from "@/types";
 
 import { MESSAGE_PREVIEW_TABS } from "./config";
 import { TourLaneSection } from "./tour-lane";
+import { useIsPhone } from "@/lib/phone";
 
 export function TourSendView() {
+  // 手机上两段 How to use 放页面最底（手机版规则）。
+  const isPhone = useIsPhone();
   const [tourTypes, setTourTypes] = useState<TourTypeOption[] | null>(null);
   const [typesError, setTypesError] = useState<string | null>(null);
   const [forbidden, setForbidden] = useState(false);
@@ -109,7 +112,7 @@ export function TourSendView() {
           idleText="Select a tour type and tour date above to preview the message content."
           tone="green"
         />
-        <HowToUse />
+        {isPhone ? null : <HowToUse />}
       </TourLaneSection>
 
       {/* 旧页面 Last Minute 那张卡 margin-top:8px，两块之间没有分隔线。 */}
@@ -121,15 +124,26 @@ export function TourSendView() {
           onUnauthorized={redirectToLogin}
           onSendingChange={onLmSending}
         >
-          <HowToUseLastMinute />
+          {isPhone ? null : <HowToUseLastMinute />}
         </TourLaneSection>
       </div>
+      {/* 手机上两段 How to use 都放页面最底（手机版规则）。 */}
+      {isPhone ? (
+        <>
+          <HowToUse />
+          <HowToUseLastMinute />
+        </>
+      ) : null}
     </Shell>
   );
 }
 
 function Shell({ children }: { children: React.ReactNode }) {
-  return <main className="text-stone-800">{children}</main>;
+  return (
+    <main data-phone-compact className="text-stone-800">
+      {children}
+    </main>
+  );
 }
 
 function HowToUse() {
@@ -302,8 +316,8 @@ function HowToUseLastMinute() {
         An order in the file twice with the same details gets one message.
       </li>
       <li>
-        Click Send Last Minute and keep the page open until the results
-        appear. Click View this send to open this send in the Send Log.
+        Click Send Last Minute and keep the page open until the results appear.
+        Click View this send to open this send in the Send Log.
       </li>
     </SendHowTo>
   );

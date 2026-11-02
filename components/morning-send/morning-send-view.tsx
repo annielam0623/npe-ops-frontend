@@ -40,6 +40,8 @@ import {
 } from "./config";
 import { MorningPreviewStep } from "./morning-preview";
 import { MorningResults, type MorningSendStop } from "./morning-results";
+import { usePhoneInfo } from "@/components/ui/phone";
+import { cn } from "@/lib/utils";
 
 interface Manifest {
   /** 发送时要把同一个文件再传给后端（后端按文件重新解析）。 */
@@ -94,6 +96,8 @@ function selectedInFileOrder(
 }
 
 export function MorningSendView() {
+  // 手机上上传说明收进标题后的「i」（手机版规则）。
+  const info = usePhoneInfo("About this upload");
   const [file, setFile] = useState<File | null>(null);
   const [fileInputKey, setFileInputKey] = useState(0);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -263,7 +267,7 @@ export function MorningSendView() {
       : 0;
 
   return (
-    <main className="text-stone-800">
+    <main data-phone-compact className="text-stone-800">
       <TrackingButton href="/morning-pickup/tracking" color="bg-[#185FA5]" />
       <SendPageHeader title="Morning Pickup — Send" />
 
@@ -277,7 +281,9 @@ export function MorningSendView() {
             }}
             className={SEND_CARD}
           >
-            <h2 className={SEND_CARD_TITLE}>📋 Step 1 — Upload Manifest</h2>
+            <h2 className={SEND_CARD_TITLE}>
+              📋 Step 1 — Upload Manifest{info.button}
+            </h2>
             <div className={FORM_ROW}>
               <label className={FORM_GROUP}>
                 Manifest (.csv or .xlsx)
@@ -290,7 +296,7 @@ export function MorningSendView() {
                 />
               </label>
             </div>
-            <p className={FORM_HINT}>
+            <p className={cn(FORM_HINT, info.hide)}>
               Required columns: Order Number, Name, Phone, Pax, Pickup Time,
               Pickup Location, Agent, Driver, Bus#
             </p>

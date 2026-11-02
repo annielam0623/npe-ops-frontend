@@ -11,6 +11,8 @@ import {
   sendButtonClass,
 } from "./legacy-ui";
 import { useTourTypeGroups } from "./use-tour-type-groups";
+import { usePhoneInfo } from "@/components/ui/phone";
+import { cn } from "@/lib/utils";
 
 /** 样子照旧页面 send_tickets.html 的 .send-card（Step 1）。 */
 export function UploadForm({
@@ -36,6 +38,8 @@ export function UploadForm({
 }) {
   const input = inputClass("orange");
   const tourTypeGroups = useTourTypeGroups();
+  // 手机上上传说明收进标题后的「i」（手机版规则）。
+  const info = usePhoneInfo("About this upload");
   return (
     <form
       noValidate
@@ -45,7 +49,9 @@ export function UploadForm({
       }}
       className={SEND_CARD}
     >
-      <h2 className={SEND_CARD_TITLE}>🎟️ Step 1 — Upload Manifest</h2>
+      <h2 className={SEND_CARD_TITLE}>
+        🎟️ Step 1 — Upload Manifest{info.button}
+      </h2>
       <div className={FORM_ROW}>
         <label className={FORM_GROUP}>
           Tour Type
@@ -89,7 +95,7 @@ export function UploadForm({
         </label>
       </div>
       {/* 不列列名（Annie 2026-10-06：列了会让人以为 Rezdy CSV 也要这些字段）。缺列时后端会说缺哪一列。 */}
-      <p className={FORM_HINT}>
+      <p className={cn(FORM_HINT, info.hide)}>
         Upload the CSV exactly as you downloaded it from Rezdy. You do not need
         to add or change any columns.
       </p>
