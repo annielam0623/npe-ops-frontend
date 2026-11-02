@@ -22,11 +22,12 @@ const SHORT_LABEL: Record<string, string> = Object.fromEntries(
 );
 
 const INPUT =
-  "min-w-0 rounded-[6px] border border-[#e5e7eb] bg-paper px-2 py-1 text-[11px] text-[#1a1a1a] placeholder:text-[#a8a39b] night:border-white/10 night:bg-white/[.04] night:text-white/90 night:placeholder:text-white/30";
+  "min-w-0 rounded-[6px] border border-[#e5e7eb] bg-paper px-2 py-1 text-[11px] text-[#1a1a1a] night:border-white/10 night:bg-white/[.04] night:text-white/90 night:placeholder:text-white/30";
 const FIELD = "flex min-w-0 flex-col gap-[3px]";
 const FIELD_LABEL =
   "text-[10px] font-semibold text-[#6B5E57] night:text-white/55";
-const NOTE = "mt-1.5 text-[10.5px] leading-[1.5] text-[#6B5E57] night:text-white/55";
+const NOTE =
+  "mt-1.5 text-[10.5px] leading-[1.5] text-[#6B5E57] night:text-white/55";
 /** 蓝色提交键（Create / Save），同 Products（Annie 2026-10-30 Content Studio 蓝色 Save）。 */
 const BUTTON =
   "cursor-pointer rounded-[6px] border border-[#3b82f6] bg-[#3b82f6] px-3 py-1 text-[11px] font-semibold text-white hover:enabled:bg-[#2f76e8] disabled:cursor-default disabled:opacity-50";
@@ -399,8 +400,8 @@ function EditTourForm({
             The tour name guests see on their ticket (SMS and confirmation
             page). Don&apos;t include the supplier name.
             <br />
-            Name: Upper Antelope Canyon – Chief Tsosie Tours → guests see:
-            Upper Antelope Canyon Tour
+            Name: Upper Antelope Canyon – Chief Tsosie Tours → guests see: Upper
+            Antelope Canyon Tour
           </span>
         </label>
         <label className={cn(FIELD, "flex-[1_1_90px]")}>

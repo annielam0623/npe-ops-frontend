@@ -964,7 +964,7 @@ function NoteInput({
       value={row.note}
       placeholder="Note for yourself (not sent to anyone)"
       onChange={(e) => onChange({ ...row, note: e.target.value })}
-      className="h-8 w-full rounded-[7px] border border-[#cbd2dc] bg-paper px-[11px] text-[13px] text-[#111827] placeholder:text-[#9ca3af]"
+      className="h-8 w-full rounded-[7px] border border-[#cbd2dc] bg-paper px-[11px] text-[13px] text-[#111827]"
     />
   );
 }

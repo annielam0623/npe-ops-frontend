@@ -273,7 +273,7 @@ export function OrdersListView() {
               value={search}
               placeholder="Search order#, name, email, phone, product..."
               onChange={(e) => setSearch(e.target.value)}
-              className="h-8 w-72 min-w-[200px] rounded-[7px] border-[0.5px] border-black/15 bg-paper px-2.5 text-[13px] text-[#1a1a1a] placeholder:text-[#999] focus:outline-none night:border-white/10 night:bg-white/[.04] night:text-white/90 night:placeholder:text-white/35"
+              className="h-8 w-72 min-w-[200px] rounded-[7px] border-[0.5px] border-black/15 bg-paper px-2.5 text-[13px] text-[#1a1a1a] focus:outline-none night:border-white/10 night:bg-white/[.04] night:text-white/90 night:placeholder:text-white/35"
             />
             {/* 旧页 .dr-trigger「📅 Tour date · Upcoming ▾」；ops 里是原生下拉，样子照旧。 */}
             <label className="relative flex h-8 cursor-pointer items-center gap-1.5 rounded-[7px] border-[0.5px] border-black/[.18] bg-paper px-3 text-[13px] whitespace-nowrap text-[#1a1a1a] select-none hover:border-black/35 night:border-white/10 night:bg-white/[.04] night:text-white/90">

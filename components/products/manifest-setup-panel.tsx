@@ -30,10 +30,10 @@ import {
   ManifestMap,
   type MapZone,
 } from "@/components/products/manifest-setup-map";
+import { capsPlaceholder } from "@/components/ui/placeholder";
 import { ForecastSetupFields } from "@/components/products/forecast-setup";
 import {
   BUTTON,
-  capsPlaceholder,
   HINT,
   INPUT,
   MapField,

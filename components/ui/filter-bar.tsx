@@ -19,7 +19,7 @@ export const FILTER_BAR_CLASS =
   "flex flex-wrap items-center gap-x-2.5 gap-y-2 rounded-lg border border-stone-200 bg-paper px-3 py-2.5 night:border-white/10 night:bg-white/[.032]";
 
 /** 26px 高的输入框 / 日期框（外面没有 FilterField 包着时用）。 */
-export const FILTER_INPUT_CLASS = `h-[26px] rounded-md border border-stone-300 bg-paper px-2 text-xs text-stone-800 placeholder:text-stone-400 focus:border-stone-500 focus:ring-1 focus:ring-stone-500 focus:outline-none disabled:opacity-50 ${NIGHT_FIELD}`;
+export const FILTER_INPUT_CLASS = `h-[26px] rounded-md border border-stone-300 bg-paper px-2 text-xs text-stone-800 focus:border-stone-500 focus:ring-1 focus:ring-stone-500 focus:outline-none disabled:opacity-50 ${NIGHT_FIELD}`;
 
 /** Reset / Export 这类次要操作：不带边框的灰字按钮，移上去才有底色。 */
 export const FILTER_TEXT_BUTTON_CLASS =
@@ -180,7 +180,7 @@ export function FilterSearch({
         onKeyDown={(e) => {
           if (e.key === "Escape" && value) onChange("");
         }}
-        className="h-full min-w-0 flex-1 bg-transparent text-xs text-stone-800 placeholder:text-stone-400 focus:outline-none night:text-white night:placeholder:text-white/30"
+        className="h-full min-w-0 flex-1 bg-transparent text-xs text-stone-800 focus:outline-none night:text-white night:placeholder:text-white/30"
       />
       {value ? (
         <button

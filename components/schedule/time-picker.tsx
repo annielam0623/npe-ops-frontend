@@ -394,7 +394,7 @@ export function TimePicker({
         className={cn(
           "rounded-[6px] border px-2.5 font-mono font-semibold placeholder:font-normal focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/60",
           tone === "light"
-            ? "h-8 w-[104px] border-black/25 bg-white text-[13px] text-[#1a1a1a] [color-scheme:light] placeholder:text-black/35 focus:border-[#1a1a1a] night:border-white/25 night:bg-[#070f1a] night:text-white"
+            ? "h-8 w-[104px] border-black/25 bg-white text-[13px] text-[#1a1a1a] [color-scheme:light] focus:border-[#1a1a1a] night:border-white/25 night:bg-[#070f1a] night:text-white"
             : "h-9 w-[112px] border-white/25 bg-[#070f1a] text-[14px] text-white [color-scheme:dark] placeholder:text-white/35 focus:border-sky-400/70",
           className,
         )}
