@@ -519,63 +519,63 @@ export function ManifestsView() {
               />
               {/* 手机上 Columns / Export / Show hidden rows / Upload 收进「⋯」（Annie 2026-11-01 手机版规则）。 */}
               <PhoneMore>
-              <button
-                type="button"
-                hidden={noFeatures}
-                onClick={() => setPicking(true)}
-                disabled={!shown}
-                className={LEGACY_BTN_CLASS}
-              >
-                ☰ Columns
-              </button>
-              <button
-                type="button"
-                hidden={noFeatures}
-                onClick={() => {
-                  if (!shown) return;
-                  if (seeingHidden && hidden) {
-                    const csv = buildHiddenCsv(shown, hidden, fields);
-                    downloadCsv(
-                      `manifest_${shown.date}_hidden-rows.csv`,
-                      csv.headers,
-                      csv.rows,
-                    );
-                    return;
-                  }
-                  const csv = buildCsv(shown, fields);
-                  downloadCsv(csvFilename(shown), csv.headers, csv.rows);
-                }}
-                disabled={seeingHidden ? false : !shown?.rows.length}
-                className={LEGACY_BTN_CLASS}
-              >
-                ↓ Export CSV
-              </button>
-              {/* Show hidden rows（后端 G167，Annie 2026-10-23「动手」）：默认关；和 Columns / Export 一样是“怎么看这一页”的选项。 */}
-              <label
-                hidden={noFeatures}
-                className="inline-flex h-7 cursor-pointer items-center gap-1.5 px-1 text-[12.5px] text-[#cbd5e1] select-none"
-              >
-                <input
-                  type="checkbox"
-                  aria-label="Show hidden rows"
-                  checked={showHidden}
-                  onChange={(e) => {
-                    setShowHidden(e.target.checked);
-                    if (!e.target.checked) setViewHidden(false);
+                <button
+                  type="button"
+                  hidden={noFeatures}
+                  onClick={() => setPicking(true)}
+                  disabled={!shown}
+                  className={LEGACY_BTN_CLASS}
+                >
+                  ☰ Columns
+                </button>
+                <button
+                  type="button"
+                  hidden={noFeatures}
+                  onClick={() => {
+                    if (!shown) return;
+                    if (seeingHidden && hidden) {
+                      const csv = buildHiddenCsv(shown, hidden, fields);
+                      downloadCsv(
+                        `manifest_${shown.date}_hidden-rows.csv`,
+                        csv.headers,
+                        csv.rows,
+                      );
+                      return;
+                    }
+                    const csv = buildCsv(shown, fields);
+                    downloadCsv(csvFilename(shown), csv.headers, csv.rows);
                   }}
-                  className="size-[15px] accent-[#94a3b8]"
-                />
-                Show hidden rows
-              </label>
-              <button
-                type="button"
-                hidden={viewOnly}
-                onClick={() => setUploadingCfm(true)}
-                disabled={!date}
-                className={LEGACY_BTN_CLASS}
-              >
-                ↑ Upload confirmation #s
-              </button>
+                  disabled={seeingHidden ? false : !shown?.rows.length}
+                  className={LEGACY_BTN_CLASS}
+                >
+                  ↓ Export CSV
+                </button>
+                {/* Show hidden rows（后端 G167，Annie 2026-10-23「动手」）：默认关；和 Columns / Export 一样是“怎么看这一页”的选项。 */}
+                <label
+                  hidden={noFeatures}
+                  className="inline-flex h-7 cursor-pointer items-center gap-1.5 px-1 text-[12.5px] text-[#cbd5e1] select-none"
+                >
+                  <input
+                    type="checkbox"
+                    aria-label="Show hidden rows"
+                    checked={showHidden}
+                    onChange={(e) => {
+                      setShowHidden(e.target.checked);
+                      if (!e.target.checked) setViewHidden(false);
+                    }}
+                    className="size-[15px] accent-[#94a3b8]"
+                  />
+                  Show hidden rows
+                </label>
+                <button
+                  type="button"
+                  hidden={viewOnly}
+                  onClick={() => setUploadingCfm(true)}
+                  disabled={!date}
+                  className={LEGACY_BTN_CLASS}
+                >
+                  ↑ Upload confirmation #s
+                </button>
               </PhoneMore>
               <span className="text-[12px] text-[#94a3b8] night:text-white/45">
                 {loading ? "Loading…" : null}
@@ -752,12 +752,13 @@ export function ManifestsView() {
             {legacyCount > 0 ? (
               <p className={NOTE_CLASS}>
                 <PhoneOneLine>
-                ⚠️ {plural(legacyCount, "row")} on this page{" "}
-                {legacyCount === 1 ? "comes" : "come"} from data frozen before
-                Aug 16, 2026 (marked <span className="font-medium">Legacy</span>
-                ). Booking questions and most Trip / Booking fields are empty
-                for
-                {legacyCount === 1 ? " it" : " them"}.
+                  ⚠️ {plural(legacyCount, "row")} on this page{" "}
+                  {legacyCount === 1 ? "comes" : "come"} from data frozen before
+                  Aug 16, 2026 (marked{" "}
+                  <span className="font-medium">Legacy</span>
+                  ). Booking questions and most Trip / Booking fields are empty
+                  for
+                  {legacyCount === 1 ? " it" : " them"}.
                 </PhoneOneLine>
               </p>
             ) : null}
@@ -1590,7 +1591,7 @@ function CfmInput({
           }}
           className={cn(
             // 旧页 .inline-edit：无框、底下一条虚线；存的状态用底线和底色表示。
-            "w-[90px] border-b bg-transparent px-0.5 py-px font-[inherit] text-[12px] text-[#1a1a1a] placeholder:text-[#ccc] focus:border-solid focus:outline-none night:text-white night:placeholder:text-white/30",
+            "w-[90px] border-b bg-transparent px-0.5 py-px font-[inherit] text-[12px] text-[#1a1a1a] focus:border-solid focus:outline-none night:text-white night:placeholder:text-white/30",
             status === "saving" &&
               "border-amber-400 bg-amber-50 night:border-amber-400/60 night:bg-amber-400/10",
             status === "saved" &&

@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 
+import { capsPlaceholder } from "@/components/ui/placeholder";
 import { Modal } from "@/components/ui/modal";
 import { describeError, isStatus } from "@/lib/api-errors";
 import {
@@ -239,6 +240,7 @@ export function LogIncidentDialog({
                 autoComplete="off"
                 maxLength={50}
                 placeholder="CHD…"
+                {...capsPlaceholder("CHD…")}
                 value={form.orderNumber}
                 onChange={(e) => set("orderNumber", e.target.value)}
                 className={FIELD_CLASS}

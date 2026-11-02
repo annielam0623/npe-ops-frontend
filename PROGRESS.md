@@ -268,12 +268,16 @@
 - ⇒ 开关 team_messages_direct 何时打开由 Annie 自己定，各窗口不再问。
 - ⇒ **新需求（未动手、要先 preview、要后端）**：Notice 也能跟 CCL 交流；发的时候可以选「个人」或「team」，CCL 算一个 team。现在 91 核过：名单只有内部员工，partner 调接口 403、收不到消息、partner Dashboard 没这块 ⇒ 要后端放开 partner 收发、加「发给 team」（团队清单从哪来、CCL team 包含哪些账号）。交主窗口 98 派工 / 转后端。
 
-## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
+## 2026-11-01 晚 全站白卡片输入框提示字改浅（`task/products-placeholder`，工作窗口 91，主窗口 98 派）—— Annie「动手」，已合 main
+- Annie 原话：「在product设置里头，你在输入框里设置的提示词颜色太深了，那个灰色要再浅一点，让人一看就知道是没填的，现在给人感觉是已经填好了」；看 preview（https://claude.ai/artifact/L6ig9u3yXFbdffLc68ASxk）后：「再加上斜体来区别吧」「然后字体小一些」「11px，大写的在小一号」「同意定稿 11px。动手」「全大写的10px」；范围（经 98 转）：「全站一起改，动手」。
+- 原来：Products 和大多数白卡片输入框没设提示字颜色，用 Tailwind 默认「字色 50%」，白卡片上约 #878684，像已经填好了；另有 8 处各写各的灰（#999、#aaa、#ccc、#9ca3af、#a8a39b、stone-400、black/35）。
+- 做了：
+  - `app/globals.css` 在 base 层加一条：bg-paper / bg-white 上的 input、textarea（框本身是 bg-paper / bg-white，或在这样的卡片 / 弹窗里）提示字 #94a3b8、斜体、11px；`:root:not([data-theme="night"])`，全深色主题不动；深色底上的框（顶栏搜索、Notice 回复、Daily Tasks、Morning Tracking 搜索等）不在白底里，不动。放 base 层：页面自己写的 placeholder: 类仍优先（深色框的 white/30–35 照旧）。点进框提示字消失（globals 那条不在层里）照旧。
+  - 去掉白卡片上自己写的提示字颜色：tix-tour-picker、vehicle-row（Dispatch 备注）、manifests-view（Add #）、section-cfm、orders-list 搜索、time-picker 浅色款、send-log 搜索、filter-bar。night: 的提示字颜色都保留。
+  - **全大写 10px 的判断**：用 `components/ui/placeholder.ts` 的 `capsPlaceholder(text)`——提示字里有字母、且全是大写时给框加 `data-caps-placeholder`，globals.css 再小一号。要用的框把它展开到 input 上（动态的提示字也能自动判断）。现在加了：Products 的 Section order、Bus Manifest section order、Forecast「SUNSET」、每个产品的 Section 框（= default section，如 BUS TOUR）、Daily report Log incident 的「CHD…」。以后新框的提示字是全大写的，照样加。
+- 检查：tsc / eslint 0 错、next build 过；headless products 225/225、ptt 44/44（第一次冷启动有 1 条超时，main 上和重跑都 44/44）、nav 38/38、mf 225/225、orders 38/38、catchup 31/31；在模拟接口的 /settings/products 实测：白卡片提示字 rgb(148,163,184) italic 11px、全大写 10px，顶栏深色搜索不变，?theme=night 全部照旧。
 
-### 49. Products 输入框提示字（placeholder）太深（派 91 出 preview，2026-11-01 晚）
-- Annie 原话：「在product设置里头，你在输入框里设置的提示词颜色太深了，那个灰色要再浅一点，让人一看就知道是没填的，现在给人感觉是已经填好了」
-- 91：查现用色、出「现在 / 改浅」对比 preview，问只改 Products 还是全站统一。未动手。
-- preview https://claude.ai/artifact/L6ig9u3yXFbdffLc68ASxk（现用约 #878684，Tailwind 默认字色 50%；全站另有十来处各写各的灰）。题 1 Annie 在 91 窗口答：「再加上斜体来区别吧」⇒ 丙：浅灰 #94a3b8 + 斜体。Annie 又加：「然后字体小一些」⇒ 题 1b Annie 答「11px，大写的在小一号」⇒ 定稿：#94a3b8 斜体，一般 11px，全大写的（LOWER, UPPER, X、SUNSET）10px，填的字照旧 13px。题 2 只改 Products（B）还是全站白卡片一起改（A，推荐）：未答。未动手。
+## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
 ### 48. Notice 跟 CCL 交流，可选个人或 team（2026-11-01 晚，11/2 做）
 - Annie 原话（09 窗口）：「2 可以跟CCL用notice交流，发的时候可以选个人，也可以选team」「CCl也算一个team」；开关「开放给员工由我来决定，你不要再问了」（各窗口不再问开关）。

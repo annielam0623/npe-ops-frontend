@@ -125,7 +125,7 @@ export function SectionCfm({
               setError("");
             }
           }}
-          className="h-[26px] w-[120px] rounded-md border border-black/30 bg-white px-2 font-normal text-[#111] placeholder:text-[#999] focus:border-[#3b82f6] focus:outline-none disabled:opacity-60"
+          className="h-[26px] w-[120px] rounded-md border border-black/30 bg-white px-2 font-normal text-[#111] focus:border-[#3b82f6] focus:outline-none disabled:opacity-60"
         />
       </label>
       <button

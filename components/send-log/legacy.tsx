@@ -107,7 +107,7 @@ export function LegacySearch({
         onKeyDown={(e) => {
           if (e.key === "Escape" && value) onChange("");
         }}
-        className="min-w-0 flex-1 bg-transparent font-[inherit] text-[13px] text-[#1a1a1a] placeholder:text-[#aaa] focus:outline-none night:text-white/90 night:placeholder:text-white/35"
+        className="min-w-0 flex-1 bg-transparent font-[inherit] text-[13px] text-[#1a1a1a] focus:outline-none night:text-white/90 night:placeholder:text-white/35"
       />
       {value ? (
         <button
