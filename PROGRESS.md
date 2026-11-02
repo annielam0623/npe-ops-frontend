@@ -349,6 +349,12 @@
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 53. 限制下载功能（2026-11-02，Annie 在 e6 窗口问，没动手）
+- Annie 原话：「我可以限制一下download的功能么」。e6 已答能做、说了现状，问她要限制谁、哪些页（不在 24 这里重复问）。
+- e6 只读核：Team 页已有 4 个导出勾 manifests.export / orders.export / logs.export / reports.export；后端服务器端导出没勾就 403（orders.py、send_log.py、notifications.py、tour_manifest.py、farm_out.py）。前端员工按钮级权限没做：没勾的人照样看得到 Export / Download 键；浏览器里直接生成的下载后端拦不住。下载键：Manifests Export CSV、Orders Export、Order Log、Send Log、Broadcast Log、Sales Report、Farm out Report / Timetable、HR Export to Excel、Pickup Locations Export、三个 Tracking 页、Dispatch 的 Download Bus Manifest。
+- 可做：员工也按 4 个导出勾藏键（含浏览器生成的）；要不要细分（如 Bus Manifest 下载单独一项）看 Annie。先出 preview（哪页哪个键对应哪一勾）。相关旧题：11-01 09 问过的权限题 A / B / C（Farm out 导出跟 reports.export、Bus Manifest 下载 + Manifests Export CSV 跟 manifests.export，未答）。
+- 等 Annie 在 e6 窗口答范围，再派（e6 出 preview）。
+
 ### 52. 司机页 Farm out 客人那一栏改用 Affiliate 的叫法（2026-11-02，Annie 提，没动手）
 - Annie 原话：「我原来说过Farm out的客人是要出现在bus manifest和司机的pick up list里，然后用个好听的名字掩盖把客人卖了的行为」。
 - 24 只读查现状：① Bus Manifest（/dispatch/manifest）已照做：转单客人在最下面灰色小栏「Affiliate」，不写合作公司名（10-18 Annie 定，affiliate-card.tsx）。② 司机手机页（后端 app/templates/field/driver_home.html:406–414，只 relay 司机看得到）栏标题写「Farm out — hand off, not our bus」，说明写「These guests go to a partner company. Pick them up the same way, but do not put them on your tour bus — hand them off to the partner.」——直接写了 Farm out 和 partner company，跟她的要求不符。员工内部页（Dispatch、Farm out Report、Settings）照旧叫 Farm out。
