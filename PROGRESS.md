@@ -4,7 +4,27 @@
 
 > 6d 交接（下面「2026-10-27 交接：前端主窗口 6d」那节）的后端需求已于 10/27 晚由 ad 转给家里后端主窗口 17。
 
-> **明天（10/31，周末时间表）的主窗口：先读下面「2026-10-30 晚 收工交接：前端主窗口-98」，再看置顶。eb 那两节是更早的。**
+> **下一个主窗口：先读下面「2026-11-01 晚 收工交接：前端主窗口-98」，再看置顶「📌 等 Annie 确认」。更早的交接是 10-30 晚那节。**
+
+## 2026-11-01 晚 收工交接：前端主窗口-98 [94e9c6]（家里，周末时间表，21:30 收尾）
+
+**一、10/31–11/1 合进 main 上线的（前端）**
+- G228 Team Messages 58ea7db（e6）；排班测试员工 is_test 235b326（91）；站内消息 / 在线同事 34e93fc（91，开关 team_messages_direct 默认只 SA）。
+- Dispatch Shuttle 上车点提示 7096b5b（91）；Schedule check 不算 TI 8110bd6（e6，后端 is_tour_departure 已上 ⇒ 已生效）。
+- 羚羊谷 / Hoover Canyon order 拖拽（只管当次打印 / 下载）+ Products「Bus Manifest section order」324f669（91）。**生产设置还空，等 Annie 自己填（羚羊谷 LOWER、UPPER、Canyon X）**。
+- 权限「只看勾」c374e85（09，后端 a987105a）。
+- G138 排班每周确认 9f5da48 + 往来记录补全显示 17abd37（e6；后端 16 g138-history-notify 已上 ⇒ 已生效）。
+- X Canyon → Canyon X：前端无写死，数据 + 后端已改。
+
+**二、等 Annie 答 / 动手（详见置顶）**
+- 42 Send Log：后端 44 补批次（所有发送都进组 + 补旧数据，开工前找 Annie，代码可能 11/2）；91 折叠 preview 4 题未答。Annie 问「规律是什么，原则是什么」⇒ 主窗口答原则「所有发送都进组、没有例外」，问她要不要写进前后端规范（未答）。
+- 43 Forecast 回看：v4（09，task/forecast-history-preview e6f391c），题 1–4 已答（灰表头、Today 键、最多回看 7 天），等「动手」；动手时 09 先确认「回溯 7 天」= 最多回看 7 天。后端快照 + 回看今晚上线（64 确认）；补 3 个月数据 57 排 11/2。
+- 44 全站手机版：e6 v2（task/mobile-preview-e6 f6840ee，不合 main），题 1 Annie 选 B（shortcut 收进 ★）+ 缩小；「morning只用显示今天的」指哪几页 + 题 2–4 未答。
+- 权限题 A / B / C（Work Sheet 只读、Farm out 导出、Manifest 两个导出键）和 Team 页「特批」标记：未答。
+- 10d 排班生产测试（09）：等 Annie 自己处理 ZZTest（不问她）。
+
+**三、窗口**
+- 09 / 91 / e6 都已收尾：分支推了、dev server / Chrome 关了。
 
 
 
