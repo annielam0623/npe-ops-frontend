@@ -20,6 +20,9 @@
 - 窗口：前端工作窗口 09、91、e6；后端主窗口 57，后端工作窗口 64、44；37 多半是今天的后端主窗口（98 说），已问它确认。
 - 资源：空闲内存 46.8 / 63 GB；node 0 个；chrome 28 个进程，约 4.1 GB。
 - 已发 e6：报开工和分支名，接着做手机版第二批。
+- 37 确认：它是今天的后端主窗口（接 57），后端 44 / 64 经它回报。37 更正 98 的说法：Forecast 补数据（G229）还没派，等 Annie 答数据格式 / 上传方式 / 补的日子要不要标出来。G231 Notice ↔ CCL 等 Annie 答 91 preview 的 6 题。64 在做 G233（前端已经做了）、G232（排班邮件附 PDF，页面不变）。
+- G230 Send Log 按组分页接口格式（44 出，还没上线，Risk C，Annie 确认后才推 main）：逐条 send-log 每行加 batch_id；新增 GET /api/notifications/send-log/groups（筛选同逐条接口 + page / page_size≤100；组里任一条符合就列，一组不切开；返回 total / total_groups / stats / groups[{batch_id, started_at(_label), module, tour_type, tour_label, tour_date, send_type, sent_by, summary, matched_rows, matched_orders≤20, batch_id 为 null 时带 rows}]）；展开照旧 /api/send-batches/{id}；不是团的组 tour_label 是 Morning Pickup / Guest reply / Broadcast / Farm-out notice。已转 91 对着 preview 核字段。Annie 还没「动手」，题 3、4 没答，所以不写代码。
+- 手机版第二批分工：e6 做 ① Pickup Locations / Products / Team、② Send Log / Workspace / Content Studio（task/mobile-phase2，worktree C:\Code\ops-wt-e6-mob2）；09 做 ③ Schedule 工具条 / Bus Manifest / 发送页 / Tickets・Tour Tracking（task/mobile-phase3）。共用的 phone.tsx / lib/phone.ts / globals.css 要改的话先报 24 协调。Send Log 只改手机上的样子，不动页面结构（91 之后要改成折叠组）。
 
 ## 2026-11-01 晚 收工交接：前端主窗口-98 [94e9c6]（家里，周末时间表；11/2 凌晨写完）
 
