@@ -209,6 +209,12 @@
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 43. 7 Days Forecast 回看历史（09，preview https://claude.ai/artifact/KgRH1xVmZ7QVgS5KnZ1wJC ，2026-11-01 问）
+- preview 代码在 task/forecast-history-preview 74e36f1（不合 main）。日期从 /api/forecast/history 取，第一项 Today (live)；过去日子只读，不出 Refresh、Antelope seats；琥珀横条「Viewing saved forecast from <date> · saved <time> PT · read only」+ 灰框「← Back to today」；没快照时不出日期选择。How to use 加一条（原文见 09 回报）。
+- 题 1 样子：甲 A 日期选择在标题右边、横条在页头下整块琥珀（推荐）／乙 B 放右边选项排（Full screen 左边「History」）、细横条贴表格。
+- 题 2 第一天表头下「Today」小字：甲 改「Saved day」（推荐）／乙 照旧 Today／丙 不写。
+- 题 3 看历史时 Action Log：甲 不显示（推荐）／乙 照常显示（是今天的全部记录）。
+
 ### 42. Send Log 有记录没进组（91 只读查，2026-11-01 问）
 - Annie 原话：「我前两天发现现在前端有很多问题，我们的send log已经做了group 功能，把某次发次全部group起来好查看，但是很奇怪，每次都有一些在页面下面并没有group起来，为什么」
 - 原因（后端）：上面「📦 Send batches」用后端批次；只有发送页点 Send（Tour Confirmation / Last Minute、门票、Manifests 上发）才建批次。自动发（团确认 7 点 / 6 点、门票 9 / 12 / 5 点）、早班 Morning Pickup / Relay、Farm-out 通知、广播、回复客人、单发都不建批次（batch_id NULL，后端 send_batches.py:10–11 写明设计如此），只出现在下面逐条大表。下面大表本来不分组、不带 batch_id。不是分页 / 排序问题。
