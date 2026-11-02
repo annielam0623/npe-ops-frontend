@@ -4,7 +4,32 @@
 
 > 6d 交接（下面「2026-10-27 交接：前端主窗口 6d」那节）的后端需求已于 10/27 晚由 ad 转给家里后端主窗口 17。
 
-> **下一个主窗口：先读下面「2026-11-01 晚 收工交接：前端主窗口-98」，再看置顶「📌 等 Annie 确认」。更早的交接是 10-30 晚那节。**
+> **下一个主窗口：先读下面「2026-11-02 收工交接：前端主窗口-24」，再看置顶「📌 等 Annie 确认」。更早的交接是 10-30 晚那节。**
+
+## 2026-11-02 收工交接：前端主窗口-24 [d1dbae]（公司）
+
+> Annie「收工，写交接」。今天的细节在下面各节和置顶，这里只列下一个主窗口要接的。
+
+### 一、今天上 main 的（等 Annie 线上验收）
+- 手机版第二批 ①② e6 1472142、第 ③ 批 09 87b5b97；dr 84/88 修好 09 461955e。
+- Send Log 按组显示（置顶 42，1cf1564，后端 G230 /groups、/groups/{batch_id}/rows 已上线）。
+- Main manifest CHD 行不能勾、不进发送：第一步已合 main（91）。
+- Dispatch CCL 改版提醒条 / Apply changes 卡不出现：09 修好，合 main 2559628（修复 bd0d389）；原因是页面自动改的行（补车字母、私人团配单）在 CCL 晚到时被当成 staff 改过。检查 tsc 0、eslint 0 错、build 过、da 454/454。已告诉 Annie，请她下次 CCL 发改版时线上看一眼。
+
+### 二、在分支、等 Annie 选 / 动手才合
+- **CHD admin_fee 标签（置顶 50）**：两版等 Annie 选——版 1 `task/manifests-chd-pax` 8361888（推荐，91），版 2 `task/manifests-sendable` fba8716。选定后：91 合 main 报 SHA → 主窗口把 SHA 转 37，后端合 ad5707ee → 91 只读核线上 CHD 标签。
+- **Notice ↔ CCL（置顶 48）**：CCL 已是 staff（Annie：「CCL我已经取消了Partner的身份」），前后端核过不再标 Partner；Farm out 跟 CCL 无关，preview 里「Farm out Dispatch」已删（e6）。题 1–5 有效、题 6/6a/6b/7 作废；等 Annie 答题 8（推荐 A）并说「动手」。后端 G231 由 37 那边接。
+- **Send Log 新模块（A/B/C）**：等 Annie 答，答了 09 先出 preview。
+
+### 三、等 Annie 的（详见置顶，不要滚动重问）
+- 50 CHD 版 1 / 版 2；48 题 8 + 动手；52 司机页 Farm out 栏改 Affiliate 叫法（A/B/C + 动手，定了转 37）；
+- 53 限制下载 / team 权限：Annie 已答「一直跟 team 走」「两个 team 的功能都有」「没选的功能键都藏」，问了「Tracking 页和 Settings 页的导出归哪个勾。什么意思」——已解释；还等题 4a–f（都推荐 A）、5（A）、6（B）、7（A）和动手。37 在问 Annie 谁能管 team 成员。前端藏键要等后端 /api/me/permissions 改成「有效权限」（team 勾 ∪ 个人勾 ∩ 角色标准，后端 44 设计，migration v141）。
+- Dashboard 两个统计格的 bug：等动手。51 订单搜索、Forecast 补数据（G229，等 Annie 答数据格式）照旧等。
+
+### 四、窗口
+- 前端工作窗口：09（CCL 修完，空）、91（CHD 两版在分支，等选）、e6（Notice-CCL preview、权限 preview）。
+- 后端：今天主窗口 37（接 57），工作窗口 44（Send Log / 权限）、64。
+- 收工时 main 干净；本窗口只改了 PROGRESS.md。
 
 ## 2026-11-02 dr 84/88 修好：手机上 Dashboard 的 My shortcuts 条最右边的药丸被裁（`task/dr-check-fix`，工作窗口 09，主窗口 24 派）—— 已合 main 461955e
 - 现象：dr 那 4 条宽度检查（520 / 420px 药丸被裁、越窄越大）不过；二分：23c1764 的上一个提交 88/88，23c1764（手机版第一批）起 84/88。
