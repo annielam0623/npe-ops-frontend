@@ -264,6 +264,13 @@
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 48. Notice 跟 CCL 交流，可选个人或 team（2026-11-01 晚，11/2 做）
+- Annie 原话（09 窗口）：「2 可以跟CCL用notice交流，发的时候可以选个人，也可以选team」「CCl也算一个team」；开关「开放给员工由我来决定，你不要再问了」（各窗口不再问开关）。
+- 现状：partner 不在 /api/team/online，调接口 403，收不到消息；PartnerHome 只有问候语和 Forecast。
+- 已转 57（11/2 派人）：partner 收发范围、「发给 team」（team 清单来源、CCL team 包括哪些账号、每人一份还是共享）、partner 在哪看 / 回、开关管不管 partner。91 出前端 preview（排在 Send Log 新 preview 后）。未动手。
+- Annie 补（57 转）：「那也开个页面给它们吧」⇒ CCL partner 有自己单独的 Notice 页（能看、能回），不只是 PartnerHome 一块。已转 91 加进 preview；后端方案带 partner 侧接口。
+- 91 preview https://claude.ai/artifact/CjrpyLgPdDhE4f7FHs9gWH（Today's team 加「✉ New message」；发消息选 A person / A team，CCL 标 PARTNER；CCL 首页一块 Notice + 单独 /notice 页，顶栏「Notice (N)」）。6 题：① team 消息的回复：A 回发信人 + 抄送 team 其他人（推荐）／B 只回发信人；② Got it：A 各人按各人（推荐）／B 一人按全 team 收；③ 「A person」名单：A 全部在用员工 + CCL，在线标 online（推荐）／B 只在线员工 + 全部 CCL；④ CCL 主动发：A 只能回复／B 能发，只选 NPE team（推荐）／C team 或个人；⑤ team 消息发邮件：A 每人一封，回复只站内（推荐）／B 只站内；⑥ CCL 首页 Notice：A 留一块只放新消息 + Open Notice →（推荐）／B 只一行「2 new messages」／C 什么都不加。后端要的已转 57。
+
 ### 47. Shortcut 条 Manifests 的点改橙色（09，preview https://claude.ai/artifact/25YysSRdXNCzmZRUi5EwK1 ，2026-11-01 晚）
 - Annie 原话（附截图，各页顶上的 shortcut 条）：「这里的点，manifest用橙色吧」
 - 现在：Manifests 的点是灰色（没设颜色）。preview 用 #fb923c（亮橙）；Broadcast 已经用 #f97316（深一点的橙），所以没用同一个。Dashboard 的 My shortcuts 框边也跟着点的颜色变橙。
@@ -277,6 +284,7 @@
 - 4 题（原文见 preview 第 5 节，已发 98）：题 1 方案 A / B（推荐 A）；题 2 Settings「+ Add …」表单手机上默认收起（推荐收起）；题 3 右下角 ↑↓ 手机上 A 不显示（推荐）/ B 只留 ↑ / C 照旧；题 4 黄框 / 红框提示压一行 + More（推荐，红色报错不压）。
 - 2026-11-01 Annie 答题 1 并提新改法（还没「动手」）：「用方案B，然后把pill的框再缩小，改了以后的还是很大，太占地方了」「然后morning只用显示今天的」。e6 已更新 preview v2（同一链接最上面一节）：B（shortcut 条收进顶栏 ★）+ 按钮 / 页签 / 分组标签 / 日期框 / 统计卡统一缩小（字 12.5px，约 26–30px 高）+ 收起的整行压薄 + 手机上 Morning Pickup Tracking 只看今天。改后：Manifests 表格 740 → 约 360、Dispatch Pull from Discord 815 → 约 390、Vehicles 列表 1115 → 约 210、Tracking 第一行 565 → 约 345。新题：「Morning 只显示今天」指哪几页——A 只手机上的 Tracking（推荐）/ B 手机上 Tracking + Send / C 电脑版也只看今天 / D 别处。题 2–4 未答。
 - 2026-11-01 21:30 e6 收尾：做到 preview v2，没写代码。截图工具和临时样式存在分支 `task/mobile-preview-e6`（f6840ee，checks/headless/mobile-preview/，README 写了用法，不合 main）。等 Annie 答：①「Morning 只显示今天」指哪几页（A 只手机上的 Tracking，推荐 / B 手机 Tracking + Send / C 电脑版也只看今天 / D 别处）；② 题 2 Settings「+ Add …」表单手机上默认收起（推荐收起）；③ 题 3 右下角 ↑↓（A 手机不显示，推荐 / B 只留 ↑ / C 照旧）；④ 题 4 黄框红框压一行 + More（推荐，红色报错不压）。下一步：Annie 答完、说「动手」后，先做 components/ui 共用组件（顶栏 48 + ★ 收 shortcut、标题后 i、⋯ 菜单、一行提示条、收起的表单、pill 手机尺寸），再按页分批换（先 Dispatch / Manifests / Settings / Tracking），每批跑相关检查套后合 main；规则写进 CLAUDE.md。dev server、Chrome 已关。
+- 2026-11-01 Annie 在 e6 窗口答完剩下 4 件，原话：「除了第三点我要保留显示之外，其他都同意推荐」⇒ ①「Morning 只显示今天」= A：只有手机上的 Morning Pickup Tracking 只看今天，电脑版照旧能换日期；② Settings「+ Add …」表单手机上默认收起；③ 右下角 ↑↓ 手机上照旧显示（两个都留，规则第 9 条作废）；④ 黄框 / 红框手机上压一行 + More，红色报错不压。还没说「动手」。
 
 ### 43. 7 Days Forecast 回看历史（09，preview https://claude.ai/artifact/KgRH1xVmZ7QVgS5KnZ1wJC ，2026-11-01 问）
 - preview 代码在 task/forecast-history-preview 74e36f1（不合 main）。日期从 /api/forecast/history 取，第一项 Today (live)；过去日子只读，不出 Refresh、Antelope seats；琥珀横条「Viewing saved forecast from <date> · saved <time> PT · read only」+ 灰框「← Back to today」；没快照时不出日期选择。How to use 加一条（原文见 09 回报）。
