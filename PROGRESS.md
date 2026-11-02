@@ -268,6 +268,7 @@
 - Annie 原话（09 窗口）：「2 可以跟CCL用notice交流，发的时候可以选个人，也可以选team」「CCl也算一个team」；开关「开放给员工由我来决定，你不要再问了」（各窗口不再问开关）。
 - 现状：partner 不在 /api/team/online，调接口 403，收不到消息；PartnerHome 只有问候语和 Forecast。
 - 已转 57（11/2 派人）：partner 收发范围、「发给 team」（team 清单来源、CCL team 包括哪些账号、每人一份还是共享）、partner 在哪看 / 回、开关管不管 partner。91 出前端 preview（排在 Send Log 新 preview 后）。未动手。
+- Annie 补（57 转）：「那也开个页面给它们吧」⇒ CCL partner 有自己单独的 Notice 页（能看、能回），不只是 PartnerHome 一块。已转 91 加进 preview；后端方案带 partner 侧接口。
 
 ### 47. Shortcut 条 Manifests 的点改橙色（09，preview https://claude.ai/artifact/25YysSRdXNCzmZRUi5EwK1 ，2026-11-01 晚）
 - Annie 原话（附截图，各页顶上的 shortcut 条）：「这里的点，manifest用橙色吧」
