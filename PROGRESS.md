@@ -226,6 +226,8 @@
 - 原因（后端）：上面「📦 Send batches」用后端批次；只有发送页点 Send（Tour Confirmation / Last Minute、门票、Manifests 上发）才建批次。自动发（团确认 7 点 / 6 点、门票 9 / 12 / 5 点）、早班 Morning Pickup / Relay、Farm-out 通知、广播、回复客人、单发都不建批次（batch_id NULL，后端 send_batches.py:10–11 写明设计如此），只出现在下面逐条大表。下面大表本来不分组、不带 batch_id。不是分页 / 排序问题。
 - 问 Annie 是哪种：① 某次发送在上面 Send batches 找不到、只在下面大表 ⇒ 修法 A：后端让自动发 / 早班等也建批次（样子不变，算修 bug；旧数据补不补要定）；② 嫌下面大表一条一条 ⇒ 修法 B：大表也按批次折叠（改版式，先 preview）。
 - Annie 答：「1. 要补   2 出」⇒ A 已转 57（所有发送建批次 + 补旧数据，SQL 给 Annie 过目；大表接口加 batch_id）；B 派 91 出 preview（大表按批次折叠，和上面 Send batches 怎么并）。
+- Annie 问「我们就不能都统一格式么，为什么做一部分又不做一部分，规律是什么，原则是什么」⇒ 主窗口答：没有原则，是分组一页一页加、旧发送没回头改；原则应是「所有发送都进组、没有例外」，问她要不要写进前后端规范（未答）。后端已派 44（今晚调查 + 开工确认，代码可能明天）。
+- 91 preview https://claude.ai/artifact/6xQqXHFXQgcf8443mc4Lcx 4 题：① 上下两块：A 合成一块，去掉上面 Send batches，组头点开先看小结（推荐）／B 上面保留、下面也折叠；② 每页 50 条：A 按组算、一组不切开，要后端按组分页（推荐）／B 照旧按消息算，跨页标 continued；③ 筛选 / 搜索时：A 组里只放符合的、写「1 of 6 in this send match」（推荐）／B 放整批、符合的标黄；④ 默认：A 收起，搜单号或从 View this send 进来自动展开（推荐）／B 全展开。后端要的已转 57 / 44。
 
 ### 41. Bus Manifest：Antelope 三个 canyon 的顺序和分页（91，preview https://claude.ai/artifact/SuSZPJVnMTUUirXhnpGZ4x ，2026-11-01 问）
 - 已定：长期默认；分页 staff 自己定（Annie「长期默认，第二个由staff来决定」）。样子：页头 Version 旁「Canyon order: Lower → Upper → X · 1 page ▾」，点开小框 ↑↓ 换顺序、两节中间勾「Start a new page here」，整页 Save 才存。
