@@ -394,6 +394,7 @@
   - Annie 在 37 窗口定（原话）：「费用件数就是人数，不管最后怎么记录，我们的reschedule fee是按照人头收的」⇒ d8 不再去同单找人数：行 pax = 费用自己的件数（多个选项取最大），全部 CHD 产品都这样；null / pax_unknown 只是保险、预计 0，前端 null 照旧显示「—」。preview v4 取消（题 1、3 已明确答）。已转 91。只差动手。
   - ⚠️ 91 报：Annie 在 91 窗口说的是「其他同意推荐，动手」（题 1 B 淡红、题 2 B 只写单数不写 pax、题 3 A 留说明条），91 已照这个做完 task/manifests-sendable fba8716（man 339 / mf 230 / da 446 / nav 38、tsc、eslint 过），没合 main。跟 24 窗口的「1. 要标 2. 按照客人人数 3 不要说明」题 2、3 相反。91 在问 Annie 以哪个为准；按 24 这边要改三处（写 pax、null 显示「—」/ pax_unknown、去说明条），改完等 d8 pax 上后端 main 再合。动手已有（91 窗口）。
   - 37：后端 task/chd-main-manifest ad5707ee 已推、审查 PASS，等前端 step 2 合 main 后 24 发 SHA，37 再合。最终形状：胶囊 p:<code> / internal name / sendable:false；行 pax = 费用件数（多选项取最大）；pax_unknown 在标签和胶囊上，今天 0，8/16 前 legacy 的 PFYF01 可能有 null（保留「—」）。已转 91，前端先合，要兼容后端旧形状。还卡在 Annie 题 2 / 3 以哪版为准。
+  - 91 两版都做好、检查过，没合 main：版本 1（24 窗口的答案，91 推荐）task/manifests-chd-pax 8361888——淡红、写 pax（「CHD 5 · 9 pax」「Upgrade 5 pax」）、null 显示「—」、pax_unknown>0 写「+ N unknown」、去说明条；兼容后端旧形状；man 340、mf 230、da 446、nav 38、tsc / eslint / build 过。版本 2（91 窗口的答案）task/manifests-sendable fba8716——只写单数、留说明条。Annie 定哪版合哪版；合后等后端合，91 在线上 CHD 标签只看核一遍。
 
 ### 48. Notice 跟 CCL 交流，可选个人或 team（2026-11-01 晚，11/2 做）
 - Annie 原话（09 窗口）：「2 可以跟CCL用notice交流，发的时候可以选个人，也可以选team」「CCl也算一个team」；开关「开放给员工由我来决定，你不要再问了」（各窗口不再问开关）。
