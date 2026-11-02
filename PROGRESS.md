@@ -6,6 +6,21 @@
 
 > **下一个主窗口：先读下面「2026-11-01 晚 收工交接：前端主窗口-98」，再看置顶「📌 等 Annie 确认」。更早的交接是 10-30 晚那节。**
 
+## 2026-11-02 主窗口 `npe-ops-frontend-24`[d1dbae] 开工，接 98
+- Annie 指定 24 做 11/2 主窗口。98 已交接，从现在起不再派工，收到的消息都转给 24。
+- 98 交接里补充的（PROGRESS 11/1 晚那节没写的）：
+  - 09 手上没活，在等 Annie 答 Forecast「回溯 7 天」：是最多往回看 7 天（现在的做法），还是一打开就先显示 7 天。
+  - 10d 排班生产测试要继续之前，先跟 Annie 说清楚：Publish 会给所有 Super Admin 发通知和邮件。
+  - 已作废、不合 main 的分支：task/perm-tick-or-role（aa8d053）、task/manifests-dot-orange、task/forecast-history-preview、task/mobile-preview-e6。
+  - 后端还没交付的：
+    - 44：Send Log 补批次，以及按组分页（page / page_size / total、筛选按组）。接口格式写代码前先发主窗口；开工前 44 要先找 Annie 确认。
+    - 57：Notice-CCL 接口方案（Risk B + security-auditor）。
+    - 64 / 57：Forecast 补 3 个月数据的入口。先问 Annie 数据格式；history 以后可能加 source: nightly | backfill。
+  - Annie 自己要做（只是提醒）：在 Products › Manifest setup 里填 Bus Manifest section order（LOWER、UPPER、Canyon X）。
+- 窗口：前端工作窗口 09、91、e6；后端主窗口 57，后端工作窗口 64、44；37 多半是今天的后端主窗口（98 说），已问它确认。
+- 资源：空闲内存 46.8 / 63 GB；node 0 个；chrome 28 个进程，约 4.1 GB。
+- 已发 e6：报开工和分支名，接着做手机版第二批。
+
 ## 2026-11-01 晚 收工交接：前端主窗口-98 [94e9c6]（家里，周末时间表；11/2 凌晨写完）
 
 **一、10/31–11/1 合进 main 上线的（前端，等 Annie 线上验收）**
