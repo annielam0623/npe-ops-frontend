@@ -353,6 +353,7 @@
 - Annie 原话：「我可以限制一下download的功能么」。e6 已答能做、说了现状，问她要限制谁、哪些页（不在 24 这里重复问）。
 - e6 只读核：Team 页已有 4 个导出勾 manifests.export / orders.export / logs.export / reports.export；后端服务器端导出没勾就 403（orders.py、send_log.py、notifications.py、tour_manifest.py、farm_out.py）。前端员工按钮级权限没做：没勾的人照样看得到 Export / Download 键；浏览器里直接生成的下载后端拦不住。下载键：Manifests Export CSV、Orders Export、Order Log、Send Log、Broadcast Log、Sales Report、Farm out Report / Timetable、HR Export to Excel、Pickup Locations Export、三个 Tracking 页、Dispatch 的 Download Bus Manifest。
 - 可做：员工也按 4 个导出勾藏键（含浏览器生成的）；要不要细分（如 Bus Manifest 下载单独一项）看 Annie。先出 preview（哪页哪个键对应哪一勾）。相关旧题：11-01 09 问过的权限题 A / B / C（Farm out 导出跟 reports.export、Bus Manifest 下载 + Manifests Export CSV 跟 manifests.export，未答）。
+- Annie 接着问（e6 窗口原话）：「这样子，我可以给teams设置权限么」。e6 只读核：权限现在只按人存（后端 permissions.py，每人的勾 ∩ 角色标准），team（user_teams）只管发消息 / 通知，跟权限无关；批量只有 Team 页弹窗「Copy access from」。e6 给的两种：A team 当模板，Teams 页给 team 定一套勾，按「Apply to members」一次套到每人身上，之后每人还能单独改，改模板要再按一次（前端用现有每人保存接口，后端基本不改，推荐）／B 权限跟着 team 走，人 = 所在 team 的勾合起来 + 个人额外勾，改 team 马上生效（后端改算法和存储，工作量大，还要定「team 给了、个人想去掉」怎么办）。等她在 e6 窗口答；preview 跟下载那份并成一份。
 - 等 Annie 在 e6 窗口答范围，再派（e6 出 preview）。
 
 ### 52. 司机页 Farm out 客人那一栏改用 Affiliate 的叫法（2026-11-02，Annie 提，没动手）
