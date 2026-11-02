@@ -355,6 +355,9 @@
 - 可做：员工也按 4 个导出勾藏键（含浏览器生成的）；要不要细分（如 Bus Manifest 下载单独一项）看 Annie。先出 preview（哪页哪个键对应哪一勾）。相关旧题：11-01 09 问过的权限题 A / B / C（Farm out 导出跟 reports.export、Bus Manifest 下载 + Manifests Export CSV 跟 manifests.export，未答）。
 - Annie 接着问（e6 窗口原话）：「这样子，我可以给teams设置权限么」。e6 只读核：权限现在只按人存（后端 permissions.py，每人的勾 ∩ 角色标准），team（user_teams）只管发消息 / 通知，跟权限无关；批量只有 Team 页弹窗「Copy access from」。e6 给的两种：A team 当模板，Teams 页给 team 定一套勾，按「Apply to members」一次套到每人身上，之后每人还能单独改，改模板要再按一次（前端用现有每人保存接口，后端基本不改，推荐）／B 权限跟着 team 走，人 = 所在 team 的勾合起来 + 个人额外勾，改 team 马上生效（后端改算法和存储，工作量大，还要定「team 给了、个人想去掉」怎么办）。等她在 e6 窗口答；preview 跟下载那份并成一份。
 - Annie 答（e6 窗口原话）：「限制谁的问题，你如果可以让我按照assign的team来选的话就会容易很多，如果受限或者没有勾选给这个人的功能，这些键就没有必要出现在页面上」⇒ ① 按 team 一次给一组人设权限；② 员工也照勾藏键（没勾的功能页面上不出键，不只是后端 403）。没动手。e6 出 preview：Teams 页按 team 设权限、下载键对照表（并 09 11-01 的 Farm out 导出 / Bus Manifest 下载两题）、题目（模板 vs 跟着 team 走、一人两个 team、只藏下载键还是所有功能键、Tracking / Settings 导出归哪）。等链接和题。
+- Annie 又说（e6 窗口原话）：「现在给到CCL的版块已经够多，那就可以给他们打开dashbroad，但是只显示开放给他们的模块就好了」。e6 只读核 dashboard-view.tsx：各块已按勾显示（My shortcuts 只出 canOpen；Notice 跟 dashboard.view；Messages 要 tracking .view + messages.view；任务 tasks.view_own；Today's team / 本周 Schedule 跟 schedule.view；DOR 跟 report.view）⇒ Annie 在 Team 页给 CCL 勾 Dashboard 即可，前端不用改。
+  - 两处漏（修 bug，样子不变，等动手）：统计行「Messages need reply」没 Messages 块也出（显示 —）；「Open reports」只看 DOR 版面开关、不看 report.view ⇒ 对应块不出，这格也不出。
+  - 新题（并进 e6 权限 preview）：Today's team 跟 schedule.view 走，CCL 没勾就没地方发消息。A 给 CCL 勾 Staff Schedule（Today's team + 本周 Schedule + 侧栏 Staff Schedule 都出，前端不改）／B Today's team 不跟排班勾，没勾的人只出在线名单 + New message、不列班次（前端改、后端确认在线 / 名单接口不要 schedule.view；推荐，CCL 能发消息又看不到排班；样子变化要 preview）。
 
 ### 52. 司机页 Farm out 客人那一栏改用 Affiliate 的叫法（2026-11-02，Annie 提，没动手）
 - Annie 原话：「我原来说过Farm out的客人是要出现在bus manifest和司机的pick up list里，然后用个好听的名字掩盖把客人卖了的行为」。
