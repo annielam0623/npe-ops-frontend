@@ -18,7 +18,7 @@
 
 **二、等 Annie 答 / 动手（详见置顶）**
 - 42 Send Log：后端 44 补批次（所有发送都进组 + 补旧数据，开工前找 Annie，代码可能 11/2）；91 折叠 preview 4 题未答。Annie 问「规律是什么，原则是什么」⇒ 主窗口答原则「所有发送都进组、没有例外」，问她要不要写进前后端规范（未答）。
-- 43 Forecast 回看：v4（09，task/forecast-history-preview e6f391c），题 1–4 已答（灰表头、Today 键、最多回看 7 天），等「动手」；动手时 09 先确认「回溯 7 天」= 最多回看 7 天。后端快照 + 回看今晚上线（64 确认）；补 3 个月数据 57 排 11/2。
+- 43 Forecast 回看：v4（09，task/forecast-history-preview e6f391c），题 1–4 已答（灰表头、Today 键、最多回看 7 天），等「动手」；动手时 09 先确认「回溯 7 天」= 最多回看 7 天。后端快照 + 回看已上 main 0db87bc3（64），第一张快照 11/1 23:55 PT；补 3 个月数据 57 排 11/2。
 - 44 全站手机版：e6 v2（task/mobile-preview-e6 f6840ee，不合 main），题 1 Annie 选 B（shortcut 收进 ★）+ 缩小；「morning只用显示今天的」指哪几页 + 题 2–4 未答。
 - 权限题 A / B / C（Work Sheet 只读、Farm out 导出、Manifest 两个导出键）和 Team 页「特批」标记：未答。
 - 10d 排班生产测试（09）：等 Annie 自己处理 ZZTest（不问她）。
