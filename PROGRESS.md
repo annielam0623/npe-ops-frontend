@@ -8,6 +8,19 @@
 
 
 
+## 2026-11-01 晚 7 Days Forecast 回看历史：preview v4，等 Annie「动手」（`task/forecast-history-preview`，工作窗口 09，主窗口 98 派）
+- **背景**：Annie 2026-11-01 定，Forecast 内容要留着、staff 能回看（「现在7days的前端页面也要改」）。后端 64 `task/forecast-history`：
+  `GET /api/forecast/history` → `{dates}`（新的在前）；`GET /api/forecast/history/{YYYY-MM-DD}` → `{date, taken_at, forecast}`（forecast 同 60-day，当晚 23:55 PT），没有快照 404、格式错 400。权限 forecast.view。98：后端今晚上线。
+- **preview**：https://claude.ai/artifact/KgRH1xVmZ7QVgS5KnZ1wJC（v4）。代码只在 preview 分支（e6f391c，模拟接口 + 截图用，**不合 main**）。
+  - v1 琥珀横条 + 下拉 → Annie：「我希望再colum和row的第一个空格里放两个箭头，点左边那个屏幕就往历史翻，点右边这个就往前翻，不要在上面做提醒条，占太多地方」
+  - v2 左上角箭头 → Annie：「整张表的默认是从今天开始，第一列永远显示今天的日期。然后在两个箭头之间放Today的快捷键。今天至将来的日期格子不变，过去的日期格式就用琥珀色，但是颜色浅一点，现在这个太深了」
+  - v3/v4 → Annie：「1. 理解基本正确，但是在第一个显示今天的日期的目的是有个快捷键可以一点就将今天回到第一列 2，过去日子的表头就灰色吧，黄色太显眼了 3 我明天上传过去3个月的数据来补」
+- **v4 定下的样子**：表默认从今天开始；左上角 `‹ [Today · 日期] ›`；每点 ‹ 在今天左边接一天过去的日子（取那天自己快照的第 0 列，灰表头 #334155 写 Saved，只读）；› 少接一天；Today 一下回到从今天开始；最早一张时 ‹ 灰。今天和以后完全不变（可改，Antelope seats / Refresh / Action Log 照常）。没有快照时箭头不出现。How to use 加一条（原文在 preview 里）。
+- **等 Annie**：题 4「有了 3 个月数据后要不要『跳到某天』」——甲 不加（推荐先上）/ 乙 Full screen 左边加 Go to / 丙 Go to 只显示那一周。原文在 preview 和 98 的置顶。
+  原题 3（没存的那晚怎么接）因 Annie 要补数据暂不问。补 3 个月数据的入口是后端的事（98 已转，57 排明天）。
+- **动手后要做**：从 main 拉新分支，照 preview 分支的 `components/forecast/history-bar.tsx`（HistoryArrows）、`history-merge.ts`（把过去日子接到左边）、`forecast-grid.tsx`（corner / pastDays、灰表头）、`forecast-view.tsx`、`lib/forecast-api.ts`、How to use 正式写（去掉 preview 痕迹，如 `?back=` 参数）；
+  fc-mock 加 history 两个接口、fc-test 加检查（默认从今天、‹ › Today、最早变灰、过去列只读、今天以后可改）；跑 tsc / eslint / build / fc 等套件，后端上 main 后再合。
+
 ## 2026-11-01 凌晨 10d 生产排班测试：先放着，等 Annie 自己改好 ZZTest（工作窗口 09）
 - **做到哪**：只做了只读核对，生产上什么都没改、没发。2027-02-07 那周仍是空草稿。
 - **卡在哪**：c374e85（只看勾）上线后只读核对：ZZTest（role = staff）的 `/api/me/permissions` 排班相关只有 `schedule.view`，排班页没有 Save / Publish / + Add employee（前端照后端，正确）。
