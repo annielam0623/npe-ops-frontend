@@ -359,6 +359,7 @@
   - 两处漏（修 bug，样子不变，等动手）：统计行「Messages need reply」没 Messages 块也出（显示 —）；「Open reports」只看 DOR 版面开关、不看 report.view ⇒ 对应块不出，这格也不出。
   - 新题（并进 e6 权限 preview）：Today's team 跟 schedule.view 走，CCL 没勾就没地方发消息。A 给 CCL 勾 Staff Schedule（Today's team + 本周 Schedule + 侧栏 Staff Schedule 都出，前端不改）／B Today's team 不跟排班勾，没勾的人只出在线名单 + New message、不列班次（前端改、后端确认在线 / 名单接口不要 schedule.view；推荐，CCL 能发消息又看不到排班；样子变化要 preview）。
 - Annie 答权限题（24 窗口原话，没动手）：「一直跟team走」（= B，人的权限 = 所在 team 的勾 + 个人，改 team 马上生效）；两个 team「那就两个team的功能都有」（并集）；「没选的功能键都藏」（不只下载键）；Tracking / Settings 导出归哪：「什么意思」⇒ 24 解释了大意，请 e6 在 preview 里写全（列具体键 + 选项 + 推荐）。另请 e6 补题：team 给了、个人想去掉怎么办。已转 37 请后端只读估算 team 权限的形状和工作量（要改 permissions.py 算法和存储）。
+  - 37：44 只读出后端设计和工作量（team 勾存储 + 可选个人去掉两种、合起来顺序、team 勾接口和「勾从哪来」、action_log、迁移不改现有权限、只读数 team 和多 team 人数），出好转来对 preview。「角色标准还卡不卡 team 给的勾」由 37 在它窗口问 Annie，e6 不问（已告诉 e6）。
 
 ### 52. 司机页 Farm out 客人那一栏改用 Affiliate 的叫法（2026-11-02，Annie 提，没动手）
 - Annie 原话：「我原来说过Farm out的客人是要出现在bus manifest和司机的pick up list里，然后用个好听的名字掩盖把客人卖了的行为」。
