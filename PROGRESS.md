@@ -317,7 +317,9 @@
 - Annie 原话：「紧急插个队，把sales report做出来」。24 问她指哪种：A 修现有 /sales-report（10/23 上线，按 Group → section → 产品，Orders / Pax / $，只 SA 可见挂 Soon）／B 做一份新报表（先出 preview）／C 把删掉的按 agent 月表周表加回来。她没选，接着说：「你先把CHD这个group 先放回main manifest」。
 - 背景：CHD 组（booking_type='unmapped'，只有 PFYF01 收款行）是 10-18 照 Annie「这个产品不是 tour，不应该出现在 manifest 里」由后端 G111 挡掉的。后端同一个函数还管自动发送、Manifests 发送、Dispatch 同步、Forecast、接客时间提醒、电话 AI。前端现在只能在 Manifests 的 Show hidden rows 里看到这些行。
 - 问 Annie 范围：A 只放回 Main manifest 页上显示（发送、Dispatch、Forecast、电话 AI 照旧不算；推荐）／B 全部恢复成 10-18 以前那样。已转 37 先只读评估，并核 Sales Report 现在算不算 CHD 组。没答复前不改代码。
-- Annie 答：「A」（只放回 Main manifest 显示，发送 / Dispatch / Forecast / 电话 AI 照旧不算）。随后 Annie 原话「动手」⇒ 已转 37 按 A 开工（优先）。前端 Manifests 要不要跟着改，等 37 的方案。Sales Report 要哪种（A / B / C）还没答。
+- Annie 答：「A」（只放回 Main manifest 显示，发送 / Dispatch / Forecast / 电话 AI 照旧不算）。随后 Annie 原话「动手」⇒ 已转 37 按 A 开工（优先）。前端 Manifests 要不要跟着改，等 37 的方案。
+- 37 派后端 d8（最优先）。预定形状：CHD 行进正常 rows[]，每行带 sendable + reason_label（"The group is Unmapped"），CHD 行 sendable:false；Bus 标签多一个 CHD 胶囊。前端必须把 sendable:false 的行排除出勾选、Select unsent、全选，否则整批发送失败。⇒ 已派 91 task/manifests-sendable（没带字段当 true，可以先合 main）；后端等 24 说「前端已上」再推。胶囊人数算不算进 Bus / 当天总数：37 在问 Annie，没答前只算自己的胶囊。
+- 37 核过：Sales Report /amount/products 本来就算 CHD 组和 PFYF01（不看 manifest 筛选；$ 只算 confirmed；Gray Line 6 张收款单都算进去了）。所以 Annie 觉得报表缺 CHD 的话，原因在别处，要问她看到了什么。另外 37 更正：「10-18 CHD 漏进 Dispatch」没有记录，Dispatch 同步只建 bus_tour 组，CHD 怎样都不会排进车里。Sales Report 要哪种（A / B / C）还没答。
 
 ### 48. Notice 跟 CCL 交流，可选个人或 team（2026-11-01 晚，11/2 做）
 - Annie 原话（09 窗口）：「2 可以跟CCL用notice交流，发的时候可以选个人，也可以选team」「CCl也算一个team」；开关「开放给员工由我来决定，你不要再问了」（各窗口不再问开关）。
