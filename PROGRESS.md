@@ -363,6 +363,7 @@
   - 「角色标准还卡不卡 team 给的勾」Annie 在 24 窗口答（原话）「受」⇒ 权限 = (各 team 勾 ∪ 个人勾) ∩ 角色标准。已转 37 / 44，37 不再问。
   - e6 权限 preview https://claude.ai/artifact/Y6iUsnesJLDwSvHJdqTrpp （按已定 1–3 改，没写代码）：Teams 页每个 team 加灰「Access」键（同 Team 页权限表，蓝 Save 马上对全员生效）；个人弹窗每勾写来源（from CCL, Operations / Personal / 红字 removed for …）；没勾的键不出（动手前给每页完整对照表）；CCL Dashboard 样子。剩题 4a–4f（Farm out Report CSV 跟 Export Reports / Manifests CSV + Bus Manifest 下载跟 Export Manifests / 三个 Tracking CSV 跟 Export Orders / HR 导出跟 Edit HR / Pickup Locations 导出跟 Settings: Pickup locations / Farm out Timetable 跟 Settings: Farm-out，都推荐 A）、题 5 个人可单独去掉（推荐 A）、题 6 Today's team 不跟排班勾（推荐 B）。24 已发 Annie。
   - 44 后端设计（37 转，没动手，全新增）：GET / PUT /api/team/teams/{id}/permissions（PUT 整份替换、只 superadmin、记 log）；catalog 加 team_items；members/{id} 加 team_items（来源）/ effective_items，选减法再加 denied_items；/api/me/permissions 改按实际权限（前端藏键读这个）。事实：多数人已有 34–55 个个人勾，并集下 team 去勾不影响个人也勾了的人；生产 5 个 team（Operations 21、Tour Confirmation 20、Morning Pickup 16、Tickets Reminder 16、CCL 10），20 人在 2+ team。后端约 1 天（减法 +半天），迁移 v141，Risk C。37 在问 Annie「谁能加减 team 成员、删 team」（推荐只 Super Admin）。已转 e6。
+  - e6 对完 44 设计改 preview（版本 1793652453-7228，同一链接）：Access 只 Super Admin、改动记 log；黄框写个人勾 34–55 个 / 并集 / 5 个 team 人数 / 受角色标准；模拟人数改真实；加被角色卡掉的灰字示例。⚠️ 前端「没勾的键不出」要等后端 /api/me/permissions 改按实际权限上线后才能上，否则 team 给的键会被误藏。新题 7（e6 提，24 已问 Annie）：加「去掉跟 team 重复的个人勾」键（A 推荐，Super Admin、确认框逐人列）／B 手动去／C 不清理。
 
 ### 52. 司机页 Farm out 客人那一栏改用 Affiliate 的叫法（2026-11-02，Annie 提，没动手）
 - Annie 原话：「我原来说过Farm out的客人是要出现在bus manifest和司机的pick up list里，然后用个好听的名字掩盖把客人卖了的行为」。
