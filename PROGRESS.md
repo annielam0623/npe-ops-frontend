@@ -262,6 +262,7 @@
 - Annie 原话：「todays team，anyone login就会显示在上面，然后任何人都可以相互发notice，记住：notice是内部用的」
 - 现状：功能已上线（91，34e93fc），开关 team_messages_direct 默认只 SA 可见，要员工能用需 Annie 在版面设置里打开。
 - 09 已问 Annie：现在要不要打开；partner（CCL 等）要不要排除在名单和收发之外（推荐排除，「内部用」）。后端 /api/team/online 会不会列 partner 还没核。
+- 91 只读核过（后端 staff_messages.py:76–90、auth.py:56 / 81–88、dashboard_widgets.py:197–218；前端 partner-home.tsx:14）：名单只取 staff / supervisor / admin / SA 的在职账号，partner、司机、导游都不在；partner 调接口 403，也收不到消息；partner 的 Dashboard 没有这一块。⇒ 已经是「内部用」，不用改。剩下只等 Annie 自己决定何时在版面设置里打开开关。
 
 ### 44. 全站手机版重新设计（派 e6 调查 + preview，2026-11-01）
 - Annie 原话：「而且我们的divce版本要重新设计一下了，太多说明和介绍的东西占了半个手机屏」；主窗口问范围，她选「全站一起（推荐）」：一套统一手机版规则，所有页面照做，新页面也照做。
