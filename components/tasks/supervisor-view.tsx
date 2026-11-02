@@ -18,7 +18,7 @@ import {
   summarizeDone,
   toLaHHMM,
 } from "./config";
-import { DayTag, DueTag, LinkOpen, PriorityDot } from "./shared";
+import { DayTag, LinkOpen, PriorityDot } from "./shared";
 import { TaskTimeline } from "./timeline";
 
 const DAY_MS = 24 * 3600 * 1000;
