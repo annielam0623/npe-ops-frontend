@@ -311,6 +311,18 @@
 - 检查：tsc 0、eslint 0 错（2 旧警告）、build 过；nav 32/32、dr 88/88、tasks 144/144（第一次跑有 3 条 Dashboard 窄屏宽度检查没过，用 main 原版对照和改后重跑都 144/144，判断是那几条不稳定、跟颜色无关）。
 - 旧分支 task/manifests-dot-orange 作废（被这条取代）。
 
+## 2026-11-02 Main manifest：CHD（Admin fee）行不能勾、不进发送（`task/manifests-sendable`，工作窗口 91，主窗口 24 派）—— 第一步已合 main；admin_fee 标签等 Annie 看 preview
+- Annie 原话（经 37 / 24 转）：「你先把CHD这个group 先放回main manifest」（范围答「A」后「动手」）；「不发送，它是一个Admin fee，不参与排团，但是要追踪是否购买和收款」；「统计销售要把这个费用统计进去，但是需要单独的一个项目」「我的意思是在main manifest里单独设一项」「不要放到现有的行程里，它是单独的一个tag」。
+- 后端 d8（`task/chd-main-manifest`，G232）：GET /api/manifests 加 tab=admin_fee；tabs[] / pills[] / rows[] 加 sendable，rows 另有 reason / reason_label；没带 sendable 当 true。后端等第二步（admin_fee 标签）合 main 后才推。
+- **第一步（已合 main）**：
+  - `ManifestRow.sendable` / `ManifestTab.sendable` / `ManifestPill.sendable`；`config.ts` 的 `canSend(row)`（没带 = true）。
+  - sendable:false 的行没有勾选框（同 Show hidden rows 里的行）；表头 Select all、节标题全选、Select all unsent tours、操作条的「几单 · 几人」和发送名单都不带它。原因：后端逐行复核，一批里夹一条整批 400。
+  - tabs[].sendable=false 的标签（admin_fee）先不显示，等 Annie 看 preview。
+  - man-mock 加 `unsendable: [单号]`（新后端：带 sendable、发送夹着就 400）；man-test 加 5 项。
+  - 检查：tsc / eslint 0 错、build 过；man 327/327、mf 225/225、da 446/446、nav 38/38。
+- **第二步（admin_fee 标签）**：preview https://claude.ai/artifact/2whv5SmmkPvJzeWUDBw3Fu （真页面接模拟数据截图）。代码在本 worktree 的 stash「g232-step2-preview」（标签放出来、整个标签没有勾选和发送条、灰色说明条、man-mock 的 adminFee 开关），Annie 同意后再接着做。3 题见置顶 50。
+- 需要后端：user_prefs 白名单加 `manifest_cols_admin_fee`（这个标签的 Columns 才存得住；没有时页面写「Could not load your saved columns」并用默认列）。
+
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
 ### 50. Sales Report 插队 + CHD 组放回 Main manifest（2026-11-02）
