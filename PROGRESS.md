@@ -28,7 +28,13 @@
 
 
 
-## 2026-11-01 晚 7 Days Forecast 回看历史：preview v4，等 Annie「动手」（`task/forecast-history-preview`，工作窗口 09，主窗口 98 派）
+## 2026-11-01 晚 7 Days Forecast 回看历史：Annie「动手」已做，已合 main dc42da3（`task/forecast-history`，工作窗口 09，主窗口 98 派）
+- **动手**：Annie 对 98「动手」（98 转，后端 64 已上 main 0db87bc3）。照 v4 做：表默认从今天开始；左上角 `‹ [Today · 日期] ›`；每点 ‹ 今天左边接一天（取那天快照第一列），灰表头 #334155 写 Saved、格子极淡灰、只读；› 少一天；Today 回到今天在第一列；最多 7 天（接满 ‹ 灰）；没有快照（接口 404）不出箭头。
+  没存快照的那晚：先照 98 定的乙——照日历留一列，表头写 No snapshot、格子只显示「—」（不去读接口）。今天和以后完全不变。How to use 加 Past days 一条。
+- 文件：components/forecast/history-bar.tsx（HistoryArrows）、history-merge.ts（daysBefore / MAX_DAYS_BACK / mergePastDays）、forecast-grid.tsx（corner / pastDays / noSnapshotDays，CSS 盖淡灰 + 「—」）、forecast-view.tsx、lib/forecast-api.ts、how-to-use.tsx。
+- 检查：合最新 main 后 tsc 0、eslint 0 错（2 旧警告）、build 过；fc 196/196（新加 12 条：没接口不出箭头、默认从今天、‹ 接前一天 901、只读 / 今天以后照样能改、只读一次快照、照日历 3 天、No snapshot 列、不读没存的、7 天封顶、›、Today、How to use）、nav 32/32、perm 54/54。
+- 还要问 Annie（09 已问）：「回溯 7 天」= 最多往回看 7 天（现在的做法），还是一打开就先显示过去 7 天；没存快照那晚现在是「—」列，她补完 3 个月数据后基本不会出现。
+
 - **背景**：Annie 2026-11-01 定，Forecast 内容要留着、staff 能回看（「现在7days的前端页面也要改」）。后端 64 `task/forecast-history`：
   `GET /api/forecast/history` → `{dates}`（新的在前）；`GET /api/forecast/history/{YYYY-MM-DD}` → `{date, taken_at, forecast}`（forecast 同 60-day，当晚 23:55 PT），没有快照 404、格式错 400。权限 forecast.view。98：后端今晚上线。
 - **preview**：https://claude.ai/artifact/KgRH1xVmZ7QVgS5KnZ1wJC（v4）。代码只在 preview 分支（e6f391c，模拟接口 + 截图用，**不合 main**）。
