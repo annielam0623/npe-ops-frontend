@@ -215,6 +215,18 @@
 - 检查：tsc / build 过、eslint 0 错；mf 225/225（Canyon 一组 16 项，含 Hoover 叫 Section order）、products 225/225（新格子 6 项）、nav 32/32。
 - 合 main 前：后端上 main 后对着真接口核 canyon_sections / layout / bus_section_order，合最新 main 重跑 mf / products / nav。
 
+- 原置顶 41（全部已答、已上线 324f669，11-01 91 收尾时移来）：
+  - 41. Bus Manifest：Antelope 三个 canyon 的顺序和分页（91，preview https://claude.ai/artifact/SuSZPJVnMTUUirXhnpGZ4x ，2026-11-01 问）
+  - 已定：长期默认；分页 staff 自己定（Annie「长期默认，第二个由staff来决定」）。样子：页头 Version 旁「Canyon order: Lower → Upper → X · 1 page ▾」，点开小框 ↑↓ 换顺序、两节中间勾「Start a new page here」，整页 Save 才存。
+  - (1) 哪些团出现：A 团里有两节以上（不算 Shuttle）就出现，今天只有 Antelope（推荐）／B 只给 Antelope。
+  - (2) 顺序用在哪：A 页面、打印、Excel、司机页、导游页都照选好的顺序（推荐）／B 只管打印。
+  - (3)「新的一页」管哪：A 打印照勾换页，页面上在那里画虚线写「New page」，Excel 不变（推荐）／B 只管打印、页面不显示。
+  - (4) 谁能改：A 同 Version，有 Bus Manifest 编辑权的 staff 都能改，记 Action Log（推荐）／B 只有 Admin / Super Admin。
+  - 不加开关（Bus Manifest 上的选项，不是没跑过的新业务）。要后端，等 Annie 答完、说「动手」再派。
+  - 11-01 Annie 原话：「同意全部推荐。但是在start a new page here,  应该用更直观的说明」⇒ (1)–(4) 都定 A。91 出 v2（同一链接最上面绿框）剩一题：两节中间那行怎么写——写法 1「UPPER prints [On the same page | On a new page]」二选一（推荐）／写法 2 打勾「Print CANYON X on a new page」／写法 3 小框按 PAGE 1 / PAGE 2 分组，「Move … to the next page ↓」「Join page 1 ↑」。还没动手。
+  - 11-01 Annie 原话：「给他们拖拽不是更好么」⇒ 91 出 v3（同一链接最上面）：去掉 ↑↓ 和中间那行，小框按纸分 PAGE 1 / PAGE 2 …，拖 canyon 上下换顺序、拖进另一页的框 = 印在那页、拖到最下面虚线框「Drag a canyon here to print it on a new page」= 新的一页，拖空的页自动消失；拖完暂存，整页 Save 才存。剩一题：A 顺序和分页都用拖（推荐）／B 只有顺序用拖、分页照 v2 写法 1。还没动手。
+  - 11-01 Annie 答「A」⇒ 顺序和分页都用拖。全部题已定，等「动手」。动手后先要后端：每团存 canyon 顺序 + 分页（页 = 节名列表的列表）、_sections() 按顺序排、paginate() 按页换页（当天没有的节跳过、不出空页）、GET /api/dispatch/manifest 的 tour 带设置和可选节名、写接口同 PUT manifest/version 并记 Action Log；前端再接。
+
 ## 2026-11-01 7 Days Forecast 回看历史（派给工作窗口 09，主窗口 98）—— 做 preview，等 Annie 动手
 - Annie 2026-11-01（64 转）：7 Days Forecast 的内容要保留、staff 能回看；「现在7days的前端页面也要改」。
 - 后端 64 task/forecast-history：GET /api/forecast/history → {dates}（新的在前）；GET /api/forecast/history/{date} → {date, taken_at, forecast = 当晚 23:55 PT 的 60-day 内容}；404「No snapshot was saved for …」。权限 forecast.view（含 CCL partner）。每晚 23:55 PT 存快照，第一张 11/1（等后端上线 + Annie 跑迁移）。每周日晚给 Annie 发 Excel（前端不管）。
@@ -246,17 +258,8 @@
 - Annie 答：「1. 要补   2 出」⇒ A 已转 57（所有发送建批次 + 补旧数据，SQL 给 Annie 过目；大表接口加 batch_id）；B 派 91 出 preview（大表按批次折叠，和上面 Send batches 怎么并）。
 - Annie 问「我们就不能都统一格式么，为什么做一部分又不做一部分，规律是什么，原则是什么」⇒ 主窗口答：没有原则，是分组一页一页加、旧发送没回头改；原则应是「所有发送都进组、没有例外」，问她要不要写进前后端规范（未答）。后端已派 44（今晚调查 + 开工确认，代码可能明天）。
 - 91 preview https://claude.ai/artifact/6xQqXHFXQgcf8443mc4Lcx 4 题：① 上下两块：A 合成一块，去掉上面 Send batches，组头点开先看小结（推荐）／B 上面保留、下面也折叠；② 每页 50 条：A 按组算、一组不切开，要后端按组分页（推荐）／B 照旧按消息算，跨页标 continued；③ 筛选 / 搜索时：A 组里只放符合的、写「1 of 6 in this send match」（推荐）／B 放整批、符合的标黄；④ 默认：A 收起，搜单号或从 View this send 进来自动展开（推荐）／B 全展开。后端要的已转 57 / 44。
-
-### 41. Bus Manifest：Antelope 三个 canyon 的顺序和分页（91，preview https://claude.ai/artifact/SuSZPJVnMTUUirXhnpGZ4x ，2026-11-01 问）
-- 已定：长期默认；分页 staff 自己定（Annie「长期默认，第二个由staff来决定」）。样子：页头 Version 旁「Canyon order: Lower → Upper → X · 1 page ▾」，点开小框 ↑↓ 换顺序、两节中间勾「Start a new page here」，整页 Save 才存。
-- (1) 哪些团出现：A 团里有两节以上（不算 Shuttle）就出现，今天只有 Antelope（推荐）／B 只给 Antelope。
-- (2) 顺序用在哪：A 页面、打印、Excel、司机页、导游页都照选好的顺序（推荐）／B 只管打印。
-- (3)「新的一页」管哪：A 打印照勾换页，页面上在那里画虚线写「New page」，Excel 不变（推荐）／B 只管打印、页面不显示。
-- (4) 谁能改：A 同 Version，有 Bus Manifest 编辑权的 staff 都能改，记 Action Log（推荐）／B 只有 Admin / Super Admin。
-- 不加开关（Bus Manifest 上的选项，不是没跑过的新业务）。要后端，等 Annie 答完、说「动手」再派。
-- 11-01 Annie 原话：「同意全部推荐。但是在start a new page here,  应该用更直观的说明」⇒ (1)–(4) 都定 A。91 出 v2（同一链接最上面绿框）剩一题：两节中间那行怎么写——写法 1「UPPER prints [On the same page | On a new page]」二选一（推荐）／写法 2 打勾「Print CANYON X on a new page」／写法 3 小框按 PAGE 1 / PAGE 2 分组，「Move … to the next page ↓」「Join page 1 ↑」。还没动手。
-- 11-01 Annie 原话：「给他们拖拽不是更好么」⇒ 91 出 v3（同一链接最上面）：去掉 ↑↓ 和中间那行，小框按纸分 PAGE 1 / PAGE 2 …，拖 canyon 上下换顺序、拖进另一页的框 = 印在那页、拖到最下面虚线框「Drag a canyon here to print it on a new page」= 新的一页，拖空的页自动消失；拖完暂存，整页 Save 才存。剩一题：A 顺序和分页都用拖（推荐）／B 只有顺序用拖、分页照 v2 写法 1。还没动手。
-- 11-01 Annie 答「A」⇒ 顺序和分页都用拖。全部题已定，等「动手」。动手后先要后端：每团存 canyon 顺序 + 分页（页 = 节名列表的列表）、_sections() 按顺序排、paginate() 按页换页（当天没有的节跳过、不出空页）、GET /api/dispatch/manifest 的 tour 带设置和可选节名、写接口同 PUT manifest/version 并记 Action Log；前端再接。
+- 后端 44 定的补批次分法（11-01 晚，等 Annie 开工确认，代码明天）：回复客人 / 单发一条一批；Morning Pickup / Relay 点一次一批；自动发每个 tour 每轮一批（sent_by "scheduler"）；Farm-out、广播一次一批；新模块 tour_label 给英文名；/api/send-batches 和 /{id} 格式不变，另加 total / truncated（现在 list_batches LIMIT 200，前端没分页、超了会悄悄漏最早的批，91 请 44 加的）；GET /api/notifications/send-log 每行加 batch_id。旧数据：同 module + sent_by + tour_type + tour_date、相邻不超 10 分钟算一批，file_rows = 行数，Skipped 0。方案 A 的按组分页不在这一件里，等 Annie 答 4 题再派。
+- 91 下一步：① 44 上线后只读核新批次的 tour_label、total / truncated；② Send batches 超过上限时写「Showing 200 of N. Pick fewer dates.」（样子不变，算修 bug，可直接修）；③ 等 Annie 答 4 题 + 「动手」再做折叠（题 1 选 B 的话，一条一批的回复会挤满上面那块，要再问怎么收）。preview 源文件在 91 的 scratchpad，不进仓库，没有分支。
 
 > 规矩见 CLAUDE.md「问 Annie 要确认的事：给完整内容，并一直置顶」（2026-10-30）。每条都要能单独看懂。
 
