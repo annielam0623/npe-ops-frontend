@@ -139,6 +139,10 @@ function useStickyDateRow(wrapRef: React.RefObject<HTMLDivElement | null>) {
  * 日期行往下滚时固定在顶栏下面，见 useStickyDateRow。
  * sticky 的格子都显式写自己的背景色，见 styles.ts 顶部注释。
  */
+/** PREVIEW：过去日子的浅琥珀色（Annie 2026-11-01「颜色浅一点」）。 */
+const PAST_HEADER_BG = "#fcd98a";
+const PAST_COL_BG = "rgba(252, 217, 138, 0.10)";
+
 export function ForecastGrid({
   data,
   colorByVehicle,
@@ -147,7 +151,7 @@ export function ForecastGrid({
   onOpenCell,
   canyon,
   corner,
-  history = false,
+  pastDays,
 }: {
   data: Forecast60Day;
   colorByVehicle: boolean;
@@ -159,8 +163,8 @@ export function ForecastGrid({
   canyon: CanyonSnapshot | null;
   /** PREVIEW：左上角格子里的内容（回看历史的箭头）。 */
   corner?: React.ReactNode;
-  /** PREVIEW：看的是快照 ⇒ 第一天表头标 Saved（琥珀色），不标 Today。 */
-  history?: boolean;
+  /** PREVIEW：接在今天左边、从快照来的过去日子 ⇒ 整列浅琥珀色、只读。 */
+  pastDays?: Set<string>;
 }) {
   const blocks = hideZero
     ? data.blocks.filter((b) => !isAllZero(b.total))
@@ -217,7 +221,13 @@ export function ForecastGrid({
         <colgroup>
           <col style={{ width: firstColWidth }} />
           {data.days.map((d, i) => (
-            <col key={d} style={{ width: dayWidths[i] }} />
+            <col
+              key={d}
+              style={{
+                width: dayWidths[i],
+                backgroundColor: pastDays?.has(d) ? PAST_COL_BG : undefined,
+              }}
+            />
           ))}
         </colgroup>
         <thead>
@@ -225,12 +235,13 @@ export function ForecastGrid({
             <th
               scope="col"
               className="sticky top-0 left-0 z-30 border-b border-white/10 px-2 py-2 text-left max-sm:shadow-[inset_-2px_0_0_rgba(255,255,255,.4),inset_0_-2px_0_rgba(255,255,255,.4)]"
-              style={{ backgroundColor: history ? "#3a2a0a" : HEADER_BG }}
+              style={{ backgroundColor: HEADER_BG }}
             >
               {corner}
             </th>
             {data.days.map((day) => {
               const isToday = day === data.today;
+              const isSaved = pastDays?.has(day) ?? false;
               return (
                 <th
                   key={day}
@@ -238,16 +249,20 @@ export function ForecastGrid({
                   data-day={day}
                   data-today={isToday || undefined}
                   className={`sticky top-0 z-20 border-b border-white/10 px-1 py-2 text-center font-semibold whitespace-nowrap max-sm:shadow-[inset_0_-2px_0_rgba(255,255,255,.4)] ${colLine(isToday)} ${
-                    isToday ? (history ? "text-[#fcd34d]" : "text-sky-200") : "text-white"
+                    isToday ? "text-sky-200" : isSaved ? "text-[#422006]" : "text-white"
                   }`}
                   style={{
-                    backgroundColor: isToday ? (history ? "#3a2a0a" : HEADER_TODAY_BG) : HEADER_BG,
+                    backgroundColor: isToday ? HEADER_TODAY_BG : isSaved ? PAST_HEADER_BG : HEADER_BG,
                   }}
                 >
                   {formatHeaderDay(day)}
                   {isToday ? (
-                    <div className={`text-[9px] font-normal ${history ? "text-[#fcd34d]" : "text-sky-300/80"}`}>
-                      {history ? "Saved" : "Today"}
+                    <div className="text-[9px] font-normal text-sky-300/80">
+                      Today
+                    </div>
+                  ) : isSaved ? (
+                    <div className="text-[9px] font-normal text-[#713f12]">
+                      Saved
                     </div>
                   ) : null}
                 </th>

@@ -68,12 +68,12 @@ export function HowToUse() {
           no bookings at all in the next 60 days, to make the table shorter.
         </li>
         <li>
-          <b>Saved forecasts</b>: the page saves a copy of the forecast every
-          night at 11:55 PM (Los Angeles time). Use the <b>‹ ›</b> arrows in the
-          top-left corner of the table to step back through saved days and
-          forward again to today; a saved day shows in amber and is read only
-          (no Antelope seats, Refresh or Action Log). The <b>History</b> menu
-          next to Full screen jumps straight to any saved day.
+          <b>Past days</b>: the page saves a copy of the forecast every night
+          at 11:55 PM (Los Angeles time). Click <b>‹</b> in the top-left corner
+          of the table to add the day before on the left, as it was saved that
+          night; <b>›</b> takes one away, and <b>Today</b> goes straight back to
+          starting from today. Past days have amber headers marked Saved and
+          can&rsquo;t be edited; today and later days work as usual.
         </li>
         <li>
           Lines CCL posted that don&rsquo;t match any route (Private Tour, lines

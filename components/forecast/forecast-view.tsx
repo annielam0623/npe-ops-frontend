@@ -13,7 +13,6 @@ import {
   fetchForecast60Day,
   fetchForecastHistory,
   fetchForecastHistoryDates,
-  type ForecastHistorySnapshot,
   refreshCanyonSnapshot,
   saveForecastCell,
 } from "@/lib/forecast-api";
@@ -33,7 +32,8 @@ import { CellEditor } from "./cell-editor";
 import { formatLongDate, formatMetaTime } from "./config";
 import { ForecastGrid, type CellTarget } from "./forecast-grid";
 import { GuideEditor } from "./guide-editor";
-import { HistoryArrows, HistoryPicker } from "./history-bar";
+import { HistoryArrows } from "./history-bar";
+import { mergePastDays } from "./history-merge";
 import { HowToUse } from "./how-to-use";
 import { Legend } from "./legend";
 import { ForecastReadOnly } from "./read-only";
@@ -90,26 +90,16 @@ export function ForecastView() {
   // 员工权限：没有 forecast.edit 只能看（后端 17 2026-10-26）——Refresh 不显示，表上的编辑框都打不开。
   // partner 一律只能看，勾了也一样（Annie 2026-10-27「合作方只能看…不能改或者选任何功能」）。
   const perms = usePermissions();
-  // 回看历史（PREVIEW）：historyDate = 选了哪一天；snapshot = 那天的快照。
+  // 回看历史（PREVIEW v3）：back = 表左边接上几天过去的日子（0 = 从今天开始）；每个过去的日子取那天自己的快照。
   const [historyDates, setHistoryDates] = useState<string[]>([]);
-  const [historyDate, setHistoryDate] = useState<string | null>(null);
-  const [snapshot, setSnapshot] = useState<ForecastHistorySnapshot | null>(null);
-  const [variant, setVariant] = useState<"a" | "b">("a");
+  const [back, setBack] = useState(0);
+  const [snaps, setSnaps] = useState<Record<string, Forecast60Day>>({});
   useEffect(() => {
     const q = new URLSearchParams(window.location.search);
-    setVariant(q.get("pv") === "b" ? "b" : "a");
-    if (q.get("hist")) setHistoryDate(q.get("hist"));
+    if (q.get("back")) setBack(Number(q.get("back")));
     fetchForecastHistoryDates().then((r) => setHistoryDates(r.dates), () => {});
   }, []);
-  useEffect(() => {
-    if (!historyDate) { setSnapshot(null); return; }
-    const c = new AbortController();
-    fetchForecastHistory(historyDate, c.signal).then((s) => setSnapshot(s), () => {});
-    return () => c.abort();
-  }, [historyDate]);
-  const viewingHistory = !!(historyDate && snapshot);
   const readOnly =
-    viewingHistory ||
     !perms.can("forecast.edit") || perms.partnerLacks("forecast.edit");
   const [view, setView] = useState<ViewState>({ kind: "loading" });
   const [reloadKey, setReloadKey] = useState(0);
@@ -363,12 +353,30 @@ export function ForecastView() {
   }
 
   const liveData = view.kind === "ready" ? view.data : null;
-  const data = viewingHistory ? snapshot!.forecast : liveData;
-  const picker = historyDates.length ? (
-    <HistoryPicker dates={historyDates} value={historyDate} onChange={setHistoryDate} compact={variant === "b"} />
-  ) : null;
-  const corner = historyDates.length ? (
-    <HistoryArrows dates={historyDates} value={historyDate} onChange={setHistoryDate} />
+  // 比今天早、存过快照的日子，新的在前。
+  const pastDates = liveData ? historyDates.filter((d) => d < liveData.today) : [];
+  const shown = pastDates.slice(0, back).reverse();
+  const missing = shown.filter((d) => !snaps[d]).join(",");
+  useEffect(() => {
+    if (!missing) return;
+    for (const d of missing.split(",")) {
+      fetchForecastHistory(d).then((s) => setSnaps((m) => ({ ...m, [d]: s.forecast })), () => {});
+    }
+  }, [missing]);
+  const data = liveData
+    ? mergePastDays(liveData, missing ? [] : shown.map((d) => ({ date: d, forecast: snaps[d] })))
+    : null;
+  const pastSet = new Set(missing ? [] : shown);
+  const corner = liveData && pastDates.length ? (
+    <HistoryArrows
+      today={liveData.today}
+      canBack={back < pastDates.length}
+      canForward={back > 0}
+      onBack={() => setBack((b) => b + 1)}
+      onForward={() => setBack((b) => Math.max(0, b - 1))}
+      onToday={() => setBack(0)}
+      atToday={back === 0}
+    />
   ) : null;
   const cellValueNow =
     data && cellTarget
@@ -453,7 +461,7 @@ export function ForecastView() {
               </div>
             ) : null}
 
-            {canyon && !viewingHistory ? (
+            {canyon ? (
               <div
                 data-canyon-bar
                 className="-mt-1 flex flex-wrap items-center gap-3 text-[12.5px] text-white max-sm:contents"
@@ -514,7 +522,6 @@ export function ForecastView() {
                   />
                   Hide rows that are all 0
                 </label>
-                {variant === "b" ? picker : null}
                 {canFullscreen ? (
                   <button
                     type="button"
@@ -533,9 +540,9 @@ export function ForecastView() {
                 data={data}
                 colorByVehicle={colorByVehicle}
                 hideZero={hideZero}
-                canyon={viewingHistory ? null : canyon}
+                canyon={canyon}
                 corner={corner}
-                history={viewingHistory}
+                pastDays={pastSet}
                 onOpenEditor={(manifestId, section, dayIndex) =>
                   setEditorTarget({ manifestId, section, dayIndex })
                 }
@@ -545,7 +552,7 @@ export function ForecastView() {
 
             {/* 接口没带 running_meta（后端 G81 没上线）时不显示，免得展开只得到 Not Found。
                 partner 后端 403（G208），同 Manifests 干脆不出。 */}
-            {!viewingHistory && !perms.partnerView &&
+            {!perms.partnerView &&
             data.blocks.some((b) => b.running_meta !== undefined) ? (
               <ActionLog refreshKey={logKey} />
             ) : null}
