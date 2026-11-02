@@ -791,7 +791,7 @@ export function ManifestsView() {
               // 同 Show hidden rows 的「For checking only.」灰条。
               <div className="mb-3 rounded-[10px] border-[0.5px] border-white/20 bg-white/[.07] px-3.5 py-2 text-[12.5px] text-[#cbd5e1]">
                 <b className="text-white">Admin fees, for tracking only.</b>{" "}
-                Change fees, service fees and other admin fees. They are not
+                Upgrades, reschedule fees and other admin items. They are not
                 sent and not dispatched, and they are not counted in Bus Tour or
                 Tickets. Check Status, Paid and Due to see whether each one was
                 bought and paid.

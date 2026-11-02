@@ -199,12 +199,16 @@ function counts(rows) {
 }
 
 // G232 admin_fee 标签（CHD 组 = Admin fee，不能发；adminFee 开着才有）。
+// 真实的 3 个产品（Annie 2026-11-02 Products 截图）：PLU3N8「Upgrade」、PXLTL1「Mystical Ante upgrade fee」、PFYF01「Reschedule Fee」。
+const ADMIN_FEE_PRODUCTS = { PLU3N8: "Upgrade", PXLTL1: "Mystical Ante upgrade fee", PFYF01: "Reschedule Fee" };
 const ADMIN_FEE_ROWS = [
-  { o: "CHD-88041", code: "PFYF01", v: { guest_name: "ZZ Test Lee", agent_name: "Viator", product: "Change fee", pax: 1, status: "Confirmed", item_amount: 25, order_total: 25, total_paid: 25, total_due: 0, currency: "USD" } },
-  { o: "CHD-88057", code: "PFYF01", v: { guest_name: "ZZ Test Garcia", agent_name: "Direct", product: "Change fee", pax: 1, status: "Confirmed", item_amount: 25, order_total: 25, total_paid: 0, total_due: 25, currency: "USD" } },
-  { o: "CHD-88102", code: "PFYF01", v: { guest_name: "ZZ Test Nguyen", agent_name: "Direct", product: "Service fee", pax: 2, status: "Cancelled", item_amount: 30, order_total: 30, total_paid: 0, total_due: 0, currency: "USD" } },
-];
-const ADMIN_FEE_TAB = { key: "admin_fee", label: "CHD", sendable: false, rows: 3, orders: 3, pax: 4 };
+  { o: "CHD-88041", code: "PLU3N8", v: { guest_name: "ZZ Test Lee", agent_name: "Viator", pax: 2, status: "Confirmed", item_amount: 40, order_total: 40, total_paid: 40, total_due: 0, currency: "USD" } },
+  { o: "CHD-88057", code: "PLU3N8", v: { guest_name: "ZZ Test Garcia", agent_name: "Direct", pax: 3, status: "Confirmed", item_amount: 60, order_total: 60, total_paid: 0, total_due: 60, currency: "USD" } },
+  { o: "CHD-88063", code: "PXLTL1", v: { guest_name: "ZZ Test Patel", agent_name: "GetYourGuide", pax: 2, status: "Confirmed", item_amount: 30, order_total: 30, total_paid: 30, total_due: 0, currency: "USD" } },
+  { o: "CHD-88102", code: "PFYF01", v: { guest_name: "ZZ Test Nguyen", agent_name: "Direct", pax: 1, status: "Confirmed", item_amount: 25, order_total: 25, total_paid: 25, total_due: 0, currency: "USD" } },
+  { o: "CHD-88110", code: "PFYF01", v: { guest_name: "ZZ Test Smith", agent_name: "Direct", pax: 1, status: "Cancelled", item_amount: 25, order_total: 25, total_paid: 0, total_due: 0, currency: "USD" } },
+].map((r) => ({ ...r, v: { ...r.v, product: ADMIN_FEE_PRODUCTS[r.code] } }));
+const ADMIN_FEE_TAB = { key: "admin_fee", label: "CHD", sendable: false, rows: 5, orders: 5, pax: 9 };
 const ADMIN_FEE_CATALOG = [
   { key: "order_number", label: "Order #", group: "booking", type: "text" },
   { key: "guest_name", label: "Guest", group: "guest", type: "text" },
@@ -222,7 +226,18 @@ function adminFeePage(url, date) {
   const known = new Set([...ADMIN_FEE_CATALOG.map((f) => f.key), "currency"]);
   const asked = url.searchParams.get("fields");
   const fields = (asked ? asked.split(",").filter(Boolean) : ADMIN_FEE_DEFAULTS).filter((k) => known.has(k));
-  const rows = (date === today ? ADMIN_FEE_ROWS : []).map((r) => {
+  // adminFeePills: "product" = 每个产品一个胶囊（p:<code>，后端要新加）；其他 = 按组一个 CHD 胶囊（g:9，后端现在的做法）。
+  const byProduct = ctl.adminFeePills === "product";
+  const dayFee = date === today ? ADMIN_FEE_ROWS : [];
+  const pills = byProduct
+    ? Object.keys(ADMIN_FEE_PRODUCTS).filter((c) => dayFee.some((r) => r.code === c)).map((c) => {
+        const rs = dayFee.filter((r) => r.code === c);
+        return { key: "p:" + c, label: ADMIN_FEE_PRODUCTS[c], color: null, sendable: false, rows: rs.length, orders: rs.length, pax: rs.reduce((n, r) => n + r.v.pax, 0) };
+      })
+    : dayFee.length ? [{ key: "g:9", label: "CHD", color: null, sendable: false, rows: dayFee.length, orders: dayFee.length, pax: dayFee.reduce((n, r) => n + r.v.pax, 0) }] : [];
+  const askedPill = url.searchParams.get("pill");
+  const pill = pills.some((p) => p.key === askedPill) ? askedPill : pills[0]?.key ?? null;
+  const rows = dayFee.filter((r) => !byProduct || "p:" + r.code === pill).map((r) => {
     const all = { ...r.v, order_number: r.o };
     const values = {};
     for (const k of fields) values[k] = all[k] ?? null;
@@ -231,8 +246,7 @@ function adminFeePage(url, date) {
   });
   const tabs = ["bus", "tickets"].map((k) => ({ key: k, label: k === "bus" ? "Bus Tour" : "Tickets - SelfDrive", sendable: true, ...counts(allRows().filter((r) => r.tab === k)) }));
   if (date === today) tabs.push(ADMIN_FEE_TAB);
-  const pills = date === today ? [{ key: "g:9", label: "CHD", color: null, sendable: false, rows: 3, orders: 3, pax: 4 }] : [];
-  return [200, { date, tab: "admin_fee", is_admin: ctl.role === "admin", tabs, pills, pill: pills[0]?.key ?? null, catalog: ADMIN_FEE_CATALOG, groups: GROUPS, default_fields: ADMIN_FEE_DEFAULTS, fields, denied: [], unknown: [], sections: [], rows }];
+  return [200, { date, tab: "admin_fee", is_admin: ctl.role === "admin", tabs, pills, pill, catalog: ADMIN_FEE_CATALOG, groups: GROUPS, default_fields: ADMIN_FEE_DEFAULTS, fields, denied: [], unknown: [], sections: [], rows }];
 }
 
 function page(url) {
