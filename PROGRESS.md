@@ -292,6 +292,7 @@
 - 11/1 晚 Annie 在 44 窗口定页面样子（附截图，44 转）：「我要的是页面上方那样折叠起来，把每次发送都折叠起来，而不是像下方那些一样，一条条排列出来」「分成100个一组都可以，就是把分好的折叠起来就行了」⇒ 整页每次发送一个折叠组头（同现在上方那块），去掉逐条大表（= 题 ① A）；按组分页，每页 100 组，一组不切开（= 题 ② A，100 代替 50）；取代「Showing 200 of N」。后端 44：组列表带 page / page_size / total，筛选按组（组里任一条符合就列），11/2 写代码前先发接口；展开照旧 /api/send-batches/{id}。题 ③ ④ 未答，未说动手。
 - 后端 44 定的补批次分法（11-01 晚，等 Annie 开工确认，代码明天）：回复客人 / 单发一条一批；Morning Pickup / Relay 点一次一批；自动发每个 tour 每轮一批（sent_by "scheduler"）；Farm-out、广播一次一批；新模块 tour_label 给英文名；/api/send-batches 和 /{id} 格式不变，另加 total / truncated（现在 list_batches LIMIT 200，前端没分页、超了会悄悄漏最早的批，91 请 44 加的）；GET /api/notifications/send-log 每行加 batch_id。旧数据：同 module + sent_by + tour_type + tour_date、相邻不超 10 分钟算一批，file_rows = 行数，Skipped 0。方案 A 的按组分页不在这一件里，等 Annie 答 4 题再派。
 - 91 下一步：① 44 上线后只读核新批次的 tour_label、total / truncated；② Send batches 超过上限时写「Showing 200 of N. Pick fewer dates.」（样子不变，算修 bug，可直接修）；③ 等 Annie 答 4 题 + 「动手」再做折叠（题 1 选 B 的话，一条一批的回复会挤满上面那块，要再问怎么收）。preview 源文件在 91 的 scratchpad，不进仓库，没有分支。
+- 11-01 夜 Annie 答（带截图，44 转 91，原话和细节 44 已发 98）：整个 Send Log 都是折叠的组，一次发送一组，像现在上面那块；不要逐条的平表；每页 100 组，一组不切开。⇒ 上一条 ② 「Showing 200 of N」作废；后端改做按组分页（带 total、每组带筛选结果），接口格式 44 明天给 98。91 等接口格式和 Annie「动手」再做前端；preview 要不要照这个答案更新，等 98 说。
 
 > 规矩见 CLAUDE.md「问 Annie 要确认的事：给完整内容，并一直置顶」（2026-10-30）。每条都要能单独看懂。
 
