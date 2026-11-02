@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ops 手机版改版 preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* 同 ops 后台：深蓝外框 + 浅卡片；一栏读下来，对比图并排 */
+  --bg: #f4f6f9;
+  --card: #ffffff;
+  --ink: #142033;
+  --muted: #5b6b80;
+  --line: #dde3eb;
+  --accent: #1d5fa8;
+  --warn: #9a5b00;
+  --warnbg: #fff4dd;
+  --good: #15803d;
+  --bad: #b42318;
+  --font-body: "IBM Plex Sans", "Noto Sans SC", system-ui, sans-serif;
+  --font-display: "IBM Plex Sans", "Noto Sans SC", system-ui, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #07111d; --card: #0f1c2d; --ink: #e6edf5; --muted: #93a4b8; --line: #22344a;
+    --accent: #7ab3e0; --warn: #fbbf24; --warnbg: #2a2110; --good: #4ade80; --bad: #f87171;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #07111d; --card: #0f1c2d; --ink: #e6edf5; --muted: #93a4b8; --line: #22344a;
+  --accent: #7ab3e0; --warn: #fbbf24; --warnbg: #2a2110; --good: #4ade80; --bad: #f87171;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.65 var(--font-body); }
+main { max-width: 1000px; margin: 0 auto; padding: 28px 16px 64px; display: flex; flex-direction: column; gap: 28px; }
+h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; line-height: 1.3; margin: 0; }
+h1 { font-size: 26px; }
+h2 { font-size: 20px; padding-bottom: 6px; border-bottom: 2px solid var(--line); }
+h3 { font-size: 16px; }
+p { margin: 0; max-width: 72ch; }
+.sub { color: var(--muted); }
+section { display: flex; flex-direction: column; gap: 14px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; }
+.tbl { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--card); }
+table { border-collapse: collapse; width: 100%; min-width: 720px; font-size: 13.5px; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { color: var(--muted); font-weight: 600; font-size: 12.5px; }
+td.num { white-space: nowrap; font-weight: 600; }
+.bad { color: var(--bad); } .good { color: var(--good); } .warn { color: var(--warn); }
+ol, ul { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 6px; }
+.pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; align-items: start; }
+figure { margin: 0; display: flex; flex-direction: column; gap: 6px; }
+figure img { width: 100%; max-width: 300px; border-radius: 14px; border: 1px solid var(--line); display: block; }
+figcaption { font-size: 13px; color: var(--muted); }
+figcaption b { color: var(--ink); }
+.q { border-left: 4px solid var(--accent); }
+.q h3 { color: var(--accent); }
+.rec { background: var(--warnbg); border-radius: 8px; padding: 6px 10px; }
+code { font-size: 13px; background: var(--bg); padding: 1px 5px; border-radius: 4px; }
+.tag { display: inline-block; font-size: 12px; font-weight: 600; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+<header style="display:flex;flex-direction:column;gap:8px">
+  <h1>Ops 手机版改版 preview（全站统一规则）</h1>
+  <p class="sub">工作窗口 e6 做，2026-11-01。Annie 原话：「而且我们的divce版本要重新设计一下了，太多说明和介绍的东西占了半个手机屏」，范围选「全站一起」。下面的截图用模拟数据在 390×844（iPhone 14 尺寸）下截的，「改后」是在模拟页面上临时改样式做的效果，<b>还没写任何代码</b>。电脑版样子不变，只改手机尺寸。</p>
+</header>
+
+<section>
+  <h2>v2（2026-11-01）：方案 B + pill 缩小 + Morning 只显示今天</h2>
+  <p>Annie 原话：「用方案B，然后把pill的框再缩小，改了以后的还是很大，太占地方了」「然后morning只用显示今天的」。这一版：</p>
+  <div class="card">
+  <ul>
+    <li><b>方案 B</b>：shortcut 条整条收进顶栏的 ★ 按钮。</li>
+    <li><b>pill 统一缩小</b>：按钮、页签、分组标签（Bus Tour / Antelope Bus Tour…）、日期框、搜索框、统计卡，字 12.5px，上下边距 2px，高度大约 26–30px（原来 36–48px）。</li>
+    <li><b>收起的整行也压薄</b>：+ Add Vehicle、Extra columns、Action Log、How to use 都约 34px 一行。</li>
+    <li><b>Morning Pickup Tracking 手机上只看今天</b>：不出 ‹ 日期 › Today 那一排，标题下只写「Today · Sun, Nov 1」。</li>
+  </ul>
+  </div>
+  <div class="card">
+    <h3>Manifests</h3>
+    <div class="pair">
+      <figure><img src="img/manifests-now.png" alt="Manifests now"><figcaption><b>现在</b>：表格 740。</figcaption></figure>
+      <figure><img src="img/manifests-b2.png" alt="Manifests v2"><figcaption><b>v2</b>：页签、分组标签、发送条按钮都变小；表格约 360。</figcaption></figure>
+    </div>
+  </div>
+  <div class="card">
+    <h3>Dispatch</h3>
+    <div class="pair">
+      <figure><img src="img/dispatch-now.png" alt="Dispatch now"><figcaption><b>现在</b>：Pull from Discord 815。</figcaption></figure>
+      <figure><img src="img/dispatch-b2.png" alt="Dispatch v2"><figcaption><b>v2</b>：① Assign / ② Send 一行小页签；Pull from Discord 约 390，车卡约 640。</figcaption></figure>
+    </div>
+  </div>
+  <div class="card">
+    <h3>Settings › Vehicles</h3>
+    <div class="pair">
+      <figure><img src="img/set-vehicles-now.png" alt="Vehicles now"><figcaption><b>现在</b>：列表 1115。</figcaption></figure>
+      <figure><img src="img/set-vehicles-b2.png" alt="Vehicles v2"><figcaption><b>v2</b>：列表约 210，三台车 + Action Log + How to use 一屏放下。</figcaption></figure>
+    </div>
+  </div>
+  <div class="card">
+    <h3>Morning Pickup Tracking</h3>
+    <div class="pair">
+      <figure><img src="img/tracking-now.png" alt="Tracking now"><figcaption><b>现在</b>：第一行订单 565。</figcaption></figure>
+      <figure><img src="img/tracking-b2.png" alt="Tracking v2"><figcaption><b>v2</b>：只看今天；司机筛选和统计卡变小；第一行订单约 345。（右上 Export / Refresh 这张图里还没缩，做的时候一起缩。）</figcaption></figure>
+    </div>
+  </div>
+  <div class="card q">
+    <h3>v2 要确认的一件：「Morning 只显示今天」指哪几页？</h3>
+    <p><b>现在怎样</b>：Morning Pickup Tracking 顶上有 ‹ 日期 › Today，能看任何一天。v2 先照「手机上的 Morning Pickup Tracking 只看今天、不能换日期」做了图。</p>
+    <ul>
+      <li><b>A</b>：只有手机上的 Morning Pickup Tracking 只看今天；电脑版照旧能换日期（图里就是这样）。</li>
+      <li><b>B</b>：手机上 Morning Pickup Tracking 和 Morning Pickup Send 都只看今天。</li>
+      <li><b>C</b>：电脑版也只看今天。</li>
+      <li><b>D</b>：你说的是别处，例如 Dashboard 的「Today's pickup」，请指一下。</li>
+    </ul>
+    <p class="rec">推荐 <b>A</b>：手机上多半是当天盯人上车；回看别的日子在电脑上做。</p>
+  </div>
+  <p class="sub">题 2–4（Add 表单收起、↑↓、提示条一行）还在下面第 5 节，没变。下面第 1–5 节是第一版，留作对照。</p>
+</section>
+
+<section>
+  <h2>1. 现在：第一屏被什么占了</h2>
+  <p>每一页的顶栏（64px）+ shortcut 条（49px）+ 边距，<b>先吃掉 129px</b>（第一屏的 15%）。右下角的 ↑↓ 两个圆键每页都盖在内容上。下表是各页第一屏（844px 高）里的说明 / 提示占多少、真正的内容（表格、列表、卡片）从多少 px 开始。</p>
+  <div class="tbl">
+  <table>
+    <thead><tr><th>页面</th><th>第一屏里的说明、提示、How to use、介绍</th><th>真正内容从</th></tr></thead>
+    <tbody>
+      <tr><td>Dispatch</td><td>页头橙色介绍 45 · 步骤框 152（两行小字）· Step 1 说明 46 + How to use 链接 · Step 2 说明 68 + How to use 框</td><td class="num bad">Pull from Discord 815，第一张车卡 ≈1100</td></tr>
+      <tr><td>Manifests</td><td>工具条 168（Columns / Export / Show hidden / Upload 四个次要键）· Legacy 黄框 77 · 选单发送条 142（0 单时也摊开）</td><td class="num bad">表格 740</td></tr>
+      <tr><td>Settings › Vehicles</td><td>How to use 放在最上面 48 · Add Vehicle 表单整个摊开 472 · Extra columns 247</td><td class="num bad">车辆列表 1115（第二屏）</td></tr>
+      <tr><td>Settings › Pickup Locations</td><td>How to use 在上面 44 · Add New Location 表单摊开 2486</td><td class="num bad">列表 2842（第四屏）</td></tr>
+      <tr><td>Settings › Products</td><td>「6 items need attention」450 · How to use 在上面 52 · Groups 75</td><td class="num bad">801</td></tr>
+      <tr><td>Settings › Team</td><td>上面空白 28 · 标题+介绍 129 · How to use 52 · 「Drag titles to reorder…」36</td><td class="num bad">表格 691</td></tr>
+      <tr><td>Send Log</td><td>统计 165 · 筛选 190 · Send batches 说明</td><td class="num bad">表格 849</td></tr>
+      <tr><td>My Workspace</td><td>页头介绍 63 · 粘贴框 311 高</td><td class="num bad">My work 列表 1005</td></tr>
+      <tr><td>Morning Pickup Tracking</td><td>统计卡 162（4 张卡排两行）· 「Click a Bus #…」「Drag columns…」两行提示 42</td><td class="num warn">第一行 565</td></tr>
+      <tr><td>Bus Manifest</td><td>页头 108</td><td class="num warn">表格 516</td></tr>
+      <tr><td>Staff Schedule</td><td>工具条 154（按钮挤成 3 行）· Working hours 20</td><td class="num warn">排班表 405</td></tr>
+      <tr><td>Content Studio</td><td>警告 45 + 介绍 45；卡片说明很长；<b>页面比屏幕宽，会左右晃</b></td><td class="num warn">卡片 240</td></tr>
+      <tr><td>Dashboard</td><td>Messages 说明一行 36；Task reminder 弹窗盖住下半屏</td><td class="num good">Notice 141</td></tr>
+      <tr><td>Orders</td><td>日期筛选 116</td><td class="num good">表格 262</td></tr>
+      <tr><td>7 Days Forecast</td><td>颜色图例 38</td><td class="num good">表格 246</td></tr>
+      <tr><td>Send 页（Tickets / Morning）</td><td>Step 1 下一行说明 33；How to use 已在下面</td><td class="num good">表单 154</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section>
+  <h2>2. 统一规则（手机 = 屏宽小于 640px；电脑、平板照现在）</h2>
+  <div class="card">
+  <ol>
+    <li><b>顶栏变矮</b>：64 → 48px，标题字小一号。</li>
+    <li><b>页头介绍、区块说明收成标题后的「i」</b>：灰色介绍句、Dispatch 橙色那句、「Each window shows two messages…」「CCL's schedule from Discord…」这类，手机上不显示，点标题后的 <b>i</b> 再看（弹出小框）。</li>
+    <li><b>How to use 一律放页面最底、收起</b>（现在 Settings 几页放在最上面）；区块里的「How to use — xxx」链接 / 框也收进那个 i。</li>
+    <li><b>提示条压成一行</b>：黄框、红框只显示第一行，后面「More」点开看全文；纯操作提示（「Drag columns to reorder」「Click a Bus # to…」）手机上不显示，因为手机上本来就拖不了。</li>
+    <li><b>次要按钮收进「⋯」</b>：Columns、Export CSV、Show hidden rows、Upload、Auto-fill 这类，手机上收进一个 ⋯ 菜单；日期、搜索、Save、Send 这些主要操作照旧露在外面。</li>
+    <li><b>Settings 页先给列表</b>：「+ Add …」表单、Extra columns 这类设置区默认收起成一行，点开再填。</li>
+    <li><b>统计卡排一行</b>：Tracking 这种 3–4 个数字的卡片，手机上排成一行小卡。</li>
+    <li><b>步骤框排一行</b>：Dispatch 的 ① Assign / ② Send 手机上并排、去掉下面那行小字。</li>
+    <li><b>右下角 ↑↓ 手机上不显示</b>：手机本来就能直接滑，两个圆键一直盖在内容上。</li>
+    <li><b>页面不能比屏幕宽</b>：只有表格自己左右滑，整页不晃（Content Studio 现在会晃）。</li>
+    <li><b>做成共用组件</b>：i、⋯、一行提示条、收起的表单都放进 <code>components/ui</code>，现有页面换上，<b>以后的新页面照着用就自动符合</b>，再写进 CLAUDE.md 当规矩。</li>
+  </ol>
+  </div>
+</section>
+
+<section>
+  <h2>3. 两种方案</h2>
+  <div class="pair">
+    <div class="card">
+      <h3>方案 A：收起（推荐）</h3>
+      <p>上面 11 条都做；<b>shortcut 条留着</b>，压成一行 36px，左右滑。东西都还在页面上，只是收起来。</p>
+      <p class="sub">内容平均提前 300–800px；员工找东西的位置和电脑版一样。</p>
+    </div>
+    <div class="card">
+      <h3>方案 B：再精简</h3>
+      <p>A 全做，再把 <b>shortcut 条整条收进顶栏的 ★ 按钮</b>（点开是同一组捷径）。</p>
+      <p class="sub">再多出约 50px；代价是捷径要多点一下，和电脑版不一样。</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>4. 现在 / 改后 对比（模拟数据）</h2>
+
+  <div class="card">
+    <h3>Dispatch</h3>
+    <div class="pair">
+      <figure><img src="img/dispatch-now.png" alt="Dispatch on a phone now"><figcaption><b>现在</b>：Pull from Discord 在 815，车卡在第二屏。</figcaption></figure>
+      <figure><img src="img/dispatch-a.png" alt="Dispatch after option A"><figcaption><b>方案 A</b>：介绍、说明进 i；步骤框一行。Pull from Discord 到 455，第一张车卡 745 就看得到。</figcaption></figure>
+      <figure><img src="img/dispatch-b.png" alt="Dispatch after option B"><figcaption><b>方案 B</b>：shortcut 条进 ★。Pull from Discord 418，车卡 685。</figcaption></figure>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Manifests</h3>
+    <div class="pair">
+      <figure><img src="img/manifests-now.png" alt="Manifests on a phone now"><figcaption><b>现在</b>：表格从 740 开始。</figcaption></figure>
+      <figure><img src="img/manifests-a.png" alt="Manifests after option A"><figcaption><b>方案 A</b>：四个次要键进 ⋯；Legacy 黄框一行 + More；发送条一行（左右滑）。表格从 740 提前到约 490。</figcaption></figure>
+      <figure><img src="img/manifests-b.png" alt="Manifests after option B"><figcaption><b>方案 B</b>：再收 shortcut 条，表格约 453。</figcaption></figure>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Settings › Vehicles（Settings 各页同理）</h3>
+    <div class="pair">
+      <figure><img src="img/set-vehicles-now.png" alt="Vehicles on a phone now"><figcaption><b>现在</b>：How to use 在最上；Add 表单摊开；列表在第二屏（1115）。</figcaption></figure>
+      <figure><img src="img/set-vehicles-a.png" alt="Vehicles after option A"><figcaption><b>方案 A</b>：「+ Add Vehicle」「Extra columns」收成一行，点开再填；How to use 到最底。列表 268 开始，三台车第一屏全看到。</figcaption></figure>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Morning Pickup Tracking（三个 Tracking 页同理）</h3>
+    <div class="pair">
+      <figure><img src="img/tracking-now.png" alt="Tracking on a phone now"><figcaption><b>现在</b>：4 张统计卡两行；两行操作提示；第一行订单 565。</figcaption></figure>
+      <figure><img src="img/tracking-a.png" alt="Tracking after option A"><figcaption><b>方案 A</b>：统计卡一行；提示不显示。第一行订单 425，第一屏看到 5 单。</figcaption></figure>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>别的页现在的样子（参考，改法照第 2 节）</h3>
+    <div class="pair">
+      <figure><img src="img/set-pickup-now.png" alt="Pickup Locations now"><figcaption>Pickup Locations：表单摊开 2486px，列表在第四屏。</figcaption></figure>
+      <figure><img src="img/set-users-now.png" alt="Team now"><figcaption>Team：介绍 + How to use + 提示，表格 691。</figcaption></figure>
+      <figure><img src="img/set-products-now.png" alt="Products now"><figcaption>Products：「need attention」450px 在最上。</figcaption></figure>
+      <figure><img src="img/workspace-now.png" alt="My Workspace now"><figcaption>My Workspace：粘贴框占大半屏。</figcaption></figure>
+      <figure><img src="img/send-log-now.png" alt="Send Log now"><figcaption>Send Log：统计 + 筛选 355px。</figcaption></figure>
+      <figure><img src="img/set-content-now.png" alt="Content Studio now"><figcaption>Content Studio：右边多出一条，页面会左右晃。</figcaption></figure>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>5. 要 Annie 定的事</h2>
+
+  <div class="card q">
+    <h3>题 1　用方案 A 还是方案 B？</h3>
+    <p><b>哪里</b>：全站手机版，每页顶上的 shortcut 条（Dashboard、Manifests、Dispatch… 那排捷径）。</p>
+    <p><b>现在</b>：每页都占 49px 一整行，加上顶栏共 129px。</p>
+    <ul>
+      <li><b>A</b>：留着，压成一行 36px，左右滑。和电脑版一样的位置。</li>
+      <li><b>B</b>：收进顶栏的 ★ 按钮，点开再选。再多出约 50px 给内容，但捷径要多点一下。</li>
+    </ul>
+    <p class="rec">推荐 <b>A</b>：员工每天靠这排捷径跳页，藏起来反而慢；省下的主要空间来自说明和表单，不在这一行。</p>
+  </div>
+
+  <div class="card q">
+    <h3>题 2　Settings 页的「+ Add …」表单手机上默认收起？</h3>
+    <p><b>哪里</b>：Settings › Vehicles、Pickup Locations、Products 等有新增表单的页。</p>
+    <p><b>现在</b>：表单整个摊开在列表上面（Pickup Locations 有 2486px），列表要滑到第二到第四屏。</p>
+    <ul>
+      <li><b>A</b>：手机上收成一行「+ Add Vehicle」，点开才出表单；列表排第一屏。</li>
+      <li><b>B</b>：照现在摊开。</li>
+    </ul>
+    <p class="rec">推荐 <b>A</b>：手机上多半是查，不是新增。电脑版照旧摊开。</p>
+  </div>
+
+  <div class="card q">
+    <h3>题 3　右下角 ↑↓ 两个圆键手机上要不要？</h3>
+    <p><b>哪里</b>：全站右下角回顶 / 到底的蓝色圆键。</p>
+    <p><b>现在</b>：每页都盖在内容上（截图右下角）。</p>
+    <ul>
+      <li><b>A</b>：手机上不显示（手机直接滑就行）。</li>
+      <li><b>B</b>：留一个 ↑（回顶），去掉 ↓。</li>
+      <li><b>C</b>：照现在两个都留。</li>
+    </ul>
+    <p class="rec">推荐 <b>A</b>。</p>
+  </div>
+
+  <div class="card q">
+    <h3>题 4　黄框 / 红框提示手机上压成一行？</h3>
+    <p><b>哪里</b>：例如 Manifests 的「⚠️ 1 row on this page comes from data frozen before Aug 16, 2026 (marked Legacy). Booking questions and most Trip / Booking fields are empty for it.」、Content Studio 的「⚠️ Every Save changes the live text right away…」。</p>
+    <ul>
+      <li><b>A</b>：只显示第一行，后面「More」点开看全文。</li>
+      <li><b>B</b>：照现在全文显示。</li>
+    </ul>
+    <p class="rec">推荐 <b>A</b>。红色报错（保存失败、读不到）不压，照旧全文。</p>
+  </div>
+</section>
+
+<p class="sub">文字都是系统里原有的英文；新加的只有「More」和「⋯」两个。Annie 说「动手」后才写代码：先做共用组件和规则，再一页页换，每批跑检查套后合 main。</p>
+</main>
+</body>
+</html>
