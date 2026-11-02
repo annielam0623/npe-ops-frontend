@@ -121,8 +121,6 @@ const MODULES: readonly NavModule[] = [
     group: "Operations",
     label: "Manifests",
     href: "/manifests",
-    // 橙色（Annie 2026-11-01「这里的点，manifest用橙色吧」）；Broadcast 已用 #f97316，这里用浅一档的橙。
-    dot: "#fb923c",
   },
   { id: "orders", group: "Operations", label: "Orders", href: "/orders" },
   {
