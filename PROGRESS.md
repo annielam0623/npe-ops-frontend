@@ -46,6 +46,7 @@
   - 44 答（37 转）：缺 1 照做 GET …/groups/{batch_id}/rows，每行 = 逐条行 + id / batch_id / matched，没这个 batch 回 404；缺 2 只有 Annie 选全部展开才做；module 一定有值：morning_pickup / farm_out / broadcast_* / reply_*（tour_label 是 Guest reply）等。/groups、/rows 等 Annie 确认 Risk C 后一起上线。已转 91（reply 先照 preview 用「Other」，换新标签要先问 Annie）。
   - 2026-11-02 后端 G230 已上线 main 34c8993f：/groups、/groups/{id}/rows 可用，逐条加 batch_id，新的发送都建批次；旧数据等 Annie 跑补批次 SQL（44 在给她）。前端整页折叠还等 Annie 答题 3、4 + 动手；动手后 24 打算派 09（91 只做 CHD）。
   - 2026-11-02 补批次 SQL 已在生产跑完（37 转）：Annie 跑的，44 只读核对 0 行没组，47,957 行 / 6,651 组；另有 17 个旧空组（ids 358–1199，10/14–10/30 没发出东西的批次），/groups 不返回，前端不用特殊处理。前端整页折叠可直接用 /groups + /groups/{id}/rows，不用为 batch_id 为空做后备。仍等 Annie 题 3、4 + 动手。
+  - 2026-11-02 Annie 原话「题3题4，同意推荐，动手」⇒ 题 3 A（筛选时组里只放符合的，写「1 of 6 in this send match」）、题 4 A（默认收起，搜单号 / View this send 进来自动展开）。已派 09（task/send-log-groups），整份背景已发。新模块（下一条）已在动手时问 Annie。
   - 91 记的，Annie 说动手时一起问（现在先不问）：前端 Send Log 只认 3 个模块（components/send-log/config.ts：Tour Conf、Morning P/U、Tickets）。所有发送都进组以后会多出 last_minute / farm_out / broadcast_* / reply_*。组头可以写「Other」，但 Module 下拉筛不出这几类，统计卡也不单独算。要问：Module 下拉和统计卡要不要加这几类（加的话先出 preview），以及 reply_* 换不换成自己的标签。
 - 手机版第二批分工：e6 做 ① Pickup Locations / Products / Team、② Send Log / Workspace / Content Studio（task/mobile-phase2，worktree C:\Code\ops-wt-e6-mob2）；09 做 ③ Schedule 工具条 / Bus Manifest / 发送页 / Tickets・Tour Tracking（task/mobile-phase3）。共用的 phone.tsx / lib/phone.ts / globals.css 要改的话先报 24 协调。Send Log 只改手机上的样子，不动页面结构（91 之后要改成折叠组）。
 
