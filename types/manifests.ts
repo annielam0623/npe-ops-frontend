@@ -3,7 +3,7 @@
  * 标签 / 胶囊 / 字段目录全由后端下发，前端不写死；字段键跨天稳定，账号里存的列选择就存这些键。
  */
 
-export type ManifestTabKey = "bus" | "tickets";
+export type ManifestTabKey = "bus" | "tickets" | "admin_fee";
 
 /** 标签和胶囊共用的计数。 */
 export interface ManifestCounts {

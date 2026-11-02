@@ -626,6 +626,23 @@ async function run() {
   await waitFor("!$dialog()");
   await ctl({ unsendable: null, resetSent: true });
 
+  // ── G232 admin_fee 标签（CHD 组 = Admin fee）：排在 Bus / Tickets 后面，只看不发 ──
+  check("旧后端（没有 admin_fee）：只有 Bus Tour、Tickets 两个标签", await evaluate("return [...document.querySelectorAll('[role=tab]')].length === 2;"));
+  await ctl({ adminFee: true });
+  await openPage(`${APP}/manifests`);
+  await waitFor("document.querySelectorAll('[role=tab]').length === 3");
+  check("admin_fee 标签排在 Bus Tour、Tickets 后面，名字用后端给的组名 CHD", await evaluate("const t = [...document.querySelectorAll('[role=tab]')].map(b => b.textContent); return t[0].startsWith('Bus Tour') && t[1].startsWith('Tickets') && t[2].startsWith('CHD');"));
+  await evaluate("[...document.querySelectorAll('[role=tab]')][2].click();");
+  await waitFor("document.querySelector('tr[data-row^=\"CHD-88041\"]')");
+  check("CHD 标签：3 行费用单，默认列含 Status / Paid / Due", await evaluate("const h = [...document.querySelectorAll('thead th')].map(th => th.textContent.trim()); return document.querySelectorAll('tr[data-row]').length === 3 && ['Status', 'Paid', 'Due', 'Amount (this item)', 'Order total'].every(x => h.includes(x));"));
+  check("CHD 标签：没有勾选框、没有 Select all / Select all unsent、没有发送条", await evaluate("return [...document.querySelectorAll('tr[data-row] label')].every(l => l.hidden) && document.querySelector('thead th label').hidden && document.querySelector('thead th button').hidden && !$bar();"));
+  check("CHD 标签：上面有灰色说明条 Admin fees, for tracking only.", await evaluate("return document.body.textContent.includes('Admin fees, for tracking only.');"));
+  check("CHD 标签：地址栏带 tab=admin_fee", await evaluate("return new URLSearchParams(location.search).get('tab') === 'admin_fee';"));
+  await openPage(`${APP}/manifests?tab=bus`);
+  await waitFor("$box('CHD1001')");
+  check("回到 Bus Tour：勾选和发送条照旧，没有说明条", await evaluate("return !!$bar() && !document.body.textContent.includes('Admin fees, for tracking only.');"));
+  await ctl({ adminFee: false });
+
   // ── G198 Main Manifest 的 Cfm # 格（后端 8a bbf3d08；preview 4p4g9f2M8hNXBB7UPRxWqd ③）──
   await ctl({ g198: true });
   await openPage(`${APP}/manifests`);

@@ -11,13 +11,14 @@ import type {
 export const TAB_KEYS: readonly ManifestTabKey[] = ["bus", "tickets"];
 
 export function isTabKey(value: string | null): value is ManifestTabKey {
-  return value === "bus" || value === "tickets";
+  return value === "bus" || value === "tickets" || value === "admin_fee";
 }
 
 /** 两个标签各存各的列选择（后端契约 D）。 */
 export const PREF_KEY = {
   bus: "manifest_cols_bus",
   tickets: "manifest_cols_tickets",
+  admin_fee: "manifest_cols_admin_fee",
 } as const;
 
 /** staff 填的确认号那一列：表格里做成输入框。 */
@@ -32,6 +33,7 @@ export const REZDY_CFM_KEY = "rezdy_cfm";
 const HELPER_FIELDS: Record<ManifestTabKey, readonly string[]> = {
   bus: ["pax", "sent_tour_at"],
   tickets: ["pax", STAFF_CFM_KEY, REZDY_CFM_KEY, "sent_tickets_at"],
+  admin_fee: ["pax"],
 };
 
 /** 请求的列：没存过（null）就用后端默认列（默认列本来就含这几项）；存过的补上缺的辅助列。 */
@@ -57,6 +59,7 @@ function hasValue(v: ManifestValue | undefined): boolean {
 
 /** 这一行这个标签要发的东西发过没有（Bus = 团确认、Tickets = 门票提醒，哪个页面发的都算）。 */
 export function sentAt(row: ManifestRow, tab: ManifestTabKey): string {
+  if (tab === "admin_fee") return "";
   const v = row.values[tab === "bus" ? "sent_tour_at" : "sent_tickets_at"];
   return hasValue(v) ? String(v) : "";
 }
@@ -76,6 +79,7 @@ export const SEND_TABLE_FIELDS: Record<ManifestTabKey, readonly string[]> = {
     "product",
   ],
   tickets: ["guest_name", "sent_tickets_by"],
+  admin_fee: [],
 };
 
 /**

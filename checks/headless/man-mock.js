@@ -29,7 +29,7 @@ function minus15(t, orderNumber) {
 // 发过的：row_key → ISO。CHD1002 的团确认 10/6 已发过（测「已发过、跳过」和 Send anyway）。
 const sentTour = new Map();
 const sentTickets = new Map();
-const prefs = { manifest_cols_bus: null, manifest_cols_tickets: null };
+const prefs = { manifest_cols_bus: null, manifest_cols_tickets: null, manifest_cols_admin_fee: null };
 const log = [];
 const cfm = new Map(); // row_key → {confirmation_no, updated_by, updated_at}
 // G198（后端 8a bbf3d08）：按「日期 + 团 + 节」存的 Cfm #。ctl.g198 开着时 Antelope 的 UPPER ANTELOPE 节开了格。
@@ -198,11 +198,49 @@ function counts(rows) {
   return { rows: rows.length, orders: new Set(rows.map((r) => r.order_number)).size, pax: rows.reduce((s, r) => s + (r.v.pax || 0), 0) };
 }
 
+// G232 admin_fee 标签（CHD 组 = Admin fee，不能发；adminFee 开着才有）。
+const ADMIN_FEE_ROWS = [
+  { o: "CHD-88041", code: "PFYF01", v: { guest_name: "ZZ Test Lee", agent_name: "Viator", product: "Change fee", pax: 1, status: "Confirmed", item_amount: 25, order_total: 25, total_paid: 25, total_due: 0, currency: "USD" } },
+  { o: "CHD-88057", code: "PFYF01", v: { guest_name: "ZZ Test Garcia", agent_name: "Direct", product: "Change fee", pax: 1, status: "Confirmed", item_amount: 25, order_total: 25, total_paid: 0, total_due: 25, currency: "USD" } },
+  { o: "CHD-88102", code: "PFYF01", v: { guest_name: "ZZ Test Nguyen", agent_name: "Direct", product: "Service fee", pax: 2, status: "Cancelled", item_amount: 30, order_total: 30, total_paid: 0, total_due: 0, currency: "USD" } },
+];
+const ADMIN_FEE_TAB = { key: "admin_fee", label: "CHD", sendable: false, rows: 3, orders: 3, pax: 4 };
+const ADMIN_FEE_CATALOG = [
+  { key: "order_number", label: "Order #", group: "booking", type: "text" },
+  { key: "guest_name", label: "Guest", group: "guest", type: "text" },
+  { key: "agent_name", label: "Agent", group: "booking", type: "text" },
+  { key: "product", label: "Product", group: "trip", type: "text" },
+  { key: "pax", label: "Pax", group: "guest", type: "number" },
+  { key: "status", label: "Status", group: "booking", type: "text" },
+  { key: "item_amount", label: "Amount (this item)", group: "money", type: "money" },
+  { key: "order_total", label: "Order total", group: "money", type: "money" },
+  { key: "total_paid", label: "Paid", group: "money", type: "money" },
+  { key: "total_due", label: "Due", group: "money", type: "money" },
+];
+const ADMIN_FEE_DEFAULTS = ["order_number", "guest_name", "agent_name", "product", "pax", "status", "item_amount", "order_total", "total_paid", "total_due"];
+function adminFeePage(url, date) {
+  const known = new Set([...ADMIN_FEE_CATALOG.map((f) => f.key), "currency"]);
+  const asked = url.searchParams.get("fields");
+  const fields = (asked ? asked.split(",").filter(Boolean) : ADMIN_FEE_DEFAULTS).filter((k) => known.has(k));
+  const rows = (date === today ? ADMIN_FEE_ROWS : []).map((r) => {
+    const all = { ...r.v, order_number: r.o };
+    const values = {};
+    for (const k of fields) values[k] = all[k] ?? null;
+    return { row_key: `${r.o}|${r.code}|${date}`, order_number: r.o, product_code: r.code, tour_date: date, lane_source: "rezdy_bookings", leg: null, section: null,
+      sendable: false, reason: "unmapped_group", reason_label: "Admin fee - not sent, not dispatched", values };
+  });
+  const tabs = ["bus", "tickets"].map((k) => ({ key: k, label: k === "bus" ? "Bus Tour" : "Tickets - SelfDrive", sendable: true, ...counts(allRows().filter((r) => r.tab === k)) }));
+  if (date === today) tabs.push(ADMIN_FEE_TAB);
+  const pills = date === today ? [{ key: "g:9", label: "CHD", color: null, sendable: false, rows: 3, orders: 3, pax: 4 }] : [];
+  return [200, { date, tab: "admin_fee", is_admin: ctl.role === "admin", tabs, pills, pill: pills[0]?.key ?? null, catalog: ADMIN_FEE_CATALOG, groups: GROUPS, default_fields: ADMIN_FEE_DEFAULTS, fields, denied: [], unknown: [], sections: [], rows }];
+}
+
 function page(url) {
   const date = url.searchParams.get("date") || today;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return [400, { detail: "Bad date" }];
   const tab = url.searchParams.get("tab") || "bus";
-  if (tab !== "bus" && tab !== "tickets") return [400, { detail: "Bad tab" }];
+  if (tab !== "bus" && tab !== "tickets" && !(tab === "admin_fee" && ctl.adminFee)) return [400, { detail: "Bad tab" }];
+  if (tab === "admin_fee") return adminFeePage(url, date);
   const isAdmin = ctl.role === "admin";
   // 后端 639b41b（2026-10-11）起 Money 组所有 staff 都能看；moneyAdminOnly 模拟旧行为，用来测「存着但没权限」的提示。
   const moneyOpen = isAdmin || !ctl.moneyAdminOnly;
@@ -254,7 +292,8 @@ function page(url) {
             : { sendable: true }
           : {}) };
     });
-  const tabs = ["bus", "tickets"].map((k) => ({ key: k, label: k === "bus" ? "Bus Tour" : "Tickets - SelfDrive", ...counts(dayRows.filter((r) => r.tab === k)) }));
+  const tabs = ["bus", "tickets"].map((k) => ({ key: k, label: k === "bus" ? "Bus Tour" : "Tickets - SelfDrive", ...(ctl.adminFee ? { sendable: true } : {}), ...counts(dayRows.filter((r) => r.tab === k)) }));
+  if (ctl.adminFee && date === today) tabs.push(ADMIN_FEE_TAB);
   // 分节：只有 Antelope（g:3）、只在 sections 开着时；后端规则是行已经按节排好。
   const sections = sectionsOn
     ? [
@@ -358,7 +397,7 @@ http
     }
     if (p === "/api/me")
       return send(res, 200, { id: 1, username: "zztest", display_name: "ZZ Test", initials: "ZT", role: ctl.role, is_admin: ctl.role === "admin", is_superadmin: false });
-    const pm = p.match(/^\/api\/user-prefs\/(manifest_cols_(bus|tickets))$/);
+    const pm = p.match(/^\/api\/user-prefs\/(manifest_cols_(bus|tickets|admin_fee))$/);
     if (pm) {
       if (req.method === "GET") {
         if (ctl.prefsFail) return send(res, 500, { detail: "prefs down" });

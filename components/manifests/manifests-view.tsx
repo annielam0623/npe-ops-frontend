@@ -109,6 +109,7 @@ type SendKind = "message" | "tour" | "lastminute" | "reminder";
 const TAB_FALLBACK_LABEL: Record<ManifestTabKey, string> = {
   bus: "Bus Tour",
   tickets: "Tickets - SelfDrive",
+  admin_fee: "Admin fee",
 };
 
 export function ManifestsView() {
@@ -136,6 +137,7 @@ export function ManifestsView() {
   const [saved, setSaved] = useState<SavedFields>({
     bus: undefined,
     tickets: undefined,
+    admin_fee: undefined,
   });
   const [prefNote, setPrefNote] = useState("");
   const [data, setData] = useState<ManifestPage | null>(null);
@@ -425,7 +427,7 @@ export function ManifestsView() {
   }, [highlight, highlightShown]);
   const legacyCount = shown ? shown.rows.filter(isLegacy).length : 0;
   // 不能发的标签（admin_fee = CHD 组的 Admin fee，后端 G232）先不显示：样子还没给 Annie 看过。
-  const tabs = (
+  const tabs =
     data?.tabs ??
     TAB_KEYS.map((key): ManifestTab => ({
       key,
@@ -433,8 +435,9 @@ export function ManifestsView() {
       rows: 0,
       orders: 0,
       pax: 0,
-    }))
-  ).filter((t) => t.sendable !== false);
+    }));
+  // 这个标签能不能发（admin_fee = CHD 组的 Admin fee 不能）：不能就没有勾选、没有发送条。
+  const tabSendable = tabs.find((t) => t.key === tab)?.sendable !== false;
   const currentPill = shown?.pills.find((p) => p.key === shown.pill);
   const fields = shown ? shownFields(shown, savedHere) : [];
   // 隐藏行：只在勾了开关、响应里有 hidden 块时才有；有行才出灰色胶囊，没有行写一句小字。
@@ -784,7 +787,22 @@ export function ManifestsView() {
               </div>
             ) : null}
 
-            {!noSend && !seeingHidden && shown && shown.rows.length ? (
+            {!seeingHidden && !tabSendable && shown && shown.rows.length ? (
+              // 同 Show hidden rows 的「For checking only.」灰条。
+              <div className="mb-3 rounded-[10px] border-[0.5px] border-white/20 bg-white/[.07] px-3.5 py-2 text-[12.5px] text-[#cbd5e1]">
+                <b className="text-white">Admin fees, for tracking only.</b>{" "}
+                Change fees, service fees and other admin fees. They are not
+                sent and not dispatched, and they are not counted in Bus Tour or
+                Tickets. Check Status, Paid and Due to see whether each one was
+                bought and paid.
+              </div>
+            ) : null}
+
+            {!noSend &&
+            tabSendable &&
+            !seeingHidden &&
+            shown &&
+            shown.rows.length ? (
               // 勾选后的操作条（Annie 2026-10-09 样稿第 3 版）：几位几人、发确认 / 提醒、自定义消息、清空。
               <div
                 role="group"
@@ -949,7 +967,7 @@ export function ManifestsView() {
                   fields={fields}
                   selected={selected}
                   highlight={highlight}
-                  selectable={!noSend}
+                  selectable={!noSend && tabSendable}
                   onToggle={toggleRows}
                   onSelectUnsent={selectUnsent}
                   onReorder={
