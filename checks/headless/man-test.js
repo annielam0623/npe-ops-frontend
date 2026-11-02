@@ -639,6 +639,16 @@ async function run() {
   check("CHD 标签：上面有灰色说明条 Admin fees, for tracking only.", await evaluate("return document.body.textContent.includes('Admin fees, for tracking only.');"));
   check("CHD 标签：默认列有 Fee item；没有团日期、放在下单日的行（shown_on=order_date）在 Product 下面写 reason_label，有团日期的不写", await evaluate("const h = [...document.querySelectorAll('thead th')].map(th => th.textContent.trim()); const note = (o) => document.querySelector('tr[data-row^=\"' + o + '\"] [data-shown-on]'); const pi = h.indexOf('Product'); const cell = document.querySelector('tr[data-row^=\"CHD-88041\"]').children[pi]; return h.includes('Fee item') && note('CHD-88041')?.textContent === 'Admin fee - no tour date, shown on order date (Nov 2)' && cell.contains(note('CHD-88041')) && !note('CHD-88102');"));
   check("CHD 标签：地址栏带 tab=admin_fee", await evaluate("return new URLSearchParams(location.search).get('tab') === 'admin_fee';"));
+  check("CHD 标签：没收齐款（Due 不是 0）的 CHD-88057 整行淡红，收齐的、已取消的不标", await evaluate("const bg = (o) => getComputedStyle(document.querySelector('tr[data-row^=\"' + o + '\"]')).backgroundColor; return bg('CHD-88057') === 'rgb(253, 236, 235)' && ['CHD-88041', 'CHD-88063', 'CHD-88102', 'CHD-88110'].every(o => bg(o) !== 'rgb(253, 236, 235)');"));
+  check("CHD 标签：标签、表头只写单数，不写 pax；Bus Tour 标签照旧写 pax", await evaluate("const t = [...document.querySelectorAll('[role=tab]')].map(b => b.textContent.replace(/\\s+/g, ' ').trim()); const head = [...document.querySelectorAll('section span')].some(s => s.textContent === '5 orders · 5 rows'); return t[2] === 'CHD 5' && /pax$/.test(t[0]) && head;"));
+  await ctl({ adminFeePills: "product" });
+  await openPage(`${APP}/manifests?tab=admin_fee`);
+  await waitFor("document.querySelector('tr[data-row^=\"CHD-88041\"]')");
+  check("CHD 标签（每个产品一个胶囊，Annie 题 0 选 A）：胶囊写产品名 + 单数，不写 pax", await evaluate("const b = [...document.querySelectorAll('button')].map(x => x.textContent.replace(/\\s+/g, ' ').trim()); return ['Upgrade 2', 'Mystical Ante upgrade fee 1', 'Reschedule Fee 2'].every(x => b.includes(x)) && !b.some(x => /^(Upgrade|Mystical|Reschedule).*pax$/.test(x));"));
+  await openPage(`${APP}/manifests?tab=admin_fee&pill=p%3APLU3N8`);
+  await waitFor("document.querySelector('tr[data-row^=\"CHD-88057\"]')");
+  check("CHD 标签：点 Upgrade 胶囊只看 Upgrade 的 2 单，表头「2 orders · 2 rows」", await evaluate("return document.querySelectorAll('tr[data-row]').length === 2 && [...document.querySelectorAll('section span')].some(s => s.textContent === '2 orders · 2 rows');"));
+  await ctl({ adminFeePills: null });
   await openPage(`${APP}/manifests?tab=bus`);
   await waitFor("$box('CHD1001')");
   check("回到 Bus Tour：勾选和发送条照旧，没有说明条", await evaluate("return !!$bar() && !document.body.textContent.includes('Admin fees, for tracking only.');"));

@@ -628,7 +628,12 @@ export function ManifestsView() {
                         on ? "text-[#fde68a]" : "text-[#94a3b8]",
                       )}
                     >
-                      {data ? `${t.orders} · ${t.pax} pax` : ""}
+                      {/* 费用单（admin_fee 等不能发的标签）只写单数：Pax 是费用的数量、不是真客人（Annie 2026-11-02 题 2 选 B）。 */}
+                      {data
+                        ? t.sendable === false
+                          ? `${t.orders}`
+                          : `${t.orders} · ${t.pax} pax`
+                        : ""}
                     </span>
                   </button>
                 );
@@ -697,10 +702,17 @@ export function ManifestsView() {
                     >
                       {/* 只写人数（Annie 2026-10-15：单数拿掉，Bus / Tickets 都是）；
                         人数的数字蓝色 #0066ff（Annie 2026-10-14 选的亮蓝，原来的 #48a0c7 不够显眼）。 */}
-                      <span className="font-semibold text-[#0066ff] night:text-sky-300">
-                        {p.pax}
-                      </span>{" "}
-                      pax
+                      {p.sendable === false ? (
+                        // 费用单的胶囊只写单数（Annie 2026-11-02 题 2 选 B）。
+                        p.orders
+                      ) : (
+                        <>
+                          <span className="font-semibold text-[#0066ff] night:text-sky-300">
+                            {p.pax}
+                          </span>{" "}
+                          pax
+                        </>
+                      )}
                     </span>
                   </button>
                 ))}
@@ -958,7 +970,9 @@ export function ManifestsView() {
                   </h2>
                   <span className="text-[11px] text-[#1a1a1a] tabular-nums night:text-white/50">
                     {currentPill
-                      ? `${plural(currentPill.orders, "order")} · ${currentPill.pax} pax · ${plural(shown.rows.length, "row")}`
+                      ? tabSendable
+                        ? `${plural(currentPill.orders, "order")} · ${currentPill.pax} pax · ${plural(shown.rows.length, "row")}`
+                        : `${plural(currentPill.orders, "order")} · ${plural(shown.rows.length, "row")}`
                       : plural(shown.rows.length, "row")}
                   </span>
                 </div>
@@ -1272,6 +1286,8 @@ function ManifestTable({
     // 没填 Cfm # 的门票行：整行标红提醒（Annie 2026-10-17）；勾选本身不再被这个挡住，
     // 真正拦截挪到了发送前的 Skip & send 确认条（见上面 requestSend）。
     const missingCfm = tab === "tickets" && !hasCfm;
+    // 费用单（不能发的行）没收齐款：Due 不是 0 ⇒ 整行同样的淡红（Annie 2026-11-02 题 1 选 B）。
+    const unpaidFee = !canSend(r) && Number(r.values.total_due ?? 0) !== 0;
     return (
       <tr
         key={r.row_key}
@@ -1283,7 +1299,7 @@ function ManifestTable({
             ? "bg-[#fff3cd] hover:bg-[#ffecb3] night:bg-amber-400/15 night:hover:bg-amber-400/20"
             : sentTickets
               ? "bg-[#fff8e1] hover:bg-[#fff3cd] night:bg-amber-400/[.06] night:hover:bg-amber-400/10"
-              : missingCfm
+              : missingCfm || unpaidFee
                 ? "bg-[#fdeceb] hover:bg-[#fbdedb] night:bg-rose-400/10 night:hover:bg-rose-400/15"
                 : "hover:bg-[#fafaf8] night:hover:bg-white/[.03]",
         )}
