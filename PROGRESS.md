@@ -209,6 +209,11 @@
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 42. Send Log 有记录没进组（91 只读查，2026-11-01 问）
+- Annie 原话：「我前两天发现现在前端有很多问题，我们的send log已经做了group 功能，把某次发次全部group起来好查看，但是很奇怪，每次都有一些在页面下面并没有group起来，为什么」
+- 原因（后端）：上面「📦 Send batches」用后端批次；只有发送页点 Send（Tour Confirmation / Last Minute、门票、Manifests 上发）才建批次。自动发（团确认 7 点 / 6 点、门票 9 / 12 / 5 点）、早班 Morning Pickup / Relay、Farm-out 通知、广播、回复客人、单发都不建批次（batch_id NULL，后端 send_batches.py:10–11 写明设计如此），只出现在下面逐条大表。下面大表本来不分组、不带 batch_id。不是分页 / 排序问题。
+- 问 Annie 是哪种：① 某次发送在上面 Send batches 找不到、只在下面大表 ⇒ 修法 A：后端让自动发 / 早班等也建批次（样子不变，算修 bug；旧数据补不补要定）；② 嫌下面大表一条一条 ⇒ 修法 B：大表也按批次折叠（改版式，先 preview）。
+
 ### 41. Bus Manifest：Antelope 三个 canyon 的顺序和分页（91，preview https://claude.ai/artifact/SuSZPJVnMTUUirXhnpGZ4x ，2026-11-01 问）
 - 已定：长期默认；分页 staff 自己定（Annie「长期默认，第二个由staff来决定」）。样子：页头 Version 旁「Canyon order: Lower → Upper → X · 1 page ▾」，点开小框 ↑↓ 换顺序、两节中间勾「Start a new page here」，整页 Save 才存。
 - (1) 哪些团出现：A 团里有两节以上（不算 Shuttle）就出现，今天只有 Antelope（推荐）／B 只给 Antelope。
