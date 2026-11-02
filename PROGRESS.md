@@ -6,27 +6,34 @@
 
 > **下一个主窗口：先读下面「2026-11-01 晚 收工交接：前端主窗口-98」，再看置顶「📌 等 Annie 确认」。更早的交接是 10-30 晚那节。**
 
-## 2026-11-01 晚 收工交接：前端主窗口-98 [94e9c6]（家里，周末时间表，21:30 收尾）
+## 2026-11-01 晚 收工交接：前端主窗口-98 [94e9c6]（家里，周末时间表；11/2 凌晨写完）
 
-**一、10/31–11/1 合进 main 上线的（前端）**
-- G228 Team Messages 58ea7db（e6）；排班测试员工 is_test 235b326（91）；站内消息 / 在线同事 34e93fc（91，开关 team_messages_direct 默认只 SA）。
-- Dispatch Shuttle 上车点提示 7096b5b（91）；Schedule check 不算 TI 8110bd6（e6，后端 is_tour_departure 已上 ⇒ 已生效）。
-- 羚羊谷 / Hoover Canyon order 拖拽（只管当次打印 / 下载）+ Products「Bus Manifest section order」324f669（91）。**生产设置还空，等 Annie 自己填（羚羊谷 LOWER、UPPER、Canyon X）**。
+**一、10/31–11/1 合进 main 上线的（前端，等 Annie 线上验收）**
+- G228 Team Messages 58ea7db（e6）；排班测试员工 is_test 235b326（91）；站内消息 / 在线同事 34e93fc（91，开关 team_messages_direct 何时开由 Annie 定——「开放给员工由我来决定，你不要再问了」，各窗口不再问）。partner 已不在名单、不能收发（91 核过）。
+- Dispatch Shuttle 上车点提示 7096b5b（91）；Schedule check 不算 TI 8110bd6（e6，后端已上 ⇒ 已生效）。
+- Canyon order 拖拽 + Products「Bus Manifest section order」324f669（91）。**生产设置还空，等 Annie 自己填（羚羊谷 LOWER、UPPER、Canyon X）**。
 - 权限「只看勾」c374e85（09，后端 a987105a）。
-- G138 排班每周确认 9f5da48 + 往来记录补全显示 17abd37（e6；后端 16 g138-history-notify 已上 ⇒ 已生效）。
+- G138 排班每周确认 9f5da48 + 往来记录补全 17abd37（e6；后端 16 已上 ⇒ 已生效）。
 - X Canyon → Canyon X：前端无写死，数据 + 后端已改。
+- Forecast 回看历史 dc42da3（09，后端 0db87bc3，第一张快照 11/1 23:55 PT）。⚠️ 09 先合后问「回溯 7 天」= 最多往回看 7 天（现做法）还是打开就先显示 7 天，等 Annie 答。
+- Dashboard 主管 Today's tasks 行 a7b8a8a（09：去掉重复 Overdue 签、任务名完整）。
+- 全站手机版第一批 23c1764（e6：顶栏 48px、shortcut 收进 ★、按钮变小、Dispatch / Manifests / Vehicles / Morning Tracking；电脑版不变）。规则已写进 CLAUDE.md（58a35a2）。
+- Shortcut 颜色 fab9475（09：常用的上色——Dashboard 粉、Manifests 橙、Forecast 红、Forms 蓝绿、Broadcast 白；不常用的灰）。
+- 全站白卡片输入框提示字 0c77d54（91：#94a3b8 斜体 11px，全大写 10px）。
 
-**二、等 Annie 答 / 动手（详见置顶）**
-- 42 Send Log：后端 44 补批次（所有发送都进组 + 补旧数据，开工前找 Annie，代码可能 11/2）；91 折叠 preview 4 题未答。Annie 问「规律是什么，原则是什么」⇒ 主窗口答原则「所有发送都进组、没有例外」，问她要不要写进前后端规范（未答）。
-- 43 Forecast 回看：v4（09，task/forecast-history-preview e6f391c），题 1–4 已答（灰表头、Today 键、最多回看 7 天），等「动手」；动手时 09 先确认「回溯 7 天」= 最多回看 7 天。后端快照 + 回看已上 main 0db87bc3（64），第一张快照 11/1 23:55 PT；补 3 个月数据 57 排 11/2。
-- 44 全站手机版：e6 v2（task/mobile-preview-e6 f6840ee，不合 main），题 1 Annie 选 B（shortcut 收进 ★）+ 缩小；「morning只用显示今天的」指哪几页 + 题 2–4 未答。
-- 权限题 A / B / C（Work Sheet 只读、Farm out 导出、Manifest 两个导出键）和 Team 页「特批」标记：未答。
+**二、11/2 要做的**
+- e6：手机版第二批（Pickup Locations、Products、Team、Send Log、Workspace、Schedule、Bus Manifest、发送页、Tickets / Tour Tracking、Content Studio 横晃），照 CLAUDE.md 手机版规则，Annie 已动手。
+- 91：Send Log 整页折叠（置顶 42）——Annie 定整页只有组、每页 100 组；题 3（筛选时组里放什么）/ 题 4（默认收起 / 展开）未答；等后端 44 发接口（补批次 + 补旧数据 + 组分页）、Annie 动手。
+- 91 + 后端：Notice 跟 CCL 交流（置顶 48），preview https://claude.ai/artifact/CjrpyLgPdDhE4f7FHs9gWH 6 题未答；后端 57 派人出接口方案（Risk B + security-auditor）。
+- 64 / 57：Forecast 补 3 个月数据入口（先问 Annie 格式）。
+
+**三、等 Annie 的（详见置顶）**
+- 42 题 3、4；48 六题；Send Log 原则「所有发送都进组」要不要写进前后端规范（未答）。
+- 权限题 A / B / C（Work Sheet 只读、Farm out 导出、Manifest 两个导出键）和 Team 页「特批」标记。
 - 10d 排班生产测试（09）：等 Annie 自己处理 ZZTest（不问她）。
 
-**三、窗口**
-- 09 / 91 / e6 都已收尾：分支推了、dev server / Chrome 关了。
-
-
+**四、窗口**
+- 09 / 91 / e6：分支都推了；收尾前请各窗口再确认一次 dev server / Chrome 已关。
 
 ## 2026-11-01 晚 7 Days Forecast 回看历史：Annie「动手」已做，已合 main dc42da3（`task/forecast-history`，工作窗口 09，主窗口 98 派）
 - **动手**：Annie 对 98「动手」（98 转，后端 64 已上 main 0db87bc3）。照 v4 做：表默认从今天开始；左上角 `‹ [Today · 日期] ›`；每点 ‹ 今天左边接一天（取那天快照第一列），灰表头 #334155 写 Saved、格子极淡灰、只读；› 少一天；Today 回到今天在第一列；最多 7 天（接满 ‹ 灰）；没有快照（接口 404）不出箭头。
