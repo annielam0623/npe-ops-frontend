@@ -273,7 +273,7 @@
 ### 49. Products 输入框提示字（placeholder）太深（派 91 出 preview，2026-11-01 晚）
 - Annie 原话：「在product设置里头，你在输入框里设置的提示词颜色太深了，那个灰色要再浅一点，让人一看就知道是没填的，现在给人感觉是已经填好了」
 - 91：查现用色、出「现在 / 改浅」对比 preview，问只改 Products 还是全站统一。未动手。
-- preview https://claude.ai/artifact/L6ig9u3yXFbdffLc68ASxk（现用约 #878684，Tailwind 默认字色 50%；全站另有十来处各写各的灰）。题 1 Annie 在 91 窗口答：「再加上斜体来区别吧」⇒ 丙：浅灰 #94a3b8 + 斜体。Annie 又加：「然后字体小一些」⇒ 题 1b 提示字大小：12px 小一号（推荐）／11px 小两号（填的字照旧 13px）。题 2 只改 Products（B）还是全站白卡片一起改（A，推荐）：未答。未动手。
+- preview https://claude.ai/artifact/L6ig9u3yXFbdffLc68ASxk（现用约 #878684，Tailwind 默认字色 50%；全站另有十来处各写各的灰）。题 1 Annie 在 91 窗口答：「再加上斜体来区别吧」⇒ 丙：浅灰 #94a3b8 + 斜体。Annie 又加：「然后字体小一些」⇒ 题 1b Annie 答「11px，大写的在小一号」⇒ 定稿：#94a3b8 斜体，一般 11px，全大写的（LOWER, UPPER, X、SUNSET）10px，填的字照旧 13px。题 2 只改 Products（B）还是全站白卡片一起改（A，推荐）：未答。未动手。
 
 ### 48. Notice 跟 CCL 交流，可选个人或 team（2026-11-01 晚，11/2 做）
 - Annie 原话（09 窗口）：「2 可以跟CCL用notice交流，发的时候可以选个人，也可以选team」「CCl也算一个team」；开关「开放给员工由我来决定，你不要再问了」（各窗口不再问开关）。
