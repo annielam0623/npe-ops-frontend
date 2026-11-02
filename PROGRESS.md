@@ -493,6 +493,7 @@
 
 ### 39. Dispatch：Check the bus 会跳过 Apply CCL 的变动（91 出 preview）
 - Annie 原话「我现在是不是需要把pull from discord放到巴士前面，因为第一件事情应该是检查CCL的消息来了没有」「主要是点check the bus 就会跳过apply ccl的变动」。打开页面会自动拉一次 Discord，但结果 / Apply 在 Step 2 顶上，Step 1 卡片的 Check the bus 直接跳到车块、跳过它。91 preview：https://claude.ai/artifact/PmUDb4Cbxb72XThPEPzfQn 。推荐 A1（最上面一整条 CCL 状态 + Pull + Apply）+ B1（Check the bus 照跳）+ C1（团块顶上写这个团的 CCL 变动 + Apply，整份套用）+ D1（不自动 Apply，Not now 只收清单、提醒留着）。不需要后端。Annie 原话「这样吧，如果CCL有变动现需要apply的，就在你给的这个位置出个通知，直接点击查看，跳转到下面的apply change的card里」⇒ 最上面只在有没 Apply 的变动时出通知 + 点击滚到 Step 2 的 Apply 卡；Pull / Apply 卡原位不动；不做团块提示。91 改 preview（v3 两种样子、v4 克制、v5 绿色色板），Annie 选「样样子 1 · 左边琥珀色条 + Discord 图标」（v3 样子 1，Not now 后仍在直到 Apply），等动手。Add hotel：Annie 选 H（白底 Save 蓝字半粗「~~~~~ Shuttle Pick up ~~~~~」）；「占了的还是发灰，正常的就500，你把页面上400的都改成500」+「dispatch这一页」⇒ 正常酒店名黑色 500、被占的灰；Dispatch 页 400 字改 500。四件都定了，等动手（91）。
+- 2026-11-02 Annie 问（24 窗口原话）：「然后我们前两天做的关于discord那边的更新在dispatch的assign和send的下面设置一个提醒，怎么不见了」。24 只读查：已上 main dbeb7cf（CclNotice，dispatch-view.tsx:1779–1787），代码还在；只在「CCL 改版（revision）还没 Apply」时出，CCL 第一次发的预填（蓝条）不出，Apply 后消失。问 Annie 看的是哪天、下面 Step 2 有没有琥珀色 Apply changes 卡：有卡没通知 = bug，派人修；没卡 = 照设计不出。
 
 ### 8. 可以上线后对着看的（不用答，验收时看）
 - Products 手动保存：09 问的 5 处细节，主窗口按盘点推荐定了，见 PROGRESS「2026-10-30」那节 09 的记录：
