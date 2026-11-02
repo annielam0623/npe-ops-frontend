@@ -277,12 +277,13 @@
 - Annie 补（57 转）：「那也开个页面给它们吧」⇒ CCL partner 有自己单独的 Notice 页（能看、能回），不只是 PartnerHome 一块。已转 91 加进 preview；后端方案带 partner 侧接口。
 - 91 preview https://claude.ai/artifact/CjrpyLgPdDhE4f7FHs9gWH（Today's team 加「✉ New message」；发消息选 A person / A team，CCL 标 PARTNER；CCL 首页一块 Notice + 单独 /notice 页，顶栏「Notice (N)」）。6 题：① team 消息的回复：A 回发信人 + 抄送 team 其他人（推荐）／B 只回发信人；② Got it：A 各人按各人（推荐）／B 一人按全 team 收；③ 「A person」名单：A 全部在用员工 + CCL，在线标 online（推荐）／B 只在线员工 + 全部 CCL；④ CCL 主动发：A 只能回复／B 能发，只选 NPE team（推荐）／C team 或个人；⑤ team 消息发邮件：A 每人一封，回复只站内（推荐）／B 只站内；⑥ CCL 首页 Notice：A 留一块只放新消息 + Open Notice →（推荐）／B 只一行「2 new messages」／C 什么都不加。后端要的已转 57。
 
-### 47. Shortcut 条 Manifests 的点改橙色（09，preview https://claude.ai/artifact/25YysSRdXNCzmZRUi5EwK1 ，2026-11-01 晚）
-- Annie 原话（附截图，各页顶上的 shortcut 条）：「这里的点，manifest用橙色吧」
-- 现在：Manifests 的点是灰色（没设颜色）。preview 用 #fb923c（亮橙）；Broadcast 已经用 #f97316（深一点的橙），所以没用同一个。Dashboard 的 My shortcuts 框边也跟着点的颜色变橙。
-- 题：甲 = 照 preview 用 #fb923c（推荐，和 Broadcast 分得开）；乙 = 用和 Broadcast 一样的 #f97316。
-- 代码 task/manifests-dot-orange 0239629（一行 nav-config.ts），没合。等 Annie 看 preview、说「动手」。
-
+### 47. Shortcut 条每个页面一个颜色（09，preview https://claude.ai/artifact/25YysSRdXNCzmZRUi5EwK1 第 2 版，2026-11-01 晚）
+- Annie 原话：「这里的点，manifest用橙色吧」→ 看了橙色方案：「可以，最主要是把几个的颜色区别开来，现在看上去都一样，我都很难区分他们」
+- 现在：Dashboard、Manifests、7 Days Forecast、Orders、Forms 都是同一个灰点；My Workspace 和 Daily Operation Report 同色 #fbbf24；Manifests 改橙后和 Broadcast #f97316 撞色。
+- 方案（样稿）：Dashboard 白 #f8fafc、Manifests 橙 #fb923c、7 Days Forecast 黄绿 #a3e635、Orders 珊瑚红 #f87171、Forms 蓝绿 #2dd4bf、Daily Operation Report 浅粉 #fda4af、Broadcast 洋红 #e879f9；Dispatch 青、My Workspace 琥珀、Staff Schedule 淡紫、Morning 蓝 / Tour 绿 / Ticket 紫（同 Tracking 三个图标）不变。颜色同时用在 shortcut 条的点和 Dashboard My shortcuts 的框边。
+- 题 1：这套颜色可以吗？甲 = 照这套（推荐）；乙 = 哪个想换直接说。
+- 题 2：Activities（3 个 Log）和 Reports（4 个报表）要不要也各给颜色？甲 = 先保持灰（推荐，再加 7 种会互相接近）；乙 = 现在都给。
+- 代码：只改 components/nav/nav-config.ts 的 dot；task/manifests-dot-orange 只有 Manifests 一行，等答了再照方案改。
 ### 44. 全站手机版重新设计（派 e6 调查 + preview，2026-11-01）
 - Annie 原话：「而且我们的divce版本要重新设计一下了，太多说明和介绍的东西占了半个手机屏」；主窗口问范围，她选「全站一起（推荐）」：一套统一手机版规则，所有页面照做，新页面也照做。
 - e6：手机尺寸截各主要页面、量说明 / How to use / 提示条 / shortcut 条占多高，提统一规则（1–2 种），挑 3–4 页做「现在 / 改后」对比 preview。电脑版不变。等 preview 和题。
