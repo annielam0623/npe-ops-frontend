@@ -367,6 +367,7 @@
 - 题 0 Annie 答（91 转）：「CHD要胶囊，每个产品一个」⇒ A，每个产品一个胶囊（不算动手）。后端要改：admin_fee 胶囊 key p:<product_code>、label 用 internal name、sendable:false、?pill=p:<code> 只回该产品；已转 37 / d8，注明还没动手。前端不用改。还等题 1–3 + 动手。
 - 题 1–3 Annie 答，原话「1. 要标  2. 按照客人人数 3 不要说明」⇒ ① Due≠0 整行淡红（B）；② 写 pax，按真实客人人数（A，不是推荐的 B）——收款单不能算 50 / 75 人，已问 37 / d8 能不能回真实人数、拿不到回 null 显示「—」；③ 不要说明条。已转 91（先不改代码）。还等动手 + 后端 pax 答复。
   - 37 回：已转 d8，先只读查数据，再给规则和工时。方向：真实人数只从同一 order_number 在 rezdy_bookings 里的数据取（不直接去 Rezdy），没有就 null、前端显示「—」，不用费用数量。37 注明：这只适用于 Main manifest 的 admin_fee 标签，Sales Report 的 pax 问题仍未定。
+  - 37 转形状：产品级胶囊已推 task/chd-main-manifest 709df07f（p:<code>、internal name、sendable:false、当天没行不出胶囊）；pax 部分 d8 在做约 45–60 分钟：admin_fee 行 pax 可 null（显示「—」），标签 / 胶囊加 pax_unknown（null 行数），pax = 非 null 之和。预计 PFYF01 约 215 行有人数、约 10 行 null；PLU3N8 / PXLTL1 单独订单是 null，除非 Annie 同意按人数量算客人（37 在问她）。已转 91 出 preview v4（pax_unknown 怎么显示 + 去说明条 + Due≠0 淡红）。
 
 ### 48. Notice 跟 CCL 交流，可选个人或 team（2026-11-01 晚，11/2 做）
 - Annie 原话（09 窗口）：「2 可以跟CCL用notice交流，发的时候可以选个人，也可以选team」「CCl也算一个team」；开关「开放给员工由我来决定，你不要再问了」（各窗口不再问开关）。
