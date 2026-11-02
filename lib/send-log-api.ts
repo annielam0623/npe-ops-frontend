@@ -1,37 +1,87 @@
 import { apiFetch } from "@/lib/api-client";
 import { buildQueryString } from "@/lib/utils";
 import type {
-  SendBatch,
   SendBatchDetail,
+  SendLogGroupRow,
+  SendLogGroupsPage,
   SendLogPage,
   SendLogQuery,
 } from "@/types";
 
-export const SEND_LOG_PAGE_SIZE = 50;
+/** 每页 100 组，一组不拆到两页（Annie 2026-11-01；后端上限也是 100）。 */
+export const SEND_LOG_GROUPS_PAGE_SIZE = 100;
+/** 页面下方 ⚠️ Errors 看最近这么多条（逐条接口，同样的筛选）。 */
+export const SEND_LOG_ERRORS_PAGE_SIZE = 200;
 
-/** staff 及以上可调；纯读。空字符串的筛选项不传。 */
+/** 行的筛选（不含日期）：空字符串的不传。 */
+function rowFilters(query: SendLogQuery) {
+  const orderNumber = query.orderNumber.trim();
+  return {
+    // 后端按字面「包含」搜（% _ \ 已转义）。
+    order_number: orderNumber || undefined,
+    mtlv_eligible: query.mtlv ? true : undefined,
+    module: query.module || undefined,
+    channel: query.channel || undefined,
+    status: query.status || undefined,
+  };
+}
+
+/** 日期 + 行的筛选。按订单号搜时不限日期（Annie 2026-10-05 定），后端不传日期 = 全部日期。 */
+function logFilters(query: SendLogQuery) {
+  const searching = !!query.orderNumber.trim();
+  return {
+    date_from: searching ? undefined : query.from,
+    date_to: searching ? undefined : query.to,
+    ...rowFilters(query),
+  };
+}
+
+/** 逐条（staff 及以上可调；纯读）：只用来列页面下方的 ⚠️ Errors。 */
 export function fetchSendLog(
   query: SendLogQuery,
   signal?: AbortSignal,
 ): Promise<SendLogPage> {
-  const orderNumber = query.orderNumber.trim();
   return apiFetch<SendLogPage>("/api/notifications/send-log", {
     cache: "no-store",
     signal,
     query: {
-      // 按订单号搜时不限日期（Annie 2026-10-05 定），后端不传日期 = 全部日期。
-      date_from: orderNumber ? undefined : query.from,
-      date_to: orderNumber ? undefined : query.to,
-      // 后端按字面「包含」搜（% _ \ 已转义）。
-      order_number: orderNumber || undefined,
-      mtlv_eligible: query.mtlv ? true : undefined,
-      module: query.module || undefined,
-      channel: query.channel || undefined,
-      status: query.status || undefined,
-      page: query.page,
-      page_size: SEND_LOG_PAGE_SIZE,
+      ...logFilters(query),
+      page: 1,
+      page_size: SEND_LOG_ERRORS_PAGE_SIZE,
     },
   });
+}
+
+/** G230：整页按组，一次发送一组，新的在前。一组里有一条符合筛选就列整组。 */
+export function fetchSendLogGroups(
+  query: SendLogQuery,
+  signal?: AbortSignal,
+): Promise<SendLogGroupsPage> {
+  return apiFetch<SendLogGroupsPage>("/api/notifications/send-log/groups", {
+    cache: "no-store",
+    signal,
+    query: {
+      ...logFilters(query),
+      page: query.page,
+      page_size: SEND_LOG_GROUPS_PAGE_SIZE,
+    },
+  });
+}
+
+/**
+ * 一组的全部行（新的在前），每行带 matched。不传日期：组是按日期列出来的，
+ * 半夜跨天的那几条也算这一组；matched 只看订单号 / 模块 / 渠道 / 状态 / MTLV。没有这一组 404。
+ */
+export async function fetchSendLogGroupRows(
+  batchId: number,
+  query: SendLogQuery,
+  signal?: AbortSignal,
+): Promise<SendLogGroupRow[]> {
+  const res = await apiFetch<{ rows: SendLogGroupRow[] }>(
+    `/api/notifications/send-log/groups/${batchId}/rows`,
+    { cache: "no-store", signal, query: rowFilters(query) },
+  );
+  return res.rows ?? [];
 }
 
 /**
@@ -49,26 +99,12 @@ export function buildSendLogExportUrl(
   return `/api/send-log/export?${qs}`;
 }
 
-/** 发送页「View this send」：Send Log 里这一批展开（新标签页打开）。 */
+/** 发送页「View this send」：Send Log 里这一组展开（新标签页打开）。 */
 export function sendBatchHref(batchId: number): string {
   return `/send-log?batch=${encodeURIComponent(String(batchId))}`;
 }
 
-/** 「Send batches」：按开始发送的洛杉矶日期（含两端），新的在前。 */
-export async function fetchSendBatches(
-  from: string,
-  to: string,
-  signal?: AbortSignal,
-): Promise<SendBatch[]> {
-  const res = await apiFetch<{ batches: SendBatch[] }>("/api/send-batches", {
-    cache: "no-store",
-    signal,
-    query: { date_from: from, date_to: to },
-  });
-  return res.batches ?? [];
-}
-
-/** 一批的小结 + 逐单明细 + 跳过的单。没有这一批 404。 */
+/** 一组的小结（文件几行、送达情况）+ 跳过的单。没有这一组 404。 */
 export function fetchSendBatch(
   id: number,
   signal?: AbortSignal,
