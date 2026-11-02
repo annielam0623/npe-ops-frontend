@@ -1199,6 +1199,26 @@ async function run() {
   await waitFor("location.pathname === '/auth/login'");
   check("未登录跳旧后台登录页", (await evaluate("return location.href;")).startsWith(`${APP}/auth/login?next=`));
   await ctl({ fail401: false });
+
+  // 手机版（Annie 2026-11-01 手机版规则）：黄框说明一行 + More、Bus Manifest setup 各项说明进「i」、How to use 在最底
+  await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+  await goto(`${APP}/settings/products`);
+  await waitFor("document.querySelectorAll('tbody tr').length > 0", 30000);
+  await sleep(500);
+  const shown = (sel) => `(() => { const e = document.querySelector(${JSON.stringify(sel)}); return !!e && e.getBoundingClientRect().height > 0; })()`;
+  const howTop = "(() => { const d = [...document.querySelectorAll('details')].find(x => /How to use/.test(x.querySelector('summary')?.textContent || '') && x.getBoundingClientRect().height > 0); return d ? d.getBoundingClientRect().top + scrollY : -1; })()";
+  const noSideScroll = "document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1";
+  check("手机：黄框说明只显示一行 + More", await evaluate("const o = document.querySelector('[data-attn-row] [data-phone-oneline]'); return !!o && o.getBoundingClientRect().height < 30 && /More/.test(o.textContent);"));
+  check("手机：Bus Manifest setup 各项灰字说明收起、标题后有「i」", await evaluate("const f = document.querySelector('[data-field]'); if (!f) return 'skip'; const p = f.querySelector('p'); return p.getBoundingClientRect().height === 0 && !!f.querySelector('[data-phone-info]');").then((v) => v === true || v === "skip"));
+  const howProducts = howTop.replace("/How to use/", "/How to use — Products/");
+  check("手机：How to use 在 Products 表下面", await evaluate(`const ts = [...document.querySelectorAll('table')]; const t = ts[ts.length - 1].getBoundingClientRect().bottom + scrollY; return ${howProducts} > t;`));
+  check("手机：整页不左右晃", await evaluate(`return ${noSideScroll};`));
+  await evaluate("document.querySelector('[data-attn-row] [data-phone-oneline] button').click();");
+  await sleep(200);
+  check("手机：点 More 看全文", await evaluate("return document.querySelector('[data-attn-row] [data-phone-oneline]').getBoundingClientRect().height > 30;"));
+  await cdp("Emulation.clearDeviceMetricsOverride");
+  await sleep(300);
+  check("电脑：How to use 照旧在上面、说明照旧全显示", (await evaluate(`return ${howProducts} < document.querySelector('table').getBoundingClientRect().top + scrollY;`)) && (await evaluate("const f = document.querySelector('[data-field]'); return !f || f.querySelector('p').getBoundingClientRect().height > 0;")));
 }
 
 main().catch((e) => {

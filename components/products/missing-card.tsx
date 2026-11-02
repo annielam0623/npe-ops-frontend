@@ -3,16 +3,12 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { usePhoneInfo } from "@/components/ui/phone";
 import { TBODY_CLASS, TR_CLASS } from "@/components/pickup-locations/legacy-ui";
 import { cn } from "@/lib/utils";
 import type { MissingProduct, ProductGroup } from "@/types";
 
-import {
-  BULK_MIN,
-  BulkBar,
-  BulkBarRow,
-  lastPickedIndex,
-} from "./bulk-bar";
+import { BULK_MIN, BulkBar, BulkBarRow, lastPickedIndex } from "./bulk-bar";
 import {
   groupLabel,
   missingDates,
@@ -81,6 +77,8 @@ export function MissingCard({
   const [bulkType, setBulkType] = useState(KEEP);
   const [confirming, setConfirming] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  // 手机上卡片说明收进标题后的「i」（Annie 2026-11-01 手机版规则）。
+  const introInfo = usePhoneInfo("About this list");
 
   const update = (code: string, patch: Partial<RowState>) =>
     setRows((all) => ({ ...all, [code]: { ...all[code], ...patch } }));
@@ -217,10 +215,16 @@ export function MissingCard({
       <div className="flex items-center justify-between border-b-[0.5px] border-black/[.08] bg-[#fff4e5] px-4 py-3 night:border-white/10 night:bg-amber-400/10">
         <h2 className="text-[13px] font-semibold text-[#9a3412] night:text-amber-200">
           {title}
+          {introInfo.button}
         </h2>
       </div>
       {/* .miss-intro */}
-      <div className="border-b-[0.5px] border-black/[.06] bg-[#fffaf3] px-4 py-3 text-[12px] leading-[1.6] text-[#7c4a1e] night:border-white/10 night:bg-amber-400/10 night:text-amber-200">
+      <div
+        className={cn(
+          introInfo.hide,
+          "border-b-[0.5px] border-black/[.06] bg-[#fffaf3] px-4 py-3 text-[12px] leading-[1.6] text-[#7c4a1e] night:border-white/10 night:bg-amber-400/10 night:text-amber-200",
+        )}
+      >
         <p>
           These product codes have appeared on orders but are not in the list
           below, so this table gives no category for them. Their orders fall

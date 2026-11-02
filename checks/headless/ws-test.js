@@ -240,6 +240,18 @@ async function run() {
   check("侧栏 Settings 有 My Workspace", await evaluate("return [...document.querySelectorAll('nav a')].some(a => a.getAttribute('href') === '/settings/workspace');"));
   check("顶栏页名 My Workspace", await evaluate("return document.querySelector('header').textContent.includes('My Workspace');"));
 
+  // 手机版（Annie 2026-11-01 手机版规则）：页头说明一行 + More、My work 说明进「i」、粘贴框变矮、整页不左右晃
+  await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+  await open(`${APP}/workspace`, "document.querySelector('[data-item]')");
+  await sleep(300);
+  check("手机：页头说明只显示一行 + More", await evaluate("const o = document.querySelector('header [data-phone-oneline]'); return !!o && o.getBoundingClientRect().height < 30;"));
+  check("手机：My work 说明收进「i」", await evaluate("const s = document.querySelector('[aria-label=\"My work\"]'); const p = [...s.querySelectorAll('p')].find(x => /Everything made here is kept/.test(x.textContent)); return !!s.querySelector('[data-phone-info]') && p.getBoundingClientRect().height === 0;"));
+  check("手机：粘贴框变矮（≤ 160px）", (await evaluate("return document.querySelector('#ws-text').getBoundingClientRect().height;")) <= 160);
+  check("手机：整页不左右晃", await evaluate("return document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1;"));
+  await cdp("Emulation.clearDeviceMetricsOverride");
+  await sleep(300);
+  check("电脑：说明照旧全显示、粘贴框照旧高", (await evaluate("const s = document.querySelector('[aria-label=\"My work\"]'); return [...s.querySelectorAll('p')].some(x => /Everything made here is kept/.test(x.textContent) && x.getBoundingClientRect().height > 0);")) && (await evaluate("return document.querySelector('#ws-text').getBoundingClientRect().height;")) > 200);
+
   // ── 401 ──
   await ctl({ unauth: true });
   await goto(`${APP}/workspace`);

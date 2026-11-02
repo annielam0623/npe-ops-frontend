@@ -7,6 +7,7 @@ import { usePermissions } from "@/lib/staff-permissions";
 import type { ActionResult } from "@/components/ui/action-result";
 import { CenteredPage } from "@/components/ui/centered-page";
 import { ErrorBanner, Panel } from "@/components/ui/panel";
+import { usePhoneInfo } from "@/components/ui/phone";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchCurrentUser } from "@/lib/auth-api";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
@@ -155,16 +156,23 @@ export function TeamsView() {
   }
 
   const closeDialog = useCallback(() => setDialog(null), []);
+  // 手机上页头那句灰字收进标题后的「i」（Annie 2026-11-01 手机版规则）。
+  const headInfo = usePhoneInfo("About this page");
 
   return (
     // 照旧页面 settings_teams.html：内容区 860px 居中、四周 32px / 24px；标题、说明、New Team 在页面里（旧页面没有顶栏标题）。
     <main className="text-stone-800 night:text-white/90">
-      <CenteredPage className="py-8 max-lg:px-6">
-        <header className="mb-7 flex items-center justify-between gap-3">
+      <CenteredPage className="py-8 max-lg:px-6 max-sm:px-0 max-sm:py-1">
+        <header className="mb-7 flex items-center justify-between gap-3 max-sm:mb-3">
           <div>
             {/* 旧页面标题是 #1a1a1a，放在深色底上看不见；按深色底换成旧后台的浅色字。 */}
-            <h1 className="m-0 text-[22px] font-bold text-[#f8fafc]">Teams</h1>
-            <p className="mt-1 text-[13px] text-[#888] night:text-white/55">
+            <h1 className="m-0 text-[22px] font-bold text-[#f8fafc] max-sm:text-[19px]">
+              Teams
+              {headInfo.button}
+            </h1>
+            <p
+              className={`mt-1 text-[13px] text-[#888] night:text-white/55 ${headInfo.hide}`}
+            >
               Manage staff teams and their notification boards
             </p>
           </div>
@@ -183,7 +191,12 @@ export function TeamsView() {
           ) : null}
         </header>
 
-        {view.kind === "ready" ? <TeamsHowTo /> : null}
+        {/* How to use：电脑上照旧在这里；手机上放到页面最底（Annie 2026-11-01 手机版规则）。 */}
+        {view.kind === "ready" ? (
+          <div className="max-sm:hidden">
+            <TeamsHowTo />
+          </div>
+        ) : null}
 
         <TeamsBody
           view={view}
@@ -191,6 +204,12 @@ export function TeamsView() {
           onEdit={(team) => setDialog({ kind: "edit", team })}
           onDelete={(team) => setDialog({ kind: "delete", team })}
         />
+
+        {view.kind === "ready" ? (
+          <div className="mt-5 sm:hidden">
+            <TeamsHowTo />
+          </div>
+        ) : null}
       </CenteredPage>
 
       {dialog?.kind === "create" || dialog?.kind === "edit" ? (

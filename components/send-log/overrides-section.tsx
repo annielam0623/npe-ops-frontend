@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchSendOverrides, type SendOverride } from "@/lib/send-log-api";
+import { usePhoneInfo } from "@/components/ui/phone";
 
 import { formatSentAt } from "./config";
 import { TABLE_CARD, TABLE_HEADER, TABLE_TITLE } from "./legacy";
@@ -44,6 +45,8 @@ export function OverridesSection({
 }) {
   const [rows, setRows] = useState<SendOverride[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // 手机上标题后的说明收进「i」（Annie 2026-11-01 手机版规则）。
+  const info = usePhoneInfo("About overrides");
 
   useEffect(() => {
     const controller = new AbortController();
@@ -75,8 +78,13 @@ export function OverridesSection({
       className={`mt-6 ${TABLE_CARD}`}
     >
       <div className={TABLE_HEADER}>
-        <span className={TABLE_TITLE}>Sent with an override</span>
-        <span className="text-[11.5px] text-[#6b6b6b] night:text-white/35">
+        <span className={`${TABLE_TITLE} whitespace-nowrap`}>
+          Sent with an override
+          {info.button}
+        </span>
+        <span
+          className={`text-[11.5px] text-[#6b6b6b] night:text-white/35 ${info.hide}`}
+        >
           Orders that went out with a problem someone chose to send anyway.
           Order numbers and reasons only.
         </span>

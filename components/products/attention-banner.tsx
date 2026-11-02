@@ -4,6 +4,7 @@ import { useEffect, useState, type ReactNode } from "react";
 
 import type { ActionResult } from "@/components/ui/action-result";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { PhoneOneLine } from "@/components/ui/phone";
 import { describeError } from "@/lib/api-errors";
 import { fetchForecastSettings } from "@/lib/forecast-api";
 import { cn } from "@/lib/utils";
@@ -137,9 +138,9 @@ export function AttentionBanner({
                     {attrIssues.length}
                   </b>{" "}
                   {attrIssues.length === 1 ? "product is" : "products are"}{" "}
-                  missing their <b>Group</b> and/or <b>Category</b>. Until
-                  both are set, this table and its reports fall back to
-                  whatever was already stored on the booking.
+                  missing their <b>Group</b> and/or <b>Category</b>. Until both
+                  are set, this table and its reports fall back to whatever was
+                  already stored on the booking.
                 </>
               }
               jumpLabel="Jump to them ↓"
@@ -178,11 +179,10 @@ export function AttentionBanner({
                   <b className="text-[#9a3412] night:text-amber-200">
                     {missingLeft.length}
                   </b>{" "}
-                  product code{missingLeft.length === 1 ? "" : "s"} appeared
-                  on orders but{" "}
-                  {missingLeft.length === 1 ? "is" : "are"} not in this list
-                  at all yet — their orders fall back to whatever category
-                  was stored on the booking itself.
+                  product code{missingLeft.length === 1 ? "" : "s"} appeared on
+                  orders but {missingLeft.length === 1 ? "is" : "are"} not in
+                  this list at all yet — their orders fall back to whatever
+                  category was stored on the booking itself.
                 </>
               }
               jumpLabel="Review & add ↓"
@@ -217,8 +217,8 @@ export function AttentionBanner({
                   <b>{unmatched.length}</b> saved Forecast setting
                   {unmatched.length === 1 ? "" : "s"} no longer match
                   {unmatched.length === 1 ? "es" : ""} a section (renamed or
-                  removed). These are leftover data, not a classification
-                  choice — they should be deleted, not left as is.
+                  removed). These are leftover data, not a classification choice
+                  — they should be deleted, not left as is.
                 </>
               }
               jumpLabel="Open & review ↓"
@@ -294,7 +294,10 @@ function Row({
             : "bg-[#fffaf3] text-[#7c4a1e] night:bg-amber-400/10 night:text-amber-200",
         )}
       >
-        <p className="m-0 max-w-[56ch]">{text}</p>
+        {/* 手机上黄框文字只显示一行 + More（Annie 2026-11-01 手机版规则）。 */}
+        <p className="m-0 max-w-[56ch] max-sm:min-w-0 max-sm:flex-1">
+          <PhoneOneLine>{text}</PhoneOneLine>
+        </p>
         <button
           type="button"
           onClick={onJump}
@@ -310,7 +313,7 @@ function Row({
       </div>
       <div
         data-attn-chips={section}
-        className="flex flex-wrap gap-[6px] border-b-[0.5px] border-black/[.06] bg-[#fffaf3] px-4 py-2.5 night:border-white/10 night:bg-amber-400/10 last:border-b-0"
+        className="flex flex-wrap gap-[6px] border-b-[0.5px] border-black/[.06] bg-[#fffaf3] px-4 py-2.5 last:border-b-0 night:border-white/10 night:bg-amber-400/10"
       >
         {children}
       </div>

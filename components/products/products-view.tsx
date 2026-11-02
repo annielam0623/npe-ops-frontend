@@ -512,7 +512,10 @@ function ProductsPage() {
         }
       />
 
-      <HowToUse />
+      {/* How to use：电脑上照旧在这里；手机上放到页面最底（Annie 2026-11-01 手机版规则）。 */}
+      <div className="max-sm:hidden">
+        <HowToUse />
+      </div>
 
       {/* 同旧页面：Groups 在 Manifest setup 上面，默认收起。 */}
       <GroupsCard
@@ -755,6 +758,9 @@ function ProductsPage() {
       </section>
 
       <ProductLog version={logVersion} onUnauthorized={redirectToLogin} />
+      <div className="sm:hidden">
+        <HowToUse />
+      </div>
 
       {bulkConfirm ? (
         <ConfirmDialog

@@ -15,6 +15,7 @@ import { CenteredPage } from "@/components/ui/centered-page";
 import { DARK_PRIMARY_BUTTON_CLASS } from "@/components/ui/buttons";
 import { plex } from "@/components/ui/dark-page";
 import { HowToUse } from "@/components/ui/how-to-use";
+import { PhoneOneLine, usePhoneInfo } from "@/components/ui/phone";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
 import { cn } from "@/lib/utils";
@@ -161,12 +162,13 @@ export function WorkspaceView() {
     <main className={cn(plex.className, "text-[#f8fafc]")}>
       <CenteredPage className="flex flex-col gap-[18px] text-[13px] leading-normal">
         <header>
-          <h1 className="sr-only">
-            My Workspace
-          </h1>
-          <p className="mt-1 text-white/60">
-            Paste an email or upload a file, choose where it goes, and let the
-            system do the first pass. You check everything before it is saved.
+          <h1 className="sr-only">My Workspace</h1>
+          {/* 手机上只显示一行 + More（页面标题在顶栏，没有地方放「i」；Annie 2026-11-01 手机版规则）。 */}
+          <p className="mt-1 text-white/60 max-sm:mt-0">
+            <PhoneOneLine>
+              Paste an email or upload a file, choose where it goes, and let the
+              system do the first pass. You check everything before it is saved.
+            </PhoneOneLine>
           </p>
         </header>
 
@@ -196,7 +198,7 @@ export function WorkspaceView() {
           <>
             <section
               aria-label="Input"
-              className="flex flex-wrap gap-[18px] rounded-[16px] border border-white/10 bg-white/[.032] p-[18px]"
+              className="flex flex-wrap gap-[18px] rounded-[16px] border border-white/10 bg-white/[.032] p-[18px] max-sm:gap-3 max-sm:p-3"
             >
               <div className="flex min-w-0 flex-[2_1_520px] flex-col gap-2.5">
                 <div role="tablist" className="flex gap-1.5">
@@ -232,7 +234,7 @@ export function WorkspaceView() {
                       value={text}
                       onChange={(e) => setText(e.target.value)}
                       rows={13}
-                      className="resize-y rounded-[10px] border border-white/15 bg-[#081624] px-3.5 py-3 text-[13px] leading-[1.55] font-normal text-[#f8fafc] outline-none focus:border-white/35"
+                      className="resize-y rounded-[10px] border border-white/15 bg-[#081624] px-3.5 py-3 text-[13px] leading-[1.55] font-normal text-[#f8fafc] outline-none focus:border-white/35 max-sm:h-[150px]"
                     />
                   </label>
                 ) : (
@@ -414,6 +416,8 @@ function MyWork({
   const [status, setStatus] = useState<string | null>(null);
   const [data, setData] = useState<WorkspaceItemList | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // 手机上「My work」下面那句灰字收进「i」（Annie 2026-11-01 手机版规则）。
+  const info = usePhoneInfo("About My work");
 
   useEffect(() => {
     const controller = new AbortController();
@@ -444,10 +448,13 @@ function MyWork({
   return (
     <section
       aria-label="My work"
-      className="rounded-[16px] border border-white/10 bg-white/[.032] p-[18px]"
+      className="rounded-[16px] border border-white/10 bg-white/[.032] p-[18px] max-sm:p-3"
     >
-      <h2 className="text-[15px] font-semibold">My work</h2>
-      <p className="mt-0.5 text-[12px] text-white/55">
+      <h2 className="text-[15px] font-semibold">
+        My work
+        {info.button}
+      </h2>
+      <p className={cn("mt-0.5 text-[12px] text-white/55", info.hide)}>
         Everything made here is kept, so you can reopen it, pick up a draft, or
         hand it to a teammate.
       </p>

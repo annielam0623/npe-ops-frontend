@@ -31,6 +31,7 @@ import {
   type MapZone,
 } from "@/components/products/manifest-setup-map";
 import { capsPlaceholder } from "@/components/ui/placeholder";
+import { usePhoneInfo } from "@/components/ui/phone";
 import { ForecastSetupFields } from "@/components/products/forecast-setup";
 import {
   BUTTON,
@@ -160,11 +161,15 @@ export function ManifestSetupPanel({
     setError(describeError(e));
   }
 
+  // 手机上标题后的灰字收进「i」（Annie 2026-11-01 手机版规则）。
+  const headInfo = usePhoneInfo("About Bus Manifest setup");
+
   return (
     // .ms-card
     <section className="mb-4 overflow-hidden rounded-[12px] border-[0.5px] border-black/10 bg-paper text-[#1a1a1a] night:border-white/10 night:bg-white/[.04] night:text-white/90">
       <div className="flex flex-wrap items-center gap-3 border-b-[0.5px] border-black/[.08] bg-paper px-4 py-[11px] night:border-white/10 night:bg-white/[.03]">
         <h2 className="text-[14.5px] font-bold">Bus Manifest setup</h2>
+        {headInfo.button}
         {data && data.groups.length ? (
           <select
             aria-label="Tour group"
@@ -180,7 +185,7 @@ export function ManifestSetupPanel({
             ))}
           </select>
         ) : null}
-        <span className={HINT}>
+        <span className={cn(HINT, headInfo.hide)}>
           How the printed Bus Manifest looks for this tour.
         </span>
         {error || loadError ? (

@@ -924,6 +924,23 @@ async function run() {
   await goto(`${APP}/settings/content-studio`);
   await waitFor("document.body.textContent.includes('Admin access required')");
   check("staff：Admin access required", true);
+
+  // 手机版（Annie 2026-11-01 手机版规则）：不再左右晃；没选模块不放空预览框；选了模块预览排在编辑内容下面、How to use 上面
+  await ctl({ staff: false });
+  await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+  await goto(`${APP}/settings/content-studio`);
+  await waitFor("[...document.querySelectorAll('main button')].some(b => /Tour Confirmation/.test(b.textContent))", 30000);
+  await sleep(300);
+  check("手机：首页整页不左右晃", await evaluate("return document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1;"));
+  check("手机：首页没有空的预览框", await evaluate("return ![...document.querySelectorAll('span')].some(s => s.textContent.trim() === 'Preview' && s.getBoundingClientRect().height > 0);"));
+  await evaluate("[...document.querySelectorAll('main button')].find(b => /Tour Confirmation/.test(b.textContent)).click();");
+  await sleep(1500);
+  check("手机：选了模块也不左右晃", await evaluate("return document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1;"));
+  check("手机：预览在 How to use 上面、宽度占满", await evaluate("const p = [...document.querySelectorAll('span')].find(s => s.textContent.trim() === 'Preview' && s.getBoundingClientRect().height > 0); const h = [...document.querySelectorAll('details')].find(d => /How to use/.test(d.textContent) && d.getBoundingClientRect().height > 0); return !!p && !!h && p.getBoundingClientRect().top < h.getBoundingClientRect().top && p.parentElement.parentElement.getBoundingClientRect().width > 340;"));
+  await cdp("Emulation.clearDeviceMetricsOverride");
+  await sleep(300);
+  check("电脑：照旧左右分栏", await evaluate("const p = [...document.querySelectorAll('span')].find(s => s.textContent.trim() === 'Preview' && s.getBoundingClientRect().height > 0); return !!p && p.getBoundingClientRect().left > innerWidth / 3;"));
+
   await ctl({ staff: false, fail401: true });
   await goto(`${APP}/settings/content-studio`);
   await waitFor("location.pathname === '/auth/login'");

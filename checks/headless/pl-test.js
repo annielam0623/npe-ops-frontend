@@ -548,6 +548,31 @@ async function run() {
   const addPost = (await since(before, (e) => e.method === "POST"))[0];
   check("勾 Shuttle stop 再 Add：POST 带 is_shuttle true", addPost?.body?.is_shuttle === true && addPost.body.is_tour_bus === false, JSON.stringify(addPost?.body));
   await ctl({ split: false });
+
+  // 手机版（Annie 2026-11-01 手机版规则）：+ Add New Location 默认收起、Export / Import 进 ⋯、How to use 在最底、表格左右滑不挤
+  await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+  await goto(`${APP}/settings/pickup-locations`);
+  await waitFor("document.querySelectorAll('tbody tr').length > 0", 30000);
+  await sleep(300);
+  const shown = (sel) => `(() => { const e = document.querySelector(${JSON.stringify(sel)}); return !!e && e.getBoundingClientRect().height > 0; })()`;
+  const howTop = "(() => { const d = [...document.querySelectorAll('details')].find(x => /How to use/.test(x.querySelector('summary')?.textContent || '') && x.getBoundingClientRect().height > 0); return d ? d.getBoundingClientRect().top + scrollY : -1; })()";
+  const noSideScroll = "document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1";
+  check("手机：+ Add New Location 默认收起", !(await evaluate(`return ${shown("#new-name")};`)));
+  check("手机：地点列表在第一屏（表格顶 < 450px）", (await evaluate("return document.querySelector('table').getBoundingClientRect().top;")) < 450);
+  check("手机：How to use 在列表下面", await evaluate(`const t = document.querySelector('table').getBoundingClientRect().bottom + scrollY; return ${howTop} > t;`));
+  check("手机：Export 收进 ⋯（不直接显示）", !(await evaluate("return [...document.querySelectorAll('button')].some(b => /Export/.test(b.textContent) && b.getBoundingClientRect().height > 0);")) && (await evaluate(`return ${shown("[data-phone-more]")};`)));
+  await evaluate("document.querySelector('[data-phone-more]').click();");
+  await sleep(200);
+  check("手机：点 ⋯ 出 Export", await evaluate("return [...document.querySelectorAll('[data-phone-more-menu] button')].some(b => /Export/.test(b.textContent));"));
+  check("手机：表格不挤（最小 760px，在卡片里左右滑）、整页不左右晃", (await evaluate("return document.querySelector('table').getBoundingClientRect().width;")) >= 760 && (await evaluate(`return ${noSideScroll};`)));
+  await evaluate("document.querySelector('[data-phone-fold=\"add-location\"]').click();");
+  await sleep(200);
+  check("手机：点 + Add New Location 展开、一列排（Hotel Name 框宽 > 250px）", (await evaluate(`return ${shown("#new-name")};`)) && (await evaluate("return document.querySelector('#new-name').getBoundingClientRect().width;")) > 250);
+  await cdp("Emulation.clearDeviceMetricsOverride");
+  await goto(`${APP}/settings/pickup-locations`);
+  await waitFor("document.querySelectorAll('tbody tr').length > 0", 30000);
+  await sleep(300);
+  check("电脑：Add 表单照旧展开、How to use 照旧在最上面、Export 照旧直接显示", (await evaluate(`return ${shown("#new-name")};`)) && (await evaluate(`return ${howTop} < document.querySelector('table').getBoundingClientRect().top + scrollY;`)) && (await evaluate("return [...document.querySelectorAll('button')].some(b => /Export/.test(b.textContent) && b.getBoundingClientRect().height > 0);")));
 }
 
 main().catch((e) => {
