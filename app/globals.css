@@ -150,3 +150,25 @@ table.afm .col-resizer {
 .db-lift:hover {
   transform: translateY(-1px);
 }
+
+/* ===== 手机版（Annie 2026-11-01「动手」，preview https://claude.ai/artifact/QN1ZShgWKXFoeUSmjQgutY v2）=====
+ * 屏宽 < 640px 才生效，电脑版不变。内容区（[data-phone-compact]）里的按钮、页签、输入框统一变小
+ * （Annie「把pill的框再缩小，改了以后的还是很大，太占地方了」）。这里不进 @layer，盖过组件里的 Tailwind 尺寸；
+ * 个别不要缩的加 data-phone-keep。输入框字号不动（iOS 小于 16px 会在点进去时放大整页）。 */
+@media (max-width: 639.98px) {
+  [data-phone-compact] :is(button, [role="tab"]):not([data-phone-keep]) {
+    padding-top: 3px;
+    padding-bottom: 3px;
+    padding-left: 10px;
+    padding-right: 10px;
+    font-size: 13px;
+    line-height: 1.35;
+    min-height: 0;
+  }
+  [data-phone-compact]
+    :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select):not([data-phone-keep]) {
+    padding-top: 4px;
+    padding-bottom: 4px;
+    min-height: 0;
+  }
+}

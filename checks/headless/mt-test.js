@@ -1040,6 +1040,29 @@ async function run() {
     ws.onmessage = orig;
   }
 
+  // ── 手机版（Annie 2026-11-01「然后morning只用显示今天的」选 A；手机版规则）：只看今天、不出日期切换；统计卡一行；操作提示不显示 ──
+  {
+    const ymdLA = (shift) => `const d = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' })); d.setDate(d.getDate() + (${shift})); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');`;
+    const yesterdayYmd = await evaluate(ymdLA(-1));
+    const todayYmd = await evaluate(ymdLA(0));
+    await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+    const from = (await mockLog()).length;
+    await goto(`${APP}/morning-pickup/tracking?date=${yesterdayYmd}`);
+    await waitFor("document.querySelector('[data-phone-today]') && document.querySelectorAll('tbody tr').length > 0", 30000);
+    await sleep(800);
+    const log = (await mockLog()).slice(from);
+    check("手机：带 ?date=昨天打开也只看今天（最后一次读的是今天）", log.filter((e) => e.path === "/api/notifications/morning-pickup/tracking").pop()?.query === `?date=${todayYmd}`, JSON.stringify(log.map((e) => e.query)));
+    check("手机：不出 ‹ 日期 › Today，写「Today · …」", await evaluate("return document.querySelector('input[aria-label=\"Date\"]').getBoundingClientRect().height === 0 && document.querySelector('[data-phone-today]').textContent.startsWith('Today · ');"));
+    check("手机：4 张统计卡排一行", await evaluate("const c = [...document.querySelector('section[aria-label=\"Summary\"]').children]; return c.length === 4 && new Set(c.map(x => Math.round(x.getBoundingClientRect().top))).size === 1;"));
+    check("手机：「Drag columns」操作提示不显示", await evaluate("const e = [...document.querySelectorAll('span')].find(s => s.textContent.includes('Drag columns to reorder')); return !e || e.getBoundingClientRect().height === 0;"));
+    check("手机：标题栏有 ★，shortcut 条收起", await evaluate("const s = document.querySelector('[data-phone-shortcuts]'); return document.querySelector('[data-phone-star]').getBoundingClientRect().width > 0 && s.getBoundingClientRect().height === 0;"));
+    await cdp("Emulation.clearDeviceMetricsOverride");
+    await goto(`${APP}/morning-pickup/tracking?date=${yesterdayYmd}`);
+    await waitFor("document.querySelector('input[aria-label=\"Date\"]')", 30000);
+    await sleep(500);
+    check("电脑：照旧能看别的日子（?date=昨天）、有日期切换", (await evaluate("return document.querySelector('input[aria-label=\"Date\"]').value;")) === yesterdayYmd);
+  }
+
   // ── 未登录 ──
   await ctl({ fail401: true });
   await goto(`${APP}/morning-pickup/tracking`);

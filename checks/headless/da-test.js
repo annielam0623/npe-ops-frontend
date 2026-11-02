@@ -185,7 +185,7 @@ async function run() {
   await helpers();
   const first = (await since(before, (e) => e.path === "/api/dispatch/day"))[0];
   check("默认不带日期（服务端定明天）、地址补上 ?date=", first && first.q.date === undefined && (await evaluate("return location.search;")) === "?date=2026-10-05");
-  check("标题：长日期 + Tomorrow", await evaluate("return document.querySelector('h1').textContent === 'Monday, October 5Tomorrow';"));
+  check("标题：长日期 + Tomorrow", await evaluate("const h = document.querySelector('h1').cloneNode(true); h.querySelectorAll('[data-phone-info]').forEach(x => x.remove()); return h.textContent === 'Monday, October 5Tomorrow';"));
   await waitReq(before, (e) => e.path === "/api/dispatch/imports/pull");
   const pullReq = (await since(before, (e) => e.path === "/api/dispatch/imports/pull"))[0];
   // 请求发出不等于结果画出来了（Step 1 多读一个接口以后会慢一点）：等那句上次拉取时间出现再判断。
@@ -2051,6 +2051,26 @@ async function run() {
     check("换天：链接跟着换成 2026-10-19", await waitFor(`${link}?.getAttribute('href') === '/driver/preview?date=2026-10-19'`, 10000));
     check("换天：Guide 链接也跟着换成 2026-10-19", await waitFor(`${glink}?.getAttribute('href') === '/guide/preview?date=2026-10-19'`, 10000));
     await ctl({ superAdmin: false });
+    await goto("about:blank");
+    await sleep(300);
+  }
+
+  // 手机版（Annie 2026-11-01 手机版规则）：页头黄字、各步说明、How to use 收进「i」；① Assign / ② Send 一行
+  {
+    await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+    await goto(`${APP}/dispatch?date=2026-10-05`);
+    await waitFor("document.querySelector('#dispatch-steps') && document.querySelector('[aria-label=\"Buses & drivers\"]')", 60000);
+    await sleep(500);
+    const yellow = "[...document.querySelectorAll('p')].find(p => p.textContent.startsWith('Assign the buses, drivers and hotels'))";
+    check("手机：① Assign / ② Send 排一行，小字不显示", await evaluate("const t = [...document.querySelectorAll('#dispatch-steps [role=tab]')]; return t.length === 2 && Math.round(t[0].getBoundingClientRect().top) === Math.round(t[1].getBoundingClientRect().top) && t.every(x => [...x.children].pop().getBoundingClientRect().height === 0);"));
+    check("手机：页头黄字收起，日期后有 i", await evaluate("return " + yellow + ".getBoundingClientRect().height === 0 && document.querySelectorAll('[data-phone-info]').length >= 3;"));
+    check("手机：Step 2 说明和 How to use 收起", await evaluate("const s = document.querySelector('[aria-label=\"Buses & drivers\"]'); const d = [...s.querySelectorAll('details')].find(x => x.textContent.includes('How to use — Buses')); return ![...s.querySelectorAll('div')].some(x => x.textContent.startsWith(\"CCL's schedule from Discord\") && x.getBoundingClientRect().height > 0) && (!d || d.getBoundingClientRect().height === 0);"));
+    await evaluate("document.querySelector('[aria-label=\"Buses & drivers\"] [data-phone-info]').click();");
+    await sleep(200);
+    check("手机：点 Step 2 的 i 出说明和 How to use", await evaluate("const s = document.querySelector('[aria-label=\"Buses & drivers\"]'); const d = [...s.querySelectorAll('details')].find(x => x.textContent.includes('How to use — Buses')); return [...s.querySelectorAll('div')].some(x => x.textContent.startsWith(\"CCL's schedule from Discord\") && x.getBoundingClientRect().height > 0) && !!d && d.getBoundingClientRect().height > 0;"));
+    await cdp("Emulation.clearDeviceMetricsOverride");
+    await sleep(300);
+    check("电脑：黄字、步骤小字照旧显示，没有 i", await evaluate("return " + yellow + ".getBoundingClientRect().height > 0 && [...document.querySelectorAll('[data-phone-info]')].every(b => b.getBoundingClientRect().width === 0) && [...document.querySelectorAll('#dispatch-steps [role=tab]')].every(x => [...x.children].pop().getBoundingClientRect().height > 0);"));
     await goto("about:blank");
     await sleep(300);
   }

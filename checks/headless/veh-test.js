@@ -361,6 +361,23 @@ async function run() {
   await evaluate("$btn('Close', document.querySelector('[data-bulk-import]')).click();");
   await waitFor("!document.querySelector('[data-bulk-import]')");
 
+  // 手机版（Annie 2026-11-01 手机版规则）：+ Add Vehicle、Extra columns 默认收起，先给列表；How to use 在最底
+  await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+  await goto(`${APP}/settings/vehicles`);
+  await waitFor("document.querySelectorAll('tbody tr').length > 0", 30000);
+  await sleep(300);
+  const shownBox = (sel) => `(() => { const e = document.querySelector(${JSON.stringify(sel)}); return !!e && e.getBoundingClientRect().height > 0; })()`;
+  check("手机：Add Vehicle 表单默认收起", !(await evaluate(`return ${shownBox("input[placeholder='e.g. 2657']")};`)));
+  check("手机：Extra columns 默认收起", !(await evaluate(`return ${shownBox("[aria-label='Extra columns'] form")};`)));
+  check("手机：车辆列表在第一屏（表格顶 < 450px）", (await evaluate("return document.querySelector('table').getBoundingClientRect().top;")) < 450);
+  check("手机：How to use 在列表下面", await evaluate("const d = [...document.querySelectorAll('details')].find(x => /How to use/.test(x.textContent) && x.getBoundingClientRect().height > 0); return !!d && d.getBoundingClientRect().top > document.querySelector('table').getBoundingClientRect().bottom;"));
+  await evaluate("document.querySelector('[data-phone-fold=\"add-vehicle\"]').click();");
+  await sleep(200);
+  check("手机：点 + Add Vehicle 展开表单", await evaluate(`return ${shownBox("input[placeholder='e.g. 2657']")};`));
+  await cdp("Emulation.clearDeviceMetricsOverride");
+  await sleep(300);
+  check("电脑：表单照旧展开、How to use 照旧在最上面", (await evaluate(`return ${shownBox("[aria-label='Extra columns'] form")};`)) && (await evaluate("const d = [...document.querySelectorAll('details')].find(x => /How to use/.test(x.textContent) && x.getBoundingClientRect().height > 0); return !!d && d.getBoundingClientRect().top < document.querySelector('table').getBoundingClientRect().top;")));
+
   // 权限 / 未登录
   await ctl({ staff: true });
   await goto(`${APP}/settings/vehicles`);

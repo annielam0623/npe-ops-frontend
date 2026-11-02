@@ -62,6 +62,7 @@ import {
 import { LunchDialog } from "./lunch-dialog";
 import { TourTable } from "./tour-table";
 import { PageShortcutBar } from "@/components/nav/page-shortcut-bar";
+import { PhoneShortcutStar } from "@/components/ui/phone";
 import { PageLink } from "@/components/ui/page-link";
 import { TourUploadDialog } from "./tour-upload-dialog";
 
@@ -388,6 +389,7 @@ export function TourTrackingView() {
           className="pointer-events-none absolute right-0 -bottom-[18px] left-0 h-9 rounded-[50%_50%_0_0/100%_100%_0_0] bg-[#f4f0e6]"
         />
         <div className="relative z-[1] flex items-center gap-3.5">
+          <PhoneShortcutStar />
           <h1 className="text-[17px] font-bold tracking-[.2px] text-white">
             Tour Confirmation Tracking
           </h1>

@@ -212,9 +212,9 @@ async function run() {
   // ── 别的页面：顶栏下面的 shortcuts 导航条（Annie 2026-10-14）：← Back、Dashboard 第一个，钉在上面 ──
   const bar = "document.querySelector('section[aria-label=\"My shortcuts\"]')";
   await waitFor(`${bar} && ${bar}.querySelector('[data-shortcut=dashboard]')`);
-  check("导航条：在顶栏下面（不在页面里）、最左 ← Back、Dashboard 第一个", await evaluate(`const b = ${bar}; return !b.closest('main') && b.previousElementSibling?.tagName === 'HEADER' && b.querySelector('button').textContent.trim() === '← Back' && b.querySelector('li').dataset.shortcut === 'dashboard' && !b.querySelector('[data-shortcut=dashboard] button');`));
+  check("导航条：在顶栏下面（不在页面里）、最左 ← Back、Dashboard 第一个", await evaluate(`const b = ${bar}; return !b.closest('main') && (b.closest('[data-phone-shortcuts]') || b).previousElementSibling?.tagName === 'HEADER' && b.querySelector('button').textContent.trim() === '← Back' && b.querySelector('li').dataset.shortcut === 'dashboard' && !b.querySelector('[data-shortcut=dashboard] button');`));
   check("导航条里有 Tracking 小部件：在最左（药丸之前），三个圆标 蓝 / 绿 / 紫，链到三个 Tracking 页", await evaluate(`const li = [...${bar}.querySelectorAll('li[data-shortcut]')]; const w = ${bar}.querySelector('[data-shortcut=tracking_widget]'); if (!w || li[0].dataset.shortcut !== 'dashboard' || w.getBoundingClientRect().right > li[0].getBoundingClientRect().left) return false; const c = [...w.querySelectorAll('[data-tracking-circle]')]; return c.map(e => e.getAttribute('href')).join() === '/morning-pickup/tracking,/tour-confirmation/tracking,/tickets-reminder/tracking' && c.map(e => e.style.getPropertyValue('--ac').trim()).join('|') === '#3b82f6|#22c55e|#6d5bd0';`));
-  check("导航条和顶栏一起钉在上面（sticky）", await evaluate(`return getComputedStyle(${bar}.parentElement).position === 'sticky';`));
+  check("导航条和顶栏一起钉在上面（sticky）", await evaluate(`return getComputedStyle(${bar}.closest('[data-app-topbar]')).position === 'sticky';`));
   check("侧栏顶部不再写名字（Operations Center 下面）", await evaluate(`return !${nav}.querySelector('a[href=\"/dashboard\"]').parentElement.textContent.includes('ZZ Test');`));
   await evaluate(`${bar}.querySelector('button').click();`);
   await waitFor("location.pathname === '/dashboard'");
@@ -229,6 +229,25 @@ async function run() {
   await sleep(400);
   check("窄屏：点 ☰ 打开", await evaluate(`return ${nav}.getBoundingClientRect().left >= 0;`));
   await cdp("Emulation.clearDeviceMetricsOverride");
+
+  // 手机版（Annie 2026-11-01「用方案B」）：顶栏 48px；My shortcuts 条收进顶栏的 ★，点开才出；电脑上没有 ★、条照旧
+  await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+  await goto(`${APP}/dispatch/guide-sheet`);
+  await waitFor("document.querySelector('[data-phone-star]')");
+  await sleep(300);
+  const stripShown = "(() => { const s = document.querySelector('[data-phone-shortcuts]'); return !!s && s.getBoundingClientRect().height > 0; })()";
+  check("手机：顶栏 48px 高", (await evaluate("return Math.round(document.querySelector('header').getBoundingClientRect().height);")) === 48);
+  check("手机：shortcut 条默认收起，顶栏有 ★", !(await evaluate(`return ${stripShown};`)) && (await evaluate("return document.querySelector('[data-phone-star]').getBoundingClientRect().width > 0;")));
+  await evaluate("document.querySelector('[data-phone-star]').click();");
+  await sleep(200);
+  check("手机：点 ★ 出 shortcut 条", await evaluate(`return ${stripShown} && document.querySelector('[data-phone-star]').getAttribute('aria-expanded') === 'true';`));
+  await evaluate("document.querySelector('[data-phone-star]').click();");
+  await sleep(200);
+  check("手机：再点 ★ 收起", !(await evaluate(`return ${stripShown};`)));
+  check("手机：内容区里的按钮变小（13px）", await evaluate("const b = [...document.querySelectorAll('[data-phone-compact] button')].find(x => x.getBoundingClientRect().width > 0); return !b || getComputedStyle(b).fontSize === '13px';"));
+  await cdp("Emulation.clearDeviceMetricsOverride");
+  await sleep(300);
+  check("电脑：没有 ★，shortcut 条照旧显示，顶栏 64px", (await evaluate("return document.querySelector('[data-phone-star]').getBoundingClientRect().width === 0;")) && (await evaluate(`return ${stripShown};`)) && (await evaluate("return Math.round(document.querySelector('header').getBoundingClientRect().height);")) === 64);
 
   // /auth/login 是后端代理的登录页（next.config.ts 转发，后端 G32），不经过本仓库的 React 页面，
   // 自然没有侧栏——这里只确认代理生效、看到的是后端的内容，不是本仓库的 404。

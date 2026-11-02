@@ -116,7 +116,8 @@ import {
   SingleBusGuests,
   TourSeatingNotes,
 } from "./seating";
-import { StepBox } from "./step-box";
+import { StepBox, useStepInfoHide } from "./step-box";
+import { usePhoneInfo } from "@/components/ui/phone";
 import { lockedByText, useEditLock } from "./use-edit-lock";
 import { PrivateOrderCards } from "./private-orders";
 import { RelayRow, VanBlock } from "./vehicle-row";
@@ -212,6 +213,8 @@ const TABS: readonly [Tab, string, string, string][] = [
 ];
 
 export function DispatchView() {
+  // 手机上页头那句黄字收进日期后的「i」（Annie 2026-11-01 手机版规则）。
+  const headInfo = usePhoneInfo("About this page");
   const [day, setDay] = useState<DispatchDay | null>(null);
   const [rows, setRows] = useState<DispatchRow[]>([]);
   const [base, setBase] = useState<DispatchRow[]>([]);
@@ -1596,8 +1599,11 @@ export function DispatchView() {
         {/* 照旧页面 `.dhead`：日期是这一页的主标题（深底上，白字），右边换日期。 */}
         <header className="mb-4 flex flex-wrap items-start justify-between gap-[18px]">
           <div>
-            <h1 className="m-0 flex flex-wrap items-center gap-3 text-[29px] leading-[1.12] font-bold tracking-[-.02em] text-white">
-              <span>{day ? fmtLong(day.run_date) : " "}</span>
+            <h1 className="m-0 flex flex-wrap items-center gap-3 text-[29px] leading-[1.12] font-bold tracking-[-.02em] text-white max-sm:gap-2 max-sm:text-[22px]">
+              <span>
+                {day ? fmtLong(day.run_date) : " "}
+                {viewOnly ? null : headInfo.button}
+              </span>
               {tag ? (
                 <span className="relative -top-0.5 rounded-full border border-[rgba(59,130,246,.35)] bg-[rgba(59,130,246,.18)] px-2.5 py-1 text-[11px] font-bold tracking-[.05em] text-[#93c5fd] uppercase">
                   {tag}
@@ -1607,7 +1613,12 @@ export function DispatchView() {
             {/* 原来写「Saving sends nothing…」；分步以后照后端 G29 第 7 条改成按步骤说；10-07 拆成两个标签。 */}
             {/* Annie 2026-10-15：这句改黄色（琥珀，同步骤条当前块）。 */}
             {viewOnly ? null : (
-              <p className="mt-1.5 mb-0 text-[13.5px] text-[#fbbf24]">
+              <p
+                className={cn(
+                  "mt-1.5 mb-0 text-[13.5px] text-[#fbbf24]",
+                  headInfo.hide,
+                )}
+              >
                 Assign the buses, drivers and hotels, then Send: driver texts
                 first, then guests&rsquo; morning pickup texts.
               </p>
@@ -1696,7 +1707,7 @@ export function DispatchView() {
                 id="dispatch-steps"
                 role="tablist"
                 aria-label="Dispatch"
-                className="mb-[18px] flex scroll-mt-24 flex-col sm:flex-row"
+                className="mb-[18px] flex scroll-mt-24 flex-row max-sm:mb-3"
               >
                 {TABS.map(([key, step, label, desc], n) => {
                   const on = tab === key;
@@ -1723,9 +1734,8 @@ export function DispatchView() {
                         // 点过 Completed：② Send 黄框闪 2 秒（同 Check the bus 闪团块）。
                         className={cn(
                           "grid flex-1 grid-cols-[auto_minmax(0,1fr)] items-center gap-x-2 gap-y-0.5 border px-5 py-3.5 text-left transition-colors",
-                          n === 0
-                            ? "rounded-t-[14px] sm:rounded-l-[14px] sm:rounded-tr-none"
-                            : "rounded-b-[14px] sm:rounded-r-[14px] sm:rounded-bl-none",
+                          // 手机上也并排一行（Annie 2026-11-01 手机版规则）。
+                          n === 0 ? "rounded-l-[14px]" : "rounded-r-[14px]",
                           on
                             ? "border-[rgba(251,191,36,.6)] bg-[rgba(251,191,36,.10)] text-white shadow-[inset_0_-3px_0_#fbbf24]"
                             : "border-white/10 bg-white/[.04] text-[#cbd5e1] hover:bg-white/[.07]",
@@ -1737,13 +1747,13 @@ export function DispatchView() {
                         <span
                           aria-hidden
                           className={cn(
-                            "text-[20px] leading-tight font-bold",
+                            "text-[20px] leading-tight font-bold max-sm:text-[16px]",
                             on ? "text-[#fbbf24]" : "text-[#94a3b8]",
                           )}
                         >
                           {step}
                         </span>
-                        <span className="flex flex-wrap items-center gap-2 text-[20px] leading-tight font-bold tracking-[-.01em]">
+                        <span className="flex flex-wrap items-center gap-2 text-[20px] leading-tight font-bold tracking-[-.01em] max-sm:text-[16px]">
                           {label}
                           {key === "assign" &&
                           pendingSave &&
@@ -1756,7 +1766,7 @@ export function DispatchView() {
                             </span>
                           ) : null}
                         </span>
-                        <span className="col-start-2 text-[12.5px] text-[#94a3b8]">
+                        <span className="col-start-2 text-[12.5px] text-[#94a3b8] max-sm:hidden">
                           {desc}
                         </span>
                       </button>
@@ -3014,8 +3024,10 @@ function DiscordIcon() {
 }
 
 function HowToUse() {
+  // 手机上跟着 Step 2 标题后的「i」显示 / 收起。
+  const stepHide = useStepInfoHide();
   return (
-    <details className={HOWTO}>
+    <details className={cn(HOWTO, stepHide)}>
       <summary className={HOWTO_SUMMARY}>
         📖 How to use — Buses &amp; drivers
       </summary>

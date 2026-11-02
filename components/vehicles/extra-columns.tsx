@@ -15,6 +15,7 @@ import {
   BTN_SUBMIT_CLASS,
 } from "@/components/pickup-locations/legacy-ui";
 import { cn } from "@/lib/utils";
+import { usePhoneCollapse } from "@/components/ui/phone";
 import {
   COLUMN_LABEL_MAX,
   createVehicleColumn,
@@ -35,6 +36,8 @@ export function ExtraColumns({
   onChanged: () => Promise<void>;
   onUnauthorized: () => void;
 }) {
+  // 手机上默认收起（Annie 2026-11-01 手机版规则）。
+  const fold = usePhoneCollapse();
   const [label, setLabel] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ tone: "ok" | "error"; text: string } | null>(
@@ -91,8 +94,20 @@ export function ExtraColumns({
   return (
     <section aria-label="Extra columns" className={CARD_CLASS}>
       <div className={CARD_HEADER_CLASS}>
-        <h2 className={CARD_TITLE_CLASS}>Extra columns</h2>
+        <h2 className={CARD_TITLE_CLASS}>
+          <button
+            type="button"
+            onClick={fold.toggle}
+            aria-expanded={fold.open}
+            data-phone-fold="extra-columns"
+            className="flex w-full items-center gap-2 text-left sm:pointer-events-none"
+          >
+            Extra columns
+            {fold.caret}
+          </button>
+        </h2>
       </div>
+      <div className={fold.hide}>
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -231,6 +246,7 @@ export function ExtraColumns({
             );
           })
         )}
+      </div>
       </div>
     </section>
   );

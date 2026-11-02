@@ -61,6 +61,7 @@ import {
 } from "./config";
 import { TicketsTable } from "./tickets-table";
 import { PageShortcutBar } from "@/components/nav/page-shortcut-bar";
+import { PhoneShortcutStar } from "@/components/ui/phone";
 import { UploadDialog } from "./upload-dialog";
 
 type LoadState =
@@ -862,6 +863,7 @@ function HeroHeader() {
           <path d="M0,32 Q720,0 1440,32 L1440,32 L0,32 Z" fill="#f0f4f8" />
         </svg>
       </div>
+      <PhoneShortcutStar className="relative z-[3]" />
       <div className="relative z-[3] flex-1">
         <h1 className="m-0 text-[20px] font-bold tracking-[1px] uppercase [text-shadow:0_2px_14px_rgba(95,168,255,0.35)]">
           Tickets Reminder Log

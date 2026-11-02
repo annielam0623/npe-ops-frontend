@@ -38,6 +38,7 @@ import { NAV_DRAG_TYPE, NavProvider, useNav } from "./nav-context";
 import { pageTitleFor } from "./page-titles";
 import { PARTNER_HOME_HREF, PartnerFrame } from "./partner-frame";
 import { ShortcutBar } from "./shortcut-bar";
+import { PhoneShortcutStar, PhoneShortcutsSlot } from "@/components/ui/phone";
 
 /**
  * 整站外框。颜色、顶栏照旧后台 base.html（深色）；侧栏按 dashboard 改版阶段一（Annie 2026-10-11 审过，
@@ -159,7 +160,7 @@ function Frame({
           data-app-topbar
           className="sticky top-0 z-30 shrink-0 backdrop-blur-[18px] print:hidden"
         >
-          <header className="flex h-16 items-center justify-between gap-3 border-b border-white/[.06] bg-[rgba(5,11,19,.56)] px-4 sm:px-7 print:hidden">
+          <header className="flex h-12 items-center sm:h-16 justify-between gap-3 border-b border-white/[.06] bg-[rgba(5,11,19,.56)] px-4 sm:px-7 print:hidden">
             <span className="flex min-w-0 items-center gap-3">
               <button
                 type="button"
@@ -172,7 +173,7 @@ function Frame({
               {pathname === "/dashboard" ? (
                 // dashboard 的问候语和日期放在顶栏这一行（Annie 2026-10-14：问候语不需要那么多位置）。
                 // Annie 2026-10-14：问候语字放大（15 → 20）。
-                <span className="truncate text-[20px] font-semibold text-white">
+                <span className="truncate text-[17px] font-semibold text-white sm:text-[20px]">
                   {me
                     ? `Good morning, ${greetingName(me.display_name, me.username)}`
                     : "Dashboard"}
@@ -183,12 +184,14 @@ function Frame({
                   ) : null}
                 </span>
               ) : (
-                <span className="truncate text-[20px] font-semibold tracking-[-.02em] text-white">
+                <span className="truncate text-[17px] font-semibold tracking-[-.02em] text-white sm:text-[20px]">
                   {pageTitleFor(pathname)}
                 </span>
               )}
             </span>
-            <span className="flex items-center gap-3.5">
+            <span className="flex items-center gap-2 sm:gap-3.5">
+              {/* 手机上 My shortcuts 条收进这颗 ★（Annie 2026-11-01「用方案B」）；Dashboard 没有条，也不出 ★。 */}
+              {pathname === "/dashboard" ? null : <PhoneShortcutStar />}
               {/* 原来是照旧后台 base.html 的一个不能输入的搜索框样子；Annie 2026-10-14 定改成真的订单搜索，所有页面都有。 */}
               {/* 右边原来写登录名，Annie 2026-10-14 让拿掉（侧栏底部仍有名字）。 */}
               {/* 没有 orders.view 的人不显示订单搜索（员工权限，后端 17 2026-10-26）。 */}
@@ -197,10 +200,15 @@ function Frame({
           </header>
           {/* Dashboard 自己有 My shortcuts 框；别的页面才在顶栏下面显示成导航条。 */}
           {pathname === "/dashboard" ? null : (
-            <ShortcutBar pathname={pathname} />
+            <PhoneShortcutsSlot pathname={pathname}>
+              <ShortcutBar pathname={pathname} />
+            </PhoneShortcutsSlot>
           )}
         </div>
-        <div className="min-w-0 flex-1 p-4 sm:p-7 print:p-0">
+        <div
+          data-phone-compact
+          className="min-w-0 flex-1 p-3 sm:p-7 print:p-0"
+        >
           <PermissionGate pathname={pathname}>{children}</PermissionGate>
         </div>
       </div>

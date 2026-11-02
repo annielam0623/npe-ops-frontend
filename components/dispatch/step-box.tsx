@@ -1,4 +1,16 @@
-import type { ReactNode } from "react";
+"use client";
+
+import { createContext, useContext, type ReactNode } from "react";
+
+import { usePhoneInfo } from "@/components/ui/phone";
+import { cn } from "@/lib/utils";
+
+/** 手机上这一步的「i」开没开（这一步里的 How to use 框跟着它显示 / 收起）。电脑上不管。 */
+const StepInfoContext = createContext(true);
+/** 这一步里的说明类东西（How to use 框）加这个 class：手机上没点 i 时收起。 */
+export function useStepInfoHide(): string {
+  return useContext(StepInfoContext) ? "" : "max-sm:hidden";
+}
 
 /**
  * 排车页按操作顺序分的一步（后端 G29 第一批，Annie 2026-10-05 定）：序号 + 标题 + 一句话，
@@ -6,6 +18,7 @@ import type { ReactNode } from "react";
  * Assign：Step 1 Guest lists / 2 Buses & drivers；Send：Step 1 Send to drivers / 2 Morning Relay — text guests。
  *
  * 样子照旧页面 dispatch_assignments.html 的 `.dstep*`：深底上的半透明框（不是白卡片）。
+ * 手机上（Annie 2026-11-01 手机版规则）：那句说明和 How to use 收进标题后的「i」。
  */
 export function StepBox({
   n,
@@ -23,26 +36,39 @@ export function StepBox({
   headExtra?: ReactNode;
   children: ReactNode;
 }) {
+  const info = usePhoneInfo(`About ${title}`);
   return (
     <section
       id={id}
       aria-label={title}
-      className="max-w-full min-w-0 scroll-mt-20 rounded-[14px] border border-white/10 bg-white/[.025] p-4"
+      className="max-w-full min-w-0 scroll-mt-20 rounded-[14px] border border-white/10 bg-white/[.025] p-4 max-sm:p-3"
     >
       <div className="mb-1 flex flex-wrap items-baseline gap-2.5">
         <span className="font-mono text-[12px] tracking-[.08em] text-[#fbbf24] uppercase">
           Step {n}
         </span>
-        <h2 className="m-0 text-[18px] font-[650] text-white">{title}</h2>
-        {headExtra}
+        <h2 className="m-0 text-[18px] font-[650] text-white max-sm:text-[16px]">
+          {title}
+          {info.button}
+        </h2>
+        {headExtra ? (
+          <span className={cn("contents", info.hide)}>{headExtra}</span>
+        ) : null}
       </div>
       {/* 说明告诉 staff 这一步做什么 / 发什么（Annie 2026-10-07：原来 12px 浅灰看不清，放大到 14px）。
           旧页面 `.dstep-d` 是 12.5px var(--muted)；字号按 Annie 的要求留 14px，颜色用深底上看得清的 #cbd5e1。
           不限宽、占满整行（Annie 2026-10-12：别在中间就折行）。 */}
-      <div className="mb-3 space-y-1 text-[14px] leading-relaxed text-[#cbd5e1] [&_b]:text-white">
+      <div
+        className={cn(
+          "mb-3 space-y-1 text-[14px] leading-relaxed text-[#cbd5e1] [&_b]:text-white",
+          info.hide,
+        )}
+      >
         {desc}
       </div>
-      <div className="flex min-w-0 flex-col gap-3">{children}</div>
+      <StepInfoContext.Provider value={info.open}>
+        <div className="flex min-w-0 flex-col gap-3">{children}</div>
+      </StepInfoContext.Provider>
     </section>
   );
 }

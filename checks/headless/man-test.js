@@ -1678,6 +1678,21 @@ async function run() {
   }
   await ctl({ staffPerms: null, superAdmin: false });
 
+  // ── 手机版（Annie 2026-11-01 手机版规则）：Columns / Export / Show hidden / Upload 收进 ⋯；Legacy 黄框一行 + More；发送条一行 ──
+  await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+  await openPage(`${APP}/manifests?date=${today}&tab=bus`);
+  await sleep(500);
+  check("手机：Columns 不在工具条上，有 ⋯", await evaluate("const vis = (e) => !!e && e.getBoundingClientRect().height > 0; const c = [...document.querySelectorAll('button')].filter(b => b.textContent.trim() === '☰ Columns'); return c.every(b => !vis(b)) && vis(document.querySelector('[data-phone-more]'));"));
+  await evaluate("document.querySelector('[data-phone-more]').click();");
+  await sleep(200);
+  check("手机：点 ⋯ 出 Columns / Export CSV / Upload", await evaluate("const m = document.querySelector('[data-phone-more-menu]'); return !!m && ['☰ Columns', '↓ Export CSV', 'Show hidden rows', 'Upload confirmation'].every(t => m.textContent.includes(t));"));
+  await evaluate("document.querySelector('[data-phone-more]').click();");
+  check("手机：Legacy 黄框只占一行，有 More", await evaluate("const o = document.querySelector('[data-phone-oneline]'); return !!o && o.getBoundingClientRect().height < 34 && o.textContent.includes('More');"));
+  check("手机：发送条一行", await evaluate("const g = document.querySelector('[aria-label=\"Selected guests\"]'); return !!g && g.getBoundingClientRect().height < 56;"));
+  await cdp("Emulation.clearDeviceMetricsOverride");
+  await sleep(300);
+  check("电脑：Columns 照旧在工具条上，没有 ⋯", await evaluate("const vis = (e) => !!e && e.getBoundingClientRect().height > 0; return [...document.querySelectorAll('button')].some(b => b.textContent.trim() === '☰ Columns' && vis(b)) && !vis(document.querySelector('[data-phone-more]'));"));
+
   // ── 未登录：跳 ops 自己的登录页带 next ──
   await ctl({ fail401: true });
   await goto(`${APP}/manifests?date=${today}&tab=tickets`);

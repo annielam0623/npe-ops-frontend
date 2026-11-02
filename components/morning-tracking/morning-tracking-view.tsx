@@ -46,6 +46,8 @@ import {
   summarizeDrivers,
 } from "./config";
 import { PageShortcutBar } from "@/components/nav/page-shortcut-bar";
+import { PhoneShortcutStar } from "@/components/ui/phone";
+import { useIsPhone } from "@/lib/phone";
 import { TrackingTable } from "./tracking-table";
 
 type LoadState =
@@ -108,6 +110,12 @@ export function MorningTrackingView() {
       window.location.href = buildLegacyLoginRedirectUrl(window.location.href);
     }
   }, []);
+
+  // 手机上只看今天（Annie 2026-11-01「然后morning只用显示今天的」，选 A：电脑版照旧能换日期）。
+  const isPhone = useIsPhone();
+  useEffect(() => {
+    if (isPhone && date && date !== laToday()) setDate(laToday());
+  }, [isPhone, date]);
 
   // 要看哪天：地址栏 ?date=（dashboard 的消息卡片会带），否则洛杉矶的今天。
   useEffect(() => {
@@ -287,6 +295,7 @@ export function MorningTrackingView() {
   return (
     // 整页照旧页面 tracking_morning.html（不套站点外框）：深色底 #0d1b2e、56px 顶栏、IBM Plex Sans。
     <main
+      data-phone-compact
       className={cn(
         trackingFont.className,
         "min-h-screen bg-[#0d1b2e] leading-[normal] text-[#e0eaf6]",
@@ -294,9 +303,10 @@ export function MorningTrackingView() {
     >
       {/* 最上面的 My shortcuts 条（Annie 2026-10-19：所有页面包括 tracking 页）；页面原来的 ← Back 去掉，页面顶栏钉在它下面（48px）。 */}
       <PageShortcutBar />
-      <div className="sticky top-12 z-10 flex h-14 items-center justify-between border-b border-white/[.08] bg-[#0a1628] px-6">
-        <div className="flex items-center gap-3.5">
-          <h1 className="text-[17px] font-bold text-white">
+      <div className="sticky top-0 z-10 flex h-12 items-center justify-between gap-2 border-b border-white/[.08] bg-[#0a1628] px-3 sm:top-12 sm:h-14 sm:px-6">
+        <div className="flex min-w-0 items-center gap-2 sm:gap-3.5">
+          <PhoneShortcutStar />
+          <h1 className="truncate text-[15px] font-bold text-white sm:text-[17px]">
             🔵 Morning Pickup Tracking
           </h1>
         </div>
@@ -328,7 +338,7 @@ export function MorningTrackingView() {
         </div>
       </div>
 
-      <div className="w-full px-6 py-5">
+      <div className="w-full px-3 py-3 sm:px-6 sm:py-5">
         {state.kind === "forbidden" ? (
           <TrackingNotice dark>
             <p className="font-semibold text-white">Staff access required</p>
@@ -336,7 +346,14 @@ export function MorningTrackingView() {
           </TrackingNotice>
         ) : (
           <>
-            <div className="mb-[18px] flex items-center gap-2">
+            {/* 手机上不出日期切换，只写今天。 */}
+            <p
+              data-phone-today
+              className="mb-2 text-[14px] font-semibold text-[#7ab3e0] sm:hidden"
+            >
+              Today · {phoneDay(today)}
+            </p>
+            <div className="mb-[18px] flex items-center gap-2 max-sm:hidden">
               <button
                 type="button"
                 aria-label="Previous day"
@@ -407,7 +424,7 @@ export function MorningTrackingView() {
             <div
               role="group"
               aria-label="Filter by driver"
-              className="mb-[18px] flex flex-wrap gap-1.5"
+              className="mb-3 flex flex-wrap gap-1.5 sm:mb-[18px]"
             >
               <DriverPill active={!activeDriver} onClick={() => setDriver("")}>
                 {/* 加载完之前只写 All，加载后带人数（同旧页面）。 */}
@@ -434,7 +451,7 @@ export function MorningTrackingView() {
 
             <section
               aria-label="Summary"
-              className="mb-5 flex flex-wrap gap-2.5"
+              className="mb-3 flex flex-wrap gap-2.5 max-sm:flex-nowrap max-sm:gap-1.5 sm:mb-5"
             >
               <StatCard label="Total" value={stats ? stats.total : "—"} />
               <StatCard
@@ -477,7 +494,8 @@ export function MorningTrackingView() {
                 </h2>
               </div>
               <div className="overflow-x-auto">
-                <div className="mb-1 flex flex-wrap justify-between gap-x-4 gap-y-1 px-0.5 text-[11px] text-[#aaa]">
+                {/* 纯操作提示：手机上不显示（手机上也拖不了列）。 */}
+                <div className="mb-1 flex flex-wrap justify-between gap-x-4 gap-y-1 px-0.5 text-[11px] text-[#aaa] max-sm:hidden">
                   <span className="font-semibold text-[#5ba3d9]">
                     Click a Bus # to see live tracking (opens Samsara in a new
                     tab)
@@ -557,7 +575,17 @@ export function MorningTrackingView() {
 
 /** 旧页面 .btn：深蓝底、浅蓝字。 */
 const BTN =
-  "inline-flex cursor-pointer items-center gap-[5px] rounded-[7px] border border-white/15 bg-[#1a2f4a] px-3.5 py-1.5 text-[12px] text-[#a0c0e0] no-underline transition-colors hover:bg-[#1e3a5f] hover:text-white disabled:opacity-60";
+  "inline-flex cursor-pointer items-center gap-[5px] rounded-[7px] border border-white/15 bg-[#1a2f4a] px-3.5 py-1.5 text-[12px] text-[#a0c0e0] no-underline transition-colors hover:bg-[#1e3a5f] hover:text-white disabled:opacity-60 max-sm:whitespace-nowrap max-sm:px-2.5 max-sm:py-1";
+
+/** 手机上「Today · Sun, Nov 1」。 */
+function phoneDay(ymd: string): string {
+  if (!ymd) return "";
+  return new Date(`${ymd}T12:00:00`).toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
+}
 
 /** 旧页面 .btn-nav：32px 方块的 ‹ ›。 */
 const NAV_BTN =
@@ -603,17 +631,19 @@ function StatCard({
   return (
     <div
       title={title}
-      className="min-w-[100px] rounded-[10px] border border-white/[.08] bg-[#1a2f4a] px-5 py-3 text-center"
+      className="min-w-[100px] rounded-[10px] border border-white/[.08] bg-[#1a2f4a] px-5 py-3 text-center max-sm:min-w-0 max-sm:flex-1 max-sm:px-1 max-sm:py-1.5"
     >
       <div
         className={cn(
-          "text-[26px] font-bold text-white tabular-nums",
+          "text-[26px] font-bold text-white tabular-nums max-sm:text-[18px]",
           valueClass,
         )}
       >
         {value}
       </div>
-      <div className="mt-0.5 text-[11px] text-[#7a9bbe]">{label}</div>
+      <div className="mt-0.5 text-[11px] text-[#7a9bbe] max-sm:text-[10px] max-sm:leading-tight">
+        {label}
+      </div>
     </div>
   );
 }

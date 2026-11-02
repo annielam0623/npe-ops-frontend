@@ -2,6 +2,8 @@
 
 import { usePathname } from "next/navigation";
 
+import { PhoneShortcutsSlot } from "@/components/ui/phone";
+
 import { NavProvider } from "./nav-context";
 import { ShortcutBar } from "./shortcut-bar";
 
@@ -14,9 +16,13 @@ export function PageShortcutBar() {
   const pathname = usePathname() ?? "/";
   return (
     <NavProvider>
-      <div className="sticky top-0 z-30 bg-[#06101c] print:hidden">
+      {/* 手机上收起来，点页面标题栏的 ★ 才出（Annie 2026-11-01「用方案B」）；标题栏手机上钉在最上面。 */}
+      <PhoneShortcutsSlot
+        pathname={pathname}
+        className="sticky top-0 z-30 bg-[#06101c] print:hidden"
+      >
         <ShortcutBar pathname={pathname} />
-      </div>
+      </PhoneShortcutsSlot>
     </NavProvider>
   );
 }

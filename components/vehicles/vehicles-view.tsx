@@ -49,6 +49,7 @@ import {
 import type { Vehicle, VehicleColumn, VehicleInput } from "@/types";
 
 import { ExtraColumns } from "./extra-columns";
+import { usePhoneCollapse } from "@/components/ui/phone";
 import { VehicleImportPanel } from "./import-panel";
 import { VehicleLog } from "./vehicle-log";
 
@@ -124,6 +125,8 @@ function inputOf(d: Draft): VehicleInput {
 export function VehiclesView() {
   const [view, setView] = useState<ViewState>({ kind: "loading" });
   const [reloadKey, setReloadKey] = useState(0);
+  // 手机上「+ Add Vehicle」默认收起，先给列表（Annie 2026-11-01 题 2 同意推荐）。
+  const addFold = usePhoneCollapse();
   const [search, setSearch] = useState("");
   const [addDraft, setAddDraft] = useState<Draft>(EMPTY_DRAFT);
   const [adding, setAdding] = useState(false);
@@ -459,12 +462,27 @@ export function VehiclesView() {
         </ErrorBanner>
       ) : (
         <>
-          <HowToUse />
+          {/* How to use：电脑上照旧在最上面；手机上放到页面最底（Annie 2026-11-01 手机版规则）。 */}
+          <div className="max-sm:hidden">
+            <HowToUse />
+          </div>
 
           <section className={CARD_CLASS}>
             <div className={CARD_HEADER_CLASS}>
-              <h2 className={CARD_TITLE_CLASS}>+ Add Vehicle</h2>
+              <h2 className={CARD_TITLE_CLASS}>
+                <button
+                  type="button"
+                  onClick={addFold.toggle}
+                  aria-expanded={addFold.open}
+                  data-phone-fold="add-vehicle"
+                  className="flex w-full items-center gap-2 text-left sm:pointer-events-none"
+                >
+                  + Add Vehicle
+                  {addFold.caret}
+                </button>
+              </h2>
             </div>
+            <div className={addFold.hide}>
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -548,6 +566,7 @@ export function VehiclesView() {
                   {addResult.text}
                 </span>
               ) : null}
+            </div>
             </div>
           </section>
 
@@ -726,6 +745,9 @@ export function VehiclesView() {
           {view.kind === "ready" ? (
             <VehicleLog version={logVersion} onUnauthorized={redirectToLogin} />
           ) : null}
+          <div className="sm:hidden">
+            <HowToUse />
+          </div>
         </>
       )}
 

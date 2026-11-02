@@ -1,5 +1,6 @@
 "use client";
 
+import { PhoneMore, PhoneOneLine } from "@/components/ui/phone";
 import {
   type CSSProperties,
   useCallback,
@@ -516,6 +517,8 @@ export function ManifestsView() {
                 onUnauthorized={redirectToLogin}
                 inputClassName={SEARCH_INPUT_CLASS}
               />
+              {/* 手机上 Columns / Export / Show hidden rows / Upload 收进「⋯」（Annie 2026-11-01 手机版规则）。 */}
+              <PhoneMore>
               <button
                 type="button"
                 hidden={noFeatures}
@@ -573,6 +576,7 @@ export function ManifestsView() {
               >
                 ↑ Upload confirmation #s
               </button>
+              </PhoneMore>
               <span className="text-[12px] text-[#94a3b8] night:text-white/45">
                 {loading ? "Loading…" : null}
               </span>
@@ -747,12 +751,14 @@ export function ManifestsView() {
 
             {legacyCount > 0 ? (
               <p className={NOTE_CLASS}>
+                <PhoneOneLine>
                 ⚠️ {plural(legacyCount, "row")} on this page{" "}
                 {legacyCount === 1 ? "comes" : "come"} from data frozen before
                 Aug 16, 2026 (marked <span className="font-medium">Legacy</span>
                 ). Booking questions and most Trip / Booking fields are empty
                 for
                 {legacyCount === 1 ? " it" : " them"}.
+                </PhoneOneLine>
               </p>
             ) : null}
 
@@ -774,9 +780,9 @@ export function ManifestsView() {
               <div
                 role="group"
                 aria-label="Selected guests"
-                className="mb-3 flex flex-wrap items-center gap-2 rounded-[10px] border border-white/10 bg-white/[.04] px-3 py-2 text-[13px]"
+                className="mb-3 flex flex-wrap items-center gap-2 rounded-[10px] border border-white/10 bg-white/[.04] px-3 py-2 text-[13px] max-sm:flex-nowrap max-sm:gap-1.5 max-sm:overflow-x-auto max-sm:px-2 max-sm:py-1.5 max-sm:[&>button]:shrink-0 max-sm:[&>button]:whitespace-nowrap"
               >
-                <span className="mr-auto text-[#cbd5e1] tabular-nums">
+                <span className="mr-auto text-[#cbd5e1] tabular-nums max-sm:shrink-0 max-sm:whitespace-nowrap">
                   {plural(pickedOrders, "order")} selected · {pickedPax} pax
                 </span>
                 {noConfirm ? null : (
