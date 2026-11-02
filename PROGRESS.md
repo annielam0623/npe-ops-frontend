@@ -212,6 +212,8 @@
 ### 44. 全站手机版重新设计（派 e6 调查 + preview，2026-11-01）
 - Annie 原话：「而且我们的divce版本要重新设计一下了，太多说明和介绍的东西占了半个手机屏」；主窗口问范围，她选「全站一起（推荐）」：一套统一手机版规则，所有页面照做，新页面也照做。
 - e6：手机尺寸截各主要页面、量说明 / How to use / 提示条 / shortcut 条占多高，提统一规则（1–2 种），挑 3–4 页做「现在 / 改后」对比 preview。电脑版不变。等 preview 和题。
+- e6 preview 已出：https://claude.ai/artifact/QN1ZShgWKXFoeUSmjQgutY （390×844 模拟数据截 17 页；改后是在模拟页面上临时改样式，没写代码）。每页顶栏 + shortcut 条先吃 129px；最差：Pickup Locations 列表在第四屏（Add 表单摊开 2486px）、Vehicles 1115、Dispatch 车卡 ≈1100、Send Log 849、Manifests 740；Content Studio 整页比屏宽会左右晃。规则 11 条（手机 = 宽 < 640px）：顶栏 48、介绍进「i」、How to use 一律最底、提示条一行 + More、次要键进「⋯」、Settings 的 Add 表单收起、统计卡一行、Dispatch 步骤框一行、手机不显示 ↑↓、整页不横晃、做成共用组件写进 CLAUDE.md。方案 A（shortcut 条留一行，推荐）/ B（收进顶栏 ★）。改后：Dispatch Pull from Discord 815 → 455、Manifests 表格 740 → ≈490、Vehicles 列表 1115 → 268、Tracking 第一行 565 → 425。
+- 4 题（原文见 preview 第 5 节，已发 98）：题 1 方案 A / B（推荐 A）；题 2 Settings「+ Add …」表单手机上默认收起（推荐收起）；题 3 右下角 ↑↓ 手机上 A 不显示（推荐）/ B 只留 ↑ / C 照旧；题 4 黄框 / 红框提示压一行 + More（推荐，红色报错不压）。
 
 ### 43. 7 Days Forecast 回看历史（09，preview https://claude.ai/artifact/KgRH1xVmZ7QVgS5KnZ1wJC ，2026-11-01 问）
 - preview 代码在 task/forecast-history-preview 74e36f1（不合 main）。日期从 /api/forecast/history 取，第一项 Today (live)；过去日子只读，不出 Refresh、Antelope seats；琥珀横条「Viewing saved forecast from <date> · saved <time> PT · read only」+ 灰框「← Back to today」；没快照时不出日期选择。How to use 加一条（原文见 09 回报）。
