@@ -348,6 +348,10 @@
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 52. 司机页 Farm out 客人那一栏改用 Affiliate 的叫法（2026-11-02，Annie 提，没动手）
+- Annie 原话：「我原来说过Farm out的客人是要出现在bus manifest和司机的pick up list里，然后用个好听的名字掩盖把客人卖了的行为」。
+- 24 只读查现状：① Bus Manifest（/dispatch/manifest）已照做：转单客人在最下面灰色小栏「Affiliate」，不写合作公司名（10-18 Annie 定，affiliate-card.tsx）。② 司机手机页（后端 app/templates/field/driver_home.html:406–414，只 relay 司机看得到）栏标题写「Farm out — hand off, not our bus」，说明写「These guests go to a partner company. Pick them up the same way, but do not put them on your tour bus — hand them off to the partner.」——直接写了 Farm out 和 partner company，跟她的要求不符。员工内部页（Dispatch、Farm out Report、Settings）照旧叫 Farm out。
+- 问 Annie：司机页改成标题「Affiliate」+ 人数，说明改「Pick these guests up the same way. They ride with our affiliate, not on your tour bus. Hand them off at the meeting point.」（推荐，同 Bus Manifest 叫法）／只改标题、去掉说明／别的名字。改的是后端模板，动手后转 37。
 ### 51. 订单搜索显示整单 + 一点跳到 Main manifest 并预先勾选（2026-11-02，Annie 对后端 37 说，方案阶段，没动手）
 - A 原话：「…显示整个订单包括些什么，有没有add on，有没有reschedule fee，所有的订单里的项目都要包含进去」。现状：后端订单详情接口 LIMIT 1；前端 order-detail-view 的 Ticket Breakdown / Raw items 只显示第一项，order-lookup-api 把搜索结果每单压成第一行（线上已有的漏洞）。后端打算详情加 items（全部项）、列表每单加一句小结。例：CHDEFSJ2C。
 - B 原话：「如果需要resend confirmation或者reminder的话，再给一个链接可以一点击就进到该订单所属的main manifest页面上，停留在该订单上，订单默认勾选」。后端给 manifest_link {date, tab, pill, row_keys[]} 或 null（不在 Main manifest 上就不给链接，提示去 Order List 看状态）。
