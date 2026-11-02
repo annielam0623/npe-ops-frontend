@@ -318,6 +318,7 @@
 - 已转 57（11/2 派人）：partner 收发范围、「发给 team」（team 清单来源、CCL team 包括哪些账号、每人一份还是共享）、partner 在哪看 / 回、开关管不管 partner。91 出前端 preview（排在 Send Log 新 preview 后）。未动手。
 - Annie 补（57 转）：「那也开个页面给它们吧」⇒ CCL partner 有自己单独的 Notice 页（能看、能回），不只是 PartnerHome 一块。已转 91 加进 preview；后端方案带 partner 侧接口。
 - 91 preview https://claude.ai/artifact/CjrpyLgPdDhE4f7FHs9gWH（Today's team 加「✉ New message」；发消息选 A person / A team，CCL 标 PARTNER；CCL 首页一块 Notice + 单独 /notice 页，顶栏「Notice (N)」）。6 题：① team 消息的回复：A 回发信人 + 抄送 team 其他人（推荐）／B 只回发信人；② Got it：A 各人按各人（推荐）／B 一人按全 team 收；③ 「A person」名单：A 全部在用员工 + CCL，在线标 online（推荐）／B 只在线员工 + 全部 CCL；④ CCL 主动发：A 只能回复／B 能发，只选 NPE team（推荐）／C team 或个人；⑤ team 消息发邮件：A 每人一封，回复只站内（推荐）／B 只站内；⑥ CCL 首页 Notice：A 留一块只放新消息 + Open Notice →（推荐）／B 只一行「2 new messages」／C 什么都不加。后端要的已转 57。
+- 2026-11-02 Annie 答 ①–④（在后端主窗口 37 那里答，37 转 24）：① A ② A ③ A ④ **C**（CCL 能主动发，发给 NPE 的 team 或某个人，CCL 看得到全部 NPE 员工名字）。⑤ ⑥ 还没答，37 已问过一次，不再追问；⑥ 只涉及前端。37 请 Annie 开新的后端窗口出 G231 接口方案（带 security-auditor）。91 按 ④ C 更新 preview。还没「动手」。
 
 ### 44. 全站手机版重新设计（派 e6 调查 + preview，2026-11-01）
 - Annie 原话：「而且我们的divce版本要重新设计一下了，太多说明和介绍的东西占了半个手机屏」；主窗口问范围，她选「全站一起（推荐）」：一套统一手机版规则，所有页面照做，新页面也照做。
