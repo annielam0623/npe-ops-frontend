@@ -202,6 +202,11 @@
 - 检查：tsc / build 过、eslint 0 错；mf 225/225（Canyon 一组 16 项，含 Hoover 叫 Section order）、products 225/225（新格子 6 项）、nav 32/32。
 - 合 main 前：后端上 main 后对着真接口核 canyon_sections / layout / bus_section_order，合最新 main 重跑 mf / products / nav。
 
+## 2026-11-01 7 Days Forecast 回看历史（派给工作窗口 09，主窗口 98）—— 做 preview，等 Annie 动手
+- Annie 2026-11-01（64 转）：7 Days Forecast 的内容要保留、staff 能回看；「现在7days的前端页面也要改」。
+- 后端 64 task/forecast-history：GET /api/forecast/history → {dates}（新的在前）；GET /api/forecast/history/{date} → {date, taken_at, forecast = 当晚 23:55 PT 的 60-day 内容}；404「No snapshot was saved for …」。权限 forecast.view（含 CCL partner）。每晚 23:55 PT 存快照，第一张 11/1（等后端上线 + Annie 跑迁移）。每周日晚给 Annie 发 Excel（前端不管）。
+- 前端（64 建议）：回看日期选择；过去日子同一表格只读（不改格子、没 + guide / Refresh / 开团和限额编辑）；Canyon 剩余座位不在快照里（隐藏或「—」）；横条「Viewing saved forecast from <date>」+ 回到今天；How to use 加一行。09 出 preview。
+
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
 ### 41. Bus Manifest：Antelope 三个 canyon 的顺序和分页（91，preview https://claude.ai/artifact/SuSZPJVnMTUUirXhnpGZ4x ，2026-11-01 问）
