@@ -11,6 +11,8 @@ import {
   deleteGuidePlan,
   fetchCanyonSnapshot,
   fetchForecast60Day,
+  fetchForecastHistory,
+  fetchForecastHistoryDates,
   refreshCanyonSnapshot,
   saveForecastCell,
 } from "@/lib/forecast-api";
@@ -30,6 +32,8 @@ import { CellEditor } from "./cell-editor";
 import { formatLongDate, formatMetaTime } from "./config";
 import { ForecastGrid, type CellTarget } from "./forecast-grid";
 import { GuideEditor } from "./guide-editor";
+import { HistoryArrows } from "./history-bar";
+import { daysBefore, MAX_DAYS_BACK, mergePastDays } from "./history-merge";
 import { HowToUse } from "./how-to-use";
 import { Legend } from "./legend";
 import { ForecastReadOnly } from "./read-only";
@@ -86,6 +90,24 @@ export function ForecastView() {
   // 员工权限：没有 forecast.edit 只能看（后端 17 2026-10-26）——Refresh 不显示，表上的编辑框都打不开。
   // partner 一律只能看，勾了也一样（Annie 2026-10-27「合作方只能看…不能改或者选任何功能」）。
   const perms = usePermissions();
+  // 回看过去的日子（Annie 2026-11-01，preview v4 后「动手」）：back = 今天左边接上几天（0 = 从今天开始，最多 7 天）；
+  // 每个过去的日子取那天自己的快照（当晚 23:55 PT 存的）的第一列。没有快照的那天照日历留一列「—」。
+  const [historyDates, setHistoryDates] = useState<string[]>([]);
+  const [back, setBack] = useState(0);
+  // 读过的快照：null = 那天没有（404）或读失败。
+  const [snaps, setSnaps] = useState<Record<string, Forecast60Day | null>>({});
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchForecastHistoryDates(controller.signal).then(
+      (r) => {
+        if (!controller.signal.aborted) setHistoryDates(r.dates);
+      },
+      () => {
+        // 后端没上线 / 读失败：不出箭头，页面照旧。
+      },
+    );
+    return () => controller.abort();
+  }, []);
   const readOnly =
     !perms.can("forecast.edit") || perms.partnerLacks("forecast.edit");
   const [view, setView] = useState<ViewState>({ kind: "loading" });
@@ -339,7 +361,63 @@ export function ForecastView() {
     applyCellResult(target, result);
   }
 
-  const data = view.kind === "ready" ? view.data : null;
+  const liveData = view.kind === "ready" ? view.data : null;
+  // 比今天早、存过快照的日子（新的在前）；最早那张决定 ‹ 还能不能点。
+  const savedPast = liveData
+    ? historyDates.filter((d) => d < liveData.today)
+    : [];
+  const oldestSaved = savedPast.length
+    ? savedPast.reduce((a, b) => (a < b ? a : b))
+    : null;
+  const savedSet = new Set(savedPast);
+  // 今天左边要接的日子（照日历，早的在前）。
+  const shown = liveData ? daysBefore(liveData.today, back) : [];
+  const toFetch = shown
+    .filter((d) => savedSet.has(d) && !(d in snaps))
+    .join(",");
+  useEffect(() => {
+    if (!toFetch) return;
+    const controller = new AbortController();
+    for (const d of toFetch.split(",")) {
+      fetchForecastHistory(d, controller.signal).then(
+        (s) => setSnaps((m) => ({ ...m, [d]: s.forecast })),
+        () => {
+          if (!controller.signal.aborted)
+            setSnaps((m) => ({ ...m, [d]: null }));
+        },
+      );
+    }
+    return () => controller.abort();
+  }, [toFetch]);
+  // 还在读的时候先不接（免得一列列跳出来）。
+  const pastReady = !toFetch;
+  // 没往回接（或还在读）时就是实时数据本身，不动它。
+  const data =
+    liveData && pastReady && shown.length
+      ? mergePastDays(
+          liveData,
+          shown.map((d) => ({ date: d, forecast: snaps[d] ?? null })),
+        )
+      : liveData;
+  const pastDays = new Set(pastReady ? shown : []);
+  const noSnapshotDays = new Set(
+    pastReady ? shown.filter((d) => !snaps[d]) : [],
+  );
+  const corner =
+    liveData && oldestSaved ? (
+      <HistoryArrows
+        today={liveData.today}
+        canBack={
+          back < MAX_DAYS_BACK &&
+          oldestSaved <= daysBefore(liveData.today, back + 1)[0]
+        }
+        canForward={back > 0}
+        onBack={() => setBack((b) => Math.min(MAX_DAYS_BACK, b + 1))}
+        onForward={() => setBack((b) => Math.max(0, b - 1))}
+        onToday={() => setBack(0)}
+        atToday={back === 0}
+      />
+    ) : null;
   const cellValueNow =
     data && cellTarget
       ? cellTarget.rowKey === "major_events"
@@ -503,6 +581,9 @@ export function ForecastView() {
                 colorByVehicle={colorByVehicle}
                 hideZero={hideZero}
                 canyon={canyon}
+                corner={corner}
+                pastDays={pastDays}
+                noSnapshotDays={noSnapshotDays}
                 onOpenEditor={(manifestId, section, dayIndex) =>
                   setEditorTarget({ manifestId, section, dayIndex })
                 }

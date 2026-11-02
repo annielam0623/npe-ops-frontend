@@ -43,6 +43,11 @@ function daysFrom(startYmd, n) {
 }
 const DAYS = daysFrom("2026-10-08", N);
 const TODAY = DAYS[1];
+const HISTORY_BACK = [1, 2, 4, 5, 9];
+function daysBack(k) {
+  const [y, m, d] = TODAY.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d) - k * 86400000).toISOString().slice(0, 10);
+}
 
 function constArr(value, overrides = {}) {
   return DAYS.map((_, i) => (i in overrides ? overrides[i] : value));
@@ -512,6 +517,25 @@ http
       canyonState.refreshed = true;
       ctl.canyon = "live";
       return send(res, 200, canyonPayload());
+    }
+    // 回看过去的日子（后端 64 0db87bc3）：ctl.history 关着 = 后端没上线（404），页面照旧。
+    // 有快照的日子：今天前 1、2、4、5、9 天（前 3、6、7、8 天没存）；每张快照第一列的粗体人数写成 900 + 往前几天，好认。
+    if (p === "/api/forecast/history" && req.method === "GET") {
+      if (!ctl.history) return send(res, 404, { detail: "Not Found" });
+      return send(res, 200, { dates: HISTORY_BACK.map((k) => daysBack(k)) });
+    }
+    const histMatch = p.match(/^\/api\/forecast\/history\/([^/]+)$/);
+    if (histMatch && req.method === "GET") {
+      if (!ctl.history) return send(res, 404, { detail: "Not Found" });
+      const date = histMatch[1];
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return send(res, 400, { detail: "Use a date like 2026-10-30." });
+      const k = HISTORY_BACK.find((n) => daysBack(n) === date);
+      if (k === undefined) return send(res, 404, { detail: `No snapshot was saved for ${date}.` });
+      const forecast = JSON.parse(JSON.stringify(payload()));
+      forecast.today = date;
+      forecast.days = daysFrom(date, N);
+      for (const b of forecast.blocks) b.total[0] = 900 + k;
+      return send(res, 200, { date, taken_at: `${date}T23:55:00-07:00`, forecast });
     }
     if (p === "/api/forecast/60-day") {
       if (ctl.error) return send(res, 500, { detail: "Internal Server Error" });

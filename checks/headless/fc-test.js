@@ -345,7 +345,7 @@ async function run() {
   // 新增失败：mock 返回 400 detail
   await ctl({ addFail: "That name is already planned for this day." });
   await evaluate(`$setValue(${dialog}.querySelector('input[aria-label="Guide name"]'), 'Someone');`);
-  let before = (await mockLog()).length;
+  before = (await mockLog()).length;
   await evaluate(`$btn('Add guide', ${dialog}).click();`);
   await waitFor(`${dialog}.textContent.includes('already planned')`);
   check(
@@ -680,6 +680,69 @@ async function run() {
     ),
   );
   await ctl({ tiersEmpty: false });
+
+  // ── 回看过去的日子（Annie 2026-11-01，preview v4「动手」；后端 64 0db87bc3）──
+  // mock：有快照的是今天前 1、2、4、5、9 天；快照第一列粗体人数 = 900 + 往前几天。
+  const back = (k) => {
+    const [y, m, d] = TODAY.split("-").map(Number);
+    return new Date(Date.UTC(y, m - 1, d) - k * 86400000).toISOString().slice(0, 10);
+  };
+  const pastHeads = "return [...document.querySelectorAll('th[data-past]')].map(th => th.dataset.day).join(',');";
+  await openPage(`${APP}/forecast`);
+  check("后端没有回看接口（404）：左上角不出箭头，页面照旧", await evaluate("return !document.querySelector('[data-history-arrows]') && !document.querySelector('th[data-past]');"));
+  await ctl({ history: true });
+  await openPage(`${APP}/forecast`);
+  await waitFor("document.querySelector('[data-history-arrows]')");
+  check(
+    "有快照：左上角「‹ Today ›」，Today 下面写今天的日期；默认从今天开始（没有 Saved 列），› 灰、‹ 可点",
+    await evaluate(`const a = document.querySelector('[data-history-arrows]'); const t = document.querySelector('[data-history-today]'); return a.closest('th') === document.querySelector('thead th') && t.textContent.startsWith('Today') && /\\d+\\/\\d+/.test(t.textContent) && t.disabled && !document.querySelector('th[data-past]') && document.querySelector('[data-history-newer]').disabled && !document.querySelector('[data-history-older]').disabled;`),
+  );
+  before = (await mockLog()).length;
+  await evaluate("document.querySelector('[data-history-older]').click();");
+  await waitFor("document.querySelector('th[data-past]')");
+  check(
+    "点一下 ‹：今天左边接上前一天，灰表头写 Saved；格子是那天快照的第一列（粗体人数 901）",
+    await evaluate(`const th = document.querySelector('th[data-past]'); return th.dataset.day === '${back(1)}' && th.textContent.includes('Saved') && getComputedStyle(th).backgroundColor === 'rgb(51, 65, 85)' && document.querySelector('td[data-kind="total-cell"][data-block="3"][data-day="${back(1)}"]').textContent.trim() === '901';`),
+    await evaluate(pastHeads),
+  );
+  check(
+    "接上的那天在今天左边、只读（没有按钮 / 绿色 +）；今天照旧写 Today、今天以后照样能点",
+    await evaluate(`const ths = [...document.querySelectorAll('thead th[data-day]')].map(t => t.dataset.day); const past = [...document.querySelectorAll('td[data-day="${back(1)}"]')]; return ths[0] === '${back(1)}' && ths[1] === '${TODAY}' && past.length > 0 && past.every(td => !td.querySelector('button') && !td.querySelector('[data-add-plus]')) && document.querySelector('th[data-day="${TODAY}"]').textContent.includes('Today') && !!${cclTd(4, "Notes", DAYS[2])}.querySelector('button');`),
+  );
+  check("只读了那一天的快照", (await since(before, (e) => e.path.startsWith("/api/forecast/history/"))).map((e) => e.path).join(",") === `/api/forecast/history/${back(1)}`, JSON.stringify(await since(before, (e) => e.path.startsWith("/api/forecast/history"))));
+  before = (await mockLog()).length;
+  await evaluate("document.querySelector('[data-history-older]').click();");
+  await waitFor(`document.querySelectorAll('th[data-past]').length === 2`);
+  await evaluate("document.querySelector('[data-history-older]').click();");
+  await waitFor(`document.querySelectorAll('th[data-past]').length === 3`);
+  check("照日历一天一天接：往前 3 天、早的在左", (await evaluate(pastHeads)) === [back(3), back(2), back(1)].join(","), await evaluate(pastHeads));
+  check(
+    "没存快照的那天（往前 3 天）：表头写 No snapshot，整列格子只显示「—」",
+    await evaluate(`const th = document.querySelector('th[data-day="${back(3)}"]'); const td = document.querySelector('td[data-kind="total-cell"][data-block="3"][data-day="${back(3)}"]'); return th.textContent.includes('No snapshot') && getComputedStyle(td).color === 'rgba(0, 0, 0, 0)' && getComputedStyle(td, '::before').content === '"—"';`),
+  );
+  check("没存的那天不去读接口", !(await since(before, (e) => e.path === `/api/forecast/history/${back(3)}`)).length);
+  for (let i = 0; i < 6; i++) {
+    if (await evaluate("return document.querySelector('[data-history-older]').disabled;")) break;
+    await evaluate("document.querySelector('[data-history-older]').click();");
+    await sleep(400);
+  }
+  await waitFor(`document.querySelectorAll('th[data-past]').length === 7`);
+  check(
+    "最多往回接 7 天：接满 7 天 ‹ 变灰（往前 9 天还有快照也不再接）",
+    (await evaluate("return document.querySelectorAll('th[data-past]').length;")) === 7 && (await evaluate("return document.querySelector('[data-history-older]').disabled;")),
+    await evaluate(pastHeads),
+  );
+  await evaluate("document.querySelector('[data-history-newer]').click();");
+  await waitFor(`document.querySelectorAll('th[data-past]').length === 6`);
+  check("点 ›：少接一天（6 天），‹ 又能点", !(await evaluate("return document.querySelector('[data-history-older]').disabled;")));
+  await evaluate("document.querySelector('[data-history-today]').click();");
+  await waitFor("!document.querySelector('th[data-past]')");
+  check(
+    "点 Today：一下回到今天在第一列，› 灰、Today 键不可点",
+    await evaluate(`return [...document.querySelectorAll('thead th[data-day]')].every(t => t.dataset.day >= '${DAYS[0]}') && document.querySelector('[data-history-newer]').disabled && document.querySelector('[data-history-today]').disabled;`),
+  );
+  check("How to use 说明了 Past days（‹ › Today、7 天、No snapshot）", await evaluate("const t = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use')).textContent; return t.includes('Past days') && t.includes('up to 7 days back') && t.includes('No snapshot');"));
+  await ctl({ history: false });
 
   // ── 403：Staff access required ──
   await ctl({ forbid: true });

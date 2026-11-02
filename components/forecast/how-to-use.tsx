@@ -41,9 +41,9 @@ export function HowToUse() {
           <b>Crew notes</b>, <b>CCL major events</b>,{" "}
           <b>Pax (tour 1, tour 2)</b> and <b>Driver / Vehicle type</b> are typed
           in by staff: click a cell from today on (an empty one shows a green{" "}
-          <b className="text-[#4ade80]">+</b>), type, and Save. Clear the
-          text and Save to remove it. Point at a cell to see who wrote it and
-          when. <b>Sunset depart times</b> and <b>Private tours</b> fill in by
+          <b className="text-[#4ade80]">+</b>), type, and Save. Clear the text
+          and Save to remove it. Point at a cell to see who wrote it and when.{" "}
+          <b>Sunset depart times</b> and <b>Private tours</b> fill in by
           themselves from the bookings. Notes stays empty for now.
         </li>
         <li>
@@ -66,6 +66,15 @@ export function HowToUse() {
         <li>
           <b>Hide rows that are all 0</b> hides routes and breakdown rows with
           no bookings at all in the next 60 days, to make the table shorter.
+        </li>
+        <li>
+          <b>Past days</b>: the page saves a copy of the forecast every night at
+          11:55 PM (Los Angeles time). Click <b>‹</b> in the top-left corner of
+          the table to add the day before on the left, as it was saved that
+          night, up to 7 days back; <b>›</b> takes one away, and <b>Today</b>
+          puts today back in the first column. Past days have grey headers
+          marked Saved and can&rsquo;t be edited (a day with no saved copy shows{" "}
+          <b>No snapshot</b> and —); today and later days work as usual.
         </li>
         <li>
           Lines CCL posted that don&rsquo;t match any route (Private Tour, lines

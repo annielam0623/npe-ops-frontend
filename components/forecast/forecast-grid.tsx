@@ -139,6 +139,30 @@ function useStickyDateRow(wrapRef: React.RefObject<HTMLDivElement | null>) {
  * 日期行往下滚时固定在顶栏下面，见 useStickyDateRow。
  * sticky 的格子都显式写自己的背景色，见 styles.ts 顶部注释。
  */
+/** 接在今天左边的过去日子：灰表头（Annie 2026-11-01「过去日子的表头就灰色吧，黄色太显眼了」），格子盖一层极淡的灰。 */
+const PAST_HEADER_BG = "#334155";
+const PAST_CELL_TINT = "rgba(148, 163, 184, 0.07)";
+
+/**
+ * 过去日子的格子样式：格子各自写了背景色（见 styles.ts），所以用 inset 阴影盖一层淡灰，不动原来的颜色。
+ * 没存快照的那天：格子里原来的内容藏掉，整列只显示「—」。日期是 YYYY-MM-DD，放进选择器是安全的。
+ */
+function pastDaysCss(
+  pastDays: Set<string>,
+  noSnapshotDays: Set<string>,
+): string {
+  const sel = (d: string) => `[data-forecast-grid] td[data-day="${d}"]`;
+  return [
+    ...[...pastDays].map(
+      (d) => `${sel(d)} { box-shadow: inset 0 0 0 9999px ${PAST_CELL_TINT}; }`,
+    ),
+    ...[...noSnapshotDays].map(
+      (d) =>
+        `${sel(d)} { color: transparent !important; background-color: #0f1a2a !important; pointer-events: none; } ${sel(d)} > * { visibility: hidden; } ${sel(d)}::before { content: "—"; color: rgba(255,255,255,.45); visibility: visible; }`,
+    ),
+  ].join("\n");
+}
+
 export function ForecastGrid({
   data,
   colorByVehicle,
@@ -146,6 +170,9 @@ export function ForecastGrid({
   onOpenEditor,
   onOpenCell,
   canyon,
+  corner,
+  pastDays,
+  noSnapshotDays,
 }: {
   data: Forecast60Day;
   colorByVehicle: boolean;
@@ -155,6 +182,12 @@ export function ForecastGrid({
   /** G81：点粗体人数格 / Max allotments 格，改这一天。 */
   /** Antelope 剩余座位快照；null = 后端没上线 / 读失败 ⇒ 这一行照旧（Max allotments）。 */
   canyon: CanyonSnapshot | null;
+  /** 左上角格子里的内容（‹ Today › 回看过去的日子）。 */
+  corner?: React.ReactNode;
+  /** 接在今天左边、取自快照的过去日子：灰表头写 Saved，格子极淡灰；过去的日子本来就不能改。 */
+  pastDays?: Set<string>;
+  /** 过去日子里没存快照的那几天：整列「—」，表头写 No snapshot。 */
+  noSnapshotDays?: Set<string>;
 }) {
   const blocks = hideZero
     ? data.blocks.filter((b) => !isAllZero(b.total))
@@ -201,6 +234,9 @@ export function ForecastGrid({
       className="[scrollbar-color:rgba(255,255,255,.85)_rgba(255,255,255,.2)] overflow-x-auto rounded-[14px] border border-white/10 [&::-webkit-scrollbar]:h-[22px] [&::-webkit-scrollbar-thumb]:rounded-[20px] [&::-webkit-scrollbar-thumb]:border-4 [&::-webkit-scrollbar-thumb]:border-transparent [&::-webkit-scrollbar-thumb]:bg-white/85 [&::-webkit-scrollbar-thumb]:bg-clip-padding [&::-webkit-scrollbar-thumb:hover]:bg-white [&::-webkit-scrollbar-track]:bg-white/20"
     >
       <style>{LEAD_CSS}</style>
+      {pastDays?.size ? (
+        <style>{pastDaysCss(pastDays, noSnapshotDays ?? new Set())}</style>
+      ) : null}
       <table
         className="border-collapse text-[12.5px]"
         style={{
@@ -220,26 +256,45 @@ export function ForecastGrid({
               scope="col"
               className="sticky top-0 left-0 z-30 border-b border-white/10 px-2 py-2 text-left max-sm:shadow-[inset_-2px_0_0_rgba(255,255,255,.4),inset_0_-2px_0_rgba(255,255,255,.4)]"
               style={{ backgroundColor: HEADER_BG }}
-            />
+            >
+              {corner}
+            </th>
             {data.days.map((day) => {
               const isToday = day === data.today;
+              const isSaved = pastDays?.has(day) ?? false;
               return (
                 <th
                   key={day}
                   scope="col"
                   data-day={day}
                   data-today={isToday || undefined}
+                  data-past={isSaved || undefined}
                   className={`sticky top-0 z-20 border-b border-white/10 px-1 py-2 text-center font-semibold whitespace-nowrap max-sm:shadow-[inset_0_-2px_0_rgba(255,255,255,.4)] ${colLine(isToday)} ${
-                    isToday ? "text-sky-200" : "text-white"
+                    isToday
+                      ? "text-sky-200"
+                      : isSaved
+                        ? "text-[#cbd5e1]"
+                        : "text-white"
                   }`}
                   style={{
-                    backgroundColor: isToday ? HEADER_TODAY_BG : HEADER_BG,
+                    backgroundColor: isToday
+                      ? HEADER_TODAY_BG
+                      : isSaved
+                        ? PAST_HEADER_BG
+                        : HEADER_BG,
                   }}
                 >
                   {formatHeaderDay(day)}
                   {isToday ? (
                     <div className="text-[9px] font-normal text-sky-300/80">
                       Today
+                    </div>
+                  ) : isSaved ? (
+                    <div
+                      data-past-label
+                      className="text-[9px] font-normal text-[#94a3b8]"
+                    >
+                      {noSnapshotDays?.has(day) ? "No snapshot" : "Saved"}
                     </div>
                   ) : null}
                 </th>
@@ -316,7 +371,7 @@ function Block({
         data-kind="total"
       >
         <td
-          className={`sticky left-0 z-10 max-sm:shadow-[inset_-2px_0_0_rgba(255,255,255,.4)] ${totalTop} px-2 py-1.5 align-middle font-bold text-[#facc15] leading-tight ${LABEL_SIZE}`}
+          className={`sticky left-0 z-10 max-sm:shadow-[inset_-2px_0_0_rgba(255,255,255,.4)] ${totalTop} px-2 py-1.5 align-middle leading-tight font-bold text-[#facc15] ${LABEL_SIZE}`}
           style={{ backgroundColor: TOTAL_ROW_BG }}
         >
           {block.name}
