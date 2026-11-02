@@ -348,6 +348,11 @@
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 52. 司机页 Farm out 客人那一栏改用 Affiliate 的叫法（2026-11-02，Annie 提，没动手）
+- Annie 原话：「我原来说过Farm out的客人是要出现在bus manifest和司机的pick up list里，然后用个好听的名字掩盖把客人卖了的行为」。
+- 24 只读查现状：① Bus Manifest（/dispatch/manifest）已照做：转单客人在最下面灰色小栏「Affiliate」，不写合作公司名（10-18 Annie 定，affiliate-card.tsx）。② 司机手机页（后端 app/templates/field/driver_home.html:406–414，只 relay 司机看得到）栏标题写「Farm out — hand off, not our bus」，说明写「These guests go to a partner company. Pick them up the same way, but do not put them on your tour bus — hand them off to the partner.」——直接写了 Farm out 和 partner company，跟她的要求不符。员工内部页（Dispatch、Farm out Report、Settings）照旧叫 Farm out。
+- 问 Annie：司机页改成标题「Affiliate」+ 人数，说明改「Pick these guests up the same way. They ride with our affiliate, not on your tour bus. Hand them off at the meeting point.」（推荐，同 Bus Manifest 叫法）／只改标题、去掉说明／别的名字。改的是后端模板，动手后转 37。
+
 ### 51. 订单搜索显示整单 + 一点跳到 Main manifest 并预先勾选（2026-11-02，Annie 对后端 37 说，方案阶段，没动手）
 - A 原话：「…显示整个订单包括些什么，有没有add on，有没有reschedule fee，所有的订单里的项目都要包含进去」。现状：后端订单详情接口 LIMIT 1；前端 order-detail-view 的 Ticket Breakdown / Raw items 只显示第一项，order-lookup-api 把搜索结果每单压成第一行（线上已有的漏洞）。后端打算详情加 items（全部项）、列表每单加一句小结。例：CHDEFSJ2C。
 - B 原话：「如果需要resend confirmation或者reminder的话，再给一个链接可以一点击就进到该订单所属的main manifest页面上，停留在该订单上，订单默认勾选」。后端给 manifest_link {date, tab, pill, row_keys[]} 或 null（不在 Main manifest 上就不给链接，提示去 Order List 看状态）。
@@ -368,6 +373,8 @@
 - 题 1–3 Annie 答，原话「1. 要标  2. 按照客人人数 3 不要说明」⇒ ① Due≠0 整行淡红（B）；② 写 pax，按真实客人人数（A，不是推荐的 B）——收款单不能算 50 / 75 人，已问 37 / d8 能不能回真实人数、拿不到回 null 显示「—」；③ 不要说明条。已转 91（先不改代码）。还等动手 + 后端 pax 答复。
   - 37 回：已转 d8，先只读查数据，再给规则和工时。方向：真实人数只从同一 order_number 在 rezdy_bookings 里的数据取（不直接去 Rezdy），没有就 null、前端显示「—」，不用费用数量。37 注明：这只适用于 Main manifest 的 admin_fee 标签，Sales Report 的 pax 问题仍未定。
   - 37 转形状：产品级胶囊已推 task/chd-main-manifest 709df07f（p:<code>、internal name、sendable:false、当天没行不出胶囊）；pax 部分 d8 在做约 45–60 分钟：admin_fee 行 pax 可 null（显示「—」），标签 / 胶囊加 pax_unknown（null 行数），pax = 非 null 之和。预计 PFYF01 约 215 行有人数、约 10 行 null；PLU3N8 / PXLTL1 单独订单是 null，除非 Annie 同意按人数量算客人（37 在问她）。已转 91 出 preview v4（pax_unknown 怎么显示 + 去说明条 + Due≠0 淡红）。
+  - Annie 在 37 窗口定（原话）：「费用件数就是人数，不管最后怎么记录，我们的reschedule fee是按照人头收的」⇒ d8 不再去同单找人数：行 pax = 费用自己的件数（多个选项取最大），全部 CHD 产品都这样；null / pax_unknown 只是保险、预计 0，前端 null 照旧显示「—」。preview v4 取消（题 1、3 已明确答）。已转 91。只差动手。
+  - ⚠️ 91 报：Annie 在 91 窗口说的是「其他同意推荐，动手」（题 1 B 淡红、题 2 B 只写单数不写 pax、题 3 A 留说明条），91 已照这个做完 task/manifests-sendable fba8716（man 339 / mf 230 / da 446 / nav 38、tsc、eslint 过），没合 main。跟 24 窗口的「1. 要标 2. 按照客人人数 3 不要说明」题 2、3 相反。91 在问 Annie 以哪个为准；按 24 这边要改三处（写 pax、null 显示「—」/ pax_unknown、去说明条），改完等 d8 pax 上后端 main 再合。动手已有（91 窗口）。
 
 ### 48. Notice 跟 CCL 交流，可选个人或 team（2026-11-01 晚，11/2 做）
 - Annie 原话（09 窗口）：「2 可以跟CCL用notice交流，发的时候可以选个人，也可以选team」「CCl也算一个team」；开关「开放给员工由我来决定，你不要再问了」（各窗口不再问开关）。
@@ -380,6 +387,9 @@
 - Annie 对后端「CCL方案确认，动手」⇒ 64 在 task/g231-notice-ccl 写（迁移 v140，Annie 执行后推）。预定接口：GET /api/team/directory（员工 / partner 两种返回，partner 不给 online）、POST /api/team/messages {to_user_id | to_team_id}、…/reply、…/thread、Notice 接口对 partner 开放（只收 message）。真实 team 名：Operations、Tour Confirmation、Morning Pickup、Tickets Reminder、CCL。已转 91，排在 CHD 后。前端动手：24 在问 Annie（题 5、6 + CCL 不显示在线）。37 转来最终形状（审查中，等 v140），已转 91；邮件后端已按题 5 A 做（第一条每人一封，回复只站内）。
 - 2026-11-02 Annie 答（24 窗口原话）：「题5 A  题6 有消息就自动出现在页顶吧」⇒ ⑤ A（后端不用改）；⑥ 新做法：有新消息时自动出现在 CCL 页面顶上，不留固定块。还没答「CCL 不显示在线」，没动手。⚠️ Annie 不满 91 同时挂 CHD 和 CCL（原话「你又让它做CCL的页面，又让它做我紧急的事情？」）⇒ Notice-CCL 整件改交 e6（改 preview ④），91 只做 CHD。91 已在交接前改好 ④；新 2 题 Annie 答（原话）「6a B  6b A」⇒ Home / 7 Days Forecast / Farm out Dispatch 每页顶上都出（Notice 页不重复），放消息卡可直接 Reply / Got it。剩「CCL 不显示在线」+ 动手。
 - Annie 看 preview 问「farm out为什么要通知CCL？」并说明「Farm out就是把这几个客人卖给其他公司的车上去了，跟CCL都没有关系了」。24 查：preview 把「Farm out Dispatch」画成 CCL 顶栏里的页面、6a 也写了它，但前端没有这个页面；Farm out 是转给别的合作公司，Farm out Notice 只发客人（后端 farm_out_notice.py），不通知 CCL。已请 e6 改 preview：核 CCL 实际能开的页面，顶栏和 6a 只写真实页面，6a 结论 B 不变（CCL 能进的每页顶上都出）。
+  - e6 已改 preview（同一链接，版本 1793651438-0f8c，没写代码）：只读核 staff-permissions.ts + partner-frame.tsx——partner 只按 Team 页的勾、只能看；永远打不开 3 个 /send 页和 Farm out Report；Home 就是整张 7 Days Forecast（顶栏不另列）；前端没有 Farm out Dispatch 页。生产上 CCL 勾了哪些查不到，按 Annie 10-27「合作方只能看manifest和订单」画成 Home · Manifests · Orders · Notice。6a 仍 B，页名改成 Home、Manifests、Orders；④-2 换成 Manifests 页。全文已无 Farm。仍等题 7 + 动手。
+- Annie 新说法（24 窗口原话）：「CCL我已经取消了Partner的身份，所以不要再标Partner在他们的名字后面了」⇒ 不再在 CCL 名字后面标 Partner。已请 e6 去掉 preview 里的 PARTNER / Partner 标签，并只读核 CCL 账号现在的 role、列出影响（partner 顶栏 / 单独 /notice / 页顶 Notice 块是否还适用、题 6 / 6a / 6b / 7 是否还算数）；已告诉 37 查 G231 partner 版接口还要不要。没动手。
+  - 37 回：CCL 账号（84）改 staff 是 Annie 今天在 64 窗口定的；以后的合作方照旧走 partner 规则，后端 partner 分支保留给以后，不删；G231 正在合后端 main（af530bea，v140 已执行）。64 在查接口里有没有 role / is_partner / label 字段、各 CCL 账号现在的 role。24 倾向：前端 partner 那套保留给以后的合作方，CCL 当员工处理、不标 PARTNER；已转 e6 按这个改 preview、作废不再适用的题。
 
 ### 44. 全站手机版重新设计（派 e6 调查 + preview，2026-11-01）
 - Annie 原话：「而且我们的divce版本要重新设计一下了，太多说明和介绍的东西占了半个手机屏」；主窗口问范围，她选「全站一起（推荐）」：一套统一手机版规则，所有页面照做，新页面也照做。
@@ -483,6 +493,7 @@
 
 ### 39. Dispatch：Check the bus 会跳过 Apply CCL 的变动（91 出 preview）
 - Annie 原话「我现在是不是需要把pull from discord放到巴士前面，因为第一件事情应该是检查CCL的消息来了没有」「主要是点check the bus 就会跳过apply ccl的变动」。打开页面会自动拉一次 Discord，但结果 / Apply 在 Step 2 顶上，Step 1 卡片的 Check the bus 直接跳到车块、跳过它。91 preview：https://claude.ai/artifact/PmUDb4Cbxb72XThPEPzfQn 。推荐 A1（最上面一整条 CCL 状态 + Pull + Apply）+ B1（Check the bus 照跳）+ C1（团块顶上写这个团的 CCL 变动 + Apply，整份套用）+ D1（不自动 Apply，Not now 只收清单、提醒留着）。不需要后端。Annie 原话「这样吧，如果CCL有变动现需要apply的，就在你给的这个位置出个通知，直接点击查看，跳转到下面的apply change的card里」⇒ 最上面只在有没 Apply 的变动时出通知 + 点击滚到 Step 2 的 Apply 卡；Pull / Apply 卡原位不动；不做团块提示。91 改 preview（v3 两种样子、v4 克制、v5 绿色色板），Annie 选「样样子 1 · 左边琥珀色条 + Discord 图标」（v3 样子 1，Not now 后仍在直到 Apply），等动手。Add hotel：Annie 选 H（白底 Save 蓝字半粗「~~~~~ Shuttle Pick up ~~~~~」）；「占了的还是发灰，正常的就500，你把页面上400的都改成500」+「dispatch这一页」⇒ 正常酒店名黑色 500、被占的灰；Dispatch 页 400 字改 500。四件都定了，等动手（91）。
+- 2026-11-02 Annie 问（24 窗口原话）：「然后我们前两天做的关于discord那边的更新在dispatch的assign和send的下面设置一个提醒，怎么不见了」。24 只读查：已上 main dbeb7cf（CclNotice，dispatch-view.tsx:1779–1787），代码还在；只在「CCL 改版（revision）还没 Apply」时出，CCL 第一次发的预填（蓝条）不出，Apply 后消失。问 Annie 看的是哪天、下面 Step 2 有没有琥珀色 Apply changes 卡：有卡没通知 = bug，派人修；没卡 = 照设计不出。
 
 ### 8. 可以上线后对着看的（不用答，验收时看）
 - Products 手动保存：09 问的 5 处细节，主窗口按盘点推荐定了，见 PROGRESS「2026-10-30」那节 09 的记录：
