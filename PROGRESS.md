@@ -254,6 +254,15 @@
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 45. Dashboard 主管 Today's tasks 行（09，preview https://claude.ai/artifact/LxnxMp62Q7yJ27hJxjceAc ，2026-11-01 晚）
+- Annie 原话：「task 这里，overdue和旁边的时间明显是重复的，不需要显示了。然后把task完整地显示出来」
+- 改法：去掉红色「Overdue · was due …」签（右边时间框已写时间，行仍在 Overdue 红框里带红边）；任务名不截断、太长折行。只改 supervisor-view.tsx，员工 My tasks 不动。代码 task/tasks-row-full d4f1522（没合；动手时删没用的 DueTag import、跑 tasks）。等「动手」。
+
+### 46. Today's team 人人可见、互发 Notice（09 记录，2026-11-01 晚）
+- Annie 原话：「todays team，anyone login就会显示在上面，然后任何人都可以相互发notice，记住：notice是内部用的」
+- 现状：功能已上线（91，34e93fc），开关 team_messages_direct 默认只 SA 可见，要员工能用需 Annie 在版面设置里打开。
+- 09 已问 Annie：现在要不要打开；partner（CCL 等）要不要排除在名单和收发之外（推荐排除，「内部用」）。后端 /api/team/online 会不会列 partner 还没核。
+
 ### 44. 全站手机版重新设计（派 e6 调查 + preview，2026-11-01）
 - Annie 原话：「而且我们的divce版本要重新设计一下了，太多说明和介绍的东西占了半个手机屏」；主窗口问范围，她选「全站一起（推荐）」：一套统一手机版规则，所有页面照做，新页面也照做。
 - e6：手机尺寸截各主要页面、量说明 / How to use / 提示条 / shortcut 条占多高，提统一规则（1–2 种），挑 3–4 页做「现在 / 改后」对比 preview。电脑版不变。等 preview 和题。
