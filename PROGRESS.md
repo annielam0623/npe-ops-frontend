@@ -264,6 +264,11 @@
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 48. Notice 跟 CCL 交流，可选个人或 team（2026-11-01 晚，11/2 做）
+- Annie 原话（09 窗口）：「2 可以跟CCL用notice交流，发的时候可以选个人，也可以选team」「CCl也算一个team」；开关「开放给员工由我来决定，你不要再问了」（各窗口不再问开关）。
+- 现状：partner 不在 /api/team/online，调接口 403，收不到消息；PartnerHome 只有问候语和 Forecast。
+- 已转 57（11/2 派人）：partner 收发范围、「发给 team」（team 清单来源、CCL team 包括哪些账号、每人一份还是共享）、partner 在哪看 / 回、开关管不管 partner。91 出前端 preview（排在 Send Log 新 preview 后）。未动手。
+
 ### 47. Shortcut 条 Manifests 的点改橙色（09，preview https://claude.ai/artifact/25YysSRdXNCzmZRUi5EwK1 ，2026-11-01 晚）
 - Annie 原话（附截图，各页顶上的 shortcut 条）：「这里的点，manifest用橙色吧」
 - 现在：Manifests 的点是灰色（没设颜色）。preview 用 #fb923c（亮橙）；Broadcast 已经用 #f97316（深一点的橙），所以没用同一个。Dashboard 的 My shortcuts 框边也跟着点的颜色变橙。
