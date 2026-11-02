@@ -366,6 +366,7 @@
 - d8 最终字段（31aef9a3，等前端第二步）：admin_fee 标签 label CHD、胶囊 g:20；rows 加 shown_on；新列 fee_item（Rezdy optionLabel，金额 > 0）进默认列；Annie 定 PLU3N8 / PXLTL1 显示在下单日（生产：PLU3N8 11/01 3 单，PXLTL1 10/12 12 单、10/23 14 单）。37 还在问：PFYF01 的 Upgrade Fee 单要不要也挪到下单日。91 改 preview（加 Fee item、行上显示 reason_label）。preview v2 新题 0（按产品胶囊 A 推荐 / 只靠 Product 列 B）+ 题 1–3 等 Annie。Pax 里收款单各算 50 / 75 人，37 问过她一次，未答。另外 37 更正：「10-18 CHD 漏进 Dispatch」没有记录，Dispatch 同步只建 bus_tour 组，CHD 怎样都不会排进车里。Sales Report 要哪种（A / B / C）还没答。
 - 题 0 Annie 答（91 转）：「CHD要胶囊，每个产品一个」⇒ A，每个产品一个胶囊（不算动手）。后端要改：admin_fee 胶囊 key p:<product_code>、label 用 internal name、sendable:false、?pill=p:<code> 只回该产品；已转 37 / d8，注明还没动手。前端不用改。还等题 1–3 + 动手。
 - 题 1–3 Annie 答，原话「1. 要标  2. 按照客人人数 3 不要说明」⇒ ① Due≠0 整行淡红（B）；② 写 pax，按真实客人人数（A，不是推荐的 B）——收款单不能算 50 / 75 人，已问 37 / d8 能不能回真实人数、拿不到回 null 显示「—」；③ 不要说明条。已转 91（先不改代码）。还等动手 + 后端 pax 答复。
+  - 37 回：已转 d8，先只读查数据，再给规则和工时。方向：真实人数只从同一 order_number 在 rezdy_bookings 里的数据取（不直接去 Rezdy），没有就 null、前端显示「—」，不用费用数量。37 注明：这只适用于 Main manifest 的 admin_fee 标签，Sales Report 的 pax 问题仍未定。
 
 ### 48. Notice 跟 CCL 交流，可选个人或 team（2026-11-01 晚，11/2 做）
 - Annie 原话（09 窗口）：「2 可以跟CCL用notice交流，发的时候可以选个人，也可以选team」「CCl也算一个team」；开关「开放给员工由我来决定，你不要再问了」（各窗口不再问开关）。
