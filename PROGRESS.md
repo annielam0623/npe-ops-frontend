@@ -339,6 +339,11 @@
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 51. 订单搜索显示整单 + 一点跳到 Main manifest 并预先勾选（2026-11-02，Annie 对后端 37 说，方案阶段，没动手）
+- A 原话：「…显示整个订单包括些什么，有没有add on，有没有reschedule fee，所有的订单里的项目都要包含进去」。现状：后端订单详情接口 LIMIT 1；前端 order-detail-view 的 Ticket Breakdown / Raw items 只显示第一项，order-lookup-api 把搜索结果每单压成第一行（线上已有的漏洞）。后端打算详情加 items（全部项）、列表每单加一句小结。例：CHDEFSJ2C。
+- B 原话：「如果需要resend confirmation或者reminder的话，再给一个链接可以一点击就进到该订单所属的main manifest页面上，停留在该订单上，订单默认勾选」。后端给 manifest_link {date, tab, pill, row_keys[]} 或 null（不在 Main manifest 上就不给链接，提示去 Order List 看状态）。
+- 已派 e6 只读查：Main manifest 吃不吃 date / tab / pill / select 参数、row_key 能不能用来预选、前端估时。结果转 37。之后要先出 preview。
+
 ### 50. Sales Report 插队 + CHD 组放回 Main manifest（2026-11-02）
 - Annie 原话：「紧急插个队，把sales report做出来」。24 问她指哪种：A 修现有 /sales-report（10/23 上线，按 Group → section → 产品，Orders / Pax / $，只 SA 可见挂 Soon）／B 做一份新报表（先出 preview）／C 把删掉的按 agent 月表周表加回来。她没选，接着说：「你先把CHD这个group 先放回main manifest」。
 - 背景：CHD 组（booking_type='unmapped'，只有 PFYF01 收款行）是 10-18 照 Annie「这个产品不是 tour，不应该出现在 manifest 里」由后端 G111 挡掉的。后端同一个函数还管自动发送、Manifests 发送、Dispatch 同步、Forecast、接客时间提醒、电话 AI。前端现在只能在 Manifests 的 Show hidden rows 里看到这些行。
