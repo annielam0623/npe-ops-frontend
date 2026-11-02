@@ -72,7 +72,7 @@ export function HowToUse() {
           at 11:55 PM (Los Angeles time). Click <b>‹</b> in the top-left corner
           of the table to add the day before on the left, as it was saved that
           night; <b>›</b> takes one away, and <b>Today</b> goes straight back to
-          starting from today. Past days have amber headers marked Saved and
+          starting from today. Past days have grey headers marked Saved and
           can&rsquo;t be edited; today and later days work as usual.
         </li>
         <li>

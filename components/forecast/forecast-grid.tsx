@@ -139,9 +139,9 @@ function useStickyDateRow(wrapRef: React.RefObject<HTMLDivElement | null>) {
  * 日期行往下滚时固定在顶栏下面，见 useStickyDateRow。
  * sticky 的格子都显式写自己的背景色，见 styles.ts 顶部注释。
  */
-/** PREVIEW：过去日子的浅琥珀色（Annie 2026-11-01「颜色浅一点」）。 */
-const PAST_HEADER_BG = "#fcd98a";
-const PAST_COL_BG = "rgba(252, 217, 138, 0.10)";
+/** PREVIEW：过去日子的表头用灰色（Annie 2026-11-01「过去日子的表头就灰色吧，黄色太显眼了」）。 */
+const PAST_HEADER_BG = "#334155";
+const PAST_COL_BG = "rgba(148, 163, 184, 0.07)";
 
 export function ForecastGrid({
   data,
@@ -249,7 +249,7 @@ export function ForecastGrid({
                   data-day={day}
                   data-today={isToday || undefined}
                   className={`sticky top-0 z-20 border-b border-white/10 px-1 py-2 text-center font-semibold whitespace-nowrap max-sm:shadow-[inset_0_-2px_0_rgba(255,255,255,.4)] ${colLine(isToday)} ${
-                    isToday ? "text-sky-200" : isSaved ? "text-[#422006]" : "text-white"
+                    isToday ? "text-sky-200" : isSaved ? "text-[#cbd5e1]" : "text-white"
                   }`}
                   style={{
                     backgroundColor: isToday ? HEADER_TODAY_BG : isSaved ? PAST_HEADER_BG : HEADER_BG,
@@ -261,7 +261,7 @@ export function ForecastGrid({
                       Today
                     </div>
                   ) : isSaved ? (
-                    <div className="text-[9px] font-normal text-[#713f12]">
+                    <div className="text-[9px] font-normal text-[#94a3b8]">
                       Saved
                     </div>
                   ) : null}
