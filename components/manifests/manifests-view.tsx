@@ -1333,6 +1333,17 @@ function ManifestTable({
             ) : (
               <Cell field={byKey.get(k)} row={r} fieldKey={k} />
             )}
+            {r.shown_on === "order_date" &&
+            r.reason_label &&
+            (k === "product" || (i === 0 && !fields.includes("product"))) ? (
+              // 没有团日期、放在下单日的 admin fee 行（G232）：在 Product 下面一行小字写清楚（没选 Product 列就写在第一列）。
+              <span
+                data-shown-on
+                className="mt-0.5 block text-[11px] text-[#1a1a1a] night:text-white/50"
+              >
+                {r.reason_label}
+              </span>
+            ) : null}
             {i === 0 && isLegacy(r) ? (
               <span
                 title="From data frozen before Aug 16, 2026 — booking questions and most Trip / Booking fields are empty"

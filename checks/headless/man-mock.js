@@ -207,13 +207,20 @@ const ADMIN_FEE_ROWS = [
   { o: "CHD-88063", code: "PXLTL1", v: { guest_name: "ZZ Test Patel", agent_name: "GetYourGuide", pax: 2, status: "Confirmed", item_amount: 30, order_total: 30, total_paid: 30, total_due: 0, currency: "USD" } },
   { o: "CHD-88102", code: "PFYF01", v: { guest_name: "ZZ Test Nguyen", agent_name: "Direct", pax: 1, status: "Confirmed", item_amount: 25, order_total: 25, total_paid: 25, total_due: 0, currency: "USD" } },
   { o: "CHD-88110", code: "PFYF01", v: { guest_name: "ZZ Test Smith", agent_name: "Direct", pax: 1, status: "Cancelled", item_amount: 25, order_total: 25, total_paid: 0, total_due: 0, currency: "USD" } },
-].map((r) => ({ ...r, v: { ...r.v, product: ADMIN_FEE_PRODUCTS[r.code] } }));
+].map((r) => {
+  // G232：PLU3N8 / PXLTL1 没有团日期，后端放在订单的 LA 下单日（shown_on "order_date"）；PFYF01 照团日期。
+  const undated = r.code !== "PFYF01";
+  const fee = { "CHD-88041": "From Lower Antelope, per person", "CHD-88057": "From Lower Antelope, per person", "CHD-88063": "From Lower Antelope, per person", "CHD-88102": "Rescheduling Fee", "CHD-88110": "Upgrade Fee, Rescheduling Fee" }[r.o];
+  return { ...r, v: { ...r.v, product: ADMIN_FEE_PRODUCTS[r.code], fee_item: fee }, shown_on: undated ? "order_date" : null,
+    reason_label: undated ? "Admin fee - no tour date, shown on order date (Nov 2)" : "Admin fee - not sent, not dispatched" };
+});
 const ADMIN_FEE_TAB = { key: "admin_fee", label: "CHD", sendable: false, rows: 5, orders: 5, pax: 9 };
 const ADMIN_FEE_CATALOG = [
   { key: "order_number", label: "Order #", group: "booking", type: "text" },
   { key: "guest_name", label: "Guest", group: "guest", type: "text" },
   { key: "agent_name", label: "Agent", group: "booking", type: "text" },
   { key: "product", label: "Product", group: "trip", type: "text" },
+  { key: "fee_item", label: "Fee item", group: "trip", type: "text" },
   { key: "pax", label: "Pax", group: "guest", type: "number" },
   { key: "status", label: "Status", group: "booking", type: "text" },
   { key: "item_amount", label: "Amount (this item)", group: "money", type: "money" },
@@ -221,7 +228,7 @@ const ADMIN_FEE_CATALOG = [
   { key: "total_paid", label: "Paid", group: "money", type: "money" },
   { key: "total_due", label: "Due", group: "money", type: "money" },
 ];
-const ADMIN_FEE_DEFAULTS = ["order_number", "guest_name", "agent_name", "product", "pax", "status", "item_amount", "order_total", "total_paid", "total_due"];
+const ADMIN_FEE_DEFAULTS = ["order_number", "guest_name", "agent_name", "product", "fee_item", "pax", "status", "item_amount", "order_total", "total_paid", "total_due"];
 function adminFeePage(url, date) {
   const known = new Set([...ADMIN_FEE_CATALOG.map((f) => f.key), "currency"]);
   const asked = url.searchParams.get("fields");
@@ -234,7 +241,7 @@ function adminFeePage(url, date) {
         const rs = dayFee.filter((r) => r.code === c);
         return { key: "p:" + c, label: ADMIN_FEE_PRODUCTS[c], color: null, sendable: false, rows: rs.length, orders: rs.length, pax: rs.reduce((n, r) => n + r.v.pax, 0) };
       })
-    : dayFee.length ? [{ key: "g:9", label: "CHD", color: null, sendable: false, rows: dayFee.length, orders: dayFee.length, pax: dayFee.reduce((n, r) => n + r.v.pax, 0) }] : [];
+    : dayFee.length ? [{ key: "g:20", label: "CHD", color: null, sendable: false, rows: dayFee.length, orders: dayFee.length, pax: dayFee.reduce((n, r) => n + r.v.pax, 0) }] : [];
   const askedPill = url.searchParams.get("pill");
   const pill = pills.some((p) => p.key === askedPill) ? askedPill : pills[0]?.key ?? null;
   const rows = dayFee.filter((r) => !byProduct || "p:" + r.code === pill).map((r) => {
@@ -242,7 +249,7 @@ function adminFeePage(url, date) {
     const values = {};
     for (const k of fields) values[k] = all[k] ?? null;
     return { row_key: `${r.o}|${r.code}|${date}`, order_number: r.o, product_code: r.code, tour_date: date, lane_source: "rezdy_bookings", leg: null, section: null,
-      sendable: false, reason: "unmapped_group", reason_label: "Admin fee - not sent, not dispatched", values };
+      sendable: false, reason: "unmapped_group", reason_label: r.reason_label, shown_on: r.shown_on, values };
   });
   const tabs = ["bus", "tickets"].map((k) => ({ key: k, label: k === "bus" ? "Bus Tour" : "Tickets - SelfDrive", sendable: true, ...counts(allRows().filter((r) => r.tab === k)) }));
   if (date === today) tabs.push(ADMIN_FEE_TAB);

@@ -78,9 +78,14 @@ export interface ManifestRow {
    * 后端发送时逐行复核，一批里夹一条就整批失败，所以前端不让勾。旧后端没有这个字段 ⇒ 当 true。
    */
   sendable?: boolean;
-  reason?: string;
-  /** 不能发的原因，例如 "The group is Unmapped"。 */
-  reason_label?: string;
+  reason?: string | null;
+  /** 不能发的原因，例如 "Admin fee - not sent, not dispatched"。 */
+  reason_label?: string | null;
+  /**
+   * 这一行为什么出在这一天（后端 G232）："order_date" = 没有团日期的 admin fee 产品（PLU3N8 / PXLTL1），
+   * 放在订单的 LA 下单日（Annie 2026-11-02 定），行上写 reason_label。普通行 null。
+   */
+  shown_on?: string | null;
   /** 只含 `fields` 里的键。 */
   values: Record<string, ManifestValue>;
 }
