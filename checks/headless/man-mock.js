@@ -214,7 +214,10 @@ const ADMIN_FEE_ROWS = [
   return { ...r, v: { ...r.v, product: ADMIN_FEE_PRODUCTS[r.code], fee_item: fee }, shown_on: undated ? "order_date" : null,
     reason_label: undated ? "Admin fee - no tour date, shown on order date (Nov 2)" : "Admin fee - not sent, not dispatched" };
 });
-const ADMIN_FEE_TAB = { key: "admin_fee", label: "CHD", sendable: false, rows: 5, orders: 5, pax: 9 };
+// adminFeeNullPax：CHD-88110 拿不到件数（pax null，8/16 前的老单会这样），标签 / 胶囊带 pax_unknown。
+const feeRows = () => ADMIN_FEE_ROWS.map((r) => (ctl.adminFeeNullPax && r.o === "CHD-88110" ? { ...r, v: { ...r.v, pax: null } } : r));
+const feeCounts = (rs) => ({ rows: rs.length, orders: rs.length, pax: rs.reduce((n, r) => n + (r.v.pax ?? 0), 0), pax_unknown: rs.filter((r) => r.v.pax === null).length });
+const adminFeeTab = () => ({ key: "admin_fee", label: "CHD", sendable: false, ...feeCounts(feeRows()) });
 const ADMIN_FEE_CATALOG = [
   { key: "order_number", label: "Order #", group: "booking", type: "text" },
   { key: "guest_name", label: "Guest", group: "guest", type: "text" },
@@ -235,13 +238,13 @@ function adminFeePage(url, date) {
   const fields = (asked ? asked.split(",").filter(Boolean) : ADMIN_FEE_DEFAULTS).filter((k) => known.has(k));
   // adminFeePills: "product" = 每个产品一个胶囊（p:<code>，后端要新加）；其他 = 按组一个 CHD 胶囊（g:9，后端现在的做法）。
   const byProduct = ctl.adminFeePills === "product";
-  const dayFee = date === today ? ADMIN_FEE_ROWS : [];
+  const dayFee = date === today ? feeRows() : [];
   const pills = byProduct
     ? Object.keys(ADMIN_FEE_PRODUCTS).filter((c) => dayFee.some((r) => r.code === c)).map((c) => {
         const rs = dayFee.filter((r) => r.code === c);
-        return { key: "p:" + c, label: ADMIN_FEE_PRODUCTS[c], color: null, sendable: false, rows: rs.length, orders: rs.length, pax: rs.reduce((n, r) => n + r.v.pax, 0) };
+        return { key: "p:" + c, label: ADMIN_FEE_PRODUCTS[c], color: null, sendable: false, ...feeCounts(rs) };
       })
-    : dayFee.length ? [{ key: "g:20", label: "CHD", color: null, sendable: false, rows: dayFee.length, orders: dayFee.length, pax: dayFee.reduce((n, r) => n + r.v.pax, 0) }] : [];
+    : dayFee.length ? [{ key: "g:20", label: "CHD", color: null, sendable: false, ...feeCounts(dayFee) }] : [];
   const askedPill = url.searchParams.get("pill");
   const pill = pills.some((p) => p.key === askedPill) ? askedPill : pills[0]?.key ?? null;
   const rows = dayFee.filter((r) => !byProduct || "p:" + r.code === pill).map((r) => {
@@ -252,7 +255,7 @@ function adminFeePage(url, date) {
       sendable: false, reason: "unmapped_group", reason_label: r.reason_label, shown_on: r.shown_on, values };
   });
   const tabs = ["bus", "tickets"].map((k) => ({ key: k, label: k === "bus" ? "Bus Tour" : "Tickets - SelfDrive", sendable: true, ...counts(allRows().filter((r) => r.tab === k)) }));
-  if (date === today) tabs.push(ADMIN_FEE_TAB);
+  if (date === today) tabs.push(adminFeeTab());
   return [200, { date, tab: "admin_fee", is_admin: ctl.role === "admin", tabs, pills, pill, catalog: ADMIN_FEE_CATALOG, groups: GROUPS, default_fields: ADMIN_FEE_DEFAULTS, fields, denied: [], unknown: [], sections: [], rows }];
 }
 
@@ -314,7 +317,7 @@ function page(url) {
           : {}) };
     });
   const tabs = ["bus", "tickets"].map((k) => ({ key: k, label: k === "bus" ? "Bus Tour" : "Tickets - SelfDrive", ...(ctl.adminFee ? { sendable: true } : {}), ...counts(dayRows.filter((r) => r.tab === k)) }));
-  if (ctl.adminFee && date === today) tabs.push(ADMIN_FEE_TAB);
+  if (ctl.adminFee && date === today) tabs.push(adminFeeTab());
   // 分节：只有 Antelope（g:3）、只在 sections 开着时；后端规则是行已经按节排好。
   const sections = sectionsOn
     ? [

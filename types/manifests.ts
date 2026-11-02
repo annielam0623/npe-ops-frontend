@@ -10,6 +10,11 @@ export interface ManifestCounts {
   rows: number;
   orders: number;
   pax: number;
+  /**
+   * pax 是 null 的行数（只有 admin_fee 标签和它的胶囊带，后端 G232）：pax 只加非 null 的行。
+   * 费用件数 = 人数（Annie 2026-11-02）；8/16 前的老单可能拿不到件数。旧后端 / Bus / Tickets 没有 ⇒ 当 0。
+   */
+  pax_unknown?: number;
 }
 
 export interface ManifestTab extends ManifestCounts {

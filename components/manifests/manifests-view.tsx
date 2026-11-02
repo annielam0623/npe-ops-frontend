@@ -628,12 +628,7 @@ export function ManifestsView() {
                         on ? "text-[#fde68a]" : "text-[#94a3b8]",
                       )}
                     >
-                      {/* 费用单（admin_fee 等不能发的标签）只写单数：Pax 是费用的数量、不是真客人（Annie 2026-11-02 题 2 选 B）。 */}
-                      {data
-                        ? t.sendable === false
-                          ? `${t.orders}`
-                          : `${t.orders} · ${t.pax} pax`
-                        : ""}
+                      {data ? `${t.orders} · ${t.pax} pax${unknownPax(t)}` : ""}
                     </span>
                   </button>
                 );
@@ -702,17 +697,10 @@ export function ManifestsView() {
                     >
                       {/* 只写人数（Annie 2026-10-15：单数拿掉，Bus / Tickets 都是）；
                         人数的数字蓝色 #0066ff（Annie 2026-10-14 选的亮蓝，原来的 #48a0c7 不够显眼）。 */}
-                      {p.sendable === false ? (
-                        // 费用单的胶囊只写单数（Annie 2026-11-02 题 2 选 B）。
-                        p.orders
-                      ) : (
-                        <>
-                          <span className="font-semibold text-[#0066ff] night:text-sky-300">
-                            {p.pax}
-                          </span>{" "}
-                          pax
-                        </>
-                      )}
+                      <span className="font-semibold text-[#0066ff] night:text-sky-300">
+                        {p.pax}
+                      </span>{" "}
+                      pax{unknownPax(p)}
                     </span>
                   </button>
                 ))}
@@ -796,17 +784,6 @@ export function ManifestsView() {
             state === null ? (
               <div className={EMPTY_CLASS}>
                 No live {TAB_FALLBACK_LABEL[tab]} orders for this date.
-              </div>
-            ) : null}
-
-            {!seeingHidden && !tabSendable && shown && shown.rows.length ? (
-              // 同 Show hidden rows 的「For checking only.」灰条。
-              <div className="mb-3 rounded-[10px] border-[0.5px] border-white/20 bg-white/[.07] px-3.5 py-2 text-[12.5px] text-[#cbd5e1]">
-                <b className="text-white">Admin fees, for tracking only.</b>{" "}
-                Upgrades, reschedule fees and other admin items. They are not
-                sent and not dispatched, and they are not counted in Bus Tour or
-                Tickets. Check Status, Paid and Due to see whether each one was
-                bought and paid.
               </div>
             ) : null}
 
@@ -970,9 +947,7 @@ export function ManifestsView() {
                   </h2>
                   <span className="text-[11px] text-[#1a1a1a] tabular-nums night:text-white/50">
                     {currentPill
-                      ? tabSendable
-                        ? `${plural(currentPill.orders, "order")} · ${currentPill.pax} pax · ${plural(shown.rows.length, "row")}`
-                        : `${plural(currentPill.orders, "order")} · ${plural(shown.rows.length, "row")}`
+                      ? `${plural(currentPill.orders, "order")} · ${currentPill.pax} pax${unknownPax(currentPill)} · ${plural(shown.rows.length, "row")}`
                       : plural(shown.rows.length, "row")}
                   </span>
                 </div>
@@ -1206,6 +1181,11 @@ function HiddenRowsSection({
       </section>
     </div>
   );
+}
+
+/** 费用单里拿不到件数的行（pax 是 null）：写在 pax 后面「 + 3 unknown」，没有就不写。 */
+function unknownPax(c: { pax_unknown?: number }): string {
+  return c.pax_unknown ? ` + ${c.pax_unknown} unknown` : "";
 }
 
 function ManifestTable({
