@@ -281,11 +281,10 @@
 - Annie 补（57 转）：「那也开个页面给它们吧」⇒ CCL partner 有自己单独的 Notice 页（能看、能回），不只是 PartnerHome 一块。已转 91 加进 preview；后端方案带 partner 侧接口。
 - 91 preview https://claude.ai/artifact/CjrpyLgPdDhE4f7FHs9gWH（Today's team 加「✉ New message」；发消息选 A person / A team，CCL 标 PARTNER；CCL 首页一块 Notice + 单独 /notice 页，顶栏「Notice (N)」）。6 题：① team 消息的回复：A 回发信人 + 抄送 team 其他人（推荐）／B 只回发信人；② Got it：A 各人按各人（推荐）／B 一人按全 team 收；③ 「A person」名单：A 全部在用员工 + CCL，在线标 online（推荐）／B 只在线员工 + 全部 CCL；④ CCL 主动发：A 只能回复／B 能发，只选 NPE team（推荐）／C team 或个人；⑤ team 消息发邮件：A 每人一封，回复只站内（推荐）／B 只站内；⑥ CCL 首页 Notice：A 留一块只放新消息 + Open Notice →（推荐）／B 只一行「2 new messages」／C 什么都不加。后端要的已转 57。
 
-### 47. Shortcut 条常用页面分得开（09，preview https://claude.ai/artifact/25YysSRdXNCzmZRUi5EwK1 第 6 版，2026-11-01 晚）
-- Annie 原话：「这里的点，manifest用橙色吧」→「可以，最主要是把几个的颜色区别开来，现在看上去都一样，我都很难区分他们」→「如果颜色类似的，可以选择一个是点的颜色，一个是框的颜色」→「你把那些使用率不高的做区别干什么」→「最常用的三个dashbroad，manifest 7 days你都用灰色？」→（对 98）「7 days用红色吧」
-- v6：Dashboard 粉 #f472b6、Manifests 橙 #fb923c、7 Days Forecast 红 #ef4444；Forms 蓝绿 #2dd4bf、Broadcast 白 #f8fafc、Daily Operation Report 灰；Dispatch / My Workspace / Staff Schedule / Morning / Tour / Ticket 不变；Log / 报表灰。
-- 题（撞色）：Forecast 改红后和 Orders（珊瑚红 #f87171）都是红。甲 = Orders 换黄绿 #a3e635（Forecast 空出来的，跟别的都不撞，推荐）；乙 = Orders 留珊瑚红 #f87171、Forecast 用正红 #ef4444（样稿里两个并排放了，小点上很难分）。
-- 等答了、「动手」：只改 components/nav/nav-config.ts 的 dot。
+### 47. Shortcut 条常用页面分得开（09，preview https://claude.ai/artifact/25YysSRdXNCzmZRUi5EwK1 第 7 版，2026-11-01 晚）
+- Annie 原话：「这里的点，manifest用橙色吧」→「可以，最主要是把几个的颜色区别开来，现在看上去都一样，我都很难区分他们」→「如果颜色类似的，可以选择一个是点的颜色，一个是框的颜色」→「你把那些使用率不高的做区别干什么」→「最常用的三个dashbroad，manifest 7 days你都用灰色？」→（对 98）「7 days用红色吧」「orders没人用的」
+- v7（定稿方案，等「动手」）：Dashboard 粉 #f472b6、Manifests 橙 #fb923c、7 Days Forecast 红 #ef4444；Forms 蓝绿 #2dd4bf、Broadcast 白 #f8fafc（原橙和 Manifests 撞色）；Orders、Daily Operation Report、Log、报表灰；Dispatch / My Workspace / Staff Schedule / Morning / Tour / Ticket 不变。没有待答的题。
+- 动手时：只改 components/nav/nav-config.ts 的 dot（daily_report 去掉 dot），跑 nav / dr 等。
 ### 44. 全站手机版重新设计（派 e6 调查 + preview，2026-11-01）
 - Annie 原话：「而且我们的divce版本要重新设计一下了，太多说明和介绍的东西占了半个手机屏」；主窗口问范围，她选「全站一起（推荐）」：一套统一手机版规则，所有页面照做，新页面也照做。
 - e6：手机尺寸截各主要页面、量说明 / How to use / 提示条 / shortcut 条占多高，提统一规则（1–2 种），挑 3–4 页做「现在 / 改后」对比 preview。电脑版不变。等 preview 和题。
