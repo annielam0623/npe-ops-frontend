@@ -349,6 +349,23 @@
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 53. 限制下载功能（2026-11-02，Annie 在 e6 窗口问，没动手）
+- Annie 原话：「我可以限制一下download的功能么」。e6 已答能做、说了现状，问她要限制谁、哪些页（不在 24 这里重复问）。
+- e6 只读核：Team 页已有 4 个导出勾 manifests.export / orders.export / logs.export / reports.export；后端服务器端导出没勾就 403（orders.py、send_log.py、notifications.py、tour_manifest.py、farm_out.py）。前端员工按钮级权限没做：没勾的人照样看得到 Export / Download 键；浏览器里直接生成的下载后端拦不住。下载键：Manifests Export CSV、Orders Export、Order Log、Send Log、Broadcast Log、Sales Report、Farm out Report / Timetable、HR Export to Excel、Pickup Locations Export、三个 Tracking 页、Dispatch 的 Download Bus Manifest。
+- 可做：员工也按 4 个导出勾藏键（含浏览器生成的）；要不要细分（如 Bus Manifest 下载单独一项）看 Annie。先出 preview（哪页哪个键对应哪一勾）。相关旧题：11-01 09 问过的权限题 A / B / C（Farm out 导出跟 reports.export、Bus Manifest 下载 + Manifests Export CSV 跟 manifests.export，未答）。
+- Annie 接着问（e6 窗口原话）：「这样子，我可以给teams设置权限么」。e6 只读核：权限现在只按人存（后端 permissions.py，每人的勾 ∩ 角色标准），team（user_teams）只管发消息 / 通知，跟权限无关；批量只有 Team 页弹窗「Copy access from」。e6 给的两种：A team 当模板，Teams 页给 team 定一套勾，按「Apply to members」一次套到每人身上，之后每人还能单独改，改模板要再按一次（前端用现有每人保存接口，后端基本不改，推荐）／B 权限跟着 team 走，人 = 所在 team 的勾合起来 + 个人额外勾，改 team 马上生效（后端改算法和存储，工作量大，还要定「team 给了、个人想去掉」怎么办）。等她在 e6 窗口答；preview 跟下载那份并成一份。
+- Annie 答（e6 窗口原话）：「限制谁的问题，你如果可以让我按照assign的team来选的话就会容易很多，如果受限或者没有勾选给这个人的功能，这些键就没有必要出现在页面上」⇒ ① 按 team 一次给一组人设权限；② 员工也照勾藏键（没勾的功能页面上不出键，不只是后端 403）。没动手。e6 出 preview：Teams 页按 team 设权限、下载键对照表（并 09 11-01 的 Farm out 导出 / Bus Manifest 下载两题）、题目（模板 vs 跟着 team 走、一人两个 team、只藏下载键还是所有功能键、Tracking / Settings 导出归哪）。等链接和题。
+- Annie 又说（e6 窗口原话）：「现在给到CCL的版块已经够多，那就可以给他们打开dashbroad，但是只显示开放给他们的模块就好了」。e6 只读核 dashboard-view.tsx：各块已按勾显示（My shortcuts 只出 canOpen；Notice 跟 dashboard.view；Messages 要 tracking .view + messages.view；任务 tasks.view_own；Today's team / 本周 Schedule 跟 schedule.view；DOR 跟 report.view）⇒ Annie 在 Team 页给 CCL 勾 Dashboard 即可，前端不用改。
+  - 两处漏（修 bug，样子不变，等动手）：统计行「Messages need reply」没 Messages 块也出（显示 —）；「Open reports」只看 DOR 版面开关、不看 report.view ⇒ 对应块不出，这格也不出。
+  - 新题（并进 e6 权限 preview）：Today's team 跟 schedule.view 走，CCL 没勾就没地方发消息。A 给 CCL 勾 Staff Schedule（Today's team + 本周 Schedule + 侧栏 Staff Schedule 都出，前端不改）／B Today's team 不跟排班勾，没勾的人只出在线名单 + New message、不列班次（前端改、后端确认在线 / 名单接口不要 schedule.view；推荐，CCL 能发消息又看不到排班；样子变化要 preview）。
+- Annie 答权限题（24 窗口原话，没动手）：「一直跟team走」（= B，人的权限 = 所在 team 的勾 + 个人，改 team 马上生效）；两个 team「那就两个team的功能都有」（并集）；「没选的功能键都藏」（不只下载键）；Tracking / Settings 导出归哪：「什么意思」⇒ 24 解释了大意，请 e6 在 preview 里写全（列具体键 + 选项 + 推荐）。另请 e6 补题：team 给了、个人想去掉怎么办。已转 37 请后端只读估算 team 权限的形状和工作量（要改 permissions.py 算法和存储）。
+  - 37：44 只读出后端设计和工作量（team 勾存储 + 可选个人去掉两种、合起来顺序、team 勾接口和「勾从哪来」、action_log、迁移不改现有权限、只读数 team 和多 team 人数），出好转来对 preview。「角色标准还卡不卡 team 给的勾」由 37 在它窗口问 Annie，e6 不问（已告诉 e6）。
+  - 「角色标准还卡不卡 team 给的勾」Annie 在 24 窗口答（原话）「受」⇒ 权限 = (各 team 勾 ∪ 个人勾) ∩ 角色标准。已转 37 / 44，37 不再问。
+  - e6 权限 preview https://claude.ai/artifact/Y6iUsnesJLDwSvHJdqTrpp （按已定 1–3 改，没写代码）：Teams 页每个 team 加灰「Access」键（同 Team 页权限表，蓝 Save 马上对全员生效）；个人弹窗每勾写来源（from CCL, Operations / Personal / 红字 removed for …）；没勾的键不出（动手前给每页完整对照表）；CCL Dashboard 样子。剩题 4a–4f（Farm out Report CSV 跟 Export Reports / Manifests CSV + Bus Manifest 下载跟 Export Manifests / 三个 Tracking CSV 跟 Export Orders / HR 导出跟 Edit HR / Pickup Locations 导出跟 Settings: Pickup locations / Farm out Timetable 跟 Settings: Farm-out，都推荐 A）、题 5 个人可单独去掉（推荐 A）、题 6 Today's team 不跟排班勾（推荐 B）。24 已发 Annie。
+  - 44 后端设计（37 转，没动手，全新增）：GET / PUT /api/team/teams/{id}/permissions（PUT 整份替换、只 superadmin、记 log）；catalog 加 team_items；members/{id} 加 team_items（来源）/ effective_items，选减法再加 denied_items；/api/me/permissions 改按实际权限（前端藏键读这个）。事实：多数人已有 34–55 个个人勾，并集下 team 去勾不影响个人也勾了的人；生产 5 个 team（Operations 21、Tour Confirmation 20、Morning Pickup 16、Tickets Reminder 16、CCL 10），20 人在 2+ team。后端约 1 天（减法 +半天），迁移 v141，Risk C。37 在问 Annie「谁能加减 team 成员、删 team」（推荐只 Super Admin）。已转 e6。
+  - e6 对完 44 设计改 preview（版本 1793652453-7228，同一链接）：Access 只 Super Admin、改动记 log；黄框写个人勾 34–55 个 / 并集 / 5 个 team 人数 / 受角色标准；模拟人数改真实；加被角色卡掉的灰字示例。⚠️ 前端「没勾的键不出」要等后端 /api/me/permissions 改按实际权限上线后才能上，否则 team 给的键会被误藏。新题 7（e6 提，24 已问 Annie）：加「去掉跟 team 重复的个人勾」键（A 推荐，Super Admin、确认框逐人列）／B 手动去／C 不清理。
+  - e6 preview 加题 7 和样子 ④（版本 1793652511-e063）：Team 页标题右灰键（只 Super Admin）→ 确认框逐人列、黄框说明、蓝色「Remove N ticks」；412 勾 / 61 人是模拟数，真实数等后端只读。剩题 4–7 等 Annie。
+
 ### 52. 司机页 Farm out 客人那一栏改用 Affiliate 的叫法（2026-11-02，Annie 提，没动手）
 - Annie 原话：「我原来说过Farm out的客人是要出现在bus manifest和司机的pick up list里，然后用个好听的名字掩盖把客人卖了的行为」。
 - 24 只读查现状：① Bus Manifest（/dispatch/manifest）已照做：转单客人在最下面灰色小栏「Affiliate」，不写合作公司名（10-18 Annie 定，affiliate-card.tsx）。② 司机手机页（后端 app/templates/field/driver_home.html:406–414，只 relay 司机看得到）栏标题写「Farm out — hand off, not our bus」，说明写「These guests go to a partner company. Pick them up the same way, but do not put them on your tour bus — hand them off to the partner.」——直接写了 Farm out 和 partner company，跟她的要求不符。员工内部页（Dispatch、Farm out Report、Settings）照旧叫 Farm out。
@@ -376,6 +393,8 @@
   - 37 转形状：产品级胶囊已推 task/chd-main-manifest 709df07f（p:<code>、internal name、sendable:false、当天没行不出胶囊）；pax 部分 d8 在做约 45–60 分钟：admin_fee 行 pax 可 null（显示「—」），标签 / 胶囊加 pax_unknown（null 行数），pax = 非 null 之和。预计 PFYF01 约 215 行有人数、约 10 行 null；PLU3N8 / PXLTL1 单独订单是 null，除非 Annie 同意按人数量算客人（37 在问她）。已转 91 出 preview v4（pax_unknown 怎么显示 + 去说明条 + Due≠0 淡红）。
   - Annie 在 37 窗口定（原话）：「费用件数就是人数，不管最后怎么记录，我们的reschedule fee是按照人头收的」⇒ d8 不再去同单找人数：行 pax = 费用自己的件数（多个选项取最大），全部 CHD 产品都这样；null / pax_unknown 只是保险、预计 0，前端 null 照旧显示「—」。preview v4 取消（题 1、3 已明确答）。已转 91。只差动手。
   - ⚠️ 91 报：Annie 在 91 窗口说的是「其他同意推荐，动手」（题 1 B 淡红、题 2 B 只写单数不写 pax、题 3 A 留说明条），91 已照这个做完 task/manifests-sendable fba8716（man 339 / mf 230 / da 446 / nav 38、tsc、eslint 过），没合 main。跟 24 窗口的「1. 要标 2. 按照客人人数 3 不要说明」题 2、3 相反。91 在问 Annie 以哪个为准；按 24 这边要改三处（写 pax、null 显示「—」/ pax_unknown、去说明条），改完等 d8 pax 上后端 main 再合。动手已有（91 窗口）。
+  - 37：后端 task/chd-main-manifest ad5707ee 已推、审查 PASS，等前端 step 2 合 main 后 24 发 SHA，37 再合。最终形状：胶囊 p:<code> / internal name / sendable:false；行 pax = 费用件数（多选项取最大）；pax_unknown 在标签和胶囊上，今天 0，8/16 前 legacy 的 PFYF01 可能有 null（保留「—」）。已转 91，前端先合，要兼容后端旧形状。还卡在 Annie 题 2 / 3 以哪版为准。
+  - 91 两版都做好、检查过，没合 main：版本 1（24 窗口的答案，91 推荐）task/manifests-chd-pax 8361888——淡红、写 pax（「CHD 5 · 9 pax」「Upgrade 5 pax」）、null 显示「—」、pax_unknown>0 写「+ N unknown」、去说明条；兼容后端旧形状；man 340、mf 230、da 446、nav 38、tsc / eslint / build 过。版本 2（91 窗口的答案）task/manifests-sendable fba8716——只写单数、留说明条。Annie 定哪版合哪版；合后等后端合，91 在线上 CHD 标签只看核一遍。
 
 ### 48. Notice 跟 CCL 交流，可选个人或 team（2026-11-01 晚，11/2 做）
 - Annie 原话（09 窗口）：「2 可以跟CCL用notice交流，发的时候可以选个人，也可以选team」「CCl也算一个team」；开关「开放给员工由我来决定，你不要再问了」（各窗口不再问开关）。
@@ -392,6 +411,8 @@
 - Annie 新说法（24 窗口原话）：「CCL我已经取消了Partner的身份，所以不要再标Partner在他们的名字后面了」⇒ 不再在 CCL 名字后面标 Partner。已请 e6 去掉 preview 里的 PARTNER / Partner 标签，并只读核 CCL 账号现在的 role、列出影响（partner 顶栏 / 单独 /notice / 页顶 Notice 块是否还适用、题 6 / 6a / 6b / 7 是否还算数）；已告诉 37 查 G231 partner 版接口还要不要。没动手。
   - 37 回：CCL 账号（84）改 staff 是 Annie 今天在 64 窗口定的；以后的合作方照旧走 partner 规则，后端 partner 分支保留给以后，不删；G231 正在合后端 main（af530bea，v140 已执行）。64 在查接口里有没有 role / is_partner / label 字段、各 CCL 账号现在的 role。24 倾向：前端 partner 那套保留给以后的合作方，CCL 当员工处理、不标 PARTNER；已转 e6 按这个改 preview、作废不再适用的题。
   - e6 照「CCL 当员工」改 preview（版本 1793651691-42eb，同一链接，没写代码）：② 名单 CCL team 去 PARTNER、个人写「David Ruiz · CCL」；③ 卡片标题去「(CCL)」；④⑤⑥ 和题 6 / 6a / 6b / 7 标作废（CCL 用员工 Dashboard / Notice / Today's team，partner 那套留给以后的合作方，前后端都只看 role，不用改）；题 1–5 照算。新题 8：CCL 改员工后保护都不生效，只靠 Team 页的勾（订单 Agent & Commission 会看到、Read & edit 能改能导出、勾发送能对客人发、Farm out 键 / Report 看得到、邮件带 Reply-To、没勾 Dashboard 就收不到 Notice）；A 照员工、Annie 在 Team 页调勾（推荐）／B 另外对 CCL team 藏佣金 / 代理商（要后端按 team 判断）。Notice-CCL 剩动手；题 8 是另一件。
+  - 37 转 64 只读核：后端对 CCL 不发任何 Partner 标记（role / kind / from_kind 都是 staff，「(Partner)」后缀只在 role == partner 时加，staff_messages.py:153–162）；生产 0 个 partner；84 CCL、85 Lei、86 Daniel、87 Connie、90 Anthony 是 staff、team CCL，89 LiuCai staff 没 team。G231 已合后端 main 4a61bbfb，推送等最后审查。CCL 作为员工能看到完整 Notice 和在线名单（Annie 要的）。已请 e6 查前端有没有按 team 名 / 旧缓存写死的 Partner 标签，有就当 bug 修。
+  - e6 只读查 origin/main：前端没有会给 CCL 标 Partner 的地方，Partner 字样全按 role / account_type === partner 判断（partner-frame、Team 页角色标签 / Partners 筛选 / 成员弹窗、isPartner 现读 /api/me，不缓存）；没有按 team 名 CCL 判断的。不用修；Annie 那句指 preview（已改）。开着的旧页面刷新一次即换员工版。
 
 ### 44. 全站手机版重新设计（派 e6 调查 + preview，2026-11-01）
 - Annie 原话：「而且我们的divce版本要重新设计一下了，太多说明和介绍的东西占了半个手机屏」；主窗口问范围，她选「全站一起（推荐）」：一套统一手机版规则，所有页面照做，新页面也照做。
