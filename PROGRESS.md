@@ -277,6 +277,12 @@
   - **全大写 10px 的判断**：用 `components/ui/placeholder.ts` 的 `capsPlaceholder(text)`——提示字里有字母、且全是大写时给框加 `data-caps-placeholder`，globals.css 再小一号。要用的框把它展开到 input 上（动态的提示字也能自动判断）。现在加了：Products 的 Section order、Bus Manifest section order、Forecast「SUNSET」、每个产品的 Section 框（= default section，如 BUS TOUR）、Daily report Log incident 的「CHD…」。以后新框的提示字是全大写的，照样加。
 - 检查：tsc / eslint 0 错、next build 过；headless products 225/225、ptt 44/44（第一次冷启动有 1 条超时，main 上和重跑都 44/44）、nav 38/38、mf 225/225、orders 38/38、catchup 31/31；在模拟接口的 /settings/products 实测：白卡片提示字 rgb(148,163,184) italic 11px、全大写 10px，顶栏深色搜索不变，?theme=night 全部照旧。
 
+## 2026-11-01 晚 Shortcut 条：只给常用页面上色（`task/shortcut-colors`，工作窗口 09，置顶 47 移来）—— 已合 main fab9475
+- Annie 原话一路：「这里的点，manifest用橙色吧」→「可以，最主要是把几个的颜色区别开来，现在看上去都一样，我都很难区分他们」→「如果颜色类似的，可以选择一个是点的颜色，一个是框的颜色」→「你把那些使用率不高的做区别干什么」→「最常用的三个dashbroad，manifest 7 days你都用灰色？」→（对 98）「7 days用红色吧」「orders没人用的」「我要在常用的给颜色区分」→ 看 preview 第 7 版（https://claude.ai/artifact/25YysSRdXNCzmZRUi5EwK1）后：「动手」
+- 改了 components/nav/nav-config.ts 的 dot：Dashboard 粉 #f472b6、Manifests 橙 #fb923c、7 Days Forecast 红 #ef4444、Forms 蓝绿 #2dd4bf、Broadcast 白 #f8fafc（原橙和 Manifests 撞色）；Daily Operation Report 去掉 dot（灰）。Orders / Log / 报表照旧灰。侧栏小点、shortcut 条、Dashboard My shortcuts 图标都跟着变。
+- 检查：tsc 0、eslint 0 错（2 旧警告）、build 过；nav 32/32、dr 88/88、tasks 144/144（第一次跑有 3 条 Dashboard 窄屏宽度检查没过，用 main 原版对照和改后重跑都 144/144，判断是那几条不稳定、跟颜色无关）。
+- 旧分支 task/manifests-dot-orange 作废（被这条取代）。
+
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
 ### 48. Notice 跟 CCL 交流，可选个人或 team（2026-11-01 晚，11/2 做）
@@ -286,10 +292,6 @@
 - Annie 补（57 转）：「那也开个页面给它们吧」⇒ CCL partner 有自己单独的 Notice 页（能看、能回），不只是 PartnerHome 一块。已转 91 加进 preview；后端方案带 partner 侧接口。
 - 91 preview https://claude.ai/artifact/CjrpyLgPdDhE4f7FHs9gWH（Today's team 加「✉ New message」；发消息选 A person / A team，CCL 标 PARTNER；CCL 首页一块 Notice + 单独 /notice 页，顶栏「Notice (N)」）。6 题：① team 消息的回复：A 回发信人 + 抄送 team 其他人（推荐）／B 只回发信人；② Got it：A 各人按各人（推荐）／B 一人按全 team 收；③ 「A person」名单：A 全部在用员工 + CCL，在线标 online（推荐）／B 只在线员工 + 全部 CCL；④ CCL 主动发：A 只能回复／B 能发，只选 NPE team（推荐）／C team 或个人；⑤ team 消息发邮件：A 每人一封，回复只站内（推荐）／B 只站内；⑥ CCL 首页 Notice：A 留一块只放新消息 + Open Notice →（推荐）／B 只一行「2 new messages」／C 什么都不加。后端要的已转 57。
 
-### 47. Shortcut 条常用页面分得开（09，preview https://claude.ai/artifact/25YysSRdXNCzmZRUi5EwK1 第 7 版，2026-11-01 晚）
-- Annie 原话：「这里的点，manifest用橙色吧」→「可以，最主要是把几个的颜色区别开来，现在看上去都一样，我都很难区分他们」→「如果颜色类似的，可以选择一个是点的颜色，一个是框的颜色」→「你把那些使用率不高的做区别干什么」→「最常用的三个dashbroad，manifest 7 days你都用灰色？」→（对 98）「7 days用红色吧」「orders没人用的」
-- v7（定稿方案，等「动手」）：Dashboard 粉 #f472b6、Manifests 橙 #fb923c、7 Days Forecast 红 #ef4444；Forms 蓝绿 #2dd4bf、Broadcast 白 #f8fafc（原橙和 Manifests 撞色）；Orders、Daily Operation Report、Log、报表灰；Dispatch / My Workspace / Staff Schedule / Morning / Tour / Ticket 不变。没有待答的题。
-- 动手时：只改 components/nav/nav-config.ts 的 dot（daily_report 去掉 dot），跑 nav / dr 等。
 ### 44. 全站手机版重新设计（派 e6 调查 + preview，2026-11-01）
 - Annie 原话：「而且我们的divce版本要重新设计一下了，太多说明和介绍的东西占了半个手机屏」；主窗口问范围，她选「全站一起（推荐）」：一套统一手机版规则，所有页面照做，新页面也照做。
 - e6：手机尺寸截各主要页面、量说明 / How to use / 提示条 / shortcut 条占多高，提统一规则（1–2 种），挑 3–4 页做「现在 / 改后」对比 preview。电脑版不变。等 preview 和题。
