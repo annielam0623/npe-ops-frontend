@@ -33,6 +33,7 @@
 - 窗口：前端工作窗口 09、91、e6；后端主窗口 57，后端工作窗口 64、44；37 多半是今天的后端主窗口（98 说），已问它确认。
 - 资源：空闲内存 46.8 / 63 GB；node 0 个；chrome 28 个进程，约 4.1 GB。
 - 已发 e6：报开工和分支名，接着做手机版第二批。
+- 手机版第二批全部上线：e6 ①② 1472142，09 ③ 87b5b97（dr 84/88 的 shortcut 宽度 4 条纯 main 也不过，派 09 查）。
 - 37 确认：它是今天的后端主窗口（接 57），后端 44 / 64 经它回报。37 更正 98 的说法：Forecast 补数据（G229）还没派，等 Annie 答数据格式 / 上传方式 / 补的日子要不要标出来。G231 Notice ↔ CCL 等 Annie 答 91 preview 的 6 题。64 在做 G233（前端已经做了）、G232（排班邮件附 PDF，页面不变）。
 - G230 Send Log 按组分页接口格式（44 出，还没上线，Risk C，Annie 确认后才推 main）：逐条 send-log 每行加 batch_id；新增 GET /api/notifications/send-log/groups（筛选同逐条接口 + page / page_size≤100；组里任一条符合就列，一组不切开；返回 total / total_groups / stats / groups[{batch_id, started_at(_label), module, tour_type, tour_label, tour_date, send_type, sent_by, summary, matched_rows, matched_orders≤20, batch_id 为 null 时带 rows}]）；展开照旧 /api/send-batches/{id}；不是团的组 tour_label 是 Morning Pickup / Guest reply / Broadcast / Farm-out notice。已转 91 对着 preview 核字段。Annie 还没「动手」，题 3、4 没答，所以不写代码。
   - 91 核过（preview v2 不用改）：组头、分页、计数、统计、单条都够。缺 1（题 3 不管选哪个都要）：组展开时分不出哪几条符合筛选，send-batches 的行也缺列 ⇒ 请后端加 GET /api/notifications/send-log/groups/{batch_id}/rows?<筛选>，回 SendLogRow + matched。缺 2（只有题 4 选全部展开才要）：groups 接口加 include_rows=1。小问题：不是团的组 module 回什么值。三件都已转 37。
