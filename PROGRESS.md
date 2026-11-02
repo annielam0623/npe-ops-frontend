@@ -252,17 +252,23 @@
 - 后端 64 task/forecast-history：GET /api/forecast/history → {dates}（新的在前）；GET /api/forecast/history/{date} → {date, taken_at, forecast = 当晚 23:55 PT 的 60-day 内容}；404「No snapshot was saved for …」。权限 forecast.view（含 CCL partner）。每晚 23:55 PT 存快照，第一张 11/1（等后端上线 + Annie 跑迁移）。每周日晚给 Annie 发 Excel（前端不管）。
 - 前端（64 建议）：回看日期选择；过去日子同一表格只读（不改格子、没 + guide / Refresh / 开团和限额编辑）；Canyon 剩余座位不在快照里（隐藏或「—」）；横条「Viewing saved forecast from <date>」+ 回到今天；How to use 加一行。09 出 preview。
 
+## 2026-11-01 晚 Dashboard 主管 Today's tasks 行：去掉重复的 Overdue 签、任务名完整显示（`task/tasks-row-and-dot`，工作窗口 09）—— 已合 main a7b8a8a
+- Annie 原话：「task 这里，overdue和旁边的时间明显是重复的，不需要显示了。然后把task完整地显示出来」；看过 preview（https://claude.ai/artifact/LxnxMp62Q7yJ27hJxjceAc）后：「然后设计通过。动手吧」（98 核过）。
+- 改了：components/tasks/supervisor-view.tsx 主管行不再挂「Overdue · was due …」签（时间框已写时间，行仍在 Overdue 红框、带红边）；标题去掉 truncate，太长折行。员工 My tasks 不动。tasks-test 改成查「没有 Overdue 签、时间框 14:00、标题不截断」。
+- 检查：合最新 main 后 tsc 0、eslint 0 错（2 旧警告）、build 过；tasks 144/144、nav 32/32。
+
+## 2026-11-01 晚 Today's team / Notice：Annie 答复（置顶 46 移来）
+- Annie 原话：「1. 开放给员工由我来决定，你不要再问了。2 可以跟CCL用notice交流，发的时候可以选个人，也可以选team」「CCl也算一个team」
+- ⇒ 开关 team_messages_direct 何时打开由 Annie 自己定，各窗口不再问。
+- ⇒ **新需求（未动手、要先 preview、要后端）**：Notice 也能跟 CCL 交流；发的时候可以选「个人」或「team」，CCL 算一个 team。现在 91 核过：名单只有内部员工，partner 调接口 403、收不到消息、partner Dashboard 没这块 ⇒ 要后端放开 partner 收发、加「发给 team」（团队清单从哪来、CCL team 包含哪些账号）。交主窗口 98 派工 / 转后端。
+
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
-### 45. Dashboard 主管 Today's tasks 行（09，preview https://claude.ai/artifact/LxnxMp62Q7yJ27hJxjceAc ，2026-11-01 晚）
-- Annie 原话：「task 这里，overdue和旁边的时间明显是重复的，不需要显示了。然后把task完整地显示出来」
-- 改法：去掉红色「Overdue · was due …」签（右边时间框已写时间，行仍在 Overdue 红框里带红边）；任务名不截断、太长折行。只改 supervisor-view.tsx，员工 My tasks 不动。代码 task/tasks-row-full d4f1522（没合；动手时删没用的 DueTag import、跑 tasks）。等「动手」。
-
-### 46. Today's team 人人可见、互发 Notice（09 记录，2026-11-01 晚）
-- Annie 原话：「todays team，anyone login就会显示在上面，然后任何人都可以相互发notice，记住：notice是内部用的」
-- 现状：功能已上线（91，34e93fc），开关 team_messages_direct 默认只 SA 可见，要员工能用需 Annie 在版面设置里打开。
-- 09 已问 Annie：现在要不要打开；partner（CCL 等）要不要排除在名单和收发之外（推荐排除，「内部用」）。后端 /api/team/online 会不会列 partner 还没核。
-- 91 只读核过（后端 staff_messages.py:76–90、auth.py:56 / 81–88、dashboard_widgets.py:197–218；前端 partner-home.tsx:14）：名单只取 staff / supervisor / admin / SA 的在职账号，partner、司机、导游都不在；partner 调接口 403，也收不到消息；partner 的 Dashboard 没有这一块。⇒ 已经是「内部用」，不用改。剩下只等 Annie 自己决定何时在版面设置里打开开关。
+### 47. Shortcut 条 Manifests 的点改橙色（09，preview https://claude.ai/artifact/25YysSRdXNCzmZRUi5EwK1 ，2026-11-01 晚）
+- Annie 原话（附截图，各页顶上的 shortcut 条）：「这里的点，manifest用橙色吧」
+- 现在：Manifests 的点是灰色（没设颜色）。preview 用 #fb923c（亮橙）；Broadcast 已经用 #f97316（深一点的橙），所以没用同一个。Dashboard 的 My shortcuts 框边也跟着点的颜色变橙。
+- 题：甲 = 照 preview 用 #fb923c（推荐，和 Broadcast 分得开）；乙 = 用和 Broadcast 一样的 #f97316。
+- 代码 task/manifests-dot-orange 0239629（一行 nav-config.ts），没合。等 Annie 看 preview、说「动手」。
 
 ### 44. 全站手机版重新设计（派 e6 调查 + preview，2026-11-01）
 - Annie 原话：「而且我们的divce版本要重新设计一下了，太多说明和介绍的东西占了半个手机屏」；主窗口问范围，她选「全站一起（推荐）」：一套统一手机版规则，所有页面照做，新页面也照做。
