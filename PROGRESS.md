@@ -401,6 +401,7 @@
   - 37 回：CCL 账号（84）改 staff 是 Annie 今天在 64 窗口定的；以后的合作方照旧走 partner 规则，后端 partner 分支保留给以后，不删；G231 正在合后端 main（af530bea，v140 已执行）。64 在查接口里有没有 role / is_partner / label 字段、各 CCL 账号现在的 role。24 倾向：前端 partner 那套保留给以后的合作方，CCL 当员工处理、不标 PARTNER；已转 e6 按这个改 preview、作废不再适用的题。
   - e6 照「CCL 当员工」改 preview（版本 1793651691-42eb，同一链接，没写代码）：② 名单 CCL team 去 PARTNER、个人写「David Ruiz · CCL」；③ 卡片标题去「(CCL)」；④⑤⑥ 和题 6 / 6a / 6b / 7 标作废（CCL 用员工 Dashboard / Notice / Today's team，partner 那套留给以后的合作方，前后端都只看 role，不用改）；题 1–5 照算。新题 8：CCL 改员工后保护都不生效，只靠 Team 页的勾（订单 Agent & Commission 会看到、Read & edit 能改能导出、勾发送能对客人发、Farm out 键 / Report 看得到、邮件带 Reply-To、没勾 Dashboard 就收不到 Notice）；A 照员工、Annie 在 Team 页调勾（推荐）／B 另外对 CCL team 藏佣金 / 代理商（要后端按 team 判断）。Notice-CCL 剩动手；题 8 是另一件。
   - 37 转 64 只读核：后端对 CCL 不发任何 Partner 标记（role / kind / from_kind 都是 staff，「(Partner)」后缀只在 role == partner 时加，staff_messages.py:153–162）；生产 0 个 partner；84 CCL、85 Lei、86 Daniel、87 Connie、90 Anthony 是 staff、team CCL，89 LiuCai staff 没 team。G231 已合后端 main 4a61bbfb，推送等最后审查。CCL 作为员工能看到完整 Notice 和在线名单（Annie 要的）。已请 e6 查前端有没有按 team 名 / 旧缓存写死的 Partner 标签，有就当 bug 修。
+  - e6 只读查 origin/main：前端没有会给 CCL 标 Partner 的地方，Partner 字样全按 role / account_type === partner 判断（partner-frame、Team 页角色标签 / Partners 筛选 / 成员弹窗、isPartner 现读 /api/me，不缓存）；没有按 team 名 CCL 判断的。不用修；Annie 那句指 preview（已改）。开着的旧页面刷新一次即换员工版。
 
 ### 44. 全站手机版重新设计（派 e6 调查 + preview，2026-11-01）
 - Annie 原话：「而且我们的divce版本要重新设计一下了，太多说明和介绍的东西占了半个手机屏」；主窗口问范围，她选「全站一起（推荐）」：一套统一手机版规则，所有页面照做，新页面也照做。
