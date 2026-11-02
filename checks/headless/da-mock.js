@@ -143,8 +143,12 @@ function roster() {
   return { drivers: [...ds, ...rosterExtra.filter((p) => p.type === "driver")], guides: [...gs, ...rosterExtra.filter((p) => p.type === "guide")] };
 }
 function day(date) {
-  const g82 = date === PRIVATE_DAY && !ctl.noG82;
-  const dayRows = (saved[date] ?? []).map((r) => {
+  // revAuto（CCL 通知不出现的 bug）：10-07 的改版日再存一台没字母的 West Rim 车（按人数要两台 ⇒ 页面自动给它字母 A、补开 B）
+  // 和一台没配订单的私人团车（打开就自动配上订单）。这两种自动改动都不算 staff 动过手，改版卡和通知照样要出现。
+  const revAuto = date === "2026-10-07" && ctl.revAuto;
+  const g82 = (date === PRIVATE_DAY && !ctl.noG82) || revAuto;
+  const dayRows = (revAuto ? [...saved[date], row({ id: 902, shift: "bus_tour", manifest_id: 3, driver_hr_id: 4, vehicle_id: 12, bus_label: null, location_ids: [102] }),
+    row({ id: 903, shift: "private_tour", driver_hr_id: 5, vehicle_id: 14, custom_tour_name: "ZZ Test Charter", order_number: null, order_number_set_by_staff: false })] : (saved[date] ?? [])).map((r) => {
     const c = { ...r };
     if (date === PRIVATE_DAY && ctl.noG82) { delete c.order_number; delete c.order_number_set_by_staff; }
     return c;
@@ -255,6 +259,8 @@ http.createServer(async (req, res) => {
   if (p === "/__log") return send(res, 200, log);
   if (p === "/__ctl") {
     Object.assign(ctl, JSON.parse(await readRaw(req)));
+    // revAuto：10-07 的改版回到没应用（前面的检查可能 Apply + 存过），存的排车回到只有 901 那台。
+    if (ctl.revAuto) { prefills["2026-10-07"].status = "pending"; saved["2026-10-07"] = [row({ id: 901, shift: "relay", driver_hr_id: 1, vehicle_id: 10, location_ids: [100] })]; }
     // resetSeats：Seat guests 的单回到自动分车的位置（前面的检查挪过车）。
     if (ctl.resetFo) { const fresh = JSON.parse(FO_PRISTINE); foOrders.splice(0, foOrders.length, ...fresh); ctl.resetFo = false; }
     if (ctl.resetSeats) { for (const o of seatOrders) { o.bus_label = o.auto; o.staff = false; } ctl.resetSeats = false; }
@@ -388,7 +394,9 @@ http.createServer(async (req, res) => {
     for (const r of free) out.set(r.key, { key: r.key, order_number: null, over_capacity: false });
     return send(res, 200, { matches: [...out.values()], unmatched_orders: unmatched });
   }
-  if (p === "/api/dispatch/imports/day") return send(res, 200, { last_ok: "10/04 02:13 PM", prefill: prefills[q.date] ?? null });
+  // prefillDelay：CCL 那份晚到（生产上常见：人数卡片、私人团配单先回来，页面已经自动改过行）。
+  if (p === "/api/dispatch/imports/day" && ctl.prefillDelay) await new Promise((r) => setTimeout(r, ctl.prefillDelay));
+  if (p === "/api/dispatch/imports/day") return send(res, 200, { last_ok: "10/04 02:13 PM", prefill: ctl.hideRev && q.date === "2026-10-07" ? null : (prefills[q.date] ?? null) });
   if (p === "/api/dispatch/imports/pull") {
     const b = JSON.parse(await readRaw(req)); entry.body = b;
     const msg = { nothing: "Nothing new from CCL since the last pull.", failed: "Pull failed: Discord rejected the bot token (401). Check DISCORD_BOT_TOKEN on Railway." }[ctl.pullStatus] ?? "ok";
@@ -609,6 +617,10 @@ http.createServer(async (req, res) => {
     ] });
     if (q.date === "2026-10-18" || q.date === "2026-10-19") return send(res, 200, { run_date: q.date, cards: [
       { ...card(3, "West Rim Bus Tour"), uploaded: true, pax: 10, guests: 4, buses: 2, mode: "lettered", not_on_bus: 0, buses_needed: 2, guests_per_bus: 14, bus_pax: { A: 3, B: 7 } },
+    ] });
+    // revAuto：West Rim 9 位、一台车只坐 5 位 ⇒ 要两台（页面给存着的那台字母 A、补开 B）。
+    if (q.date === "2026-10-07" && ctl.revAuto) return send(res, 200, { run_date: q.date, cards: [
+      { ...card(3, "West Rim Bus Tour"), uploaded: true, pax: 9, guests: 4, buses: 1, mode: "single", not_on_bus: 4, buses_needed: 2, guests_per_bus: 5, bus_pax: {} },
     ] });
     if (q.date === "2026-10-10") return send(res, 200, { run_date: q.date, cards: [
       { ...card(3, "West Rim Bus Tour"), uploaded: true, pax: 7, guests: 3, buses: 3, mode: "lettered", not_on_bus: 0, buses_needed: 2, guests_per_bus: 4, bus_pax: { A: 4, B: 0, C: 3 } },

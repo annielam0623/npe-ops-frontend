@@ -2055,6 +2055,53 @@ async function run() {
     await sleep(300);
   }
 
+  // CCL 通知不出现（Annie 2026-11-02「怎么不见了」）：打开页面后自动改的行（按人数给存着的车补字母 / 补开空车、私人团自动配订单）
+  // 不算 staff 动过手；CCL 那份晚到时，改版卡和步骤框下面的通知都要出现。Pull from Discord 拉到改版也一样。
+  {
+    const notice = "document.querySelector('[data-ccl-notice]')";
+    const card = "document.querySelector('section[aria-label=CCL]')";
+    const autoDone = "[...document.querySelectorAll('[data-f=order]')].some(s => s.value)";
+    for (const [label, opts] of [["CCL 先到", { prefillDelay: 0 }], ["CCL 晚到（自动改行之后）", { prefillDelay: 2500 }]]) {
+      await ctl({ revAuto: true, pullStatus: "nothing", ...opts });
+      await goto(`${APP}/dispatch?date=2026-10-07`);
+    await helpers();
+      await waitFor(card, 15000);
+      await sleep(800);
+      check(`${label}：存过的一天有改版，打开后页面自动给车补字母、私人团自动配订单 ⇒ Apply changes 卡和步骤框下面的通知都在`, await evaluate(`return !!${card} && !!${notice} && ${notice}.textContent.includes('CCL posted 2 changes for');`), await evaluate(`return JSON.stringify({card: !!${card}, notice: !!${notice}, order: ${autoDone}});`));
+      check(`${label}：自动改的确实发生了（私人团配上了订单）`, await evaluate(`return ${autoDone};`));
+    }
+    // Pull from Discord 拉到改版：页面已经自动改过行，也要列出来（不是「while you were editing」）。
+    await ctl({ revAuto: true, prefillDelay: 0 });
+    {
+      await ctl({ hideRev: true, pullStatus: "nothing" });
+      await goto(`${APP}/dispatch?date=2026-10-07`);
+    await helpers();
+      await waitFor(autoDone, 15000);
+      await sleep(800);
+      check("Pull 之前：还没有改版（没有卡、没有通知）", await evaluate(`return !${card} && !${notice};`));
+      await ctl({ hideRev: false, pullStatus: "revision" });
+      await evaluate("$btn('Pull from Discord').click();");
+      check("Pull from Discord 拉到改版：Apply changes 卡和通知都出现，不说「while you were editing」", await waitFor(`${card} && ${notice}`, 10000) && !(await evaluate("return document.body.textContent.includes('while you were editing');")), await evaluate("return document.body.textContent.match(/CCL posted something new[^.]*\\./)?.[0] ?? '';"));
+      await evaluate(`$btn('Apply changes', ${card}).click();`);
+      await sleep(300);
+      check("Apply 以后通知不见了", await evaluate(`return !${notice} && !${card};`));
+    }
+    // staff 真的动过手：照旧不列改版（同旧页面），Pull 时说「while you were editing」。
+    await ctl({ revAuto: true, hideRev: true, pullStatus: "nothing" });
+    await goto(`${APP}/dispatch?date=2026-10-07`);
+    await helpers();
+    await waitFor(autoDone, 15000);
+    await sleep(800);
+    await evaluate("const s = document.querySelector('[data-f=note]'); $setValue(s, 'ZZ Test note');");
+    await sleep(200);
+    await ctl({ hideRev: false, pullStatus: "revision" });
+    await evaluate("$btn('Pull from Discord').click();");
+    check("staff 真动过手：Pull 到改版只提示「while you were editing」，不出卡", await waitFor("document.body.textContent.includes('while you were editing')", 10000) && !(await evaluate(`return !!${card};`)));
+    await ctl({ revAuto: false, hideRev: false, prefillDelay: 0, pullStatus: "nothing" });
+    await goto("about:blank");
+    await sleep(300);
+  }
+
   // 手机版（Annie 2026-11-01 手机版规则）：页头黄字、各步说明、How to use 收进「i」；① Assign / ② Send 一行
   {
     await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
