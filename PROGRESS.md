@@ -20,6 +20,12 @@
 - 窗口：前端工作窗口 09、91、e6；后端主窗口 57，后端工作窗口 64、44；37 多半是今天的后端主窗口（98 说），已问它确认。
 - 资源：空闲内存 46.8 / 63 GB；node 0 个；chrome 28 个进程，约 4.1 GB。
 - 已发 e6：报开工和分支名，接着做手机版第二批。
+- 37 确认：它是今天的后端主窗口（接 57），后端 44 / 64 经它回报。37 更正 98 的说法：Forecast 补数据（G229）还没派，等 Annie 答数据格式 / 上传方式 / 补的日子要不要标出来。G231 Notice ↔ CCL 等 Annie 答 91 preview 的 6 题。64 在做 G233（前端已经做了）、G232（排班邮件附 PDF，页面不变）。
+- G230 Send Log 按组分页接口格式（44 出，还没上线，Risk C，Annie 确认后才推 main）：逐条 send-log 每行加 batch_id；新增 GET /api/notifications/send-log/groups（筛选同逐条接口 + page / page_size≤100；组里任一条符合就列，一组不切开；返回 total / total_groups / stats / groups[{batch_id, started_at(_label), module, tour_type, tour_label, tour_date, send_type, sent_by, summary, matched_rows, matched_orders≤20, batch_id 为 null 时带 rows}]）；展开照旧 /api/send-batches/{id}；不是团的组 tour_label 是 Morning Pickup / Guest reply / Broadcast / Farm-out notice。已转 91 对着 preview 核字段。Annie 还没「动手」，题 3、4 没答，所以不写代码。
+  - 91 核过（preview v2 不用改）：组头、分页、计数、统计、单条都够。缺 1（题 3 不管选哪个都要）：组展开时分不出哪几条符合筛选，send-batches 的行也缺列 ⇒ 请后端加 GET /api/notifications/send-log/groups/{batch_id}/rows?<筛选>，回 SendLogRow + matched。缺 2（只有题 4 选全部展开才要）：groups 接口加 include_rows=1。小问题：不是团的组 module 回什么值。三件都已转 37。
+  - 44 答（37 转）：缺 1 照做 GET …/groups/{batch_id}/rows，每行 = 逐条行 + id / batch_id / matched，没这个 batch 回 404；缺 2 只有 Annie 选全部展开才做；module 一定有值：morning_pickup / farm_out / broadcast_* / reply_*（tour_label 是 Guest reply）等。/groups、/rows 等 Annie 确认 Risk C 后一起上线。已转 91（reply 先照 preview 用「Other」，换新标签要先问 Annie）。
+  - 91 记的，Annie 说动手时一起问（现在先不问）：前端 Send Log 只认 3 个模块（components/send-log/config.ts：Tour Conf、Morning P/U、Tickets）。所有发送都进组以后会多出 last_minute / farm_out / broadcast_* / reply_*。组头可以写「Other」，但 Module 下拉筛不出这几类，统计卡也不单独算。要问：Module 下拉和统计卡要不要加这几类（加的话先出 preview），以及 reply_* 换不换成自己的标签。
+- 手机版第二批分工：e6 做 ① Pickup Locations / Products / Team、② Send Log / Workspace / Content Studio（task/mobile-phase2，worktree C:\Code\ops-wt-e6-mob2）；09 做 ③ Schedule 工具条 / Bus Manifest / 发送页 / Tickets・Tour Tracking（task/mobile-phase3）。共用的 phone.tsx / lib/phone.ts / globals.css 要改的话先报 24 协调。Send Log 只改手机上的样子，不动页面结构（91 之后要改成折叠组）。
 
 ## 2026-11-01 晚 收工交接：前端主窗口-98 [94e9c6]（家里，周末时间表；11/2 凌晨写完）
 
@@ -313,6 +319,8 @@
 - 已转 57（11/2 派人）：partner 收发范围、「发给 team」（team 清单来源、CCL team 包括哪些账号、每人一份还是共享）、partner 在哪看 / 回、开关管不管 partner。91 出前端 preview（排在 Send Log 新 preview 后）。未动手。
 - Annie 补（57 转）：「那也开个页面给它们吧」⇒ CCL partner 有自己单独的 Notice 页（能看、能回），不只是 PartnerHome 一块。已转 91 加进 preview；后端方案带 partner 侧接口。
 - 91 preview https://claude.ai/artifact/CjrpyLgPdDhE4f7FHs9gWH（Today's team 加「✉ New message」；发消息选 A person / A team，CCL 标 PARTNER；CCL 首页一块 Notice + 单独 /notice 页，顶栏「Notice (N)」）。6 题：① team 消息的回复：A 回发信人 + 抄送 team 其他人（推荐）／B 只回发信人；② Got it：A 各人按各人（推荐）／B 一人按全 team 收；③ 「A person」名单：A 全部在用员工 + CCL，在线标 online（推荐）／B 只在线员工 + 全部 CCL；④ CCL 主动发：A 只能回复／B 能发，只选 NPE team（推荐）／C team 或个人；⑤ team 消息发邮件：A 每人一封，回复只站内（推荐）／B 只站内；⑥ CCL 首页 Notice：A 留一块只放新消息 + Open Notice →（推荐）／B 只一行「2 new messages」／C 什么都不加。后端要的已转 57。
+- 2026-11-02 Annie 答 ①–④（在后端主窗口 37 那里答，37 转 24）：① A ② A ③ A ④ **C**（CCL 能主动发，发给 NPE 的 team 或某个人，CCL 看得到全部 NPE 员工名字）。⑤ ⑥ 还没答，37 已问过一次，不再追问；⑥ 只涉及前端。37 请 Annie 开新的后端窗口出 G231 接口方案（带 security-auditor）。91 按 ④ C 更新 preview。还没「动手」。
+- 91 已更新 preview（同一链接）：① ② ③ 标「已定 A」，④ 标「已定 C」；新加 ⑥「CCL 主动发消息」（A team 只列 NPE 的 team；A person 列全部在用 NPE 员工 + 所在 team，不列 CCL 自己）。91 自己定的一处，等 Annie 看：CCL 那边的名单不显示谁在线（在线算员工内部信息）。给后端的（partner 取 team 清单、取员工名单（只要名字 + team）、发给 team 或个人）已转 37。
 
 ### 44. 全站手机版重新设计（派 e6 调查 + preview，2026-11-01）
 - Annie 原话：「而且我们的divce版本要重新设计一下了，太多说明和介绍的东西占了半个手机屏」；主窗口问范围，她选「全站一起（推荐）」：一套统一手机版规则，所有页面照做，新页面也照做。
