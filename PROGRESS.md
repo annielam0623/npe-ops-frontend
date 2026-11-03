@@ -13,9 +13,29 @@
   - Morning tracking 页签 Tracking / Live drivers（⑪ A，样子同排班 Schedule / Rules），Live drivers 旁写「Super Admin only」（开关是 super_admin_only 时）；`lib/page-visibility.ts` 加 `morning_live_drivers`。开关没对我开：没有页签，表也跟以前一样（Driver mark、No show 置顶都不出）。日期、司机筛选、统计卡（⑦ A 照搬）、搜索、Refresh、Export 两个页签共用。
   - Tracking 表（⑥ A）：新列 Driver mark（紧跟 Check-in Time；存档里没有时插在那里，旧后台自己丢掉不认识的键），写「✓ Picked up 5:42 AM / ✓ Boarded / ✗ No show 6:03 AM」+ 车 / 司机；ns_unhandled 的单顶到最上面、淡红底、左边红条，Driver mark 下 ⚠️ Take action（同 Notes 那个接口），处理过写 ✓ 谁；刷新新冒出来的 No show 闪三下、带 NEW 五分钟；两个页签上红数字（没处理的 No show 单数），全处理完绿点。旧后端没有 live_* 键时整列不出。
   - Live drivers（新 `components/morning-tracking/live-drivers.tsx`）：一人一列，React 照搬司机页 / 导游页（relay 站点块、Checked in、团车摘要卡 / 午餐 / 名单、有单独导游的团车只出数字、导游页 On board、Not picked up 红框、Routes / Messages 收件箱）；按钮只读灰掉、标了的绿 / 红、下面写几点（④⑩ A）；列头写车 · 哪一趟、x picked up · y no show · z not marked · pax；搜索标黄；司机筛选只看那一列；每 30 秒刷新（表和司机页一起，只在今天、没过 cut-off；Tracking 页签照旧 60 秒）。
-  - ⑨ 每列 Text / Messages 里的客人：打开 Tracking 那个回复框（ConversationModal 加 `sendBoth`：SMS / Email 默认都勾，发完分开写两个渠道结果，绿 / 红 / 灰，no_channel 写「SMS not sent: no channel」）；别的地方不传，照旧只勾 SMS。单号不在当天 tracking 里时红字说用 Orders。
+  - ⑨ 每列 Text / Messages 里的客人：打开 Tracking 那个回复框（ConversationModal 加 `sendBoth`：发完分开写两个渠道结果，绿 / 红 / 灰，no_channel 写「SMS not sent: no channel」；默认两个都勾已是全站的，见 2026-11-03 那节）。单号不在当天 tracking 里时红字说用 Orders。
   - How to use 加两条（开关对我开时才出）。
 - 检查：mt-mock 加 ctl.live（行的 live_* / ns_unhandled、/live-drivers 两个人、addNoShow / clearMark / liveForbidden、NOCHANNEL / FAILMAIL）；mt 加 22 条（开关关着不出、两个页签、Driver mark 位置、No show 置顶红底、时间写法、页签数字、Take action 后绿点、NEW、Live 两列、列头数字、只读按钮 + 时间、导游列、搜索标黄、司机筛选、回复框默认两个都勾 + POST 形状 + 两行绿字、no_channel / 邮件失败红字、Messages 收件箱、30 秒刷新、403、旧后端没 Driver mark），可选 LIVE_SHOT 存截图（看过，同 preview）。ns 的 Page visibility 行数 20→22（main 上已经是 21，那条原来没跟着改）。mt 240/240、ns 49/49、tt 137/137、tk 135/135、da 454/454、tasks 144/144、nav 38/38、perm 54/54；tsc / eslint（0 错）/ build 过。
+## 2026-11-03 回复框短信 / 邮件默认都勾（`task/reply-both-default`，工作窗口 `npe-ops-frontend-39`[36b630]）
+- Annie 原话（39 窗口）：「那你把他们都改成两个勾选」（起因：39 核对出新 ops 和旧后台的回复框都默认只勾 SMS，跟她说的「staff发送morning的默认就是两个都自动勾选了」对不上）。只改默认勾选，样子不变，不用 preview。
+- 改了：`components/ui/conversation-modal.tsx` emailChecked 默认 true——Morning / Tour / Tickets tracking 和 Dashboard 的 Reply 弹框都一样；客人没邮箱时那一格本来就勾不上、不发。Manifests 群发那个窗口不是这个组件，没动。
+- 检查：mt 两条改成「默认两个都勾」「Send 带 send_email=true」；mt 218/218（第一次跑有 4 条偶发没过——60 秒自动拉、Agent 列表格没出行，跟本改动无关，重跑全过）、tt 137/137、tk 131/131、da 457/457；tsc / eslint（0 错）/ build 过。
+
+## 2026-11-02 晚 Bus Manifest 司机兼导游并一格（`task/manifest-driver-guide`，工作窗口 `npe-ops-frontend-0e`[d96681]，主窗口 f8 派）
+- Annie 对 Bus Manifest 对照纸本报告「全部同意。动手」；纸本「Driver Guide: Lankun」。这一步只改网页：同一个人（后端 bus.driver_is_guide；没带时不分大小写比名字）⇒ 抬头一格「Driver Guide」、午餐单底行「Driver Guide」；打印模板那几行由后端改（f8 转）。
+- 检查：mf 加一项（A 车并一格、B 车照旧两格）；mf 231、man 346、da 457、rl 26、nav 38；tsc / eslint 0 错 / build 过。
+
+## 2026-11-02 晚 Dispatch › Relay list 打印单 + Bus Manifest setup 简称（`task/relay-print`，工作窗口 `npe-ops-frontend-0e`[d96681]，主窗口 f8 派）—— ✅ 后端 35eec2e1 上线、v143 Annie 已执行后合 main
+- Annie 原话（0e 窗口）：「在其余页面里，其实我们dispatch里是没有做relay的可打印版本的，现在动手做吧，一个总表，然后分成每个司机的分表」；「总表按照现在的格式来，字段100%复制，这个不用多说了」；「其他问题都走推荐，简写纸本里用哪个就用哪个，不要自己改」；「hoover的司机用他的bus manifest就好了，上面都按照时间排好了」；「排完relay并保存了以后，应该加一个按键显示这些relay的list」。简称后来改定（f8 窗口）：「South，West，Lower，Upper，CanyonX，BZ」。
+- preview（Annie 已定）：https://claude.ai/artifact/3p3STHAw1rk7ewCeQW1dma （v12）；11/3 真实排车样张（名字 / 电话遮过）：https://claude.ai/artifact/Fi5ncf4fyfBVhUhZyeEYA5 。
+- 做了：
+  - 新页 `/dispatch/relay-list?date=`（`&car=<排车行 id>` = 只这一台）：每轮一张 RELAY SPLITS 总表（7 列照纸本 Pick up Time · Pick up Location · Quantities · Customer name · Customer Phone · Tour · Order Number；图例第一排接驳车，下面每团一栏叠大巴），每台有客人的车一张分表（车色抬头、Time · Hotel · Qty · Full Name · Phone # · Product · Order #、Total Pax、底部只列这台车客人要去的大巴色条）；A4 竖向一张一页；还没上 relay 车的客人屏幕上单独一块、不印。排序：时间 → 车 → 站序 → First name A–Z，换酒店空一行。Tour 用后端 product_short；接驳车 1 黄 / 2 橙 / 3 蓝…，大巴用团色。这台车当天也是大巴（car.tour_buses 1 个）⇒ 抬头写大巴；2 个以上都列 + print_warnings 红字。Hoover 的 Tour bus pick up 不印。逻辑在 `lib/relay-list.ts`，页面 `components/relay-list/`。
+  - Dispatch › Morning Relay：Pull from manifests 旁「📋 Relay list」（白键，新标签）；1st / 2nd Round 每台有客人的车车头「Print」只看这一台；有没存的改动先问「Save before opening the Relay list?」（Save and open / Cancel），存好再开。
+  - Products › Bus Manifest setup：「Short name」一项（团一格 + 每个 Tour 节一格），先暂存、按 Save 逐个 PUT；后端没带 short_name 时不出这项。
+  - 类型：relay-pull 的 guest.phone / manifest_id / product_short / short_tag / hotel_short / bus，car.location_ids / tour_buses / print_warnings（都是可选，旧后端照样能看）。
+- 检查：新套 rl（rl-mock 照 fc 的形状）；da 加 Relay list 键 / 车头 Print / 没存先问；products 加 Short name（后端没上不出、暂存、Save 发两种 PUT、存不上红字留草稿）。结果（合 main 后）：rl 26/26、products 237/237、da 457/457（第一次 452/457 是座位调动那 5 项偶发的时机问题，单独重跑全过）、nav 38/38；tsc / eslint 0 错 / build 过。
+- 合 main 前对照后端 35eec2e1 真实代码核过：relay-pull guest phone / manifest_id / product_short / hotel_short / bus{label,tour,tour_short,driver,guide,van,color,sections[{name,short,color}]}，car location_ids / tour_buses / print_warnings；Manifest setup short_name、section_short_names[{section,short_name}]、两个 PUT 的路径和回包都对得上。合最新 main 后 rl 26、products 237、da 457、nav 38，tsc / eslint 0 错 / build 过。
+- 还要后端（已转 f8）：导游 pick up 页（/guide）每位客人加团简称（Annie「导游的pick up网页版需要知道客人参加的tour是哪个，可以用简写」）；司机 /driver relay 页同样补；酒店简称 hotel_short。
 
 ## 2026-11-02 晚 Staff Schedule › Auto-fill：按基础周排整月（`task/schedule-base-week`，工作窗口 `npe-ops-frontend-0e`[d96681]，主窗口 f8 派）
 - Annie 原话（f8 窗口）：「我要加 一个功能，在排班这里可以选一周为基础，比如这周的排班很混乱，我现在用上周的排班为基数，来自动排班，遵守定好的这些role，然后把整个月的班都排出来」；「这个很重要，需要今天做完，明天就需要排出来，周三要跟员工确认了」；对 preview https://claude.ai/artifact/L3gCgqBPvDLBxAC2ToDVxp 「7题全部同意推荐，动手」；复制周的处理「A同意推荐」。
@@ -144,8 +164,14 @@
     - Annie 问（f8 窗口原话）：「对了，我们这个页面是否可以跟司机的live tracking联动起来，显示他已经到了那个酒店」⇒ 请 fc 只读查 Samsara（位置 / 到站事件 / 车对应 / 酒店坐标 / 工作量）；39 在 preview 预留「Arrived / Left / On the way」「Now at …」样子。
       - fc 估：现在没有车辆实时位置、没有酒店坐标（只有 Samsara 位置共享链接、车号对应、司机当天开哪台车）。A 只显示「离酒店 0.3 mi」（约 1 天，迁移酒店经纬度，17 家填一次）；B「Arrived 6:02 / Left 6:09」（经纬度 + 到离事件表 + 早班每分钟轮询，2–3 天；或在 Samsara 后台建酒店围栏读进出事件）；C ETA 不建议。A / B 都要 Annie 在 Samsara 后台给 token 开读位置 / 事件权限，Risk C。f8 建议：司机实时页先上不带到站，到站作为第二期做 B。等 Annie 选。
     - ✅ Annie 动手（f8 窗口原话）：「出来第3个，我要30秒刷新relay，其他都同意推荐，动手。staff发送morning的默认就是两个都自动勾选了」⇒ 除 ③ 外全推荐；Live drivers 30 秒刷新；⑫ 沿用 Morning 回复框默认（39 核）；到站第二期。后端已派 9e（司机页只读数据、tracking live_status*、ns_unhandled、开关 morning_live_drivers）；前端 39 task/live-drivers。
-    - Annie 问（原话）：「我们不是已经有权限了么，不然客人怎么通过我们看司机的位置？」⇒ 已请 fc 用现 token 实测能不能读车辆位置。
+    - Annie 问（原话）：「我们不是已经有权限了么，不然客人怎么通过我们看司机的位置？」⇒ 已请 fc 用现 token 实测能不能读车辆位置。✅ Annie 自己跑只读脚本实测：现 token 能读（/fleet/vehicles/locations、/fleet/vehicles/stats?types=gps 都 200 有坐标）⇒ 第二期到站不用开权限，只差酒店坐标和半径，fc 做完 live-drivers 再更新估算。
     - fc 字段定（已转 39）：GET /api/notifications/morning-pickup/live-drivers?date=（morning.view + 开关 morning_live_drivers）→ people[{kind, hr_id, name, first_shift, segments | runs, inbox}]；…/live-drivers/thread（不写已读，含 email_in）；回复 POST /booking-notes/by-order；tracking 行加 live_status / live_status_at / live_driver / live_van / ns_unhandled。
+    - 39 核 ⑫：回复框（conversation-modal.tsx:366-367）现在默认只勾 SMS，Morning / Tour / Tickets tracking、Dashboard 共用；旧后台也只勾 SMS ⇒ 跟 Annie「staff发送morning的默认就是两个都自动勾选了」对不上（她可能指 Morning 发送页）。Live drivers 默认两个都勾；别的页面问 Annie A 照旧（推荐）／B 全站两个都勾。
+    - ✅ 后端已上 main d20a005d（合并 f85ec0ca，两审 PASS）。已请 39 合 task/live-drivers。
+    - Samsara 第二期到站（Annie 在后端主窗口「动手」）：fc 字段——pickup-locations 加 latitude / longitude / arrival_radius_m（默认 10），PATCH /api/pickup-locations/{id}/arrival-point；tracking 行加 arrived_at / left_at，Live drivers relay_blocks 每块加 arrived_at / left_at。迁移 v146（v145 后）。前端派 39（task/samsara-arrival，live-drivers 合完后做；Pickup Locations 加坐标 + 半径格，暂存 + Save）。
+    - BZ 颜色 Annie 要再浅（后端主窗口原话「BZ的颜色再浅一点」）：0e 色表加 4 块（现 #f06f68 / 1 #f4938e / 2 #f7b0ac / 3 #facdca），等 Annie 挑。✅ Annie（原话）「BZ选1」⇒ #f4938e，已转 9e、0e。
+    - 39：司机实时页前端在 task/live-drivers 9600def（没合，等后端 live-drivers SHA）：页签 + 开关 morning_live_drivers、Driver mark 列 + ns_unhandled 置顶 + NEW 闪、Live drivers 30 秒、回复框短信 + 邮件默认都勾（别处照旧）。mt 240、ns 49（顺带修了 main 上本来就过时的「Page visibility N 行」）、tt 137、tk 135、da 454、tasks 144、nav 38、perm 54，tsc / eslint / build 过。
+    - 39：work-hours 前端在 task/schedule-work-hours 27a94ca（sch 367、dr 89、tasks 144，tsc / eslint / build 过），等后端 v144 SHA；开始 task/live-drivers。
 - Annie 嫌 Dashboard「Today's team」难看（f8 窗口原话，附截图）：「这个排版也太丑了吧，你的审美呢」⇒ 改样子，派 0e 出 preview（一人一行对齐、Off 合一行、Visible to 收起、Online now 省地方、ZZTest 是否出现问 Annie）。没动手。
   - 0e preview：https://claude.ai/artifact/Ph29qDSR1UtYmKGAWmryhY 。7 题（推荐 A）：1 一人一行右对齐班次；2 Off 合一行；3 标题右「⚙ Visible to」小窗；4 正在上班左细绿条；5 在线绿点 + Also online 一行；6 ZZTest 去 Staff Schedule 勾 Test；7 Anita 照常。不要后端。
 - 今晚在等 Annie 的，跟 24 交接第三节一样，不重问。
@@ -540,7 +566,15 @@
 - Annie 在 39 窗口（原话）：「我要在working hour里可以选择一周的时间，也可以分别设置几天的时间不同」⇒ Working hours「Same every day」/「Different by day」七行 + Copy Monday。新题 ⑦ 七行（A）；⑧ 每天「No coverage needed」勾（A 要）；⑨ 只按星期几（A，不做节假日）。39 把「选择一周的时间」理解为七天同一组，不对要改。⚠️ 要后端：每个星期几 start / end / off（迁移）、GET 多 work_hours、PUT /api/settings/schedule/work-hours、空档按当天算。
 - Annie 在 39 窗口（原话）：「然后我已经说过Anite不参加gap，为什么她的时间仍然出来在时间条里，然后时间条上面应该有个时间线显示时间的」⇒ Day timeline preview：https://claude.ai/artifact/PnnAHTzhtSGD1nQcZmiWzu 。5 题：① 不算人头的人不出现在时间条（A）；② 下面灰字「Not shown…: Anita 8:00 AM – 4:00 PM」只给排班的人（A）；③ 今天加琥珀「now」竖线（A）；④ 周表照旧 Not counted 小标（A）；⑤ 员工看的 Anita 照常、没说明（A）。纯前端。顶上加整点刻度。⚠️ 如果她看到 Anita 条子是普通蓝色没斜纹，说明还没在 Employees 取消 Anita 的 Counts toward coverage。
 
-### 56. Bus Manifest 底部汇总框按团分（2026-11-02 晚，0e 报告，没动手）
+### 56. Bus Manifest 底部汇总框按团分（2026-11-02 晚，0e 报告）—— ✅ 已动手，待移走
+- Annie 在 f8 窗口逐题回（原话）：题 2「对」，其余「全部同意。动手」⇒ 题 2 / 3 / 4a / 4b / 4c / 7 全按推荐；8 条跟纸本的差别 f8 理解为全改。后端派 9e / 36（footer_style 版式表 + 迁移、Rezdy 系统字输出时去掉）；前端 0e（去 FOOTER_LABEL、版式下拉、② relay 车色、③ Quantities 标色、④ 抬头按车色、⑤ 午餐单 NOTES、⑥ 司机兼导游并格、⑦ ASSIST 列，一条一个提交）。
+- 0e 只读查：打印 / Excel 是后端出的，几乎每条都要后端。f8 定：⑥ 前端先做，打印那几行转后端；② relay_color、⑤ lunch notes、⑥ 打印模板已转 9e；③ 票型颜色表（两份纸本 +skywalk 一灰一黄冲突）、④ 每车颜色来源（系统里没有车色）、⑦ ASSIST 是否只 Antelope ⇒ 0e 出小 preview 问 Annie。
+  - 0e 小 preview：https://claude.ai/artifact/95SQutQhZRwjCAfN2AyDov （0e 更正，MrEd… 那个作废）。③ A 照 10/6 纸本（No Lunch 淡黄、+skywalk 灰、加购亮黄、Premium 不标、Heli 整行橙，固定对照表）；④ A setup 每团设 Bus B / C color（A 用团色），抬头 / 打印 / Relay 色条都用；⑦ A setup 每团一个 ASSIST 勾，先只 Antelope。④⑦ 要后端小迁移。等 Annie。
+  - Annie（后端主窗口原话）：「全部按照我上传的纸本颜色来，不要改」⇒ ③④ 照 10/6 纸本原样取色，不再问。已请 0e 从 PDF 取色值出完整色表（哪一处 → 色值 → 第几页），核前端 RELAY_CAR_COLORS 是否纸本色；纸本没有的颜色列出来交 Annie。后端 36 照色表把颜色落到一处（relay_pull.RELAY_COLORS 等）。⑦ ASSIST 仍等 Annie。
+  - Annie（f8 窗口原话）：「也是回答你的几个问题，我们的颜色和格式都必须按照现有的纸本来，不要自己瞎设计」⇒ ③ 照纸本色、④ 每车照纸本色（固定对照，不加 setup 车色），⑦ ASSIST 只 Antelope（不加 setup 勾）；格式一律以纸本为准，纸本没有的情况列给 Annie。已转 0e、9e。Annie 补（原话）：「BZ是浅珊瑚红」⇒ BZ 用浅珊瑚红（先从纸本第 9 页 BZ 那格取色），已转 0e。
+  - 36 字段定（已转 0e）：manifest 每车 footer[{key, label, value, custom}]、tour.footer_style / assist_column、客人 relay_color / hotel_first / lunch_notes、lunch rows notes / notes_check、bus.driver_is_guide；relay-pull car.relay_color；Rezdy 系统段后端去掉；迁移 v145（footer_style + assist_column）。f8 定：不做选版式下拉（照纸本、题 6 写死），迁移预填。问 Annie：west / hoover 分不进格子的人多出一格 OTHER（纸本没有）要不要。
+  - ⑥ 司机兼导游并格已合 main 9a3266b（0e；mf 231、man 346、da 457、rl 26、nav 38）。
+  - 纸本色表（0e）：https://claude.ai/artifact/1j7yN3Vn2ifP4fvYrqoA1A （49 处），已转 9e，各处照纸本各取各的色。问 Annie：酒店格纸本涂的是节色 / 车色（不是 relay 车色），而且不是每家都涂，哪几家涂？纸本没有的颜色（第 4 辆 relay、第三辆车、BZ 节、West / Hoover 节、SECRET / VIP LOWER、Antelope 回程 / South 去程 shuttle、+skywalk +Meal Voucher / Trail Of Time / SKY ONLY、午餐单 Turkey 整行黄）要 Annie 给。OTHER 格 Annie 在 36 窗口答（9e 转，原话）「要吧」⇒ 保留，只在有人分不进时出。
 - Annie 原话：「核心问题是：在bus manifest底部的灰色汇总框里，把Antelope的表格变成所有tour的样本了，这是错误的，每个tour的汇总表都不一样」；「另外，hooverdam在bus manifest那里已经设置好分小节了」。
 - 0e 报告（汇总一节先交，其余 12 页同链接更新）：https://claude.ai/artifact/EgwNMRbsCTJMoMb9m3iRQU 。后端 footer()（tour_manifest.py:919）一套格子全团共用；前端 manifest-view.tsx:227 FOOTER_LABEL 对所有团改成 Antelope 叫法（只网页，打印 / Excel 还是后端原名）；West 7 个分项、Hoover 5 个 ops 都没有；数据够（10/6 纸本数字反推对得上）。改格子要后端，前端去掉那 3 个改名。PDF 原件在 C:\Users\annzh\Downloads\4796_001.pdf。
 - 6 题（推荐）：① West「Heli & Boat + Bus Tour + Voucher」进 GA + Meal (Voucher)（A）；② West SKY ONLY / SKY+Meal / Premium 怎么认（A 看票型 / 产品名里的 skywalk、voucher）；③ West / Hoover 拿掉纸本没有的 IN / OUT / No Lunch / Lunch（A）；④ Hoover BOULDER SHUTTLE = Boulder City 节、RAFTING = HD Raft 节，RAFT SHUTTLE 请 Annie 说是哪个产品（A）；⑤ Antelope 一个 canyon 两个确认号：先不改（A）／一节存多个（B，要后端）；⑥ 后端按团写死 4 套格子，其他团用通用套（A）／setup 里每团自设（B，先 preview）。
@@ -569,7 +603,7 @@
       - Annie（原话）：「因为Hoover没有relay司机，所以不需要，本来就是他们的tour bus去接的」⇒ Hoover 不设简称；司机页 / 导游页订单号旁只在设了简称时才显示，不回落全名；Relay 打印单照旧回落。已转 9e。
       - fc（task/relay-print 93f2c9fc）：客人加 short_tag（没设 = ""，不回落，司机 / 导游页用），打印单用 product_short；v143 已按新简称填。司机页 / 导游页模板那部分后端在等 Annie 在后端窗口回范围「同意」。
       - 0e 前端推 task/relay-print 3a7021f（没合，等 fc + v143）：新页 /dispatch/relay-list（每轮总表 + 每车分表，A4 竖向）、Morning Relay「📋 Relay list」键 + 每车 Print、Bus Manifest setup 加 Short name（团 + 节，暂存 + Save）。rl 26、products 237、da 457、nav 38，tsc / eslint / build 过。hotel_short 键名请 fc 确认（已问 9e）。
-      - ✅ 后端上 main 35eec2e1（合并 e0ad91ed），v143 Annie 已执行（South / West / BZ；Lower / Upper / CanyonX）；司机页 / 导游页简称随后端上线。已请 0e 在基础周那件之后合 task/relay-print。
+      - ✅ 后端上 main 35eec2e1（合并 e0ad91ed），v143 Annie 已执行（South / West / BZ；Lower / Upper / CanyonX）；司机页 / 导游页简称随后端上线。已请 0e 在基础周那件之后合 task/relay-print。✅ 前端已合 main d378f8f（rl 26、products 237、da 457、nav 38，tsc / eslint / build 过）：Morning Relay「📋 Relay list」+ 每车 Print、Bus Manifest setup「Short name」。等 Annie 线上验收。
     - Annie 补（0e 转，原话）：「排完relay并保存了以后，应该加一个按键显示这些relay的list」⇒ 题 1 的键改成「📋 Relay list」：先在屏幕上看总表 + 每车分表，要纸在那页按 Print；显示已保存的排车，有没存的改动先问 Save first?（v10，不影响后端）。
     - fc 字段名定（已转 0e）：manifest-setup groups[] 加 short_name、section_short_names；PUT …/groups/{id}/short-name、…/section-short-name（前端按 Save 再逐个 PUT）；relay-pull guests 加 phone / manifest_id / product_short / bus{label, tour, tour_short, sections[{name, short, color}], driver, guide, van, color}，car 加 location_ids / tour_buses。迁移 v143（Annie 执行，排 v141 / v142 后）。「This van is on 2 tour buses today.」改放 car.print_warnings（不放 problems，免得挡发送）。后端 WIP task/relay-print 459edd0c，今晚 21:30 停，明天接着。
   - 另：ops 标黄规则「带 + 就亮黄」会让 West 所有 Premium (Skywalk+Voucher) 行都亮黄，纸本不标（并进其余 12 页差别 ③）。

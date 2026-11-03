@@ -196,6 +196,13 @@ export interface ManifestSetupGroup {
   /** 每个有 Tour 产品的节一行（班车节不列），按节名排；后端没上线 G130 时没有这个键。 */
   section_tour_types?: SectionTourType[];
   /**
+   * Relay list / 导游页 Tour 那一格的团简称（task/relay-print，Annie 11/2「South，West，Lower，Upper，CanyonX，BZ」）；
+   * "" = 没设（写团名）。后端没上线时没有这个键，不出这项设置。
+   */
+  short_name?: string;
+  /** 每个 Tour 节一行的节简称（列法同 section_tour_types），"" = 没设（写节名）。 */
+  section_short_names?: { section: string; short_name: string }[];
+  /**
    * G198（后端 8a）：Main Manifest 标题行出 Cfm # 格的节名（库里的名字，例 "UPPER"、"LOWER"、"Canyon X"）。
    * 没有这个键 = 后端没上线，不出这项设置。
    */

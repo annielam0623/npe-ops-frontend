@@ -290,8 +290,9 @@ async function run() {
   check("投递结果标签：SMS sent, Email failed", dialogText.includes("SMS sent, Email failed"));
   check("客人消息标签 Guest via SMS", dialogText.includes("Guest via SMS"));
   check("电话 AI 留言标签 Phone AI（后端 E188）", dialogText.includes("Phone AI"));
-  check("SMS 默认勾选、Email 默认不勾",
-    await evaluate("const c=[...document.querySelectorAll('[role=dialog] input[type=checkbox]')]; return c[0].checked && !c[1].checked;"));
+  // Annie 2026-11-02「那你把他们都改成两个勾选」。
+  check("SMS 和 Email 默认都勾",
+    await evaluate("const c=[...document.querySelectorAll('[role=dialog] input[type=checkbox]')]; return c[0].checked && c[1].checked;"));
 
   // 字数提示
   await evaluate("$setValue(document.querySelector('[role=dialog] textarea'), 'Hello there');");
@@ -351,8 +352,9 @@ async function run() {
   await waitFor("document.querySelector('[role=dialog] textarea').value === ''");
   log = (await mockLog()).slice(before);
   post = log.find((e) => e.method === "POST");
-  check("Send：direction=sms_out，send_sms=true，send_email=false",
-    post && post.body.direction === "sms_out" && post.body.send_sms === true && post.body.send_email === false, JSON.stringify(post));
+  // 短信和邮件默认都勾（Annie 2026-11-02「那你把他们都改成两个勾选」）。
+  check("Send：direction=sms_out，send_sms=true，send_email=true（默认两个都勾）",
+    post && post.body.direction === "sms_out" && post.body.send_sms === true && post.body.send_email === true, JSON.stringify(post));
   check("发送成功不出警告", !(await evaluate("return !!document.querySelector('[role=dialog] [role=alert]');")));
 
   // 没送达
@@ -1152,7 +1154,6 @@ async function run() {
     await sleep(200);
     if (await evaluate("return !!document.querySelector('[role=dialog]');")) await evaluate("[...document.querySelectorAll('[role=dialog] button')].find((b) => /close|×/i.test(b.getAttribute('aria-label') || b.textContent))?.click();");
     await waitFor("!document.querySelector('[role=dialog]')");
-    // Tracking 表里打开回复框：照旧只勾 SMS（别的页面不动）
     await evaluate("document.querySelector('[data-mt-tab=\"tracking\"]').click();");
     await waitFor("document.querySelectorAll('main tbody tr').length >= 4");
     // Messages 页签

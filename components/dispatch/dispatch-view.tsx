@@ -2740,6 +2740,8 @@ export function DispatchView() {
                       ? copyFirstRoundFromSend
                       : undefined
                   }
+                  // Relay list 前有没存的改动：先存（只读的人不存，直接看已保存的）。
+                  onSave={viewOnly ? undefined : () => saveRef.current()}
                 />
               </div>
             ) : null}

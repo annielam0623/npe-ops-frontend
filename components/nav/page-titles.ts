@@ -10,6 +10,7 @@ const PAGE_TITLES: readonly [prefix: string, title: string][] = [
   ["/dispatch/work-sheet", "Dispatch — Work Sheet"],
   ["/dispatch/guide-sheet", "Dispatch — Guide Sheet"],
   ["/dispatch/manifest", "Dispatch — Tour manifest"],
+  ["/dispatch/relay-list", "Dispatch — Relay list"],
   ["/dispatch", "Dispatch — Assignments"],
   ["/morning-pickup/send", "Morning Pickup — Send"],
   ["/tour-confirmation/send", "Tour Confirmation — Send"],

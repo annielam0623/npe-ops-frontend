@@ -328,8 +328,8 @@ function ConversationModalInner({
   onChanged: () => void;
   onUnauthorized: () => void;
   /**
-   * 短信和邮件同时发（Annie 2026-11-02「email sms同时发」，Live drivers 页签用；别的页面不传，照旧默认只勾 SMS）：
-   * SMS to guest 和 Email to guest 默认都勾；发完分开写两个渠道的结果（成功绿、失败红、没有的灰）。
+   * Live drivers 页签用（Annie 2026-11-02「email sms同时发」）：发完分开写两个渠道的结果（成功绿、失败红、没有的灰）。
+   * 默认两个都勾已经是全站的了（2026-11-03）。
    */
   sendBoth?: boolean;
 }) {
@@ -370,7 +370,8 @@ function ConversationModalInner({
   const [loadFailed, setLoadFailed] = useState(false);
   const [text, setText] = useState("");
   const [smsChecked, setSmsChecked] = useState(true);
-  const [emailChecked, setEmailChecked] = useState(sendBoth);
+  // 短信和邮件默认都勾（Annie 2026-11-02「那你把他们都改成两个勾选」）：所有用这个回复框的页面一样；没邮箱的那一格勾不上、不发。
+  const [emailChecked, setEmailChecked] = useState(true);
   /** sendBoth：上一次发送每个渠道的结果。 */
   const [results, setResults] = useState<
     { tone: "ok" | "bad" | "muted"; text: string }[] | null
