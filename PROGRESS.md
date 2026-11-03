@@ -13,6 +13,8 @@
   - 9e 回：CHD 后端由 36 接（代码 ad5707ee，83ff7720 只是 WIP 交接、代码一样），等 f8 发前端 main SHA 才推；G231 由 fc 落地，「员工侧 /api/notices、/api/team/online 格式不变」已列进验收，变了推前先告诉 f8。
   - Annie 在后端 9e 窗口选 CHD **版 1**（9e 转）：合 task/manifests-chd-pax 8361888（Annie 的「动手」之前已在 91 窗口给过）。今晚没开前端工作窗口，f8 请 Annie 开一个来合：先合最新 main，再跑 tsc / eslint / build 和 man / mf / da / nav，过了合 main，把 SHA 报 f8；f8 转 9e → 36 推后端，之后再只读核线上 CHD 标签。版 2 task/manifests-sendable 作废，不合。
 - 置顶 48 题 8：Annie 在 9e 窗口答（9e 转，原话）「要」⇒ B，CCL 改员工后另外藏佣金 / 代理商；没动手。f8 只读 grep 前端显示处（Orders 列表 Agent 列、订单详情 Agent & Commission、订单搜索结果、Morning Pickup Tracking Agent 列、Sales Report 按代理商、CHD 标签 Agent 列，导出：Orders Export、三个 Tracking CSV、Manifests Export CSV）发 9e。主张接口里就不返回（只前端藏不够）。判断法问 Annie：① 新权限勾「See agent & commission」，现有员工默认有，CCL team 不勾（推荐）／② 后端按 CCL team 写死。等 9e 评估工作量。
+- G231 员工侧（fc 核，9e 转）：/api/team/online 不变；/api/notices kind=message 的 ref 只新增 from_kind / to_team_id / to_team_name / thread_root_id；POST /api/team/messages 多 recipients / emailed_count。f8 只读核前端无严格形状校验（notices-api 原样传 ref，notice-panel 只读 message_id / week_start，team-message-dialog 只读 emailed）⇒ 回「可以」，fc 合并推后端 main。
+- 题 8 后端工作量 36 在估（① 新权限勾 / ② 写死 CCL team，含导出、迁移、测试）；Sales Report 这次后端不动，以后对员工开放时按同一判断藏，一并交 Annie。
 - 今晚在等 Annie 的，跟 24 交接第三节一样，不重问。
 
 ## 2026-11-02 收工交接：前端主窗口-24 [d1dbae]（公司）
