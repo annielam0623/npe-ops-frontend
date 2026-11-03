@@ -6,6 +6,11 @@
 
 > **下一个主窗口：先读下面「2026-11-02 收工交接：前端主窗口-24」，再看置顶「📌 等 Annie 确认」。更早的交接是 10-30 晚那节。**
 
+## 2026-11-03 回复框短信 / 邮件默认都勾（`task/reply-both-default`，工作窗口 `npe-ops-frontend-39`[36b630]）
+- Annie 原话（39 窗口）：「那你把他们都改成两个勾选」（起因：39 核对出新 ops 和旧后台的回复框都默认只勾 SMS，跟她说的「staff发送morning的默认就是两个都自动勾选了」对不上）。只改默认勾选，样子不变，不用 preview。
+- 改了：`components/ui/conversation-modal.tsx` emailChecked 默认 true——Morning / Tour / Tickets tracking 和 Dashboard 的 Reply 弹框都一样；客人没邮箱时那一格本来就勾不上、不发。Manifests 群发那个窗口不是这个组件，没动。
+- 检查：mt 两条改成「默认两个都勾」「Send 带 send_email=true」；mt 218/218（第一次跑有 4 条偶发没过——60 秒自动拉、Agent 列表格没出行，跟本改动无关，重跑全过）、tt 137/137、tk 131/131、da 457/457；tsc / eslint（0 错）/ build 过。
+
 ## 2026-11-02 晚 Dispatch › Relay list 打印单 + Bus Manifest setup 简称（`task/relay-print`，工作窗口 `npe-ops-frontend-0e`[d96681]，主窗口 f8 派）—— ✅ 后端 35eec2e1 上线、v143 Annie 已执行后合 main
 - Annie 原话（0e 窗口）：「在其余页面里，其实我们dispatch里是没有做relay的可打印版本的，现在动手做吧，一个总表，然后分成每个司机的分表」；「总表按照现在的格式来，字段100%复制，这个不用多说了」；「其他问题都走推荐，简写纸本里用哪个就用哪个，不要自己改」；「hoover的司机用他的bus manifest就好了，上面都按照时间排好了」；「排完relay并保存了以后，应该加一个按键显示这些relay的list」。简称后来改定（f8 窗口）：「South，West，Lower，Upper，CanyonX，BZ」。
 - preview（Annie 已定）：https://claude.ai/artifact/3p3STHAw1rk7ewCeQW1dma （v12）；11/3 真实排车样张（名字 / 电话遮过）：https://claude.ai/artifact/Fi5ncf4fyfBVhUhZyeEYA5 。

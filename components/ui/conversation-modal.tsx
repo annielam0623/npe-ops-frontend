@@ -364,7 +364,8 @@ function ConversationModalInner({
   const [loadFailed, setLoadFailed] = useState(false);
   const [text, setText] = useState("");
   const [smsChecked, setSmsChecked] = useState(true);
-  const [emailChecked, setEmailChecked] = useState(false);
+  // 短信和邮件默认都勾（Annie 2026-11-02「那你把他们都改成两个勾选」）：所有用这个回复框的页面一样；没邮箱的那一格勾不上、不发。
+  const [emailChecked, setEmailChecked] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [toggling, setToggling] = useState(false);
   const [notice, setNotice] = useState<Notice>(null);
