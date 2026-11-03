@@ -16,23 +16,33 @@ export interface ScheduleWorkWindow {
   end_time: string;
 }
 
+/** 按星期几设的 Working hours 的一天（后端 v144，36 定）：weekday 0 = Mon … 6 = Sun；off = 这天不查空档。 */
+export interface ScheduleWorkHoursDay {
+  weekday: number;
+  /** "HH:MM"。GET 回来都有值；前端 PUT 也总是带上（后端允许 off 的那天给 null = 沿用存着的，前端不用）。 */
+  start_time: string;
+  end_time: string;
+  off: boolean;
+}
+
+/** Working hours（Annie 2026-11-02「可以选择一周的时间，也可以分别设置几天的时间不同」）。 */
+export interface ScheduleWorkHours {
+  /** true = 七天一样（7 天必须相同，否则后端 400）。 */
+  same_every_day: boolean;
+  /** 7 天，按 weekday 排。 */
+  days: ScheduleWorkHoursDay[];
+}
+
 /** GET /api/settings/schedule 的返回体。 */
 export interface ScheduleSettings {
+  /** = Monday 那一组（旧接口照旧）；后端没带 work_hours 时就用它（每天一样）。 */
   work_window: ScheduleWorkWindow;
-  shift_types: ScheduleShiftType[];
   /**
-   * 按星期几设的工作时段（后端 11-02 晚在做，还没上线时没有这个键）。weekday 0 = 周一 … 6 = 周日（注意跟排班页的 0 = 周日不同）；
-   * off = 这天不开工：按基础周排时这天不排、不报空档。
+   * 按星期几设（后端 v144 起；旧后端没有这个键）。weekday 0 = 周一 … 6 = 周日（注意跟排班页的 0 = 周日不同）；
+   * off = 这天不开工：不报空档；Auto-fill 按基础周排时这天不排。
    */
-  work_hours?: {
-    same_every_day: boolean;
-    days: {
-      weekday: number;
-      start_time: string;
-      end_time: string;
-      off: boolean;
-    }[];
-  };
+  work_hours?: ScheduleWorkHours;
+  shift_types: ScheduleShiftType[];
 }
 
 /** PUT /api/settings/schedule/work-window 的请求体（superadmin）。 */

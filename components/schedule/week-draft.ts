@@ -1,3 +1,4 @@
+import type { HoursOf } from "@/lib/schedule-work-hours";
 import { formatClock, minutesOf } from "@/lib/schedule-time";
 import { shiftYmd } from "@/lib/la-date";
 import type { ScheduleGap, ScheduleSlot, ScheduleWeekOp } from "@/types";
@@ -285,23 +286,26 @@ export function opsOf(d: WeekDraft): {
 
 /**
  * 照页面上的班算空档（preview Q3「照页面上的改动算，存的时候以后端为准」）：工作时段内、有人的班都没盖到的时间，
- * 算法同后端 / mock（只看排到人的班，跨夜不算）。
+ * 算法同后端 / mock（只看排到人的班，跨夜不算）。工作时段按那一天的（Working hours 按星期几，Annie 2026-11-02）；
+ * 那天勾了 No coverage needed 就不查。
  */
 export function localGaps(
   weekStart: string,
   slots: readonly ScheduleSlot[],
-  work: { start_time: string; end_time: string },
+  hoursOf: HoursOf,
   /** 测试用的人（is_test，Annie 2026-10-30 选 A）：他们的班不算覆盖。 */
   skip?: ReadonlySet<number>,
 ): ScheduleGap[] {
-  const winStart = minutesOf(work.start_time);
-  const winEnd = minutesOf(work.end_time);
-  if (winStart == null || winEnd == null || winEnd <= winStart) return [];
   const hhmm = (m: number) =>
     `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
   const gaps: ScheduleGap[] = [];
   for (let i = 0; i < 7; i++) {
     const date = shiftYmd(weekStart, i);
+    const work = hoursOf(date);
+    const winStart = minutesOf(work.start_time);
+    const winEnd = minutesOf(work.end_time);
+    if (work.off || winStart == null || winEnd == null || winEnd <= winStart)
+      continue;
     const covered = slots
       .filter(
         (s) =>
@@ -342,16 +346,16 @@ export function newGapsByCard(
   serverSlots: readonly ScheduleSlot[],
   liveSlots: readonly ScheduleSlot[],
   d: WeekDraft,
-  work: { start_time: string; end_time: string },
+  hoursOf: HoursOf,
   now?: LaNow,
   skip?: ReadonlySet<number>,
 ): Map<number, ScheduleGap[]> {
   const out = new Map<number, ScheduleGap[]>();
   if (!isDirty(d)) return out;
-  const before = localGaps(weekStart, serverSlots, work, skip);
+  const before = localGaps(weekStart, serverSlots, hoursOf, skip);
   const after = now
-    ? futureGaps(localGaps(weekStart, liveSlots, work, skip), now)
-    : localGaps(weekStart, liveSlots, work, skip);
+    ? futureGaps(localGaps(weekStart, liveSlots, hoursOf, skip), now)
+    : localGaps(weekStart, liveSlots, hoursOf, skip);
   const fresh = after.filter(
     (g) =>
       !before.some(

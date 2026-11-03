@@ -422,6 +422,8 @@ export type {
   ScheduleWeekChangesResult,
   ScheduleWeekOp,
   ScheduleWeekStatus,
+  ScheduleWorkHours,
+  ScheduleWorkHoursDay,
   ScheduleWorkWindow,
   ScheduleWorkWindowInput,
 } from "./schedule";

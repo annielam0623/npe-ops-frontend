@@ -4,7 +4,69 @@
 
 > 6d 交接（下面「2026-10-27 交接：前端主窗口 6d」那节）的后端需求已于 10/27 晚由 ad 转给家里后端主窗口 17。
 
-> **下一个主窗口：先读下面「2026-11-02 收工交接：前端主窗口-24」，再看置顶「📌 等 Annie 确认」。更早的交接是 10-30 晚那节。**
+> **下一个主窗口：先读下面「2026-11-03 凌晨 收工交接：前端主窗口 f8」，再看置顶「📌 等 Annie 确认」。上一份是「2026-11-02 收工交接：前端主窗口-24」。**
+
+## 2026-11-03 凌晨 收工交接：前端主窗口 `npe-ops-frontend-f8`[f1ac95]（家里电脑，Annie「我要睡觉了，你把交接写详细一点，明天回公司继续，要保证工作的顺利，所有东西都不能缺」）
+
+> 11-02 晚整晚的逐条记录在下面「2026-11-02 晚 主窗口 f8 开工」一节（每件有 Annie 原话、SHA、检查数）。这里只列明天要接的。
+> 今晚窗口：前端工作窗口 `39`[36b630]、`0e`[d96681]（都在家里电脑）；后端主窗口 `后端主窗口-9e`[79fb6f]，后端工作窗口 36、fc。家里的窗口明天在公司不会在，公司的新窗口要从分支接。
+
+### 一、今晚已上线（前后端都在 main，等 Annie 线上验收）
+| 件 | 前端 SHA | 后端 | Annie 要做的验收 |
+|---|---|---|---|
+| CHD 放回 Main manifest（版 1） | 03c1d51 | a7c62e91 | Manifests › CHD 标签：每产品一个胶囊、写 pax、Due≠0 淡红、不能勾 |
+| 午餐缩写读进 Lunch 栏 | 不用改 | a104835e | 看 11/3 Antelope 那台车 Lunch 栏、Special 没有餐码 |
+| 排班空档报错写清哪天哪个改动 | 308af89 | — | — |
+| Anita 不算人头 | e1029ac | 7c976175（v141） | **Annie 要在 Employees 窗口取消 Anita 的「Counts toward coverage」**（还没确认做了） |
+| 员工行拖动排序 | 96e142c | 同上 | — |
+| Day timeline（Anita 不出现 + 时间刻度 + now 线） | 529a757 | — | — |
+| 排班 ⚙ Settings 集中（Same every day） | 10e82e9 | — | — |
+| CCL 藏价格（orders.money_view） | f2851f6 | 8e9a9a58（v142） | 用 CCL / 没勾的 ZZ Test 账号看：Orders / 订单详情 / Main manifest 金额 / Dispatch Payable / Farm out Report / Sales Report / tracking Agent 列 / Supplier › Partners 价格都没了 |
+| dr 检查修（money_view 后） | 94d80a8 | — | — |
+| 按基础周排整月 | 9261c52 | — | Auto-fill › 「Copy a base week, then fix by the rules」，**Annie 今天要用它排整个月，周三跟员工确认** |
+| Relay 打印单（总表 + 每车） | d378f8f | 35eec2e1（v143 简称） | Dispatch › Morning Relay「📋 Relay list」/ 每车 Print；Bus Manifest setup「Short name」 |
+| 司机页 / 导游页订单号旁团简称 | — | 随 35eec2e1 | 简称 South / West / BZ / Lower / Upper / CanyonX（Annie 定）；没设简称不显示（Hoover 不设） |
+| Bus Manifest 司机兼导游并一格 | 9a3266b | 打印模板等 v145 | — |
+| 回复框短信 + 邮件默认都勾（全站） | 3b65dc8（+ 25752dc 去冲突标记） | — | Annie 在 39 窗口「那你把他们都改成两个勾选」 |
+| Working hours 按星期几设（Different by day） | fd74df8 | 196f24c7（v144） | ⚙ Settings 里设每天不同；空档按当天算 |
+
+### 二、做完在分支、等合 main（明天第一件就是核状态、合）
+> 下面已按 39 / 0e 收工回报更新为最终状态。明天先 `git fetch` 再核一次。⚠️ 两个 worktree 都在家里电脑；公司电脑从 origin 的分支开新 worktree 接。
+| 分支 | 窗口 | 等什么 | 合之前跑 |
+|---|---|---|---|
+| ~~task/schedule-work-hours~~ | 39 | ✅ **已合 main fd74df8**（sch 377、dr 89、tasks 144）。Annie 现在可以在 ⚙ Settings 设「Different by day」 | — |
+| task/live-drivers **188c4ca**（39 收工确认，worktree D:\ops-wt-39-ld） | 39 | 后端 d20a005d 已上，不缺后端、不缺 Annie。已对 tracking 新键和 /live-drivers 顶层形状；**还没核** segments 里 relay_blocks / manifest、guide runs 的键名（前端照 driver_home.html 写的）。分支里 ns-test「Page visibility 行数」改 22（main 上那条本来就过时，合了一起修） | 合最新 main → 在后端代码核那几处键 → mt / ns / tt / tk / da / tasks / nav / perm、tsc / eslint / build → 合 main |
+| task/samsara-arrival | 39 | **还没开始、没有分支**。等 live-drivers 合完再从 main 开，照 f8 那节 fc 字段用 mock 写；合 main 等后端 samsara-arrivals + v146 | pl / mt / tt / tk / nav |
+| task/manifest-paper **d74c553**（0e 收工确认） | 0e | 后端 bus-footer-style（v145）还没上；酒店格颜色和缺的颜色等 Annie。内容：汇总框照后端 label 画（去 FOOTER_LABEL）、ASSIST 列、午餐单 NOTES（黄底 / 红字）、Relay list 车色读 car.relay_color；酒店格 relay_color / hotel_first 先不用。mock 检查 mf 235、man 346、da 457、rl 26、nav 38 过。分支里有 0e 的 PROGRESS 一节（含 Today's team 7 题） | mf / man / da / rl / nav（动到排班加 sch），合前对后端真实形状核一遍 |
+
+> 39 收工：worktree 只留 D:\ops-wt-39-ld（task/live-drivers），D:\ops-wt-39-tl、D:\ops-wt-39-rb 已删；没有留下 dev server / Chrome。
+> 0e 收工：worktree 只留 D:\ops-wt-0e-relay（task/manifest-paper，依赖已装），其余已删；没有留下 dev server / Chrome；11/3 relay 导出 JSON 已删。
+
+### 三、等后端（后端主窗口 9e 那边）
+- **bus-footer-style + 纸本色表（迁移 v145，Annie 执行）**：36 做。汇总框按团写死（standard / south / west / hoover，迁移预填，**页面不做选版式下拉**——Annie「不要自己瞎设计」）；OTHER 格保留（Annie「要吧」）；ASSIST 只 Antelope；Rezdy 系统段输出时去掉；driver_is_guide；lunch notes；色值照 0e 纸本色表 https://claude.ai/artifact/1j7yN3Vn2ifP4fvYrqoA1A （BZ = #f4938e，Annie「BZ选1」）。字段名见 f8 那节「36 字段定」。
+- **Samsara 到站（迁移 v146，Annie 执行，排 v145 后）**：fc 做。pickup-locations 加 latitude / longitude / arrival_radius_m，PATCH …/arrival-point；tracking 行和 Live drivers relay_blocks 加 arrived_at / left_at。上线后 staff 要在 Pickup Locations 填酒店坐标才开始记。现 Samsara token 已能读车辆位置（Annie 自己实测）。
+- 迁移顺序：v141 ✅、v142 ✅、v143 ✅、v144 ✅；**v145、v146 待 Annie 执行**。
+- 9e 收工回报（11-03 00:xx）：bus-footer-style 没上 main，36 代码写了大半（footer 版式、题 7、⑤ NOTES、⑥ Driver Guide、⑦ ASSIST、relay 色盘搬后端、BZ #f4938e），今晚只把 v145（footer_style + assist_column）推到后端 task/bus-footer-style 给 Annie 看；② 酒店格等 Annie；明天公司 Resume，Annie 执行 v145 后才推代码。Samsara 到站：后端 WIP task/samsara-arrivals 8dc59fed（轮询核心 + 坐标接口写完，tracking / Live drivers 的 arrived_at / left_at 还没接；v146 草稿等 v145 落地后 Claim；默认半径 10 米待明天 GPS 实测）。明天后端主窗口未定，以 Annie 说的为准。
+
+### 四、等 Annie 的（都在置顶「📌」里，原话见 f8 那节；不要重复问已答的）
+1. **Bus Manifest 酒店格颜色**：纸本上酒店格涂的是节色 / 车色（不是 relay 车色），而且不是每家都涂（Antelope A 的 Aria、Circus、Treasure 没涂）——哪几家涂、什么规则。
+2. **纸本上没有的颜色**：第 4 辆以后的 relay 车、各团 C 车、BZ 的节 / 酒店格、West / Hoover 节色、SECRET / VIP LOWER、Antelope 回程 / South 去程 / 其他 shuttle、+skywalk +Meal Voucher / + Trail Of Time / SKY ONLY、午餐单默认 Turkey 整行黄。⚠️ Annie 规矩：颜色和格式照纸本，**不出推荐、不加设置项**，只问纸本没有的。
+3. **Today's team 重排**（0e preview https://claude.ai/artifact/Ph29qDSR1UtYmKGAWmryhY ，7 题都推荐 A）：Annie 还没答。
+4. **改班次时间小窗口挡住结束≤开始**（置顶 55 ②，推荐挡住，要 preview）：没答。
+5. **Notice ↔ CCL 前端页面**（置顶 48，后端 G231 已上）：等「动手」。
+6. 白天留下的：司机页 Farm out 栏改叫法（置顶 52）、Send Log 新模块（A/B/C）、Dashboard 两个统计格 bug（动手）、订单搜索整单 + 跳 Main manifest（置顶 51）、Forecast 补 3 个月数据格式。
+
+### 五、明天开工要做的（按顺序）
+1. 报对话名、是主窗口还是工作窗口；`git fetch`、`git status`；读本节和置顶。
+2. 核第二节四个分支的最新 SHA：schedule-work-hours、live-drivers 如果 39 已合就记 SHA；没合的派公司的新窗口接（从 origin 的分支开 worktree，合最新 main，跑上面的检查，合 main）。
+3. 问后端主窗口（公司那边是谁）v145 / v146 的进度，上了就派窗口合 task/manifest-paper、task/samsara-arrival。
+4. 提醒 Annie：取消 Anita 的勾；用「按基础周排」排整月，周三发确认；验收第一节那些；执行 v145 / v146。
+5. 资源：家里电脑今晚空闲约 11–12 GB；公司电脑开工前照规矩看一次。
+
+### 六、今晚学到的规矩（已写进记忆）
+- 颜色和格式**照纸本**（10/6 PDF：C:\Users\annzh\Downloads\4796_001.pdf，家里电脑；公司电脑要找 Annie 要），不自己设计、不加设置项、不给「推荐的别的做法」，只问纸本没覆盖的情况。
+- 「同意」不算动手；「动手出 preview」= 出 preview，不是写代码。
+- 后端今晚没有 21:30 收工（Annie：「后端也一直在做」）。
 
 ## 2026-11-02 晚 Morning Pickup Tracking：司机实时页（Live drivers）（`task/live-drivers`，工作窗口 `npe-ops-frontend-39`[36b630]）—— ⏸️ 在分支，后端已上 main（d20a005d），还没合（2026-11-03 收工）
 - Annie 原话：「我们要不啊再出一个版本的页面，就跟司机看到的页面一样，每个司机占一列，他所有的行动都显示出来」「把各个司机的手机页面都显示出来，并列在页面上」「B我想放在morning tracking页面　同意默认关，no show要重新设计，统计同moring tracking，message也能回」「就设成文件夹形式就好了」「email sms同时发」；定稿：「出来第3个，我要30秒刷新relay，其他都同意推荐，动手」。preview https://claude.ai/artifact/TwJJ32NCdbTEnqxQcCX6MN 第 3 版。⑬ Samsara 到站是第二期，这一版不做；⑫ 别的页面回复框默认值不动（f8 在问 Annie）。
@@ -65,6 +127,12 @@
 - 补跑：fo-settings 132/132（加没勾 / 勾了、Action Log 第一页空两项）、pl 105、products 231、hr 62、as 69；tsc 0 错、build 过。
 - 检查：orders / man / mt / tt / fod / fr 各加「没勾 / 勾了 / Super Admin」（orders 还测旧后端照样给数据时前端自己藏）；原来按勾的几组补上 orders.money_view；partner 订单详情改成不出 Price 卡；共用 staff-perm-mock.js 加 ctl.extraWidgets（带别的页面开关）。上传表头的词照后端 36 审查后的清单（Order Total / Subtotal / Due / Discount / Coupon / Tax / Surcharge / Voucher / Net / Retail / Fee / Payable / Revenue / Source / Sales Channel / Supplier 整词比，Agent / Price / Paid… 字串比），用 Annie 给的两份 Rezdy CSV 的全部表头核过。
 - 结果（合最新 main 191f635 后）：orders 46/46、man 346/346、mt 218/218、tt 137/137、tk 135/135、fod 48/48、fr 24/24、perm 54/54、nav 38/38、da 454/454；tsc 0 错、eslint 0 错（2 个旧 warning）、build 过。
+
+## 2026-11-02 晚 Staff Schedule：Working hours 按星期几（`task/schedule-work-hours`，工作窗口 `npe-ops-frontend-39`[36b630]）—— 后端 196f24c7（v144 已执行）上 main 后合 main（2026-11-03）
+- Annie 原话（39 窗口）：「我要在working hour里可以选择一周的时间，也可以分别设置几天的时间不同」；设置 preview 第 3 版 ⑦⑧⑨ A，「同意全部推荐。动手」。后端字段 36 定、f8 转：GET /api/settings/schedule 多 work_hours {same_every_day, days[{weekday 0=Mon…6=Sun, start_time, end_time, off}]}；PUT /api/settings/schedule/work-hours 整份替换（settings.schedule）；旧 work-window 照旧（7 天同、off 全取消、same=true）。
+- 改了：新 `lib/schedule-work-hours.ts`（weekdayOf / weekDays / hoursOfSettings / sameEveryDay / workHoursSummary，没带 work_hours 回落 work_window）；`week-draft.ts` localGaps / newGapsByCard 按当天的时间、off 那天不查；Day timeline 刻度 / 竖线 / Nobody 按当天，off 那天写「none — no coverage needed on this day」；周表加班窗口默认时间按那一天；卡头那行按天合并写（「Mon–Fri 3:00 AM – 9:30 PM · Sat 4:00 AM – 9:00 PM · Sun no coverage needed」）；Gap 那句按天带星期几（「(Friday working hours end 9:30 PM)」，七天一样时不带）。⚙ Settings 弹窗：后端带 work_hours 才出「Same every day / Different by day」+ 七行（No coverage needed、Copy Monday to all days），一次 PUT /work-hours；切回 Same every day 用 Monday 那组、黄字「All days will use …」；只读的人看按天那一句；旧后端照旧一组时间走 work-window。
+- 合 main 时：对照后端 0ca7afe8 核过（GET work_hours、PUT /work-hours 整份、same_every_day 时 7 天含 off 都要一样、报错原话「Monday: start and end time cannot be the same.」「Same every day is on, so all 7 days must have the same hours.」同 mock）。main 上 Auto-fill 按基础周那件也在 ScheduleSettings 加了 work_hours（内联类型），合并后只留具名的 ScheduleWorkHours（start / end 必有，GET 都有值），Auto-fill 照常编译；合后 sch 377/377、dr 89/89、tasks 144/144，tsc / eslint / build 过。
+- 检查：sch-mock 加 ctl.workHours（GET work_hours、PUT /work-hours 校验同后端原话、gapsFor 按天 / off）；sch 加 14 条（两个选项、七行、PUT 形状、卡头按天、Sun off 没红点 / Sat 有、Sat 刻度 4 AM–9 PM、Sun no coverage、只读按天、再打开状态、400 原话、Copy Monday、切回 Same + PUT）。sch 367/367、dr 89/89、tasks 144/144；tsc / eslint（0 错）/ build 过。
 
 ## 2026-11-02 晚 Staff Schedule：排班设置集中到 ⚙ Settings（`task/schedule-settings`，工作窗口 `npe-ops-frontend-39`[36b630]）
 - Annie 原话（后端主窗口转）：「所以两个edit，到底哪个管用」「而且排列得左一个又一个的，可以集中在一起管各自不同的功能么」；39 窗口：「我要在working hour里可以选择一周的时间，也可以分别设置几天的时间不同」「schedule同意全部推荐，但是需要加一个可以edit的权限让我来Admin里勾选」；preview 第 3 版 https://claude.ai/artifact/97MgNcpw28p7W4DxXmpgrM 「同意全部推荐。动手」（f8 窗口也说「动手」）。
@@ -563,6 +631,7 @@
 - Annie 更正（f8 窗口原话）：「没有，后端也一直在做」⇒ 后端今晚不收工。9e：按天设已派 36 今晚做，迁移 v144（排 fc v143 后，要 Annie 执行），字段名定了发 f8。
 - 按天设字段定（36）：GET settings/schedule 多 work_hours {same_every_day, days[7]{weekday 0=Mon, start_time, end_time, off}}，work_window = Monday；PUT /api/settings/schedule/work-hours 整份替换（settings.schedule，same_every_day 时 7 天须一样，400 原话），旧 work-window PUT 照能用。已转 39（接 Different by day）、0e（基础周按当天时间算）。上线：Annie 执行 v144 → 后端推。
 - ✅ 排班设置集中（Same every day）已合 main 10e82e9（39，sch 354、dr 89、tasks 144，tsc / eslint / build 过）：⚙ Settings 弹窗、照 settings.schedule 勾、只读一行 Working hours、空档补一句。39 接着 task/schedule-work-hours（Different by day），等后端 SHA 再合。
+- ✅ 按天设后端已上 main 196f24c7（合并 0ca7afe8），v144 已执行。已请 39 先合 task/schedule-work-hours。前端上线前 Annie 先别设「每天不同」。
 - （作废）9e：按天设已记规格，22:14 PT 过了 21:30 收工点，明天第一件派（迁移 v144），今晚只做完 relay-print。
 - Annie 在 39 窗口答（原话）：「schedule同意全部推荐，但是需要加一个可以edit的权限让我来Admin里勾选」⇒ 两份 preview 全按推荐；⑤ 改：能改设置照 Team 页勾。39 查：现成勾 settings.schedule（后端 PUT 本来就按它查，routers/schedule.py:47），前端只是写死 is_superadmin ⇒ 不用新权限，前端改照勾；按天设的新接口也用它。设置 preview v3 同链接。「同意」不算动手，39 已问 Annie「是否现在动手」。动手后：Day timeline 纯前端；设置集中前端先做（Same every day 先用现 work-window 接口）；按天设转后端（迁移 + work_hours + PUT /api/settings/schedule/work-hours，权限 settings.schedule）。
 - 设置集中 preview 第 2 版：https://claude.ai/artifact/97MgNcpw28p7W4DxXmpgrM 。原 6 题（推荐 ① 工具条 ⚙ Settings + 弹窗、② 留一行只读 Working hours、③ Employees 不搬、④ Rules 不搬、⑤ SA 改 / 排班人只读、⑥ 空档补「(working hours end …)」）。
