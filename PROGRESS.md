@@ -10,6 +10,7 @@
 - Annie 指定 f8 做今晚的前端主窗口。本地 main 落后 626 个提交，已 fast-forward 到 4a2f477，工作区干净。
 - 资源（17:42）：空闲内存 11.1 / 31.7 GB；chrome 47 个进程，约 4.6 GB；node 1 个。内存偏紧，同时开的工作窗口不超过 2 个。
 - 后端今晚主窗口是 `npe-confirmation-service-9e`[79fb6f]。9e 问了两件，f8 已回：① CHD admin_fee 前端第二步没上 main，等 Annie 选版 1（8361888）还是版 2（fba8716），合了再发 SHA，后端先别推（9e 报的后端 SHA 是 83ff7720，以它为准）；② G231 前端还没写代码。前端不调新接口，后端先上线没影响；条件是员工用的 /api/notices、/api/team/online 返回格式不变。
+  - 9e 回：CHD 后端由 36 接（代码 ad5707ee，83ff7720 只是 WIP 交接、代码一样），等 f8 发前端 main SHA 才推；G231 由 fc 落地，「员工侧 /api/notices、/api/team/online 格式不变」已列进验收，变了推前先告诉 f8。
 - 今晚在等 Annie 的，跟 24 交接第三节一样，不重问。
 
 ## 2026-11-02 收工交接：前端主窗口-24 [d1dbae]（公司）
