@@ -134,6 +134,7 @@
       - fc 估：现在没有车辆实时位置、没有酒店坐标（只有 Samsara 位置共享链接、车号对应、司机当天开哪台车）。A 只显示「离酒店 0.3 mi」（约 1 天，迁移酒店经纬度，17 家填一次）；B「Arrived 6:02 / Left 6:09」（经纬度 + 到离事件表 + 早班每分钟轮询，2–3 天；或在 Samsara 后台建酒店围栏读进出事件）；C ETA 不建议。A / B 都要 Annie 在 Samsara 后台给 token 开读位置 / 事件权限，Risk C。f8 建议：司机实时页先上不带到站，到站作为第二期做 B。等 Annie 选。
     - ✅ Annie 动手（f8 窗口原话）：「出来第3个，我要30秒刷新relay，其他都同意推荐，动手。staff发送morning的默认就是两个都自动勾选了」⇒ 除 ③ 外全推荐；Live drivers 30 秒刷新；⑫ 沿用 Morning 回复框默认（39 核）；到站第二期。后端已派 9e（司机页只读数据、tracking live_status*、ns_unhandled、开关 morning_live_drivers）；前端 39 task/live-drivers。
     - Annie 问（原话）：「我们不是已经有权限了么，不然客人怎么通过我们看司机的位置？」⇒ 已请 fc 用现 token 实测能不能读车辆位置。
+    - fc 字段定（已转 39）：GET /api/notifications/morning-pickup/live-drivers?date=（morning.view + 开关 morning_live_drivers）→ people[{kind, hr_id, name, first_shift, segments | runs, inbox}]；…/live-drivers/thread（不写已读，含 email_in）；回复 POST /booking-notes/by-order；tracking 行加 live_status / live_status_at / live_driver / live_van / ns_unhandled。
 - Annie 嫌 Dashboard「Today's team」难看（f8 窗口原话，附截图）：「这个排版也太丑了吧，你的审美呢」⇒ 改样子，派 0e 出 preview（一人一行对齐、Off 合一行、Visible to 收起、Online now 省地方、ZZTest 是否出现问 Annie）。没动手。
 - 今晚在等 Annie 的，跟 24 交接第三节一样，不重问。
 
