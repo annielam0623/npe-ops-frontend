@@ -437,6 +437,7 @@
 - 0e 报告第 2 版全部完成（同链接）：题 ④ 换成 4a GO City Upgrade 算 GENERATOR（推荐算）、4b BOULDER SHUTTLE 数 Hoover 的 BOULDER CITY 节（推荐）、4c RAFT SHUTTLE 先不出（推荐）。其余 12 页最大差别：① Relay 5 页 ops 没有可打印单子（置顶 33）；② Pick-up Location 纸本按 relay 车上色，ops 隔组上色；③ Quantities 标色不同；④ 抬头颜色纸本按车、ops 按团；⑤ 午餐单不出忌口 NOTES（置顶 33）；⑥ 司机兼导游没并一格；⑦ 没有 ASSIST 列。定过的不算问题。0e 空出来。
 - Annie 在 0e 窗口给 West Rezdy 原件 west-bus-2026-09-30.csv（原话「西峡的情况比较复杂一些，我给你看一下从Rezdy 下载的原件是什么样子的，然后你已经有了它的纸本，你可以对比一下，是同一天同一个tour」）；纸本是 10/6、CSV 是 9/30，不同天，0e 已请她给 9/30 纸本。报告第 3 版：West 只看 Quantities 就能分 7 格（9/30 合计 58 = 全部人数）；「+skywalk +Meal Voucher」= SKY+Meal、「Premium (Skywalk+Voucher)」= Premium ⇒ 题 2 缩成只问 SKY ONLY 是哪种票（推荐带 skywalk、不带餐）；现 LUNCH 规则这天只算 6 人带餐，题 3 更该拿掉。
 - 已请 9e 只读查 Hoover 生产分节（manifest_products 的 section / kind / extra）。
+- Annie 在 0e 窗口答题 6 的 BZ（原话）：「问题6，BZ页脚的统计表格是：TOTAL OF PAX, AVAILABLE SEAT LEFT, INBOUND, OUTBOUND, SEATS USED, No Lunch(including shuttle) , LUNCH这几项」⇒ BZ 跟 Antelope 同一套 7 格（就是现在网页那套），打印 / Excel 3 个名字跟着改。题 6 推荐 A 改写为：West、Hoover、South 各一套，Antelope、BZ 和其他团用 Antelope 那套；A / B 还没答。不是动手。报告第 4 版。
 - 36 查回：Hoover 节 = HD Highlights（8 个，PJ0LQF internal_name 写「West Rim」疑似填错）/ HD Generator（5 个，票型「+ Generator」）/ HD RAFT（2）/ BOULDER CITY（2）；另有独立 manifests 35 Boulder_City（PV3Y0U）。HIGHLIGHTS / GENERATOR / RAFTING 对得上。题 ④ 改成 3 小题：④a PJD1EQ 的 Upgrade 票型算不算 GENERATOR；④b BOULDER SHUTTLE 数 Hoover 的 BOULDER CITY 节还是 PV3Y0U；④c RAFT SHUTTLE 生产里没有对应产品，怎么算。已转 0e 更新报告。
 
 ### 55. 排班 gap：11/2 10–12 在哪看到的 + 时间小窗要不要挡（2026-11-02 晚）
