@@ -16,6 +16,14 @@
 - 检查：tsc、eslint（0 错，1 条旧 warning）；headless da 462/462（新加 send-auto-open 6 条：停在 Assign 三份都不取、切到 Send 各取 1 次、两个 Refresh 白色、How to use 新句、来回切不重取、直接 ?tab=send 自动取）、rl 26/26、nav 38/38、pl 105/105、products 237/237。
 - Annie 线上验收看：Dispatch › Send 打开就有司机、导游表和 Morning Relay 两轮；两个白色 ↻ Refresh；How to use 两句。⚠️ 生产后端，别点 Send texts now / Preview & send 里的发送。
 
+## 2026-11-03 Dispatch 没定位的车标「No tracking」（`task/no-tracking`，工作窗口 91 [359513]，主窗口 24 派，置顶 60）—— 合 main
+- Annie 定（在后端 37 说「动手」）：staff 要看出哪台车追踪不了；这些车客人照样收链接、能签到，短信 / 邮件不提 live tracking（后端自动换字，fc880e40）；只标不拦。preview https://claude.ai/artifact/GqgxoQ12fMyPgtzRM3kHJ8 。
+- Annie 在 91 窗口原话「动手」（4 题没逐题答，照 preview 的推荐做：题 1 A、题 2 A、题 3 A、题 4 B）。
+- 改了：
+  - Assign：车号下面红点标「No live GPS」→「No tracking」；选车下拉里没定位的车写「2056 · No tracking」；右栏 Schedule check 改成「2056 has no tracking — Guests on it still get the link and can check in. The text doesn’t mention live tracking.」；How to use — Buses & drivers 加一条。
+  - Send › Morning Relay：车有车号且 `car.has_tracking === false` 时，车号后面同款红点标「No tracking」（不进 problems、不拦 Preview & send；没车号的占位车后端也给 false，不标；旧后端没这个键当 true）；How to use — Morning Relay 加一条。
+- 检查：da-mock 加 ctl.relayNoTracking；da 加 5 条（下拉文字、右栏文字 + How to use、旧后端不标、768 标 + 不拦、占位车不标）。da 462/462、rl 26/26、nav 38/38；tsc / eslint（0 错）/ build 过。
+
 ## 2026-11-03 主窗口 `今日主窗口-24`[310398] 开工（公司电脑，接 f8）
 - 窗口：前端工作窗口 09 [341d31]、91 [b22952]、e6 [03dd03]；d8 [840908] 身份待确认（已问是否后端主窗口）。
 - 资源：空闲内存 49.2 / 61.8 GB；没有 node / chrome 进程。
@@ -645,6 +653,13 @@
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 64. G180 Main manifest 订单同步到 Tour Tracking：重新启动（2026-11-03，Annie「重新启动」）
+- 10/24 Annie 提，后端 d9 写好代码在 origin/task/tracking-sync-design（4cac1f93，10/25 夜后没动，没上 main、没跑迁移；deploy-guard 第 3 轮 FAIL：迁移要先于代码；迁移号 v122 已被占，要换号）。设计文档 docs/tracking-sync-design-2026-10-24.md，Annie 已定的不再问（同步已确认订单、发送前后都同步、send_state Sent / Not sent、order_state Confirmed / On hold / Cancelled 以 Order List 为准、从不删行、午餐谁新留谁、Farm out 只记录、Broadcast 含 Not sent 不含 On hold / Cancelled 且发出后变 Sent、总开关默认关、Tour Tracking 加 Sent / Not sent 筛选默认 Sent + 订单号后小标签）。还没答：调用记录表 401 要不要记（Max 推荐不记，后端那边问）。
+- 当时页面只改了旧后台模板；ops 新 Tour Tracking 页要前端另做。
+- 已转 37：派后端合最新 main、换迁移号、重审、重估工作量和时间，冻结 ops 要用的接口字段。已派 91 出 ops Tour Tracking 的 preview（筛选、标签、统计 / 导出算不算、How to use），没定的列题。等 preview 后 Annie「动手」才写前端代码。
+- 37 派后端 44 重评：接分支合今天 main、迁移改号（最早 v147，排 57 的 v145、64 的 v146 后）、按现在代码核设计、冻结接口形状（send_state / order_state、farm out 标、筛选在服务器还是页面、broadcast 名单）、估工作量和时间；44 也查 10-25 后 Annie 答没答 401，真没答 37 才问。形状和 ETA 经 37 转。
+- 44 重评结果（37 转）：设计照旧成立；后端约 1 个工作日，明天中午左右分支代码好；之后 Annie 执行 v147（在 64 的 v146 后）→ 代码上 main → 回填试跑 → 真回填 → Annie 开开关（Super Admin，默认关）。冻结接口（只加）：tour-confirmation/tracking 每行加 send_state sent / unsent、order_state confirmed / on_hold / cancelled（来自 Order List，不是客人回复）；Farm out 用现有 farm_out_view 不为 null；Sent / Not sent 筛选在页面做，默认 Sent；Broadcast 名单页面组，含 sent + unsent、不含 on_hold / cancelled（只在浏览器端排除），发完后端把真发出的 unsent 改 sent，前端重读；开关 / 回填接口只 Super Admin。401 那题属 G178（电话记录）不是 G180，已问过两次，不再问、不挡 G180。已转 91。
+
 ### 63. 换司机只改 Dispatch：页面上怎么标（G234，Annie 已「动手」后端；e6 preview https://claude.ai/artifact/CXT8ZueNa3akn1ZrGn4Ycj ，没写代码）
 - 背景：Annie（37 转）「换了司机以后，staff只需要去dispatch把司机改了，然后保存，就可以了，不需要再发送任何信息出去」。后端 4d 做：改司机 + Save 后已发客人的链接跟新司机，不发东西。前端占位字段 driver_followed {from, to}，真实字段 37 待转。
 - 题 1 Morning Relay 发送名单标在哪（现在 Status 列淡黄「Sent by…」，下面橙字「Changed after sent: …」，改司机不显示）：A（推荐）Status 列 Sent by 下面一行、橙字上面；B 名字后小标签「Driver changed」，鼠标移上去看全句。
@@ -656,6 +671,7 @@
 - 字段定了（37 转 4d，锁定）：就用前端占位名 driver_followed = null 或 {from（发送时的司机，常是 Excel 写法如 FREDDY）, to（现在 Dispatch 的司机）, at, by}；在 relay-pull 的 guests（rounds 和 need_a_look）和 Morning tracking rows[]。Dispatch 存（POST /api/dispatch/day、/section、/copy）回 driver_follow {updated_orders, skipped[{car, reason}]}，可做提示。改后 Morning tracking 的 driver 列显示新司机。4d 在 task/driver-change-follow 做。
 - 题 5（37 提，同一司机只换车）：现在 Morning Relay 出橙字「Changed after sent」（车）提示要不要重发（Annie G16 ③：只标不自动发，staff 定）。事实：链接只在 Samsara 看到司机登进新车、司机名在 HR 唯一且有 Samsara 编号、新车在 Vehicles 有链接时才自动跟；Dispatch 的车号常跟实际不符（今天查到 CCL 写 1724 / 1328，实际 1725 / 2017），所以 Dispatch 只换车不一定代表客人要做什么。A（推荐）保留橙字改说法，如 "Van changed after send — link follows the driver; resend only if the driver changed too"；B 只换车的不标；C 照旧。
 - 题 6（37 提）：换了司机以后，如果新司机开的车跟客人上次看的不同，Morning tracking 仍会出红字「Wrong bus — resend link」，「resend」跟「换司机不用重发」冲突。A（推荐）红字改成请客人重新打开链接，如 "Bus changed — ask the guest to open the link again"（= 61 题 1 ③，新字先给 Annie 看）；B 照旧。
+- G234 补（Annie 在 4d 窗口「同意。动手」，37 转）：司机名不同写法（JOSEPH vs Joe R、BOSS vs David H）用现有 dispatch_ccl_name_alias 表对上（CCL Apply 已填 16 行）；ops HR 页每位司机加「Other spellings」一格读写这张表（记 action_log），不迁移，nickname 仍是显示名。前端：HR 页这一格 + How to use，新样子先给 Annie 看 preview；接口形状 4d 给、37 转，到了再派窗口（排队：09 加急件、e6 send-auto-open、91 G180 preview 在做）。接口已定（37 转 4d，task/driver-change-follow，没上 main）：GET /api/hr/profiles 加 other_spellings；GET / PUT /api/hr/profiles/{id}/spellings（view / edit 权限，PUT 整份替换、后端规整大写去重、本人 nickname 去掉）；400 / 404 / 409 detail 原样显示；写 action_log；CCL 已学到的写法会出现（David H: BOSS 等）。已排给 91，G180 preview 之后出 preview。
 - 题 7（e6，preview 第 ④ 节，同一链接新版）Dispatch 按 Save 后要不要提示链接已跟新司机（现在只写绿色「✓ Saved」）：A（推荐）要——改成了一行灰字 "Tracking links now follow the new driver for 3 guests who were already texted (Bus 2457 → LUIS). Nothing was sent to guests."；没改成的车红字 "Bus 2355: links not changed — <reason>. Their links still follow the old driver: fix the driver name, or text those guests again on the Send tab."；都没有就不多出字。B 不提示，只写 ✓ Saved，要去 Morning Relay / Morning tracking 看每行（没改成的可能漏掉）。已问 4d：skipped[].reason 是否给 staff 看的英文句子。
   - 红字模板锁定（前后端）：「<car>: links not changed — <reason>」，reason 后端给、末尾不带句号。4 句定稿：① the driver was removed. Pick the new driver and save again ② guests sent with driver BRUCE could be on more than one car with this bus number. Text these guests again on the Send tab ③ something went wrong while updating the links. Save again（car = All buses）④ guests on this bus were sent with driver JOSEPH, which doesn't match Joe R. Text these guests again on the Send tab（多个发送名 ", " 连、多个旧司机 " / " 连）。不写「fix the driver name」（发送名改不了）。
 
@@ -699,7 +715,7 @@
   - Driver changed (with or without a bus change): the tracking link still follows the driver from the list you sent. Fix the driver (and bus) in the file, upload it again on Morning Pickup → Send, tick only those guests and send. They get a new text with the right bus.
   - If the Driver name is not a link, the guest's page can't follow a bus change. Send those guests again with the new Bus #.
 
-### 60. 没定位的车标「No tracking」（2026-11-03，91 preview https://claude.ai/artifact/GqgxoQ12fMyPgtzRM3kHJ8 ，没写代码）
+### 60. 没定位的车标「No tracking」（2026-11-03，91 preview https://claude.ai/artifact/GqgxoQ12fMyPgtzRM3kHJ8 ）—— ✅ Annie 在 91 窗口「动手」（没逐题答，照推荐 1 A / 2 A / 3 A / 4 B），已合 main e9336c2（da 462、rl 26、nav 38），待移走
 - 发现：Dispatch › Assign 每台车车号下面本来就有标：有定位绿色「GPS」，没定位红点「No live GPS」；右栏 Schedule check 有「2056 has no live GPS — Guests on that vehicle won't see the map.」。Send 页 Morning Relay 车头现在没标。
 - 题 1 Assign 页红标的字（后半句「won't see the map」以后不对，客人照样收链接能签到）：A（推荐）改「No tracking」，样子颜色不变，右栏改「2056 has no tracking — Guests on it still get the link and can check in. The text doesn't mention live tracking.」；B 红标留「No live GPS」，只改右栏那句。
 - 题 2 选车下拉要不要标：A（推荐）车号后写「· No tracking」，如「2056 · No tracking」（下拉只能文字不能上色）；B 不标。
@@ -813,6 +829,7 @@
 - 需要后端（Annie 答完再转）：schedule_employees 加 sort_order（迁移按名字填）、GET employees 按 sort_order 排、PUT /api/schedule/employees/order {employee_ids:[…]}（权限 schedule.edit、写 Action Log、不改周 version、不通知）。
 
 ### 53. 限制下载功能（2026-11-02，Annie 在 e6 窗口问，没动手）
+- ⚠️ 2026-11-03 Annie 在 e6 窗口说（原话）「4-7题，全部同意推荐」，没写是哪份：可能是本条 53（题 4a–f / 5 / 6 / 7），也可能是置顶 63（G234 题 4 原文 / 5 只换车橙字 / 6 Wrong bus 红字 / 7 Save 后提示）。已问 Annie 确认，没动手。
 - Annie 原话：「我可以限制一下download的功能么」。e6 已答能做、说了现状，问她要限制谁、哪些页（不在 24 这里重复问）。
 - e6 只读核：Team 页已有 4 个导出勾 manifests.export / orders.export / logs.export / reports.export；后端服务器端导出没勾就 403（orders.py、send_log.py、notifications.py、tour_manifest.py、farm_out.py）。前端员工按钮级权限没做：没勾的人照样看得到 Export / Download 键；浏览器里直接生成的下载后端拦不住。下载键：Manifests Export CSV、Orders Export、Order Log、Send Log、Broadcast Log、Sales Report、Farm out Report / Timetable、HR Export to Excel、Pickup Locations Export、三个 Tracking 页、Dispatch 的 Download Bus Manifest。
 - 可做：员工也按 4 个导出勾藏键（含浏览器生成的）；要不要细分（如 Bus Manifest 下载单独一项）看 Annie。先出 preview（哪页哪个键对应哪一勾）。相关旧题：11-01 09 问过的权限题 A / B / C（Farm out 导出跟 reports.export、Bus Manifest 下载 + Manifests Export CSV 跟 manifests.export，未答）。

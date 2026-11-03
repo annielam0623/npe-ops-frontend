@@ -211,7 +211,8 @@ async function run() {
   // 下拉
   check("司机下拉：Relay 只列勾了 Morning Relay 或没勾的；驾照过期的不列；最后两项手填；名字后不挂语言（后端 10-07 dispatch-lang-label）", await evaluate(`return ${opts(`${vrow(0)}.querySelector('[data-f=driver]')`)} === 'Choose driver...|FREDDY|GIA|Bruce W|Not in the list? Type a name...';`), await evaluate(`return ${opts(`${vrow(0)}.querySelector('[data-f=driver]')`)};`));
   check("团车：司机兼导游显示 drives and guides；导游下拉第一项 Driver Guide", await evaluate(`return ${vrow(1)}.textContent.includes('GIA drives and guides') && ${vrow(1)}.querySelector('[data-f=guide]').value === '__dg';`));
-  check("团车 2：缺导游标 Needs guide；同司机同车两行 → Duplicate row；没 GPS", await evaluate(`return ${vrow(2)}.textContent.includes('Needs guide') && ${vrow(2)}.textContent.includes('Duplicate row') && ${vrow(2)}.textContent.includes('No live GPS');`));
+  check("团车 2：缺导游标 Needs guide；同司机同车两行 → Duplicate row；没 GPS", await evaluate(`return ${vrow(2)}.textContent.includes('Needs guide') && ${vrow(2)}.textContent.includes('Duplicate row') && ${vrow(2)}.textContent.includes('No tracking');`));
+  check("No tracking（Annie 2026-11-03 题 2 A）：选车下拉里没定位的车写「2056 · No tracking」，有定位的只写车号", await evaluate(`const o = [...${vrow(2)}.querySelector('[data-f=vehicle]').options].map(x => x.text); return o.includes('2056 · No tracking') && o.includes('768') && o.includes('1328');`));
   await pick(`${vrow(2)}.querySelector('[data-f=driver]')`, "5");
   check("司机不是 Driver + Guide：Driver Guide 灰掉并说明", await evaluate(`return ${opts(`${vrow(2)}.querySelector('[data-f=guide]')`)}.startsWith('Driver Guide (driver is not Driver + Guide)[x]');`));
   check("改了一处：Step 2 写 Unsaved changes（60 秒没操作才自动存）；没有 Save schedule / Discard 键",await evaluate(`return ${waiting} && ![...document.querySelectorAll('button')].some(b => ['Save schedule', 'Discard'].includes(b.textContent.trim()));`), await evaluate(`return ${saveState};`));
@@ -238,7 +239,7 @@ async function run() {
   await sleep(150);
   check("Relay 加车：同一轮别人勾走的酒店点不了（写是谁）、停用的不列", await evaluate(`return ${opts(`${vrow(4)}.querySelector('[data-f=addstop]')`)} === 'Add hotel|Excalibur - ZZ Test Typed[x]|MGM - ZZ Test Typed[x]|Treasure Island';`), await evaluate(`return ${opts(`${vrow(4)}.querySelector('[data-f=addstop]')`)};`));
   check("右栏：没司机的车 1 台（唯一拦保存的）", await evaluate("return document.querySelector('[aria-label=\"Schedule check\"]').textContent.includes('1 vehicle has no driver yet');"));
-  check("右栏：Bruce W 在 2 台车上、没 GPS、1st Round 没排的酒店", await evaluate("const t = document.querySelector('[aria-label=\"Schedule check\"]').textContent; return t.includes('Bruce W is on vehicle 2056 twice') && t.includes('2056 has no live GPS') && t.includes('1 hotel with no Morning Relay · 1st Round vehicle');"));
+  check("右栏：Bruce W 在 2 台车上、没 GPS、1st Round 没排的酒店", await evaluate("const t = document.querySelector('[aria-label=\"Schedule check\"]').textContent; return t.includes('Bruce W is on vehicle 2056 twice') && t.includes('2056 has no tracking') && t.includes('Guests on it still get the link and can check in. The text doesn’t mention live tracking.') && document.body.textContent.includes('No tracking (red) under a vehicle means it has no live GPS.') && t.includes('1 hotel with no Morning Relay · 1st Round vehicle');"));
 
   // 自动保存：没司机的车也能存（后端放宽 migrate_v107；Annie 2026-10-18「第 4 条如果是保存的话是没问题的」）
   before = (await mockLog()).length;
@@ -482,6 +483,16 @@ async function run() {
   // G61（2026-10-15）：Text 列改名 Status；没发过的空着（不再有 Not sent 胶囊），发过的黄标签「Sent by 谁 on 时间」，改过的另写 Changed after sent: …
   check("1st Round：车行、3 单 6 pax、1 单没发；表头 Status；没发过的空着、发过的黄标签 + Changed after sent（写改了什么）/ No show", await evaluate(`const t = ${rp}.textContent; const box = ${rp}.querySelector('[aria-label="1st Round · 4:30 - 5:15 AM"]'); const heads = [...box.querySelectorAll('thead th')].map(th => th.textContent.trim()); const r = (o) => box.querySelector('tr[data-order="' + o + '"]'); return t.includes('768 · FREDDY · 3 orders, 6 pax') && t.includes('3 orders, 6 pax · 1 not sent yet') && heads.includes('Status') && !heads.includes('Text') && !/Not sent/.test(t) && !r('R1').querySelector('[data-sent-label]') && r('R2').querySelector('[data-sent-label]').textContent === 'Sent by veronica on Oct 5, 4:30 AM' && r('R2').querySelector('[data-changed]').textContent === 'Changed after sent: pickup time 4:45 AM → 5:00 AM' && r('R3').textContent.includes('No show') && !r('R3').querySelector('[data-sent-label]');`), await evaluate(`return ${rp}.textContent;`));
   check("2nd Round：没车写 No vehicle · No driver、发送键灰掉", await evaluate(`const box = ${rp}.querySelector('[aria-label="2nd Round · 5:40 - 6:30 AM"]'); return box.textContent.includes('No vehicle · No driver') && $btn('Preview & send', box).disabled;`));
+  check("No tracking：旧后端（车上没有 has_tracking）车头不标", await evaluate(`return !${rp}.querySelector('[data-no-tracking]');`));
+  await ctl({ relayNoTracking: true });
+  await evaluate(`$btn('Pull from manifests', ${rp}).click();`);
+  await waitFor(`${rp}.querySelector('[data-no-tracking]')`);
+  check("No tracking（题 3 A）：1st Round 车 768 没定位 ⇒ 车号后面红点标 No tracking；只标不拦（Preview & send 照常能点）", await evaluate(`const box = ${rp}.querySelector('[aria-label="1st Round · 4:30 - 5:15 AM"]'); const m = box.querySelector('[data-no-tracking]'); return !!m && m.textContent.trim() === 'No tracking' && m.closest('td').textContent.startsWith('768') && !$btn('Preview & send', box).disabled && !box.querySelector('[data-car-blocked]');`));
+  check("No tracking：没配车的占位车（No vehicle，后端也给 false）不标", await evaluate(`const box = ${rp}.querySelector('[aria-label="2nd Round · 5:40 - 6:30 AM"]'); return box.textContent.includes('No vehicle · No driver') && !box.querySelector('[data-no-tracking]');`));
+  check("No tracking：Morning Relay 的 How to use 有那一句", await evaluate(`return ${rp}.textContent.includes('A car marked No tracking has no live GPS. Its guests still get the text and the link to check in');`));
+  await ctl({ relayNoTracking: false });
+  await evaluate(`$btn('Pull from manifests', ${rp}).click();`);
+  await waitFor(`!${rp}.querySelector('[data-no-tracking]')`);
   check("Need a look 写原因；出发点上车的单数", await evaluate(`const t = ${rp}.textContent; return t.includes('Pickup time could not be worked out from the time in Rezdy') && t.includes('4 orders board at the tour bus departure point');`));
   // task/relay-print（Annie：「排完relay并保存了以后，应该加一个按键显示这些relay的list」）：📋 Relay list 新标签打开；车头 Print 只看这一台。
   await evaluate("window.__opens = []; window.open = (u) => { window.__opens.push(String(u)); return null; };");

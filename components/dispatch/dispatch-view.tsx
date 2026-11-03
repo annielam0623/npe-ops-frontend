@@ -3055,6 +3055,11 @@ function HowToUse() {
           add the person to Human Resource).
         </li>
         <li>
+          No tracking (red) under a vehicle means it has no live GPS. Guests on
+          it still get the link and can check in; the text doesn&rsquo;t mention
+          live tracking.
+        </li>
+        <li>
           Morning Relay: pick each car&rsquo;s hotels in Add hotel. 2nd Round:
           Copy 1st Round copies the cars, drivers and hotels.
         </li>
