@@ -450,6 +450,7 @@
     - 题 7 Annie 答（0e 转，原话）：「hoover的司机用他的bus manifest就好了，上面都按照时间排好了」⇒ Hoover 不另印 relay 单（v7）。
     - v8：照 fc 细节（vehicle_id 认大巴，0 / 1 / 2+ 个，2+ 红字「This van is on 2 tour buses today」；颜色复用 Bus Manifest；简称 B = manifests.short_name 小迁移，后端 1–2 小时；后端合计 1 天内）。等 Annie 答题 1 / 2 / 4 / 6。
     - ✅ v9 定稿（0e 转，原话）：「其他问题都走推荐，简写纸本里用哪个就用哪个，不要自己改」，动手 = 之前「现在动手做吧…」。题 1 A；题 2 B 简称照纸本（GC South / LOWER / UPPER / X），团和节都要能设（Canyon X → X）；题 3 A；题 4 A（大巴用 Bus Manifest 色）；题 5 CLOSE 红字、没客人的车不印；题 6 A（不加 Goes-to，/driver 页同补）；题 7 B。已派 9e → fc（relay-pull 字段 + short_name 团 / 节 + /driver 页，迁移要 Annie 执行）；前端 0e task/relay-print 先 mock，setup 简称格也归 0e。
+    - Annie（0e 窗口原话）：「你把明天的行程用我们定下来的格式preview一次」⇒ 0e 用 11/3 真实数据画 v9 格式 preview（名字只留首字母、电话后 4 位）。已请 9e 只读导出到 C:\Users\annzh\AppData\Local\Temp\relay-2026-11-03.json（用完删）。
   - 另：ops 标黄规则「带 + 就亮黄」会让 West 所有 Premium (Skywalk+Voucher) 行都亮黄，纸本不标（并进其余 12 页差别 ③）。
 - 36 查回：Hoover 节 = HD Highlights（8 个，PJ0LQF internal_name 写「West Rim」疑似填错）/ HD Generator（5 个，票型「+ Generator」）/ HD RAFT（2）/ BOULDER CITY（2）；另有独立 manifests 35 Boulder_City（PV3Y0U）。HIGHLIGHTS / GENERATOR / RAFTING 对得上。题 ④ 改成 3 小题：④a PJD1EQ 的 Upgrade 票型算不算 GENERATOR；④b BOULDER SHUTTLE 数 Hoover 的 BOULDER CITY 节还是 PV3Y0U；④c RAFT SHUTTLE 生产里没有对应产品，怎么算。已转 0e 更新报告。
 
