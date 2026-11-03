@@ -199,6 +199,16 @@ export interface LiveTourCompact {
   no_show: number;
   not_split?: boolean;
   unplaced?: number;
+  /** shuttle 去程 / 回程块（不带客人；driver_tour_view.compact_view）。 */
+  shuttles?: {
+    label: string;
+    kind: string;
+    time: string;
+    hotel: string | null;
+    product: string | null;
+    pax: number;
+    bookings: number;
+  }[];
 }
 
 export interface LiveSegment {

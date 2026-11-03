@@ -1173,7 +1173,15 @@ async function run() {
     await evaluate("document.querySelector('[data-mt-tab=\"live\"]').click();");
     check("live-drivers 403：Live drivers 页签写「not open to you yet」，不白屏", await waitFor("document.body.textContent.includes('Live drivers is not open to you yet')"));
     // 旧后端（行里没有 live_* 键）：Driver mark 列不出
-    await ctl({ liveForbidden: false, live: false });
+    // 有单独导游的团车司机（只看数字）：照 driver_home.html 的 tc——没分到车的提醒、团名、数字、shuttle 块。
+    await ctl({ liveForbidden: false, liveCompact: true });
+    await openTracking();
+    await evaluate("document.querySelector('[data-mt-tab=\"live\"]').click();");
+    const sam = "document.querySelector('[data-live-person=\"driver-13\"]')";
+    check("只看数字的团车（tour_compact）：40 pax on this bus、团名、Guide: Ana、TI 12 / relay 26 / No show 2、3 orders 没分到车的提醒、Shuttle outbound 块（时间、接人点、产品、5 人 2 单）",
+      await waitFor(`${sam} && ${sam}.textContent.includes('40pax on this bus') && ${sam}.textContent.includes('ZZ Test West Rim') && ${sam}.textContent.includes('Guide: Ana') && ${sam}.textContent.includes('3 orders on this tour have no bus yet and are not counted here. Call dispatch.') && !!${sam}.querySelector('[data-compact-shuttle]') && ['6:30 AM', 'ZZ Test Shuttle Stop', 'Shuttle outbound', 'ZZ Test Shuttle', '52 bookings'].every((t) => ${sam}.querySelector('[data-compact-shuttle]').textContent.includes(t)) && ['12Board at Treasure Island', '26Brought to TI by relay', '2No show (from guide)'].every((t) => ${sam}.textContent.includes(t))`),
+      await evaluate(`return ${sam}?.textContent;`));
+    await ctl({ liveCompact: false, live: false });
     await openTracking();
     check("旧后端（没有 live_* 键）：Super Admin 也没有 Driver mark 列，表照旧", await evaluate("return ![...document.querySelectorAll('main thead th')].some((th) => th.textContent.includes('Driver mark'));"));
     await ctl({ live: false, staffPerms: null, superAdmin: false, extraWidgets: null });

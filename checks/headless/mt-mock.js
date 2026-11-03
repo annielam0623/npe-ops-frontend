@@ -375,7 +375,15 @@ http
     if (p === "/api/notifications/morning-pickup/live-drivers") {
       if (ctl.liveForbidden) return send(res, 403, { detail: "Live drivers is not open to you." });
       const date = url.searchParams.get("date");
-      return send(res, 200, { date, people: date === today ? livePeople() : [] });
+      // liveCompact：再加一位有单独导游的团车司机（driver_tour_view：只看数字 + shuttle 块，名单是 null）。
+      const compact = {
+        kind: "driver", hr_id: 13, name: "Sam", first_shift: "tour", error: false, inbox: { unread_total: 0, threads: [] },
+        segments: [{ id: 301, shift: "tour", kind: "", when: "", title: "ZZ Test West Rim", van: "Coach 30", tour_unset: false,
+          manifest: null, relay_guests: null, relay_farm_out_guests: null,
+          tour_compact: { total: 40, first: "7:00 AM", guide: "Ana", my_relay: 0, ti: 12, other_relay: 26, no_show: 2, not_split: false, unplaced: 3,
+            shuttles: [{ label: "Shuttle outbound", kind: "outbound", time: "6:30 AM", hotel: "ZZ Test Shuttle Stop", product: "ZZ Test Shuttle", pax: 5, bookings: 2 }] } }],
+      };
+      return send(res, 200, { date, people: date === today ? [...livePeople(), ...(ctl.liveCompact ? [compact] : [])] : [] });
     }
     let m = p.match(/^\/api\/bookings\/(\d+)\/take-action$/);
     if (m && req.method === "PUT") {

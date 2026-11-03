@@ -282,7 +282,10 @@ function DriverRoutes({
             </div>
           ) : null}
           {seg.tour_compact ? (
-            <CompactTour seg={seg} />
+            <CompactTour
+              seg={seg}
+              title={multi || seg.tour_unset ? "" : seg.title}
+            />
           ) : seg.manifest ? (
             <TourList
               manifest={seg.manifest}
@@ -590,7 +593,8 @@ function RelayList({
   );
 }
 
-function CompactTour({ seg }: { seg: LiveSegment }) {
+/** title：一天只有这一段时写在车号旁边（同 driver_home.html 的 tc-tour）；几段时段头已经写了，传空。 */
+function CompactTour({ seg, title }: { seg: LiveSegment; title: string }) {
   const tc = seg.tour_compact!;
   const stat = (n: number, label: string, red = false) => (
     <div className="rounded-[9px] bg-white/[.06] px-1 py-1.5 text-center">
@@ -602,6 +606,18 @@ function CompactTour({ seg }: { seg: LiveSegment }) {
   );
   return (
     <div>
+      {/* 同司机手机页（driver_home.html 的 tc.not_split / tc.unplaced）。 */}
+      {tc.not_split ? (
+        <Warn>
+          Dispatch has not split this tour between buses yet. Call dispatch.
+        </Warn>
+      ) : tc.unplaced ? (
+        <Warn>
+          {tc.unplaced} order{tc.unplaced === 1 ? "" : "s"} on this tour{" "}
+          {tc.unplaced === 1 ? "has" : "have"} no bus yet and{" "}
+          {tc.unplaced === 1 ? "is" : "are"} not counted here. Call dispatch.
+        </Warn>
+      ) : null}
       <div className="mb-2.5 rounded-[14px] border border-blue-500/45 bg-[#10243b] p-3.5">
         <div className="flex flex-wrap items-baseline gap-2">
           <b className="text-[28px] leading-none">{tc.total}</b>
@@ -618,6 +634,7 @@ function CompactTour({ seg }: { seg: LiveSegment }) {
               {seg.van}
             </span>
           ) : null}
+          {title ? <span>{title}</span> : null}
           {tc.guide ? <span>Guide: {tc.guide}</span> : null}
         </div>
         <div className="mt-2.5 grid grid-cols-[repeat(auto-fit,minmax(70px,1fr))] gap-1.5">
@@ -636,6 +653,27 @@ function CompactTour({ seg }: { seg: LiveSegment }) {
         The guide{tc.guide ? ` ${tc.guide}` : ""} has the guest list and
         contacts the guests.
       </p>
+      {/* shuttle 去程 / 回程：只有接人点、时间、人数，不带客人（同 driver_home.html 的 tc.shuttles）。 */}
+      {tc.shuttles?.map((b, i) => (
+        <section
+          key={i}
+          data-compact-shuttle
+          className={cn(
+            "mt-2 overflow-hidden rounded-xl border border-white/10",
+            STN[i % 2],
+          )}
+        >
+          <StationHead
+            time={b.time}
+            hotel={b.hotel}
+            spot={b.product}
+            label={b.label}
+            kind={b.kind}
+            pax={b.pax}
+            bookings={b.bookings}
+          />
+        </section>
+      ))}
     </div>
   );
 }
