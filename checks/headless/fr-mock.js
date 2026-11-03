@@ -34,6 +34,11 @@ http.createServer(async (req, res) => {
   log.push({ path: p, query: url.search });
   if (ctl.fail401) return send(res, 401, { detail: "Authentication required" });
   if (p === "/api/me") return send(res, 200, { id: 1, username: "zztest", display_name: "ZZ Test", initials: "ZT", role: ctl.sa ? "superadmin" : "staff", is_admin: !!ctl.sa, is_superadmin: !!ctl.sa });
+  // 题 8：ctl.staffPerms = 这个员工勾了的项（数组）；没设 ⇒ 权限接口 404（前端照旧不藏）。
+  if (p === "/api/me/permissions") {
+    if (!ctl.staffPerms) return send(res, 404, { detail: "Not Found" });
+    return send(res, 200, { is_superadmin: !!ctl.sa, permissions: ctl.staffPerms.map((code) => ({ code, module: code.split(".")[0], wired: true })), default_home: null });
+  }
   if (p === "/api/settings/dashboard-widgets") {
     if (!ctl.frVis) return send(res, 404, { detail: "Not Found" });
     return send(res, 200, { readable: true, widgets: [{ key: "farm_out_report", label: "Farm out Report", visibility: ctl.frVis, default: "super_admin_only", visible_to_me: ctl.frVis === "staff" || !!ctl.sa }] });

@@ -27,6 +27,7 @@ import { fetchUserPref, saveUserPref } from "@/lib/user-prefs-api";
 import { OTHER_TOUR_COLOR, resolveTourColor } from "@/lib/tour-colors";
 import { usePageVisibility } from "@/lib/page-visibility";
 import { byTick } from "@/lib/permissions";
+import { withoutManifestMoney } from "@/lib/money-view";
 import { usePermissions } from "@/lib/staff-permissions";
 import { cn } from "@/lib/utils";
 import { useViewOnly, ViewOnly } from "@/components/ui/view-only";
@@ -413,7 +414,14 @@ export function ManifestsView() {
   const today = date ? laToday() : "";
   const loading = state?.kind === "loading";
   // 换了标签还没回来时，旧标签的数据不当成这个标签的。
-  const shown = data && data.tab === tab ? data : null;
+  // 没勾 See prices, agent & commission（orders.money_view，题 8）：金额 / 代理商列整列不出，Columns 里也没有
+  // （后端这时本来就不给，这里再挡一道：存着的列、旧后端都不出空栏，也不算进「need admin access」那句）。
+  const shown =
+    data && data.tab === tab
+      ? perms.canSeeMoney
+        ? data
+        : withoutManifestMoney(data)
+      : null;
   // 搜索跳过来的行到了：滚到屏幕中间（每次跳转只滚一次，后面重拉不再拽视线）。
   const highlightShown =
     !!highlight && !!shown?.rows.some((r) => r.row_key === highlight);
@@ -1221,6 +1229,7 @@ function ManifestTable({
 }) {
   // partner 不能发时没有勾选；Cfm # 能不能改由格子自己看 ViewOnly（manifests.edit）。
   const viewOnly = !selectable;
+  const seeMoney = usePermissions().canSeeMoney;
   const byKey = new Map(data.catalog.map((f) => [f.key, f]));
   const tab = data.tab;
   /** 正在拖的列、指着的列（指着的那列左 / 右边画一条蓝线，表示会落在哪边）。 */
@@ -1267,7 +1276,9 @@ function ManifestTable({
     // 真正拦截挪到了发送前的 Skip & send 确认条（见上面 requestSend）。
     const missingCfm = tab === "tickets" && !hasCfm;
     // 费用单（不能发的行）没收齐款：Due 不是 0 ⇒ 整行同样的淡红（Annie 2026-11-02 题 1 选 B）。
-    const unpaidFee = !canSend(r) && Number(r.values.total_due ?? 0) !== 0;
+    // 看不到钱的人不标（标了就等于告诉他没收齐款）。
+    const unpaidFee =
+      seeMoney && !canSend(r) && Number(r.values.total_due ?? 0) !== 0;
     return (
       <tr
         key={r.row_key}

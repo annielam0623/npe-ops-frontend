@@ -6,6 +6,16 @@
 
 > **下一个主窗口：先读下面「2026-11-02 收工交接：前端主窗口-24」，再看置顶「📌 等 Annie 确认」。更早的交接是 10-30 晚那节。**
 
+## 2026-11-02 晚 没勾 See prices, agent & commission 的人藏价格（`task/money-view-hide`，工作窗口 `npe-ops-frontend-0e`[d96681]，主窗口 f8 派）—— ⛔ 推了分支，等后端 v142 上线再合 main
+- Annie 原话（置顶 48 题 8）：「要」「选1」；「只单独勾了CCL的就是CCL的人……」；「默认不带 / 藏」；「除了客人的基本信息，CCL看不到任何有价格的信息」→「动手」；验收「manifest，dispatch等任何有价格的那一栏都隐藏起来他们点击或添加都不行就可以了」。
+- ⛔ 上线顺序：后端先跑 v142（加 orders.money_view 勾、给现有员工勾上）再上线，前端才能合。前端按勾藏，勾不存在时会把所有员工的价格都藏掉。后端卡在 fc 的 v141 先落地，预计 11-03。
+- 判断：`usePermissions().canSeeMoney`（lib/staff-permissions.ts，`can("orders.money_view")`：Super Admin 恒有、读失败员工照旧、partner 按勾）。哪些算钱放 `lib/money-view.ts`（Main manifest 金额 / 代理商列、上传名单表头的词）。
+- 藏了：Orders 列表 Agent 列；订单详情 Price 卡、Agent & Commission、Operations 的 Agent 行、Ticket Breakdown 单价、Raw Rezdy 两块、How to use 里讲价格的几条（price = null 不报错）；订单搜索结果 Agent；Main manifest 金额 / 代理商列（Columns 没有 Money 组、存着的不画、不算进「need admin access」）、CHD 标签 Amount / Order total / Paid / Due、Due≠0 淡红；Dispatch Farm out 名单 Payable 整栏（不能输入、不提 Payable is not set）；Farm out Report、Sales Report 侧栏 / shortcut 不出、直接打开写 no access（canOpen 多要这一勾）；Morning Pickup Tracking Agent 列；Tour / Tickets tracking 上传列里算钱 / 代理商的表头。
+- 不用改 / 已确认：Forecast 前后端都没有价格；Team 页照后端 catalog 画，新勾自动在 Orders 组；`/api/bookings` 的 agent_name 前端没地方显示；Dispatch action-log 照常；activity_log 的「(price details hidden)」照文字显示；partner 的 tracking upload_row 少了代理商列照常。
+- 没动、报 f8：Supplier › Partners（farm out 合作方价格表）要 settings.farm_out 才能开，没另按 money_view 藏。
+- 检查：orders / man / mt / tt / fod / fr 各加「没勾 / 勾了 / Super Admin」（orders 还测旧后端照样给数据时前端自己藏）；原来按勾的几组补上 orders.money_view；partner 订单详情改成不出 Price 卡；共用 staff-perm-mock.js 加 ctl.extraWidgets（带别的页面开关）。上传表头的词照后端 36 审查后的清单（Order Total / Subtotal / Due / Discount / Coupon / Tax / Surcharge / Voucher / Net / Retail / Fee / Payable / Revenue / Source / Sales Channel / Supplier 整词比，Agent / Price / Paid… 字串比），用 Annie 给的两份 Rezdy CSV 的全部表头核过。
+- 结果（合最新 main 191f635 后）：orders 46/46、man 346/346、mt 218/218、tt 137/137、tk 135/135、fod 48/48、fr 24/24、perm 54/54、nav 38/38、da 454/454；tsc 0 错、eslint 0 错（2 个旧 warning）、build 过。
+
 ## 2026-11-02 晚 Bus Manifest 对照纸本 PDF 逐字段核对（工作窗口 `npe-ops-frontend-0e`[d96681]，主窗口 f8 派）—— 只核对，没改代码
 - Annie 原话（f8 窗口）：「请按照这个PDF的样子，逐个检查现在bus manifest里的字段，一一核实」；随后「核心问题是：在bus manifest底部的灰色汇总框里，把Antelope的表格变成所有tour的样本了，这是错误的，每个tour的汇总表都不一样」；「另外，hooverdam在bus manifest那里已经设置好分小节了」。
 - PDF 原件在 `C:\Users\annzh\Downloads\4796_001.pdf`（10/6/2026，13 页，10-27 Annie 发 74 时留下的），0e 逐页渲染对原图核。

@@ -23,6 +23,7 @@ import { toggleTakeAction } from "@/lib/booking-notes-api";
 import { isYmd, laToday, shiftYmd } from "@/lib/la-date";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
 import { useLeaveGuard } from "@/lib/use-leave-guard";
+import { withoutMoneyHeaders } from "@/lib/money-view";
 import { usePermissions } from "@/lib/staff-permissions";
 import { useTick } from "@/lib/use-tick";
 import { fetchUserPref, saveUserPref } from "@/lib/user-prefs-api";
@@ -383,7 +384,11 @@ export function TicketsTrackingView() {
   const data = state.kind === "ready" ? state.data : null;
   const allRows = useMemo(() => data?.rows ?? [], [data]);
   const pills = useMemo(() => productPills(allRows), [allRows]);
-  const headers = useMemo(() => uploadedHeaders(allRows), [allRows]);
+  // 没勾 orders.money_view（题 8）：上传名单里算钱 / 代理商的表头不出，Columns 里也勾不上。
+  const headers = useMemo(
+    () => withoutMoneyHeaders(uploadedHeaders(allRows), perms.canSeeMoney),
+    [allRows, perms.canSeeMoney],
+  );
   const columns = visibleColumns(prefs, headers);
   const filtered = useMemo(
     () =>

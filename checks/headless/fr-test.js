@@ -198,6 +198,18 @@ async function run() {
   check("开关没登记 · Super Admin：照常看到报表", await waitFor("document.body.textContent.includes('Chen Wei')"));
   await ctl({ frVis: "staff", sa: false });
 
+  // ── 题 8：Farm out Report 整页都是钱：没勾 orders.money_view 打不开、不请求接口；勾了照常 ──
+  {
+    await ctl({ staffPerms: ["reports.view"] });
+    const before = (await mockLog()).length;
+    await goto(`${APP}/farm-out-report`);
+    check("员工勾了 reports.view、没勾 orders.money_view：写 You don't have access，不请求 /api/farm-out/report", await waitFor("!!document.querySelector('[data-no-access]')") && (await mockLog()).slice(before).every((e) => e.path !== "/api/farm-out/report"));
+    await ctl({ staffPerms: ["reports.view", "orders.money_view"] });
+    await goto(`${APP}/farm-out-report`);
+    check("员工勾了 reports.view + orders.money_view：照常看到报表", await waitFor("document.body.textContent.includes('Chen Wei')"));
+    await ctl({ staffPerms: null });
+  }
+
   await ctl({ fail401: true });
   await goto(`${APP}/farm-out-report`);
   await waitFor("location.pathname === '/auth/login'");

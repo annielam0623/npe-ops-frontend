@@ -746,6 +746,21 @@ async function run() {
     check(`${label}：${canBroadcast ? "有" : "没有"} 📣 Broadcast`, has === canBroadcast, String(has));
   }
   await ctl({ staffPerms: null, superAdmin: false });
+  // ── 题 8：没勾 orders.money_view ⇒ 上传名单里的 Agent 这类列在 ☰ Columns 里不出（mock 照样给 = 旧后端）；勾了 / Super Admin 照旧 ──
+  for (const [label, opts, see] of [
+    ["员工没勾 orders.money_view", { staffPerms: ["tour.view"] }, false],
+    ["员工勾了 orders.money_view", { staffPerms: ["tour.view", "orders.money_view"] }, true],
+    ["Super Admin（一项都没勾）", { staffPerms: null, superAdmin: true }, true],
+  ]) {
+    await ctl({ staffPerms: null, superAdmin: false, ...opts });
+    await open();
+    await sleep(800);
+    await evaluate("$btn('☰ Columns').click();");
+    await waitFor(dialog);
+    const st = await evaluate(`const d = ${dialog}; return { n: d.querySelectorAll('input[type=checkbox]').length, agent: [...d.querySelectorAll('label')].some(l => l.textContent.trim() === 'Agent'), note: d.textContent.includes('Hotel Note') };`);
+    check(`${label}：☰ Columns ${see ? "有" : "没有"}上传列 Agent，Hotel Note 照旧`, st.agent === see && st.note && st.n === 17 + (see ? 3 : 2), JSON.stringify(st));
+  }
+  await ctl({ staffPerms: null, superAdmin: false });
   // ── 手机版第 ③ 批（Annie 2026-11-01 手机版规则）：统计 7 格一行、团按钮一行、Columns / Download / Upload 进 ⋯、拖动提示不显示、不横晃 ──
   await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
   await openPage(`${APP}/tour-confirmation/tracking?date=${D}`);

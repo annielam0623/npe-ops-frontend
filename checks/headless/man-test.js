@@ -1734,6 +1734,31 @@ async function run() {
   }
   await ctl({ staffPerms: null, superAdmin: false });
 
+  // ── 题 8：没勾 See prices, agent & commission（orders.money_view）⇒ 金额 / 代理商整列不出，Columns 里也没有 Money 组和 Agent；
+  //    CHD 标签的 Amount / Order total / Paid / Due 不出，Due≠0 不标淡红。mock 照样给数据（= 旧后端），看前端自己藏。勾了 / Super Admin 照旧 ──
+  await ctl({ adminFee: true });
+  for (const [label, opts, see] of [
+    ["员工没勾 orders.money_view", { staffPerms: ["manifests.view", "manifests.edit"] }, false],
+    ["员工勾了 orders.money_view", { staffPerms: ["manifests.view", "manifests.edit", "orders.money_view"] }, true],
+    ["Super Admin（一项都没勾）", { staffPerms: null, superAdmin: true }, true],
+  ]) {
+    await ctl({ staffPerms: null, superAdmin: false, ...opts });
+    await goto(`${APP}/manifests?date=${today}&tab=bus`);
+    await waitFor("document.querySelector('table tbody tr')", 60000);
+    await helpers();
+    await sleep(800);
+    await evaluate("$btn('☰ Columns').click();");
+    await waitFor("$dialog()");
+    const pick = await evaluate("const s = [...$dialog().querySelectorAll('section')].map(x => x.getAttribute('aria-label')); const t = $dialog().textContent; return { money: s.includes('Money'), total: t.includes('Order total') };");
+    check(`${label}：Bus Tour 的 ☰ Columns ${see ? "有" : "没有"} Money 组（Order total）`, pick.money === see && pick.total === see, JSON.stringify(pick));
+    await goto(`${APP}/manifests?tab=admin_fee`);
+    await waitFor("document.querySelector('tr[data-row^=\"CHD-88057\"]')", 60000);
+    await sleep(500);
+    const fee = await evaluate("const h = [...document.querySelectorAll('thead th')].map(th => th.textContent.trim()); const r = document.querySelector('tr[data-row^=\"CHD-88057\"]'); return { money: ['Paid', 'Due', 'Amount (this item)', 'Order total', 'Agent'].filter(x => h.includes(x)).length, red: getComputedStyle(r).backgroundColor === 'rgb(253, 236, 235)', cells: r.children.length === h.length, viator: document.querySelector('tbody').textContent.includes('Viator'), note: document.body.textContent.includes('need admin access') };");
+    check(`${label}：CHD 标签 ${see ? "有" : "没有"} Amount / Order total / Paid / Due / Agent 列、Due≠0 ${see ? "" : "不"}标淡红，没有「need admin access」`, (see ? fee.money === 5 && fee.red && fee.viator : fee.money === 0 && !fee.red && !fee.viator) && fee.cells && !fee.note, JSON.stringify(fee));
+  }
+  await ctl({ staffPerms: null, superAdmin: false, adminFee: false });
+
   // ── 手机版（Annie 2026-11-01 手机版规则）：Columns / Export / Show hidden / Upload 收进 ⋯；Legacy 黄框一行 + More；发送条一行 ──
   await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
   await openPage(`${APP}/manifests?date=${today}&tab=bus`);

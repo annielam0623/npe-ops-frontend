@@ -275,6 +275,20 @@ async function run() {
   await openDay(D_NEW, `document.querySelectorAll('[data-sec="bus_tour:3"] .vrow').length === 2`);
   await sleep(800);
   check("开关没登记 · admin：第二台车没有 ⇄ Farm out 键，其余 Dispatch 照常", await evaluate("return !document.querySelector('[data-farm-out-on]') && document.querySelectorAll('[data-sec=\"bus_tour:3\"] .vrow').length === 2;"));
+  // ── 题 8：没勾 orders.money_view ⇒ Farm out 名单的 Payable 整栏不出、不能输入，也不提「Payable is not set」；勾了照旧 ──
+  for (const [label, perms, see] of [
+    ["员工没勾 orders.money_view", ["dispatch.view", "dispatch.edit", "dispatch.send", "manifests.view"], false],
+    ["员工勾了 orders.money_view", ["dispatch.view", "dispatch.edit", "dispatch.send", "manifests.view", "orders.money_view"], true],
+  ]) {
+    await ctl({ foVis: "staff", resetFo: true, staffPerms: perms, extraWidgets: [{ key: "farm_out_dispatch", label: "Dispatch · Farm out", visibility: "staff", default: "super_admin_only", visible_to_me: true }] });
+    await openDay(D_FO, `document.querySelector('[data-farm-out-guests]')`);
+    await evaluate(`${guestsBtn}.click();`);
+    await waitFor(farmOrder("CHDF003"));
+    await sleep(300);
+    const st = await evaluate(`const g = document.querySelector('[data-farm-out-guests]'); const h = [...g.querySelectorAll('thead th')].map(t => t.textContent.trim()); const r = ${farmOrder("CHDF001")}; return { head: h.includes('Payable'), input: !!g.querySelector('[aria-label^="Payable for"]'), money: [...g.querySelectorAll('input')].some(i => i.value.includes('$305')), note: !!g.querySelector('[data-no-payable]'), cells: r.children.length === h.length };`);
+    check(`${label}：Farm out 名单 ${see ? "有" : "没有"} Payable 栏（表头、输入框、$305）${see ? "" : "，不提 Payable is not set"}`, st.head === see && st.input === see && st.money === see && (see || !st.note) && st.cells, JSON.stringify(st));
+  }
+  await ctl({ staffPerms: null, extraWidgets: null });
   await ctl({ foVis: "staff", resetFo: true });
   await openDay(D_FO, `document.querySelector('[data-farm-out-guests]')`);
   await evaluate(`${guestsBtn}.click();`);
