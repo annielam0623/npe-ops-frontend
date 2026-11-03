@@ -56,7 +56,24 @@ function canyonView() {
     ],
     unplaced: { sections: [], totals: { pax: 0, guests: 0, boarded: 0, no_show: 0 }, empty_notes: false }, totals: { pax: 12, guests: 12, boarded: 0, no_show: 0 }, gone: [] };
 }
+// ctl.paper：后端 bus-footer-style 的纸本颜色（paper_colors、每车 band_color、票型 ticket_color、午餐单节色）。
 function view() {
+  const v = view0();
+  if (ctl.paper && !ctl.canyon) {
+    v.paper_colors = { extra_row: "#f0c59a", notes: "#fffc11", lunch_notes: "#fff909", lunch_bar: "#fffa08", foot_head: "#dbdcde", confirm_box: "#fff704", lunch_default_row: "#fff200" };
+    for (const b of v.blocks) {
+      if (b.bus_label === "A" || b.bus.bus_label === "A") b.band_color = "#ffd966";
+      for (const s of b.sections) for (const g of s.guests) {
+        g.ticket_color = g.ticket.includes("+") ? "#fffa0c" : null;
+        if (g.order_number === "CHD1") g.notes = "HGV";
+      }
+      if (b.lunch) for (const s of b.lunch.sections) s.color = "#c5e0b4";
+    }
+    for (const s of v.unplaced.sections) for (const g of s.guests) g.ticket_color = g.ticket.includes("+") ? "#fffa0c" : null;
+  }
+  return v;
+}
+function view0() {
   if (ctl.canyon) return canyonView();
   const sec = (gs0, withAttr) => ({ key: "LOWER ANTELOPE", kind: "tour", title: "LOWER ANTELOPE", heading: `LOWER ANTELOPE {${gs0.reduce((a, g) => a + g.pax, 0)}}`, name: "", pax: gs0.reduce((a, g) => a + g.pax, 0), color: "#bfe3b0", guests: gs0.map(pub),
     ...(withAttr ? { attraction: state.attraction, attraction_filled: true } : {}),

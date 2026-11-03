@@ -228,6 +228,7 @@ export type {
   ManifestBlock,
   ManifestCard,
   ManifestFooterCell,
+  ManifestPaperColors,
   ManifestGoneGuest,
   ManifestGuest,
   ManifestLunch,

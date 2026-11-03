@@ -75,6 +75,8 @@ export interface ManifestGuest {
   rezdy_notes?: string | null;
   /** 票种里有 "+"：标黄。 */
   ticket_hl: boolean;
+  /** 票型格底色（后端照纸本取色，bus-footer-style ③）；null = 不涂。没带（旧后端）⇒ 照 ticket_hl 涂亮黄。 */
+  ticket_color?: string | null;
   /** 产品挂的 Extra 名（Bus Manifest setup，例 Heli）；没有为 ""。有值时整行用 `extra_row_color`。 */
   extra?: string;
   /** G65：只会是 null 或 "missing"（取消 / 改期的行在 ManifestView.gone 里）。 */
@@ -175,7 +177,12 @@ export interface ManifestLunch {
   /** G199：店名。 */
   restaurant?: string;
   /** title 后端已拼好，例「LOWER 1P - 12 PAX」，照原文显示。 */
-  sections: { title: string; rows: ManifestLunchRow[] }[];
+  /** color：这一节标题的颜色（后端照纸本午餐单取色，没有 ⇒ 同 Bus Manifest 节色）；没带（旧后端）⇒ 前端按节名找。 */
+  sections: {
+    title: string;
+    rows: ManifestLunchRow[];
+    color?: string | null;
+  }[];
   totals: { pax: number; turkey: number; veggie: number; beef: number };
   /** 页脚（最多两行，用 \n 分开，换行照印）。 */
   note: string;
@@ -272,6 +279,8 @@ export interface ManifestBlock {
   sections: ManifestSection[];
   totals: ManifestTotals;
   footer: ManifestFooterCell[];
+  /** 这辆车抬头的颜色（后端照纸本，按字母 / 团；没有 ⇒ 团色）。没带（旧后端）⇒ tour.band_color。 */
+  band_color?: string;
   empty_notes: boolean;
   /** G198：这台车的午餐表；没有这个键（后端没上线）或 null（团没分配午餐店）都不出。 */
   lunch?: ManifestLunch | null;
@@ -316,6 +325,8 @@ export interface ManifestView {
   shuttle_colors: { outbound: string; inbound: string };
   /** Extra 客人整行的底色（后端 `EXTRA_ROW_COLOR`）。 */
   extra_row_color?: string;
+  /** 不分团的纸本颜色（后端 paper_colors.page_constants()，bus-footer-style ③）。没带（旧后端）⇒ 照旧写死的颜色。 */
+  paper_colors?: ManifestPaperColors;
   manifest: {
     id: number;
     file_name: string;
@@ -381,4 +392,21 @@ export interface DispatchPendingItem {
   /** 影响到哪一轮 / 哪台 Morning Relay 车；后端还没填时是 ""。 */
   relay: string;
   created_at: string;
+}
+
+/** GET manifest 的 `paper_colors`（后端 paper_colors.page_constants()）：照 Annie 10/6 纸本取的色。 */
+export interface ManifestPaperColors {
+  extra_row?: string;
+  /** Special Requirements 有字的黄底。 */
+  notes?: string;
+  /** 午餐单 NOTES（客人的忌口）黄底。 */
+  lunch_notes?: string;
+  /** 午餐单标题日期黄条、页脚 POC 黄条。 */
+  lunch_bar?: string;
+  /** 底部汇总框格头的灰。 */
+  foot_head?: string;
+  /** 确认号小表的黄（节没有自己的颜色时用）。 */
+  confirm_box?: string;
+  /** 午餐单「没写口味、按 Turkey 算」整行。 */
+  lunch_default_row?: string;
 }

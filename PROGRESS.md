@@ -118,6 +118,7 @@
   - 下一步：后端上了以后合最新 main，对后端真实形状核一遍（字段名、footer 每套格子的字），把 mock 对齐；酒店格按 Annie 答的改（后端已经给 relay_color / hotel_first，前端现在没用）。
   - 合 main 前要跑：mf、man、da、rl、nav（有动排班的话加 sch），tsc / eslint / build。
   - 色表：https://claude.ai/artifact/1j7yN3Vn2ifP4fvYrqoA1A （BZ 已选 #f4938e，Annie「BZ选1」）。③ 票型颜色、④ 每辆车颜色、⑦ ASSIST 都已定「照纸本」，不加新设置。
+- 2026-11-03 09 接手（24 加急派，Annie 下午 1:30 培训 Dispatch）：合最新 main，对后端 bus-footer-style 6bda6616（37 说字段已锁定）逐字段核：footer[]{key,label,value,custom}、tour.footer_style / assist_column、午餐行 notes / notes_check、bus.driver_is_guide、relay-pull car.relay_color 都对得上；ASSIST 位置同后端（紧跟 Special Requirements）。补接后端已给、分支还没用的纸本颜色（③④，Annie 已定照纸本，后端打印页已在用，照打印页一一对上；没带照旧色）：每车抬头 block.band_color、票型 guest.ticket_color（null 不涂）、view.paper_colors（notes 黄 / foot_head 汇总框格头灰 / confirm_box 确认号黄框 / lunch_bar 午餐单日期条和页脚 / lunch_default_row / lunch_notes）、午餐单节标题 lunch.sections[].color。酒店格 relay_color / hotel_first、footer-style 下拉照旧不用。检查：mf 240（加 5 项纸本颜色）、rl 26、man 346、da 457、nav 38；tsc 0、eslint 0 错、build 过。推分支，等后端 main SHA 再合。
 - 另外在等 Annie：Dashboard「Today's team」重新排版 preview https://claude.ai/artifact/Ph29qDSR1UtYmKGAWmryhY 的 7 题（样子 A / B、休息合一行、Visible to 收进 ⚙、正在上班细绿条、Online now、ZZTest 勾 Test、不算人头照常显示），没动手，没写代码。
 
 ## 2026-11-02 晚 Bus Manifest 司机兼导游并一格（`task/manifest-driver-guide`，工作窗口 `npe-ops-frontend-0e`[d96681]，主窗口 f8 派）
