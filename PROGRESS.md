@@ -118,6 +118,7 @@
     - 9e 估：14–20 小时，不迁移，复用 /driver/preview、/guide/preview 取数。改题：⑤ 推荐一人一列（数据按人算）；② dispatch.view 在 partner 白名单里，页面带客人电话 / 短信 / 餐厅联系 ⇒ 新权限码或先只 Super Admin + 开关（推荐后者）；relay_status_at 要补；没连 HR 的司机列不出来；性能要加单次请求缓存。已请 39 改 preview。后端今晚 21:30 收工，派工在明天。
     - Annie 问（f8 窗口原话）：「可以在页面上有no show的提醒么」⇒ 题 ⑥ 加 C：页顶红框逐个列 No show（车 / 司机 · 客人 · 酒店 · 时间 · 标的时间，点了滚到那行），步骤旁红数字，新出现的标 new，不发邮件 / 短信（推荐 C）。已请 39 加进 preview。
     - preview 第 2 版（同链接）：② 改推荐 B（先只 Super Admin + 员工可见开关，默认关）；④ relay_status_at 后端要补，推荐 A 只写时间；⑤ 改推荐 A 一人一列（例 Kevin 先 relay 再 Bus A，Bus A 也出现在导游 Lily 那列）；⑥ 加 C 页顶红框（点了滚到那行标黄，新出现的闪三下带 NEW，改回 Picked up 就拿掉），推荐 C；⑦⑧ 和手机名字条都按人；没连 HR 的司机列不出来。等 Annie 答 + 动手。
+    - Annie 答（f8 窗口原话）：「B我想放在morning tracking页面   同意默认关 ， no show要重新设计 ，统计同moring tracking， message也能回」⇒ 放 Morning Pickup Tracking 页；先只 SA + 员工可见开关默认关；No show 提醒重做（出 2–3 种挑）；统计照 Morning tracking 统计卡；办公室能在对话里回客人（要后端）。其余照推荐。没动手。已请 39 出 v3，后端影响已告诉 9e。
 - 今晚在等 Annie 的，跟 24 交接第三节一样，不重问。
 
 ## 2026-11-02 收工交接：前端主窗口-24 [d1dbae]（公司）
@@ -497,6 +498,7 @@
   - ⚠️ 急（Annie 原话）：「这个很重要，需要今天做完，明天就需要排出来，周三要跟员工确认了」⇒ 后端已收工，走纯前端（现有周接口 + 前端 Auto-fill 引擎，一周一周存草稿）；0e preview 压到最简 15–20 分钟交，同时在 task/schedule-base-week 按推荐先写。
   - 0e 查：纯前端可做（GET weeks、engine locked + findViolations、POST weeks/{周}/slots/bulk 存草稿）。preview：https://claude.ai/artifact/L3gCgqBPvDLBxAC2ToDVxp 。7 题（推荐）：① 照抄再按 Rules 修正（A）；② 下周起 4 周、可选 1–6（A）；③ 已有草稿只填空格（A），已发布不动；④ 存草稿各周自己 Publish（A）；⑤ 排不出留空、淡红 + 红字列出（A）；⑥ 员工确认照旧；⑦ 跟 schedule.edit。等 Annie 答 + 动手。
   - ✅ Annie 在 f8 窗口（原话）：「7题全部同意推荐，动手」⇒ 0e 做完 task/schedule-base-week 今晚合 main。
+    - Annie 答（f8 窗口原话「A同意推荐」）⇒ 复制周处理照 0e 做法，已告诉 0e。
     - 0e 发现：后端 GET weeks 主管第一次打开某周会自动复制上一周的班（copied_from），照题 ③ 字面「只填空格」会全保留混乱周的复制品。0e 改法：复制来的周（copied_from 有值）整周按基础周排、replace:true；非复制来的草稿只填空格；已发布不动；预览写清每周是哪种。风险：复制周上手改过的几格会被换掉。f8 已问 Annie 确认，0e 先照这个做。
 - Annie 问以前的「谁哪天不上 / 谁不上某个班」设置在哪：f8 答——在排班页 Rules 页签（Cannot work / Fixed shift 等规则，给 Auto-fill 用）。
 - Annie 更正（f8 窗口原话）：「没有，后端也一直在做」⇒ 后端今晚不收工。9e：按天设已派 36 今晚做，迁移 v144（排 fc v143 后，要 Annie 执行），字段名定了发 f8。
