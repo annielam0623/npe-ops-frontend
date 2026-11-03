@@ -63,6 +63,7 @@
   - 36 审后 3 处更新（已转 0e）：订单 activity_log 金额条目 detail 换「(price details hidden)」；tracking 再去 Order Total / Subtotal / Due / Discount / Coupon / Tax / Surcharge / Voucher / Net / Retail / Fee / Payable / Revenue / Source / Sales Channel / Supplier；partner 在 tracking 也去代理商列。后端审完，等 fc v141 落地才提交 v142，预计明天上线。
 - relay 司机标的状态办公室能不能看到（Annie 在 9e 问）：f8 只读核——ops Morning Relay 只出红「No show」，picked_up 不显示，不自动刷新，没有通知。已回 9e。
 - 新功能（Annie 在后端主窗口原话，9e 转）：「我们要不啊再出一个版本的页面，就跟司机看到的页面一样，每个司机占一列，他所有的行动都显示出来」，另说「我刚才说了」（不用再问做不做）。⇒ 派 39 出 preview（办公室看当天每个司机一列：客人 + Picked up / No show + 时间；题：放哪、谁能看、刷新频率、显示时间 / 历史、团车导游的 Boarded 算不算、No show 提醒）。后端要只读接口，标记时间存不存 9e 在查。
+  - Annie 补（后端主窗口原话）：「把各个司机的手机页面都显示出来，并列在页面上」⇒ 每列 = 司机手机页原样，并排，只读，staff 不能代点。后端出 staff 只读接口，复用司机页取数。已转 39。
 - 今晚在等 Annie 的，跟 24 交接第三节一样，不重问。
 
 ## 2026-11-02 收工交接：前端主窗口-24 [d1dbae]（公司）
