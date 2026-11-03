@@ -16,6 +16,7 @@
 - G231 员工侧（fc 核，9e 转）：/api/team/online 不变；/api/notices kind=message 的 ref 只新增 from_kind / to_team_id / to_team_name / thread_root_id；POST /api/team/messages 多 recipients / emailed_count。f8 只读核前端无严格形状校验（notices-api 原样传 ref，notice-panel 只读 message_id / week_start，team-message-dialog 只读 emailed）⇒ 回「可以」，fc 合并推后端 main。
 - 题 8 后端工作量 36 在估（① 新权限勾 / ② 写死 CCL team，含导出、迁移、测试）；Sales Report 这次后端不动，以后对员工开放时按同一判断藏，一并交 Annie。
 - 题 8 判断法 Annie 在 f8 窗口答（原话）「选1」⇒ 新权限勾「See agent & commission」，现有员工默认勾，CCL team 不勾，以后跟 team 权限走。没动手。已转 9e：36 只估 ①，写清勾名 / 默认 / 迁移。
+- 工作窗口 `npe-ops-frontend-39`[36b630] 报到（家里）。f8 派：CHD 版 1 合 main（worktree D:\ops-wt-39-chd，先合最新 main，再跑 tsc / eslint / build + man / mf / da / nav，过了合 main 报 SHA；后端推后只读核线上 CHD 标签）。
 - 今晚在等 Annie 的，跟 24 交接第三节一样，不重问。
 
 ## 2026-11-02 收工交接：前端主窗口-24 [d1dbae]（公司）
