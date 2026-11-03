@@ -28,6 +28,7 @@
 - Annie 报 bug（f8 窗口原话）：「然后schedule的设置有问题，今天的排班有个10am-12pm的gap，系统没看出来」。修 bug、样子不变，不用 preview。gap 判断在 components/schedule（week-grid / week-draft / schedule-view / day-timeline）和 lib/schedule-engine.ts。39 在做拖拽 preview，空闲内存 12 GB，f8 请 Annie 再开 1 个窗口来查。
   - 39 拖拽 preview 交了，空出来，gap 两件改派 39（task/schedule-gap-fix），不用再开窗口。
   - Annie 又报（原话）：「然后7号的gap已经填了，但始终报错不让保存，即使我改了班次的时间，也没用」⇒ 11/7 gap 已填，Save 照旧报错拦住，改班次时间也不行。跟上一条同一块 gap 判断，并给同一个新窗口查（漏报 + 误报）。
+  - 39 只读查：Save 是后端拦（schedule.py:1004–1008 _new_gaps ⇒ 409 coverage_gap）；find_coverage_gaps 不算没排人的班、end ≤ start 的班（结束写 12:00 AM）、is_test 员工的班（schedule.py:463）；future_gaps 只留洛杉矶此刻以后（Annie 10-30 规矩）。猜：① 晚上看时那段已过去被放掉（是规则问题，要问 Annie）；② 填的班结束 12:00 AM 或是测试员工。39 没生产登录，f8 已请 9e 只读取 11/1 周数据、排班设置、员工 is_test、409 回的 gaps。
 - 今晚在等 Annie 的，跟 24 交接第三节一样，不重问。
 
 ## 2026-11-02 收工交接：前端主窗口-24 [d1dbae]（公司）
