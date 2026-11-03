@@ -15,13 +15,19 @@ import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
 import {
   buildSendLogExportUrl,
   fetchSendLog,
-  SEND_LOG_PAGE_SIZE,
+  fetchSendLogGroups,
+  SEND_LOG_GROUPS_PAGE_SIZE,
 } from "@/lib/send-log-api";
 import { cn } from "@/lib/utils";
-import type { SendLogPage, SendLogQuery } from "@/types";
+import type {
+  SendLogGroupsPage,
+  SendLogPage,
+  SendLogQuery,
+  SendLogRow,
+} from "@/types";
 
 import { laToday, MODULE_STYLES, MODULES, STATUS_OPTIONS } from "./config";
-import { batchFromUrl, SendBatches } from "./send-batches";
+import { batchFromUrl, SendGroups } from "./send-groups";
 import {
   BTN_RESET,
   FILTER_BAR,
@@ -33,13 +39,13 @@ import {
   TABLE_HEADER,
 } from "./legacy";
 import { OverridesSection } from "./overrides-section";
-import { ErrorsTable, SendLogTable } from "./send-log-table";
+import { ErrorsTable } from "./send-log-table";
 
 type ViewState =
-  | { kind: "loading"; previous: SendLogPage | null }
+  | { kind: "loading"; previous: SendLogGroupsPage | null }
   | { kind: "forbidden" }
   | { kind: "error"; message: string }
-  | { kind: "ready"; data: SendLogPage };
+  | { kind: "ready"; data: SendLogGroupsPage };
 
 function initialQuery(): SendLogQuery {
   return {
@@ -66,8 +72,10 @@ export function SendLogView() {
     previous: null,
   });
   const [reloadKey, setReloadKey] = useState(0);
+  /** 页面下方 ⚠️ Errors：同样筛选下最近 200 条里带错误的（逐条接口）。 */
+  const [errorRows, setErrorRows] = useState<SendLogRow[]>([]);
   const [orderDraft, setOrderDraft] = useState("");
-  /** 发送页的 View this send 带 ?batch= 过来：那一批展开。 */
+  /** 发送页的 View this send 带 ?batch= 过来：那一组展开。 */
   const [targetBatch, setTargetBatch] = useState<number | null>(null);
   const redirectingRef = useRef(false);
 
@@ -100,7 +108,15 @@ export function SendLogView() {
             ? prev.previous
             : null,
     }));
+    // Errors 那一块取不到就不显示，不影响上面的组。
     fetchSendLog(query, controller.signal)
+      .then((page) => {
+        if (!controller.signal.aborted) setErrorRows(page.rows);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setErrorRows([]);
+      });
+    fetchSendLogGroups(query, controller.signal)
       .then((data) => {
         if (!controller.signal.aborted) {
           setView({ kind: "ready", data });
@@ -145,9 +161,15 @@ export function SendLogView() {
         : null;
   const today = query.from ? laToday() : "";
   const activeCard: CardKey = query.mtlv ? "mtlv" : query.module;
-  const pages = data ? Math.ceil(data.total / SEND_LOG_PAGE_SIZE) : 0;
+  const pages = data
+    ? Math.ceil(data.total_groups / SEND_LOG_GROUPS_PAGE_SIZE)
+    : 0;
   /** 按订单号搜着（不限日期）。 */
   const searching = !!query.orderNumber;
+  /** 按行的筛选（组里只放符合的、组头写命中几条；题 3 甲）。模块整组一样，不算。 */
+  const filtered = searching || query.mtlv || !!query.channel || !!query.status;
+  /** 换筛选（不含翻页）：组重新来，展开的都收起。 */
+  const filterKey = JSON.stringify({ ...query, page: 0 });
 
   return (
     <main className="text-stone-800 night:text-white/90">
@@ -249,19 +271,11 @@ export function SendLogView() {
               Reset
             </button>
             <span className={RECORDS_COUNT}>
-              {data ? `${data.total} records` : "— records"}
+              {data
+                ? `${data.total_groups} ${data.total_groups === 1 ? "send" : "sends"} · ${data.total} records`
+                : "— records"}
             </span>
           </div>
-
-          {/* Send batches 只按日期列；搜订单号时先收起来，免得看成这一单的批次。 */}
-          {query.from && !searching ? (
-            <SendBatches
-              from={query.from}
-              to={query.to}
-              target={targetBatch}
-              onUnauthorized={redirectToLogin}
-            />
-          ) : null}
 
           {view.kind === "error" ? (
             <div className="mb-4">
@@ -312,8 +326,14 @@ export function SendLogView() {
               )}
             >
               {data ? (
-                <SendLogTable
-                  rows={data.rows}
+                // G230：一次发送一组（Annie 2026-11-01），每页 100 组。
+                <SendGroups
+                  key={filterKey}
+                  groups={data.groups}
+                  query={query}
+                  filtered={filtered}
+                  target={targetBatch}
+                  onUnauthorized={redirectToLogin}
                   onMtlvClick={() => updateFilter({ module: "", mtlv: true })}
                 />
               ) : view.kind === "loading" ? (
@@ -351,7 +371,7 @@ export function SendLogView() {
             </nav>
           ) : null}
 
-          {data ? <ErrorsTable rows={data.rows} /> : null}
+          {data ? <ErrorsTable rows={errorRows} /> : null}
           {/* G129：带着问题、有人点了 Send anyway 发出去的（按日期；搜订单号时不限日期，先收起来）。 */}
           {query.from && !searching ? (
             <OverridesSection
@@ -365,15 +385,17 @@ export function SendLogView() {
       <HowToUse
         title="How to use — Send Log"
         items={[
-          "The page shows today's messages. For other days: 📅 → Yesterday, This Week, This Month, or Custom (both dates, then Apply).",
-          "To find one order, type its number in the search box (part of it works too). The search covers all dates; the 📅 date button turns grey, Send batches is hidden and Export is off (it works by date). Clear the box (✕) or pick a date to go back.",
-          "Click Tour Conf, Morning P/U, Tickets or MTLV to show only those. Total Sent shows all. Type and Status narrow it further.",
+          "The page shows today's sends. For other days: 📅 → Yesterday, This Week, This Month, or Custom (both dates, then Apply).",
+          "Each send is one block, newest first: when it was sent, the module, the tour, the tour date, who sent it, and how many were sent, failed, skipped or not sent. Single messages and guest replies are a block of one.",
+          "Blocks start closed. Click a block to open it: first a summary (rows in the file, whether each email and SMS was delivered, skipped orders with the reason), then every message. Click ↻ Refresh to update the delivery results.",
+          "100 sends per page. A send is never split across two pages.",
+          "To find one order, type its number in the search box (part of it works too). The search covers all dates; the 📅 date button turns grey and Export is off (it works by date). The sends with that order open by themselves and show only that order. Clear the box (✕) or pick a date to go back.",
+          "Click Tour Conf, Morning P/U, Tickets or MTLV to show only those. Total Sent shows all. Type and Status narrow it further. With MTLV, Type, Status or a search on, an open send shows only the messages that match, and its title says how many match (for example 1 of 6 in this send match).",
           "Email and SMS show each guest's result. A dash means that channel was not used.",
-          "Failures are listed in the Errors box below the list.",
-          "Click ⬇ Export to download the selected dates and module as a CSV (Type, Status and MTLV are not applied).",
-          "Send batches lists each send from Tickets Reminder and Tour Confirmation (including Last Minute), newest first, for the dates you picked. The title shows when it was sent, the tour, the tour date, who sent it, and how many were sent, failed or skipped.",
-          "Click a batch to open it: how many rows were in the file, whether each email and SMS was delivered, every message, and every skipped order with the reason. Click ↻ Refresh to update the delivery results. View this send on a send page opens its batch here.",
-          "Not sent means those orders were never sent in this batch: the page lost contact, or the send stopped with an error. Wait a few minutes, then send again from the same page: orders already sent are skipped and never sent twice.",
+          "Failures are listed in the Errors box below the list (from the latest 200 messages for the dates and filters you picked).",
+          "Click ⬇ Export to download the selected dates and module as a CSV, one row per message (Type, Status and MTLV are not applied).",
+          "View this send on a send page opens that send here.",
+          "Not sent means those orders were never sent in this send: the page lost contact, or the send stopped with an error. Wait a few minutes, then send again from the same page: orders already sent are skipped and never sent twice.",
         ]}
         warning="A failed message: reach the guest through the other channel."
       />
@@ -395,7 +417,7 @@ function StatCards({
   active,
   onSelect,
 }: {
-  data: SendLogPage | null;
+  data: Pick<SendLogPage, "stats"> | null;
   active: CardKey;
   onSelect: (key: CardKey) => void;
 }) {

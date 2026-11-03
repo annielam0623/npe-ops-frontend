@@ -1,3 +1,5 @@
+import type { SendBatchSummary } from "./send-batches";
+
 /** send_log.module 目前的三个值；库里是自由字符串，不认识的按原值显示。 */
 export type SendLogModule =
   "tour_confirmation" | "morning_pickup" | "tickets_reminder";
@@ -56,4 +58,43 @@ export interface SendLogQuery {
   /** 按订单号「包含」搜；有值时不限日期。 */
   orderNumber: string;
   page: number;
+}
+
+/** G230：Send Log 整页按组，一次发送一组（GET /api/notifications/send-log/groups 的一组）。 */
+export interface SendLogGroup {
+  /** 补批次已跑完，生产上都有值；万一为 null 就没有明细可点。 */
+  batch_id: number | null;
+  module: string;
+  tour_type: string;
+  /** 后端写好的名字：团名（Last Minute 带后缀）、Morning Pickup / Guest reply / Broadcast / Farm-out notice。 */
+  tour_label: string;
+  tour_date: string;
+  send_type: string;
+  sent_by: string;
+  started_at: string;
+  /** 洛杉矶时间，已格式化："Oct 3, 2026 11:52 PM"。 */
+  started_at_label: string;
+  /** 整组的数字，不受筛选影响。 */
+  summary: SendBatchSummary;
+  /** 这一组里符合当前筛选的行数。 */
+  matched_rows: number;
+  matched_orders: string[];
+}
+
+export interface SendLogGroupsPage {
+  /** 符合筛选的行数。 */
+  total: number;
+  /** 符合筛选的组数（分页用）。 */
+  total_groups: number;
+  page: number;
+  page_size: number;
+  stats: SendLogPage["stats"];
+  groups: SendLogGroup[];
+}
+
+/** GET …/send-log/groups/{batch_id}/rows 的一行：逐条的形状 + id + 是否符合当前筛选。 */
+export interface SendLogGroupRow extends SendLogRow {
+  id: number;
+  batch_id: number | null;
+  matched: boolean;
 }

@@ -4,7 +4,45 @@
 
 > 6d 交接（下面「2026-10-27 交接：前端主窗口 6d」那节）的后端需求已于 10/27 晚由 ad 转给家里后端主窗口 17。
 
-> **下一个主窗口：先读下面「2026-11-01 晚 收工交接：前端主窗口-98」，再看置顶「📌 等 Annie 确认」。更早的交接是 10-30 晚那节。**
+> **下一个主窗口：先读下面「2026-11-02 收工交接：前端主窗口-24」，再看置顶「📌 等 Annie 确认」。更早的交接是 10-30 晚那节。**
+
+## 2026-11-02 晚 主窗口 `npe-ops-frontend-f8`[f1ac95] 开工，接 24（家里电脑）
+- Annie 指定 f8 做今晚的前端主窗口。本地 main 落后 626 个提交，已 fast-forward 到 4a2f477，工作区干净。
+- 资源（17:42）：空闲内存 11.1 / 31.7 GB；chrome 47 个进程，约 4.6 GB；node 1 个。内存偏紧，同时开的工作窗口不超过 2 个。
+- 后端今晚主窗口是 `npe-confirmation-service-9e`[79fb6f]。9e 问了两件，f8 已回：① CHD admin_fee 前端第二步没上 main，等 Annie 选版 1（8361888）还是版 2（fba8716），合了再发 SHA，后端先别推（9e 报的后端 SHA 是 83ff7720，以它为准）；② G231 前端还没写代码。前端不调新接口，后端先上线没影响；条件是员工用的 /api/notices、/api/team/online 返回格式不变。
+  - 9e 回：CHD 后端由 36 接（代码 ad5707ee，83ff7720 只是 WIP 交接、代码一样），等 f8 发前端 main SHA 才推；G231 由 fc 落地，「员工侧 /api/notices、/api/team/online 格式不变」已列进验收，变了推前先告诉 f8。
+  - Annie 在后端 9e 窗口选 CHD **版 1**（9e 转）：合 task/manifests-chd-pax 8361888（Annie 的「动手」之前已在 91 窗口给过）。今晚没开前端工作窗口，f8 请 Annie 开一个来合：先合最新 main，再跑 tsc / eslint / build 和 man / mf / da / nav，过了合 main，把 SHA 报 f8；f8 转 9e → 36 推后端，之后再只读核线上 CHD 标签。版 2 task/manifests-sendable 作废，不合。
+- 置顶 48 题 8：Annie 在 9e 窗口答（9e 转，原话）「要」⇒ B，CCL 改员工后另外藏佣金 / 代理商；没动手。f8 只读 grep 前端显示处（Orders 列表 Agent 列、订单详情 Agent & Commission、订单搜索结果、Morning Pickup Tracking Agent 列、Sales Report 按代理商、CHD 标签 Agent 列，导出：Orders Export、三个 Tracking CSV、Manifests Export CSV）发 9e。主张接口里就不返回（只前端藏不够）。判断法问 Annie：① 新权限勾「See agent & commission」，现有员工默认有，CCL team 不勾（推荐）／② 后端按 CCL team 写死。等 9e 评估工作量。
+- G231 员工侧（fc 核，9e 转）：/api/team/online 不变；/api/notices kind=message 的 ref 只新增 from_kind / to_team_id / to_team_name / thread_root_id；POST /api/team/messages 多 recipients / emailed_count。f8 只读核前端无严格形状校验（notices-api 原样传 ref，notice-panel 只读 message_id / week_start，team-message-dialog 只读 emailed）⇒ 回「可以」，fc 合并推后端 main。
+- 题 8 后端工作量 36 在估（① 新权限勾 / ② 写死 CCL team，含导出、迁移、测试）；Sales Report 这次后端不动，以后对员工开放时按同一判断藏，一并交 Annie。
+- 题 8 判断法 Annie 在 f8 窗口答（原话）「选1」⇒ 新权限勾「See agent & commission」，现有员工默认勾，CCL team 不勾，以后跟 team 权限走。没动手。已转 9e：36 只估 ①，写清勾名 / 默认 / 迁移。
+- 工作窗口 `npe-ops-frontend-39`[36b630] 报到（家里）。f8 派：CHD 版 1 合 main（worktree D:\ops-wt-39-chd，先合最新 main，再跑 tsc / eslint / build + man / mf / da / nav，过了合 main 报 SHA；后端推后只读核线上 CHD 标签）。
+- 今晚在等 Annie 的，跟 24 交接第三节一样，不重问。
+
+## 2026-11-02 收工交接：前端主窗口-24 [d1dbae]（公司）
+
+> Annie「收工，写交接」。今天的细节在下面各节和置顶，这里只列下一个主窗口要接的。
+
+### 一、今天上 main 的（等 Annie 线上验收）
+- 手机版第二批 ①② e6 1472142、第 ③ 批 09 87b5b97；dr 84/88 修好 09 461955e。
+- Send Log 按组显示（置顶 42，1cf1564，后端 G230 /groups、/groups/{batch_id}/rows 已上线）。
+- Main manifest CHD 行不能勾、不进发送：第一步已合 main（91）。
+- Dispatch CCL 改版提醒条 / Apply changes 卡不出现：09 修好，合 main 2559628（修复 bd0d389）；原因是页面自动改的行（补车字母、私人团配单）在 CCL 晚到时被当成 staff 改过。检查 tsc 0、eslint 0 错、build 过、da 454/454。已告诉 Annie，请她下次 CCL 发改版时线上看一眼。
+
+### 二、在分支、等 Annie 选 / 动手才合
+- **CHD admin_fee 标签（置顶 50）**：两版等 Annie 选——版 1 `task/manifests-chd-pax` 8361888（推荐，91），版 2 `task/manifests-sendable` fba8716。选定后：91 合 main 报 SHA → 主窗口把 SHA 转 37，后端合 ad5707ee → 91 只读核线上 CHD 标签。
+- **Notice ↔ CCL（置顶 48）**：CCL 已是 staff（Annie：「CCL我已经取消了Partner的身份」），前后端核过不再标 Partner；Farm out 跟 CCL 无关，preview 里「Farm out Dispatch」已删（e6）。题 1–5 有效、题 6/6a/6b/7 作废；等 Annie 答题 8（推荐 A）并说「动手」。后端 G231 由 37 那边接。
+- **Send Log 新模块（A/B/C）**：等 Annie 答，答了 09 先出 preview。
+
+### 三、等 Annie 的（详见置顶，不要滚动重问）
+- 50 CHD 版 1 / 版 2；48 题 8 + 动手；52 司机页 Farm out 栏改 Affiliate 叫法（A/B/C + 动手，定了转 37）；
+- 53 限制下载 / team 权限：Annie 已答「一直跟 team 走」「两个 team 的功能都有」「没选的功能键都藏」，问了「Tracking 页和 Settings 页的导出归哪个勾。什么意思」——已解释；还等题 4a–f（都推荐 A）、5（A）、6（B）、7（A）和动手。37 在问 Annie 谁能管 team 成员。前端藏键要等后端 /api/me/permissions 改成「有效权限」（team 勾 ∪ 个人勾 ∩ 角色标准，后端 44 设计，migration v141）。
+- Dashboard 两个统计格的 bug：等动手。51 订单搜索、Forecast 补数据（G229，等 Annie 答数据格式）照旧等。
+
+### 四、窗口
+- 前端工作窗口：09（CCL 修完，空）、91（CHD 两版在分支，等选）、e6（Notice-CCL preview、权限 preview）。
+- 后端：今天主窗口 37（接 57），工作窗口 44（Send Log / 权限）、64。
+- 收工时 main 干净；本窗口只改了 PROGRESS.md。
 
 ## 2026-11-02 dr 84/88 修好：手机上 Dashboard 的 My shortcuts 条最右边的药丸被裁（`task/dr-check-fix`，工作窗口 09，主窗口 24 派）—— 已合 main 461955e
 - 现象：dr 那 4 条宽度检查（520 / 420px 药丸被裁、越窄越大）不过；二分：23c1764 的上一个提交 88/88，23c1764（手机版第一批）起 84/88。
@@ -47,6 +85,7 @@
   - 2026-11-02 后端 G230 已上线 main 34c8993f：/groups、/groups/{id}/rows 可用，逐条加 batch_id，新的发送都建批次；旧数据等 Annie 跑补批次 SQL（44 在给她）。前端整页折叠还等 Annie 答题 3、4 + 动手；动手后 24 打算派 09（91 只做 CHD）。
   - 2026-11-02 补批次 SQL 已在生产跑完（37 转）：Annie 跑的，44 只读核对 0 行没组，47,957 行 / 6,651 组；另有 17 个旧空组（ids 358–1199，10/14–10/30 没发出东西的批次），/groups 不返回，前端不用特殊处理。前端整页折叠可直接用 /groups + /groups/{id}/rows，不用为 batch_id 为空做后备。仍等 Annie 题 3、4 + 动手。
   - 2026-11-02 Annie 原话「题3题4，同意推荐，动手」⇒ 题 3 A（筛选时组里只放符合的，写「1 of 6 in this send match」）、题 4 A（默认收起，搜单号 / View this send 进来自动展开）。已派 09（task/send-log-groups），整份背景已发。新模块（下一条）已在动手时问 Annie。
+  - ✅ 09 已合 main 1cf1564（功能 290b897，task/send-log-groups）：整页一张表、一次发送一组（新的在前），/send-log/groups 每页 100 组，计数「N sends · M records」；组头 Sent at / 模块（last_minute 算 Tour Conf，不认识的写 Other）/ tour_label · 日期 · by / 结果数；点开先小结（/api/send-batches/{id}）再逐条 11 列（/groups/{id}/rows）。题 3：筛选 / 搜单号只放 matched 行，组头「1 of 10 in this send match」，搜中的行标黄（Module 筛选不算）。题 4：默认收起，搜单号自动展开前 10 组，?batch= 那组展开 + 金线、不在当页就单独取来放最上面。09 自定两处（验收留意）：① 组的行请求不带日期（跨午夜的也算同组）；② 底部 ⚠️ Errors 改成逐条接口同筛选的最近 200 条。手机组头贴左、不横晃；How to use 重写。检查：tsc 0、eslint 0 错、build 过；catchup 57/57、man 327、tour 65、tsend 61、olog 20、blog 31。没做：新模块的 Module 下拉 / 统计卡 / reply_* 标签（等 Annie 答）。
   - 91 记的，Annie 说动手时一起问（现在先不问）：前端 Send Log 只认 3 个模块（components/send-log/config.ts：Tour Conf、Morning P/U、Tickets）。所有发送都进组以后会多出 last_minute / farm_out / broadcast_* / reply_*。组头可以写「Other」，但 Module 下拉筛不出这几类，统计卡也不单独算。要问：Module 下拉和统计卡要不要加这几类（加的话先出 preview），以及 reply_* 换不换成自己的标签。
 - 手机版第二批分工：e6 做 ① Pickup Locations / Products / Team、② Send Log / Workspace / Content Studio（task/mobile-phase2，worktree C:\Code\ops-wt-e6-mob2）；09 做 ③ Schedule 工具条 / Bus Manifest / 发送页 / Tickets・Tour Tracking（task/mobile-phase3）。共用的 phone.tsx / lib/phone.ts / globals.css 要改的话先报 24 协调。Send Log 只改手机上的样子，不动页面结构（91 之后要改成折叠组）。
 
@@ -348,6 +387,28 @@
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 53. 限制下载功能（2026-11-02，Annie 在 e6 窗口问，没动手）
+- Annie 原话：「我可以限制一下download的功能么」。e6 已答能做、说了现状，问她要限制谁、哪些页（不在 24 这里重复问）。
+- e6 只读核：Team 页已有 4 个导出勾 manifests.export / orders.export / logs.export / reports.export；后端服务器端导出没勾就 403（orders.py、send_log.py、notifications.py、tour_manifest.py、farm_out.py）。前端员工按钮级权限没做：没勾的人照样看得到 Export / Download 键；浏览器里直接生成的下载后端拦不住。下载键：Manifests Export CSV、Orders Export、Order Log、Send Log、Broadcast Log、Sales Report、Farm out Report / Timetable、HR Export to Excel、Pickup Locations Export、三个 Tracking 页、Dispatch 的 Download Bus Manifest。
+- 可做：员工也按 4 个导出勾藏键（含浏览器生成的）；要不要细分（如 Bus Manifest 下载单独一项）看 Annie。先出 preview（哪页哪个键对应哪一勾）。相关旧题：11-01 09 问过的权限题 A / B / C（Farm out 导出跟 reports.export、Bus Manifest 下载 + Manifests Export CSV 跟 manifests.export，未答）。
+- Annie 接着问（e6 窗口原话）：「这样子，我可以给teams设置权限么」。e6 只读核：权限现在只按人存（后端 permissions.py，每人的勾 ∩ 角色标准），team（user_teams）只管发消息 / 通知，跟权限无关；批量只有 Team 页弹窗「Copy access from」。e6 给的两种：A team 当模板，Teams 页给 team 定一套勾，按「Apply to members」一次套到每人身上，之后每人还能单独改，改模板要再按一次（前端用现有每人保存接口，后端基本不改，推荐）／B 权限跟着 team 走，人 = 所在 team 的勾合起来 + 个人额外勾，改 team 马上生效（后端改算法和存储，工作量大，还要定「team 给了、个人想去掉」怎么办）。等她在 e6 窗口答；preview 跟下载那份并成一份。
+- Annie 答（e6 窗口原话）：「限制谁的问题，你如果可以让我按照assign的team来选的话就会容易很多，如果受限或者没有勾选给这个人的功能，这些键就没有必要出现在页面上」⇒ ① 按 team 一次给一组人设权限；② 员工也照勾藏键（没勾的功能页面上不出键，不只是后端 403）。没动手。e6 出 preview：Teams 页按 team 设权限、下载键对照表（并 09 11-01 的 Farm out 导出 / Bus Manifest 下载两题）、题目（模板 vs 跟着 team 走、一人两个 team、只藏下载键还是所有功能键、Tracking / Settings 导出归哪）。等链接和题。
+- Annie 又说（e6 窗口原话）：「现在给到CCL的版块已经够多，那就可以给他们打开dashbroad，但是只显示开放给他们的模块就好了」。e6 只读核 dashboard-view.tsx：各块已按勾显示（My shortcuts 只出 canOpen；Notice 跟 dashboard.view；Messages 要 tracking .view + messages.view；任务 tasks.view_own；Today's team / 本周 Schedule 跟 schedule.view；DOR 跟 report.view）⇒ Annie 在 Team 页给 CCL 勾 Dashboard 即可，前端不用改。
+  - 两处漏（修 bug，样子不变，等动手）：统计行「Messages need reply」没 Messages 块也出（显示 —）；「Open reports」只看 DOR 版面开关、不看 report.view ⇒ 对应块不出，这格也不出。
+  - 新题（并进 e6 权限 preview）：Today's team 跟 schedule.view 走，CCL 没勾就没地方发消息。A 给 CCL 勾 Staff Schedule（Today's team + 本周 Schedule + 侧栏 Staff Schedule 都出，前端不改）／B Today's team 不跟排班勾，没勾的人只出在线名单 + New message、不列班次（前端改、后端确认在线 / 名单接口不要 schedule.view；推荐，CCL 能发消息又看不到排班；样子变化要 preview）。
+- Annie 答权限题（24 窗口原话，没动手）：「一直跟team走」（= B，人的权限 = 所在 team 的勾 + 个人，改 team 马上生效）；两个 team「那就两个team的功能都有」（并集）；「没选的功能键都藏」（不只下载键）；Tracking / Settings 导出归哪：「什么意思」⇒ 24 解释了大意，请 e6 在 preview 里写全（列具体键 + 选项 + 推荐）。另请 e6 补题：team 给了、个人想去掉怎么办。已转 37 请后端只读估算 team 权限的形状和工作量（要改 permissions.py 算法和存储）。
+  - 37：44 只读出后端设计和工作量（team 勾存储 + 可选个人去掉两种、合起来顺序、team 勾接口和「勾从哪来」、action_log、迁移不改现有权限、只读数 team 和多 team 人数），出好转来对 preview。「角色标准还卡不卡 team 给的勾」由 37 在它窗口问 Annie，e6 不问（已告诉 e6）。
+  - 「角色标准还卡不卡 team 给的勾」Annie 在 24 窗口答（原话）「受」⇒ 权限 = (各 team 勾 ∪ 个人勾) ∩ 角色标准。已转 37 / 44，37 不再问。
+  - e6 权限 preview https://claude.ai/artifact/Y6iUsnesJLDwSvHJdqTrpp （按已定 1–3 改，没写代码）：Teams 页每个 team 加灰「Access」键（同 Team 页权限表，蓝 Save 马上对全员生效）；个人弹窗每勾写来源（from CCL, Operations / Personal / 红字 removed for …）；没勾的键不出（动手前给每页完整对照表）；CCL Dashboard 样子。剩题 4a–4f（Farm out Report CSV 跟 Export Reports / Manifests CSV + Bus Manifest 下载跟 Export Manifests / 三个 Tracking CSV 跟 Export Orders / HR 导出跟 Edit HR / Pickup Locations 导出跟 Settings: Pickup locations / Farm out Timetable 跟 Settings: Farm-out，都推荐 A）、题 5 个人可单独去掉（推荐 A）、题 6 Today's team 不跟排班勾（推荐 B）。24 已发 Annie。
+  - 44 后端设计（37 转，没动手，全新增）：GET / PUT /api/team/teams/{id}/permissions（PUT 整份替换、只 superadmin、记 log）；catalog 加 team_items；members/{id} 加 team_items（来源）/ effective_items，选减法再加 denied_items；/api/me/permissions 改按实际权限（前端藏键读这个）。事实：多数人已有 34–55 个个人勾，并集下 team 去勾不影响个人也勾了的人；生产 5 个 team（Operations 21、Tour Confirmation 20、Morning Pickup 16、Tickets Reminder 16、CCL 10），20 人在 2+ team。后端约 1 天（减法 +半天），迁移 v141，Risk C。37 在问 Annie「谁能加减 team 成员、删 team」（推荐只 Super Admin）。已转 e6。
+  - e6 对完 44 设计改 preview（版本 1793652453-7228，同一链接）：Access 只 Super Admin、改动记 log；黄框写个人勾 34–55 个 / 并集 / 5 个 team 人数 / 受角色标准；模拟人数改真实；加被角色卡掉的灰字示例。⚠️ 前端「没勾的键不出」要等后端 /api/me/permissions 改按实际权限上线后才能上，否则 team 给的键会被误藏。新题 7（e6 提，24 已问 Annie）：加「去掉跟 team 重复的个人勾」键（A 推荐，Super Admin、确认框逐人列）／B 手动去／C 不清理。
+  - e6 preview 加题 7 和样子 ④（版本 1793652511-e063）：Team 页标题右灰键（只 Super Admin）→ 确认框逐人列、黄框说明、蓝色「Remove N ticks」；412 勾 / 61 人是模拟数，真实数等后端只读。剩题 4–7 等 Annie。
+
+### 52. 司机页 Farm out 客人那一栏改用 Affiliate 的叫法（2026-11-02，Annie 提，没动手）
+- Annie 原话：「我原来说过Farm out的客人是要出现在bus manifest和司机的pick up list里，然后用个好听的名字掩盖把客人卖了的行为」。
+- 24 只读查现状：① Bus Manifest（/dispatch/manifest）已照做：转单客人在最下面灰色小栏「Affiliate」，不写合作公司名（10-18 Annie 定，affiliate-card.tsx）。② 司机手机页（后端 app/templates/field/driver_home.html:406–414，只 relay 司机看得到）栏标题写「Farm out — hand off, not our bus」，说明写「These guests go to a partner company. Pick them up the same way, but do not put them on your tour bus — hand them off to the partner.」——直接写了 Farm out 和 partner company，跟她的要求不符。员工内部页（Dispatch、Farm out Report、Settings）照旧叫 Farm out。
+- 问 Annie：司机页改成标题「Affiliate」+ 人数，说明改「Pick these guests up the same way. They ride with our affiliate, not on your tour bus. Hand them off at the meeting point.」（推荐，同 Bus Manifest 叫法）／只改标题、去掉说明／别的名字。改的是后端模板，动手后转 37。
+
 ### 51. 订单搜索显示整单 + 一点跳到 Main manifest 并预先勾选（2026-11-02，Annie 对后端 37 说，方案阶段，没动手）
 - A 原话：「…显示整个订单包括些什么，有没有add on，有没有reschedule fee，所有的订单里的项目都要包含进去」。现状：后端订单详情接口 LIMIT 1；前端 order-detail-view 的 Ticket Breakdown / Raw items 只显示第一项，order-lookup-api 把搜索结果每单压成第一行（线上已有的漏洞）。后端打算详情加 items（全部项）、列表每单加一句小结。例：CHDEFSJ2C。
 - B 原话：「如果需要resend confirmation或者reminder的话，再给一个链接可以一点击就进到该订单所属的main manifest页面上，停留在该订单上，订单默认勾选」。后端给 manifest_link {date, tab, pill, row_keys[]} 或 null（不在 Main manifest 上就不给链接，提示去 Order List 看状态）。
@@ -365,6 +426,13 @@
 - Annie 看 preview 原话：「CHD tag那里，每个CHDgroup下面的产品都是有产品名称的」⇒ 24 理解为按产品名分开显示（每个产品一个胶囊、Product 列显示全名）。91 核真实产品清单（37 曾说 CHD 组只有 PFYF01，要核）、改 preview，看后端胶囊要不要加到产品一级。91 查：代码里 unmapped 组只有 PFYF01（Manual Admin Item），费用项名在 quantities[].optionLabel；Bus 胶囊本来就是组一级不是产品一级。已请 37 / d8 只读查生产库（unmapped 组和产品名、60 天订单、optionLabel），判断是 ① 多个有名字的产品（按产品出胶囊）还是 ② 只有 PFYF01、费用项在选项里（加 Fee item 列）。Annie 发 Products 截图 ⇒ ①：CHD 组 3 个产品 PLU3N8（Upgrade）、PXLTL1（Mystical Ante upg…）、PFYF01（Reschedule Fee）。91 用真名改 preview（按产品胶囊 vs 只靠 Product 列，做成一题）；37 / d8 确认 3 个都进 admin_fee、准备产品级胶囊。d8 查生产：只一个 unmapped 组 id 20 CHD；PXLTL1 全名「Mystical Ante upgrade fee」；PFYF01 行都有 tour_date，PLU3N8（3 单）/ PXLTL1（26 单）tour_date 全 NULL ⇒ 现在哪天都不出现，37 在问 Annie 放哪天；PFYF01 费用项 Rescheduling 181 / Upgrade 65 / Tour Service 6 / Hotel Pickup 1，37 在问要不要 Fee item 列；产品级胶囊 d8 约 30–45 分钟。
 - d8 最终字段（31aef9a3，等前端第二步）：admin_fee 标签 label CHD、胶囊 g:20；rows 加 shown_on；新列 fee_item（Rezdy optionLabel，金额 > 0）进默认列；Annie 定 PLU3N8 / PXLTL1 显示在下单日（生产：PLU3N8 11/01 3 单，PXLTL1 10/12 12 单、10/23 14 单）。37 还在问：PFYF01 的 Upgrade Fee 单要不要也挪到下单日。91 改 preview（加 Fee item、行上显示 reason_label）。preview v2 新题 0（按产品胶囊 A 推荐 / 只靠 Product 列 B）+ 题 1–3 等 Annie。Pax 里收款单各算 50 / 75 人，37 问过她一次，未答。另外 37 更正：「10-18 CHD 漏进 Dispatch」没有记录，Dispatch 同步只建 bus_tour 组，CHD 怎样都不会排进车里。Sales Report 要哪种（A / B / C）还没答。
 - 题 0 Annie 答（91 转）：「CHD要胶囊，每个产品一个」⇒ A，每个产品一个胶囊（不算动手）。后端要改：admin_fee 胶囊 key p:<product_code>、label 用 internal name、sendable:false、?pill=p:<code> 只回该产品；已转 37 / d8，注明还没动手。前端不用改。还等题 1–3 + 动手。
+- 题 1–3 Annie 答，原话「1. 要标  2. 按照客人人数 3 不要说明」⇒ ① Due≠0 整行淡红（B）；② 写 pax，按真实客人人数（A，不是推荐的 B）——收款单不能算 50 / 75 人，已问 37 / d8 能不能回真实人数、拿不到回 null 显示「—」；③ 不要说明条。已转 91（先不改代码）。还等动手 + 后端 pax 答复。
+  - 37 回：已转 d8，先只读查数据，再给规则和工时。方向：真实人数只从同一 order_number 在 rezdy_bookings 里的数据取（不直接去 Rezdy），没有就 null、前端显示「—」，不用费用数量。37 注明：这只适用于 Main manifest 的 admin_fee 标签，Sales Report 的 pax 问题仍未定。
+  - 37 转形状：产品级胶囊已推 task/chd-main-manifest 709df07f（p:<code>、internal name、sendable:false、当天没行不出胶囊）；pax 部分 d8 在做约 45–60 分钟：admin_fee 行 pax 可 null（显示「—」），标签 / 胶囊加 pax_unknown（null 行数），pax = 非 null 之和。预计 PFYF01 约 215 行有人数、约 10 行 null；PLU3N8 / PXLTL1 单独订单是 null，除非 Annie 同意按人数量算客人（37 在问她）。已转 91 出 preview v4（pax_unknown 怎么显示 + 去说明条 + Due≠0 淡红）。
+  - Annie 在 37 窗口定（原话）：「费用件数就是人数，不管最后怎么记录，我们的reschedule fee是按照人头收的」⇒ d8 不再去同单找人数：行 pax = 费用自己的件数（多个选项取最大），全部 CHD 产品都这样；null / pax_unknown 只是保险、预计 0，前端 null 照旧显示「—」。preview v4 取消（题 1、3 已明确答）。已转 91。只差动手。
+  - ⚠️ 91 报：Annie 在 91 窗口说的是「其他同意推荐，动手」（题 1 B 淡红、题 2 B 只写单数不写 pax、题 3 A 留说明条），91 已照这个做完 task/manifests-sendable fba8716（man 339 / mf 230 / da 446 / nav 38、tsc、eslint 过），没合 main。跟 24 窗口的「1. 要标 2. 按照客人人数 3 不要说明」题 2、3 相反。91 在问 Annie 以哪个为准；按 24 这边要改三处（写 pax、null 显示「—」/ pax_unknown、去说明条），改完等 d8 pax 上后端 main 再合。动手已有（91 窗口）。
+  - 37：后端 task/chd-main-manifest ad5707ee 已推、审查 PASS，等前端 step 2 合 main 后 24 发 SHA，37 再合。最终形状：胶囊 p:<code> / internal name / sendable:false；行 pax = 费用件数（多选项取最大）；pax_unknown 在标签和胶囊上，今天 0，8/16 前 legacy 的 PFYF01 可能有 null（保留「—」）。已转 91，前端先合，要兼容后端旧形状。还卡在 Annie 题 2 / 3 以哪版为准。
+  - 91 两版都做好、检查过，没合 main：版本 1（24 窗口的答案，91 推荐）task/manifests-chd-pax 8361888——淡红、写 pax（「CHD 5 · 9 pax」「Upgrade 5 pax」）、null 显示「—」、pax_unknown>0 写「+ N unknown」、去说明条；兼容后端旧形状；man 340、mf 230、da 446、nav 38、tsc / eslint / build 过。版本 2（91 窗口的答案）task/manifests-sendable fba8716——只写单数、留说明条。Annie 定哪版合哪版；合后等后端合，91 在线上 CHD 标签只看核一遍。
 
 ### 48. Notice 跟 CCL 交流，可选个人或 team（2026-11-01 晚，11/2 做）
 - Annie 原话（09 窗口）：「2 可以跟CCL用notice交流，发的时候可以选个人，也可以选team」「CCl也算一个team」；开关「开放给员工由我来决定，你不要再问了」（各窗口不再问开关）。
@@ -376,6 +444,13 @@
 - 91 已更新 preview（同一链接）：① ② ③ 标「已定 A」，④ 标「已定 C」；新加 ⑥「CCL 主动发消息」（A team 只列 NPE 的 team；A person 列全部在用 NPE 员工 + 所在 team，不列 CCL 自己）。91 自己定的一处，等 Annie 看：CCL 那边的名单不显示谁在线（在线算员工内部信息）。给后端的（partner 取 team 清单、取员工名单（只要名字 + team）、发给 team 或个人）已转 37。
 - Annie 对后端「CCL方案确认，动手」⇒ 64 在 task/g231-notice-ccl 写（迁移 v140，Annie 执行后推）。预定接口：GET /api/team/directory（员工 / partner 两种返回，partner 不给 online）、POST /api/team/messages {to_user_id | to_team_id}、…/reply、…/thread、Notice 接口对 partner 开放（只收 message）。真实 team 名：Operations、Tour Confirmation、Morning Pickup、Tickets Reminder、CCL。已转 91，排在 CHD 后。前端动手：24 在问 Annie（题 5、6 + CCL 不显示在线）。37 转来最终形状（审查中，等 v140），已转 91；邮件后端已按题 5 A 做（第一条每人一封，回复只站内）。
 - 2026-11-02 Annie 答（24 窗口原话）：「题5 A  题6 有消息就自动出现在页顶吧」⇒ ⑤ A（后端不用改）；⑥ 新做法：有新消息时自动出现在 CCL 页面顶上，不留固定块。还没答「CCL 不显示在线」，没动手。⚠️ Annie 不满 91 同时挂 CHD 和 CCL（原话「你又让它做CCL的页面，又让它做我紧急的事情？」）⇒ Notice-CCL 整件改交 e6（改 preview ④），91 只做 CHD。91 已在交接前改好 ④；新 2 题 Annie 答（原话）「6a B  6b A」⇒ Home / 7 Days Forecast / Farm out Dispatch 每页顶上都出（Notice 页不重复），放消息卡可直接 Reply / Got it。剩「CCL 不显示在线」+ 动手。
+- Annie 看 preview 问「farm out为什么要通知CCL？」并说明「Farm out就是把这几个客人卖给其他公司的车上去了，跟CCL都没有关系了」。24 查：preview 把「Farm out Dispatch」画成 CCL 顶栏里的页面、6a 也写了它，但前端没有这个页面；Farm out 是转给别的合作公司，Farm out Notice 只发客人（后端 farm_out_notice.py），不通知 CCL。已请 e6 改 preview：核 CCL 实际能开的页面，顶栏和 6a 只写真实页面，6a 结论 B 不变（CCL 能进的每页顶上都出）。
+  - e6 已改 preview（同一链接，版本 1793651438-0f8c，没写代码）：只读核 staff-permissions.ts + partner-frame.tsx——partner 只按 Team 页的勾、只能看；永远打不开 3 个 /send 页和 Farm out Report；Home 就是整张 7 Days Forecast（顶栏不另列）；前端没有 Farm out Dispatch 页。生产上 CCL 勾了哪些查不到，按 Annie 10-27「合作方只能看manifest和订单」画成 Home · Manifests · Orders · Notice。6a 仍 B，页名改成 Home、Manifests、Orders；④-2 换成 Manifests 页。全文已无 Farm。仍等题 7 + 动手。
+- Annie 新说法（24 窗口原话）：「CCL我已经取消了Partner的身份，所以不要再标Partner在他们的名字后面了」⇒ 不再在 CCL 名字后面标 Partner。已请 e6 去掉 preview 里的 PARTNER / Partner 标签，并只读核 CCL 账号现在的 role、列出影响（partner 顶栏 / 单独 /notice / 页顶 Notice 块是否还适用、题 6 / 6a / 6b / 7 是否还算数）；已告诉 37 查 G231 partner 版接口还要不要。没动手。
+  - 37 回：CCL 账号（84）改 staff 是 Annie 今天在 64 窗口定的；以后的合作方照旧走 partner 规则，后端 partner 分支保留给以后，不删；G231 正在合后端 main（af530bea，v140 已执行）。64 在查接口里有没有 role / is_partner / label 字段、各 CCL 账号现在的 role。24 倾向：前端 partner 那套保留给以后的合作方，CCL 当员工处理、不标 PARTNER；已转 e6 按这个改 preview、作废不再适用的题。
+  - e6 照「CCL 当员工」改 preview（版本 1793651691-42eb，同一链接，没写代码）：② 名单 CCL team 去 PARTNER、个人写「David Ruiz · CCL」；③ 卡片标题去「(CCL)」；④⑤⑥ 和题 6 / 6a / 6b / 7 标作废（CCL 用员工 Dashboard / Notice / Today's team，partner 那套留给以后的合作方，前后端都只看 role，不用改）；题 1–5 照算。新题 8：CCL 改员工后保护都不生效，只靠 Team 页的勾（订单 Agent & Commission 会看到、Read & edit 能改能导出、勾发送能对客人发、Farm out 键 / Report 看得到、邮件带 Reply-To、没勾 Dashboard 就收不到 Notice）；A 照员工、Annie 在 Team 页调勾（推荐）／B 另外对 CCL team 藏佣金 / 代理商（要后端按 team 判断）。Notice-CCL 剩动手；题 8 是另一件。
+  - 37 转 64 只读核：后端对 CCL 不发任何 Partner 标记（role / kind / from_kind 都是 staff，「(Partner)」后缀只在 role == partner 时加，staff_messages.py:153–162）；生产 0 个 partner；84 CCL、85 Lei、86 Daniel、87 Connie、90 Anthony 是 staff、team CCL，89 LiuCai staff 没 team。G231 已合后端 main 4a61bbfb，推送等最后审查。CCL 作为员工能看到完整 Notice 和在线名单（Annie 要的）。已请 e6 查前端有没有按 team 名 / 旧缓存写死的 Partner 标签，有就当 bug 修。
+  - e6 只读查 origin/main：前端没有会给 CCL 标 Partner 的地方，Partner 字样全按 role / account_type === partner 判断（partner-frame、Team 页角色标签 / Partners 筛选 / 成员弹窗、isPartner 现读 /api/me，不缓存）；没有按 team 名 CCL 判断的。不用修；Annie 那句指 preview（已改）。开着的旧页面刷新一次即换员工版。
 
 ### 44. 全站手机版重新设计（派 e6 调查 + preview，2026-11-01）
 - Annie 原话：「而且我们的divce版本要重新设计一下了，太多说明和介绍的东西占了半个手机屏」；主窗口问范围，她选「全站一起（推荐）」：一套统一手机版规则，所有页面照做，新页面也照做。
@@ -479,6 +554,9 @@
 
 ### 39. Dispatch：Check the bus 会跳过 Apply CCL 的变动（91 出 preview）
 - Annie 原话「我现在是不是需要把pull from discord放到巴士前面，因为第一件事情应该是检查CCL的消息来了没有」「主要是点check the bus 就会跳过apply ccl的变动」。打开页面会自动拉一次 Discord，但结果 / Apply 在 Step 2 顶上，Step 1 卡片的 Check the bus 直接跳到车块、跳过它。91 preview：https://claude.ai/artifact/PmUDb4Cbxb72XThPEPzfQn 。推荐 A1（最上面一整条 CCL 状态 + Pull + Apply）+ B1（Check the bus 照跳）+ C1（团块顶上写这个团的 CCL 变动 + Apply，整份套用）+ D1（不自动 Apply，Not now 只收清单、提醒留着）。不需要后端。Annie 原话「这样吧，如果CCL有变动现需要apply的，就在你给的这个位置出个通知，直接点击查看，跳转到下面的apply change的card里」⇒ 最上面只在有没 Apply 的变动时出通知 + 点击滚到 Step 2 的 Apply 卡；Pull / Apply 卡原位不动；不做团块提示。91 改 preview（v3 两种样子、v4 克制、v5 绿色色板），Annie 选「样样子 1 · 左边琥珀色条 + Discord 图标」（v3 样子 1，Not now 后仍在直到 Apply），等动手。Add hotel：Annie 选 H（白底 Save 蓝字半粗「~~~~~ Shuttle Pick up ~~~~~」）；「占了的还是发灰，正常的就500，你把页面上400的都改成500」+「dispatch这一页」⇒ 正常酒店名黑色 500、被占的灰；Dispatch 页 400 字改 500。四件都定了，等动手（91）。
+- 2026-11-02 Annie 问（24 窗口原话）：「然后我们前两天做的关于discord那边的更新在dispatch的assign和send的下面设置一个提醒，怎么不见了」。24 只读查：已上 main dbeb7cf（CclNotice，dispatch-view.tsx:1779–1787），代码还在；只在「CCL 改版（revision）还没 Apply」时出，CCL 第一次发的预填（蓝条）不出，Apply 后消失。问 Annie 看的是哪天、下面 Step 2 有没有琥珀色 Apply changes 卡：有卡没通知 = bug，派人修；没卡 = 照设计不出。
+  - Annie 补（原话）：「他们昨天就发过update，但是没有看到提醒出现，我刚才去apply的时候也不见提醒条」⇒ 有 Apply changes 卡但没提醒条 = bug。已派 09 修（样子不变，不用 preview）：查卡和提醒条的显示条件、dbeb7cf 之后有没有被盖掉，用 mock 重现，da 加检查，修好直接合 main。
+  - ✅ 09 已修，合 main 2559628（bd0d389，task/ccl-notice-fix，样子不变）。原因：通知和 Apply changes 卡用同一份状态，是一起不出。打开一天后页面自动补车字母 / 空车、私人团自动配单，CCL 那份晚到时「动过手」判断（countChanges(base, rows) > 0）成立，被当成 staff 改过 ⇒ 改版不列，Pull 也只提示「while you were editing」。生产上这几样常比 CCL 先回，所以两样都没出。改法：staffEditedRef 只记 staff 自己的改动，私人团自动配单 edit(next, {auto:true}) 不算动过手；只有 staff 动过手且有没存的才不碰 CCL（打开和 Pull 两处）。检查：tsc 0、eslint 0 错、build 过、da 454/454（新加 CCL 先到 / 晚到 2.5 秒 / Pull 拉到 / staff 真改过 4 种）。下次 CCL 发改版请 Annie 线上看一眼。
 
 ### 8. 可以上线后对着看的（不用答，验收时看）
 - Products 手动保存：09 问的 5 处细节，主窗口按盘点推荐定了，见 PROGRESS「2026-10-30」那节 09 的记录：

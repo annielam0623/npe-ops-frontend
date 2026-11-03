@@ -147,6 +147,9 @@ export type {
 } from "./morning-tracking";
 export type {
   SendLogChannel,
+  SendLogGroup,
+  SendLogGroupRow,
+  SendLogGroupsPage,
   SendLogModule,
   SendLogPage,
   SendLogQuery,

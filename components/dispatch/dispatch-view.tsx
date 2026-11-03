@@ -229,6 +229,12 @@ export function DispatchView() {
    * 只是看一眼不会把这一天存掉、占住。它们在 staff 改了任何地方或点 Completed 时一起存）。
    */
   const [userEdited, setUserEdited] = useState(false);
+  /**
+   * staff 自己动过手（不算页面打开后自动改的：按人数给车补字母 / 补开空车、私人团自动配订单）。
+   * CCL 预填 / 改版只在「staff 动过手、还没存」时才不碰——自动改的也算进去的话，CCL 晚一点到，
+   * 改版卡和步骤框下面的通知就都不出来（Annie 2026-11-02「怎么不见了」）。
+   */
+  const staffEditedRef = useRef(false);
   /** 上一次自动保存存不上时的行（同样的行不再重试，staff 再改才试）。 */
   const lastFailRef = useRef<string | null>(null);
   /** 按单元保存：正在存的单元（只锁它）/ 每个单元挡下来的原因（原文）/ 自动保存存不上的那份行（不重试）。 */
@@ -537,11 +543,8 @@ export function DispatchView() {
     if (!p || cur.day?.run_date !== date) return;
     // 关闭的线：存没存过都标出来。
     setClosures(p.closures ?? []);
-    // 动过手 / 已应用：不预填、不列改版（同旧页面：这时也不记 prefill）。按人数补开的空车不算动过手（Annie 2026-10-11）。
-    if (
-      countChanges(cur.base, withoutAutoWindows(cur.rows)) > 0 ||
-      p.status !== "pending"
-    )
+    // 动过手 / 已应用：不预填、不列改版（同旧页面：这时也不记 prefill）。按人数补开的空车、页面自动改的不算动过手（Annie 2026-10-11）。
+    if (staffDirty(staffEditedRef.current, cur) || p.status !== "pending")
       return;
     setPrefill(p);
     stateRef.current = { ...cur, prefill: p };
@@ -608,6 +611,7 @@ export function DispatchView() {
         setRows(cloneRows(d.rows));
         setBase(cloneRows(d.rows));
         setUserEdited(false);
+        staffEditedRef.current = false;
         lastFailRef.current = null;
         unitFailRef.current = {};
         setUnitError({});
@@ -681,8 +685,7 @@ export function DispatchView() {
         setPullMsg(`${res.message || "Pull failed."}${last ? ` ${last}` : ""}`);
       const cur = stateRef.current;
       if ((res.status === "new" || res.status === "revision") && cur.day) {
-        const isDirty =
-          countChanges(cur.base, withoutAutoWindows(cur.rows)) > 0;
+        const isDirty = staffDirty(staffEditedRef.current, cur);
         const untouched =
           !!cur.prefill &&
           !cur.base.length &&
@@ -834,7 +837,7 @@ export function DispatchView() {
           order_number_set_by_staff: false,
         };
       });
-      if (changed) edit(next);
+      if (changed) edit(next, { auto: true });
     } catch (e) {
       if (isStatus(e, 401)) redirectToLogin();
       // 配不上不挡排车：订单下拉还是能手选。
@@ -919,22 +922,24 @@ export function DispatchView() {
    * 动手改：没占住这一天就先占（G71）。别人在改 ⇒ 不改、页面只读；打开之后别人存过 ⇒ 先换成最新的、这一下不算。
    * 占的那一下页面是灰的（acquiring），不会有第二个改动叠上来。
    */
-  function edit(next: DispatchRow[]) {
+  function edit(next: DispatchRow[], opts: { auto?: boolean } = {}) {
     if (viewOnlyRef.current) return;
     if (lock.token()) {
-      apply(next);
+      apply(next, opts);
       return;
     }
     const date = day?.run_date;
     void (async () => {
       const r = await lock.ensure();
       if (!date || stateRef.current.day?.run_date !== date) return;
-      if (r.kind === "ok") apply(next);
+      if (r.kind === "ok") apply(next, opts);
       else await lockFailed(r, date);
     })();
   }
 
-  function apply(next: DispatchRow[]) {
+  /** auto：页面自己改的（私人团自动配订单），照常存，但不算 staff 动过手（CCL 照样列）。 */
+  function apply(next: DispatchRow[], opts: { auto?: boolean } = {}) {
+    if (!opts.auto) staffEditedRef.current = true;
     lock.markEdited();
     setRows(next);
     setUserEdited(true);
@@ -2961,6 +2966,14 @@ function ClockIcon() {
       <path d="M12 7.5V12l3 2" />
     </svg>
   );
+}
+
+/** staff 自己动过手、还有没存的（CCL 不碰这种）。edited = staffEditedRef。 */
+function staffDirty(
+  edited: boolean,
+  cur: { base: DispatchRow[]; rows: DispatchRow[] },
+): boolean {
+  return edited && countChanges(cur.base, withoutAutoWindows(cur.rows)) > 0;
 }
 
 /** Pull from Discord 上的 Discord 标志（旧 `.btn-discord .dico`）。 */
