@@ -67,6 +67,7 @@
   - Annie 补（后端主窗口原话）：「把各个司机的手机页面都显示出来，并列在页面上」⇒ 每列 = 司机手机页原样，并排，只读，staff 不能代点。后端出 staff 只读接口，复用司机页取数。已转 39。
   - 39 preview：https://claude.ai/artifact/TwJJ32NCdbTEnqxQcCX6MN （每列原样司机 / 导游手机页，只读按钮灰掉，深蓝列头）。后端现状：只存最新一次标记 + 时间 + 人，没有历史。10 题（推荐）：① Dispatch 加「③ Live drivers」（A）；② 跟 dispatch.view（A，要先检查就 B 开关）；③ 30 秒自动 + Refresh（A）；④ 标记后写时间（A）；⑤ 一辆车一列（A）；⑥ 步骤条旁红数字 No show 人数，不发通知（B）；⑦ 页顶统计行留（A）；⑧ 按开始时间排（A）；⑨ Messages 页签照留只读（A）；⑩ 按钮照画灰掉（A）。接口形状已转 9e 估工作量（GET /api/dispatch/live-drivers）。
     - 9e 估：14–20 小时，不迁移，复用 /driver/preview、/guide/preview 取数。改题：⑤ 推荐一人一列（数据按人算）；② dispatch.view 在 partner 白名单里，页面带客人电话 / 短信 / 餐厅联系 ⇒ 新权限码或先只 Super Admin + 开关（推荐后者）；relay_status_at 要补；没连 HR 的司机列不出来；性能要加单次请求缓存。已请 39 改 preview。后端今晚 21:30 收工，派工在明天。
+    - Annie 问（f8 窗口原话）：「可以在页面上有no show的提醒么」⇒ 题 ⑥ 加 C：页顶红框逐个列 No show（车 / 司机 · 客人 · 酒店 · 时间 · 标的时间，点了滚到那行），步骤旁红数字，新出现的标 new，不发邮件 / 短信（推荐 C）。已请 39 加进 preview。
 - 今晚在等 Annie 的，跟 24 交接第三节一样，不重问。
 
 ## 2026-11-02 收工交接：前端主窗口-24 [d1dbae]（公司）
