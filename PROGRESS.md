@@ -16,6 +16,13 @@
   - 酒店格：后端给的 relay_color / hotel_first 先不用（f8 转：等 Annie 说哪几家涂、涂什么色；纸本是节色 / 车色、不是每家都涂），照旧隔组涂节色。
   - 司机兼导游并一格已另外上线（9a3266b）。题 7 Rezdy 系统字后端去掉，前端不用做。
 - 检查：mf 加 South 那套照印不改名 + OTHER、ASSIST 列（紧跟 Special Requirements）、午餐单 NOTES 黄底 / 红字、没 assist_column 不出；rl 改成照后端车色（BZ 用 Annie 选的 #f4938e）。mf 235、man 346、da 457、rl 26、nav 38；tsc / eslint 0 错 / build 过。
+- 收工交接（2026-11-02 深夜，Annie 睡了，明天公司接着做）：
+  - 做到：前端改动都在 task/manifest-paper（e4ace10 之后这条交接提交），推了分支，⛔ 没合 main。worktree 留着：D:\ops-wt-0e-relay（就在这个分支上，依赖已装）。
+  - 等：① 后端 36 的字段上 main（footer 带 key / label、tour.footer_style / assist_column、lunch rows notes / notes_check、bus.driver_is_guide、relay-pull car.relay_color）+ v145 Annie 执行；② Annie 答酒店格涂哪几家、涂什么色（纸本是节色 / 车色、不是每家都涂，见色表最后）；③ 色表最后那几样纸本上没有的颜色（第 4 辆以后的 relay 车、BZ 的节、West / Hoover 的节色、纸本没出现的票型等）。
+  - 下一步：后端上了以后合最新 main，对后端真实形状核一遍（字段名、footer 每套格子的字），把 mock 对齐；酒店格按 Annie 答的改（后端已经给 relay_color / hotel_first，前端现在没用）。
+  - 合 main 前要跑：mf、man、da、rl、nav（有动排班的话加 sch），tsc / eslint / build。
+  - 色表：https://claude.ai/artifact/1j7yN3Vn2ifP4fvYrqoA1A （BZ 已选 #f4938e，Annie「BZ选1」）。③ 票型颜色、④ 每辆车颜色、⑦ ASSIST 都已定「照纸本」，不加新设置。
+- 另外在等 Annie：Dashboard「Today's team」重新排版 preview https://claude.ai/artifact/Ph29qDSR1UtYmKGAWmryhY 的 7 题（样子 A / B、休息合一行、Visible to 收进 ⚙、正在上班细绿条、Online now、ZZTest 勾 Test、不算人头照常显示），没动手，没写代码。
 
 ## 2026-11-02 晚 Bus Manifest 司机兼导游并一格（`task/manifest-driver-guide`，工作窗口 `npe-ops-frontend-0e`[d96681]，主窗口 f8 派）
 - Annie 对 Bus Manifest 对照纸本报告「全部同意。动手」；纸本「Driver Guide: Lankun」。这一步只改网页：同一个人（后端 bus.driver_is_guide；没带时不分大小写比名字）⇒ 抬头一格「Driver Guide」、午餐单底行「Driver Guide」；打印模板那几行由后端改（f8 转）。
