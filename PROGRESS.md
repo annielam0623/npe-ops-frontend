@@ -696,6 +696,7 @@
 - ❌ 省掉 Apply 作废：Annie 看了 CCL 自己写错车号的结果后（原话）「那还是保留手动apply CCL的change吧」⇒ 题 1–6 作废，CCL 改版照旧 staff 按 Apply，后端不用做。题 7（Step 1 司机 / 导游打开就列好）、题 8（Step 2 Morning Relay 不用按 Pull）、题 9 里 Send 两句 How to use 仍等 Annie。
 - Annie 在 09 窗口答（原话）「问题7-9，同意全部推荐」⇒ 7 A（Step 1 打开就列好司机 / 导游，Check the list 改白色 ↻ Refresh）、8 A（Step 2 打开自动取客人，Pull from manifests 改白色 ↻ Refresh）、9 三段 How to use 照草稿。「同意」不算动手，09 已问她要不要现在动手，等「动手」。
 - ✅ Annie 在 09 窗口「动手」（原话就两个字，接在「题 7–9 要不要现在动手」后）。09 正盯 manifest-paper 加急件 ⇒ 按 Annie「不要让一个窗口同时做紧急的和别的」，task/send-auto-open 改派 e6 写、检查过直接合 main。
+- ✅ e6 合 main **497a76d**（task/send-auto-open）：Send 标签显示时自动列司机 / 导游两张表 + Morning Relay 两轮（停在 Assign、在 Assign 存都不取；来回切不重取），Check the list / Pull from manifests 改白色 ↻ Refresh，出错前缀 "Could not load the guests"，How to use 两句照原文，Step 1 说明 / Fix … and pull again / Copy 1st Round / Pickup Locations / Bus Manifest setup 几处英文跟着改。da 467、rl 26、nav 38、pl 105、products 237，tsc / eslint / build 过。Annie 验收：Dispatch › Send 一打开就有三块、两个白色 Refresh（生产后端，别点发送）。置顶 62 待移走。
 - Annie 原话（24 窗口）：「我想把事情弄得简单一点，干脆把apply省掉，改过得数据直接就update了不需要staff动手」
 - 现在：CCL 在 Discord 发改版 → Dispatch 顶上琥珀提醒条 + Step 2「Apply changes」卡，staff 按 Apply 才套进排车。
 - Annie 接着补（原话）：「包括在dispatch的send 页面，把司机和导游发送也打开，不折叠，也不需要pull from manifest，直接展开给staff看」⇒ Send 步骤司机 / 导游发送块默认展开；不用按 Pull from manifests，打开就自动取好。并进同一份 preview。
