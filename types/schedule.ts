@@ -16,9 +16,29 @@ export interface ScheduleWorkWindow {
   end_time: string;
 }
 
+/** 按星期几设的 Working hours 的一天（后端 v144，36 定）：weekday 0 = Mon … 6 = Sun；off = 这天不查空档。 */
+export interface ScheduleWorkHoursDay {
+  weekday: number;
+  /** "HH:MM"；PUT 时 off 的那天可以给 null（沿用存着的时间）。GET 回来都有值。 */
+  start_time: string | null;
+  end_time: string | null;
+  off: boolean;
+}
+
+/** Working hours（Annie 2026-11-02「可以选择一周的时间，也可以分别设置几天的时间不同」）。 */
+export interface ScheduleWorkHours {
+  /** true = 七天一样（7 天必须相同，否则后端 400）。 */
+  same_every_day: boolean;
+  /** 7 天，按 weekday 排。 */
+  days: ScheduleWorkHoursDay[];
+}
+
 /** GET /api/settings/schedule 的返回体。 */
 export interface ScheduleSettings {
+  /** = Monday 那一组（旧接口照旧）；后端没带 work_hours 时就用它（每天一样）。 */
   work_window: ScheduleWorkWindow;
+  /** 按星期几设（后端 v144 起）；旧后端没有这个键。 */
+  work_hours?: ScheduleWorkHours;
   shift_types: ScheduleShiftType[];
 }
 

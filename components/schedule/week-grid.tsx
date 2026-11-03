@@ -1,5 +1,6 @@
 "use client";
 
+import type { HoursOf } from "@/lib/schedule-work-hours";
 import { useEffect, useRef, useState } from "react";
 
 import { laToday, shiftYmd } from "@/lib/la-date";
@@ -57,8 +58,8 @@ interface WeekGridProps {
     end: string;
     note: string | null;
   }) => void;
-  /** 工作时段起止：新班的默认时间（后端没有每种班次的默认时间）。 */
-  workWindow: { start_time: string; end_time: string };
+  /** 那一天的工作时段：新班的默认时间（班次没设默认时间时用）。 */
+  hoursOf: HoursOf;
   onDeleteSlot: (slotId: number) => void;
   onUpdateTime: (slotId: number, startTime: string, endTime: string) => void;
   /** 改 / 清除备注（`null` = 清除）。 */
@@ -122,7 +123,7 @@ export function WeekGrid({
   canEdit,
   onAssign,
   onCreateSlots,
-  workWindow,
+  hoursOf,
   onDeleteSlot,
   onUpdateTime,
   onSaveNote,
@@ -397,7 +398,7 @@ export function WeekGrid({
           employee={employees.find((e) => e.id === adding.employeeId) ?? null}
           shiftTypes={activeShiftTypes}
           slots={slots}
-          workWindow={workWindow}
+          workWindow={hoursOf(adding.date)}
           onSubmit={(input) => {
             onCreateSlots({ ...input, employeeId: adding.employeeId });
             setAdding(null);
