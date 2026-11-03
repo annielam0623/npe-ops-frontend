@@ -315,6 +315,7 @@ function ConversationModalInner({
   onChanged,
   onUnauthorized,
   context,
+  sendBoth = false,
 }: {
   /** 照哪一个旧页面的样子画（三页的对话窗各不相同）。 */
   theme: ConversationTheme;
@@ -326,6 +327,11 @@ function ConversationModalInner({
   /** 写了备注 / 发了消息 / 改了 Take action：表格要重拉。 */
   onChanged: () => void;
   onUnauthorized: () => void;
+  /**
+   * Live drivers 页签用（Annie 2026-11-02「email sms同时发」）：发完分开写两个渠道的结果（成功绿、失败红、没有的灰）。
+   * 默认两个都勾已经是全站的了（2026-11-03）。
+   */
+  sendBoth?: boolean;
 }) {
   const { orderNumber, bookingId, guestForm } = target;
   const sourceKind = source.kind;
@@ -364,7 +370,12 @@ function ConversationModalInner({
   const [loadFailed, setLoadFailed] = useState(false);
   const [text, setText] = useState("");
   const [smsChecked, setSmsChecked] = useState(true);
-  const [emailChecked, setEmailChecked] = useState(false);
+  // 短信和邮件默认都勾（Annie 2026-11-02「那你把他们都改成两个勾选」）：所有用这个回复框的页面一样；没邮箱的那一格勾不上、不发。
+  const [emailChecked, setEmailChecked] = useState(true);
+  /** sendBoth：上一次发送每个渠道的结果。 */
+  const [results, setResults] = useState<
+    { tone: "ok" | "bad" | "muted"; text: string }[] | null
+  >(null);
   const [submitting, setSubmitting] = useState(false);
   const [toggling, setToggling] = useState(false);
   const [notice, setNotice] = useState<Notice>(null);
@@ -484,6 +495,7 @@ function ConversationModalInner({
     setTooLong(false);
     setSubmitting(true);
     setNotice(null);
+    setResults(null);
     try {
       const payload: NoteCreate = {
         body,
@@ -501,7 +513,53 @@ function ConversationModalInner({
       if (toGuest && useEmail && note.email_status !== "sent") {
         missed.push("email");
       }
-      if (missed.length) {
+      if (sendBoth && toGuest) {
+        // 两个渠道分开写（后端各管各的：短信渠道判不出 = no_channel，只跳过短信，邮件照发）。
+        const line = (
+          used: boolean,
+          has: boolean,
+          status: string | null | undefined,
+          label: "SMS" | "Email",
+          to: string,
+          none: string,
+        ) =>
+          !has
+            ? { tone: "muted" as const, text: `${label} not sent — ${none}` }
+            : !used
+              ? {
+                  tone: "muted" as const,
+                  text: `${label} not sent — not ticked`,
+                }
+              : status === "sent"
+                ? { tone: "ok" as const, text: `✓ ${label} sent to ${to}` }
+                : status === "no_channel"
+                  ? {
+                      tone: "bad" as const,
+                      text: `${label} not sent: no channel`,
+                    }
+                  : {
+                      tone: "bad" as const,
+                      text: `✗ ${label} NOT delivered${status ? ` (${status})` : ""}. The guest did not get it by ${label === "SMS" ? "text" : "email"}.`,
+                    };
+        setResults([
+          line(
+            useSms,
+            hasPhone,
+            note.sms_status,
+            "SMS",
+            target.phone,
+            "no phone on file",
+          ),
+          line(
+            useEmail,
+            hasEmail,
+            note.email_status,
+            "Email",
+            target.email,
+            "no email on file",
+          ),
+        ]);
+      } else if (missed.length) {
         setNotice({
           tone: "warn",
           text: `Saved, but NOT delivered to the guest via ${missed.join(" / ")}. The guest has not received this message — please reach them another way.`,
@@ -655,6 +713,27 @@ function ConversationModalInner({
       </div>
 
       <div className={cn("px-3.5 py-3", skin.foot)}>
+        {results ? (
+          <div
+            data-send-results
+            className="mb-2 rounded-md px-3 py-2 text-[12px] leading-[1.7]"
+          >
+            {results.map((r, i) => (
+              <div
+                key={i}
+                data-send-result={r.tone}
+                className={cn(
+                  "font-semibold",
+                  r.tone === "ok" && "text-[#2ecc71]",
+                  r.tone === "bad" && "text-[#e74c3c]",
+                  r.tone === "muted" && "font-normal text-[#8aa9c8]",
+                )}
+              >
+                {r.text}
+              </div>
+            ))}
+          </div>
+        ) : null}
         {notice ? (
           <p
             role="alert"

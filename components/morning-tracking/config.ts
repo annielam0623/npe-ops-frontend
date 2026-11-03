@@ -12,6 +12,7 @@ export type ColumnKey =
   | "name"
   | "checkin_status"
   | "checkin_time"
+  | "driver_mark"
   | "notes"
   | "whatsapp"
   | "phone"
@@ -31,6 +32,9 @@ export const COLUMNS: readonly { key: ColumnKey; label: string }[] = [
   { key: "name", label: "Name" },
   { key: "checkin_status", label: "Check-in" },
   { key: "checkin_time", label: "Check-in Time" },
+  // 司机 / 导游在手机上标的 Picked up / Boarded / No show（司机实时页 ⑥ A，Annie 2026-11-02「动手」）。
+  // 旧后台不认这个键，会自己丢掉（tracking_morning.html loadColOrder 只留认识的）。
+  { key: "driver_mark", label: "Driver mark" },
   { key: "notes", label: "Notes" },
   { key: "whatsapp", label: "WhatsApp" },
   { key: "phone", label: "Phone" },
@@ -79,7 +83,10 @@ export function parseColumnOrder(raw: string | null): ColumnKey[] | null {
   }
   for (const key of DEFAULT_COLUMN_ORDER) {
     if (!seen.has(key)) {
-      order.push(key);
+      // Driver mark 是看签到时一起看的：存档里没有时插在 Check-in Time 后面（找不到再补在最后），别的新列照旧补在最后。
+      const after = key === "driver_mark" ? order.indexOf("checkin_time") : -1;
+      if (after >= 0) order.splice(after + 1, 0, key);
+      else order.push(key);
     }
   }
   return order;
@@ -209,13 +216,52 @@ export function formatYmd(ymd: string): string {
 
 /**
  * 后端已按「签到的在前（新的在前），再按接客时间」排好。
- * 客人发来 WhatsApp 还没人处理的单顶到最上面（最新的在前），其余保持原顺序。
+ * 司机标了 No show、还没人处理的单顶到最上面（最新标的在前，司机实时页 ⑥ A）；
+ * 再下面是客人发来 WhatsApp 还没人处理的单（最新的在前），其余保持原顺序。
  */
 export function orderRows(rows: MorningTrackingRow[]): MorningTrackingRow[] {
+  const noShow = rows
+    .filter((r) => r.ns_unhandled)
+    .sort((a, b) =>
+      (b.live_status_at || "").localeCompare(a.live_status_at || ""),
+    );
   const floated = rows
-    .filter((r) => r.wa_unhandled)
+    .filter((r) => !r.ns_unhandled && r.wa_unhandled)
     .sort((a, b) => (b.latest_wa_ts || "").localeCompare(a.latest_wa_ts || ""));
-  return [...floated, ...rows.filter((r) => !r.wa_unhandled)];
+  return [
+    ...noShow,
+    ...floated,
+    ...rows.filter((r) => !r.ns_unhandled && !r.wa_unhandled),
+  ];
+}
+
+/** 后端带了司机标记那几个键（司机实时页那一版之后）：Driver mark 列才出。 */
+export function hasLiveMarks(rows: MorningTrackingRow[]): boolean {
+  return rows.some((r) => r.live_status !== undefined);
+}
+
+const MARK_TIME_FORMAT = new Intl.DateTimeFormat("en-US", {
+  timeZone: LA_TIME_ZONE,
+  hour: "numeric",
+  minute: "2-digit",
+});
+
+/** "6:03 AM"（洛杉矶）；没有 / 读不懂为 ""。 */
+export function formatMarkTime(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const t = new Date(iso).getTime();
+  return Number.isNaN(t) ? "" : MARK_TIME_FORMAT.format(t);
+}
+
+/** 页签上的数：没处理的 No show 单数；有 No show 但都处理了 ⇒ 绿点（站内规矩：没处理红、处理过绿）。 */
+export function noShowBadge(rows: MorningTrackingRow[]): {
+  unhandled: number;
+  any: boolean;
+} {
+  return {
+    unhandled: rows.filter((r) => r.ns_unhandled).length,
+    any: rows.some((r) => r.live_status === "no_show"),
+  };
 }
 
 export function matchesSearch(

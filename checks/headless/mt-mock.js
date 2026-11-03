@@ -21,6 +21,63 @@ const MULTI_ADDR_ONE = "+15551230001"; // 有两张没出发的单：Reply / Ass
 const MULTI_ADDR_ZERO = "zztest-zero@example.test"; // 名下没有没出发的单：Take action 不经选单直接关。
 const MULTI_ADDR_WAITING = "+15551230099"; // staff 已经回过、在等客人：不计入红胶囊。
 const log = [];
+
+// ── 司机实时页（ctl.live）：司机 / 导游在手机上标的。ISO 用今天洛杉矶的时间。
+const laIso = (hhmm) => {
+  const [h, m] = hhmm.split(":").map(Number);
+  // 洛杉矶 11 月是 PST（-08:00）；只用来显示几点，够了。
+  return `${today}T${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:00-08:00`;
+};
+const LIVE_MARKS = {
+  A1001: { status: "picked_up", at: laIso("05:42"), driver: "Mike", van: "Van 12" },
+  A1002: { status: "no_show", at: laIso("06:03"), driver: "Mike", van: "Van 12" },
+  A1003: { status: "boarded", at: laIso("07:02"), driver: "Ana", van: "Bus A" },
+};
+const relayGuest = (id, first, last, pax, order) => {
+  const mk = LIVE_MARKS[order];
+  const st = mk && mk.driver === "Mike" ? mk : null;
+  return { id, first_name: first, last_name: last, pax, order_number: order, phone: "+15550000000", relay_status: st ? st.status : null, relay_status_at: st ? st.at : null, checked_in_at: order === "A1001" ? "5:31 AM" : "" };
+};
+const tourGuest = (id, name, pax, order) => {
+  const mk = LIVE_MARKS[order];
+  const st = mk && mk.driver === "Ana" ? mk : null;
+  return { id, name, guide_name: name, pax, order_number: order, lunch_text: "1 B 1 T", guide_lunch: { text: "1 B 1 T", bad: false }, boarding: st ? st.status : null, boarding_at: st ? st.at : null, relay_status: null };
+};
+function livePeople() {
+  const g1 = relayGuest(1, "ZZ Test", "One", 2, "A1001");
+  const g2 = relayGuest(2, "ZZ Test", "Two", 2, "A1002");
+  const t3 = tourGuest(3, "ZZ Test Three", 2, "A1003");
+  const t4 = tourGuest(4, "ZZ Test Four", 1, "A1004");
+  const picked = [g1, g2].filter((g) => g.relay_status === "picked_up").reduce((a, g) => a + g.pax, 0);
+  const ns = [g1, g2].filter((g) => g.relay_status === "no_show").reduce((a, g) => a + g.pax, 0);
+  return [
+    {
+      kind: "driver", hr_id: 11, name: "Mike", first_shift: "relay", error: false,
+      segments: [{
+        id: 101, shift: "relay", kind: "", when: "", title: "Morning Relay · 1st Round", van: "Van 12", tour_unset: false,
+        manifest: null, tour_compact: null, relay_guests: [g1, g2], relay_farm_out_guests: [],
+        relay_summary: { pax: 4, pickups: 2, first: "5:40 AM", last: "5:55 AM", picked_up: picked, no_show: ns },
+        relay_blocks: [
+          { time: "5:40 AM", hotel: "ZZ Test Excalibur", spot: "South entrance", pax: 2, bookings: 1, guests: [g1] },
+          { time: "5:55 AM", hotel: "ZZ Test Luxor", spot: "Taxi line", pax: 2, bookings: 1, guests: [g2] },
+        ],
+      }],
+      inbox: { unread_total: 1, threads: [{ order_number: "A1002", guest_name: "ZZ Test Two", pax: 2, pickup_location: "ZZ Test Luxor", pickup_time: "5:55 AM", van: "Van 12", last: { text: "Running 10 min late", at: laIso("05:58"), time: "5:58 AM", from: "guest" }, last_guest_text: "Running 10 min late", unread: true }] },
+    },
+    {
+      kind: "guide", hr_id: 12, name: "Ana", first_shift: "tour", error: false,
+      runs: [{
+        id: 201, tour: "ZZ Test Grand Canyon", bus_label: "A", van: "Coach 21",
+        manifest: {
+          summary: { pax: 3, pickups: 1, first: "7:00 AM", last: "7:00 AM", picked_up: 2, no_show: 0 },
+          guide_lunch_bar: [{ n: 2, label: "Beef" }, { n: 1, label: "Turkey" }],
+          blocks: [{ time: "7:00 AM", hotel: "Treasure Island", kind: "tour", label: "Bus tour", pax: 3, bookings: 2, guests: [t3, t4] }],
+        },
+        relay_no_show: [],
+      }],
+    },
+  ];
+}
 let pref = null;
 
 function row(over) {
@@ -217,6 +274,15 @@ http
         pref = ctl.pref;
         delete ctl.pref;
       }
+      // 司机实时页：导游刚标了一位 No show（测 NEW / 页签数字）；clearNoShow 改回没标。
+      if (ctl.addNoShow) {
+        LIVE_MARKS[ctl.addNoShow] = { status: "no_show", at: laIso("07:05"), driver: "Ana", van: "Bus A" };
+        delete ctl.addNoShow;
+      }
+      if (ctl.clearMark) {
+        delete LIVE_MARKS[ctl.clearMark];
+        delete ctl.clearMark;
+      }
       return send(res, 200, { ctl, pref });
     }
     if (p === "/auth/login") {
@@ -288,15 +354,36 @@ http
     }
     if (p === "/api/notifications/morning-pickup/tracking") {
       const date = url.searchParams.get("date");
+      // 司机实时页（ctl.live）：每行多 live_status / live_status_at / live_driver / live_van / ns_unhandled（后端 fc 定）。
+      // ns_unhandled 模拟「标在最后一次 Take action 之后」：No show 而且还没人点 Take action。
+      const withLive = (r) => {
+        if (!ctl.live) return r;
+        const mk = LIVE_MARKS[r.order_number];
+        if (!mk) return { ...r, live_status: null, live_status_at: null, live_driver: "", live_van: "", ns_unhandled: false };
+        return { ...r, live_status: mk.status, live_status_at: mk.at, live_driver: mk.driver, live_van: mk.van, ns_unhandled: mk.status === "no_show" && !r.action_taken_by };
+      };
       return send(res, 200, {
         date,
         tracking_window: { end_minute: ctl.endMinute, end_label: ctl.endMinute === 0 ? "12:00 AM" : "11:59 PM" },
         rows: date !== today ? [] : [
-          ...(ctl.staleAction ? rows.map((r) => (r.id === 5 ? { ...r, notes_unhandled: true } : r)) : rows),
+          ...(ctl.staleAction ? rows.map((r) => (r.id === 5 ? { ...r, notes_unhandled: true } : r)) : rows).map(withLive),
           // 有电话、没邮箱：测对话框「短信最多两段」没邮箱时的提示（Annie 2026-10-15）。
           ...(ctl.noEmailRow ? [noEmailRow] : []),
         ],
       });
+    }
+    if (p === "/api/notifications/morning-pickup/live-drivers") {
+      if (ctl.liveForbidden) return send(res, 403, { detail: "Live drivers is not open to you." });
+      const date = url.searchParams.get("date");
+      // liveCompact：再加一位有单独导游的团车司机（driver_tour_view：只看数字 + shuttle 块，名单是 null）。
+      const compact = {
+        kind: "driver", hr_id: 13, name: "Sam", first_shift: "tour", error: false, inbox: { unread_total: 0, threads: [] },
+        segments: [{ id: 301, shift: "tour", kind: "", when: "", title: "ZZ Test West Rim", van: "Coach 30", tour_unset: false,
+          manifest: null, relay_guests: null, relay_farm_out_guests: null,
+          tour_compact: { total: 40, first: "7:00 AM", guide: "Ana", my_relay: 0, ti: 12, other_relay: 26, no_show: 2, not_split: false, unplaced: 3,
+            shuttles: [{ label: "Shuttle outbound", kind: "outbound", time: "6:30 AM", hotel: "ZZ Test Shuttle Stop", product: "ZZ Test Shuttle", pax: 5, bookings: 2 }] } }],
+      };
+      return send(res, 200, { date, people: date === today ? [...livePeople(), ...(ctl.liveCompact ? [compact] : [])] : [] });
     }
     let m = p.match(/^\/api\/bookings\/(\d+)\/take-action$/);
     if (m && req.method === "PUT") {
@@ -329,8 +416,8 @@ http
           author_username: "ZZ Test",
           direction: body.direction,
           body: body.body,
-          sms_status: body.send_sms ? (fail ? "failed" : "sent") : null,
-          email_status: body.send_email ? "sent" : null,
+          sms_status: body.send_sms ? (fail ? "failed" : body.body.includes("NOCHANNEL") ? "no_channel" : "sent") : null,
+          email_status: body.send_email ? (body.body.includes("FAILMAIL") ? "failed" : "sent") : null,
           created_at: "2026-10-03 08:00",
         };
         (notes[order] ||= []).push(note);

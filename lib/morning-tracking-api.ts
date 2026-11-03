@@ -1,6 +1,6 @@
 import { apiFetch } from "@/lib/api-client";
 import { buildQueryString } from "@/lib/utils";
-import type { MorningTracking } from "@/types";
+import type { LiveDrivers, MorningTracking } from "@/types";
 
 /** staff 及以上可调；纯读。date 为洛杉矶日期 YYYY-MM-DD。 */
 export function fetchMorningTracking(
@@ -23,4 +23,18 @@ export function fetchMorningTracking(
  */
 export function buildMorningExportUrl(date: string): string {
   return `/api/notifications/morning-pickup/export?${buildQueryString({ date })}`;
+}
+
+/**
+ * 司机实时页（Live drivers 页签）：当天每位司机 / 导游手机上那一页的同一份数据，只读。
+ * 权限 morning.view，开关 morning_live_drivers（默认只 Super Admin，关着 403）。
+ */
+export function fetchLiveDrivers(
+  date: string,
+  signal?: AbortSignal,
+): Promise<LiveDrivers> {
+  return apiFetch<LiveDrivers>(
+    "/api/notifications/morning-pickup/live-drivers",
+    { cache: "no-store", signal, query: { date } },
+  );
 }

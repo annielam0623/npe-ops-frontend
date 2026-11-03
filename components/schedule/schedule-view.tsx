@@ -43,6 +43,14 @@ import { coversGaps, sortByName } from "@/lib/schedule-timeline";
 import { pushRecentShift } from "@/lib/schedule-recent";
 import type { Rule } from "@/lib/schedule-engine";
 import {
+  type HoursOf,
+  WEEKDAY_NAMES,
+  hoursOfSettings,
+  sameEveryDay,
+  weekdayOf,
+  workHoursSummary,
+} from "@/lib/schedule-work-hours";
+import {
   fetchScheduleRules,
   saveScheduleRules,
 } from "@/lib/schedule-rules-api";
@@ -852,6 +860,8 @@ export function ScheduleView() {
   ]
     .filter(Boolean)
     .join(" · ");
+  // Working hours 按星期几（Annie 2026-11-02，后端 v144 work_hours；旧后端每天都是 work_window）。
+  const hoursOf = hoursOfSettings(settings);
   // 测试用的人（Annie 2026-10-30 选 A）和设成不算人头的人（Annie 11-02「Anita不算的」）：不算进空档。
   const testIds = new Set(
     employees.filter((e) => !coversGaps(e)).map((e) => e.id),
@@ -864,7 +874,7 @@ export function ScheduleView() {
           readyWeek.slots,
           derived.live,
           draft,
-          settings.work_window,
+          hoursOf,
           laNow,
           testIds,
         )
@@ -879,7 +889,7 @@ export function ScheduleView() {
   // 有测试用的人（is_test）时也自己算：他们的班不算覆盖（后端改好以前后端的 gaps 还算着他们）。
   const baseGaps =
     readyWeek && (dirty || testIds.size > 0)
-      ? localGaps(weekStart, liveSlots, settings.work_window, testIds)
+      ? localGaps(weekStart, liveSlots, hoursOf, testIds)
       : (readyWeek?.gaps ?? []);
   const rejectedGaps =
     dirty && saveState.kind === "error" ? (saveState.gaps ?? []) : [];
@@ -1178,10 +1188,8 @@ export function ScheduleView() {
                         data-working-hours
                         className={cn(MUTED, "text-[12px] max-sm:hidden")}
                       >
-                        Working hours{" "}
-                        {formatBadgeTime(settings.work_window.start_time)} –{" "}
-                        {formatBadgeTime(settings.work_window.end_time)} — gaps
-                        are checked inside these hours.
+                        Working hours {workHoursSummary(settings)} — gaps are
+                        checked inside these hours.
                       </p>
                     ) : null}
                   </div>
@@ -1217,7 +1225,8 @@ export function ScheduleView() {
                         }
                         onJump={jumpToDay}
                         onClick={() => setConfirmingPublish(true)}
-                        workWindow={settings.work_window}
+                        hoursOf={hoursOf}
+                        byDay={!sameEveryDay(settings)}
                       />
                     </div>
                   ) : readyWeek.status === "published" ? (
@@ -1234,7 +1243,7 @@ export function ScheduleView() {
                     weekStart={weekStart}
                     slots={liveSlots}
                     employees={activeEmployees}
-                    workWindow={settings.work_window}
+                    hoursOf={hoursOf}
                     selectedDate={timelineDate}
                     onSelectDate={(d) =>
                       setTimelineDay({ week: weekStart, date: d })
@@ -1767,7 +1776,8 @@ function PublishControl({
   publishedWithGaps,
   onJump,
   onClick,
-  workWindow,
+  hoursOf,
+  byDay,
 }: {
   gapDays: Map<string, ScheduleGap[]>;
   canPublish: boolean;
@@ -1779,18 +1789,22 @@ function PublishControl({
   publishedWithGaps: boolean;
   onJump: (date: string) => void;
   onClick: () => void;
-  /** 空档贴着 Working hours 开头 / 结尾时补一句（Annie 2026-11-02 preview ⑥A：一看就知道是 Working hours 卡住的）。 */
-  workWindow: ScheduleWorkWindow;
+  /** 空档贴着那一天 Working hours 开头 / 结尾时补一句（Annie 2026-11-02 preview ⑥A：一看就知道是 Working hours 卡住的）。 */
+  hoursOf: HoursOf;
+  /** Working hours 按天不同：那句话带星期几，例如「(Friday working hours end 9:30 PM)」。 */
+  byDay: boolean;
 }) {
   const list = [...gapDays.values()].flat();
   const edgeNote = (g: ScheduleGap) => {
-    const atStart = g.start_time === workWindow.start_time;
-    const atEnd = g.end_time === workWindow.end_time;
+    const h = hoursOf(g.date);
+    const atStart = g.start_time === h.start_time;
+    const atEnd = g.end_time === h.end_time;
     if (atStart && atEnd) return null;
+    const day = byDay ? `${WEEKDAY_NAMES[weekdayOf(g.date)]} ` : "";
     if (atEnd)
-      return `(working hours end ${formatBadgeTime(workWindow.end_time)})`;
+      return `(${day}working hours end ${formatBadgeTime(h.end_time)})`;
     if (atStart)
-      return `(working hours start ${formatBadgeTime(workWindow.start_time)})`;
+      return `(${day}working hours start ${formatBadgeTime(h.start_time)})`;
     return null;
   };
   const shown = list.slice(0, 3);
@@ -1965,7 +1979,7 @@ function WeekBody({
         canEdit={canEdit}
         onAssign={onAssign}
         onCreateSlots={onCreateSlots}
-        workWindow={settings.work_window}
+        hoursOf={hoursOfSettings(settings)}
         onDeleteSlot={onDeleteSlot}
         onUpdateTime={onUpdateTime}
         onSaveNote={onSaveNote}

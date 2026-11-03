@@ -1402,6 +1402,61 @@ async function run() {
   await waitFor(`!${SD}`);
   await fetch(`${MOCK}/api/settings/schedule/work-window`, { method: "PUT", body: JSON.stringify({ start_time: "03:00", end_time: "21:30" }) });
   await fetch(`${MOCK}/api/settings/schedule/shift-types/open`, { method: "PUT", body: JSON.stringify({ default_start_time: "02:00", default_end_time: "10:00" }) });
+
+  // ── Working hours 按星期几（Annie 2026-11-02「可以选择一周的时间，也可以分别设置几天的时间不同」，⑦⑧⑨ A；后端 v144 work_hours）──
+  await ctl({ workHours: true, role: "superadmin", meName: "" });
+  await openPage(`${APP}/schedule?week=${P2}`);
+  await waitFor("document.querySelector('[data-open-settings]')");
+  await openSettings();
+  check("后端带 work_hours：Working hours 两个选项，默认 Same every day（一组 3:00 AM – 9:30 PM），没有七行", await evaluate(`return ${SD}.querySelector('[data-hours-mode="same"]').checked && !${SD}.querySelector('[data-work-day]') && ${SD}.querySelector('input[aria-label="Working hours start"]').value === '3:00 AM';`));
+  await evaluate(`${SD}.querySelector('[data-hours-mode="by-day"]').click();`);
+  await waitFor(`${SD}.querySelectorAll('[data-work-day]').length === 7`);
+  check("点 Different by day：Mon–Sun 七行都先填上那一组，每行一个 No coverage needed，下面 Copy Monday to all days；换了方式也算改动（黄字 Not saved yet）", await evaluate(`return ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].every((d) => ${SD}.querySelector('input[aria-label="' + d + ' start"]').value === '3:00 AM' && ${SD}.querySelector('input[aria-label="' + d + ' end"]').value === '9:30 PM') && ${SD}.querySelectorAll('[data-day-off]').length === 7 && !!${SD}.querySelector('[data-copy-monday]') && ${SD}.querySelector('[data-settings-unsaved]')?.textContent === 'Not saved yet: working hours changed';`));
+  let whFrom = (await mockLog()).length;
+  await evaluate(`$setValue(${SD}.querySelector('input[aria-label="Sat start"]'), '04:00'); $setValue(${SD}.querySelector('input[aria-label="Sat end"]'), '21:00'); ${SD}.querySelector('[data-day-off="6"]').click();`);
+  await waitFor(`${SD}.querySelector('[data-settings-unsaved]')?.textContent === 'Not saved yet: working hours changed'`);
+  await evaluate(`${SD}.querySelector('[data-settings-save]').click();`);
+  await waitFor(`!!${SD}.querySelector('[data-settings-saved]') || !!${SD}.querySelector('[data-settings-error]')`);
+  const whBody = (await since(whFrom, (e) => e.method === "PUT" && e.path === "/api/settings/schedule/work-hours"))[0]?.body;
+  check("Sat 改 4:00 AM – 9:00 PM、Sun 勾 No coverage needed，按 Save：一次 PUT /work-hours，7 天整份（same_every_day=false），绿字 Saved；没碰 work-window", !!whBody && whBody.same_every_day === false && whBody.days.length === 7 && JSON.stringify(whBody.days[5]) === JSON.stringify({ weekday: 5, start_time: "04:00", end_time: "21:00", off: false }) && whBody.days[6].off === true && whBody.days[0].start_time === "03:00" && whBody.days[0].end_time === "21:30" && (await since(whFrom, (e) => e.path === "/api/settings/schedule/work-window")).length === 0 && (await evaluate(`return !!${SD}.querySelector('[data-settings-saved]');`)), JSON.stringify(whBody));
+  await evaluate(`$btn('Close', ${SD}).click();`);
+  await waitFor(`!${SD}`);
+  check("Day timeline 卡头那行按天写：Mon–Fri 3:00 AM – 9:30 PM · Sat 4:00 AM – 9:00 PM · Sun no coverage needed", await waitFor("document.querySelector('[data-working-hours]')?.textContent.replace(/\\s+/g, ' ').trim() === 'Working hours Mon–Fri 3:00 AM – 9:30 PM · Sat 4:00 AM – 9:00 PM · Sun no coverage needed — gaps are checked inside these hours.'"), await evaluate("return document.querySelector('[data-working-hours]')?.textContent.replace(/\\s+/g, ' ').trim();"));
+  check("空档按当天：Sun 12/06（No coverage needed）没有红点，Sat 12/12 有", await waitFor(`!document.querySelector('[data-day-tab="${P2}"][data-has-gap]') && !!document.querySelector('[data-day-tab="2026-12-12"][data-has-gap]')`));
+  await evaluate("document.querySelector('[data-day-tab=\"2026-12-12\"]').click();");
+  check("Day timeline 看 Sat：刻度两头 4 AM / 9 PM，Nobody 4:00 AM – 9:00 PM", await waitFor("[...document.querySelectorAll('[data-nobody-row]')].some((r) => r.textContent.includes('4:00 AM – 9:00 PM')) && document.querySelector('[data-axis-step=\"2\"] span')?.textContent === '4 AM' && [...document.querySelectorAll('[data-axis-step=\"2\"] span')].pop().textContent === '9 PM'"), await evaluate("return [...document.querySelectorAll('[data-axis-step=\"2\"] span')].map((x) => x.textContent).join(',');"));
+  await evaluate(`document.querySelector('[data-day-tab="${P2}"]').click();`);
+  check("Day timeline 看 Sun：Gaps 那一句写 none — no coverage needed on this day", await waitFor("!!document.querySelector('[data-gaps-line] [data-no-coverage]')"));
+  // 只读的人看到的也是按天那一句
+  await ctl({ role: "admin", tick: { switchOn: false, codes: STANDARD_SUP.filter((c) => c !== "settings.schedule") } });
+  await openPage(`${APP}/schedule?week=${P2}`);
+  await waitFor("document.querySelector('[data-open-settings]')");
+  await openSettings();
+  check("没勾 settings.schedule 的人：Working hours 只读一句，按天写", await evaluate(`return ${SD}.querySelector('[data-settings-hours]').textContent.includes('Mon–Fri 3:00 AM – 9:30 PM · Sat 4:00 AM – 9:00 PM · Sun no coverage needed') && !${SD}.querySelector('input');`));
+  await evaluate(`$btn('Close', ${SD}).click();`);
+  await ctl({ role: "superadmin", tick: null });
+  await openPage(`${APP}/schedule?week=${P2}`);
+  await waitFor("document.querySelector('[data-open-settings]')");
+  await openSettings();
+  check("再打开：Different by day 选着，Sat 4:00 AM、Sun 勾着", await evaluate(`return ${SD}.querySelector('[data-hours-mode="by-day"]').checked && ${SD}.querySelector('input[aria-label="Sat start"]').value === '4:00 AM' && ${SD}.querySelector('[data-day-off="6"]').checked;`));
+  // 400：后端原话红字
+  await evaluate(`$setValue(${SD}.querySelector('input[aria-label="Mon end"]'), '03:00');`);
+  await waitFor(`!!${SD}.querySelector('[data-settings-unsaved]')`);
+  await evaluate(`${SD}.querySelector('[data-settings-save]').click();`);
+  check("Mon 开始 = 结束：后端 400，红字「Working hours not saved — Monday: start and end time cannot be the same.」，改动留着", await waitFor(`${SD}.querySelector('[data-settings-error]')?.textContent.includes('Working hours not saved — Monday: start and end time cannot be the same.')`), await evaluate(`return ${SD}.querySelector('[data-settings-error]')?.textContent;`));
+  await evaluate(`$setValue(${SD}.querySelector('input[aria-label="Mon end"]'), '21:30');`);
+  // Copy Monday + 切回 Same every day
+  await evaluate(`${SD}.querySelector('[data-copy-monday]').click();`);
+  check("Copy Monday to all days：Sat 变回 3:00 AM – 9:30 PM（Sun 的勾不动）", await waitFor(`${SD}.querySelector('input[aria-label="Sat start"]').value === '3:00 AM' && ${SD}.querySelector('input[aria-label="Sat end"]').value === '9:30 PM' && ${SD}.querySelector('[data-day-off="6"]').checked`));
+  await evaluate(`${SD}.querySelector('[data-hours-mode="same"]').click();`);
+  check("切回 Same every day：用 Monday 那一组，黄字 All days will use 3:00 AM – 9:30 PM.", await waitFor(`${SD}.textContent.includes('All days will use 3:00 AM – 9:30 PM.') && !${SD}.querySelector('[data-work-day]')`));
+  whFrom = (await mockLog()).length;
+  await evaluate(`${SD}.querySelector('[data-settings-save]').click();`);
+  await waitFor(`!!${SD}.querySelector('[data-settings-saved]')`);
+  const sameBody = (await since(whFrom, (e) => e.method === "PUT" && e.path === "/api/settings/schedule/work-hours"))[0]?.body;
+  check("按 Save：same_every_day=true，7 天都是 03:00–21:30、都不勾", !!sameBody && sameBody.same_every_day === true && sameBody.days.every((d) => d.start_time === "03:00" && d.end_time === "21:30" && d.off === false), JSON.stringify(sameBody));
+  await evaluate(`$btn('Close', ${SD}).click();`);
+  await ctl({ workHours: false });
   await ctl({ phase2: false, role: "supervisor", meName: "" });
   await openPage(`${APP}/schedule?week=2026-10-04`);
   await waitFor(`${cell("1|2026-10-04")}`);

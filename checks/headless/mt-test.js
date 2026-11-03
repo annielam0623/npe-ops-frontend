@@ -290,8 +290,9 @@ async function run() {
   check("投递结果标签：SMS sent, Email failed", dialogText.includes("SMS sent, Email failed"));
   check("客人消息标签 Guest via SMS", dialogText.includes("Guest via SMS"));
   check("电话 AI 留言标签 Phone AI（后端 E188）", dialogText.includes("Phone AI"));
-  check("SMS 默认勾选、Email 默认不勾",
-    await evaluate("const c=[...document.querySelectorAll('[role=dialog] input[type=checkbox]')]; return c[0].checked && !c[1].checked;"));
+  // Annie 2026-11-02「那你把他们都改成两个勾选」。
+  check("SMS 和 Email 默认都勾",
+    await evaluate("const c=[...document.querySelectorAll('[role=dialog] input[type=checkbox]')]; return c[0].checked && c[1].checked;"));
 
   // 字数提示
   await evaluate("$setValue(document.querySelector('[role=dialog] textarea'), 'Hello there');");
@@ -351,8 +352,9 @@ async function run() {
   await waitFor("document.querySelector('[role=dialog] textarea').value === ''");
   log = (await mockLog()).slice(before);
   post = log.find((e) => e.method === "POST");
-  check("Send：direction=sms_out，send_sms=true，send_email=false",
-    post && post.body.direction === "sms_out" && post.body.send_sms === true && post.body.send_email === false, JSON.stringify(post));
+  // 短信和邮件默认都勾（Annie 2026-11-02「那你把他们都改成两个勾选」）。
+  check("Send：direction=sms_out，send_sms=true，send_email=true（默认两个都勾）",
+    post && post.body.direction === "sms_out" && post.body.send_sms === true && post.body.send_email === true, JSON.stringify(post));
   check("发送成功不出警告", !(await evaluate("return !!document.querySelector('[role=dialog] [role=alert]');")));
 
   // 没送达
@@ -1075,6 +1077,114 @@ async function run() {
     await waitFor("document.querySelector('input[aria-label=\"Date\"]')", 30000);
     await sleep(500);
     check("电脑：照旧能看别的日子（?date=昨天）、有日期切换", (await evaluate("return document.querySelector('input[aria-label=\"Date\"]').value;")) === yesterdayYmd);
+  }
+
+  // ── 司机实时页（Annie 2026-11-02「出来第3个，我要30秒刷新relay，其他都同意推荐，动手」，preview TwJJ32NCdbTEnqxQcCX6MN 第 3 版）──
+  // ⑪ A 页签 Tracking / Live drivers；② 先只 Super Admin（开关 morning_live_drivers 默认关）；⑥ A No show 淡红置顶 + Take action；
+  // ⑦ A 统计照搬；③ Live drivers 30 秒刷新；⑨ 回复框短信 + 邮件同时发。
+  {
+    const LIVE_ON = [{ key: "morning_live_drivers", label: "Live drivers", visibility: "super_admin_only", default: "super_admin_only", visible_to_me: true }];
+    const LIVE_OFF = [{ key: "morning_live_drivers", label: "Live drivers", visibility: "super_admin_only", default: "super_admin_only", visible_to_me: false }];
+    const openTracking = async () => {
+      await goto(`${APP}/morning-pickup/tracking`);
+      await waitFor("document.querySelectorAll('main tbody tr').length >= 4", 30000);
+      await helpers();
+    };
+    const orderCol = () => evaluate("return [...document.querySelectorAll('main thead th')].map((th) => th.textContent.replace('⠿','').trim().replace(/\\s*\\d+$/, ''));");
+    // 开关没对我开（员工）：跟以前一样——没有页签、没有 Driver mark、No show 不置顶
+    await ctl({ live: true, staffPerms: ["morning.view", "messages.view", "messages.reply"], superAdmin: false, extraWidgets: LIVE_OFF });
+    await openTracking();
+    check("开关没对我开：没有 Tracking / Live drivers 页签、没有 Driver mark 列、没有 No show 红行", await evaluate("return !document.querySelector('[data-mt-tab]') && ![...document.querySelectorAll('main thead th')].some((th) => th.textContent.includes('Driver mark')) && !document.querySelector('[data-ns-row]');"));
+    // Super Admin
+    await ctl({ live: true, staffPerms: null, superAdmin: true, extraWidgets: LIVE_ON });
+    await openTracking();
+    check("Super Admin：两个页签 Tracking / Live drivers，Live drivers 旁边写 Super Admin only，默认在 Tracking", await waitFor("document.querySelectorAll('[data-mt-tab]').length === 2 && document.querySelector('[data-mt-tab=\"live\"]').textContent.includes('Super Admin only') && document.querySelector('[data-mt-tab=\"tracking\"]').getAttribute('aria-selected') === 'true'"));
+    const cols = await orderCol();
+    check("Tracking 表多一列 Driver mark，紧跟 Check-in Time", cols.indexOf("Driver mark") === cols.indexOf("Check-in Time") + 1, cols.join(","));
+    check("司机标了 No show、没人处理的 A1002 顶到最上面，淡红底，Driver mark 写「✗ No show 6:03 AM」+「Van 12 Mike」+ ⚠️ Take action", await evaluate("const tr = document.querySelector('main tbody tr'); const m = tr.querySelector('[data-driver-mark]'); return tr.dataset.nsRow === 'A1002' && tr.className.includes('rgba(239,68,68') && m.dataset.driverMark === 'no_show' && m.textContent.includes('✗ No show 6:03 AM') && m.textContent.includes('Van 12 Mike') && !!m.querySelector('[data-ns-take-action]');"), await evaluate("return document.querySelector('main tbody tr')?.textContent;"));
+    check("Picked up / Boarded 照写时间（A1001 ✓ Picked up 5:42 AM、A1003 ✓ Boarded 7:02 AM），没标的写 —", await evaluate("const mk = (o) => [...document.querySelectorAll('main tbody tr')].find((tr) => tr.textContent.includes(o)).querySelector('[data-driver-mark]'); const none = [...document.querySelectorAll('main tbody tr')].find((tr) => tr.textContent.includes('A1004')); return mk('A1001').textContent.includes('✓ Picked up 5:42 AM') && mk('A1003').textContent.includes('✓ Boarded 7:02 AM') && !none.querySelector('[data-driver-mark]');"));
+    check("页签上红数字 1（没处理的 No show 单数）", await evaluate("return [...document.querySelectorAll('[data-ns-badge]')].every((b) => b.textContent === '1') && document.querySelectorAll('[data-ns-badge]').length === 2;"));
+    let from = (await mockLog()).length;
+    await evaluate("document.querySelector('[data-ns-take-action]').click();");
+    check("点 ⚠️ Take action：PUT take-action want=on；那一行不再置顶、不红，写 ✓ ZZ Test；页签变绿点", (await waitFor("!document.querySelector('[data-ns-row]') && !!document.querySelector('[data-ns-handled]') && document.querySelectorAll('[data-ns-badge-ok]').length === 2 && !document.querySelector('[data-ns-badge]')")) && (await mockLog()).slice(from).some((e) => e.method === "PUT" && /\/api\/bookings\/2\/take-action/.test(e.path) && String(e.query).includes("want=on")));
+    // 撤销，后面还要用 No show
+    await fetch(`${MOCK}/api/bookings/2/take-action?want=off`, { method: "PUT" });
+    // 新冒出来的 No show：刷新后那一行带 NEW、闪
+    await openTracking();
+    await ctl({ addNoShow: "A1004" });
+    await evaluate("$btn('↻ Refresh').click();");
+    check("刷新后新冒出来的 No show（A1004）：顶上来、带 NEW、闪三下；页签数字变 2", await waitFor("!!document.querySelector('tr[data-ns-row=\"A1004\"][data-ns-new]') && document.querySelector('tr[data-ns-row=\"A1004\"]').textContent.includes('NEW') && document.querySelector('[data-ns-badge]')?.textContent === '2'"));
+    check("原来就有的 A1002 不带 NEW", await evaluate("return !document.querySelector('tr[data-ns-row=\"A1002\"][data-ns-new]');"));
+    // Live drivers 页签
+    from = (await mockLog()).length;
+    await evaluate("document.querySelector('[data-mt-tab=\"live\"]').click();");
+    check("点 Live drivers：读 /live-drivers?date=今天，一人一列（Mike 司机、Ana 导游），表收起；日期、司机筛选、统计卡照旧在", (await waitFor("document.querySelectorAll('[data-live-person]').length === 2")) && (await mockLog()).slice(from).some((e) => e.path === "/api/notifications/morning-pickup/live-drivers") && (await evaluate("return !document.querySelector('main tbody') && !!document.querySelector('section[aria-label=Summary]') && !!document.querySelector('[aria-label=\"Filter by driver\"]');")));
+    // 看样子用：LIVE_SHOT=文件路径 时存一张 Live drivers 页签的截图（1500 宽）。
+    if (process.env.LIVE_SHOT) {
+      await cdp("Emulation.setDeviceMetricsOverride", { width: 1500, height: 1300, deviceScaleFactor: 1, mobile: false });
+      await sleep(600);
+      const shot = await cdp("Page.captureScreenshot", { format: "png" });
+      require("fs").writeFileSync(process.env.LIVE_SHOT, Buffer.from(shot.data, "base64"));
+      await cdp("Emulation.clearDeviceMetricsOverride");
+    }
+    const mike = "document.querySelector('[data-live-person=\"driver-11\"]')";
+    const ana = "document.querySelector('[data-live-person=\"guide-12\"]')";
+    check("Mike 那一列：列头 Van 12 · Morning Relay · 1st Round，2 picked up · 2 no show · 0 not marked · 4 pax；Good morning, Mike；Routes / Messages（红数字 1）", await evaluate(`const t = ${mike}.textContent; return t.includes('Van 12 · Morning Relay · 1st Round') && ${mike}.querySelector('[data-live-counts]').textContent.replace(/\\s+/g, ' ').trim() === '2 picked up · 2 no show · 0 not marked · 4 pax' && t.includes('Good morning, Mike') && ${mike}.querySelector('[data-live-tab=\"messages\"]').textContent.includes('1');`), await evaluate(`return ${mike}.querySelector('[data-live-counts]')?.textContent;`));
+    check("按钮只读：标了的那个保持绿 / 红，下面写几点（✓ Picked up 5:42 AM、✗ No show 6:03 AM）", await evaluate(`const g = (o) => ${mike}.querySelector('[data-live-guest="' + o + '"]'); return !!g('A1001').querySelector('[data-mark-btn=on]') && g('A1001').querySelector('[data-mark-time]').textContent === '✓ Picked up 5:42 AM' && !!g('A1002').querySelector('[data-mark-btn=ns]') && g('A1002').querySelector('[data-mark-time]').textContent === '✗ No show 6:03 AM' && !g('A1001').querySelector('button:not([data-live-text])');`));
+    check("Ana（导游）那一列：Hello, Ana；On board 2 / 3；A1003 ✓ Boarded 7:02 AM；A1004 是刚标的 No show", await evaluate(`const t = ${ana}.textContent; return t.includes('Hello, Ana') && t.includes('On board 2 / 3') && ${ana}.querySelector('[data-live-guest="A1003"] [data-mark-time]').textContent === '✓ Boarded 7:02 AM';`));
+    // 搜索：客人那一行标黄
+    await evaluate("$setValue(document.querySelector('input[type=search]'), 'A1003');");
+    check("搜索 A1003：Live drivers 里那位客人标黄", await waitFor(`${ana}.querySelector('[data-live-guest="A1003"]').className.includes('ring-yellow-400') && !${mike}.querySelector('[data-live-guest="A1001"]').className.includes('ring-yellow-400')`));
+    await evaluate("$setValue(document.querySelector('input[type=search]'), '');");
+    // 司机筛选：只看 Mike
+    await evaluate("[...document.querySelectorAll('[aria-label=\"Filter by driver\"] button')].find((b) => b.textContent.startsWith('Mike')).click();");
+    check("司机筛选点 Mike：只剩 Mike 那一列", await waitFor("document.querySelectorAll('[data-live-person]').length === 1 && !!document.querySelector('[data-live-person=\"driver-11\"]')"));
+    await evaluate("[...document.querySelectorAll('[aria-label=\"Filter by driver\"] button')].find((b) => b.textContent.startsWith('All')).click();");
+    await waitFor("document.querySelectorAll('[data-live-person]').length === 2");
+    // ⑨ 回复：Text 打开同一个回复框，短信 + 邮件默认都勾
+    await evaluate(`${mike}.querySelector('[data-live-guest="A1001"] [data-live-text]').click();`);
+    await waitFor("document.querySelector('[role=dialog] textarea')");
+    check("Text 打开 Tracking 的回复框（A1001），SMS to guest 和 Email to guest 默认都勾", await evaluate("const d = document.querySelector('[role=dialog]'); const box = (l) => [...d.querySelectorAll('label')].find((x) => x.textContent.includes(l))?.querySelector('input'); return d.textContent.includes('A1001') && box('SMS to guest').checked && box('Email to guest').checked;"));
+    from = (await mockLog()).length;
+    await evaluate("$setValue(document.querySelector('[role=dialog] textarea'), 'Hi from the office'); $btn('Send →', document.querySelector('[role=dialog]')).click();");
+    check("Send →：一次 POST，send_sms + send_email 都是 true；发完两行绿字 ✓ SMS sent to … / ✓ Email sent to …", (await waitFor("document.querySelectorAll('[data-send-result=ok]').length === 2")) && (await mockLog()).slice(from).some((e) => e.method === "POST" && e.path === "/booking-notes/by-order/A1001" && e.body?.send_sms === true && e.body?.send_email === true), await evaluate("return document.querySelector('[data-send-results]')?.textContent;"));
+    await evaluate("$setValue(document.querySelector('[role=dialog] textarea'), 'NOCHANNEL FAILMAIL test'); $btn('Send →', document.querySelector('[role=dialog]')).click();");
+    check("短信渠道判不出 / 邮件失败：红字「SMS not sent: no channel」和「✗ Email NOT delivered」", await waitFor("document.querySelector('[data-send-results]')?.textContent.includes('SMS not sent: no channel') && document.querySelector('[data-send-results]').textContent.includes('Email NOT delivered') && document.querySelectorAll('[data-send-result=bad]').length === 2"), await evaluate("return document.querySelector('[data-send-results]')?.textContent;"));
+    await evaluate("document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));");
+    await sleep(200);
+    if (await evaluate("return !!document.querySelector('[role=dialog]');")) await evaluate("[...document.querySelectorAll('[role=dialog] button')].find((b) => /close|×/i.test(b.getAttribute('aria-label') || b.textContent))?.click();");
+    await waitFor("!document.querySelector('[role=dialog]')");
+    await evaluate("document.querySelector('[data-mt-tab=\"tracking\"]').click();");
+    await waitFor("document.querySelectorAll('main tbody tr').length >= 4");
+    // Messages 页签
+    await evaluate("document.querySelector('[data-mt-tab=\"live\"]').click();");
+    await waitFor(`${mike}`);
+    await evaluate(`${mike}.querySelector('[data-live-tab="messages"]').click();`);
+    check("Mike 的 Messages：收件箱一条（ZZ Test Two，红点，Running 10 min late），写「打开不算司机已读」", await waitFor(`${mike}.querySelector('[data-live-thread="A1002"]')?.textContent.includes('Running 10 min late') && ${mike}.textContent.includes('does not mark it read for the driver')`));
+    // 30 秒刷新（Live drivers 页签）
+    if (!SKIP_POLL) {
+      from = (await mockLog()).length;
+      await ctl({ clearMark: "A1004" });
+      check("Live drivers 每 30 秒刷新：35 秒内又读了一次 live-drivers 和 tracking；A1004 改回没标后页签数字变 1", (await waitFor(`(async () => true)() && document.querySelector('[data-ns-badge]')?.textContent === '1'`, 40000)) && (await mockLog()).slice(from).some((e) => e.path === "/api/notifications/morning-pickup/live-drivers") && (await mockLog()).slice(from).some((e) => e.path === "/api/notifications/morning-pickup/tracking"));
+    }
+    // 403（开关被关）：页签里说一句，不白屏
+    await ctl({ liveForbidden: true });
+    await openTracking();
+    await evaluate("document.querySelector('[data-mt-tab=\"live\"]').click();");
+    check("live-drivers 403：Live drivers 页签写「not open to you yet」，不白屏", await waitFor("document.body.textContent.includes('Live drivers is not open to you yet')"));
+    // 旧后端（行里没有 live_* 键）：Driver mark 列不出
+    // 有单独导游的团车司机（只看数字）：照 driver_home.html 的 tc——没分到车的提醒、团名、数字、shuttle 块。
+    await ctl({ liveForbidden: false, liveCompact: true });
+    await openTracking();
+    await evaluate("document.querySelector('[data-mt-tab=\"live\"]').click();");
+    const sam = "document.querySelector('[data-live-person=\"driver-13\"]')";
+    check("只看数字的团车（tour_compact）：40 pax on this bus、团名、Guide: Ana、TI 12 / relay 26 / No show 2、3 orders 没分到车的提醒、Shuttle outbound 块（时间、接人点、产品、5 人 2 单）",
+      await waitFor(`${sam} && ${sam}.textContent.includes('40pax on this bus') && ${sam}.textContent.includes('ZZ Test West Rim') && ${sam}.textContent.includes('Guide: Ana') && ${sam}.textContent.includes('3 orders on this tour have no bus yet and are not counted here. Call dispatch.') && !!${sam}.querySelector('[data-compact-shuttle]') && ['6:30 AM', 'ZZ Test Shuttle Stop', 'Shuttle outbound', 'ZZ Test Shuttle', '52 bookings'].every((t) => ${sam}.querySelector('[data-compact-shuttle]').textContent.includes(t)) && ['12Board at Treasure Island', '26Brought to TI by relay', '2No show (from guide)'].every((t) => ${sam}.textContent.includes(t))`),
+      await evaluate(`return ${sam}?.textContent;`));
+    await ctl({ liveCompact: false, live: false });
+    await openTracking();
+    check("旧后端（没有 live_* 键）：Super Admin 也没有 Driver mark 列，表照旧", await evaluate("return ![...document.querySelectorAll('main thead th')].some((th) => th.textContent.includes('Driver mark'));"));
+    await ctl({ live: false, staffPerms: null, superAdmin: false, extraWidgets: null });
   }
 
   // ── 未登录 ──

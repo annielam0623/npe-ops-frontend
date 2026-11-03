@@ -10,6 +10,7 @@ import {
 } from "@/lib/schedule-timeline";
 import { gapDayLabel, gapReason, gapsByDate } from "@/lib/schedule-gaps";
 import { formatClock, minutesOf } from "@/lib/schedule-time";
+import type { HoursOf } from "@/lib/schedule-work-hours";
 import { shiftYmd } from "@/lib/la-date";
 import { cn } from "@/lib/utils";
 import type {
@@ -17,7 +18,6 @@ import type {
   ScheduleGap,
   ScheduleShiftType,
   ScheduleSlot,
-  ScheduleWorkWindow,
 } from "@/types";
 
 import { DAY_LABELS } from "./config";
@@ -26,7 +26,8 @@ interface DayTimelineProps {
   weekStart: string;
   slots: ScheduleSlot[];
   employees: ScheduleEmployee[];
-  workWindow: ScheduleWorkWindow;
+  /** 那一天的 Working hours（按星期几，Annie 2026-11-02）；off = No coverage needed，这天不查空档。 */
+  hoursOf: HoursOf;
   /** 外部已经选了要看哪天（例如点了有空档的日子）时传入；不传就自己管理、默认今天在这一周里的那天或周一。 */
   selectedDate?: string;
   defaultDate?: string;
@@ -112,7 +113,7 @@ export function DayTimeline({
   weekStart,
   slots,
   employees,
-  workWindow,
+  hoursOf,
   selectedDate,
   defaultDate,
   onSelectDate,
@@ -129,8 +130,9 @@ export function DayTimeline({
     onSelectDate?.(d);
   };
 
-  const windowStart = minutesOf(workWindow.start_time) ?? 0;
-  const windowEnd = minutesOf(workWindow.end_time) ?? 24 * 60;
+  const dayHours = hoursOf(date);
+  const windowStart = minutesOf(dayHours.start_time) ?? 0;
+  const windowEnd = minutesOf(dayHours.end_time) ?? 24 * 60;
 
   const allBars = dayBars(slots, employees, date);
   // 不算值班人头的人（Annie 2026-11-02「我已经说过Anite不参加gap，为什么她的时间仍然出来在时间条里」，preview ①A）：
@@ -148,7 +150,9 @@ export function DayTimeline({
         endMin: minutesOf(g.end_time) ?? 0,
         gap: g as ScheduleGap | null,
       }))
-    : gapsOf(bars, windowStart, windowEnd).map((g) => ({ ...g, gap: null }));
+    : dayHours.off
+      ? []
+      : gapsOf(bars, windowStart, windowEnd).map((g) => ({ ...g, gap: null }));
   const otherDays = byDate ? [...byDate.keys()].filter((d) => d !== date) : [];
   const nobodyRows = showGaps && byDate ? gaps : [];
   // 刻度和每小时竖线只在 Working hours 不跨午夜时画（跨午夜的窗口条子本来也画不对，另说）。
@@ -354,7 +358,11 @@ export function DayTimeline({
             <span className="font-semibold text-white/70">
               {byDate ? `Gaps on ${gapDayLabel(date)}: ` : "Gaps: "}
             </span>
-            {gaps.length === 0 ? (
+            {dayHours.off ? (
+              <span data-no-coverage className="text-white/45">
+                none — no coverage needed on this day
+              </span>
+            ) : gaps.length === 0 ? (
               <span className="text-emerald-300">
                 {byDate ? "none" : "none — fully covered"}
               </span>
