@@ -487,6 +487,7 @@
   - ⚠️ 急（Annie 原话）：「这个很重要，需要今天做完，明天就需要排出来，周三要跟员工确认了」⇒ 后端已收工，走纯前端（现有周接口 + 前端 Auto-fill 引擎，一周一周存草稿）；0e preview 压到最简 15–20 分钟交，同时在 task/schedule-base-week 按推荐先写。
   - 0e 查：纯前端可做（GET weeks、engine locked + findViolations、POST weeks/{周}/slots/bulk 存草稿）。preview：https://claude.ai/artifact/L3gCgqBPvDLBxAC2ToDVxp 。7 题（推荐）：① 照抄再按 Rules 修正（A）；② 下周起 4 周、可选 1–6（A）；③ 已有草稿只填空格（A），已发布不动；④ 存草稿各周自己 Publish（A）；⑤ 排不出留空、淡红 + 红字列出（A）；⑥ 员工确认照旧；⑦ 跟 schedule.edit。等 Annie 答 + 动手。
   - ✅ Annie 在 f8 窗口（原话）：「7题全部同意推荐，动手」⇒ 0e 做完 task/schedule-base-week 今晚合 main。
+    - 0e 发现：后端 GET weeks 主管第一次打开某周会自动复制上一周的班（copied_from），照题 ③ 字面「只填空格」会全保留混乱周的复制品。0e 改法：复制来的周（copied_from 有值）整周按基础周排、replace:true；非复制来的草稿只填空格；已发布不动；预览写清每周是哪种。风险：复制周上手改过的几格会被换掉。f8 已问 Annie 确认，0e 先照这个做。
 - Annie 问以前的「谁哪天不上 / 谁不上某个班」设置在哪：f8 答——在排班页 Rules 页签（Cannot work / Fixed shift 等规则，给 Auto-fill 用）。
 - Annie 更正（f8 窗口原话）：「没有，后端也一直在做」⇒ 后端今晚不收工。9e：按天设已派 36 今晚做，迁移 v144（排 fc v143 后，要 Annie 执行），字段名定了发 f8。
 - （作废）9e：按天设已记规格，22:14 PT 过了 21:30 收工点，明天第一件派（迁移 v144），今晚只做完 relay-print。
