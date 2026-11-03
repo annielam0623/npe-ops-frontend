@@ -635,7 +635,7 @@
   - 同一司机换车：客人再打开原短信链接，页面自动显示「Your bus has changed to Bus #新车」，Track 开新车地图，不用重发。条件：Driver 名在 Morning tracking 能点（HR 对上且有 Samsara Driver ID）、新车在 Vehicles 有 Samsara 链接、Samsara 查得到司机现车。
   - 红字 = 客人最近一次按 Track 开的是 A 车，司机现在在 B 车。真要处理时是请客人回原短信再按 Track，不是发新链接。误报：接完客司机换去开别的车（红字不看时间）；一单分两台车（按这单最新一条比，另一台那行误标）。
   - 换司机：系统认发送时名单里的司机（bookings.driver），Dispatch 改派 / Apply 不改它。只改 Dispatch 不重发 ⇒ 客人可能被带到旧司机正在开的别的车上（还写「Your bus has changed」）。重新上传、勾这几位、再发才更新。客人页和短信上没有司机名字电话。
-  - 11/2 截图那些：前端读不到生产，已请 37 只读查是真换车还是误报。
+  - 11/2 截图那些：前端读不到生产，37 派 64 只读查（数据库 + Samsara 分配段），各类几条、举例经 37 回。37 提醒：这件跟后端待办 G234（提醒发出后换车 / 换司机 → 提示重发）重叠，G234 也在等 Annie。
 - 题 1：请后端改三处吗？A（推荐）都改：① 红字只在接客时段内、按这一行的车号比；② 换司机后跟车按 Dispatch 的派车（Dispatch 保存同步到订单，或跟车直接读 Dispatch，后端定）；③ 红字和 How to use 文字改成「请客人重新打开链接按 Track」（新文字先给 Annie 看）。B 只改 ①③；C 都不改，只写操作步骤。
 - 题 2：staff 操作步骤（英文，放 Morning tracking 的 How to use，替换 Guest Viewed 那条）先照现在的做法上吗？A（推荐）先上，后端改完再更新；B 等后端改完一起上。草稿原文：
   - Guest Viewed shows when the guest last tapped Track on their tracking page. "—" means they have not tapped it yet.
