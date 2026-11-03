@@ -65,6 +65,7 @@
 - relay 司机标的状态办公室能不能看到（Annie 在 9e 问）：f8 只读核——ops Morning Relay 只出红「No show」，picked_up 不显示，不自动刷新，没有通知。已回 9e。
 - 新功能（Annie 在后端主窗口原话，9e 转）：「我们要不啊再出一个版本的页面，就跟司机看到的页面一样，每个司机占一列，他所有的行动都显示出来」，另说「我刚才说了」（不用再问做不做）。⇒ 派 39 出 preview（办公室看当天每个司机一列：客人 + Picked up / No show + 时间；题：放哪、谁能看、刷新频率、显示时间 / 历史、团车导游的 Boarded 算不算、No show 提醒）。后端要只读接口，标记时间存不存 9e 在查。
   - Annie 补（后端主窗口原话）：「把各个司机的手机页面都显示出来，并列在页面上」⇒ 每列 = 司机手机页原样，并排，只读，staff 不能代点。后端出 staff 只读接口，复用司机页取数。已转 39。
+  - 39 preview：https://claude.ai/artifact/TwJJ32NCdbTEnqxQcCX6MN （每列原样司机 / 导游手机页，只读按钮灰掉，深蓝列头）。后端现状：只存最新一次标记 + 时间 + 人，没有历史。10 题（推荐）：① Dispatch 加「③ Live drivers」（A）；② 跟 dispatch.view（A，要先检查就 B 开关）；③ 30 秒自动 + Refresh（A）；④ 标记后写时间（A）；⑤ 一辆车一列（A）；⑥ 步骤条旁红数字 No show 人数，不发通知（B）；⑦ 页顶统计行留（A）；⑧ 按开始时间排（A）；⑨ Messages 页签照留只读（A）；⑩ 按钮照画灰掉（A）。接口形状已转 9e 估工作量（GET /api/dispatch/live-drivers）。
 - 今晚在等 Annie 的，跟 24 交接第三节一样，不重问。
 
 ## 2026-11-02 收工交接：前端主窗口-24 [d1dbae]（公司）
