@@ -6,9 +6,10 @@
 
 > **下一个主窗口：先读下面「2026-11-02 收工交接：前端主窗口-24」，再看置顶「📌 等 Annie 确认」。更早的交接是 10-30 晚那节。**
 
-## 2026-11-02 晚 没勾 See prices, agent & commission 的人藏价格（`task/money-view-hide`，工作窗口 `npe-ops-frontend-0e`[d96681]，主窗口 f8 派）—— ⛔ 推了分支，等后端 v142 上线再合 main
+## 2026-11-02 晚 没勾 See prices, agent & commission 的人藏价格（`task/money-view-hide`，工作窗口 `npe-ops-frontend-0e`[d96681]，主窗口 f8 派）—— ✅ 后端 8e9a9a58 上线、v142 Annie 已执行（21 人勾上、CCL 5 人没勾）后合 main
 - Annie 原话（置顶 48 题 8）：「要」「选1」；「只单独勾了CCL的就是CCL的人……」；「默认不带 / 藏」；「除了客人的基本信息，CCL看不到任何有价格的信息」→「动手」；验收「manifest，dispatch等任何有价格的那一栏都隐藏起来他们点击或添加都不行就可以了」。
 - ⛔ 上线顺序：后端先跑 v142（加 orders.money_view 勾、给现有员工勾上）再上线，前端才能合。前端按勾藏，勾不存在时会把所有员工的价格都藏掉。后端卡在 fc 的 v141 先落地，预计 11-03。
+- 合 main 前（合最新 main 后）对照后端真实代码再核：manifest_fields MONEY_HIDDEN_FIELDS（PARTNER_HIDDEN + source / source_channel + money 组）、orders no_money_view（price=null、快照去金额键、activity_log 金额条目换「(price details hidden)」）、farm_out_settings rates 403 + 日志 SQL 里筛掉 rates 条目，都和前端对得上。检查：orders 46、man 346（第一次 344，拖列两项偶发，单独重跑全过）、mt 218、tt 137、tk 135、fod 48、fr 24、perm 54、nav 38、da 454、fo-settings 132；tsc / eslint 0 错 / build 过。
 - 判断：`usePermissions().canSeeMoney`（lib/staff-permissions.ts，`can("orders.money_view")`：Super Admin 恒有、读失败员工照旧、partner 按勾）。哪些算钱放 `lib/money-view.ts`（Main manifest 金额 / 代理商列、上传名单表头的词）。
 - 藏了：Orders 列表 Agent 列；订单详情 Price 卡、Agent & Commission、Operations 的 Agent 行、Ticket Breakdown 单价、Raw Rezdy 两块、How to use 里讲价格的几条（price = null 不报错）；订单搜索结果 Agent；Main manifest 金额 / 代理商列（Columns 没有 Money 组、存着的不画、不算进「need admin access」）、CHD 标签 Amount / Order total / Paid / Due、Due≠0 淡红；Dispatch Farm out 名单 Payable 整栏（不能输入、不提 Payable is not set）；Farm out Report、Sales Report 侧栏 / shortcut 不出、直接打开写 no access（canOpen 多要这一勾）；Morning Pickup Tracking Agent 列；Tour / Tickets tracking 上传列里算钱 / 代理商的表头。
 - 不用改 / 已确认：Forecast 前后端都没有价格；Team 页照后端 catalog 画，新勾自动在 Orders 组；`/api/bookings` 的 agent_name 前端没地方显示；Dispatch action-log 照常；activity_log 的「(price details hidden)」照文字显示；partner 的 tracking upload_row 少了代理商列照常。
