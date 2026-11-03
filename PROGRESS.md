@@ -18,6 +18,7 @@
 - 题 8 判断法 Annie 在 f8 窗口答（原话）「选1」⇒ 新权限勾「See agent & commission」，现有员工默认勾，CCL team 不勾，以后跟 team 权限走。没动手。已转 9e：36 只估 ①，写清勾名 / 默认 / 迁移。
 - 工作窗口 `npe-ops-frontend-39`[36b630] 报到（家里）。f8 派：CHD 版 1 合 main（worktree D:\ops-wt-39-chd，先合最新 main，再跑 tsc / eslint / build + man / mf / da / nav，过了合 main 报 SHA；后端推后只读核线上 CHD 标签）。
 - 题 8 后端评估（36，9e 转，没动手）：新勾 orders.agent_view「See agent & commission」，没勾 = 藏字段不拒请求，superadmin 恒有，迁移 v141 给现有员工勾上。藏：orders 列表 / 搜索 agent_name → 「—」；订单详情 agent_name 和 reseller* / commission / paymentOption / payments；morning tracking agent_name；sales-report monthly / weekly / product-agents 没勾 403；/api/manifests 的 agent_name 等进 denied（CHD 也是）；Orders Export Agent 列填「—」；Tour / Tickets tracking 按表头去 agent|reseller|commission 列。CHD 合 main 后开工，约半天。两个题 9e 直接问 Annie。f8 回：Manifests Export CSV 是前端拿 JSON 生成，跟着藏；Morning ⬇ Export 是后端 /api/notifications/morning-pickup/export，请 36 找这个路由（没有就当 bug 记）。
+  - 9e 回：路由在（notifications.py:2928 通用 /{module}/export，导出 xlsx），列里没有代理商 / 佣金 ⇒ 这处不用改，不是 bug。
 - 今晚在等 Annie 的，跟 24 交接第三节一样，不重问。
 
 ## 2026-11-02 收工交接：前端主窗口-24 [d1dbae]（公司）
