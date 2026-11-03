@@ -653,6 +653,12 @@
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 67. Dispatch 名单（添加司机 / 导游那块）每行可编辑（2026-11-03，91 记录，preview https://claude.ai/artifact/XFaFvh6wBiCjRPXywxK9Rj ，没写代码）
+- Annie 原话（91 窗口）：「另外在dispatch的可以添加司机和导游那一块，把导游和司机的信息设为可编辑，因为我们现在好多导游的电话是没有的，把编辑的权限给到staff」。
+- preview 照做不问：每行一个 Edit，在行里直接改，蓝色 Save 点了就存；电话重复时显示后端原话红字；权限同 + Add（dispatch.edit）。
+- 3 题（91 推荐都是 A，原文见 preview）：题 1 能改什么——A 只改名字和电话；题 2 名字写到哪——A 写 HR 的 Nickname；题 3 How to use 文字——A 用 preview 里那段原文。
+- 需要后端：PUT /api/dispatch/roster/{id} {name, phone}，权限和开关同 POST，电话重复 409，改动记 HR Action Log。后端 main 现在只有 GET 和 POST。等 Annie 答题并「动手」再派后端 / 前端写代码（已先告诉 37 评估）。
+
 ### 66. 司机页 / 导游页预览：当天在跑的要跟手机上一样（2026-11-03）—— ✅ Annie 选 A 并「动手」，后端做
 - 截图是后端导游页（app/templates/field/guide_home.html，Antelope Bus A 2356），按钮 Boarded / No show / Call / ✎ Change / Send message 都灰。24 只读查：这些键在**预览**（Dispatch「Guide page preview ↗」/ Manifest 每车 Guide view，preview=True）或**前一天**（G227「Opens on … the grey buttons work on the day」，ahead）时是 disabled，样式 opacity .45（:267、:274），所以字发灰、点不了，是有意的；到了当天真正的导游手机上是正常颜色。单号「CHD0748XR · Lower」、「3 bookings」、「pax · 9 pickup stops」那类是本来的次要灰字。
 - Annie（原话）「我作为super admin登录进去，应该让我看到和司机或导游看到的实时的才对啊，只要这个行程在跑」⇒ Super Admin 从 Dispatch 的 Driver / Guide page preview 打开时，行程当天在跑就要跟司机 / 导游手机上一模一样（颜色正常、实时状态）。24 只读查：预览跟司机本人共用同一份取数（field.py:222、:337），标记是实时的；灰是因为 preview=True 时按钮 disabled、opacity .45（已标的绿 / 红也一起变暗）。
@@ -665,6 +671,8 @@
 - 题 2 人员表加列吗：A（推荐）紧跟 Nickname 加「Other spellings」列，逗号隔开、没有写「—」；B 不加，只在弹窗看。
 - 题 3 Edit list 能改吗：A（推荐）只看不改，要改点那一行 Edit（被拒时红字对得上人）；B 也能改（逗号隔开）。
 - 题 4 文字（英文）：A（推荐）格子下说明 "How the morning Excel or CCL writes this name, one per line (for example JOSEPH). Each spelling can belong to one person only."；How to use — Human Resource 加 "Other spellings: other ways this person's name is written in the morning Excel or CCL (for example JOSEPH for Joe R). One per line. A spelling can belong to only one person. Removing a spelling means CCL imports stop matching it to this person."
+- ✅ Annie 已答（91 窗口原话「HR的四项： 1 B 2. A  3B  4A」）：格子放 Dispatch 块（Samsara Driver ID 旁）；人员表紧跟 Nickname 加列；Edit list 也能改（逗号隔开）；文字用题 4 原文。91 已按答案更新 preview。**还没说「动手」，前端没写代码。**
+- 题 3 选 B 带来的后端要求（已转 37）：POST /api/hr/profiles/bulk 也要收 Other spellings，被拒时带 profile_id（前端红字放那人那一格下）。91 在后端 driver-change-follow 分支上还没找到 spellings 接口，等 37 回接口位置。
 
 ### 64. G180 Main manifest 订单同步到 Tour Tracking：重新启动（2026-11-03，Annie「重新启动」）
 - 10/24 Annie 提，后端 d9 写好代码在 origin/task/tracking-sync-design（4cac1f93，10/25 夜后没动，没上 main、没跑迁移；deploy-guard 第 3 轮 FAIL：迁移要先于代码；迁移号 v122 已被占，要换号）。设计文档 docs/tracking-sync-design-2026-10-24.md，Annie 已定的不再问（同步已确认订单、发送前后都同步、send_state Sent / Not sent、order_state Confirmed / On hold / Cancelled 以 Order List 为准、从不删行、午餐谁新留谁、Farm out 只记录、Broadcast 含 Not sent 不含 On hold / Cancelled 且发出后变 Sent、总开关默认关、Tour Tracking 加 Sent / Not sent 筛选默认 Sent + 订单号后小标签）。还没答：调用记录表 401 要不要记（Max 推荐不记，后端那边问）。
@@ -678,6 +686,7 @@
 - 题 3 Farm out：A（推荐）用 ops 现有紫色「⇄ Farmed out ▾」，不另加；B 另加紫色小标签「Farm out」（同一单会同时有两样）。
 - 题 4 Download CSV（后端出）：A（推荐）加两列「Sent」（Sent / Not sent）、「Order state」（Confirmed / On hold / Cancelled），要后端加；B 不加。
 - 题 5 How to use（英文）：A（推荐）两段——加在「How to use — Tour Confirmation Tracking」："The Sent / Not sent box next to Search chooses which orders show. Sent is the normal view. Not sent shows orders that came in from the Main manifest and have no confirmation sent yet; they carry a grey Not sent tag. A yellow On hold or red Cancelled tag means the order changed in the Order List; the row stays here as a record. ⇄ Farmed out means the order was handed to a partner."；Broadcast 那条后："The list includes Not sent guests too, whatever the Sent / Not sent box shows. On hold and Cancelled orders are left out."（题 3 选 B 时第一段末句改 "A purple Farm out tag means the order was handed to a partner."）
+- 2026-11-03 下午 Annie 在 91 窗口先说「tour /ticket 的tracking页面，已发送和排到前面，未发送的排到下面，然后标粉红。然后还是需要有一列标是否sent」，91 照改了 preview；随后 Annie 说「我觉得你没有理解这个sent和 no sent的设置，我再讲一下规则」——**91 停下等 Annie 讲规则，那版 preview 先不转、上面 5 题先别问**。另：Ticket Tracking 不在后端 G180 范围（只做 tour_confirmation），要做就得后端另做同步（已告诉 37，等 Annie 讲完规则再定）。
 
 
 ### 63. 换司机只改 Dispatch：页面上怎么标（G234）—— ✅ Annie 已答并「动手」（2026-11-03）；e6 preview https://claude.ai/artifact/CXT8ZueNa3akn1ZrGn4Ycj ，没写代码）
