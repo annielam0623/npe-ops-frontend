@@ -643,6 +643,13 @@
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 65. HR 页「Other spellings」（G234 补，Annie 在 4d 窗口「同意。动手」后端；91 preview https://claude.ai/artifact/W92fd328NYL5S5e3U1bjSw ，没写代码）
+- 照做不问：走现有 Edit 弹窗（底部 Save / Saving… / 关前问 / 红字），先 PUT 写法再存其他字段（409 时什么都没存）；Add person 先建人再存写法；存好显示后端规整后的样子；后端报错原样红字；改动进现有 Action Log；不用蓝色；Export / Import 不带这一格。
+- 题 1 弹窗里放哪：A（推荐）Identity 里紧跟 Nickname；B Dispatch 那一块。
+- 题 2 人员表加列吗：A（推荐）紧跟 Nickname 加「Other spellings」列，逗号隔开、没有写「—」；B 不加，只在弹窗看。
+- 题 3 Edit list 能改吗：A（推荐）只看不改，要改点那一行 Edit（被拒时红字对得上人）；B 也能改（逗号隔开）。
+- 题 4 文字（英文）：A（推荐）格子下说明 "How the morning Excel or CCL writes this name, one per line (for example JOSEPH). Each spelling can belong to one person only."；How to use — Human Resource 加 "Other spellings: other ways this person's name is written in the morning Excel or CCL (for example JOSEPH for Joe R). One per line. A spelling can belong to only one person. Removing a spelling means CCL imports stop matching it to this person."
+
 ### 64. G180 Main manifest 订单同步到 Tour Tracking：重新启动（2026-11-03，Annie「重新启动」）
 - 10/24 Annie 提，后端 d9 写好代码在 origin/task/tracking-sync-design（4cac1f93，10/25 夜后没动，没上 main、没跑迁移；deploy-guard 第 3 轮 FAIL：迁移要先于代码；迁移号 v122 已被占，要换号）。设计文档 docs/tracking-sync-design-2026-10-24.md，Annie 已定的不再问（同步已确认订单、发送前后都同步、send_state Sent / Not sent、order_state Confirmed / On hold / Cancelled 以 Order List 为准、从不删行、午餐谁新留谁、Farm out 只记录、Broadcast 含 Not sent 不含 On hold / Cancelled 且发出后变 Sent、总开关默认关、Tour Tracking 加 Sent / Not sent 筛选默认 Sent + 订单号后小标签）。还没答：调用记录表 401 要不要记（Max 推荐不记，后端那边问）。
 - 当时页面只改了旧后台模板；ops 新 Tour Tracking 页要前端另做。
