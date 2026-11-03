@@ -135,6 +135,8 @@
     - ✅ Annie 动手（f8 窗口原话）：「出来第3个，我要30秒刷新relay，其他都同意推荐，动手。staff发送morning的默认就是两个都自动勾选了」⇒ 除 ③ 外全推荐；Live drivers 30 秒刷新；⑫ 沿用 Morning 回复框默认（39 核）；到站第二期。后端已派 9e（司机页只读数据、tracking live_status*、ns_unhandled、开关 morning_live_drivers）；前端 39 task/live-drivers。
     - Annie 问（原话）：「我们不是已经有权限了么，不然客人怎么通过我们看司机的位置？」⇒ 已请 fc 用现 token 实测能不能读车辆位置。
     - fc 字段定（已转 39）：GET /api/notifications/morning-pickup/live-drivers?date=（morning.view + 开关 morning_live_drivers）→ people[{kind, hr_id, name, first_shift, segments | runs, inbox}]；…/live-drivers/thread（不写已读，含 email_in）；回复 POST /booking-notes/by-order；tracking 行加 live_status / live_status_at / live_driver / live_van / ns_unhandled。
+    - 39 核 ⑫：回复框（conversation-modal.tsx:366-367）现在默认只勾 SMS，Morning / Tour / Tickets tracking、Dashboard 共用；旧后台也只勾 SMS ⇒ 跟 Annie「staff发送morning的默认就是两个都自动勾选了」对不上（她可能指 Morning 发送页）。Live drivers 默认两个都勾；别的页面问 Annie A 照旧（推荐）／B 全站两个都勾。
+    - 39：work-hours 前端在 task/schedule-work-hours 27a94ca（sch 367、dr 89、tasks 144，tsc / eslint / build 过），等后端 v144 SHA；开始 task/live-drivers。
 - Annie 嫌 Dashboard「Today's team」难看（f8 窗口原话，附截图）：「这个排版也太丑了吧，你的审美呢」⇒ 改样子，派 0e 出 preview（一人一行对齐、Off 合一行、Visible to 收起、Online now 省地方、ZZTest 是否出现问 Annie）。没动手。
   - 0e preview：https://claude.ai/artifact/Ph29qDSR1UtYmKGAWmryhY 。7 题（推荐 A）：1 一人一行右对齐班次；2 Off 合一行；3 标题右「⚙ Visible to」小窗；4 正在上班左细绿条；5 在线绿点 + Also online 一行；6 ZZTest 去 Staff Schedule 勾 Test；7 Anita 照常。不要后端。
 - 今晚在等 Annie 的，跟 24 交接第三节一样，不重问。
