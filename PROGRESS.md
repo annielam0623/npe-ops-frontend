@@ -4,7 +4,44 @@
 
 > 6d 交接（下面「2026-10-27 交接：前端主窗口 6d」那节）的后端需求已于 10/27 晚由 ad 转给家里后端主窗口 17。
 
-> **下一个主窗口：先读下面「2026-11-03 凌晨 收工交接：前端主窗口 f8」，再看置顶「📌 等 Annie 确认」。上一份是「2026-11-02 收工交接：前端主窗口-24」。**
+> **下一个主窗口：先读下面「2026-11-03 收工交接：前端主窗口 今日主窗口-24」，再看置顶「📌 等 Annie 确认」。上一份是「2026-11-03 凌晨 收工交接：前端主窗口 f8」。**
+
+## 2026-11-03 收工交接：前端主窗口 `今日主窗口-24`[310398]（公司电脑，Annie 定今天 17:30 下班）
+
+> 当天逐条记录在下面「2026-11-03 主窗口 今日主窗口-24 开工」及各任务节；每件 Annie 原话都在置顶里。后端今天公司电脑 15:30 后 AFTER_HOURS 不再落地，后续家里那台接。
+> 窗口：前端工作窗口 09 [341d31]、91 [b22952]、e6 [03dd03]（都已收尾、dev server / Chrome 都关）；后端主窗口 `主窗口37`[875db6]，后端工作窗口 57、4d、44、64、d8。
+
+### 一、今天上 main 的（等 Annie 线上验收）
+| 件 | 前端 SHA | 验收看 |
+|---|---|---|
+| Live drivers（Morning tracking 司机实时页，39 做、09 合） | 406fa21 | Morning tracking › Live drivers 标签（Super Admin，开关默认关） |
+| 回复框短信 / 邮件默认都勾 | 3b65dc8（已在 main） | 任一回复框两个都勾 |
+| Staff Schedule Working hours 按星期几 | fd74df8 | — |
+| Dispatch 没定位的车标「No tracking」（置顶 60） | e9336c2 | Assign 车号红点、下拉「· No tracking」、Send › Morning Relay 车头 |
+| Dispatch › Send 打开就展开（置顶 62 题 7–9） | 497a76d | Send 标签直接列司机 / 导游表和 Morning Relay；两个白色 ↻ Refresh；⚠️ 别点发送 |
+
+### 二、做完在分支、等后端上 main 才合
+| 分支 | 提交 | 等什么 | 下一步 |
+|---|---|---|---|
+| task/manifest-paper（09，Bus Manifest 照纸本，**加急**） | 20687e8 | 后端 bus-footer-style 本地 main 已合（52e41058 / e0bfe213），**只等 Annie 在终端跑发布**；37 给 main SHA | 09（或接手窗口）对真实 main 核字段 → 合最新 main 重跑 mf / rl / man / da / nav + tsc / eslint / build → 合 main，报 Annie 看什么 |
+| task/driver-follow（e6，G234 换司机只改 Dispatch，置顶 63） | 7acc105（代码 0835797） | 后端 4d task/driver-change-follow（33691e8d 已推，driver_follow.updated[] 和 bulk spellings 明天家里做），排在 57 后；**Annie 还要看新红字 "Bus changed — ask the guest to open the link again" / tooltip / Guest Viewed How to use 那句** | 核真实形状 → 合 main 重跑 da / rl / mt / nav → Annie 看过红字后合 |
+| task/samsara-arrival（09，到站 Arrived / Left） | 071df4d | 后端 64 samsara-arrivals + v146（Annie 跑）；置顶 58 / 59 答 | 同上 |
+
+### 三、等 Annie 的（详见置顶，不要滚动重问）
+- **64 G180 Tour Tracking**：Annie 讲完规则（4 条原话在置顶），91 preview 已改（Sent 列 + Order Status 列、未发送在下粉红），**5 题等答**；Ticket Tracking 不在后端 G180 范围，要不要另做等她说。后端 44 停在 task/tracking-sync-design，代码约明天中午好 → v147（Annie 跑）。
+- **65 HR Other spellings**：Annie 已答 1B 2A 3B 4A，**等「动手」**。接口 91 已核过。若动手时 bulk 还没上，问 Annie 分两步（备用题在置顶）。
+- **67 Dispatch 名单每行可编辑**：**4 题等答 + 「动手」**；后端评估约半天、风险 B；电话日志只记字段不记号码（已告诉 Annie）。
+- **68 Relay 勾酒店不核座位**：超座位提醒还是挡住，37 在问；定了 37 派后端、24 派前端（先 preview）。
+- **66 Super Admin 预览看实时**：Annie 已「动手」，后端 64 做，排 57 → 4d 后；纯后端页面。
+- 61（Q1 / Q2）、58 / 59、53 Q8、52、51、48、55②、Today's team 7 题、酒店格颜色、Send Log 模块、Dashboard 统计 bug、Forecast 回填：照旧等。
+- 我还开着两问（Annie 没答，不重问）：「正在跑的 tour」要哪种视图（车在哪 / 团进度 / 全部在跑总览）；要不要后端把线上团车司机页和 v2 设计逐项对比。
+- Annie 自己要做：取消 Anita 的「Counts toward coverage」；基础周 Auto-fill 排整月、周三跟员工确认；GPS 偏差实测；跑 v146 / v147；10/6 纸本 PDF 不在公司电脑。
+- 置顶 60、62 已做完，可移到当天记录。
+
+### 四、明天开工
+1. 报对话名；git pull；问 37 后端 bus-footer-style 有没有发布 → 有就派 manifest-paper 核对合 main（加急）。
+2. 后端 G234 上 main → e6 driver-follow；Annie 看新红字。
+3. 等 Annie 答 64 / 65 / 67 / 68，答了按原话派。
 
 ## 2026-11-03 Dispatch › Send 打开就展开（`task/send-auto-open`，工作窗口 e6 [03dd03]，主窗口 24 派）—— 置顶 62 题 7–9
 - Annie 原话：「包括在dispatch的send 页面，把司机和导游发送也打开，不折叠，也不需要pull from manifest，直接展开给staff看」；答题「问题7-9，同意全部推荐」；随后在 09 窗口「动手」。preview https://claude.ai/artifact/3RE8qSbwHECoCjakAgBidh 第三节。CCL 自动 Apply（题 1–6）作废，不做。
