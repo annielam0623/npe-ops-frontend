@@ -22,6 +22,8 @@
   - 题 8 第 1 问 Annie 在后端 36 窗口答（9e 转，原话）：「只单独勾了CCL的就是CCL的人，他们只能看到assign给CCL的东西，他们有多项勾选的人都按照跨team的功能，各个team的功能都有」⇒ 只在 CCL 一个 team 的人（今天 84/85/86/87/90）不勾 orders.agent_view，多 team 的照常勾。「CCL 只看 assign 给 CCL 的东西」是更宽的可见范围规则，后端登记待办，以后 team 权限派工带上。第 2 问（新账号默认带不带勾）后端在问；没动手。
 - ✅ CHD 版 1 已合 main 03c1d51（39；tsc / eslint 0 错 / build 过，man 340、mf 230、da 454、nav 38）。f8 已发「前端已上 (step 2)」+ SHA 给 9e → 36 推后端 ad5707ee；推后 39 只读核线上 CHD 标签。
 - Annie 报 bug（附截图，11/3 Antelope Canyon BUS 2356=A 的 Bus Manifest，原话）：「这是怎么回事，我们设计的lunch是进lunch 这栏，怎么还跑到special那里去了」。Lunch 列全是「-」，餐的代码（1V 1B / 1T / 1T 1B / 2T）都留在 Special Requirements，例 HDV71ATK、HDE9MST6、HDYWZL6Y、HDCWTQKE、HDG1HYKB、HD4HLWJY、HDWZ1QYT。f8 只读核：前端 LunchCell 只显示后端回的 lunch，没有拆 Special 的逻辑 ⇒ 后端取餐的问题。已发 9e 优先查（取哪个字段、是不是退步、修法）；只修 bug 样子不变照 bug 办，要从 Special 删代码或改样子先回 Annie。
+  - 9e 回：从 10-03 起规则就不认「1T 1B」「2V」这类缩写（以前的「N Turkey」是猜的），不是改坏。Annie 在后端定：缩写读进 Lunch 格，样子不变；读准了照 10-03 规则从 Special Requirements 去掉餐码、其他文字保留。36 今晚做（tour_manifest.py，读时算，已上传的 11/3、11/4 名单上线即生效），前端不用改。
+  - CHD：后端已给 36 go，排在 G231 合并后推（G231 等 Annie 改 Risk、跑 release.py）。
 - 今晚在等 Annie 的，跟 24 交接第三节一样，不重问。
 
 ## 2026-11-02 收工交接：前端主窗口-24 [d1dbae]（公司）
