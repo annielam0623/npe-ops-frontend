@@ -661,6 +661,11 @@
 - 后端 37 评估（2026-11-03 15:30，没动手）：约半天，风险 B，要 code-reviewer + security-auditor 审。接口照前端形状：PUT /api/dispatch/roster/{id} {name, phone}，dispatch.edit + dispatch_roster 开关，电话重复 409（排除本人，沿用 add_person 加锁查重），改动记 HR Action Log（entity hr_profiles，before / after，值没变不记；电话同现有 POST 只记改了哪个字段、不记号码）。名字写 nickname，显示名 COALESCE(nickname, legal_name)：改名后 Dispatch 下拉和已排好的车都显示新名字；改名后跑 link_after_hr_save（G214），把今天及以后手填了新名字的格子连上这人。
 - 新增题 4（37 提，已让 91 加进 preview）：改名后旧名字要不要自动加进这人的 Other spellings。
 - 要告诉 Annie：规则 8 写的是日志记 before / after，但现有 HR 日志为保护个人信息不记电话号码本身（只记改了电话），两条有出入。
+- **最终 4 题（91 更新 preview，同链接，已注「电话改动只记改了电话、不记号码」）**：
+  - 题 1 能改哪几项：A（推荐）只改名字和电话；B 再加 Driver / Guide / Driver + Guide。
+  - 题 2 名字改 HR 哪一格：A（推荐）改 Nickname，没 Nickname 的人存成 Nickname，Legal Name 不动；B 有 Nickname 改 Nickname，没有就改 Legal Name。
+  - 题 3 改名后旧名字自动进 Other spellings 吗：A（推荐）自动加，存好后行下提示「The old name GIA was added to Other spellings.」；B 不加，staff 自己去 HR 加。
+  - 题 4 How to use 加：A（推荐）「To fix a name or phone number, click Edit on that row, change it, then click Save. The new name or number shows on Dispatch right away. Other details (licence, position) are in Settings › Human Resource.」
 
 ### 66. 司机页 / 导游页预览：当天在跑的要跟手机上一样（2026-11-03）—— ✅ Annie 选 A 并「动手」，后端做
 - 截图是后端导游页（app/templates/field/guide_home.html，Antelope Bus A 2356），按钮 Boarded / No show / Call / ✎ Change / Send message 都灰。24 只读查：这些键在**预览**（Dispatch「Guide page preview ↗」/ Manifest 每车 Guide view，preview=True）或**前一天**（G227「Opens on … the grey buttons work on the day」，ahead）时是 disabled，样式 opacity .45（:267、:274），所以字发灰、点不了，是有意的；到了当天真正的导游手机上是正常颜色。单号「CHD0748XR · Lower」、「3 bookings」、「pax · 9 pickup stops」那类是本来的次要灰字。
@@ -691,6 +696,13 @@
 - 题 4 Download CSV（后端出）：A（推荐）加两列「Sent」（Sent / Not sent）、「Order state」（Confirmed / On hold / Cancelled），要后端加；B 不加。
 - 题 5 How to use（英文）：A（推荐）两段——加在「How to use — Tour Confirmation Tracking」："The Sent / Not sent box next to Search chooses which orders show. Sent is the normal view. Not sent shows orders that came in from the Main manifest and have no confirmation sent yet; they carry a grey Not sent tag. A yellow On hold or red Cancelled tag means the order changed in the Order List; the row stays here as a record. ⇄ Farmed out means the order was handed to a partner."；Broadcast 那条后："The list includes Not sent guests too, whatever the Sent / Not sent box shows. On hold and Cancelled orders are left out."（题 3 选 B 时第一段末句改 "A purple Farm out tag means the order was handed to a partner."）
 - 2026-11-03 下午 Annie 在 91 窗口先说「tour /ticket 的tracking页面，已发送和排到前面，未发送的排到下面，然后标粉红。然后还是需要有一列标是否sent」，91 照改了 preview；随后 Annie 说「我觉得你没有理解这个sent和 no sent的设置，我再讲一下规则」——**91 停下等 Annie 讲规则，那版 preview 先不转、上面 5 题先别问**。另：Ticket Tracking 不在后端 G180 范围（只做 tour_confirmation），要做就得后端另做同步（已告诉 37，等 Annie 讲完规则再定）。
+- **Annie 讲的规则（91 窗口原话）**：「1. 所有main manifest的订单都自动进tracking 页面； 2. 这是一个单项的流动，如果main manifest有退改或on hold，自动去order list查改单的状态，然后如实体现在order status里，但是订单不消失。3. 永远不去Rezdy拉订单，只接受main manifest的数据，数据消失就去order list上查状态并更新。4. 发送之后的所有规则照旧。」——与后端设计一致，后端不用改。
+- 91 按规则改了 preview（同链接）：订单状态单独一列 Order Status（Confirmed / On hold / Cancelled），不再挂订单号后的小标签；紧跟 Order # 是 Sent 列；已发送在上，未发送在下、整行粉红。**上面旧的题 1 等作废，换成新 5 题（推荐都 A）**：
+  - 题 1：A 不要 Sent / Not sent 筛选框，一张表全显示；B 留 3 项筛选框，默认 Sent + Not sent。
+  - 题 2：A 数字卡、团胶囊只算已发送的，另加粉红「Not sent」数字卡；B 全算进去（Response Rate 会被拉低）。
+  - 题 3：A Farm out 用现有「⇄ Farmed out ▾」；B Order Status 里写 Farm out。
+  - 题 4：A CSV 加 Sent、Order state 两列（要后端加）；B 不加。
+  - 题 5：How to use 原文 A「Every order in the Main manifest shows here, before and after its confirmation is sent. Sent orders come first. Orders with no confirmation sent yet are listed below them in pink, with Not sent in the Sent column. Order Status comes from the Order List: if an order is put on hold or cancelled, it shows On hold or Cancelled there, and the row stays as a record. ⇄ Farmed out means the order was handed to a partner.」Broadcast 那条后面加「The list includes Not sent guests too. On hold and Cancelled orders are left out. After it is sent, those rows change to Sent.」
 
 
 ### 63. 换司机只改 Dispatch：页面上怎么标（G234）—— ✅ Annie 已答并「动手」（2026-11-03）；e6 preview https://claude.ai/artifact/CXT8ZueNa3akn1ZrGn4Ycj ，没写代码）
