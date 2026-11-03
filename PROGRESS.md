@@ -26,6 +26,7 @@
   - CHD：后端已给 36 go，排在 G231 合并后推（G231 等 Annie 改 Risk、跑 release.py）。
 - 新需求（Annie 在 f8 窗口原话，没说动手）：「帮忙把staff schedule的每个人的row改成可拖拽」。新功能 ⇒ 先 preview。已派 39：只读查现状（排序字段、后端有没有存顺序的接口、只能看的人、手机版），出电脑 + 手机 preview（Artifact 链接）和题目（谁能拖、全公司一份还是每人一份、每周同一顺序、新员工排哪、手机能不能拖）；拖动先暂存、并进现有 Save。
 - Annie 报 bug（f8 窗口原话）：「然后schedule的设置有问题，今天的排班有个10am-12pm的gap，系统没看出来」。修 bug、样子不变，不用 preview。gap 判断在 components/schedule（week-grid / week-draft / schedule-view / day-timeline）和 lib/schedule-engine.ts。39 在做拖拽 preview，空闲内存 12 GB，f8 请 Annie 再开 1 个窗口来查。
+  - 39 拖拽 preview 交了，空出来，gap 两件改派 39（task/schedule-gap-fix），不用再开窗口。
   - Annie 又报（原话）：「然后7号的gap已经填了，但始终报错不让保存，即使我改了班次的时间，也没用」⇒ 11/7 gap 已填，Save 照旧报错拦住，改班次时间也不行。跟上一条同一块 gap 判断，并给同一个新窗口查（漏报 + 误报）。
 - 今晚在等 Annie 的，跟 24 交接第三节一样，不重问。
 
@@ -396,6 +397,12 @@
 - 需要后端：user_prefs 白名单加 `manifest_cols_admin_fee`（这个标签的 Columns 才存得住；没有时页面写「Could not load your saved columns」并用默认列）。
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
+
+### 54. Staff Schedule 员工行拖动排序（2026-11-02 晚，Annie 提，没动手）
+- Annie 原话（f8 窗口）：「帮忙把staff schedule的每个人的row改成可拖拽」。
+- 39 preview：https://claude.ai/artifact/PCJkqu6KRWreA1EzMkJRk8 （电脑 4 张 / 手机 3 张，模拟数据）。现状：行按名字 A→Z（后端 schedule.py:275），自己那行固定最上，能改的人最上面多 Unassigned；没有顺序字段 / 接口。改法：名字左边把手 ⠿ 上下拖，暂存，并进现有 Save / Discard，挪过的行琥珀边框。
+- 7 题（括号是推荐）：① 谁能拖（A 跟 schedule.edit 走）；② 顺序存哪（A 全公司一份）；③ 每周一样（A 一份一直有效，不算排班改动、不出 Publish again、不通知）；④ 新员工（A 排最后）；⑤ 手机（A 不能拖，只看顺序）；⑥ 自己那行（A 照旧固定最上）；⑦ 别处跟不跟（A Day timeline、Dashboard Today's team / 整周排班都跟）。
+- 需要后端（Annie 答完再转）：schedule_employees 加 sort_order（迁移按名字填）、GET employees 按 sort_order 排、PUT /api/schedule/employees/order {employee_ids:[…]}（权限 schedule.edit、写 Action Log、不改周 version、不通知）。
 
 ### 53. 限制下载功能（2026-11-02，Annie 在 e6 窗口问，没动手）
 - Annie 原话：「我可以限制一下download的功能么」。e6 已答能做、说了现状，问她要限制谁、哪些页（不在 24 这里重复问）。
