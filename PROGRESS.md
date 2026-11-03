@@ -444,6 +444,7 @@
   - 题 6 Annie 在 0e 窗口答（原话）：「问题6的选择先走A吧，有时间再做B。」⇒ A：后端按团写死，West / Hoover / South 各一套，Antelope、BZ 和其他团用 Antelope 7 格；B 以后再做。没动手。已请 9e / 36 估 A 的工作量。
   - 36 估：新列 manifests.footer_style（迁移，默认 standard = Antelope / BZ 7 格），代码里版式表 standard / south / west / hoover（label + 算法类型）；哪团用哪套在 Bus Manifest 页下拉选（后端 PUT + log，前端下拉 + 去 FOOTER_LABEL，下拉是新 UI 要 preview）。Hoover 按节计、格名用节名 ⇒ 最省事是 Annie 在 Manifest setup 把节名改成纸本名（HIGHLIGHTS / GENERATOR / RAFTING / BOULDER SHUTTLE）。后端大半天到一天，前端小活，B 再约一天；迁移排 v142 后。推荐先做框架 + standard / south，West / Hoover 等题答完再填。
   - Annie 在 0e 窗口提新功能（原话）：「在其余页面里，其实我们dispatch里是没有做relay的可打印版本的，现在动手做吧，一个总表，然后分成每个司机的分表」⇒ 新功能，0e 先出 preview（照 74 的 A4 样张 RELAY SPLITS 总表 + 每车 Relay 单，加 10-30 的 Q18 CLOSE / Q20 站序），同置顶 33 的 Relay 部分。relay-pull 缺电话、Product 简称、交给哪辆大巴（manifest_id + bus_label）、每车站序 ⇒ 已预告 9e 估工作量，形状等 preview 定。
+    - fc 估：relay-pull 只加键不迁移；guest 加 phone、product_short（有节用节名，没节用 display_name，例「South Rim」）、manifest_id、bus（{label, tour, sections[], driver, guide, van} 或 null ⇒「no bus」）；car 加 location_ids。后端约半天，Risk B。「GC South」这种简称要改 display_name 或加简称字段 ⇒ preview 里问 Annie（A 照用 display_name，推荐）。已转 0e。
   - 另：ops 标黄规则「带 + 就亮黄」会让 West 所有 Premium (Skywalk+Voucher) 行都亮黄，纸本不标（并进其余 12 页差别 ③）。
 - 36 查回：Hoover 节 = HD Highlights（8 个，PJ0LQF internal_name 写「West Rim」疑似填错）/ HD Generator（5 个，票型「+ Generator」）/ HD RAFT（2）/ BOULDER CITY（2）；另有独立 manifests 35 Boulder_City（PV3Y0U）。HIGHLIGHTS / GENERATOR / RAFTING 对得上。题 ④ 改成 3 小题：④a PJD1EQ 的 Upgrade 票型算不算 GENERATOR；④b BOULDER SHUTTLE 数 Hoover 的 BOULDER CITY 节还是 PV3Y0U；④c RAFT SHUTTLE 生产里没有对应产品，怎么算。已转 0e 更新报告。
 
