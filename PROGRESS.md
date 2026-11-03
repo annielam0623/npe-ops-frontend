@@ -30,7 +30,7 @@
 ### 三、等 Annie 的（详见置顶，不要滚动重问）
 - **64 G180 Tour Tracking**：5 题 Annie 已答（原话在置顶），**等「动手」**；CSV 两列已转 37；Ticket Tracking 要不要另做等她说。后端 44 停在 task/tracking-sync-design，代码约明天中午好 → v147（Annie 跑）。
 - **65 HR Other spellings**：Annie「HR动手」，91 在 task/hr-other-spellings 做（没接口时不显示，可先合 main）；Edit list 先只读，等后端 bulk。
-- **67 Dispatch 名单每行可编辑**：**4 题等答 + 「动手」**；后端评估约半天、风险 B；电话日志只记字段不记号码（已告诉 Annie）。
+- **67 Dispatch 名单每行可编辑**：Annie「Dispatch名单编辑-动手」，按推荐全 A；91 task/roster-edit（HR 之后），后端 PUT /api/dispatch/roster/{id} 待 37 派（明天家里）。
 - **68 Relay 勾酒店不核座位**：超座位提醒还是挡住，37 在问；定了 37 派后端、24 派前端（先 preview）。
 - **66 Super Admin 预览看实时**：Annie 已「动手」，后端 64 做，排 57 → 4d 后；纯后端页面。
 - 61（Q1 / Q2）、58 / 59、53 Q8、52、51、48、55②、Today's team 7 题、酒店格颜色、Send Log 模块、Dashboard 统计 bug、Forecast 回填：照旧等。
@@ -708,6 +708,7 @@
   - 题 2 名字改 HR 哪一格：A（推荐）改 Nickname，没 Nickname 的人存成 Nickname，Legal Name 不动；B 有 Nickname 改 Nickname，没有就改 Legal Name。
   - 题 3 改名后旧名字自动进 Other spellings 吗：A（推荐）自动加，存好后行下提示「The old name GIA was added to Other spellings.」；B 不加，staff 自己去 HR 加。
   - 题 4 How to use 加：A（推荐）「To fix a name or phone number, click Edit on that row, change it, then click Save. The new name or number shows on Dispatch right away. Other details (licence, position) are in Settings › Human Resource.」
+- ✅ **Annie 在 91 窗口说「Dispatch名单编辑-动手」（原话，2026-11-03 傍晚）**，4 题没逐题答，按推荐全 A（只改名字和电话；写 Nickname；改名后旧名字自动进 Other spellings；How to use 用原文），91 在回复里跟她确认。91 先做完 HR 再开 task/roster-edit；后端 PUT 没有时不出 Edit 键。已转 37 派后端（含返回要不要带 old_name_added，旧名字进 spellings 由后端做）。
 
 ### 66. 司机页 / 导游页预览：当天在跑的要跟手机上一样（2026-11-03）—— ✅ Annie 选 A 并「动手」，后端做
 - 截图是后端导游页（app/templates/field/guide_home.html，Antelope Bus A 2356），按钮 Boarded / No show / Call / ✎ Change / Send message 都灰。24 只读查：这些键在**预览**（Dispatch「Guide page preview ↗」/ Manifest 每车 Guide view，preview=True）或**前一天**（G227「Opens on … the grey buttons work on the day」，ahead）时是 disabled，样式 opacity .45（:267、:274），所以字发灰、点不了，是有意的；到了当天真正的导游手机上是正常颜色。单号「CHD0748XR · Lower」、「3 bookings」、「pax · 9 pickup stops」那类是本来的次要灰字。
