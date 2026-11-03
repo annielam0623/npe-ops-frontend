@@ -1,3 +1,4 @@
+import type { DriverFollowed } from "@/lib/driver-follow";
 import { apiFetch } from "@/lib/api-client";
 import type {
   DispatchCopyResult,
@@ -252,8 +253,10 @@ export interface RelayGuest {
   sent_by?: string;
   /** 司机在酒店标的：no_show / 空。 */
   relay_status: string;
-  /** 发过之后又改了的地方（接客时间、酒店、车）；不会自动重发。 */
+  /** 发过之后又改了的地方（接客时间、酒店；G234 题 5 起后端不再算只换车）；不会自动重发。 */
   changed: string[];
+  /** G234：发过之后在 Dispatch 换了司机，链接已改跟新司机；没换过 = null（旧后端没有这个键）。 */
+  driver_followed?: DriverFollowed | null;
   // ── Relay list 打印单（task/relay-print，后端 fc；旧后端没有这几个键，打印单上对应的格子空着）──
   /** 客人电话。 */
   phone?: string;

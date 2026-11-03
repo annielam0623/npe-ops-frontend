@@ -6,6 +6,17 @@
 
 > **下一个主窗口：先读下面「2026-11-03 凌晨 收工交接：前端主窗口 f8」，再看置顶「📌 等 Annie 确认」。上一份是「2026-11-02 收工交接：前端主窗口-24」。**
 
+## 2026-11-03 G234 换司机只改 Dispatch，客人链接跟新司机（`task/driver-follow`，工作窗口 e6 [03dd03]，主窗口 24 派）—— 分支已推，**未合 main**
+- Annie 原话（置顶 63）：「乙的话，除了题5-要改成不需要任何动作。否则会让staff confuse。其他都同意推荐。动手」。preview https://claude.ai/artifact/CXT8ZueNa3akn1ZrGn4Ycj 。
+- 定稿：题 1 A、2 A、3 A、4 B、6 A、7 A；题 5（同一司机只换车不再出 Changed after sent）由后端 4d 在 relay_pull 里做，前端不过滤。
+- 做了什么：
+  - `lib/driver-follow.ts`（新）：driver_followed {from,to,at,by}、driver_follow {updated_orders, skipped[{car,reason}]} 的类型和三句话。
+  - Dispatch › Send › Morning Relay：发过的客人 Status 格 Sent by 下面、橙字上面一行灰字「Driver changed after send (was BRUCE) — link now follows FREDDY」；Need a look 写在原因下面。How to use 加一条（照 preview ③）。
+  - Dispatch 存（整天 / 单元 / 复制）回 driver_follow 时，提示条位置出一块：灰字「Tracking links now follow the new driver for N guests who were already texted (单号). Nothing was sent to guests.」；没改成的车红字「<car>: links not changed — <reason>.」（原因原样、末尾补句号）；全空不出；Dismiss 收起；换天清掉。
+  - Morning tracking：Driver 列名字下面同一句灰字；红字「Wrong bus — resend link」改成「Bus changed — ask the guest to open the link again」（题 6 A，tooltip 也改）；How to use 换 Guest Viewed 那条、加两条（Driver changed after send；换司机只要在 Dispatch 改好 Save）。
+- 检查：tsc、eslint 0 错、build 过；da 475/475（+8：Relay 名单那句的位置 / 颜色 / 不勾、旧后端不出、How to use；Save 后灰字、红字两句、Dismiss、全空不出）、mt 246/246（+5：红字新字和提示、Driver 列那句、灰色、没换过不出、How to use）、rl 26/26、nav 38/38。
+- **合 main 前要等**：① Annie 看过题 6 新红字和 How to use 新句（24 转）；② 后端 task/driver-change-follow 上 main，按真实形状核一遍 driver_followed / driver_follow 再合。
+
 ## 2026-11-03 Dispatch › Send 打开就展开（`task/send-auto-open`，工作窗口 e6 [03dd03]，主窗口 24 派）—— 置顶 62 题 7–9
 - Annie 原话：「包括在dispatch的send 页面，把司机和导游发送也打开，不折叠，也不需要pull from manifest，直接展开给staff看」；答题「问题7-9，同意全部推荐」；随后在 09 窗口「动手」。preview https://claude.ai/artifact/3RE8qSbwHECoCjakAgBidh 第三节。CCL 自动 Apply（题 1–6）作废，不做。
 - 做了什么（`components/dispatch/relay-panel.tsx`、`dispatch-view.tsx`）：

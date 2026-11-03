@@ -1,3 +1,5 @@
+import type { DriverFollowed } from "@/lib/driver-follow";
+
 /** GET /api/notifications/morning-pickup/tracking 的一行（一单）。空值是空字符串，不是 null。 */
 export interface MorningTrackingRow {
   /** bookings.id，Take action 用。 */
@@ -25,8 +27,10 @@ export interface MorningTrackingRow {
   driver_live_van?: string;
   /** 客人打开当前这台车的追踪链接的时间（ISO）；没点过、或没开 Samsara 时为 null（同上）。 */
   guest_viewed_at?: string | null;
-  /** 客人看的链接是旧车、司机已经换车：要重发链接（同上）。 */
+  /** 客人看的链接是旧车、司机已经换车：请客人重新打开链接（同上；G234 题 6 改字）。 */
   guest_link_stale?: boolean;
+  /** G234：发送后在 Dispatch 换了司机，链接已改跟新司机；没换过 = null（旧后端没有这个键）。driver 列已经是新司机。 */
+  driver_followed?: DriverFollowed | null;
   /** 原始短信状态（例 "sent:SM…"、"delivered"、"undelivered"），前端按子串归类。 */
   sms_status: string;
   email_state: "" | "clicked" | "opened" | "delivered" | "sent" | "failed";

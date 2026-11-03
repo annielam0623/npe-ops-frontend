@@ -179,6 +179,8 @@ const rows = [
     email: "",
     driver: "Ana",
     driver_live_van: "",
+    // G234：发送后在 Dispatch 换了司机（FREDDY → Ana），链接已跟新司机。
+    driver_followed: { from: "FREDDY", to: "Ana", at: "2026-10-08T05:10:00-07:00", by: "annie" },
     guest_viewed_at: null,
     guest_link_stale: false,
     vehicle_no: "769",

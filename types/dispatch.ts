@@ -1,3 +1,5 @@
+import type { DriverFollowResult } from "@/lib/driver-follow";
+
 import type { FarmOutOrder } from "./farm-out";
 
 /** Dispatch → Assignments（后端 app/routers/dispatch.py）。全部 require_staff。 */
@@ -188,6 +190,8 @@ export interface DispatchMeta {
 
 export interface DispatchSaveResult {
   ok: true;
+  /** G234：这次改了司机，已发过短信的客人链接改跟新司机（后端没上线 / 旧后端没有这个键）。 */
+  driver_follow?: DriverFollowResult;
   saved: number;
   ccl_applied: boolean;
   typed_alert: "sent" | "not_set_up" | "failed" | null;
@@ -199,6 +203,8 @@ export interface DispatchSaveResult {
 /** POST /api/dispatch/section：只存一个单元（后端 K，docs/interfaces/dispatch-section-save-2026-10-18.md）。 */
 export interface DispatchSectionSaveResult {
   ok: true;
+  /** G234：同 DispatchSaveResult.driver_follow。 */
+  driver_follow?: DriverFollowResult;
   unit: string;
   saved: number;
   /** 这一块新的行 id，顺序同请求的 rows。 */
@@ -211,6 +217,8 @@ export interface DispatchSectionSaveResult {
 
 export interface DispatchCopyResult {
   ok: true;
+  /** G234：同 DispatchSaveResult.driver_follow。 */
+  driver_follow?: DriverFollowResult;
   saved: number;
   dropped: number;
   dropped_expired: number;

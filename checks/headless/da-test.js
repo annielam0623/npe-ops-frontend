@@ -289,6 +289,21 @@ async function run() {
   check("保存：按单元送（Morning Relay 这一块的车）、只送该送的字段（不送显示用的名字 / CCL 原文）", sv && sv.date === "2026-10-05" && sv.unit === "relay" && sv.rows.length === 1 && sv.rows[0].driver_typed_name === "ZZ Test Typed" && !("driver_name" in sv.rows[0]) && !("ccl" in sv.rows[0]) && sv.rows[0].ccl_line_id === null && !("ccl_import_id" in sv), JSON.stringify(sv));
   // G71：前面第一次改的时候占住了这一天，保存带着那个 token。
   const lk0 = (await mockLog()).filter((e) => e.path === "/api/dispatch/edit-lock" && e.resp).at(-1);
+  // G234 题 7 A：改了司机、Save 后——灰字说跟了几位，没改成的车红字（后端原因原样 + 句号）；全空不出。
+  await ctl({ driverFollow: { updated_orders: ["R1", "R2"], skipped: [{ car: "Bus 2355", reason: "the driver was removed. Pick the new driver and save again" }, { car: "All buses", reason: "something went wrong while updating the links. Save again." }] } });
+  await pick(tourVeh, tourWas);
+  await saveNow();
+  await waitFor("document.querySelector('[data-driver-follow]')");
+  check("G234 题 7 A：Save 后灰字 Tracking links now follow the new driver for 2 guests who were already texted (R1, R2). Nothing was sent to guests.", await evaluate(`const e = document.querySelector('[data-follow-updated]'); return e?.textContent === 'Tracking links now follow the new driver for 2 guests who were already texted (R1, R2). Nothing was sent to guests.' && getComputedStyle(e).color === 'rgb(203, 213, 225)';`), await evaluate("return document.querySelector('[data-driver-follow]')?.textContent;"));
+  check("G234 题 7 A：没改成的车红字「<car>: links not changed — <reason>.」，原因原样、末尾一个句号（后端带了句号也不重复）", await evaluate(`const s = [...document.querySelectorAll('[data-follow-skipped]')]; return s.length === 2 && s[0].textContent === 'Bus 2355: links not changed — the driver was removed. Pick the new driver and save again.' && s[1].textContent === 'All buses: links not changed — something went wrong while updating the links. Save again.' && getComputedStyle(s[0]).color === 'rgb(252, 165, 165)';`), await evaluate("return [...document.querySelectorAll('[data-follow-skipped]')].map(e => e.textContent).join(' | ');"));
+  await evaluate("[...document.querySelector('[data-driver-follow]').querySelectorAll('button')].find(b => b.textContent.trim() === 'Dismiss').click();");
+  check("G234：Dismiss 收起那一块", await waitFor("!document.querySelector('[data-driver-follow]')"));
+  await ctl({ driverFollow: { updated_orders: [], skipped: [] } });
+  await pick(tourVeh, tourNew);
+  await saveNow();
+  await sleep(400);
+  check("G234：这次没改到已发过的客人（全空）⇒ 什么都不多出", await evaluate("return !document.querySelector('[data-driver-follow]');"));
+  await ctl({ driverFollow: null });
   check("G71 保存带 edit_token（第一次改的时候占到的那个）", !!lk0 && lk0.body.date === "2026-10-05" && lk0.body.version === "v1" && sv?.edit_token === lk0.resp.token, JSON.stringify([lk0, sv?.edit_token]));
   await waitFor(`${saveState}?.startsWith('✓ Auto-saved ')`);
   check("自动存好：Step 2 写 ✓ Auto-saved 时间（不弹框）、红条没了；那一块的车旁写 ✓ Auto-saved 时间", await evaluate(`return /^✓ Auto-saved \\d{1,2}:\\d{2} [AP]M$/.test(${saveState}) && !document.querySelector('[data-save-error]') && !document.querySelector('[role=dialog]') && /^Auto-saved \\d{1,2}:\\d{2} [AP]M$/.test(document.querySelector('[data-unit-save="tour:3"] [data-unit-state]').textContent) && [...document.querySelector('[data-unit-save="tour:3"]').closest('section').querySelectorAll('[data-row-save-state]')].every(x => x.textContent.startsWith('✓ Auto-saved '));`), await evaluate(`return ${saveState};`));
@@ -493,6 +508,16 @@ async function run() {
   await ctl({ relayNoTracking: false });
   await evaluate(`$btn('↻ Refresh', ${rp}).click();`);
   await waitFor(`!${rp}.querySelector('[data-no-tracking]')`);
+  check("G234：旧后端（没有 driver_followed）不出那一句", await evaluate(`return !${rp}.querySelector('[data-driver-followed]');`));
+  await ctl({ relayFollowed: true });
+  await evaluate(`$btn('↻ Refresh', ${rp}).click();`);
+  await waitFor(`${rp}.querySelector('[data-driver-followed]')`);
+  check("G234 题 1 A / 4 B：R2 的 Status 格：Sent by 标签 → Driver changed after send (was BRUCE) — link now follows FREDDY → 橙字 Changed after sent", await evaluate(`const td = ${rp}.querySelector('tr[data-order="R2"] [data-sent-label]').parentElement; const kids = [...td.children]; const f = td.querySelector('[data-driver-followed]'); return f?.textContent === 'Driver changed after send (was BRUCE) — link now follows FREDDY' && kids.indexOf(td.querySelector('[data-sent-label]')) < kids.indexOf(f) && kids.indexOf(f) < kids.indexOf(td.querySelector('[data-changed]'));`), await evaluate(`return ${rp}.querySelector('tr[data-order="R2"]')?.textContent;`));
+  check("G234 题 3 A：灰色小字（不是橙、红、绿）；别的行不出；照旧默认不勾", await evaluate(`const f = ${rp}.querySelector('[data-driver-followed]'); return getComputedStyle(f).color === 'rgb(107, 114, 128)' && ${rp}.querySelectorAll('[data-driver-followed]').length === 1 && !${rp}.querySelector('tr[data-order="R2"] input[data-pick]').checked;`));
+  check("G234：Morning Relay 的 How to use 写了换司机只要在 Assign 改好 Save、不用重发、司机要填对", await evaluate(`return ${rp}.textContent.replace(/\\s+/g, ' ').includes("Driver changed after guests were texted? Change the driver on the Assign tab and Save. Their tracking links then follow the new driver, so you don’t need to text them again. Their row says “Driver changed after send — link now follows …”. Guest links use the driver saved in Dispatch, so make sure each car has the right driver.");`));
+  await ctl({ relayFollowed: false });
+  await evaluate(`$btn('↻ Refresh', ${rp}).click();`);
+  await waitFor(`!${rp}.querySelector('[data-driver-followed]')`);
   check("Need a look 写原因；出发点上车的单数", await evaluate(`const t = ${rp}.textContent; return t.includes('Pickup time could not be worked out from the time in Rezdy') && t.includes('4 orders board at the tour bus departure point');`));
   // task/relay-print（Annie：「排完relay并保存了以后，应该加一个按键显示这些relay的list」）：📋 Relay list 新标签打开；车头 Print 只看这一台。
   await evaluate("window.__opens = []; window.open = (u) => { window.__opens.push(String(u)); return null; };");
