@@ -545,6 +545,7 @@
 
 ### 56. Bus Manifest 底部汇总框按团分（2026-11-02 晚，0e 报告）—— ✅ 已动手，待移走
 - Annie 在 f8 窗口逐题回（原话）：题 2「对」，其余「全部同意。动手」⇒ 题 2 / 3 / 4a / 4b / 4c / 7 全按推荐；8 条跟纸本的差别 f8 理解为全改。后端派 9e / 36（footer_style 版式表 + 迁移、Rezdy 系统字输出时去掉）；前端 0e（去 FOOTER_LABEL、版式下拉、② relay 车色、③ Quantities 标色、④ 抬头按车色、⑤ 午餐单 NOTES、⑥ 司机兼导游并格、⑦ ASSIST 列，一条一个提交）。
+- 0e 只读查：打印 / Excel 是后端出的，几乎每条都要后端。f8 定：⑥ 前端先做，打印那几行转后端；② relay_color、⑤ lunch notes、⑥ 打印模板已转 9e；③ 票型颜色表（两份纸本 +skywalk 一灰一黄冲突）、④ 每车颜色来源（系统里没有车色）、⑦ ASSIST 是否只 Antelope ⇒ 0e 出小 preview 问 Annie。
 - Annie 原话：「核心问题是：在bus manifest底部的灰色汇总框里，把Antelope的表格变成所有tour的样本了，这是错误的，每个tour的汇总表都不一样」；「另外，hooverdam在bus manifest那里已经设置好分小节了」。
 - 0e 报告（汇总一节先交，其余 12 页同链接更新）：https://claude.ai/artifact/EgwNMRbsCTJMoMb9m3iRQU 。后端 footer()（tour_manifest.py:919）一套格子全团共用；前端 manifest-view.tsx:227 FOOTER_LABEL 对所有团改成 Antelope 叫法（只网页，打印 / Excel 还是后端原名）；West 7 个分项、Hoover 5 个 ops 都没有；数据够（10/6 纸本数字反推对得上）。改格子要后端，前端去掉那 3 个改名。PDF 原件在 C:\Users\annzh\Downloads\4796_001.pdf。
 - 6 题（推荐）：① West「Heli & Boat + Bus Tour + Voucher」进 GA + Meal (Voucher)（A）；② West SKY ONLY / SKY+Meal / Premium 怎么认（A 看票型 / 产品名里的 skywalk、voucher）；③ West / Hoover 拿掉纸本没有的 IN / OUT / No Lunch / Lunch（A）；④ Hoover BOULDER SHUTTLE = Boulder City 节、RAFTING = HD Raft 节，RAFT SHUTTLE 请 Annie 说是哪个产品（A）；⑤ Antelope 一个 canyon 两个确认号：先不改（A）／一节存多个（B，要后端）；⑥ 后端按团写死 4 套格子，其他团用通用套（A）／setup 里每团自设（B，先 preview）。
