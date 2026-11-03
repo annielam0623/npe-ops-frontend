@@ -438,6 +438,10 @@
 - Annie 在 0e 窗口给 West Rezdy 原件 west-bus-2026-09-30.csv（原话「西峡的情况比较复杂一些，我给你看一下从Rezdy 下载的原件是什么样子的，然后你已经有了它的纸本，你可以对比一下，是同一天同一个tour」）；纸本是 10/6、CSV 是 9/30，不同天，0e 已请她给 9/30 纸本。报告第 3 版：West 只看 Quantities 就能分 7 格（9/30 合计 58 = 全部人数）；「+skywalk +Meal Voucher」= SKY+Meal、「Premium (Skywalk+Voucher)」= Premium ⇒ 题 2 缩成只问 SKY ONLY 是哪种票（推荐带 skywalk、不带餐）；现 LUNCH 规则这天只算 6 人带餐，题 3 更该拿掉。
 - 已请 9e 只读查 Hoover 生产分节（manifest_products 的 section / kind / extra）。
 - Annie 在 0e 窗口答题 6 的 BZ（原话）：「问题6，BZ页脚的统计表格是：TOTAL OF PAX, AVAILABLE SEAT LEFT, INBOUND, OUTBOUND, SEATS USED, No Lunch(including shuttle) , LUNCH这几项」⇒ BZ 跟 Antelope 同一套 7 格（就是现在网页那套），打印 / Excel 3 个名字跟着改。题 6 推荐 A 改写为：West、Hoover、South 各一套，Antelope、BZ 和其他团用 Antelope 那套；A / B 还没答。不是动手。报告第 4 版。
+- Annie 在 0e 窗口说「重来」，给了同一天的 west-bus-2026-10-06.csv ⇒ 报告第 5 版 West 节逐单重做（9/30 删掉）：42 单 104 人，单号全对上；A 车 7 格全对；B 车差 CHDKU405B（2 人，Rezdy「+skywalk +Meal Voucher」，staff 在纸本改成「Adult Premium」）。Heli & Boat + Voucher 进 GA + Meal (Voucher) 已证实。
+  - 题 2 改：「+skywalk +Meal Voucher」算 Premium 还是 SKY+Meal (Voucher)？A 照 Rezdy 原文进 SKY+Meal（推荐）／B 照纸本算 Premium、SKY+Meal 格拿掉。SKY ONLY 仍没见过。
+  - 新题 7：Special Requirements 里 Rezdy 系统字（「Rejected booking fields First Name…」「Invalid booking field values Mobile…」）纸本都删了，ops 整段亮黄印出。A 这两种自动不印、客人写的照印（推荐）／B 照旧 staff 自己改。
+  - 另：ops 标黄规则「带 + 就亮黄」会让 West 所有 Premium (Skywalk+Voucher) 行都亮黄，纸本不标（并进其余 12 页差别 ③）。
 - 36 查回：Hoover 节 = HD Highlights（8 个，PJ0LQF internal_name 写「West Rim」疑似填错）/ HD Generator（5 个，票型「+ Generator」）/ HD RAFT（2）/ BOULDER CITY（2）；另有独立 manifests 35 Boulder_City（PV3Y0U）。HIGHLIGHTS / GENERATOR / RAFTING 对得上。题 ④ 改成 3 小题：④a PJD1EQ 的 Upgrade 票型算不算 GENERATOR；④b BOULDER SHUTTLE 数 Hoover 的 BOULDER CITY 节还是 PV3Y0U；④c RAFT SHUTTLE 生产里没有对应产品，怎么算。已转 0e 更新报告。
 
 ### 55. 排班 gap：11/2 10–12 在哪看到的 + 时间小窗要不要挡（2026-11-02 晚）
