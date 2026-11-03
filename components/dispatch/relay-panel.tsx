@@ -923,9 +923,9 @@ export function RelayPanel({
               text them again (for example Changed after sent).
             </li>
             <li>
-              A car marked No tracking has no live GPS. Its guests still get
-              the text and the link to check in; the text doesn&rsquo;t mention
-              live tracking. Nothing is blocked.
+              A car marked No tracking has no live GPS. Its guests still get the
+              text and the link to check in; the text doesn&rsquo;t mention live
+              tracking. Nothing is blocked.
             </li>
             <li>
               Under each car, guests are grouped by hotel. Use the button on a
@@ -2078,8 +2078,8 @@ function CarRows({
               No tracking
             </span>
           ) : null}{" "}
-          · {car.driver || "No driver"} ·{" "}
-          {plural(guests.length, "order")}, {paxOf(guests)} pax
+          · {car.driver || "No driver"} · {plural(guests.length, "order")},{" "}
+          {paxOf(guests)} pax
           {onPrint ? (
             <button
               type="button"
