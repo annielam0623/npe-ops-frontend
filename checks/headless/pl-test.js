@@ -316,7 +316,7 @@ async function run() {
   await sleep(600);
   check("存不了：写原因、勾还原", await evaluate(`return document.body.textContent.includes('Could not change Tour bus departure for Resorts World: Admin access required') && ${depBox("Resorts World")}.checked === true;`));
   await ctl({ depFail: false });
-  check("How to use 说明 Tour bus departure", await evaluate("return document.body.textContent.includes('Guests picked up there are left out when you click Pull from manifests in Dispatch.');"));
+  check("How to use 说明 Tour bus departure", await evaluate("return document.body.textContent.includes('Guests picked up there are left out of Morning Relay on Dispatch → Send.');"));
   // ── ⬆ Import（全站通用导入，Annie 2026-10-29「批量导游同意推荐。动手」；后端 G220 76de8f3，模拟接口照后端形状）──
   await ctl({ failList: false });
   await openPage(`${APP}/settings/pickup-locations`);

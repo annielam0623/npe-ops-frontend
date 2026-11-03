@@ -1630,7 +1630,8 @@ function GroupEditor({
                 tour&rsquo;s hotel guests to Treasure Island (1st Round or 2nd
                 Round) and click Save. Not on Morning Relay means the tour bus
                 picks up its own hotel guests, and they do not show in Morning
-                Relay at all. The next Pull from manifests on Dispatch uses it.
+                Relay at all. Dispatch → Send uses it the next time the guests
+                load.
               </>
             ) : null}
           </li>

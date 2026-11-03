@@ -1549,13 +1549,13 @@ export function DispatchView() {
     ]);
   }
 
-  /** Send 页第 2 轮的 Copy 1st Round：复制完切回 Assign，让人看过、Save 了再回来 Pull。 */
+  /** Send 页第 2 轮的 Copy 1st Round：复制完切回 Assign，让人看过、Save 了再回 Send（自动重取）。 */
   function copyFirstRoundFromSend() {
     copyFirstRound(META.relay_shifts[1]);
     switchTab("assign");
     setNotice({
       tone: "ok",
-      text: "Copied the 1st Round cars into the 2nd Round. Check them; once they are saved, go back to Send and pull again.",
+      text: "Copied the 1st Round cars into the 2nd Round. Check them; once they are saved, go back to Send: the guests load again.",
     });
   }
 
@@ -2732,6 +2732,7 @@ export function DispatchView() {
                   // 不留存之前读的司机名单（服务端按存好的排车发）。
                   key={`relay-${day.run_date}-${manifestVersion}`}
                   date={day.run_date}
+                  active={tab === "send"}
                   dirty={unsaved}
                   disabled={navDisabled}
                   onUnauthorized={redirectToLogin}

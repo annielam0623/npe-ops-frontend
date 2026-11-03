@@ -6,6 +6,16 @@
 
 > **下一个主窗口：先读下面「2026-11-03 凌晨 收工交接：前端主窗口 f8」，再看置顶「📌 等 Annie 确认」。上一份是「2026-11-02 收工交接：前端主窗口-24」。**
 
+## 2026-11-03 Dispatch › Send 打开就展开（`task/send-auto-open`，工作窗口 e6 [03dd03]，主窗口 24 派）—— 置顶 62 题 7–9
+- Annie 原话：「包括在dispatch的send 页面，把司机和导游发送也打开，不折叠，也不需要pull from manifest，直接展开给staff看」；答题「问题7-9，同意全部推荐」；随后在 09 窗口「动手」。preview https://claude.ai/artifact/3RE8qSbwHECoCjakAgBidh 第三节。CCL 自动 Apply（题 1–6）作废，不做。
+- 做了什么（`components/dispatch/relay-panel.tsx`、`dispatch-view.tsx`）：
+  - 题 7 A：Send 标签显示出来就列好司机、导游两张表（默认勾选照旧）；Check the list 改成白色「↻ Refresh」。Send texts now 前照旧重读、确认框照旧。
+  - 题 8 A：Morning Relay 同时自动取；Pull from manifests 改成白色「↻ Refresh」。出错前缀改成 "Could not load the guests"。没存的改动提示、发送键关着、每轮 Preview & send 都照旧。
+  - 只在 Send 标签真显示时取（RelayPanel 新 prop `active`）：停在 Assign、在 Assign 存好重建都不取；切到 Send 才取；Send 显示着时重建（换天 / 存好）马上再取；来回切不重取。去掉了挂载时读 driver-notice / guide-notice 的那一行提示（DriverHint），名单直接列出来。
+  - 题 9：How to use 两条照原文换；其余提到 Pull / Check the list 的英文跟着改（Step 1 说明、Fix … and pull again、Copy 1st Round 提示、Pickup Locations 的 Tour bus departure、Products › Bus Manifest setup 的 Morning Relay round）。
+- 检查：tsc、eslint（0 错，1 条旧 warning）；headless da 462/462（新加 send-auto-open 6 条：停在 Assign 三份都不取、切到 Send 各取 1 次、两个 Refresh 白色、How to use 新句、来回切不重取、直接 ?tab=send 自动取）、rl 26/26、nav 38/38、pl 105/105、products 237/237。
+- Annie 线上验收看：Dispatch › Send 打开就有司机、导游表和 Morning Relay 两轮；两个白色 ↻ Refresh；How to use 两句。⚠️ 生产后端，别点 Send texts now / Preview & send 里的发送。
+
 ## 2026-11-03 主窗口 `今日主窗口-24`[310398] 开工（公司电脑，接 f8）
 - 窗口：前端工作窗口 09 [341d31]、91 [b22952]、e6 [03dd03]；d8 [840908] 身份待确认（已问是否后端主窗口）。
 - 资源：空闲内存 49.2 / 61.8 GB；没有 node / chrome 进程。
