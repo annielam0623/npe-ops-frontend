@@ -10,9 +10,9 @@
 - Annie 原话（置顶 63）：「乙的话，除了题5-要改成不需要任何动作。否则会让staff confuse。其他都同意推荐。动手」。preview https://claude.ai/artifact/CXT8ZueNa3akn1ZrGn4Ycj 。
 - 定稿：题 1 A、2 A、3 A、4 B、6 A、7 A；题 5（同一司机只换车不再出 Changed after sent）由后端 4d 在 relay_pull 里做，前端不过滤。
 - 做了什么：
-  - `lib/driver-follow.ts`（新）：driver_followed {from,to,at,by}、driver_follow {updated_orders, skipped[{car,reason}]} 的类型和三句话。
+  - `lib/driver-follow.ts`（新）：driver_followed {from,to,at,by}、driver_follow {updated_orders: 人数, updated[{car,from,to,orders}], skipped[{car,reason}]} 的类型和三句话。
   - Dispatch › Send › Morning Relay：发过的客人 Status 格 Sent by 下面、橙字上面一行灰字「Driver changed after send (was BRUCE) — link now follows FREDDY」；Need a look 写在原因下面。How to use 加一条（照 preview ③）。
-  - Dispatch 存（整天 / 单元 / 复制）回 driver_follow 时，提示条位置出一块：灰字「Tracking links now follow the new driver for N guests who were already texted (单号). Nothing was sent to guests.」；没改成的车红字「<car>: links not changed — <reason>.」（原因原样、末尾补句号）；全空不出；Dismiss 收起；换天清掉。
+  - Dispatch 存（整天 / 单元 / 复制）回 driver_follow 时，提示条位置出一块：灰字「Tracking links now follow the new driver for N guests who were already texted (Bus 2457 → LUIS, …). Nothing was sent to guests.」（updated_orders 是人数，括号里每台车来自 driver_follow.updated）；没改成的车红字「<car>: links not changed — <reason>.」（原因原样、末尾补句号）；全空不出；Dismiss 收起；换天清掉。
   - Morning tracking：Driver 列名字下面同一句灰字；红字「Wrong bus — resend link」改成「Bus changed — ask the guest to open the link again」（题 6 A，tooltip 也改）；How to use 换 Guest Viewed 那条、加两条（Driver changed after send；换司机只要在 Dispatch 改好 Save）。
 - 检查：tsc、eslint 0 错、build 过；da 475/475（+8：Relay 名单那句的位置 / 颜色 / 不勾、旧后端不出、How to use；Save 后灰字、红字两句、Dismiss、全空不出）、mt 246/246（+5：红字新字和提示、Driver 列那句、灰色、没换过不出、How to use）、rl 26/26、nav 38/38。
 - **合 main 前要等**：① Annie 看过题 6 新红字和 How to use 新句（24 转）；② 后端 task/driver-change-follow 上 main，按真实形状核一遍 driver_followed / driver_follow 再合。

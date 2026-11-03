@@ -2057,9 +2057,9 @@ export function DispatchView() {
                     className="flex items-start justify-between gap-3 rounded-xl border border-white/10 bg-white/[.04] px-4 py-[13px] text-[13px] leading-[1.55]"
                   >
                     <div className="flex flex-col gap-1">
-                      {follow.updated_orders.length ? (
+                      {follow.updated_orders > 0 ? (
                         <span data-follow-updated className="text-[#cbd5e1]">
-                          {followUpdatedText(follow.updated_orders)}
+                          {followUpdatedText(follow)}
                         </span>
                       ) : null}
                       {follow.skipped.map((s, i) => (

@@ -18,7 +18,10 @@ export interface DriverFollowed {
 
 /** Dispatch 存（day / section / copy）回的：这次改了哪些客人的链接、哪几台车没改成。 */
 export interface DriverFollowResult {
-  updated_orders: string[];
+  /** 这次改跟新司机的、已发过短信的客人数。 */
+  updated_orders: number;
+  /** 每台改了的车一条（没有 = []）；car 是车的标签（如 Bus 2457）。 */
+  updated: { car: string; from: string; to: string; orders: string[] }[];
   /** reason 是给 staff 看的英文句子，末尾没有句号。 */
   skipped: { car: string; reason: string }[];
 }
@@ -29,10 +32,13 @@ export function driverFollowedText(d: DriverFollowed): string {
   return `Driver changed after send${was} — link now follows ${d.to.trim()}`;
 }
 
-/** 题 7 A：Save 以后的灰字。 */
-export function followUpdatedText(orders: string[]): string {
-  const n = orders.length;
-  return `Tracking links now follow the new driver for ${n} guest${n === 1 ? "" : "s"} who ${n === 1 ? "was" : "were"} already texted (${orders.join(", ")}). Nothing was sent to guests.`;
+/** 题 7 A：Save 以后的灰字（括号里每台车「Bus 2457 → LUIS」，几台用逗号连）。 */
+export function followUpdatedText(r: DriverFollowResult): string {
+  const n = r.updated_orders;
+  const cars = (r.updated ?? [])
+    .map((u) => `${u.car.trim()} → ${u.to.trim()}`)
+    .join(", ");
+  return `Tracking links now follow the new driver for ${n} guest${n === 1 ? "" : "s"} who ${n === 1 ? "was" : "were"} already texted${cars ? ` (${cars})` : ""}. Nothing was sent to guests.`;
 }
 
 /** 题 7 A：没改成的车，红字。reason 原样，末尾加句号。 */
@@ -43,5 +49,5 @@ export function followSkippedText(s: { car: string; reason: string }): string {
 
 /** 有没有要说的（全空 = 不出那一块）。 */
 export function hasFollowNews(r: DriverFollowResult | null | undefined) {
-  return !!r && (r.updated_orders.length > 0 || r.skipped.length > 0);
+  return !!r && (r.updated_orders > 0 || r.skipped.length > 0);
 }
