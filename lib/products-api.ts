@@ -220,6 +220,29 @@ export function saveSectionTourType(
   });
 }
 
+/** 团简称（Relay list / 导游页 Tour 一格，task/relay-print）："" = 清空，最长 30。 */
+export function saveGroupShortName(
+  manifestId: number,
+  shortName: string,
+): Promise<{ ok: boolean; short_name: string }> {
+  return apiFetch(`${SETUP_API}/groups/${manifestId}/short-name`, {
+    method: "PUT",
+    body: { short_name: shortName },
+  });
+}
+
+/** 节简称（例 Canyon X → CanyonX）："" = 清空；节名必须是这个团 Tour 产品里真有的。 */
+export function saveSectionShortName(
+  manifestId: number,
+  section: string,
+  shortName: string,
+): Promise<{ ok: boolean; section: string; short_name: string }> {
+  return apiFetch(`${SETUP_API}/groups/${manifestId}/section-short-name`, {
+    method: "PUT",
+    body: { section, short_name: shortName },
+  });
+}
+
 /**
  * 哪几节在 Main Manifest 标题行出 Cfm # 格（G198，后端 8a）：整组替换，[] = 全关。只有 admin 能存；
  * 节名不对 400 + 原话（Antelope 第三节在库里叫「Canyon X」）。

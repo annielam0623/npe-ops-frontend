@@ -254,6 +254,35 @@ export interface RelayGuest {
   relay_status: string;
   /** 发过之后又改了的地方（接客时间、酒店、车）；不会自动重发。 */
   changed: string[];
+  // ── Relay list 打印单（task/relay-print，后端 fc；旧后端没有这几个键，打印单上对应的格子空着）──
+  /** 客人电话。 */
+  phone?: string;
+  /** 这位客人的团（manifests.id）。 */
+  manifest_id?: number | null;
+  /** Tour 列的简称：有节 = 节简称 → 节名；没节 = 团简称 → 团名（纸本的 GC South / LOWER / X）。 */
+  product_short?: string;
+  /** 只在设了简称时才有值（没设 = ""，不回落）：给司机页 / 导游页订单号旁用，Relay list 不用（用 product_short）。 */
+  short_tag?: string;
+  /** 酒店简称（同 Bus Manifest 的 hotel_short）；没有就用 hotel / pickup_location。 */
+  hotel_short?: string;
+  /** 这位客人要上的大巴（Dispatch 排车）；没分到车 = null。 */
+  bus?: RelayBus | null;
+}
+
+/** 当天一辆大巴（Bus Tour 排车）：Relay list 底部色条、总表图例用。 */
+export interface RelayBus {
+  /** 这个团当天分车时的字母（A / B…）；只有一台车 = null。 */
+  label: string | null;
+  tour: string;
+  /** 团简称（Bus Manifest setup 设的，没设 = ""）。 */
+  tour_short?: string;
+  /** 这辆车上客人的节（Lower & Upper），name = 节名、short = 节简称、color = 节色（同 Bus Manifest）。 */
+  sections?: { name: string; short: string; color: string }[];
+  driver: string | null;
+  guide: string | null;
+  van: string | null;
+  /** 团色（manifest_color，同 Bus Manifest 抬头）。 */
+  color: string | null;
 }
 
 /** 整车不发的 relay 车（缺司机 / 没排接客站点）：`orders` 是这一轮被挡下的订单号，没客人的坏车是 []。 */
@@ -282,6 +311,12 @@ export interface RelayPull {
         tour_name?: string | null;
         /** tour_car 轮：这台车在团里的字母（A / B…，同 Assign 的 Bus A；后端待补 B2）。 */
         bus_label?: string | null;
+        /** 这台车排车页的站序（pickup_locations.id，按 sort_order）。Relay list 照它排。 */
+        location_ids?: number[];
+        /** 这台车（按 vehicle）当天也是哪几辆大巴：0 个 = 普通 relay 车；1 个 = 抬头写这辆大巴；2 个以上 = 排错了，都列出来。 */
+        tour_buses?: Omit<RelayBus, "sections">[];
+        /** 只给 Relay list 看的提示（例如「This van is on 2 tour buses today.」）；不挡发送（挡发送的是 problems）。 */
+        print_warnings?: string[];
       };
       guests: RelayGuest[];
     }[]

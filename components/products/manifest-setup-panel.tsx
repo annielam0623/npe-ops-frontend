@@ -13,7 +13,9 @@ import {
   saveManifestExtras,
   saveManifestGroup,
   saveManifestSection,
+  saveGroupShortName,
   saveRelayRound,
+  saveSectionShortName,
   saveSectionTourType,
 } from "@/lib/products-api";
 import { cn } from "@/lib/utils";
@@ -291,6 +293,11 @@ function GroupEditor({
   const [relayEdit, setRelayEdit] = useState<string | null>(null);
   const [cfmEdit, setCfmEdit] = useState<string[] | null>(null);
   const [tourTypeEdits, setTourTypeEdits] = useState<Record<string, string>>(
+    {},
+  );
+  /** 团简称、节简称（task/relay-print）：草稿只记改过的。 */
+  const [shortEdit, setShortEdit] = useState<string | null>(null);
+  const [secShortEdits, setSecShortEdits] = useState<Record<string, string>>(
     {},
   );
   const [sectionEdits, setSectionEdits] = useState<
@@ -629,6 +636,68 @@ function GroupEditor({
           const t = failText(err);
           if (t === "") return "";
           fails.push(`${e.section || setup.default_section}: ${t}`);
+        }
+      }
+      return fails.length ? fails.join(" · ") : null;
+    },
+  });
+
+  // 简称（Relay list 的 Tour 一格、导游页，Annie 11/2「South，West，Lower，Upper，CanyonX，BZ」）：
+  // 团一格 + 每个 Tour 节一格，整块一个 Save；接口一格一存，按 Save 时依次 PUT，存不上的留着草稿。
+  const savedShort = group.short_name ?? "";
+  const shortValue = shortEdit ?? savedShort;
+  const shortChanged = shortEdit !== null && shortEdit.trim() !== savedShort;
+  const secShortChanged = (group.section_short_names ?? []).filter(
+    (e) =>
+      secShortEdits[e.section] !== undefined &&
+      secShortEdits[e.section].trim() !== e.short_name,
+  );
+  const shortBlock = useBlockSave({
+    id: sid("shortNames"),
+    label: label("Short name"),
+    dirty: shortChanged || secShortChanged.length > 0,
+    draftKey: JSON.stringify([shortEdit, secShortEdits]),
+    auto: true,
+    doSave: async () => {
+      const fails: string[] = [];
+      if (shortChanged && shortEdit !== null) {
+        try {
+          const d = await saveGroupShortName(group.id, shortEdit.trim());
+          const updated = { ...groupRef.current, short_name: d.short_name };
+          groupRef.current = updated;
+          onGroupChange(updated);
+          setShortEdit(null);
+        } catch (err) {
+          const t = failText(err);
+          if (t === "") return "";
+          fails.push(`Tour: ${t}`);
+        }
+      }
+      for (const e of secShortChanged) {
+        try {
+          const d = await saveSectionShortName(
+            group.id,
+            e.section,
+            secShortEdits[e.section].trim(),
+          );
+          const cur = groupRef.current;
+          const updated = {
+            ...cur,
+            section_short_names: (cur.section_short_names ?? []).map((x) =>
+              x.section === e.section ? { ...x, short_name: d.short_name } : x,
+            ),
+          };
+          groupRef.current = updated;
+          onGroupChange(updated);
+          setSecShortEdits((m) => {
+            const rest = { ...m };
+            delete rest[e.section];
+            return rest;
+          });
+        } catch (err) {
+          const t = failText(err);
+          if (t === "") return "";
+          fails.push(`${e.section}: ${t}`);
         }
       }
       return fails.length ? fails.join(" · ") : null;
@@ -1018,6 +1087,75 @@ function GroupEditor({
                   No Tour sections in this group yet.
                 </span>
               )}
+            </MapField>
+          ) : null}
+
+          {group.short_name !== undefined ? (
+            <MapField
+              {...field("sections")}
+              sub
+              title="Short name"
+              hint="The short name printed in the Tour column of the Relay list and shown on the guide page (for example South, Lower, CanyonX). One for the tour, and one per section. Leave a box empty to show the full tour or section name. Click Save to keep it."
+            >
+              <table className="w-auto border-collapse text-[12.5px]">
+                <thead>
+                  <tr>
+                    <th className={TH}>Name</th>
+                    <th className={TH}>Short name</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr data-short-row="">
+                    <td className={TD}>
+                      {group.display_name} <span className={HINT}>(tour)</span>
+                    </td>
+                    <td className={TD}>
+                      <input
+                        aria-label={`Short name for ${group.display_name}`}
+                        value={shortValue}
+                        maxLength={30}
+                        disabled={shortBlock.state.kind === "saving"}
+                        onChange={(e) => setShortEdit(e.target.value)}
+                        className={cn(
+                          INPUT,
+                          "w-[140px]",
+                          shortChanged && CHANGED_RING,
+                        )}
+                      />
+                    </td>
+                  </tr>
+                  {(group.section_short_names ?? []).map((e) => {
+                    const changed = secShortChanged.some(
+                      (x) => x.section === e.section,
+                    );
+                    return (
+                      <tr key={e.section} data-short-row={e.section}>
+                        <td className={TD}>{e.section}</td>
+                        <td className={TD}>
+                          <input
+                            aria-label={`Short name for ${e.section}`}
+                            value={secShortEdits[e.section] ?? e.short_name}
+                            maxLength={30}
+                            disabled={shortBlock.state.kind === "saving"}
+                            onChange={(ev) =>
+                              setSecShortEdits((m) => ({
+                                ...m,
+                                [e.section]: ev.target.value,
+                              }))
+                            }
+                            className={cn(
+                              INPUT,
+                              "w-[140px]",
+                              changed && CHANGED_RING,
+                            )}
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              <SaveControl block={shortBlock} />
             </MapField>
           ) : null}
 

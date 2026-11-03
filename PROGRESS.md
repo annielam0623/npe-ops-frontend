@@ -6,6 +6,17 @@
 
 > **下一个主窗口：先读下面「2026-11-02 收工交接：前端主窗口-24」，再看置顶「📌 等 Annie 确认」。更早的交接是 10-30 晚那节。**
 
+## 2026-11-02 晚 Dispatch › Relay list 打印单 + Bus Manifest setup 简称（`task/relay-print`，工作窗口 `npe-ops-frontend-0e`[d96681]，主窗口 f8 派）—— ⛔ 推了分支，等后端 task/relay-print（fc）+ v143 上线再合 main
+- Annie 原话（0e 窗口）：「在其余页面里，其实我们dispatch里是没有做relay的可打印版本的，现在动手做吧，一个总表，然后分成每个司机的分表」；「总表按照现在的格式来，字段100%复制，这个不用多说了」；「其他问题都走推荐，简写纸本里用哪个就用哪个，不要自己改」；「hoover的司机用他的bus manifest就好了，上面都按照时间排好了」；「排完relay并保存了以后，应该加一个按键显示这些relay的list」。简称后来改定（f8 窗口）：「South，West，Lower，Upper，CanyonX，BZ」。
+- preview（Annie 已定）：https://claude.ai/artifact/3p3STHAw1rk7ewCeQW1dma （v12）；11/3 真实排车样张（名字 / 电话遮过）：https://claude.ai/artifact/Fi5ncf4fyfBVhUhZyeEYA5 。
+- 做了：
+  - 新页 `/dispatch/relay-list?date=`（`&car=<排车行 id>` = 只这一台）：每轮一张 RELAY SPLITS 总表（7 列照纸本 Pick up Time · Pick up Location · Quantities · Customer name · Customer Phone · Tour · Order Number；图例第一排接驳车，下面每团一栏叠大巴），每台有客人的车一张分表（车色抬头、Time · Hotel · Qty · Full Name · Phone # · Product · Order #、Total Pax、底部只列这台车客人要去的大巴色条）；A4 竖向一张一页；还没上 relay 车的客人屏幕上单独一块、不印。排序：时间 → 车 → 站序 → First name A–Z，换酒店空一行。Tour 用后端 product_short；接驳车 1 黄 / 2 橙 / 3 蓝…，大巴用团色。这台车当天也是大巴（car.tour_buses 1 个）⇒ 抬头写大巴；2 个以上都列 + print_warnings 红字。Hoover 的 Tour bus pick up 不印。逻辑在 `lib/relay-list.ts`，页面 `components/relay-list/`。
+  - Dispatch › Morning Relay：Pull from manifests 旁「📋 Relay list」（白键，新标签）；1st / 2nd Round 每台有客人的车车头「Print」只看这一台；有没存的改动先问「Save before opening the Relay list?」（Save and open / Cancel），存好再开。
+  - Products › Bus Manifest setup：「Short name」一项（团一格 + 每个 Tour 节一格），先暂存、按 Save 逐个 PUT；后端没带 short_name 时不出这项。
+  - 类型：relay-pull 的 guest.phone / manifest_id / product_short / short_tag / hotel_short / bus，car.location_ids / tour_buses / print_warnings（都是可选，旧后端照样能看）。
+- 检查：新套 rl（rl-mock 照 fc 的形状）；da 加 Relay list 键 / 车头 Print / 没存先问；products 加 Short name（后端没上不出、暂存、Save 发两种 PUT、存不上红字留草稿）。结果（合 main 后）：rl 26/26、products 237/237、da 457/457（第一次 452/457 是座位调动那 5 项偶发的时机问题，单独重跑全过）、nav 38/38；tsc / eslint 0 错 / build 过。
+- 还要后端（已转 f8）：导游 pick up 页（/guide）每位客人加团简称（Annie「导游的pick up网页版需要知道客人参加的tour是哪个，可以用简写」）；司机 /driver relay 页同样补；酒店简称 hotel_short。
+
 ## 2026-11-02 晚 Staff Schedule：员工行拖动排顺序（`task/schedule-row-order`，从 coverage-flag 分支接着开，工作窗口 `npe-ops-frontend-39`[36b630]，主窗口 f8 派）—— 后端 7c976175 上 main 后合 main（2026-11-02 晚）
 - Annie 原话（39 窗口）：「第7按B，其他都按推荐。东松户」「动手」。preview https://claude.ai/artifact/PCJkqu6KRWreA1EzMkJRk8 。即 ① 跟 schedule.edit 走 ② 全公司一份 ③ 每周同一个顺序、不算排班改动 ④ 新加 / 重新启用排最后 ⑤ 手机不拖 ⑥ 自己那行固定最上面、不拖 ⑦ **只排班表这一张**照这个顺序，别处照旧按名字。
 - 后端（fc 定）：GET employees 按 sort_order, name, id 排、每人带 sort_order；PUT /api/schedule/employees/order {"employee_ids":[在用的人整份]} → {"employees":[…]}，缺 / 多 / 重复 400 原话；不动 version、不发通知。

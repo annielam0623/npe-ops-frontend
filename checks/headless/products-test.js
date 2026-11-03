@@ -1107,6 +1107,34 @@ async function run() {
   );
   await ctl({ forecastSettings: false });
 
+  // ── task/relay-print：Short name（团 + 节，Relay list 的 Tour 一格；Annie 11/2「South，West，Lower，Upper，CanyonX，BZ」）──
+  check("后端没上线（没有 short_name）：没有 Short name 这项", await evaluate("return !document.querySelector('[data-short-row]');"));
+  await ctl({ shortNames: true, shortReset: true });
+  await goto(`${APP}/settings/products`);
+  await waitFor("document.querySelector('[data-short-row]')", 30000);
+  await helpers();
+  {
+    const rows = "[...document.querySelectorAll('[data-short-row]')].map((r) => (r.dataset.shortRow || 'tour') + '=' + r.querySelector('input').value).join()";
+    check("Short name：团一行 + 每个 Tour 节一行，显示已存的（Antelope / LOWER=Lower / Canyon X 空）", (await evaluate(`return ${rows};`)) === "tour=Antelope,LOWER=Lower,Canyon X=", await evaluate(`return ${rows};`));
+    before = (await mockLog()).length;
+    await evaluate("$setValue(document.querySelector('[data-short-row=\"Canyon X\"] input'), 'CanyonX'); $setValue(document.querySelector('[data-short-row=\"\"] input'), 'Ant');");
+    await sleep(400);
+    check("Short name：改了先不存（暂存在页面上、框标琥珀色）", (await since(before, (e) => /short-name$/.test(e.path))).length === 0 && (await evaluate("return /f59e0b|amber/.test(document.querySelector('[data-short-row=\"Canyon X\"] input').className);")));
+    const shortSave = "[...document.querySelectorAll('[data-field=sections]')].find((f) => f.querySelector('[data-short-row]')).querySelector('[data-save-btn]').click();";
+    await evaluate(shortSave);
+    const g = await waitPut(before, "/api/settings/manifest-setup/groups/1/short-name");
+    const s = await waitPut(before, "/api/settings/manifest-setup/groups/1/section-short-name");
+    check("Short name：按 Save ⇒ PUT …/short-name {short_name:'Ant'} + …/section-short-name {section:'Canyon X', short_name:'CanyonX'}（只发改了的）", g?.body?.short_name === "Ant" && s?.body?.section === "Canyon X" && s?.body?.short_name === "CanyonX" && (await since(before, (e) => e.path.endsWith("/section-short-name"))).length === 1, JSON.stringify([g?.body, s?.body]));
+    check("Short name：存好写绿字 Saved", await waitFor("!![...document.querySelectorAll('[data-field=sections]')].find((f) => f.querySelector('[data-short-row]')).querySelector('[data-save-ok]')"));
+    await ctl({ shortSectionFail: true });
+    before = (await mockLog()).length;
+    await evaluate("$setValue(document.querySelector('[data-short-row=\"LOWER\"] input'), 'Low');");
+    await evaluate(shortSave);
+    await waitPut(before, "/api/settings/manifest-setup/groups/1/section-short-name");
+    check("Short name：存不上 ⇒ 红字写节名和后端原话，草稿留着", await waitFor("[...document.querySelectorAll('[data-field=sections]')].find((f) => f.querySelector('[data-short-row]')).textContent.includes(\"LOWER: Unknown section 'LOWER' for this group.\")") && (await evaluate("return document.querySelector('[data-short-row=\"LOWER\"] input').value === 'Low';")));
+    await ctl({ shortSectionFail: false, shortNames: false, shortReset: true });
+  }
+
   // ── G198：Manifest setup 按节勾 Cfm # 格（后端 8a bbf3d08）──
   await ctl({ g198: true, cfmSections: ["UPPER"] });
   await goto(`${APP}/settings/products`);

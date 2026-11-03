@@ -325,6 +325,7 @@ export function RelayPanel({
   disabled = false,
   onUnauthorized,
   onCopyFirstRound,
+  onSave,
 }: {
   date: string;
   /** 排车页正在换天 / 保存：这时点了会对上一天操作，先关着。 */
@@ -334,8 +335,12 @@ export function RelayPanel({
   onUnauthorized: () => void;
   /** 第 2 轮还没排车（没有车或只有空车）时才传：复制第 1 轮的车，切回 Assign 等人 Save。 */
   onCopyFirstRound?: () => void;
+  /** 存这一天（Relay list 前有没存的改动时先存）；存好返回 true。没有 = 只读，不问、直接打开已保存的。 */
+  onSave?: () => Promise<boolean>;
 }) {
   const [data, setData] = useState<RelayPull | null>(null);
+  /** 「Save before opening the Relay list?」：undefined = 没开；null = 整份；数字 = 只看这台车（车头 Print）。 */
+  const [listAsk, setListAsk] = useState<number | null | undefined>(undefined);
   const [pulling, setPulling] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<Record<string, RoundResult>>({});
@@ -415,6 +420,19 @@ export function RelayPanel({
         ? `${prefix}: could not reach the server. Check your connection and try again.`
         : `${prefix}: ${describeError(e)}`,
     );
+  }
+
+  /** Relay list 的地址（Annie：「排完relay并保存了以后，应该加一个按键显示这些relay的list」）。 */
+  const relayListUrl = (car: number | null) =>
+    `/dispatch/relay-list?date=${date}${car ? `&car=${car}` : ""}`;
+
+  /** 打开 Relay list（新标签）：有没存的改动先问要不要存（显示的是已保存的排车）。 */
+  function openRelayList(car: number | null) {
+    if (dirty && onSave) {
+      setListAsk(car);
+      return;
+    }
+    window.open(relayListUrl(car), "_blank", "noopener,noreferrer");
   }
 
   async function pull() {
@@ -894,6 +912,15 @@ export function RelayPanel({
           >
             {pulling ? "Pulling…" : "Pull from manifests"}
           </button>
+          <button
+            type="button"
+            data-relay-list
+            disabled={disabled}
+            onClick={() => openRelayList(null)}
+            className={RP_BTN_WHITE}
+          >
+            📋 Relay list
+          </button>
           <span className={RP_SUB}>
             {dirty
               ? "Assign is not saved yet - Pull uses the saved schedule."
@@ -1119,6 +1146,12 @@ export function RelayPanel({
                           prefix={
                             code === "tour_car" ? tourCarPrefix(b, cars) : ""
                           }
+                          // Relay list 只排两轮（Hoover 的 Tour bus pick up 不印，Annie「用他的bus manifest就好了」）。
+                          onPrint={
+                            code !== "tour_car" && b.car.id && b.guests.length
+                              ? () => openRelayList(b.car.id)
+                              : undefined
+                          }
                         />
                       ))}
                     </Table>
@@ -1169,6 +1202,40 @@ export function RelayPanel({
           </>
         ) : null}
       </StepBox>
+
+      {listAsk !== undefined && onSave ? (
+        <ConfirmDialog
+          title="Save before opening the Relay list?"
+          confirmLabel="Save and open"
+          busyLabel="Saving…"
+          onClose={() => setListAsk(undefined)}
+          onConfirm={async () => {
+            // 先在点击里开好新标签（存完再开会被浏览器当成弹窗拦掉），存好了再把地址填进去。
+            const tab = window.open("about:blank", "_blank");
+            const ok = await onSave();
+            if (!ok) {
+              tab?.close();
+              return {
+                status: "error",
+                message:
+                  "Could not save. Fix the problems shown on Assign, then try again.",
+              };
+            }
+            const url = relayListUrl(listAsk);
+            if (tab) {
+              tab.opener = null;
+              tab.location.href = url;
+            } else window.open(url, "_blank", "noopener,noreferrer");
+            setListAsk(undefined);
+            return { status: "ok" };
+          }}
+        >
+          <p>
+            The Relay list shows the saved schedule. You have changes on Assign
+            that are not saved yet.
+          </p>
+        </ConfirmDialog>
+      ) : null}
 
       {confirm?.kind === "round" ? (
         <ConfirmDialog
@@ -1990,6 +2057,7 @@ function CarRows({
   guests,
   pick,
   prefix,
+  onPrint,
 }: {
   car: {
     van: string | null;
@@ -2000,6 +2068,8 @@ function CarRows({
   pick: Pick;
   /** 车头最前面的字（Tour bus pick up 轮写团名）；relay / relay_2 的车不属于单个团，不传。 */
   prefix?: string;
+  /** 车头的 Print：Relay list 只看 / 只印这一台。没有 = 不出这个键。 */
+  onPrint?: () => void;
 }) {
   // 缺司机 / 没排接客站点：这台车整车不发（后端 G108），车头标红写原因。
   const bad = !!car.problems?.length;
@@ -2018,6 +2088,16 @@ function CarRows({
           {prefix ? <>{prefix} · </> : null}
           {car.van || "No vehicle"} · {car.driver || "No driver"} ·{" "}
           {plural(guests.length, "order")}, {paxOf(guests)} pax
+          {onPrint ? (
+            <button
+              type="button"
+              data-relay-car-print
+              onClick={onPrint}
+              className="ml-2.5 inline-flex h-6 cursor-pointer items-center rounded-md border border-black/25 bg-paper px-2.5 align-middle text-[11.5px] font-bold text-[#111]"
+            >
+              Print
+            </button>
+          ) : null}
           {bad ? (
             <span className="block text-[12px] font-medium">
               {car.problems?.join(" · ")}
