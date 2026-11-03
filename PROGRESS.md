@@ -495,6 +495,7 @@
 - Annie 在 39 窗口答（原话）：「第7按B，其他都按推荐。」「动手」⇒ ①–⑥ A，⑦ B（只改排班表，Day timeline / Dashboard 照旧按名字，前端自己排）。后端已转 9e（sort_order + PUT /api/schedule/employees/order）；39 在 task/schedule-row-order 用 mock 写，后端上线后合。
 - G231 后端已上 main eba1c421（9e 转）：GET /api/team/directory {teams:[{id,name,member_count}], people:[{id, display_name, kind, teams, online}]}；POST /api/team/messages {to_user_id | to_team_id, body} → {ok, id, emailed, recipients, emailed_count}；POST …/{id}/reply {body} → {ok, id, recipients}；GET …/{id}/thread → {root:{…, to_team_id, to_team_name}, replies:[{id, from_display_name, from_kind, body, created_at}]}；notices ref 多 from_kind / to_team_id / to_team_name / thread_root_id。前端 Notice-CCL（置顶 48，preview e6）还等 Annie「动手」，动手后派新窗口。Lunch 和 CHD 由 36 依次推。
 - 39 两件写好在分支（没合，等后端 schedule-employee-flags 上 main）：task/schedule-coverage-flag cbddbe6（Annie 在 39 窗口补原话「Anita-not counted只在管理面出现，员工界面不要显示这个说明，就放正常的名字就好」，已照做）；task/schedule-row-order cbada82（接在前一个后面，先合 1 再合 2）。sch 341、dr 88、tasks 144，tsc / eslint / build 过。不算人头 preview 题 ② ③ 仍等 Annie（代码按推荐写）。
+- ✅ 排班前端两件已上 main（39）：不算人头 e1029ac（sch 328、dr 88、tasks 144）、拖行排序 96e142c（sch 341、dr 88、tasks 144），tsc / eslint / build 过，已对后端真实形状核过。等 Annie 在 Employees 窗口取消 Anita 的「Counts toward coverage」。
 - ✅ 排班后端已上 main 7c976175（合并 1727bac3，v141 Annie 已执行）。已请 39 先合 coverage-flag 再合 row-order，报 SHA；不算人头题 ② ③ 照推荐上。合后请 Annie 在 Employees 窗口取消 Anita。
 - 9e 回：counts_for_coverage + sort_order 合成一个包由 fc 做，迁移 v141（Annie 执行后推代码），排在 G231 后；题 8 orders.agent_view 迁移改成 v142。
 - Annie 原话（f8 窗口）：「帮忙把staff schedule的每个人的row改成可拖拽」。
