@@ -640,7 +640,8 @@
 - How to use 原文（请确认）：Morning Relay 加在「Guests who already got the text are skipped…」后："Driver changed after guests were texted? Change the driver on the Assign tab and Save. Their tracking links then follow the new driver, so you don't need to text them again. Their row says "Driver changed after send — link now follows …". Guest links use the driver saved in Dispatch, so make sure each car has the right driver."；Morning tracking 加在 Guest Viewed 那条后："\"Driver changed after send — link now follows …\" under a driver's name: the driver was changed in Dispatch after the text went out. The guest's link already follows the new driver. You don't need to send anything."；61 staff 步骤换司机那条改成："Driver changed (with or without a bus change): change the driver on Dispatch → Assign and Save. The guest's tracking link then follows the new driver to the bus they are on. You don't need to text the guest again."
 - e6 另提（给 37 / Annie）：Dispatch 里同一司机只换车，现在 Morning Relay 会橙字「Changed after sent」提示要不要重发；但同司机换车链接本来会自动跟，要不要也改成不提示？这次 preview 没动。
 
-### 62. Dispatch 省掉 CCL 的 Apply，改版自动更新（2026-11-03，Annie 提，没动手）
+### 62. Dispatch Send 页司机 / 导游 / Morning Relay 打开就展开（题 7–9 还等 Annie）；省掉 CCL Apply 已作废（2026-11-03）
+- ❌ 省掉 Apply 作废：Annie 看了 CCL 自己写错车号的结果后（原话）「那还是保留手动apply CCL的change吧」⇒ 题 1–6 作废，CCL 改版照旧 staff 按 Apply，后端不用做。题 7（Step 1 司机 / 导游打开就列好）、题 8（Step 2 Morning Relay 不用按 Pull）、题 9 里 Send 两句 How to use 仍等 Annie。
 - Annie 原话（24 窗口）：「我想把事情弄得简单一点，干脆把apply省掉，改过得数据直接就update了不需要staff动手」
 - 现在：CCL 在 Discord 发改版 → Dispatch 顶上琥珀提醒条 + Step 2「Apply changes」卡，staff 按 Apply 才套进排车。
 - Annie 接着补（原话）：「包括在dispatch的send 页面，把司机和导游发送也打开，不折叠，也不需要pull from manifest，直接展开给staff看」⇒ Send 步骤司机 / 导游发送块默认展开；不用按 Pull from manifests，打开就自动取好。并进同一份 preview。
