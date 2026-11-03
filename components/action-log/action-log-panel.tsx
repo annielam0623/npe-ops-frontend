@@ -50,6 +50,28 @@ type FirstPage =
       paged: boolean;
     };
 
+/** 第一页最多往下多翻几页去找第一条看得到的记录（防后端 cursor 出错时一直翻）。 */
+const MAX_EMPTY_PAGES = 20;
+
+/**
+ * 拉一页（第一页或 Show more）；后端按权限整条拿掉了一页里的全部条目（例如没勾 orders.money_view 时的改价格记录，后端 36 e37835a8）
+ * 但还有 next_cursor 时，接着往下翻，直到有条目或翻完——不然面板会写「没有记录」、也没有 Show more。
+ */
+async function firstNonEmpty(
+  load: (before: string | null, signal: AbortSignal) => Promise<ActionLogPage>,
+  signal: AbortSignal,
+  before: string | null = null,
+): Promise<ActionLogPage> {
+  let result = await load(before, signal);
+  for (
+    let n = 0;
+    !result.entries.length && result.next_cursor && n < MAX_EMPTY_PAGES;
+    n++
+  )
+    result = await load(result.next_cursor, signal);
+  return result;
+}
+
 /**
  * G203 共用 Action Log：放在可编辑页面最底下。默认收起，第一次展开才拉；列 When / Who / What / From → To，
  * 新的在上，每次 50 条，Show more 用上一页的 next_cursor 往前翻。
@@ -107,8 +129,7 @@ export function ActionLogPanel({
       controllerRef.current = controller;
       setPage({ kind: "loading" });
       setMore({ loading: false, error: null });
-      loadRef
-        .current(null, controller.signal)
+      firstNonEmpty(loadRef.current, controller.signal)
         .then((result) => {
           if (controller.signal.aborted) return;
           loadedKeyRef.current = key;
@@ -145,8 +166,7 @@ export function ActionLogPanel({
     const controller = new AbortController();
     controllerRef.current = controller;
     setMore({ loading: true, error: null });
-    loadRef
-      .current(cursor, controller.signal)
+    firstNonEmpty(loadRef.current, controller.signal, cursor)
       .then((result) => {
         if (controller.signal.aborted) return;
         setMore({ loading: false, error: null });
