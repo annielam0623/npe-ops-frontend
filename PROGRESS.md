@@ -4,7 +4,67 @@
 
 > 6d 交接（下面「2026-10-27 交接：前端主窗口 6d」那节）的后端需求已于 10/27 晚由 ad 转给家里后端主窗口 17。
 
-> **下一个主窗口：先读下面「2026-11-02 收工交接：前端主窗口-24」，再看置顶「📌 等 Annie 确认」。更早的交接是 10-30 晚那节。**
+> **下一个主窗口：先读下面「2026-11-03 凌晨 收工交接：前端主窗口 f8」，再看置顶「📌 等 Annie 确认」。上一份是「2026-11-02 收工交接：前端主窗口-24」。**
+
+## 2026-11-03 凌晨 收工交接：前端主窗口 `npe-ops-frontend-f8`[f1ac95]（家里电脑，Annie「我要睡觉了，你把交接写详细一点，明天回公司继续，要保证工作的顺利，所有东西都不能缺」）
+
+> 11-02 晚整晚的逐条记录在下面「2026-11-02 晚 主窗口 f8 开工」一节（每件有 Annie 原话、SHA、检查数）。这里只列明天要接的。
+> 今晚窗口：前端工作窗口 `39`[36b630]、`0e`[d96681]（都在家里电脑）；后端主窗口 `后端主窗口-9e`[79fb6f]，后端工作窗口 36、fc。家里的窗口明天在公司不会在，公司的新窗口要从分支接。
+
+### 一、今晚已上线（前后端都在 main，等 Annie 线上验收）
+| 件 | 前端 SHA | 后端 | Annie 要做的验收 |
+|---|---|---|---|
+| CHD 放回 Main manifest（版 1） | 03c1d51 | a7c62e91 | Manifests › CHD 标签：每产品一个胶囊、写 pax、Due≠0 淡红、不能勾 |
+| 午餐缩写读进 Lunch 栏 | 不用改 | a104835e | 看 11/3 Antelope 那台车 Lunch 栏、Special 没有餐码 |
+| 排班空档报错写清哪天哪个改动 | 308af89 | — | — |
+| Anita 不算人头 | e1029ac | 7c976175（v141） | **Annie 要在 Employees 窗口取消 Anita 的「Counts toward coverage」**（还没确认做了） |
+| 员工行拖动排序 | 96e142c | 同上 | — |
+| Day timeline（Anita 不出现 + 时间刻度 + now 线） | 529a757 | — | — |
+| 排班 ⚙ Settings 集中（Same every day） | 10e82e9 | — | — |
+| CCL 藏价格（orders.money_view） | f2851f6 | 8e9a9a58（v142） | 用 CCL / 没勾的 ZZ Test 账号看：Orders / 订单详情 / Main manifest 金额 / Dispatch Payable / Farm out Report / Sales Report / tracking Agent 列 / Supplier › Partners 价格都没了 |
+| dr 检查修（money_view 后） | 94d80a8 | — | — |
+| 按基础周排整月 | 9261c52 | — | Auto-fill › 「Copy a base week, then fix by the rules」，**Annie 今天要用它排整个月，周三跟员工确认** |
+| Relay 打印单（总表 + 每车） | d378f8f | 35eec2e1（v143 简称） | Dispatch › Morning Relay「📋 Relay list」/ 每车 Print；Bus Manifest setup「Short name」 |
+| 司机页 / 导游页订单号旁团简称 | — | 随 35eec2e1 | 简称 South / West / BZ / Lower / Upper / CanyonX（Annie 定）；没设简称不显示（Hoover 不设） |
+| Bus Manifest 司机兼导游并一格 | 9a3266b | 打印模板等 v145 | — |
+| 回复框短信 + 邮件默认都勾（全站） | 3b65dc8 | — | Annie 在 39 窗口「那你把他们都改成两个勾选」 |
+
+### 二、做完在分支、等合 main（明天第一件就是核状态、合）
+> ⚠️ 下面的 SHA 是交接时的状态；39 / 0e 收工回报后我会在本节补最终 SHA。明天先 `git fetch` 看分支最新提交。
+| 分支 | 窗口 | 等什么 | 合之前跑 |
+|---|---|---|---|
+| task/schedule-work-hours（27a94ca 起） | 39 | 后端 196f24c7 已上、v144 已执行 ⇒ **可以合**，39 交接时在合 | sch / dr / tasks、tsc / eslint / build。合前 Annie 别设「每天不同」 |
+| task/live-drivers（9600def 起） | 39 | 后端 d20a005d 已上 ⇒ **可以合** | mt / ns / tt / tk / da / tasks / nav / perm |
+| task/samsara-arrival | 39 | 后端到站（v146）还没上 | pl / mt / tt / tk / nav |
+| task/manifest-paper **d74c553**（0e 收工确认） | 0e | 后端 bus-footer-style（v145）还没上；酒店格颜色和缺的颜色等 Annie。内容：汇总框照后端 label 画（去 FOOTER_LABEL）、ASSIST 列、午餐单 NOTES（黄底 / 红字）、Relay list 车色读 car.relay_color；酒店格 relay_color / hotel_first 先不用。mock 检查 mf 235、man 346、da 457、rl 26、nav 38 过。分支里有 0e 的 PROGRESS 一节（含 Today's team 7 题） | mf / man / da / rl / nav（动到排班加 sch），合前对后端真实形状核一遍 |
+
+> 0e 收工：worktree 只留 D:\ops-wt-0e-relay（task/manifest-paper，依赖已装），其余已删；没有留下 dev server / Chrome；11/3 relay 导出 JSON 已删。
+
+### 三、等后端（后端主窗口 9e 那边）
+- **bus-footer-style + 纸本色表（迁移 v145，Annie 执行）**：36 做。汇总框按团写死（standard / south / west / hoover，迁移预填，**页面不做选版式下拉**——Annie「不要自己瞎设计」）；OTHER 格保留（Annie「要吧」）；ASSIST 只 Antelope；Rezdy 系统段输出时去掉；driver_is_guide；lunch notes；色值照 0e 纸本色表 https://claude.ai/artifact/1j7yN3Vn2ifP4fvYrqoA1A （BZ = #f4938e，Annie「BZ选1」）。字段名见 f8 那节「36 字段定」。
+- **Samsara 到站（迁移 v146，Annie 执行，排 v145 后）**：fc 做。pickup-locations 加 latitude / longitude / arrival_radius_m，PATCH …/arrival-point；tracking 行和 Live drivers relay_blocks 加 arrived_at / left_at。上线后 staff 要在 Pickup Locations 填酒店坐标才开始记。现 Samsara token 已能读车辆位置（Annie 自己实测）。
+- 迁移顺序：v141 ✅、v142 ✅、v143 ✅、v144 ✅；**v145、v146 待 Annie 执行**。
+- 9e 收工回报（11-03 00:xx）：bus-footer-style 没上 main，36 代码写了大半（footer 版式、题 7、⑤ NOTES、⑥ Driver Guide、⑦ ASSIST、relay 色盘搬后端、BZ #f4938e），今晚只把 v145（footer_style + assist_column）推到后端 task/bus-footer-style 给 Annie 看；② 酒店格等 Annie；明天公司 Resume，Annie 执行 v145 后才推代码。Samsara 到站：后端 WIP task/samsara-arrivals 8dc59fed（轮询核心 + 坐标接口写完，tracking / Live drivers 的 arrived_at / left_at 还没接；v146 草稿等 v145 落地后 Claim；默认半径 10 米待明天 GPS 实测）。明天后端主窗口未定，以 Annie 说的为准。
+
+### 四、等 Annie 的（都在置顶「📌」里，原话见 f8 那节；不要重复问已答的）
+1. **Bus Manifest 酒店格颜色**：纸本上酒店格涂的是节色 / 车色（不是 relay 车色），而且不是每家都涂（Antelope A 的 Aria、Circus、Treasure 没涂）——哪几家涂、什么规则。
+2. **纸本上没有的颜色**：第 4 辆以后的 relay 车、各团 C 车、BZ 的节 / 酒店格、West / Hoover 节色、SECRET / VIP LOWER、Antelope 回程 / South 去程 / 其他 shuttle、+skywalk +Meal Voucher / + Trail Of Time / SKY ONLY、午餐单默认 Turkey 整行黄。⚠️ Annie 规矩：颜色和格式照纸本，**不出推荐、不加设置项**，只问纸本没有的。
+3. **Today's team 重排**（0e preview https://claude.ai/artifact/Ph29qDSR1UtYmKGAWmryhY ，7 题都推荐 A）：Annie 还没答。
+4. **改班次时间小窗口挡住结束≤开始**（置顶 55 ②，推荐挡住，要 preview）：没答。
+5. **Notice ↔ CCL 前端页面**（置顶 48，后端 G231 已上）：等「动手」。
+6. 白天留下的：司机页 Farm out 栏改叫法（置顶 52）、Send Log 新模块（A/B/C）、Dashboard 两个统计格 bug（动手）、订单搜索整单 + 跳 Main manifest（置顶 51）、Forecast 补 3 个月数据格式。
+
+### 五、明天开工要做的（按顺序）
+1. 报对话名、是主窗口还是工作窗口；`git fetch`、`git status`；读本节和置顶。
+2. 核第二节四个分支的最新 SHA：schedule-work-hours、live-drivers 如果 39 已合就记 SHA；没合的派公司的新窗口接（从 origin 的分支开 worktree，合最新 main，跑上面的检查，合 main）。
+3. 问后端主窗口（公司那边是谁）v145 / v146 的进度，上了就派窗口合 task/manifest-paper、task/samsara-arrival。
+4. 提醒 Annie：取消 Anita 的勾；用「按基础周排」排整月，周三发确认；验收第一节那些；执行 v145 / v146。
+5. 资源：家里电脑今晚空闲约 11–12 GB；公司电脑开工前照规矩看一次。
+
+### 六、今晚学到的规矩（已写进记忆）
+- 颜色和格式**照纸本**（10/6 PDF：C:\Users\annzh\Downloads\4796_001.pdf，家里电脑；公司电脑要找 Annie 要），不自己设计、不加设置项、不给「推荐的别的做法」，只问纸本没覆盖的情况。
+- 「同意」不算动手；「动手出 preview」= 出 preview，不是写代码。
+- 后端今晚没有 21:30 收工（Annie：「后端也一直在做」）。
 
 ## 2026-11-03 回复框短信 / 邮件默认都勾（`task/reply-both-default`，工作窗口 `npe-ops-frontend-39`[36b630]）
 - Annie 原话（39 窗口）：「那你把他们都改成两个勾选」（起因：39 核对出新 ops 和旧后台的回复框都默认只勾 SMS，跟她说的「staff发送morning的默认就是两个都自动勾选了」对不上）。只改默认勾选，样子不变，不用 preview。
