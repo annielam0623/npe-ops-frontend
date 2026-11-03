@@ -42,6 +42,7 @@
 - **bus-footer-style + 纸本色表（迁移 v145，Annie 执行）**：36 做。汇总框按团写死（standard / south / west / hoover，迁移预填，**页面不做选版式下拉**——Annie「不要自己瞎设计」）；OTHER 格保留（Annie「要吧」）；ASSIST 只 Antelope；Rezdy 系统段输出时去掉；driver_is_guide；lunch notes；色值照 0e 纸本色表 https://claude.ai/artifact/1j7yN3Vn2ifP4fvYrqoA1A （BZ = #f4938e，Annie「BZ选1」）。字段名见 f8 那节「36 字段定」。
 - **Samsara 到站（迁移 v146，Annie 执行，排 v145 后）**：fc 做。pickup-locations 加 latitude / longitude / arrival_radius_m，PATCH …/arrival-point；tracking 行和 Live drivers relay_blocks 加 arrived_at / left_at。上线后 staff 要在 Pickup Locations 填酒店坐标才开始记。现 Samsara token 已能读车辆位置（Annie 自己实测）。
 - 迁移顺序：v141 ✅、v142 ✅、v143 ✅、v144 ✅；**v145、v146 待 Annie 执行**。
+- 9e 收工回报（11-03 00:xx）：bus-footer-style 没上 main，36 代码写了大半（footer 版式、题 7、⑤ NOTES、⑥ Driver Guide、⑦ ASSIST、relay 色盘搬后端、BZ #f4938e），今晚只把 v145（footer_style + assist_column）推到后端 task/bus-footer-style 给 Annie 看；② 酒店格等 Annie；明天公司 Resume，Annie 执行 v145 后才推代码。Samsara 到站：后端 WIP task/samsara-arrivals 8dc59fed（轮询核心 + 坐标接口写完，tracking / Live drivers 的 arrived_at / left_at 还没接；v146 草稿等 v145 落地后 Claim；默认半径 10 米待明天 GPS 实测）。明天后端主窗口未定，以 Annie 说的为准。
 
 ### 四、等 Annie 的（都在置顶「📌」里，原话见 f8 那节；不要重复问已答的）
 1. **Bus Manifest 酒店格颜色**：纸本上酒店格涂的是节色 / 车色（不是 relay 车色），而且不是每家都涂（Antelope A 的 Aria、Circus、Treasure 没涂）——哪几家涂、什么规则。
