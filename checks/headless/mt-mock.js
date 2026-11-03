@@ -52,7 +52,7 @@ function livePeople() {
   const ns = [g1, g2].filter((g) => g.relay_status === "no_show").reduce((a, g) => a + g.pax, 0);
   return [
     {
-      kind: "driver", hr_id: 11, name: "Mike", first_shift: "relay",
+      kind: "driver", hr_id: 11, name: "Mike", first_shift: "relay", error: false,
       segments: [{
         id: 101, shift: "relay", kind: "", when: "", title: "Morning Relay · 1st Round", van: "Van 12", tour_unset: false,
         manifest: null, tour_compact: null, relay_guests: [g1, g2], relay_farm_out_guests: [],
@@ -65,7 +65,7 @@ function livePeople() {
       inbox: { unread_total: 1, threads: [{ order_number: "A1002", guest_name: "ZZ Test Two", pax: 2, pickup_location: "ZZ Test Luxor", pickup_time: "5:55 AM", van: "Van 12", last: { text: "Running 10 min late", at: laIso("05:58"), time: "5:58 AM", from: "guest" }, last_guest_text: "Running 10 min late", unread: true }] },
     },
     {
-      kind: "guide", hr_id: 12, name: "Ana", first_shift: "tour",
+      kind: "guide", hr_id: 12, name: "Ana", first_shift: "tour", error: false,
       runs: [{
         id: 201, tour: "ZZ Test Grand Canyon", bus_label: "A", van: "Coach 21",
         manifest: {

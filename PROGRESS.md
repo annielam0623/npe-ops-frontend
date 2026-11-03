@@ -6,7 +6,7 @@
 
 > **下一个主窗口：先读下面「2026-11-02 收工交接：前端主窗口-24」，再看置顶「📌 等 Annie 确认」。更早的交接是 10-30 晚那节。**
 
-## 2026-11-02 晚 Morning Pickup Tracking：司机实时页（Live drivers）（`task/live-drivers`，工作窗口 `npe-ops-frontend-39`[36b630]）—— 在分支，等后端 live-drivers（9e）上 main、f8 发 SHA 再合
+## 2026-11-02 晚 Morning Pickup Tracking：司机实时页（Live drivers）（`task/live-drivers`，工作窗口 `npe-ops-frontend-39`[36b630]）—— ⏸️ 在分支，后端已上 main（d20a005d），还没合（2026-11-03 收工）
 - Annie 原话：「我们要不啊再出一个版本的页面，就跟司机看到的页面一样，每个司机占一列，他所有的行动都显示出来」「把各个司机的手机页面都显示出来，并列在页面上」「B我想放在morning tracking页面　同意默认关，no show要重新设计，统计同moring tracking，message也能回」「就设成文件夹形式就好了」「email sms同时发」；定稿：「出来第3个，我要30秒刷新relay，其他都同意推荐，动手」。preview https://claude.ai/artifact/TwJJ32NCdbTEnqxQcCX6MN 第 3 版。⑬ Samsara 到站是第二期，这一版不做；⑫ 别的页面回复框默认值不动（f8 在问 Annie）。
 - 后端字段（fc 定，f8 转）：GET /api/notifications/morning-pickup/live-drivers?date=（morning.view + 开关 morning_live_drivers，默认 super_admin_only）回 {date, people[{kind driver|guide, hr_id, name, first_shift, segments|runs, inbox}]}；tracking 每行多 live_status / live_status_at / live_driver / live_van / ns_unhandled；回复用 POST /booking-notes/by-order/{n}（send_sms + send_email）。
 - 改了：
@@ -15,6 +15,9 @@
   - Live drivers（新 `components/morning-tracking/live-drivers.tsx`）：一人一列，React 照搬司机页 / 导游页（relay 站点块、Checked in、团车摘要卡 / 午餐 / 名单、有单独导游的团车只出数字、导游页 On board、Not picked up 红框、Routes / Messages 收件箱）；按钮只读灰掉、标了的绿 / 红、下面写几点（④⑩ A）；列头写车 · 哪一趟、x picked up · y no show · z not marked · pax；搜索标黄；司机筛选只看那一列；每 30 秒刷新（表和司机页一起，只在今天、没过 cut-off；Tracking 页签照旧 60 秒）。
   - ⑨ 每列 Text / Messages 里的客人：打开 Tracking 那个回复框（ConversationModal 加 `sendBoth`：发完分开写两个渠道结果，绿 / 红 / 灰，no_channel 写「SMS not sent: no channel」；默认两个都勾已是全站的，见 2026-11-03 那节）。单号不在当天 tracking 里时红字说用 Orders。
   - How to use 加两条（开关对我开时才出）。
+- **收工交接（2026-11-03，39）**：分支 `task/live-drivers`，worktree `D:\ops-wt-39-ld`。已合 main 25752dc（回复框全站默认两个都勾：conversation-modal 冲突解成 useState(true) + 保留 sendBoth 的结果显示）。
+  - 已对照后端 f85ec0ca 核过：tracking 每行 live_status / live_status_at（ISO）/ live_driver / live_van / ns_unhandled 同前端；/live-drivers 回 {date, people[{kind, hr_id, name, first_shift(可 null), error(布尔), segments+inbox | runs}]}，error 改成布尔、那一列写「Could not load this page. Try ↻ Refresh, or call the driver.」。还没逐个核 segments 里 relay_blocks / manifest 的键（同 /driver 页，前端按 driver_home.html 的键写的）——下一步先在后端代码里核 relay_pull.station_blocks、tour_manifest.guests_for_assignment / runs_for_guide 回的键名。
+  - 下一步：合最新 main → 核上面那几处键 → 跑 mt / ns / tt / tk / da / tasks / nav / perm（mt 的 60 秒自动拉、Agent 列偶尔会因为机器忙偶发失败，重跑）、tsc / eslint / build → 合 main 报 SHA 给 f8。
 - 检查：mt-mock 加 ctl.live（行的 live_* / ns_unhandled、/live-drivers 两个人、addNoShow / clearMark / liveForbidden、NOCHANNEL / FAILMAIL）；mt 加 22 条（开关关着不出、两个页签、Driver mark 位置、No show 置顶红底、时间写法、页签数字、Take action 后绿点、NEW、Live 两列、列头数字、只读按钮 + 时间、导游列、搜索标黄、司机筛选、回复框默认两个都勾 + POST 形状 + 两行绿字、no_channel / 邮件失败红字、Messages 收件箱、30 秒刷新、403、旧后端没 Driver mark），可选 LIVE_SHOT 存截图（看过，同 preview）。ns 的 Page visibility 行数 20→22（main 上已经是 21，那条原来没跟着改）。mt 240/240、ns 49/49、tt 137/137、tk 135/135、da 454/454、tasks 144/144、nav 38/38、perm 54/54；tsc / eslint（0 错）/ build 过。
 ## 2026-11-03 回复框短信 / 邮件默认都勾（`task/reply-both-default`，工作窗口 `npe-ops-frontend-39`[36b630]）
 - Annie 原话（39 窗口）：「那你把他们都改成两个勾选」（起因：39 核对出新 ops 和旧后台的回复框都默认只勾 SMS，跟她说的「staff发送morning的默认就是两个都自动勾选了」对不上）。只改默认勾选，样子不变，不用 preview。

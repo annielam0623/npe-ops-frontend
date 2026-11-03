@@ -246,12 +246,12 @@ export interface LivePerson {
   kind: "driver" | "guide";
   hr_id: number;
   name: string;
-  first_shift?: string;
+  first_shift?: string | null;
   segments?: LiveSegment[];
   runs?: LiveGuideRun[];
   inbox?: { unread_total: number; threads: LiveInboxThread[] } | null;
-  /** 这一位读失败（后端只空这一位）。 */
-  error?: string;
+  /** 这一位读失败（后端 true，只空这一位，整页照出）。 */
+  error?: boolean;
 }
 
 export interface LiveDrivers {

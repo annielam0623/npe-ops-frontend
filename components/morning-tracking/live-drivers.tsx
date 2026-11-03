@@ -174,7 +174,7 @@ function PersonColumn({
           </h3>
           {person.error ? (
             <p className="mt-3 rounded-lg bg-red-500/15 px-3 py-2 text-[12.5px] text-red-300">
-              Could not load this page: {person.error}
+              Could not load this page. Try ↻ Refresh, or call the driver.
             </p>
           ) : guide ? (
             <GuidePage
