@@ -58,8 +58,8 @@ function livePeople() {
         manifest: null, tour_compact: null, relay_guests: [g1, g2], relay_farm_out_guests: [],
         relay_summary: { pax: 4, pickups: 2, first: "5:40 AM", last: "5:55 AM", picked_up: picked, no_show: ns },
         relay_blocks: [
-          { time: "5:40 AM", hotel: "ZZ Test Excalibur", spot: "South entrance", pax: 2, bookings: 1, guests: [g1] },
-          { time: "5:55 AM", hotel: "ZZ Test Luxor", spot: "Taxi line", pax: 2, bookings: 1, guests: [g2] },
+          { time: "5:40 AM", hotel: "ZZ Test Excalibur", spot: "South entrance", pax: 2, bookings: 1, guests: [g1], ...(ctl.noArrival ? {} : { arrived_at: laIso("05:38"), left_at: laIso("05:46") }) },
+          { time: "5:55 AM", hotel: "ZZ Test Luxor", spot: "Taxi line", pax: 2, bookings: 1, guests: [g2], ...(ctl.noArrival ? {} : { arrived_at: laIso("05:53"), left_at: null }) },
         ],
       }],
       inbox: { unread_total: 1, threads: [{ order_number: "A1002", guest_name: "ZZ Test Two", pax: 2, pickup_location: "ZZ Test Luxor", pickup_time: "5:55 AM", van: "Van 12", last: { text: "Running 10 min late", at: laIso("05:58"), time: "5:58 AM", from: "guest" }, last_guest_text: "Running 10 min late", unread: true }] },

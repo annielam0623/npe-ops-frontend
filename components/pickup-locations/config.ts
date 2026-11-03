@@ -1,4 +1,5 @@
 import type {
+  ArrivalPoint,
   PickupLocation,
   PickupLocationInput,
   PickupStopTime,
@@ -23,6 +24,49 @@ export interface LocationDraft {
   is_shuttle: boolean;
   /** Shuttle 站的小时刻表：一行一条线路的一班，每个季节一格。先暂存，按这一行的 Save 才存。 */
   times: TimeRowDraft[];
+  /** Samsara 到站的接客门口（输入框原样字符串，按 Save 才校验、才存；arrivalPointOf）。 */
+  latitude: string;
+  longitude: string;
+  radius: string;
+}
+
+/** 后端 samsara_arrivals 的默认半径和上下限（同 migrate_v146）。 */
+export const ARRIVAL_RADIUS_DEFAULT = 10;
+export const ARRIVAL_RADIUS_MIN = 1;
+export const ARRIVAL_RADIUS_MAX = 500;
+
+/** 草稿里的坐标 → PATCH …/arrival-point 的 body；填得不对给一句英文（不发请求）。两格都空 = 清掉。 */
+export function arrivalPointOf(
+  draft: LocationDraft,
+): { point: ArrivalPoint } | { error: string } {
+  const lat = draft.latitude.trim();
+  const lon = draft.longitude.trim();
+  const r = draft.radius.trim();
+  const radius = r === "" ? ARRIVAL_RADIUS_DEFAULT : Number(r);
+  if (
+    !Number.isInteger(radius) ||
+    radius < ARRIVAL_RADIUS_MIN ||
+    radius > ARRIVAL_RADIUS_MAX
+  )
+    return {
+      error: `Radius must be a whole number of meters from ${ARRIVAL_RADIUS_MIN} to ${ARRIVAL_RADIUS_MAX}.`,
+    };
+  if (!lat && !lon)
+    return { point: { latitude: null, longitude: null, radius_m: radius } };
+  if (!lat || !lon)
+    return {
+      error: "Fill in both latitude and longitude, or leave both empty.",
+    };
+  const la = Number(lat);
+  const lo = Number(lon);
+  if (!Number.isFinite(la) || !Number.isFinite(lo))
+    return { error: "Latitude and longitude must be numbers." };
+  if (la < -90 || la > 90 || lo < -180 || lo > 180)
+    return {
+      error:
+        "Latitude must be between -90 and 90, longitude between -180 and 180.",
+    };
+  return { point: { latitude: la, longitude: lo, radius_m: radius } };
 }
 
 /** 一格：时间、No service，或者两样都没有（= 这一季还没填）。 */
@@ -54,6 +98,9 @@ export function emptyDraft(): LocationDraft {
     is_tour_bus: false,
     is_shuttle: false,
     times: [],
+    latitude: "",
+    longitude: "",
+    radius: "",
   };
 }
 
@@ -122,6 +169,12 @@ export function draftOf(loc: PickupLocation): LocationDraft {
     is_tour_bus: !!loc.is_tour_bus,
     is_shuttle: !!loc.is_shuttle,
     times: timeRowsOf(loc.times),
+    latitude: loc.latitude == null ? "" : String(loc.latitude),
+    longitude: loc.longitude == null ? "" : String(loc.longitude),
+    radius:
+      loc.arrival_radius_m == null
+        ? String(ARRIVAL_RADIUS_DEFAULT)
+        : String(loc.arrival_radius_m),
   };
 }
 

@@ -110,6 +110,7 @@ export type {
   TourResponseStats,
 } from "./ops-summary";
 export type {
+  ArrivalPoint,
   PickupLocation,
   PickupLocationInput,
   PickupLogAction,

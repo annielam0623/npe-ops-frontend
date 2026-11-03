@@ -152,6 +152,12 @@ export interface LiveStationBlock<G> {
   pax: number;
   bookings: number;
   guests: G[];
+  /**
+   * Samsara 到站（后端 samsara-arrivals，只有 relay_blocks 有）：relay 车到 / 离这一站的时间（ISO）；
+   * 没记到 / 这家没填坐标为 null，旧后端没有这两个键。
+   */
+  arrived_at?: string | null;
+  left_at?: string | null;
 }
 
 /** 团车名单上的一位客人（manifest.blocks[].guests[]，导游页同）。 */

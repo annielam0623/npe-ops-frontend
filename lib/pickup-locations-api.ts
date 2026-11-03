@@ -1,5 +1,6 @@
 import { apiFetch } from "@/lib/api-client";
 import type {
+  ArrivalPoint,
   PickupLocation,
   PickupLocationInput,
   ShuttleRoute,
@@ -57,6 +58,17 @@ export async function setPickupLocationTourDeparture(
   await apiFetch(`/api/pickup-locations/${id}/tour-departure`, {
     method: "PATCH",
     body: { tour_departure: on },
+  });
+}
+
+/** Samsara 到站的接客门口坐标 + 半径（后端 samsara-arrivals）。两个坐标都 null = 清掉，这家不再记到 / 离。 */
+export async function setPickupLocationArrivalPoint(
+  id: number,
+  point: ArrivalPoint,
+): Promise<void> {
+  await apiFetch(`/api/pickup-locations/${id}/arrival-point`, {
+    method: "PATCH",
+    body: point,
   });
 }
 

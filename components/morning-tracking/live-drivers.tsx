@@ -325,6 +325,8 @@ function StationHead({
   kind,
   pax,
   bookings,
+  arrived_at,
+  left_at,
 }: {
   time: string;
   hotel: string | null;
@@ -333,7 +335,12 @@ function StationHead({
   kind?: string;
   pax: number;
   bookings: number;
+  arrived_at?: string | null;
+  left_at?: string | null;
 }) {
+  // Samsara 到站（preview TwJJ32NCdbTEnqxQcCX6MN 预留的样子）：到了没走绿色，走了灰色；没记到不出。
+  const arrived = formatMarkTime(arrived_at);
+  const left = arrived ? formatMarkTime(left_at) : "";
   return (
     <div className="flex items-start gap-2.5 px-3.5 pt-2.5 pb-1.5">
       <div className="min-w-0 flex-1">
@@ -358,6 +365,20 @@ function StationHead({
               )}
             >
               {label}
+            </span>
+          ) : null}
+          {arrived ? (
+            <span
+              data-arrival={left ? "left" : "arrived"}
+              className={cn(
+                "rounded px-1.5 text-[10.5px] font-bold whitespace-nowrap",
+                left
+                  ? "bg-white/[.08] text-[#cbd5e1]"
+                  : "bg-green-500/[.16] text-[#86efac]",
+              )}
+            >
+              Arrived {arrived}
+              {left ? ` · Left ${left}` : ""}
             </span>
           ) : null}
         </div>

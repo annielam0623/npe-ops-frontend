@@ -549,6 +549,66 @@ async function run() {
   check("勾 Shuttle stop 再 Add：POST 带 is_shuttle true", addPost?.body?.is_shuttle === true && addPost.body.is_tour_bus === false, JSON.stringify(addPost?.body));
   await ctl({ split: false });
 
+  // Samsara 到站（后端 samsara-arrivals）：编辑行里填接客门口的坐标 + 半径，先暂存、按 Save 才存（PUT 之后另发 PATCH …/arrival-point）。
+  {
+    const er = "document.querySelector('[data-edit-row]')";
+    const inp = (label) => `${er}.querySelector('[data-arrival-point] input[aria-label="${label}"]')`;
+    const openBellagio = async () => {
+      await evaluate(`$btn('✏ Edit', ${rowOf("Bellagio")}).click();`);
+      await waitFor(er);
+    };
+    await goto(`${APP}/settings/pickup-locations`);
+    await waitFor(rowOf("Bellagio"), 30000);
+    await helpers();
+    await openBellagio();
+    check("旧后端（GET 没有 latitude）：编辑行没有坐标格", await evaluate(`return !${er}.querySelector('[data-arrival-point]');`));
+    await evaluate(`$btn('Cancel', ${er}).click();`);
+    await ctl({ arrival: true });
+    await goto(`${APP}/settings/pickup-locations`);
+    await waitFor(rowOf("Bellagio"), 30000);
+    await helpers();
+    check("新后端、还没填坐标：看的行不写 Pickup point", await evaluate(`return !${rowOf("Bellagio")}.querySelector('[data-arrival-point-view]');`));
+    await openBellagio();
+    check("编辑行：酒店名下面 Pickup point (live tracking)，Latitude / Longitude 空着，半径默认 10", await evaluate(`return ${er}.querySelector('[data-arrival-point]').textContent.includes('Pickup point (live tracking)') && ${inp("Latitude")}.value === '' && ${inp("Longitude")}.value === '' && ${inp("Radius in meters")}.value === '10';`));
+    // 只填一个：不发请求、红字，改动留着
+    await evaluate(`$setValue(${inp("Latitude")}, '36.1126');`);
+    let before = (await mockLog()).length;
+    await evaluate(`$btn('Save', ${er}).click();`);
+    await sleep(300);
+    check("只填纬度按 Save：不发请求、红字 Fill in both latitude and longitude…、改动留着", (await since(before, (e) => e.method === "PUT" || e.method === "PATCH")).length === 0 && (await evaluate(`return ${er}.textContent.includes('Could not save: Fill in both latitude and longitude, or leave both empty.') && ${inp("Latitude")}.value === '36.1126';`)));
+    await evaluate(`$setValue(${inp("Longitude")}, '-115.1767'); $setValue(${inp("Radius in meters")}, '0');`);
+    await evaluate(`$btn('Save', ${er}).click();`);
+    await sleep(300);
+    check("半径 0：不发请求、红字 Radius must be a whole number of meters from 1 to 500.", (await since(before, (e) => e.method === "PUT" || e.method === "PATCH")).length === 0 && (await evaluate(`return ${er}.textContent.includes('Radius must be a whole number of meters from 1 to 500.');`)));
+    await evaluate(`$setValue(${inp("Radius in meters")}, '15');`);
+    before = (await mockLog()).length;
+    await evaluate(`$btn('Save', ${er}).click();`);
+    await waitFor(`!${er} && ${rowOf("Bellagio")}?.querySelector('[data-arrival-point-view]')`);
+    const sent = await since(before, (e) => e.method === "PUT" || e.method === "PATCH");
+    check("Save：先 PUT 酒店，再 PATCH arrival-point {latitude, longitude, radius_m}（数字）", sent.length === 2 && sent[0].method === "PUT" && sent[1].method === "PATCH" && sent[1].path.endsWith("/arrival-point") && JSON.stringify(sent[1].body) === JSON.stringify({ latitude: 36.1126, longitude: -115.1767, radius_m: 15 }), JSON.stringify(sent));
+    check("存好：绿字 ✓ Saved Bellagio，看的行写 Pickup point: 36.1126, -115.1767 (15 m)", await evaluate(`return document.body.textContent.includes('✓ Saved Bellagio') && ${rowOf("Bellagio")}.querySelector('[data-arrival-point-view]').textContent.replace(/\\s+/g, ' ').trim() === 'Pickup point: 36.1126, -115.1767 (15 m)';`), await evaluate(`return ${rowOf("Bellagio")}?.querySelector('[data-arrival-point-view]')?.textContent;`));
+    // 只改了别的格：不发 PATCH
+    await openBellagio();
+    await evaluate(`$setValue(${er}.querySelector('input[aria-label="Short (for SMS)"]'), 'Bell lobby');`);
+    before = (await mockLog()).length;
+    await evaluate(`$btn('Save', ${er}).click();`);
+    await waitFor(`!${er}`);
+    check("坐标没改、只改 Short：只 PUT，不发 PATCH", (await since(before, (e) => e.method === "PATCH")).length === 0 && (await since(before, (e) => e.method === "PUT")).length === 1);
+    // 坐标存不上：酒店已存、红字写清楚只有坐标没存，编辑行留着
+    await ctl({ arrivalFail: true });
+    await openBellagio();
+    await evaluate(`$setValue(${inp("Latitude")}, ''); $setValue(${inp("Longitude")}, '');`);
+    await evaluate(`$btn('Save', ${er}).click();`);
+    check("PATCH 失败：红字 The hotel was saved, but not the pickup point…，编辑行留着、改动还在", await waitFor(`${er}?.textContent.includes('The hotel was saved, but not the pickup point:') && ${inp("Latitude")}.value === ''`));
+    await ctl({ arrivalFail: false });
+    before = (await mockLog()).length;
+    await evaluate(`$btn('Save', ${er}).click();`);
+    await waitFor(`!${er}`);
+    const clear = (await since(before, (e) => e.method === "PATCH"))[0];
+    check("两格都清空再 Save：PATCH 送 latitude / longitude null（不再记这家），看的行不写 Pickup point", JSON.stringify(clear?.body) === JSON.stringify({ latitude: null, longitude: null, radius_m: 15 }) && (await waitFor(`!${rowOf("Bellagio")}.querySelector('[data-arrival-point-view]')`)), JSON.stringify(clear?.body));
+    await ctl({ arrival: false });
+  }
+
   // 手机版（Annie 2026-11-01 手机版规则）：+ Add New Location 默认收起、Export / Import 进 ⋯、How to use 在最底、表格左右滑不挤
   await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
   await goto(`${APP}/settings/pickup-locations`);
