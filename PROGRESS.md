@@ -24,6 +24,7 @@
 | 分支 | 提交 | 等什么 | 下一步 |
 |---|---|---|---|
 | task/manifest-paper（09，Bus Manifest 照纸本，**加急**） | 20687e8 | 后端 bus-footer-style 本地 main 已合（52e41058 / e0bfe213），**只等 Annie 在终端跑发布**；37 给 main SHA | 09（或接手窗口）对真实 main 核字段 → 合最新 main 重跑 mf / rl / man / da / nav + tsc / eslint / build → 合 main，报 Annie 看什么 |
+| ↳ 更新 | — | ✅ 37：后端 bus-footer-style（G236）已上 main e0bfe213，字段名没改 | 已派 09 核对合 main |
 | task/driver-follow（e6，G234 换司机只改 Dispatch，置顶 63） | 7acc105（代码 0835797） | 后端 4d task/driver-change-follow（33691e8d 已推，driver_follow.updated[] 和 bulk spellings 明天家里做），排在 57 后；**Annie 还要看新红字 "Bus changed — ask the guest to open the link again" / tooltip / Guest Viewed How to use 那句** | 核真实形状 → 合 main 重跑 da / rl / mt / nav → Annie 看过红字后合 |
 | task/samsara-arrival（09，到站 Arrived / Left） | 071df4d | 后端 64 samsara-arrivals + v146（Annie 跑）；置顶 58 / 59 答 | 同上 |
 
