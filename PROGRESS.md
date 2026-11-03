@@ -631,6 +631,15 @@
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 63. 换司机只改 Dispatch：页面上怎么标（G234，Annie 已「动手」后端；e6 preview https://claude.ai/artifact/CXT8ZueNa3akn1ZrGn4Ycj ，没写代码）
+- 背景：Annie（37 转）「换了司机以后，staff只需要去dispatch把司机改了，然后保存，就可以了，不需要再发送任何信息出去」。后端 4d 做：改司机 + Save 后已发客人的链接跟新司机，不发东西。前端占位字段 driver_followed {from, to}，真实字段 37 待转。
+- 题 1 Morning Relay 发送名单标在哪（现在 Status 列淡黄「Sent by…」，下面橙字「Changed after sent: …」，改司机不显示）：A（推荐）Status 列 Sent by 下面一行、橙字上面；B 名字后小标签「Driver changed」，鼠标移上去看全句。
+- 题 2 Morning tracking 标在哪：A（推荐）Driver 列司机名下面（跟 Guest Viewed 的红字分开）；B Guest Viewed 列时间下面（跟红字挤一格）。
+- 题 3 颜色（这句意思是「已自动处理，不用做什么」）：A（推荐）灰色小字；B 绿色小字（全站绿色是保存成功，易混）；C 橙字（橙字意思是看要不要重发，会误会）。
+- 题 4 原文：A "Driver changed after send — link now follows LUIS"；B（推荐）"Driver changed after send (was FREDDY) — link now follows LUIS"（客人说等的是 Freddy 时对得上，要后端给旧司机名）。
+- How to use 原文（请确认）：Morning Relay 加在「Guests who already got the text are skipped…」后："Driver changed after guests were texted? Change the driver on the Assign tab and Save. Their tracking links then follow the new driver, so you don't need to text them again. Their row says "Driver changed after send — link now follows …". Guest links use the driver saved in Dispatch, so make sure each car has the right driver."；Morning tracking 加在 Guest Viewed 那条后："\"Driver changed after send — link now follows …\" under a driver's name: the driver was changed in Dispatch after the text went out. The guest's link already follows the new driver. You don't need to send anything."；61 staff 步骤换司机那条改成："Driver changed (with or without a bus change): change the driver on Dispatch → Assign and Save. The guest's tracking link then follows the new driver to the bus they are on. You don't need to text the guest again."
+- e6 另提（给 37 / Annie）：Dispatch 里同一司机只换车，现在 Morning Relay 会橙字「Changed after sent」提示要不要重发；但同司机换车链接本来会自动跟，要不要也改成不提示？这次 preview 没动。
+
 ### 62. Dispatch 省掉 CCL 的 Apply，改版自动更新（2026-11-03，Annie 提，没动手）
 - Annie 原话（24 窗口）：「我想把事情弄得简单一点，干脆把apply省掉，改过得数据直接就update了不需要staff动手」
 - 现在：CCL 在 Discord 发改版 → Dispatch 顶上琥珀提醒条 + Step 2「Apply changes」卡，staff 按 Apply 才套进排车。
