@@ -870,7 +870,7 @@ async function run() {
   await sleep(600);
   check("已发布的周 Save 造成新空档：后端 409 coverage_gap ⇒ 没存上", !gapSaved);
   check("红字自己滚到屏幕中间（人在页面下面也看得到）", await evaluate("const r = document.querySelector('[data-save-error]').getBoundingClientRect(); return r.top >= 0 && r.bottom <= window.innerHeight;"), await evaluate("const r = document.querySelector('[data-save-error]')?.getBoundingClientRect(); return JSON.stringify([r?.top, r?.bottom, window.innerHeight, window.scrollY]);"));
-  check("红字写后端原话、列出空档（Mon 10/05 · nobody 2:00–11:15 AM），Not saved yet 留着", await evaluate("const e = document.querySelector('[data-save-error]').textContent; return e.includes(\"This change would leave a gap in coverage, so it wasn't saved.\") && e.includes('Mon 10/05 · nobody 2:00–11:15 AM') && !!document.querySelector('[data-unsaved-summary]');"), await evaluate("return document.querySelector('[data-save-status]')?.textContent;"));
+  check("红字写后端原话、逐段写哪天几点 + 哪个改动造成的（Mon 10/05, 2:00–11:15 AM is not covered — caused by your change to Veronica's Open shift.），Not saved yet 留着", await evaluate("const e = document.querySelector('[data-save-error]').textContent; return e.includes(\"This change would leave a gap in coverage, so it wasn't saved.\") && e.includes(\"Mon 10/05, 2:00–11:15 AM is not covered — caused by your change to Veronica's Open shift.\") && !!document.querySelector('[data-unsaved-summary]');"), await evaluate("return document.querySelector('[data-save-status]')?.textContent;"));
   check("被拒的空档在页面上也标出来：周表列头 Mon 10/05 红点、Day timeline 的 Mon 带红点", await evaluate("return !!document.querySelector('[data-grid-gap=\"2026-10-05\"]') && !!document.querySelector('[data-day-tab=\"2026-10-05\"][data-has-gap]');"));
   await evaluate("document.querySelector('[data-week-discard]').click();");
   check("Discard：红字、Not saved yet 都没了，周表列头的红点也没了", await waitFor("!document.querySelector('[data-save-error]') && !document.querySelector('[data-unsaved-summary]') && !document.querySelector('[data-grid-gap=\"2026-10-05\"]')"));
@@ -1607,6 +1607,36 @@ async function run() {
   await ctl({ inactiveEmployee: 0 });
   await evaluate("document.querySelector('[data-week-discard]').click();");
   await waitFor("!document.querySelector('[data-unsaved-summary]')");
+
+  // ── 409 coverage_gap：同一次 Save 里别的日子开了口子（Annie 11-02「7号的gap已经填了，但始终报错不让保存」）──
+  // 已发布的 9/27 周（没有空档）：Mon 9/28 Veronica Open 改成 2:00–10:30 AM（开口子 10:30–11:30），Sat 10/03 Anita 改时间（没事）。
+  await ctl({ role: "supervisor", changesLocked: false, inactiveEmployee: 0 });
+  await openPage(`${APP}/schedule?week=2026-09-27`);
+  await waitFor(`${cell("1|2026-09-28")}?.querySelector('[data-slot-id]')`, 30000);
+  await evaluate("window.__scheduleNow = '2026-09-01T00:00'; window.dispatchEvent(new Event('focus'));");
+  await sleep(300);
+  const gVer = `${cell("1|2026-09-28")}.querySelector('[data-slot-id]')`;
+  const gAnita = `${cell("5|2026-10-03")}.querySelector('[data-slot-id]')`;
+  await setTime(gVer, null, "10:30");
+  await setTime(gAnita, null, "12:30");
+  const gapLine = "Mon 09/28, 10:30–11:30 AM is not covered — caused by your change to Veronica's Open shift.";
+  check("409 coverage_gap：红框逐段写哪天几点、是哪个改动造成的", !(await saveWeek()) && (await evaluate(`const e = document.querySelector('[data-save-error]'); return e.textContent.includes('Nothing was saved') && [...e.querySelectorAll('[data-rejected-gaps] li')].map(li => li.textContent).join('|') === ${JSON.stringify(gapLine)};`)), await evaluate("return document.querySelector('[data-save-error]')?.textContent;"));
+  // 再改别的日子（Annie 当时改的是 7 号）：红字收起，但后端说的那一段还留着，写明上次 Save 为什么被拒。
+  await setTime(gAnita, null, "12:15");
+  check("再改别的地方：后端列的空档还留着（Your last Save was refused…），没有混成别的红字", await waitFor(`!document.querySelector('[data-save-error]') && document.querySelector('[data-save-rejected]')?.textContent.includes('Your last Save was refused because of these gaps.') && document.querySelector('[data-save-rejected] li')?.textContent === ${JSON.stringify(gapLine)}`), await evaluate("return document.querySelector('[data-save-status]')?.textContent;"));
+  check("还是没补：再按 Save 照样被拒（以后端为准）", !(await saveWeek()));
+  // 把口子补上（Veronica 改到 11:45，盖住 10:30–11:30）：存得上，红框没了。
+  await setTime(gVer, null, "11:45");
+  check("补上以后 Save 存得上，上次被拒的红框也没了", (await saveWeek()) && (await evaluate("return !document.querySelector('[data-save-rejected]') && !document.querySelector('[data-save-error]');")), await evaluate("return document.querySelector('[data-save-status]')?.textContent;"));
+  // 还原，后面的「按勾」检查要这一周干净。
+  await setTime(gVer, null, "11:30");
+  await setTime(gAnita, null, "12:00");
+  check("还原 9/27 周（Veronica 11:30、Anita 12:00）", await saveWeek());
+  // Discard 也清掉：再造一次被拒，按 Discard ⇒ 红框没了。
+  await setTime(gVer, null, "10:30");
+  await saveWeek();
+  await evaluate("document.querySelector('[data-week-discard]').click();");
+  check("Discard：改动和上次被拒的红框一起清掉", await waitFor("!document.querySelector('[data-unsaved-summary]') && !document.querySelector('[data-save-rejected]') && !document.querySelector('[data-save-error]')"));
 
   // ── 手机版第 ③ 批（Annie 2026-11-01 手机版规则）：一行 ‹ 日期 ›，This week / Next week / Auto-fill / Employees / + Add employee 收进「⋯」，Save 露在外面，整页不横晃 ──
   await ctl({ fail401: false, role: "superadmin" });

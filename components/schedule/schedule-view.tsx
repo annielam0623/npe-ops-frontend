@@ -84,6 +84,7 @@ import {
   isDirty,
   localGaps,
   futureGaps,
+  gapCauseIds,
   newGapsByCard,
   type LaNow,
   opsOf,
@@ -214,6 +215,14 @@ export function ScheduleView() {
   const [saveState, setSaveState] = useState<SaveState>({ kind: "idle" });
   /** 后端 400 指出的那一个班（标红）。 */
   const [errorSlotId, setErrorSlotId] = useState<number | null>(null);
+  /**
+   * 上一次 Save 被 409 coverage_gap 拒时后端列的空档。再改页面（红字收起）也留着，下一次 Save 成功 / Discard / 换周才清掉：
+   * 不然一改别的地方，后端说的「哪天哪段」就看不到了，人只会去改自己以为的那一天（Annie 11-02「7号的gap已经填了，但始终报错不让保存」）。
+   */
+  const [rejectedGapsOf, setRejectedGapsOf] = useState<{
+    week: string;
+    gaps: ScheduleGap[];
+  } | null>(null);
   /** 409 stale 后点了 Keep editing：下次 Save 用库里最新的 version。 */
   const [versionOverride, setVersionOverride] = useState<string | null>(null);
   /** 离开页面 / 换周时问 Save / Don't save / Cancel。 */
@@ -275,6 +284,7 @@ export function ScheduleView() {
     setDraft(EMPTY_DRAFT);
     setSaveState({ kind: "idle" });
     setErrorSlotId(null);
+    setRejectedGapsOf(null);
     setVersionOverride(null);
     setIdleNudge(false);
   }, [weekStart]);
@@ -489,6 +499,7 @@ export function ScheduleView() {
       setDraft(EMPTY_DRAFT);
       setVersionOverride(null);
       setIdleNudge(false);
+      setRejectedGapsOf(null);
       setSaveState({ kind: "saved", at: new Date().toISOString() });
       if (r.week.status === "published") setUnsentWeek(weekStart);
       // 存好就放开（preview ③），别人可以改；再动手时会重新占。
@@ -504,6 +515,8 @@ export function ScheduleView() {
       if (e && e.code !== "locked") editLock.adoptToken(e.lock_token);
       if (e?.op_index != null)
         setErrorSlotId(slotOfRef.current[e.op_index] ?? null);
+      if (e?.code === "coverage_gap" && e.gaps?.length)
+        setRejectedGapsOf({ week: weekStart, gaps: e.gaps });
       setSaveState({
         kind: "error",
         message,
@@ -521,6 +534,7 @@ export function ScheduleView() {
     setDraft(EMPTY_DRAFT);
     setSaveState({ kind: "idle" });
     setErrorSlotId(null);
+    setRejectedGapsOf(null);
     setVersionOverride(null);
     setIdleNudge(false);
     void editLock.release();
@@ -800,6 +814,28 @@ export function ScheduleView() {
     laNow,
   );
   const gapDays = gapsByDate(gaps);
+  // Save 被 409 coverage_gap 拒：后端列的每一段写清哪天几点、是页面上哪个改动造成的（Annie 11-02「7号的gap已经填了，但始终报错不让保存」：
+  // 同一次 Save 送的是打开页面以来所有没存的改动，口子常常开在别的日子）。
+  const rejectedLines =
+    dirty && readyWeek && rejectedGapsOf?.week === weekStart
+      ? rejectedGapsOf.gaps.map((g) => {
+          const causes = gapCauseIds(g, readyWeek.slots, draft).map((id) => {
+            const s = readyWeek.slots.find((x) => x.id === id)!;
+            const who =
+              employees.find((e) => e.id === s.employee_id)?.name ??
+              "Someone";
+            const type =
+              settings.shift_types.find((t) => t.key === s.shift_type)
+                ?.label ?? s.shift_type;
+            return `${who}'s ${type} shift`;
+          });
+          return `${gapDayLabel(g.date)}, ${gapRange(g)} is not covered${
+            causes.length
+              ? ` — caused by your change to ${causes.join(" and ")}`
+              : ""
+          }.`;
+        })
+      : [];
   // 有空档也能发布（Publish anyway）：只给 admin 及以上（Annie 2026-10-29 Q1）。supervisor 有空档时照旧先补人。
   const canPublishAnyway = me.is_admin === true || me.is_superadmin === true;
   // 已发布的周也能点 Publish again（Annie 2026-10-29 Q6「要留publish again，要允许改正错误」）；有空档时同样走 Publish anyway。
@@ -911,6 +947,7 @@ export function ScheduleView() {
                 dirty={dirty}
                 summary={dirty ? summaryOf(counts) : ""}
                 state={saveState}
+                rejectedLines={rejectedLines}
                 idleNudge={idleNudge}
                 onReload={() => {
                   discardDraft();
@@ -1344,6 +1381,7 @@ function SaveStatus({
   dirty,
   summary,
   state,
+  rejectedLines,
   idleNudge,
   onReload,
   onKeepEditing,
@@ -1351,6 +1389,8 @@ function SaveStatus({
   dirty: boolean;
   summary: string;
   state: SaveState;
+  /** 上一次 Save 被 409 coverage_gap 拒时后端列的空档（写好的句子）；再改页面也留着，直到下次 Save / Discard。 */
+  rejectedLines: string[];
   idleNudge: boolean;
   onReload: () => void;
   onKeepEditing: () => void;
@@ -1375,14 +1415,8 @@ function SaveStatus({
             Not saved: {state.message} Nothing was saved; your changes are still
             on the page.
           </p>
-          {state.gaps?.length ? (
-            <ul className="mt-1 list-disc pl-5">
-              {state.gaps.map((g, i) => (
-                <li key={i}>
-                  {gapDayLabel(g.date)} · nobody {gapRange(g)}
-                </li>
-              ))}
-            </ul>
+          {rejectedLines.length ? (
+            <RejectedGapList lines={rejectedLines} />
           ) : null}
           {state.stale ? (
             <div className="mt-2 flex flex-wrap gap-2">
@@ -1406,6 +1440,18 @@ function SaveStatus({
           ) : null}
         </div>
       ) : null}
+      {state.kind !== "error" && rejectedLines.length ? (
+        <div
+          data-save-rejected
+          className="rounded-[10px] border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-red-200"
+        >
+          <p className="font-semibold">
+            Your last Save was refused because of these gaps. Fix them, then
+            click Save again.
+          </p>
+          <RejectedGapList lines={rejectedLines} />
+        </div>
+      ) : null}
       {dirty ? (
         <p data-unsaved-summary className="font-semibold text-[#fcd34d]">
           Not saved yet: {summary}
@@ -1427,6 +1473,16 @@ function SaveStatus({
         </p>
       ) : null}
     </div>
+  );
+}
+
+function RejectedGapList({ lines }: { lines: string[] }) {
+  return (
+    <ul data-rejected-gaps className="mt-1 list-disc pl-5">
+      {lines.map((line, i) => (
+        <li key={i}>{line}</li>
+      ))}
+    </ul>
   );
 }
 

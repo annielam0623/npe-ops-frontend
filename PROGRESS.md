@@ -6,6 +6,18 @@
 
 > **下一个主窗口：先读下面「2026-11-02 收工交接：前端主窗口-24」，再看置顶「📌 等 Annie 确认」。更早的交接是 10-30 晚那节。**
 
+## 2026-11-02 晚 Staff Schedule 空档：Save 被拒写清哪天哪段、哪个改动造成的（`task/schedule-gap-fix`，工作窗口 `npe-ops-frontend-39`[36b630]，主窗口 f8 派）
+- Annie 原话（f8 窗口）：①「今天的排班有个10am-12pm的gap，系统没看出来」②「7号的gap已经填了，但始终报错不让保存，即使我改了班次的时间，也没用」。修 bug、样子不变，不用 preview。
+- 生产数据由后端 fc 只读查（18:37 PT，39 没有生产凭证、没去找）：工作时段 02:00–21:30；11/1 那周已发布；is_test 全 false；time_off 0 行。
+- ①：后端没算出空档——Anita 11/2 Mid 08–16（slot 122）盖住 10–12。39 只读查过前端：空档只在 week-draft.ts localGaps / lib/schedule-timeline.ts gapsOf 两处算，规则同后端（只看排到人的班、结束 ≤ 开始不算、测试的人不算、只算「现在以后」），没有按班次类型 / 默认时间另算的地方 ⇒ **前端无 bug**，等 Annie 答在哪个画面看到的、Mid 算不算前台（f8 在问）。
+- ②：拦 Save 的是后端（schedule.py apply_week_changes，已发布的周整批做完算 _new_gaps ⇒ 409 coverage_gap），前端不拦。11/7 现在只剩 02:00–03:00，补上本该存得上；fc 判断最可能是同一次 Save 送的是打开页面以来全部没存的改动，口子开在别的日子。前端原来的问题：409 的红字一再改页面就收起，后端列的「哪天哪段」跟着没了；列表也只写「Sat 11/07 · nobody 2:00–3:00 AM」，不说是哪个改动造成的 ⇒ 人只会去改自己以为的那一天。
+- 改了（`components/schedule/schedule-view.tsx`、`week-draft.ts`）：
+  - 409 coverage_gap 每段写成「Mon 09/28, 10:30–11:30 AM is not covered — caused by your change to Veronica's Open shift.」（找得到是哪张改过的卡就写，`gapCauseIds`，只改备注的不算）。
+  - 被拒以后再改页面：红字收起，但同样的红框留着，写「Your last Save was refused because of these gaps. Fix them, then click Save again.」+ 上面那几行；下次 Save 成功 / Discard / 换周才清掉。
+  - 只想撤掉某一个改动：现有做法不变——那张卡改回原样 / 删的按 Undo / 挪回去；Discard 是全部撤掉。没加新功能。
+- ③（f8 c）：时间选择器不加 am/pm 时按 24 小时读（打「9:30」= 上午 9:30），选 12 点 + AM = 12:00 AM（00:00）。改时间小窗（time-edit-popup.tsx）结束 ≤ 开始也能按 Done，只在卡片上小字「End isn't after start」（Add shift 窗口有同样提示但不挡）；这种班前后端都不算覆盖。要不要在小窗里提示 / 挡住，算改样子，已报 f8，没动。
+- 检查：sch 新加 5 条（9/27 已发布周：别的日子开口子 ⇒ 409 逐段写原因；再改别处红框还在；没补再存照样拒；补上存得上、红框没了；Discard 清掉），改了 1 条旧的（10/05 的 409 文字）。sch 322/322、tasks 144/144、dr 88/88，tsc / eslint（0 错）/ build 过。
+
 ## 2026-11-02 晚 主窗口 `npe-ops-frontend-f8`[f1ac95] 开工，接 24（家里电脑）
 - Annie 指定 f8 做今晚的前端主窗口。本地 main 落后 626 个提交，已 fast-forward 到 4a2f477，工作区干净。
 - 资源（17:42）：空闲内存 11.1 / 31.7 GB；chrome 47 个进程，约 4.6 GB；node 1 个。内存偏紧，同时开的工作窗口不超过 2 个。

@@ -362,16 +362,36 @@ export function newGapsByCard(
       ),
   );
   for (const g of fresh) {
-    for (const id of Object.keys(d.edits).map(Number)) {
-      const orig = serverSlots.find((s) => s.id === id);
-      if (!orig || orig.date !== g.date || orig.employee_id == null) continue;
-      // 原来覆盖着这段空档（有交集）：就是它造成的。
-      if (orig.start_time < g.end_time && g.start_time < orig.end_time) {
-        out.set(id, [...(out.get(id) ?? []), g]);
-      }
+    for (const id of gapCauseIds(g, serverSlots, d)) {
+      out.set(id, [...(out.get(id) ?? []), g]);
     }
   }
   return out;
+}
+
+/**
+ * 页面上哪几张改过的卡造成了这段空档：库里原来有人、和这段有交集，现在被挪走 / 删掉 / 改了时间。
+ * Save 被后端 409 coverage_gap 拒了时，后端列的空档也用它找到是哪张卡（Annie 11-02「填了还是不让保存」）。
+ */
+export function gapCauseIds(
+  g: ScheduleGap,
+  serverSlots: readonly ScheduleSlot[],
+  d: WeekDraft,
+): number[] {
+  const ids: number[] = [];
+  for (const id of Object.keys(d.edits).map(Number)) {
+    const e = d.edits[id];
+    // 只改了备注的不算。
+    if (!e.deleted && e.employee_id === undefined && e.start_time === undefined)
+      continue;
+    const orig = serverSlots.find((s) => s.id === id);
+    if (!orig || orig.date !== g.date || orig.employee_id == null) continue;
+    // 原来覆盖着这段空档（有交集）：就是它造成的。
+    if (orig.start_time < g.end_time && g.start_time < orig.end_time) {
+      ids.push(id);
+    }
+  }
+  return ids;
 }
 
 /** 「1 hour」「45 minutes」「1 hour 30 minutes」。 */
