@@ -36,7 +36,9 @@
 | task/schedule-work-hours（27a94ca 起） | 39 | 后端 196f24c7 已上、v144 已执行 ⇒ **可以合**，39 交接时在合 | sch / dr / tasks、tsc / eslint / build。合前 Annie 别设「每天不同」 |
 | task/live-drivers（9600def 起） | 39 | 后端 d20a005d 已上 ⇒ **可以合** | mt / ns / tt / tk / da / tasks / nav / perm |
 | task/samsara-arrival | 39 | 后端到站（v146）还没上 | pl / mt / tt / tk / nav |
-| task/manifest-paper | 0e | 后端 bus-footer-style（v145）还没上；酒店格颜色和缺的颜色等 Annie | mf / man / da / rl / nav |
+| task/manifest-paper **d74c553**（0e 收工确认） | 0e | 后端 bus-footer-style（v145）还没上；酒店格颜色和缺的颜色等 Annie。内容：汇总框照后端 label 画（去 FOOTER_LABEL）、ASSIST 列、午餐单 NOTES（黄底 / 红字）、Relay list 车色读 car.relay_color；酒店格 relay_color / hotel_first 先不用。mock 检查 mf 235、man 346、da 457、rl 26、nav 38 过。分支里有 0e 的 PROGRESS 一节（含 Today's team 7 题） | mf / man / da / rl / nav（动到排班加 sch），合前对后端真实形状核一遍 |
+
+> 0e 收工：worktree 只留 D:\ops-wt-0e-relay（task/manifest-paper，依赖已装），其余已删；没有留下 dev server / Chrome；11/3 relay 导出 JSON 已删。
 
 ### 三、等后端（后端主窗口 9e 那边）
 - **bus-footer-style + 纸本色表（迁移 v145，Annie 执行）**：36 做。汇总框按团写死（standard / south / west / hoover，迁移预填，**页面不做选版式下拉**——Annie「不要自己瞎设计」）；OTHER 格保留（Annie「要吧」）；ASSIST 只 Antelope；Rezdy 系统段输出时去掉；driver_is_guide；lunch notes；色值照 0e 纸本色表 https://claude.ai/artifact/1j7yN3Vn2ifP4fvYrqoA1A （BZ = #f4938e，Annie「BZ选1」）。字段名见 f8 那节「36 字段定」。
