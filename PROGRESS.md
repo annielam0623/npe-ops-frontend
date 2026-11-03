@@ -120,6 +120,7 @@
     - preview 第 2 版（同链接）：② 改推荐 B（先只 Super Admin + 员工可见开关，默认关）；④ relay_status_at 后端要补，推荐 A 只写时间；⑤ 改推荐 A 一人一列（例 Kevin 先 relay 再 Bus A，Bus A 也出现在导游 Lily 那列）；⑥ 加 C 页顶红框（点了滚到那行标黄，新出现的闪三下带 NEW，改回 Picked up 就拿掉），推荐 C；⑦⑧ 和手机名字条都按人；没连 HR 的司机列不出来。等 Annie 答 + 动手。
     - Annie 答（f8 窗口原话）：「B我想放在morning tracking页面   同意默认关 ， no show要重新设计 ，统计同moring tracking， message也能回」⇒ 放 Morning Pickup Tracking 页；先只 SA + 员工可见开关默认关；No show 提醒重做（出 2–3 种挑）；统计照 Morning tracking 统计卡；办公室能在对话里回客人（要后端）。其余照推荐。没动手。已请 39 出 v3，后端影响已告诉 9e。Annie 补（原话）：「司机的这个表如果在moring那块的话，很多功能是可以共用的」⇒ 尽量沿用 Morning tracking 的统计卡、刷新、客人行 / 状态、对话回复等，preview 列「共用 / 新加」对照表。Annie 又补（原话）：「就设成文件夹形式就好了」⇒ Morning tracking 页上做文件夹页签（Tracking / Live drivers），日期 / 统计 / 搜索共用；另画一种「按司机一个个文件夹展开」给她挑。
     - fc 估「办公室能回」：复用 POST /booking-notes/by-order/{n}（messages.reply），公司号码发，司机手机看得到（from office + 员工名），办公室看不改已读；页面开关新 key 默认 super_admin_only 挂在专用读接口；后端 0.5–1 天，不迁移。已转 39。Annie 确认（原话）：「是的，staff就直接用我们的页面chat那个twillio的渠道发出去」；又补「email sms同时发」⇒ 办公室回客人 SMS + Email 同时发，已请 fc 查现有接口支不支持，39 画进 v3。
+    - v3（同链接）：Morning tracking 两个文件夹页签 Tracking / Live drivers，共用日期 / 司机筛选 / 统计卡 / 搜索 / 刷新 / Export / 对话框。新题：⑪ A 页签 + 司机并排（推荐）／B 左边司机文件夹一次看一人；⑥ No show A Tracking 表里那单淡红置顶 + Driver mark 列 + 用现成 Take action 当已处理（推荐）／B 司机筛选旁红数字 + Mark handled／C 顶栏 🔔 下拉；⑦ A 照搬统计卡（推荐）；③ 每分钟、过 cut-off 停。后端：司机页只读数据、tracking 行加 live_status*、ns_unhandled、开关 key morning_live_drivers。
 - 今晚在等 Annie 的，跟 24 交接第三节一样，不重问。
 
 ## 2026-11-02 收工交接：前端主窗口-24 [d1dbae]（公司）
