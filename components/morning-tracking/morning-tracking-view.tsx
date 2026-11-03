@@ -78,7 +78,7 @@ function writeLocalOrder(order: ColumnKey[]) {
 }
 
 export function MorningTrackingView() {
-  const { partnerView } = usePermissions();
+  const { partnerView, canSeeMoney } = usePermissions();
   // date 为空表示还没在浏览器里算出要看哪天（避免服务端 / 浏览器不一致）。
   const [date, setDate] = useState("");
   const [state, setState] = useState<LoadState>({ kind: "loading" });
@@ -506,7 +506,12 @@ export function MorningTrackingView() {
                 </div>
                 <TrackingTable
                   rows={filtered}
-                  columnOrder={columnOrder}
+                  columnOrder={
+                    // 没勾 See prices, agent & commission（orders.money_view，题 8）：Agent 列整列不出（后端给的是空字符串）。
+                    canSeeMoney
+                      ? columnOrder
+                      : columnOrder.filter((k) => k !== "agent_name")
+                  }
                   onReorder={reorderColumns}
                   onOpenConversation={(row) =>
                     setConversation({

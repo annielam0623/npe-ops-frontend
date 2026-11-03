@@ -1036,6 +1036,20 @@ async function run() {
       check(`${label}：早班发送预览照出、${canSend ? "有" : "没有"} Send to Selected`, rows && has === canSend, String(has));
     }
     await ctl({ staffPerms: null, superAdmin: false });
+    // ── 题 8：没勾 orders.money_view ⇒ Morning Pickup Tracking 的 Agent 列整列不出；勾了 / Super Admin 照旧 ──
+    for (const [label, opts, see] of [
+      ["员工没勾 orders.money_view", { staffPerms: ["morning.view"] }, false],
+      ["员工勾了 orders.money_view", { staffPerms: ["morning.view", "orders.money_view"] }, true],
+      ["Super Admin（一项都没勾）", { staffPerms: null, superAdmin: true }, true],
+    ]) {
+      await ctl({ staffPerms: null, superAdmin: false, ...opts });
+      await goto(`${APP}/morning-pickup/tracking`);
+      await waitFor("!!document.querySelector('main tbody tr td:nth-child(3)')", 60000);
+      await sleep(500);
+      const st = await evaluate("const h = [...document.querySelectorAll('main thead th')].map(t => t.textContent.trim()); const r = document.querySelector('main tbody tr'); return { agent: h.some(t => /^agent/i.test(t)), heads: h.length, cells: r.children.length, viator: document.querySelector('main tbody').textContent.includes('Agent Z') };");
+      check(`${label}：Morning Pickup Tracking ${see ? "有" : "没有"} Agent 列（16 / 15 列），每行格数 = 表头数`, st.heads === (see ? 16 : 15) && st.cells === st.heads && st.viator === see, JSON.stringify(st));
+    }
+    await ctl({ staffPerms: null, superAdmin: false });
     promptConfirm = false;
     ws.onmessage = orig;
   }

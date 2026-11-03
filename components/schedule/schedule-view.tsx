@@ -32,8 +32,6 @@ import {
   saveScheduleWeekChanges,
   setScheduleTimeOff,
   updateScheduleEmployee,
-  updateShiftTypeDefaults,
-  updateWorkWindow,
 } from "@/lib/schedule-api";
 import { replaceUrl, useLeaveGuard } from "@/lib/use-leave-guard";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
@@ -61,6 +59,7 @@ import type {
   ScheduleShiftType,
   ScheduleSlot,
   ScheduleWeek,
+  ScheduleWorkWindow,
 } from "@/types";
 import { ApiError } from "@/types";
 
@@ -75,7 +74,7 @@ import { DayTimeline } from "./day-timeline";
 import { ScheduleLockedPanel } from "./lock-panel";
 import { SendChangesDialog } from "./send-changes-dialog";
 import { ResponsesCard } from "./responses-card";
-import { TimePicker } from "./time-picker";
+import { ScheduleSettingsDialog } from "./settings-dialog";
 import { useScheduleEditLock } from "./use-schedule-edit-lock";
 import {
   addCreates,
@@ -187,6 +186,7 @@ export function ScheduleView() {
 
   const [addingEmployee, setAddingEmployee] = useState(false);
   const [managingEmployees, setManagingEmployees] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   // 规则（后端没上线 / 读不到 ⇒ null ⇒ 不显示 Rules 标签和 Auto-fill 键）。
   const [rules, setRules] = useState<Rule[] | null>(null);
   const [tab, setTab] = useState<"schedule" | "rules">("schedule");
@@ -425,6 +425,11 @@ export function ScheduleView() {
   const canAddEmployee =
     superAdmin ||
     (tickPerms.can("team.staff_add") && tickPerms.can("schedule.edit"));
+  // 排班设置（Working hours、Default shift times）：Team 页的勾 settings.schedule（Annie 2026-11-02「需要加一个可以edit的权限让我来Admin里勾选」；
+  // 后端 PUT work-window / shift-types 本来就按这一项查）。有 schedule.edit 没这个勾的排班人能打开、只读；只能看的员工没有这个键。
+  const canChangeSettings = byTick(tickPerms, "settings.schedule", {
+    superAdmin,
+  });
   // Publish / Publish again：schedule.publish（schedule.py:331）。
   const canPublishTick = byTick(tickPerms, "schedule.publish", {
     superAdmin,
@@ -930,20 +935,7 @@ export function ScheduleView() {
   return (
     <main data-phone-compact className="text-white/90">
       <CenteredPage className="flex flex-col gap-5 max-sm:gap-3">
-        <div className="flex flex-wrap items-center justify-end gap-3">
-          <h1 className="sr-only">Staff Schedule</h1>
-          <WorkWindowControl
-            settings={settings}
-            isSuperadmin={me.is_superadmin}
-            onUpdated={setSettings}
-          />
-        </div>
-
-        <DefaultShiftTimes
-          settings={settings}
-          isSuperadmin={me.is_superadmin}
-          onUpdated={setSettings}
-        />
+        <h1 className="sr-only">Staff Schedule</h1>
 
         {rules !== null ? (
           <div role="tablist" className="-mb-2 flex gap-2">
@@ -1012,6 +1004,11 @@ export function ScheduleView() {
               }
               onManageEmployees={
                 canAddEmployee ? () => setManagingEmployees(true) : undefined
+              }
+              onSettings={
+                canEdit || canChangeSettings
+                  ? () => setSettingsOpen(true)
+                  : undefined
               }
               onAutoFill={
                 canEdit && rules !== null
@@ -1171,9 +1168,23 @@ export function ScheduleView() {
             {readyWeek && week.kind === "ready" ? (
               <section ref={timelineRef} className={cn(CARD, "scroll-mt-4")}>
                 <div className={CARD_HEADER}>
-                  <h2 className="text-[14px] font-semibold text-white">
-                    Day timeline
-                  </h2>
+                  <div className="min-w-0">
+                    <h2 className="text-[14px] font-semibold text-white">
+                      Day timeline
+                    </h2>
+                    {canEdit ? (
+                      // 空档按什么算一眼看得到（Annie 2026-11-02「所以两个edit，到底哪个管用」，preview ②A）；改去 ⚙ Settings。
+                      <p
+                        data-working-hours
+                        className={cn(MUTED, "text-[12px] max-sm:hidden")}
+                      >
+                        Working hours{" "}
+                        {formatBadgeTime(settings.work_window.start_time)} –{" "}
+                        {formatBadgeTime(settings.work_window.end_time)} — gaps
+                        are checked inside these hours.
+                      </p>
+                    ) : null}
+                  </div>
                   {canEdit ? (
                     <div className="flex items-center gap-3">
                       {readyWeek.status === "published" ? (
@@ -1206,6 +1217,7 @@ export function ScheduleView() {
                         }
                         onJump={jumpToDay}
                         onClick={() => setConfirmingPublish(true)}
+                        workWindow={settings.work_window}
                       />
                     </div>
                   ) : readyWeek.status === "published" ? (
@@ -1230,6 +1242,7 @@ export function ScheduleView() {
                     weekGaps={gaps}
                     showGaps={canEdit}
                     shiftTypes={settings.shift_types}
+                    now={laNow}
                   />
                 </div>
               </section>
@@ -1393,6 +1406,19 @@ export function ScheduleView() {
             </p>
           ) : null}
         </ConfirmDialog>
+      ) : null}
+
+      {settingsOpen ? (
+        <ScheduleSettingsDialog
+          settings={settings}
+          canChange={canChangeSettings}
+          onSaved={(next) => {
+            setSettings(next);
+            // 空档按新的 Working hours 马上重算（后端 GET week 带 gaps）。
+            void loadWeek(undefined, true);
+          }}
+          onClose={() => setSettingsOpen(false)}
+        />
       ) : null}
 
       {leaveAsk ? (
@@ -1588,240 +1614,6 @@ function ForbiddenPanel() {
   );
 }
 
-function WorkWindowControl({
-  settings,
-  isSuperadmin,
-  onUpdated,
-}: {
-  settings: ScheduleSettings;
-  isSuperadmin: boolean;
-  onUpdated: (settings: ScheduleSettings) => void;
-}) {
-  const [editing, setEditing] = useState(false);
-  const [start, setStart] = useState(settings.work_window.start_time);
-  const [end, setEnd] = useState(settings.work_window.end_time);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  if (!editing) {
-    return (
-      <span className={cn(MUTED, "flex items-center gap-2 text-[13px]")}>
-        Working hours:{" "}
-        <span className="text-white/80">
-          {formatBadgeTime(settings.work_window.start_time)} –{" "}
-          {formatBadgeTime(settings.work_window.end_time)}
-        </span>
-        {isSuperadmin ? (
-          <button
-            type="button"
-            onClick={() => {
-              setStart(settings.work_window.start_time);
-              setEnd(settings.work_window.end_time);
-              setError(null);
-              setEditing(true);
-            }}
-            className="cursor-pointer text-[12px] text-sky-300 hover:underline"
-          >
-            Edit
-          </button>
-        ) : null}
-      </span>
-    );
-  }
-
-  return (
-    <form
-      className="flex flex-wrap items-center gap-2 text-[13px]"
-      onSubmit={async (event) => {
-        event.preventDefault();
-        setSaving(true);
-        setError(null);
-        try {
-          const updated = await updateWorkWindow({
-            start_time: start,
-            end_time: end,
-          });
-          onUpdated(updated);
-          setEditing(false);
-        } catch (error) {
-          setError(describeError(error));
-        } finally {
-          setSaving(false);
-        }
-      }}
-    >
-      <span className={MUTED}>Working hours:</span>
-      <TimePicker
-        ariaLabel="Working hours start"
-        value={start}
-        onChange={setStart}
-      />
-      <span className={MUTED}>–</span>
-      <TimePicker ariaLabel="Working hours end" value={end} onChange={setEnd} />
-      <button
-        type="submit"
-        disabled={saving}
-        className={DARK_PRIMARY_BUTTON_CLASS}
-      >
-        {saving ? "Saving…" : "Save"}
-      </button>
-      <button
-        type="button"
-        onClick={() => setEditing(false)}
-        disabled={saving}
-        className={DARK_SECONDARY_BUTTON_CLASS}
-      >
-        Cancel
-      </button>
-      {error ? <span className="text-[12px] text-red-300">{error}</span> : null}
-    </form>
-  );
-}
-
-/**
- * 班次默认上下班时间（后端 ③，Annie 2026-10-18）：加班窗口里选班次时自动填。所有人只读文字，superadmin 能改。
- * 只有设了默认时间的班次才列出；后端还没带这两个字段（旧版）时整行不出现。
- */
-function DefaultShiftTimes({
-  settings,
-  isSuperadmin,
-  onUpdated,
-}: {
-  settings: ScheduleSettings;
-  isSuperadmin: boolean;
-  onUpdated: (settings: ScheduleSettings) => void;
-}) {
-  const types = settings.shift_types.filter((t) => t.is_active);
-  const supported = types.some((t) => t.default_start_time !== undefined);
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState<Record<string, [string, string]>>({});
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  if (!supported) return null;
-
-  function begin() {
-    const next: Record<string, [string, string]> = {};
-    for (const t of types) {
-      next[t.key] = [t.default_start_time ?? "", t.default_end_time ?? ""];
-    }
-    setDraft(next);
-    setError(null);
-    setEditing(true);
-  }
-
-  async function save() {
-    setSaving(true);
-    setError(null);
-    try {
-      for (const t of types) {
-        const [s, e] = draft[t.key] ?? ["", ""];
-        const curS = t.default_start_time ?? "";
-        const curE = t.default_end_time ?? "";
-        if (s === curS && e === curE) continue;
-        // 后端：两个都带时间 = 设置，两个都 null = 清除；只填一个会 400（原话显示出来）。
-        await updateShiftTypeDefaults(t, {
-          default_start_time: s || null,
-          default_end_time: e || null,
-        });
-      }
-      onUpdated(await fetchScheduleSettings());
-      setEditing(false);
-    } catch (err) {
-      setError(describeError(err));
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  if (!editing) {
-    return (
-      <div
-        data-default-times
-        className={cn(
-          MUTED,
-          "flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px]",
-        )}
-      >
-        <span>Default shift times:</span>
-        {types.map((t) => (
-          <span key={t.key} className="text-white/80">
-            {t.label}{" "}
-            {t.default_start_time && t.default_end_time
-              ? `${formatBadgeTime(t.default_start_time)} – ${formatBadgeTime(t.default_end_time)}`
-              : "not set"}
-          </span>
-        ))}
-        {isSuperadmin ? (
-          <button
-            type="button"
-            onClick={begin}
-            className="cursor-pointer text-[12px] text-sky-300 hover:underline"
-          >
-            Edit
-          </button>
-        ) : null}
-      </div>
-    );
-  }
-
-  return (
-    <form
-      data-default-times-form
-      className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[13px]"
-      onSubmit={(event) => {
-        event.preventDefault();
-        void save();
-      }}
-    >
-      <span className={MUTED}>Default shift times:</span>
-      {types.map((t) => (
-        <span key={t.key} className="flex items-center gap-1.5 text-white/80">
-          {t.label}
-          <TimePicker
-            ariaLabel={`${t.label} start`}
-            allowEmpty
-            value={draft[t.key]?.[0] ?? ""}
-            onChange={(v) =>
-              setDraft((d) => ({
-                ...d,
-                [t.key]: [v, d[t.key]?.[1] ?? ""],
-              }))
-            }
-          />
-          <span className={MUTED}>–</span>
-          <TimePicker
-            ariaLabel={`${t.label} end`}
-            allowEmpty
-            value={draft[t.key]?.[1] ?? ""}
-            onChange={(v) =>
-              setDraft((d) => ({
-                ...d,
-                [t.key]: [d[t.key]?.[0] ?? "", v],
-              }))
-            }
-          />
-        </span>
-      ))}
-      <button
-        type="submit"
-        disabled={saving}
-        className={DARK_PRIMARY_BUTTON_CLASS}
-      >
-        {saving ? "Saving…" : "Save"}
-      </button>
-      <button
-        type="button"
-        onClick={() => setEditing(false)}
-        disabled={saving}
-        className={DARK_SECONDARY_BUTTON_CLASS}
-      >
-        Cancel
-      </button>
-      {error ? <span className="text-[12px] text-red-300">{error}</span> : null}
-    </form>
-  );
-}
-
 function formatBadgeTime(hhmm: string): string {
   const [h, m] = hhmm.split(":").map(Number);
   const period = h < 12 ? "AM" : "PM";
@@ -1835,6 +1627,7 @@ function WeekNav({
   canEdit,
   onAddEmployee,
   onManageEmployees,
+  onSettings,
   onAutoFill,
   autoFillDisabled,
   saveControls,
@@ -1844,6 +1637,8 @@ function WeekNav({
   canEdit: boolean;
   onAddEmployee?: () => void;
   onManageEmployees?: () => void;
+  /** ⚙ Settings（Working hours、Default shift times 集中一处，Annie 2026-11-02 preview 97MgNcpw28p7W4DxXmpgrM）。 */
+  onSettings?: () => void;
   onAutoFill?: () => void;
   autoFillDisabled?: boolean;
   /** 整周一个 Save（B9 preview ①）：Save + Discard，放在 Auto-fill 左边。 */
@@ -1851,7 +1646,9 @@ function WeekNav({
 }) {
   // 手机版（Annie 2026-11-01 手机版规则）：一行只放 ‹ 日期 ›；This week / Next week、Auto-fill、Employees、+ Add employee
   // 收进右边那排的「⋯」，Discard / Save 照旧露在外面。没有右边那排（只能看的人）时 This week / Next week 照旧放在日期后面。
-  const editRow = Boolean(canEdit && (onAddEmployee || saveControls));
+  const editRow = Boolean(
+    (canEdit && (onAddEmployee || saveControls)) || onSettings,
+  );
   const jumpButtons = (inMenu: boolean) => (
     <>
       <button
@@ -1940,6 +1737,16 @@ function WeekNav({
                 + Add employee
               </button>
             ) : null}
+            {onSettings ? (
+              <button
+                type="button"
+                data-open-settings
+                onClick={onSettings}
+                className={DARK_SECONDARY_BUTTON_CLASS}
+              >
+                ⚙ Settings
+              </button>
+            ) : null}
           </PhoneMore>
         </div>
       ) : null}
@@ -1960,6 +1767,7 @@ function PublishControl({
   publishedWithGaps,
   onJump,
   onClick,
+  workWindow,
 }: {
   gapDays: Map<string, ScheduleGap[]>;
   canPublish: boolean;
@@ -1971,8 +1779,20 @@ function PublishControl({
   publishedWithGaps: boolean;
   onJump: (date: string) => void;
   onClick: () => void;
+  /** 空档贴着 Working hours 开头 / 结尾时补一句（Annie 2026-11-02 preview ⑥A：一看就知道是 Working hours 卡住的）。 */
+  workWindow: ScheduleWorkWindow;
 }) {
   const list = [...gapDays.values()].flat();
+  const edgeNote = (g: ScheduleGap) => {
+    const atStart = g.start_time === workWindow.start_time;
+    const atEnd = g.end_time === workWindow.end_time;
+    if (atStart && atEnd) return null;
+    if (atEnd)
+      return `(working hours end ${formatBadgeTime(workWindow.end_time)})`;
+    if (atStart)
+      return `(working hours start ${formatBadgeTime(workWindow.start_time)})`;
+    return null;
+  };
   const shown = list.slice(0, 3);
   const more = list.length - shown.length;
   return (
@@ -2004,6 +1824,11 @@ function PublishControl({
               >
                 {gapDayLabel(g.date)} · nobody {gapRange(g)}
               </button>
+              {edgeNote(g) ? (
+                <span data-gap-edge className="ml-1 text-red-300/80">
+                  {edgeNote(g)}
+                </span>
+              ) : null}
               {i < shown.length - 1 ? "," : ""}
             </span>
           ))}

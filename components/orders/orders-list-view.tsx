@@ -133,7 +133,10 @@ export function OrdersListView() {
   >({ kind: "loading", previous: null });
   const [reloadKey, setReloadKey] = useState(0);
   // partner 只能看，不给 Export（Annie 2026-10-27「不能改或者选任何功能」）；也不出 Agent 列（G204）。
-  const partner = usePermissions().partnerView;
+  const perms = usePermissions();
+  const partner = perms.partnerView;
+  // 没勾 See prices, agent & commission（orders.money_view）也不出 Agent 列（题 8，后端给的是「—」）。
+  const showAgent = !partner && perms.canSeeMoney;
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
   const [confirmExport, setConfirmExport] = useState(false);
@@ -421,8 +424,8 @@ export function OrdersListView() {
                       "Tour Date",
                       "Pickup",
                       "Pax",
-                      // partner 不看代理商（后端 G204 给 partner 的 agent_name 是「—」）。
-                      ...(partner ? [] : ["Agent"]),
+                      // partner / 没勾 orders.money_view 不看代理商（后端给的 agent_name 是「—」）。
+                      ...(showAgent ? ["Agent"] : []),
                       "Source",
                       "Created",
                       "Updated",
@@ -440,7 +443,7 @@ export function OrdersListView() {
                   {!data || data.records.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={partner ? 11 : 12}
+                        colSpan={showAgent ? 12 : 11}
                         className={cn(
                           "p-6 text-center text-[13px]",
                           state.kind === "error"
@@ -474,7 +477,7 @@ export function OrdersListView() {
                       <OrderTableRow
                         key={`${r.order_number}-${i}`}
                         row={r}
-                        showAgent={!partner}
+                        showAgent={showAgent}
                       />
                     ))
                   )}

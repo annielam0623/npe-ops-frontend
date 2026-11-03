@@ -407,6 +407,24 @@ async function partnersChecks() {
   check("开关设成 Admins · admin：页面照常打开，没有 Visible to 控件（只有 Super Admin 有）", await open(URL, "document.querySelector('tr[data-partner]')") && !(await evaluate("return !!document.querySelector('[data-visibility-control]');")));
   await ctl({ foVis: "staff" });
 
+  // ── 题 8：没勾 See prices, agent & commission（orders.money_view）⇒ 合作方价格整块不出、不请求；合作公司本身照旧；勾了照旧 ──
+  for (const [label, ticks, see] of [
+    ["admin 勾了 settings.farm_out、没勾 orders.money_view", ["settings.farm_out"], false],
+    ["admin 勾了 settings.farm_out + orders.money_view", ["settings.farm_out", "orders.money_view"], true],
+  ]) {
+    await ctl({ ticks });
+    const mark = (await (await fetch(`${MOCK}/__log`)).json()).length;
+    await open(URL, "document.querySelector('tr[data-partner]')");
+    await sleep(500);
+    const st = await evaluate("const h = [...document.querySelectorAll('th')].map(t => t.textContent.trim()); const titles = [...document.querySelectorAll('h2')].map(x => x.textContent.trim()); return { adult: h.includes('Adult'), rows: document.querySelectorAll('tr[data-rate-row]').length, imp: [...document.querySelectorAll('button')].some(b => b.offsetParent !== null && b.textContent.includes('⬆ Import') && !b.closest('[data-partner-detail]')), title: titles.includes('Partners & rates'), plain: titles.includes('Partners'), timetable: [...document.querySelectorAll('a')].some(a => a.textContent.trim() === 'Timetable'), howPrice: document.body.textContent.includes('Adult and Child price') };");
+    const asked = (await (await fetch(`${MOCK}/__log`)).json()).slice(mark).some((e) => /\/partners\/\d+\/rates$/.test(e.path));
+    const ok = see
+      ? st.adult && st.rows > 0 && st.imp && st.title && st.howPrice && asked
+      : !st.adult && st.rows === 0 && !st.imp && st.plain && !st.howPrice && !asked;
+    check(`${label}：${see ? "有" : "没有"} Adult / Child 列、团价格行、⬆ Import rates、价格请求；卡片标题 ${see ? "Partners & rates" : "Partners"}；Timetable 照旧`, ok && st.timetable, JSON.stringify({ ...st, asked }));
+  }
+  await ctl({ ticks: null });
+
   // ── G203 第三批：页面最底的 Action Log（/api/farm-out/settings/action-log）──
   await ctl({ reset: true, fail401: false, staff: false, partner: false, unavailable: false, log403: false });
   check("Action Log：页面最底有面板", await open(URL, "document.querySelector('tr[data-partner]') && [...document.querySelectorAll('button')].some(b => b.textContent.includes('Action Log'))"));
@@ -419,6 +437,17 @@ async function partnersChecks() {
     check("Action Log：展开才请求一次、显示 3 行（West Rim › Adult price / Bellagio › Spot / Active）", alReqs.length === 1 && await evaluate("const t = document.querySelector('[data-action-log]').textContent; return t.includes('West Rim › Adult price') && t.includes('Bellagio › Spot') && t.includes('$105.00');"), JSON.stringify(alReqs));
     check("Action Log：旧条目 from / to 都是 null → No before / after recorded", await evaluate("return [...document.querySelectorAll('[data-action-log] tbody tr')].some(r => r.textContent.includes('Active') && r.textContent.includes('No before / after recorded'));"));
   }
+  // 题 8：第一页的条目全被后端拿掉（没勾 orders.money_view 时的改价记录）但还有 next_cursor ⇒ 接着翻，不写「没有记录」
+  await ctl({ logEmptyFirst: true });
+  {
+    const before = (await mockLog()).length;
+    await open(URL, "document.querySelector('tr[data-partner]') && [...document.querySelectorAll('button')].some(b => b.textContent.includes('Action Log'))");
+    await evaluate("[...document.querySelectorAll('button')].find(b => b.textContent.includes('Action Log')).click();");
+    const got = await waitFor("document.querySelectorAll('[data-action-log] tbody tr').length === 3", 20000);
+    const reqs = (await mockLog()).slice(before).filter((e) => e.path === "/api/farm-out/settings/action-log");
+    check("Action Log：第一页全被拿掉、还有 next_cursor ⇒ 自动翻下一页显示 3 行，不写 No changes", got && reqs.length === 2 && !(await evaluate("return document.querySelector('[data-action-log]').textContent.includes('No changes recorded yet.');")), JSON.stringify(reqs.map((e) => e.query)));
+  }
+  await ctl({ logEmptyFirst: false });
   // 后端 403（没有 settings.farm_out）：不报错，只一句灰字
   await ctl({ log403: true });
   await goto(URL);

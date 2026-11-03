@@ -136,6 +136,19 @@ const PARTNER_SEND_PAGES = [
 /** partner 怎么勾都打不开的页面：整页只为发送的、Farm out Report（Annie 2026-10-27「关」）。 */
 const PARTNER_CLOSED_PAGES = [...PARTNER_SEND_PAGES, "/farm-out-report"];
 
+/**
+ * 整页都是钱的页面（Farm out Report、Sales Report）：除了页面本身要的项，还要勾 orders.money_view（题 8）；
+ * 没勾就侧栏 / shortcut 不出、打不开（后端这时这几个接口 403）。
+ */
+const MONEY_PAGES = ["/farm-out-report", "/sales-report"];
+
+function isMoneyPage(path: string): boolean {
+  const pathname = path.split(/[?#]/)[0];
+  return MONEY_PAGES.some(
+    (p) => pathname === p || pathname.startsWith(`${p}/`),
+  );
+}
+
 function isPartnerClosedPage(path: string): boolean {
   const pathname = path.split(/[?#]/)[0];
   return PARTNER_CLOSED_PAGES.some(
@@ -222,7 +235,16 @@ export interface Permissions {
    * Dashboard 的 Multi Orders Take action（/booking-notes/multi/take-action）不走这里，照旧按 messages.reply。
    */
   canRowTakeAction: (page: "tickets" | "tour" | "morning") => boolean;
+  /**
+   * 能看价格 / 代理商 / 佣金（勾 `orders.money_view`「See prices, agent & commission」，Annie 2026-11-02 题 8「动手」：
+   * 「除了客人的基本信息，CCL看不到任何有价格的信息」）。没勾 ⇒ 价格栏、价格块整栏不出，Columns 里也加不上。
+   * Super Admin 恒有；规则同 `can()`（读失败员工照旧、partner 一律没有）。后端没勾时也去掉这些字段，前端只管不出空栏。
+   */
+  canSeeMoney: boolean;
 }
+
+/** 价格 / 代理商 / 佣金这一勾（后端 v142 迁移加，Team 页 Orders 组）。 */
+export const MONEY_VIEW = "orders.money_view";
 
 /** partner 的首页：/dashboard 上的 partner 版（Q1 A），不读后端给的 default_home（Q7 A）。 */
 const PARTNER_HOME = "/dashboard";
@@ -268,6 +290,7 @@ export function usePermissions(): Permissions {
     canAny,
     canOpen: (path) => {
       if (partnerView && isPartnerClosedPage(path)) return false;
+      if (isMoneyPage(path) && !can(MONEY_VIEW)) return false;
       const need = requiredForPath(path);
       // partner 首页不看 dashboard.view（Q5 A）。
       if (partnerView && need?.includes("dashboard.view")) return true;
@@ -286,5 +309,6 @@ export function usePermissions(): Permissions {
       (page === "tickets"
         ? can("tickets.send")
         : canAny(["tour.send", "morning.send"])),
+    canSeeMoney: can(MONEY_VIEW),
   };
 }

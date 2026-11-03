@@ -23,6 +23,7 @@ import {
   updateMtlvTicketStatus,
   updateTourConfirmation,
 } from "@/lib/tour-tracking-api";
+import { withoutMoneyHeaders } from "@/lib/money-view";
 import { usePermissions } from "@/lib/staff-permissions";
 import { useTick } from "@/lib/use-tick";
 import { fetchUserPref, saveUserPref } from "@/lib/user-prefs-api";
@@ -329,7 +330,11 @@ export function TourTrackingView() {
   const allRows = useMemo(() => data?.rows ?? [], [data]);
   const meta = useMemo(() => tourMeta(tourTypes), [tourTypes]);
   const pills = useMemo(() => tourPills(allRows, meta), [allRows, meta]);
-  const headers = useMemo(() => uploadedHeaders(allRows), [allRows]);
+  // 没勾 orders.money_view（题 8）：上传名单里算钱 / 代理商的表头不出，Columns 里也勾不上。
+  const headers = useMemo(
+    () => withoutMoneyHeaders(uploadedHeaders(allRows), perms.canSeeMoney),
+    [allRows, perms.canSeeMoney],
+  );
   const columns = visibleColumns(order, vis, headers);
   const filtered = useMemo(
     () =>

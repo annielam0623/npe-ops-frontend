@@ -6,7 +6,7 @@
 
 > **下一个主窗口：先读下面「2026-11-02 收工交接：前端主窗口-24」，再看置顶「📌 等 Annie 确认」。更早的交接是 10-30 晚那节。**
 
-## 2026-11-02 晚 Dispatch › Relay list 打印单 + Bus Manifest setup 简称（`task/relay-print`，工作窗口 `npe-ops-frontend-0e`[d96681]，主窗口 f8 派）—— ⛔ 推了分支，等后端 task/relay-print（fc）+ v143 上线再合 main
+## 2026-11-02 晚 Dispatch › Relay list 打印单 + Bus Manifest setup 简称（`task/relay-print`，工作窗口 `npe-ops-frontend-0e`[d96681]，主窗口 f8 派）—— ✅ 后端 35eec2e1 上线、v143 Annie 已执行后合 main
 - Annie 原话（0e 窗口）：「在其余页面里，其实我们dispatch里是没有做relay的可打印版本的，现在动手做吧，一个总表，然后分成每个司机的分表」；「总表按照现在的格式来，字段100%复制，这个不用多说了」；「其他问题都走推荐，简写纸本里用哪个就用哪个，不要自己改」；「hoover的司机用他的bus manifest就好了，上面都按照时间排好了」；「排完relay并保存了以后，应该加一个按键显示这些relay的list」。简称后来改定（f8 窗口）：「South，West，Lower，Upper，CanyonX，BZ」。
 - preview（Annie 已定）：https://claude.ai/artifact/3p3STHAw1rk7ewCeQW1dma （v12）；11/3 真实排车样张（名字 / 电话遮过）：https://claude.ai/artifact/Fi5ncf4fyfBVhUhZyeEYA5 。
 - 做了：
@@ -16,6 +16,50 @@
   - 类型：relay-pull 的 guest.phone / manifest_id / product_short / short_tag / hotel_short / bus，car.location_ids / tour_buses / print_warnings（都是可选，旧后端照样能看）。
 - 检查：新套 rl（rl-mock 照 fc 的形状）；da 加 Relay list 键 / 车头 Print / 没存先问；products 加 Short name（后端没上不出、暂存、Save 发两种 PUT、存不上红字留草稿）。结果（合 main 后）：rl 26/26、products 237/237、da 457/457（第一次 452/457 是座位调动那 5 项偶发的时机问题，单独重跑全过）、nav 38/38；tsc / eslint 0 错 / build 过。
 - 还要后端（已转 f8）：导游 pick up 页（/guide）每位客人加团简称（Annie「导游的pick up网页版需要知道客人参加的tour是哪个，可以用简写」）；司机 /driver relay 页同样补；酒店简称 hotel_short。
+
+## 2026-11-02 晚 Staff Schedule › Auto-fill：按基础周排整月（`task/schedule-base-week`，工作窗口 `npe-ops-frontend-0e`[d96681]，主窗口 f8 派）
+- Annie 原话（f8 窗口）：「我要加 一个功能，在排班这里可以选一周为基础，比如这周的排班很混乱，我现在用上周的排班为基数，来自动排班，遵守定好的这些role，然后把整个月的班都排出来」；「这个很重要，需要今天做完，明天就需要排出来，周三要跟员工确认了」；对 preview https://claude.ai/artifact/L3gCgqBPvDLBxAC2ToDVxp 「7题全部同意推荐，动手」；复制周的处理「A同意推荐」。
+- 做了（纯前端，不用新接口）：Auto-fill 弹窗多一种填法「Copy a base week, then fix by the rules」：选基础周（默认上周，可选前 6 周到这周）、从哪周起（默认下周）、几周（默认 4，可选 1–6）→ 预览每周一张表（跟基础周不同的格子琥珀框，鼠标移上去写原因；排不下的红字列出）→「Create drafts for N weeks」一周一个 POST …/slots/bulk 存草稿，不 Publish、不通知。
+  - 引擎 `lib/schedule-engine.ts` 加 `seedFromBase()`：照抄基础周每人每天的班，去掉违反规则的格子（Cannot work、跟固定班冲突、休息不够、超出每周天数），周末轮值管的班留给轮值排；其余锁住，再用原来的 `generateWeek` 按规则补排。
+  - ⚠️ 后端第一次打开某一周会自动复制上一周（copied_from）：这种周当空周整周按基础周排、存时 replace:true 换掉复制品；不是复制来的、已有班的草稿只填空格（replace:false，原来的班留着）；已发布的周跳过。预览每周标题旁写明是哪一种（Annie「A同意推荐」）。
+  - Working hours 按星期几（后端 work_hours，还没上线时没有这个键）：off 的那天不排、不报空档；没带照旧。
+- 检查：sch 356/356（新加：默认值、不问 Replace / Add、照抄 Close、Veronica 固定班 Mid→Open 琥珀框 Fixed shift、Create drafts for 4 weeks、复制周 replace:true / 非复制草稿 replace:false 原来的班留着、周日 off 不排；收尾清空排过的几周）。
+
+## 2026-11-02 晚 dr 87/88 修好：检查用的员工补上 orders.money_view（`task/dr-money-view`，工作窗口 `npe-ops-frontend-0e`[d96681]，主窗口 f8 派，39 报）
+- 原因：money-view 上 main 后，没勾 orders.money_view 的人侧栏不出 Farm out Report（有意的）；检查共用的 `checks/headless/role-standard.js` 是 11-01 照抄的后端角色标准，还没有这一勾。后端 8e9a9a58 的 _STAFF_STANDARD 已含 orders.money_view（「员工本来就看得到价格；CCL 的人靠没勾藏」）⇒ 照后端补上，页面不改。
+- dr 另加一条：没勾 orders.money_view 的员工（dr-mock ctl.noMoney）侧栏 Operations 没有 Farm out Report，其余照旧。
+- 检查：dr 89/89、nav 38/38；共用 role-standard 的 as 69、dor 75、hr 62、sch 346、tcq 86 全过。
+
+## 2026-11-02 晚 没勾 See prices, agent & commission 的人藏价格（`task/money-view-hide`，工作窗口 `npe-ops-frontend-0e`[d96681]，主窗口 f8 派）—— ✅ 后端 8e9a9a58 上线、v142 Annie 已执行（21 人勾上、CCL 5 人没勾）后合 main
+- Annie 原话（置顶 48 题 8）：「要」「选1」；「只单独勾了CCL的就是CCL的人……」；「默认不带 / 藏」；「除了客人的基本信息，CCL看不到任何有价格的信息」→「动手」；验收「manifest，dispatch等任何有价格的那一栏都隐藏起来他们点击或添加都不行就可以了」。
+- ⛔ 上线顺序：后端先跑 v142（加 orders.money_view 勾、给现有员工勾上）再上线，前端才能合。前端按勾藏，勾不存在时会把所有员工的价格都藏掉。后端卡在 fc 的 v141 先落地，预计 11-03。
+- 合 main 前（合最新 main 后）对照后端真实代码再核：manifest_fields MONEY_HIDDEN_FIELDS（PARTNER_HIDDEN + source / source_channel + money 组）、orders no_money_view（price=null、快照去金额键、activity_log 金额条目换「(price details hidden)」）、farm_out_settings rates 403 + 日志 SQL 里筛掉 rates 条目，都和前端对得上。检查：orders 46、man 346（第一次 344，拖列两项偶发，单独重跑全过）、mt 218、tt 137、tk 135、fod 48、fr 24、perm 54、nav 38、da 454、fo-settings 132；tsc / eslint 0 错 / build 过。
+- 判断：`usePermissions().canSeeMoney`（lib/staff-permissions.ts，`can("orders.money_view")`：Super Admin 恒有、读失败员工照旧、partner 按勾）。哪些算钱放 `lib/money-view.ts`（Main manifest 金额 / 代理商列、上传名单表头的词）。
+- 藏了：Orders 列表 Agent 列；订单详情 Price 卡、Agent & Commission、Operations 的 Agent 行、Ticket Breakdown 单价、Raw Rezdy 两块、How to use 里讲价格的几条（price = null 不报错）；订单搜索结果 Agent；Main manifest 金额 / 代理商列（Columns 没有 Money 组、存着的不画、不算进「need admin access」）、CHD 标签 Amount / Order total / Paid / Due、Due≠0 淡红；Dispatch Farm out 名单 Payable 整栏（不能输入、不提 Payable is not set）；Farm out Report、Sales Report 侧栏 / shortcut 不出、直接打开写 no access（canOpen 多要这一勾）；Morning Pickup Tracking Agent 列；Tour / Tickets tracking 上传列里算钱 / 代理商的表头。
+- 不用改 / 已确认：Forecast 前后端都没有价格；Team 页照后端 catalog 画，新勾自动在 Orders 组；`/api/bookings` 的 agent_name 前端没地方显示；Dispatch action-log 照常；activity_log 的「(price details hidden)」照文字显示；partner 的 tracking upload_row 少了代理商列照常。
+- Supplier › Partners（f8 转 Annie 原话「除了客人的基本信息，CCL看不到任何有价格的信息」，合作方价格也算）：没勾的人不请求价格、不出 Adult / Child 列和每个团的价格行、不出 ⬆ Import rates，卡片标题改「Partners」，How to use 不讲价格；合作公司本身（Add / Rename / Timetable / Locations / Deactivate）照 settings.farm_out 照旧。后端接口 9e 一起拦。Timetable 子页、合作方详情没有价格。
+- 共用 Action Log 面板（components/action-log/action-log-panel.tsx）：后端 36 e37835a8 没勾时把 rates 条目整条拿掉，一页可能 0 条但 next_cursor 照给 ⇒ 第一页 / Show more 翻到 0 条且还有 cursor 时自动接着翻（最多 20 页），不再误写「No changes recorded yet.」、不丢 Show more。翻页本来就只看 next_cursor，不看一页满没满。
+- 补跑：fo-settings 132/132（加没勾 / 勾了、Action Log 第一页空两项）、pl 105、products 231、hr 62、as 69；tsc 0 错、build 过。
+- 检查：orders / man / mt / tt / fod / fr 各加「没勾 / 勾了 / Super Admin」（orders 还测旧后端照样给数据时前端自己藏）；原来按勾的几组补上 orders.money_view；partner 订单详情改成不出 Price 卡；共用 staff-perm-mock.js 加 ctl.extraWidgets（带别的页面开关）。上传表头的词照后端 36 审查后的清单（Order Total / Subtotal / Due / Discount / Coupon / Tax / Surcharge / Voucher / Net / Retail / Fee / Payable / Revenue / Source / Sales Channel / Supplier 整词比，Agent / Price / Paid… 字串比），用 Annie 给的两份 Rezdy CSV 的全部表头核过。
+- 结果（合最新 main 191f635 后）：orders 46/46、man 346/346、mt 218/218、tt 137/137、tk 135/135、fod 48/48、fr 24/24、perm 54/54、nav 38/38、da 454/454；tsc 0 错、eslint 0 错（2 个旧 warning）、build 过。
+
+## 2026-11-02 晚 Staff Schedule：排班设置集中到 ⚙ Settings（`task/schedule-settings`，工作窗口 `npe-ops-frontend-39`[36b630]）
+- Annie 原话（后端主窗口转）：「所以两个edit，到底哪个管用」「而且排列得左一个又一个的，可以集中在一起管各自不同的功能么」；39 窗口：「我要在working hour里可以选择一周的时间，也可以分别设置几天的时间不同」「schedule同意全部推荐，但是需要加一个可以edit的权限让我来Admin里勾选」；preview 第 3 版 https://claude.ai/artifact/97MgNcpw28p7W4DxXmpgrM 「同意全部推荐。动手」（f8 窗口也说「动手」）。
+- 改了：
+  - 新 `components/schedule/settings-dialog.tsx`：Working hours（「Gaps are checked inside these hours.」）、Default shift times（「Pre-filled times for new shifts only. Does not change shifts already scheduled or the gap check.」）、Staff confirmation 一行（周三提醒和确认页开关在 Settings › Notifications）。一个 Save，只送改过的；黄字 Not saved yet、绿字 Saved、红字写哪一块没存 + 后端原话（存上的照算存上）；有没存的改动时 × / Cancel / 点外面先问 Keep editing / Discard / Save，关标签页浏览器提示。手机：弹窗占满一屏，每块说明进「i」。
+  - `schedule-view.tsx`：去掉页顶 WorkWindowControl / DefaultShiftTimes 两个 Edit；工具条（手机在 ⋯ 里）加「⚙ Settings」；Day timeline 卡头一行只读「Working hours 2:00 AM – 9:30 PM — gaps are checked inside these hours.」（只给能改排班的人，手机不出）；Gap 提示贴着 Working hours 开头 / 结尾的补「(working hours end 9:30 PM)」/「(working hours start …)」。
+  - 权限（⑤，Annie 补的）：能改照 Team 页勾 `settings.schedule`「Settings: Schedule work window and shift types」（后端 PUT work-window / shift-types 本来就按这一项查，`routers/schedule.py:47`；以前前端写死 Super Admin）；有 schedule.edit 没这个勾的只读、底下写怎么要权限；只能看的员工没有键。
+  - Employees、Rules、员工行拖排序、Auto-fill 不动（③④）。
+- ⏳ 「Different by day」七行 + No coverage needed（⑦⑧⑨）等后端按天设（f8 已转 9e：GET 多回 work_hours、PUT /api/settings/schedule/work-hours、空档按那天的时间算）。现在只有一组时间，不出灰掉的选项；后端上 main 后接上，页面上那一行改成按天写。
+- 检查：sch-mock 保存设置改按 settings.schedule 勾放行（`holds()`）；sch 原来的「Default shift times 一行 / superadmin Edit」「admin 看不到 Edit」改成 ⚙ Settings 版，新加 13 条（没两个 Edit、卡头只读一行、没勾只读 + 权限说明、员工没有键、暂存黄字、Save 只发改过的、Working hours PUT + 卡头跟着变、没存关窗先问 + Discard、400 红字 + 改动留着、Gap 补 working hours end）。sch 354/354、tasks 144/144；dr 87/88（同上一节，main 上 money-view 带来的侧栏那条，跟本改动无关）；tsc / eslint（0 错）/ build 过。
+
+## 2026-11-02 晚 Staff Schedule：Day timeline 不算人头的人不出现 + 时间刻度（`task/schedule-timeline-axis`，工作窗口 `npe-ops-frontend-39`[36b630]）
+- Annie 原话（39 窗口）：「然后我已经说过Anite不参加gap，为什么她的时间仍然出来在时间条里，然后时间条上面应该有个时间线显示时间的」；preview https://claude.ai/artifact/PnnAHTzhtSGD1nQcZmiWzu ；「同意全部推荐，动手」（f8 窗口也说「动手」）。
+- 改了 `components/schedule/day-timeline.tsx`（schedule-view 传 `now={laNow}`）：
+  - ①A 能改排班的人看的时间条里，不算人头的人（counts_for_coverage=false、不是测试的人）不出现，Overlap 也不算；②A 下面灰字「Not shown (don't count toward coverage): Anita 2:00 AM – 12:00 PM」；⑤A 员工看的照常、没有说明；④A 周表不变。
+  - 顶上一行刻度（`data-time-axis`）：两头写 Working hours 开始 / 结束，电脑每 2 小时、手机每 4 小时一个整点，离两头 / now 太近的不写；每行每小时一条淡竖线（`data-hour-line`）。
+  - ③A 看今天时每行一条琥珀色 now 竖线，刻度上写「now 7 PM」（`window.__scheduleNow` 可固定）。Working hours 跨午夜时不画刻度和竖线（条子本来也画不对，另说）。
+- 检查：sch 加 / 改 6 条（刻度标签、19 条竖线、now 线 + 换天消失、Anita 不出现 + 灰字、勾回去复原、员工看照常），sch 346/346、tasks 144/144；dr 87/88——失败的那条是侧栏 Operations 顺序（少了 farm_out_report），是 main 上 money-view（0e，`5959395`）带来的，跟本改动无关，已报 f8。tsc / eslint（0 错）/ build 过。
 
 ## 2026-11-02 晚 Staff Schedule：员工行拖动排顺序（`task/schedule-row-order`，从 coverage-flag 分支接着开，工作窗口 `npe-ops-frontend-39`[36b630]，主窗口 f8 派）—— 后端 7c976175 上 main 后合 main（2026-11-02 晚）
 - Annie 原话（39 窗口）：「第7按B，其他都按推荐。东松户」「动手」。preview https://claude.ai/artifact/PCJkqu6KRWreA1EzMkJRk8 。即 ① 跟 schedule.edit 走 ② 全公司一份 ③ 每周同一个顺序、不算排班改动 ④ 新加 / 重新启用排最后 ⑤ 手机不拖 ⑥ 自己那行固定最上面、不拖 ⑦ **只排班表这一张**照这个顺序，别处照旧按名字。
@@ -82,6 +126,7 @@
   - 范围扩大（Annie 在 36，9e 转，原话）：「除了客人的基本信息，CCL看不到任何有价格的信息」，随后「动手」⇒ 一切价格都藏（Manifest money 组、CHD amount / paid / due、订单详情 price、Rezdy 快照金额、Farm out 价格、报表金额）。勾改名 orders.money_view「See prices, agent & commission」（orders.agent_view 作废），新账号默认不带，只在 CCL 一个 team 的人不勾。CCL 5 个账号没有 orders.view，会漏价格的是 Manifests、Dispatch、Forecast、Reports（含 Farm out CSV）、Morning tracking。36 已开工，迁移 v142 要 Annie 执行，预计明天上线。藏键清单定了 9e 转 f8，再派前端。
   - 验收口径（Annie 在后端主窗口原话）：「manifest，dispatch等任何有价格的那一栏都隐藏起来他们点击或添加都不行就可以了」⇒ 没勾的人价格栏整栏不出，Columns 里也加不上、点不进；后端 catalog 不给、请求了进 denied。
   - 36 藏键清单定稿（task/agent-view 177a83b3，未进 main）：读 /api/me/permissions 的 orders.money_view（或 is_superadmin）；manifests money 组 + agent 等、orders agent_name、订单详情 price、dispatch guest_paid / farm_out payable_*、farm-out PATCH payable 403、farm-out report 403、Sales Report 403、morning tracking agent_name、tour / tickets tracking 去价格列、bookings agent_name。已派 0e（task/money-view-hide），⚠️ 只能跟后端同时或晚于后端合 main。
+  - ✅ 后端已上 main 8e9a9a58（合并 32a4dd4a，SA-7 修复 b43b9135），v142 Annie 已执行（21 人勾上，CCL 5 人没勾）。已请 0e 合 task/money-view-hide。✅ 前端已合 main f2851f6（检查全过），等 Annie 线上验收（用没勾的 ZZ Test 员工或 CCL 账号看）。
   - 0e 做完 task/money-view-hide 18d4b0b（没合，等 v142 SHA）：usePermissions().canSeeMoney、lib/money-view.ts；藏 Orders / 订单详情 / 搜索 / Main manifest 金额 + 代理商 / CHD 金额 / Dispatch Farm out Payable / Farm out Report / Sales Report / Morning / Tour / Tickets tracking；Forecast 没价格。检查 orders 46、man 346、mt 218、tt 137、tk 135、fod 48、fr 24、perm 54、nav 38、da 454，tsc / eslint / build 过。f8 定：Supplier › Partners 合作方价格表也藏（照 Annie「任何有价格的信息」），0e 补前端，已请 9e 后端一起拦。36 并进 agent-view（e37835a8）：partners/{id}/rates、rates/import/preview / commit 没勾 403；settings/action-log 去 rates:<id> 条目（一页可能少于 limit，照 next_cursor 翻）；partners / locations / timetable / tour-meta 照旧。已转 0e 核。
     - 0e 再推 task/money-view-hide 0f35bae（仍不合）：Partners 没勾不请求 rates、不出价格列 / 行 / Import rates，标题「Partners」；共用 Action Log 面板修了一页条目全被拿掉时写「No changes recorded yet.」的问题（0 条且有 cursor 自动接着翻，最多 20 页）。fo-settings 132、pl 105、products 231、hr 62、as 69，tsc / build 过。
   - 36 审后 3 处更新（已转 0e）：订单 activity_log 金额条目 detail 换「(price details hidden)」；tracking 再去 Order Total / Subtotal / Due / Discount / Coupon / Tax / Surcharge / Voucher / Net / Retail / Fee / Payable / Revenue / Source / Sales Channel / Supplier；partner 在 tracking 也去代理商列。后端审完，等 fc v141 落地才提交 v142，预计明天上线。
@@ -92,6 +137,12 @@
     - 9e 估：14–20 小时，不迁移，复用 /driver/preview、/guide/preview 取数。改题：⑤ 推荐一人一列（数据按人算）；② dispatch.view 在 partner 白名单里，页面带客人电话 / 短信 / 餐厅联系 ⇒ 新权限码或先只 Super Admin + 开关（推荐后者）；relay_status_at 要补；没连 HR 的司机列不出来；性能要加单次请求缓存。已请 39 改 preview。后端今晚 21:30 收工，派工在明天。
     - Annie 问（f8 窗口原话）：「可以在页面上有no show的提醒么」⇒ 题 ⑥ 加 C：页顶红框逐个列 No show（车 / 司机 · 客人 · 酒店 · 时间 · 标的时间，点了滚到那行），步骤旁红数字，新出现的标 new，不发邮件 / 短信（推荐 C）。已请 39 加进 preview。
     - preview 第 2 版（同链接）：② 改推荐 B（先只 Super Admin + 员工可见开关，默认关）；④ relay_status_at 后端要补，推荐 A 只写时间；⑤ 改推荐 A 一人一列（例 Kevin 先 relay 再 Bus A，Bus A 也出现在导游 Lily 那列）；⑥ 加 C 页顶红框（点了滚到那行标黄，新出现的闪三下带 NEW，改回 Picked up 就拿掉），推荐 C；⑦⑧ 和手机名字条都按人；没连 HR 的司机列不出来。等 Annie 答 + 动手。
+    - Annie 答（f8 窗口原话）：「B我想放在morning tracking页面   同意默认关 ， no show要重新设计 ，统计同moring tracking， message也能回」⇒ 放 Morning Pickup Tracking 页；先只 SA + 员工可见开关默认关；No show 提醒重做（出 2–3 种挑）；统计照 Morning tracking 统计卡；办公室能在对话里回客人（要后端）。其余照推荐。没动手。已请 39 出 v3，后端影响已告诉 9e。Annie 补（原话）：「司机的这个表如果在moring那块的话，很多功能是可以共用的」⇒ 尽量沿用 Morning tracking 的统计卡、刷新、客人行 / 状态、对话回复等，preview 列「共用 / 新加」对照表。Annie 又补（原话）：「就设成文件夹形式就好了」⇒ Morning tracking 页上做文件夹页签（Tracking / Live drivers），日期 / 统计 / 搜索共用；另画一种「按司机一个个文件夹展开」给她挑。
+    - fc 估「办公室能回」：复用 POST /booking-notes/by-order/{n}（messages.reply），公司号码发，司机手机看得到（from office + 员工名），办公室看不改已读；页面开关新 key 默认 super_admin_only 挂在专用读接口；后端 0.5–1 天，不迁移。已转 39。Annie 确认（原话）：「是的，staff就直接用我们的页面chat那个twillio的渠道发出去」；又补「email sms同时发」⇒ 办公室回客人 SMS + Email 同时发，已请 fc 查现有接口支不支持，39 画进 v3。
+    - v3（同链接）：Morning tracking 两个文件夹页签 Tracking / Live drivers，共用日期 / 司机筛选 / 统计卡 / 搜索 / 刷新 / Export / 对话框。新题：⑪ A 页签 + 司机并排（推荐）／B 左边司机文件夹一次看一人；⑥ No show A Tracking 表里那单淡红置顶 + Driver mark 列 + 用现成 Take action 当已处理（推荐）／B 司机筛选旁红数字 + Mark handled／C 顶栏 🔔 下拉；⑦ A 照搬统计卡（推荐）；③ 每分钟、过 cut-off 停。后端：司机页只读数据、tracking 行加 live_status*、ns_unhandled、开关 key morning_live_drivers。
+    - fc：短信 + 邮件同时发现有接口已支持（booking-notes/by-order 带 send_sms + send_email），客人邮件回复（email_in）办公室列读接口多带（约 30 分钟），司机端照旧只收短信 / WhatsApp。已转 39。
+    - Annie 问（f8 窗口原话）：「对了，我们这个页面是否可以跟司机的live tracking联动起来，显示他已经到了那个酒店」⇒ 请 fc 只读查 Samsara（位置 / 到站事件 / 车对应 / 酒店坐标 / 工作量）；39 在 preview 预留「Arrived / Left / On the way」「Now at …」样子。
+      - fc 估：现在没有车辆实时位置、没有酒店坐标（只有 Samsara 位置共享链接、车号对应、司机当天开哪台车）。A 只显示「离酒店 0.3 mi」（约 1 天，迁移酒店经纬度，17 家填一次）；B「Arrived 6:02 / Left 6:09」（经纬度 + 到离事件表 + 早班每分钟轮询，2–3 天；或在 Samsara 后台建酒店围栏读进出事件）；C ETA 不建议。A / B 都要 Annie 在 Samsara 后台给 token 开读位置 / 事件权限，Risk C。f8 建议：司机实时页先上不带到站，到站作为第二期做 B。等 Annie 选。
 - 今晚在等 Annie 的，跟 24 交接第三节一样，不重问。
 
 ## 2026-11-02 收工交接：前端主窗口-24 [d1dbae]（公司）
@@ -462,6 +513,28 @@
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 57. 排班：设置集中 + Working hours 按天设 + Day timeline（2026-11-02 晚，39）—— ✅ 已动手，待移走
+- Annie 在 f8 窗口（原话）：「动手」⇒ 39 开 task/schedule-timeline、task/schedule-settings（Same every day 先用现接口）；按天设后端已转 9e（迁移 + work_hours + PUT /api/settings/schedule/work-hours，权限 settings.schedule，排 v143 后）。
+- 39 转 Annie 在它窗口原话：Day timeline「同意全部推荐，动手」；设置集中「同意全部推荐。动手」。39 在做 task/schedule-timeline-axis，接着 task/schedule-settings。
+- ✅ Day timeline 已合 main 529a757（39，sch 346、tasks 144，tsc / eslint / build 过）。39 接着做 task/schedule-settings（只做 Same every day，Different by day 后端上了再出，不放灰掉的选项）。
+- ⚠️ dr 87/88：staff 侧栏少 farm_out_report，多半是 money-view 藏了（mock 员工没 orders.money_view），是检查过时。已派 0e task/dr-money-view 修检查。✅ 已合 main 94d80a8：role-standard.js 照后端补 orders.money_view，dr 另加没勾不出 Farm out Report；dr 89、nav 38、as 69、dor 75、hr 62、sch 346、tcq 86 全过。只改检查。
+- 新功能（Annie 在 f8 窗口原话）：「我要加 一个功能，在排班这里可以选一周为基础，比如这周的排班很混乱，我现在用上周的排班为基数，来自动排班，遵守定好的这些role，然后把整个月的班都排出来」⇒ 先 preview，派 0e（dr 修完后做）：选基础周 → 选范围 → 照规则排 → 预览 → 存草稿。题：基础周怎么用、范围、已有内容的周、存草稿还是 Publish、排不出来的格子、员工确认、谁能用。没动手。
+  - ⚠️ 急（Annie 原话）：「这个很重要，需要今天做完，明天就需要排出来，周三要跟员工确认了」⇒ 后端已收工，走纯前端（现有周接口 + 前端 Auto-fill 引擎，一周一周存草稿）；0e preview 压到最简 15–20 分钟交，同时在 task/schedule-base-week 按推荐先写。
+  - 0e 查：纯前端可做（GET weeks、engine locked + findViolations、POST weeks/{周}/slots/bulk 存草稿）。preview：https://claude.ai/artifact/L3gCgqBPvDLBxAC2ToDVxp 。7 题（推荐）：① 照抄再按 Rules 修正（A）；② 下周起 4 周、可选 1–6（A）；③ 已有草稿只填空格（A），已发布不动；④ 存草稿各周自己 Publish（A）；⑤ 排不出留空、淡红 + 红字列出（A）；⑥ 员工确认照旧；⑦ 跟 schedule.edit。等 Annie 答 + 动手。
+  - ✅ Annie 在 f8 窗口（原话）：「7题全部同意推荐，动手」⇒ 0e 做完 task/schedule-base-week 今晚合 main。
+    - Annie 答（f8 窗口原话「A同意推荐」）⇒ 复制周处理照 0e 做法，已告诉 0e。
+    - ✅ 已合 main 9261c52（0e）：Auto-fill › How to fill「Copy a base week, then fix by the rules」；sch 364、tasks 144、dr 89，tsc / eslint / build 过。存草稿不 Publish、不通知。
+    - 0e 发现：后端 GET weeks 主管第一次打开某周会自动复制上一周的班（copied_from），照题 ③ 字面「只填空格」会全保留混乱周的复制品。0e 改法：复制来的周（copied_from 有值）整周按基础周排、replace:true；非复制来的草稿只填空格；已发布不动；预览写清每周是哪种。风险：复制周上手改过的几格会被换掉。f8 已问 Annie 确认，0e 先照这个做。
+- Annie 问以前的「谁哪天不上 / 谁不上某个班」设置在哪：f8 答——在排班页 Rules 页签（Cannot work / Fixed shift 等规则，给 Auto-fill 用）。
+- Annie 更正（f8 窗口原话）：「没有，后端也一直在做」⇒ 后端今晚不收工。9e：按天设已派 36 今晚做，迁移 v144（排 fc v143 后，要 Annie 执行），字段名定了发 f8。
+- 按天设字段定（36）：GET settings/schedule 多 work_hours {same_every_day, days[7]{weekday 0=Mon, start_time, end_time, off}}，work_window = Monday；PUT /api/settings/schedule/work-hours 整份替换（settings.schedule，same_every_day 时 7 天须一样，400 原话），旧 work-window PUT 照能用。已转 39（接 Different by day）、0e（基础周按当天时间算）。上线：Annie 执行 v144 → 后端推。
+- ✅ 排班设置集中（Same every day）已合 main 10e82e9（39，sch 354、dr 89、tasks 144，tsc / eslint / build 过）：⚙ Settings 弹窗、照 settings.schedule 勾、只读一行 Working hours、空档补一句。39 接着 task/schedule-work-hours（Different by day），等后端 SHA 再合。
+- （作废）9e：按天设已记规格，22:14 PT 过了 21:30 收工点，明天第一件派（迁移 v144），今晚只做完 relay-print。
+- Annie 在 39 窗口答（原话）：「schedule同意全部推荐，但是需要加一个可以edit的权限让我来Admin里勾选」⇒ 两份 preview 全按推荐；⑤ 改：能改设置照 Team 页勾。39 查：现成勾 settings.schedule（后端 PUT 本来就按它查，routers/schedule.py:47），前端只是写死 is_superadmin ⇒ 不用新权限，前端改照勾；按天设的新接口也用它。设置 preview v3 同链接。「同意」不算动手，39 已问 Annie「是否现在动手」。动手后：Day timeline 纯前端；设置集中前端先做（Same every day 先用现 work-window 接口）；按天设转后端（迁移 + work_hours + PUT /api/settings/schedule/work-hours，权限 settings.schedule）。
+- 设置集中 preview 第 2 版：https://claude.ai/artifact/97MgNcpw28p7W4DxXmpgrM 。原 6 题（推荐 ① 工具条 ⚙ Settings + 弹窗、② 留一行只读 Working hours、③ Employees 不搬、④ Rules 不搬、⑤ SA 改 / 排班人只读、⑥ 空档补「(working hours end …)」）。
+- Annie 在 39 窗口（原话）：「我要在working hour里可以选择一周的时间，也可以分别设置几天的时间不同」⇒ Working hours「Same every day」/「Different by day」七行 + Copy Monday。新题 ⑦ 七行（A）；⑧ 每天「No coverage needed」勾（A 要）；⑨ 只按星期几（A，不做节假日）。39 把「选择一周的时间」理解为七天同一组，不对要改。⚠️ 要后端：每个星期几 start / end / off（迁移）、GET 多 work_hours、PUT /api/settings/schedule/work-hours、空档按当天算。
+- Annie 在 39 窗口（原话）：「然后我已经说过Anite不参加gap，为什么她的时间仍然出来在时间条里，然后时间条上面应该有个时间线显示时间的」⇒ Day timeline preview：https://claude.ai/artifact/PnnAHTzhtSGD1nQcZmiWzu 。5 题：① 不算人头的人不出现在时间条（A）；② 下面灰字「Not shown…: Anita 8:00 AM – 4:00 PM」只给排班的人（A）；③ 今天加琥珀「now」竖线（A）；④ 周表照旧 Not counted 小标（A）；⑤ 员工看的 Anita 照常、没说明（A）。纯前端。顶上加整点刻度。⚠️ 如果她看到 Anita 条子是普通蓝色没斜纹，说明还没在 Employees 取消 Anita 的 Counts toward coverage。
+
 ### 56. Bus Manifest 底部汇总框按团分（2026-11-02 晚，0e 报告，没动手）
 - Annie 原话：「核心问题是：在bus manifest底部的灰色汇总框里，把Antelope的表格变成所有tour的样本了，这是错误的，每个tour的汇总表都不一样」；「另外，hooverdam在bus manifest那里已经设置好分小节了」。
 - 0e 报告（汇总一节先交，其余 12 页同链接更新）：https://claude.ai/artifact/EgwNMRbsCTJMoMb9m3iRQU 。后端 footer()（tour_manifest.py:919）一套格子全团共用；前端 manifest-view.tsx:227 FOOTER_LABEL 对所有团改成 Antelope 叫法（只网页，打印 / Excel 还是后端原名）；West 7 个分项、Hoover 5 个 ops 都没有；数据够（10/6 纸本数字反推对得上）。改格子要后端，前端去掉那 3 个改名。PDF 原件在 C:\Users\annzh\Downloads\4796_001.pdf。
@@ -490,6 +563,8 @@
       - Annie 定简称（f8 窗口原话）：「South，West，Lower，Upper，CanyonX，BZ」⇒ 取代纸本的 GC South / LOWER / UPPER / X。v143 预填：South Rim = South、West Rim = West、Bryce&Zion = BZ；Antelope 节 LOWER = Lower、UPPER = Upper、Canyon X = CanyonX；其他团不预填。已转 9e、0e。
       - Annie（原话）：「因为Hoover没有relay司机，所以不需要，本来就是他们的tour bus去接的」⇒ Hoover 不设简称；司机页 / 导游页订单号旁只在设了简称时才显示，不回落全名；Relay 打印单照旧回落。已转 9e。
       - fc（task/relay-print 93f2c9fc）：客人加 short_tag（没设 = ""，不回落，司机 / 导游页用），打印单用 product_short；v143 已按新简称填。司机页 / 导游页模板那部分后端在等 Annie 在后端窗口回范围「同意」。
+      - 0e 前端推 task/relay-print 3a7021f（没合，等 fc + v143）：新页 /dispatch/relay-list（每轮总表 + 每车分表，A4 竖向）、Morning Relay「📋 Relay list」键 + 每车 Print、Bus Manifest setup 加 Short name（团 + 节，暂存 + Save）。rl 26、products 237、da 457、nav 38，tsc / eslint / build 过。hotel_short 键名请 fc 确认（已问 9e）。
+      - ✅ 后端上 main 35eec2e1（合并 e0ad91ed），v143 Annie 已执行（South / West / BZ；Lower / Upper / CanyonX）；司机页 / 导游页简称随后端上线。已请 0e 在基础周那件之后合 task/relay-print。
     - Annie 补（0e 转，原话）：「排完relay并保存了以后，应该加一个按键显示这些relay的list」⇒ 题 1 的键改成「📋 Relay list」：先在屏幕上看总表 + 每车分表，要纸在那页按 Print；显示已保存的排车，有没存的改动先问 Save first?（v10，不影响后端）。
     - fc 字段名定（已转 0e）：manifest-setup groups[] 加 short_name、section_short_names；PUT …/groups/{id}/short-name、…/section-short-name（前端按 Save 再逐个 PUT）；relay-pull guests 加 phone / manifest_id / product_short / bus{label, tour, tour_short, sections[{name, short, color}], driver, guide, van, color}，car 加 location_ids / tour_buses。迁移 v143（Annie 执行，排 v141 / v142 后）。「This van is on 2 tour buses today.」改放 car.print_warnings（不放 problems，免得挡发送）。后端 WIP task/relay-print 459edd0c，今晚 21:30 停，明天接着。
   - 另：ops 标黄规则「带 + 就亮黄」会让 West 所有 Premium (Skywalk+Voucher) 行都亮黄，纸本不标（并进其余 12 页差别 ③）。

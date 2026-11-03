@@ -172,6 +172,11 @@ export function PartnersView() {
   const [logVersion, setLogVersion] = useState(0);
   const redirectToLogin = useRedirectToLogin();
   const perms = usePermissions();
+  // 没勾 See prices, agent & commission（orders.money_view，题 8；Annie「除了客人的基本信息，CCL看不到任何有价格的信息」，
+  // 合作方的价格也算）：价格列、每个团的价格行、Import rates 都不出，也不请求价格；合作公司本身照 settings.farm_out 照旧。
+  const seeMoney = perms.canSeeMoney;
+  /** 价格那几列算不算在表里（没勾时表只剩 Partner / Status / Actions）。 */
+  const cols = seeMoney ? 5 : 3;
 
   /** 导入存好后静悄悄重拉（不回到 Loading，Import 块和展开的上车点都留着）。 */
   const refreshAll = useCallback(async () => {
@@ -221,6 +226,11 @@ export function PartnersView() {
         const list = await fetchPartners();
         if (controller.signal.aborted) return;
         setPartners(list);
+        if (!tickPermsRef.current.canSeeMoney) {
+          setRates({});
+          setGate({ kind: "ready" });
+          return;
+        }
         const entries = await Promise.all(
           list.map(async (p) => {
             try {
@@ -260,11 +270,13 @@ export function PartnersView() {
     try {
       const created = await createPartner(name);
       setPartners((all) => [...all, created]);
-      try {
-        const r = await fetchPartnerRates(created.id);
-        setRates((all) => ({ ...all, [created.id]: r }));
-      } catch {
-        setRates((all) => ({ ...all, [created.id]: "error" }));
+      if (seeMoney) {
+        try {
+          const r = await fetchPartnerRates(created.id);
+          setRates((all) => ({ ...all, [created.id]: r }));
+        } catch {
+          setRates((all) => ({ ...all, [created.id]: "error" }));
+        }
       }
       setNewName("");
       setOpenId(created.id);
@@ -386,7 +398,7 @@ export function PartnersView() {
 
       {ready ? (
         <>
-          <HowToUse />
+          <HowToUse money={seeMoney} />
 
           <section className={CARD_CLASS}>
             <div className={CARD_HEADER_CLASS}>
@@ -430,7 +442,7 @@ export function PartnersView() {
             </div>
           ) : null}
 
-          {importOpen ? (
+          {importOpen && seeMoney ? (
             <StandardImport
               title="Import rates"
               help={
@@ -468,8 +480,11 @@ export function PartnersView() {
 
           <section className={CARD_CLASS}>
             <div className={CARD_HEADER_CLASS}>
-              <h2 className={CARD_TITLE_CLASS}>Partners &amp; rates</h2>
+              <h2 className={CARD_TITLE_CLASS}>
+                {seeMoney ? <>Partners &amp; rates</> : "Partners"}
+              </h2>
               <span
+                hidden={!seeMoney}
                 title={
                   editingRate
                     ? "Save or cancel the price you are editing first."
@@ -487,8 +502,12 @@ export function PartnersView() {
                 <thead>
                   <tr>
                     <th className={TH_CLASS}>Partner / Tour</th>
-                    <th className={cn(TH_CLASS, "text-right")}>Adult</th>
-                    <th className={cn(TH_CLASS, "text-right")}>Child</th>
+                    {seeMoney ? (
+                      <>
+                        <th className={cn(TH_CLASS, "text-right")}>Adult</th>
+                        <th className={cn(TH_CLASS, "text-right")}>Child</th>
+                      </>
+                    ) : null}
                     <th className={TH_CLASS}>Status</th>
                     <th className={TH_CLASS}>Actions</th>
                   </tr>
@@ -496,7 +515,10 @@ export function PartnersView() {
                 <tbody className={TBODY_CLASS}>
                   {partners.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className={cn(TD_CLASS, "text-center")}>
+                      <td
+                        colSpan={cols}
+                        className={cn(TD_CLASS, "text-center")}
+                      >
                         No partners yet.
                       </td>
                     </tr>
@@ -514,7 +536,7 @@ export function PartnersView() {
                           >
                             <td
                               className={cn(TD_CLASS, "font-semibold")}
-                              colSpan={3}
+                              colSpan={seeMoney ? 3 : 1}
                             >
                               {renaming?.id === p.id ? (
                                 <span className="flex flex-wrap items-center gap-2">
@@ -621,7 +643,7 @@ export function PartnersView() {
                               </span>
                             </td>
                           </tr>
-                          {list === "error" ? (
+                          {!seeMoney ? null : list === "error" ? (
                             <tr className={TR_CLASS}>
                               <td
                                 colSpan={5}
@@ -1014,7 +1036,7 @@ export function PartnersView() {
                           )}
                           {openId === p.id ? (
                             <tr className={TR_CLASS}>
-                              <td colSpan={5} className="p-0">
+                              <td colSpan={cols} className="p-0">
                                 <PartnerDetail
                                   partnerId={p.id}
                                   partnerName={p.name}
@@ -1070,13 +1092,31 @@ export function PartnersView() {
 }
 
 /** 页面说明（同其它 Settings 页的蓝色 How to use 条）。 */
-function HowToUse() {
+/** money = false（没勾 orders.money_view）：不讲价格、子项和 Import rates。 */
+function HowToUse({ money }: { money: boolean }) {
   return (
     <LegacyHowTo
       title="How to use — Farm out Partners"
       padY="py-2.5"
-      footer="Infants are never counted in the settlement amount, on any tour."
+      footer={
+        money
+          ? "Infants are never counted in the settlement amount, on any tour."
+          : undefined
+      }
     >
+      {money ? (
+        <MoneyHowTo />
+      ) : (
+        <li>Add a partner: type its name and click Add.</li>
+      )}
+      <PartnerHowTo />
+    </LegacyHowTo>
+  );
+}
+
+function MoneyHowTo() {
+  return (
+    <>
       <li>
         Add a partner: type its name and click Add. Its tours appear under it
         with prices not set; click Edit on a tour to set them.
@@ -1102,6 +1142,13 @@ function HowToUse() {
         Partner and Tour; a blank cell never clears a price; rows marked Error
         are not saved.
       </li>
+    </>
+  );
+}
+
+function PartnerHowTo() {
+  return (
+    <>
       <li>
         Locations opens this partner&apos;s own pick-up hotels (not linked to
         our Pickup Locations). Their order there is the order shown in Dispatch.
@@ -1116,6 +1163,6 @@ function HowToUse() {
         partner from the Farm out choice in Dispatch; orders already farmed out
         to it are not changed, and you can Reactivate at any time.
       </li>
-    </LegacyHowTo>
+    </>
   );
 }

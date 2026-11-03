@@ -82,7 +82,8 @@ export function OrderDetailView({ orderNumber }: { orderNumber: string }) {
   /** 保存后重拉，但不切回 Loading：另一张卡片里没存的输入保留（各卡片自己管状态）。 */
   // partner 只能看（Annie 2026-10-27「合作方只能看manifest和订单，不能改或者选任何功能」）：
   // 不出 Edit / Unlock、How to use、Agent & Commission（N2 B）、Farm out、条码的 show、Raw Rezdy。员工照旧。
-  const partner = usePermissions().partnerView;
+  const perms = usePermissions();
+  const partner = perms.partnerView;
   // 员工也按勾（Annie 2026-10-30 置顶 10c）：没勾 orders.edit 就没有 Edit / Unlock；总开关关着照旧全给，Super Admin 全给。
   const canEditOrder = useTick("orders.edit");
   const reload = useCallback(
@@ -121,7 +122,7 @@ export function OrderDetailView({ orderNumber }: { orderNumber: string }) {
       >
         ← Back to Orders
       </PageLink>
-      {partner ? null : <HowToUse />}
+      {partner ? null : <HowToUse money={perms.canSeeMoney} />}
       {state.kind === "loading" ? (
         <div className={OD_LOADING}>Loading…</div>
       ) : state.kind === "notfound" ? (
@@ -169,6 +170,9 @@ function OrderBody({
   onUnauthorized: () => void;
 }) {
   const type = o.booking_type !== "—" ? o.booking_type : o.product.type;
+  // 没勾 See prices, agent & commission（orders.money_view，题 8「除了客人的基本信息，CCL看不到任何有价格的信息」）：
+  // 价格卡、Agent & Commission、票价、Raw Rezdy 都不出。后端这时 price = null、order_detail / items_detail 去掉代理商 / 付款 / 金额。
+  const seeMoney = usePermissions().canSeeMoney && o.price !== null;
   return (
     <>
       {/* .od-head：订单号直接在深色底上，旧页的 #1a1a1a 看不见，改用旧后台正文色 #f8fafc。 */}
@@ -245,21 +249,23 @@ function OrderBody({
                 ? ([
                     [
                       "Items",
-                      `${o.product.item_count} products in this order — the card above shows the first one. See Ticket Breakdown${partner ? "" : " and Raw Rezdy items"} below.`,
+                      `${o.product.item_count} products in this order — the card above shows the first one. See Ticket Breakdown${partner || !seeMoney ? "" : " and Raw Rezdy items"} below.`,
                     ],
                   ] as [string, unknown][])
                 : []),
             ]}
           />
         </Card>
-        <PriceCard
-          order={o}
-          onSaved={onSaved}
-          onUnauthorized={onUnauthorized}
-        />
+        {seeMoney ? (
+          <PriceCard
+            order={o}
+            onSaved={onSaved}
+            onUnauthorized={onUnauthorized}
+          />
+        ) : null}
         <OpsCard order={o} onSaved={onSaved} onUnauthorized={onUnauthorized} />
-        {partner ? null : <AgentCard detail={o.order_detail} />}
-        <TicketsCard items={o.items_detail} />
+        {partner || !seeMoney ? null : <AgentCard detail={o.order_detail} />}
+        <TicketsCard items={o.items_detail} prices={seeMoney} />
         <Card title="Notes">
           <Rows
             rows={[
@@ -320,7 +326,7 @@ function OrderBody({
           )}
         </Card>
       </div>
-      {partner ? null : (
+      {partner || !seeMoney ? null : (
         <>
           <RawBlock title="Raw Rezdy items" value={o.items_detail} />
           <RawBlock title="Raw Rezdy order" value={o.order_detail} />
@@ -645,8 +651,9 @@ function OpsCard({
   onUnauthorized: () => void;
 }) {
   const ops = o.ops;
-  // partner 不看代理商（Agent & Commission 对 partner 不出，Annie 2026-10-27 N2 B）。
-  const partner = usePermissions().partnerView;
+  // partner 不看代理商（Agent & Commission 对 partner 不出，Annie 2026-10-27 N2 B）；没勾 orders.money_view 也不看（题 8）。
+  const perms = usePermissions();
+  const hideAgent = perms.partnerView || !perms.canSeeMoney;
   const initial = () => ({
     confirmation_no: ops.confirmation_no ?? "",
     lunch_turkey: String(ops.lunch_turkey ?? 0),
@@ -771,7 +778,7 @@ function OpsCard({
           rows={[
             ["Confirmation #", ops.confirmation_no],
             ["TT #", ops.tt_number],
-            ...(partner
+            ...(hideAgent
               ? []
               : ([["Agent", ops.agent_name]] as [string, unknown][])),
             ["Driver", ops.driver],
@@ -858,7 +865,8 @@ function Masked({ value }: { value: string }) {
   );
 }
 
-function TicketsCard({ items }: { items: unknown }) {
+/** prices = false：不出每种票的单价（没勾 orders.money_view，题 8）。 */
+function TicketsCard({ items, prices }: { items: unknown; prices: boolean }) {
   const list = Array.isArray(items) ? (items as RezdyItem[]) : [];
   return (
     <Card title="Ticket Breakdown">
@@ -879,11 +887,13 @@ function TicketsCard({ items }: { items: unknown }) {
                       className="border-b-[0.5px] border-black/5 last:border-b-0 night:border-white/10"
                     >
                       <td className="px-1 py-1.5">{q.optionLabel}</td>
-                      <td className="px-1 py-1.5 text-right whitespace-nowrap tabular-nums">
-                        {typeof q.optionPrice === "number"
-                          ? `$${q.optionPrice.toFixed(2)}`
-                          : ""}
-                      </td>
+                      {prices ? (
+                        <td className="px-1 py-1.5 text-right whitespace-nowrap tabular-nums">
+                          {typeof q.optionPrice === "number"
+                            ? `$${q.optionPrice.toFixed(2)}`
+                            : ""}
+                        </td>
+                      ) : null}
                       <td className="px-1 py-1.5 text-right whitespace-nowrap tabular-nums">
                         × {q.value}
                       </td>
@@ -945,7 +955,8 @@ function RawBlock({ title, value }: { title: string; value: unknown }) {
   );
 }
 
-function HowToUse() {
+/** money = false（没勾 orders.money_view）：不提价格卡、代理商和 Raw Rezdy。 */
+function HowToUse({ money }: { money: boolean }) {
   return (
     // 旧页这里是一直展开的蓝框（不是可折叠的 details），样式照 send_morning.html。
     <div className="mb-4 rounded-[10px] border border-[#b5d4f4] bg-[#e8f3fc] px-5 py-3.5 text-[12px] leading-[1.8] text-[#0c3a6b] night:border-sky-400/20 night:bg-sky-400/[.08] night:text-sky-300">
@@ -954,27 +965,34 @@ function HowToUse() {
       </div>
       <ol className="list-decimal pl-[18px]">
         <li>
-          This page shows one order: guest, product, price, operations, agent
-          and commission, tickets, notes and activity.
+          {money
+            ? "This page shows one order: guest, product, price, operations, agent and commission, tickets, notes and activity."
+            : "This page shows one order: guest, product, operations, tickets, notes and activity."}
         </li>
-        <li>
-          Change the price: click Edit on the Price card, change the numbers,
-          click Save, then confirm. Saving a price locks the order, so Rezdy
-          stops updating its price and details. Click Unlock to let Rezdy update
-          it again.
-        </li>
+        {money ? (
+          <li>
+            Change the price: click Edit on the Price card, change the numbers,
+            click Save, then confirm. Saving a price locks the order, so Rezdy
+            stops updating its price and details. Click Unlock to let Rezdy
+            update it again.
+          </li>
+        ) : null}
         <li>
           Change operations: click Edit on the Operations card to change
           Confirmation # or lunch counts, then Save. A lunch box left empty is
           not changed. An empty Confirmation # clears it.
         </li>
+        {money ? (
+          <li>
+            You can have both cards open at once. Saving one does not lose what
+            you typed in the other.
+          </li>
+        ) : null}
         <li>
-          You can have both cards open at once. Saving one does not lose what
-          you typed in the other.
-        </li>
-        <li>
-          Ticket barcodes are hidden; click show to see one. Raw Rezdy items and
-          Raw Rezdy order at the bottom open the original data Rezdy sent.
+          Ticket barcodes are hidden; click show to see one.
+          {money
+            ? " Raw Rezdy items and Raw Rezdy order at the bottom open the original data Rezdy sent."
+            : ""}
         </li>
       </ol>
       <div className="mt-2 border-t border-[#b5d4f4] pt-2 night:border-sky-400/20">

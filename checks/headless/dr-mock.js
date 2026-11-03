@@ -50,7 +50,11 @@ http
     log.push({ method: req.method, path: p, body });
     if (p === "/admin/dashboard") { res.setHeader("Content-Type", "text/html"); return res.end("<h1>LEGACY DASHBOARD</h1>"); }
     // 只看勾（2026-11-01）：按角色标准回。
-    if (p === "/api/me/permissions") return send(res, 200, permsBody(ctl.role));
+    // ctl.noMoney：这个人没勾 orders.money_view（CCL 的人，G231 第 8 题）。
+    if (p === "/api/me/permissions") {
+      const body = permsBody(ctl.role);
+      return send(res, 200, ctl.noMoney ? { ...body, permissions: body.permissions.filter((x) => x.code !== "orders.money_view") } : body);
+    }
     if (p === "/api/me") {
       return send(res, 200, {
         id: 1, username: "zztest", display_name: "ZZ Test", initials: "ZT", role: ctl.role,

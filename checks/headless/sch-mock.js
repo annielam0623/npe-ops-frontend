@@ -1,7 +1,9 @@
 // 模拟后端：Staff Schedule（阶段二，拖拽排班版）。控制：POST /__ctl {role}；GET /__log。
 // role: "staff" | "supervisor" | "admin" | "superadmin"（默认 supervisor，方便直接测排班）。
 const http = require("http");
-const { permsBody } = require("./role-standard");
+const { permsBody, STANDARD } = require("./role-standard");
+/** 后端 require_perm：Super Admin 全放行；设了 ctl.tick 按勾，否则按角色标准。 */
+const holds = (code) => ctl.role === "superadmin" || (ctl.tick ? ctl.tick.codes.includes(code) : (STANDARD[ctl.role] || []).includes(code));
 // phase2: true ⇒ 二期字段（备注 note / 休假 time_off / 班次默认时间）和接口都开（POST /__ctl {phase2:true}）。
 const ctl = { fail401: false, role: "supervisor", meName: "", rulesMissing: false, phase2: false };
 let timeOff = []; // {id, employee_id, date, kind, note}
@@ -478,11 +480,13 @@ http
     }
 
     if (p === "/api/settings/schedule" && req.method === "GET") {
-      return send(res, 200, settingsPayload());
+      // ctl.sundayOff：后端 Working hours 按星期几（work_hours，weekday 0 = 周一 … 6 = 周日），周日 off。
+      const base = settingsPayload();
+      return send(res, 200, ctl.sundayOff ? { ...base, work_hours: { same_every_day: false, days: [0, 1, 2, 3, 4, 5, 6].map((weekday) => ({ weekday, start_time: "02:00", end_time: "21:30", off: weekday === 6 })) } } : base);
     }
     const stMatch = /^\/api\/settings\/schedule\/shift-types\/([a-z_]+)$/.exec(p);
     if (stMatch && req.method === "PUT" && ctl.phase2) {
-      if (ctl.role !== "superadmin") return send(res, 403, { detail: "Only a superadmin can change shift types." });
+      if (!holds("settings.schedule")) return send(res, 403, { detail: "You don't have permission: Settings: Schedule work window and shift types." });
       const b = await readBody(req);
       entry.body = b;
       const hasS = b.default_start_time !== undefined && b.default_start_time !== null;
@@ -534,8 +538,8 @@ http
       return send(res, 200, { ok: true });
     }
     if (p === "/api/settings/schedule/work-window" && req.method === "PUT") {
-      if (ctl.role !== "superadmin") {
-        return send(res, 403, { detail: "Only a superadmin can change the work window." });
+      if (!holds("settings.schedule")) {
+        return send(res, 403, { detail: "You don't have permission: Settings: Schedule work window and shift types." });
       }
       const b = await readBody(req);
       entry.body = b;

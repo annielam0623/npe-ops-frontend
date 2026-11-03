@@ -41,10 +41,61 @@ interface DayTimelineProps {
   showGaps?: boolean;
   /** 写空档原因用（Unassigned 里的班叫什么）。 */
   shiftTypes?: ScheduleShiftType[];
+  /** 洛杉矶的此刻（日期 + 第几分钟）：看的是今天时画一条「now」竖线。 */
+  now?: { date: string; minute: number };
 }
 
 function percentOf(min: number, startMin: number, endMin: number): number {
   return ((min - startMin) / (endMin - startMin)) * 100;
+}
+
+/** 刻度上的钟点：整点写「2 AM」，不是整点写「9:30 PM」。 */
+function axisLabel(min: number): string {
+  const h24 = Math.floor(min / 60) % 24;
+  const m = min % 60;
+  const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
+  return `${h12}${m ? `:${String(m).padStart(2, "0")}` : ""} ${h24 < 12 ? "AM" : "PM"}`;
+}
+
+/**
+ * 时间条上面那一行刻度（Annie 2026-11-02「时间条上面应该有个时间线显示时间的」，preview PnnAHTzhtSGD1nQcZmiWzu）：
+ * 两头写 Working hours 的开始和结束，中间每 step 小时一个整点；离两头或「now」太近的不写，免得叠在一起。
+ */
+function axisTicks(
+  startMin: number,
+  endMin: number,
+  stepHours: number,
+  nowMin: number | null,
+): number[] {
+  const step = stepHours * 60;
+  const minGap = step * 0.6;
+  const out: number[] = [];
+  for (let m = Math.ceil((startMin + 1) / step) * step; m < endMin; m += step) {
+    if (m - startMin < minGap || endMin - m < minGap) continue;
+    if (nowMin != null && Math.abs(m - nowMin) < minGap) continue;
+    out.push(m);
+  }
+  return out;
+}
+
+/** 每一行底下每小时一条淡竖线，对着上面的刻度看。 */
+function HourLines({ startMin, endMin }: { startMin: number; endMin: number }) {
+  const lines: number[] = [];
+  for (let m = Math.ceil((startMin + 1) / 60) * 60; m < endMin; m += 60)
+    lines.push(m);
+  return (
+    <>
+      {lines.map((m) => (
+        <span
+          key={m}
+          aria-hidden
+          data-hour-line
+          className="absolute inset-y-0 w-px bg-white/[.07]"
+          style={{ left: `${percentOf(m, startMin, endMin)}%` }}
+        />
+      ))}
+    </>
+  );
 }
 
 /** 红点（未处理 = 红点，全站规矩）。 */
@@ -68,6 +119,7 @@ export function DayTimeline({
   weekGaps,
   showGaps = true,
   shiftTypes = [],
+  now,
 }: DayTimelineProps) {
   const dates = DAY_LABELS.map((_, i) => shiftYmd(weekStart, i));
   const [internalDate, setInternalDate] = useState(defaultDate ?? dates[1]);
@@ -80,7 +132,13 @@ export function DayTimeline({
   const windowStart = minutesOf(workWindow.start_time) ?? 0;
   const windowEnd = minutesOf(workWindow.end_time) ?? 24 * 60;
 
-  const bars = dayBars(slots, employees, date);
+  const allBars = dayBars(slots, employees, date);
+  // 不算值班人头的人（Annie 2026-11-02「我已经说过Anite不参加gap，为什么她的时间仍然出来在时间条里」，preview ①A）：
+  // 能改排班的人看的时间条里不出现、Overlap 也不算，底下灰字一句（②A）。员工看的照常（⑤A，员工界面不显示这个说明）。
+  const hidden = (e: ScheduleEmployee) =>
+    showGaps && !e.is_test && !coversGaps(e);
+  const bars = allBars.filter((b) => !hidden(b.employee));
+  const notShown = allBars.filter((b) => hidden(b.employee));
   const overlaps = overlapsOf(bars);
   const byDate = weekGaps ? gapsByDate(weekGaps) : null;
   /** 这一天的空档（分钟）：有后端的就用后端的，否则照旧自己算。 */
@@ -93,6 +151,62 @@ export function DayTimeline({
     : gapsOf(bars, windowStart, windowEnd).map((g) => ({ ...g, gap: null }));
   const otherDays = byDate ? [...byDate.keys()].filter((d) => d !== date) : [];
   const nobodyRows = showGaps && byDate ? gaps : [];
+  // 刻度和每小时竖线只在 Working hours 不跨午夜时画（跨午夜的窗口条子本来也画不对，另说）。
+  const axisOk = windowEnd > windowStart;
+  // 「now」竖线：看的是今天、现在在 Working hours 里（③A）。
+  const nowMin =
+    axisOk &&
+    now &&
+    now.date === date &&
+    now.minute > windowStart &&
+    now.minute < windowEnd
+      ? now.minute
+      : null;
+  const track = (inner: React.ReactNode) => (
+    <div className="relative h-5 flex-1 rounded-[4px] bg-white/[.04]">
+      {axisOk ? <HourLines startMin={windowStart} endMin={windowEnd} /> : null}
+      {inner}
+      {nowMin != null ? (
+        <span
+          aria-hidden
+          data-now-line
+          className="absolute -inset-y-0.5 w-0.5 rounded-[1px] bg-amber-400"
+          style={{ left: `${percentOf(nowMin, windowStart, windowEnd)}%` }}
+        />
+      ) : null}
+    </div>
+  );
+  const axisRow = (stepHours: number, className: string) => (
+    <div
+      data-axis-step={stepHours}
+      className={cn("relative h-4 flex-1", className)}
+    >
+      <span className="absolute left-0 font-mono text-[10.5px] leading-4 whitespace-nowrap text-white/55">
+        {axisLabel(windowStart)}
+      </span>
+      {axisTicks(windowStart, windowEnd, stepHours, nowMin).map((m) => (
+        <span
+          key={m}
+          className="absolute -translate-x-1/2 font-mono text-[10.5px] leading-4 whitespace-nowrap text-white/55"
+          style={{ left: `${percentOf(m, windowStart, windowEnd)}%` }}
+        >
+          {axisLabel(m)}
+        </span>
+      ))}
+      <span className="absolute right-0 font-mono text-[10.5px] leading-4 whitespace-nowrap text-white/55">
+        {axisLabel(windowEnd)}
+      </span>
+      {nowMin != null ? (
+        <span
+          data-now-label
+          className="absolute -translate-x-1/2 bg-[#111a2a] px-1 font-mono text-[10.5px] leading-4 font-bold whitespace-nowrap text-amber-300"
+          style={{ left: `${percentOf(nowMin, windowStart, windowEnd)}%` }}
+        >
+          now {axisLabel(nowMin)}
+        </span>
+      ) : null}
+    </div>
+  );
 
   return (
     <div>
@@ -135,6 +249,14 @@ export function DayTimeline({
         </p>
       ) : (
         <div className="space-y-1.5">
+          {axisOk ? (
+            <div data-time-axis className="flex items-center gap-2">
+              <div className="w-[88px] shrink-0" />
+              {axisRow(2, "max-sm:hidden")}
+              {axisRow(4, "sm:hidden")}
+              <div className="w-[128px] shrink-0" />
+            </div>
+          ) : null}
           {nobodyRows.map((g, i) => {
             const left = percentOf(
               Math.max(g.startMin, windowStart),
@@ -153,15 +275,15 @@ export function DayTimeline({
                 <div className="w-[88px] shrink-0 truncate text-[12px] font-semibold text-red-300">
                   Nobody
                 </div>
-                <div className="relative h-5 flex-1 rounded-[4px] bg-white/[.04]">
+                {track(
                   <div
                     className="absolute top-0 h-full rounded-[4px] bg-red-500/45 ring-1 ring-red-400/70"
                     style={{
                       left: `${Math.max(0, left)}%`,
                       width: `${Math.max(0, Math.min(100, width))}%`,
                     }}
-                  />
-                </div>
+                  />,
+                )}
                 <div className="w-[128px] shrink-0 text-right text-[11px] text-red-300">
                   {formatClock(minutesToHHMM(g.startMin))} –{" "}
                   {formatClock(minutesToHHMM(g.endMin))}
@@ -170,9 +292,6 @@ export function DayTimeline({
             );
           })}
           {bars.map((bar) => {
-            // 不算值班人头的人（Annie 11-02「Anita不算的」）：条子斜纹虚线、写 not counted；只给看得到空档的人标。
-            const notCounted =
-              showGaps && !bar.employee.is_test && !coversGaps(bar.employee);
             const left = percentOf(
               Math.max(bar.startMin, windowStart),
               windowStart,
@@ -187,29 +306,22 @@ export function DayTimeline({
             return (
               <div
                 key={`${bar.employee.id}:${bar.slot.id}`}
+                data-timeline-row={bar.employee.id}
                 className="flex items-center gap-2"
               >
                 <div className="w-[88px] shrink-0 truncate text-[12px] text-white/70">
                   {bar.employee.name}
                 </div>
-                <div className="relative h-5 flex-1 rounded-[4px] bg-white/[.04]">
+                {track(
                   <div
-                    data-not-counted={notCounted || undefined}
-                    className={cn(
-                      "absolute top-0 h-full rounded-[4px]",
-                      notCounted
-                        ? "border border-dashed border-sky-300/70 bg-[repeating-linear-gradient(45deg,rgba(56,189,248,.35)_0_6px,rgba(56,189,248,.12)_6px_12px)] pl-1.5 text-[10.5px] leading-[18px] whitespace-nowrap text-sky-100"
-                        : "bg-sky-400/40",
-                    )}
+                    className="absolute top-0 h-full rounded-[4px] bg-sky-400/40"
                     style={{
                       left: `${Math.max(0, left)}%`,
                       width: `${Math.max(0, Math.min(100, width))}%`,
                     }}
                     title={`${formatClock(bar.slot.start_time)} – ${formatClock(bar.slot.end_time)}`}
-                  >
-                    {notCounted ? "not counted" : null}
-                  </div>
-                </div>
+                  />,
+                )}
                 <div className="w-[128px] shrink-0 text-right text-[11px] text-white/40">
                   {formatClock(bar.slot.start_time)} –{" "}
                   {formatClock(bar.slot.end_time)}
@@ -278,6 +390,17 @@ export function DayTimeline({
                 ))}
               </span>
             ) : null}
+          </div>
+        ) : null}
+        {notShown.length ? (
+          <div data-not-shown className="text-white/45">
+            Not shown (don&apos;t count toward coverage):{" "}
+            {notShown
+              .map(
+                (b) =>
+                  `${b.employee.name} ${formatClock(b.slot.start_time)} – ${formatClock(b.slot.end_time)}`,
+              )
+              .join(", ")}
           </div>
         ) : null}
       </div>

@@ -49,6 +49,13 @@ function strip(v) {
 function forPartner(d) {
   return { ...d, order_detail: strip(d.order_detail), items_detail: strip(d.items_detail), ops: { ...d.ops, agent_name: "" } };
 }
+// 题 8（后端 36 task/agent-view）：没勾 orders.money_view ⇒ 详情 price = null、ops.agent_name = ""、去掉代理商 / 付款 / 金额；列表 agent_name「—」。
+// ctl.keepMoney = true ⇒ 模拟旧后端（照样给），看前端自己藏不藏。
+function lacksMoney() {
+  if (ctl.keepMoney) return false;
+  const ticks = ctl.staffPerms || ctl.partner;
+  return Array.isArray(ticks) && !ctl.superAdmin && !ticks.includes("orders.money_view");
+}
 http.createServer(async (req, res) => {
   const url = new URL(req.url, "http://x");
   const p = url.pathname;
@@ -75,7 +82,7 @@ http.createServer(async (req, res) => {
     if (q.get("date_to") === "2000-01-01") rows = [];
     const page = Number(q.get("page") || 1);
     let records = rows.slice((page - 1) * 50, page * 50);
-    if (ctl.partner) records = records.map((r) => ({ ...r, agent_name: "—" }));
+    if (ctl.partner || lacksMoney()) records = records.map((r) => ({ ...r, agent_name: "—" }));
     return send(res, 200, { total: rows.length, page, pages: Math.ceil(rows.length / 50), records });
   }
   if (p === "/api/operations/orders/export") {
@@ -88,7 +95,7 @@ http.createServer(async (req, res) => {
   if (m) {
     const id = decodeURIComponent(m[1]);
     const d = detail[id];
-    if (req.method === "GET") return d ? send(res, 200, ctl.partner ? forPartner(d) : d) : send(res, 404, { detail: "Order not found" });
+    if (req.method === "GET") return d ? send(res, 200, lacksMoney() ? { ...forPartner(d), price: null } : ctl.partner ? forPartner(d) : d) : send(res, 404, { detail: "Order not found" });
     const body = await readBody(req);
     entry.body = body;
     if (!d.editable) return send(res, 409, { detail: "This order is stored in the new Rezdy table, which is read-only for now." });

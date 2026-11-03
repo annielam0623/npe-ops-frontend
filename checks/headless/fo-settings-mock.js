@@ -96,6 +96,11 @@ http
     if (ctl.fail401) return send(res, 401, { detail: "Authentication required" });
     if (p === "/api/me")
       return send(res, 200, { id: 1, username: "zztest", display_name: "ZZ Test", initials: "ZT", role: ctl.partner ? "partner" : ctl.staff ? "staff" : "admin", is_admin: !ctl.staff && !ctl.partner, is_superadmin: false });
+    // 题 8：ctl.ticks = 这个人勾了的项（数组）；没设 ⇒ 权限接口 404（前端照旧不藏）。
+    if (p === "/api/me/permissions") {
+      if (!ctl.ticks) return send(res, 404, { detail: "Not Found" });
+      return send(res, 200, { is_superadmin: false, permissions: ctl.ticks.map((code) => ({ code, module: code.split(".")[0], wired: true })), default_home: null });
+    }
     // 「谁看得到」开关（2026-10-25）：这套默认放给所有人（看页面内容）；foVis=null 时没登记（404），前端按默认 super_admin_only 算。
     if (p === "/api/settings/dashboard-widgets") {
       if (!ctl.foVis) return send(res, 404, { detail: "Not Found" });
@@ -107,6 +112,9 @@ http
     // G203 第三批：Farm out 设置的 Action Log（后端 c8 ee121ec，权限 settings.farm_out；partner 403）。旧条目 from / to 是 null。
     if (p === "/api/farm-out/settings/action-log") {
       if (ctl.log403 || ctl.partner) return send(res, 403, { detail: "Permission required" });
+      // 题 8（后端 36 e37835a8）：没勾 orders.money_view 时 rates 条目整条不给，一页可能是空的但 next_cursor 照给。
+      // ctl.logEmptyFirst ⇒ 第一页 0 条 + next_cursor「c1」，带 before=c1 才给下面 3 条。
+      if (ctl.logEmptyFirst && url.searchParams.get("before") !== "c1") return send(res, 200, { next_cursor: "c1", entries: [] });
       return send(res, 200, { next_cursor: null, entries: [
         { id: "3-1", at: "2026-10-29T17:00:00+00:00", by: "Annie Z", action: "update", label: "ZZ Test Partner", what: "West Rim › Adult price", from: "$100.00", to: "$105.00" },
         { id: "2-1", at: "2026-10-28T17:00:00+00:00", by: "Max", action: "update", label: "ZZ Test Partner", what: "Bellagio › Spot", from: "Main lobby", to: "North valet" },

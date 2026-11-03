@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 import { describeError } from "@/lib/api-errors";
 import { patchFarmOutOrder } from "@/lib/farm-out-api";
+import { usePermissions } from "@/lib/staff-permissions";
 import {
   formatMoney,
   formatTime,
@@ -143,6 +144,8 @@ export function FarmOutGuests({
   const [over, setOver] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  // 没勾 See prices, agent & commission（orders.money_view，题 8）：Payable 整栏不出、不能输入（后端 PATCH 带 payable 会 403）。
+  const seeMoney = usePermissions().canSeeMoney;
   useEffect(() => {
     if (openSignal) setOpen(true);
   }, [openSignal]);
@@ -160,6 +163,7 @@ export function FarmOutGuests({
   const locationsUnavailable = partnerId != null && locs.state === "none";
   const noPayable = orders.filter(
     (o) =>
+      seeMoney &&
       o.farm_out &&
       o.farm_out.payable_amount == null &&
       !o.farm_out.payable_set_by_staff,
@@ -246,7 +250,7 @@ export function FarmOutGuests({
                     "Pick-up hotel",
                     "Check-in",
                     "Departs",
-                    "Payable",
+                    ...(seeMoney ? ["Payable"] : []),
                     "Bus",
                   ].map((h) => (
                     <th
@@ -370,26 +374,28 @@ export function FarmOutGuests({
                           <span className="text-[#999]">—</span>
                         )}
                       </td>
-                      <td className="px-2 py-2">
-                        {editable ? (
-                          <EditCell
-                            label={`Payable for ${o.name || o.order_number}`}
-                            value={formatMoney(f.payable_amount)}
-                            staffSet={f.payable_set_by_staff}
-                            width="w-[84px]"
-                            disabled={off}
-                            placeholder="—"
-                            parse={(r) => parseMoney(r) as number | null}
-                            onCommit={(v) =>
-                              void patch(o, {
-                                payable_amount: v == null ? null : Number(v),
-                              })
-                            }
-                          />
-                        ) : (
-                          "—"
-                        )}
-                      </td>
+                      {seeMoney ? (
+                        <td className="px-2 py-2">
+                          {editable ? (
+                            <EditCell
+                              label={`Payable for ${o.name || o.order_number}`}
+                              value={formatMoney(f.payable_amount)}
+                              staffSet={f.payable_set_by_staff}
+                              width="w-[84px]"
+                              disabled={off}
+                              placeholder="—"
+                              parse={(r) => parseMoney(r) as number | null}
+                              onCommit={(v) =>
+                                void patch(o, {
+                                  payable_amount: v == null ? null : Number(v),
+                                })
+                              }
+                            />
+                          ) : (
+                            "—"
+                          )}
+                        </td>
+                      ) : null}
                       <td className="px-2 py-2">
                         <select
                           aria-label={`Bus for ${o.name || o.order_number || "this order"}`}
@@ -415,7 +421,7 @@ export function FarmOutGuests({
                   .filter(
                     (o) =>
                       o.farm_out &&
-                      (o.farm_out.payable_changed_by ||
+                      ((seeMoney && o.farm_out.payable_changed_by) ||
                         o.farm_out.checkin_time_set_by_staff ||
                         o.farm_out.depart_time_set_by_staff),
                   )
@@ -425,17 +431,17 @@ export function FarmOutGuests({
                       f.checkin_time_set_by_staff || f.depart_time_set_by_staff
                         ? "times"
                         : null,
-                      f.payable_set_by_staff ? "payable" : null,
+                      seeMoney && f.payable_set_by_staff ? "payable" : null,
                     ].filter(Boolean);
                     return (
                       <tr key={`n-${o.guest_ids.join("-")}`}>
                         <td
-                          colSpan={8}
+                          colSpan={seeMoney ? 8 : 7}
                           className="px-2 pb-2 text-[11px] text-[#1d4ed8]"
                         >
                           {o.name || o.order_number}: changed by staff
                           {what.length ? ` — ${what.join(", ")}` : ""}
-                          {f.payable_changed_by
+                          {seeMoney && f.payable_changed_by
                             ? ` (${f.payable_changed_by}, ${whenText(f.payable_changed_at)})`
                             : ""}
                         </td>
@@ -464,8 +470,7 @@ export function FarmOutGuests({
               {noPayable ? (
                 <span data-no-payable className="text-[12px] text-[#8a5a00]">
                   Payable is not set for {plural(noPayable, "order")}. Add this
-                  tour’s prices in Supplier → Partners, or type an
-                  amount.
+                  tour’s prices in Supplier → Partners, or type an amount.
                 </span>
               ) : null}
               {hotelless.map((o) => (

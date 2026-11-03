@@ -257,14 +257,14 @@ async function run() {
   check("partner 订单列表：没有 ⬇ Export", await evaluate("return ![...document.querySelectorAll('main button')].some((b) => b.offsetParent !== null && b.textContent.includes('Export'));"));
   check("partner 订单列表：没有 Agent 列（G204 给的 agent_name 是「—」）", await evaluate("const h = [...document.querySelectorAll('main thead th')].map((t) => t.textContent); return !h.includes('Agent') && h.includes('Source') && document.querySelector('main tbody tr').children.length === h.length;"));
   await goto(`${APP}/orders/CHDTESTORDER1`);
-  await waitFor("!!document.querySelector('section[aria-label=\"Price\"]')", 60000);
+  await waitFor("!!document.querySelector('section[aria-label=\"Operations\"]')", 60000);
   await helpers();
   await evaluate(SEL);
   await sleep(500);
   check("partner 订单详情：Price / Operations 没有 Edit、Unlock", await evaluate("return ![...document.querySelectorAll('main button')].some((b) => ['Edit', 'Unlock'].includes(b.textContent.trim()));"));
   check("partner 订单详情：没有 Agent & Commission 卡片（N2 B）", await evaluate("return !$card('Agent & Commission') && !document.querySelector('main').textContent.includes('Viator');"));
   check("partner 订单详情：没有 Raw Rezdy、How to use、条码的 show", await evaluate("const t = document.querySelector('main').textContent; return !t.includes('Raw Rezdy') && !t.includes('How to use') && ![...document.querySelectorAll('main button')].some((b) => b.textContent.trim() === 'show') && t.includes('••••3456');"));
-  check("partner 订单详情：G204 去掉代理商 / 佣金 key 后页面照常（Price 卡还在、没有 Agent 行）", await evaluate("const t = document.querySelector('main').textContent; return !!$card('Price') && !!$card('Operations') && ![...$card('Operations').querySelectorAll('dt, th, td, span, div')].some((e) => e.textContent.trim() === 'Agent');"));
+  check("partner 订单详情：没勾 orders.money_view ⇒ 没有 Price 卡（题 8）、没有 Agent 行，页面照常", await evaluate("return !$card('Price') && !!$card('Operations') && ![...$card('Operations').querySelectorAll('dt, th, td, span, div')].some((e) => e.textContent.trim() === 'Agent');"));
   check("partner 订单详情：不写 Read-only 那行（那是给员工的）", await evaluate("return !document.querySelector('main').textContent.includes('Read-only — this order');"));
   await goto(`${APP}/orders/CHDFOP`);
   await waitFor("!!document.querySelector('section[aria-label=\"Price\"]')", 60000);
@@ -275,8 +275,8 @@ async function run() {
 
   // ── 员工也按勾（Annie 2026-10-30 置顶 10c）：没勾 orders.edit 没有 Edit / Unlock，也不写 Read-only 那行；Super Admin 全有 ──
   for (const [label, opts, canEdit] of [
-    ["员工只勾 orders.view", { staffPerms: ["orders.view"] }, false],
-    ["员工勾 orders.edit", { staffPerms: ["orders.view", "orders.edit"] }, true],
+    ["员工只勾 orders.view", { staffPerms: ["orders.view", "orders.money_view"] }, false],
+    ["员工勾 orders.edit", { staffPerms: ["orders.view", "orders.edit", "orders.money_view"] }, true],
     ["Super Admin（一项都没勾）", { staffPerms: null, superAdmin: true }, true],
   ]) {
     await ctl({ staffPerms: null, superAdmin: false, ...opts });
@@ -288,6 +288,31 @@ async function run() {
     check(`${label}：订单详情 ${canEdit ? "有" : "没有"} Edit / Unlock，不写 Read-only 那行`, st.edit === canEdit && !st.readOnlyLine, JSON.stringify(st));
   }
   await ctl({ staffPerms: null, superAdmin: false });
+
+  // ── 题 8：没勾 See prices, agent & commission（orders.money_view）⇒ 价格 / 代理商整栏整块不出；勾了 / Super Admin 照旧 ──
+  // keepMoney = 模拟旧后端照样给数据：前端也要自己藏。
+  for (const [label, opts, see] of [
+    ["员工没勾 orders.money_view（新后端，price = null）", { staffPerms: ["orders.view", "orders.edit"] }, false],
+    ["员工没勾 orders.money_view（旧后端照样给）", { staffPerms: ["orders.view", "orders.edit"], keepMoney: true }, false],
+    ["员工勾了 orders.money_view", { staffPerms: ["orders.view", "orders.edit", "orders.money_view"] }, true],
+    ["Super Admin（一项都没勾）", { staffPerms: null, superAdmin: true }, true],
+  ]) {
+    await ctl({ staffPerms: null, superAdmin: false, keepMoney: false, ...opts });
+    await goto(`${APP}/orders`);
+    await waitFor("document.querySelector('main table tbody tr')", 60000);
+    await sleep(500);
+    const list = await evaluate("const h = [...document.querySelectorAll('main thead th')].map((t) => t.textContent.trim()); return { agent: h.includes('Agent'), viator: document.querySelector('main tbody').textContent.includes('Viator'), cells: document.querySelector('main tbody tr').children.length, heads: h.length };");
+    check(`${label}：订单列表 ${see ? "有" : "没有"} Agent 列，每行格数 = 表头数`, list.agent === see && list.viator === see && list.cells === list.heads, JSON.stringify(list));
+    await goto(`${APP}/orders/CHDTESTORDER1`);
+    await waitFor("!!document.querySelector('section[aria-label=\"Operations\"]')", 60000);
+    await helpers();
+    await evaluate(SEL);
+    await sleep(500);
+    const d = await evaluate("const t = document.querySelector('main').textContent; return { price: !!$card('Price'), agentCard: !!$card('Agent & Commission'), agentRow: [...$card('Operations').querySelectorAll('span')].some((e) => e.textContent.trim() === 'Agent'), ticketPrice: t.includes('$99.75'), raw: t.includes('Raw Rezdy'), howPrice: t.includes('Change the price') };");
+    const all = see ? Object.values(d).every(Boolean) : !Object.values(d).some(Boolean);
+    check(`${label}：订单详情 ${see ? "有" : "没有"} Price 卡 / Agent & Commission / Agent 行 / 票价 / Raw Rezdy / How to use 价格那条`, all, JSON.stringify(d));
+  }
+  await ctl({ staffPerms: null, superAdmin: false, keepMoney: false });
   await ctl({ fail401: true });
   await goto(`${APP}/orders`);
   await waitFor("location.pathname === '/auth/login'");

@@ -291,7 +291,8 @@ function Note({
 function LookupResultView({ result }: { result: LookupResult }) {
   const { order, date } = result;
   // partner：不看代理商、不碰 Farm out（Annie 2026-10-27）。
-  const partner = usePermissions().partnerView;
+  const perms = usePermissions();
+  const partner = perms.partnerView;
   const on = order.order_number;
   const driver = [
     order.ops.driver,
@@ -354,8 +355,8 @@ function LookupResultView({ result }: { result: LookupResult }) {
           <Field label="Confirmation #">
             {order.ops.confirmation_no || "—"}
           </Field>
-          {/* partner 不看代理商（Agent & Commission 对 partner 不出，Annie 2026-10-27 N2 B）。 */}
-          {partner ? null : (
+          {/* partner 不看代理商（Agent & Commission 对 partner 不出，Annie 2026-10-27 N2 B）；没勾 orders.money_view 也不看（题 8）。 */}
+          {partner || !perms.canSeeMoney ? null : (
             <Field label="Agent">{order.ops.agent_name || "—"}</Field>
           )}
         </dl>
