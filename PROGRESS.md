@@ -441,6 +441,7 @@
 - Annie 在 0e 窗口说「重来」，给了同一天的 west-bus-2026-10-06.csv ⇒ 报告第 5 版 West 节逐单重做（9/30 删掉）：42 单 104 人，单号全对上；A 车 7 格全对；B 车差 CHDKU405B（2 人，Rezdy「+skywalk +Meal Voucher」，staff 在纸本改成「Adult Premium」）。Heli & Boat + Voucher 进 GA + Meal (Voucher) 已证实。
   - 题 2 改：「+skywalk +Meal Voucher」算 Premium 还是 SKY+Meal (Voucher)？A 照 Rezdy 原文进 SKY+Meal（推荐）／B 照纸本算 Premium、SKY+Meal 格拿掉。SKY ONLY 仍没见过。
   - 新题 7：Special Requirements 里 Rezdy 系统字（「Rejected booking fields First Name…」「Invalid booking field values Mobile…」）纸本都删了，ops 整段亮黄印出。A 这两种自动不印、客人写的照印（推荐）／B 照旧 staff 自己改。
+  - 题 6 Annie 在 0e 窗口答（原话）：「问题6的选择先走A吧，有时间再做B。」⇒ A：后端按团写死，West / Hoover / South 各一套，Antelope、BZ 和其他团用 Antelope 7 格；B 以后再做。没动手。已请 9e / 36 估 A 的工作量。
   - 另：ops 标黄规则「带 + 就亮黄」会让 West 所有 Premium (Skywalk+Voucher) 行都亮黄，纸本不标（并进其余 12 页差别 ③）。
 - 36 查回：Hoover 节 = HD Highlights（8 个，PJ0LQF internal_name 写「West Rim」疑似填错）/ HD Generator（5 个，票型「+ Generator」）/ HD RAFT（2）/ BOULDER CITY（2）；另有独立 manifests 35 Boulder_City（PV3Y0U）。HIGHLIGHTS / GENERATOR / RAFTING 对得上。题 ④ 改成 3 小题：④a PJD1EQ 的 Upgrade 票型算不算 GENERATOR；④b BOULDER SHUTTLE 数 Hoover 的 BOULDER CITY 节还是 PV3Y0U；④c RAFT SHUTTLE 生产里没有对应产品，怎么算。已转 0e 更新报告。
 
