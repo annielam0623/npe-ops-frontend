@@ -43,6 +43,21 @@
 2. 后端 G234 上 main → e6 driver-follow；Annie 看新红字。
 3. 等 Annie 答 64 / 65 / 67 / 68，答了按原话派。
 
+## 2026-11-03 HR「Other spellings」（`task/hr-other-spellings`，工作窗口 91 [359513]，置顶 65）—— 合 main
+
+- Annie 原话：「HR的四项： 1 B 2. A  3B  4A」，之后「HR动手」。preview：https://claude.ai/artifact/W92fd328NYL5S5e3U1bjSw
+- 做了：
+  - 编辑弹窗 Dispatch 块（Samsara Driver ID 后面）加「Other spellings」格子，一行一个；
+  - 人员表紧跟 Nickname 加一列，逗号隔开，没有写「—」；
+  - How to use 加一条：题 4 原文 + 「To change them, click Edit on that person's row.」（Edit list 暂时只读，所以补了这句）。
+- 保存：
+  - 改人：先 `PUT /api/hr/profiles/{id}/spellings`，再 PUT profile。被拒（409 等）时什么都没存，弹窗不关，红字是后端原话，格子红框。
+  - 没改写法不调这个接口。
+  - Add person：先建人再存写法。写法被拒时，用新建的人重开弹窗（带回格子里的字和红字），再按 Save 不会重复建人。
+- 后端没上线（`GET /api/hr/profiles` 不带 `other_spellings`）时，这一格、这一列、How to use 那条都不出，页面跟以前一样。后端接口在 `task/driver-change-follow` 33691e8d，还没上 main。
+- ⏸️ 题 3 B（Edit list 里也能改）：后端 bulk 还不收 other_spellings（明天家里那台做，错误带 profile_id）。现在 Edit list 里这一列只读。bulk 上了以后：EditCell 开成逗号输入，红字放在那人那一格下面，How to use 末句去掉。
+- 检查：hr 80/80（新 12 条 Other spellings，含后端没上线的 3 条），nav 38/38；tsc / eslint / build 过。
+
 ## 2026-11-03 Dispatch › Send 打开就展开（`task/send-auto-open`，工作窗口 e6 [03dd03]，主窗口 24 派）—— 置顶 62 题 7–9
 - Annie 原话：「包括在dispatch的send 页面，把司机和导游发送也打开，不折叠，也不需要pull from manifest，直接展开给staff看」；答题「问题7-9，同意全部推荐」；随后在 09 窗口「动手」。preview https://claude.ai/artifact/3RE8qSbwHECoCjakAgBidh 第三节。CCL 自动 Apply（题 1–6）作废，不做。
 - 做了什么（`components/dispatch/relay-panel.tsx`、`dispatch-view.tsx`）：
