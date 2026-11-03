@@ -6,6 +6,14 @@
 
 > **下一个主窗口：先读下面「2026-11-03 凌晨 收工交接：前端主窗口 f8」，再看置顶「📌 等 Annie 确认」。上一份是「2026-11-02 收工交接：前端主窗口-24」。**
 
+## 2026-11-03 主窗口 `今日主窗口-24`[310398] 开工（公司电脑，接 f8）
+- 窗口：前端工作窗口 09 [341d31]、91 [b22952]、e6 [03dd03]；d8 [840908] 身份待确认（已问是否后端主窗口）。
+- 资源：空闲内存 49.2 / 61.8 GB；没有 node / chrome 进程。
+- 分支核对（git fetch 后）：schedule-work-hours 已合 main（fd74df8）；task/live-drivers 188c4ca 未合 → 已派 09 核键名、跑检查、合 main；task/manifest-paper d74c553 未合，等后端 v145；task/samsara-arrival 还没有分支，等 live-drivers 合完、后端 v146。
+- d8 [840908] 是后端工作窗口（task/chd-main-manifest，CHD Admin fee），不是后端主窗口。它以为还在等前端；已告诉它前后端都已上线（前端 03c1d51、后端 a7c62e91，后端分支比 main 没有多出的提交）。d8 只读看 git：后端 v145 在 origin/task/bus-footer-style（ba98dd63、c235b048），v146 在 origin/task/samsara-arrivals 8dc59fed，都没上 main。今天后端主窗口是 37 [875db6]（Annie 说「后端主窗口是37」），后端工作窗口 64；已问 37 v145 / v146 进度。
+- 读了后端 origin/main 上 9e 的晚间交接（2bb6b23a，NPE_每日交接.md）：**v145 已于 11-03 凌晨在生产执行**（记录 c235b048），代码还没上 main，等后端推（推时 Risk C→B）；samsara-arrivals 8dc59fed 可以合 schedule-work-hours 后接着做，v146 等 v145 代码落地。Annie 还要做：GPS 偏差实测（车停在酒店门口时跑 docs/samsara-arrivals/samsara_gps_offset_probe.py，≤10 米就用 10 米）、v146 到时过目执行。已更正 37：不用再问 v145 有没有执行。
+- 37 回：v145 代码（bus-footer-style）早上派给 d8，审完整 diff、跑连库测试后合 main，Annie 授权 schema 推送；上了 37 给前端 SHA 和最终字段名，之前以分支 tasks/ACTIVE.md 交接里的字段为准。v146 samsara-arrivals 派给 64，要等 v145 代码落地后才能提交 v146，最早今天晚些；前端照 fc 字段用 mock 写可以，字段有变 37 马上转。前端 task/samsara-arrival 等 09 合完 live-drivers 再开（它要接 Live drivers 的 relay_blocks）。
+
 ## 2026-11-03 凌晨 收工交接：前端主窗口 `npe-ops-frontend-f8`[f1ac95]（家里电脑，Annie「我要睡觉了，你把交接写详细一点，明天回公司继续，要保证工作的顺利，所有东西都不能缺」）
 
 > 11-02 晚整晚的逐条记录在下面「2026-11-02 晚 主窗口 f8 开工」一节（每件有 Annie 原话、SHA、检查数）。这里只列明天要接的。
