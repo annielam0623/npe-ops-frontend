@@ -74,6 +74,13 @@ html::-webkit-scrollbar-thumb:hover {
   background-clip: padding-box;
 }
 
+/* Morning Pickup Tracking：司机刚标的 No show 那一行闪 3 下（司机实时页 ⑥ A，tracking-table.tsx）。 */
+@keyframes ns-flash {
+  50% {
+    background-color: rgba(239, 68, 68, 0.45);
+  }
+}
+
 /* Daily Tasks 到点提醒弹窗刚出现时闪 3 下再定格（components/tasks/reminder-popup.tsx，
    Annie 2026-10-19：「选B，然后可以制造一点声响或者震动一下么」「或者bling-bling闪几下」）。
    起止值和弹窗稳定态的边框 / 发光一致，闪完不会跳一下。 */

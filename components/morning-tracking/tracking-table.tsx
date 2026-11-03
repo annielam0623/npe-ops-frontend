@@ -5,6 +5,7 @@ import { type DragEvent, type ReactNode, useRef, useState } from "react";
 import { ChannelIcon, WHATSAPP_GREEN } from "@/components/ui/channel-icon";
 import { ColResizer, useColumnSizing } from "@/components/ui/column-sizing";
 import { ConversationPreview } from "@/components/ui/conversation-preview";
+import { usePermissions } from "@/lib/staff-permissions";
 import { cn } from "@/lib/utils";
 import { sameSiteLiveUrl, vehicleLiveUrl } from "@/lib/vehicles-api";
 import type { MorningTrackingRow } from "@/types";
@@ -16,6 +17,7 @@ import {
   emailStatusOf,
   formatCheckinTime,
   formatGuestViewed,
+  formatMarkTime,
   notesHeaderCount,
   smsStatusOf,
 } from "./config";
@@ -42,6 +44,8 @@ export interface TrackingTableProps {
   togglingId: number | null;
   now: number;
   placeholder: string | null;
+  /** 这次刷新新冒出来的 No show（bookings.id）：那一行闪三下、带 NEW（司机实时页 ⑥ A）。 */
+  newNoShow?: ReadonlySet<number>;
 }
 
 export function TrackingTable({
@@ -53,7 +57,9 @@ export function TrackingTable({
   togglingId,
   now,
   placeholder,
+  newNoShow,
 }: TrackingTableProps) {
+  const canTake = usePermissions().canRowTakeAction("morning");
   const [dragging, setDragging] = useState<ColumnKey | null>(null);
   const [dropTarget, setDropTarget] = useState<ColumnKey | null>(null);
   // 拖表头右边缘调宽 + 按内容自动定列宽（照旧页面，宽度不存）。每次画完行都量，拖过以后不再量。
@@ -151,15 +157,33 @@ export function TrackingTable({
             rows.map((row) => (
               <tr
                 key={row.id}
-                className="border-b border-white/5 last:border-b-0 hover:bg-white/[.03]"
+                data-ns-row={row.ns_unhandled ? row.order_number : undefined}
+                data-ns-new={newNoShow?.has(row.id) || undefined}
+                className={cn(
+                  "border-b border-white/5 last:border-b-0 hover:bg-white/[.03]",
+                  // 司机标了 No show、没人处理：淡红底、顶到最上面（⑥ A）；刚冒出来的闪三下。
+                  row.ns_unhandled && "bg-[rgba(239,68,68,.13)]",
+                  newNoShow?.has(row.id) &&
+                    "animate-[ns-flash_1s_ease-in-out_3]",
+                )}
               >
                 {columnOrder.map((key, index) => (
                   <Cell
                     key={key}
                     columnKey={key}
                     row={row}
-                    // WhatsApp 没人处理而被顶上来的行，第一格画一道绿条说明原因。
-                    floated={index === 0 && row.wa_unhandled}
+                    // 被顶上来的行，第一格画一道竖条说明原因：No show 红、WhatsApp 没人处理绿。
+                    floated={
+                      index === 0
+                        ? row.ns_unhandled
+                          ? "ns"
+                          : row.wa_unhandled
+                            ? "wa"
+                            : null
+                        : null
+                    }
+                    isNew={!!newNoShow?.has(row.id)}
+                    canTake={canTake}
                     now={now}
                     toggling={togglingId === row.id}
                     onOpenConversation={onOpenConversation}
@@ -227,6 +251,8 @@ function Cell({
   columnKey,
   row,
   floated,
+  isNew,
+  canTake,
   now,
   toggling,
   onOpenConversation,
@@ -234,14 +260,18 @@ function Cell({
 }: {
   columnKey: ColumnKey;
   row: MorningTrackingRow;
-  floated: boolean;
+  floated: "ns" | "wa" | null;
+  isNew: boolean;
+  canTake: boolean;
   now: number;
   toggling: boolean;
   onOpenConversation: (row: MorningTrackingRow) => void;
   onToggleAction: (row: MorningTrackingRow, want: "on" | "off") => void;
 }) {
   const style = floated
-    ? { boxShadow: `inset 3px 0 0 ${WHATSAPP_GREEN}` }
+    ? {
+        boxShadow: `inset 3px 0 0 ${floated === "ns" ? "#ef4444" : WHATSAPP_GREEN}`,
+      }
     : undefined;
   const base =
     "px-3 py-2.5 align-middle text-[#c8ddf0] [overflow-wrap:anywhere]";
@@ -291,6 +321,17 @@ function Cell({
     case "checkin_time":
       content = formatCheckinTime(row.checkin_time);
       className = "text-[11px] text-[#7a9bbe]";
+      break;
+    case "driver_mark":
+      content = (
+        <DriverMark
+          row={row}
+          isNew={isNew}
+          canTake={canTake}
+          toggling={toggling}
+          onToggleAction={onToggleAction}
+        />
+      );
       break;
     case "quantities":
       content = row.quantities || "—";
@@ -407,5 +448,73 @@ function Cell({
     <td style={style} className={cn(base, className)}>
       {content}
     </td>
+  );
+}
+
+/**
+ * Driver mark 列（司机实时页 ⑥ A，Annie 2026-11-02「动手」）：司机 / 导游在手机上标的，带几点、哪台车谁标的。
+ * No show 没人处理：⚠️ Take action（同 Notes / WhatsApp 那个，点了就算处理过、不再置顶）；处理过写 ✓ 谁（绿）。
+ * 司机改回 Picked up / Boarded 后端就不算 No show 了，自己回原位。
+ */
+function DriverMark({
+  row,
+  isNew,
+  canTake,
+  toggling,
+  onToggleAction,
+}: {
+  row: MorningTrackingRow;
+  isNew: boolean;
+  canTake: boolean;
+  toggling: boolean;
+  onToggleAction: (row: MorningTrackingRow, want: "on" | "off") => void;
+}) {
+  const status = row.live_status;
+  if (!status) return <span className="text-[#5a7a9a]">—</span>;
+  const at = formatMarkTime(row.live_status_at);
+  const who = [row.live_van, row.live_driver].filter(Boolean).join(" ");
+  const ns = status === "no_show";
+  const label = ns
+    ? "✗ No show"
+    : status === "boarded"
+      ? "✓ Boarded"
+      : "✓ Picked up";
+  return (
+    <div data-driver-mark={status} className="flex flex-col items-start gap-1">
+      <span
+        className={cn(
+          "inline-flex items-center gap-1 rounded-[10px] px-2.5 py-[3px] text-[11px] font-semibold whitespace-nowrap",
+          ns
+            ? "bg-[rgba(239,68,68,.18)] text-[#fca5a5]"
+            : "bg-[rgba(46,204,113,.15)] text-[#2ecc71]",
+        )}
+      >
+        {label}
+        {at ? ` ${at}` : ""}
+        {isNew ? (
+          <span className="ml-1 rounded-[4px] bg-[#ef4444] px-1 text-[9.5px] font-extrabold text-white">
+            NEW
+          </span>
+        ) : null}
+      </span>
+      {who ? <span className="text-[11px] text-[#7a9bbe]">{who}</span> : null}
+      {ns && canTake ? (
+        row.ns_unhandled ? (
+          <button
+            type="button"
+            data-ns-take-action
+            disabled={toggling}
+            onClick={() => onToggleAction(row, "on")}
+            className="cursor-pointer p-0 text-[11px] text-[#c47a12] disabled:opacity-50"
+          >
+            ⚠️ Take action
+          </button>
+        ) : row.action_taken_by ? (
+          <span data-ns-handled className="text-[11px] text-[#2ecc71]">
+            ✓ {row.action_taken_by}
+          </span>
+        ) : null
+      ) : null}
+    </div>
   );
 }

@@ -6,6 +6,17 @@
 
 > **下一个主窗口：先读下面「2026-11-02 收工交接：前端主窗口-24」，再看置顶「📌 等 Annie 确认」。更早的交接是 10-30 晚那节。**
 
+## 2026-11-02 晚 Morning Pickup Tracking：司机实时页（Live drivers）（`task/live-drivers`，工作窗口 `npe-ops-frontend-39`[36b630]）—— 在分支，等后端 live-drivers（9e）上 main、f8 发 SHA 再合
+- Annie 原话：「我们要不啊再出一个版本的页面，就跟司机看到的页面一样，每个司机占一列，他所有的行动都显示出来」「把各个司机的手机页面都显示出来，并列在页面上」「B我想放在morning tracking页面　同意默认关，no show要重新设计，统计同moring tracking，message也能回」「就设成文件夹形式就好了」「email sms同时发」；定稿：「出来第3个，我要30秒刷新relay，其他都同意推荐，动手」。preview https://claude.ai/artifact/TwJJ32NCdbTEnqxQcCX6MN 第 3 版。⑬ Samsara 到站是第二期，这一版不做；⑫ 别的页面回复框默认值不动（f8 在问 Annie）。
+- 后端字段（fc 定，f8 转）：GET /api/notifications/morning-pickup/live-drivers?date=（morning.view + 开关 morning_live_drivers，默认 super_admin_only）回 {date, people[{kind driver|guide, hr_id, name, first_shift, segments|runs, inbox}]}；tracking 每行多 live_status / live_status_at / live_driver / live_van / ns_unhandled；回复用 POST /booking-notes/by-order/{n}（send_sms + send_email）。
+- 改了：
+  - Morning tracking 页签 Tracking / Live drivers（⑪ A，样子同排班 Schedule / Rules），Live drivers 旁写「Super Admin only」（开关是 super_admin_only 时）；`lib/page-visibility.ts` 加 `morning_live_drivers`。开关没对我开：没有页签，表也跟以前一样（Driver mark、No show 置顶都不出）。日期、司机筛选、统计卡（⑦ A 照搬）、搜索、Refresh、Export 两个页签共用。
+  - Tracking 表（⑥ A）：新列 Driver mark（紧跟 Check-in Time；存档里没有时插在那里，旧后台自己丢掉不认识的键），写「✓ Picked up 5:42 AM / ✓ Boarded / ✗ No show 6:03 AM」+ 车 / 司机；ns_unhandled 的单顶到最上面、淡红底、左边红条，Driver mark 下 ⚠️ Take action（同 Notes 那个接口），处理过写 ✓ 谁；刷新新冒出来的 No show 闪三下、带 NEW 五分钟；两个页签上红数字（没处理的 No show 单数），全处理完绿点。旧后端没有 live_* 键时整列不出。
+  - Live drivers（新 `components/morning-tracking/live-drivers.tsx`）：一人一列，React 照搬司机页 / 导游页（relay 站点块、Checked in、团车摘要卡 / 午餐 / 名单、有单独导游的团车只出数字、导游页 On board、Not picked up 红框、Routes / Messages 收件箱）；按钮只读灰掉、标了的绿 / 红、下面写几点（④⑩ A）；列头写车 · 哪一趟、x picked up · y no show · z not marked · pax；搜索标黄；司机筛选只看那一列；每 30 秒刷新（表和司机页一起，只在今天、没过 cut-off；Tracking 页签照旧 60 秒）。
+  - ⑨ 每列 Text / Messages 里的客人：打开 Tracking 那个回复框（ConversationModal 加 `sendBoth`：SMS / Email 默认都勾，发完分开写两个渠道结果，绿 / 红 / 灰，no_channel 写「SMS not sent: no channel」）；别的地方不传，照旧只勾 SMS。单号不在当天 tracking 里时红字说用 Orders。
+  - How to use 加两条（开关对我开时才出）。
+- 检查：mt-mock 加 ctl.live（行的 live_* / ns_unhandled、/live-drivers 两个人、addNoShow / clearMark / liveForbidden、NOCHANNEL / FAILMAIL）；mt 加 22 条（开关关着不出、两个页签、Driver mark 位置、No show 置顶红底、时间写法、页签数字、Take action 后绿点、NEW、Live 两列、列头数字、只读按钮 + 时间、导游列、搜索标黄、司机筛选、回复框默认两个都勾 + POST 形状 + 两行绿字、no_channel / 邮件失败红字、Messages 收件箱、30 秒刷新、403、旧后端没 Driver mark），可选 LIVE_SHOT 存截图（看过，同 preview）。ns 的 Page visibility 行数 20→22（main 上已经是 21，那条原来没跟着改）。mt 240/240、ns 49/49、tt 137/137、tk 135/135、da 454/454、tasks 144/144、nav 38/38、perm 54/54；tsc / eslint（0 错）/ build 过。
+
 ## 2026-11-02 晚 Staff Schedule › Auto-fill：按基础周排整月（`task/schedule-base-week`，工作窗口 `npe-ops-frontend-0e`[d96681]，主窗口 f8 派）
 - Annie 原话（f8 窗口）：「我要加 一个功能，在排班这里可以选一周为基础，比如这周的排班很混乱，我现在用上周的排班为基数，来自动排班，遵守定好的这些role，然后把整个月的班都排出来」；「这个很重要，需要今天做完，明天就需要排出来，周三要跟员工确认了」；对 preview https://claude.ai/artifact/L3gCgqBPvDLBxAC2ToDVxp 「7题全部同意推荐，动手」；复制周的处理「A同意推荐」。
 - 做了（纯前端，不用新接口）：Auto-fill 弹窗多一种填法「Copy a base week, then fix by the rules」：选基础周（默认上周，可选前 6 周到这周）、从哪周起（默认下周）、几周（默认 4，可选 1–6）→ 预览每周一张表（跟基础周不同的格子琥珀框，鼠标移上去写原因；排不下的红字列出）→「Create drafts for N weeks」一周一个 POST …/slots/bulk 存草稿，不 Publish、不通知。

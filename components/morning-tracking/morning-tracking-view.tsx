@@ -23,22 +23,30 @@ import { describeError, isStatus } from "@/lib/api-errors";
 import { toggleTakeAction } from "@/lib/booking-notes-api";
 import { isYmd, laMinuteOfDay, laToday, shiftYmd } from "@/lib/la-date";
 import {
+  DARK_PRIMARY_BUTTON_CLASS,
+  DARK_SECONDARY_BUTTON_CLASS,
+} from "@/components/ui/buttons";
+import {
   buildMorningExportUrl,
+  fetchLiveDrivers,
   fetchMorningTracking,
 } from "@/lib/morning-tracking-api";
+import { usePageVisibility } from "@/lib/page-visibility";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
 import { usePermissions } from "@/lib/staff-permissions";
 import { fetchUserPref, saveUserPref } from "@/lib/user-prefs-api";
 import { cn, takeSearchParam } from "@/lib/utils";
-import type { MorningTracking, MorningTrackingRow } from "@/types";
+import type { LiveDrivers, MorningTracking, MorningTrackingRow } from "@/types";
 
 import {
   type ColumnKey,
   computeStats,
   DEFAULT_COLUMN_ORDER,
   emailBadgeOf,
+  hasLiveMarks,
   LOCAL_COLUMN_ORDER_KEY,
   matchesSearch,
+  noShowBadge,
   orderRows,
   parseColumnOrder,
   POLL_INTERVAL_MS,
@@ -48,6 +56,7 @@ import {
 import { PageShortcutBar } from "@/components/nav/page-shortcut-bar";
 import { PhoneShortcutStar } from "@/components/ui/phone";
 import { useIsPhone } from "@/lib/phone";
+import { LiveDriversBoard } from "./live-drivers";
 import { TrackingTable } from "./tracking-table";
 
 type LoadState =
@@ -58,6 +67,17 @@ type LoadState =
 
 /** WhatsApp 窗口倒计时自己走，不等 60 秒一轮。 */
 const CLOCK_TICK_MS = 30_000;
+/** Live drivers 页签每 30 秒刷新一次（Annie 2026-11-02「我要30秒刷新relay」）；Tracking 页签照旧 60 秒。 */
+const LIVE_POLL_MS = 30_000;
+/** 新冒出来的 No show 那一行带 NEW 多久。 */
+const NEW_NO_SHOW_MS = 5 * 60_000;
+
+type LiveState =
+  | { kind: "idle" }
+  | { kind: "loading" }
+  | { kind: "forbidden" }
+  | { kind: "error"; message: string }
+  | { kind: "ready"; data: LiveDrivers };
 
 function readLocalOrder(): ColumnKey[] | null {
   try {
@@ -92,6 +112,15 @@ export function MorningTrackingView() {
   const [conversation, setConversation] = useState<ConversationTarget | null>(
     null,
   );
+  /** 从 Live drivers 打开的回复框：短信和邮件同时发（Annie「email sms同时发」）。 */
+  const [conversationBoth, setConversationBoth] = useState(false);
+  // 文件夹页签（司机实时页 ⑪ A）：Tracking = 现在的表；Live drivers = 一人一列的司机页，先只 Super Admin（开关默认关）。
+  const [tab, setTab] = useState<"tracking" | "live">("tracking");
+  const [live, setLive] = useState<LiveState>({ kind: "idle" });
+  const liveSeqRef = useRef(0);
+  /** 司机刚标的 No show（bookings.id → 第一次看到的时间）：那一行闪三下、带 NEW 五分钟（⑥ A）。 */
+  const [nsSeen, setNsSeen] = useState<Map<number, number>>(new Map());
+  const nsKnownRef = useRef<Set<number> | null>(null);
   const [togglingId, setTogglingId] = useState<number | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
@@ -139,6 +168,21 @@ export function MorningTrackingView() {
         setState({ kind: "ready", data });
         setRefreshError(null);
         setNow(Date.now());
+        // 新冒出来的 No show：跟上一次比（第一次打开 / 换日期不算新的）。
+        const ns = new Set(
+          data.rows.filter((r) => r.ns_unhandled).map((r) => r.id),
+        );
+        const known = nsKnownRef.current;
+        nsKnownRef.current = ns;
+        if (known) {
+          const fresh = [...ns].filter((id) => !known.has(id));
+          if (fresh.length)
+            setNsSeen((m) => {
+              const next = new Map(m);
+              for (const id of fresh) next.set(id, Date.now());
+              return next;
+            });
+        }
       } catch (error) {
         if (seq !== requestSeqRef.current) {
           return;
@@ -157,6 +201,54 @@ export function MorningTrackingView() {
     [redirectToLogin],
   );
 
+  const data = state.kind === "ready" ? state.data : null;
+  const endMinute = data?.tracking_window.end_minute ?? null;
+  const pageVisibility = usePageVisibility(redirectToLogin);
+  const canLive =
+    !partnerView && pageVisibility.visible("morning_live_drivers");
+
+  const loadLive = useCallback(
+    async (target: string, silent: boolean) => {
+      const seq = ++liveSeqRef.current;
+      if (!silent) setLive({ kind: "loading" });
+      try {
+        const data = await fetchLiveDrivers(target);
+        if (seq !== liveSeqRef.current) return;
+        setLive({ kind: "ready", data });
+      } catch (error) {
+        if (seq !== liveSeqRef.current) return;
+        if (isStatus(error, 401)) redirectToLogin();
+        else if (isStatus(error, 403)) setLive({ kind: "forbidden" });
+        else if (silent) setRefreshError(describeError(error));
+        else setLive({ kind: "error", message: describeError(error) });
+      }
+    },
+    [redirectToLogin],
+  );
+
+  // 切到 Live drivers / 换日期：读一次司机页数据。
+  useEffect(() => {
+    if (tab === "live" && date && canLive) void loadLive(date, false);
+  }, [tab, date, canLive, loadLive]);
+
+  // 换日期：No show 的「新」从头算。
+  useEffect(() => {
+    nsKnownRef.current = null;
+    setNsSeen(new Map());
+  }, [date]);
+
+  // Live drivers 页签每 30 秒刷新（表和司机页一起，统计卡、No show 跟着变）；同 Tracking：只在看今天、没过截止时间。
+  useEffect(() => {
+    if (tab !== "live" || !date || endMinute === null || !canLive) return;
+    const timer = setInterval(() => {
+      if (date === laToday() && laMinuteOfDay() < endMinute) {
+        void load(date, true);
+        void loadLive(date, true);
+      }
+    }, LIVE_POLL_MS);
+    return () => clearInterval(timer);
+  }, [tab, date, endMinute, canLive, load, loadLive]);
+
   useEffect(() => {
     if (!date) {
       return;
@@ -168,8 +260,6 @@ export function MorningTrackingView() {
     void load(date, false);
   }, [date, load]);
 
-  const data = state.kind === "ready" ? state.data : null;
-  const endMinute = data?.tracking_window.end_minute ?? null;
   const endLabel = data?.tracking_window.end_label ?? "";
 
   // 自动刷新：只在看今天、且没过追踪窗口时（每轮都重新算「今天」和「几点」）。
@@ -230,6 +320,7 @@ export function MorningTrackingView() {
     }
     setDriver("");
     setRefreshError(null);
+    setLive({ kind: "idle" });
     setDate(next);
   }
 
@@ -256,7 +347,21 @@ export function MorningTrackingView() {
     }
   }
 
-  const allRows = useMemo(() => data?.rows ?? [], [data]);
+  // 司机标记（Driver mark 列、No show 置顶 / 红底 / 页签数字）跟 Live drivers 同一个开关：开关没对我开时表跟以前一样。
+  const allRows = useMemo(
+    () =>
+      (data?.rows ?? []).map((r) =>
+        canLive
+          ? r
+          : {
+              ...r,
+              live_status: undefined,
+              live_status_at: undefined,
+              ns_unhandled: false,
+            },
+      ),
+    [data, canLive],
+  );
   const drivers = useMemo(() => summarizeDrivers(allRows), [allRows]);
   // 刷新以后这位司机没有单了，就回到 All（不能出现「All 亮着、其实还在按司机筛」）。
   const activeDriver = drivers.some((d) => d.driver === driver) ? driver : "";
@@ -272,6 +377,51 @@ export function MorningTrackingView() {
     [allRows, activeDriver, search],
   );
   const stats = data ? computeStats(filtered) : null;
+  const nsBadge = noShowBadge(allRows);
+  const newNoShow = useMemo(
+    () =>
+      new Set(
+        [...nsSeen]
+          .filter(([, at]) => now - at < NEW_NO_SHOW_MS)
+          .map(([id]) => id),
+      ),
+    [nsSeen, now],
+  );
+  const showMarks = hasLiveMarks(allRows);
+  const livePeople = useMemo(() => {
+    const people = live.kind === "ready" ? live.data.people : [];
+    if (!activeDriver) return people;
+    // 司机筛选：Tracking 的司机名跟这一列的名字对上（不分大小写，名字写法不一样时按名字开头）。
+    const want = activeDriver.trim().toLowerCase();
+    return people.filter((p) => {
+      const n = p.name.trim().toLowerCase();
+      return n === want || n.startsWith(want) || want.startsWith(n);
+    });
+  }, [live, activeDriver]);
+
+  function openConversation(row: MorningTrackingRow, both: boolean) {
+    setConversationBoth(both);
+    setConversation({
+      bookingId: row.id,
+      orderNumber: row.order_number,
+      guestName: row.name,
+      phone: row.phone,
+      email: row.email,
+      smsBadge: smsBadgeOf(row.sms_status),
+      emailBadge: emailBadgeOf(row.email_state),
+      actionTakenBy: row.action_taken_by,
+    });
+  }
+
+  /** Live drivers 每列点 Text / Messages 里的客人：按单号找 Tracking 那一行，打开同一个回复框（⑨）。 */
+  function openGuest(orderNumber: string) {
+    const row = allRows.find((r) => r.order_number === orderNumber);
+    if (row) openConversation(row, true);
+    else
+      setActionError(
+        `Order ${orderNumber} is not on this morning's tracking list, so it cannot be answered here. Use Orders.`,
+      );
+  }
 
   const today = date ? laToday(new Date(now)) : "";
   const pollNotice = !data
@@ -392,6 +542,54 @@ export function MorningTrackingView() {
               </button>
             </div>
 
+            {canLive ? (
+              <div
+                role="tablist"
+                aria-label="Morning tracking views"
+                className="mb-3 flex items-center gap-2 sm:mb-[18px]"
+              >
+                {(["tracking", "live"] as const).map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    role="tab"
+                    aria-selected={tab === t}
+                    data-mt-tab={t}
+                    onClick={() => setTab(t)}
+                    className={cn(
+                      "relative",
+                      tab === t
+                        ? DARK_PRIMARY_BUTTON_CLASS
+                        : DARK_SECONDARY_BUTTON_CLASS,
+                    )}
+                  >
+                    {t === "tracking" ? "Tracking" : "Live drivers"}
+                    {t === "live" &&
+                    pageVisibility.visibilityOf("morning_live_drivers") ===
+                      "super_admin_only" ? (
+                      <span className="ml-1.5 text-[10px] font-bold text-[#fcd34d]">
+                        Super Admin only
+                      </span>
+                    ) : null}
+                    {/* 没处理的 No show：红数字；有 No show 都处理了：绿点（站内规矩）。 */}
+                    {nsBadge.unhandled ? (
+                      <span
+                        data-ns-badge
+                        className="absolute -top-[6px] -right-[6px] h-[17px] min-w-[17px] rounded-[9px] bg-[#ef4444] px-1 text-center text-[10.5px] leading-[17px] font-bold text-white shadow-[0_0_0_2px_#0d1b2e]"
+                      >
+                        {nsBadge.unhandled}
+                      </span>
+                    ) : nsBadge.any ? (
+                      <span
+                        data-ns-badge-ok
+                        className="absolute -top-[4px] -right-[4px] size-2.5 rounded-full bg-[#22c55e] shadow-[0_0_0_2px_#0d1b2e]"
+                      />
+                    ) : null}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+
             {state.kind === "error" ? (
               <TrackingBanner
                 dark
@@ -487,51 +685,68 @@ export function MorningTrackingView() {
               </span>
             </div>
 
-            <section className="overflow-hidden rounded-[12px] border border-white/[.08] bg-[#1a2f4a]">
-              <div className="flex items-center justify-between border-b border-white/[.08] bg-[#0f2035] px-4 py-3">
-                <h2 className="text-[13px] font-semibold text-[#7ab3e0]">
-                  Check-in Log
-                </h2>
-              </div>
-              <div className="overflow-x-auto">
-                {/* 纯操作提示：手机上不显示（手机上也拖不了列）。 */}
-                <div className="mb-1 flex flex-wrap justify-between gap-x-4 gap-y-1 px-0.5 text-[11px] text-[#aaa] max-sm:hidden">
-                  <span className="font-semibold text-[#5ba3d9]">
-                    Click a Bus # to see live tracking (opens Samsara in a new
-                    tab)
-                  </span>
-                  <span className="ml-auto">
-                    ⇆ Drag columns to reorder · ↔ Drag edges to resize
-                  </span>
-                </div>
-                <TrackingTable
-                  rows={filtered}
-                  columnOrder={
-                    // 没勾 See prices, agent & commission（orders.money_view，题 8）：Agent 列整列不出（后端给的是空字符串）。
-                    canSeeMoney
-                      ? columnOrder
-                      : columnOrder.filter((k) => k !== "agent_name")
-                  }
-                  onReorder={reorderColumns}
-                  onOpenConversation={(row) =>
-                    setConversation({
-                      bookingId: row.id,
-                      orderNumber: row.order_number,
-                      guestName: row.name,
-                      phone: row.phone,
-                      email: row.email,
-                      smsBadge: smsBadgeOf(row.sms_status),
-                      emailBadge: emailBadgeOf(row.email_state),
-                      actionTakenBy: row.action_taken_by,
-                    })
-                  }
-                  onToggleAction={(row, want) => void toggleAction(row, want)}
-                  togglingId={togglingId}
-                  now={now}
-                  placeholder={placeholder}
+            {tab === "live" && canLive ? (
+              live.kind === "forbidden" ? (
+                <TrackingNotice dark>
+                  <p className="font-semibold text-white">
+                    Live drivers is not open to you yet
+                  </p>
+                </TrackingNotice>
+              ) : live.kind === "error" ? (
+                <TrackingBanner
+                  dark
+                  actionLabel="Retry"
+                  onAction={() => void loadLive(date, false)}
+                >
+                  Could not load the drivers&apos; pages: {live.message}
+                </TrackingBanner>
+              ) : live.kind === "ready" ? (
+                <LiveDriversBoard
+                  people={livePeople}
+                  search={search}
+                  onOpenGuest={openGuest}
                 />
-              </div>
-            </section>
+              ) : (
+                <p className="p-7 text-center text-[#4a6a8a]">Loading…</p>
+              )
+            ) : (
+              <section className="overflow-hidden rounded-[12px] border border-white/[.08] bg-[#1a2f4a]">
+                <div className="flex items-center justify-between border-b border-white/[.08] bg-[#0f2035] px-4 py-3">
+                  <h2 className="text-[13px] font-semibold text-[#7ab3e0]">
+                    Check-in Log
+                  </h2>
+                </div>
+                <div className="overflow-x-auto">
+                  {/* 纯操作提示：手机上不显示（手机上也拖不了列）。 */}
+                  <div className="mb-1 flex flex-wrap justify-between gap-x-4 gap-y-1 px-0.5 text-[11px] text-[#aaa] max-sm:hidden">
+                    <span className="font-semibold text-[#5ba3d9]">
+                      Click a Bus # to see live tracking (opens Samsara in a new
+                      tab)
+                    </span>
+                    <span className="ml-auto">
+                      ⇆ Drag columns to reorder · ↔ Drag edges to resize
+                    </span>
+                  </div>
+                  <TrackingTable
+                    rows={filtered}
+                    columnOrder={columnOrder.filter(
+                      (k) =>
+                        // 没勾 See prices, agent & commission（orders.money_view，题 8）：Agent 列整列不出（后端给的是空字符串）。
+                        (canSeeMoney || k !== "agent_name") &&
+                        // 后端还没带司机标记（旧版）：Driver mark 列不出。
+                        (showMarks || k !== "driver_mark"),
+                    )}
+                    onReorder={reorderColumns}
+                    onOpenConversation={(row) => openConversation(row, false)}
+                    newNoShow={newNoShow}
+                    onToggleAction={(row, want) => void toggleAction(row, want)}
+                    togglingId={togglingId}
+                    now={now}
+                    placeholder={placeholder}
+                  />
+                </div>
+              </section>
+            )}
           </>
         )}
         <HowToUse
@@ -548,6 +763,13 @@ export function MorningTrackingView() {
             "A Phone AI message means a guest called and did not get their confirmation, or said our email or phone is wrong. The message says what the AI promised the guest, usually that it will be sent within 15 minutes: check any new email or phone with the guest, resend it, then click ✓ Mark as actioned. The same message also goes to reservations@.",
             "The whole list refreshes every minute until the cut-off. Click ↻ Refresh any time. ⬇ Export downloads the day.",
             "Drag a column header to move it. The order is saved to your account and is the same as on the old admin page. Drag its right edge to make it wider or narrower; widths go back to normal when you reload the page.",
+            // 司机实时页（开关对我开时才写）。
+            ...(canLive
+              ? [
+                  "Live drivers shows each driver's and guide's phone page side by side, read-only. Picked up, Boarded and No show show the time they were marked. It refreshes every 30 seconds. Tap Text, or a guest in Messages, to reply: SMS and email go together from the company number, and the driver sees your reply in their conversation.",
+                  "When a driver or guide marks No show, that order moves to the top of Tracking in red, with ⚠️ Take action under Driver mark. Click it once you have dealt with it. The red number on the tabs counts the No shows nobody has handled; a green dot means all are handled.",
+                ]
+              : []),
           ]}
           warning={
             <>
@@ -570,8 +792,12 @@ export function MorningTrackingView() {
           target={conversation}
           source={{ kind: "order", line: "morning" }}
           onClose={() => setConversation(null)}
-          onChanged={() => void load(dateRef.current, true)}
+          onChanged={() => {
+            void load(dateRef.current, true);
+            if (tab === "live") void loadLive(dateRef.current, true);
+          }}
           onUnauthorized={redirectToLogin}
+          sendBoth={conversationBoth}
         />
       ) : null}
     </main>

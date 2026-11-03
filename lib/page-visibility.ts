@@ -89,6 +89,12 @@ export const VISIBILITY_KEYS = {
     where: "/guide and Send to guide. Opens only on Everyone",
     default: "super_admin_only",
   },
+  // 司机实时页（Annie 2026-11-02「同意默认关」：先只 Super Admin，她检查好了再打开）。
+  morning_live_drivers: {
+    label: "Morning Pickup Tracking · Live drivers",
+    where: "/morning-pickup/tracking (Live drivers tab)",
+    default: "super_admin_only",
+  },
   // 还没做好（Annie 2026-10-26「我们还没有做好……就仅super admin可见，然后都打上soon的标签」）
   quotation: {
     label: "Quotation",
