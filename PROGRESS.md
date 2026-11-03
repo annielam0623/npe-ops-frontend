@@ -727,6 +727,7 @@
 - ✅ **Annie 在 91 窗口说「Dispatch名单编辑-动手」（原话，2026-11-03 傍晚）**，4 题没逐题答，按推荐全 A（只改名字和电话；写 Nickname；改名后旧名字自动进 Other spellings；How to use 用原文），91 在回复里跟她确认。91 先做完 HR 再开 task/roster-edit；后端 PUT 没有时不出 Edit 键。已转 37 派后端（含返回要不要带 old_name_added，旧名字进 spellings 由后端做）。
 - 37 回字段：PUT /api/dispatch/roster/{id} {name, phone} → {id, name, phone, type, old_name_added}；old_name_added 是加进 Other spellings 的旧名字字符串，没加为 null（没改名 / 旧名已在他的写法里 / 撞别人写法——只跳过不报错，名字电话照存）。排在 G234（4d spellings 表）上 main 之后，明天家里那台约半天，做完 37 发提交号。已转 91。
 
+- 91 请后端 GET /api/dispatch/roster 带 can_edit: true（有 PUT + dispatch.edit + 开关开），没这键不出 Edit 键；已转 37 待确认。91 照这形状开 task/roster-edit。
 ### 66. 司机页 / 导游页预览：当天在跑的要跟手机上一样（2026-11-03）—— ✅ Annie 选 A 并「动手」，后端做
 - 截图是后端导游页（app/templates/field/guide_home.html，Antelope Bus A 2356），按钮 Boarded / No show / Call / ✎ Change / Send message 都灰。24 只读查：这些键在**预览**（Dispatch「Guide page preview ↗」/ Manifest 每车 Guide view，preview=True）或**前一天**（G227「Opens on … the grey buttons work on the day」，ahead）时是 disabled，样式 opacity .45（:267、:274），所以字发灰、点不了，是有意的；到了当天真正的导游手机上是正常颜色。单号「CHD0748XR · Lower」、「3 bookings」、「pax · 9 pickup stops」那类是本来的次要灰字。
 - Annie（原话）「我作为super admin登录进去，应该让我看到和司机或导游看到的实时的才对啊，只要这个行程在跑」⇒ Super Admin 从 Dispatch 的 Driver / Guide page preview 打开时，行程当天在跑就要跟司机 / 导游手机上一模一样（颜色正常、实时状态）。24 只读查：预览跟司机本人共用同一份取数（field.py:222、:337），标记是实时的；灰是因为 preview=True 时按钮 disabled、opacity .45（已标的绿 / 红也一起变暗）。
@@ -746,6 +747,7 @@
 - 91 只读核对 33691e8d：与 preview 对得上（列表带 other_spellings；弹窗先 PUT spellings 再存其他字段，回填规整后的列表；6 句报错逐字相同，另有后端原话格式报错：超 60 字 / 超 20 个 / 不能有换行或 tab；与本人 Nickname 相同自动略过；只真改才记 Action Log；PUT 用 HR 编辑权限）。弹窗一行一个、Edit list 逗号隔开（写法不能含逗号）。**备用题（Annie 说动手时 bulk 还没上才问）**：先做弹窗 + 人员表列，Edit list 这列先只读，bulk 上了再开可改——分两步行不行。
 - ✅ **Annie 在 91 窗口说「HR动手」（原话，2026-11-03 傍晚）**。91 从 main 开 task/hr-other-spellings：编辑弹窗 Dispatch 块格子、人员表列、Edit list 列；接口没 other_spellings 时（生产现在）全都不出、页面同现在，后端上线后自动出现。Edit list 那列先只读，整批保存上线再开可改（即备用题的分两步，91 跟 Annie 说明）。
 
+- ✅ 91 合 main **fe0e13a**（功能 8fb0d61）：hr 80/80（新 12 条）、nav 38/38、tsc / eslint / build 过。后端没上线时格子、列、How to use 那条都不出，生产页面同以前。Edit list 列先只读；How to use 在 Annie 定的原文后临时多一句「To change them, click Edit on that person's row.」，bulk 上了去掉（已告诉 Annie）。
 ### 64. G180 Main manifest 订单同步到 Tour Tracking：重新启动（2026-11-03，Annie「重新启动」）
 - 10/24 Annie 提，后端 d9 写好代码在 origin/task/tracking-sync-design（4cac1f93，10/25 夜后没动，没上 main、没跑迁移；deploy-guard 第 3 轮 FAIL：迁移要先于代码；迁移号 v122 已被占，要换号）。设计文档 docs/tracking-sync-design-2026-10-24.md，Annie 已定的不再问（同步已确认订单、发送前后都同步、send_state Sent / Not sent、order_state Confirmed / On hold / Cancelled 以 Order List 为准、从不删行、午餐谁新留谁、Farm out 只记录、Broadcast 含 Not sent 不含 On hold / Cancelled 且发出后变 Sent、总开关默认关、Tour Tracking 加 Sent / Not sent 筛选默认 Sent + 订单号后小标签）。还没答：调用记录表 401 要不要记（Max 推荐不记，后端那边问）。
 - 当时页面只改了旧后台模板；ops 新 Tour Tracking 页要前端另做。
