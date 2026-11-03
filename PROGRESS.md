@@ -6,6 +6,15 @@
 
 > **下一个主窗口：先读下面「2026-11-02 收工交接：前端主窗口-24」，再看置顶「📌 等 Annie 确认」。更早的交接是 10-30 晚那节。**
 
+## 2026-11-02 晚 Bus Manifest 对照纸本 PDF 逐字段核对（工作窗口 `npe-ops-frontend-0e`[d96681]，主窗口 f8 派）—— 只核对，没改代码
+- Annie 原话（f8 窗口）：「请按照这个PDF的样子，逐个检查现在bus manifest里的字段，一一核实」；随后「核心问题是：在bus manifest底部的灰色汇总框里，把Antelope的表格变成所有tour的样本了，这是错误的，每个tour的汇总表都不一样」；「另外，hooverdam在bus manifest那里已经设置好分小节了」。
+- PDF 原件在 `C:\Users\annzh\Downloads\4796_001.pdf`（10/6/2026，13 页，10-27 Annie 发 74 时留下的），0e 逐页渲染对原图核。
+- 报告（Artifact）：https://claude.ai/artifact/EgwNMRbsCTJMoMb9m3iRQU 。最前面单独一节「底部灰色汇总框」，后面按 PDF 13 页分节，每节「字段 / 纸本 / 现在 ops / 结论 / 备注（数据来源、要不要后端）」。不放客人资料。
+- 汇总框结论：后端 `tour_manifest.py` `footer()` 只有一套格子所有团共用；前端 `manifest-view.tsx` `FOOTER_LABEL`（G198 Q9）对所有团把 BUS SEATS LEFT / USED 改成 Antelope 叫法（South 因此错了），打印 / Excel 仍是后端原名；West 7 个、Hoover 5 个分项格 ops 没有。照纸本数字反推：West 两车分项之和 = SEATS USED（51、53）；Hoover HIGHLIGHTS = HD Highlights 节、GENERATOR = HD Generator 节、RAFTING = HD RAFT 节（生产分节由后端 36 只读查，9e 转）。改格子要后端；后端 36：按团出汇总是新规格，动手后再估。
+- 其余页最大的差别：Relay 5 页 ops 没有可打印单（置顶 33）；Pick-up Location 纸本按 relay 车上色、ops 隔组上色；Quantities 标色规则不同；抬头颜色纸本按车、ops 按团；午餐单忌口 NOTES 不出（置顶 33 Q10 / Q11）；司机兼导游不并一格；ASSIST 列没有。
+- 问 Annie（汇总框，原文在报告「问 Annie」）：1 West Heli & Boat + Voucher 进哪格；2 West SKY ONLY / SKY+Meal 和 Premium 的分法；3 West / Hoover 多出的 INBOUND / OUTBOUND / No Lunch / LUNCH 拿不拿掉；4a GO City Upgrade 算不算 GENERATOR；4b BOULDER SHUTTLE 数 Hoover 的 BOULDER CITY 节还是 Boulder_City 团的 PV3Y0U；4c RAFT SHUTTLE 怎么算（生产没有这个产品）；5 Antelope 一节两个确认号；6 按团写死 4 套还是 setup 里自己设。由 f8 按格式问 Annie。
+- 顺带发现：Hoover 的 PJ0LQF 挂在 HD Highlights，internal_name 却是「West Rim」，疑似填错，只报告没改。
+
 ## 2026-11-02 晚 Staff Schedule 空档：Save 被拒写清哪天哪段、哪个改动造成的（`task/schedule-gap-fix`，工作窗口 `npe-ops-frontend-39`[36b630]，主窗口 f8 派）
 - Annie 原话（f8 窗口）：①「今天的排班有个10am-12pm的gap，系统没看出来」②「7号的gap已经填了，但始终报错不让保存，即使我改了班次的时间，也没用」。修 bug、样子不变，不用 preview。
 - 生产数据由后端 fc 只读查（18:37 PT，39 没有生产凭证、没去找）：工作时段 02:00–21:30；11/1 那周已发布；is_test 全 false；time_off 0 行。
