@@ -442,6 +442,7 @@
   - 题 2 改：「+skywalk +Meal Voucher」算 Premium 还是 SKY+Meal (Voucher)？A 照 Rezdy 原文进 SKY+Meal（推荐）／B 照纸本算 Premium、SKY+Meal 格拿掉。SKY ONLY 仍没见过。
   - 新题 7：Special Requirements 里 Rezdy 系统字（「Rejected booking fields First Name…」「Invalid booking field values Mobile…」）纸本都删了，ops 整段亮黄印出。A 这两种自动不印、客人写的照印（推荐）／B 照旧 staff 自己改。
   - 题 6 Annie 在 0e 窗口答（原话）：「问题6的选择先走A吧，有时间再做B。」⇒ A：后端按团写死，West / Hoover / South 各一套，Antelope、BZ 和其他团用 Antelope 7 格；B 以后再做。没动手。已请 9e / 36 估 A 的工作量。
+  - Annie 在 0e 窗口提新功能（原话）：「在其余页面里，其实我们dispatch里是没有做relay的可打印版本的，现在动手做吧，一个总表，然后分成每个司机的分表」⇒ 新功能，0e 先出 preview（照 74 的 A4 样张 RELAY SPLITS 总表 + 每车 Relay 单，加 10-30 的 Q18 CLOSE / Q20 站序），同置顶 33 的 Relay 部分。relay-pull 缺电话、Product 简称、交给哪辆大巴（manifest_id + bus_label）、每车站序 ⇒ 已预告 9e 估工作量，形状等 preview 定。
   - 另：ops 标黄规则「带 + 就亮黄」会让 West 所有 Premium (Skywalk+Voucher) 行都亮黄，纸本不标（并进其余 12 页差别 ③）。
 - 36 查回：Hoover 节 = HD Highlights（8 个，PJ0LQF internal_name 写「West Rim」疑似填错）/ HD Generator（5 个，票型「+ Generator」）/ HD RAFT（2）/ BOULDER CITY（2）；另有独立 manifests 35 Boulder_City（PV3Y0U）。HIGHLIGHTS / GENERATOR / RAFTING 对得上。题 ④ 改成 3 小题：④a PJD1EQ 的 Upgrade 票型算不算 GENERATOR；④b BOULDER SHUTTLE 数 Hoover 的 BOULDER CITY 节还是 PV3Y0U；④c RAFT SHUTTLE 生产里没有对应产品，怎么算。已转 0e 更新报告。
 
