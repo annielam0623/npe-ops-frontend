@@ -6,6 +6,7 @@ import { laToday, shiftYmd } from "@/lib/la-date";
 import { gapRangeShort } from "@/lib/schedule-gaps";
 import { readRecentShifts, type RecentShift } from "@/lib/schedule-recent";
 import { formatClock, hasBadTimeRange } from "@/lib/schedule-time";
+import { coversGaps } from "@/lib/schedule-timeline";
 import { cn } from "@/lib/utils";
 import type {
   ScheduleEmployee,
@@ -29,7 +30,7 @@ import {
   TIME_OFF_LABEL,
 } from "./config";
 import { sentTime } from "./send-changes-dialog";
-import { TestTag } from "./employees-dialog";
+import { NotCountedTag, TestTag } from "./employees-dialog";
 import { TimeEditPopup } from "./time-edit-popup";
 import { gapSentence, type SlotMark } from "./week-draft";
 
@@ -151,6 +152,12 @@ export function WeekGrid({
   const unassigned = slots.filter((s) => s.employee_id == null);
   const showNeeds = canEdit || unassigned.length > 0;
   const activeShiftTypes = shiftTypes.filter((t) => t.is_active);
+  // 不算值班人头的人（Annie 11-02「Anita不算的」）：只给能改排班的人标（员工本来看不到空档）；测试的人已经有 Test 标签。
+  const notCounted = new Set(
+    canEdit
+      ? employees.filter((e) => !e.is_test && !coversGaps(e)).map((e) => e.id)
+      : [],
+  );
 
   function dropOn(slotId: number, date: string, employeeId: number | null) {
     const slot = slotById.get(slotId);
@@ -218,6 +225,9 @@ export function WeekGrid({
               slot.shift_type
             }
             canEdit={canEdit}
+            notCounted={
+              slot.employee_id != null && notCounted.has(slot.employee_id)
+            }
             selected={selectedSlotId === slot.id}
             mark={marks?.get(slot.id)}
             error={errorSlotId === slot.id}
@@ -319,6 +329,7 @@ export function WeekGrid({
             key={e.id}
             employee={e}
             mine={e.id === meId}
+            notCounted={notCounted.has(e.id)}
             cells={dates.map((date) => renderCell(date, e.id))}
             change={pendingChanges?.find((p) => p.employee_id === e.id)}
             onSendChanges={
@@ -398,6 +409,7 @@ export function WeekGrid({
 function PersonRow({
   employee,
   mine,
+  notCounted = false,
   cells,
   change,
   onSendChanges,
@@ -405,6 +417,8 @@ function PersonRow({
 }: {
   employee: ScheduleEmployee;
   mine: boolean;
+  /** 检查空档时不算这个人（Employees 里取消了 Counts toward coverage）。 */
+  notCounted?: boolean;
   cells: React.ReactNode[];
   /** 这个人这周和上次发布不一样（Annie 10-29「员工确认」）。 */
   change?: SchedulePendingChange;
@@ -426,6 +440,7 @@ function PersonRow({
           />
           <span className="min-w-0 break-words">{employee.name}</span>
           {employee.is_test ? <TestTag /> : null}
+          {notCounted ? <NotCountedTag /> : null}
         </span>
         {change && change.items.length > 0 && onSendChanges ? (
           <span
@@ -621,6 +636,7 @@ function SlotCard({
   slot,
   label,
   canEdit,
+  notCounted = false,
   selected,
   mark,
   error,
@@ -637,6 +653,8 @@ function SlotCard({
   slot: ScheduleSlot;
   label: string;
   canEdit: boolean;
+  /** 这个人不算值班人头：卡片变淡、虚线框（preview ②A）。 */
+  notCounted?: boolean;
   selected: boolean;
   /** 没存的改动（整周一个 Save）；undefined = 和库里一样。 */
   mark?: SlotMark;
@@ -675,6 +693,7 @@ function SlotCard({
         onSelect();
       }}
       data-slot-id={slot.id}
+      data-not-counted={notCounted || undefined}
       data-mark={deleted ? "deleted" : words.join(" ") || undefined}
       data-slot-error={error || undefined}
       className={cn(
@@ -683,6 +702,7 @@ function SlotCard({
           ? "border-dashed border-red-400/70 bg-red-500/[.1] text-red-200"
           : shiftCardClass(slot.shift_type),
         badRange && "border-amber-400/60 bg-amber-400/[.12]",
+        notCounted && "border-dashed opacity-55",
         // 没存的改动：琥珀框（同 Bus Manifest 那份）；删掉的灰掉、琥珀虚线，名字和时间划线。
         changed && "border-amber-400 ring-1 ring-amber-400/60",
         deleted &&

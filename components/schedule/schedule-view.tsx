@@ -40,6 +40,7 @@ import { usePageVisibility } from "@/lib/page-visibility";
 import { byTick } from "@/lib/by-tick";
 import { usePermissions } from "@/lib/staff-permissions";
 import { gapDayLabel, gapRange, gapsByDate } from "@/lib/schedule-gaps";
+import { coversGaps } from "@/lib/schedule-timeline";
 import { pushRecentShift } from "@/lib/schedule-recent";
 import type { Rule } from "@/lib/schedule-engine";
 import {
@@ -769,8 +770,10 @@ export function ScheduleView() {
     if (orig) movedFrom.set(orig.id, orig.employee_id);
   }
   const counts = countChanges(draft);
-  // 测试用的人（Annie 2026-10-30 选 A）：不算进空档。
-  const testIds = new Set(employees.filter((e) => e.is_test).map((e) => e.id));
+  // 测试用的人（Annie 2026-10-30 选 A）和设成不算人头的人（Annie 11-02「Anita不算的」）：不算进空档。
+  const testIds = new Set(
+    employees.filter((e) => !coversGaps(e)).map((e) => e.id),
+  );
   // 卡片上直接标空档（置顶 17）：这次改动新造成的空档记到造成它的那张卡上，补上就没了。
   const gapNotes =
     readyWeek && derived
@@ -822,11 +825,10 @@ export function ScheduleView() {
           const causes = gapCauseIds(g, readyWeek.slots, draft).map((id) => {
             const s = readyWeek.slots.find((x) => x.id === id)!;
             const who =
-              employees.find((e) => e.id === s.employee_id)?.name ??
-              "Someone";
+              employees.find((e) => e.id === s.employee_id)?.name ?? "Someone";
             const type =
-              settings.shift_types.find((t) => t.key === s.shift_type)
-                ?.label ?? s.shift_type;
+              settings.shift_types.find((t) => t.key === s.shift_type)?.label ??
+              s.shift_type;
             return `${who}'s ${type} shift`;
           });
           return `${gapDayLabel(g.date)}, ${gapRange(g)} is not covered${

@@ -6,6 +6,12 @@
 
 > **下一个主窗口：先读下面「2026-11-02 收工交接：前端主窗口-24」，再看置顶「📌 等 Annie 确认」。更早的交接是 10-30 晚那节。**
 
+## 2026-11-02 晚 Staff Schedule：某些员工不算值班人头（`task/schedule-coverage-flag`，工作窗口 `npe-ops-frontend-39`[36b630]，主窗口 f8 派）—— 在分支，等后端 schedule-employee-flags 上 main 再合
+- Annie 原话（f8 窗口）：「Anita不算的」「把Anita从统计中拿出来」（f8 当动手）；39 窗口：「Anita-not counted只在管理面出现，员工界面不要显示这个说明，就放正常的名字就好」。preview https://claude.ai/artifact/QM4TTYGRUjuu3kUWLoeGD3 （按人设、权限跟 schedule.edit 已定；题 ② 标不标、③ 已发布周通不通知等 Annie）。
+- 后端（fc 定，9e 转）：employees 每人带 counts_for_coverage；PUT /api/schedule/employees/{id} 收 {"counts_for_coverage": bool}；false 或 is_test 的人的班在空档判断里当没排人；不动 version、不发通知。
+- 前端：Employees 窗口每人一个勾「Counts toward coverage」（默认勾、点一下就存，同 Test person），取消后名字旁琥珀色「Not counted」；`lib/schedule-timeline.ts coversGaps()`（is_test 或 counts_for_coverage=false 都不算），week-draft localGaps（经 schedule-view 的排除名单）和 gapsOf 都用它；周表 Not counted 小标 + 班卡淡虚线、Day timeline 条子斜纹写 not counted —— 只给能改排班的人看，员工看到的是正常名字（Annie 原话）。字段没带当 true。Dashboard 不变。
+- 检查：sch 加 6 条（默认勾上；取消 PUT 形状 + 标签；周表标记 + 周六出空档；Day timeline 斜纹 + Nobody 行；勾回去恢复；staff 看不到任何标记），sch 328/328；tsc / eslint（0 错）/ build 过。
+
 ## 2026-11-02 晚 Staff Schedule 空档：Save 被拒写清哪天哪段、哪个改动造成的（`task/schedule-gap-fix`，工作窗口 `npe-ops-frontend-39`[36b630]，主窗口 f8 派）
 - Annie 原话（f8 窗口）：①「今天的排班有个10am-12pm的gap，系统没看出来」②「7号的gap已经填了，但始终报错不让保存，即使我改了班次的时间，也没用」。修 bug、样子不变，不用 preview。
 - 生产数据由后端 fc 只读查（18:37 PT，39 没有生产凭证、没去找）：工作时段 02:00–21:30；11/1 那周已发布；is_test 全 false；time_off 0 行。

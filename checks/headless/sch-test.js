@@ -474,6 +474,26 @@ async function run() {
   await evaluate("$btn('Close', document.querySelector('[role=dialog]')).click();");
   await waitFor("!document.querySelector('[role=dialog]')");
   check("取消勾：Test 标签没了，周一的空档也没了", await waitFor("![...document.querySelectorAll('[data-sch-grid] [data-test-tag]')].length && !document.querySelector('[data-grid-gap=\"2026-10-05\"]')"));
+
+  // 不算值班人头（Annie 2026-11-02「Anita不算的」「把Anita从统计中拿出来」）：Employees 每人一个勾 Counts toward coverage，默认勾上。
+  await evaluate("$btn('Employees').click();");
+  await waitFor(`${empRow(5)}`);
+  check("Employees 框每个人一个勾「Counts toward coverage」，默认勾上（字段没带 = 算）", await evaluate(`return [1,2,3,4,5].every((id) => { const c = document.querySelector('[role=dialog] [data-employee-row="' + id + '"] [data-counts-coverage]'); return !!c && c.checked; }) && ${empRow(5)}.textContent.includes('Counts toward coverage');`));
+  let ncFrom = (await mockLog()).length;
+  await evaluate(`${empRow(5)}.querySelector('[data-counts-coverage]').click();`);
+  check("取消 Anita：PUT {counts_for_coverage:false}，名字旁出琥珀色 Not counted", (await waitFor(`!${empRow(5)}.querySelector('[data-counts-coverage]').checked && !!${empRow(5)}.querySelector('[data-not-counted-tag]')`)) && JSON.stringify((await since(ncFrom, (e) => e.method === "PUT" && e.path === "/api/schedule/employees/5"))[0]?.body) === '{"counts_for_coverage":false}');
+  await evaluate("$btn('Close', document.querySelector('[role=dialog]')).click();");
+  await waitFor("!document.querySelector('[role=dialog]')");
+  check("排班表：Anita 名字旁 Not counted、她的班卡变淡虚线；周六只有她的 2:00–11:30 AM 出空档", (await waitFor(`!!document.querySelector('[data-grid-gap="2026-10-10"]')`)) && (await evaluate(`const row = [...document.querySelectorAll('[data-sch-grid] .sticky')].find((r) => r.textContent.includes('Anita')); const card = ${cell("5|2026-10-10")}.querySelector('[data-slot-id]'); return !!row.querySelector('[data-not-counted-tag]') && card.dataset.notCounted === 'true' && card.className.includes('border-dashed') && document.querySelector('[data-grid-gap="2026-10-10"]').textContent.includes('Gap 2–11:30 AM');`)), await evaluate("return document.querySelector('[data-grid-gap=\"2026-10-10\"]')?.textContent;"));
+  await evaluate("document.querySelector('[data-day-tab=\"2026-10-10\"]').click();");
+  check("Day timeline 周六：Anita 的条子斜纹写 not counted，多一行 Nobody 2:00 AM – 11:30 AM", await waitFor("[...document.querySelectorAll('[data-not-counted]')].some((b) => b.textContent === 'not counted') && [...document.querySelectorAll('[data-nobody-row]')].some((r) => r.textContent.includes('2:00 AM') && r.textContent.includes('11:30 AM'))"));
+  await evaluate("$btn('Employees').click();");
+  await waitFor(`${empRow(5)}`);
+  await evaluate(`${empRow(5)}.querySelector('[data-counts-coverage]').click();`);
+  await waitFor(`${empRow(5)}.querySelector('[data-counts-coverage]').checked`);
+  await evaluate("$btn('Close', document.querySelector('[role=dialog]')).click();");
+  await waitFor("!document.querySelector('[role=dialog]')");
+  check("勾回去：Not counted 没了，周六的空档也没了", await waitFor("!document.querySelector('[data-sch-grid] [data-not-counted-tag]') && !document.querySelector('[data-grid-gap=\"2026-10-10\"]') && !document.querySelector('[data-not-counted]')"));
   await evaluate("$btn('Employees').click();");
   await waitFor(`${empRow(5)}`);
   await evaluate(`$btn('Edit', ${empRow(5)}).click();`);
@@ -950,6 +970,16 @@ async function run() {
   await openPage(`${APP}/schedule?week=2026-10-04`);
   await waitFor(`${cell("4|2026-10-05")}`);
   check("staff 能看已发布的这一周（不是 403 提示）", !(await text()).includes("hasn't been published"));
+  // 不算值班人头只在管理面标（Annie 11-02「Anita-not counted只在管理面出现，员工界面不要显示这个说明，就放正常的名字就好」）。
+  await ctl({ role: "supervisor" });
+  await fetch(`${MOCK}/api/schedule/employees/5`, { method: "PUT", body: JSON.stringify({ counts_for_coverage: false }) });
+  await ctl({ role: "staff" });
+  await openPage(`${APP}/schedule?week=2026-10-04`);
+  await waitFor(`${cell("5|2026-10-10")}?.querySelector('[data-slot-id]')`);
+  check("staff：Anita 设成不算人头，员工看到的排班表 / Day timeline 只有正常名字，没有 Not counted、班卡和条子照常", await evaluate("return !document.querySelector('[data-not-counted-tag]') && !document.querySelector('[data-not-counted]') && !document.body.innerText.includes('not counted') && !document.body.innerText.includes('Not counted') && [...document.querySelectorAll('[data-sch-grid] .sticky')].some((r) => r.textContent.trim() === 'Anita');"));
+  await ctl({ role: "supervisor" });
+  await fetch(`${MOCK}/api/schedule/employees/5`, { method: "PUT", body: JSON.stringify({ counts_for_coverage: true }) });
+  await ctl({ role: "staff" });
   check("staff 看不到 Send to confirm、N changes、改过的格子框", await evaluate("return !document.querySelector('[data-person-changes]') && !document.querySelector('[data-send-to-confirm]') && !document.querySelector('[data-changed]');"));
   check(
     "staff 看不到 Publish / Add employee / + / × / Unassigned",

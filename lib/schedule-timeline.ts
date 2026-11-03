@@ -1,6 +1,14 @@
 import { minutesOf } from "@/lib/schedule-time";
 import type { ScheduleEmployee, ScheduleSlot } from "@/types";
 
+/**
+ * 这个人的班算不算值班（检查空档用）：测试的人（is_test）和设成不算人头的人（counts_for_coverage = false）都不算。
+ * 前端自己算空档的地方（week-draft localGaps、下面的 gapsOf）都用这一份，同后端 _week_gaps。
+ */
+export function coversGaps(e: ScheduleEmployee): boolean {
+  return !e.is_test && e.counts_for_coverage !== false;
+}
+
 export interface TimelineBar {
   employee: ScheduleEmployee;
   slot: ScheduleSlot;
@@ -71,6 +79,7 @@ export function gapsOf(
   windowEndMin: number,
 ): { startMin: number; endMin: number }[] {
   const covered = bars
+    .filter((b) => coversGaps(b.employee))
     .map(
       (b) =>
         [

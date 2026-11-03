@@ -37,6 +37,11 @@ export interface ScheduleEmployee {
    * 后端 schedule_employees.is_test（57 在做，要迁移）；没带 = 不是。
    */
   is_test?: boolean;
+  /**
+   * 算不算值班人头（Annie 2026-11-02「Anita不算的」「把Anita从统计中拿出来」）：false = 她的班照常排、照常显示、照常通知，
+   * 只是检查空档时不算覆盖（同 is_test 那样排除）。后端 schedule_employees.counts_for_coverage（9e 在做）；没带 = true。
+   */
+  counts_for_coverage?: boolean;
 }
 
 /** PUT /api/schedule/employees/{id} 的请求体（supervisor 及以上）：没传的字段不动；email 传空字符串 = 清掉。 */
@@ -45,6 +50,7 @@ export interface ScheduleEmployeeUpdate {
   email?: string;
   is_active?: boolean;
   is_test?: boolean;
+  counts_for_coverage?: boolean;
 }
 
 /** GET /api/schedule/employees 的返回体（包了一层）。 */
