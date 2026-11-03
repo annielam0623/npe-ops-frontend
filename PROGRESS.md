@@ -18,6 +18,18 @@
 - 检查：orders / man / mt / tt / fod / fr 各加「没勾 / 勾了 / Super Admin」（orders 还测旧后端照样给数据时前端自己藏）；原来按勾的几组补上 orders.money_view；partner 订单详情改成不出 Price 卡；共用 staff-perm-mock.js 加 ctl.extraWidgets（带别的页面开关）。上传表头的词照后端 36 审查后的清单（Order Total / Subtotal / Due / Discount / Coupon / Tax / Surcharge / Voucher / Net / Retail / Fee / Payable / Revenue / Source / Sales Channel / Supplier 整词比，Agent / Price / Paid… 字串比），用 Annie 给的两份 Rezdy CSV 的全部表头核过。
 - 结果（合最新 main 191f635 后）：orders 46/46、man 346/346、mt 218/218、tt 137/137、tk 135/135、fod 48/48、fr 24/24、perm 54/54、nav 38/38、da 454/454；tsc 0 错、eslint 0 错（2 个旧 warning）、build 过。
 
+## 2026-11-02 晚 Staff Schedule：员工行拖动排顺序（`task/schedule-row-order`，从 coverage-flag 分支接着开，工作窗口 `npe-ops-frontend-39`[36b630]，主窗口 f8 派）—— 后端 7c976175 上 main 后合 main（2026-11-02 晚）
+- Annie 原话（39 窗口）：「第7按B，其他都按推荐。东松户」「动手」。preview https://claude.ai/artifact/PCJkqu6KRWreA1EzMkJRk8 。即 ① 跟 schedule.edit 走 ② 全公司一份 ③ 每周同一个顺序、不算排班改动 ④ 新加 / 重新启用排最后 ⑤ 手机不拖 ⑥ 自己那行固定最上面、不拖 ⑦ **只排班表这一张**照这个顺序，别处照旧按名字。
+- 后端（fc 定）：GET employees 按 sort_order, name, id 排、每人带 sort_order；PUT /api/schedule/employees/order {"employee_ids":[在用的人整份]} → {"employees":[…]}，缺 / 多 / 重复 400 原话；不动 version、不发通知。
+- 前端：排班表名字左边把手 ⠿（max-sm:hidden），按住拖到别人那一行前 / 后，蓝线标落点；拖过的行琥珀框；并进同一个 Save / Discard（Save 先存这一周的班，再 PUT order；「Not saved yet: staff order changed」；离开页面照旧拦）；拖回原位当没改；顺序草稿换周也留着。`employees` 在页面里一律按名字排（Day timeline、Employees 窗口、Auto-fill、Responses），只有排班表另按 sort_order；Dashboard 的 Schedule / Today's team 也改成自己按名字排（`lib/schedule-timeline.ts sortByName`），因为接口会按 sort_order 回（f8 提醒）。有把手时 Staff 表头左边距 40px，名字对齐。
+- 检查：sch 加 13 条（照 sort_order 排 + 把手；拖 Anita 到 Lizzie 前：蓝线、琥珀框、不发请求；Not saved yet；格子不接员工行；Employees 窗口按名字；Save 一次 PUT 整份、不碰 /changes；别的周同顺序；Discard；拖回原位；400 原话；自己固定最上面无把手；员工无把手同顺序；手机无把手），Dashboard 那条改成按名字（Jing,Anita,Lizzie,Nadia,Veronica,…）。sch 341/341、dr 88/88、tasks 144/144；tsc / eslint（0 错）/ build 过。
+
+## 2026-11-02 晚 Staff Schedule：某些员工不算值班人头（`task/schedule-coverage-flag`，工作窗口 `npe-ops-frontend-39`[36b630]，主窗口 f8 派）—— 后端 7c976175 上 main 后合 main（2026-11-02 晚）
+- Annie 原话（f8 窗口）：「Anita不算的」「把Anita从统计中拿出来」（f8 当动手）；39 窗口：「Anita-not counted只在管理面出现，员工界面不要显示这个说明，就放正常的名字就好」。preview https://claude.ai/artifact/QM4TTYGRUjuu3kUWLoeGD3 （按人设、权限跟 schedule.edit 已定；题 ② 标不标、③ 已发布周通不通知等 Annie）。
+- 后端（fc 定，9e 转）：employees 每人带 counts_for_coverage；PUT /api/schedule/employees/{id} 收 {"counts_for_coverage": bool}；false 或 is_test 的人的班在空档判断里当没排人；不动 version、不发通知。
+- 前端：Employees 窗口每人一个勾「Counts toward coverage」（默认勾、点一下就存，同 Test person），取消后名字旁琥珀色「Not counted」；`lib/schedule-timeline.ts coversGaps()`（is_test 或 counts_for_coverage=false 都不算），week-draft localGaps（经 schedule-view 的排除名单）和 gapsOf 都用它；周表 Not counted 小标 + 班卡淡虚线、Day timeline 条子斜纹写 not counted —— 只给能改排班的人看，员工看到的是正常名字（Annie 原话）。字段没带当 true。Dashboard 不变。
+- 检查：sch 加 6 条（默认勾上；取消 PUT 形状 + 标签；周表标记 + 周六出空档；Day timeline 斜纹 + Nobody 行；勾回去恢复；staff 看不到任何标记），sch 328/328；tsc / eslint（0 错）/ build 过。
+
 ## 2026-11-02 晚 Bus Manifest 对照纸本 PDF 逐字段核对（工作窗口 `npe-ops-frontend-0e`[d96681]，主窗口 f8 派）—— 只核对，没改代码
 - Annie 原话（f8 窗口）：「请按照这个PDF的样子，逐个检查现在bus manifest里的字段，一一核实」；随后「核心问题是：在bus manifest底部的灰色汇总框里，把Antelope的表格变成所有tour的样本了，这是错误的，每个tour的汇总表都不一样」；「另外，hooverdam在bus manifest那里已经设置好分小节了」。
 - PDF 原件在 `C:\Users\annzh\Downloads\4796_001.pdf`（10/6/2026，13 页，10-27 Annie 发 74 时留下的），0e 逐页渲染对原图核。
@@ -71,7 +83,17 @@
   - 范围扩大（Annie 在 36，9e 转，原话）：「除了客人的基本信息，CCL看不到任何有价格的信息」，随后「动手」⇒ 一切价格都藏（Manifest money 组、CHD amount / paid / due、订单详情 price、Rezdy 快照金额、Farm out 价格、报表金额）。勾改名 orders.money_view「See prices, agent & commission」（orders.agent_view 作废），新账号默认不带，只在 CCL 一个 team 的人不勾。CCL 5 个账号没有 orders.view，会漏价格的是 Manifests、Dispatch、Forecast、Reports（含 Farm out CSV）、Morning tracking。36 已开工，迁移 v142 要 Annie 执行，预计明天上线。藏键清单定了 9e 转 f8，再派前端。
   - 验收口径（Annie 在后端主窗口原话）：「manifest，dispatch等任何有价格的那一栏都隐藏起来他们点击或添加都不行就可以了」⇒ 没勾的人价格栏整栏不出，Columns 里也加不上、点不进；后端 catalog 不给、请求了进 denied。
   - 36 藏键清单定稿（task/agent-view 177a83b3，未进 main）：读 /api/me/permissions 的 orders.money_view（或 is_superadmin）；manifests money 组 + agent 等、orders agent_name、订单详情 price、dispatch guest_paid / farm_out payable_*、farm-out PATCH payable 403、farm-out report 403、Sales Report 403、morning tracking agent_name、tour / tickets tracking 去价格列、bookings agent_name。已派 0e（task/money-view-hide），⚠️ 只能跟后端同时或晚于后端合 main。
+  - ✅ 后端已上 main 8e9a9a58（合并 32a4dd4a，SA-7 修复 b43b9135），v142 Annie 已执行（21 人勾上，CCL 5 人没勾）。已请 0e 合 task/money-view-hide。
+  - 0e 做完 task/money-view-hide 18d4b0b（没合，等 v142 SHA）：usePermissions().canSeeMoney、lib/money-view.ts；藏 Orders / 订单详情 / 搜索 / Main manifest 金额 + 代理商 / CHD 金额 / Dispatch Farm out Payable / Farm out Report / Sales Report / Morning / Tour / Tickets tracking；Forecast 没价格。检查 orders 46、man 346、mt 218、tt 137、tk 135、fod 48、fr 24、perm 54、nav 38、da 454，tsc / eslint / build 过。f8 定：Supplier › Partners 合作方价格表也藏（照 Annie「任何有价格的信息」），0e 补前端，已请 9e 后端一起拦。36 并进 agent-view（e37835a8）：partners/{id}/rates、rates/import/preview / commit 没勾 403；settings/action-log 去 rates:<id> 条目（一页可能少于 limit，照 next_cursor 翻）；partners / locations / timetable / tour-meta 照旧。已转 0e 核。
+    - 0e 再推 task/money-view-hide 0f35bae（仍不合）：Partners 没勾不请求 rates、不出价格列 / 行 / Import rates，标题「Partners」；共用 Action Log 面板修了一页条目全被拿掉时写「No changes recorded yet.」的问题（0 条且有 cursor 自动接着翻，最多 20 页）。fo-settings 132、pl 105、products 231、hr 62、as 69，tsc / build 过。
   - 36 审后 3 处更新（已转 0e）：订单 activity_log 金额条目 detail 换「(price details hidden)」；tracking 再去 Order Total / Subtotal / Due / Discount / Coupon / Tax / Surcharge / Voucher / Net / Retail / Fee / Payable / Revenue / Source / Sales Channel / Supplier；partner 在 tracking 也去代理商列。后端审完，等 fc v141 落地才提交 v142，预计明天上线。
+- relay 司机标的状态办公室能不能看到（Annie 在 9e 问）：f8 只读核——ops Morning Relay 只出红「No show」，picked_up 不显示，不自动刷新，没有通知。已回 9e。
+- 新功能（Annie 在后端主窗口原话，9e 转）：「我们要不啊再出一个版本的页面，就跟司机看到的页面一样，每个司机占一列，他所有的行动都显示出来」，另说「我刚才说了」（不用再问做不做）。⇒ 派 39 出 preview（办公室看当天每个司机一列：客人 + Picked up / No show + 时间；题：放哪、谁能看、刷新频率、显示时间 / 历史、团车导游的 Boarded 算不算、No show 提醒）。后端要只读接口，标记时间存不存 9e 在查。
+  - Annie 补（后端主窗口原话）：「把各个司机的手机页面都显示出来，并列在页面上」⇒ 每列 = 司机手机页原样，并排，只读，staff 不能代点。后端出 staff 只读接口，复用司机页取数。已转 39。
+  - 39 preview：https://claude.ai/artifact/TwJJ32NCdbTEnqxQcCX6MN （每列原样司机 / 导游手机页，只读按钮灰掉，深蓝列头）。后端现状：只存最新一次标记 + 时间 + 人，没有历史。10 题（推荐）：① Dispatch 加「③ Live drivers」（A）；② 跟 dispatch.view（A，要先检查就 B 开关）；③ 30 秒自动 + Refresh（A）；④ 标记后写时间（A）；⑤ 一辆车一列（A）；⑥ 步骤条旁红数字 No show 人数，不发通知（B）；⑦ 页顶统计行留（A）；⑧ 按开始时间排（A）；⑨ Messages 页签照留只读（A）；⑩ 按钮照画灰掉（A）。接口形状已转 9e 估工作量（GET /api/dispatch/live-drivers）。
+    - 9e 估：14–20 小时，不迁移，复用 /driver/preview、/guide/preview 取数。改题：⑤ 推荐一人一列（数据按人算）；② dispatch.view 在 partner 白名单里，页面带客人电话 / 短信 / 餐厅联系 ⇒ 新权限码或先只 Super Admin + 开关（推荐后者）；relay_status_at 要补；没连 HR 的司机列不出来；性能要加单次请求缓存。已请 39 改 preview。后端今晚 21:30 收工，派工在明天。
+    - Annie 问（f8 窗口原话）：「可以在页面上有no show的提醒么」⇒ 题 ⑥ 加 C：页顶红框逐个列 No show（车 / 司机 · 客人 · 酒店 · 时间 · 标的时间，点了滚到那行），步骤旁红数字，新出现的标 new，不发邮件 / 短信（推荐 C）。已请 39 加进 preview。
+    - preview 第 2 版（同链接）：② 改推荐 B（先只 Super Admin + 员工可见开关，默认关）；④ relay_status_at 后端要补，推荐 A 只写时间；⑤ 改推荐 A 一人一列（例 Kevin 先 relay 再 Bus A，Bus A 也出现在导游 Lily 那列）；⑥ 加 C 页顶红框（点了滚到那行标黄，新出现的闪三下带 NEW，改回 Picked up 就拿掉），推荐 C；⑦⑧ 和手机名字条都按人；没连 HR 的司机列不出来。等 Annie 答 + 动手。
 - 今晚在等 Annie 的，跟 24 交接第三节一样，不重问。
 
 ## 2026-11-02 收工交接：前端主窗口-24 [d1dbae]（公司）
@@ -465,8 +487,14 @@
     - Annie（0e 窗口原话）：「你把明天的行程用我们定下来的格式preview一次」⇒ 0e 用 11/3 真实数据画 v9 格式 preview（名字只留首字母、电话后 4 位）。已请 9e 只读导出到 C:\Users\annzh\AppData\Local\Temp\relay-2026-11-03.json（用完删）。
       - 36 已导（遮过）：第一轮 3 台车（1724 Bruce O / 1725 David H / 2356 Dan A）0 客人——明天站点 staff 还没在排车页存；need_a_look 50 位；Tour bus pick up 1955 Dan A Hoover 6 位；bus_tour 5 辆（South Rim 2622 没字母等）。relay 车 2356 同时是 Antelope A 大巴。已转 0e 照实画（空车写 no pickup stop yet），站点存好可重导。
       - 0e 11/3 真实数据 preview：https://claude.ai/artifact/Fi5ncf4fyfBVhUhZyeEYA5 （遮过）。json / 截图已删。新加后端：relay-pull 每位客人加 hotel_short（同 Bus Manifest），已转 9e。
+      - Annie（0e 窗口原话）：「导游的pick up网页版需要知道客人参加的tour是哪个，可以用简写」⇒ B6：后端 /guide 页每位客人加 product_short，已转 9e / fc（v11）。
+      - Annie（f8 窗口原话）：「这个需要加到司机的页面上：在订单号旁边需要把客人的tour名字加上去，可以用简写」⇒ B5 定位置：/driver 页每位客人订单号旁加 product_short（relay 车和团车都加），导游页同放订单号旁。已转 9e / fc，明天做。
+      - Annie 定简称（f8 窗口原话）：「South，West，Lower，Upper，CanyonX，BZ」⇒ 取代纸本的 GC South / LOWER / UPPER / X。v143 预填：South Rim = South、West Rim = West、Bryce&Zion = BZ；Antelope 节 LOWER = Lower、UPPER = Upper、Canyon X = CanyonX；其他团不预填。已转 9e、0e。
+      - Annie（原话）：「因为Hoover没有relay司机，所以不需要，本来就是他们的tour bus去接的」⇒ Hoover 不设简称；司机页 / 导游页订单号旁只在设了简称时才显示，不回落全名；Relay 打印单照旧回落。已转 9e。
+      - fc（task/relay-print 93f2c9fc）：客人加 short_tag（没设 = ""，不回落，司机 / 导游页用），打印单用 product_short；v143 已按新简称填。司机页 / 导游页模板那部分后端在等 Annie 在后端窗口回范围「同意」。
+      - 0e 前端推 task/relay-print 3a7021f（没合，等 fc + v143）：新页 /dispatch/relay-list（每轮总表 + 每车分表，A4 竖向）、Morning Relay「📋 Relay list」键 + 每车 Print、Bus Manifest setup 加 Short name（团 + 节，暂存 + Save）。rl 26、products 237、da 457、nav 38，tsc / eslint / build 过。hotel_short 键名请 fc 确认（已问 9e）。
     - Annie 补（0e 转，原话）：「排完relay并保存了以后，应该加一个按键显示这些relay的list」⇒ 题 1 的键改成「📋 Relay list」：先在屏幕上看总表 + 每车分表，要纸在那页按 Print；显示已保存的排车，有没存的改动先问 Save first?（v10，不影响后端）。
-    - fc 字段名定（已转 0e）：manifest-setup groups[] 加 short_name、section_short_names；PUT …/groups/{id}/short-name、…/section-short-name（前端按 Save 再逐个 PUT）；relay-pull guests 加 phone / manifest_id / product_short / bus{label, tour, tour_short, sections[{name, short, color}], driver, guide, van, color}，car 加 location_ids / tour_buses。迁移 v143（Annie 执行，排 v141 / v142 后）。
+    - fc 字段名定（已转 0e）：manifest-setup groups[] 加 short_name、section_short_names；PUT …/groups/{id}/short-name、…/section-short-name（前端按 Save 再逐个 PUT）；relay-pull guests 加 phone / manifest_id / product_short / bus{label, tour, tour_short, sections[{name, short, color}], driver, guide, van, color}，car 加 location_ids / tour_buses。迁移 v143（Annie 执行，排 v141 / v142 后）。「This van is on 2 tour buses today.」改放 car.print_warnings（不放 problems，免得挡发送）。后端 WIP task/relay-print 459edd0c，今晚 21:30 停，明天接着。
   - 另：ops 标黄规则「带 + 就亮黄」会让 West 所有 Premium (Skywalk+Voucher) 行都亮黄，纸本不标（并进其余 12 页差别 ③）。
 - 36 查回：Hoover 节 = HD Highlights（8 个，PJ0LQF internal_name 写「West Rim」疑似填错）/ HD Generator（5 个，票型「+ Generator」）/ HD RAFT（2）/ BOULDER CITY（2）；另有独立 manifests 35 Boulder_City（PV3Y0U）。HIGHLIGHTS / GENERATOR / RAFTING 对得上。题 ④ 改成 3 小题：④a PJD1EQ 的 Upgrade 票型算不算 GENERATOR；④b BOULDER SHUTTLE 数 Hoover 的 BOULDER CITY 节还是 PV3Y0U；④c RAFT SHUTTLE 生产里没有对应产品，怎么算。已转 0e 更新报告。
 
@@ -482,6 +510,10 @@
 - Annie 在 39 窗口答（原话）：「第7按B，其他都按推荐。」「动手」⇒ ①–⑥ A，⑦ B（只改排班表，Day timeline / Dashboard 照旧按名字，前端自己排）。后端已转 9e（sort_order + PUT /api/schedule/employees/order）；39 在 task/schedule-row-order 用 mock 写，后端上线后合。
 - G231 后端已上 main eba1c421（9e 转）：GET /api/team/directory {teams:[{id,name,member_count}], people:[{id, display_name, kind, teams, online}]}；POST /api/team/messages {to_user_id | to_team_id, body} → {ok, id, emailed, recipients, emailed_count}；POST …/{id}/reply {body} → {ok, id, recipients}；GET …/{id}/thread → {root:{…, to_team_id, to_team_name}, replies:[{id, from_display_name, from_kind, body, created_at}]}；notices ref 多 from_kind / to_team_id / to_team_name / thread_root_id。前端 Notice-CCL（置顶 48，preview e6）还等 Annie「动手」，动手后派新窗口。Lunch 和 CHD 由 36 依次推。
 - 39 两件写好在分支（没合，等后端 schedule-employee-flags 上 main）：task/schedule-coverage-flag cbddbe6（Annie 在 39 窗口补原话「Anita-not counted只在管理面出现，员工界面不要显示这个说明，就放正常的名字就好」，已照做）；task/schedule-row-order cbada82（接在前一个后面，先合 1 再合 2）。sch 341、dr 88、tasks 144，tsc / eslint / build 过。不算人头 preview 题 ② ③ 仍等 Annie（代码按推荐写）。
+- 排班页两个 Edit（Annie 在 9e 问）：f8 只读核——「Default shift times」Edit 只改新班的默认时间，不改已排的班、不影响空档；右上角「Working hours」Edit 才是 work_window（空档按它算）。Annie 原话（后端主窗口）：「所以两个edit，到底哪个管用」「而且排列得左一个又一个的，可以集中在一起管各自不同的功能么」⇒ 改样子，派 39 出 preview（设置集中一处，每块一句话说清管什么，暂存 + Save）。没动手。
+  - 39 preview：https://claude.ai/artifact/97MgNcpw28p7W4DxXmpgrM 。6 题（推荐）：① 工具条「⚙ Settings」键 + 弹窗（A）；② 页面留一行只读 Working hours（A）；③ Employees 窗口不搬（A）；④ Rules 不搬（A）；⑤ Super Admin 能改、排班人只读打开（B）；⑥ 贴着 Working hours 头尾的空档补「(working hours end 9:30 PM)」（A）。不需要后端。等 Annie 答 + 动手。
+- ✅ 排班前端两件已上 main（39）：不算人头 e1029ac（sch 328、dr 88、tasks 144）、拖行排序 96e142c（sch 341、dr 88、tasks 144），tsc / eslint / build 过，已对后端真实形状核过。等 Annie 在 Employees 窗口取消 Anita 的「Counts toward coverage」。
+- ✅ 排班后端已上 main 7c976175（合并 1727bac3，v141 Annie 已执行）。已请 39 先合 coverage-flag 再合 row-order，报 SHA；不算人头题 ② ③ 照推荐上。合后请 Annie 在 Employees 窗口取消 Anita。
 - 9e 回：counts_for_coverage + sort_order 合成一个包由 fc 做，迁移 v141（Annie 执行后推代码），排在 G231 后；题 8 orders.agent_view 迁移改成 v142。
 - Annie 原话（f8 窗口）：「帮忙把staff schedule的每个人的row改成可拖拽」。
 - 39 preview：https://claude.ai/artifact/PCJkqu6KRWreA1EzMkJRk8 （电脑 4 张 / 手机 3 张，模拟数据）。现状：行按名字 A→Z（后端 schedule.py:275），自己那行固定最上，能改的人最上面多 Unassigned；没有顺序字段 / 接口。改法：名字左边把手 ⠿ 上下拖，暂存，并进现有 Save / Discard，挪过的行琥珀边框。

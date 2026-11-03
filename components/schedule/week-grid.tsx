@@ -6,6 +6,7 @@ import { laToday, shiftYmd } from "@/lib/la-date";
 import { gapRangeShort } from "@/lib/schedule-gaps";
 import { readRecentShifts, type RecentShift } from "@/lib/schedule-recent";
 import { formatClock, hasBadTimeRange } from "@/lib/schedule-time";
+import { coversGaps } from "@/lib/schedule-timeline";
 import { cn } from "@/lib/utils";
 import type {
   ScheduleEmployee,
@@ -29,7 +30,7 @@ import {
   TIME_OFF_LABEL,
 } from "./config";
 import { sentTime } from "./send-changes-dialog";
-import { TestTag } from "./employees-dialog";
+import { NotCountedTag, TestTag } from "./employees-dialog";
 import { TimeEditPopup } from "./time-edit-popup";
 import { gapSentence, type SlotMark } from "./week-draft";
 
@@ -93,10 +94,18 @@ interface WeekGridProps {
    * 没存的不在里面（Annie 2026-10-30 置顶 12「同意」，方案 A）。
    */
   sendBlocked?: boolean;
+  /**
+   * 拖员工行排顺序（Annie 2026-11-02「第7按B，其他都按推荐」「动手」，preview PCJkqu6KRWreA1EzMkJRk8）：
+   * 把 dragId 那一行放到 targetId 那一行前面（after = 后面）。只给能改排班的人传；手机上不拖（题 ⑤A），自己那一行不拖（题 ⑥A）。
+   */
+  onReorder?: (dragId: number, targetId: number, after: boolean) => void;
+  /** 换过位置、还没存的行：琥珀色框（同改过的班）。 */
+  movedRows?: ReadonlySet<number>;
 }
 
 const COLS = "grid-cols-[130px_repeat(7,minmax(118px,1fr))]";
 const SLOT_MIME = "text/slot";
+const ROW_MIME = "text/sch-row";
 
 /**
  * 排班表：一行一个人、一列一天（Annie 2026-10-17 看预览定：员工一眼看到自己这周几点上班）。
@@ -129,7 +138,15 @@ export function WeekGrid({
   pendingChanges,
   onSendChanges,
   sendBlocked = false,
+  onReorder,
+  movedRows,
 }: WeekGridProps) {
+  // 拖员工行：正拖着哪一行、放下会落在哪一行的前 / 后（蓝线）。
+  const [rowDrag, setRowDrag] = useState<number | null>(null);
+  const [rowDrop, setRowDrop] = useState<{
+    id: number;
+    after: boolean;
+  } | null>(null);
   const [selectedSlotId, setSelectedSlotId] = useState<number | null>(null);
   // 改时间的小窗（A8）：哪一张卡、卡片元素（量位置）。同一时间只开一个。
   const [timeEdit, setTimeEdit] = useState<{
@@ -151,6 +168,12 @@ export function WeekGrid({
   const unassigned = slots.filter((s) => s.employee_id == null);
   const showNeeds = canEdit || unassigned.length > 0;
   const activeShiftTypes = shiftTypes.filter((t) => t.is_active);
+  // 不算值班人头的人（Annie 11-02「Anita不算的」）：只给能改排班的人标（员工本来看不到空档）；测试的人已经有 Test 标签。
+  const notCounted = new Set(
+    canEdit
+      ? employees.filter((e) => !e.is_test && !coversGaps(e)).map((e) => e.id)
+      : [],
+  );
 
   function dropOn(slotId: number, date: string, employeeId: number | null) {
     const slot = slotById.get(slotId);
@@ -218,6 +241,9 @@ export function WeekGrid({
               slot.shift_type
             }
             canEdit={canEdit}
+            notCounted={
+              slot.employee_id != null && notCounted.has(slot.employee_id)
+            }
             selected={selectedSlotId === slot.id}
             mark={marks?.get(slot.id)}
             error={errorSlotId === slot.id}
@@ -260,7 +286,13 @@ export function WeekGrid({
   return (
     <div className="overflow-x-auto p-3" data-sch-grid>
       <div className={cn("grid min-w-[960px] gap-[2px]", COLS)}>
-        <div className="pb-1.5 pl-[25px] text-[11px] font-bold tracking-[.06em] text-white/90 uppercase">
+        <div
+          className={cn(
+            "pb-1.5 text-[11px] font-bold tracking-[.06em] text-white/90 uppercase",
+            // 有拖动把手时名字往右挪了一个把手宽，表头跟着对齐（手机上没有把手）。
+            onReorder ? "pl-[40px] max-sm:pl-[25px]" : "pl-[25px]",
+          )}
+        >
           Staff
         </div>
         {dates.map((date, i) => (
@@ -319,6 +351,36 @@ export function WeekGrid({
             key={e.id}
             employee={e}
             mine={e.id === meId}
+            reorder={
+              onReorder
+                ? {
+                    // 自己那一行固定在最上面，不拖、也不当落点（题 ⑥A）。
+                    canDrag: e.id !== meId,
+                    dragging: rowDrag === e.id,
+                    dropLine:
+                      rowDrop?.id === e.id && rowDrag !== e.id
+                        ? rowDrop.after
+                          ? "after"
+                          : "before"
+                        : null,
+                    moved: !!movedRows?.has(e.id),
+                    onDragStart: () => setRowDrag(e.id),
+                    onDragEnd: () => {
+                      setRowDrag(null);
+                      setRowDrop(null);
+                    },
+                    onDragOver: (after) =>
+                      e.id !== meId && setRowDrop({ id: e.id, after }),
+                    onDrop: (dragId, after) => {
+                      setRowDrag(null);
+                      setRowDrop(null);
+                      if (e.id === meId || dragId === e.id) return;
+                      onReorder(dragId, e.id, after);
+                    },
+                  }
+                : undefined
+            }
+            notCounted={notCounted.has(e.id)}
             cells={dates.map((date) => renderCell(date, e.id))}
             change={pendingChanges?.find((p) => p.employee_id === e.id)}
             onSendChanges={
@@ -395,9 +457,23 @@ export function WeekGrid({
   );
 }
 
+interface RowReorder {
+  canDrag: boolean;
+  dragging: boolean;
+  /** 放下后落在这一行的前面 / 后面：画一条蓝线。 */
+  dropLine: "before" | "after" | null;
+  moved: boolean;
+  onDragStart: () => void;
+  onDragEnd: () => void;
+  onDragOver: (after: boolean) => void;
+  onDrop: (dragId: number, after: boolean) => void;
+}
+
 function PersonRow({
   employee,
   mine,
+  notCounted = false,
+  reorder,
   cells,
   change,
   onSendChanges,
@@ -405,27 +481,86 @@ function PersonRow({
 }: {
   employee: ScheduleEmployee;
   mine: boolean;
+  /** 检查空档时不算这个人（Employees 里取消了 Counts toward coverage）。 */
+  notCounted?: boolean;
+  /** 拖行排顺序（只给能改排班的人）。 */
+  reorder?: RowReorder;
   cells: React.ReactNode[];
   /** 这个人这周和上次发布不一样（Annie 10-29「员工确认」）。 */
   change?: SchedulePendingChange;
   onSendChanges?: () => void;
   sendBlocked?: boolean;
 }) {
+  const line = (
+    <div
+      data-row-drop-line
+      aria-hidden
+      className="col-span-full -my-[1px] h-[3px] rounded-full bg-sky-400 shadow-[0_0_6px_#38bdf8]"
+    />
+  );
   return (
     <>
+      {reorder?.dropLine === "before" ? line : null}
       <div
+        data-person-row={employee.id}
+        data-row-moved={reorder?.moved || undefined}
+        onDragOver={
+          reorder
+            ? (e) => {
+                if (!e.dataTransfer.types.includes(ROW_MIME)) return;
+                e.preventDefault();
+                const r = e.currentTarget.getBoundingClientRect();
+                reorder.onDragOver(e.clientY > r.top + r.height / 2);
+              }
+            : undefined
+        }
+        onDrop={
+          reorder
+            ? (e) => {
+                const id = Number(e.dataTransfer.getData(ROW_MIME));
+                if (!id) return;
+                e.preventDefault();
+                const r = e.currentTarget.getBoundingClientRect();
+                reorder.onDrop(id, e.clientY > r.top + r.height / 2);
+              }
+            : undefined
+        }
         className={cn(
           "sticky left-0 z-[1] flex flex-col justify-center rounded-[6px] px-2 py-1.5",
           mine ? "bg-[#0c2a3f]" : "bg-[#0b1727]",
+          reorder?.dragging && "opacity-40",
+          reorder?.moved && "ring-1 ring-amber-400",
         )}
       >
         <span className="flex items-center gap-[7px] text-[17px] leading-tight font-bold text-white">
+          {reorder ? (
+            reorder.canDrag ? (
+              // 拖动把手（preview ①）：按住上下拖；手机上不拖（题 ⑤A）。
+              <span
+                data-row-handle={employee.id}
+                draggable
+                title="Drag to change the order"
+                onDragStart={(e) => {
+                  e.dataTransfer.setData(ROW_MIME, String(employee.id));
+                  e.dataTransfer.effectAllowed = "move";
+                  reorder.onDragStart();
+                }}
+                onDragEnd={reorder.onDragEnd}
+                className="-ml-1 w-3 shrink-0 cursor-grab text-[14px] leading-none tracking-[-2px] text-white/40 select-none hover:text-sky-300 active:cursor-grabbing max-sm:hidden"
+              >
+                ⠿
+              </span>
+            ) : (
+              <span aria-hidden className="-ml-1 w-3 shrink-0 max-sm:hidden" />
+            )
+          ) : null}
           <span
             className="h-2.5 w-2.5 shrink-0 rounded-full"
             style={{ backgroundColor: personDotColor(employee.id) }}
           />
           <span className="min-w-0 break-words">{employee.name}</span>
           {employee.is_test ? <TestTag /> : null}
+          {notCounted ? <NotCountedTag /> : null}
         </span>
         {change && change.items.length > 0 && onSendChanges ? (
           <span
@@ -465,6 +600,7 @@ function PersonRow({
         ) : null}
       </div>
       {cells}
+      {reorder?.dropLine === "after" ? line : null}
     </>
   );
 }
@@ -502,6 +638,8 @@ function Cell({
       onDragOver={
         canEdit
           ? (e) => {
+              // 拖的是员工行（排顺序）不是班：格子不接。
+              if (e.dataTransfer.types.includes(ROW_MIME)) return;
               e.preventDefault();
               setDragOver(true);
             }
@@ -621,6 +759,7 @@ function SlotCard({
   slot,
   label,
   canEdit,
+  notCounted = false,
   selected,
   mark,
   error,
@@ -637,6 +776,8 @@ function SlotCard({
   slot: ScheduleSlot;
   label: string;
   canEdit: boolean;
+  /** 这个人不算值班人头：卡片变淡、虚线框（preview ②A）。 */
+  notCounted?: boolean;
   selected: boolean;
   /** 没存的改动（整周一个 Save）；undefined = 和库里一样。 */
   mark?: SlotMark;
@@ -675,6 +816,7 @@ function SlotCard({
         onSelect();
       }}
       data-slot-id={slot.id}
+      data-not-counted={notCounted || undefined}
       data-mark={deleted ? "deleted" : words.join(" ") || undefined}
       data-slot-error={error || undefined}
       className={cn(
@@ -683,6 +825,7 @@ function SlotCard({
           ? "border-dashed border-red-400/70 bg-red-500/[.1] text-red-200"
           : shiftCardClass(slot.shift_type),
         badRange && "border-amber-400/60 bg-amber-400/[.12]",
+        notCounted && "border-dashed opacity-55",
         // 没存的改动：琥珀框（同 Bus Manifest 那份）；删掉的灰掉、琥珀虚线，名字和时间划线。
         changed && "border-amber-400 ring-1 ring-amber-400/60",
         deleted &&

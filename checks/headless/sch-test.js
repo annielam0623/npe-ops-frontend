@@ -126,7 +126,8 @@ async function main() {
 }
 
 const cell = (key) => `document.querySelector('[data-cell="${key}"]')`;
-const rowNames = `[...document.querySelectorAll('[data-sch-grid] .sticky')].map(e => e.textContent.trim())`;
+// 拖行把手（⠿）不算名字。
+const rowNames = `[...document.querySelectorAll('[data-sch-grid] .sticky')].map(e => e.textContent.replace('⠿', '').trim())`;
 
 const mockLog = async () => (await fetch(`${MOCK}/__log`)).json();
 const since = async (n, f) => (await mockLog()).slice(n).filter(f);
@@ -474,6 +475,26 @@ async function run() {
   await evaluate("$btn('Close', document.querySelector('[role=dialog]')).click();");
   await waitFor("!document.querySelector('[role=dialog]')");
   check("取消勾：Test 标签没了，周一的空档也没了", await waitFor("![...document.querySelectorAll('[data-sch-grid] [data-test-tag]')].length && !document.querySelector('[data-grid-gap=\"2026-10-05\"]')"));
+
+  // 不算值班人头（Annie 2026-11-02「Anita不算的」「把Anita从统计中拿出来」）：Employees 每人一个勾 Counts toward coverage，默认勾上。
+  await evaluate("$btn('Employees').click();");
+  await waitFor(`${empRow(5)}`);
+  check("Employees 框每个人一个勾「Counts toward coverage」，默认勾上（字段没带 = 算）", await evaluate(`return [1,2,3,4,5].every((id) => { const c = document.querySelector('[role=dialog] [data-employee-row="' + id + '"] [data-counts-coverage]'); return !!c && c.checked; }) && ${empRow(5)}.textContent.includes('Counts toward coverage');`));
+  let ncFrom = (await mockLog()).length;
+  await evaluate(`${empRow(5)}.querySelector('[data-counts-coverage]').click();`);
+  check("取消 Anita：PUT {counts_for_coverage:false}，名字旁出琥珀色 Not counted", (await waitFor(`!${empRow(5)}.querySelector('[data-counts-coverage]').checked && !!${empRow(5)}.querySelector('[data-not-counted-tag]')`)) && JSON.stringify((await since(ncFrom, (e) => e.method === "PUT" && e.path === "/api/schedule/employees/5"))[0]?.body) === '{"counts_for_coverage":false}');
+  await evaluate("$btn('Close', document.querySelector('[role=dialog]')).click();");
+  await waitFor("!document.querySelector('[role=dialog]')");
+  check("排班表：Anita 名字旁 Not counted、她的班卡变淡虚线；周六只有她的 2:00–11:30 AM 出空档", (await waitFor(`!!document.querySelector('[data-grid-gap="2026-10-10"]')`)) && (await evaluate(`const row = [...document.querySelectorAll('[data-sch-grid] .sticky')].find((r) => r.textContent.includes('Anita')); const card = ${cell("5|2026-10-10")}.querySelector('[data-slot-id]'); return !!row.querySelector('[data-not-counted-tag]') && card.dataset.notCounted === 'true' && card.className.includes('border-dashed') && document.querySelector('[data-grid-gap="2026-10-10"]').textContent.includes('Gap 2–11:30 AM');`)), await evaluate("return document.querySelector('[data-grid-gap=\"2026-10-10\"]')?.textContent;"));
+  await evaluate("document.querySelector('[data-day-tab=\"2026-10-10\"]').click();");
+  check("Day timeline 周六：Anita 的条子斜纹写 not counted，多一行 Nobody 2:00 AM – 11:30 AM", await waitFor("[...document.querySelectorAll('[data-not-counted]')].some((b) => b.textContent === 'not counted') && [...document.querySelectorAll('[data-nobody-row]')].some((r) => r.textContent.includes('2:00 AM') && r.textContent.includes('11:30 AM'))"));
+  await evaluate("$btn('Employees').click();");
+  await waitFor(`${empRow(5)}`);
+  await evaluate(`${empRow(5)}.querySelector('[data-counts-coverage]').click();`);
+  await waitFor(`${empRow(5)}.querySelector('[data-counts-coverage]').checked`);
+  await evaluate("$btn('Close', document.querySelector('[role=dialog]')).click();");
+  await waitFor("!document.querySelector('[role=dialog]')");
+  check("勾回去：Not counted 没了，周六的空档也没了", await waitFor("!document.querySelector('[data-sch-grid] [data-not-counted-tag]') && !document.querySelector('[data-grid-gap=\"2026-10-10\"]') && !document.querySelector('[data-not-counted]')"));
   await evaluate("$btn('Employees').click();");
   await waitFor(`${empRow(5)}`);
   await evaluate(`$btn('Edit', ${empRow(5)}).click();`);
@@ -950,6 +971,16 @@ async function run() {
   await openPage(`${APP}/schedule?week=2026-10-04`);
   await waitFor(`${cell("4|2026-10-05")}`);
   check("staff 能看已发布的这一周（不是 403 提示）", !(await text()).includes("hasn't been published"));
+  // 不算值班人头只在管理面标（Annie 11-02「Anita-not counted只在管理面出现，员工界面不要显示这个说明，就放正常的名字就好」）。
+  await ctl({ role: "supervisor" });
+  await fetch(`${MOCK}/api/schedule/employees/5`, { method: "PUT", body: JSON.stringify({ counts_for_coverage: false }) });
+  await ctl({ role: "staff" });
+  await openPage(`${APP}/schedule?week=2026-10-04`);
+  await waitFor(`${cell("5|2026-10-10")}?.querySelector('[data-slot-id]')`);
+  check("staff：Anita 设成不算人头，员工看到的排班表 / Day timeline 只有正常名字，没有 Not counted、班卡和条子照常", await evaluate("return !document.querySelector('[data-not-counted-tag]') && !document.querySelector('[data-not-counted]') && !document.body.innerText.includes('not counted') && !document.body.innerText.includes('Not counted') && [...document.querySelectorAll('[data-sch-grid] .sticky')].some((r) => r.textContent.trim() === 'Anita');"));
+  await ctl({ role: "supervisor" });
+  await fetch(`${MOCK}/api/schedule/employees/5`, { method: "PUT", body: JSON.stringify({ counts_for_coverage: true }) });
+  await ctl({ role: "staff" });
   check("staff 看不到 Send to confirm、N changes、改过的格子框", await evaluate("return !document.querySelector('[data-person-changes]') && !document.querySelector('[data-send-to-confirm]') && !document.querySelector('[data-changed]');"));
   check(
     "staff 看不到 Publish / Add employee / + / × / Unassigned",
@@ -1273,7 +1304,7 @@ async function run() {
   const dash = `document.querySelector('[data-dashboard-schedule]')`;
   check("Dashboard 有单独的 Schedule 区块、标题带日期范围", await waitFor(`${dash} && ${dash}.textContent.includes('Schedule · Oct 4 – Oct 10')`));
   const dashNames = await evaluate(`return [...${dash}.querySelectorAll('.w-max > div')].filter((d) => d.className.includes('min-h-[56px]') && d.className.includes('px-2')).map((d) => d.textContent.trim()).join(',');`);
-  check("一行一个人：自己（Jing）在最上面，其他人在后面", dashNames === "Jing,Veronica,Lizzie,Nadia,Anita,ZZ Test Helper", dashNames);
+  check("一行一个人：自己（Jing）在最上面，其他人按名字排（接口按排班表的 sort_order 回，Dashboard 照旧按名字，拖行题 ⑦B）", dashNames === "Jing,Anita,Lizzie,Nadia,Veronica,ZZ Test Helper", dashNames);
   check(
     "列宽 122px、格子高 ≥ 56px（Annie 看预览定的）",
     await evaluate(`
@@ -1638,12 +1669,89 @@ async function run() {
   await evaluate("document.querySelector('[data-week-discard]').click();");
   check("Discard：改动和上次被拒的红框一起清掉", await waitFor("!document.querySelector('[data-unsaved-summary]') && !document.querySelector('[data-save-rejected]') && !document.querySelector('[data-save-error]')"));
 
+  // ── 拖员工行排顺序（Annie 2026-11-02「第7按B，其他都按推荐」「动手」，preview PCJkqu6KRWreA1EzMkJRk8）──
+  // 全公司一份、每周一样（②③A），跟 schedule.edit 走（①A），手机不拖（⑤A），自己那行固定最上面不拖（⑥A），只排班表照这个顺序（⑦B）。
+  await ctl({ role: "supervisor", meName: "", orderFail: false });
+  await openPage(`${APP}/schedule?week=2026-09-27`);
+  await waitFor("document.querySelector('[data-row-handle]')", 30000);
+  const activeIds = (await (await fetch(`${MOCK}/api/schedule/employees`)).json()).employees.map((e) => e.id);
+  const gridIds = () => evaluate("return [...document.querySelectorAll('[data-person-row]')].map((r) => Number(r.dataset.personRow));");
+  check("排班表的行照接口的 sort_order 排；能改排班的人每行名字左边一个把手 ⠿", JSON.stringify(await gridIds()) === JSON.stringify(activeIds) && (await evaluate(`return ${JSON.stringify(activeIds)}.every((id) => document.querySelector('[data-row-handle="' + id + '"]')?.textContent.trim() === '⠿');`)), JSON.stringify(await gridIds()));
+  // headless 里原生拖拽不好模拟：用同一个 DataTransfer 依次派 dragstart → dragover → drop → dragend。
+  const dragRow = (from, to, after) => evaluate(`
+    const dt = new DataTransfer();
+    const h = document.querySelector('[data-row-handle="${from}"]');
+    h.dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer: dt }));
+    await new Promise((res) => setTimeout(res, 100));
+    const t = document.querySelector('[data-person-row="${to}"]');
+    const r = t.getBoundingClientRect();
+    const y = ${after ? "r.bottom - 2" : "r.top + 2"};
+    t.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: dt, clientX: r.left + 5, clientY: y }));
+    await new Promise((res) => setTimeout(res, 150));
+    const line = !!document.querySelector('[data-row-drop-line]');
+    t.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: dt, clientX: r.left + 5, clientY: y }));
+    h.dispatchEvent(new DragEvent('dragend', { bubbles: true, dataTransfer: dt }));
+    await new Promise((res) => setTimeout(res, 150));
+    return line;`);
+  let roFrom = (await mockLog()).length;
+  const lineShown = await dragRow(5, 2, false);
+  const movedOrder = [1, 5, 2, ...activeIds.filter((id) => ![1, 5, 2].includes(id))];
+  check("拖 Anita 到 Lizzie 前面：拖的时候出蓝线；放下后 Anita 排到第 2 行、带琥珀框，没发请求", lineShown && (await waitFor(`JSON.stringify([...document.querySelectorAll('[data-person-row]')].map((r) => Number(r.dataset.personRow))) === ${JSON.stringify(JSON.stringify(movedOrder))}`)) && (await evaluate("return !!document.querySelector('[data-person-row=\"5\"][data-row-moved]') && !document.querySelector('[data-row-drop-line]');")) && (await since(roFrom, (e) => e.method !== "GET" && !e.path.includes("edit-lock"))).length === 0, `line=${lineShown} ${JSON.stringify(await gridIds())}`);
+  check("没存：Not saved yet: staff order changed，Save / Discard 能点", await evaluate(`return document.querySelector('[data-unsaved-summary]')?.textContent === 'Not saved yet: staff order changed' && !${SAVE}.disabled && !document.querySelector('[data-week-discard]').disabled;`), await evaluate("return document.querySelector('[data-unsaved-summary]')?.textContent;"));
+  check("拖班不受影响：格子不接员工行", await evaluate(`
+    const dt = new DataTransfer();
+    document.querySelector('[data-row-handle="3"]').dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer: dt }));
+    const c = document.querySelector('[data-cell="3|2026-09-28"]');
+    const ev = new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: dt });
+    c.dispatchEvent(ev);
+    document.querySelector('[data-row-handle="3"]').dispatchEvent(new DragEvent('dragend', { bubbles: true, dataTransfer: dt }));
+    return !ev.defaultPrevented;`));
+  await evaluate("$btn('Employees').click();");
+  await waitFor("document.querySelector('[role=dialog] [data-employee-row]')");
+  check("Employees 窗口照旧按名字排（⑦B）", await evaluate("const ns = [...document.querySelectorAll('[role=dialog] [data-employee-row]')].map((r) => r.querySelector('span').textContent.trim()); return ns[0].startsWith('Anita') && ns[1].startsWith('Jing');"), await evaluate("return [...document.querySelectorAll('[role=dialog] [data-employee-row]')].map((r) => r.querySelector('span').textContent.trim()).join(',');"));
+  await evaluate("$btn('Close', document.querySelector('[role=dialog]')).click();");
+  await waitFor("!document.querySelector('[role=dialog]')");
+  roFrom = (await mockLog()).length;
+  check("按 Save：一次 PUT /api/schedule/employees/order，整份新顺序；绿色 Saved，琥珀框没了；不碰这一周的班", (await saveWeek()) && JSON.stringify((await since(roFrom, (e) => e.method === "PUT" && e.path === "/api/schedule/employees/order"))[0]?.body) === JSON.stringify({ employee_ids: movedOrder }) && (await since(roFrom, (e) => e.path.endsWith("/changes"))).length === 0 && (await evaluate("return !document.querySelector('[data-row-moved]');")), JSON.stringify((await since(roFrom, (e) => e.method === "PUT"))[0]?.body));
+  await openPage(`${APP}/schedule?week=2026-10-04`);
+  await waitFor("document.querySelector('[data-person-row]')", 30000);
+  check("别的周也是这个顺序（全公司一份、每周一样）", JSON.stringify(await gridIds()) === JSON.stringify(movedOrder), JSON.stringify(await gridIds()));
+  // Discard：拖了不存，按 Discard 回到原样
+  await dragRow(3, 1, false);
+  await waitFor("!!document.querySelector('[data-row-moved]')");
+  await evaluate("document.querySelector('[data-week-discard]').click();");
+  check("Discard：顺序回到存好的样子", (await waitFor(`!document.querySelector('[data-row-moved]') && !document.querySelector('[data-unsaved-summary]')`)) && JSON.stringify(await gridIds()) === JSON.stringify(movedOrder));
+  // 拖回原位：当没改
+  await dragRow(5, 1, true);
+  check("拖回原来的位置：当没改（没有 Not saved yet）", await evaluate("return !document.querySelector('[data-unsaved-summary]') && !document.querySelector('[data-row-moved]');"));
+  // 400：后端原话红字，顺序留在页面上
+  await dragRow(3, 1, false);
+  await ctl({ orderFail: true });
+  check("后端 400：红字照后端原话，拖过的顺序还在页面上", !(await saveWeek()) && (await evaluate("return document.querySelector('[data-save-error]')?.textContent.includes('employee_ids must list every active employee exactly once.') && !!document.querySelector('[data-row-moved]');")), await evaluate("return document.querySelector('[data-save-status]')?.textContent;"));
+  await ctl({ orderFail: false });
+  await evaluate("document.querySelector('[data-week-discard]').click();");
+  await waitFor("!document.querySelector('[data-row-moved]')");
+  // 自己那一行（⑥A）：固定在最上面、没有把手
+  await ctl({ role: "supervisor", meName: "Nadia" });
+  await openPage(`${APP}/schedule?week=2026-10-04`);
+  await waitFor("document.querySelector('[data-person-row]')", 30000);
+  check("自己（Nadia）那一行固定在最上面、没有把手；其他人照排好的顺序、有把手", JSON.stringify(await gridIds()) === JSON.stringify([3, ...movedOrder.filter((id) => id !== 3)]) && (await evaluate("return !document.querySelector('[data-row-handle=\"3\"]') && !!document.querySelector('[data-row-handle=\"1\"]');")), JSON.stringify(await gridIds()));
+  // 员工（只能看）：照同一个顺序，没有把手
+  await ctl({ role: "staff", meName: "Jing" });
+  await openPage(`${APP}/schedule?week=2026-10-04`);
+  await waitFor("document.querySelector('[data-person-row]')", 30000);
+  check("员工看到同一个顺序（自己在最上面），没有把手", JSON.stringify(await gridIds()) === JSON.stringify([4, ...movedOrder.filter((id) => id !== 4)]) && (await evaluate("return !document.querySelector('[data-row-handle]');")), JSON.stringify(await gridIds()));
+  // 还原，后面的检查要原来的顺序
+  await ctl({ role: "supervisor", meName: "" });
+  await fetch(`${MOCK}/api/schedule/employees/order`, { method: "PUT", body: JSON.stringify({ employee_ids: activeIds }) });
+
   // ── 手机版第 ③ 批（Annie 2026-11-01 手机版规则）：一行 ‹ 日期 ›，This week / Next week / Auto-fill / Employees / + Add employee 收进「⋯」，Save 露在外面，整页不横晃 ──
   await ctl({ fail401: false, role: "superadmin" });
   await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
   await goto(`${APP}/schedule`);
   await waitFor("document.querySelector('[data-week-save]')", 30000);
   await sleep(600);
+  check("手机：员工行没有拖动把手（拖行题 ⑤A：手机上只看顺序）", await evaluate("const hs = [...document.querySelectorAll('[data-row-handle]')]; return hs.length > 0 && hs.every((h) => getComputedStyle(h).display === 'none');"));
   check("手机：Schedule 整页不左右晃", await evaluate(`const vis = (el) => !!el && el.getBoundingClientRect().height > 0 && el.getBoundingClientRect().width > 0; const noSway = document.documentElement.scrollWidth <= innerWidth + 1; const btn = (t, root = document) => [...root.querySelectorAll('button, a')].find((b) => b.textContent.trim().startsWith(t)); return noSway;`), await evaluate("return document.documentElement.scrollWidth + ' > ' + innerWidth;"));
   check("手机：‹ 日期 › 一行；This week / Next week 不在外面；Save 和 ⋯ 看得见", await evaluate(`const vis = (el) => !!el && el.getBoundingClientRect().height > 0 && el.getBoundingClientRect().width > 0; const noSway = document.documentElement.scrollWidth <= innerWidth + 1; const btn = (t, root = document) => [...root.querySelectorAll('button, a')].find((b) => b.textContent.trim().startsWith(t)); const p = document.querySelector('[aria-label="Previous week"]').getBoundingClientRect(), n = document.querySelector('[aria-label="Next week"]').getBoundingClientRect(); const outside = [...document.querySelectorAll('button')].filter((b) => b.textContent.trim() === 'This week' && vis(b) && !b.closest('[data-phone-more-menu]')); return Math.abs(p.top - n.top) < 2 && outside.length === 0 && vis(document.querySelector('[data-week-save]')) && vis(document.querySelector('[data-phone-more]'));`));
   await evaluate("document.querySelector('[data-phone-more]').click();");

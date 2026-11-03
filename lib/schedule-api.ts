@@ -65,6 +65,20 @@ export function updateScheduleEmployee(
   });
 }
 
+/**
+ * 存排班表的员工顺序（schedule.edit；后端 schedule-employee-flags）：在用的人整份按新顺序给，缺人 / 多人 / 重复 ⇒ 400 原话。
+ * 不改周的 version、不发通知。回来的是在用的人（新顺序，带 sort_order）。
+ */
+export async function saveScheduleEmployeeOrder(
+  employeeIds: number[],
+): Promise<ScheduleEmployee[]> {
+  const result = await apiFetch<ScheduleEmployeesResponse>(
+    "/api/schedule/employees/order",
+    { method: "PUT", body: { employee_ids: employeeIds } },
+  );
+  return result.employees;
+}
+
 /** admin / supervisor 加人；重名不挡（同名同姓现实里会有），后端只按 id 认人。 */
 export function addScheduleEmployee(
   input: ScheduleEmployeeInput,

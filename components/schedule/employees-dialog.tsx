@@ -98,7 +98,9 @@ export function EmployeesDialog({
           Use the same email they sign in to ops with, so they also get the
           in-app notice when a week is published. People without an email
           don&apos;t get the publish email. Deactivated people disappear from
-          the schedule; past shifts stay.
+          the schedule; past shifts stay. Untick &ldquo;Counts toward
+          coverage&rdquo; for someone whose shifts shouldn&apos;t fill a gap
+          &mdash; their shifts still show and they still get notices.
         </p>
 
         {error ? (
@@ -140,6 +142,9 @@ export function EmployeesDialog({
                   />
                   {e.name}
                   {e.is_test ? <TestTag /> : null}
+                  {!e.is_test && e.counts_for_coverage === false ? (
+                    <NotCountedTag />
+                  ) : null}
                   {e.is_active ? null : (
                     <span className="text-[11px] font-normal">
                       (deactivated)
@@ -154,6 +159,22 @@ export function EmployeesDialog({
                   </span>
                 )}
                 <span className="flex flex-wrap items-center gap-1.5">
+                  {/* 算不算值班人头（Annie 11-02「Anita不算的」）：点一下就存（同 Test person）；取消了她的班照常显示、照常通知，只是不算覆盖。 */}
+                  <label className="mr-1 flex cursor-pointer items-center gap-1.5 text-[12px] text-white/75">
+                    <input
+                      type="checkbox"
+                      data-counts-coverage={e.id}
+                      checked={e.counts_for_coverage !== false}
+                      onChange={(ev) =>
+                        void run(() =>
+                          onUpdate(e.id, {
+                            counts_for_coverage: ev.target.checked,
+                          }),
+                        )
+                      }
+                    />
+                    Counts toward coverage
+                  </label>
                   {/* 测试用的人（Annie 2026-10-30 选 A）：点一下就存（同 Deactivate），不出现在 Dashboard、不算空档。 */}
                   <label className="mr-1 flex cursor-pointer items-center gap-1.5 text-[12px] text-white/75">
                     <input
@@ -333,6 +354,18 @@ export function TestTag() {
       className="rounded bg-white/10 px-1 text-[10px] font-semibold text-white/60"
     >
       Test
+    </span>
+  );
+}
+
+/** 不算值班人头的人旁边的小标签（琥珀色，不用蓝）。排班表和 Employees 框共用。 */
+export function NotCountedTag() {
+  return (
+    <span
+      data-not-counted-tag
+      className="rounded bg-amber-400/15 px-1 text-[10px] font-semibold whitespace-nowrap text-amber-300"
+    >
+      Not counted
     </span>
   );
 }

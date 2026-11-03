@@ -127,11 +127,12 @@ const settings = {
 // ---- 员工名单。
 let nextEmployeeId = 6;
 const employees = [
-  { id: 1, name: "Veronica", email: "veronica@nationalparkexpress.com", is_active: true },
-  { id: 2, name: "Lizzie", email: "lizzie@nationalparkexpress.com", is_active: true },
-  { id: 3, name: "Nadia", email: "nadia@nationalparkexpress.com", is_active: true },
-  { id: 4, name: "Jing", email: "jing@nationalparkexpress.com", is_active: true },
-  { id: 5, name: "Anita", email: "anita@nationalparkexpress.com", is_active: true },
+  // sort_order：排班表的顺序（后端 schedule-employee-flags，GET 按 sort_order, name, id 排）。
+  { id: 1, name: "Veronica", email: "veronica@nationalparkexpress.com", is_active: true, sort_order: 1 },
+  { id: 2, name: "Lizzie", email: "lizzie@nationalparkexpress.com", is_active: true, sort_order: 2 },
+  { id: 3, name: "Nadia", email: "nadia@nationalparkexpress.com", is_active: true, sort_order: 3 },
+  { id: 4, name: "Jing", email: "jing@nationalparkexpress.com", is_active: true, sort_order: 4 },
+  { id: 5, name: "Anita", email: "anita@nationalparkexpress.com", is_active: true, sort_order: 5 },
 ];
 
 let nextSlotId = 100;
@@ -236,8 +237,10 @@ function gapsFor(weekData) {
   const winEnd = minutesOf(settings.work_window.end_time);
   const gaps = [];
   for (const date of datesOfWeek(weekData.week_start)) {
+    // 不算值班人头的人（counts_for_coverage = false）的班不算覆盖，同后端 _week_gaps。
+    const notCounted = new Set(employees.filter((e) => e.counts_for_coverage === false).map((e) => e.id));
     const intervals = weekData.slots
-      .filter((s) => s.date === date && s.employee_id != null)
+      .filter((s) => s.date === date && s.employee_id != null && !notCounted.has(s.employee_id))
       .map((s) => [minutesOf(s.start_time), minutesOf(s.end_time)])
       .filter(([s, e]) => s != null && e != null && e > s)
       .map(([s, e]) => [Math.max(s, winStart), Math.min(e, winEnd)])
@@ -542,7 +545,21 @@ http
 
     if (p === "/api/schedule/employees" && req.method === "GET") {
       const all = url.searchParams.get("include_inactive") === "1" && ctl.role !== "staff";
-      return send(res, 200, { employees: all ? employees : employees.filter((e) => e.is_active) });
+      const byOrder = (a, b) => (a.sort_order ?? 1e9) - (b.sort_order ?? 1e9) || a.name.localeCompare(b.name) || a.id - b.id;
+      return send(res, 200, { employees: (all ? employees : employees.filter((e) => e.is_active)).slice().sort(byOrder) });
+    }
+    // 存排班表的员工顺序（后端 schedule-employee-flags）：在用的人整份按新顺序，缺 / 多 / 重复 ⇒ 400。
+    if (p === "/api/schedule/employees/order" && req.method === "PUT") {
+      if (ctl.role === "staff") return send(res, 403, { detail: "Only a supervisor or above can edit the schedule." });
+      const b = await readBody(req);
+      entry.body = b;
+      const ids = b && b.employee_ids;
+      const active = employees.filter((e) => e.is_active).map((e) => e.id);
+      if (ctl.orderFail || !Array.isArray(ids) || ids.length !== active.length || new Set(ids).size !== ids.length || !ids.every((id) => active.includes(id))) {
+        return send(res, 400, { detail: "employee_ids must list every active employee exactly once." });
+      }
+      ids.forEach((id, i) => { employees.find((e) => e.id === id).sort_order = i + 1; });
+      return send(res, 200, { employees: ids.map((id) => employees.find((e) => e.id === id)) });
     }
     if (p === "/api/schedule/employees" && req.method === "POST") {
       if (ctl.role === "staff") {
@@ -552,7 +569,7 @@ http
       entry.body = b;
       const name = String(b.name || "").trim();
       if (!name) return send(res, 400, { detail: "Name is required." });
-      const created = { id: nextEmployeeId++, name, email: String(b.email || "").trim(), is_active: true };
+      const created = { id: nextEmployeeId++, name, email: String(b.email || "").trim(), is_active: true, sort_order: Math.max(0, ...employees.map((e) => e.sort_order ?? 0)) + 1 };
       employees.push(created);
       return send(res, 200, created);
     }
@@ -622,9 +639,13 @@ http
         }
         e.email = em;
       }
+      // 重新启用的人排到最后（后端 schedule-employee-flags：sort_order = 最大值 + 1）。
+      if (b.is_active === true && !e.is_active) e.sort_order = Math.max(0, ...employees.map((x) => x.sort_order ?? 0)) + 1;
       if (b.is_active !== undefined) e.is_active = !!b.is_active;
       // 测试用的人（Annie 2026-10-30 选 A，后端 57 在加 schedule_employees.is_test）
       if (b.is_test !== undefined) e.is_test = !!b.is_test;
+      // 算不算值班人头（Annie 11-02「Anita不算的」，后端 9e 在加 schedule_employees.counts_for_coverage）
+      if (b.counts_for_coverage !== undefined) e.counts_for_coverage = !!b.counts_for_coverage;
       return send(res, 200, e);
     }
 

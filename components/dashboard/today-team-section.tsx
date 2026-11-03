@@ -21,6 +21,7 @@ import {
   personName,
   type TeamPerson,
 } from "@/lib/team-messages-api";
+import { sortByName } from "@/lib/schedule-timeline";
 import { cn } from "@/lib/utils";
 import type { ScheduleEmployee, ScheduleSettings, ScheduleWeek } from "@/types";
 
@@ -114,7 +115,10 @@ export function TodayTeamSection({
           kind: "ready",
           settings,
           // 测试用的人（is_test，Annie 2026-10-30「不要把这两个人显示在dashbroad里」）：后端没滤也不出。
-          employees: employees.filter((e) => e.is_active && !e.is_test),
+          // 按名字排：接口按排班表的 sort_order 排，Dashboard 照旧按名字（Annie 11-02 拖行题 ⑦B）。
+          employees: sortByName(
+            employees.filter((e) => e.is_active && !e.is_test),
+          ),
           week,
           meName: me.display_name?.trim().toLowerCase() ?? null,
         });

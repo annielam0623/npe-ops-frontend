@@ -2,7 +2,12 @@
 
 import { useState } from "react";
 
-import { dayBars, gapsOf, overlapsOf } from "@/lib/schedule-timeline";
+import {
+  coversGaps,
+  dayBars,
+  gapsOf,
+  overlapsOf,
+} from "@/lib/schedule-timeline";
 import { gapDayLabel, gapReason, gapsByDate } from "@/lib/schedule-gaps";
 import { formatClock, minutesOf } from "@/lib/schedule-time";
 import { shiftYmd } from "@/lib/la-date";
@@ -165,6 +170,9 @@ export function DayTimeline({
             );
           })}
           {bars.map((bar) => {
+            // 不算值班人头的人（Annie 11-02「Anita不算的」）：条子斜纹虚线、写 not counted；只给看得到空档的人标。
+            const notCounted =
+              showGaps && !bar.employee.is_test && !coversGaps(bar.employee);
             const left = percentOf(
               Math.max(bar.startMin, windowStart),
               windowStart,
@@ -186,13 +194,21 @@ export function DayTimeline({
                 </div>
                 <div className="relative h-5 flex-1 rounded-[4px] bg-white/[.04]">
                   <div
-                    className="absolute top-0 h-full rounded-[4px] bg-sky-400/40"
+                    data-not-counted={notCounted || undefined}
+                    className={cn(
+                      "absolute top-0 h-full rounded-[4px]",
+                      notCounted
+                        ? "border border-dashed border-sky-300/70 bg-[repeating-linear-gradient(45deg,rgba(56,189,248,.35)_0_6px,rgba(56,189,248,.12)_6px_12px)] pl-1.5 text-[10.5px] leading-[18px] whitespace-nowrap text-sky-100"
+                        : "bg-sky-400/40",
+                    )}
                     style={{
                       left: `${Math.max(0, left)}%`,
                       width: `${Math.max(0, Math.min(100, width))}%`,
                     }}
                     title={`${formatClock(bar.slot.start_time)} – ${formatClock(bar.slot.end_time)}`}
-                  />
+                  >
+                    {notCounted ? "not counted" : null}
+                  </div>
                 </div>
                 <div className="w-[128px] shrink-0 text-right text-[11px] text-white/40">
                   {formatClock(bar.slot.start_time)} –{" "}
