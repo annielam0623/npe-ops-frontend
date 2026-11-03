@@ -71,6 +71,9 @@
 - relay 司机标的状态办公室能不能看到（Annie 在 9e 问）：f8 只读核——ops Morning Relay 只出红「No show」，picked_up 不显示，不自动刷新，没有通知。已回 9e。
 - 新功能（Annie 在后端主窗口原话，9e 转）：「我们要不啊再出一个版本的页面，就跟司机看到的页面一样，每个司机占一列，他所有的行动都显示出来」，另说「我刚才说了」（不用再问做不做）。⇒ 派 39 出 preview（办公室看当天每个司机一列：客人 + Picked up / No show + 时间；题：放哪、谁能看、刷新频率、显示时间 / 历史、团车导游的 Boarded 算不算、No show 提醒）。后端要只读接口，标记时间存不存 9e 在查。
   - Annie 补（后端主窗口原话）：「把各个司机的手机页面都显示出来，并列在页面上」⇒ 每列 = 司机手机页原样，并排，只读，staff 不能代点。后端出 staff 只读接口，复用司机页取数。已转 39。
+  - 39 preview：https://claude.ai/artifact/TwJJ32NCdbTEnqxQcCX6MN （每列原样司机 / 导游手机页，只读按钮灰掉，深蓝列头）。后端现状：只存最新一次标记 + 时间 + 人，没有历史。10 题（推荐）：① Dispatch 加「③ Live drivers」（A）；② 跟 dispatch.view（A，要先检查就 B 开关）；③ 30 秒自动 + Refresh（A）；④ 标记后写时间（A）；⑤ 一辆车一列（A）；⑥ 步骤条旁红数字 No show 人数，不发通知（B）；⑦ 页顶统计行留（A）；⑧ 按开始时间排（A）；⑨ Messages 页签照留只读（A）；⑩ 按钮照画灰掉（A）。接口形状已转 9e 估工作量（GET /api/dispatch/live-drivers）。
+    - 9e 估：14–20 小时，不迁移，复用 /driver/preview、/guide/preview 取数。改题：⑤ 推荐一人一列（数据按人算）；② dispatch.view 在 partner 白名单里，页面带客人电话 / 短信 / 餐厅联系 ⇒ 新权限码或先只 Super Admin + 开关（推荐后者）；relay_status_at 要补；没连 HR 的司机列不出来；性能要加单次请求缓存。已请 39 改 preview。后端今晚 21:30 收工，派工在明天。
+    - Annie 问（f8 窗口原话）：「可以在页面上有no show的提醒么」⇒ 题 ⑥ 加 C：页顶红框逐个列 No show（车 / 司机 · 客人 · 酒店 · 时间 · 标的时间，点了滚到那行），步骤旁红数字，新出现的标 new，不发邮件 / 短信（推荐 C）。已请 39 加进 preview。
 - 今晚在等 Annie 的，跟 24 交接第三节一样，不重问。
 
 ## 2026-11-02 收工交接：前端主窗口-24 [d1dbae]（公司）
@@ -465,8 +468,11 @@
       - 36 已导（遮过）：第一轮 3 台车（1724 Bruce O / 1725 David H / 2356 Dan A）0 客人——明天站点 staff 还没在排车页存；need_a_look 50 位；Tour bus pick up 1955 Dan A Hoover 6 位；bus_tour 5 辆（South Rim 2622 没字母等）。relay 车 2356 同时是 Antelope A 大巴。已转 0e 照实画（空车写 no pickup stop yet），站点存好可重导。
       - 0e 11/3 真实数据 preview：https://claude.ai/artifact/Fi5ncf4fyfBVhUhZyeEYA5 （遮过）。json / 截图已删。新加后端：relay-pull 每位客人加 hotel_short（同 Bus Manifest），已转 9e。
       - Annie（0e 窗口原话）：「导游的pick up网页版需要知道客人参加的tour是哪个，可以用简写」⇒ B6：后端 /guide 页每位客人加 product_short，已转 9e / fc（v11）。
+      - Annie（f8 窗口原话）：「这个需要加到司机的页面上：在订单号旁边需要把客人的tour名字加上去，可以用简写」⇒ B5 定位置：/driver 页每位客人订单号旁加 product_short（relay 车和团车都加），导游页同放订单号旁。已转 9e / fc，明天做。
+      - Annie 定简称（f8 窗口原话）：「South，West，Lower，Upper，CanyonX，BZ」⇒ 取代纸本的 GC South / LOWER / UPPER / X。v143 预填：South Rim = South、West Rim = West、Bryce&Zion = BZ；Antelope 节 LOWER = Lower、UPPER = Upper、Canyon X = CanyonX；其他团不预填。已转 9e、0e。
+      - Annie（原话）：「因为Hoover没有relay司机，所以不需要，本来就是他们的tour bus去接的」⇒ Hoover 不设简称；司机页 / 导游页订单号旁只在设了简称时才显示，不回落全名；Relay 打印单照旧回落。已转 9e。
     - Annie 补（0e 转，原话）：「排完relay并保存了以后，应该加一个按键显示这些relay的list」⇒ 题 1 的键改成「📋 Relay list」：先在屏幕上看总表 + 每车分表，要纸在那页按 Print；显示已保存的排车，有没存的改动先问 Save first?（v10，不影响后端）。
-    - fc 字段名定（已转 0e）：manifest-setup groups[] 加 short_name、section_short_names；PUT …/groups/{id}/short-name、…/section-short-name（前端按 Save 再逐个 PUT）；relay-pull guests 加 phone / manifest_id / product_short / bus{label, tour, tour_short, sections[{name, short, color}], driver, guide, van, color}，car 加 location_ids / tour_buses。迁移 v143（Annie 执行，排 v141 / v142 后）。
+    - fc 字段名定（已转 0e）：manifest-setup groups[] 加 short_name、section_short_names；PUT …/groups/{id}/short-name、…/section-short-name（前端按 Save 再逐个 PUT）；relay-pull guests 加 phone / manifest_id / product_short / bus{label, tour, tour_short, sections[{name, short, color}], driver, guide, van, color}，car 加 location_ids / tour_buses。迁移 v143（Annie 执行，排 v141 / v142 后）。「This van is on 2 tour buses today.」改放 car.print_warnings（不放 problems，免得挡发送）。后端 WIP task/relay-print 459edd0c，今晚 21:30 停，明天接着。
   - 另：ops 标黄规则「带 + 就亮黄」会让 West 所有 Premium (Skywalk+Voucher) 行都亮黄，纸本不标（并进其余 12 页差别 ③）。
 - 36 查回：Hoover 节 = HD Highlights（8 个，PJ0LQF internal_name 写「West Rim」疑似填错）/ HD Generator（5 个，票型「+ Generator」）/ HD RAFT（2）/ BOULDER CITY（2）；另有独立 manifests 35 Boulder_City（PV3Y0U）。HIGHLIGHTS / GENERATOR / RAFTING 对得上。题 ④ 改成 3 小题：④a PJD1EQ 的 Upgrade 票型算不算 GENERATOR；④b BOULDER SHUTTLE 数 Hoover 的 BOULDER CITY 节还是 PV3Y0U；④c RAFT SHUTTLE 生产里没有对应产品，怎么算。已转 0e 更新报告。
 
