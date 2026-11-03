@@ -26,6 +26,7 @@
   - CHD：后端已给 36 go，排在 G231 合并后推（G231 等 Annie 改 Risk、跑 release.py）。
 - 新需求（Annie 在 f8 窗口原话，没说动手）：「帮忙把staff schedule的每个人的row改成可拖拽」。新功能 ⇒ 先 preview。已派 39：只读查现状（排序字段、后端有没有存顺序的接口、只能看的人、手机版），出电脑 + 手机 preview（Artifact 链接）和题目（谁能拖、全公司一份还是每人一份、每周同一顺序、新员工排哪、手机能不能拖）；拖动先暂存、并进现有 Save。
 - Annie 报 bug（f8 窗口原话）：「然后schedule的设置有问题，今天的排班有个10am-12pm的gap，系统没看出来」。修 bug、样子不变，不用 preview。gap 判断在 components/schedule（week-grid / week-draft / schedule-view / day-timeline）和 lib/schedule-engine.ts。39 在做拖拽 preview，空闲内存 12 GB，f8 请 Annie 再开 1 个窗口来查。
+  - Annie 又报（原话）：「然后7号的gap已经填了，但始终报错不让保存，即使我改了班次的时间，也没用」⇒ 11/7 gap 已填，Save 照旧报错拦住，改班次时间也不行。跟上一条同一块 gap 判断，并给同一个新窗口查（漏报 + 误报）。
 - 今晚在等 Annie 的，跟 24 交接第三节一样，不重问。
 
 ## 2026-11-02 收工交接：前端主窗口-24 [d1dbae]（公司）
