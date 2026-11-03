@@ -462,6 +462,7 @@
       - 36 已导（遮过）：第一轮 3 台车（1724 Bruce O / 1725 David H / 2356 Dan A）0 客人——明天站点 staff 还没在排车页存；need_a_look 50 位；Tour bus pick up 1955 Dan A Hoover 6 位；bus_tour 5 辆（South Rim 2622 没字母等）。relay 车 2356 同时是 Antelope A 大巴。已转 0e 照实画（空车写 no pickup stop yet），站点存好可重导。
       - 0e 11/3 真实数据 preview：https://claude.ai/artifact/Fi5ncf4fyfBVhUhZyeEYA5 （遮过）。json / 截图已删。新加后端：relay-pull 每位客人加 hotel_short（同 Bus Manifest），已转 9e。
       - Annie（0e 窗口原话）：「导游的pick up网页版需要知道客人参加的tour是哪个，可以用简写」⇒ B6：后端 /guide 页每位客人加 product_short，已转 9e / fc（v11）。
+      - Annie（f8 窗口原话）：「这个需要加到司机的页面上：在订单号旁边需要把客人的tour名字加上去，可以用简写」⇒ B5 定位置：/driver 页每位客人订单号旁加 product_short（relay 车和团车都加），导游页同放订单号旁。已转 9e / fc，明天做。
     - Annie 补（0e 转，原话）：「排完relay并保存了以后，应该加一个按键显示这些relay的list」⇒ 题 1 的键改成「📋 Relay list」：先在屏幕上看总表 + 每车分表，要纸在那页按 Print；显示已保存的排车，有没存的改动先问 Save first?（v10，不影响后端）。
     - fc 字段名定（已转 0e）：manifest-setup groups[] 加 short_name、section_short_names；PUT …/groups/{id}/short-name、…/section-short-name（前端按 Save 再逐个 PUT）；relay-pull guests 加 phone / manifest_id / product_short / bus{label, tour, tour_short, sections[{name, short, color}], driver, guide, van, color}，car 加 location_ids / tour_buses。迁移 v143（Annie 执行，排 v141 / v142 后）。「This van is on 2 tour buses today.」改放 car.print_warnings（不放 problems，免得挡发送）。后端 WIP task/relay-print 459edd0c，今晚 21:30 停，明天接着。
   - 另：ops 标黄规则「带 + 就亮黄」会让 West 所有 Premium (Skywalk+Voucher) 行都亮黄，纸本不标（并进其余 12 页差别 ③）。
