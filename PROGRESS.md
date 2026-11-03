@@ -13,7 +13,7 @@
   - 题 8 A：Morning Relay 同时自动取；Pull from manifests 改成白色「↻ Refresh」。出错前缀改成 "Could not load the guests"。没存的改动提示、发送键关着、每轮 Preview & send 都照旧。
   - 只在 Send 标签真显示时取（RelayPanel 新 prop `active`）：停在 Assign、在 Assign 存好重建都不取；切到 Send 才取；Send 显示着时重建（换天 / 存好）马上再取；来回切不重取。去掉了挂载时读 driver-notice / guide-notice 的那一行提示（DriverHint），名单直接列出来。
   - 题 9：How to use 两条照原文换；其余提到 Pull / Check the list 的英文跟着改（Step 1 说明、Fix … and pull again、Copy 1st Round 提示、Pickup Locations 的 Tour bus departure、Products › Bus Manifest setup 的 Morning Relay round）。
-- 检查：tsc、eslint（0 错，1 条旧 warning）；headless da 462/462（新加 send-auto-open 6 条：停在 Assign 三份都不取、切到 Send 各取 1 次、两个 Refresh 白色、How to use 新句、来回切不重取、直接 ?tab=send 自动取）、rl 26/26、nav 38/38、pl 105/105、products 237/237。
+- 检查：tsc、eslint（0 错，1 条旧 warning）；headless da 467/467（合了 main 的 No tracking 后；新加 send-auto-open 6 条：停在 Assign 三份都不取、切到 Send 各取 1 次、两个 Refresh 白色、How to use 新句、来回切不重取、直接 ?tab=send 自动取）、rl 26/26、nav 38/38、pl 105/105、products 237/237。
 - Annie 线上验收看：Dispatch › Send 打开就有司机、导游表和 Morning Relay 两轮；两个白色 ↻ Refresh；How to use 两句。⚠️ 生产后端，别点 Send texts now / Preview & send 里的发送。
 
 ## 2026-11-03 Dispatch 没定位的车标「No tracking」（`task/no-tracking`，工作窗口 91 [359513]，主窗口 24 派，置顶 60）—— 合 main
@@ -653,14 +653,29 @@
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 65. HR 页「Other spellings」（G234 补，Annie 在 4d 窗口「同意。动手」后端；91 preview https://claude.ai/artifact/W92fd328NYL5S5e3U1bjSw ，没写代码）
+- 照做不问：走现有 Edit 弹窗（底部 Save / Saving… / 关前问 / 红字），先 PUT 写法再存其他字段（409 时什么都没存）；Add person 先建人再存写法；存好显示后端规整后的样子；后端报错原样红字；改动进现有 Action Log；不用蓝色；Export / Import 不带这一格。
+- 题 1 弹窗里放哪：A（推荐）Identity 里紧跟 Nickname；B Dispatch 那一块。
+- 题 2 人员表加列吗：A（推荐）紧跟 Nickname 加「Other spellings」列，逗号隔开、没有写「—」；B 不加，只在弹窗看。
+- 题 3 Edit list 能改吗：A（推荐）只看不改，要改点那一行 Edit（被拒时红字对得上人）；B 也能改（逗号隔开）。
+- 题 4 文字（英文）：A（推荐）格子下说明 "How the morning Excel or CCL writes this name, one per line (for example JOSEPH). Each spelling can belong to one person only."；How to use — Human Resource 加 "Other spellings: other ways this person's name is written in the morning Excel or CCL (for example JOSEPH for Joe R). One per line. A spelling can belong to only one person. Removing a spelling means CCL imports stop matching it to this person."
+
 ### 64. G180 Main manifest 订单同步到 Tour Tracking：重新启动（2026-11-03，Annie「重新启动」）
 - 10/24 Annie 提，后端 d9 写好代码在 origin/task/tracking-sync-design（4cac1f93，10/25 夜后没动，没上 main、没跑迁移；deploy-guard 第 3 轮 FAIL：迁移要先于代码；迁移号 v122 已被占，要换号）。设计文档 docs/tracking-sync-design-2026-10-24.md，Annie 已定的不再问（同步已确认订单、发送前后都同步、send_state Sent / Not sent、order_state Confirmed / On hold / Cancelled 以 Order List 为准、从不删行、午餐谁新留谁、Farm out 只记录、Broadcast 含 Not sent 不含 On hold / Cancelled 且发出后变 Sent、总开关默认关、Tour Tracking 加 Sent / Not sent 筛选默认 Sent + 订单号后小标签）。还没答：调用记录表 401 要不要记（Max 推荐不记，后端那边问）。
 - 当时页面只改了旧后台模板；ops 新 Tour Tracking 页要前端另做。
 - 已转 37：派后端合最新 main、换迁移号、重审、重估工作量和时间，冻结 ops 要用的接口字段。已派 91 出 ops Tour Tracking 的 preview（筛选、标签、统计 / 导出算不算、How to use），没定的列题。等 preview 后 Annie「动手」才写前端代码。
 - 37 派后端 44 重评：接分支合今天 main、迁移改号（最早 v147，排 57 的 v145、64 的 v146 后）、按现在代码核设计、冻结接口形状（send_state / order_state、farm out 标、筛选在服务器还是页面、broadcast 名单）、估工作量和时间；44 也查 10-25 后 Annie 答没答 401，真没答 37 才问。形状和 ETA 经 37 转。
 - 44 重评结果（37 转）：设计照旧成立；后端约 1 个工作日，明天中午左右分支代码好；之后 Annie 执行 v147（在 64 的 v146 后）→ 代码上 main → 回填试跑 → 真回填 → Annie 开开关（Super Admin，默认关）。冻结接口（只加）：tour-confirmation/tracking 每行加 send_state sent / unsent、order_state confirmed / on_hold / cancelled（来自 Order List，不是客人回复）；Farm out 用现有 farm_out_view 不为 null；Sent / Not sent 筛选在页面做，默认 Sent；Broadcast 名单页面组，含 sent + unsent、不含 on_hold / cancelled（只在浏览器端排除），发完后端把真发出的 unsent 改 sent，前端重读；开关 / 回填接口只 Super Admin。401 那题属 G178（电话记录）不是 G180，已问过两次，不再问、不挡 G180。已转 91。
+- 91 preview：https://claude.ai/artifact/Fz4f3awLiNauihh2n655JT （ops Tour Tracking 接模拟数据，新东西画上去，没写代码）。照做不问：Order # 格里加 Not sent（灰底、字 #1a1a1a）/ On hold（黄）/ Cancelled（红）标签，照旧模板颜色，不加列；Broadcast 名单去掉 on_hold / cancelled，发完重读；手机上筛选和 Status 下拉排一起；旧后端没字段当 sent / confirmed。
+- 题 1 筛选框：A（推荐）Search 后、Status 前一个下拉，3 项 Sent / Not sent / Sent + Not sent（同旧后台 10/24 模板）；B 只 Sent / Not sent 两项。
+- 题 2 团胶囊（All 4/6、AC-U 1/2…）和数字卡（Total、YES、Pending…）：A（推荐）跟着筛选算（选 Sent 跟现在一样；选 Not sent 只算没发的，Response Rate 写「—」）；B 永远只算 Sent（切 Not sent 时上下对不上）。
+- 题 3 Farm out：A（推荐）用 ops 现有紫色「⇄ Farmed out ▾」，不另加；B 另加紫色小标签「Farm out」（同一单会同时有两样）。
+- 题 4 Download CSV（后端出）：A（推荐）加两列「Sent」（Sent / Not sent）、「Order state」（Confirmed / On hold / Cancelled），要后端加；B 不加。
+- 题 5 How to use（英文）：A（推荐）两段——加在「How to use — Tour Confirmation Tracking」："The Sent / Not sent box next to Search chooses which orders show. Sent is the normal view. Not sent shows orders that came in from the Main manifest and have no confirmation sent yet; they carry a grey Not sent tag. A yellow On hold or red Cancelled tag means the order changed in the Order List; the row stays here as a record. ⇄ Farmed out means the order was handed to a partner."；Broadcast 那条后："The list includes Not sent guests too, whatever the Sent / Not sent box shows. On hold and Cancelled orders are left out."（题 3 选 B 时第一段末句改 "A purple Farm out tag means the order was handed to a partner."）
 
-### 63. 换司机只改 Dispatch：页面上怎么标（G234，Annie 已「动手」后端；e6 preview https://claude.ai/artifact/CXT8ZueNa3akn1ZrGn4Ycj ，没写代码）
+
+### 63. 换司机只改 Dispatch：页面上怎么标（G234）—— ✅ Annie 已答并「动手」（2026-11-03）；e6 preview https://claude.ai/artifact/CXT8ZueNa3akn1ZrGn4Ycj ，没写代码）
+- ✅ Annie（原话）「乙的话，除了题5-要改成不需要任何动作。否则会让staff confuse。其他都同意推荐。动手」⇒ 题 1 A（Morning Relay：Status 列 Sent by 下、橙字上）、题 2 A（Morning tracking：Driver 列名字下）、题 3 A（灰色小字）、题 4 B（"Driver changed after send (was FREDDY) — link now follows LUIS"）、题 6 A（红字改成请客人重新打开链接，新字先给 Annie 看）、题 7 A（Save 后灰字 / 没改成红字「<car>: links not changed — <reason>」）、How to use 三段照草稿；**题 5 改：同一司机只换车 = 不需要任何动作**，不出橙字「Changed after sent」提示重发（24 理解为 B「只换车的不标」，如要灰字说明再问）。派 e6（send-auto-open 合完后），前端等后端 G234（task/driver-change-follow）上 main 再合。
 - 背景：Annie（37 转）「换了司机以后，staff只需要去dispatch把司机改了，然后保存，就可以了，不需要再发送任何信息出去」。后端 4d 做：改司机 + Save 后已发客人的链接跟新司机，不发东西。前端占位字段 driver_followed {from, to}，真实字段 37 待转。
 - 题 1 Morning Relay 发送名单标在哪（现在 Status 列淡黄「Sent by…」，下面橙字「Changed after sent: …」，改司机不显示）：A（推荐）Status 列 Sent by 下面一行、橙字上面；B 名字后小标签「Driver changed」，鼠标移上去看全句。
 - 题 2 Morning tracking 标在哪：A（推荐）Driver 列司机名下面（跟 Guest Viewed 的红字分开）；B Guest Viewed 列时间下面（跟红字挤一格）。
@@ -829,7 +844,8 @@
 - 需要后端（Annie 答完再转）：schedule_employees 加 sort_order（迁移按名字填）、GET employees 按 sort_order 排、PUT /api/schedule/employees/order {employee_ids:[…]}（权限 schedule.edit、写 Action Log、不改周 version、不通知）。
 
 ### 53. 限制下载功能（2026-11-02，Annie 在 e6 窗口问，没动手）
-- ⚠️ 2026-11-03 Annie 在 e6 窗口说（原话）「4-7题，全部同意推荐」，没写是哪份：可能是本条 53（题 4a–f / 5 / 6 / 7），也可能是置顶 63（G234 题 4 原文 / 5 只换车橙字 / 6 Wrong bus 红字 / 7 Save 后提示）。已问 Annie 确认，没动手。
+- ✅ 2026-11-03 Annie 在 e6 窗口（原话）「4-7题，全部同意推荐」，24 问是哪份，Annie「我说的是甲」⇒ 本条 53：题 4 导出键归属 4a Farm out Report → Export Reports、4b Manifests Export CSV + Bus Manifest 下载 → Export Manifests、4c 三个 Tracking Download CSV → Export Orders、4d HR Export / Download template → Edit HR profiles、4e Pickup Locations Export → Settings: Pickup locations、4f Farm out Timetable Download → Settings: Farm-out；题 5 能对个人单独去掉（denied_items）；题 6 没勾 Staff Schedule 也出 Today's team、只是不列班次；题 7 加「Remove personal ticks that a team already gives」键（只 Super Admin，先确认框）。**「同意」不算动手，还没动手。** 已转 37 / 44。
+- 题 8（37 提，在 37 窗口问过一次，这里只列一次）：谁能给 team 加人 / 删人、删 team？A（推荐）只 Super Admin；B 有 Team 页编辑权限的人都能。37：G240 设计等 44 做完 G180 再更新，迁移号到时重排（v148 起）；64 只读核后端导出接口是否跟题 4 对得上。
 - Annie 原话：「我可以限制一下download的功能么」。e6 已答能做、说了现状，问她要限制谁、哪些页（不在 24 这里重复问）。
 - e6 只读核：Team 页已有 4 个导出勾 manifests.export / orders.export / logs.export / reports.export；后端服务器端导出没勾就 403（orders.py、send_log.py、notifications.py、tour_manifest.py、farm_out.py）。前端员工按钮级权限没做：没勾的人照样看得到 Export / Download 键；浏览器里直接生成的下载后端拦不住。下载键：Manifests Export CSV、Orders Export、Order Log、Send Log、Broadcast Log、Sales Report、Farm out Report / Timetable、HR Export to Excel、Pickup Locations Export、三个 Tracking 页、Dispatch 的 Download Bus Manifest。
 - 可做：员工也按 4 个导出勾藏键（含浏览器生成的）；要不要细分（如 Bus Manifest 下载单独一项）看 Annie。先出 preview（哪页哪个键对应哪一勾）。相关旧题：11-01 09 问过的权限题 A / B / C（Farm out 导出跟 reports.export、Bus Manifest 下载 + Manifests Export CSV 跟 manifests.export，未答）。
