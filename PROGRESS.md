@@ -628,6 +628,14 @@
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 60. 没定位的车标「No tracking」（2026-11-03，91 preview https://claude.ai/artifact/GqgxoQ12fMyPgtzRM3kHJ8 ，没写代码）
+- 发现：Dispatch › Assign 每台车车号下面本来就有标：有定位绿色「GPS」，没定位红点「No live GPS」；右栏 Schedule check 有「2056 has no live GPS — Guests on that vehicle won't see the map.」。Send 页 Morning Relay 车头现在没标。
+- 题 1 Assign 页红标的字（后半句「won't see the map」以后不对，客人照样收链接能签到）：A（推荐）改「No tracking」，样子颜色不变，右栏改「2056 has no tracking — Guests on it still get the link and can check in. The text doesn't mention live tracking.」；B 红标留「No live GPS」，只改右栏那句。
+- 题 2 选车下拉要不要标：A（推荐）车号后写「· No tracking」，如「2056 · No tracking」（下拉只能文字不能上色）；B 不标。
+- 题 3 Send 页 Morning Relay 车头（现「768 · FREDDY · 7 orders, 14 pax」）：只标不拦，不进红色问题行。A（推荐）车号后加和 Assign 一样的红点标「No tracking」；B 车号后红字「(no tracking)」不加底色。
+- 题 4 How to use（英文）：A 两页同一句 "Vans without tracking: guests still get the link to check in; the message doesn't mention live tracking."；B（推荐）每页一句——Assign："No tracking (red) under a vehicle means it has no live GPS. Guests on it still get the link and can check in; the text doesn't mention live tracking." Morning Relay："A car marked No tracking has no live GPS. Its guests still get the text and the link to check in; the text doesn't mention live tracking. Nothing is blocked."
+- 照做不问：有定位照旧绿「GPS」，Morning Relay 车头有定位不写；不用蓝色；Own bus 那一轮车头一样标。
+
 ### 59. Pickup Locations 填酒店坐标的格子放哪（2026-11-03，09 做 Samsara 到站，分支 task/samsara-arrival 071df4d，没合）
 - 页面：Products › Pickup Locations（/pickup-locations）。Samsara 到站要 staff 给每家酒店填接客门口的坐标和范围（默认 10 米，Annie 定）。
 - 09 现在的放法（照页面现有格子，Annie 没看过）：点某家酒店的 Edit，在酒店名下面（原来放 Tour bus / Shuttle 勾的位置）加小标题「Pickup point (live tracking)」，下面三格一格一行：Latitude、Longitude、Within [10] m。不加列，表不变宽。按这一行的 Save 才存（绿字 ✓ Saved），没存就离开会问。不编辑时，有坐标的酒店名下面一行灰字「Pickup point: 36.1126, -115.1767 (15 m)」，没坐标不写。截图（模拟数据）：C:\Users\annzh\AppData\Local\Temp\claude\8828d70a62fa0031\6520170a-1023-449b-87d9-6f73e0add973\scratchpad\pl-edit.png
