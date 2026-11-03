@@ -16,6 +16,7 @@
   - Morning tracking：Driver 列名字下面同一句灰字；红字「Wrong bus — resend link」改成「Bus changed — ask the guest to open the link again」（题 6 A，tooltip 也改）；How to use 换 Guest Viewed 那条、加两条（Driver changed after send；换司机只要在 Dispatch 改好 Save）。
 - 检查：tsc、eslint 0 错、build 过；da 475/475（+8：Relay 名单那句的位置 / 颜色 / 不勾、旧后端不出、How to use；Save 后灰字、红字两句、Dismiss、全空不出）、mt 246/246（+5：红字新字和提示、Driver 列那句、灰色、没换过不出、How to use）、rl 26/26、nav 38/38。
 - **合 main 前要等**：① Annie 看过题 6 新红字和 How to use 新句（24 转）；② 后端 task/driver-change-follow 上 main，按真实形状核一遍 driver_followed / driver_follow 再合。
+- 11-03 收工（17:30）：分支停在 0835797，全部已推。后端 37 说 driver_follow.updated[] 还没做完（后端分支到 33691e8d，未合 main），11-04 家里接着做。下一步：后端上 main 后核真实形状 → 合最新 main → 重跑 da / rl / mt / nav + tsc / eslint / build → 等 Annie 看红字 / How to use 后合 main。
 
 ## 2026-11-03 Dispatch › Send 打开就展开（`task/send-auto-open`，工作窗口 e6 [03dd03]，主窗口 24 派）—— 置顶 62 题 7–9
 - Annie 原话：「包括在dispatch的send 页面，把司机和导游发送也打开，不折叠，也不需要pull from manifest，直接展开给staff看」；答题「问题7-9，同意全部推荐」；随后在 09 窗口「动手」。preview https://claude.ai/artifact/3RE8qSbwHECoCjakAgBidh 第三节。CCL 自动 Apply（题 1–6）作废，不做。
