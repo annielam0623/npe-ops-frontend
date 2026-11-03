@@ -61,6 +61,8 @@
   - 36 藏键清单定稿（task/agent-view 177a83b3，未进 main）：读 /api/me/permissions 的 orders.money_view（或 is_superadmin）；manifests money 组 + agent 等、orders agent_name、订单详情 price、dispatch guest_paid / farm_out payable_*、farm-out PATCH payable 403、farm-out report 403、Sales Report 403、morning tracking agent_name、tour / tickets tracking 去价格列、bookings agent_name。已派 0e（task/money-view-hide），⚠️ 只能跟后端同时或晚于后端合 main。
   - 0e 做完 task/money-view-hide 18d4b0b（没合，等 v142 SHA）：usePermissions().canSeeMoney、lib/money-view.ts；藏 Orders / 订单详情 / 搜索 / Main manifest 金额 + 代理商 / CHD 金额 / Dispatch Farm out Payable / Farm out Report / Sales Report / Morning / Tour / Tickets tracking；Forecast 没价格。检查 orders 46、man 346、mt 218、tt 137、tk 135、fod 48、fr 24、perm 54、nav 38、da 454，tsc / eslint / build 过。f8 定：Supplier › Partners 合作方价格表也藏（照 Annie「任何有价格的信息」），0e 补前端，已请 9e 后端一起拦。36 并进 agent-view（e37835a8）：partners/{id}/rates、rates/import/preview / commit 没勾 403；settings/action-log 去 rates:<id> 条目（一页可能少于 limit，照 next_cursor 翻）；partners / locations / timetable / tour-meta 照旧。已转 0e 核。
   - 36 审后 3 处更新（已转 0e）：订单 activity_log 金额条目 detail 换「(price details hidden)」；tracking 再去 Order Total / Subtotal / Due / Discount / Coupon / Tax / Surcharge / Voucher / Net / Retail / Fee / Payable / Revenue / Source / Sales Channel / Supplier；partner 在 tracking 也去代理商列。后端审完，等 fc v141 落地才提交 v142，预计明天上线。
+- relay 司机标的状态办公室能不能看到（Annie 在 9e 问）：f8 只读核——ops Morning Relay 只出红「No show」，picked_up 不显示，不自动刷新，没有通知。已回 9e。
+- 新功能（Annie 在后端主窗口原话，9e 转）：「我们要不啊再出一个版本的页面，就跟司机看到的页面一样，每个司机占一列，他所有的行动都显示出来」，另说「我刚才说了」（不用再问做不做）。⇒ 派 39 出 preview（办公室看当天每个司机一列：客人 + Picked up / No show + 时间；题：放哪、谁能看、刷新频率、显示时间 / 历史、团车导游的 Boarded 算不算、No show 提醒）。后端要只读接口，标记时间存不存 9e 在查。
 - 今晚在等 Annie 的，跟 24 交接第三节一样，不重问。
 
 ## 2026-11-02 收工交接：前端主窗口-24 [d1dbae]（公司）
