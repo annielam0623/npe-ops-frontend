@@ -625,6 +625,16 @@
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 58. Morning Pickup Tracking 表里怎么显示「到了 / 走了」的时间（2026-11-03，09 做 Samsara 到站时问）
+- 页面：Morning Pickup Tracking（/morning-pickup/tracking）的表格，每一行是一单客人。
+- 现在：Samsara 到站会记下车到酒店、离开酒店的时间（后端 64 在做，v146）。39 的 Live drivers preview（https://claude.ai/artifact/TwJJ32NCdbTEnqxQcCX6MN ）只画了 Live drivers 页签里司机那一列的站点头：酒店名后面一个小胶囊，到了没走是绿色「Arrived 6:18 AM」，走了是灰色「Arrived 5:38 AM · Left 5:46 AM」。Tracking 表格的行没画过，所以要问。
+- 选法：
+  - 甲（推荐）：Pickup Location 那格、酒店名下面加同样的小胶囊，不加列。表格不变宽，样子和 Live drivers 一致。
+  - 乙：表格新加一列「At hotel」，写到 / 离时间。好找，但表格又多一列。
+  - 丙：这一期 Tracking 表不显示，只在 Live drivers 页签显示。
+- 没坐标、没数据的酒店都不显示，不另造提醒。preview 里那个黄色「On the way」后端没数据，不做。
+- 09 先做 Pickup Locations 坐标格和 Live drivers 胶囊，这一处等答。
+
 ### 57. 排班：设置集中 + Working hours 按天设 + Day timeline（2026-11-02 晚，39）—— ✅ 已动手，待移走
 - Annie 在 f8 窗口（原话）：「动手」⇒ 39 开 task/schedule-timeline、task/schedule-settings（Same every day 先用现接口）；按天设后端已转 9e（迁移 + work_hours + PUT /api/settings/schedule/work-hours，权限 settings.schedule，排 v143 后）。
 - 39 转 Annie 在它窗口原话：Day timeline「同意全部推荐，动手」；设置集中「同意全部推荐。动手」。39 在做 task/schedule-timeline-axis，接着 task/schedule-settings。
