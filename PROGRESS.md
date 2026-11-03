@@ -751,6 +751,7 @@
   - 题 4：A CSV 加 Sent、Order state 两列（要后端加）；B 不加。
   - 题 5：How to use 原文 A「Every order in the Main manifest shows here, before and after its confirmation is sent. Sent orders come first. Orders with no confirmation sent yet are listed below them in pink, with Not sent in the Sent column. Order Status comes from the Order List: if an order is put on hold or cancelled, it shows On hold or Cancelled there, and the row stays as a record. ⇄ Farmed out means the order was handed to a partner.」Broadcast 那条后面加「The list includes Not sent guests too. On hold and Cancelled orders are left out. After it is sent, those rows change to Sent.」
 - ✅ **Annie 答新 5 题（91 窗口原话）**：「1. 不需要，因为manifest里头有详细信息，发了没有什么时候发的  2. A  -- 没发送不参与统计   3. A  4. 要  5 A」。即：不加筛选框一张表全显示（已发在上、未发在下粉红，Order # 后 Sent、Order Status 两列）；没发送不参与统计（团胶囊、Total、YES、Pending、Response Rate 只算已发），另加粉红 Not sent 数字卡；Farm out 用现有「⇄ Farmed out ▾」；CSV 加 Sent、Order state 两列（后端活，已转 37）；How to use 用 preview 原文。**还没说「动手」**；前端还要等后端 G180 上 main。
+- 37 转 44：冻结形状里「Sent / Not sent 筛选默认 Sent」撤掉（一张表）；接口照旧返回当天所有行、统计前端算；CSV 两列等 Annie「动手」后跟 G180 一起做。44 分支 task/tracking-sync-design 734778db。
 
 
 ### 63. 换司机只改 Dispatch：页面上怎么标（G234）—— ✅ Annie 已答并「动手」（2026-11-03）；e6 preview https://claude.ai/artifact/CXT8ZueNa3akn1ZrGn4Ycj ，没写代码）
