@@ -8,7 +8,14 @@ import type { HRProfileInput } from "@/lib/hr-api";
 import { cn } from "@/lib/utils";
 import type { HRLinkableUser, HRProfile } from "@/types";
 
-import { FIELDS, GROUPS, type HRField } from "./fields";
+import {
+  FIELDS,
+  GROUPS,
+  type HRField,
+  parseSpellings,
+  SPELLINGS_HINT,
+  SPELLINGS_LABEL,
+} from "./fields";
 import {
   HR_BTN_CLASS,
   HR_BTN_DANGER_CLASS,
@@ -64,7 +71,18 @@ interface ProfileDialogProps {
   linkableUsers: HRLinkableUser[];
   /** 可选账号没拉到时（不影响保存，只是下拉里只有当前关联的）。 */
   linkableError: string | null;
-  onSave: (input: HRProfileInput) => Promise<ActionResult>;
+  /**
+   * spellings：「Other spellings」改过时是新列表，没改 / 后端没这一格时是 null。
+   */
+  onSave: (
+    input: HRProfileInput,
+    spellings: string[] | null,
+  ) => Promise<ActionResult>;
+  /** 后端有「Other spellings」（列表带 other_spellings 键）才出这一格。 */
+  spellingsSupported?: boolean;
+  /** Add person 存好了人、写法没存上时，用新建的人重开弹窗：带回格子里的字和红字。 */
+  initialSpellingsText?: string;
+  initialError?: string | null;
   onDelete: () => void;
   onClose: () => void;
 }
@@ -76,6 +94,9 @@ export function ProfileDialog({
   onSave,
   onDelete,
   onClose,
+  spellingsSupported = false,
+  initialSpellingsText,
+  initialError = null,
 }: ProfileDialogProps) {
   const titleId = useId();
   const idPrefix = useId();
@@ -84,10 +105,21 @@ export function ProfileDialog({
   const initialUser = profile?.user_id != null ? String(profile.user_id) : "";
   const [userId, setUserId] = useState(initialUser);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(initialError);
+  const savedSpellings = (profile?.other_spellings ?? []).join("\n");
+  const [spellText, setSpellText] = useState(
+    initialSpellingsText ?? savedSpellings,
+  );
+  const spellingsChanged =
+    spellingsSupported &&
+    parseSpellings(spellText).join("\n") !==
+      parseSpellings(savedSpellings).join("\n");
   const [askDiscard, setAskDiscard] = useState(false);
 
-  const dirty = !sameValues(values, initial) || userId !== initialUser;
+  const dirty =
+    !sameValues(values, initial) ||
+    userId !== initialUser ||
+    spellingsChanged;
 
   function dismiss() {
     if (saving) return;
@@ -105,7 +137,10 @@ export function ProfileDialog({
       ...values,
       user_id: userId ? Number(userId) : null,
     };
-    const result = await onSave(input);
+    const result = await onSave(
+      input,
+      spellingsChanged ? parseSpellings(spellText) : null,
+    );
     if (result.status === "error") {
       setError(result.message);
       setSaving(false);
@@ -197,6 +232,29 @@ export function ProfileDialog({
                     onChange={(v) => setValue(f.key, v)}
                   />
                 ))}
+                {group === "dispatch" && spellingsSupported ? (
+                  // 题 1 选 B（Annie 2026-11-03）：放在 Dispatch 块，Samsara Driver ID 后面。
+                  <label
+                    htmlFor={`${idPrefix}-other_spellings`}
+                    className="flex flex-col gap-[5px]"
+                  >
+                    <span className={LABEL_CLASS}>{SPELLINGS_LABEL}</span>
+                    <textarea
+                      id={`${idPrefix}-other_spellings`}
+                      data-hr-spellings
+                      value={spellText}
+                      rows={3}
+                      disabled={saving}
+                      onChange={(e) => setSpellText(e.target.value)}
+                      className={cn(
+                        INPUT_CLASS,
+                        "min-h-[70px] resize-y",
+                        error && spellingsChanged && "border-[#b3261e]",
+                      )}
+                    />
+                    <span className={HINT_CLASS}>{SPELLINGS_HINT}</span>
+                  </label>
+                ) : null}
               </div>
             </fieldset>
           ))}
