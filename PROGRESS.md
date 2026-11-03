@@ -24,6 +24,7 @@
 - Annie 报 bug（附截图，11/3 Antelope Canyon BUS 2356=A 的 Bus Manifest，原话）：「这是怎么回事，我们设计的lunch是进lunch 这栏，怎么还跑到special那里去了」。Lunch 列全是「-」，餐的代码（1V 1B / 1T / 1T 1B / 2T）都留在 Special Requirements，例 HDV71ATK、HDE9MST6、HDYWZL6Y、HDCWTQKE、HDG1HYKB、HD4HLWJY、HDWZ1QYT。f8 只读核：前端 LunchCell 只显示后端回的 lunch，没有拆 Special 的逻辑 ⇒ 后端取餐的问题。已发 9e 优先查（取哪个字段、是不是退步、修法）；只修 bug 样子不变照 bug 办，要从 Special 删代码或改样子先回 Annie。
   - 9e 回：从 10-03 起规则就不认「1T 1B」「2V」这类缩写（以前的「N Turkey」是猜的），不是改坏。Annie 在后端定：缩写读进 Lunch 格，样子不变；读准了照 10-03 规则从 Special Requirements 去掉餐码、其他文字保留。36 今晚做（tour_manifest.py，读时算，已上传的 11/3、11/4 名单上线即生效），前端不用改。
   - CHD：后端已给 36 go，排在 G231 合并后推（G231 等 Annie 改 Risk、跑 release.py）。
+- 新需求（Annie 在 f8 窗口原话，没说动手）：「帮忙把staff schedule的每个人的row改成可拖拽」。新功能 ⇒ 先 preview。已派 39：只读查现状（排序字段、后端有没有存顺序的接口、只能看的人、手机版），出电脑 + 手机 preview（Artifact 链接）和题目（谁能拖、全公司一份还是每人一份、每周同一顺序、新员工排哪、手机能不能拖）；拖动先暂存、并进现有 Save。
 - 今晚在等 Annie 的，跟 24 交接第三节一样，不重问。
 
 ## 2026-11-02 收工交接：前端主窗口-24 [d1dbae]（公司）
