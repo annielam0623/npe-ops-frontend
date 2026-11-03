@@ -1241,8 +1241,15 @@ function BusCard({
           style={{ background: data.tour.band_color }}
         >
           <span className="text-[26px] font-extrabold">{data.tour.name}</span>
-          <Person label="Driver" value={block.bus.driver} />
-          <Person label="Guide" value={block.bus.guide} />
+          {/* 司机兼导游（纸本「Driver Guide: Lankun」，Annie 2026-11-02「全部同意。动手」）：同一个人只写一格。 */}
+          {sameCrew(block.bus) ? (
+            <Person label="Driver Guide" value={block.bus.driver} />
+          ) : (
+            <>
+              <Person label="Driver" value={block.bus.driver} />
+              <Person label="Guide" value={block.bus.guide} />
+            </>
+          )}
           <span className="ml-auto text-[19px] font-bold">
             {data.date_label}
           </span>
@@ -1459,6 +1466,17 @@ function Warn({ children }: { children: React.ReactNode }) {
       <PhoneOneLine>{children}</PhoneOneLine>
     </p>
   );
+}
+
+/** 司机和导游是同一个人：后端的 driver_is_guide；没带时自己比（不分大小写、去头尾空格；两边都要有名字）。 */
+function sameCrew(bus: {
+  driver: string;
+  guide: string;
+  driver_is_guide?: boolean;
+}): boolean {
+  if (bus.driver_is_guide !== undefined) return bus.driver_is_guide;
+  const d = (bus.driver || "").trim().toLowerCase();
+  return !!d && d === (bus.guide || "").trim().toLowerCase();
 }
 
 function Person({ label, value }: { label: string; value: string }) {
@@ -2456,8 +2474,12 @@ function LunchSheet({
             {(
               [
                 ["Bus #", block.bus_number],
-                ["Tour Guide", block.bus.guide || "—"],
-                ["Driver", block.bus.driver || "—"],
+                ...((sameCrew(block.bus)
+                  ? [["Driver Guide", block.bus.driver]]
+                  : [
+                      ["Tour Guide", block.bus.guide || "—"],
+                      ["Driver", block.bus.driver || "—"],
+                    ]) as [string, string][]),
               ] as const
             ).flatMap(([k, v]) => [
               <td

@@ -250,6 +250,8 @@ export interface ManifestBlock {
     seats: number | null;
     driver: string;
     guide: string;
+    /** 司机兼导游（后端 36）：true 时抬头写一格「Driver Guide」，午餐单底行也一样。没带时前端自己比名字。 */
+    driver_is_guide?: boolean;
   };
   /** 黄框存的车键：单车时 ""，否则字母。 */
   bus_key: string;

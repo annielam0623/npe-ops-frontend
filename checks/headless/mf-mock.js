@@ -73,7 +73,8 @@ function view() {
   const onB = state.guests.filter((g) => g.bus_label === "B");
   const un = state.guests.filter((g) => !g.bus_label);
   const shuttle = { key: "SHUTTLE OUT", kind: "outbound", title: "SHUTTLE OUT", heading: "SHUTTLE: LAS TO PAGE // OUTBOUND 2 PAX", name: "", pax: 2, color: "#f8c9a0", guests: [pub(guest(9, "CHD9", { ticket: "Shuttle" }))], attraction: { checkin_time: "", pax_text: "", tour_time: "", confirmation_no: "" }, attraction_filled: false };
-  const block = (id, label, gs, extraSecs = []) => ({ bus: { id, bus_label: label, van: "20" + id, seats: 56, driver: "FREDDY", guide: "" }, bus_key: label, bus_number: `20${id}=${label}`,
+  // ctl.sameCrew：A 车司机兼导游（纸本「Driver Guide: Lankun」）。
+  const block = (id, label, gs, extraSecs = []) => ({ bus: { id, bus_label: label, van: "20" + id, seats: 56, driver: "FREDDY", guide: ctl.sameCrew && label === "A" ? " freddy " : "" }, bus_key: label, bus_number: `20${id}=${label}`,
     sections: gs.length ? [sec(gs, true), ...extraSecs] : extraSecs, totals: { pax: 0, guests: 0, boarded: 0, no_show: 0 },
     footer: [{ label: "TOTAL # OF PAX", value: 56, custom: false }, { label: "BUS SEATS LEFT", value: null, custom: false }, { label: "Heli SEATS LEFT", value: 4, custom: true }, { label: "INBOUND", value: 0, custom: false }, { label: "BUS SEATS USED", value: 6, custom: false }, { label: "NO LUNCH (INCL. SHUTTLE)", value: 2, custom: false }], empty_notes: false,
     ...(ctl.g198 ? { lunch: label === "A" ? { sections: [{ title: "LOWER ANTELOPE 1:00P - 4 PAX", rows: [{ name: "ZZ Test1", pax: 2, turkey: 2, veggie: 0, beef: 0, defaulted: true }, { name: "ZZ Test3", pax: 2, turkey: 1, veggie: 1, beef: 0, defaulted: false }] }], totals: { pax: 4, turkey: 3, veggie: 1, beef: 0 }, note: "(TEXT) POC: ZZ TEST 555-0100\nCALL no later than 7pm, night before  555-0101", title: "NPE Lunch Box - ZZ Test Bee's", restaurant: "ZZ Test Bee's" } : null } : {}),
