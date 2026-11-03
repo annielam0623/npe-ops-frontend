@@ -28,9 +28,9 @@
 | task/samsara-arrival（09，到站 Arrived / Left） | 071df4d | 后端 64 samsara-arrivals + v146（Annie 跑）；置顶 58 / 59 答 | 同上 |
 
 ### 三、等 Annie 的（详见置顶，不要滚动重问）
-- **64 G180 Tour Tracking**：Annie 讲完规则（4 条原话在置顶），91 preview 已改（Sent 列 + Order Status 列、未发送在下粉红），**5 题等答**；Ticket Tracking 不在后端 G180 范围，要不要另做等她说。后端 44 停在 task/tracking-sync-design，代码约明天中午好 → v147（Annie 跑）。
-- **65 HR Other spellings**：Annie 已答 1B 2A 3B 4A，**等「动手」**。接口 91 已核过。若动手时 bulk 还没上，问 Annie 分两步（备用题在置顶）。
-- **67 Dispatch 名单每行可编辑**：**4 题等答 + 「动手」**；后端评估约半天、风险 B；电话日志只记字段不记号码（已告诉 Annie）。
+- **64 G180 Tour Tracking**：5 题 Annie 已答（原话在置顶），**等「动手」**；CSV 两列已转 37；Ticket Tracking 要不要另做等她说。后端 44 停在 task/tracking-sync-design，代码约明天中午好 → v147（Annie 跑）。
+- **65 HR Other spellings**：Annie「HR动手」，91 在 task/hr-other-spellings 做（没接口时不显示，可先合 main）；Edit list 先只读，等后端 bulk。
+- **67 Dispatch 名单每行可编辑**：Annie「Dispatch名单编辑-动手」，按推荐全 A；91 task/roster-edit（HR 之后），后端 PUT /api/dispatch/roster/{id} 待 37 派（明天家里）。
 - **68 Relay 勾酒店不核座位**：超座位提醒还是挡住，37 在问；定了 37 派后端、24 派前端（先 preview）。
 - **66 Super Admin 预览看实时**：Annie 已「动手」，后端 64 做，排 57 → 4d 后；纯后端页面。
 - 61（Q1 / Q2）、58 / 59、53 Q8、52、51、48、55②、Today's team 7 题、酒店格颜色、Send Log 模块、Dashboard 统计 bug、Forecast 回填：照旧等。
@@ -708,6 +708,8 @@
   - 题 2 名字改 HR 哪一格：A（推荐）改 Nickname，没 Nickname 的人存成 Nickname，Legal Name 不动；B 有 Nickname 改 Nickname，没有就改 Legal Name。
   - 题 3 改名后旧名字自动进 Other spellings 吗：A（推荐）自动加，存好后行下提示「The old name GIA was added to Other spellings.」；B 不加，staff 自己去 HR 加。
   - 题 4 How to use 加：A（推荐）「To fix a name or phone number, click Edit on that row, change it, then click Save. The new name or number shows on Dispatch right away. Other details (licence, position) are in Settings › Human Resource.」
+- ✅ **Annie 在 91 窗口说「Dispatch名单编辑-动手」（原话，2026-11-03 傍晚）**，4 题没逐题答，按推荐全 A（只改名字和电话；写 Nickname；改名后旧名字自动进 Other spellings；How to use 用原文），91 在回复里跟她确认。91 先做完 HR 再开 task/roster-edit；后端 PUT 没有时不出 Edit 键。已转 37 派后端（含返回要不要带 old_name_added，旧名字进 spellings 由后端做）。
+- 37 回字段：PUT /api/dispatch/roster/{id} {name, phone} → {id, name, phone, type, old_name_added}；old_name_added 是加进 Other spellings 的旧名字字符串，没加为 null（没改名 / 旧名已在他的写法里 / 撞别人写法——只跳过不报错，名字电话照存）。排在 G234（4d spellings 表）上 main 之后，明天家里那台约半天，做完 37 发提交号。已转 91。
 
 ### 66. 司机页 / 导游页预览：当天在跑的要跟手机上一样（2026-11-03）—— ✅ Annie 选 A 并「动手」，后端做
 - 截图是后端导游页（app/templates/field/guide_home.html，Antelope Bus A 2356），按钮 Boarded / No show / Call / ✎ Change / Send message 都灰。24 只读查：这些键在**预览**（Dispatch「Guide page preview ↗」/ Manifest 每车 Guide view，preview=True）或**前一天**（G227「Opens on … the grey buttons work on the day」，ahead）时是 disabled，样式 opacity .45（:267、:274），所以字发灰、点不了，是有意的；到了当天真正的导游手机上是正常颜色。单号「CHD0748XR · Lower」、「3 bookings」、「pax · 9 pickup stops」那类是本来的次要灰字。
@@ -726,6 +728,7 @@
 - 37 回：spellings 接口在 4d 的 worktree 分支 task/driver-change-follow（同 G234），GET/PUT 是 4d 本地没推的提交，所以 origin 上找不到；题 3 B 的 bulk 要求已转 4d。公司电脑 15:30 AFTER_HOURS，后端今天不再落地，家里那台接着做；推到 origin 后 37 发提交号。上线顺序不变：57 → 4d（G234 + spellings）→ 64。
 - 37 回（2026-11-03 傍晚）：spellings 接口已推 origin task/driver-change-follow 33691e8d（GET/PUT /api/hr/profiles/{id}/spellings，profiles 列表带 other_spellings），91 可只读对接口；bulk 收 other_spellings（错误带 profile_id）和保存返回 driver_follow.updated[] 家里那台明天做，未合 main。前端仍等 Annie「动手」。
 - 91 只读核对 33691e8d：与 preview 对得上（列表带 other_spellings；弹窗先 PUT spellings 再存其他字段，回填规整后的列表；6 句报错逐字相同，另有后端原话格式报错：超 60 字 / 超 20 个 / 不能有换行或 tab；与本人 Nickname 相同自动略过；只真改才记 Action Log；PUT 用 HR 编辑权限）。弹窗一行一个、Edit list 逗号隔开（写法不能含逗号）。**备用题（Annie 说动手时 bulk 还没上才问）**：先做弹窗 + 人员表列，Edit list 这列先只读，bulk 上了再开可改——分两步行不行。
+- ✅ **Annie 在 91 窗口说「HR动手」（原话，2026-11-03 傍晚）**。91 从 main 开 task/hr-other-spellings：编辑弹窗 Dispatch 块格子、人员表列、Edit list 列；接口没 other_spellings 时（生产现在）全都不出、页面同现在，后端上线后自动出现。Edit list 那列先只读，整批保存上线再开可改（即备用题的分两步，91 跟 Annie 说明）。
 
 ### 64. G180 Main manifest 订单同步到 Tour Tracking：重新启动（2026-11-03，Annie「重新启动」）
 - 10/24 Annie 提，后端 d9 写好代码在 origin/task/tracking-sync-design（4cac1f93，10/25 夜后没动，没上 main、没跑迁移；deploy-guard 第 3 轮 FAIL：迁移要先于代码；迁移号 v122 已被占，要换号）。设计文档 docs/tracking-sync-design-2026-10-24.md，Annie 已定的不再问（同步已确认订单、发送前后都同步、send_state Sent / Not sent、order_state Confirmed / On hold / Cancelled 以 Order List 为准、从不删行、午餐谁新留谁、Farm out 只记录、Broadcast 含 Not sent 不含 On hold / Cancelled 且发出后变 Sent、总开关默认关、Tour Tracking 加 Sent / Not sent 筛选默认 Sent + 订单号后小标签）。还没答：调用记录表 401 要不要记（Max 推荐不记，后端那边问）。
@@ -747,6 +750,8 @@
   - 题 3：A Farm out 用现有「⇄ Farmed out ▾」；B Order Status 里写 Farm out。
   - 题 4：A CSV 加 Sent、Order state 两列（要后端加）；B 不加。
   - 题 5：How to use 原文 A「Every order in the Main manifest shows here, before and after its confirmation is sent. Sent orders come first. Orders with no confirmation sent yet are listed below them in pink, with Not sent in the Sent column. Order Status comes from the Order List: if an order is put on hold or cancelled, it shows On hold or Cancelled there, and the row stays as a record. ⇄ Farmed out means the order was handed to a partner.」Broadcast 那条后面加「The list includes Not sent guests too. On hold and Cancelled orders are left out. After it is sent, those rows change to Sent.」
+- ✅ **Annie 答新 5 题（91 窗口原话）**：「1. 不需要，因为manifest里头有详细信息，发了没有什么时候发的  2. A  -- 没发送不参与统计   3. A  4. 要  5 A」。即：不加筛选框一张表全显示（已发在上、未发在下粉红，Order # 后 Sent、Order Status 两列）；没发送不参与统计（团胶囊、Total、YES、Pending、Response Rate 只算已发），另加粉红 Not sent 数字卡；Farm out 用现有「⇄ Farmed out ▾」；CSV 加 Sent、Order state 两列（后端活，已转 37）；How to use 用 preview 原文。**还没说「动手」**；前端还要等后端 G180 上 main。
+- 37 转 44：冻结形状里「Sent / Not sent 筛选默认 Sent」撤掉（一张表）；接口照旧返回当天所有行、统计前端算；CSV 两列等 Annie「动手」后跟 G180 一起做。44 分支 task/tracking-sync-design 734778db。
 
 
 ### 63. 换司机只改 Dispatch：页面上怎么标（G234）—— ✅ Annie 已答并「动手」（2026-11-03）；e6 preview https://claude.ai/artifact/CXT8ZueNa3akn1ZrGn4Ycj ，没写代码）
