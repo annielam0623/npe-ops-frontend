@@ -29,7 +29,7 @@
 
 ### 三、等 Annie 的（详见置顶，不要滚动重问）
 - **64 G180 Tour Tracking**：5 题 Annie 已答（原话在置顶），**等「动手」**；CSV 两列已转 37；Ticket Tracking 要不要另做等她说。后端 44 停在 task/tracking-sync-design，代码约明天中午好 → v147（Annie 跑）。
-- **65 HR Other spellings**：Annie 已答 1B 2A 3B 4A，**等「动手」**。接口 91 已核过。若动手时 bulk 还没上，问 Annie 分两步（备用题在置顶）。
+- **65 HR Other spellings**：Annie「HR动手」，91 在 task/hr-other-spellings 做（没接口时不显示，可先合 main）；Edit list 先只读，等后端 bulk。
 - **67 Dispatch 名单每行可编辑**：**4 题等答 + 「动手」**；后端评估约半天、风险 B；电话日志只记字段不记号码（已告诉 Annie）。
 - **68 Relay 勾酒店不核座位**：超座位提醒还是挡住，37 在问；定了 37 派后端、24 派前端（先 preview）。
 - **66 Super Admin 预览看实时**：Annie 已「动手」，后端 64 做，排 57 → 4d 后；纯后端页面。
@@ -726,6 +726,7 @@
 - 37 回：spellings 接口在 4d 的 worktree 分支 task/driver-change-follow（同 G234），GET/PUT 是 4d 本地没推的提交，所以 origin 上找不到；题 3 B 的 bulk 要求已转 4d。公司电脑 15:30 AFTER_HOURS，后端今天不再落地，家里那台接着做；推到 origin 后 37 发提交号。上线顺序不变：57 → 4d（G234 + spellings）→ 64。
 - 37 回（2026-11-03 傍晚）：spellings 接口已推 origin task/driver-change-follow 33691e8d（GET/PUT /api/hr/profiles/{id}/spellings，profiles 列表带 other_spellings），91 可只读对接口；bulk 收 other_spellings（错误带 profile_id）和保存返回 driver_follow.updated[] 家里那台明天做，未合 main。前端仍等 Annie「动手」。
 - 91 只读核对 33691e8d：与 preview 对得上（列表带 other_spellings；弹窗先 PUT spellings 再存其他字段，回填规整后的列表；6 句报错逐字相同，另有后端原话格式报错：超 60 字 / 超 20 个 / 不能有换行或 tab；与本人 Nickname 相同自动略过；只真改才记 Action Log；PUT 用 HR 编辑权限）。弹窗一行一个、Edit list 逗号隔开（写法不能含逗号）。**备用题（Annie 说动手时 bulk 还没上才问）**：先做弹窗 + 人员表列，Edit list 这列先只读，bulk 上了再开可改——分两步行不行。
+- ✅ **Annie 在 91 窗口说「HR动手」（原话，2026-11-03 傍晚）**。91 从 main 开 task/hr-other-spellings：编辑弹窗 Dispatch 块格子、人员表列、Edit list 列；接口没 other_spellings 时（生产现在）全都不出、页面同现在，后端上线后自动出现。Edit list 那列先只读，整批保存上线再开可改（即备用题的分两步，91 跟 Annie 说明）。
 
 ### 64. G180 Main manifest 订单同步到 Tour Tracking：重新启动（2026-11-03，Annie「重新启动」）
 - 10/24 Annie 提，后端 d9 写好代码在 origin/task/tracking-sync-design（4cac1f93，10/25 夜后没动，没上 main、没跑迁移；deploy-guard 第 3 轮 FAIL：迁移要先于代码；迁移号 v122 已被占，要换号）。设计文档 docs/tracking-sync-design-2026-10-24.md，Annie 已定的不再问（同步已确认订单、发送前后都同步、send_state Sent / Not sent、order_state Confirmed / On hold / Cancelled 以 Order List 为准、从不删行、午餐谁新留谁、Farm out 只记录、Broadcast 含 Not sent 不含 On hold / Cancelled 且发出后变 Sent、总开关默认关、Tour Tracking 加 Sent / Not sent 筛选默认 Sent + 订单号后小标签）。还没答：调用记录表 401 要不要记（Max 推荐不记，后端那边问）。
