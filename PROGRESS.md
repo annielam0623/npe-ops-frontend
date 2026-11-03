@@ -153,6 +153,8 @@
     - fc 字段定（已转 39）：GET /api/notifications/morning-pickup/live-drivers?date=（morning.view + 开关 morning_live_drivers）→ people[{kind, hr_id, name, first_shift, segments | runs, inbox}]；…/live-drivers/thread（不写已读，含 email_in）；回复 POST /booking-notes/by-order；tracking 行加 live_status / live_status_at / live_driver / live_van / ns_unhandled。
     - 39 核 ⑫：回复框（conversation-modal.tsx:366-367）现在默认只勾 SMS，Morning / Tour / Tickets tracking、Dashboard 共用；旧后台也只勾 SMS ⇒ 跟 Annie「staff发送morning的默认就是两个都自动勾选了」对不上（她可能指 Morning 发送页）。Live drivers 默认两个都勾；别的页面问 Annie A 照旧（推荐）／B 全站两个都勾。
     - ✅ 后端已上 main d20a005d（合并 f85ec0ca，两审 PASS）。已请 39 合 task/live-drivers。
+    - Samsara 第二期到站（Annie 在后端主窗口「动手」）：fc 字段——pickup-locations 加 latitude / longitude / arrival_radius_m（默认 10），PATCH /api/pickup-locations/{id}/arrival-point；tracking 行加 arrived_at / left_at，Live drivers relay_blocks 每块加 arrived_at / left_at。迁移 v146（v145 后）。前端派 39（task/samsara-arrival，live-drivers 合完后做；Pickup Locations 加坐标 + 半径格，暂存 + Save）。
+    - BZ 颜色 Annie 要再浅（后端主窗口原话「BZ的颜色再浅一点」）：0e 色表加 4 块（现 #f06f68 / 1 #f4938e / 2 #f7b0ac / 3 #facdca），等 Annie 挑。
     - 39：司机实时页前端在 task/live-drivers 9600def（没合，等后端 live-drivers SHA）：页签 + 开关 morning_live_drivers、Driver mark 列 + ns_unhandled 置顶 + NEW 闪、Live drivers 30 秒、回复框短信 + 邮件默认都勾（别处照旧）。mt 240、ns 49（顺带修了 main 上本来就过时的「Page visibility N 行」）、tt 137、tk 135、da 454、tasks 144、nav 38、perm 54，tsc / eslint / build 过。
     - 39：work-hours 前端在 task/schedule-work-hours 27a94ca（sch 367、dr 89、tasks 144，tsc / eslint / build 过），等后端 v144 SHA；开始 task/live-drivers。
 - Annie 嫌 Dashboard「Today's team」难看（f8 窗口原话，附截图）：「这个排版也太丑了吧，你的审美呢」⇒ 改样子，派 0e 出 preview（一人一行对齐、Off 合一行、Visible to 收起、Online now 省地方、ZZTest 是否出现问 Annie）。没动手。
