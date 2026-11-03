@@ -22,6 +22,12 @@ const profiles = [
     license_expiry_state: "none", medical_expiry_state: "none" },
 ];
 let pref = null;
+// 「Other spellings」（后端 G234 续）：ctl.spellings = true 时列表带 other_spellings、有 PUT …/spellings；关着 = 后端没上线。
+// JOSEPH 已经是别人（Joe R）的写法 ⇒ 409。
+const spellings = { 1: ["JOE ROD"] };
+function withSpellings(p) {
+  return ctl.spellings ? { ...p, other_spellings: spellings[p.id] ?? [] } : p;
+}
 function send(res, status, body, headers = {}) {
   res.statusCode = status;
   res.setHeader("Content-Type", "application/json");
@@ -68,7 +74,7 @@ http.createServer(async (req, res) => {
   if (ctl.writeForbidden && req.method !== "GET" && p.startsWith("/api/hr/")) return send(res, 403, { detail: "Admin access required" });
   if (p === "/api/hr/profiles" && req.method === "GET") {
     if (ctl.fail500) return send(res, 500, { detail: "Human Resource is misconfigured and has been disabled: x This needs a code fix, not a settings change." });
-    return send(res, 200, { profiles: [...profiles].sort((a, b) => a.legal_name.localeCompare(b.legal_name)) });
+    return send(res, 200, { profiles: [...profiles].sort((a, b) => a.legal_name.localeCompare(b.legal_name)).map(withSpellings) });
   }
   if (p === "/api/hr/linkable-users") return send(res, 200, { users: [{ id: 7, label: "Dan D", role: "driver" }] });
   // G203 共用读接口（后端 3686fea）：只存字段名，每个字段一行，from / to 为 null。
@@ -86,6 +92,18 @@ http.createServer(async (req, res) => {
     const id = nextId++;
     profiles.push({ ...blank, ...b, id, ...stateOf(b) });
     return send(res, 200, { id, legal_name: b.legal_name });
+  }
+  const sm = /^\/api\/hr\/profiles\/(\d+)\/spellings$/.exec(p);
+  if (sm && ctl.spellings && req.method === "PUT") {
+    const b = await readBody(req); entry.body = b;
+    const id = Number(sm[1]);
+    const row = profiles.find((x) => x.id === id);
+    if (!row) return send(res, 404, { detail: "That profile no longer exists — it may have been deleted." });
+    const list = [...new Set((b.spellings ?? []).map((s) => String(s).trim().toUpperCase().replace(/ +/g, " ")).filter(Boolean))]
+      .filter((s) => s !== String(row.nickname).toUpperCase()).sort();
+    if (list.includes("JOSEPH")) return send(res, 409, { detail: "JOSEPH is already used for Joe R. Remove it there first." });
+    spellings[id] = list;
+    return send(res, 200, { spellings: list });
   }
   let m = /^\/api\/hr\/profiles\/(\d+)$/.exec(p);
   if (m && req.method === "PUT") {

@@ -696,8 +696,8 @@ function HowToUse() {
       <li>
         Tour bus departure (only in the Tour bus block): tick it for a place
         where guests board the tour bus directly (Treasure Island). Guests
-        picked up there are left out when you click Pull from manifests in
-        Dispatch. It saves as soon as you click.
+        picked up there are left out of Morning Relay on Dispatch → Send. It
+        saves as soon as you click.
       </li>
       <li>
         If the list is wider than the window, scroll it sideways to see the

@@ -569,8 +569,10 @@ export function analyze(
     if (!v || v.has_tracking || noGps.has(v.id)) return;
     noGps.add(v.id);
     issues.push({
-      title: `${v.van_no} has no live GPS`,
-      detail: "Guests on that vehicle won’t see the map.",
+      // Annie 2026-11-03：没定位的车照发链接、客人照样签到，短信 / 邮件不提 live tracking（后端自动换字）；只标不拦。
+      title: `${v.van_no} has no tracking`,
+      detail:
+        "Guests on it still get the link and can check in. The text doesn’t mention live tracking.",
       idx,
     });
   });

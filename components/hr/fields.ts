@@ -251,15 +251,35 @@ export const LIST_FIELD_KEYS = [
 ] as const;
 
 export const LOGIN_COLUMN = "__login";
+/**
+ * 「Other spellings」列（Annie 2026-11-03 题 2 选 A：紧跟 Nickname）。不走 bulk 白名单：
+ * Edit list 里先只读，后端 bulk 收这一格以后再开成能改（题 3 选 B）。后端没这个键时整列不出。
+ */
+export const SPELLINGS_COLUMN = "other_spellings";
 export const DEFAULT_COLUMNS: readonly string[] = [
-  ...LIST_FIELD_KEYS,
+  LIST_FIELD_KEYS[0],
+  LIST_FIELD_KEYS[1],
+  SPELLINGS_COLUMN,
+  ...LIST_FIELD_KEYS.slice(2),
   LOGIN_COLUMN,
 ];
 
+export const SPELLINGS_LABEL = "Other spellings";
+export const SPELLINGS_HINT =
+  "How the morning Excel or CCL writes this name, one per line (for example JOSEPH). Each spelling can belong to one person only.";
+
+/** 格子里的文字 → 交给后端的列表（一行一个；空行去掉，规整交给后端）。 */
+export function parseSpellings(text: string): string[] {
+  return text
+    .split(/\r?\n/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
 export function columnLabel(key: string): string {
-  return key === LOGIN_COLUMN
-    ? "Login Account"
-    : (FIELD_BY_KEY[key]?.label ?? key);
+  if (key === LOGIN_COLUMN) return "Login Account";
+  if (key === SPELLINGS_COLUMN) return SPELLINGS_LABEL;
+  return FIELD_BY_KEY[key]?.label ?? key;
 }
 
 export function fieldLabel(key: string): string {

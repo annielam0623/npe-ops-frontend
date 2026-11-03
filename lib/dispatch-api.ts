@@ -305,6 +305,11 @@ export interface RelayPull {
         id: number;
         van: string | null;
         driver: string | null;
+        /**
+         * 这台车有没有实时定位（Vehicles 里有 Samsara 链接；后端 2026-11-03 fc880e40）。false 只标「No tracking」、
+         * 不挡发送；没配车号的车后端也给 false（页面只在有车号时标）。旧后端没有 ⇒ 当 true。
+         */
+        has_tracking?: boolean;
         /** 这台车不能发的原因（英文整句）；空 / 没有 = 可以发。 */
         problems?: string[];
         /** tour_car 轮（Tour bus pick up）：这台车是哪个团的（后端待补 B2；没有就从客人的 Tour 取）。 */
