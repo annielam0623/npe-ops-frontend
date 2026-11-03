@@ -19,6 +19,14 @@
 - 检查：orders / man / mt / tt / fod / fr 各加「没勾 / 勾了 / Super Admin」（orders 还测旧后端照样给数据时前端自己藏）；原来按勾的几组补上 orders.money_view；partner 订单详情改成不出 Price 卡；共用 staff-perm-mock.js 加 ctl.extraWidgets（带别的页面开关）。上传表头的词照后端 36 审查后的清单（Order Total / Subtotal / Due / Discount / Coupon / Tax / Surcharge / Voucher / Net / Retail / Fee / Payable / Revenue / Source / Sales Channel / Supplier 整词比，Agent / Price / Paid… 字串比），用 Annie 给的两份 Rezdy CSV 的全部表头核过。
 - 结果（合最新 main 191f635 后）：orders 46/46、man 346/346、mt 218/218、tt 137/137、tk 135/135、fod 48/48、fr 24/24、perm 54/54、nav 38/38、da 454/454；tsc 0 错、eslint 0 错（2 个旧 warning）、build 过。
 
+## 2026-11-02 晚 Staff Schedule：Day timeline 不算人头的人不出现 + 时间刻度（`task/schedule-timeline-axis`，工作窗口 `npe-ops-frontend-39`[36b630]）
+- Annie 原话（39 窗口）：「然后我已经说过Anite不参加gap，为什么她的时间仍然出来在时间条里，然后时间条上面应该有个时间线显示时间的」；preview https://claude.ai/artifact/PnnAHTzhtSGD1nQcZmiWzu ；「同意全部推荐，动手」（f8 窗口也说「动手」）。
+- 改了 `components/schedule/day-timeline.tsx`（schedule-view 传 `now={laNow}`）：
+  - ①A 能改排班的人看的时间条里，不算人头的人（counts_for_coverage=false、不是测试的人）不出现，Overlap 也不算；②A 下面灰字「Not shown (don't count toward coverage): Anita 2:00 AM – 12:00 PM」；⑤A 员工看的照常、没有说明；④A 周表不变。
+  - 顶上一行刻度（`data-time-axis`）：两头写 Working hours 开始 / 结束，电脑每 2 小时、手机每 4 小时一个整点，离两头 / now 太近的不写；每行每小时一条淡竖线（`data-hour-line`）。
+  - ③A 看今天时每行一条琥珀色 now 竖线，刻度上写「now 7 PM」（`window.__scheduleNow` 可固定）。Working hours 跨午夜时不画刻度和竖线（条子本来也画不对，另说）。
+- 检查：sch 加 / 改 6 条（刻度标签、19 条竖线、now 线 + 换天消失、Anita 不出现 + 灰字、勾回去复原、员工看照常），sch 346/346、tasks 144/144；dr 87/88——失败的那条是侧栏 Operations 顺序（少了 farm_out_report），是 main 上 money-view（0e，`5959395`）带来的，跟本改动无关，已报 f8。tsc / eslint（0 错）/ build 过。
+
 ## 2026-11-02 晚 Staff Schedule：员工行拖动排顺序（`task/schedule-row-order`，从 coverage-flag 分支接着开，工作窗口 `npe-ops-frontend-39`[36b630]，主窗口 f8 派）—— 后端 7c976175 上 main 后合 main（2026-11-02 晚）
 - Annie 原话（39 窗口）：「第7按B，其他都按推荐。东松户」「动手」。preview https://claude.ai/artifact/PCJkqu6KRWreA1EzMkJRk8 。即 ① 跟 schedule.edit 走 ② 全公司一份 ③ 每周同一个顺序、不算排班改动 ④ 新加 / 重新启用排最后 ⑤ 手机不拖 ⑥ 自己那行固定最上面、不拖 ⑦ **只排班表这一张**照这个顺序，别处照旧按名字。
 - 后端（fc 定）：GET employees 按 sort_order, name, id 排、每人带 sort_order；PUT /api/schedule/employees/order {"employee_ids":[在用的人整份]} → {"employees":[…]}，缺 / 多 / 重复 400 原话；不动 version、不发通知。

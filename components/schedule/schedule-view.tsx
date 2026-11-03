@@ -1230,6 +1230,7 @@ export function ScheduleView() {
                     weekGaps={gaps}
                     showGaps={canEdit}
                     shiftTypes={settings.shift_types}
+                    now={laNow}
                   />
                 </div>
               </section>

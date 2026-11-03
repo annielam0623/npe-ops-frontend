@@ -226,8 +226,11 @@ async function run() {
   await setNow("2026-10-06T08:00");
   check("过去的空档不标：现在是 Tue 10/06，Mon 10/05 的空档（5:00–9:30 PM）列头红点、Gap 提示、Day timeline 红点都没了", await waitFor("!document.querySelector('[data-grid-gap=\"2026-10-05\"]') && !document.querySelector('[data-gap-summary]') && !document.querySelector('[data-day-tab=\"2026-10-05\"][data-has-gap]')"));
   await setNow("2026-10-05T19:00");
+  // 「now」竖线（Annie 11-02 Day timeline preview ③A）：看的是今天才画，刻度上写 now 7 PM，离 now 太近的整点（6 PM、8 PM）不写。
+  check("Day timeline 看今天（Mon 10/05，现在 7:00 PM）：每行一条 now 竖线，刻度上写「now 7 PM」，6 PM / 8 PM 不写免得叠在一起", await waitFor("document.querySelector('[data-day-tab=\"2026-10-05\"]').getAttribute('aria-selected') === 'true' && document.querySelectorAll('[data-now-line]').length >= 2 && document.querySelector('[data-axis-step=\"2\"] [data-now-label]')?.textContent === 'now 7 PM' && !document.querySelector('[data-axis-step=\"2\"]').textContent.includes('6 PM') && !document.querySelector('[data-axis-step=\"2\"]').textContent.includes('8 PM')"), await evaluate("return document.querySelector('[data-axis-step=\"2\"]')?.textContent;"));
   check("今天跨过「现在」的那段只算后半截：现在 Mon 10/05 7:00 PM ⇒ 只剩 7:00–9:30 PM", await waitFor("document.querySelector('[data-grid-gap=\"2026-10-05\"]')?.textContent.includes('Gap 7–9:30 PM') && document.querySelector('[data-gap-summary]')?.textContent.includes('Mon 10/05 · nobody 7:00–9:30 PM')"), await evaluate("return (document.querySelector('[data-grid-gap=\"2026-10-05\"]')?.textContent || '') + ' | ' + (document.querySelector('[data-gap-summary]')?.textContent || '');"));
   await setNow("2026-09-01T00:00");
+  check("换回不是今天：now 竖线和 now 字都没了", await waitFor("!document.querySelector('[data-now-line]') && !document.querySelector('[data-now-label]')"));
   await waitFor("document.querySelector('[data-grid-gap=\"2026-10-05\"]')?.textContent.includes('Gap 5–9:30 PM')");
 
   // 验收第 5 条：绕过前端直接调发布接口，有空档一样被拒；后端形状 {detail:{detail,gaps}}。
@@ -328,6 +331,12 @@ async function run() {
   check("10/7 显示 Veronica + Lizzie 重叠", timelineText.includes("Veronica + Lizzie"));
   check("10/7 显示 Lizzie + Nadia 重叠", timelineText.includes("Lizzie + Nadia"));
   check("10/7 没有空档：写「Gaps on Wed 10/07: none」", timelineText.includes("Gaps on Wed 10/07: none"));
+  // 时间刻度（Annie 2026-11-02「时间条上面应该有个时间线显示时间的」，preview PnnAHTzhtSGD1nQcZmiWzu）
+  check("Day timeline 顶上一行刻度：电脑每 2 小时一个整点，两头写 Working hours 2 AM / 9:30 PM；手机那一行藏着", await evaluate(`
+    const a = document.querySelector('[data-axis-step="2"]'), p = document.querySelector('[data-axis-step="4"]');
+    const labels = [...a.querySelectorAll('span')].map((s) => s.textContent);
+    return JSON.stringify(labels) === JSON.stringify(['2 AM', '4 AM', '6 AM', '8 AM', '10 AM', '12 PM', '2 PM', '4 PM', '6 PM', '8 PM', '9:30 PM']) && a.offsetWidth > 0 && p.offsetWidth === 0;`), await evaluate("return [...document.querySelectorAll('[data-axis-step=\"2\"] span')].map((s) => s.textContent).join(',');"));
+  check("每一行底下有每小时一条淡竖线（2:00–9:30 PM 之间 19 条）", await evaluate("const r = document.querySelector('[data-timeline-row]'); return r.querySelectorAll('[data-hour-line]').length === 19;"));
 
   // ── 点卡片再点同一天别人的格子：Lizzie(2) 周一 Mid → Nadia(3) ──
   const lizMid = `${cell("2|2026-10-05")}.querySelector('[data-slot-id]')`;
@@ -487,14 +496,15 @@ async function run() {
   await waitFor("!document.querySelector('[role=dialog]')");
   check("排班表：Anita 名字旁 Not counted、她的班卡变淡虚线；周六只有她的 2:00–11:30 AM 出空档", (await waitFor(`!!document.querySelector('[data-grid-gap="2026-10-10"]')`)) && (await evaluate(`const row = [...document.querySelectorAll('[data-sch-grid] .sticky')].find((r) => r.textContent.includes('Anita')); const card = ${cell("5|2026-10-10")}.querySelector('[data-slot-id]'); return !!row.querySelector('[data-not-counted-tag]') && card.dataset.notCounted === 'true' && card.className.includes('border-dashed') && document.querySelector('[data-grid-gap="2026-10-10"]').textContent.includes('Gap 2–11:30 AM');`)), await evaluate("return document.querySelector('[data-grid-gap=\"2026-10-10\"]')?.textContent;"));
   await evaluate("document.querySelector('[data-day-tab=\"2026-10-10\"]').click();");
-  check("Day timeline 周六：Anita 的条子斜纹写 not counted，多一行 Nobody 2:00 AM – 11:30 AM", await waitFor("[...document.querySelectorAll('[data-not-counted]')].some((b) => b.textContent === 'not counted') && [...document.querySelectorAll('[data-nobody-row]')].some((r) => r.textContent.includes('2:00 AM') && r.textContent.includes('11:30 AM'))"));
+  // Annie 11-02「我已经说过Anite不参加gap，为什么她的时间仍然出来在时间条里」（preview PnnAHTzhtSGD1nQcZmiWzu ①②A）
+  check("Day timeline 周六：Anita 不在时间条里，下面灰字「Not shown (don't count toward coverage): Anita 2:00 AM – 12:00 PM」（她的班）；多一行 Nobody 2:00 AM – 11:30 AM", await waitFor("!document.querySelector('[data-timeline-row=\"5\"]') && document.querySelector('[data-not-shown]')?.textContent === \"Not shown (don't count toward coverage): Anita 2:00 AM – 12:00 PM\" && [...document.querySelectorAll('[data-nobody-row]')].some((r) => r.textContent.includes('2:00 AM') && r.textContent.includes('11:30 AM'))"), await evaluate("return document.querySelector('[data-not-shown]')?.textContent;"));
   await evaluate("$btn('Employees').click();");
   await waitFor(`${empRow(5)}`);
   await evaluate(`${empRow(5)}.querySelector('[data-counts-coverage]').click();`);
   await waitFor(`${empRow(5)}.querySelector('[data-counts-coverage]').checked`);
   await evaluate("$btn('Close', document.querySelector('[role=dialog]')).click();");
   await waitFor("!document.querySelector('[role=dialog]')");
-  check("勾回去：Not counted 没了，周六的空档也没了", await waitFor("!document.querySelector('[data-sch-grid] [data-not-counted-tag]') && !document.querySelector('[data-grid-gap=\"2026-10-10\"]') && !document.querySelector('[data-not-counted]')"));
+  check("勾回去：Not counted 没了，周六的空档也没了，Anita 回到时间条里、灰字没了", await waitFor("!document.querySelector('[data-sch-grid] [data-not-counted-tag]') && !document.querySelector('[data-grid-gap=\"2026-10-10\"]') && !document.querySelector('[data-not-shown]') && !!document.querySelector('[data-timeline-row=\"5\"]')"));
   await evaluate("$btn('Employees').click();");
   await waitFor(`${empRow(5)}`);
   await evaluate(`$btn('Edit', ${empRow(5)}).click();`);
@@ -978,6 +988,8 @@ async function run() {
   await openPage(`${APP}/schedule?week=2026-10-04`);
   await waitFor(`${cell("5|2026-10-10")}?.querySelector('[data-slot-id]')`);
   check("staff：Anita 设成不算人头，员工看到的排班表 / Day timeline 只有正常名字，没有 Not counted、班卡和条子照常", await evaluate("return !document.querySelector('[data-not-counted-tag]') && !document.querySelector('[data-not-counted]') && !document.body.innerText.includes('not counted') && !document.body.innerText.includes('Not counted') && [...document.querySelectorAll('[data-sch-grid] .sticky')].some((r) => r.textContent.trim() === 'Anita');"));
+  await evaluate("document.querySelector('[data-day-tab=\"2026-10-10\"]').click();");
+  check("staff：Day timeline 周六 Anita 照常在时间条里，没有「Not shown」灰字（Annie：员工界面不显示这个说明）", await waitFor("!!document.querySelector('[data-timeline-row=\"5\"]') && !document.querySelector('[data-not-shown]')"));
   await ctl({ role: "supervisor" });
   await fetch(`${MOCK}/api/schedule/employees/5`, { method: "PUT", body: JSON.stringify({ counts_for_coverage: true }) });
   await ctl({ role: "staff" });
