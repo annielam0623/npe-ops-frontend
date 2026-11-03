@@ -16,6 +16,7 @@
 - ✅ 09 合 task/live-drivers → main **406fa21**（39 的 188c4ca + 09 修正）。核后端 2bb6b23a 键名：/live-drivers 外层、segments、relay_blocks / relay_summary / relay 客人、manifest、导游 runs、inbox 都对得上；唯一对不上的是 tour_compact（有单独导游的团车司机页）后端带 shuttles，driver_home.html 会显示 shuttle 块、not_split / unplaced 提醒、只有一段时车号旁团名，前端原来没有，已照模板补上（mt 加一条）。不缺后端。ns 合 main 后已是 22 行，不用改。tsc 0、eslint 0 错、build 过；mt 241、ns 49、tt 137、tk 135、da 457、tasks 144、nav 38、perm 54。Annie 验收：Morning tracking › Live drivers 页签（开关 morning_live_drivers 默认只 Super Admin）。
 - 派 09：task/samsara-arrival，照 fc 字段用 mock 写（Pickup Locations 坐标 + 半径暂存 + Save；tracking 行 / Live drivers relay_blocks 显示 Arrived / Left，照 39 preview 预留的样子），先推分支不合，等后端 64 的 samsara-arrivals + v146。
 - 09 推 task/samsara-arrival **071df4d**（没合）：Pickup Locations 编辑行加坐标 + 范围（暂存 + Save，坐标改过才另发 PATCH …/arrival-point，body 键是 radius_m，对后端 WIP 0bd3372e 核过）；Live drivers relay 站点头加 Arrived / Left 胶囊（照 39 preview）。后端 GET 没 latitude 时格子不出。pl 115、mt 242、tt 137、tk 135、nav 38，tsc / eslint / build 过。Tracking 表行等置顶 58；Pickup Locations 放法 Annie 没看过 → 置顶 59。
+- 新任务（37 转，Annie 在 37 窗口「动手」）：没定位的车标「No tracking」。Annie 定：Dispatch 派车页能看出哪台车追踪不了；这些车客人照收链接、能签到，短信 / 邮件不提 live tracking（「链接照发，客人还能签到…把短信里的live tracking也去掉」）；只标记、不拦发送。后端 44：Dispatch 派车数据和 Morning Relay 发送 / 预览每台车加 has_tracking，改短信 / 邮件文字，客人页已藏 Track；字段名 37 待转。今天没 samsara 链接的：Sienna Van、1256、2433、2（后三台 Annie 自己核），前端不写死。前端：Dispatch Assign + Morning Relay 发送页加标记 + How to use 各一句。标记是新样子 → 派 91 先出 preview。
 
 ## 2026-11-03 凌晨 收工交接：前端主窗口 `npe-ops-frontend-f8`[f1ac95]（家里电脑，Annie「我要睡觉了，你把交接写详细一点，明天回公司继续，要保证工作的顺利，所有东西都不能缺」）
 
