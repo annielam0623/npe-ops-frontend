@@ -658,6 +658,9 @@
 - preview 照做不问：每行一个 Edit，在行里直接改，蓝色 Save 点了就存；电话重复时显示后端原话红字；权限同 + Add（dispatch.edit）。
 - 3 题（91 推荐都是 A，原文见 preview）：题 1 能改什么——A 只改名字和电话；题 2 名字写到哪——A 写 HR 的 Nickname；题 3 How to use 文字——A 用 preview 里那段原文。
 - 需要后端：PUT /api/dispatch/roster/{id} {name, phone}，权限和开关同 POST，电话重复 409，改动记 HR Action Log。后端 main 现在只有 GET 和 POST。等 Annie 答题并「动手」再派后端 / 前端写代码（已先告诉 37 评估）。
+- 后端 37 评估（2026-11-03 15:30，没动手）：约半天，风险 B，要 code-reviewer + security-auditor 审。接口照前端形状：PUT /api/dispatch/roster/{id} {name, phone}，dispatch.edit + dispatch_roster 开关，电话重复 409（排除本人，沿用 add_person 加锁查重），改动记 HR Action Log（entity hr_profiles，before / after，值没变不记；电话同现有 POST 只记改了哪个字段、不记号码）。名字写 nickname，显示名 COALESCE(nickname, legal_name)：改名后 Dispatch 下拉和已排好的车都显示新名字；改名后跑 link_after_hr_save（G214），把今天及以后手填了新名字的格子连上这人。
+- 新增题 4（37 提，已让 91 加进 preview）：改名后旧名字要不要自动加进这人的 Other spellings。
+- 要告诉 Annie：规则 8 写的是日志记 before / after，但现有 HR 日志为保护个人信息不记电话号码本身（只记改了电话），两条有出入。
 
 ### 66. 司机页 / 导游页预览：当天在跑的要跟手机上一样（2026-11-03）—— ✅ Annie 选 A 并「动手」，后端做
 - 截图是后端导游页（app/templates/field/guide_home.html，Antelope Bus A 2356），按钮 Boarded / No show / Call / ✎ Change / Send message 都灰。24 只读查：这些键在**预览**（Dispatch「Guide page preview ↗」/ Manifest 每车 Guide view，preview=True）或**前一天**（G227「Opens on … the grey buttons work on the day」，ahead）时是 disabled，样式 opacity .45（:267、:274），所以字发灰、点不了，是有意的；到了当天真正的导游手机上是正常颜色。单号「CHD0748XR · Lower」、「3 bookings」、「pax · 9 pickup stops」那类是本来的次要灰字。
@@ -673,6 +676,7 @@
 - 题 4 文字（英文）：A（推荐）格子下说明 "How the morning Excel or CCL writes this name, one per line (for example JOSEPH). Each spelling can belong to one person only."；How to use — Human Resource 加 "Other spellings: other ways this person's name is written in the morning Excel or CCL (for example JOSEPH for Joe R). One per line. A spelling can belong to only one person. Removing a spelling means CCL imports stop matching it to this person."
 - ✅ Annie 已答（91 窗口原话「HR的四项： 1 B 2. A  3B  4A」）：格子放 Dispatch 块（Samsara Driver ID 旁）；人员表紧跟 Nickname 加列；Edit list 也能改（逗号隔开）；文字用题 4 原文。91 已按答案更新 preview。**还没说「动手」，前端没写代码。**
 - 题 3 选 B 带来的后端要求（已转 37）：POST /api/hr/profiles/bulk 也要收 Other spellings，被拒时带 profile_id（前端红字放那人那一格下）。91 在后端 driver-change-follow 分支上还没找到 spellings 接口，等 37 回接口位置。
+- 37 回：spellings 接口在 4d 的 worktree 分支 task/driver-change-follow（同 G234），GET/PUT 是 4d 本地没推的提交，所以 origin 上找不到；题 3 B 的 bulk 要求已转 4d。公司电脑 15:30 AFTER_HOURS，后端今天不再落地，家里那台接着做；推到 origin 后 37 发提交号。上线顺序不变：57 → 4d（G234 + spellings）→ 64。
 
 ### 64. G180 Main manifest 订单同步到 Tour Tracking：重新启动（2026-11-03，Annie「重新启动」）
 - 10/24 Annie 提，后端 d9 写好代码在 origin/task/tracking-sync-design（4cac1f93，10/25 夜后没动，没上 main、没跑迁移；deploy-guard 第 3 轮 FAIL：迁移要先于代码；迁移号 v122 已被占，要换号）。设计文档 docs/tracking-sync-design-2026-10-24.md，Annie 已定的不再问（同步已确认订单、发送前后都同步、send_state Sent / Not sent、order_state Confirmed / On hold / Cancelled 以 Order List 为准、从不删行、午餐谁新留谁、Farm out 只记录、Broadcast 含 Not sent 不含 On hold / Cancelled 且发出后变 Sent、总开关默认关、Tour Tracking 加 Sent / Not sent 筛选默认 Sent + 订单号后小标签）。还没答：调用记录表 401 要不要记（Max 推荐不记，后端那边问）。
