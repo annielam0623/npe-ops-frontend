@@ -20,6 +20,7 @@ import type {
   ScheduleWeekChangesError,
   ScheduleWeekChangesResult,
   ScheduleWeekOp,
+  ScheduleWorkHours,
   ScheduleWorkWindowInput,
 } from "@/types";
 
@@ -37,6 +38,19 @@ export function updateWorkWindow(
   input: ScheduleWorkWindowInput,
 ): Promise<ScheduleSettings> {
   return apiFetch<ScheduleSettings>("/api/settings/schedule/work-window", {
+    method: "PUT",
+    body: input,
+  });
+}
+
+/**
+ * Working hours 按星期几（后端 v144，权限 settings.schedule）：整份替换，7 天都要带，回存好的整份。
+ * same_every_day=true 时 7 天必须一样，否则 400（原话例如「Same every day is on, so all 7 days must have the same hours.」）。
+ */
+export function updateWorkHours(
+  input: ScheduleWorkHours,
+): Promise<ScheduleWorkHours> {
+  return apiFetch<ScheduleWorkHours>("/api/settings/schedule/work-hours", {
     method: "PUT",
     body: input,
   });

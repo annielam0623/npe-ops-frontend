@@ -11,12 +11,24 @@ import { describeError } from "@/lib/api-errors";
 import {
   fetchScheduleSettings,
   updateShiftTypeDefaults,
+  updateWorkHours,
   updateWorkWindow,
 } from "@/lib/schedule-api";
 import { formatClock } from "@/lib/schedule-time";
+import {
+  type DayHours,
+  sameEveryDay,
+  WEEKDAY_SHORT,
+  weekDays,
+  workHoursSummary,
+} from "@/lib/schedule-work-hours";
 import { useLeaveGuard } from "@/lib/use-leave-guard";
 import { cn } from "@/lib/utils";
-import type { ScheduleSettings, ScheduleShiftType } from "@/types";
+import type {
+  ScheduleSettings,
+  ScheduleShiftType,
+  ScheduleWorkHours,
+} from "@/types";
 
 import { TimePicker } from "./time-picker";
 
@@ -38,7 +50,9 @@ function defaultsOf(types: ScheduleShiftType[]): Defaults {
  * preview 97MgNcpw28p7W4DxXmpgrM 第 3 版「同意全部推荐。动手」）：Working hours、Default shift times 两块，
  * 一个 Save（10-29 规矩：先暂存、按 Save 才存；有没存的改动时关窗先问）。
  * 能改照 Team 页的勾 settings.schedule（Super Admin 恒能改，后端保存接口本来就按这一项查）；没勾的排班人只读。
- * 「Different by day」七行等后端按天设上线再接（f8 派工：先只做 Same every day，不出灰掉的选项）。
+ * Working hours 按星期几（Annie 2026-11-02「可以选择一周的时间，也可以分别设置几天的时间不同」，⑦⑧⑨ A）：
+ * 后端带了 work_hours 才出「Same every day / Different by day」两个选项和七行（No coverage needed、Copy Monday to all days）；
+ * 旧后端没有就照旧一组时间、走 work-window 接口。
  */
 export function ScheduleSettingsDialog({
   settings,
@@ -55,8 +69,14 @@ export function ScheduleSettingsDialog({
   const types = settings.shift_types.filter((t) => t.is_active);
   // 后端还没带默认时间（旧版）时整块不出（同原来的 DefaultShiftTimes）。
   const hasDefaults = types.some((t) => t.default_start_time !== undefined);
+  // 后端带了 work_hours（v144）才能按天设。
+  const byDaySupported = !!settings.work_hours;
+  const savedDays = weekDays(settings);
+  const savedSame = sameEveryDay(settings);
   const [start, setStart] = useState(settings.work_window.start_time);
   const [end, setEnd] = useState(settings.work_window.end_time);
+  const [same, setSame] = useState(savedSame);
+  const [days, setDays] = useState<DayHours[]>(savedDays);
   const [defaults, setDefaults] = useState<Defaults>(() => defaultsOf(types));
   const [state, setState] = useState<
     | { kind: "idle" }
@@ -70,9 +90,24 @@ export function ScheduleSettingsDialog({
   const defaultsInfo = usePhoneInfo("About default shift times");
   const confirmInfo = usePhoneInfo("About staff confirmation");
 
-  const hoursDirty =
-    start !== settings.work_window.start_time ||
-    end !== settings.work_window.end_time;
+  /** 要存的那一份（按天设）：Same every day 时 7 天都是那一组、都不勾 No coverage needed。 */
+  const draftHours = (): ScheduleWorkHours => ({
+    same_every_day: same,
+    days: (same
+      ? days.map(() => ({ start_time: start, end_time: end, off: false }))
+      : days
+    ).map((d, weekday) => ({ weekday, ...d })),
+  });
+  const savedHours: ScheduleWorkHours = {
+    same_every_day: savedSame,
+    days: savedDays.map((d, weekday) => ({ weekday, ...d })),
+  };
+  const hoursDirty = byDaySupported
+    ? JSON.stringify(draftHours()) !== JSON.stringify(savedHours)
+    : start !== settings.work_window.start_time ||
+      end !== settings.work_window.end_time;
+  const setDay = (i: number, patch: Partial<DayHours>) =>
+    setDays((cur) => cur.map((d, j) => (j === i ? { ...d, ...patch } : d)));
   const changedTypes = types.filter((t) => {
     const [s, e] = defaults[t.key] ?? ["", ""];
     return (
@@ -95,7 +130,8 @@ export function ScheduleSettingsDialog({
     let hoursOk = true;
     if (hoursDirty) {
       try {
-        await updateWorkWindow({ start_time: start, end_time: end });
+        if (byDaySupported) await updateWorkHours(draftHours());
+        else await updateWorkWindow({ start_time: start, end_time: end });
       } catch (err) {
         hoursOk = false;
         lines.push(`Working hours not saved — ${describeError(err)}`);
@@ -129,6 +165,8 @@ export function ScheduleSettingsDialog({
       if (hoursOk) {
         setStart(fresh.work_window.start_time);
         setEnd(fresh.work_window.end_time);
+        setSame(sameEveryDay(fresh));
+        setDays(weekDays(fresh));
       }
       const next = defaultsOf(fresh.shift_types.filter((t) => t.is_active));
       setDefaults((cur) => {
@@ -201,25 +239,131 @@ export function ScheduleSettingsDialog({
             Gaps are checked inside these hours.
           </p>
           {canChange ? (
-            <div className="flex flex-wrap items-center gap-2 text-[13px]">
-              <TimePicker
-                ariaLabel="Working hours start"
-                value={start}
-                onChange={setStart}
-              />
-              <span className="text-white/60">–</span>
-              <TimePicker
-                ariaLabel="Working hours end"
-                value={end}
-                onChange={setEnd}
-              />
-            </div>
+            <>
+              {byDaySupported ? (
+                <label className="my-1 flex cursor-pointer items-center gap-2 text-[12.5px] text-white/90">
+                  <input
+                    type="radio"
+                    name="work-hours-mode"
+                    data-hours-mode="same"
+                    checked={same}
+                    onChange={() => {
+                      // 切回七天一样：用 Monday 那一组（preview：「All days will use …」）。
+                      setStart(days[0].start_time);
+                      setEnd(days[0].end_time);
+                      setSame(true);
+                    }}
+                  />
+                  Same every day
+                </label>
+              ) : null}
+              {same || !byDaySupported ? (
+                <div
+                  className={cn(
+                    "flex flex-wrap items-center gap-2 text-[13px]",
+                    byDaySupported && "ml-6",
+                  )}
+                >
+                  <TimePicker
+                    ariaLabel="Working hours start"
+                    value={start}
+                    onChange={setStart}
+                  />
+                  <span className="text-white/60">–</span>
+                  <TimePicker
+                    ariaLabel="Working hours end"
+                    value={end}
+                    onChange={setEnd}
+                  />
+                  {byDaySupported && !savedSame && same ? (
+                    <span className="text-[12px] text-[#fcd34d]">
+                      All days will use {formatClock(start)} –{" "}
+                      {formatClock(end)}.
+                    </span>
+                  ) : null}
+                </div>
+              ) : null}
+              {byDaySupported ? (
+                <label className="my-1 flex cursor-pointer items-center gap-2 text-[12.5px] text-white/90">
+                  <input
+                    type="radio"
+                    name="work-hours-mode"
+                    data-hours-mode="by-day"
+                    checked={!same}
+                    onChange={() => {
+                      // 从七天一样切过来：七行先都填上那一组，再逐天改。
+                      if (same)
+                        setDays((cur) =>
+                          cur.map((d) => ({
+                            ...d,
+                            start_time: start,
+                            end_time: end,
+                          })),
+                        );
+                      setSame(false);
+                    }}
+                  />
+                  Different by day
+                </label>
+              ) : null}
+              {byDaySupported && !same ? (
+                <div className="ml-6">
+                  <div className="grid grid-cols-[40px_auto_auto_auto_1fr] items-center gap-x-2 gap-y-1.5 text-[13px] max-sm:grid-cols-[34px_auto_auto_auto]">
+                    {days.map((d, i) => (
+                      <div key={i} className="contents" data-work-day={i}>
+                        <span className="font-semibold text-white/90">
+                          {WEEKDAY_SHORT[i]}
+                        </span>
+                        <TimePicker
+                          ariaLabel={`${WEEKDAY_SHORT[i]} start`}
+                          value={d.start_time}
+                          onChange={(v) => setDay(i, { start_time: v })}
+                        />
+                        <span className="text-white/60">–</span>
+                        <TimePicker
+                          ariaLabel={`${WEEKDAY_SHORT[i]} end`}
+                          value={d.end_time}
+                          onChange={(v) => setDay(i, { end_time: v })}
+                        />
+                        <label className="flex cursor-pointer items-center gap-1.5 text-[11.5px] text-white/65 max-sm:col-span-4 max-sm:mb-1">
+                          <input
+                            type="checkbox"
+                            data-day-off={i}
+                            checked={d.off}
+                            onChange={(e) =>
+                              setDay(i, { off: e.target.checked })
+                            }
+                          />
+                          No coverage needed
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    data-copy-monday
+                    onClick={() =>
+                      setDays((cur) =>
+                        cur.map((d) => ({
+                          ...d,
+                          start_time: cur[0].start_time,
+                          end_time: cur[0].end_time,
+                        })),
+                      )
+                    }
+                    className={cn(
+                      DARK_SECONDARY_BUTTON_CLASS,
+                      "mt-2 px-2 py-0.5 text-[11.5px]",
+                    )}
+                  >
+                    Copy Monday to all days
+                  </button>
+                </div>
+              ) : null}
+            </>
           ) : (
             <p className="text-[13px] text-white/85">
-              {timeText(
-                settings.work_window.start_time,
-                settings.work_window.end_time,
-              )}
+              {workHoursSummary(settings)}
             </p>
           )}
         </section>

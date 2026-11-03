@@ -234,11 +234,26 @@ function datesOfWeek(weekStart) {
 }
 
 /** 按工作时段算每天的空档（下班 <= 上班、或没排到人的时段不算覆盖）。 */
+// Working hours 按星期几（后端 v144，36 定）：ctl.workHours = true 时 GET 多回 work_hours，PUT /work-hours 能用。
+// 没开时每天都是 work_window（旧后端）。weekday 0 = Mon … 6 = Sun。
+let workDays = null; // [{start_time, end_time, off}] × 7；null = 7 天都跟 work_window
+let workSame = true;
+const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+const weekdayOf = (ymd) => (new Date(`${ymd}T00:00:00Z`).getUTCDay() + 6) % 7;
+function workDaysNow() {
+  return workDays || DAY_NAMES.map(() => ({ start_time: settings.work_window.start_time, end_time: settings.work_window.end_time, off: false }));
+}
+function workHoursPayload() {
+  return { same_every_day: workSame, days: workDaysNow().map((d, weekday) => ({ weekday, ...d })) };
+}
+
 function gapsFor(weekData) {
-  const winStart = minutesOf(settings.work_window.start_time);
-  const winEnd = minutesOf(settings.work_window.end_time);
   const gaps = [];
   for (const date of datesOfWeek(weekData.week_start)) {
+    const day = ctl.workHours ? workDaysNow()[weekdayOf(date)] : settings.work_window;
+    if (day.off) continue;
+    const winStart = minutesOf(day.start_time);
+    const winEnd = minutesOf(day.end_time);
     // 不算值班人头的人（counts_for_coverage = false）的班不算覆盖，同后端 _week_gaps。
     const notCounted = new Set(employees.filter((e) => e.counts_for_coverage === false).map((e) => e.id));
     const intervals = weekData.slots
@@ -335,9 +350,10 @@ function weekPayload(weekData) {
 }
 
 function settingsPayload() {
-  if (!ctl.phase2) return settings;
+  const base = ctl.workHours ? { ...settings, work_hours: workHoursPayload() } : settings;
+  if (!ctl.phase2) return base;
   return {
-    ...settings,
+    ...base,
     shift_types: settings.shift_types.map((t) => ({
       ...t,
       default_start_time: (DEFAULT_TIMES[t.key] || [null, null])[0],
@@ -542,7 +558,35 @@ http
       const b = await readBody(req);
       entry.body = b;
       settings.work_window = { start_time: b.start_time, end_time: b.end_time };
+      // 旧接口：7 天都设成这一组、off 全取消、same_every_day = true（同后端）。
+      workDays = null;
+      workSame = true;
       return send(res, 200, settings);
+    }
+    if (p === "/api/settings/schedule/work-hours" && req.method === "PUT" && ctl.workHours) {
+      if (!holds("settings.schedule")) {
+        return send(res, 403, { detail: "You don't have permission: Settings: Schedule work window and shift types." });
+      }
+      const b = await readBody(req);
+      entry.body = b;
+      if (!Array.isArray(b.days) || b.days.length !== 7) return send(res, 400, { detail: "days must list all 7 weekdays." });
+      const cur = workDaysNow();
+      const next = [];
+      for (const d of [...b.days].sort((x, y) => x.weekday - y.weekday)) {
+        const keep = cur[d.weekday];
+        const st = d.start_time ?? (d.off ? keep.start_time : null);
+        const en = d.end_time ?? (d.off ? keep.end_time : null);
+        if (!st || !en) return send(res, 400, { detail: `${DAY_NAMES[d.weekday]}: start and end time are required.` });
+        if (st === en) return send(res, 400, { detail: `${DAY_NAMES[d.weekday]}: start and end time cannot be the same.` });
+        next.push({ start_time: st, end_time: en, off: !!d.off });
+      }
+      if (b.same_every_day && next.some((d) => d.start_time !== next[0].start_time || d.end_time !== next[0].end_time || d.off !== next[0].off)) {
+        return send(res, 400, { detail: "Same every day is on, so all 7 days must have the same hours." });
+      }
+      workDays = next;
+      workSame = !!b.same_every_day;
+      settings.work_window = { start_time: next[0].start_time, end_time: next[0].end_time };
+      return send(res, 200, workHoursPayload());
     }
 
     if (p === "/api/schedule/employees" && req.method === "GET") {
