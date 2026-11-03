@@ -1181,6 +1181,69 @@ async function run() {
   check("10/18、10/25 两周都建好了、各 30 个班", w18.slots.length === 30 && w25.slots.length === 30, `${w18.slots.length} ${w25.slots.length}`);
   check("10/18 周末只有轮值的班：周六 / 周日各 1 Open + 1 Close（轮值的 4 个人里）", [6, 0].every((d) => ["open", "close"].every((t) => w18.slots.filter((x) => x.date === (d === 6 ? "2026-10-24" : "2026-10-18") && x.shift_type === t && [2, 3, 4, 5].includes(x.employee_id)).length === 1)));
 
+  // ── 按基础周排（Annie 2026-11-02「用上周的排班为基数，来自动排班，遵守定好的这些role，然后把整个月的班都排出来」；
+  //    preview https://claude.ai/artifact/L3gCgqBPvDLBxAC2ToDVxp 照推荐）：默认基础周 = 上周、从下周起 4 周，存草稿、只填空格 ──
+  {
+    const laToday = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Los_Angeles", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+    const add = (ymd, n) => { const [y, m, d] = ymd.split("-").map(Number); return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10); };
+    const dow = new Date(`${laToday}T12:00:00Z`).getUTCDay();
+    const thisWeek = add(laToday, -dow);
+    const lastWeek = add(thisWeek, -7);
+    const nextWeek = add(thisWeek, 7);
+    // 基础周：Veronica（id 1，规则固定周一到周五 Open）排成 Mid ⇒ 该被改回 Open；id 2 周一到周三 Close ⇒ 照抄。
+    const baseSlots = [
+      ...[1, 2, 3, 4, 5].map((d) => ({ date: add(lastWeek, d), shift_type: "mid", start_time: "08:00", end_time: "17:00", employee_id: 1 })),
+      ...[1, 2, 3].map((d) => ({ date: add(lastWeek, d), shift_type: "close", start_time: "13:30", end_time: "21:30", employee_id: 2 })),
+    ];
+    await fetch(`${MOCK}/api/schedule/weeks/${lastWeek}/slots/bulk`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ replace: true, slots: baseSlots }) });
+    // 第二周先有一份不是复制来的草稿（bulk 建的，copied_from null）：id 3 周一 Mid ⇒ 只填空格，这一格留着。
+    const week2 = add(nextWeek, 7);
+    await fetch(`${MOCK}/api/schedule/weeks/${week2}/slots/bulk`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ replace: true, slots: [{ date: add(week2, 1), shift_type: "mid", start_time: "08:00", end_time: "17:00", employee_id: 3 }] }) });
+    await openPage(`${APP}/schedule?week=${thisWeek}`);
+    await waitFor("!!$btn('Auto-fill') && !$btn('Auto-fill').disabled", 30000);
+    await evaluate("$btn('Auto-fill').click();");
+    await waitFor(`${dlg} && ${dlg}.textContent.includes('Auto-fill schedule')`);
+    await evaluate(`[...${dlg}.querySelectorAll('button[role=radio]')].find(b => b.textContent.includes('Copy a base week')).click();`);
+    await waitFor(`${dlg}.querySelector('[data-autofill-base]')`);
+    check("按基础周排：默认基础周 = 上周、从下周起 4 周；照 Rules 排的 This week / Next 4 weeks 收起来", await evaluate(`const d = ${dlg}; return d.querySelector('[data-base-week]').value === '${lastWeek}' && d.querySelector('[data-base-start]').value === '${nextWeek}' && d.querySelector('[data-base-count]').value === '4' && d.querySelector('[data-base-count]').options.length === 6 && ![...d.querySelectorAll('button[role=radio]')].some(b => b.offsetParent !== null && b.textContent.includes('Next 4 weeks'));`));
+    let b0 = (await (await fetch(`${MOCK}/__log`)).json()).length;
+    await evaluate(`$btn('Preview', ${dlg}).click();`);
+    await waitFor(`${dlg}.querySelectorAll('[data-autofill-week]').length === 4`, 30000);
+    check("按基础周排：不问 Replace / Add，直接预览 4 周；每周写明是换掉复制来的班还是只填空格", await evaluate(`return !${dlg}.querySelector('[data-autofill-existing]') && !!${dlg}.querySelector('[data-autofill-base-note]') && ${dlg}.querySelector('[data-autofill-week="${nextWeek}"] [data-base-mode]').dataset.baseMode === 'replace' && ${dlg}.querySelector('[data-autofill-week="${week2}"] [data-base-mode]').dataset.baseMode === 'fill';`));
+    const wk1 = `${dlg}.querySelector('[data-autofill-week="${nextWeek}"]')`;
+    check("照抄基础周：id 2 周一 Close 照抄、没标琥珀框", await evaluate(`const cells = [...${wk1}.querySelectorAll('[class*="min-h-[56px]"][class*="flex-col"]')]; return cells.length > 0 && ${wk1}.textContent.includes('Close');`));
+    check("按规则修正：Veronica 基础周是 Mid，固定班规则是 Open ⇒ 排 Open、琥珀框写 Fixed shift", await evaluate(`return [...${wk1}.querySelectorAll('[data-changed]')].some(c => c.dataset.changed === 'Fixed shift' && c.textContent.includes('Open'));`));
+    check("按基础周排：键写 Create drafts for 4 weeks", await evaluate(`return !!$btn('Create drafts for 4 weeks', ${dlg});`));
+    b0 = (await (await fetch(`${MOCK}/__log`)).json()).length;
+    await evaluate(`$btn('Create drafts for 4 weeks', ${dlg}).click();`);
+    check("建好：绿条写 for 4 weeks、Nothing is published", await waitFor("document.querySelector('[data-autofill-banner]')?.textContent.includes('for 4 weeks') && document.querySelector('[data-autofill-banner]').textContent.includes('Nothing is published')", 30000), await evaluate("return document.querySelector('[data-autofill-banner]')?.textContent;"));
+    const bulks = (await (await fetch(`${MOCK}/__log`)).json()).slice(b0).filter((e) => e.path.endsWith("/slots/bulk"));
+    const rep = (ws) => bulks.find((e) => e.path.includes(ws))?.body?.replace;
+    check("一周一个 POST …/slots/bulk：打开时自动复制来的周 replace:true（整周换成按基础周排的）；不是复制来的草稿 replace:false（只填空格）", bulks.length === 4 && rep(nextWeek) === true && rep(week2) === false, JSON.stringify(bulks.map((e) => [e.path, e.body?.replace])));
+    const w2 = await (await fetch(`${MOCK}/api/schedule/weeks/${week2}`)).json();
+    check("不是复制来的草稿：原来 id 3 周一 Mid 留着，空的天按基础周补上（id 2 周一 Close）", w2.slots.filter((x) => x.employee_id === 3 && x.date === add(week2, 1)).length === 1 && w2.slots.some((x) => x.employee_id === 3 && x.date === add(week2, 1) && x.shift_type === "mid") && w2.slots.some((x) => x.employee_id === 2 && x.date === add(week2, 1) && x.shift_type === "close"), JSON.stringify(w2.slots.filter((x) => x.date === add(week2, 1))));
+    const nw = await (await fetch(`${MOCK}/api/schedule/weeks/${nextWeek}`)).json();
+    check("下周存成草稿：id 2 周一 Close（照抄）、Veronica 周一 Open（按规则），状态 draft", nw.status === "draft" && nw.slots.some((x) => x.employee_id === 2 && x.date === add(nextWeek, 1) && x.shift_type === "close") && nw.slots.some((x) => x.employee_id === 1 && x.date === add(nextWeek, 1) && x.shift_type === "open"), JSON.stringify(nw.slots.filter((x) => x.date === add(nextWeek, 1))));
+    // Working hours 按星期几（后端 work_hours）：周日 off ⇒ 按基础周排时周日一格都不排。
+    await ctl({ sundayOff: true });
+    await openPage(`${APP}/schedule?week=${thisWeek}`);
+    await waitFor("!!$btn('Auto-fill') && !$btn('Auto-fill').disabled", 30000);
+    await evaluate("$btn('Auto-fill').click();");
+    await waitFor(`${dlg} && ${dlg}.textContent.includes('Auto-fill schedule')`);
+    await evaluate(`[...${dlg}.querySelectorAll('button[role=radio]')].find(b => b.textContent.includes('Copy a base week')).click();`);
+    await waitFor(`${dlg}.querySelector('[data-autofill-base]')`);
+    const b1 = (await (await fetch(`${MOCK}/__log`)).json()).length;
+    await evaluate(`$btn('Preview', ${dlg}).click();`);
+    await waitFor(`${dlg}.querySelectorAll('[data-autofill-week]').length === 4`, 30000);
+    await evaluate(`$btn('Create drafts for 4 weeks', ${dlg}).click();`);
+    await waitFor("document.querySelector('[data-autofill-banner]')?.textContent.includes('for 4 weeks')", 30000);
+    const offBulks = (await (await fetch(`${MOCK}/__log`)).json()).slice(b1).filter((e) => e.path.endsWith("/slots/bulk"));
+    check("Working hours 周日 off：按基础周排的 4 周都没有周日的班", offBulks.length === 4 && offBulks.every((e) => (e.body?.slots || []).every((x) => new Date(`${x.date}T12:00:00Z`).getUTCDay() !== 0)), JSON.stringify(offBulks.map((e) => (e.body?.slots || []).filter((x) => new Date(`${x.date}T12:00:00Z`).getUTCDay() === 0).length)));
+    await ctl({ sundayOff: false });
+    // 收尾：排过的几周清空（后面「二期」那周打开时会复制前一周，要的是空周）。
+    for (let k = 1; k <= 4; k++) await fetch(`${MOCK}/api/schedule/weeks/${add(thisWeek, k * 7)}/slots/bulk`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ replace: true, slots: [] }) });
+  }
+
   // ── 二期：时段备注 / 休假 / 班次默认时间（后端 ①②③，Annie 2026-10-18「可以，动手」）──
   await ctl({ phase2: true, role: "supervisor", meName: "" });
   const P2 = "2026-12-06"; // 离种子数据很远：一周全空的草稿

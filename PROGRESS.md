@@ -6,6 +6,14 @@
 
 > **下一个主窗口：先读下面「2026-11-02 收工交接：前端主窗口-24」，再看置顶「📌 等 Annie 确认」。更早的交接是 10-30 晚那节。**
 
+## 2026-11-02 晚 Staff Schedule › Auto-fill：按基础周排整月（`task/schedule-base-week`，工作窗口 `npe-ops-frontend-0e`[d96681]，主窗口 f8 派）
+- Annie 原话（f8 窗口）：「我要加 一个功能，在排班这里可以选一周为基础，比如这周的排班很混乱，我现在用上周的排班为基数，来自动排班，遵守定好的这些role，然后把整个月的班都排出来」；「这个很重要，需要今天做完，明天就需要排出来，周三要跟员工确认了」；对 preview https://claude.ai/artifact/L3gCgqBPvDLBxAC2ToDVxp 「7题全部同意推荐，动手」；复制周的处理「A同意推荐」。
+- 做了（纯前端，不用新接口）：Auto-fill 弹窗多一种填法「Copy a base week, then fix by the rules」：选基础周（默认上周，可选前 6 周到这周）、从哪周起（默认下周）、几周（默认 4，可选 1–6）→ 预览每周一张表（跟基础周不同的格子琥珀框，鼠标移上去写原因；排不下的红字列出）→「Create drafts for N weeks」一周一个 POST …/slots/bulk 存草稿，不 Publish、不通知。
+  - 引擎 `lib/schedule-engine.ts` 加 `seedFromBase()`：照抄基础周每人每天的班，去掉违反规则的格子（Cannot work、跟固定班冲突、休息不够、超出每周天数），周末轮值管的班留给轮值排；其余锁住，再用原来的 `generateWeek` 按规则补排。
+  - ⚠️ 后端第一次打开某一周会自动复制上一周（copied_from）：这种周当空周整周按基础周排、存时 replace:true 换掉复制品；不是复制来的、已有班的草稿只填空格（replace:false，原来的班留着）；已发布的周跳过。预览每周标题旁写明是哪一种（Annie「A同意推荐」）。
+  - Working hours 按星期几（后端 work_hours，还没上线时没有这个键）：off 的那天不排、不报空档；没带照旧。
+- 检查：sch 356/356（新加：默认值、不问 Replace / Add、照抄 Close、Veronica 固定班 Mid→Open 琥珀框 Fixed shift、Create drafts for 4 weeks、复制周 replace:true / 非复制草稿 replace:false 原来的班留着、周日 off 不排；收尾清空排过的几周）。
+
 ## 2026-11-02 晚 dr 87/88 修好：检查用的员工补上 orders.money_view（`task/dr-money-view`，工作窗口 `npe-ops-frontend-0e`[d96681]，主窗口 f8 派，39 报）
 - 原因：money-view 上 main 后，没勾 orders.money_view 的人侧栏不出 Farm out Report（有意的）；检查共用的 `checks/headless/role-standard.js` 是 11-01 照抄的后端角色标准，还没有这一勾。后端 8e9a9a58 的 _STAFF_STANDARD 已含 orders.money_view（「员工本来就看得到价格；CCL 的人靠没勾藏」）⇒ 照后端补上，页面不改。
 - dr 另加一条：没勾 orders.money_view 的员工（dr-mock ctl.noMoney）侧栏 Operations 没有 Farm out Report，其余照旧。

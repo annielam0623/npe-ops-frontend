@@ -7,11 +7,12 @@ import {
   DARK_SECONDARY_BUTTON_CLASS,
 } from "@/components/ui/buttons";
 import { describeError } from "@/lib/api-errors";
-import { shiftYmd } from "@/lib/la-date";
+import { laToday, shiftYmd, weekStartYmd } from "@/lib/la-date";
 import { fetchScheduleWeek } from "@/lib/schedule-api";
 import { bulkCreateSlots } from "@/lib/schedule-rules-api";
 import {
   generateWeek,
+  seedFromBase,
   type DayShift,
   type Problem,
   type Rule,
@@ -29,10 +30,22 @@ const HISTORY_WEEKS = 4;
 
 type Mode = "replace" | "append";
 
+/** 怎么填：照 Rules 排（原来的 Auto-fill）／拿一周当基础照抄，再按 Rules 修正（Annie 2026-11-02）。 */
+type Fill = "rules" | "base";
+
+/** 按基础周排：最多排几周（preview 题 ② A：默认 4 周，可选 1–6 周）。 */
+const BASE_MAX_WEEKS = 6;
+
+/** 深色弹窗里的下拉（同 Rules 页的选择框）。 */
+const SELECT =
+  "h-8 rounded-[8px] border border-white/20 bg-[#0b1727] px-2 text-[12.5px] text-white";
+
 interface WeekInfo {
   weekStart: string;
   published: boolean;
   existingSlots: number;
+  /** 这一周是后端第一次打开时自动复制上一周来的（copied_from）：按基础周排时当空周，整周换掉。 */
+  copied: boolean;
   /** 已发布 / 或者要保留的班（Add to them 时当 locked）。 */
   plan: WeekPlan;
 }
@@ -50,6 +63,10 @@ interface Proposal {
     end: string;
   }[];
   problems: Problem[];
+  /** 按基础周排：跟基础周不一样的格子（`<员工 id>|<星期几>` → 为什么改）。 */
+  changed?: Record<string, string>;
+  /** 存的时候先删掉这一周原来的班（按基础周排：复制来的周）；没写 = 照弹窗的 Replace / Add。 */
+  replace?: boolean;
 }
 
 type Step =
@@ -114,6 +131,13 @@ export function AutoFillDialog({
   const pressedOnBackdropRef = useRef(false);
   const [weeksCount, setWeeksCount] = useState<1 | 4>(1);
   const [mode, setMode] = useState<Mode>("replace");
+  // 按基础周排（Annie 2026-11-02「用上周的排班为基数，来自动排班，遵守定好的这些role，然后把整个月的班都排出来」）：
+  // 默认基础周 = 上周、从下周起排 4 周（preview https://claude.ai/artifact/L3gCgqBPvDLBxAC2ToDVxp 题 ① ② 推荐）。
+  const thisWeek = weekStartYmd(laToday());
+  const [fill, setFill] = useState<Fill>("rules");
+  const [baseWeek, setBaseWeek] = useState(() => shiftYmd(thisWeek, -7));
+  const [baseStart, setBaseStart] = useState(() => shiftYmd(thisWeek, 7));
+  const [baseCount, setBaseCount] = useState(4);
   const [step, setStep] = useState<Step>({ kind: "setup" });
   const active = employees.filter((e) => e.is_active);
   const busy = step.kind === "loading" || step.kind === "creating";
@@ -126,9 +150,30 @@ export function AutoFillDialog({
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [busy, onClose]);
 
-  const targets = Array.from({ length: weeksCount }, (_, i) =>
-    shiftYmd(weekStart, i * 7),
+  const firstWeek = fill === "base" ? baseStart : weekStart;
+  const targetCount = fill === "base" ? baseCount : weeksCount;
+  const targets = Array.from({ length: targetCount }, (_, i) =>
+    shiftYmd(firstWeek, i * 7),
   );
+  // 班次默认时间（后端正式来源）排在最后，盖过旧的 shift_times 规则。
+  const allRules: Rule[] = [
+    ...rules,
+    ...settings.shift_types.flatMap((t): Rule[] =>
+      t.default_start_time && t.default_end_time
+        ? [
+            {
+              type: "shift_times",
+              enabled: true,
+              params: {
+                shift_type: t.key,
+                start: t.default_start_time,
+                end: t.default_end_time,
+              },
+            },
+          ]
+        : [],
+    ),
+  ];
 
   /** 读各周现状（后端说：生成前必须先 GET；顺序读）。 */
   async function inspect() {
@@ -136,7 +181,7 @@ export function AutoFillDialog({
       setStep({ kind: "loading", text: "Checking the weeks…" });
       const history: WeekPlan[] = [];
       for (let i = HISTORY_WEEKS; i >= 1; i--) {
-        const w = await fetchScheduleWeek(shiftYmd(weekStart, -i * 7));
+        const w = await fetchScheduleWeek(shiftYmd(firstWeek, -i * 7));
         history.push(planOf(w, active));
       }
       const weeks: WeekInfo[] = [];
@@ -146,8 +191,15 @@ export function AutoFillDialog({
           weekStart: ws,
           published: w.status === "published",
           existingSlots: w.slots.length,
+          copied: !!w.copied_from,
           plan: planOf(w, active),
         });
+      }
+      if (fill === "base") {
+        // 按基础周排：已有草稿的周只填空格（题 ③ A），不问 Replace / Add。
+        const base = planOf(await fetchScheduleWeek(baseWeek), active);
+        runBase(weeks, history, base, 1);
+        return;
       }
       const hasExisting = weeks.some(
         (w) => !w.published && w.existingSlots > 0,
@@ -188,25 +240,7 @@ export function AutoFillDialog({
       const result = generateWeek({
         weekStart: w.weekStart,
         employees: active.map((e) => ({ id: e.id, name: e.name })),
-        // 班次默认时间（后端正式来源）排在最后，盖过旧的 shift_times 规则。
-        rules: [
-          ...rules,
-          ...settings.shift_types.flatMap((t): Rule[] =>
-            t.default_start_time && t.default_end_time
-              ? [
-                  {
-                    type: "shift_times",
-                    enabled: true,
-                    params: {
-                      shift_type: t.key,
-                      start: t.default_start_time,
-                      end: t.default_end_time,
-                    },
-                  },
-                ]
-              : [],
-          ),
-        ],
+        rules: allRules,
         previous,
         history: [...hist],
         fallbackTimes: {
@@ -239,6 +273,128 @@ export function AutoFillDialog({
     setStep({ kind: "preview", proposals, seed });
   }
 
+  /**
+   * 按基础周排：每一周先照抄基础周（去掉违反规则的格子，`seedFromBase`），锁住，再用同一个引擎按 Rules 补排
+   * （周末轮值、覆盖、每周天数）。已发布的周跳过；已有草稿的班原样保留、只填空格；排不下的留空、写明（题 ⑤ A）。
+   */
+  function runBase(
+    weeks: WeekInfo[],
+    history: WeekPlan[],
+    base: WeekPlan,
+    seed: number,
+  ) {
+    setMode("append");
+    const emps = active.map((e) => ({ id: e.id, name: e.name }));
+    // Working hours 按星期几（后端 work_hours，没带 = 照旧每天都排）：off 的那天不排、不报空档。
+    // 后端 weekday 0 = 周一 … 6 = 周日；排班这边 0 = 周日。
+    const offDays = new Set(
+      (settings.work_hours?.days ?? [])
+        .filter((d) => d.off)
+        .map((d) => (d.weekday + 1) % 7),
+    );
+    const withoutOff = (plan: WeekPlan): WeekPlan => ({
+      ...plan,
+      byEmployee: Object.fromEntries(
+        Object.entries(plan.byEmployee).map(([id, days]) => [
+          id,
+          days.map((x, d) => (offDays.has(d) ? null : x)),
+        ]),
+      ),
+    });
+    const baseOn = offDays.size ? withoutOff(base) : base;
+    const proposals: Proposal[] = [];
+    const hist = [...history];
+    let previous: WeekPlan | null = hist[hist.length - 1] ?? null;
+    if (previous) hist.pop();
+    for (let i = 0; i < weeks.length; i++) {
+      const w = weeks[i];
+      if (w.published) {
+        proposals.push({
+          weekStart: w.weekStart,
+          skipped: true,
+          plan: w.plan,
+          create: [],
+          problems: [],
+        });
+        if (previous) hist.push(previous);
+        previous = w.plan;
+        continue;
+      }
+      // 后端第一次打开某一周会把上一周的班复制过来（copied_from）：那不是 staff 排的，当空周整周按基础周排、存时换掉；
+      // 不是复制来的、已经有班的草稿（Auto-fill / 手排）照题 ③ A 只填空格。
+      const keep = w.copied ? null : w.plan;
+      const { seed: start, dropped } = seedFromBase({
+        rules: allRules,
+        base: baseOn,
+        weekStart: w.weekStart,
+        previous,
+        employees: emps,
+        existing: keep,
+      });
+      const result = generateWeek({
+        weekStart: w.weekStart,
+        employees: emps,
+        rules: allRules,
+        previous,
+        history: [...hist],
+        fallbackTimes: {
+          start: settings.work_window.start_time,
+          end: settings.work_window.end_time,
+        },
+        seed: seed * 101 + i,
+        locked: start,
+      });
+      const dayOf = (date: string) =>
+        Math.round(
+          (Date.parse(`${date}T00:00:00Z`) -
+            Date.parse(`${w.weekStart}T00:00:00Z`)) /
+            86_400_000,
+        );
+      const plan = offDays.size ? withoutOff(result.plan) : result.plan;
+      const create = result.shifts.filter(
+        (s) =>
+          !keep?.byEmployee[s.employeeId]?.[dayOf(s.date)] &&
+          !offDays.has(dayOf(s.date)),
+      );
+      const problems = result.problems.filter(
+        (x) => !x.date || !offDays.has(dayOf(x.date)),
+      );
+      const why = new Map(
+        dropped.map((x) => [`${x.employeeId}|${x.day}`, x.reason]),
+      );
+      const changed: Record<string, string> = {};
+      for (const e of emps) {
+        for (let d = 0; d < 7; d++) {
+          if (keep?.byEmployee[e.id]?.[d]) continue;
+          if (offDays.has(d)) continue;
+          const b = base.byEmployee[e.id]?.[d] ?? null;
+          const r = plan.byEmployee[e.id]?.[d] ?? null;
+          const same =
+            (!b && !r) ||
+            (!!b &&
+              !!r &&
+              b.type === r.type &&
+              b.start === r.start &&
+              b.end === r.end);
+          if (!same)
+            changed[`${e.id}|${d}`] = why.get(`${e.id}|${d}`) ?? "Rules";
+        }
+      }
+      proposals.push({
+        weekStart: w.weekStart,
+        skipped: false,
+        plan,
+        create,
+        problems,
+        changed,
+        replace: w.copied && w.existingSlots > 0,
+      });
+      if (previous) hist.push(previous);
+      previous = plan;
+    }
+    setStep({ kind: "preview", proposals, seed });
+  }
+
   async function create(proposals: Proposal[]) {
     setStep({ kind: "creating" });
     let made = 0;
@@ -248,13 +404,14 @@ export function AutoFillDialog({
     try {
       for (const p of proposals) {
         if (p.skipped) continue;
+        const replace = p.replace ?? mode === "replace";
         if (onDraftThisWeek && p.weekStart === weekStart) {
-          onDraftThisWeek(p.create, mode === "replace");
+          onDraftThisWeek(p.create, replace);
           onPage = p.create.length;
           continue;
         }
         await bulkCreateSlots(p.weekStart, {
-          replace: mode === "replace",
+          replace,
           slots: p.create.map((s) => ({
             date: s.date,
             shift_type: s.type,
@@ -309,7 +466,7 @@ export function AutoFillDialog({
       >
         <h2 id={titleId} className="text-[17px] font-semibold text-white">
           {step.kind === "preview"
-            ? `Preview · ${rangeText(weekStart, weeksCount)}`
+            ? `Preview · ${rangeText(firstWeek, targetCount)}`
             : "Auto-fill schedule"}
         </h2>
 
@@ -320,6 +477,103 @@ export function AutoFillDialog({
               is published and nobody is notified.
             </p>
             <div className="flex flex-col gap-1.5">
+              <span className="text-[12px] font-medium text-white/75">
+                How to fill
+              </span>
+              <div className="flex flex-wrap gap-2" role="radiogroup">
+                <Pill
+                  active={fill === "rules"}
+                  onClick={() => setFill("rules")}
+                >
+                  By the rules
+                </Pill>
+                <Pill active={fill === "base"} onClick={() => setFill("base")}>
+                  Copy a base week, then fix by the rules
+                </Pill>
+              </div>
+            </div>
+            {fill === "base" ? (
+              <div className="flex flex-col gap-2" data-autofill-base>
+                <label className="flex flex-wrap items-center gap-2 text-[12.5px] text-white/85">
+                  Base week
+                  <select
+                    data-base-week
+                    value={baseWeek}
+                    onChange={(e) => setBaseWeek(e.target.value)}
+                    className={SELECT}
+                  >
+                    {Array.from({ length: 7 }, (_, i) =>
+                      shiftYmd(thisWeek, (i - 6) * 7),
+                    )
+                      .reverse()
+                      .map((ws) => (
+                        <option key={ws} value={ws}>
+                          {rangeText(ws, 1)}
+                          {ws === thisWeek
+                            ? " (this week)"
+                            : ws === shiftYmd(thisWeek, -7)
+                              ? " (last week)"
+                              : ""}
+                        </option>
+                      ))}
+                  </select>
+                </label>
+                <label className="flex flex-wrap items-center gap-2 text-[12.5px] text-white/85">
+                  Fill
+                  <select
+                    data-base-count
+                    value={baseCount}
+                    onChange={(e) => setBaseCount(Number(e.target.value))}
+                    className={SELECT}
+                  >
+                    {Array.from(
+                      { length: BASE_MAX_WEEKS },
+                      (_, i) => i + 1,
+                    ).map((n) => (
+                      <option key={n} value={n}>
+                        {n} week{n === 1 ? "" : "s"}
+                      </option>
+                    ))}
+                  </select>
+                  starting
+                  <select
+                    data-base-start
+                    value={baseStart}
+                    onChange={(e) => setBaseStart(e.target.value)}
+                    className={SELECT}
+                  >
+                    {[0, 1, 2].map((k) => {
+                      const ws = shiftYmd(thisWeek, k * 7);
+                      return (
+                        <option key={ws} value={ws}>
+                          {rangeText(ws, 1)}
+                          {k === 0
+                            ? " (this week)"
+                            : k === 1
+                              ? " (next week)"
+                              : ""}
+                        </option>
+                      );
+                    })}
+                  </select>
+                  <span className="text-white/70">
+                    · {rangeText(baseStart, baseCount)}
+                  </span>
+                </label>
+                <p className="text-[12px] text-white/70">
+                  Each person gets the same shifts as in the base week. Shifts
+                  that break a Rule are changed, and weekend shifts follow the
+                  Weekend rotation. Weeks that already have shifts keep them and
+                  only the empty days are filled.
+                </p>
+              </div>
+            ) : null}
+            <div
+              className={cn(
+                "flex flex-col gap-1.5",
+                fill === "base" && "hidden",
+              )}
+            >
               <span className="text-[12px] font-medium text-white/75">
                 Which weeks
               </span>
@@ -421,6 +675,7 @@ export function AutoFillDialog({
             step={step}
             employees={active}
             settings={settings}
+            baseWeek={fill === "base" ? baseWeek : null}
             onAnother={() => {
               // 重排：同样的输入、换一个 seed；需要重读现状时回到 inspect 太慢，这里直接用上一次读到的
               void reroll(step);
@@ -460,7 +715,7 @@ export function AutoFillDialog({
       setStep({ kind: "loading", text: "Trying another arrangement…" });
       const history: WeekPlan[] = [];
       for (let i = HISTORY_WEEKS; i >= 1; i--) {
-        const w = await fetchScheduleWeek(shiftYmd(weekStart, -i * 7));
+        const w = await fetchScheduleWeek(shiftYmd(firstWeek, -i * 7));
         history.push(planOf(w, active));
       }
       const weeks: WeekInfo[] = [];
@@ -470,10 +725,14 @@ export function AutoFillDialog({
           weekStart: ws,
           published: w.status === "published",
           existingSlots: w.slots.length,
+          copied: !!w.copied_from,
           plan: planOf(w, active),
         });
       }
-      runEngine(weeks, history, mode, from.seed + 1);
+      if (fill === "base") {
+        const base = planOf(await fetchScheduleWeek(baseWeek), active);
+        runBase(weeks, history, base, from.seed + 1);
+      } else runEngine(weeks, history, mode, from.seed + 1);
     } catch (error) {
       setStep({ kind: "error", message: describeError(error) });
     }
@@ -525,6 +784,7 @@ function PreviewBody({
   step,
   employees,
   settings,
+  baseWeek,
   onAnother,
   onCreate,
   onClose,
@@ -532,6 +792,8 @@ function PreviewBody({
   step: Extract<Step, { kind: "preview" }>;
   employees: ScheduleEmployee[];
   settings: ScheduleSettings;
+  /** 按基础周排时是哪一周；照 Rules 排 = null。 */
+  baseWeek: string | null;
   onAnother: () => void;
   onCreate: () => void;
   onClose: () => void;
@@ -542,6 +804,15 @@ function PreviewBody({
     settings.shift_types.find((t) => t.key === key)?.label ?? key;
   return (
     <>
+      {baseWeek ? (
+        <p data-autofill-base-note className="text-[13px] text-white/80">
+          Copied from the base week {rangeText(baseWeek, 1)}. Days with an{" "}
+          <span className="rounded-[4px] px-1 outline-2 outline-[#f59e0b]">
+            amber frame
+          </span>{" "}
+          were changed to follow the Rules (point at one to see why).
+        </p>
+      ) : null}
       {problems.length === 0 ? (
         <p
           data-autofill-ok
@@ -579,11 +850,32 @@ function PreviewBody({
               <span className="ml-2 text-[12px] font-normal text-white/70">
                 published — skipped
               </span>
+            ) : baseWeek ? (
+              <span
+                data-base-mode={p.replace ? "replace" : "fill"}
+                className="ml-2 text-[12px] font-normal text-white/70"
+              >
+                {p.replace
+                  ? "replaces the shifts copied from the week before"
+                  : "keeps the shifts already there, fills the empty days"}
+              </span>
             ) : null}
           </h3>
           {p.skipped ? null : (
-            <PlanTable plan={p.plan} employees={employees} label={label} />
+            <PlanTable
+              plan={p.plan}
+              employees={employees}
+              label={label}
+              changed={p.changed}
+            />
           )}
+          {!p.skipped && baseWeek && p.problems.length ? (
+            <ul className="list-disc pl-5 text-[12px] text-red-300">
+              {p.problems.map((x, i) => (
+                <li key={i}>{x.message}</li>
+              ))}
+            </ul>
+          ) : null}
         </div>
       ))}
       <Footer>
@@ -607,7 +899,9 @@ function PreviewBody({
           onClick={onCreate}
           className={DARK_PRIMARY_BUTTON_CLASS}
         >
-          Create draft
+          {baseWeek
+            ? `Create drafts for ${step.proposals.filter((p) => !p.skipped).length} week${step.proposals.filter((p) => !p.skipped).length === 1 ? "" : "s"}`
+            : "Create draft"}
         </button>
       </Footer>
     </>
@@ -618,10 +912,13 @@ function PlanTable({
   plan,
   employees,
   label,
+  changed,
 }: {
   plan: WeekPlan;
   employees: ScheduleEmployee[];
   label: (key: string) => string;
+  /** 按基础周排：跟基础周不一样的格子（`<员工 id>|<星期几>` → 原因），琥珀框。 */
+  changed?: Record<string, string>;
 }) {
   const dates = DAY_LABELS.map((_, i) => shiftYmd(plan.weekStart, i));
   return (
@@ -646,6 +943,7 @@ function PlanTable({
             employee={e}
             days={plan.byEmployee[e.id] ?? []}
             label={label}
+            changed={changed}
           />
         ))}
       </div>
@@ -657,10 +955,12 @@ function PlanRow({
   employee,
   days,
   label,
+  changed,
 }: {
   employee: ScheduleEmployee;
   days: DayShift[];
   label: (key: string) => string;
+  changed?: Record<string, string>;
 }) {
   return (
     <>
@@ -673,8 +973,18 @@ function PlanRow({
       </div>
       {Array.from({ length: 7 }, (_, d) => {
         const s = days[d];
+        const why = changed?.[`${employee.id}|${d}`];
         return (
-          <div key={d} className="flex min-h-[56px] flex-col">
+          <div
+            key={d}
+            data-changed={why || undefined}
+            title={why ? `Changed from the base week: ${why}` : undefined}
+            className={cn(
+              "flex min-h-[56px] flex-col",
+              why &&
+                "rounded-[6px] outline-2 -outline-offset-1 outline-[#f59e0b]",
+            )}
+          >
             {s ? (
               <div
                 className={cn(
