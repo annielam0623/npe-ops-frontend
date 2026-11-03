@@ -6,6 +6,11 @@
 
 > **下一个主窗口：先读下面「2026-11-02 收工交接：前端主窗口-24」，再看置顶「📌 等 Annie 确认」。更早的交接是 10-30 晚那节。**
 
+## 2026-11-02 晚 dr 87/88 修好：检查用的员工补上 orders.money_view（`task/dr-money-view`，工作窗口 `npe-ops-frontend-0e`[d96681]，主窗口 f8 派，39 报）
+- 原因：money-view 上 main 后，没勾 orders.money_view 的人侧栏不出 Farm out Report（有意的）；检查共用的 `checks/headless/role-standard.js` 是 11-01 照抄的后端角色标准，还没有这一勾。后端 8e9a9a58 的 _STAFF_STANDARD 已含 orders.money_view（「员工本来就看得到价格；CCL 的人靠没勾藏」）⇒ 照后端补上，页面不改。
+- dr 另加一条：没勾 orders.money_view 的员工（dr-mock ctl.noMoney）侧栏 Operations 没有 Farm out Report，其余照旧。
+- 检查：dr 89/89、nav 38/38；共用 role-standard 的 as 69、dor 75、hr 62、sch 346、tcq 86 全过。
+
 ## 2026-11-02 晚 没勾 See prices, agent & commission 的人藏价格（`task/money-view-hide`，工作窗口 `npe-ops-frontend-0e`[d96681]，主窗口 f8 派）—— ✅ 后端 8e9a9a58 上线、v142 Annie 已执行（21 人勾上、CCL 5 人没勾）后合 main
 - Annie 原话（置顶 48 题 8）：「要」「选1」；「只单独勾了CCL的就是CCL的人……」；「默认不带 / 藏」；「除了客人的基本信息，CCL看不到任何有价格的信息」→「动手」；验收「manifest，dispatch等任何有价格的那一栏都隐藏起来他们点击或添加都不行就可以了」。
 - ⛔ 上线顺序：后端先跑 v142（加 orders.money_view 勾、给现有员工勾上）再上线，前端才能合。前端按勾藏，勾不存在时会把所有员工的价格都藏掉。后端卡在 fc 的 v141 先落地，预计 11-03。

@@ -217,6 +217,19 @@ async function run() {
     await evaluate(`return [...${nav}.querySelectorAll('[data-module]')].map(r => r.dataset.module).join(',');`),
   );
   check("拿掉了 Dispatch Imports / Work Sheet / Guide Sheet", !/Dispatch Imports|Work Sheet|Guide Sheet/.test(t1));
+  // G231 第 8 题：没勾 orders.money_view（CCL 的人）⇒ Farm out Report 整页都是钱，侧栏不出；其余照旧。
+  await ctl({ noMoney: true });
+  await openDashboard();
+  await openNav();
+  check(
+    "没勾 orders.money_view 的员工：Operations 里没有 Farm out Report，其余条目照旧",
+    (await evaluate(`return [...${nav}.querySelector('section[aria-label=Operations]').querySelectorAll('[data-module]')].map(r => r.dataset.module).join(',');`)) ===
+      "dashboard,workspace,forecast,manifests,orders,dispatch,forms,schedule,daily_report",
+    await evaluate(`return [...${nav}.querySelectorAll('[data-module]')].map(r => r.dataset.module).join(',');`),
+  );
+  await ctl({ noMoney: false });
+  await openDashboard();
+  await openNav();
   check(
     // Quotation 现在仅 Super Admin 可见，staff 的侧栏里没有这一项了，这里只还看 Daily Operation Report。
     "Daily Operation Report 标 SOON，照样是链接（Staff Schedule 已上线，不再标）",
