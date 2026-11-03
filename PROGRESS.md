@@ -15,6 +15,7 @@
 - 37 回：v145 代码（bus-footer-style）早上派给 d8，审完整 diff、跑连库测试后合 main，Annie 授权 schema 推送；上了 37 给前端 SHA 和最终字段名，之前以分支 tasks/ACTIVE.md 交接里的字段为准。v146 samsara-arrivals 派给 64，要等 v145 代码落地后才能提交 v146，最早今天晚些；前端照 fc 字段用 mock 写可以，字段有变 37 马上转。前端 task/samsara-arrival 等 09 合完 live-drivers 再开（它要接 Live drivers 的 relay_blocks）。
 - ✅ 09 合 task/live-drivers → main **406fa21**（39 的 188c4ca + 09 修正）。核后端 2bb6b23a 键名：/live-drivers 外层、segments、relay_blocks / relay_summary / relay 客人、manifest、导游 runs、inbox 都对得上；唯一对不上的是 tour_compact（有单独导游的团车司机页）后端带 shuttles，driver_home.html 会显示 shuttle 块、not_split / unplaced 提醒、只有一段时车号旁团名，前端原来没有，已照模板补上（mt 加一条）。不缺后端。ns 合 main 后已是 22 行，不用改。tsc 0、eslint 0 错、build 过；mt 241、ns 49、tt 137、tk 135、da 457、tasks 144、nav 38、perm 54。Annie 验收：Morning tracking › Live drivers 页签（开关 morning_live_drivers 默认只 Super Admin）。
 - 派 09：task/samsara-arrival，照 fc 字段用 mock 写（Pickup Locations 坐标 + 半径暂存 + Save；tracking 行 / Live drivers relay_blocks 显示 Arrived / Left，照 39 preview 预留的样子），先推分支不合，等后端 64 的 samsara-arrivals + v146。
+- 09 推 task/samsara-arrival **071df4d**（没合）：Pickup Locations 编辑行加坐标 + 范围（暂存 + Save，坐标改过才另发 PATCH …/arrival-point，body 键是 radius_m，对后端 WIP 0bd3372e 核过）；Live drivers relay 站点头加 Arrived / Left 胶囊（照 39 preview）。后端 GET 没 latitude 时格子不出。pl 115、mt 242、tt 137、tk 135、nav 38，tsc / eslint / build 过。Tracking 表行等置顶 58；Pickup Locations 放法 Annie 没看过 → 置顶 59。
 
 ## 2026-11-03 凌晨 收工交接：前端主窗口 `npe-ops-frontend-f8`[f1ac95]（家里电脑，Annie「我要睡觉了，你把交接写详细一点，明天回公司继续，要保证工作的顺利，所有东西都不能缺」）
 
@@ -624,6 +625,13 @@
 - 需要后端：user_prefs 白名单加 `manifest_cols_admin_fee`（这个标签的 Columns 才存得住；没有时页面写「Could not load your saved columns」并用默认列）。
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
+
+### 59. Pickup Locations 填酒店坐标的格子放哪（2026-11-03，09 做 Samsara 到站，分支 task/samsara-arrival 071df4d，没合）
+- 页面：Products › Pickup Locations（/pickup-locations）。Samsara 到站要 staff 给每家酒店填接客门口的坐标和范围（默认 10 米，Annie 定）。
+- 09 现在的放法（照页面现有格子，Annie 没看过）：点某家酒店的 Edit，在酒店名下面（原来放 Tour bus / Shuttle 勾的位置）加小标题「Pickup point (live tracking)」，下面三格一格一行：Latitude、Longitude、Within [10] m。不加列，表不变宽。按这一行的 Save 才存（绿字 ✓ Saved），没存就离开会问。不编辑时，有坐标的酒店名下面一行灰字「Pickup point: 36.1126, -115.1767 (15 m)」，没坐标不写。截图（模拟数据）：C:\Users\annzh\AppData\Local\Temp\claude\8828d70a62fa0031\6520170a-1023-449b-87d9-6f73e0add973\scratchpad\pl-edit.png
+- 报错（英文，红字）：只填一个坐标「Fill in both latitude and longitude, or leave both empty.」；范围不在 1–500「Radius must be a whole number of meters from 1 to 500.」；坐标存失败「The hotel was saved, but not the pickup point: …」。两格都清空 = 这家不再记到 / 离。
+- 题 1：这个放法行不行？A（推荐）照截图；B 另说放法。
+- 题 2：上面「+ Add New Location」新加酒店的表单要不要也加这三格？A（推荐）不加，新酒店加好后点 Edit 再填（Add 表单已经很长）；B 加。
 
 ### 58. Morning Pickup Tracking 表里怎么显示「到了 / 走了」的时间（2026-11-03，09 做 Samsara 到站时问）
 - 页面：Morning Pickup Tracking（/morning-pickup/tracking）的表格，每一行是一单客人。
