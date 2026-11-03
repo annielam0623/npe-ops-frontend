@@ -501,6 +501,7 @@
 - Annie 问以前的「谁哪天不上 / 谁不上某个班」设置在哪：f8 答——在排班页 Rules 页签（Cannot work / Fixed shift 等规则，给 Auto-fill 用）。
 - Annie 更正（f8 窗口原话）：「没有，后端也一直在做」⇒ 后端今晚不收工。9e：按天设已派 36 今晚做，迁移 v144（排 fc v143 后，要 Annie 执行），字段名定了发 f8。
 - 按天设字段定（36）：GET settings/schedule 多 work_hours {same_every_day, days[7]{weekday 0=Mon, start_time, end_time, off}}，work_window = Monday；PUT /api/settings/schedule/work-hours 整份替换（settings.schedule，same_every_day 时 7 天须一样，400 原话），旧 work-window PUT 照能用。已转 39（接 Different by day）、0e（基础周按当天时间算）。上线：Annie 执行 v144 → 后端推。
+- ✅ 排班设置集中（Same every day）已合 main 10e82e9（39，sch 354、dr 89、tasks 144，tsc / eslint / build 过）：⚙ Settings 弹窗、照 settings.schedule 勾、只读一行 Working hours、空档补一句。39 接着 task/schedule-work-hours（Different by day），等后端 SHA 再合。
 - （作废）9e：按天设已记规格，22:14 PT 过了 21:30 收工点，明天第一件派（迁移 v144），今晚只做完 relay-print。
 - Annie 在 39 窗口答（原话）：「schedule同意全部推荐，但是需要加一个可以edit的权限让我来Admin里勾选」⇒ 两份 preview 全按推荐；⑤ 改：能改设置照 Team 页勾。39 查：现成勾 settings.schedule（后端 PUT 本来就按它查，routers/schedule.py:47），前端只是写死 is_superadmin ⇒ 不用新权限，前端改照勾；按天设的新接口也用它。设置 preview v3 同链接。「同意」不算动手，39 已问 Annie「是否现在动手」。动手后：Day timeline 纯前端；设置集中前端先做（Same every day 先用现 work-window 接口）；按天设转后端（迁移 + work_hours + PUT /api/settings/schedule/work-hours，权限 settings.schedule）。
 - 设置集中 preview 第 2 版：https://claude.ai/artifact/97MgNcpw28p7W4DxXmpgrM 。原 6 题（推荐 ① 工具条 ⚙ Settings + 弹窗、② 留一行只读 Working hours、③ Employees 不搬、④ Rules 不搬、⑤ SA 改 / 排班人只读、⑥ 空档补「(working hours end …)」）。
