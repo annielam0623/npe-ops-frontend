@@ -47,6 +47,7 @@
   - Annie 点核心（原话）：「核心问题是：在bus manifest底部的灰色汇总框里，把Antelope的表格变成所有tour的样本了，这是错误的，每个tour的汇总表都不一样」⇒ 每种团底部统计各用各的（Antelope / South / West / Hoover，格子见清单）。没动手。已请 0e 把这块放报告最前面：现在怎么来的、每格算法、要不要后端。
   - Annie 补（原话）：「另外，hooverdam在bus manifest那里已经设置好分小节了」⇒ Hoover Dam 分节是她设好的，保留，不算跟 PDF 的差别；已转 0e，请它查分了哪几节、汇总格能不能跟节对上。
 - 题 8 剩下两问 Annie 在后端 36 窗口答（9e 转，原话）「默认不带 / 藏」⇒ 新账号默认不带 orders.agent_view（Super Admin 在 Team 页勾）；订单详情再藏 source / sourceChannel / supplierName。迁移 v142。等 Annie「动手」36 开工；前端要跟着藏 Team 页勾 / 订单列 / 详情块，后端上线后派。
+  - 范围扩大（Annie 在 36，9e 转，原话）：「除了客人的基本信息，CCL看不到任何有价格的信息」，随后「动手」⇒ 一切价格都藏（Manifest money 组、CHD amount / paid / due、订单详情 price、Rezdy 快照金额、Farm out 价格、报表金额）。勾改名 orders.money_view「See prices, agent & commission」（orders.agent_view 作废），新账号默认不带，只在 CCL 一个 team 的人不勾。CCL 5 个账号没有 orders.view，会漏价格的是 Manifests、Dispatch、Forecast、Reports（含 Farm out CSV）、Morning tracking。36 已开工，迁移 v142 要 Annie 执行，预计明天上线。藏键清单定了 9e 转 f8，再派前端。
 - 今晚在等 Annie 的，跟 24 交接第三节一样，不重问。
 
 ## 2026-11-02 收工交接：前端主窗口-24 [d1dbae]（公司）
