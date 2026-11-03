@@ -414,7 +414,8 @@
 
 ### 55. 排班 gap：11/2 10–12 在哪看到的 + 时间小窗要不要挡（2026-11-02 晚）
 - gap 修复已合 main 308af89（39）：409 逐段写「…is not covered — caused by your change to X's Y shift.」，被拒后红框留到 Save 成功 / Discard / 换周。
-- 问 Annie ①：11/2 10am–12pm 在哪个画面看到的？前后端都按 Anita Mid 08–16 算有人（39、fc 核过，前端无 bug）。是 Anita 实际没来，还是 Mid 不算前台（后者是新规则）？
+- ① 已答：Annie 发 Day timeline 截图（11/2 Veronica 2–10、Anita 8–4、Nadia 12–8、Jing 1:30–9:30），原话「Anita不算的」⇒ 新规则：某些员工不算覆盖。没动手；已派 39 出 preview（推荐 Employees 弹窗每人一个「Counts toward coverage」开关、照 is_test 的路排除，题：按人还是按班次类型 / 表上标不标 / 已发布周多出 gap 通不通知 / 谁能改；需要后端字段）。
+- （原问题）问 Annie ①：11/2 10am–12pm 在哪个画面看到的？前后端都按 Anita Mid 08–16 算有人（39、fc 核过，前端无 bug）。是 Anita 实际没来，还是 Mid 不算前台（后者是新规则）？
 - 问 Annie ②（39 报，改样子要 preview）：时间小窗结束 ≤ 开始（例如点 12 + AM = 午夜）也能按 Done，只出小字「End isn't after start」，存时就被当空档拒。要不要在小窗里挡住 / 醒目提示？推荐：挡住，Done 变灰 + 红字「End must be after start」，先出 preview。
 
 ### 54. Staff Schedule 员工行拖动排序（2026-11-02 晚，Annie 提，没动手）
