@@ -6,6 +6,14 @@
 
 > **下一个主窗口：先读下面「2026-11-03 凌晨 收工交接：前端主窗口 f8」，再看置顶「📌 等 Annie 确认」。上一份是「2026-11-02 收工交接：前端主窗口-24」。**
 
+## 2026-11-03 Dispatch 没定位的车标「No tracking」（`task/no-tracking`，工作窗口 91 [359513]，主窗口 24 派，置顶 60）—— 合 main
+- Annie 定（在后端 37 说「动手」）：staff 要看出哪台车追踪不了；这些车客人照样收链接、能签到，短信 / 邮件不提 live tracking（后端自动换字，fc880e40）；只标不拦。preview https://claude.ai/artifact/GqgxoQ12fMyPgtzRM3kHJ8 。
+- Annie 在 91 窗口原话「动手」（4 题没逐题答，照 preview 的推荐做：题 1 A、题 2 A、题 3 A、题 4 B）。
+- 改了：
+  - Assign：车号下面红点标「No live GPS」→「No tracking」；选车下拉里没定位的车写「2056 · No tracking」；右栏 Schedule check 改成「2056 has no tracking — Guests on it still get the link and can check in. The text doesn’t mention live tracking.」；How to use — Buses & drivers 加一条。
+  - Send › Morning Relay：车有车号且 `car.has_tracking === false` 时，车号后面同款红点标「No tracking」（不进 problems、不拦 Preview & send；没车号的占位车后端也给 false，不标；旧后端没这个键当 true）；How to use — Morning Relay 加一条。
+- 检查：da-mock 加 ctl.relayNoTracking；da 加 5 条（下拉文字、右栏文字 + How to use、旧后端不标、768 标 + 不拦、占位车不标）。da 462/462、rl 26/26、nav 38/38；tsc / eslint（0 错）/ build 过。
+
 ## 2026-11-03 主窗口 `今日主窗口-24`[310398] 开工（公司电脑，接 f8）
 - 窗口：前端工作窗口 09 [341d31]、91 [b22952]、e6 [03dd03]；d8 [840908] 身份待确认（已问是否后端主窗口）。
 - 资源：空闲内存 49.2 / 61.8 GB；没有 node / chrome 进程。

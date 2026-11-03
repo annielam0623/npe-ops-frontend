@@ -948,6 +948,11 @@ export function RelayPanel({
               text them again (for example Changed after sent).
             </li>
             <li>
+              A car marked No tracking has no live GPS. Its guests still get
+              the text and the link to check in; the text doesn&rsquo;t mention
+              live tracking. Nothing is blocked.
+            </li>
+            <li>
               Under each car, guests are grouped by hotel. Use the button on a
               hotel&rsquo;s bar to select or deselect everyone not sent yet at
               that hotel. For guests already sent at that hotel, Send anyway
@@ -2062,6 +2067,7 @@ function CarRows({
   car: {
     van: string | null;
     driver: string | null;
+    has_tracking?: boolean;
     problems?: string[];
   };
   guests: RelayGuest[];
@@ -2086,7 +2092,18 @@ function CarRows({
           )}
         >
           {prefix ? <>{prefix} · </> : null}
-          {car.van || "No vehicle"} · {car.driver || "No driver"} ·{" "}
+          {car.van || "No vehicle"}
+          {/* 没定位的车：同 Assign 车号下面的红点标，只标不拦（Annie 2026-11-03 No tracking 题 3 选 A）。 */}
+          {car.van && car.has_tracking === false ? (
+            <span
+              data-no-tracking
+              className="mx-2 inline-flex items-center gap-[5px] rounded-full bg-[#fdeceb] px-2 py-0.5 align-middle text-[11px] font-semibold whitespace-nowrap text-[#b3261e]"
+            >
+              <span aria-hidden className="size-1.5 rounded-full bg-current" />
+              No tracking
+            </span>
+          ) : null}{" "}
+          · {car.driver || "No driver"} ·{" "}
           {plural(guests.length, "order")}, {paxOf(guests)} pax
           {onPrint ? (
             <button
