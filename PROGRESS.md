@@ -834,6 +834,7 @@
 
 ### 53. 限制下载功能（2026-11-02，Annie 在 e6 窗口问，没动手）
 - ✅ 2026-11-03 Annie 在 e6 窗口（原话）「4-7题，全部同意推荐」，24 问是哪份，Annie「我说的是甲」⇒ 本条 53：题 4 导出键归属 4a Farm out Report → Export Reports、4b Manifests Export CSV + Bus Manifest 下载 → Export Manifests、4c 三个 Tracking Download CSV → Export Orders、4d HR Export / Download template → Edit HR profiles、4e Pickup Locations Export → Settings: Pickup locations、4f Farm out Timetable Download → Settings: Farm-out；题 5 能对个人单独去掉（denied_items）；题 6 没勾 Staff Schedule 也出 Today's team、只是不列班次；题 7 加「Remove personal ticks that a team already gives」键（只 Super Admin，先确认框）。**「同意」不算动手，还没动手。** 已转 37 / 44。
+- 题 8（37 提，在 37 窗口问过一次，这里只列一次）：谁能给 team 加人 / 删人、删 team？A（推荐）只 Super Admin；B 有 Team 页编辑权限的人都能。37：G240 设计等 44 做完 G180 再更新，迁移号到时重排（v148 起）；64 只读核后端导出接口是否跟题 4 对得上。
 - Annie 原话：「我可以限制一下download的功能么」。e6 已答能做、说了现状，问她要限制谁、哪些页（不在 24 这里重复问）。
 - e6 只读核：Team 页已有 4 个导出勾 manifests.export / orders.export / logs.export / reports.export；后端服务器端导出没勾就 403（orders.py、send_log.py、notifications.py、tour_manifest.py、farm_out.py）。前端员工按钮级权限没做：没勾的人照样看得到 Export / Download 键；浏览器里直接生成的下载后端拦不住。下载键：Manifests Export CSV、Orders Export、Order Log、Send Log、Broadcast Log、Sales Report、Farm out Report / Timetable、HR Export to Excel、Pickup Locations Export、三个 Tracking 页、Dispatch 的 Download Bus Manifest。
 - 可做：员工也按 4 个导出勾藏键（含浏览器生成的）；要不要细分（如 Bus Manifest 下载单独一项）看 Annie。先出 preview（哪页哪个键对应哪一勾）。相关旧题：11-01 09 问过的权限题 A / B / C（Farm out 导出跟 reports.export、Bus Manifest 下载 + Manifests Export CSV 跟 manifests.export，未答）。
