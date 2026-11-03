@@ -643,6 +643,12 @@
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 64. G180 Main manifest 订单同步到 Tour Tracking：重新启动（2026-11-03，Annie「重新启动」）
+- 10/24 Annie 提，后端 d9 写好代码在 origin/task/tracking-sync-design（4cac1f93，10/25 夜后没动，没上 main、没跑迁移；deploy-guard 第 3 轮 FAIL：迁移要先于代码；迁移号 v122 已被占，要换号）。设计文档 docs/tracking-sync-design-2026-10-24.md，Annie 已定的不再问（同步已确认订单、发送前后都同步、send_state Sent / Not sent、order_state Confirmed / On hold / Cancelled 以 Order List 为准、从不删行、午餐谁新留谁、Farm out 只记录、Broadcast 含 Not sent 不含 On hold / Cancelled 且发出后变 Sent、总开关默认关、Tour Tracking 加 Sent / Not sent 筛选默认 Sent + 订单号后小标签）。还没答：调用记录表 401 要不要记（Max 推荐不记，后端那边问）。
+- 当时页面只改了旧后台模板；ops 新 Tour Tracking 页要前端另做。
+- 已转 37：派后端合最新 main、换迁移号、重审、重估工作量和时间，冻结 ops 要用的接口字段。已派 91 出 ops Tour Tracking 的 preview（筛选、标签、统计 / 导出算不算、How to use），没定的列题。等 preview 后 Annie「动手」才写前端代码。
+- 37 派后端 44 重评：接分支合今天 main、迁移改号（最早 v147，排 57 的 v145、64 的 v146 后）、按现在代码核设计、冻结接口形状（send_state / order_state、farm out 标、筛选在服务器还是页面、broadcast 名单）、估工作量和时间；44 也查 10-25 后 Annie 答没答 401，真没答 37 才问。形状和 ETA 经 37 转。
+
 ### 63. 换司机只改 Dispatch：页面上怎么标（G234，Annie 已「动手」后端；e6 preview https://claude.ai/artifact/CXT8ZueNa3akn1ZrGn4Ycj ，没写代码）
 - 背景：Annie（37 转）「换了司机以后，staff只需要去dispatch把司机改了，然后保存，就可以了，不需要再发送任何信息出去」。后端 4d 做：改司机 + Save 后已发客人的链接跟新司机，不发东西。前端占位字段 driver_followed {from, to}，真实字段 37 待转。
 - 题 1 Morning Relay 发送名单标在哪（现在 Status 列淡黄「Sent by…」，下面橙字「Changed after sent: …」，改司机不显示）：A（推荐）Status 列 Sent by 下面一行、橙字上面；B 名字后小标签「Driver changed」，鼠标移上去看全句。
