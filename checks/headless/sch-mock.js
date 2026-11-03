@@ -496,7 +496,9 @@ http
     }
 
     if (p === "/api/settings/schedule" && req.method === "GET") {
-      return send(res, 200, settingsPayload());
+      // ctl.sundayOff：后端 Working hours 按星期几（work_hours，weekday 0 = 周一 … 6 = 周日），周日 off。
+      const base = settingsPayload();
+      return send(res, 200, ctl.sundayOff ? { ...base, work_hours: { same_every_day: false, days: [0, 1, 2, 3, 4, 5, 6].map((weekday) => ({ weekday, start_time: "02:00", end_time: "21:30", off: weekday === 6 })) } } : base);
     }
     const stMatch = /^\/api\/settings\/schedule\/shift-types\/([a-z_]+)$/.exec(p);
     if (stMatch && req.method === "PUT" && ctl.phase2) {

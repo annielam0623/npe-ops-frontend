@@ -462,7 +462,20 @@ async function run() {
   check("1st Round：车行、3 单 6 pax、1 单没发；表头 Status；没发过的空着、发过的黄标签 + Changed after sent（写改了什么）/ No show", await evaluate(`const t = ${rp}.textContent; const box = ${rp}.querySelector('[aria-label="1st Round · 4:30 - 5:15 AM"]'); const heads = [...box.querySelectorAll('thead th')].map(th => th.textContent.trim()); const r = (o) => box.querySelector('tr[data-order="' + o + '"]'); return t.includes('768 · FREDDY · 3 orders, 6 pax') && t.includes('3 orders, 6 pax · 1 not sent yet') && heads.includes('Status') && !heads.includes('Text') && !/Not sent/.test(t) && !r('R1').querySelector('[data-sent-label]') && r('R2').querySelector('[data-sent-label]').textContent === 'Sent by veronica on Oct 5, 4:30 AM' && r('R2').querySelector('[data-changed]').textContent === 'Changed after sent: pickup time 4:45 AM → 5:00 AM' && r('R3').textContent.includes('No show') && !r('R3').querySelector('[data-sent-label]');`), await evaluate(`return ${rp}.textContent;`));
   check("2nd Round：没车写 No vehicle · No driver、发送键灰掉", await evaluate(`const box = ${rp}.querySelector('[aria-label="2nd Round · 5:40 - 6:30 AM"]'); return box.textContent.includes('No vehicle · No driver') && $btn('Preview & send', box).disabled;`));
   check("Need a look 写原因；出发点上车的单数", await evaluate(`const t = ${rp}.textContent; return t.includes('Pickup time could not be worked out from the time in Rezdy') && t.includes('4 orders board at the tour bus departure point');`));
+  // task/relay-print（Annie：「排完relay并保存了以后，应该加一个按键显示这些relay的list」）：📋 Relay list 新标签打开；车头 Print 只看这一台。
+  await evaluate("window.__opens = []; window.open = (u) => { window.__opens.push(String(u)); return null; };");
+  await evaluate(`${rp}.querySelector('[data-relay-list]').click();`);
+  await sleep(200);
+  check("📋 Relay list（白键）：没改动时直接新标签打开 /dispatch/relay-list?date=这天", (await evaluate("return window.__opens[0];")) === "/dispatch/relay-list?date=2026-10-05" && (await evaluate(`return getComputedStyle(${rp}.querySelector('[data-relay-list]')).backgroundColor !== 'rgb(59, 130, 246)';`)), await evaluate("return JSON.stringify(window.__opens);"));
+  await evaluate(`${rp}.querySelector('[aria-label="1st Round · 4:30 - 5:15 AM"] [data-relay-car-print]').click();`);
+  await sleep(200);
+  check("车头 Print：只看这一台（&car=801）；没客人的车没有 Print", (await evaluate("return window.__opens[1];")) === "/dispatch/relay-list?date=2026-10-05&car=801" && !(await evaluate(`return !!${rp}.querySelector('[aria-label="2nd Round · 5:40 - 6:30 AM"] [data-relay-car-print]');`)), await evaluate("return JSON.stringify(window.__opens);"));
   await makeDirty();
+  await evaluate("window.__opens = []; window.open = (u) => { window.__opens.push(String(u)); return null; };");
+  await evaluate(`${rp}.querySelector('[data-relay-list]').click();`);
+  check("有没存的改动：先问 Save before opening the Relay list?，不直接打开", await waitFor("[...document.querySelectorAll('[role=dialog]')].some(d => d.textContent.includes('Save before opening the Relay list?'))") && (await evaluate("return window.__opens.length === 0;")));
+  await evaluate("const d = [...document.querySelectorAll('[role=dialog]')].find(d => d.textContent.includes('Save before opening the Relay list?')); [...d.querySelectorAll('button')].find(b => b.textContent.trim() === 'Cancel').click();");
+  await waitFor("![...document.querySelectorAll('[role=dialog]')].some(d => d.textContent.includes('Save before opening the Relay list?'))");
   check("检查点：Assign 还没存好 ⇒ Send 顶上黄条 Assign is not saved yet、Preview & send 关着；没出错时 Assign 标签不写 not saved", await evaluate(`return ${panel("send")}.querySelector('[role=alert]').textContent.includes('Assign is not saved yet.') && $btn('Preview & send', ${rp}).disabled && !${tabBtn("assign")}.textContent.includes('not saved');`), await evaluate(`return ${panel("send")}.querySelector('[role=alert]')?.textContent;`));
   await evaluate(`$btn('Back to Assign', ${panel("send")}).click();`);
   await waitFor(`!${panel("assign")}.hidden`);

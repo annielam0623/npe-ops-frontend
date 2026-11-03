@@ -1,0 +1,91 @@
+/* Relay list：A4 竖向，照纸本 4796_001.pdf 第 9–13 页（Calibri 粗体、表头灰、酒店涂车色、换酒店空一行）。 */
+.rl-sheet {
+  width: 210mm;
+  min-height: 297mm;
+  margin: 0 auto 18px;
+  padding: 12mm 11mm;
+  background: #fff;
+  color: #111;
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.25),
+    0 8px 24px rgba(0, 0, 0, 0.12);
+  font-family: Calibri, Carlito, Arial, sans-serif;
+}
+.rl-sheet table {
+  border-collapse: collapse;
+  width: 100%;
+}
+.rl-sheet th {
+  font-size: 10px;
+  font-weight: 600;
+  background: #d9d9d9;
+  border: 1px solid #bbb;
+  padding: 2px 4px;
+}
+.rl-sheet td {
+  font-size: 15px;
+  font-weight: 700;
+  border: 1px solid #c8c8c8;
+  padding: 4px 6px;
+  text-align: center;
+  white-space: nowrap;
+}
+.rl-sheet td.rl-gap {
+  height: 12px;
+  border-left: 0;
+  border-right: 0;
+}
+.rl-total td {
+  font-size: 12.5px;
+  padding: 2px 5px;
+}
+.rl-total th {
+  font-size: 9px;
+}
+.rl-legend td {
+  font-size: 10.5px;
+  padding: 2px 6px;
+}
+.rl-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 12px;
+  font-size: 24px;
+  font-weight: 700;
+}
+.rl-bar {
+  text-align: center;
+  font-size: 18px;
+  font-weight: 700;
+  padding: 5px;
+}
+
+@media screen and (max-width: 860px) {
+  .rl-scroll {
+    overflow-x: auto;
+  }
+}
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 0;
+  }
+  html,
+  body {
+    background: #fff !important;
+  }
+  .rl-sheet {
+    margin: 0;
+    box-shadow: none;
+    break-after: page;
+  }
+  .rl-sheet:last-of-type {
+    break-after: auto;
+  }
+  .rl-screen-only {
+    display: none !important;
+  }
+}

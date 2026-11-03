@@ -739,3 +739,82 @@ export function generateWeeks(
   }
   return results;
 }
+
+// ───────────────────────── 按基础周排（Annie 2026-11-02「用上周的排班为基数，来自动排班，遵守定好的这些role」）─────────────────────────
+
+/** 基础周里没照抄的一格和原因（预览里标「因为规则改了」）。 */
+export interface BaseDrop {
+  employeeId: number;
+  day: DayIndex;
+  reason: string;
+}
+
+/**
+ * 拿基础周当底稿：每人每天照抄基础周的班，违反规则的那几格去掉，其余锁住（交给 `generateWeek` 的 `locked` 再按规则补排）。
+ * - 这一周已经排好的班（`existing`，只填空格）原样保留、优先于基础周；
+ * - 周末轮值管的那几个班不照抄（照抄就每周同一批人上周末），留给轮值排；
+ * - 不照抄：不能上的日子 / 班（cannot_work）、跟固定班冲突（fixed_shift）、和前一天之间休息不够（min_rest / after_shift）、
+ *   超出每周天数（days_per_week，从后往前去掉）。
+ * 纯逻辑，不连接口。
+ */
+export function seedFromBase(input: {
+  rules: Rule[];
+  base: WeekPlan;
+  weekStart: string;
+  previous: WeekPlan | null;
+  employees: EngineEmployee[];
+  existing?: WeekPlan | null;
+}): { seed: WeekPlan; dropped: BaseDrop[] } {
+  const c = compile(input.rules);
+  const dropped: BaseDrop[] = [];
+  const rotating = (d: number, type: string) =>
+    c.rotation.some((r) =>
+      r.slots.some((s) => s.day === d && s.shift_type === type),
+    );
+  const fixedOn = (id: number, d: number) =>
+    c.fixed.find((f) => f.employee_id === id && f.days.includes(d as DayIndex));
+  const byEmployee: Record<number, DayShift[]> = {};
+  for (const e of input.employees) {
+    const days = emptyDays();
+    const have = input.existing?.byEmployee[e.id] ?? [];
+    const base = input.base.byEmployee[e.id] ?? [];
+    const copied: number[] = [];
+    for (let d = 0; d < 7; d++) {
+      if (have[d]) {
+        days[d] = { ...have[d]! };
+        continue;
+      }
+      const b = base[d];
+      if (!b) continue;
+      const day = d as DayIndex;
+      const fixed = fixedOn(e.id, d);
+      const before: DayShift =
+        d === 0 ? (input.previous?.byEmployee[e.id]?.[6] ?? null) : days[d - 1];
+      let reason = "";
+      if (rotating(d, b.type)) reason = "Weekend rotation";
+      else if (!canWork(c, e.id, day, b.type)) reason = "Cannot work";
+      else if (fixed && fixed.shift_type !== b.type) reason = "Fixed shift";
+      else if (!followOk(c, before, b)) reason = "Rest between shifts";
+      if (reason) {
+        dropped.push({ employeeId: e.id, day, reason });
+        continue;
+      }
+      days[d] = { ...b };
+      copied.push(d);
+    }
+    const target = targetDays(c, e.id);
+    if (target != null) {
+      let over = days.filter(Boolean).length - target;
+      for (let i = copied.length - 1; over > 0 && i >= 0; i--, over--) {
+        days[copied[i]] = null;
+        dropped.push({
+          employeeId: e.id,
+          day: copied[i] as DayIndex,
+          reason: "Days per week",
+        });
+      }
+    }
+    byEmployee[e.id] = days;
+  }
+  return { seed: { weekStart: input.weekStart, byEmployee }, dropped };
+}

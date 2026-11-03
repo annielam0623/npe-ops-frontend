@@ -2,6 +2,8 @@
 const http = require("http");
 const ctl = { fail401: false, staff: false, failMissing: false, slowNextProductPut: 0, slowNextGroupPut: 0, noRelay: false, relayFail: false, failSection: 0, categories: false, forecastSettings: false, forecastFail: "", g198: false, cfmSections: ["UPPER"], g199: false };
 let busOrder = [];
+// task/relay-print：Short name（团 + 节）。
+let shortNames = { group: "Antelope", sections: { LOWER: "Lower", "Canyon X": "" } };
 // 7 Days Forecast 设置（后端 G63）：团 1 有主块和单独成块的 SUNSET。
 let fcNextId = 600;
 const fc = {
@@ -214,9 +216,32 @@ http.createServer(async (req, res) => {
     return send(res, 200, { success: true, is_active: body.active });
   }
   const S = "/api/settings/manifest-setup";
+  if (ctl.shortReset) {
+    shortNames = { group: "Antelope", sections: { LOWER: "Lower", "Canyon X": "" } };
+    ctl.shortReset = false;
+  }
   // busOrder：后端 64 的 Bus Manifest section order（置顶 41）：groups[] 带 bus_section_order；默认不带 = 后端没上线。
   if (p === S && ctl.busOrder)
     return send(res, 200, { ...setup, groups: setup.groups.map((g, i) => ({ ...g, bus_section_order: i === 0 ? busOrder : [] })) });
+  // task/relay-print（后端 fc）：groups[] 带 short_name + section_short_names；默认不带 = 后端没上线（不出 Short name 这项）。
+  if (p === S && ctl.shortNames)
+    return send(res, 200, { ...setup, groups: setup.groups.map((g, i) => ({ ...g, short_name: i === 0 ? shortNames.group : "", section_short_names: i === 0 ? Object.entries(shortNames.sections).map(([section, short_name]) => ({ section, short_name })) : [] })) });
+  m = p.match(/^\/api\/settings\/manifest-setup\/groups\/(\d+)\/short-name$/);
+  if (m) {
+    const body = await readBody(req);
+    entry.body = body;
+    if ((body.short_name || "").length > 30) return send(res, 400, { detail: "Short name must be 30 characters or fewer." });
+    shortNames.group = body.short_name;
+    return send(res, 200, { ok: true, short_name: body.short_name });
+  }
+  m = p.match(/^\/api\/settings\/manifest-setup\/groups\/(\d+)\/section-short-name$/);
+  if (m) {
+    const body = await readBody(req);
+    entry.body = body;
+    if (ctl.shortSectionFail) return send(res, 400, { detail: `Unknown section '${body.section}' for this group.` });
+    shortNames.sections[body.section] = body.short_name;
+    return send(res, 200, { ok: true, section: body.section, short_name: body.short_name });
+  }
   if (p === S) {
     // G198（后端 8a bbf3d08）：groups[] 带 cfm_sections；第一组多几个有名字的节（LOWER / Canyon X 是 tour，PAGE 是班车）。
     if (ctl.g198) {

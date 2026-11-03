@@ -307,6 +307,15 @@ async function run() {
   }
   check("How to use 写了 Back / Dispatch 两个键", await evaluate("return document.body.textContent.includes('Back returns to the page you came from. The Dispatch button opens Dispatch on this manifest');"));
   check("页头：团名、日期、单数 / 人数 / 文件", await evaluate("return document.querySelector('h1').textContent === 'Antelope Canyon' && document.body.textContent.includes('Mon, Oct 5, 2026 · 4 orders, 8 pax · ant.csv');"));
+  // 司机兼导游并一格（Annie 2026-11-02「全部同意。动手」，纸本「Driver Guide: Lankun」）：不分大小写、去空格比；别的车照旧两格。
+  await ctl({ sameCrew: true });
+  await goto(`${APP}/dispatch/manifest?date=2026-10-05&tour=3`);
+  await waitFor("document.querySelector('section[aria-label=\"Bus 2041=A\"]')", 30000);
+  check("司机兼导游：抬头只一格「Driver Guide: FREDDY」，B 车照旧 Driver / Guide 两格", await evaluate("const a = document.querySelector('section[aria-label=\"Bus 2041=A\"]').firstElementChild.textContent; const b = document.querySelector('section[aria-label=\"Bus 2042=B\"]').firstElementChild.textContent; return a.includes('Driver Guide:') && !/Guide:.*Guide:/.test(a) && !a.includes('Driver:') && b.includes('Driver:') && b.includes('Guide:');"));
+  await ctl({ sameCrew: false });
+  await goto(`${APP}/dispatch/manifest?date=2026-10-05&tour=3`);
+  await waitFor("document.querySelector('section[aria-label=\"Bus 2041=A\"]')", 30000);
+  await helpers();
   check("每台车一块：色条（司机、BUS #）、节标题用节颜色", await evaluate("const b = document.querySelector('section[aria-label=\"Bus 2041=A\"]'); return !!b && b.textContent.includes('FREDDY') && b.textContent.includes('BUS #: 2041=A') && [...b.querySelectorAll('td')].some(td => td.textContent === 'LOWER ANTELOPE - 4 PAX' && td.style.background.includes('191, 227, 176'));"));
   check("shuttle 节：票种后加红色 OUTBOUND", await evaluate("return [...document.querySelectorAll('tr[data-guest=CHD9] td')].some(td => td.textContent === 'Shuttle OUTBOUND');"));
   check("票种有 + 标黄、三明治读不出红字原文", await evaluate("const r = document.querySelector('tr[data-guest=CHD2]'); return [...r.children].some(td => td.className.includes('fff200') && td.textContent.includes('+')) && [...r.children].some(td => td.className.includes('d00000') && td.title.includes('Sandwiches could not be read'));"));
