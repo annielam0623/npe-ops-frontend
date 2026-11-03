@@ -422,6 +422,7 @@
 - 0e 报告（汇总一节先交，其余 12 页同链接更新）：https://claude.ai/artifact/EgwNMRbsCTJMoMb9m3iRQU 。后端 footer()（tour_manifest.py:919）一套格子全团共用；前端 manifest-view.tsx:227 FOOTER_LABEL 对所有团改成 Antelope 叫法（只网页，打印 / Excel 还是后端原名）；West 7 个分项、Hoover 5 个 ops 都没有；数据够（10/6 纸本数字反推对得上）。改格子要后端，前端去掉那 3 个改名。PDF 原件在 C:\Users\annzh\Downloads\4796_001.pdf。
 - 6 题（推荐）：① West「Heli & Boat + Bus Tour + Voucher」进 GA + Meal (Voucher)（A）；② West SKY ONLY / SKY+Meal / Premium 怎么认（A 看票型 / 产品名里的 skywalk、voucher）；③ West / Hoover 拿掉纸本没有的 IN / OUT / No Lunch / Lunch（A）；④ Hoover BOULDER SHUTTLE = Boulder City 节、RAFTING = HD Raft 节，RAFT SHUTTLE 请 Annie 说是哪个产品（A）；⑤ Antelope 一个 canyon 两个确认号：先不改（A）／一节存多个（B，要后端）；⑥ 后端按团写死 4 套格子，其他团用通用套（A）／setup 里每团自设（B，先 preview）。
 - 已请 9e 只读查 Hoover 生产分节（manifest_products 的 section / kind / extra）。
+- 36 查回：Hoover 节 = HD Highlights（8 个，PJ0LQF internal_name 写「West Rim」疑似填错）/ HD Generator（5 个，票型「+ Generator」）/ HD RAFT（2）/ BOULDER CITY（2）；另有独立 manifests 35 Boulder_City（PV3Y0U）。HIGHLIGHTS / GENERATOR / RAFTING 对得上。题 ④ 改成 3 小题：④a PJD1EQ 的 Upgrade 票型算不算 GENERATOR；④b BOULDER SHUTTLE 数 Hoover 的 BOULDER CITY 节还是 PV3Y0U；④c RAFT SHUTTLE 生产里没有对应产品，怎么算。已转 0e 更新报告。
 
 ### 55. 排班 gap：11/2 10–12 在哪看到的 + 时间小窗要不要挡（2026-11-02 晚）
 - gap 修复已合 main 308af89（39）：409 逐段写「…is not covered — caused by your change to X's Y shift.」，被拒后红框留到 Save 成功 / Discard / 换周。
