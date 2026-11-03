@@ -223,13 +223,6 @@ const WRAP_TD =
 /** 取消 / 改期那一块照旧的小字（不是车上的名单）。 */
 const TD_SMALL = cn(TD, "text-[13.5px]");
 
-/** 合计行照纸本改名（G198 Q9）；后端打印 / Excel 那边由后端改。 */
-const FOOTER_LABEL: Record<string, string> = {
-  "BUS SEATS LEFT": "AVAILABLE SEATS LEFT",
-  "BUS SEATS USED": "SEATS USED",
-  "NO LUNCH (INCL. SHUTTLE)": "No Lunch (including shuttle)",
-};
-
 /**
  * 一个团、一天的 manifest，照纸本版式（同旧页面 /admin/dispatch/manifest）。
  * 车来自排车页已保存的排车，客人从主 Manifest 同步（G35，打开排车页时）。
@@ -1552,7 +1545,9 @@ function GuestTable({
   // 屏幕上留、打印去掉；打印页和 Excel 是后端出的，照旧没有）。
   const boarding = version !== "west";
   const boardingClass = version === "lankun" ? "print:hidden" : "";
-  const cols = columns.length + (lettered ? 1 : 0) + (boarding ? 1 : 0);
+  const assist = !!data.tour.assist_column;
+  const cols =
+    columns.length + (lettered ? 1 : 0) + (assist ? 1 : 0) + (boarding ? 1 : 0);
   const th = { fontSize: `${HEAD_PX[version].th}px` };
   // Canyon order 分页的地方（置顶 41 题 3 A）：屏幕上画一条「New page」虚线；真正换页在后端的打印页。
   const breaks = newPageBefore(sections, data.tour.canyon_pages);
@@ -1621,6 +1616,11 @@ function GuestTable({
                 </th>
               );
             })}
+            {data.tour.assist_column ? (
+              <th data-assist-col className={TH} style={th}>
+                ASSIST
+              </th>
+            ) : null}
             {lettered ? (
               <th className={TH} style={th}>
                 Bus
@@ -2075,6 +2075,10 @@ function SectionRows({
                 return null;
             }
           })}
+          {/* ASSIST（纸本只有 Antelope 有，后端 assist_column）：空格子，给手写打勾。 */}
+          {data.tour.assist_column ? (
+            <td data-assist-cell className={cn(TD, "min-w-[54px]")} />
+          ) : null}
           {lettered ? (
             <td className={TD}>
               <BusSelect
@@ -2304,7 +2308,8 @@ function Footer({
     <div className="mt-2.5 flex overflow-x-auto border border-[#9aa]">
       {cells.map((c) => (
         <div
-          key={c.label}
+          key={c.key ?? c.label}
+          data-footer-key={c.key}
           className="flex min-w-[92px] flex-[1_1_0] flex-col items-center border-r border-[#9aa] last:border-r-0"
         >
           <span
@@ -2313,7 +2318,8 @@ function Footer({
               c.custom ? "bg-[#ddd0f0]" : "bg-[#c9d3dc]",
             )}
           >
-            {FOOTER_LABEL[c.label] ?? c.label}
+            {/* 名字照后端给的画（后端按团的版式写死，照纸本；Annie「全部按照我上传的纸本颜色来，不要改」）。 */}
+            {c.label}
           </span>
           <span
             className={cn(
@@ -2439,15 +2445,7 @@ function LunchSheet({
                       <td className={N}>{r.turkey}</td>
                       <td className={N}>{r.veggie}</td>
                       <td className={N}>{r.beef}</td>
-                      <td
-                        className={cn(
-                          "border border-[#c8ced2] px-1.5",
-                          r.check_text &&
-                            "w-[240px] text-[11px] leading-[13px] font-bold whitespace-normal text-[#d00000]",
-                        )}
-                      >
-                        {r.check_text || ""}
-                      </td>
+                      <LunchNotes row={r} />
                     </tr>
                   ))}
                 </Fragment>
@@ -2507,6 +2505,33 @@ function LunchSheet({
         </div>
       ) : null}
     </section>
+  );
+}
+
+/**
+ * 午餐单 NOTES（照纸本第 4 页「NO FETA」黄底，后端 rows[].notes / notes_check）：读不准 = Rezdy 原文红字；
+ * 有忌口 / 要求 = 黄底照写；旧后端只有 check_text 时照旧红字。
+ */
+function LunchNotes({
+  row: r,
+}: {
+  row: ManifestLunch["sections"][number]["rows"][number];
+}) {
+  const red =
+    r.notes !== undefined ? !!r.notes_check && !!r.notes : !!r.check_text;
+  const text = r.notes !== undefined ? r.notes : (r.check_text ?? "");
+  return (
+    <td
+      data-lunch-notes={text || undefined}
+      className={cn(
+        "border border-[#c8ced2] px-1.5",
+        red
+          ? "w-[240px] text-[11px] leading-[13px] font-bold whitespace-normal text-[#d00000]"
+          : text && "bg-[#fff909] text-[15px] font-bold whitespace-normal",
+      )}
+    >
+      {text}
+    </td>
   );
 }
 

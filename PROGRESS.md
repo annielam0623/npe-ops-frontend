@@ -6,6 +6,17 @@
 
 > **下一个主窗口：先读下面「2026-11-02 收工交接：前端主窗口-24」，再看置顶「📌 等 Annie 确认」。更早的交接是 10-30 晚那节。**
 
+## 2026-11-02 晚 Bus Manifest 照纸本：汇总框按团、ASSIST 列、午餐单 NOTES、Relay 车色（`task/manifest-paper`，工作窗口 `npe-ops-frontend-0e`[d96681]，主窗口 f8 派）—— ⛔ 推了分支，等后端 36 上 main 再合
+- Annie 原话：对 Bus Manifest 对照纸本报告「全部同意。动手」；「全部按照我上传的纸本颜色来，不要改」；「我们的颜色和格式都必须按照现有的纸本来，不要自己瞎设计」；OTHER 格「要吧」。纸本色表：https://claude.ai/artifact/1j7yN3Vn2ifP4fvYrqoA1A 。
+- 前端（照后端 36 定的字段，先用 mock）：
+  - 底部汇总框：去掉 FOOTER_LABEL（以前对所有团改成 Antelope 的叫法），照后端 footer[].label 画（后端按团写死 standard / south / west / hoover，照纸本）；格子带 data-footer-key；OTHER 格照后端给的出。不出「选版式」下拉（Annie 要按团写死）。
+  - ASSIST 列：tour.assist_column = true（纸本只有 Antelope）时 Special Requirements 右边多一列空的 ASSIST。
+  - 午餐单 NOTES：rows[].notes 有字黄底（纸本「NO FETA」#fff909），notes_check = true 写红字原文；旧后端照旧用 check_text。
+  - Relay list：车色读后端 car.relay_color（照纸本取色），没带退回前端色盘。
+  - 酒店格：后端给的 relay_color / hotel_first 先不用（f8 转：等 Annie 说哪几家涂、涂什么色；纸本是节色 / 车色、不是每家都涂），照旧隔组涂节色。
+  - 司机兼导游并一格已另外上线（9a3266b）。题 7 Rezdy 系统字后端去掉，前端不用做。
+- 检查：mf 加 South 那套照印不改名 + OTHER、ASSIST 列（紧跟 Special Requirements）、午餐单 NOTES 黄底 / 红字、没 assist_column 不出；rl 改成照后端车色（BZ 用 Annie 选的 #f4938e）。mf 235、man 346、da 457、rl 26、nav 38；tsc / eslint 0 错 / build 过。
+
 ## 2026-11-02 晚 Bus Manifest 司机兼导游并一格（`task/manifest-driver-guide`，工作窗口 `npe-ops-frontend-0e`[d96681]，主窗口 f8 派）
 - Annie 对 Bus Manifest 对照纸本报告「全部同意。动手」；纸本「Driver Guide: Lankun」。这一步只改网页：同一个人（后端 bus.driver_is_guide；没带时不分大小写比名字）⇒ 抬头一格「Driver Guide」、午餐单底行「Driver Guide」；打印模板那几行由后端改（f8 转）。
 - 检查：mf 加一项（A 车并一格、B 车照旧两格）；mf 231、man 346、da 457、rl 26、nav 38；tsc / eslint 0 错 / build 过。

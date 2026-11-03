@@ -87,6 +87,12 @@ export interface ManifestGuest {
    */
   hotel_short?: string;
   pickup_time_short?: string;
+  /**
+   * 后端 36 给的 Pick-up Location 涂色（relay_color + hotel_first）：Annie 还没定哪几家涂、涂什么色（纸本是节色 / 车色、不是每家都涂），
+   * 先不用，照旧隔组涂节色。
+   */
+  relay_color?: string | null;
+  hotel_first?: boolean;
   /** Lunch 格的 B / T / V 三个固定位置（例 ["1 B", "", "2 V"]，0 份留空）；null = 没点餐 / 读不出，格里写「-」。 */
   lunch_slots?: [string, string, string] | null;
   /** 这单的餐份数和 Pax 对不上（含读不出、没写按默认算的）：屏幕上整格 Lunch 标红。 */
@@ -154,6 +160,10 @@ export interface ManifestLunchRow {
   defaulted: boolean;
   /** 三明治读不准时的 Rezdy 原文（Notes 列红字）。后端现在不带，带了才画。 */
   check_text?: string;
+  /** 客人的忌口 / 要求（Special Requirements 去掉三明治后剩的字，例「NO FETA」）：有字就黄底（照纸本 NOTES）。 */
+  notes?: string;
+  /** true = 三明治读不准，notes 是 Rezdy 原文、写红字。 */
+  notes_check?: boolean;
 }
 
 /** G198：每台车后面接的 Bee's 午餐表（团没分配午餐店时为 null，不出）。 */
@@ -235,6 +245,9 @@ export interface ManifestAffiliate {
 }
 
 export interface ManifestFooterCell {
+  /** 格子是什么（seats / seats_left / seats_used / inbound / outbound / no_lunch / lunch / extra / 票型 / section / other）；旧后端没有。 */
+  key?: string;
+  /** 照这个字画（后端按团的版式给，照纸本）。 */
   label: string;
   value: number | null;
   /** Extra 的「<名字> SEATS LEFT」格（Bus Manifest setup 里设的，底色不同）。 */
@@ -288,6 +301,10 @@ export interface ManifestView {
     manifest_version?: ManifestVersion;
     /** 出不出 Lunch 列（排了餐厅的团才出，三个版式都出）。 */
     lunch_column?: boolean;
+    /** 底部汇总框的版式（后端按团写死，照纸本）：standard / south / west / hoover。前端不出下拉，只照 footer 画。 */
+    footer_style?: string;
+    /** 纸本只有 Antelope 有：true 时 Special Requirements 右边多一列空的 ASSIST（给手写打勾）。 */
+    assist_column?: boolean;
     /**
      * Canyon order（置顶 41，Annie 2026-11-01「两件都动手」）：团里有两节以上 tour 节时才带。
      * canyon_sections = 这个团可能有的 tour 节名（Manifest setup）；canyon_pages = 默认的顺序和分页（每页一串节名：

@@ -195,7 +195,10 @@ export function buildRound(
       ...base,
       title: `Relay ${n}`,
       who: `${(b.car.driver || "No driver").trim()} - ${b.car.van || "No vehicle"}`,
-      color: RELAY_CAR_COLORS[(n - 1) % RELAY_CAR_COLORS.length],
+      // 车色照后端（car.relay_color，照纸本取色）；旧后端没带时退回前端色盘。
+      color:
+        b.car.relay_color ||
+        RELAY_CAR_COLORS[(n - 1) % RELAY_CAR_COLORS.length],
       isBus: false,
     };
   });
