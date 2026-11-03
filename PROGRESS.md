@@ -465,7 +465,8 @@
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
-### 57. 排班：设置集中 + Working hours 按天设 + Day timeline（2026-11-02 晚，39，没动手）
+### 57. 排班：设置集中 + Working hours 按天设 + Day timeline（2026-11-02 晚，39）—— 已答，等「动手」
+- Annie 在 39 窗口答（原话）：「schedule同意全部推荐，但是需要加一个可以edit的权限让我来Admin里勾选」⇒ 两份 preview 全按推荐；⑤ 改：能改设置照 Team 页勾。39 查：现成勾 settings.schedule（后端 PUT 本来就按它查，routers/schedule.py:47），前端只是写死 is_superadmin ⇒ 不用新权限，前端改照勾；按天设的新接口也用它。设置 preview v3 同链接。「同意」不算动手，39 已问 Annie「是否现在动手」。动手后：Day timeline 纯前端；设置集中前端先做（Same every day 先用现 work-window 接口）；按天设转后端（迁移 + work_hours + PUT /api/settings/schedule/work-hours，权限 settings.schedule）。
 - 设置集中 preview 第 2 版：https://claude.ai/artifact/97MgNcpw28p7W4DxXmpgrM 。原 6 题（推荐 ① 工具条 ⚙ Settings + 弹窗、② 留一行只读 Working hours、③ Employees 不搬、④ Rules 不搬、⑤ SA 改 / 排班人只读、⑥ 空档补「(working hours end …)」）。
 - Annie 在 39 窗口（原话）：「我要在working hour里可以选择一周的时间，也可以分别设置几天的时间不同」⇒ Working hours「Same every day」/「Different by day」七行 + Copy Monday。新题 ⑦ 七行（A）；⑧ 每天「No coverage needed」勾（A 要）；⑨ 只按星期几（A，不做节假日）。39 把「选择一周的时间」理解为七天同一组，不对要改。⚠️ 要后端：每个星期几 start / end / off（迁移）、GET 多 work_hours、PUT /api/settings/schedule/work-hours、空档按当天算。
 - Annie 在 39 窗口（原话）：「然后我已经说过Anite不参加gap，为什么她的时间仍然出来在时间条里，然后时间条上面应该有个时间线显示时间的」⇒ Day timeline preview：https://claude.ai/artifact/PnnAHTzhtSGD1nQcZmiWzu 。5 题：① 不算人头的人不出现在时间条（A）；② 下面灰字「Not shown…: Anita 8:00 AM – 4:00 PM」只给排班的人（A）；③ 今天加琥珀「now」竖线（A）；④ 周表照旧 Not counted 小标（A）；⑤ 员工看的 Anita 照常、没说明（A）。纯前端。顶上加整点刻度。⚠️ 如果她看到 Anita 条子是普通蓝色没斜纹，说明还没在 Employees 取消 Anita 的 Counts toward coverage。
