@@ -19,6 +19,16 @@
 - 检查：orders / man / mt / tt / fod / fr 各加「没勾 / 勾了 / Super Admin」（orders 还测旧后端照样给数据时前端自己藏）；原来按勾的几组补上 orders.money_view；partner 订单详情改成不出 Price 卡；共用 staff-perm-mock.js 加 ctl.extraWidgets（带别的页面开关）。上传表头的词照后端 36 审查后的清单（Order Total / Subtotal / Due / Discount / Coupon / Tax / Surcharge / Voucher / Net / Retail / Fee / Payable / Revenue / Source / Sales Channel / Supplier 整词比，Agent / Price / Paid… 字串比），用 Annie 给的两份 Rezdy CSV 的全部表头核过。
 - 结果（合最新 main 191f635 后）：orders 46/46、man 346/346、mt 218/218、tt 137/137、tk 135/135、fod 48/48、fr 24/24、perm 54/54、nav 38/38、da 454/454；tsc 0 错、eslint 0 错（2 个旧 warning）、build 过。
 
+## 2026-11-02 晚 Staff Schedule：排班设置集中到 ⚙ Settings（`task/schedule-settings`，工作窗口 `npe-ops-frontend-39`[36b630]）
+- Annie 原话（后端主窗口转）：「所以两个edit，到底哪个管用」「而且排列得左一个又一个的，可以集中在一起管各自不同的功能么」；39 窗口：「我要在working hour里可以选择一周的时间，也可以分别设置几天的时间不同」「schedule同意全部推荐，但是需要加一个可以edit的权限让我来Admin里勾选」；preview 第 3 版 https://claude.ai/artifact/97MgNcpw28p7W4DxXmpgrM 「同意全部推荐。动手」（f8 窗口也说「动手」）。
+- 改了：
+  - 新 `components/schedule/settings-dialog.tsx`：Working hours（「Gaps are checked inside these hours.」）、Default shift times（「Pre-filled times for new shifts only. Does not change shifts already scheduled or the gap check.」）、Staff confirmation 一行（周三提醒和确认页开关在 Settings › Notifications）。一个 Save，只送改过的；黄字 Not saved yet、绿字 Saved、红字写哪一块没存 + 后端原话（存上的照算存上）；有没存的改动时 × / Cancel / 点外面先问 Keep editing / Discard / Save，关标签页浏览器提示。手机：弹窗占满一屏，每块说明进「i」。
+  - `schedule-view.tsx`：去掉页顶 WorkWindowControl / DefaultShiftTimes 两个 Edit；工具条（手机在 ⋯ 里）加「⚙ Settings」；Day timeline 卡头一行只读「Working hours 2:00 AM – 9:30 PM — gaps are checked inside these hours.」（只给能改排班的人，手机不出）；Gap 提示贴着 Working hours 开头 / 结尾的补「(working hours end 9:30 PM)」/「(working hours start …)」。
+  - 权限（⑤，Annie 补的）：能改照 Team 页勾 `settings.schedule`「Settings: Schedule work window and shift types」（后端 PUT work-window / shift-types 本来就按这一项查，`routers/schedule.py:47`；以前前端写死 Super Admin）；有 schedule.edit 没这个勾的只读、底下写怎么要权限；只能看的员工没有键。
+  - Employees、Rules、员工行拖排序、Auto-fill 不动（③④）。
+- ⏳ 「Different by day」七行 + No coverage needed（⑦⑧⑨）等后端按天设（f8 已转 9e：GET 多回 work_hours、PUT /api/settings/schedule/work-hours、空档按那天的时间算）。现在只有一组时间，不出灰掉的选项；后端上 main 后接上，页面上那一行改成按天写。
+- 检查：sch-mock 保存设置改按 settings.schedule 勾放行（`holds()`）；sch 原来的「Default shift times 一行 / superadmin Edit」「admin 看不到 Edit」改成 ⚙ Settings 版，新加 13 条（没两个 Edit、卡头只读一行、没勾只读 + 权限说明、员工没有键、暂存黄字、Save 只发改过的、Working hours PUT + 卡头跟着变、没存关窗先问 + Discard、400 红字 + 改动留着、Gap 补 working hours end）。sch 354/354、tasks 144/144；dr 87/88（同上一节，main 上 money-view 带来的侧栏那条，跟本改动无关）；tsc / eslint（0 错）/ build 过。
+
 ## 2026-11-02 晚 Staff Schedule：Day timeline 不算人头的人不出现 + 时间刻度（`task/schedule-timeline-axis`，工作窗口 `npe-ops-frontend-39`[36b630]）
 - Annie 原话（39 窗口）：「然后我已经说过Anite不参加gap，为什么她的时间仍然出来在时间条里，然后时间条上面应该有个时间线显示时间的」；preview https://claude.ai/artifact/PnnAHTzhtSGD1nQcZmiWzu ；「同意全部推荐，动手」（f8 窗口也说「动手」）。
 - 改了 `components/schedule/day-timeline.tsx`（schedule-view 传 `now={laNow}`）：
