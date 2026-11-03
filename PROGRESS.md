@@ -657,6 +657,7 @@
 - 截图是后端导游页（app/templates/field/guide_home.html，Antelope Bus A 2356），按钮 Boarded / No show / Call / ✎ Change / Send message 都灰。24 只读查：这些键在**预览**（Dispatch「Guide page preview ↗」/ Manifest 每车 Guide view，preview=True）或**前一天**（G227「Opens on … the grey buttons work on the day」，ahead）时是 disabled，样式 opacity .45（:267、:274），所以字发灰、点不了，是有意的；到了当天真正的导游手机上是正常颜色。单号「CHD0748XR · Lower」、「3 bookings」、「pax · 9 pickup stops」那类是本来的次要灰字。
 - Annie（原话）「我作为super admin登录进去，应该让我看到和司机或导游看到的实时的才对啊，只要这个行程在跑」⇒ Super Admin 从 Dispatch 的 Driver / Guide page preview 打开时，行程当天在跑就要跟司机 / 导游手机上一模一样（颜色正常、实时状态）。24 只读查：预览跟司机本人共用同一份取数（field.py:222、:337），标记是实时的；灰是因为 preview=True 时按钮 disabled、opacity .45（已标的绿 / 红也一起变暗）。
 - 题：Super Admin 看当天在跑的行程时：A（推荐）样子、颜色跟司机 / 导游手机上一模一样，已标的照样绿 / 红，但点不了（不替司机点；跟 Live drivers 一样只读）；B 跟司机一样也能点（Super Admin 可以替司机 / 导游标 Boarded / No show、改餐、发餐厅消息，会记成 Super Admin 做的）。不是当天（前一天 / 已过）的照旧。要后端改模板（转 37），等 Annie 选 + 动手。
+- Annie（原话）「同意推荐」⇒ A。「同意」不算动手，已问是否现在动手。
 
 ### 65. HR 页「Other spellings」（G234 补，Annie 在 4d 窗口「同意。动手」后端；91 preview https://claude.ai/artifact/W92fd328NYL5S5e3U1bjSw ，没写代码）
 - 照做不问：走现有 Edit 弹窗（底部 Save / Saving… / 关前问 / 红字），先 PUT 写法再存其他字段（409 时什么都没存）；Add person 先建人再存写法；存好显示后端规整后的样子；后端报错原样红字；改动进现有 Action Log；不用蓝色；Export / Import 不带这一格。
