@@ -59,6 +59,7 @@
   - 范围扩大（Annie 在 36，9e 转，原话）：「除了客人的基本信息，CCL看不到任何有价格的信息」，随后「动手」⇒ 一切价格都藏（Manifest money 组、CHD amount / paid / due、订单详情 price、Rezdy 快照金额、Farm out 价格、报表金额）。勾改名 orders.money_view「See prices, agent & commission」（orders.agent_view 作废），新账号默认不带，只在 CCL 一个 team 的人不勾。CCL 5 个账号没有 orders.view，会漏价格的是 Manifests、Dispatch、Forecast、Reports（含 Farm out CSV）、Morning tracking。36 已开工，迁移 v142 要 Annie 执行，预计明天上线。藏键清单定了 9e 转 f8，再派前端。
   - 验收口径（Annie 在后端主窗口原话）：「manifest，dispatch等任何有价格的那一栏都隐藏起来他们点击或添加都不行就可以了」⇒ 没勾的人价格栏整栏不出，Columns 里也加不上、点不进；后端 catalog 不给、请求了进 denied。
   - 36 藏键清单定稿（task/agent-view 177a83b3，未进 main）：读 /api/me/permissions 的 orders.money_view（或 is_superadmin）；manifests money 组 + agent 等、orders agent_name、订单详情 price、dispatch guest_paid / farm_out payable_*、farm-out PATCH payable 403、farm-out report 403、Sales Report 403、morning tracking agent_name、tour / tickets tracking 去价格列、bookings agent_name。已派 0e（task/money-view-hide），⚠️ 只能跟后端同时或晚于后端合 main。
+  - 36 审后 3 处更新（已转 0e）：订单 activity_log 金额条目 detail 换「(price details hidden)」；tracking 再去 Order Total / Subtotal / Due / Discount / Coupon / Tax / Surcharge / Voucher / Net / Retail / Fee / Payable / Revenue / Source / Sales Channel / Supplier；partner 在 tracking 也去代理商列。后端审完，等 fc v141 落地才提交 v142，预计明天上线。
 - 今晚在等 Annie 的，跟 24 交接第三节一样，不重问。
 
 ## 2026-11-02 收工交接：前端主窗口-24 [d1dbae]（公司）
