@@ -15,6 +15,7 @@
   - Products › Bus Manifest setup：「Short name」一项（团一格 + 每个 Tour 节一格），先暂存、按 Save 逐个 PUT；后端没带 short_name 时不出这项。
   - 类型：relay-pull 的 guest.phone / manifest_id / product_short / short_tag / hotel_short / bus，car.location_ids / tour_buses / print_warnings（都是可选，旧后端照样能看）。
 - 检查：新套 rl（rl-mock 照 fc 的形状）；da 加 Relay list 键 / 车头 Print / 没存先问；products 加 Short name（后端没上不出、暂存、Save 发两种 PUT、存不上红字留草稿）。结果（合 main 后）：rl 26/26、products 237/237、da 457/457（第一次 452/457 是座位调动那 5 项偶发的时机问题，单独重跑全过）、nav 38/38；tsc / eslint 0 错 / build 过。
+- 合 main 前对照后端 35eec2e1 真实代码核过：relay-pull guest phone / manifest_id / product_short / hotel_short / bus{label,tour,tour_short,driver,guide,van,color,sections[{name,short,color}]}，car location_ids / tour_buses / print_warnings；Manifest setup short_name、section_short_names[{section,short_name}]、两个 PUT 的路径和回包都对得上。合最新 main 后 rl 26、products 237、da 457、nav 38，tsc / eslint 0 错 / build 过。
 - 还要后端（已转 f8）：导游 pick up 页（/guide）每位客人加团简称（Annie「导游的pick up网页版需要知道客人参加的tour是哪个，可以用简写」）；司机 /driver relay 页同样补；酒店简称 hotel_short。
 
 ## 2026-11-02 晚 Staff Schedule › Auto-fill：按基础周排整月（`task/schedule-base-week`，工作窗口 `npe-ops-frontend-0e`[d96681]，主窗口 f8 派）
