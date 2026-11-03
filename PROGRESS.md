@@ -19,6 +19,7 @@
 - 工作窗口 `npe-ops-frontend-39`[36b630] 报到（家里）。f8 派：CHD 版 1 合 main（worktree D:\ops-wt-39-chd，先合最新 main，再跑 tsc / eslint / build + man / mf / da / nav，过了合 main 报 SHA；后端推后只读核线上 CHD 标签）。
 - 题 8 后端评估（36，9e 转，没动手）：新勾 orders.agent_view「See agent & commission」，没勾 = 藏字段不拒请求，superadmin 恒有，迁移 v141 给现有员工勾上。藏：orders 列表 / 搜索 agent_name → 「—」；订单详情 agent_name 和 reseller* / commission / paymentOption / payments；morning tracking agent_name；sales-report monthly / weekly / product-agents 没勾 403；/api/manifests 的 agent_name 等进 denied（CHD 也是）；Orders Export Agent 列填「—」；Tour / Tickets tracking 按表头去 agent|reseller|commission 列。CHD 合 main 后开工，约半天。两个题 9e 直接问 Annie。f8 回：Manifests Export CSV 是前端拿 JSON 生成，跟着藏；Morning ⬇ Export 是后端 /api/notifications/morning-pickup/export，请 36 找这个路由（没有就当 bug 记）。
   - 9e 回：路由在（notifications.py:2928 通用 /{module}/export，导出 xlsx），列里没有代理商 / 佣金 ⇒ 这处不用改，不是 bug。
+  - 题 8 第 1 问 Annie 在后端 36 窗口答（9e 转，原话）：「只单独勾了CCL的就是CCL的人，他们只能看到assign给CCL的东西，他们有多项勾选的人都按照跨team的功能，各个team的功能都有」⇒ 只在 CCL 一个 team 的人（今天 84/85/86/87/90）不勾 orders.agent_view，多 team 的照常勾。「CCL 只看 assign 给 CCL 的东西」是更宽的可见范围规则，后端登记待办，以后 team 权限派工带上。第 2 问（新账号默认带不带勾）后端在问；没动手。
 - 今晚在等 Annie 的，跟 24 交接第三节一样，不重问。
 
 ## 2026-11-02 收工交接：前端主窗口-24 [d1dbae]（公司）
