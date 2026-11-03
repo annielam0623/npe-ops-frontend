@@ -636,6 +636,18 @@
 - 现在：CCL 在 Discord 发改版 → Dispatch 顶上琥珀提醒条 + Step 2「Apply changes」卡，staff 按 Apply 才套进排车。
 - Annie 接着补（原话）：「包括在dispatch的send 页面，把司机和导游发送也打开，不折叠，也不需要pull from manifest，直接展开给staff看」⇒ Send 步骤司机 / 导游发送块默认展开；不用按 Pull from manifests，打开就自动取好。并进同一份 preview。
 - 派 09 只读查可行性 + 出 preview（staff 有没存的改动时怎么办、自动套用后要不要存、已发司机 / 客人要不要提示重发、staff 怎么知道改了什么 / Undo、跟 Dispatch 车号不准的关系），回来再把每题原文贴给 Annie。等 Annie「动手」才写代码。
+- 09 preview：https://claude.ai/artifact/3RE8qSbwHECoCjakAgBidh （只读查完，没写代码）。现状：后端每 30 分钟 + 打开 Dispatch 时拉 Discord，只写导入表不动排车（dispatch_import.py:563）；改版 = 「已存排车」比「CCL 最新版」（:701、:860）；Apply 只改草稿不存（dispatch-view.tsx:1463）。⚠️ 直接自动套会把 staff 手改的司机 / 车（如 CCL 写 1724、staff 改成实际 1725）改回去，把 staff 自己加的车（farm out、加开、CCL 没写的团）当 Removed 删掉。Send 页 Step 1 要按 Check the list 才出两张表；Step 2 Pull from manifests 只读，不改排车。
+- 题 1 谁来套：A（推荐）后端拉到改版就直接改排车并存，没人开页面也更新；B 有人打开 Dispatch 时前端自动套、自动存。
+- 题 2 手改 / 自加的车（最要紧）：A（推荐）只套 CCL 这一版比上一版真改了的格子，staff 手改且 CCL 没再改的不动，只删「上一版有、这一版没了」的车，staff 自己加的车永远不自动删；B 全照 CCL；C 改司机 / 车 / 加车自动套，删车仍要 staff 点。
+- 题 3 staff 正在改没存时 CCL 到了：A（推荐）先不套，staff 一存马上套；同一格两边都改用 CCL 的，清单红字 "Your change was replaced by CCL"；B 同一格用 staff 的，写 "Kept your change; CCL said …"；C 直接套，staff 没存的作废（不推荐）。等待时提醒条原文："CCL posted a change · 2 changes" / "It will be applied as soon as you save. Your own changes stay; if you and CCL changed the same box, CCL's wins and is listed in red."
+- 题 4 自动套用后直接存吗：A（推荐）直接存，不算 staff 改，不拦离开；B 只改草稿等 Save（还要 staff 动手）。
+- 题 5 已发过司机 / 客人又被 CCL 改：A（推荐）提醒条加黄框只提示不自动发——"Drivers were already texted for this day (5:10 PM yesterday). Robert L has not got his link yet. Go to Send → Step 1 and send to Robert L." / "Morning Relay guests were already texted. 4 guests on the changed cars are marked "Changed after sent" on the Send tab. Nothing was re-sent."；B 不加，只靠 Send 页现有 Changed after sent。
+- 题 6 怎么知道改了什么 / Undo：琥珀条 "CCL update applied 6:42 AM · 3 changes for Tue Nov 4"，下一行 "The schedule below already shows CCL's new version and is saved. Nothing was sent."，View changes ▾ 展开 Changed / Added / Removed 旧 → 新，点 ✕ 或下一版才消失。Undo：A（推荐）不做，要改回就在页面改（算手改）；B 做一键 Undo（后端存套用前的样子）。
+- 题 7 Send Step 1 司机 / 导游：A（推荐）打开就列好两张表，默认勾选照旧，Check the list 改白色 ↻ Refresh；B 同 A 去掉键。发送前重读名单、确认框、有没存改动时 Send 关着都照旧。
+- 题 8 Send Step 2 Morning Relay：打开就自动取（已发的淡黄 + Sent by 照旧不勾；有没存改动照旧提示、发送键关；取不到红字 "Could not load the guests: …" + Refresh；仍要按每轮 Preview & send）。A（推荐）Pull from manifests 改白色 ↻ Refresh；B 不留键。
+- 题 9 How to use（英文）：Assign "When CCL posts a new version on Discord, the schedule updates by itself and is saved. An amber bar shows what changed; click View changes to see the list. If you were editing, CCL's version is applied when you save. Your own changes stay unless CCL changed the same box. Nothing is sent to drivers or guests."；Send Step 1 "The drivers and the guides are listed in two tables. Each table has its own Send texts now. Click Refresh to read the lists again."；Send Step 2 "The guests are listed from the saved schedule and today's tour manifests. Check Need a look, then Preview & send for the 1st or 2nd Round. Click Refresh after changing the Assign tab."
+- 需要后端（题 1–6）：拉到改版直接套并存、有编辑锁先等；对比改成 CCL 上一版 → 这一版（ccl_line_id，自加的车不删）；每次自动套用留记录进 Action Log；返回已发过的司机 / 客人和新换上的司机。题 7、8 纯前端。
+- 跟 Dispatch 车号不准的关系：可能是 CCL 发了改版没人 Apply，Dispatch 停在旧版（自动套能解决）；也可能 CCL 自己写错或司机当天自己换车（解决不了）。已请 37 查 11/2、11/3 导入那一版是 pending 还是 applied、写的车号。
 
 ### 61. 发送后换车 / 换司机，staff 怎么处理；红字「Wrong bus — resend link」（2026-11-03，Annie 问，e6 只读查）
 - Annie 原话：「如果再发出通知之后发生两种情况：1 换车，2 换司机，Staff应该怎么处理已确保客人的链接可以正确工作。morning tracking里有客人是否打开过以及打开的时间，具体staff这边要怎样操作呢」
