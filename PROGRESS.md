@@ -10,6 +10,7 @@
 - 窗口：前端工作窗口 09 [341d31]、91 [b22952]、e6 [03dd03]；d8 [840908] 身份待确认（已问是否后端主窗口）。
 - 资源：空闲内存 49.2 / 61.8 GB；没有 node / chrome 进程。
 - 分支核对（git fetch 后）：schedule-work-hours 已合 main（fd74df8）；task/live-drivers 188c4ca 未合 → 已派 09 核键名、跑检查、合 main；task/manifest-paper d74c553 未合，等后端 v145；task/samsara-arrival 还没有分支，等 live-drivers 合完、后端 v146。
+- d8 [840908] 是后端工作窗口（task/chd-main-manifest，CHD Admin fee），不是后端主窗口。它以为还在等前端；已告诉它前后端都已上线（前端 03c1d51、后端 a7c62e91，后端分支比 main 没有多出的提交）。d8 只读看 git：后端 v145 在 origin/task/bus-footer-style（ba98dd63、c235b048「v145 execution record」，Annie 是否已执行没核实），v146 在 origin/task/samsara-arrivals 8dc59fed，都没上 main。今天后端主窗口是谁待 Annie 说。
 
 ## 2026-11-03 凌晨 收工交接：前端主窗口 `npe-ops-frontend-f8`[f1ac95]（家里电脑，Annie「我要睡觉了，你把交接写详细一点，明天回公司继续，要保证工作的顺利，所有东西都不能缺」）
 
