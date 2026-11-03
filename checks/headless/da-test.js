@@ -485,13 +485,13 @@ async function run() {
   check("2nd Round：没车写 No vehicle · No driver、发送键灰掉", await evaluate(`const box = ${rp}.querySelector('[aria-label="2nd Round · 5:40 - 6:30 AM"]'); return box.textContent.includes('No vehicle · No driver') && $btn('Preview & send', box).disabled;`));
   check("No tracking：旧后端（车上没有 has_tracking）车头不标", await evaluate(`return !${rp}.querySelector('[data-no-tracking]');`));
   await ctl({ relayNoTracking: true });
-  await evaluate(`$btn('Pull from manifests', ${rp}).click();`);
+  await evaluate(`$btn('↻ Refresh', ${rp}).click();`);
   await waitFor(`${rp}.querySelector('[data-no-tracking]')`);
   check("No tracking（题 3 A）：1st Round 车 768 没定位 ⇒ 车号后面红点标 No tracking；只标不拦（Preview & send 照常能点）", await evaluate(`const box = ${rp}.querySelector('[aria-label="1st Round · 4:30 - 5:15 AM"]'); const m = box.querySelector('[data-no-tracking]'); return !!m && m.textContent.trim() === 'No tracking' && m.closest('td').textContent.startsWith('768') && !$btn('Preview & send', box).disabled && !box.querySelector('[data-car-blocked]');`));
   check("No tracking：没配车的占位车（No vehicle，后端也给 false）不标", await evaluate(`const box = ${rp}.querySelector('[aria-label="2nd Round · 5:40 - 6:30 AM"]'); return box.textContent.includes('No vehicle · No driver') && !box.querySelector('[data-no-tracking]');`));
   check("No tracking：Morning Relay 的 How to use 有那一句", await evaluate(`return ${rp}.textContent.includes('A car marked No tracking has no live GPS. Its guests still get the text and the link to check in');`));
   await ctl({ relayNoTracking: false });
-  await evaluate(`$btn('Pull from manifests', ${rp}).click();`);
+  await evaluate(`$btn('↻ Refresh', ${rp}).click();`);
   await waitFor(`!${rp}.querySelector('[data-no-tracking]')`);
   check("Need a look 写原因；出发点上车的单数", await evaluate(`const t = ${rp}.textContent; return t.includes('Pickup time could not be worked out from the time in Rezdy') && t.includes('4 orders board at the tour bus departure point');`));
   // task/relay-print（Annie：「排完relay并保存了以后，应该加一个按键显示这些relay的list」）：📋 Relay list 新标签打开；车头 Print 只看这一台。
