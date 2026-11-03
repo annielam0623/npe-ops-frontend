@@ -28,7 +28,7 @@
 | task/samsara-arrival（09，到站 Arrived / Left） | 071df4d | 后端 64 samsara-arrivals + v146（Annie 跑）；置顶 58 / 59 答 | 同上 |
 
 ### 三、等 Annie 的（详见置顶，不要滚动重问）
-- **64 G180 Tour Tracking**：Annie 讲完规则（4 条原话在置顶），91 preview 已改（Sent 列 + Order Status 列、未发送在下粉红），**5 题等答**；Ticket Tracking 不在后端 G180 范围，要不要另做等她说。后端 44 停在 task/tracking-sync-design，代码约明天中午好 → v147（Annie 跑）。
+- **64 G180 Tour Tracking**：5 题 Annie 已答（原话在置顶），**等「动手」**；CSV 两列已转 37；Ticket Tracking 要不要另做等她说。后端 44 停在 task/tracking-sync-design，代码约明天中午好 → v147（Annie 跑）。
 - **65 HR Other spellings**：Annie 已答 1B 2A 3B 4A，**等「动手」**。接口 91 已核过。若动手时 bulk 还没上，问 Annie 分两步（备用题在置顶）。
 - **67 Dispatch 名单每行可编辑**：**4 题等答 + 「动手」**；后端评估约半天、风险 B；电话日志只记字段不记号码（已告诉 Annie）。
 - **68 Relay 勾酒店不核座位**：超座位提醒还是挡住，37 在问；定了 37 派后端、24 派前端（先 preview）。
@@ -747,6 +747,7 @@
   - 题 3：A Farm out 用现有「⇄ Farmed out ▾」；B Order Status 里写 Farm out。
   - 题 4：A CSV 加 Sent、Order state 两列（要后端加）；B 不加。
   - 题 5：How to use 原文 A「Every order in the Main manifest shows here, before and after its confirmation is sent. Sent orders come first. Orders with no confirmation sent yet are listed below them in pink, with Not sent in the Sent column. Order Status comes from the Order List: if an order is put on hold or cancelled, it shows On hold or Cancelled there, and the row stays as a record. ⇄ Farmed out means the order was handed to a partner.」Broadcast 那条后面加「The list includes Not sent guests too. On hold and Cancelled orders are left out. After it is sent, those rows change to Sent.」
+- ✅ **Annie 答新 5 题（91 窗口原话）**：「1. 不需要，因为manifest里头有详细信息，发了没有什么时候发的  2. A  -- 没发送不参与统计   3. A  4. 要  5 A」。即：不加筛选框一张表全显示（已发在上、未发在下粉红，Order # 后 Sent、Order Status 两列）；没发送不参与统计（团胶囊、Total、YES、Pending、Response Rate 只算已发），另加粉红 Not sent 数字卡；Farm out 用现有「⇄ Farmed out ▾」；CSV 加 Sent、Order state 两列（后端活，已转 37）；How to use 用 preview 原文。**还没说「动手」**；前端还要等后端 G180 上 main。
 
 
 ### 63. 换司机只改 Dispatch：页面上怎么标（G234）—— ✅ Annie 已答并「动手」（2026-11-03）；e6 preview https://claude.ai/artifact/CXT8ZueNa3akn1ZrGn4Ycj ，没写代码）
