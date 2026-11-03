@@ -19,6 +19,7 @@
 - Annie 问（原话，附 Morning tracking 11/2 Guest Viewed 列截图，十来行红字「Wrong bus — resend link」）：「如果再发出通知之后发生两种情况：1 换车，2 换司机，Staff应该怎么处理已确保客人的链接可以正确工作。morning tracking里有客人是否打开过以及打开的时间，具体staff这边要怎样操作呢」。24 只读看到：客人按 Track 时后端 samsara_live.actual_van() 按发送时写的 bookings.driver → HR → Samsara 当前车自动跟车（对不上就照链接的车）；红字 = 客人点链接时的车 ≠ 司机现在 Samsara 上的车。派 e6 只读查：换车 / 换司机客人页各显示什么、换司机后会不会跟错车、重发是否更新 bookings.driver、11/2 那些红字是真换车还是误报，写 staff 操作步骤草稿和要后端改的地方。
 - 新任务（37 转，Annie 在 37 窗口「动手」）：没定位的车标「No tracking」。Annie 定：Dispatch 派车页能看出哪台车追踪不了；这些车客人照收链接、能签到，短信 / 邮件不提 live tracking（「链接照发，客人还能签到…把短信里的live tracking也去掉」）；只标记、不拦发送。后端 44：Dispatch 派车数据和 Morning Relay 发送 / 预览每台车加 has_tracking，改短信 / 邮件文字，客人页已藏 Track；字段名 37 待转。今天没 samsara 链接的：Sienna Van、1256、2433、2（后三台 Annie 自己核），前端不写死。前端：Dispatch Assign + Morning Relay 发送页加标记 + How to use 各一句。标记是新样子 → 派 91 先出 preview。
   - 37 转 44 字段（已转 91）：Assign 页后端已在 main——GET /api/dispatch/day 的 vehicles[{id, van_no, has_tracking, seats}]（dispatch.py:309-337），选车处和已派车都要标；Morning Relay 新加，44 在 task/no-tracking-vans：GET /api/dispatch/relay-pull 的 rounds[<round>][].car.has_tracking（车没定位或没配 van 为 false；不在 car.problems，不拦发送；没这个键当 true），SHA 待转。客人短信 / 邮件后端自动换文字。How to use 建议句："Vans without tracking: guests still get the link to check in; the message doesn't mention live tracking."
+  - ✅ 后端 no-tracking-vans 已上线 fc880e40（合并 c1fc121b）：relay-pull car.has_tracking 是真的；没定位的车客人短信 / 邮件已换成只说签到（有定位的车一字不变）。已转 91；前端等置顶 60 答。
 
 ## 2026-11-03 凌晨 收工交接：前端主窗口 `npe-ops-frontend-f8`[f1ac95]（家里电脑，Annie「我要睡觉了，你把交接写详细一点，明天回公司继续，要保证工作的顺利，所有东西都不能缺」）
 
