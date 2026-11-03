@@ -648,6 +648,7 @@
 - 当时页面只改了旧后台模板；ops 新 Tour Tracking 页要前端另做。
 - 已转 37：派后端合最新 main、换迁移号、重审、重估工作量和时间，冻结 ops 要用的接口字段。已派 91 出 ops Tour Tracking 的 preview（筛选、标签、统计 / 导出算不算、How to use），没定的列题。等 preview 后 Annie「动手」才写前端代码。
 - 37 派后端 44 重评：接分支合今天 main、迁移改号（最早 v147，排 57 的 v145、64 的 v146 后）、按现在代码核设计、冻结接口形状（send_state / order_state、farm out 标、筛选在服务器还是页面、broadcast 名单）、估工作量和时间；44 也查 10-25 后 Annie 答没答 401，真没答 37 才问。形状和 ETA 经 37 转。
+- 44 重评结果（37 转）：设计照旧成立；后端约 1 个工作日，明天中午左右分支代码好；之后 Annie 执行 v147（在 64 的 v146 后）→ 代码上 main → 回填试跑 → 真回填 → Annie 开开关（Super Admin，默认关）。冻结接口（只加）：tour-confirmation/tracking 每行加 send_state sent / unsent、order_state confirmed / on_hold / cancelled（来自 Order List，不是客人回复）；Farm out 用现有 farm_out_view 不为 null；Sent / Not sent 筛选在页面做，默认 Sent；Broadcast 名单页面组，含 sent + unsent、不含 on_hold / cancelled（只在浏览器端排除），发完后端把真发出的 unsent 改 sent，前端重读；开关 / 回填接口只 Super Admin。401 那题属 G178（电话记录）不是 G180，已问过两次，不再问、不挡 G180。已转 91。
 
 ### 63. 换司机只改 Dispatch：页面上怎么标（G234，Annie 已「动手」后端；e6 preview https://claude.ai/artifact/CXT8ZueNa3akn1ZrGn4Ycj ，没写代码）
 - 背景：Annie（37 转）「换了司机以后，staff只需要去dispatch把司机改了，然后保存，就可以了，不需要再发送任何信息出去」。后端 4d 做：改司机 + Save 后已发客人的链接跟新司机，不发东西。前端占位字段 driver_followed {from, to}，真实字段 37 待转。
