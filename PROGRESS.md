@@ -705,7 +705,7 @@
   - Driver changed (with or without a bus change): the tracking link still follows the driver from the list you sent. Fix the driver (and bus) in the file, upload it again on Morning Pickup → Send, tick only those guests and send. They get a new text with the right bus.
   - If the Driver name is not a link, the guest's page can't follow a bus change. Send those guests again with the new Bus #.
 
-### 60. 没定位的车标「No tracking」（2026-11-03，91 preview https://claude.ai/artifact/GqgxoQ12fMyPgtzRM3kHJ8 ，没写代码）
+### 60. 没定位的车标「No tracking」（2026-11-03，91 preview https://claude.ai/artifact/GqgxoQ12fMyPgtzRM3kHJ8 ）—— ✅ Annie 在 91 窗口「动手」（没逐题答，照推荐 1 A / 2 A / 3 A / 4 B），已合 main e9336c2（da 462、rl 26、nav 38），待移走
 - 发现：Dispatch › Assign 每台车车号下面本来就有标：有定位绿色「GPS」，没定位红点「No live GPS」；右栏 Schedule check 有「2056 has no live GPS — Guests on that vehicle won't see the map.」。Send 页 Morning Relay 车头现在没标。
 - 题 1 Assign 页红标的字（后半句「won't see the map」以后不对，客人照样收链接能签到）：A（推荐）改「No tracking」，样子颜色不变，右栏改「2056 has no tracking — Guests on it still get the link and can check in. The text doesn't mention live tracking.」；B 红标留「No live GPS」，只改右栏那句。
 - 题 2 选车下拉要不要标：A（推荐）车号后写「· No tracking」，如「2056 · No tracking」（下拉只能文字不能上色）；B 不标。
