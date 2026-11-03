@@ -683,6 +683,7 @@
 - 题 3 选 B 带来的后端要求（已转 37）：POST /api/hr/profiles/bulk 也要收 Other spellings，被拒时带 profile_id（前端红字放那人那一格下）。91 在后端 driver-change-follow 分支上还没找到 spellings 接口，等 37 回接口位置。
 - 37 回：spellings 接口在 4d 的 worktree 分支 task/driver-change-follow（同 G234），GET/PUT 是 4d 本地没推的提交，所以 origin 上找不到；题 3 B 的 bulk 要求已转 4d。公司电脑 15:30 AFTER_HOURS，后端今天不再落地，家里那台接着做；推到 origin 后 37 发提交号。上线顺序不变：57 → 4d（G234 + spellings）→ 64。
 - 37 回（2026-11-03 傍晚）：spellings 接口已推 origin task/driver-change-follow 33691e8d（GET/PUT /api/hr/profiles/{id}/spellings，profiles 列表带 other_spellings），91 可只读对接口；bulk 收 other_spellings（错误带 profile_id）和保存返回 driver_follow.updated[] 家里那台明天做，未合 main。前端仍等 Annie「动手」。
+- 91 只读核对 33691e8d：与 preview 对得上（列表带 other_spellings；弹窗先 PUT spellings 再存其他字段，回填规整后的列表；6 句报错逐字相同，另有后端原话格式报错：超 60 字 / 超 20 个 / 不能有换行或 tab；与本人 Nickname 相同自动略过；只真改才记 Action Log；PUT 用 HR 编辑权限）。弹窗一行一个、Edit list 逗号隔开（写法不能含逗号）。**备用题（Annie 说动手时 bulk 还没上才问）**：先做弹窗 + 人员表列，Edit list 这列先只读，bulk 上了再开可改——分两步行不行。
 
 ### 64. G180 Main manifest 订单同步到 Tour Tracking：重新启动（2026-11-03，Annie「重新启动」）
 - 10/24 Annie 提，后端 d9 写好代码在 origin/task/tracking-sync-design（4cac1f93，10/25 夜后没动，没上 main、没跑迁移；deploy-guard 第 3 轮 FAIL：迁移要先于代码；迁移号 v122 已被占，要换号）。设计文档 docs/tracking-sync-design-2026-10-24.md，Annie 已定的不再问（同步已确认订单、发送前后都同步、send_state Sent / Not sent、order_state Confirmed / On hold / Cancelled 以 Order List 为准、从不删行、午餐谁新留谁、Farm out 只记录、Broadcast 含 Not sent 不含 On hold / Cancelled 且发出后变 Sent、总开关默认关、Tour Tracking 加 Sent / Not sent 筛选默认 Sent + 订单号后小标签）。还没答：调用记录表 401 要不要记（Max 推荐不记，后端那边问）。
