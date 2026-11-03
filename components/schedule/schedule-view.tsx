@@ -25,6 +25,7 @@ import {
   changesErrorOf,
   deleteScheduleTimeOff,
   fetchScheduleEmployees,
+  saveScheduleEmployeeOrder,
   fetchScheduleSettings,
   fetchScheduleWeek,
   publishScheduleWeek,
@@ -40,7 +41,7 @@ import { usePageVisibility } from "@/lib/page-visibility";
 import { byTick } from "@/lib/by-tick";
 import { usePermissions } from "@/lib/staff-permissions";
 import { gapDayLabel, gapRange, gapsByDate } from "@/lib/schedule-gaps";
-import { coversGaps } from "@/lib/schedule-timeline";
+import { coversGaps, sortByName } from "@/lib/schedule-timeline";
 import { pushRecentShift } from "@/lib/schedule-recent";
 import type { Rule } from "@/lib/schedule-engine";
 import {
@@ -166,7 +167,20 @@ export function ScheduleView() {
   const [meErrorMessage, setMeErrorMessage] = useState("");
 
   const [settings, setSettings] = useState<ScheduleSettings | null>(null);
-  const [employees, setEmployees] = useState<ScheduleEmployee[]>([]);
+  // 名单一律按名字排（Day timeline、Employees 窗口、Auto-fill 等照旧按名字，题 ⑦B）；排班表那一张另按 sort_order 排。
+  const [employees, setEmployeesRaw] = useState<ScheduleEmployee[]>([]);
+  const setEmployees = useCallback(
+    (
+      next:
+        ScheduleEmployee[] | ((prev: ScheduleEmployee[]) => ScheduleEmployee[]),
+    ) =>
+      setEmployeesRaw((prev) =>
+        sortByName(typeof next === "function" ? next(prev) : next),
+      ),
+    [],
+  );
+  /** 拖员工行排的新顺序（在用的人 id，整份），还没存；null = 没动。和这一周的班不一样，换周也留着。 */
+  const [orderDraft, setOrderDraft] = useState<number[] | null>(null);
   const [weekStart, setWeekStart] = useState(() => weekStartYmd(laToday()));
   const [week, setWeek] = useState<WeekState>({ kind: "loading" });
   const [reloadKey, setReloadKey] = useState(0);
@@ -235,6 +249,8 @@ export function ScheduleView() {
   /** 上一次 Save 送出去的 ops 对应哪个班（400 op_index → 标红哪一格）。 */
   const slotOfRef = useRef<number[]>([]);
   const dirty = isDirty(draft);
+  // 页面上有没存的东西：这一周的班 + 员工顺序（顺序不占这一周的编辑锁、不算排班改动）。
+  const anyDirty = dirty || orderDraft !== null;
   // 空档只算洛杉矶「现在以后」（Annie 2026-10-30「对过去的应该彻底放行」）：每分钟、回到这个标签页时刷新一次。
   const [laNow, setLaNow] = useState<LaNow>(readLaNow);
   useEffect(() => {
@@ -275,7 +291,7 @@ export function ScheduleView() {
     [],
   );
   useLeaveGuard(
-    dirty,
+    anyDirty,
     "You have unsaved changes to this week's schedule.",
     askLeave,
   );
@@ -356,7 +372,7 @@ export function ScheduleView() {
       }
     })();
     return () => controller.abort();
-  }, [reloadKey, redirectToLogin, tickPerms.ready]);
+  }, [reloadKey, redirectToLogin, tickPerms.ready, setEmployees]);
 
   const loadWeek = useCallback(
     async (signal?: AbortSignal, quiet = false) => {
@@ -419,9 +435,62 @@ export function ScheduleView() {
   const meEmployee = meName
     ? activeEmployees.find((e) => e.name.trim().toLowerCase() === meName)
     : undefined;
+  // 排班表的行：存好的顺序（sort_order，没带按名字）+ 页面上拖过还没存的；自己那一行照旧固定在最上面（题 ⑥A）。
+  const rowOrder = applyOrder(byRowOrder(activeEmployees), orderDraft);
   const orderedEmployees = meEmployee
-    ? [meEmployee, ...activeEmployees.filter((e) => e.id !== meEmployee.id)]
-    : activeEmployees;
+    ? [meEmployee, ...rowOrder.filter((e) => e.id !== meEmployee.id)]
+    : rowOrder;
+  const savedRowIds = byRowOrder(activeEmployees).map((e) => e.id);
+  const movedRows = new Set(
+    orderDraft
+      ? rowOrder.filter((e, i) => savedRowIds[i] !== e.id).map((e) => e.id)
+      : [],
+  );
+
+  /** 拖员工行：dragId 放到 targetId 前面（after = 后面）。拖回原样就当没改。 */
+  function handleReorder(dragId: number, targetId: number, after: boolean) {
+    const ids = rowOrder.map((e) => e.id).filter((id) => id !== dragId);
+    const at = ids.indexOf(targetId);
+    if (at < 0) return;
+    ids.splice(after ? at + 1 : at, 0, dragId);
+    setOrderDraft(ids.every((id, i) => id === savedRowIds[i]) ? null : ids);
+    setSaveState({ kind: "idle" });
+  }
+
+  /** 存员工顺序。成功返回 null；失败返回后端原话。 */
+  async function saveOrder(): Promise<string | null> {
+    if (!orderDraft) return null;
+    setSaveState({ kind: "saving" });
+    try {
+      const saved = await saveScheduleEmployeeOrder(rowOrder.map((e) => e.id));
+      const sortOf = new Map(saved.map((e) => [e.id, e.sort_order]));
+      setEmployees((prev) =>
+        prev.map((e) =>
+          sortOf.has(e.id) ? { ...e, sort_order: sortOf.get(e.id) } : e,
+        ),
+      );
+      setOrderDraft(null);
+      setSaveState({ kind: "saved", at: new Date().toISOString() });
+      return null;
+    } catch (error) {
+      if (isStatus(error, 401)) {
+        redirectToLogin();
+        return "Please sign in again.";
+      }
+      const message = describeError(error);
+      setSaveState({ kind: "error", message });
+      return message;
+    }
+  }
+
+  /** 页面上的 Save：先存这一周的班（原来的整周 Save），再存员工顺序。 */
+  async function saveAll(): Promise<string | null> {
+    if (dirty) {
+      const err = await saveDraft();
+      if (err) return err;
+    }
+    return saveOrder();
+  }
 
   /** 改好一处：编辑锁记一笔；已发布的周还要记「改了还没发」（Annie「改完再发」）。 */
   function markEdited() {
@@ -533,6 +602,7 @@ export function ScheduleView() {
   /** 放弃全部没存的改动，回到已存的样子，放开锁。 */
   function discardDraft() {
     setDraft(EMPTY_DRAFT);
+    setOrderDraft(null);
     setSaveState({ kind: "idle" });
     setErrorSlotId(null);
     setRejectedGapsOf(null);
@@ -770,6 +840,13 @@ export function ScheduleView() {
     if (orig) movedFrom.set(orig.id, orig.employee_id);
   }
   const counts = countChanges(draft);
+  // 「Not saved yet: …」：这一周的班 + 员工顺序。
+  const unsavedSummary = [
+    dirty ? summaryOf(counts) : "",
+    orderDraft ? "staff order changed" : "",
+  ]
+    .filter(Boolean)
+    .join(" · ");
   // 测试用的人（Annie 2026-10-30 选 A）和设成不算人头的人（Annie 11-02「Anita不算的」）：不算进空档。
   const testIds = new Set(
     employees.filter((e) => !coversGaps(e)).map((e) => e.id),
@@ -912,7 +989,7 @@ export function ScheduleView() {
                     <button
                       type="button"
                       data-week-discard
-                      disabled={!dirty || saveState.kind === "saving"}
+                      disabled={!anyDirty || saveState.kind === "saving"}
                       onClick={discardDraft}
                       className={DARK_SECONDARY_BUTTON_CLASS}
                     >
@@ -921,8 +998,8 @@ export function ScheduleView() {
                     <button
                       type="button"
                       data-week-save
-                      disabled={!dirty || saveState.kind === "saving"}
-                      onClick={() => void saveDraft()}
+                      disabled={!anyDirty || saveState.kind === "saving"}
+                      onClick={() => void saveAll()}
                       className={DARK_PRIMARY_BUTTON_CLASS}
                     >
                       {saveState.kind === "saving" ? "Saving…" : "Save"}
@@ -946,8 +1023,8 @@ export function ScheduleView() {
 
             {canEdit && readyWeek ? (
               <SaveStatus
-                dirty={dirty}
-                summary={dirty ? summaryOf(counts) : ""}
+                dirty={anyDirty}
+                summary={unsavedSummary}
                 state={saveState}
                 rejectedLines={rejectedLines}
                 idleNudge={idleNudge}
@@ -1035,6 +1112,8 @@ export function ScheduleView() {
               meId={meEmployee?.id ?? null}
               settings={settings}
               canEdit={canEdit}
+              onReorder={canEdit ? handleReorder : undefined}
+              movedRows={movedRows}
               onAssign={handleAssign}
               onCreateSlots={handleCreateSlots}
               onDeleteSlot={handleDeleteSlot}
@@ -1319,10 +1398,10 @@ export function ScheduleView() {
       {leaveAsk ? (
         <LeaveDialog
           items={[
-            `Staff Schedule ${weekRangeLabel(weekStart)}: ${summaryOf(counts)}`,
+            `Staff Schedule ${weekRangeLabel(weekStart)}: ${unsavedSummary}`,
           ]}
           onSave={async () => {
-            const err = await saveDraft();
+            const err = await saveAll();
             if (err) return err;
             leaveAsk.resolve(true);
             setLeaveAsk(null);
@@ -1974,6 +2053,8 @@ function WeekBody({
   pendingChanges,
   onSendChanges,
   sendBlocked,
+  onReorder,
+  movedRows,
 }: {
   /** 整周一个 Save：页面上要画的班（库里的 + 暂存）和标记；没有 = 照库里的画。 */
   draftView?: {
@@ -2013,6 +2094,8 @@ function WeekBody({
   pendingChanges?: SchedulePendingChange[];
   onSendChanges?: (employeeId: number) => void;
   sendBlocked?: boolean;
+  onReorder?: (dragId: number, targetId: number, after: boolean) => void;
+  movedRows?: ReadonlySet<number>;
 }) {
   if (state.kind === "loading") {
     return (
@@ -2068,7 +2151,32 @@ function WeekBody({
         pendingChanges={pendingChanges}
         onSendChanges={onSendChanges}
         sendBlocked={sendBlocked}
+        onReorder={onReorder}
+        movedRows={movedRows}
       />
     </section>
+  );
+}
+
+/** 排班表的行顺序：sort_order 小的在前；没有 sort_order（后端还没上线）的按名字排在后面。 */
+function byRowOrder(list: ScheduleEmployee[]): ScheduleEmployee[] {
+  return [...list].sort((a, b) => {
+    const sa = a.sort_order ?? Number.POSITIVE_INFINITY;
+    const sb = b.sort_order ?? Number.POSITIVE_INFINITY;
+    return sa - sb || 0;
+  });
+}
+
+/** 套上页面上拖过的顺序：草稿里有的按草稿排，草稿以后新加的人（不在草稿里）排在最后。 */
+function applyOrder(
+  list: ScheduleEmployee[],
+  ids: number[] | null,
+): ScheduleEmployee[] {
+  if (!ids) return list;
+  const at = new Map(ids.map((id, i) => [id, i]));
+  return [...list].sort(
+    (a, b) =>
+      (at.get(a.id) ?? Number.POSITIVE_INFINITY) -
+        (at.get(b.id) ?? Number.POSITIVE_INFINITY) || 0,
   );
 }

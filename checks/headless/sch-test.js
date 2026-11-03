@@ -126,7 +126,8 @@ async function main() {
 }
 
 const cell = (key) => `document.querySelector('[data-cell="${key}"]')`;
-const rowNames = `[...document.querySelectorAll('[data-sch-grid] .sticky')].map(e => e.textContent.trim())`;
+// 拖行把手（⠿）不算名字。
+const rowNames = `[...document.querySelectorAll('[data-sch-grid] .sticky')].map(e => e.textContent.replace('⠿', '').trim())`;
 
 const mockLog = async () => (await fetch(`${MOCK}/__log`)).json();
 const since = async (n, f) => (await mockLog()).slice(n).filter(f);
@@ -1303,7 +1304,7 @@ async function run() {
   const dash = `document.querySelector('[data-dashboard-schedule]')`;
   check("Dashboard 有单独的 Schedule 区块、标题带日期范围", await waitFor(`${dash} && ${dash}.textContent.includes('Schedule · Oct 4 – Oct 10')`));
   const dashNames = await evaluate(`return [...${dash}.querySelectorAll('.w-max > div')].filter((d) => d.className.includes('min-h-[56px]') && d.className.includes('px-2')).map((d) => d.textContent.trim()).join(',');`);
-  check("一行一个人：自己（Jing）在最上面，其他人在后面", dashNames === "Jing,Veronica,Lizzie,Nadia,Anita,ZZ Test Helper", dashNames);
+  check("一行一个人：自己（Jing）在最上面，其他人按名字排（接口按排班表的 sort_order 回，Dashboard 照旧按名字，拖行题 ⑦B）", dashNames === "Jing,Anita,Lizzie,Nadia,Veronica,ZZ Test Helper", dashNames);
   check(
     "列宽 122px、格子高 ≥ 56px（Annie 看预览定的）",
     await evaluate(`
@@ -1668,12 +1669,89 @@ async function run() {
   await evaluate("document.querySelector('[data-week-discard]').click();");
   check("Discard：改动和上次被拒的红框一起清掉", await waitFor("!document.querySelector('[data-unsaved-summary]') && !document.querySelector('[data-save-rejected]') && !document.querySelector('[data-save-error]')"));
 
+  // ── 拖员工行排顺序（Annie 2026-11-02「第7按B，其他都按推荐」「动手」，preview PCJkqu6KRWreA1EzMkJRk8）──
+  // 全公司一份、每周一样（②③A），跟 schedule.edit 走（①A），手机不拖（⑤A），自己那行固定最上面不拖（⑥A），只排班表照这个顺序（⑦B）。
+  await ctl({ role: "supervisor", meName: "", orderFail: false });
+  await openPage(`${APP}/schedule?week=2026-09-27`);
+  await waitFor("document.querySelector('[data-row-handle]')", 30000);
+  const activeIds = (await (await fetch(`${MOCK}/api/schedule/employees`)).json()).employees.map((e) => e.id);
+  const gridIds = () => evaluate("return [...document.querySelectorAll('[data-person-row]')].map((r) => Number(r.dataset.personRow));");
+  check("排班表的行照接口的 sort_order 排；能改排班的人每行名字左边一个把手 ⠿", JSON.stringify(await gridIds()) === JSON.stringify(activeIds) && (await evaluate(`return ${JSON.stringify(activeIds)}.every((id) => document.querySelector('[data-row-handle="' + id + '"]')?.textContent.trim() === '⠿');`)), JSON.stringify(await gridIds()));
+  // headless 里原生拖拽不好模拟：用同一个 DataTransfer 依次派 dragstart → dragover → drop → dragend。
+  const dragRow = (from, to, after) => evaluate(`
+    const dt = new DataTransfer();
+    const h = document.querySelector('[data-row-handle="${from}"]');
+    h.dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer: dt }));
+    await new Promise((res) => setTimeout(res, 100));
+    const t = document.querySelector('[data-person-row="${to}"]');
+    const r = t.getBoundingClientRect();
+    const y = ${after ? "r.bottom - 2" : "r.top + 2"};
+    t.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: dt, clientX: r.left + 5, clientY: y }));
+    await new Promise((res) => setTimeout(res, 150));
+    const line = !!document.querySelector('[data-row-drop-line]');
+    t.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: dt, clientX: r.left + 5, clientY: y }));
+    h.dispatchEvent(new DragEvent('dragend', { bubbles: true, dataTransfer: dt }));
+    await new Promise((res) => setTimeout(res, 150));
+    return line;`);
+  let roFrom = (await mockLog()).length;
+  const lineShown = await dragRow(5, 2, false);
+  const movedOrder = [1, 5, 2, ...activeIds.filter((id) => ![1, 5, 2].includes(id))];
+  check("拖 Anita 到 Lizzie 前面：拖的时候出蓝线；放下后 Anita 排到第 2 行、带琥珀框，没发请求", lineShown && (await waitFor(`JSON.stringify([...document.querySelectorAll('[data-person-row]')].map((r) => Number(r.dataset.personRow))) === ${JSON.stringify(JSON.stringify(movedOrder))}`)) && (await evaluate("return !!document.querySelector('[data-person-row=\"5\"][data-row-moved]') && !document.querySelector('[data-row-drop-line]');")) && (await since(roFrom, (e) => e.method !== "GET" && !e.path.includes("edit-lock"))).length === 0, `line=${lineShown} ${JSON.stringify(await gridIds())}`);
+  check("没存：Not saved yet: staff order changed，Save / Discard 能点", await evaluate(`return document.querySelector('[data-unsaved-summary]')?.textContent === 'Not saved yet: staff order changed' && !${SAVE}.disabled && !document.querySelector('[data-week-discard]').disabled;`), await evaluate("return document.querySelector('[data-unsaved-summary]')?.textContent;"));
+  check("拖班不受影响：格子不接员工行", await evaluate(`
+    const dt = new DataTransfer();
+    document.querySelector('[data-row-handle="3"]').dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer: dt }));
+    const c = document.querySelector('[data-cell="3|2026-09-28"]');
+    const ev = new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: dt });
+    c.dispatchEvent(ev);
+    document.querySelector('[data-row-handle="3"]').dispatchEvent(new DragEvent('dragend', { bubbles: true, dataTransfer: dt }));
+    return !ev.defaultPrevented;`));
+  await evaluate("$btn('Employees').click();");
+  await waitFor("document.querySelector('[role=dialog] [data-employee-row]')");
+  check("Employees 窗口照旧按名字排（⑦B）", await evaluate("const ns = [...document.querySelectorAll('[role=dialog] [data-employee-row]')].map((r) => r.querySelector('span').textContent.trim()); return ns[0].startsWith('Anita') && ns[1].startsWith('Jing');"), await evaluate("return [...document.querySelectorAll('[role=dialog] [data-employee-row]')].map((r) => r.querySelector('span').textContent.trim()).join(',');"));
+  await evaluate("$btn('Close', document.querySelector('[role=dialog]')).click();");
+  await waitFor("!document.querySelector('[role=dialog]')");
+  roFrom = (await mockLog()).length;
+  check("按 Save：一次 PUT /api/schedule/employees/order，整份新顺序；绿色 Saved，琥珀框没了；不碰这一周的班", (await saveWeek()) && JSON.stringify((await since(roFrom, (e) => e.method === "PUT" && e.path === "/api/schedule/employees/order"))[0]?.body) === JSON.stringify({ employee_ids: movedOrder }) && (await since(roFrom, (e) => e.path.endsWith("/changes"))).length === 0 && (await evaluate("return !document.querySelector('[data-row-moved]');")), JSON.stringify((await since(roFrom, (e) => e.method === "PUT"))[0]?.body));
+  await openPage(`${APP}/schedule?week=2026-10-04`);
+  await waitFor("document.querySelector('[data-person-row]')", 30000);
+  check("别的周也是这个顺序（全公司一份、每周一样）", JSON.stringify(await gridIds()) === JSON.stringify(movedOrder), JSON.stringify(await gridIds()));
+  // Discard：拖了不存，按 Discard 回到原样
+  await dragRow(3, 1, false);
+  await waitFor("!!document.querySelector('[data-row-moved]')");
+  await evaluate("document.querySelector('[data-week-discard]').click();");
+  check("Discard：顺序回到存好的样子", (await waitFor(`!document.querySelector('[data-row-moved]') && !document.querySelector('[data-unsaved-summary]')`)) && JSON.stringify(await gridIds()) === JSON.stringify(movedOrder));
+  // 拖回原位：当没改
+  await dragRow(5, 1, true);
+  check("拖回原来的位置：当没改（没有 Not saved yet）", await evaluate("return !document.querySelector('[data-unsaved-summary]') && !document.querySelector('[data-row-moved]');"));
+  // 400：后端原话红字，顺序留在页面上
+  await dragRow(3, 1, false);
+  await ctl({ orderFail: true });
+  check("后端 400：红字照后端原话，拖过的顺序还在页面上", !(await saveWeek()) && (await evaluate("return document.querySelector('[data-save-error]')?.textContent.includes('employee_ids must list every active employee exactly once.') && !!document.querySelector('[data-row-moved]');")), await evaluate("return document.querySelector('[data-save-status]')?.textContent;"));
+  await ctl({ orderFail: false });
+  await evaluate("document.querySelector('[data-week-discard]').click();");
+  await waitFor("!document.querySelector('[data-row-moved]')");
+  // 自己那一行（⑥A）：固定在最上面、没有把手
+  await ctl({ role: "supervisor", meName: "Nadia" });
+  await openPage(`${APP}/schedule?week=2026-10-04`);
+  await waitFor("document.querySelector('[data-person-row]')", 30000);
+  check("自己（Nadia）那一行固定在最上面、没有把手；其他人照排好的顺序、有把手", JSON.stringify(await gridIds()) === JSON.stringify([3, ...movedOrder.filter((id) => id !== 3)]) && (await evaluate("return !document.querySelector('[data-row-handle=\"3\"]') && !!document.querySelector('[data-row-handle=\"1\"]');")), JSON.stringify(await gridIds()));
+  // 员工（只能看）：照同一个顺序，没有把手
+  await ctl({ role: "staff", meName: "Jing" });
+  await openPage(`${APP}/schedule?week=2026-10-04`);
+  await waitFor("document.querySelector('[data-person-row]')", 30000);
+  check("员工看到同一个顺序（自己在最上面），没有把手", JSON.stringify(await gridIds()) === JSON.stringify([4, ...movedOrder.filter((id) => id !== 4)]) && (await evaluate("return !document.querySelector('[data-row-handle]');")), JSON.stringify(await gridIds()));
+  // 还原，后面的检查要原来的顺序
+  await ctl({ role: "supervisor", meName: "" });
+  await fetch(`${MOCK}/api/schedule/employees/order`, { method: "PUT", body: JSON.stringify({ employee_ids: activeIds }) });
+
   // ── 手机版第 ③ 批（Annie 2026-11-01 手机版规则）：一行 ‹ 日期 ›，This week / Next week / Auto-fill / Employees / + Add employee 收进「⋯」，Save 露在外面，整页不横晃 ──
   await ctl({ fail401: false, role: "superadmin" });
   await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
   await goto(`${APP}/schedule`);
   await waitFor("document.querySelector('[data-week-save]')", 30000);
   await sleep(600);
+  check("手机：员工行没有拖动把手（拖行题 ⑤A：手机上只看顺序）", await evaluate("const hs = [...document.querySelectorAll('[data-row-handle]')]; return hs.length > 0 && hs.every((h) => getComputedStyle(h).display === 'none');"));
   check("手机：Schedule 整页不左右晃", await evaluate(`const vis = (el) => !!el && el.getBoundingClientRect().height > 0 && el.getBoundingClientRect().width > 0; const noSway = document.documentElement.scrollWidth <= innerWidth + 1; const btn = (t, root = document) => [...root.querySelectorAll('button, a')].find((b) => b.textContent.trim().startsWith(t)); return noSway;`), await evaluate("return document.documentElement.scrollWidth + ' > ' + innerWidth;"));
   check("手机：‹ 日期 › 一行；This week / Next week 不在外面；Save 和 ⋯ 看得见", await evaluate(`const vis = (el) => !!el && el.getBoundingClientRect().height > 0 && el.getBoundingClientRect().width > 0; const noSway = document.documentElement.scrollWidth <= innerWidth + 1; const btn = (t, root = document) => [...root.querySelectorAll('button, a')].find((b) => b.textContent.trim().startsWith(t)); const p = document.querySelector('[aria-label="Previous week"]').getBoundingClientRect(), n = document.querySelector('[aria-label="Next week"]').getBoundingClientRect(); const outside = [...document.querySelectorAll('button')].filter((b) => b.textContent.trim() === 'This week' && vis(b) && !b.closest('[data-phone-more-menu]')); return Math.abs(p.top - n.top) < 2 && outside.length === 0 && vis(document.querySelector('[data-week-save]')) && vis(document.querySelector('[data-phone-more]'));`));
   await evaluate("document.querySelector('[data-phone-more]').click();");

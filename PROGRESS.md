@@ -6,6 +6,12 @@
 
 > **下一个主窗口：先读下面「2026-11-02 收工交接：前端主窗口-24」，再看置顶「📌 等 Annie 确认」。更早的交接是 10-30 晚那节。**
 
+## 2026-11-02 晚 Staff Schedule：员工行拖动排顺序（`task/schedule-row-order`，从 coverage-flag 分支接着开，工作窗口 `npe-ops-frontend-39`[36b630]，主窗口 f8 派）—— 在分支，等后端 schedule-employee-flags 上 main 再合
+- Annie 原话（39 窗口）：「第7按B，其他都按推荐。东松户」「动手」。preview https://claude.ai/artifact/PCJkqu6KRWreA1EzMkJRk8 。即 ① 跟 schedule.edit 走 ② 全公司一份 ③ 每周同一个顺序、不算排班改动 ④ 新加 / 重新启用排最后 ⑤ 手机不拖 ⑥ 自己那行固定最上面、不拖 ⑦ **只排班表这一张**照这个顺序，别处照旧按名字。
+- 后端（fc 定）：GET employees 按 sort_order, name, id 排、每人带 sort_order；PUT /api/schedule/employees/order {"employee_ids":[在用的人整份]} → {"employees":[…]}，缺 / 多 / 重复 400 原话；不动 version、不发通知。
+- 前端：排班表名字左边把手 ⠿（max-sm:hidden），按住拖到别人那一行前 / 后，蓝线标落点；拖过的行琥珀框；并进同一个 Save / Discard（Save 先存这一周的班，再 PUT order；「Not saved yet: staff order changed」；离开页面照旧拦）；拖回原位当没改；顺序草稿换周也留着。`employees` 在页面里一律按名字排（Day timeline、Employees 窗口、Auto-fill、Responses），只有排班表另按 sort_order；Dashboard 的 Schedule / Today's team 也改成自己按名字排（`lib/schedule-timeline.ts sortByName`），因为接口会按 sort_order 回（f8 提醒）。有把手时 Staff 表头左边距 40px，名字对齐。
+- 检查：sch 加 13 条（照 sort_order 排 + 把手；拖 Anita 到 Lizzie 前：蓝线、琥珀框、不发请求；Not saved yet；格子不接员工行；Employees 窗口按名字；Save 一次 PUT 整份、不碰 /changes；别的周同顺序；Discard；拖回原位；400 原话；自己固定最上面无把手；员工无把手同顺序；手机无把手），Dashboard 那条改成按名字（Jing,Anita,Lizzie,Nadia,Veronica,…）。sch 341/341、dr 88/88、tasks 144/144；tsc / eslint（0 错）/ build 过。
+
 ## 2026-11-02 晚 Staff Schedule：某些员工不算值班人头（`task/schedule-coverage-flag`，工作窗口 `npe-ops-frontend-39`[36b630]，主窗口 f8 派）—— 在分支，等后端 schedule-employee-flags 上 main 再合
 - Annie 原话（f8 窗口）：「Anita不算的」「把Anita从统计中拿出来」（f8 当动手）；39 窗口：「Anita-not counted只在管理面出现，员工界面不要显示这个说明，就放正常的名字就好」。preview https://claude.ai/artifact/QM4TTYGRUjuu3kUWLoeGD3 （按人设、权限跟 schedule.edit 已定；题 ② 标不标、③ 已发布周通不通知等 Annie）。
 - 后端（fc 定，9e 转）：employees 每人带 counts_for_coverage；PUT /api/schedule/employees/{id} 收 {"counts_for_coverage": bool}；false 或 is_test 的人的班在空档判断里当没排人；不动 version、不发通知。

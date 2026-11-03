@@ -42,6 +42,11 @@ export interface ScheduleEmployee {
    * 只是检查空档时不算覆盖（同 is_test 那样排除）。后端 schedule_employees.counts_for_coverage（9e 在做）；没带 = true。
    */
   counts_for_coverage?: boolean;
+  /**
+   * 排班表上的顺序（Annie 2026-11-02 拖员工行，「第7按B，其他都按推荐」）：全公司一份、每周一样；新加 / 重新启用的排最后。
+   * 只排班表那一张照这个排，别处（Day timeline、Dashboard、Employees 窗口）照旧按名字（题 ⑦B）。没带 = 按名字。
+   */
+  sort_order?: number | null;
 }
 
 /** PUT /api/schedule/employees/{id} 的请求体（supervisor 及以上）：没传的字段不动；email 传空字符串 = 清掉。 */

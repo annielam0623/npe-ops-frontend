@@ -9,6 +9,20 @@ export function coversGaps(e: ScheduleEmployee): boolean {
   return !e.is_test && e.counts_for_coverage !== false;
 }
 
+/**
+ * 员工按名字排（不分大小写）。后端 GET employees 按 sort_order 排（排班表拖出来的顺序），
+ * 但只有排班表那一张照这个顺序，别处（Day timeline、Dashboard、Employees 窗口）照旧按名字（Annie 11-02 拖行题 ⑦B）。
+ */
+export function sortByName<T extends { name: string; id: number }>(
+  list: readonly T[],
+): T[] {
+  return [...list].sort(
+    (a, b) =>
+      a.name.localeCompare(b.name, "en", { sensitivity: "base" }) ||
+      a.id - b.id,
+  );
+}
+
 export interface TimelineBar {
   employee: ScheduleEmployee;
   slot: ScheduleSlot;
