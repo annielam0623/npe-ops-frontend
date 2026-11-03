@@ -634,6 +634,7 @@
 ### 62. Dispatch 省掉 CCL 的 Apply，改版自动更新（2026-11-03，Annie 提，没动手）
 - Annie 原话（24 窗口）：「我想把事情弄得简单一点，干脆把apply省掉，改过得数据直接就update了不需要staff动手」
 - 现在：CCL 在 Discord 发改版 → Dispatch 顶上琥珀提醒条 + Step 2「Apply changes」卡，staff 按 Apply 才套进排车。
+- Annie 接着补（原话）：「包括在dispatch的send 页面，把司机和导游发送也打开，不折叠，也不需要pull from manifest，直接展开给staff看」⇒ Send 步骤司机 / 导游发送块默认展开；不用按 Pull from manifests，打开就自动取好。并进同一份 preview。
 - 派 09 只读查可行性 + 出 preview（staff 有没存的改动时怎么办、自动套用后要不要存、已发司机 / 客人要不要提示重发、staff 怎么知道改了什么 / Undo、跟 Dispatch 车号不准的关系），回来再把每题原文贴给 Annie。等 Annie「动手」才写代码。
 
 ### 61. 发送后换车 / 换司机，staff 怎么处理；红字「Wrong bus — resend link」（2026-11-03，Annie 问，e6 只读查）
