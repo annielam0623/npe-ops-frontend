@@ -473,7 +473,10 @@
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
-### 57. 排班：设置集中 + Working hours 按天设 + Day timeline（2026-11-02 晚，39）—— 已答，等「动手」
+### 57. 排班：设置集中 + Working hours 按天设 + Day timeline（2026-11-02 晚，39）—— ✅ 已动手，待移走
+- Annie 在 f8 窗口（原话）：「动手」⇒ 39 开 task/schedule-timeline、task/schedule-settings（Same every day 先用现接口）；按天设后端已转 9e（迁移 + work_hours + PUT /api/settings/schedule/work-hours，权限 settings.schedule，排 v143 后）。
+- 39 转 Annie 在它窗口原话：Day timeline「同意全部推荐，动手」；设置集中「同意全部推荐。动手」。39 在做 task/schedule-timeline-axis，接着 task/schedule-settings。
+- 9e：按天设已记规格，22:14 PT 过了 21:30 收工点，明天第一件派（迁移 v144），今晚只做完 relay-print。
 - Annie 在 39 窗口答（原话）：「schedule同意全部推荐，但是需要加一个可以edit的权限让我来Admin里勾选」⇒ 两份 preview 全按推荐；⑤ 改：能改设置照 Team 页勾。39 查：现成勾 settings.schedule（后端 PUT 本来就按它查，routers/schedule.py:47），前端只是写死 is_superadmin ⇒ 不用新权限，前端改照勾；按天设的新接口也用它。设置 preview v3 同链接。「同意」不算动手，39 已问 Annie「是否现在动手」。动手后：Day timeline 纯前端；设置集中前端先做（Same every day 先用现 work-window 接口）；按天设转后端（迁移 + work_hours + PUT /api/settings/schedule/work-hours，权限 settings.schedule）。
 - 设置集中 preview 第 2 版：https://claude.ai/artifact/97MgNcpw28p7W4DxXmpgrM 。原 6 题（推荐 ① 工具条 ⚙ Settings + 弹窗、② 留一行只读 Working hours、③ Employees 不搬、④ Rules 不搬、⑤ SA 改 / 排班人只读、⑥ 空档补「(working hours end …)」）。
 - Annie 在 39 窗口（原话）：「我要在working hour里可以选择一周的时间，也可以分别设置几天的时间不同」⇒ Working hours「Same every day」/「Different by day」七行 + Copy Monday。新题 ⑦ 七行（A）；⑧ 每天「No coverage needed」勾（A 要）；⑨ 只按星期几（A，不做节假日）。39 把「选择一周的时间」理解为七天同一组，不对要改。⚠️ 要后端：每个星期几 start / end / off（迁移）、GET 多 work_hours、PUT /api/settings/schedule/work-hours、空档按当天算。
