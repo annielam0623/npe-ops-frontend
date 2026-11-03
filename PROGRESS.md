@@ -420,7 +420,8 @@
 - （原问题）问 Annie ①：11/2 10am–12pm 在哪个画面看到的？前后端都按 Anita Mid 08–16 算有人（39、fc 核过，前端无 bug）。是 Anita 实际没来，还是 Mid 不算前台（后者是新规则）？
 - 问 Annie ②（39 报，改样子要 preview）：时间小窗结束 ≤ 开始（例如点 12 + AM = 午夜）也能按 Done，只出小字「End isn't after start」，存时就被当空档拒。要不要在小窗里挡住 / 醒目提示？推荐：挡住，Done 变灰 + 红字「End must be after start」，先出 preview。
 
-### 54. Staff Schedule 员工行拖动排序（2026-11-02 晚，Annie 提，没动手）
+### 54. Staff Schedule 员工行拖动排序（2026-11-02 晚，Annie 提）—— ✅ 已答、已动手，待移走
+- Annie 在 39 窗口答（原话）：「第7按B，其他都按推荐。」「动手」⇒ ①–⑥ A，⑦ B（只改排班表，Day timeline / Dashboard 照旧按名字，前端自己排）。后端已转 9e（sort_order + PUT /api/schedule/employees/order）；39 在 task/schedule-row-order 用 mock 写，后端上线后合。
 - Annie 原话（f8 窗口）：「帮忙把staff schedule的每个人的row改成可拖拽」。
 - 39 preview：https://claude.ai/artifact/PCJkqu6KRWreA1EzMkJRk8 （电脑 4 张 / 手机 3 张，模拟数据）。现状：行按名字 A→Z（后端 schedule.py:275），自己那行固定最上，能改的人最上面多 Unassigned；没有顺序字段 / 接口。改法：名字左边把手 ⠿ 上下拖，暂存，并进现有 Save / Discard，挪过的行琥珀边框。
 - 7 题（括号是推荐）：① 谁能拖（A 跟 schedule.edit 走）；② 顺序存哪（A 全公司一份）；③ 每周一样（A 一份一直有效，不算排班改动、不出 Publish again、不通知）；④ 新员工（A 排最后）；⑤ 手机（A 不能拖，只看顺序）；⑥ 自己那行（A 照旧固定最上）；⑦ 别处跟不跟（A Day timeline、Dashboard Today's team / 整周排班都跟）。
