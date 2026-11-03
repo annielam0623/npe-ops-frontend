@@ -27,17 +27,19 @@
 | Relay 打印单（总表 + 每车） | d378f8f | 35eec2e1（v143 简称） | Dispatch › Morning Relay「📋 Relay list」/ 每车 Print；Bus Manifest setup「Short name」 |
 | 司机页 / 导游页订单号旁团简称 | — | 随 35eec2e1 | 简称 South / West / BZ / Lower / Upper / CanyonX（Annie 定）；没设简称不显示（Hoover 不设） |
 | Bus Manifest 司机兼导游并一格 | 9a3266b | 打印模板等 v145 | — |
-| 回复框短信 + 邮件默认都勾（全站） | 3b65dc8 | — | Annie 在 39 窗口「那你把他们都改成两个勾选」 |
+| 回复框短信 + 邮件默认都勾（全站） | 3b65dc8（+ 25752dc 去冲突标记） | — | Annie 在 39 窗口「那你把他们都改成两个勾选」 |
+| Working hours 按星期几设（Different by day） | fd74df8 | 196f24c7（v144） | ⚙ Settings 里设每天不同；空档按当天算 |
 
 ### 二、做完在分支、等合 main（明天第一件就是核状态、合）
-> ⚠️ 下面的 SHA 是交接时的状态；39 / 0e 收工回报后我会在本节补最终 SHA。明天先 `git fetch` 看分支最新提交。
+> 下面已按 39 / 0e 收工回报更新为最终状态。明天先 `git fetch` 再核一次。⚠️ 两个 worktree 都在家里电脑；公司电脑从 origin 的分支开新 worktree 接。
 | 分支 | 窗口 | 等什么 | 合之前跑 |
 |---|---|---|---|
-| task/schedule-work-hours（27a94ca 起） | 39 | 后端 196f24c7 已上、v144 已执行 ⇒ **可以合**，39 交接时在合 | sch / dr / tasks、tsc / eslint / build。合前 Annie 别设「每天不同」 |
-| task/live-drivers（9600def 起） | 39 | 后端 d20a005d 已上 ⇒ **可以合** | mt / ns / tt / tk / da / tasks / nav / perm |
-| task/samsara-arrival | 39 | 后端到站（v146）还没上 | pl / mt / tt / tk / nav |
+| ~~task/schedule-work-hours~~ | 39 | ✅ **已合 main fd74df8**（sch 377、dr 89、tasks 144）。Annie 现在可以在 ⚙ Settings 设「Different by day」 | — |
+| task/live-drivers **188c4ca**（39 收工确认，worktree D:\ops-wt-39-ld） | 39 | 后端 d20a005d 已上，不缺后端、不缺 Annie。已对 tracking 新键和 /live-drivers 顶层形状；**还没核** segments 里 relay_blocks / manifest、guide runs 的键名（前端照 driver_home.html 写的）。分支里 ns-test「Page visibility 行数」改 22（main 上那条本来就过时，合了一起修） | 合最新 main → 在后端代码核那几处键 → mt / ns / tt / tk / da / tasks / nav / perm、tsc / eslint / build → 合 main |
+| task/samsara-arrival | 39 | **还没开始、没有分支**。等 live-drivers 合完再从 main 开，照 f8 那节 fc 字段用 mock 写；合 main 等后端 samsara-arrivals + v146 | pl / mt / tt / tk / nav |
 | task/manifest-paper **d74c553**（0e 收工确认） | 0e | 后端 bus-footer-style（v145）还没上；酒店格颜色和缺的颜色等 Annie。内容：汇总框照后端 label 画（去 FOOTER_LABEL）、ASSIST 列、午餐单 NOTES（黄底 / 红字）、Relay list 车色读 car.relay_color；酒店格 relay_color / hotel_first 先不用。mock 检查 mf 235、man 346、da 457、rl 26、nav 38 过。分支里有 0e 的 PROGRESS 一节（含 Today's team 7 题） | mf / man / da / rl / nav（动到排班加 sch），合前对后端真实形状核一遍 |
 
+> 39 收工：worktree 只留 D:\ops-wt-39-ld（task/live-drivers），D:\ops-wt-39-tl、D:\ops-wt-39-rb 已删；没有留下 dev server / Chrome。
 > 0e 收工：worktree 只留 D:\ops-wt-0e-relay（task/manifest-paper，依赖已装），其余已删；没有留下 dev server / Chrome；11/3 relay 导出 JSON 已删。
 
 ### 三、等后端（后端主窗口 9e 那边）
