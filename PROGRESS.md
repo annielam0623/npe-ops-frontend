@@ -479,6 +479,7 @@
       - Annie 定简称（f8 窗口原话）：「South，West，Lower，Upper，CanyonX，BZ」⇒ 取代纸本的 GC South / LOWER / UPPER / X。v143 预填：South Rim = South、West Rim = West、Bryce&Zion = BZ；Antelope 节 LOWER = Lower、UPPER = Upper、Canyon X = CanyonX；其他团不预填。已转 9e、0e。
       - Annie（原话）：「因为Hoover没有relay司机，所以不需要，本来就是他们的tour bus去接的」⇒ Hoover 不设简称；司机页 / 导游页订单号旁只在设了简称时才显示，不回落全名；Relay 打印单照旧回落。已转 9e。
       - fc（task/relay-print 93f2c9fc）：客人加 short_tag（没设 = ""，不回落，司机 / 导游页用），打印单用 product_short；v143 已按新简称填。司机页 / 导游页模板那部分后端在等 Annie 在后端窗口回范围「同意」。
+      - 0e 前端推 task/relay-print 3a7021f（没合，等 fc + v143）：新页 /dispatch/relay-list（每轮总表 + 每车分表，A4 竖向）、Morning Relay「📋 Relay list」键 + 每车 Print、Bus Manifest setup 加 Short name（团 + 节，暂存 + Save）。rl 26、products 237、da 457、nav 38，tsc / eslint / build 过。hotel_short 键名请 fc 确认（已问 9e）。
     - Annie 补（0e 转，原话）：「排完relay并保存了以后，应该加一个按键显示这些relay的list」⇒ 题 1 的键改成「📋 Relay list」：先在屏幕上看总表 + 每车分表，要纸在那页按 Print；显示已保存的排车，有没存的改动先问 Save first?（v10，不影响后端）。
     - fc 字段名定（已转 0e）：manifest-setup groups[] 加 short_name、section_short_names；PUT …/groups/{id}/short-name、…/section-short-name（前端按 Save 再逐个 PUT）；relay-pull guests 加 phone / manifest_id / product_short / bus{label, tour, tour_short, sections[{name, short, color}], driver, guide, van, color}，car 加 location_ids / tour_buses。迁移 v143（Annie 执行，排 v141 / v142 后）。「This van is on 2 tour buses today.」改放 car.print_warnings（不放 problems，免得挡发送）。后端 WIP task/relay-print 459edd0c，今晚 21:30 停，明天接着。
   - 另：ops 标黄规则「带 + 就亮黄」会让 West 所有 Premium (Skywalk+Voucher) 行都亮黄，纸本不标（并进其余 12 页差别 ③）。
