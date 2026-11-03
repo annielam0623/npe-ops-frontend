@@ -123,6 +123,7 @@
     - v3（同链接）：Morning tracking 两个文件夹页签 Tracking / Live drivers，共用日期 / 司机筛选 / 统计卡 / 搜索 / 刷新 / Export / 对话框。新题：⑪ A 页签 + 司机并排（推荐）／B 左边司机文件夹一次看一人；⑥ No show A Tracking 表里那单淡红置顶 + Driver mark 列 + 用现成 Take action 当已处理（推荐）／B 司机筛选旁红数字 + Mark handled／C 顶栏 🔔 下拉；⑦ A 照搬统计卡（推荐）；③ 每分钟、过 cut-off 停。后端：司机页只读数据、tracking 行加 live_status*、ns_unhandled、开关 key morning_live_drivers。
     - fc：短信 + 邮件同时发现有接口已支持（booking-notes/by-order 带 send_sms + send_email），客人邮件回复（email_in）办公室列读接口多带（约 30 分钟），司机端照旧只收短信 / WhatsApp。已转 39。
     - Annie 问（f8 窗口原话）：「对了，我们这个页面是否可以跟司机的live tracking联动起来，显示他已经到了那个酒店」⇒ 请 fc 只读查 Samsara（位置 / 到站事件 / 车对应 / 酒店坐标 / 工作量）；39 在 preview 预留「Arrived / Left / On the way」「Now at …」样子。
+      - fc 估：现在没有车辆实时位置、没有酒店坐标（只有 Samsara 位置共享链接、车号对应、司机当天开哪台车）。A 只显示「离酒店 0.3 mi」（约 1 天，迁移酒店经纬度，17 家填一次）；B「Arrived 6:02 / Left 6:09」（经纬度 + 到离事件表 + 早班每分钟轮询，2–3 天；或在 Samsara 后台建酒店围栏读进出事件）；C ETA 不建议。A / B 都要 Annie 在 Samsara 后台给 token 开读位置 / 事件权限，Risk C。f8 建议：司机实时页先上不带到站，到站作为第二期做 B。等 Annie 选。
 - 今晚在等 Annie 的，跟 24 交接第三节一样，不重问。
 
 ## 2026-11-02 收工交接：前端主窗口-24 [d1dbae]（公司）
