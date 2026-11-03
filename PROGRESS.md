@@ -649,6 +649,13 @@
 - 已转 37：派后端合最新 main、换迁移号、重审、重估工作量和时间，冻结 ops 要用的接口字段。已派 91 出 ops Tour Tracking 的 preview（筛选、标签、统计 / 导出算不算、How to use），没定的列题。等 preview 后 Annie「动手」才写前端代码。
 - 37 派后端 44 重评：接分支合今天 main、迁移改号（最早 v147，排 57 的 v145、64 的 v146 后）、按现在代码核设计、冻结接口形状（send_state / order_state、farm out 标、筛选在服务器还是页面、broadcast 名单）、估工作量和时间；44 也查 10-25 后 Annie 答没答 401，真没答 37 才问。形状和 ETA 经 37 转。
 - 44 重评结果（37 转）：设计照旧成立；后端约 1 个工作日，明天中午左右分支代码好；之后 Annie 执行 v147（在 64 的 v146 后）→ 代码上 main → 回填试跑 → 真回填 → Annie 开开关（Super Admin，默认关）。冻结接口（只加）：tour-confirmation/tracking 每行加 send_state sent / unsent、order_state confirmed / on_hold / cancelled（来自 Order List，不是客人回复）；Farm out 用现有 farm_out_view 不为 null；Sent / Not sent 筛选在页面做，默认 Sent；Broadcast 名单页面组，含 sent + unsent、不含 on_hold / cancelled（只在浏览器端排除），发完后端把真发出的 unsent 改 sent，前端重读；开关 / 回填接口只 Super Admin。401 那题属 G178（电话记录）不是 G180，已问过两次，不再问、不挡 G180。已转 91。
+- 91 preview：https://claude.ai/artifact/Fz4f3awLiNauihh2n655JT （ops Tour Tracking 接模拟数据，新东西画上去，没写代码）。照做不问：Order # 格里加 Not sent（灰底、字 #1a1a1a）/ On hold（黄）/ Cancelled（红）标签，照旧模板颜色，不加列；Broadcast 名单去掉 on_hold / cancelled，发完重读；手机上筛选和 Status 下拉排一起；旧后端没字段当 sent / confirmed。
+- 题 1 筛选框：A（推荐）Search 后、Status 前一个下拉，3 项 Sent / Not sent / Sent + Not sent（同旧后台 10/24 模板）；B 只 Sent / Not sent 两项。
+- 题 2 团胶囊（All 4/6、AC-U 1/2…）和数字卡（Total、YES、Pending…）：A（推荐）跟着筛选算（选 Sent 跟现在一样；选 Not sent 只算没发的，Response Rate 写「—」）；B 永远只算 Sent（切 Not sent 时上下对不上）。
+- 题 3 Farm out：A（推荐）用 ops 现有紫色「⇄ Farmed out ▾」，不另加；B 另加紫色小标签「Farm out」（同一单会同时有两样）。
+- 题 4 Download CSV（后端出）：A（推荐）加两列「Sent」（Sent / Not sent）、「Order state」（Confirmed / On hold / Cancelled），要后端加；B 不加。
+- 题 5 How to use（英文）：A（推荐）两段——加在「How to use — Tour Confirmation Tracking」："The Sent / Not sent box next to Search chooses which orders show. Sent is the normal view. Not sent shows orders that came in from the Main manifest and have no confirmation sent yet; they carry a grey Not sent tag. A yellow On hold or red Cancelled tag means the order changed in the Order List; the row stays here as a record. ⇄ Farmed out means the order was handed to a partner."；Broadcast 那条后："The list includes Not sent guests too, whatever the Sent / Not sent box shows. On hold and Cancelled orders are left out."（题 3 选 B 时第一段末句改 "A purple Farm out tag means the order was handed to a partner."）
+
 
 ### 63. 换司机只改 Dispatch：页面上怎么标（G234，Annie 已「动手」后端；e6 preview https://claude.ai/artifact/CXT8ZueNa3akn1ZrGn4Ycj ，没写代码）
 - 背景：Annie（37 转）「换了司机以后，staff只需要去dispatch把司机改了，然后保存，就可以了，不需要再发送任何信息出去」。后端 4d 做：改司机 + Save 后已发客人的链接跟新司机，不发东西。前端占位字段 driver_followed {from, to}，真实字段 37 待转。
