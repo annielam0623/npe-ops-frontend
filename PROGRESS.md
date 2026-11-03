@@ -44,6 +44,7 @@
   - fc 生产只读（9e 转）：① 11/2 后端没算出 gap，Anita Mid 08–16（slot 122）盖住 10–12，去掉 Anita 才有这段缺口 ⇒ 问 Annie 在哪看到、是不是 Anita 没来 / Mid 不算前台。② 11/7 现在唯一空档 02:00–03:00，填了应能存；被拒的 409 整批回滚查不到；最可能是 Save 一次提交所有未存改动，别的日子开了新口子，其次结束 ≤ 开始。is_test 全 false。已转 39：409 gaps 写清哪天几点（「Nov 7, 2:00–3:00 AM is not covered」）、模拟复现、查 12:00 AM。后端另加 409 日志。
 - 后端上 main（9e 转）：CHD a7c62e91（合并 a77bef20）；Lunch 缩写 a104835e（合并 14ca4c38，11/3 Antelope 车 Lunch 格出 B/T/V，Special 去掉餐码）。39 没有生产登录，线上核对改请 Annie 自己看：Manifests › CHD 标签、11/3 Antelope Bus Manifest。
 - Annie 给旧手工 Bus Manifest PDF（4796_001.pdf，10/6/2026，13 页：Antelope A / B、两张午餐单、South、West A / B、Hoover Dam、Relay Splits 总表、Relay 1–3 每车一张、South 自接站），原话：「请按照这个PDF的样子，逐个检查现在bus manifest里的字段，一一核实」。只核对、出报告，不改代码。f8 已逐页抄成字段清单：C:\Users\annzh\AppData\Local\Temp\claude\d--npe-ops-frontend\d7f937ff-2ae2-44ad-b7a5-d9018f7278dc\scratchpad\bus-manifest-pdf-10-06.md。已派新工作窗口 `npe-ops-frontend-0e`[d96681]（家里）：worktree 里用 mock 截图 + 读代码，按 13 页出对照报告（Artifact），不改代码。
+  - Annie 点核心（原话）：「核心问题是：在bus manifest底部的灰色汇总框里，把Antelope的表格变成所有tour的样本了，这是错误的，每个tour的汇总表都不一样」⇒ 每种团底部统计各用各的（Antelope / South / West / Hoover，格子见清单）。没动手。已请 0e 把这块放报告最前面：现在怎么来的、每格算法、要不要后端。
 - 今晚在等 Annie 的，跟 24 交接第三节一样，不重问。
 
 ## 2026-11-02 收工交接：前端主窗口-24 [d1dbae]（公司）
