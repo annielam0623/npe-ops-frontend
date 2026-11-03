@@ -665,7 +665,7 @@
 
 
 ### 63. 换司机只改 Dispatch：页面上怎么标（G234）—— ✅ Annie 已答并「动手」（2026-11-03）；e6 preview https://claude.ai/artifact/CXT8ZueNa3akn1ZrGn4Ycj ，没写代码）
-- ✅ Annie（原话）「乙的话，除了题5-要改成不需要任何动作。否则会让staff confuse。其他都同意推荐。动手」⇒ 题 1 A（Morning Relay：Status 列 Sent by 下、橙字上）、题 2 A（Morning tracking：Driver 列名字下）、题 3 A（灰色小字）、题 4 B（"Driver changed after send (was FREDDY) — link now follows LUIS"）、题 6 A（红字改成请客人重新打开链接，新字先给 Annie 看）、题 7 A（Save 后灰字 / 没改成红字「<car>: links not changed — <reason>」）、How to use 三段照草稿；**题 5 改：同一司机只换车 = 不需要任何动作**，不出橙字「Changed after sent」提示重发（24 理解为 B「只换车的不标」，如要灰字说明再问）。派 e6（send-auto-open 合完后），前端等后端 G234（task/driver-change-follow）上 main 再合。
+- ✅ Annie（原话）「乙的话，除了题5-要改成不需要任何动作。否则会让staff confuse。其他都同意推荐。动手」⇒ 题 1 A（Morning Relay：Status 列 Sent by 下、橙字上）、题 2 A（Morning tracking：Driver 列名字下）、题 3 A（灰色小字）、题 4 B（"Driver changed after send (was FREDDY) — link now follows LUIS"）、题 6 A（红字改成请客人重新打开链接，新字先给 Annie 看）、题 7 A（Save 后灰字 / 没改成红字「<car>: links not changed — <reason>」）、How to use 三段照草稿；**题 5 改：同一司机只换车 = 不需要任何动作**，不出橙字「Changed after sent」提示重发（24 理解为 B「只换车的不标」，如要灰字说明再问）。派 e6（send-auto-open 合完后），前端等后端 G234（task/driver-change-follow）上 main 再合。题 5 后端做（37）：4d 在 G234 分支把 relay_pull.changed_since_sent 的车号比较去掉，只换车 / 换司机同时换车不再出 Changed after sent，时间、酒店照旧；前端不过滤。G234 排在 57 推送后，4d 还要跑一轮审查。
 - 背景：Annie（37 转）「换了司机以后，staff只需要去dispatch把司机改了，然后保存，就可以了，不需要再发送任何信息出去」。后端 4d 做：改司机 + Save 后已发客人的链接跟新司机，不发东西。前端占位字段 driver_followed {from, to}，真实字段 37 待转。
 - 题 1 Morning Relay 发送名单标在哪（现在 Status 列淡黄「Sent by…」，下面橙字「Changed after sent: …」，改司机不显示）：A（推荐）Status 列 Sent by 下面一行、橙字上面；B 名字后小标签「Driver changed」，鼠标移上去看全句。
 - 题 2 Morning tracking 标在哪：A（推荐）Driver 列司机名下面（跟 Guest Viewed 的红字分开）；B Guest Viewed 列时间下面（跟红字挤一格）。
