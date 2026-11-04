@@ -959,6 +959,11 @@ D. 已完成、待从置顶移走：
 - preview（工作窗口 fa [985244]，2026-11-03 晚，没写代码）：https://claude.ai/artifact/L7Ks8gymYvsd33Q9DuLGUr —— 设置键 ⚙ Colours & page、弹窗（Relay 1–6 / 每团 All buses + 字母 / Portrait·Landscape / Reset）、深紫对照 3 个浅紫候选、A4 横版、手机、How to use 原文；题 1–6 在页面最底（题 3：本窗口没 ops 登录，没查到生产是哪两张，推断是 Antelope 没填纸本色的车退回团色 #7a6ba8）。
 - 5c 派前端工作窗口 `npe-ops-frontend-fa`[985244] 做 preview（入口放 Relay list 页设置键；题 1 颜色范围、题 2 浅紫候选、题 3 哪一天），只做 preview 不写代码。
 
+### 79. 司机 / 导游页（手机页 + ops Live drivers）字一律白色（2026-11-04）
+- Annie 原话：「我对live 的司机和导游页面不满意的地方：除了故意设置成灰色的字，其他一律用白色--例如订单号和tour等，本来就是深色背景，现在天亮得晚，司机和导游很难辨认」。
+- 范围：手机司机页 / 导游页（后端模板 driver_home.html、guide_home.html）+ ops Morning tracking › Live drivers（前端 live-drivers.tsx）。
+- 先 preview：派 09 列出页面上所有灰字（订单号、tour 简写、地址、1 booking、Picked up 0/9、Not checked in、时间等），标出改白 / 保留灰（建议只留：按不了的按钮、「—」占位），并排对比，Annie 点头后后端改模板、前端改 Live drivers。已知会 37。
+
 ### 78. Live drivers 订单号旁加团简写（2026-11-04）—— ✅ Annie「动手」
 - ✅ 09 合 main（task/live-short-tag）：Morning tracking › Live drivers 每位客人订单号写成「A1001 · GC」（同司机手机页 `{{ order_number }} · {{ short_tag }}`），relay 段、团车段、导游 runs 都加；short_tag 空或缺只写单号。后端 37 说 /live-drivers 已带 short_tag，合了线上就能看到。检查：mt 247/247（新 1 条）、nav 38/38；tsc 0、eslint 0、build 过。
 - Annie 发 Live drivers 截图（订单号旁没简写），主窗口问「是否现在动手」，她答「动手」并确认是这件（不是 72）。同司机手机页 11/2 B5 / B6（后端 3e0ff83f）：订单号后「· short_tag」，只在设了 Bus Manifest setup Short name 时显示。
