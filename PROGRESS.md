@@ -798,6 +798,7 @@
 - 9e 转的 Annie 已确认四条：没填链接的单像 No Cfm # 一样被挡、可 Send anyway；Brenda 两种都要；格子里填 + 上传两列表格都要；发出后改了链接标「Changed since sent」，staff 手动重发（Send anyway）。原话（9e 转）：「要在Upper brenda的main manifest那里增加一个栏目，叫waver link，由staff上传或者填写进去，然后发送的时候一起发给客人，每个订单都有独立的一个link」；四条是 9e 出的选择题，Annie 都勾推荐项（Brenda 两种 = Brenda 和 Brenda — No Permit Fee），没另写字，**没说「动手」、没看过样子**。
 - 后端 da 在做（迁移 v147 Annie 先执行），今晚多半 WIP。拟定字段：GET /api/manifests 每行 waiver_link_required + 4 列（waiver_link / waiver_status / waiver_link_by / waiver_link_at）；PUT /api/manifests/waiver-link；POST /api/manifests/waiver-links/upload（apply false 预览 / true 写入，status new/changed/same 及 not_found/not_waiver/bad_link/empty/duplicate）；send-tickets blocked reasons 加 "No waiver link"（与 No Cfm # 合并一条）；Changed since sent 当已发跳过；Action Log entity manifest_waiver_link。How to use 写在 ops Manifests 页（英文、默认折叠）。
 - 前端：新功能 → 先 preview（排在 fa 的 73 前端推分支后），Annie「动手」才写代码。资源：空闲内存 8.3 / 31.7 GB，不加窗口。
+- fa preview：https://claude.ai/artifact/5niqePBqxUsCBqKpLLKCnm （5 题：列在哪出现 / 上传替换 / 文件格式 / Changed since sent 何时消失 / 链接放消息哪里；How to use 4 句）。已整段转 Annie；题 5 链接怎么到客人、题 2 B / 题 4 B 后端工作量已问 9e。
 
 ### 73. Relay list：紫色太深 + 颜色和纸张方向交给 staff 设（2026-11-03 晚，Annie 在主窗口 5c 提，着急，没动手）
 - 原话：「两件事情着急做：relay list里，最后一张和倒数第三张的紫色太深了。可以把颜色的调配和页面的方向交给staff去处理么」
