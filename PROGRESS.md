@@ -1009,6 +1009,7 @@ D. 已完成、待从置顶移走：
 - 先 preview：派 09 列出页面上所有灰字（订单号、tour 简写、地址、1 booking、Picked up 0/9、Not checked in、时间等），标出改白 / 保留灰（建议只留：按不了的按钮、「—」占位），并排对比，Annie 点头后后端改模板、前端改 Live drivers。已知会 37。
 
 - ✅ **Annie「改白色的事情，同意推荐。动手」（主窗口-24 原话，2026-11-04）**：全改白，只留 K1 / K2 / K3 灰。清单已发后端 94（改 driver_home.html / guide_home.html）；ops 派 2c 合 task/live-white-text fc3883a（先合 main 跑 mt / nav + build）。
+- ✅ **2c 合 main c41546a**（task/live-white-text fc3883a + 合 main 78fbd1e，只改 live-drivers.tsx）：检查 mt 247/247、nav 38/38；tsc 0、eslint 0 错（3 条旧 warning）、build 过。**Annie 验收**：ops Morning tracking › Live drivers —— 订单号、tour 简写、酒店 / 地址、人数、Picked up x/y、时间等原来灰的字都是白色；仍是灰的只有 K1 按不了的键（半透明）、K2 还没 check in 的「–」、K3 没选中的 Routes / Messages 页签；彩色字（琥珀 / 绿 / 红 / 蓝）不变。手机司机页 / 导游页等后端 94 改模板上线。
 ### 78. Live drivers 订单号旁加团简写（2026-11-04）—— ✅ Annie「动手」
 - ✅ 09 合 main（task/live-short-tag）：Morning tracking › Live drivers 每位客人订单号写成「A1001 · GC」（同司机手机页 `{{ order_number }} · {{ short_tag }}`），relay 段、团车段、导游 runs 都加；short_tag 空或缺只写单号。后端 37 说 /live-drivers 已带 short_tag，合了线上就能看到。检查：mt 247/247（新 1 条）、nav 38/38；tsc 0、eslint 0、build 过。
 - Annie 发 Live drivers 截图（订单号旁没简写），主窗口问「是否现在动手」，她答「动手」并确认是这件（不是 72）。同司机手机页 11/2 B5 / B6（后端 3e0ff83f）：订单号后「· short_tag」，只在设了 Bus Manifest setup Short name 时显示。
