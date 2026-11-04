@@ -820,6 +820,7 @@
 - 计划：只读打开每个司机 / 导游页（headless、手机尺寸），核页面能开、内容对、每个 tel: / sms: 号码格式能拨、和资料一致；不真拨、不真发。
 - 卡在：fa 没 ops 登录、拿不到链接；打开链接会不会记成「已打开」。已问 9e 要链接清单 / 不记录的办法 / 键拨给谁。
 - 9e 只读答：用 Super Admin 预览 /driver/preview?date=2026-11-04、/guide/preview?date=2026-11-04（同模板同数据、选人页、不记已读、写操作 disabled）；**不要用真 /l/{token} 测**（会按司机本人登录）。客人行 Call = tel:{manifest 客人 phone}；relay 段 Call 在预览里灰；Text 不是 sms:，是系统内消息框（driver_messages）。fa 没登录进不去。今晚做不做 9e 请 Annie 定。5c 已问 Annie：A 她自己看预览 / B 后端只读查全部号码格式。
+- Annie（原话）：「我点击进司机的的页面call键是灰色的，不能点啊」。5c 只读核 driver_home.html：预览里客人 Call 是灰的 span（:289-291、:381-384，.g-btns-preview pointer-events:none），不是 tel:——9e 上次说法有误，已更正；真链接（明天 G227）Call 是 tel:{客人电话}、Text 能用。已问 9e 预览 Call 改真 tel: 的工作量 / 当初为何灰；问 Annie 选法。
 
 ### 75. Dashboard 搜索框可以按 Agent reference 搜订单（2026-11-03 晚，Annie 在主窗口 5c 提，没动手）
 - 原话：「我在main manifest里加上了agent reference，能否在首页的search bar里页可以加上用这个号码搜索订单」
