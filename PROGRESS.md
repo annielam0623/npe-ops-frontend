@@ -959,6 +959,13 @@ D. 已完成、待从置顶移走：
 - 理解：每位司机 / 导游每天一份记录：每站到 / 离时间和停了多久（Samsara 到站，置顶 59 / 58）、发了几条短信、报了几个 Picked up / No show；工作结束时把他那天的 live 页存一份，之后能回看。
 - 2c 已请 94 只读评估数据够不够（到 / 离只有填了坐标的酒店才有；短信 / 打勾记录存不存、能不能按人按天数）。
 - 要问 Annie：Q1 在哪看（ops Morning tracking › Live drivers 加「History」按日期回看 / 单独报表页 / Daily Operation Report）；Q2 快照什么时候拍（最后一站走了以后 / 固定时间如下午 3 点 / 两者）；Q3 是存「那一刻的页面样子」还是存数字汇总；Q4 谁能看、留多久。答了先 preview。
+- **后端 18 只读评估（94 转，含生产只读）**：
+  - 到 / 离：relay_stop_visits，只判 relay 车 + 填了坐标的酒店；生产 28 家 0 家有坐标、表 0 行 ⇒ 等 59 上线 staff 填坐标；记的是车号，按人用当天 dispatch 司机-车号对；停留 = left_at − arrived_at。
+  - 短信：司机页只能给自己车上客人发快捷回复（booking_notes sms_out + send_log），没有回 ops 通道；导游页只有给餐厅发午餐单。⚠️ 司机发的和员工回复同表同 direction，没来源标记，要准得写入时加来源（约半天）。
+  - Picked up / No show / Boarded：tour_manifest_guest 只存最后一次，改过会覆盖、无历史、action_log 不记 ⇒ 只能数最后状态；要数改过几次得加事件记录。
+  - 快照：/driver、/guide 都现场算不存。推荐存 JSON 汇总（不存 HTML、不存客人电话），前端照 JSON 画当天样子。「工作结束」推荐：Dispatch 那天点 Completed 时每人存一份；没点的晚上固定点定时补存（建议 23:00，Annie 定）；之后再改另存一版标 after completion。不推荐「最后一站离开」（判不了）、「链接过期」（密码登录的人没链接）。
+  - 工时：后端约 1.5–2 天，带迁移（v151 后），要跟 57 的 seat 排队。
+- **2c 已整段问 Annie（新题，取代上面 Q1–Q4）**：Q1 放哪（A 推荐 Live drivers 每人加 Day snapshot、按日期回看 / B Staff Schedule 这个人那一天 / C 个人 History 按天）；Q2 什么时候存（A 推荐 Completed 时存 + 23:00 补存 / 时间她可改）；Q3 司机 / 导游本人看不看自己的（A 推荐不看 / B 看）；Q4 谁能看、留多久（A 推荐同 Live drivers、90 天 / B 只 SA、一直留）；Q5 短信数要不要准（A 推荐加来源标记约半天 / B 先不数）；Q6 Picked up / No show 数最后状态还是连改过几次（A 推荐只数最后状态 / B 加事件记录）。
 
 ### 85. Staff Schedule 班次类型（Open / Mid / Close）可手动新增（2026-11-04，Annie 在主窗口-2c 提，附排班格截图，没动手）
 - 原话：「在role里，给一个手动添加role的选项」「我说的是staff schedule」。截图是 Staff Schedule 周表，格子上的 Open / Mid / Close ⇒ 理解为班次类型（后端叫 shift type）。
