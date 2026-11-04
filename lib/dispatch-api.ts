@@ -284,8 +284,12 @@ export interface RelayBus {
   driver: string | null;
   guide: string | null;
   van: string | null;
-  /** 团色（manifest_color，同 Bus Manifest 抬头）。 */
+  /** 团色（manifest_color，同 Bus Manifest 抬头）。置顶 73 后端起是最终色（staff 设的 → 纸本 → 团色）。 */
   color: string | null;
+  /** 置顶 73：这辆大巴所在团 / 字母设的纸张方向（同时是 relay 车的那张单用它）；没有 = portrait。 */
+  orientation?: "portrait" | "landscape";
+  /** 置顶 73：这辆大巴是哪个团（Relay list 设置弹窗对「Also a relay car today」用）；旧后端没有 ⇒ 按团名对。 */
+  manifest_id?: number;
 }
 
 /** 整车不发的 relay 车（缺司机 / 没排接客站点）：`orders` 是这一轮被挡下的订单号，没客人的坏车是 []。 */
@@ -327,11 +331,15 @@ export interface RelayPull {
         print_warnings?: string[];
         /** 这台车在 Relay 单上的颜色（后端，照纸本：每轮从 Relay 1 编号；也是大巴的车用团色、不占号）。没带 = 用前端色盘。 */
         relay_color?: string | null;
+        /** 置顶 73：这张车单的纸张方向（后端按 Relay N / 团 / 字母的设置算好）；没有 = portrait。 */
+        orientation?: "portrait" | "landscape";
       };
       guests: RelayGuest[];
     }[]
   >;
   need_a_look: (RelayGuest & { reason: string })[];
+  /** 置顶 73：RELAY SPLITS 总表的纸张方向；没有 = portrait。 */
+  summary_orientation?: "portrait" | "landscape";
   /** 在团车出发点（Tour bus departure）上车、不进 relay 的单数。 */
   departure: number;
   /** 查发送状态之前的服务器时间：勾 Send anyway 时原样带回发送键（preview_at）。 */

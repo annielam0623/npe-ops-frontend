@@ -25,7 +25,9 @@ import {
   type ListLayout,
   LOGIN_COLUMN,
   MIN_COL_WIDTH,
+  normalizeSpellingsCell,
   SPELLINGS_COLUMN,
+  SPELLINGS_FIELD,
   toggleMulti,
 } from "./fields";
 import { HR_BTN_CLASS, HR_EMPTY_CLASS, HR_PILL_CLASS } from "./legacy-ui";
@@ -39,6 +41,9 @@ export function isCellChanged(
   key: string,
   draft: string,
 ): boolean {
+  if (key === SPELLINGS_COLUMN) {
+    return normalizeSpellingsCell(draft) !== cellValue(profile, key);
+  }
   return draft.trim() !== cellValue(profile, key);
 }
 
@@ -55,6 +60,8 @@ interface PeopleTableProps {
   placeholder: string | null;
   /** 窗口底部还有别的固定条（Edit list 的保存条）时，滚动条放在它上面。 */
   bottomOffset?: number;
+  /** Edit list 存的时候某个人的「Other spellings」被拒：红字放在那个人那一格下面。 */
+  cellError?: { profileId: number; message: string } | null;
 }
 
 /** table.hr th */
@@ -77,6 +84,7 @@ export function PeopleTable({
   onEdit,
   placeholder,
   bottomOffset = 0,
+  cellError = null,
 }: PeopleTableProps) {
   const [dragging, setDragging] = useState<string | null>(null);
   const [drop, setDrop] = useState<{ key: string; after: boolean } | null>(
@@ -240,11 +248,19 @@ export function PeopleTable({
                 >
                   {layout.order.map((key) => (
                     <td key={key} className={TD}>
-                      {editing &&
-                      key !== LOGIN_COLUMN &&
-                      key !== SPELLINGS_COLUMN ? (
+                      {editing && key !== LOGIN_COLUMN ? (
                         <EditCell
-                          field={FIELD_BY_KEY[key]}
+                          field={
+                            key === SPELLINGS_COLUMN
+                              ? SPELLINGS_FIELD
+                              : FIELD_BY_KEY[key]
+                          }
+                          error={
+                            key === SPELLINGS_COLUMN &&
+                            cellError?.profileId === p.id
+                              ? cellError.message
+                              : null
+                          }
                           profile={p}
                           draft={edits[p.id]?.[key]}
                           disabled={locked}
@@ -311,7 +327,6 @@ function ViewCell({
     );
   }
   if (columnKey === SPELLINGS_COLUMN) {
-    // Edit list 里也只读：要改点这一行的 Edit（后端 bulk 还不收这一格）。
     const list = profile.other_spellings ?? [];
     return (
       <span data-spellings={profile.id} className="whitespace-normal">
@@ -349,7 +364,9 @@ function EditCell({
   draft,
   disabled,
   onChange,
+  error = null,
 }: {
+  error?: string | null;
   field: HRField;
   profile: HRProfile;
   draft: string | undefined;
@@ -416,6 +433,36 @@ function EditCell({
           </option>
         ))}
       </select>
+    );
+  }
+  if (field.key === SPELLINGS_COLUMN) {
+    return (
+      <div className="flex min-w-[170px] flex-col gap-[3px] whitespace-normal">
+        <input
+          aria-label={label}
+          data-spellings-input={profile.id}
+          type="text"
+          value={value}
+          placeholder="e.g. JOSEPH, JOE R"
+          size={Math.max(value.length + 2, 16)}
+          disabled={disabled}
+          aria-invalid={!!error || undefined}
+          onChange={(e) => onChange(e.target.value)}
+          className={cn(
+            inputClass,
+            error && "border-[#b3261e] night:border-red-400",
+          )}
+        />
+        {error ? (
+          <span
+            role="alert"
+            data-spellings-error={profile.id}
+            className="max-w-[260px] text-[11px] leading-[1.35] text-[#b3261e] night:text-red-300"
+          >
+            {error}
+          </span>
+        ) : null}
+      </div>
     );
   }
   return (

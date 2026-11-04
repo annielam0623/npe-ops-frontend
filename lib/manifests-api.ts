@@ -79,6 +79,70 @@ export function saveManifestCfm(input: {
   });
 }
 
+/** 一格 waiver link 存好后的值（后端 brenda-waiver-link）。值没变时 updated_by / updated_at 是 null。 */
+export interface ManifestWaiverResult {
+  order_number: string;
+  product_code: string;
+  tour_date: string;
+  waiver_link: string;
+  updated_by: string | null;
+  updated_at: string | null;
+}
+
+/**
+ * 置顶 74：Brenda 门票每单一条 waiver link（manifests.edit）。`waiver_link` 送 "" = 清空。
+ * 只收 http(s) 完整网址，其余 400 + 英文原因；这张门票不要 waiver ⇒ 400；这天没有这单 ⇒ 404。
+ */
+export function saveManifestWaiverLink(input: {
+  order_number: string;
+  product_code: string;
+  tour_date: string;
+  waiver_link: string;
+}): Promise<ManifestWaiverResult> {
+  return apiFetch<ManifestWaiverResult>("/api/manifests/waiver-link", {
+    method: "PUT",
+    body: input,
+  });
+}
+
+/** 上传每一行的结果：new / changed / same 能写；其余不写，逐行报出来。 */
+export type WaiverUploadStatus =
+  | "new"
+  | "changed"
+  | "same"
+  | "not_found"
+  | "not_waiver"
+  | "bad_link"
+  | "empty"
+  | "duplicate";
+
+export interface WaiverUploadRow {
+  order_number: string;
+  waiver_link: string;
+  /** 这单现在存着的链接（没有 = ""）。 */
+  current: string;
+  status: WaiverUploadStatus;
+  /** bad_link 的原因（英文整句）。 */
+  error: string | null;
+  /** apply=true 时这一行真的写进去了。 */
+  saved: boolean;
+}
+
+/**
+ * 置顶 74：上传两列表格批量填 waiver link。apply=false 只对比、不写；apply=true 写 new / changed 的行（Annie 题 2 A：按 Save 一起写）。
+ * 只对这一天。
+ */
+export function uploadWaiverLinks(input: {
+  tour_date: string;
+  items: { order_number: string; waiver_link: string }[];
+  apply: boolean;
+}): Promise<{ tour_date: string; applied: boolean; items: WaiverUploadRow[] }> {
+  return apiFetch("/api/manifests/waiver-links/upload", {
+    method: "POST",
+    body: input,
+  });
+}
+
 /**
  * Bus tour 一节的 Cfm #（G198，后端 8a）：按「日期 + 团 + 节」存一个号，Bus Manifest 每辆车那一节的标题都带它。
  * `cfm_no` 送 "" = 清空。所有 staff 都能存；没开格的节 400 + 英文原因。只记录，不发送。
@@ -224,6 +288,30 @@ export async function fetchAllManifestRowsForDate(
   const out: ManifestMatchCandidate[] = [];
   for (const page of await fetchAllPagesForDate(date, ["pax"], signal))
     collectCandidates(page, out);
+  return out;
+}
+
+/** 置顶 74 上传 waiver links 配套：这一天门票单的客人名、门票提醒发过没有（预览表、黄框用）。 */
+export async function fetchTicketOrderInfo(
+  date: string,
+  signal?: AbortSignal,
+): Promise<Map<string, { name: string; sent: boolean }>> {
+  const out = new Map<string, { name: string; sent: boolean }>();
+  for (const page of await fetchAllPagesForDate(
+    date,
+    ["guest_name", "sent_tickets_at"],
+    signal,
+  )) {
+    if (page.tab !== "tickets") continue;
+    for (const row of page.rows) {
+      const cur = out.get(row.order_number);
+      const sent = !!row.values.sent_tickets_at;
+      out.set(row.order_number, {
+        name: cur?.name || String(row.values.guest_name ?? ""),
+        sent: !!cur?.sent || sent,
+      });
+    }
+  }
   return out;
 }
 

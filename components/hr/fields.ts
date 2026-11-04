@@ -252,10 +252,26 @@ export const LIST_FIELD_KEYS = [
 
 export const LOGIN_COLUMN = "__login";
 /**
- * 「Other spellings」列（Annie 2026-11-03 题 2 选 A：紧跟 Nickname）。不走 bulk 白名单：
- * Edit list 里先只读，后端 bulk 收这一格以后再开成能改（题 3 选 B）。后端没这个键时整列不出。
+ * 「Other spellings」列（Annie 2026-11-03 题 2 选 A：紧跟 Nickname）。Edit list 里能改（题 3 选 B）：
+ * 逗号隔开，交给后端 bulk 的是这一格的整份清单（空 = 清空；后端 01606b02 起收）。后端没这个键时整列不出。
  */
 export const SPELLINGS_COLUMN = "other_spellings";
+/** Edit list 用的字段说明（不在 FIELDS 里：弹窗那一格是单独画的）。 */
+export const SPELLINGS_FIELD: HRField = {
+  key: SPELLINGS_COLUMN,
+  label: "Other spellings",
+  kind: "text",
+  group: "dispatch",
+};
+
+/** Edit list 里逗号隔开的文字 → 比较用的样子（去空格、去空项）。 */
+export function normalizeSpellingsCell(text: string): string {
+  return text
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .join(", ");
+}
 export const DEFAULT_COLUMNS: readonly string[] = [
   LIST_FIELD_KEYS[0],
   LIST_FIELD_KEYS[1],
@@ -398,6 +414,8 @@ export function parseLayout(text: string | null): ListLayout | null {
 // ── Edit list：每格的值统一成字符串比较（多选是按选项顺序的逗号串，同后端 bulk 接受的格式） ──
 
 export function cellValue(profile: HRProfile, key: string): string {
+  if (key === SPELLINGS_COLUMN)
+    return (profile.other_spellings ?? []).join(", ");
   const raw = (profile as unknown as Record<string, unknown>)[key];
   if (Array.isArray(raw)) return raw.join(",");
   return (raw as string) ?? "";
