@@ -13,7 +13,8 @@
 - 在分支没合：task/driver-follow（等 Annie 对新红字 / tooltip / How to use 两句回 A）、task/samsara-arrival（等后端 samsara-arrivals + v146）。
 - 后端 main 最新 010f6302（G245 登记）；manifest_cols 三键上限 4000 → 20000 今晚家里做，还没 SHA。
 - 前端工作窗口 fa [985244] 报到（共用主目录，已叫它开 worktree）。派：① 置顶 73 preview；② **加急 bug**：Annie 原话「然后，明天的relay list还每页都隔了一张空白页」（11/4 Relay list 打印每张后多一张空白页）→ fa 先修（task/relay-list-blank-page，只修 bug、样子不变，不用 preview），修完直接合 main。
-- 5c 对话名改为「今日前端主窗口-5c」。后端另有 npe-confirmation-service-da [af1446]。
+- 5c 对话名改为「今日前端主窗口-5c」。
+- ✅ 置顶 71 后端：manifest_cols_bus / _tickets / _admin_fee 上限 4000 → 20000 已上线（后端 origin/main 1fac68ca，9e 报）；键名格式不变，超限 400 "value too long (max 20000 chars)"，其他键仍 4000，partner 仍 403。前端不用改。后端另有 npe-confirmation-service-da [af1446]。
 
 ## 2026-11-03 晚 Relay list 打印每张后面多一张空白页（`task/relay-list-blank-page`，工作窗口 `npe-ops-frontend-fa`[985244]，主窗口 5c 派）—— 只修 bug、样子不变，合 main
 - Annie 原话（5c 转）：「然后，明天的relay list还每页都隔了一张空白页」（11-04 的 Relay list）。
