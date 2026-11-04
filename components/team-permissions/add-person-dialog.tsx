@@ -17,11 +17,14 @@ import { MemberFormDialog } from "./member-form-dialog";
  */
 export function AddPersonDialog({
   onSaved,
+  ownItems,
   onClose,
   onBasicInvite,
   toFailure,
 }: {
   onSaved: () => void;
+  /** admin 自己有的勾（G212 Qd）：自己没有的项灰掉；Super Admin 不传。 */
+  ownItems?: ReadonlySet<string>;
   onClose: () => void;
   onBasicInvite: () => void;
   toFailure: (error: unknown) => ActionFailure;
@@ -65,6 +68,7 @@ export function AddPersonDialog({
         catalog={data.catalog}
         members={data.members}
         onSaved={onSaved}
+        ownItems={ownItems}
         onClose={onClose}
         toFailure={toFailure}
       />

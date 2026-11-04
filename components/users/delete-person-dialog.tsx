@@ -110,7 +110,11 @@ export function DeletePersonDialog({
   );
 }
 
-/** 后端 G212：账号还连着 Dispatch / 任务记录、删不掉，只能停用（400 detail 原文里有「still linked」）。 */
+/**
+ * 后端 G212：账号还连着 Dispatch / 任务记录、删不掉，只能停用。B3 起是 409 + 带数字的一句（例「Erin Walsh is still linked
+ * to 3 task handovers and 12 Dispatch assignments, so the account cannot be deleted. Deactivate it instead, or reassign
+ * those first.」），以前是 400；两种原文里都有「still linked」，原样显示，按这个出「Deactivate instead」。
+ */
 function isStillLinked(message: string): boolean {
   return /still linked/i.test(message);
 }

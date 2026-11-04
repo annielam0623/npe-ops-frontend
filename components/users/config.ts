@@ -1,9 +1,4 @@
-import type {
-  AdminUser,
-  AssignableRole,
-  CurrentUser,
-  UserRole,
-} from "@/types";
+import type { AdminUser, AssignableRole, CurrentUser, UserRole } from "@/types";
 
 interface RoleStyle {
   label: string;

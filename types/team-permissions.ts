@@ -70,6 +70,19 @@ export interface TeamMemberUser {
   phone?: string | null;
   /** 关联了 HR 档案的司机 / 导游：HR 里的电话（后端 G219，名单也带）；其余 null。 */
   hr_phone?: string | null;
+  // ── G212 B5（已上线）：Users 页要的字段，名单改读这里（admin / Super Admin 一起）。没带 = 后端还旧，照读 /api/users。
+  role?: string;
+  is_active?: boolean;
+  initials?: string | null;
+  /** 只给能 Copy Link 的人、只给没接受的邀请；其余 null（SA-2 / SA-6：范围外的邀请对 admin 也是 null）。 */
+  invite_token?: string | null;
+  is_self?: boolean;
+  created_at?: string | null;
+  created_by?: string | null;
+  // ── G212 B6 / B7：按层级能不能改。前端照它出 / 藏键，不自己另算；没带 = 后端还旧，照以前的做法。
+  can_edit?: boolean;
+  /** can_edit = false 时的原因（英文原话，照显示），例如「Only a Super Admin can change another admin.」。 */
+  edit_block_reason?: string | null;
 }
 
 export interface TeamMemberContact {

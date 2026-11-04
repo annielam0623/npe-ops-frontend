@@ -45,6 +45,24 @@ const DUTIES = [["guest_messages", "Guest messages"], ["complaints", "Complaints
 const TEAMS = [{ id: 1, name: "Reservations", color: "#2563eb" }, { id: 2, name: "Operations", color: "#15803d" }, { id: 3, name: "Morning", color: "#b45309" }, { id: 4, name: "Tickets", color: "#dc2626" }, { id: 5, name: "Dispatch", color: "#7c3aed" }];
 
 let viewer, nohome, nodefault, acctype, typeFail, team500, team403, detailFail, delFail, contact404, importBad, importFail, importConflict, people, contact, nextId;
+// G212 B5 / B6 / B7 + SA-2 / SA-6 + B3（后端 f4，没上线；形状照 94 转的）：g212=1 打开。
+//   admin 能读 /api/team/*（名单去掉 Super Admin 行和部门邮箱行），每行 can_edit + edit_block_reason；
+//   写按层级 403 / 400；/api/users 每行也带 can_edit；删不掉 409 新句子；多一个司机账号、两个 admin 范围外的邀请。
+let g212 = false;
+const LEVEL = { superadmin: 4, admin: 3, supervisor: 2 };
+const lvl = (role) => LEVEL[role] || 1;
+const viewerId = () => (viewer === "superadmin" ? 1 : 2);
+const ownItems = () => people.find((x) => x.id === viewerId())?.items || [];
+/** 同后端 team_tiers.row_reason：null = 能改。 */
+function blockReason(p) {
+  if (p.id === viewerId()) return "You cannot change your own access. Ask a Super Admin.";
+  if (p.role === "superadmin") return "A Super Admin account cannot be edited here.";
+  if (viewer === "superadmin") return null;
+  if (lvl(p.role) >= lvl("admin")) return "Only a Super Admin can change another admin.";
+  // SA-2：admin 看待接受邀请，含自己没有的权限 ⇒ 不能分享 / 撤销。
+  if (!p.invite_used && p.items.some((c) => !ownItems().includes(c))) return "Only a Super Admin can share this invite.";
+  return null;
+}
 // Team 页 Columns（后端 92）：账号里存的 team_list_layout（JSON 字符串；null = 没存过）；teamLayout404 = 后端还没认这个键。
 let teamLayout = null, teamLayout404 = false;
 const log = [];
@@ -59,6 +77,7 @@ function person(id, username, display_name, items, o = {}) {
 function reset() {
   teamLayout = null; teamLayout404 = false;
   extraLog.length = 0;
+  g212 = false;
   viewer = "superadmin"; detailFail = 0; delFail = ""; contact404 = false; importBad = false; importFail = false; importConflict = false; nohome = false; nodefault = false; acctype = false; typeFail = false; team500 = false; team403 = false;
   people = [
     person(1, "annie", "Annie", ALL, { role: "superadmin", team_ids: [1, 2] }),
@@ -84,6 +103,13 @@ const row = (p) => {
     team_ids: p.team_ids, item_count: p.items.length, duties: p.duties, phone: p.phone };
   if (!nohome) r.home_path = p.home_path;
   if (acctype) r.account_type = p.role === "partner" ? "partner" : "staff";
+  if (g212) {
+    const reason = blockReason(p);
+    Object.assign(r, { role: p.role, is_active: p.is_active, initials: null, is_self: p.id === viewerId(),
+      created_by: "annie", created_at: "2026-09-27T03:30:00+00:00",
+      invite_token: !p.invite_used && !reason ? "tok-" + p.id : null,
+      can_edit: reason === null, edit_block_reason: reason });
+  }
   return r;
 };
 const detail = (p) => ({ id: p.id, username: p.username, display_name: p.display_name, email: p.email,
@@ -142,6 +168,13 @@ http.createServer((req, res) => {
       if (q.importfail) importFail = q.importfail === "1";
       if (q.importconflict) importConflict = q.importconflict === "1";
       if (q.hrphone) people.find((x) => x.id === Number(q.hrphone)).hr_phone = "(702) 555-0199";
+      if (q.g212 === "1" && !g212) {
+        g212 = true;
+        // 司机账号（不在 /api/team/members，只在 /api/users）；admin 角色的邀请（SA-6）；含 settings.schedule 的邀请（SA-2，admin 没这一项）。
+        people.push(person(nextId++, "zz.driver", "ZZ Test Driver", [], { role: "driver", email: null }));
+        people.push(person(nextId++, "__pending_admin0001", null, ADMIN, { role: "admin", invite_used: false, is_active: false, email: null }));
+        people.push(person(nextId++, "__pending_sched0001", null, [...STAFF, "settings.schedule"], { invite_used: false, is_active: false, email: null }));
+      }
       if (q.log) return send(res, 200, log);
       return send(res, 200, { ok: true });
     }
@@ -202,9 +235,31 @@ http.createServer((req, res) => {
         display_name: "Viewer", initials: "VW", role: viewer, is_admin: true, is_superadmin: viewer === "superadmin", is_supervisor: true });
     }
 
+    // G212 ②：只返回生效的勾（同后端 Qd 拦截用的那份）。
+    if (g212 && p === "/api/me/permissions" && m === "GET") {
+      return send(res, 200, { is_superadmin: viewer === "superadmin", default_home: null,
+        permissions: ownItems().map((code) => ({ code, module: code.split(".")[0], wired: true })) });
+    }
+
     if (p.startsWith("/api/team/")) {
       if (team500) return send(res, 500, { detail: "Internal Server Error" });
-      if (team403 || viewer !== "superadmin") return send(res, 403, { detail: "Superadmin access required" });
+      // G212 B6：admin 也能用 Team 页（读 + 按层级写）；部门邮箱职责、导入只给 Super Admin。
+      const adminOk = g212 && viewer === "admin" && !p.startsWith("/api/team/contacts");
+      if (team403 || (viewer !== "superadmin" && !adminOk)) return send(res, 403, { detail: "Superadmin access required" });
+      if (g212 && viewer === "admin") {
+        const tm = p.match(/^\/api\/team\/members\/(\d+)/);
+        const who = tm && people.find((x) => x.id === Number(tm[1]));
+        if (who && who.role === "superadmin") return send(res, 404, { detail: "Member not found" });
+        if (who && m !== "GET" && blockReason(who)) return send(res, 403, { detail: blockReason(who) });
+        if (tm && m === "PUT" && !p.endsWith("/contact") && !p.endsWith("/account-type")) {
+          const own = ownItems();
+          const want = new Set(body.items || []);
+          const diff = [...new Set([...who.items, ...want])].filter((c) => who.items.includes(c) !== want.has(c) && !own.includes(c)).sort();
+          if (diff.length) return send(res, 400, { detail: `You can only give or take away permissions you have yourself: ${diff.join(", ")}` });
+        }
+        if (p === "/api/team/members" && m === "GET")
+          return send(res, 200, people.filter((x) => x.role !== "superadmin" && !["driver", "guide"].includes(x.role)).map(row));
+      }
       if (p === "/api/team/catalog" && m === "GET") {
         const out = {
           modules: MODULES.map(([code, display_name, items]) => {
@@ -217,7 +272,8 @@ http.createServer((req, res) => {
         if (!nodefault) out.default_items = STAFF;
         return send(res, 200, out);
       }
-      if (p === "/api/team/members" && m === "GET") return send(res, 200, [...people.map(row), contact]);
+      // 司机 / 导游不在 Team 名单（后端 PERM_ROLES），只在 /api/users。
+      if (p === "/api/team/members" && m === "GET") return send(res, 200, [...people.filter((x) => !["driver", "guide"].includes(x.role)).map(row), contact]);
       if (p === "/api/team/members" && m === "POST") {
         if (!body.username || body.username.length < 3) return send(res, 400, { detail: "Username must be at least 3 characters." });
         if (people.some((x) => x.username.toLowerCase() === body.username.toLowerCase())) return send(res, 400, { detail: "That username is already taken. Please choose another." });
@@ -299,7 +355,9 @@ http.createServer((req, res) => {
       if (viewer === "anon") return send(res, 401, { detail: "Authentication required" });
       return send(res, 200, people.map((x) => ({ id: x.id, username: x.username, display_name: x.display_name,
         initials: null, role: x.role, is_active: x.is_active, invite_used: x.invite_used, invite_token: x.invite_used ? null : "tok-" + x.id,
-        created_by: "annie", created_at: "2026-09-27T03:30:00+00:00", team_ids: x.team_ids, is_self: x.id === 1 })));
+        created_by: "annie", created_at: "2026-09-27T03:30:00+00:00", team_ids: x.team_ids, is_self: g212 ? x.id === viewerId() : x.id === 1,
+        // G212 ①：/api/users 每行也带（同一个判断）；admin 看司机 / 导游 = true。
+        ...(g212 ? { can_edit: blockReason(x) === null, edit_block_reason: blockReason(x) } : {}) })));
     }
     // 彻底删除（后端 G212 DELETE /api/users/{id}，3d 269c3ae）：delfail=linked / self / super / 403 / 404 照后端原话回错。
     const um = p.match(/^\/api\/users\/(\d+)(\/deactivate)?$/);
@@ -308,7 +366,9 @@ http.createServer((req, res) => {
       if (!who) return send(res, 404, { detail: "User not found" });
       if (m === "DELETE") {
         const DEL_FAIL = {
-          linked: [400, "This account is still linked to dispatch or task records, so it cannot be deleted. Deactivate it instead."],
+          linked: g212
+            ? [409, `${who.display_name} is still linked to 3 task handovers and 12 Dispatch assignments, so the account cannot be deleted. Deactivate it instead, or reassign those first.`]
+            : [400, "This account is still linked to dispatch or task records, so it cannot be deleted. Deactivate it instead."],
           self: [400, "Cannot delete yourself"],
           super: [400, "Cannot delete a superadmin account"],
           403: [403, "Superadmin access required"],
@@ -336,6 +396,10 @@ http.createServer((req, res) => {
     const rm = p.match(/^\/api\/users\/(\d+)\/role$/);
     if (rm && m === "POST") {
       const who = people.find((x) => x.id === Number(rm[1]));
+      if (g212 && viewer === "admin") {
+        if (blockReason(who)) return send(res, 403, { detail: blockReason(who) });
+        if (lvl(body.role) >= lvl("admin")) return send(res, 400, { detail: "You can only give a role below your own." });
+      }
       who.role = body.role;
       return send(res, 200, { ok: true, role: body.role });
     }
