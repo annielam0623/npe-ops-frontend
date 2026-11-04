@@ -1029,6 +1029,7 @@ D. 已完成、待从置顶移走：
     - Q8 How to use：A（推荐）Profile「Profile lists drivers (Driver and Driver + Guide) on top and guides below. People without a position are listed last until you pick one.」+ Working Record 一段（全文见 preview）；B 她改字。
     - 给后端（等 Annie 答了转 94）：field-stats 每人带 HR position；同一人司机 / 导游两种 kind 是一条还是两条；totals / by_day 同 summary 名，另带 avg_dwell_minutes、staff_sms，by_day 带 date / van / kind；Today 用 /live-drivers summary；没坐标的站进不进 stops。前端：Profile 分节约 2 小时，Working Record 约 1 天。
   - **Annie 答（原话）**：「1，这两节是对的   2 分的也是对的，但是我要的不是这个内容，他们的working record一个是快照，就是我们之前讨论的司机或导游的那个页面快照，另一个是一个日历，显示该天他的工作是什么，比如说Dan，11/2 司机，bus tour south rim  车号，  lankun 11/2 导游，bus tour antelope 车号， Annie-test 司机&导游  private tour BZ 车号」⇒ Q1 A、Q2 A 定。**Working Record 内容改**：不是统计表，而是每人两样——① **日历**：每天他做了什么（Driver / Guide / Driver & Guide、哪个团如「Bus tour South Rim」「Bus tour Antelope」「Private tour BZ」、车号）；② **快照**：之前讨论的司机 / 导游页面快照（⇒ 快照**恢复**，18 的 day-snapshot WIP 分支、存法照之前定稿：relay 10:00、团车司机 check out + 23:00、导游按团时间）。Q3–Q8 统计那些题作废。2c 理解：点日历某一天 → 看那天的快照；待 preview 核。已转 94（恢复快照 + 日历数据）、81（重画 preview）。
+  - **Annie（原话）**：「没人需要统计他们接了几个客人之类的，那个在tracking表里已经有了，我现在要的数据是给他们算工资的」⇒ Working Record 的目的 = **算工资**：日历每天写角色、团、车号是关键；人数 / Picked up 这类统计不要（Tracking 表已有）。2c 已问 Annie：工资按什么算（按天 / 按团种类 / 按小时（check in–check out）/ 加班、Driver & Guide 另算？），好决定日历每格还要写什么、要不要按月合计和 Export。已告诉 94、81。
 - G212 Team 页前端派 c8（task/g212-team-hierarchy），等后端 SHA。
 
 ### 85. Staff Schedule 班次类型（Open / Mid / Close）可手动新增（2026-11-04，Annie 在主窗口-2c 提，附排班格截图，没动手）
