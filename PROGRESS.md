@@ -967,6 +967,7 @@ D. 已完成、待从置顶移走：
 - **新要求（主窗口原话，2026-11-04）**：「在南北分车这里，dispatch的分车页面，按照A-Z 顺序来排，相同酒店放在一起，然后设置酒店胶囊在表格的上方，点胶囊就选中这个胶囊的所有酒店，然后点击移动到B车，就全部移过去了，胶囊可以单选也可以多选」。还没 preview、没动手。纯前端（seating.tsx，同 72 勾选框同一文件）→ 派 09 在 task/seat-direction 上一起出 preview。
 - ✅ Annie「理解正确，动手」（主窗口原话，2026-11-04）对酒店胶囊那件。09 在 task/seat-direction 上直接写，细节按推荐，做完截图 preview 给 Annie 看过再合（连同 Direction 列 / 大勾选框）。
 
+- 09 做完酒店胶囊 + A–Z（task/seat-direction faca991，未合；preview 同链接 ①b）：每台车 / Not on a bus 各一排胶囊（「Wynn 2 orders · 4 pax」，没酒店的「No hotel」排最后）；按酒店名 A–Z、同酒店内按客人名；选中淡蓝底深蓝字；可跨车多选；Upper / Lower 筛选时只算筛出的；合作方只读不出胶囊；Completed 日照常。da 501/501。**等 Annie 看 ① ①b ② 三处点头**；Direction 列没后端键时不出，所以点头后可先合 main。
 ### 72. Dispatch 两台 bus 调位置：勾选框放大 + Auto 按南北分车（2026-11-03 晚，Annie 在主窗口提，附表）
 - Annie 原话：「前端要改一下，当有两台bus可以调位置的时候，勾选框太小了，把它放大跟main manifest里一样；另外Auto排进bus的时候按照这个规则：一台车放south，一台放north，中间的机动填位」。
 - 附表（Las Vegas 酒店分三色）：Blue: Northbound assist —— Plaza、Sahara、The STRAT、Westgate、Circus Circus、Wynn、Trump；Red: Neutral / Flexible —— MGM Grand、Virgin、Horseshoe、Bellagio、Treasure Island；Orange: Southbound assist —— Aria、Mandalay Bay、Excalibur、Park MGM、Resorts World。
