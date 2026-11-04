@@ -6,6 +6,18 @@
 
 > **下一个主窗口：先读下面「2026-11-04 收工交接：前端主窗口 2c」，再看置顶「📌 等 Annie 确认」。**
 
+## 2026-11-04 收工：工作窗口 `npe-ops-frontend-c8`[a65365]（2c 派；dev server / Chrome 已全关）
+- 今天合了 main（详细做法、检查数、Annie 验收点各在自己那一节）：
+  - **G212 Team 页 admin 按层级** → main 9bea1a4（功能 368796d + 7f6bcb0；后端 b68aa0e9 核过字段）。见「2026-11-04 G212 Team 页 admin 按层级」一节：admin 账号、SA 账号各看一遍 Settings › Team，只动 ZZ Test。
+  - **置顶 85 Staff Schedule 班次类型** → main 1230d19（功能 e5b406d + 0dd439c）；后端 color b75601c0 上线后只读核过、前端不用改，**选色已生效**（d2e69c2 记的）。验收点在置顶 85 最上面；生产没有删除，加的 ZZ Test 类型看完勾掉 Active。
+- 作废 / 没做：
+  - 置顶 86 快照 preview https://claude.ai/artifact/8ncEsZAqKAjRRe9qErWnyz 作废（Annie 改成只要汇总和统计，另出）。
+  - 置顶 83：c8 早上只读熟悉过，没写；后来 81 做完合了 main（a9efe18），不在 c8 手上。
+- 留给下一个窗口知道的：
+  - users 检查套接在 tp 等别的套后面跑时，偶尔在 /settings/users 跳转那一步首次编译超时崩（75/75 后），单跑每次 80/80，跟改动无关；合 Team 页相关改动时单独再跑一次 users 确认。
+  - worktree 留着、都已合、没有未提交改动，可以删：C:\Code\npe-ops-fe-c8（task/schedule-shift-types）、C:\Code\npe-ops-fe-c8-g212（task/g212-team-hierarchy）。
+  - 手上没有没做完的活。
+
 ## 2026-11-04 收工：工作窗口 `npe-ops-frontend-81`[90172b]（2c 派；dev server / Chrome 已全关）
 - 今天合了 main：Restaurant ⬆ Import 6c56f18、置顶 75 agent ref 搜索 8cecaea、置顶 51 B Open in Main manifest 6e05f55、置顶 83 凌晨登录 Dispatch 默认今天 a9efe18、置顶 59 / 58 酒店坐标一格 + Tracking Arrived at / Left at 4fffe65（各置顶记了验收点）。
 - **推了分支、没合**（worktree 都在 C:Code 下，干净）：
