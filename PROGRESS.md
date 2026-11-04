@@ -1985,6 +1985,7 @@ D. 已完成、待从置顶移走：
 - **Annie 确认（原话）**：「置顶83，是的，只是登录默认，如果staff自己改过时间就随他改的时间，不需要再回跳」⇒ 只管登录后打开时的默认日期；staff 自己换过日期就一直按他换的，不跳回。**还没「动手」**（已问）。
 - ✅ **Annie「1 登录时间选A   动手」（原话，2026-11-04）** ⇒ 置顶 84 Q5 = A：登录时间跟登录记录一起做——后端每次登录写一条记录，GET /api/me 加 logged_in_at（这次会话的登录时间）取自它；前端 83 动手，派 81（task/dispatch-login-default）。84 在 Staff Schedule 怎么显示（Q1–Q4）还没答，要先 preview（81 做完 83 出）。已转 94。
   - 94：派后端 18（Restaurant Import 后），logged_in_at 按本次 token 取、拿不到不带（上线后 9 小时内旧 token 都不带）；登录记录迁移 v151（排在 v148 / v149 / v150 后，SQL 先给 Annie 看）；列表接口等 84 preview。2c 建议 94 把 logged_in_at 先单独上（token exp − 9h，不用迁移），记录表后上。
+  - ✅ 94 同意分两步：logged_in_at 单独先上（不用迁移，按本次 token 推算，57 核续签情况），派 57 现在开工；登录记录表 + v151 照旧 18 后做。
 - ✅ **Annie「排班这个全部同意推荐，动手吧」（原话，2026-11-04）** ⇒ Q1 A、Q2 A（只在 ⚙ Settings › Shift types）、Q3 A（名字 + 默认时间 + 8 色）、Q4 A（停用 + 排序 + 停用提醒）、Q5 A（两段 How to use）、Q6 定稿（Unassigned 不上色、卡片白虚线框无底色）。前端派 c8（task/schedule-shift-types）；后端 color 列 + migration（先给 Annie 看）+ action_log 转 94。preview v4 https://claude.ai/artifact/9LFRCau1uBg5sQ5aPbdSZt
 
 - ✅ **Annie「排班这个全部同意推荐，动手吧」（原话，2026-11-04）** ⇒ Q1 A、Q2 A（只在 ⚙ Settings › Shift types）、Q3 A（名字 + 默认时间 + 8 色）、Q4 A（停用 + 排序 + 停用提醒）、Q5 A（两段 How to use）、Q6 定稿（Unassigned 不上色、卡片白虚线框无底色）。前端派 c8（task/schedule-shift-types）；后端 color 列 + migration（先给 Annie 看）+ action_log 转 94。preview v4 https://claude.ai/artifact/9LFRCau1uBg5sQ5aPbdSZt
