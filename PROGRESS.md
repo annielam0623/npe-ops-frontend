@@ -821,6 +821,7 @@
 - 卡在：fa 没 ops 登录、拿不到链接；打开链接会不会记成「已打开」。已问 9e 要链接清单 / 不记录的办法 / 键拨给谁。
 - 9e 只读答：用 Super Admin 预览 /driver/preview?date=2026-11-04、/guide/preview?date=2026-11-04（同模板同数据、选人页、不记已读、写操作 disabled）；**不要用真 /l/{token} 测**（会按司机本人登录）。客人行 Call = tel:{manifest 客人 phone}；relay 段 Call 在预览里灰；Text 不是 sms:，是系统内消息框（driver_messages）。fa 没登录进不去。今晚做不做 9e 请 Annie 定。5c 已问 Annie：A 她自己看预览 / B 后端只读查全部号码格式。
 - Annie（原话）：「我点击进司机的的页面call键是灰色的，不能点啊」。5c 只读核 driver_home.html：预览里客人 Call 是灰的 span（:289-291、:381-384，.g-btns-preview pointer-events:none），不是 tel:——9e 上次说法有误，已更正；真链接（明天 G227）Call 是 tel:{客人电话}、Text 能用。已问 9e 预览 Call 改真 tel: 的工作量 / 当初为何灰；问 Annie 选法。
+- 9e 认错并答：预览灰掉是故意的（Annie 10-27「只读、照真实版面画」）。预览 Call 改真 tel:（driver / guide 两个模板）约半小时、Risk B，代价是 Super Admin 点了真拨。只读查 11/4 全部客人电话（按司机 / 导游分组、标空号 / 位数不对 / 带字母 / 国际号缺 +，并和 Order List 比）约 15 分钟、不改文件，收工时段也能跑，Annie 说一声就做。（5c 给 Annie 的标号：A = 只读查，B = 改预览。）
 
 ### 75. Dashboard 搜索框可以按 Agent reference 搜订单（2026-11-03 晚，Annie 在主窗口 5c 提，没动手）
 - 原话：「我在main manifest里加上了agent reference，能否在首页的search bar里页可以加上用这个号码搜索订单」
