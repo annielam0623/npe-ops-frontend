@@ -972,6 +972,7 @@ D. 已完成、待从置顶移走：
   - Q2–Q4 同上（Q4 A 加停用提醒）。Q5 How to use 两段：Staff Schedule 段加改名句；Rules 页「New shift types show up in the Shift list of every rule. Auto-fill uses the times from the Shift times rule, so add one for a new shift type; without it, Auto-fill uses the whole working hours.」
   - Q6 Unassigned 配色：A（推荐）深灰行头 + 白字「Unassigned」「3 shifts to assign」+ 整行淡斜纹，卡片保留班次色 + 虚线框 + 右上「No one yet」；B 整行淡黄底 + 黄虚线（撞「改了没存」的黄）；C 同别人的行，只「Unassigned」灰斜体（太淡易漏）。
   - 前端工时 4–5 小时；后端 color 列（Q3 A）+ 建议 action_log。
+  - **Annie 答 Q6（原话）**：「unsign不上色吧，这个透明就好」⇒ Unassigned 行头和整行都不上底色（透明、跟员工行一样），不用斜纹。2c 追问：卡片保留班次色 + 虚线框 + 右上「No one yet」（推荐保留，免得跟已派的分不清）。其余 Q2–Q5 未答，还没「动手」。
 
 ### 84. Staff Schedule 后台要有员工登录记录（2026-11-04，Annie 在主窗口-2c 提，没动手）
 - 原话（接置顶 83 后说）：「我们本来就应该在staff的schedule后台管理页面有员工的登录记录」。
