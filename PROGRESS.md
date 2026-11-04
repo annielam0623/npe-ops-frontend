@@ -954,6 +954,12 @@ D. 已完成、待从置顶移走：
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 84. Staff Schedule 后台要有员工登录记录（2026-11-04，Annie 在主窗口-2c 提，没动手）
+- 原话（接置顶 83 后说）：「我们本来就应该在staff的schedule后台管理页面有员工的登录记录」。
+- 现状（2c 只读查后端 origin/main）：**系统没有登录记录**。登录只发 9 小时的 cookie（auth.py _set_session_cookie），不写库；只有 admin_users.last_seen_at（presence.py，Dashboard「Today's team」在线用，一分钟一刷，只留最后一次）。前端 Staff Schedule 有 person-history.tsx（每人一周往来记录：发的 / 回的 / 主管处理），没登录。
+- 想法：后端每次登录写一条记录（谁、几点、从哪种账号进），置顶 83 的「登录时间」也从这里取；前端在 Staff Schedule 里显示。样子要先 preview。
+- 要问 Annie：放哪（每人 History 里 / 单独一个 Logins 列表）、记什么（只登录时间 / 加退出、IP、设备）、留多久、谁能看；+ 跟置顶 83 是不是一起做。
+
 ### 83. 凌晨 2 点–早上 9 点打开 Dispatch 默认今天（2026-11-04，Annie 在主窗口-2c 提，没动手）
 - 原话：「给你一个新任务，把凌晨2点- 9点登录进operation system的人的dispatch页面默认为今天。今早犯了好几个错误，拿着今天的单子去对明天的团，数字全是错的，然后才发现是默认是明天的」。
 - 现状（2c 只读）：Dispatch 不带 ?date= 时由后端定默认 = 洛杉矶明天（app/dispatch/page.tsx:9、lib/dispatch-api.ts:26）；dispatch-view.tsx:751 只认 ?date=。
