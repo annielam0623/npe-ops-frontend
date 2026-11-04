@@ -10,6 +10,8 @@
 - 24 关前转交（24 原话「看你已改名主窗口-2c，今天由你接主窗口」）。2c 先以工作窗口合了置顶 79 ops 白字 main c41546a。已告知后端 94、37 新名字。**后端主窗口今天是 `主窗口-94`[8d6960]**（37 关前说：后端的事都发 94，含 direction SHA、模板白字；后端交接在后端 origin/main fa210a5c 的 NPE_每日交接.md 最上面）。
 - 还在跑：后端 94 改手机司机 / 导游页白字；后端 57 南北分车 direction（迁移 Annie 先执行）。等 Annie：72 preview 回 A、80 选 A / B、64 / 69 / 68（详见置顶，不滚动重问）。
 - 已派 `npe-ops-frontend-81`[90172b]：Supplier › Restaurant ⬆ Import（5c 交接「明天开工」0；Annie 10/29 已动手，不再 preview）。分支 task/import-restaurant；先查后端有没有导入接口，没有写「需要后端」转 94。
+  - 81 查过后端没有 Restaurant 导入接口 → 需求（preview / commit 路由、栏 key、按店名对上、校验、日志、409）2c 原样转 94；94 收到，排在 18 做完 75 之后。81 先 mock 做、推分支不合，SHA 到了 2c 转 81 核字段再合。
+- `09`[341d31] 还开着（上下文长，只接小活）：待命接 72——Annie 看 preview 回「动手」后转原话给 09，合最新 main、跑 da / pl / nav + tsc / eslint / build 后合。
 
 ## 2026-11-04 交接：前端主窗口 `今日主窗口-24`[310398] → 今天新开的主窗口（公司电脑）
 
