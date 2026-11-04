@@ -749,6 +749,7 @@
 - Annie 原话（09 窗口）：「酒店的颜色是由哪个司机去接决定的，如果就两台车，就分两个颜色给置顶的relay1 和2 ，然后对应的他们接的酒店就是他们自己的颜色」。与后端 relay_pull.py:287 注释相反，已转 37 更正；后端要在 manifest guest 上加 relay_color（现成 guest_relay_colors()，同 Relay 列表色，没 relay 接为 null）。
 - 两题（09 已在它窗口问 Annie，原文完整）：① 每行酒店格都涂，还是同一家酒店连着的只涂第一行（后端已有 hotel_first）；② 没有 relay 接的客人（自己到、团车接）酒店格不涂吗。
 - 派 09 做 preview；Annie 答题 + 「动手」后写代码。
+- 37 评估：能做（relay_car_colors() + guest_relay_colors()），manifest guest 加 relay_color，注释同任务改。规则同 Relay 列表：每轮各自从 Relay 1 编号；当天也开大巴的 relay 车不占号、取它挂的大巴团色；第 4 辆起照纸本色表循环。只网页约 2 小时；打印 + Excel 也涂约半天（57 下午把打印 / Excel 酒店格色拿掉了要加回）。风险 B。新题 ③：打印和 Excel 也照涂吗（推荐要）。已转 09 放进 preview。
 
 ### 68. Dispatch Relay 车勾酒店不算人数、不核座位（2026-11-03 bug，Annie 在后端 37 窗口报，37 在问）
 - Annie 把一台 23 座的车勾进了 39 个客人。后端要给每家酒店人数、保存时核座位；前端勾选时显示「人数 / 座位」。
