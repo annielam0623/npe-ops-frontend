@@ -62,6 +62,13 @@ export function RulesView({ rules, ctx, canEdit, onSave }: RulesViewProps) {
           <p className={cn(MUTED, "text-[12px]")}>
             Auto-fill follows these rules when it schedules a week.
             {canEdit ? "" : " Only supervisors and admins can change them."}
+            {/* 置顶 85 Q5（Annie「全部同意推荐」；2c 定放这里，不另加 How to use 框）。 */}
+            <span data-rules-shift-types-note>
+              {" "}
+              New shift types show up in the Shift list of every rule. Auto-fill
+              uses the times from the Shift times rule, so add one for a new
+              shift type; without it, Auto-fill uses the whole working hours.
+            </span>
           </p>
         </div>
         {canEdit ? (

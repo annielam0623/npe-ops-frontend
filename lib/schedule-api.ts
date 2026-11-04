@@ -1,4 +1,5 @@
 import { apiFetch } from "@/lib/api-client";
+import { rememberShiftTypeColors } from "@/lib/schedule-shift-colors";
 import { ApiError } from "@/types";
 import type {
   ScheduleEmployee,
@@ -25,13 +26,16 @@ import type {
 } from "@/types";
 
 /** 工作时段 + 班次类型；所有登录用户都能读，写只有 superadmin（后端挡，前端按 403 隐藏改的入口）。 */
-export function fetchScheduleSettings(
+export async function fetchScheduleSettings(
   signal?: AbortSignal,
 ): Promise<ScheduleSettings> {
-  return apiFetch<ScheduleSettings>("/api/settings/schedule", {
+  const settings = await apiFetch<ScheduleSettings>("/api/settings/schedule", {
     cache: "no-store",
     signal,
   });
+  // 格子按班次类型存的颜色画（置顶 85）：读到就记下，各处画卡片时按 key 查。
+  rememberShiftTypeColors(settings.shift_types);
+  return settings;
 }
 
 export function updateWorkWindow(
@@ -181,27 +185,65 @@ export function deleteScheduleTimeOff(id: number): Promise<ScheduleOk> {
   });
 }
 
+/** 新增 / 改班次类型要送的字段（置顶 85）；默认时间两个都给 = 设置，两个都 null = 不设。 */
+export interface ShiftTypeInput {
+  label: string;
+  sort_order: number;
+  default_start_time: string | null;
+  default_end_time: string | null;
+  /** 旧后端不认这个字段会忽略（payload.get），新后端不认得的颜色名 400。 */
+  color: string;
+}
+
 /**
- * 改班次类型的默认上下班时间（superadmin）。两个都给 = 设置，两个都 null = 清除；
- * 只给一个后端 400 `Send both default_start_time and default_end_time, or neither.`
+ * 新增班次类型（settings.schedule = Super Admin，后端 POST …/shift-types）。key 前端从名字生成
+ * （`shiftTypeKeyFor`）；后端照旧查重，重了 400「Shift type "x" already exists.」。
  */
-export function updateShiftTypeDefaults(
-  type: ScheduleShiftType,
-  input: { default_start_time: string | null; default_end_time: string | null },
-): Promise<unknown> {
-  // 现有字段原样带上（label / 排序 / 启用），只改默认时间，免得后端把缺的字段当成要清掉。
-  return apiFetch<unknown>(
-    `/api/settings/schedule/shift-types/${encodeURIComponent(type.key)}`,
-    {
-      method: "PUT",
-      body: {
-        label: type.label,
-        sort_order: type.sort_order,
-        is_active: type.is_active,
-        ...input,
-      },
-    },
+export function createShiftType(
+  input: ShiftTypeInput & { key: string },
+): Promise<ScheduleShiftType> {
+  return apiFetch<ScheduleShiftType>("/api/settings/schedule/shift-types", {
+    method: "POST",
+    body: input,
+  });
+}
+
+/** 改名 / 排序 / 停用 / 默认时间 / 颜色，整行一起送（同 updateShiftTypeDefaults：缺的字段不让后端猜）。key 不变。 */
+export function updateShiftType(
+  key: string,
+  input: ShiftTypeInput & { is_active: boolean },
+): Promise<ScheduleShiftType> {
+  return apiFetch<ScheduleShiftType>(
+    `/api/settings/schedule/shift-types/${encodeURIComponent(key)}`,
+    { method: "PUT", body: input },
   );
+}
+
+/**
+ * 从名字生成 key（preview Q3：小写、空格换 _、最多 20 字，重了加 _2、_3…）。
+ * 只留 a–z / 0–9 / _；名字里一个字母数字都没有时用 shift。`taken` = 已有的 key（含停用的、这次新加的）。
+ */
+export function shiftTypeKeyFor(
+  label: string,
+  taken: Iterable<string>,
+): string {
+  const used = new Set(taken);
+  const base =
+    label
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, "_")
+      .replace(/[^a-z0-9_]/g, "")
+      .replace(/_+/g, "_")
+      .replace(/^_|_$/g, "")
+      .slice(0, 20)
+      .replace(/_$/, "") || "shift";
+  if (!used.has(base)) return base;
+  for (let n = 2; ; n++) {
+    const tail = `_${n}`;
+    const key = `${base.slice(0, 20 - tail.length)}${tail}`;
+    if (!used.has(key)) return key;
+  }
 }
 
 /**
