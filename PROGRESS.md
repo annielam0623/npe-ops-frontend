@@ -32,6 +32,7 @@
 - Annie 自己要做：v146；取消 Anita「Counts toward coverage」；GPS 偏差实测。
 
 ### 四、明天开工
+0. **Supplier › Restaurant 加 ⬆ Import**（Annie 原话「写进交接明天做」）：全站「上传表格自动填」preview https://claude.ai/artifact/MKtDUiYyUPZ1FcBJR3j4Lw 里四页之一，10/29 已「批量导游同意推荐。动手」（Q1–Q7 全按推荐），不用再出 preview。Team / HR / Pickup / Vehicles / Farm out Locations / Rates 都已上 main，只剩 Restaurant（当时等 G215，G215 早已上线但没派）。先只读查后端有没有 Restaurant 导入接口（标准形状 `<base>/preview`、`<base>/commit`，见 types/bulk-import.ts）；没有就写进「需要后端」转后端主窗口；前端照 StandardImport 做（参照 components/vehicles/import-panel.tsx）。
 1. 报对话名；git pull；问后端主窗口 75 / 51B / samsara-arrivals 进度，SHA 到了派窗口核字段合（fa 的分支都在 origin）。
 2. Annie 答 77 / 63 等，按原话派。
 3. 资源：今晚空闲内存 8–11 GB，最多 1 个工作窗口。
