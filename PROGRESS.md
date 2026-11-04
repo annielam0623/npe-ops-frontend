@@ -1082,6 +1082,7 @@ D. 已完成、待从置顶移走：
   - 94：派后端 18（Restaurant Import 后），logged_in_at 按本次 token 取、拿不到不带（上线后 9 小时内旧 token 都不带）；登录记录迁移 v151（排在 v148 / v149 / v150 后，SQL 先给 Annie 看）；列表接口等 84 preview。2c 建议 94 把 logged_in_at 先单独上（token exp − 9h，不用迁移），记录表后上。
   - ✅ 94 同意分两步：logged_in_at 单独先上（不用迁移，按本次 token 推算，57 核续签情况），派 57 现在开工；登录记录表 + v151 照旧 18 后做。
   - 57 审查全过、正在落地：GET /api/me logged_in_at = ISO 例「2026-11-04T17:40:00+00:00」，拿不到整个键不带；partner / staff / admin 都带；旧 token 也能推出时间（上线后已登录的人马上有）。SHA 到了转 81 合 6a3320f。
+  - ✅ 后端上线 main 3b362f51（合并 39426f8d，任务 fc186f8a）。派 81 核字段合 main。
 
 ### 82. G245 Main manifest 羚羊谷 Cfm # 跟产品不符标红、挡发送（2026-11-04，94 转，前端还没 preview）
 - Annie 原话（94 转）：「我需要订单如实地反映在页面上，rezdy是什么样就是什么样……现在在main manifest的cfm#就应该是标红，然后让staff去改」「如果设置了auto send的话要提醒这个#的不对，不能发送」。起因 CHDQ59DAL：原下 X 后改 Lower，X 栏的号是真的但不是 Lower 的号。
