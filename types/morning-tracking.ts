@@ -29,6 +29,12 @@ export interface MorningTrackingRow {
   guest_viewed_at?: string | null;
   /** 客人看的链接是旧车、司机已经换车：请客人重新打开链接（同上；G234 题 6 改字）。 */
   guest_link_stale?: boolean;
+  /**
+   * Samsara 到站（置顶 58，后端 samsara-arrivals）：这单那一轮的 relay 车到 / 离他接客酒店的时间（ISO）；
+   * 不是 relay 的单、酒店没填坐标、车还没到 = null；旧后端没有这两个键（不出这两列）。
+   */
+  arrived_at?: string | null;
+  left_at?: string | null;
   /** G234：发送后在 Dispatch 换了司机，链接已改跟新司机；没换过 = null（旧后端没有这个键）。driver 列已经是新司机。 */
   driver_followed?: DriverFollowed | null;
   /** 原始短信状态（例 "sent:SM…"、"delivered"、"undelivered"），前端按子串归类。 */
@@ -158,6 +164,12 @@ export interface LiveStationBlock<G> {
   pax: number;
   bookings: number;
   guests: G[];
+  /**
+   * Samsara 到站（后端 samsara-arrivals，只有 relay_blocks 有）：relay 车到 / 离这一站的时间（ISO）；
+   * 没记到 / 这家没填坐标为 null，旧后端没有这两个键。
+   */
+  arrived_at?: string | null;
+  left_at?: string | null;
 }
 
 /** 团车名单上的一位客人（manifest.blocks[].guests[]，导游页同）。 */

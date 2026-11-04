@@ -4,7 +4,36 @@
 
 > 6d 交接（下面「2026-10-27 交接：前端主窗口 6d」那节）的后端需求已于 10/27 晚由 ad 转给家里后端主窗口 17。
 
-> **下一个主窗口：先读下面「2026-11-04 交接：前端主窗口 今日主窗口-24 → 今天新开的主窗口」，再读「2026-11-03 晚 收工交接：前端主窗口 5c」，再看置顶「📌 等 Annie 确认」。**
+> **下一个主窗口：先读下面「2026-11-04 收工交接：前端主窗口 2c」，再看置顶「📌 等 Annie 确认」。**
+
+## 2026-11-04 收工交接：前端主窗口 `主窗口-2c`[f4667e]（公司电脑）
+> 窗口：前端工作窗口 `npe-ops-frontend-81`[90172b]、`c8`[a65365]；后端主窗口 `主窗口-94`[8d6960]（后端 18 / 2e / 57 / f4）。09、24、37 今天已关。
+
+### 一、今天上 main（等 Annie 线上验收，验收点在各置顶）
+| 件 | 前端 SHA | 后端 |
+|---|---|---|
+| 79 ops Live drivers 灰字改白 | c41546a | 手机司机 / 导游页 ae1a647f |
+| 72 南北分车（大勾选框、酒店胶囊 + A–Z、Direction 列） | 06bff03 | direction 57（今天 Annie 跑 release.py） |
+| 75 搜索按 Agent reference | 8cecaea | b6b1fce1 |
+| 51 B 订单详情跳 Main manifest | 6e05f55 | 8be7f86c |
+| Restaurant ⬆ Import | 6c56f18 | b1919f7e |
+| 83 凌晨 2:00–8:30 登录 Dispatch 默认今天 | a9efe18 | 3b362f51 |
+| G212 Team 页 admin 按层级 | 9bea1a4 | b68aa0e9 |
+| 59 / 58 Pickup 坐标一格 + Tracking Arrived at / Left at | 4fffe65 | 478c597c（早已上） |
+
+### 二、在做 / 等后端
+- **85 Staff Schedule 班次类型**（c8，task/schedule-shift-types）：Annie「颜色不重要，关键是我要的几个功能」⇒ 不等 color 先合（没 color 键时藏选色）。c8 正在合，SHA 记置顶 85。后端 color + action_log（2e，v150 已执行）排在南北分车后面推，上线后选色自动出。
+- **82 G245 羚羊谷 Cfm # 标红**（81，task/g245-cfm-mismatch）：Annie「羚羊谷，请动手」，定稿在置顶 82；等后端 f4 SHA；合前截图给 Annie。
+- **86 HR Profile 分节 + Working Record**（81）：Profile 分节 task/hr-profile-sections 3a72805（不靠后端，等截图给 Annie 后合）；Working Record（日历 + 快照 + Hours，算工资用）Annie「working record这里全部同意推荐，动手」，后端 18 明天接着做（快照 / 日历 / 所有人列表 / Hours = Samsara HOS），前端 81 照 mock 做。⚠️ HR 补 Jimmy Vegas、Juan (Beni) 的 Samsara Driver ID；David H 没 HOS；可能要 Annie 在 Samsara 后台给 token 加 HOS 读权限。
+- **84 登录记录**：后端 18 往后排（v151）；显示方式等 Annie 答（preview 7gQFvoaMvPVmrBCVZCxwMj）。
+
+### 三、等 Annie（详见置顶，不滚动重问）
+- 81 Relay list 打印页码（preview 4dc5BmHshSrk8EZNm8K55a，Q1–Q3）；84 Q1–Q5；80 导游页（94 问）；其余旧置顶照旧（77、69、68、64、63、61、53、48 等）。
+
+### 四、明天开工
+1. 报对话名；git pull；问 94：color（85）、G245（82）、Working Record（86）后端 SHA。
+2. 85 / 82 / 86 Profile 分节合了没有，没合的接着合；验收点发 Annie。
+3. ⚠️ 2c 今天在 944e763 误用 sed 把一行插到每行后面，47d38d3 已修。以后在 PROGRESS 插行先确认 grep 有命中（`[ -n "$n" ]`），或用 Edit。
 
 ## 2026-11-04 前端主窗口 `主窗口-2c`[f4667e] 接班
 - 24 关前转交（24 原话「看你已改名主窗口-2c，今天由你接主窗口」）。2c 先以工作窗口合了置顶 79 ops 白字 main c41546a。已告知后端 94、37 新名字。**后端主窗口今天是 `主窗口-94`[8d6960]**（37 关前说：后端的事都发 94，含 direction SHA、模板白字；后端交接在后端 origin/main fa210a5c 的 NPE_每日交接.md 最上面）。
@@ -1061,6 +1090,7 @@ D. 已完成、待从置顶移走：
       - 94 转 Annie 在 18 窗口答（原话）：「如果我们能从samsara拿到数据就最好，拿不到的话就每天晚上11兜底」⇒ 司机上下班以 Samsara 为准（18 评估 HOS on / off duty vs DVIR pre / post-trip、对人对天、没登录车的司机多少、工作量），拿不到 23:00 兜底。导游时间来源等 Annie 在 2c 答（A 团排定时间推荐 / B 导游页打卡 / C 同司机系统）。
 - ✅ **Annie「working record这里全部同意推荐，动手」（原话，2026-11-04）** ⇒ Profile 分 Drivers / Guides 两节 + Position not set 最下；Working Record：Q1 C（周表所有人 + 点名字看月历 + 当月合计）、Q2 A（角色色 + 团名 + 车号，📷 有快照，虚线 live 未存档）、Q3 A（弹窗，人数 / 订单收起，选版本）、Q4 A（天数 / 各团次数 / Hours + ⬇ Export for payroll CSV）、Q5 **B**（要 Hours：司机 Samsara、拿不到 23:00 兜底；导游 = 推荐 A 团排定开始 / 结束时间）、Q6 A（📷 只给也能看 Live drivers 的人）、Q7 A（How to use，加 Hours 的句子由 81 补、报原文）。先只 SA 可见。前端派 81（task/hr-working-record；Profile 分节不靠后端，可先合），后端转 94。
   - 94：Working Record 全交 18，login-records 往后排；**v152 已在生产执行、核对过（12:22）**；Hours 要加新列 18 另写迁移草稿给 Annie；后端今天 14:15 收尾，Hours 今天多半做不完，推分支明天接着做。
+  - **Hours 评估 + 形状（18，94 转，只读）**：司机用 Samsara HOS（不用 DVIR：只有车没司机、时刻不准）：上班 = 当天第一次离开 off duty，下班 = 最后一次回 off duty（实测 Bruce O relay 11/04 03:53–06:54、Carlos C South Rim 10/31 04:26–18:59）。按 hr_profiles.samsara_driver_id 对人：近 7 天 16 位司机 14 位有，**缺 Jimmy Vegas、Juan (Beni)（HR 页补上）**；**David H 是 ELD Exempt 没 HOS，只能兜底**。工时按「人 + 天」一对，不分到每条 run（runs 的 start_at / end_at 留空）。日历每天加 hours {start_at, end_at, source:"samsara"|"fallback"|"schedule"|"none", note}：有 HOS ⇒ samsara；有上班没下班 ⇒ end_at 23:00、fallback、note「No Samsara off-duty time」；完全没 HOS ⇒ start_at 空、end_at 23:00、fallback、note「No Samsara time」（要人补上班时间）；导游 ⇒ start_at = 那台车 Main Manifest 最早接客时间、end_at = 团的 guide_snapshot_time（West Rim 18:00 / Hoover 16:00 / 其他 21:00）、schedule。不用迁移，约 1 天；⚠️ 先实测 Samsara token 有没有 HOS 读权限，没有要 Annie 在 Samsara 后台加。「所有人」日历：每人 {hr_id, name, position, days}。今天上不了，明天接着做。已转 81。
 - G212 Team 页前端派 c8（task/g212-team-hierarchy），等后端 SHA。
 
 ### 85. Staff Schedule 班次类型（Open / Mid / Close）可手动新增（2026-11-04，Annie 在主窗口-2c 提，附排班格截图，没动手）
@@ -1089,6 +1119,7 @@ D. 已完成、待从置顶移走：
   - c8 推 task/schedule-shift-types **e5b406d**（含 main e2c682c，没合，等后端 color SHA）：sch 405/405、nav 38/38，tsc 0、eslint 0 错、build 过。Settings › Shift types（停用的也列、能勾回；⋮⋮ 拖或 ↑↓；8 色小窗；改名黄框 + 「Was "Mid" — not saved yet」；灰绿 + Add shift type；蓝 Save）；页面先挡红字「Enter a name for the new shift type.」「There is already a shift type called "X".」「Enter both default times for X, or leave both empty.」；key 从名字生成；停用但规则在用 → 黄字「ZZ Test Training is still used by 1 rule (…). Auto-fill keeps using it until you change that rule in Rules.」；颜色按 color 取（周表 / Add shift / Auto-fill / Dashboard / 员工确认页），旧后端 open / mid / close 照旧其余灰白；Unassigned 定稿样子；How to use 方案 B。preview 外两处小东西（已告诉 Annie）：未存新行右边「×」可去掉；默认时间旁的「Clear」键去掉，直接删字清空。要后端：GET /api/schedule/confirmation 的 shift_types 也带 color（已转 94）。
   - 2e：确认页 GET /api/schedule/confirmation 和免登录链接页都带 color；带 shift types 的 4 处都带（GET settings/schedule、POST / PUT 返回、确认页）；周表接口不返回 shift types。⚠️ 确认页只列 active 类型（原来就这样），已排的班用停用类型时拿不到 color / label，前端按 key 默认色。SHA 到了转 c8。
   - 94（12:3x）：v148 / v149 / v150 / v152 Annie 都已执行、核对过；2e 代码 + 审查全 PASS，只差排队推送（带迁移的一次一件）：G245（f4 落地中）→ **班次颜色（2e）预计 13:30–14:00 上线** → 南北分车 → Working Record。SHA 到了转 c8 合 e5b406d。
+  - **Annie（原话，94 转）**：「颜色不重要，关键是我要的几个功能」⇒ 2c 让 c8 **不等 color 先合**：后端 create / update 用 payload.get 取字段，多带 color 忽略不 400；前端在 GET 没 color 键时先藏选色、POST / PUT 不带 color，后端上线后自动出。除颜色外都用现有接口，后端不用再做。
 
 ### 84. Staff Schedule 后台要有员工登录记录（2026-11-04，Annie 在主窗口-2c 提，没动手）
 - 原话（接置顶 83 后说）：「我们本来就应该在staff的schedule后台管理页面有员工的登录记录」。
@@ -1491,7 +1522,13 @@ pe-ops-wt-login-default`，mock，**没合 main，等后端 57 的 logged_in_at 
     - **Annie 答 Q5（原话）**：「5. 在tracking表上加两列吧，arrived at Left at」⇒ 置顶 58 定：Morning Pickup Tracking 表新加两列「Arrived at」「Left at」（不是甲的小胶囊，也不是乙的一列）。没坐标 / 没数据的格子显示「—」。81 改 preview 时一起画。Q1 / Q2 未答，未动手。
     - ✅ **Annie「其他问题都同意推荐，动手」（原话，2026-11-04）** ⇒ 59 Q1 A（Edit 时酒店名下）、Q2 A（Add 表单不加）、Q4 A（How to use 用 2c 改后的一格版）；连同 Q3 一格 Coordinates、Q5 Tracking 两列。派 81 在 task/samsara-arrival 上做（83 推完分支后），合 main 前截图给 Annie 看 Q3 / Q5 两处新样子。
       - 81 推 task/samsara-arrival **c9aad7b**（没合，合了 72 Direction 的冲突，Direction 和坐标同一个 Save）：pl 129、mt 253、nav 38，tsc / eslint / build 过。58：两列放在 Pickup Location 后面，时间写法同 Check-in Time（「11/4, 5:38 AM」），旧后端没键不出；这页没 ☰ Columns；⬇ Export（后端 CSV）这次不带两列，要带得后端改。截图（2c scratchpad 59-edit-row / 59-edit-error / 59-view-row / 58-tracking-columns.png）已发 Annie，等她点头再合。
+      - ✅ **Annie「我还是没有选A吧，可以合」（原话）** ⇒ 截图点头；Export 选 A（这次不带两列）。派 81 合 main。
       - 81 已改 preview（同链接 25fhKRvwcw4rKmdtb5FA7B）。红字：「Paste the coordinates as latitude, longitude — for example 36.106711, -115.176612.」「Radius must be a whole number of meters from 1 to 500.」「Those coordinates are not on the map. Latitude comes first (between -90 and 90), then longitude (between -180 and 180).」「The hotel was saved, but not the pickup point: …」；逗号 / 空格分开都认。58：后端 notifications.py:1234 每行带 arrived_at / left_at（只 relay 车的单有，一单几站取最早到的）。
+- ✅ 2026-11-04 合 main（工作窗口 `npe-ops-frontend-81`[90172b]，2c 派；Annie「其他问题都同意推荐，动手」，看截图后「我还是没有选A吧，可以合」）：
+  - 定稿：Q1 A 编辑时酒店名下「Pickup point (live tracking)」；Q3 一格「Coordinates」（贴「36.106711, -115.176612」，逗号或空格），Save 时拆成 latitude / longitude 发 PATCH …/arrival-point，清空 = 两个 null；Q2 A Add 表单不加；不编辑时灰字「Pickup point: 36.106711, -115.176612 (10 m)」。
+  - 红字（英文原文）：「Paste the coordinates as latitude, longitude — for example 36.106711, -115.176612.」「Those coordinates are not on the map. Latitude comes first (between -90 and 90), then longitude (between -180 and 180).」「Radius must be a whole number of meters from 1 to 500.」「The hotel was saved, but not the pickup point: …」（后端原话）。How to use 加 2c 转的一格版原文。
+  - 合最新 main 时和置顶 72 Direction 冲突 6 个文件，两边都留（Direction 和坐标同一个 Save）。检查：pl 129/129、mt 253/253、nav 38/38；tsc 0、eslint 0 错、build 过。
+  - Annie 验收：Products › Pickup Locations → 某家 ZZ Test 酒店 ✏ Edit → 在 Coordinates 贴 Google Maps 右键复制的坐标 → Save → 酒店名下一行灰字 Pickup point: …；只贴一个数按 Save 出红字。
 
 ### 58. Morning Pickup Tracking 表里怎么显示「到了 / 走了」的时间（2026-11-03，09 做 Samsara 到站时问）
 - 页面：Morning Pickup Tracking（/morning-pickup/tracking）的表格，每一行是一单客人。
@@ -1502,6 +1539,9 @@ pe-ops-wt-login-default`，mock，**没合 main，等后端 57 的 logged_in_at 
   - 丙：这一期 Tracking 表不显示，只在 Live drivers 页签显示。
 - 没坐标、没数据的酒店都不显示，不另造提醒。preview 里那个黄色「On the way」后端没数据，不做。
 - 09 先做 Pickup Locations 坐标格和 Live drivers 胶囊，这一处等答。
+- ✅ 2026-11-04 合 main（81，同 59 一起）：Annie「在tracking表上加两列吧，arrived at Left at」；Export 选 A（「我还是没有选A吧」：这次不带这两列，Export 是后端出的 CSV）。
+  - Pickup Location 后面紧跟「Arrived at」「Left at」（存过列顺序的人也插在这里），写法同 Check-in Time（洛杉矶「11/4, 5:38 AM」），没数据「—」；后端行里没有 arrived_at 时不出这两列。只读核过后端 notifications.py:1234（每行 arrived_at / left_at，ISO 或 null，只有 relay 车的单有）。
+  - Annie 验收：Morning Pickup Tracking 表，Pickup Location 右边两列；酒店填了坐标、relay 车开过以后才有时间，现在多半是「—」。
 
 ### 57. 排班：设置集中 + Working hours 按天设 + Day timeline（2026-11-02 晚，39）—— ✅ 已动手，待移走
 - Annie 在 f8 窗口（原话）：「动手」⇒ 39 开 task/schedule-timeline、task/schedule-settings（Same every day 先用现接口）；按天设后端已转 9e（迁移 + work_hours + PUT /api/settings/schedule/work-hours，权限 settings.schedule，排 v143 后）。

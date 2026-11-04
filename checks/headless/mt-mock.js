@@ -58,8 +58,8 @@ function livePeople() {
         manifest: null, tour_compact: null, relay_guests: [g1, g2], relay_farm_out_guests: [],
         relay_summary: { pax: 4, pickups: 2, first: "5:40 AM", last: "5:55 AM", picked_up: picked, no_show: ns },
         relay_blocks: [
-          { time: "5:40 AM", hotel: "ZZ Test Excalibur", spot: "South entrance", pax: 2, bookings: 1, guests: [g1] },
-          { time: "5:55 AM", hotel: "ZZ Test Luxor", spot: "Taxi line", pax: 2, bookings: 1, guests: [g2] },
+          { time: "5:40 AM", hotel: "ZZ Test Excalibur", spot: "South entrance", pax: 2, bookings: 1, guests: [g1], ...(ctl.noArrival ? {} : { arrived_at: laIso("05:38"), left_at: laIso("05:46") }) },
+          { time: "5:55 AM", hotel: "ZZ Test Luxor", spot: "Taxi line", pax: 2, bookings: 1, guests: [g2], ...(ctl.noArrival ? {} : { arrived_at: laIso("05:53"), left_at: null }) },
         ],
       }],
       inbox: { unread_total: 1, threads: [{ order_number: "A1002", guest_name: "ZZ Test Two", pax: 2, pickup_location: "ZZ Test Luxor", pickup_time: "5:55 AM", van: "Van 12", last: { text: "Running 10 min late", at: laIso("05:58"), time: "5:58 AM", from: "guest" }, last_guest_text: "Running 10 min late", unread: true }] },
@@ -358,7 +358,11 @@ http
       const date = url.searchParams.get("date");
       // 司机实时页（ctl.live）：每行多 live_status / live_status_at / live_driver / live_van / ns_unhandled（后端 fc 定）。
       // ns_unhandled 模拟「标在最后一次 Take action 之后」：No show 而且还没人点 Take action。
-      const withLive = (r) => {
+      // 置顶 58：ctl.arrivals = 新后端，每行带 arrived_at / left_at（A1001 到了又走、A1002 到了没走、其余 null）。
+      const ARR = { A1001: { arrived_at: laIso("05:38"), left_at: laIso("05:46") }, A1002: { arrived_at: laIso("05:53"), left_at: null } };
+      const withArrivals = (r) => (ctl.arrivals ? { ...r, ...(ARR[r.order_number] || { arrived_at: null, left_at: null }) } : r);
+      const withLive = (r0) => {
+        const r = withArrivals(r0);
         if (!ctl.live) return r;
         const mk = LIVE_MARKS[r.order_number];
         if (!mk) return { ...r, live_status: null, live_status_at: null, live_driver: "", live_van: "", ns_unhandled: false };

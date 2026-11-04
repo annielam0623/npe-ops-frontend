@@ -426,6 +426,12 @@ function Cell({
       content = row.pickup_location || "—";
       className = "text-[12px]";
       break;
+    case "arrived_at":
+    case "left_at":
+      // 同 Check-in Time 的写法（洛杉矶时间「11/4, 6:18 AM」）；没数据「—」。
+      content = formatCheckinTime(row[columnKey] ?? null);
+      className = "text-[11px] text-[#7a9bbe]";
+      break;
     case "agent_name":
       content = row.agent_name || "—";
       className = "text-[12px] text-[#a0c0e0]";

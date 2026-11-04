@@ -7,6 +7,7 @@ import type { PickupLocation, ShuttleRoute, ShuttleSeason } from "@/types";
 
 import {
   ALIASES_MAX,
+  ARRIVAL_RADIUS_DEFAULT,
   DIRECTION_OPTIONS,
   type LocationDraft,
   safeHref,
@@ -21,6 +22,7 @@ import {
   BTN_EDIT_CLASS,
   BTN_OFF_CLASS,
   BTN_ON_CLASS,
+  INLINE_INPUT_BASE,
   INLINE_INPUT_CLASS,
   TD_CLASS,
   TH_CLASS,
@@ -103,6 +105,8 @@ export function LocationsTable({
 }) {
   const isShuttle = variant === "shuttle";
   const cols = (isShuttle ? 8 : 7) + (showDirection ? 1 : 0);
+  /** 后端已经有 Samsara 到站（GET 带 latitude）：编辑行出坐标格、看的行写坐标。 */
+  const arrival = locations.some((l) => l.latitude !== undefined);
   const seasonName = shuttle?.seasons.find(
     (x) => x.id === shuttle.seasonId,
   )?.name;
@@ -185,6 +189,7 @@ export function LocationsTable({
                   variant={variant}
                   shuttle={shuttle}
                   cols={cols}
+                  arrival={arrival}
                   showDirection={showDirection}
                 />
               ) : (
@@ -205,6 +210,56 @@ export function LocationsTable({
           )}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+const ARRIVAL_HINT =
+  "Where the van stops for these guests. Live tracking records when a relay van comes within this many meters, and when it leaves. Paste the coordinates from Google Maps. Leave it empty to stop recording this hotel.";
+
+/**
+ * Samsara 到站：接客门口坐标 + 半径（米）。一格 Coordinates（置顶 59 Q3，Annie「要不就编辑的时候一格，保存后你自己分开两格」），
+ * 先暂存在编辑行，按这一行的 Save 才拆开、存。
+ */
+function ArrivalPointInputs({
+  draft,
+  disabled,
+  onChange,
+}: {
+  draft: LocationDraft;
+  disabled: boolean;
+  onChange: (patch: Partial<LocationDraft>) => void;
+}) {
+  return (
+    <div data-arrival-point className="mt-1.5" title={ARRIVAL_HINT}>
+      <div className="mb-0.5 text-[10px] text-[#1a1a1a] night:text-white/55">
+        Pickup point (live tracking)
+      </div>
+      {/* 一格一行：Hotel Name 那一列窄，Within 放在下一行。 */}
+      <div className="flex flex-col gap-1">
+        <input
+          type="text"
+          aria-label="Coordinates"
+          placeholder="e.g. 36.106711, -115.176612"
+          value={draft.coordinates}
+          disabled={disabled}
+          onChange={(event) => onChange({ coordinates: event.target.value })}
+          className={cn(INLINE_INPUT_CLASS, "min-w-0")}
+        />
+        <label className="flex items-center gap-1 text-[11px] text-[#1a1a1a] night:text-white/75">
+          Within
+          <input
+            type="text"
+            inputMode="numeric"
+            aria-label="Radius in meters"
+            value={draft.radius}
+            disabled={disabled}
+            onChange={(event) => onChange({ radius: event.target.value })}
+            className={cn(INLINE_INPUT_BASE, "w-12 min-w-0")}
+          />
+          m
+        </label>
+      </div>
     </div>
   );
 }
@@ -250,6 +305,16 @@ function ViewRow({
         ) : null}
         {variant === "shuttle" && loc.is_tour_bus ? (
           <AlsoTag>also Tour bus</AlsoTag>
+        ) : null}
+        {loc.latitude != null && loc.longitude != null ? (
+          <div
+            data-arrival-point-view
+            title={ARRIVAL_HINT}
+            className="mt-1 text-[11px] text-[#1a1a1a] night:text-white/55"
+          >
+            Pickup point: {loc.latitude}, {loc.longitude} (
+            {loc.arrival_radius_m ?? ARRIVAL_RADIUS_DEFAULT} m)
+          </div>
         ) : null}
         {/* 「Tour bus departure」只跟团车有关，Shuttle 块不出（v2 Q3）。 */}
         {variant !== "shuttle" ? (
@@ -417,6 +482,7 @@ function EditRow({
   variant,
   shuttle,
   cols,
+  arrival,
   showDirection,
 }: {
   id: number;
@@ -427,6 +493,7 @@ function EditRow({
   variant: TableVariant;
   shuttle?: ShuttleTableProps;
   cols: number;
+  arrival: boolean;
   showDirection: boolean;
 }) {
   const { draft, saving, error } = edit;
@@ -461,6 +528,13 @@ function EditRow({
                 onChange={(t) => onChange({ ...draft, ...t })}
               />
             </div>
+          ) : null}
+          {arrival ? (
+            <ArrivalPointInputs
+              draft={draft}
+              disabled={saving}
+              onChange={(patch) => onChange({ ...draft, ...patch })}
+            />
           ) : null}
         </td>
         {showDirection ? (
