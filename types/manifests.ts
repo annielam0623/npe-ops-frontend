@@ -83,6 +83,11 @@ export interface ManifestRow {
    * 后端发送时逐行复核，一批里夹一条就整批失败，所以前端不让勾。旧后端没有这个字段 ⇒ 当 true。
    */
   sendable?: boolean;
+  /**
+   * 置顶 74（后端 brenda-waiver-link，v147）：true = 这张门票要每单一条 waiver link（Upper Antelope Brenda 两种），
+   * 这一行的 Waiver link 格可以填；没填 = 发送时像 No Cfm # 一样被挡（可 Send anyway）。旧后端没有 ⇒ 当 false。
+   */
+  waiver_link_required?: boolean;
   reason?: string | null;
   /** 不能发的原因，例如 "Admin fee - not sent, not dispatched"。 */
   reason_label?: string | null;

@@ -1843,6 +1843,8 @@ async function run() {
   await sleep(300);
   check("电脑：Columns 照旧在工具条上，没有 ⋯", await evaluate("const vis = (e) => !!e && e.getBoundingClientRect().height > 0; return [...document.querySelectorAll('button')].some(b => b.textContent.trim() === '☰ Columns' && vis(b)) && !vis(document.querySelector('[data-phone-more]'));"));
 
+  await waiverChecks();
+
   // ── 未登录：跳 ops 自己的登录页带 next ──
   await ctl({ fail401: true });
   await goto(`${APP}/manifests?date=${today}&tab=tickets`);
@@ -1891,6 +1893,192 @@ async function main() {
   const failed = results.filter((r) => !r.ok);
   console.log(`\n${results.length - failed.length}/${results.length} passed`);
   process.exit(failed.length ? 1 : 0);
+}
+
+// ── 置顶 74：Upper Antelope (Brenda) 每单 waiver link（Annie「那4提全部按推荐走，动手」；preview 5niqePBqxUsCBqKpLLKCnm）──
+async function waiverChecks() {
+  const BRENDA = `${APP}/manifests?date=${today}&tab=tickets&pill=t%3Abrenda`;
+  const ANT = `${APP}/manifests?date=${today}&tab=tickets&pill=t%3Aantelope`;
+  const wInput = (o) => `document.querySelector('input[aria-label^="Waiver link for ${o}"]')`;
+  const wCell = (o) => `document.querySelector('[data-waiver-cell="${o}"]')`;
+  const tr = (o) => `document.querySelector('tr[data-row^="${o}"]')`;
+  let from;
+
+  // 旧后端（行上没有 waiver_link_required）：和现在一样。
+  await ctl({ waiver: false, role: "staff", staffPerms: null, partnerCodes: null, prefs: { bus: null, tickets: null }, clearCfm: true, seedCfm: true });
+  await openPage(ANT);
+  check("旧后端：门票没有 Waiver link 列、没有 Upload waiver links", await evaluate("return !$heads().includes('Waiver link') && (!$btn('↑ Upload waiver links') || $btn('↑ Upload waiver links').hidden);"));
+
+  await ctl({ waiver: true, seedWaiver: true });
+  from = (await mockLog()).length;
+  await openPage(BRENDA);
+  await waitFor("$heads().includes('Waiver link')", 20000);
+  {
+    const reqs = await since(from, isList);
+    const last = reqs[reqs.length - 1];
+    check("没存过列、胶囊里有要 waiver 的单：再按默认列 + waiver 那几列拉一次", reqs.length >= 2 && !q(reqs[0]).get("fields") && (q(last).get("fields") || "").split(",").includes("waiver_link") && (q(last).get("fields") || "").split(",").includes("waiver_status"), reqs.map((r) => r.query).join(" || "));
+  }
+  check("题 1 A：Waiver link 列自动出现、紧跟在 Cfm # 后面；waiver 状态等辅助列不显示", await evaluate("const h = $heads(); return h[h.indexOf('Cfm #') + 1] === 'Waiver link' && !h.includes('Waiver status') && !h.includes('Waiver link by');"), await evaluate("return $heads().join('|');"));
+  check("工具条有白色 ↑ Upload waiver links", await evaluate("const b = $btn('↑ Upload waiver links'); return !!b && !b.hidden && getComputedStyle(b).backgroundColor !== 'rgb(59, 130, 246)';"));
+  check("不要 waiver 的单（CHD2105）没有格子", await evaluate(`return !${wCell("CHD2105")} && !${wInput("CHD2105")};`));
+  check("要 waiver 没填（CHD2101）：红「No waiver link」、整行淡红", await evaluate(`const t = ${wCell("CHD2101")}.querySelector('[data-waiver-status=missing]'); return !!t && t.textContent === 'No waiver link' && ${tr("CHD2101")}.className.includes('bg-[#fdeceb]');`));
+  check("填了的（CHD2102）：框里是链接、Open ↗ 新窗口打开、下面写谁", await evaluate(`const c = ${wCell("CHD2102")}; const a = c.querySelector('[data-waiver-open]'); return ${wInput("CHD2102")}.value === 'https://waiver.example.com/s/B2' && a.href === 'https://waiver.example.com/s/B2' && a.target === '_blank' && a.rel.includes('noopener') && c.textContent.includes('veronica') && !c.querySelector('[data-waiver-status]');`));
+  check("发过又改了（CHD2103）：黄「Changed since sent」", await evaluate(`const t = ${wCell("CHD2103")}.querySelector('[data-waiver-status=changed]'); return !!t && t.textContent === 'Changed since sent';`));
+  check("表头上方黄字提示写到 Cfm # 和 waiver link", await evaluate("return document.body.textContent.includes('Orders without a Cfm # or a waiver link will be stopped when you send.');"));
+
+  await openPage(ANT);
+  await waitFor("$heads().includes('Cfm #')", 20000);
+  check("同标签另一颗胶囊没有要 waiver 的单（Antelope）：没有这一列、没有上传键", await evaluate("return !$heads().includes('Waiver link') && (!$btn('↑ Upload waiver links') || $btn('↑ Upload waiver links').hidden);"));
+  await openPage(BRENDA);
+  await waitFor("$heads().includes('Waiver link')", 20000);
+
+  // 格子：坏链接红字、Esc 放弃、好链接 Save。
+  from = (await mockLog()).length;
+  await evaluate(`const el = ${wInput("CHD2101")}; $setValue(el, 'ftp://nope'); el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));`);
+  await waitFor(`${wCell("CHD2101")}.textContent.includes('Not saved:')`);
+  check("坏链接按 Enter：后端 400 原话红字、输入保留、Save 还在", await evaluate(`const c = ${wCell("CHD2101")}; return c.textContent.includes('Not saved: Waiver link must be a full web address starting with http:// or https://.') && ${wInput("CHD2101")}.value === 'ftp://nope' && !!c.querySelector('[data-waiver-save]');`));
+  await evaluate(`const el = ${wInput("CHD2101")}; el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));`);
+  await sleep(150);
+  check("Esc：放弃改动、红字收起", await evaluate(`return ${wInput("CHD2101")}.value === '' && !${wCell("CHD2101")}.textContent.includes('Not saved') && !${wCell("CHD2101")}.querySelector('[data-waiver-save]');`));
+  await evaluate(`$setValue(${wInput("CHD2101")}, ' https://waiver.example.com/s/B1 ');`);
+  await sleep(150);
+  check("改了：格旁出蓝色 Save", await evaluate(`const b = ${wCell("CHD2101")}.querySelector('[data-waiver-save]'); return !!b && getComputedStyle(b).backgroundColor === 'rgb(59, 130, 246)';`));
+  from = (await mockLog()).length;
+  await evaluate(`${wCell("CHD2101")}.querySelector('[data-waiver-save]').click();`);
+  await waitFor(`${wCell("CHD2101")}.querySelector('[data-waiver-saved]')`);
+  {
+    const put = (await since(from, (e) => e.path === "/api/manifests/waiver-link"))[0];
+    check("Save：PUT 订单号 + 产品 + 团期 + 去空格的链接", put && put.method === "PUT" && JSON.stringify(put.body) === JSON.stringify({ order_number: "CHD2101", product_code: "BREN1", tour_date: today, waiver_link: "https://waiver.example.com/s/B1" }), JSON.stringify(put));
+  }
+  check("存好：绿 Saved、红标签和整行淡红都没了、出 Open ↗", await evaluate(`const c = ${wCell("CHD2101")}; return getComputedStyle(c.querySelector('[data-waiver-saved]')).color === 'rgb(4, 120, 87)' && !c.querySelector('[data-waiver-status]') && !!c.querySelector('[data-waiver-open]') && !${tr("CHD2101")}.className.includes('bg-[#fdeceb]');`));
+
+  // ☰ Columns 关掉 / 再打开。
+  await evaluate("$btn('☰ Columns').click();");
+  await waitFor("$dialog()");
+  check("☰ Columns 里 Waiver link 是勾着的", await evaluate("const l = [...$dialog().querySelectorAll('label')].find(l => l.textContent.trim() === 'Waiver link'); return !!l && l.querySelector('input').checked;"));
+  await evaluate("$tick('Waiver link', false);");
+  from = (await mockLog()).length;
+  await evaluate("$btn('Apply for all', $dialog()).click();");
+  await waitFor("!$dialog() && !$heads().includes('Waiver link')");
+  {
+    const put = (await since(from, (e) => e.path === "/api/user-prefs/manifest_cols_tickets" && e.method === "PUT"))[0];
+    const v = put && JSON.parse(put.body.value);
+    const reqs = await since(from, isList);
+    check("关掉：存的列里记「-waiver_link」、不再自动加；发给后端的 fields 不带「-」", !!v && v.shared.includes("-waiver_link") && !v.shared.includes("waiver_link") && reqs.every((r) => !(q(r).get("fields") || "").includes("-")), put && put.body.value);
+  }
+  await evaluate("$btn('☰ Columns').click();");
+  await waitFor("$dialog()");
+  await evaluate("$tick('Waiver link', true);");
+  from = (await mockLog()).length;
+  await evaluate("$btn('Apply for all', $dialog()).click();");
+  await waitFor("!$dialog() && $heads().includes('Waiver link')");
+  {
+    const put = (await since(from, (e) => e.path === "/api/user-prefs/manifest_cols_tickets" && e.method === "PUT"))[0];
+    const v = put && JSON.parse(put.body.value);
+    check("再勾上：列回来、「-waiver_link」去掉", !!v && v.shared.includes("waiver_link") && !v.shared.includes("-waiver_link"), put && put.body.value);
+  }
+  await ctl({ prefs: { bus: null, tickets: null } });
+
+  // 发送：缺 Cfm # / 缺 waiver link 合一条、Send anyway。
+  await ctl({ seedWaiver: true });
+  await openPage(BRENDA);
+  await waitFor(`${wCell("CHD2104")}`, 20000);
+  await evaluate("$box('CHD2102').click(); $box('CHD2104').click(); $box('CHD2101').click();");
+  await evaluate("$btn('Send reminder', $bar()).click();");
+  await waitFor("document.querySelector('[data-soft-blocked]')");
+  check("点发送：红条合一条、逐单写缺什么（CHD2104「No Cfm #, No waiver link」、CHD2101「No waiver link」）", await evaluate("const a = document.querySelector('[role=alert]'); const li = (o) => a.querySelector('[data-soft-block=\"' + o + '\"]')?.textContent; return li('CHD2104') === 'CHD2104 — No Cfm #, No waiver link' && li('CHD2101') === 'CHD2101 — No waiver link' && !li('CHD2102') && !!$btn('Skip & send 1', a) && !!$btn('Send anyway 3', a) && !$dialog();"), await evaluate("return document.querySelector('[role=alert]')?.textContent;"));
+  await evaluate("$btn('Send anyway', document.querySelector('[role=alert]')).click();");
+  await waitFor("$dialog()");
+  check("Send anyway：弹窗写明各缺什么、Send Log 留痕", await evaluate("const n = $dialog().querySelector('[data-send-anyway-note]'); return !!n && n.textContent.includes('CHD2104 (No Cfm #, No waiver link)') && n.textContent.includes('CHD2101 (No waiver link)') && n.textContent.includes('will be sent separately') && n.textContent.includes('Send Log');"), await evaluate("return $dialog().querySelector('[data-send-anyway-note]')?.textContent;"));
+  from = (await mockLog()).length;
+  await evaluate("$btn('✉️ Send 3 reminders', $dialog()).click();");
+  await waitFor("$dialog()?.textContent.includes('sent.')");
+  {
+    const body = (await since(from, (e) => e.path === "/api/manifests/send-tickets"))[0]?.body;
+    check("发送：三单都传，CHD2104 / CHD2101 进 send_anyway", body && body.row_keys.length === 3 && ["CHD2104", "CHD2101"].every((o) => (body.send_anyway || []).includes(o)), JSON.stringify(body));
+  }
+  await evaluate("$btn('Done', $dialog()).click();");
+  await waitFor("!$dialog()");
+
+  // 服务器拦下（没进 send_anyway）：红框 Not sent、原因合一条。
+  await ctl({ seedWaiver: true, tkBlock: ["CHD2102"] });
+  await openPage(BRENDA);
+  await waitFor("$box('CHD2102')", 20000);
+  await evaluate("$box('CHD2102').click();");
+  await evaluate("$btn('Send reminder', $bar()).click();");
+  await waitFor("$dialog()");
+  await evaluate("$btn('✉️ Send 1 reminder', $dialog()).click();");
+  await waitFor("$dialog()?.textContent.includes('skipped')");
+  check("服务器拦下（发送那一刻才发现缺）：列在 Skipped 里写后端原因、可以勾 Send anyway", await evaluate("const t = $dialog().textContent; return t.includes('1 skipped') && t.includes('No Cfm #') && !!$dialog().querySelector('input[type=checkbox]');"), await evaluate("return $dialog().textContent;"));
+  await evaluate("$btn('Done', $dialog()).click();");
+  await waitFor("!$dialog()");
+  await ctl({ tkBlock: [] });
+
+  // Changed since sent 当已发：淡黄行 + 标签，勾 Send anyway 才重发；重发后标签消失。
+  await ctl({ seedWaiver: true });
+  await openPage(BRENDA);
+  await waitFor("$box('CHD2103')", 20000);
+  await evaluate("$box('CHD2103').click();");
+  await evaluate("$btn('Send reminder', $bar()).click();");
+  await waitFor("$dialog()?.querySelector('[data-order=\"CHD2103\"]')");
+  check("发送弹窗：CHD2103 淡黄（已发过）+「Waiver link changed after sent」+ Send anyway 勾选框", await evaluate("const r = $dialog().querySelector('[data-order=\"CHD2103\"]'); return r.className.includes('bg-[#fff8e1]') && r.querySelector('[data-waiver-changed]')?.textContent === 'Waiver link changed after sent' && !!r.querySelector('[data-again]');"));
+  await evaluate("$dialog().querySelector('[data-again=\"CHD2103\"]').click();");
+  await evaluate("[...$dialog().querySelectorAll('button')].find(b => /Send 1 reminder/.test(b.textContent)).click();");
+  await waitFor("$dialog()?.textContent.includes('sent.')");
+  await evaluate("$btn('Done', $dialog()).click();");
+  await waitFor(`!$dialog() && ${wCell("CHD2103")} && !${wCell("CHD2103")}.querySelector('[data-waiver-status=changed]')`, 20000);
+  check("重发成功后：Changed since sent 自动消失（照后端 waiver_status）", await evaluate(`return !${wCell("CHD2103")}.querySelector('[data-waiver-status]');`));
+
+  // 上传：有表头。
+  await ctl({ seedWaiver: true });
+  await openPage(BRENDA);
+  await waitFor("$btn('↑ Upload waiver links')", 20000);
+  await evaluate("$btn('↑ Upload waiver links').click();");
+  await waitFor("$dialog()");
+  from = (await mockLog()).length;
+  await setFile('input[aria-label="Waiver link spreadsheet"]', "waiver-upload.csv");
+  await waitFor("$dialog().querySelector('[data-waiver-summary]')", 20000);
+  {
+    const pre = (await since(from, (e) => e.path === "/api/manifests/waiver-links/upload"))[0]?.body;
+    check("选文件：先 apply=false 把 7 行都送去对比", pre && pre.apply === false && pre.tour_date === today && pre.items.length === 7 && pre.items[0].order_number === "CHD2101", JSON.stringify(pre));
+  }
+  const res = await evaluate("return [...$dialog().querySelectorAll('tr[data-waiver-result]')].map(r => r.dataset.waiverResult).join(',');");
+  check("逐行结果：new / same / changed / not_found / not_waiver / duplicate×2", res === "new,same,changed,not_found,not_waiver,duplicate,duplicate", res);
+  check("汇总：7 rows、New 1、Will replace 1、Same 1、Not found / Not a waiver order / Duplicate", await evaluate("const t = $dialog().querySelector('[data-waiver-summary]').textContent; return t.includes('7 rows read') && t.includes('New: 1') && t.includes('Will replace: 1') && t.includes('Same, skipped: 1') && t.includes('Not found: 1') && t.includes('Not a waiver order: 1') && t.includes('Duplicate in file: 2');"), await evaluate("return $dialog().querySelector('[data-waiver-summary]').textContent;"));
+  check("黄框：1 单会被替换、其中 1 单客人已收到旧链接（CHD2103 发过）", await evaluate("const w = $dialog().querySelector('[data-waiver-warn]'); return !!w && w.textContent.includes('1 order already has a different waiver link') && w.textContent.includes('1 of them already got the ticket reminder');"), await evaluate("return $dialog().querySelector('[data-waiver-warn]')?.textContent;"));
+  check("changed 行：旧链接划掉、新的绿色、写 already sent；客人名带出来", await evaluate("const r = $dialog().querySelector('tr[data-waiver-line=\"CHD2103\"]'); return r.textContent.includes('already sent') && !!r.querySelector('.line-through') && r.textContent.includes('ZZ Brenda Three');"));
+  from = (await mockLog()).length;
+  await evaluate("$btn('Save 2 links', $dialog()).click();");
+  await waitFor("$dialog().querySelector('[data-waiver-done]')");
+  {
+    const ap = (await since(from, (e) => e.path === "/api/manifests/waiver-links/upload"))[0]?.body;
+    check("题 2 A：按 Save 只把 new + changed 两行用 apply=true 传", ap && ap.apply === true && ap.items.map((i) => i.order_number).join(",") === "CHD2101,CHD2103", JSON.stringify(ap));
+  }
+  check("写好：绿字 Saved 1 new and replaced 1 waiver links", await evaluate("return $dialog().querySelector('[data-waiver-done]').textContent.includes('Saved 1 new and replaced 1 waiver links.');"));
+  await evaluate("$btn('Close', $dialog()).click();");
+  await waitFor(`!$dialog() && ${wInput("CHD2101")}?.value === 'https://waiver.example.com/s/B1'`, 20000);
+  check("关掉后页面重拉：新链接在格子里", await evaluate(`return ${wInput("CHD2101")}.value === 'https://waiver.example.com/s/B1';`));
+
+  // 上传：没有表头（题 3 A：第 1 列订单号、第 2 列链接，第一行也算）。
+  await evaluate("$btn('↑ Upload waiver links').click();");
+  await waitFor("$dialog()");
+  await setFile('input[aria-label="Waiver link spreadsheet"]', "waiver-noheader.csv");
+  await waitFor("$dialog().querySelector('[data-waiver-summary]')", 20000);
+  const res2 = await evaluate("return [...$dialog().querySelectorAll('tr[data-waiver-result]')].map(r => r.dataset.waiverLine + ':' + r.dataset.waiverResult).join(',');");
+  check("没有表头：3 行都读（第一行也是数据）——bad link / empty / changed", res2 === "CHD2104:bad_link,CHD2101:empty,CHD2102:changed", res2);
+  check("bad link 行写后端原因", await evaluate("return $dialog().querySelector('tr[data-waiver-line=\"CHD2104\"]').textContent.includes('must be a full web address');"));
+  await evaluate("$btn('Close', $dialog()).click();");
+  await waitFor("!$dialog()");
+
+  // How to use 4 句。
+  check("How to use 加了 4 句（Waiver link / Upload / No waiver link / Changed since sent）", await evaluate("const t = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Manifests')).textContent; return t.includes('in step 1 of Prepare for Your Tour') && t.includes('↑ Upload waiver links: upload a spreadsheet with two columns') && t.includes('then says the waiver link will be sent separately') && t.includes('The tag goes away once it is sent.');"));
+
+  // 只读（没勾 manifests.edit）：看得到链接，不能改、不能上传。
+  await ctl({ staffPerms: ["manifests.view", "manifests.send"] });
+  await openPage(BRENDA);
+  await waitFor(`${wCell("CHD2102")}`, 20000);
+  check("只读：没有输入框、只显示链接和 Open ↗；没有 Upload waiver links", await evaluate(`return !${wInput("CHD2102")} && ${wCell("CHD2102")}.textContent.includes('https://waiver.example.com/s/B2') && !!${wCell("CHD2102")}.querySelector('[data-waiver-open]') && (!$btn('↑ Upload waiver links') || $btn('↑ Upload waiver links').hidden);`));
+  await ctl({ staffPerms: null, waiver: false, prefs: { bus: null, tickets: null } });
 }
 
 main();

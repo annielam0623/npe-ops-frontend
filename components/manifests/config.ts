@@ -27,12 +27,33 @@ export const STAFF_CFM_KEY = "staff_cfm";
 export const REZDY_CFM_KEY = "rezdy_cfm";
 
 /**
+ * 置顶 74：Brenda 每单 waiver link 那一列（表格里做成输入框，同 Cfm #）。
+ * 列的规则（Annie 题 1 A）：这一页至少一单 waiver_link_required 才自动出现，紧跟在 Cfm # 后面；☰ Columns 里关掉
+ * 就在存的列里记一个 WAIVER_OFF（不发给后端），以后不再自动加。
+ */
+export const WAIVER_KEY = "waiver_link";
+export const WAIVER_STATUS_KEY = "waiver_status";
+export const WAIVER_OFF = "-waiver_link";
+/** 后端 waiver_status 的两种字（其余 = ""）。 */
+export const WAIVER_MISSING = "No waiver link";
+export const WAIVER_CHANGED = "Changed since sent";
+
+/**
  * 勾选 / 发送要用、但 staff 可能没选来显示的列：每次都多要一份，表格和导出只显示 staff 选的。
  * 人数（选了几位 · 几人）、Cfm #（门票没填的勾不上）、发过没有（弹窗里写「已发过、会跳过」、门票行变灰）。
  */
 const HELPER_FIELDS: Record<ManifestTabKey, readonly string[]> = {
   bus: ["pax", "sent_tour_at"],
-  tickets: ["pax", STAFF_CFM_KEY, REZDY_CFM_KEY, "sent_tickets_at"],
+  tickets: [
+    "pax",
+    STAFF_CFM_KEY,
+    REZDY_CFM_KEY,
+    "sent_tickets_at",
+    WAIVER_KEY,
+    WAIVER_STATUS_KEY,
+    "waiver_link_by",
+    "waiver_link_at",
+  ],
   admin_fee: ["pax"],
 };
 
@@ -42,7 +63,61 @@ export function requestFields(
   tab: ManifestTabKey,
 ): string[] | null {
   if (!saved) return null;
-  return [...saved, ...HELPER_FIELDS[tab].filter((k) => !saved.includes(k))];
+  // 「-键」只是前端记的「这一列我关掉了」，不发给后端。
+  const keys = saved.filter((k) => !k.startsWith("-"));
+  return [...keys, ...HELPER_FIELDS[tab].filter((k) => !keys.includes(k))];
+}
+
+/** 这一页有没有要 waiver link 的单（列和上传键都看它）。 */
+export function pageNeedsWaiver(rows: readonly ManifestRow[]): boolean {
+  return rows.some((r) => r.waiver_link_required === true);
+}
+
+/**
+ * 表格显示的列加上自动出现的 Waiver link（题 1 A）：这一页要、staff 没在 ☰ Columns 关掉、还没在列里 ⇒
+ * 插在 Cfm # 后面（没有 Cfm # 列就放最后）。
+ */
+export function withWaiverColumn(
+  fields: string[],
+  rows: readonly ManifestRow[],
+  saved: readonly string[] | null | undefined,
+): string[] {
+  if (!pageNeedsWaiver(rows)) return fields.filter((k) => k !== WAIVER_KEY);
+  if (fields.includes(WAIVER_KEY) || saved?.includes(WAIVER_OFF)) return fields;
+  const at = fields.indexOf(STAFF_CFM_KEY);
+  return at < 0
+    ? [...fields, WAIVER_KEY]
+    : [...fields.slice(0, at + 1), WAIVER_KEY, ...fields.slice(at + 1)];
+}
+
+/**
+ * ☰ Columns 存之前：这一页会自动出 Waiver link、staff 却没勾它 ⇒ 记一个 WAIVER_OFF（以后不再自动加）；
+ * 勾了 ⇒ 去掉以前记的 WAIVER_OFF。
+ */
+export function rememberWaiverChoice(
+  fields: string[],
+  rows: readonly ManifestRow[],
+): string[] {
+  const keys = fields.filter((k) => k !== WAIVER_OFF);
+  if (!pageNeedsWaiver(rows) || keys.includes(WAIVER_KEY)) return keys;
+  return [...keys, WAIVER_OFF];
+}
+
+/** 这一行要 waiver link、但还没填。 */
+export function missingWaiver(row: ManifestRow): boolean {
+  return row.waiver_link_required === true && !hasValue(row.values[WAIVER_KEY]);
+}
+
+/**
+ * 门票这一行发送前缺什么（同后端 split_ticket_soft_blocks，一行两个原因合成一条）：
+ * 「No Cfm #」「No waiver link」；不缺 = []。巴士不看。
+ */
+export function softBlocks(row: ManifestRow, tab: ManifestTabKey): string[] {
+  if (tab !== "tickets") return [];
+  return [
+    ...(isSelectable(row, tab) ? [] : ["No Cfm #"]),
+    ...(missingWaiver(row) ? [WAIVER_MISSING] : []),
+  ];
 }
 
 /** 表格 / 导出显示的列：staff 选的（没存过就是后端返回的默认列），不显示只为勾选多要的辅助列。 */

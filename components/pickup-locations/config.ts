@@ -1,4 +1,5 @@
 import type {
+  PickupDirection,
   PickupLocation,
   PickupLocationInput,
   PickupStopTime,
@@ -23,6 +24,23 @@ export interface LocationDraft {
   is_shuttle: boolean;
   /** Shuttle 站的小时刻表：一行一条线路的一班，每个季节一格。先暂存，按这一行的 Save 才存。 */
   times: TimeRowDraft[];
+  /** Direction（置顶 72）：undefined = 后端还没有这一项，不出、不送。按这一行的 Save 才存（PATCH /direction）。 */
+  direction?: PickupDirection | null;
+}
+
+/** Direction 下拉和显示（界面文字 North / South / Flexible / Not set；点的颜色照 Annie 给的酒店三色表）。 */
+export const DIRECTION_OPTIONS: readonly {
+  value: PickupDirection;
+  label: string;
+  dot: string;
+}[] = [
+  { value: "north", label: "North", dot: "#2563eb" },
+  { value: "south", label: "South", dot: "#ea8a1a" },
+  { value: "flexible", label: "Flexible", dot: "#dc2626" },
+];
+
+export function directionLabel(d: PickupDirection | null | undefined): string {
+  return DIRECTION_OPTIONS.find((o) => o.value === d)?.label ?? "Not set";
 }
 
 /** 一格：时间、No service，或者两样都没有（= 这一季还没填）。 */
@@ -122,6 +140,7 @@ export function draftOf(loc: PickupLocation): LocationDraft {
     is_tour_bus: !!loc.is_tour_bus,
     is_shuttle: !!loc.is_shuttle,
     times: timeRowsOf(loc.times),
+    ...("direction" in loc ? { direction: loc.direction ?? null } : {}),
   };
 }
 
@@ -261,6 +280,7 @@ export const LOG_FIELDS: readonly { key: string; label: string }[] = [
   { key: "is_tour_bus", label: "Type: Tour bus" },
   { key: "is_shuttle", label: "Type: Shuttle" },
   { key: "times", label: "Times" },
+  { key: "direction", label: "Direction" },
 ];
 
 const LOG_TIME_FORMAT = new Intl.DateTimeFormat("en-US", {

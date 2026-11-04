@@ -1,5 +1,7 @@
 // 模拟后端：/manifests 页（后端 task/manifests-fields 契约 A–D，提交 04f3fa0）。
 // 控制：POST /__ctl {fail401, role, fail, prefsFail, prefs:{bus,tickets}}；GET /__log。
+// 置顶 74：/__ctl {waiver: true} 开 Brenda 胶囊（t:brenda，每行带 waiver_link_required + waiver 四列，形状照后端 brenda-waiver-link）；
+//   {seedWaiver: true} 重置 waiver 数据；waiverPutFail：PUT 回 500。
 // role: admin（默认，有金额组）| staff（没有金额组）| driver（403）。
 const http = require("http");
 const staffPerm = require("./staff-perm-mock");
@@ -139,19 +141,56 @@ const REZDY_ONLY = [
   { tab: "tickets", pill: "t:antelope", order_number: "CHD2005", product_code: "TIX01", lane_source: "rezdy_bookings",
     v: { guest_name: "ZZ Ticket Rezdy", pax: 1, product: "Antelope Tickets", start_time: "2026-10-07 08:30:00", rezdy_cfm: "RZ-2005" } },
 ];
-const allRows = () => (ctl.bulk ? [...ROWS, ...BULK] : ROWS).concat(ctl.cfmMix ? MIXED : []).concat(ctl.rezdyTix ? REZDY_ONLY : []);
+// 置顶 74：Upper Antelope (Brenda) 每单 waiver link。CHD2101 没填、CHD2102 填了、CHD2103 发过后改了（Changed since sent）、
+// CHD2104 Cfm # 和链接都没有、CHD2105 同胶囊但这张门票不要 waiver。
+const WAIVER_ROWS = [
+  ["CHD2101", "ZZ Brenda One", true],
+  ["CHD2102", "ZZ Brenda Two", true],
+  ["CHD2103", "ZZ Brenda Three", true],
+  ["CHD2104", "ZZ Brenda Four", true],
+  ["CHD2105", "ZZ Brenda Other", false],
+].map(([o, name, req]) => ({ tab: "tickets", pill: "t:brenda", order_number: o, product_code: req ? "BREN1" : "BREN9", lane_source: "rezdy_bookings", waiver: req,
+  v: { guest_name: name, pax: 2, product: "Upper Antelope Brenda", start_time: "2026-10-07 09:30:00", phone: "+15550002100" } }));
+const waiver = new Map(); // row_key → {waiver_link, updated_by, updated_at}
+const waiverSent = new Map(); // row_key → 最近一次发出去的链接
+function seedWaiver() {
+  waiver.clear();
+  waiverSent.clear();
+  for (const r of WAIVER_ROWS) sentTickets.delete(rowKey(r, today));
+  const k = (o) => rowKey(WAIVER_ROWS.find((r) => r.order_number === o), today);
+  for (const o of ["CHD2101", "CHD2102", "CHD2103", "CHD2105"]) cfm.set(k(o), { confirmation_no: `BR-${o.slice(-3)}`, updated_by: "zztest", updated_at: "2026-10-07T18:05:00+00:00" });
+  waiver.set(k("CHD2102"), { waiver_link: "https://waiver.example.com/s/B2", updated_by: "veronica", updated_at: "2026-10-07T21:14:00+00:00" });
+  waiver.set(k("CHD2103"), { waiver_link: "https://waiver.example.com/s/B3new", updated_by: "annie", updated_at: "2026-10-07T22:02:00+00:00" });
+  sentTickets.set(k("CHD2103"), "2026-10-06T23:10:00+00:00");
+  waiverSent.set(k("CHD2103"), "https://waiver.example.com/s/B3old");
+}
+const waiverStatus = (r, key) => {
+  if (!r.waiver) return "";
+  const link = waiver.get(key)?.waiver_link ?? "";
+  if (!link) return "No waiver link";
+  return waiverSent.has(key) && waiverSent.get(key) !== link ? "Changed since sent" : "";
+};
+const WAIVER_FIELDS = [
+  { key: "waiver_link", label: "Waiver link", group: "ours", type: "text" },
+  { key: "waiver_status", label: "Waiver status", group: "ours", type: "text" },
+  { key: "waiver_link_by", label: "Waiver link by", group: "ours", type: "text" },
+  { key: "waiver_link_at", label: "Waiver link at", group: "ours", type: "datetime" },
+];
+const goodLink = (v) => /^https?:\/\/[^\s/]+\.[^\s]+$/i.test(v);
+const allRows = () => (ctl.bulk ? [...ROWS, ...BULK] : ROWS).concat(ctl.cfmMix ? MIXED : []).concat(ctl.rezdyTix ? REZDY_ONLY : []).concat(ctl.waiver ? WAIVER_ROWS : []);
 let sendCalls = 0;
 const PILL_LABEL = {
   "g:3": "Antelope Bus Tour",
   "g:7": "Grand Canyon West",
   "g:none": "No group yet",
   "t:antelope": "Antelope Canyon",
+  "t:brenda": "Upper Antelope (Brenda)",
   "t:none": "No tour type yet",
 };
 // G142：接口给的团颜色（Settings → Products → Manifest setup 配的），不是按团名猜的。
 // g:3 故意给一个和按名字猜（antelope → 紫 #7a6ba8）不一样的颜色，用来证明真用了接口的值；
 // g:7 故意不配（null），验证没配时照旧按团名猜（west → 橙）；门票 / none 恒 null，同接口文档。
-const PILL_COLOR = { "g:3": "#111827", "g:7": null, "g:none": null, "t:antelope": null, "t:none": null };
+const PILL_COLOR = { "g:3": "#111827", "g:7": null, "g:none": null, "t:antelope": null, "t:brenda": null, "t:none": null };
 const rowKey = (r, date) => `${r.order_number}|${r.product_code}|${date}`;
 const SECTION_OF = { CHD1001: "tour:UPPER ANTELOPE", CHD1002: "outbound:SHUTTLE: LAS VEGAS → PAGE" };
 const byKey = (key) => allRows().find((r) => rowKey(r, today) === key);
@@ -280,7 +319,7 @@ function page(url) {
   const questions = [];
   if (tabRows.some((r) => "q:0123456789" in r.v)) questions.push(BUS_QUESTION);
   if (tabRows.some((r) => "pq:abcdef0123" in r.v)) questions.push(PAX_QUESTION);
-  const catalog = [...BASE_CATALOG, ...(ctl.minus15 ? [GUEST_PICKUP] : []), ...questions, ...(moneyOpen ? MONEY : [])];
+  const catalog = [...BASE_CATALOG, ...(ctl.minus15 ? [GUEST_PICKUP] : []), ...(ctl.waiver ? WAIVER_FIELDS : []), ...questions, ...(moneyOpen ? MONEY : [])];
   const known = new Set(catalog.map((f) => f.key));
   const moneyKeys = new Set(MONEY.map((f) => f.key));
   const asked_fields = url.searchParams.get("fields");
@@ -297,7 +336,9 @@ function page(url) {
       const all = { ...r.v, order_number: r.order_number, staff_cfm: c?.confirmation_no ?? null, staff_cfm_by: c?.updated_by ?? null, staff_cfm_at: c?.updated_at ?? null,
         sent_tour_at: sentTour.get(key) ?? null, sent_tickets_at: sentTickets.get(key) ?? null,
         sent_tour_by: sentTour.has(key) ? "ZZ Test Staff" : null, sent_tickets_by: sentTickets.has(key) ? "ZZ Test Staff" : null,
-        guest_pickup_time: minus15(r.v.pickup_time, r.order_number), bus_tour_type: ctl.busTour[r.order_number] ?? "" };
+        guest_pickup_time: minus15(r.v.pickup_time, r.order_number), bus_tour_type: ctl.busTour[r.order_number] ?? "",
+        ...(ctl.waiver ? { waiver_link: r.waiver ? (waiver.get(key)?.waiver_link ?? "") : "", waiver_status: waiverStatus(r, key),
+          waiver_link_by: r.waiver ? (waiver.get(key)?.updated_by ?? "") : "", waiver_link_at: r.waiver ? (waiver.get(key)?.updated_at ?? null) : null } : {}) };
       const values = {};
       for (const k of fields) values[k] = all[k] ?? null;
       // 短信两段（Annie 2026-10-15）：msgNames 换名字测最长名字展开；msgEmails 给行加 email 值（"" = 没邮箱）。
@@ -305,6 +346,7 @@ function page(url) {
       if (ctl.msgEmails && r.order_number in ctl.msgEmails) values.email = ctl.msgEmails[r.order_number];
       return { row_key: key, order_number: r.order_number, product_code: r.product_code, tour_date: date, lane_source: r.lane_source,
         section: sectionsOn ? SECTION_OF[r.order_number] : null, values,
+        ...(ctl.waiver ? { waiver_link_required: !!r.waiver } : {}),
         // G36：returnLeg 开着时把 CHD1002 当成往返 shuttle 的回程那一行。
         leg: ctl.returnLeg && r.order_number === "CHD1002" ? "return" : null,
         // G189：shuttleRows 里的单带 shuttle: true（后端每行的 shuttle 标记），其余 false；没设 = 旧后端，不带这个字段。
@@ -395,6 +437,10 @@ http
       if (body.resetCalls) {
         sendCalls = 0;
         delete body.resetCalls;
+      }
+      if (body.seedWaiver) {
+        seedWaiver();
+        delete body.seedWaiver;
       }
       if (body.seedCfm) {
         cfm.set(rowKey(ROWS[4], today), { confirmation_no: "AC-55120", updated_by: "zztest", updated_at: "2026-10-07T18:05:00+00:00" });
@@ -513,14 +559,65 @@ http
       // G129：缺 Cfm # 不再整批 400：没发的进 blocked（can_override: true），其余照发；订单号在 send_anyway 里就照发（Cfm # 留空）。
       const sa = new Set(body.send_anyway ?? []);
       // tkBlock：这几单（发送那一刻才发现缺 Cfm #）后端照样给 blocked；订单号在 send_anyway 里才放行。
-      const noCfm = body.row_keys.filter((k) => !cfm.get(k)?.confirmation_no || (ctl.tkBlock ?? []).includes(byKey(k).order_number));
-      const blocked = noCfm.filter((k) => !sa.has(byKey(k).order_number)).map((k) => ({ order_number: byKey(k).order_number, reasons: ["No Cfm #"], can_override: true }));
+      const reasonsOf = (k) => [
+        ...(!cfm.get(k)?.confirmation_no || (ctl.tkBlock ?? []).includes(byKey(k).order_number) ? ["No Cfm #"] : []),
+        ...(byKey(k).waiver && !waiver.get(k)?.waiver_link ? ["No waiver link"] : []),
+      ];
+      const noCfm = body.row_keys.filter((k) => reasonsOf(k).length);
+      const blocked = noCfm.filter((k) => !sa.has(byKey(k).order_number)).map((k) => ({ order_number: byKey(k).order_number, reasons: reasonsOf(k), can_override: true }));
       const keys = body.row_keys.filter((k) => !blocked.some((b) => b.order_number === byKey(k).order_number));
       const { results, skipped } = sendRows(keys, sentTickets, body);
+      // 发出去了 ⇒ 记下这次的链接（Changed since sent 跟着消失）。
+      for (const r of results) if (r.waiver) waiverSent.set(rowKey(r, today), waiver.get(rowKey(r, today))?.waiver_link ?? "");
       return send(res, 200, { checked_at: "2026-10-07T18:29:00+00:00", sent: results.length,
         results: results.map((r) => ({ record_id: 1, chd_number: r.order_number, name: r.v.guest_name, sms_ok: ch.sms, email_ok: ch.email ? { message_id: "m1" } : false })), skipped,
         ...(ctl.noBatch ? {} : { batch_id: keys.length ? ++batchSeq : null }),
         blocked, overridden_orders: noCfm.map((k) => byKey(k).order_number).filter((o) => sa.has(o) && results.some((r) => r.order_number === o)) });
+    }
+    // 置顶 74：一格 waiver link（后端 brenda-waiver-link）。
+    if (p === "/api/manifests/waiver-link" && req.method === "PUT") {
+      const body = await readBody(req);
+      entry.body = body;
+      if (ctl.role === "staff" && ctl.waiverNoEdit) return send(res, 403, { detail: "You do not have permission to do this." });
+      if (ctl.waiverPutFail) return send(res, 500, { detail: "Something went wrong on our side." });
+      const r = allRows().find((x) => x.order_number === body.order_number && x.product_code === body.product_code);
+      if (!r || body.tour_date !== today) return send(res, 404, { detail: "That booking is not on this date in Rezdy. Reload the page." });
+      if (!r.waiver) return send(res, 400, { detail: "This ticket does not use a per-order waiver link." });
+      const v = String(body.waiver_link ?? "").trim();
+      if (v && !goodLink(v)) return send(res, 400, { detail: "Waiver link must be a full web address starting with http:// or https://." });
+      const key = rowKey(r, today);
+      const row = { waiver_link: v, updated_by: "zztest", updated_at: "2026-10-07T23:00:00+00:00" };
+      waiver.set(key, row);
+      return send(res, 200, { order_number: r.order_number, product_code: r.product_code, tour_date: today, ...row });
+    }
+    // 置顶 74：上传两列表格（apply=false 只对比；true 写 new / changed）。
+    if (p === "/api/manifests/waiver-links/upload" && req.method === "POST") {
+      const body = await readBody(req);
+      entry.body = body;
+      const items = body.items ?? [];
+      const linksPer = new Map();
+      for (const it of items) if (it.waiver_link) linksPer.set(it.order_number, new Set([...(linksPer.get(it.order_number) ?? []), it.waiver_link]));
+      const done = new Set();
+      const out = items.map((it) => {
+        const o = (it.order_number ?? "").trim();
+        const v = (it.waiver_link ?? "").trim();
+        const r = allRows().find((x) => x.order_number === o);
+        const key = r ? rowKey(r, today) : "";
+        const current = r?.waiver ? (waiver.get(key)?.waiver_link ?? "") : "";
+        const row = { order_number: o, waiver_link: v, current, status: "", error: null, saved: false };
+        if (!r || body.tour_date !== today) row.status = "not_found";
+        else if (!r.waiver) row.status = "not_waiver";
+        else if (!v) row.status = "empty";
+        else if (!goodLink(v)) { row.status = "bad_link"; row.error = "Waiver link must be a full web address starting with http:// or https://."; }
+        else if ((linksPer.get(o)?.size ?? 0) > 1) row.status = "duplicate";
+        else if (done.has(o) || current === v) row.status = "same";
+        else {
+          row.status = current ? "changed" : "new";
+          if (body.apply) { waiver.set(key, { waiver_link: v, updated_by: "zztest", updated_at: "2026-10-07T23:10:00+00:00" }); done.add(o); row.saved = true; }
+        }
+        return row;
+      });
+      return send(res, 200, { tour_date: body.tour_date, applied: !!body.apply, items: out });
     }
     // 上传 Cfm # 之前的对比（后端 837360f）：只读；new / same / conflict / not_found；already_sent = 这单发过门票提醒。
     if (p === "/api/manifests/cfm/preview" && req.method === "POST") {
