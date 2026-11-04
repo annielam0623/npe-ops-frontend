@@ -2701,6 +2701,7 @@ D. 已完成、待从置顶移走：
     - Q3 贴「纬度, 经度」一串自动拆两格：A（推荐）要；B 不要（约多 30 分钟）。
     - Q4 How to use：A（推荐）「Pickup point (live tracking): click ✏ Edit on a hotel. In Google Maps, right-click the spot where the van stops for these guests and click the numbers at the top of the menu to copy them (for example 36.106711, -115.176612). Paste them into Latitude (both boxes fill in), keep Within 10 m unless the stop is large, then press Save. Live tracking then records when a relay van gets there and when it leaves. Empty both boxes to stop recording this hotel.」；B 她改字。
     - Q5（= 置顶 58）Tracking 表到 / 离：甲（推荐）酒店名下小胶囊同 Live drivers；乙 新列「At hotel」；丙 这期不显示（甲 / 乙约 1–2 小时）。
+    - **Annie 答 Q3（原话）**：「Q3，你现在显示的就是两个你让staff怎么填？要不就编辑的时候一格，保存后你自己分开两格」⇒ 编辑时只一格「Coordinates」（贴「36.106711, -115.176612」一整串）+ Within [10] m；保存后系统自己拆成纬度 / 经度存，不编辑时照旧显示。Q4 How to use 跟着改（2c 拟稿已发 Annie）。81 做完 83 后改 preview。Q1 / Q2 / Q5 未答，未动手。
 - ✅ **Annie「排班这个全部同意推荐，动手吧」（原话，2026-11-04）** ⇒ Q1 A、Q2 A（只在 ⚙ Settings › Shift types）、Q3 A（名字 + 默认时间 + 8 色）、Q4 A（停用 + 排序 + 停用提醒）、Q5 A（两段 How to use）、Q6 定稿（Unassigned 不上色、卡片白虚线框无底色）。前端派 c8（task/schedule-shift-types）；后端 color 列 + migration（先给 Annie 看）+ action_log 转 94。preview v4 https://claude.ai/artifact/9LFRCau1uBg5sQ5aPbdSZt
 
 - ✅ **Annie「排班这个全部同意推荐，动手吧」（原话，2026-11-04）** ⇒ Q1 A、Q2 A（只在 ⚙ Settings › Shift types）、Q3 A（名字 + 默认时间 + 8 色）、Q4 A（停用 + 排序 + 停用提醒）、Q5 A（两段 How to use）、Q6 定稿（Unassigned 不上色、卡片白虚线框无底色）。前端派 c8（task/schedule-shift-types）；后端 color 列 + migration（先给 Annie 看）+ action_log 转 94。preview v4 https://claude.ai/artifact/9LFRCau1uBg5sQ5aPbdSZt
