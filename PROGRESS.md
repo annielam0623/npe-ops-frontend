@@ -763,6 +763,11 @@
 - 后端：user-prefs 三键白名单、上限 4000 字；同键改 {shared, pages:{<pill>:[...]}} 放宽上限，或加按胶囊的键，37 定形状（已留言 37，明天家里评估）。等 Annie 答题 + 「动手」。
 - 37 评估：键不变，值改 JSON 字符串 {"shared": [...], "pages": {"<pill>": [...]}}（后端只当字符串存，user_prefs.py:133，格式由前端定）；不按胶囊加键。前端兼容旧值（旧列表当 shared，第一次 Apply 写新格式）。后端只把这三键上限 4000 → 20000（user_prefs.py:83）+ 测试，约 1 小时、风险 A、无 migration。Annie「动手」后明天家里派。已转 09。
 - ✅ **Annie 在后端 37 窗口「动手，今天做」（原话）**。后端 57 今晚放宽上限到 20000（上线前超 4000 字回 400）。前端派 09 开 task/manifest-cols-per-page；3 题没逐题答，按推荐全 A。
+- Annie 在 09 窗口改口「我们还是晚上做吧」（原话）→ 09 停手，没改文件（本地空分支 task/manifest-cols-per-page 没推）。**今晚家里窗口接**，09 已看好的做法：
+  - components/manifests/config.ts：parseSavedFields 读 {shared, pages}，旧列表当 shared；pages[pill] = [] 表示这页用系统默认列。
+  - manifests-view.tsx：saved 按标签存 {shared, pages}；当前列 = pages[pill] ?? shared（pill 空时 fieldsKey 变会自动重拉）。applyFields 分 for this page（写 pages[pill]）/ for all（写 shared、清 pages）；Use the shared columns 删 pages[pill]；Reset 在有自己设置的页只重置 pages[pill]；reorderFields（拖表头）有自己设置存这页。胶囊按钮约 :660 加灰标 OWN。
+  - field-picker.tsx：标题加胶囊名；顶上一行文字 + Use the shared columns；底部两个蓝键 Apply for this page / Apply for all；没有胶囊的页只留一个 Apply。
+  - 检查：man / mf / nav + tsc / eslint / build。3 题按推荐全 A。后端 57 今晚家里放宽上限 20000。
 
 ### 70. Dispatch › Assign 顶部统计条旁放醒目的 Relay List 键（2026-11-03，09 记录，preview https://claude.ai/artifact/LzSrfzeXzA9Tgsndd4J6KV ，没写代码）
 - Annie 原话（09 窗口）：「然后把morning relay list放到 1st round的上方，就是那个统计表格的旁边，把最后一个缩窄一些，旁边放Relay List，标得醒目一点」。
