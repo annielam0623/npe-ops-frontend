@@ -820,6 +820,7 @@
 - 现状（5c 只读）：搜索框走 /api/operations/orders?q=，前端只认单号 / 姓名 / 电话（lib/order-lookup-api.ts searchOrders）。Agent reference = 后端 manifest_fields 的 reseller_reference（Rezdy resellerReference），orders 搜索应不含它 ⇒ 要后端。它在 money_view 隐藏名单里（lib/money-view.ts），没勾 See prices, agent & commission 的人看不到。
 - 已请 9e 评估；问 Annie：没这权限的人能不能按它搜（推荐 A 能搜到单、但不显示号码）。
 - 9e 评估：能做，不用迁移，后端约 1–2 小时；q 加 order_detail->>'resellerReference'（两条车道），返回加 reseller_reference + matched_agent_ref；Orders 页搜索也跟着能搜（Export 13 列不变）；每次搜索约慢 0.3 秒，先不建索引。money_view：A / B 都能做，9e 推荐 B（看不到就不能用）。今晚过收工点，最早明天派。
+- Annie：「同意A」⇒ 没 money_view 的人也能按 agent ref 搜到单，号码显示「—」。**还没「动手」**；下一步 fa 做完 74 后出 preview（搜索结果标「Matched by agent reference」、搜索框提示字），Annie 看过「动手」再转 9e。
 
 ### 74. Main Manifest：Upper Antelope Brenda 每单一条 Waiver link（2026-11-03 晚，Annie 在后端 9e 窗口提，9e 转；前端还没 preview）
 - 9e 转的 Annie 已确认四条：没填链接的单像 No Cfm # 一样被挡、可 Send anyway；Brenda 两种都要；格子里填 + 上传两列表格都要；发出后改了链接标「Changed since sent」，staff 手动重发（Send anyway）。原话（9e 转）：「要在Upper brenda的main manifest那里增加一个栏目，叫waver link，由staff上传或者填写进去，然后发送的时候一起发给客人，每个订单都有独立的一个link」；四条是 9e 出的选择题，Annie 都勾推荐项（Brenda 两种 = Brenda 和 Brenda — No Permit Fee），没另写字，**没说「动手」、没看过样子**。
