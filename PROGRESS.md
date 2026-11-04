@@ -956,6 +956,8 @@ D. 已完成、待从置顶移走：
 - 合并后的题（2026-11-03 晚已贴给 Annie，取代主窗口先问的 4 题）：1 哪台 North 哪台 South（推荐 A = North，最后一个字母 = South）；2 Flexible 放哪（推荐当时空位多的那台，一样多放 A）；3 超过两台中间车（推荐只装 Flexible 和满出来的）；4 North 一台装不下（推荐先中间车，没有就 South 那台，一单不拆，都装不下照旧 Not on a bus）；5 表外酒店（推荐当 Flexible，Settings 显示 Not set 让 staff 补）；6 适用哪些团（没推荐，Annie 说）；7 Resorts World 在表里是橙色（南），确认是不是故意的。
 - preview（Pickup Locations Direction 列 + Seat guests 大勾选框）派给今晚 / 明天的前端工作窗口。
 
+- ✅ **Annie 答 7 题并「动手」（主窗口原话，2026-11-04）**：「南北分车的问题：1. 第一台bus放最多的人，如果S多就放S，N多就放N  6 多有团 7是。其他都同意推荐，动手」⇒ 题 1：Bus A 放人多的那一方（South 人多 A 放 South，North 人多 A 放 North），最后一台放另一方；题 2–5 照推荐（Flexible 放当时空位多的那台、一样多放 A；三台以上中间车只装 Flexible 和满出来的；人多那方一台装不下先放中间车、没有就放另一方那台，一单不拆，都装不下照旧 Not on a bus；表外酒店当 Flexible、Settings 显示 Not set）；题 6：所有有字母分车的团都用；题 7：Resorts World 放橙色（South）是对的。
+- 已转 37 派后端（迁移 Annie 先执行）。前端派 09：Pickup Locations 加 Direction 列下拉 + Seat guests 勾选框放大成 CHECK_BIG，先出 preview 给 Annie 看再合。
 ### 71. Main manifest ☰ Columns 按某一页单独存—— ✅ 已合 main f5459d6（2026-11-03，09 记录，还没 preview）
 - Annie 原话（09 窗口）：「在main manifest上的column选线，我可以专门为某个页面选择勾选哪些项目么？可不可以在选择的那个页面上加一个just apply for this page，or apply for all」。
 - 现状：列选择按账号、按标签（Bus Tour / Tickets - SelfDrive / Admin fee）各存一份（user-prefs manifest_cols_bus / _tickets / _admin_fee），同标签下所有胶囊共用。按胶囊分开存要后端改 user-prefs（键白名单、值上限 4000 字：加上限或加按胶囊的键）；前端 ☰ Columns 弹窗加「Apply to this page only / Apply to all」。
