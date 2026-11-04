@@ -10,7 +10,7 @@
 - 24 关前转交（24 原话「看你已改名主窗口-2c，今天由你接主窗口」）。2c 先以工作窗口合了置顶 79 ops 白字 main c41546a。已告知后端 94、37 新名字。**后端主窗口今天是 `主窗口-94`[8d6960]**（37 关前说：后端的事都发 94，含 direction SHA、模板白字；后端交接在后端 origin/main fa210a5c 的 NPE_每日交接.md 最上面）。
 - 还在跑：后端 94 改手机司机 / 导游页白字；后端 57 南北分车 direction（迁移 Annie 先执行）。等 Annie：72 preview 回 A、80 选 A / B、64 / 69 / 68（详见置顶，不滚动重问）。
 - 已派 `npe-ops-frontend-81`[90172b]：Supplier › Restaurant ⬆ Import（5c 交接「明天开工」0；Annie 10/29 已动手，不再 preview）。分支 task/import-restaurant；先查后端有没有导入接口，没有写「需要后端」转 94。
-  - 81 查过后端没有 Restaurant 导入接口 → 需求（preview / commit 路由、栏 key、按店名对上、校验、日志、409）2c 原样转 94；94 收到，排在 18 做完 75 之后。81 先 mock 做、推分支不合，SHA 到了 2c 转 81 核字段再合。
+  - 81 查过后端没有 Restaurant 导入接口 → 需求（preview / commit 路由、栏 key、按店名对上、校验、日志、409）2c 原样转 94；94 收到，已派后端 18 做。81 先 mock 做、推分支不合，SHA 到了 2c 转 81 核字段再合。
 - `09`[341d31] 还开着（上下文长，只接小活）：接 72 合 main。Annie 对 2c 说「我让它动手了」（在 09 窗口说的动手，原话等 09 报）、「做完就关掉吧」⇒ 09 合完 72 报 SHA 后收工关窗口。
 
 ## 2026-11-04 交接：前端主窗口 `今日主窗口-24`[310398] → 今天新开的主窗口（公司电脑）
@@ -964,6 +964,7 @@ D. 已完成、待从置顶移走：
 - ⚠️ 9e 转：Annie 在 9e 窗口回「B」（没 money_view 的人不按 agent ref 搜）。和在 5c 的「同意A」相反 ⇒ 5c 已问 Annie 以哪个为准，答了再定。后端 9e 今晚已收工，这件没写进后端交接，明天以本条为准。
 - ✅ **定 B**：Annie 知道两边不一致后，在 9e 窗口再回「B」（9e 转）⇒ 没 money_view 的人，q 不按 agent ref 搜。**还没「动手」**；preview 照 B 画。
 - fa preview（只画 B）：https://claude.ai/artifact/75Ujnjc3crJ5m6AycJGnaR （4 题：顶栏提示字 / 怎么标 / Orders 页提示字 / How to use，都推荐 A），已整段转 Annie。
+- ✅ 后端上线（94 转，2026-11-04）：main b6b1fce1（合并 62eda877，任务 9b2a723f），同前端 124b946 mock：有 money_view 每行带 reseller_reference（空 "—"）+ matched_agent_ref；没 money_view / partner 不带两键、不按 agent ref 搜；Export 13 列不变。2c 派 81 核字段、合最新 main、跑检查后合。
 
 ### 74. Main Manifest：Upper Antelope Brenda 每单一条 Waiver link（2026-11-03 晚，Annie 在后端 9e 窗口提，9e 转；前端还没 preview）
 - 9e 转的 Annie 已确认四条：没填链接的单像 No Cfm # 一样被挡、可 Send anyway；Brenda 两种都要；格子里填 + 上传两列表格都要；发出后改了链接标「Changed since sent」，staff 手动重发（Send anyway）。原话（9e 转）：「要在Upper brenda的main manifest那里增加一个栏目，叫waver link，由staff上传或者填写进去，然后发送的时候一起发给客人，每个订单都有独立的一个link」；四条是 9e 出的选择题，Annie 都勾推荐项（Brenda 两种 = Brenda 和 Brenda — No Permit Fee），没另写字，**没说「动手」、没看过样子**。
