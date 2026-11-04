@@ -19,6 +19,9 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 async function ctl(body) {
   await fetch(`${MOCK}/__ctl`, { method: "POST", body: JSON.stringify(body) });
 }
+async function since(before, filter) {
+  return (await mockLog()).slice(before).filter(filter);
+}
 async function mockLog() {
   return (await fetch(`${MOCK}/__log`)).json();
 }
@@ -135,6 +138,16 @@ async function pdfPages(opts = { preferCSSPageSize: true }) {
   return (pdf.match(/\/Type\s*\/Page(?!s)/g) || []).length;
 }
 
+/** 每页的方向（PDF 的 MediaBox 宽 > 高 = 横）。 */
+async function pdfOrients() {
+  const r = await cdp("Page.printToPDF", { printBackground: true, preferCSSPageSize: true });
+  const pdf = Buffer.from(r.data, "base64").toString("latin1");
+  return [...pdf.matchAll(/\/MediaBox\s*\[([^\]]+)\]/g)].map((m) => {
+    const [, , w, h] = m[1].trim().split(/\s+/).map(Number);
+    return w > h ? "L" : "P";
+  });
+}
+
 async function open(url) {
   await goto(url);
   await waitFor("document.querySelector('[data-relay-total], [data-relay-car], main p')", 60000);
@@ -222,6 +235,132 @@ async function run() {
   await waitFor("location.pathname === '/auth/login'", 30000);
   check("未登录跳旧后台登录页", (await evaluate("return location.href;")).startsWith(`${APP}/auth/login?next=`));
   await ctl({ fail401: false });
+
+  await settingsChecks();
+}
+
+// ── 置顶 73：⚙ Colours & page（颜色 + 每张单方向；preview https://claude.ai/artifact/L7Ks8gymYvsd33Q9DuLGUr 定稿）──
+const dlg = "document.querySelector('[data-relay-settings]')";
+const row = (k) => `document.querySelector('[data-relay-settings-row="${k}"]')`;
+const orientOf = (k) => `${row(k)}.querySelector('[data-orient-toggle]').dataset.orientToggle`;
+const pick = (k, label) => `[...${row(k)}.querySelectorAll('[data-orient-toggle] button')].find(b => b.textContent.trim() === '${label}').click();`;
+
+async function openSettings() {
+  await waitFor("document.querySelector('[data-relay-settings-open]')", 30000);
+  await evaluate("document.querySelector('[data-relay-settings-open]').click();");
+  await waitFor(dlg);
+  await helpers();
+}
+
+async function settingsChecks() {
+  // 后端还没上线（404）：没有 ⚙、没有 How to use，全部竖版，和以前一样。
+  await ctl({ noSettings: true, edit: true, reset: true });
+  await open(URL0);
+  await waitFor("document.querySelectorAll('[data-relay-total]').length === 2", 30000);
+  await sleep(800);
+  check("设置接口没上线（404）：没有 ⚙ Colours & page、没有 How to use，每张单都是竖版", await evaluate("return !document.querySelector('[data-relay-settings-open]') && !document.body.textContent.includes('How to use — Relay list') && [...document.querySelectorAll('.rl-sheet')].every(s => s.dataset.orient === 'portrait');"));
+
+  // 只能看 Dispatch：弹窗只读。
+  await ctl({ noSettings: false, edit: false, reset: true });
+  await open(URL0);
+  await openSettings();
+  check("⚙ Colours & page 是白底键（不是蓝色提交键）", await evaluate("return getComputedStyle(document.querySelector('[data-relay-settings-open]')).backgroundColor !== 'rgb(59, 130, 246)';"));
+  check("只能看 Dispatch：弹窗只读——写 View only，没有 Save / Reset to paper colours / Set all，颜色框和方向键都点不了", await evaluate(`const d = ${dlg}; return d.textContent.includes('View only') && !d.querySelector('[data-relay-settings-save]') && !$btn('Reset to paper colours', d) && !$btn('Set all to Portrait', d) && [...d.querySelectorAll('input')].every(i => i.disabled) && [...d.querySelectorAll('[data-orient-toggle] button')].every(b => b.disabled);`));
+  await evaluate(`$btn('Close', ${dlg}).click();`);
+  check("只读时 Close 直接关（没有改动，不问）", await waitFor(`!${dlg}`));
+
+  // 能编辑。
+  await ctl({ edit: true });
+  await open(URL0);
+  await openSettings();
+  check("弹窗三块：Summary（RELAY SPLITS，只有方向）、Relay cars（Relay 1–6）、Tour buses；顶部 Set all to Portrait / Landscape", await evaluate(`const d = ${dlg}; const rows = [...d.querySelectorAll('[data-relay-settings-row^="relay-"]')].map(r => r.dataset.relaySettingsRow).join(','); return !!${row("summary")} && ${row("summary")}.textContent.includes('No colour') && rows === 'relay-1,relay-2,relay-3,relay-4,relay-5,relay-6' && d.textContent.includes('Tour buses') && !!$btn('Set all to Portrait', d) && !!$btn('Set all to Landscape', d);`));
+  check("Relay 1 显示默认色 #fff605 + Paper colour", await evaluate(`return ${row("relay-1")}.querySelector('input[type=text]').value === '#fff605' && ${row("relay-1")}.textContent.includes('Paper colour');`));
+  {
+    const shown = await evaluate("return [...document.querySelectorAll('[data-relay-settings-tour]')].map(t => t.dataset.relaySettingsTour).join(',');");
+    check("Tour buses 默认只列当天的团（3 Antelope、1 South、2 West、4 BZ），Hoover Dam 不列", shown.split(",").sort().join(",") === "1,2,3,4", shown);
+  }
+  await evaluate(`$btn('Show all tours', ${dlg}).click();`);
+  check("Show all tours：Hoover Dam 也列出来", await waitFor("document.querySelector('[data-relay-settings-tour=\"9\"]')"));
+  check("同时是团大巴的 relay 车：South C 那一行写「Also a relay car today: ZZ Carlos - 1855, ZZ Paulie - 2017」", await evaluate(`const t = ${row("tour-1-C")}.querySelector('[data-also-relay]'); return !!t && t.textContent.includes('Also a relay car today: ZZ Carlos - 1855, ZZ Paulie - 2017') && t.textContent.includes('Its relay sheet uses this row');`));
+  check("Relay cars 顶上说明：也是大巴的车没有 Relay 编号，在团那一行设", await evaluate(`return ${dlg}.textContent.includes('A relay car that is also a tour bus has no Relay number.');`));
+  check("Antelope B 有纸本自己的颜色 #db92c8（Default colour）；South C 跟 All buses（Uses All buses）", await evaluate(`return ${row("tour-3-B")}.querySelector('input[type=text]').value === '#db92c8' && ${row("tour-3-B")}.textContent.includes('Default colour') && ${row("tour-1-C")}.textContent.includes('Uses All buses');`));
+
+  // 改：Relay 1 颜色、总表横、Relay 2 横、South C 横。
+  await evaluate(`$setValue(${row("relay-1")}.querySelector('input[type=text]'), '#aabbcc');`);
+  await evaluate(pick("summary", "Landscape"));
+  await evaluate(pick("relay-2", "Landscape"));
+  await evaluate(pick("tour-1-C", "Landscape"));
+  await sleep(200);
+  check("改了的颜色显示 Changed + Reset；方向键跟着变", await evaluate(`return ${row("relay-1")}.textContent.includes('Changed') && !!$btn('Reset', ${row("relay-1")}) && ${orientOf("summary")} === 'landscape' && ${orientOf("relay-2")} === 'landscape' && ${orientOf("tour-1-C")} === 'landscape';`));
+  check("还没按 Save：单子不变（Relay 1 还是黄、总表还是竖）", await evaluate(`return getComputedStyle(document.querySelector('[data-relay-car="901"] .rl-head')).backgroundColor === '${rgb("#fff605")}' && document.querySelector('[data-relay-total=relay]').dataset.orient === 'portrait';`));
+
+  // 没存关窗：问；Keep editing 留下。
+  await evaluate(`$btn('Cancel', ${dlg}).click();`);
+  check("有没存的改动时按 Cancel：弹窗里问 You have unsaved changes（Discard / Keep editing / Save）", await waitFor("document.querySelector('[data-relay-settings-ask]')") && (await evaluate("const a = document.querySelector('[data-relay-settings-ask]'); return a.textContent.includes('You have unsaved changes') && !!$btn('Discard', a) && !!$btn('Keep editing', a) && !!$btn('Save', a);")));
+  await evaluate("$btn('Keep editing', document.querySelector('[data-relay-settings-ask]')).click();");
+  check("Keep editing：留在弹窗、改动还在", await evaluate(`return !document.querySelector('[data-relay-settings-ask]') && ${orientOf("summary")} === 'landscape';`));
+
+  // 存失败：红字，改动留着。
+  await ctl({ failPut: true });
+  await evaluate(`document.querySelector('[data-relay-settings-save]').click();`);
+  check("存失败：红字 Not saved: …，改动还在弹窗里", await waitFor("document.querySelector('[data-relay-settings-status=error]')") && (await evaluate(`const s = document.querySelector('[data-relay-settings-status=error]'); return s.textContent.startsWith('Not saved:') && getComputedStyle(s).color === 'rgb(220, 38, 38)' && ${orientOf("summary")} === 'landscape';`)));
+  await ctl({ failPut: false });
+
+  // 存：一个 PUT，只带改了的部分。
+  let b0 = (await mockLog()).length;
+  await evaluate(`document.querySelector('[data-relay-settings-save]').click();`);
+  check("Save：绿色 Saved", await waitFor("document.querySelector('[data-relay-settings-status=saved]')") && (await evaluate("return getComputedStyle(document.querySelector('[data-relay-settings-status=saved]')).color === 'rgb(22, 163, 74)';")));
+  {
+    const puts = await since(b0, (e) => e.path === "/api/settings/relay-list" && e.method === "PUT");
+    const body = puts[0]?.body;
+    const want = { colors: ["#aabbcc", null, null, null, null, null], orientations: { summary: "landscape", relay: ["portrait", "landscape", "portrait", "portrait", "portrait", "portrait"], tours: { 1: { buses: { C: "landscape" } } } } };
+    check("一个 PUT /api/settings/relay-list，只带改了的部分（Relay 颜色，默认色写 null；总表、Relay 2、South C 的方向）", puts.length === 1 && JSON.stringify(body) === JSON.stringify(want), JSON.stringify(puts));
+  }
+  check("存好后单子跟着变：Relay 1 抬头 #aabbcc；两张总表横；South C（1855）横；其余竖", await waitFor(`getComputedStyle(document.querySelector('[data-relay-car="901"] .rl-head')).backgroundColor === '${rgb("#aabbcc")}'`) && (await evaluate("const o = (sel) => document.querySelector(sel).dataset.orient; return o('[data-relay-total=relay]') === 'landscape' && o('[data-relay-total=relay_2]') === 'landscape' && o('[data-relay-car=\"902\"]') === 'landscape' && o('[data-relay-car=\"901\"]') === 'portrait' && o('[data-relay-car=\"905\"]') === 'portrait';")));
+  check("2017 挂 South C + BZ：方向取第一辆大巴（South C）⇒ 横", await evaluate("return document.querySelector('[data-relay-car=\"904\"]').dataset.orient === 'landscape';"));
+  check("屏幕上横版单宽 297mm（看到的就是打出来的）", await evaluate("const w = (sel) => document.querySelector(sel).getBoundingClientRect().width; return Math.abs(w('[data-relay-total=relay]') - 297 * 96 / 25.4) < 2 && Math.abs(w('[data-relay-car=\"901\"]') - 210 * 96 / 25.4) < 2;"));
+  check("存好了再关：不问", await evaluate(`$btn('Cancel', ${dlg}).click(); return true;`) && (await waitFor(`!${dlg}`)));
+
+  // 打印：横竖混排，页数对、每页方向对。
+  {
+    const o = await pdfOrients();
+    // 顺序：1st 总表(L)、901(P)、902(L)、904(L)、2nd 总表(L)、905(P)
+    check("打印 PDF 横竖混排：6 张 6 页，每页方向照设置（L P L L L P），没有空白页", o.join("") === "LPLLLP", o.join(""));
+  }
+  await ctl({ many: true });
+  await open(URL0);
+  await waitFor("document.querySelectorAll('[data-relay-row^=CHDZZL]').length === 40", 30000);
+  {
+    await cdp("Emulation.setEmulatedMedia", { media: "print" });
+    // 每张单该占几页：按模拟打印时的高度估（估得偏多：横版 41 行估 3 页、实印 2 页，PyMuPDF 逐页核过 41 行全在，没被裁），
+    // 所以给范围 [估-1, 估]、至少 1 页；长单至少 2 页。
+    const per = await evaluate("return [...document.querySelectorAll('.rl-sheet')].map(s => { const land = s.dataset.orient === 'landscape'; const page = (land ? 210 : 297) * 96 / 25.4; const n = Math.max(1, Math.ceil(s.getBoundingClientRect().height / page - 0.01)); return [land ? 'L' : 'P', n > 1 ? Math.max(2, n - 1) : 1, n]; });");
+    await cdp("Emulation.setEmulatedMedia", { media: "" });
+    const re = new RegExp(`^${per.map(([d, lo, hi]) => `${d}{${lo},${hi}}`).join("")}$`);
+    const o = (await pdfOrients()).join("");
+    check("横竖混排 + 长单（2nd Round 总表横、41 行）分页：每张印成该占的页数、方向不变，没有空白页", re.test(o) && per.some(([d, lo]) => d === "L" && lo >= 2), `pdf=${o} want=${re}`);
+  }
+  await ctl({ many: false });
+
+  // Set all + Reset to paper colours + Discard。
+  await open(URL0);
+  await openSettings();
+  await evaluate(`$btn('Set all to Portrait', ${dlg}).click();`);
+  check("Set all to Portrait：每一行方向都变竖", await evaluate(`return [...${dlg}.querySelectorAll('[data-orient-toggle]')].every(t => t.dataset.orientToggle === 'portrait');`));
+  await evaluate(`$btn('Reset to paper colours', ${dlg}).click();`);
+  check("Reset to paper colours：Relay 1 回 #fff605（还要按 Save）", await evaluate(`return ${row("relay-1")}.querySelector('input[type=text]').value === '#fff605' && !document.querySelector('[data-relay-settings-status]');`));
+  b0 = (await mockLog()).length;
+  await evaluate(`$btn('Cancel', ${dlg}).click();`);
+  await waitFor("document.querySelector('[data-relay-settings-ask]')");
+  await evaluate("$btn('Discard', document.querySelector('[data-relay-settings-ask]')).click();");
+  check("Discard：关窗、什么都不存（没有 PUT），单子不变", (await waitFor(`!${dlg}`)) && !(await since(b0, (e) => e.method === "PUT")).length && (await evaluate("return document.querySelector('[data-relay-total=relay]').dataset.orient === 'landscape';")));
+
+  // How to use（题 6 A）：屏幕上折起、打印不印。
+  check("How to use — Relay list：7 句、第 3 句写三处一起变", await evaluate("const d = [...document.querySelectorAll('details')].find(x => x.textContent.includes('How to use — Relay list')); return !!d && !d.open && d.querySelectorAll('li').length === 7 && d.querySelectorAll('li')[2].textContent.includes('Bus Manifest bus header');"));
+  await cdp("Emulation.setEmulatedMedia", { media: "print" });
+  check("打印：How to use 不印", await evaluate("const d = [...document.querySelectorAll('details')].find(x => x.textContent.includes('How to use — Relay list')); return getComputedStyle(d.closest('.rl-screen-only')).display === 'none';"));
+  await cdp("Emulation.setEmulatedMedia", { media: "" });
+  await ctl({ reset: true, edit: false });
 }
 
 main().catch((e) => {

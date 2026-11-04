@@ -23,6 +23,25 @@
   - 9e：派后端 36（TI 已上 b885f1d1）。改为颜色 + 方向一个接口 GET/PUT /api/settings/relay-list（含 tour_colors、orientations、defaults、tours[]），不写回 manifests.paper_colors（纸本色要留着当「回默认」）；显示色「staff 设的 → 纸本 → 团色」三处同读。21:30 前做不完推 WIP 明天续。已转 fa。
 - ✅ 置顶 71 后端：manifest_cols_bus / _tickets / _admin_fee 上限 4000 → 20000 已上线（后端 origin/main 1fac68ca，9e 报）；键名格式不变，超限 400 "value too long (max 20000 chars)"，其他键仍 4000，partner 仍 403。前端不用改。后端另有 npe-confirmation-service-da [af1446]。
 
+## 2026-11-03 晚 置顶 73 Relay list「⚙ Colours & page」：颜色 + 每张单方向交给 staff（`task/relay-list-settings`，工作窗口 fa [985244]，主窗口 5c 派）—— ⛔ 推了分支，等后端上 main 核字段再合
+- Annie 原话：「两件事情着急做：relay list里，最后一张和倒数第三张的紫色太深了。可以把颜色的调配和页面的方向交给staff去处理么」「我要把这两项放给staff，要后端改就后端改」「设置页面的方向是否可以每页独立设置」「同意全部推荐。紫色那个留给staff自己调」「动手」（5c 转）。
+- preview 定稿 https://claude.ai/artifact/L7Ks8gymYvsd33Q9DuLGUr （题 1 A 三处一起变、题 2 D 默认色不改、题 3 作废、题 4 A 每张各自设、题 5 A dispatch.edit 能改、题 6 A How to use）。
+- 做了：
+  - Relay list 页顶部白色「⚙ Colours & page」（`data-relay-settings-open`）→ `components/relay-list/relay-settings-dialog.tsx`：顶部 Set all to Portrait / Landscape；Summary（RELAY SPLITS，只有方向）；Relay 1–6（颜色 + 方向）；Tour buses（当天的团，每团 All buses + 每个 bus 字母，字母不设就跟 All buses，跟着的方向键灰色；「Show all tours」展开全部启用的团）；同时是团大巴的 relay 车在那辆大巴那一行写「↳ Also a relay car today: 司机 - 车号. Its relay sheet uses this row.」；每格 Changed + Reset、底部 Reset to paper colours；先暂存，蓝色 Save 才存（一个 PUT，只带改了的部分，Relay 颜色等于默认的写 null）、Saving… / 绿 Saved / 红字 Not saved: …；有没存的改动关窗问 Discard / Keep editing / Save，跳页 / 关标签走 useLeaveGuard；只能看 Dispatch 的人只读（View only，没有 Save / Reset / Set all）。
+  - 存好后重读设置和 relay-pull（单子上的颜色、方向都是后端算好的）；重读失败红框「Saved, but the sheets could not be reloaded」。
+  - 每张单 `data-orient`（总表 = relay-pull `summary_orientation`；车单 = car.orientation → tour_buses[0].orientation → portrait）；屏幕上横版单 297mm 宽（页面 max-w 900 → 1180px）；打印用命名页 `@page rl-land { size: A4 landscape }`，横版打印时同样不撑满（不出空白页）。
+  - How to use（7 句，preview 第 5 节原文，第 3 句 3A），页面最底、折起、不打印；顶部那句说明手机上收进「i」。
+  - 后端没上线（GET 404 / 读不到）：没有 ⚙、没有 How to use，全部竖版，页面和现在一样。
+  - 接口封装 `lib/relay-list-settings-api.ts`（形状照 5c 转的 9e 最终评估：GET colors / tour_colors / orientations / defaults / tours[]；PUT 合并、null = 回默认）。
+- ⚠️ 等后端核对（36 在做，上 main 后照真实字段改）：
+  1. GET `tours[]` 的形状我先定成 `{manifest_id, name, color, default_color, buses:[{label, color, default_color}]}`（团 All buses 的当前色 / 默认色在团上）。
+  2. 弹窗里字母没自己设时显示的颜色：纸本上这个字母有自己的默认色（和团默认不同）就用它，否则跟 All buses（`busColor()`）——要和后端「staff 设的 → 纸本 → 团色」对一下字母 / 团的先后。
+  3. relay-pull `tour_buses[]` 想要带 `manifest_id`（「Also a relay car」按团 id 对；没有就按团名对 tours[].name）。
+  4. PUT 不能编辑时 403，红字照 detail 显示。
+- 横竖混排实测（headless Chrome）：独立页 6 张横竖混排、两张长单 ⇒ 8 页每页方向都对；页面上 mock 实打：6 张 L P L L L P；长单（2nd Round 横版总表 41 行）印 2 页，PyMuPDF 逐页核过 41 行都在、没有被裁。
+- rl 套加 29 条（共 58）：404 时和现在一样；⚙ 白底；只读；三块 + Set all；默认只列当天的团 / Show all tours；Also a relay car；纸本字母色 / Uses All buses；改了 Changed、没存单子不变；Cancel 问、Keep editing；存失败红字；Save 绿字、一个 PUT 只带改了的部分；存好后单子换色 / 换方向、2017 挂两辆取第一辆；横版屏幕 297mm；PDF 每页方向 LPLLLP；长单分页；Set all；Reset to paper colours；Discard 不存；How to use 7 句、不印。
+- 检查：rl 58/58、da 482/482、mf 240/240、man 360/360、nav 38/38；tsc 0 错、eslint 0 错（3 条原有 warning）、build 过。
+
 ## 2026-11-03 晚 da 481/482「Pull：按这天拉、两轮标题和时间来自接口」修好（`task/da-482-fix`，工作窗口 fa [985244]，主窗口 5c 派）—— 检查套时序问题，页面没 bug，合 main
 - 现象：da-test.js 那条在 main 上稳定挂（连跑 3 次都挂），pulls=[]、Step 2 显示 Loading…。
 - 原因：send-auto-open（497a76d）以后 Send 打开就自动取名单，这条改成点 ↻ Refresh 再取；但点完后旧名单（含 Need a look）还留在屏幕上，检查只等「Need a look 出现」⇒ 立刻往下判断，这次的 relay-pull 请求还没到 mock，按钮还在 Loading…。页面行为正确（请求按 2026-10-05 发、两轮标题时间照接口），是检查过期。

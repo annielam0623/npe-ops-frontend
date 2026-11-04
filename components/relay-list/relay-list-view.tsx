@@ -4,8 +4,10 @@ import "./relay-list.css";
 
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 
+import { HowToUse } from "@/components/ui/how-to-use";
 import { ErrorBanner } from "@/components/ui/panel";
 import { PageLink } from "@/components/ui/page-link";
+import { usePhoneInfo } from "@/components/ui/phone";
 import { describeError, isStatus } from "@/lib/api-errors";
 import {
   fetchRelayPull,
@@ -26,7 +28,20 @@ import {
   relayDates,
   tourText,
 } from "@/lib/relay-list";
+import {
+  fetchRelayListSettings,
+  orientationOf,
+  type RelayListSettings,
+} from "@/lib/relay-list-settings-api";
+import { usePageVisibility } from "@/lib/page-visibility";
+import { byTick } from "@/lib/permissions";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
+import { usePermissions } from "@/lib/staff-permissions";
+
+import {
+  type AlsoRelayCar,
+  RelaySettingsDialog,
+} from "./relay-settings-dialog";
 
 type ViewState =
   | { kind: "loading" }
@@ -45,7 +60,8 @@ const WHITE_BTN =
 /**
  * Relay list：Dispatch › Morning Relay「📋 Relay list」打开（Annie：「排完relay并保存了以后，应该加一个按键显示这些relay的list」）。
  * 地址 `?date=YYYY-MM-DD`；带 `&car=<排车行 id>` = 只看 / 只印这一台（车头的 Print）。显示的是已保存的排车。
- * 一轮一张 RELAY SPLITS 总表 + 每台有客人的车一张，屏幕上看、按 Print 打印（A4 竖向，一张一页）。
+ * 一轮一张 RELAY SPLITS 总表 + 每台有客人的车一张，屏幕上看、按 Print 打印（A4，每张从新的一页开始）。
+ * 每张单的方向、各车颜色由 staff 在「⚙ Colours & page」设（置顶 73），relay-pull 带回算好的 orientation / color。
  */
 export function RelayListView() {
   const [params, setParams] = useState<{
@@ -55,6 +71,19 @@ export function RelayListView() {
   const [view, setView] = useState<ViewState>({ kind: "loading" });
   const [reloadKey, setReloadKey] = useState(0);
   const redirectingRef = useRef(false);
+  /**
+   * 颜色和方向设置（置顶 73）：后端还没上线（404）/ 读不到 = null ⇒ 没有 ⚙ 键、没有 How to use，页面和以前一样。
+   */
+  const [settings, setSettings] = useState<RelayListSettings | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [refreshError, setRefreshError] = useState<string | null>(null);
+  const info = usePhoneInfo("About this page");
+  // 能改 = 能编辑 Dispatch（题 5 A；同 Dispatch 页：partner 只看，Super Admin 全给）。PUT 后端也按 dispatch.edit 挡。
+  const perms = usePermissions();
+  const isSuperAdmin = usePageVisibility().isSuperAdmin;
+  const canEdit =
+    !perms.partnerLacks("dispatch.edit") &&
+    byTick(perms, "dispatch.edit", { superAdmin: isSuperAdmin });
 
   const redirectToLogin = useCallback(() => {
     if (!redirectingRef.current) {
@@ -93,10 +122,36 @@ export function RelayListView() {
     };
   }, [params, reloadKey, redirectToLogin]);
 
+  useEffect(() => {
+    const ctrl = new AbortController();
+    fetchRelayListSettings(ctrl.signal)
+      .then((s) => setSettings(s))
+      .catch(() => {
+        if (!ctrl.signal.aborted) setSettings(null);
+      });
+    return () => ctrl.abort();
+  }, []);
+
+  /** 存好颜色 / 方向后：重读设置和 relay-pull（单子上的颜色、方向后端算），不闪 Loading。 */
+  const afterSave = useCallback(async () => {
+    setRefreshError(null);
+    try {
+      const [s, data] = await Promise.all([
+        fetchRelayListSettings(),
+        params ? fetchRelayPull(params.date) : Promise.resolve(null),
+      ]);
+      setSettings(s);
+      if (data) setView({ kind: "ready", data });
+    } catch (e) {
+      setRefreshError(describeError(e));
+    }
+  }, [params]);
+
   const backHref = params ? `/dispatch?date=${params.date}` : "/dispatch";
 
+  // 横版单 297mm 宽（置顶 73）：max-w 放得下一整张。
   return (
-    <main className="mx-auto w-full max-w-[900px] px-4 py-5 sm:px-6 print:max-w-none print:p-0">
+    <main className="mx-auto w-full max-w-[1180px] px-4 py-5 sm:px-6 print:max-w-none print:p-0">
       <div className="rl-screen-only mb-4 flex flex-wrap items-center gap-3">
         <PageLink href={backHref} className={NAV_LINK}>
           ← Dispatch
@@ -111,11 +166,32 @@ export function RelayListView() {
             🖨 Print
           </button>
         ) : null}
-        <span className="text-[12.5px] text-[#cbd5e1]">
+        {view.kind === "ready" && settings ? (
+          <button
+            type="button"
+            data-relay-settings-open
+            onClick={() => setSettingsOpen(true)}
+            className={WHITE_BTN}
+          >
+            ⚙ Colours &amp; page
+          </button>
+        ) : null}
+        {info.button}
+        <span className={`text-[12.5px] text-[#cbd5e1] ${info.hide}`}>
           Shows the saved Dispatch schedule. Changed something? Save it on
           Dispatch, then reload this page.
         </span>
       </div>
+      {refreshError ? (
+        <div className="rl-screen-only mb-3">
+          <ErrorBanner
+            actionLabel="Reload"
+            onAction={() => window.location.reload()}
+          >
+            Saved, but the sheets could not be reloaded: {refreshError}
+          </ErrorBanner>
+        </div>
+      ) : null}
       {view.kind === "loading" ? (
         <p className="text-[13px] text-[#94a3b8]">Loading…</p>
       ) : view.kind === "bad-link" ? (
@@ -139,8 +215,67 @@ export function RelayListView() {
           <Sheets data={view.data} date={params.date} onlyCar={params.car} />
         </div>
       ) : null}
+      {view.kind === "ready" && settings ? (
+        <div className="rl-screen-only">
+          <HowToUse dark title="How to use — Relay list" items={HOW_TO} />
+        </div>
+      ) : null}
+      {settingsOpen && settings && view.kind === "ready" ? (
+        <RelaySettingsDialog
+          settings={settings}
+          canEdit={canEdit}
+          {...todayTours(view.data)}
+          onSaved={afterSave}
+          onClose={() => setSettingsOpen(false)}
+        />
+      ) : null}
     </main>
   );
+}
+
+/** How to use（置顶 73 preview 第 5 节原文，题 1 A ⇒ 第 3 句写三处一起变）。 */
+const HOW_TO = [
+  "Press ⚙ Colours & page to choose the colour of each relay car and tour bus, and whether each sheet prints Portrait or Landscape.",
+  "Colours and page directions are saved for everyone and apply to every day, not only the day you are looking at.",
+  "A tour bus colour is also used for that bus on the driver page and on the Bus Manifest bus header.",
+  'A bus letter without its own colour or direction uses the tour\'s "All buses" row.',
+  "A relay car that is also a tour bus uses that bus's row, not a Relay number.",
+  "Nothing is saved until you press Save. Reset puts one colour back to the paper colour; Reset to paper colours puts them all back (press Save after).",
+  "Some older printers need Auto-rotate turned on in the print window to print Portrait and Landscape sheets together.",
+];
+
+/** 当天的团（设置弹窗默认只列这些）和「同时是团大巴的 relay 车」。 */
+function todayTours(data: RelayPull): {
+  todayTourIds: Set<number>;
+  todayTourNames: Set<string>;
+  alsoRelay: AlsoRelayCar[];
+} {
+  const ids = new Set<number>();
+  const names = new Set<string>();
+  const also: AlsoRelayCar[] = [];
+  const seen = new Set<string>();
+  for (const blocks of Object.values(data.rounds))
+    for (const b of blocks) {
+      for (const g of b.guests) {
+        if (g.manifest_id != null) ids.add(g.manifest_id);
+        if (g.bus?.tour) names.add(g.bus.tour);
+      }
+      for (const tb of b.car.tour_buses ?? []) {
+        if (tb.manifest_id != null) ids.add(tb.manifest_id);
+        names.add(tb.tour);
+        const who = `${(b.car.driver || "No driver").trim()} - ${b.car.van || "No vehicle"}`;
+        const k = `${tb.manifest_id}|${tb.tour}|${tb.label}|${who}`;
+        if (seen.has(k)) continue;
+        seen.add(k);
+        also.push({
+          manifestId: tb.manifest_id ?? null,
+          tour: tb.tour,
+          label: tb.label,
+          who,
+        });
+      }
+    }
+  return { todayTourIds: ids, todayTourNames: names, alsoRelay: also };
 }
 
 function Sheets({
@@ -181,6 +316,7 @@ function Sheets({
             round={r}
             dateLong={dates.long}
             many={rounds.length > 1}
+            orientation={orientationOf(data.summary_orientation)}
           />
           {r.cars
             .filter((c) => c.rows.length > 0)
@@ -258,15 +394,21 @@ function TotalSheet({
   round,
   dateLong,
   many,
+  orientation,
 }: {
   round: RelayRoundList;
   dateLong: string;
   /** 有两轮时右上角带上是哪一轮。 */
   many: boolean;
+  orientation: "portrait" | "landscape";
 }) {
   let prev: { guest: RelayGuest; carKey: string } | null = null;
   return (
-    <section data-relay-total={round.round} className="rl-sheet rl-total">
+    <section
+      data-relay-total={round.round}
+      data-orient={orientation}
+      className="rl-sheet rl-total"
+    >
       <div className="flex items-baseline justify-between text-[20px] font-bold">
         <span>RELAY SPLITS</span>
         <span>
@@ -334,7 +476,11 @@ function CarSheet({
 }) {
   let prev: { guest: RelayGuest; carKey: string } | null = null;
   return (
-    <section data-relay-car={car.key} className="rl-sheet">
+    <section
+      data-relay-car={car.key}
+      data-orient={car.orientation}
+      className="rl-sheet"
+    >
       <div className="rl-head" style={{ background: car.color }}>
         <span>
           {car.title} &nbsp;{car.who}

@@ -1,4 +1,5 @@
 import type { RelayBus, RelayGuest, RelayPull } from "@/lib/dispatch-api";
+import { orientationOf, type Orientation } from "@/lib/relay-list-settings-api";
 
 /**
  * Relay list（Dispatch › Morning Relay「📋 Relay list」，task/relay-print）：把 relay-pull 的两轮排成纸本那几张单。
@@ -45,6 +46,12 @@ export interface RelayCarSheet {
   pax: number;
   /** 底部色条：这台车的客人要交给的大巴（Q3 A）。 */
   buses: RelayBus[];
+  /** 打印方向（置顶 73）：车自己的 → 挂的第一辆大巴的 → portrait。 */
+  orientation: Orientation;
+  /** 这台车当天也是哪几辆大巴（设置弹窗「Also a relay car today」用）。 */
+  tourBuses: Omit<RelayBus, "sections">[];
+  /** 司机 - 车号（设置弹窗用）。 */
+  driverVan: string;
 }
 
 export interface RelayRoundList {
@@ -180,6 +187,9 @@ export function buildRound(
       rows,
       pax,
       buses,
+      orientation: orientationOf(b.car.orientation ?? tb[0]?.orientation),
+      tourBuses: tb,
+      driverVan: `${(b.car.driver || "No driver").trim()} - ${b.car.van || "No vehicle"}`,
     };
     if (tb.length >= 1) {
       return {
@@ -194,7 +204,7 @@ export function buildRound(
     return {
       ...base,
       title: `Relay ${n}`,
-      who: `${(b.car.driver || "No driver").trim()} - ${b.car.van || "No vehicle"}`,
+      who: base.driverVan,
       // 车色照后端（car.relay_color，照纸本取色）；旧后端没带时退回前端色盘。
       color:
         b.car.relay_color ||
