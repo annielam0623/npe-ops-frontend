@@ -784,6 +784,7 @@
   - Relay 1..6 色盘 + 方向：settings 键 relay_list {colors[6], orientation}；`GET/PUT /api/settings/relay-list`（GET 带 defaults 给「Reset to paper colours」）；relay-pull 加顶层 orientation。
   - 权限：PUT 按 dispatch.edit、GET 按 dispatch.view。⚠️ Bus Manifest setup 页是 require_admin，staff 进不去 ⇒ 入口改放 Relay list 页上的设置键（preview 照这个做）。
   - Annie「动手」后转 9e 派后端窗口。
+- 5c 派前端工作窗口 `npe-ops-frontend-fa`[985244] 做 preview（入口放 Relay list 页设置键；题 1 颜色范围、题 2 浅紫候选、题 3 哪一天），只做 preview 不写代码。
 
 ### 72. Dispatch 两台 bus 调位置：勾选框放大 + Auto 按南北分车（2026-11-03 晚，Annie 在主窗口提，附表）
 - Annie 原话：「前端要改一下，当有两台bus可以调位置的时候，勾选框太小了，把它放大跟main manifest里一样；另外Auto排进bus的时候按照这个规则：一台车放south，一台放north，中间的机动填位」。
