@@ -2078,7 +2078,11 @@ export function ReminderDialog({
         ) : null}
         {!sending ? (
           <>
-            <ResultNumbers run={run} failed={failed} />
+            <ResultNumbers
+              run={run}
+              failed={failed}
+              notSent={new Set(run.blocked.map((b) => b.order)).size}
+            />
             <div role="status" className={OK_BOX}>
               {plural(run.sent, "order")} sent.
               {failed ? ` ${failed} not sent by SMS or email, see below.` : ""}

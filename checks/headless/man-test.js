@@ -1289,7 +1289,7 @@ async function run() {
     await waitFor("$dialog()");
     await evaluate("$btn('✉️ Send 1 reminder', $dialog()).click();");
     await waitFor("$dialog()?.querySelector('[data-blocked=\"CHD2005\"]')");
-    check("G245 后端硬拦：发送结果红框 Not sent (1)，原因照后端原话、名字写上，没有 Send anyway 勾选", await evaluate(`const b = $dialog().querySelector('[data-blocked=\"CHD2005\"]'); const t = $dialog().textContent; return b.textContent.includes(${JSON.stringify(REASON)}) && b.textContent.includes('ZZ Ticket Rezdy') && t.includes('Not sent (1)') && t.includes('1 order not sent, see below.') && !$dialog().querySelector('input[data-anyway=\"CHD2005\"]') && !$dialog().querySelector('[data-skipped=\"CHD2005\"]');`), await evaluate("return $dialog().textContent;"));
+    check("G245 后端硬拦：发送结果红框 Not sent (1)，原因照后端原话、名字写上，没有 Send anyway 勾选", await evaluate(`const b = $dialog().querySelector('[data-blocked=\"CHD2005\"]'); const t = $dialog().textContent; return b.textContent.includes(${JSON.stringify(REASON)}) && b.textContent.includes('ZZ Ticket Rezdy') && t.includes('Not sent (1)') && t.includes('1 order not sent, see below.') && /Not sents*1/.test($dialog().querySelector('[class*=\"mb-0\"]')?.textContent ?? t) && !$dialog().querySelector('input[data-anyway=\"CHD2005\"]') && !$dialog().querySelector('[data-skipped=\"CHD2005\"]');`), await evaluate("return $dialog().textContent;"));
     await evaluate("$btn('Done', $dialog()).click();");
     await waitFor("!$dialog()");
     await ctl({ mismatch: null, mismatchLate: [] });
