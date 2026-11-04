@@ -36,6 +36,7 @@
 1. 报对话名；git pull；问后端主窗口 75 / 51B / samsara-arrivals 进度，SHA 到了派窗口核字段合（fa 的分支都在 origin）。
 2. Annie 答 77 / 63 等，按原话派。
 3. 资源：今晚空闲内存 8–11 GB，最多 1 个工作窗口。
+- 5c 应 Annie「我10/29到今天提出来的需求，还有哪些没有实现的」做了一次盘点（只读）：置顶里已完成、待移走的 = 76、71、70、67、66、65、62、60、57、56、54、50、44、43、42、39、38、37、36、35、34、32、30（只剩小题）；明天主窗口先把这些移到当天记录（73 / 74 等 Annie 验收后移）。另两件要问后端：G212 B3 / B6 / B7（admin 按层级，10-30 后没再提）、61 题 1①「Wrong bus」跨天误报没派。
 - fa 收工：分支都已推、进程都关；worktree 留 D:\npe-ops-frontend-wt-blank（task/open-in-manifest，75 / 51B 后端到了在这里核）；D:\npe-ops-frontend-wt-waiver 已合 main 可删。⚠️ fa 顺手关了 3398 上一个不是它的进程（可能别的窗口的 dev server），已告诉 da、36，断了重启即可。
 - 网页版看板已更新（Annie 原话「今晚收工，写交接，把明天要做的事情写进网页版去」）：https://claude.ai/artifact/3GzA8Kv4o8pojxoGsQMj4F 版本 1793778407-a998——今日完成加 Waiver link / Relay 颜色和方向 / Relay 空白页 / Working hours 按天 / Dispatch No tracking；明天计划加 Restaurant 批量导入，更新 agent ref 搜索、跳 Main Manifest 两张的进度；进行中加「快捷回复搬进 Content Studio」，删掉已完成的 4 张。
 
