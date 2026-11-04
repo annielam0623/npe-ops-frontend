@@ -962,6 +962,7 @@ D. 已完成、待从置顶移走：
 - **Annie 答（原话）**：「Q1 A Q2 我说的是登录的时间，这里提前一点，也就是说如果staff凌晨2点 - 8：30am期间登录的，看到的dispatch页面都是今天的，直到他再次登录，8：31am以后登录的看到的就是明天的dispatch」⇒ 只改 Dispatch 主页；**按登录时间（洛杉矶）**：02:00–08:30 登录 → 默认今天（登录那天），一直到下次登录；08:31 起登录 → 默认明天。带 ?date= / 手动换日期照旧。**还没说「动手」。**
 - **需要后端**（2c 只读查后端 origin/main）：前端读不到登录时间（session cookie httponly）。登录 token 有 exp、TOKEN_EXPIRE_HOURS=9（app/auth.py:47），没有 iat；/api/me（users.py:144）不带登录时间。要后端在 GET /api/me 加 `logged_in_at`（ISO UTC，登录那一刻；可从 token exp − 9h 算，或签 token 时加 iat）。前端：没这个字段 = 照旧明天。
 - 注：token 9 小时过期，02:00–08:30 登录的最晚 17:30 前要重登，重登后按新登录时间算。
+- **Annie 确认（原话）**：「置顶83，是的，只是登录默认，如果staff自己改过时间就随他改的时间，不需要再回跳」⇒ 只管登录后打开时的默认日期；staff 自己换过日期就一直按他换的，不跳回。**还没「动手」**（已问）。
 
 ### 82. G245 Main manifest 羚羊谷 Cfm # 跟产品不符标红、挡发送（2026-11-04，94 转，前端还没 preview）
 - Annie 原话（94 转）：「我需要订单如实地反映在页面上，rezdy是什么样就是什么样……现在在main manifest的cfm#就应该是标红，然后让staff去改」「如果设置了auto send的话要提醒这个#的不对，不能发送」。起因 CHDQ59DAL：原下 X 后改 Lower，X 栏的号是真的但不是 Lower 的号。
