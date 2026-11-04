@@ -967,6 +967,7 @@ D. 已完成、待从置顶移走：
   - Q5 How to use：A（推荐）「Shift types (Super Admin): open ⚙ Settings → Shift types. Click + Add shift type, type a name, pick a colour and, if you like, default times, then press Save. Untick Active to stop offering a shift type; shifts already scheduled keep it. Drag ⋮⋮ to change the order of the buttons in Add shift.」；B 她改字。
   - 规矩：全部暂存、蓝色 Save 一起存、未存关弹窗先问；红字「Enter a name for the new shift type.」「There is already a shift type called …」。
   - 需要后端（Q3 A 时）：schedule_shift_types 加 color（open / mid / close / amber / rose / teal / orange / grey，migration 先给 Annie 看）；GET 带 color，POST / PUT 收 color、不认得 400；建议改类型写 action_log；key 前端从名字生成（小写、空格 _、≤20、重了加 _2）。工时：前端 3–4 小时，后端约 1 小时 + migration。
+- **Annie 回（原话，附 Unassigned 行截图）**：「一个是自己添加班次，给班次改名，然后在schedule的rules里可以添加规则。另外，图片里这个颜色实在太丑了重新设计一下。然后它的功能和用法是怎样的」⇒ Q1 = A（班次类型）；要能**新增 + 改名**；新类型要能在 **Rules** 里用（2c 查：rule-dialog.tsx:260 按 active 班次类型列，排班引擎不写死 open / mid / close ⇒ 新类型自动能选，不用另做）；**Unassigned 行配色重新设计**（现在暗红底 #1b0d12 + 红色虚线框，week-grid.tsx:336）；她问 Unassigned 的功能和用法（2c 已在回复里解释）。还没「动手」。2c 派 81 改 preview：加改名、Rules 里能选新类型的示意、Unassigned 行 2–3 种新配色。
 
 ### 84. Staff Schedule 后台要有员工登录记录（2026-11-04，Annie 在主窗口-2c 提，没动手）
 - 原话（接置顶 83 后说）：「我们本来就应该在staff的schedule后台管理页面有员工的登录记录」。
