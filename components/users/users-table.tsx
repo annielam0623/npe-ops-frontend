@@ -648,13 +648,27 @@ function RowActions({
   busy: boolean;
   actions: UserRowActions;
 }) {
+  // 自己那一行：Reset password 灰着（同现在）+ ✏️ Name（preview v3 ②「自己：Reset password（灰掉）· ✏️ Name」，
+  // admin「同左」；后端自己的显示名照旧能改）。
   if (user.is_self) {
     return (
-      <ResetPasswordButton
-        user={user}
-        role={role}
-        onClick={actions.onResetPassword}
-      />
+      <>
+        <ResetPasswordButton
+          user={user}
+          role={role}
+          onClick={actions.onResetPassword}
+        />
+        <button
+          type="button"
+          onClick={() => actions.onEditName(user)}
+          className={cn(
+            SMALL_BUTTON_CLASS,
+            "border border-[#e5e7eb] bg-[#f3f4f6] px-3 font-medium text-[#1a1a1a] night:border-white/10 night:bg-white/[.07] night:text-white/75",
+          )}
+        >
+          ✏️ Name
+        </button>
+      </>
     );
   }
 

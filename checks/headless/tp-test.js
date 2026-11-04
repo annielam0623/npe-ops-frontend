@@ -1028,7 +1028,7 @@ async function fill(page, label, value) {
       kevin.includes("🔒 Only a Super Admin can change another admin.") && !/\bEdit\b|Deactivate|Reset password/.test(kevin) &&
         !(await page.evaluate(() => [...document.querySelectorAll("tbody tr")].find((r) => r.innerText.includes("@kevin")).querySelector("select"))), kevin);
     const self = (await rowText(page, "@grace")) || "";
-    check("G212 admin: own row — no Edit (Qb), Reset password still there, no lock text", !/\bEdit\b/.test(self) && self.includes("Reset password") && !self.includes("🔒"), self);
+    check("G212 admin: own row — no Edit (Qb), Reset password (greyed) + ✏️ Name (preview v3 ②), no lock text", !/\bEdit\b/.test(self) && self.includes("Reset password") && self.includes("✏️ Name") && !self.includes("🔒"), self);
     const ben = (await rowText(page, "@ben")) || "";
     check("G212 admin: staff row — Edit · Reset password · ✏️ Name · Deactivate", /Edit[\s\S]*Reset password[\s\S]*✏️ Name[\s\S]*Deactivate/.test(ben), ben);
     const opts = await page.evaluate(() => [...[...document.querySelectorAll("tbody tr")].find((r) => r.innerText.includes("@ben")).querySelectorAll("select option")].map((o) => o.textContent.trim()));
