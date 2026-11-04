@@ -4,7 +4,41 @@
 
 > 6d 交接（下面「2026-10-27 交接：前端主窗口 6d」那节）的后端需求已于 10/27 晚由 ad 转给家里后端主窗口 17。
 
-> **下一个主窗口：先读下面「2026-11-03 晚 收工交接：前端主窗口 今日前端主窗口-5c」，再看置顶「📌 等 Annie 确认」。上一份是「2026-11-03 收工交接：前端主窗口 今日主窗口-24」。**
+> **下一个主窗口：先读下面「2026-11-04 交接：前端主窗口 今日主窗口-24 → 今天新开的主窗口」，再读「2026-11-03 晚 收工交接：前端主窗口 5c」，再看置顶「📌 等 Annie 确认」。**
+
+## 2026-11-04 交接：前端主窗口 `今日主窗口-24`[310398] → 今天新开的主窗口（公司电脑）
+
+> Annie：「你这个窗口太多内容了，我打算跟其他几个昨天就开着的窗口一起关闭了，你写一下交接给新开的窗口，让它来做今天的主窗口」。前端工作窗口 09 / 91 / e6 也一起关；新主窗口开工后请 Annie 按需要开新工作窗口。
+> 先读本节，再读下面「2026-11-03 晚 收工交接：前端主窗口 5c」（家里昨晚做的：Waiver link、Relay list ⚙ Colours、置顶 73–77、Restaurant Import 待做等），再看置顶「📌 等 Annie 确认」。
+> 后端主窗口：`主窗口37`[875db6]（公司）；后端工作窗口 57（在做南北分车）、44、4d、64。
+
+### 一、今天（11-04）上 main 的，等 Annie 线上验收
+| 件 | 前端 SHA | 后端 | 验收看 |
+|---|---|---|---|
+| 置顶 63 G234 换司机只改 Dispatch（Annie「A」） | 40d5279 | 01606b02 | Dispatch Assign 换司机 Save 后灰字 / 红字；Send › Morning Relay Status 灰字；Morning tracking Driver 列灰字 + Guest Viewed 红字「Bus changed — ask the guest to open the link again」+ How to use 两句 |
+| 置顶 78 Live drivers 订单号旁「· 简写」（Annie「动手」） | 153be6b | 不用改（早已带 short_tag） | Morning tracking › Live drivers；没填 Bus Manifest setup Short name 的团只显示单号 |
+| 置顶 70 Relay List 键（11-03 晚） | 6367d0c | — | Dispatch › Assign 顶部 |
+| 置顶 71 Columns 按页存（11-03 晚） | f5459d6 | 1fac68ca（上限 20000，家里昨晚上） | Manifests ☰ Columns 6 个验收点见置顶 71 |
+
+### 二、在分支、等 Annie 看 preview
+- **置顶 72 南北分车（前端 09，task/seat-direction faca991 或之后，未合）**：preview https://claude.ai/artifact/5FLcwPjxBMjNbVuD15mCmG 三处 ① Seat guests 大勾选框 ①b 酒店胶囊 + A–Z（Annie 已「理解正确，动手」，细节按推荐）② Pickup Locations Direction 列。**等 Annie 回 A**（已问，回复里有全文）→ 合最新 main 跑 da / pl / nav + tsc / eslint / build 后合 main（Direction 列没后端键时不出，可先合）。
+  - 规则全部已定（置顶 72 有原话）：Bus A 放人多一方、一样多放 South、溢出先中间车再另一方、Flexible 补空位多的、不拆单、表外 = Flexible、所有字母分车团、Resorts World = South。
+  - 后端 57 在做：GET /api/pickup-locations 每行 direction（north / south / flexible / null）、PATCH /{id}/direction、迁移预填 17 家（**Annie 要先执行迁移**）、seat_plan 改规则。上线 SHA 由 37 发。
+
+### 三、正在做 / 刚派的
+- **置顶 79 司机 / 导游页字改白**（Annie 原话在置顶 79）：派 09 出 preview：逐项列灰字（页面文字 + 模板 class / 行号，driver_home.html、guide_home.html、live-drivers.tsx），推荐全改白、只留按不了的按钮和「—」占位，「现在 / 改后」并排。09 被关之前的进度见置顶 79（它会写进去）。**新主窗口：派新工作窗口接着出 preview**；Annie 点头 + 动手后：清单发 37（后端改模板），前端改 Live drivers。
+
+### 四、等 Annie（详见置顶，不滚动重问）
+- 64 G180 Tour Tracking：Notified 版 preview https://claude.ai/artifact/Fz4f3awLiNauihh2n655JT 等点头（Annie 已在 44「动手」，措辞 Notified / To notify，CSV Notified = Yes / No）；后端 44 task/tracking-sync-v2 家里做。
+- 69 酒店格按 relay 车色：preview https://claude.ai/artifact/G6wBhhVQpNqWiHQgQWQ4te 3 题。
+- 68 / G243 Relay 勾酒店超座位：提醒还是挡（37 问）。
+- 其余（5c 交接里的 77、51 A、Today's team 7 题、48、Send Log、Dashboard 统计 bug、Forecast 补数据；61、58 / 59、53 Q8 等）照旧。
+- Annie 自己要做：v146（samsara-arrivals）、南北分车迁移、取消 Anita「Counts toward coverage」、GPS 偏差实测。
+
+### 五、新主窗口开工
+1. ListAgents 报对话名；git pull；读本节 + 5c 节 + 置顶。
+2. 问 Annie 要开几个工作窗口（看资源）：至少 1 个接 72（合 main）+ 79（preview）；5c 交接的 Restaurant ⬆ Import 也待派。
+3. 发消息给 `主窗口37` 告知新的前端主窗口名字。
 
 ## 2026-11-03 晚 收工交接：前端主窗口 `今日前端主窗口-5c`[e44052]（家里电脑）
 > 逐条记录在下面「主窗口 5c 开工」节和置顶 73–77、51；Annie 原话都在置顶里。窗口：前端工作窗口 fa [985244]（固定检查端口 APP 3577 / MOCK 8977 / CDP 9577，worktree D:\npe-ops-frontend-wt-blank）；后端主窗口-9e（已收工）、后端 da、36。
