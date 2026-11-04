@@ -967,6 +967,9 @@ D. 已完成、待从置顶移走：
   - 工时：后端约 1.5–2 天，带迁移（v151 后），要跟 57 的 seat 排队。
 - **2c 已整段问 Annie（新题，取代上面 Q1–Q4）**：Q1 放哪（A 推荐 Live drivers 每人加 Day snapshot、按日期回看 / B Staff Schedule 这个人那一天 / C 个人 History 按天）；Q2 什么时候存（A 推荐 Completed 时存 + 23:00 补存 / 时间她可改）；Q3 司机 / 导游本人看不看自己的（A 推荐不看 / B 看）；Q4 谁能看、留多久（A 推荐同 Live drivers、90 天 / B 只 SA、一直留）；Q5 短信数要不要准（A 推荐加来源标记约半天 / B 先不数）；Q6 Picked up / No show 数最后状态还是连改过几次（A 推荐只数最后状态 / B 加事件记录）。
 - **Annie 对 Q5（原话）**：「staff发的都自带id了，所以只会有拿了这个链接的人会再发，所以不会混淆」⇒ 员工回复带员工 id，没带员工 id 的 sms_out 就是司机页（拿链接的人）发的，不用另加来源标记。已转 94 核实（booking_notes / send_log 员工发的是否都有 user id、司机页发的是否都没有 / 能否按车或 field link 对到人）。Q1–Q4、Q6 未答，未动手。
+  - 94：交 18 核实，重点是有账号的司机从司机页发会不会也带 user id、跟员工分不开。
+  - ✅ 18 核完（生产只读）：**能分开，不用加来源标记、后端不多做**。判据：booking_notes / send_log 只记登录名（author_username / sent_by），拿去对 admin_users.username 的 role——staff / admin / superadmin / supervisor = 员工发；driver / guide 账号，或对不上账号但对得上 HR nickname（没账号的司机）= 司机页发；再按 hr_profiles 对到人、当天 dispatch 对到车。近 14 天 sms_out 197 行全是员工、无误算；⚠️ 近 14 天没有一条司机页发的（快捷回复只配了 3 条），司机那边只靠读代码证明。快照存时把「谁发的」一起存进去，以后改 role / 改名不受影响（写进设计）。⇒ Q5 = 数准，不加工作量。
+- **Annie 答 Q2（原话）**：「Q2，我们现在所有的操作都不需要点completed，所以就以tour结束吧，司机check out了那台车就结束了」⇒ 不用 Dispatch Completed；快照在**司机 check out 那台车时**存（tour 结束）。已转 94 核：司机页 / 系统里有没有「check out 车」这个动作、存在哪、导游怎么算结束、司机忘了 check out 时要不要兜底（晚上补存）。
 
 ### 85. Staff Schedule 班次类型（Open / Mid / Close）可手动新增（2026-11-04，Annie 在主窗口-2c 提，附排班格截图，没动手）
 - 原话：「在role里，给一个手动添加role的选项」「我说的是staff schedule」。截图是 Staff Schedule 周表，格子上的 Open / Mid / Close ⇒ 理解为班次类型（后端叫 shift type）。
