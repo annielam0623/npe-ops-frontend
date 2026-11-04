@@ -108,6 +108,30 @@ export function missingWaiver(row: ManifestRow): boolean {
   return row.waiver_link_required === true && !hasValue(row.values[WAIVER_KEY]);
 }
 
+/** G245：这一行 Rezdy 的 Cfm # 跟产品不符（只看门票）。 */
+export function cfmMismatch(
+  row: ManifestRow,
+  tab: ManifestTabKey,
+): { other_label: string; other_value: string } | null {
+  return tab === "tickets" ? (row.cfm_mismatch ?? null) : null;
+}
+
+/** 发送前红条里写的原因（同后端 blocked 的原话）。 */
+export function cfmMismatchReason(m: {
+  other_label: string;
+  other_value: string;
+}): string {
+  return `Cfm # doesn't match the product (${m.other_label}: ${m.other_value})`;
+}
+
+/** 红格的提示（Annie：鼠标停上去显示、简短，告诉 staff 去 Rezdy 改）。 */
+export function cfmMismatchTip(m: {
+  other_label: string;
+  other_value: string;
+}): string {
+  return `Wrong Cfm # for this product — Rezdy has it under ${m.other_label}: ${m.other_value}. Fix it in Rezdy.`;
+}
+
 /**
  * 门票这一行发送前缺什么（同后端 split_ticket_soft_blocks，一行两个原因合成一条）：
  * 「No Cfm #」「No waiver link」；不缺 = []。巴士不看。
@@ -117,6 +141,8 @@ export function softBlocks(row: ManifestRow, tab: ManifestTabKey): string[] {
   return [
     ...(isSelectable(row, tab) ? [] : ["No Cfm #"]),
     ...(missingWaiver(row) ? [WAIVER_MISSING] : []),
+    // G245：号不对是硬拦（不算进 Send anyway），原因同后端原话。
+    ...(row.cfm_mismatch ? [cfmMismatchReason(row.cfm_mismatch)] : []),
   ];
 }
 
