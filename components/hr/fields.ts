@@ -434,3 +434,31 @@ export function toggleMulti(
   const unknown = [...set].filter((v) => !known.includes(v));
   return [...known, ...unknown].join(",");
 }
+
+/**
+ * Profile 分节（置顶 86，Annie「把司机和导游分开，司机+司机&导游放在上面的section，只是导游的放到下面的一个section」，
+ * 题 2 A：Position 没填的放最下面一节）：driver / both ⇒ Drivers；guide ⇒ Guides；其余（没填、不认识的值）⇒ Position not set。
+ */
+export type ProfileSection = "drivers" | "guides" | "unset";
+
+export function profileSection(
+  position: string | null | undefined,
+): ProfileSection {
+  if (position === "driver" || position === "both") return "drivers";
+  if (position === "guide") return "guides";
+  return "unset";
+}
+
+export const PROFILE_SECTIONS: readonly {
+  key: ProfileSection;
+  title: string;
+  note: string;
+}[] = [
+  { key: "drivers", title: "Drivers", note: "Driver and Driver + Guide" },
+  { key: "guides", title: "Guides", note: "Guide only" },
+  {
+    key: "unset",
+    title: "Position not set",
+    note: "Pick Driver, Guide or Driver + Guide to move them up.",
+  },
+];
