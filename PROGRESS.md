@@ -764,7 +764,7 @@
 - 合并后的题（2026-11-03 晚已贴给 Annie，取代主窗口先问的 4 题）：1 哪台 North 哪台 South（推荐 A = North，最后一个字母 = South）；2 Flexible 放哪（推荐当时空位多的那台，一样多放 A）；3 超过两台中间车（推荐只装 Flexible 和满出来的）；4 North 一台装不下（推荐先中间车，没有就 South 那台，一单不拆，都装不下照旧 Not on a bus）；5 表外酒店（推荐当 Flexible，Settings 显示 Not set 让 staff 补）；6 适用哪些团（没推荐，Annie 说）；7 Resorts World 在表里是橙色（南），确认是不是故意的。
 - preview（Pickup Locations Direction 列 + Seat guests 大勾选框）派给今晚 / 明天的前端工作窗口。
 
-### 71. Main manifest ☰ Columns 按某一页单独存（2026-11-03，09 记录，还没 preview）
+### 71. Main manifest ☰ Columns 按某一页单独存—— ✅ 已合 main f5459d6（2026-11-03，09 记录，还没 preview）
 - Annie 原话（09 窗口）：「在main manifest上的column选线，我可以专门为某个页面选择勾选哪些项目么？可不可以在选择的那个页面上加一个just apply for this page，or apply for all」。
 - 现状：列选择按账号、按标签（Bus Tour / Tickets - SelfDrive / Admin fee）各存一份（user-prefs manifest_cols_bus / _tickets / _admin_fee），同标签下所有胶囊共用。按胶囊分开存要后端改 user-prefs（键白名单、值上限 4000 字：加上限或加按胶囊的键）；前端 ☰ Columns 弹窗加「Apply to this page only / Apply to all」。
 - 09 在问 Annie「某个页面」是不是指某颗胶囊；答了 09 出 preview，归 09。定了范围再转 37 评估后端。
