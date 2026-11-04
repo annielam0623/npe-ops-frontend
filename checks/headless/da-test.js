@@ -1149,6 +1149,7 @@ async function run() {
   check("点 A 的 U：这台车只显示 U 的订单并自动勾上", await evaluate(`const a = ${bg("3:A")}; const rows = [...a.querySelectorAll('[data-seat-order]')]; return rows.length === 1 && rows[0].dataset.seatOrder === 'SG1' && rows[0].querySelector('[data-seat-select]').checked && a.textContent.includes('1 order of 2');`));
   await evaluate(`${tk("A", "all")}.click();`);
   await sleep(150);
+  check("72：Seat guests 每单勾选框放大成 Main manifest 的大小（20px）", await evaluate(`const b = document.querySelector('[data-seat-select]').getBoundingClientRect(); return Math.round(b.width) === 20 && Math.round(b.height) === 20;`));
   check("点 All：两张订单都回来，勾选取消", await evaluate(`const a = ${bg("3:A")}; return a.querySelectorAll('[data-seat-order]').length === 2 && [...a.querySelectorAll('[data-seat-select]')].every(b => !b.checked);`));
   let sb = (await mockLog()).length;
   await evaluate(`const s = ${bg("3:A")}.querySelector('[data-seat-order=SG2] select'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, 'B'); s.dispatchEvent(new Event('change', { bubbles: true }));`);
@@ -2265,6 +2266,50 @@ async function run() {
     check("电脑：黄字、步骤小字照旧显示，没有 i", await evaluate("return " + yellow + ".getBoundingClientRect().height > 0 && [...document.querySelectorAll('[data-phone-info]')].every(b => b.getBoundingClientRect().width === 0) && [...document.querySelectorAll('#dispatch-steps [role=tab]')].every(x => [...x.children].pop().getBoundingClientRect().height > 0);"));
     await goto("about:blank");
     await sleep(300);
+  }
+
+
+  // 置顶 72 追加（Annie 2026-11-04「理解正确，动手」）：Arrange seats 名单按酒店 A–Z、同酒店挨着；名单上方酒店胶囊，点一颗勾上这家全部单，可多选
+  {
+    await ctl({ pillDemo: true });
+    await goto(APP + "/dispatch?date=2026-10-09");
+    const bgp = (k) => "document.querySelector('[data-bus-guests=\"" + k + "\"]')";
+    await waitFor(bgp("3:A") + "?.querySelector('[data-hotel-pill]')", 60000);
+    await helpers();
+    const names = (col) => evaluate("return [...(" + col + ").querySelectorAll('[data-seat-order]')].map(li => li.querySelector('.truncate').textContent.replace(/PD\\d+$/, '').trim()).join('|');");
+    const unpl = "document.querySelector('[data-unplaced=\"3\"]')";
+    const aNames = await names(bgp("3:A"));
+    check("72 追加：Bus A 名单按酒店 A–Z、同酒店挨着、同酒店按客人名（Bellagio Moss、Circus Circus Lee、Wynn Adams、Wynn Kim）", aNames === "ZZ Test Moss|ZZ Test Lee|ZZ Test Adams|ZZ Test Kim", aNames);
+    const uNames = await names(unpl);
+    check("72 追加：Not on a bus 也按 A–Z，没写酒店的排最后", uNames === "ZZ Test Gray|ZZ Test Hale", uNames);
+    const pills = (col) => evaluate("return [...(" + col + ").querySelectorAll('[data-hotel-pill]')].map(b => b.textContent).join('|');");
+    const aPills = await pills(bgp("3:A"));
+    check("72 追加：名单上方一家酒店一颗胶囊，写几单 · 几位（Wynn 2 orders · 4 pax）", aPills === "Bellagio1 order · 1 pax|Circus Circus1 order · 3 pax|Wynn2 orders · 4 pax", aPills);
+    check("72 追加：Not on a bus 也有胶囊，没写酒店的叫 No hotel", (await pills(unpl)) === "Excalibur1 order · 2 pax|No hotel1 order · 1 pax", await pills(unpl));
+    const pill = (col, h) => "(" + col + ").querySelector('[data-hotel-pill=\"" + h + "\"]')";
+    const ticked = (col) => evaluate("return [...(" + col + ").querySelectorAll('[data-seat-order]')].filter(li => li.querySelector('[data-seat-select]').checked).map(li => li.dataset.seatOrder).join(',');");
+    await evaluate(pill(bgp("3:A"), "Wynn") + ".click();");
+    await sleep(150);
+    check("72 追加：点 Wynn ⇒ 这台车 Wynn 的两单都勾上、胶囊变选中", (await ticked(bgp("3:A"))) === "PD3,PD1" && (await evaluate("return " + pill(bgp("3:A"), "Wynn") + ".getAttribute('aria-pressed');")) === "true", await ticked(bgp("3:A")));
+    await evaluate(pill(bgp("3:A"), "Circus Circus") + ".click();");
+    await sleep(150);
+    check("72 追加：再点 Circus Circus ⇒ 多选，三单都勾着", (await ticked(bgp("3:A"))) === "PD2,PD3,PD1", await ticked(bgp("3:A")));
+    await evaluate(pill(bgp("3:A"), "Wynn") + ".click();");
+    await sleep(150);
+    check("72 追加：再点 Wynn ⇒ Wynn 两单取消，Circus Circus 还勾着", (await ticked(bgp("3:A"))) === "PD2" && (await evaluate("return " + pill(bgp("3:A"), "Wynn") + ".getAttribute('aria-pressed');")) === "false", await ticked(bgp("3:A")));
+    await evaluate(pill(bgp("3:A"), "Circus Circus") + ".click(); " + pill(bgp("3:A"), "Wynn") + ".click();");
+    await sleep(150);
+    check("72 追加：下面写 Move selected (2) to…", await evaluate("return document.querySelector('[data-move-target]').options[0].textContent === 'Move selected (2) to…';"));
+    const before = (await mockLog()).length;
+    await evaluate("const s = document.querySelector('[data-move-target]'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, 'B'); s.dispatchEvent(new Event('change', { bubbles: true }));");
+    await sleep(100);
+    await evaluate("document.querySelector('[data-move-selected]').click();");
+    await waitFor(bgp("3:B") + ".textContent.includes('ZZ Test Adams') && " + bgp("3:B") + ".textContent.includes('ZZ Test Kim')");
+    const moves = (await mockLog()).slice(before).filter((e) => e.path === "/api/dispatch/seating/move");
+    const movedIds = moves.flatMap((e) => e.body.guest_ids).sort((x, y) => x - y).join(",");
+    check("72 追加：选好点 Move ⇒ Wynn 两单一次移到 Bus B（存 bus_label B），B 里也按 A–Z 排", moves.every((e) => e.body.bus_label === "B") && movedIds === "100,101,120,121" && (await names(bgp("3:B"))) === "ZZ Test Cole|ZZ Test Park|ZZ Test Ford|ZZ Test Nash|ZZ Test Adams|ZZ Test Kim", movedIds + " / " + (await names(bgp("3:B"))));
+    check("72 追加：How to use 写了酒店胶囊", await evaluate("const t = document.body.textContent.replace(/\\s+/g, ' '); return t.includes('Arrange seats lists each bus by hotel, A to Z, with the same hotel together.') && t.includes('Click a hotel above a list to tick all its orders');"));
+    await ctl({ pillDemo: false });
   }
 
   // 401

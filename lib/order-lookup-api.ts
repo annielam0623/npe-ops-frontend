@@ -143,7 +143,12 @@ export async function searchOrders(
     );
     const seen = new Set<string>();
     const orders = page.records.filter((r) => {
-      if (!hit(r, q) || seen.has(r.order_number)) return false;
+      // 置顶 75：后端标了 matched_agent_ref 的（按 agent reference 对上）也留下。
+      if (
+        !(hit(r, q) || r.matched_agent_ref === true) ||
+        seen.has(r.order_number)
+      )
+        return false;
       seen.add(r.order_number);
       return true;
     });

@@ -303,6 +303,14 @@ async function run() {
     await sleep(500);
     const list = await evaluate("const h = [...document.querySelectorAll('main thead th')].map((t) => t.textContent.trim()); return { agent: h.includes('Agent'), viator: document.querySelector('main tbody').textContent.includes('Viator'), cells: document.querySelector('main tbody tr').children.length, heads: h.length };");
     check(`${label}：订单列表 ${see ? "有" : "没有"} Agent 列，每行格数 = 表头数`, list.agent === see && list.viator === see && list.cells === list.heads, JSON.stringify(list));
+    // 置顶 75（定 B）：能看 agent 的人搜索框提示字带 agent ref、How to use 多一句；没权限的人都不提。
+    const ph = await evaluate("const i = document.querySelector('main input[type=search]'); const t = [...document.querySelectorAll('details')].find((d) => d.textContent.includes('How to use — Orders'))?.textContent ?? ''; return { ph: i.placeholder, how: t.includes('you can also search by the agent reference') };");
+    check(`${label}：搜索框提示字 / How to use ${see ? "提" : "不提"} agent ref`, see ? ph.ph === "Search order#, name, email, phone, product, agent ref..." && ph.how : ph.ph === "Search order#, name, email, phone, product..." && !ph.how, JSON.stringify(ph));
+    if (see) {
+      await evaluate("const i = document.querySelector('main input[type=search]'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(i, 'TA-55001'); i.dispatchEvent(new Event('input', { bubbles: true })); return 1;");
+      const hit = await waitFor("document.querySelector('main [data-matched-agent-ref]')", 20000);
+      check(`${label}：按 agent ref 搜到的单，单号下面写 Matched by agent reference: TA-55001`, hit && (await evaluate("return document.querySelector('main [data-matched-agent-ref]').textContent === 'Matched by agent reference: TA-55001';")));
+    }
     await goto(`${APP}/orders/CHDTESTORDER1`);
     await waitFor("!!document.querySelector('section[aria-label=\"Operations\"]')", 60000);
     await helpers();
@@ -313,6 +321,17 @@ async function run() {
     check(`${label}：订单详情 ${see ? "有" : "没有"} Price 卡 / Agent & Commission / Agent 行 / 票价 / Raw Rezdy / How to use 价格那条`, all, JSON.stringify(d));
   }
   await ctl({ staffPerms: null, superAdmin: false, keepMoney: false });
+  // ── 置顶 51 B：Order details 整页顶上「Main manifest:」——有 manifest_links 才出；partner 不出 ──
+  await ctl({ mlinks: true, partner: null, staffPerms: null });
+  await goto(`${APP}/orders/CHDTESTORDER1`);
+  await waitFor("document.querySelector('[data-open-in-manifest]')", 60000);
+  check("Order details 整页：白键 Open in Main manifest →，网址带 row", await evaluate("const a = document.querySelector('[data-open-in-manifest]'); const u = new URL(a.href); return a.textContent.trim() === 'Open in Main manifest →' && u.pathname === '/manifests' && u.searchParams.get('row') === 'CHDTESTORDER1|PBZ|2026-10-03';"));
+  await ctl({ mlinks: false });
+  await goto(`${APP}/orders/CHDTESTORDER1`);
+  await waitFor("!!document.querySelector('main h1')", 60000);
+  await sleep(500);
+  check("旧后端：整页没有 Main manifest 那一行", await evaluate("return !document.querySelector('[data-manifest-links]');"));
+
   await ctl({ fail401: true });
   await goto(`${APP}/orders`);
   await waitFor("location.pathname === '/auth/login'");

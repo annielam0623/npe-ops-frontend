@@ -24,7 +24,14 @@ export interface PickupLocation {
   is_shuttle?: boolean | null;
   /** Shuttle 站每条线路、每个季节车到这一站的时间（全部季节一次给）。没有这一格 = 那一季还没填。 */
   times?: PickupStopTime[];
+  /**
+   * Auto 分车用的方向（置顶 72，Annie 2026-11-04「动手」）：null = Not set（排座当 Flexible）。
+   * **没有这个键 = 后端还没上线**，页面不出 Direction 列。改用 PATCH /{id}/direction。
+   */
+  direction?: PickupDirection | null;
 }
+
+export type PickupDirection = "north" | "south" | "flexible";
 
 /** 一个站 × 一条线路（Shuttle 产品）× 第几班 × 一个季节。 */
 export interface PickupStopTime {

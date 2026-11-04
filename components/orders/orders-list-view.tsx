@@ -274,7 +274,12 @@ export function OrdersListView() {
               type="search"
               aria-label="Search"
               value={search}
-              placeholder="Search order#, name, email, phone, product..."
+              placeholder={
+                // 置顶 75（定 B）：能看 agent 的人才能按 agent reference 搜，才提。
+                perms.canSeeMoney
+                  ? "Search order#, name, email, phone, product, agent ref..."
+                  : "Search order#, name, email, phone, product..."
+              }
               onChange={(e) => setSearch(e.target.value)}
               className="h-8 w-72 min-w-[200px] rounded-[7px] border-[0.5px] border-black/15 bg-paper px-2.5 text-[13px] text-[#1a1a1a] focus:outline-none night:border-white/10 night:bg-white/[.04] night:text-white/90 night:placeholder:text-white/35"
             />
@@ -515,6 +520,11 @@ export function OrdersListView() {
               "The list shows upcoming tours. Search by order #, name, email, phone or product.",
               "Click 📅 Tour date to change the range (Custom: pick both dates, then Apply).",
               "Click an Order # to open the order.",
+              ...(perms.canSeeMoney
+                ? [
+                    "If you can see prices, agent & commission, you can also search by the agent reference — here and in the order search box at the top of every page.",
+                  ]
+                : []),
               ...(partner
                 ? []
                 : [
@@ -587,6 +597,17 @@ function OrderTableRow({
         >
           {r.order_number}
         </Link>
+        {r.matched_agent_ref ? (
+          <span
+            data-matched-agent-ref
+            className="block text-[11px] text-[#378ADD] night:text-sky-300"
+          >
+            Matched by agent reference
+            {r.reseller_reference && r.reseller_reference !== "—"
+              ? `: ${r.reseller_reference}`
+              : ""}
+          </span>
+        ) : null}
       </td>
       <td className="px-2.5 py-[7px]">
         {r.name}

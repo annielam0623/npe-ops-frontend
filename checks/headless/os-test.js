@@ -139,7 +139,8 @@ async function run() {
   await ctl({ unauth: false });
   await openDashboard();
 
-  check("顶栏有订单搜索框（原来假框的位置）", await evaluate("return $input().placeholder === 'Order #, guest name or phone #' && !!$input().closest('header');"));
+  // 置顶 75：能看 agent 的人（这里读不到权限 = 照旧全给）提示字带 agent ref。
+  check("顶栏有订单搜索框（原来假框的位置）；能看 agent 的人提示字带 agent ref", await evaluate("return $input().placeholder === 'Order #, guest name, phone # or agent ref' && !!$input().closest('header');"));
   check("搜索框是 1px 黄色细线、没有底线", await evaluate("const s = getComputedStyle($input().form); return s.borderTopWidth === '1px' && s.borderBottomWidth === '1px' && s.borderTopColor.includes('251, 191, 36') && s.boxShadow === 'none';"));
   check("dashboard 页面里没有单独的查询框", await evaluate("return !document.querySelector('main section[aria-label=\"Order lookup\"]') && !$box();"));
   check("问候语和日期在顶栏", await evaluate("const h = document.querySelector('header').textContent; return h.includes('Good morning, ZZ Test') && /(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday), /.test(h);"), await evaluate("return document.querySelector('header').textContent;"));
@@ -289,7 +290,7 @@ async function run() {
 
   // ── 查不到 / 出错 / Clear ──
   await search("NOPE", "document.querySelector('[data-lookup-note]')?.textContent.includes('No order matches')");
-  check("查不到：写明可以用单号、姓名或电话", await evaluate("return $txt().includes('No order matches “NOPE”') && $txt().includes('the guest’s name or phone number') && !document.querySelector('[data-lookup-result]');"));
+  check("查不到：写明可以用单号、姓名、电话或 agent reference（能看 agent 的人）", await evaluate("return $txt().includes('No order matches “NOPE”') && $txt().includes('the guest’s name, phone number or agent reference') && !document.querySelector('[data-lookup-result]');"));
 
   // ── 按客人姓名 / 电话搜（Annie 2026-10-14）──
   await ctl({});
@@ -322,6 +323,21 @@ async function run() {
   await sleep(150);
   check("Clear 后再点输入框：不弹空浮窗", await evaluate("return !$box();"));
 
+  // ── 置顶 75：按 agent reference 搜（定 B：能看 agent 的人才行）──
+  await ctl({});
+  await search("TA-778", "document.querySelector('[data-match-list]')");
+  check("agent ref 对上两单：都留下（不是单号 / 姓名 / 电话也留），单号下面标 Matched by agent reference: 号码", await evaluate("const t = (o) => document.querySelector('[data-match=' + o + '] [data-matched-agent-ref]')?.textContent; return document.querySelectorAll('[data-match]').length === 2 && t('ZZTEST3') === 'Matched by agent reference: TA-77812' && t('ZZTEST5') === 'Matched by agent reference: TA-77899';"), await evaluate("return $box()?.textContent;"));
+  await evaluate("document.querySelector('[data-match=ZZTEST3]').click(); return 1;");
+  check("从名单点进去：顶上蓝框 Found by agent reference", await waitFor("document.querySelector('[data-found-by-agent-ref]')?.textContent === 'Found by agent reference: TA-77812'"));
+  await ctl({});
+  await search("TA-77812", "document.querySelector('[data-lookup-order]')?.textContent === 'ZZTEST3'");
+  check("只对上一单：直接打开，顶上蓝框 Found by agent reference: TA-77812", await evaluate("return document.querySelector('[data-found-by-agent-ref]')?.textContent === 'Found by agent reference: TA-77812' && !document.querySelector('[data-back-to-list]');"));
+  await ctl({});
+  await search("ZZTEST2", "document.querySelector('[data-lookup-order]')?.textContent === 'ZZTEST2'");
+  check("按单号打开的：没有 agent 蓝框", await evaluate("return !document.querySelector('[data-found-by-agent-ref]');"));
+  await evaluate("[...$box().querySelectorAll('button')].find(b => b.textContent.trim() === 'Clear').click(); return 1;");
+  await sleep(200);
+
   // ── 别的页面：发送页也有顶栏搜索（Annie 2026-10-14），同样是居中浮窗 ──
   await goto(`${APP}/tickets-reminder/send`);
   await waitFor("document.querySelector('[data-top-order-search] input')", 60000);
@@ -350,6 +366,36 @@ async function run() {
   await goto(`${APP}/morning-pickup/tracking?date=2026-10-20&q=ZZTEST1`);
   await waitFor("document.querySelector('input[type=search]')", 60000);
   check("Morning Tracking：搜索框预填单号", await waitFor("document.querySelector('input[type=search]').value === 'ZZTEST1'"));
+
+  // ── 置顶 51 B：订单卡片「Main manifest:」一行 ──
+  await ctl({ mlinks: false });
+  await openDashboard();
+  await search("ZZTEST2", "document.querySelector('[data-lookup-order]')?.textContent === 'ZZTEST2'");
+  check("旧后端（没有 manifest_links）：没有 Main manifest 那一行", await evaluate("return !document.querySelector('[data-manifest-links]');"));
+  await ctl({ mlinks: true });
+  await search("ZZTEST2", "document.querySelector('[data-manifest-links]')");
+  check("一处：白键「Open in Main manifest →」，网址带 date / tab / pill / row", await evaluate("const a = document.querySelector('[data-open-in-manifest]'); const u = new URL(a.href); return document.querySelectorAll('[data-open-in-manifest]').length === 1 && a.textContent.trim() === 'Open in Main manifest →' && u.pathname === '/manifests' && u.searchParams.get('date') === '2026-10-21' && u.searchParams.get('tab') === 'tickets' && u.searchParams.get('pill') === 't:antelope' && u.searchParams.get('row') === 'ZZTEST2|TIX1|2026-10-21' && !u.searchParams.has('tick') && getComputedStyle(a).backgroundColor === 'rgb(255, 255, 255)';"), await evaluate("return document.querySelector('[data-manifest-links]')?.outerHTML;"))
+  await ctl({ mlinks: true });
+  await search("ZZTEST1", "document.querySelectorAll('[data-open-in-manifest]').length === 2");
+  check("分在两处：每处一个键「标签 · 胶囊 →」", await evaluate("return [...document.querySelectorAll('[data-open-in-manifest]')].map(a => a.textContent.trim()).join('|') === 'Bus Tour · Bryce & Zion →|Tickets - SelfDrive · Upper Antelope →';"))
+  await ctl({ mlinks: true });
+  await search("ZZTEST5", "document.querySelector('[data-manifest-none]')");
+  check("不在 Main manifest 上：灰字 + Open Order List →（带单号）", await evaluate("const t = document.querySelector('[data-manifest-none]').textContent; const a = [...document.querySelectorAll('[data-manifest-links] a')].find(x => x.textContent.includes('Open Order List')); return t === 'This order is not on Main manifest for its tour date. Check its status in Order List.' && new URL(a.href).pathname === '/orders' && new URL(a.href).searchParams.get('q') === 'ZZTEST5';"))
+  await ctl({ mlinks: true });
+  await search("ZZTEST4", "document.querySelector('[data-manifest-none]')");
+  check("Cancelled：写明取消的单不在 Main manifest 上", await evaluate("return document.querySelector('[data-manifest-none]').textContent === 'Cancelled orders are not on Main manifest. Check Order List.';"))
+  await ctl({ mlinks: true, hold: true });
+  await search("ZZTEST2", "document.querySelector('[data-manifest-hold]')");
+  check("On Hold：照给键但网址带 tick=0，旁边黄字", await evaluate("const a = document.querySelector('[data-open-in-manifest]'); return new URL(a.href).searchParams.get('tick') === '0' && document.querySelector('[data-manifest-hold]').textContent.includes('On Hold — it will not be pre-ticked');"))
+  await ctl({ mlinks: false, hold: false });
+  // ── 置顶 75：没勾 See prices, agent & commission（orders.money_view）：提示字不提、按 agent ref 搜不到 ──
+  await ctl({ noMoney: true });
+  await openDashboard();
+  await waitFor("$input().placeholder === 'Order #, guest name or phone #'");
+  check("没权限：提示字照旧 Order #, guest name or phone #", await evaluate("return $input().placeholder === 'Order #, guest name or phone #';"));
+  await search("TA-77812", "document.querySelector('[data-lookup-note]')?.textContent.includes('No order matches')");
+  check("没权限：按 agent ref 搜不到，提示句不提 agent reference", await evaluate("return $txt().includes('the guest’s name or phone number') && !$txt().includes('agent reference');"));
+  await ctl({ noMoney: false });
 
   // ── 401 跳登录 ──
   await openDashboard();

@@ -9,7 +9,11 @@
 ## 2026-11-04 前端主窗口 `主窗口-2c`[f4667e] 接班
 - 24 关前转交（24 原话「看你已改名主窗口-2c，今天由你接主窗口」）。2c 先以工作窗口合了置顶 79 ops 白字 main c41546a。已告知后端 94、37 新名字。**后端主窗口今天是 `主窗口-94`[8d6960]**（37 关前说：后端的事都发 94，含 direction SHA、模板白字；后端交接在后端 origin/main fa210a5c 的 NPE_每日交接.md 最上面）。
 - 还在跑：后端 94 改手机司机 / 导游页白字；后端 57 南北分车 direction（迁移 Annie 先执行）。等 Annie：72 preview 回 A、80 选 A / B、64 / 69 / 68（详见置顶，不滚动重问）。
-- 没人做、待派：Supplier › Restaurant ⬆ Import（5c 交接「明天开工」0）。
+- 已派 `npe-ops-frontend-81`[90172b]：Supplier › Restaurant ⬆ Import（5c 交接「明天开工」0；Annie 10/29 已动手，不再 preview）。分支 task/import-restaurant；先查后端有没有导入接口，没有写「需要后端」转 94。
+  - 81 查过后端没有 Restaurant 导入接口 → 需求（preview / commit 路由、栏 key、按店名对上、校验、日志、409）2c 原样转 94；94 收到，已派后端 18 做。81 先 mock 做、推分支不合，SHA 到了 2c 转 81 核字段再合。
+  - 81 推 task/import-restaurant **58c97e1**（没合）：restaurant 58/58（+21）、nav 38/38，tsc / eslint / build 过。⬆ Import 在「+ Add a restaurant」左边（深色，同 Add 样子）。请后端导入时也写 updated_by / updated_at（已转 94）。81 接着做 75。
+  - ✅ 后端上线 main b1919f7e（合并 1f7a064f，任务 f198a896，94 转）：形状同 58c97e1 mock，导入也写 updated_by / updated_at。派 81 核字段合 main（83 推完后、59 之前）。
+- ✅ `09` 合 72 → main **06bff03**（Annie 在 09 窗口原话「动手」）：da 501、pl 116、nav 38，tsc / eslint / build 过；验收点见置顶 72。已告知 94（57 direction 后端可推）。09 收工关窗口。
 
 ## 2026-11-04 Supplier › Restaurant ⬆ Import（`task/import-restaurant`，工作窗口 `npe-ops-frontend-81`[90172b]，主窗口 2c 派）—— ⛔ 推了分支，等后端接口再合
 - 依据：全站「上传表格自动填」preview https://claude.ai/artifact/MKtDUiYyUPZ1FcBJR3j4Lw ③-4，Annie 10/29「批量导游同意推荐。动手」（Q1–Q7 全按推荐），不再出 preview；5c 交接「四、明天开工」0。
@@ -133,6 +137,25 @@ D. 已完成、待从置顶移走：
   - fa 推 task/relay-list-settings **e219e0e**（没合 main）；preview 定稿同链接。rl 58、da 482、mf 240、man 360、nav 38，tsc / eslint / build 过；横竖混排 PDF 实测方向全对、长单不裁。要后端核 4 点（tours[] 形状、字母色顺序、tour_buses[] 带 manifest_id、PUT detail 英文）已转 9e。fa 接着做 74 preview。
   - ✅ 后端 73 上 main **ee601775**（36 做；11/04 线上只读新旧颜色 62 行一致，连库 3984 OK）。最终字段已转 fa：tours[] 带 color/default_color（Relay + 司机页）和 header_*（Bus Manifest），*_set；取色顺序以后端为准（staff 字母 → staff All buses → 纸本字母 → 纸本团 → 团色），前端直接用返回值不自己算。派 fa 核字段后合 main。
 - ✅ 置顶 71 后端：manifest_cols_bus / _tickets / _admin_fee 上限 4000 → 20000 已上线（后端 origin/main 1fac68ca，9e 报）；键名格式不变，超限 400 "value too long (max 20000 chars)"，其他键仍 4000，partner 仍 403。前端不用改。后端另有 npe-confirmation-service-da [af1446]。
+
+## 2026-11-03 晚 置顶 51 B 订单详情一点跳到 Main manifest 的那一单（`task/open-in-manifest`，工作窗口 fa [985244]，主窗口 5c 派）—— ✅ 后端 8be7f86c 上 main，11-04 核过字段后合 main（81）
+- Annie 原话：「在查出来的订单详情上是否可以加个链接，直接点击跳转到manifest上的该订单项上」；11/2「如果需要resend confirmation或者reminder的话，再给一个链接可以一点击就进到该订单所属的main manifest页面上，停留在该订单上，订单默认勾选」；preview https://claude.ai/artifact/PhPav7b9m1sjrxmfa8sv8F 5 题全 A，「同意全部推荐。动手」（5c 转）。
+- 后端（只读 origin/main 362cd700）：还没有 manifest_link(s)。字段照 fa 拟的 `manifest_links: [{date, tab, tab_label, pill, pill_label, row_keys[]}]`（不在 Main manifest = []），写在 types/orders.ts OrderDetail（可选）；后端定了形状再核。
+- 做了：
+  - `components/order-lookup/manifest-links.tsx`：「Main manifest:」一行——一处 ⇒ 白键「Open in Main manifest →」；几处 ⇒ 每处「标签 · 胶囊 →」；[] ⇒ 灰字（Cancelled 另一句）+ 白键「Open Order List →」（/orders?q=单号）；On Hold ⇒ 照给键、网址带 tick=0、旁边黄字「On Hold — it will not be pre-ticked. Check Order List before sending.」；后端没带字段 / partner ⇒ 不出。放在顶栏搜索结果卡片（字段下面）和 Order details 整页顶部。
+  - Manifests：读 `?row=`（这单的行，逗号隔开）：标黄（同搜索跳转）、滚到、这一页拿到后只预勾能发的行（tick=0 不勾；看不到发送 / 不能发的标签不勾），然后用 replaceUrl 把 row / tick 从网址去掉。只勾不发，staff 照旧自己按 Send。
+- 检查：os 74/74（加 6 条：旧后端没有、一处键和网址、两处标签 · 胶囊、不在 + Open Order List、Cancelled、On Hold tick=0）、orders 48/48（整页键、旧后端没有）、man 365/365（How to use 那句、?row= 标黄勾上 1 order selected、网址去掉 row、不自动发、tick=0 不勾）、dr 89/89、nav 38/38、mf 240/240；tsc 0 错、eslint 0 错（3 条原有 warning）、build 过。端口 APP 3577 / MOCK 8977 / CDP 9577。
+  - Main manifest 的 How to use 在「Search」那句后面加 preview 第 4 节原文（Order lookup / Order details: Open in Main manifest → …）；man 套加一条核这句。
+## 2026-11-03 晚 置顶 75 按 Agent reference 搜订单（`task/agent-ref-search`，工作窗口 fa [985244]，主窗口 5c 派）—— ✅ 后端 b6b1fce1 上 main，11-04 核过字段后合 main（81）
+- Annie 原话：「我在main manifest里加上了agent reference，能否在首页的search bar里页可以加上用这个号码搜索订单」；定 B（没勾 See prices, agent & commission 的人不按 agent ref 搜）；preview https://claude.ai/artifact/75Ujnjc3crJ5m6AycJGnaR 4 题全 A，「同意全部推荐。动手」（5c 转）。
+- 后端拟（9e，还没做）：/api/operations/orders 的 q 加 resellerReference（只给有 orders.money_view 的人），每行加 reseller_reference、matched_agent_ref（只有 agent ref 命中时 true）。前端字段照这个写（types/orders.ts 可选字段），后端没带时一切照旧。
+- 做了：
+  - `lib/order-lookup-api.ts` searchOrders：后端标了 matched_agent_ref 的行也留下（原来只留单号 / 姓名 / 电话对得上的）。
+  - 顶栏搜索框（top-order-search）：有 money_view 的人提示字「Order #, guest name, phone # or agent ref」、aria-label 同改；没权限照旧。
+  - 搜索结果（order-lookup-result）：名单里靠 agent ref 对上的单，单号下面蓝色小字「Matched by agent reference: XXXX」；只对上一单直接打开 / 从名单点进去 ⇒ 顶上蓝框「Found by agent reference: XXXX」；查不到的提示句，有权限的人多写「agent reference」。
+  - Orders 页：有权限的人提示字「Search order#, name, email, phone, product, agent ref...」、名单单号下面标 Matched by agent reference、How to use 加一句「If you can see prices, agent & commission, you can also search by the agent reference — here and in the order search box at the top of every page.」。
+- os 套加 7 条（agent ref 两单名单 + 标记、点进去蓝框、单个直接打开蓝框、按单号打开没蓝框、没权限提示字照旧 + 搜不到）、orders 套加每种权限的提示字 / How to use + 搜到的标记；检查：os 74/74、orders 52/52、dr 89/89、nav 38/38、mf 240/240、man 360/360；tsc 0 错、eslint 0 错（3 条原有 warning）、build 过。
+- ⚠️ 检查端口：3298 / 3398 都撞过别的窗口的 dev server（连到别人的服务、测的不是自己的代码），这次用 APP_PORT=3577 MOCK_PORT=8977 CDP_PORT=9577。
 
 ## 2026-11-03 晚 置顶 74 Main Manifest：Brenda 每单一条 Waiver link（`task/waiver-link`，工作窗口 fa [985244]，主窗口 5c 派）—— ✅ 后端 635a198b 上 main（v147 已在生产执行），核过字段后合 main
 - Annie 原话：「那4提全部按推荐走，动手」（5c 转）；preview 定稿 https://claude.ai/artifact/5niqePBqxUsCBqKpLLKCnm （题 1 A 列只在有要 waiver 的单的胶囊出、☰ Columns 能关；题 2 A 上传按 Save 一起写 new + changed；题 3 A 按表头认、没表头当第 1 列订单号第 2 列链接；题 4 A Changed since sent 重发成功后自动消失）。
@@ -953,6 +976,114 @@ D. 已完成、待从置顶移走：
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 86. 司机 / 导游 live 页每天的快照（2026-11-04，Annie 在主窗口-2c 提，没动手）
+- 原话：「我还有个需求，司机和导游的live 记录，是否可以有快照，就是他这一天在哪个站停留了多久，发了多少短信，汇报了多少picked up和no show，在工作结束前它的页面有个快照」。
+- 理解：每位司机 / 导游每天一份记录：每站到 / 离时间和停了多久（Samsara 到站，置顶 59 / 58）、发了几条短信、报了几个 Picked up / No show；工作结束时把他那天的 live 页存一份，之后能回看。
+- 2c 已请 94 只读评估数据够不够（到 / 离只有填了坐标的酒店才有；短信 / 打勾记录存不存、能不能按人按天数）。
+- 要问 Annie：Q1 在哪看（ops Morning tracking › Live drivers 加「History」按日期回看 / 单独报表页 / Daily Operation Report）；Q2 快照什么时候拍（最后一站走了以后 / 固定时间如下午 3 点 / 两者）；Q3 是存「那一刻的页面样子」还是存数字汇总；Q4 谁能看、留多久。答了先 preview。
+- **后端 18 只读评估（94 转，含生产只读）**：
+  - 到 / 离：relay_stop_visits，只判 relay 车 + 填了坐标的酒店；生产 28 家 0 家有坐标、表 0 行 ⇒ 等 59 上线 staff 填坐标；记的是车号，按人用当天 dispatch 司机-车号对；停留 = left_at − arrived_at。
+  - 短信：司机页只能给自己车上客人发快捷回复（booking_notes sms_out + send_log），没有回 ops 通道；导游页只有给餐厅发午餐单。⚠️ 司机发的和员工回复同表同 direction，没来源标记，要准得写入时加来源（约半天）。
+  - Picked up / No show / Boarded：tour_manifest_guest 只存最后一次，改过会覆盖、无历史、action_log 不记 ⇒ 只能数最后状态；要数改过几次得加事件记录。
+  - 快照：/driver、/guide 都现场算不存。推荐存 JSON 汇总（不存 HTML、不存客人电话），前端照 JSON 画当天样子。「工作结束」推荐：Dispatch 那天点 Completed 时每人存一份；没点的晚上固定点定时补存（建议 23:00，Annie 定）；之后再改另存一版标 after completion。不推荐「最后一站离开」（判不了）、「链接过期」（密码登录的人没链接）。
+  - 工时：后端约 1.5–2 天，带迁移（v151 后），要跟 57 的 seat 排队。
+- **2c 已整段问 Annie（新题，取代上面 Q1–Q4）**：Q1 放哪（A 推荐 Live drivers 每人加 Day snapshot、按日期回看 / B Staff Schedule 这个人那一天 / C 个人 History 按天）；Q2 什么时候存（A 推荐 Completed 时存 + 23:00 补存 / 时间她可改）；Q3 司机 / 导游本人看不看自己的（A 推荐不看 / B 看）；Q4 谁能看、留多久（A 推荐同 Live drivers、90 天 / B 只 SA、一直留）；Q5 短信数要不要准（A 推荐加来源标记约半天 / B 先不数）；Q6 Picked up / No show 数最后状态还是连改过几次（A 推荐只数最后状态 / B 加事件记录）。
+- **Annie 对 Q5（原话）**：「staff发的都自带id了，所以只会有拿了这个链接的人会再发，所以不会混淆」⇒ 员工回复带员工 id，没带员工 id 的 sms_out 就是司机页（拿链接的人）发的，不用另加来源标记。已转 94 核实（booking_notes / send_log 员工发的是否都有 user id、司机页发的是否都没有 / 能否按车或 field link 对到人）。Q1–Q4、Q6 未答，未动手。
+  - 94：交 18 核实，重点是有账号的司机从司机页发会不会也带 user id、跟员工分不开。
+  - ✅ 18 核完（生产只读）：**能分开，不用加来源标记、后端不多做**。判据：booking_notes / send_log 只记登录名（author_username / sent_by），拿去对 admin_users.username 的 role——staff / admin / superadmin / supervisor = 员工发；driver / guide 账号，或对不上账号但对得上 HR nickname（没账号的司机）= 司机页发；再按 hr_profiles 对到人、当天 dispatch 对到车。近 14 天 sms_out 197 行全是员工、无误算；⚠️ 近 14 天没有一条司机页发的（快捷回复只配了 3 条），司机那边只靠读代码证明。快照存时把「谁发的」一起存进去，以后改 role / 改名不受影响（写进设计）。⇒ Q5 = 数准，不加工作量。
+- **Annie 答 Q2（原话）**：「Q2，我们现在所有的操作都不需要点completed，所以就以tour结束吧，司机check out了那台车就结束了」⇒ 不用 Dispatch Completed；快照在**司机 check out 那台车时**存（tour 结束）。已转 94 核：司机页 / 系统里有没有「check out 车」这个动作、存在哪、导游怎么算结束、司机忘了 check out 时要不要兜底（晚上补存）。
+  - 18 核完（Samsara 只读）：① **我们系统没有 check out 动作**（搜 check out / dvir / post-trip / clock out / punch 都 0）。Samsara 现成信号：post-trip DVIR（收车检查，近 7 天有，带车号 + 时间；我们查的接口没司机名，按车号 + 当天 dispatch 对人；官方 /fleet/dvirs 可能带司机要实测）；HOS duty status（离车 vehicleId 变 0，但很多司机不登 Samsara，不可靠，只当第二道）。② 导游跟他那台车的司机一起存，一车两导游各存各的。③ 兜底要：当晚 23:00（LA）没存的补存，标「not checked out」；check out 后再改另存一版。④ 做法：A（后端推荐）用 Samsara post-trip DVIR 当 check out，司机不用多点（后端半天–1 天，先实测字段 / 权限）+ 23:00 兜底；B 司机页加 Check out 键（后端半天 + 前端）；C 两样都要，先到先存，都没有 23:00 兜底。2c 已问 Annie。
+  - **Annie 定导游（原话）**：「导游的话就是每天晚上9点，west rim 下午6点，hoover dam 4点」⇒ 导游快照按团定时存（LA 时间）：一般 21:00；West Rim 团 18:00；Hoover Dam 团 16:00（不跟司机 check out）。已转 94。司机 check out 用 A / B / C、司机兜底时间还没答。
+  - 18 设计（94 转，生产只读）：manifests 表加 guide_snapshot_time（空 = 21:00），迁移预填 GCWest 18:00、Hoover 16:00，代码不认团名；Products › Manifest setup 每团加一格「Guide snapshot time」（写 action_log，前端要做、样子要 preview）。团按 manifest 认、不按产品（West Rim 43 个产品多数名字带「Hoover Dam Photo Stop」）。待 Annie：Private（12 个产品，West Rim / Hoover 都有）走 21:00、VOF-H/D 走默认（West Sunset 已停不管）；一位导游一天两团 → 每人每天一份、按他当天最晚的时间存（近 30 天只 2 次）。2c 已问。
+  - **Annie（原话）**：「司机忘记的话没关系，ralay时间总共就那么长，relay到上午10点全部算结束」⇒ relay 司机：上午 10:00（LA）全部算结束、存快照（取代 23:00 兜底）。2c 理解：relay 司机就按 10:00 定时存、不用 check out；团车司机（开整天团的）还按 check out？已问 Annie。已转 94。
+  - **Annie（原话）**：「司机不会忘记chek out，他们就是拿这个计工资的，而且兜底就晚上11点吧」⇒ 司机快照按 check out 存；司机靠 check out 计工资，所以有这条记录；兜底 23:00（LA）。⚠️ 要查司机计工资的 check out 是在哪个系统做的（Samsara HOS / DVIR / 别的打卡），已转 94 只读查；查到就用它（= 方案 A 一类，司机不多点）。
+- ✅ **Annie「其他都按推按走，动手」（原话，2026-11-04）** ⇒ 定稿：Q1 A ops Morning tracking › Live drivers 每人「Day snapshot」按日期回看；Q3 A 司机 / 导游本人不看；Q4 A 同能看 Live drivers 的人、留 90 天；Q5 短信按登录名对 role 分（不加工作量，快照存「谁发的」）；Q6 A 只数最后状态；存 JSON 汇总（不存客人电话），前端照 JSON 画当天样子，存后再改另存一版标 after completion。**何时存**：relay 司机 10:00（A）；团车司机 = check out（计工资那条，来源待 18 查）+ 23:00 兜底；导游按 manifest 的 Guide snapshot time（Products › Manifest setup 新一格，预填 GCWest 18:00、Hoover 16:00，空 = 21:00；Private / VOF-H/D 走 21:00；一天两团每人一份按最晚时间）。后端转 94（迁移 SQL 先给 Annie 看）；前端两处新样子（Day snapshot、Manifest setup 那一格）先 preview 给 Annie 看过再合。新功能没跑过 ⇒ 照开关规则②建议 Day snapshot 先只 SA 可见（已问 Annie）。
+  - 94：派后端 18（Restaurant Import 推完开工），1.5–2 天带迁移，今天上不了；check out 来源 94 直接问 Annie，没答前后端先只做 23:00 兜底、来源留一处接口。接口形状定了发 2c。前端 preview 等新开工作窗口。
+
+### 85. Staff Schedule 班次类型（Open / Mid / Close）可手动新增（2026-11-04，Annie 在主窗口-2c 提，附排班格截图，没动手）
+- 原话：「在role里，给一个手动添加role的选项」「我说的是staff schedule」。截图是 Staff Schedule 周表，格子上的 Open / Mid / Close ⇒ 理解为班次类型（后端叫 shift type）。
+- 现状（2c 只读）：Add shift 弹窗「Shift」一排固定按钮（add-shift-dialog.tsx:283 起，来自后端 shift types）；Settings 弹窗只能改已有类型的 Default shift times（settings-dialog.tsx）。**后端已有新增接口** POST /api/settings/schedule/shift-types（key / label / sort_order / 默认时间，routers/schedule.py:136，权限 _settings），前端没做入口。
+- 注意：格子颜色写死按 key（components/schedule/config.ts SHIFT_CARDS），新类型会全用同一个后备色 ⇒ 要么前端给几种备选色让人挑（要后端存色），要么新类型统一一种色。
+- 2c 派 81 出 preview（不写代码）：放哪（Settings › 班次类型列表 + Add / Add shift 弹窗里「+ New」）、填什么（名字、默认上下班时间、颜色）、能不能停用 / 排序。Annie 看过 +「动手」才写。
+- **preview**：https://claude.ai/artifact/9LFRCau1uBg5sQ5aPbdSZt （2c 已整段转 Annie，等答）。81 核后端：key 小写 ≤20 字、重了 400；label ≤40；权限 settings.schedule 只有 superadmin；没颜色、没删除，有 is_active / sort_order / 默认时间；改类型不写 action_log；Add shift 只列 active。
+  - Q1 「role」是不是班次类型：A 是（preview 画的）；B 是员工岗位（Office / Driver / Guide），另出 preview。
+  - Q2 在哪加：A（推荐）只在 ⚙ Settings，「Default shift times」改成「Shift types」，每行 ⋮⋮ 排序 / 色块 / 名字 / 默认时间 / Active，底下灰绿「+ Add shift type」；B 另在 Add shift 弹窗加「+ New」。
+  - Q3 填什么：A（推荐）名字（必填 ≤40）+ 默认时间（可空）+ 颜色 8 选 1（绿 / 蓝 / 紫 / 黄 / 粉 / 青 / 橙 / 灰）——要后端加 color 列 + migration；B 只名字和时间，颜色一律灰白（后端不用改）。
+  - Q4 停用 / 排序：A（推荐）都要（Active 勾掉以后不再出现、已排的照旧；⋮⋮ 排 Add shift 按钮先后）；B 只要停用。
+  - Q5 How to use：A（推荐）「Shift types (Super Admin): open ⚙ Settings → Shift types. Click + Add shift type, type a name, pick a colour and, if you like, default times, then press Save. Untick Active to stop offering a shift type; shifts already scheduled keep it. Drag ⋮⋮ to change the order of the buttons in Add shift.」；B 她改字。
+  - 规矩：全部暂存、蓝色 Save 一起存、未存关弹窗先问；红字「Enter a name for the new shift type.」「There is already a shift type called …」。
+  - 需要后端（Q3 A 时）：schedule_shift_types 加 color（open / mid / close / amber / rose / teal / orange / grey，migration 先给 Annie 看）；GET 带 color，POST / PUT 收 color、不认得 400；建议改类型写 action_log；key 前端从名字生成（小写、空格 _、≤20、重了加 _2）。工时：前端 3–4 小时，后端约 1 小时 + migration。
+- **Annie 回（原话，附 Unassigned 行截图）**：「一个是自己添加班次，给班次改名，然后在schedule的rules里可以添加规则。另外，图片里这个颜色实在太丑了重新设计一下。然后它的功能和用法是怎样的」⇒ Q1 = A（班次类型）；要能**新增 + 改名**；新类型要能在 **Rules** 里用（2c 查：rule-dialog.tsx:260 按 active 班次类型列，排班引擎不写死 open / mid / close ⇒ 新类型自动能选，不用另做）；**Unassigned 行配色重新设计**（现在暗红底 #1b0d12 + 红色虚线框，week-grid.tsx:336）；她问 Unassigned 的功能和用法（2c 已在回复里解释）。还没「动手」。2c 派 81 改 preview：加改名、Rules 里能选新类型的示意、Unassigned 行 2–3 种新配色。
+- **preview v2**（同链接 9LFRCau1uBg5sQ5aPbdSZt，2c 已整段转 Annie，等答）：加改名（名字格直接改，黄字「Was "Mid" — not saved yet」，Save 才存；key 不变，已排的班 / 规则 / 员工周表跟着显示新名）；Rules Add rule 示意；Unassigned 四种并排；「功能和用法」六步。81 核：引擎 / 空档 / 后端 coverage / PDF 都不写死类型。两个坑：① Auto-fill 时间取 Rules 的 Shift times，没有就用 Working hours（auto-fill-dialog.tsx:246），不用类型的 Default time；② 停用类型的规则仍有效、Auto-fill 还会排 ⇒ 停用时黄字提醒改规则。
+  - Q2–Q4 同上（Q4 A 加停用提醒）。Q5 How to use 两段：Staff Schedule 段加改名句；Rules 页「New shift types show up in the Shift list of every rule. Auto-fill uses the times from the Shift times rule, so add one for a new shift type; without it, Auto-fill uses the whole working hours.」
+  - Q6 Unassigned 配色：A（推荐）深灰行头 + 白字「Unassigned」「3 shifts to assign」+ 整行淡斜纹，卡片保留班次色 + 虚线框 + 右上「No one yet」；B 整行淡黄底 + 黄虚线（撞「改了没存」的黄）；C 同别人的行，只「Unassigned」灰斜体（太淡易漏）。
+  - 前端工时 4–5 小时；后端 color 列（Q3 A）+ 建议 action_log。
+  - **Annie 答 Q6（原话）**：「unsign不上色吧，这个透明就好」⇒ Unassigned 行头和整行都不上底色（透明、跟员工行一样），不用斜纹。2c 追问：卡片保留班次色 + 虚线框 + 右上「No one yet」（推荐保留，免得跟已派的分不清）。其余 Q2–Q5 未答，还没「动手」。
+  - **Annie 再定（原话）**：「在unassigned之一块里，就保持原来背景的颜色，所有框用白色虚线就好了」⇒ Unassigned 这块保持页面原来的背景色（不另上色）；这块里所有卡片的框一律白色虚线（取代红色虚线）；卡片里照旧显示班次名和时间（2c 理解：卡片底色同班次色，不另加「No one yet」——做 preview 时画出来给她核）。
+  - **Annie 更正（原话）**：「你误会我的意思了，是卡片整个不上色，只是个虚线白框然后里头有文字」⇒ Unassigned 这块的卡片**不上任何底色**（不用班次色），只有白色虚线框 + 框里文字（班次名、时间）。
+- ✅ **Annie「排班这个全部同意推荐，动手吧」（原话，2026-11-04）** ⇒ Q1 A、Q2 A（只在 ⚙ Settings › Shift types）、Q3 A（名字 + 默认时间 + 8 色）、Q4 A（停用 + 排序 + 停用提醒）、Q5 A（两段 How to use）、Q6 定稿（Unassigned 不上色、卡片白虚线框无底色）。前端派 c8（task/schedule-shift-types）；后端 color 列 + migration（先给 Annie 看）+ action_log 转 94。preview v4 https://claude.ai/artifact/9LFRCau1uBg5sQ5aPbdSZt
+  - c8 发现 Staff Schedule 页本来没有 How to use 框 ⇒ 2c 定：Q5 两段不新增框——Shift types 那段放 ⚙ Settings › Shift types 的「i」说明里，Rules 那句接在 Rules 卡片灰字「Auto-fill follows these rules when it schedules a week.」后面；已告诉 Annie，她要另加框再说。
+
+### 84. Staff Schedule 后台要有员工登录记录（2026-11-04，Annie 在主窗口-2c 提，没动手）
+- 原话（接置顶 83 后说）：「我们本来就应该在staff的schedule后台管理页面有员工的登录记录」。
+- 现状（2c 只读查后端 origin/main）：**系统没有登录记录**。登录只发 9 小时的 cookie（auth.py _set_session_cookie），不写库；只有 admin_users.last_seen_at（presence.py，Dashboard「Today's team」在线用，一分钟一刷，只留最后一次）。前端 Staff Schedule 有 person-history.tsx（每人一周往来记录：发的 / 回的 / 主管处理），没登录。
+- 想法：后端每次登录写一条记录（谁、几点、从哪种账号进），置顶 83 的「登录时间」也从这里取；前端在 Staff Schedule 里显示。样子要先 preview。
+- 要问 Annie：放哪（每人 History 里 / 单独一个 Logins 列表）、记什么（只登录时间 / 加退出、IP、设备）、留多久、谁能看；+ 跟置顶 83 是不是一起做。
+- Q5 已答 A（一起做，见置顶 83）。**preview**：https://claude.ai/artifact/7gQFvoaMvPVmrBCVZCxwMj （81；2c 已整段转 Annie，等答）：
+  - Q1 放哪：A（推荐）每人 History 里按时间插，蓝标签「Signed in」+ Computer / Phone，02:00–08:30 登录的加小字「Dispatch opened on today」；B 单独「Sign-ins」卡（按人 / 日期筛）；C 都要。
+  - Q2 记什么：A（推荐）登录时间 + 电脑 / 手机；B 加退出时间（多数是空）；C 加设备 / 浏览器 / IP。
+  - Q3 留多久：A（推荐）90 天；B 一直。
+  - Q4 谁能看：A（推荐）能管排班的人（schedule.edit）；B 只 SA。
+  - Q5 How to use：A（推荐）「History also lists each time the person signed in (Signed in, with Computer or Phone). Sign-ins between 2:00 AM and 8:30 AM show 'Dispatch opened on today': that is the day their Dispatch page opened on. Sign-ins are kept for 90 days.」；B 她改字。
+  - 需要后端（等她答了转 94）：v151 表（账号 id、登录时间、电脑 / 手机按 User-Agent 粗分不存原文、90 天清）；History 接口加 kind:"signed_in"（at、device）；⚠️ schedule_employees 没连登录账号（只名字、email），后端要定怎么对（按 email / 加 user id 列）；Q1 B / C 另要列表接口。
+
+### 83. 凌晨 2 点–早上 9 点打开 Dispatch 默认今天（2026-11-04，Annie 在主窗口-2c 提，没动手）
+- 原话：「给你一个新任务，把凌晨2点- 9点登录进operation system的人的dispatch页面默认为今天。今早犯了好几个错误，拿着今天的单子去对明天的团，数字全是错的，然后才发现是默认是明天的」。
+- 现状（2c 只读）：Dispatch 不带 ?date= 时由后端定默认 = 洛杉矶明天（app/dispatch/page.tsx:9、lib/dispatch-api.ts:26）；dispatch-view.tsx:751 只认 ?date=。
+- 做法（只改前端、样子不变）：没带 ?date= 时，前端按洛杉矶时间（= 拉斯维加斯）看现在几点，02:00–08:59 就请求今天，其余照旧明天；带 ?date= 或手动换日期照旧。
+- 问 Annie：Q1 范围只 Dispatch 主页（Assign / Send），还是 Bus Manifest / Relay list / Work sheet / Guide sheet 也一起；Q2 9 点整算明天（推荐）；+ 是否现在动手。
+- **Annie 答（原话）**：「Q1 A Q2 我说的是登录的时间，这里提前一点，也就是说如果staff凌晨2点 - 8：30am期间登录的，看到的dispatch页面都是今天的，直到他再次登录，8：31am以后登录的看到的就是明天的dispatch」⇒ 只改 Dispatch 主页；**按登录时间（洛杉矶）**：02:00–08:30 登录 → 默认今天（登录那天），一直到下次登录；08:31 起登录 → 默认明天。带 ?date= / 手动换日期照旧。**还没说「动手」。**
+- **需要后端**（2c 只读查后端 origin/main）：前端读不到登录时间（session cookie httponly）。登录 token 有 exp、TOKEN_EXPIRE_HOURS=9（app/auth.py:47），没有 iat；/api/me（users.py:144）不带登录时间。要后端在 GET /api/me 加 `logged_in_at`（ISO UTC，登录那一刻；可从 token exp − 9h 算，或签 token 时加 iat）。前端：没这个字段 = 照旧明天。
+- 注：token 9 小时过期，02:00–08:30 登录的最晚 17:30 前要重登，重登后按新登录时间算。
+- **Annie 确认（原话）**：「置顶83，是的，只是登录默认，如果staff自己改过时间就随他改的时间，不需要再回跳」⇒ 只管登录后打开时的默认日期；staff 自己换过日期就一直按他换的，不跳回。**还没「动手」**（已问）。
+- ✅ **Annie「1 登录时间选A   动手」（原话，2026-11-04）** ⇒ 置顶 84 Q5 = A：登录时间跟登录记录一起做——后端每次登录写一条记录，GET /api/me 加 logged_in_at（这次会话的登录时间）取自它；前端 83 动手，派 81（task/dispatch-login-default）。84 在 Staff Schedule 怎么显示（Q1–Q4）还没答，要先 preview（81 做完 83 出）。已转 94。
+  - 94：派后端 18（Restaurant Import 后），logged_in_at 按本次 token 取、拿不到不带（上线后 9 小时内旧 token 都不带）；登录记录迁移 v151（排在 v148 / v149 / v150 后，SQL 先给 Annie 看）；列表接口等 84 preview。2c 建议 94 把 logged_in_at 先单独上（token exp − 9h，不用迁移），记录表后上。
+  - ✅ 94 同意分两步：logged_in_at 单独先上（不用迁移，按本次 token 推算，57 核续签情况），派 57 现在开工；登录记录表 + v151 照旧 18 后做。
+
+### 82. G245 Main manifest 羚羊谷 Cfm # 跟产品不符标红、挡发送（2026-11-04，94 转，前端还没 preview）
+- Annie 原话（94 转）：「我需要订单如实地反映在页面上，rezdy是什么样就是什么样……现在在main manifest的cfm#就应该是标红，然后让staff去改」「如果设置了auto send的话要提醒这个#的不对，不能发送」。起因 CHDQ59DAL：原下 X 后改 Lower，X 栏的号是真的但不是 Lower 的号。
+- 后端 f4 在审、没上线，要 Annie 先执行 **v149** 才能上。形状（只加字段）：① GET /api/manifests 每行 cfm_mismatch：{other_label:"Antelope Canyon X Confirmation #", other_value:"387826855"} 或 null；Cfm # 照旧显示 Rezdy 上的号；staff 在 Manifests 填了 Cfm # 后刷新变 null。② POST /api/manifests/send-tickets：标红行进 blocked，reasons ["Cfm # doesn't match the product (Antelope Canyon X Confirmation #: 387826855)"]，can_override=false（不能 Send anyway），返回形状不变。③ How to use 补一句红标意思和处理（在 Cfm # 填正确的号）。
+- 前端：Manifests 的 Cfm # 格标红 + tooltip「Rezdy also has <other_label>: <other_value>」；勾选时可先提示；被挡照 legacy-ui 红框。样子新增 ⇒ **先 preview**，2c 派 81 出（不写代码），Annie 看过 +「动手」再写，后端 SHA 到了才合。
+- **preview**：https://claude.ai/artifact/XnLF3SdqmMvaYQth8oHCjn （Main manifest › Tickets；2c 已整段转 Annie，等答）。后端：手动发送一定挡、不能 Send anyway；自动发送跳过并每单发一次提醒邮件（收件人 = Auto Send「门票汇总邮件」那组，生产 antelope@ / reservations@，94 方案 A 等 Annie 确认）。表上 Cfm # (Rezdy) 不能改；Cfm # 是 staff 填的「Add #」。
+  - Q1 怎么标：A（推荐）只标 Cfm # (Rezdy) 那格红框红字 + 下面小红字「Doesn't match the product」，悬停「Rezdy also has Antelope Canyon X Confirmation #: 387826855」，行不变色；B 整行淡红 + 红框（跟没 Cfm # 分不清）；C 红底白字。
+  - Q2 能不能勾：A（推荐）同没 Cfm # 做法，能勾，点 Send reminder 红条逐单写原因、不算进 Send anyway，表上方黄字加「Orders with a red Cfm # can't be sent until you enter the right Cfm #.」；B 勾选框灰掉。
+  - Q3 How to use：A（推荐）用「Red Cfm # (Tickets): the Cfm # from Rezdy doesn't match the product. Rezdy has a number in another Antelope field, for example when an order was changed from X to Lower. Point at the number to see which field. Check the order in Rezdy, then type the right number in the Cfm # cell and press Save. The red mark goes away and the order can be sent. Until then it can't be sent, by hand or by Auto Send, and Send anyway doesn't apply.」；B 她改字。
+  - Q4 自动发送跳过要不要在 ops 列出：A（推荐）不另列，Auto Send 页说明加半句「Orders whose Cfm # doesn't match the product are skipped too; each one is emailed to the summary list once.」；B 每轮下逐单列 Skipped（要后端另给接口）。
+  - 另问：提醒邮件收件人用 Auto Send 门票汇总那组（94 方案 A）。
+  - 前端工时定了后约 2–3 小时（含 man 套）。
+- **Annie 答（原话）**：「CFM #  Q1 C  Q2 A  Q3 不应该是how to use，是在鼠标停上去的时候把这段话显示出来，然后简短一点，总的目的就是告诉它这个不是这个产品的cfm# format，去rezdy里头改」⇒ Q1 **C** 红底白字；Q2 **A** 能勾、Send reminder 红条逐单写原因、不能 Send anyway、黄字加半句；Q3 不放 How to use，改成鼠标停在红格上的短提示，意思「这不是这个产品的 Cfm #，去 Rezdy 改」。2c 拟稿（等 Annie 确认原文）：「Wrong Cfm # for this product — Rezdy has it under Antelope Canyon X Confirmation #: 387826855. Fix it in Rezdy.」。Q4、Q5 还没答；**还没「动手」**。
+- ⚠️ 要问 94：Annie 说「去 rezdy里头改」，后端现在是 staff 在 Manifests 填 Cfm # 后红标消失。在 Rezdy 改好后，下次同步红标会不会自己消失？手机没鼠标时提示怎么看（81 原 A 方案有一直显示的小红字，C 没有）。
+  - 94 回：Rezdy 改后会不会自己消红交 f4 用代码 + 生产数据只读核，结论到了转来；提醒邮件收件人（Q5：A 用 Auto Send 现有两个汇总邮箱 / B 新加一栏只放 antelope@）94 自己问 Annie，前端不再问。Q4（ops 上要不要另列 Skipped）仍是前端的题。
+  - **Annie 原话**：「不需要每一单发一份邮件，我们只需要每次发送发一份就好了，把有问题没发送的集中在一起就可以了」⇒ 自动发送每一轮发一封，集中列这一轮因 Cfm # 不符没发的单（不是每单一封）。已转 94。前端 Auto Send 说明半句跟着改成「Orders whose Cfm # doesn't match the product are skipped and listed together in one email after each run.」（Q4 A 时用）。
+  - 94 / f4 查完（代码 + 生产只读）：**在 Rezdy 改好红标自己消失，后端不用改**——Rezdy 改字段推 webhook、整单重写，cfm_mismatch 每次开页 / 发送现场算，推到即变（近 30 天 booking_updated 26,373 次）。号挪到对的栏 ⇒ 消红能发；只删 X 栏、Antelope 栏空 ⇒ 消红变 No Cfm #（软拦，可 Send anyway）；在 Manifests 直接填 Cfm # ⇒ 当场消、能发。邮件改成每轮最多一封、没有就不发；每日汇总照旧带此原因；收件人等 Annie 答 94。
+
+### 81. ~~Bus Manifest~~ **Relay list 打印页**每页页脚标「n of n」（2026-11-04，Annie 在主窗口-2c 提，没动手）
+- 原话：「G236 Bus Manifest 照纸本 --- 把每页的页脚标上页数 n of n，提醒staff后面还有页面」。
+- ⚠️ **Annie 更正（原话）：「对不起，我说的是relay的打印页」** ⇒ 要改的是 Dispatch › Relay list 打印（前端 app/dispatch/relay-list、components/relay-list/）。下面 Bus Manifest 的查证和 preview（6SWsdc8ND7FMoG41aU2jB5、Q1 / Q2）**作废、不用答**，留作记录。2c 派 81 重出 Relay list 的 preview。
+- **Relay list preview**：https://claude.ai/artifact/4dc5BmHshSrk8EZNm8K55a （2c 已整段转 Annie，等答）。现在：一次打一整套（每轮总表 RELAY SPLITS + 每台 relay 车一张，按 ⚙ 各自竖 / 横），一个页码都没有，人多接着印下一页无提示；车头 Print 只打那一台。
+  - Q1 怎么数：A（推荐）整份连着数，右下「Page 3 of 5」，只打一台就数那台；B 每张单各自数，左单名右「Page 1 of 1」。
+  - Q2 放哪：A（推荐）右下角；B 底下居中。
+  - Q3 每页底边留约 8mm：A（推荐）行，一张少一行左右；B 不行就不加页码。
+  - How to use 一句（选 A）：「Each printed page shows Page n of N at the bottom right, counting the whole set (or the one car you printed). Print from Chrome, and leave Headers and footers unticked in the print settings.」
+  - 可行性：A = relay-list.css 竖 / 横 @page 加底边 8mm + @bottom-right counter(page)/counter(pages)，不用 JS；81 在 Chrome 156 打 PDF 实测 5 页 Page 1–5 of 5、横版也对；Safari 不出页码；约 1–1.5 小时。B 要 JS 量纸高约 4 小时、不准。
+- ~~范围：前端 manifest-view.tsx~~ **更正（81 只读查）**：打印页是后端模板 app/templates/admin/tour_manifest_print.html（ops 的 Print 键打开它）⇒ **后端改，前端不用改**。
+- 81 查到：打印页**已经有页码、就是每车各自数**（后端 10-03 照纸本）：表格下一行左「Page 1/2」右「Continued on next page →」，末页「End of manifest」；reflow() 按实际分页按车重编，号码准。Affiliate 栏「Page 1/1 · End of Affiliate」，午餐单「Page 1/1」。问题在样子：紧跟表格不在纸底（末页人少时停在纸中间）、12px 灰字、没写车号。
+- preview：https://claude.ai/artifact/6SWsdc8ND7FMoG41aU2jB5 （一团三车、Bus 2 两页；现在 / A / B 并排）。**等 Annie 答（2c 已整段转）**：
+  - Q1 页码怎么数、放哪：A（推荐）每车各自数、挪到纸最底下（合计排下、加黑线）、加大加粗黑字写车号：左「Bus 2 · Page 1 of 2」右「Continued on next page →」，末页「End of Bus 2」，原来那行去掉；B 整份连着数「Page 3 of 4」放最底下（午餐单照旧各自数不算进去）；C 不改。
+  - Q2 Affiliate 栏 / 午餐单：A（推荐）Affiliate 栏照 Q1 新样子「Affiliate · Page 1 of 1」，午餐单不动；B 三种都不动。
+  - 可行性（给后端）：A 把 .pageline 挪进 .bottom 末尾（已 margin-top:auto 贴纸底）+ 改 reflow() 文字，约 30 分钟 + 无头 Chrome 核三版式（General / Marcello / Lankun）；B 约 1 小时；不用 @page counter（只能整份数、会算进午餐单）。
+- 答了 +「动手」⇒ 转 94 派后端。
+
 ### 75 进度 / 端口
 - fa 推 task/agent-ref-search **124b946**（mock，没合 main，等后端）。os 74、orders 52、dr 89、nav 38、mf 240、man 360，tsc / eslint / build 过。
 - 端口：fa 两次撞到别的 dev server（3298、3398），5c 查时已没有别人在听。今晚起各前端窗口检查端口固定：fa = APP 3577 / MOCK 8977 / CDP 9577；以后新窗口另分（例如 36xx / 89xx / 96xx），开工时由主窗口指定。
@@ -983,6 +1114,9 @@ D. 已完成、待从置顶移走：
 - ⚠️ 9e 转：Annie 在 9e 窗口回「B」（没 money_view 的人不按 agent ref 搜）。和在 5c 的「同意A」相反 ⇒ 5c 已问 Annie 以哪个为准，答了再定。后端 9e 今晚已收工，这件没写进后端交接，明天以本条为准。
 - ✅ **定 B**：Annie 知道两边不一致后，在 9e 窗口再回「B」（9e 转）⇒ 没 money_view 的人，q 不按 agent ref 搜。**还没「动手」**；preview 照 B 画。
 - fa preview（只画 B）：https://claude.ai/artifact/75Ujnjc3crJ5m6AycJGnaR （4 题：顶栏提示字 / 怎么标 / Orders 页提示字 / How to use，都推荐 A），已整段转 Annie。
+- ✅ 后端上线（94 转，2026-11-04）：main b6b1fce1（合并 62eda877，任务 9b2a723f），同前端 124b946 mock：有 money_view 每行带 reseller_reference（空 "—"）+ matched_agent_ref；没 money_view / partner 不带两键、不按 agent ref 搜；Export 13 列不变。2c 派 81 核字段、合最新 main、跑检查后合。✅ **81 合 main 8cecaea**（fast-forward，前端没改代码；os 74、orders 52、nav 38、dr 89、mf 240、man 396，tsc / eslint / build 过）。
+- ✅ 2026-11-04 合 main（工作窗口 `npe-ops-frontend-81`[90172b]，2c 派）：只读核后端 origin/main b6b1fce1（任务 9b2a723f）——键名 reseller_reference（空给 "—"）/ matched_agent_ref（只靠 agent ref 对上才 true）、只给 MONEY_SHOWN（没 money_view 的人和 partner 两键都不给、q 也不按 agent ref 搜）、Export 13 列不变，和 124b946 的 mock 一致，前端不用改。合最新 main 后重跑：os 74/74、orders 52/52、nav 38/38、dr 89/89、mf 240/240、man 396/396；tsc 0、eslint 0 错（3 条原有 warning）、build 过（端口 8982 / 3582 / 9582）。main SHA 见 2c 记录。
+  Annie 验收：有 money_view 的账号在 Dashboard 顶栏搜索框、Orders 页搜索框输入 agent reference ⇒ 搜到单、单号下面蓝字「Matched by agent reference: …」，只对上一单直接打开、顶上蓝框「Found by agent reference: …」；没 money_view 的账号提示字照旧、按 agent ref 搜不到。
 
 ### 74. Main Manifest：Upper Antelope Brenda 每单一条 Waiver link（2026-11-03 晚，Annie 在后端 9e 窗口提，9e 转；前端还没 preview）
 - 9e 转的 Annie 已确认四条：没填链接的单像 No Cfm # 一样被挡、可 Send anyway；Brenda 两种都要；格子里填 + 上传两列表格都要；发出后改了链接标「Changed since sent」，staff 手动重发（Send anyway）。原话（9e 转）：「要在Upper brenda的main manifest那里增加一个栏目，叫waver link，由staff上传或者填写进去，然后发送的时候一起发给客人，每个订单都有独立的一个link」；四条是 9e 出的选择题，Annie 都勾推荐项（Brenda 两种 = Brenda 和 Brenda — No Permit Fee），没另写字，**没说「动手」、没看过样子**。
@@ -1039,6 +1173,7 @@ D. 已完成、待从置顶移走：
 
 - ✅ **Annie「改白色的事情，同意推荐。动手」（主窗口-24 原话，2026-11-04）**：全改白，只留 K1 / K2 / K3 灰。清单已发后端 94（改 driver_home.html / guide_home.html）；ops 派 2c 合 task/live-white-text fc3883a（先合 main 跑 mt / nav + build）。
 - ✅ **2c 合 main c41546a**（task/live-white-text fc3883a + 合 main 78fbd1e，只改 live-drivers.tsx）：检查 mt 247/247、nav 38/38；tsc 0、eslint 0 错（3 条旧 warning）、build 过。**Annie 验收**：ops Morning tracking › Live drivers —— 订单号、tour 简写、酒店 / 地址、人数、Picked up x/y、时间等原来灰的字都是白色；仍是灰的只有 K1 按不了的键（半透明）、K2 还没 check in 的「–」、K3 没选中的 Routes / Messages 页签；彩色字（琥珀 / 绿 / 红 / 蓝）不变。手机司机页 / 导游页等后端 94 改模板上线。
+- ✅ **后端上线 main ae1a647f**（任务 cd731584，合并 25c14c40，94 转）：手机司机页 D1–D23、导游页 G1–G15 改白，K1 / K2 / K3 照旧灰；base.html 没改，所以清单外的改餐编辑器、link_expired、选人页、Sign out 仍是灰。**Annie 手机上验收**。
 ### 78. Live drivers 订单号旁加团简写（2026-11-04）—— ✅ Annie「动手」
 - ✅ 09 合 main（task/live-short-tag）：Morning tracking › Live drivers 每位客人订单号写成「A1001 · GC」（同司机手机页 `{{ order_number }} · {{ short_tag }}`），relay 段、团车段、导游 runs 都加；short_tag 空或缺只写单号。后端 37 说 /live-drivers 已带 short_tag，合了线上就能看到。检查：mt 247/247（新 1 条）、nav 38/38；tsc 0、eslint 0、build 过。
 - Annie 发 Live drivers 截图（订单号旁没简写），主窗口问「是否现在动手」，她答「动手」并确认是这件（不是 72）。同司机手机页 11/2 B5 / B6（后端 3e0ff83f）：订单号后「· short_tag」，只在设了 Bus Manifest setup Short name 时显示。
@@ -1046,9 +1181,15 @@ D. 已完成、待从置顶移走：
 - 37 核过：/live-drivers 已带 short_tag（团车段 _driver_day_context → _safe_tag；relay 段 print_extras fallback=False；导游 runs _tag_runs），后端不用改；读简称出错时字段缺，前端按缺 = 空。纯前端，09 做完合 main 线上即见。
 - **新要求（主窗口原话，2026-11-04）**：「在南北分车这里，dispatch的分车页面，按照A-Z 顺序来排，相同酒店放在一起，然后设置酒店胶囊在表格的上方，点胶囊就选中这个胶囊的所有酒店，然后点击移动到B车，就全部移过去了，胶囊可以单选也可以多选」。还没 preview、没动手。纯前端（seating.tsx，同 72 勾选框同一文件）→ 派 09 在 task/seat-direction 上一起出 preview。
 - ✅ Annie「理解正确，动手」（主窗口原话，2026-11-04）对酒店胶囊那件。09 在 task/seat-direction 上直接写，细节按推荐，做完截图 preview 给 Annie 看过再合（连同 Direction 列 / 大勾选框）。
+- 09 写好（task/seat-direction，未合，和 72 Direction / 大勾选框一起等 Annie 看 preview https://claude.ai/artifact/5FLcwPjxBMjNbVuD15mCmG 第 ③ 节）：
+  - Arrange seats 每台车和 Not on a bus 的名单按酒店名 A–Z（不分大小写），同酒店挨着、同酒店按客人名；没写酒店的排最后（胶囊叫 No hotel）。
+  - 细节按推荐（Annie 说按推荐做）：胶囊放**每一列各一排**（在 Upper / Lower 键下面、名单上面，只管这一列）；写「Wynn 2 orders · 4 pax」；点一颗勾上这一列这家酒店全部单、再点取消、可多选、别的勾选不动（可跨列）；选中样子 = 浅蓝底深蓝字（不用实心蓝，蓝色留给提交键）；不用 Direction 色；只有一家酒店也放；只看（partner）不出胶囊；Completed 日 / staff 挪过的单照样显示、照样能选（挪了就是 staff 定的）；有 Upper / Lower 筛选时胶囊只算筛出来的单。
+  - How to use 加一条（原文）："Arrange seats lists each bus by hotel, A to Z, with the same hotel together. Click a hotel above a list to tick all its orders (click again to untick; you can pick several), then pick the bus under the lists and click Move selected orders."
+  - 检查：da 501/501（新 11 条，模拟 ctl pillDemo）；tsc 0、eslint 0。
 
 - 09 做完酒店胶囊 + A–Z（task/seat-direction faca991，未合；preview 同链接 ①b）：每台车 / Not on a bus 各一排胶囊（「Wynn 2 orders · 4 pax」，没酒店的「No hotel」排最后）；按酒店名 A–Z、同酒店内按客人名；选中淡蓝底深蓝字；可跨车多选；Upper / Lower 筛选时只算筛出的；合作方只读不出胶囊；Completed 日照常。da 501/501。**等 Annie 看 ① ①b ② 三处点头**；Direction 列没后端键时不出，所以点头后可先合 main。
 ### 72. Dispatch 两台 bus 调位置：勾选框放大 + Auto 按南北分车（2026-11-03 晚，Annie 在主窗口提，附表）
+- ✅ **Annie 在 09 窗口说「动手」（原话，2026-11-04）** ⇒ 09 合 main（task/seat-direction）。验收看：① Dispatch › Assign › Arrange seats 每单勾选框变大（20×20，同 Main manifest）；①b 每台车 / Not on a bus 名单按酒店 A–Z、同酒店挨着，名单上方酒店胶囊（Wynn 2 orders · 4 pax），点一颗勾上这家全部单、再点取消、可多选，选好在下面选车点 Move selected orders 一次全移；② Settings › Pickup Locations Tour bus 块 Hotel Name 右边 Direction 列（彩点 North / South / Flexible / 灰 Not set，✏ Edit 里下拉、按 Save 存）——**后端 57 没上线前 GET 不带 direction 键，这一列不出**。两段 How to use 原文见上。检查：da 501/501、pl 116/116、nav 38/38；tsc 0、eslint 0 错、build 过（先合了最新 main）。
 - Annie 原话：「前端要改一下，当有两台bus可以调位置的时候，勾选框太小了，把它放大跟main manifest里一样；另外Auto排进bus的时候按照这个规则：一台车放south，一台放north，中间的机动填位」。
 - 附表（Las Vegas 酒店分三色）：Blue: Northbound assist —— Plaza、Sahara、The STRAT、Westgate、Circus Circus、Wynn、Trump；Red: Neutral / Flexible —— MGM Grand、Virgin、Horseshoe、Bellagio、Treasure Island；Orange: Southbound assist —— Aria、Mandalay Bay、Excalibur、Park MGM、Resorts World。
 - ① 勾选框：components/dispatch/seating.tsx:135（Seat guests 每单的勾选框，现在是浏览器默认小框）改成 Main manifest 的 CHECK_BIG（manifests-view.tsx:1307）。纯前端；大小改动照规矩先 preview。
@@ -1060,6 +1201,12 @@ D. 已完成、待从置顶移走：
 
 - ✅ **Annie 答 7 题并「动手」（主窗口原话，2026-11-04）**：「南北分车的问题：1. 第一台bus放最多的人，如果S多就放S，N多就放N  6 多有团 7是。其他都同意推荐，动手」⇒ 题 1：Bus A 放人多的那一方（South 人多 A 放 South，North 人多 A 放 North），最后一台放另一方；题 2–5 照推荐（Flexible 放当时空位多的那台、一样多放 A；三台以上中间车只装 Flexible 和满出来的；人多那方一台装不下先放中间车、没有就放另一方那台，一单不拆，都装不下照旧 Not on a bus；表外酒店当 Flexible、Settings 显示 Not set）；题 6：所有有字母分车的团都用；题 7：Resorts World 放橙色（South）是对的。
 - 已转 37 派后端（迁移 Annie 先执行）。前端派 09：Pickup Locations 加 Direction 列下拉 + Seat guests 勾选框放大成 CHECK_BIG，先出 preview 给 Annie 看再合。
+- 09 前端（task/seat-direction **228912c**，已推、**没合 main**，等 Annie 看 preview 说「动手」）：preview https://claude.ai/artifact/5FLcwPjxBMjNbVuD15mCmG （模拟数据截图）。
+  - ① components/dispatch/seating.tsx 每单勾选框改用 CHECK_BIG（20×20，同 Main manifest）。
+  - ② Pickup Locations：GET 每行带 direction 键才出「Direction」列（Tour bus 块 / All Locations，Hotel Name 右边，Shuttle 块不出）；显示彩点 + North / South / Flexible，没设灰色 Not set；✏ Edit 里下拉，按这一行 Save：先 PUT、Direction 改了才 PATCH /{id}/direction {direction}（照 57 形状）；PATCH 失败红字 "Could not save Direction: <detail> The other boxes were saved."、行留着可重试。Action Log 加栏名 Direction（假定后端 action_log 键叫 direction，上线后核）。Export / Import 不加。
+  - How to use 加一条（原文）："Direction (only in the Tour bus block): click ✏ Edit and pick North, South, or Flexible, then Save. Auto on Dispatch → Seat guests uses it when a tour has two or more buses: Bus A takes the side with more guests (North or South), the last bus takes the other side, and Flexible guests fill whichever bus has more empty seats. Not set counts as Flexible."
+  - Annie 补答两题（37 → 24 转）：一样多 Bus A 放 South；人少一方溢出也先放中间车、没有就放 Bus A；「绝不自行拆单，留给staff决定」。How to use 那条在 Flexible 那句后补（原文）："If both sides have the same number of guests, Bus A takes South. If a side does not fit on its bus, the extra orders go to a middle bus first, then to the other bus. Auto never splits an order: guests who still do not fit stay in Not on a bus for you to place."；preview 已同步。pl 116/116。
+  - 检查：pl 116/116（新 12 条）、da 483/483（新 1 条勾选框 20px）；tsc 0、eslint 0。合 main 前还要合最新 main + build。
 - 37 定形状：GET /api/pickup-locations 每行加 direction（north / south / flexible / null，null 显示 Not set、排座按 Flexible）；PATCH /api/pickup-locations/{id}/direction {direction} → {success, direction}（同 tour-departure 写法：400 / 404 "That hotel is not in the list any more."、没变不写、改了记 action_log；权限 settings.pickup）；界面 North / South / Flexible / Not set；Seat guests 接口不变。后端 57 做，有迁移 Annie 先执行。已转 09。
 - 后端 57 接手，要两题（已问 Annie）：a North / South 人数一样多时 A 放哪方；b 人少那方最后一台也装不下：对称处理（先中间车，没有就放 A）还是直接 Not on a bus（57 推荐对称）。17 家表已发 57，名字它自己对 hotel_name。
 - 09 preview https://claude.ai/artifact/5FLcwPjxBMjNbVuD15mCmG （分支 task/seat-direction c6ca0a3，代码 228912c，未合）：Seat guests 勾选框 CHECK_BIG 20×20；Pickup Locations Tour bus 块 Hotel Name 右边 Direction 列（色点 蓝 North / 橙 South / 红 Flexible，没设灰 Not set；✏ Edit 下拉随行 Save，先 PUT 再按需 PATCH direction；失败红字 "Could not save Direction: <detail> The other boxes were saved."；Action Log 加 Direction；Export / Import 不带；GET 没键不出）。pl 116、da 483、tsc / eslint 过。**等 Annie 看 preview 点头**，后端 57 上线后合。
@@ -1255,6 +1402,18 @@ D. 已完成、待从置顶移走：
 - 报错（英文，红字）：只填一个坐标「Fill in both latitude and longitude, or leave both empty.」；范围不在 1–500「Radius must be a whole number of meters from 1 to 500.」；坐标存失败「The hotel was saved, but not the pickup point: …」。两格都清空 = 这家不再记到 / 离。
 - 题 1：这个放法行不行？A（推荐）照截图；B 另说放法。
 - 题 2：上面「+ Add New Location」新加酒店的表单要不要也加这三格？A（推荐）不加，新酒店加好后点 Edit 再填（Add 表单已经很长）；B 加。
+- 2026-11-04：94 说 Annie 问 tracking 测试的坐标在哪填 ⇒ 2c 把题 1 / 题 2 + 截图（C:\Users\annzh\AppData\Local\Temp\claude\8828d70a62fa0031\8f0176bc-4499-4c01-bf6e-e6fe335357df\scratchpad\pin59-pickup-point.png）整段发 Annie。答了 +「动手」派窗口合 task/samsara-arrival（后端 samsara-arrivals + v146 也要上）。
+  - 94：**后端 samsara-arrivals 早已上线**（合并 478c597c、关包 416ddc37，另 04f27f52 测试小修），**v146 已在生产执行**。GET /api/pickup-locations 每行 latitude / longitude（null）/ arrival_radius_m（默认 10）；PATCH /{id}/arrival-point {latitude, longitude, radius_m}，都 null = 清，radius_m 不带 = 不改，1–500，写 action_log；tracking / Live drivers 的 arrived_at / left_at 也在。⇒ task/samsara-arrival 合 main **只等 Annie 答 59 +「动手」**（58 Tracking 表那题另说）。
+  - **preview**：https://claude.ai/artifact/25fhKRvwcw4rKmdtb5FA7B （81，含 58；2c 已整段转 Annie，等答）。81 核 071df4d 对后端 PATCH / GET 对得上（404「That hotel is not in the list any more.」）。
+    - Q1 放法：A（推荐）Edit 时酒店名下「Pickup point (live tracking)」+ Latitude / Longitude / Within [10] m，不加列，行 Save 才存；不编辑时灰字「Pickup point: 36.106711, -115.176612 (10 m)」；红字加一条「Latitude and longitude must be numbers.」；B 另说放法。
+    - Q2 Add 表单加不加：A（推荐）不加；B 加。
+    - Q3 贴「纬度, 经度」一串自动拆两格：A（推荐）要；B 不要（约多 30 分钟）。
+    - Q4 How to use：A（推荐）「Pickup point (live tracking): click ✏ Edit on a hotel. In Google Maps, right-click the spot where the van stops for these guests and click the numbers at the top of the menu to copy them (for example 36.106711, -115.176612). Paste them into Latitude (both boxes fill in), keep Within 10 m unless the stop is large, then press Save. Live tracking then records when a relay van gets there and when it leaves. Empty both boxes to stop recording this hotel.」；B 她改字。
+    - Q5（= 置顶 58）Tracking 表到 / 离：甲（推荐）酒店名下小胶囊同 Live drivers；乙 新列「At hotel」；丙 这期不显示（甲 / 乙约 1–2 小时）。
+    - **Annie 答 Q3（原话）**：「Q3，你现在显示的就是两个你让staff怎么填？要不就编辑的时候一格，保存后你自己分开两格」⇒ 编辑时只一格「Coordinates」（贴「36.106711, -115.176612」一整串）+ Within [10] m；保存后系统自己拆成纬度 / 经度存，不编辑时照旧显示。Q4 How to use 跟着改（2c 拟稿已发 Annie）。81 做完 83 后改 preview。Q1 / Q2 / Q5 未答，未动手。
+    - **Annie 答 Q5（原话）**：「5. 在tracking表上加两列吧，arrived at Left at」⇒ 置顶 58 定：Morning Pickup Tracking 表新加两列「Arrived at」「Left at」（不是甲的小胶囊，也不是乙的一列）。没坐标 / 没数据的格子显示「—」。81 改 preview 时一起画。Q1 / Q2 未答，未动手。
+    - ✅ **Annie「其他问题都同意推荐，动手」（原话，2026-11-04）** ⇒ 59 Q1 A（Edit 时酒店名下）、Q2 A（Add 表单不加）、Q4 A（How to use 用 2c 改后的一格版）；连同 Q3 一格 Coordinates、Q5 Tracking 两列。派 81 在 task/samsara-arrival 上做（83 推完分支后），合 main 前截图给 Annie 看 Q3 / Q5 两处新样子。
+      - 81 已改 preview（同链接 25fhKRvwcw4rKmdtb5FA7B）。红字：「Paste the coordinates as latitude, longitude — for example 36.106711, -115.176612.」「Radius must be a whole number of meters from 1 to 500.」「Those coordinates are not on the map. Latitude comes first (between -90 and 90), then longitude (between -180 and 180).」「The hotel was saved, but not the pickup point: …」；逗号 / 空格分开都认。58：后端 notifications.py:1234 每行带 arrived_at / left_at（只 relay 车的单有，一单几站取最早到的）。
 
 ### 58. Morning Pickup Tracking 表里怎么显示「到了 / 走了」的时间（2026-11-03，09 做 Samsara 到站时问）
 - 页面：Morning Pickup Tracking（/morning-pickup/tracking）的表格，每一行是一单客人。
@@ -1386,6 +1545,11 @@ D. 已完成、待从置顶移走：
 - 2026-11-03 晚 Annie 在主窗口 5c 又提（原话）：「在查出来的订单详情上是否可以加个链接，直接点击跳转到manifest上的该订单项上」= 本条 B。5c 派 fa 先只读查后端 main 有没有 manifest_link(s)，再出 B 的 preview（不写代码）。
   - fa：后端 origin/main 362cd700 没有 manifest_link(s)，要后端在订单详情 / 搜索接口给 manifest_links [{date, tab, tab_label, pill, pill_label, row_keys[]}]（不在 = []）。preview https://claude.ai/artifact/PhPav7b9m1sjrxmfa8sv8F （5 题：放哪 / 分几处 / 勾哪些 / On Hold / 不在时写什么，都推荐 A），已整段转 Annie。
   - Annie「同意全部推荐。动手」（5 题全 A）。fa 推 task/open-in-manifest **6343171**（mock，没合 main）。**给后端的形状（明天后端主窗口照这个做，或告诉真实形状）**：订单详情 / 搜索接口的 OrderDetail 加 `manifest_links: [{date:"YYYY-MM-DD", tab, tab_label, pill, pill_label, row_keys:[]}]`，不在 Main manifest = []；On Hold 要能判断（订单状态照 Order List）；Cancelled 不给。前端：没这个字段 = 整行不出；Manifests 接 ?row=&tick=0。os 74、orders 48、man 365、dr 89、nav 38、mf 240，tsc / eslint / build 过。
+  - 94 报（2026-11-04）：后端 f4 写完在审、没上线。形状同前端 mock：GET /api/operations/orders/{order_number} 加 manifest_links [{date, tab, tab_label, pill, pill_label, row_keys[]}]，不在 = []；没 manifests.view 或查位置出错 = 不带字段（订单详情照常）；row_key / tab / pill 取 GET /api/manifests 的 page_rows；CHD 行在 admin_fee 标签。On Hold 永远 []（10-27 定 on hold 不进 Main Manifest，新表状态叫 pending），manifest-links.tsx 的 isOnHold / tick=0 分支走不到，显示「not on Main manifest … Check its status in Order List」，符合订单流，不用改。SHA 到了派窗口核字段、合最新 main 后合。
+  - ✅ 后端上线 main 8be7f86c（合并 ab189834，任务 020e94aa，94 转）。2c 派 81（75 合完接）核字段、合最新 main、跑 os / orders / man / dr / nav / mf 后合。 ✅ **81 合 main 6e05f55**（fast-forward，前端没改代码；os 80、orders 54、man 401、dr 89、nav 38、mf 240，tsc / eslint / build 过）。
+- ✅ 2026-11-04 合 main（工作窗口 `npe-ops-frontend-81`[90172b]，2c 派）：后端 94 上 main 8be7f86c（合并 ab189834，任务 020e94aa）。只读核过：GET /api/operations/orders/{order_number} 带 manifest_links [{date（ISO）, tab, tab_label, pill, pill_label, row_keys[]}]，和 6343171 的 mock 一致；row_key 用的是同一个 manifest_list.row_key()（同 GET /api/manifests 每行的 row_key，「单号|产品|日期」，回程段加后缀），tab / pill 同那页的 tabs[].key / pills[].key，?row= 能定位；不在 Main Manifest = []；没 manifests.view 或查位置出错 = 不带字段（订单详情照常，前端整行不出）；On Hold 永远 []（显示「not on Main manifest … Check its status in Order List」，符合订单流）。前端没改代码。
+  - 合最新 main（含 75 8cecaea）：PROGRESS / man-test / os-mock / os-test 冲突两边都留（os-mock ctl 合成 {unauth, mlinks, hold, noMoney}）。重跑：os 80/80、orders 54/54、man 401/401、dr 89/89、nav 38/38、mf 240/240；tsc 0、eslint 0 错（3 条原有 warning）、build 过（端口 8983 / 3583 / 9583）。
+  - Annie 验收：Dashboard 顶栏搜索或 Orders › 订单详情，卡片最下面「Main manifest:」⇒ 白键「Open in Main manifest →」（分在几处就每处一个「标签 · 胶囊 →」）→ 跳到对应日期 / 标签 / 胶囊，那一行标黄、滚到眼前、能发的行预勾（不会自动发）；不在 Main manifest 的单写灰字 + 「Open Order List →」；取消的单写「Cancelled orders are not on Main manifest. Check Order List.」。
 
 ### 50. Sales Report 插队 + CHD 组放回 Main manifest（2026-11-02）
 - Annie 原话：「紧急插个队，把sales report做出来」。24 问她指哪种：A 修现有 /sales-report（10/23 上线，按 Group → section → 产品，Orders / Pax / $，只 SA 可见挂 Soon）／B 做一份新报表（先出 preview）／C 把删掉的按 agent 月表周表加回来。她没选，接着说：「你先把CHD这个group 先放回main manifest」。
@@ -1649,6 +1813,8 @@ D. 已完成、待从置顶移走：
   64 给了控件 ↔ 码对照（09 记在分支 task/perm-tick-or-role 5a8fdc9 的 PROGRESS）：前端查和后端同一个码；后端还看 role 的，前端也照旧看 role。改看勾：侧栏 Settings 各项、HR view / edit、Products Forecast 设置、排班读停用员工、Workspace Rate card 链接。照旧看 role / SA：Team 页（/settings/users 10-28 已并进 Team，只做跳转；账号列表 / 重设密码 / 改名 / 停用 admin 可用，权限 / 职责 / 组只有 SA；Annie 指出「users已经跟team合并了」，09 已更正 c6c570a）、Products Bus Manifest setup、/notifications、Quick replies、Supplier restaurant、Workspace settings、排班 Publish anyway。这些要改看勾的话是后端新活（57）。
 - 后端 G225 Multi Orders 上 main（origin 7a69b185，合并 54fdd81f），前端不用改：卡片只算 confirmed 的单（读 Order List）；每 10 分钟，只剩 1 张单自动挂上，0 张挂到最后发给他的那张并亮起；「<2 张不显示」没做。multi_trip 卡可能还列已取消团期，后端已登记。
 - 后端 G212 B1 / B2 / B4 / B5 上 main（origin 86faf30b，合并 1f967bad）：admin 可撤销没接受的邀请；/api/team/members 加 role / is_active / initials / invite_token（只 SA、只未接受）/ is_self；停用 / 启用 / 改角色 / 重置链接 / invite 进 Team action-log；删账号快照带 teams。B3（409 + 计数，先发 detail 写法）、B6 / B7 还没做。⇒ 派 91 只读核对前端 Team 页要不要跟着改。
+- 2026-11-04 94 转 G212 B3 形状（f4 在做，没上线）：DELETE /api/users/{id} 被 RESTRICT 挡 → 409（原 400），detail 纯字符串，例「Erin Walsh is still linked to 3 task handovers and 12 Dispatch assignments, so the account cannot be deleted. Deactivate it instead, or reassign those first.」（保留 still linked；四种叫法 task handovers / Dispatch assignments / Dispatch change records / Dispatch guest list records）；数不出退回原句。其余：删自己 / 超管 400、admin 删真账号 403、404。前端 delete-person-dialog.tsx:115 靠正则 still linked 出「Deactivate instead」，新句仍含 → 不用改；上线后派窗口核一遍（可加判 409）。B6 / B7 can_edit / edit_block_reason 后发。
+- 2026-11-04 94 转 G212 B6 / B7 字段（f4 在审，没上线；只加字段）：GET /api/team/members admin 调用时不返回 Super Admin 行（Qa）和部门邮箱行（Q9），superadmin 照旧全返回；每行加 can_edit + edit_block_reason（null 或：「Only a Super Admin can change another admin.」「You cannot change your own access. Ask a Super Admin.」「A Super Admin account cannot be edited here.」）。GET /members/{id} 同带；admin 看 SA 详情 404，同级 admin 只读。**前端照 can_edit 出 Edit / 改角色 / 停用 / 重置链接 / 团队等键，不自己另算。** 写接口按层级 403（detail 同上）；admin 改成 admin 400「You can only give a role below your own.」；admin 勾 / 拿自己没有的权限 400「You can only give or take away permissions you have yourself: <代码…>」（规格 Qd：这些项灰掉勾不了）。自己显示名照旧能改。admin 也能调 /api/team/catalog、/api/team/action-log、拿 invite_token（Q6）。只给 superadmin：部门邮箱职责、批量导入 Email / Mobile、Delete 真账号。⇒ 前端 Team 页要跟着改（B5：改用 /api/team/members，SA / admin 一起），后端上线前派窗口照 mock 做；现在 81 / c8 都有活，等一个空出来。
   - 91 核完：现在不出错。B1 admin 的 Cancel invite 前端一直有（users-table.tsx:469-487），现在能成功；Delete 真账号只在 SA 的 Edit 框里，和后端一致。B4 / B2 日志动作名 update / create / delete 前端已有说法。
   - B5：前端现在先拉 /api/users，SA 再拉 /api/team/members + 逐人拉 /api/team/members/{id}（users-view.tsx:158-190）。members 是 require_superadmin，等 B6 放开给 admin 后两种人一起改只读 members。需要后端（备选，已转 57）：members 带 items 或 Access 汇总，省掉逐人请求；日志 Role 值小写，后端加 values 映射。
   - 派 91 小修 task/team-log-refresh：Team 日志面板开着时，动作成功后 refreshKey +1，新条目马上出（样子不变）。

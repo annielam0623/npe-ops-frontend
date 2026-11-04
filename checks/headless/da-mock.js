@@ -108,7 +108,17 @@ const seatOrders = [
   { order_number: "SG3", name: "ZZ Test Charlie", pax: 3, guest_ids: [5, 6, 7], pickup_time: "6:40 AM", pickup_location: "Bellagio", auto: "B" },
   { order_number: "SG4", name: "ZZ Test Delta", pax: 2, guest_ids: [8, 9], pickup_time: "6:40 AM", pickup_location: "Bellagio", auto: null },
 ].map((o, i) => ({ ...o, bus_label: o.auto, staff: false, tour_types: [["upper_antelope"], ["lower_antelope"], ["upper_antelope"], []][i], tour_type: [["upper_antelope"], ["lower_antelope"], ["upper_antelope"], []][i][0] ?? null }));
+// 置顶 72 追加（酒店胶囊 + A–Z）：POST /__ctl {pillDemo:true} ⇒ 2026-10-09 换成下面这份（两台 14 座，故意不按顺序给）。
+const pillOrders = [
+  ["PD1", "ZZ Test Kim", 2, "Wynn", "A"], ["PD2", "ZZ Test Lee", 3, "Circus Circus", "A"], ["PD3", "ZZ Test Adams", 2, "Wynn", "A"], ["PD4", "ZZ Test Moss", 1, "Bellagio", "A"],
+  ["PD5", "ZZ Test Park", 2, "Aria", "B"], ["PD6", "ZZ Test Nash", 4, "Mandalay Bay", "B"], ["PD7", "ZZ Test Cole", 3, "Aria", "B"], ["PD8", "ZZ Test Ford", 2, "Bellagio", "B"],
+  ["PD9", "ZZ Test Gray", 2, "Excalibur", null], ["PD10", "ZZ Test Hale", 1, "", null],
+].map(([order_number, name, pax, hotel, bus], i) => ({ order_number, name, pax, guest_ids: Array.from({ length: pax }, (_, k) => 100 + i * 10 + k), pickup_time: "6:30 AM", pickup_location: hotel || null, auto: bus, bus_label: bus, staff: false, tour_types: [], tour_type: null }));
 function seating(date) {
+  if (ctl.pillDemo && date === "2026-10-09") {
+    const bus = (label, van) => ({ label, van, seats: 14, capacity: 14, pax: pillOrders.filter((o) => o.bus_label === label).reduce((n, o) => n + o.pax, 0) });
+    return { run_date: date, tours: [{ manifest_id: 3, title: "West Rim Bus Tour", name: "West Rim", uploaded: true, mode: "lettered", guests_per_bus: 14, pax: 22, buses: [bus("A", "768"), bus("B", "1328")], orders: pillOrders.map(({ auto, ...o }) => o) }] };
+  }
   if (date === "2026-10-18") {
     // Farm out 车不限座：capacity null（后端第三版接口）。
     const bus = (label, van) => ({ label, van, seats: label === "B" ? null : 14, capacity: label === "B" ? null : 14, pax: foOrders.filter((o) => o.bus_label === label).reduce((n, o) => n + o.pax, 0), ...(label === "B" ? { farm_out: true, partner_name: "Partner A" } : {}) });
@@ -596,7 +606,7 @@ http.createServer(async (req, res) => {
     if (fo) { const wasNotified = !!fo.farm_out?.notice_sent_at; fo.bus_label = b.bus_label; if (b.bus_label === "A") fo.farm_out = null; return send(res, 200, { ok: true, moved: fo.guest_ids.length, bus_label: b.bus_label, run_date: "2026-10-18", manifest_id: 3, auto_skipped: false, farm_out: { farmed: b.bus_label === "B" ? [fo.order_number] : [], revoked: b.bus_label === "A" ? [fo.order_number] : [], already_notified: b.bus_label === "A" && wasNotified ? [fo.order_number] : [] } }); }
     // 一次可以挪几张订单（Arrange seats 勾选 / 拖拽成组，真后端同样收一串 guest_ids）：客人要正好是几张订单的全部客人。
     const ids = b.guest_ids || [];
-    const os = seatOrders.filter((x) => x.guest_ids.every((g) => ids.includes(g)));
+    const os = (ctl.pillDemo ? pillOrders : seatOrders).filter((x) => x.guest_ids.every((g) => ids.includes(g)));
     if (!os.length || os.reduce((n, x) => n + x.guest_ids.length, 0) !== ids.length) return send(res, 400, { detail: "Some of these guests are no longer on the list. Reload the page." });
     const o = os[0];
     // G56：Completed 那天选 Auto 不自动分车，原样留着、回 auto_skipped（autoSkip 开着时模拟）。

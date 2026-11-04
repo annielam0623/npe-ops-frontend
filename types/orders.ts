@@ -21,6 +21,13 @@ export interface OrderRow {
   updated_at: string;
   /** confirmed / pending / cancelled / Rezdy 原值 / "—"。 */
   status: string;
+  /**
+   * 置顶 75（Annie「同意全部推荐。动手」，定 B）：Agent reference（Rezdy resellerReference）。只有 orders.money_view 的人后端才给、
+   * 才按它搜；旧后端没有。
+   */
+  reseller_reference?: string;
+  /** 这一行是靠 agent reference 对上的（后端标；没权限的人永远不会是 true）。 */
+  matched_agent_ref?: boolean;
 }
 
 export interface OrderListPage {
@@ -41,6 +48,18 @@ export interface OrderListQuery {
 export interface OrderDetail {
   order_number: string;
   status: string;
+  /**
+   * 置顶 51 B（后端待做，形状照 fa preview 拟）：这单在 Main manifest 上的位置，一单的行可能分在几个标签 / 胶囊上；
+   * 不在 Main manifest 上 = []；旧后端没有这个字段 ⇒ 订单卡片不出「Main manifest:」那一行。
+   */
+  manifest_links?: {
+    date: string;
+    tab: string;
+    tab_label?: string;
+    pill: string | null;
+    pill_label?: string;
+    row_keys: string[];
+  }[];
   source: string;
   booking_type: string;
   /** false：订单在新的 Rezdy 表里，暂时只读。 */
