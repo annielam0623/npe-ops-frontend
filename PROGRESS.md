@@ -43,6 +43,7 @@
   - 81 推 task/import-restaurant **58c97e1**（没合）：restaurant 58/58（+21）、nav 38/38，tsc / eslint / build 过。⬆ Import 在「+ Add a restaurant」左边（深色，同 Add 样子）。请后端导入时也写 updated_by / updated_at（已转 94）。81 接着做 75。
   - ✅ 后端上线 main b1919f7e（合并 1f7a064f，任务 f198a896，94 转）：形状同 58c97e1 mock，导入也写 updated_by / updated_at。派 81 核字段合 main（83 推完后、59 之前）。
 - ✅ `09` 合 72 → main **06bff03**（Annie 在 09 窗口原话「动手」）：da 501、pl 116、nav 38，tsc / eslint / build 过；验收点见置顶 72。已告知 94（57 direction 后端可推）。09 收工关窗口。
+  - ✅ 南北分车后端上线 main ce27bd43（合并 bcf90fec，94 转）：GET pickup-locations 每行 direction，PATCH …/{id}/direction 写 action_log，seat_plan 新规则生效，生产 17 家已预填 ⇒ Direction 列应已出现。派 81 只读核字段。
 
 ## 2026-11-04 G212 Team 页 admin 按层级（`task/g212-team-hierarchy`，工作窗口 `npe-ops-frontend-c8`[a65365]，主窗口 2c 派）—— ✅ 后端 b68aa0e9 上 main，核过字段后合 main
 - 依据：Annie 10-28 Team 合并 preview v3（https://claude.ai/artifact/QpiQpo6x2b82CxAw86W9zq ）「a看不到 b不能 c不能 d不能」+「动手」；后端 f4 B3 / B5 / B6 / B7 / SA-2 / SA-6。2c 定：司机 / 导游行用 A（从 /api/users 补）、自己那一行照 v3 加 ✏️ Name；(a)(b) 截图 Annie 看过没提意见，照现在合。
