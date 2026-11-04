@@ -75,7 +75,7 @@
   - 没改写法不调这个接口。
   - Add person：先建人再存写法。写法被拒时，用新建的人重开弹窗（带回格子里的字和红字），再按 Save 不会重复建人。
 - 后端没上线（`GET /api/hr/profiles` 不带 `other_spellings`）时，这一格、这一列、How to use 那条都不出，页面跟以前一样。后端接口在 `task/driver-change-follow` 33691e8d，还没上 main。
-- ⏸️ 题 3 B（Edit list 里也能改）：后端 bulk 还不收 other_spellings（明天家里那台做，错误带 profile_id）。现在 Edit list 里这一列只读。bulk 上了以后：EditCell 开成逗号输入，红字放在那人那一格下面，How to use 末句去掉。
+- ✅ 题 3 B（Edit list 里也能改）：后端 01606b02 上 main（bulk 收 other_spellings，错误带 profile_id）后补上（`task/hr-spellings-bulk`）。Edit list 里逗号隔开，交给 bulk 的是这人的整份清单；被拒时红字放在那人那一格下面（保存条也写「谁: 原因 Nothing was saved.」），一改那一格红字消失；存好后后端规整的写法不算没存的改动。How to use 临时那句已去掉。hr 87/87，nav 38/38，tsc / eslint / build 过。线上没法登录，只读确认要 Annie 自己看（HR 页现在应该有这一格 / 这一列）。
 - 检查：hr 80/80（新 12 条 Other spellings，含后端没上线的 3 条），nav 38/38；tsc / eslint / build 过。
 
 ## 2026-11-03 Dispatch › Send 打开就展开（`task/send-auto-open`，工作窗口 e6 [03dd03]，主窗口 24 派）—— 置顶 62 题 7–9
