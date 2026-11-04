@@ -1041,6 +1041,7 @@ D. 已完成、待从置顶移走：
 - ✅ **Annie「排班这个全部同意推荐，动手吧」（原话，2026-11-04）** ⇒ Q1 A、Q2 A（只在 ⚙ Settings › Shift types）、Q3 A（名字 + 默认时间 + 8 色）、Q4 A（停用 + 排序 + 停用提醒）、Q5 A（两段 How to use）、Q6 定稿（Unassigned 不上色、卡片白虚线框无底色）。前端派 c8（task/schedule-shift-types）；后端 color 列 + migration（先给 Annie 看）+ action_log 转 94。preview v4 https://claude.ai/artifact/9LFRCau1uBg5sQ5aPbdSZt
   - c8 发现 Staff Schedule 页本来没有 How to use 框 ⇒ 2c 定：Q5 两段不新增框——Shift types 那段放 ⚙ Settings › Shift types 的「i」说明里，Rules 那句接在 Rules 卡片灰字「Auto-fill follows these rules when it schedules a week.」后面；已告诉 Annie，她要另加框再说。
   - c8 推 task/schedule-shift-types **e5b406d**（含 main e2c682c，没合，等后端 color SHA）：sch 405/405、nav 38/38，tsc 0、eslint 0 错、build 过。Settings › Shift types（停用的也列、能勾回；⋮⋮ 拖或 ↑↓；8 色小窗；改名黄框 + 「Was "Mid" — not saved yet」；灰绿 + Add shift type；蓝 Save）；页面先挡红字「Enter a name for the new shift type.」「There is already a shift type called "X".」「Enter both default times for X, or leave both empty.」；key 从名字生成；停用但规则在用 → 黄字「ZZ Test Training is still used by 1 rule (…). Auto-fill keeps using it until you change that rule in Rules.」；颜色按 color 取（周表 / Add shift / Auto-fill / Dashboard / 员工确认页），旧后端 open / mid / close 照旧其余灰白；Unassigned 定稿样子；How to use 方案 B。preview 外两处小东西（已告诉 Annie）：未存新行右边「×」可去掉；默认时间旁的「Clear」键去掉，直接删字清空。要后端：GET /api/schedule/confirmation 的 shift_types 也带 color（已转 94）。
+  - 2e：确认页 GET /api/schedule/confirmation 和免登录链接页都带 color；带 shift types 的 4 处都带（GET settings/schedule、POST / PUT 返回、确认页）；周表接口不返回 shift types。⚠️ 确认页只列 active 类型（原来就这样），已排的班用停用类型时拿不到 color / label，前端按 key 默认色。SHA 到了转 c8。
 
 ### 84. Staff Schedule 后台要有员工登录记录（2026-11-04，Annie 在主窗口-2c 提，没动手）
 - 原话（接置顶 83 后说）：「我们本来就应该在staff的schedule后台管理页面有员工的登录记录」。
@@ -1067,6 +1068,7 @@ D. 已完成、待从置顶移走：
 - ✅ **Annie「1 登录时间选A   动手」（原话，2026-11-04）** ⇒ 置顶 84 Q5 = A：登录时间跟登录记录一起做——后端每次登录写一条记录，GET /api/me 加 logged_in_at（这次会话的登录时间）取自它；前端 83 动手，派 81（task/dispatch-login-default）。84 在 Staff Schedule 怎么显示（Q1–Q4）还没答，要先 preview（81 做完 83 出）。已转 94。
   - 94：派后端 18（Restaurant Import 后），logged_in_at 按本次 token 取、拿不到不带（上线后 9 小时内旧 token 都不带）；登录记录迁移 v151（排在 v148 / v149 / v150 后，SQL 先给 Annie 看）；列表接口等 84 preview。2c 建议 94 把 logged_in_at 先单独上（token exp − 9h，不用迁移），记录表后上。
   - ✅ 94 同意分两步：logged_in_at 单独先上（不用迁移，按本次 token 推算，57 核续签情况），派 57 现在开工；登录记录表 + v151 照旧 18 后做。
+  - 57 审查全过、正在落地：GET /api/me logged_in_at = ISO 例「2026-11-04T17:40:00+00:00」，拿不到整个键不带；partner / staff / admin 都带；旧 token 也能推出时间（上线后已登录的人马上有）。SHA 到了转 81 合 6a3320f。
 
 ### 82. G245 Main manifest 羚羊谷 Cfm # 跟产品不符标红、挡发送（2026-11-04，94 转，前端还没 preview）
 - Annie 原话（94 转）：「我需要订单如实地反映在页面上，rezdy是什么样就是什么样……现在在main manifest的cfm#就应该是标红，然后让staff去改」「如果设置了auto send的话要提醒这个#的不对，不能发送」。起因 CHDQ59DAL：原下 X 后改 Lower，X 栏的号是真的但不是 Lower 的号。
