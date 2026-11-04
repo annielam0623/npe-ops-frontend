@@ -11,6 +11,27 @@
 - 还在跑：后端 94 改手机司机 / 导游页白字；后端 57 南北分车 direction（迁移 Annie 先执行）。等 Annie：72 preview 回 A、80 选 A / B、64 / 69 / 68（详见置顶，不滚动重问）。
 - 没人做、待派：Supplier › Restaurant ⬆ Import（5c 交接「明天开工」0）。
 
+## 2026-11-04 Supplier › Restaurant ⬆ Import（`task/import-restaurant`，工作窗口 `npe-ops-frontend-81`[90172b]，主窗口 2c 派）—— ⛔ 推了分支，等后端接口再合
+- 依据：全站「上传表格自动填」preview https://claude.ai/artifact/MKtDUiYyUPZ1FcBJR3j4Lw ③-4，Annie 10/29「批量导游同意推荐。动手」（Q1–Q7 全按推荐），不再出 preview；5c 交接「四、明天开工」0。
+- 改动（worktree `C:\Code\npe-ops-wt-import-restaurant`）：
+  - 新文件 `components/supplier/import-panel.tsx`：通用 `StandardImport`，title「Import restaurants」，endpoint `/api/supplier/restaurants/import`。
+    - 模板（csv）：Name / Address / Phone / Text / Email / Notes for staff，带全部现有的店（按店名排），电话写成 (928) 555-0110；文件名 `restaurants_template_<日期>.csv`。页脚两行、分团不导入（preview ③-4）。
+  - `restaurant-view.tsx`：「+ Add a restaurant」左边加「⬆ Import」（深色底上同 Add 那个键的样子，不是蓝的）；点开在卡片列表上方展开 Import 块；存好后重读。
+    卡片的 key 加上能导入的栏（导入改的栏不一定动 updated_at，不加的话卡片还显示旧值）。权限同本页（admin，Q4）。
+- 检查：restaurant-mock 加 preview / commit（标准 bulk_import 形状；`importFileError` 400、`importConflict` 409、`importFail` 500），新文件 `checks/headless/restaurant-import.csv`。restaurant 套加 21 条：
+  - 键的位置 / 样子 / 不是蓝的；展开在卡片上方、说明三句；模板列、行、电话格式、文件名；
+  - 只调 preview；数字和栏名；旧 → 新、blank in file — left as is；三种红字（电话格式、店名空、文件里重复）；蓝色 Save 2 rows；
+  - 500 红字预览留着；409 后端原话；存好绿字、新店出卡片（没分团）、旧店 Email 跟着变、计数 2；Close；文件读不了 400 原话。
+  - 结果：restaurant 58/58、nav 38/38；tsc 0、eslint 0 错、build 通过（独立端口 8981 / 3581 / 9581，跑完已关）。
+- ⚠️ **需要后端**（11-04 已发 2c 转 94，94 派 18）：`POST /api/supplier/restaurants/import/preview|commit`（preview B6）。
+  - multipart `file`（.csv / .xlsx）；require_admin；标准 bulk_import 形状（同 vehicles / pickup）。
+  - 栏 key：name=Name、address=Address、phone=Phone、text_number=Text、email=Email、staff_note=Notes for staff。footer、分团不导入。
+  - 按店名对上（不分大小写、去头尾空格）；没对上的新建（footer=''、不分团）；空格不改；有错的行不存，其余一个事务。
+  - 校验复用 lunch_restaurants.clean_*，原话，field 填栏 key；文件里重复店名第二行 field=null「Repeated above — skipped.」。
+  - 每家一条 action_log（action="import"，只放改了的栏）；撞唯一索引 409 人话整份不存。
+- 下一步：后端上 main → 只读核栏 key / 原话 / 权限 → mock 改成后端原话 → 合最新 main、重跑 restaurant / nav、tsc / eslint / build → 合 main。
+  Annie 验收：ops › Supplier › Restaurant › ⬆ Import，只用 ZZ Test 开头的店。
+
 ## 2026-11-04 交接：前端主窗口 `今日主窗口-24`[310398] → 今天新开的主窗口（公司电脑）
 
 > Annie：「你这个窗口太多内容了，我打算跟其他几个昨天就开着的窗口一起关闭了，你写一下交接给新开的窗口，让它来做今天的主窗口」。前端工作窗口 09 / 91 / e6 也一起关；新主窗口开工后请 Annie 按需要开新工作窗口。
