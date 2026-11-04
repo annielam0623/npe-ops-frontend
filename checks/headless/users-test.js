@@ -61,7 +61,8 @@ async function rowText(page, s) {
   let t = await text(page);
   check("list shows users", ["Boss Lady", "Alice A", "Bob B", "Carl C", "Pending registration…", "Second Super"].every((s) => t.includes(s)));
   check("self marked (you)", (await rowText(page, "Boss Lady")).includes("(you)"));
-  check("self row has no actions", !(await rowText(page, "Boss Lady")).includes("✏️ Name"));
+  // preview v3 ②「自己：Reset password（灰掉）· ✏️ Name」（G212，2c 2026-11-04 定）。
+  check("self row: Reset password + ✏️ Name only (no Deactivate)", /Reset password[\s\S]*✏️ Name/.test(await rowText(page, "Boss Lady")) && !(await rowText(page, "Boss Lady")).includes("Deactivate"));
   check("team chip shown", (await rowText(page, "Alice A")).includes("Morning"));
   check("joined date LA tz (Sep 26)", (await rowText(page, "Alice A")).includes("Sep 26, 2026"), await rowText(page, "Alice A"));
   check("pending row: Invited by under the status (no Joined)", (await rowText(page, "Pending registration")).includes("Invited by") && !(await rowText(page, "Pending registration")).includes("Joined"));

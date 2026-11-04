@@ -39,6 +39,12 @@ export interface AdminUser {
   created_at: string | null;
   team_ids: number[];
   is_self: boolean;
+  /**
+   * G212 B6 / B7（Team 页名单从 /api/team/members 来时带）：能不能改这个人。false = 行上只写 edit_block_reason；
+   * 没带（司机 / 导游从 /api/users 补进来、或后端还旧）= 照以前的做法出键。
+   */
+  can_edit?: boolean;
+  edit_block_reason?: string | null;
 }
 
 /** POST /api/users/{id}/reset-link 的返回体：链接只返回这一次，24 小时内一次性有效。 */
