@@ -963,6 +963,7 @@ D. 已完成、待从置顶移走：
 - Annie 发 Live drivers 截图（订单号旁没简写），主窗口问「是否现在动手」，她答「动手」并确认是这件（不是 72）。同司机手机页 11/2 B5 / B6（后端 3e0ff83f）：订单号后「· short_tag」，只在设了 Bus Manifest setup Short name 时显示。
 - 后端：/live-drivers 客人带 short_tag（relay、团车、导游 runs），已转 37。前端：09 task/live-short-tag，没键不显示可先合。
 - 37 核过：/live-drivers 已带 short_tag（团车段 _driver_day_context → _safe_tag；relay 段 print_extras fallback=False；导游 runs _tag_runs），后端不用改；读简称出错时字段缺，前端按缺 = 空。纯前端，09 做完合 main 线上即见。
+- **新要求（主窗口原话，2026-11-04）**：「在南北分车这里，dispatch的分车页面，按照A-Z 顺序来排，相同酒店放在一起，然后设置酒店胶囊在表格的上方，点胶囊就选中这个胶囊的所有酒店，然后点击移动到B车，就全部移过去了，胶囊可以单选也可以多选」。还没 preview、没动手。纯前端（seating.tsx，同 72 勾选框同一文件）→ 派 09 在 task/seat-direction 上一起出 preview。
 
 ### 72. Dispatch 两台 bus 调位置：勾选框放大 + Auto 按南北分车（2026-11-03 晚，Annie 在主窗口提，附表）
 - Annie 原话：「前端要改一下，当有两台bus可以调位置的时候，勾选框太小了，把它放大跟main manifest里一样；另外Auto排进bus的时候按照这个规则：一台车放south，一台放north，中间的机动填位」。
