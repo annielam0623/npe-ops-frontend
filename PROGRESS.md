@@ -1094,6 +1094,11 @@ D. 已完成、待从置顶移走：
 - G212 Team 页前端派 c8（task/g212-team-hierarchy），等后端 SHA。
 
 ### 85. Staff Schedule 班次类型（Open / Mid / Close）可手动新增（2026-11-04，Annie 在主窗口-2c 提，附排班格截图，没动手）
+- ✅ **前端已合 main**（`task/schedule-shift-types`，工作窗口 c8[a65365]，2c 派；SHA 见下面「合 main」一句）。Annie（94 转）原话「颜色不重要，关键是我要的几个功能」⇒ 2c 定不等后端 color 列，先合。
+  - 做了（照 preview v4 全部推荐）：⚙ Settings 里「Default shift times」改成「Shift types」：每行 ⋮⋮ 排序（拖，或聚焦按 ↑↓）、色块、名字（改名黄框 + 「Was “Mid” — not saved yet」）、默认时间、Active；停用的也列着能勾回来；灰绿「+ Add shift type」，没存的新行右边小「×」能去掉。全部暂存、蓝色 Save 一起存，未存关窗先问；红字「Enter a name for the new shift type.」「There is already a shift type called “X”.」「Enter both default times for X, or leave both empty.」；key 从名字生成（小写、空格 _、≤20、重了 _2）。停用但还有开着的规则在用 ⇒ 黄字「X is still used by N rule(s) (…). Auto-fill keeps using it until you change that rule in Rules.」。Unassigned 行头 / 格子不上色、卡片白虚线框 + 白字。How to use 照方案 B：Shift types 那段放 Settings › Shift types 说明（手机收进「i」），Rules 卡片灰字后面接「New shift types show up in the Shift list of every rule. …」。原来默认时间旁的「Clear」拿掉（清空直接删框里的字）。
+  - **颜色**：后端 GET /api/settings/schedule 的 shift_types 带 color 键以后才出 8 色小窗、POST / PUT 才带 color；现在没带 ⇒ 色块只显示（Open 绿 / Mid 蓝 / Close 紫，新类型灰白），不能挑。格子颜色已经按 color 字段取（周表、Add shift、Auto-fill、Dashboard、员工确认页），后端上线后不用再改前端。
+  - 检查（合最新 main 后，端口 3278 / 8879 / 9413）：sch 409/409（新加 85 用例：新增 / 空名 / 重名 / key _2 / 改名 / 未存拦截 / 排序 / 停用提醒 / Add shift 顺序 / 颜色两种后端 / Unassigned / Rules 那句 / 非 SA 只读）、nav 38/38；tsc 0、eslint 0 错（3 个原有 warning）、build 过。
+  - Annie 验收看哪里（线上 ops Staff Schedule，Super Admin 账号；只用 ZZ Test 名字）：① ⚙ Settings → Shift types：+ Add shift type 加「ZZ Test Training」、填默认时间 → Save，绿字 Saved；Add shift 弹窗 Shift 那一排多了它；② 把它改个名 → Save，已排的班、Rules 跟着变；③ ⋮⋮ 拖顺序 → Save，Add shift 按钮顺序跟着变；④ 勾掉 Active → Save，Add shift 里不再出现（还有规则用它时名单下面黄字）；⑤ 周表 Unassigned 那一行不上色、卡片白虚线框；⑥ **颜色要等后端 color 上线后才能选**，现在色块只是显示。⚠️ 生产没有删除：加了的 ZZ Test 类型验收完请勾掉 Active 停用。
 - 原话：「在role里，给一个手动添加role的选项」「我说的是staff schedule」。截图是 Staff Schedule 周表，格子上的 Open / Mid / Close ⇒ 理解为班次类型（后端叫 shift type）。
 - 现状（2c 只读）：Add shift 弹窗「Shift」一排固定按钮（add-shift-dialog.tsx:283 起，来自后端 shift types）；Settings 弹窗只能改已有类型的 Default shift times（settings-dialog.tsx）。**后端已有新增接口** POST /api/settings/schedule/shift-types（key / label / sort_order / 默认时间，routers/schedule.py:136，权限 _settings），前端没做入口。
 - 注意：格子颜色写死按 key（components/schedule/config.ts SHIFT_CARDS），新类型会全用同一个后备色 ⇒ 要么前端给几种备选色让人挑（要后端存色），要么新类型统一一种色。
