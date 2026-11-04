@@ -1492,6 +1492,7 @@ pe-ops-wt-login-default`，mock，**没合 main，等后端 57 的 logged_in_at 
     - **Annie 答 Q5（原话）**：「5. 在tracking表上加两列吧，arrived at Left at」⇒ 置顶 58 定：Morning Pickup Tracking 表新加两列「Arrived at」「Left at」（不是甲的小胶囊，也不是乙的一列）。没坐标 / 没数据的格子显示「—」。81 改 preview 时一起画。Q1 / Q2 未答，未动手。
     - ✅ **Annie「其他问题都同意推荐，动手」（原话，2026-11-04）** ⇒ 59 Q1 A（Edit 时酒店名下）、Q2 A（Add 表单不加）、Q4 A（How to use 用 2c 改后的一格版）；连同 Q3 一格 Coordinates、Q5 Tracking 两列。派 81 在 task/samsara-arrival 上做（83 推完分支后），合 main 前截图给 Annie 看 Q3 / Q5 两处新样子。
       - 81 推 task/samsara-arrival **c9aad7b**（没合，合了 72 Direction 的冲突，Direction 和坐标同一个 Save）：pl 129、mt 253、nav 38，tsc / eslint / build 过。58：两列放在 Pickup Location 后面，时间写法同 Check-in Time（「11/4, 5:38 AM」），旧后端没键不出；这页没 ☰ Columns；⬇ Export（后端 CSV）这次不带两列，要带得后端改。截图（2c scratchpad 59-edit-row / 59-edit-error / 59-view-row / 58-tracking-columns.png）已发 Annie，等她点头再合。
+      - ✅ **Annie「我还是没有选A吧，可以合」（原话）** ⇒ 截图点头；Export 选 A（这次不带两列）。派 81 合 main。
       - 81 已改 preview（同链接 25fhKRvwcw4rKmdtb5FA7B）。红字：「Paste the coordinates as latitude, longitude — for example 36.106711, -115.176612.」「Radius must be a whole number of meters from 1 to 500.」「Those coordinates are not on the map. Latitude comes first (between -90 and 90), then longitude (between -180 and 180).」「The hotel was saved, but not the pickup point: …」；逗号 / 空格分开都认。58：后端 notifications.py:1234 每行带 arrived_at / left_at（只 relay 车的单有，一单几站取最早到的）。
 
 ### 58. Morning Pickup Tracking 表里怎么显示「到了 / 走了」的时间（2026-11-03，09 做 Samsara 到站时问）
