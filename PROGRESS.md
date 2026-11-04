@@ -21,6 +21,8 @@
 - Annie 答（原话）：「同意全部推荐。紫色那个留给staff自己调」⇒ 题 1 A（三处一起变）、题 2 D（不改默认，staff 用 ⚙ 自己调）、题 3 不用答了（不改默认色）、题 4 A（每张单各自设）、题 5 A（dispatch.edit 能改）、题 6 A（加 How to use，第 3 句用 3A）。**还没说「动手」**，5c 已问。
 - ✅ Annie 原话「动手」（2026-11-03 晚）。5c 转 9e 派后端（排在 36「第二轮 relay 认 TI」后；题 1 A 要同时写 bar/bars 和 bus/buses；要一个 dispatch.view 能读的 GET 给团 / 字母 / 当前色 / 默认色）；派 fa 前端 task/relay-list-settings，先 mock、推分支不合，等后端 SHA。
   - 9e：派后端 36（TI 已上 b885f1d1）。改为颜色 + 方向一个接口 GET/PUT /api/settings/relay-list（含 tour_colors、orientations、defaults、tours[]），不写回 manifests.paper_colors（纸本色要留着当「回默认」）；显示色「staff 设的 → 纸本 → 团色」三处同读。21:30 前做不完推 WIP 明天续。已转 fa。
+  - fa 推 task/relay-list-settings **e219e0e**（没合 main）；preview 定稿同链接。rl 58、da 482、mf 240、man 360、nav 38，tsc / eslint / build 过；横竖混排 PDF 实测方向全对、长单不裁。要后端核 4 点（tours[] 形状、字母色顺序、tour_buses[] 带 manifest_id、PUT detail 英文）已转 9e。fa 接着做 74 preview。
+  - ✅ 后端 73 上 main **ee601775**（36 做；11/04 线上只读新旧颜色 62 行一致，连库 3984 OK）。最终字段已转 fa：tours[] 带 color/default_color（Relay + 司机页）和 header_*（Bus Manifest），*_set；取色顺序以后端为准（staff 字母 → staff All buses → 纸本字母 → 纸本团 → 团色），前端直接用返回值不自己算。派 fa 核字段后合 main。
 - ✅ 置顶 71 后端：manifest_cols_bus / _tickets / _admin_fee 上限 4000 → 20000 已上线（后端 origin/main 1fac68ca，9e 报）；键名格式不变，超限 400 "value too long (max 20000 chars)"，其他键仍 4000，partner 仍 403。前端不用改。后端另有 npe-confirmation-service-da [af1446]。
 
 ## 2026-11-03 晚 置顶 73 Relay list「⚙ Colours & page」：颜色 + 每张单方向交给 staff（`task/relay-list-settings`，工作窗口 fa [985244]，主窗口 5c 派）—— ⛔ 推了分支，等后端上 main 核字段再合
@@ -811,6 +813,13 @@
 - 需要后端：user_prefs 白名单加 `manifest_cols_admin_fee`（这个标签的 Columns 才存得住；没有时页面写「Could not load your saved columns」并用默认列）。
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
+
+### 74. Main Manifest：Upper Antelope Brenda 每单一条 Waiver link（2026-11-03 晚，Annie 在后端 9e 窗口提，9e 转；前端还没 preview）
+- 9e 转的 Annie 已确认四条：没填链接的单像 No Cfm # 一样被挡、可 Send anyway；Brenda 两种都要；格子里填 + 上传两列表格都要；发出后改了链接标「Changed since sent」，staff 手动重发（Send anyway）。原话（9e 转）：「要在Upper brenda的main manifest那里增加一个栏目，叫waver link，由staff上传或者填写进去，然后发送的时候一起发给客人，每个订单都有独立的一个link」；四条是 9e 出的选择题，Annie 都勾推荐项（Brenda 两种 = Brenda 和 Brenda — No Permit Fee），没另写字，**没说「动手」、没看过样子**。
+- 后端 da 在做（迁移 v147 Annie 先执行），今晚多半 WIP。拟定字段：GET /api/manifests 每行 waiver_link_required + 4 列（waiver_link / waiver_status / waiver_link_by / waiver_link_at）；PUT /api/manifests/waiver-link；POST /api/manifests/waiver-links/upload（apply false 预览 / true 写入，status new/changed/same 及 not_found/not_waiver/bad_link/empty/duplicate）；send-tickets blocked reasons 加 "No waiver link"（与 No Cfm # 合并一条）；Changed since sent 当已发跳过；Action Log entity manifest_waiver_link。How to use 写在 ops Manifests 页（英文、默认折叠）。
+- 前端：新功能 → 先 preview（排在 fa 的 73 前端推分支后），Annie「动手」才写代码。资源：空闲内存 8.3 / 31.7 GB，不加窗口。
+- fa preview：https://claude.ai/artifact/5niqePBqxUsCBqKpLLKCnm （5 题：列在哪出现 / 上传替换 / 文件格式 / Changed since sent 何时消失 / 链接放消息哪里；How to use 4 句）。已整段转 Annie；题 5 链接怎么到客人、题 2 B / 题 4 B 后端工作量已问 9e。
+  - 后端 da 回：① 短信 / 邮件正文不变，链接只替换客人门票确认页「Prepare for Your Tour」第 1 步那条固定链接 ⇒ 题 5 删；② 题 2 B 不用改后端（apply=true 只传勾上的行）；③ 题 4 A 就是后端做法（按最近一次至少一条发成功的记录比，两条都失败不消失）。已叫 fa 改 preview。
 
 ### 73. Relay list：紫色太深 + 颜色和纸张方向交给 staff 设（2026-11-03 晚，Annie 在主窗口 5c 提，着急，没动手）
 - 原话：「两件事情着急做：relay list里，最后一张和倒数第三张的紫色太深了。可以把颜色的调配和页面的方向交给staff去处理么」
