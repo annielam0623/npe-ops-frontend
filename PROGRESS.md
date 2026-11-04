@@ -4,7 +4,37 @@
 
 > 6d 交接（下面「2026-10-27 交接：前端主窗口 6d」那节）的后端需求已于 10/27 晚由 ad 转给家里后端主窗口 17。
 
-> **下一个主窗口：先读下面「2026-11-03 收工交接：前端主窗口 今日主窗口-24」，再看置顶「📌 等 Annie 确认」。上一份是「2026-11-03 凌晨 收工交接：前端主窗口 f8」。**
+> **下一个主窗口：先读下面「2026-11-03 晚 收工交接：前端主窗口 今日前端主窗口-5c」，再看置顶「📌 等 Annie 确认」。上一份是「2026-11-03 收工交接：前端主窗口 今日主窗口-24」。**
+
+## 2026-11-03 晚 收工交接：前端主窗口 `今日前端主窗口-5c`[e44052]（家里电脑）
+> 逐条记录在下面「主窗口 5c 开工」节和置顶 73–77、51；Annie 原话都在置顶里。窗口：前端工作窗口 fa [985244]（固定检查端口 APP 3577 / MOCK 8977 / CDP 9577，worktree D:\npe-ops-frontend-wt-blank）；后端主窗口-9e（已收工）、后端 da、36。
+
+### 一、今晚上 main（等 Annie 线上验收）
+| 件 | 前端 SHA | 后端 | 验收看 |
+|---|---|---|---|
+| Relay list 打印不再多空白页 | 659baf0 | — | 11/4 Relay list 打印预览 |
+| da 482 检查过期修正 | 6f2e9be | — | 不用验 |
+| 置顶 73 Relay list ⚙ Colours & page（颜色 + 每张单方向） | 050a800 | ee601775 | 7 个验收点见置顶 73 / fa 节 |
+| 置顶 71 Columns 上限 20000 | — | 1fac68ca | Apply for this page / all 能存 |
+| 置顶 74 Brenda Waiver link | 86444673 | 635a198b（v147 已执行） | ① Brenda 胶囊出列 ② 红 No waiver link / 填好绿 Saved ③ Upload waiver links ④ 发送被挡合一条 ⑤ Changed since sent ⑥ ☰ Columns 能关 ⑦ How to use 4 句；只动 ZZ Test |
+
+### 二、前端在分支、等后端（明天后端主窗口照置顶派）
+| 分支 | SHA | 等什么 |
+|---|---|---|
+| task/agent-ref-search（置顶 75，定 B + 4 题全 A，已动手） | 124b946 | q 加 resellerReference（没 money_view 不加）、返回 reseller_reference + matched_agent_ref |
+| task/open-in-manifest（置顶 51 B，5 题全 A，已动手） | 6343171 | manifest_links 形状见置顶 51 |
+| task/samsara-arrival | 071df4d | 后端 samsara-arrivals + v146；置顶 58 / 59 |
+| task/driver-follow | a65ba71 | 只等 Annie 对新红字 / tooltip / How to use（置顶 63） |
+
+### 三、等 Annie（不滚动重问）
+- 77 快捷回复搬进 Content Studio：preview https://claude.ai/artifact/Q5XYrpnniHcacr6pskveXP 3 题 + 动手；13 句草稿等她改（定稿后她自己加，或说要导入）。
+- 69（3 题）、72（7 题）、64（Notified 版点头）、68（提醒还是挡）、51 A、Today's team 7 题、48、Send Log、Dashboard 统计 bug、Forecast 补数据：照旧。
+- Annie 自己要做：v146；取消 Anita「Counts toward coverage」；GPS 偏差实测。
+
+### 四、明天开工
+1. 报对话名；git pull；问后端主窗口 75 / 51B / samsara-arrivals 进度，SHA 到了派窗口核字段合（fa 的分支都在 origin）。
+2. Annie 答 77 / 63 等，按原话派。
+3. 资源：今晚空闲内存 8–11 GB，最多 1 个工作窗口。
 
 ## 2026-11-03 晚 主窗口 `npe-ops-frontend-5c`[e44052] 开工（家里电脑，接 24；只分工和汇报，不写代码）
 - 本地 main 落后 139，已 pull 到 63d7aae。
