@@ -770,6 +770,7 @@
 
 - ✅ 91 合 main **fe0e13a**（功能 8fb0d61）：hr 80/80（新 12 条）、nav 38/38、tsc / eslint / build 过。后端没上线时格子、列、How to use 那条都不出，生产页面同以前。Edit list 列先只读；How to use 在 Annie 定的原文后临时多一句「To change them, click Edit on that person's row.」，bulk 上了去掉（已告诉 Annie）。
 - 37 转 4d 定稿（送审中未上 main）：bulk 每项可带 other_spellings（逗号串或列表，完整清单，空串清空）；被拒 {detail:{message, profile_id}} 400/409 整批回滚；已删除的人进 missing；控制字符拒收；CHECK 违规改 400。G234 driver_follow 定稿 {updated_orders, updated:[{car, from(Dispatch 原司机), to, orders}], skipped:[{car, reason}]}。已分别转 91 / e6。
+- ✅ 后端 G234 + spellings 上 main **01606b02**（含 bulk other_spellings）。已派 91：线上只读确认 → Edit list 列开可改、去掉 How to use 临时句 → 合 main。
 ### 64. G180 Main manifest 订单同步到 Tour Tracking：重新启动（2026-11-03，Annie「重新启动」）
 - 10/24 Annie 提，后端 d9 写好代码在 origin/task/tracking-sync-design（4cac1f93，10/25 夜后没动，没上 main、没跑迁移；deploy-guard 第 3 轮 FAIL：迁移要先于代码；迁移号 v122 已被占，要换号）。设计文档 docs/tracking-sync-design-2026-10-24.md，Annie 已定的不再问（同步已确认订单、发送前后都同步、send_state Sent / Not sent、order_state Confirmed / On hold / Cancelled 以 Order List 为准、从不删行、午餐谁新留谁、Farm out 只记录、Broadcast 含 Not sent 不含 On hold / Cancelled 且发出后变 Sent、总开关默认关、Tour Tracking 加 Sent / Not sent 筛选默认 Sent + 订单号后小标签）。还没答：调用记录表 401 要不要记（Max 推荐不记，后端那边问）。
 - 当时页面只改了旧后台模板；ops 新 Tour Tracking 页要前端另做。
@@ -815,6 +816,7 @@
 
 
 
+- ✅ 后端 G234 上 main 01606b02。e6 核对 + 合最新 main + 检查后先推分支，等 Annie 看新红字 / tooltip / How to use 两句（2026-11-03 已贴原文问）再合 main。
 ### 62. Dispatch Send 页司机 / 导游 / Morning Relay 打开就展开（题 7–9 还等 Annie）；省掉 CCL Apply 已作废（2026-11-03）
 - ❌ 省掉 Apply 作废：Annie 看了 CCL 自己写错车号的结果后（原话）「那还是保留手动apply CCL的change吧」⇒ 题 1–6 作废，CCL 改版照旧 staff 按 Apply，后端不用做。题 7（Step 1 司机 / 导游打开就列好）、题 8（Step 2 Morning Relay 不用按 Pull）、题 9 里 Send 两句 How to use 仍等 Annie。
 - Annie 在 09 窗口答（原话）「问题7-9，同意全部推荐」⇒ 7 A（Step 1 打开就列好司机 / 导游，Check the list 改白色 ↻ Refresh）、8 A（Step 2 打开自动取客人，Pull from manifests 改白色 ↻ Refresh）、9 三段 How to use 照草稿。「同意」不算动手，09 已问她要不要现在动手，等「动手」。
