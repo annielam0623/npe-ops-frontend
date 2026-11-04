@@ -1032,6 +1032,15 @@ D. 已完成、待从置顶移走：
   - **Annie（原话）**：「没人需要统计他们接了几个客人之类的，那个在tracking表里已经有了，我现在要的数据是给他们算工资的」⇒ Working Record 的目的 = **算工资**：日历每天写角色、团、车号是关键；人数 / Picked up 这类统计不要（Tracking 表已有）。2c 已问 Annie：工资按什么算（按天 / 按团种类 / 按小时（check in–check out）/ 加班、Driver & Guide 另算？），好决定日历每格还要写什么、要不要按月合计和 Export。已告诉 94、81。
   - 94 转 Annie 在后端窗口新定（原话）：「所以当所有车辆都走了以后，我让morning的dispatch点击一下completed这个键，然后今天的dispatch记录就锁定了，只有授权的人才可以改，然后按照你推荐的存表方式」⇒ 以后车走完点 Completed、当天 dispatch 锁定（授权的人 / 撤回 / 锁哪些 94 在问她）。日历来源：点了 Completed 的以那版为准；没点的每晚定时存前一天排班兜底（18 加）。
   - **日历接口（18，94 转，没上线，v152 Annie 先执行）**：GET /api/field-calendar?hr_id=&from=&to=，权限 settings.hr.view（不另叠开关），不带范围 = 本月，≤93 天。每天 {date, role:"driver"|"guide"|"both", source:"not_completed"|"completed"|"after_edit"|"live", snapshot:bool, runs:[{shift, kind, title, manifest_id, tour_name, van, as:"driver"|"guide", start_at:null, end_at:null}]}；只回本人，不带同车别人名字；live = 没存档按现在 dispatch 算，存了档事后改不变；start_at / end_at 留给工资（现在空）；relay 段名「Hotel pickups to Treasure Island」，第 1 / 2 轮靠 shift + kind。生产试：Carlos C 11/02 both South Rim 2622；Lankun W 11/04 guide Antelope Canyon 2356；Dan A 11/01 driver Private Tour（团名车号空，那天排车没填）。快照两条接口照旧。已转 81。
+  - **preview v2（日历 + 快照）**：同链接 https://claude.ai/artifact/U951qPXH1hNBzLbuSGY6Hm （81；2c 已整段转 Annie，等答）。
+    - Q1 怎么看：A 周表（一人一行七天）；B 选一人看月历；C（推荐）默认周表看所有人（Drivers / Guides 两节），点名字看此人月历 + 当月合计。
+    - Q2 格子：A（推荐）角色（Driver 蓝 / Guide 紫 / Driver & Guide 青）+ 团名 + 车号，一天两段写两行，没填写「no tour name」「no van」；📷 = 有快照；虚线 +「live」= 未存档；B 只角色 + 团名。
+    - Q3 快照：A（推荐）弹窗，上面段 / 车 / 开始结束 / 每站到离，人数和订单收进「Show guest counts and orders」，卡头选版本；B 弹窗全展开；C 右侧面板。
+    - Q4 合计 / Export：A（推荐）几天司机 / 导游 / 司机 & 导游、各团几次（relay 分 1st / 2nd round）、Hours 一格；一天两段算 1 天；⬇ Export for payroll（每人每天一行 + 合计，CSV）；B 只天数。
+    - Q5 工资按什么 / Hours：A（推荐先）按天 / 按团、Hours 写「Not available yet」；B 要 Hours（时间来源另定、后端另做）。（= 2c 之前问的工资题）
+    - Q6 HR 的人看不看快照：A（推荐）📷 只给同时能看 Live drivers 的人；B 能看 HR 的都能看（后端多认 settings.hr.view）。
+    - Q7 How to use：A（推荐）「Working Record: what each driver and guide did each day, for payroll. …」（全文见 preview）；B 她改字。
+    - 要后端（已转 94）：field-calendar 不带 hr_id = 所有能看的人（或另一个列表接口），每人带 hr_id / name / HR position。前端约 2 天。
 - G212 Team 页前端派 c8（task/g212-team-hierarchy），等后端 SHA。
 
 ### 85. Staff Schedule 班次类型（Open / Mid / Close）可手动新增（2026-11-04，Annie 在主窗口-2c 提，附排班格截图，没动手）
