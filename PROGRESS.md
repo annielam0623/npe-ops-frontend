@@ -970,6 +970,7 @@ D. 已完成、待从置顶移走：
   - 94：交 18 核实，重点是有账号的司机从司机页发会不会也带 user id、跟员工分不开。
   - ✅ 18 核完（生产只读）：**能分开，不用加来源标记、后端不多做**。判据：booking_notes / send_log 只记登录名（author_username / sent_by），拿去对 admin_users.username 的 role——staff / admin / superadmin / supervisor = 员工发；driver / guide 账号，或对不上账号但对得上 HR nickname（没账号的司机）= 司机页发；再按 hr_profiles 对到人、当天 dispatch 对到车。近 14 天 sms_out 197 行全是员工、无误算；⚠️ 近 14 天没有一条司机页发的（快捷回复只配了 3 条），司机那边只靠读代码证明。快照存时把「谁发的」一起存进去，以后改 role / 改名不受影响（写进设计）。⇒ Q5 = 数准，不加工作量。
 - **Annie 答 Q2（原话）**：「Q2，我们现在所有的操作都不需要点completed，所以就以tour结束吧，司机check out了那台车就结束了」⇒ 不用 Dispatch Completed；快照在**司机 check out 那台车时**存（tour 结束）。已转 94 核：司机页 / 系统里有没有「check out 车」这个动作、存在哪、导游怎么算结束、司机忘了 check out 时要不要兜底（晚上补存）。
+  - 18 核完（Samsara 只读）：① **我们系统没有 check out 动作**（搜 check out / dvir / post-trip / clock out / punch 都 0）。Samsara 现成信号：post-trip DVIR（收车检查，近 7 天有，带车号 + 时间；我们查的接口没司机名，按车号 + 当天 dispatch 对人；官方 /fleet/dvirs 可能带司机要实测）；HOS duty status（离车 vehicleId 变 0，但很多司机不登 Samsara，不可靠，只当第二道）。② 导游跟他那台车的司机一起存，一车两导游各存各的。③ 兜底要：当晚 23:00（LA）没存的补存，标「not checked out」；check out 后再改另存一版。④ 做法：A（后端推荐）用 Samsara post-trip DVIR 当 check out，司机不用多点（后端半天–1 天，先实测字段 / 权限）+ 23:00 兜底；B 司机页加 Check out 键（后端半天 + 前端）；C 两样都要，先到先存，都没有 23:00 兜底。2c 已问 Annie。
 
 ### 85. Staff Schedule 班次类型（Open / Mid / Close）可手动新增（2026-11-04，Annie 在主窗口-2c 提，附排班格截图，没动手）
 - 原话：「在role里，给一个手动添加role的选项」「我说的是staff schedule」。截图是 Staff Schedule 周表，格子上的 Open / Mid / Close ⇒ 理解为班次类型（后端叫 shift type）。
