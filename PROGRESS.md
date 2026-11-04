@@ -4,7 +4,36 @@
 
 > 6d 交接（下面「2026-10-27 交接：前端主窗口 6d」那节）的后端需求已于 10/27 晚由 ad 转给家里后端主窗口 17。
 
-> **下一个主窗口：先读下面「2026-11-04 交接：前端主窗口 今日主窗口-24 → 今天新开的主窗口」，再读「2026-11-03 晚 收工交接：前端主窗口 5c」，再看置顶「📌 等 Annie 确认」。**
+> **下一个主窗口：先读下面「2026-11-04 收工交接：前端主窗口 2c」，再看置顶「📌 等 Annie 确认」。**
+
+## 2026-11-04 收工交接：前端主窗口 `主窗口-2c`[f4667e]（公司电脑）
+> 窗口：前端工作窗口 `npe-ops-frontend-81`[90172b]、`c8`[a65365]；后端主窗口 `主窗口-94`[8d6960]（后端 18 / 2e / 57 / f4）。09、24、37 今天已关。
+
+### 一、今天上 main（等 Annie 线上验收，验收点在各置顶）
+| 件 | 前端 SHA | 后端 |
+|---|---|---|
+| 79 ops Live drivers 灰字改白 | c41546a | 手机司机 / 导游页 ae1a647f |
+| 72 南北分车（大勾选框、酒店胶囊 + A–Z、Direction 列） | 06bff03 | direction 57（今天 Annie 跑 release.py） |
+| 75 搜索按 Agent reference | 8cecaea | b6b1fce1 |
+| 51 B 订单详情跳 Main manifest | 6e05f55 | 8be7f86c |
+| Restaurant ⬆ Import | 6c56f18 | b1919f7e |
+| 83 凌晨 2:00–8:30 登录 Dispatch 默认今天 | a9efe18 | 3b362f51 |
+| G212 Team 页 admin 按层级 | 9bea1a4 | b68aa0e9 |
+| 59 / 58 Pickup 坐标一格 + Tracking Arrived at / Left at | 4fffe65 | 478c597c（早已上） |
+
+### 二、在做 / 等后端
+- **85 Staff Schedule 班次类型**（c8，task/schedule-shift-types）：Annie「颜色不重要，关键是我要的几个功能」⇒ 不等 color 先合（没 color 键时藏选色）。c8 正在合，SHA 记置顶 85。后端 color + action_log（2e，v150 已执行）排在南北分车后面推，上线后选色自动出。
+- **82 G245 羚羊谷 Cfm # 标红**（81，task/g245-cfm-mismatch）：Annie「羚羊谷，请动手」，定稿在置顶 82；等后端 f4 SHA；合前截图给 Annie。
+- **86 HR Profile 分节 + Working Record**（81）：Profile 分节 task/hr-profile-sections 3a72805（不靠后端，等截图给 Annie 后合）；Working Record（日历 + 快照 + Hours，算工资用）Annie「working record这里全部同意推荐，动手」，后端 18 明天接着做（快照 / 日历 / 所有人列表 / Hours = Samsara HOS），前端 81 照 mock 做。⚠️ HR 补 Jimmy Vegas、Juan (Beni) 的 Samsara Driver ID；David H 没 HOS；可能要 Annie 在 Samsara 后台给 token 加 HOS 读权限。
+- **84 登录记录**：后端 18 往后排（v151）；显示方式等 Annie 答（preview 7gQFvoaMvPVmrBCVZCxwMj）。
+
+### 三、等 Annie（详见置顶，不滚动重问）
+- 81 Relay list 打印页码（preview 4dc5BmHshSrk8EZNm8K55a，Q1–Q3）；84 Q1–Q5；80 导游页（94 问）；其余旧置顶照旧（77、69、68、64、63、61、53、48 等）。
+
+### 四、明天开工
+1. 报对话名；git pull；问 94：color（85）、G245（82）、Working Record（86）后端 SHA。
+2. 85 / 82 / 86 Profile 分节合了没有，没合的接着合；验收点发 Annie。
+3. ⚠️ 2c 今天在 944e763 误用 sed 把一行插到每行后面，47d38d3 已修。以后在 PROGRESS 插行先确认 grep 有命中（`[ -n "$n" ]`），或用 Edit。
 
 ## 2026-11-04 前端主窗口 `主窗口-2c`[f4667e] 接班
 - 24 关前转交（24 原话「看你已改名主窗口-2c，今天由你接主窗口」）。2c 先以工作窗口合了置顶 79 ops 白字 main c41546a。已告知后端 94、37 新名字。**后端主窗口今天是 `主窗口-94`[8d6960]**（37 关前说：后端的事都发 94，含 direction SHA、模板白字；后端交接在后端 origin/main fa210a5c 的 NPE_每日交接.md 最上面）。
