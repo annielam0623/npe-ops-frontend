@@ -745,6 +745,11 @@
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 70. Dispatch › Assign 顶部统计条旁放醒目的 Relay List 键（2026-11-03，09 记录，preview https://claude.ai/artifact/LzSrfzeXzA9Tgsndd4J6KV ，没写代码）
+- Annie 原话（09 窗口）：「然后把morning relay list放到 1st round的上方，就是那个统计表格的旁边，把最后一个缩窄一些，旁边放Relay List，标得醒目一点」。
+- 做法：统计条最后一格缩窄（字分两行），右边放 Relay List 键（Morning Relay · 1st Round 卡上方），打开同 Send 页 📋 Relay list（新标签，有没存的改动先问）。只改前端 dispatch-view.tsx。
+- 题 1 键样子：A（推荐）黄底黑字大键（纸本 Relay 1 黄 #fff605），同统计条高；B 透明底黄粗边框黄字。题 2 Send 页原 📋 Relay list 白色小键：A（推荐）留着；B 拿掉（会碰 relay-panel）。09 已在它窗口问 Annie；动手后 09 做。
+
 ### 69. Bus Manifest 酒店格按接他的 relay 车涂色（2026-11-03，09 记录）
 - Annie 原话（09 窗口）：「酒店的颜色是由哪个司机去接决定的，如果就两台车，就分两个颜色给置顶的relay1 和2 ，然后对应的他们接的酒店就是他们自己的颜色」。与后端 relay_pull.py:287 注释相反，已转 37 更正；后端要在 manifest guest 上加 relay_color（现成 guest_relay_colors()，同 Relay 列表色，没 relay 接为 null）。
 - 两题（09 已在它窗口问 Annie，原文完整）：① 每行酒店格都涂，还是同一家酒店连着的只涂第一行（后端已有 hotel_first）；② 没有 relay 接的客人（自己到、团车接）酒店格不涂吗。
