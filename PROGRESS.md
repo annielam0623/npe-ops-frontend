@@ -787,6 +787,7 @@
 - Annie 改法（09 窗口原话）：「我要跟那个表格在一行，如果页面缩小也跟着缩小，反正就是要在一行，本来就是一个按钮，不需要那么大。把小的说明文字删掉」⇒ 键与统计条始终同一行、窗口窄了跟着缩不换行、普通按钮大小、删「opens in a new tab」小字。「在send页面的那个键不需要保留了」⇒ 题 2 = B。09 preview 已更新。还等题 1 颜色 + 「动手」。
 - 09 preview 第 5 版（同链接）：Annie 又定统计条四格等宽、数字在上说明在下，统计条缩小一点、键大一点，同一行同高、变窄跟着缩不换行。还等题 1 颜色（截图是黄底黑字）+ 「动手」。
 - ✅ **Annie 在主窗口「Relay List  动手」（原话，2026-11-03 晚）**；题 1 没另答，照第 5 版黄底黑字（推荐 A）。派 09 task/relay-list-button。
+- ✅ 09 合 main（task/relay-list-button）：Assign 顶上统计条和黄底黑字「📋 Relay List」键同一行、一样高（窗口变窄统计条跟着缩、说明字截「…」，键不换行）；统计条四格等宽、图标对齐、数字在上说明在下，比原来矮一点；键 16px 粗体、#fff605。点了新标签打开这天的 Relay list，有没存的改动先问 Save before opening the Relay list?（只读的人直接打开）。Send 页 Morning Relay 的 📋 Relay list 键拿掉；车头 Print 照旧。打开逻辑抽成 components/dispatch/relay-list-open.tsx（useRelayListOpener）两处共用。How to use 里没有提到 Send 页那个键的句子，没改文字。检查：da 482（新 4 条：Send 页没有键、键在统计条旁黄底黑字无小字、同行同高四格等宽、点了打开）、rl 26、nav 38；tsc 0、eslint 0 错、build 过。
 
 ### 69. Bus Manifest 酒店格按接他的 relay 车涂色（2026-11-03，09 记录）
 - Annie 原话（09 窗口）：「酒店的颜色是由哪个司机去接决定的，如果就两台车，就分两个颜色给置顶的relay1 和2 ，然后对应的他们接的酒店就是他们自己的颜色」。与后端 relay_pull.py:287 注释相反，已转 37 更正；后端要在 manifest guest 上加 relay_color（现成 guest_relay_colors()，同 Relay 列表色，没 relay 接为 null）。
