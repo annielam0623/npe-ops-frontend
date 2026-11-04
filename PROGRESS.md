@@ -799,6 +799,7 @@
 - 后端 da 在做（迁移 v147 Annie 先执行），今晚多半 WIP。拟定字段：GET /api/manifests 每行 waiver_link_required + 4 列（waiver_link / waiver_status / waiver_link_by / waiver_link_at）；PUT /api/manifests/waiver-link；POST /api/manifests/waiver-links/upload（apply false 预览 / true 写入，status new/changed/same 及 not_found/not_waiver/bad_link/empty/duplicate）；send-tickets blocked reasons 加 "No waiver link"（与 No Cfm # 合并一条）；Changed since sent 当已发跳过；Action Log entity manifest_waiver_link。How to use 写在 ops Manifests 页（英文、默认折叠）。
 - 前端：新功能 → 先 preview（排在 fa 的 73 前端推分支后），Annie「动手」才写代码。资源：空闲内存 8.3 / 31.7 GB，不加窗口。
 - fa preview：https://claude.ai/artifact/5niqePBqxUsCBqKpLLKCnm （5 题：列在哪出现 / 上传替换 / 文件格式 / Changed since sent 何时消失 / 链接放消息哪里；How to use 4 句）。已整段转 Annie；题 5 链接怎么到客人、题 2 B / 题 4 B 后端工作量已问 9e。
+  - 后端 da 回：① 短信 / 邮件正文不变，链接只替换客人门票确认页「Prepare for Your Tour」第 1 步那条固定链接 ⇒ 题 5 删；② 题 2 B 不用改后端（apply=true 只传勾上的行）；③ 题 4 A 就是后端做法（按最近一次至少一条发成功的记录比，两条都失败不消失）。已叫 fa 改 preview。
 
 ### 73. Relay list：紫色太深 + 颜色和纸张方向交给 staff 设（2026-11-03 晚，Annie 在主窗口 5c 提，着急，没动手）
 - 原话：「两件事情着急做：relay list里，最后一张和倒数第三张的紫色太深了。可以把颜色的调配和页面的方向交给staff去处理么」
