@@ -1090,6 +1090,7 @@ D. 已完成、待从置顶移走：
   - c8 推 task/schedule-shift-types **e5b406d**（含 main e2c682c，没合，等后端 color SHA）：sch 405/405、nav 38/38，tsc 0、eslint 0 错、build 过。Settings › Shift types（停用的也列、能勾回；⋮⋮ 拖或 ↑↓；8 色小窗；改名黄框 + 「Was "Mid" — not saved yet」；灰绿 + Add shift type；蓝 Save）；页面先挡红字「Enter a name for the new shift type.」「There is already a shift type called "X".」「Enter both default times for X, or leave both empty.」；key 从名字生成；停用但规则在用 → 黄字「ZZ Test Training is still used by 1 rule (…). Auto-fill keeps using it until you change that rule in Rules.」；颜色按 color 取（周表 / Add shift / Auto-fill / Dashboard / 员工确认页），旧后端 open / mid / close 照旧其余灰白；Unassigned 定稿样子；How to use 方案 B。preview 外两处小东西（已告诉 Annie）：未存新行右边「×」可去掉；默认时间旁的「Clear」键去掉，直接删字清空。要后端：GET /api/schedule/confirmation 的 shift_types 也带 color（已转 94）。
   - 2e：确认页 GET /api/schedule/confirmation 和免登录链接页都带 color；带 shift types 的 4 处都带（GET settings/schedule、POST / PUT 返回、确认页）；周表接口不返回 shift types。⚠️ 确认页只列 active 类型（原来就这样），已排的班用停用类型时拿不到 color / label，前端按 key 默认色。SHA 到了转 c8。
   - 94（12:3x）：v148 / v149 / v150 / v152 Annie 都已执行、核对过；2e 代码 + 审查全 PASS，只差排队推送（带迁移的一次一件）：G245（f4 落地中）→ **班次颜色（2e）预计 13:30–14:00 上线** → 南北分车 → Working Record。SHA 到了转 c8 合 e5b406d。
+  - **Annie（原话，94 转）**：「颜色不重要，关键是我要的几个功能」⇒ 2c 让 c8 **不等 color 先合**：后端 create / update 用 payload.get 取字段，多带 color 忽略不 400；前端在 GET 没 color 键时先藏选色、POST / PUT 不带 color，后端上线后自动出。除颜色外都用现有接口，后端不用再做。
 
 ### 84. Staff Schedule 后台要有员工登录记录（2026-11-04，Annie 在主窗口-2c 提，没动手）
 - 原话（接置顶 83 后说）：「我们本来就应该在staff的schedule后台管理页面有员工的登录记录」。
