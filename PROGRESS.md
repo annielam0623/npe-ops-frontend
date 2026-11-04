@@ -1867,6 +1867,7 @@ pe-ops-wt-login-default`，mock，**没合 main，等后端 57 的 logged_in_at 
   - c8 两问 f4 答：① GET /api/users 每行也带 can_edit + edit_block_reason（同 team_tiers.row_reason）；members 不加司机 / 导游 ⇒ 前端名单用 members + 从 /api/users 补 driver / guide 行，按各自 can_edit；② /api/me/permissions 只返回生效的勾（codes_for），同后端 Qd 拦截。f4 复审中，排在 57 后落地。
   - c8 推 task/g212-team-hierarchy **368796d**（照 mock，没合，等 f4 SHA）：tp 193（+20）、users 80、teams 54、perm 54、nav 38，tsc / eslint / build 过。跟 preview v3 不同三处：(a) Access 上方灰字「Greyed-out choices would give or take away permissions you don't have yourself. Only a Super Admin can change those.」；(b) 锁定文字用后端原话带句号（「🔒 Only a Super Admin can change another admin.」「🔒 Only a Super Admin can share this invite.」）；(c) admin 自己那行原来没 ✏️ Name ⇒ 2c 定照 preview v3 加。截图（2c scratchpad g212-*.png）已发 Annie。
   - c8 推 **7f6bcb0**：照 preview v3 ②，SA 和 admin 自己那行都加 ✏️ Name，Reset password 照旧灰；tp 193、users 80，tsc / eslint 0 错。等 f4 SHA。
+  - ✅ 后端上线 main b68aa0e9（合并 a3b3d613，任务 861f997d、8e4d6ef7，94 转）。派 c8 核字段合 main。
   - 91 核完：现在不出错。B1 admin 的 Cancel invite 前端一直有（users-table.tsx:469-487），现在能成功；Delete 真账号只在 SA 的 Edit 框里，和后端一致。B4 / B2 日志动作名 update / create / delete 前端已有说法。
   - B5：前端现在先拉 /api/users，SA 再拉 /api/team/members + 逐人拉 /api/team/members/{id}（users-view.tsx:158-190）。members 是 require_superadmin，等 B6 放开给 admin 后两种人一起改只读 members。需要后端（备选，已转 57）：members 带 items 或 Access 汇总，省掉逐人请求；日志 Role 值小写，后端加 values 映射。
   - 派 91 小修 task/team-log-refresh：Team 日志面板开着时，动作成功后 refreshKey +1，新条目马上出（样子不变）。
