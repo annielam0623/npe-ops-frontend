@@ -1014,6 +1014,7 @@ D. 已完成、待从置顶移走：
     - 给后端（已转 94）：sms.by 每项带来源（driver_page / staff）；可选：列表接口直接带 data，免得每人读一次详情。
     - 最终形状（18，94 转，审查中，v152 Annie 先执行）：sms = {sent, by:[{author, count, source:"driver_page"|"staff"}]}，范围 = 当天（LA）这位司机车上订单的所有 sms_out；别的司机 / 导游发的也算 driver_page；sent 与 latest.sms_sent 只算本人从司机页发的；导游 sms = {sent:0, by:[]}。列表 GET /api/field-snapshots 的 people[] 每项直接带最新一版完整 data；详情接口留着看旧版。
 - ⚠️ **Annie（原话）**：「我突然想起来，其实现在页面上的不就是他们的快照了么，虽然司机那边的链接失效了，但是我们ops网站上的tracking页面的记录还在啊」⇒ 2c 请 94 让 18 **暂停**（v152 先不执行），只读答：回看旧日子是不是现场按当前 dispatch 算（事后改了会变）、数据会不会被清；不做快照、只在 Live drivers 每人加一行汇总要多少工作量；arrived / left 是否已在 live-drivers。2c 已问 Annie A 停快照只加汇总（推荐）/ B 照做快照。
+- ✅ **Annie（原话）**：「每天翻看是能看到的，现在只缺一个汇总和统计」⇒ **不做快照**（上面快照设计、v152、preview 8ncEsZAqKAjRRe9qErWnyz 作废）；改做**汇总和统计**：每位司机 / 导游每天的数字（pax、picked up / boarded、no show、not marked、从司机页发的短信、每站停留），以及跨天统计（按人、按日期范围）。放哪、统计哪些、怎么看要先 preview。已告诉 94（18 停快照、评估汇总 / 统计接口）。
 - G212 Team 页前端派 c8（task/g212-team-hierarchy），等后端 SHA。
 
 ### 85. Staff Schedule 班次类型（Open / Mid / Close）可手动新增（2026-11-04，Annie 在主窗口-2c 提，附排班格截图，没动手）
