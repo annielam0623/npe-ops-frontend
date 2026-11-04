@@ -1190,6 +1190,7 @@
 - B 原话：「如果需要resend confirmation或者reminder的话，再给一个链接可以一点击就进到该订单所属的main manifest页面上，停留在该订单上，订单默认勾选」。后端给 manifest_link {date, tab, pill, row_keys[]} 或 null（不在 Main manifest 上就不给链接，提示去 Order List 看状态）。
 - e6 只读结果（已转 37）：date / tab / pill 已经接受，要加 ?row=<row_key>（标黄、滚到、只预勾能发的行，用过删掉，不在这页出黄字）；row_key 就是发送接口用的键；建议后端改给 manifest_links[]（一单的行可能分在几个 tab / pill 上）。估时：A preview 半天 + 代码半天到一天，B 约一天，合计约 2 天；B 要等 91 的 CHD 分支合 main。等接口形状和 Annie 动手，之后先出 preview。
 - 2026-11-03 晚 Annie 在主窗口 5c 又提（原话）：「在查出来的订单详情上是否可以加个链接，直接点击跳转到manifest上的该订单项上」= 本条 B。5c 派 fa 先只读查后端 main 有没有 manifest_link(s)，再出 B 的 preview（不写代码）。
+  - fa：后端 origin/main 362cd700 没有 manifest_link(s)，要后端在订单详情 / 搜索接口给 manifest_links [{date, tab, tab_label, pill, pill_label, row_keys[]}]（不在 = []）。preview https://claude.ai/artifact/PhPav7b9m1sjrxmfa8sv8F （5 题：放哪 / 分几处 / 勾哪些 / On Hold / 不在时写什么，都推荐 A），已整段转 Annie。
 
 ### 50. Sales Report 插队 + CHD 组放回 Main manifest（2026-11-02）
 - Annie 原话：「紧急插个队，把sales report做出来」。24 问她指哪种：A 修现有 /sales-report（10/23 上线，按 Group → section → 产品，Orders / Pax / $，只 SA 可见挂 Soon）／B 做一份新报表（先出 preview）／C 把删掉的按 agent 月表周表加回来。她没选，接着说：「你先把CHD这个group 先放回main manifest」。
