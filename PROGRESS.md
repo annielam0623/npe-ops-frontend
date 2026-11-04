@@ -823,6 +823,8 @@
   - 后端 da 回：① 短信 / 邮件正文不变，链接只替换客人门票确认页「Prepare for Your Tour」第 1 步那条固定链接 ⇒ 题 5 删；② 题 2 B 不用改后端（apply=true 只传勾上的行）；③ 题 4 A 就是后端做法（按最近一次至少一条发成功的记录比，两条都失败不消失）。已叫 fa 改 preview。
   - Annie 对 preview 第 4 节（客人页）原话：「用新的waiver link 取代旧的，将原本放一个通用link的地方换成来取该订单的waiver link，因为每个订单所对应的link都不一样」⇒ 存了链接的 Brenda 单：第 1 步原来放通用链接的位置换成这一单自己的链接（preview 已是这样）。5c 追问：Brenda 单没填链接却 Send anyway 时，第 1 步还放通用链接（现在后端做法）还是不放（推荐不放，写一句英文提示）。
   - Annie：「同意A」⇒ 没填链接的 Brenda 单第 1 步不放通用链接，写「Your waiver link will be sent to you separately.」。已转后端 da（改原做法）、fa（补 preview + How to use 第 3 句）。
+  - Annie 问「不要waiver的单为什么要放链接」→ 5c 解释（大多数门票没有 waiver 步，Secret Antelope 一条通用 Smartwaiver 链接不动，Brenda 现在那条带固定 bookingUuid 是错的），fa 改第 ③ 格为「Other tickets: no change…」。
+  - ✅ Annie 原话「那4提全部按推荐走，动手」⇒ 题 1–4 都 A。派 fa 前端 task/waiver-link（mock，推分支不合，等后端 da SHA + v147）；已告诉 da，并再要客人页没链接那句的确认。
 
 ### 73. Relay list：紫色太深 + 颜色和纸张方向交给 staff 设（2026-11-03 晚，Annie 在主窗口 5c 提，着急，没动手）
 - 原话：「两件事情着急做：relay list里，最后一张和倒数第三张的紫色太深了。可以把颜色的调配和页面的方向交给staff去处理么」
