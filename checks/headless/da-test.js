@@ -478,8 +478,17 @@ async function run() {
   check("send-auto-open：直接打开 ?tab=send 也自动取好 Morning Relay", await evaluate(`return !!${rp}.querySelector('[aria-label="Need a look"]');`));
   let b0 = (await mockLog()).length;
   await evaluate(`$btn('↻ Refresh', ${rp}).click();`);
-  await waitFor(`${rp}.querySelector('[aria-label="Need a look"]')`);
-  check("Pull：按这天拉、两轮标题和时间来自接口", (await since(b0, (e) => e.path === "/api/dispatch/relay-pull"))[0]?.q.date === "2026-10-05" && (await evaluate(`const t = ${rp}.textContent; return t.includes('1st Round · 4:30 - 5:15 AM') && t.includes('2nd Round · 5:40 - 6:30 AM');`)));
+  // 重取时旧名单（含 Need a look）还在屏幕上：要等这次请求真的到了 mock、Refresh 键从 Loading… 变回来，才算取完。
+  {
+    const end = Date.now() + 30000;
+    while (Date.now() < end && !(await since(b0, (e) => e.path === "/api/dispatch/relay-pull")).length) await sleep(150);
+  }
+  await waitFor(`${rp}.querySelector('[data-refresh-guests]').textContent.trim() === '↻ Refresh' && ${rp}.querySelector('[aria-label="Need a look"]')`);
+  {
+    const pulls = await since(b0, (e) => e.path === "/api/dispatch/relay-pull");
+    const txt = await evaluate(`return ${rp}.textContent;`);
+    check("Pull：按这天拉、两轮标题和时间来自接口", pulls[0]?.q.date === "2026-10-05" && txt.includes('1st Round · 4:30 - 5:15 AM') && txt.includes('2nd Round · 5:40 - 6:30 AM'), `pulls=${JSON.stringify(pulls)} text=${txt.slice(0, 600)}`);
+  }
   // G61（2026-10-15）：Text 列改名 Status；没发过的空着（不再有 Not sent 胶囊），发过的黄标签「Sent by 谁 on 时间」，改过的另写 Changed after sent: …
   check("1st Round：车行、3 单 6 pax、1 单没发；表头 Status；没发过的空着、发过的黄标签 + Changed after sent（写改了什么）/ No show", await evaluate(`const t = ${rp}.textContent; const box = ${rp}.querySelector('[aria-label="1st Round · 4:30 - 5:15 AM"]'); const heads = [...box.querySelectorAll('thead th')].map(th => th.textContent.trim()); const r = (o) => box.querySelector('tr[data-order="' + o + '"]'); return t.includes('768 · FREDDY · 3 orders, 6 pax') && t.includes('3 orders, 6 pax · 1 not sent yet') && heads.includes('Status') && !heads.includes('Text') && !/Not sent/.test(t) && !r('R1').querySelector('[data-sent-label]') && r('R2').querySelector('[data-sent-label]').textContent === 'Sent by veronica on Oct 5, 4:30 AM' && r('R2').querySelector('[data-changed]').textContent === 'Changed after sent: pickup time 4:45 AM → 5:00 AM' && r('R3').textContent.includes('No show') && !r('R3').querySelector('[data-sent-label]');`), await evaluate(`return ${rp}.textContent;`));
   check("2nd Round：没车写 No vehicle · No driver、发送键灰掉", await evaluate(`const box = ${rp}.querySelector('[aria-label="2nd Round · 5:40 - 6:30 AM"]'); return box.textContent.includes('No vehicle · No driver') && $btn('Preview & send', box).disabled;`));
