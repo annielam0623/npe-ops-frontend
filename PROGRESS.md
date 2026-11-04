@@ -18,6 +18,7 @@
 - fa 报 da 482（Pull 按这天拉、两轮标题）在 main 上就挂 → 派 fa 查（task/da-482-fix）。
 - 置顶 73 Annie 追问（原话）：「设置页面的方向是否可以每页独立设置」→ 5c 答可行（Chrome 支持每页不同方向）；派 fa 在同一 preview 里加「每张单各自设方向」并实测横竖混排 PDF，题 4 改为 A 每张各自设 / B 总表分表各一 / C 一个管全部；已请 9e 重评存法。**还不是「动手」**。
   - 9e 重评：仍不用迁移，后端半天到一天。方向全放 settings relay_list.orientations {summary, relay[6], tours{manifest_id:{all, buses{A}}}}（不进 paper_colors）；relay-pull 加 summary_orientation、每车 orientation、tour_buses[].orientation；兼大巴的车不占 Relay 编号，方向 / 颜色都取团那一行。已转 fa 画进 preview。
+- Annie 答（原话）：「同意全部推荐。紫色那个留给staff自己调」⇒ 题 1 A（三处一起变）、题 2 D（不改默认，staff 用 ⚙ 自己调）、题 3 不用答了（不改默认色）、题 4 A（每张单各自设）、题 5 A（dispatch.edit 能改）、题 6 A（加 How to use，第 3 句用 3A）。**还没说「动手」**，5c 已问。
 - ✅ 置顶 71 后端：manifest_cols_bus / _tickets / _admin_fee 上限 4000 → 20000 已上线（后端 origin/main 1fac68ca，9e 报）；键名格式不变，超限 400 "value too long (max 20000 chars)"，其他键仍 4000，partner 仍 403。前端不用改。后端另有 npe-confirmation-service-da [af1446]。
 
 ## 2026-11-03 晚 Relay list 打印每张后面多一张空白页（`task/relay-list-blank-page`，工作窗口 `npe-ops-frontend-fa`[985244]，主窗口 5c 派）—— 只修 bug、样子不变，合 main
