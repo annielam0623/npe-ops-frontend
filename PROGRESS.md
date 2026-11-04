@@ -972,6 +972,7 @@ D. 已完成、待从置顶移走：
 - **Annie 答 Q2（原话）**：「Q2，我们现在所有的操作都不需要点completed，所以就以tour结束吧，司机check out了那台车就结束了」⇒ 不用 Dispatch Completed；快照在**司机 check out 那台车时**存（tour 结束）。已转 94 核：司机页 / 系统里有没有「check out 车」这个动作、存在哪、导游怎么算结束、司机忘了 check out 时要不要兜底（晚上补存）。
   - 18 核完（Samsara 只读）：① **我们系统没有 check out 动作**（搜 check out / dvir / post-trip / clock out / punch 都 0）。Samsara 现成信号：post-trip DVIR（收车检查，近 7 天有，带车号 + 时间；我们查的接口没司机名，按车号 + 当天 dispatch 对人；官方 /fleet/dvirs 可能带司机要实测）；HOS duty status（离车 vehicleId 变 0，但很多司机不登 Samsara，不可靠，只当第二道）。② 导游跟他那台车的司机一起存，一车两导游各存各的。③ 兜底要：当晚 23:00（LA）没存的补存，标「not checked out」；check out 后再改另存一版。④ 做法：A（后端推荐）用 Samsara post-trip DVIR 当 check out，司机不用多点（后端半天–1 天，先实测字段 / 权限）+ 23:00 兜底；B 司机页加 Check out 键（后端半天 + 前端）；C 两样都要，先到先存，都没有 23:00 兜底。2c 已问 Annie。
   - **Annie 定导游（原话）**：「导游的话就是每天晚上9点，west rim 下午6点，hoover dam 4点」⇒ 导游快照按团定时存（LA 时间）：一般 21:00；West Rim 团 18:00；Hoover Dam 团 16:00（不跟司机 check out）。已转 94。司机 check out 用 A / B / C、司机兜底时间还没答。
+  - 18 设计（94 转，生产只读）：manifests 表加 guide_snapshot_time（空 = 21:00），迁移预填 GCWest 18:00、Hoover 16:00，代码不认团名；Products › Manifest setup 每团加一格「Guide snapshot time」（写 action_log，前端要做、样子要 preview）。团按 manifest 认、不按产品（West Rim 43 个产品多数名字带「Hoover Dam Photo Stop」）。待 Annie：Private（12 个产品，West Rim / Hoover 都有）走 21:00、VOF-H/D 走默认（West Sunset 已停不管）；一位导游一天两团 → 每人每天一份、按他当天最晚的时间存（近 30 天只 2 次）。2c 已问。
 
 ### 85. Staff Schedule 班次类型（Open / Mid / Close）可手动新增（2026-11-04，Annie 在主窗口-2c 提，附排班格截图，没动手）
 - 原话：「在role里，给一个手动添加role的选项」「我说的是staff schedule」。截图是 Staff Schedule 周表，格子上的 Open / Mid / Close ⇒ 理解为班次类型（后端叫 shift type）。
