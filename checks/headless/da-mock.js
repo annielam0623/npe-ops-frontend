@@ -383,7 +383,7 @@ http.createServer(async (req, res) => {
     saved[b.date] = [...rest, ...mine];
     bump(b.date);
     const typed = b.rows.map((r) => r.driver_typed_name).filter(Boolean);
-    return send(res, 200, { ok: true, unit: b.unit, saved: b.rows.length, ids: mine.map((r) => r.id), version: ver(b.date), typed_alert: typed.length ? "not_set_up" : null, typed_names: typed, farm_out: { revoked: [], already_notified: [] } });
+    return send(res, 200, { ok: true, unit: b.unit, saved: b.rows.length, ids: mine.map((r) => r.id), version: ver(b.date), typed_alert: typed.length ? "not_set_up" : null, typed_names: typed, farm_out: { revoked: [], already_notified: [] }, ...(ctl.driverFollow ? { driver_follow: ctl.driverFollow } : {}) });
   }
   if (p === "/api/dispatch/day" && req.method === "POST") {
     const b = JSON.parse(await readRaw(req)); entry.body = b;
@@ -395,7 +395,7 @@ http.createServer(async (req, res) => {
     bump(b.date);
     if (b.ccl_import_id && prefills[b.date]) prefills[b.date].status = "applied";
     const typed = b.rows.map((r) => r.driver_typed_name).filter(Boolean);
-    return send(res, 200, { ok: true, saved: b.rows.length, ccl_applied: !!b.ccl_import_id, typed_alert: typed.length ? "not_set_up" : null, typed_names: typed, farm_out: { revoked: [], already_notified: [] } });
+    return send(res, 200, { ok: true, saved: b.rows.length, ccl_applied: !!b.ccl_import_id, typed_alert: typed.length ? "not_set_up" : null, typed_names: typed, farm_out: { revoked: [], already_notified: [] }, ...(ctl.driverFollow ? { driver_follow: ctl.driverFollow } : {}) });
   }
   if (p === "/api/dispatch/copy") {
     const b = JSON.parse(await readRaw(req)); entry.body = b;
@@ -457,7 +457,7 @@ http.createServer(async (req, res) => {
     const tourCarSecond = ctl.tourCarB2 && !ctl.tourCarNoCar ? [{ car: { id: 805, van: "2205", driver: "ZZ DRIVER", ...b2("B") }, guests: [] }] : [];
     return send(res, 200, { run_date: q.date, checked_at: RELAY_PULL_AT, round_labels: { relay: { name: "Morning Relay · 1st Round", when: "4:30 - 5:15 AM" }, relay_2: { name: "Morning Relay · 2nd Round", when: "5:40 - 6:30 AM" }, tour_car: { name: "Morning Relay · Own bus", when: "" } },
       rounds: {
-        relay: [...(ctl.relayOnlyBad ? [] : [{ car: { id: 801, van: "768", driver: "FREDDY", ...(ctl.relayNoTracking ? { has_tracking: false } : {}) }, guests: [g({ id: 1, order_number: "R1", ...sentMeta("R1") }), g({ id: 2, order_number: "R2", ...sentMeta("R2"), changed: ["pickup time 4:45 AM → 5:00 AM"] }), g({ id: 3, order_number: "R3", ...sentMeta("R3"), relay_status: "no_show" }), ...extra, ...hotelGuests] }]),
+        relay: [...(ctl.relayOnlyBad ? [] : [{ car: { id: 801, van: "768", driver: "FREDDY", ...(ctl.relayNoTracking ? { has_tracking: false } : {}) }, guests: [g({ id: 1, order_number: "R1", ...sentMeta("R1") }), g({ id: 2, order_number: "R2", ...sentMeta("R2"), changed: ["pickup time 4:45 AM → 5:00 AM"], ...(ctl.relayFollowed ? { driver_followed: { from: "BRUCE", to: "FREDDY", at: "2026-10-05T04:10:00-07:00", by: "annie" } } : {}) }), g({ id: 3, order_number: "R3", ...sentMeta("R3"), relay_status: "no_show" }), ...extra, ...hotelGuests] }]),
           ...(ctl.relayBlocked || ctl.relayOnlyBad ? [{ car: { id: 803, van: "2103", driver: "SAM", problems: BAD_CAR_1.problems }, guests: [g({ id: 6, order_number: "R6", name: "ZZ Park", pickup_location: "Best Western" })] }] : [])],
         relay_2: [{ car: { id: 802, van: null, driver: null, ...(ctl.relayNoTracking ? { has_tracking: false } : {}), ...(ctl.relayBlocked ? { problems: BAD_CAR_2.problems } : {}) }, guests: [] }],
         tour_car: ctl.tourCar ? [{ car: tourCarCar, guests: tourCarGuests }, ...tourCarSecond] : [],

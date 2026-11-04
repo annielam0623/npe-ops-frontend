@@ -212,6 +212,19 @@ D. 已完成、待从置顶移走：
 - ✅ 题 3 B（Edit list 里也能改）：后端 01606b02 上 main（bulk 收 other_spellings，错误带 profile_id）后补上（`task/hr-spellings-bulk`）。Edit list 里逗号隔开，交给 bulk 的是这人的整份清单；被拒时红字放在那人那一格下面（保存条也写「谁: 原因 Nothing was saved.」），一改那一格红字消失；存好后后端规整的写法不算没存的改动。How to use 临时那句已去掉。hr 87/87，nav 38/38，tsc / eslint / build 过。线上没法登录，只读确认要 Annie 自己看（HR 页现在应该有这一格 / 这一列）。
 - 检查：hr 80/80（新 12 条 Other spellings，含后端没上线的 3 条），nav 38/38；tsc / eslint / build 过。
 
+## 2026-11-03 G234 换司机只改 Dispatch，客人链接跟新司机（`task/driver-follow`，工作窗口 e6 [03dd03]，主窗口 24 派）—— **11-04 已合 main**
+- 11-04：Annie 看过 Morning tracking 新红字 "Bus changed — ask the guest to open the link again"、tooltip、How to use 两句，回「A」（原话，24 转）＝照原样用。后端 01606b02 已上 main，真实返回对过：driver_follow / driver_followed 形状同前端，不用改。合最新 main（da-test 一处冲突：同一条 Pull 检查两边都修了等请求回来，取 main 的写法）后重跑检查再合 main。
+- Annie 原话（置顶 63）：「乙的话，除了题5-要改成不需要任何动作。否则会让staff confuse。其他都同意推荐。动手」。preview https://claude.ai/artifact/CXT8ZueNa3akn1ZrGn4Ycj 。
+- 定稿：题 1 A、2 A、3 A、4 B、6 A、7 A；题 5（同一司机只换车不再出 Changed after sent）由后端 4d 在 relay_pull 里做，前端不过滤。
+- 做了什么：
+  - `lib/driver-follow.ts`（新）：driver_followed {from,to,at,by}、driver_follow {updated_orders: 人数, updated[{car,from,to,orders}], skipped[{car,reason}]} 的类型和三句话。
+  - Dispatch › Send › Morning Relay：发过的客人 Status 格 Sent by 下面、橙字上面一行灰字「Driver changed after send (was BRUCE) — link now follows FREDDY」；Need a look 写在原因下面。How to use 加一条（照 preview ③）。
+  - Dispatch 存（整天 / 单元 / 复制）回 driver_follow 时，提示条位置出一块：灰字「Tracking links now follow the new driver for N guests who were already texted (Bus 2457 → LUIS, …). Nothing was sent to guests.」（updated_orders 是人数，括号里每台车来自 driver_follow.updated）；没改成的车红字「<car>: links not changed — <reason>.」（原因原样、末尾补句号）；全空不出；Dismiss 收起；换天清掉。
+  - Morning tracking：Driver 列名字下面同一句灰字；红字「Wrong bus — resend link」改成「Bus changed — ask the guest to open the link again」（题 6 A，tooltip 也改）；How to use 换 Guest Viewed 那条、加两条（Driver changed after send；换司机只要在 Dispatch 改好 Save）。
+- 检查：tsc、eslint 0 错、build 过；da 475/475（+8：Relay 名单那句的位置 / 颜色 / 不勾、旧后端不出、How to use；Save 后灰字、红字两句、Dismiss、全空不出）、mt 246/246（+5：红字新字和提示、Driver 列那句、灰色、没换过不出、How to use）、rl 26/26、nav 38/38。
+- **合 main 前要等**：① Annie 看过题 6 新红字和 How to use 新句（24 转）；② 后端 task/driver-change-follow 上 main，按真实形状核一遍 driver_followed / driver_follow 再合。
+- 11-03 收工（17:30）：分支停在 0835797，全部已推。后端 37 说 driver_follow.updated[] 还没做完（后端分支到 33691e8d，未合 main），11-04 家里接着做。下一步：后端上 main 后核真实形状 → 合最新 main → 重跑 da / rl / mt / nav + tsc / eslint / build → 等 Annie 看红字 / How to use 后合 main。
+
 ## 2026-11-03 Dispatch › Send 打开就展开（`task/send-auto-open`，工作窗口 e6 [03dd03]，主窗口 24 派）—— 置顶 62 题 7–9
 - Annie 原话：「包括在dispatch的send 页面，把司机和导游发送也打开，不折叠，也不需要pull from manifest，直接展开给staff看」；答题「问题7-9，同意全部推荐」；随后在 09 窗口「动手」。preview https://claude.ai/artifact/3RE8qSbwHECoCjakAgBidh 第三节。CCL 自动 Apply（题 1–6）作废，不做。
 - 做了什么（`components/dispatch/relay-panel.tsx`、`dispatch-view.tsx`）：
@@ -946,6 +959,14 @@ D. 已完成、待从置顶移走：
 - preview（工作窗口 fa [985244]，2026-11-03 晚，没写代码）：https://claude.ai/artifact/L7Ks8gymYvsd33Q9DuLGUr —— 设置键 ⚙ Colours & page、弹窗（Relay 1–6 / 每团 All buses + 字母 / Portrait·Landscape / Reset）、深紫对照 3 个浅紫候选、A4 横版、手机、How to use 原文；题 1–6 在页面最底（题 3：本窗口没 ops 登录，没查到生产是哪两张，推断是 Antelope 没填纸本色的车退回团色 #7a6ba8）。
 - 5c 派前端工作窗口 `npe-ops-frontend-fa`[985244] 做 preview（入口放 Relay list 页设置键；题 1 颜色范围、题 2 浅紫候选、题 3 哪一天），只做 preview 不写代码。
 
+### 78. Live drivers 订单号旁加团简写（2026-11-04）—— ✅ Annie「动手」
+- ✅ 09 合 main（task/live-short-tag）：Morning tracking › Live drivers 每位客人订单号写成「A1001 · GC」（同司机手机页 `{{ order_number }} · {{ short_tag }}`），relay 段、团车段、导游 runs 都加；short_tag 空或缺只写单号。后端 37 说 /live-drivers 已带 short_tag，合了线上就能看到。检查：mt 247/247（新 1 条）、nav 38/38；tsc 0、eslint 0、build 过。
+- Annie 发 Live drivers 截图（订单号旁没简写），主窗口问「是否现在动手」，她答「动手」并确认是这件（不是 72）。同司机手机页 11/2 B5 / B6（后端 3e0ff83f）：订单号后「· short_tag」，只在设了 Bus Manifest setup Short name 时显示。
+- 后端：/live-drivers 客人带 short_tag（relay、团车、导游 runs），已转 37。前端：09 task/live-short-tag，没键不显示可先合。
+- 37 核过：/live-drivers 已带 short_tag（团车段 _driver_day_context → _safe_tag；relay 段 print_extras fallback=False；导游 runs _tag_runs），后端不用改；读简称出错时字段缺，前端按缺 = 空。纯前端，09 做完合 main 线上即见。
+- **新要求（主窗口原话，2026-11-04）**：「在南北分车这里，dispatch的分车页面，按照A-Z 顺序来排，相同酒店放在一起，然后设置酒店胶囊在表格的上方，点胶囊就选中这个胶囊的所有酒店，然后点击移动到B车，就全部移过去了，胶囊可以单选也可以多选」。还没 preview、没动手。纯前端（seating.tsx，同 72 勾选框同一文件）→ 派 09 在 task/seat-direction 上一起出 preview。
+- ✅ Annie「理解正确，动手」（主窗口原话，2026-11-04）对酒店胶囊那件。09 在 task/seat-direction 上直接写，细节按推荐，做完截图 preview 给 Annie 看过再合（连同 Direction 列 / 大勾选框）。
+
 ### 72. Dispatch 两台 bus 调位置：勾选框放大 + Auto 按南北分车（2026-11-03 晚，Annie 在主窗口提，附表）
 - Annie 原话：「前端要改一下，当有两台bus可以调位置的时候，勾选框太小了，把它放大跟main manifest里一样；另外Auto排进bus的时候按照这个规则：一台车放south，一台放north，中间的机动填位」。
 - 附表（Las Vegas 酒店分三色）：Blue: Northbound assist —— Plaza、Sahara、The STRAT、Westgate、Circus Circus、Wynn、Trump；Red: Neutral / Flexible —— MGM Grand、Virgin、Horseshoe、Bellagio、Treasure Island；Orange: Southbound assist —— Aria、Mandalay Bay、Excalibur、Park MGM、Resorts World。
@@ -964,6 +985,11 @@ D. 已完成、待从置顶移走：
   - How to use 加一条（原文）："Direction (only in the Tour bus block): click ✏ Edit and pick North, South, or Flexible, then Save. Auto on Dispatch → Seat guests uses it when a tour has two or more buses: Bus A takes the side with more guests (North or South), the last bus takes the other side, and Flexible guests fill whichever bus has more empty seats. Not set counts as Flexible."
   - Annie 补答两题（37 → 24 转）：一样多 Bus A 放 South；人少一方溢出也先放中间车、没有就放 Bus A；「绝不自行拆单，留给staff决定」。How to use 那条在 Flexible 那句后补（原文）："If both sides have the same number of guests, Bus A takes South. If a side does not fit on its bus, the extra orders go to a middle bus first, then to the other bus. Auto never splits an order: guests who still do not fit stay in Not on a bus for you to place."；preview 已同步。pl 116/116。
   - 检查：pl 116/116（新 12 条）、da 483/483（新 1 条勾选框 20px）；tsc 0、eslint 0。合 main 前还要合最新 main + build。
+- 37 定形状：GET /api/pickup-locations 每行加 direction（north / south / flexible / null，null 显示 Not set、排座按 Flexible）；PATCH /api/pickup-locations/{id}/direction {direction} → {success, direction}（同 tour-departure 写法：400 / 404 "That hotel is not in the list any more."、没变不写、改了记 action_log；权限 settings.pickup）；界面 North / South / Flexible / Not set；Seat guests 接口不变。后端 57 做，有迁移 Annie 先执行。已转 09。
+- 后端 57 接手，要两题（已问 Annie）：a North / South 人数一样多时 A 放哪方；b 人少那方最后一台也装不下：对称处理（先中间车，没有就放 A）还是直接 Not on a bus（57 推荐对称）。17 家表已发 57，名字它自己对 hotel_name。
+- 09 preview https://claude.ai/artifact/5FLcwPjxBMjNbVuD15mCmG （分支 task/seat-direction c6ca0a3，代码 228912c，未合）：Seat guests 勾选框 CHECK_BIG 20×20；Pickup Locations Tour bus 块 Hotel Name 右边 Direction 列（色点 蓝 North / 橙 South / 红 Flexible，没设灰 Not set；✏ Edit 下拉随行 Save，先 PUT 再按需 PATCH direction；失败红字 "Could not save Direction: <detail> The other boxes were saved."；Action Log 加 Direction；Export / Import 不带；GET 没键不出）。pl 116、da 483、tsc / eslint 过。**等 Annie 看 preview 点头**，后端 57 上线后合。
+- ✅ Annie 在 37 窗口答 a / b：两方人数一样多时 Bus A 放 South；人少一方溢出也先放中间车、没有就放 Bus A；原则「绝不自行拆单，留给staff决定」。已转 09 补 How to use。
+- 2026-11-04 09 补 How to use 两句（09fac69），preview 已更新。**72 的 preview 还没点头**（Annie 说的「动手」是 78，不是这件）。
 ### 71. Main manifest ☰ Columns 按某一页单独存—— ✅ 已合 main f5459d6（2026-11-03，09 记录，还没 preview）
 - Annie 原话（09 窗口）：「在main manifest上的column选线，我可以专门为某个页面选择勾选哪些项目么？可不可以在选择的那个页面上加一个just apply for this page，or apply for all」。
 - 现状：列选择按账号、按标签（Bus Tour / Tickets - SelfDrive / Admin fee）各存一份（user-prefs manifest_cols_bus / _tickets / _admin_fee），同标签下所有胶囊共用。按胶囊分开存要后端改 user-prefs（键白名单、值上限 4000 字：加上限或加按胶囊的键）；前端 ☰ Columns 弹窗加「Apply to this page only / Apply to all」。
@@ -1078,7 +1104,7 @@ D. 已完成、待从置顶移走：
 - ✅ **Annie 在 44 窗口定措辞并「动手」（37 转）**：已通知的行不加标；还没通知的行加「To notify」标；CSV 列名「Notified」，值 Yes / No。后端 44 移到新分支 task/tracking-sync-v2（基于最新 main），明天家里做，完成 37 发 SHA。前端：与之前 preview 的「Sent 列」不一样（改成行内 To notify 标？），已派 91 改 preview，并问 Annie 两点（见 2026-11-03 回复）。
 - Annie 改措辞（主窗口原话）：「已通知的行标Notified」——每行都标：Notified / To notify。主窗口按她之前「需要有一列」理解为 Order # 后保留一列（列名 Notified，值 Notified / To notify，To notify 行粉红排下面），派 91 改 preview 给她看；已转 37 / 44。
 - 91 preview 改成 Notified 版（同链接）：Order # 后「Notified」列（Notified 黑字 / To notify 玫红粗字，To notify 行粉红排下面），后接 Order Status；数字卡「To notify」，其他只算 Notified；CSV 加 Notified（Yes/No）+ Order state（后端）；Broadcast 含 To notify，发后变 Notified。How to use 原文已贴给 Annie。**等 Annie 看 preview 点头**，后端 task/tracking-sync-v2 上 main 后写代码。
-### 63. 换司机只改 Dispatch：页面上怎么标（G234）—— ✅ Annie 已答并「动手」（2026-11-03）；e6 preview https://claude.ai/artifact/CXT8ZueNa3akn1ZrGn4Ycj ，没写代码）
+### 63. 换司机只改 Dispatch：页面上怎么标（G234）—— ✅ 已合 main 40d5279（2026-11-04）；Annie 已答并「动手」（2026-11-03）；e6 preview https://claude.ai/artifact/CXT8ZueNa3akn1ZrGn4Ycj ，没写代码）
 - ✅ Annie（原话）「乙的话，除了题5-要改成不需要任何动作。否则会让staff confuse。其他都同意推荐。动手」⇒ 题 1 A（Morning Relay：Status 列 Sent by 下、橙字上）、题 2 A（Morning tracking：Driver 列名字下）、题 3 A（灰色小字）、题 4 B（"Driver changed after send (was FREDDY) — link now follows LUIS"）、题 6 A（红字改成请客人重新打开链接，新字先给 Annie 看）、题 7 A（Save 后灰字 / 没改成红字「<car>: links not changed — <reason>」）、How to use 三段照草稿；**题 5 改：同一司机只换车 = 不需要任何动作**，不出橙字「Changed after sent」提示重发（24 理解为 B「只换车的不标」，如要灰字说明再问）。派 e6（send-auto-open 合完后），前端等后端 G234（task/driver-change-follow）上 main 再合。题 5 后端做（37）：4d 在 G234 分支把 relay_pull.changed_since_sent 的车号比较去掉，只换车 / 换司机同时换车不再出 Changed after sent，时间、酒店照旧；前端不过滤。G234 排在 57 推送后，4d 还要跑一轮审查。
 - e6 推 task/driver-follow **9dd151b**（没合；da 475、mt 246、rl 26、nav 38，tsc / eslint / build 过）。等：① Annie 看新红字 / How to use；② 后端 G234 上 main 后对真实形状。新红字（Guest Viewed）"Bus changed — ask the guest to open the link again"；提示 "The driver is on a different bus from the one this guest last opened. Ask the guest to open the link in their text again and tap Track. No new link is needed."；Guest Viewed 那条 How to use 改成 "..."Bus changed — ask the guest to open the link again" in red means the driver is on a different bus from the one the guest last opened: ask the guest to open the link in their text again and tap Track. You don't need to send a new link."。跟 preview 两处差别：① Save 后灰字括号里写单号（接口只给 updated_orders），preview 是「Bus 2457 → LUIS」，37：后端照 preview 来，加 driver_follow.updated [{car, from, to, orders}]，updated_orders 是数字 n（等 4d 确认），已转 e6 改，e6 推 **0835797**（灰字照 preview「(Bus 2457 → LUIS, Bus 768 → PAM)」，差别 ① 没了；da 475；顺修 da「Pull：按这天拉」抢先判的旧检查）；② 提示放页面上方现有提示条位置（整天存 / 复制没有单块 Save 位置）。
 - 背景：Annie（37 转）「换了司机以后，staff只需要去dispatch把司机改了，然后保存，就可以了，不需要再发送任何信息出去」。后端 4d 做：改司机 + Save 后已发客人的链接跟新司机，不发东西。前端占位字段 driver_followed {from, to}，真实字段 37 待转。
@@ -1100,6 +1126,7 @@ D. 已完成、待从置顶移走：
 - ✅ 后端 G234 上 main 01606b02。e6 核对 + 合最新 main + 检查后先推分支，等 Annie 看新红字 / tooltip / How to use 两句（2026-11-03 已贴原文问）再合 main。
 - e6 task/driver-follow 合最新 main **a65ba71**（未合 main）：对 01606b02 核过不用改；tsc / eslint（0 错）/ build 过，da 487、rl 26、mt 246、nav 38。**只等 Annie 对新红字 / tooltip / How to use 两句点头**。
 - ✅ **Annie 回「A」（主窗口原话，2026-11-04）**：新红字 / tooltip / How to use 两句照原样用。已叫 e6 合最新 main、重跑检查后合 main。
+- ✅ e6 合 main **40d5279**：tsc / eslint（0 错）/ build 过，da 490、rl 60、mt 246、nav 38。等 Annie 线上验收（Dispatch Assign Save 后灰字 / 红字；Send › Morning Relay Status 灰字；Morning tracking Driver 列灰字 + Guest Viewed 红字 + How to use 两句）。
 ### 62. Dispatch Send 页司机 / 导游 / Morning Relay 打开就展开（题 7–9 还等 Annie）；省掉 CCL Apply 已作废（2026-11-03）
 - ❌ 省掉 Apply 作废：Annie 看了 CCL 自己写错车号的结果后（原话）「那还是保留手动apply CCL的change吧」⇒ 题 1–6 作废，CCL 改版照旧 staff 按 Apply，后端不用做。题 7（Step 1 司机 / 导游打开就列好）、题 8（Step 2 Morning Relay 不用按 Pull）、题 9 里 Send 两句 How to use 仍等 Annie。
 - Annie 在 09 窗口答（原话）「问题7-9，同意全部推荐」⇒ 7 A（Step 1 打开就列好司机 / 导游，Check the list 改白色 ↻ Refresh）、8 A（Step 2 打开自动取客人，Pull from manifests 改白色 ↻ Refresh）、9 三段 How to use 照草稿。「同意」不算动手，09 已问她要不要现在动手，等「动手」。
