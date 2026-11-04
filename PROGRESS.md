@@ -1029,6 +1029,7 @@ D. 已完成、待从置顶移走：
   - **Annie 更正（原话）**：「你误会我的意思了，是卡片整个不上色，只是个虚线白框然后里头有文字」⇒ Unassigned 这块的卡片**不上任何底色**（不用班次色），只有白色虚线框 + 框里文字（班次名、时间）。
 - ✅ **Annie「排班这个全部同意推荐，动手吧」（原话，2026-11-04）** ⇒ Q1 A、Q2 A（只在 ⚙ Settings › Shift types）、Q3 A（名字 + 默认时间 + 8 色）、Q4 A（停用 + 排序 + 停用提醒）、Q5 A（两段 How to use）、Q6 定稿（Unassigned 不上色、卡片白虚线框无底色）。前端派 c8（task/schedule-shift-types）；后端 color 列 + migration（先给 Annie 看）+ action_log 转 94。preview v4 https://claude.ai/artifact/9LFRCau1uBg5sQ5aPbdSZt
   - c8 发现 Staff Schedule 页本来没有 How to use 框 ⇒ 2c 定：Q5 两段不新增框——Shift types 那段放 ⚙ Settings › Shift types 的「i」说明里，Rules 那句接在 Rules 卡片灰字「Auto-fill follows these rules when it schedules a week.」后面；已告诉 Annie，她要另加框再说。
+  - c8 推 task/schedule-shift-types **e5b406d**（含 main e2c682c，没合，等后端 color SHA）：sch 405/405、nav 38/38，tsc 0、eslint 0 错、build 过。Settings › Shift types（停用的也列、能勾回；⋮⋮ 拖或 ↑↓；8 色小窗；改名黄框 + 「Was "Mid" — not saved yet」；灰绿 + Add shift type；蓝 Save）；页面先挡红字「Enter a name for the new shift type.」「There is already a shift type called "X".」「Enter both default times for X, or leave both empty.」；key 从名字生成；停用但规则在用 → 黄字「ZZ Test Training is still used by 1 rule (…). Auto-fill keeps using it until you change that rule in Rules.」；颜色按 color 取（周表 / Add shift / Auto-fill / Dashboard / 员工确认页），旧后端 open / mid / close 照旧其余灰白；Unassigned 定稿样子；How to use 方案 B。preview 外两处小东西（已告诉 Annie）：未存新行右边「×」可去掉；默认时间旁的「Clear」键去掉，直接删字清空。要后端：GET /api/schedule/confirmation 的 shift_types 也带 color（已转 94）。
 
 ### 84. Staff Schedule 后台要有员工登录记录（2026-11-04，Annie 在主窗口-2c 提，没动手）
 - 原话（接置顶 83 后说）：「我们本来就应该在staff的schedule后台管理页面有员工的登录记录」。
