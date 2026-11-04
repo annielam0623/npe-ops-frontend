@@ -139,6 +139,8 @@ export interface LiveRelayGuest {
   last_name: string | null;
   pax: number;
   order_number: string;
+  /** 团简写（同司机手机页 `{{ order_number }} · {{ short_tag }}`，置顶 78）；空 / 没有这个键 = 不显示。 */
+  short_tag?: string | null;
   phone?: string | null;
   relay_status: "picked_up" | "no_show" | null;
   relay_status_at?: string | null;
@@ -165,6 +167,8 @@ export interface LiveTourGuest {
   guide_name?: string;
   pax: number;
   order_number: string;
+  /** 团简写（同司机手机页 `{{ order_number }} · {{ short_tag }}`，置顶 78）；空 / 没有这个键 = 不显示。 */
+  short_tag?: string | null;
   phone?: string | null;
   lunch_text?: string;
   guide_lunch?: { text: string; bad?: boolean } | null;

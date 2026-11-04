@@ -1145,6 +1145,7 @@ async function run() {
     check("Ana（导游）那一列：Hello, Ana；On board 2 / 3；A1003 ✓ Boarded 7:02 AM；A1004 是刚标的 No show", await evaluate(`const t = ${ana}.textContent; return t.includes('Hello, Ana') && t.includes('On board 2 / 3') && ${ana}.querySelector('[data-live-guest="A1003"] [data-mark-time]').textContent === '✓ Boarded 7:02 AM';`));
     // 搜索：客人那一行标黄
     await evaluate("$setValue(document.querySelector('input[type=search]'), 'A1003');");
+    check("置顶 78：订单号旁加团简写（A1001 · GC、A1003 · ZN）；简写空（A1002）或没有这个键（A1004）只写单号", await evaluate(`const has = (col, o, s) => [...col.querySelector('[data-live-guest="' + o + '"]').querySelectorAll('div,span')].some(e => e.textContent.trim() === s); return has(${mike}, 'A1001', 'A1001 · GC') && has(${ana}, 'A1003', 'A1003 · ZN') && has(${mike}, 'A1002', 'A1002') && !${mike}.querySelector('[data-live-guest="A1002"]').textContent.includes('A1002 ·') && has(${ana}, 'A1004', 'A1004') && !${ana}.querySelector('[data-live-guest="A1004"]').textContent.includes('A1004 ·');`));
     check("搜索 A1003：Live drivers 里那位客人标黄", await waitFor(`${ana}.querySelector('[data-live-guest="A1003"]').className.includes('ring-yellow-400') && !${mike}.querySelector('[data-live-guest="A1001"]').className.includes('ring-yellow-400')`));
     await evaluate("$setValue(document.querySelector('input[type=search]'), '');");
     // 司机筛选：只看 Mike

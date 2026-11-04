@@ -463,6 +463,12 @@ function MarkTime({
   );
 }
 
+/** 订单号 · 团简写（同司机手机页 driver_home / guide_home 的写法）；没有简写只写单号。 */
+function orderWithTag(g: { order_number: string; short_tag?: string | null }) {
+  const tag = g.short_tag?.trim();
+  return tag ? `${g.order_number} · ${tag}` : g.order_number;
+}
+
 function hit(search: string, ...values: (string | null | undefined)[]) {
   return (
     !!search && values.some((v) => (v ?? "").toLowerCase().includes(search))
@@ -537,7 +543,7 @@ function RelayList({
                       </span>
                     </div>
                     <div className="mt-0.5 text-[12px] text-[#64748b]">
-                      {g.order_number}
+                      {orderWithTag(g)}
                     </div>
                   </div>
                   <div className="flex flex-col items-end text-right whitespace-nowrap">
@@ -834,7 +840,7 @@ function TourList({
                       {lunchText}
                     </span>
                   ) : null}
-                  <span className="text-[#64748b]">{g.order_number}</span>
+                  <span className="text-[#64748b]">{orderWithTag(g)}</span>
                 </div>
                 {g.relay_status === "no_show" ? (
                   <div className="mt-1.5 text-[12px] font-bold text-[#fca5a5]">
