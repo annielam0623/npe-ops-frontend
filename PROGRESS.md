@@ -116,7 +116,7 @@ D. 已完成、待从置顶移走：
   - ✅ 后端 73 上 main **ee601775**（36 做；11/04 线上只读新旧颜色 62 行一致，连库 3984 OK）。最终字段已转 fa：tours[] 带 color/default_color（Relay + 司机页）和 header_*（Bus Manifest），*_set；取色顺序以后端为准（staff 字母 → staff All buses → 纸本字母 → 纸本团 → 团色），前端直接用返回值不自己算。派 fa 核字段后合 main。
 - ✅ 置顶 71 后端：manifest_cols_bus / _tickets / _admin_fee 上限 4000 → 20000 已上线（后端 origin/main 1fac68ca，9e 报）；键名格式不变，超限 400 "value too long (max 20000 chars)"，其他键仍 4000，partner 仍 403。前端不用改。后端另有 npe-confirmation-service-da [af1446]。
 
-## 2026-11-03 晚 置顶 75 按 Agent reference 搜订单（`task/agent-ref-search`，工作窗口 fa [985244]，主窗口 5c 派）—— ⛔ 推了分支，等后端（9e 明天做）上 main 核字段再合
+## 2026-11-03 晚 置顶 75 按 Agent reference 搜订单（`task/agent-ref-search`，工作窗口 fa [985244]，主窗口 5c 派）—— ✅ 后端 b6b1fce1 上 main，11-04 核过字段后合 main（81）
 - Annie 原话：「我在main manifest里加上了agent reference，能否在首页的search bar里页可以加上用这个号码搜索订单」；定 B（没勾 See prices, agent & commission 的人不按 agent ref 搜）；preview https://claude.ai/artifact/75Ujnjc3crJ5m6AycJGnaR 4 题全 A，「同意全部推荐。动手」（5c 转）。
 - 后端拟（9e，还没做）：/api/operations/orders 的 q 加 resellerReference（只给有 orders.money_view 的人），每行加 reseller_reference、matched_agent_ref（只有 agent ref 命中时 true）。前端字段照这个写（types/orders.ts 可选字段），后端没带时一切照旧。
 - 做了：
@@ -982,6 +982,8 @@ D. 已完成、待从置顶移走：
 - ✅ **定 B**：Annie 知道两边不一致后，在 9e 窗口再回「B」（9e 转）⇒ 没 money_view 的人，q 不按 agent ref 搜。**还没「动手」**；preview 照 B 画。
 - fa preview（只画 B）：https://claude.ai/artifact/75Ujnjc3crJ5m6AycJGnaR （4 题：顶栏提示字 / 怎么标 / Orders 页提示字 / How to use，都推荐 A），已整段转 Annie。
 - ✅ 后端上线（94 转，2026-11-04）：main b6b1fce1（合并 62eda877，任务 9b2a723f），同前端 124b946 mock：有 money_view 每行带 reseller_reference（空 "—"）+ matched_agent_ref；没 money_view / partner 不带两键、不按 agent ref 搜；Export 13 列不变。2c 派 81 核字段、合最新 main、跑检查后合。
+- ✅ 2026-11-04 合 main（工作窗口 `npe-ops-frontend-81`[90172b]，2c 派）：只读核后端 origin/main b6b1fce1（任务 9b2a723f）——键名 reseller_reference（空给 "—"）/ matched_agent_ref（只靠 agent ref 对上才 true）、只给 MONEY_SHOWN（没 money_view 的人和 partner 两键都不给、q 也不按 agent ref 搜）、Export 13 列不变，和 124b946 的 mock 一致，前端不用改。合最新 main 后重跑：os 74/74、orders 52/52、nav 38/38、dr 89/89、mf 240/240、man 396/396；tsc 0、eslint 0 错（3 条原有 warning）、build 过（端口 8982 / 3582 / 9582）。main SHA 见 2c 记录。
+  Annie 验收：有 money_view 的账号在 Dashboard 顶栏搜索框、Orders 页搜索框输入 agent reference ⇒ 搜到单、单号下面蓝字「Matched by agent reference: …」，只对上一单直接打开、顶上蓝框「Found by agent reference: …」；没 money_view 的账号提示字照旧、按 agent ref 搜不到。
 
 ### 74. Main Manifest：Upper Antelope Brenda 每单一条 Waiver link（2026-11-03 晚，Annie 在后端 9e 窗口提，9e 转；前端还没 preview）
 - 9e 转的 Annie 已确认四条：没填链接的单像 No Cfm # 一样被挡、可 Send anyway；Brenda 两种都要；格子里填 + 上传两列表格都要；发出后改了链接标「Changed since sent」，staff 手动重发（Send anyway）。原话（9e 转）：「要在Upper brenda的main manifest那里增加一个栏目，叫waver link，由staff上传或者填写进去，然后发送的时候一起发给客人，每个订单都有独立的一个link」；四条是 9e 出的选择题，Annie 都勾推荐项（Brenda 两种 = Brenda 和 Brenda — No Permit Fee），没另写字，**没说「动手」、没看过样子**。
