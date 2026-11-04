@@ -1048,6 +1048,19 @@ D. 已完成、待从置顶移走：
   - **Annie（原话）**：「没人需要统计他们接了几个客人之类的，那个在tracking表里已经有了，我现在要的数据是给他们算工资的」⇒ Working Record 的目的 = **算工资**：日历每天写角色、团、车号是关键；人数 / Picked up 这类统计不要（Tracking 表已有）。2c 已问 Annie：工资按什么算（按天 / 按团种类 / 按小时（check in–check out）/ 加班、Driver & Guide 另算？），好决定日历每格还要写什么、要不要按月合计和 Export。已告诉 94、81。
   - 94 转 Annie 在后端窗口新定（原话）：「所以当所有车辆都走了以后，我让morning的dispatch点击一下completed这个键，然后今天的dispatch记录就锁定了，只有授权的人才可以改，然后按照你推荐的存表方式」⇒ 以后车走完点 Completed、当天 dispatch 锁定（授权的人 / 撤回 / 锁哪些 94 在问她）。日历来源：点了 Completed 的以那版为准；没点的每晚定时存前一天排班兜底（18 加）。
   - **日历接口（18，94 转，没上线，v152 Annie 先执行）**：GET /api/field-calendar?hr_id=&from=&to=，权限 settings.hr.view（不另叠开关），不带范围 = 本月，≤93 天。每天 {date, role:"driver"|"guide"|"both", source:"not_completed"|"completed"|"after_edit"|"live", snapshot:bool, runs:[{shift, kind, title, manifest_id, tour_name, van, as:"driver"|"guide", start_at:null, end_at:null}]}；只回本人，不带同车别人名字；live = 没存档按现在 dispatch 算，存了档事后改不变；start_at / end_at 留给工资（现在空）；relay 段名「Hotel pickups to Treasure Island」，第 1 / 2 轮靠 shift + kind。生产试：Carlos C 11/02 both South Rim 2622；Lankun W 11/04 guide Antelope Canyon 2356；Dan A 11/01 driver Private Tour（团名车号空，那天排车没填）。快照两条接口照旧。已转 81。
+  - **preview v2（日历 + 快照）**：同链接 https://claude.ai/artifact/U951qPXH1hNBzLbuSGY6Hm （81；2c 已整段转 Annie，等答）。
+    - Q1 怎么看：A 周表（一人一行七天）；B 选一人看月历；C（推荐）默认周表看所有人（Drivers / Guides 两节），点名字看此人月历 + 当月合计。
+    - Q2 格子：A（推荐）角色（Driver 蓝 / Guide 紫 / Driver & Guide 青）+ 团名 + 车号，一天两段写两行，没填写「no tour name」「no van」；📷 = 有快照；虚线 +「live」= 未存档；B 只角色 + 团名。
+    - Q3 快照：A（推荐）弹窗，上面段 / 车 / 开始结束 / 每站到离，人数和订单收进「Show guest counts and orders」，卡头选版本；B 弹窗全展开；C 右侧面板。
+    - Q4 合计 / Export：A（推荐）几天司机 / 导游 / 司机 & 导游、各团几次（relay 分 1st / 2nd round）、Hours 一格；一天两段算 1 天；⬇ Export for payroll（每人每天一行 + 合计，CSV）；B 只天数。
+    - Q5 工资按什么 / Hours：A（推荐先）按天 / 按团、Hours 写「Not available yet」；B 要 Hours（时间来源另定、后端另做）。（= 2c 之前问的工资题）
+    - Q6 HR 的人看不看快照：A（推荐）📷 只给同时能看 Live drivers 的人；B 能看 HR 的都能看（后端多认 settings.hr.view）。
+    - Q7 How to use：A（推荐）「Working Record: what each driver and guide did each day, for payroll. …」（全文见 preview）；B 她改字。
+    - 要后端（已转 94）：field-calendar 不带 hr_id = 所有能看的人（或另一个列表接口），每人带 hr_id / name / HR position。前端约 2 天。
+    - **Annie 答 Q5：「B」「是工资」** ⇒ 要 Hours（几点上班、几点下班，按小时算工资）。要先定时间从哪来：司机 = 计工资的 check in / check out（94 在问她是哪个系统）；导游 = 2c 已问（团的排定时间 / 导游页打卡 / 别的）。已转 94。其余 Q1–Q4、Q6、Q7 未答，未动手。
+      - 94 转 Annie 在 18 窗口答（原话）：「如果我们能从samsara拿到数据就最好，拿不到的话就每天晚上11兜底」⇒ 司机上下班以 Samsara 为准（18 评估 HOS on / off duty vs DVIR pre / post-trip、对人对天、没登录车的司机多少、工作量），拿不到 23:00 兜底。导游时间来源等 Annie 在 2c 答（A 团排定时间推荐 / B 导游页打卡 / C 同司机系统）。
+- ✅ **Annie「working record这里全部同意推荐，动手」（原话，2026-11-04）** ⇒ Profile 分 Drivers / Guides 两节 + Position not set 最下；Working Record：Q1 C（周表所有人 + 点名字看月历 + 当月合计）、Q2 A（角色色 + 团名 + 车号，📷 有快照，虚线 live 未存档）、Q3 A（弹窗，人数 / 订单收起，选版本）、Q4 A（天数 / 各团次数 / Hours + ⬇ Export for payroll CSV）、Q5 **B**（要 Hours：司机 Samsara、拿不到 23:00 兜底；导游 = 推荐 A 团排定开始 / 结束时间）、Q6 A（📷 只给也能看 Live drivers 的人）、Q7 A（How to use，加 Hours 的句子由 81 补、报原文）。先只 SA 可见。前端派 81（task/hr-working-record；Profile 分节不靠后端，可先合），后端转 94。
+  - 94：Working Record 全交 18，login-records 往后排；**v152 已在生产执行、核对过（12:22）**；Hours 要加新列 18 另写迁移草稿给 Annie；后端今天 14:15 收尾，Hours 今天多半做不完，推分支明天接着做。
 - G212 Team 页前端派 c8（task/g212-team-hierarchy），等后端 SHA。
 
 ### 85. Staff Schedule 班次类型（Open / Mid / Close）可手动新增（2026-11-04，Annie 在主窗口-2c 提，附排班格截图，没动手）
@@ -1075,6 +1088,7 @@ D. 已完成、待从置顶移走：
   - c8 发现 Staff Schedule 页本来没有 How to use 框 ⇒ 2c 定：Q5 两段不新增框——Shift types 那段放 ⚙ Settings › Shift types 的「i」说明里，Rules 那句接在 Rules 卡片灰字「Auto-fill follows these rules when it schedules a week.」后面；已告诉 Annie，她要另加框再说。
   - c8 推 task/schedule-shift-types **e5b406d**（含 main e2c682c，没合，等后端 color SHA）：sch 405/405、nav 38/38，tsc 0、eslint 0 错、build 过。Settings › Shift types（停用的也列、能勾回；⋮⋮ 拖或 ↑↓；8 色小窗；改名黄框 + 「Was "Mid" — not saved yet」；灰绿 + Add shift type；蓝 Save）；页面先挡红字「Enter a name for the new shift type.」「There is already a shift type called "X".」「Enter both default times for X, or leave both empty.」；key 从名字生成；停用但规则在用 → 黄字「ZZ Test Training is still used by 1 rule (…). Auto-fill keeps using it until you change that rule in Rules.」；颜色按 color 取（周表 / Add shift / Auto-fill / Dashboard / 员工确认页），旧后端 open / mid / close 照旧其余灰白；Unassigned 定稿样子；How to use 方案 B。preview 外两处小东西（已告诉 Annie）：未存新行右边「×」可去掉；默认时间旁的「Clear」键去掉，直接删字清空。要后端：GET /api/schedule/confirmation 的 shift_types 也带 color（已转 94）。
   - 2e：确认页 GET /api/schedule/confirmation 和免登录链接页都带 color；带 shift types 的 4 处都带（GET settings/schedule、POST / PUT 返回、确认页）；周表接口不返回 shift types。⚠️ 确认页只列 active 类型（原来就这样），已排的班用停用类型时拿不到 color / label，前端按 key 默认色。SHA 到了转 c8。
+  - 94（12:3x）：v148 / v149 / v150 / v152 Annie 都已执行、核对过；2e 代码 + 审查全 PASS，只差排队推送（带迁移的一次一件）：G245（f4 落地中）→ **班次颜色（2e）预计 13:30–14:00 上线** → 南北分车 → Working Record。SHA 到了转 c8 合 e5b406d。
 
 ### 84. Staff Schedule 后台要有员工登录记录（2026-11-04，Annie 在主窗口-2c 提，没动手）
 - 原话（接置顶 83 后说）：「我们本来就应该在staff的schedule后台管理页面有员工的登录记录」。
@@ -1128,6 +1142,7 @@ pe-ops-wt-login-default`，mock，**没合 main，等后端 57 的 logged_in_at 
   - 94 回：Rezdy 改后会不会自己消红交 f4 用代码 + 生产数据只读核，结论到了转来；提醒邮件收件人（Q5：A 用 Auto Send 现有两个汇总邮箱 / B 新加一栏只放 antelope@）94 自己问 Annie，前端不再问。Q4（ops 上要不要另列 Skipped）仍是前端的题。
   - **Annie 原话**：「不需要每一单发一份邮件，我们只需要每次发送发一份就好了，把有问题没发送的集中在一起就可以了」⇒ 自动发送每一轮发一封，集中列这一轮因 Cfm # 不符没发的单（不是每单一封）。已转 94。前端 Auto Send 说明半句跟着改成「Orders whose Cfm # doesn't match the product are skipped and listed together in one email after each run.」（Q4 A 时用）。
   - 94 / f4 查完（代码 + 生产只读）：**在 Rezdy 改好红标自己消失，后端不用改**——Rezdy 改字段推 webhook、整单重写，cfm_mismatch 每次开页 / 发送现场算，推到即变（近 30 天 booking_updated 26,373 次）。号挪到对的栏 ⇒ 消红能发；只删 X 栏、Antelope 栏空 ⇒ 消红变 No Cfm #（软拦，可 Send anyway）；在 Manifests 直接填 Cfm # ⇒ 当场消、能发。邮件改成每轮最多一封、没有就不发；每日汇总照旧带此原因；收件人等 Annie 答 94。
+- ✅ **Annie「羚羊谷，请动手」（原话，2026-11-04）** ⇒ 定稿：Q1 C（Cfm # (Rezdy) 那格红底白字）；Q2 A（能勾、Send reminder 红条逐单写原因、不能 Send anyway、黄字加半句）；Q3 不放 How to use，改鼠标停上去的短提示，用 2c 拟稿「Wrong Cfm # for this product — Rezdy has it under <other_label>: <other_value>. Fix it in Rezdy.」（她没另改，按推荐）；手机点红格弹同一句（推荐 A）；Q4 A（ops 不另列，Auto Send 说明加「Orders whose Cfm # doesn't match the product are skipped and listed together in one email after each run.」）。派 81（task/g245-cfm-mismatch，先于 Working Record），后端 f4 正在落地。
 
 ### 81. ~~Bus Manifest~~ **Relay list 打印页**每页页脚标「n of n」（2026-11-04，Annie 在主窗口-2c 提，没动手）
 - 原话：「G236 Bus Manifest 照纸本 --- 把每页的页脚标上页数 n of n，提醒staff后面还有页面」。
