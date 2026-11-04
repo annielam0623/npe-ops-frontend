@@ -859,6 +859,8 @@
   - Annie 问「Download the tour app → Open Link 是什么」→ 是 fa preview 编的假步骤，已照后端 tickets_reminder.py 改（第 1 步 waiver、第 2 步 permit fee，No Permit Fee 只有第 1 步）。Annie 再说「动手」（fa 已在写，照旧）。
   - 后端 da：客人页已改（task/brenda-waiver-link 02509ee5，没上 main）：Brenda 两种没填链接 ⇒「Your waiver link will be sent to you separately.」，填了 ⇒ 这一单的链接；其他门票照旧。字段不变，4 题后端都不用改。
   - ✅ 后端 da 上线 **635a198b**，v147 已在生产执行，字段同前；派 fa 核字段合 main。⚠️ da：现在挂 Brenda 的产品只有 PY45SW（Annie 说两种都要 = Brenda 和 Brenda — No Permit Fee）⇒ 问 Annie 另一个产品要不要挂。
+  - da 只读查生产：PY45SW = 带 permit fee（Upper Antelope Canyon Admission Ticket (TB)），未来已确认 64 单都会出格子；No Permit Fee 现在没产品挂、9/1 以来没这类订单。不用改代码，以后 staff 在 Settings › Products 把门票类型选「Brenda — No Permit Fee」就生效。
+  - ⚠️ 5c 提醒 Annie：后端已上线 ⇒ 这 64 单现在客人页第 1 步已变成「Your waiver link will be sent to you separately.」（包括已收过提醒的），发门票提醒会被 No waiver link 挡（可 Send anyway）；前端还没合时 staff 填不了链接。fa 正在合。
   - fa 推 task/waiver-link **c447450**（mock，没合 main，等后端 brenda-waiver-link 上 main + v147）。man 396、mf 240、nav 38，tsc / eslint / build 过。fa 提醒：默认检查端口 3298 曾被别的 dev server 占，各窗口跑检查请错开端口（fa 用 APP_PORT=3398 / MOCK_PORT=8999 / CDP_PORT=9533）；5c 查时 3298 已没人占。
 
 ### 73. Relay list：紫色太深 + 颜色和纸张方向交给 staff 设（2026-11-03 晚，Annie 在主窗口 5c 提，着急，没动手）
