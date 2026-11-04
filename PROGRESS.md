@@ -1,5 +1,6 @@
 # 前端迁移进度
 - ✅ **Annie「排班这个全部同意推荐，动手吧」（原话，2026-11-04）** ⇒ Q1 A、Q2 A（只在 ⚙ Settings › Shift types）、Q3 A（名字 + 默认时间 + 8 色）、Q4 A（停用 + 排序 + 停用提醒）、Q5 A（两段 How to use）、Q6 定稿（Unassigned 不上色、卡片白虚线框无底色）。前端派 c8（task/schedule-shift-types）；后端 color 列 + migration（先给 Annie 看）+ action_log 转 94。preview v4 https://claude.ai/artifact/9LFRCau1uBg5sQ5aPbdSZt
+  - c8 发现 Staff Schedule 页本来没有 How to use 框 ⇒ 2c 定：Q5 两段不新增框——Shift types 那段放 ⚙ Settings › Shift types 的「i」说明里，Rules 那句接在 Rules 卡片灰字「Auto-fill follows these rules when it schedules a week.」后面；已告诉 Annie，她要另加框再说。
 
 - ✅ **Annie「排班这个全部同意推荐，动手吧」（原话，2026-11-04）** ⇒ Q1 A、Q2 A（只在 ⚙ Settings › Shift types）、Q3 A（名字 + 默认时间 + 8 色）、Q4 A（停用 + 排序 + 停用提醒）、Q5 A（两段 How to use）、Q6 定稿（Unassigned 不上色、卡片白虚线框无底色）。前端派 c8（task/schedule-shift-types）；后端 color 列 + migration（先给 Annie 看）+ action_log 转 94。preview v4 https://claude.ai/artifact/9LFRCau1uBg5sQ5aPbdSZt
 > 每完成一步就更新本文件。新开窗口先读 [CLAUDE.md](CLAUDE.md)，再读本文件。
