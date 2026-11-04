@@ -769,6 +769,17 @@
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 73. Relay list：紫色太深 + 颜色和纸张方向交给 staff 设（2026-11-03 晚，Annie 在主窗口 5c 提，着急，没动手）
+- 原话：「两件事情着急做：relay list里，最后一张和倒数第三张的紫色太深了。可以把颜色的调配和页面的方向交给staff去处理么」
+- 现状（5c 只读查）：
+  - 「Relay N」接驳车单的颜色是后端固定色盘 `paper_colors.RELAY_COLORS`（黄、橙、蓝、绿、淡紫 #d9c8f0、粉），按车的顺序取，staff 改不了。
+  - 这台车同时是团大巴的那几张，用的是团色：后端 `paper_colors.bar_color` 先看纸本里按团、按 bus 字母写死的颜色，没有再用团色。深紫多半是这一种。staff 也改不了。
+  - 纸张方向在前端写死成 A4 竖版（`components/relay-list/relay-list.css` 的 `@page`）。
+- 要 Annie 定：① 是哪一天的 relay list（好核对是哪两张、哪个颜色）；② staff 改的颜色只用在 Relay list，还是同一个团 / bus 在 Bus Manifest、司机页也跟着变；③ 纸张方向每次打印时选、记在这台电脑上，还是存进系统、大家都一样。
+- 改颜色要后端加一个存颜色的地方（可能要迁移）；只做方向选择的话前端就能做。新样子要先出 preview。
+- Annie 答（原话）：「我要把这两项放给staff，要后端改就后端改」⇒ 颜色、方向都让 staff 设，存进系统（③ 定 B）。② 颜色管到哪里、① 哪一天还没答，放进 preview 里让她选。**还不是「动手」**。
+- 5c 已把评估请求转给后端主窗口-9e（要字段 / 接口形状、要不要迁移、工期，先不落地）。前端 preview 等 Annie 开 1 个工作窗口后派。
+
 ### 72. Dispatch 两台 bus 调位置：勾选框放大 + Auto 按南北分车（2026-11-03 晚，Annie 在主窗口提，附表）
 - Annie 原话：「前端要改一下，当有两台bus可以调位置的时候，勾选框太小了，把它放大跟main manifest里一样；另外Auto排进bus的时候按照这个规则：一台车放south，一台放north，中间的机动填位」。
 - 附表（Las Vegas 酒店分三色）：Blue: Northbound assist —— Plaza、Sahara、The STRAT、Westgate、Circus Circus、Wynn、Trump；Red: Neutral / Flexible —— MGM Grand、Virgin、Horseshoe、Bellagio、Treasure Island；Orange: Southbound assist —— Aria、Mandalay Bay、Excalibur、Park MGM、Resorts World。
