@@ -959,6 +959,14 @@ D. 已完成、待从置顶移走：
 - 现状（2c 只读）：Add shift 弹窗「Shift」一排固定按钮（add-shift-dialog.tsx:283 起，来自后端 shift types）；Settings 弹窗只能改已有类型的 Default shift times（settings-dialog.tsx）。**后端已有新增接口** POST /api/settings/schedule/shift-types（key / label / sort_order / 默认时间，routers/schedule.py:136，权限 _settings），前端没做入口。
 - 注意：格子颜色写死按 key（components/schedule/config.ts SHIFT_CARDS），新类型会全用同一个后备色 ⇒ 要么前端给几种备选色让人挑（要后端存色），要么新类型统一一种色。
 - 2c 派 81 出 preview（不写代码）：放哪（Settings › 班次类型列表 + Add / Add shift 弹窗里「+ New」）、填什么（名字、默认上下班时间、颜色）、能不能停用 / 排序。Annie 看过 +「动手」才写。
+- **preview**：https://claude.ai/artifact/9LFRCau1uBg5sQ5aPbdSZt （2c 已整段转 Annie，等答）。81 核后端：key 小写 ≤20 字、重了 400；label ≤40；权限 settings.schedule 只有 superadmin；没颜色、没删除，有 is_active / sort_order / 默认时间；改类型不写 action_log；Add shift 只列 active。
+  - Q1 「role」是不是班次类型：A 是（preview 画的）；B 是员工岗位（Office / Driver / Guide），另出 preview。
+  - Q2 在哪加：A（推荐）只在 ⚙ Settings，「Default shift times」改成「Shift types」，每行 ⋮⋮ 排序 / 色块 / 名字 / 默认时间 / Active，底下灰绿「+ Add shift type」；B 另在 Add shift 弹窗加「+ New」。
+  - Q3 填什么：A（推荐）名字（必填 ≤40）+ 默认时间（可空）+ 颜色 8 选 1（绿 / 蓝 / 紫 / 黄 / 粉 / 青 / 橙 / 灰）——要后端加 color 列 + migration；B 只名字和时间，颜色一律灰白（后端不用改）。
+  - Q4 停用 / 排序：A（推荐）都要（Active 勾掉以后不再出现、已排的照旧；⋮⋮ 排 Add shift 按钮先后）；B 只要停用。
+  - Q5 How to use：A（推荐）「Shift types (Super Admin): open ⚙ Settings → Shift types. Click + Add shift type, type a name, pick a colour and, if you like, default times, then press Save. Untick Active to stop offering a shift type; shifts already scheduled keep it. Drag ⋮⋮ to change the order of the buttons in Add shift.」；B 她改字。
+  - 规矩：全部暂存、蓝色 Save 一起存、未存关弹窗先问；红字「Enter a name for the new shift type.」「There is already a shift type called …」。
+  - 需要后端（Q3 A 时）：schedule_shift_types 加 color（open / mid / close / amber / rose / teal / orange / grey，migration 先给 Annie 看）；GET 带 color，POST / PUT 收 color、不认得 400；建议改类型写 action_log；key 前端从名字生成（小写、空格 _、≤20、重了加 _2）。工时：前端 3–4 小时，后端约 1 小时 + migration。
 
 ### 84. Staff Schedule 后台要有员工登录记录（2026-11-04，Annie 在主窗口-2c 提，没动手）
 - 原话（接置顶 83 后说）：「我们本来就应该在staff的schedule后台管理页面有员工的登录记录」。
