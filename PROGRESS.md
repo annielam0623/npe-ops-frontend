@@ -954,6 +954,12 @@ D. 已完成、待从置顶移走：
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 86. 司机 / 导游 live 页每天的快照（2026-11-04，Annie 在主窗口-2c 提，没动手）
+- 原话：「我还有个需求，司机和导游的live 记录，是否可以有快照，就是他这一天在哪个站停留了多久，发了多少短信，汇报了多少picked up和no show，在工作结束前它的页面有个快照」。
+- 理解：每位司机 / 导游每天一份记录：每站到 / 离时间和停了多久（Samsara 到站，置顶 59 / 58）、发了几条短信、报了几个 Picked up / No show；工作结束时把他那天的 live 页存一份，之后能回看。
+- 2c 已请 94 只读评估数据够不够（到 / 离只有填了坐标的酒店才有；短信 / 打勾记录存不存、能不能按人按天数）。
+- 要问 Annie：Q1 在哪看（ops Morning tracking › Live drivers 加「History」按日期回看 / 单独报表页 / Daily Operation Report）；Q2 快照什么时候拍（最后一站走了以后 / 固定时间如下午 3 点 / 两者）；Q3 是存「那一刻的页面样子」还是存数字汇总；Q4 谁能看、留多久。答了先 preview。
+
 ### 85. Staff Schedule 班次类型（Open / Mid / Close）可手动新增（2026-11-04，Annie 在主窗口-2c 提，附排班格截图，没动手）
 - 原话：「在role里，给一个手动添加role的选项」「我说的是staff schedule」。截图是 Staff Schedule 周表，格子上的 Open / Mid / Close ⇒ 理解为班次类型（后端叫 shift type）。
 - 现状（2c 只读）：Add shift 弹窗「Shift」一排固定按钮（add-shift-dialog.tsx:283 起，来自后端 shift types）；Settings 弹窗只能改已有类型的 Default shift times（settings-dialog.tsx）。**后端已有新增接口** POST /api/settings/schedule/shift-types（key / label / sort_order / 默认时间，routers/schedule.py:136，权限 _settings），前端没做入口。
