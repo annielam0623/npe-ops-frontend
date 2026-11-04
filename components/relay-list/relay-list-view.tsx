@@ -122,22 +122,24 @@ export function RelayListView() {
     };
   }, [params, reloadKey, redirectToLogin]);
 
+  // 带 ?date=：弹窗只列那天排车出现过 / 配过色的字母。
   useEffect(() => {
+    if (!params) return;
     const ctrl = new AbortController();
-    fetchRelayListSettings(ctrl.signal)
+    fetchRelayListSettings(params.date, ctrl.signal)
       .then((s) => setSettings(s))
       .catch(() => {
         if (!ctrl.signal.aborted) setSettings(null);
       });
     return () => ctrl.abort();
-  }, []);
+  }, [params]);
 
   /** 存好颜色 / 方向后：重读设置和 relay-pull（单子上的颜色、方向后端算），不闪 Loading。 */
   const afterSave = useCallback(async () => {
     setRefreshError(null);
     try {
       const [s, data] = await Promise.all([
-        fetchRelayListSettings(),
+        fetchRelayListSettings(params?.date),
         params ? fetchRelayPull(params.date) : Promise.resolve(null),
       ]);
       setSettings(s);

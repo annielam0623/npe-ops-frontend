@@ -7,7 +7,6 @@ import { describeError } from "@/lib/api-errors";
 import {
   buildPatch,
   busColor,
-  busHasOwnDefault,
   busOrientation,
   isHex,
   type DraftTour,
@@ -328,11 +327,7 @@ export function RelaySettingsDialog({
                         />
                         <Meta
                           custom={!!own?.color}
-                          note={
-                            busHasOwnDefault(t, b.label)
-                              ? "Default colour"
-                              : "Uses All buses"
-                          }
+                          note={d.color ? "Uses All buses" : "Default colour"}
                           canEdit={canEdit}
                           onReset={() =>
                             editTour(id, (x) => ({

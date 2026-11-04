@@ -4,9 +4,10 @@ import { apiFetch } from "@/lib/api-client";
  * Relay list 的颜色和每张单的纸张方向（置顶 73，Annie 2026-11-03「我要把这两项放给staff」「设置页面的方向是否可以每页独立设置」
  * 「同意全部推荐。紫色那个留给staff自己调」「动手」；preview https://claude.ai/artifact/L7Ks8gymYvsd33Q9DuLGUr）。
  * 后端（9e 评估，36 做）：GET（dispatch.view）/ PUT（dispatch.edit）`/api/settings/relay-list`，颜色和方向同一个接口；
- * PUT 只改传进去的部分、按团 / 字母合并，null = 回默认。显示色「staff 设的 → 纸本 → 团色」后端在 Relay list / 司机页 /
- * Bus Manifest 三处统一算好（relay-pull 的 tour_buses[].color、relay_color 已是最终色），前端不自己算单子上的颜色。
- * ⚠️ 字段形状照 5c 转的评估先写，后端上 main 后照真实字段核对。
+ * PUT 只改传进去的部分、按团 / 字母合并，null = 回默认；坏值 400 什么都不改；返回 {ok, …同 GET 整份}。
+ * 字段照后端 main ee601775（5c 转的最终字段）。取色顺序（后端）：staff 设的字母 → staff 设的 All buses → 纸本字母 → 纸本团 → 团色；
+ * Relay list / 司机页 / Bus Manifest 三处后端统一算好（relay-pull 的 tour_buses[].color、relay_color、Bus Manifest band_color），
+ * 前端不自己算单子上的颜色；弹窗里只按同一顺序把暂存的改动画出来。
  */
 
 export type Orientation = "portrait" | "landscape";
@@ -18,14 +19,24 @@ export function orientationOf(v: unknown): Orientation {
   return v === "landscape" ? "landscape" : "portrait";
 }
 
-/** 一个启用的团：当前生效色 + 默认色（纸本 → 团色），每个 bus 字母同样。 */
-export interface RelaySettingsTour {
-  manifest_id: number;
-  name: string;
-  /** 这个团「All buses」的当前色 / 默认色。 */
+/**
+ * 团这一层 = All buses；buses[] 每个字母同名几项。color / default_color 是 Relay list + 司机页色条，
+ * header_* 是 Bus Manifest 车抬头（staff 改一次两处一起变，弹窗只显示 color）；*_set = staff 自己设过。
+ */
+export interface RelaySettingsColorItem {
   color: string;
   default_color: string;
-  buses: { label: string; color: string; default_color: string }[];
+  header_color?: string;
+  header_default_color?: string;
+  orientation?: Orientation | null;
+  color_set?: boolean;
+  orientation_set?: boolean;
+}
+
+export interface RelaySettingsTour extends RelaySettingsColorItem {
+  manifest_id: number;
+  name: string;
+  buses: (RelaySettingsColorItem & { label: string })[];
 }
 
 export interface RelayTourColors {
@@ -39,16 +50,20 @@ export interface RelayTourOrientations {
 }
 
 export interface RelayListSettings {
-  /** Relay 1–6 当前色（第 7 台起从 Relay 1 轮）。 */
-  colors: string[];
+  /** Relay 1–6：[] 或 6 格，null = 那格用默认（第 7 台起从 Relay 1 轮）。 */
+  colors: (string | null)[];
   /** staff 设过的团 / 字母颜色（键 = manifest_id）；没设的不在里面。 */
   tour_colors: Record<string, RelayTourColors>;
   orientations: {
-    summary: Orientation;
-    relay: Orientation[];
+    summary?: Orientation | null;
+    /** [] 或 6 格，null = portrait。 */
+    relay: (Orientation | null)[];
     tours: Record<string, RelayTourOrientations>;
   };
-  defaults: { colors: string[] };
+  defaults: {
+    colors: string[];
+    orientations?: { summary: Orientation; relay: Orientation[] };
+  };
   tours: RelaySettingsTour[];
 }
 
@@ -65,10 +80,16 @@ export interface RelayListSettingsPatch {
 
 const API = "/api/settings/relay-list";
 
+/** date = 这一天（只列那天排车出现过 / 配过色的字母）。 */
 export function fetchRelayListSettings(
+  date?: string,
   signal?: AbortSignal,
 ): Promise<RelayListSettings> {
-  return apiFetch<RelayListSettings>(API, { cache: "no-store", signal });
+  return apiFetch<RelayListSettings>(API, {
+    cache: "no-store",
+    signal,
+    query: date ? { date } : undefined,
+  });
 }
 
 export function saveRelayListSettings(
@@ -105,7 +126,7 @@ export const isHex = (v: unknown): v is string =>
 const lower = (v: string | null | undefined) =>
   isHex(v) ? v.toLowerCase() : null;
 
-/** 接口那一份 ⇒ 弹窗暂存的一份（坏值一律当没设）。 */
+/** 接口那一份 ⇒ 弹窗暂存的一份（坏值一律当没设）。staff 设没设过看 *_set（没有这个字段的旧形状再看 tour_colors / orientations）。 */
 export function toDraft(s: RelayListSettings): RelaySettingsDraft {
   const defaults = s.defaults?.colors ?? [];
   const colors = Array.from(
@@ -122,15 +143,16 @@ export function toDraft(s: RelayListSettings): RelaySettingsDraft {
     const to = s.orientations?.tours?.[id] ?? {};
     const buses: DraftTour["buses"] = {};
     for (const b of t.buses ?? []) {
-      const o = to.buses?.[b.label];
+      const o = b.orientation_set ? b.orientation : to.buses?.[b.label];
       buses[b.label] = {
-        color: lower(tc.buses?.[b.label]),
+        color: lower(b.color_set ? b.color : tc.buses?.[b.label]),
         orientation: o ? orientationOf(o) : null,
       };
     }
+    const o = t.orientation_set ? t.orientation : to.all;
     tours[id] = {
-      color: lower(tc.all),
-      orientation: to.all ? orientationOf(to.all) : null,
+      color: lower(t.color_set ? t.color : tc.all),
+      orientation: o ? orientationOf(o) : null,
       buses,
     };
   }
@@ -142,33 +164,27 @@ export function toDraft(s: RelayListSettings): RelaySettingsDraft {
   };
 }
 
-/** 这个团「All buses」在弹窗里显示的颜色。 */
+/** 这个团「All buses」在弹窗里显示的颜色：staff 设的（含暂存）→ 后端默认色。 */
 export function tourAllColor(t: RelaySettingsTour, d: DraftTour): string {
-  return d.color ?? lower(t.default_color) ?? "#c8cdd3";
+  return d.color ?? lower(t.default_color) ?? lower(t.color) ?? "#c8cdd3";
 }
 
 /**
- * 字母在弹窗里显示的颜色：自己设的 → 纸本上这个字母有自己的颜色（默认色和团默认不同）就用它 → 团 All buses 现在的颜色。
- * ⚠️ 和后端「staff 设的 → 纸本 → 团色」对过才算数（后端上 main 后核）。
+ * 字母在弹窗里显示的颜色，照后端顺序：staff 设的字母 → staff 设的 All buses → 字母的默认色（后端算好的纸本字母 → 纸本团 → 团色）。
+ * 没改过时就等于后端返回的 color。
  */
 export function busColor(
   t: RelaySettingsTour,
   d: DraftTour,
   label: string,
 ): string {
-  const own = d.buses[label]?.color;
-  if (own) return own;
   const b = t.buses.find((x) => x.label === label);
-  const def = lower(b?.default_color);
-  if (def && def !== lower(t.default_color)) return def;
-  return tourAllColor(t, d);
-}
-
-/** 字母有没有纸本上自己的颜色（没有 = 跟着 All buses）。 */
-export function busHasOwnDefault(t: RelaySettingsTour, label: string): boolean {
-  const b = t.buses.find((x) => x.label === label);
-  const def = lower(b?.default_color);
-  return !!def && def !== lower(t.default_color);
+  return (
+    d.buses[label]?.color ??
+    d.color ??
+    lower(b?.default_color) ??
+    tourAllColor(t, d)
+  );
 }
 
 export const tourOrientation = (d: DraftTour): Orientation =>

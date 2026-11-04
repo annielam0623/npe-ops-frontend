@@ -25,7 +25,7 @@
   - ✅ 后端 73 上 main **ee601775**（36 做；11/04 线上只读新旧颜色 62 行一致，连库 3984 OK）。最终字段已转 fa：tours[] 带 color/default_color（Relay + 司机页）和 header_*（Bus Manifest），*_set；取色顺序以后端为准（staff 字母 → staff All buses → 纸本字母 → 纸本团 → 团色），前端直接用返回值不自己算。派 fa 核字段后合 main。
 - ✅ 置顶 71 后端：manifest_cols_bus / _tickets / _admin_fee 上限 4000 → 20000 已上线（后端 origin/main 1fac68ca，9e 报）；键名格式不变，超限 400 "value too long (max 20000 chars)"，其他键仍 4000，partner 仍 403。前端不用改。后端另有 npe-confirmation-service-da [af1446]。
 
-## 2026-11-03 晚 置顶 73 Relay list「⚙ Colours & page」：颜色 + 每张单方向交给 staff（`task/relay-list-settings`，工作窗口 fa [985244]，主窗口 5c 派）—— ⛔ 推了分支，等后端上 main 核字段再合
+## 2026-11-03 晚 置顶 73 Relay list「⚙ Colours & page」：颜色 + 每张单方向交给 staff（`task/relay-list-settings`，工作窗口 fa [985244]，主窗口 5c 派）—— ✅ 后端 ee601775 上 main，核过字段后合 main
 - Annie 原话：「两件事情着急做：relay list里，最后一张和倒数第三张的紫色太深了。可以把颜色的调配和页面的方向交给staff去处理么」「我要把这两项放给staff，要后端改就后端改」「设置页面的方向是否可以每页独立设置」「同意全部推荐。紫色那个留给staff自己调」「动手」（5c 转）。
 - preview 定稿 https://claude.ai/artifact/L7Ks8gymYvsd33Q9DuLGUr （题 1 A 三处一起变、题 2 D 默认色不改、题 3 作废、题 4 A 每张各自设、题 5 A dispatch.edit 能改、题 6 A How to use）。
 - 做了：
@@ -34,15 +34,16 @@
   - 每张单 `data-orient`（总表 = relay-pull `summary_orientation`；车单 = car.orientation → tour_buses[0].orientation → portrait）；屏幕上横版单 297mm 宽（页面 max-w 900 → 1180px）；打印用命名页 `@page rl-land { size: A4 landscape }`，横版打印时同样不撑满（不出空白页）。
   - How to use（7 句，preview 第 5 节原文，第 3 句 3A），页面最底、折起、不打印；顶部那句说明手机上收进「i」。
   - 后端没上线（GET 404 / 读不到）：没有 ⚙、没有 How to use，全部竖版，页面和现在一样。
-  - 接口封装 `lib/relay-list-settings-api.ts`（形状照 5c 转的 9e 最终评估：GET colors / tour_colors / orientations / defaults / tours[]；PUT 合并、null = 回默认）。
-- ⚠️ 等后端核对（36 在做，上 main 后照真实字段改）：
-  1. GET `tours[]` 的形状我先定成 `{manifest_id, name, color, default_color, buses:[{label, color, default_color}]}`（团 All buses 的当前色 / 默认色在团上）。
-  2. 弹窗里字母没自己设时显示的颜色：纸本上这个字母有自己的默认色（和团默认不同）就用它，否则跟 All buses（`busColor()`）——要和后端「staff 设的 → 纸本 → 团色」对一下字母 / 团的先后。
-  3. relay-pull `tour_buses[]` 想要带 `manifest_id`（「Also a relay car」按团 id 对；没有就按团名对 tours[].name）。
-  4. PUT 不能编辑时 403，红字照 detail 显示。
+  - 接口封装 `lib/relay-list-settings-api.ts`。
+- 后端上 main（ee601775）后照最终字段改（5c 转、只读核过后端 `app/services/relay_list_settings.py` 的 tours()）：
+  1. GET 带 `?date=当天`（只列那天排车出现过 / 配过色的字母）；colors / orientations.relay 是 [] 或 6 格、null = 默认；tours[] = {manifest_id, name, color, default_color, header_color, header_default_color, orientation, color_set, orientation_set, buses:[{label, 同名几项}]}，团这层 = All buses；弹窗按 *_set 判断 staff 设没设过，只显示 color（header_* 是 Bus Manifest 车抬头，后端一起改）。
+  2. 取色顺序照后端：staff 设的字母 → staff 设的 All buses → 字母默认色（纸本字母 → 纸本团 → 团色，后端 default_color 已算好）。弹窗没改时就是后端返回的 color；暂存改了 All buses，没自己设的字母跟着变、写 Uses All buses。删掉了原来前端自己猜的「纸本字母优先」。
+  3. relay-pull tour_buses[] 带 manifest_id、orientation；car.orientation（兼大巴的取第一辆大巴的方向）；summary_orientation。
+  4. PUT 回 {ok, …整份}；403「You do not have permission to do this.」、400 原话都照红字 Not saved: … 显示。
 - 横竖混排实测（headless Chrome）：独立页 6 张横竖混排、两张长单 ⇒ 8 页每页方向都对；页面上 mock 实打：6 张 L P L L L P；长单（2nd Round 横版总表 41 行）印 2 页，PyMuPDF 逐页核过 41 行都在、没有被裁。
-- rl 套加 29 条（共 58）：404 时和现在一样；⚙ 白底；只读；三块 + Set all；默认只列当天的团 / Show all tours；Also a relay car；纸本字母色 / Uses All buses；改了 Changed、没存单子不变；Cancel 问、Keep editing；存失败红字；Save 绿字、一个 PUT 只带改了的部分；存好后单子换色 / 换方向、2017 挂两辆取第一辆；横版屏幕 297mm；PDF 每页方向 LPLLLP；长单分页；Set all；Reset to paper colours；Discard 不存；How to use 7 句、不印。
-- 检查：rl 58/58、da 482/482、mf 240/240、man 360/360、nav 38/38；tsc 0 错、eslint 0 错（3 条原有 warning）、build 过。
+- rl 套加 31 条（共 60）：设置带 ?date=、改 All buses 后没设的字母跟着变；404 时和现在一样；⚙ 白底；只读；三块 + Set all；默认只列当天的团 / Show all tours；Also a relay car；纸本字母色 / Uses All buses；改了 Changed、没存单子不变；Cancel 问、Keep editing；存失败红字；Save 绿字、一个 PUT 只带改了的部分；存好后单子换色 / 换方向、2017 挂两辆取第一辆；横版屏幕 297mm；PDF 每页方向 LPLLLP；长单分页；Set all；Reset to paper colours；Discard 不存；How to use 7 句、不印。
+- 检查（合最新 main 后）：rl 60/60、da 482/482、mf 240/240、man 360/360、nav 38/38；tsc 0 错、eslint 0 错（3 条原有 warning）、build 过。
+- Annie 线上验收点：① Dispatch › Morning Relay › 📋 Relay list 顶上有白色「⚙ Colours & page」；② 弹窗里改一个 Relay 颜色 / 一张单方向，按 Save 绿字 Saved，单子马上换色 / 变横版；③ 打印预览：横竖混排每页方向对、没有空白页；④ 改一个团的颜色，同一辆车在司机页色条、Bus Manifest 车抬头也一起变；⑤ 没勾 dispatch.edit 的账号打开弹窗是只读。⚠️ 生产上改了就是真改（所有人、所有日期），验完可按 Reset 回默认再 Save。
 
 ## 2026-11-03 晚 da 481/482「Pull：按这天拉、两轮标题和时间来自接口」修好（`task/da-482-fix`，工作窗口 fa [985244]，主窗口 5c 派）—— 检查套时序问题，页面没 bug，合 main
 - 现象：da-test.js 那条在 main 上稳定挂（连跑 3 次都挂），pulls=[]、Step 2 显示 Loading…。

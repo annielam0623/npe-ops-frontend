@@ -8,7 +8,7 @@ const ctl = { fail401: false, fail500: false, old: false, many: false, noSetting
 if (process.env.MOCK_CTL) Object.assign(ctl, JSON.parse(process.env.MOCK_CTL));
 const log = [];
 
-// ── 置顶 73：Relay list 颜色 + 每张单方向（GET / PUT /api/settings/relay-list，形状照 9e 评估）──
+// ── 置顶 73：Relay list 颜色 + 每张单方向（GET / PUT /api/settings/relay-list，形状照后端 main ee601775）──
 const DEFAULT_COLORS = ["#fff605", "#ffc05b", "#83b7e8", "#c5e8b7", "#d9c8f0", "#f6c6d6"];
 // 启用的团：当天有的是 3 Antelope（A/B）、1 South Rim（C）、2 West Rim、4 Bryce&Zion；9 Hoover Dam 当天没有（Show all tours 才出）。
 const TOURS = [
@@ -19,36 +19,53 @@ const TOURS = [
   { manifest_id: 9, name: "Hoover Dam", default_color: "#d9fbfe", buses: [{ label: "A", default_color: "#d9fbfe" }] },
 ];
 const P = "portrait";
-const fresh = () => ({ colors: [...DEFAULT_COLORS], tour_colors: {}, orientations: { summary: P, relay: [P, P, P, P, P, P], tours: {} } });
+// colors / orientations.relay：[] 或 6 格，null = 那格用默认（同后端）。
+const fresh = () => ({ colors: [], tour_colors: {}, orientations: { relay: [], tours: {} } });
 let st = fresh();
-const tourColor = (mid, label) => {
+// 取色顺序同后端：staff 设的字母 → staff 设的 All buses → 纸本字母 → 纸本团 → 团色（mock 里字母的 default_color 已含后三层）。
+const defaultColor = (mid, label) => {
   const t = TOURS.find((x) => x.manifest_id === mid);
-  const tc = st.tour_colors[mid] || {};
-  const b = t && t.buses.find((x) => x.label === label);
-  return (label && tc.buses && tc.buses[label]) || (b && b.default_color !== t.default_color ? b.default_color : null) || tc.all || (b && b.default_color) || (t && t.default_color) || "#c8cdd3";
+  const b = t && label && t.buses.find((x) => x.label === label);
+  return (b && b.default_color) || (t && t.default_color) || "#c8cdd3";
 };
+const tourColor = (mid, label) => {
+  const tc = st.tour_colors[mid] || {};
+  return (label && tc.buses && tc.buses[label]) || tc.all || defaultColor(mid, label);
+};
+const relayColor = (i) => st.colors[i] || DEFAULT_COLORS[i];
+const relayOrient = (i) => st.orientations.relay[i] || P;
 const tourOrient = (mid, label) => {
   const to = st.orientations.tours[mid] || {};
   return (label && to.buses && to.buses[label]) || to.all || P;
 };
 function settingsBody() {
+  const entry = (mid, label) => {
+    const tc = st.tour_colors[mid] || {};
+    const to = st.orientations.tours[mid] || {};
+    const set = label ? !!(tc.buses && tc.buses[label]) : !!tc.all;
+    const oset = label ? !!(to.buses && to.buses[label]) : !!to.all;
+    const c = tourColor(mid, label), d = defaultColor(mid, label);
+    return { color: c, default_color: d, header_color: c, header_default_color: d, orientation: tourOrient(mid, label), color_set: set, orientation_set: oset };
+  };
   return {
     ...JSON.parse(JSON.stringify(st)),
-    defaults: { colors: DEFAULT_COLORS, orientations: { summary: P, relay: [P, P, P, P, P, P], tours: {} } },
-    tours: TOURS.map((t) => ({ ...t, color: tourColor(t.manifest_id, null), buses: t.buses.map((b) => ({ ...b, color: tourColor(t.manifest_id, b.label) })) })),
+    defaults: { colors: DEFAULT_COLORS, orientations: { summary: P, relay: [P, P, P, P, P, P] } },
+    tours: TOURS.map((t) => ({ manifest_id: t.manifest_id, name: t.name, ...entry(t.manifest_id, null), buses: t.buses.map((b) => ({ label: b.label, ...entry(t.manifest_id, b.label) })) })),
   };
 }
 // PUT：只改传进来的部分，按团 / 字母合并，null = 回默认（照 9e）。
 function merge(patch) {
-  if (Array.isArray(patch.colors)) st.colors = st.colors.map((c, i) => (i in patch.colors ? patch.colors[i] || DEFAULT_COLORS[i] : c));
+  const slots = (cur, raw) => { const out = [...cur, ...Array(6 - cur.length).fill(null)]; raw.forEach((v, i) => (out[i] = v)); return out.some(Boolean) ? out : []; };
+  if (patch.colors === null) st.colors = [];
+  else if (Array.isArray(patch.colors)) st.colors = slots(st.colors, patch.colors);
   for (const [mid, v] of Object.entries(patch.tour_colors || {})) {
     const cur = (st.tour_colors[mid] ||= {});
     if ("all" in v) cur.all = v.all;
     for (const [l, c] of Object.entries(v.buses || {})) (cur.buses ||= {})[l] = c;
   }
   const o = patch.orientations || {};
-  if (o.summary) st.orientations.summary = o.summary;
-  if (Array.isArray(o.relay)) st.orientations.relay = o.relay.map((x) => x || P);
+  if ("summary" in o) st.orientations.summary = o.summary;
+  if (Array.isArray(o.relay)) st.orientations.relay = slots(st.orientations.relay, o.relay);
   for (const [mid, v] of Object.entries(o.tours || {})) {
     const cur = (st.orientations.tours[mid] ||= {});
     if ("all" in v) cur.all = v.all;
@@ -111,15 +128,15 @@ function relayPull(date) {
         }
         if (tb.length) b.car.orientation = tb[0].orientation || P;
         else {
-          b.car.relay_color = st.colors[n % 6];
-          b.car.orientation = st.orientations.relay[n % 6];
+          b.car.relay_color = relayColor(n % 6);
+          b.car.orientation = relayOrient(n % 6);
           n += 1;
         }
       }
     }
   }
   return {
-    ...(ctl.old ? {} : { summary_orientation: st.orientations.summary }),
+    ...(ctl.old ? {} : { summary_orientation: st.orientations.summary || P }),
     run_date: date,
     checked_at: "2026-11-02T20:00:00-08:00",
     round_labels: { relay: { name: "Morning Relay · 1st Round", when: "4:30 - 5:15 AM" }, relay_2: { name: "Morning Relay · 2nd Round", when: "5:40 - 6:30 AM" }, tour_car: { name: "Morning Relay · Tour bus pick up", when: "" } },
@@ -169,6 +186,7 @@ http
         if (!ctl.edit) return send(res, 403, { detail: "You do not have permission to edit Dispatch." });
         if (ctl.failPut) return send(res, 500, { detail: "Internal Server Error" });
         merge(log[log.length - 1].body);
+        return send(res, 200, { ok: true, ...settingsBody() });
       }
       return send(res, 200, settingsBody());
     }

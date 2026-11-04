@@ -283,7 +283,14 @@ async function settingsChecks() {
   check("Show all tours：Hoover Dam 也列出来", await waitFor("document.querySelector('[data-relay-settings-tour=\"9\"]')"));
   check("同时是团大巴的 relay 车：South C 那一行写「Also a relay car today: ZZ Carlos - 1855, ZZ Paulie - 2017」", await evaluate(`const t = ${row("tour-1-C")}.querySelector('[data-also-relay]'); return !!t && t.textContent.includes('Also a relay car today: ZZ Carlos - 1855, ZZ Paulie - 2017') && t.textContent.includes('Its relay sheet uses this row');`));
   check("Relay cars 顶上说明：也是大巴的车没有 Relay 编号，在团那一行设", await evaluate(`return ${dlg}.textContent.includes('A relay car that is also a tour bus has no Relay number.');`));
-  check("Antelope B 有纸本自己的颜色 #db92c8（Default colour）；South C 跟 All buses（Uses All buses）", await evaluate(`return ${row("tour-3-B")}.querySelector('input[type=text]').value === '#db92c8' && ${row("tour-3-B")}.textContent.includes('Default colour') && ${row("tour-1-C")}.textContent.includes('Uses All buses');`));
+  check("字母没自己设：显示后端的默认色（Antelope B 纸本 #db92c8，Default colour）", await evaluate(`return ${row("tour-3-B")}.querySelector('input[type=text]').value === '#db92c8' && ${row("tour-3-B")}.textContent.includes('Default colour');`));
+  check("设置带 ?date=当天读（只列那天的字母）", (await mockLog()).some((e) => e.path === "/api/settings/relay-list" && e.query === `?date=${D}`));
+  // 改 Antelope All buses（暂存）：没自己设的字母跟着变（后端顺序 staff 字母 → staff All buses → 纸本），显示 Uses All buses。
+  await evaluate(`$setValue(${row("tour-3")}.querySelector('input[type=text]'), '#123456');`);
+  await sleep(150);
+  check("改 All buses 后没自己设的字母跟着变（Bus A / B 都显示 #123456、Uses All buses）", await evaluate(`return ['tour-3-A','tour-3-B'].every(k => document.querySelector('[data-relay-settings-row="' + k + '"] input[type=text]').value === '#123456' && document.querySelector('[data-relay-settings-row="' + k + '"]').textContent.includes('Uses All buses'));`));
+  await evaluate(`$btn('Reset', ${row("tour-3")}).click();`);
+  await sleep(150);
 
   // 改：Relay 1 颜色、总表横、Relay 2 横、South C 横。
   await evaluate(`$setValue(${row("relay-1")}.querySelector('input[type=text]'), '#aabbcc');`);
