@@ -36,6 +36,20 @@
 1. 报对话名；git pull；问后端主窗口 75 / 51B / samsara-arrivals 进度，SHA 到了派窗口核字段合（fa 的分支都在 origin）。
 2. Annie 答 77 / 63 等，按原话派。
 3. 资源：今晚空闲内存 8–11 GB，最多 1 个工作窗口。
+### 五、10/29–11/03 需求盘点（Annie「写到交接，把这些事情都写进去。然后明天要做的事情提醒我」）
+**明天主窗口开工第一件：把下面「开工提醒 Annie」整段发给她（中文，每条带完整内容）。**
+
+开工提醒 Annie（她今天要做 / 要答的）：
+1. 今天（11/4）要跟员工确认排班 → 先用 Staff Schedule › Auto-fill「Copy a base week, then fix by the rules」排整月（9261c52 已上线），草稿核好再一周一周 Publish；排之前先在排班设置取消 Anita 的「Counts toward coverage」。
+2. 线上验收昨晚上线的：Waiver link（置顶 74 七个点，只动 ZZ Test）、Relay list ⚙ Colours & page（置顶 73）、Relay list 打印没空白页、Columns 存长设置。
+3. 执行 v146（Samsara 到站，后端到时提醒）；GPS 偏差实测；Products › Manifest setup 填 Bus Manifest section order（LOWER、UPPER、Canyon X）。
+4. 要她答 / 说「动手」的（按急的排）：77 快捷回复 3 题 + 13 句草稿；63 新红字 / tooltip / How to use；68 超座位提醒还是挡；72 七题；69 三题；64 Notified 版点头；58 / 59；61 三小题；55②；53 题 8 + 动手；Dashboard 两个统计格 bug 动手；52 Affiliate 措辞；48 Notice ↔ CCL 动手；Today's team 7 题；Send Log 新模块 A/B/C；Forecast 补 3 个月格式；纸本没有的颜色；33 整套打印小题；29 Restaurant total 留空。
+
+A. 前端写好、等后端：75 agent-ref-search 124b946；51 B open-in-manifest 6343171（manifest_links 形状见置顶 51）；samsara-arrival 071df4d（+ v146 + 58 / 59）。
+B. 前后端都没做：51 A 订单详情显示整单（先 preview）；64 G180（后端 tracking-sync-v2 没上，v147 号已被 Waiver 用掉要重排）；69、72②（先等答题）；53 team 有效权限（后端 /api/me/permissions 改，没动手）；48 补「CCL 只看 assign 给 CCL 的」（后端只登记）；61 题 1①「Wrong bus」跨天误报（notifications.py 没传日期，没定、没派）。
+C. 已动手没做完：Supplier › Restaurant ⬆ Import（第四节 0）；G212 后端 B3 / B6 / B7（admin 按层级，10-30 后没再提）→ 问后端主窗口还做不做。
+D. 已完成、待从置顶移走：
+
 - 5c 应 Annie「我10/29到今天提出来的需求，还有哪些没有实现的」做了一次盘点（只读）：置顶里已完成、待移走的 = 76、71、70、67、66、65、62、60、57、56、54、50、44、43、42、39、38、37、36、35、34、32、30（只剩小题）；明天主窗口先把这些移到当天记录（73 / 74 等 Annie 验收后移）。另两件要问后端：G212 B3 / B6 / B7（admin 按层级，10-30 后没再提）、61 题 1①「Wrong bus」跨天误报没派。
 - fa 收工：分支都已推、进程都关；worktree 留 D:\npe-ops-frontend-wt-blank（task/open-in-manifest，75 / 51B 后端到了在这里核）；D:\npe-ops-frontend-wt-waiver 已合 main 可删。⚠️ fa 顺手关了 3398 上一个不是它的进程（可能别的窗口的 dev server），已告诉 da、36，断了重启即可。
 - 网页版看板已更新（Annie 原话「今晚收工，写交接，把明天要做的事情写进网页版去」）：https://claude.ai/artifact/3GzA8Kv4o8pojxoGsQMj4F 版本 1793778407-a998——今日完成加 Waiver link / Relay 颜色和方向 / Relay 空白页 / Working hours 按天 / Dispatch No tracking；明天计划加 Restaurant 批量导入，更新 agent ref 搜索、跳 Main Manifest 两张的进度；进行中加「快捷回复搬进 Content Studio」，删掉已完成的 4 张。
