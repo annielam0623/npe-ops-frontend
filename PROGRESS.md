@@ -830,6 +830,37 @@
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 75 进度 / 端口
+- fa 推 task/agent-ref-search **124b946**（mock，没合 main，等后端）。os 74、orders 52、dr 89、nav 38、mf 240、man 360，tsc / eslint / build 过。
+- 端口：fa 两次撞到别的 dev server（3298、3398），5c 查时已没有别人在听。今晚起各前端窗口检查端口固定：fa = APP 3577 / MOCK 8977 / CDP 9577；以后新窗口另分（例如 36xx / 89xx / 96xx），开工时由主窗口指定。
+
+### 77. 司机 Messages 快捷回复的文字（2026-11-03 晚，Annie 在主窗口 5c 提）
+- 原话：「我们来写一下司机的message答复的快捷回答吧」
+- 现状：页面已有——ops Settings › Quick replies（app/settings/quick-replies，admin / superadmin 能增删改、排序、开关）；司机页 Messages 里点一下就发给客人，司机不能自己打字。后端规则：每条 ≤80 字、不能有花括号（没有占位符，原样发出）、只能用短信能发的字符。现有几条我们看不到（没登录）。
+- 5c 起了一份 13 条英文草稿发 Annie 改；定稿后由 Annie（admin）自己在 Settings › Quick replies 加——是生产数据，前端窗口不代填。
+- Annie（原话）：「不如放在content studio」⇒ 把 Settings › Driver Quick Replies 的管理搬进 Content Studio（Team Messages 卡加一个「Driver Quick Replies」标签页，接口照旧 /api/driver-quick-replies，只前端改）。5c 问：旧页面去掉、旧网址跳 Content Studio（推荐）还是两处都留。是页面调整 ⇒ 先 preview（排 fa），还没「动手」。
+- fa preview：https://claude.ai/artifact/Q5XYrpnniHcacr6pskveXP （3 题：旧页去掉跳转 / 排序拖拽暂存 + Save order / Action Log 放标签下，都推荐 A；How to use 5 句），已整段转 Annie。13 句草稿只是样稿数据。
+
+### 76. 测 11/4 司机 / 导游链接和页面上的 SMS / 电话键（2026-11-03 晚，Annie 在主窗口 5c 提）
+- 原话：「我需要你测试一下明天各个司机和导游的链接是否真的有效，他们的sms和电话键是否真能work」
+- 计划：只读打开每个司机 / 导游页（headless、手机尺寸），核页面能开、内容对、每个 tel: / sms: 号码格式能拨、和资料一致；不真拨、不真发。
+- 卡在：fa 没 ops 登录、拿不到链接；打开链接会不会记成「已打开」。已问 9e 要链接清单 / 不记录的办法 / 键拨给谁。
+- 9e 只读答：用 Super Admin 预览 /driver/preview?date=2026-11-04、/guide/preview?date=2026-11-04（同模板同数据、选人页、不记已读、写操作 disabled）；**不要用真 /l/{token} 测**（会按司机本人登录）。客人行 Call = tel:{manifest 客人 phone}；relay 段 Call 在预览里灰；Text 不是 sms:，是系统内消息框（driver_messages）。fa 没登录进不去。今晚做不做 9e 请 Annie 定。5c 已问 Annie：A 她自己看预览 / B 后端只读查全部号码格式。
+- Annie（原话）：「我点击进司机的的页面call键是灰色的，不能点啊」。5c 只读核 driver_home.html：预览里客人 Call 是灰的 span（:289-291、:381-384，.g-btns-preview pointer-events:none），不是 tel:——9e 上次说法有误，已更正；真链接（明天 G227）Call 是 tel:{客人电话}、Text 能用。已问 9e 预览 Call 改真 tel: 的工作量 / 当初为何灰；问 Annie 选法。
+- 9e 认错并答：预览灰掉是故意的（Annie 10-27「只读、照真实版面画」）。预览 Call 改真 tel:（driver / guide 两个模板）约半小时、Risk B，代价是 Super Admin 点了真拨。只读查 11/4 全部客人电话（按司机 / 导游分组、标空号 / 位数不对 / 带字母 / 国际号缺 +，并和 Order List 比）约 15 分钟、不改文件，收工时段也能跑，Annie 说一声就做。（5c 给 Annie 的标号：A = 只读查，B = 改预览。）
+- ✅ Annie 原话「同意全部推荐。动手」⇒ 76 A：9e 今晚只读查 11/4 全部客人电话；同一句也答了 75（4 题全 A）、51 B（5 题全 A）→ 后端明天派，fa 先 mock 写前端（task/agent-ref-search、task/open-in-manifest），推分支不合。
+- ✅ 9e 只读查完 11/4：56 位在团客人都有号码、格式都能拨，和 Order List 后 10 位全部一致（0 不一致）；15 个司机 / 导游位 HR 号码都对。判据用坏样本验过。查不出号码是否真通（停机 / 打错要真拨）。Text 走系统内消息。75、51B 后端明天主窗口照置顶派。
+
+### 75. Dashboard 搜索框可以按 Agent reference 搜订单（2026-11-03 晚，Annie 在主窗口 5c 提，没动手）
+- 原话：「我在main manifest里加上了agent reference，能否在首页的search bar里页可以加上用这个号码搜索订单」
+- 现状（5c 只读）：搜索框走 /api/operations/orders?q=，前端只认单号 / 姓名 / 电话（lib/order-lookup-api.ts searchOrders）。Agent reference = 后端 manifest_fields 的 reseller_reference（Rezdy resellerReference），orders 搜索应不含它 ⇒ 要后端。它在 money_view 隐藏名单里（lib/money-view.ts），没勾 See prices, agent & commission 的人看不到。
+- 已请 9e 评估；问 Annie：没这权限的人能不能按它搜（推荐 A 能搜到单、但不显示号码）。
+- 9e 评估：能做，不用迁移，后端约 1–2 小时；q 加 order_detail->>'resellerReference'（两条车道），返回加 reseller_reference + matched_agent_ref；Orders 页搜索也跟着能搜（Export 13 列不变）；每次搜索约慢 0.3 秒，先不建索引。money_view：A / B 都能做，9e 推荐 B（看不到就不能用）。今晚过收工点，最早明天派。
+- Annie：「同意A」⇒ 没 money_view 的人也能按 agent ref 搜到单，号码显示「—」。**还没「动手」**；下一步 fa 做完 74 后出 preview（搜索结果标「Matched by agent reference」、搜索框提示字），Annie 看过「动手」再转 9e。
+- ⚠️ 9e 转：Annie 在 9e 窗口回「B」（没 money_view 的人不按 agent ref 搜）。和在 5c 的「同意A」相反 ⇒ 5c 已问 Annie 以哪个为准，答了再定。后端 9e 今晚已收工，这件没写进后端交接，明天以本条为准。
+- ✅ **定 B**：Annie 知道两边不一致后，在 9e 窗口再回「B」（9e 转）⇒ 没 money_view 的人，q 不按 agent ref 搜。**还没「动手」**；preview 照 B 画。
+- fa preview（只画 B）：https://claude.ai/artifact/75Ujnjc3crJ5m6AycJGnaR （4 题：顶栏提示字 / 怎么标 / Orders 页提示字 / How to use，都推荐 A），已整段转 Annie。
+
 ### 74. Main Manifest：Upper Antelope Brenda 每单一条 Waiver link（2026-11-03 晚，Annie 在后端 9e 窗口提，9e 转；前端还没 preview）
 - 9e 转的 Annie 已确认四条：没填链接的单像 No Cfm # 一样被挡、可 Send anyway；Brenda 两种都要；格子里填 + 上传两列表格都要；发出后改了链接标「Changed since sent」，staff 手动重发（Send anyway）。原话（9e 转）：「要在Upper brenda的main manifest那里增加一个栏目，叫waver link，由staff上传或者填写进去，然后发送的时候一起发给客人，每个订单都有独立的一个link」；四条是 9e 出的选择题，Annie 都勾推荐项（Brenda 两种 = Brenda 和 Brenda — No Permit Fee），没另写字，**没说「动手」、没看过样子**。
 - 后端 da 在做（迁移 v147 Annie 先执行），今晚多半 WIP。拟定字段：GET /api/manifests 每行 waiver_link_required + 4 列（waiver_link / waiver_status / waiver_link_by / waiver_link_at）；PUT /api/manifests/waiver-link；POST /api/manifests/waiver-links/upload（apply false 预览 / true 写入，status new/changed/same 及 not_found/not_waiver/bad_link/empty/duplicate）；send-tickets blocked reasons 加 "No waiver link"（与 No Cfm # 合并一条）；Changed since sent 当已发跳过；Action Log entity manifest_waiver_link。How to use 写在 ops Manifests 页（英文、默认折叠）。
@@ -841,6 +872,8 @@
   - Annie 问「不要waiver的单为什么要放链接」→ 5c 解释（大多数门票没有 waiver 步，Secret Antelope 一条通用 Smartwaiver 链接不动，Brenda 现在那条带固定 bookingUuid 是错的），fa 改第 ③ 格为「Other tickets: no change…」。
   - ✅ Annie 原话「那4提全部按推荐走，动手」⇒ 题 1–4 都 A。派 fa 前端 task/waiver-link（mock，推分支不合，等后端 da SHA + v147）；已告诉 da，并再要客人页没链接那句的确认。
   - Annie 问「Download the tour app → Open Link 是什么」→ 是 fa preview 编的假步骤，已照后端 tickets_reminder.py 改（第 1 步 waiver、第 2 步 permit fee，No Permit Fee 只有第 1 步）。Annie 再说「动手」（fa 已在写，照旧）。
+  - 后端 da：客人页已改（task/brenda-waiver-link 02509ee5，没上 main）：Brenda 两种没填链接 ⇒「Your waiver link will be sent to you separately.」，填了 ⇒ 这一单的链接；其他门票照旧。字段不变，4 题后端都不用改。
+  - fa 推 task/waiver-link **c447450**（mock，没合 main，等后端 brenda-waiver-link 上 main + v147）。man 396、mf 240、nav 38，tsc / eslint / build 过。fa 提醒：默认检查端口 3298 曾被别的 dev server 占，各窗口跑检查请错开端口（fa 用 APP_PORT=3398 / MOCK_PORT=8999 / CDP_PORT=9533）；5c 查时 3298 已没人占。
 
 ### 73. Relay list：紫色太深 + 颜色和纸张方向交给 staff 设（2026-11-03 晚，Annie 在主窗口 5c 提，着急，没动手）
 - 原话：「两件事情着急做：relay list里，最后一张和倒数第三张的紫色太深了。可以把颜色的调配和页面的方向交给staff去处理么」
@@ -1186,6 +1219,9 @@
 - A 原话：「…显示整个订单包括些什么，有没有add on，有没有reschedule fee，所有的订单里的项目都要包含进去」。现状：后端订单详情接口 LIMIT 1；前端 order-detail-view 的 Ticket Breakdown / Raw items 只显示第一项，order-lookup-api 把搜索结果每单压成第一行（线上已有的漏洞）。后端打算详情加 items（全部项）、列表每单加一句小结。例：CHDEFSJ2C。
 - B 原话：「如果需要resend confirmation或者reminder的话，再给一个链接可以一点击就进到该订单所属的main manifest页面上，停留在该订单上，订单默认勾选」。后端给 manifest_link {date, tab, pill, row_keys[]} 或 null（不在 Main manifest 上就不给链接，提示去 Order List 看状态）。
 - e6 只读结果（已转 37）：date / tab / pill 已经接受，要加 ?row=<row_key>（标黄、滚到、只预勾能发的行，用过删掉，不在这页出黄字）；row_key 就是发送接口用的键；建议后端改给 manifest_links[]（一单的行可能分在几个 tab / pill 上）。估时：A preview 半天 + 代码半天到一天，B 约一天，合计约 2 天；B 要等 91 的 CHD 分支合 main。等接口形状和 Annie 动手，之后先出 preview。
+- 2026-11-03 晚 Annie 在主窗口 5c 又提（原话）：「在查出来的订单详情上是否可以加个链接，直接点击跳转到manifest上的该订单项上」= 本条 B。5c 派 fa 先只读查后端 main 有没有 manifest_link(s)，再出 B 的 preview（不写代码）。
+  - fa：后端 origin/main 362cd700 没有 manifest_link(s)，要后端在订单详情 / 搜索接口给 manifest_links [{date, tab, tab_label, pill, pill_label, row_keys[]}]（不在 = []）。preview https://claude.ai/artifact/PhPav7b9m1sjrxmfa8sv8F （5 题：放哪 / 分几处 / 勾哪些 / On Hold / 不在时写什么，都推荐 A），已整段转 Annie。
+  - Annie「同意全部推荐。动手」（5 题全 A）。fa 推 task/open-in-manifest **6343171**（mock，没合 main）。**给后端的形状（明天后端主窗口照这个做，或告诉真实形状）**：订单详情 / 搜索接口的 OrderDetail 加 `manifest_links: [{date:"YYYY-MM-DD", tab, tab_label, pill, pill_label, row_keys:[]}]`，不在 Main manifest = []；On Hold 要能判断（订单状态照 Order List）；Cancelled 不给。前端：没这个字段 = 整行不出；Manifests 接 ?row=&tick=0。os 74、orders 48、man 365、dr 89、nav 38、mf 240，tsc / eslint / build 过。
 
 ### 50. Sales Report 插队 + CHD 组放回 Main manifest（2026-11-02）
 - Annie 原话：「紧急插个队，把sales report做出来」。24 问她指哪种：A 修现有 /sales-report（10/23 上线，按 Group → section → 产品，Orders / Pax / $，只 SA 可见挂 Soon）／B 做一份新报表（先出 preview）／C 把删掉的按 agent 月表周表加回来。她没选，接着说：「你先把CHD这个group 先放回main manifest」。
