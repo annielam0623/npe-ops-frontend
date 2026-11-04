@@ -33,7 +33,7 @@
 - **65 HR Other spellings**：Annie「HR动手」，91 在 task/hr-other-spellings 做（没接口时不显示，可先合 main）；Edit list 先只读，等后端 bulk。
 - **67 Dispatch 名单每行可编辑**：Annie「Dispatch名单编辑-动手」，按推荐全 A；91 task/roster-edit（HR 之后），后端 PUT /api/dispatch/roster/{id} 待 37 派（明天家里）。
 - **68 Relay 勾酒店不核座位**：超座位提醒还是挡住，37 在问；定了 37 派后端、24 派前端（先 preview）。
-- **66 Super Admin 预览看实时**：Annie 已「动手」，后端 64 做，排 57 → 4d 后；纯后端页面。
+- **66 Super Admin 预览看实时**：✅ 后端 f604d430 已上 main，等 Annie 验收。
 - 61（Q1 / Q2）、58 / 59、53 Q8、52、51、48、55②、Today's team 7 题、酒店格颜色、Send Log 模块、Dashboard 统计 bug、Forecast 回填：照旧等。
 - 我还开着两问（Annie 没答，不重问）：「正在跑的 tour」要哪种视图（车在哪 / 团进度 / 全部在跑总览）；要不要后端把线上团车司机页和 v2 设计逐项对比。
 - Annie 自己要做：取消 Anita 的「Counts toward coverage」；基础周 Auto-fill 排整月、周三跟员工确认；GPS 偏差实测；跑 v146 / v147；10/6 纸本 PDF 不在公司电脑。
@@ -754,6 +754,7 @@
 - 题：Super Admin 看当天在跑的行程时：A（推荐）样子、颜色跟司机 / 导游手机上一模一样，已标的照样绿 / 红，但点不了（不替司机点；跟 Live drivers 一样只读）；B 跟司机一样也能点（Super Admin 可以替司机 / 导游标 Boarded / No show、改餐、发餐厅消息，会记成 Super Admin 做的）。不是当天（前一天 / 已过）的照旧。要后端改模板（转 37），等 Annie 选 + 动手。
 - Annie（原话）「同意推荐」⇒ A；24 问是否现在动手，Annie「动手」。已转 37（后端模板 driver_home / guide_home：当天的 Super Admin 预览颜色、实时状态跟手机一样，只读不能点；非当天照旧）。前端不用改。37 派 64（worktree field-preview-live），也核服务器拒绝预览会话的操作；合并排在 57（等 Annie 发布）、4d（G234）后。等后端 SHA。
 
+- ✅ 后端上 main **f604d430**（37 转）：/driver/preview、/guide/preview 看今天时正常颜色，按钮仍 disabled，后端对 Super Admin 的动作一律 403；别的日期不变。前端不用改。等 Annie 线上验收（Dispatch 的 Driver page preview ↗ / Guide page preview ↗），验收后移到当天记录。
 ### 65. HR 页「Other spellings」（G234 补，Annie 在 4d 窗口「同意。动手」后端；91 preview https://claude.ai/artifact/W92fd328NYL5S5e3U1bjSw ，没写代码）
 - 照做不问：走现有 Edit 弹窗（底部 Save / Saving… / 关前问 / 红字），先 PUT 写法再存其他字段（409 时什么都没存）；Add person 先建人再存写法；存好显示后端规整后的样子；后端报错原样红字；改动进现有 Action Log；不用蓝色；Export / Import 不带这一格。
 - 题 1 弹窗里放哪：A（推荐）Identity 里紧跟 Nickname；B Dispatch 那一块。
