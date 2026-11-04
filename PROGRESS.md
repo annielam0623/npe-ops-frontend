@@ -1343,6 +1343,7 @@ D. 已完成、待从置顶移走：
 - 题 1：这个放法行不行？A（推荐）照截图；B 另说放法。
 - 题 2：上面「+ Add New Location」新加酒店的表单要不要也加这三格？A（推荐）不加，新酒店加好后点 Edit 再填（Add 表单已经很长）；B 加。
 - 2026-11-04：94 说 Annie 问 tracking 测试的坐标在哪填 ⇒ 2c 把题 1 / 题 2 + 截图（C:\Users\annzh\AppData\Local\Temp\claude\8828d70a62fa0031\8f0176bc-4499-4c01-bf6e-e6fe335357df\scratchpad\pin59-pickup-point.png）整段发 Annie。答了 +「动手」派窗口合 task/samsara-arrival（后端 samsara-arrivals + v146 也要上）。
+  - 94：**后端 samsara-arrivals 早已上线**（合并 478c597c、关包 416ddc37，另 04f27f52 测试小修），**v146 已在生产执行**。GET /api/pickup-locations 每行 latitude / longitude（null）/ arrival_radius_m（默认 10）；PATCH /{id}/arrival-point {latitude, longitude, radius_m}，都 null = 清，radius_m 不带 = 不改，1–500，写 action_log；tracking / Live drivers 的 arrived_at / left_at 也在。⇒ task/samsara-arrival 合 main **只等 Annie 答 59 +「动手」**（58 Tracking 表那题另说）。
 
 ### 58. Morning Pickup Tracking 表里怎么显示「到了 / 走了」的时间（2026-11-03，09 做 Samsara 到站时问）
 - 页面：Morning Pickup Tracking（/morning-pickup/tracking）的表格，每一行是一单客人。
