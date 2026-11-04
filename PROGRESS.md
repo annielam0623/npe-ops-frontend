@@ -4,7 +4,49 @@
 
 > 6d 交接（下面「2026-10-27 交接：前端主窗口 6d」那节）的后端需求已于 10/27 晚由 ad 转给家里后端主窗口 17。
 
-> **下一个主窗口：先读下面「2026-11-03 晚 收工交接：前端主窗口 今日前端主窗口-5c」，再看置顶「📌 等 Annie 确认」。上一份是「2026-11-03 收工交接：前端主窗口 今日主窗口-24」。**
+> **下一个主窗口：先读下面「2026-11-04 交接：前端主窗口 今日主窗口-24 → 今天新开的主窗口」，再读「2026-11-03 晚 收工交接：前端主窗口 5c」，再看置顶「📌 等 Annie 确认」。**
+
+## 2026-11-04 前端主窗口 `主窗口-2c`[f4667e] 接班
+- 24 关前转交（24 原话「看你已改名主窗口-2c，今天由你接主窗口」）。2c 先以工作窗口合了置顶 79 ops 白字 main c41546a。已告知后端 94、37 新名字。**后端主窗口今天是 `主窗口-94`[8d6960]**（37 关前说：后端的事都发 94，含 direction SHA、模板白字；后端交接在后端 origin/main fa210a5c 的 NPE_每日交接.md 最上面）。
+- 还在跑：后端 94 改手机司机 / 导游页白字；后端 57 南北分车 direction（迁移 Annie 先执行）。等 Annie：72 preview 回 A、80 选 A / B、64 / 69 / 68（详见置顶，不滚动重问）。
+- 已派 `npe-ops-frontend-81`[90172b]：Supplier › Restaurant ⬆ Import（5c 交接「明天开工」0；Annie 10/29 已动手，不再 preview）。分支 task/import-restaurant；先查后端有没有导入接口，没有写「需要后端」转 94。
+  - 81 查过后端没有 Restaurant 导入接口 → 需求（preview / commit 路由、栏 key、按店名对上、校验、日志、409）2c 原样转 94；94 收到，排在 18 做完 75 之后。81 先 mock 做、推分支不合，SHA 到了 2c 转 81 核字段再合。
+- `09`[341d31] 还开着（上下文长，只接小活）：待命接 72——Annie 看 preview 回「动手」后转原话给 09，合最新 main、跑 da / pl / nav + tsc / eslint / build 后合。
+
+## 2026-11-04 交接：前端主窗口 `今日主窗口-24`[310398] → 今天新开的主窗口（公司电脑）
+
+> Annie：「你这个窗口太多内容了，我打算跟其他几个昨天就开着的窗口一起关闭了，你写一下交接给新开的窗口，让它来做今天的主窗口」。前端工作窗口 09 / 91 / e6 也一起关；新主窗口开工后请 Annie 按需要开新工作窗口。
+> 先读本节，再读下面「2026-11-03 晚 收工交接：前端主窗口 5c」（家里昨晚做的：Waiver link、Relay list ⚙ Colours、置顶 73–77、Restaurant Import 待做等），再看置顶「📌 等 Annie 确认」。
+> 后端主窗口：**今天是 `npe-confirmation-service-94`[8d6960]**（37 已关）；后端工作窗口 57（在做南北分车）、44、4d、64。前端已开新工作窗口 `npe-ops-frontend-2c`[f4667e]，在等新主窗口派工（24 只叫它先只读准备）。
+
+### 一、今天（11-04）上 main 的，等 Annie 线上验收
+| 件 | 前端 SHA | 后端 | 验收看 |
+|---|---|---|---|
+| 置顶 63 G234 换司机只改 Dispatch（Annie「A」） | 40d5279 | 01606b02 | Dispatch Assign 换司机 Save 后灰字 / 红字；Send › Morning Relay Status 灰字；Morning tracking Driver 列灰字 + Guest Viewed 红字「Bus changed — ask the guest to open the link again」+ How to use 两句 |
+| 置顶 78 Live drivers 订单号旁「· 简写」（Annie「动手」） | 153be6b | 不用改（早已带 short_tag） | Morning tracking › Live drivers；没填 Bus Manifest setup Short name 的团只显示单号 |
+| 置顶 70 Relay List 键（11-03 晚） | 6367d0c | — | Dispatch › Assign 顶部 |
+| 置顶 71 Columns 按页存（11-03 晚） | f5459d6 | 1fac68ca（上限 20000，家里昨晚上） | Manifests ☰ Columns 6 个验收点见置顶 71 |
+
+### 二、在分支、等 Annie 看 preview
+- **置顶 72 南北分车（前端 09，task/seat-direction faca991 或之后，未合）**：preview https://claude.ai/artifact/5FLcwPjxBMjNbVuD15mCmG 三处 ① Seat guests 大勾选框 ①b 酒店胶囊 + A–Z（Annie 已「理解正确，动手」，细节按推荐）② Pickup Locations Direction 列。**等 Annie 回 A**（已问，回复里有全文）→ 合最新 main 跑 da / pl / nav + tsc / eslint / build 后合 main（Direction 列没后端键时不出，可先合）。
+  - 规则全部已定（置顶 72 有原话）：Bus A 放人多一方、一样多放 South、溢出先中间车再另一方、Flexible 补空位多的、不拆单、表外 = Flexible、所有字母分车团、Resorts World = South。
+  - 后端 57 在做：GET /api/pickup-locations 每行 direction（north / south / flexible / null）、PATCH /{id}/direction、迁移预填 17 家（**Annie 要先执行迁移**）、seat_plan 改规则。上线 SHA 由 37 发。
+
+### 三、正在做 / 刚派的
+- **置顶 79 司机 / 导游页字改白**（Annie 原话在置顶 79；09 已开 origin/task/live-white-text，看那里的提交）：派 09 出 preview：逐项列灰字（页面文字 + 模板 class / 行号，driver_home.html、guide_home.html、live-drivers.tsx），推荐全改白、只留按不了的按钮和「—」占位，「现在 / 改后」并排。09 被关之前的进度见置顶 79（它会写进去）。**新主窗口：派新工作窗口接着出 preview**；Annie 点头 + 动手后：清单发 37（后端改模板），前端改 Live drivers。
+  - ✅ 09 收尾：preview **https://claude.ai/artifact/8cWB8Ki2BdEttf49GXt4Pp**（司机页 D1–D23、导游页 G1–G15、ops O1–O10，每项带页面文字 + class / 行号，全部推荐改白 #fff）；只留灰 3 处等 Annie 确认：K1 按不了的按钮、K2 签到前「–」占位、K3 没选中的 Routes / Messages 标签。后端建议：base.html:17 的 --muted / --muted-2 改 #fff，K2 / K3 单独设回 #94a3b8。ops 改动在 task/live-white-text fc3883a（未合，mt 没跑：接手先合 main 跑 mt / nav + build）。✅ Annie 同意推荐并「动手」，清单已发 94，ops 派 2c 合。
+
+### 四、等 Annie（详见置顶，不滚动重问）
+- 64 G180 Tour Tracking：Notified 版 preview https://claude.ai/artifact/Fz4f3awLiNauihh2n655JT 等点头（Annie 已在 44「动手」，措辞 Notified / To notify，CSV Notified = Yes / No）；后端 44 task/tracking-sync-v2 家里做。
+- 69 酒店格按 relay 车色：preview https://claude.ai/artifact/G6wBhhVQpNqWiHQgQWQ4te 3 题。
+- 68 / G243 Relay 勾酒店超座位：提醒还是挡（37 问）。
+- 其余（5c 交接里的 77、51 A、Today's team 7 题、48、Send Log、Dashboard 统计 bug、Forecast 补数据；61、58 / 59、53 Q8 等）照旧。
+- Annie 自己要做：v146（samsara-arrivals）、南北分车迁移、取消 Anita「Counts toward coverage」、GPS 偏差实测。
+
+### 五、新主窗口开工
+1. ListAgents 报对话名；git pull；读本节 + 5c 节 + 置顶。
+2. 问 Annie 要开几个工作窗口（看资源）：至少 1 个接 72（合 main）+ 79（preview）；5c 交接的 Restaurant ⬆ Import 也待派。
+3. 发消息给后端主窗口 `npe-confirmation-service-94` 告知新的前端主窗口名字；给 2c 派工。
 
 ## 2026-11-03 晚 收工交接：前端主窗口 `今日前端主窗口-5c`[e44052]（家里电脑）
 > 逐条记录在下面「主窗口 5c 开工」节和置顶 73–77、51；Annie 原话都在置顶里。窗口：前端工作窗口 fa [985244]（固定检查端口 APP 3577 / MOCK 8977 / CDP 9577，worktree D:\npe-ops-frontend-wt-blank）；后端主窗口-9e（已收工）、后端 da、36。
@@ -959,6 +1001,25 @@ D. 已完成、待从置顶移走：
 - preview（工作窗口 fa [985244]，2026-11-03 晚，没写代码）：https://claude.ai/artifact/L7Ks8gymYvsd33Q9DuLGUr —— 设置键 ⚙ Colours & page、弹窗（Relay 1–6 / 每团 All buses + 字母 / Portrait·Landscape / Reset）、深紫对照 3 个浅紫候选、A4 横版、手机、How to use 原文；题 1–6 在页面最底（题 3：本窗口没 ops 登录，没查到生产是哪两张，推断是 Antelope 没填纸本色的车退回团色 #7a6ba8）。
 - 5c 派前端工作窗口 `npe-ops-frontend-fa`[985244] 做 preview（入口放 Relay list 页设置键；题 1 颜色范围、题 2 浅紫候选、题 3 哪一天），只做 preview 不写代码。
 
+### 80. 导游页从发出那刻就 live（2026-11-04，Annie 在主窗口-24 提，还没动手）
+- Annie 原话：「导游的页面从发出那刻就直接live吧，这样他们可以提前联系客人」。
+- 现状：guide_home.html 在当天之前（ahead）按钮 disabled + 半透明（preview 时也是），所以导游提前拿到链接也打不了电话、发不了短信。改的是后端模板 / 路由；ops 不用改。
+- 题（已在 24 回复里问 Annie）：A（推荐）发出后 Call / Text 马上能用（可以提前联系客人），Picked up / No show 仍只在当天能按（免得提前误按）；B 全部按钮发出后都能按。
+- 已转后端主窗口 94 评估；答了 + 「动手」由新主窗口转 94。也影响置顶 79 的 K1（按不了的按钮）范围。
+- **⚠️ 上面旧 A / B 作废，别再按旧题问（94 只读查过，已直接问 Annie，2026-11-04）**：① 导游打开明天的链接，客人 / 餐厅 Call 本来就是真 tel: 链接、不灰（guide_home.html:32-36，只 preview 里是灰 span）；② 只有 Boarded / No show、✎ Change、餐厅 Send message 提前灰、后端也只放当天（回 400）；③ 导游页本来没有给客人的 Text（G215 定 Messages 先不做），Text 是新功能；④ 导游页只开今天和明天；⑤ 司机页提前 Call 能用，Text 后端只放当天。
+  - 94 给 Annie 的新选项：**A 不改（推荐，Call 已能用）**；B 导游页新做给客人的 Text；C 三样当天动作也提前放开（不推荐）。她答了 94 转前端；ops 大概率不用改。
+- 79 手机司机 / 导游页白字：94 派后端 2e [3e65d0] 照 D1–D23 / G1–G15、K1–K3 做，SHA 到了 94 转来。
+
+### 79. 司机 / 导游页（手机页 + ops Live drivers）字一律白色（2026-11-04）
+- 09 出了 preview（等 Annie 确认 +「动手」）：https://claude.ai/artifact/8cWB8Ki2BdEttf49GXt4Pp —— 逐项清单（页面文字 + class / 行号）：司机页 D1–D23、导游页 G1–G15、ops Live drivers O1–O10 全改白 #fff；推荐只留灰 3 处：K1 按不了的键（还没到当天 / 预览 / ops 只读，本来半透明）、K2 还没 check in 的「–」占位、K3 没选中的页签 Routes / Messages。彩色字（琥珀时间酒店、绿 / 红状态、蓝电话和 BUS TOUR 标签）和白底气泡里的 GUEST 不动。
+  - 后端参考做法：base.html:17 的 --muted / --muted-2 改 #fff，再给 K2（.g-ci-t 没 done）、K3（.tab）单独写回 #94a3b8。模板行号按本机后端 7243a50f 读的。
+  - ops 那边已在 task/live-white-text **fc3883a** 改好（live-drivers.tsx 31 处改 text-white，留 :198 页签、:395 按不了的键、:561「–」），没合 main；tsc 0、eslint 0，**mt 还没跑**（合之前先合 main、跑 mt / nav + build）。
+- Annie 原话：「我对live 的司机和导游页面不满意的地方：除了故意设置成灰色的字，其他一律用白色--例如订单号和tour等，本来就是深色背景，现在天亮得晚，司机和导游很难辨认」。
+- 范围：手机司机页 / 导游页（后端模板 driver_home.html、guide_home.html）+ ops Morning tracking › Live drivers（前端 live-drivers.tsx）。
+- 先 preview：派 09 列出页面上所有灰字（订单号、tour 简写、地址、1 booking、Picked up 0/9、Not checked in、时间等），标出改白 / 保留灰（建议只留：按不了的按钮、「—」占位），并排对比，Annie 点头后后端改模板、前端改 Live drivers。已知会 37。
+
+- ✅ **Annie「改白色的事情，同意推荐。动手」（主窗口-24 原话，2026-11-04）**：全改白，只留 K1 / K2 / K3 灰。清单已发后端 94（改 driver_home.html / guide_home.html）；ops 派 2c 合 task/live-white-text fc3883a（先合 main 跑 mt / nav + build）。
+- ✅ **2c 合 main c41546a**（task/live-white-text fc3883a + 合 main 78fbd1e，只改 live-drivers.tsx）：检查 mt 247/247、nav 38/38；tsc 0、eslint 0 错（3 条旧 warning）、build 过。**Annie 验收**：ops Morning tracking › Live drivers —— 订单号、tour 简写、酒店 / 地址、人数、Picked up x/y、时间等原来灰的字都是白色；仍是灰的只有 K1 按不了的键（半透明）、K2 还没 check in 的「–」、K3 没选中的 Routes / Messages 页签；彩色字（琥珀 / 绿 / 红 / 蓝）不变。手机司机页 / 导游页等后端 94 改模板上线。
 ### 78. Live drivers 订单号旁加团简写（2026-11-04）—— ✅ Annie「动手」
 - ✅ 09 合 main（task/live-short-tag）：Morning tracking › Live drivers 每位客人订单号写成「A1001 · GC」（同司机手机页 `{{ order_number }} · {{ short_tag }}`），relay 段、团车段、导游 runs 都加；short_tag 空或缺只写单号。后端 37 说 /live-drivers 已带 short_tag，合了线上就能看到。检查：mt 247/247（新 1 条）、nav 38/38；tsc 0、eslint 0、build 过。
 - Annie 发 Live drivers 截图（订单号旁没简写），主窗口问「是否现在动手」，她答「动手」并确认是这件（不是 72）。同司机手机页 11/2 B5 / B6（后端 3e0ff83f）：订单号后「· short_tag」，只在设了 Bus Manifest setup Short name 时显示。
@@ -972,6 +1033,7 @@ D. 已完成、待从置顶移走：
   - How to use 加一条（原文）："Arrange seats lists each bus by hotel, A to Z, with the same hotel together. Click a hotel above a list to tick all its orders (click again to untick; you can pick several), then pick the bus under the lists and click Move selected orders."
   - 检查：da 501/501（新 11 条，模拟 ctl pillDemo）；tsc 0、eslint 0。
 
+- 09 做完酒店胶囊 + A–Z（task/seat-direction faca991，未合；preview 同链接 ①b）：每台车 / Not on a bus 各一排胶囊（「Wynn 2 orders · 4 pax」，没酒店的「No hotel」排最后）；按酒店名 A–Z、同酒店内按客人名；选中淡蓝底深蓝字；可跨车多选；Upper / Lower 筛选时只算筛出的；合作方只读不出胶囊；Completed 日照常。da 501/501。**等 Annie 看 ① ①b ② 三处点头**；Direction 列没后端键时不出，所以点头后可先合 main。
 ### 72. Dispatch 两台 bus 调位置：勾选框放大 + Auto 按南北分车（2026-11-03 晚，Annie 在主窗口提，附表）
 - Annie 原话：「前端要改一下，当有两台bus可以调位置的时候，勾选框太小了，把它放大跟main manifest里一样；另外Auto排进bus的时候按照这个规则：一台车放south，一台放north，中间的机动填位」。
 - 附表（Las Vegas 酒店分三色）：Blue: Northbound assist —— Plaza、Sahara、The STRAT、Westgate、Circus Circus、Wynn、Trump；Red: Neutral / Flexible —— MGM Grand、Virgin、Horseshoe、Bellagio、Treasure Island；Orange: Southbound assist —— Aria、Mandalay Bay、Excalibur、Park MGM、Resorts World。
