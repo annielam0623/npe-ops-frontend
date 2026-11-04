@@ -994,6 +994,9 @@ D. 已完成、待从置顶移走：
 - 5c 派前端工作窗口 `npe-ops-frontend-fa`[985244] 做 preview（入口放 Relay list 页设置键；题 1 颜色范围、题 2 浅紫候选、题 3 哪一天），只做 preview 不写代码。
 
 ### 79. 司机 / 导游页（手机页 + ops Live drivers）字一律白色（2026-11-04）
+- 09 出了 preview（等 Annie 确认 +「动手」）：https://claude.ai/artifact/8cWB8Ki2BdEttf49GXt4Pp —— 逐项清单（页面文字 + class / 行号）：司机页 D1–D23、导游页 G1–G15、ops Live drivers O1–O10 全改白 #fff；推荐只留灰 3 处：K1 按不了的键（还没到当天 / 预览 / ops 只读，本来半透明）、K2 还没 check in 的「–」占位、K3 没选中的页签 Routes / Messages。彩色字（琥珀时间酒店、绿 / 红状态、蓝电话和 BUS TOUR 标签）和白底气泡里的 GUEST 不动。
+  - 后端参考做法：base.html:17 的 --muted / --muted-2 改 #fff，再给 K2（.g-ci-t 没 done）、K3（.tab）单独写回 #94a3b8。模板行号按本机后端 7243a50f 读的。
+  - ops 那边已在 task/live-white-text **fc3883a** 改好（live-drivers.tsx 31 处改 text-white，留 :198 页签、:395 按不了的键、:561「–」），没合 main；tsc 0、eslint 0，**mt 还没跑**（合之前先合 main、跑 mt / nav + build）。
 - Annie 原话：「我对live 的司机和导游页面不满意的地方：除了故意设置成灰色的字，其他一律用白色--例如订单号和tour等，本来就是深色背景，现在天亮得晚，司机和导游很难辨认」。
 - 范围：手机司机页 / 导游页（后端模板 driver_home.html、guide_home.html）+ ops Morning tracking › Live drivers（前端 live-drivers.tsx）。
 - 先 preview：派 09 列出页面上所有灰字（订单号、tour 简写、地址、1 booking、Picked up 0/9、Not checked in、时间等），标出改白 / 保留灰（建议只留：按不了的按钮、「—」占位），并排对比，Annie 点头后后端改模板、前端改 Live drivers。已知会 37。
