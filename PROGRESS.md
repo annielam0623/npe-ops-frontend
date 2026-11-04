@@ -1041,6 +1041,7 @@ D. 已完成、待从置顶移走：
     - Q6 HR 的人看不看快照：A（推荐）📷 只给同时能看 Live drivers 的人；B 能看 HR 的都能看（后端多认 settings.hr.view）。
     - Q7 How to use：A（推荐）「Working Record: what each driver and guide did each day, for payroll. …」（全文见 preview）；B 她改字。
     - 要后端（已转 94）：field-calendar 不带 hr_id = 所有能看的人（或另一个列表接口），每人带 hr_id / name / HR position。前端约 2 天。
+    - **Annie 答 Q5：「B」「是工资」** ⇒ 要 Hours（几点上班、几点下班，按小时算工资）。要先定时间从哪来：司机 = 计工资的 check in / check out（94 在问她是哪个系统）；导游 = 2c 已问（团的排定时间 / 导游页打卡 / 别的）。已转 94。其余 Q1–Q4、Q6、Q7 未答，未动手。
 - G212 Team 页前端派 c8（task/g212-team-hierarchy），等后端 SHA。
 
 ### 85. Staff Schedule 班次类型（Open / Mid / Close）可手动新增（2026-11-04，Annie 在主窗口-2c 提，附排班格截图，没动手）
