@@ -8,6 +8,8 @@ import { describeError, isStatus } from "@/lib/api-errors";
 import {
   addRosterPerson,
   phoneDigits,
+  type RosterEditResult,
+  updateRosterPerson,
   type Roster,
   type RosterPerson,
 } from "@/lib/dispatch-roster-api";
@@ -24,6 +26,25 @@ import {
 
 type Side = "driver" | "guide";
 
+/** 正在改的那一行（一次只改一行；Driver + Guide 的人只在点了 Edit 的那一边出输入框）。 */
+interface EditDraft {
+  side: Side;
+  person: RosterPerson;
+  name: string;
+  phone: string;
+  error: string | null;
+  /** 电话和别人重复（电话框标红）。 */
+  dup: boolean;
+}
+
+function draftDirty(d: EditDraft | null): boolean {
+  return (
+    !!d &&
+    (d.name.trim() !== d.person.name ||
+      d.phone.trim() !== (d.person.phone ?? ""))
+  );
+}
+
 const byName = (a: RosterPerson, b: RosterPerson) =>
   a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
 
@@ -36,12 +57,18 @@ const byName = (a: RosterPerson, b: RosterPerson) =>
 export function RosterDialog({
   roster,
   canAdd,
+  canEdit = false,
   onClose,
   onAdded,
+  onEdited,
   onUnauthorized,
 }: {
   roster: Roster;
   canAdd: boolean;
+  /** 名单能改（后端 can_edit 且有 dispatch.edit）：每行一个 Edit。 */
+  canEdit?: boolean;
+  /** 改好了：排车页把新名字 / 电话换进自己的名单和下拉。 */
+  onEdited?: (person: RosterEditResult) => void;
   onClose: () => void;
   /** 存好了：排车页把这个人加进自己的司机 / 导游名单（不重读这一天）。 */
   onAdded: (person: RosterPerson, side: Side) => void;
@@ -53,6 +80,70 @@ export function RosterDialog({
   /** 电话重复时，名单里已有的那个号码（只比数字），两边都标黄。 */
   const [dupPhone, setDupPhone] = useState<string | null>(null);
   const [added, setAdded] = useState<ReadonlySet<number>>(new Set());
+  const [draft, setDraft] = useState<EditDraft | null>(null);
+  /** 有没存的改动时点了别的 Edit / Close：先问。 */
+  const [ask, setAsk] = useState<
+    | { kind: "switch"; side: Side; person: RosterPerson }
+    | { kind: "close" }
+    | null
+  >(null);
+  /** 改好的人（标绿「✓ Saved」）和加进 Other spellings 的旧名字。 */
+  const [saved, setSaved] = useState<ReadonlyMap<number, string | null>>(
+    new Map(),
+  );
+
+  function startEdit(side: Side, person: RosterPerson) {
+    if (draftDirty(draft) && draft?.person.id !== person.id) {
+      setAsk({ kind: "switch", side, person });
+      return;
+    }
+    setAsk(null);
+    setOpen(null);
+    setDraft({
+      side,
+      person,
+      name: person.name,
+      phone: person.phone ?? "",
+      error: null,
+      dup: false,
+    });
+  }
+
+  function close() {
+    if (busy) return;
+    if (draftDirty(draft)) setAsk({ kind: "close" });
+    else onClose();
+  }
+
+  async function saveEdit() {
+    if (!draft || busy) return;
+    const name = draft.name.trim();
+    const phone = draft.phone.trim();
+    setBusy(true);
+    setDupPhone(null);
+    try {
+      const result = await updateRosterPerson(draft.person.id, { name, phone });
+      setSaved((m) => new Map(m).set(result.id, result.old_name_added ?? null));
+      setDraft(null);
+      setAsk(null);
+      onEdited?.(result);
+    } catch (e) {
+      if (isStatus(e, 401)) {
+        onUnauthorized();
+        return;
+      }
+      const dup = isStatus(e, 409);
+      if (dup) setDupPhone(phoneDigits(phone));
+      const error = isStatus(e, 403)
+        ? "Your account can't change people here. Nothing was changed."
+        : e instanceof TypeError
+          ? "Could not reach the server. Nothing was changed - try again."
+          : describeError(e);
+      setDraft((d) => (d ? { ...d, error, dup } : d));
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function save(
     side: Side,
@@ -86,7 +177,7 @@ export function RosterDialog({
   return (
     <Modal
       titleId={titleId}
-      onDismiss={busy ? undefined : onClose}
+      onDismiss={busy ? undefined : close}
       panelClassName="max-w-[960px] max-h-[92vh] overflow-y-auto text-[#111827]"
     >
       <div
@@ -106,7 +197,7 @@ export function RosterDialog({
           <VisibilityControl pageKey="dispatch_roster" tone="light" />
           <button
             type="button"
-            onClick={onClose}
+            onClick={close}
             disabled={busy}
             className={TM_BTN}
           >
@@ -114,6 +205,13 @@ export function RosterDialog({
           </button>
         </div>
       </div>
+      {ask?.kind === "close" && draft ? (
+        <AskBar
+          text={`Close without saving your changes to ${draft.person.name}?`}
+          onKeep={() => setAsk(null)}
+          onDiscard={onClose}
+        />
+      ) : null}
       <details className={cn(HOWTO, "mx-[18px] mt-3 max-w-none")}>
         <summary className={HOWTO_SUMMARY}>
           📖 How to use — Drivers &amp; guides
@@ -136,9 +234,18 @@ export function RosterDialog({
             person is already in the system. Find them in the list instead of
             adding them again.
           </li>
+          {canEdit ? (
+            <li>
+              To fix a name or phone number, click Edit on that row, change it,
+              then click Save. The new name or number shows on Dispatch right
+              away. Other details (licence, position) are in Settings › Human
+              Resource.
+            </li>
+          ) : null}
           <li>
-            To change or remove a person, or to fill in licence and other
-            details, ask an admin in Settings › Human Resource.
+            To {canEdit ? "" : "change or "}remove a person, or to fill in
+            licence and other details, ask an admin in Settings › Human
+            Resource.
           </li>
         </ol>
       </details>
@@ -164,6 +271,37 @@ export function RosterDialog({
               setOpen(null);
             }}
             onSave={(name, phone) => save(side, name, phone)}
+            canEdit={canEdit}
+            draft={draft?.side === side ? draft : null}
+            ask={ask?.kind === "switch" ? ask : null}
+            saved={saved}
+            onStartEdit={(p) => startEdit(side, p)}
+            onDraft={(patch) =>
+              setDraft((d) =>
+                d ? { ...d, ...patch, error: null, dup: false } : d,
+              )
+            }
+            onSaveEdit={() => void saveEdit()}
+            onCancelEdit={() => {
+              setDraft(null);
+              setAsk(null);
+              setDupPhone(null);
+            }}
+            onKeepEditing={() => setAsk(null)}
+            onDiscardSwitch={() => {
+              if (ask?.kind !== "switch") return;
+              const next = ask;
+              setAsk(null);
+              setDupPhone(null);
+              setDraft({
+                side: next.side,
+                person: next.person,
+                name: next.person.name,
+                phone: next.person.phone ?? "",
+                error: null,
+                dup: false,
+              });
+            }}
           />
         ))}
       </div>
@@ -182,7 +320,27 @@ function Column({
   onOpen,
   onCancel,
   onSave,
+  canEdit,
+  draft,
+  ask,
+  saved,
+  onStartEdit,
+  onDraft,
+  onSaveEdit,
+  onCancelEdit,
+  onKeepEditing,
+  onDiscardSwitch,
 }: {
+  canEdit: boolean;
+  draft: EditDraft | null;
+  ask: { side: Side; person: RosterPerson } | null;
+  saved: ReadonlyMap<number, string | null>;
+  onStartEdit: (person: RosterPerson) => void;
+  onDraft: (patch: { name?: string; phone?: string }) => void;
+  onSaveEdit: () => void;
+  onCancelEdit: () => void;
+  onKeepEditing: () => void;
+  onDiscardSwitch: () => void;
   side: Side;
   people: RosterPerson[];
   canAdd: boolean;
@@ -241,20 +399,47 @@ function Column({
             <tr>
               <th className={cn(TH, "py-1.5")}>Name</th>
               <th className={cn(TH, "py-1.5")}>Phone</th>
+              {canEdit ? (
+                <th className={cn(TH, "w-[1%] py-1.5")}>
+                  <span className="sr-only">Edit</span>
+                </th>
+              ) : null}
             </tr>
           </thead>
           <tbody>
             {people.map((p) => {
               const isNew = added.has(p.id);
               const isDup = !!dupPhone && phoneDigits(p.phone) === dupPhone;
+              if (draft?.person.id === p.id) {
+                return (
+                  <EditRows
+                    key={p.id}
+                    draft={draft}
+                    busy={busy}
+                    ask={ask}
+                    onDraft={onDraft}
+                    onSave={onSaveEdit}
+                    onCancel={onCancelEdit}
+                    onKeep={onKeepEditing}
+                    onDiscard={onDiscardSwitch}
+                  />
+                );
+              }
+              const wasSaved = saved.has(p.id);
+              const oldName = saved.get(p.id) ?? null;
               return (
                 <tr
                   key={p.id}
                   data-roster-person={p.id}
                   data-dup={isDup || undefined}
                   data-added={isNew || undefined}
+                  data-saved={wasSaved || undefined}
                   className={cn(
-                    isDup ? "bg-[#fff4d6]" : isNew ? "bg-[#eef9f1]" : "",
+                    isDup
+                      ? "bg-[#fff4d6]"
+                      : isNew || wasSaved
+                        ? "bg-[#eef9f1]"
+                        : "",
                   )}
                 >
                   <td className={cn(TD, "px-2.5 py-[7px]")}>
@@ -269,6 +454,19 @@ function Column({
                         ✓ Added
                       </span>
                     ) : null}
+                    {wasSaved ? (
+                      <span className="ml-1.5 text-[10.5px] font-bold text-[#1e6b43]">
+                        ✓ Saved
+                      </span>
+                    ) : null}
+                    {oldName ? (
+                      <span
+                        data-roster-old-name
+                        className="mt-0.5 block text-[11.5px] text-[#1e6b43]"
+                      >
+                        The old name {oldName} was added to Other spellings.
+                      </span>
+                    ) : null}
                   </td>
                   <td
                     className={cn(
@@ -278,13 +476,26 @@ function Column({
                   >
                     {p.phone || "—"}
                   </td>
+                  {canEdit ? (
+                    <td className={cn(TD, "px-2.5 py-[7px] text-right")}>
+                      <button
+                        type="button"
+                        data-roster-edit={p.id}
+                        onClick={() => onStartEdit(p)}
+                        disabled={busy}
+                        className={cn(TM_BTN, "h-7 px-2.5 text-[12px]")}
+                      >
+                        Edit
+                      </button>
+                    </td>
+                  ) : null}
                 </tr>
               );
             })}
             {!people.length ? (
               <tr>
                 <td
-                  colSpan={2}
+                  colSpan={canEdit ? 3 : 2}
                   className={cn(TD, "px-2.5 py-3 text-center text-[#6b7280]")}
                 >
                   No {title.toLowerCase()} yet.
@@ -295,6 +506,159 @@ function Column({
         </table>
       </div>
     </section>
+  );
+}
+
+function AskBar({
+  text,
+  onKeep,
+  onDiscard,
+}: {
+  text: string;
+  onKeep: () => void;
+  onDiscard: () => void;
+}) {
+  return (
+    <div
+      role="alert"
+      data-roster-ask
+      className="mx-[18px] mt-3 flex flex-wrap items-center gap-2 rounded-[7px] bg-[#fdf1dd] px-3 py-2 text-[12.5px] text-[#8a5a00]"
+    >
+      <span className="mr-auto">{text}</span>
+      <button type="button" onClick={onKeep} className={TM_BTN}>
+        Keep editing
+      </button>
+      <button
+        type="button"
+        onClick={onDiscard}
+        className={cn(TM_BTN, "border-[#e6b4b0] text-[#b3261e]")}
+      >
+        Discard
+      </button>
+    </div>
+  );
+}
+
+/** 正在改的那一行：名字、电话两个框 + 蓝色 Save（点了就存）/ Cancel；出错时下面一行红字。 */
+function EditRows({
+  draft,
+  busy,
+  ask,
+  onDraft,
+  onSave,
+  onCancel,
+  onKeep,
+  onDiscard,
+}: {
+  draft: EditDraft;
+  busy: boolean;
+  ask: { side: Side; person: RosterPerson } | null;
+  onDraft: (patch: { name?: string; phone?: string }) => void;
+  onSave: () => void;
+  onCancel: () => void;
+  onKeep: () => void;
+  onDiscard: () => void;
+}) {
+  const INPUT =
+    "h-8 w-full min-w-0 rounded-[7px] border border-[#cbd2dc] bg-white px-2.5 text-[13px] text-[#111827]";
+  const canSave = !!draft.name.trim() && !!draft.phone.trim();
+  return (
+    <>
+      <tr data-roster-editing={draft.person.id} className="bg-[#f6f8f6]">
+        <td className={cn(TD, "px-2.5 py-[6px]")}>
+          <input
+            aria-label="Name"
+            data-roster-edit-name
+            autoFocus
+            value={draft.name}
+            maxLength={120}
+            disabled={busy}
+            onChange={(e) => onDraft({ name: e.target.value })}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && canSave) onSave();
+            }}
+            className={INPUT}
+          />
+        </td>
+        <td className={cn(TD, "px-2.5 py-[6px]")}>
+          <input
+            aria-label="Phone"
+            data-roster-edit-phone
+            inputMode="tel"
+            value={draft.phone}
+            maxLength={40}
+            disabled={busy}
+            aria-invalid={draft.dup || undefined}
+            onChange={(e) => onDraft({ phone: e.target.value })}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && canSave) onSave();
+            }}
+            className={cn(
+              INPUT,
+              draft.dup && "border-[#b3261e] shadow-[inset_0_0_0_1px_#b3261e]",
+            )}
+          />
+        </td>
+        <td className={cn(TD, "px-2.5 py-[6px] text-right whitespace-nowrap")}>
+          {/* 蓝色只给提交键（Annie 2026-10-11）：点了就直接存进系统。 */}
+          <button
+            type="button"
+            data-roster-edit-save
+            onClick={onSave}
+            disabled={busy || !canSave}
+            className="mr-1 h-7 rounded-[8px] border border-[#3b82f6] bg-[#3b82f6] px-3 text-[12px] font-semibold text-white hover:bg-[#2f76e8] disabled:cursor-not-allowed disabled:opacity-45"
+          >
+            {busy ? "Saving…" : "Save"}
+          </button>
+          <button
+            type="button"
+            data-roster-edit-cancel
+            onClick={onCancel}
+            disabled={busy}
+            className={cn(TM_BTN, "h-7 px-2.5 text-[12px]")}
+          >
+            Cancel
+          </button>
+        </td>
+      </tr>
+      {draft.error ? (
+        <tr className="bg-[#f6f8f6]">
+          <td
+            colSpan={3}
+            role="alert"
+            data-roster-edit-error
+            className="px-2.5 pb-2 text-[12px] font-semibold text-[#b3261e]"
+          >
+            {draft.error}
+          </td>
+        </tr>
+      ) : null}
+      {ask ? (
+        <tr>
+          <td colSpan={3} className="p-0">
+            <div
+              role="alert"
+              data-roster-ask
+              className="my-1 flex flex-wrap items-center gap-2 rounded-[7px] bg-[#fdf1dd] px-3 py-2 text-[12.5px] text-[#8a5a00]"
+            >
+              <span className="mr-auto">
+                Discard your changes to {draft.person.name}?
+              </span>
+              <button type="button" onClick={onKeep} className={TM_BTN}>
+                Keep editing
+              </button>
+              <button
+                type="button"
+                onClick={onDiscard}
+                className={cn(TM_BTN, "border-[#e6b4b0] text-[#b3261e]")}
+              >
+                Discard
+              </button>
+            </div>
+          </td>
+        </tr>
+      ) : null}
+    </>
   );
 }
 

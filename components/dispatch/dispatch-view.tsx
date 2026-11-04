@@ -463,6 +463,31 @@ export function DispatchView() {
     });
   }
 
+  /** 名单里改了名字 / 电话：这一页的名单和司机 / 导游下拉马上换成新名字（不重读这一天）。 */
+  function rosterEdited(p: RosterPerson) {
+    const swap = <T extends { id: number; name: string }>(list: T[]) =>
+      list.map((x) =>
+        x.id === p.id ? { ...x, name: p.name, phone: p.phone } : x,
+      );
+    setRoster((r) =>
+      r ? { ...r, drivers: swap(r.drivers), guides: swap(r.guides) } : r,
+    );
+    setDay((d) => {
+      if (!d) return d;
+      return {
+        ...d,
+        drivers: d.drivers.map((x) =>
+          x.id === p.id
+            ? { ...x, name: p.name, initials: initialsOf(p.name) }
+            : x,
+        ),
+        guides: d.guides.map((x) =>
+          x.id === p.id ? { ...x, name: p.name } : x,
+        ),
+      };
+    });
+  }
+
   const L = useMemo(() => (day ? makeLookup(day) : null), [day]);
   const analysis = useMemo(
     () =>
@@ -2785,8 +2810,10 @@ export function DispatchView() {
           <RosterDialog
             roster={roster}
             canAdd={canAddRoster}
+            canEdit={canAddRoster && roster.can_edit === true}
             onClose={() => setRosterOpen(false)}
             onAdded={rosterAdded}
+            onEdited={rosterEdited}
             onUnauthorized={redirectToLogin}
           />
         ) : null}

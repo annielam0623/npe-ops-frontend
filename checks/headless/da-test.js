@@ -1904,6 +1904,61 @@ async function run() {
     await sleep(500);
     await ctl({ partner: false, partnerPerms: null, roster: "off", rosterVis: null });
 
+    // ── 名单编辑（Annie 2026-11-03「Dispatch名单编辑-动手」，题 1–4 按推荐 A）──
+    {
+      const edBtn = (k, id) => `${side(k)}.querySelector('[data-roster-edit="${id}"]')`;
+      const isPut = (e) => /^\/api\/dispatch\/roster\/\d+$/.test(e.path) && e.method === "PUT";
+      await ctl({ roster: "on", rosterVis: "staff", rosterEdit: false });
+      await openDispatch(`${rosterBtn}`);
+      await evaluate(`${rosterBtn}.click();`);
+      await waitFor(`${side("driver")}`);
+      check("名单编辑：后端还没有 can_edit ⇒ 不出 Edit 键", await evaluate("return !document.querySelector('[data-roster-edit]');"));
+      await closeRoster();
+      await ctl({ rosterEdit: true });
+      await openDispatch(`${rosterBtn}`);
+      await evaluate(`${rosterBtn}.click();`);
+      await waitFor(`${edBtn("driver", 2)}`);
+      check("名单编辑：can_edit ⇒ 每行一个 Edit（两边都有）、How to use 加了一条", await evaluate(`return !!${edBtn("driver", 1)} && !!${edBtn("guide", 6)} && document.querySelector('[data-roster]').closest('[role=dialog]').textContent.includes('To fix a name or phone number, click Edit on that row');`));
+      // 电话重复：409 原话红字，这一行不关
+      let b = (await mockLog()).length;
+      await evaluate(`${edBtn("guide", 6)}.click();`);
+      await waitFor(`${side("guide")}.querySelector('[data-roster-edit-phone]')`);
+      check("名单编辑：点 Edit ⇒ 这一行变成名字 + 电话两个框，带原值", await evaluate(`return ${side("guide")}.querySelector('[data-roster-edit-name]').value === 'PAM' && ${side("guide")}.querySelector('[data-roster-edit-phone]').value === '(702) 555-0144';`));
+      await evaluate(`$setValue(${side("guide")}.querySelector('[data-roster-edit-phone]'), '(702) 555-0101');`);
+      await sleep(100);
+      await evaluate(`${side("guide")}.querySelector('[data-roster-edit-save]').click();`);
+      await waitFor(`${side("guide")}.querySelector('[data-roster-edit-error]')`);
+      check("名单编辑：电话已是别人的 ⇒ 红字后端原话、电话框红、这一行还开着", await evaluate(`return ${side("guide")}.querySelector('[data-roster-edit-error]').textContent.includes('This phone number is already on the list') && ${side("guide")}.querySelector('[data-roster-edit-phone]').getAttribute('aria-invalid') === 'true';`));
+      // 有改动时点别的 Edit ⇒ 先问
+      await evaluate(`${edBtn("driver", 1)}.click();`);
+      check("名单编辑：没存时点别的 Edit ⇒ 先问 Discard your changes to PAM?", await waitFor(`${side("guide")}.querySelector('[data-roster-ask]')?.textContent.includes('Discard your changes to PAM?')`));
+      await evaluate(`[...${side("guide")}.querySelectorAll('[data-roster-ask] button')].find((x) => x.textContent === 'Keep editing').click();`);
+      // 有改动时关窗 ⇒ 先问
+      await evaluate("[...document.querySelectorAll('[role=dialog] button')].find((x) => x.textContent === 'Close').click();");
+      check("名单编辑：没存时 Close ⇒ 先问 Close without saving your changes to PAM?", await waitFor("document.querySelector('[data-roster-ask]')?.textContent.includes('Close without saving your changes to PAM?')"));
+      await evaluate("[...document.querySelector('[data-roster-ask]').querySelectorAll('button')].find((x) => x.textContent === 'Keep editing').click();");
+      await evaluate(`${side("guide")}.querySelector('[data-roster-edit-cancel]').click();`);
+      await waitFor(`!${side("guide")}.querySelector('[data-roster-edit-phone]')`);
+      // 改名（Driver + Guide 的 GIA）：存好标绿、提示旧名字进了 Other spellings；排车下拉马上换名字
+      b = (await mockLog()).length;
+      await evaluate(`${edBtn("driver", 2)}.click();`);
+      await waitFor(`${side("driver")}.querySelector('[data-roster-edit-name]')`);
+      check("名单编辑：Driver + Guide 的人只在点了的那一边出输入框", await evaluate(`return !${side("guide")}.querySelector('[data-roster-edit-name]');`));
+      await evaluate(`$setValue(${side("driver")}.querySelector('[data-roster-edit-name]'), 'GIA M');`);
+      await sleep(100);
+      await evaluate(`${side("driver")}.querySelector('[data-roster-edit-save]').click();`);
+      await waitFor(`${side("driver")}.querySelector('[data-roster-person="2"][data-saved]')`);
+      const puts = await since(b, isPut);
+      check("名单编辑：PUT /api/dispatch/roster/2 带 {name, phone}", puts.length === 1 && puts[0].path === "/api/dispatch/roster/2" && JSON.stringify(puts[0].body) === JSON.stringify({ name: "GIA M", phone: "(702) 555-0117" }), JSON.stringify(puts));
+      check("名单编辑：存好 ⇒ 绿底 ✓ Saved、写着 The old name GIA was added to Other spellings.", await evaluate(`const r = ${side("driver")}.querySelector('[data-roster-person="2"]'); return r.textContent.includes('GIA M') && r.textContent.includes('✓ Saved') && r.querySelector('[data-roster-old-name]')?.textContent === 'The old name GIA was added to Other spellings.';`));
+      check("名单编辑：Guides 那边同一个人也换成新名字", await evaluate(`return ${side("guide")}.querySelector('[data-roster-person="2"]').textContent.includes('GIA M');`));
+      await closeRoster();
+      check("名单编辑：排车页司机下拉马上是新名字（没重读这一天）", await evaluate("return [...document.querySelectorAll('select[aria-label=Driver] option')].some((o) => o.textContent.trim().startsWith('GIA M'));"));
+      check("名单编辑：没有重读这一天", (await since(b, (e) => e.path.startsWith("/api/dispatch/day"))).length === 0);
+      await ctl({ rosterEdit: false, roster: "off", rosterVis: null });
+    }
+
+
     // ── G203 第四批：页面最底的 Action Log（/api/dispatch/action-log?date=，dispatch.edit）──
     await openDispatch();
     {
@@ -1933,7 +1988,7 @@ async function run() {
     }
   }
 
-  // ── partner（CCL）没勾 dispatch.edit（勾了 dispatch.send 也不算）：只看，不请求写接口和 Farm out 接口 ──
+     // ── partner（CCL）没勾 dispatch.edit（勾了 dispatch.send 也不算）：只看，不请求写接口和 Farm out 接口 ──
   // 先离开上一个（员工）页面、等它放开编辑锁（keepalive release），免得记到 partner 头上。
   await goto("about:blank");
   await sleep(800);

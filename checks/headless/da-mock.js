@@ -137,7 +137,22 @@ const drivers = [
 // ctl.rosterVis = 开关 dispatch_roster 的档（null = 没登记）；ctl.rosterPost403 = POST 403。新加的人不进 day() 的下拉（证明页面自己加）。
 const PHONES = { 1: "(702) 555-0101", 2: "(702) 555-0117", 3: null, 4: "(725) 555-0122", 5: "(702) 555-0135", 6: "(702) 555-0144" };
 const rosterExtra = [];
+// 名单编辑（Annie 2026-11-03「Dispatch名单编辑-动手」）：ctl.rosterEdit = true ⇒ GET 带 can_edit、有 PUT /api/dispatch/roster/{id}。
+// 改过的名字 / 电话只进名单，不进 day()（证明排车页自己换名字）。
+const rosterEdits = {};
+function applyRosterEdit(p) {
+  const e = rosterEdits[p.id];
+  return e ? { ...p, ...e } : p;
+}
 function roster() {
+  const base = rosterBase();
+  return {
+    drivers: base.drivers.map(applyRosterEdit),
+    guides: base.guides.map(applyRosterEdit),
+    ...(ctl.rosterEdit ? { can_edit: true } : {}),
+  };
+}
+function rosterBase() {
   const ds = drivers.map((d) => ({ id: d.id, name: d.name, phone: PHONES[d.id], type: d.position === "both" ? "both" : "driver" }));
   const gs = [{ id: 2, name: "GIA", phone: PHONES[2], type: "both" }, { id: 6, name: "PAM", phone: PHONES[6], type: "guide" }];
   return { drivers: [...ds, ...rosterExtra.filter((p) => p.type === "driver")], guides: [...gs, ...rosterExtra.filter((p) => p.type === "guide")] };
@@ -291,6 +306,24 @@ http.createServer(async (req, res) => {
       ...(ctl.foVis ? [{ key: "farm_out_dispatch", label: "Dispatch · Farm out", visibility: ctl.foVis, default: "super_admin_only", visible_to_me: ctl.foVis !== "super_admin_only" }] : []),
       ...(ctl.rosterVis ? [{ key: "dispatch_roster", label: "Dispatch: driver / guide roster", visibility: ctl.rosterVis, default: "super_admin_only", visible_to_me: ctl.rosterVis !== "super_admin_only" }] : []),
     ] });
+  }
+  const rm = /^\/api\/dispatch\/roster\/(\d+)$/.exec(p);
+  if (rm && ctl.roster === "on" && ctl.rosterEdit && req.method === "PUT") {
+    const b = JSON.parse(await readRaw(req)); entry.body = b;
+    const id = Number(rm[1]);
+    const r = roster();
+    const all = [...r.drivers, ...r.guides];
+    const me = all.find((x) => x.id === id);
+    if (!me) return send(res, 404, { detail: "That person is no longer on the list." });
+    const digits = String(b.phone || "").replace(/\D/g, "");
+    if (!String(b.name || "").trim()) return send(res, 400, { detail: "Type a name." });
+    if (digits.length < 7 || digits.length > 15) return send(res, 400, { detail: "The phone number needs 7 to 15 digits." });
+    const dup = all.find((x) => x.id !== id && String(x.phone || "").replace(/\D/g, "") === digits);
+    if (dup) return send(res, 409, { detail: `This phone number is already on the list (${dup.name}).` });
+    const name = b.name.trim();
+    const oldName = me.name !== name ? me.name : null;
+    rosterEdits[id] = { name, phone: b.phone.trim() };
+    return send(res, 200, { id, name, phone: b.phone.trim(), type: me.type, old_name_added: oldName });
   }
   if (p === "/api/dispatch/roster") {
     if (ctl.roster !== "on" && ctl.roster !== "403") return send(res, 404, { detail: "Not Found" });
