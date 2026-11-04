@@ -974,6 +974,8 @@ D. 已完成、待从置顶移走：
   - Q4 自动发送跳过要不要在 ops 列出：A（推荐）不另列，Auto Send 页说明加半句「Orders whose Cfm # doesn't match the product are skipped too; each one is emailed to the summary list once.」；B 每轮下逐单列 Skipped（要后端另给接口）。
   - 另问：提醒邮件收件人用 Auto Send 门票汇总那组（94 方案 A）。
   - 前端工时定了后约 2–3 小时（含 man 套）。
+- **Annie 答（原话）**：「CFM #  Q1 C  Q2 A  Q3 不应该是how to use，是在鼠标停上去的时候把这段话显示出来，然后简短一点，总的目的就是告诉它这个不是这个产品的cfm# format，去rezdy里头改」⇒ Q1 **C** 红底白字；Q2 **A** 能勾、Send reminder 红条逐单写原因、不能 Send anyway、黄字加半句；Q3 不放 How to use，改成鼠标停在红格上的短提示，意思「这不是这个产品的 Cfm #，去 Rezdy 改」。2c 拟稿（等 Annie 确认原文）：「Wrong Cfm # for this product — Rezdy has it under Antelope Canyon X Confirmation #: 387826855. Fix it in Rezdy.」。Q4、Q5 还没答；**还没「动手」**。
+- ⚠️ 要问 94：Annie 说「去 rezdy里头改」，后端现在是 staff 在 Manifests 填 Cfm # 后红标消失。在 Rezdy 改好后，下次同步红标会不会自己消失？手机没鼠标时提示怎么看（81 原 A 方案有一直显示的小红字，C 没有）。
 
 ### 81. ~~Bus Manifest~~ **Relay list 打印页**每页页脚标「n of n」（2026-11-04，Annie 在主窗口-2c 提，没动手）
 - 原话：「G236 Bus Manifest 照纸本 --- 把每页的页脚标上页数 n of n，提醒staff后面还有页面」。
