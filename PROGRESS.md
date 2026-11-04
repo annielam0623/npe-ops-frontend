@@ -824,6 +824,7 @@
 - 现状：页面已有——ops Settings › Quick replies（app/settings/quick-replies，admin / superadmin 能增删改、排序、开关）；司机页 Messages 里点一下就发给客人，司机不能自己打字。后端规则：每条 ≤80 字、不能有花括号（没有占位符，原样发出）、只能用短信能发的字符。现有几条我们看不到（没登录）。
 - 5c 起了一份 13 条英文草稿发 Annie 改；定稿后由 Annie（admin）自己在 Settings › Quick replies 加——是生产数据，前端窗口不代填。
 - Annie（原话）：「不如放在content studio」⇒ 把 Settings › Driver Quick Replies 的管理搬进 Content Studio（Team Messages 卡加一个「Driver Quick Replies」标签页，接口照旧 /api/driver-quick-replies，只前端改）。5c 问：旧页面去掉、旧网址跳 Content Studio（推荐）还是两处都留。是页面调整 ⇒ 先 preview（排 fa），还没「动手」。
+- fa preview：https://claude.ai/artifact/Q5XYrpnniHcacr6pskveXP （3 题：旧页去掉跳转 / 排序拖拽暂存 + Save order / Action Log 放标签下，都推荐 A；How to use 5 句），已整段转 Annie。13 句草稿只是样稿数据。
 
 ### 76. 测 11/4 司机 / 导游链接和页面上的 SMS / 电话键（2026-11-03 晚，Annie 在主窗口 5c 提）
 - 原话：「我需要你测试一下明天各个司机和导游的链接是否真的有效，他们的sms和电话键是否真能work」
