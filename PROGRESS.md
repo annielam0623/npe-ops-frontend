@@ -1126,6 +1126,7 @@ pe-ops-wt-login-default`，mock，**没合 main，等后端 57 的 logged_in_at 
   - 94 回：Rezdy 改后会不会自己消红交 f4 用代码 + 生产数据只读核，结论到了转来；提醒邮件收件人（Q5：A 用 Auto Send 现有两个汇总邮箱 / B 新加一栏只放 antelope@）94 自己问 Annie，前端不再问。Q4（ops 上要不要另列 Skipped）仍是前端的题。
   - **Annie 原话**：「不需要每一单发一份邮件，我们只需要每次发送发一份就好了，把有问题没发送的集中在一起就可以了」⇒ 自动发送每一轮发一封，集中列这一轮因 Cfm # 不符没发的单（不是每单一封）。已转 94。前端 Auto Send 说明半句跟着改成「Orders whose Cfm # doesn't match the product are skipped and listed together in one email after each run.」（Q4 A 时用）。
   - 94 / f4 查完（代码 + 生产只读）：**在 Rezdy 改好红标自己消失，后端不用改**——Rezdy 改字段推 webhook、整单重写，cfm_mismatch 每次开页 / 发送现场算，推到即变（近 30 天 booking_updated 26,373 次）。号挪到对的栏 ⇒ 消红能发；只删 X 栏、Antelope 栏空 ⇒ 消红变 No Cfm #（软拦，可 Send anyway）；在 Manifests 直接填 Cfm # ⇒ 当场消、能发。邮件改成每轮最多一封、没有就不发；每日汇总照旧带此原因；收件人等 Annie 答 94。
+- ✅ **Annie「羚羊谷，请动手」（原话，2026-11-04）** ⇒ 定稿：Q1 C（Cfm # (Rezdy) 那格红底白字）；Q2 A（能勾、Send reminder 红条逐单写原因、不能 Send anyway、黄字加半句）；Q3 不放 How to use，改鼠标停上去的短提示，用 2c 拟稿「Wrong Cfm # for this product — Rezdy has it under <other_label>: <other_value>. Fix it in Rezdy.」（她没另改，按推荐）；手机点红格弹同一句（推荐 A）；Q4 A（ops 不另列，Auto Send 说明加「Orders whose Cfm # doesn't match the product are skipped and listed together in one email after each run.」）。派 81（task/g245-cfm-mismatch，先于 Working Record），后端 f4 正在落地。
 
 ### 81. ~~Bus Manifest~~ **Relay list 打印页**每页页脚标「n of n」（2026-11-04，Annie 在主窗口-2c 提，没动手）
 - 原话：「G236 Bus Manifest 照纸本 --- 把每页的页脚标上页数 n of n，提醒staff后面还有页面」。
