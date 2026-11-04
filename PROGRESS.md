@@ -962,6 +962,7 @@ D. 已完成、待从置顶移走：
 ### 78. Live drivers 订单号旁加团简写（2026-11-04）—— ✅ Annie「动手」
 - Annie 发 Live drivers 截图（订单号旁没简写），主窗口问「是否现在动手」，她答「动手」并确认是这件（不是 72）。同司机手机页 11/2 B5 / B6（后端 3e0ff83f）：订单号后「· short_tag」，只在设了 Bus Manifest setup Short name 时显示。
 - 后端：/live-drivers 客人带 short_tag（relay、团车、导游 runs），已转 37。前端：09 task/live-short-tag，没键不显示可先合。
+- 37 核过：/live-drivers 已带 short_tag（团车段 _driver_day_context → _safe_tag；relay 段 print_extras fallback=False；导游 runs _tag_runs），后端不用改；读简称出错时字段缺，前端按缺 = 空。纯前端，09 做完合 main 线上即见。
 
 ### 72. Dispatch 两台 bus 调位置：勾选框放大 + Auto 按南北分车（2026-11-03 晚，Annie 在主窗口提，附表）
 - Annie 原话：「前端要改一下，当有两台bus可以调位置的时候，勾选框太小了，把它放大跟main manifest里一样；另外Auto排进bus的时候按照这个规则：一台车放south，一台放north，中间的机动填位」。
