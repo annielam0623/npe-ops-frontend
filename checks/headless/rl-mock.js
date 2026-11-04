@@ -1,8 +1,8 @@
 // 模拟后端：Relay list（/dispatch/relay-list，task/relay-print）。只回 relay-pull 加了打印字段的形状（后端 fc 定的键）。
-// 控制：POST /__ctl {fail401, fail500, old}（old = 旧后端，没有 phone / product_short / bus / location_ids / tour_buses）；GET /__log。
+// 控制：POST /__ctl {fail401, fail500, old, many}（many = 2nd Round 那台车 40 个客人，一张单要印两页）（old = 旧后端，没有 phone / product_short / bus / location_ids / tour_buses）；GET /__log。
 const http = require("http");
 
-const ctl = { fail401: false, fail500: false, old: false };
+const ctl = { fail401: false, fail500: false, old: false, many: false };
 if (process.env.MOCK_CTL) Object.assign(ctl, JSON.parse(process.env.MOCK_CTL));
 const log = [];
 
@@ -41,7 +41,10 @@ function relayPull(date) {
       guests: [rich({ id: 5, order_number: "CHDZZX01", name: "Xi Xu", pickup_time: "4:40 AM", pickup_location: "Wynn Hotel", location_id: 15, hotel: "Wynn Hotel", tour: "South Rim" }, { phone: "+15550100005", manifest_id: 1, product_short: "South", short_tag: "South", hotel_short: "Wynn", bus: BUS.south })],
     },
   ];
-  const r2 = [{ car: { id: 905, van: "1724", driver: "ZZ Bruce", ...(ctl.old ? {} : { location_ids: [11], tour_buses: [] }) }, guests: [rich({ id: 6, order_number: "CHDZZW01", name: "Wes West", pickup_time: "5:40 AM", pickup_location: "Aria Resort", location_id: 11, hotel: "Aria Resort", tour: "West Rim" }, { phone: "+15550100006", manifest_id: 2, product_short: "West", short_tag: "West", hotel_short: "Aria", bus: BUS.west })] }];
+  const extra = ctl.many
+    ? Array.from({ length: 40 }, (_, i) => rich({ id: 100 + i, order_number: `CHDZZL${String(i).padStart(2, "0")}`, name: `ZZ Long ${i}`, pickup_time: "5:45 AM", pickup_location: `ZZ Hotel ${i}`, location_id: 200 + i, hotel: `ZZ Hotel ${i}`, tour: "West Rim" }, { phone: "+15550100100", manifest_id: 2, product_short: "West", short_tag: "West", hotel_short: `ZZ Hotel ${i}`, bus: BUS.west }))
+    : [];
+  const r2 = [{ car: { id: 905, van: "1724", driver: "ZZ Bruce", ...(ctl.old ? {} : { location_ids: [11], tour_buses: [] }) }, guests: [rich({ id: 6, order_number: "CHDZZW01", name: "Wes West", pickup_time: "5:40 AM", pickup_location: "Aria Resort", location_id: 11, hotel: "Aria Resort", tour: "West Rim" }, { phone: "+15550100006", manifest_id: 2, product_short: "West", short_tag: "West", hotel_short: "Aria", bus: BUS.west }), ...extra] }];
   // Hoover 自己接（Tour bus pick up）：Relay list 不印。
   const tc = [{ car: { id: 906, van: "1955", driver: "ZZ Dan", tour_name: "HooverDam", bus_label: null }, guests: [g({ id: 7, order_number: "CHDZZHD1", name: "Hoover Guest", pickup_time: "9:15 AM", pickup_location: "Excalibur", tour: "HooverDam" })] }];
   return {

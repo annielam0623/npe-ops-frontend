@@ -128,6 +128,13 @@ const rgb = (hex) => {
   return `rgb(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255})`;
 };
 
+/** 打印成 PDF（A4，照页面的 @page），返回页数。 */
+async function pdfPages(opts = { preferCSSPageSize: true }) {
+  const r = await cdp("Page.printToPDF", { printBackground: true, ...opts });
+  const pdf = Buffer.from(r.data, "base64").toString("latin1");
+  return (pdf.match(/\/Type\s*\/Page(?!s)/g) || []).length;
+}
+
 async function open(url) {
   await goto(url);
   await waitFor("document.querySelector('[data-relay-total], [data-relay-car], main p')", 60000);
@@ -167,8 +174,31 @@ async function run() {
   await cdp("Emulation.setEmulatedMedia", { media: "print" });
   await sleep(300);
   check("打印：工具条和「Not on any relay car yet」不印，站点外框不印", await evaluate("return getComputedStyle(document.querySelector('[data-relay-unplaced]')).display === 'none' && getComputedStyle(document.querySelector('[data-relay-print]').parentElement).display === 'none';"));
-  check("打印：每张 A4 一页（break-after: page）", await evaluate("const s = document.querySelector('[data-relay-total=relay]'); const v = getComputedStyle(s).breakAfter; return v === 'page';"));
+  check("打印：第一张以后每张从新的一页开始（break-before: page），第一张不另起页", await evaluate("const s = [...document.querySelectorAll('.rl-sheet')]; return getComputedStyle(s[0]).breakBefore !== 'page' && s.slice(1).every(x => getComputedStyle(x).breakBefore === 'page');"));
   await cdp("Emulation.setEmulatedMedia", { media: "" });
+  // 真打一份 PDF 数页数：页数 = 单数（2 张总表 + 4 台有客人的车），没有空白页（Annie 11-03：「每页都隔了一张空白页」）。
+  {
+    const n = await pdfPages();
+    check("打印 PDF：6 张单 = 6 页，没有空白页", n === 6, `pages=${n}`);
+    const letter = await pdfPages({ preferCSSPageSize: false, paperWidth: 8.5, paperHeight: 11 });
+    check("打印 PDF：打印机纸是 Letter 也一样 6 页", letter === 6, `pages=${letter}`);
+  }
+  // 一张单内容超过一页：分到两页，也不出空白页。
+  await ctl({ many: true });
+  await open(URL0);
+  await waitFor("document.querySelectorAll('[data-relay-row^=CHDZZL]').length === 40", 30000);
+  {
+    // 2nd Round 的总表和那台车都是 41 行，各占两页：页数 = 每张单按打印高度（A4 = 297mm）该占几页加起来。
+    await cdp("Emulation.setEmulatedMedia", { media: "print" });
+    const per = await evaluate("const a4 = 297 * 96 / 25.4; return [...document.querySelectorAll('.rl-sheet')].map(s => Math.ceil(s.getBoundingClientRect().height / a4 - 0.01));");
+    await cdp("Emulation.setEmulatedMedia", { media: "" });
+    const want = per.reduce((a, b) => a + b, 0);
+    const n = await pdfPages();
+    check("打印 PDF：41 个客人的单分到两页，页数 = 各张单该占的页数之和（8），没有空白页", n === want && want === 8 && per.filter((x) => x === 2).length === 2, `pages=${n} want=${want} per=${per}`);
+  }
+  await ctl({ many: false });
+  await open(URL0);
+  await waitFor("document.querySelectorAll('[data-relay-total]').length === 2", 30000);
 
   // 车头的 Print：只看这一台
   await open(`${URL0}&car=902`);

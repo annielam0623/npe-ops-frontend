@@ -15,6 +15,14 @@
 - 前端工作窗口 fa [985244] 报到（共用主目录，已叫它开 worktree）。派：① 置顶 73 preview；② **加急 bug**：Annie 原话「然后，明天的relay list还每页都隔了一张空白页」（11/4 Relay list 打印每张后多一张空白页）→ fa 先修（task/relay-list-blank-page，只修 bug、样子不变，不用 preview），修完直接合 main。
 - 5c 对话名改为「今日前端主窗口-5c」。后端另有 npe-confirmation-service-da [af1446]。
 
+## 2026-11-03 晚 Relay list 打印每张后面多一张空白页（`task/relay-list-blank-page`，工作窗口 `npe-ops-frontend-fa`[985244]，主窗口 5c 派）—— 只修 bug、样子不变，合 main
+- Annie 原话（5c 转）：「然后，明天的relay list还每页都隔了一张空白页」（11-04 的 Relay list）。
+- 原因：`relay-list.css` 打印时每张单仍 `min-height: 297mm`（一整页高），内容 / 边框差一点点就溢到下一页，再加 `break-after: page` ⇒ 每张后面一张空白页；打印机纸是 Letter（美国默认，比 A4 短 18mm）时 297mm 一定超页，就是 Annie 看到的「每页都隔一张」。另外 `.rl-sheet:last-of-type` 被后面只在屏幕上的「Not on any relay car yet」区块（也是 section）挡住，最后一张后面也多一页。
+- 改法（只动打印 CSS，屏幕上的样子、配色、版式不变）：打印时 `.rl-sheet { min-height: 0 }`；分页改成 `.rl-sheet ~ .rl-sheet { break-before: page }`（第二张起从新页开始，最后一张后面不会多页）。以后置顶 73 的 Landscape 也照这个分页。
+- 没能只读打开生产 11-04 的 Relay list 数页数：本窗口没有 ops 登录。用模拟数据复现：修前 6 张单印 7 页、长单 9 页（应 8 页）；修后对。
+- rl 套加 3 条：PDF 页数 = 6（6 张单）；Letter 纸也 6 页；mock `many`（2nd Round 那台车 41 个客人）⇒ 页数 = 各张按打印高度该占的页数之和 = 8，没有空白页；原「break-after」断言改成「第二张起 break-before: page」。
+- 检查：rl 29/29、nav 38/38；da 481/482——挂的「Pull：按这天拉、两轮标题和时间来自接口」在没改动的 main 上同样挂（已报 5c，不是本次引起的）；tsc 0 错、eslint 0 错（3 条原有 warning）、build 过。
+
 ## 2026-11-03 收工交接：前端主窗口 `今日主窗口-24`[310398]（公司电脑，Annie 定今天 17:30 下班）
 
 > 当天逐条记录在下面「2026-11-03 主窗口 今日主窗口-24 开工」及各任务节；每件 Annie 原话都在置顶里。后端今天公司电脑 15:30 后 AFTER_HOURS 不再落地，后续家里那台接。

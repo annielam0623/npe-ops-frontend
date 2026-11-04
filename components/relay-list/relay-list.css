@@ -77,13 +77,16 @@
   body {
     background: #fff !important;
   }
+  /* 打印时不撑满 297mm：撑满后差一点点就溢出到下一页，再加分页 = 每张后面一张空白页（Annie 11-03）；
+     纸张是 Letter 时 297mm 更是一定超页。分页改成「第二张起从新页开始」，最后一张后面不会多一页
+     （原来的 :last-of-type 会被后面只在屏幕上的 Not on any relay car 区块挡住）。横版同样适用。 */
   .rl-sheet {
+    min-height: 0;
     margin: 0;
     box-shadow: none;
-    break-after: page;
   }
-  .rl-sheet:last-of-type {
-    break-after: auto;
+  .rl-sheet ~ .rl-sheet {
+    break-before: page;
   }
   .rl-screen-only {
     display: none !important;
