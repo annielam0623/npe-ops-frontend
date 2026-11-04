@@ -996,6 +996,13 @@ D. 已完成、待从置顶移走：
 - 现状（2c 只读查后端 origin/main）：**系统没有登录记录**。登录只发 9 小时的 cookie（auth.py _set_session_cookie），不写库；只有 admin_users.last_seen_at（presence.py，Dashboard「Today's team」在线用，一分钟一刷，只留最后一次）。前端 Staff Schedule 有 person-history.tsx（每人一周往来记录：发的 / 回的 / 主管处理），没登录。
 - 想法：后端每次登录写一条记录（谁、几点、从哪种账号进），置顶 83 的「登录时间」也从这里取；前端在 Staff Schedule 里显示。样子要先 preview。
 - 要问 Annie：放哪（每人 History 里 / 单独一个 Logins 列表）、记什么（只登录时间 / 加退出、IP、设备）、留多久、谁能看；+ 跟置顶 83 是不是一起做。
+- Q5 已答 A（一起做，见置顶 83）。**preview**：https://claude.ai/artifact/7gQFvoaMvPVmrBCVZCxwMj （81；2c 已整段转 Annie，等答）：
+  - Q1 放哪：A（推荐）每人 History 里按时间插，蓝标签「Signed in」+ Computer / Phone，02:00–08:30 登录的加小字「Dispatch opened on today」；B 单独「Sign-ins」卡（按人 / 日期筛）；C 都要。
+  - Q2 记什么：A（推荐）登录时间 + 电脑 / 手机；B 加退出时间（多数是空）；C 加设备 / 浏览器 / IP。
+  - Q3 留多久：A（推荐）90 天；B 一直。
+  - Q4 谁能看：A（推荐）能管排班的人（schedule.edit）；B 只 SA。
+  - Q5 How to use：A（推荐）「History also lists each time the person signed in (Signed in, with Computer or Phone). Sign-ins between 2:00 AM and 8:30 AM show 'Dispatch opened on today': that is the day their Dispatch page opened on. Sign-ins are kept for 90 days.」；B 她改字。
+  - 需要后端（等她答了转 94）：v151 表（账号 id、登录时间、电脑 / 手机按 User-Agent 粗分不存原文、90 天清）；History 接口加 kind:"signed_in"（at、device）；⚠️ schedule_employees 没连登录账号（只名字、email），后端要定怎么对（按 email / 加 user id 列）；Q1 B / C 另要列表接口。
 
 ### 83. 凌晨 2 点–早上 9 点打开 Dispatch 默认今天（2026-11-04，Annie 在主窗口-2c 提，没动手）
 - 原话：「给你一个新任务，把凌晨2点- 9点登录进operation system的人的dispatch页面默认为今天。今早犯了好几个错误，拿着今天的单子去对明天的团，数字全是错的，然后才发现是默认是明天的」。
@@ -1373,6 +1380,7 @@ D. 已完成、待从置顶移走：
     - **Annie 答 Q3（原话）**：「Q3，你现在显示的就是两个你让staff怎么填？要不就编辑的时候一格，保存后你自己分开两格」⇒ 编辑时只一格「Coordinates」（贴「36.106711, -115.176612」一整串）+ Within [10] m；保存后系统自己拆成纬度 / 经度存，不编辑时照旧显示。Q4 How to use 跟着改（2c 拟稿已发 Annie）。81 做完 83 后改 preview。Q1 / Q2 / Q5 未答，未动手。
     - **Annie 答 Q5（原话）**：「5. 在tracking表上加两列吧，arrived at Left at」⇒ 置顶 58 定：Morning Pickup Tracking 表新加两列「Arrived at」「Left at」（不是甲的小胶囊，也不是乙的一列）。没坐标 / 没数据的格子显示「—」。81 改 preview 时一起画。Q1 / Q2 未答，未动手。
     - ✅ **Annie「其他问题都同意推荐，动手」（原话，2026-11-04）** ⇒ 59 Q1 A（Edit 时酒店名下）、Q2 A（Add 表单不加）、Q4 A（How to use 用 2c 改后的一格版）；连同 Q3 一格 Coordinates、Q5 Tracking 两列。派 81 在 task/samsara-arrival 上做（83 推完分支后），合 main 前截图给 Annie 看 Q3 / Q5 两处新样子。
+      - 81 已改 preview（同链接 25fhKRvwcw4rKmdtb5FA7B）。红字：「Paste the coordinates as latitude, longitude — for example 36.106711, -115.176612.」「Radius must be a whole number of meters from 1 to 500.」「Those coordinates are not on the map. Latitude comes first (between -90 and 90), then longitude (between -180 and 180).」「The hotel was saved, but not the pickup point: …」；逗号 / 空格分开都认。58：后端 notifications.py:1234 每行带 arrived_at / left_at（只 relay 车的单有，一单几站取最早到的）。
 
 ### 58. Morning Pickup Tracking 表里怎么显示「到了 / 走了」的时间（2026-11-03，09 做 Samsara 到站时问）
 - 页面：Morning Pickup Tracking（/morning-pickup/tracking）的表格，每一行是一单客人。
