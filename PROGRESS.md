@@ -779,6 +779,11 @@
 - 改颜色要后端加一个存颜色的地方（可能要迁移）；只做方向选择的话前端就能做。新样子要先出 preview。
 - Annie 答（原话）：「我要把这两项放给staff，要后端改就后端改」⇒ 颜色、方向都让 staff 设，存进系统（③ 定 B）。② 颜色管到哪里、① 哪一天还没答，放进 preview 里让她选。**还不是「动手」**。
 - 5c 已把评估请求转给后端主窗口-9e（要字段 / 接口形状、要不要迁移、工期，先不落地）。前端 preview 等 Annie 开 1 个工作窗口后派。
+- 9e 评估（只读）：**不用迁移，Risk B，后端约半天**；要等 36 的「第二轮 relay 认 TI」上线后才能开工（同改 relay_pull.py）。
+  - 团 / bus 色：已有 manifests.paper_colors（v145）的 bar / bars（Relay 单、司机页色条）和 bus / buses（Bus Manifest 车抬头）；拟 `PUT /api/settings/manifest-setup/groups/{manifest_id}/paper-colors` {bar, bars:{A:…}}，null = 回默认，写 action_log。深紫多半是没填纸本 bar 的团退回了团色。
+  - Relay 1..6 色盘 + 方向：settings 键 relay_list {colors[6], orientation}；`GET/PUT /api/settings/relay-list`（GET 带 defaults 给「Reset to paper colours」）；relay-pull 加顶层 orientation。
+  - 权限：PUT 按 dispatch.edit、GET 按 dispatch.view。⚠️ Bus Manifest setup 页是 require_admin，staff 进不去 ⇒ 入口改放 Relay list 页上的设置键（preview 照这个做）。
+  - Annie「动手」后转 9e 派后端窗口。
 
 ### 72. Dispatch 两台 bus 调位置：勾选框放大 + Auto 按南北分车（2026-11-03 晚，Annie 在主窗口提，附表）
 - Annie 原话：「前端要改一下，当有两台bus可以调位置的时候，勾选框太小了，把它放大跟main manifest里一样；另外Auto排进bus的时候按照这个规则：一台车放south，一台放north，中间的机动填位」。
