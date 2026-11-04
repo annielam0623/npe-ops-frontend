@@ -815,6 +815,11 @@
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 76. 测 11/4 司机 / 导游链接和页面上的 SMS / 电话键（2026-11-03 晚，Annie 在主窗口 5c 提）
+- 原话：「我需要你测试一下明天各个司机和导游的链接是否真的有效，他们的sms和电话键是否真能work」
+- 计划：只读打开每个司机 / 导游页（headless、手机尺寸），核页面能开、内容对、每个 tel: / sms: 号码格式能拨、和资料一致；不真拨、不真发。
+- 卡在：fa 没 ops 登录、拿不到链接；打开链接会不会记成「已打开」。已问 9e 要链接清单 / 不记录的办法 / 键拨给谁。
+
 ### 75. Dashboard 搜索框可以按 Agent reference 搜订单（2026-11-03 晚，Annie 在主窗口 5c 提，没动手）
 - 原话：「我在main manifest里加上了agent reference，能否在首页的search bar里页可以加上用这个号码搜索订单」
 - 现状（5c 只读）：搜索框走 /api/operations/orders?q=，前端只认单号 / 姓名 / 电话（lib/order-lookup-api.ts searchOrders）。Agent reference = 后端 manifest_fields 的 reseller_reference（Rezdy resellerReference），orders 搜索应不含它 ⇒ 要后端。它在 money_view 隐藏名单里（lib/money-view.ts），没勾 See prices, agent & commission 的人看不到。
@@ -823,6 +828,7 @@
 - Annie：「同意A」⇒ 没 money_view 的人也能按 agent ref 搜到单，号码显示「—」。**还没「动手」**；下一步 fa 做完 74 后出 preview（搜索结果标「Matched by agent reference」、搜索框提示字），Annie 看过「动手」再转 9e。
 - ⚠️ 9e 转：Annie 在 9e 窗口回「B」（没 money_view 的人不按 agent ref 搜）。和在 5c 的「同意A」相反 ⇒ 5c 已问 Annie 以哪个为准，答了再定。后端 9e 今晚已收工，这件没写进后端交接，明天以本条为准。
 - ✅ **定 B**：Annie 知道两边不一致后，在 9e 窗口再回「B」（9e 转）⇒ 没 money_view 的人，q 不按 agent ref 搜。**还没「动手」**；preview 照 B 画。
+- fa preview（只画 B）：https://claude.ai/artifact/75Ujnjc3crJ5m6AycJGnaR （4 题：顶栏提示字 / 怎么标 / Orders 页提示字 / How to use，都推荐 A），已整段转 Annie。
 
 ### 74. Main Manifest：Upper Antelope Brenda 每单一条 Waiver link（2026-11-03 晚，Annie 在后端 9e 窗口提，9e 转；前端还没 preview）
 - 9e 转的 Annie 已确认四条：没填链接的单像 No Cfm # 一样被挡、可 Send anyway；Brenda 两种都要；格子里填 + 上传两列表格都要；发出后改了链接标「Changed since sent」，staff 手动重发（Send anyway）。原话（9e 转）：「要在Upper brenda的main manifest那里增加一个栏目，叫waver link，由staff上传或者填写进去，然后发送的时候一起发给客人，每个订单都有独立的一个link」；四条是 9e 出的选择题，Annie 都勾推荐项（Brenda 两种 = Brenda 和 Brenda — No Permit Fee），没另写字，**没说「动手」、没看过样子**。
