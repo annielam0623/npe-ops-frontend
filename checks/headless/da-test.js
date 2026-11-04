@@ -2312,6 +2312,59 @@ async function run() {
     await ctl({ pillDemo: false });
   }
 
+  // ── 置顶 83：凌晨 2:00–8:30（洛杉矶）登录的，Dispatch 默认看今天（登录那天）；Annie「1 登录时间选A   动手」──
+  {
+    // 2026-10-04 是夏令时（PDT，UTC-7）：LA 02:00 = 09:00Z。mock 不带 date 时回 2026-10-05（= 后端默认明天）。
+    const dayGets = async (from) => (await mockLog()).slice(from).filter((e) => e.path === "/api/dispatch/day" && e.method === "GET");
+    const openAt = async (loggedInAt, url = `${APP}/dispatch`) => {
+      await ctl({ loggedInAt });
+      const from = (await mockLog()).length;
+      await openPage(url);
+      await waitFor("document.querySelector('.vrow')");
+      await sleep(300);
+      const gets = await dayGets(from);
+      return { first: gets[0], url: await evaluate("return location.search;") };
+    };
+    const cases = [
+      ["2026-10-04T09:00:00Z", "2026-10-04", "02:00 登录 ⇒ 今天"],
+      ["2026-10-04T15:30:59Z", "2026-10-04", "08:30:59 登录 ⇒ 今天"],
+      ["2026-10-04T15:31:00Z", null, "08:31 登录 ⇒ 照旧（后端默认明天，不带 date）"],
+      ["2026-10-04T08:59:00Z", null, "01:59 登录 ⇒ 照旧"],
+      ["2026-11-04T10:15:00Z", "2026-11-04", "冬令时（PST）02:15 登录 ⇒ 今天"],
+      [null, null, "logged_in_at = null ⇒ 照旧"],
+    ];
+    for (const [at, want, name] of cases) {
+      const r = await openAt(at);
+      check(`83 ${name}`, r.first && (want ? r.first.q.date === want : !r.first.q.date), JSON.stringify(r));
+    }
+    await ctl({ loggedInAt: false });
+    {
+      const from = (await mockLog()).length;
+      await openPage(`${APP}/dispatch`);
+      await waitFor("document.querySelector('.vrow')");
+      await sleep(300);
+      const g = (await dayGets(from))[0];
+      check("83 旧后端（/api/me 没有 logged_in_at）⇒ 照旧", g && !g.q.date, JSON.stringify(g));
+    }
+    let r = await openAt("2026-10-04T10:00:00Z", `${APP}/dispatch?date=2026-10-07`);
+    check("83 网址带 ?date= ⇒ 照网址，不看登录时间", r.first && r.first.q.date === "2026-10-07", JSON.stringify(r));
+    r = await openAt("2026-10-04T10:00:00Z");
+    check("83 凌晨登录打开后网址写上这一天（?date=2026-10-04）", r.url.includes("date=2026-10-04"), r.url);
+    {
+      await evaluate("document.querySelector('[aria-label=\"Next day\"]').click(); return 1;");
+      await waitFor("location.search.includes('date=2026-10-05')");
+      const from = (await mockLog()).length;
+      await openPage(`${APP}${await evaluate("return location.pathname + location.search;")}`);
+      await waitFor("document.querySelector('.vrow')");
+      const g = (await dayGets(from))[0];
+      check("83 staff 自己换到 10/5 后刷新 ⇒ 还是 10/5，不跳回今天", g && g.q.date === "2026-10-05", JSON.stringify(g));
+    }
+    r = await openAt("2026-10-04T10:00:00Z");
+    check("83 从侧栏重新进 Dispatch（网址没日期）⇒ 仍按登录时间看今天", r.first && r.first.q.date === "2026-10-04", JSON.stringify(r));
+    check("83 How to use 写了凌晨登录看今天", await evaluate("return document.body.textContent.replace(/\\s+/g, ' ').includes('if you signed in between 2:00 AM and 8:30 AM (Las Vegas time), Dispatch opens on today until you sign in again');"));
+    await ctl({ loggedInAt: false });
+  }
+
   // 401
   await ctl({ fail401: true });
   await goto(`${APP}/dispatch`);

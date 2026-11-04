@@ -91,6 +91,11 @@ interface MemberFormDialogProps {
    * 只给 Super Admin，自己和 Super Admin 账号不给（页面决定传不传）。
    */
   onDelete?: () => void;
+  /**
+   * admin 自己有的勾（G212 Qd，Annie「d不能」：admin 给别人的权限不能超过自己有的，自己没有的项灰着勾不了）。
+   * 会加上或拿掉自己没有的项的那个档位按钮灰掉；Super Admin 不传 = 不限。后端照样 400 挡。
+   */
+  ownItems?: ReadonlySet<string>;
 }
 
 interface FormState {
@@ -154,6 +159,7 @@ export function MemberFormDialog({
   toFailure,
   onAccountTypeChanged,
   onDelete,
+  ownItems,
 }: MemberFormDialogProps) {
   const titleId = useId();
   const groups = useMemo(
@@ -178,6 +184,17 @@ export function MemberFormDialog({
     () => staffOnlyCodes(catalog.modules),
     [catalog.modules],
   );
+  /**
+   * admin（Qd）：整组换（默认组、Copy access from）时只换自己有的项；自己没有的项照这个人原来的留着。
+   * Super Admin（ownItems 不传）原样。
+   */
+  const limitToOwn = (next: Set<string>, current: ReadonlySet<string>) =>
+    ownItems
+      ? new Set([
+          ...[...next].filter((c) => ownItems.has(c)),
+          ...[...current].filter((c) => !ownItems.has(c)),
+        ])
+      : next;
   const isAdd = mode.kind === "add";
   const editId = mode.kind === "edit" ? mode.member.id : null;
   const defaultItems = catalog.default_items ?? null;
@@ -196,7 +213,7 @@ export function MemberFormDialog({
   const [form, setForm] = useState<FormState | null>(() =>
     isAdd
       ? {
-          items: knownItems(catalog, defaultItems ?? []),
+          items: limitToOwn(knownItems(catalog, defaultItems ?? []), new Set()),
           duties: new Set(),
           teamIds: new Set(),
           home: "",
@@ -281,7 +298,9 @@ export function MemberFormDialog({
             catalog.modules.flatMap((m) => m.items.map((i) => i.code)),
           )
         : knownItems(catalog, detail.items);
-      setForm((prev) => (prev ? { ...prev, items } : prev));
+      setForm((prev) =>
+        prev ? { ...prev, items: limitToOwn(items, prev.items) } : prev,
+      );
       setCopyMessage(
         `Copied access for ${summarize(groups, items, partnerStaffOnly).modules} modules from ${memberName(source)}. Nothing is saved until you click ${isAdd ? "Create" : "Save"}.`,
       );
@@ -309,7 +328,7 @@ export function MemberFormDialog({
       items:
         next === "partner"
           ? new Set()
-          : knownItems(catalog, defaultItems ?? []),
+          : limitToOwn(knownItems(catalog, defaultItems ?? []), new Set()),
       duties: new Set(),
       teamIds: new Set(),
       home: next === "partner" ? PARTNER_HOME : "",
@@ -589,6 +608,7 @@ export function MemberFormDialog({
                       wiredModules={wiredModules}
                       items={form.items}
                       staffOnly={partnerStaffOnly}
+                      ownItems={ownItems}
                       open={open}
                       onOpen={setOpen}
                       onItems={(items) => setForm({ ...form, items })}
@@ -1163,6 +1183,7 @@ function AccessSection({
   wiredModules,
   items,
   staffOnly,
+  ownItems,
   open,
   onOpen,
   onItems,
@@ -1173,6 +1194,8 @@ function AccessSection({
   items: Set<string>;
   /** partner 时 = 只给内部员工的发送项；员工为 undefined。 */
   staffOnly?: ReadonlySet<string>;
+  /** admin 自己有的勾（Qd）；不传 = 不限。 */
+  ownItems?: ReadonlySet<string>;
   open: Set<string>;
   onOpen: (open: Set<string>) => void;
   onItems: (items: Set<string>) => void;
@@ -1229,6 +1252,12 @@ function AccessSection({
       {note ? (
         <p className="m-0 mb-2 text-[12px] text-[#854d0e]">{note}</p>
       ) : null}
+      {ownItems ? (
+        <p data-own-items-note className="m-0 mb-2 text-[12px] text-[#4b5563]">
+          Greyed-out choices would give or take away permissions you don&apos;t
+          have yourself. Only a Super Admin can change those.
+        </p>
+      ) : null}
       <div className="overflow-hidden rounded-[10px] border border-[#e5e7eb]">
         {groups.map((group) =>
           group.kind === "row" ? (
@@ -1238,6 +1267,7 @@ function AccessSection({
               notActive={!wiredModules.has(group.module)}
               items={items}
               staffOnly={staffOnly}
+              ownItems={ownItems}
               expanded={open.has(group.key)}
               onToggle={() => toggle(group.key)}
               onItems={onItems}
@@ -1249,6 +1279,7 @@ function AccessSection({
               notActive={!wiredModules.has(group.module)}
               items={items}
               staffOnly={staffOnly}
+              ownItems={ownItems}
               open={open}
               onToggle={toggle}
               onItems={onItems}
@@ -1265,6 +1296,7 @@ function SettingsGroup({
   notActive,
   items,
   staffOnly,
+  ownItems,
   open,
   onToggle,
   onItems,
@@ -1273,6 +1305,7 @@ function SettingsGroup({
   notActive: boolean;
   items: Set<string>;
   staffOnly?: ReadonlySet<string>;
+  ownItems?: ReadonlySet<string>;
   open: Set<string>;
   onToggle: (key: string) => void;
   onItems: (items: Set<string>) => void;
@@ -1307,6 +1340,7 @@ function SettingsGroup({
               notActive={false}
               items={items}
               staffOnly={staffOnly}
+              ownItems={ownItems}
               expanded={open.has(row.key)}
               onToggle={() => onToggle(row.key)}
               onItems={onItems}
@@ -1323,6 +1357,7 @@ function AccessRowView({
   notActive,
   items,
   staffOnly,
+  ownItems,
   expanded,
   onToggle,
   onItems,
@@ -1332,6 +1367,8 @@ function AccessRowView({
   items: Set<string>;
   /** partner 时 = 只给内部员工的发送项（档位不含、灰字 Internal staff only）；员工为 undefined。 */
   staffOnly?: ReadonlySet<string>;
+  /** admin 自己有的勾（Qd）：选了会加上 / 拿掉自己没有的项的档位灰掉。 */
+  ownItems?: ReadonlySet<string>;
   expanded: boolean;
   onToggle: () => void;
   onItems: (items: Set<string>) => void;
@@ -1378,13 +1415,30 @@ function AccessRowView({
             const on = level === option.level;
             // partner：只剩「看」的行没有 Read & edit / Full access（Q1 A）。
             const locked = editLocked && option.level === "edit";
+            // Qd：选它会加上或拿掉 admin 自己没有的项 ⇒ 灰掉（后端也 400）。
+            const beyondOwn =
+              !on &&
+              !!ownItems &&
+              (() => {
+                const next = withLevel(row, option.level, items, staffOnly);
+                return row.all.some(
+                  (c) => next.has(c) !== items.has(c) && !ownItems.has(c),
+                );
+              })();
             return (
               <button
                 key={option.level}
                 type="button"
                 aria-pressed={on}
-                disabled={locked}
-                title={locked ? "Internal staff only" : undefined}
+                disabled={locked || beyondOwn}
+                data-beyond-own={beyondOwn || undefined}
+                title={
+                  locked
+                    ? "Internal staff only"
+                    : beyondOwn
+                      ? "You don't have all of these permissions yourself. Only a Super Admin can change this."
+                      : undefined
+                }
                 onClick={() =>
                   onItems(withLevel(row, option.level, items, staffOnly))
                 }

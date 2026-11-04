@@ -35,6 +35,8 @@ import type {
   RestaurantSaved,
 } from "@/types/supplier";
 
+import { RestaurantImportPanel } from "./import-panel";
+
 /**
  * Supplier › Restaurant（G199，preview https://claude.ai/artifact/BxohT6D7sXeRKMrpNkA7rb 第 4 版 ②，
  * Annie 2026-10-27「Supplier preview 动手」）：一家午餐店一张卡（店名、给哪些团、联系人 / 订餐方式两行 + 亮黄印出来的样子、员工备注），
@@ -51,6 +53,10 @@ type Gate =
 
 type Result = { tone: "ok" | "error"; text: string };
 
+/** 深色底上的次要键（⬆ Import、+ Add a restaurant）：不是蓝的，蓝色只给提交键。 */
+const DARK_BTN =
+  "cursor-pointer rounded-[8px] border border-white/20 bg-transparent px-3 py-[5px] text-[12.5px] font-bold text-[#cbd5e1] hover:bg-white/[.06] disabled:cursor-not-allowed disabled:opacity-50";
+
 /** 新卡片的键（还没有 id）。 */
 const NEW = "new";
 
@@ -60,6 +66,7 @@ export function RestaurantView() {
   const [adding, setAdding] = useState(false);
   const [results, setResults] = useState<Record<string, Result>>({});
   const [deleting, setDeleting] = useState<LunchRestaurant | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
   const redirectToLogin = useRedirectToLogin();
 
   useEffect(() => {
@@ -172,16 +179,36 @@ export function RestaurantView() {
               Lunch vendors and how to order. The footer text prints at the
               bottom of each bus&apos;s lunch sheet.
             </p>
-            <button
-              type="button"
-              data-add-restaurant
-              disabled={adding}
-              onClick={() => setAdding(true)}
-              className="cursor-pointer rounded-[8px] border border-white/20 bg-transparent px-3 py-[5px] text-[12.5px] font-bold text-[#cbd5e1] hover:bg-white/[.06] disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              + Add a restaurant
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                data-import-restaurants
+                disabled={importOpen}
+                onClick={() => setImportOpen(true)}
+                className={DARK_BTN}
+              >
+                ⬆ Import
+              </button>
+              <button
+                type="button"
+                data-add-restaurant
+                disabled={adding}
+                onClick={() => setAdding(true)}
+                className={DARK_BTN}
+              >
+                + Add a restaurant
+              </button>
+            </div>
           </div>
+
+          {importOpen ? (
+            <RestaurantImportPanel
+              restaurants={data.restaurants}
+              onClose={() => setImportOpen(false)}
+              onSaved={reload}
+              onUnauthorized={redirectToLogin}
+            />
+          ) : null}
 
           <div className="flex flex-col gap-3.5">
             {adding ? (
@@ -213,8 +240,8 @@ export function RestaurantView() {
             ) : null}
             {data.restaurants.map((r) => (
               <RestaurantCard
-                // 重读后资料或分配变了就重画成存好的样子。
-                key={`${r.id}|${r.updated_at}|${r.groups.map((g) => g.id).join(",")}`}
+                // 重读后资料或分配变了就重画成存好的样子（⬆ Import 改的栏不一定动 updated_at，所以带上能导入的栏）。
+                key={`${r.id}|${r.updated_at}|${r.groups.map((g) => g.id).join(",")}|${[r.name, r.address, r.phone, r.text_number, r.email, r.staff_note].join("|")}`}
                 restaurant={r}
                 list={data}
                 result={results[String(r.id)] ?? null}

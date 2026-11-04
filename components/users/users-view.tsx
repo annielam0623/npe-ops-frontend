@@ -45,7 +45,7 @@ import {
   fetchTeamMembers,
   saveContactDuties,
 } from "@/lib/team-permissions-api";
-import { usePermissions } from "@/lib/staff-permissions";
+import { fetchMyPermissions, usePermissions } from "@/lib/staff-permissions";
 import { fetchTeams } from "@/lib/teams-api";
 import { fetchUserPref, saveUserPref } from "@/lib/user-prefs-api";
 import {
@@ -78,6 +78,7 @@ import {
   assignableRolesFor,
   describeRoleChange,
   displayNameOf,
+  FIELD_ROLES,
   isPartner,
   isPending,
   normalizeRole,
@@ -119,9 +120,11 @@ type ViewState =
       isSuperAdmin: boolean;
       /** 后端已经认 supervisor（`/api/me` 带 `is_supervisor`）。 */
       withSupervisor: boolean;
-      /** Super Admin 的权限那一份；读不到时为 null，原因在 teamError（名单照常）。 */
+      /** 权限那一份（Super Admin；admin 等 G212 B6）；读不到时为 null，原因在 teamError（名单照常）。 */
       team: TeamData | null;
       teamError: string | null;
+      /** admin 自己有的勾（Qd：Edit 框里自己没有的项灰掉）；Super Admin / 读不到 = null（不灰）。 */
+      ownItems: ReadonlySet<string> | null;
     };
 
 type DialogState =
@@ -186,8 +189,9 @@ async function fetchDetails(members: TeamMember[], signal?: AbortSignal) {
       try {
         details.set(id, await fetchTeamMember(id, signal));
       } catch (error) {
-        // 401 / 403 要整份处理；单个人拿不到只让那一行的 Access 写「—」。
-        if (isStatus(error, 401) || isStatus(error, 403) || signal?.aborted) {
+        // 401 要整份处理；单个人拿不到（admin 看范围外的人 403 / 404）只让那一行的 Access 写「—」。
+        // 整个接口不让用的话，名单那一步就已经 403 了，到不了这里。
+        if (isStatus(error, 401) || signal?.aborted) {
           throw error;
         }
       }
@@ -207,28 +211,85 @@ async function fetchTeamData(signal?: AbortSignal): Promise<TeamData> {
 }
 
 /**
+ * G212 B5 / B6：名单改用 /api/team/members（admin 和 Super Admin 一起；admin 拿到的已经去掉了 Super Admin 行和部门邮箱行）。
+ * 那边带了 role（B5）才换；否则（后端还旧）照旧用 /api/users。司机 / 导游一律从 /api/users 补。
+ */
+export function rosterOf(
+  users: AdminUser[],
+  members: readonly TeamMember[] | null,
+): AdminUser[] {
+  const memberUsers = (members ?? []).filter(
+    (m): m is TeamMemberUser => m.kind === "user",
+  );
+  if (!memberUsers.length || memberUsers.some((m) => m.role === undefined)) {
+    return users;
+  }
+  const fromMembers: AdminUser[] = memberUsers.map((m) => ({
+    id: m.id,
+    username: m.username,
+    display_name: m.display_name,
+    initials: m.initials ?? null,
+    role: m.role ?? "staff",
+    is_active: m.is_active ?? m.can_login,
+    invite_used: !m.pending_invite,
+    invite_token: m.invite_token ?? null,
+    created_by: m.created_by ?? null,
+    created_at: m.created_at ?? null,
+    team_ids: m.team_ids,
+    is_self: m.is_self ?? false,
+    can_edit: m.can_edit,
+    edit_block_reason: m.edit_block_reason ?? null,
+  }));
+  const ids = new Set(fromMembers.map((u) => u.id));
+  const field = users.filter(
+    // 司机 / 导游账号不在 /api/team/members 里（后端 PERM_ROLES），从 /api/users 补进来照旧显示（2c 定 A）。
+    (u) => FIELD_ROLES.includes(normalizeRole(u.role)) && !ids.has(u.id),
+  );
+  // 照 /api/users 原来的顺序排（两边都按 id）。
+  return [...fromMembers, ...field].sort((a, b) => a.id - b.id);
+}
+
+/**
  * 用户和团队一起拉：团队列用团队名和颜色显示。团队那条 403（后端 G177 P3 起挂 settings.users，
  * admin 没勾这一项就读不了）时不算整页失败：teams 为 null，其余照常；401 等别的错照旧往外抛。
- * Super Admin 再拉权限那一份；它出错（401 除外）只在表上方写一句，名单和 Users 的操作照常。
+ * 权限那一份（/api/team/*）：Super Admin 一直能读；admin 等 G212 B6 上线才能读（之前 403 ⇒ 照旧只读 /api/users，不报错）。
+ * 它出错（401 除外）只在表上方写一句，名单和 Users 的操作照常。
+ * admin 还读自己有哪些勾（Qd：自己没有的项灰掉），读不到 = 不灰（后端照样 400）。
  */
 async function fetchPage(isSuperAdmin: boolean, signal?: AbortSignal) {
-  const [users, teams, team] = await Promise.all([
+  const [users, teams, team, mine] = await Promise.all([
     fetchUsers(signal),
     fetchTeams(signal).catch((error: unknown) => {
       if (isStatus(error, 403)) return null;
       throw error;
     }),
+    fetchTeamData(signal).then(
+      (data) => ({ data, error: null }),
+      (error: unknown) => {
+        if (isStatus(error, 401) || signal?.aborted) throw error;
+        // admin 碰到旧后端（403 / 404）：照以前只读 /api/users，不报错。
+        if (!isSuperAdmin && (isStatus(error, 403) || isStatus(error, 404)))
+          return { data: null, error: null };
+        return { data: null, error: describeError(error) };
+      },
+    ),
     isSuperAdmin
-      ? fetchTeamData(signal).then(
-          (data) => ({ data, error: null }),
+      ? Promise.resolve(null)
+      : fetchMyPermissions(signal).then(
+          (r) => new Set(r.permissions.map((p) => p.code)),
           (error: unknown) => {
             if (isStatus(error, 401) || signal?.aborted) throw error;
-            return { data: null, error: describeError(error) };
+            return null;
           },
-        )
-      : Promise.resolve({ data: null, error: null }),
+        ),
   ]);
-  return { users, teams, team: team.data, teamError: team.error };
+  return {
+    users: rosterOf(users, team.data?.members ?? null),
+    teams,
+    team: team.data,
+    teamError: team.error,
+    ownItems: mine as ReadonlySet<string> | null,
+  };
 }
 
 /**
@@ -473,7 +534,9 @@ export function TeamView() {
     [view],
   );
 
-  /** Super Admin 的权限那一份按 id 查：档位合计、Team 那边的人、职责名。 */
+  const viewerIsSuperAdmin = view.kind === "ready" && view.isSuperAdmin;
+
+  /** 权限那一份按 id 查：档位合计、Team 那边的人、职责名。 */
   const lookups = useMemo(() => {
     if (view.kind !== "ready" || !view.team) {
       return null;
@@ -544,14 +607,19 @@ export function TeamView() {
             : homeLabel(m.home_path),
         email: m.email,
         noEmail: m.duties.length > 0 && !m.email?.trim(),
-        onEdit: m.is_superadmin
-          ? undefined
-          : () =>
-              setDialog({ kind: "member", mode: { kind: "edit", member: m } }),
+        // G212 B6 / B7：照后端的 can_edit 出 Edit（不自己另算）；后端还没带时照以前：Super Admin 对非 Super Admin 的人。
+        onEdit: (
+          m.can_edit === undefined
+            ? viewerIsSuperAdmin && !m.is_superadmin
+            : m.can_edit
+        )
+          ? () =>
+              setDialog({ kind: "member", mode: { kind: "edit", member: m } })
+          : undefined,
       });
     }
     return map;
-  }, [lookups, dutyNames]);
+  }, [lookups, dutyNames, viewerIsSuperAdmin]);
 
   /** admin 看不到 Super Admin 的行（Annie Qa）；再按搜索框和 Show 筛。 */
   const visibleUsers = useMemo(() => {
@@ -578,14 +646,19 @@ export function TeamView() {
   }, [view, search, show, extras]);
 
   const visibleContacts = useMemo(() => {
-    if (!lookups || (show !== "all" && show !== "active")) {
+    // 部门邮箱只给 Super Admin（Q9；admin 的 members 里本来就没有）。
+    if (
+      !lookups ||
+      !viewerIsSuperAdmin ||
+      (show !== "all" && show !== "active")
+    ) {
       return [];
     }
     const q = search.trim().toLowerCase();
     return lookups.contacts.filter(
       (c) => !q || `${c.name} ${c.email}`.toLowerCase().includes(q),
     );
-  }, [lookups, search, show]);
+  }, [lookups, search, show, viewerIsSuperAdmin]);
 
   const counts = useMemo(() => {
     if (view.kind !== "ready") {
@@ -645,8 +718,10 @@ export function TeamView() {
               <button
                 type="button"
                 onClick={() =>
+                  // admin 等 G212 B6（能读 /api/team/*）以后也开完整的表（preview v3 ③：角色只到下一层、勾不超过自己的）；
+                  // 之前照旧开邀请链接。
                   setDialog(
-                    view.isSuperAdmin
+                    view.isSuperAdmin || view.team
                       ? { kind: "add-person" }
                       : { kind: "invite" },
                   )
@@ -798,8 +873,12 @@ export function TeamView() {
                 users={visibleUsers}
                 teamsById={teamsById}
                 teamsUnavailable={view.teams === null}
-                canChangeRoles={view.isSuperAdmin}
-                roles={assignableRolesFor(view.withSupervisor)}
+                // admin 等 G212 B6 起能改下一层的人的角色（Qc：只给比自己低的，不能升成 admin）；
+                // 每行再看后端的 can_edit（UsersTable 里）。
+                canChangeRoles={view.isSuperAdmin || !!view.team}
+                roles={assignableRolesFor(view.withSupervisor).filter(
+                  (r) => view.isSuperAdmin || r !== "admin",
+                )}
                 busyUserId={busyUserId}
                 extras={extras}
                 layout={layout}
@@ -826,8 +905,8 @@ export function TeamView() {
               />
             )}
             <RoleLegend withSupervisor={view.withSupervisor} />
-            {/* 改动记录（G203，/api/team/action-log 只给 Super Admin）。 */}
-            {view.isSuperAdmin ? (
+            {/* 改动记录（G203，/api/team/action-log；G212 Q6 起 admin 也能读：权限那一份读到了就出）。 */}
+            {view.isSuperAdmin || view.team ? (
               <ActionLogPanel
                 refreshKey={logVersion}
                 reloadOnOpen
@@ -855,6 +934,7 @@ export function TeamView() {
           catalog={view.team.catalog}
           members={lookups.memberUsers}
           summaries={lookups.summaries}
+          ownItems={view.ownItems ?? undefined}
           onSaved={() => {
             if (dialog.mode.kind === "edit") {
               setDialog(null);
@@ -865,7 +945,8 @@ export function TeamView() {
           toFailure={toActionError}
           onAccountTypeChanged={() => void refreshList()}
           onDelete={
-            dialog.mode.kind === "edit"
+            // 彻底删除只给 Super Admin（B8）：admin 打开的 Edit 框最下面没有 Delete。
+            dialog.mode.kind === "edit" && view.isSuperAdmin
               ? deleteTarget(dialog.mode.member, usersById, (user, member) =>
                   setDialog({ kind: "delete-person", user, member }),
                 )
@@ -921,6 +1002,7 @@ export function TeamView() {
           onBasicInvite={() => setDialog({ kind: "invite" })}
           onGenerateInvite={handleGenerateInvite}
           onCreateResetLink={handleCreateResetLink}
+          ownItems={view.ownItems ?? undefined}
           onClose={closeDialog}
         />
       ) : null}
@@ -1035,6 +1117,7 @@ function UsersDialogs({
   onBasicInvite,
   onGenerateInvite,
   onCreateResetLink,
+  ownItems,
   onClose,
 }: {
   dialog: DialogState;
@@ -1045,6 +1128,8 @@ function UsersDialogs({
   onBasicInvite: () => void;
   onGenerateInvite: () => Promise<InviteOutcome>;
   onCreateResetLink: (user: AdminUser) => Promise<ResetOutcome>;
+  /** admin 自己有的勾（Qd）：Add person 表里自己没有的项灰掉。 */
+  ownItems?: ReadonlySet<string>;
   onClose: () => void;
 }) {
   switch (dialog?.kind) {
@@ -1057,6 +1142,7 @@ function UsersDialogs({
     case "add-person":
       return (
         <AddPersonDialog
+          ownItems={ownItems}
           onSaved={onRefresh}
           onClose={onClose}
           onBasicInvite={onBasicInvite}

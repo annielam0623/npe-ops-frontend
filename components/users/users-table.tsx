@@ -271,6 +271,8 @@ export function UsersTable({
               teamsUnavailable={teamsUnavailable}
               canChangeRole={
                 canChangeRoles &&
+                // G212：照后端的 can_edit（同级 admin、Super Admin、范围外的人不出下拉）。
+                user.can_edit !== false &&
                 !isPartner(user) &&
                 !isPending(user) &&
                 !user.is_self &&
@@ -397,7 +399,12 @@ function UserRow({
           user={user}
           teamsById={teamsById}
           unavailable={teamsUnavailable}
-          onClick={() => actions.onAssignTeams(user)}
+          onClick={
+            // 改不了这个人（G212 can_edit = false）：团队照样显示，点不开。
+            user.can_edit === false
+              ? undefined
+              : () => actions.onAssignTeams(user)
+          }
         />
       </td>
     ),
@@ -532,7 +539,8 @@ function TeamChips({
   user: AdminUser;
   teamsById: ReadonlyMap<number, Team>;
   unavailable: boolean;
-  onClick: () => void;
+  /** 没有 = 只显示，不能点（改不了这个人）。 */
+  onClick?: () => void;
 }) {
   // partner 不进任何团队（同 Team 页「Not for external partners」）；团队读不了时也只写「—」。
   if (isPartner(user) || unavailable) {
@@ -543,6 +551,28 @@ function TeamChips({
   const teams = user.team_ids
     .map((id) => teamsById.get(id))
     .filter((team): team is Team => team !== undefined);
+
+  if (!onClick) {
+    return teams.length === 0 ? (
+      <span className="text-[12px] text-[#9ca3af] night:text-white/35">—</span>
+    ) : (
+      <span className="flex flex-wrap items-center gap-[5px]">
+        {teams.map((team) => (
+          <span
+            key={team.id}
+            className="rounded-[12px] border px-[9px] py-0.5 text-[12px] font-semibold"
+            style={{
+              color: team.color,
+              backgroundColor: `${team.color}22`,
+              borderColor: `${team.color}55`,
+            }}
+          >
+            {team.name}
+          </span>
+        ))}
+      </span>
+    );
+  }
 
   return (
     <button
@@ -618,18 +648,62 @@ function RowActions({
   busy: boolean;
   actions: UserRowActions;
 }) {
+  // 自己那一行：Reset password 灰着（同现在）+ ✏️ Name（preview v3 ②「自己：Reset password（灰掉）· ✏️ Name」，
+  // admin「同左」；后端自己的显示名照旧能改）。
   if (user.is_self) {
     return (
-      <ResetPasswordButton
-        user={user}
-        role={role}
-        onClick={actions.onResetPassword}
-      />
+      <>
+        <ResetPasswordButton
+          user={user}
+          role={role}
+          onClick={actions.onResetPassword}
+        />
+        <button
+          type="button"
+          onClick={() => actions.onEditName(user)}
+          className={cn(
+            SMALL_BUTTON_CLASS,
+            "border border-[#e5e7eb] bg-[#f3f4f6] px-3 font-medium text-[#1a1a1a] night:border-white/10 night:bg-white/[.07] night:text-white/75",
+          )}
+        >
+          ✏️ Name
+        </button>
+      </>
     );
   }
 
   // 后端对 superadmin 的停用 / 恢复 / 删除一律 400，这里不显示这些按钮；改显示名不受限。
   const protectedAccount = role === "superadmin";
+
+  // G212 B6 / B7：后端说改不了（同级 admin、Super Admin、范围外的邀请）⇒ 行上只写后端的原话，不出改的键；
+  // 有链接（invite_token）的邀请照旧能 Copy Link。Super Admin 账号照 preview v3 留 ✏️ Name。
+  if (user.can_edit === false) {
+    return (
+      <>
+        {isPending(user) && user.invite_token ? (
+          <CopyLinkButton user={user} onCopy={actions.onCopyLink} />
+        ) : null}
+        <span
+          data-edit-block
+          className="text-[12px] whitespace-nowrap text-[#9ca3af] night:text-white/45"
+        >
+          🔒 {user.edit_block_reason || "View only"}
+        </span>
+        {protectedAccount && !isPending(user) ? (
+          <button
+            type="button"
+            onClick={() => actions.onEditName(user)}
+            className={cn(
+              SMALL_BUTTON_CLASS,
+              "border border-[#e5e7eb] bg-[#f3f4f6] px-3 font-medium text-[#1a1a1a] night:border-white/10 night:bg-white/[.07] night:text-white/75",
+            )}
+          >
+            ✏️ Name
+          </button>
+        ) : null}
+      </>
+    );
+  }
 
   // 行上的 🗑 只剩取消待接受的邀请（还不是账号，admin 也能用）。彻底删除账号搬进 Edit 框最下面、
   // 只给 Super Admin（Annie 2026-10-28：「delete不用这么麻烦，就把它放在权限的选择页，在最下面设置个删除键」）。
