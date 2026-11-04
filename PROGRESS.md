@@ -754,6 +754,11 @@
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 71. Main manifest ☰ Columns 按某一页单独存（2026-11-03，09 记录，还没 preview）
+- Annie 原话（09 窗口）：「在main manifest上的column选线，我可以专门为某个页面选择勾选哪些项目么？可不可以在选择的那个页面上加一个just apply for this page，or apply for all」。
+- 现状：列选择按账号、按标签（Bus Tour / Tickets - SelfDrive / Admin fee）各存一份（user-prefs manifest_cols_bus / _tickets / _admin_fee），同标签下所有胶囊共用。按胶囊分开存要后端改 user-prefs（键白名单、值上限 4000 字：加上限或加按胶囊的键）；前端 ☰ Columns 弹窗加「Apply to this page only / Apply to all」。
+- 09 在问 Annie「某个页面」是不是指某颗胶囊；答了 09 出 preview，归 09。定了范围再转 37 评估后端。
+
 ### 70. Dispatch › Assign 顶部统计条旁放醒目的 Relay List 键（2026-11-03，09 记录，preview https://claude.ai/artifact/LzSrfzeXzA9Tgsndd4J6KV ，没写代码）
 - Annie 原话（09 窗口）：「然后把morning relay list放到 1st round的上方，就是那个统计表格的旁边，把最后一个缩窄一些，旁边放Relay List，标得醒目一点」。
 - 做法：统计条最后一格缩窄（字分两行），右边放 Relay List 键（Morning Relay · 1st Round 卡上方），打开同 Send 页 📋 Relay list（新标签，有没存的改动先问）。只改前端 dispatch-view.tsx。
