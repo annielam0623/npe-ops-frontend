@@ -1096,7 +1096,8 @@ D. 已完成、待从置顶移走：
 - G212 Team 页前端派 c8（task/g212-team-hierarchy），等后端 SHA。
 
 ### 85. Staff Schedule 班次类型（Open / Mid / Close）可手动新增（2026-11-04，Annie 在主窗口-2c 提，附排班格截图，没动手）
-- ✅ **前端已合 main**（`task/schedule-shift-types`，工作窗口 c8[a65365]，2c 派；SHA 见下面「合 main」一句）。Annie（94 转）原话「颜色不重要，关键是我要的几个功能」⇒ 2c 定不等后端 color 列，先合。
+- ✅ **选色已生效**：后端 color 上线 main b75601c0（合并 9c5bc16b）。c8 只读核过：字段名 `color`、8 个取值 open / mid / close / amber / rose / teal / orange / grey 跟前端一致；GET /api/settings/schedule、POST / PUT 返回、确认页（含免登录链接页）的 shift_types 都带 color；没带 color 的 POST = grey、不认得 400。前端不用改：settings 带了 color 键，⚙ Settings › Shift types 的 8 色小窗自动出来，存的颜色周表 / Add shift / Dashboard / 确认页都照着画。
+- ✅ **前端已合 main** 1230d19（功能 e5b406d + 0dd439c，`task/schedule-shift-types`，工作窗口 c8[a65365]，2c 派）。Annie（94 转）原话「颜色不重要，关键是我要的几个功能」⇒ 2c 定不等后端 color 列，先合。
   - 做了（照 preview v4 全部推荐）：⚙ Settings 里「Default shift times」改成「Shift types」：每行 ⋮⋮ 排序（拖，或聚焦按 ↑↓）、色块、名字（改名黄框 + 「Was “Mid” — not saved yet」）、默认时间、Active；停用的也列着能勾回来；灰绿「+ Add shift type」，没存的新行右边小「×」能去掉。全部暂存、蓝色 Save 一起存，未存关窗先问；红字「Enter a name for the new shift type.」「There is already a shift type called “X”.」「Enter both default times for X, or leave both empty.」；key 从名字生成（小写、空格 _、≤20、重了 _2）。停用但还有开着的规则在用 ⇒ 黄字「X is still used by N rule(s) (…). Auto-fill keeps using it until you change that rule in Rules.」。Unassigned 行头 / 格子不上色、卡片白虚线框 + 白字。How to use 照方案 B：Shift types 那段放 Settings › Shift types 说明（手机收进「i」），Rules 卡片灰字后面接「New shift types show up in the Shift list of every rule. …」。原来默认时间旁的「Clear」拿掉（清空直接删框里的字）。
   - **颜色**：后端 GET /api/settings/schedule 的 shift_types 带 color 键以后才出 8 色小窗、POST / PUT 才带 color；现在没带 ⇒ 色块只显示（Open 绿 / Mid 蓝 / Close 紫，新类型灰白），不能挑。格子颜色已经按 color 字段取（周表、Add shift、Auto-fill、Dashboard、员工确认页），后端上线后不用再改前端。
   - 检查（合最新 main 后，端口 3278 / 8879 / 9413）：sch 409/409（新加 85 用例：新增 / 空名 / 重名 / key _2 / 改名 / 未存拦截 / 排序 / 停用提醒 / Add shift 顺序 / 颜色两种后端 / Unassigned / Rules 那句 / 非 SA 只读）、nav 38/38；tsc 0、eslint 0 错（3 个原有 warning）、build 过。
