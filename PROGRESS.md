@@ -53,6 +53,14 @@
 - 68 / G243 Relay 勾酒店不核座位：等 Annie 定提醒还是挡（37 问）。
 - 后端今天收工，交接 3b65ee42；明天：samsara-arrivals 落地（Annie 放行）、G180、G243、酒店格色。
 
+### 六、晚上追加（Annie「收工」前，以这里为准）
+- 上 main（等 Annie 线上验收）：置顶 70 Assign 统计条旁黄底「📋 Relay List」键 **6367d0c**（Send 页那个键拿掉）；置顶 71 Manifests ☰ Columns 按页存 **f5459d6**（Apply for this page 蓝 / Apply for all 白、OWN 灰标、Use the shared columns；6 个验收点见 71）。
+- 71 后端：三键上限 4000 → 20000 **今晚家里做**，没 SHA；上线前超 4000 字会 400，前端已确认弹窗红字 / 拖表头改回并写原因，不会悄悄没存。家里主窗口上线后会发 SHA 给前端主窗口（前端不用改）。
+- task/driver-follow **a65ba71**（e6）：仍只等 Annie 对新红字 / tooltip / How to use 两句回 A（原文在 2026-11-03 回复和置顶 63）。
+- 置顶 72（新）两台 bus 勾选框放大 + Auto 按南北分车：Annie 附 17 家酒店三色表；后端 37 评估约 1 天 + 迁移（Pickup Locations 加 Direction 列，排 v146、v147 后）；**7 题等 Annie 答**（题目在置顶 72）；答了 + 动手后派前端出 preview（Direction 列 + 大勾选框）。
+- waiver link：Annie 在后端 37 窗口问「我要在页面加一列 waiver link 的事情呢」，前后端都没有记录（前端查了 PROGRESS、代码、分支、本机前端对话）；37 已问她三点（哪个页面、链接从哪来、点了做什么），**前端不重复问**，她答了 37 转来再记置顶。
+- 置顶 64 G180（Notified 版 preview 等 Annie 点头）、69 酒店格 relay 色（3 题）、68 / G243 超座位（提醒还是挡）：照旧等 Annie。
+
 ## 2026-11-03 Dispatch › Drivers & guides 可以改名字、电话（`task/roster-edit`，工作窗口 91 [359513]，置顶 67）—— 合 main
 
 - Annie 原话：「另外在dispatch的可以添加司机和导游那一块，把导游和司机的信息设为可编辑，因为我们现在好多导游的电话是没有的，把编辑的权限给到staff」；之后「Dispatch名单编辑-动手」。4 题没逐题答，按推荐全 A 做：
