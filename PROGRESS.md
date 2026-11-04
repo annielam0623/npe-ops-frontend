@@ -795,6 +795,7 @@
   - Relay 1..6 色盘 + 方向：settings 键 relay_list {colors[6], orientation}；`GET/PUT /api/settings/relay-list`（GET 带 defaults 给「Reset to paper colours」）；relay-pull 加顶层 orientation。
   - 权限：PUT 按 dispatch.edit、GET 按 dispatch.view。⚠️ Bus Manifest setup 页是 require_admin，staff 进不去 ⇒ 入口改放 Relay list 页上的设置键（preview 照这个做）。
   - Annie「动手」后转 9e 派后端窗口。
+- preview（工作窗口 fa [985244]，2026-11-03 晚，没写代码）：https://claude.ai/artifact/L7Ks8gymYvsd33Q9DuLGUr —— 设置键 ⚙ Colours & page、弹窗（Relay 1–6 / 每团 All buses + 字母 / Portrait·Landscape / Reset）、深紫对照 3 个浅紫候选、A4 横版、手机、How to use 原文；题 1–6 在页面最底（题 3：本窗口没 ops 登录，没查到生产是哪两张，推断是 Antelope 没填纸本色的车退回团色 #7a6ba8）。
 - 5c 派前端工作窗口 `npe-ops-frontend-fa`[985244] 做 preview（入口放 Relay list 页设置键；题 1 颜色范围、题 2 浅紫候选、题 3 哪一天），只做 preview 不写代码。
 
 ### 72. Dispatch 两台 bus 调位置：勾选框放大 + Auto 按南北分车（2026-11-03 晚，Annie 在主窗口提，附表）
