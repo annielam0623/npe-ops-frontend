@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import {
+  DARK_PRIMARY_BUTTON_CLASS,
   PRIMARY_BUTTON_CLASS,
   SECONDARY_BUTTON_CLASS,
 } from "@/components/ui/buttons";
@@ -19,6 +20,9 @@ import { CHECK_BIG, plural } from "./config";
  */
 export function FieldPicker({
   tabLabel,
+  pageLabel,
+  ownPage = false,
+  onUseShared,
   catalog,
   groups,
   selected,
@@ -27,18 +31,30 @@ export function FieldPicker({
   onClose,
 }: {
   tabLabel: string;
+  /** 当前胶囊的名字（Bus 的 group、Tickets 的 tour type）；没有胶囊 = 只有一个 Apply（置顶 71）。 */
+  pageLabel?: string;
+  /** 这颗胶囊用的是它自己的一套列。 */
+  ownPage?: boolean;
+  /** Use the shared columns：回到整个标签共用的一套。失败时 reject。 */
+  onUseShared?: () => Promise<void>;
   catalog: ManifestField[];
   groups: ManifestFieldGroup[];
   /** 现在用的列（没存过时是后端默认列）。 */
   selected: readonly string[];
   defaults: readonly string[];
-  /** null = 恢复后端默认列。失败时 reject，弹窗留着并显示原因。 */
-  onApply: (fields: string[] | null) => Promise<void>;
+  /**
+   * null = 恢复后端默认列。page = Apply for this page（只给这颗胶囊），all = Apply for all（整个标签、清掉各页自己的）。
+   * 失败时 reject，弹窗留着并显示原因。
+   */
+  onApply: (fields: string[] | null, scope: "page" | "all") => Promise<void>;
   onClose: () => void;
 }) {
   const [draft, setDraft] = useState<string[]>([...selected]);
   const [search, setSearch] = useState("");
-  const [busy, setBusy] = useState(false);
+  /** 正在存哪一种（Saving… 写在点的那个键上）。 */
+  const [busy, setBusyKind] = useState<
+    false | "page" | "all" | "reset" | "shared"
+  >(false);
   const [error, setError] = useState("");
 
   const inCatalog = new Set(catalog.map((f) => f.key));
@@ -91,16 +107,21 @@ export function FieldPicker({
     });
   }
 
-  async function apply(fields: string[] | null) {
-    setBusy(true);
+  async function run(
+    kind: "page" | "all" | "reset" | "shared",
+    work: () => Promise<void>,
+  ) {
+    setBusyKind(kind);
     setError("");
     try {
-      await onApply(fields);
+      await work();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
-      setBusy(false);
+      setBusyKind(false);
     }
   }
+  const apply = (fields: string[] | null, scope: "page" | "all") =>
+    run(fields === null ? "reset" : scope, () => onApply(fields, scope));
 
   const titleId = "manifest-field-picker-title";
   return (
@@ -117,11 +138,38 @@ export function FieldPicker({
             className="text-base font-semibold text-stone-900 night:text-white"
           >
             Columns — {tabLabel}
+            {pageLabel ? ` · ${pageLabel}` : ""}
           </h2>
           <p className="text-xs text-[#1a1a1a] night:text-white/50">
             Saved to your account. Drag the boxes under Column order to put the
-            columns in the order you want, then click Apply.
+            columns in the order you want, then click{" "}
+            {pageLabel ? "Apply for this page or Apply for all" : "Apply"}.
           </p>
+          {pageLabel ? (
+            <p
+              data-cols-scope
+              className="mt-1.5 rounded-md bg-slate-100 px-2 py-1 text-xs text-slate-700 night:bg-white/[.06] night:text-white/70"
+            >
+              {ownPage ? (
+                <>
+                  This page has its own columns.{" "}
+                  {onUseShared ? (
+                    <button
+                      type="button"
+                      data-use-shared
+                      disabled={!!busy}
+                      onClick={() => void run("shared", onUseShared)}
+                      className="text-blue-600 underline disabled:opacity-50 night:text-blue-300"
+                    >
+                      {busy === "shared" ? "Saving…" : "Use the shared columns"}
+                    </button>
+                  ) : null}
+                </>
+              ) : (
+                `This page uses the shared ${tabLabel} columns.`
+              )}
+            </p>
+          ) : null}
         </div>
         <FilterSearch
           value={search}
@@ -281,9 +329,13 @@ export function FieldPicker({
       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-stone-200 px-5 py-3 night:border-white/10">
         <button
           type="button"
-          disabled={busy}
-          onClick={() => void apply(null)}
-          title={`Back to the default ${defaults.length} columns`}
+          disabled={!!busy}
+          onClick={() => void apply(null, "page")}
+          title={
+            ownPage
+              ? `Back to the default ${defaults.length} columns for this page only`
+              : `Back to the default ${defaults.length} columns`
+          }
           className={SECONDARY_BUTTON_CLASS}
         >
           Reset to default
@@ -294,20 +346,45 @@ export function FieldPicker({
           </span>
           <button
             type="button"
-            disabled={busy}
+            disabled={!!busy}
             onClick={onClose}
             className={SECONDARY_BUTTON_CLASS}
           >
             Cancel
           </button>
-          <button
-            type="button"
-            disabled={busy || pickedHere === 0}
-            onClick={() => void apply(draft)}
-            className={PRIMARY_BUTTON_CLASS}
-          >
-            {busy ? "Saving…" : "Apply"}
-          </button>
+          {/* 置顶 71 题 3（Annie）：Apply for this page 蓝色、Apply for all 白色；没有胶囊的页只有一个蓝色 Apply。 */}
+          {pageLabel ? (
+            <>
+              <button
+                type="button"
+                data-apply="page"
+                disabled={!!busy || pickedHere === 0}
+                onClick={() => void apply(draft, "page")}
+                className={DARK_PRIMARY_BUTTON_CLASS}
+              >
+                {busy === "page" ? "Saving…" : "Apply for this page"}
+              </button>
+              <button
+                type="button"
+                data-apply="all"
+                disabled={!!busy || pickedHere === 0}
+                onClick={() => void apply(draft, "all")}
+                className={SECONDARY_BUTTON_CLASS}
+              >
+                {busy === "all" ? "Saving…" : "Apply for all"}
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              data-apply="all"
+              disabled={!!busy || pickedHere === 0}
+              onClick={() => void apply(draft, "all")}
+              className={PRIMARY_BUTTON_CLASS}
+            >
+              {busy === "all" ? "Saving…" : "Apply"}
+            </button>
+          )}
         </div>
       </div>
     </Modal>

@@ -192,12 +192,13 @@ async function run() {
   await sleep(100);
   await evaluate("$tick('Booked at', true); $tick('Dietary needs?', true); $tick('Return transfer', true); $tick('Pickup location', false);");
   from = (await mockLog()).length;
-  await evaluate("$btn('Apply', $dialog()).click();");
+  await evaluate("$btn('Apply for all', $dialog()).click();");
   await waitFor("!$dialog()");
   await waitFor("$heads().includes('Booked at')");
+  const colsOf = (v) => { const p = JSON.parse(v); return Array.isArray(p) ? p : p.shared; };
   const put = (await since(from, (e) => e.path === "/api/user-prefs/manifest_cols_bus" && e.method === "PUT"))[0];
-  const saved = put && JSON.parse(put.body.value);
-  check("Apply：存到 manifest_cols_bus（JSON 键数组，新勾的排最后）", saved && saved.join(",") === "order_number,guest_name,pax,pickup_time,rezdy_cfm,staff_cfm,sent_tour_at,date_created,q:0123456789,transfer_return", put && put.body.value);
+  const saved = put && colsOf(put.body.value);
+  check("Apply for all：存到 manifest_cols_bus（新格式 {shared, pages}，shared 新勾的排最后）", saved && saved.join(",") === "order_number,guest_name,pax,pickup_time,rezdy_cfm,staff_cfm,sent_tour_at,date_created,q:0123456789,transfer_return", put && put.body.value);
   reqs = await since(from, isList);
   check("重拉带 fields 和当前胶囊", reqs.length === 1 && q(reqs[0]).get("fields") === saved.join(",") && q(reqs[0]).get("pill") === "g:3", q(reqs[0]).get("fields"));
   check("表头跟着变、顺序同选择", (await evaluate("return $heads().join('|');")) === "Order #|Guest|Pax|Pickup time|Rezdy Cfm #|Cfm #|Tour confirmation sent|Booked at|Dietary needs?|Return transfer", await evaluate("return $heads().join('|');"));
@@ -216,7 +217,7 @@ async function run() {
   };
   const colPut = async (since0) => {
     const p = (await since(since0, (e) => e.path === "/api/user-prefs/manifest_cols_bus" && e.method === "PUT"))[0];
-    return p ? JSON.parse(p.body.value).join(",") : null;
+    return p ? colsOf(p.body.value).join(",") : null;
   };
   check("表头可拖（draggable、提示 Drag to move this column）", await evaluate("const t = [...document.querySelectorAll('thead th[data-col]')]; return t.length === 10 && t.every(x => x.draggable && x.title === 'Drag to move this column');"));
   from = (await mockLog()).length;
@@ -255,7 +256,7 @@ async function run() {
   check("✕：取消勾选（格子没了、下面的勾也没了）", !(await chips()).includes("Dietary needs?") && !(await evaluate("return [...$dialog().querySelectorAll('label')].find(l => l.textContent.trim() === 'Dietary needs?').querySelector('input').checked;")));
   from = (await mockLog()).length;
   check("拖了还没 Apply：不存", !(await since(from, (e) => e.path === "/api/user-prefs/manifest_cols_bus")).length);
-  await evaluate("$btn('Apply', $dialog()).click();");
+  await evaluate("$btn('Apply for all', $dialog()).click();");
   await waitFor("!$dialog()");
   await waitFor("$heads()[0] === 'Return transfer'");
   check("Apply：按格子的顺序存、表头跟着变", (await colPut(from)) === "transfer_return,guest_name,pax,order_number,pickup_time,rezdy_cfm,staff_cfm,sent_tour_at,date_created" && (await evaluate("return $heads().join('|');")) === "Return transfer|Guest|Pax|Order #|Pickup time|Rezdy Cfm #|Cfm #|Tour confirmation sent|Booked at", await evaluate("return $heads().join('|');"));
@@ -267,7 +268,7 @@ async function run() {
   await evaluate("$tick('Dietary needs?', true);");
   await dragChip("Dietary needs?", "Return transfer");
   check("拖回原顺序", (await chips()) === "Order #|Guest|Pax|Pickup time|Rezdy Cfm #|Cfm #|Tour confirmation sent|Booked at|Dietary needs?|Return transfer", await chips());
-  await evaluate("$btn('Apply', $dialog()).click();");
+  await evaluate("$btn('Apply for all', $dialog()).click();");
   await waitFor("!$dialog()");
   await waitFor("$heads()[0] === 'Order #'");
 
@@ -286,10 +287,10 @@ async function run() {
   check("弹窗写明有 2 列存着但这页用不了", await evaluate("return $dialog().textContent.includes('2 saved columns not available on this page today');"));
   await evaluate("$tick('Pax', true);");
   from = (await mockLog()).length;
-  await evaluate("$btn('Apply', $dialog()).click();");
+  await evaluate("$btn('Apply for all', $dialog()).click();");
   await waitFor("!$dialog()");
   const put2 = (await since(from, (e) => e.path === "/api/user-prefs/manifest_cols_bus" && e.method === "PUT"))[0];
-  check("再存一次：金额键和今天没有的键都没被删", put2 && put2.body.value === JSON.stringify(["order_number", "order_total", "q:9999999999", "guest_name", "pax"]), put2 && put2.body.value);
+  check("旧格式（一个数组）当共用的一套读；再存一次写成新格式，金额键和今天没有的键都没被删", put2 && put2.body.value === JSON.stringify({ shared: ["order_number", "order_total", "q:9999999999", "guest_name", "pax"], pages: {} }), put2 && put2.body.value);
   await ctl({ moneyAdminOnly: false });
 
   // ── Reset to default：存 []，请求不带 fields ──
@@ -302,19 +303,87 @@ async function run() {
   await waitFor("$heads().length === 8");
   const put3 = (await since(from, (e) => e.path === "/api/user-prefs/manifest_cols_bus" && e.method === "PUT"))[0];
   reqs = await since(from, isList);
-  check("Reset to default：存 []、重拉不带 fields、回到默认 7 列", put3 && put3.body.value === "[]" && reqs.length === 1 && !q(reqs[0]).has("fields"));
+  check("Reset to default：共用的一套存 []、重拉不带 fields、回到默认 7 列", put3 && put3.body.value === JSON.stringify({ shared: [], pages: {} }) && reqs.length === 1 && !q(reqs[0]).has("fields"), put3 && put3.body.value);
 
   // ── 存列失败：弹窗不关、写原因 ──
   await evaluate("$btn('☰ Columns').click();");
   await waitFor("$dialog()");
   await ctl({ prefsFail: true });
-  await evaluate("$tick('Phone', true); $btn('Apply', $dialog()).click();");
+  await evaluate("$tick('Phone', true); $btn('Apply for all', $dialog()).click();");
   await waitFor("$dialog()?.textContent.includes('Could not save your columns')");
   check("存列失败：弹窗留着、写原因", await evaluate("return !!$dialog() && $dialog().textContent.includes('Could not save your columns: prefs down');"));
   await ctl({ prefsFail: false });
   await evaluate("$btn('Cancel', $dialog()).click();");
   await waitFor("!$dialog()");
   check("Cancel：不存、列不变", (await evaluate("return $heads().length;")) === 8);
+
+  // ── 置顶 71（Annie「1 A 2 A 3 apply for this page 用蓝色 apply for all 用白色」）：☰ Columns 可以只存给这颗胶囊 ──
+  const busPut = async (since0) => { const p = (await since(since0, (e) => e.path === "/api/user-prefs/manifest_cols_bus" && e.method === "PUT")).at(-1); return p ? JSON.parse(p.body.value) : null; };
+  const ownPills = () => evaluate("return [...document.querySelectorAll('[data-own-cols]')].map(o => o.closest('button').textContent.split(' ')[0]).join('|');");
+  const goPill = async (label) => {
+    await evaluate("$btn(" + JSON.stringify(label) + ").click();");
+    await waitFor("document.querySelector('section h2')?.textContent === " + JSON.stringify(label));
+    await sleep(300);
+  };
+  await evaluate("$btn('☰ Columns').click();");
+  await waitFor("$dialog()");
+  check("71：标题写标签和胶囊（… · Antelope Bus Tour）；没有自己设置时写用共用的一套、没有 Use the shared columns", await evaluate("const d = $dialog(); return d.querySelector('h2').textContent.includes(' · Antelope Bus Tour') && d.querySelector('[data-cols-scope]').textContent.startsWith('This page uses the shared') && !d.querySelector('[data-use-shared]');"), await evaluate("return $dialog().querySelector('h2').textContent + ' / ' + $dialog().querySelector('[data-cols-scope]')?.textContent;"));
+  check("71 题 3：Apply for this page 蓝色、Apply for all 白色", await evaluate("const b = (s) => $dialog().querySelector('[data-apply=' + s + ']'); return getComputedStyle(b('page')).backgroundColor === 'rgb(59, 130, 246)' && getComputedStyle(b('all')).backgroundColor !== 'rgb(59, 130, 246)' && b('page').textContent === 'Apply for this page' && b('all').textContent === 'Apply for all';"));
+  from = (await mockLog()).length;
+  await evaluate("$tick('Phone', true); $dialog().querySelector('[data-apply=page]').click();");
+  await waitFor("!$dialog() && $heads().includes('Phone')");
+  let cv = await busPut(from);
+  check("71：Apply for this page ⇒ 只存进 pages[g:3]，共用的一套不动（[]）", cv && JSON.stringify(cv.shared) === "[]" && Object.keys(cv.pages).join() === "g:3" && cv.pages["g:3"].at(-1) === "phone", JSON.stringify(cv));
+  check("71 题 2：这颗胶囊标 OWN，别的胶囊不标", (await ownPills()) === "Antelope", await ownPills());
+  await goPill("Grand Canyon West");
+  check("71：换到别的胶囊用共用的一套（没有 Phone）", !(await evaluate("return $heads().includes('Phone');")), await evaluate("return $heads().join('|');"));
+  await goPill("Antelope Bus Tour");
+  await waitFor("$heads().includes('Phone')");
+  check("71：回到 Antelope 又是它自己的一套（有 Phone）", await evaluate("return $heads().includes('Phone');"));
+  from = (await mockLog()).length;
+  await dragHead("Phone", "Guest");
+  cv = await busPut(from);
+  check("71：有自己设置的页拖表头 ⇒ 存进这一页，共用的不动", cv && JSON.stringify(cv.shared) === "[]" && cv.pages["g:3"].indexOf("phone") === cv.pages["g:3"].indexOf("guest_name") - 1, JSON.stringify(cv));
+  await evaluate("$btn('☰ Columns').click();");
+  await waitFor("$dialog()");
+  check("71：有自己设置时弹窗写 This page has its own columns. + Use the shared columns", await evaluate("return $dialog().querySelector('[data-cols-scope]').textContent.startsWith('This page has its own columns.') && !!$dialog().querySelector('[data-use-shared]');"));
+  from = (await mockLog()).length;
+  await evaluate("$dialog().querySelector('[data-use-shared]').click();");
+  await waitFor("!$dialog() && !$heads().includes('Phone')");
+  cv = await busPut(from);
+  check("71：Use the shared columns ⇒ 删掉 pages[g:3]、OWN 没了、回到共用的列", cv && Object.keys(cv.pages).length === 0 && (await ownPills()) === "", JSON.stringify(cv));
+  await evaluate("$btn('☰ Columns').click();");
+  await waitFor("$dialog()");
+  await evaluate("$tick('Phone', true); $dialog().querySelector('[data-apply=page]').click();");
+  await waitFor("!$dialog() && $heads().includes('Phone')");
+  await evaluate("$btn('☰ Columns').click();");
+  await waitFor("$dialog()");
+  from = (await mockLog()).length;
+  await evaluate("$btn('Reset to default', $dialog()).click();");
+  await waitFor("!$dialog() && !$heads().includes('Phone')");
+  cv = await busPut(from);
+  check("71：有自己设置的页 Reset to default ⇒ 只把这一页设成默认列（pages[g:3] = []），OWN 还在", cv && JSON.stringify(cv) === JSON.stringify({ shared: [], pages: { "g:3": [] } }) && (await ownPills()) === "Antelope", JSON.stringify(cv));
+  await goPill("Grand Canyon West");
+  await evaluate("$btn('☰ Columns').click();");
+  await waitFor("$dialog()");
+  from = (await mockLog()).length;
+  await evaluate("$tick('Phone', true); $dialog().querySelector('[data-apply=all]').click();");
+  await waitFor("!$dialog() && $heads().includes('Phone')");
+  cv = await busPut(from);
+  check("71 题 1 A：Apply for all ⇒ 共用的一套换掉、各页自己的清掉、OWN 没了", cv && cv.shared.includes("phone") && Object.keys(cv.pages).length === 0 && (await ownPills()) === "", JSON.stringify(cv));
+  await goPill("Antelope Bus Tour");
+  await waitFor("$heads().includes('Phone')");
+  check("71：Antelope 也跟着共用的一套（有 Phone）", await evaluate("return $heads().includes('Phone');"));
+  await evaluate("$btn('☰ Columns').click();");
+  await waitFor("$dialog()");
+  await ctl({ prefsFail: true });
+  await evaluate("$tick('Phone', false); $dialog().querySelector('[data-apply=page]').click();");
+  await waitFor("$dialog()?.textContent.includes('Could not save your columns')");
+  check("71：Apply for this page 存不上（例如超长被拒）⇒ 弹窗留着、红字原样写原因、没标 OWN", (await evaluate("return $dialog().textContent.includes('Could not save your columns: prefs down');")) && (await ownPills()) === "");
+  await ctl({ prefsFail: false });
+  await evaluate("$btn('Reset to default', $dialog()).click();");
+  await waitFor("!$dialog() && $heads().length === 8");
+  check("71：How to use 写了 Apply for this page / Apply for all / OWN", await evaluate("const t = document.body.textContent; return t.includes('Apply for this page keeps your columns for the group or tour type you are on') && t.includes('shows OWN on its pill');"));
 
   // ── Cfm #（自动保存盘点 A2，Annie「4项全部动手」）：改了出 Save，按 Save / Enter 才存；离开框不存；Esc 放弃；404；清空 ──
   const cfmSave = (order) => `$cfm('${order}').parentElement.querySelector('[data-cfm-save]')`;

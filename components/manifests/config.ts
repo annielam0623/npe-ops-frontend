@@ -153,21 +153,75 @@ export function sectionBg(kind: string, tourIndex: number): string {
 }
 
 /**
- * 账号里存的列选择：JSON 字段键数组。坏值 / 没存过 / 空数组都当「用后端默认列」（null）。
+ * 账号里存的列选择（置顶 71，Annie 2026-11-03）：每个标签一个键，值是 JSON
+ * `{"shared": [...], "pages": {"<胶囊 key>": [...]}}`——shared 是整个标签共用的一套，pages 是某颗胶囊（Bus 的 group、
+ * Tickets 的 tour type）自己的一套（Apply for this page）。null / 空数组 = 用后端默认列。
+ * 旧值（一个数组）当 shared 读；第一次 Apply 写成新格式。坏值当「没存过」。
  * 今天没出现的键（unknown）、没权限的键（denied）照样留在里面，不删。
  */
-export function parseSavedFields(value: string | null): string[] | null {
-  if (!value) return null;
+export interface SavedCols {
+  shared: string[] | null;
+  pages: Record<string, string[] | null>;
+}
+
+export const EMPTY_COLS: SavedCols = { shared: null, pages: {} };
+
+function cleanKeys(value: unknown): string[] | null {
+  if (!Array.isArray(value)) return null;
+  const keys = value.filter(
+    (k): k is string => typeof k === "string" && k !== "",
+  );
+  return keys.length ? [...new Set(keys)] : null;
+}
+
+export function parseSavedCols(value: string | null): SavedCols {
+  if (!value) return EMPTY_COLS;
   try {
     const parsed: unknown = JSON.parse(value);
-    if (!Array.isArray(parsed)) return null;
-    const keys = parsed.filter(
-      (k): k is string => typeof k === "string" && k !== "",
-    );
-    return keys.length ? [...new Set(keys)] : null;
+    if (Array.isArray(parsed)) return { shared: cleanKeys(parsed), pages: {} };
+    if (!parsed || typeof parsed !== "object") return EMPTY_COLS;
+    const obj = parsed as { shared?: unknown; pages?: unknown };
+    const pages: Record<string, string[] | null> = {};
+    if (
+      obj.pages &&
+      typeof obj.pages === "object" &&
+      !Array.isArray(obj.pages)
+    ) {
+      for (const [k, v] of Object.entries(
+        obj.pages as Record<string, unknown>,
+      )) {
+        if (k && Array.isArray(v)) pages[k] = cleanKeys(v);
+      }
+    }
+    return { shared: cleanKeys(obj.shared), pages };
   } catch {
-    return null;
+    return EMPTY_COLS;
   }
+}
+
+/** 存回账号的字符串（新格式；null 写成空数组 = 默认列）。 */
+export function serializeSavedCols(cols: SavedCols): string {
+  return JSON.stringify({
+    shared: cols.shared ?? [],
+    pages: Object.fromEntries(
+      Object.entries(cols.pages).map(([k, v]) => [k, v ?? []]),
+    ),
+  });
+}
+
+/** 这颗胶囊有没有自己的一套。 */
+export function hasOwnCols(
+  cols: SavedCols | null | undefined,
+  pill: string,
+): boolean {
+  return (
+    !!cols && !!pill && Object.prototype.hasOwnProperty.call(cols.pages, pill)
+  );
+}
+
+/** 这颗胶囊用的列：有自己的用自己的，没有用 shared。 */
+export function colsFor(cols: SavedCols, pill: string): string[] | null {
+  return hasOwnCols(cols, pill) ? (cols.pages[pill] ?? null) : cols.shared;
 }
 
 const LA_DATETIME = new Intl.DateTimeFormat("en-US", {

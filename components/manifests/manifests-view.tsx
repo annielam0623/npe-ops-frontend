@@ -49,7 +49,12 @@ import {
   isLegacy,
   isSelectable,
   isTabKey,
-  parseSavedFields,
+  colsFor,
+  EMPTY_COLS,
+  hasOwnCols,
+  parseSavedCols,
+  type SavedCols,
+  serializeSavedCols,
   paxOf,
   canSend,
   plural,
@@ -77,7 +82,7 @@ type LoadState =
   | { kind: "error"; message: string };
 
 /** 账号里存的列：undefined = 还没拉；null = 没存过（用后端默认列）。 */
-type SavedFields = Record<ManifestTabKey, string[] | null | undefined>;
+type SavedFields = Record<ManifestTabKey, SavedCols | undefined>;
 
 // 样子照旧后台 manifests.html / base.html（Annie 2026-10-07：和旧版一模一样）。
 /** base.html 的 .btn：深色底上的半透明按钮。 */
@@ -187,14 +192,17 @@ export function ManifestsView() {
     setPill(params.get("pill") ?? "");
   }, []);
 
-  // 这个标签存的列（每个标签只拉一次）。
-  const savedHere = saved[tab];
+  // 这个标签存的列（每个标签只拉一次）；这颗胶囊有自己的一套就用自己的（置顶 71）。
+  const colsHere = saved[tab];
+  const ownHere = hasOwnCols(colsHere, pill);
+  const savedHere =
+    colsHere === undefined ? undefined : colsFor(colsHere, pill);
   useEffect(() => {
-    if (savedHere !== undefined) return;
+    if (colsHere !== undefined) return;
     const controller = new AbortController();
     fetchUserPref(PREF_KEY[tab], controller.signal)
       .then((value) =>
-        setSaved((s) => ({ ...s, [tab]: parseSavedFields(value) })),
+        setSaved((s) => ({ ...s, [tab]: parseSavedCols(value) })),
       )
       .catch((error: unknown) => {
         if (controller.signal.aborted) return;
@@ -206,10 +214,10 @@ export function ManifestsView() {
         setPrefNote(
           `Could not load your saved columns (${describeError(error)}), showing the default columns.`,
         );
-        setSaved((s) => ({ ...s, [tab]: null }));
+        setSaved((s) => ({ ...s, [tab]: EMPTY_COLS }));
       });
     return () => controller.abort();
-  }, [tab, savedHere, redirectToLogin]);
+  }, [tab, colsHere, redirectToLogin]);
 
   const fieldsKey = savedHere ? savedHere.join(",") : "";
   useEffect(() => {
@@ -348,28 +356,59 @@ export function ManifestsView() {
     );
   }
 
-  async function applyFields(fields: string[] | null) {
+  /** 存这个标签的列选择（整个 {shared, pages}）；失败 reject，原因原样给弹窗显示红字。 */
+  async function saveCols(next: SavedCols) {
     try {
-      await saveUserPref(PREF_KEY[tab], JSON.stringify(fields ?? []));
+      await saveUserPref(PREF_KEY[tab], serializeSavedCols(next));
     } catch (error) {
       if (isStatus(error, 401)) redirectToLogin();
       throw new Error(describeError(error));
     }
-    setSaved((s) => ({ ...s, [tab]: fields }));
+    setSaved((s) => ({ ...s, [tab]: next }));
     setPrefNote("");
+  }
+
+  /**
+   * ☰ Columns 存（置顶 71，Annie「1 A 2 A 3 apply for this page 用蓝色 apply for all 用白色」）：
+   * page = 只给这颗胶囊；all = 整个标签共用、清掉各页自己的（题 1 A）；
+   * Reset to default（fields = null）在有自己设置的页只重置这一页，没有就重置共用的那套。
+   */
+  async function applyFields(fields: string[] | null, scope: "page" | "all") {
+    const cur = colsHere ?? EMPTY_COLS;
+    let next: SavedCols;
+    if (fields === null)
+      next = ownHere
+        ? { ...cur, pages: { ...cur.pages, [pill]: null } }
+        : { ...cur, shared: null };
+    else if (scope === "page" && pill)
+      next = { ...cur, pages: { ...cur.pages, [pill]: fields } };
+    else next = { shared: fields, pages: {} };
+    await saveCols(next);
+    setPicking(false);
+  }
+
+  /** Use the shared columns：这颗胶囊不再用自己的一套，回到整个标签共用的。 */
+  async function useSharedCols() {
+    const cur = colsHere ?? EMPTY_COLS;
+    const pages = { ...cur.pages };
+    delete pages[pill];
+    await saveCols({ ...cur, pages });
     setPicking(false);
   }
 
   /**
    * 拖表头换列的顺序（Annie 2026-10-14：后加的 Pickup time 排在最右，挪不过去）：马上存进账号，同 ☰ Columns；
-   * 存不上就改回原来的顺序、写原因。
+   * 这颗胶囊有自己的一套就存进它自己的，没有就存共用的（置顶 71）。存不上就改回原来的顺序、写原因。
    */
   async function reorderFields(next: string[]) {
-    const before = saved[tab];
-    setSaved((s) => ({ ...s, [tab]: next }));
+    const before = colsHere ?? EMPTY_COLS;
+    const after: SavedCols = ownHere
+      ? { ...before, pages: { ...before.pages, [pill]: next } }
+      : { ...before, shared: next };
+    setSaved((s) => ({ ...s, [tab]: after }));
     setPrefNote("");
     try {
-      await saveUserPref(PREF_KEY[tab], JSON.stringify(next));
+      await saveUserPref(PREF_KEY[tab], serializeSavedCols(after));
     } catch (error) {
       if (isStatus(error, 401)) {
         redirectToLogin();
@@ -710,6 +749,16 @@ export function ManifestsView() {
                       </span>{" "}
                       pax{unknownPax(p)}
                     </span>
+                    {/* 置顶 71 题 2 A：这颗胶囊用自己的一套列 ⇒ 小灰标 OWN。 */}
+                    {hasOwnCols(colsHere, p.key) ? (
+                      <span
+                        data-own-cols
+                        title="This page has its own columns (☰ Columns)"
+                        className="ml-1.5 rounded-[4px] bg-[#64748b] px-1 py-px align-[1px] text-[10px] font-bold tracking-[.04em] text-white"
+                      >
+                        OWN
+                      </span>
+                    ) : null}
                   </button>
                 ))}
                 {hidden && hiddenRows.length ? (
@@ -998,6 +1047,14 @@ export function ManifestsView() {
               shown.tabs.find((t) => t.key === tab)?.label ??
               TAB_FALLBACK_LABEL[tab]
             }
+            pageLabel={
+              shown.pill
+                ? (shown.pills.find((p) => p.key === shown.pill)?.label ??
+                  undefined)
+                : undefined
+            }
+            ownPage={ownHere}
+            onUseShared={ownHere ? useSharedCols : undefined}
             catalog={shown.catalog}
             groups={shown.groups}
             selected={savedHere ?? shown.default_fields}
@@ -1712,9 +1769,18 @@ function ManifestsHowToUse() {
           that tab asked them.
         </>,
         <>
+          <b>Apply for this page</b> keeps your columns for the group or tour
+          type you are on; <b>Apply for all</b> uses them for every page in the
+          tab and clears any page&apos;s own columns. A page with its own
+          columns shows <b>OWN</b> on its pill; in <b>☰ Columns</b>, click Use
+          the shared columns to go back to the tab&apos;s columns.
+        </>,
+        <>
           To move a column: in <b>☰ Columns</b>, drag its box under Column
-          order to where you want it and click Apply. Or drag its header on the
-          page left or right; that order is saved to your account right away.
+          order to where you want it and click Apply for this page or Apply for
+          all. Or drag its header on the page left or right; that order is saved
+          to your account right away (to this page only if it has its own
+          columns).
         </>,
         <>
           <b>Cfm #</b>: if the Cfm # column is shown, type the confirmation
