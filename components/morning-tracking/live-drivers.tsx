@@ -96,7 +96,7 @@ export function LiveDriversBoard({
 }) {
   if (!people.length)
     return (
-      <p className="rounded-[12px] border border-white/[.08] bg-[#1a2f4a] p-7 text-center text-[13px] text-[#4a6a8a]">
+      <p className="rounded-[12px] border border-white/[.08] bg-[#1a2f4a] p-7 text-center text-[13px] text-white">
         No drivers or guides scheduled for this date.
       </p>
     );
@@ -143,12 +143,12 @@ function PersonColumn({
           {guide ? " — guide" : ""}
         </div>
         {vehicleLines(person).map((line, i) => (
-          <div key={i} className="text-[12px] text-[#b8c2d6]">
+          <div key={i} className="text-[12px] text-white">
             {line}
           </div>
         ))}
         {k.pax ? (
-          <div data-live-counts className="mt-0.5 text-[12px] text-[#cbd5e1]">
+          <div data-live-counts className="mt-0.5 text-[12px] text-white">
             {k.done} {k.word} ·{" "}
             <span className={cn(k.noShow && "font-bold text-[#fca5a5]")}>
               {k.noShow} no show
@@ -303,7 +303,7 @@ function DriverRoutes({
               unreadByOrder={unreadByOrder}
             />
           ) : (
-            <p className="border-t border-white/5 px-3.5 py-2.5 text-[12.5px] text-[#64748b]">
+            <p className="border-t border-white/5 px-3.5 py-2.5 text-[12.5px] text-white">
               {seg.relay_guests === null && seg.relay_blocks === undefined
                 ? "Guest list not uploaded yet."
                 : "No guests for this vehicle yet."}
@@ -362,12 +362,12 @@ function StationHead({
           ) : null}
         </div>
         {spot ? (
-          <div className="mt-0.5 text-[12px] text-[#94a3b8]">{spot}</div>
+          <div className="mt-0.5 text-[12px] text-white">{spot}</div>
         ) : null}
       </div>
       <div className="shrink-0 rounded-lg border border-white/15 bg-white/[.04] px-2.5 py-0.5 text-center">
         <b className="block text-[20px] leading-[1.1]">{pax}</b>
-        <span className="text-[10px] text-[#94a3b8]">
+        <span className="text-[10px] text-white">
           {bookings} booking{bookings === 1 ? "" : "s"}
         </span>
       </div>
@@ -491,7 +491,7 @@ function RelayList({
     <>
       {s ? (
         <div className="px-3.5 pt-2 pb-1">
-          <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1 text-[12.5px] text-[#94a3b8]">
+          <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1 text-[12.5px] text-white">
             <span>
               <b className="text-white">{s.pax}</b> pax
             </span>
@@ -511,7 +511,7 @@ function RelayList({
               </span>
             ) : null}
           </div>
-          <div className="mt-0.5 pb-1.5 text-[12px] text-[#94a3b8]">
+          <div className="mt-0.5 pb-1.5 text-[12px] text-white">
             Picked up {s.picked_up}/{s.pax} · {s.no_show} no show
           </div>
         </div>
@@ -542,7 +542,7 @@ function RelayList({
                         {g.pax} pax
                       </span>
                     </div>
-                    <div className="mt-0.5 text-[12px] text-[#64748b]">
+                    <div className="mt-0.5 text-[12px] text-white">
                       {orderWithTag(g)}
                     </div>
                   </div>
@@ -550,7 +550,7 @@ function RelayList({
                     <span
                       className={cn(
                         "text-[11px]",
-                        g.checked_in_at ? "text-green-500" : "text-[#64748b]",
+                        g.checked_in_at ? "text-green-500" : "text-white",
                       )}
                     >
                       {g.checked_in_at ? "Checked in" : "Not checked in"}
@@ -605,7 +605,7 @@ function CompactTour({ seg, title }: { seg: LiveSegment; title: string }) {
   const stat = (n: number, label: string, red = false) => (
     <div className="rounded-[9px] bg-white/[.06] px-1 py-1.5 text-center">
       <b className={cn("block text-[19px]", red && "text-[#fca5a5]")}>{n}</b>
-      <small className="block text-[10px] leading-[1.25] text-[#94a3b8]">
+      <small className="block text-[10px] leading-[1.25] text-white">
         {label}
       </small>
     </div>
@@ -627,14 +627,14 @@ function CompactTour({ seg, title }: { seg: LiveSegment; title: string }) {
       <div className="mb-2.5 rounded-[14px] border border-blue-500/45 bg-[#10243b] p-3.5">
         <div className="flex flex-wrap items-baseline gap-2">
           <b className="text-[28px] leading-none">{tc.total}</b>
-          <span className="text-[13px] text-[#94a3b8]">pax on this bus</span>
+          <span className="text-[13px] text-white">pax on this bus</span>
           {tc.first ? (
             <em className="ml-auto text-[13px] font-bold text-amber-400 not-italic">
               {tc.first}
             </em>
           ) : null}
         </div>
-        <div className="mt-2.5 flex flex-wrap items-center gap-2 border-t border-white/10 pt-2.5 text-[12.5px] text-[#94a3b8]">
+        <div className="mt-2.5 flex flex-wrap items-center gap-2 border-t border-white/10 pt-2.5 text-[12.5px] text-white">
           {seg.van ? (
             <span className="rounded-md border border-blue-500/35 bg-blue-500/20 px-2 font-semibold text-white">
               {seg.van}
@@ -655,7 +655,7 @@ function CompactTour({ seg, title }: { seg: LiveSegment; title: string }) {
           {stat(tc.no_show, "No show (from guide)", true)}
         </div>
       </div>
-      <p className="rounded-[10px] border border-dashed border-white/15 px-2.5 py-2 text-[12px] text-[#94a3b8]">
+      <p className="rounded-[10px] border border-dashed border-white/15 px-2.5 py-2 text-[12px] text-white">
         The guide{tc.guide ? ` ${tc.guide}` : ""} has the guest list and
         contacts the guests.
       </p>
@@ -713,7 +713,7 @@ function TourList({
         <div className="mb-2.5 rounded-[14px] border border-blue-500/45 bg-[#10243b] p-3.5">
           <div className="flex flex-wrap items-baseline gap-2">
             <b className="text-[28px] leading-none">{s.pax}</b>
-            <span className="text-[13px] text-[#94a3b8]">
+            <span className="text-[13px] text-white">
               pax · {s.pickups} pickup stop{s.pickups === 1 ? "" : "s"}
             </span>
             {s.first ? (
@@ -723,7 +723,7 @@ function TourList({
               </em>
             ) : null}
           </div>
-          <div className="mt-2.5 flex flex-wrap items-center gap-2 border-t border-white/10 pt-2.5 text-[12.5px] text-[#94a3b8]">
+          <div className="mt-2.5 flex flex-wrap items-center gap-2 border-t border-white/10 pt-2.5 text-[12.5px] text-white">
             {van ? (
               <span className="rounded-md border border-blue-500/35 bg-blue-500/20 px-2 font-semibold text-white">
                 {van}
@@ -736,7 +736,7 @@ function TourList({
               <b className="text-[22px] leading-none text-[#86efac]">
                 On board {s.picked_up} / {s.pax}
               </b>
-              <span className="text-[12.5px] text-[#94a3b8]">
+              <span className="text-[12.5px] text-white">
                 · {s.no_show} no show
               </span>
             </div>
@@ -746,7 +746,7 @@ function TourList({
               {lunch.map((x) => (
                 <span
                   key={x.label}
-                  className="flex-1 rounded-lg bg-white/[.06] px-0.5 py-1 text-center text-[11px] text-[#94a3b8]"
+                  className="flex-1 rounded-lg bg-white/[.06] px-0.5 py-1 text-center text-[11px] text-white"
                 >
                   <b className="block text-[16px] text-white">{x.n}</b>
                   {x.label}
@@ -757,7 +757,7 @@ function TourList({
         </div>
       ) : null}
       {!guide && s ? (
-        <div className="flex px-2 pb-2 text-[11px] font-bold tracking-[.1em] text-[#94a3b8] uppercase">
+        <div className="flex px-2 pb-2 text-[11px] font-bold tracking-[.1em] text-white uppercase">
           Guests
           <span className="ml-auto font-normal tracking-normal text-green-500 normal-case tabular-nums">
             Boarded {s.picked_up} / {s.pax} · {s.no_show} no show
@@ -781,7 +781,7 @@ function TourList({
           {relayNoShow.map((g, i) => (
             <div key={i} className="text-[12px] text-white">
               <b>{g.guide_name}</b>{" "}
-              <span className="text-[#94a3b8]">
+              <span className="text-white">
                 {g.pax} pax{g.pickup_location ? ` · ${g.pickup_location}` : ""}
               </span>
             </div>
@@ -829,7 +829,7 @@ function TourList({
                     </span>
                   ) : null}
                 </div>
-                <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[12px] text-[#94a3b8]">
+                <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[12px] text-white">
                   {lunchText ? (
                     <span
                       className={cn(
@@ -840,7 +840,7 @@ function TourList({
                       {lunchText}
                     </span>
                   ) : null}
-                  <span className="text-[#64748b]">{orderWithTag(g)}</span>
+                  <span className="text-white">{orderWithTag(g)}</span>
                 </div>
                 {g.relay_status === "no_show" ? (
                   <div className="mt-1.5 text-[12px] font-bold text-[#fca5a5]">
@@ -867,7 +867,7 @@ function TourList({
         </section>
       ))}
       {!m.blocks.length ? (
-        <p className="px-0.5 py-2.5 text-[13px] text-[#94a3b8]">
+        <p className="px-0.5 py-2.5 text-[13px] text-white">
           No guests on this bus.
         </p>
       ) : null}
@@ -896,7 +896,7 @@ function GuidePage({
 }) {
   if (!runs.length)
     return (
-      <p className="mt-4 rounded-[14px] border border-dashed border-white/15 p-5 text-center text-[14px] font-semibold text-[#94a3b8]">
+      <p className="mt-4 rounded-[14px] border border-dashed border-white/15 p-5 text-center text-[14px] font-semibold text-white">
         No bus today
       </p>
     );
@@ -907,7 +907,7 @@ function GuidePage({
           {runs.length > 1 || !run.manifest ? (
             <div className="flex items-baseline gap-2.5 px-0.5 pb-2">
               <span className="text-[16px] font-bold">{run.tour}</span>
-              <span className="ml-auto text-[12.5px] text-[#94a3b8]">
+              <span className="ml-auto text-[12.5px] text-white">
                 {[run.bus_label ? `Bus ${run.bus_label}` : "", run.van]
                   .filter(Boolean)
                   .join(" · ")}
@@ -928,7 +928,7 @@ function GuidePage({
               relayNoShow={run.relay_no_show}
             />
           ) : (
-            <p className="px-0.5 py-2.5 text-[13px] text-[#94a3b8]">
+            <p className="px-0.5 py-2.5 text-[13px] text-white">
               Guest list not uploaded yet.
             </p>
           )}
@@ -949,13 +949,13 @@ function Inbox({
 }) {
   if (!threads.length)
     return (
-      <p className="px-2 py-3.5 text-[13px] text-[#94a3b8]">
+      <p className="px-2 py-3.5 text-[13px] text-white">
         No messages from these guests yet.
       </p>
     );
   return (
     <div data-live-inbox>
-      <div className="px-2 py-1.5 text-[11px] font-bold tracking-[.1em] text-[#94a3b8] uppercase">
+      <div className="px-2 py-1.5 text-[11px] font-bold tracking-[.1em] text-white uppercase">
         Newest first · this driver&apos;s run
       </div>
       {threads.map((t) => (
@@ -974,11 +974,11 @@ function Inbox({
               <span className="inline-block size-2 rounded-full bg-red-500" />
             ) : null}
             <b className="text-[15px] text-white">{t.guest_name}</b>
-            <span className="ml-auto text-[11.5px] text-[#94a3b8]">
+            <span className="ml-auto text-[11.5px] text-white">
               {t.last?.time ?? ""}
             </span>
           </div>
-          <div className="text-[12px] text-[#94a3b8]">
+          <div className="text-[12px] text-white">
             {t.pax} pax{t.pickup_location ? ` · ${t.pickup_location}` : ""}
           </div>
           {t.last ? (
@@ -988,7 +988,7 @@ function Inbox({
           ) : null}
         </button>
       ))}
-      <p className="px-1 text-[11.5px] text-[#64748b]">
+      <p className="px-1 text-[11.5px] text-white">
         Opening a conversation here does not mark it read for the driver.
       </p>
     </div>
