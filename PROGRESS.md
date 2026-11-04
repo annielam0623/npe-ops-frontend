@@ -1387,6 +1387,7 @@ D. 已完成、待从置顶移走：
   - fa：后端 origin/main 362cd700 没有 manifest_link(s)，要后端在订单详情 / 搜索接口给 manifest_links [{date, tab, tab_label, pill, pill_label, row_keys[]}]（不在 = []）。preview https://claude.ai/artifact/PhPav7b9m1sjrxmfa8sv8F （5 题：放哪 / 分几处 / 勾哪些 / On Hold / 不在时写什么，都推荐 A），已整段转 Annie。
   - Annie「同意全部推荐。动手」（5 题全 A）。fa 推 task/open-in-manifest **6343171**（mock，没合 main）。**给后端的形状（明天后端主窗口照这个做，或告诉真实形状）**：订单详情 / 搜索接口的 OrderDetail 加 `manifest_links: [{date:"YYYY-MM-DD", tab, tab_label, pill, pill_label, row_keys:[]}]`，不在 Main manifest = []；On Hold 要能判断（订单状态照 Order List）；Cancelled 不给。前端：没这个字段 = 整行不出；Manifests 接 ?row=&tick=0。os 74、orders 48、man 365、dr 89、nav 38、mf 240，tsc / eslint / build 过。
   - 94 报（2026-11-04）：后端 f4 写完在审、没上线。形状同前端 mock：GET /api/operations/orders/{order_number} 加 manifest_links [{date, tab, tab_label, pill, pill_label, row_keys[]}]，不在 = []；没 manifests.view 或查位置出错 = 不带字段（订单详情照常）；row_key / tab / pill 取 GET /api/manifests 的 page_rows；CHD 行在 admin_fee 标签。On Hold 永远 []（10-27 定 on hold 不进 Main Manifest，新表状态叫 pending），manifest-links.tsx 的 isOnHold / tick=0 分支走不到，显示「not on Main manifest … Check its status in Order List」，符合订单流，不用改。SHA 到了派窗口核字段、合最新 main 后合。
+  - ✅ 后端上线 main 8be7f86c（合并 ab189834，任务 020e94aa，94 转）。2c 派 81（75 合完接）核字段、合最新 main、跑 os / orders / man / dr / nav / mf 后合。
 
 ### 50. Sales Report 插队 + CHD 组放回 Main manifest（2026-11-02）
 - Annie 原话：「紧急插个队，把sales report做出来」。24 问她指哪种：A 修现有 /sales-report（10/23 上线，按 Group → section → 产品，Orders / Pax / $，只 SA 可见挂 Soon）／B 做一份新报表（先出 preview）／C 把删掉的按 agent 月表周表加回来。她没选，接着说：「你先把CHD这个group 先放回main manifest」。
