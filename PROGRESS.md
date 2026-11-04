@@ -954,14 +954,33 @@ D. 已完成、待从置顶移走：
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 83. 凌晨 2 点–早上 9 点打开 Dispatch 默认今天（2026-11-04，Annie 在主窗口-2c 提，没动手）
+- 原话：「给你一个新任务，把凌晨2点- 9点登录进operation system的人的dispatch页面默认为今天。今早犯了好几个错误，拿着今天的单子去对明天的团，数字全是错的，然后才发现是默认是明天的」。
+- 现状（2c 只读）：Dispatch 不带 ?date= 时由后端定默认 = 洛杉矶明天（app/dispatch/page.tsx:9、lib/dispatch-api.ts:26）；dispatch-view.tsx:751 只认 ?date=。
+- 做法（只改前端、样子不变）：没带 ?date= 时，前端按洛杉矶时间（= 拉斯维加斯）看现在几点，02:00–08:59 就请求今天，其余照旧明天；带 ?date= 或手动换日期照旧。
+- 问 Annie：Q1 范围只 Dispatch 主页（Assign / Send），还是 Bus Manifest / Relay list / Work sheet / Guide sheet 也一起；Q2 9 点整算明天（推荐）；+ 是否现在动手。
+
 ### 82. G245 Main manifest 羚羊谷 Cfm # 跟产品不符标红、挡发送（2026-11-04，94 转，前端还没 preview）
 - Annie 原话（94 转）：「我需要订单如实地反映在页面上，rezdy是什么样就是什么样……现在在main manifest的cfm#就应该是标红，然后让staff去改」「如果设置了auto send的话要提醒这个#的不对，不能发送」。起因 CHDQ59DAL：原下 X 后改 Lower，X 栏的号是真的但不是 Lower 的号。
 - 后端 f4 在审、没上线，要 Annie 先执行 **v149** 才能上。形状（只加字段）：① GET /api/manifests 每行 cfm_mismatch：{other_label:"Antelope Canyon X Confirmation #", other_value:"387826855"} 或 null；Cfm # 照旧显示 Rezdy 上的号；staff 在 Manifests 填了 Cfm # 后刷新变 null。② POST /api/manifests/send-tickets：标红行进 blocked，reasons ["Cfm # doesn't match the product (Antelope Canyon X Confirmation #: 387826855)"]，can_override=false（不能 Send anyway），返回形状不变。③ How to use 补一句红标意思和处理（在 Cfm # 填正确的号）。
 - 前端：Manifests 的 Cfm # 格标红 + tooltip「Rezdy also has <other_label>: <other_value>」；勾选时可先提示；被挡照 legacy-ui 红框。样子新增 ⇒ **先 preview**，2c 派 81 出（不写代码），Annie 看过 +「动手」再写，后端 SHA 到了才合。
+- **preview**：https://claude.ai/artifact/XnLF3SdqmMvaYQth8oHCjn （Main manifest › Tickets；2c 已整段转 Annie，等答）。后端：手动发送一定挡、不能 Send anyway；自动发送跳过并每单发一次提醒邮件（收件人 = Auto Send「门票汇总邮件」那组，生产 antelope@ / reservations@，94 方案 A 等 Annie 确认）。表上 Cfm # (Rezdy) 不能改；Cfm # 是 staff 填的「Add #」。
+  - Q1 怎么标：A（推荐）只标 Cfm # (Rezdy) 那格红框红字 + 下面小红字「Doesn't match the product」，悬停「Rezdy also has Antelope Canyon X Confirmation #: 387826855」，行不变色；B 整行淡红 + 红框（跟没 Cfm # 分不清）；C 红底白字。
+  - Q2 能不能勾：A（推荐）同没 Cfm # 做法，能勾，点 Send reminder 红条逐单写原因、不算进 Send anyway，表上方黄字加「Orders with a red Cfm # can't be sent until you enter the right Cfm #.」；B 勾选框灰掉。
+  - Q3 How to use：A（推荐）用「Red Cfm # (Tickets): the Cfm # from Rezdy doesn't match the product. Rezdy has a number in another Antelope field, for example when an order was changed from X to Lower. Point at the number to see which field. Check the order in Rezdy, then type the right number in the Cfm # cell and press Save. The red mark goes away and the order can be sent. Until then it can't be sent, by hand or by Auto Send, and Send anyway doesn't apply.」；B 她改字。
+  - Q4 自动发送跳过要不要在 ops 列出：A（推荐）不另列，Auto Send 页说明加半句「Orders whose Cfm # doesn't match the product are skipped too; each one is emailed to the summary list once.」；B 每轮下逐单列 Skipped（要后端另给接口）。
+  - 另问：提醒邮件收件人用 Auto Send 门票汇总那组（94 方案 A）。
+  - 前端工时定了后约 2–3 小时（含 man 套）。
 
 ### 81. ~~Bus Manifest~~ **Relay list 打印页**每页页脚标「n of n」（2026-11-04，Annie 在主窗口-2c 提，没动手）
 - 原话：「G236 Bus Manifest 照纸本 --- 把每页的页脚标上页数 n of n，提醒staff后面还有页面」。
 - ⚠️ **Annie 更正（原话）：「对不起，我说的是relay的打印页」** ⇒ 要改的是 Dispatch › Relay list 打印（前端 app/dispatch/relay-list、components/relay-list/）。下面 Bus Manifest 的查证和 preview（6SWsdc8ND7FMoG41aU2jB5、Q1 / Q2）**作废、不用答**，留作记录。2c 派 81 重出 Relay list 的 preview。
+- **Relay list preview**：https://claude.ai/artifact/4dc5BmHshSrk8EZNm8K55a （2c 已整段转 Annie，等答）。现在：一次打一整套（每轮总表 RELAY SPLITS + 每台 relay 车一张，按 ⚙ 各自竖 / 横），一个页码都没有，人多接着印下一页无提示；车头 Print 只打那一台。
+  - Q1 怎么数：A（推荐）整份连着数，右下「Page 3 of 5」，只打一台就数那台；B 每张单各自数，左单名右「Page 1 of 1」。
+  - Q2 放哪：A（推荐）右下角；B 底下居中。
+  - Q3 每页底边留约 8mm：A（推荐）行，一张少一行左右；B 不行就不加页码。
+  - How to use 一句（选 A）：「Each printed page shows Page n of N at the bottom right, counting the whole set (or the one car you printed). Print from Chrome, and leave Headers and footers unticked in the print settings.」
+  - 可行性：A = relay-list.css 竖 / 横 @page 加底边 8mm + @bottom-right counter(page)/counter(pages)，不用 JS；81 在 Chrome 156 打 PDF 实测 5 页 Page 1–5 of 5、横版也对；Safari 不出页码；约 1–1.5 小时。B 要 JS 量纸高约 4 小时、不准。
 - ~~范围：前端 manifest-view.tsx~~ **更正（81 只读查）**：打印页是后端模板 app/templates/admin/tour_manifest_print.html（ops 的 Print 键打开它）⇒ **后端改，前端不用改**。
 - 81 查到：打印页**已经有页码、就是每车各自数**（后端 10-03 照纸本）：表格下一行左「Page 1/2」右「Continued on next page →」，末页「End of manifest」；reflow() 按实际分页按车重编，号码准。Affiliate 栏「Page 1/1 · End of Affiliate」，午餐单「Page 1/1」。问题在样子：紧跟表格不在纸底（末页人少时停在纸中间）、12px 灰字、没写车号。
 - preview：https://claude.ai/artifact/6SWsdc8ND7FMoG41aU2jB5 （一团三车、Bus 2 两页；现在 / A / B 并排）。**等 Annie 答（2c 已整段转）**：
