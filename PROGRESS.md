@@ -1342,6 +1342,7 @@ D. 已完成、待从置顶移走：
 - 报错（英文，红字）：只填一个坐标「Fill in both latitude and longitude, or leave both empty.」；范围不在 1–500「Radius must be a whole number of meters from 1 to 500.」；坐标存失败「The hotel was saved, but not the pickup point: …」。两格都清空 = 这家不再记到 / 离。
 - 题 1：这个放法行不行？A（推荐）照截图；B 另说放法。
 - 题 2：上面「+ Add New Location」新加酒店的表单要不要也加这三格？A（推荐）不加，新酒店加好后点 Edit 再填（Add 表单已经很长）；B 加。
+- 2026-11-04：94 说 Annie 问 tracking 测试的坐标在哪填 ⇒ 2c 把题 1 / 题 2 + 截图（C:\Users\annzh\AppData\Local\Temp\claude\8828d70a62fa0031\8f0176bc-4499-4c01-bf6e-e6fe335357df\scratchpad\pin59-pickup-point.png）整段发 Annie。答了 +「动手」派窗口合 task/samsara-arrival（后端 samsara-arrivals + v146 也要上）。
 
 ### 58. Morning Pickup Tracking 表里怎么显示「到了 / 走了」的时间（2026-11-03，09 做 Samsara 到站时问）
 - 页面：Morning Pickup Tracking（/morning-pickup/tracking）的表格，每一行是一单客人。
@@ -1741,6 +1742,7 @@ D. 已完成、待从置顶移走：
   64 给了控件 ↔ 码对照（09 记在分支 task/perm-tick-or-role 5a8fdc9 的 PROGRESS）：前端查和后端同一个码；后端还看 role 的，前端也照旧看 role。改看勾：侧栏 Settings 各项、HR view / edit、Products Forecast 设置、排班读停用员工、Workspace Rate card 链接。照旧看 role / SA：Team 页（/settings/users 10-28 已并进 Team，只做跳转；账号列表 / 重设密码 / 改名 / 停用 admin 可用，权限 / 职责 / 组只有 SA；Annie 指出「users已经跟team合并了」，09 已更正 c6c570a）、Products Bus Manifest setup、/notifications、Quick replies、Supplier restaurant、Workspace settings、排班 Publish anyway。这些要改看勾的话是后端新活（57）。
 - 后端 G225 Multi Orders 上 main（origin 7a69b185，合并 54fdd81f），前端不用改：卡片只算 confirmed 的单（读 Order List）；每 10 分钟，只剩 1 张单自动挂上，0 张挂到最后发给他的那张并亮起；「<2 张不显示」没做。multi_trip 卡可能还列已取消团期，后端已登记。
 - 后端 G212 B1 / B2 / B4 / B5 上 main（origin 86faf30b，合并 1f967bad）：admin 可撤销没接受的邀请；/api/team/members 加 role / is_active / initials / invite_token（只 SA、只未接受）/ is_self；停用 / 启用 / 改角色 / 重置链接 / invite 进 Team action-log；删账号快照带 teams。B3（409 + 计数，先发 detail 写法）、B6 / B7 还没做。⇒ 派 91 只读核对前端 Team 页要不要跟着改。
+- 2026-11-04 94 转 G212 B3 形状（f4 在做，没上线）：DELETE /api/users/{id} 被 RESTRICT 挡 → 409（原 400），detail 纯字符串，例「Erin Walsh is still linked to 3 task handovers and 12 Dispatch assignments, so the account cannot be deleted. Deactivate it instead, or reassign those first.」（保留 still linked；四种叫法 task handovers / Dispatch assignments / Dispatch change records / Dispatch guest list records）；数不出退回原句。其余：删自己 / 超管 400、admin 删真账号 403、404。前端 delete-person-dialog.tsx:115 靠正则 still linked 出「Deactivate instead」，新句仍含 → 不用改；上线后派窗口核一遍（可加判 409）。B6 / B7 can_edit / edit_block_reason 后发。
   - 91 核完：现在不出错。B1 admin 的 Cancel invite 前端一直有（users-table.tsx:469-487），现在能成功；Delete 真账号只在 SA 的 Edit 框里，和后端一致。B4 / B2 日志动作名 update / create / delete 前端已有说法。
   - B5：前端现在先拉 /api/users，SA 再拉 /api/team/members + 逐人拉 /api/team/members/{id}（users-view.tsx:158-190）。members 是 require_superadmin，等 B6 放开给 admin 后两种人一起改只读 members。需要后端（备选，已转 57）：members 带 items 或 Access 汇总，省掉逐人请求；日志 Role 值小写，后端加 values 映射。
   - 派 91 小修 task/team-log-refresh：Team 日志面板开着时，动作成功后 refreshKey +1，新条目马上出（样子不变）。
