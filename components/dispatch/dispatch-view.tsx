@@ -3164,6 +3164,12 @@ function HowToUse() {
           order onto another bus of the tour, or pick the bus in its list.
         </li>
         <li>
+          Arrange seats lists each bus by hotel, A to Z, with the same hotel
+          together. Click a hotel above a list to tick all its orders (click
+          again to untick; you can pick several), then pick the bus under the
+          lists and click Move selected orders.
+        </li>
+        <li>
           A yellow bar means CCL posted a change: Apply changes puts it on the
           page.
         </li>

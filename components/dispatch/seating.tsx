@@ -79,6 +79,82 @@ export function tourTypeKeys(orders: SeatingOrder[]): string[] {
   });
 }
 
+/**
+ * 酒店（置顶 72 追加，Annie 2026-11-04「理解正确，动手」）：每台车 / Not on a bus 的名单按酒店名 A–Z 排，
+ * 同一家酒店的单挨在一起，同酒店里按客人名排；没写酒店的排最后。
+ */
+function hotelOf(o: SeatingOrder): string {
+  return o.pickup_location?.trim() ?? "";
+}
+
+export function byHotel(a: SeatingOrder, b: SeatingOrder): number {
+  const ha = hotelOf(a);
+  const hb = hotelOf(b);
+  if (!ha !== !hb) return ha ? -1 : 1;
+  return (
+    ha.localeCompare(hb, "en", { sensitivity: "base" }) ||
+    (a.name || "").localeCompare(b.name || "", "en", { sensitivity: "base" })
+  );
+}
+
+/**
+ * 名单上方一排酒店胶囊：一家酒店一颗，写几单 · 几位；点一颗 = 勾上这一列这家酒店的全部单，再点取消；可以点好几颗，
+ * 别的勾选不动。选好用下面的「Move selected to…」一次挪走。只有一家酒店也放（一下全选）。
+ */
+function HotelPills({
+  id,
+  orders,
+  isOn,
+  onToggle,
+  disabled,
+}: {
+  id: string;
+  orders: SeatingOrder[];
+  /** 这家酒店在这一列的单是不是全都勾上了。 */
+  isOn: (list: SeatingOrder[]) => boolean;
+  onToggle: (list: SeatingOrder[], on: boolean) => void;
+  disabled: boolean;
+}) {
+  const groups: { hotel: string; list: SeatingOrder[] }[] = [];
+  for (const o of orders) {
+    const h = hotelOf(o);
+    const g = groups.at(-1);
+    if (g && g.hotel === h) g.list.push(o);
+    else groups.push({ hotel: h, list: [o] });
+  }
+  if (!groups.length) return null;
+  return (
+    <div data-hotel-pills={id} className="mb-1.5 flex flex-wrap gap-1">
+      {groups.map(({ hotel, list }) => {
+        const on = isOn(list);
+        const label = hotel || "No hotel";
+        return (
+          <button
+            key={label}
+            type="button"
+            data-hotel-pill={label}
+            aria-pressed={on}
+            disabled={disabled}
+            title={`${label}: ${plural(list.length, "order")}, ${plural(sum(list), "guest")}. Click to ${on ? "untick" : "tick"} them all.`}
+            onClick={() => onToggle(list, !on)}
+            className={cn(
+              "inline-flex h-6 max-w-full cursor-pointer items-center gap-1 rounded-full border px-2 text-[11.5px] tabular-nums disabled:cursor-not-allowed disabled:opacity-50",
+              on
+                ? "border-[#185fa5] bg-[#eaf2ff] font-semibold text-[#0c447c]"
+                : "border-[#cbd2dc] bg-white text-[#1a1a1a]",
+            )}
+          >
+            <span className="truncate font-semibold">{label}</span>
+            <span className="whitespace-nowrap text-[#6b7280]">
+              {plural(list.length, "order")} · {sum(list)} pax
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 /** 一张订单：名字、单号、几位、接客时间地点；下拉换车；可拖到同一团的另一台车。 */
 function OrderLine({
   tour,
@@ -261,7 +337,7 @@ export function ArrangeBoard({
   const buses = tour.buses.filter(
     (b): b is SeatingBus & { label: string } => !!b.label,
   );
-  const unplaced = tour.orders.filter((o) => eff(o) === null);
+  const unplaced = tour.orders.filter((o) => eff(o) === null).sort(byHotel);
   const picked = tour.orders.filter((o) => sel.has(keyOf(o)));
 
   async function move(orders: SeatingOrder[], to: string | null) {
@@ -294,6 +370,20 @@ export function ArrangeBoard({
           }),
     selectedIds: () => picked.flatMap((p) => p.guest_ids),
   });
+  const pillProps = (id: string) => ({
+    id,
+    disabled,
+    isOn: (list: SeatingOrder[]) => list.every((o) => sel.has(keyOf(o))),
+    onToggle: (list: SeatingOrder[], on: boolean) =>
+      setSel((cur) => {
+        const next = new Set(cur);
+        for (const o of list) {
+          if (on) next.add(keyOf(o));
+          else next.delete(keyOf(o));
+        }
+        return next;
+      }),
+  });
 
   return (
     <div
@@ -311,9 +401,9 @@ export function ArrangeBoard({
           const mine = tour.orders.filter((o) => eff(o) === b.label);
           const pax = sum(mine);
           const tf = typeOf[b.label];
-          const shown = tf
-            ? mine.filter((o) => o.tour_types?.includes(tf))
-            : mine;
+          const shown = (
+            tf ? mine.filter((o) => o.tour_types?.includes(tf)) : mine
+          ).sort(byHotel);
           const full = b.capacity != null && pax > b.capacity;
           const farm = !!b.farm_out;
           return (
@@ -439,6 +529,12 @@ export function ArrangeBoard({
                   })}
                 </div>
               ) : null}
+              {viewOnly ? null : (
+                <HotelPills
+                  {...pillProps(`${tour.manifest_id}:${b.label}`)}
+                  orders={shown}
+                />
+              )}
               <div className="mb-1 text-[11.5px] text-[#6b7280]">
                 {tf
                   ? `${plural(shown.length, "order")} of ${mine.length}`
@@ -477,6 +573,12 @@ export function ArrangeBoard({
                 ? "Completed: pick a bus for each order"
                 : "No room on today’s buses"}
             </div>
+            {viewOnly ? null : (
+              <HotelPills
+                {...pillProps(`${tour.manifest_id}:none`)}
+                orders={unplaced}
+              />
+            )}
             <ul className="m-0 flex max-h-[320px] list-none flex-col gap-1.5 overflow-y-auto p-0">
               {unplaced.map((o) => (
                 <OrderLine key={keyOf(o)} {...lineProps(o)} />

@@ -966,6 +966,11 @@ D. 已完成、待从置顶移走：
 - 37 核过：/live-drivers 已带 short_tag（团车段 _driver_day_context → _safe_tag；relay 段 print_extras fallback=False；导游 runs _tag_runs），后端不用改；读简称出错时字段缺，前端按缺 = 空。纯前端，09 做完合 main 线上即见。
 - **新要求（主窗口原话，2026-11-04）**：「在南北分车这里，dispatch的分车页面，按照A-Z 顺序来排，相同酒店放在一起，然后设置酒店胶囊在表格的上方，点胶囊就选中这个胶囊的所有酒店，然后点击移动到B车，就全部移过去了，胶囊可以单选也可以多选」。还没 preview、没动手。纯前端（seating.tsx，同 72 勾选框同一文件）→ 派 09 在 task/seat-direction 上一起出 preview。
 - ✅ Annie「理解正确，动手」（主窗口原话，2026-11-04）对酒店胶囊那件。09 在 task/seat-direction 上直接写，细节按推荐，做完截图 preview 给 Annie 看过再合（连同 Direction 列 / 大勾选框）。
+- 09 写好（task/seat-direction，未合，和 72 Direction / 大勾选框一起等 Annie 看 preview https://claude.ai/artifact/5FLcwPjxBMjNbVuD15mCmG 第 ③ 节）：
+  - Arrange seats 每台车和 Not on a bus 的名单按酒店名 A–Z（不分大小写），同酒店挨着、同酒店按客人名；没写酒店的排最后（胶囊叫 No hotel）。
+  - 细节按推荐（Annie 说按推荐做）：胶囊放**每一列各一排**（在 Upper / Lower 键下面、名单上面，只管这一列）；写「Wynn 2 orders · 4 pax」；点一颗勾上这一列这家酒店全部单、再点取消、可多选、别的勾选不动（可跨列）；选中样子 = 浅蓝底深蓝字（不用实心蓝，蓝色留给提交键）；不用 Direction 色；只有一家酒店也放；只看（partner）不出胶囊；Completed 日 / staff 挪过的单照样显示、照样能选（挪了就是 staff 定的）；有 Upper / Lower 筛选时胶囊只算筛出来的单。
+  - How to use 加一条（原文）："Arrange seats lists each bus by hotel, A to Z, with the same hotel together. Click a hotel above a list to tick all its orders (click again to untick; you can pick several), then pick the bus under the lists and click Move selected orders."
+  - 检查：da 501/501（新 11 条，模拟 ctl pillDemo）；tsc 0、eslint 0。
 
 ### 72. Dispatch 两台 bus 调位置：勾选框放大 + Auto 按南北分车（2026-11-03 晚，Annie 在主窗口提，附表）
 - Annie 原话：「前端要改一下，当有两台bus可以调位置的时候，勾选框太小了，把它放大跟main manifest里一样；另外Auto排进bus的时候按照这个规则：一台车放south，一台放north，中间的机动填位」。
