@@ -27,7 +27,7 @@
 
 ### 三、正在做 / 刚派的
 - **置顶 79 司机 / 导游页字改白**（Annie 原话在置顶 79；09 已开 origin/task/live-white-text，看那里的提交）：派 09 出 preview：逐项列灰字（页面文字 + 模板 class / 行号，driver_home.html、guide_home.html、live-drivers.tsx），推荐全改白、只留按不了的按钮和「—」占位，「现在 / 改后」并排。09 被关之前的进度见置顶 79（它会写进去）。**新主窗口：派新工作窗口接着出 preview**；Annie 点头 + 动手后：清单发 37（后端改模板），前端改 Live drivers。
-  - ✅ 09 收尾：preview **https://claude.ai/artifact/8cWB8Ki2BdEttf49GXt4Pp**（司机页 D1–D23、导游页 G1–G15、ops O1–O10，每项带页面文字 + class / 行号，全部推荐改白 #fff）；只留灰 3 处等 Annie 确认：K1 按不了的按钮、K2 签到前「–」占位、K3 没选中的 Routes / Messages 标签。后端建议：base.html:17 的 --muted / --muted-2 改 #fff，K2 / K3 单独设回 #94a3b8。ops 改动在 task/live-white-text fc3883a（未合，mt 没跑：接手先合 main 跑 mt / nav + build）。**已发给 Annie，等她点头 + 动手**，再把清单发后端主窗口 94。
+  - ✅ 09 收尾：preview **https://claude.ai/artifact/8cWB8Ki2BdEttf49GXt4Pp**（司机页 D1–D23、导游页 G1–G15、ops O1–O10，每项带页面文字 + class / 行号，全部推荐改白 #fff）；只留灰 3 处等 Annie 确认：K1 按不了的按钮、K2 签到前「–」占位、K3 没选中的 Routes / Messages 标签。后端建议：base.html:17 的 --muted / --muted-2 改 #fff，K2 / K3 单独设回 #94a3b8。ops 改动在 task/live-white-text fc3883a（未合，mt 没跑：接手先合 main 跑 mt / nav + build）。✅ Annie 同意推荐并「动手」，清单已发 94，ops 派 2c 合。
 
 ### 四、等 Annie（详见置顶，不滚动重问）
 - 64 G180 Tour Tracking：Notified 版 preview https://claude.ai/artifact/Fz4f3awLiNauihh2n655JT 等点头（Annie 已在 44「动手」，措辞 Notified / To notify，CSV Notified = Yes / No）；后端 44 task/tracking-sync-v2 家里做。
@@ -1008,6 +1008,7 @@ D. 已完成、待从置顶移走：
 - 范围：手机司机页 / 导游页（后端模板 driver_home.html、guide_home.html）+ ops Morning tracking › Live drivers（前端 live-drivers.tsx）。
 - 先 preview：派 09 列出页面上所有灰字（订单号、tour 简写、地址、1 booking、Picked up 0/9、Not checked in、时间等），标出改白 / 保留灰（建议只留：按不了的按钮、「—」占位），并排对比，Annie 点头后后端改模板、前端改 Live drivers。已知会 37。
 
+- ✅ **Annie「改白色的事情，同意推荐。动手」（主窗口-24 原话，2026-11-04）**：全改白，只留 K1 / K2 / K3 灰。清单已发后端 94（改 driver_home.html / guide_home.html）；ops 派 2c 合 task/live-white-text fc3883a（先合 main 跑 mt / nav + build）。
 ### 78. Live drivers 订单号旁加团简写（2026-11-04）—— ✅ Annie「动手」
 - ✅ 09 合 main（task/live-short-tag）：Morning tracking › Live drivers 每位客人订单号写成「A1001 · GC」（同司机手机页 `{{ order_number }} · {{ short_tag }}`），relay 段、团车段、导游 runs 都加；short_tag 空或缺只写单号。后端 37 说 /live-drivers 已带 short_tag，合了线上就能看到。检查：mt 247/247（新 1 条）、nav 38/38；tsc 0、eslint 0、build 过。
 - Annie 发 Live drivers 截图（订单号旁没简写），主窗口问「是否现在动手」，她答「动手」并确认是这件（不是 72）。同司机手机页 11/2 B5 / B6（后端 3e0ff83f）：订单号后「· short_tag」，只在设了 Bus Manifest setup Short name 时显示。
