@@ -590,7 +590,7 @@ async function run() {
   await evaluate("$btn('Save', document.querySelector('[data-block=tour] [data-edit-row]')).click();");
   await waitFor("!document.querySelector('[data-block=tour] [data-edit-row]')");
   check("72：再按 Save 存上 Flexible", (await since(before72, (e) => /\/direction$/.test(e.path)))[0]?.body?.direction === "flexible" && (await waitFor(dirRow("Aria") + "?.children[1].textContent.trim() === 'Flexible'")));
-  check("72：How to use 写了 Direction 怎么用", await evaluate("const t = document.body.textContent.replace(/\\s+/g, ' '); return t.includes('Direction (only in the Tour bus block): click ✏ Edit and pick North, South, or Flexible, then Save.') && t.includes('Bus A takes the side with more guests (North or South), the last bus takes the other side') && t.includes('Not set counts as Flexible.');"));
+  check("72：How to use 写了 Direction 怎么用", await evaluate("const t = document.body.textContent.replace(/\\s+/g, ' '); return t.includes('Direction (only in the Tour bus block): click ✏ Edit and pick North, South, or Flexible, then Save.') && t.includes('Bus A takes the side with more guests (North or South), the last bus takes the other side') && t.includes('Not set counts as Flexible.') && t.includes('If both sides have the same number of guests, Bus A takes South.') && t.includes('Auto never splits an order: guests who still do not fit stay in Not on a bus for you to place.');"));
   await ctl({ direction: false });
   await ctl({ split: false });
 

@@ -716,7 +716,11 @@ function HowToUse() {
         South, or Flexible, then Save. Auto on Dispatch → Seat guests uses it
         when a tour has two or more buses: Bus A takes the side with more guests
         (North or South), the last bus takes the other side, and Flexible guests
-        fill whichever bus has more empty seats. Not set counts as Flexible.
+        fill whichever bus has more empty seats. If both sides have the same
+        number of guests, Bus A takes South. If a side does not fit on its bus,
+        the extra orders go to a middle bus first, then to the other bus. Auto
+        never splits an order: guests who still do not fit stay in Not on a bus
+        for you to place. Not set counts as Flexible.
       </li>
       <li>
         Tour bus departure (only in the Tour bus block): tick it for a place
