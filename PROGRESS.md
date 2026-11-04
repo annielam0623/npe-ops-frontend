@@ -25,7 +25,7 @@
   - ✅ 后端 73 上 main **ee601775**（36 做；11/04 线上只读新旧颜色 62 行一致，连库 3984 OK）。最终字段已转 fa：tours[] 带 color/default_color（Relay + 司机页）和 header_*（Bus Manifest），*_set；取色顺序以后端为准（staff 字母 → staff All buses → 纸本字母 → 纸本团 → 团色），前端直接用返回值不自己算。派 fa 核字段后合 main。
 - ✅ 置顶 71 后端：manifest_cols_bus / _tickets / _admin_fee 上限 4000 → 20000 已上线（后端 origin/main 1fac68ca，9e 报）；键名格式不变，超限 400 "value too long (max 20000 chars)"，其他键仍 4000，partner 仍 403。前端不用改。后端另有 npe-confirmation-service-da [af1446]。
 
-## 2026-11-03 晚 置顶 74 Main Manifest：Brenda 每单一条 Waiver link（`task/waiver-link`，工作窗口 fa [985244]，主窗口 5c 派）—— ⛔ 推了分支，等后端 brenda-waiver-link 上 main 核字段再合
+## 2026-11-03 晚 置顶 74 Main Manifest：Brenda 每单一条 Waiver link（`task/waiver-link`，工作窗口 fa [985244]，主窗口 5c 派）—— ✅ 后端 635a198b 上 main（v147 已在生产执行），核过字段后合 main
 - Annie 原话：「那4提全部按推荐走，动手」（5c 转）；preview 定稿 https://claude.ai/artifact/5niqePBqxUsCBqKpLLKCnm （题 1 A 列只在有要 waiver 的单的胶囊出、☰ Columns 能关；题 2 A 上传按 Save 一起写 new + changed；题 3 A 按表头认、没表头当第 1 列订单号第 2 列链接；题 4 A Changed since sent 重发成功后自动消失）。
 - 后端（da，分支 task/brenda-waiver-link 02509ee5，没上 main，迁移 v147 Annie 先执行）：行上 waiver_link_required；字段 waiver_link / waiver_status / waiver_link_by / waiver_link_at；PUT /api/manifests/waiver-link；POST /api/manifests/waiver-links/upload（apply false 预览 / true 写，每行 status new/changed/same/not_found/not_waiver/bad_link/empty/duplicate）；send-tickets blocked reasons 加 "No waiver link"（同一单和 No Cfm # 合一条，can_override）。我只读看过后端分支代码，mock 照它写。
 - 做了：
@@ -38,7 +38,8 @@
   - 后端没带 waiver 字段时：没有列、没有上传键、拦截照旧，页面和现在一样。
 - man 套加 waiver 检查（共 396）：旧后端没变化；默认列补拉；列自动出 / 位置 / 另一颗胶囊不出；格子 No waiver link / Open / 谁 / Changed since sent；坏链接红字、Esc、Save 请求体、存好绿字；☰ Columns 关 / 开（-waiver_link）；红条合一条 + Send anyway 请求；后端拦下进 Skipped；Changed since sent 弹窗标签 + 重发后消失；上传有表头（apply=false 7 行、7 种结果、黄框、Save 只传 2 行 apply=true、写好绿字、重拉）；没表头 3 行；How to use；只读。
 - 检查：man 396/396、mf 240/240、nav 38/38；tsc 0 错、eslint 0 错（3 条原有 warning）、build 过。截图核过格子和上传弹窗样子同 preview。
-- ⚠️ 合 main 前要做：后端上 main 后照真实字段核一遍（尤其 waiver_status 字、upload 回包、blocked reasons），再合最新 main、重跑检查。
+- 合 main（2026-11-03 晚）：只读核后端 635a198b——和我写 mock 时看的 02509ee5 比，接口形状一字没变（PUT / upload 回包 / waiver_status 两种字 / blocked reasons 合一条 can_override），只改了内部「算发出去」的判据（SENT_STATUS_SQL，送达回执改写的状态也算）。合最新 main 后：man 396/396、mf 240/240、nav 38/38；tsc 0 错、eslint 0 错（3 条原有 warning）、build 过。Annie「我同意，请动手」（接受后端已上线的客人页变化）。现在挂 Brenda 的产品只有 PY45SW。
+- Annie 线上验收点：① Main manifest › Tickets › Upper Antelope (Brenda) 胶囊（PY45SW）：Cfm # 后面自动出 Waiver link 列，别的胶囊没有；② 没填的单红「No waiver link」、整行淡红；填链接按 Save / Enter，绿字 Saved、出 Open ↗；③ 工具条「↑ Upload waiver links」：先逐行显示结果，按 Save N links 才写；④ 勾缺链接的单点 Send reminder：红条逐单写缺什么，可 Skip & send / Send anyway；⑤ 发过之后改链接：黄「Changed since sent」，发送弹窗里标「Waiver link changed after sent」，勾 Send anyway 重发成功后标签消失；⑥ ☰ Columns 能关掉 Waiver link。⚠️ 生产上只动 ZZ Test 单；填 / 上传 / 发送都是真的。
 
 ## 2026-11-03 晚 置顶 73 Relay list「⚙ Colours & page」：颜色 + 每张单方向交给 staff（`task/relay-list-settings`，工作窗口 fa [985244]，主窗口 5c 派）—— ✅ 后端 ee601775 上 main，核过字段后合 main
 - Annie 原话：「两件事情着急做：relay list里，最后一张和倒数第三张的紫色太深了。可以把颜色的调配和页面的方向交给staff去处理么」「我要把这两项放给staff，要后端改就后端改」「设置页面的方向是否可以每页独立设置」「同意全部推荐。紫色那个留给staff自己调」「动手」（5c 转）。
