@@ -959,6 +959,10 @@ D. 已完成、待从置顶移走：
 - preview（工作窗口 fa [985244]，2026-11-03 晚，没写代码）：https://claude.ai/artifact/L7Ks8gymYvsd33Q9DuLGUr —— 设置键 ⚙ Colours & page、弹窗（Relay 1–6 / 每团 All buses + 字母 / Portrait·Landscape / Reset）、深紫对照 3 个浅紫候选、A4 横版、手机、How to use 原文；题 1–6 在页面最底（题 3：本窗口没 ops 登录，没查到生产是哪两张，推断是 Antelope 没填纸本色的车退回团色 #7a6ba8）。
 - 5c 派前端工作窗口 `npe-ops-frontend-fa`[985244] 做 preview（入口放 Relay list 页设置键；题 1 颜色范围、题 2 浅紫候选、题 3 哪一天），只做 preview 不写代码。
 
+### 78. Live drivers 订单号旁加团简写（2026-11-04）—— ✅ Annie「动手」
+- Annie 发 Live drivers 截图（订单号旁没简写），主窗口问「是否现在动手」，她答「动手」并确认是这件（不是 72）。同司机手机页 11/2 B5 / B6（后端 3e0ff83f）：订单号后「· short_tag」，只在设了 Bus Manifest setup Short name 时显示。
+- 后端：/live-drivers 客人带 short_tag（relay、团车、导游 runs），已转 37。前端：09 task/live-short-tag，没键不显示可先合。
+
 ### 72. Dispatch 两台 bus 调位置：勾选框放大 + Auto 按南北分车（2026-11-03 晚，Annie 在主窗口提，附表）
 - Annie 原话：「前端要改一下，当有两台bus可以调位置的时候，勾选框太小了，把它放大跟main manifest里一样；另外Auto排进bus的时候按照这个规则：一台车放south，一台放north，中间的机动填位」。
 - 附表（Las Vegas 酒店分三色）：Blue: Northbound assist —— Plaza、Sahara、The STRAT、Westgate、Circus Circus、Wynn、Trump；Red: Neutral / Flexible —— MGM Grand、Virgin、Horseshoe、Bellagio、Treasure Island；Orange: Southbound assist —— Aria、Mandalay Bay、Excalibur、Park MGM、Resorts World。
@@ -975,6 +979,7 @@ D. 已完成、待从置顶移走：
 - 后端 57 接手，要两题（已问 Annie）：a North / South 人数一样多时 A 放哪方；b 人少那方最后一台也装不下：对称处理（先中间车，没有就放 A）还是直接 Not on a bus（57 推荐对称）。17 家表已发 57，名字它自己对 hotel_name。
 - 09 preview https://claude.ai/artifact/5FLcwPjxBMjNbVuD15mCmG （分支 task/seat-direction c6ca0a3，代码 228912c，未合）：Seat guests 勾选框 CHECK_BIG 20×20；Pickup Locations Tour bus 块 Hotel Name 右边 Direction 列（色点 蓝 North / 橙 South / 红 Flexible，没设灰 Not set；✏ Edit 下拉随行 Save，先 PUT 再按需 PATCH direction；失败红字 "Could not save Direction: <detail> The other boxes were saved."；Action Log 加 Direction；Export / Import 不带；GET 没键不出）。pl 116、da 483、tsc / eslint 过。**等 Annie 看 preview 点头**，后端 57 上线后合。
 - ✅ Annie 在 37 窗口答 a / b：两方人数一样多时 Bus A 放 South；人少一方溢出也先放中间车、没有就放 Bus A；原则「绝不自行拆单，留给staff决定」。已转 09 补 How to use。
+- 2026-11-04 09 补 How to use 两句（09fac69），preview 已更新。**72 的 preview 还没点头**（Annie 说的「动手」是 78，不是这件）。
 ### 71. Main manifest ☰ Columns 按某一页单独存—— ✅ 已合 main f5459d6（2026-11-03，09 记录，还没 preview）
 - Annie 原话（09 窗口）：「在main manifest上的column选线，我可以专门为某个页面选择勾选哪些项目么？可不可以在选择的那个页面上加一个just apply for this page，or apply for all」。
 - 现状：列选择按账号、按标签（Bus Tour / Tickets - SelfDrive / Admin fee）各存一份（user-prefs manifest_cols_bus / _tickets / _admin_fee），同标签下所有胶囊共用。按胶囊分开存要后端改 user-prefs（键白名单、值上限 4000 字：加上限或加按胶囊的键）；前端 ☰ Columns 弹窗加「Apply to this page only / Apply to all」。
