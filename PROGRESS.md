@@ -750,6 +750,7 @@
 - 两题（09 已在它窗口问 Annie，原文完整）：① 每行酒店格都涂，还是同一家酒店连着的只涂第一行（后端已有 hotel_first）；② 没有 relay 接的客人（自己到、团车接）酒店格不涂吗。
 - 派 09 做 preview；Annie 答题 + 「动手」后写代码。
 - 37 评估：能做（relay_car_colors() + guest_relay_colors()），manifest guest 加 relay_color，注释同任务改。规则同 Relay 列表：每轮各自从 Relay 1 编号；当天也开大巴的 relay 车不占号、取它挂的大巴团色；第 4 辆起照纸本色表循环。只网页约 2 小时；打印 + Excel 也涂约半天（57 下午把打印 / Excel 酒店格色拿掉了要加回）。风险 B。新题 ③：打印和 Excel 也照涂吗（推荐要）。已转 09 放进 preview。
+- 09 preview：https://claude.ai/artifact/G6wBhhVQpNqWiHQgQWQ4te （没写代码）。色：Relay 1–3 纸本 #fff605 / #ffc05b / #83b7e8，4–6 #c5e8b7 / #d9c8f0 / #f6c6d6，再多循环。题 1 同酒店连着：A（推荐）只涂第一行 / B 每行都涂（同酒店被两车分接按车分组各涂）；题 2 没 relay 接：A（推荐）不涂 / B 浅灰 #dbdcde；题 3 打印 + Excel：A（推荐）三处一样（后端约半天）/ B 只网页（约 2 小时）。等 Annie 答 + 「动手」。
 
 ### 68. Dispatch Relay 车勾酒店不算人数、不核座位（2026-11-03 bug，Annie 在后端 37 窗口报，37 在问）
 - Annie 把一台 23 座的车勾进了 39 个客人。后端要给每家酒店人数、保存时核座位；前端勾选时显示「人数 / 座位」。
