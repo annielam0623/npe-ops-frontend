@@ -981,7 +981,7 @@ D. 已完成、待从置顶移走：
 - ⚠️ 9e 转：Annie 在 9e 窗口回「B」（没 money_view 的人不按 agent ref 搜）。和在 5c 的「同意A」相反 ⇒ 5c 已问 Annie 以哪个为准，答了再定。后端 9e 今晚已收工，这件没写进后端交接，明天以本条为准。
 - ✅ **定 B**：Annie 知道两边不一致后，在 9e 窗口再回「B」（9e 转）⇒ 没 money_view 的人，q 不按 agent ref 搜。**还没「动手」**；preview 照 B 画。
 - fa preview（只画 B）：https://claude.ai/artifact/75Ujnjc3crJ5m6AycJGnaR （4 题：顶栏提示字 / 怎么标 / Orders 页提示字 / How to use，都推荐 A），已整段转 Annie。
-- ✅ 后端上线（94 转，2026-11-04）：main b6b1fce1（合并 62eda877，任务 9b2a723f），同前端 124b946 mock：有 money_view 每行带 reseller_reference（空 "—"）+ matched_agent_ref；没 money_view / partner 不带两键、不按 agent ref 搜；Export 13 列不变。2c 派 81 核字段、合最新 main、跑检查后合。
+- ✅ 后端上线（94 转，2026-11-04）：main b6b1fce1（合并 62eda877，任务 9b2a723f），同前端 124b946 mock：有 money_view 每行带 reseller_reference（空 "—"）+ matched_agent_ref；没 money_view / partner 不带两键、不按 agent ref 搜；Export 13 列不变。2c 派 81 核字段、合最新 main、跑检查后合。✅ **81 合 main 8cecaea**（fast-forward，前端没改代码；os 74、orders 52、nav 38、dr 89、mf 240、man 396，tsc / eslint / build 过）。
 - ✅ 2026-11-04 合 main（工作窗口 `npe-ops-frontend-81`[90172b]，2c 派）：只读核后端 origin/main b6b1fce1（任务 9b2a723f）——键名 reseller_reference（空给 "—"）/ matched_agent_ref（只靠 agent ref 对上才 true）、只给 MONEY_SHOWN（没 money_view 的人和 partner 两键都不给、q 也不按 agent ref 搜）、Export 13 列不变，和 124b946 的 mock 一致，前端不用改。合最新 main 后重跑：os 74/74、orders 52/52、nav 38/38、dr 89/89、mf 240/240、man 396/396；tsc 0、eslint 0 错（3 条原有 warning）、build 过（端口 8982 / 3582 / 9582）。main SHA 见 2c 记录。
   Annie 验收：有 money_view 的账号在 Dashboard 顶栏搜索框、Orders 页搜索框输入 agent reference ⇒ 搜到单、单号下面蓝字「Matched by agent reference: …」，只对上一单直接打开、顶上蓝框「Found by agent reference: …」；没 money_view 的账号提示字照旧、按 agent ref 搜不到。
 
