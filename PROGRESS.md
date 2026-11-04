@@ -754,6 +754,13 @@
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 72. Dispatch 两台 bus 调位置：勾选框放大 + Auto 按南北分车（2026-11-03 晚，Annie 在主窗口提，附表）
+- Annie 原话：「前端要改一下，当有两台bus可以调位置的时候，勾选框太小了，把它放大跟main manifest里一样；另外Auto排进bus的时候按照这个规则：一台车放south，一台放north，中间的机动填位」。
+- 附表（Las Vegas 酒店分三色）：Blue: Northbound assist —— Plaza、Sahara、The STRAT、Westgate、Circus Circus、Wynn、Trump；Red: Neutral / Flexible —— MGM Grand、Virgin、Horseshoe、Bellagio、Treasure Island；Orange: Southbound assist —— Aria、Mandalay Bay、Excalibur、Park MGM、Resorts World。
+- ① 勾选框：components/dispatch/seating.tsx:135（Seat guests 每单的勾选框，现在是浏览器默认小框）改成 Main manifest 的 CHECK_BIG（manifests-view.tsx:1307）。纯前端；大小改动照规矩先 preview。
+- ② Auto 分车：自动分车在后端（POST /api/dispatch/seating/move 的 Auto = 交回后端自动分车），规则要后端改；已留言 37。细节题已问 Annie（见当天回复）。
+- 等 Annie 答题 +「动手」。
+
 ### 71. Main manifest ☰ Columns 按某一页单独存（2026-11-03，09 记录，还没 preview）
 - Annie 原话（09 窗口）：「在main manifest上的column选线，我可以专门为某个页面选择勾选哪些项目么？可不可以在选择的那个页面上加一个just apply for this page，or apply for all」。
 - 现状：列选择按账号、按标签（Bus Tour / Tickets - SelfDrive / Admin fee）各存一份（user-prefs manifest_cols_bus / _tickets / _admin_fee），同标签下所有胶囊共用。按胶囊分开存要后端改 user-prefs（键白名单、值上限 4000 字：加上限或加按胶囊的键）；前端 ☰ Columns 弹窗加「Apply to this page only / Apply to all」。
