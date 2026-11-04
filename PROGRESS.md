@@ -826,6 +826,7 @@
   - Annie 问「不要waiver的单为什么要放链接」→ 5c 解释（大多数门票没有 waiver 步，Secret Antelope 一条通用 Smartwaiver 链接不动，Brenda 现在那条带固定 bookingUuid 是错的），fa 改第 ③ 格为「Other tickets: no change…」。
   - ✅ Annie 原话「那4提全部按推荐走，动手」⇒ 题 1–4 都 A。派 fa 前端 task/waiver-link（mock，推分支不合，等后端 da SHA + v147）；已告诉 da，并再要客人页没链接那句的确认。
   - Annie 问「Download the tour app → Open Link 是什么」→ 是 fa preview 编的假步骤，已照后端 tickets_reminder.py 改（第 1 步 waiver、第 2 步 permit fee，No Permit Fee 只有第 1 步）。Annie 再说「动手」（fa 已在写，照旧）。
+  - 后端 da：客人页已改（task/brenda-waiver-link 02509ee5，没上 main）：Brenda 两种没填链接 ⇒「Your waiver link will be sent to you separately.」，填了 ⇒ 这一单的链接；其他门票照旧。字段不变，4 题后端都不用改。
 
 ### 73. Relay list：紫色太深 + 颜色和纸张方向交给 staff 设（2026-11-03 晚，Annie 在主窗口 5c 提，着急，没动手）
 - 原话：「两件事情着急做：relay list里，最后一张和倒数第三张的紫色太深了。可以把颜色的调配和页面的方向交给staff去处理么」
