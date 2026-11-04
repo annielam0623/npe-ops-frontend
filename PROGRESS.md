@@ -1043,6 +1043,7 @@ D. 已完成、待从置顶移走：
     - 要后端（已转 94）：field-calendar 不带 hr_id = 所有能看的人（或另一个列表接口），每人带 hr_id / name / HR position。前端约 2 天。
     - **Annie 答 Q5：「B」「是工资」** ⇒ 要 Hours（几点上班、几点下班，按小时算工资）。要先定时间从哪来：司机 = 计工资的 check in / check out（94 在问她是哪个系统）；导游 = 2c 已问（团的排定时间 / 导游页打卡 / 别的）。已转 94。其余 Q1–Q4、Q6、Q7 未答，未动手。
       - 94 转 Annie 在 18 窗口答（原话）：「如果我们能从samsara拿到数据就最好，拿不到的话就每天晚上11兜底」⇒ 司机上下班以 Samsara 为准（18 评估 HOS on / off duty vs DVIR pre / post-trip、对人对天、没登录车的司机多少、工作量），拿不到 23:00 兜底。导游时间来源等 Annie 在 2c 答（A 团排定时间推荐 / B 导游页打卡 / C 同司机系统）。
+- ✅ **Annie「working record这里全部同意推荐，动手」（原话，2026-11-04）** ⇒ Profile 分 Drivers / Guides 两节 + Position not set 最下；Working Record：Q1 C（周表所有人 + 点名字看月历 + 当月合计）、Q2 A（角色色 + 团名 + 车号，📷 有快照，虚线 live 未存档）、Q3 A（弹窗，人数 / 订单收起，选版本）、Q4 A（天数 / 各团次数 / Hours + ⬇ Export for payroll CSV）、Q5 **B**（要 Hours：司机 Samsara、拿不到 23:00 兜底；导游 = 推荐 A 团排定开始 / 结束时间）、Q6 A（📷 只给也能看 Live drivers 的人）、Q7 A（How to use，加 Hours 的句子由 81 补、报原文）。先只 SA 可见。前端派 81（task/hr-working-record；Profile 分节不靠后端，可先合），后端转 94。
 - G212 Team 页前端派 c8（task/g212-team-hierarchy），等后端 SHA。
 
 ### 85. Staff Schedule 班次类型（Open / Mid / Close）可手动新增（2026-11-04，Annie 在主窗口-2c 提，附排班格截图，没动手）
