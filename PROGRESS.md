@@ -760,6 +760,9 @@
 - ① 勾选框：components/dispatch/seating.tsx:135（Seat guests 每单的勾选框，现在是浏览器默认小框）改成 Main manifest 的 CHECK_BIG（manifests-view.tsx:1307）。纯前端；大小改动照规矩先 preview。
 - ② Auto 分车：自动分车在后端（POST /api/dispatch/seating/move 的 Auto = 交回后端自动分车），规则要后端改；已留言 37。细节题已问 Annie（见当天回复）。
 - 等 Annie 答题 +「动手」。
+- 37 评估：现状 tour_manifest.seat_plan()（:2211-2242）按 CSV 行序一单一单装满 A 再 B，不回头；一单不拆、staff 定过的不动、Completed 日不跑、Farm out 车不装——照留。做法：Pickup Locations 加一栏「Direction」North / South / Flexible（空 = Flexible），迁移加列（风险 C，排 v146、v147 后），迁移按名字预填表上 17 家；Settings 加下拉、改动写 action_log；客人酒店用现成 locate() 对。后端约 1 天、四 agent 审、迁移 Annie 先执行。前端：Pickup Locations 加一列下拉 + Seat guests 勾选框放大。
+- 合并后的题（2026-11-03 晚已贴给 Annie，取代主窗口先问的 4 题）：1 哪台 North 哪台 South（推荐 A = North，最后一个字母 = South）；2 Flexible 放哪（推荐当时空位多的那台，一样多放 A）；3 超过两台中间车（推荐只装 Flexible 和满出来的）；4 North 一台装不下（推荐先中间车，没有就 South 那台，一单不拆，都装不下照旧 Not on a bus）；5 表外酒店（推荐当 Flexible，Settings 显示 Not set 让 staff 补）；6 适用哪些团（没推荐，Annie 说）；7 Resorts World 在表里是橙色（南），确认是不是故意的。
+- preview（Pickup Locations Direction 列 + Seat guests 大勾选框）派给今晚 / 明天的前端工作窗口。
 
 ### 71. Main manifest ☰ Columns 按某一页单独存（2026-11-03，09 记录，还没 preview）
 - Annie 原话（09 窗口）：「在main manifest上的column选线，我可以专门为某个页面选择勾选哪些项目么？可不可以在选择的那个页面上加一个just apply for this page，or apply for all」。
