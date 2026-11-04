@@ -212,7 +212,8 @@ D. 已完成、待从置顶移走：
 - ✅ 题 3 B（Edit list 里也能改）：后端 01606b02 上 main（bulk 收 other_spellings，错误带 profile_id）后补上（`task/hr-spellings-bulk`）。Edit list 里逗号隔开，交给 bulk 的是这人的整份清单；被拒时红字放在那人那一格下面（保存条也写「谁: 原因 Nothing was saved.」），一改那一格红字消失；存好后后端规整的写法不算没存的改动。How to use 临时那句已去掉。hr 87/87，nav 38/38，tsc / eslint / build 过。线上没法登录，只读确认要 Annie 自己看（HR 页现在应该有这一格 / 这一列）。
 - 检查：hr 80/80（新 12 条 Other spellings，含后端没上线的 3 条），nav 38/38；tsc / eslint / build 过。
 
-## 2026-11-03 G234 换司机只改 Dispatch，客人链接跟新司机（`task/driver-follow`，工作窗口 e6 [03dd03]，主窗口 24 派）—— 分支已推，**未合 main**
+## 2026-11-03 G234 换司机只改 Dispatch，客人链接跟新司机（`task/driver-follow`，工作窗口 e6 [03dd03]，主窗口 24 派）—— **11-04 已合 main**
+- 11-04：Annie 看过 Morning tracking 新红字 "Bus changed — ask the guest to open the link again"、tooltip、How to use 两句，回「A」（原话，24 转）＝照原样用。后端 01606b02 已上 main，真实返回对过：driver_follow / driver_followed 形状同前端，不用改。合最新 main（da-test 一处冲突：同一条 Pull 检查两边都修了等请求回来，取 main 的写法）后重跑检查再合 main。
 - Annie 原话（置顶 63）：「乙的话，除了题5-要改成不需要任何动作。否则会让staff confuse。其他都同意推荐。动手」。preview https://claude.ai/artifact/CXT8ZueNa3akn1ZrGn4Ycj 。
 - 定稿：题 1 A、2 A、3 A、4 B、6 A、7 A；题 5（同一司机只换车不再出 Changed after sent）由后端 4d 在 relay_pull 里做，前端不过滤。
 - 做了什么：
