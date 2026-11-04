@@ -789,6 +789,7 @@
 
 - ✅ 91 合 main **fe0e13a**（功能 8fb0d61）：hr 80/80（新 12 条）、nav 38/38、tsc / eslint / build 过。后端没上线时格子、列、How to use 那条都不出，生产页面同以前。Edit list 列先只读；How to use 在 Annie 定的原文后临时多一句「To change them, click Edit on that person's row.」，bulk 上了去掉（已告诉 Annie）。
 - 37 转 4d 定稿（送审中未上 main）：bulk 每项可带 other_spellings（逗号串或列表，完整清单，空串清空）；被拒 {detail:{message, profile_id}} 400/409 整批回滚；已删除的人进 missing；控制字符拒收；CHECK 违规改 400。G234 driver_follow 定稿 {updated_orders, updated:[{car, from(Dispatch 原司机), to, orders}], skipped:[{car, reason}]}。已分别转 91 / e6。
+- ✅ 后端 G234 + spellings 上 main **01606b02**（含 bulk other_spellings）。已派 91：线上只读确认 → Edit list 列开可改、去掉 How to use 临时句 → 合 main。
 ### 64. G180 Main manifest 订单同步到 Tour Tracking：重新启动（2026-11-03，Annie「重新启动」）
 - 10/24 Annie 提，后端 d9 写好代码在 origin/task/tracking-sync-design（4cac1f93，10/25 夜后没动，没上 main、没跑迁移；deploy-guard 第 3 轮 FAIL：迁移要先于代码；迁移号 v122 已被占，要换号）。设计文档 docs/tracking-sync-design-2026-10-24.md，Annie 已定的不再问（同步已确认订单、发送前后都同步、send_state Sent / Not sent、order_state Confirmed / On hold / Cancelled 以 Order List 为准、从不删行、午餐谁新留谁、Farm out 只记录、Broadcast 含 Not sent 不含 On hold / Cancelled 且发出后变 Sent、总开关默认关、Tour Tracking 加 Sent / Not sent 筛选默认 Sent + 订单号后小标签）。还没答：调用记录表 401 要不要记（Max 推荐不记，后端那边问）。
 - 当时页面只改了旧后台模板；ops 新 Tour Tracking 页要前端另做。
@@ -814,6 +815,7 @@
 
 
 - Annie 在后端 44 窗口又讲规则（37 转，记在 44 分支 3799b064，还没「动手」）：(1) Sent = 发送动作做了，发失败也算 Sent，成败看 SMS / Email 状态；Broadcast 一发出就翻 Sent。(2) 除 morning 外每类发送都算：tour confirmation、Last Minute、shuttle、Broadcast；tickets reminder 也算但属 Ticket Tracking（做不做未定）。(3) 改期订单新日期那行是 Not sent，旧日期照现有。(4) Sent 与客人回复确认无关。(5) 她不喜欢「sent / no sent」说法，44 推荐界面用「Notified / Not notified」（库值不变），**44 在问她选词**（前端不重复问）；选定的词用于标签、CSV 列名、How to use。已转 91 照这几条更新 preview。
+- ✅ **Annie 在 44 窗口定措辞并「动手」（37 转）**：已通知的行不加标；还没通知的行加「To notify」标；CSV 列名「Notified」，值 Yes / No。后端 44 移到新分支 task/tracking-sync-v2（基于最新 main），明天家里做，完成 37 发 SHA。前端：与之前 preview 的「Sent 列」不一样（改成行内 To notify 标？），已派 91 改 preview，并问 Annie 两点（见 2026-11-03 回复）。
 ### 63. 换司机只改 Dispatch：页面上怎么标（G234）—— ✅ Annie 已答并「动手」（2026-11-03）；e6 preview https://claude.ai/artifact/CXT8ZueNa3akn1ZrGn4Ycj ，没写代码）
 - ✅ Annie（原话）「乙的话，除了题5-要改成不需要任何动作。否则会让staff confuse。其他都同意推荐。动手」⇒ 题 1 A（Morning Relay：Status 列 Sent by 下、橙字上）、题 2 A（Morning tracking：Driver 列名字下）、题 3 A（灰色小字）、题 4 B（"Driver changed after send (was FREDDY) — link now follows LUIS"）、题 6 A（红字改成请客人重新打开链接，新字先给 Annie 看）、题 7 A（Save 后灰字 / 没改成红字「<car>: links not changed — <reason>」）、How to use 三段照草稿；**题 5 改：同一司机只换车 = 不需要任何动作**，不出橙字「Changed after sent」提示重发（24 理解为 B「只换车的不标」，如要灰字说明再问）。派 e6（send-auto-open 合完后），前端等后端 G234（task/driver-change-follow）上 main 再合。题 5 后端做（37）：4d 在 G234 分支把 relay_pull.changed_since_sent 的车号比较去掉，只换车 / 换司机同时换车不再出 Changed after sent，时间、酒店照旧；前端不过滤。G234 排在 57 推送后，4d 还要跑一轮审查。
 - e6 推 task/driver-follow **9dd151b**（没合；da 475、mt 246、rl 26、nav 38，tsc / eslint / build 过）。等：① Annie 看新红字 / How to use；② 后端 G234 上 main 后对真实形状。新红字（Guest Viewed）"Bus changed — ask the guest to open the link again"；提示 "The driver is on a different bus from the one this guest last opened. Ask the guest to open the link in their text again and tap Track. No new link is needed."；Guest Viewed 那条 How to use 改成 "..."Bus changed — ask the guest to open the link again" in red means the driver is on a different bus from the one the guest last opened: ask the guest to open the link in their text again and tap Track. You don't need to send a new link."。跟 preview 两处差别：① Save 后灰字括号里写单号（接口只给 updated_orders），preview 是「Bus 2457 → LUIS」，37：后端照 preview 来，加 driver_follow.updated [{car, from, to, orders}]，updated_orders 是数字 n（等 4d 确认），已转 e6 改，e6 推 **0835797**（灰字照 preview「(Bus 2457 → LUIS, Bus 768 → PAM)」，差别 ① 没了；da 475；顺修 da「Pull：按这天拉」抢先判的旧检查）；② 提示放页面上方现有提示条位置（整天存 / 复制没有单块 Save 位置）。
@@ -833,6 +835,7 @@
 
 
 
+- ✅ 后端 G234 上 main 01606b02。e6 核对 + 合最新 main + 检查后先推分支，等 Annie 看新红字 / tooltip / How to use 两句（2026-11-03 已贴原文问）再合 main。
 ### 62. Dispatch Send 页司机 / 导游 / Morning Relay 打开就展开（题 7–9 还等 Annie）；省掉 CCL Apply 已作废（2026-11-03）
 - ❌ 省掉 Apply 作废：Annie 看了 CCL 自己写错车号的结果后（原话）「那还是保留手动apply CCL的change吧」⇒ 题 1–6 作废，CCL 改版照旧 staff 按 Apply，后端不用做。题 7（Step 1 司机 / 导游打开就列好）、题 8（Step 2 Morning Relay 不用按 Pull）、题 9 里 Send 两句 How to use 仍等 Annie。
 - Annie 在 09 窗口答（原话）「问题7-9，同意全部推荐」⇒ 7 A（Step 1 打开就列好司机 / 导游，Check the list 改白色 ↻ Refresh）、8 A（Step 2 打开自动取客人，Pull from manifests 改白色 ↻ Refresh）、9 三段 How to use 照草稿。「同意」不算动手，09 已问她要不要现在动手，等「动手」。
