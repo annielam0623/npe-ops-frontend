@@ -934,6 +934,11 @@ D. 已完成、待从置顶移走：
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 81. G236 Bus Manifest 打印每页页脚标「n of n」（2026-11-04，Annie 在主窗口-2c 提，没动手）
+- 原话：「G236 Bus Manifest 照纸本 --- 把每页的页脚标上页数 n of n，提醒staff后面还有页面」。
+- 范围：Dispatch › Bus Manifest 打印（components/dispatch-manifest/manifest-view.tsx，浏览器打印，前端做；后端不用改）。
+- 要先 preview（版式新增）：页脚放哪、字样（如「Page 1 of 3」）、按整份打印数还是每辆车各自从 1 数、午餐单 / Relay list 要不要也加。等派工作窗口出 preview，Annie 看过 +「动手」才写代码。
+
 ### 75 进度 / 端口
 - fa 推 task/agent-ref-search **124b946**（mock，没合 main，等后端）。os 74、orders 52、dr 89、nav 38、mf 240、man 360，tsc / eslint / build 过。
 - 端口：fa 两次撞到别的 dev server（3298、3398），5c 查时已没有别人在听。今晚起各前端窗口检查端口固定：fa = APP 3577 / MOCK 8977 / CDP 9577；以后新窗口另分（例如 36xx / 89xx / 96xx），开工时由主窗口指定。
