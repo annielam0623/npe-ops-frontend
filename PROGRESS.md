@@ -1016,7 +1016,7 @@ D. 已完成、待从置顶移走：
   - Q5 How to use：A（推荐）「History also lists each time the person signed in (Signed in, with Computer or Phone). Sign-ins between 2:00 AM and 8:30 AM show 'Dispatch opened on today': that is the day their Dispatch page opened on. Sign-ins are kept for 90 days.」；B 她改字。
   - 需要后端（等她答了转 94）：v151 表（账号 id、登录时间、电脑 / 手机按 User-Agent 粗分不存原文、90 天清）；History 接口加 kind:"signed_in"（at、device）；⚠️ schedule_employees 没连登录账号（只名字、email），后端要定怎么对（按 email / 加 user id 列）；Q1 B / C 另要列表接口。
 
-### 83. 凌晨 2 点–早上 9 点打开 Dispatch 默认今天（2026-11-04，Annie 在主窗口-2c 提，没动手）
+### 83. 凌晨 2 点–早上 9 点打开 Dispatch 默认今天（2026-11-04，Annie 在主窗口-2c 提）—— ⛔ 前端推了分支，等后端 logged_in_at
 - 原话：「给你一个新任务，把凌晨2点- 9点登录进operation system的人的dispatch页面默认为今天。今早犯了好几个错误，拿着今天的单子去对明天的团，数字全是错的，然后才发现是默认是明天的」。
 - 现状（2c 只读）：Dispatch 不带 ?date= 时由后端定默认 = 洛杉矶明天（app/dispatch/page.tsx:9、lib/dispatch-api.ts:26）；dispatch-view.tsx:751 只认 ?date=。
 - 做法（只改前端、样子不变）：没带 ?date= 时，前端按洛杉矶时间（= 拉斯维加斯）看现在几点，02:00–08:59 就请求今天，其余照旧明天；带 ?date= 或手动换日期照旧。
@@ -1029,6 +1029,13 @@ D. 已完成、待从置顶移走：
   - 94：派后端 18（Restaurant Import 后），logged_in_at 按本次 token 取、拿不到不带（上线后 9 小时内旧 token 都不带）；登录记录迁移 v151（排在 v148 / v149 / v150 后，SQL 先给 Annie 看）；列表接口等 84 preview。2c 建议 94 把 logged_in_at 先单独上（token exp − 9h，不用迁移），记录表后上。
   - ✅ 94 同意分两步：logged_in_at 单独先上（不用迁移，按本次 token 推算，57 核续签情况），派 57 现在开工；登录记录表 + v151 照旧 18 后做。
 
+  - 81 前端（`task/dispatch-login-default`，worktree `C:Code
+pe-ops-wt-login-default`，mock，**没合 main，等后端 57 的 logged_in_at 上线核字段再合**）：
+    - types/auth.ts CurrentUser 加可选 `logged_in_at`（ISO UTC）；lib/la-date.ts `loginDefaultDate()`：洛杉矶 02:00:00–08:30:59 登录 ⇒ 登录那天，其余 / 没字段 / 读不到 ⇒ null（照旧后端默认明天）。
+    - dispatch-view 打开时：网址没 ?date= 才读 /api/me 按登录时间定；带 ?date= 照网址；打开后照旧把日期写进网址，所以 staff 自己换天后刷新不跳回；从侧栏重新进（网址没日期）仍按登录时间，直到再次登录。样子不变。
+    - How to use 加第一句（英文原文）：「Which day opens: if you signed in between 2:00 AM and 8:30 AM (Las Vegas time), Dispatch opens on today until you sign in again; otherwise it opens on tomorrow. Change the day any time — the page stays on the day you picked.」
+    - 检查：da-mock `/api/me` 加 ctl.loggedInAt；da 加 12 条（02:00、08:30:59、08:31、01:59、冬令时 02:15、null、旧后端没字段、带 ?date=、打开后网址写日期、手动换天刷新不跳、侧栏重进仍按登录时间、How to use）。da 513/513、nav 38/38；tsc 0、eslint 0 错、build 过（端口 8984 / 3584 / 9584）。
+    - 下一步：后端 57 上线 → 只读核 /api/me 的键名 `logged_in_at`（ISO、UTC 或带偏移都认，拿不到不带 / null）→ 合最新 main、重跑 da / nav → 合 main。Annie 验收：凌晨 2:00–8:30 登录后点侧栏 Dispatch，默认是今天；8:31 以后登录默认明天。
 ### 82. G245 Main manifest 羚羊谷 Cfm # 跟产品不符标红、挡发送（2026-11-04，94 转，前端还没 preview）
 - Annie 原话（94 转）：「我需要订单如实地反映在页面上，rezdy是什么样就是什么样……现在在main manifest的cfm#就应该是标红，然后让staff去改」「如果设置了auto send的话要提醒这个#的不对，不能发送」。起因 CHDQ59DAL：原下 X 后改 Lower，X 栏的号是真的但不是 Lower 的号。
 - 后端 f4 在审、没上线，要 Annie 先执行 **v149** 才能上。形状（只加字段）：① GET /api/manifests 每行 cfm_mismatch：{other_label:"Antelope Canyon X Confirmation #", other_value:"387826855"} 或 null；Cfm # 照旧显示 Rezdy 上的号；staff 在 Manifests 填了 Cfm # 后刷新变 null。② POST /api/manifests/send-tickets：标红行进 blocked，reasons ["Cfm # doesn't match the product (Antelope Canyon X Confirmation #: 387826855)"]，can_override=false（不能 Send anyway），返回形状不变。③ How to use 补一句红标意思和处理（在 Cfm # 填正确的号）。
