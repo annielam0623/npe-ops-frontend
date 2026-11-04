@@ -779,6 +779,12 @@
   - field-picker.tsx：标题加胶囊名；顶上一行文字 + Use the shared columns；底部两个蓝键 Apply for this page / Apply for all；没有胶囊的页只留一个 Apply。
   - 检查：man / mf / nav + tsc / eslint / build。3 题按推荐全 A。后端 57 今晚家里放宽上限 20000。
 - ✅ **Annie 答 3 题（主窗口原话）**：「column那个1 A 2 A 3 apply for this page  用蓝色  apply for all 用白色」⇒ 题 1 A（Apply for all 全换、清掉各页自己的）；题 2 A（OWN 灰标 + 弹窗顶文字 + Use the shared columns）；题 3 = B：**Apply for this page 蓝色，Apply for all 白色**（取代上面「按推荐全 A」里的两键都蓝）。
+- ✅ 09 合 main（task/manifest-cols-per-page）：Manifests ☰ Columns 可只存给当前胶囊。
+  - 存法：user-prefs 三键不变，值改 JSON 字符串 {"shared": [...], "pages": {"<胶囊 key>": [...]}}；旧值（一个数组）当 shared 读，第一次存写新格式；pages[x] = [] 表示这页用默认列。
+  - 弹窗：标题「Columns — Bus Tour · Antelope Bus Tour」；顶上一行 "This page uses the shared Bus Tour columns." 或 "This page has its own columns. Use the shared columns"；底部 Apply for this page（蓝 #3b82f6）/ Apply for all（白）。没有胶囊的页照旧只有一个 Apply（原来的深灰）。
+  - Apply for all：共用的一套换掉、各页自己的清掉（题 1 A）；胶囊上小灰标 OWN（题 2 A）；拖表头、Reset to default 在有自己设置的页只动这一页。存不上（后端没放宽前超 4000 字会 400）红字原样写在弹窗里。
+  - How to use 加一条（原文）："Apply for this page keeps your columns for the group or tour type you are on; Apply for all uses them for every page in the tab and clears any page's own columns. A page with its own columns shows OWN on its pill; in ☰ Columns, click Use the shared columns to go back to the tab's columns."；拖列那条改成 "...click Apply for this page or Apply for all. Or drag its header on the page left or right; that order is saved to your account right away (to this page only if it has its own columns)."
+  - 检查：man 360（新 17 条 + 旧检查改用 Apply for all / 新格式）、mf 240、nav 38；tsc 0、eslint 0 错、build 过。后端放宽 20000 的 SHA 到了不用改前端。
 
 ### 70. Dispatch › Assign 顶部统计条旁放醒目的 Relay List 键—— ✅ 已合 main 6367d0c（2026-11-03，09 记录，preview https://claude.ai/artifact/LzSrfzeXzA9Tgsndd4J6KV ，没写代码）
 - Annie 原话（09 窗口）：「然后把morning relay list放到 1st round的上方，就是那个统计表格的旁边，把最后一个缩窄一些，旁边放Relay List，标得醒目一点」。
