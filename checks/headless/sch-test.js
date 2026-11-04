@@ -1508,6 +1508,25 @@ async function run() {
       await evaluate(`const b = ${SD}.querySelector('[data-add-shift-type]'); const cs = getComputedStyle(b); return b.textContent.trim() === '+ Add shift type' && cs.backgroundColor === 'rgb(107, 142, 116)' && cs.color === 'rgb(255, 255, 255)';`),
       await evaluate(`return getComputedStyle(${SD}.querySelector('[data-add-shift-type]')).backgroundColor;`),
     );
+    // 后端还不存颜色（settings 没带 color 键，2c 2026-11-04「现在就合，不等 color」）：只显示默认色，不给挑；新类型灰白；POST 不带 color。
+    check("85 旧后端没 color：色块只是显示（不是按钮），没有选色小窗", await evaluate(`return [...${SD}.querySelectorAll('[data-shift-type-row]')].every((r) => { const s = [...r.querySelectorAll('[data-shift-type-color]')]; return s.length === 1 && s[0].tagName === 'SPAN' && s[0].hasAttribute('data-color-fixed'); }) && !${SD}.querySelector('[data-shift-color-pop]');`));
+    let ncFrom = (await mockLog()).length;
+    await evaluate(`${SD}.querySelector('[data-add-shift-type]').click();`);
+    await waitFor(`!!${newRow}`);
+    check("85 旧后端没 color：新加的一行是灰白色块", await evaluate(`return ${newRow}.querySelector('[data-shift-type-color]').dataset.shiftTypeColor === 'grey';`));
+    await evaluate(`$setValue(${newRow}.querySelector('input[data-shift-type-name]'), 'ZZ Test Nocolor');`);
+    await evaluate(`${SD}.querySelector('[data-settings-save]').click();`);
+    await waitSaved();
+    let ncw = await writes(ncFrom);
+    check("85 旧后端没 color：按 Save 的 POST 不带 color", ncw.length === 1 && ncw[0].method === "POST" && !("color" in ncw[0].body) && ncw[0].body.key === "zz_test_nocolor", JSON.stringify(ncw.map((e) => e.body)));
+    // 下面照后端上了 color 列来测（选色小窗、存颜色）。
+    await evaluate(`$btn('Close', ${SD}).click();`);
+    await waitFor(`!${SD}`);
+    await ctl({ resetShiftTypes: true, shiftColors: true });
+    await openPage(`${APP}/schedule?week=${P2}`);
+    await waitFor("document.querySelector('[data-open-settings]')");
+    await openSettings();
+    check("85 后端带 color：色块是按钮，能点开选色", await evaluate(`return [...${SD}.querySelectorAll('[data-shift-type-row] [data-shift-type-color]')].every((b) => b.tagName === 'BUTTON');`));
     // 新增：空名字挡住
     let stFrom = (await mockLog()).length;
     await evaluate(`${SD}.querySelector('[data-add-shift-type]').click();`);

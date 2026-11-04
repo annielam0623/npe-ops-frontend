@@ -204,6 +204,7 @@ export function ShiftTypesEditor({
   setRows,
   types,
   showTimes,
+  canPickColor,
   rules,
   ruleCtx,
   errorIds,
@@ -213,6 +214,8 @@ export function ShiftTypesEditor({
   types: ScheduleShiftType[];
   /** 后端带默认时间（二期）才出时间那两格。 */
   showTimes: boolean;
+  /** 后端 settings 的 shift_types 带 color 键（= 能存颜色）才出 8 色小窗；没带只显示默认色。 */
+  canPickColor: boolean;
   rules: Rule[] | null;
   ruleCtx: DescribeContext;
   /** 按 Save 时没过页面检查的行：名字框标红。 */
@@ -277,9 +280,11 @@ export function ShiftTypesEditor({
   function add() {
     const id = `new-${nextNewRef.current++}`;
     // 新的一行先给一个还没人用的颜色（灰白留到最后）。
+    // 后端还不存颜色时一律灰白（存不住就不先给一种颜色，免得看着像选好了）。
     const used = new Set(rows.map((r) => r.color));
-    const color =
-      SHIFT_COLORS.find((c) => c !== "grey" && !used.has(c)) ?? "grey";
+    const color = canPickColor
+      ? (SHIFT_COLORS.find((c) => c !== "grey" && !used.has(c)) ?? "grey")
+      : "grey";
     focusRef.current = id;
     setRows((cur) => [
       ...cur,
@@ -369,24 +374,38 @@ export function ShiftTypesEditor({
                 ⋮⋮
               </span>
               <span className="relative">
-                <button
-                  type="button"
-                  data-shift-type-color={r.color}
-                  aria-label={`Colour for ${nameFor}: ${SHIFT_COLOR_NAME[r.color]}`}
-                  aria-expanded={colorFor === r.id}
-                  onClick={() =>
-                    setColorFor((cur) => (cur === r.id ? null : r.id))
-                  }
-                  style={{ background: SHIFT_SWATCH[r.color] }}
-                  className={cn(
-                    "block h-[20px] w-[20px] cursor-pointer rounded-[6px] border border-white/30",
-                    saved &&
-                      r.color !== savedColorOf(saved) &&
-                      "ring-2 ring-amber-400",
-                    !r.active && "opacity-50",
-                  )}
-                />
-                {colorFor === r.id ? (
+                {canPickColor ? null : (
+                  // 后端还没存颜色（settings 没带 color 键，2c 2026-11-04）：只显示按 key 的默认色，不给挑。
+                  <span
+                    data-shift-type-color={r.color}
+                    data-color-fixed
+                    style={{ background: SHIFT_SWATCH[r.color] }}
+                    className={cn(
+                      "block h-[20px] w-[20px] rounded-[6px] border border-white/30",
+                      !r.active && "opacity-50",
+                    )}
+                  />
+                )}
+                {canPickColor ? (
+                  <button
+                    type="button"
+                    data-shift-type-color={r.color}
+                    aria-label={`Colour for ${nameFor}: ${SHIFT_COLOR_NAME[r.color]}`}
+                    aria-expanded={colorFor === r.id}
+                    onClick={() =>
+                      setColorFor((cur) => (cur === r.id ? null : r.id))
+                    }
+                    style={{ background: SHIFT_SWATCH[r.color] }}
+                    className={cn(
+                      "block h-[20px] w-[20px] cursor-pointer rounded-[6px] border border-white/30",
+                      saved &&
+                        r.color !== savedColorOf(saved) &&
+                        "ring-2 ring-amber-400",
+                      !r.active && "opacity-50",
+                    )}
+                  />
+                ) : null}
+                {canPickColor && colorFor === r.id ? (
                   <div
                     ref={popRef}
                     data-shift-color-pop

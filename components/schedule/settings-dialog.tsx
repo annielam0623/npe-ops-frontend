@@ -77,6 +77,8 @@ export function ScheduleSettingsDialog({
   const activeTypes = types.filter((t) => t.is_active);
   // 后端还没带默认时间（旧版）时不出时间那两格。
   const hasDefaults = types.some((t) => t.default_start_time !== undefined);
+  // 后端 shift_types 带 color 键（schedule_shift_types.color 上线）才能选颜色；没带 = 照 key 默认色，不给挑、不送。
+  const colorSupported = types.some((t) => t.color !== undefined);
   // 后端带了 work_hours（v144）才能按天设。
   const byDaySupported = !!settings.work_hours;
   const savedDays = weekDays(settings);
@@ -160,7 +162,8 @@ export function ScheduleSettingsDialog({
         // 后端：两个都带时间 = 设置，两个都 null = 清除。
         default_start_time: r.start || null,
         default_end_time: r.end || null,
-        color: r.color,
+        // 后端还不存颜色时不带（2c 2026-11-04：存不住就不送，也不给挑）。
+        ...(colorSupported ? { color: r.color } : {}),
       };
       if (saved) {
         const c = rowChanges(r, saved);
@@ -465,6 +468,7 @@ export function ScheduleSettingsDialog({
               }}
               types={types}
               showTimes={hasDefaults}
+              canPickColor={colorSupported}
               rules={rules}
               ruleCtx={ruleCtx}
               errorIds={errorIds}

@@ -192,7 +192,7 @@ export interface ShiftTypeInput {
   default_start_time: string | null;
   default_end_time: string | null;
   /** 旧后端不认这个字段会忽略（payload.get），新后端不认得的颜色名 400。 */
-  color: string;
+  color?: string;
 }
 
 /**
