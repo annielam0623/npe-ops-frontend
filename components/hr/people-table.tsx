@@ -25,6 +25,7 @@ import {
   type ListLayout,
   LOGIN_COLUMN,
   MIN_COL_WIDTH,
+  SPELLINGS_COLUMN,
   toggleMulti,
 } from "./fields";
 import { HR_BTN_CLASS, HR_EMPTY_CLASS, HR_PILL_CLASS } from "./legacy-ui";
@@ -239,7 +240,9 @@ export function PeopleTable({
                 >
                   {layout.order.map((key) => (
                     <td key={key} className={TD}>
-                      {editing && key !== LOGIN_COLUMN ? (
+                      {editing &&
+                      key !== LOGIN_COLUMN &&
+                      key !== SPELLINGS_COLUMN ? (
                         <EditCell
                           field={FIELD_BY_KEY[key]}
                           profile={p}
@@ -304,6 +307,15 @@ function ViewCell({
         )}
       >
         no account
+      </span>
+    );
+  }
+  if (columnKey === SPELLINGS_COLUMN) {
+    // Edit list 里也只读：要改点这一行的 Edit（后端 bulk 还不收这一格）。
+    const list = profile.other_spellings ?? [];
+    return (
+      <span data-spellings={profile.id} className="whitespace-normal">
+        {list.length ? list.join(", ") : "—"}
       </span>
     );
   }

@@ -38,6 +38,11 @@ export interface HRProfile {
   /** 后端按洛杉矶的今天算好的（30 天内为 soon），前端不要自己算。 */
   license_expiry_state: ExpiryState;
   medical_expiry_state: ExpiryState;
+  /**
+   * 「Other spellings」（后端 G234 续）：早上 Excel / CCL 里这个人名字的其他写法，大写、排好序。
+   * 后端还没上线时没有这个键 ⇒ 页面不出这一格 / 这一列。
+   */
+  other_spellings?: string[];
 }
 
 export interface HRLinkableUser {

@@ -325,6 +325,8 @@ export interface RelayPull {
         tour_buses?: Omit<RelayBus, "sections">[];
         /** 只给 Relay list 看的提示（例如「This van is on 2 tour buses today.」）；不挡发送（挡发送的是 problems）。 */
         print_warnings?: string[];
+        /** 这台车在 Relay 单上的颜色（后端，照纸本：每轮从 Relay 1 编号；也是大巴的车用团色、不占号）。没带 = 用前端色盘。 */
+        relay_color?: string | null;
       };
       guests: RelayGuest[];
     }[]

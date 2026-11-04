@@ -24,6 +24,7 @@ import {
   type HRProfileInput,
   saveHRBulk,
   scheduleConfirmOf,
+  saveHRSpellings,
   updateHRProfile,
 } from "@/lib/hr-api";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
@@ -35,6 +36,7 @@ import {
   defaultLayout,
   type ListLayout,
   normalizeLayout,
+  SPELLINGS_COLUMN,
   parseLayout,
 } from "./fields";
 import { HRLog } from "./hr-log";
@@ -118,7 +120,12 @@ export function HRView() {
   const [bulkSaving, setBulkSaving] = useState(false);
   const [banner, setBanner] = useState<Banner>(null);
   const [askLeaveEdit, setAskLeaveEdit] = useState(false);
-  const [dialog, setDialog] = useState<{ profile: HRProfile | null } | null>(
+  const [dialog, setDialog] = useState<{
+    profile: HRProfile | null;
+    /** Add person 后写法没存上：带回格子里的字和红字。 */
+    spellingsText?: string;
+    error?: string;
+  } | null>(
     null,
   );
   const [linkable, setLinkable] = useState<{
@@ -362,11 +369,38 @@ export function HRView() {
   async function saveProfile(
     profile: HRProfile | null,
     input: HRProfileInput,
+    spellings: string[] | null,
   ): Promise<ActionResult> {
+    let createdId: number | null = null;
     try {
-      if (profile) await updateHRProfile(profile.id, input);
-      else await createHRProfile(input);
+      if (profile) {
+        // 先存写法：最常见的被拒（409 写法是别人的）时什么都没存，改好再按 Save。
+        if (spellings) await saveHRSpellings(profile.id, spellings);
+        await updateHRProfile(profile.id, input);
+      } else {
+        createdId = await createHRProfile(input);
+        if (spellings?.length) await saveHRSpellings(createdId, spellings);
+      }
     } catch (error) {
+      if (createdId !== null && !isStatus(error, 401)) {
+        // 人已经建好、写法没存上：用新建的人重开弹窗（再按 Save 不会重复建人）。
+        const message =
+          error instanceof TypeError
+            ? "Could not reach the server."
+            : describeHrWriteError(error);
+        const profiles = await refresh();
+        const created = profiles?.find((p) => p.id === createdId) ?? null;
+        if (created) {
+          setDialog({
+            profile: created,
+            spellingsText: (spellings ?? []).join("\n"),
+            error: `The person was added, but the other spellings were not saved: ${message}`,
+          });
+        } else {
+          setDialog(null);
+        }
+        return { status: "ok" };
+      }
       if (isStatus(error, 401)) {
         redirectToLogin();
         return { status: "redirecting" };
@@ -441,6 +475,16 @@ export function HRView() {
   }
 
   const profiles = view.kind === "ready" ? view.profiles : [];
+  // 后端上了「Other spellings」（G234 续）每个人都带 other_spellings；没带 = 后端没上线，这一格 / 这一列都不出。
+  const spellingsSupported = profiles.some((p) =>
+    Array.isArray(p.other_spellings),
+  );
+  const tableLayout = spellingsSupported
+    ? layout
+    : {
+        ...layout,
+        order: layout.order.filter((k) => k !== SPELLINGS_COLUMN),
+      };
   const placeholder =
     view.kind === "loading"
       ? "Loading…"
@@ -560,7 +604,7 @@ export function HRView() {
               </div>
               <PeopleTable
                 profiles={profiles}
-                layout={layout}
+                layout={tableLayout}
                 onLayoutChange={changeLayout}
                 editing={editing}
                 edits={edits}
@@ -657,7 +701,11 @@ export function HRView() {
 
             <HowToUse
               title="How to use — Human Resource"
-              items={HOW_TO_ITEMS}
+              items={
+                spellingsSupported
+                  ? [...HOW_TO_ITEMS, SPELLINGS_HOW_TO]
+                  : HOW_TO_ITEMS
+              }
               warning="A red message means nothing was saved: fix the field and save again."
             />
           </div>
@@ -666,10 +714,16 @@ export function HRView() {
 
       {dialog ? (
         <ProfileDialog
+          key={dialog.profile?.id ?? "new"}
           profile={dialog.profile}
+          spellingsSupported={spellingsSupported}
+          initialSpellingsText={dialog.spellingsText}
+          initialError={dialog.error ?? null}
           linkableUsers={linkable.users}
           linkableError={linkable.error}
-          onSave={(input) => saveProfile(dialog.profile, input)}
+          onSave={(input, spellings) =>
+            saveProfile(dialog.profile, input, spellings)
+          }
           onDelete={() =>
             dialog.profile &&
             setDeleting({ kind: "ask", profile: dialog.profile })
@@ -751,6 +805,10 @@ function BannerLine({
     </p>
   );
 }
+
+/** Annie 2026-11-03 题 4 选 A 的原文；后一句是 Edit list 暂时只读（后端 bulk 还不收这一格）的说明。 */
+const SPELLINGS_HOW_TO =
+  "Other spellings: other ways this person's name is written in the morning Excel or CCL (for example JOSEPH for Joe R). One per line. A spelling can belong to only one person. Removing a spelling means CCL imports stop matching it to this person. To change them, click Edit on that person's row.";
 
 const HOW_TO_ITEMS = [
   "The People list shows all drivers and guides. Expired licenses are shaded red.",

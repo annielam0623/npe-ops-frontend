@@ -21,7 +21,7 @@ function relayPull(date) {
   const r1 = [
     {
       // 1724：站序 MGM（12）在 Aria（11）前面。
-      car: { id: 901, van: "1724", driver: "ZZ Bruce", ...(ctl.old ? {} : { location_ids: [12, 11], tour_buses: [] }) },
+      car: { id: 901, van: "1724", driver: "ZZ Bruce", ...(ctl.old ? {} : { location_ids: [12, 11], tour_buses: [], relay_color: "#fff605" }) },
       guests: [
         rich({ id: 1, order_number: "CHDZZA01", name: "Zed Zane", pickup_location: "Aria Resort", location_id: 11, hotel: "Aria Resort", tour: "Antelope Canyon" }, { phone: "+15550100001", manifest_id: 3, product_short: "Lower", short_tag: "Lower", hotel_short: "Aria", bus: BUS.antA }),
         rich({ id: 2, order_number: "CHDZZA02", name: "Amy Abel", pax: 3, pickup_location: "Aria Resort", location_id: 11, hotel: "Aria Resort", tour: "Antelope Canyon" }, { phone: "+15550100002", manifest_id: 3, product_short: "CanyonX", short_tag: "CanyonX", hotel_short: "Aria", bus: BUS.antB }),
@@ -37,7 +37,7 @@ function relayPull(date) {
     { car: { id: 903, van: "1725", driver: "ZZ David", problems: ["Relay car 1725 has no pickup stop"], ...(ctl.old ? {} : { location_ids: [], tour_buses: [] }) }, guests: [] },
     // 2017：排错了，同一台车挂在两个团上（只是打印提示，不挡发送）。
     {
-      car: { id: 904, van: "2017", driver: "ZZ Paulie", ...(ctl.old ? {} : { location_ids: [15], tour_buses: [SOUTH_CAR, { label: null, tour: "Bryce&Zion", tour_short: "BZ", driver: "ZZ Paulie", guide: "ZZ Paulie", van: "2017", color: "#567669" }], print_warnings: ["This van is on 2 tour buses today."] }) },
+      car: { id: 904, van: "2017", driver: "ZZ Paulie", ...(ctl.old ? {} : { location_ids: [15], tour_buses: [SOUTH_CAR, { label: null, tour: "Bryce&Zion", tour_short: "BZ", driver: "ZZ Paulie", guide: "ZZ Paulie", van: "2017", color: "#f4938e" }], print_warnings: ["This van is on 2 tour buses today."] }) },
       guests: [rich({ id: 5, order_number: "CHDZZX01", name: "Xi Xu", pickup_time: "4:40 AM", pickup_location: "Wynn Hotel", location_id: 15, hotel: "Wynn Hotel", tour: "South Rim" }, { phone: "+15550100005", manifest_id: 1, product_short: "South", short_tag: "South", hotel_short: "Wynn", bus: BUS.south })],
     },
   ];
