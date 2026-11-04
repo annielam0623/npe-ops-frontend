@@ -39,7 +39,8 @@ import {
   followUpdatedText,
   hasFollowNews,
 } from "@/lib/driver-follow";
-import { isYmd, shiftYmd } from "@/lib/la-date";
+import { fetchCurrentUser } from "@/lib/auth-api";
+import { isYmd, loginDefaultDate, shiftYmd } from "@/lib/la-date";
 import { resolveTourColor } from "@/lib/tour-colors";
 import { usePageVisibility } from "@/lib/page-visibility";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
@@ -751,7 +752,16 @@ export function DispatchView() {
     const fromUrl = params.get("date");
     if (params.get("tab") === "send" && canSend) setTab("send");
     void (async () => {
-      const d = isYmd(fromUrl) ? fromUrl : null;
+      // 置顶 83：网址没带日期时，凌晨 2:00–8:30（洛杉矶）登录的默认看今天（直到再次登录）；
+      // 其余照旧由后端默认明天。读不到登录时间不挡页面。staff 自己换了日期就写进网址，刷新照网址。
+      let d = isYmd(fromUrl) ? fromUrl : null;
+      if (!d) {
+        try {
+          d = loginDefaultDate((await fetchCurrentUser()).logged_in_at);
+        } catch {
+          d = null;
+        }
+      }
       if (await load(d, { sync: true })) {
         const cur = stateRef.current.day;
         if (cur) await maybePrefill(cur.run_date);
@@ -3144,6 +3154,12 @@ function HowToUse() {
         📖 How to use — Buses &amp; drivers
       </summary>
       <ol className={HOWTO_OL}>
+        <li>
+          Which day opens: if you signed in between 2:00 AM and 8:30 AM (Las
+          Vegas time), Dispatch opens on today until you sign in again;
+          otherwise it opens on tomorrow. Change the day any time &mdash; the
+          page stays on the day you picked.
+        </li>
         <li>
           CCL&rsquo;s schedule fills in the buses and drivers. Orange text means
           a name or vehicle did not match: pick it from the list, or choose

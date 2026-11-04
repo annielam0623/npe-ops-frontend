@@ -88,3 +88,24 @@ export function weekStartYmd(ymd: string): string {
 export function monthStartYmd(ymd: string): string {
   return `${ymd.slice(0, 8)}01`;
 }
+
+/** 凌晨登录看今天的时段（洛杉矶）：02:00 起，到 08:30 这一分钟结束（置顶 83，Annie 2026-11-04）。 */
+const LOGIN_TODAY_FROM = 2 * 60;
+const LOGIN_TODAY_TO = 8 * 60 + 30;
+
+/**
+ * Dispatch 打开时默认看哪天（置顶 83，Annie「1 登录时间选A   动手」）：这次是洛杉矶凌晨 2:00–8:30 登录的 ⇒
+ * 登录那天（今天的团）；其余时间登录、或后端没给登录时间 ⇒ null（照旧由后端默认明天）。
+ * 只看登录时间，不看现在几点：直到再次登录都一样。
+ */
+export function loginDefaultDate(
+  loggedInAt: string | null | undefined,
+): string | null {
+  if (!loggedInAt) return null;
+  const at = new Date(loggedInAt);
+  if (Number.isNaN(at.getTime())) return null;
+  const minute = laMinuteOfDay(at);
+  return minute >= LOGIN_TODAY_FROM && minute <= LOGIN_TODAY_TO
+    ? laToday(at)
+    : null;
+}
