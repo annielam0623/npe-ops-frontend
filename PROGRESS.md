@@ -12,7 +12,7 @@
 - 已派 `npe-ops-frontend-81`[90172b]：Supplier › Restaurant ⬆ Import（5c 交接「明天开工」0；Annie 10/29 已动手，不再 preview）。分支 task/import-restaurant；先查后端有没有导入接口，没有写「需要后端」转 94。
   - 81 查过后端没有 Restaurant 导入接口 → 需求（preview / commit 路由、栏 key、按店名对上、校验、日志、409）2c 原样转 94；94 收到，已派后端 18 做。81 先 mock 做、推分支不合，SHA 到了 2c 转 81 核字段再合。
   - 81 推 task/import-restaurant **58c97e1**（没合）：restaurant 58/58（+21）、nav 38/38，tsc / eslint / build 过。⬆ Import 在「+ Add a restaurant」左边（深色，同 Add 样子）。请后端导入时也写 updated_by / updated_at（已转 94）。81 接着做 75。
-- `09`[341d31] 还开着（上下文长，只接小活）：接 72 合 main。Annie 对 2c 说「我让它动手了」（在 09 窗口说的动手，原话等 09 报）、「做完就关掉吧」⇒ 09 合完 72 报 SHA 后收工关窗口。
+- ✅ `09` 合 72 → main **06bff03**（Annie 在 09 窗口原话「动手」）：da 501、pl 116、nav 38，tsc / eslint / build 过；验收点见置顶 72。已告知 94（57 direction 后端可推）。09 收工关窗口。
 
 ## 2026-11-04 交接：前端主窗口 `今日主窗口-24`[310398] → 今天新开的主窗口（公司电脑）
 
