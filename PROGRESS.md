@@ -12,6 +12,8 @@
 - 资源：空闲内存 10.8 / 31.7 GB，node + chrome 进程 73 个 ⇒ 偏紧，先最多开 1 个工作窗口。
 - 在分支没合：task/driver-follow（等 Annie 对新红字 / tooltip / How to use 两句回 A）、task/samsara-arrival（等后端 samsara-arrivals + v146）。
 - 后端 main 最新 010f6302（G245 登记）；manifest_cols 三键上限 4000 → 20000 今晚家里做，还没 SHA。
+- 前端工作窗口 fa [985244] 报到（共用主目录，已叫它开 worktree）。派：① 置顶 73 preview；② **加急 bug**：Annie 原话「然后，明天的relay list还每页都隔了一张空白页」（11/4 Relay list 打印每张后多一张空白页）→ fa 先修（task/relay-list-blank-page，只修 bug、样子不变，不用 preview），修完直接合 main。
+- 5c 对话名改为「今日前端主窗口-5c」。后端另有 npe-confirmation-service-da [af1446]。
 
 ## 2026-11-03 收工交接：前端主窗口 `今日主窗口-24`[310398]（公司电脑，Annie 定今天 17:30 下班）
 
