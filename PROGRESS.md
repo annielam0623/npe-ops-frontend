@@ -36,6 +36,7 @@
 1. 报对话名；git pull；问后端主窗口 75 / 51B / samsara-arrivals 进度，SHA 到了派窗口核字段合（fa 的分支都在 origin）。
 2. Annie 答 77 / 63 等，按原话派。
 3. 资源：今晚空闲内存 8–11 GB，最多 1 个工作窗口。
+- 网页版看板已更新（Annie 原话「今晚收工，写交接，把明天要做的事情写进网页版去」）：https://claude.ai/artifact/3GzA8Kv4o8pojxoGsQMj4F 版本 1793778407-a998——今日完成加 Waiver link / Relay 颜色和方向 / Relay 空白页 / Working hours 按天 / Dispatch No tracking；明天计划加 Restaurant 批量导入，更新 agent ref 搜索、跳 Main Manifest 两张的进度；进行中加「快捷回复搬进 Content Studio」，删掉已完成的 4 张。
 
 ## 2026-11-03 晚 主窗口 `npe-ops-frontend-5c`[e44052] 开工（家里电脑，接 24；只分工和汇报，不写代码）
 - 本地 main 落后 139，已 pull 到 63d7aae。
