@@ -978,6 +978,7 @@ D. 已完成、待从置顶移走：
 - ⚠️ 要问 94：Annie 说「去 rezdy里头改」，后端现在是 staff 在 Manifests 填 Cfm # 后红标消失。在 Rezdy 改好后，下次同步红标会不会自己消失？手机没鼠标时提示怎么看（81 原 A 方案有一直显示的小红字，C 没有）。
   - 94 回：Rezdy 改后会不会自己消红交 f4 用代码 + 生产数据只读核，结论到了转来；提醒邮件收件人（Q5：A 用 Auto Send 现有两个汇总邮箱 / B 新加一栏只放 antelope@）94 自己问 Annie，前端不再问。Q4（ops 上要不要另列 Skipped）仍是前端的题。
   - **Annie 原话**：「不需要每一单发一份邮件，我们只需要每次发送发一份就好了，把有问题没发送的集中在一起就可以了」⇒ 自动发送每一轮发一封，集中列这一轮因 Cfm # 不符没发的单（不是每单一封）。已转 94。前端 Auto Send 说明半句跟着改成「Orders whose Cfm # doesn't match the product are skipped and listed together in one email after each run.」（Q4 A 时用）。
+  - 94 / f4 查完（代码 + 生产只读）：**在 Rezdy 改好红标自己消失，后端不用改**——Rezdy 改字段推 webhook、整单重写，cfm_mismatch 每次开页 / 发送现场算，推到即变（近 30 天 booking_updated 26,373 次）。号挪到对的栏 ⇒ 消红能发；只删 X 栏、Antelope 栏空 ⇒ 消红变 No Cfm #（软拦，可 Send anyway）；在 Manifests 直接填 Cfm # ⇒ 当场消、能发。邮件改成每轮最多一封、没有就不发；每日汇总照旧带此原因；收件人等 Annie 答 94。
 
 ### 81. ~~Bus Manifest~~ **Relay list 打印页**每页页脚标「n of n」（2026-11-04，Annie 在主窗口-2c 提，没动手）
 - 原话：「G236 Bus Manifest 照纸本 --- 把每页的页脚标上页数 n of n，提醒staff后面还有页面」。
