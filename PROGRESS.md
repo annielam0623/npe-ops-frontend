@@ -1091,6 +1091,7 @@ D. 已完成、待从置顶移走：
 
 - ✅ 后端 G234 上 main 01606b02。e6 核对 + 合最新 main + 检查后先推分支，等 Annie 看新红字 / tooltip / How to use 两句（2026-11-03 已贴原文问）再合 main。
 - e6 task/driver-follow 合最新 main **a65ba71**（未合 main）：对 01606b02 核过不用改；tsc / eslint（0 错）/ build 过，da 487、rl 26、mt 246、nav 38。**只等 Annie 对新红字 / tooltip / How to use 两句点头**。
+- ✅ **Annie 回「A」（主窗口原话，2026-11-04）**：新红字 / tooltip / How to use 两句照原样用。已叫 e6 合最新 main、重跑检查后合 main。
 ### 62. Dispatch Send 页司机 / 导游 / Morning Relay 打开就展开（题 7–9 还等 Annie）；省掉 CCL Apply 已作废（2026-11-03）
 - ❌ 省掉 Apply 作废：Annie 看了 CCL 自己写错车号的结果后（原话）「那还是保留手动apply CCL的change吧」⇒ 题 1–6 作废，CCL 改版照旧 staff 按 Apply，后端不用做。题 7（Step 1 司机 / 导游打开就列好）、题 8（Step 2 Morning Relay 不用按 Pull）、题 9 里 Send 两句 How to use 仍等 Annie。
 - Annie 在 09 窗口答（原话）「问题7-9，同意全部推荐」⇒ 7 A（Step 1 打开就列好司机 / 导游，Check the list 改白色 ↻ Refresh）、8 A（Step 2 打开自动取客人，Pull from manifests 改白色 ↻ Refresh）、9 三段 How to use 照草稿。「同意」不算动手，09 已问她要不要现在动手，等「动手」。
