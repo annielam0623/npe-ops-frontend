@@ -11,7 +11,7 @@
 - 还在跑：后端 94 改手机司机 / 导游页白字；后端 57 南北分车 direction（迁移 Annie 先执行）。等 Annie：72 preview 回 A、80 选 A / B、64 / 69 / 68（详见置顶，不滚动重问）。
 - 已派 `npe-ops-frontend-81`[90172b]：Supplier › Restaurant ⬆ Import（5c 交接「明天开工」0；Annie 10/29 已动手，不再 preview）。分支 task/import-restaurant；先查后端有没有导入接口，没有写「需要后端」转 94。
   - 81 查过后端没有 Restaurant 导入接口 → 需求（preview / commit 路由、栏 key、按店名对上、校验、日志、409）2c 原样转 94；94 收到，排在 18 做完 75 之后。81 先 mock 做、推分支不合，SHA 到了 2c 转 81 核字段再合。
-- `09`[341d31] 还开着（上下文长，只接小活）：待命接 72——Annie 看 preview 回「动手」后转原话给 09，合最新 main、跑 da / pl / nav + tsc / eslint / build 后合。
+- `09`[341d31] 还开着（上下文长，只接小活）：接 72 合 main。Annie 对 2c 说「我让它动手了」（在 09 窗口说的动手，原话等 09 报）、「做完就关掉吧」⇒ 09 合完 72 报 SHA 后收工关窗口。
 
 ## 2026-11-04 交接：前端主窗口 `今日主窗口-24`[310398] → 今天新开的主窗口（公司电脑）
 
@@ -1367,6 +1367,7 @@ D. 已完成、待从置顶移走：
 - 2026-11-03 晚 Annie 在主窗口 5c 又提（原话）：「在查出来的订单详情上是否可以加个链接，直接点击跳转到manifest上的该订单项上」= 本条 B。5c 派 fa 先只读查后端 main 有没有 manifest_link(s)，再出 B 的 preview（不写代码）。
   - fa：后端 origin/main 362cd700 没有 manifest_link(s)，要后端在订单详情 / 搜索接口给 manifest_links [{date, tab, tab_label, pill, pill_label, row_keys[]}]（不在 = []）。preview https://claude.ai/artifact/PhPav7b9m1sjrxmfa8sv8F （5 题：放哪 / 分几处 / 勾哪些 / On Hold / 不在时写什么，都推荐 A），已整段转 Annie。
   - Annie「同意全部推荐。动手」（5 题全 A）。fa 推 task/open-in-manifest **6343171**（mock，没合 main）。**给后端的形状（明天后端主窗口照这个做，或告诉真实形状）**：订单详情 / 搜索接口的 OrderDetail 加 `manifest_links: [{date:"YYYY-MM-DD", tab, tab_label, pill, pill_label, row_keys:[]}]`，不在 Main manifest = []；On Hold 要能判断（订单状态照 Order List）；Cancelled 不给。前端：没这个字段 = 整行不出；Manifests 接 ?row=&tick=0。os 74、orders 48、man 365、dr 89、nav 38、mf 240，tsc / eslint / build 过。
+  - 94 报（2026-11-04）：后端 f4 写完在审、没上线。形状同前端 mock：GET /api/operations/orders/{order_number} 加 manifest_links [{date, tab, tab_label, pill, pill_label, row_keys[]}]，不在 = []；没 manifests.view 或查位置出错 = 不带字段（订单详情照常）；row_key / tab / pill 取 GET /api/manifests 的 page_rows；CHD 行在 admin_fee 标签。On Hold 永远 []（10-27 定 on hold 不进 Main Manifest，新表状态叫 pending），manifest-links.tsx 的 isOnHold / tick=0 分支走不到，显示「not on Main manifest … Check its status in Order List」，符合订单流，不用改。SHA 到了派窗口核字段、合最新 main 后合。
 
 ### 50. Sales Report 插队 + CHD 组放回 Main manifest（2026-11-02）
 - Annie 原话：「紧急插个队，把sales report做出来」。24 问她指哪种：A 修现有 /sales-report（10/23 上线，按 Group → section → 产品，Orders / Pax / $，只 SA 可见挂 Soon）／B 做一份新报表（先出 preview）／C 把删掉的按 agent 月表周表加回来。她没选，接着说：「你先把CHD这个group 先放回main manifest」。
