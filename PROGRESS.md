@@ -958,6 +958,11 @@ D. 已完成、待从置顶移走：
 
 - ✅ **Annie 答 7 题并「动手」（主窗口原话，2026-11-04）**：「南北分车的问题：1. 第一台bus放最多的人，如果S多就放S，N多就放N  6 多有团 7是。其他都同意推荐，动手」⇒ 题 1：Bus A 放人多的那一方（South 人多 A 放 South，North 人多 A 放 North），最后一台放另一方；题 2–5 照推荐（Flexible 放当时空位多的那台、一样多放 A；三台以上中间车只装 Flexible 和满出来的；人多那方一台装不下先放中间车、没有就放另一方那台，一单不拆，都装不下照旧 Not on a bus；表外酒店当 Flexible、Settings 显示 Not set）；题 6：所有有字母分车的团都用；题 7：Resorts World 放橙色（South）是对的。
 - 已转 37 派后端（迁移 Annie 先执行）。前端派 09：Pickup Locations 加 Direction 列下拉 + Seat guests 勾选框放大成 CHECK_BIG，先出 preview 给 Annie 看再合。
+- 09 前端（task/seat-direction **228912c**，已推、**没合 main**，等 Annie 看 preview 说「动手」）：preview https://claude.ai/artifact/5FLcwPjxBMjNbVuD15mCmG （模拟数据截图）。
+  - ① components/dispatch/seating.tsx 每单勾选框改用 CHECK_BIG（20×20，同 Main manifest）。
+  - ② Pickup Locations：GET 每行带 direction 键才出「Direction」列（Tour bus 块 / All Locations，Hotel Name 右边，Shuttle 块不出）；显示彩点 + North / South / Flexible，没设灰色 Not set；✏ Edit 里下拉，按这一行 Save：先 PUT、Direction 改了才 PATCH /{id}/direction {direction}（照 57 形状）；PATCH 失败红字 "Could not save Direction: <detail> The other boxes were saved."、行留着可重试。Action Log 加栏名 Direction（假定后端 action_log 键叫 direction，上线后核）。Export / Import 不加。
+  - How to use 加一条（原文）："Direction (only in the Tour bus block): click ✏ Edit and pick North, South, or Flexible, then Save. Auto on Dispatch → Seat guests uses it when a tour has two or more buses: Bus A takes the side with more guests (North or South), the last bus takes the other side, and Flexible guests fill whichever bus has more empty seats. Not set counts as Flexible."
+  - 检查：pl 116/116（新 12 条）、da 483/483（新 1 条勾选框 20px）；tsc 0、eslint 0。合 main 前还要合最新 main + build。
 ### 71. Main manifest ☰ Columns 按某一页单独存—— ✅ 已合 main f5459d6（2026-11-03，09 记录，还没 preview）
 - Annie 原话（09 窗口）：「在main manifest上的column选线，我可以专门为某个页面选择勾选哪些项目么？可不可以在选择的那个页面上加一个just apply for this page，or apply for all」。
 - 现状：列选择按账号、按标签（Bus Tour / Tickets - SelfDrive / Admin fee）各存一份（user-prefs manifest_cols_bus / _tickets / _admin_fee），同标签下所有胶囊共用。按胶囊分开存要后端改 user-prefs（键白名单、值上限 4000 字：加上限或加按胶囊的键）；前端 ☰ Columns 弹窗加「Apply to this page only / Apply to all」。
