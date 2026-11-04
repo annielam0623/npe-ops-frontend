@@ -1272,6 +1272,7 @@ async function run() {
     await evaluate("$btn('Send reminder', $bar()).click();");
     await waitFor("document.querySelector('[data-soft-blocked]')");
     check("G245 红条逐单写原因（后端原话）+ 号不对的不能 Send anyway 那句", await evaluate(`const t = document.querySelector('[data-soft-blocked]').textContent; return document.querySelector('[data-soft-block=\"CHD2005\"]').textContent.includes(${JSON.stringify(REASON)}) && document.querySelector('[data-soft-block=\"CHD2004\"]').textContent.includes('No Cfm #') && t.includes("An order with a Cfm # that doesn't match the product can't be sent anyway.");`), await evaluate("return document.querySelector('[data-soft-blocked]')?.textContent;"));
+    check("只修 bug：红条上 Go fill them in 是深红字（原来白字在淡红底上看不见）", await evaluate("const b = [...document.querySelectorAll('button')].find(x => x.textContent.trim() === 'Go fill them in'); return !!b && getComputedStyle(b).color === 'rgb(122, 36, 36)';"));
     check("G245 Send anyway 只算没号的那一单（Send anyway 1）", await evaluate("const b = document.querySelector('[data-send-anyway-cfm]'); return !!b && b.textContent.trim() === 'Send anyway 1';"), await evaluate("return document.querySelector('[data-send-anyway-cfm]')?.textContent;"));
     await evaluate("$btn('Go fill them in').click();");
     // 只勾号不对的 ⇒ 没有 Send anyway

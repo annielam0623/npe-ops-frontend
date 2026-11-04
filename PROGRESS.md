@@ -1144,6 +1144,13 @@ pe-ops-wt-login-default`，mock，**没合 main，等后端 57 的 logged_in_at 
   - **Annie 原话**：「不需要每一单发一份邮件，我们只需要每次发送发一份就好了，把有问题没发送的集中在一起就可以了」⇒ 自动发送每一轮发一封，集中列这一轮因 Cfm # 不符没发的单（不是每单一封）。已转 94。前端 Auto Send 说明半句跟着改成「Orders whose Cfm # doesn't match the product are skipped and listed together in one email after each run.」（Q4 A 时用）。
   - 94 / f4 查完（代码 + 生产只读）：**在 Rezdy 改好红标自己消失，后端不用改**——Rezdy 改字段推 webhook、整单重写，cfm_mismatch 每次开页 / 发送现场算，推到即变（近 30 天 booking_updated 26,373 次）。号挪到对的栏 ⇒ 消红能发；只删 X 栏、Antelope 栏空 ⇒ 消红变 No Cfm #（软拦，可 Send anyway）；在 Manifests 直接填 Cfm # ⇒ 当场消、能发。邮件改成每轮最多一封、没有就不发；每日汇总照旧带此原因；收件人等 Annie 答 94。
 - ✅ **Annie「羚羊谷，请动手」（原话，2026-11-04）** ⇒ 定稿：Q1 C（Cfm # (Rezdy) 那格红底白字）；Q2 A（能勾、Send reminder 红条逐单写原因、不能 Send anyway、黄字加半句）；Q3 不放 How to use，改鼠标停上去的短提示，用 2c 拟稿「Wrong Cfm # for this product — Rezdy has it under <other_label>: <other_value>. Fix it in Rezdy.」（她没另改，按推荐）；手机点红格弹同一句（推荐 A）；Q4 A（ops 不另列，Auto Send 说明加「Orders whose Cfm # doesn't match the product are skipped and listed together in one email after each run.」）。派 81（task/g245-cfm-mismatch，先于 Working Record），后端 f4 正在落地。
+- 前端（工作窗口 `npe-ops-frontend-81`[90172b]，2c 派；Annie「羚羊谷，请动手」）：`task/g245-cfm-mismatch`（worktree `C:Code
+pe-ops-wt-g245`，mock），**推了分支、没合 main，等 f4 SHA 核字段**。
+  - 定稿：Q1 C Cfm # (Rezdy) 格红底白字（行不变色），title / 手机点开写「Wrong Cfm # for this product — Rezdy has it under {other_label}: {other_value}. Fix it in Rezdy.」；Q2 A 能勾，Send reminder 红条逐单写「Cfm # doesn't match the product ({other_label}: {other_value})」、不算进 Send anyway（+「An order with a Cfm # that doesn't match the product can't be sent anyway.」），黄字加「Orders with a red Cfm # can't be sent until the Cfm # is fixed in Rezdy or in the Cfm # cell.」；后端硬拦（can_override=false）提醒结果进红框 Not sent（原来提醒弹窗只放 Skipped，这次补上）+ 数字多「Not sent」；Q4 A Auto Send 说明加「Orders whose Cfm # doesn't match the product are skipped and listed together in one email after each run.」；How to use 不加。
+  - 只修 bug（2c 同意）：发送前淡红红条上的「Go fill them in」原来白字（深色底的键样式），看不见；改成条上的深红字 + 淡红边，大小不变。
+  - 后端收件人：Annie 定只发 antelope（f4 db6eb24e，新键 tickets.cfm_alert_emails，缺省 antelope@）；Auto Send 页先不加栏。
+  - 检查：man 411/411（新加 12 条）、mf 240/240、nav 38/38、as 69/69；tsc 0、eslint 0 错、build 过。截图已发 2c 转 Annie。
+  - 下一步：f4 上 main → 只读核 cfm_mismatch / blocked reasons / can_override → 合最新 main 重跑 man / mf / nav → Annie 点头后合 main。
 
 ### 81. ~~Bus Manifest~~ **Relay list 打印页**每页页脚标「n of n」（2026-11-04，Annie 在主窗口-2c 提，没动手）
 - 原话：「G236 Bus Manifest 照纸本 --- 把每页的页脚标上页数 n of n，提醒staff后面还有页面」。

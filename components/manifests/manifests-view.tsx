@@ -100,6 +100,9 @@ type SavedFields = Record<ManifestTabKey, SavedCols | undefined>;
 /** base.html 的 .btn：深色底上的半透明按钮。 */
 const LEGACY_BTN_CLASS =
   "inline-flex h-9 items-center justify-center gap-2 rounded-[10px] border border-white/10 bg-white/[.04] px-3.5 text-[13px] font-[650] whitespace-nowrap text-white transition hover:bg-white/[.08] disabled:cursor-not-allowed disabled:opacity-50";
+/** 淡红确认条上的次要键（「Go fill them in」）：同 LEGACY_BTN_CLASS 的大小，字用条上的深红（白字在淡红底上看不见）。 */
+const RED_BAR_BTN_CLASS =
+  "inline-flex h-9 items-center justify-center gap-2 rounded-[10px] border border-[#e4a5a0] bg-white/60 px-3.5 text-[13px] font-[650] whitespace-nowrap text-[#7a2424] transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50 night:border-rose-400/30 night:bg-white/[.04] night:text-rose-200 night:hover:bg-white/[.08]";
 /** manifests.html 的 .btn-nav（‹ ›）。 */
 const NAV_BTN_CLASS =
   "flex h-7 w-7 items-center justify-center rounded-[7px] border-[0.5px] border-black/15 bg-paper text-[15px] text-[#1a1a1a] hover:bg-[#f5f5f3] disabled:opacity-50 night:border-white/15 night:bg-white/[.04] night:text-white/80 night:hover:bg-white/[.08]";
@@ -1047,7 +1050,8 @@ export function ManifestsView() {
                   <button
                     type="button"
                     onClick={() => setPendingSend(null)}
-                    className={LEGACY_BTN_CLASS}
+                    // 只修 bug：原来用深色底的白字键，放在淡红条上看不见；改成红条的深红字（同条上的文字），别的不变。
+                    className={RED_BAR_BTN_CLASS}
                   >
                     Go fill them in
                   </button>
