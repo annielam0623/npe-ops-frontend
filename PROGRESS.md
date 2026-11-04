@@ -44,6 +44,25 @@
 2. 后端 G234 上 main → e6 driver-follow；Annie 看新红字。
 3. 等 Annie 答 64 / 65 / 67 / 68，答了按原话派。
 
+## 2026-11-03 Dispatch › Drivers & guides 可以改名字、电话（`task/roster-edit`，工作窗口 91 [359513]，置顶 67）—— 合 main
+
+- Annie 原话：「另外在dispatch的可以添加司机和导游那一块，把导游和司机的信息设为可编辑，因为我们现在好多导游的电话是没有的，把编辑的权限给到staff」；之后「Dispatch名单编辑-动手」。4 题没逐题答，按推荐全 A 做：
+  1. 只改名字和电话；
+  2. 名字写 Nickname；
+  3. 改名后旧名字自动加进 Other spellings；
+  4. How to use 用原文。
+- preview：https://claude.ai/artifact/XFaFvh6wBiCjRPXywxK9Rj
+- 做了：
+  - `GET /api/dispatch/roster` 带 `can_edit: true`，且这个人有 dispatch.edit（同 + Add）时，每行出一个 Edit。
+  - 点 Edit：这一行变成名字 + 电话两个框，蓝色 Save 点了就存（`PUT /api/dispatch/roster/{id}` {name, phone}），旁边 Cancel。
+  - 409 电话重复：后端原话红字，电话框红，这一行不关。
+  - 一次只改一行：没存时点别的 Edit 先问「Discard your changes to X?」，关窗先问「Close without saving your changes to X?」。
+  - 存好：绿底「✓ Saved」。`old_name_added` 有值时写「The old name X was added to Other spellings.」。
+  - 排车页的名单和司机 / 导游下拉马上换新名字，不重读这一天。
+  - How to use 加一条。
+- 后端没上线（GET 不带 can_edit）时没有 Edit 键，页面和以前一样。后端 37 / 57 在 `task/roster-edit` 做，排在 4d 后上线。
+- 检查：da 479/479（新 12 条），nav 38/38；tsc / eslint / build 过。
+
 ## 2026-11-03 HR「Other spellings」（`task/hr-other-spellings`，工作窗口 91 [359513]，置顶 65）—— 合 main
 
 - Annie 原话：「HR的四项： 1 B 2. A  3B  4A」，之后「HR动手」。preview：https://claude.ai/artifact/W92fd328NYL5S5e3U1bjSw
