@@ -6,6 +6,14 @@
 
 > **下一个主窗口：先读下面「2026-11-04 收工交接：前端主窗口 2c」，再看置顶「📌 等 Annie 确认」。**
 
+## 2026-11-04 收工：工作窗口 `npe-ops-frontend-81`[90172b]（2c 派；dev server / Chrome 已全关）
+- 今天合了 main：Restaurant ⬆ Import 6c56f18、置顶 75 agent ref 搜索 8cecaea、置顶 51 B Open in Main manifest 6e05f55、置顶 83 凌晨登录 Dispatch 默认今天 a9efe18、置顶 59 / 58 酒店坐标一格 + Tracking Arrived at / Left at 4fffe65（各置顶记了验收点）。
+- **推了分支、没合**（worktree 都在 C:Code 下，干净）：
+  - `task/g245-cfm-mismatch` **e736302**（worktree npe-ops-wt-g245）：置顶 82 G245 红格 + 提示 + 红条 + 提醒结果红框 Not sent + Auto Send 说明一句 + 「Go fill them in」看不清的修复。man 411/411、mf 240、nav 38、as 69。截图已发 2c 转 Annie。**明天：f4 SHA 到了只读核 cfm_mismatch / blocked reasons / can_override → 合最新 main 重跑 man / mf / nav / as → Annie 点头后合 main**，置顶 82 记 SHA。
+  - `task/hr-profile-sections` **3a72805**（worktree npe-ops-wt-hr-profile）：置顶 86 Q1 / Q2 A，HR「People」改名「Profile」，分 Drivers（driver + both）/ Guides / Position not set（有才出）三节，How to use 一句。hr 92/92、nav 38。截图 86-profile-sections.png 已发 2c。**明天：Annie 点头 → 合最新 main 重跑 hr / nav → 合 main**，置顶 86 记 SHA。
+- **没开工**：置顶 86 Working Record（日历 + 快照 + Hours，定稿 = preview v2 https://claude.ai/artifact/U951qPXH1hNBzLbuSGY6Hm 全部推荐 + Q5 B 要 Hours + Q6 A 📷 只给能看 Live drivers 的人；先只 Super Admin）。等后端 18：field-calendar（含「不带 hr_id = 所有人 {hr_id, name, position, days}」和每天 hours {start_at, end_at, source, note}）、field-snapshots。开工时开 `task/hr-working-record`，先 mock；Hours 没数据的写法要定原文报 2c（fallback note「No Samsara off-duty time」「No Samsara time」要醒目提示补，schedule 灰字注明）。
+- 出过的 preview（都已转 Annie）：置顶 84 登录记录 https://claude.ai/artifact/7gQFvoaMvPVmrBCVZCxwMj（等答）；置顶 85 Staff Schedule 班次类型 https://claude.ai/artifact/9LFRCau1uBg5sQ5aPbdSZt（第 4 版，Q6 定稿：Unassigned 卡片不上色、白虚线框；其余等答）；置顶 81 Relay list 页码 https://claude.ai/artifact/4dc5BmHshSrk8EZNm8K55a（等答；@page 页码已实测）。
+
 ## 2026-11-04 收工交接：前端主窗口 `主窗口-2c`[f4667e]（公司电脑）
 > 窗口：前端工作窗口 `npe-ops-frontend-81`[90172b]、`c8`[a65365]；后端主窗口 `主窗口-94`[8d6960]（后端 18 / 2e / 57 / f4）。09、24、37 今天已关。
 
