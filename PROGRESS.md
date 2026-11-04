@@ -1035,6 +1035,7 @@ D. 已完成、待从置顶移走：
 
 - 09 做完酒店胶囊 + A–Z（task/seat-direction faca991，未合；preview 同链接 ①b）：每台车 / Not on a bus 各一排胶囊（「Wynn 2 orders · 4 pax」，没酒店的「No hotel」排最后）；按酒店名 A–Z、同酒店内按客人名；选中淡蓝底深蓝字；可跨车多选；Upper / Lower 筛选时只算筛出的；合作方只读不出胶囊；Completed 日照常。da 501/501。**等 Annie 看 ① ①b ② 三处点头**；Direction 列没后端键时不出，所以点头后可先合 main。
 ### 72. Dispatch 两台 bus 调位置：勾选框放大 + Auto 按南北分车（2026-11-03 晚，Annie 在主窗口提，附表）
+- ✅ **Annie 在 09 窗口说「动手」（原话，2026-11-04）** ⇒ 09 合 main（task/seat-direction）。验收看：① Dispatch › Assign › Arrange seats 每单勾选框变大（20×20，同 Main manifest）；①b 每台车 / Not on a bus 名单按酒店 A–Z、同酒店挨着，名单上方酒店胶囊（Wynn 2 orders · 4 pax），点一颗勾上这家全部单、再点取消、可多选，选好在下面选车点 Move selected orders 一次全移；② Settings › Pickup Locations Tour bus 块 Hotel Name 右边 Direction 列（彩点 North / South / Flexible / 灰 Not set，✏ Edit 里下拉、按 Save 存）——**后端 57 没上线前 GET 不带 direction 键，这一列不出**。两段 How to use 原文见上。检查：da 501/501、pl 116/116、nav 38/38；tsc 0、eslint 0 错、build 过（先合了最新 main）。
 - Annie 原话：「前端要改一下，当有两台bus可以调位置的时候，勾选框太小了，把它放大跟main manifest里一样；另外Auto排进bus的时候按照这个规则：一台车放south，一台放north，中间的机动填位」。
 - 附表（Las Vegas 酒店分三色）：Blue: Northbound assist —— Plaza、Sahara、The STRAT、Westgate、Circus Circus、Wynn、Trump；Red: Neutral / Flexible —— MGM Grand、Virgin、Horseshoe、Bellagio、Treasure Island；Orange: Southbound assist —— Aria、Mandalay Bay、Excalibur、Park MGM、Resorts World。
 - ① 勾选框：components/dispatch/seating.tsx:135（Seat guests 每单的勾选框，现在是浏览器默认小框）改成 Main manifest 的 CHECK_BIG（manifests-view.tsx:1307）。纯前端；大小改动照规矩先 preview。
