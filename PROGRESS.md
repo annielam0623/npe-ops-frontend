@@ -758,6 +758,9 @@
 - Annie 原话（09 窗口）：「在main manifest上的column选线，我可以专门为某个页面选择勾选哪些项目么？可不可以在选择的那个页面上加一个just apply for this page，or apply for all」。
 - 现状：列选择按账号、按标签（Bus Tour / Tickets - SelfDrive / Admin fee）各存一份（user-prefs manifest_cols_bus / _tickets / _admin_fee），同标签下所有胶囊共用。按胶囊分开存要后端改 user-prefs（键白名单、值上限 4000 字：加上限或加按胶囊的键）；前端 ☰ Columns 弹窗加「Apply to this page only / Apply to all」。
 - 09 在问 Annie「某个页面」是不是指某颗胶囊；答了 09 出 preview，归 09。定了范围再转 37 评估后端。
+- Annie 原话：「就是我在哪个产品页面点击column打开后做勾选或取消，apply的时候有连个键：apply for this page   另一个:  Apply for all」⇒ 页面 = 标签下的胶囊；弹窗底部「Apply for this page」/「Apply for all」，仍每人账号各存。09 preview https://claude.ai/artifact/DS5P93vVfPFdf7AEVpWbhR （没写代码）。
+- 题 1 有自己设置的页点 Apply for all：A（推荐）全换、那页自己的清掉；B 只换没自己设置的页。题 2 怎么看出用自己的列：A（推荐）胶囊小灰标「OWN」+ 弹窗顶写 "This page has its own columns." + "Use the shared columns" 一键回去（没有时写 "This page uses the shared Bus Tour columns."）；B 胶囊不标只弹窗写。题 3 两键颜色（都直接存）：A（推荐）都蓝；B all 蓝、this page 白。照做不问：拖表头有自己设置存这页否则存标签；Reset to default 在有自己设置的页只重置这页。
+- 后端：user-prefs 三键白名单、上限 4000 字；同键改 {shared, pages:{<pill>:[...]}} 放宽上限，或加按胶囊的键，37 定形状（已留言 37，明天家里评估）。等 Annie 答题 + 「动手」。
 
 ### 70. Dispatch › Assign 顶部统计条旁放醒目的 Relay List 键（2026-11-03，09 记录，preview https://claude.ai/artifact/LzSrfzeXzA9Tgsndd4J6KV ，没写代码）
 - Annie 原话（09 窗口）：「然后把morning relay list放到 1st round的上方，就是那个统计表格的旁边，把最后一个缩窄一些，旁边放Relay List，标得醒目一点」。
