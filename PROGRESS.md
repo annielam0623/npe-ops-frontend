@@ -22,6 +22,7 @@
 - ✅ Annie 原话「动手」（2026-11-03 晚）。5c 转 9e 派后端（排在 36「第二轮 relay 认 TI」后；题 1 A 要同时写 bar/bars 和 bus/buses；要一个 dispatch.view 能读的 GET 给团 / 字母 / 当前色 / 默认色）；派 fa 前端 task/relay-list-settings，先 mock、推分支不合，等后端 SHA。
   - 9e：派后端 36（TI 已上 b885f1d1）。改为颜色 + 方向一个接口 GET/PUT /api/settings/relay-list（含 tour_colors、orientations、defaults、tours[]），不写回 manifests.paper_colors（纸本色要留着当「回默认」）；显示色「staff 设的 → 纸本 → 团色」三处同读。21:30 前做不完推 WIP 明天续。已转 fa。
   - fa 推 task/relay-list-settings **e219e0e**（没合 main）；preview 定稿同链接。rl 58、da 482、mf 240、man 360、nav 38，tsc / eslint / build 过；横竖混排 PDF 实测方向全对、长单不裁。要后端核 4 点（tours[] 形状、字母色顺序、tour_buses[] 带 manifest_id、PUT detail 英文）已转 9e。fa 接着做 74 preview。
+  - ✅ 后端 73 上 main **ee601775**（36 做；11/04 线上只读新旧颜色 62 行一致，连库 3984 OK）。最终字段已转 fa：tours[] 带 color/default_color（Relay + 司机页）和 header_*（Bus Manifest），*_set；取色顺序以后端为准（staff 字母 → staff All buses → 纸本字母 → 纸本团 → 团色），前端直接用返回值不自己算。派 fa 核字段后合 main。
 - ✅ 置顶 71 后端：manifest_cols_bus / _tickets / _admin_fee 上限 4000 → 20000 已上线（后端 origin/main 1fac68ca，9e 报）；键名格式不变，超限 400 "value too long (max 20000 chars)"，其他键仍 4000，partner 仍 403。前端不用改。后端另有 npe-confirmation-service-da [af1446]。
 
 ## 2026-11-03 晚 da 481/482「Pull：按这天拉、两轮标题和时间来自接口」修好（`task/da-482-fix`，工作窗口 fa [985244]，主窗口 5c 派）—— 检查套时序问题，页面没 bug，合 main
