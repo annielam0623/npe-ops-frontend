@@ -46,6 +46,7 @@ import {
   TD,
   TH,
 } from "./legacy-styles";
+import { useRelayListOpener } from "./relay-list-open";
 import { StepBox } from "./step-box";
 
 /** 两轮的键和按钮字；轮名和时间段由接口的 round_labels 给（后端 dispatch.SHIFTS，同旧页面）。 */
@@ -267,7 +268,7 @@ const RP_BTN_GREEN =
  */
 const RP_BTN_SEND =
   "h-8 rounded-[7px] border border-[#3b82f6] bg-[#3b82f6] px-3 text-[13px] font-semibold whitespace-nowrap text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3b82f6] disabled:cursor-not-allowed disabled:opacity-50";
-/** ↻ Refresh（Step 1 / Step 2 重读名单，不发）、Relay list：白底（同上 Q3；蓝色只给提交）。 */
+/** ↻ Refresh（Step 1 / Step 2 重读名单，不发）：白底（同上 Q3；蓝色只给提交）。 */
 const RP_BTN_WHITE =
   "h-[30px] rounded-lg border border-[#cbd5e1] bg-white px-3 text-[12.5px] font-semibold whitespace-nowrap text-[#1a1a1a] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3b82f6] disabled:cursor-not-allowed disabled:opacity-50";
 /** 旧 `.rp-sub`。 */
@@ -312,8 +313,6 @@ export function RelayPanel({
   onSave?: () => Promise<boolean>;
 }) {
   const [data, setData] = useState<RelayPull | null>(null);
-  /** 「Save before opening the Relay list?」：undefined = 没开；null = 整份；数字 = 只看这台车（车头 Print）。 */
-  const [listAsk, setListAsk] = useState<number | null | undefined>(undefined);
   const [pulling, setPulling] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<Record<string, RoundResult>>({});
@@ -393,18 +392,9 @@ export function RelayPanel({
     );
   }
 
-  /** Relay list 的地址（Annie：「排完relay并保存了以后，应该加一个按键显示这些relay的list」）。 */
-  const relayListUrl = (car: number | null) =>
-    `/dispatch/relay-list?date=${date}${car ? `&car=${car}` : ""}`;
-
-  /** 打开 Relay list（新标签）：有没存的改动先问要不要存（显示的是已保存的排车）。 */
-  function openRelayList(car: number | null) {
-    if (dirty && onSave) {
-      setListAsk(car);
-      return;
-    }
-    window.open(relayListUrl(car), "_blank", "noopener,noreferrer");
-  }
+  /** 车头 Print 打开 Relay list 只看这一台：有没存的改动先问要不要存（整份的 Relay List 键在 Assign 顶上，置顶 70）。 */
+  const relayList = useRelayListOpener({ date, dirty, onSave });
+  const openRelayList = relayList.open;
 
   async function pull() {
     setPulling(true);
@@ -885,15 +875,6 @@ export function RelayPanel({
           >
             {pulling ? "Loading…" : "↻ Refresh"}
           </button>
-          <button
-            type="button"
-            data-relay-list
-            disabled={disabled}
-            onClick={() => openRelayList(null)}
-            className={RP_BTN_WHITE}
-          >
-            📋 Relay list
-          </button>
           <span className={RP_SUB}>
             {dirty
               ? "Assign is not saved yet - Pull uses the saved schedule."
@@ -1183,39 +1164,7 @@ export function RelayPanel({
         ) : null}
       </StepBox>
 
-      {listAsk !== undefined && onSave ? (
-        <ConfirmDialog
-          title="Save before opening the Relay list?"
-          confirmLabel="Save and open"
-          busyLabel="Saving…"
-          onClose={() => setListAsk(undefined)}
-          onConfirm={async () => {
-            // 先在点击里开好新标签（存完再开会被浏览器当成弹窗拦掉），存好了再把地址填进去。
-            const tab = window.open("about:blank", "_blank");
-            const ok = await onSave();
-            if (!ok) {
-              tab?.close();
-              return {
-                status: "error",
-                message:
-                  "Could not save. Fix the problems shown on Assign, then try again.",
-              };
-            }
-            const url = relayListUrl(listAsk);
-            if (tab) {
-              tab.opener = null;
-              tab.location.href = url;
-            } else window.open(url, "_blank", "noopener,noreferrer");
-            setListAsk(undefined);
-            return { status: "ok" };
-          }}
-        >
-          <p>
-            The Relay list shows the saved schedule. You have changes on Assign
-            that are not saved yet.
-          </p>
-        </ConfirmDialog>
-      ) : null}
+      {relayList.dialog}
 
       {confirm?.kind === "round" ? (
         <ConfirmDialog

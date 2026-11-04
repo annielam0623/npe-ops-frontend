@@ -100,6 +100,7 @@ import {
 import { BusIcon } from "./icons";
 import { Rail, useCheckOpen } from "./rail";
 import { RelayPanel } from "./relay-panel";
+import { useRelayListOpener } from "./relay-list-open";
 import {
   isAutoWindow,
   notNeededRows,
@@ -1210,6 +1211,15 @@ export function DispatchView() {
   }
   const saveRef = useRef(save);
   saveRef.current = save;
+  /**
+   * Assign 顶上统计条旁的 Relay List 键（置顶 70，Annie 2026-11-03「Relay List  动手」）：新标签打开这天的 Relay list，
+   * 有没存的改动先问要不要存（只读的人不存，直接看已保存的）。Send 页原来的 📋 Relay list 键拿掉（题 2 B）。
+   */
+  const relayList = useRelayListOpener({
+    date: day?.run_date ?? "",
+    dirty: unsaved,
+    onSave: viewOnly ? undefined : () => saveRef.current(),
+  });
 
   /**
    * 只存一个单元（Annie 2026-10-18「动手」；后端 POST /api/dispatch/section）：这个单元所有的车整块替换，
@@ -2063,11 +2073,12 @@ export function DispatchView() {
                 ) : null}
 
                 {/* 旧 `.toprow`：统计条（三个数）+ 右上角要看的事。 */}
+                {/* 统计条 + Relay List 键（置顶 70）：始终同一行、一样高；窗口变窄统计条跟着缩，键不换行。 */}
                 <section
                   aria-label="Summary"
-                  className="grid grid-cols-1 items-stretch gap-[18px]"
+                  className="flex min-w-0 items-stretch gap-3"
                 >
-                  <div className="flex flex-wrap items-stretch rounded-[14px] border border-white/10 bg-white/[.04] px-1.5 py-1">
+                  <div className="flex min-w-0 flex-1 flex-nowrap items-stretch overflow-hidden rounded-[14px] border border-white/10 bg-white/[.04] px-1.5 py-0.5">
                     <Stat
                       icon="👤"
                       value={analysis.driversUsed}
@@ -2097,7 +2108,17 @@ export function DispatchView() {
                       />
                     ))}
                   </div>
+                  <button
+                    type="button"
+                    data-relay-list
+                    disabled={navDisabled}
+                    onClick={() => relayList.open(null)}
+                    className="inline-flex flex-none items-center gap-1.5 rounded-[14px] border border-[#fff605] bg-[#fff605] px-5 text-[16px] font-bold whitespace-nowrap text-[#111] hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50 max-sm:px-3 max-sm:text-[14px]"
+                  >
+                    📋 Relay List
+                  </button>
                 </section>
+                {relayList.dialog}
 
                 {/* 旧 `.cols`：≤1300px 拆成一栏，右栏落到卡片下面。 */}
                 <div className="grid grid-cols-1 items-start gap-[18px]">
@@ -2958,23 +2979,26 @@ function Stat({
   border?: boolean;
 }) {
   return (
+    // 四格等宽、图标对齐，数字在上、说明在下（置顶 70）；窄了说明字截成「…」。
     <div
       className={cn(
-        "flex min-w-0 items-center gap-2.5 px-5 py-3",
+        "flex min-w-0 flex-1 basis-0 items-center gap-2.5 px-[clamp(8px,1.2vw,16px)] py-1.5",
         border && "border-l border-white/10",
       )}
     >
       <span
         aria-hidden
-        className="flex size-[26px] flex-none items-center justify-center rounded-lg bg-white/[.07] text-[13px]"
+        className="flex size-6 flex-none items-center justify-center rounded-lg bg-white/[.07] text-[12px]"
       >
         {icon}
       </span>
-      <span>
-        <span className="text-[19px] leading-[1.1] font-bold text-white tabular-nums">
+      <span className="flex min-w-0 flex-col leading-[1.15]">
+        <span className="text-[17px] font-bold whitespace-nowrap text-white tabular-nums">
           {value}
         </span>
-        <span className="ml-[.3em] text-[12px] text-[#94a3b8]">{label}</span>
+        <span className="truncate text-[11.5px] text-[#94a3b8]" title={label}>
+          {label}
+        </span>
       </span>
     </div>
   );
