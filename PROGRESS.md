@@ -116,7 +116,7 @@ D. 已完成、待从置顶移走：
   - ✅ 后端 73 上 main **ee601775**（36 做；11/04 线上只读新旧颜色 62 行一致，连库 3984 OK）。最终字段已转 fa：tours[] 带 color/default_color（Relay + 司机页）和 header_*（Bus Manifest），*_set；取色顺序以后端为准（staff 字母 → staff All buses → 纸本字母 → 纸本团 → 团色），前端直接用返回值不自己算。派 fa 核字段后合 main。
 - ✅ 置顶 71 后端：manifest_cols_bus / _tickets / _admin_fee 上限 4000 → 20000 已上线（后端 origin/main 1fac68ca，9e 报）；键名格式不变，超限 400 "value too long (max 20000 chars)"，其他键仍 4000，partner 仍 403。前端不用改。后端另有 npe-confirmation-service-da [af1446]。
 
-## 2026-11-03 晚 置顶 51 B 订单详情一点跳到 Main manifest 的那一单（`task/open-in-manifest`，工作窗口 fa [985244]，主窗口 5c 派）—— ⛔ 推了分支，等后端给 manifest_links 再合
+## 2026-11-03 晚 置顶 51 B 订单详情一点跳到 Main manifest 的那一单（`task/open-in-manifest`，工作窗口 fa [985244]，主窗口 5c 派）—— ✅ 后端 8be7f86c 上 main，11-04 核过字段后合 main（81）
 - Annie 原话：「在查出来的订单详情上是否可以加个链接，直接点击跳转到manifest上的该订单项上」；11/2「如果需要resend confirmation或者reminder的话，再给一个链接可以一点击就进到该订单所属的main manifest页面上，停留在该订单上，订单默认勾选」；preview https://claude.ai/artifact/PhPav7b9m1sjrxmfa8sv8F 5 题全 A，「同意全部推荐。动手」（5c 转）。
 - 后端（只读 origin/main 362cd700）：还没有 manifest_link(s)。字段照 fa 拟的 `manifest_links: [{date, tab, tab_label, pill, pill_label, row_keys[]}]`（不在 Main manifest = []），写在 types/orders.ts OrderDetail（可选）；后端定了形状再核。
 - 做了：
@@ -1409,6 +1409,9 @@ D. 已完成、待从置顶移走：
   - Annie「同意全部推荐。动手」（5 题全 A）。fa 推 task/open-in-manifest **6343171**（mock，没合 main）。**给后端的形状（明天后端主窗口照这个做，或告诉真实形状）**：订单详情 / 搜索接口的 OrderDetail 加 `manifest_links: [{date:"YYYY-MM-DD", tab, tab_label, pill, pill_label, row_keys:[]}]`，不在 Main manifest = []；On Hold 要能判断（订单状态照 Order List）；Cancelled 不给。前端：没这个字段 = 整行不出；Manifests 接 ?row=&tick=0。os 74、orders 48、man 365、dr 89、nav 38、mf 240，tsc / eslint / build 过。
   - 94 报（2026-11-04）：后端 f4 写完在审、没上线。形状同前端 mock：GET /api/operations/orders/{order_number} 加 manifest_links [{date, tab, tab_label, pill, pill_label, row_keys[]}]，不在 = []；没 manifests.view 或查位置出错 = 不带字段（订单详情照常）；row_key / tab / pill 取 GET /api/manifests 的 page_rows；CHD 行在 admin_fee 标签。On Hold 永远 []（10-27 定 on hold 不进 Main Manifest，新表状态叫 pending），manifest-links.tsx 的 isOnHold / tick=0 分支走不到，显示「not on Main manifest … Check its status in Order List」，符合订单流，不用改。SHA 到了派窗口核字段、合最新 main 后合。
   - ✅ 后端上线 main 8be7f86c（合并 ab189834，任务 020e94aa，94 转）。2c 派 81（75 合完接）核字段、合最新 main、跑 os / orders / man / dr / nav / mf 后合。
+- ✅ 2026-11-04 合 main（工作窗口 `npe-ops-frontend-81`[90172b]，2c 派）：后端 94 上 main 8be7f86c（合并 ab189834，任务 020e94aa）。只读核过：GET /api/operations/orders/{order_number} 带 manifest_links [{date（ISO）, tab, tab_label, pill, pill_label, row_keys[]}]，和 6343171 的 mock 一致；row_key 用的是同一个 manifest_list.row_key()（同 GET /api/manifests 每行的 row_key，「单号|产品|日期」，回程段加后缀），tab / pill 同那页的 tabs[].key / pills[].key，?row= 能定位；不在 Main Manifest = []；没 manifests.view 或查位置出错 = 不带字段（订单详情照常，前端整行不出）；On Hold 永远 []（显示「not on Main manifest … Check its status in Order List」，符合订单流）。前端没改代码。
+  - 合最新 main（含 75 8cecaea）：PROGRESS / man-test / os-mock / os-test 冲突两边都留（os-mock ctl 合成 {unauth, mlinks, hold, noMoney}）。重跑：os 80/80、orders 54/54、man 401/401、dr 89/89、nav 38/38、mf 240/240；tsc 0、eslint 0 错（3 条原有 warning）、build 过（端口 8983 / 3583 / 9583）。
+  - Annie 验收：Dashboard 顶栏搜索或 Orders › 订单详情，卡片最下面「Main manifest:」⇒ 白键「Open in Main manifest →」（分在几处就每处一个「标签 · 胶囊 →」）→ 跳到对应日期 / 标签 / 胶囊，那一行标黄、滚到眼前、能发的行预勾（不会自动发）；不在 Main manifest 的单写灰字 + 「Open Order List →」；取消的单写「Cancelled orders are not on Main manifest. Check Order List.」。
 
 ### 50. Sales Report 插队 + CHD 组放回 Main manifest（2026-11-02）
 - Annie 原话：「紧急插个队，把sales report做出来」。24 问她指哪种：A 修现有 /sales-report（10/23 上线，按 Group → section → 产品，Orders / Pax / $，只 SA 可见挂 Soon）／B 做一份新报表（先出 preview）／C 把删掉的按 agent 月表周表加回来。她没选，接着说：「你先把CHD这个group 先放回main manifest」。
