@@ -9,10 +9,7 @@ import { HowToUse } from "@/components/ui/how-to-use";
 import { ErrorBanner, Panel } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchCurrentUser } from "@/lib/auth-api";
-import {
-  byTick,
-  describeHrWriteError,
-} from "@/lib/permissions";
+import { byTick, describeHrWriteError } from "@/lib/permissions";
 import { usePermissions } from "@/lib/staff-permissions";
 import {
   bulkErrorOf,
@@ -118,6 +115,11 @@ export function HRView() {
   const [editing, setEditing] = useState(false);
   const [edits, setEdits] = useState<ListEdits>({});
   const [bulkSaving, setBulkSaving] = useState(false);
+  /** Edit list 存的时候某人的 Other spellings 被拒：红字放在那一格下面。 */
+  const [cellError, setCellError] = useState<{
+    profileId: number;
+    message: string;
+  } | null>(null);
   const [banner, setBanner] = useState<Banner>(null);
   const [askLeaveEdit, setAskLeaveEdit] = useState(false);
   const [dialog, setDialog] = useState<{
@@ -125,9 +127,7 @@ export function HRView() {
     /** Add person 后写法没存上：带回格子里的字和红字。 */
     spellingsText?: string;
     error?: string;
-  } | null>(
-    null,
-  );
+  } | null>(null);
   const [linkable, setLinkable] = useState<{
     users: HRLinkableUser[];
     error: string | null;
@@ -263,6 +263,26 @@ export function HRView() {
     }
   }
 
+  /**
+   * 这次存进去的「Other spellings」：后端会规整（大写、排序、去掉和 Nickname 一样的），存好的格子不再算改动。
+   */
+  function dropSavedSpellings(
+    current: ListEdits,
+    saved: Map<number, Record<string, string | number>>,
+  ): ListEdits {
+    const next: ListEdits = {};
+    for (const [id, row] of Object.entries(current)) {
+      const sent = saved.get(Number(id));
+      next[Number(id)] =
+        sent && SPELLINGS_COLUMN in sent
+          ? Object.fromEntries(
+              Object.entries(row).filter(([k]) => k !== SPELLINGS_COLUMN),
+            )
+          : row;
+    }
+    return next;
+  }
+
   /** 去掉已经不在的人、已经等于新值的格子。 */
   function pruneEdits(profiles: HRProfile[], current: ListEdits): ListEdits {
     const next: ListEdits = {};
@@ -286,6 +306,7 @@ export function HRView() {
       byId.set(c.profile.id, row);
     }
     setBulkSaving(true);
+    setCellError(null);
     showBanner(null);
     try {
       const result = await saveHRBulk([...byId.values()]);
@@ -298,7 +319,7 @@ export function HRView() {
         setEdits({});
         return;
       }
-      const left = pruneEdits(profiles, edits);
+      const left = pruneEdits(profiles, dropSavedSpellings(edits, byId));
       setEdits(left);
       const leftCount = changedCells(profiles, left).length;
       const missing = result.missing ?? 0;
@@ -334,6 +355,16 @@ export function HRView() {
             ? view.profiles.find((p) => p.id === bulk.profileId)?.legal_name
             : undefined;
         text = who ? `${who}: ${bulk.message}` : bulk.message;
+        // 这个人这次改了 Other spellings：红字也放在那一格下面（题 3 B）。
+        if (
+          bulk.profileId !== null &&
+          changes.some(
+            (c) =>
+              c.profile.id === bulk.profileId && c.key === SPELLINGS_COLUMN,
+          )
+        ) {
+          setCellError({ profileId: bulk.profileId, message: bulk.message });
+        }
       } else if (error instanceof TypeError) {
         text = "Could not reach the server — nothing was saved.";
       } else {
@@ -609,8 +640,11 @@ export function HRView() {
                 editing={editing}
                 edits={edits}
                 locked={bulkSaving}
+                cellError={editing ? cellError : null}
                 onCellChange={(id, key, value) => {
                   if (banner) showBanner(null);
+                  if (cellError?.profileId === id && key === SPELLINGS_COLUMN)
+                    setCellError(null);
                   setEdits((all) => ({
                     ...all,
                     [id]: { ...all[id], [key]: value },
@@ -806,9 +840,9 @@ function BannerLine({
   );
 }
 
-/** Annie 2026-11-03 题 4 选 A 的原文；后一句是 Edit list 暂时只读（后端 bulk 还不收这一格）的说明。 */
+/** Annie 2026-11-03 题 4 选 A 的原文。 */
 const SPELLINGS_HOW_TO =
-  "Other spellings: other ways this person's name is written in the morning Excel or CCL (for example JOSEPH for Joe R). One per line. A spelling can belong to only one person. Removing a spelling means CCL imports stop matching it to this person. To change them, click Edit on that person's row.";
+  "Other spellings: other ways this person's name is written in the morning Excel or CCL (for example JOSEPH for Joe R). One per line. A spelling can belong to only one person. Removing a spelling means CCL imports stop matching it to this person.";
 
 const HOW_TO_ITEMS = [
   "The People list shows all drivers and guides. Expired licenses are shaded red.",

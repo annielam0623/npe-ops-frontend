@@ -125,12 +125,22 @@ http.createServer(async (req, res) => {
     const b = await readBody(req); entry.body = b;
     if (ctl.samsaraDup) return send(res, 400, { detail: "That Samsara Driver ID is already on another person's record. Each driver needs their own ID. Nothing was saved." });
     if (ctl.bulkErr) return send(res, 400, { detail: { message: "In Town Only drivers can't be given Bus Tour. Untick one of them.", profile_id: 1 } });
+    // Other spellings（后端 01606b02）：逗号串 = 这个人的整份清单；JOSEPH 是别人的 ⇒ 409，整批不存。
+    for (const e of b.edits) {
+      if (typeof e.other_spellings === "string" && /(^|,) *joseph *(,|$)/i.test(e.other_spellings)) {
+        return send(res, 409, { detail: { message: "JOSEPH is already used for Joe R. Remove it there first.", profile_id: e.id } });
+      }
+    }
     let updated = 0;
     for (const e of b.edits) {
       const row = profiles.find((x) => x.id === e.id);
       if (!row) continue;
       for (const [k, v] of Object.entries(e)) {
         if (k === "id") continue;
+        if (k === "other_spellings") {
+          spellings[e.id] = [...new Set(String(v).split(",").map((s) => s.trim().toUpperCase()).filter(Boolean))].sort();
+          continue;
+        }
         row[k] = ["assignments", "limited", "languages"].includes(k) ? (v ? String(v).split(",") : []) : v;
       }
       updated++;
