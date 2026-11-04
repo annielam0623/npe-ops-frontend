@@ -215,6 +215,75 @@ async function run() {
   await evaluate("$btn('Delete', $dialog()).click(); return 1;");
   check("删好：DELETE /restaurants/1、卡片没了、计数 1", (await waitCall("DELETE", /restaurants\/1$/, 2)) && (await waitFor("!$dialog() && !$card(\"ZZ Test Bee's\") && $txt().includes('1 restaurant')")));
 
+  // ── ⬆ Import（全站「上传表格自动填」preview ③-4，Annie 2026-10-29「批量导游同意推荐。动手」；需要后端 B6）──
+  await ctl({ reset: true });
+  await open("document.querySelector('section[data-restaurant]')");
+  await evaluate(`
+    window.__blob = null; window.__download = null;
+    const orig = URL.createObjectURL;
+    URL.createObjectURL = (b) => { window.__blob = b; return orig(b); };
+    HTMLAnchorElement.prototype.click = function () { window.__download = this.download; };
+    return 1;
+  `);
+  check("Import：+ Add a restaurant 左边有 ⬆ Import，样子同 Add（不是蓝的），收着时没有 Import 块", await evaluate("const b = document.querySelector('[data-import-restaurants]'); const a = document.querySelector('[data-add-restaurant]'); return !!b && b.textContent.trim() === '⬆ Import' && b.nextElementSibling === a && $bg(b) !== '" + BLUE + "' && b.className === a.className && !document.querySelector('[data-bulk-import]');"));
+  await evaluate("document.querySelector('[data-import-restaurants]').click(); return 1;");
+  check("点开：卡片列表上方展开 Import restaurants 块、键灰掉；说明写按 Name 对上、空格不清、页脚不导入", await waitFor("const s = document.querySelector('[data-bulk-import]'); return s && s.getAttribute('aria-label') === 'Import restaurants' && document.querySelector('[data-import-restaurants]').disabled && (s.compareDocumentPosition(document.querySelector('section[data-restaurant]')) & Node.DOCUMENT_POSITION_FOLLOWING) && s.textContent.includes('Name finds the restaurant') && s.textContent.includes('A blank cell never clears what is stored') && s.textContent.includes('The lunch sheet footer is not imported.')"));
+  await evaluate("$btn('⬇ Download template').click(); return 1;");
+  await waitFor("window.__download");
+  {
+    const tpl = await evaluate("return (await window.__blob.text()).replace(/^\\uFEFF/, '');");
+    const lines = tpl.split("\r\n").filter(Boolean);
+    check(
+      "模板：Name / Address / Phone / Text / Email / Notes for staff，带上现有的店（电话写 (928) 555-0110，不带页脚），文件名 restaurants_template_<日期>.csv",
+      lines[0] === "Name,Address,Phone,Text,Email,Notes for staff" && lines.length === 2 && lines[1] === "ZZ Test Bee's,\"1201 ZZ Test Ave, Tusayan, AZ 86023\",(928) 555-0110,,," && /^restaurants_template_\d{4}-\d{2}-\d{2}\.csv$/.test(await evaluate("return window.__download;")),
+      JSON.stringify({ lines, file: await evaluate("return window.__download;") }),
+    );
+  }
+  const setFile = async (selector, file) => {
+    const { root } = await cdp("DOM.getDocument", { depth: -1, pierce: true });
+    const { nodeId } = await cdp("DOM.querySelector", { nodeId: root.nodeId, selector });
+    await cdp("DOM.setFileInputFiles", { nodeId, files: [`${__dirname.replace(/\\/g, "/")}/${file}`] });
+  };
+  const impCalls = async () => (await mockLog()).filter((e) => e.path.startsWith("/api/supplier/restaurants/import/"));
+  await setFile("[data-bulk-import] input[type=file]", "restaurant-import.csv");
+  await waitFor("document.querySelector('[data-bulk-counts]')");
+  let ireqs = await impCalls();
+  check("预览：上传文件、只调 /api/supplier/restaurants/import/preview（不写）", ireqs.length === 1 && ireqs[0].path === "/api/supplier/restaurants/import/preview" && ireqs[0].method === "POST" && ireqs[0].hasFile, JSON.stringify(ireqs));
+  check(
+    "预览：New 1 / Will update 1 / No change 0 / Errors 3，栏名用页面上的",
+    await evaluate("const t = document.querySelector('[data-bulk-counts]').textContent; const h = [...document.querySelectorAll('[data-bulk-import] thead th')].map(th => th.textContent); return t.includes('New: 1') && t.includes('Will update: 1') && t.includes('No change: 0') && t.includes('Errors: 3') && JSON.stringify(h) === JSON.stringify(['Import','Name','Address','Phone','Text','Email','Notes for staff']);"),
+    await evaluate("return JSON.stringify({c: document.querySelector('[data-bulk-counts]').textContent, h: [...document.querySelectorAll('[data-bulk-import] thead th')].map(th => th.textContent)});"),
+  );
+  check("预览：改了的格子写 旧 → 新（— → zz.bees@example.com）、空格写 blank in file — left as is", await evaluate("const ch = [...document.querySelectorAll('[data-bulk-changed]')].map(e => e.textContent); return ch.includes('— → zz.bees@example.com') && document.querySelector('[data-bulk-import] tr[data-status=update]').textContent.includes('blank in file — left as is');"), await evaluate("return JSON.stringify([...document.querySelectorAll('[data-bulk-changed]')].map(e => e.textContent));"));
+  check("预览：有错的红字写原因（电话格式、店名空、文件里重复）", await evaluate("const es = [...document.querySelectorAll('[data-bulk-error]')].map(e => e.textContent); return es.includes(\"Phone doesn't look like a phone number. Use digits, e.g. (928) 555-0110.\") && es.includes('Enter the restaurant name.') && es.includes('Repeated above — skipped.');"));
+  check("Save 键：蓝色 Save 2 rows（有错的 3 行不存）", await evaluate("const b = $btn('Save 2 rows'); return !!b && $bg(b) === '" + BLUE + "';"));
+  await ctl({ importFail: true });
+  await evaluate("$btn('Save 2 rows').click(); return 1;");
+  await waitFor("document.querySelector('[data-bulk-import] [role=alert]')?.textContent.includes('Not saved')");
+  check("存不上（500）：红字 Not saved — nothing was changed.，预览留着", await evaluate("const a = document.querySelector('[data-bulk-import] [role=alert]'); return a.textContent.startsWith('Not saved — nothing was changed.') && getComputedStyle(a).color === 'rgb(179, 38, 30)' && !!$btn('Save 2 rows');"), await evaluate("return document.querySelector('[data-bulk-import] [role=alert]')?.textContent;"));
+  await ctl({ importFail: false, importConflict: true });
+  await evaluate("$btn('Save 2 rows').click(); return 1;");
+  await waitFor("document.querySelector('[data-bulk-import] [role=alert]')?.textContent.includes('Someone changed')");
+  check("存的时候撞上别人改（409）：红字照后端原话，预览留着", await evaluate("const a = document.querySelector('[data-bulk-import] [role=alert]'); return a.textContent === 'Not saved — Someone changed the restaurant list while this file was being saved. Nothing was saved — check the preview again.' && !!$btn('Save 2 rows');"), await evaluate("return document.querySelector('[data-bulk-import] [role=alert]')?.textContent;"));
+  await ctl({ importConflict: false });
+  await evaluate("$btn('Save 2 rows').click(); return 1;");
+  await waitFor("document.querySelector('[data-bulk-import] [role=status]')?.textContent.includes('Saved')");
+  ireqs = (await impCalls()).filter((e) => e.path.endsWith("/commit"));
+  check(
+    "Save：commit 传同一个文件；绿字 Saved — 1 new, 1 updated. 3 rows with errors were not saved.；预览表收起",
+    ireqs.length === 3 && ireqs.every((e) => e.hasFile) && (await evaluate("const s = document.querySelector('[data-bulk-import] [role=status]'); return s.textContent.includes('Saved — 1 new, 1 updated. 3 rows with errors were not saved.') && getComputedStyle(s).color === 'rgb(30, 107, 67)' && !document.querySelector('[data-bulk-import] table');")),
+    await evaluate("return document.querySelector('[data-bulk-import] [role=status]')?.textContent;"),
+  );
+  check("存好：页面重读——新店 ZZ Test Grill 出卡片（没分团）、Bee's 的 Email 是新的、计数 2", await waitFor("const g = $card('ZZ Test Grill'); const b = $card(\"ZZ Test Bee's\"); return g && b && g.querySelector('[data-lunch-for]').textContent === 'Lunch for: no tours' && $field(g, 'Phone').value === '(435) 555-0101' && $field(b, 'Email').value === 'zz.bees@example.com' && $txt().includes('2 restaurants')"), await evaluate("const g = $card('ZZ Test Grill'); const b = $card(\"ZZ Test Bee's\"); return JSON.stringify({g: !!g, lf: g?.querySelector('[data-lunch-for]')?.textContent, ph: g && $field(g, 'Phone')?.value, em: b && $field(b, 'Email')?.value, two: $txt().includes('2 restaurants')});"));
+  await evaluate("$btn('Close', document.querySelector('[data-bulk-import]')).click(); return 1;");
+  check("Close：Import 块收起，⬆ Import 又能点", await waitFor("!document.querySelector('[data-bulk-import]') && !document.querySelector('[data-import-restaurants]').disabled"));
+  await ctl({ importFileError: "Missing column: Name" });
+  await evaluate("document.querySelector('[data-import-restaurants]').click(); return 1;");
+  await waitFor("document.querySelector('[data-bulk-import]')");
+  await setFile("[data-bulk-import] input[type=file]", "restaurant-import.csv");
+  check("文件读不了（400）：红字照后端原话，没有预览表、没有 Save", await waitFor("document.querySelector('[data-bulk-import] [role=alert]')?.textContent === 'Missing column: Name' && !document.querySelector('[data-bulk-import] table') && ![...document.querySelectorAll('[data-bulk-import] button')].some(b => b.textContent.startsWith('Save'))"), await evaluate("return document.querySelector('[data-bulk-import]')?.textContent;"));
+  await ctl({ importFileError: "" });
+
   // 后端还没上线（404）：不报错
   await ctl({ unavailable: true });
   check("后端 404：写 Restaurant isn't available yet，没有红字 / Retry", (await open("$txt().includes(\"Restaurant isn't available yet\")")) && (await evaluate("return !document.querySelector('main [role=alert]') && !$btn('Retry');")), await evaluate("return document.querySelector('main')?.innerText.slice(0, 300);"));

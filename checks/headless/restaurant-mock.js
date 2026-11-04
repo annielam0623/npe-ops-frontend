@@ -1,10 +1,10 @@
 // 模拟后端：Supplier › Restaurant 午餐店（G199，形状照后端 8a `task/g199-supplier-restaurant` 11636fb：
 // app/routers/supplier.py + app/services/lunch_restaurants.py；400 原话照 8a 2026-10-27 发来的清单）。
 // Manifest setup 那一行（lunch_restaurant）在 products 套里测。
-// 控制：POST /__ctl {reset, fail401, staff, superadmin, unavailable, fail500}；GET /__log。端口默认 8799（MOCK_PORT 可改）。
+// 控制：POST /__ctl {reset, fail401, staff, superadmin, unavailable, fail500, importFail, importConflict, importFileError}；GET /__log。端口默认 8799（MOCK_PORT 可改）。
 const http = require("http");
 
-const ctl = { fail401: false, staff: false, superadmin: false, unavailable: false, fail500: false };
+const ctl = { fail401: false, staff: false, superadmin: false, unavailable: false, fail500: false, importFail: false, importConflict: false, importFileError: "" };
 const log = [];
 
 let restaurants, groups, nextId;
@@ -140,6 +140,33 @@ http
     log.push(entry);
     // G203 第二批：共用读接口（后端 f76d5e9）。
     if (p === "/api/supplier/restaurants/action-log") return send(res, 200, { next_cursor: null, entries: [{ id: "2-1", at: "2026-10-28T17:00:00+00:00", by: "Annie Z", action: "update", label: "ZZ Test item", what: "Name", from: "Old", to: "New" }, { id: "1-1", at: "2026-10-27T17:00:00+00:00", by: "Max", action: "create", label: "ZZ Test item", what: "Name", from: null, to: "Old" }] });
+    // ⬆ Import（preview ③-4 / 需要后端 B6：标准 bulk_import 形状，同 vehicles / pickup）。multipart，不按 JSON 读。
+    // 栏 key：name / address / phone / text_number / email / staff_note；按店名对上，没对上的新建（不分团）。
+    // 错误原话照 lunch_restaurants.clean_*；控制 importFileError（400）/ importConflict（409）/ importFail（500）。
+    if (p === "/api/supplier/restaurants/import/preview" || p === "/api/supplier/restaurants/import/commit") {
+      const raw = (await readRaw(req)).toString();
+      entry.hasFile = /filename="restaurant-import\.csv"/.test(raw);
+      if (ctl.fail401) return send(res, 401, { detail: "Authentication required" });
+      if (ctl.staff) return send(res, 403, { detail: "Admin access required" });
+      if (ctl.importFileError) return send(res, 400, { detail: ctl.importFileError });
+      if (p.endsWith("/preview")) {
+        const rows = [
+          { status: "update", id: 1, row: 2, values: { name: "ZZ Test Bee's", address: "1201 ZZ Test Ave, Tusayan, AZ 86023", phone: "+19285550110", text_number: "", email: "zz.bees@example.com", staff_note: "" }, before: { email: "" }, changed: ["email"], blanked: ["text_number", "staff_note"], errors: [] },
+          { status: "new", id: null, row: 3, values: { name: "ZZ Test Grill", address: "12 Main St, Kanab, UT", phone: "+14355550101", text_number: "", email: "", staff_note: "" }, before: {}, changed: ["name", "address", "phone"], blanked: [], errors: [] },
+          { status: "error", id: null, row: 4, values: { name: "ZZ Test Cafe", address: "", phone: "555-0", text_number: "", email: "", staff_note: "" }, before: {}, changed: [], blanked: [], errors: [{ field: "phone", message: "Phone doesn't look like a phone number. Use digits, e.g. (928) 555-0110." }] },
+          { status: "error", id: null, row: 5, values: { name: "", address: "3 Lake Powell Blvd, Page, AZ", phone: "", text_number: "", email: "", staff_note: "" }, before: {}, changed: [], blanked: [], errors: [{ field: "name", message: "Enter the restaurant name." }] },
+          { status: "error", id: null, row: 6, values: { name: "ZZ Test Grill", address: "", phone: "", text_number: "", email: "", staff_note: "" }, before: {}, changed: [], blanked: [], errors: [{ field: null, message: "Repeated above — skipped." }] },
+        ];
+        const counts = { new: 0, update: 0, unchanged: 0, error: 0 };
+        for (const r of rows) counts[r.status]++;
+        return send(res, 200, { columns: ["name", "address", "phone", "text_number", "email", "staff_note"], rows, counts });
+      }
+      if (ctl.importConflict) return send(res, 409, { detail: "Someone changed the restaurant list while this file was being saved. Nothing was saved — check the preview again." });
+      if (ctl.importFail) return send(res, 500, { detail: "Database is busy" });
+      restaurants.find((r) => r.id === 1).email = "zz.bees@example.com";
+      restaurants.push({ id: nextId++, name: "ZZ Test Grill", footer: "", staff_note: "", address: "12 Main St, Kanab, UT", phone: "+14355550101", text_number: "", email: "", updated_by: "ZZ Test", updated_at: stamp() });
+      return send(res, 200, { created: 1, updated: 1, unchanged: 0, skipped: 3 });
+    }
     const raw = await readRaw(req);
     if (raw.length) entry.body = JSON.parse(raw.toString());
     if (ctl.fail401) return send(res, 401, { detail: "Authentication required" });
