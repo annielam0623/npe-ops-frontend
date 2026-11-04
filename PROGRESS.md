@@ -994,6 +994,12 @@ D. 已完成、待从置顶移走：
 - preview（工作窗口 fa [985244]，2026-11-03 晚，没写代码）：https://claude.ai/artifact/L7Ks8gymYvsd33Q9DuLGUr —— 设置键 ⚙ Colours & page、弹窗（Relay 1–6 / 每团 All buses + 字母 / Portrait·Landscape / Reset）、深紫对照 3 个浅紫候选、A4 横版、手机、How to use 原文；题 1–6 在页面最底（题 3：本窗口没 ops 登录，没查到生产是哪两张，推断是 Antelope 没填纸本色的车退回团色 #7a6ba8）。
 - 5c 派前端工作窗口 `npe-ops-frontend-fa`[985244] 做 preview（入口放 Relay list 页设置键；题 1 颜色范围、题 2 浅紫候选、题 3 哪一天），只做 preview 不写代码。
 
+### 80. 导游页从发出那刻就 live（2026-11-04，Annie 在主窗口-24 提，还没动手）
+- Annie 原话：「导游的页面从发出那刻就直接live吧，这样他们可以提前联系客人」。
+- 现状：guide_home.html 在当天之前（ahead）按钮 disabled + 半透明（preview 时也是），所以导游提前拿到链接也打不了电话、发不了短信。改的是后端模板 / 路由；ops 不用改。
+- 题（已在 24 回复里问 Annie）：A（推荐）发出后 Call / Text 马上能用（可以提前联系客人），Picked up / No show 仍只在当天能按（免得提前误按）；B 全部按钮发出后都能按。
+- 已转后端主窗口 94 评估；答了 + 「动手」由新主窗口转 94。也影响置顶 79 的 K1（按不了的按钮）范围。
+
 ### 79. 司机 / 导游页（手机页 + ops Live drivers）字一律白色（2026-11-04）
 - 09 出了 preview（等 Annie 确认 +「动手」）：https://claude.ai/artifact/8cWB8Ki2BdEttf49GXt4Pp —— 逐项清单（页面文字 + class / 行号）：司机页 D1–D23、导游页 G1–G15、ops Live drivers O1–O10 全改白 #fff；推荐只留灰 3 处：K1 按不了的键（还没到当天 / 预览 / ops 只读，本来半透明）、K2 还没 check in 的「–」占位、K3 没选中的页签 Routes / Messages。彩色字（琥珀时间酒店、绿 / 红状态、蓝电话和 BUS TOUR 标签）和白底气泡里的 GUEST 不动。
   - 后端参考做法：base.html:17 的 --muted / --muted-2 改 #fff，再给 K2（.g-ci-t 没 done）、K3（.tab）单独写回 #94a3b8。模板行号按本机后端 7243a50f 读的。
