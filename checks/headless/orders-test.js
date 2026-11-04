@@ -313,6 +313,17 @@ async function run() {
     check(`${label}：订单详情 ${see ? "有" : "没有"} Price 卡 / Agent & Commission / Agent 行 / 票价 / Raw Rezdy / How to use 价格那条`, all, JSON.stringify(d));
   }
   await ctl({ staffPerms: null, superAdmin: false, keepMoney: false });
+  // ── 置顶 51 B：Order details 整页顶上「Main manifest:」——有 manifest_links 才出；partner 不出 ──
+  await ctl({ mlinks: true, partner: null, staffPerms: null });
+  await goto(`${APP}/orders/CHDTESTORDER1`);
+  await waitFor("document.querySelector('[data-open-in-manifest]')", 60000);
+  check("Order details 整页：白键 Open in Main manifest →，网址带 row", await evaluate("const a = document.querySelector('[data-open-in-manifest]'); const u = new URL(a.href); return a.textContent.trim() === 'Open in Main manifest →' && u.pathname === '/manifests' && u.searchParams.get('row') === 'CHDTESTORDER1|PBZ|2026-10-03';"));
+  await ctl({ mlinks: false });
+  await goto(`${APP}/orders/CHDTESTORDER1`);
+  await waitFor("!!document.querySelector('main h1')", 60000);
+  await sleep(500);
+  check("旧后端：整页没有 Main manifest 那一行", await evaluate("return !document.querySelector('[data-manifest-links]');"));
+
   await ctl({ fail401: true });
   await goto(`${APP}/orders`);
   await waitFor("location.pathname === '/auth/login'");

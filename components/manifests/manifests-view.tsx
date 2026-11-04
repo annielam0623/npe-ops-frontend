@@ -22,7 +22,7 @@ import {
   saveManifestCfm,
 } from "@/lib/manifests-api";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
-import { useLeaveGuard } from "@/lib/use-leave-guard";
+import { replaceUrl, useLeaveGuard } from "@/lib/use-leave-guard";
 import { fetchUserPref, saveUserPref } from "@/lib/user-prefs-api";
 import { OTHER_TOUR_COLOR, resolveTourColor } from "@/lib/tour-colors";
 import { usePageVisibility } from "@/lib/page-visibility";
@@ -171,6 +171,8 @@ export function ManifestsView() {
   /** 搜索跳过来的那一行（row_key）：标黄、滚到眼前；手动换日期 / 标签 / 胶囊就不再标。 */
   const [highlight, setHighlight] = useState<string | null>(null);
   const scrolledToRef = useRef<string | null>(null);
+  /** 置顶 51 B：?row= 带来的行，这一页拿到后用一次（预勾 + 去掉网址里的 row / tick）。 */
+  const jumpRef = useRef<{ rows: string[]; tick: boolean } | null>(null);
   const redirectingRef = useRef(false);
   /** 上一次返回已经满足的请求：后端换了胶囊（我们没指定 / 指定的当天不存在）时不再重拉一次。 */
   const satisfiedRef = useRef("");
@@ -190,6 +192,13 @@ export function ManifestsView() {
     setDate(isYmd(fromUrl) ? fromUrl : laToday());
     if (isTabKey(tabFromUrl)) setTab(tabFromUrl);
     setPill(params.get("pill") ?? "");
+    // 置顶 51 B：订单详情「Open in Main manifest →」带来的 ?row=（这单的行，逗号隔开）：标黄、滚到、预勾（tick=0 只标黄）。
+    const rows = (params.get("row") ?? "").split(",").filter(Boolean);
+    if (rows.length) {
+      jumpRef.current = { rows, tick: params.get("tick") !== "0" };
+      setHighlight(rows[0]);
+      scrolledToRef.current = null;
+    }
   }, []);
 
   // 这个标签存的列（每个标签只拉一次）；这颗胶囊有自己的一套就用自己的（置顶 71）。
@@ -485,6 +494,20 @@ export function ManifestsView() {
     }));
   // 这个标签能不能发（admin_fee = CHD 组的 Admin fee 不能）：不能就没有勾选、没有发送条。
   const tabSendable = tabs.find((t) => t.key === tab)?.sendable !== false;
+  // 置顶 51 B：?row= 的行到了：只预勾能发的行（On Hold 带 tick=0 不勾），然后把 row / tick 从网址去掉（刷新不再勾一次）。
+  useEffect(() => {
+    const jump = jumpRef.current;
+    if (!jump || !shown) return;
+    const here = shown.rows.filter((r) => jump.rows.includes(r.row_key));
+    if (!here.length) return;
+    jumpRef.current = null;
+    if (jump.tick && !noSend && tabSendable)
+      setSelected(new Set(here.filter(canSend).map((r) => r.row_key)));
+    const url = new URL(window.location.href);
+    url.searchParams.delete("row");
+    url.searchParams.delete("tick");
+    replaceUrl(url);
+  }, [shown, noSend, tabSendable]);
   const currentPill = shown?.pills.find((p) => p.key === shown.pill);
   const fields = shown ? shownFields(shown, savedHere) : [];
   // 隐藏行：只在勾了开关、响应里有 hidden 块时才有；有行才出灰色胶囊，没有行写一句小字。
@@ -1752,6 +1775,12 @@ function ManifestsHowToUse() {
           <b>Search</b>: type an order #, guest name, phone or email. It looks
           through every tab and group on this day. Click a result to jump to it;
           the row is highlighted in yellow.
+        </>,
+        <>
+          <b>Order lookup / Order details</b>: Open in Main manifest → opens the
+          order on Main manifest, highlighted and ticked, so you can resend the
+          confirmation or reminder. Nothing is sent until you press Send. If the
+          order is not on Main manifest, check its status in Order List.
         </>,
         <>
           <b>Bus Tour</b> shows one group at a time (the groups from Settings →

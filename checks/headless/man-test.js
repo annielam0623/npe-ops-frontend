@@ -1843,6 +1843,23 @@ async function run() {
   await sleep(300);
   check("电脑：Columns 照旧在工具条上，没有 ⋯", await evaluate("const vis = (e) => !!e && e.getBoundingClientRect().height > 0; return [...document.querySelectorAll('button')].some(b => b.textContent.trim() === '☰ Columns' && vis(b)) && !vis(document.querySelector('[data-phone-more]'));"));
 
+  // ── 置顶 51 B：?row= 标黄、滚到、预勾能发的行、用过去掉；tick=0 只标黄 ──
+  await ctl({ role: "staff", staffPerms: null, partnerCodes: null, prefs: { bus: null, tickets: null }, seedCfm: true });
+  {
+    const rk = `CHD2001|TIX01|${today}`;
+    const from0 = (await mockLog()).length;
+    await openPage(`${APP}/manifests?date=${today}&tab=tickets&pill=t%3Aantelope&row=${encodeURIComponent(rk)}`);
+    await waitFor("$box('CHD2001')?.checked", 20000);
+    check("?row=：那一行标黄、勾上，发送条写 1 order selected", await evaluate("const tr = $box('CHD2001').closest('tr'); return tr.hasAttribute('data-highlight') && tr.className.includes('bg-[#fff3cd]') && $box('CHD2001').checked && $bar().textContent.includes('1 order selected');"), await evaluate("return $bar()?.textContent;"));
+    check("用过就从网址去掉 row（刷新不再勾一次），date / tab / pill 留着", await evaluate("const u = new URL(location.href); return !u.searchParams.has('row') && u.searchParams.get('pill') === 't:antelope';"));
+    check("预勾不会自动发（没有发送请求）", !(await since(from0, (e) => e.path === "/api/manifests/send-tickets")).length);
+    await openPage(`${APP}/manifests?date=${today}&tab=tickets&pill=t%3Aantelope&row=${encodeURIComponent(rk)}&tick=0`);
+    await waitFor("$box('CHD2001')?.closest('tr').hasAttribute('data-highlight')", 20000);
+    await sleep(500);
+    check("How to use 写了 Open in Main manifest 那句", await evaluate("const t = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Manifests')).textContent; return t.includes('Open in Main manifest → opens the order on Main manifest, highlighted and ticked') && t.includes('Nothing is sent until you press Send.');"));
+    check("tick=0（On Hold）：只标黄、不勾", await evaluate("return !$box('CHD2001').checked && !new URL(location.href).searchParams.has('tick');"));
+  }
+
   // ── 未登录：跳 ops 自己的登录页带 next ──
   await ctl({ fail401: true });
   await goto(`${APP}/manifests?date=${today}&tab=tickets`);

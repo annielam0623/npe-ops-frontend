@@ -23,6 +23,7 @@ import {
   smsLabel as tourSms,
 } from "@/components/tour-tracking/config";
 import { PageLink } from "@/components/ui/page-link";
+import { ManifestLinks } from "./manifest-links";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { isInbound } from "@/lib/channels";
 import {
@@ -360,6 +361,10 @@ function LookupResultView({ result }: { result: LookupResult }) {
             <Field label="Agent">{order.ops.agent_name || "—"}</Field>
           )}
         </dl>
+        <ManifestLinks
+          order={order}
+          className="mt-3 border-t border-white/[.08] pt-2.5"
+        />
         {order.farm_out_view && !partner ? (
           <div className="mt-3">
             <FarmOutViewCard

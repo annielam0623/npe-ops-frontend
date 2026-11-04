@@ -95,7 +95,9 @@ http.createServer(async (req, res) => {
   if (m) {
     const id = decodeURIComponent(m[1]);
     const d = detail[id];
-    if (req.method === "GET") return d ? send(res, 200, lacksMoney() ? { ...forPartner(d), price: null } : ctl.partner ? forPartner(d) : d) : send(res, 404, { detail: "Order not found" });
+    // 置顶 51 B：ctl.mlinks = 新后端，详情带 manifest_links（一处）。
+    const ml = ctl.mlinks ? { manifest_links: [{ date: "2026-10-03", tab: "bus", tab_label: "Bus Tour", pill: "g:3", pill_label: "Bryce & Zion", row_keys: [`${id}|PBZ|2026-10-03`] }] } : {};
+    if (req.method === "GET") return d ? send(res, 200, { ...(lacksMoney() ? { ...forPartner(d), price: null } : ctl.partner ? forPartner(d) : d), ...ml }) : send(res, 404, { detail: "Order not found" });
     const body = await readBody(req);
     entry.body = body;
     if (!d.editable) return send(res, 409, { detail: "This order is stored in the new Rezdy table, which is read-only for now." });

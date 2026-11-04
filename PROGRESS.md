@@ -25,6 +25,15 @@
   - ✅ 后端 73 上 main **ee601775**（36 做；11/04 线上只读新旧颜色 62 行一致，连库 3984 OK）。最终字段已转 fa：tours[] 带 color/default_color（Relay + 司机页）和 header_*（Bus Manifest），*_set；取色顺序以后端为准（staff 字母 → staff All buses → 纸本字母 → 纸本团 → 团色），前端直接用返回值不自己算。派 fa 核字段后合 main。
 - ✅ 置顶 71 后端：manifest_cols_bus / _tickets / _admin_fee 上限 4000 → 20000 已上线（后端 origin/main 1fac68ca，9e 报）；键名格式不变，超限 400 "value too long (max 20000 chars)"，其他键仍 4000，partner 仍 403。前端不用改。后端另有 npe-confirmation-service-da [af1446]。
 
+## 2026-11-03 晚 置顶 51 B 订单详情一点跳到 Main manifest 的那一单（`task/open-in-manifest`，工作窗口 fa [985244]，主窗口 5c 派）—— ⛔ 推了分支，等后端给 manifest_links 再合
+- Annie 原话：「在查出来的订单详情上是否可以加个链接，直接点击跳转到manifest上的该订单项上」；11/2「如果需要resend confirmation或者reminder的话，再给一个链接可以一点击就进到该订单所属的main manifest页面上，停留在该订单上，订单默认勾选」；preview https://claude.ai/artifact/PhPav7b9m1sjrxmfa8sv8F 5 题全 A，「同意全部推荐。动手」（5c 转）。
+- 后端（只读 origin/main 362cd700）：还没有 manifest_link(s)。字段照 fa 拟的 `manifest_links: [{date, tab, tab_label, pill, pill_label, row_keys[]}]`（不在 Main manifest = []），写在 types/orders.ts OrderDetail（可选）；后端定了形状再核。
+- 做了：
+  - `components/order-lookup/manifest-links.tsx`：「Main manifest:」一行——一处 ⇒ 白键「Open in Main manifest →」；几处 ⇒ 每处「标签 · 胶囊 →」；[] ⇒ 灰字（Cancelled 另一句）+ 白键「Open Order List →」（/orders?q=单号）；On Hold ⇒ 照给键、网址带 tick=0、旁边黄字「On Hold — it will not be pre-ticked. Check Order List before sending.」；后端没带字段 / partner ⇒ 不出。放在顶栏搜索结果卡片（字段下面）和 Order details 整页顶部。
+  - Manifests：读 `?row=`（这单的行，逗号隔开）：标黄（同搜索跳转）、滚到、这一页拿到后只预勾能发的行（tick=0 不勾；看不到发送 / 不能发的标签不勾），然后用 replaceUrl 把 row / tick 从网址去掉。只勾不发，staff 照旧自己按 Send。
+- 检查：os 74/74（加 6 条：旧后端没有、一处键和网址、两处标签 · 胶囊、不在 + Open Order List、Cancelled、On Hold tick=0）、orders 48/48（整页键、旧后端没有）、man 365/365（How to use 那句、?row= 标黄勾上 1 order selected、网址去掉 row、不自动发、tick=0 不勾）、dr 89/89、nav 38/38、mf 240/240；tsc 0 错、eslint 0 错（3 条原有 warning）、build 过。端口 APP 3577 / MOCK 8977 / CDP 9577。
+  - Main manifest 的 How to use 在「Search」那句后面加 preview 第 4 节原文（Order lookup / Order details: Open in Main manifest → …）；man 套加一条核这句。
+
 ## 2026-11-03 晚 置顶 73 Relay list「⚙ Colours & page」：颜色 + 每张单方向交给 staff（`task/relay-list-settings`，工作窗口 fa [985244]，主窗口 5c 派）—— ✅ 后端 ee601775 上 main，核过字段后合 main
 - Annie 原话：「两件事情着急做：relay list里，最后一张和倒数第三张的紫色太深了。可以把颜色的调配和页面的方向交给staff去处理么」「我要把这两项放给staff，要后端改就后端改」「设置页面的方向是否可以每页独立设置」「同意全部推荐。紫色那个留给staff自己调」「动手」（5c 转）。
 - preview 定稿 https://claude.ai/artifact/L7Ks8gymYvsd33Q9DuLGUr （题 1 A 三处一起变、题 2 D 默认色不改、题 3 作废、题 4 A 每张各自设、题 5 A dispatch.edit 能改、题 6 A How to use）。

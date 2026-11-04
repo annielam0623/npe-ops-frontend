@@ -2,7 +2,15 @@
 // 控制：POST /__ctl {unauth}；GET /__log 看请求。
 const http = require("http");
 
-const ctl = { unauth: false };
+const ctl = { unauth: false, mlinks: false, hold: false };
+// 置顶 51 B：mlinks 开着 = 新后端，订单详情带 manifest_links（ZZTEST1 分在两处、ZZTEST2 一处、其余 []）；hold = ZZTEST2 是 On Hold。
+const MLINKS = {
+  ZZTEST1: [
+    { date: "2026-10-20", tab: "bus", tab_label: "Bus Tour", pill: "g:3", pill_label: "Bryce & Zion", row_keys: ["ZZTEST1|PBZ|2026-10-20"] },
+    { date: "2026-10-20", tab: "tickets", tab_label: "Tickets - SelfDrive", pill: "t:antelope", pill_label: "Upper Antelope", row_keys: ["ZZTEST1|TIX1|2026-10-20"] },
+  ],
+  ZZTEST2: [{ date: "2026-10-21", tab: "tickets", tab_label: "Tickets - SelfDrive", pill: "t:antelope", pill_label: "Upper Antelope", row_keys: ["ZZTEST2|TIX1|2026-10-21"] }],
+};
 const log = [];
 
 function send(res, status, body) {
@@ -158,7 +166,9 @@ http
       if (ctl.unauth) return send(res, 401, { detail: "Not authenticated" });
       const on = decodeURIComponent(m[1]);
       if (on === "ZZFAIL") return send(res, 500, { detail: "mock order failure" });
-      return ORDERS[on] ? send(res, 200, ORDERS[on]) : send(res, 404, { detail: "Order not found" });
+      if (!ORDERS[on]) return send(res, 404, { detail: "Order not found" });
+      const o = { ...ORDERS[on], ...(ctl.hold && on === "ZZTEST2" ? { status: "On Hold" } : {}) };
+      return send(res, 200, ctl.mlinks ? { ...o, manifest_links: MLINKS[on] ?? [] } : o);
     }
     const date = url.searchParams.get("date");
     const merge = (lane) => [...OTHER(date)[lane], ...((DAYS[date] || {})[lane] || [])];
