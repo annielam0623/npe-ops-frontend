@@ -303,6 +303,14 @@ async function run() {
     await sleep(500);
     const list = await evaluate("const h = [...document.querySelectorAll('main thead th')].map((t) => t.textContent.trim()); return { agent: h.includes('Agent'), viator: document.querySelector('main tbody').textContent.includes('Viator'), cells: document.querySelector('main tbody tr').children.length, heads: h.length };");
     check(`${label}：订单列表 ${see ? "有" : "没有"} Agent 列，每行格数 = 表头数`, list.agent === see && list.viator === see && list.cells === list.heads, JSON.stringify(list));
+    // 置顶 75（定 B）：能看 agent 的人搜索框提示字带 agent ref、How to use 多一句；没权限的人都不提。
+    const ph = await evaluate("const i = document.querySelector('main input[type=search]'); const t = [...document.querySelectorAll('details')].find((d) => d.textContent.includes('How to use — Orders'))?.textContent ?? ''; return { ph: i.placeholder, how: t.includes('you can also search by the agent reference') };");
+    check(`${label}：搜索框提示字 / How to use ${see ? "提" : "不提"} agent ref`, see ? ph.ph === "Search order#, name, email, phone, product, agent ref..." && ph.how : ph.ph === "Search order#, name, email, phone, product..." && !ph.how, JSON.stringify(ph));
+    if (see) {
+      await evaluate("const i = document.querySelector('main input[type=search]'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(i, 'TA-55001'); i.dispatchEvent(new Event('input', { bubbles: true })); return 1;");
+      const hit = await waitFor("document.querySelector('main [data-matched-agent-ref]')", 20000);
+      check(`${label}：按 agent ref 搜到的单，单号下面写 Matched by agent reference: TA-55001`, hit && (await evaluate("return document.querySelector('main [data-matched-agent-ref]').textContent === 'Matched by agent reference: TA-55001';")));
+    }
     await goto(`${APP}/orders/CHDTESTORDER1`);
     await waitFor("!!document.querySelector('section[aria-label=\"Operations\"]')", 60000);
     await helpers();

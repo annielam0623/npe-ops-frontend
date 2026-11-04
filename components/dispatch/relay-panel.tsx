@@ -18,6 +18,7 @@ import {
 import type { ActionResult } from "@/components/ui/action-result";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { describeError, isStatus } from "@/lib/api-errors";
+import { driverFollowedText } from "@/lib/driver-follow";
 import {
   type DriverNotice,
   fetchDriverNotice,
@@ -902,6 +903,14 @@ export function RelayPanel({
             <li>
               Guests who already got the text are skipped. Tick Send anyway to
               text them again (for example Changed after sent).
+            </li>
+            <li>
+              Driver changed after guests were texted? Change the driver on the
+              Assign tab and Save. Their tracking links then follow the new
+              driver, so you don&rsquo;t need to text them again. Their row says
+              &ldquo;Driver changed after send — link now follows …&rdquo;.
+              Guest links use the driver saved in Dispatch, so make sure each
+              car has the right driver.
             </li>
             <li>
               A car marked No tracking has no live GPS. Its guests still get the
@@ -2106,7 +2115,17 @@ function GuestRow({
       <td className={cn(TD, RP_PAD, "text-right")}>{g.pax ?? ""}</td>
       <td className={cn(TD, RP_PAD)}>{g.tour}</td>
       {why !== undefined ? (
-        <td className={cn(TD, RP_PAD, "text-[12px] text-[#8a5a00]")}>{why}</td>
+        <td className={cn(TD, RP_PAD, "text-[12px] text-[#8a5a00]")}>
+          {why}
+          {g.driver_followed ? (
+            <span
+              data-driver-followed
+              className="mt-0.5 block text-[11px] text-[#6b7280]"
+            >
+              {driverFollowedText(g.driver_followed)}
+            </span>
+          ) : null}
+        </td>
       ) : (
         <td className={cn(TD, RP_PAD)}>
           <Status g={g} />
@@ -2135,7 +2154,10 @@ function GuestRow({
 const PILL =
   "inline-block rounded-full px-2 py-px text-[11px] font-[650] whitespace-nowrap";
 
-/** 没发过的空着；发过的用全站发送表格的黄标签「Sent by 谁 on 时间」，发过之后改了的下面橙字写改了什么。 */
+/**
+ * 没发过的空着；发过的用全站发送表格的黄标签「Sent by 谁 on 时间」，发过之后改了的下面橙字写改了什么。
+ * G234（题 1 A、3 A、4 B）：发过后换了司机、链接已跟新司机的，Sent by 下面、橙字上面一行灰字（不用做什么）。
+ */
 function Status({ g }: { g: RelayGuest }) {
   if (g.relay_status === "no_show") {
     return (
@@ -2148,6 +2170,14 @@ function Status({ g }: { g: RelayGuest }) {
       <span data-sent-label className={cn(DUP_BADGE, "inline-block")}>
         {sentLabel(g)}
       </span>
+      {g.driver_followed ? (
+        <span
+          data-driver-followed
+          className="mt-0.5 block text-[11px] text-[#6b7280]"
+        >
+          {driverFollowedText(g.driver_followed)}
+        </span>
+      ) : null}
       {g.changed?.length ? (
         <span data-changed className="mt-0.5 block text-[11px] text-[#8a5a00]">
           Changed after sent: {g.changed.join("; ")}

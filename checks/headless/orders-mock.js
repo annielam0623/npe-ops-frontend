@@ -78,7 +78,9 @@ http.createServer(async (req, res) => {
   }
   if (p === "/api/operations/orders") {
     let rows = all;
-    if (q.get("q")) rows = rows.filter((r) => r.order_number.includes(q.get("q")) || r.name.toLowerCase().includes(q.get("q").toLowerCase()));
+    // 置顶 75：q 以 TA- 开头 = 按 agent reference 搜（能看 agent 的人才对得上）：第一单带 reseller_reference + matched_agent_ref。
+    if (q.get("q")?.startsWith("TA-")) rows = ctl.partner || lacksMoney() ? [] : [{ ...all[0], reseller_reference: "TA-55001", matched_agent_ref: true }];
+    else if (q.get("q")) rows = rows.filter((r) => r.order_number.includes(q.get("q")) || r.name.toLowerCase().includes(q.get("q").toLowerCase()));
     if (q.get("date_to") === "2000-01-01") rows = [];
     const page = Number(q.get("page") || 1);
     let records = rows.slice((page - 1) * 50, page * 50);

@@ -33,6 +33,12 @@ import {
   saveDispatchSection,
 } from "@/lib/dispatch-api";
 import { fetchManifest, syncManifests } from "@/lib/dispatch-manifest-api";
+import {
+  type DriverFollowResult,
+  followSkippedText,
+  followUpdatedText,
+  hasFollowNews,
+} from "@/lib/driver-follow";
 import { isYmd, shiftYmd } from "@/lib/la-date";
 import { resolveTourColor } from "@/lib/tour-colors";
 import { usePageVisibility } from "@/lib/page-visibility";
@@ -224,6 +230,8 @@ export function DispatchView() {
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [notice, setNotice] = useState<Notice>(null);
+  /** G234 题 7 A：这次存（整天 / 单元 / 复制）改了几位已发过客人的链接、哪几台车没改成。下一次存、换天时换掉。 */
+  const [follow, setFollow] = useState<DriverFollowResult | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
   /**
    * staff 动过手、还没存（自动保存只存 staff 改的；打开时 CCL 预填、按人数补开的车不自动存——
@@ -1024,6 +1032,7 @@ export function DispatchView() {
 
   async function goTo(date: string) {
     setNotice(null);
+    setFollow(null);
     setLoading(true);
     lock.clearEnded();
     await lock.release();
@@ -1154,6 +1163,7 @@ export function DispatchView() {
       const j = await saveDispatchDay(date, toSave, cclImportId, lock.token());
       // 存好服务器就放开了。
       lock.forget();
+      setFollow(hasFollowNews(j.driver_follow) ? j.driver_follow! : null);
       if (!(await load(date))) return false;
       const names = j.typed_names ?? [];
       // Farm out 车被删 / 取消 / 换了合作公司：只在客人已经收过通知时才说一句（不自动补发）。
@@ -1303,6 +1313,7 @@ export function DispatchView() {
       delete unitFailRef.current[unit];
       // 这个团的客人后端重新分过车了；Relay 面板、Step 1 卡片跟着重读（同整天保存后）。
       setManifestVersion((v) => v + 1);
+      setFollow(hasFollowNews(j.driver_follow) ? j.driver_follow! : null);
       const names = j.typed_names ?? [];
       const foNotified = j.farm_out?.already_notified ?? [];
       flashSaved(
@@ -1431,6 +1442,7 @@ export function DispatchView() {
     try {
       const j = await copyDispatchDay(date, day.copy_from, lock.token());
       lock.forget();
+      setFollow(hasFollowNews(j.driver_follow) ? j.driver_follow! : null);
       setPending(null);
       if (await load(date)) {
         const lines: string[] = [];
@@ -2070,6 +2082,39 @@ export function DispatchView() {
                       Dismiss
                     </button>
                   </p>
+                ) : null}
+
+                {/* G234 题 7 A（preview ④）：改了司机、Save 后——灰字说跟了几位，没改成的车红字（后端原因原样 + 句号）。 */}
+                {follow ? (
+                  <div
+                    role="status"
+                    data-driver-follow
+                    className="flex items-start justify-between gap-3 rounded-xl border border-white/10 bg-white/[.04] px-4 py-[13px] text-[13px] leading-[1.55]"
+                  >
+                    <div className="flex flex-col gap-1">
+                      {follow.updated_orders > 0 ? (
+                        <span data-follow-updated className="text-[#cbd5e1]">
+                          {followUpdatedText(follow)}
+                        </span>
+                      ) : null}
+                      {follow.skipped.map((s, i) => (
+                        <span
+                          key={i}
+                          data-follow-skipped
+                          className="text-[#fca5a5]"
+                        >
+                          {followSkippedText(s)}
+                        </span>
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setFollow(null)}
+                      className="text-[12px] whitespace-nowrap text-[#cbd5e1] underline"
+                    >
+                      Dismiss
+                    </button>
+                  </div>
                 ) : null}
 
                 {/* 旧 `.toprow`：统计条（三个数）+ 右上角要看的事。 */}
@@ -3117,6 +3162,12 @@ function HowToUse() {
         <li>
           &quot;Not on a bus&quot; (orange) lists orders with no room. Drag an
           order onto another bus of the tour, or pick the bus in its list.
+        </li>
+        <li>
+          Arrange seats lists each bus by hotel, A to Z, with the same hotel
+          together. Click a hotel above a list to tick all its orders (click
+          again to untick; you can pick several), then pick the bus under the
+          lists and click Move selected orders.
         </li>
         <li>
           A yellow bar means CCL posted a change: Apply changes puts it on the

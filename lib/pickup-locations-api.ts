@@ -1,5 +1,6 @@
 import { apiFetch } from "@/lib/api-client";
 import type {
+  PickupDirection,
   PickupLocation,
   PickupLocationInput,
   ShuttleRoute,
@@ -57,6 +58,17 @@ export async function setPickupLocationTourDeparture(
   await apiFetch(`/api/pickup-locations/${id}/tour-departure`, {
     method: "PATCH",
     body: { tour_departure: on },
+  });
+}
+
+/** Auto 分车的方向（置顶 72）：null = Not set。只在这一行按 Save 时调；值不对 400，酒店没了 404。 */
+export async function setPickupLocationDirection(
+  id: number,
+  direction: PickupDirection | null,
+): Promise<void> {
+  await apiFetch(`/api/pickup-locations/${id}/direction`, {
+    method: "PATCH",
+    body: { direction },
   });
 }
 
