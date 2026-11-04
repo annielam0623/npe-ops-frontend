@@ -815,6 +815,10 @@
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 75 进度 / 端口
+- fa 推 task/agent-ref-search **124b946**（mock，没合 main，等后端）。os 74、orders 52、dr 89、nav 38、mf 240、man 360，tsc / eslint / build 过。
+- 端口：fa 两次撞到别的 dev server（3298、3398），5c 查时已没有别人在听。今晚起各前端窗口检查端口固定：fa = APP 3577 / MOCK 8977 / CDP 9577；以后新窗口另分（例如 36xx / 89xx / 96xx），开工时由主窗口指定。
+
 ### 77. 司机 Messages 快捷回复的文字（2026-11-03 晚，Annie 在主窗口 5c 提）
 - 原话：「我们来写一下司机的message答复的快捷回答吧」
 - 现状：页面已有——ops Settings › Quick replies（app/settings/quick-replies，admin / superadmin 能增删改、排序、开关）；司机页 Messages 里点一下就发给客人，司机不能自己打字。后端规则：每条 ≤80 字、不能有花括号（没有占位符，原样发出）、只能用短信能发的字符。现有几条我们看不到（没登录）。
