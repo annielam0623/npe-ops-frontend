@@ -959,8 +959,9 @@ D. 已完成、待从置顶移走：
 - 后端 f4 在审、没上线，要 Annie 先执行 **v149** 才能上。形状（只加字段）：① GET /api/manifests 每行 cfm_mismatch：{other_label:"Antelope Canyon X Confirmation #", other_value:"387826855"} 或 null；Cfm # 照旧显示 Rezdy 上的号；staff 在 Manifests 填了 Cfm # 后刷新变 null。② POST /api/manifests/send-tickets：标红行进 blocked，reasons ["Cfm # doesn't match the product (Antelope Canyon X Confirmation #: 387826855)"]，can_override=false（不能 Send anyway），返回形状不变。③ How to use 补一句红标意思和处理（在 Cfm # 填正确的号）。
 - 前端：Manifests 的 Cfm # 格标红 + tooltip「Rezdy also has <other_label>: <other_value>」；勾选时可先提示；被挡照 legacy-ui 红框。样子新增 ⇒ **先 preview**，2c 派 81 出（不写代码），Annie 看过 +「动手」再写，后端 SHA 到了才合。
 
-### 81. G236 Bus Manifest 打印每页页脚标「n of n」（2026-11-04，Annie 在主窗口-2c 提，没动手）
+### 81. ~~Bus Manifest~~ **Relay list 打印页**每页页脚标「n of n」（2026-11-04，Annie 在主窗口-2c 提，没动手）
 - 原话：「G236 Bus Manifest 照纸本 --- 把每页的页脚标上页数 n of n，提醒staff后面还有页面」。
+- ⚠️ **Annie 更正（原话）：「对不起，我说的是relay的打印页」** ⇒ 要改的是 Dispatch › Relay list 打印（前端 app/dispatch/relay-list、components/relay-list/）。下面 Bus Manifest 的查证和 preview（6SWsdc8ND7FMoG41aU2jB5、Q1 / Q2）**作废、不用答**，留作记录。2c 派 81 重出 Relay list 的 preview。
 - ~~范围：前端 manifest-view.tsx~~ **更正（81 只读查）**：打印页是后端模板 app/templates/admin/tour_manifest_print.html（ops 的 Print 键打开它）⇒ **后端改，前端不用改**。
 - 81 查到：打印页**已经有页码、就是每车各自数**（后端 10-03 照纸本）：表格下一行左「Page 1/2」右「Continued on next page →」，末页「End of manifest」；reflow() 按实际分页按车重编，号码准。Affiliate 栏「Page 1/1 · End of Affiliate」，午餐单「Page 1/1」。问题在样子：紧跟表格不在纸底（末页人少时停在纸中间）、12px 灰字、没写车号。
 - preview：https://claude.ai/artifact/6SWsdc8ND7FMoG41aU2jB5 （一团三车、Bus 2 两页；现在 / A / B 并排）。**等 Annie 答（2c 已整段转）**：
