@@ -16,6 +16,12 @@
 - 5c 对话名改为「今日前端主窗口-5c」。
 - ✅ 置顶 71 后端：manifest_cols_bus / _tickets / _admin_fee 上限 4000 → 20000 已上线（后端 origin/main 1fac68ca，9e 报）；键名格式不变，超限 400 "value too long (max 20000 chars)"，其他键仍 4000，partner 仍 403。前端不用改。后端另有 npe-confirmation-service-da [af1446]。
 
+## 2026-11-03 晚 da 481/482「Pull：按这天拉、两轮标题和时间来自接口」修好（`task/da-482-fix`，工作窗口 fa [985244]，主窗口 5c 派）—— 检查套时序问题，页面没 bug，合 main
+- 现象：da-test.js 那条在 main 上稳定挂（连跑 3 次都挂），pulls=[]、Step 2 显示 Loading…。
+- 原因：send-auto-open（497a76d）以后 Send 打开就自动取名单，这条改成点 ↻ Refresh 再取；但点完后旧名单（含 Need a look）还留在屏幕上，检查只等「Need a look 出现」⇒ 立刻往下判断，这次的 relay-pull 请求还没到 mock，按钮还在 Loading…。页面行为正确（请求按 2026-10-05 发、两轮标题时间照接口），是检查过期。
+- 改法：只改 da-test.js：点 Refresh 后先等这次 relay-pull 请求到 mock，再等 `[data-refresh-guests]` 变回「↻ Refresh」；失败时 detail 打出请求和面板文字。
+- 检查：da 482/482、rl 29/29、nav 38/38；tsc 0 错、eslint 0 错（3 条原有 warning）、build 过。
+
 ## 2026-11-03 晚 Relay list 打印每张后面多一张空白页（`task/relay-list-blank-page`，工作窗口 `npe-ops-frontend-fa`[985244]，主窗口 5c 派）—— 只修 bug、样子不变，合 main
 - Annie 原话（5c 转）：「然后，明天的relay list还每页都隔了一张空白页」（11-04 的 Relay list）。
 - 原因：`relay-list.css` 打印时每张单仍 `min-height: 297mm`（一整页高），内容 / 边框差一点点就溢到下一页，再加 `break-after: page` ⇒ 每张后面一张空白页；打印机纸是 Letter（美国默认，比 A4 短 18mm）时 297mm 一定超页，就是 Annie 看到的「每页都隔一张」。另外 `.rl-sheet:last-of-type` 被后面只在屏幕上的「Not on any relay car yet」区块（也是 section）挡住，最后一张后面也多一页。
