@@ -39,7 +39,7 @@
 - 81 Relay list 打印页码（preview 4dc5BmHshSrk8EZNm8K55a，Q1–Q3）；84 Q1–Q5；80 导游页（94 问）；其余旧置顶照旧（77、69、68、64、63、61、53、48 等）。
 
 ### 四、明天开工
-1. 报对话名；git pull；问 94：color（85）、G245（82）、Working Record（86）后端 SHA。
+1. 报对话名；git pull；后端交接在后端 origin/main 223e0c4a（NPE_每日交接.md 最上面，待办 G249–G252）。后端明天顺序：G245（82）第一个落地 → G212 SA-8 换邀请链接 → Working Record（Hours + 所有人日历）→ login-records（84）；SHA 由明天后端主窗口发来。
 2. 85 / 82 / 86 Profile 分节合了没有，没合的接着合；验收点发 Annie。
 3. ⚠️ 2c 今天在 944e763 误用 sed 把一行插到每行后面，47d38d3 已修。以后在 PROGRESS 插行先确认 grep 有命中（`[ -n "$n" ]`），或用 Edit。
 
