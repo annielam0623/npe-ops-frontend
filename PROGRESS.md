@@ -27,6 +27,7 @@
 
 ### 三、正在做 / 刚派的
 - **置顶 79 司机 / 导游页字改白**（Annie 原话在置顶 79；09 已开 origin/task/live-white-text，看那里的提交）：派 09 出 preview：逐项列灰字（页面文字 + 模板 class / 行号，driver_home.html、guide_home.html、live-drivers.tsx），推荐全改白、只留按不了的按钮和「—」占位，「现在 / 改后」并排。09 被关之前的进度见置顶 79（它会写进去）。**新主窗口：派新工作窗口接着出 preview**；Annie 点头 + 动手后：清单发 37（后端改模板），前端改 Live drivers。
+  - ✅ 09 收尾：preview **https://claude.ai/artifact/8cWB8Ki2BdEttf49GXt4Pp**（司机页 D1–D23、导游页 G1–G15、ops O1–O10，每项带页面文字 + class / 行号，全部推荐改白 #fff）；只留灰 3 处等 Annie 确认：K1 按不了的按钮、K2 签到前「–」占位、K3 没选中的 Routes / Messages 标签。后端建议：base.html:17 的 --muted / --muted-2 改 #fff，K2 / K3 单独设回 #94a3b8。ops 改动在 task/live-white-text fc3883a（未合，mt 没跑：接手先合 main 跑 mt / nav + build）。**已发给 Annie，等她点头 + 动手**，再把清单发后端主窗口 94。
 
 ### 四、等 Annie（详见置顶，不滚动重问）
 - 64 G180 Tour Tracking：Notified 版 preview https://claude.ai/artifact/Fz4f3awLiNauihh2n655JT 等点头（Annie 已在 44「动手」，措辞 Notified / To notify，CSV Notified = Yes / No）；后端 44 task/tracking-sync-v2 家里做。
