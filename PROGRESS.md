@@ -22,8 +22,8 @@
 | 59 / 58 Pickup 坐标一格 + Tracking Arrived at / Left at | 4fffe65 | 478c597c（早已上） |
 
 ### 二、在做 / 等后端
-- **85 Staff Schedule 班次类型**（c8，task/schedule-shift-types）：Annie「颜色不重要，关键是我要的几个功能」⇒ 不等 color 先合（没 color 键时藏选色）。c8 正在合，SHA 记置顶 85。后端 color + action_log（2e，v150 已执行）排在南北分车后面推，上线后选色自动出。
-- **82 G245 羚羊谷 Cfm # 标红**（81，task/g245-cfm-mismatch）：Annie「羚羊谷，请动手」，定稿在置顶 82；等后端 f4 SHA；合前截图给 Annie。
+- **85 Staff Schedule 班次类型**：✅ 前端 main 1230d19（c8）；✅ 后端 color + action_log 上线 b75601c0（合并 9c5bc16b），选色应已自动出，c8 只读核字段。
+- **82 G245 羚羊谷 Cfm # 标红**（81，task/g245-cfm-mismatch）：Annie「羚羊谷，请动手」，定稿在置顶 82；前端 e736302；后端 f4 今天来不及、明天第一个落地；截图已发 Annie 等点头（收件人只发 antelope，Auto Send 页先不加栏，等 Annie）。
 - **86 HR Profile 分节 + Working Record**（81）：Profile 分节 task/hr-profile-sections 3a72805（不靠后端，等截图给 Annie 后合）；Working Record（日历 + 快照 + Hours，算工资用）Annie「working record这里全部同意推荐，动手」，后端 18 明天接着做（快照 / 日历 / 所有人列表 / Hours = Samsara HOS），前端 81 照 mock 做。⚠️ HR 补 Jimmy Vegas、Juan (Beni) 的 Samsara Driver ID；David H 没 HOS；可能要 Annie 在 Samsara 后台给 token 加 HOS 读权限。
 - **84 登录记录**：后端 18 往后排（v151）；显示方式等 Annie 答（preview 7gQFvoaMvPVmrBCVZCxwMj）。
 
