@@ -26,7 +26,7 @@
   - 后端 57 在做：GET /api/pickup-locations 每行 direction（north / south / flexible / null）、PATCH /{id}/direction、迁移预填 17 家（**Annie 要先执行迁移**）、seat_plan 改规则。上线 SHA 由 37 发。
 
 ### 三、正在做 / 刚派的
-- **置顶 79 司机 / 导游页字改白**（Annie 原话在置顶 79）：派 09 出 preview：逐项列灰字（页面文字 + 模板 class / 行号，driver_home.html、guide_home.html、live-drivers.tsx），推荐全改白、只留按不了的按钮和「—」占位，「现在 / 改后」并排。09 被关之前的进度见置顶 79（它会写进去）。**新主窗口：派新工作窗口接着出 preview**；Annie 点头 + 动手后：清单发 37（后端改模板），前端改 Live drivers。
+- **置顶 79 司机 / 导游页字改白**（Annie 原话在置顶 79；09 已开 origin/task/live-white-text，看那里的提交）：派 09 出 preview：逐项列灰字（页面文字 + 模板 class / 行号，driver_home.html、guide_home.html、live-drivers.tsx），推荐全改白、只留按不了的按钮和「—」占位，「现在 / 改后」并排。09 被关之前的进度见置顶 79（它会写进去）。**新主窗口：派新工作窗口接着出 preview**；Annie 点头 + 动手后：清单发 37（后端改模板），前端改 Live drivers。
 
 ### 四、等 Annie（详见置顶，不滚动重问）
 - 64 G180 Tour Tracking：Notified 版 preview https://claude.ai/artifact/Fz4f3awLiNauihh2n655JT 等点头（Annie 已在 44「动手」，措辞 Notified / To notify，CSV Notified = Yes / No）；后端 44 task/tracking-sync-v2 家里做。
