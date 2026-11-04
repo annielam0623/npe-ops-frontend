@@ -1018,6 +1018,16 @@ D. 已完成、待从置顶移走：
   - 18 评估（94 转，只读）：① 回看旧日子现场算不存；人按当前 dispatch（车 → 司机）对，事后改了旧日子跟着变（10/31 1328）；谁点的存在客人行不变；重传 / 重同步留住标记，main manifest 同步不碰过去的日子；⚠️ 旧日子手动重传 CSV，文件里没有的行会被删、标记一起没；没有定时清旧日子。② 每人当天汇总：现场算、不用迁移、后端约半天——/live-drivers 每人加 summary {pax, picked_up, boarded, no_show, not_marked, sms_sent（本人司机页发的）, sms_by:[{author, count, source}], stops:[{van, hotel, arrived_at, left_at, dwell_minutes}]}（10/31 David H 23 / 21 / 2 / 0 对得上截图）。③ 到 / 离 Live drivers 已带，只有 relay 段，团车段没有；28 家都没坐标。④ 跨天统计不能现场算（一天 12–13 秒）⇒ 每人每天汇总表（迁移、无版本），每晚算前一天 + 重算最近 7 天；GET /api/field-stats?from=&to=&hr_id=&kind= ⇒ {from, to, computed_through, people:[{hr_id, name, kind, days, totals, by_day}]}，上限 93 天；后端 1–1.5 天。后端建议先做 ②，④ 等 Annie 定 Completed 锁不锁。
   - 2c 判断：Annie 说过「我们现在所有的操作都不需要点completed」⇒ 不靠 Completed 锁，靠每晚重算最近 7 天。已问 Annie：Q1 先做当天汇总（推荐）；Q2 跨天统计也做（推荐，7 天重算）还是以后；Q3 统计放哪（preview）。派 81 出 preview（汇总行 + 统计页）。
   - **Annie 定放哪（原话）**：「把它放到人力资源模块里吧，现在有的那个页面叫profile，把司机和导游分开，司机+司机&导游放在上面的section，只是导游的放到下面的一个section。然后再加一个Working Record，分开两栏，一栏是司机，一栏是导游，司机&导游的放司机那栏」⇒ 统计放 Human Resource（/settings/hr）：现在的「People」页签改叫「Profile」，名单分两节——上面 Drivers（position = Driver 和 Driver + Guide），下面 Guides（只 Guide）；另加一个页签「Working Record」，分两栏 Drivers / Guides（Driver + Guide 放 Drivers 栏）放汇总和跨天统计。（2c 理解「现在有的那个页面叫profile」= 把 People 改名 Profile，preview 时核。）已转 81 改 preview。
+  - **preview（HR 版）**：https://claude.ai/artifact/U951qPXH1hNBzLbuSGY6Hm （81；之前 MJTyJTyerMpn4soNpqgjhh 作废；2c 已整段转 Annie，等答）。Working Record 先只 SA 可见。
+    - Q1 People 改名 Profile、分 Drivers / Guides 两节：A（推荐）对；B 另说。
+    - Q2 Position 没填：A（推荐）第三节「Position not set」放最下，有才出现；B 放 Drivers。
+    - Q3 两栏：A 左右并排；B（推荐）上下两节、多放一列 Staff SMS。
+    - Q4 一行：A（推荐）Drivers：Days、Pax、Picked up、No show、Not marked、SMS（司机页自己发）、Avg stop；Guides：Days、Pax、Boarded、No show、Not marked；合计，点名字按天；B 再加每天平均。
+    - Q5 Driver + Guide 当导游的日子：A（推荐）算在 Drivers 他那行，名字旁「2 as guide」，按天标 as guide；B 单独进 Guides 栏。
+    - Q6 日期 / Export：A（推荐）Today / This week / Last week / This month / Custom（≤93 天，周从周日算），默认 Last week，右上「Updated through Tue 11/3」，⬇ Export CSV；B 只 Custom、不要 Export。
+    - Q7 Live drivers 卡上当天汇总：A（推荐）保留；B 去掉。
+    - Q8 How to use：A（推荐）Profile「Profile lists drivers (Driver and Driver + Guide) on top and guides below. People without a position are listed last until you pick one.」+ Working Record 一段（全文见 preview）；B 她改字。
+    - 给后端（等 Annie 答了转 94）：field-stats 每人带 HR position；同一人司机 / 导游两种 kind 是一条还是两条；totals / by_day 同 summary 名，另带 avg_dwell_minutes、staff_sms，by_day 带 date / van / kind；Today 用 /live-drivers summary；没坐标的站进不进 stops。前端：Profile 分节约 2 小时，Working Record 约 1 天。
 - G212 Team 页前端派 c8（task/g212-team-hierarchy），等后端 SHA。
 
 ### 85. Staff Schedule 班次类型（Open / Mid / Close）可手动新增（2026-11-04，Annie 在主窗口-2c 提，附排班格截图，没动手）
