@@ -778,6 +778,7 @@
   - manifests-view.tsx：saved 按标签存 {shared, pages}；当前列 = pages[pill] ?? shared（pill 空时 fieldsKey 变会自动重拉）。applyFields 分 for this page（写 pages[pill]）/ for all（写 shared、清 pages）；Use the shared columns 删 pages[pill]；Reset 在有自己设置的页只重置 pages[pill]；reorderFields（拖表头）有自己设置存这页。胶囊按钮约 :660 加灰标 OWN。
   - field-picker.tsx：标题加胶囊名；顶上一行文字 + Use the shared columns；底部两个蓝键 Apply for this page / Apply for all；没有胶囊的页只留一个 Apply。
   - 检查：man / mf / nav + tsc / eslint / build。3 题按推荐全 A。后端 57 今晚家里放宽上限 20000。
+- ✅ **Annie 答 3 题（主窗口原话）**：「column那个1 A 2 A 3 apply for this page  用蓝色  apply for all 用白色」⇒ 题 1 A（Apply for all 全换、清掉各页自己的）；题 2 A（OWN 灰标 + 弹窗顶文字 + Use the shared columns）；题 3 = B：**Apply for this page 蓝色，Apply for all 白色**（取代上面「按推荐全 A」里的两键都蓝）。
 
 ### 70. Dispatch › Assign 顶部统计条旁放醒目的 Relay List 键（2026-11-03，09 记录，preview https://claude.ai/artifact/LzSrfzeXzA9Tgsndd4J6KV ，没写代码）
 - Annie 原话（09 窗口）：「然后把morning relay list放到 1st round的上方，就是那个统计表格的旁边，把最后一个缩窄一些，旁边放Relay List，标得醒目一点」。
