@@ -780,7 +780,7 @@
   - 检查：man / mf / nav + tsc / eslint / build。3 题按推荐全 A。后端 57 今晚家里放宽上限 20000。
 - ✅ **Annie 答 3 题（主窗口原话）**：「column那个1 A 2 A 3 apply for this page  用蓝色  apply for all 用白色」⇒ 题 1 A（Apply for all 全换、清掉各页自己的）；题 2 A（OWN 灰标 + 弹窗顶文字 + Use the shared columns）；题 3 = B：**Apply for this page 蓝色，Apply for all 白色**（取代上面「按推荐全 A」里的两键都蓝）。
 
-### 70. Dispatch › Assign 顶部统计条旁放醒目的 Relay List 键（2026-11-03，09 记录，preview https://claude.ai/artifact/LzSrfzeXzA9Tgsndd4J6KV ，没写代码）
+### 70. Dispatch › Assign 顶部统计条旁放醒目的 Relay List 键—— ✅ 已合 main 6367d0c（2026-11-03，09 记录，preview https://claude.ai/artifact/LzSrfzeXzA9Tgsndd4J6KV ，没写代码）
 - Annie 原话（09 窗口）：「然后把morning relay list放到 1st round的上方，就是那个统计表格的旁边，把最后一个缩窄一些，旁边放Relay List，标得醒目一点」。
 - 做法：统计条最后一格缩窄（字分两行），右边放 Relay List 键（Morning Relay · 1st Round 卡上方），打开同 Send 页 📋 Relay list（新标签，有没存的改动先问）。只改前端 dispatch-view.tsx。
 - 题 1 键样子：A（推荐）黄底黑字大键（纸本 Relay 1 黄 #fff605），同统计条高；B 透明底黄粗边框黄字。题 2 Send 页原 📋 Relay list 白色小键：A（推荐）留着；B 拿掉（会碰 relay-panel）。09 已在它窗口问 Annie；动手后 09 做。
