@@ -25,6 +25,21 @@
   - ✅ 后端 73 上 main **ee601775**（36 做；11/04 线上只读新旧颜色 62 行一致，连库 3984 OK）。最终字段已转 fa：tours[] 带 color/default_color（Relay + 司机页）和 header_*（Bus Manifest），*_set；取色顺序以后端为准（staff 字母 → staff All buses → 纸本字母 → 纸本团 → 团色），前端直接用返回值不自己算。派 fa 核字段后合 main。
 - ✅ 置顶 71 后端：manifest_cols_bus / _tickets / _admin_fee 上限 4000 → 20000 已上线（后端 origin/main 1fac68ca，9e 报）；键名格式不变，超限 400 "value too long (max 20000 chars)"，其他键仍 4000，partner 仍 403。前端不用改。后端另有 npe-confirmation-service-da [af1446]。
 
+## 2026-11-03 晚 置顶 74 Main Manifest：Brenda 每单一条 Waiver link（`task/waiver-link`，工作窗口 fa [985244]，主窗口 5c 派）—— ⛔ 推了分支，等后端 brenda-waiver-link 上 main 核字段再合
+- Annie 原话：「那4提全部按推荐走，动手」（5c 转）；preview 定稿 https://claude.ai/artifact/5niqePBqxUsCBqKpLLKCnm （题 1 A 列只在有要 waiver 的单的胶囊出、☰ Columns 能关；题 2 A 上传按 Save 一起写 new + changed；题 3 A 按表头认、没表头当第 1 列订单号第 2 列链接；题 4 A Changed since sent 重发成功后自动消失）。
+- 后端（da，分支 task/brenda-waiver-link 02509ee5，没上 main，迁移 v147 Annie 先执行）：行上 waiver_link_required；字段 waiver_link / waiver_status / waiver_link_by / waiver_link_at；PUT /api/manifests/waiver-link；POST /api/manifests/waiver-links/upload（apply false 预览 / true 写，每行 status new/changed/same/not_found/not_waiver/bad_link/empty/duplicate）；send-tickets blocked reasons 加 "No waiver link"（同一单和 No Cfm # 合一条，can_override）。我只读看过后端分支代码，mock 照它写。
+- 做了：
+  - `components/manifests/waiver-cell.tsx`：Waiver link 格照 Cfm # 格（虚线底、改了出蓝色 Save / Enter、Esc 放弃、绿 Saved、红字 Not saved: 后端原话、谁 · 什么时候、Open ↗ 新窗口）；红「No waiver link」、黄「Changed since sent」（照后端 waiver_status）；只有 waiver_link_required 的行有格子；没有 manifests.edit 只看链接；没存离开要问（和 Cfm # 同一个拦截，键加 w:）。
+  - 列（`config.ts` withWaiverColumn / rememberWaiverChoice）：这一页至少一单要 waiver 才自动出、插在 Cfm # 后面；☰ Columns 关掉 ⇒ 存的列里记 `-waiver_link`（不发给后端），以后不再自动加，再勾上就去掉；拖表头存列也保留这个记号。Tickets 没存过列时，第一次拉到有要 waiver 的单就按「后端默认列 + waiver 辅助列」再拉一次。
+  - 拦截（`softBlocks`）：勾了缺 Cfm # 或缺 waiver link 的单点发送 ⇒ 红条合一条，逐单写「No Cfm #」/「No waiver link」/「No Cfm #, No waiver link」；Skip & send / Send anyway 照旧（只缺 Cfm # 时红条照原来的写法）；缺 waiver 的行同样整行淡红；表头上方黄字改成「Orders without a Cfm # or a waiver link will be stopped when you send…」。Send anyway 弹窗写各单缺什么、Send Log 留痕。发送那一刻才被后端拦下的照旧在 Skipped 里可勾 Send anyway，原因用逗号合一条。
+  - 发送名单（legacy-ui 同款 GuestTable）：Changed since sent 的单淡黄已发 + 「Waiver link changed after sent」，勾 Send anyway 才重发。
+  - `components/manifests/waiver-upload-panel.tsx` + `lib/manifests-waiver-import.ts`：工具条白键「↑ Upload waiver links」（这一页有要 waiver 的单、能编辑才出）；选文件 ⇒ apply=false 全部行 ⇒ 逐行 Result / Order # / Lead Name / Saved link / File link / Note，黄框写替换几单、几单客人已收到旧链接；蓝色「Save N links」⇒ 只传 new + changed 的行 apply=true；绿字 Saved N new and replaced N，没写进去的逐条红字；关掉后页面重拉。客人名 / 发过没有另拉当天门票各胶囊（拿不到不挡）。
+  - How to use 加 4 句（preview 定稿原文，第 1 句带 ticket page，第 3 句 "the guest's ticket page then says the waiver link will be sent separately"）。
+  - 后端没带 waiver 字段时：没有列、没有上传键、拦截照旧，页面和现在一样。
+- man 套加 waiver 检查（共 396）：旧后端没变化；默认列补拉；列自动出 / 位置 / 另一颗胶囊不出；格子 No waiver link / Open / 谁 / Changed since sent；坏链接红字、Esc、Save 请求体、存好绿字；☰ Columns 关 / 开（-waiver_link）；红条合一条 + Send anyway 请求；后端拦下进 Skipped；Changed since sent 弹窗标签 + 重发后消失；上传有表头（apply=false 7 行、7 种结果、黄框、Save 只传 2 行 apply=true、写好绿字、重拉）；没表头 3 行；How to use；只读。
+- 检查：man 396/396、mf 240/240、nav 38/38；tsc 0 错、eslint 0 错（3 条原有 warning）、build 过。截图核过格子和上传弹窗样子同 preview。
+- ⚠️ 合 main 前要做：后端上 main 后照真实字段核一遍（尤其 waiver_status 字、upload 回包、blocked reasons），再合最新 main、重跑检查。
+
 ## 2026-11-03 晚 置顶 73 Relay list「⚙ Colours & page」：颜色 + 每张单方向交给 staff（`task/relay-list-settings`，工作窗口 fa [985244]，主窗口 5c 派）—— ✅ 后端 ee601775 上 main，核过字段后合 main
 - Annie 原话：「两件事情着急做：relay list里，最后一张和倒数第三张的紫色太深了。可以把颜色的调配和页面的方向交给staff去处理么」「我要把这两项放给staff，要后端改就后端改」「设置页面的方向是否可以每页独立设置」「同意全部推荐。紫色那个留给staff自己调」「动手」（5c 转）。
 - preview 定稿 https://claude.ai/artifact/L7Ks8gymYvsd33Q9DuLGUr （题 1 A 三处一起变、题 2 D 默认色不改、题 3 作废、题 4 A 每张各自设、题 5 A dispatch.edit 能改、题 6 A How to use）。
