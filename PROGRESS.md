@@ -1004,6 +1004,9 @@ D. 已完成、待从置顶移走：
 - 现状：guide_home.html 在当天之前（ahead）按钮 disabled + 半透明（preview 时也是），所以导游提前拿到链接也打不了电话、发不了短信。改的是后端模板 / 路由；ops 不用改。
 - 题（已在 24 回复里问 Annie）：A（推荐）发出后 Call / Text 马上能用（可以提前联系客人），Picked up / No show 仍只在当天能按（免得提前误按）；B 全部按钮发出后都能按。
 - 已转后端主窗口 94 评估；答了 + 「动手」由新主窗口转 94。也影响置顶 79 的 K1（按不了的按钮）范围。
+- **⚠️ 上面旧 A / B 作废，别再按旧题问（94 只读查过，已直接问 Annie，2026-11-04）**：① 导游打开明天的链接，客人 / 餐厅 Call 本来就是真 tel: 链接、不灰（guide_home.html:32-36，只 preview 里是灰 span）；② 只有 Boarded / No show、✎ Change、餐厅 Send message 提前灰、后端也只放当天（回 400）；③ 导游页本来没有给客人的 Text（G215 定 Messages 先不做），Text 是新功能；④ 导游页只开今天和明天；⑤ 司机页提前 Call 能用，Text 后端只放当天。
+  - 94 给 Annie 的新选项：**A 不改（推荐，Call 已能用）**；B 导游页新做给客人的 Text；C 三样当天动作也提前放开（不推荐）。她答了 94 转前端；ops 大概率不用改。
+- 79 手机司机 / 导游页白字：94 派后端 2e [3e65d0] 照 D1–D23 / G1–G15、K1–K3 做，SHA 到了 94 转来。
 
 ### 79. 司机 / 导游页（手机页 + ops Live drivers）字一律白色（2026-11-04）
 - 09 出了 preview（等 Annie 确认 +「动手」）：https://claude.ai/artifact/8cWB8Ki2BdEttf49GXt4Pp —— 逐项清单（页面文字 + class / 行号）：司机页 D1–D23、导游页 G1–G15、ops Live drivers O1–O10 全改白 #fff；推荐只留灰 3 处：K1 按不了的键（还没到当天 / 预览 / ops 只读，本来半透明）、K2 还没 check in 的「–」占位、K3 没选中的页签 Routes / Messages。彩色字（琥珀时间酒店、绿 / 红状态、蓝电话和 BUS TOUR 标签）和白底气泡里的 GUEST 不动。
