@@ -44,6 +44,15 @@
 2. 后端 G234 上 main → e6 driver-follow；Annie 看新红字。
 3. 等 Annie 答 64 / 65 / 67 / 68，答了按原话派。
 
+### 五、傍晚追加（写完上面后又发生的，以这里为准）
+- 上 main（等 Annie 线上验收）：Bus Manifest 照纸本 **2c8ceee**（后端 e0bfe213，9 个验收点见 manifest-paper 节）；HR Other spellings **fe0e13a** + Edit list 可改 **f077e4b**（后端 01606b02）；Dispatch 名单每行可编辑 **bec1f7c**（后端 3e1d5c46，只改 ZZ Test）；置顶 66 Super Admin 实时预览（纯后端 f604d430）。
+- task/driver-follow **a65ba71**（e6）：后端 01606b02 已上，检查全过，**只等 Annie 对新红字 / tooltip / How to use 两句回 A**，回了 e6 合 main。
+- 64 G180：Annie 定词「Notified / To notify」并在 44 窗口「动手」；91 preview 已改 Notified 版（同链接），等 Annie 看；后端 44 task/tracking-sync-v2 明天家里做（37 说等 Annie 批 Scope v3）。
+- 69 酒店格按 relay 车色：09 preview https://claude.ai/artifact/G6wBhhVQpNqWiHQgQWQ4te ，3 题等答 + 动手；后端明天家里做。
+- 70 Assign 统计条旁 Relay List 键：09 preview https://claude.ai/artifact/LzSrfzeXzA9Tgsndd4J6KV ，2 题等答 + 动手；只改前端。
+- 68 / G243 Relay 勾酒店不核座位：等 Annie 定提醒还是挡（37 问）。
+- 后端今天收工，交接 3b65ee42；明天：samsara-arrivals 落地（Annie 放行）、G180、G243、酒店格色。
+
 ## 2026-11-03 Dispatch › Drivers & guides 可以改名字、电话（`task/roster-edit`，工作窗口 91 [359513]，置顶 67）—— 合 main
 
 - Annie 原话：「另外在dispatch的可以添加司机和导游那一块，把导游和司机的信息设为可编辑，因为我们现在好多导游的电话是没有的，把编辑的权限给到staff」；之后「Dispatch名单编辑-动手」。4 题没逐题答，按推荐全 A 做：
