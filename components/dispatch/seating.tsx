@@ -4,6 +4,7 @@ import { type DragEvent, useEffect, useState } from "react";
 
 import { cn } from "@/lib/utils";
 import type { SeatingBus, SeatingOrder, SeatingTour } from "@/types";
+import { CHECK_BIG } from "@/components/manifests/config";
 import { useViewOnly } from "@/components/ui/view-only";
 
 /**
@@ -138,7 +139,7 @@ function OrderLine({
             checked={selected}
             disabled={disabled}
             onChange={(e) => onSelect(e.target.checked)}
-            className="mr-1.5 align-[-2px]"
+            className={cn(CHECK_BIG, "mr-1.5 inline-block align-[-5px]")}
           />
         ) : null}
         {order.name || "—"}

@@ -18,6 +18,7 @@ import {
   fetchShuttleRoutes,
   fetchShuttleSeasons,
   setPickupLocationActive,
+  setPickupLocationDirection,
   setPickupLocationTourDeparture,
   updatePickupLocation,
 } from "@/lib/pickup-locations-api";
@@ -262,8 +263,15 @@ export function PickupLocationsView() {
       ...all,
       [id]: { ...edit, saving: true, error: null },
     }));
+    const direction = edit.draft.direction;
+    const directionChanged =
+      direction !== undefined && direction !== edit.original?.direction;
+    let otherSaved = false;
     try {
       await updatePickupLocation(id, input);
+      otherSaved = true;
+      // Direction 是单独的接口（置顶 72），同一个 Save 一起存，没改就不发。
+      if (directionChanged) await setPickupLocationDirection(id, direction);
       closeEdit(id);
       const n = input.times?.length ?? 0;
       showSaved(
@@ -283,8 +291,18 @@ export function PickupLocationsView() {
               [id]: {
                 ...all[id],
                 saving: false,
-                // 一样都不存（后端整份一个事务），改动留着。
-                error: `Could not save: ${describeError(error)} Nothing was saved.`,
+                // 一样都不存（后端整份一个事务），改动留着；只有 Direction 没存上时照实说。
+                error: otherSaved
+                  ? `Could not save Direction: ${describeError(error)} The other boxes were saved.`
+                  : `Could not save: ${describeError(error)} Nothing was saved.`,
+                ...(otherSaved && all[id].original
+                  ? {
+                      original: {
+                        ...all[id].draft,
+                        direction: all[id].original!.direction,
+                      },
+                    }
+                  : {}),
               },
             }
           : all,
@@ -692,6 +710,13 @@ function HowToUse() {
         Days already scheduled and guests who already have it are not affected.
         Reactivate brings it back. Delete removes it for good, and is refused
         while the hotel is still used in Dispatch.
+      </li>
+      <li>
+        Direction (only in the Tour bus block): click ✏ Edit and pick North,
+        South, or Flexible, then Save. Auto on Dispatch → Seat guests uses it
+        when a tour has two or more buses: Bus A takes the side with more guests
+        (North or South), the last bus takes the other side, and Flexible guests
+        fill whichever bus has more empty seats. Not set counts as Flexible.
       </li>
       <li>
         Tour bus departure (only in the Tour bus block): tick it for a place

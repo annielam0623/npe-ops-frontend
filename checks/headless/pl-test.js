@@ -547,6 +547,51 @@ async function run() {
   await waitFor("document.body.textContent.includes('✓ Added')");
   const addPost = (await since(before, (e) => e.method === "POST"))[0];
   check("勾 Shuttle stop 再 Add：POST 带 is_shuttle true", addPost?.body?.is_shuttle === true && addPost.body.is_tour_bus === false, JSON.stringify(addPost?.body));
+
+  // ── 置顶 72 Direction（Annie 2026-11-04「动手」；后端 57 形状：GET 每行 direction，PATCH /{id}/direction）──
+  check("72：GET 没有 direction 键 ⇒ 不出 Direction 列", !(await evaluate("return [...document.querySelectorAll('th')].some(th => th.textContent.trim() === 'Direction');")));
+  await ctl({ direction: true });
+  await openPage(APP + "/settings/pickup-locations");
+  await waitFor("document.querySelector('[data-block=tour] [data-direction]')");
+  await helpers();
+  await evaluate("window.$pickDir = (v) => { const s = document.querySelector('[data-block=tour] [data-direction-select]'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, v); s.dispatchEvent(new Event('change', { bubbles: true })); };");
+  const dirRow = (name) => "[...document.querySelectorAll('[data-block=tour] tbody tr')].find(tr => tr.children[0].textContent.startsWith(" + JSON.stringify(name) + "))";
+  const dirText = (name) => evaluate("return " + dirRow(name) + "?.children[1].textContent.trim();");
+  check("72：Tour bus 块第 2 列是 Direction；Shuttle 块不出", await evaluate("const h = [...document.querySelectorAll('[data-block=tour] thead th')].map(th => th.textContent.trim()); return h[1] === 'Direction' && ![...document.querySelectorAll('[data-block=shuttle] thead th')].some(th => th.textContent.trim() === 'Direction');"));
+  const four = [await dirText("Wynn"), await dirText("Aria"), await dirText("Bellagio"), await dirText("ZZ Test Direction Inn")].join("|");
+  check("72：显示 North / South / Flexible / Not set", four === "North|South|Flexible|Not set", four);
+  await evaluate(dirRow("ZZ Test Direction Inn") + ".querySelector('button').click();");
+  await waitFor("document.querySelector('[data-block=tour] [data-direction-select]')");
+  check("72：✏ Edit 出下拉 Not set / North / South / Flexible，照现在的值", await evaluate("const s = document.querySelector('[data-block=tour] [data-direction-select]'); return s.value === '' && [...s.options].map(o => o.textContent).join('|') === 'Not set|North|South|Flexible';"));
+  let before72 = (await mockLog()).length;
+  await evaluate("$pickDir('north');");
+  await sleep(300);
+  check("72：改了下拉先不存（没发请求）", (await since(before72, (e) => e.method !== "GET")).length === 0);
+  await evaluate("$btn('Save', document.querySelector('[data-block=tour] [data-edit-row]')).click();");
+  await waitFor("!document.querySelector('[data-block=tour] [data-edit-row]')");
+  const sent72 = await since(before72, (e) => e.method !== "GET");
+  const dirPatch = sent72.find((e) => /\/direction$/.test(e.path));
+  check("72：按 Save ⇒ PUT 这一行 + PATCH /direction {direction:'north'}", sent72.some((e) => e.method === "PUT") && dirPatch && dirPatch.method === "PATCH" && JSON.stringify(dirPatch.body) === '{"direction":"north"}', JSON.stringify(sent72.map((e) => e.method + " " + e.path + " " + JSON.stringify(e.body))));
+  check("72：存好重拉显示 North", await waitFor(dirRow("ZZ Test Direction Inn") + "?.children[1].textContent.trim() === 'North'"));
+  await evaluate(dirRow("Wynn") + ".querySelector('button').click();");
+  await waitFor("document.querySelector('[data-block=tour] [data-edit-row]')");
+  before72 = (await mockLog()).length;
+  await evaluate("$btn('Save', document.querySelector('[data-block=tour] [data-edit-row]')).click();");
+  await waitFor("!document.querySelector('[data-block=tour] [data-edit-row]')");
+  check("72：Direction 没改 ⇒ 不发 PATCH /direction", !(await since(before72, (e) => /\/direction$/.test(e.path))).length);
+  await ctl({ dirFail: true });
+  await evaluate(dirRow("Aria") + ".querySelector('button').click();");
+  await waitFor("document.querySelector('[data-block=tour] [data-direction-select]')");
+  await evaluate("$pickDir('flexible');");
+  await evaluate("$btn('Save', document.querySelector('[data-block=tour] [data-edit-row]')).click();");
+  check("72：PATCH 被拒 ⇒ 行留着、红字写原因 + 其他已存", await waitFor("document.querySelector('[data-block=tour] [data-edit-row]')?.textContent.includes('Could not save Direction: Direction must be North, South, Flexible, or Not set. The other boxes were saved.')"));
+  await ctl({ dirFail: false });
+  before72 = (await mockLog()).length;
+  await evaluate("$btn('Save', document.querySelector('[data-block=tour] [data-edit-row]')).click();");
+  await waitFor("!document.querySelector('[data-block=tour] [data-edit-row]')");
+  check("72：再按 Save 存上 Flexible", (await since(before72, (e) => /\/direction$/.test(e.path)))[0]?.body?.direction === "flexible" && (await waitFor(dirRow("Aria") + "?.children[1].textContent.trim() === 'Flexible'")));
+  check("72：How to use 写了 Direction 怎么用", await evaluate("const t = document.body.textContent.replace(/\\s+/g, ' '); return t.includes('Direction (only in the Tour bus block): click ✏ Edit and pick North, South, or Flexible, then Save.') && t.includes('Bus A takes the side with more guests (North or South), the last bus takes the other side') && t.includes('Not set counts as Flexible.');"));
+  await ctl({ direction: false });
   await ctl({ split: false });
 
   // 手机版（Annie 2026-11-01 手机版规则）：+ Add New Location 默认收起、Export / Import 进 ⋯、How to use 在最底、表格左右滑不挤

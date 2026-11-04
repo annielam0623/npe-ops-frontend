@@ -1124,6 +1124,7 @@ async function run() {
   check("点 A 的 U：这台车只显示 U 的订单并自动勾上", await evaluate(`const a = ${bg("3:A")}; const rows = [...a.querySelectorAll('[data-seat-order]')]; return rows.length === 1 && rows[0].dataset.seatOrder === 'SG1' && rows[0].querySelector('[data-seat-select]').checked && a.textContent.includes('1 order of 2');`));
   await evaluate(`${tk("A", "all")}.click();`);
   await sleep(150);
+  check("72：Seat guests 每单勾选框放大成 Main manifest 的大小（20px）", await evaluate(`const b = document.querySelector('[data-seat-select]').getBoundingClientRect(); return Math.round(b.width) === 20 && Math.round(b.height) === 20;`));
   check("点 All：两张订单都回来，勾选取消", await evaluate(`const a = ${bg("3:A")}; return a.querySelectorAll('[data-seat-order]').length === 2 && [...a.querySelectorAll('[data-seat-select]')].every(b => !b.checked);`));
   let sb = (await mockLog()).length;
   await evaluate(`const s = ${bg("3:A")}.querySelector('[data-seat-order=SG2] select'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, 'B'); s.dispatchEvent(new Event('change', { bubbles: true }));`);
