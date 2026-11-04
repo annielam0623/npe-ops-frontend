@@ -767,6 +767,7 @@
 - 37 回字段：PUT /api/dispatch/roster/{id} {name, phone} → {id, name, phone, type, old_name_added}；old_name_added 是加进 Other spellings 的旧名字字符串，没加为 null（没改名 / 旧名已在他的写法里 / 撞别人写法——只跳过不报错，名字电话照存）。排在 G234（4d spellings 表）上 main 之后，明天家里那台约半天，做完 37 发提交号。已转 91。
 
 - 91 请后端 GET /api/dispatch/roster 带 can_edit；✅ 37 同意：顶层 can_edit 布尔（同 drivers / guides 平级），PUT 上线后有 dispatch.edit 为 true 否则 false，开关关时 GET 本身 403；没这键不出 Edit 键。91 照这形状开 task/roster-edit。
+- ✅ 91 合 main **bec1f7c**（功能 ca52271，task/roster-edit）：GET 不带 can_edit 时不出 Edit 键，生产同以前，57 上线后自动出现；对 37 形状核过。da 479/479（新 12 条）、nav 38/38、tsc / eslint / build 过。
 ### 66. 司机页 / 导游页预览：当天在跑的要跟手机上一样（2026-11-03）—— ✅ Annie 选 A 并「动手」，后端做
 - 截图是后端导游页（app/templates/field/guide_home.html，Antelope Bus A 2356），按钮 Boarded / No show / Call / ✎ Change / Send message 都灰。24 只读查：这些键在**预览**（Dispatch「Guide page preview ↗」/ Manifest 每车 Guide view，preview=True）或**前一天**（G227「Opens on … the grey buttons work on the day」，ahead）时是 disabled，样式 opacity .45（:267、:274），所以字发灰、点不了，是有意的；到了当天真正的导游手机上是正常颜色。单号「CHD0748XR · Lower」、「3 bookings」、「pax · 9 pickup stops」那类是本来的次要灰字。
 - Annie（原话）「我作为super admin登录进去，应该让我看到和司机或导游看到的实时的才对啊，只要这个行程在跑」⇒ Super Admin 从 Dispatch 的 Driver / Guide page preview 打开时，行程当天在跑就要跟司机 / 导游手机上一模一样（颜色正常、实时状态）。24 只读查：预览跟司机本人共用同一份取数（field.py:222、:337），标记是实时的；灰是因为 preview=True 时按钮 disabled、opacity .45（已标的绿 / 红也一起变暗）。
@@ -790,6 +791,7 @@
 - ✅ 91 合 main **fe0e13a**（功能 8fb0d61）：hr 80/80（新 12 条）、nav 38/38、tsc / eslint / build 过。后端没上线时格子、列、How to use 那条都不出，生产页面同以前。Edit list 列先只读；How to use 在 Annie 定的原文后临时多一句「To change them, click Edit on that person's row.」，bulk 上了去掉（已告诉 Annie）。
 - 37 转 4d 定稿（送审中未上 main）：bulk 每项可带 other_spellings（逗号串或列表，完整清单，空串清空）；被拒 {detail:{message, profile_id}} 400/409 整批回滚；已删除的人进 missing；控制字符拒收；CHECK 违规改 400。G234 driver_follow 定稿 {updated_orders, updated:[{car, from(Dispatch 原司机), to, orders}], skipped:[{car, reason}]}。已分别转 91 / e6。
 - ✅ 后端 G234 + spellings 上 main **01606b02**（含 bulk other_spellings）。已派 91：线上只读确认 → Edit list 列开可改、去掉 How to use 临时句 → 合 main。
+- ✅ 91 Edit list 列可改合 main **f077e4b**（task/hr-spellings-bulk；hr 87/87、nav 38/38、tsc / eslint / build 过）；How to use 临时句已去掉。线上只读 91 做不了（headless 无登录），请 Annie 打开 HR 看那一列 / 那一格（别存真人）。
 ### 64. G180 Main manifest 订单同步到 Tour Tracking：重新启动（2026-11-03，Annie「重新启动」）
 - 10/24 Annie 提，后端 d9 写好代码在 origin/task/tracking-sync-design（4cac1f93，10/25 夜后没动，没上 main、没跑迁移；deploy-guard 第 3 轮 FAIL：迁移要先于代码；迁移号 v122 已被占，要换号）。设计文档 docs/tracking-sync-design-2026-10-24.md，Annie 已定的不再问（同步已确认订单、发送前后都同步、send_state Sent / Not sent、order_state Confirmed / On hold / Cancelled 以 Order List 为准、从不删行、午餐谁新留谁、Farm out 只记录、Broadcast 含 Not sent 不含 On hold / Cancelled 且发出后变 Sent、总开关默认关、Tour Tracking 加 Sent / Not sent 筛选默认 Sent + 订单号后小标签）。还没答：调用记录表 401 要不要记（Max 推荐不记，后端那边问）。
 - 当时页面只改了旧后台模板；ops 新 Tour Tracking 页要前端另做。
