@@ -15,6 +15,22 @@
   - ✅ 后端上线 main b1919f7e（合并 1f7a064f，任务 f198a896，94 转）：形状同 58c97e1 mock，导入也写 updated_by / updated_at。派 81 核字段合 main（83 推完后、59 之前）。
 - ✅ `09` 合 72 → main **06bff03**（Annie 在 09 窗口原话「动手」）：da 501、pl 116、nav 38，tsc / eslint / build 过；验收点见置顶 72。已告知 94（57 direction 后端可推）。09 收工关窗口。
 
+## 2026-11-04 G212 Team 页 admin 按层级（`task/g212-team-hierarchy`，工作窗口 `npe-ops-frontend-c8`[a65365]，主窗口 2c 派）—— ✅ 后端 b68aa0e9 上 main，核过字段后合 main
+- 依据：Annie 10-28 Team 合并 preview v3（https://claude.ai/artifact/QpiQpo6x2b82CxAw86W9zq ）「a看不到 b不能 c不能 d不能」+「动手」；后端 f4 B3 / B5 / B6 / B7 / SA-2 / SA-6。2c 定：司机 / 导游行用 A（从 /api/users 补）、自己那一行照 v3 加 ✏️ Name；(a)(b) 截图 Annie 看过没提意见，照现在合。
+- 做了：
+  - 名单改读 /api/team/members（admin 和 Super Admin 一起；admin 那份后端已去掉 Super Admin 行和部门邮箱行）；司机 / 导游从 GET /api/users 取 role = driver / guide 补进来。旧后端（members 没带 role、admin 读 /api/team 403 / 404）照以前只读 /api/users。
+  - 行上的键照每行的 can_edit 出，不自己另算。can_edit = false：Actions 只写「🔒 + edit_block_reason 原文」（Only a Super Admin can change another admin. / You cannot change your own access. Ask a Super Admin. / A Super Admin account cannot be edited here. / Only a Super Admin can share this invite.），团队格只显示，没有角色下拉；Super Admin 账号留 ✏️ Name；invite_token = null 的邀请没有 Copy Link / Cancel invite。
+  - 自己那一行：Reset password（灰）+ ✏️ Name（preview v3 ②，SA 和 admin 一样）。
+  - admin：Access / 职责 / 首页列、Edit、Action Log、完整的 Add person 表；角色下拉只有比 admin 低的（Qc）；Edit 框里没有 Delete（B8）。
+  - Qd：用 /api/me/permissions（后端 codes_for，跟拦截同一处）。会加上 / 拿掉 admin 自己没有的项的档位键灰掉 + 悬停原因，Access 上面一行灰字「Greyed-out choices would give or take away permissions you don't have yourself. Only a Super Admin can change those.」；默认组、Copy access from 只换 admin 自己有的项。
+  - B3：409 新句子仍含 still linked，「Deactivate instead」照旧（只改注释）。
+- 核后端字段（b68aa0e9 只读）：members / 详情 / GET /api/users 每行 can_edit + edit_block_reason（team_tiers.row_reason）；四句原因与上面一致；/api/me/permissions 只报生效项；DELETE 409「<名字> is still linked to …」。和 mock 一致，前端不用改。
+- 检查（mock tp g212=1，端口 3278 / 8879 / 9413）：tp 193/193（新加 20 条 G212）、users 80/80、teams 54/54、perm 54/54、nav 38/38；tsc 0、eslint 0 错（3 个原有 warning）、build 过。⚠️ users 接在别的套后面跑偶尔在 /settings/users 跳转那一步首次编译超时崩（75/75 后），单跑每次 80/80，和这次改动无关。
+- Annie 验收看哪里（线上 ops Settings › Team；只动 ZZ Test 账号）：
+  1. 用 **admin 账号**打开：看不到 Super Admin 行、部门邮箱行；别的 admin 那一行只写「🔒 Only a Super Admin can change another admin.」；自己那一行只有 Reset password（灰）和 ✏️ Name；司机 / 导游账号照样在；Supervisor / Staff 那几行有 Edit · Reset password · ✏️ Name · Deactivate，角色下拉里没有 Admin。
+  2. admin 点某个 ZZ Test 员工的 Edit：自己没有的权限那一格灰着点不了（例如 admin 没有的 Schedule work window），最下面没有 Delete。
+  3. 用 **Super Admin 账号**打开：跟以前一样全部能改，Super Admin 行写「🔒 A Super Admin account cannot be edited here.」；ZZ Test 账号 Edit → Delete 删不掉时红框写「… is still linked to …」+「Deactivate instead」。
+
 ## 2026-11-04 Supplier › Restaurant ⬆ Import（`task/import-restaurant`，工作窗口 `npe-ops-frontend-81`[90172b]，主窗口 2c 派）—— ✅ 后端 b1919f7e 上 main，核过字段后合 main
 - 依据：全站「上传表格自动填」preview https://claude.ai/artifact/MKtDUiYyUPZ1FcBJR3j4Lw ③-4，Annie 10/29「批量导游同意推荐。动手」（Q1–Q7 全按推荐），不再出 preview；5c 交接「四、明天开工」0。
 - 改动（worktree `C:\Code\npe-ops-wt-import-restaurant`）：
