@@ -968,6 +968,10 @@ D. 已完成、待从置顶移走：
   - 规矩：全部暂存、蓝色 Save 一起存、未存关弹窗先问；红字「Enter a name for the new shift type.」「There is already a shift type called …」。
   - 需要后端（Q3 A 时）：schedule_shift_types 加 color（open / mid / close / amber / rose / teal / orange / grey，migration 先给 Annie 看）；GET 带 color，POST / PUT 收 color、不认得 400；建议改类型写 action_log；key 前端从名字生成（小写、空格 _、≤20、重了加 _2）。工时：前端 3–4 小时，后端约 1 小时 + migration。
 - **Annie 回（原话，附 Unassigned 行截图）**：「一个是自己添加班次，给班次改名，然后在schedule的rules里可以添加规则。另外，图片里这个颜色实在太丑了重新设计一下。然后它的功能和用法是怎样的」⇒ Q1 = A（班次类型）；要能**新增 + 改名**；新类型要能在 **Rules** 里用（2c 查：rule-dialog.tsx:260 按 active 班次类型列，排班引擎不写死 open / mid / close ⇒ 新类型自动能选，不用另做）；**Unassigned 行配色重新设计**（现在暗红底 #1b0d12 + 红色虚线框，week-grid.tsx:336）；她问 Unassigned 的功能和用法（2c 已在回复里解释）。还没「动手」。2c 派 81 改 preview：加改名、Rules 里能选新类型的示意、Unassigned 行 2–3 种新配色。
+- **preview v2**（同链接 9LFRCau1uBg5sQ5aPbdSZt，2c 已整段转 Annie，等答）：加改名（名字格直接改，黄字「Was "Mid" — not saved yet」，Save 才存；key 不变，已排的班 / 规则 / 员工周表跟着显示新名）；Rules Add rule 示意；Unassigned 四种并排；「功能和用法」六步。81 核：引擎 / 空档 / 后端 coverage / PDF 都不写死类型。两个坑：① Auto-fill 时间取 Rules 的 Shift times，没有就用 Working hours（auto-fill-dialog.tsx:246），不用类型的 Default time；② 停用类型的规则仍有效、Auto-fill 还会排 ⇒ 停用时黄字提醒改规则。
+  - Q2–Q4 同上（Q4 A 加停用提醒）。Q5 How to use 两段：Staff Schedule 段加改名句；Rules 页「New shift types show up in the Shift list of every rule. Auto-fill uses the times from the Shift times rule, so add one for a new shift type; without it, Auto-fill uses the whole working hours.」
+  - Q6 Unassigned 配色：A（推荐）深灰行头 + 白字「Unassigned」「3 shifts to assign」+ 整行淡斜纹，卡片保留班次色 + 虚线框 + 右上「No one yet」；B 整行淡黄底 + 黄虚线（撞「改了没存」的黄）；C 同别人的行，只「Unassigned」灰斜体（太淡易漏）。
+  - 前端工时 4–5 小时；后端 color 列（Q3 A）+ 建议 action_log。
 
 ### 84. Staff Schedule 后台要有员工登录记录（2026-11-04，Annie 在主窗口-2c 提，没动手）
 - 原话（接置顶 83 后说）：「我们本来就应该在staff的schedule后台管理页面有员工的登录记录」。
