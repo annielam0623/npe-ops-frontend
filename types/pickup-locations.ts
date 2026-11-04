@@ -31,6 +31,11 @@ export interface PickupLocation {
   latitude?: number | null;
   longitude?: number | null;
   arrival_radius_m?: number | null;
+  /**
+   * Auto 分车用的方向（置顶 72，Annie 2026-11-04「动手」）：null = Not set（排座当 Flexible）。
+   * **没有这个键 = 后端还没上线**，页面不出 Direction 列。改用 PATCH /{id}/direction。
+   */
+  direction?: PickupDirection | null;
 }
 
 /** PATCH /api/pickup-locations/{id}/arrival-point 的 body（两个坐标都 null = 清掉；radius_m 1–500 整数）。 */
@@ -39,6 +44,8 @@ export interface ArrivalPoint {
   longitude: number | null;
   radius_m: number;
 }
+
+export type PickupDirection = "north" | "south" | "flexible";
 
 /** 一个站 × 一条线路（Shuttle 产品）× 第几班 × 一个季节。 */
 export interface PickupStopTime {

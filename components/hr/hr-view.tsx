@@ -9,10 +9,7 @@ import { HowToUse } from "@/components/ui/how-to-use";
 import { ErrorBanner, Panel } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchCurrentUser } from "@/lib/auth-api";
-import {
-  byTick,
-  describeHrWriteError,
-} from "@/lib/permissions";
+import { byTick, describeHrWriteError } from "@/lib/permissions";
 import { usePermissions } from "@/lib/staff-permissions";
 import {
   bulkErrorOf,
@@ -24,6 +21,7 @@ import {
   type HRProfileInput,
   saveHRBulk,
   scheduleConfirmOf,
+  saveHRSpellings,
   updateHRProfile,
 } from "@/lib/hr-api";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
@@ -35,6 +33,7 @@ import {
   defaultLayout,
   type ListLayout,
   normalizeLayout,
+  SPELLINGS_COLUMN,
   parseLayout,
 } from "./fields";
 import { HRLog } from "./hr-log";
@@ -116,11 +115,19 @@ export function HRView() {
   const [editing, setEditing] = useState(false);
   const [edits, setEdits] = useState<ListEdits>({});
   const [bulkSaving, setBulkSaving] = useState(false);
+  /** Edit list 存的时候某人的 Other spellings 被拒：红字放在那一格下面。 */
+  const [cellError, setCellError] = useState<{
+    profileId: number;
+    message: string;
+  } | null>(null);
   const [banner, setBanner] = useState<Banner>(null);
   const [askLeaveEdit, setAskLeaveEdit] = useState(false);
-  const [dialog, setDialog] = useState<{ profile: HRProfile | null } | null>(
-    null,
-  );
+  const [dialog, setDialog] = useState<{
+    profile: HRProfile | null;
+    /** Add person 后写法没存上：带回格子里的字和红字。 */
+    spellingsText?: string;
+    error?: string;
+  } | null>(null);
   const [linkable, setLinkable] = useState<{
     users: HRLinkableUser[];
     error: string | null;
@@ -256,6 +263,26 @@ export function HRView() {
     }
   }
 
+  /**
+   * 这次存进去的「Other spellings」：后端会规整（大写、排序、去掉和 Nickname 一样的），存好的格子不再算改动。
+   */
+  function dropSavedSpellings(
+    current: ListEdits,
+    saved: Map<number, Record<string, string | number>>,
+  ): ListEdits {
+    const next: ListEdits = {};
+    for (const [id, row] of Object.entries(current)) {
+      const sent = saved.get(Number(id));
+      next[Number(id)] =
+        sent && SPELLINGS_COLUMN in sent
+          ? Object.fromEntries(
+              Object.entries(row).filter(([k]) => k !== SPELLINGS_COLUMN),
+            )
+          : row;
+    }
+    return next;
+  }
+
   /** 去掉已经不在的人、已经等于新值的格子。 */
   function pruneEdits(profiles: HRProfile[], current: ListEdits): ListEdits {
     const next: ListEdits = {};
@@ -279,6 +306,7 @@ export function HRView() {
       byId.set(c.profile.id, row);
     }
     setBulkSaving(true);
+    setCellError(null);
     showBanner(null);
     try {
       const result = await saveHRBulk([...byId.values()]);
@@ -291,7 +319,7 @@ export function HRView() {
         setEdits({});
         return;
       }
-      const left = pruneEdits(profiles, edits);
+      const left = pruneEdits(profiles, dropSavedSpellings(edits, byId));
       setEdits(left);
       const leftCount = changedCells(profiles, left).length;
       const missing = result.missing ?? 0;
@@ -327,6 +355,16 @@ export function HRView() {
             ? view.profiles.find((p) => p.id === bulk.profileId)?.legal_name
             : undefined;
         text = who ? `${who}: ${bulk.message}` : bulk.message;
+        // 这个人这次改了 Other spellings：红字也放在那一格下面（题 3 B）。
+        if (
+          bulk.profileId !== null &&
+          changes.some(
+            (c) =>
+              c.profile.id === bulk.profileId && c.key === SPELLINGS_COLUMN,
+          )
+        ) {
+          setCellError({ profileId: bulk.profileId, message: bulk.message });
+        }
       } else if (error instanceof TypeError) {
         text = "Could not reach the server — nothing was saved.";
       } else {
@@ -362,11 +400,38 @@ export function HRView() {
   async function saveProfile(
     profile: HRProfile | null,
     input: HRProfileInput,
+    spellings: string[] | null,
   ): Promise<ActionResult> {
+    let createdId: number | null = null;
     try {
-      if (profile) await updateHRProfile(profile.id, input);
-      else await createHRProfile(input);
+      if (profile) {
+        // 先存写法：最常见的被拒（409 写法是别人的）时什么都没存，改好再按 Save。
+        if (spellings) await saveHRSpellings(profile.id, spellings);
+        await updateHRProfile(profile.id, input);
+      } else {
+        createdId = await createHRProfile(input);
+        if (spellings?.length) await saveHRSpellings(createdId, spellings);
+      }
     } catch (error) {
+      if (createdId !== null && !isStatus(error, 401)) {
+        // 人已经建好、写法没存上：用新建的人重开弹窗（再按 Save 不会重复建人）。
+        const message =
+          error instanceof TypeError
+            ? "Could not reach the server."
+            : describeHrWriteError(error);
+        const profiles = await refresh();
+        const created = profiles?.find((p) => p.id === createdId) ?? null;
+        if (created) {
+          setDialog({
+            profile: created,
+            spellingsText: (spellings ?? []).join("\n"),
+            error: `The person was added, but the other spellings were not saved: ${message}`,
+          });
+        } else {
+          setDialog(null);
+        }
+        return { status: "ok" };
+      }
       if (isStatus(error, 401)) {
         redirectToLogin();
         return { status: "redirecting" };
@@ -441,6 +506,16 @@ export function HRView() {
   }
 
   const profiles = view.kind === "ready" ? view.profiles : [];
+  // 后端上了「Other spellings」（G234 续）每个人都带 other_spellings；没带 = 后端没上线，这一格 / 这一列都不出。
+  const spellingsSupported = profiles.some((p) =>
+    Array.isArray(p.other_spellings),
+  );
+  const tableLayout = spellingsSupported
+    ? layout
+    : {
+        ...layout,
+        order: layout.order.filter((k) => k !== SPELLINGS_COLUMN),
+      };
   const placeholder =
     view.kind === "loading"
       ? "Loading…"
@@ -560,13 +635,16 @@ export function HRView() {
               </div>
               <PeopleTable
                 profiles={profiles}
-                layout={layout}
+                layout={tableLayout}
                 onLayoutChange={changeLayout}
                 editing={editing}
                 edits={edits}
                 locked={bulkSaving}
+                cellError={editing ? cellError : null}
                 onCellChange={(id, key, value) => {
                   if (banner) showBanner(null);
+                  if (cellError?.profileId === id && key === SPELLINGS_COLUMN)
+                    setCellError(null);
                   setEdits((all) => ({
                     ...all,
                     [id]: { ...all[id], [key]: value },
@@ -657,7 +735,11 @@ export function HRView() {
 
             <HowToUse
               title="How to use — Human Resource"
-              items={HOW_TO_ITEMS}
+              items={
+                spellingsSupported
+                  ? [...HOW_TO_ITEMS, SPELLINGS_HOW_TO]
+                  : HOW_TO_ITEMS
+              }
               warning="A red message means nothing was saved: fix the field and save again."
             />
           </div>
@@ -666,10 +748,16 @@ export function HRView() {
 
       {dialog ? (
         <ProfileDialog
+          key={dialog.profile?.id ?? "new"}
           profile={dialog.profile}
+          spellingsSupported={spellingsSupported}
+          initialSpellingsText={dialog.spellingsText}
+          initialError={dialog.error ?? null}
           linkableUsers={linkable.users}
           linkableError={linkable.error}
-          onSave={(input) => saveProfile(dialog.profile, input)}
+          onSave={(input, spellings) =>
+            saveProfile(dialog.profile, input, spellings)
+          }
           onDelete={() =>
             dialog.profile &&
             setDeleting({ kind: "ask", profile: dialog.profile })
@@ -751,6 +839,10 @@ function BannerLine({
     </p>
   );
 }
+
+/** Annie 2026-11-03 题 4 选 A 的原文。 */
+const SPELLINGS_HOW_TO =
+  "Other spellings: other ways this person's name is written in the morning Excel or CCL (for example JOSEPH for Joe R). One per line. A spelling can belong to only one person. Removing a spelling means CCL imports stop matching it to this person.";
 
 const HOW_TO_ITEMS = [
   "The People list shows all drivers and guides. Expired licenses are shaded red.",

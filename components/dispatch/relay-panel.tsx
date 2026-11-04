@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 
 import { MorningResults } from "@/components/morning-send/morning-results";
 import {
@@ -18,6 +18,7 @@ import {
 import type { ActionResult } from "@/components/ui/action-result";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { describeError, isStatus } from "@/lib/api-errors";
+import { driverFollowedText } from "@/lib/driver-follow";
 import {
   type DriverNotice,
   fetchDriverNotice,
@@ -46,6 +47,7 @@ import {
   TD,
   TH,
 } from "./legacy-styles";
+import { useRelayListOpener } from "./relay-list-open";
 import { StepBox } from "./step-box";
 
 /** 两轮的键和按钮字；轮名和时间段由接口的 round_labels 给（后端 dispatch.SHIFTS，同旧页面）。 */
@@ -172,36 +174,6 @@ function pickedPeople(d: DriverNotice, skipped: ReadonlySet<string>) {
   return d.people.filter((p) => p.can_send && !skipped.has(p.key));
 }
 
-/**
- * 收起状态下的一行提示（旧 `renderDriverHint()`，后端 2026-10-10）：有发不了的人就橙字数一下，
- * 否则显示上次发送情况。
- */
-function DriverHint({ d }: { d: DriverNotice }) {
-  if (!d.people.length) {
-    return (
-      <p className={cn(RP_HINT, "m-0")}>
-        No drivers on the schedule for this day yet.
-      </p>
-    );
-  }
-  const bad = d.people.filter((p) => !p.can_send).length;
-  if (bad) {
-    return (
-      <p className={cn(RP_HINT, "m-0 text-[#fbbf6a]")}>
-        <b className="font-[650]">
-          {plural(bad, "driver")} can&rsquo;t be texted
-        </b>{" "}
-        — no mobile number or not in HR.
-      </p>
-    );
-  }
-  return (
-    <p className={cn(RP_HINT, "m-0")}>
-      {lastSentText(d) ?? "Not sent yet for this day."}
-    </p>
-  );
-}
-
 /** 把短信里的网址变成可点的链接（新标签页打开），其余原样。 */
 function linkify(text: string) {
   return text.split(/(https?:\/\/[^\s<>]+)/).map((part, i) =>
@@ -222,7 +194,7 @@ function linkify(text: string) {
 }
 
 /**
- * 发给司机 / 导游的原文，打开这一天就显示，不用先点 Check the list（Annie 2026-10-15：「还是要显示一下发给司机和导游的内容是什么」）。
+ * 发给司机 / 导游的原文，打开 Send 标签就显示（Annie 2026-10-15：「还是要显示一下发给司机和导游的内容是什么」）。
  * 司机的原文是后端拼好的（`GET /api/dispatch/driver-notice` 的 text，链接在最后）；导游的照 guide-notice 的 text
  *（Send to guide，Annie 2026-10-30「1. 动手」）。导游的还没读到（接口没上线 / 出错）时照旧写「还不发」。
  */
@@ -288,9 +260,6 @@ function OutgoingTexts({
   );
 }
 
-/** 旧 `.rp-btn`：深底上的亮蓝（Pull from manifests / Send to driver）。 */
-const RP_BTN =
-  "h-[30px] rounded-lg border border-[#3b82f6] bg-[#3b82f6] px-3 text-[12.5px] font-semibold whitespace-nowrap text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3b82f6] disabled:cursor-not-allowed disabled:opacity-50";
 /** 旧 `.rp-box .rp-btn.green`：白框里的发送键，跟 Step 1 / 2 同一个尺寸。 */
 const RP_BTN_GREEN =
   "h-8 rounded-[7px] border border-[#16a34a] bg-[#16a34a] px-3 text-[13px] font-semibold whitespace-nowrap text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3b82f6] disabled:cursor-not-allowed disabled:opacity-50";
@@ -300,7 +269,7 @@ const RP_BTN_GREEN =
  */
 const RP_BTN_SEND =
   "h-8 rounded-[7px] border border-[#3b82f6] bg-[#3b82f6] px-3 text-[13px] font-semibold whitespace-nowrap text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3b82f6] disabled:cursor-not-allowed disabled:opacity-50";
-/** Check the list：只是列名单（不发），白底（同上 Q3）。 */
+/** ↻ Refresh（Step 1 / Step 2 重读名单，不发）：白底（同上 Q3；蓝色只给提交）。 */
 const RP_BTN_WHITE =
   "h-[30px] rounded-lg border border-[#cbd5e1] bg-white px-3 text-[12.5px] font-semibold whitespace-nowrap text-[#1a1a1a] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3b82f6] disabled:cursor-not-allowed disabled:opacity-50";
 /** 旧 `.rp-sub`。 */
@@ -315,12 +284,16 @@ const CHK_CELL = "w-7 text-center";
 /**
  * 排车页 Send 标签的两步（后端 _relay_pull_panel.html，2026-10-04；10-05 G29 分成两步；
  * Annie 2026-10-07 定拆 Assign / Send：Step 1 Send to drivers、Step 2 早班发送 = 原 Morning Relay）：
- * Pull from manifests（只读）把当天 manifest 里的酒店客人按接客时间分进两轮、对到停那家酒店的车；
+ * 打开 Send 标签就自动取（只读，send-auto-open 题 8 A）：把当天 manifest 里的酒店客人按接客时间分进两轮、对到停那家酒店的车；
  * 每轮一个发送键（⚠️ 真发早班短信，服务端重算名单、跳过发过的）；Send to driver（⚠️ 真发，给司机发他们页面的链接）。
  * 换一天、每次重读这一天（存好 / 复制之后）都由父组件用 key 重建：名单和结果都按服务端最新的重来。
+ * 司机、导游名单和 Morning Relay 客人在 Send 标签真显示出来时才取（Annie 2026-11-03「把司机和导游发送也打开，不折叠，
+ * 也不需要pull from manifest，直接展开给staff看」，题 7 / 8 A）：面板挂在隐藏的 Send 标签里，挂载就取的话，
+ * 在 Assign 每存一次都会在后台多打三个请求。
  */
 export function RelayPanel({
   date,
+  active,
   dirty,
   disabled = false,
   onUnauthorized,
@@ -328,6 +301,8 @@ export function RelayPanel({
   onSave,
 }: {
   date: string;
+  /** Send 标签正显示着：第一次显示（以及显示着时重建）就自动列名单、取客人。 */
+  active: boolean;
   /** 排车页正在换天 / 保存：这时点了会对上一天操作，先关着。 */
   disabled?: boolean;
   /** 排车页有没存的改动：Pull 读的是已保存的排车，要提醒；两个发送键关着，先回 Assign 存。 */
@@ -339,8 +314,6 @@ export function RelayPanel({
   onSave?: () => Promise<boolean>;
 }) {
   const [data, setData] = useState<RelayPull | null>(null);
-  /** 「Save before opening the Relay list?」：undefined = 没开；null = 整份；数字 = 只看这台车（车头 Print）。 */
-  const [listAsk, setListAsk] = useState<number | null | undefined>(undefined);
   const [pulling, setPulling] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<Record<string, RoundResult>>({});
@@ -353,11 +326,11 @@ export function RelayPanel({
   const [blockAny, setBlockAny] = useState<Set<string>>(() => new Set());
   /** Send to driver 在自己那一块，出错写在那一块里（不写进早班发送那一块，人看不到）。 */
   const [driverError, setDriverError] = useState<string | null>(null);
-  /** 收起状态那一行提示用的名单：打开这一天就自动拉一次（不用点 Check the list），点开 / 发完跟着更新。 */
+  /** 司机短信原文那格用：列名单 / 发完重读时跟着更新。 */
   const [hint, setHint] = useState<DriverNotice | null>(null);
   /** 导游短信原文那格用（打开这一天就拉一次；读不到 = 照旧写「还不发」）。 */
   const [guideHint, setGuideHint] = useState<GuideNotice | null>(null);
-  /** 点一次 Check the list：司机、导游两份名单一起列（Send to guide preview Q1 A）。每点一次 +1，导游那块跟着重读。 */
+  /** 列一次名单（打开 Send 标签、点 ↻ Refresh）：司机、导游两份一起列（Send to guide preview Q1 A）。每次 +1，导游那块跟着重读。 */
   const [guideListKey, setGuideListKey] = useState(0);
   /**
    * 这次取消勾选的司机 key。记「没勾的」而不是「勾了的」：默认全勾，重读名单后新出现的能发的人
@@ -387,24 +360,22 @@ export function RelayPanel({
     setAgain: toggleSet(setGuestAgain),
   };
 
-  // 换天由父组件用 key 重建这个组件，所以挂载时拉一次就是「换天自动刷新提示」。
-  // 出错就不显示提示，等点 Check the list 再报错（同旧 `loadDriverHint()`）。
+  // Send 标签第一次显示出来就列好两份名单、取好客人（题 7 / 8 A）。换天、存好、复制都由父组件用 key 重建，
+  // ref 跟着清零：重建时 Send 标签正显示着就马上再取，在 Assign 上就等切到 Send 再取。
+  const opened = useRef(false);
   useEffect(() => {
-    let alive = true;
-    fetchDriverNotice(date)
-      .then((d) => {
-        if (alive) setHint(d);
-      })
-      .catch(() => {});
-    fetchGuideNotice(date)
-      .then((g) => {
-        if (alive) setGuideHint(g);
-      })
-      .catch(() => {});
-    return () => {
-      alive = false;
-    };
-  }, [date]);
+    if (!active || opened.current) return;
+    opened.current = true;
+    refreshLists();
+    void pull();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active]);
+
+  /** ↻ Refresh（Step 1）：司机、导游两份名单一起重读。 */
+  function refreshLists() {
+    void loadDrivers();
+    setGuideListKey((k) => k + 1);
+  }
 
   function fail(
     e: unknown,
@@ -422,18 +393,9 @@ export function RelayPanel({
     );
   }
 
-  /** Relay list 的地址（Annie：「排完relay并保存了以后，应该加一个按键显示这些relay的list」）。 */
-  const relayListUrl = (car: number | null) =>
-    `/dispatch/relay-list?date=${date}${car ? `&car=${car}` : ""}`;
-
-  /** 打开 Relay list（新标签）：有没存的改动先问要不要存（显示的是已保存的排车）。 */
-  function openRelayList(car: number | null) {
-    if (dirty && onSave) {
-      setListAsk(car);
-      return;
-    }
-    window.open(relayListUrl(car), "_blank", "noopener,noreferrer");
-  }
+  /** 车头 Print 打开 Relay list 只看这一台：有没存的改动先问要不要存（整份的 Relay List 键在 Assign 顶上，置顶 70）。 */
+  const relayList = useRelayListOpener({ date, dirty, onSave });
+  const openRelayList = relayList.open;
 
   async function pull() {
     setPulling(true);
@@ -444,7 +406,7 @@ export function RelayPanel({
       setGuestOff(new Set());
       setGuestAgain(new Set());
     } catch (e) {
-      fail(e, "Could not pull the guests");
+      fail(e, "Could not load the guests");
     } finally {
       setPulling(false);
     }
@@ -520,8 +482,10 @@ export function RelayPanel({
           blocked.length
             ? `None of the ticked guests in ${roundTitle(code)} can be texted. ${blocked
                 .map((c) => `${c.car}: ${c.problems.join("; ")}.`)
-                .join(" ")} Fix the cars on the Assign tab, then pull again.`
-            : `The ticked guests in ${roundTitle(code)} were already sent by someone else. Pull again to see who sent them.`,
+                .join(
+                  " ",
+                )} Fix the cars on the Assign tab and save, then send again.`
+            : `The ticked guests in ${roundTitle(code)} were already sent by someone else. Click Refresh to see who sent them.`,
         );
         return;
       }
@@ -604,7 +568,7 @@ export function RelayPanel({
       const d = await fetchDriverNotice(date);
       setDrivers(d);
       setHint(d);
-      // 每次列出名单（点 Check the list、发完重拉）都从默认开始：开 relay 车的人勾上、只开 Tour / Private 的不勾；
+      // 每次列出名单（打开 Send、点 ↻ Refresh、发完重拉）都从默认开始：开 relay 车的人勾上、只开 Tour / Private 的不勾；
       // 只有 Send texts now 前的那次重读（askDrivers）保留这次的勾选。
       setSkipped(defaultSkipped(d.people));
     } catch (e) {
@@ -741,8 +705,8 @@ export function RelayPanel({
             </p>
             <p>
               Drivers get the driver page, guides get the guide page. Guests get
-              nothing from this step. Click Check the list to see who will get
-              it before anything is sent.
+              nothing from this step. The lists below show who will get it
+              before anything is sent.
             </p>
           </>
         }
@@ -751,21 +715,20 @@ export function RelayPanel({
           <OutgoingTexts text={hint.text} guideText={guideHint?.text} />
         ) : null}
         <div className="flex flex-wrap items-baseline gap-3">
-          {/* 旧页面 2026-10-10 改名（`8cdacda`）：点了只是列出名单，真正发送是下面的 Send texts now。
-              点一次同时列司机、导游两份名单。 */}
+          {/* 打开就列好（题 7 A）；↻ Refresh 重读司机、导游两份名单，不发。真正发送是下面的 Send texts now。 */}
           <button
             type="button"
+            data-refresh-lists
             disabled={loadingDrivers || disabled}
-            onClick={() => {
-              void loadDrivers();
-              setGuideListKey((k) => k + 1);
-            }}
+            onClick={refreshLists}
             className={RP_BTN_WHITE}
           >
-            Check the list
+            {loadingDrivers ? "Loading…" : "↻ Refresh"}
           </button>
         </div>
-        {hint ? <DriverHint d={hint} /> : null}
+        {loadingDrivers && !drivers ? (
+          <p className={cn(RP_HINT, "m-0")}>Loading the drivers…</p>
+        ) : null}
 
         <details className={RP_HOWTO}>
           <summary className={HOWTO_SUMMARY}>
@@ -773,8 +736,8 @@ export function RelayPanel({
           </summary>
           <ol className={HOWTO_OL}>
             <li>
-              Click Check the list: the drivers and the guides are listed in two
-              tables. Each table has its own Send texts now.
+              The drivers and the guides are listed in two tables. Each table
+              has its own Send texts now. Click Refresh to read the lists again.
             </li>
             <li>
               Drivers with a Morning Relay car are ticked; tick or untick
@@ -782,8 +745,7 @@ export function RelayPanel({
             </li>
             <li>
               A driver or guide with no mobile number, or not in HR, is listed
-              with the reason. Fix it in Human Resource, then Check the list
-              again.
+              with the reason. Fix it in Human Resource, then click Refresh.
             </li>
             <li>
               Guides: you can add a short line after the link. It must fit in
@@ -904,27 +866,20 @@ export function RelayPanel({
         desc="Text hotel guests their morning pickup. Guests go to the 1st or 2nd Round by their tour, on the car that stops at their hotel."
       >
         <div className="flex flex-wrap items-baseline gap-3">
+          {/* 打开就取（题 8 A）；↻ Refresh 再取一次（只读，不发）。 */}
           <button
             type="button"
+            data-refresh-guests
             disabled={pulling || disabled}
             onClick={() => void pull()}
-            className={RP_BTN}
-          >
-            {pulling ? "Pulling…" : "Pull from manifests"}
-          </button>
-          <button
-            type="button"
-            data-relay-list
-            disabled={disabled}
-            onClick={() => openRelayList(null)}
             className={RP_BTN_WHITE}
           >
-            📋 Relay list
+            {pulling ? "Loading…" : "↻ Refresh"}
           </button>
           <span className={RP_SUB}>
             {dirty
               ? "Assign is not saved yet - Pull uses the saved schedule."
-              : "Pull uses the Morning Relay cars and hotels saved on the Assign tab."}
+              : "From the Morning Relay cars and hotels saved on the Assign tab."}
           </span>
         </div>
 
@@ -934,18 +889,33 @@ export function RelayPanel({
           </summary>
           <ol className={HOWTO_OL}>
             <li>
-              Click Pull from manifests, check Need a look, then Preview & send
-              for the 1st or 2nd Round. A car needs a driver and at least one
-              pickup stop, or its guests are not texted.
+              The guests are listed from the saved schedule and today&rsquo;s
+              tour manifests. Check Need a look, then Preview & send for the 1st
+              or 2nd Round. Click Refresh after changing the Assign tab. A car
+              needs a driver and at least one pickup stop, or its guests are not
+              texted.
             </li>
             <li>
               Need a look: no car stops at that hotel, the hotel name was not
               recognised, or the Rezdy time could not be read. Fix it on the
-              Assign tab and pull again.
+              Assign tab and save; the list loads again.
             </li>
             <li>
               Guests who already got the text are skipped. Tick Send anyway to
               text them again (for example Changed after sent).
+            </li>
+            <li>
+              Driver changed after guests were texted? Change the driver on the
+              Assign tab and Save. Their tracking links then follow the new
+              driver, so you don&rsquo;t need to text them again. Their row says
+              &ldquo;Driver changed after send — link now follows …&rdquo;.
+              Guest links use the driver saved in Dispatch, so make sure each
+              car has the right driver.
+            </li>
+            <li>
+              A car marked No tracking has no live GPS. Its guests still get the
+              text and the link to check in; the text doesn&rsquo;t mention live
+              tracking. Nothing is blocked.
             </li>
             <li>
               Under each car, guests are grouped by hotel. Use the button on a
@@ -1054,7 +1024,7 @@ export function RelayPanel({
                             </div>
                           ))}
                           <div className="text-[11.5px]">
-                            Fix the car on the Assign tab, pull again, then send
+                            Fix the car on the Assign tab and save, then send
                             this round.
                           </div>
                           {!res.results?.length ? (
@@ -1172,7 +1142,7 @@ export function RelayPanel({
                         )
                         .join(", ")}
                       ): their guests will not be texted. Fix them on the Assign
-                      tab and pull again.
+                      tab and save.
                     </p>
                   ) : null}
                 </Box>
@@ -1203,39 +1173,7 @@ export function RelayPanel({
         ) : null}
       </StepBox>
 
-      {listAsk !== undefined && onSave ? (
-        <ConfirmDialog
-          title="Save before opening the Relay list?"
-          confirmLabel="Save and open"
-          busyLabel="Saving…"
-          onClose={() => setListAsk(undefined)}
-          onConfirm={async () => {
-            // 先在点击里开好新标签（存完再开会被浏览器当成弹窗拦掉），存好了再把地址填进去。
-            const tab = window.open("about:blank", "_blank");
-            const ok = await onSave();
-            if (!ok) {
-              tab?.close();
-              return {
-                status: "error",
-                message:
-                  "Could not save. Fix the problems shown on Assign, then try again.",
-              };
-            }
-            const url = relayListUrl(listAsk);
-            if (tab) {
-              tab.opener = null;
-              tab.location.href = url;
-            } else window.open(url, "_blank", "noopener,noreferrer");
-            setListAsk(undefined);
-            return { status: "ok" };
-          }}
-        >
-          <p>
-            The Relay list shows the saved schedule. You have changes on Assign
-            that are not saved yet.
-          </p>
-        </ConfirmDialog>
-      ) : null}
+      {relayList.dialog}
 
       {confirm?.kind === "round" ? (
         <ConfirmDialog
@@ -1375,7 +1313,7 @@ export function RelayPanel({
 
 /**
  * Send to guide（G75 后端早有；Annie 2026-10-30 对 preview https://claude.ai/artifact/4hC4p7DrrwmEhNPsSFHwNB 5 处「同意推荐」，
- * 之后「1. 动手」）：Step 1 司机那块下面，同一个 Check the list 列出名单，自己一个 Send texts now。
+ * 之后「1. 动手」）：Step 1 司机那块下面，同一次列名单（打开 Send、↻ Refresh）列出，自己一个 Send texts now。
  * - 能发的导游默认全勾；发不了的整行灰字、写原因。一个导游带两台车只收一条（后端合好的）。
  * - 导游页开关（guide_page）关着：Send 灰掉，旁边灰字照后端 page_off_text（同 G215 司机那块）。
  * - 框头写「Last sent 时间 by 谁（…）」，再发时确认框提醒「They will get it again」（Q4 A，照司机那块）。
@@ -1393,7 +1331,7 @@ function GuideBox({
   onLoaded,
 }: {
   date: string;
-  /** 父组件每点一次 Check the list 就 +1：0 = 还没点过，不列名单。 */
+  /** 父组件每列一次名单（打开 Send、↻ Refresh）就 +1：0 = 还没列过。 */
   listKey: number;
   disabled: boolean;
   /** 排车页有没存的改动：发送键关着（同司机那块）。 */
@@ -1442,7 +1380,7 @@ function GuideBox({
     }
   }
 
-  // 点 Check the list（listKey 变了）才列名单。
+  // listKey 变了（打开 Send、↻ Refresh）才列名单。
   useEffect(() => {
     if (listKey > 0) void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -2062,6 +2000,7 @@ function CarRows({
   car: {
     van: string | null;
     driver: string | null;
+    has_tracking?: boolean;
     problems?: string[];
   };
   guests: RelayGuest[];
@@ -2086,8 +2025,19 @@ function CarRows({
           )}
         >
           {prefix ? <>{prefix} · </> : null}
-          {car.van || "No vehicle"} · {car.driver || "No driver"} ·{" "}
-          {plural(guests.length, "order")}, {paxOf(guests)} pax
+          {car.van || "No vehicle"}
+          {/* 没定位的车：同 Assign 车号下面的红点标，只标不拦（Annie 2026-11-03 No tracking 题 3 选 A）。 */}
+          {car.van && car.has_tracking === false ? (
+            <span
+              data-no-tracking
+              className="mx-2 inline-flex items-center gap-[5px] rounded-full bg-[#fdeceb] px-2 py-0.5 align-middle text-[11px] font-semibold whitespace-nowrap text-[#b3261e]"
+            >
+              <span aria-hidden className="size-1.5 rounded-full bg-current" />
+              No tracking
+            </span>
+          ) : null}{" "}
+          · {car.driver || "No driver"} · {plural(guests.length, "order")},{" "}
+          {paxOf(guests)} pax
           {onPrint ? (
             <button
               type="button"
@@ -2165,7 +2115,17 @@ function GuestRow({
       <td className={cn(TD, RP_PAD, "text-right")}>{g.pax ?? ""}</td>
       <td className={cn(TD, RP_PAD)}>{g.tour}</td>
       {why !== undefined ? (
-        <td className={cn(TD, RP_PAD, "text-[12px] text-[#8a5a00]")}>{why}</td>
+        <td className={cn(TD, RP_PAD, "text-[12px] text-[#8a5a00]")}>
+          {why}
+          {g.driver_followed ? (
+            <span
+              data-driver-followed
+              className="mt-0.5 block text-[11px] text-[#6b7280]"
+            >
+              {driverFollowedText(g.driver_followed)}
+            </span>
+          ) : null}
+        </td>
       ) : (
         <td className={cn(TD, RP_PAD)}>
           <Status g={g} />
@@ -2194,7 +2154,10 @@ function GuestRow({
 const PILL =
   "inline-block rounded-full px-2 py-px text-[11px] font-[650] whitespace-nowrap";
 
-/** 没发过的空着；发过的用全站发送表格的黄标签「Sent by 谁 on 时间」，发过之后改了的下面橙字写改了什么。 */
+/**
+ * 没发过的空着；发过的用全站发送表格的黄标签「Sent by 谁 on 时间」，发过之后改了的下面橙字写改了什么。
+ * G234（题 1 A、3 A、4 B）：发过后换了司机、链接已跟新司机的，Sent by 下面、橙字上面一行灰字（不用做什么）。
+ */
 function Status({ g }: { g: RelayGuest }) {
   if (g.relay_status === "no_show") {
     return (
@@ -2207,6 +2170,14 @@ function Status({ g }: { g: RelayGuest }) {
       <span data-sent-label className={cn(DUP_BADGE, "inline-block")}>
         {sentLabel(g)}
       </span>
+      {g.driver_followed ? (
+        <span
+          data-driver-followed
+          className="mt-0.5 block text-[11px] text-[#6b7280]"
+        >
+          {driverFollowedText(g.driver_followed)}
+        </span>
+      ) : null}
       {g.changed?.length ? (
         <span data-changed className="mt-0.5 block text-[11px] text-[#8a5a00]">
           Changed after sent: {g.changed.join("; ")}

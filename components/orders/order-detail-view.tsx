@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { ManifestLinks } from "@/components/order-lookup/manifest-links";
 
 import { FarmOutViewCard } from "@/components/farm-out/farm-out-view-card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -204,6 +205,8 @@ function OrderBody({
           {o.source}
         </span>
       </header>
+      {/* 置顶 51 B：一点跳到 Main manifest 的那一单（标黄、预勾）。 */}
+      <ManifestLinks order={o} className="mt-2 mb-3" />
       {storedReadOnly && !partner ? (
         // 旧页 .od-warn 是 #B3261E，深色底上看不清，用浅一点的红。
         <p className="mt-1.5 mb-4 text-[11px] text-[#f87171]">

@@ -108,7 +108,17 @@ const seatOrders = [
   { order_number: "SG3", name: "ZZ Test Charlie", pax: 3, guest_ids: [5, 6, 7], pickup_time: "6:40 AM", pickup_location: "Bellagio", auto: "B" },
   { order_number: "SG4", name: "ZZ Test Delta", pax: 2, guest_ids: [8, 9], pickup_time: "6:40 AM", pickup_location: "Bellagio", auto: null },
 ].map((o, i) => ({ ...o, bus_label: o.auto, staff: false, tour_types: [["upper_antelope"], ["lower_antelope"], ["upper_antelope"], []][i], tour_type: [["upper_antelope"], ["lower_antelope"], ["upper_antelope"], []][i][0] ?? null }));
+// 置顶 72 追加（酒店胶囊 + A–Z）：POST /__ctl {pillDemo:true} ⇒ 2026-10-09 换成下面这份（两台 14 座，故意不按顺序给）。
+const pillOrders = [
+  ["PD1", "ZZ Test Kim", 2, "Wynn", "A"], ["PD2", "ZZ Test Lee", 3, "Circus Circus", "A"], ["PD3", "ZZ Test Adams", 2, "Wynn", "A"], ["PD4", "ZZ Test Moss", 1, "Bellagio", "A"],
+  ["PD5", "ZZ Test Park", 2, "Aria", "B"], ["PD6", "ZZ Test Nash", 4, "Mandalay Bay", "B"], ["PD7", "ZZ Test Cole", 3, "Aria", "B"], ["PD8", "ZZ Test Ford", 2, "Bellagio", "B"],
+  ["PD9", "ZZ Test Gray", 2, "Excalibur", null], ["PD10", "ZZ Test Hale", 1, "", null],
+].map(([order_number, name, pax, hotel, bus], i) => ({ order_number, name, pax, guest_ids: Array.from({ length: pax }, (_, k) => 100 + i * 10 + k), pickup_time: "6:30 AM", pickup_location: hotel || null, auto: bus, bus_label: bus, staff: false, tour_types: [], tour_type: null }));
 function seating(date) {
+  if (ctl.pillDemo && date === "2026-10-09") {
+    const bus = (label, van) => ({ label, van, seats: 14, capacity: 14, pax: pillOrders.filter((o) => o.bus_label === label).reduce((n, o) => n + o.pax, 0) });
+    return { run_date: date, tours: [{ manifest_id: 3, title: "West Rim Bus Tour", name: "West Rim", uploaded: true, mode: "lettered", guests_per_bus: 14, pax: 22, buses: [bus("A", "768"), bus("B", "1328")], orders: pillOrders.map(({ auto, ...o }) => o) }] };
+  }
   if (date === "2026-10-18") {
     // Farm out 车不限座：capacity null（后端第三版接口）。
     const bus = (label, van) => ({ label, van, seats: label === "B" ? null : 14, capacity: label === "B" ? null : 14, pax: foOrders.filter((o) => o.bus_label === label).reduce((n, o) => n + o.pax, 0), ...(label === "B" ? { farm_out: true, partner_name: "Partner A" } : {}) });
@@ -137,7 +147,22 @@ const drivers = [
 // ctl.rosterVis = 开关 dispatch_roster 的档（null = 没登记）；ctl.rosterPost403 = POST 403。新加的人不进 day() 的下拉（证明页面自己加）。
 const PHONES = { 1: "(702) 555-0101", 2: "(702) 555-0117", 3: null, 4: "(725) 555-0122", 5: "(702) 555-0135", 6: "(702) 555-0144" };
 const rosterExtra = [];
+// 名单编辑（Annie 2026-11-03「Dispatch名单编辑-动手」）：ctl.rosterEdit = true ⇒ GET 带 can_edit、有 PUT /api/dispatch/roster/{id}。
+// 改过的名字 / 电话只进名单，不进 day()（证明排车页自己换名字）。
+const rosterEdits = {};
+function applyRosterEdit(p) {
+  const e = rosterEdits[p.id];
+  return e ? { ...p, ...e } : p;
+}
 function roster() {
+  const base = rosterBase();
+  return {
+    drivers: base.drivers.map(applyRosterEdit),
+    guides: base.guides.map(applyRosterEdit),
+    ...(ctl.rosterEdit ? { can_edit: true } : {}),
+  };
+}
+function rosterBase() {
   const ds = drivers.map((d) => ({ id: d.id, name: d.name, phone: PHONES[d.id], type: d.position === "both" ? "both" : "driver" }));
   const gs = [{ id: 2, name: "GIA", phone: PHONES[2], type: "both" }, { id: 6, name: "PAM", phone: PHONES[6], type: "guide" }];
   return { drivers: [...ds, ...rosterExtra.filter((p) => p.type === "driver")], guides: [...gs, ...rosterExtra.filter((p) => p.type === "guide")] };
@@ -292,6 +317,24 @@ http.createServer(async (req, res) => {
       ...(ctl.rosterVis ? [{ key: "dispatch_roster", label: "Dispatch: driver / guide roster", visibility: ctl.rosterVis, default: "super_admin_only", visible_to_me: ctl.rosterVis !== "super_admin_only" }] : []),
     ] });
   }
+  const rm = /^\/api\/dispatch\/roster\/(\d+)$/.exec(p);
+  if (rm && ctl.roster === "on" && ctl.rosterEdit && req.method === "PUT") {
+    const b = JSON.parse(await readRaw(req)); entry.body = b;
+    const id = Number(rm[1]);
+    const r = roster();
+    const all = [...r.drivers, ...r.guides];
+    const me = all.find((x) => x.id === id);
+    if (!me) return send(res, 404, { detail: "That person is no longer on the list." });
+    const digits = String(b.phone || "").replace(/\D/g, "");
+    if (!String(b.name || "").trim()) return send(res, 400, { detail: "Type a name." });
+    if (digits.length < 7 || digits.length > 15) return send(res, 400, { detail: "The phone number needs 7 to 15 digits." });
+    const dup = all.find((x) => x.id !== id && String(x.phone || "").replace(/\D/g, "") === digits);
+    if (dup) return send(res, 409, { detail: `This phone number is already on the list (${dup.name}).` });
+    const name = b.name.trim();
+    const oldName = me.name !== name ? me.name : null;
+    rosterEdits[id] = { name, phone: b.phone.trim() };
+    return send(res, 200, { id, name, phone: b.phone.trim(), type: me.type, old_name_added: oldName });
+  }
   if (p === "/api/dispatch/roster") {
     if (ctl.roster !== "on" && ctl.roster !== "403") return send(res, 404, { detail: "Not Found" });
     if (req.method === "GET") return ctl.roster === "403" ? send(res, 403, { detail: "Not allowed." }) : send(res, 200, roster());
@@ -350,7 +393,7 @@ http.createServer(async (req, res) => {
     saved[b.date] = [...rest, ...mine];
     bump(b.date);
     const typed = b.rows.map((r) => r.driver_typed_name).filter(Boolean);
-    return send(res, 200, { ok: true, unit: b.unit, saved: b.rows.length, ids: mine.map((r) => r.id), version: ver(b.date), typed_alert: typed.length ? "not_set_up" : null, typed_names: typed, farm_out: { revoked: [], already_notified: [] } });
+    return send(res, 200, { ok: true, unit: b.unit, saved: b.rows.length, ids: mine.map((r) => r.id), version: ver(b.date), typed_alert: typed.length ? "not_set_up" : null, typed_names: typed, farm_out: { revoked: [], already_notified: [] }, ...(ctl.driverFollow ? { driver_follow: ctl.driverFollow } : {}) });
   }
   if (p === "/api/dispatch/day" && req.method === "POST") {
     const b = JSON.parse(await readRaw(req)); entry.body = b;
@@ -362,7 +405,7 @@ http.createServer(async (req, res) => {
     bump(b.date);
     if (b.ccl_import_id && prefills[b.date]) prefills[b.date].status = "applied";
     const typed = b.rows.map((r) => r.driver_typed_name).filter(Boolean);
-    return send(res, 200, { ok: true, saved: b.rows.length, ccl_applied: !!b.ccl_import_id, typed_alert: typed.length ? "not_set_up" : null, typed_names: typed, farm_out: { revoked: [], already_notified: [] } });
+    return send(res, 200, { ok: true, saved: b.rows.length, ccl_applied: !!b.ccl_import_id, typed_alert: typed.length ? "not_set_up" : null, typed_names: typed, farm_out: { revoked: [], already_notified: [] }, ...(ctl.driverFollow ? { driver_follow: ctl.driverFollow } : {}) });
   }
   if (p === "/api/dispatch/copy") {
     const b = JSON.parse(await readRaw(req)); entry.body = b;
@@ -424,9 +467,9 @@ http.createServer(async (req, res) => {
     const tourCarSecond = ctl.tourCarB2 && !ctl.tourCarNoCar ? [{ car: { id: 805, van: "2205", driver: "ZZ DRIVER", ...b2("B") }, guests: [] }] : [];
     return send(res, 200, { run_date: q.date, checked_at: RELAY_PULL_AT, round_labels: { relay: { name: "Morning Relay · 1st Round", when: "4:30 - 5:15 AM" }, relay_2: { name: "Morning Relay · 2nd Round", when: "5:40 - 6:30 AM" }, tour_car: { name: "Morning Relay · Own bus", when: "" } },
       rounds: {
-        relay: [...(ctl.relayOnlyBad ? [] : [{ car: { id: 801, van: "768", driver: "FREDDY" }, guests: [g({ id: 1, order_number: "R1", ...sentMeta("R1") }), g({ id: 2, order_number: "R2", ...sentMeta("R2"), changed: ["pickup time 4:45 AM → 5:00 AM"] }), g({ id: 3, order_number: "R3", ...sentMeta("R3"), relay_status: "no_show" }), ...extra, ...hotelGuests] }]),
+        relay: [...(ctl.relayOnlyBad ? [] : [{ car: { id: 801, van: "768", driver: "FREDDY", ...(ctl.relayNoTracking ? { has_tracking: false } : {}) }, guests: [g({ id: 1, order_number: "R1", ...sentMeta("R1") }), g({ id: 2, order_number: "R2", ...sentMeta("R2"), changed: ["pickup time 4:45 AM → 5:00 AM"], ...(ctl.relayFollowed ? { driver_followed: { from: "BRUCE", to: "FREDDY", at: "2026-10-05T04:10:00-07:00", by: "annie" } } : {}) }), g({ id: 3, order_number: "R3", ...sentMeta("R3"), relay_status: "no_show" }), ...extra, ...hotelGuests] }]),
           ...(ctl.relayBlocked || ctl.relayOnlyBad ? [{ car: { id: 803, van: "2103", driver: "SAM", problems: BAD_CAR_1.problems }, guests: [g({ id: 6, order_number: "R6", name: "ZZ Park", pickup_location: "Best Western" })] }] : [])],
-        relay_2: [{ car: { id: 802, van: null, driver: null, ...(ctl.relayBlocked ? { problems: BAD_CAR_2.problems } : {}) }, guests: [] }],
+        relay_2: [{ car: { id: 802, van: null, driver: null, ...(ctl.relayNoTracking ? { has_tracking: false } : {}), ...(ctl.relayBlocked ? { problems: BAD_CAR_2.problems } : {}) }, guests: [] }],
         tour_car: ctl.tourCar ? [{ car: tourCarCar, guests: tourCarGuests }, ...tourCarSecond] : [],
       },
       need_a_look: [g({ id: 9, order_number: "R9", pickup_time: "7:30 AM", reason: "Pickup time could not be worked out from the time in Rezdy" })],
@@ -563,7 +606,7 @@ http.createServer(async (req, res) => {
     if (fo) { const wasNotified = !!fo.farm_out?.notice_sent_at; fo.bus_label = b.bus_label; if (b.bus_label === "A") fo.farm_out = null; return send(res, 200, { ok: true, moved: fo.guest_ids.length, bus_label: b.bus_label, run_date: "2026-10-18", manifest_id: 3, auto_skipped: false, farm_out: { farmed: b.bus_label === "B" ? [fo.order_number] : [], revoked: b.bus_label === "A" ? [fo.order_number] : [], already_notified: b.bus_label === "A" && wasNotified ? [fo.order_number] : [] } }); }
     // 一次可以挪几张订单（Arrange seats 勾选 / 拖拽成组，真后端同样收一串 guest_ids）：客人要正好是几张订单的全部客人。
     const ids = b.guest_ids || [];
-    const os = seatOrders.filter((x) => x.guest_ids.every((g) => ids.includes(g)));
+    const os = (ctl.pillDemo ? pillOrders : seatOrders).filter((x) => x.guest_ids.every((g) => ids.includes(g)));
     if (!os.length || os.reduce((n, x) => n + x.guest_ids.length, 0) !== ids.length) return send(res, 400, { detail: "Some of these guests are no longer on the list. Reload the page." });
     const o = os[0];
     // G56：Completed 那天选 Auto 不自动分车，原样留着、回 auto_skipped（autoSkip 开着时模拟）。

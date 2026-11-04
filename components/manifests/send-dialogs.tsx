@@ -1096,11 +1096,23 @@ function GuestTable({
                   {held}
                 </span>
               ) : sent ? (
-                <span
-                  className={cn(DUP_BADGE, "inline-block whitespace-normal")}
-                >
-                  {sent}
-                </span>
+                <>
+                  <span
+                    className={cn(DUP_BADGE, "inline-block whitespace-normal")}
+                  >
+                    {sent}
+                  </span>
+                  {/* 置顶 74：发过之后改了 waiver link（后端 waiver_status），勾 Send anyway 重发新链接。 */}
+                  {tab === "tickets" &&
+                  r.values.waiver_status === "Changed since sent" ? (
+                    <span
+                      data-waiver-changed={r.order_number}
+                      className="ml-1 inline-block rounded bg-[#fef3c7] px-1.5 text-[10px] font-semibold text-[#92400e]"
+                    >
+                      Waiver link changed after sent
+                    </span>
+                  ) : null}
+                </>
               ) : null}
             </td>
             <td className={TD}>
@@ -1914,11 +1926,12 @@ function ticketOutcomes(res: ManifestSendTicketsResult, type: TicketsSendType) {
     skipped: [
       ...(res.skipped ?? []),
       // G129：缺 Cfm # 没发的单，列在「Skipped」里；能覆盖的可以勾 Send anyway（reason = no_cfm）。
+      // 置顶 74：缺 waiver link 同一条（「No Cfm #, No waiver link」）。
       ...(res.blocked ?? []).map((b) => ({
         order_number: b.order_number,
         name: "",
         reason: b.can_override ? "no_cfm" : "blocked",
-        message: b.reasons.join("; "),
+        message: b.reasons.join(", "),
       })),
     ],
   };
@@ -1933,6 +1946,7 @@ export function ReminderDialog({
   onSent,
   onUnauthorized,
   noCfmOrders = [],
+  overReasons = {},
 }: {
   date: string;
   rows: ManifestRow[];
@@ -1945,6 +1959,8 @@ export function ReminderDialog({
   onUnauthorized: () => void;
   /** G129：缺 Cfm # 的单，staff 在确认条上点了 Send anyway：照发，确认号栏留空（订单号进 send_anyway）。 */
   noCfmOrders?: string[];
+  /** 置顶 74：这些照发的单各缺什么（「No Cfm #」「No waiver link」）；只缺 Cfm # 时说明照原来的写法。 */
+  overReasons?: Record<string, string[]>;
 }) {
   // 打开时拍一份（同上）。
   const [snapshot] = useState(rowsProp);
@@ -2137,7 +2153,20 @@ export function ReminderDialog({
           {error}
         </p>
       ) : null}
-      {noCfmOrders.length ? (
+      {noCfmOrders.length &&
+      noCfmOrders.some((o) =>
+        (overReasons[o] ?? []).some((x) => x !== "No Cfm #"),
+      ) ? (
+        <div data-send-anyway-note className={NOTE_BOX}>
+          Sent anyway with something missing:{" "}
+          {noCfmOrders
+            .map((o) => `${o} (${(overReasons[o] ?? ["No Cfm #"]).join(", ")})`)
+            .join("; ")}
+          . A missing Cfm # is left blank; without a waiver link the
+          guest&apos;s ticket page says the link will be sent separately. This
+          is recorded in Send Log.
+        </div>
+      ) : noCfmOrders.length ? (
         <div data-send-anyway-note className={NOTE_BOX}>
           No Cfm # for {noCfmOrders.join(", ")}.{" "}
           {noCfmOrders.length === 1 ? "It goes" : "They go"} out with the Cfm #

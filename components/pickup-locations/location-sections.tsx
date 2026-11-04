@@ -88,6 +88,8 @@ export function LocationSections(props: Props) {
     typesSupported,
     savedNote,
   } = props;
+  /** 后端已经有 Direction（GET 每行带 direction 键）才出那一列；Shuttle 块不出（只跟团车分车有关）。 */
+  const directionSupported = locations.some((l) => "direction" in l);
 
   const header = (title: ReactNode, extra?: ReactNode) => (
     <div className={CARD_HEADER_CLASS}>
@@ -154,6 +156,7 @@ export function LocationSections(props: Props) {
       onTourDeparture={props.onTourDeparture}
       onDelete={props.onDelete}
       variant={variant}
+      showDirection={directionSupported && variant !== "shuttle"}
       {...extra}
     />
   );

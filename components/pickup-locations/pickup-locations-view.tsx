@@ -18,6 +18,7 @@ import {
   fetchShuttleRoutes,
   fetchShuttleSeasons,
   setPickupLocationActive,
+  setPickupLocationDirection,
   setPickupLocationTourDeparture,
   setPickupLocationArrivalPoint,
   updatePickupLocation,
@@ -245,7 +246,7 @@ export function PickupLocationsView() {
     const pointChanged =
       arrivalSupported &&
       !!edit.original &&
-      (["latitude", "longitude", "radius"] as const).some(
+      (["coordinates", "radius"] as const).some(
         (k) => edit.draft[k].trim() !== edit.original![k].trim(),
       );
     const point = pointChanged ? arrivalPointOf(edit.draft) : null;
@@ -274,8 +275,15 @@ export function PickupLocationsView() {
       ...all,
       [id]: { ...edit, saving: true, error: null },
     }));
+    const direction = edit.draft.direction;
+    const directionChanged =
+      direction !== undefined && direction !== edit.original?.direction;
+    let otherSaved = false;
     try {
       await updatePickupLocation(id, input);
+      otherSaved = true;
+      // Direction 是单独的接口（置顶 72），同一个 Save 一起存，没改就不发。
+      if (directionChanged) await setPickupLocationDirection(id, direction);
     } catch (error) {
       if (isStatus(error, 401)) {
         redirectToLogin();
@@ -288,8 +296,18 @@ export function PickupLocationsView() {
               [id]: {
                 ...all[id],
                 saving: false,
-                // 一样都不存（后端整份一个事务），改动留着。
-                error: `Could not save: ${describeError(error)} Nothing was saved.`,
+                // 一样都不存（后端整份一个事务），改动留着；只有 Direction 没存上时照实说。
+                error: otherSaved
+                  ? `Could not save Direction: ${describeError(error)} The other boxes were saved.`
+                  : `Could not save: ${describeError(error)} Nothing was saved.`,
+                ...(otherSaved && all[id].original
+                  ? {
+                      original: {
+                        ...all[id].draft,
+                        direction: all[id].original!.direction,
+                      },
+                    }
+                  : {}),
               },
             }
           : all,
@@ -732,10 +750,30 @@ function HowToUse() {
         while the hotel is still used in Dispatch.
       </li>
       <li>
+        Direction (only in the Tour bus block): click ✏ Edit and pick North,
+        South, or Flexible, then Save. Auto on Dispatch → Seat guests uses it
+        when a tour has two or more buses: Bus A takes the side with more guests
+        (North or South), the last bus takes the other side, and Flexible guests
+        fill whichever bus has more empty seats. If both sides have the same
+        number of guests, Bus A takes South. If a side does not fit on its bus,
+        the extra orders go to a middle bus first, then to the other bus. Auto
+        never splits an order: guests who still do not fit stay in Not on a bus
+        for you to place. Not set counts as Flexible.
+      </li>
+      <li>
+        <b>Pickup point (live tracking)</b>: click ✏ Edit on a hotel. In Google
+        Maps, right-click the spot where the van stops for these guests and
+        click the numbers at the top of the menu to copy them (for example
+        36.106711, -115.176612). Paste them into Coordinates, keep Within 10 m
+        unless the stop is large, then press Save. Live tracking then records
+        when a relay van gets there and when it leaves. Empty Coordinates to
+        stop recording this hotel.
+      </li>
+      <li>
         Tour bus departure (only in the Tour bus block): tick it for a place
         where guests board the tour bus directly (Treasure Island). Guests
-        picked up there are left out when you click Pull from manifests in
-        Dispatch. It saves as soon as you click.
+        picked up there are left out of Morning Relay on Dispatch → Send. It
+        saves as soon as you click.
       </li>
       <li>
         If the list is wider than the window, scroll it sideways to see the

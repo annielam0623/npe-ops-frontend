@@ -113,6 +113,7 @@ async function main() {
   try {
     await run();
     await runTicks();
+    await runSpellings();
   } finally {
     ws.close();
     chrome.kill();
@@ -451,6 +452,117 @@ main().catch((e) => {
   console.error(e);
   process.exit(2);
 });
+
+// ── 「Other spellings」（Annie 2026-11-03：题 1 B 放 Dispatch 块、题 2 A 表上一列、题 3 B Edit list——bulk 没上前先只读、题 4 A 原文；「HR动手」）──
+async function runSpellings() {
+  const spell = `${dialog}.querySelector('[data-hr-spellings]')`;
+  const reqs = async (before) => since(before, (e) => /\/spellings$/.test(e.path));
+  await ctl({ fail401: false, staff: false, supervisor: false, superadmin: false, tick: null, spellings: false });
+  await load();
+  check("Other spellings：后端没上线（列表不带 other_spellings）⇒ 没有这一列", !(await evaluate("return $heads().includes('Other spellings');")));
+  check("Other spellings：后端没上线 ⇒ How to use 不提", !(await evaluate("return document.body.textContent.includes('Other spellings:');")));
+  await evaluate(`[...${rowOf("Alice Driver")}.querySelectorAll('button')].find(b => b.textContent.trim() === 'Edit').click();`);
+  await waitFor(`${dialog} && ${dialog}.textContent.includes('Edit — Alice Driver')`);
+  check("Other spellings：后端没上线 ⇒ 弹窗里没有这一格", await evaluate(`return !${spell};`));
+  await evaluate(`$btn('Cancel', ${dialog}).click();`);
+  await waitFor("!document.querySelector('[role=dialog]')");
+
+  await ctl({ spellings: true });
+  await load();
+  const heads = await evaluate("return $heads();");
+  check("Other spellings：列紧跟 Nickname", heads.slice(0, 3).join("|") === "Legal Name|Nickname|Other spellings", heads.join("|"));
+  check("Other spellings：表上逗号隔开、没有写 —", await evaluate(`return ${rowOf("Alice Driver")}.querySelector('[data-spellings]').textContent === 'JOE ROD' && ${rowOf("Bob Guide")}.querySelector('[data-spellings]').textContent === '—';`));
+  check("Other spellings：How to use 加了一条（原文）", await evaluate("return document.body.textContent.includes(\"Other spellings: other ways this person's name is written in the morning Excel or CCL (for example JOSEPH for Joe R). One per line. A spelling can belong to only one person. Removing a spelling means CCL imports stop matching it to this person.\");"));
+
+  // Edit list：能改（题 3 B，后端 bulk 01606b02 起收 other_spellings）
+  await evaluate("$btn('Edit list').click();");
+  await waitFor("document.querySelector('[data-spellings-input]')");
+  const sp1 = `document.querySelector('[data-spellings-input="1"]')`;
+  check("Other spellings：Edit list 里这一列是输入框、逗号隔开", await evaluate(`return ${sp1}.value === 'JOE ROD';`));
+  check("Other spellings：How to use 不再写临时那句", !(await evaluate("return document.body.textContent.includes(\"To change them, click Edit on that person's row.\");")));
+  await evaluate(`$setValue(${sp1}, 'JOE ROD, joseph');`);
+  await sleep(100);
+  let bb = (await mockLog()).length;
+  await evaluate("$btn('Save changes').click();");
+  await waitFor("document.querySelector('[data-spellings-error=\"1\"]')");
+  const bulk1 = (await since(bb, (e) => e.path === "/api/hr/profiles/bulk"))[0];
+  check("Other spellings：Edit list 存 ⇒ bulk 带 other_spellings 逗号串", JSON.stringify(bulk1?.body) === JSON.stringify({ edits: [{ id: 1, other_spellings: "JOE ROD, joseph" }] }), JSON.stringify(bulk1?.body));
+  check("Other spellings：Edit list 被拒 ⇒ 红字放在那个人那一格下面、格子红框、改动还在", await evaluate(`return document.querySelector('[data-spellings-error="1"]').textContent === 'JOSEPH is already used for Joe R. Remove it there first.' && ${sp1}.getAttribute('aria-invalid') === 'true' && ${sp1}.value === 'JOE ROD, joseph';`));
+  check("Other spellings：保存条也写 谁: 原因 Nothing was saved.", await evaluate("return document.body.textContent.includes('Alice Driver: JOSEPH is already used for Joe R. Remove it there first. Nothing was saved.');"));
+  await evaluate(`$setValue(${sp1}, 'JOE ROD, joe r');`);
+  check("Other spellings：一改这一格红字就消失", await waitFor("!document.querySelector('[data-spellings-error]')"));
+  await sleep(100);
+  await evaluate("$btn('Save changes').click();");
+  await waitFor("document.body.textContent.includes('1 profile saved')");
+  check("Other spellings：Edit list 存好 ⇒ 格子是后端规整后的样子、没有剩下的改动", await evaluate(`return ${sp1}.value === 'JOE R, JOE ROD' && !document.body.textContent.includes('unsaved change');`));
+  // 只是空格不同不算改动
+  await evaluate(`$setValue(${sp1}, ' JOE R ,JOE ROD ');`);
+  check("Other spellings：只是空格不同不算改动", await evaluate("return !document.body.textContent.includes('1 unsaved change');"));
+  await evaluate("$btn('Discard').click();");
+  await evaluate("$btn('Done').click();");
+  await waitFor("!document.querySelector('tbody input')");
+
+  // 弹窗：在 Dispatch 块
+  await evaluate(`[...${rowOf("Alice Driver")}.querySelectorAll('button')].find(b => b.textContent.trim() === 'Edit').click();`);
+  await waitFor(`${dialog} && ${spell}`);
+  check("Other spellings：弹窗里这一格在 Dispatch 块、带说明、显示已有写法", await evaluate(`
+    const fs = [...${dialog}.querySelectorAll('fieldset')].find(f => f.querySelector('legend')?.textContent === 'Dispatch');
+    return !!fs && fs.contains(${spell}) && ${spell}.value.split(String.fromCharCode(10)).includes('JOE ROD') && fs.textContent.includes('How the morning Excel or CCL writes this name');
+  `));
+  // 被拒：写法是别人的
+  let before = (await mockLog()).length;
+  await evaluate(`$setValue(${spell}, 'JOE ROD' + String.fromCharCode(10) + 'joseph');`);
+  await evaluate(`$setValue(${fieldIn("Notes")}, 'ZZ Test note');`);
+  await evaluate(`$btn('Save', ${dialog}).click();`);
+  await waitFor(`${dialog} && ${dialog}.textContent.includes('JOSEPH is already used for Joe R')`);
+  const after409 = await since(before, () => true);
+  check("Other spellings：被拒 ⇒ 弹窗不关、红字后端原话、格子红框", await evaluate(`return !!${dialog} && ${spell}.className.includes('b3261e');`));
+  check("Other spellings：先存写法；被拒时其他字段没存（没有 PUT profile）", after409.some((e) => /\/spellings$/.test(e.path)) && !after409.some((e) => /\/api\/hr\/profiles\/\d+$/.test(e.path) && e.method === "PUT"), JSON.stringify(after409.map((e) => e.method + " " + e.path)));
+  check("Other spellings：一行一个交给后端", JSON.stringify(after409.find((e) => /\/spellings$/.test(e.path))?.body) === JSON.stringify({ spellings: ["JOE ROD", "joseph"] }));
+  // 改好再存
+  before = (await mockLog()).length;
+  await evaluate(`$setValue(${spell}, 'JOE ROD' + String.fromCharCode(10) + ' joe r ' + String.fromCharCode(10) + String.fromCharCode(10));`);
+  await evaluate(`$btn('Save', ${dialog}).click();`);
+  await waitFor("!document.querySelector('[role=dialog]')");
+  const ok = await since(before, () => true);
+  check("Other spellings：存好 ⇒ 先 PUT spellings 再 PUT profile，弹窗关", ok.findIndex((e) => /\/spellings$/.test(e.path)) >= 0 && ok.findIndex((e) => /\/spellings$/.test(e.path)) < ok.findIndex((e) => /\/api\/hr\/profiles\/1$/.test(e.path) && e.method === "PUT"), JSON.stringify(ok.map((e) => e.method + " " + e.path)));
+  await waitFor(`${rowOf("Alice Driver")}.querySelector('[data-spellings]').textContent.includes('JOE R,')`);
+  check("Other spellings：表上显示后端规整后的写法（弹窗存）", await evaluate(`return ${rowOf("Alice Driver")}.querySelector('[data-spellings]').textContent === 'JOE R, JOE ROD';`));
+  // 只改别的字段 ⇒ 不调 spellings
+  before = (await mockLog()).length;
+  await evaluate(`[...${rowOf("Bob Guide")}.querySelectorAll('button')].find(b => b.textContent.trim() === 'Edit').click();`);
+  await waitFor(`${dialog} && ${spell}`);
+  await evaluate(`$setValue(${fieldIn("Notes")}, 'ZZ Test only notes');`);
+  await evaluate(`$btn('Save', ${dialog}).click();`);
+  await waitFor("!document.querySelector('[role=dialog]')");
+  check("Other spellings：没改写法 ⇒ 不调 spellings 接口", !(await reqs(before)).length);
+  // 只改写法 ⇒ 关弹窗前算有改动
+  await evaluate(`[...${rowOf("Bob Guide")}.querySelectorAll('button')].find(b => b.textContent.trim() === 'Edit').click();`);
+  await waitFor(`${dialog} && ${spell}`);
+  await evaluate(`$setValue(${spell}, 'BOBBY');`);
+  await evaluate(`$btn('Cancel', ${dialog}).click();`);
+  check("Other spellings：只改了写法就关 ⇒ 先问 Close without saving", await waitFor(`${dialog} && ${dialog}.textContent.includes('Close without saving your changes?')`));
+  await evaluate(`$btn('Discard', ${dialog}).click();`);
+  await waitFor("!document.querySelector('[role=dialog]')");
+
+  // Add person：先建人再存写法；写法被拒 ⇒ 用新建的人重开弹窗，不会重复建人
+  before = (await mockLog()).length;
+  await evaluate("$btn('Add person').click();");
+  await waitFor(`${dialog} && ${spell}`);
+  await evaluate(`$setValue(${fieldIn("Legal Name")}, 'ZZ Test Spell');`);
+  await evaluate(`$setValue(${spell}, 'JOSEPH');`);
+  await evaluate(`$btn('Save', ${dialog}).click();`);
+  await waitFor(`${dialog} && ${dialog}.textContent.includes('Edit — ZZ Test Spell')`);
+  check("Other spellings：Add person 写法被拒 ⇒ 人已建好，弹窗换成编辑这个人、红字说明、格子里的字还在", await evaluate(`return ${dialog}.textContent.includes('The person was added, but the other spellings were not saved: JOSEPH is already used for Joe R') && ${spell}.value === 'JOSEPH';`));
+  await evaluate(`$setValue(${spell}, 'ZZ SPELL');`);
+  await evaluate(`$btn('Save', ${dialog}).click();`);
+  await waitFor("!document.querySelector('[role=dialog]')");
+  const add = await since(before, () => true);
+  check("Other spellings：重开后再存不会重复建人（POST 只有 1 次）", add.filter((e) => e.path === "/api/hr/profiles" && e.method === "POST").length === 1, JSON.stringify(add.map((e) => e.method + " " + e.path)));
+  await waitFor(`${rowOf("ZZ Test Spell")}`);
+  check("Other spellings：新人的写法存上", await evaluate(`return ${rowOf("ZZ Test Spell")}.querySelector('[data-spellings]').textContent === 'ZZ SPELL';`));
+  await ctl({ spellings: false });
+}
 
 // ── 全部按照勾选（Annie 2026-10-30 置顶 10c）B 类：Human Resource 的改（Add person / Edit list）按 settings.hr.edit ──
 // 只看勾（2026-11-01）：看这一页 = settings.hr.view，改 = settings.hr.edit。

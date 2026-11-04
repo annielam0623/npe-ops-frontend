@@ -173,9 +173,20 @@ async function run() {
   {
     const gv = await evaluate("const i = $heads().indexOf('Guest Viewed'); return $rows().map(r => [r[1], r[i]]);");
     const byOrder = Object.fromEntries(gv);
-    check("Guest Viewed：洛杉矶时间 + 旧链接时红字 Wrong bus — resend link",
-      byOrder.A1001 === "10/8, 7:42 AMWrong bus — resend link", JSON.stringify(byOrder.A1001));
+    // G234 题 6 A（Annie 2026-11-03「其他都同意推荐」）：红字改成请客人重新打开链接，不再写 resend link。
+    check("Guest Viewed：洛杉矶时间 + 旧链接时红字 Bus changed — ask the guest to open the link again",
+      byOrder.A1001 === "10/8, 7:42 AMBus changed — ask the guest to open the link again", JSON.stringify(byOrder.A1001));
+    check("G234：红字的提示写请客人重新打开链接、按 Track，不用新链接；页面上没有 Wrong bus 了", await evaluate(`const s = [...document.querySelectorAll('tbody span')].find(e => e.textContent === 'Bus changed — ask the guest to open the link again'); return !!s && s.title.includes('Ask the guest to open the link in their text again and tap Track') && !document.body.textContent.includes('Wrong bus');`));
     check("Guest Viewed：没点过写 —、不提示重发", byOrder.A1003 === "—", JSON.stringify(byOrder.A1003));
+  }
+  {
+    const dv = await evaluate("const i = $heads().indexOf('Driver'); return $rows().map(r => [r[1], r[i]]);");
+    const byOrder = Object.fromEntries(dv);
+    check("G234 题 2 A / 4 B：换过司机的行，Driver 列名字下面一行 Driver changed after send (was FREDDY) — link now follows Ana",
+      byOrder.A1003 === "AnaDriver changed after send (was FREDDY) — link now follows Ana", JSON.stringify(byOrder.A1003));
+    check("G234 题 3 A：那一行是灰色小字（不是橙、红、绿，也不是链接）", await evaluate(`const s = document.querySelector('[data-driver-followed]'); return !!s && getComputedStyle(s).color === 'rgb(159, 179, 200)' && !s.closest('a');`));
+    check("G234：没换过司机的行不出这一句", !String(byOrder.A1001).includes("Driver changed"), JSON.stringify(byOrder.A1001));
+    check("G234：How to use 写了 Bus changed（请客人重新打开）、Driver changed after send、换司机只要在 Dispatch 改好 Save", await evaluate(`const t = document.body.textContent; return t.includes("means the driver is on a different bus from the one the guest last opened: ask the guest to open the link in their text again and tap Track. You don't need to send a new link.") && t.includes("the driver was changed in Dispatch after the text went out. The guest's link already follows the new driver. You don't need to send anything.") && t.includes("Driver changed (with or without a bus change): change the driver on Dispatch → Assign and Save. The guest's tracking link then follows the new driver to the bus they are on. You don't need to text the guest again.");`));
   }
   check("How to use 写了 Driver 和 Guest Viewed", await evaluate("return document.body.textContent.includes('Click a Driver name to see where that driver is right now') && document.body.textContent.includes('Guest Viewed only works while live tracking links are turned on');"));
   check("How to use 写了短信最多 300 字、只能普通字符、超了发 email（Annie 2026-10-15）", await evaluate("return document.body.textContent.includes('click Send →. SMS can be at most 300 characters, plain characters only (no emoji, curly quotes or long dashes); if it is longer, send it by email.');"));
@@ -1136,6 +1147,7 @@ async function run() {
     check("Ana（导游）那一列：Hello, Ana；On board 2 / 3；A1003 ✓ Boarded 7:02 AM；A1004 是刚标的 No show", await evaluate(`const t = ${ana}.textContent; return t.includes('Hello, Ana') && t.includes('On board 2 / 3') && ${ana}.querySelector('[data-live-guest="A1003"] [data-mark-time]').textContent === '✓ Boarded 7:02 AM';`));
     // 搜索：客人那一行标黄
     await evaluate("$setValue(document.querySelector('input[type=search]'), 'A1003');");
+    check("置顶 78：订单号旁加团简写（A1001 · GC、A1003 · ZN）；简写空（A1002）或没有这个键（A1004）只写单号", await evaluate(`const has = (col, o, s) => [...col.querySelector('[data-live-guest="' + o + '"]').querySelectorAll('div,span')].some(e => e.textContent.trim() === s); return has(${mike}, 'A1001', 'A1001 · GC') && has(${ana}, 'A1003', 'A1003 · ZN') && has(${mike}, 'A1002', 'A1002') && !${mike}.querySelector('[data-live-guest="A1002"]').textContent.includes('A1002 ·') && has(${ana}, 'A1004', 'A1004') && !${ana}.querySelector('[data-live-guest="A1004"]').textContent.includes('A1004 ·');`));
     check("搜索 A1003：Live drivers 里那位客人标黄", await waitFor(`${ana}.querySelector('[data-live-guest="A1003"]').className.includes('ring-yellow-400') && !${mike}.querySelector('[data-live-guest="A1001"]').className.includes('ring-yellow-400')`));
     await evaluate("$setValue(document.querySelector('input[type=search]'), '');");
     // 司机筛选：只看 Mike
@@ -1187,6 +1199,28 @@ async function run() {
     await openTracking();
     check("旧后端（没有 live_* 键）：Super Admin 也没有 Driver mark 列，表照旧", await evaluate("return ![...document.querySelectorAll('main thead th')].some((th) => th.textContent.includes('Driver mark'));"));
     await ctl({ live: false, staffPerms: null, superAdmin: false, extraWidgets: null });
+  }
+
+  // ── 置顶 58：Arrived at / Left at 两列（Annie「在tracking表上加两列吧，arrived at Left at」）──
+  {
+    await ctl({ arrivals: true });
+    await goto(`${APP}/morning-pickup/tracking`);
+    await waitFor("document.querySelectorAll('main tbody tr').length >= 4", 30000);
+    await helpers();
+    const hs = await evaluate("return $heads();");
+    const pl = hs.indexOf("Pickup Location");
+    check("58 新后端：Pickup Location 后面紧跟 Arrived at、Left at（存过列顺序的人也插在这里）", pl >= 0 && hs[pl + 1] === "Arrived at" && hs[pl + 2] === "Left at", hs.join(" | "));
+    const cells = await evaluate("const h = $heads(); const a = h.indexOf('Arrived at'), l = h.indexOf('Left at'); return Object.fromEntries($rows().map(r => [r[h.indexOf('Order #')], [r[a], r[l]]]));");
+    const t = (hhmm) => { const [hh, mm] = hhmm.split(":").map(Number); return `${new Date().toLocaleDateString("en-US", { timeZone: "America/Los_Angeles", month: "numeric", day: "numeric" })}, ${hh % 12 || 12}:${String(mm).padStart(2, "0")} ${hh < 12 ? "AM" : "PM"}`; };
+    check("58 到了又走：A1001 Arrived at / Left at 照 Check-in Time 的写法（洛杉矶时间）", cells.A1001?.[0] === t("05:38") && cells.A1001?.[1] === t("05:46"), JSON.stringify(cells.A1001));
+    check("58 到了没走：A1002 Arrived at 有、Left at「—」", cells.A1002?.[0] === t("05:53") && cells.A1002?.[1] === "—", JSON.stringify(cells.A1002));
+    check("58 没数据：A1003 两列都「—」", cells.A1003?.[0] === "—" && cells.A1003?.[1] === "—", JSON.stringify(cells.A1003));
+    await ctl({ arrivals: false });
+    await goto(`${APP}/morning-pickup/tracking`);
+    await waitFor("document.querySelectorAll('main tbody tr').length >= 4", 30000);
+    await helpers();
+    const old = await evaluate("return $heads();");
+    check("58 旧后端（行里没有 arrived_at）：不出这两列", !old.includes("Arrived at") && !old.includes("Left at"), old.join(" | "));
   }
 
   // ── 未登录 ──

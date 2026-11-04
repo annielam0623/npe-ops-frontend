@@ -309,7 +309,8 @@ function VehicleSelect({
       <option value="">No vehicle yet</option>
       {L.day.vehicles.map((v) => (
         <option key={v.id} value={v.id}>
-          {v.van_no}
+          {/* 没定位的车在下拉里就写出来（Annie 2026-11-03 No tracking 题 2 选 A）；下拉是浏览器自带的，只能写字。 */}
+          {v.has_tracking ? v.van_no : `${v.van_no} · No tracking`}
         </option>
       ))}
       {sel && !found ? (
@@ -603,7 +604,7 @@ function GpsPill({ v }: { v: { has_tracking: boolean } | null }) {
     </Pill>
   ) : (
     <Pill tone="bad" dot>
-      No live GPS
+      No tracking
     </Pill>
   );
 }

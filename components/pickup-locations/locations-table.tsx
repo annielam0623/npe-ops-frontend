@@ -8,6 +8,7 @@ import type { PickupLocation, ShuttleRoute, ShuttleSeason } from "@/types";
 import {
   ALIASES_MAX,
   ARRIVAL_RADIUS_DEFAULT,
+  DIRECTION_OPTIONS,
   type LocationDraft,
   safeHref,
   SHORT_MAX,
@@ -81,6 +82,7 @@ export function LocationsTable({
   onDelete,
   variant = "all",
   shuttle,
+  showDirection = false,
 }: {
   locations: PickupLocation[];
   /** 打开编辑的行（按 id）；搜索时草稿保留。 */
@@ -98,9 +100,11 @@ export function LocationsTable({
   variant?: TableVariant;
   /** variant = shuttle 时给。 */
   shuttle?: ShuttleTableProps;
+  /** 出 Direction 列（后端有了才出，Shuttle 块不出；置顶 72）。 */
+  showDirection?: boolean;
 }) {
   const isShuttle = variant === "shuttle";
-  const cols = isShuttle ? 8 : 7;
+  const cols = (isShuttle ? 8 : 7) + (showDirection ? 1 : 0);
   /** 后端已经有 Samsara 到站（GET 带 latitude）：编辑行出坐标格、看的行写坐标。 */
   const arrival = locations.some((l) => l.latitude !== undefined);
   const seasonName = shuttle?.seasons.find(
@@ -115,12 +119,25 @@ export function LocationsTable({
             <th className={cn(TH, "w-[13%]")}>
               {isShuttle ? "Stop" : "Hotel Name"}
             </th>
+            {showDirection ? (
+              <th
+                className={cn(TH, "w-[8%]")}
+                title="Used by Auto on Dispatch → Seat guests to split guests between buses. Not set counts as Flexible."
+              >
+                Direction
+              </th>
+            ) : null}
             {isShuttle ? (
               <th className={cn(TH, "w-[19%] bg-amber-300/10")}>
                 Times{seasonName ? ` — ${seasonName}` : ""}
               </th>
             ) : null}
-            <th className={cn(TH, isShuttle ? "w-[12%]" : "w-[16%]")}>
+            <th
+              className={cn(
+                TH,
+                isShuttle ? "w-[12%]" : showDirection ? "w-[13%]" : "w-[16%]",
+              )}
+            >
               Photo URL
             </th>
             <th
@@ -130,7 +147,7 @@ export function LocationsTable({
               Map image
             </th>
             <th className={cn(TH, "w-[15%]")}>Short (for SMS)</th>
-            <th className={cn(TH, "w-[20%]")}>
+            <th className={cn(TH, showDirection ? "w-[15%]" : "w-[20%]")}>
               Details (email &amp; guest page &amp; AI Agent)
             </th>
             <th
@@ -173,6 +190,7 @@ export function LocationsTable({
                   shuttle={shuttle}
                   cols={cols}
                   arrival={arrival}
+                  showDirection={showDirection}
                 />
               ) : (
                 <ViewRow
@@ -180,6 +198,7 @@ export function LocationsTable({
                   loc={loc}
                   variant={variant}
                   shuttle={shuttle}
+                  showDirection={showDirection}
                   busy={busyId === loc.id}
                   onEdit={() => onEdit(loc)}
                   onToggleActive={() => onToggleActive(loc)}
@@ -196,9 +215,12 @@ export function LocationsTable({
 }
 
 const ARRIVAL_HINT =
-  "Where the van stops for these guests. Live tracking records when a relay van comes within this many meters, and when it leaves. Leave both empty to stop recording this hotel.";
+  "Where the van stops for these guests. Live tracking records when a relay van comes within this many meters, and when it leaves. Paste the coordinates from Google Maps. Leave it empty to stop recording this hotel.";
 
-/** Samsara 到站：接客门口坐标 + 半径（米）。先暂存在编辑行，按这一行的 Save 才存。 */
+/**
+ * Samsara 到站：接客门口坐标 + 半径（米）。一格 Coordinates（置顶 59 Q3，Annie「要不就编辑的时候一格，保存后你自己分开两格」），
+ * 先暂存在编辑行，按这一行的 Save 才拆开、存。
+ */
 function ArrivalPointInputs({
   draft,
   disabled,
@@ -213,26 +235,15 @@ function ArrivalPointInputs({
       <div className="mb-0.5 text-[10px] text-[#1a1a1a] night:text-white/55">
         Pickup point (live tracking)
       </div>
-      {/* 一格一行：Hotel Name 那一列窄，并排放坐标会被截断。 */}
+      {/* 一格一行：Hotel Name 那一列窄，Within 放在下一行。 */}
       <div className="flex flex-col gap-1">
         <input
           type="text"
-          inputMode="decimal"
-          aria-label="Latitude"
-          placeholder="Latitude"
-          value={draft.latitude}
+          aria-label="Coordinates"
+          placeholder="e.g. 36.106711, -115.176612"
+          value={draft.coordinates}
           disabled={disabled}
-          onChange={(event) => onChange({ latitude: event.target.value })}
-          className={cn(INLINE_INPUT_CLASS, "min-w-0")}
-        />
-        <input
-          type="text"
-          inputMode="decimal"
-          aria-label="Longitude"
-          placeholder="Longitude"
-          value={draft.longitude}
-          disabled={disabled}
-          onChange={(event) => onChange({ longitude: event.target.value })}
+          onChange={(event) => onChange({ coordinates: event.target.value })}
           className={cn(INLINE_INPUT_CLASS, "min-w-0")}
         />
         <label className="flex items-center gap-1 text-[11px] text-[#1a1a1a] night:text-white/75">
@@ -261,6 +272,7 @@ function ViewRow({
   loc,
   variant,
   shuttle,
+  showDirection,
   busy,
   onEdit,
   onToggleActive,
@@ -270,6 +282,7 @@ function ViewRow({
   loc: PickupLocation;
   variant: TableVariant;
   shuttle?: ShuttleTableProps;
+  showDirection: boolean;
   busy: boolean;
   onEdit: () => void;
   onToggleActive: () => void;
@@ -319,6 +332,11 @@ function ViewRow({
           </label>
         ) : null}
       </td>
+      {showDirection ? (
+        <td className={TD_CLASS} data-direction={loc.direction ?? ""}>
+          <DirectionText value={loc.direction ?? null} />
+        </td>
+      ) : null}
       {variant === "shuttle" && shuttle ? (
         <td className={cn(TD_CLASS, "bg-amber-300/[.06] text-[12px]")}>
           <TimesCell
@@ -398,6 +416,28 @@ function ViewRow({
   );
 }
 
+/** Direction 一格：彩色小点 + 文字（点的颜色照 Annie 的酒店三色表）；没设 = 灰色 Not set。 */
+function DirectionText({ value }: { value: LocationDraft["direction"] }) {
+  const opt = DIRECTION_OPTIONS.find((o) => o.value === value);
+  if (!opt) {
+    return (
+      <span className="text-[12px] whitespace-nowrap text-[#888780] italic night:text-white/40">
+        Not set
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1.5 text-[12px] whitespace-nowrap">
+      <span
+        aria-hidden
+        className="inline-block size-2 rounded-full"
+        style={{ background: opt.dot }}
+      />
+      {opt.label}
+    </span>
+  );
+}
+
 /** 缩略图；加载不出来时写明 cannot load 并给出地址（多半是填成了网页而不是图片）。 */
 function MapThumb({ url }: { url: string }) {
   const [broken, setBroken] = useState(false);
@@ -443,6 +483,7 @@ function EditRow({
   shuttle,
   cols,
   arrival,
+  showDirection,
 }: {
   id: number;
   edit: EditState;
@@ -453,6 +494,7 @@ function EditRow({
   shuttle?: ShuttleTableProps;
   cols: number;
   arrival: boolean;
+  showDirection: boolean;
 }) {
   const { draft, saving, error } = edit;
   const set = <K extends keyof LocationDraft>(
@@ -495,6 +537,30 @@ function EditRow({
             />
           ) : null}
         </td>
+        {showDirection ? (
+          <td className={TD_CLASS}>
+            <select
+              aria-label="Direction"
+              data-direction-select
+              value={draft.direction ?? ""}
+              disabled={saving}
+              onChange={(event) =>
+                set(
+                  "direction",
+                  (event.target.value || null) as LocationDraft["direction"],
+                )
+              }
+              className={INLINE_INPUT_CLASS}
+            >
+              <option value="">Not set</option>
+              {DIRECTION_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </td>
+        ) : null}
         {variant === "shuttle" ? (
           <td className={cn(TD_CLASS, "bg-amber-300/[.06]")}>
             {showTimes ? (

@@ -111,6 +111,7 @@ export type {
 } from "./ops-summary";
 export type {
   ArrivalPoint,
+  PickupDirection,
   PickupLocation,
   PickupLocationInput,
   PickupLogAction,
@@ -229,6 +230,7 @@ export type {
   ManifestBlock,
   ManifestCard,
   ManifestFooterCell,
+  ManifestPaperColors,
   ManifestGoneGuest,
   ManifestGuest,
   ManifestLunch,

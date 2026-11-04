@@ -75,6 +75,8 @@ export interface ManifestGuest {
   rezdy_notes?: string | null;
   /** 票种里有 "+"：标黄。 */
   ticket_hl: boolean;
+  /** 票型格底色（后端照纸本取色，bus-footer-style ③）；null = 不涂。没带（旧后端）⇒ 照 ticket_hl 涂亮黄。 */
+  ticket_color?: string | null;
   /** 产品挂的 Extra 名（Bus Manifest setup，例 Heli）；没有为 ""。有值时整行用 `extra_row_color`。 */
   extra?: string;
   /** G65：只会是 null 或 "missing"（取消 / 改期的行在 ManifestView.gone 里）。 */
@@ -87,6 +89,12 @@ export interface ManifestGuest {
    */
   hotel_short?: string;
   pickup_time_short?: string;
+  /**
+   * 后端 36 给的 Pick-up Location 涂色（relay_color + hotel_first）：Annie 还没定哪几家涂、涂什么色（纸本是节色 / 车色、不是每家都涂），
+   * 先不用，照旧隔组涂节色。
+   */
+  relay_color?: string | null;
+  hotel_first?: boolean;
   /** Lunch 格的 B / T / V 三个固定位置（例 ["1 B", "", "2 V"]，0 份留空）；null = 没点餐 / 读不出，格里写「-」。 */
   lunch_slots?: [string, string, string] | null;
   /** 这单的餐份数和 Pax 对不上（含读不出、没写按默认算的）：屏幕上整格 Lunch 标红。 */
@@ -154,6 +162,10 @@ export interface ManifestLunchRow {
   defaulted: boolean;
   /** 三明治读不准时的 Rezdy 原文（Notes 列红字）。后端现在不带，带了才画。 */
   check_text?: string;
+  /** 客人的忌口 / 要求（Special Requirements 去掉三明治后剩的字，例「NO FETA」）：有字就黄底（照纸本 NOTES）。 */
+  notes?: string;
+  /** true = 三明治读不准，notes 是 Rezdy 原文、写红字。 */
+  notes_check?: boolean;
 }
 
 /** G198：每台车后面接的 Bee's 午餐表（团没分配午餐店时为 null，不出）。 */
@@ -165,7 +177,12 @@ export interface ManifestLunch {
   /** G199：店名。 */
   restaurant?: string;
   /** title 后端已拼好，例「LOWER 1P - 12 PAX」，照原文显示。 */
-  sections: { title: string; rows: ManifestLunchRow[] }[];
+  /** color：这一节标题的颜色（后端照纸本午餐单取色，没有 ⇒ 同 Bus Manifest 节色）；没带（旧后端）⇒ 前端按节名找。 */
+  sections: {
+    title: string;
+    rows: ManifestLunchRow[];
+    color?: string | null;
+  }[];
   totals: { pax: number; turkey: number; veggie: number; beef: number };
   /** 页脚（最多两行，用 \n 分开，换行照印）。 */
   note: string;
@@ -235,6 +252,9 @@ export interface ManifestAffiliate {
 }
 
 export interface ManifestFooterCell {
+  /** 格子是什么（seats / seats_left / seats_used / inbound / outbound / no_lunch / lunch / extra / 票型 / section / other）；旧后端没有。 */
+  key?: string;
+  /** 照这个字画（后端按团的版式给，照纸本）。 */
   label: string;
   value: number | null;
   /** Extra 的「<名字> SEATS LEFT」格（Bus Manifest setup 里设的，底色不同）。 */
@@ -259,6 +279,8 @@ export interface ManifestBlock {
   sections: ManifestSection[];
   totals: ManifestTotals;
   footer: ManifestFooterCell[];
+  /** 这辆车抬头的颜色（后端照纸本，按字母 / 团；没有 ⇒ 团色）。没带（旧后端）⇒ tour.band_color。 */
+  band_color?: string;
   empty_notes: boolean;
   /** G198：这台车的午餐表；没有这个键（后端没上线）或 null（团没分配午餐店）都不出。 */
   lunch?: ManifestLunch | null;
@@ -288,6 +310,10 @@ export interface ManifestView {
     manifest_version?: ManifestVersion;
     /** 出不出 Lunch 列（排了餐厅的团才出，三个版式都出）。 */
     lunch_column?: boolean;
+    /** 底部汇总框的版式（后端按团写死，照纸本）：standard / south / west / hoover。前端不出下拉，只照 footer 画。 */
+    footer_style?: string;
+    /** 纸本只有 Antelope 有：true 时 Special Requirements 右边多一列空的 ASSIST（给手写打勾）。 */
+    assist_column?: boolean;
     /**
      * Canyon order（置顶 41，Annie 2026-11-01「两件都动手」）：团里有两节以上 tour 节时才带。
      * canyon_sections = 这个团可能有的 tour 节名（Manifest setup）；canyon_pages = 默认的顺序和分页（每页一串节名：
@@ -299,6 +325,8 @@ export interface ManifestView {
   shuttle_colors: { outbound: string; inbound: string };
   /** Extra 客人整行的底色（后端 `EXTRA_ROW_COLOR`）。 */
   extra_row_color?: string;
+  /** 不分团的纸本颜色（后端 paper_colors.page_constants()，bus-footer-style ③）。没带（旧后端）⇒ 照旧写死的颜色。 */
+  paper_colors?: ManifestPaperColors;
   manifest: {
     id: number;
     file_name: string;
@@ -364,4 +392,21 @@ export interface DispatchPendingItem {
   /** 影响到哪一轮 / 哪台 Morning Relay 车；后端还没填时是 ""。 */
   relay: string;
   created_at: string;
+}
+
+/** GET manifest 的 `paper_colors`（后端 paper_colors.page_constants()）：照 Annie 10/6 纸本取的色。 */
+export interface ManifestPaperColors {
+  extra_row?: string;
+  /** Special Requirements 有字的黄底。 */
+  notes?: string;
+  /** 午餐单 NOTES（客人的忌口）黄底。 */
+  lunch_notes?: string;
+  /** 午餐单标题日期黄条、页脚 POC 黄条。 */
+  lunch_bar?: string;
+  /** 底部汇总框格头的灰。 */
+  foot_head?: string;
+  /** 确认号小表的黄（节没有自己的颜色时用）。 */
+  confirm_box?: string;
+  /** 午餐单「没写口味、按 Turkey 算」整行。 */
+  lunch_default_row?: string;
 }

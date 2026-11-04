@@ -36,12 +36,12 @@ const LIVE_MARKS = {
 const relayGuest = (id, first, last, pax, order) => {
   const mk = LIVE_MARKS[order];
   const st = mk && mk.driver === "Mike" ? mk : null;
-  return { id, first_name: first, last_name: last, pax, order_number: order, phone: "+15550000000", relay_status: st ? st.status : null, relay_status_at: st ? st.at : null, checked_in_at: order === "A1001" ? "5:31 AM" : "" };
+  return { id, first_name: first, last_name: last, pax, order_number: order, short_tag: order === "A1001" ? "GC" : "", phone: "+15550000000", relay_status: st ? st.status : null, relay_status_at: st ? st.at : null, checked_in_at: order === "A1001" ? "5:31 AM" : "" };
 };
 const tourGuest = (id, name, pax, order) => {
   const mk = LIVE_MARKS[order];
   const st = mk && mk.driver === "Ana" ? mk : null;
-  return { id, name, guide_name: name, pax, order_number: order, lunch_text: "1 B 1 T", guide_lunch: { text: "1 B 1 T", bad: false }, boarding: st ? st.status : null, boarding_at: st ? st.at : null, relay_status: null };
+  return { id, name, guide_name: name, pax, order_number: order, ...(order === "A1003" ? { short_tag: "ZN" } : {}), lunch_text: "1 B 1 T", guide_lunch: { text: "1 B 1 T", bad: false }, boarding: st ? st.status : null, boarding_at: st ? st.at : null, relay_status: null };
 };
 function livePeople() {
   const g1 = relayGuest(1, "ZZ Test", "One", 2, "A1001");
@@ -179,6 +179,8 @@ const rows = [
     email: "",
     driver: "Ana",
     driver_live_van: "",
+    // G234：发送后在 Dispatch 换了司机（FREDDY → Ana），链接已跟新司机。
+    driver_followed: { from: "FREDDY", to: "Ana", at: "2026-10-08T05:10:00-07:00", by: "annie" },
     guest_viewed_at: null,
     guest_link_stale: false,
     vehicle_no: "769",
@@ -356,7 +358,11 @@ http
       const date = url.searchParams.get("date");
       // 司机实时页（ctl.live）：每行多 live_status / live_status_at / live_driver / live_van / ns_unhandled（后端 fc 定）。
       // ns_unhandled 模拟「标在最后一次 Take action 之后」：No show 而且还没人点 Take action。
-      const withLive = (r) => {
+      // 置顶 58：ctl.arrivals = 新后端，每行带 arrived_at / left_at（A1001 到了又走、A1002 到了没走、其余 null）。
+      const ARR = { A1001: { arrived_at: laIso("05:38"), left_at: laIso("05:46") }, A1002: { arrived_at: laIso("05:53"), left_at: null } };
+      const withArrivals = (r) => (ctl.arrivals ? { ...r, ...(ARR[r.order_number] || { arrived_at: null, left_at: null }) } : r);
+      const withLive = (r0) => {
+        const r = withArrivals(r0);
         if (!ctl.live) return r;
         const mk = LIVE_MARKS[r.order_number];
         if (!mk) return { ...r, live_status: null, live_status_at: null, live_driver: "", live_van: "", ns_unhandled: false };

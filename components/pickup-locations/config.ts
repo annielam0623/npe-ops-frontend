@@ -1,5 +1,6 @@
 import type {
   ArrivalPoint,
+  PickupDirection,
   PickupLocation,
   PickupLocationInput,
   PickupStopTime,
@@ -24,10 +25,14 @@ export interface LocationDraft {
   is_shuttle: boolean;
   /** Shuttle 站的小时刻表：一行一条线路的一班，每个季节一格。先暂存，按这一行的 Save 才存。 */
   times: TimeRowDraft[];
-  /** Samsara 到站的接客门口（输入框原样字符串，按 Save 才校验、才存；arrivalPointOf）。 */
-  latitude: string;
-  longitude: string;
+  /**
+   * Samsara 到站的接客门口：一格 Coordinates，原样存 Google Maps 复制的「纬度, 经度」一串
+   * （置顶 59 Q3，Annie「要不就编辑的时候一格，保存后你自己分开两格」）；按 Save 才拆开、校验、存（arrivalPointOf）。
+   */
+  coordinates: string;
   radius: string;
+  /** Direction（置顶 72）：undefined = 后端还没有这一项，不出、不送。按这一行的 Save 才存（PATCH /direction）。 */
+  direction?: PickupDirection | null;
 }
 
 /** 后端 samsara_arrivals 的默认半径和上下限（同 migrate_v146）。 */
@@ -35,12 +40,24 @@ export const ARRIVAL_RADIUS_DEFAULT = 10;
 export const ARRIVAL_RADIUS_MIN = 1;
 export const ARRIVAL_RADIUS_MAX = 500;
 
-/** 草稿里的坐标 → PATCH …/arrival-point 的 body；填得不对给一句英文（不发请求）。两格都空 = 清掉。 */
+/** 「36.106711, -115.176612」或「36.106711 -115.176612」：两个数，逗号或空格分开。 */
+const COORDINATES = /^([+-]?\d+(?:\.\d+)?)\s*(?:,|\s)\s*([+-]?\d+(?:\.\d+)?)$/;
+
+/** 坐标 → 填进 Coordinates 那一格的写法（同 Google Maps 复制出来的样子）。 */
+export function coordinatesText(
+  latitude: number | null | undefined,
+  longitude: number | null | undefined,
+): string {
+  return latitude == null || longitude == null
+    ? ""
+    : `${latitude}, ${longitude}`;
+}
+
+/** 草稿里的坐标 → PATCH …/arrival-point 的 body；填得不对给一句英文（不发请求）。Coordinates 空 = 清掉。 */
 export function arrivalPointOf(
   draft: LocationDraft,
 ): { point: ArrivalPoint } | { error: string } {
-  const lat = draft.latitude.trim();
-  const lon = draft.longitude.trim();
+  const text = draft.coordinates.trim();
   const r = draft.radius.trim();
   const radius = r === "" ? ARRIVAL_RADIUS_DEFAULT : Number(r);
   if (
@@ -51,22 +68,37 @@ export function arrivalPointOf(
     return {
       error: `Radius must be a whole number of meters from ${ARRIVAL_RADIUS_MIN} to ${ARRIVAL_RADIUS_MAX}.`,
     };
-  if (!lat && !lon)
+  if (!text)
     return { point: { latitude: null, longitude: null, radius_m: radius } };
-  if (!lat || !lon)
+  const m = COORDINATES.exec(text);
+  if (!m)
     return {
-      error: "Fill in both latitude and longitude, or leave both empty.",
+      error:
+        "Paste the coordinates as latitude, longitude — for example 36.106711, -115.176612.",
     };
-  const la = Number(lat);
-  const lo = Number(lon);
-  if (!Number.isFinite(la) || !Number.isFinite(lo))
-    return { error: "Latitude and longitude must be numbers." };
+  const la = Number(m[1]);
+  const lo = Number(m[2]);
   if (la < -90 || la > 90 || lo < -180 || lo > 180)
     return {
       error:
-        "Latitude must be between -90 and 90, longitude between -180 and 180.",
+        "Those coordinates are not on the map. Latitude comes first (between -90 and 90), then longitude (between -180 and 180).",
     };
   return { point: { latitude: la, longitude: lo, radius_m: radius } };
+}
+
+/** Direction 下拉和显示（界面文字 North / South / Flexible / Not set；点的颜色照 Annie 给的酒店三色表）。 */
+export const DIRECTION_OPTIONS: readonly {
+  value: PickupDirection;
+  label: string;
+  dot: string;
+}[] = [
+  { value: "north", label: "North", dot: "#2563eb" },
+  { value: "south", label: "South", dot: "#ea8a1a" },
+  { value: "flexible", label: "Flexible", dot: "#dc2626" },
+];
+
+export function directionLabel(d: PickupDirection | null | undefined): string {
+  return DIRECTION_OPTIONS.find((o) => o.value === d)?.label ?? "Not set";
 }
 
 /** 一格：时间、No service，或者两样都没有（= 这一季还没填）。 */
@@ -98,8 +130,7 @@ export function emptyDraft(): LocationDraft {
     is_tour_bus: false,
     is_shuttle: false,
     times: [],
-    latitude: "",
-    longitude: "",
+    coordinates: "",
     radius: "",
   };
 }
@@ -169,12 +200,12 @@ export function draftOf(loc: PickupLocation): LocationDraft {
     is_tour_bus: !!loc.is_tour_bus,
     is_shuttle: !!loc.is_shuttle,
     times: timeRowsOf(loc.times),
-    latitude: loc.latitude == null ? "" : String(loc.latitude),
-    longitude: loc.longitude == null ? "" : String(loc.longitude),
+    coordinates: coordinatesText(loc.latitude, loc.longitude),
     radius:
       loc.arrival_radius_m == null
         ? String(ARRIVAL_RADIUS_DEFAULT)
         : String(loc.arrival_radius_m),
+    ...("direction" in loc ? { direction: loc.direction ?? null } : {}),
   };
 }
 
@@ -314,6 +345,7 @@ export const LOG_FIELDS: readonly { key: string; label: string }[] = [
   { key: "is_tour_bus", label: "Type: Tour bus" },
   { key: "is_shuttle", label: "Type: Shuttle" },
   { key: "times", label: "Times" },
+  { key: "direction", label: "Direction" },
 ];
 
 const LOG_TIME_FORMAT = new Intl.DateTimeFormat("en-US", {

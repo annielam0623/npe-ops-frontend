@@ -90,6 +90,7 @@ import {
 import type {
   ManifestBlock,
   ManifestFooterCell,
+  ManifestPaperColors,
   ManifestGoneGuest,
   ManifestGuest,
   ManifestLunch,
@@ -222,13 +223,6 @@ const WRAP_TD =
   "border border-[#c8ced2] px-[7px] py-[3px] align-middle whitespace-normal [overflow-wrap:anywhere]";
 /** 取消 / 改期那一块照旧的小字（不是车上的名单）。 */
 const TD_SMALL = cn(TD, "text-[13.5px]");
-
-/** 合计行照纸本改名（G198 Q9）；后端打印 / Excel 那边由后端改。 */
-const FOOTER_LABEL: Record<string, string> = {
-  "BUS SEATS LEFT": "AVAILABLE SEATS LEFT",
-  "BUS SEATS USED": "SEATS USED",
-  "NO LUNCH (INCL. SHUTTLE)": "No Lunch (including shuttle)",
-};
 
 /**
  * 一个团、一天的 manifest，照纸本版式（同旧页面 /admin/dispatch/manifest）。
@@ -1238,7 +1232,8 @@ function BusCard({
         {/* .mf-band */}
         <div
           className="flex flex-wrap items-end gap-[22px] rounded-[3px] px-3 py-1.5"
-          style={{ background: data.tour.band_color }}
+          // 每辆车自己的抬头色（后端照纸本，bus-footer-style ④）；旧后端没带 ⇒ 团色。
+          style={{ background: block.band_color || data.tour.band_color }}
         >
           <span className="text-[26px] font-extrabold">{data.tour.name}</span>
           {/* 司机兼导游（纸本「Driver Guide: Lankun」，Annie 2026-11-02「全部同意。动手」）：同一个人只写一格。 */}
@@ -1380,6 +1375,7 @@ function BusCard({
         />
         <Footer
           cells={block.footer}
+          headColor={data.paper_colors?.foot_head}
           sandwich={block.restaurant?.totals ?? null}
           big={version === "marcello"}
         />
@@ -1394,6 +1390,7 @@ function BusCard({
       {block.lunch && version !== "lankun" ? (
         <LunchSheet
           lunch={block.lunch}
+          paper={data.paper_colors}
           dateLabel={data.date_label}
           block={block}
           tourSections={block.sections}
@@ -1552,7 +1549,9 @@ function GuestTable({
   // 屏幕上留、打印去掉；打印页和 Excel 是后端出的，照旧没有）。
   const boarding = version !== "west";
   const boardingClass = version === "lankun" ? "print:hidden" : "";
-  const cols = columns.length + (lettered ? 1 : 0) + (boarding ? 1 : 0);
+  const assist = !!data.tour.assist_column;
+  const cols =
+    columns.length + (lettered ? 1 : 0) + (assist ? 1 : 0) + (boarding ? 1 : 0);
   const th = { fontSize: `${HEAD_PX[version].th}px` };
   // Canyon order 分页的地方（置顶 41 题 3 A）：屏幕上画一条「New page」虚线；真正换页在后端的打印页。
   const breaks = newPageBefore(sections, data.tour.canyon_pages);
@@ -1621,6 +1620,11 @@ function GuestTable({
                 </th>
               );
             })}
+            {data.tour.assist_column ? (
+              <th data-assist-col className={TH} style={th}>
+                ASSIST
+              </th>
+            ) : null}
             {lettered ? (
               <th className={TH} style={th}>
                 Bus
@@ -1732,11 +1736,14 @@ function SectionHeading({ section: s }: { section: ManifestSection }) {
  */
 function NotesCell({
   guest: g,
+  hl,
   onSave,
   font,
   editing: textEditing,
 }: {
   guest: ManifestGuest;
+  /** 有字的黄底（后端 paper_colors.notes，照纸本）；没带 ⇒ 照旧 #fff200。 */
+  hl?: string;
   /** 暂存（null = 恢复 Rezdy 原文）。 */
   onSave: (guest: ManifestGuest, notes: string | null) => void;
   font: CellFont;
@@ -1826,11 +1833,14 @@ function NotesCell({
               }
             : undefined
       }
-      style={font.style("notes", g.order_number)}
+      style={{
+        ...font.style("notes", g.order_number),
+        ...(shown && hl ? { background: hl } : null),
+      }}
       className={cn(
         "border border-[#c8ced2] px-[7px] py-[3px] align-middle",
         textEdit.className,
-        shown && "bg-[#fff200]",
+        shown && !hl && "bg-[#fff200]",
         g.notes_check
           ? "min-w-[220px] whitespace-pre-wrap text-[#d00000]"
           : "whitespace-nowrap",
@@ -2046,8 +2056,20 @@ function SectionRows({
                     {...cell(
                       "ticket",
                       g,
-                      cn(WRAP_TD, g.ticket_hl && "bg-[#fff200]"),
+                      cn(
+                        WRAP_TD,
+                        // 旧后端没带 ticket_color ⇒ 照旧带「+」亮黄。
+                        g.ticket_color === undefined &&
+                          g.ticket_hl &&
+                          "bg-[#fff200]",
+                      ),
                     )}
+                    // 票型格照纸本取色（后端 ticket_color，bus-footer-style ③）；null = 不涂。
+                    style={
+                      g.ticket_color
+                        ? { background: g.ticket_color }
+                        : undefined
+                    }
                   >
                     {g.ticket}
                     {s.kind !== "tour" &&
@@ -2066,6 +2088,7 @@ function SectionRows({
                   <NotesCell
                     key={key}
                     guest={g}
+                    hl={data.paper_colors?.notes}
                     onSave={onNotesChange}
                     font={font}
                     editing={editing}
@@ -2075,6 +2098,10 @@ function SectionRows({
                 return null;
             }
           })}
+          {/* ASSIST（纸本只有 Antelope 有，后端 assist_column）：空格子，给手写打勾。 */}
+          {data.tour.assist_column ? (
+            <td data-assist-cell className={cn(TD, "min-w-[54px]")} />
+          ) : null}
           {lettered ? (
             <td className={TD}>
               <BusSelect
@@ -2109,6 +2136,7 @@ function SectionRows({
             <AttractionBox
               section={s}
               color={color}
+              boxColor={data.paper_colors?.confirm_box}
               tourManifestId={attraction.tourManifestId}
               busKey={attraction.busKey}
               onError={attraction.onError}
@@ -2187,10 +2215,13 @@ const ATTR_FIELDS = [
 function AttractionBox({
   section,
   color,
+  boxColor,
   busKey,
 }: {
   section: ManifestSection;
   color: string;
+  /** 节没有自己的颜色时的黄（后端 paper_colors.confirm_box，照纸本）；没带 ⇒ 照旧 #fff27a。 */
+  boxColor?: string;
   tourManifestId: number;
   busKey: string;
   onError: (e: unknown) => void;
@@ -2216,7 +2247,13 @@ function AttractionBox({
         "my-0.5 grid max-w-[820px] grid-cols-[repeat(auto-fit,minmax(140px,1fr))] items-end gap-x-3 gap-y-1.5 rounded border border-[#c9b200] bg-[#fff27a] px-2.5 py-1.5",
         staged && UNSAVED_RING,
       )}
-      style={section.color ? { background: color } : undefined}
+      style={
+        section.color
+          ? { background: color }
+          : boxColor
+            ? { background: boxColor }
+            : undefined
+      }
     >
       <div className="col-span-full text-[11px] font-extrabold">
         {section.title} Confirmation Information
@@ -2289,10 +2326,13 @@ function RestaurantBlock({
 
 function Footer({
   cells,
+  headColor,
   sandwich = null,
   big = false,
 }: {
   cells: ManifestFooterCell[];
+  /** 格头的灰（后端 paper_colors.foot_head，照纸本）；没带 ⇒ 照旧 #c9d3dc。自定的格子照旧淡紫。 */
+  headColor?: string;
   /** Lankun：合计一排最后加 TOTAL SANDWICH（定 18，读不出的按 Turkey 算，后端算好）。 */
   sandwich?: ManifestRestaurant["totals"] | null;
   /** Marcello：合计一排的数字一起放大（Q24）。 */
@@ -2304,16 +2344,21 @@ function Footer({
     <div className="mt-2.5 flex overflow-x-auto border border-[#9aa]">
       {cells.map((c) => (
         <div
-          key={c.label}
+          key={c.key ?? c.label}
+          data-footer-key={c.key}
           className="flex min-w-[92px] flex-[1_1_0] flex-col items-center border-r border-[#9aa] last:border-r-0"
         >
           <span
             className={cn(
               "flex h-8 w-full items-center justify-center px-[3px] py-0.5 text-center text-[11px] leading-[1.2] font-extrabold text-[#222] uppercase",
-              c.custom ? "bg-[#ddd0f0]" : "bg-[#c9d3dc]",
+              c.custom ? "bg-[#ddd0f0]" : !headColor && "bg-[#c9d3dc]",
             )}
+            style={
+              !c.custom && headColor ? { background: headColor } : undefined
+            }
           >
-            {FOOTER_LABEL[c.label] ?? c.label}
+            {/* 名字照后端给的画（后端按团的版式写死，照纸本；Annie「全部按照我上传的纸本颜色来，不要改」）。 */}
+            {c.label}
           </span>
           <span
             className={cn(
@@ -2353,11 +2398,14 @@ function Footer({
  */
 function LunchSheet({
   lunch,
+  paper,
   dateLabel,
   block,
   tourSections,
 }: {
   lunch: ManifestLunch;
+  /** 纸本颜色（后端 paper_colors）；没带 ⇒ 照旧写死的颜色。 */
+  paper?: ManifestPaperColors;
   dateLabel: string;
   block: ManifestBlock;
   tourSections: ManifestSection[];
@@ -2372,7 +2420,13 @@ function LunchSheet({
       data-lunch
       className={cn(CARD, "max-w-[820px]")}
     >
-      <div className="bg-[#fff27a] p-1.5 text-center text-[24px] font-extrabold">
+      <div
+        className={cn(
+          "p-1.5 text-center text-[24px] font-extrabold",
+          !paper?.lunch_bar && "bg-[#fff27a]",
+        )}
+        style={paper?.lunch_bar ? { background: paper.lunch_bar } : undefined}
+      >
         {dateLabel}
       </div>
       <div className="mt-0.5 mb-1.5 text-center text-[12px] text-[#333]">
@@ -2408,12 +2462,15 @@ function LunchSheet({
           <tbody>
             {lunch.sections.map((s) => {
               // 后端的 title 已拼好（「LOWER 1P - 12 PAX」）：按节名开头找这一节的颜色，名字长的先配（VIP LOWER 不配到 LOWER）。
-              const color = [...tourSections]
-                .sort((a, b) => b.title.length - a.title.length)
-                .find(
-                  (x) =>
-                    s.title === x.title || s.title.startsWith(`${x.title} `),
-                )?.color;
+              // 后端照纸本给了午餐单节色就用它；旧后端没带 ⇒ 照节名找 Bus Manifest 的节色。
+              const color =
+                s.color ||
+                [...tourSections]
+                  .sort((a, b) => b.title.length - a.title.length)
+                  .find(
+                    (x) =>
+                      s.title === x.title || s.title.startsWith(`${x.title} `),
+                  )?.color;
               return (
                 <Fragment key={s.title}>
                   <tr>
@@ -2432,22 +2489,23 @@ function LunchSheet({
                     <tr
                       key={`${r.name}-${i}`}
                       data-lunch-row={r.name}
-                      className={r.defaulted ? "bg-[#fff200]" : undefined}
+                      className={
+                        r.defaulted && !paper?.lunch_default_row
+                          ? "bg-[#fff200]"
+                          : undefined
+                      }
+                      style={
+                        r.defaulted && paper?.lunch_default_row
+                          ? { background: paper.lunch_default_row }
+                          : undefined
+                      }
                     >
                       <td className={LTD}>{r.name}</td>
                       <td className={N}>{r.pax}</td>
                       <td className={N}>{r.turkey}</td>
                       <td className={N}>{r.veggie}</td>
                       <td className={N}>{r.beef}</td>
-                      <td
-                        className={cn(
-                          "border border-[#c8ced2] px-1.5",
-                          r.check_text &&
-                            "w-[240px] text-[11px] leading-[13px] font-bold whitespace-normal text-[#d00000]",
-                        )}
-                      >
-                        {r.check_text || ""}
-                      </td>
+                      <LunchNotes row={r} hl={paper?.lunch_notes} />
                     </tr>
                   ))}
                 </Fragment>
@@ -2501,12 +2559,51 @@ function LunchSheet({
       {lunch.note ? (
         <div
           data-lunch-note
-          className="mt-2.5 bg-[#ffff00] px-1.5 py-1 text-center text-[14px] leading-[1.45] font-bold whitespace-pre-line"
+          className={cn(
+            "mt-2.5 px-1.5 py-1 text-center text-[14px] leading-[1.45] font-bold whitespace-pre-line",
+            !paper?.lunch_bar && "bg-[#ffff00]",
+          )}
+          style={paper?.lunch_bar ? { background: paper.lunch_bar } : undefined}
         >
           {lunch.note}
         </div>
       ) : null}
     </section>
+  );
+}
+
+/**
+ * 午餐单 NOTES（照纸本第 4 页「NO FETA」黄底，后端 rows[].notes / notes_check）：读不准 = Rezdy 原文红字；
+ * 有忌口 / 要求 = 黄底照写；旧后端只有 check_text 时照旧红字。
+ */
+function LunchNotes({
+  row: r,
+  hl,
+}: {
+  row: ManifestLunch["sections"][number]["rows"][number];
+  /** 黄底（后端 paper_colors.lunch_notes）；没带 ⇒ 照旧 #fff909。 */
+  hl?: string;
+}) {
+  const red =
+    r.notes !== undefined ? !!r.notes_check && !!r.notes : !!r.check_text;
+  const text = r.notes !== undefined ? r.notes : (r.check_text ?? "");
+  return (
+    <td
+      data-lunch-notes={text || undefined}
+      className={cn(
+        "border border-[#c8ced2] px-1.5",
+        red
+          ? "w-[240px] text-[11px] leading-[13px] font-bold whitespace-normal text-[#d00000]"
+          : text &&
+              cn(
+                "text-[15px] font-bold whitespace-normal",
+                !hl && "bg-[#fff909]",
+              ),
+      )}
+      style={!red && text && hl ? { background: hl } : undefined}
+    >
+      {text}
+    </td>
   );
 }
 

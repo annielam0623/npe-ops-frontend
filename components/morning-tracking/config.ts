@@ -22,6 +22,8 @@ export type ColumnKey =
   | "guest_viewed"
   | "pickup_time"
   | "pickup_location"
+  | "arrived_at"
+  | "left_at"
   | "sms_status"
   | "email_status"
   | "agent_name";
@@ -45,6 +47,10 @@ export const COLUMNS: readonly { key: ColumnKey; label: string }[] = [
   { key: "guest_viewed", label: "Guest Viewed" },
   { key: "pickup_time", label: "Pickup Time" },
   { key: "pickup_location", label: "Pickup Location" },
+  // 置顶 58（Annie「在tracking表上加两列吧，arrived at Left at」）：Samsara 记到的 relay 车到 / 离接客酒店的时间。
+  // 旧后台不认这两个键，会自己丢掉；拖过列的人存档里没有，补在最后（parseColumnOrder）。
+  { key: "arrived_at", label: "Arrived at" },
+  { key: "left_at", label: "Left at" },
   { key: "sms_status", label: "SMS Status" },
   { key: "email_status", label: "Email Status" },
   { key: "agent_name", label: "Agent" },
@@ -55,6 +61,13 @@ export const DEFAULT_COLUMN_ORDER: readonly ColumnKey[] = COLUMNS.map(
 );
 
 const KNOWN_KEYS = new Set<string>(DEFAULT_COLUMN_ORDER);
+
+/** 存档里没有这一列时插在哪一列后面。 */
+const NEW_COLUMN_AFTER: Partial<Record<ColumnKey, ColumnKey>> = {
+  driver_mark: "checkin_time",
+  arrived_at: "pickup_location",
+  left_at: "arrived_at",
+};
 
 /**
  * 存下来的顺序 → 能用的顺序：认识的键按存的顺序，新加的列补在后面，不认识的丢掉。
@@ -83,8 +96,10 @@ export function parseColumnOrder(raw: string | null): ColumnKey[] | null {
   }
   for (const key of DEFAULT_COLUMN_ORDER) {
     if (!seen.has(key)) {
-      // Driver mark 是看签到时一起看的：存档里没有时插在 Check-in Time 后面（找不到再补在最后），别的新列照旧补在最后。
-      const after = key === "driver_mark" ? order.indexOf("checkin_time") : -1;
+      // 存档里没有的新列：Driver mark 插在 Check-in Time 后面，Arrived at / Left at 跟在 Pickup Location 后面
+      // （置顶 58，看接客时一起看）；找不到再补在最后，别的新列照旧补在最后。
+      const anchor = NEW_COLUMN_AFTER[key];
+      const after = anchor ? order.indexOf(anchor) : -1;
       if (after >= 0) order.splice(after + 1, 0, key);
       else order.push(key);
     }

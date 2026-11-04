@@ -316,7 +316,7 @@ async function run() {
   await sleep(600);
   check("存不了：写原因、勾还原", await evaluate(`return document.body.textContent.includes('Could not change Tour bus departure for Resorts World: Admin access required') && ${depBox("Resorts World")}.checked === true;`));
   await ctl({ depFail: false });
-  check("How to use 说明 Tour bus departure", await evaluate("return document.body.textContent.includes('Guests picked up there are left out when you click Pull from manifests in Dispatch.');"));
+  check("How to use 说明 Tour bus departure", await evaluate("return document.body.textContent.includes('Guests picked up there are left out of Morning Relay on Dispatch → Send.');"));
   // ── ⬆ Import（全站通用导入，Annie 2026-10-29「批量导游同意推荐。动手」；后端 G220 76de8f3，模拟接口照后端形状）──
   await ctl({ failList: false });
   await openPage(`${APP}/settings/pickup-locations`);
@@ -547,6 +547,51 @@ async function run() {
   await waitFor("document.body.textContent.includes('✓ Added')");
   const addPost = (await since(before, (e) => e.method === "POST"))[0];
   check("勾 Shuttle stop 再 Add：POST 带 is_shuttle true", addPost?.body?.is_shuttle === true && addPost.body.is_tour_bus === false, JSON.stringify(addPost?.body));
+
+  // ── 置顶 72 Direction（Annie 2026-11-04「动手」；后端 57 形状：GET 每行 direction，PATCH /{id}/direction）──
+  check("72：GET 没有 direction 键 ⇒ 不出 Direction 列", !(await evaluate("return [...document.querySelectorAll('th')].some(th => th.textContent.trim() === 'Direction');")));
+  await ctl({ direction: true });
+  await openPage(APP + "/settings/pickup-locations");
+  await waitFor("document.querySelector('[data-block=tour] [data-direction]')");
+  await helpers();
+  await evaluate("window.$pickDir = (v) => { const s = document.querySelector('[data-block=tour] [data-direction-select]'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, v); s.dispatchEvent(new Event('change', { bubbles: true })); };");
+  const dirRow = (name) => "[...document.querySelectorAll('[data-block=tour] tbody tr')].find(tr => tr.children[0].textContent.startsWith(" + JSON.stringify(name) + "))";
+  const dirText = (name) => evaluate("return " + dirRow(name) + "?.children[1].textContent.trim();");
+  check("72：Tour bus 块第 2 列是 Direction；Shuttle 块不出", await evaluate("const h = [...document.querySelectorAll('[data-block=tour] thead th')].map(th => th.textContent.trim()); return h[1] === 'Direction' && ![...document.querySelectorAll('[data-block=shuttle] thead th')].some(th => th.textContent.trim() === 'Direction');"));
+  const four = [await dirText("Wynn"), await dirText("Aria"), await dirText("Bellagio"), await dirText("ZZ Test Direction Inn")].join("|");
+  check("72：显示 North / South / Flexible / Not set", four === "North|South|Flexible|Not set", four);
+  await evaluate(dirRow("ZZ Test Direction Inn") + ".querySelector('button').click();");
+  await waitFor("document.querySelector('[data-block=tour] [data-direction-select]')");
+  check("72：✏ Edit 出下拉 Not set / North / South / Flexible，照现在的值", await evaluate("const s = document.querySelector('[data-block=tour] [data-direction-select]'); return s.value === '' && [...s.options].map(o => o.textContent).join('|') === 'Not set|North|South|Flexible';"));
+  let before72 = (await mockLog()).length;
+  await evaluate("$pickDir('north');");
+  await sleep(300);
+  check("72：改了下拉先不存（没发请求）", (await since(before72, (e) => e.method !== "GET")).length === 0);
+  await evaluate("$btn('Save', document.querySelector('[data-block=tour] [data-edit-row]')).click();");
+  await waitFor("!document.querySelector('[data-block=tour] [data-edit-row]')");
+  const sent72 = await since(before72, (e) => e.method !== "GET");
+  const dirPatch = sent72.find((e) => /\/direction$/.test(e.path));
+  check("72：按 Save ⇒ PUT 这一行 + PATCH /direction {direction:'north'}", sent72.some((e) => e.method === "PUT") && dirPatch && dirPatch.method === "PATCH" && JSON.stringify(dirPatch.body) === '{"direction":"north"}', JSON.stringify(sent72.map((e) => e.method + " " + e.path + " " + JSON.stringify(e.body))));
+  check("72：存好重拉显示 North", await waitFor(dirRow("ZZ Test Direction Inn") + "?.children[1].textContent.trim() === 'North'"));
+  await evaluate(dirRow("Wynn") + ".querySelector('button').click();");
+  await waitFor("document.querySelector('[data-block=tour] [data-edit-row]')");
+  before72 = (await mockLog()).length;
+  await evaluate("$btn('Save', document.querySelector('[data-block=tour] [data-edit-row]')).click();");
+  await waitFor("!document.querySelector('[data-block=tour] [data-edit-row]')");
+  check("72：Direction 没改 ⇒ 不发 PATCH /direction", !(await since(before72, (e) => /\/direction$/.test(e.path))).length);
+  await ctl({ dirFail: true });
+  await evaluate(dirRow("Aria") + ".querySelector('button').click();");
+  await waitFor("document.querySelector('[data-block=tour] [data-direction-select]')");
+  await evaluate("$pickDir('flexible');");
+  await evaluate("$btn('Save', document.querySelector('[data-block=tour] [data-edit-row]')).click();");
+  check("72：PATCH 被拒 ⇒ 行留着、红字写原因 + 其他已存", await waitFor("document.querySelector('[data-block=tour] [data-edit-row]')?.textContent.includes('Could not save Direction: Direction must be North, South, Flexible, or Not set. The other boxes were saved.')"));
+  await ctl({ dirFail: false });
+  before72 = (await mockLog()).length;
+  await evaluate("$btn('Save', document.querySelector('[data-block=tour] [data-edit-row]')).click();");
+  await waitFor("!document.querySelector('[data-block=tour] [data-edit-row]')");
+  check("72：再按 Save 存上 Flexible", (await since(before72, (e) => /\/direction$/.test(e.path)))[0]?.body?.direction === "flexible" && (await waitFor(dirRow("Aria") + "?.children[1].textContent.trim() === 'Flexible'")));
+  check("72：How to use 写了 Direction 怎么用", await evaluate("const t = document.body.textContent.replace(/\\s+/g, ' '); return t.includes('Direction (only in the Tour bus block): click ✏ Edit and pick North, South, or Flexible, then Save.') && t.includes('Bus A takes the side with more guests (North or South), the last bus takes the other side') && t.includes('Not set counts as Flexible.') && t.includes('If both sides have the same number of guests, Bus A takes South.') && t.includes('Auto never splits an order: guests who still do not fit stay in Not on a bus for you to place.');"));
+  await ctl({ direction: false });
   await ctl({ split: false });
 
   // Samsara 到站（后端 samsara-arrivals）：编辑行里填接客门口的坐标 + 半径，先暂存、按 Save 才存（PUT 之后另发 PATCH …/arrival-point）。
@@ -569,14 +614,19 @@ async function run() {
     await helpers();
     check("新后端、还没填坐标：看的行不写 Pickup point", await evaluate(`return !${rowOf("Bellagio")}.querySelector('[data-arrival-point-view]');`));
     await openBellagio();
-    check("编辑行：酒店名下面 Pickup point (live tracking)，Latitude / Longitude 空着，半径默认 10", await evaluate(`return ${er}.querySelector('[data-arrival-point]').textContent.includes('Pickup point (live tracking)') && ${inp("Latitude")}.value === '' && ${inp("Longitude")}.value === '' && ${inp("Radius in meters")}.value === '10';`));
-    // 只填一个：不发请求、红字，改动留着
-    await evaluate(`$setValue(${inp("Latitude")}, '36.1126');`);
+    check("编辑行：酒店名下面 Pickup point (live tracking)，一格 Coordinates 空着（提示 e.g. 36.106711, -115.176612），半径默认 10；没有 Latitude / Longitude 两格", await evaluate(`return ${er}.querySelector('[data-arrival-point]').textContent.includes('Pickup point (live tracking)') && ${inp("Coordinates")}.value === '' && ${inp("Coordinates")}.placeholder === 'e.g. 36.106711, -115.176612' && ${inp("Radius in meters")}.value === '10' && !${inp("Latitude")} && !${inp("Longitude")};`));
+    // 只贴一个数：不发请求、红字，改动留着
+    await evaluate(`$setValue(${inp("Coordinates")}, '36.1126');`);
     let before = (await mockLog()).length;
     await evaluate(`$btn('Save', ${er}).click();`);
     await sleep(300);
-    check("只填纬度按 Save：不发请求、红字 Fill in both latitude and longitude…、改动留着", (await since(before, (e) => e.method === "PUT" || e.method === "PATCH")).length === 0 && (await evaluate(`return ${er}.textContent.includes('Could not save: Fill in both latitude and longitude, or leave both empty.') && ${inp("Latitude")}.value === '36.1126';`)));
-    await evaluate(`$setValue(${inp("Longitude")}, '-115.1767'); $setValue(${inp("Radius in meters")}, '0');`);
+    check("只贴一个数按 Save：不发请求、红字 Paste the coordinates as latitude, longitude…、改动留着", (await since(before, (e) => e.method === "PUT" || e.method === "PATCH")).length === 0 && (await evaluate(`return ${er}.textContent.includes('Could not save: Paste the coordinates as latitude, longitude — for example 36.106711, -115.176612.') && ${inp("Coordinates")}.value === '36.1126';`)));
+    // 贴反了（经度在前）：纬度超出 -90..90
+    await evaluate(`$setValue(${inp("Coordinates")}, '-115.1767, 36.1126');`);
+    await evaluate(`$btn('Save', ${er}).click();`);
+    await sleep(300);
+    check("贴反了：不发请求、红字 Those coordinates are not on the map. Latitude comes first…", (await since(before, (e) => e.method === "PUT" || e.method === "PATCH")).length === 0 && (await evaluate(`return ${er}.textContent.includes('Those coordinates are not on the map. Latitude comes first (between -90 and 90), then longitude (between -180 and 180).');`)));
+    await evaluate(`$setValue(${inp("Coordinates")}, '36.1126, -115.1767'); $setValue(${inp("Radius in meters")}, '0');`);
     await evaluate(`$btn('Save', ${er}).click();`);
     await sleep(300);
     check("半径 0：不发请求、红字 Radius must be a whole number of meters from 1 to 500.", (await since(before, (e) => e.method === "PUT" || e.method === "PATCH")).length === 0 && (await evaluate(`return ${er}.textContent.includes('Radius must be a whole number of meters from 1 to 500.');`)));
@@ -585,8 +635,18 @@ async function run() {
     await evaluate(`$btn('Save', ${er}).click();`);
     await waitFor(`!${er} && ${rowOf("Bellagio")}?.querySelector('[data-arrival-point-view]')`);
     const sent = await since(before, (e) => e.method === "PUT" || e.method === "PATCH");
-    check("Save：先 PUT 酒店，再 PATCH arrival-point {latitude, longitude, radius_m}（数字）", sent.length === 2 && sent[0].method === "PUT" && sent[1].method === "PATCH" && sent[1].path.endsWith("/arrival-point") && JSON.stringify(sent[1].body) === JSON.stringify({ latitude: 36.1126, longitude: -115.1767, radius_m: 15 }), JSON.stringify(sent));
-    check("存好：绿字 ✓ Saved Bellagio，看的行写 Pickup point: 36.1126, -115.1767 (15 m)", await evaluate(`return document.body.textContent.includes('✓ Saved Bellagio') && ${rowOf("Bellagio")}.querySelector('[data-arrival-point-view]').textContent.replace(/\\s+/g, ' ').trim() === 'Pickup point: 36.1126, -115.1767 (15 m)';`), await evaluate(`return ${rowOf("Bellagio")}?.querySelector('[data-arrival-point-view]')?.textContent;`));
+    check("Save：先 PUT 酒店，再 PATCH arrival-point，一格拆成 {latitude, longitude, radius_m}（数字）", sent.length === 2 && sent[0].method === "PUT" && sent[1].method === "PATCH" && sent[1].path.endsWith("/arrival-point") && JSON.stringify(sent[1].body) === JSON.stringify({ latitude: 36.1126, longitude: -115.1767, radius_m: 15 }), JSON.stringify(sent));
+    check("存好：绿字 ✓ Saved Bellagio，看的行写 Pickup point: 36.1126, -115.1767 (15 m)", await evaluate(`return document.body.textContent.includes('✓ Saved Bellagio') && ${rowOf("Bellagio")}.querySelector('[data-arrival-point-view]').textContent.replace(/\s+/g, ' ').trim() === 'Pickup point: 36.1126, -115.1767 (15 m)';`), await evaluate(`return ${rowOf("Bellagio")}?.querySelector('[data-arrival-point-view]')?.textContent;`));
+    // 再点 Edit：存好的坐标照 Google Maps 的写法回到一格里
+    await openBellagio();
+    check("再点 Edit：Coordinates 一格写 36.1126, -115.1767", await evaluate(`return ${inp("Coordinates")}.value === '36.1126, -115.1767';`), await evaluate(`return ${inp("Coordinates")}?.value;`));
+    // 空格分开也认
+    await evaluate(`$setValue(${inp("Coordinates")}, '36.2  -115.2');`);
+    before = (await mockLog()).length;
+    await evaluate(`$btn('Save', ${er}).click();`);
+    await waitFor(`!${er}`);
+    const spaced = (await since(before, (e) => e.method === "PATCH"))[0];
+    check("空格分开（36.2  -115.2）也认：PATCH {36.2, -115.2}", JSON.stringify(spaced?.body) === JSON.stringify({ latitude: 36.2, longitude: -115.2, radius_m: 15 }), JSON.stringify(spaced?.body));
     // 只改了别的格：不发 PATCH
     await openBellagio();
     await evaluate(`$setValue(${er}.querySelector('input[aria-label="Short (for SMS)"]'), 'Bell lobby');`);
@@ -597,15 +657,15 @@ async function run() {
     // 坐标存不上：酒店已存、红字写清楚只有坐标没存，编辑行留着
     await ctl({ arrivalFail: true });
     await openBellagio();
-    await evaluate(`$setValue(${inp("Latitude")}, ''); $setValue(${inp("Longitude")}, '');`);
+    await evaluate(`$setValue(${inp("Coordinates")}, '');`);
     await evaluate(`$btn('Save', ${er}).click();`);
-    check("PATCH 失败：红字 The hotel was saved, but not the pickup point…，编辑行留着、改动还在", await waitFor(`${er}?.textContent.includes('The hotel was saved, but not the pickup point:') && ${inp("Latitude")}.value === ''`));
+    check("PATCH 失败：红字 The hotel was saved, but not the pickup point…，编辑行留着、改动还在", await waitFor(`${er}?.textContent.includes('The hotel was saved, but not the pickup point:') && ${inp("Coordinates")}.value === ''`));
     await ctl({ arrivalFail: false });
     before = (await mockLog()).length;
     await evaluate(`$btn('Save', ${er}).click();`);
     await waitFor(`!${er}`);
     const clear = (await since(before, (e) => e.method === "PATCH"))[0];
-    check("两格都清空再 Save：PATCH 送 latitude / longitude null（不再记这家），看的行不写 Pickup point", JSON.stringify(clear?.body) === JSON.stringify({ latitude: null, longitude: null, radius_m: 15 }) && (await waitFor(`!${rowOf("Bellagio")}.querySelector('[data-arrival-point-view]')`)), JSON.stringify(clear?.body));
+    check("Coordinates 清空再 Save：PATCH 送 latitude / longitude null（不再记这家），看的行不写 Pickup point", JSON.stringify(clear?.body) === JSON.stringify({ latitude: null, longitude: null, radius_m: 15 }) && (await waitFor(`!${rowOf("Bellagio")}.querySelector('[data-arrival-point-view]')`)), JSON.stringify(clear?.body));
     await ctl({ arrival: false });
   }
 

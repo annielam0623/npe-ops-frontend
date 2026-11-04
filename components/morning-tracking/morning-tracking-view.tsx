@@ -388,6 +388,8 @@ export function MorningTrackingView() {
     [nsSeen, now],
   );
   const showMarks = hasLiveMarks(allRows);
+  // 置顶 58：后端带了到 / 离时间才出 Arrived at / Left at 两列（旧后端没有这两个键）。
+  const showArrivals = allRows.some((r) => "arrived_at" in r);
   const livePeople = useMemo(() => {
     const people = live.kind === "ready" ? live.data.people : [];
     if (!activeDriver) return people;
@@ -734,7 +736,9 @@ export function MorningTrackingView() {
                         // 没勾 See prices, agent & commission（orders.money_view，题 8）：Agent 列整列不出（后端给的是空字符串）。
                         (canSeeMoney || k !== "agent_name") &&
                         // 后端还没带司机标记（旧版）：Driver mark 列不出。
-                        (showMarks || k !== "driver_mark"),
+                        (showMarks || k !== "driver_mark") &&
+                        (showArrivals ||
+                          (k !== "arrived_at" && k !== "left_at")),
                     )}
                     onReorder={reorderColumns}
                     onOpenConversation={(row) => openConversation(row, false)}
@@ -757,7 +761,9 @@ export function MorningTrackingView() {
             "Check-in shows ✓ Checked In or ⏳ Pending.",
             "Click a number in Bus # to see where that bus is now. Samsara opens in a new tab. A number you cannot click has no live map: it is not in Settings → Vehicles, or that vehicle has no Samsara link.",
             "Click a Driver name to see where that driver is right now, even if they switched buses after dispatch. A name you cannot click means we could not match that driver to a live vehicle.",
-            'Guest Viewed shows when that guest opened their tracking link today. "—" means they have not clicked it yet. If the van changed after that, you\'ll see "Wrong bus — resend link" in red: that guest is still looking at the old van and needs a fresh text with the new van number.',
+            'Guest Viewed shows when that guest opened their tracking link today. "—" means they have not clicked it yet. "Bus changed — ask the guest to open the link again" in red means the driver is on a different bus from the one the guest last opened: ask the guest to open the link in their text again and tap Track. You don\'t need to send a new link.',
+            "\"Driver changed after send — link now follows …\" under a driver's name: the driver was changed in Dispatch after the text went out. The guest's link already follows the new driver. You don't need to send anything.",
+            "Driver changed (with or without a bus change): change the driver on Dispatch → Assign and Save. The guest's tracking link then follows the new driver to the bus they are on. You don't need to text the guest again.",
             "Click a Notes or WhatsApp cell to read and reply: tick SMS to guest or Email to guest, click Send →. SMS can be at most 300 characters, plain characters only (no emoji, curly quotes or long dashes); if it is longer, send it by email.",
             "When a message is handled, click ✓ Mark as actioned (or Take action in the table). If a new message comes in afterward, the cell goes back to ⚠️ Take action — clicking it once does not clear later messages too.",
             "A Phone AI message means a guest called and did not get their confirmation, or said our email or phone is wrong. The message says what the AI promised the guest, usually that it will be sent within 15 minutes: check any new email or phone with the guest, resend it, then click ✓ Mark as actioned. The same message also goes to reservations@.",

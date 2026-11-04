@@ -17,7 +17,8 @@ export type UserRole =
  * POST /api/users/{id}/role 接受的角色（与后端 app/auth.py 的 ASSIGNABLE_ROLES 一致）。
  * supervisor 要等后端上线才接受，页面按 `/api/me` 有没有 `is_supervisor` 决定给不给选。
  */
-export type AssignableRole = "staff" | "supervisor" | "admin" | "driver" | "guide";
+export type AssignableRole =
+  "staff" | "supervisor" | "admin" | "driver" | "guide";
 
 /** GET /api/users 返回数组中的一项；数组按 id 升序。 */
 export interface AdminUser {

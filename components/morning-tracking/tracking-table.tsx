@@ -5,6 +5,7 @@ import { type DragEvent, type ReactNode, useRef, useState } from "react";
 import { ChannelIcon, WHATSAPP_GREEN } from "@/components/ui/channel-icon";
 import { ColResizer, useColumnSizing } from "@/components/ui/column-sizing";
 import { ConversationPreview } from "@/components/ui/conversation-preview";
+import { driverFollowedText } from "@/lib/driver-follow";
 import { usePermissions } from "@/lib/staff-permissions";
 import { cn } from "@/lib/utils";
 import { sameSiteLiveUrl, vehicleLiveUrl } from "@/lib/vehicles-api";
@@ -368,7 +369,7 @@ function Cell({
     case "driver": {
       // 司机名点了看他**现在**开的那台车（换过车也对），同旧页面 2026-10-08；后端只给车号，地址前端拼（同 Vehicles 的 Open map）。
       const liveVan = row.driver_live_van?.trim();
-      content =
+      const name =
         row.driver && liveVan ? (
           <a
             href={vehicleLiveUrl(liveVan)}
@@ -382,6 +383,20 @@ function Cell({
         ) : (
           row.driver || "—"
         );
+      // G234（题 2 A、3 A、4 B）：发送后在 Dispatch 换了司机、链接已跟新司机——名字下面一行灰色小字，不用做什么。
+      content = row.driver_followed ? (
+        <>
+          {name}
+          <span
+            data-driver-followed
+            className="mt-0.5 block text-[10.5px] text-[#9fb3c8]"
+          >
+            {driverFollowedText(row.driver_followed)}
+          </span>
+        </>
+      ) : (
+        name
+      );
       break;
     }
     case "guest_viewed":
@@ -392,10 +407,10 @@ function Cell({
             <>
               <br />
               <span
-                title="Guest is still viewing the old link — the van changed since they clicked. Wrong bus is shown on their page."
+                title="The driver is on a different bus from the one this guest last opened. Ask the guest to open the link in their text again and tap Track. No new link is needed."
                 className="text-[10px] font-semibold text-[#e74c3c]"
               >
-                Wrong bus — resend link
+                Bus changed — ask the guest to open the link again
               </span>
             </>
           ) : null}
@@ -410,6 +425,12 @@ function Cell({
     case "pickup_location":
       content = row.pickup_location || "—";
       className = "text-[12px]";
+      break;
+    case "arrived_at":
+    case "left_at":
+      // 同 Check-in Time 的写法（洛杉矶时间「11/4, 6:18 AM」）；没数据「—」。
+      content = formatCheckinTime(row[columnKey] ?? null);
+      className = "text-[11px] text-[#7a9bbe]";
       break;
     case "agent_name":
       content = row.agent_name || "—";

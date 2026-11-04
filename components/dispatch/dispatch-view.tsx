@@ -33,6 +33,12 @@ import {
   saveDispatchSection,
 } from "@/lib/dispatch-api";
 import { fetchManifest, syncManifests } from "@/lib/dispatch-manifest-api";
+import {
+  type DriverFollowResult,
+  followSkippedText,
+  followUpdatedText,
+  hasFollowNews,
+} from "@/lib/driver-follow";
 import { isYmd, shiftYmd } from "@/lib/la-date";
 import { resolveTourColor } from "@/lib/tour-colors";
 import { usePageVisibility } from "@/lib/page-visibility";
@@ -100,6 +106,7 @@ import {
 import { BusIcon } from "./icons";
 import { Rail, useCheckOpen } from "./rail";
 import { RelayPanel } from "./relay-panel";
+import { useRelayListOpener } from "./relay-list-open";
 import {
   isAutoWindow,
   notNeededRows,
@@ -223,6 +230,8 @@ export function DispatchView() {
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [notice, setNotice] = useState<Notice>(null);
+  /** G234 题 7 A：这次存（整天 / 单元 / 复制）改了几位已发过客人的链接、哪几台车没改成。下一次存、换天时换掉。 */
+  const [follow, setFollow] = useState<DriverFollowResult | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
   /**
    * staff 动过手、还没存（自动保存只存 staff 改的；打开时 CCL 预填、按人数补开的车不自动存——
@@ -459,6 +468,31 @@ export function DispatchView() {
       return {
         ...d,
         guides: insertByName(d.guides, { id: p.id, name: p.name }),
+      };
+    });
+  }
+
+  /** 名单里改了名字 / 电话：这一页的名单和司机 / 导游下拉马上换成新名字（不重读这一天）。 */
+  function rosterEdited(p: RosterPerson) {
+    const swap = <T extends { id: number; name: string }>(list: T[]) =>
+      list.map((x) =>
+        x.id === p.id ? { ...x, name: p.name, phone: p.phone } : x,
+      );
+    setRoster((r) =>
+      r ? { ...r, drivers: swap(r.drivers), guides: swap(r.guides) } : r,
+    );
+    setDay((d) => {
+      if (!d) return d;
+      return {
+        ...d,
+        drivers: d.drivers.map((x) =>
+          x.id === p.id
+            ? { ...x, name: p.name, initials: initialsOf(p.name) }
+            : x,
+        ),
+        guides: d.guides.map((x) =>
+          x.id === p.id ? { ...x, name: p.name } : x,
+        ),
       };
     });
   }
@@ -998,6 +1032,7 @@ export function DispatchView() {
 
   async function goTo(date: string) {
     setNotice(null);
+    setFollow(null);
     setLoading(true);
     lock.clearEnded();
     await lock.release();
@@ -1128,6 +1163,7 @@ export function DispatchView() {
       const j = await saveDispatchDay(date, toSave, cclImportId, lock.token());
       // 存好服务器就放开了。
       lock.forget();
+      setFollow(hasFollowNews(j.driver_follow) ? j.driver_follow! : null);
       if (!(await load(date))) return false;
       const names = j.typed_names ?? [];
       // Farm out 车被删 / 取消 / 换了合作公司：只在客人已经收过通知时才说一句（不自动补发）。
@@ -1185,6 +1221,15 @@ export function DispatchView() {
   }
   const saveRef = useRef(save);
   saveRef.current = save;
+  /**
+   * Assign 顶上统计条旁的 Relay List 键（置顶 70，Annie 2026-11-03「Relay List  动手」）：新标签打开这天的 Relay list，
+   * 有没存的改动先问要不要存（只读的人不存，直接看已保存的）。Send 页原来的 📋 Relay list 键拿掉（题 2 B）。
+   */
+  const relayList = useRelayListOpener({
+    date: day?.run_date ?? "",
+    dirty: unsaved,
+    onSave: viewOnly ? undefined : () => saveRef.current(),
+  });
 
   /**
    * 只存一个单元（Annie 2026-10-18「动手」；后端 POST /api/dispatch/section）：这个单元所有的车整块替换，
@@ -1268,6 +1313,7 @@ export function DispatchView() {
       delete unitFailRef.current[unit];
       // 这个团的客人后端重新分过车了；Relay 面板、Step 1 卡片跟着重读（同整天保存后）。
       setManifestVersion((v) => v + 1);
+      setFollow(hasFollowNews(j.driver_follow) ? j.driver_follow! : null);
       const names = j.typed_names ?? [];
       const foNotified = j.farm_out?.already_notified ?? [];
       flashSaved(
@@ -1396,6 +1442,7 @@ export function DispatchView() {
     try {
       const j = await copyDispatchDay(date, day.copy_from, lock.token());
       lock.forget();
+      setFollow(hasFollowNews(j.driver_follow) ? j.driver_follow! : null);
       setPending(null);
       if (await load(date)) {
         const lines: string[] = [];
@@ -1549,13 +1596,13 @@ export function DispatchView() {
     ]);
   }
 
-  /** Send 页第 2 轮的 Copy 1st Round：复制完切回 Assign，让人看过、Save 了再回来 Pull。 */
+  /** Send 页第 2 轮的 Copy 1st Round：复制完切回 Assign，让人看过、Save 了再回 Send（自动重取）。 */
   function copyFirstRoundFromSend() {
     copyFirstRound(META.relay_shifts[1]);
     switchTab("assign");
     setNotice({
       tone: "ok",
-      text: "Copied the 1st Round cars into the 2nd Round. Check them; once they are saved, go back to Send and pull again.",
+      text: "Copied the 1st Round cars into the 2nd Round. Check them; once they are saved, go back to Send: the guests load again.",
     });
   }
 
@@ -2037,12 +2084,46 @@ export function DispatchView() {
                   </p>
                 ) : null}
 
+                {/* G234 题 7 A（preview ④）：改了司机、Save 后——灰字说跟了几位，没改成的车红字（后端原因原样 + 句号）。 */}
+                {follow ? (
+                  <div
+                    role="status"
+                    data-driver-follow
+                    className="flex items-start justify-between gap-3 rounded-xl border border-white/10 bg-white/[.04] px-4 py-[13px] text-[13px] leading-[1.55]"
+                  >
+                    <div className="flex flex-col gap-1">
+                      {follow.updated_orders > 0 ? (
+                        <span data-follow-updated className="text-[#cbd5e1]">
+                          {followUpdatedText(follow)}
+                        </span>
+                      ) : null}
+                      {follow.skipped.map((s, i) => (
+                        <span
+                          key={i}
+                          data-follow-skipped
+                          className="text-[#fca5a5]"
+                        >
+                          {followSkippedText(s)}
+                        </span>
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setFollow(null)}
+                      className="text-[12px] whitespace-nowrap text-[#cbd5e1] underline"
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                ) : null}
+
                 {/* 旧 `.toprow`：统计条（三个数）+ 右上角要看的事。 */}
+                {/* 统计条 + Relay List 键（置顶 70）：始终同一行、一样高；窗口变窄统计条跟着缩，键不换行。 */}
                 <section
                   aria-label="Summary"
-                  className="grid grid-cols-1 items-stretch gap-[18px]"
+                  className="flex min-w-0 items-stretch gap-3"
                 >
-                  <div className="flex flex-wrap items-stretch rounded-[14px] border border-white/10 bg-white/[.04] px-1.5 py-1">
+                  <div className="flex min-w-0 flex-1 flex-nowrap items-stretch overflow-hidden rounded-[14px] border border-white/10 bg-white/[.04] px-1.5 py-0.5">
                     <Stat
                       icon="👤"
                       value={analysis.driversUsed}
@@ -2072,7 +2153,17 @@ export function DispatchView() {
                       />
                     ))}
                   </div>
+                  <button
+                    type="button"
+                    data-relay-list
+                    disabled={navDisabled}
+                    onClick={() => relayList.open(null)}
+                    className="inline-flex flex-none items-center gap-1.5 rounded-[14px] border border-[#fff605] bg-[#fff605] px-5 text-[16px] font-bold whitespace-nowrap text-[#111] hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50 max-sm:px-3 max-sm:text-[14px]"
+                  >
+                    📋 Relay List
+                  </button>
                 </section>
+                {relayList.dialog}
 
                 {/* 旧 `.cols`：≤1300px 拆成一栏，右栏落到卡片下面。 */}
                 <div className="grid grid-cols-1 items-start gap-[18px]">
@@ -2732,6 +2823,7 @@ export function DispatchView() {
                   // 不留存之前读的司机名单（服务端按存好的排车发）。
                   key={`relay-${day.run_date}-${manifestVersion}`}
                   date={day.run_date}
+                  active={tab === "send"}
                   dirty={unsaved}
                   disabled={navDisabled}
                   onUnauthorized={redirectToLogin}
@@ -2784,8 +2876,10 @@ export function DispatchView() {
           <RosterDialog
             roster={roster}
             canAdd={canAddRoster}
+            canEdit={canAddRoster && roster.can_edit === true}
             onClose={() => setRosterOpen(false)}
             onAdded={rosterAdded}
+            onEdited={rosterEdited}
             onUnauthorized={redirectToLogin}
           />
         ) : null}
@@ -2930,23 +3024,26 @@ function Stat({
   border?: boolean;
 }) {
   return (
+    // 四格等宽、图标对齐，数字在上、说明在下（置顶 70）；窄了说明字截成「…」。
     <div
       className={cn(
-        "flex min-w-0 items-center gap-2.5 px-5 py-3",
+        "flex min-w-0 flex-1 basis-0 items-center gap-2.5 px-[clamp(8px,1.2vw,16px)] py-1.5",
         border && "border-l border-white/10",
       )}
     >
       <span
         aria-hidden
-        className="flex size-[26px] flex-none items-center justify-center rounded-lg bg-white/[.07] text-[13px]"
+        className="flex size-6 flex-none items-center justify-center rounded-lg bg-white/[.07] text-[12px]"
       >
         {icon}
       </span>
-      <span>
-        <span className="text-[19px] leading-[1.1] font-bold text-white tabular-nums">
+      <span className="flex min-w-0 flex-col leading-[1.15]">
+        <span className="text-[17px] font-bold whitespace-nowrap text-white tabular-nums">
           {value}
         </span>
-        <span className="ml-[.3em] text-[12px] text-[#94a3b8]">{label}</span>
+        <span className="truncate text-[11.5px] text-[#94a3b8]" title={label}>
+          {label}
+        </span>
       </span>
     </div>
   );
@@ -3054,12 +3151,23 @@ function HowToUse() {
           add the person to Human Resource).
         </li>
         <li>
+          No tracking (red) under a vehicle means it has no live GPS. Guests on
+          it still get the link and can check in; the text doesn&rsquo;t mention
+          live tracking.
+        </li>
+        <li>
           Morning Relay: pick each car&rsquo;s hotels in Add hotel. 2nd Round:
           Copy 1st Round copies the cars, drivers and hotels.
         </li>
         <li>
           &quot;Not on a bus&quot; (orange) lists orders with no room. Drag an
           order onto another bus of the tour, or pick the bus in its list.
+        </li>
+        <li>
+          Arrange seats lists each bus by hotel, A to Z, with the same hotel
+          together. Click a hotel above a list to tick all its orders (click
+          again to untick; you can pick several), then pick the bus under the
+          lists and click Move selected orders.
         </li>
         <li>
           A yellow bar means CCL posted a change: Apply changes puts it on the

@@ -1,6 +1,13 @@
 // 模拟后端：Pickup Locations 页。控制：POST /__ctl {fail401, staff, failList}；GET /__log。
 const http = require("http");
-const ctl = { fail401: false, staff: false, failList: false, depFail: false, split: false, timesFail: false, importFail: false, importConflict: false, previewBad: false };
+const ctl = { fail401: false, staff: false, failList: false, depFail: false, split: false, timesFail: false, importFail: false, importConflict: false, previewBad: false, direction: false, dirFail: false };
+// 置顶 72：POST /__ctl {direction:true} ⇒ GET 每行带 direction（后端 57 的形状），另加三家团车酒店；dirFail ⇒ PATCH /direction 400。
+const DIR_SEED = { Bellagio: "flexible", "Treasure Island": "flexible" };
+const DIR_EXTRA = [
+  { hotel_name: "Aria", instruction_short: "Aria", direction: "south" },
+  { hotel_name: "Wynn", instruction_short: "Wynn", direction: "north" },
+  { hotel_name: "ZZ Test Direction Inn", instruction_short: "ZZ", direction: null },
+];
 const log = [];
 let nextId = 50;
 let locations = [
@@ -119,6 +126,10 @@ http.createServer(async (req, res) => {
   if (p === "/__ctl") {
     const b = await readBody(req);
     if (b && b.split && !ctl.split) locations = splitData();
+    if (b && b.direction && !ctl.direction) {
+      for (const l of locations) if (!("direction" in l)) l.direction = DIR_SEED[l.hotel_name] ?? null;
+      for (const x of DIR_EXTRA) locations.push({ id: nextId++, photo_url: null, instruction: "Meet at the front entrance", aliases: "", map_image_url: "", is_active: true, is_tour_departure: false, is_tour_bus: true, is_shuttle: false, times: [], ...x });
+    }
     Object.assign(ctl, b);
     return send(res, 200, ctl);
   }
@@ -211,6 +222,16 @@ http.createServer(async (req, res) => {
     if (m[1] === "1") return send(res, 409, { detail: "Aria is in the Dispatch schedule (Oct 3). It cannot be deleted while it is scheduled." });
     locations = locations.filter((l) => l.id !== Number(m[1]));
     return send(res, 200, { success: true });
+  }
+  m = p.match(/^\/api\/pickup-locations\/(\d+)\/direction$/);
+  if (m && req.method === "PATCH") {
+    const body = await readBody(req);
+    entry.body = body;
+    if (ctl.dirFail || !["north", "south", "flexible", null].includes(body.direction)) return send(res, 400, { detail: "Direction must be North, South, Flexible, or Not set." });
+    const loc = locations.find((l) => l.id === Number(m[1]));
+    if (!loc) return send(res, 404, { detail: "That hotel is not in the list any more." });
+    loc.direction = body.direction;
+    return send(res, 200, { success: true, direction: body.direction });
   }
   m = p.match(/^\/api\/pickup-locations\/(\d+)\/tour-departure$/);
   if (m) {

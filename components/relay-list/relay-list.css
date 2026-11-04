@@ -1,4 +1,4 @@
-/* Relay list：A4 竖向，照纸本 4796_001.pdf 第 9–13 页（Calibri 粗体、表头灰、酒店涂车色、换酒店空一行）。 */
+/* Relay list：A4（每张单自己的方向，置顶 73），照纸本 4796_001.pdf 第 9–13 页（Calibri 粗体、表头灰、酒店涂车色、换酒店空一行）。 */
 .rl-sheet {
   width: 210mm;
   min-height: 297mm;
@@ -10,6 +10,11 @@
     0 1px 3px rgba(0, 0, 0, 0.25),
     0 8px 24px rgba(0, 0, 0, 0.12);
   font-family: Calibri, Carlito, Arial, sans-serif;
+}
+/* 横版（置顶 73）：屏幕上也按横版画，看到的就是打出来的。 */
+.rl-sheet[data-orient="landscape"] {
+  width: 297mm;
+  min-height: 210mm;
 }
 .rl-sheet table {
   border-collapse: collapse;
@@ -73,17 +78,30 @@
     size: A4 portrait;
     margin: 0;
   }
+  /* 每张单各自的方向用命名页（Chrome 支持；横竖混打实测见 PROGRESS 置顶 73）。 */
+  @page rl-land {
+    size: A4 landscape;
+    margin: 0;
+  }
+  .rl-sheet[data-orient="landscape"] {
+    page: rl-land;
+    /* 同上面的空白页修法：打印时不撑满（选择器比 .rl-sheet 具体，要再写一次）。 */
+    min-height: 0;
+  }
   html,
   body {
     background: #fff !important;
   }
+  /* 打印时不撑满 297mm：撑满后差一点点就溢出到下一页，再加分页 = 每张后面一张空白页（Annie 11-03）；
+     纸张是 Letter 时 297mm 更是一定超页。分页改成「第二张起从新页开始」，最后一张后面不会多一页
+     （原来的 :last-of-type 会被后面只在屏幕上的 Not on any relay car 区块挡住）。横版同样适用。 */
   .rl-sheet {
+    min-height: 0;
     margin: 0;
     box-shadow: none;
-    break-after: page;
   }
-  .rl-sheet:last-of-type {
-    break-after: auto;
+  .rl-sheet ~ .rl-sheet {
+    break-before: page;
   }
   .rl-screen-only {
     display: none !important;

@@ -22,7 +22,7 @@ import {
   saveManifestCfm,
 } from "@/lib/manifests-api";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
-import { useLeaveGuard } from "@/lib/use-leave-guard";
+import { replaceUrl, useLeaveGuard } from "@/lib/use-leave-guard";
 import { fetchUserPref, saveUserPref } from "@/lib/user-prefs-api";
 import { OTHER_TOUR_COLOR, resolveTourColor } from "@/lib/tour-colors";
 import { usePageVisibility } from "@/lib/page-visibility";
@@ -49,7 +49,12 @@ import {
   isLegacy,
   isSelectable,
   isTabKey,
-  parseSavedFields,
+  colsFor,
+  EMPTY_COLS,
+  hasOwnCols,
+  parseSavedCols,
+  type SavedCols,
+  serializeSavedCols,
   paxOf,
   canSend,
   plural,
@@ -61,10 +66,19 @@ import {
   STAFF_CFM_KEY,
   TAB_KEYS,
   CHECK_BIG,
+  missingWaiver,
+  pageNeedsWaiver,
+  rememberWaiverChoice,
+  softBlocks,
+  WAIVER_KEY,
+  WAIVER_OFF,
+  withWaiverColumn,
 } from "./config";
 import { FieldPicker } from "./field-picker";
 import { ManifestSearch } from "./manifest-search";
 import { SectionCfm } from "./section-cfm";
+import { WaiverInput } from "./waiver-cell";
+import { WaiverUploadPanel } from "./waiver-upload-panel";
 import {
   MessageDialog,
   ReminderDialog,
@@ -77,7 +91,7 @@ type LoadState =
   | { kind: "error"; message: string };
 
 /** 账号里存的列：undefined = 还没拉；null = 没存过（用后端默认列）。 */
-type SavedFields = Record<ManifestTabKey, string[] | null | undefined>;
+type SavedFields = Record<ManifestTabKey, SavedCols | undefined>;
 
 // 样子照旧后台 manifests.html / base.html（Annie 2026-10-07：和旧版一模一样）。
 /** base.html 的 .btn：深色底上的半透明按钮。 */
@@ -146,6 +160,12 @@ export function ManifestsView() {
   const [reloadKey, setReloadKey] = useState(0);
   const [picking, setPicking] = useState(false);
   const [uploadingCfm, setUploadingCfm] = useState(false);
+  const [uploadingWaiver, setUploadingWaiver] = useState(false);
+  /**
+   * 置顶 74：Tickets 没存过列（用后端默认列）、这一页又有要 waiver 的单时，默认列里没有 waiver 那几项 ⇒
+   * 记下后端的默认列，再按「默认列 + 辅助列」重拉一次，Waiver link 格和拦截才有值。
+   */
+  const [ticketDefaults, setTicketDefaults] = useState<string[] | null>(null);
   /**
    * Show hidden rows（后端 G167）：默认关。开了请求带 include_hidden=true，响应多一个 `hidden` 块；
    * `viewHidden` = 正在看灰色虚线的 Hidden rows 胶囊（只读表，不是后端的胶囊，所以不进 pill / 地址栏）。
@@ -166,6 +186,8 @@ export function ManifestsView() {
   /** 搜索跳过来的那一行（row_key）：标黄、滚到眼前；手动换日期 / 标签 / 胶囊就不再标。 */
   const [highlight, setHighlight] = useState<string | null>(null);
   const scrolledToRef = useRef<string | null>(null);
+  /** 置顶 51 B：?row= 带来的行，这一页拿到后用一次（预勾 + 去掉网址里的 row / tick）。 */
+  const jumpRef = useRef<{ rows: string[]; tick: boolean } | null>(null);
   const redirectingRef = useRef(false);
   /** 上一次返回已经满足的请求：后端换了胶囊（我们没指定 / 指定的当天不存在）时不再重拉一次。 */
   const satisfiedRef = useRef("");
@@ -185,16 +207,26 @@ export function ManifestsView() {
     setDate(isYmd(fromUrl) ? fromUrl : laToday());
     if (isTabKey(tabFromUrl)) setTab(tabFromUrl);
     setPill(params.get("pill") ?? "");
+    // 置顶 51 B：订单详情「Open in Main manifest →」带来的 ?row=（这单的行，逗号隔开）：标黄、滚到、预勾（tick=0 只标黄）。
+    const rows = (params.get("row") ?? "").split(",").filter(Boolean);
+    if (rows.length) {
+      jumpRef.current = { rows, tick: params.get("tick") !== "0" };
+      setHighlight(rows[0]);
+      scrolledToRef.current = null;
+    }
   }, []);
 
-  // 这个标签存的列（每个标签只拉一次）。
-  const savedHere = saved[tab];
+  // 这个标签存的列（每个标签只拉一次）；这颗胶囊有自己的一套就用自己的（置顶 71）。
+  const colsHere = saved[tab];
+  const ownHere = hasOwnCols(colsHere, pill);
+  const savedHere =
+    colsHere === undefined ? undefined : colsFor(colsHere, pill);
   useEffect(() => {
-    if (savedHere !== undefined) return;
+    if (colsHere !== undefined) return;
     const controller = new AbortController();
     fetchUserPref(PREF_KEY[tab], controller.signal)
       .then((value) =>
-        setSaved((s) => ({ ...s, [tab]: parseSavedFields(value) })),
+        setSaved((s) => ({ ...s, [tab]: parseSavedCols(value) })),
       )
       .catch((error: unknown) => {
         if (controller.signal.aborted) return;
@@ -206,12 +238,14 @@ export function ManifestsView() {
         setPrefNote(
           `Could not load your saved columns (${describeError(error)}), showing the default columns.`,
         );
-        setSaved((s) => ({ ...s, [tab]: null }));
+        setSaved((s) => ({ ...s, [tab]: EMPTY_COLS }));
       });
     return () => controller.abort();
-  }, [tab, savedHere, redirectToLogin]);
+  }, [tab, colsHere, redirectToLogin]);
 
-  const fieldsKey = savedHere ? savedHere.join(",") : "";
+  const reqSaved =
+    savedHere ?? (tab === "tickets" ? ticketDefaults : null) ?? null;
+  const fieldsKey = reqSaved ? reqSaved.join(",") : "";
   useEffect(() => {
     if (!date || savedHere === undefined) return;
     const requestKey = `${date}|${tab}|${pill}|${fieldsKey}|${reloadKey}|${showHidden}`;
@@ -224,7 +258,7 @@ export function ManifestsView() {
         date,
         tab,
         pill,
-        fields: requestFields(savedHere, tab),
+        fields: requestFields(reqSaved, tab),
         includeHidden: showHidden,
       },
       controller.signal,
@@ -264,6 +298,7 @@ export function ManifestsView() {
     pill,
     fieldsKey,
     savedHere,
+    reqSaved,
     reloadKey,
     showHidden,
     redirectToLogin,
@@ -348,28 +383,60 @@ export function ManifestsView() {
     );
   }
 
-  async function applyFields(fields: string[] | null) {
+  /** 存这个标签的列选择（整个 {shared, pages}）；失败 reject，原因原样给弹窗显示红字。 */
+  async function saveCols(next: SavedCols) {
     try {
-      await saveUserPref(PREF_KEY[tab], JSON.stringify(fields ?? []));
+      await saveUserPref(PREF_KEY[tab], serializeSavedCols(next));
     } catch (error) {
       if (isStatus(error, 401)) redirectToLogin();
       throw new Error(describeError(error));
     }
-    setSaved((s) => ({ ...s, [tab]: fields }));
+    setSaved((s) => ({ ...s, [tab]: next }));
     setPrefNote("");
+  }
+
+  /**
+   * ☰ Columns 存（置顶 71，Annie「1 A 2 A 3 apply for this page 用蓝色 apply for all 用白色」）：
+   * page = 只给这颗胶囊；all = 整个标签共用、清掉各页自己的（题 1 A）；
+   * Reset to default（fields = null）在有自己设置的页只重置这一页，没有就重置共用的那套。
+   */
+  async function applyFields(fields: string[] | null, scope: "page" | "all") {
+    const cur = colsHere ?? EMPTY_COLS;
+    let next: SavedCols;
+    if (fields === null)
+      next = ownHere
+        ? { ...cur, pages: { ...cur.pages, [pill]: null } }
+        : { ...cur, shared: null };
+    else if (scope === "page" && pill)
+      next = { ...cur, pages: { ...cur.pages, [pill]: fields } };
+    else next = { shared: fields, pages: {} };
+    await saveCols(next);
+    setPicking(false);
+  }
+
+  /** Use the shared columns：这颗胶囊不再用自己的一套，回到整个标签共用的。 */
+  async function useSharedCols() {
+    const cur = colsHere ?? EMPTY_COLS;
+    const pages = { ...cur.pages };
+    delete pages[pill];
+    await saveCols({ ...cur, pages });
     setPicking(false);
   }
 
   /**
    * 拖表头换列的顺序（Annie 2026-10-14：后加的 Pickup time 排在最右，挪不过去）：马上存进账号，同 ☰ Columns；
-   * 存不上就改回原来的顺序、写原因。
+   * 这颗胶囊有自己的一套就存进它自己的，没有就存共用的（置顶 71）。存不上就改回原来的顺序、写原因。
    */
-  async function reorderFields(next: string[]) {
-    const before = saved[tab];
-    setSaved((s) => ({ ...s, [tab]: next }));
+  async function reorderFields(moved: string[]) {
+    const before = colsHere ?? EMPTY_COLS;
+    const next = shown ? rememberWaiverChoice(moved, shown.rows) : moved;
+    const after: SavedCols = ownHere
+      ? { ...before, pages: { ...before.pages, [pill]: next } }
+      : { ...before, shared: next };
+    setSaved((s) => ({ ...s, [tab]: after }));
     setPrefNote("");
     try {
-      await saveUserPref(PREF_KEY[tab], JSON.stringify(next));
+      await saveUserPref(PREF_KEY[tab], serializeSavedCols(after));
     } catch (error) {
       if (isStatus(error, 401)) {
         redirectToLogin();
@@ -391,9 +458,16 @@ export function ManifestsView() {
       return next;
     });
   }, []);
+  /** 置顶 74：Waiver link 格改了没存（和 Cfm # 同一份记录，键前面加 w:）。 */
+  const onWaiverDirty = useCallback(
+    (rowKey: string, dirty: boolean) => onCfmDirty(`w:${rowKey}`, dirty),
+    [onCfmDirty],
+  );
   useLeaveGuard(
     dirtyCfm.size > 0,
-    "A Cfm # you typed is not saved yet. Leave without saving?",
+    [...dirtyCfm].some((k) => k.startsWith("w:"))
+      ? "A waiver link you typed is not saved yet. Leave without saving?"
+      : "A Cfm # you typed is not saved yet. Leave without saving?",
   );
 
   function onCfmSaved(rowKey: string, values: ManifestRow["values"]) {
@@ -446,8 +520,33 @@ export function ManifestsView() {
     }));
   // 这个标签能不能发（admin_fee = CHD 组的 Admin fee 不能）：不能就没有勾选、没有发送条。
   const tabSendable = tabs.find((t) => t.key === tab)?.sendable !== false;
+  // 置顶 51 B：?row= 的行到了：只预勾能发的行（On Hold 带 tick=0 不勾），然后把 row / tick 从网址去掉（刷新不再勾一次）。
+  useEffect(() => {
+    const jump = jumpRef.current;
+    if (!jump || !shown) return;
+    const here = shown.rows.filter((r) => jump.rows.includes(r.row_key));
+    if (!here.length) return;
+    jumpRef.current = null;
+    if (jump.tick && !noSend && tabSendable)
+      setSelected(new Set(here.filter(canSend).map((r) => r.row_key)));
+    const url = new URL(window.location.href);
+    url.searchParams.delete("row");
+    url.searchParams.delete("tick");
+    replaceUrl(url);
+  }, [shown, noSend, tabSendable]);
   const currentPill = shown?.pills.find((p) => p.key === shown.pill);
-  const fields = shown ? shownFields(shown, savedHere) : [];
+  // 置顶 74：Waiver link 列这一页有要 waiver 的单才自动出（题 1 A），☰ Columns 里关掉就不加。
+  const fields = shown
+    ? tab === "tickets"
+      ? withWaiverColumn(
+          shownFields(shown, savedHere ?? ticketDefaults),
+          shown.rows,
+          savedHere,
+        )
+      : shownFields(shown, savedHere)
+    : [];
+  const needsWaiver =
+    tab === "tickets" && !!shown && pageNeedsWaiver(shown.rows);
   // 隐藏行：只在勾了开关、响应里有 hidden 块时才有；有行才出灰色胶囊，没有行写一句小字。
   const hidden = showHidden ? (shown?.hidden ?? null) : null;
   const hiddenRows = hidden?.rows ?? [];
@@ -457,9 +556,13 @@ export function ManifestsView() {
   const denied = shown ? shown.denied.filter(isSavedKey) : [];
   const unknown = shown ? shown.unknown.filter(isSavedKey) : [];
   // 勾了以后 Cfm # 被清掉的门票行不再算勾着（发不出去）；不能发的行（CHD 组，canSend）也不算。
+  // 置顶 74：要 waiver 却没填链接的门票行同样先拦（同 No Cfm #，一行两个原因合成一条）。
   const pickedRows = shown
     ? shown.rows.filter(
-        (r) => selected.has(r.row_key) && canSend(r) && isSelectable(r, tab),
+        (r) =>
+          selected.has(r.row_key) &&
+          canSend(r) &&
+          softBlocks(r, tab).length === 0,
       )
     : [];
   const pickedPax = pickedRows.reduce((n, r) => n + paxOf(r), 0);
@@ -467,12 +570,31 @@ export function ManifestsView() {
   // 勾了、但门票还没填 Cfm # 的行：点发送时先拦一道，不悄悄漏发。
   const missingPicked = shown
     ? shown.rows.filter(
-        (r) => selected.has(r.row_key) && canSend(r) && !isSelectable(r, tab),
+        (r) =>
+          selected.has(r.row_key) &&
+          canSend(r) &&
+          softBlocks(r, tab).length > 0,
       )
     : [];
+  // 只缺 Cfm #（没有 waiver 的事）⇒ 红条照原来的写法。
+  const onlyCfmMissing = missingPicked.every((r) => !missingWaiver(r));
   // 这页门票里有没有还没填 Cfm # 的行（不看有没有勾）：表格上方要不要出黄字提示。
   const anyMissingCfm =
     tab === "tickets" && !!shown?.rows.some((r) => !isSelectable(r, tab));
+  const anyMissingWaiver =
+    tab === "tickets" && !!shown?.rows.some((r) => missingWaiver(r));
+
+  useEffect(() => {
+    if (
+      tab === "tickets" &&
+      shown &&
+      savedHere === null &&
+      !ticketDefaults &&
+      pageNeedsWaiver(shown.rows) &&
+      !shown.rows.some((r) => WAIVER_KEY in r.values)
+    )
+      setTicketDefaults(shown.default_fields);
+  }, [tab, shown, savedHere, ticketDefaults]);
 
   /** Send reminder / Send message / Send tour confirmation 的统一入口。 */
   function requestSend(kind: SendKind) {
@@ -595,6 +717,17 @@ export function ManifestsView() {
                 >
                   ↑ Upload confirmation #s
                 </button>
+                {/* 置顶 74：这一页有要 waiver 的单才出；只对这一天。 */}
+                <button
+                  type="button"
+                  data-waiver-upload
+                  hidden={viewOnly || !needsWaiver}
+                  onClick={() => setUploadingWaiver(true)}
+                  disabled={!date}
+                  className={LEGACY_BTN_CLASS}
+                >
+                  ↑ Upload waiver links
+                </button>
               </PhoneMore>
               <span className="text-[12px] text-[#94a3b8] night:text-white/45">
                 {loading ? "Loading…" : null}
@@ -710,6 +843,16 @@ export function ManifestsView() {
                       </span>{" "}
                       pax{unknownPax(p)}
                     </span>
+                    {/* 置顶 71 题 2 A：这颗胶囊用自己的一套列 ⇒ 小灰标 OWN。 */}
+                    {hasOwnCols(colsHere, p.key) ? (
+                      <span
+                        data-own-cols
+                        title="This page has its own columns (☰ Columns)"
+                        className="ml-1.5 rounded-[4px] bg-[#64748b] px-1 py-px align-[1px] text-[10px] font-bold tracking-[.04em] text-white"
+                      >
+                        OWN
+                      </span>
+                    ) : null}
                   </button>
                 ))}
                 {hidden && hiddenRows.length ? (
@@ -861,14 +1004,31 @@ export function ManifestsView() {
                 role="alert"
                 className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-[10px] border-[0.5px] border-[#e4a5a0] bg-[#fdeceb] px-3.5 py-2.5 text-[13px] text-[#7a2424] night:border-rose-400/30 night:bg-rose-400/10 night:text-rose-200"
               >
-                <span className="max-w-[60ch]">
-                  <b>{missingPicked.length}</b>{" "}
-                  {missingPicked.length === 1 ? "order" : "orders"} selected{" "}
-                  {missingPicked.length === 1 ? "has" : "have"} no Cfm # yet, so{" "}
-                  {missingPicked.length === 1 ? "it" : "they"} cannot be sent:{" "}
-                  {missingPicked.map((r) => r.order_number).join(", ")}. Fill it
-                  in, or skip and send the rest.
-                </span>
+                {onlyCfmMissing ? (
+                  <span className="max-w-[60ch]">
+                    <b>{missingPicked.length}</b>{" "}
+                    {missingPicked.length === 1 ? "order" : "orders"} selected{" "}
+                    {missingPicked.length === 1 ? "has" : "have"} no Cfm # yet,
+                    so {missingPicked.length === 1 ? "it" : "they"} cannot be
+                    sent: {missingPicked.map((r) => r.order_number).join(", ")}.
+                    Fill it in, or skip and send the rest.
+                  </span>
+                ) : (
+                  // 置顶 74：缺 Cfm # / 缺 waiver link 合成一条，逐单写缺什么。
+                  <span data-soft-blocked className="max-w-[62ch]">
+                    <b>{missingPicked.length}</b>{" "}
+                    {missingPicked.length === 1 ? "order" : "orders"} selected
+                    cannot be sent yet:
+                    <ul className="mt-1 list-disc pl-5">
+                      {missingPicked.map((r) => (
+                        <li key={r.row_key} data-soft-block={r.order_number}>
+                          {r.order_number} — {softBlocks(r, tab).join(", ")}
+                        </li>
+                      ))}
+                    </ul>
+                    Fill them in, or skip and send the rest.
+                  </span>
+                )}
                 <span className="flex flex-wrap gap-2">
                   <button
                     type="button"
@@ -908,7 +1068,12 @@ export function ManifestsView() {
               </div>
             ) : null}
 
-            {!noConfirm && !seeingHidden && anyMissingCfm ? (
+            {!noConfirm && !seeingHidden && anyMissingWaiver ? (
+              <p className="mb-2 text-[12.5px] font-medium text-[#ba7517] night:text-amber-300">
+                Orders without a Cfm # or a waiver link will be stopped when you
+                send. Click the cell to fill one in anytime.
+              </p>
+            ) : !noConfirm && !seeingHidden && anyMissingCfm ? (
               <p className="mb-2 text-[12.5px] font-medium text-[#ba7517] night:text-amber-300">
                 Orders without a Cfm # will be skipped when you send. Click the
                 Cfm # cell to fill one in anytime.
@@ -972,6 +1137,7 @@ export function ManifestsView() {
                   }
                   onCfmSaved={onCfmSaved}
                   onCfmDirty={onCfmDirty}
+                  onWaiverDirty={onWaiverDirty}
                   onUnauthorized={redirectToLogin}
                 />
               </section>
@@ -998,11 +1164,36 @@ export function ManifestsView() {
               shown.tabs.find((t) => t.key === tab)?.label ??
               TAB_FALLBACK_LABEL[tab]
             }
+            pageLabel={
+              shown.pill
+                ? (shown.pills.find((p) => p.key === shown.pill)?.label ??
+                  undefined)
+                : undefined
+            }
+            ownPage={ownHere}
+            onUseShared={ownHere ? useSharedCols : undefined}
             catalog={shown.catalog}
             groups={shown.groups}
-            selected={savedHere ?? shown.default_fields}
+            selected={
+              tab === "tickets"
+                ? withWaiverColumn(
+                    (savedHere ?? shown.default_fields).filter(
+                      (k) => k !== WAIVER_OFF,
+                    ),
+                    shown.rows,
+                    savedHere,
+                  )
+                : (savedHere ?? shown.default_fields)
+            }
             defaults={shown.default_fields}
-            onApply={applyFields}
+            onApply={(next, scope) =>
+              applyFields(
+                next && tab === "tickets"
+                  ? rememberWaiverChoice(next, shown.rows)
+                  : next,
+                scope,
+              )
+            }
             onClose={() => setPicking(false)}
           />
         ) : null}
@@ -1036,6 +1227,11 @@ export function ManifestsView() {
               cfmOver.length ? [...pickedRows, ...missingPicked] : pickedRows
             }
             noCfmOrders={cfmOver}
+            overReasons={Object.fromEntries(
+              missingPicked
+                .filter((r) => cfmOver.includes(r.order_number))
+                .map((r) => [r.order_number, softBlocks(r, tab)]),
+            )}
             pill={shown.pill ?? ""}
             tourTypeLabel={currentPill?.label ?? ""}
             onClose={() => {
@@ -1050,6 +1246,14 @@ export function ManifestsView() {
           />
         ) : null}
 
+        {uploadingWaiver && date && !viewOnly ? (
+          <WaiverUploadPanel
+            date={date}
+            onClose={() => setUploadingWaiver(false)}
+            onSaved={() => setReloadKey((k) => k + 1)}
+            onUnauthorized={redirectToLogin}
+          />
+        ) : null}
         {uploadingCfm && date && !viewOnly ? (
           <CfmUploadPanel
             date={date}
@@ -1207,6 +1411,7 @@ function ManifestTable({
   onReorder,
   onCfmSaved,
   onCfmDirty,
+  onWaiverDirty,
   onUnauthorized,
 }: {
   data: ManifestPage;
@@ -1225,6 +1430,8 @@ function ManifestTable({
   onCfmSaved: (rowKey: string, values: ManifestRow["values"]) => void;
   /** 某一行的 Cfm # 改了没存 / 存好了。 */
   onCfmDirty: (rowKey: string, dirty: boolean) => void;
+  /** 某一行的 Waiver link 改了没存 / 存好了（置顶 74）。 */
+  onWaiverDirty: (rowKey: string, dirty: boolean) => void;
   onUnauthorized: () => void;
 }) {
   // partner 不能发时没有勾选；Cfm # 能不能改由格子自己看 ViewOnly（manifests.edit）。
@@ -1274,7 +1481,7 @@ function ManifestTable({
     const sentTickets = tab === "tickets" && !!sentAt(r, "tickets");
     // 没填 Cfm # 的门票行：整行标红提醒（Annie 2026-10-17）；勾选本身不再被这个挡住，
     // 真正拦截挪到了发送前的 Skip & send 确认条（见上面 requestSend）。
-    const missingCfm = tab === "tickets" && !hasCfm;
+    const missingCfm = tab === "tickets" && (!hasCfm || missingWaiver(r));
     // 费用单（不能发的行）没收齐款：Due 不是 0 ⇒ 整行同样的淡红（Annie 2026-11-02 题 1 选 B）。
     // 看不到钱的人不标（标了就等于告诉他没收齐款）。
     const unpaidFee =
@@ -1335,6 +1542,13 @@ function ManifestTable({
                 row={r}
                 onSaved={onCfmSaved}
                 onDirty={onCfmDirty}
+                onUnauthorized={onUnauthorized}
+              />
+            ) : k === WAIVER_KEY ? (
+              <WaiverInput
+                row={r}
+                onSaved={onCfmSaved}
+                onDirty={onWaiverDirty}
                 onUnauthorized={onUnauthorized}
               />
             ) : (
@@ -1697,6 +1911,12 @@ function ManifestsHowToUse() {
           the row is highlighted in yellow.
         </>,
         <>
+          <b>Order lookup / Order details</b>: Open in Main manifest → opens the
+          order on Main manifest, highlighted and ticked, so you can resend the
+          confirmation or reminder. Nothing is sent until you press Send. If the
+          order is not on Main manifest, check its status in Order List.
+        </>,
+        <>
           <b>Bus Tour</b> shows one group at a time (the groups from Settings →
           Products). <b>Tickets - SelfDrive</b> shows one tour type at a time
           (the Tour type column in Settings → Products). Click a pill to switch;
@@ -1712,9 +1932,18 @@ function ManifestsHowToUse() {
           that tab asked them.
         </>,
         <>
+          <b>Apply for this page</b> keeps your columns for the group or tour
+          type you are on; <b>Apply for all</b> uses them for every page in the
+          tab and clears any page&apos;s own columns. A page with its own
+          columns shows <b>OWN</b> on its pill; in <b>☰ Columns</b>, click Use
+          the shared columns to go back to the tab&apos;s columns.
+        </>,
+        <>
           To move a column: in <b>☰ Columns</b>, drag its box under Column
-          order to where you want it and click Apply. Or drag its header on the
-          page left or right; that order is saved to your account right away.
+          order to where you want it and click Apply for this page or Apply for
+          all. Or drag its header on the page left or right; that order is saved
+          to your account right away (to this page only if it has its own
+          columns).
         </>,
         <>
           <b>Cfm #</b>: if the Cfm # column is shown, type the confirmation
@@ -1809,6 +2038,33 @@ function ManifestsHowToUse() {
           Cfm # written in; a pax mismatch, more than one system row for the
           same order, or a duplicate in the file are left red for you to check
           by hand instead of guessing.
+        </>,
+        <>
+          <b>Waiver link</b>: Upper Antelope (Brenda) orders need a waiver link.
+          Click the Waiver link cell, paste the link, then press Save or Enter
+          (Esc cancels). Other orders have no waiver link cell. Open ↗ opens the
+          saved link. The guest finds it on their ticket page, in step 1 of
+          Prepare for Your Tour.
+        </>,
+        <>
+          <b>↑ Upload waiver links</b>: upload a spreadsheet with two columns,
+          the order number and the waiver link. It is checked against this date
+          only. You see every row first: new, changed (replaces the saved link),
+          same (skipped), and rows that are not saved (order not found, not a
+          waiver order, not a web link, empty, or in the file twice). Press Save
+          to write the new and changed links.
+        </>,
+        <>
+          <b>No waiver link</b>: an order without a waiver link is stopped when
+          you send, the same way as an order without a Cfm #. Fill the link in,
+          skip it and send the rest, or press Send anyway (the guest&apos;s
+          ticket page then says the waiver link will be sent separately).
+        </>,
+        <>
+          <b>Changed since sent</b>: the link was changed after the guest got
+          the reminder. Tick the order, then tick Send anyway in the send window
+          to send the reminder again, so the guest gets the new link on their
+          ticket page. The tag goes away once it is sent.
         </>,
       ]}
     />

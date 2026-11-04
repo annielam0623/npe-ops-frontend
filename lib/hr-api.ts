@@ -77,6 +77,21 @@ export function scheduleConfirmOf(error: unknown): string | null {
   return detail?.needs_confirm && detail.message ? detail.message : null;
 }
 
+/**
+ * 「Other spellings」整份替换（后端 G234 续）：返回规整后的列表（大写、去重、和本人 Nickname 一样的略过）。
+ * 400 写得不对 / 404 人不在了 / 409 写法已经是别人的——detail 都是给 staff 看的一句英文。
+ */
+export async function saveHRSpellings(
+  id: number,
+  spellings: string[],
+): Promise<string[]> {
+  const result = await apiFetch<{ spellings: string[] }>(
+    `${API}/profiles/${id}/spellings`,
+    { method: "PUT", body: { spellings } },
+  );
+  return result.spellings;
+}
+
 /** Edit list：每行只带改过的列（多选是逗号分隔的值）。整批一个事务，一行出错全部不存。 */
 export function saveHRBulk(
   edits: Array<Record<string, string | number>>,
