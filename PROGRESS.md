@@ -1494,6 +1494,11 @@ pe-ops-wt-login-default`，mock，**没合 main，等后端 57 的 logged_in_at 
       - 81 推 task/samsara-arrival **c9aad7b**（没合，合了 72 Direction 的冲突，Direction 和坐标同一个 Save）：pl 129、mt 253、nav 38，tsc / eslint / build 过。58：两列放在 Pickup Location 后面，时间写法同 Check-in Time（「11/4, 5:38 AM」），旧后端没键不出；这页没 ☰ Columns；⬇ Export（后端 CSV）这次不带两列，要带得后端改。截图（2c scratchpad 59-edit-row / 59-edit-error / 59-view-row / 58-tracking-columns.png）已发 Annie，等她点头再合。
       - ✅ **Annie「我还是没有选A吧，可以合」（原话）** ⇒ 截图点头；Export 选 A（这次不带两列）。派 81 合 main。
       - 81 已改 preview（同链接 25fhKRvwcw4rKmdtb5FA7B）。红字：「Paste the coordinates as latitude, longitude — for example 36.106711, -115.176612.」「Radius must be a whole number of meters from 1 to 500.」「Those coordinates are not on the map. Latitude comes first (between -90 and 90), then longitude (between -180 and 180).」「The hotel was saved, but not the pickup point: …」；逗号 / 空格分开都认。58：后端 notifications.py:1234 每行带 arrived_at / left_at（只 relay 车的单有，一单几站取最早到的）。
+- ✅ 2026-11-04 合 main（工作窗口 `npe-ops-frontend-81`[90172b]，2c 派；Annie「其他问题都同意推荐，动手」，看截图后「我还是没有选A吧，可以合」）：
+  - 定稿：Q1 A 编辑时酒店名下「Pickup point (live tracking)」；Q3 一格「Coordinates」（贴「36.106711, -115.176612」，逗号或空格），Save 时拆成 latitude / longitude 发 PATCH …/arrival-point，清空 = 两个 null；Q2 A Add 表单不加；不编辑时灰字「Pickup point: 36.106711, -115.176612 (10 m)」。
+  - 红字（英文原文）：「Paste the coordinates as latitude, longitude — for example 36.106711, -115.176612.」「Those coordinates are not on the map. Latitude comes first (between -90 and 90), then longitude (between -180 and 180).」「Radius must be a whole number of meters from 1 to 500.」「The hotel was saved, but not the pickup point: …」（后端原话）。How to use 加 2c 转的一格版原文。
+  - 合最新 main 时和置顶 72 Direction 冲突 6 个文件，两边都留（Direction 和坐标同一个 Save）。检查：pl 129/129、mt 253/253、nav 38/38；tsc 0、eslint 0 错、build 过。
+  - Annie 验收：Products › Pickup Locations → 某家 ZZ Test 酒店 ✏ Edit → 在 Coordinates 贴 Google Maps 右键复制的坐标 → Save → 酒店名下一行灰字 Pickup point: …；只贴一个数按 Save 出红字。
 
 ### 58. Morning Pickup Tracking 表里怎么显示「到了 / 走了」的时间（2026-11-03，09 做 Samsara 到站时问）
 - 页面：Morning Pickup Tracking（/morning-pickup/tracking）的表格，每一行是一单客人。
@@ -1504,6 +1509,9 @@ pe-ops-wt-login-default`，mock，**没合 main，等后端 57 的 logged_in_at 
   - 丙：这一期 Tracking 表不显示，只在 Live drivers 页签显示。
 - 没坐标、没数据的酒店都不显示，不另造提醒。preview 里那个黄色「On the way」后端没数据，不做。
 - 09 先做 Pickup Locations 坐标格和 Live drivers 胶囊，这一处等答。
+- ✅ 2026-11-04 合 main（81，同 59 一起）：Annie「在tracking表上加两列吧，arrived at Left at」；Export 选 A（「我还是没有选A吧」：这次不带这两列，Export 是后端出的 CSV）。
+  - Pickup Location 后面紧跟「Arrived at」「Left at」（存过列顺序的人也插在这里），写法同 Check-in Time（洛杉矶「11/4, 5:38 AM」），没数据「—」；后端行里没有 arrived_at 时不出这两列。只读核过后端 notifications.py:1234（每行 arrived_at / left_at，ISO 或 null，只有 relay 车的单有）。
+  - Annie 验收：Morning Pickup Tracking 表，Pickup Location 右边两列；酒店填了坐标、relay 车开过以后才有时间，现在多半是「—」。
 
 ### 57. 排班：设置集中 + Working hours 按天设 + Day timeline（2026-11-02 晚，39）—— ✅ 已动手，待移走
 - Annie 在 f8 窗口（原话）：「动手」⇒ 39 开 task/schedule-timeline、task/schedule-settings（Same every day 先用现接口）；按天设后端已转 9e（迁移 + work_hours + PUT /api/settings/schedule/work-hours，权限 settings.schedule，排 v143 后）。
