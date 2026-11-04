@@ -15,7 +15,7 @@
   - ✅ 后端上线 main b1919f7e（合并 1f7a064f，任务 f198a896，94 转）：形状同 58c97e1 mock，导入也写 updated_by / updated_at。派 81 核字段合 main（83 推完后、59 之前）。
 - ✅ `09` 合 72 → main **06bff03**（Annie 在 09 窗口原话「动手」）：da 501、pl 116、nav 38，tsc / eslint / build 过；验收点见置顶 72。已告知 94（57 direction 后端可推）。09 收工关窗口。
 
-## 2026-11-04 Supplier › Restaurant ⬆ Import（`task/import-restaurant`，工作窗口 `npe-ops-frontend-81`[90172b]，主窗口 2c 派）—— ⛔ 推了分支，等后端接口再合
+## 2026-11-04 Supplier › Restaurant ⬆ Import（`task/import-restaurant`，工作窗口 `npe-ops-frontend-81`[90172b]，主窗口 2c 派）—— ✅ 后端 b1919f7e 上 main，核过字段后合 main
 - 依据：全站「上传表格自动填」preview https://claude.ai/artifact/MKtDUiYyUPZ1FcBJR3j4Lw ③-4，Annie 10/29「批量导游同意推荐。动手」（Q1–Q7 全按推荐），不再出 preview；5c 交接「四、明天开工」0。
 - 改动（worktree `C:\Code\npe-ops-wt-import-restaurant`）：
   - 新文件 `components/supplier/import-panel.tsx`：通用 `StandardImport`，title「Import restaurants」，endpoint `/api/supplier/restaurants/import`。
@@ -35,6 +35,7 @@
   - 每家一条 action_log（action="import"，只放改了的栏）；撞唯一索引 409 人话整份不存。
 - 下一步：后端上 main → 只读核栏 key / 原话 / 权限 → mock 改成后端原话 → 合最新 main、重跑 restaurant / nav、tsc / eslint / build → 合 main。
   Annie 验收：ops › Supplier › Restaurant › ⬆ Import，只用 ZZ Test 开头的店。
+- ✅ 合 main（11-04，81）：只读核后端 origin/main b1919f7e（合并 1f7a064f，任务 f198a896）：路由 POST /api/supplier/restaurants/import/preview|commit、require_admin；IMPORT_COLUMNS 键 name / address / phone / text_number / email / staff_note，表头 Name / Address / Phone / Text / Email / Notes for staff（也认 Restaurant、Text number、Note for staff、Staff note）；409 原话同 mock；导入写 updated_by / updated_at、action_log action="import"。前端不用改。合最新 main 后重跑：restaurant 58/58、nav 38/38；tsc 0、eslint 0 错、build 过。
 
 ## 2026-11-04 交接：前端主窗口 `今日主窗口-24`[310398] → 今天新开的主窗口（公司电脑）
 
