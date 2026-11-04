@@ -1005,6 +1005,14 @@ D. 已完成、待从置顶移走：
     2) GET /api/field-snapshots/{hr_id}?date=&kind=driver|guide&version=N（不带 = 最新）⇒ {hr_id, name, kind, run_date, version, trigger, created_at, versions, data:{shifts:[{shift, title, van}], stops:[{van, location_id, hotel, arrived_at, left_at, dwell_minutes}], sms:{sent, by:[{author, count}]}, guests:{pax, picked_up, boarded, no_show, not_marked}, roster:[{order_number, pax, status:"picked_up"|"boarded"|"no_show"|null, at, by, source:"relay"|"boarding"}], generated_at}}；没有 ⇒ 404「No snapshot for that day.」；kind 错 ⇒ 400。
     - trigger：relay_10am、checked_out（来源未接，暂不出现）、not_checked_out（23:00 兜底）、guide_time、after_completion。人数都是 pax（同 Live drivers）；roster 不带客人姓名 / 电话；留 90 天；stops 现在大多空（酒店没坐标）。
     3) GET /api/settings/manifest-setup 每团加 guide_snapshot_time:"18:00"|null（null = 21:00）；PUT /api/settings/manifest-setup/groups/{manifest_id}/guide-snapshot-time body {guide_snapshot_time:"HH:MM"|""} ⇒ {ok, guide_snapshot_time}，写 action_log，格式错 400 一句英文。
+  - **preview**：https://claude.ai/artifact/8ncEsZAqKAjRRe9qErWnyz （c8；2c 已整段转 Annie，等答）。开关：Day snapshot 先只 SA 可见（写进 preview，不是题）。
+    - Q1 入口：A（推荐）Live drivers 上方「Live / Day snapshot」切换，一人一卡、用上方日期框回看；B 每列列头小键开弹窗；C 第三个页签「Day snapshots」。
+    - Q2 默认展开：A（推荐）数字、SMS 按谁发、Stops 一直显示，Orders 收起「Show N orders」；B 全展开；C 只数字。
+    - Q3 多版：A（推荐）卡头下拉默认最新（「Changed after completion · 7:12 PM」+ Version 2 of 2），可选旧版；B 只最新。
+    - Q4 Manifest setup「Guide snapshot time」：A（推荐）放「Dispatch」组 Morning Relay round 下面，空 = 9:00 PM，Clear 也要 Save；B 另开「Morning tracking」组。
+    - Q5 How to use：A（推荐）Morning tracking 段「Day snapshot (Live drivers): switch to Day snapshot to see what each driver and guide did that day, saved when their work ended: relay drivers at 10:00 AM, tour drivers when they check out (or at 11:00 PM if they don't), and guides at the tour's guide snapshot time. Pick a date at the top to look back up to 90 days. Each card shows the shift and van, the guest counts (pax, picked up or boarded, no show, not marked), how many SMS were sent and by whom, how long the van stayed at each stop, and every order with its status, when it was marked and by whom. Guest names and phone numbers are not kept. If anything changes after a snapshot is saved, a new version is saved; pick the version at the top of the card.」+ Manifest setup 灰字「Not printed. When the guide's Day snapshot for this tour is saved on Morning tracking › Live drivers (Las Vegas time). Leave it empty for 9:00 PM. Click Save to keep it.」；B 她改字。
+    - 给后端（已转 94）：sms.by 每项带来源（driver_page / staff）；可选：列表接口直接带 data，免得每人读一次详情。
+- G212 Team 页前端派 c8（task/g212-team-hierarchy），等后端 SHA。
 
 ### 85. Staff Schedule 班次类型（Open / Mid / Close）可手动新增（2026-11-04，Annie 在主窗口-2c 提，附排班格截图，没动手）
 - 原话：「在role里，给一个手动添加role的选项」「我说的是staff schedule」。截图是 Staff Schedule 周表，格子上的 Open / Mid / Close ⇒ 理解为班次类型（后端叫 shift type）。
