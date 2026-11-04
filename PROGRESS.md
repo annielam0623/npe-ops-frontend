@@ -956,8 +956,13 @@ D. 已完成、待从置顶移走：
 
 ### 81. G236 Bus Manifest 打印每页页脚标「n of n」（2026-11-04，Annie 在主窗口-2c 提，没动手）
 - 原话：「G236 Bus Manifest 照纸本 --- 把每页的页脚标上页数 n of n，提醒staff后面还有页面」。
-- 范围：Dispatch › Bus Manifest 打印（components/dispatch-manifest/manifest-view.tsx，浏览器打印，前端做；后端不用改）。
-- 要先 preview（版式新增）：页脚放哪、字样（如「Page 1 of 3」）、按整份打印数还是每辆车各自从 1 数、午餐单 / Relay list 要不要也加。等派工作窗口出 preview，Annie 看过 +「动手」才写代码。
+- ~~范围：前端 manifest-view.tsx~~ **更正（81 只读查）**：打印页是后端模板 app/templates/admin/tour_manifest_print.html（ops 的 Print 键打开它）⇒ **后端改，前端不用改**。
+- 81 查到：打印页**已经有页码、就是每车各自数**（后端 10-03 照纸本）：表格下一行左「Page 1/2」右「Continued on next page →」，末页「End of manifest」；reflow() 按实际分页按车重编，号码准。Affiliate 栏「Page 1/1 · End of Affiliate」，午餐单「Page 1/1」。问题在样子：紧跟表格不在纸底（末页人少时停在纸中间）、12px 灰字、没写车号。
+- preview：https://claude.ai/artifact/6SWsdc8ND7FMoG41aU2jB5 （一团三车、Bus 2 两页；现在 / A / B 并排）。**等 Annie 答（2c 已整段转）**：
+  - Q1 页码怎么数、放哪：A（推荐）每车各自数、挪到纸最底下（合计排下、加黑线）、加大加粗黑字写车号：左「Bus 2 · Page 1 of 2」右「Continued on next page →」，末页「End of Bus 2」，原来那行去掉；B 整份连着数「Page 3 of 4」放最底下（午餐单照旧各自数不算进去）；C 不改。
+  - Q2 Affiliate 栏 / 午餐单：A（推荐）Affiliate 栏照 Q1 新样子「Affiliate · Page 1 of 1」，午餐单不动；B 三种都不动。
+  - 可行性（给后端）：A 把 .pageline 挪进 .bottom 末尾（已 margin-top:auto 贴纸底）+ 改 reflow() 文字，约 30 分钟 + 无头 Chrome 核三版式（General / Marcello / Lankun）；B 约 1 小时；不用 @page counter（只能整份数、会算进午餐单）。
+- 答了 +「动手」⇒ 转 94 派后端。
 
 ### 75 进度 / 端口
 - fa 推 task/agent-ref-search **124b946**（mock，没合 main，等后端）。os 74、orders 52、dr 89、nav 38、mf 240、man 360，tsc / eslint / build 过。
