@@ -21,6 +21,13 @@ export interface OrderRow {
   updated_at: string;
   /** confirmed / pending / cancelled / Rezdy 原值 / "—"。 */
   status: string;
+  /**
+   * 置顶 75（Annie「同意全部推荐。动手」，定 B）：Agent reference（Rezdy resellerReference）。只有 orders.money_view 的人后端才给、
+   * 才按它搜；旧后端没有。
+   */
+  reseller_reference?: string;
+  /** 这一行是靠 agent reference 对上的（后端标；没权限的人永远不会是 true）。 */
+  matched_agent_ref?: boolean;
 }
 
 export interface OrderListPage {

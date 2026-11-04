@@ -13,6 +13,7 @@ import {
 } from "react";
 
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
+import { usePermissions } from "@/lib/staff-permissions";
 import { cn } from "@/lib/utils";
 
 import {
@@ -92,6 +93,8 @@ const AMBER_BOX =
 export function TopOrderSearch() {
   const pathname = usePathname();
   const { state, input, setInput, open, setOpen, submit } = useLookupCtx();
+  // 置顶 75（定 B）：能看 agent 的人才能按 agent reference 搜，提示字才提。
+  const seeAgent = usePermissions().canSeeMoney;
   /** 窄屏：输入框展开了没有。 */
   const [expanded, setExpanded] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -166,8 +169,16 @@ export function TopOrderSearch() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onFocus={() => state.kind !== "idle" && setOpen(true)}
-          placeholder="Order #, guest name or phone #"
-          aria-label="Search orders by order #, guest name or phone"
+          placeholder={
+            seeAgent
+              ? "Order #, guest name, phone # or agent ref"
+              : "Order #, guest name or phone #"
+          }
+          aria-label={
+            seeAgent
+              ? "Search orders by order #, guest name, phone or agent reference"
+              : "Search orders by order #, guest name or phone"
+          }
           spellCheck={false}
           autoComplete="off"
           className="min-w-0 flex-1 bg-transparent font-medium text-[#f8fafc] outline-none placeholder:text-white/90 [&::-webkit-search-cancel-button]:appearance-none"

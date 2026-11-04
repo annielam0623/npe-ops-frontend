@@ -55,8 +55,19 @@ type State =
   | { kind: "not-found"; query: string }
   | { kind: "error"; message: string }
   | { kind: "list"; matches: Matches }
-  /** back：从搜出来的名单点进来的，可以回到名单。 */
-  | { kind: "ready"; result: LookupResult; back?: Matches };
+  /**
+   * back：从搜出来的名单点进来的，可以回到名单。agentRef：这单是靠 agent reference 对上的（置顶 75），顶上写一条蓝框。
+   */
+  | { kind: "ready"; result: LookupResult; back?: Matches; agentRef?: string };
+
+/** 置顶 75：这一行是靠 agent reference 对上的 ⇒ 号码（后端没给就用输入的）；否则 undefined。 */
+function agentRefOf(o: OrderRow, query: string): string | undefined {
+  return o.matched_agent_ref === true
+    ? o.reseller_reference && o.reseller_reference !== "—"
+      ? o.reseller_reference
+      : query
+    : undefined;
+}
 
 /** 深色底上的字色（整站外框是深色，tracking 页的浅底配色在这里看不清）。 */
 type Tone = "good" | "warn" | "bad" | "info" | "purple" | "muted" | "plain";
@@ -110,10 +121,11 @@ export function useOrderLookup(onUnauthorized: () => void) {
     orderNumber: string,
     signal: AbortSignal,
     back?: Matches,
+    agentRef?: string,
   ): Promise<State> {
     const result = await lookupOrder(orderNumber, signal);
     return result
-      ? { kind: "ready", result, back }
+      ? { kind: "ready", result, back, agentRef }
       : { kind: "not-found", query: orderNumber };
   }
 
@@ -124,7 +136,13 @@ export function useOrderLookup(onUnauthorized: () => void) {
       const { orders, more } = await searchOrders(query, signal);
       const exact = orders.find((o) => isSameOrder(o.order_number, query));
       if (exact) return open(exact.order_number, signal);
-      if (orders.length === 1) return open(orders[0].order_number, signal);
+      if (orders.length === 1)
+        return open(
+          orders[0].order_number,
+          signal,
+          undefined,
+          agentRefOf(orders[0], query),
+        );
       // 列表里没有的单号（极少）：照旧按单号直接查一次。
       if (orders.length === 0) return open(query, signal);
       return { kind: "list", matches: { query, orders, more } };
@@ -133,7 +151,9 @@ export function useOrderLookup(onUnauthorized: () => void) {
 
   /** 从名单里点一张。 */
   function pick(orderNumber: string, back: Matches) {
-    void run(orderNumber, (signal) => open(orderNumber, signal, back));
+    const row = back.orders.find((o) => o.order_number === orderNumber);
+    const ref = row ? agentRefOf(row, back.query) : undefined;
+    void run(orderNumber, (signal) => open(orderNumber, signal, back, ref));
   }
 
   function backTo(matches: Matches) {
@@ -158,6 +178,8 @@ export function LookupBody({
   onPick: (orderNumber: string, back: Matches) => void;
   onBack: (matches: Matches) => void;
 }) {
+  // 置顶 75（定 B）：能看 agent 的人才能按 agent reference 搜，提示句才提。
+  const seeAgent = usePermissions().canSeeMoney;
   switch (state.kind) {
     case "idle":
       return null;
@@ -167,7 +189,8 @@ export function LookupBody({
       return (
         <Note tone="warn">
           No order matches “{state.query}”. Try the order # (Rezdy or CHD), the
-          guest’s name or phone number.
+          guest’s name
+          {seeAgent ? ", phone number or agent reference" : " or phone number"}.
         </Note>
       );
     case "error":
@@ -187,6 +210,14 @@ export function LookupBody({
               ← Back to {state.back.orders.length} matches for “
               {state.back.query}”
             </button>
+          ) : null}
+          {state.agentRef ? (
+            <p
+              data-found-by-agent-ref
+              className="mb-2.5 rounded-[8px] border border-[rgba(147,197,253,.25)] bg-[rgba(147,197,253,.08)] px-2.5 py-1.5 text-[12.5px] text-[#93c5fd]"
+            >
+              Found by agent reference: {state.agentRef}
+            </p>
           ) : null}
           <LookupResultView result={state.result} />
         </>
@@ -240,6 +271,14 @@ function MatchList({
               >
                 <td className="px-2 py-2 font-semibold whitespace-nowrap">
                   {o.order_number}
+                  {o.matched_agent_ref ? (
+                    <span
+                      data-matched-agent-ref
+                      className="mt-0.5 block text-[11.5px] font-medium text-[#93c5fd]"
+                    >
+                      Matched by agent reference: {agentRefOf(o, query)}
+                    </span>
+                  ) : null}
                 </td>
                 <td className="px-2 py-2">{o.name}</td>
                 <td className="px-2 py-2 whitespace-nowrap text-white/75">

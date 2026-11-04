@@ -1,8 +1,11 @@
 // 模拟后端：dashboard 订单查询（Order lookup）。只连本机，绝不连真实后端。
-// 控制：POST /__ctl {unauth}；GET /__log 看请求。
+// 控制：POST /__ctl {unauth, noMoney}；GET /__log 看请求。
+// 置顶 75：ZZTEST3 / ZZTEST5 有 agent reference（TA-77812 / TA-77899）；q 对上它 ⇒ 行带 reseller_reference + matched_agent_ref。
+// noMoney：这个员工没勾 orders.money_view（后端不按 agent ref 搜、不给号码；/api/me/permissions 只给 orders.view）。
 const http = require("http");
 
-const ctl = { unauth: false };
+const ctl = { unauth: false, noMoney: false };
+const AGENT_REF = { ZZTEST3: "TA-77812", ZZTEST5: "TA-77899" };
 const log = [];
 
 function send(res, status, body) {
@@ -129,6 +132,7 @@ http
     log.push({ method: req.method, path: p, query: url.search });
     if (p === "/auth/login") { res.setHeader("Content-Type", "text/html"); return res.end("<h1>LEGACY LOGIN</h1>"); }
     if (p === "/api/me") return send(res, 200, { id: 1, username: "zztest", display_name: "ZZ Test", initials: "ZT", role: "staff", is_admin: false, is_superadmin: false });
+    if (p === "/api/me/permissions" && ctl.noMoney) return send(res, 200, { is_superadmin: false, permissions: [{ code: "orders.view", module: "orders", wired: true }], default_home: null });
     if (p.startsWith("/api/user-prefs/")) return send(res, 200, { key: p.split("/").pop(), value: null });
     if (p === "/api/notifications/unhandled") return send(res, 200, { today: "2026-10-20", window_end: "10:30 AM", count: 0, lanes: { morning: [], tour: [], tickets: [], multi: [] } });
     if (p === "/api/notifications/tour-confirmation/tour-types") return send(res, 200, [{ key: "bryce_zion", abbr: "BZ", label: "Bryce & Zion", has_lunch: true, has_beef: false, lunch_group: "BZ" }]);
@@ -150,7 +154,15 @@ http
           },
         };
       });
-      const hits = rows.filter((r) => !q || r.cols.some((c) => String(c).toLowerCase().includes(q))).map((r) => r.rec);
+      const hits = rows
+        .map((r) => {
+          const ref = ctl.noMoney ? "" : AGENT_REF[r.rec.order_number] || "";
+          const byRef = !!q && !!ref && ref.toLowerCase().includes(q);
+          const byCol = !q || r.cols.some((c) => String(c).toLowerCase().includes(q));
+          if (!byCol && !byRef) return null;
+          return ctl.noMoney ? r.rec : { ...r.rec, reseller_reference: ref || "—", matched_agent_ref: byRef && !byCol };
+        })
+        .filter(Boolean);
       return send(res, 200, { total: hits.length, page: 1, pages: 1, records: hits });
     }
     const m = /^\/api\/operations\/orders\/([^/]+)$/.exec(p);
