@@ -6,6 +6,7 @@ import {
   useEffect,
   useId,
   useMemo,
+  useRef,
   useState,
   type FormEvent,
   type ReactNode,
@@ -79,13 +80,16 @@ interface MemberFormDialogProps {
   members: TeamMemberUser[];
   /** 各人的档位合计（下拉里写「N modules」）；还没拿到的人不写。 */
   summaries?: ReadonlyMap<number, AccessSummary>;
-  /** 保存 / 建号成功（建邀请成功时在显示链接之后、按 Done 关闭前就调用，列表先刷新出待注册行）。 */
-  onSaved: () => void;
+  /**
+   * 保存 / 建号成功（建邀请成功时在显示链接之后、按 Done 关闭前就调用，列表先刷新出待注册行）。
+   * inviteRenewed：改的是还没接受的邀请、勾的集合真的变了 ⇒ 后端已换新链接（G212 SA-8），页面在那一行下面提醒重新发。
+   */
+  onSaved: (result?: { inviteRenewed: boolean }) => void;
   onClose: () => void;
   /** 把错误转成弹窗里显示的原因；401 时由页面跳登录。 */
   toFailure: (error: unknown) => ActionFailure;
-  /** 账号类型切换成功：列表刷新那一行，编辑框不关。 */
-  onAccountTypeChanged?: () => void;
+  /** 账号类型切换成功：列表刷新那一行，编辑框不关。还没接受的邀请换了类型 ⇒ inviteRenewed（后端换新链接）。 */
+  onAccountTypeChanged?: (result?: { inviteRenewed: boolean }) => void;
   /**
    * 有就在框最下面左边出红色 Delete（彻底删除账号，Annie 2026-10-28「动手」）。
    * 只给 Super Admin，自己和 Super Admin 账号不给（页面决定传不传）。
@@ -220,6 +224,9 @@ export function MemberFormDialog({
         }
       : null,
   );
+  /** 后端现在存着的勾（原样，没过 catalog）：存好后跟返回的比，看邀请链接换没换（G212 SA-8）。 */
+  const savedItemsRef = useRef<string[] | null>(null);
+  const pendingInvite = mode.kind === "edit" && !!mode.member.pending_invite;
   const [loadError, setLoadError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -254,6 +261,7 @@ export function MemberFormDialog({
     fetchTeamMember(editId, controller.signal)
       .then((detail) => {
         if (!controller.signal.aborted) {
+          savedItemsRef.current = [...detail.items];
           setForm({
             items: knownItems(catalog, detail.items),
             duties: new Set(detail.duties),
@@ -392,8 +400,15 @@ export function MemberFormDialog({
           await saveTeamContact(mode.member.id, contactBody());
           setSavedContact(contact);
         }
-        await saveTeamMember(mode.member.id, selection(form));
-        onSaved();
+        const sent = selection(form);
+        const res = await saveTeamMember(mode.member.id, sent);
+        const after = res?.member?.items ?? sent.items;
+        const before = savedItemsRef.current;
+        savedItemsRef.current = [...after];
+        onSaved({
+          inviteRenewed:
+            pendingInvite && before !== null && !sameItems(before, after),
+        });
         return;
       }
       if (signIn === "invite") {
@@ -801,6 +816,8 @@ export function MemberFormDialog({
           itemNames={itemNames}
           onClose={() => setTypeConfirm(false)}
           onChanged={(next, saved) => {
+            const typeChanged = next !== accountType;
+            if (saved) savedItemsRef.current = [...saved];
             setAccountType(next);
             setTypeConfirm(false);
             // 员工 → partner（Q3 A）：确认框里列的发送项后端已经去掉，弹窗按返回的 items 刷新（没带就自己去掉）；改回员工不加回。
@@ -818,13 +835,22 @@ export function MemberFormDialog({
                   : prev,
               );
             }
-            onAccountTypeChanged?.();
+            onAccountTypeChanged?.({
+              inviteRenewed: pendingInvite && typeChanged,
+            });
           }}
           toFailure={toFailure}
         />
       ) : null}
     </>
   );
+}
+
+/** 两组勾一样（不看顺序、不看重复）：后端 G212 SA-8 也是比集合。 */
+function sameItems(a: readonly string[], b: readonly string[]): boolean {
+  const x = new Set(a);
+  const y = new Set(b);
+  return x.size === y.size && [...x].every((c) => y.has(c));
 }
 
 /** partner 不收通知、不进团队（Annie 2026-10-26 选 A）。 */
