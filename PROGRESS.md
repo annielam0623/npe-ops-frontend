@@ -1584,6 +1584,13 @@ pe-ops-wt-login-default`，mock，**没合 main，等后端 57 的 logged_in_at 
     - 后端 54 补查（后端主窗口转），前端要接三件，等 Annie「动手」：① me / dashboard-widgets / permissions 三个接口同时发，去掉第二次 /api/me：串行现在 21 趟往返，并发后最多 8 趟，每页省 0.4–0.5s；三个接口服务器上各只要 1–5ms，慢的是往返次数（数据库走公网代理）。② 标签页隐藏时停轮询：一个标签页每分钟约 45 趟往返，10 人 × 3 个标签页 ≈ 每分钟 1,350 趟，跟页面请求抢连接。③ Dispatch 打开时 manifests/sync（150–250ms）和 imports/pull（会去问 Discord，最多等 8 秒，冷却只有 5 秒）不要挡在页面显示前面；后端也会改成问 Discord 时不占事务、冷却拉长。
     - ✅ **Annie 在后端主窗口说（原话）：「改变速度的三步，动手」**（后端主窗口转）。三步是：后端 Samsara 统一问（54 做）、前端三个接口同时发 + 共用 /api/me + 不等权限门就读数据、前端后台标签页停轮询。Dispatch 那两个 POST 不在范围内。e8 派 19：task/perf-shell-parallel、task/perf-hidden-poll，检查过直接合 main，SHA 发 e8 和后端主窗口。
     - 更正（后端主窗口转）：Annie 对扩大版也说了「动手」⇒ 前端多一项：Dispatch 打开时 POST manifests/sync、imports/pull 不挡页面，后台跑完再刷新。e8 派 7a（Shuttle 合完后先做这件，再做 Team 灰字）：task/perf-dispatch-bg。
+    - ✅ **7a 做完合 main**（task/perf-dispatch-bg 功能 cae488c9；合 main 的 SHA 见 git log）。改法（components/dispatch/dispatch-view.tsx）：
+      - 打开 / 换天：GET day 一到就画排车，不再等 POST /api/dispatch/manifests/sync；sync 放后台（runSync，只认最后一次、换了日子就不管）。Step 1 卡片、待处理、Seat guests 这些接口跟着页面一起发，用已存的名单先画。
+      - sync 回来：结果 / 报错照旧交给 Step 1（同步失败照旧红字「Could not update the guest lists from the Manifests page…」，读不出人数的单照旧列出）；只有名单真的变了（某团 changed_any / added / removed / changed）才让卡片、待处理、Seat guests 重读一次（卡片保持原样、不闪 loading）。**不碰排车行**（sync 只改 Step 1 名单，不改 day 的行），所以没存的改动不丢、不用等 Save；也不重建 Relay 面板（它的 key 只跟 manifestVersion）。
+      - POST imports/pull（问 Discord）原来就在页面画好之后才发，不挡页面，没改：照旧在 CCL 预填读完后后台拉，有新版时没动过手才预填、动过手照旧写「CCL posted something new while you were editing…」；失败照旧写「Pull failed: …」；拉取中 Pull 键照旧不能按。编辑锁没碰。
+      - 量页面开始显示（da-mock 加延迟，headless Chrome，dev 模式，各 3 次）：同步 250ms + Discord 8 秒：改前第一行排车 547–564ms、Step 1 卡片 592–621ms ⇒ 改后 313–362ms / 381–410ms；同步 3 秒 + Discord 8 秒：改前 3276–3310ms / 3344–3352ms ⇒ 改后 329–357ms / 400–406ms（不再随同步变慢）。量法脚本不进仓库。
+      - 检查：da 521/521（新加 3 条：同步 3 秒 + Discord 6 秒时排车行 3 秒内出、卡片已出、拉取回来照旧写 Last pull）、mf 244/244（「先同步再读卡片」改成不限顺序；新加 4 条：同步 2.5 秒卡片先出、同步回来没变化不重读、有变化自动再读一次且卡片不闪、后台同步失败照旧红字）、nav 38/38；tsc 0、eslint 0 错（3 旧 warning）、build 过。main 期间没有新提交，检查就是在最新 main 上跑的。
+      - **Annie 验收**：打开 Dispatch / 换天，排车和 Step 1 卡片应比以前快出来（以前要等名单同步跑完）；Step 1 名单照旧是最新的（同步完有变化会自己刷新一下卡片）。
     - 19 推荐先做 1 + 2（同一组文件，交一个窗口）。真实耗时要 Annie 在 Chrome F12 Network 截图（步骤已给 Annie）。
 - **Annie（原话）：「你汇报一下目前为止还有哪些id在用旧系统」** ⇒ 后端 4c 只读查：现有记录分不出来。last_seen_at 只记时间；action_log 不记域名；Host / Referer 没落库；Railway 日志有路径但没有用户。最近 7 天有登录活动的 20 个账号（不分来源），后端直接给 Annie。「旧系统」分两种：① 直接上 confirm 域名；② 在 ops 里打开还没切换的旧页面（走 next.config.ts 的 fallback）。后端问 Annie 指哪种。要分来源，后端在 auth._signed_in 加一行限频日志（域名 + 是否打开页面 + 路径），只能从上线那一刻起算。
 - G212 SA-8 后端上 main 778ee08f（关包 3eaa38e0）：改了还没接受的邀请的角色 / 权限 / 账号类型 ⇒ 旧链接马上失效（400 invalid）。前端那句提醒等 Annie 答置顶 88。
