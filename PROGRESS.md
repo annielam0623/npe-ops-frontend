@@ -1122,6 +1122,8 @@ D. 已完成、待从置顶移走：
 ### ⏰ 提醒 Annie：G180 Tour Tracking 回填以前的日子（**下周，2026-11-09 周一起提醒**）
 - Annie 原话（2026-11-05）：「回填数据可以等我有时间再做，只需要先把上线那一刻的今天及以后的数据放进去，等运行起来之后下周你提醒我做数据回填」。
 - Annie 又问（原话）：「开开关之前staff看不到页面的变化么」。e8 核：前端灰底版只要接口带 send_state / order_state，就出 Order Status 列和说明句。开关关着时后端带不带这两个键、旧模板、CSV 变不变，已问后端。推荐开关关着时 staff 什么都看不到。
+  - 17 回：已照这个做，测试钉住（task/tracking-sync-v2，没上 main）。开关关着 ⇒ tracking 接口每行不带 send_state / order_state，还没发的行整行不返回；旧模板跟现在一模一样；CSV 不加列。开关 = settings tracking_sync_config {"enabled"}，v154 种成 false，同一个开关也管自动同步；管理接口 GET / PUT 开关、POST /api/admin/tracking-sync/run（superadmin）。前端照「看到这两个键才出」，不用改。
+  - ⚠️ e8 发现：这个开关只有开 / 关两档，开了就是全体 staff 一起看到，没有「只给 Super Admin 先看」的阶段（e8 之前跟 Annie 说的「开了也只有 SA 看得到」不对，已更正）。已问 Annie：A（推荐）加一档只给 SA 看（同步照跑，SA 在 ops 先看到灰行，staff 照旧），她检查好了再开放；B 照现在两档，开了就全体看到。
 - 上线时只带当天和以后的日子；过去的日子由后端先 dry-run 出数字，给 Annie 看过、她同意后才执行回填。主窗口下周开工第一件提醒她（G180 上线、运行正常以后）。
 
 ### 88. Settings › Team：改了没接受的邀请的权限后，提醒重新发链接（2026-11-05，后端 b3 转，e8 已问，没动手）
