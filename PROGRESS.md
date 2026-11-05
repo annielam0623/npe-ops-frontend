@@ -1581,6 +1581,9 @@ pe-ops-wt-login-default`，mock，**没合 main，等后端 57 的 logged_in_at 
     4. Manifests 先读列设置再读数据，多 1 轮。改成并发，工作量小。
     5. 轮询：离开页面时会清掉，没有泄漏；但标签页藏到后台还照跑（Dashboard 每个标签页每分钟 3–4 次，Tracking 30–60s）。修法：标签页隐藏时停。半天到 1 天。
     6. Bundle：共享部分 183 → 203kB，Dashboard 176 → 245kB，全仓库没用 next/dynamic。影响 <0.1–0.3s，不是主因。1 天。
+    - 后端 54 补查（后端主窗口转），前端要接三件，等 Annie「动手」：① me / dashboard-widgets / permissions 三个接口同时发，去掉第二次 /api/me：串行现在 21 趟往返，并发后最多 8 趟，每页省 0.4–0.5s；三个接口服务器上各只要 1–5ms，慢的是往返次数（数据库走公网代理）。② 标签页隐藏时停轮询：一个标签页每分钟约 45 趟往返，10 人 × 3 个标签页 ≈ 每分钟 1,350 趟，跟页面请求抢连接。③ Dispatch 打开时 manifests/sync（150–250ms）和 imports/pull（会去问 Discord，最多等 8 秒，冷却只有 5 秒）不要挡在页面显示前面；后端也会改成问 Discord 时不占事务、冷却拉长。
+    - ✅ **Annie 在后端主窗口说（原话）：「改变速度的三步，动手」**（后端主窗口转）。三步是：后端 Samsara 统一问（54 做）、前端三个接口同时发 + 共用 /api/me + 不等权限门就读数据、前端后台标签页停轮询。Dispatch 那两个 POST 不在范围内。e8 派 19：task/perf-shell-parallel、task/perf-hidden-poll，检查过直接合 main，SHA 发 e8 和后端主窗口。
+    - 更正（后端主窗口转）：Annie 对扩大版也说了「动手」⇒ 前端多一项：Dispatch 打开时 POST manifests/sync、imports/pull 不挡页面，后台跑完再刷新。e8 派 7a（Shuttle 合完后先做这件，再做 Team 灰字）：task/perf-dispatch-bg。
     - 19 推荐先做 1 + 2（同一组文件，交一个窗口）。真实耗时要 Annie 在 Chrome F12 Network 截图（步骤已给 Annie）。
 - **Annie（原话）：「你汇报一下目前为止还有哪些id在用旧系统」** ⇒ 后端 4c 只读查：现有记录分不出来。last_seen_at 只记时间；action_log 不记域名；Host / Referer 没落库；Railway 日志有路径但没有用户。最近 7 天有登录活动的 20 个账号（不分来源），后端直接给 Annie。「旧系统」分两种：① 直接上 confirm 域名；② 在 ops 里打开还没切换的旧页面（走 next.config.ts 的 fallback）。后端问 Annie 指哪种。要分来源，后端在 auth._signed_in 加一行限频日志（域名 + 是否打开页面 + 路径），只能从上线那一刻起算。
 - G212 SA-8 后端上 main 778ee08f（关包 3eaa38e0）：改了还没接受的邀请的角色 / 权限 / 账号类型 ⇒ 旧链接马上失效（400 invalid）。前端那句提醒等 Annie 答置顶 88。
