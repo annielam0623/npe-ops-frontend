@@ -6,21 +6,9 @@ import { Modal } from "@/components/ui/modal";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchFieldSnapshot } from "@/lib/hr-working-record-api";
 import { cn } from "@/lib/utils";
-import type {
-  FieldGuestStatus,
-  FieldHours,
-  FieldSnapshot,
-} from "@/types/hr-working-record";
+import type { FieldGuestStatus, FieldSnapshot } from "@/types/hr-working-record";
 
-import {
-  clock,
-  dayHeader,
-  hasText,
-  hoursLine,
-  hoursNeedCheck,
-  hoursNote,
-  roundLabel,
-} from "./working-record-utils";
+import { clock, dayHeader, hasText, roundLabel } from "./working-record-utils";
 
 /** 点 📷 要开的那一天（Q6 A：只有也能看 Live drivers 的人有 📷）。 */
 export interface SnapshotTarget {
@@ -30,7 +18,6 @@ export interface SnapshotTarget {
   kind: "driver" | "guide";
   /** 那天又开车又带团：弹窗里能切到另一种。 */
   other: "driver" | "guide" | null;
-  hours: FieldHours | null;
 }
 
 type Load =
@@ -54,7 +41,7 @@ const STATUS_LABEL: Record<NonNullable<FieldGuestStatus>, string> = {
 };
 
 /**
- * Q3 A：弹窗。上面那天做了哪几段、车、上下班；每站到 / 离；人数、Picked up / No show、每张单收进
+ * Q3 A：弹窗。上面那天做了哪几段、车（Hours 不做，2026-11-05）；每站到 / 离；人数、Picked up / No show、每张单收进
  * 「Show guest counts and orders」，默认不展开；卡头下拉选版本（存了以后又改过会多一版）。
  */
 export function SnapshotDialog({
@@ -95,9 +82,6 @@ export function SnapshotDialog({
   }, [target.hrId, target.date, kind, version, onUnauthorized]);
 
   const snap = load.kind === "ready" ? load.snap : null;
-  const h = target.hours;
-  const line = h ? hoursLine(h) : null;
-  const note = h ? hoursNote(h) : null;
 
   return (
     <Modal
@@ -206,18 +190,6 @@ export function SnapshotDialog({
                     })}
                   </tbody>
                 </table>
-                <p data-wr-snapshot-hours className="mt-1.5">
-                  <span className="text-white/60">Hours: </span>
-                  {line ?? <span className="text-white/60">—</span>}
-                  {h?.source === "schedule" ? (
-                    <span className="text-white/60"> (tour times)</span>
-                  ) : null}
-                </p>
-                {hoursNeedCheck(h) && note ? (
-                  <p className="mt-1 rounded-[6px] border border-amber-300/40 bg-amber-300/10 px-2 py-1 font-semibold text-[#fde68a]">
-                    ⚠ {note} — check before payroll.
-                  </p>
-                ) : null}
               </div>
 
               <div>

@@ -27,17 +27,8 @@ export interface FieldRun {
 }
 
 /**
- * 当天上下班（Q5 B 要 Hours）。按「人 + 天」一对，不分到每条 run。
- * samsara = 司机 Samsara HOS；fallback = Samsara 不全，下班按 23:00 兜底（note 说缺什么）；
- * schedule = 导游按团的排定时间；none = 没有。时间是 ISO（带时区）。
+ * 不做 Hours（Annie 2026-11-05 在后端 11 窗口：「不要麻烦了……因为他们上下班是打卡，所以不重要了」）：每天不带 hours。
  */
-export interface FieldHours {
-  start_at: string | null;
-  end_at: string | null;
-  source: "samsara" | "fallback" | "schedule" | "none";
-  note: string | null;
-}
-
 export interface FieldCalendarDay {
   date: string;
   role: FieldRole;
@@ -45,8 +36,6 @@ export interface FieldCalendarDay {
   /** 那天存了快照（📷）。 */
   snapshot: boolean;
   runs: FieldRun[];
-  /** 后端 Hours 没上线前没有这个键。 */
-  hours?: FieldHours | null;
 }
 
 export interface FieldCalendarPerson {

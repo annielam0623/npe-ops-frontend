@@ -921,11 +921,10 @@ function BannerLine({
 }
 
 /**
- * 置顶 86 Q7 A 的原文（preview v2）+ Hours 的句子（Q5 B，77 补写，原文已报主窗口转 Annie）。
+ * 置顶 86 Q7 A 的原文（preview v2）。Hours 那句已去掉（Annie 2026-11-05：上下班是打卡，不做 Hours）。
  */
 const WORKING_RECORD_HOW_TO = [
   "Working Record: what each driver and guide did each day, for payroll. The week view shows everyone: role (Driver, Guide, or Driver & Guide), tour and van. Click a name to see that person's month and the month's totals (days as Driver, Guide and Driver & Guide, and how many times each tour). 📷 opens that day's snapshot. A dashed box marked live means that day is not saved yet and follows Dispatch as it is now; once saved, later changes in Dispatch do not change it. ⬇ Export for payroll downloads the month as a CSV.",
-  "Hours: a driver's start and end come from Samsara (the first time they go on duty and the last time they go off duty that day). If Samsara has no off-duty time, the end is set to 11:00 PM and the day is marked No Samsara off-duty time; if Samsara has no time at all, the start is empty and the day is marked No Samsara time. Check those days with the driver before payroll. A guide's hours are the tour times (first pickup to the tour's guide snapshot time) and are shown in grey.",
 ];
 
 /** Annie 2026-11-03 题 4 选 A 的原文。 */

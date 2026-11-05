@@ -57,17 +57,17 @@ function wrPeople() {
   const [d0, d1, d2, d3] = [0, 1, 2, 3].map(weekDay);
   return [
     { hr_id: 101, name: "ZZ Test Dan", position: "driver", days: [
-      { date: d0, role: "driver", source: "completed", snapshot: true, runs: [run("private_tour", "Private Tour", "", "driver")], hours: { start_at: la(d0, "06:00"), end_at: la(d0, "14:00"), source: "samsara", note: null } },
-      { date: d1, role: "driver", source: "completed", snapshot: true, runs: [run("bus_tour", "Bus tour South Rim", "2622", "driver")], hours: { start_at: la(d1, "04:26"), end_at: la(d1, "18:59"), source: "samsara", note: null } },
-      { date: d2, role: "driver", source: "not_completed", snapshot: true, runs: [run("relay", "Hotel pickups to Treasure Island", "Van 12", "driver"), run("bus_tour", "Bus tour Bryce & Zion", "2610", "driver")], hours: { start_at: la(d2, "03:53"), end_at: la(d2, "23:00"), source: "fallback", note: "No Samsara off-duty time" } },
-      { date: d3, role: "driver", source: "live", snapshot: false, runs: [run("bus_tour", "Bus tour South Rim", "2622", "driver")], hours: { start_at: null, end_at: la(d3, "23:00"), source: "fallback", note: "No Samsara time" } },
+      { date: d0, role: "driver", source: "completed", snapshot: true, runs: [run("private_tour", "Private Tour", "", "driver")] },
+      { date: d1, role: "driver", source: "completed", snapshot: true, runs: [run("bus_tour", "Bus tour South Rim", "2622", "driver")] },
+      { date: d2, role: "driver", source: "not_completed", snapshot: true, runs: [run("relay", "Hotel pickups to Treasure Island", "Van 12", "driver"), run("bus_tour", "Bus tour Bryce & Zion", "2610", "driver")] },
+      { date: d3, role: "driver", source: "live", snapshot: false, runs: [run("bus_tour", "Bus tour South Rim", "2622", "driver")] },
     ] },
     { hr_id: 102, name: "ZZ Test Carlos", position: "both", days: [
-      { date: d1, role: "both", source: "completed", snapshot: true, runs: [run("bus_tour", "Bus tour South Rim", "2622", "driver"), run("bus_tour", "Bus tour South Rim", "2622", "guide")], hours: { start_at: la(d1, "04:30"), end_at: la(d1, "19:00"), source: "samsara", note: null } },
+      { date: d1, role: "both", source: "completed", snapshot: true, runs: [run("bus_tour", "Bus tour South Rim", "2622", "driver"), run("bus_tour", "Bus tour South Rim", "2622", "guide")] },
       { date: d3, role: "driver", source: "live", snapshot: false, runs: [run("relay_2", "Hotel pickups to Treasure Island", "Van 7", "driver")] },
     ] },
     { hr_id: 103, name: "ZZ Test Lankun", position: "guide", days: [
-      { date: d1, role: "guide", source: "completed", snapshot: true, runs: [run("bus_tour", "Bus tour Antelope Canyon", "2356", "guide")], hours: { start_at: la(d1, "05:30"), end_at: la(d1, "21:00"), source: "schedule", note: null } },
+      { date: d1, role: "guide", source: "completed", snapshot: true, runs: [run("bus_tour", "Bus tour Antelope Canyon", "2356", "guide")] },
     ] },
     { hr_id: 104, name: "ZZ Test Lee", position: "guide", days: [
       { date: d0, role: "guide", source: "completed", snapshot: false, runs: [run("bus_tour", "", "", "guide", { tour_name: "" })] },
@@ -144,6 +144,7 @@ http.createServer(async (req, res) => {
   if (p === "/api/field-calendar") {
     if (ctl.wrMissing) return send(res, 404, { detail: "Not Found" });
     if (ctl.wrFail) return send(res, 500, { detail: "Could not load the snapshots. Try again." });
+    if (ctl.wrForbidden) return send(res, 403, { detail: "This page is not open to you." });
     const from = url.searchParams.get("from");
     const to = url.searchParams.get("to");
     const inRange = (person) => ({ ...person, days: person.days.filter((d) => d.date >= from && d.date <= to) });

@@ -2,7 +2,6 @@ import { LA_TIME_ZONE, shiftYmd, weekStartYmd } from "@/lib/la-date";
 import type {
   FieldCalendarDay,
   FieldCalendarPerson,
-  FieldHours,
   FieldRole,
   FieldRun,
 } from "@/types/hr-working-record";
@@ -119,50 +118,10 @@ export function clock(iso: string | null | undefined): string | null {
   return Number.isNaN(t) ? null : CLOCK_FORMAT.format(t);
 }
 
-/** 上下班都有才算得出钟点数（保留 2 位小数）；缺一头 = null。 */
-export function hoursOf(h: FieldHours | null | undefined): number | null {
-  if (!h?.start_at || !h.end_at) return null;
-  const ms = new Date(h.end_at).getTime() - new Date(h.start_at).getTime();
-  if (Number.isNaN(ms) || ms < 0) return null;
-  return Math.round((ms / 3_600_000) * 100) / 100;
-}
-
-export function formatHours(n: number): string {
-  return `${Number.isInteger(n) ? n : n.toFixed(2).replace(/0$/, "")} h`;
-}
-
-/** Samsara 不全（fallback：下班按 23:00 兜底，或连上班时间都没有）：要人核对后再算工资。 */
-export function hoursNeedCheck(h: FieldHours | null | undefined): boolean {
-  return h?.source === "fallback";
-}
-
-/** 后端的 note 原文；fallback 没写 note 时按缺哪头补一句（同后端两句）。 */
-export function hoursNote(h: FieldHours): string | null {
-  if (hasText(h.note)) return h.note;
-  if (h.source === "fallback") {
-    return h.start_at ? "No Samsara off-duty time" : "No Samsara time";
-  }
-  return null;
-}
-
-/** 格子 / 弹窗 / Export 里的一行钟点："4:26 AM – 6:59 PM · 14.55 h"；起点没有写 "? – 11:00 PM"。 */
-export function hoursLine(h: FieldHours): string | null {
-  const start = clock(h.start_at);
-  const end = clock(h.end_at);
-  if (!start && !end) return null;
-  const n = hoursOf(h);
-  return `${start ?? "?"} – ${end ?? "?"}${n !== null ? ` · ${formatHours(n)}` : ""}`;
-}
-
 export interface PersonTotals {
   days: Record<FieldRole, number>;
   /** 各段几次（一天两段各记 1 次），按次数多到少、再按名字。 */
   byTour: Array<{ title: string; count: number }>;
-  /** 算得出钟点的天数合计。 */
-  hours: number;
-  hoursDays: number;
-  /** Samsara 不全、要核对的天。 */
-  needCheck: number;
   /** 还没存档（live）的天。 */
   liveDays: number;
 }
@@ -176,9 +135,6 @@ export function totalsOf(
   const out: PersonTotals = {
     days: { driver: 0, guide: 0, both: 0 },
     byTour: [],
-    hours: 0,
-    hoursDays: 0,
-    needCheck: 0,
     liveDays: 0,
   };
   const tours = new Map<string, number>();
@@ -190,14 +146,7 @@ export function totalsOf(
       const t = runTitle(r) || "No tour name";
       tours.set(t, (tours.get(t) ?? 0) + 1);
     }
-    const n = hoursOf(d.hours);
-    if (n !== null) {
-      out.hours += n;
-      out.hoursDays += 1;
-    }
-    if (hoursNeedCheck(d.hours)) out.needCheck += 1;
   }
-  out.hours = Math.round(out.hours * 100) / 100;
   out.byTour = [...tours]
     .map(([title, count]) => ({ title, count }))
     .sort((a, b) => b.count - a.count || a.title.localeCompare(b.title));
@@ -225,20 +174,8 @@ export const EXPORT_HEADERS = [
   "Role",
   "Tours",
   "Vans",
-  "Start",
-  "End",
-  "Hours",
-  "Hours from",
-  "Hours note",
   "Saved",
 ] as const;
-
-const HOURS_FROM: Record<FieldHours["source"], string> = {
-  samsara: "Samsara",
-  fallback: "Samsara + 11:00 PM",
-  schedule: "Tour times",
-  none: "",
-};
 
 /** ⬇ Export for payroll：每人每天一行 + 每人一行合计（[from, to] 里的天）。 */
 export function exportRows(
@@ -253,19 +190,12 @@ export function exportRows(
       .sort((a, b) => a.date.localeCompare(b.date));
     if (!days.length) continue;
     for (const d of days) {
-      const h = d.hours ?? null;
-      const n = hoursOf(h);
       rows.push([
         p.name,
         d.date,
         ROLE_LABEL[d.role],
         d.runs.map((r) => runTitle(r) || "No tour name").join(" / "),
         d.runs.map((r) => (hasText(r.van) ? r.van : "No van")).join(" / "),
-        clock(h?.start_at) ?? "",
-        clock(h?.end_at) ?? "",
-        n ?? "",
-        h ? HOURS_FROM[h.source] : "",
-        h ? (hoursNote(h) ?? "") : "",
         d.source === "live" ? "Not saved yet (live)" : "Saved",
       ]);
     }
@@ -276,11 +206,6 @@ export function exportRows(
       `Driver ${t.days.driver} · Guide ${t.days.guide} · Driver & Guide ${t.days.both}`,
       t.byTour.map((x) => `${x.title} ×${x.count}`).join(" / "),
       "",
-      "",
-      "",
-      t.hours,
-      "",
-      t.needCheck ? `${t.needCheck} day(s) to check` : "",
       t.liveDays ? `${t.liveDays} live day(s)` : "",
     ]);
   }

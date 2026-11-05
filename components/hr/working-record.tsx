@@ -32,11 +32,7 @@ import {
   dayHeader,
   EXPORT_HEADERS,
   exportRows,
-  formatHours,
   hasText,
-  hoursLine,
-  hoursNeedCheck,
-  hoursNote,
   monthGrid,
   monthRange,
   monthTitle,
@@ -52,7 +48,7 @@ import {
  * Settings › Human Resource › Working Record（置顶 86，Annie「working record这里全部同意推荐，动手」，preview v2
  * https://claude.ai/artifact/U951qPXH1hNBzLbuSGY6Hm）：
  * Q1 C 默认周表看所有人（Drivers / Guides 两节），点名字看此人月历 + 当月合计；Q2 A 格子写角色色 + 团名 + 车号，
- * 📷 有快照、虚线 + live 未存档；Q3 A 快照弹窗；Q4 A 合计 + ⬇ Export for payroll（CSV）；Q5 B 要 Hours；
+ * 📷 有快照、虚线 + live 未存档；Q3 A 快照弹窗；Q4 A 合计 + ⬇ Export for payroll（CSV）；Hours 不做（Annie 2026-11-05「上下班是打卡」）；
  * Q6 A 📷 只给也能看 Live drivers 的人（canSnapshot）。整块先只 Super Admin 可见（hr-view 按开关 hr_working_record 判）。
  * 只看不改：没有要存的东西。
  */
@@ -70,6 +66,7 @@ type Mode =
 type Load<T> =
   | { kind: "loading" }
   | { kind: "missing" }
+  | { kind: "forbidden" }
   | { kind: "error"; message: string }
   | { kind: "ready"; data: T };
 
@@ -119,6 +116,8 @@ export function WorkingRecord({
     (error: unknown) => {
       if (isStatus(error, 401)) onUnauthorized();
       else if (isStatus(error, 404)) setLoad({ kind: "missing" });
+      // 后端 require_widget：开关 hr_working_record 没对这个人开（例如页开着时 Super Admin 刚关掉）。
+      else if (isStatus(error, 403)) setLoad({ kind: "forbidden" });
       else setLoad({ kind: "error", message: describeError(error) });
     },
     [onUnauthorized],
@@ -186,6 +185,7 @@ export function WorkingRecord({
       );
     } catch (error) {
       if (isStatus(error, 401)) onUnauthorized();
+      else if (isStatus(error, 403)) setLoad({ kind: "forbidden" });
       else setExportError(`Could not export — ${describeError(error)}`);
     } finally {
       setExporting(false);
@@ -343,6 +343,13 @@ export function WorkingRecord({
         <div data-wr-missing className={HR_CARD_CLASS}>
           <p className={HR_EMPTY_CLASS}>
             The Working Record is not available on the server yet.
+          </p>
+        </div>
+      ) : load.kind === "forbidden" ? (
+        <div data-wr-forbidden className={HR_CARD_CLASS}>
+          <p className={HR_EMPTY_CLASS}>
+            The Working Record is not open to you yet. Ask a Super Admin if you
+            need it.
           </p>
         </div>
       ) : mode.view === "person" ? (
@@ -625,22 +632,6 @@ function PersonMonth({
                 </td>
               </tr>
             )}
-            <TotalsHead label="Hours" />
-            <TotalsRow
-              label={`Total (${totals.hoursDays} day${totals.hoursDays === 1 ? "" : "s"} with times)`}
-              value={formatHours(totals.hours)}
-            />
-            {totals.needCheck ? (
-              <tr data-wr-check>
-                <td
-                  colSpan={2}
-                  className="px-2.5 py-1.5 font-semibold text-[#b45309] night:text-amber-300"
-                >
-                  ⚠ {totals.needCheck} day{totals.needCheck === 1 ? "" : "s"}{" "}
-                  without full Samsara times — check before payroll.
-                </td>
-              </tr>
-            ) : null}
           </tbody>
         </table>
       </section>
@@ -716,9 +707,6 @@ function DayJobs({
   const live = day.source === "live";
   const jobs = groupRuns(day.runs);
   const showCam = canSnapshot && day.snapshot;
-  const h = day.hours ?? null;
-  const line = h ? hoursLine(h) : null;
-  const note = h ? hoursNote(h) : null;
   return (
     <>
       {(jobs.length ? jobs : [null]).map((job, i) => {
@@ -755,7 +743,6 @@ function DayJobs({
                       date: day.date,
                       kind: day.role === "guide" ? "guide" : "driver",
                       other: day.role === "both" ? "guide" : null,
-                      hours: h,
                     })
                   }
                   className="float-right cursor-pointer text-[11px]"
@@ -778,30 +765,6 @@ function DayJobs({
           </span>
         );
       })}
-      {line || note ? (
-        <span
-          data-wr-hours={h?.source}
-          className={cn(
-            "block leading-[1.3]",
-            h?.source === "schedule"
-              ? "text-[#8a8a8a] night:text-white/45"
-              : "text-[#1a1a1a] night:text-white/80",
-          )}
-        >
-          {line}
-          {h?.source === "schedule" ? (
-            <span className="block text-[10px]">Tour times</span>
-          ) : null}
-        </span>
-      ) : null}
-      {hoursNeedCheck(h) && note ? (
-        <span
-          data-wr-hours-check
-          className="mt-0.5 block rounded-[4px] bg-[#fef3c7] px-1 py-px text-[10.5px] leading-[1.3] font-bold text-[#92400e]"
-        >
-          ⚠ {note}
-        </span>
-      ) : null}
     </>
   );
 }
