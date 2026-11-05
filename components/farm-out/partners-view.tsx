@@ -745,7 +745,11 @@ export function PartnersView() {
                                                 type="text"
                                                 inputMode="decimal"
                                                 aria-label={`${r.tour_name} ${kind} price`}
-                                                placeholder="not set"
+                                                placeholder={
+                                                  editing.items.length > 0
+                                                    ? "N/A"
+                                                    : "not set"
+                                                }
                                                 value={editing[kind]}
                                                 onChange={(e) =>
                                                   setEditingRate({
@@ -759,6 +763,15 @@ export function PartnersView() {
                                                   "w-[88px] text-right",
                                                 )}
                                               />
+                                            ) : price == null &&
+                                              (r.items?.length ?? 0) > 0 ? (
+                                              // 有子项的团：价钱都在子项上，主项的 Adult / Child 不算缺（Annie 2026-11-05「把列在主项上的两个空格忽略，或者允许我打N/A」）。
+                                              <span
+                                                data-price-na
+                                                className="text-[#9ca3af] night:text-white/45"
+                                              >
+                                                N/A
+                                              </span>
                                             ) : price == null ? (
                                               <span className="text-[#A32D2D] italic night:text-red-300">
                                                 not set
