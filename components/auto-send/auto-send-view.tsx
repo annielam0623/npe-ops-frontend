@@ -30,12 +30,14 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ErrorBanner, Panel } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchAutoSend, saveAutoSend } from "@/lib/auto-send-api";
+import { fetchTixTourTypes } from "@/lib/tix-tour-types-api";
 import { fetchCurrentUser } from "@/lib/auth-api";
 import { LA_TIME_ZONE, laMinuteOfDay } from "@/lib/la-date";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
 import { cn } from "@/lib/utils";
 import type {
   AutoSendConfig,
+  AutoSendLeadGroup,
   AutoSendRun,
   AutoSendSettings,
 } from "@/types/auto-send";
@@ -256,7 +258,14 @@ export function AutoSendView() {
         </ErrorBanner>
       ) : (
         <>
-          <HowToUse />
+          <HowToUse
+            v3={
+              !!data &&
+              (data.config.tickets.daily_report !== undefined ||
+                data.config.tickets.lead_groups !== undefined ||
+                data.config.tickets.max_per_batch !== undefined)
+            }
+          />
           {!view.data.readable ? (
             <p
               role="alert"
@@ -312,7 +321,9 @@ export function AutoSendView() {
   );
 }
 
-function HowToUse() {
+/** v3 = 后端带了置顶 89 的新键（preview v3 的全文）；旧后端照以前的 6 条。 */
+function HowToUse({ v3 }: { v3: boolean }) {
+  if (v3) return <HowToUseV3 />;
   return (
     <LegacyHowTo title="How to use — Auto Send">
       <li>
@@ -337,6 +348,65 @@ function HowToUse() {
         the next day and why. Test orders are left out of the summary. Orders
         whose Cfm # doesn&apos;t match the product are skipped and listed
         together in one email after each run.
+      </li>
+      <li>
+        Orders already sent by hand are not sent again, and the other way round.
+        To send again by hand, tick Send anyway. Auto-sent messages show as
+        &ldquo;scheduler&rdquo; in the Send Log.
+      </li>
+      <li>
+        Turning one off stops every batch of that kind that hasn&apos;t started.
+        A batch already sending finishes. Times are Las Vegas time.
+      </li>
+    </LegacyHowTo>
+  );
+}
+
+/** 置顶 89 preview v3 的 How to use（Annie 2026-11-05「Auto Send 都选 A。动手」）。 */
+function HowToUseV3() {
+  return (
+    <LegacyHowTo title="How to use — Auto Send">
+      <li>
+        Tour confirmations and ticket reminders each have their own switch, off
+        until you turn it on. When one is on, it starts at its next send time. A
+        batch that just passed is not sent again.
+      </li>
+      <li>
+        Tour confirmations go out at each send time to bus tour orders from the
+        set number of days before the tour up to the day before. Nothing goes
+        out on the tour day.
+      </li>
+      <li>
+        Each bus product needs a tour type in Settings → Products. Orders
+        without one, with a pickup time that can&apos;t be read, or with two
+        lines that disagree are skipped and emailed to the people below, once
+        per order.
+      </li>
+      <li>
+        Ticket reminders go out at each send time to ticket orders that have a
+        Cfm #. To start some ticket types earlier or later, add a time (Start
+        sending N days before) and pick its ticket types in Add ticket type, the
+        same way you pick hotels for a Morning Relay car. A ticket type can be
+        in one time only; ones already picked show grey. Ticket types not picked
+        anywhere use the default. The send times are the same for every ticket
+        type. Click Save to keep the changes.
+      </li>
+      <li>
+        Max per batch: each batch sends at most this many orders, the earliest
+        pickups first. The last batch of the day sends everything that is left.
+        An order that can&apos;t be sent yet is tried again in every batch until
+        the day before the service date.
+      </li>
+      <li>
+        Daily report: after the last batch of the day, one email lists the
+        ticket orders that were due but not sent, why, and what to do (orders
+        whose Cfm # doesn&apos;t match the product included). It is the only
+        summary email; there is no morning summary any more. It has its own
+        switch, off until you turn it on.
+      </li>
+      <li>
+        Messages go out one guest at a time, about one second apart, so a big
+        batch takes a few minutes.
       </li>
       <li>
         Orders already sent by hand are not sent again, and the other way round.
@@ -518,6 +588,10 @@ function TourCard({
     times: t.times,
     days_before: t.days_before,
     alert_emails: t.alert_emails,
+    // 置顶 89：后端带了才有（旧后端没有这个键 ⇒ 不出这一格、也不发回去）
+    ...(t.max_per_batch !== undefined
+      ? { max_per_batch: t.max_per_batch }
+      : {}),
   });
   const [draft, setDraft] = useState(fieldsOf(saved.tour));
   const savedKey = JSON.stringify(fieldsOf(saved.tour));
@@ -546,6 +620,13 @@ function TourCard({
         note="Up to the day before. Never on the tour day."
         onChange={(days_before) => setDraft({ ...draft, days_before })}
       />
+      {draft.max_per_batch !== undefined ? (
+        <MaxPerBatchField
+          id="tour-max"
+          value={draft.max_per_batch}
+          onChange={(max_per_batch) => setDraft({ ...draft, max_per_batch })}
+        />
+      ) : null}
       <EmailsField
         id="tour-alerts"
         label="Email skipped orders to"
@@ -573,7 +654,16 @@ function TicketsCard({
     days_before: t.days_before,
     summary_time: t.summary_time,
     summary_emails: t.summary_emails,
+    // 置顶 89：后端带了才有（旧后端没有 ⇒ 不出、也不发回去）。daily_report 的开关点了就存（见 DailyReport），草稿只管收件人。
+    ...(t.lead_groups !== undefined ? { lead_groups: t.lead_groups } : {}),
+    ...(t.max_per_batch !== undefined
+      ? { max_per_batch: t.max_per_batch }
+      : {}),
+    ...(t.daily_report !== undefined
+      ? { daily_report_emails: t.daily_report.emails }
+      : {}),
   });
+  const hasReport = saved.tickets.daily_report !== undefined;
   const [draft, setDraft] = useState(fieldsOf(saved.tickets));
   const savedKey = JSON.stringify(fieldsOf(saved.tickets));
   useEffect(() => setDraft(JSON.parse(savedKey)), [savedKey]);
@@ -589,7 +679,21 @@ function TicketsCard({
       })}
       onToggleEnabled={onToggleEnabled}
       dirty={JSON.stringify(draft) !== savedKey}
-      onSave={() => onSave({ ...draft, enabled: saved.tickets.enabled })}
+      onSave={() => {
+        const { daily_report_emails, ...rest } = draft;
+        return onSave({
+          ...rest,
+          enabled: saved.tickets.enabled,
+          ...(saved.tickets.daily_report && daily_report_emails
+            ? {
+                daily_report: {
+                  enabled: saved.tickets.daily_report.enabled,
+                  emails: daily_report_emails,
+                },
+              }
+            : {}),
+        });
+      }}
     >
       <TimesField
         id="tickets-times"
@@ -600,33 +704,82 @@ function TicketsCard({
         id="tickets-days"
         value={draft.days_before}
         unit="days before the service date"
+        label={
+          draft.lead_groups !== undefined
+            ? "Start sending (default)"
+            : undefined
+        }
+        note={
+          draft.lead_groups !== undefined
+            ? "For ticket types not set below."
+            : undefined
+        }
         onChange={(days_before) => setDraft({ ...draft, days_before })}
       />
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor="tickets-summary-time" className={LABEL}>
-          Day-before summary at
-        </label>
-        <div className="flex flex-wrap items-center gap-2">
-          <input
-            id="tickets-summary-time"
-            type="time"
-            value={draft.summary_time}
-            onChange={(e) =>
-              setDraft({ ...draft, summary_time: e.target.value })
+      {draft.lead_groups !== undefined ? (
+        <LeadGroupsField
+          groups={draft.lead_groups}
+          defaultDays={draft.days_before}
+          onChange={(lead_groups) => setDraft({ ...draft, lead_groups })}
+        />
+      ) : null}
+      {draft.max_per_batch !== undefined ? (
+        <MaxPerBatchField
+          id="tickets-max"
+          value={draft.max_per_batch}
+          onChange={(max_per_batch) => setDraft({ ...draft, max_per_batch })}
+        />
+      ) : null}
+      {hasReport ? null : (
+        <>
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="tickets-summary-time" className={LABEL}>
+              Day-before summary at
+            </label>
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                id="tickets-summary-time"
+                type="time"
+                value={draft.summary_time}
+                onChange={(e) =>
+                  setDraft({ ...draft, summary_time: e.target.value })
+                }
+                className={cn(
+                  INLINE_INPUT_BASE,
+                  "w-[120px] [color-scheme:light]",
+                )}
+              />
+              <span className={NOTE}>
+                What is still not sent for the next day, and why.
+              </span>
+            </div>
+          </div>
+          <EmailsField
+            id="tickets-summary"
+            label="Send the summary to"
+            values={draft.summary_emails}
+            onChange={(summary_emails) =>
+              setDraft({ ...draft, summary_emails })
             }
-            className={cn(INLINE_INPUT_BASE, "w-[120px] [color-scheme:light]")}
           />
-          <span className={NOTE}>
-            What is still not sent for the next day, and why.
-          </span>
-        </div>
-      </div>
-      <EmailsField
-        id="tickets-summary"
-        label="Send the summary to"
-        values={draft.summary_emails}
-        onChange={(summary_emails) => setDraft({ ...draft, summary_emails })}
-      />
+        </>
+      )}
+      {saved.tickets.daily_report && draft.daily_report_emails ? (
+        <DailyReport
+          enabled={saved.tickets.daily_report.enabled}
+          lastTime={[...draft.times].sort().at(-1) ?? null}
+          emails={draft.daily_report_emails}
+          onEmails={(daily_report_emails) =>
+            setDraft({ ...draft, daily_report_emails })
+          }
+          onToggle={(enabled) =>
+            onSave({
+              ...saved.tickets,
+              daily_report: { ...saved.tickets.daily_report!, enabled },
+            })
+          }
+        />
+      ) : null}
     </SettingsCard>
   );
 }
@@ -693,19 +846,21 @@ function DaysField({
   id,
   value,
   unit,
+  label = "Start sending",
   note,
   onChange,
 }: {
   id: string;
   value: number;
   unit: string;
+  label?: string;
   note?: string;
   onChange: (next: number) => void;
 }) {
   return (
     <div className="flex flex-col gap-1.5">
       <label htmlFor={id} className={LABEL}>
-        Start sending
+        {label}
       </label>
       <div className="flex flex-wrap items-center gap-2 text-[12.5px] text-[#1a1a1a] night:text-white/80">
         <input
@@ -840,5 +995,263 @@ function Runs({ runs }: { runs: AutoSendRun[] }) {
         </p>
       )}
     </section>
+  );
+}
+
+// ── 置顶 89（Annie 2026-11-05「Auto Send 都选 A。动手」，preview https://claude.ai/artifact/BYv5FXVG7FqYuQ7gFEpV1a v3）──
+
+/** 当天最后一批之前每批最多发几单；最后一批发剩下的全部。 */
+function MaxPerBatchField({
+  id,
+  value,
+  onChange,
+}: {
+  id: string;
+  value: number;
+  onChange: (next: number) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5" data-field={id}>
+      <label htmlFor={id} className={LABEL}>
+        Max per batch
+      </label>
+      <div className="flex flex-wrap items-center gap-2 text-[12.5px] text-[#1a1a1a] night:text-white/80">
+        <input
+          id={id}
+          type="number"
+          min={1}
+          value={Number.isFinite(value) ? value : ""}
+          onChange={(e) => onChange(e.target.valueAsNumber)}
+          className={cn(INLINE_INPUT_BASE, "w-[80px] tabular-nums")}
+        />
+        orders
+        <span className={NOTE}>
+          (The last batch of the day sends everything left.)
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/** Dispatch › Morning Relay 挑酒店同一套样子（vehicle-row.tsx 的 Add hotel 下拉 + Chips；Annie「跟relay酒店一摸一样」）。 */
+const ADD_TYPE =
+  "h-[34px] w-full max-w-[320px] cursor-pointer appearance-none rounded-[7px] border border-dashed border-[#9ca3af] bg-paper bg-[right_11px_center] bg-no-repeat pr-7 pl-[11px] text-[13.5px] leading-none text-[#111827] hover:bg-[#f4f5f7] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#3b82f6]";
+const ADD_TYPE_CARET =
+  "url(\"data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='7'%3E%3Cpath d='M1 1l4.5 4.5L10 1' fill='none' stroke='%23374151' stroke-width='1.6'/%3E%3C/svg%3E\")";
+const TYPE_CHIP =
+  "inline-flex cursor-pointer items-center gap-[7px] rounded-[7px] border-[0.5px] border-black/[.09] bg-[#eef2f7] px-[9px] py-[5px] text-[12.5px] text-[#1a1a1a] hover:bg-[#e2e8f0]";
+
+/** 门票团清单（Content Studio 的 tix_tour_types，只要没停用的）。读不到 ⇒ null（只显示 key）。 */
+function useTicketTypes() {
+  const [types, setTypes] = useState<{ key: string; label: string }[] | null>(
+    null,
+  );
+  useEffect(() => {
+    const ac = new AbortController();
+    fetchTixTourTypes(ac.signal)
+      .then((r) =>
+        setTypes(
+          r.tour_types
+            .filter((t) => t.is_active)
+            .map((t) => ({ key: t.key, label: t.label })),
+        ),
+      )
+      .catch(() => {
+        if (!ac.signal.aborted) setTypes(null);
+      });
+    return () => ac.abort();
+  }, []);
+  return types;
+}
+
+function LeadGroupsField({
+  groups,
+  defaultDays,
+  onChange,
+}: {
+  groups: AutoSendLeadGroup[];
+  defaultDays: number;
+  onChange: (next: AutoSendLeadGroup[]) => void;
+}) {
+  const types = useTicketTypes();
+  const nameOf = (k: string) => types?.find((t) => t.key === k)?.label ?? k;
+  const all = types?.map((t) => t.key) ?? [];
+  const set = (i: number, g: AutoSendLeadGroup) =>
+    onChange(groups.map((x, j) => (j === i ? g : x)));
+  const used = new Set(groups.flatMap((g) => g.ticket_types));
+  const rest = all.filter((k) => !used.has(k));
+  return (
+    <div className="flex flex-col gap-1.5" data-lead-groups>
+      <span className={LABEL}>Start sending, by ticket type</span>
+      <span className={NOTE}>
+        Pick the ticket types for each time. Send times are the same for every
+        ticket type.
+      </span>
+      {groups.map((g, i) => {
+        // 别的行已挑的：灰、点不了、后面写在哪一行（同 Relay 的「Excalibur - FREDDY」）；这一行已挑的不列。
+        const takenBy = new Map<string, number>();
+        groups.forEach((o, j) => {
+          if (j !== i)
+            for (const k of o.ticket_types) takenBy.set(k, o.days_before);
+        });
+        return (
+          <div
+            key={i}
+            data-lead-row={i}
+            className="grid grid-cols-[minmax(0,230px)_minmax(0,1fr)_28px] items-start gap-3.5 border-t border-[#e5e7eb] py-2.5 text-[12.5px] text-[#1a1a1a] max-sm:grid-cols-[minmax(0,1fr)_28px] night:border-white/10 night:text-white/80"
+          >
+            <div className="flex flex-wrap items-center gap-2 pt-1.5">
+              Start sending
+              <input
+                type="number"
+                min={1}
+                max={14}
+                aria-label={`Days before, time ${i + 1}`}
+                value={Number.isFinite(g.days_before) ? g.days_before : ""}
+                onChange={(e) =>
+                  set(i, { ...g, days_before: e.target.valueAsNumber })
+                }
+                className={cn(INLINE_INPUT_BASE, "w-[56px] tabular-nums")}
+              />
+              days before
+            </div>
+            <div className="flex min-w-0 flex-col gap-1.5 max-sm:col-span-2 max-sm:row-start-2">
+              <select
+                data-f="addtype"
+                aria-label="Add ticket type"
+                value=""
+                onChange={(e) =>
+                  e.target.value &&
+                  set(i, {
+                    ...g,
+                    ticket_types: [...g.ticket_types, e.target.value],
+                  })
+                }
+                className={ADD_TYPE}
+                style={{ backgroundImage: ADD_TYPE_CARET }}
+              >
+                <option value="">Add ticket type</option>
+                {all
+                  .filter((k) => !g.ticket_types.includes(k))
+                  .map((k) => (
+                    <option
+                      key={k}
+                      value={k}
+                      disabled={takenBy.has(k)}
+                      className={takenBy.has(k) ? undefined : "text-black"}
+                    >
+                      {nameOf(k)}
+                      {takenBy.has(k) ? ` - ${takenBy.get(k)} days before` : ""}
+                    </option>
+                  ))}
+              </select>
+              {g.ticket_types.length ? (
+                <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                  {g.ticket_types.map((k) => (
+                    <button
+                      key={k}
+                      type="button"
+                      data-type-chip={k}
+                      title="Remove this ticket type"
+                      onClick={() =>
+                        set(i, {
+                          ...g,
+                          ticket_types: g.ticket_types.filter((x) => x !== k),
+                        })
+                      }
+                      className={TYPE_CHIP}
+                    >
+                      {nameOf(k)}{" "}
+                      <span aria-hidden className="text-[11px]">
+                        ✕
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+            <button
+              type="button"
+              aria-label={`Remove time ${i + 1}`}
+              title="Remove this time"
+              onClick={() => onChange(groups.filter((_, j) => j !== i))}
+              className="cursor-pointer border-0 bg-transparent pt-1.5 text-[16px] leading-none text-[#78716c] hover:text-[#1a1a1a] max-sm:col-start-2 max-sm:row-start-1"
+            >
+              ×
+            </button>
+          </div>
+        );
+      })}
+      <div>
+        <button
+          type="button"
+          data-add-lead
+          onClick={() =>
+            onChange([
+              ...groups,
+              { days_before: defaultDays, ticket_types: [] },
+            ])
+          }
+          className={cn(ADD_BTN, "px-3.5 py-1.5 text-[13px]")}
+        >
+          + Add another time
+        </button>
+      </div>
+      {types ? (
+        <span className={NOTE} data-lead-default>
+          {rest.length
+            ? `Using the default (${defaultDays} days): ${rest.map(nameOf).join(", ")}.`
+            : "Every ticket type has its own time."}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+/** 每日报告：开关点了就存（照卡片抬头的开关，先确认）；收件人跟卡片的 Save 一起存。 */
+function DailyReport({
+  enabled,
+  lastTime,
+  emails,
+  onEmails,
+  onToggle,
+}: {
+  enabled: boolean;
+  lastTime: string | null;
+  emails: string[];
+  onEmails: (next: string[]) => void;
+  onToggle: (next: boolean) => Promise<ActionResult>;
+}) {
+  return (
+    <div
+      data-daily-report
+      className="flex flex-col gap-2.5 border-t-[0.5px] border-black/[.08] pt-3 night:border-white/10"
+    >
+      <div className="flex flex-wrap items-center gap-3">
+        <span className={cn(LABEL, "text-[13px]")}>Daily report</span>
+        <EnabledSwitch
+          enabled={enabled}
+          label="the daily report"
+          nextRun={null}
+          onToggle={onToggle}
+        />
+        <span className={NOTE}>Off until you turn it on.</span>
+      </div>
+      <div className="flex flex-wrap items-center gap-2 text-[12.5px] text-[#1a1a1a] night:text-white/80">
+        Sends after the last batch of the day
+        {lastTime ? <b className="font-semibold">({clock(lastTime)})</b> : null}
+        <span className={NOTE}>
+          (One email a day: the orders that were due but not sent, why, and what
+          to do. Orders whose Cfm # doesn&apos;t match the product are in it
+          too.)
+        </span>
+      </div>
+      <EmailsField
+        id="tickets-report"
+        label="Send the daily report to"
+        values={emails}
+        onChange={onEmails}
+      />
+    </div>
   );
 }
