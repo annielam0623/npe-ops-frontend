@@ -6,6 +6,15 @@
 
 > **下一个主窗口：先读下面「2026-11-04 收工交接：前端主窗口 2c」，再看置顶「📌 等 Annie 确认」。**
 
+## 2026-11-05 前端主窗口 `npe-ops-frontend-e8`[6ce7da] 开工（公司电脑；只分工和汇报，不写代码）
+- Annie：「开工，你是今天的主窗口」。git pull 到 50b28d29（昨晚家里 78 / 77 / ef 的提交都到了）；工作区干净。
+- 资源：空闲内存 35.6 / 61.8 GB，node + chrome 68 个（6.7 GB）⇒ 可开 2–3 个工作窗口。
+- 在线：后端 `npe-confirmation-service-b3`[df009e]（身份待确认，已发消息报前端主窗口名字、问两件 SHA）；前端工作窗口暂无。
+- 后端 origin/main 7d89f872（46 昨晚交接）：G245 已上；**还没上**：① /api/dispatch/manifest pickup_location_id / pickup_is_vegas（Shuttle 提示改按上车点）② G249 field-calendar 所有人 + hours + 开关 hr_working_record（Working Record 合 main）。SHA 到了派工作窗口核字段合。
+- b3 确认是今天后端主窗口，后改名「今日主窗口e8」[df009e]（跟前端同名，发消息要带 ref）；两件已登记，等后端子窗口派。
+- Annie 发「动手」，e8 问是不是置顶 87 Q0（后端三处改按 TI），Annie 反问（原话）：「订单上面显示的酒店是什么」⇒ e8 已请后端 df009e 只读查：Vegas 出发 outbound shuttle 订单的 pickup_location 原文 / 单数、pickup_lookup.match 对上哪家、is_tour_bus、2–3 个例子。结果到了转 Annie，**还不算动手**。
+- 前端工作窗口 `npe-ops-frontend-a0`[02f088] 已开，暂未派工。
+
 ## 2026-11-04 晚 前端主窗口 `npe-ops-frontend-78`[6e88e1] 接班（家里电脑；只分工和汇报，不写代码）
 - Annie：「你是今天的主窗口，跟5C交接一下昨天的工作」「pull今天公司完成的工作」。已 git pull 到 6e151cba（公司 2c / 81 / c8 今天的提交全部到了）。
 - 5c 交接（11-03 晚）里的 75 agent-ref、51 B、Restaurant ⬆ Import、G212 都已由公司 2c 派 81 / c8 合 main（见上面 2c 收工交接表），不再派。接着按 2c 交接「四、明天开工」和置顶走。
@@ -18,7 +27,22 @@
   - **G245 deploy-guard DG-4（46 转 4c）**：后端一上线，Cfm # 不符的单就硬拦不能发，红标 / How to use 在前端 task/g245-cfm-mismatch e736302，前端必须紧跟着上（目前只影响 CHDQ59DAL，11/22 出发）。后端三审 PASS、本地合并 ef380e25 未推，等 Annie 在 4c 窗口批 C→B、跑 release.py 后 push 发 SHA。⇒ 工作窗口一开，先准备 82：合最新 main 重跑 man / mf / nav / as，SHA 到了只读核字段马上合。
   - ✅ G245 后端上 main 502982e3（合并 ef380e25，46 转）。前端工作窗口 `npe-ops-frontend-77`[b4c0cd] 开工，78 派四件按序：① 82 核字段合 main ② Relay Splits 抬头（task/relay-splits-driver）③ 86 Profile 分节合 main ④ 86 Working Record mock（task/hr-working-record，推分支不合）。77 检查端口 APP 3677 / MOCK 9077 / CDP 9677。
   - Annie 加开 `npe-ops-frontend-ef`[fcce18]，改派：77 = ① 82 + ④ Working Record；ef = ② Relay Splits 抬头 + ③ 86 Profile 分节（各开 worktree，端口 APP 3777 / MOCK 9177 / CDP 9777）。
+  - 结果：82 前端 main bd2ed2c1（77）；Relay Splits 抬头 main 776810bb（ef）；86 Profile 分节 main 58956ba4（ef）；86 Working Record 推 task/hr-working-record 9cc2d142 没合（77，详见置顶 86）。SHA 都已转 46；Working Record 后端需要（所有人列表、hours、开关 hr_working_record）已转 46 明天交 18。
+  - 78 已问 Annie 确认 Working Record How to use 的 Hours 一句（原文在置顶 86 77 那条），截图链接 77 发布后转 Annie。
+  - 开关 hr_working_record：46 起初说 Annie 没点名不加；78 回规则②（全新、算工资、要 Annie 核一段时间，preview v2「先只 SA 可见」+ Annie「全部同意推荐，动手」）。46「同意加」，明天 G249 一起登记 dashboard-widgets key hr_working_record（默认 super_admin_only）。
+  - ✅ **Annie「动手」（原话，2026-11-04 晚，看了截图页 https://claude.ai/artifact/H2D3Wdrwewcm9vSPPJMntp 和 Hours 那句 How to use 后）** ⇒ Working Record 截图样子 + How to use Hours 原文定稿，不再改。task/hr-working-record 9cc2d142 等后端 G249（field-calendar 所有人列表 + hours + 开关 hr_working_record）上 main → 只读核字段 → 合最新 main 重跑 hr / nav / ns + tsc / eslint / build → 直接合 main（不用再给 Annie 看截图）。后端没上线前不合（接口不在，页面会报错）。
+  - 收工：77 分支 task/hr-working-record 9cc2d142 已推，worktree D:\npe-ops-frontend-wt-hrwr 留着（干净），D:\npe-ops-frontend-wt-g245 已合可删；ef 的 worktree 已删。两个窗口都没有在跑的 dev server / Chrome。**今晚追加上 main**：顶栏搜索关窗口自动清空 f9c2672a（ef）；Shuttle 提示临时版 ad136c9d（ef，产品名含「Las Vegas to」不提醒，置顶 87）。Annie 23 点后「我可以睡了么」→ 78 收工，77 / ef / 78 都可关。**明天主窗口**：① 等后端 46 交接的 /api/dispatch/manifest pickup_location_id / pickup_is_vegas SHA → 派人把 Shuttle 提示改按上车点、拿掉 departsVegas()；② 等后端 G249 SHA → 派人核字段合 Working Record；Annie 验收今晚上线的 82 / Relay Splits / Profile（验收点在置顶 82、78 接班节、置顶 86）。
   - ef 两件都已合 main：Relay Splits 抬头 776810bb、86 Profile 分节 58956ba4（详见各自条目）。worktree D:\npe-ops-frontend-wt-relay、D:\npe-ops-frontend-wt-hr 已合、干净，可删。
+  - ✅ **顶栏订单搜索：关闭结果窗口自动清空，已合 main f9c2672a**（ef，task/search-clear-on-close；修 bug、样子不变，不出 preview）。Annie 原话：「有个重要的bug要修一下，在search bar里，每次搜索以后查看完毕把窗口关闭，它并没有自动把搜索框里输入的内容清掉，非要点击clear才行，这个非常不方便，改了」。
+    - 改法（components/order-lookup/top-order-search.tsx）：上下两个 ✕ Close、点暗处、Esc、换页、点结果里的链接（Order details / Open tracking / Open in Main manifest / Open Order List，含同一页只换 ?query 的）都等同 Clear：清空搜索框和结果、关窗口。Ctrl / ⌘ / 中键开新标签不清。只在打字、还没回车（没有结果窗口）时按 Esc / 点外面，只收起窄屏输入框，框里的字不清。Clear 键照旧。以前「关了再点输入框重开上次结果」随之没有了（关了就清）。
+    - 检查：os 85/85（关闭那几条改成「关上 + 框空」，新加：顶上 Close、关了再点框不弹空窗、点浮窗里面不关不清、打字时 Esc / 点外面不清、跳到 Tracking 再退回来框空、订单详情页点同一页的 Order details 框空、点 Open in Main manifest 跳 /manifests 框空；agent ref 搜索、Open in Main manifest 原有各条照过）、nav 38/38；tsc 0、eslint 0 错（3 条旧 warning）、build 过（分支已在最新 main 上）。
+    - **Annie 验收**：ops 顶栏搜一张单 → 点 ✕ Close / 点暗处 / 按 Esc，搜索框都变空；点结果里的 Open in Main manifest 等链接跳走，框也是空的。
+  - ✅ **新规则 + 动手：Outbound shuttle 从 TI 出发，Dispatch 不再提醒选 Shuttle 上车点，已合 main cb6d34f6**（ef，task/no-shuttle-hint 功能 f0fdc5fc）。Annie 原话（在 ef 窗口，按时间）：「还有一个规则要记住，outbound shuttle的出发点是TI，所以也不需要单独挑酒店的」→ ef 列出冲突的两处 →「现在把它改了吧，不要提醒也不阻碍。动手」。
+    - 改法：整条去掉 2026-10-31 的 Shuttle 上车点提示（见「2026-10-31 Dispatch Tour bus 选今天的 Shuttle 上车点」一节；后已返工恢复，见下一行）——第一台车「Add hotel」右边琥珀字「Select today’s shuttle pick-up here · N shuttle guests」、右栏 Schedule check「<团>: shuttle pick-up not chosen」+ Fix 都没了；Dispatch 也不再为数 Shuttle 人数逐团读 Bus manifest。本来就不拦保存，照旧。Add hotel 下拉的分组（Las Vegas 在上、「~~~~~ Shuttle Pick up ~~~~~」分隔、Shuttle 站在下）不动。文件：components/dispatch/config.ts、dispatch-view.tsx、vehicle-row.tsx。
+    - 没改：Products › Bus Manifest setup How to use「outbound section (pickup from the order)」——讲的是 Manifest 上怎么显示，不是让 staff 挑酒店。Annie 要改再说。规则也记进了前端长期记忆（outbound-shuttle-departs-ti），以后新功能不让 staff 给 outbound shuttle 客人挑酒店 / 上车点。
+    - 检查：da 510/510（原 Shuttle 提示 8 条换成 4 条：有 Shuttle 客人也没有提示、右栏没有那条、不再请求 /api/dispatch/manifest、Add hotel 照旧）、nav 38/38；合最新 main 后 tsc 0、eslint 0 错（3 条旧 warning）、build 过。
+    - **Annie 验收**：Dispatch 选一个有 Shuttle 客人的巴士团日子 —— 车上不再出琥珀字「Select today’s shuttle pick-up here」，右边 Schedule check 也没有「shuttle pick-up not chosen」。
+    - ⚠️ 这版改多了，Annie 更正后已返工：提示恢复、产品从 Las Vegas 出发的不算（临时版），main ad136c9d，详见置顶 87。
 
 ## 2026-11-04 收工：工作窗口 `npe-ops-frontend-c8`[a65365]（2c 派；dev server / Chrome 已全关）
 - 今天合了 main（详细做法、检查数、Annie 验收点各在自己那一节）：
@@ -839,6 +863,7 @@ D. 已完成、待从置顶移走：
   旧预期「开关关着照旧按角色」全部改成「只看勾」。
 
 ## 2026-10-31 Dispatch Tour bus 选今天的 Shuttle 上车点（`task/dispatch-shuttle-hint`，工作窗口 91，主窗口 98）—— Annie「动手」，已做
+- ⚠️ 已改（11-04 晚，置顶 87）：曾整条去掉（cb6d34f6），返工后恢复，人数不算产品从 Las Vegas 出发的 Shuttle 客人（临时版 ad136c9d）；后端带 pickup_is_vegas 后改按上车点。
 - Annie 在 91 窗口原话：「动手」（题都定了：样子 1；Schedule check 那条要）。preview https://claude.ai/artifact/BewNcepgfaJMDPDMvo2Pdz v3。
 - 做法：Dispatch 每次读 Step 1 团卡片后，按有客人的巴士团读当天 Bus manifest（`GET /api/dispatch/manifest`），把 kind outbound / inbound 的节人数加起来（车上的 + 没上车的；Farm out 的不算）。这个团有 Shuttle 客人、团里哪台车（不算 Farm out 车）都还没有 Shuttle 站（Pickup Locations 没勾 Tour bus 的点）⇒
   - 第一台车「Add hotel」右边同一行：琥珀字 #b45309 半粗 + 指向下拉的小箭头、无框「Select today’s shuttle pick-up here · N shuttle guests」（人数灰字）；
@@ -1058,6 +1083,29 @@ D. 已完成、待从置顶移走：
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 87. Outbound shuttle 从 TI 出发：Dispatch 提示和 Manifest setup 说明要不要跟着改（2026-11-04 晚，Annie 在 ef 窗口提，78 已问，没动手）
+- 原话：「还有一个规则要记住，outbound shuttle的出发点是TI，所以也不需要单独挑酒店的」。
+- ef 只读查到前端可能冲突的两处（没改）：
+  - ① Dispatch › Tour bus（2026-10-31 上线，components/dispatch/vehicle-row.tsx:516、config.ts:445）：团有 Shuttle 客人（outbound + inbound 人数加起来）、车上没选 Shuttle 站时，第一台车 Add hotel 右边琥珀字「Select today's shuttle pick-up here · N shuttle guests」，Schedule check 一条「<团>: shuttle pick-up not chosen」。问：A（推荐）只算 inbound shuttle 客人，团只有 outbound 时不提醒；B 整条提示和 Schedule check 去掉；C 不改。
+  - ② Products › Bus Manifest setup 的 How to use（manifest-setup-panel.tsx:1602）现句：「The guest then shows up twice on that day: in the outbound section (pickup from the order) and in the inbound section (the return pickup you typed).」问：A（推荐）改成「in the outbound section (departs from TI) and in the inbound section (the return pickup you typed).」；B 不改。
+  - 后端有没有按订单酒店排 outbound shuttle 接客的逻辑，已转 46 只读核。
+  - 46 核完（只读，没改；后端交接 7d89f872，明天写进待办）：① relay 分车 relay_pull.split()（relay_pull.py:171-206）不分节类型，outbound shuttle 客人跟团客一样按订单 pickup_location 配接客点：订单写 TI ⇒ departure 在 TI 上车，写别的酒店 ⇒ 分进排了那站的 relay 车，没车 ⇒ Need a look（前提团设了 relay_round）；② Seat guests 南北分车 seat_plan()（tour_manifest.py:2238-2251）outbound shuttle 客人也按订单酒店方向算 A 车给哪方；③ Main / Bus Manifest outbound 节照订单显示接客时间 / 地点（manifest_list.py:272，只显示）；④ SEATS USED = 团 + max(inbound, outbound) 只算人数，无关。没细看：Morning tracking / morning_pickup.py、司机页 / 导游页模板各一处 outbound。
+  - 78 追问 Annie（关键题，决定后端①②③改不改）：Q0 outbound shuttle 客人是 A 自己到 TI 上车（不坐 relay）⇒ 后端①②③都要改成一律按 TI；B 跟团客一样由 relay 从酒店接到 TI，「不需要单独挑酒店」只是说 Dispatch 不用给 shuttle 另选上车站 ⇒ 后端不改，前端只改 ① 提示 / ② 说明。
+  - ✅ **Annie 在 ef 窗口（原话）**：「现在把它改了吧，不要提醒也不阻碍。动手」⇒ ① 选 B：Dispatch 的 Shuttle 上车点提示整条去掉（第一台车琥珀字 + Schedule check「shuttle pick-up not chosen」+ 不再为数 Shuttle 人数读 Bus manifest）；Add hotel 分组、「Shuttle Pick up」分隔行不动。ef 做 task/no-shuttle-hint。② How to use 那句 ef 判断是讲 manifest 怎么显示、不是让 staff 挑酒店，没改。Q0（后端 relay / 南北分车改不改）Annie 还没答，后端先不动。
+  - ⚠️ ef 合了 cb6d34f6（整条去掉）后 **Annie 更正（原话）**：「我要改的是：从vegas出发的shuttle是不需要加pick up 酒店的，因为客人是直接到TI上车，没让你把所有提醒都取消啊，只是取消从vegas出发的outbound shuttle的提醒啊」⇒ 提示恢复，只算 inbound shuttle 客人（只有 outbound 不提醒）。78 已派 ef 返工 task/shuttle-hint-inbound-only。
+  - 这句也答了 Q0 = A（客人直接到 TI 上车，不坐 relay）⇒ 后端 46 查到的三处（relay 分车按订单酒店、南北分车按订单酒店方向、manifest outbound 节照订单显示地点）要不要跟着改成一律按 TI，78 已问 Annie 是否现在动手。
+  - **Annie 再补（原话）**：「看清楚，是从vegas上车outbound的shuttle客人不提醒」「如果从st George出发到page的肯定是要提醒加pick up 酒店的」⇒ 规则：只有从 Vegas 出发的 outbound shuttle 客人不提醒；非 Vegas 出发的 outbound（如 St George → Page）和 inbound 照旧提醒。已转 ef：先查能不能可靠分出发地，能就照做合 main，分不出来回 78 问 Annie。
+  - ef 只读核：kind（outbound / inbound / round trip）是 staff 在 Bus Manifest setup 给产品选的，不看出发地（manifest_setup.py:34；round trip 由 split_legs 拆，去程 = outbound）。反例（webhook.py:265 _SHUTTLE_CODES）：PDHLW9 Page→St.George、PKG0MN Page→Kanab、PP0RZE St. George→Bryce、PN5SQN Bryce→Zion、PV1VFQ Kanab→St.George、Williams→GC South 夏季线；Vegas 上车的 = 「Las Vegas to …」（PBKRCW、PG8ZGQ、PGP101、PMDFGV、PQFLY1、PWQPS3、PZK1UA、PZYTDM）+ round trip 去程（PTHWQ1、PHN0QB 等）。⇒ 只算 inbound 会漏掉非 Vegas 出发的 outbound。ef 写好的「只算 inbound」推分支不合。
+  - 78 问 Annie（Q1）：A（推荐）不看 kind 看在哪上车：Shuttle 节里不是在 Vegas 上车的客人都提醒；Vegas 上车 = 产品名「Las Vegas to …」开头或 round trip 去程。前端今晚能先按产品名做，之后请后端给每位客人带「Vegas 上车」标记更稳；B 只算 inbound，再逐个确认那几条非 Vegas shuttle 设成 inbound。现状：main cb6d34f6 提醒整条去掉，非 Vegas shuttle 现在也不提醒。
+  - ef 照 78 之前的话（能可靠分就照做）按 A 做：Shuttle 节里 kind = outbound 且产品名含「Las Vegas to」⇒ 不算；其余（非 Vegas 出发的 outbound、所有 inbound、round trip 回程段）照旧提醒、计人数；样子照 10-31 版。认不出的名字当非 Vegas、照旧提醒（宁多不漏）。以后要更稳可请后端加「Vegas 上车」标记。跑完 da / nav 合 main。
+  - ⚠️ **Annie 再更正（原话）**：「我再说一次，是要看他们的上车点，也就是出发的location，只有这个location不属于vegas酒店，就要提醒」⇒ 不看产品名、不看 kind，看每位 Shuttle 客人订单的上车点：Vegas 酒店 ⇒ 不提醒；不是 Vegas 酒店 ⇒ 提醒、计人数。78 已叫 ef 停产品名那版，先查 Bus manifest 有没有上车点、怎么判断 Vegas 酒店；判断不了就写需要后端转 46。
+  - ef 查：产品名那版没合（线上仍 cb6d34f6 提醒全关）。前端判断不了：/api/dispatch/manifest 客人只有 pickup_location 文字 + hotel_short，没有 location_id；匹配只能用后端 pickup_lookup.match()。Vegas 判断前端已有（day.locations is_tour_bus = Las Vegas）。
+  - **需要后端（78 已转 46）**：/api/dispatch/manifest 每位客人加 pickup_location_id（pickup_lookup.match，对不上 null）和/或 pickup_is_vegas。前端拿到后：Shuttle 节客人上车点是 Vegas（is_tour_bus）⇒ 不算；不是或 null ⇒ 提醒、计人数；样子照 10-31 版。
+  - 78 问 Annie（Q2）：后端上线前线上怎么办：A（推荐）先不恢复，等后端字段上了直接上正确版；B 先恢复 10-31 原版（所有 Shuttle 客人都提醒，Vegas 的也提醒）。
+  - 46（23:16，已过收工线）：今晚不做，明天第一批派；口径：blocks / unplaced 各节 guests 每位加 pickup_location_id（pickup_lookup.match，对不上 null）+ pickup_is_vegas（对上那家 is_tour_bus）；只加字段。上 main 后 SHA 发当天前端主窗口 ⇒ 派工作窗口照上面规则做、合 main（ef 的产品名版作废，不要合）。
+  - **Annie（原话）**：「那我们就先做个可以今晚上线的吧，改成按产品名字？」→ 78 复述成「outbound 且名含 Las Vegas to」，Annie「不是」→ **Annie 定「选产品名从vegas开始的shuttle，不提醒」** ⇒ 今晚临时版：只看产品名、不看 kind，Vegas 出发的产品（名含「Las Vegas to」，含 round trip 回程段）一律不提醒，其余提醒、计人数，认不出当非 Vegas。派 ef 合 main。明天后端 pickup_is_vegas 上线后改按上车点。
+  - ✅ **临时版已合 main ad136c9d**（ef，task/shuttle-hint-inbound-only 功能 5e389fee，含 revert f0fdc5fc）：Dispatch Shuttle 上车点提示恢复成 10-31 版（第一台车琥珀字「Select today’s shuttle pick-up here · N shuttle guests」、Schedule check「<团>: shuttle pick-up not chosen」+ Fix、不拦保存），只改人数口径：Bus manifest 的 Shuttle 节（outbound / inbound）里，产品名含「Las Vegas to」的客人不算（One-way Shuttle: Las Vegas to …、Las Vegas to Grand Canyon South Round-trip Shuttle 的去程和回程段都不算）；别的（St. George to Page、Page to Las Vegas…）照算；名字认不出当非 Vegas、照旧提醒。代码 components/dispatch/config.ts departsVegas()、dispatch-view.tsx 读人数那段。检查：da 517/517（Shuttle 一组：404 / 没 is_tour_bus 不提醒、只有 Las Vegas to 的 outbound 不提醒、只有 Vegas round trip 回程段不提醒、只有 St. George to Page 提醒「4 shuttle guests」、只有 Page to Las Vegas 提醒「2」、混合只数非 Vegas「5」+ 样子 + Schedule check + Fix + 第二台车选了消失）、nav 38/38；合最新 main 后 tsc 0、eslint 0 错（3 旧 warning）、build 过。**Annie 验收**：Dispatch 打开有 Shuttle 客人的巴士团日子 —— 只有「Las Vegas to …」产品的 Shuttle 客人时不出提示；有 St George / Page / Kanab 出发等非 Vegas 产品时，第一台车出琥珀字，人数只数这些客人，右边 Schedule check 有那条；选了 Shuttle 站后消失。⏳ **这是临时版**：明天后端 46 给 /api/dispatch/manifest 每位客人加 pickup_location_id / pickup_is_vegas 后，改成按上车点判断（Annie「是要看他们的上车点，也就是出发的location，只有这个location不属于vegas酒店，就要提醒」），产品名判断拿掉。
+
 ### 86. 司机 / 导游 live 页每天的快照（2026-11-04，Annie 在主窗口-2c 提，没动手）
 - 原话：「我还有个需求，司机和导游的live 记录，是否可以有快照，就是他这一天在哪个站停留了多久，发了多少短信，汇报了多少picked up和no show，在工作结束前它的页面有个快照」。
 - 理解：每位司机 / 导游每天一份记录：每站到 / 离时间和停了多久（Samsara 到站，置顶 59 / 58）、发了几条短信、报了几个 Picked up / No show；工作结束时把他那天的 live 页存一份，之后能回看。
@@ -1128,6 +1176,14 @@ D. 已完成、待从置顶移走：
   - ✅ **Profile 分节已合 main 58956ba4**（ef；81 写的 3a72805 合最新 main，没改代码）：hr 92/92、nav 38/38、tsc 0、eslint 0 错（3 条旧 warning）、build 过。**Annie 验收**：Settings › Human Resource › 「Profile」标签（原 People）—— 三节：Drivers（Driver、Driver + Guide）在上、Guides 在下、Position not set 最下（有人没填才出）；列宽 / 顺序三节共用，Reset columns 在第一节；Edit list 改了 Position 存好后才挪节。
   - 94：Working Record 全交 18，login-records 往后排；**v152 已在生产执行、核对过（12:22）**；Hours 要加新列 18 另写迁移草稿给 Annie；后端今天 14:15 收尾，Hours 今天多半做不完，推分支明天接着做。
   - **Hours 评估 + 形状（18，94 转，只读）**：司机用 Samsara HOS（不用 DVIR：只有车没司机、时刻不准）：上班 = 当天第一次离开 off duty，下班 = 最后一次回 off duty（实测 Bruce O relay 11/04 03:53–06:54、Carlos C South Rim 10/31 04:26–18:59）。按 hr_profiles.samsara_driver_id 对人：近 7 天 16 位司机 14 位有，**缺 Jimmy Vegas、Juan (Beni)（HR 页补上）**；**David H 是 ELD Exempt 没 HOS，只能兜底**。工时按「人 + 天」一对，不分到每条 run（runs 的 start_at / end_at 留空）。日历每天加 hours {start_at, end_at, source:"samsara"|"fallback"|"schedule"|"none", note}：有 HOS ⇒ samsara；有上班没下班 ⇒ end_at 23:00、fallback、note「No Samsara off-duty time」；完全没 HOS ⇒ start_at 空、end_at 23:00、fallback、note「No Samsara time」（要人补上班时间）；导游 ⇒ start_at = 那台车 Main Manifest 最早接客时间、end_at = 团的 guide_snapshot_time（West Rim 18:00 / Hoover 16:00 / 其他 21:00）、schedule。不用迁移，约 1 天；⚠️ 先实测 Samsara token 有没有 HOS 读权限，没有要 Annie 在 Samsara 后台加。「所有人」日历：每人 {hr_id, name, position, days}。今天上不了，明天接着做。已转 81。
+  - **前端 Working Record（mock，推分支没合 main）**：工作窗口 `npe-ops-frontend-77`[b4c0cd]（78 派，2026-11-04 晚），`task/hr-working-record` **9cc2d142**（功能 198a4152；已合 main 7812eb0f，含 ef 的 Profile 分节，节的判法共用 fields.ts profileSection）。worktree D:\npe-ops-frontend-wt-hrwr。依据 Annie「working record这里全部同意推荐，动手」+ Q5「B」「是工资」。
+    - 做了（照 preview v2 全部推荐）：Human Resource 第三个页签「Working Record」，开关 `hr_working_record`（默认只 Super Admin，页签上标 Super Admin only；Settings › Notifications › Page visibility 多一行）。Week / Month、‹ ›、This week / This month；Drivers（driver + both）/ Guides / Position not set（有才出）三节，一行一个人七天；格子 = 角色（Driver 蓝 / Guide 紫 / Driver & Guide 青）+ 段名（relay 加「1st / 2nd round」）+ 车号，没填写「no tour name」「no van」，同一段又开车又带团合成一张 Driver & Guide；live = 橙色虚线框 + live；📷 = 有快照（Q6 A：只给也能看 Live drivers 的人，morning.view + morning_live_drivers）。Month = 整月按周叠。点名字 ⇒ 此人月历 + 当月合计（Days as Driver / Guide / Driver & Guide、By tour、Hours 合计、要核对的天数、含几天 live）。📷 ⇒ 深色弹窗：As driver / As guide（那天两样都做时）、版本下拉（默认最新，Version n of N）、Work（段 / 车）、Hours、Stops、司机页 SMS 数、「Show guest counts and orders」默认收起。⬇ Export for payroll：一律整月 CSV（周表另读整月），每人每天一行（Name, Date, Role, Tours, Vans, Start, End, Hours, Hours from, Hours note, Saved）+ 每人一行合计。只看不改，没有 Save。
+    - Hours（Q5 B）：每格写「4:26 AM – 6:59 PM · 14.55 h」；fallback 醒目黄条「⚠ No Samsara off-duty time」/「⚠ No Samsara time」（起点没有写「? – 11:00 PM」），弹窗里「⚠ … — check before payroll.」，月合计「⚠ n days without full Samsara times — check before payroll.」；导游 schedule 灰字 + 「Tour times」。
+    - How to use（Working Record 页签底下）：第 1 句 = Q7 A 原文；**第 2 句 Hours 是 77 写的，原文报 78 转 Annie**：「Hours: a driver's start and end come from Samsara (the first time they go on duty and the last time they go off duty that day). If Samsara has no off-duty time, the end is set to 11:00 PM and the day is marked No Samsara off-duty time; if Samsara has no time at all, the start is empty and the day is marked No Samsara time. Check those days with the driver before payroll. A guide's hours are the tour times (first pickup to the tour's guide snapshot time) and are shown in grey.」
+    - 形状照后端 18 WIP `origin/task/day-snapshot`（4335459b）：runs 的 van / tour_name 空是 ""；relay 轮次看 shift relay / relay_2；source = 存档 trigger 或 live。后端 404 ⇒ 页签里一句「The Working Record is not available on the server yet.」。
+    - 检查（端口 3677 / 9077 / 9677）：hr 128/128（Working Record 新加 38 条：开关 / 分节 / 格子 / 颜色 / 两段 / fallback / live / no van / D&G 合并 / 导游灰字 / 快照读取 / 版本 / 展开 / As guide / Esc / 周表 Export 整月 / CSV 内容 / 月历 + 合计 / 月历 Export / ‹ › / Month / How to use / 404 / 500 + Retry / admin 开了开关没 Live drivers 没 📷）、nav 38/38、ns 49/49（Page visibility 22 → 23 行）；tsc 0、eslint 0 错（3 条原有 warning）、build 过。截图电脑 / 手机看过（手机表格在卡片里横滑，整页不晃）。
+    - ⚠️ **需要后端**（转 94 / 明天 18）：① `GET /api/field-calendar` 不带 hr_id = 所有人 `{from, to, people:[{hr_id, name, position, days}]}`（WIP 现在 hr_id 必带）；带 hr_id 时也请带 name / position（月历抬头用）；② 每天 `hours`；③ 页面开关登记 key `hr_working_record`（默认 super_admin_only，dashboard-widgets）——没登记前前端按默认只 Super Admin。
+    - 下一步：后端上线 → 只读核字段 → 合最新 main 重跑 hr / nav / ns → 截图给 Annie 看 → 合 main。
 - G212 Team 页前端派 c8（task/g212-team-hierarchy），等后端 SHA。
 
 ### 85. Staff Schedule 班次类型（Open / Mid / Close）可手动新增（2026-11-04，Annie 在主窗口-2c 提，附排班格截图，没动手）

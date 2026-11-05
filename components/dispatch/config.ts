@@ -341,9 +341,19 @@ export interface Analysis {
   shuttleAsk: Map<number, number>;
 }
 
+/**
+ * Shuttle 产品从 Las Vegas 出发（临时版：Annie 2026-11-04「选产品名从vegas开始的shuttle，不提醒」；后端带 pickup_is_vegas 后改看上车点）。
+ * 看 Rezdy 产品名：从 Vegas 出发的都写「Las Vegas to …」（One-way Shuttle: Las Vegas to Page, Arizona、
+ * Las Vegas to Grand Canyon South Round-trip Shuttle…）；回 Vegas 的写「… to Las Vegas」，不算 Vegas 出发（照提醒）。认不出的当不是 ⇒ 照旧提醒（宁可多提醒）。
+ */
+export function departsVegas(product: string | null | undefined): boolean {
+  return /\blas vegas to\b/i.test(product ?? "");
+}
+
 /** 右栏 Schedule check、顶部统计（同旧页面 render / renderRail 的口径）。 */
 /**
- * shuttlePax：团（manifest_id）→ 当天 Bus manifest 里 Shuttle 节（outbound / inbound）的人数；没读到的团不提醒。
+ * shuttlePax：团（manifest_id）→ 当天 Bus manifest 里要在 Shuttle 站上车的 Shuttle 客人数
+ * （产品从 Las Vegas 出发的不算，不分 outbound / inbound，Annie 2026-11-04 临时版；别的照算）；没读到的团不提醒。
  */
 export function analyze(
   rows: DispatchRow[],
@@ -420,7 +430,7 @@ export function analyze(
     });
   });
 
-  // Shuttle 上车点（Annie 2026-10-31，preview BewNcepgfaJMDPDMvo2Pdz v3 样子 1 + Schedule check）：这个团当天有 Shuttle 客人、
+  // Shuttle 上车点（Annie 2026-10-31，preview BewNcepgfaJMDPDMvo2Pdz v3 样子 1 + Schedule check；11-04 起产品从 Las Vegas 出发的客人不算（临时版））：这个团当天有要提醒的 Shuttle 客人、
   // 这个团哪台车都还没有 Shuttle 站（Pickup Locations 没勾 Tour bus 的点）时提醒；默认第一台车，在别的车选了也算（不拦）。
   // 后端没带 is_tour_bus 时分不出 Shuttle 站，不提醒。
   const shuttleAsk = new Map<number, number>();
