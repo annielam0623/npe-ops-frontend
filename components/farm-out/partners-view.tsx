@@ -1138,7 +1138,9 @@ function MoneyHowTo() {
         Every tour is listed under its partner with the Adult and Child price,
         even tours with no price yet. Click Edit on a tour row, change the
         prices and click Save. A tour with no price cannot get a payable amount
-        in Dispatch until you set one.
+        in Dispatch until you set one. A tour with items under it shows N/A
+        when its Adult and Child are blank — the prices are on its items, so
+        nothing is missing.
       </li>
       <li>
         Click ＋ on a tour to add an item under it — a name and a price per
