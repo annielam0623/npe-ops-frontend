@@ -44,12 +44,14 @@
   - 7a 出 v3（1793917176-f58d）：拿掉 Day-before summary 两格，How to use 改写。✅ **Annie（原话）：「Auto Send 都选 A。动手」** ⇒ 题 1 报告在最后一批发完马上发；题 2 上线时 lead_groups 空着；题 4 全发完也发一封短的；题 5 团确认跳过提醒不变；题 6 只设提前几天。后端规格已整理发给后端主窗口（7 条）；派 7a 开 task/auto-send-limits，先照 mock 写，今天推 WIP，不合 main，等后端字段定了核完再合。
   - 后端：编号 G259，字段照前端拟的（存在 auto_send 设置 JSON 里，缺键落默认值，不用迁移）。明天先做 1、2、3、5、6、7，估计明天下午上 main；4「间隔 1 秒」跟 G257 同一批文件，排在 G257 之后。G258（团确认 Last Minute 模板）4 题 Annie 还没答，不在这次范围。
   - 7a 推 WIP origin/task/auto-send-limits **8614fb03**（没合）：两张卡片 Max per batch、按门票团挑选（照 Relay）、Daily report 块、后端带 daily_report 时不出 Day-before summary、How to use v3；旧后端没有这些键时页面跟现在一样（as 69/69）。还差：核键名、校验、as 套新检查、截图核对、Recent runs 里每日报告的文字、合 main。已请后端在 GET /api/settings/auto-send 里带 ticket_types [{key, label}]（现在读 tix-tour-types 要 admin + Content Studio 开关）。
-  - G258 Last Minute 4 题：Annie 要看原文，e8 已整段发给她（题 1 分界几点；题 2 推荐 A 每 15 分钟扫一次；题 3 推荐 A 两行模板下拉；题 4 推荐 A 留手动按钮），等答。**题 1 Annie（原话）**：「是的，还是应该保持原来的早上7点以后下的订单的界线，这个时候已经进入不能退改的时间了，不需要客人确认是否参加，所以发last minute」⇒ 分界照旧团期前一天 07:00，之后下的单自动发 Last Minute。已转后端。题 2–4 再跟她确认。**题 2 Annie（原话）**：「15分钟太频繁了，每个整点扫一次就好了，我们的团最晚凌晨12点关闭销售」⇒ 07:00 以后下的单每个整点扫一次，最后一次是 00:00。已转后端（后端：夜里整点照发没问题，只会扫到上一小时刚下的单）。**Annie 补（原话）**：「last minute的订单，短信和email都发」⇒ 已转后端。题 3、4 等答。
+  - G258 Last Minute 4 题：Annie 要看原文，e8 已整段发给她（题 1 分界几点；题 2 推荐 A 每 15 分钟扫一次；题 3 推荐 A 两行模板下拉；题 4 推荐 A 留手动按钮），等答。**题 1 Annie（原话）**：「是的，还是应该保持原来的早上7点以后下的订单的界线，这个时候已经进入不能退改的时间了，不需要客人确认是否参加，所以发last minute」⇒ 分界照旧团期前一天 07:00，之后下的单自动发 Last Minute。已转后端。题 2–4 再跟她确认。**题 2 Annie（原话）**：「15分钟太频繁了，每个整点扫一次就好了，我们的团最晚凌晨12点关闭销售」⇒ 07:00 以后下的单每个整点扫一次，最后一次是 00:00。已转后端（后端：夜里整点照发没问题，只会扫到上一小时刚下的单）。**Annie 补（原话）**：「last minute的订单，短信和email都发」⇒ 已转后端。**题 3、4 Annie：「都选A」** ⇒ 两行模板下拉（分界前默认团确认、分界后默认 Last Minute）；手动 Last Minute 按钮保留。四题全答完，**还没「动手」**：明天把两行下拉补进 Auto Send preview（BYv5FXVG7FqYuQ7gFEpV1a 的 Last Minute 一节）给她看。已转后端登记，请它拟字段名。
 
 ### 三、明天开工
 1. 报对话名；git pull；问后端主窗口 G180 / G257 / Last Minute 进度。
 2. G180 上 main → 派 a0（或新窗口）核字段合 main；同时问 Annie 三档开关放哪（推荐 Tour Tracking 页顶部给 SA 一个小下拉，或 Settings › Notifications 一行），先 preview。
 3. 7a 的 Auto Send preview 转 Annie（附每题原文），等「动手」。
+3b. Auto Send：G259 后端明天下午上 → 7a 分支 task/auto-send-limits 8614fb03 接着做（核键名、校验、检查、截图、合 main）；G258 四题已答，把 Tour confirmations 两行模板下拉补进 preview 给 Annie 看，等「动手」。
+3c. Farm out 子项价格行（Adult / Child / Infant 下拉）：等后端 G263 接口，出 preview。
 4. 置顶 Task Board 中文那题（A 改英文 / B 保持中文）还没答，不滚动重问。
 
 ## 2026-11-05 Forecast：Canyon X 的简称又变成 C（`task/forecast-canyon-x-letter`，工作窗口 `npe-ops-frontend-19`[1e2a0d]）—— ✅ 合 main（只修 bug）
