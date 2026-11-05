@@ -1119,6 +1119,11 @@ D. 已完成、待从置顶移走：
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 89. Auto Send › Ticket reminders：按产品设提前多久发 + 每天给 antelope@ 一封「今天没发出去的单」汇总（2026-11-05，Annie 在 e8 提，没动手）
+- 原话：「auto send的ticket reminder也要改一下，需要按照产品来选择提前几点发。然后我需要每天给antelope@一个email提醒他们今天哪些订单因为什么原因没有发出去，每天就汇总当天的一次发给他们就好了」。
+- 现状（前端 auto-send-view.tsx）：Ticket reminders 只有一套设置——Send times、days before the service date（所有产品一样）、Day-before summary at（前一天发一封「明天还没发的单 + 原因」）、Send the summary to。另外 G245「Cfm # 不符」每次跑完给 antelope@ 发一封。
+- e8 已问 Annie 细节（Q1–Q5），派 7a 只读查后端逻辑和工作量。答了出 preview。
+
 ### ⏰ 提醒 Annie：G180 Tour Tracking 回填以前的日子（**下周，2026-11-09 周一起提醒**）
 - Annie 原话（2026-11-05）：「回填数据可以等我有时间再做，只需要先把上线那一刻的今天及以后的数据放进去，等运行起来之后下周你提醒我做数据回填」。
 - Annie 又问（原话）：「开开关之前staff看不到页面的变化么」。e8 核：前端灰底版只要接口带 send_state / order_state，就出 Order Status 列和说明句。开关关着时后端带不带这两个键、旧模板、CSV 变不变，已问后端。推荐开关关着时 staff 什么都看不到。
