@@ -1627,6 +1627,9 @@ pe-ops-wt-login-default`，mock，**没合 main，等后端 57 的 logged_in_at 
     - 19 进度（task/perf-shell-parallel，检查在跑，没合）：schedule / employees / 2026-11-01 各 2 次，是 Today's team 和底部 Schedule 两块各读一遍，现在 15 秒内共用一份；/api/me 5 次变成 1 次；permissions 跟 me、dashboard-widgets 同一轮发。mock：Dashboard 21 个请求变 15 个；员工视角开始读数据 Dashboard 1.47 → 0.92s，Manifests 1.24 → 0.84s，Dispatch 1.14 → 0.49s。
     - 剩下「中间空约 1000ms」：权限门放行后 app/loading.tsx 会闪一下「加载中…」（中文，不合英文规定），React 让内容再等满 300ms。让页面先藏着挂上会让 partner 打开 Dispatch 时发写操作，已撤回。新题已问 Annie：A（推荐）去掉 app/loading.tsx，站内换页时旧页面留着、直到新页面出来；B 保留，只把字改成英文「Loading…」。
     - ✅ **Annie（原话）：「换页和列拖动同意推荐，动手」** ⇒ 换页选 A（去掉 app/loading.tsx），派 7a 做 task/remove-route-loading，检查过直接合 main。列拖动选 A：G180 的 Order Status 位置先只存在本机浏览器（a0 分支已经这样做了），等旧后台不用了再改成跟着账号走。
+    - ✅ **7a 合 main**（task/remove-route-loading 功能 79024fd9，合 main 的 SHA 见 git log）：删了 app/loading.tsx（全仓库只有这一个 loading.tsx，子目录里没有）。站内换页时旧页面留着，新页面好了直接换过去，不再整页闪「加载中…」。整页刷新不受影响：没有页面在服务器上取数据（几个 async page 只 await params），各页自己的「Loading…」和权限门照旧。别处的「加载中」是页面里的字（Bug Reports 中文界面、Task Board 评论 / 列表），不是换页用的，没动——⚠️ Task Board 的「加载中…」（task-board-view.tsx:229、config.ts:123）也是中文系统文字，不合英文规定，另报 e8 定要不要改。
+      - 检查：nav 39/39（新加 1 条：站内点侧栏 Work Sheet → 7 Days Forecast，换页过程中不出「加载中」、顶栏一直在、换到新页面；把 loading.tsx 放回去这条会挂，确认测得出来）、perm 54/54、dr 89/89；合最新 main（含 19 的后台停轮询）后重跑同样全过；tsc 0、eslint 0 错（3 旧 warning）、build 过。
+      - **Annie 验收**：在 ops 里点侧栏换页，不再看到整页一闪的灰字「加载中…」；点了以后旧页面先留着，新页面好了直接换过去。整页刷新照常。
     - 19 推荐先做 1 + 2（同一组文件，交一个窗口）。真实耗时要 Annie 在 Chrome F12 Network 截图（步骤已给 Annie）。
 - **Annie（原话）：「你汇报一下目前为止还有哪些id在用旧系统」** ⇒ 后端 4c 只读查：现有记录分不出来。last_seen_at 只记时间；action_log 不记域名；Host / Referer 没落库；Railway 日志有路径但没有用户。最近 7 天有登录活动的 20 个账号（不分来源），后端直接给 Annie。「旧系统」分两种：① 直接上 confirm 域名；② 在 ops 里打开还没切换的旧页面（走 next.config.ts 的 fallback）。后端问 Annie 指哪种。要分来源，后端在 auth._signed_in 加一行限频日志（域名 + 是否打开页面 + 路径），只能从上线那一刻起算。
 - G212 SA-8 后端上 main 778ee08f（关包 3eaa38e0）：改了还没接受的邀请的角色 / 权限 / 账号类型 ⇒ 旧链接马上失效（400 invalid）。前端那句提醒等 Annie 答置顶 88。
