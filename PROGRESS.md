@@ -1571,6 +1571,14 @@ pe-ops-wt-login-default`，mock，**没合 main，等后端 57 的 logged_in_at 
   - 派 `npe-ops-frontend-7a`[32d617]：task/shuttle-hint-pickup，worktree C:\Code\npe-ops-frontend-wt-shuttle，端口 3977 / 9377 / 9977，做完直接合 main。
 - **页面越开越慢（后端主窗口转 Annie 原话）**：「为什么现在感觉打开一个页面的时间越来越长了」，她说昨天就问过。前端 PROGRESS 没有昨天这条记录。后端派 54 只读查慢查询、首屏接口、定时任务。要前端查三件：① 这两周首屏 bundle 大小的变化，有没有没做懒加载的大页面；② 打开一个普通页面，并发调了多少个后端接口、各用多少毫秒（/api/me、dashboard-widgets、导航、通知 / 站内消息轮询）；③ 有没有间隔太短、切页面后没停的轮询。结果发后端主窗口合并给 Annie。等 Annie 开工作窗口派（只查不改）。
   - 派 `npe-ops-frontend-19`[1e2a0d]：worktree C:\Code\npe-ops-frontend-wt-perf，端口 4077 / 9477 / 10077。比 build（现在的 main 对比 10-22 左右的 main），用 mock + headless 数接口，grep 轮询。结果发 e8 和后端主窗口，修法等 Annie 看了再定。
+  - **19 结果（只查没改）**：mock 每个接口加 300ms，比现在的 main 91178f7e 和 10-22 的 b9e2b2d9，页面开始读数据的时刻：Dashboard 0.49s → 1.47s，Manifests 0.52 → 1.24s，Dispatch 第一个数据接口 0.15 → 1.14s（读完 1.11 → 2.08s）。按影响排：
+    1. ★ 10-26 员工权限（0a09a545）以后，权限门把整页串行卡住：先 /api/me + dashboard-widgets → 再 /api/me/permissions → 页面自己再调 /api/me → 才读数据，每页多 2 轮（permission-gate.tsx:43、staff-permissions.ts:258-272、page-visibility.ts:215-238）。修法：permissions 跟 /api/me 同时发，判断期间页面先开始读数据。约 1 天。
+    2. /api/me 每页调 2–4 次，没有共用缓存（auth-api.ts:5，29 个文件各调一次）。修法：全站共用一份。半天。
+    3. Dispatch 自己 5 轮串行，每次打开还 POST manifests/sync + imports/pull 两次写库。要先问后端。1 天。
+    4. Manifests 先读列设置再读数据，多 1 轮。改成并发，工作量小。
+    5. 轮询：离开页面时会清掉，没有泄漏；但标签页藏到后台还照跑（Dashboard 每个标签页每分钟 3–4 次，Tracking 30–60s）。修法：标签页隐藏时停。半天到 1 天。
+    6. Bundle：共享部分 183 → 203kB，Dashboard 176 → 245kB，全仓库没用 next/dynamic。影响 <0.1–0.3s，不是主因。1 天。
+    - 19 推荐先做 1 + 2（同一组文件，交一个窗口）。真实耗时要 Annie 在 Chrome F12 Network 截图（步骤已给 Annie）。
 - G212 SA-8 后端上 main 778ee08f（关包 3eaa38e0）：改了还没接受的邀请的角色 / 权限 / 账号类型 ⇒ 旧链接马上失效（400 invalid）。前端那句提醒等 Annie 答置顶 88。
 - 91 preview 改成 Notified 版（同链接）：Order # 后「Notified」列（Notified 黑字 / To notify 玫红粗字，To notify 行粉红排下面），后接 Order Status；数字卡「To notify」，其他只算 Notified；CSV 加 Notified（Yes/No）+ Order state（后端）；Broadcast 含 To notify，发后变 Notified。How to use 原文已贴给 Annie。**等 Annie 看 preview 点头**，后端 task/tracking-sync-v2 上 main 后写代码。
 ### 63. 换司机只改 Dispatch：页面上怎么标（G234）—— ✅ 已合 main 40d5279（2026-11-04）；Annie 已答并「动手」（2026-11-03）；e6 preview https://claude.ai/artifact/CXT8ZueNa3akn1ZrGn4Ycj ，没写代码）
