@@ -2144,34 +2144,23 @@ async function run() {
     await sleep(300);
   }
 
-  // ── Shuttle 上车点提示（Annie 2026-10-31 动手，preview https://claude.ai/artifact/BewNcepgfaJMDPDMvo2Pdz v3 样子 1 + Schedule check）：
-  //    团当天 Bus manifest 有 Shuttle 客人、哪台车都还没有 Shuttle 站 ⇒ 第一台车「Add hotel」右边琥珀字 + 右栏一条；别的车选了也算 ──
+  // ── Shuttle 上车点：不提醒、不拦（Annie 2026-11-04「outbound shuttle的出发点是TI，所以也不需要单独挑酒店的」「不要提醒也不阻碍」；
+  //    取代 2026-10-31 的「Select today's shuttle pick-up here」提示 + Schedule check 那条）──
   {
     const hint = "document.querySelectorAll('[data-shuttle-hint]')";
-    const issue = "[...document.querySelectorAll('[aria-label=\"Schedule check\"] [aria-label=Issues] > li')].find(l => l.textContent.includes('shuttle pick-up not chosen'))";
-    const load = async () => { await goto(`${APP}/dispatch?date=2026-10-19`); await waitFor("document.querySelector('.vrow')", 60000); await sleep(2000); await helpers(); };
-    await ctl({ hotelGroups: true, shuttlePax: 0 });
-    await load();
-    check("Shuttle：Bus manifest 读不到（404）⇒ 不出提示、右栏没有这条", (await evaluate(`return ${hint}.length;`)) === 0 && !(await evaluate(`return !!${issue};`)));
-    await ctl({ hotelGroups: false, shuttlePax: 6 });
-    await load();
-    check("Shuttle：后端没带 is_tour_bus（分不出 Shuttle 站）⇒ 不出提示", (await evaluate(`return ${hint}.length;`)) === 0 && !(await evaluate(`return !!${issue};`)));
+    const issue = "[...document.querySelectorAll('[aria-label=\"Schedule check\"] [aria-label=Issues] > li')].find(l => l.textContent.toLowerCase().includes('shuttle pick-up'))";
     await ctl({ hotelGroups: true, shuttlePax: 6 });
-    await load();
-    const h = await evaluate(`const hs = ${hint}; if (hs.length !== 1) return { n: hs.length }; const el = hs[0]; const row = el.closest('.vrow'); const s = getComputedStyle(el); const sel = row.querySelector('[data-f=addstop]'); return { n: 1, idx: row.dataset.idx, text: el.textContent, c: s.color, w: s.fontWeight, box: s.borderTopWidth + '/' + s.backgroundColor, right: el.getBoundingClientRect().left >= sel.getBoundingClientRect().right - 1, sameLine: Math.abs(el.getBoundingClientRect().top + el.offsetHeight / 2 - (sel.getBoundingClientRect().top + sel.offsetHeight / 2)) < 8, svg: !!el.querySelector('svg') };`);
-    check("Shuttle 提示只在第一台车（Bus A）、Add hotel 右边同一行，文字「Select today’s shuttle pick-up here · 7 shuttle guests」（outbound 6 + inbound 1）",
-      h.n === 1 && h.idx === "0" && /^Select today’s shuttle pick-up heres*· 7 shuttle guests$/.test(h.text) && h.right && h.sameLine, JSON.stringify(h));
-    check("Shuttle 提示样子 1：琥珀字（#b45309）半粗、带小箭头、没有框也没有底色", h.c === "rgb(180, 83, 9)" && h.w === "600" && h.svg && h.box === "0px/rgba(0, 0, 0, 0)", JSON.stringify(h));
-    const it = await evaluate(`const li = ${issue}; return li ? li.textContent : null;`);
-    check("Schedule check 一条「West Rim Bus Tour: shuttle pick-up not chosen」+「7 shuttle guests · pick a Shuttle stop on any bus of this tour.」",
-      !!it && it.includes("West Rim Bus Tour: shuttle pick-up not chosen") && it.includes("7 shuttle guests · pick a Shuttle stop on any bus of this tour."), String(it));
-    await evaluate(`window.scrollTo(0, document.body.scrollHeight); ${issue}.querySelector('[data-issue-fix]').click();`);
-    await sleep(900);
-    check("点 Fix ⇒ 跳到第一台车、光标在 Add hotel", await evaluate(`return document.activeElement === ${vrow(0)}.querySelector('[data-f=addstop]');`), await evaluate("return document.activeElement?.outerHTML.slice(0, 80);"));
-    await pick(`${vrow(1)}.querySelector('[data-f=addstop]')`, 104);
-    await sleep(400);
-    check("在第二台车（Bus B）选了 St George – Main St（Shuttle 站）也算 ⇒ 提示和右栏那条都消失、不报错",
-      (await evaluate(`return ${hint}.length;`)) === 0 && !(await evaluate(`return !!${issue};`)) && (await evaluate(`return ${vrow(1)}.textContent.includes('St George');`)));
+    const before = (await mockLog()).length;
+    await goto(`${APP}/dispatch?date=2026-10-19`);
+    await waitFor("document.querySelector('.vrow')", 60000);
+    await sleep(2000);
+    await helpers();
+    check("团有 Shuttle 客人、哪台车都没选 Shuttle 站：车上没有「Select today’s shuttle pick-up here」提示",
+      (await evaluate(`return ${hint}.length === 0 && !document.body.textContent.includes('shuttle pick-up here');`)));
+    check("右栏 Schedule check 没有「shuttle pick-up not chosen」那条", !(await evaluate(`return !!${issue};`)));
+    check("Dispatch 不再为了数 Shuttle 客人去读每个团的 Bus manifest（/api/dispatch/manifest）",
+      !(await mockLog()).slice(before).some((l) => l.path === "/api/dispatch/manifest"));
+    check("Add hotel 照旧能选（分组、Shuttle Pick up 分隔行不变）", await evaluate(`return !!${vrow(0)}.querySelector('[data-f=addstop]');`));
     await ctl({ hotelGroups: false, shuttlePax: 0 });
     await goto("about:blank");
     await sleep(300);
