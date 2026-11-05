@@ -210,29 +210,41 @@ async function run() {
     await evaluate(`const s = getComputedStyle(${lane("Tour Confirmation")}.querySelector('[data-fact="Guest reply"] dd')); return s.backgroundColor === 'rgba(0, 0, 0, 0)' && s.borderTopLeftRadius === '0px';`),
   );
 
-  // ── 浮窗：居中、背后变暗、Close / 暗处 / Esc 关、再点输入框重开 ──
+  // ── 浮窗：居中、背后变暗、Close / 暗处 / Esc 关，关了就清空搜索框（Annie 2026-11-04） ──
   check("结果在页面正中间的浮窗里", await evaluate("const r = $box().getBoundingClientRect(); const cx = r.left + r.width / 2; return $box().getAttribute('role') === 'dialog' && Math.abs(cx - innerWidth / 2) < 4 && r.top >= 0 && r.bottom <= innerHeight;"), await evaluate("return JSON.stringify($box().getBoundingClientRect());"));
   check("背后整页变暗（挂在 body 上、铺满屏幕）", await evaluate("const o = document.querySelector('[data-lookup-overlay]'); const r = o.getBoundingClientRect(); return o.parentElement === document.body && r.width === innerWidth && r.height === innerHeight;"));
   check("上下两个 ✕ Close", await evaluate("return document.querySelectorAll('[data-close-lookup]').length === 2;"));
   await evaluate("document.querySelectorAll('[data-close-lookup]')[1].click(); return 1;");
   await sleep(150);
-  check("点底部 Close：浮窗关上、输入框里的单号还在", await evaluate("return !$box() && $input().value === 'ZZTEST1';"));
+  check("点底部 Close：浮窗关上、搜索框清空（不用再点 Clear）", await evaluate("return !$box() && $input().value === '';"));
   await evaluate("$input().blur(); $input().focus(); return 1;");
   await sleep(150);
-  check("再点输入框：重开上次的结果", await evaluate("return !!$box() && $txt().includes('ZZTEST1');"));
+  check("关了再点输入框：不弹空浮窗", await evaluate("return !$box();"));
+  await search("ZZTEST1", "document.querySelector('[data-lookup-result]')");
+  await evaluate("document.querySelectorAll('[data-close-lookup]')[0].click(); return 1;");
+  await sleep(150);
+  check("点顶上 Close：浮窗关上、搜索框清空", await evaluate("return !$box() && $input().value === '';"));
+  await search("ZZTEST1", "document.querySelector('[data-lookup-result]')");
   await evaluate("document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })); return 1;");
   await sleep(150);
-  check("按 Esc 关上", await evaluate("return !$box();"));
-  await evaluate("$input().blur(); $input().focus(); return 1;");
-  await sleep(150);
+  check("按 Esc 关上、搜索框清空", await evaluate("return !$box() && $input().value === '';"));
+  await search("ZZTEST1", "document.querySelector('[data-lookup-result]')");
   await evaluate("document.querySelector('[data-lookup-overlay]').dispatchEvent(new MouseEvent('mousedown', { bubbles: true })); return 1;");
   await sleep(150);
-  check("点暗处关上", await evaluate("return !$box();"));
-  await evaluate("$input().blur(); $input().focus(); return 1;");
+  check("点暗处关上、搜索框清空", await evaluate("return !$box() && $input().value === '';"));
+  await search("ZZTEST1", "document.querySelector('[data-lookup-result]')");
+  await evaluate("$box().querySelector('[data-fact]').dispatchEvent(new MouseEvent('mousedown', { bubbles: true })); $box().querySelector('[data-fact]').click(); return 1;");
   await sleep(150);
-  await evaluate("$box().querySelector('[data-fact]').dispatchEvent(new MouseEvent('mousedown', { bubbles: true })); return 1;");
+  check("点浮窗里面（不是链接）不关、不清", await evaluate("return !!$box() && $input().value === 'ZZTEST1';"));
+  await evaluate("[...$box().querySelectorAll('button')].find(b => b.textContent.trim() === 'Clear').click(); return 1;");
   await sleep(150);
-  check("点浮窗里面不关", await evaluate("return !!$box();"));
+  // 正在打字（还没回车、没有浮窗）：Esc / 点外面都不清。
+  await evaluate("$setValue($input(), 'ZZTES'); $input().focus(); return 1;");
+  await sleep(100);
+  await evaluate("document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })); document.body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })); return 1;");
+  await sleep(150);
+  check("正在打字时按 Esc / 点外面：框里的字不清", await evaluate("return $input().value === 'ZZTES' && !$box();"));
+  await evaluate("$setValue($input(), ''); return 1;");
 
   // ── 门票单：小写输入 → 列表搜到、按库里的单号打开；团期是 YYYY-MM-DD ──
   await ctl({});
@@ -350,6 +362,19 @@ async function run() {
   check("发送页查单：居中浮窗", await evaluate("return !!$box() && $box().getAttribute('role') === 'dialog';"));
   await evaluate("[...$box().querySelectorAll('a')].find(a => a.textContent.includes('Open tracking')).click(); return 1;");
   check("浮窗里点 Open tracking：换页", await waitFor("location.pathname === '/tickets-reminder/tracking'", 60000));
+  // Tracking 页不套外框（没有顶栏）：退回发送页看搜索框。
+  await evaluate("history.back(); return 1;");
+  check("跳走再退回来：顶栏搜索框是空的、浮窗关着", await waitFor("location.pathname === '/tickets-reminder/send' && !document.querySelector('[data-order-lookup]') && document.querySelector('[data-top-order-search] input')?.value === ''", 60000));
+
+  // 同一页的链接（pathname 不变）：在订单详情页搜同一张单，点浮窗里的 Order details，也关窗口、清空。
+  await goto(`${APP}/orders/ZZTEST1`);
+  await waitFor("document.querySelector('[data-top-order-search] input')", 60000);
+  await sleep(2500);
+  await waitFor("document.querySelector('[data-top-order-search] input')", 60000);
+  await helpers();
+  await search("ZZTEST1", "document.querySelector('[data-lookup-result]')");
+  await evaluate("[...$box().querySelectorAll('a')].find(a => a.getAttribute('href') === '/orders/ZZTEST1').click(); return 1;");
+  check("同一页的链接（订单详情页里点 Order details）：浮窗关上、搜索框清空", await waitFor("location.pathname === '/orders/ZZTEST1' && !document.querySelector('[data-order-lookup]') && $input().value === ''", 30000));
 
   // ── Open tracking → 三个 Tracking 页预填搜索框 ──
   await goto(`${APP}/tour-confirmation/tracking?date=2026-10-20&q=ZZTEST1`);
@@ -387,6 +412,8 @@ async function run() {
   await ctl({ mlinks: true, hold: true });
   await search("ZZTEST2", "document.querySelector('[data-manifest-hold]')");
   check("On Hold：照给键但网址带 tick=0，旁边黄字", await evaluate("const a = document.querySelector('[data-open-in-manifest]'); return new URL(a.href).searchParams.get('tick') === '0' && document.querySelector('[data-manifest-hold]').textContent.includes('On Hold — it will not be pre-ticked');"))
+  await evaluate("document.querySelector('[data-open-in-manifest]').click(); return 1;");
+  check("点 Open in Main manifest：跳到 /manifests，浮窗关上、搜索框清空", await waitFor("location.pathname === '/manifests' && !document.querySelector('[data-order-lookup]') && document.querySelector('[data-top-order-search] input')?.value === ''", 60000));
   await ctl({ mlinks: false, hold: false });
   // ── 置顶 75：没勾 See prices, agent & commission（orders.money_view）：提示字不提、按 agent ref 搜不到 ──
   await ctl({ noMoney: true });
