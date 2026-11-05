@@ -1076,6 +1076,8 @@ D. 已完成、待从置顶移走：
   - 46 核完（只读，没改；后端交接 7d89f872，明天写进待办）：① relay 分车 relay_pull.split()（relay_pull.py:171-206）不分节类型，outbound shuttle 客人跟团客一样按订单 pickup_location 配接客点：订单写 TI ⇒ departure 在 TI 上车，写别的酒店 ⇒ 分进排了那站的 relay 车，没车 ⇒ Need a look（前提团设了 relay_round）；② Seat guests 南北分车 seat_plan()（tour_manifest.py:2238-2251）outbound shuttle 客人也按订单酒店方向算 A 车给哪方；③ Main / Bus Manifest outbound 节照订单显示接客时间 / 地点（manifest_list.py:272，只显示）；④ SEATS USED = 团 + max(inbound, outbound) 只算人数，无关。没细看：Morning tracking / morning_pickup.py、司机页 / 导游页模板各一处 outbound。
   - 78 追问 Annie（关键题，决定后端①②③改不改）：Q0 outbound shuttle 客人是 A 自己到 TI 上车（不坐 relay）⇒ 后端①②③都要改成一律按 TI；B 跟团客一样由 relay 从酒店接到 TI，「不需要单独挑酒店」只是说 Dispatch 不用给 shuttle 另选上车站 ⇒ 后端不改，前端只改 ① 提示 / ② 说明。
   - ✅ **Annie 在 ef 窗口（原话）**：「现在把它改了吧，不要提醒也不阻碍。动手」⇒ ① 选 B：Dispatch 的 Shuttle 上车点提示整条去掉（第一台车琥珀字 + Schedule check「shuttle pick-up not chosen」+ 不再为数 Shuttle 人数读 Bus manifest）；Add hotel 分组、「Shuttle Pick up」分隔行不动。ef 做 task/no-shuttle-hint。② How to use 那句 ef 判断是讲 manifest 怎么显示、不是让 staff 挑酒店，没改。Q0（后端 relay / 南北分车改不改）Annie 还没答，后端先不动。
+  - ⚠️ ef 合了 cb6d34f6（整条去掉）后 **Annie 更正（原话）**：「我要改的是：从vegas出发的shuttle是不需要加pick up 酒店的，因为客人是直接到TI上车，没让你把所有提醒都取消啊，只是取消从vegas出发的outbound shuttle的提醒啊」⇒ 提示恢复，只算 inbound shuttle 客人（只有 outbound 不提醒）。78 已派 ef 返工 task/shuttle-hint-inbound-only。
+  - 这句也答了 Q0 = A（客人直接到 TI 上车，不坐 relay）⇒ 后端 46 查到的三处（relay 分车按订单酒店、南北分车按订单酒店方向、manifest outbound 节照订单显示地点）要不要跟着改成一律按 TI，78 已问 Annie 是否现在动手。
 
 ### 86. 司机 / 导游 live 页每天的快照（2026-11-04，Annie 在主窗口-2c 提，没动手）
 - 原话：「我还有个需求，司机和导游的live 记录，是否可以有快照，就是他这一天在哪个站停留了多久，发了多少短信，汇报了多少picked up和no show，在工作结束前它的页面有个快照」。
