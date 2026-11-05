@@ -1093,6 +1093,8 @@ D. 已完成、待从置顶移走：
   - How to use 原文：「If you change the access or account type of someone who hasn't accepted their invite yet, their old invite link stops working right away. Click Copy Link and send them the new link.」
   - 灰字原文：「The old invite link no longer works. Click Copy Link and send the new one.」
   - ✅ **Annie 选 A 并「动手」**：e8 问「你那句『同意全部推荐，动手』是不是也包括 Working Record 去掉 Hours 和置顶 88」，Annie 答「是的」。派 7a（Shuttle 那件合完后做）：task/team-invite-renewed-hint，先出截图给 Annie 看灰字，她点头再合 main。同一句「是的」也覆盖 86 Working Record 去掉 Hours：G249 SHA 到了 a0 核完字段直接合。
+  - ⚠️ 7a 发现：Team 页待注册那一行只有 Copy Link / Cancel invite，没有 Edit 键（users-table.tsx:439-442 只有 !pending 才出），Role 下拉也不给（:277），所以在 Team 页改不了待注册的人的权限 / 账号类型，灰字永远不会出现；只有旧 Users 页改 role 会换链接。新题已问 Annie：A（推荐）待注册行加 Edit 键（灰底小键，放 Copy Link 左边，打开同一个 Edit 框），存好以后权限或账号类型真的变了才出灰字，点了 Copy Link 或离开页面后消失，How to use 加那一句；B 不加 Edit，只加 How to use；C 都不做。7a 先按 A 推分支、出截图，不合 main。
+  - ✅ **Annie（原话）：「按推荐，动手」** ⇒ A。7a 检查过了直接合 main，截图留着给 Annie 验收时看。
 
 ### 87. Outbound shuttle 从 TI 出发：Dispatch 提示和 Manifest setup 说明要不要跟着改（2026-11-04 晚，Annie 在 ef 窗口提，78 已问，没动手）
 - 原话：「还有一个规则要记住，outbound shuttle的出发点是TI，所以也不需要单独挑酒店的」。
@@ -1591,6 +1593,9 @@ pe-ops-wt-login-default`，mock，**没合 main，等后端 57 的 logged_in_at 
       - 量页面开始显示（da-mock 加延迟，headless Chrome，dev 模式，各 3 次）：同步 250ms + Discord 8 秒：改前第一行排车 547–564ms、Step 1 卡片 592–621ms ⇒ 改后 313–362ms / 381–410ms；同步 3 秒 + Discord 8 秒：改前 3276–3310ms / 3344–3352ms ⇒ 改后 329–357ms / 400–406ms（不再随同步变慢）。量法脚本不进仓库。
       - 检查：da 521/521（新加 3 条：同步 3 秒 + Discord 6 秒时排车行 3 秒内出、卡片已出、拉取回来照旧写 Last pull）、mf 244/244（「先同步再读卡片」改成不限顺序；新加 4 条：同步 2.5 秒卡片先出、同步回来没变化不重读、有变化自动再读一次且卡片不闪、后台同步失败照旧红字）、nav 38/38；tsc 0、eslint 0 错（3 旧 warning）、build 过。main 期间没有新提交，检查就是在最新 main 上跑的。
       - **Annie 验收**：打开 Dispatch / 换天，排车和 Step 1 卡片应比以前快出来（以前要等名单同步跑完）；Step 1 名单照旧是最新的（同步完有变化会自己刷新一下卡片）。
+    - Annie 线上 Dashboard Network 截图（11-05）：21 个 /api 请求，Finish 4.95s；每个 126–540ms；/api/me 5 次，schedule / employees / 2026-11-01 各 2 次；第二次 schedule 3.72s、notices?include_read=false&limit=50 2.87s 最慢。重复请求已转 19 一起改，两个慢接口已转后端查。
+    - 19 进度（task/perf-shell-parallel，检查在跑，没合）：schedule / employees / 2026-11-01 各 2 次，是 Today's team 和底部 Schedule 两块各读一遍，现在 15 秒内共用一份；/api/me 5 次变成 1 次；permissions 跟 me、dashboard-widgets 同一轮发。mock：Dashboard 21 个请求变 15 个；员工视角开始读数据 Dashboard 1.47 → 0.92s，Manifests 1.24 → 0.84s，Dispatch 1.14 → 0.49s。
+    - 剩下「中间空约 1000ms」：权限门放行后 app/loading.tsx 会闪一下「加载中…」（中文，不合英文规定），React 让内容再等满 300ms。让页面先藏着挂上会让 partner 打开 Dispatch 时发写操作，已撤回。新题已问 Annie：A（推荐）去掉 app/loading.tsx，站内换页时旧页面留着、直到新页面出来；B 保留，只把字改成英文「Loading…」。
     - 19 推荐先做 1 + 2（同一组文件，交一个窗口）。真实耗时要 Annie 在 Chrome F12 Network 截图（步骤已给 Annie）。
 - **Annie（原话）：「你汇报一下目前为止还有哪些id在用旧系统」** ⇒ 后端 4c 只读查：现有记录分不出来。last_seen_at 只记时间；action_log 不记域名；Host / Referer 没落库；Railway 日志有路径但没有用户。最近 7 天有登录活动的 20 个账号（不分来源），后端直接给 Annie。「旧系统」分两种：① 直接上 confirm 域名；② 在 ops 里打开还没切换的旧页面（走 next.config.ts 的 fallback）。后端问 Annie 指哪种。要分来源，后端在 auth._signed_in 加一行限频日志（域名 + 是否打开页面 + 路径），只能从上线那一刻起算。
 - G212 SA-8 后端上 main 778ee08f（关包 3eaa38e0）：改了还没接受的邀请的角色 / 权限 / 账号类型 ⇒ 旧链接马上失效（400 invalid）。前端那句提醒等 Annie 答置顶 88。
