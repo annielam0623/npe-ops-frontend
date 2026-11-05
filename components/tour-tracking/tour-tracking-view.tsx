@@ -66,6 +66,7 @@ import { PageShortcutBar } from "@/components/nav/page-shortcut-bar";
 import { PhoneMore, PhoneShortcutStar } from "@/components/ui/phone";
 import { PageLink } from "@/components/ui/page-link";
 import { TourUploadDialog } from "./tour-upload-dialog";
+import { setVisibleInterval } from "@/lib/visible-poll";
 
 type LoadState =
   | { kind: "loading" }
@@ -240,8 +241,7 @@ export function TourTrackingView() {
   // 每 60 秒静默重拉整表（不闪 Loading）。
   useEffect(() => {
     if (!date) return;
-    const timer = setInterval(() => void load(date, true), POLL_INTERVAL_MS);
-    return () => clearInterval(timer);
+    return setVisibleInterval(() => void load(date, true), POLL_INTERVAL_MS);
   }, [date, load]);
 
   useEffect(() => {

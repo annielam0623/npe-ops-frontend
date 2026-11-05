@@ -6,6 +6,15 @@
 
 > **下一个主窗口：先读下面「2026-11-04 收工交接：前端主窗口 2c」，再看置顶「📌 等 Annie 确认」。**
 
+## 2026-11-05 页面提速第二件：`task/perf-hidden-poll`（工作窗口 `npe-ops-frontend-19`[1e2a0d]，主窗口 e8 派）—— ✅ 合 main
+- Annie 原话（后端主窗口转）：「改变速度的三步，动手」。只改速度、样子不变，不出 preview。
+- 改了什么：`lib/visible-poll.ts` 的 `setVisibleInterval`（用法同 setInterval）：标签页藏到后台（document.visibilityState = hidden）就停，回到前台先马上拉一次，再按原来的间隔继续。
+  换上它的数据轮询：Dashboard 的 tasks/today、notifications/unhandled、notices、operation-reports（统计行）、Today's team 在线名单；Tour / Tickets tracking（60 秒）；Morning tracking（60 秒 + Live drivers 30 秒）；对话弹窗的内部备注（20 秒）。
+  没换：Dispatch / Schedule 编辑锁心跳（停了会丢锁）；30 秒重算「几分钟前」的时钟（不发请求）。
+- 新检查套 hp（`checks/headless/hp-*.js`，用 tasks-mock）：藏 65 秒三个接口一个都不拉；回来 2 秒内各拉 1 次；再过 62 秒照 60 秒一轮各拉 1 次；来回切不多拉。
+- 检查：hp 6/6、tasks 144/144、dr 89/89、tt 137/137、tk 135/135、mt 253/253、nav 38/38；tsc 0；eslint 0 错（3 条旧 warning）；build 过。
+- Annie 验收怎么看：开着 Dashboard 切到别的标签页几分钟，回来时 F12 → Network 里马上有一批 tasks/today、notifications/unhandled、notices；藏着的那几分钟里这几个没有出现。页面样子不变。
+
 ## 2026-11-05 页面提速第一件：`task/perf-shell-parallel`（工作窗口 `npe-ops-frontend-19`[1e2a0d]，主窗口 e8 派）—— ✅ 合 main
 - Annie 原话（后端主窗口转）：「改变速度的三步，动手」。只改速度、样子不变，不出 preview。
 - 改了什么：
@@ -1617,6 +1626,7 @@ pe-ops-wt-login-default`，mock，**没合 main，等后端 57 的 logged_in_at 
     - Annie 线上 Dashboard Network 截图（11-05）：21 个 /api 请求，Finish 4.95s；每个 126–540ms；/api/me 5 次，schedule / employees / 2026-11-01 各 2 次；第二次 schedule 3.72s、notices?include_read=false&limit=50 2.87s 最慢。重复请求已转 19 一起改，两个慢接口已转后端查。
     - 19 进度（task/perf-shell-parallel，检查在跑，没合）：schedule / employees / 2026-11-01 各 2 次，是 Today's team 和底部 Schedule 两块各读一遍，现在 15 秒内共用一份；/api/me 5 次变成 1 次；permissions 跟 me、dashboard-widgets 同一轮发。mock：Dashboard 21 个请求变 15 个；员工视角开始读数据 Dashboard 1.47 → 0.92s，Manifests 1.24 → 0.84s，Dispatch 1.14 → 0.49s。
     - 剩下「中间空约 1000ms」：权限门放行后 app/loading.tsx 会闪一下「加载中…」（中文，不合英文规定），React 让内容再等满 300ms。让页面先藏着挂上会让 partner 打开 Dispatch 时发写操作，已撤回。新题已问 Annie：A（推荐）去掉 app/loading.tsx，站内换页时旧页面留着、直到新页面出来；B 保留，只把字改成英文「Loading…」。
+    - ✅ **Annie（原话）：「换页和列拖动同意推荐，动手」** ⇒ 换页选 A（去掉 app/loading.tsx），派 7a 做 task/remove-route-loading，检查过直接合 main。列拖动选 A：G180 的 Order Status 位置先只存在本机浏览器（a0 分支已经这样做了），等旧后台不用了再改成跟着账号走。
     - 19 推荐先做 1 + 2（同一组文件，交一个窗口）。真实耗时要 Annie 在 Chrome F12 Network 截图（步骤已给 Annie）。
 - **Annie（原话）：「你汇报一下目前为止还有哪些id在用旧系统」** ⇒ 后端 4c 只读查：现有记录分不出来。last_seen_at 只记时间；action_log 不记域名；Host / Referer 没落库；Railway 日志有路径但没有用户。最近 7 天有登录活动的 20 个账号（不分来源），后端直接给 Annie。「旧系统」分两种：① 直接上 confirm 域名；② 在 ops 里打开还没切换的旧页面（走 next.config.ts 的 fallback）。后端问 Annie 指哪种。要分来源，后端在 auth._signed_in 加一行限频日志（域名 + 是否打开页面 + 路径），只能从上线那一刻起算。
 - G212 SA-8 后端上 main 778ee08f（关包 3eaa38e0）：改了还没接受的邀请的角色 / 权限 / 账号类型 ⇒ 旧链接马上失效（400 invalid）。前端那句提醒等 Annie 答置顶 88。
