@@ -14,6 +14,7 @@
 - b3 确认是今天后端主窗口，后改名「今日主窗口e8」[df009e]（跟前端同名，发消息要带 ref）；两件已登记，等后端子窗口派。
 - Annie 发「动手」，e8 问是不是置顶 87 Q0（后端三处改按 TI），Annie 反问（原话）：「订单上面显示的酒店是什么」⇒ e8 已请后端 df009e 只读查：Vegas 出发 outbound shuttle 订单的 pickup_location 原文 / 单数、pickup_lookup.match 对上哪家、is_tour_bus、2–3 个例子。结果到了转 Annie，**还不算动手**。
 - 前端工作窗口 `npe-ops-frontend-a0`[02f088] 报到，Annie 跟 a0 的原话：「开工，找主窗口报道，告诉它我让你做导游的working record」⇒ 就是置顶 86 的 Working Record（9cc2d142），不是新东西。e8 派 a0 接手：在公司开 worktree C:\Code\npe-ops-wt-hrwr（端口 APP 3877 / MOCK 9277 / CDP 9877），先合最新 main 跑 hr / nav / ns + tsc / eslint / build，推分支、不推 main；G249 的 SHA 到了只读核字段，核完直接合 main。
+  - a0 步骤 1、2 做完：worktree 实际在 C:\Code\npe-ops-frontend-wt-hrwr；9cc2d142 合上最新 main，没有冲突，推 origin/task/hr-working-record **0cb3cd46**（没推 main）。hr 128/128、nav 38/38、ns 49/49；tsc 0；eslint 0 错（3 条旧 warning）；build 过；进程都关了。等 G249 SHA。
 - 后端 b3 转：G212 邀请链接自动换新（4c 收尾中，SHA 待发），请前端在 Team 页加一句「改了角色 / 权限后，要把新链接重新发给对方」。页面上的字要先问 Annie 确认原文；e8 已向 b3 问清什么情况会换链接、旧链接会怎样。
 
 ## 2026-11-04 晚 前端主窗口 `npe-ops-frontend-78`[6e88e1] 接班（家里电脑；只分工和汇报，不写代码）
