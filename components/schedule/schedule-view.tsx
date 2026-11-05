@@ -1421,6 +1421,8 @@ export function ScheduleView() {
         <ScheduleSettingsDialog
           settings={settings}
           canChange={canChangeSettings}
+          rules={rules}
+          ruleCtx={{ employees, shiftTypes: settings.shift_types }}
           onSaved={(next) => {
             setSettings(next);
             // 空档按新的 Working hours 马上重算（后端 GET week 带 gaps）。

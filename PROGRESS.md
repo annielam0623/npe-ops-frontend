@@ -4,7 +4,67 @@
 
 > 6d 交接（下面「2026-10-27 交接：前端主窗口 6d」那节）的后端需求已于 10/27 晚由 ad 转给家里后端主窗口 17。
 
-> **下一个主窗口：先读下面「2026-11-04 交接：前端主窗口 今日主窗口-24 → 今天新开的主窗口」，再读「2026-11-03 晚 收工交接：前端主窗口 5c」，再看置顶「📌 等 Annie 确认」。**
+> **下一个主窗口：先读下面「2026-11-04 收工交接：前端主窗口 2c」，再看置顶「📌 等 Annie 确认」。**
+
+## 2026-11-04 晚 前端主窗口 `npe-ops-frontend-78`[6e88e1] 接班（家里电脑；只分工和汇报，不写代码）
+- Annie：「你是今天的主窗口，跟5C交接一下昨天的工作」「pull今天公司完成的工作」。已 git pull 到 6e151cba（公司 2c / 81 / c8 今天的提交全部到了）。
+- 5c 交接（11-03 晚）里的 75 agent-ref、51 B、Restaurant ⬆ Import、G212 都已由公司 2c 派 81 / c8 合 main（见上面 2c 收工交接表），不再派。接着按 2c 交接「四、明天开工」和置顶走。
+- Annie：「完成公司没完成的任务啊」。78 核：后端 origin/main 223e0c4a，G245（82）和 Working Record（86 field-calendar / field-snapshots / Hours）都还没上。fa、9e、da、36、5c 都已关，现在在线只有 主窗口-46 [5b93cd]。
+  - 前端待派（等 Annie 开 1 个工作窗口，家里空闲内存 10.6 GB）：① 86 Profile 分节 origin/task/hr-profile-sections 3a72805 合最新 main 跑 hr / nav + tsc / eslint / build 后合 main（Annie 已「working record这里全部同意推荐，动手」，含 Profile Q1 A / Q2 A）；② 86 Working Record 开 task/hr-working-record 照 mock 做、推分支不合（等后端）。
+  - 82 G245 前端 e736302 已写好，等后端 cfm_mismatch 上线再合。已问 46（如是后端主窗口）今晚能否做 G245 / Working Record 后端，及 G212 B3 / B6 / B7、61 题 1①。
+  - 46 回（今晚家里后端主窗口 npe-confirmation-service-46）：① G245 今晚接，落地 task/g245-antelope-x-first db6eb24e（多一笔：不符提醒只发 antelope@），v149 已执行不再执行，**要 Annie 在 46 窗口批 C→B、跑 release.py**，上 main 发 SHA；② Working Record 今晚不接（Scope v3 要 Annie 先确认 + 实测 Samsara HOS 权限），照明天；③ G212 B3 / B6 / B7 已全上（a3b3d613 / b68aa0e9）；④ 61 题 1① 修法在 61 窗口等 Annie 答，今晚不排。另：Annie 报 Relay Splits relay 卡车号刚好是某团大巴时抬头写成大巴司机 + 导游，46 等 Annie 选 A / B，定了再说前端要不要动。
+  - **Relay Splits 抬头（46 转，Annie 选 B）**：11/05 第一轮 Robert L 的 relay 卡开 2556（当天也是 Antelope 大巴），总表抬头错写「ANTELOPE CANYON｜John S + OLIVIA - 2556」，应「ANTELOPE CANYON｜Robert L - 2556」。Annie 原话：「它应该只读relay这边的数据，不管他开那台车，最终relay split只读staff放在relay卡里的数据」；纸本 10/06 样本「SOUTH｜Carlos + Glenn - 1855=C」「这里放的还是真实这趟开车的司机的名字，然后这张relay表上还是有他接的客人都属于哪台巴士的显示」。⇒ 只把司机名改读 relay 卡 car.driver（不读 tour_buses[].driver + guide）；团名 / 字母、团色、不占 Relay 编号、客人归属照旧。导游名（46 定的口径）：relay 卡司机 = 那台大巴自己的司机时写「司机 + 导游」，否则只写 relay 卡司机（✅ Annie 在 46 窗口确认，原话「同意你定的」）。后端不用改。顺带统一单车 Relay 打印单、Relay list 页里用 tour_buses driver 当抬头的地方（lib/relay-list.ts、components/relay-list/*）。验收：① 11/05 第一轮 Robert L / 2556 显示「ANTELOPE CANYON｜Robert L - 2556」团色 / 归属不变 ② 同一司机照旧「司机 + 导游」③ 普通 relay 车（Bruce O - 1725 = Relay 1）不变。属修 bug、样子不变，不出 preview；等工作窗口派，上线 SHA 发 46。
+  - **G245 deploy-guard DG-4（46 转 4c）**：后端一上线，Cfm # 不符的单就硬拦不能发，红标 / How to use 在前端 task/g245-cfm-mismatch e736302，前端必须紧跟着上（目前只影响 CHDQ59DAL，11/22 出发）。后端三审 PASS、本地合并 ef380e25 未推，等 Annie 在 4c 窗口批 C→B、跑 release.py 后 push 发 SHA。⇒ 工作窗口一开，先准备 82：合最新 main 重跑 man / mf / nav / as，SHA 到了只读核字段马上合。
+  - ✅ G245 后端上 main 502982e3（合并 ef380e25，46 转）。前端工作窗口 `npe-ops-frontend-77`[b4c0cd] 开工，78 派四件按序：① 82 核字段合 main ② Relay Splits 抬头（task/relay-splits-driver）③ 86 Profile 分节合 main ④ 86 Working Record mock（task/hr-working-record，推分支不合）。77 检查端口 APP 3677 / MOCK 9077 / CDP 9677。
+
+## 2026-11-04 收工：工作窗口 `npe-ops-frontend-c8`[a65365]（2c 派；dev server / Chrome 已全关）
+- 今天合了 main（详细做法、检查数、Annie 验收点各在自己那一节）：
+  - **G212 Team 页 admin 按层级** → main 9bea1a4（功能 368796d + 7f6bcb0；后端 b68aa0e9 核过字段）。见「2026-11-04 G212 Team 页 admin 按层级」一节：admin 账号、SA 账号各看一遍 Settings › Team，只动 ZZ Test。
+  - **置顶 85 Staff Schedule 班次类型** → main 1230d19（功能 e5b406d + 0dd439c）；后端 color b75601c0 上线后只读核过、前端不用改，**选色已生效**（d2e69c2 记的）。验收点在置顶 85 最上面；生产没有删除，加的 ZZ Test 类型看完勾掉 Active。
+- 作废 / 没做：
+  - 置顶 86 快照 preview https://claude.ai/artifact/8ncEsZAqKAjRRe9qErWnyz 作废（Annie 改成只要汇总和统计，另出）。
+  - 置顶 83：c8 早上只读熟悉过，没写；后来 81 做完合了 main（a9efe18），不在 c8 手上。
+- 留给下一个窗口知道的：
+  - users 检查套接在 tp 等别的套后面跑时，偶尔在 /settings/users 跳转那一步首次编译超时崩（75/75 后），单跑每次 80/80，跟改动无关；合 Team 页相关改动时单独再跑一次 users 确认。
+  - worktree 留着、都已合、没有未提交改动，可以删：C:\Code\npe-ops-fe-c8（task/schedule-shift-types）、C:\Code\npe-ops-fe-c8-g212（task/g212-team-hierarchy）。
+  - 手上没有没做完的活。
+
+## 2026-11-04 收工：工作窗口 `npe-ops-frontend-81`[90172b]（2c 派；dev server / Chrome 已全关）
+- 今天合了 main：Restaurant ⬆ Import 6c56f18、置顶 75 agent ref 搜索 8cecaea、置顶 51 B Open in Main manifest 6e05f55、置顶 83 凌晨登录 Dispatch 默认今天 a9efe18、置顶 59 / 58 酒店坐标一格 + Tracking Arrived at / Left at 4fffe65（各置顶记了验收点）。
+- **推了分支、没合**（worktree 都在 C:Code 下，干净）：
+  - `task/g245-cfm-mismatch` **e736302**（worktree npe-ops-wt-g245）：置顶 82 G245 红格 + 提示 + 红条 + 提醒结果红框 Not sent + Auto Send 说明一句 + 「Go fill them in」看不清的修复。man 411/411、mf 240、nav 38、as 69。截图已发 2c 转 Annie。**明天：f4 SHA 到了只读核 cfm_mismatch / blocked reasons / can_override → 合最新 main 重跑 man / mf / nav / as → Annie 点头后合 main**，置顶 82 记 SHA。
+  - `task/hr-profile-sections` **3a72805**（worktree npe-ops-wt-hr-profile）：置顶 86 Q1 / Q2 A，HR「People」改名「Profile」，分 Drivers（driver + both）/ Guides / Position not set（有才出）三节，How to use 一句。hr 92/92、nav 38。截图 86-profile-sections.png 已发 2c。**明天：Annie 点头 → 合最新 main 重跑 hr / nav → 合 main**，置顶 86 记 SHA。
+- **没开工**：置顶 86 Working Record（日历 + 快照 + Hours，定稿 = preview v2 https://claude.ai/artifact/U951qPXH1hNBzLbuSGY6Hm 全部推荐 + Q5 B 要 Hours + Q6 A 📷 只给能看 Live drivers 的人；先只 Super Admin）。等后端 18：field-calendar（含「不带 hr_id = 所有人 {hr_id, name, position, days}」和每天 hours {start_at, end_at, source, note}）、field-snapshots。开工时开 `task/hr-working-record`，先 mock；Hours 没数据的写法要定原文报 2c（fallback note「No Samsara off-duty time」「No Samsara time」要醒目提示补，schedule 灰字注明）。
+- 出过的 preview（都已转 Annie）：置顶 84 登录记录 https://claude.ai/artifact/7gQFvoaMvPVmrBCVZCxwMj（等答）；置顶 85 Staff Schedule 班次类型 https://claude.ai/artifact/9LFRCau1uBg5sQ5aPbdSZt（第 4 版，Q6 定稿：Unassigned 卡片不上色、白虚线框；其余等答）；置顶 81 Relay list 页码 https://claude.ai/artifact/4dc5BmHshSrk8EZNm8K55a（等答；@page 页码已实测）。
+
+## 2026-11-04 收工交接：前端主窗口 `主窗口-2c`[f4667e]（公司电脑）
+> 窗口：前端工作窗口 `npe-ops-frontend-81`[90172b]、`c8`[a65365]；后端主窗口 `主窗口-94`[8d6960]（后端 18 / 2e / 57 / f4）。09、24、37 今天已关。
+
+### 一、今天上 main（等 Annie 线上验收，验收点在各置顶）
+| 件 | 前端 SHA | 后端 |
+|---|---|---|
+| 79 ops Live drivers 灰字改白 | c41546a | 手机司机 / 导游页 ae1a647f |
+| 72 南北分车（大勾选框、酒店胶囊 + A–Z、Direction 列） | 06bff03 | direction 57（今天 Annie 跑 release.py） |
+| 75 搜索按 Agent reference | 8cecaea | b6b1fce1 |
+| 51 B 订单详情跳 Main manifest | 6e05f55 | 8be7f86c |
+| Restaurant ⬆ Import | 6c56f18 | b1919f7e |
+| 83 凌晨 2:00–8:30 登录 Dispatch 默认今天 | a9efe18 | 3b362f51 |
+| G212 Team 页 admin 按层级 | 9bea1a4 | b68aa0e9 |
+| 59 / 58 Pickup 坐标一格 + Tracking Arrived at / Left at | 4fffe65 | 478c597c（早已上） |
+
+### 二、在做 / 等后端
+- **85 Staff Schedule 班次类型**：✅ 前端 main 1230d19（c8）；✅ 后端 color + action_log 上线 b75601c0（合并 9c5bc16b），选色应已自动出，c8 只读核字段。
+- **82 G245 羚羊谷 Cfm # 标红**（81，task/g245-cfm-mismatch）：Annie「羚羊谷，请动手」，定稿在置顶 82；前端 e736302；后端 f4 今天来不及、明天第一个落地；截图已发 Annie 等点头（收件人只发 antelope，Auto Send 页先不加栏，等 Annie）。
+- **86 HR Profile 分节 + Working Record**（81）：Profile 分节 task/hr-profile-sections 3a72805（不靠后端，等截图给 Annie 后合）；Working Record（日历 + 快照 + Hours，算工资用）Annie「working record这里全部同意推荐，动手」，后端 18 明天接着做（快照 / 日历 / 所有人列表 / Hours = Samsara HOS），前端 81 照 mock 做。⚠️ HR 补 Jimmy Vegas、Juan (Beni) 的 Samsara Driver ID；David H 没 HOS；可能要 Annie 在 Samsara 后台给 token 加 HOS 读权限。
+- **84 登录记录**：后端 18 往后排（v151）；显示方式等 Annie 答（preview 7gQFvoaMvPVmrBCVZCxwMj）。
+
+### 三、等 Annie（详见置顶，不滚动重问）
+- 81 Relay list 打印页码（preview 4dc5BmHshSrk8EZNm8K55a，Q1–Q3）；84 Q1–Q5；80 导游页（94 问）；其余旧置顶照旧（77、69、68、64、63、61、53、48 等）。
+
+### 四、明天开工
+1. 报对话名；git pull；后端交接在后端 origin/main 223e0c4a（NPE_每日交接.md 最上面，待办 G249–G252）。后端明天顺序：G245（82）第一个落地 → G212 SA-8 换邀请链接 → Working Record（Hours + 所有人日历）→ login-records（84）；SHA 由明天后端主窗口发来。
+2. 85 / 82 / 86 Profile 分节合了没有，没合的接着合；验收点发 Annie。
+3. ⚠️ 2c 今天在 944e763 误用 sed 把一行插到每行后面，47d38d3 已修。以后在 PROGRESS 插行先确认 grep 有命中（`[ -n "$n" ]`），或用 Edit。
 
 ## 2026-11-04 前端主窗口 `主窗口-2c`[f4667e] 接班
 - 24 关前转交（24 原话「看你已改名主窗口-2c，今天由你接主窗口」）。2c 先以工作窗口合了置顶 79 ops 白字 main c41546a。已告知后端 94、37 新名字。**后端主窗口今天是 `主窗口-94`[8d6960]**（37 关前说：后端的事都发 94，含 direction SHA、模板白字；后端交接在后端 origin/main fa210a5c 的 NPE_每日交接.md 最上面）。
@@ -14,6 +74,8 @@
   - 81 推 task/import-restaurant **58c97e1**（没合）：restaurant 58/58（+21）、nav 38/38，tsc / eslint / build 过。⬆ Import 在「+ Add a restaurant」左边（深色，同 Add 样子）。请后端导入时也写 updated_by / updated_at（已转 94）。81 接着做 75。
   - ✅ 后端上线 main b1919f7e（合并 1f7a064f，任务 f198a896，94 转）：形状同 58c97e1 mock，导入也写 updated_by / updated_at。派 81 核字段合 main（83 推完后、59 之前）。
 - ✅ `09` 合 72 → main **06bff03**（Annie 在 09 窗口原话「动手」）：da 501、pl 116、nav 38，tsc / eslint / build 过；验收点见置顶 72。已告知 94（57 direction 后端可推）。09 收工关窗口。
+  - ✅ 南北分车后端上线 main ce27bd43（合并 bcf90fec，94 转）：GET pickup-locations 每行 direction，PATCH …/{id}/direction 写 action_log，seat_plan 新规则生效，生产 17 家已预填 ⇒ Direction 列应已出现。派 81 只读核字段。
+  - ✅ 81 核过：对得上，前端不用改（direction 类型一致；PATCH 送 {direction}、400 照显示；seat_plan 只改后端内部规则，前端无新字段）。
 
 ## 2026-11-04 G212 Team 页 admin 按层级（`task/g212-team-hierarchy`，工作窗口 `npe-ops-frontend-c8`[a65365]，主窗口 2c 派）—— ✅ 后端 b68aa0e9 上 main，核过字段后合 main
 - 依据：Annie 10-28 Team 合并 preview v3（https://claude.ai/artifact/QpiQpo6x2b82CxAw86W9zq ）「a看不到 b不能 c不能 d不能」+「动手」；后端 f4 B3 / B5 / B6 / B7 / SA-2 / SA-6。2c 定：司机 / 导游行用 A（从 /api/users 补）、自己那一行照 v3 加 ✏️ Name；(a)(b) 截图 Annie 看过没提意见，照现在合。
@@ -1065,6 +1127,12 @@ D. 已完成、待从置顶移走：
 - G212 Team 页前端派 c8（task/g212-team-hierarchy），等后端 SHA。
 
 ### 85. Staff Schedule 班次类型（Open / Mid / Close）可手动新增（2026-11-04，Annie 在主窗口-2c 提，附排班格截图，没动手）
+- ✅ **选色已生效**：后端 color 上线 main b75601c0（合并 9c5bc16b）。c8 只读核过：字段名 `color`、8 个取值 open / mid / close / amber / rose / teal / orange / grey 跟前端一致；GET /api/settings/schedule、POST / PUT 返回、确认页（含免登录链接页）的 shift_types 都带 color；没带 color 的 POST = grey、不认得 400。前端不用改：settings 带了 color 键，⚙ Settings › Shift types 的 8 色小窗自动出来，存的颜色周表 / Add shift / Dashboard / 确认页都照着画。
+- ✅ **前端已合 main** 1230d19（功能 e5b406d + 0dd439c，`task/schedule-shift-types`，工作窗口 c8[a65365]，2c 派）。Annie（94 转）原话「颜色不重要，关键是我要的几个功能」⇒ 2c 定不等后端 color 列，先合。
+  - 做了（照 preview v4 全部推荐）：⚙ Settings 里「Default shift times」改成「Shift types」：每行 ⋮⋮ 排序（拖，或聚焦按 ↑↓）、色块、名字（改名黄框 + 「Was “Mid” — not saved yet」）、默认时间、Active；停用的也列着能勾回来；灰绿「+ Add shift type」，没存的新行右边小「×」能去掉。全部暂存、蓝色 Save 一起存，未存关窗先问；红字「Enter a name for the new shift type.」「There is already a shift type called “X”.」「Enter both default times for X, or leave both empty.」；key 从名字生成（小写、空格 _、≤20、重了 _2）。停用但还有开着的规则在用 ⇒ 黄字「X is still used by N rule(s) (…). Auto-fill keeps using it until you change that rule in Rules.」。Unassigned 行头 / 格子不上色、卡片白虚线框 + 白字。How to use 照方案 B：Shift types 那段放 Settings › Shift types 说明（手机收进「i」），Rules 卡片灰字后面接「New shift types show up in the Shift list of every rule. …」。原来默认时间旁的「Clear」拿掉（清空直接删框里的字）。
+  - **颜色**：后端 GET /api/settings/schedule 的 shift_types 带 color 键以后才出 8 色小窗、POST / PUT 才带 color；现在没带 ⇒ 色块只显示（Open 绿 / Mid 蓝 / Close 紫，新类型灰白），不能挑。格子颜色已经按 color 字段取（周表、Add shift、Auto-fill、Dashboard、员工确认页），后端上线后不用再改前端。
+  - 检查（合最新 main 后，端口 3278 / 8879 / 9413）：sch 409/409（新加 85 用例：新增 / 空名 / 重名 / key _2 / 改名 / 未存拦截 / 排序 / 停用提醒 / Add shift 顺序 / 颜色两种后端 / Unassigned / Rules 那句 / 非 SA 只读）、nav 38/38；tsc 0、eslint 0 错（3 个原有 warning）、build 过。
+  - Annie 验收看哪里（线上 ops Staff Schedule，Super Admin 账号；只用 ZZ Test 名字）：① ⚙ Settings → Shift types：+ Add shift type 加「ZZ Test Training」、填默认时间 → Save，绿字 Saved；Add shift 弹窗 Shift 那一排多了它；② 把它改个名 → Save，已排的班、Rules 跟着变；③ ⋮⋮ 拖顺序 → Save，Add shift 按钮顺序跟着变；④ 勾掉 Active → Save，Add shift 里不再出现（还有规则用它时名单下面黄字）；⑤ 周表 Unassigned 那一行不上色、卡片白虚线框；⑥ **颜色要等后端 color 上线后才能选**，现在色块只是显示。⚠️ 生产没有删除：加了的 ZZ Test 类型验收完请勾掉 Active 停用。
 - 原话：「在role里，给一个手动添加role的选项」「我说的是staff schedule」。截图是 Staff Schedule 周表，格子上的 Open / Mid / Close ⇒ 理解为班次类型（后端叫 shift type）。
 - 现状（2c 只读）：Add shift 弹窗「Shift」一排固定按钮（add-shift-dialog.tsx:283 起，来自后端 shift types）；Settings 弹窗只能改已有类型的 Default shift times（settings-dialog.tsx）。**后端已有新增接口** POST /api/settings/schedule/shift-types（key / label / sort_order / 默认时间，routers/schedule.py:136，权限 _settings），前端没做入口。
 - 注意：格子颜色写死按 key（components/schedule/config.ts SHIFT_CARDS），新类型会全用同一个后备色 ⇒ 要么前端给几种备选色让人挑（要后端存色），要么新类型统一一种色。
@@ -1090,6 +1158,7 @@ D. 已完成、待从置顶移走：
   - c8 推 task/schedule-shift-types **e5b406d**（含 main e2c682c，没合，等后端 color SHA）：sch 405/405、nav 38/38，tsc 0、eslint 0 错、build 过。Settings › Shift types（停用的也列、能勾回；⋮⋮ 拖或 ↑↓；8 色小窗；改名黄框 + 「Was "Mid" — not saved yet」；灰绿 + Add shift type；蓝 Save）；页面先挡红字「Enter a name for the new shift type.」「There is already a shift type called "X".」「Enter both default times for X, or leave both empty.」；key 从名字生成；停用但规则在用 → 黄字「ZZ Test Training is still used by 1 rule (…). Auto-fill keeps using it until you change that rule in Rules.」；颜色按 color 取（周表 / Add shift / Auto-fill / Dashboard / 员工确认页），旧后端 open / mid / close 照旧其余灰白；Unassigned 定稿样子；How to use 方案 B。preview 外两处小东西（已告诉 Annie）：未存新行右边「×」可去掉；默认时间旁的「Clear」键去掉，直接删字清空。要后端：GET /api/schedule/confirmation 的 shift_types 也带 color（已转 94）。
   - 2e：确认页 GET /api/schedule/confirmation 和免登录链接页都带 color；带 shift types 的 4 处都带（GET settings/schedule、POST / PUT 返回、确认页）；周表接口不返回 shift types。⚠️ 确认页只列 active 类型（原来就这样），已排的班用停用类型时拿不到 color / label，前端按 key 默认色。SHA 到了转 c8。
   - 94（12:3x）：v148 / v149 / v150 / v152 Annie 都已执行、核对过；2e 代码 + 审查全 PASS，只差排队推送（带迁移的一次一件）：G245（f4 落地中）→ **班次颜色（2e）预计 13:30–14:00 上线** → 南北分车 → Working Record。SHA 到了转 c8 合 e5b406d。
+  - **Annie（原话，94 转）**：「颜色不重要，关键是我要的几个功能」⇒ 2c 让 c8 **不等 color 先合**：后端 create / update 用 payload.get 取字段，多带 color 忽略不 400；前端在 GET 没 color 键时先藏选色、POST / PUT 不带 color，后端上线后自动出。除颜色外都用现有接口，后端不用再做。
 
 ### 84. Staff Schedule 后台要有员工登录记录（2026-11-04，Annie 在主窗口-2c 提，没动手）
 - 原话（接置顶 83 后说）：「我们本来就应该在staff的schedule后台管理页面有员工的登录记录」。
@@ -1144,8 +1213,9 @@ pe-ops-wt-login-default`，mock，**没合 main，等后端 57 的 logged_in_at 
   - **Annie 原话**：「不需要每一单发一份邮件，我们只需要每次发送发一份就好了，把有问题没发送的集中在一起就可以了」⇒ 自动发送每一轮发一封，集中列这一轮因 Cfm # 不符没发的单（不是每单一封）。已转 94。前端 Auto Send 说明半句跟着改成「Orders whose Cfm # doesn't match the product are skipped and listed together in one email after each run.」（Q4 A 时用）。
   - 94 / f4 查完（代码 + 生产只读）：**在 Rezdy 改好红标自己消失，后端不用改**——Rezdy 改字段推 webhook、整单重写，cfm_mismatch 每次开页 / 发送现场算，推到即变（近 30 天 booking_updated 26,373 次）。号挪到对的栏 ⇒ 消红能发；只删 X 栏、Antelope 栏空 ⇒ 消红变 No Cfm #（软拦，可 Send anyway）；在 Manifests 直接填 Cfm # ⇒ 当场消、能发。邮件改成每轮最多一封、没有就不发；每日汇总照旧带此原因；收件人等 Annie 答 94。
 - ✅ **Annie「羚羊谷，请动手」（原话，2026-11-04）** ⇒ 定稿：Q1 C（Cfm # (Rezdy) 那格红底白字）；Q2 A（能勾、Send reminder 红条逐单写原因、不能 Send anyway、黄字加半句）；Q3 不放 How to use，改鼠标停上去的短提示，用 2c 拟稿「Wrong Cfm # for this product — Rezdy has it under <other_label>: <other_value>. Fix it in Rezdy.」（她没另改，按推荐）；手机点红格弹同一句（推荐 A）；Q4 A（ops 不另列，Auto Send 说明加「Orders whose Cfm # doesn't match the product are skipped and listed together in one email after each run.」）。派 81（task/g245-cfm-mismatch，先于 Working Record），后端 f4 正在落地。
-- 前端（工作窗口 `npe-ops-frontend-81`[90172b]，2c 派；Annie「羚羊谷，请动手」）：`task/g245-cfm-mismatch`（worktree `C:Code
-pe-ops-wt-g245`，mock），**推了分支、没合 main，等 f4 SHA 核字段**。
+  - 收件人 Annie 在 f4 窗口定（原话）：「只发antelope」⇒ 后端 f4 db6eb24e（分支）：Auto Send 设置新键 tickets.cfm_alert_emails，缺省 antelope@nationalparkexpress.com，不再发 reservations@；生产没这个键落缺省。前端 Auto Send 页没这一栏，保存沿用库值不冲掉。2c 已问 Annie 要不要页面加「Cfm # alert emails」一栏（推荐先不加）。
+  - 81 推 task/g245-cfm-mismatch **8235fad**（没合，等 f4 SHA）：man 410（+11）、mf 240、nav 38、as 69，tsc / eslint / build 过。红格 + title 提示、手机点开同一句；黄字「Orders with a red Cfm # can't be sent until the Cfm # is fixed in Rezdy or in the Cfm # cell.」；红条逐单 + 「An order with a Cfm # that doesn't match the product can't be sent anyway.」；⚠️ 后端硬拦的结果原来只在黄色 Skipped，现照 legacy-ui 进红框「Not sent (n)」（跟 preview ③「不用改」不同）；Auto Send 说明一句。顺修 bug：红条上「Go fill them in」白字看不见。截图（2c scratchpad 82-*.png）已发 Annie。
+- 前端（工作窗口 `npe-ops-frontend-81`[90172b]，2c 派；Annie「羚羊谷，请动手」）：`task/g245-cfm-mismatch`（worktree `C:\Code\npe-ops-wt-g245`，mock），**推了分支、没合 main，等 f4 SHA 核字段**。
   - 定稿：Q1 C Cfm # (Rezdy) 格红底白字（行不变色），title / 手机点开写「Wrong Cfm # for this product — Rezdy has it under {other_label}: {other_value}. Fix it in Rezdy.」；Q2 A 能勾，Send reminder 红条逐单写「Cfm # doesn't match the product ({other_label}: {other_value})」、不算进 Send anyway（+「An order with a Cfm # that doesn't match the product can't be sent anyway.」），黄字加「Orders with a red Cfm # can't be sent until the Cfm # is fixed in Rezdy or in the Cfm # cell.」；后端硬拦（can_override=false）提醒结果进红框 Not sent（原来提醒弹窗只放 Skipped，这次补上）+ 数字多「Not sent」；Q4 A Auto Send 说明加「Orders whose Cfm # doesn't match the product are skipped and listed together in one email after each run.」；How to use 不加。
   - 只修 bug（2c 同意）：发送前淡红红条上的「Go fill them in」原来白字（深色底的键样式），看不见；改成条上的深红字 + 淡红边，大小不变。
   - 后端收件人：Annie 定只发 antelope（f4 db6eb24e，新键 tickets.cfm_alert_emails，缺省 antelope@）；Auto Send 页先不加栏。
@@ -1912,6 +1982,7 @@ pe-ops-wt-g245`，mock），**推了分支、没合 main，等 f4 SHA 核字段*
 - 2026-11-04 94 转 G212 B6 / B7 字段（f4 在审，没上线；只加字段）：GET /api/team/members admin 调用时不返回 Super Admin 行（Qa）和部门邮箱行（Q9），superadmin 照旧全返回；每行加 can_edit + edit_block_reason（null 或：「Only a Super Admin can change another admin.」「You cannot change your own access. Ask a Super Admin.」「A Super Admin account cannot be edited here.」）。GET /members/{id} 同带；admin 看 SA 详情 404，同级 admin 只读。**前端照 can_edit 出 Edit / 改角色 / 停用 / 重置链接 / 团队等键，不自己另算。** 写接口按层级 403（detail 同上）；admin 改成 admin 400「You can only give a role below your own.」；admin 勾 / 拿自己没有的权限 400「You can only give or take away permissions you have yourself: <代码…>」（规格 Qd：这些项灰掉勾不了）。自己显示名照旧能改。admin 也能调 /api/team/catalog、/api/team/action-log、拿 invite_token（Q6）。只给 superadmin：部门邮箱职责、批量导入 Email / Mobile、Delete 真账号。⇒ 前端 Team 页要跟着改（B5：改用 /api/team/members，SA / admin 一起），后端上线前派窗口照 mock 做；现在 81 / c8 都有活，等一个空出来。
   - G212 补（安全审查 SA-2，没上线）：admin 看待接受邀请，凡含 admin 自己没有的权限 → 照列但 invite_token = null、can_edit = false、edit_block_reason「Only a Super Admin can share this invite.」；/members/{id} 同；旧 GET /api/users 范围外邀请 invite_token = null。admin 撤范围外邀请 → 403「Only a Super Admin can cancel this invite.」，改它 → 403「Only a Super Admin can share this invite.」。前端照 can_edit + invite_token 是否 null 出 Copy link / 撤销键。
   - G212 再补（SA-6）：admin 角色的待接受邀请，admin 看到 invite_token = null、edit_block_reason「Only a Super Admin can change another admin.」，撤销也挡；规则 = 邀请的角色要比 admin 低，admin 才能分享 / 撤销。审查全 PASS，落地后 94 发 SHA。
+  - G212 SA-8（Annie 定「自动换新连接」）：superadmin 改待接受邀请的角色或权限时自动换新链接、旧链接作废；f4 排在 G245 后。上线后前端核：Team 页改完邀请要刷新 / 提示新链接。
   - c8 两问 f4 答：① GET /api/users 每行也带 can_edit + edit_block_reason（同 team_tiers.row_reason）；members 不加司机 / 导游 ⇒ 前端名单用 members + 从 /api/users 补 driver / guide 行，按各自 can_edit；② /api/me/permissions 只返回生效的勾（codes_for），同后端 Qd 拦截。f4 复审中，排在 57 后落地。
   - c8 推 task/g212-team-hierarchy **368796d**（照 mock，没合，等 f4 SHA）：tp 193（+20）、users 80、teams 54、perm 54、nav 38，tsc / eslint / build 过。跟 preview v3 不同三处：(a) Access 上方灰字「Greyed-out choices would give or take away permissions you don't have yourself. Only a Super Admin can change those.」；(b) 锁定文字用后端原话带句号（「🔒 Only a Super Admin can change another admin.」「🔒 Only a Super Admin can share this invite.」）；(c) admin 自己那行原来没 ✏️ Name ⇒ 2c 定照 preview v3 加。截图（2c scratchpad g212-*.png）已发 Annie。
   - c8 推 **7f6bcb0**：照 preview v3 ②，SA 和 admin 自己那行都加 ✏️ Name，Reset password 照旧灰；tp 193、users 80，tsc / eslint 0 错。等 f4 SHA。

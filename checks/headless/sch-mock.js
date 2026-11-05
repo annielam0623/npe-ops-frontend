@@ -349,13 +349,24 @@ function weekPayload(weekData) {
   return out;
 }
 
+// 班次类型的颜色（置顶 85，后端 schedule_shift_types.color）：ctl.shiftColors 打开时 GET 才带 color（= 后端上了这一列）。
+const SHIFT_COLOR_NAMES = ["open", "mid", "close", "amber", "rose", "teal", "orange", "grey"];
+const INITIAL_SHIFT_TYPES = JSON.stringify(settings.shift_types);
+function shiftTypeOut(t) {
+  const { color, ...rest } = t;
+  const out = { ...rest };
+  if (ctl.shiftColors) out.color = color || (["open", "mid", "close"].includes(t.key) ? t.key : "grey");
+  return out;
+}
 function settingsPayload() {
-  const base = ctl.workHours ? { ...settings, work_hours: workHoursPayload() } : settings;
-  if (!ctl.phase2) return base;
+  const base = ctl.workHours ? { ...settings, work_hours: workHoursPayload() } : { ...settings };
+  // 后端 ORDER BY sort_order, key。
+  const sorted = [...settings.shift_types].sort((a, b) => a.sort_order - b.sort_order || (a.key < b.key ? -1 : 1));
+  if (!ctl.phase2) return { ...base, shift_types: sorted.map(shiftTypeOut) };
   return {
     ...base,
-    shift_types: settings.shift_types.map((t) => ({
-      ...t,
+    shift_types: sorted.map((t) => ({
+      ...shiftTypeOut(t),
       default_start_time: (DEFAULT_TIMES[t.key] || [null, null])[0],
       default_end_time: (DEFAULT_TIMES[t.key] || [null, null])[1],
     })),
@@ -390,6 +401,12 @@ http
     if (p === "/__sends") return send(res, 200, sendLog);
     if (p === "/__ctl") {
       Object.assign(ctl, await readBody(req));
+      // ctl.resetShiftTypes：班次类型回到种子的 Open / Mid / Close（置顶 85 的用例加过、改过之后）。
+      if (ctl.resetShiftTypes) {
+        settings.shift_types = JSON.parse(INITIAL_SHIFT_TYPES);
+        for (const k of Object.keys(DEFAULT_TIMES)) if (!["open", "mid", "close"].includes(k)) delete DEFAULT_TIMES[k];
+        delete ctl.resetShiftTypes;
+      }
       if (ctl.confirmReset) {
         confirmReqs.forEach((r) => (r.status = "pending"));
         ctl.confirmReset = false;
@@ -500,16 +517,45 @@ http
       const base = settingsPayload();
       return send(res, 200, ctl.sundayOff ? { ...base, work_hours: { same_every_day: false, days: [0, 1, 2, 3, 4, 5, 6].map((weekday) => ({ weekday, start_time: "02:00", end_time: "21:30", off: weekday === 6 })) } } : base);
     }
-    const stMatch = /^\/api\/settings\/schedule\/shift-types\/([a-z_]+)$/.exec(p);
+    // 新增班次类型（置顶 85；后端 routers/schedule.py create_shift_type：key 小写 ≤20、label ≤40、key 重了 400）。
+    if (p === "/api/settings/schedule/shift-types" && req.method === "POST" && ctl.phase2) {
+      if (!holds("settings.schedule")) return send(res, 403, { detail: "You don't have permission: Settings: Schedule work window and shift types." });
+      const b = await readBody(req);
+      entry.body = b;
+      const key = String(b.key || "").trim().toLowerCase();
+      const label = String(b.label || "").trim();
+      if (!key || !label) return send(res, 400, { detail: "key and label are required." });
+      if (key.length > 20 || label.length > 40) return send(res, 400, { detail: "key must be at most 20 characters and label at most 40." });
+      if (ctl.failCreateLabel && label === ctl.failCreateLabel) return send(res, 400, { detail: "Mock failure for this shift type." });
+      if (settings.shift_types.some((t) => t.key === key)) return send(res, 400, { detail: `Shift type "${key}" already exists.` });
+      const hasS = b.default_start_time != null;
+      if (hasS !== (b.default_end_time != null)) return send(res, 400, { detail: "Send both default_start_time and default_end_time, or neither." });
+      if (ctl.shiftColors && b.color !== undefined && !SHIFT_COLOR_NAMES.includes(b.color)) return send(res, 400, { detail: "Unknown colour." });
+      settings.shift_types.push({ key, label, sort_order: b.sort_order ?? 0, is_active: true, ...(ctl.shiftColors && b.color ? { color: b.color } : {}) });
+      DEFAULT_TIMES[key] = hasS ? [b.default_start_time, b.default_end_time] : [null, null];
+      return send(res, 200, settingsPayload().shift_types.find((t) => t.key === key));
+    }
+    const stMatch = /^\/api\/settings\/schedule\/shift-types\/([a-z0-9_]+)$/.exec(p);
     if (stMatch && req.method === "PUT" && ctl.phase2) {
       if (!holds("settings.schedule")) return send(res, 403, { detail: "You don't have permission: Settings: Schedule work window and shift types." });
       const b = await readBody(req);
       entry.body = b;
+      const t = settings.shift_types.find((x) => x.key === stMatch[1]);
+      if (!t) return send(res, 404, { detail: `Shift type "${stMatch[1]}" does not exist.` });
       const hasS = b.default_start_time !== undefined && b.default_start_time !== null;
       const hasE = b.default_end_time !== undefined && b.default_end_time !== null;
       if (hasS !== hasE) return send(res, 400, { detail: "Send both default_start_time and default_end_time, or neither." });
+      if (b.label !== undefined && !String(b.label).trim()) return send(res, 400, { detail: "label cannot be blank." });
+      if (hasS && b.default_start_time === b.default_end_time) return send(res, 400, { detail: "default_start_time and default_end_time cannot be the same." });
+      if (ctl.shiftTypePutFail === stMatch[1]) return send(res, 500, { detail: "Mock failure." });
+      if (ctl.shiftColors && b.color !== undefined && !SHIFT_COLOR_NAMES.includes(b.color)) return send(res, 400, { detail: "Unknown colour." });
+      if (b.label !== undefined) t.label = String(b.label).trim();
+      if (b.sort_order !== undefined) t.sort_order = b.sort_order;
+      if (b.is_active !== undefined) t.is_active = b.is_active;
+      // 旧后端不认 color：ctl.shiftColors 没开时照样收、不存（同 payload.get 忽略多的键）。
+      if (ctl.shiftColors && b.color !== undefined) t.color = b.color;
       DEFAULT_TIMES[stMatch[1]] = hasS ? [b.default_start_time, b.default_end_time] : [null, null];
-      return send(res, 200, settingsPayload().shift_types.find((t) => t.key === stMatch[1]));
+      return send(res, 200, settingsPayload().shift_types.find((x) => x.key === stMatch[1]));
     }
 
     // ---- 二期：休假。

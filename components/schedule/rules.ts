@@ -180,6 +180,21 @@ export function describeRule(rule: Rule, ctx: DescribeContext): string {
   }
 }
 
+/** 这条规则提到了哪些班次类型（停用提醒用，置顶 85 Q4）。 */
+export function shiftKeysOfRule(rule: Rule): string[] {
+  const p = rule.params as Record<string, unknown>;
+  const keys: unknown[] = [p.shift_type, p.if_worked, p.then_cannot];
+  if (Array.isArray(p.slots))
+    for (const s of p.slots as { shift_type?: unknown }[])
+      keys.push(s?.shift_type);
+  return [...new Set(keys.filter((k): k is string => typeof k === "string"))];
+}
+
+/** 开着的、用到这个班次类型的规则（停用的类型 Auto-fill 照规则还会排，要提醒去改规则）。 */
+export function enabledRulesUsingShift(rules: Rule[], key: string): Rule[] {
+  return rules.filter((r) => r.enabled && shiftKeysOfRule(r).includes(key));
+}
+
 /** 加一条新规则时表单的起始值。 */
 export function defaultParams(
   type: RuleType,
