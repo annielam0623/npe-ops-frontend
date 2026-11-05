@@ -95,6 +95,12 @@ export const VISIBILITY_KEYS = {
     where: "/morning-pickup/tracking (Live drivers tab)",
     default: "super_admin_only",
   },
+  // 置顶 86 Working Record（Annie「working record这里全部同意推荐，动手」：先只 Super Admin，她看好了再开放给算工资的人）。
+  hr_working_record: {
+    label: "Human Resource · Working Record",
+    where: "Settings → Human Resource (Working Record tab)",
+    default: "super_admin_only",
+  },
   // 还没做好（Annie 2026-10-26「我们还没有做好……就仅super admin可见，然后都打上soon的标签」）
   quotation: {
     label: "Quotation",

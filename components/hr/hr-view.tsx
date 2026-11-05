@@ -25,6 +25,7 @@ import {
   updateHRProfile,
 } from "@/lib/hr-api";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
+import { usePageVisibility } from "@/lib/page-visibility";
 import { fetchUserPref, saveUserPref } from "@/lib/user-prefs-api";
 import { cn } from "@/lib/utils";
 import type { HRLinkableUser, HRProfile } from "@/types";
@@ -48,6 +49,7 @@ import {
 } from "./legacy-ui";
 import { isCellChanged, type ListEdits, PeopleTable } from "./people-table";
 import { ProfileDialog } from "./profile-dialog";
+import { WorkingRecord } from "./working-record";
 
 type ViewState =
   | { kind: "loading" }
@@ -105,7 +107,9 @@ export function HRView() {
   const [view, setView] = useState<ViewState>({ kind: "loading" });
   /** 主管只读（Annie 2026-10-17）：增删改 / 批量 / 导入 / 导出只有 admin，主管看不到这些键。 */
   const [canEdit, setCanEdit] = useState(false);
-  const [tab, setTab] = useState<"people" | "schedule">("people");
+  const [tab, setTab] = useState<"people" | "schedule" | "record">("people");
+  /** Working Record 的 📷：morning.view（同 Live drivers），Super Admin 一律有。 */
+  const [canMorning, setCanMorning] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const [layout, setLayout] = useState<ListLayout>(defaultLayout);
   /** 账号里存不了（后端不认 hr_list_layout 键，2026-10-04 起 main 已认）时只存在本机。 */
@@ -155,6 +159,12 @@ export function HRView() {
     [redirectToLogin],
   );
 
+  // Working Record 页签（置顶 86）：开关 hr_working_record，默认只 Super Admin；📷 还要能看 Live drivers（Q6 A）。
+  const pageVisibility = usePageVisibility(redirectToLogin);
+  const showRecord = pageVisibility.visible("hr_working_record");
+  const canSnapshot =
+    canMorning && pageVisibility.visible("morning_live_drivers");
+
   // 全部按照勾选（Annie 2026-10-30 置顶 10c）：改 HR 开关开着按勾（settings.hr.edit，同后端 settings_hr.py），关着照旧按角色。
   const tickPerms = usePermissions();
   const tickPermsRef = useRef(tickPerms);
@@ -179,6 +189,11 @@ export function HRView() {
         }
         setCanEdit(
           byTick(tickPermsRef.current, "settings.hr.edit", {
+            superAdmin: !!me.is_superadmin,
+          }),
+        );
+        setCanMorning(
+          byTick(tickPermsRef.current, "morning.view", {
             superAdmin: !!me.is_superadmin,
           }),
         );
@@ -606,8 +621,40 @@ export function HRView() {
             >
               Schedule example
             </button>
+            {showRecord ? (
+              <button
+                type="button"
+                role="tab"
+                aria-selected={tab === "record"}
+                data-hr-tab="record"
+                onClick={() => setTab("record")}
+                className={
+                  tab === "record" ? HR_BTN_PRIMARY_CLASS : HR_BTN_CLASS
+                }
+              >
+                Working Record
+                {pageVisibility.visibilityOf("hr_working_record") ===
+                "super_admin_only" ? (
+                  <span className="ml-1.5 text-[10px] font-bold text-[#b45309] night:text-[#fcd34d]">
+                    Super Admin only
+                  </span>
+                ) : null}
+              </button>
+            ) : null}
           </div>
           {tab === "schedule" ? <ScheduleExample /> : null}
+          {tab === "record" && showRecord ? (
+            <>
+              <WorkingRecord
+                canSnapshot={canSnapshot}
+                onUnauthorized={redirectToLogin}
+              />
+              <HowToUse
+                title="How to use — Working Record"
+                items={WORKING_RECORD_HOW_TO}
+              />
+            </>
+          ) : null}
           <div hidden={tab !== "people"}>
             {banner && !editing ? (
               <BannerLine banner={banner} onDismiss={() => showBanner(null)} />
@@ -839,6 +886,14 @@ function BannerLine({
     </p>
   );
 }
+
+/**
+ * 置顶 86 Q7 A 的原文（preview v2）+ Hours 的句子（Q5 B，77 补写，原文已报主窗口转 Annie）。
+ */
+const WORKING_RECORD_HOW_TO = [
+  "Working Record: what each driver and guide did each day, for payroll. The week view shows everyone: role (Driver, Guide, or Driver & Guide), tour and van. Click a name to see that person's month and the month's totals (days as Driver, Guide and Driver & Guide, and how many times each tour). 📷 opens that day's snapshot. A dashed box marked live means that day is not saved yet and follows Dispatch as it is now; once saved, later changes in Dispatch do not change it. ⬇ Export for payroll downloads the month as a CSV.",
+  "Hours: a driver's start and end come from Samsara (the first time they go on duty and the last time they go off duty that day). If Samsara has no off-duty time, the end is set to 11:00 PM and the day is marked No Samsara off-duty time; if Samsara has no time at all, the start is empty and the day is marked No Samsara time. Check those days with the driver before payroll. A guide's hours are the tour times (first pickup to the tour's guide snapshot time) and are shown in grey.",
+];
 
 /** Annie 2026-11-03 题 4 选 A 的原文。 */
 const SPELLINGS_HOW_TO =
