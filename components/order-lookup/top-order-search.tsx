@@ -6,6 +6,7 @@ import {
   createContext,
   type FormEvent,
   type ReactNode,
+  useCallback,
   useContext,
   useEffect,
   useRef,
@@ -25,7 +26,9 @@ import {
 /**
  * 整站顶栏的订单搜索（Annie 2026-10-14：用原来右上角那个假搜索框的位置，黄色细线框显眼一点；三个发送页也有）。
  * 输入单号回车，结果一律在页面正中间的浮窗里（Annie 2026-10-14 选 B，dashboard 也一样），背后变暗；
- * 上下两个「✕ Close」，点暗处、按 Esc、换页都关上。再点输入框重新打开上次的结果。查询状态由 AppFrame 里的 OrderLookupProvider 管。
+ * 上下两个「✕ Close」，点暗处、按 Esc、换页都关上。查询状态由 AppFrame 里的 OrderLookupProvider 管。
+ * 结果窗口一关就清空搜索框和结果，同点 Clear（Annie 2026-11-04：「每次搜索以后查看完毕把窗口关闭，它并没有自动把搜索框里输入的内容清掉，非要点击clear才行」）；
+ * 点结果里的链接跳走也一样。只在打字、浮窗没开时按 Esc / 点外面，只收起窄屏输入框，不清。
  */
 
 interface LookupCtx {
@@ -56,8 +59,17 @@ export function OrderLookupProvider({ children }: { children: ReactNode }) {
     window.location.href = buildLegacyLoginRedirectUrl(window.location.href);
   });
 
-  // 换页（结果里点了 Order details / Open tracking）就收起。
-  useEffect(() => setOpen(false), [pathname]);
+  const clearRef = useRef(clear);
+  clearRef.current = clear;
+  // 稳定的引用：顶栏的 Esc / 点外面监听不用每次重挂。
+  const clearAll = useCallback(() => {
+    clearRef.current();
+    setInput("");
+    setOpen(false);
+  }, []);
+
+  // 换页（结果里点了 Order details / Open tracking）就收起、清空。
+  useEffect(() => clearAll(), [pathname, clearAll]);
 
   return (
     <Ctx.Provider
@@ -74,11 +86,7 @@ export function OrderLookupProvider({ children }: { children: ReactNode }) {
           setOpen(true);
           void search(input);
         },
-        clearAll: () => {
-          clear();
-          setInput("");
-          setOpen(false);
-        },
+        clearAll,
       }}
     >
       {children}
@@ -92,7 +100,8 @@ const AMBER_BOX =
 
 export function TopOrderSearch() {
   const pathname = usePathname();
-  const { state, input, setInput, open, setOpen, submit } = useLookupCtx();
+  const { state, input, setInput, open, setOpen, submit, clearAll } =
+    useLookupCtx();
   // 置顶 75（定 B）：能看 agent 的人才能按 agent reference 搜，提示字才提。
   const seeAgent = usePermissions().canSeeMoney;
   /** 窄屏：输入框展开了没有。 */
@@ -106,7 +115,8 @@ export function TopOrderSearch() {
   useEffect(() => {
     if (!popup && !expanded) return;
     const close = () => {
-      setOpen(false);
+      // 结果窗口开着 ⇒ 关窗口 = 清空（同 Clear）；只是窄屏输入框展开（还在打字）⇒ 只收起，不清。
+      if (popup) clearAll();
       setExpanded(false);
     };
     const onDown = (e: MouseEvent) => {
@@ -124,7 +134,7 @@ export function TopOrderSearch() {
       document.removeEventListener("mousedown", onDown);
       document.removeEventListener("keydown", onKey);
     };
-  }, [popup, expanded, setOpen]);
+  }, [popup, expanded, clearAll]);
 
   function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -193,13 +203,22 @@ export function TopOrderSearch() {
               data-lookup-overlay
               className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4"
               onMouseDown={(e) => {
-                if (e.target === e.currentTarget) setOpen(false);
+                if (e.target === e.currentTarget) clearAll();
               }}
             >
               <div
                 role="dialog"
                 aria-label="Order lookup"
                 data-order-lookup
+                onClick={(e) => {
+                  // 点结果里的链接跳走（Open in Main manifest、Order details、tracking…）：关窗口、清空。
+                  // 换页时 pathname 也会清，这里管同一页只换 ?query 的情况；Ctrl / ⌘ / 中键开新标签不清。
+                  const a = (e.target as Element).closest?.("a[href]");
+                  if (!a || a.getAttribute("target") === "_blank") return;
+                  if (e.ctrlKey || e.metaKey || e.shiftKey || e.button !== 0)
+                    return;
+                  clearAll();
+                }}
                 className="max-h-[calc(100vh-32px)] w-[min(980px,100%)] overflow-y-auto rounded-[16px] border border-white/15 bg-[#0b1726] p-4 shadow-[0_24px_60px_rgba(0,0,0,.55)]"
               >
                 <LookupPanel />
@@ -213,13 +232,13 @@ export function TopOrderSearch() {
 }
 
 function LookupPanel() {
-  const { state, setOpen, clearAll, pick, backTo } = useLookupCtx();
+  const { state, clearAll, pick, backTo } = useLookupCtx();
   const close = (
     // Annie 2026-10-14：要一个看得见的关闭键（上下各一个，结果长时不用滚回顶上）。不用蓝色。
     <button
       type="button"
       data-close-lookup
-      onClick={() => setOpen(false)}
+      onClick={clearAll}
       className="flex h-8 items-center gap-1.5 rounded-[9px] border border-white/[.13] px-3 text-[12.5px] font-semibold text-white/75 hover:border-white/[.22] hover:bg-white/[.07] hover:text-white"
     >
       ✕ Close
