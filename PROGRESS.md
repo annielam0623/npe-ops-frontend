@@ -14,6 +14,7 @@
 - 分支提交 8d9ae4c1（推了 origin/task/farmout-subitem-price，没合 main）。检查：fo-settings 132/132、nav 39/39、perm 54/54；tsc 0；eslint 0 错；build 过。
 - ✅ Annie 原话（e8 转）：「Farm out  A 动手」⇒ How to use 第二条后面加了 A 那句：「A tour with items under it shows N/A when its Adult and Child are blank — the prices are on its items, so nothing is missing.」合最新 main 后重跑：fo-settings 132/132、nav 39/39；tsc 0；eslint 0 错；build 过。合 main SHA 见本节末行。
 - Annie 验收怎么看：Farm out › Partners & rates：有子项的团，主项 Adult / Child 空着写灰字 N/A；没子项的团没填价照旧红色 not set；页面最下面 How to use 第二条末尾有上面那句。
+- 合 main：**97fc0773**（功能 8d9ae4c1 + How to use 一句 + prettier 换行；PROGRESS 0778138b）。
 
 ## 2026-11-05 收工交接：前端主窗口 `今日主窗口-e8`[6ce7da]（公司电脑）
 > 窗口：前端工作窗口 a0 [02f088]、7a [32d617]、19 [1e2a0d]；后端主窗口「今日后端主窗口e8」[df009e]（后端 54 / 4c / 11 / 17）。⚠️ 前后端主窗口今天都叫 e8，发消息要带 ref。
