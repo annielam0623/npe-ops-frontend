@@ -1092,6 +1092,7 @@ D. 已完成、待从置顶移走：
 - 选法：A（推荐）How to use 加一句 + 存好后那一行下面出灰字（新样子，先出截图）；B 只加 How to use；C 不加。
   - How to use 原文：「If you change the access or account type of someone who hasn't accepted their invite yet, their old invite link stops working right away. Click Copy Link and send them the new link.」
   - 灰字原文：「The old invite link no longer works. Click Copy Link and send the new one.」
+  - ✅ **Annie 选 A 并「动手」**：e8 问「你那句『同意全部推荐，动手』是不是也包括 Working Record 去掉 Hours 和置顶 88」，Annie 答「是的」。派 7a（Shuttle 那件合完后做）：task/team-invite-renewed-hint，先出截图给 Annie 看灰字，她点头再合 main。同一句「是的」也覆盖 86 Working Record 去掉 Hours：G249 SHA 到了 a0 核完字段直接合。
 
 ### 87. Outbound shuttle 从 TI 出发：Dispatch 提示和 Manifest setup 说明要不要跟着改（2026-11-04 晚，Annie 在 ef 窗口提，78 已问，没动手）
 - 原话：「还有一个规则要记住，outbound shuttle的出发点是TI，所以也不需要单独挑酒店的」。
@@ -1196,6 +1197,8 @@ D. 已完成、待从置顶移走：
     - 检查（端口 3677 / 9077 / 9677）：hr 128/128（Working Record 新加 38 条：开关 / 分节 / 格子 / 颜色 / 两段 / fallback / live / no van / D&G 合并 / 导游灰字 / 快照读取 / 版本 / 展开 / As guide / Esc / 周表 Export 整月 / CSV 内容 / 月历 + 合计 / 月历 Export / ‹ › / Month / How to use / 404 / 500 + Retry / admin 开了开关没 Live drivers 没 📷）、nav 38/38、ns 49/49（Page visibility 22 → 23 行）；tsc 0、eslint 0 错（3 条原有 warning）、build 过。截图电脑 / 手机看过（手机表格在卡片里横滑，整页不晃）。
     - ⚠️ **需要后端**（转 94 / 明天 18）：① `GET /api/field-calendar` 不带 hr_id = 所有人 `{from, to, people:[{hr_id, name, position, days}]}`（WIP 现在 hr_id 必带）；带 hr_id 时也请带 name / position（月历抬头用）；② 每天 `hours`；③ 页面开关登记 key `hr_working_record`（默认 super_admin_only，dashboard-widgets）——没登记前前端按默认只 Super Admin。
     - 下一步：后端上线 → 只读核字段 → 合最新 main 重跑 hr / nav / ns → 截图给 Annie 看 → 合 main。
+  - **去掉 Hours（a0，2026-11-05）**：Annie 在后端 11 窗口（原话）「不要麻烦了……因为他们上下班是打卡，所以不重要了」，选「不做 Hours」。a0 在 task/hr-working-record **74301e8f**（公司 worktree C:\Code\npe-ops-frontend-wt-hrwr）拿掉：格子时间和「· N h」、黄条 No Samsara…、导游灰字 Tour times、📷 弹窗 Hours 一节、月合计 Hours 和「⚠ n days without full Samsara times」、CSV 的 Start / End / Hours / Hours from / Hours note 五列、How to use 第 2 句（Hours 那句）。新加：field-calendar 403（开关 hr_working_record 没对这个人开）⇒ 表格位置一句「The Working Record is not open to you yet. Ask a Super Admin if you need it.」，不白屏不报红。hr 128/128、nav 38/38、ns 49/49，tsc 0、eslint 0 错、build 过。截图 https://claude.ai/artifact/VKh5WZCfEQu6AyjHphbb3t 。
+  - ✅ **Annie「动手」（e8 问「动手是不是也包括 Working Record 去掉 Hours」，Annie 原话「是的」）** ⇒ G249（field-calendar 所有人 + 开关 hr_working_record 默认 super_admin_only + require_widget 403，不带 hours）SHA 一到：a0 只读核字段 → 合最新 main 重跑 hr / nav / ns + tsc / eslint / build → 直接合 main，不用再给 Annie 看。上线后 Annie 在 Settings › Human Resource › Working Record（只 Super Admin 可见）验收。
 - G212 Team 页前端派 c8（task/g212-team-hierarchy），等后端 SHA。
 
 ### 85. Staff Schedule 班次类型（Open / Mid / Close）可手动新增（2026-11-04，Annie 在主窗口-2c 提，附排班格截图，没动手）
@@ -1560,9 +1563,23 @@ pe-ops-wt-login-default`，mock，**没合 main，等后端 57 的 logged_in_at 
   - **Annie（原话）**：「我建议换个底色吧，没有发过的全部背景是灰色，发过的就是现在的背景色，这样一眼就比较直观一些，不用显示notify这一列了，直接在表格上方做个一句话说明」⇒ 去掉 Notified 列；没发过的行整行灰底（取代粉红）；表格上方加一句说明。e8 派 a0 改 preview（同链接）：灰色色值、说明原文，列成题的有：灰行 Status 写「—」、数字卡、CSV Notified 列、How to use 改后全文、Broadcast 那句。**还不是「动手」**。
   - a0 出灰底版（同链接）：没发过的行整行灰底 #e1e4e8、字 #1a1a1a，排在下面；去掉 Notified 列；数字卡改灰；表格上方一句说明。6 题已转 Annie，推荐都选 A：题 1 说明「Grey rows: no confirmation, Last Minute, Shuttle or Broadcast message has been sent yet.」；题 2 灰行 Status 写「—」、不出下拉、不算 Pending；题 3 Order Status 照写 Order List 的状态；题 4 数字卡留「To notify」；题 5 CSV 的 Notified 列留；题 6 How to use 全文见 a0 回复（已原样贴给 Annie）。
   - ✅ **Annie（原话）：「同意全部推荐，动手」** ⇒ 6 题全选 A。e8 派 a0 照 mock 做：从 main 拉 task/tracking-sync-gray，worktree C:\Code\npe-ops-frontend-wt-g180；推分支不合，等后端 G180 上 main 核完字段再合。已告诉后端：接口形状不变，CSV 两列照加。
+  - **前端做完（a0，2026-11-05）**：`task/tracking-sync-gray` **e0548c6e**（基于 main e77fd47e），推分支、没合 main。send_state = unsent 的行整行灰底 #e1e4e8、排在发过的下面、Status 写「—」不出下拉；Order Status 列紧跟 Order #（Confirmed / On hold 橙 / Cancelled 红），能拖、拉宽、Columns 里能隐藏；团胶囊和数字卡只算发过的，加灰色「To notify」卡数灰行（不是筛选键；点数字卡筛客人回复时灰行不出现）；表格上方题 1 A 原文（手机收一行 + More）；How to use 最前加题 6 A 那段、Broadcast 那条后面接灰行那句；群发名单含灰行、不含 On hold / Cancelled（发完照旧重读）；手机 8 张卡一行。旧后端（两个键都没有）页面跟现在一样：不出 Order Status 列 / 说明 / To notify 卡 / How to use 新句。
+    - ⚠️ 列顺序：账号里的 tour_col_order 照旧只存 17 个旧列号（旧页面要正好 17 个，多一个它就当没存过），Order Status 排在哪一列后面只记在本机（localStorage npe_ops_tour_order_status_after）。
+    - 检查（端口 3877 / 9277 / 9877）：tt 157/157（G180 新加 21 条：旧后端不变、列位置、灰行在下、底色、Status —、Order Status 颜色、数字卡 / 胶囊只算发过的、To notify 3、records、说明原文、Pending 筛选不含灰行、How to use 原文、Columns 隐藏、拖列后账号仍 17 个列号、重开记得位置、群发名单、手机 8 卡一行不晃）、nav 38/38、tour 65/65、mt 253/253、os 85/85、dr 过；tsc 0、eslint 0 错（3 条原有 warning）、build 过。
+    - 下一步：后端 G180（task/tracking-sync-v2）上 main → e8 转 SHA → 只读核 send_state / order_state → 合最新 main 重跑 → 合 main。
 - ✅ **G253 上车点字段后端上 main 4c54e895**（关包 c4d1c88f）：/api/dispatch/manifest 的 blocks / unplaced 各节，每位客人加 pickup_location_id（int | null）、pickup_is_vegas（bool | null：TI 是 true，外地站 false，空 / OFFICE / 对不上是 null）。现有字段不变。⇒ 前端要做：Dispatch Shuttle 提示改成按上车点判断，pickup_is_vegas = true 不算，false / null 照旧提醒、计人数；拿掉 departsVegas() 按产品名判断那段。样子照 10-31 版，属修 bug、样子不变，不出 preview，跑完 da / nav + tsc / eslint / build 直接合 main。等 Annie 开工作窗口派（a0 在做 G180 preview）。
   - 派 `npe-ops-frontend-7a`[32d617]：task/shuttle-hint-pickup，worktree C:\Code\npe-ops-frontend-wt-shuttle，端口 3977 / 9377 / 9977，做完直接合 main。
 - **页面越开越慢（后端主窗口转 Annie 原话）**：「为什么现在感觉打开一个页面的时间越来越长了」，她说昨天就问过。前端 PROGRESS 没有昨天这条记录。后端派 54 只读查慢查询、首屏接口、定时任务。要前端查三件：① 这两周首屏 bundle 大小的变化，有没有没做懒加载的大页面；② 打开一个普通页面，并发调了多少个后端接口、各用多少毫秒（/api/me、dashboard-widgets、导航、通知 / 站内消息轮询）；③ 有没有间隔太短、切页面后没停的轮询。结果发后端主窗口合并给 Annie。等 Annie 开工作窗口派（只查不改）。
+  - 派 `npe-ops-frontend-19`[1e2a0d]：worktree C:\Code\npe-ops-frontend-wt-perf，端口 4077 / 9477 / 10077。比 build（现在的 main 对比 10-22 左右的 main），用 mock + headless 数接口，grep 轮询。结果发 e8 和后端主窗口，修法等 Annie 看了再定。
+  - **19 结果（只查没改）**：mock 每个接口加 300ms，比现在的 main 91178f7e 和 10-22 的 b9e2b2d9，页面开始读数据的时刻：Dashboard 0.49s → 1.47s，Manifests 0.52 → 1.24s，Dispatch 第一个数据接口 0.15 → 1.14s（读完 1.11 → 2.08s）。按影响排：
+    1. ★ 10-26 员工权限（0a09a545）以后，权限门把整页串行卡住：先 /api/me + dashboard-widgets → 再 /api/me/permissions → 页面自己再调 /api/me → 才读数据，每页多 2 轮（permission-gate.tsx:43、staff-permissions.ts:258-272、page-visibility.ts:215-238）。修法：permissions 跟 /api/me 同时发，判断期间页面先开始读数据。约 1 天。
+    2. /api/me 每页调 2–4 次，没有共用缓存（auth-api.ts:5，29 个文件各调一次）。修法：全站共用一份。半天。
+    3. Dispatch 自己 5 轮串行，每次打开还 POST manifests/sync + imports/pull 两次写库。要先问后端。1 天。
+    4. Manifests 先读列设置再读数据，多 1 轮。改成并发，工作量小。
+    5. 轮询：离开页面时会清掉，没有泄漏；但标签页藏到后台还照跑（Dashboard 每个标签页每分钟 3–4 次，Tracking 30–60s）。修法：标签页隐藏时停。半天到 1 天。
+    6. Bundle：共享部分 183 → 203kB，Dashboard 176 → 245kB，全仓库没用 next/dynamic。影响 <0.1–0.3s，不是主因。1 天。
+    - 19 推荐先做 1 + 2（同一组文件，交一个窗口）。真实耗时要 Annie 在 Chrome F12 Network 截图（步骤已给 Annie）。
+- **Annie（原话）：「你汇报一下目前为止还有哪些id在用旧系统」** ⇒ 后端 4c 只读查：现有记录分不出来。last_seen_at 只记时间；action_log 不记域名；Host / Referer 没落库；Railway 日志有路径但没有用户。最近 7 天有登录活动的 20 个账号（不分来源），后端直接给 Annie。「旧系统」分两种：① 直接上 confirm 域名；② 在 ops 里打开还没切换的旧页面（走 next.config.ts 的 fallback）。后端问 Annie 指哪种。要分来源，后端在 auth._signed_in 加一行限频日志（域名 + 是否打开页面 + 路径），只能从上线那一刻起算。
 - G212 SA-8 后端上 main 778ee08f（关包 3eaa38e0）：改了还没接受的邀请的角色 / 权限 / 账号类型 ⇒ 旧链接马上失效（400 invalid）。前端那句提醒等 Annie 答置顶 88。
 - 91 preview 改成 Notified 版（同链接）：Order # 后「Notified」列（Notified 黑字 / To notify 玫红粗字，To notify 行粉红排下面），后接 Order Status；数字卡「To notify」，其他只算 Notified；CSV 加 Notified（Yes/No）+ Order state（后端）；Broadcast 含 To notify，发后变 Notified。How to use 原文已贴给 Annie。**等 Annie 看 preview 点头**，后端 task/tracking-sync-v2 上 main 后写代码。
 ### 63. 换司机只改 Dispatch：页面上怎么标（G234）—— ✅ 已合 main 40d5279（2026-11-04）；Annie 已答并「动手」（2026-11-03）；e6 preview https://claude.ai/artifact/CXT8ZueNa3akn1ZrGn4Ycj ，没写代码）
