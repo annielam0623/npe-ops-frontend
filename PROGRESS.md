@@ -28,6 +28,11 @@
     - 改法（components/order-lookup/top-order-search.tsx）：上下两个 ✕ Close、点暗处、Esc、换页、点结果里的链接（Order details / Open tracking / Open in Main manifest / Open Order List，含同一页只换 ?query 的）都等同 Clear：清空搜索框和结果、关窗口。Ctrl / ⌘ / 中键开新标签不清。只在打字、还没回车（没有结果窗口）时按 Esc / 点外面，只收起窄屏输入框，框里的字不清。Clear 键照旧。以前「关了再点输入框重开上次结果」随之没有了（关了就清）。
     - 检查：os 85/85（关闭那几条改成「关上 + 框空」，新加：顶上 Close、关了再点框不弹空窗、点浮窗里面不关不清、打字时 Esc / 点外面不清、跳到 Tracking 再退回来框空、订单详情页点同一页的 Order details 框空、点 Open in Main manifest 跳 /manifests 框空；agent ref 搜索、Open in Main manifest 原有各条照过）、nav 38/38；tsc 0、eslint 0 错（3 条旧 warning）、build 过（分支已在最新 main 上）。
     - **Annie 验收**：ops 顶栏搜一张单 → 点 ✕ Close / 点暗处 / 按 Esc，搜索框都变空；点结果里的 Open in Main manifest 等链接跳走，框也是空的。
+  - ✅ **新规则 + 动手：Outbound shuttle 从 TI 出发，Dispatch 不再提醒选 Shuttle 上车点，已合 main cb6d34f6**（ef，task/no-shuttle-hint 功能 f0fdc5fc）。Annie 原话（在 ef 窗口，按时间）：「还有一个规则要记住，outbound shuttle的出发点是TI，所以也不需要单独挑酒店的」→ ef 列出冲突的两处 →「现在把它改了吧，不要提醒也不阻碍。动手」。
+    - 改法：整条去掉 2026-10-31 的 Shuttle 上车点提示（见「2026-10-31 Dispatch Tour bus 选今天的 Shuttle 上车点」一节，该节作废）——第一台车「Add hotel」右边琥珀字「Select today’s shuttle pick-up here · N shuttle guests」、右栏 Schedule check「<团>: shuttle pick-up not chosen」+ Fix 都没了；Dispatch 也不再为数 Shuttle 人数逐团读 Bus manifest。本来就不拦保存，照旧。Add hotel 下拉的分组（Las Vegas 在上、「~~~~~ Shuttle Pick up ~~~~~」分隔、Shuttle 站在下）不动。文件：components/dispatch/config.ts、dispatch-view.tsx、vehicle-row.tsx。
+    - 没改：Products › Bus Manifest setup How to use「outbound section (pickup from the order)」——讲的是 Manifest 上怎么显示，不是让 staff 挑酒店。Annie 要改再说。规则也记进了前端长期记忆（outbound-shuttle-departs-ti），以后新功能不让 staff 给 outbound shuttle 客人挑酒店 / 上车点。
+    - 检查：da 510/510（原 Shuttle 提示 8 条换成 4 条：有 Shuttle 客人也没有提示、右栏没有那条、不再请求 /api/dispatch/manifest、Add hotel 照旧）、nav 38/38；合最新 main 后 tsc 0、eslint 0 错（3 条旧 warning）、build 过。
+    - **Annie 验收**：Dispatch 选一个有 Shuttle 客人的巴士团日子 —— 车上不再出琥珀字「Select today’s shuttle pick-up here」，右边 Schedule check 也没有「shuttle pick-up not chosen」。
 
 ## 2026-11-04 收工：工作窗口 `npe-ops-frontend-c8`[a65365]（2c 派；dev server / Chrome 已全关）
 - 今天合了 main（详细做法、检查数、Annie 验收点各在自己那一节）：
