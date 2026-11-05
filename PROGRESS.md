@@ -6,6 +6,10 @@
 
 > **下一个主窗口：先读下面「2026-11-04 收工交接：前端主窗口 2c」，再看置顶「📌 等 Annie 确认」。**
 
+## 2026-11-04 晚 前端主窗口 `npe-ops-frontend-78`[6e88e1] 接班（家里电脑；只分工和汇报，不写代码）
+- Annie：「你是今天的主窗口，跟5C交接一下昨天的工作」「pull今天公司完成的工作」。已 git pull 到 6e151cba（公司 2c / 81 / c8 今天的提交全部到了）。
+- 5c 交接（11-03 晚）里的 75 agent-ref、51 B、Restaurant ⬆ Import、G212 都已由公司 2c 派 81 / c8 合 main（见上面 2c 收工交接表），不再派。接着按 2c 交接「四、明天开工」和置顶走。
+
 ## 2026-11-04 收工：工作窗口 `npe-ops-frontend-c8`[a65365]（2c 派；dev server / Chrome 已全关）
 - 今天合了 main（详细做法、检查数、Annie 验收点各在自己那一节）：
   - **G212 Team 页 admin 按层级** → main 9bea1a4（功能 368796d + 7f6bcb0；后端 b68aa0e9 核过字段）。见「2026-11-04 G212 Team 页 admin 按层级」一节：admin 账号、SA 账号各看一遍 Settings › Team，只动 ZZ Test。
