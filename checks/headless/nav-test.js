@@ -149,6 +149,15 @@ async function run() {
   // General 现在仅 Super Admin 可见（Annie 2026-10-26）：admin 的 Settings 里不再有这一项。
   check("admin：Settings 里没有 General（仅 Super Admin 可见）", await evaluate(`return ![...${nav}.querySelectorAll('div')].some(s => s.textContent === 'GeneralComing soon') && ![...${nav}.querySelectorAll('a')].some(a => a.textContent.startsWith('General'));`), await evaluate(`return ${nav}.textContent.includes('General');`));
   check("Sign out 走站内代理（不是旧后台域名）", await evaluate(`return [...${nav}.querySelectorAll('a')].find(a => a.textContent === 'Sign out').getAttribute('href') === '/auth/logout';`));
+  // ── 站内换页不闪「加载中…」（Annie 2026-11-05 选 A「动手」，删 app/loading.tsx）：旧页面留着，新页面好了直接换 ──
+  {
+    await evaluate(`window.__sawLoading = false; window.__blank = false; new MutationObserver(() => { const t = document.body.textContent; if (t.includes('加载中')) window.__sawLoading = true; if (!document.querySelector('header')) window.__blank = true; }).observe(document.body, { childList: true, subtree: true, characterData: true }); [...${nav}.querySelectorAll('a')].find(a => a.textContent.startsWith('7 Days')).click();`);
+    const moved = await waitFor("location.pathname === '/forecast' && !!document.querySelector('header')", 60000);
+    await sleep(1500);
+    check("站内点侧栏换页（Work Sheet → 7 Days Forecast）：不出「加载中…」、顶栏一直在（不整页换成空白）、换到新页面",
+      moved && !(await evaluate("return window.__sawLoading;")) && !(await evaluate("return window.__blank;")) && (await evaluate("return !!window.__sawLoading === false && location.pathname === '/forecast';")),
+      await evaluate("return location.pathname + ' saw=' + window.__sawLoading + ' blank=' + window.__blank;"));
+  }
   // ── 分批切换：ops 自己没有的路径原样转给后端，同一个网址、同一个登录（Annie 2026-10-10）──
   let fromLog = (await mockLog()).length;
   // 没切换的 Bug Reports 拿来测「旧页面经 ops 打开」；已切换的 HR 旧路径跳新页面。
