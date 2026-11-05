@@ -269,7 +269,7 @@ export function SnapshotDialog({
                               {r.status ? STATUS_LABEL[r.status] : "Not marked"}
                             </Td>
                             <Td>{clock(r.at) ?? "—"}</Td>
-                            <Td>{r.by ?? "—"}</Td>
+                            <Td>{r.by || "—"}</Td>
                           </tr>
                         ))}
                       </tbody>

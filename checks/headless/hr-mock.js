@@ -85,7 +85,8 @@ function wrSnapshots() {
     sms: { sent: 3, by: [{ author: "ZZ Test Dan", count: 3, source: "driver_page" }] },
     guests: { pax: 23, picked_up: 21, boarded: 0, no_show: 2, not_marked: 0 },
     roster: [{ order_number: "CHDZZ001", pax: 2, status: "picked_up", at: la(d1, "05:45"), by: "ZZ Test Dan", source: "relay" },
-      { order_number: "CHDZZ002", pax: 1, status: "no_show", at: la(d1, "05:50"), by: "ZZ Test Dan", source: "relay" }],
+      { order_number: "CHDZZ002", pax: 1, status: "no_show", at: la(d1, "05:50"), by: "ZZ Test Dan", source: "relay" },
+      { order_number: "CHDZZ003", pax: 1, status: null, at: null, by: "", source: "relay" }],
     generated_at: la(d1, "19:00"),
   });
   const snap = (hr_id, name, kind, version, trigger, at, d) => ({ hr_id, name, kind, run_date: d1, version, trigger, created_at: la(d1, at), data: d });
@@ -153,7 +154,8 @@ http.createServer(async (req, res) => {
       const one = wrPeople().find((x) => x.hr_id === Number(hrId));
       return send(res, 200, { ...inRange(one), from, to });
     }
-    return send(res, 200, { from, to, people: wrPeople().map(inRange) });
+    // 同后端 G249（c1b5a06f）：不带 hr_id 只列这段时间有排班的人，按名字排。
+    return send(res, 200, { from, to, people: wrPeople().map(inRange).filter((x) => x.days.length).sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()) || a.hr_id - b.hr_id) });
   }
   const fs = /^\/api\/field-snapshots\/(\d+)$/.exec(p);
   if (fs) {

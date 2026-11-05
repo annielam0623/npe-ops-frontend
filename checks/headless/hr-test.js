@@ -689,7 +689,7 @@ async function runWorkingRecord() {
   await waitFor("document.querySelector('[data-wr-guests]')");
   check("Working Record 快照：展开 ⇒ 人数 + 每张单状态 / 时间 / 谁", await evaluate(`
     const g = document.querySelector('[data-wr-guests]');
-    return g.textContent.includes('Pax 23 · Picked up 21 · No show 2 · Not marked 0') && g.textContent.includes('CHDZZ0021No show5:50 AMZZ Test Dan');`),
+    return g.textContent.includes('Pax 23 · Picked up 21 · No show 2 · Not marked 0') && g.textContent.includes('CHDZZ0021No show5:50 AMZZ Test Dan') && g.textContent.includes('CHDZZ0031Not marked——');`),
     await evaluate("return document.querySelector('[data-wr-guests]').textContent;"));
   before = (await mockLog()).length;
   await selectValue("document.querySelector('[data-wr-version]')", "1");
@@ -749,6 +749,7 @@ async function runWorkingRecord() {
   await waitFor("document.querySelector('[data-wr-today]')");
   const prev = (await waitReq(before, (e) => e.path === "/api/field-calendar" && e.query.startsWith(`?from=${wrAdd(d0, -7)}`)))[0];
   check("Working Record：‹ 上一周 ⇒ 前七天、出 This week", prev?.query === `?from=${wrAdd(d0, -7)}&to=${wrAdd(d0, -1)}`, prev?.query);
+  check("Working Record：那一周没人排班 ⇒ 不出人（后端只列有排班的人），Drivers / Guides 两节写 No … worked in this period.", await waitFor("document.querySelector('[data-wr-section=\"drivers\"]')?.textContent.includes('No drivers worked in this period.') && document.querySelector('[data-wr-section=\"guides\"]').textContent.includes('No guides worked in this period.') && !document.querySelector('[data-wr-name]') && !document.querySelector('[data-wr-section=\"unset\"]')"));
   await evaluate("document.querySelector('[data-wr-today]').click();");
   await waitFor(`${cell(101, d1)}`);
   before = (await mockLog()).length;
