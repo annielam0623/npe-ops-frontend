@@ -1083,6 +1083,7 @@ D. 已完成、待从置顶移走：
   - ✅ **Annie 在 ef 窗口（原话）**：「现在把它改了吧，不要提醒也不阻碍。动手」⇒ ① 选 B：Dispatch 的 Shuttle 上车点提示整条去掉（第一台车琥珀字 + Schedule check「shuttle pick-up not chosen」+ 不再为数 Shuttle 人数读 Bus manifest）；Add hotel 分组、「Shuttle Pick up」分隔行不动。ef 做 task/no-shuttle-hint。② How to use 那句 ef 判断是讲 manifest 怎么显示、不是让 staff 挑酒店，没改。Q0（后端 relay / 南北分车改不改）Annie 还没答，后端先不动。
   - ⚠️ ef 合了 cb6d34f6（整条去掉）后 **Annie 更正（原话）**：「我要改的是：从vegas出发的shuttle是不需要加pick up 酒店的，因为客人是直接到TI上车，没让你把所有提醒都取消啊，只是取消从vegas出发的outbound shuttle的提醒啊」⇒ 提示恢复，只算 inbound shuttle 客人（只有 outbound 不提醒）。78 已派 ef 返工 task/shuttle-hint-inbound-only。
   - 这句也答了 Q0 = A（客人直接到 TI 上车，不坐 relay）⇒ 后端 46 查到的三处（relay 分车按订单酒店、南北分车按订单酒店方向、manifest outbound 节照订单显示地点）要不要跟着改成一律按 TI，78 已问 Annie 是否现在动手。
+  - **Annie 再补（原话）**：「看清楚，是从vegas上车outbound的shuttle客人不提醒」「如果从st George出发到page的肯定是要提醒加pick up 酒店的」⇒ 规则：只有从 Vegas 出发的 outbound shuttle 客人不提醒；非 Vegas 出发的 outbound（如 St George → Page）和 inbound 照旧提醒。已转 ef：先查能不能可靠分出发地，能就照做合 main，分不出来回 78 问 Annie。
 
 ### 86. 司机 / 导游 live 页每天的快照（2026-11-04，Annie 在主窗口-2c 提，没动手）
 - 原话：「我还有个需求，司机和导游的live 记录，是否可以有快照，就是他这一天在哪个站停留了多久，发了多少短信，汇报了多少picked up和no show，在工作结束前它的页面有个快照」。
