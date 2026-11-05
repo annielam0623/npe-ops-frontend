@@ -58,6 +58,7 @@ import { PhoneShortcutStar } from "@/components/ui/phone";
 import { useIsPhone } from "@/lib/phone";
 import { LiveDriversBoard } from "./live-drivers";
 import { TrackingTable } from "./tracking-table";
+import { setVisibleInterval } from "@/lib/visible-poll";
 
 type LoadState =
   | { kind: "loading" }
@@ -240,13 +241,12 @@ export function MorningTrackingView() {
   // Live drivers 页签每 30 秒刷新（表和司机页一起，统计卡、No show 跟着变）；同 Tracking：只在看今天、没过截止时间。
   useEffect(() => {
     if (tab !== "live" || !date || endMinute === null || !canLive) return;
-    const timer = setInterval(() => {
+    return setVisibleInterval(() => {
       if (date === laToday() && laMinuteOfDay() < endMinute) {
         void load(date, true);
         void loadLive(date, true);
       }
     }, LIVE_POLL_MS);
-    return () => clearInterval(timer);
   }, [tab, date, endMinute, canLive, load, loadLive]);
 
   useEffect(() => {
@@ -267,14 +267,13 @@ export function MorningTrackingView() {
     if (!date || endMinute === null) {
       return;
     }
-    const timer = setInterval(() => {
+    return setVisibleInterval(() => {
       if (date === laToday() && laMinuteOfDay() < endMinute) {
         void load(date, true);
       } else {
         setNow(Date.now());
       }
     }, POLL_INTERVAL_MS);
-    return () => clearInterval(timer);
   }, [date, endMinute, load]);
 
   useEffect(() => {

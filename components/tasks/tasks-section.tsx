@@ -11,6 +11,7 @@ import { CLOCK_TICK_MS, POLL_INTERVAL_MS } from "../dashboard/config";
 import { EmployeeTasks } from "./employee-view";
 import { ReminderPopup } from "./reminder-popup";
 import { SupervisorTasks } from "./supervisor-view";
+import { setVisibleInterval } from "@/lib/visible-poll";
 
 /**
  * 倒计时 / 提醒不想死等 60 秒一轮的轮询：服务器最后一次给的 now 加上客户端走过的时间，
@@ -81,8 +82,7 @@ export function useTasksToday(onUnauthorized: () => void): TasksModel {
   useEffect(() => {
     loadRef.current = () => void load(true);
     void load(false);
-    const timer = setInterval(() => loadRef.current(), POLL_INTERVAL_MS);
-    return () => clearInterval(timer);
+    return setVisibleInterval(() => loadRef.current(), POLL_INTERVAL_MS);
   }, [load]);
 
   const handleChanged = useCallback(

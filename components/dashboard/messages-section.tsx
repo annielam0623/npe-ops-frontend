@@ -28,6 +28,7 @@ import {
 import { MessageCard } from "./message-card";
 import { ReplyDialog, replyLaneOf } from "./reply-dialog";
 import { MultiOrderCard } from "./multi-order-card";
+import { setVisibleInterval } from "@/lib/visible-poll";
 
 export interface PollState {
   data: UnhandledMessages | null;
@@ -104,10 +105,10 @@ export function useUnhandledMessages(
 
     loadRef.current = () => void load();
     void load();
-    const timer = setInterval(load, POLL_INTERVAL_MS);
+    const stopPoll = setVisibleInterval(() => void load(), POLL_INTERVAL_MS);
     return () => {
       stopped = true;
-      clearInterval(timer);
+      stopPoll();
       controller.abort();
     };
   }, [enabled]);
