@@ -1092,6 +1092,7 @@ D. 已完成、待从置顶移走：
   - **需要后端（78 已转 46）**：/api/dispatch/manifest 每位客人加 pickup_location_id（pickup_lookup.match，对不上 null）和/或 pickup_is_vegas。前端拿到后：Shuttle 节客人上车点是 Vegas（is_tour_bus）⇒ 不算；不是或 null ⇒ 提醒、计人数；样子照 10-31 版。
   - 78 问 Annie（Q2）：后端上线前线上怎么办：A（推荐）先不恢复，等后端字段上了直接上正确版；B 先恢复 10-31 原版（所有 Shuttle 客人都提醒，Vegas 的也提醒）。
   - 46（23:16，已过收工线）：今晚不做，明天第一批派；口径：blocks / unplaced 各节 guests 每位加 pickup_location_id（pickup_lookup.match，对不上 null）+ pickup_is_vegas（对上那家 is_tour_bus）；只加字段。上 main 后 SHA 发当天前端主窗口 ⇒ 派工作窗口照上面规则做、合 main（ef 的产品名版作废，不要合）。
+  - **Annie（原话）**：「那我们就先做个可以今晚上线的吧，改成按产品名字？」→ 78 复述成「outbound 且名含 Las Vegas to」，Annie「不是」→ **Annie 定「选产品名从vegas开始的shuttle，不提醒」** ⇒ 今晚临时版：只看产品名、不看 kind，Vegas 出发的产品（名含「Las Vegas to」，含 round trip 回程段）一律不提醒，其余提醒、计人数，认不出当非 Vegas。派 ef 合 main。明天后端 pickup_is_vegas 上线后改按上车点。
 
 ### 86. 司机 / 导游 live 页每天的快照（2026-11-04，Annie 在主窗口-2c 提，没动手）
 - 原话：「我还有个需求，司机和导游的live 记录，是否可以有快照，就是他这一天在哪个站停留了多久，发了多少短信，汇报了多少picked up和no show，在工作结束前它的页面有个快照」。
