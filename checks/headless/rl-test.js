@@ -213,6 +213,19 @@ async function run() {
   await open(URL0);
   await waitFor("document.querySelectorAll('[data-relay-total]').length === 2", 30000);
 
+  // Relay Splits 抬头只读 relay 卡司机（Annie 2026-11-04 选 B）：relay 卡换了人开大巴那台车。
+  await ctl({ swap: true });
+  await open(URL0);
+  await waitFor("document.querySelector('[data-relay-car=\"907\"]')", 30000);
+  check("relay 卡司机 ≠ 大巴司机：2556 抬头「ANTELOPE CANYON  ZZ Robert - 2556」，不写大巴司机 / 导游，用团色，不占 Relay 编号", await evaluate(`const s = document.querySelector('[data-relay-car="907"] .rl-head'); const t = s.textContent.replace(/\\s+/g, ' '); return t.includes('ANTELOPE CANYON ZZ Robert - 2556') && !t.includes('ZZ John') && !t.includes('ZZ Olivia') && !t.includes('Relay') && !/^rgba\\(0, 0, 0, 0\\)$/.test(getComputedStyle(s).backgroundColor);`));
+  check("2556 的客人归属不变：底部色条仍是 Antelope Bus A（ZZ Luis + ZZ Scarlett - 2056=A）", await evaluate("const b = [...document.querySelectorAll('[data-relay-car=\"907\"] [data-relay-bus]')].map(x => x.textContent.trim()); return b.length === 1 && b[0] === 'Antelope Bus A: Lower & Upper - ZZ Luis + ZZ Scarlett - 2056=A';"));
+  check("加了 2556 后 relay 卡司机 = 大巴司机的 1855 照旧「ZZ Carlos + ZZ Glenn - 1855=C」，普通 relay 车照旧 Relay 1 / Relay 2", await evaluate("const h = document.querySelector('[data-relay-car=\"902\"] .rl-head').textContent.replace(/\\s+/g, ' '); const r = [...document.querySelector('[data-relay-total=relay] .rl-legend tr').children].map(td => td.textContent.trim()); return h.includes('SOUTH C ZZ Carlos + ZZ Glenn - 1855=C') && JSON.stringify(r) === JSON.stringify(['Relay 1','ZZ Bruce - 1724','Relay 2','ZZ David - 1725']);"));
+  check("RELAY SPLITS 总表图例：2556 那格「ANTELOPE CANYON | ZZ Robert - 2556」，整张总表不出现 ZZ John / ZZ Olivia；客人行照列", await evaluate("const t = document.querySelector('[data-relay-total=relay]'); const cells = [...t.querySelectorAll('.rl-legend td')].map(td => td.textContent.trim()); const i = cells.indexOf('ANTELOPE CANYON'); return i >= 0 && cells[i + 1] === 'ZZ Robert - 2556' && !t.textContent.includes('ZZ John') && !t.textContent.includes('ZZ Olivia') && !!t.querySelector('tr[data-relay-row=CHDZZR01]');"));
+  check("总表图例里 1855 照旧「SOUTH C | ZZ Carlos + ZZ Glenn - 1855=C」", await evaluate("const cells = [...document.querySelectorAll('[data-relay-total=relay] .rl-legend td')].map(td => td.textContent.trim()); const i = cells.indexOf('SOUTH C'); return i >= 0 && cells[i + 1] === 'ZZ Carlos + ZZ Glenn - 1855=C';"));
+  await ctl({ swap: false });
+  await open(URL0);
+  await waitFor("document.querySelectorAll('[data-relay-total]').length === 2", 30000);
+
   // 车头的 Print：只看这一台
   await open(`${URL0}&car=902`);
   await waitFor("document.querySelector('[data-relay-car]')", 30000);

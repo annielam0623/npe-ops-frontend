@@ -1,10 +1,11 @@
 // 模拟后端：Relay list（/dispatch/relay-list，task/relay-print）。只回 relay-pull 加了打印字段的形状（后端 fc 定的键）。
-// 控制：POST /__ctl {fail401, fail500, old, many, noSettings, edit, failPut, reset}
+// 控制：POST /__ctl {fail401, fail500, old, many, swap, noSettings, edit, failPut, reset}
+//   swap = 1st Round 多一台 2556：relay 卡司机 ZZ Robert，当天这台车是 Antelope 大巴（大巴司机 ZZ John + 导游 ZZ Olivia）。
 //   many = 2nd Round 那台车 40 个客人，一张单要印两页；old = 旧后端，没有 phone / product_short / bus / location_ids / tour_buses；
 //   置顶 73：noSettings = 设置接口还没上线（404）；edit = 我有 dispatch.edit；failPut = 存设置 500；reset = 设置回默认。GET /__log。
 const http = require("http");
 
-const ctl = { fail401: false, fail500: false, old: false, many: false, noSettings: false, edit: false, failPut: false };
+const ctl = { fail401: false, fail500: false, old: false, many: false, swap: false, noSettings: false, edit: false, failPut: false };
 if (process.env.MOCK_CTL) Object.assign(ctl, JSON.parse(process.env.MOCK_CTL));
 const log = [];
 
@@ -108,6 +109,13 @@ function relayPull(date) {
       car: { id: 904, van: "2017", driver: "ZZ Paulie", ...(ctl.old ? {} : { location_ids: [15], tour_buses: [southCar(), { label: null, tour: "Bryce&Zion", tour_short: "BZ", driver: "ZZ Paulie", guide: "ZZ Paulie", van: "2017", color: "#f4938e" }], print_warnings: ["This van is on 2 tour buses today."] }) },
       guests: [rich({ id: 5, order_number: "CHDZZX01", name: "Xi Xu", pickup_time: "4:40 AM", pickup_location: "Wynn Hotel", location_id: 15, hotel: "Wynn Hotel", tour: "South Rim" }, { phone: "+15550100005", manifest_id: 1, product_short: "South", short_tag: "South", hotel_short: "Wynn", bus: BUS.south })],
     },
+    // 2556：relay 卡换了人开（ZZ Robert），当天这台车是 Antelope 大巴（ZZ John + ZZ Olivia），抬头只写 relay 卡司机。
+    ...(ctl.swap && !ctl.old
+      ? [{
+          car: { id: 907, van: "2556", driver: "ZZ Robert", location_ids: [16], tour_buses: [{ label: null, tour: "Antelope Canyon", driver: "ZZ John", guide: "ZZ Olivia", van: "2556", manifest_id: 3 }] },
+          guests: [rich({ id: 8, order_number: "CHDZZR01", name: "Rita Ray", pickup_time: "4:45 AM", pickup_location: "Bellagio", location_id: 16, hotel: "Bellagio", tour: "Antelope Canyon" }, { phone: "+15550100008", manifest_id: 3, product_short: "Lower", short_tag: "Lower", hotel_short: "Bellagio", bus: BUS.antA })],
+        }]
+      : []),
   ];
   const extra = ctl.many
     ? Array.from({ length: 40 }, (_, i) => rich({ id: 100 + i, order_number: `CHDZZL${String(i).padStart(2, "0")}`, name: `ZZ Long ${i}`, pickup_time: "5:45 AM", pickup_location: `ZZ Hotel ${i}`, location_id: 200 + i, hotel: `ZZ Hotel ${i}`, tour: "West Rim" }, { phone: "+15550100100", manifest_id: 2, product_short: "West", short_tag: "West", hotel_short: `ZZ Hotel ${i}`, bus: BUS.west }))

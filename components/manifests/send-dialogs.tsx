@@ -1908,7 +1908,11 @@ function ShuttleTemplateNote({
 
 // ── Send reminder ────────────────────────────────────────────────────────────
 
-function ticketOutcomes(res: ManifestSendTicketsResult, type: TicketsSendType) {
+function ticketOutcomes(
+  res: ManifestSendTicketsResult,
+  type: TicketsSendType,
+  nameOf: (order: string) => string = () => "",
+) {
   const useSms = type !== "email";
   const useEmail = type !== "sms";
   return {
@@ -1927,13 +1931,23 @@ function ticketOutcomes(res: ManifestSendTicketsResult, type: TicketsSendType) {
       ...(res.skipped ?? []),
       // G129：缺 Cfm # 没发的单，列在「Skipped」里；能覆盖的可以勾 Send anyway（reason = no_cfm）。
       // 置顶 74：缺 waiver link 同一条（「No Cfm #, No waiver link」）。
-      ...(res.blocked ?? []).map((b) => ({
-        order_number: b.order_number,
-        name: "",
-        reason: b.can_override ? "no_cfm" : "blocked",
-        message: b.reasons.join(", "),
-      })),
+      ...(res.blocked ?? [])
+        .filter((b) => b.can_override)
+        .map((b) => ({
+          order_number: b.order_number,
+          name: "",
+          reason: "no_cfm",
+          message: b.reasons.join(", "),
+        })),
     ],
+    // G245（置顶 82）：后端硬拦的（can_override = false，例如 Cfm # 跟产品不符）进红框 Not sent，原话照写，没有 Send anyway。
+    blocked: (res.blocked ?? [])
+      .filter((b) => !b.can_override)
+      .map((b) => ({
+        order: b.order_number,
+        name: nameOf(b.order_number),
+        reasons: b.reasons,
+      })),
   };
 }
 
@@ -1995,7 +2009,12 @@ export function ReminderDialog({
     const result = await runBatches(
       batches,
       extra,
-      (r) => ticketOutcomes(r, sendType),
+      (r) =>
+        ticketOutcomes(r, sendType, (o) => {
+          const v = rowsProp.find((x) => x.order_number === o)?.values
+            .guest_name;
+          return v == null ? "" : String(v);
+        }),
       setRun,
       isAlive,
       onUnauthorized,
@@ -2059,15 +2078,23 @@ export function ReminderDialog({
         ) : null}
         {!sending ? (
           <>
-            <ResultNumbers run={run} failed={failed} />
+            <ResultNumbers
+              run={run}
+              failed={failed}
+              notSent={new Set(run.blocked.map((b) => b.order)).size}
+            />
             <div role="status" className={OK_BOX}>
               {plural(run.sent, "order")} sent.
               {failed ? ` ${failed} not sent by SMS or email, see below.` : ""}
-              {run.skipped.length ? ` ${run.skipped.length} skipped.` : ""} Sent
-              rows move to the bottom of the list.
+              {run.skipped.length ? ` ${run.skipped.length} skipped.` : ""}
+              {run.blocked.length
+                ? ` ${plural(new Set(run.blocked.map((b) => b.order)).size, "order")} not sent, see below.`
+                : ""}{" "}
+              Sent rows move to the bottom of the list.
             </div>
           </>
         ) : null}
+        {!sending ? <BlockedList blocked={run.blocked} /> : null}
         {!sending && !run.stop ? (
           <ViewSendLinks ids={run.batchIds} theme="blue" />
         ) : null}

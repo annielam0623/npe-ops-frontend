@@ -164,7 +164,13 @@ async function load() {
 async function run() {
   require("fs").writeFileSync(`${DIR}/hr.csv`, "Legal Name,Mobile\nZZ Test New,1\n");
   await load();
-  check("标题、人数", await evaluate("return document.body.textContent.includes('People — 3') && document.body.textContent.includes('Driver and guide records');"));
+  check("标题、人数：三节 Drivers — 1 / Guides — 1 / Position not set — 1", await evaluate("return document.body.textContent.includes('Drivers — 1') && document.body.textContent.includes('Guides — 1') && document.body.textContent.includes('Position not set — 1') && document.body.textContent.includes('Driver and guide records');"));
+  // 置顶 86 题 1 / 2 A：People 改名 Profile；Drivers（driver、both）在上、Guides 在下、Position 没填 / 不认识的最下
+  check("86 页签改名 Profile（没有 People 了）", await evaluate("const t = [...document.querySelectorAll('[role=tab]')].map(b => b.textContent.trim()); return t[0] === 'Profile' && !t.includes('People');"), await evaluate("return [...document.querySelectorAll('[role=tab]')].map(b => b.textContent.trim()).join('|');"));
+  check("86 三节的先后：Drivers → Guides → Position not set", await evaluate("return [...document.querySelectorAll('[data-hr-section]')].map(s => s.dataset.hrSection).join(',') === 'drivers,guides,unset';"));
+  check("86 Alice（Driver）在 Drivers、Bob（Guide）在 Guides、Carl（没认的 position）在 Position not set", await evaluate("const sec = (n) => [...document.querySelectorAll('[data-hr-section] tbody tr')].find(tr => tr.textContent.includes(n))?.closest('[data-hr-section]').dataset.hrSection; return sec('Alice Driver') === 'drivers' && sec('Bob Guide') === 'guides' && sec('Carl Unknown') === 'unset';"));
+  check("86 Reset columns 只在第一节、说明写 Driver and Driver + Guide / Guide only", await evaluate("const ss = [...document.querySelectorAll('[data-hr-section]')]; return ss[0].textContent.includes('Reset columns') && !ss[1].textContent.includes('Reset columns') && ss[0].textContent.includes('Driver and Driver + Guide') && ss[1].textContent.includes('Guide only');"));
+  check("86 How to use 写了 Profile 分节", await evaluate("return document.body.textContent.includes('Profile lists drivers (Driver and Driver + Guide) on top and guides below.');"));
   const heads = await evaluate("return $heads();");
   check("默认列顺序（Annie 9/30 定的）", heads.slice(0, 12).join("|") === "Legal Name|Nickname|Position|Mobile|Assignment|Limited|Language|License #|License Expires|Medical Card Expires|Samsara Driver ID|Login Account", heads.join("|"));
   check("驾照过期整行红底、pill 写 expired", await evaluate(`return ${rowOf("Alice Driver")}.className.includes('fdeceb') && ${rowOf("Alice Driver")}.textContent.includes('2026-09-01 · expired');`));
@@ -369,13 +375,14 @@ async function run() {
   // ── 窗口底部浮动滚动条 ──
   await cdp("Emulation.setDeviceMetricsOverride", { width: 700, height: 420, deviceScaleFactor: 1, mobile: false });
   await sleep(400);
-  // 表格顶边放在窗口 250px 处，底边一定在窗口下面（页面下方内容多少都一样）。
-  await evaluate("const t = document.querySelector('table'); window.scrollTo(0, Math.max(0, t.getBoundingClientRect().top + window.scrollY - 250));");
+  // 表格顶边放在窗口 370px 处，底边一定在窗口下面（分三节后每节只有一两行，放 250px 整张都在窗口里）。
+  await evaluate("const t = document.querySelector('table'); window.scrollTo(0, Math.max(0, t.getBoundingClientRect().top + window.scrollY - 370));");
   await sleep(400);
   const shown = await evaluate("return !!document.querySelector('[data-floating-scrollbar]');");
   await evaluate("const b = document.querySelector('[data-floating-scrollbar]'); if (b) { b.scrollLeft = 200; b.dispatchEvent(new Event('scroll')); }");
   await sleep(200);
-  check("窄窗口：窗口底部出现横向滚动条，拖它表格跟着滚", shown && (await evaluate("return document.querySelector('table').parentElement.scrollLeft;")) === 200);
+  // 置顶 86 分三节后：浮动条跟着「底边在窗口下面」的那一张表（只有一张会这样），不一定是第一张。
+  check("窄窗口：窗口底部出现横向滚动条（只有一条），拖它那张表格跟着滚", shown && (await evaluate("return document.querySelectorAll('[data-floating-scrollbar]').length === 1 && [...document.querySelectorAll('[data-hr-section] table')].some(t => t.parentElement.scrollLeft === 200);")), await evaluate("return JSON.stringify({bars: document.querySelectorAll('[data-floating-scrollbar]').length, h: innerHeight, t: [...document.querySelectorAll('[data-hr-section] table')].map(t => { const r = t.parentElement.getBoundingClientRect(); return [Math.round(r.top), Math.round(r.bottom), t.parentElement.scrollLeft, t.scrollWidth, t.parentElement.clientWidth]; })});"));
   await cdp("Emulation.clearDeviceMetricsOverride");
   await sleep(300);
 
@@ -401,7 +408,7 @@ async function run() {
   // 只看勾（2026-11-01）：主管标准里只有 settings.hr.view；这里当作 Super Admin 给他特批了 settings.hr.edit、开关对他开着。
   await ctl({ staff: false, supervisor: true, writeForbidden: true, tick: { switchOn: true, codes: [...STANDARD.supervisor, "settings.hr.edit"] } });
   await goto(`${APP}/settings/hr`);
-  await waitFor("document.body.textContent.includes('People —')");
+  await waitFor("document.body.textContent.includes('Drivers —')");
   await helpers();
   check(
     "主管（特批了 settings.hr.edit）：看得到名单，也有 Add person / Edit list / Export / Import / 行尾 Edit",
@@ -433,10 +440,10 @@ async function run() {
       return t.includes('Week 1') && t.includes('Week 4') && t.includes('reference') && t.includes('Veronica');
     `),
   );
-  check("切到 Schedule example 时 People 表藏起来", await evaluate("return [...document.querySelectorAll('div[hidden]')].some(d => d.textContent.includes('People —'));"));
+  check("切到 Schedule example 时 People 表藏起来", await evaluate("return [...document.querySelectorAll('div[hidden]')].some(d => d.textContent.includes('Drivers —'));"));
   await ctl({ supervisor: false, tick: null });
   await goto(`${APP}/settings/hr`);
-  await waitFor("document.body.textContent.includes('People —')");
+  await waitFor("document.body.textContent.includes('Drivers —')");
   check("admin：仍有 Add person / Edit list / Export / Import", await evaluate(`
     const t = [...document.querySelectorAll('button')].map(b => b.textContent.trim());
     return t.includes('Add person') && t.includes('Edit list') && t.includes('Export to Excel') && t.includes('⬆ Import');

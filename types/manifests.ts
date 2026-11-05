@@ -88,6 +88,12 @@ export interface ManifestRow {
    * 这一行的 Waiver link 格可以填；没填 = 发送时像 No Cfm # 一样被挡（可 Send anyway）。旧后端没有 ⇒ 当 false。
    */
   waiver_link_required?: boolean;
+  /**
+   * G245（置顶 82，Annie「羚羊谷，请动手」）：Rezdy 带来的 Cfm # 不是这个产品的——Rezdy 在另一个羚羊谷确认号栏里有号
+   * （例 {other_label: "Antelope Canyon X Confirmation #", other_value: "387826855"}）；没问题 / staff 已在 Cfm # 格填了 = null。
+   * 有值时不能发（手动、自动都挡，不能 Send anyway）。旧后端没有这个键。
+   */
+  cfm_mismatch?: { other_label: string; other_value: string } | null;
   reason?: string | null;
   /** 不能发的原因，例如 "Admin fee - not sent, not dispatched"。 */
   reason_label?: string | null;

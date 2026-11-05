@@ -34,6 +34,8 @@ import {
   defaultLayout,
   type ListLayout,
   normalizeLayout,
+  PROFILE_SECTIONS,
+  profileSection,
   SPELLINGS_COLUMN,
   parseLayout,
 } from "./fields";
@@ -608,7 +610,7 @@ export function HRView() {
               onClick={() => setTab("people")}
               className={tab === "people" ? HR_BTN_PRIMARY_CLASS : HR_BTN_CLASS}
             >
-              People
+              Profile
             </button>
             <button
               type="button"
@@ -660,48 +662,79 @@ export function HRView() {
               <BannerLine banner={banner} onDismiss={() => showBanner(null)} />
             ) : null}
 
-            <section className={HR_CARD_CLASS}>
-              <div className={HR_CARD_HEADER_CLASS}>
-                <h2 className={HR_CARD_TITLE_CLASS}>
-                  People — {profiles.length}
-                </h2>
-                <span className="text-[11.5px] text-[#1a1a1a] night:text-white/55">
-                  License expiry is flagged 30 days ahead. &nbsp;·&nbsp; Drag
-                  titles to reorder, drag edges to resize —{" "}
-                  {layoutScope === "account"
-                    ? "saved to your account."
-                    : "saved in this browser."}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => changeLayout(defaultLayout())}
-                  className={HR_BTN_CLASS}
+            {/* 置顶 86 题 1 / 2 A：Drivers（Driver、Driver + Guide）在上、Guides 在下，Position 没填的最下（有才出）。
+                按存好的 Position 分节：Edit list 里改了 Position，存好以后才挪节。列宽 / 顺序三节共用一份。 */}
+            {PROFILE_SECTIONS.map((section, index) => {
+              const list = profiles.filter(
+                (p) => profileSection(p.position) === section.key,
+              );
+              if (section.key === "unset" && !list.length) return null;
+              return (
+                <section
+                  key={section.key}
+                  data-hr-section={section.key}
+                  className={HR_CARD_CLASS}
                 >
-                  Reset columns
-                </button>
-              </div>
-              <PeopleTable
-                profiles={profiles}
-                layout={tableLayout}
-                onLayoutChange={changeLayout}
-                editing={editing}
-                edits={edits}
-                locked={bulkSaving}
-                cellError={editing ? cellError : null}
-                onCellChange={(id, key, value) => {
-                  if (banner) showBanner(null);
-                  if (cellError?.profileId === id && key === SPELLINGS_COLUMN)
-                    setCellError(null);
-                  setEdits((all) => ({
-                    ...all,
-                    [id]: { ...all[id], [key]: value },
-                  }));
-                }}
-                onEdit={canEdit ? (p) => openDialog(p) : undefined}
-                placeholder={placeholder}
-                bottomOffset={editing ? SAVE_BAR_HEIGHT + 12 : 0}
-              />
-            </section>
+                  <div className={HR_CARD_HEADER_CLASS}>
+                    <h2 className={HR_CARD_TITLE_CLASS}>
+                      {section.title} — {list.length}
+                    </h2>
+                    <span className="text-[11.5px] text-[#1a1a1a] night:text-white/55">
+                      {section.note}
+                      {index === 0 ? (
+                        <>
+                          {" "}
+                          &nbsp;·&nbsp; License expiry is flagged 30 days ahead.
+                          &nbsp;·&nbsp; Drag titles to reorder, drag edges to
+                          resize —{" "}
+                          {layoutScope === "account"
+                            ? "saved to your account."
+                            : "saved in this browser."}
+                        </>
+                      ) : null}
+                    </span>
+                    {index === 0 ? (
+                      <button
+                        type="button"
+                        onClick={() => changeLayout(defaultLayout())}
+                        className={HR_BTN_CLASS}
+                      >
+                        Reset columns
+                      </button>
+                    ) : null}
+                  </div>
+                  <PeopleTable
+                    profiles={list}
+                    layout={tableLayout}
+                    onLayoutChange={changeLayout}
+                    editing={editing}
+                    edits={edits}
+                    locked={bulkSaving}
+                    cellError={editing ? cellError : null}
+                    onCellChange={(id, key, value) => {
+                      if (banner) showBanner(null);
+                      if (
+                        cellError?.profileId === id &&
+                        key === SPELLINGS_COLUMN
+                      )
+                        setCellError(null);
+                      setEdits((all) => ({
+                        ...all,
+                        [id]: { ...all[id], [key]: value },
+                      }));
+                    }}
+                    onEdit={canEdit ? (p) => openDialog(p) : undefined}
+                    placeholder={
+                      placeholder ??
+                      (list.length
+                        ? null
+                        : `No ${section.title.toLowerCase()} yet.`)
+                    }
+                    bottomOffset={editing ? SAVE_BAR_HEIGHT + 12 : 0}
+                  />
+                </section>
+              );
+            })}
 
             {editing && view.kind === "ready" ? (
               // .savebar：深色浮条，贴着窗口底边 12px（同旧页面 / 排班页）。
@@ -900,7 +933,7 @@ const SPELLINGS_HOW_TO =
   "Other spellings: other ways this person's name is written in the morning Excel or CCL (for example JOSEPH for Joe R). One per line. A spelling can belong to only one person. Removing a spelling means CCL imports stop matching it to this person.";
 
 const HOW_TO_ITEMS = [
-  "The People list shows all drivers and guides. Expired licenses are shaded red.",
+  "Profile lists drivers (Driver and Driver + Guide) on top and guides below. People without a position are listed last until you pick one. Expired licenses are shaded red.",
   "Click Add person, fill in the form (Legal Name is required), then Save.",
   "Click Edit on a row to change one person, or Edit list to change many, then Save changes and Done.",
   "To remove someone: Edit → Delete. This cannot be undone.",
