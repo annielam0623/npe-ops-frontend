@@ -6,6 +6,14 @@
 
 > **下一个主窗口：先读下面「2026-11-04 收工交接：前端主窗口 2c」，再看置顶「📌 等 Annie 确认」。**
 
+## 2026-11-05 Forecast：Canyon X 的简称又变成 C（`task/forecast-canyon-x-letter`，工作窗口 `npe-ops-frontend-19`[1e2a0d]）—— ✅ 合 main（只修 bug）
+- Annie 原话（直接在 19 窗口）：「session里的X为什么又变成C了？」（7 Days Forecast › Antelope Canyon › Session 行显示「C 1 PM」）。主窗口 e8：「照你说的修，修完直接合」。
+- 原因：Forecast 的 Session 行、Max allotments 左列、按天改上限的小框，字母按 Products 里每档名字的首字母算（10-15 定的 U / L / X）。10-31 生产数据「X Canyon → Canyon X」后，首字母成了 C；当时前端只扫了写死的字样，漏了这里。
+- 修法：`components/forecast/config.ts` 的 `allotmentAbbreviations`：名字里有单独一个字母的词就用它（Canyon X → X），否则照旧首字母；首字母撞了照旧写全名。样子恢复成 U / L / X。
+- 已查，只有 Forecast（e8 要求查）：Manifests、Bus Manifest、Relay list、Tracking 的团胶囊、Products 都没有按档名首字母算字母的地方。Bus Manifest 存页名先去掉 ANTELOPE / CANYON 两词（Canyon X → X）；Dispatch 的 U / L / X 用后端固定键 antelope_x；Forecast 排序认 X / Canyon X / X Canyon 三种写法。
+- 检查：新单元检查 `checks/headless/fc-abbr-unit.mjs` 7/7；fc 196/196；tsc 0；eslint 0 错；build 过。
+- Annie 验收怎么看：线上 Forecast › Antelope Canyon 的 Session 行又是「U 12:40 PM / L 1 PM / X 1 PM」。
+
 ## 2026-11-05 页面提速第二件：`task/perf-hidden-poll`（工作窗口 `npe-ops-frontend-19`[1e2a0d]，主窗口 e8 派）—— ✅ 合 main
 - Annie 原话（后端主窗口转）：「改变速度的三步，动手」。只改速度、样子不变，不出 preview。
 - 改了什么：`lib/visible-poll.ts` 的 `setVisibleInterval`（用法同 setInterval）：标签页藏到后台（document.visibilityState = hidden）就停，回到前台先马上拉一次，再按原来的间隔继续。
