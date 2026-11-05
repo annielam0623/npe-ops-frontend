@@ -1617,6 +1617,8 @@ pe-ops-wt-login-default`，mock，**没合 main，等后端 57 的 logged_in_at 
     - Annie 线上 Dashboard Network 截图（11-05）：21 个 /api 请求，Finish 4.95s；每个 126–540ms；/api/me 5 次，schedule / employees / 2026-11-01 各 2 次；第二次 schedule 3.72s、notices?include_read=false&limit=50 2.87s 最慢。重复请求已转 19 一起改，两个慢接口已转后端查。
     - 19 进度（task/perf-shell-parallel，检查在跑，没合）：schedule / employees / 2026-11-01 各 2 次，是 Today's team 和底部 Schedule 两块各读一遍，现在 15 秒内共用一份；/api/me 5 次变成 1 次；permissions 跟 me、dashboard-widgets 同一轮发。mock：Dashboard 21 个请求变 15 个；员工视角开始读数据 Dashboard 1.47 → 0.92s，Manifests 1.24 → 0.84s，Dispatch 1.14 → 0.49s。
     - 剩下「中间空约 1000ms」：权限门放行后 app/loading.tsx 会闪一下「加载中…」（中文，不合英文规定），React 让内容再等满 300ms。让页面先藏着挂上会让 partner 打开 Dispatch 时发写操作，已撤回。新题已问 Annie：A（推荐）去掉 app/loading.tsx，站内换页时旧页面留着、直到新页面出来；B 保留，只把字改成英文「Loading…」。
+    - ✅ 7a 去掉 app/loading.tsx，合 main **1cf5cb29**（功能 79024fd9）。全仓库只有这一个 loading.tsx；整页刷新不受影响；nav 加一条：站内换页不出「加载中」、顶栏一直在。nav 39/39、perm 54/54、dr 89/89，tsc / eslint / build 过。**Annie 验收**：ops 里点侧栏换页，不再整页闪「加载中…」，顶栏一直在。
+    - 7a 另报：Task Board（components/task-board/*，数据来自 ClickUp · Supplier）整页界面都是中文，约 119 处（加载中、搜索、暂无任务、没能从 ClickUp 取到数据…），不合「系统文字一律英文」。e8 已问 Annie：A 全部改英文；B 保持中文（如果它只给开发团队看）。
     - ✅ **Annie（原话）：「换页和列拖动同意推荐，动手」** ⇒ 换页选 A（去掉 app/loading.tsx），派 7a 做 task/remove-route-loading，检查过直接合 main。列拖动选 A：G180 的 Order Status 位置先只存在本机浏览器（a0 分支已经这样做了），等旧后台不用了再改成跟着账号走。
     - 19 推荐先做 1 + 2（同一组文件，交一个窗口）。真实耗时要 Annie 在 Chrome F12 Network 截图（步骤已给 Annie）。
 - **Annie（原话）：「你汇报一下目前为止还有哪些id在用旧系统」** ⇒ 后端 4c 只读查：现有记录分不出来。last_seen_at 只记时间；action_log 不记域名；Host / Referer 没落库；Railway 日志有路径但没有用户。最近 7 天有登录活动的 20 个账号（不分来源），后端直接给 Annie。「旧系统」分两种：① 直接上 confirm 域名；② 在 ops 里打开还没切换的旧页面（走 next.config.ts 的 fallback）。后端问 Annie 指哪种。要分来源，后端在 auth._signed_in 加一行限频日志（域名 + 是否打开页面 + 路径），只能从上线那一刻起算。
