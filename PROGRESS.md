@@ -6,6 +6,23 @@
 
 > **下一个主窗口：先读下面「2026-11-04 收工交接：前端主窗口 2c」，再看置顶「📌 等 Annie 确认」。**
 
+## 2026-11-05 Forecast：Canyon X 的简称又变成 C（`task/forecast-canyon-x-letter`，工作窗口 `npe-ops-frontend-19`[1e2a0d]）—— ✅ 合 main（只修 bug）
+- Annie 原话（直接在 19 窗口）：「session里的X为什么又变成C了？」（7 Days Forecast › Antelope Canyon › Session 行显示「C 1 PM」）。主窗口 e8：「照你说的修，修完直接合」。
+- 原因：Forecast 的 Session 行、Max allotments 左列、按天改上限的小框，字母按 Products 里每档名字的首字母算（10-15 定的 U / L / X）。10-31 生产数据「X Canyon → Canyon X」后，首字母成了 C；当时前端只扫了写死的字样，漏了这里。
+- 修法：`components/forecast/config.ts` 的 `allotmentAbbreviations`：名字里有单独一个字母的词就用它（Canyon X → X），否则照旧首字母；首字母撞了照旧写全名。样子恢复成 U / L / X。
+- 已查，只有 Forecast（e8 要求查）：Manifests、Bus Manifest、Relay list、Tracking 的团胶囊、Products 都没有按档名首字母算字母的地方。Bus Manifest 存页名先去掉 ANTELOPE / CANYON 两词（Canyon X → X）；Dispatch 的 U / L / X 用后端固定键 antelope_x；Forecast 排序认 X / Canyon X / X Canyon 三种写法。
+- 检查：新单元检查 `checks/headless/fc-abbr-unit.mjs` 7/7；fc 196/196；tsc 0；eslint 0 错；build 过。
+- Annie 验收怎么看：线上 Forecast › Antelope Canyon 的 Session 行又是「U 12:40 PM / L 1 PM / X 1 PM」。
+
+## 2026-11-05 页面提速第二件：`task/perf-hidden-poll`（工作窗口 `npe-ops-frontend-19`[1e2a0d]，主窗口 e8 派）—— ✅ 合 main
+- Annie 原话（后端主窗口转）：「改变速度的三步，动手」。只改速度、样子不变，不出 preview。
+- 改了什么：`lib/visible-poll.ts` 的 `setVisibleInterval`（用法同 setInterval）：标签页藏到后台（document.visibilityState = hidden）就停，回到前台先马上拉一次，再按原来的间隔继续。
+  换上它的数据轮询：Dashboard 的 tasks/today、notifications/unhandled、notices、operation-reports（统计行）、Today's team 在线名单；Tour / Tickets tracking（60 秒）；Morning tracking（60 秒 + Live drivers 30 秒）；对话弹窗的内部备注（20 秒）。
+  没换：Dispatch / Schedule 编辑锁心跳（停了会丢锁）；30 秒重算「几分钟前」的时钟（不发请求）。
+- 新检查套 hp（`checks/headless/hp-*.js`，用 tasks-mock）：藏 65 秒三个接口一个都不拉；回来 2 秒内各拉 1 次；再过 62 秒照 60 秒一轮各拉 1 次；来回切不多拉。
+- 检查：hp 6/6、tasks 144/144、dr 89/89、tt 137/137、tk 135/135、mt 253/253、nav 38/38；tsc 0；eslint 0 错（3 条旧 warning）；build 过。
+- Annie 验收怎么看：开着 Dashboard 切到别的标签页几分钟，回来时 F12 → Network 里马上有一批 tasks/today、notifications/unhandled、notices；藏着的那几分钟里这几个没有出现。页面样子不变。
+
 ## 2026-11-05 页面提速第一件：`task/perf-shell-parallel`（工作窗口 `npe-ops-frontend-19`[1e2a0d]，主窗口 e8 派）—— ✅ 合 main
 - Annie 原话（后端主窗口转）：「改变速度的三步，动手」。只改速度、样子不变，不出 preview。
 - 改了什么：
@@ -1620,6 +1637,9 @@ pe-ops-wt-login-default`，mock，**没合 main，等后端 57 的 logged_in_at 
     - ✅ 7a 去掉 app/loading.tsx，合 main **1cf5cb29**（功能 79024fd9）。全仓库只有这一个 loading.tsx；整页刷新不受影响；nav 加一条：站内换页不出「加载中」、顶栏一直在。nav 39/39、perm 54/54、dr 89/89，tsc / eslint / build 过。**Annie 验收**：ops 里点侧栏换页，不再整页闪「加载中…」，顶栏一直在。
     - 7a 另报：Task Board（components/task-board/*，数据来自 ClickUp · Supplier）整页界面都是中文，约 119 处（加载中、搜索、暂无任务、没能从 ClickUp 取到数据…），不合「系统文字一律英文」。e8 已问 Annie：A 全部改英文；B 保持中文（如果它只给开发团队看）。
     - ✅ **Annie（原话）：「换页和列拖动同意推荐，动手」** ⇒ 换页选 A（去掉 app/loading.tsx），派 7a 做 task/remove-route-loading，检查过直接合 main。列拖动选 A：G180 的 Order Status 位置先只存在本机浏览器（a0 分支已经这样做了），等旧后台不用了再改成跟着账号走。
+    - ✅ **7a 合 main**（task/remove-route-loading 功能 79024fd9，合 main 的 SHA 见 git log）：删了 app/loading.tsx（全仓库只有这一个 loading.tsx，子目录里没有）。站内换页时旧页面留着，新页面好了直接换过去，不再整页闪「加载中…」。整页刷新不受影响：没有页面在服务器上取数据（几个 async page 只 await params），各页自己的「Loading…」和权限门照旧。别处的「加载中」是页面里的字（Bug Reports 中文界面、Task Board 评论 / 列表），不是换页用的，没动——⚠️ Task Board 的「加载中…」（task-board-view.tsx:229、config.ts:123）也是中文系统文字，不合英文规定，另报 e8 定要不要改。
+      - 检查：nav 39/39（新加 1 条：站内点侧栏 Work Sheet → 7 Days Forecast，换页过程中不出「加载中」、顶栏一直在、换到新页面；把 loading.tsx 放回去这条会挂，确认测得出来）、perm 54/54、dr 89/89；合最新 main（含 19 的后台停轮询）后重跑同样全过；tsc 0、eslint 0 错（3 旧 warning）、build 过。
+      - **Annie 验收**：在 ops 里点侧栏换页，不再看到整页一闪的灰字「加载中…」；点了以后旧页面先留着，新页面好了直接换过去。整页刷新照常。
     - 19 推荐先做 1 + 2（同一组文件，交一个窗口）。真实耗时要 Annie 在 Chrome F12 Network 截图（步骤已给 Annie）。
 - **Annie（原话）：「你汇报一下目前为止还有哪些id在用旧系统」** ⇒ 后端 4c 只读查：现有记录分不出来。last_seen_at 只记时间；action_log 不记域名；Host / Referer 没落库；Railway 日志有路径但没有用户。最近 7 天有登录活动的 20 个账号（不分来源），后端直接给 Annie。「旧系统」分两种：① 直接上 confirm 域名；② 在 ops 里打开还没切换的旧页面（走 next.config.ts 的 fallback）。后端问 Annie 指哪种。要分来源，后端在 auth._signed_in 加一行限频日志（域名 + 是否打开页面 + 路径），只能从上线那一刻起算。
 - G212 SA-8 后端上 main 778ee08f（关包 3eaa38e0）：改了还没接受的邀请的角色 / 权限 / 账号类型 ⇒ 旧链接马上失效（400 invalid）。前端那句提醒等 Annie 答置顶 88。

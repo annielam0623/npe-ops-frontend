@@ -64,6 +64,7 @@ import { TicketsTable } from "./tickets-table";
 import { PageShortcutBar } from "@/components/nav/page-shortcut-bar";
 import { PhoneMore, PhoneShortcutStar } from "@/components/ui/phone";
 import { UploadDialog } from "./upload-dialog";
+import { setVisibleInterval } from "@/lib/visible-poll";
 
 type LoadState =
   | { kind: "loading" }
@@ -237,8 +238,7 @@ export function TicketsTrackingView() {
     if (!date) {
       return;
     }
-    const timer = setInterval(() => void load(date, true), POLL_INTERVAL_MS);
-    return () => clearInterval(timer);
+    return setVisibleInterval(() => void load(date, true), POLL_INTERVAL_MS);
   }, [date, load]);
 
   useEffect(() => {

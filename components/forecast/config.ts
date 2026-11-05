@@ -251,11 +251,16 @@ export function cclExtraRows(block: ForecastBlock): CclExtraRows {
 /**
  * 每档的简称（Annie 2026-10-15：三个羚羊谷都用第一个字母大写 ⇒ U / L / X）：行名第一个字母大写；
  * 同一块里两档首字母撞了，那几档写全名，免得分不清。
+ * 名字里有单独一个字母的词（10-31 生产数据改成「Canyon X」）就用那个字母 ⇒ 仍是 X，不是 C（Annie 2026-11-05「session里的X为什么又变成C了」）。
  */
 export function allotmentAbbreviations(
   allotments: readonly ForecastAllotment[],
 ): Map<string, string> {
-  const first = (label: string) => label.trim().charAt(0).toUpperCase();
+  const first = (label: string) => {
+    const words = label.trim().split(/\s+/);
+    const letter = words.find((w) => /^[A-Za-z]$/.test(w));
+    return (letter ?? label.trim().charAt(0)).toUpperCase();
+  };
   const counts = new Map<string, number>();
   for (const a of allotments) {
     const f = first(a.label);
