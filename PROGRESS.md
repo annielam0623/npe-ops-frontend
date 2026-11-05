@@ -1125,6 +1125,8 @@ D. 已完成、待从置顶移走：
 - e8 已问 Annie 细节（Q1–Q5），派 7a 只读查后端逻辑和工作量。答了出 preview。
 - 7a 查后端（auto_send.py，origin/main 51984bf0）：默认每天 9:00 / 12:00 / 17:00 三批，范围是服务日期明天到第 5 天，当天不发。跳过原因 7 条：No ticket tour type set for this product / No Cfm # yet / Cfm # doesn't match the product / No waiver link yet / Tour time not found in Rezdy / Check-in minutes are not set / Guest count not found 或 Order is listed twice。Day-before summary 每天 9:00 AM 发给 antelope@ + reservations@，只看明天的单，标题「Ticket reminders for <day>: n of N not sent」，表三列 Order / Product / Why not。Cfm 不符邮件每批最多一封，只给 antelope@，不去重。按产品设的存法：A 按门票团（tix_tour_types，几个团，推荐）/ B 按 Rezdy 产品（products 表，要一个个设）。入场时间能算（团时间 − check-in 分钟）。工作量：提前几天 + 固定时刻半天到 1 天；按小时往前推 1–1.5 天（调度要改）；每日汇总改现有 summary 约半天。
 - e8 补问 Annie Q6（「产品」是门票团还是 Rezdy 产品），并更正 Q2 / Q3：现有的前一天汇总已经发给 antelope@ + reservations@。
+- **Annie 答 Q2（原话）**：「比如我定的lower提前3天发，那service的前3天早上第一次发送时间到，系统就把3天后那个日期的全部订单过一遍，符合条件的就发出去--- 我需要设个上限，这次发送限额是100封，第二次100封，第三次发剩下的全部，如果有不符合条件的就不发，然后这天的第二次发送的时间到，再检查一次把那天符合条件的再发100封，第三次把剩下的符合条件的全部发出去。第三次发完之后就给antelope一个报告，汇报这天有哪些订单因为什么原因没有被发送出去，需要他们take什么样的action」
+  - e8 理解：按门票团（如 Lower）设「提前几天」；到那天，每天三个发送时间照旧；第一批、第二批各最多发 100 封，第三批发剩下全部符合条件的；每批重新检查条件。第三批发完后给 antelope@ 发一封报告：这个服务日期哪些单没发、原因、要他们做什么。⇒ Q1 ≈ A（提前几天 + 统一时间）、Q6 = A（按门票团）待她确认。e8 追问 Q7–Q10：没发的单之后几天还要不要接着试、100 封上限按什么算（全部团合计 / 每个团）和先发哪些、一天有几个服务日期时报告怎么分、每种原因对应的 action 原文。
 
 ### ⏰ 提醒 Annie：G180 Tour Tracking 回填以前的日子（**下周，2026-11-09 周一起提醒**）
 - Annie 原话（2026-11-05）：「回填数据可以等我有时间再做，只需要先把上线那一刻的今天及以后的数据放进去，等运行起来之后下周你提醒我做数据回填」。
