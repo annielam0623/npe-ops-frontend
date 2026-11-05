@@ -20,6 +20,7 @@
   - Annie 加开 `npe-ops-frontend-ef`[fcce18]，改派：77 = ① 82 + ④ Working Record；ef = ② Relay Splits 抬头 + ③ 86 Profile 分节（各开 worktree，端口 APP 3777 / MOCK 9177 / CDP 9777）。
   - 结果：82 前端 main bd2ed2c1（77）；Relay Splits 抬头 main 776810bb（ef）；86 Profile 分节 main 58956ba4（ef）；86 Working Record 推 task/hr-working-record 9cc2d142 没合（77，详见置顶 86）。SHA 都已转 46；Working Record 后端需要（所有人列表、hours、开关 hr_working_record）已转 46 明天交 18。
   - 78 已问 Annie 确认 Working Record How to use 的 Hours 一句（原文在置顶 86 77 那条），截图链接 77 发布后转 Annie。
+  - 开关 hr_working_record：46 起初说 Annie 没点名不加；78 回规则②（全新、算工资、要 Annie 核一段时间，preview v2「先只 SA 可见」+ Annie「全部同意推荐，动手」）。46「同意加」，明天 G249 一起登记 dashboard-widgets key hr_working_record（默认 super_admin_only）。
   - ef 两件都已合 main：Relay Splits 抬头 776810bb、86 Profile 分节 58956ba4（详见各自条目）。worktree D:\npe-ops-frontend-wt-relay、D:\npe-ops-frontend-wt-hr 已合、干净，可删。
 
 ## 2026-11-04 收工：工作窗口 `npe-ops-frontend-c8`[a65365]（2c 派；dev server / Chrome 已全关）
