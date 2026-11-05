@@ -24,6 +24,7 @@ import { POLL_INTERVAL_MS } from "./config";
 import { NoticeHistory } from "./notice-history";
 import { NoticePanel } from "./notice-panel";
 import type { BlockGate } from "./widget-gates";
+import { setVisibleInterval } from "@/lib/visible-poll";
 
 /**
  * Dashboard 的 Notice（Annie 2026-10-24 定死：问候行 → My shortcuts → Notice，之后才是其他块，不再问）。
@@ -158,8 +159,7 @@ function useApiNotices(onUnauthorized: () => void) {
   useEffect(() => {
     loadRef.current = () => void load();
     void load();
-    const timer = setInterval(() => loadRef.current(), POLL_INTERVAL_MS);
-    return () => clearInterval(timer);
+    return setVisibleInterval(() => loadRef.current(), POLL_INTERVAL_MS);
   }, [load]);
 
   const markRead = useCallback(

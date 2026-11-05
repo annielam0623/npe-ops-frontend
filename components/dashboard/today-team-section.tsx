@@ -26,6 +26,7 @@ import { cn } from "@/lib/utils";
 import type { ScheduleEmployee, ScheduleSettings, ScheduleWeek } from "@/types";
 
 import { TeamMessageDialog } from "./team-message-dialog";
+import { setVisibleInterval } from "@/lib/visible-poll";
 
 /** 在线名单多久重拉一次。 */
 const PEOPLE_POLL_MS = 60_000;
@@ -84,10 +85,10 @@ export function TodayTeamSection({
           else setPeople(null);
         });
     void load();
-    const timer = setInterval(() => void load(), PEOPLE_POLL_MS);
+    const stopPoll = setVisibleInterval(() => void load(), PEOPLE_POLL_MS);
     return () => {
       controller.abort();
-      clearInterval(timer);
+      stopPoll();
     };
   }, [messagingOn, onUnauthorized]);
   const [reloadKey, setReloadKey] = useState(0);
