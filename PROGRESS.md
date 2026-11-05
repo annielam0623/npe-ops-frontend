@@ -43,6 +43,8 @@
   - **Annie 问 Daily report 和 summary 的区别，e8 解释后 Annie（原话）**：「没必要，发一份就够了，我建议只发晚上的那个」⇒ 题 3 = C：早上 9:00 的 Day-before summary 不要了，只留傍晚的 Daily report（收件人默认 antelope@，可以改，reservations@ 要的话自己加进去）。preview 要跟着拿掉「Day-before summary at」「Send the summary to」两格，How to use 相关句改写。题 1、2、4、5、6 还没答，还没「动手」。
   - 7a 出 v3（1793917176-f58d）：拿掉 Day-before summary 两格，How to use 改写。✅ **Annie（原话）：「Auto Send 都选 A。动手」** ⇒ 题 1 报告在最后一批发完马上发；题 2 上线时 lead_groups 空着；题 4 全发完也发一封短的；题 5 团确认跳过提醒不变；题 6 只设提前几天。后端规格已整理发给后端主窗口（7 条）；派 7a 开 task/auto-send-limits，先照 mock 写，今天推 WIP，不合 main，等后端字段定了核完再合。
   - 后端：编号 G259，字段照前端拟的（存在 auto_send 设置 JSON 里，缺键落默认值，不用迁移）。明天先做 1、2、3、5、6、7，估计明天下午上 main；4「间隔 1 秒」跟 G257 同一批文件，排在 G257 之后。G258（团确认 Last Minute 模板）4 题 Annie 还没答，不在这次范围。
+  - 7a 推 WIP origin/task/auto-send-limits **8614fb03**（没合）：两张卡片 Max per batch、按门票团挑选（照 Relay）、Daily report 块、后端带 daily_report 时不出 Day-before summary、How to use v3；旧后端没有这些键时页面跟现在一样（as 69/69）。还差：核键名、校验、as 套新检查、截图核对、Recent runs 里每日报告的文字、合 main。已请后端在 GET /api/settings/auto-send 里带 ticket_types [{key, label}]（现在读 tix-tour-types 要 admin + Content Studio 开关）。
+  - G258 Last Minute 4 题：Annie 要看原文，e8 已整段发给她（题 1 分界几点；题 2 推荐 A 每 15 分钟扫一次；题 3 推荐 A 两行模板下拉；题 4 推荐 A 留手动按钮），等答。
 
 ### 三、明天开工
 1. 报对话名；git pull；问后端主窗口 G180 / G257 / Last Minute 进度。
