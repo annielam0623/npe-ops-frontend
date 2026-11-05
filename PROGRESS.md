@@ -18,6 +18,8 @@
   - **G245 deploy-guard DG-4（46 转 4c）**：后端一上线，Cfm # 不符的单就硬拦不能发，红标 / How to use 在前端 task/g245-cfm-mismatch e736302，前端必须紧跟着上（目前只影响 CHDQ59DAL，11/22 出发）。后端三审 PASS、本地合并 ef380e25 未推，等 Annie 在 4c 窗口批 C→B、跑 release.py 后 push 发 SHA。⇒ 工作窗口一开，先准备 82：合最新 main 重跑 man / mf / nav / as，SHA 到了只读核字段马上合。
   - ✅ G245 后端上 main 502982e3（合并 ef380e25，46 转）。前端工作窗口 `npe-ops-frontend-77`[b4c0cd] 开工，78 派四件按序：① 82 核字段合 main ② Relay Splits 抬头（task/relay-splits-driver）③ 86 Profile 分节合 main ④ 86 Working Record mock（task/hr-working-record，推分支不合）。77 检查端口 APP 3677 / MOCK 9077 / CDP 9677。
   - Annie 加开 `npe-ops-frontend-ef`[fcce18]，改派：77 = ① 82 + ④ Working Record；ef = ② Relay Splits 抬头 + ③ 86 Profile 分节（各开 worktree，端口 APP 3777 / MOCK 9177 / CDP 9777）。
+  - 结果：82 前端 main bd2ed2c1（77）；Relay Splits 抬头 main 776810bb（ef）；86 Profile 分节 main 58956ba4（ef）；86 Working Record 推 task/hr-working-record 9cc2d142 没合（77，详见置顶 86）。SHA 都已转 46；Working Record 后端需要（所有人列表、hours、开关 hr_working_record）已转 46 明天交 18。
+  - 78 已问 Annie 确认 Working Record How to use 的 Hours 一句（原文在置顶 86 77 那条），截图链接 77 发布后转 Annie。
   - ef 两件都已合 main：Relay Splits 抬头 776810bb、86 Profile 分节 58956ba4（详见各自条目）。worktree D:\npe-ops-frontend-wt-relay、D:\npe-ops-frontend-wt-hr 已合、干净，可删。
 
 ## 2026-11-04 收工：工作窗口 `npe-ops-frontend-c8`[a65365]（2c 派；dev server / Chrome 已全关）
