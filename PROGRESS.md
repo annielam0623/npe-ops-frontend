@@ -24,6 +24,10 @@
   - ✅ **Annie「动手」（原话，2026-11-04 晚，看了截图页 https://claude.ai/artifact/H2D3Wdrwewcm9vSPPJMntp 和 Hours 那句 How to use 后）** ⇒ Working Record 截图样子 + How to use Hours 原文定稿，不再改。task/hr-working-record 9cc2d142 等后端 G249（field-calendar 所有人列表 + hours + 开关 hr_working_record）上 main → 只读核字段 → 合最新 main 重跑 hr / nav / ns + tsc / eslint / build → 直接合 main（不用再给 Annie 看截图）。后端没上线前不合（接口不在，页面会报错）。
   - 收工：77 分支 task/hr-working-record 9cc2d142 已推，worktree D:\npe-ops-frontend-wt-hrwr 留着（干净），D:\npe-ops-frontend-wt-g245 已合可删；ef 的 worktree 已删。两个窗口都没有在跑的 dev server / Chrome。**明天主窗口**：等后端 G249 SHA → 派人核字段合 Working Record；Annie 验收今晚上线的 82 / Relay Splits / Profile（验收点在置顶 82、78 接班节、置顶 86）。
   - ef 两件都已合 main：Relay Splits 抬头 776810bb、86 Profile 分节 58956ba4（详见各自条目）。worktree D:\npe-ops-frontend-wt-relay、D:\npe-ops-frontend-wt-hr 已合、干净，可删。
+  - ✅ **顶栏订单搜索：关闭结果窗口自动清空，已合 main f9c2672a**（ef，task/search-clear-on-close；修 bug、样子不变，不出 preview）。Annie 原话：「有个重要的bug要修一下，在search bar里，每次搜索以后查看完毕把窗口关闭，它并没有自动把搜索框里输入的内容清掉，非要点击clear才行，这个非常不方便，改了」。
+    - 改法（components/order-lookup/top-order-search.tsx）：上下两个 ✕ Close、点暗处、Esc、换页、点结果里的链接（Order details / Open tracking / Open in Main manifest / Open Order List，含同一页只换 ?query 的）都等同 Clear：清空搜索框和结果、关窗口。Ctrl / ⌘ / 中键开新标签不清。只在打字、还没回车（没有结果窗口）时按 Esc / 点外面，只收起窄屏输入框，框里的字不清。Clear 键照旧。以前「关了再点输入框重开上次结果」随之没有了（关了就清）。
+    - 检查：os 85/85（关闭那几条改成「关上 + 框空」，新加：顶上 Close、关了再点框不弹空窗、点浮窗里面不关不清、打字时 Esc / 点外面不清、跳到 Tracking 再退回来框空、订单详情页点同一页的 Order details 框空、点 Open in Main manifest 跳 /manifests 框空；agent ref 搜索、Open in Main manifest 原有各条照过）、nav 38/38；tsc 0、eslint 0 错（3 条旧 warning）、build 过（分支已在最新 main 上）。
+    - **Annie 验收**：ops 顶栏搜一张单 → 点 ✕ Close / 点暗处 / 按 Esc，搜索框都变空；点结果里的 Open in Main manifest 等链接跳走，框也是空的。
 
 ## 2026-11-04 收工：工作窗口 `npe-ops-frontend-c8`[a65365]（2c 派；dev server / Chrome 已全关）
 - 今天合了 main（详细做法、检查数、Annie 验收点各在自己那一节）：
