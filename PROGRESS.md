@@ -22,6 +22,7 @@
   - 78 已问 Annie 确认 Working Record How to use 的 Hours 一句（原文在置顶 86 77 那条），截图链接 77 发布后转 Annie。
   - 开关 hr_working_record：46 起初说 Annie 没点名不加；78 回规则②（全新、算工资、要 Annie 核一段时间，preview v2「先只 SA 可见」+ Annie「全部同意推荐，动手」）。46「同意加」，明天 G249 一起登记 dashboard-widgets key hr_working_record（默认 super_admin_only）。
   - ✅ **Annie「动手」（原话，2026-11-04 晚，看了截图页 https://claude.ai/artifact/H2D3Wdrwewcm9vSPPJMntp 和 Hours 那句 How to use 后）** ⇒ Working Record 截图样子 + How to use Hours 原文定稿，不再改。task/hr-working-record 9cc2d142 等后端 G249（field-calendar 所有人列表 + hours + 开关 hr_working_record）上 main → 只读核字段 → 合最新 main 重跑 hr / nav / ns + tsc / eslint / build → 直接合 main（不用再给 Annie 看截图）。后端没上线前不合（接口不在，页面会报错）。
+  - 收工：77 分支 task/hr-working-record 9cc2d142 已推，worktree D:\npe-ops-frontend-wt-hrwr 留着（干净），D:\npe-ops-frontend-wt-g245 已合可删；ef 的 worktree 已删。两个窗口都没有在跑的 dev server / Chrome。**明天主窗口**：等后端 G249 SHA → 派人核字段合 Working Record；Annie 验收今晚上线的 82 / Relay Splits / Profile（验收点在置顶 82、78 接班节、置顶 86）。
   - ef 两件都已合 main：Relay Splits 抬头 776810bb、86 Profile 分节 58956ba4（详见各自条目）。worktree D:\npe-ops-frontend-wt-relay、D:\npe-ops-frontend-wt-hr 已合、干净，可删。
 
 ## 2026-11-04 收工：工作窗口 `npe-ops-frontend-c8`[a65365]（2c 派；dev server / Chrome 已全关）
