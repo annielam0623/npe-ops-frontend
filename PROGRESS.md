@@ -4,7 +4,33 @@
 
 > 6d 交接（下面「2026-10-27 交接：前端主窗口 6d」那节）的后端需求已于 10/27 晚由 ad 转给家里后端主窗口 17。
 
-> **下一个主窗口：先读下面「2026-11-04 收工交接：前端主窗口 2c」，再看置顶「📌 等 Annie 确认」。**
+> **下一个主窗口：先读下面「2026-11-05 收工交接：前端主窗口 e8」，再看置顶「📌 等 Annie 确认」。**
+
+## 2026-11-05 收工交接：前端主窗口 `今日主窗口-e8`[6ce7da]（公司电脑）
+> 窗口：前端工作窗口 a0 [02f088]、7a [32d617]、19 [1e2a0d]；后端主窗口「今日后端主窗口e8」[df009e]（后端 54 / 4c / 11 / 17）。⚠️ 前后端主窗口今天都叫 e8，发消息要带 ref。
+
+### 一、今天上 main（等 Annie 线上验收，验收点在各条）
+| 件 | 前端 SHA | 后端 | 验收看 |
+|---|---|---|---|
+| 置顶 87 Dispatch Shuttle 提示按上车点（pickup_is_vegas） | 2bc2714d（7a） | G253 4c54e895 | TI 上车的不提醒；外地站 / 空 / OFFICE 提醒 |
+| 置顶 86 HR › Working Record（去掉 Hours） | 0b0e1619（a0） | G249 c1b5a06f | 只 SA 可见；周表 / 月历 / 📷 / Export 6 列 |
+| 置顶 88 Team 待注册行 Edit + 换新链接灰字 | 3c375b75（7a） | G212 SA-8 778ee08f | Pending 行 Edit 改权限 → 灰字，旧链接 invalid；截图 https://claude.ai/artifact/4LMQ8hyXFzVjzDfPwfSEtE |
+| 提速：/api/me 共用 + 权限并发 + Dashboard 去重 | b2f4641c（19） | — | F12 Network：me 1 次，schedule / employees 各 1 次 |
+| 提速：Dispatch 两个 POST 不挡页面 | 36b62181（7a） | — | Dispatch 排车先出 |
+| 提速：后台标签页停轮询 | f0866af5（19） | G254 / G255 已上 | 切走几分钟 Network 不出 tasks / unhandled / notices |
+| 提速：去掉 app/loading.tsx | 1cf5cb29（7a） | — | 站内换页不闪「加载中…」 |
+| Forecast Canyon X 又变 C | 171407bc（19） | — | Session 行「X 1 PM」 |
+
+### 二、在分支 / 等后端
+- **置顶 64 G180 Main manifest → Tour Tracking（灰底版，Annie「同意全部推荐，动手」）**：前端 task/tracking-sync-gray **e0548c6e**（a0，没合，worktree C:\Code\npe-ops-frontend-wt-g180）。后端 17 WIP task/tracking-sync-v2 **c16857c0**：代码写完；开关三档 GET/PUT /api/settings/tracking-sync {"mode": off / super_admin_only / staff}（superadmin），v154 种成 off；off / super_admin_only 档下已发的行一个字都不动（Annie「发过的不变」「不改变现在的任何东西」），新建的未发送行不写 Rezdy 午餐份数（=0，等客人填）。卡在：四审对最终版重跑 + Annie 执行 v154（排在 v153 login-records 后，v153 也等她执行）。上 main 后：a0 核字段、合最新 main 重跑 tt / nav / tour / mt / os → 合 main。⚠️ **切档没有前端界面**，只有 PUT 接口，要问 Annie 开关放哪（见置顶 64 待问）。回填以前的日子延后（置顶最上「⏰ 提醒」，11/09 周起提醒）。
+- **置顶 89 Auto Send**：题全答了（按门票团设提前几天；门票第 1、2 批各 150、第 3 批剩下全部；团确认第 1 批 100、第 2 批剩下全部；间隔 1 秒；每日报告给 antelope@ 带开关默认关；action 原文定了）。**还没「动手」**，7a 在出 preview（进度见置顶 89）。Last Minute 自动发 4 题后端在问 Annie，答了加进同一份 preview。
+- 后端 G257（发送时不占数据库连接，Annie「A」）：11 在做，上了发 SHA，前端不用改。
+
+### 三、明天开工
+1. 报对话名；git pull；问后端主窗口 G180 / G257 / Last Minute 进度。
+2. G180 上 main → 派 a0（或新窗口）核字段合 main；同时问 Annie 三档开关放哪（推荐 Tour Tracking 页顶部给 SA 一个小下拉，或 Settings › Notifications 一行），先 preview。
+3. 7a 的 Auto Send preview 转 Annie（附每题原文），等「动手」。
+4. 置顶 Task Board 中文那题（A 改英文 / B 保持中文）还没答，不滚动重问。
 
 ## 2026-11-05 Forecast：Canyon X 的简称又变成 C（`task/forecast-canyon-x-letter`，工作窗口 `npe-ops-frontend-19`[1e2a0d]）—— ✅ 合 main（只修 bug）
 - Annie 原话（直接在 19 窗口）：「session里的X为什么又变成C了？」（7 Days Forecast › Antelope Canyon › Session 行显示「C 1 PM」）。主窗口 e8：「照你说的修，修完直接合」。
