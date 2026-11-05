@@ -1084,6 +1084,12 @@ D. 已完成、待从置顶移走：
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 88. Settings › Team：改了没接受的邀请的权限后，提醒重新发链接（2026-11-05，后端 b3 转，e8 已问，没动手）
+- 背景：后端 G212「邀请链接自动换新」（4c 收尾中，SHA 待发）。还没接受的邀请，改了 Team 页勾选的权限、账号类型、旧 Users 页的 role，任何一样都会换新链接，旧链接马上失效，打开只显示「This invite link is invalid…」。改职责 / 团队 / 首页不换；已注册账号不受影响。action_log 记「Invite link → Renewed (the old link no longer works)」。b3 请前端在 Team 页加一句。
+- 选法：A（推荐）How to use 加一句 + 存好后那一行下面出灰字（新样子，先出截图）；B 只加 How to use；C 不加。
+  - How to use 原文：「If you change the access or account type of someone who hasn't accepted their invite yet, their old invite link stops working right away. Click Copy Link and send them the new link.」
+  - 灰字原文：「The old invite link no longer works. Click Copy Link and send the new one.」
+
 ### 87. Outbound shuttle 从 TI 出发：Dispatch 提示和 Manifest setup 说明要不要跟着改（2026-11-04 晚，Annie 在 ef 窗口提，78 已问，没动手）
 - 原话：「还有一个规则要记住，outbound shuttle的出发点是TI，所以也不需要单独挑酒店的」。
 - ef 只读查到前端可能冲突的两处（没改）：
