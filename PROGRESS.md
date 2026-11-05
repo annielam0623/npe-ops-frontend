@@ -1092,6 +1092,7 @@ D. 已完成、待从置顶移走：
 - 选法：A（推荐）How to use 加一句 + 存好后那一行下面出灰字（新样子，先出截图）；B 只加 How to use；C 不加。
   - How to use 原文：「If you change the access or account type of someone who hasn't accepted their invite yet, their old invite link stops working right away. Click Copy Link and send them the new link.」
   - 灰字原文：「The old invite link no longer works. Click Copy Link and send the new one.」
+  - ✅ **Annie 选 A 并「动手」**：e8 问「你那句『同意全部推荐，动手』是不是也包括 Working Record 去掉 Hours 和置顶 88」，Annie 答「是的」。派 7a（Shuttle 那件合完后做）：task/team-invite-renewed-hint，先出截图给 Annie 看灰字，她点头再合 main。同一句「是的」也覆盖 86 Working Record 去掉 Hours：G249 SHA 到了 a0 核完字段直接合。
 
 ### 87. Outbound shuttle 从 TI 出发：Dispatch 提示和 Manifest setup 说明要不要跟着改（2026-11-04 晚，Annie 在 ef 窗口提，78 已问，没动手）
 - 原话：「还有一个规则要记住，outbound shuttle的出发点是TI，所以也不需要单独挑酒店的」。
