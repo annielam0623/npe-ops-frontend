@@ -1579,6 +1579,7 @@ pe-ops-wt-login-default`，mock，**没合 main，等后端 57 的 logged_in_at 
     5. 轮询：离开页面时会清掉，没有泄漏；但标签页藏到后台还照跑（Dashboard 每个标签页每分钟 3–4 次，Tracking 30–60s）。修法：标签页隐藏时停。半天到 1 天。
     6. Bundle：共享部分 183 → 203kB，Dashboard 176 → 245kB，全仓库没用 next/dynamic。影响 <0.1–0.3s，不是主因。1 天。
     - 19 推荐先做 1 + 2（同一组文件，交一个窗口）。真实耗时要 Annie 在 Chrome F12 Network 截图（步骤已给 Annie）。
+- **Annie（原话）：「你汇报一下目前为止还有哪些id在用旧系统」** ⇒ 后端 4c 只读查：现有记录分不出来。last_seen_at 只记时间；action_log 不记域名；Host / Referer 没落库；Railway 日志有路径但没有用户。最近 7 天有登录活动的 20 个账号（不分来源），后端直接给 Annie。「旧系统」分两种：① 直接上 confirm 域名；② 在 ops 里打开还没切换的旧页面（走 next.config.ts 的 fallback）。后端问 Annie 指哪种。要分来源，后端在 auth._signed_in 加一行限频日志（域名 + 是否打开页面 + 路径），只能从上线那一刻起算。
 - G212 SA-8 后端上 main 778ee08f（关包 3eaa38e0）：改了还没接受的邀请的角色 / 权限 / 账号类型 ⇒ 旧链接马上失效（400 invalid）。前端那句提醒等 Annie 答置顶 88。
 - 91 preview 改成 Notified 版（同链接）：Order # 后「Notified」列（Notified 黑字 / To notify 玫红粗字，To notify 行粉红排下面），后接 Order Status；数字卡「To notify」，其他只算 Notified；CSV 加 Notified（Yes/No）+ Order state（后端）；Broadcast 含 To notify，发后变 Notified。How to use 原文已贴给 Annie。**等 Annie 看 preview 点头**，后端 task/tracking-sync-v2 上 main 后写代码。
 ### 63. 换司机只改 Dispatch：页面上怎么标（G234）—— ✅ 已合 main 40d5279（2026-11-04）；Annie 已答并「动手」（2026-11-03）；e6 preview https://claude.ai/artifact/CXT8ZueNa3akn1ZrGn4Ycj ，没写代码）
