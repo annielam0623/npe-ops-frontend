@@ -9,6 +9,9 @@
 ## 2026-11-04 晚 前端主窗口 `npe-ops-frontend-78`[6e88e1] 接班（家里电脑；只分工和汇报，不写代码）
 - Annie：「你是今天的主窗口，跟5C交接一下昨天的工作」「pull今天公司完成的工作」。已 git pull 到 6e151cba（公司 2c / 81 / c8 今天的提交全部到了）。
 - 5c 交接（11-03 晚）里的 75 agent-ref、51 B、Restaurant ⬆ Import、G212 都已由公司 2c 派 81 / c8 合 main（见上面 2c 收工交接表），不再派。接着按 2c 交接「四、明天开工」和置顶走。
+- Annie：「完成公司没完成的任务啊」。78 核：后端 origin/main 223e0c4a，G245（82）和 Working Record（86 field-calendar / field-snapshots / Hours）都还没上。fa、9e、da、36、5c 都已关，现在在线只有 主窗口-46 [5b93cd]。
+  - 前端待派（等 Annie 开 1 个工作窗口，家里空闲内存 10.6 GB）：① 86 Profile 分节 origin/task/hr-profile-sections 3a72805 合最新 main 跑 hr / nav + tsc / eslint / build 后合 main（Annie 已「working record这里全部同意推荐，动手」，含 Profile Q1 A / Q2 A）；② 86 Working Record 开 task/hr-working-record 照 mock 做、推分支不合（等后端）。
+  - 82 G245 前端 e736302 已写好，等后端 cfm_mismatch 上线再合。已问 46（如是后端主窗口）今晚能否做 G245 / Working Record 后端，及 G212 B3 / B6 / B7、61 题 1①。
 
 ## 2026-11-04 收工：工作窗口 `npe-ops-frontend-c8`[a65365]（2c 派；dev server / Chrome 已全关）
 - 今天合了 main（详细做法、检查数、Annie 验收点各在自己那一节）：
