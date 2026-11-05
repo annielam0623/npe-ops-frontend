@@ -6,6 +6,15 @@
 
 > **下一个主窗口：先读下面「2026-11-04 收工交接：前端主窗口 2c」，再看置顶「📌 等 Annie 确认」。**
 
+## 2026-11-05 页面提速第二件：`task/perf-hidden-poll`（工作窗口 `npe-ops-frontend-19`[1e2a0d]，主窗口 e8 派）—— ✅ 合 main
+- Annie 原话（后端主窗口转）：「改变速度的三步，动手」。只改速度、样子不变，不出 preview。
+- 改了什么：`lib/visible-poll.ts` 的 `setVisibleInterval`（用法同 setInterval）：标签页藏到后台（document.visibilityState = hidden）就停，回到前台先马上拉一次，再按原来的间隔继续。
+  换上它的数据轮询：Dashboard 的 tasks/today、notifications/unhandled、notices、operation-reports（统计行）、Today's team 在线名单；Tour / Tickets tracking（60 秒）；Morning tracking（60 秒 + Live drivers 30 秒）；对话弹窗的内部备注（20 秒）。
+  没换：Dispatch / Schedule 编辑锁心跳（停了会丢锁）；30 秒重算「几分钟前」的时钟（不发请求）。
+- 新检查套 hp（`checks/headless/hp-*.js`，用 tasks-mock）：藏 65 秒三个接口一个都不拉；回来 2 秒内各拉 1 次；再过 62 秒照 60 秒一轮各拉 1 次；来回切不多拉。
+- 检查：hp 6/6、tasks 144/144、dr 89/89、tt 137/137、tk 135/135、mt 253/253、nav 38/38；tsc 0；eslint 0 错（3 条旧 warning）；build 过。
+- Annie 验收怎么看：开着 Dashboard 切到别的标签页几分钟，回来时 F12 → Network 里马上有一批 tasks/today、notifications/unhandled、notices；藏着的那几分钟里这几个没有出现。页面样子不变。
+
 ## 2026-11-05 页面提速第一件：`task/perf-shell-parallel`（工作窗口 `npe-ops-frontend-19`[1e2a0d]，主窗口 e8 派）—— ✅ 合 main
 - Annie 原话（后端主窗口转）：「改变速度的三步，动手」。只改速度、样子不变，不出 preview。
 - 改了什么：
