@@ -18,6 +18,7 @@ import type {
   FieldRun,
 } from "@/types/hr-working-record";
 
+import { profileSection } from "./fields";
 import {
   HR_BTN_CLASS,
   HR_BTN_PRIMARY_CLASS,
@@ -41,7 +42,6 @@ import {
   monthTitle,
   ROLE_LABEL,
   runTitle,
-  sectionOf,
   totalsOf,
   weekDays,
   weekTitle,
@@ -412,7 +412,7 @@ function AllPeople({
     <>
       {WORK_SECTIONS.map((section) => {
         const list = people
-          .filter((p) => sectionOf(p.position) === section.key)
+          .filter((p) => profileSection(p.position) === section.key)
           .sort((a, b) => a.name.localeCompare(b.name));
         if (section.key === "unset" && !list.length) return null;
         return (

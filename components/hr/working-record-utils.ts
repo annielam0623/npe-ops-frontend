@@ -7,6 +7,8 @@ import type {
   FieldRun,
 } from "@/types/hr-working-record";
 
+import type { ProfileSection } from "./fields";
+
 /**
  * Working Record（置顶 86）的纯逻辑：格子文字、合计、Export 的行。没有 React，方便单独核。
  */
@@ -202,17 +204,9 @@ export function totalsOf(
   return out;
 }
 
-/** 分节：Drivers（driver + both）在上，Guides（guide）在下，Position 没填的最后（同 Profile）。 */
-export type WorkSection = "drivers" | "guides" | "unset";
-
-export function sectionOf(position: string | null | undefined): WorkSection {
-  if (position === "driver" || position === "both") return "drivers";
-  if (position === "guide") return "guides";
-  return "unset";
-}
-
+/** 分节同 Profile（fields.ts profileSection）；Position not set 的说明换成这里能用的一句（这里不能改 Position）。 */
 export const WORK_SECTIONS: readonly {
-  key: WorkSection;
+  key: ProfileSection;
   title: string;
   note: string;
 }[] = [
