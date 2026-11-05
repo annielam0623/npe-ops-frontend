@@ -78,7 +78,7 @@ import {
   cloneRow,
   cloneRows,
   countChanges,
-  departsVegas,
+  needsShuttlePickup,
   fmtLong,
   fmtShort,
   isBlankRow,
@@ -360,9 +360,8 @@ export function DispatchView() {
   } | null>(null);
   /**
    * 每个巴士团当天 Bus manifest 里要提醒选上车点的 Shuttle 客人数（Annie 2026-10-31 Shuttle 上车点提示）。
-   * 临时版（Annie 2026-11-04「选产品名从vegas开始的shuttle，不提醒」）：产品从 Las Vegas 出发的不算，不分 outbound / inbound
-   * （round trip 回程段也不算）；别的（St George → Page、X to Las Vegas…）照算。
-   * ⏳ 后端给每位客人带 pickup_is_vegas 后改成看上车点（Annie「是要看他们的上车点…只有这个location不属于vegas酒店，就要提醒」），产品名判断拿掉。
+   * 按上车点（Annie 2026-11-05「是要看他们的上车点…只有这个location不属于vegas酒店，就要提醒」）：Shuttle 节（outbound / inbound）里
+   * pickup_is_vegas === true 的不算；false / null / 旧后端没这个键照算（needsShuttlePickup）。
    * 卡片每次重读（存好、同步、上传）都跟着重读；读不到的团不提醒。
    */
   const [shuttlePax, setShuttlePax] = useState<{
@@ -387,7 +386,7 @@ export function DispatchView() {
             ])
               if (sec.kind !== "tour")
                 for (const g of sec.guests ?? [])
-                  if (!departsVegas(g.product)) n += g.pax;
+                  if (needsShuttlePickup(g)) n += g.pax;
             return [id, n] as const;
           },
           () => null,

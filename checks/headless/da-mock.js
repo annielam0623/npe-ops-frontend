@@ -636,15 +636,27 @@ http.createServer(async (req, res) => {
       { id: 22, manifest_id: 3, tour: "West Rim Bus Tour", order_number: "SG3", kind: "changed", detail: "pax 2 → 3; pickup 6:30 AM TI → 6:40 AM Bellagio", old_bus: "B", relay: "", created_at: "2026-10-10T04:05:00+00:00" },
     ] });
   }
-  // 这个团当天 Bus manifest 的 Shuttle 客人：ctl.shuttlePax = 从 Las Vegas 出发的 outbound（到 TI 上车）；ctl.shuttleOther = 不从 Vegas 出发的 outbound
-  // （St. George to Page）；ctl.shuttleIn = inbound Page to Las Vegas（没上车那里，默认 1）；ctl.shuttleRt = 从 Vegas 出发的 round trip 回程段（inbound 节）。
-  // 都没给 = 404，排车页不出 Shuttle 提示。
+  // 这个团当天 Bus manifest 的 Shuttle 客人（G253 按上车点 pickup_is_vegas，Annie 2026-11-05）：
+  //   ctl.shuttleVegas = outbound、上车点 Treasure Island（pickup_is_vegas true）；ctl.shuttleVegasIn = inbound 节、pickup_is_vegas true；
+  //   ctl.shuttleFalse = outbound、外地 shuttle 站（St George，false）；ctl.shuttleIn = inbound、外地站（Page，false）；
+  //   ctl.shuttleNull = outbound、上车点空 / OFFICE 对不上（null）；ctl.shuttleLegacy = outbound、旧后端没有这个键。
+  // 团客（tour 节）一律 TI true 以外的随便写，不算。都没给 = 404，排车页不出 Shuttle 提示。
   if (p === "/api/dispatch/manifest") {
-    if ((!ctl.shuttlePax && !ctl.shuttleOther && !ctl.shuttleIn && !ctl.shuttleRt) || q.tour !== "3") return send(res, 404, { detail: "mock: not found" });
-    const gs = (product, pax) => (pax ? [{ id: 1, product, pax }] : []);
-    const out = [...gs("One-way Shuttle: Las Vegas to St.George", ctl.shuttlePax || 0), ...gs("One-way Shuttle: St. George to Page, Arizona", ctl.shuttleOther || 0)];
-    const inPax = ctl.shuttleIn ?? 1;
-    return send(res, 200, { run_date: q.date, blocks: [{ sections: [{ kind: "tour", pax: 9, guests: gs("West Rim Bus Tour", 9) }, { kind: "outbound", pax: out.reduce((s, g) => s + g.pax, 0), guests: out }] }], unplaced: { sections: [{ kind: "inbound", pax: inPax + (ctl.shuttleRt || 0), guests: [...gs("One-way Shuttle: Page, Arizona to Las Vegas", inPax), ...gs("Las Vegas to Grand Canyon South Round-trip Shuttle", ctl.shuttleRt || 0)] }] } });
+    const keys = ["shuttleVegas", "shuttleVegasIn", "shuttleFalse", "shuttleIn", "shuttleNull", "shuttleLegacy"];
+    if (!keys.some((k) => ctl[k]) || q.tour !== "3") return send(res, 404, { detail: "mock: not found" });
+    const gs = (product, pax, loc, id, vegas) => (pax ? [{ id: 1, product, pax, pickup_location: loc, ...(vegas === undefined ? {} : { pickup_location_id: id, pickup_is_vegas: vegas }) }] : []);
+    const out = [
+      ...gs("One-way Shuttle: Las Vegas to St.George", ctl.shuttleVegas || 0, "Treasure Island", 14, true),
+      ...gs("One-way Shuttle: St. George to Page, Arizona", ctl.shuttleFalse || 0, "St George – Main St", 104, false),
+      ...gs("One-way Shuttle: Las Vegas to Page, Arizona", ctl.shuttleNull || 0, "OFFICE", null, null),
+      ...gs("One-way Shuttle: Las Vegas to Kanab", ctl.shuttleLegacy || 0, "Treasure Island", undefined, undefined),
+    ];
+    const inb = [
+      ...gs("One-way Shuttle: Page, Arizona to Las Vegas", ctl.shuttleIn || 0, "Page – Walmart", 105, false),
+      ...gs("Las Vegas to Grand Canyon South Round-trip Shuttle", ctl.shuttleVegasIn || 0, "Treasure Island", 14, true),
+    ];
+    const sum = (a) => a.reduce((s, g) => s + g.pax, 0);
+    return send(res, 200, { run_date: q.date, blocks: [{ sections: [{ kind: "tour", pax: 9, guests: gs("West Rim Bus Tour", 9, "Excalibur", 7, false) }, { kind: "outbound", pax: sum(out), guests: out }] }], unplaced: { sections: [{ kind: "inbound", pax: sum(inb), guests: inb }] } });
   }
   if (p === "/api/dispatch/manifests") {
     const card = (id, title) => ({ manifest_id: id, title, uploaded: false, guests: 0, pax: 0, buses: 0, not_on_bus: 0, lunch: null, uploaded_at: null, uploaded_by: null, mode: "single" });
