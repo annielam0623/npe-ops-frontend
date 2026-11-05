@@ -1095,6 +1095,12 @@ D. 已完成、待从置顶移走：
   - ✅ **Annie 选 A 并「动手」**：e8 问「你那句『同意全部推荐，动手』是不是也包括 Working Record 去掉 Hours 和置顶 88」，Annie 答「是的」。派 7a（Shuttle 那件合完后做）：task/team-invite-renewed-hint，先出截图给 Annie 看灰字，她点头再合 main。同一句「是的」也覆盖 86 Working Record 去掉 Hours：G249 SHA 到了 a0 核完字段直接合。
   - ⚠️ 7a 发现：Team 页待注册那一行只有 Copy Link / Cancel invite，没有 Edit 键（users-table.tsx:439-442 只有 !pending 才出），Role 下拉也不给（:277），所以在 Team 页改不了待注册的人的权限 / 账号类型，灰字永远不会出现；只有旧 Users 页改 role 会换链接。新题已问 Annie：A（推荐）待注册行加 Edit 键（灰底小键，放 Copy Link 左边，打开同一个 Edit 框），存好以后权限或账号类型真的变了才出灰字，点了 Copy Link 或离开页面后消失，How to use 加那一句；B 不加 Edit，只加 How to use；C 都不做。7a 先按 A 推分支、出截图，不合 main。
   - ✅ **Annie（原话）：「按推荐，动手」** ⇒ A。7a 检查过了直接合 main，截图留着给 Annie 验收时看。
+  - ✅ **7a 合 main**（task/team-invite-renewed-hint 功能 171205e6，合 main 的 SHA 见 git log；截图 https://claude.ai/artifact/4LMQ8hyXFzVjzDfPwfSEtE ，电脑 + 手机 + How to use）。后端只读核过：save_team_member / save_account_type 对待注册的人能存（_manageable 有邀请专用的规则 SA-2），PUT 返回 member（不带换新标记）。
+    - 待注册行加 Edit（灰底小键，在 Copy Link 左边），开同一个 Edit 框；待注册的人框里不出 Delete（行上已有 🗑 Cancel invite）。能不能 Edit 照后端 can_edit。
+    - 灰字「The old invite link no longer works. Click Copy Link and send the new one.」：存好后，勾的集合（返回的 member.items 跟打开时的比，不看顺序）真的变了，或账号类型换了 ⇒ 那一行下面出，跟名字对齐，表格横向滚动时贴在左边（手机上看得到）。只改职责 / 团队 / 首页 / 联络方式不出；已注册的人不出。点那一行 Copy Link 或离开 / 刷新页面后消失（只在页面上，不存）。重读名单还没回来时点 Copy Link 会先等新令牌，不会复制到作废的旧链接。
+    - How to use 第 1 条末尾加原文那句。代码：components/users/users-table.tsx、users-view.tsx、components/team-permissions/member-form-dialog.tsx、lib/team-permissions-api.ts。
+    - 检查：tp 204/204（新加 13 条：每个待注册行都有 Edit 且在 Copy Link 左边、How to use 那句、改前没灰字、Edit 框没 Delete、只改职责有 PUT 但没灰字、改权限出灰字（原文、灰 #6b7280、紧挨那一行下面）、Copy Link 复制到新令牌 tok-…-v1 且灰字消失、改账号类型也出灰字、刷新后没了、已注册的人改权限不出；mock 照后端换令牌）、users 80/80（单跑；接在别的套后面跑时会在跳 /settings/users 那步崩，老问题）、teams 54/54、nav 38/38；合最新 main 后 tsc 0、eslint 0 错（3 旧 warning）、build 过。
+    - **Annie 验收**（线上，只动 ZZ Test）：Settings › Team 找一行 Pending registration（没有就 Add person 建一个 ZZ Test 邀请，邮箱用 azhou@nationalparkexpress.com）⇒ Actions 列有 Edit · Copy Link · Cancel invite；Edit 改一个权限档位 → Save ⇒ 那一行下面出灰字，旧链接打开显示 invalid；点 Copy Link 复制的是新链接，灰字消失；只改职责 / 团队 → Save ⇒ 不出灰字，旧链接照样能用。
 
 ### 87. Outbound shuttle 从 TI 出发：Dispatch 提示和 Manifest setup 说明要不要跟着改（2026-11-04 晚，Annie 在 ef 窗口提，78 已问，没动手）
 - 原话：「还有一个规则要记住，outbound shuttle的出发点是TI，所以也不需要单独挑酒店的」。
