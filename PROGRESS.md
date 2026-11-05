@@ -1088,6 +1088,9 @@ D. 已完成、待从置顶移走：
   - 78 问 Annie（Q1）：A（推荐）不看 kind 看在哪上车：Shuttle 节里不是在 Vegas 上车的客人都提醒；Vegas 上车 = 产品名「Las Vegas to …」开头或 round trip 去程。前端今晚能先按产品名做，之后请后端给每位客人带「Vegas 上车」标记更稳；B 只算 inbound，再逐个确认那几条非 Vegas shuttle 设成 inbound。现状：main cb6d34f6 提醒整条去掉，非 Vegas shuttle 现在也不提醒。
   - ef 照 78 之前的话（能可靠分就照做）按 A 做：Shuttle 节里 kind = outbound 且产品名含「Las Vegas to」⇒ 不算；其余（非 Vegas 出发的 outbound、所有 inbound、round trip 回程段）照旧提醒、计人数；样子照 10-31 版。认不出的名字当非 Vegas、照旧提醒（宁多不漏）。以后要更稳可请后端加「Vegas 上车」标记。跑完 da / nav 合 main。
   - ⚠️ **Annie 再更正（原话）**：「我再说一次，是要看他们的上车点，也就是出发的location，只有这个location不属于vegas酒店，就要提醒」⇒ 不看产品名、不看 kind，看每位 Shuttle 客人订单的上车点：Vegas 酒店 ⇒ 不提醒；不是 Vegas 酒店 ⇒ 提醒、计人数。78 已叫 ef 停产品名那版，先查 Bus manifest 有没有上车点、怎么判断 Vegas 酒店；判断不了就写需要后端转 46。
+  - ef 查：产品名那版没合（线上仍 cb6d34f6 提醒全关）。前端判断不了：/api/dispatch/manifest 客人只有 pickup_location 文字 + hotel_short，没有 location_id；匹配只能用后端 pickup_lookup.match()。Vegas 判断前端已有（day.locations is_tour_bus = Las Vegas）。
+  - **需要后端（78 已转 46）**：/api/dispatch/manifest 每位客人加 pickup_location_id（pickup_lookup.match，对不上 null）和/或 pickup_is_vegas。前端拿到后：Shuttle 节客人上车点是 Vegas（is_tour_bus）⇒ 不算；不是或 null ⇒ 提醒、计人数；样子照 10-31 版。
+  - 78 问 Annie（Q2）：后端上线前线上怎么办：A（推荐）先不恢复，等后端字段上了直接上正确版；B 先恢复 10-31 原版（所有 Shuttle 客人都提醒，Vegas 的也提醒）。
 
 ### 86. 司机 / 导游 live 页每天的快照（2026-11-04，Annie 在主窗口-2c 提，没动手）
 - 原话：「我还有个需求，司机和导游的live 记录，是否可以有快照，就是他这一天在哪个站停留了多久，发了多少短信，汇报了多少picked up和no show，在工作结束前它的页面有个快照」。
