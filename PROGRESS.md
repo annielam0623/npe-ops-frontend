@@ -29,10 +29,11 @@
     - 检查：os 85/85（关闭那几条改成「关上 + 框空」，新加：顶上 Close、关了再点框不弹空窗、点浮窗里面不关不清、打字时 Esc / 点外面不清、跳到 Tracking 再退回来框空、订单详情页点同一页的 Order details 框空、点 Open in Main manifest 跳 /manifests 框空；agent ref 搜索、Open in Main manifest 原有各条照过）、nav 38/38；tsc 0、eslint 0 错（3 条旧 warning）、build 过（分支已在最新 main 上）。
     - **Annie 验收**：ops 顶栏搜一张单 → 点 ✕ Close / 点暗处 / 按 Esc，搜索框都变空；点结果里的 Open in Main manifest 等链接跳走，框也是空的。
   - ✅ **新规则 + 动手：Outbound shuttle 从 TI 出发，Dispatch 不再提醒选 Shuttle 上车点，已合 main cb6d34f6**（ef，task/no-shuttle-hint 功能 f0fdc5fc）。Annie 原话（在 ef 窗口，按时间）：「还有一个规则要记住，outbound shuttle的出发点是TI，所以也不需要单独挑酒店的」→ ef 列出冲突的两处 →「现在把它改了吧，不要提醒也不阻碍。动手」。
-    - 改法：整条去掉 2026-10-31 的 Shuttle 上车点提示（见「2026-10-31 Dispatch Tour bus 选今天的 Shuttle 上车点」一节，该节作废）——第一台车「Add hotel」右边琥珀字「Select today’s shuttle pick-up here · N shuttle guests」、右栏 Schedule check「<团>: shuttle pick-up not chosen」+ Fix 都没了；Dispatch 也不再为数 Shuttle 人数逐团读 Bus manifest。本来就不拦保存，照旧。Add hotel 下拉的分组（Las Vegas 在上、「~~~~~ Shuttle Pick up ~~~~~」分隔、Shuttle 站在下）不动。文件：components/dispatch/config.ts、dispatch-view.tsx、vehicle-row.tsx。
+    - 改法：整条去掉 2026-10-31 的 Shuttle 上车点提示（见「2026-10-31 Dispatch Tour bus 选今天的 Shuttle 上车点」一节；后已返工恢复，见下一行）——第一台车「Add hotel」右边琥珀字「Select today’s shuttle pick-up here · N shuttle guests」、右栏 Schedule check「<团>: shuttle pick-up not chosen」+ Fix 都没了；Dispatch 也不再为数 Shuttle 人数逐团读 Bus manifest。本来就不拦保存，照旧。Add hotel 下拉的分组（Las Vegas 在上、「~~~~~ Shuttle Pick up ~~~~~」分隔、Shuttle 站在下）不动。文件：components/dispatch/config.ts、dispatch-view.tsx、vehicle-row.tsx。
     - 没改：Products › Bus Manifest setup How to use「outbound section (pickup from the order)」——讲的是 Manifest 上怎么显示，不是让 staff 挑酒店。Annie 要改再说。规则也记进了前端长期记忆（outbound-shuttle-departs-ti），以后新功能不让 staff 给 outbound shuttle 客人挑酒店 / 上车点。
     - 检查：da 510/510（原 Shuttle 提示 8 条换成 4 条：有 Shuttle 客人也没有提示、右栏没有那条、不再请求 /api/dispatch/manifest、Add hotel 照旧）、nav 38/38；合最新 main 后 tsc 0、eslint 0 错（3 条旧 warning）、build 过。
     - **Annie 验收**：Dispatch 选一个有 Shuttle 客人的巴士团日子 —— 车上不再出琥珀字「Select today’s shuttle pick-up here」，右边 Schedule check 也没有「shuttle pick-up not chosen」。
+    - ⚠️ 这版改多了，Annie 更正后已返工：提示恢复、产品从 Las Vegas 出发的不算（临时版），main ad136c9d，详见置顶 87。
 
 ## 2026-11-04 收工：工作窗口 `npe-ops-frontend-c8`[a65365]（2c 派；dev server / Chrome 已全关）
 - 今天合了 main（详细做法、检查数、Annie 验收点各在自己那一节）：
@@ -853,6 +854,7 @@ D. 已完成、待从置顶移走：
   旧预期「开关关着照旧按角色」全部改成「只看勾」。
 
 ## 2026-10-31 Dispatch Tour bus 选今天的 Shuttle 上车点（`task/dispatch-shuttle-hint`，工作窗口 91，主窗口 98）—— Annie「动手」，已做
+- ⚠️ 已改（11-04 晚，置顶 87）：曾整条去掉（cb6d34f6），返工后恢复，人数不算产品从 Las Vegas 出发的 Shuttle 客人（临时版 ad136c9d）；后端带 pickup_is_vegas 后改按上车点。
 - Annie 在 91 窗口原话：「动手」（题都定了：样子 1；Schedule check 那条要）。preview https://claude.ai/artifact/BewNcepgfaJMDPDMvo2Pdz v3。
 - 做法：Dispatch 每次读 Step 1 团卡片后，按有客人的巴士团读当天 Bus manifest（`GET /api/dispatch/manifest`），把 kind outbound / inbound 的节人数加起来（车上的 + 没上车的；Farm out 的不算）。这个团有 Shuttle 客人、团里哪台车（不算 Farm out 车）都还没有 Shuttle 站（Pickup Locations 没勾 Tour bus 的点）⇒
   - 第一台车「Add hotel」右边同一行：琥珀字 #b45309 半粗 + 指向下拉的小箭头、无框「Select today’s shuttle pick-up here · N shuttle guests」（人数灰字）；
@@ -1093,6 +1095,7 @@ D. 已完成、待从置顶移走：
   - 78 问 Annie（Q2）：后端上线前线上怎么办：A（推荐）先不恢复，等后端字段上了直接上正确版；B 先恢复 10-31 原版（所有 Shuttle 客人都提醒，Vegas 的也提醒）。
   - 46（23:16，已过收工线）：今晚不做，明天第一批派；口径：blocks / unplaced 各节 guests 每位加 pickup_location_id（pickup_lookup.match，对不上 null）+ pickup_is_vegas（对上那家 is_tour_bus）；只加字段。上 main 后 SHA 发当天前端主窗口 ⇒ 派工作窗口照上面规则做、合 main（ef 的产品名版作废，不要合）。
   - **Annie（原话）**：「那我们就先做个可以今晚上线的吧，改成按产品名字？」→ 78 复述成「outbound 且名含 Las Vegas to」，Annie「不是」→ **Annie 定「选产品名从vegas开始的shuttle，不提醒」** ⇒ 今晚临时版：只看产品名、不看 kind，Vegas 出发的产品（名含「Las Vegas to」，含 round trip 回程段）一律不提醒，其余提醒、计人数，认不出当非 Vegas。派 ef 合 main。明天后端 pickup_is_vegas 上线后改按上车点。
+  - ✅ **临时版已合 main ad136c9d**（ef，task/shuttle-hint-inbound-only 功能 5e389fee，含 revert f0fdc5fc）：Dispatch Shuttle 上车点提示恢复成 10-31 版（第一台车琥珀字「Select today’s shuttle pick-up here · N shuttle guests」、Schedule check「<团>: shuttle pick-up not chosen」+ Fix、不拦保存），只改人数口径：Bus manifest 的 Shuttle 节（outbound / inbound）里，产品名含「Las Vegas to」的客人不算（One-way Shuttle: Las Vegas to …、Las Vegas to Grand Canyon South Round-trip Shuttle 的去程和回程段都不算）；别的（St. George to Page、Page to Las Vegas…）照算；名字认不出当非 Vegas、照旧提醒。代码 components/dispatch/config.ts departsVegas()、dispatch-view.tsx 读人数那段。检查：da 517/517（Shuttle 一组：404 / 没 is_tour_bus 不提醒、只有 Las Vegas to 的 outbound 不提醒、只有 Vegas round trip 回程段不提醒、只有 St. George to Page 提醒「4 shuttle guests」、只有 Page to Las Vegas 提醒「2」、混合只数非 Vegas「5」+ 样子 + Schedule check + Fix + 第二台车选了消失）、nav 38/38；合最新 main 后 tsc 0、eslint 0 错（3 旧 warning）、build 过。**Annie 验收**：Dispatch 打开有 Shuttle 客人的巴士团日子 —— 只有「Las Vegas to …」产品的 Shuttle 客人时不出提示；有 St George / Page / Kanab 出发等非 Vegas 产品时，第一台车出琥珀字，人数只数这些客人，右边 Schedule check 有那条；选了 Shuttle 站后消失。⏳ **这是临时版**：明天后端 46 给 /api/dispatch/manifest 每位客人加 pickup_location_id / pickup_is_vegas 后，改成按上车点判断（Annie「是要看他们的上车点，也就是出发的location，只有这个location不属于vegas酒店，就要提醒」），产品名判断拿掉。
 
 ### 86. 司机 / 导游 live 页每天的快照（2026-11-04，Annie 在主窗口-2c 提，没动手）
 - 原话：「我还有个需求，司机和导游的live 记录，是否可以有快照，就是他这一天在哪个站停留了多久，发了多少短信，汇报了多少picked up和no show，在工作结束前它的页面有个快照」。
