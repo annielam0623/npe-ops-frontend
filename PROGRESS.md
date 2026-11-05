@@ -1063,6 +1063,13 @@ D. 已完成、待从置顶移走：
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 87. Outbound shuttle 从 TI 出发：Dispatch 提示和 Manifest setup 说明要不要跟着改（2026-11-04 晚，Annie 在 ef 窗口提，78 已问，没动手）
+- 原话：「还有一个规则要记住，outbound shuttle的出发点是TI，所以也不需要单独挑酒店的」。
+- ef 只读查到前端可能冲突的两处（没改）：
+  - ① Dispatch › Tour bus（2026-10-31 上线，components/dispatch/vehicle-row.tsx:516、config.ts:445）：团有 Shuttle 客人（outbound + inbound 人数加起来）、车上没选 Shuttle 站时，第一台车 Add hotel 右边琥珀字「Select today's shuttle pick-up here · N shuttle guests」，Schedule check 一条「<团>: shuttle pick-up not chosen」。问：A（推荐）只算 inbound shuttle 客人，团只有 outbound 时不提醒；B 整条提示和 Schedule check 去掉；C 不改。
+  - ② Products › Bus Manifest setup 的 How to use（manifest-setup-panel.tsx:1602）现句：「The guest then shows up twice on that day: in the outbound section (pickup from the order) and in the inbound section (the return pickup you typed).」问：A（推荐）改成「in the outbound section (departs from TI) and in the inbound section (the return pickup you typed).」；B 不改。
+  - 后端有没有按订单酒店排 outbound shuttle 接客的逻辑，已转 46 只读核。
+
 ### 86. 司机 / 导游 live 页每天的快照（2026-11-04，Annie 在主窗口-2c 提，没动手）
 - 原话：「我还有个需求，司机和导游的live 记录，是否可以有快照，就是他这一天在哪个站停留了多久，发了多少短信，汇报了多少picked up和no show，在工作结束前它的页面有个快照」。
 - 理解：每位司机 / 导游每天一份记录：每站到 / 离时间和停了多久（Samsara 到站，置顶 59 / 58）、发了几条短信、报了几个 Picked up / No show；工作结束时把他那天的 live 页存一份，之后能回看。
