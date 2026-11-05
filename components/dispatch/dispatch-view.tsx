@@ -266,6 +266,11 @@ export function DispatchView() {
   const [manifestVersion, setManifestVersion] = useState(0);
   /** 最近一次 Step 1 名单同步的结果（G35）。 */
   const [syncInfo, setSyncInfo] = useState<SyncInfo | null>(null);
+  /**
+   * 提速（Annie 2026-11-05「动手」，后端主窗口转）：名单同步放后台跑，跑完名单真的变了就加一，
+   * 只让 Step 1 卡片 / 待处理、Seat guests 重读；不碰排车行（没存的改动不丢），也不重建 Relay 面板。
+   */
+  const [syncTick, setSyncTick] = useState(0);
   /** Seat guests（每台车下面的客人）：读的是已保存的排车 + Step 1 的名单。 */
   const [seating, setSeating] = useState<DispatchSeating | null>(null);
   const [seatVersion, setSeatVersion] = useState(0);
@@ -607,6 +612,43 @@ export function DispatchView() {
     [prefillInner],
   );
 
+  /**
+   * 后台同步 Step 1 名单（见 load）。只认最后一次（连点换天时先发的可能后到）；跑完时已换到别的日子就不管。
+   * 结果 / 报错照旧交给 Step 1（syncInfo）；名单有变化才 syncTick + 1。
+   */
+  const syncSeqRef = useRef(0);
+  const runSync = useCallback(
+    async (date: string) => {
+      const seq = ++syncSeqRef.current;
+      let info: SyncInfo;
+      try {
+        info = { date, result: await syncManifests(date) };
+      } catch (e) {
+        if (isStatus(e, 401)) {
+          redirectToLogin();
+          return;
+        }
+        info = {
+          date,
+          error:
+            e instanceof TypeError
+              ? "Could not reach the server."
+              : describeError(e),
+        };
+      }
+      if (seq !== syncSeqRef.current) return;
+      if (stateRef.current.day?.run_date !== date) return;
+      setSyncInfo(info);
+      if (
+        info.result?.tours.some(
+          (t) => t.changed_any || t.added || t.removed || t.changed,
+        )
+      )
+        setSyncTick((t) => t + 1);
+    },
+    [redirectToLogin],
+  );
+
   const load = useCallback(
     async (
       date: string | null,
@@ -617,31 +659,10 @@ export function DispatchView() {
       try {
         const d = await fetchDispatchDay(date);
         if (seq !== loadSeqRef.current) return false;
-        // 打开页面 / 换天：先按主 Manifest 同步 Step 1 的名单（G35，Annie 2026-10-12），再让下面的卡片、
-        // 车下面的名单去读。保存 / 复制后的重读不同步（名单没动）。同步失败不挡排车，Step 1 写出来。
-        if (opts.sync && !viewOnlyRef.current) {
-          let info: SyncInfo;
-          try {
-            info = {
-              date: d.run_date,
-              result: await syncManifests(d.run_date),
-            };
-          } catch (e) {
-            if (isStatus(e, 401)) {
-              redirectToLogin();
-              return false;
-            }
-            info = {
-              date: d.run_date,
-              error:
-                e instanceof TypeError
-                  ? "Could not reach the server."
-                  : describeError(e),
-            };
-          }
-          if (seq !== loadSeqRef.current) return false;
-          setSyncInfo(info);
-        }
+        // 打开页面 / 换天：按主 Manifest 同步 Step 1 的名单（G35，Annie 2026-10-12）。保存 / 复制后的重读不同步（名单没动）。
+        // 提速（2026-11-05）：不再等同步跑完才画页面——先用已存的名单画出来，同步在后台跑（runSync），
+        // 名单真的变了再让卡片、车下面的名单重读。同步失败不挡排车，Step 1 照旧写出来。
+        if (opts.sync && !viewOnlyRef.current) void runSync(d.run_date);
         applyDispatchMeta(d.meta);
         setStale(false);
         setBlockedBy(null);
@@ -693,7 +714,7 @@ export function DispatchView() {
         return false;
       }
     },
-    [redirectToLogin],
+    [redirectToLogin, runSync],
   );
 
   const pull = useCallback(
@@ -781,7 +802,7 @@ export function DispatchView() {
     "This day has changes that are not saved yet. Leave without saving?",
   );
 
-  // Seat guests：换天、保存 / 重读（manifestVersion）、Step 1 Apply、挪车以后重读。读不到就不显示（不挡排车）。
+  // Seat guests：换天、保存 / 重读（manifestVersion）、Step 1 Apply、挪车、后台名单同步有变化（syncTick）以后重读。读不到就不显示（不挡排车）。
   const runDate = day?.run_date ?? null;
   useEffect(() => {
     if (!runDate) return;
@@ -796,7 +817,7 @@ export function DispatchView() {
         else setSeating(null);
       });
     return () => controller.abort();
-  }, [runDate, manifestVersion, seatVersion, redirectToLogin]);
+  }, [runDate, manifestVersion, seatVersion, syncTick, redirectToLogin]);
 
   // 名单（卡片）一到就补开，不等 CCL（Annie 2026-10-11）；CCL 预填、存好重读以后再补一遍。补开的空车不存。
   useEffect(() => {
@@ -1910,8 +1931,8 @@ export function DispatchView() {
                 key={day.run_date}
                 date={day.run_date}
                 colorByManifestId={colorByManifestId}
-                // 两个都只会变大：存好 / 重读、点过 Completed 都让卡片重读。
-                version={manifestVersion + doneTick}
+                // 三个都只会变大：存好 / 重读、点过 Completed、后台名单同步有变化（syncTick）都让卡片重读。
+                version={manifestVersion + doneTick + syncTick}
                 sync={syncInfo?.date === day.run_date ? syncInfo : null}
                 // 上传 Rezdy CSV 并 Apply 了：重读卡片和车下面的名单（同上）。
                 onUnauthorized={redirectToLogin}

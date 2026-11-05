@@ -443,6 +443,8 @@ http.createServer(async (req, res) => {
   if (p === "/api/dispatch/imports/day") return send(res, 200, { last_ok: "10/04 02:13 PM", prefill: ctl.hideRev && q.date === "2026-10-07" ? null : (prefills[q.date] ?? null) });
   if (p === "/api/dispatch/imports/pull") {
     const b = JSON.parse(await readRaw(req)); entry.body = b;
+    // pullDelayMs：问 Discord 慢（生产最多 8 秒）；页面不该等它。
+    if (ctl.pullDelayMs) await new Promise((r) => setTimeout(r, ctl.pullDelayMs));
     const msg = { nothing: "Nothing new from CCL since the last pull.", failed: "Pull failed: Discord rejected the bot token (401). Check DISCORD_BOT_TOKEN on Railway." }[ctl.pullStatus] ?? "ok";
     return send(res, 200, { status: ctl.pullStatus, message: msg, new: 0, revisions: 0, last_ok: "10/04 02:13 PM" });
   }
@@ -625,6 +627,8 @@ http.createServer(async (req, res) => {
       run_date: "2026-10-05", guest_lists: { ok: true, run_date: "2026-10-05", synced: true, tours: [] } });
   }
   // G35：排车页打开 / 换天先同步名单；这里不改任何东西。
+  // syncDelayMs：同步慢（生产 150–250ms）；页面先画出来不等它。
+  if (p === "/api/dispatch/manifests/sync" && ctl.syncDelayMs) await new Promise((r) => setTimeout(r, ctl.syncDelayMs));
   if (p === "/api/dispatch/manifests/sync") return send(res, 200, { ok: true, run_date: q.date ?? "", synced: true, tours: [] });
   // Step 1 的卡片：3 今天有块（Assign Bus 滚过去闪一下），9 没有块（滚到 Step 2 开头）。
   // G56：completed = 2026-10-09 点过 Completed，之后 SG4 是新单（没坐上车）、SG3 改了。

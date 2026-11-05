@@ -41,12 +41,21 @@ export function fetchTeamMember(
   });
 }
 
-/** 整组替换；superadmin 账号 403，未知的项 400（什么都不存）。 */
+/** PUT /api/team/members/{id} 的返回：存好后的这个人（旧后端 / mock 可能不带）。 */
+export type SavedTeamMember = {
+  ok?: boolean;
+  member?: Partial<TeamMemberDetail>;
+} | null;
+
+/**
+ * 整组替换；superadmin 账号 403，未知的项 400（什么都不存）。
+ * G212 SA-8：还没接受的邀请，勾的集合真的变了 ⇒ 后端换新邀请链接、旧的马上失效（返回里没有标记，前端自己比勾）。
+ */
 export function saveTeamMember(
   id: number,
   selection: TeamSelection,
-): Promise<void> {
-  return apiFetch<void>(`/api/team/members/${id}`, {
+): Promise<SavedTeamMember> {
+  return apiFetch<SavedTeamMember>(`/api/team/members/${id}`, {
     method: "PUT",
     body: selection,
   });
@@ -114,7 +123,11 @@ export function saveTeamContact(
 export function contactFieldError(
   error: unknown,
 ): { field: "email" | "phone"; message: string } | null {
-  if (!(error instanceof ApiError) || (error.status !== 400 && error.status !== 404)) return null;
+  if (
+    !(error instanceof ApiError) ||
+    (error.status !== 400 && error.status !== 404)
+  )
+    return null;
   const d = (error.body as { detail?: unknown } | null)?.detail;
   if (d && typeof d === "object" && !Array.isArray(d)) {
     const o = d as { field?: unknown; message?: unknown };

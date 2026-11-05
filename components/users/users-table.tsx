@@ -61,6 +61,8 @@ export interface RowExtras {
   noEmail?: boolean;
   /** 开 Team 的权限框（Access、Teams、职责、首页、账号类型；Delete 在框最下面）。没有 = 不能编辑。 */
   onEdit?: () => void;
+  /** 待注册的人这次改了权限 / 账号类型、后端已换新邀请链接（G212 SA-8）：行下面出灰字提醒重新发。 */
+  inviteRenewed?: boolean;
 }
 
 interface UsersTableProps extends UserRowActions {
@@ -423,38 +425,57 @@ function UserRow({
     ),
   };
 
+  const renewed = pending && !!extra?.inviteRenewed;
   return (
-    <tr
-      className={cn(
-        "border-b border-[#f3f4f6] night:border-white/10",
-        !pending && !user.is_active && "opacity-55",
-      )}
-    >
-      {columns.map((key) => (
-        <Fragment key={key}>{cells[key]}</Fragment>
-      ))}
+    <>
+      <tr
+        className={cn(
+          // 有灰字时分隔线画在灰字那一行下面，看起来是同一行。
+          !renewed && "border-b border-[#f3f4f6] night:border-white/10",
+          !pending && !user.is_active && "opacity-55",
+        )}
+      >
+        {columns.map((key) => (
+          <Fragment key={key}>{cells[key]}</Fragment>
+        ))}
 
-      <td className="px-4 py-3.5">
-        <div className="flex justify-center gap-2">
-          {extra?.onEdit &&
-          !pending &&
-          !user.is_self &&
-          role !== "superadmin" ? (
-            <button
-              type="button"
-              onClick={extra.onEdit}
-              className={cn(
-                SMALL_BUTTON_CLASS,
-                "border border-[#e5e7eb] bg-[#f3f4f6] px-3 font-medium text-[#1a1a1a] night:border-white/10 night:bg-white/[.07] night:text-white/75",
-              )}
-            >
-              Edit
-            </button>
-          ) : null}
-          <RowActions user={user} role={role} busy={busy} actions={actions} />
-        </div>
-      </td>
-    </tr>
+        <td className="px-4 py-3.5">
+          <div className="flex justify-center gap-2">
+            {/* 待注册的人也能 Edit（Annie 2026-11-05 选 A）：改了权限 / 账号类型后端换新链接，见下面灰字。 */}
+            {extra?.onEdit && !user.is_self && role !== "superadmin" ? (
+              <button
+                type="button"
+                onClick={extra.onEdit}
+                className={cn(
+                  SMALL_BUTTON_CLASS,
+                  "border border-[#e5e7eb] bg-[#f3f4f6] px-3 font-medium text-[#1a1a1a] night:border-white/10 night:bg-white/[.07] night:text-white/75",
+                )}
+              >
+                Edit
+              </button>
+            ) : null}
+            <RowActions user={user} role={role} busy={busy} actions={actions} />
+          </div>
+        </td>
+      </tr>
+      {renewed ? (
+        <tr
+          data-invite-renewed
+          className="border-b border-[#f3f4f6] night:border-white/10"
+        >
+          <td
+            colSpan={columns.length + 1}
+            className="px-4 pt-0 pb-3 text-[12px] text-[#6b7280] night:text-white/50"
+          >
+            {/* 跟名字对齐（头像 38px + 间距 12px）；表格比屏幕宽时贴着左边不跟着滚走（手机上也看得到）。 */}
+            <div className="sticky left-4 w-fit max-w-[calc(100vw-80px)] pl-[50px]">
+              The old invite link no longer works. Click Copy Link and send the
+              new one.
+            </div>
+          </td>
+        </tr>
+      ) : null}
+    </>
   );
 }
 

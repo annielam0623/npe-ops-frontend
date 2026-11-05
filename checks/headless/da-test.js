@@ -2202,6 +2202,26 @@ async function run() {
     await sleep(300);
   }
 
+  // ── 提速（Annie 2026-11-05「动手」，后端主窗口转）：打开时名单同步、Discord 拉取都在后台，不挡页面 ──
+  {
+    await ctl({ syncDelayMs: 3000, pullDelayMs: 6000, pullStatus: "nothing" });
+    await goto("about:blank");
+    const b0 = (await mockLog()).length;
+    const t0 = Date.now();
+    await goto(`${APP}/dispatch?date=2026-10-19`);
+    await waitFor("document.querySelector('.vrow')", 60000);
+    const shown = Date.now() - t0;
+    const lg = (await mockLog()).slice(b0);
+    check(`同步 3 秒 + Discord 6 秒：排车行先画出来，不等两个 POST（${shown}ms）`, shown < 3000 && lg.some((e) => e.path === "/api/dispatch/manifests/sync") , `shown=${shown}`);
+    await helpers();
+    check("两个 POST 还在跑时：Step 1 卡片也已读出来", await waitFor("document.querySelector('[data-card]')", 2500));
+    const pulled = await waitFor("document.body.textContent.includes('Last pull from Discord: 10/04 02:13 PM.')", 12000);
+    check("Discord 拉取回来后照旧写「Last pull from Discord: …」", pulled);
+    await ctl({ syncDelayMs: 0, pullDelayMs: 0 });
+    await goto("about:blank");
+    await sleep(300);
+  }
+
   // ── 置顶 21：司机页预览入口（Annie 2026-10-30「让前端加入口」）：只给 Super Admin，带当前日期，新标签页 ──
   {
     const link = "document.querySelector('[data-driver-preview]')";

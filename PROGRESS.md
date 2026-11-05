@@ -1093,6 +1093,14 @@ D. 已完成、待从置顶移走：
   - How to use 原文：「If you change the access or account type of someone who hasn't accepted their invite yet, their old invite link stops working right away. Click Copy Link and send them the new link.」
   - 灰字原文：「The old invite link no longer works. Click Copy Link and send the new one.」
   - ✅ **Annie 选 A 并「动手」**：e8 问「你那句『同意全部推荐，动手』是不是也包括 Working Record 去掉 Hours 和置顶 88」，Annie 答「是的」。派 7a（Shuttle 那件合完后做）：task/team-invite-renewed-hint，先出截图给 Annie 看灰字，她点头再合 main。同一句「是的」也覆盖 86 Working Record 去掉 Hours：G249 SHA 到了 a0 核完字段直接合。
+  - ⚠️ 7a 发现：Team 页待注册那一行只有 Copy Link / Cancel invite，没有 Edit 键（users-table.tsx:439-442 只有 !pending 才出），Role 下拉也不给（:277），所以在 Team 页改不了待注册的人的权限 / 账号类型，灰字永远不会出现；只有旧 Users 页改 role 会换链接。新题已问 Annie：A（推荐）待注册行加 Edit 键（灰底小键，放 Copy Link 左边，打开同一个 Edit 框），存好以后权限或账号类型真的变了才出灰字，点了 Copy Link 或离开页面后消失，How to use 加那一句；B 不加 Edit，只加 How to use；C 都不做。7a 先按 A 推分支、出截图，不合 main。
+  - ✅ **Annie（原话）：「按推荐，动手」** ⇒ A。7a 检查过了直接合 main，截图留着给 Annie 验收时看。
+  - ✅ **7a 合 main**（task/team-invite-renewed-hint 功能 171205e6，合 main 的 SHA 见 git log；截图 https://claude.ai/artifact/4LMQ8hyXFzVjzDfPwfSEtE ，电脑 + 手机 + How to use）。后端只读核过：save_team_member / save_account_type 对待注册的人能存（_manageable 有邀请专用的规则 SA-2），PUT 返回 member（不带换新标记）。
+    - 待注册行加 Edit（灰底小键，在 Copy Link 左边），开同一个 Edit 框；待注册的人框里不出 Delete（行上已有 🗑 Cancel invite）。能不能 Edit 照后端 can_edit。
+    - 灰字「The old invite link no longer works. Click Copy Link and send the new one.」：存好后，勾的集合（返回的 member.items 跟打开时的比，不看顺序）真的变了，或账号类型换了 ⇒ 那一行下面出，跟名字对齐，表格横向滚动时贴在左边（手机上看得到）。只改职责 / 团队 / 首页 / 联络方式不出；已注册的人不出。点那一行 Copy Link 或离开 / 刷新页面后消失（只在页面上，不存）。重读名单还没回来时点 Copy Link 会先等新令牌，不会复制到作废的旧链接。
+    - How to use 第 1 条末尾加原文那句。代码：components/users/users-table.tsx、users-view.tsx、components/team-permissions/member-form-dialog.tsx、lib/team-permissions-api.ts。
+    - 检查：tp 204/204（新加 13 条：每个待注册行都有 Edit 且在 Copy Link 左边、How to use 那句、改前没灰字、Edit 框没 Delete、只改职责有 PUT 但没灰字、改权限出灰字（原文、灰 #6b7280、紧挨那一行下面）、Copy Link 复制到新令牌 tok-…-v1 且灰字消失、改账号类型也出灰字、刷新后没了、已注册的人改权限不出；mock 照后端换令牌）、users 80/80（单跑；接在别的套后面跑时会在跳 /settings/users 那步崩，老问题）、teams 54/54、nav 38/38；合最新 main 后 tsc 0、eslint 0 错（3 旧 warning）、build 过。
+    - **Annie 验收**（线上，只动 ZZ Test）：Settings › Team 找一行 Pending registration（没有就 Add person 建一个 ZZ Test 邀请，邮箱用 azhou@nationalparkexpress.com）⇒ Actions 列有 Edit · Copy Link · Cancel invite；Edit 改一个权限档位 → Save ⇒ 那一行下面出灰字，旧链接打开显示 invalid；点 Copy Link 复制的是新链接，灰字消失；只改职责 / 团队 → Save ⇒ 不出灰字，旧链接照样能用。
 
 ### 87. Outbound shuttle 从 TI 出发：Dispatch 提示和 Manifest setup 说明要不要跟着改（2026-11-04 晚，Annie 在 ef 窗口提，78 已问，没动手）
 - 原话：「还有一个规则要记住，outbound shuttle的出发点是TI，所以也不需要单独挑酒店的」。
@@ -1584,6 +1592,16 @@ pe-ops-wt-login-default`，mock，**没合 main，等后端 57 的 logged_in_at 
     - 后端 54 补查（后端主窗口转），前端要接三件，等 Annie「动手」：① me / dashboard-widgets / permissions 三个接口同时发，去掉第二次 /api/me：串行现在 21 趟往返，并发后最多 8 趟，每页省 0.4–0.5s；三个接口服务器上各只要 1–5ms，慢的是往返次数（数据库走公网代理）。② 标签页隐藏时停轮询：一个标签页每分钟约 45 趟往返，10 人 × 3 个标签页 ≈ 每分钟 1,350 趟，跟页面请求抢连接。③ Dispatch 打开时 manifests/sync（150–250ms）和 imports/pull（会去问 Discord，最多等 8 秒，冷却只有 5 秒）不要挡在页面显示前面；后端也会改成问 Discord 时不占事务、冷却拉长。
     - ✅ **Annie 在后端主窗口说（原话）：「改变速度的三步，动手」**（后端主窗口转）。三步是：后端 Samsara 统一问（54 做）、前端三个接口同时发 + 共用 /api/me + 不等权限门就读数据、前端后台标签页停轮询。Dispatch 那两个 POST 不在范围内。e8 派 19：task/perf-shell-parallel、task/perf-hidden-poll，检查过直接合 main，SHA 发 e8 和后端主窗口。
     - 更正（后端主窗口转）：Annie 对扩大版也说了「动手」⇒ 前端多一项：Dispatch 打开时 POST manifests/sync、imports/pull 不挡页面，后台跑完再刷新。e8 派 7a（Shuttle 合完后先做这件，再做 Team 灰字）：task/perf-dispatch-bg。
+    - ✅ **7a 做完合 main**（task/perf-dispatch-bg 功能 cae488c9；合 main 的 SHA 见 git log）。改法（components/dispatch/dispatch-view.tsx）：
+      - 打开 / 换天：GET day 一到就画排车，不再等 POST /api/dispatch/manifests/sync；sync 放后台（runSync，只认最后一次、换了日子就不管）。Step 1 卡片、待处理、Seat guests 这些接口跟着页面一起发，用已存的名单先画。
+      - sync 回来：结果 / 报错照旧交给 Step 1（同步失败照旧红字「Could not update the guest lists from the Manifests page…」，读不出人数的单照旧列出）；只有名单真的变了（某团 changed_any / added / removed / changed）才让卡片、待处理、Seat guests 重读一次（卡片保持原样、不闪 loading）。**不碰排车行**（sync 只改 Step 1 名单，不改 day 的行），所以没存的改动不丢、不用等 Save；也不重建 Relay 面板（它的 key 只跟 manifestVersion）。
+      - POST imports/pull（问 Discord）原来就在页面画好之后才发，不挡页面，没改：照旧在 CCL 预填读完后后台拉，有新版时没动过手才预填、动过手照旧写「CCL posted something new while you were editing…」；失败照旧写「Pull failed: …」；拉取中 Pull 键照旧不能按。编辑锁没碰。
+      - 量页面开始显示（da-mock 加延迟，headless Chrome，dev 模式，各 3 次）：同步 250ms + Discord 8 秒：改前第一行排车 547–564ms、Step 1 卡片 592–621ms ⇒ 改后 313–362ms / 381–410ms；同步 3 秒 + Discord 8 秒：改前 3276–3310ms / 3344–3352ms ⇒ 改后 329–357ms / 400–406ms（不再随同步变慢）。量法脚本不进仓库。
+      - 检查：da 521/521（新加 3 条：同步 3 秒 + Discord 6 秒时排车行 3 秒内出、卡片已出、拉取回来照旧写 Last pull）、mf 244/244（「先同步再读卡片」改成不限顺序；新加 4 条：同步 2.5 秒卡片先出、同步回来没变化不重读、有变化自动再读一次且卡片不闪、后台同步失败照旧红字）、nav 38/38；tsc 0、eslint 0 错（3 旧 warning）、build 过。main 期间没有新提交，检查就是在最新 main 上跑的。
+      - **Annie 验收**：打开 Dispatch / 换天，排车和 Step 1 卡片应比以前快出来（以前要等名单同步跑完）；Step 1 名单照旧是最新的（同步完有变化会自己刷新一下卡片）。
+    - Annie 线上 Dashboard Network 截图（11-05）：21 个 /api 请求，Finish 4.95s；每个 126–540ms；/api/me 5 次，schedule / employees / 2026-11-01 各 2 次；第二次 schedule 3.72s、notices?include_read=false&limit=50 2.87s 最慢。重复请求已转 19 一起改，两个慢接口已转后端查。
+    - 19 进度（task/perf-shell-parallel，检查在跑，没合）：schedule / employees / 2026-11-01 各 2 次，是 Today's team 和底部 Schedule 两块各读一遍，现在 15 秒内共用一份；/api/me 5 次变成 1 次；permissions 跟 me、dashboard-widgets 同一轮发。mock：Dashboard 21 个请求变 15 个；员工视角开始读数据 Dashboard 1.47 → 0.92s，Manifests 1.24 → 0.84s，Dispatch 1.14 → 0.49s。
+    - 剩下「中间空约 1000ms」：权限门放行后 app/loading.tsx 会闪一下「加载中…」（中文，不合英文规定），React 让内容再等满 300ms。让页面先藏着挂上会让 partner 打开 Dispatch 时发写操作，已撤回。新题已问 Annie：A（推荐）去掉 app/loading.tsx，站内换页时旧页面留着、直到新页面出来；B 保留，只把字改成英文「Loading…」。
     - 19 推荐先做 1 + 2（同一组文件，交一个窗口）。真实耗时要 Annie 在 Chrome F12 Network 截图（步骤已给 Annie）。
 - **Annie（原话）：「你汇报一下目前为止还有哪些id在用旧系统」** ⇒ 后端 4c 只读查：现有记录分不出来。last_seen_at 只记时间；action_log 不记域名；Host / Referer 没落库；Railway 日志有路径但没有用户。最近 7 天有登录活动的 20 个账号（不分来源），后端直接给 Annie。「旧系统」分两种：① 直接上 confirm 域名；② 在 ops 里打开还没切换的旧页面（走 next.config.ts 的 fallback）。后端问 Annie 指哪种。要分来源，后端在 auth._signed_in 加一行限频日志（域名 + 是否打开页面 + 路径），只能从上线那一刻起算。
 - G212 SA-8 后端上 main 778ee08f（关包 3eaa38e0）：改了还没接受的邀请的角色 / 权限 / 账号类型 ⇒ 旧链接马上失效（400 invalid）。前端那句提醒等 Annie 答置顶 88。
