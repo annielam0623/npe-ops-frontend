@@ -66,6 +66,18 @@ http.createServer(async (req, res) => {
       row({ id: 9, order_number: "S09", guest_name: "ZZ Shuttle B", tour_type: "shuttle:BCRT", shuttle_product_name: "", lunch_turkey: 0, lunch_veggie: 0, lunch_beef: 0 })];
     // specialName：T01 的名字带 í（短信 300 字 / 特殊字符：客人名字里的不算，Annie 2026-10-15）。
     if (ctl.specialName) out = out.map((r) => (r.id === 1 ? { ...r, first_name: "Joaquín", guest_name: "Joaquín ZZ" } : r));
+    // G180 Main manifest 同步（37 冻结形状）：每行带 send_state / order_state；N201–N203 从 Main manifest 进来、还没发（排在中间，前端要挪到下面）。
+    // T02 / N203 在 Order List 里 On hold，T04 Cancelled。没开 sync = 旧后端，两个键都没有。
+    if (ctl.sync) {
+      const orderState = { 2: "on_hold", 4: "cancelled", 23: "on_hold" };
+      const unsent = [
+        row({ id: 21, order_number: "N201", guest_name: "ZZ Test Lee", first_name: "ZZLee", tour_type: "upper_antelope", email_status: "", email_state: "", sms_status: "" }),
+        row({ id: 22, order_number: "N202", guest_name: "ZZ Test Garcia", first_name: "ZZGarcia", tour_type: "grand_canyon_south", pickup_location: "treasure island", pickup_location_id: 9, pickup_hotel_name: "Treasure Island", email_status: "", email_state: "", sms_status: "" }),
+        row({ id: 23, order_number: "N203", guest_name: "ZZ Test Patel", first_name: "ZZPatel", tour_type: "grand_canyon_west", email_status: "", email_state: "", sms_status: "" }),
+      ];
+      out = [...out.slice(0, 2), unsent[0], ...out.slice(2, 4), unsent[1], unsent[2], ...out.slice(4)]
+        .map((r) => ({ ...r, send_state: r.id > 20 ? "unsent" : "sent", order_state: orderState[r.id] || "confirmed" }));
+    }
     return send(res, 200, { date: q.date, rows: q.date === "2026-10-10" ? out : [] });
   }
   if (p === "/api/broadcasting-log") return send(res, 200, { rows: q.date === "2026-10-10" ? [{ id: 5, template_name: "Weather delay", created_at: "10/09 3:00 PM", sent_by: "annie", message_body: "Hi all" }] : [] });

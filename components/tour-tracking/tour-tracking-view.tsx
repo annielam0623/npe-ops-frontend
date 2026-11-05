@@ -37,14 +37,19 @@ import type {
 
 import {
   broadcastCandidates,
+  broadcastRows,
   COLUMN_ORDER_CACHE_KEY,
   COLUMN_VIS_KEY,
   computeStats,
   defaultOrder,
   emailBadgeOf,
+  hasSyncFields,
+  isUnsent,
   matchesSearch,
   matchesTourPill,
+  ORDER_STATUS_AFTER_KEY,
   orderRows,
+  orderStatusAfter,
   parseLegacyOrder,
   parseVis,
   POLL_INTERVAL_MS,
@@ -57,13 +62,20 @@ import {
   tourMeta,
   tourPills,
   toursOnDate,
+  UNSENT_NOTE,
+  UNSENT_ROW_BG,
   uploadedHeaders,
   visibleColumns,
+  withOrderStatus,
 } from "./config";
 import { LunchDialog } from "./lunch-dialog";
 import { TourTable } from "./tour-table";
 import { PageShortcutBar } from "@/components/nav/page-shortcut-bar";
-import { PhoneMore, PhoneShortcutStar } from "@/components/ui/phone";
+import {
+  PhoneMore,
+  PhoneOneLine,
+  PhoneShortcutStar,
+} from "@/components/ui/phone";
 import { PageLink } from "@/components/ui/page-link";
 import { TourUploadDialog } from "./tour-upload-dialog";
 
@@ -104,6 +116,13 @@ function writeLocal(key: string, value: string) {
 }
 
 const messageCount = (r: TourTrackingRow) => r.notes_count + r.wa_count;
+
+/** G180 How to use（题 6 A 原文，Annie 2026-11-05「同意全部推荐，动手」）：加在最前面。 */
+const SYNC_HOW_TO =
+  "Every order in the Main manifest shows here. A grey row means nothing has been sent for that order yet: no confirmation, Last Minute, Shuttle or Broadcast message (Morning pickup messages don't count). Grey rows are listed below the others, are not counted in the numbers at the top, and show — in Status. Once a message is sent, the row is no longer grey and moves up, even if the message failed; check the Email and SMS columns to see if it arrived. The guest's reply is in Status. A rescheduled order shows as a grey row on its new date. Order Status comes from the Order List: if an order is put on hold or cancelled, it shows On hold or Cancelled there, and the row stays as a record. ⇄ Farmed out means the order was handed to a partner.";
+/** 题 6 A：接在 Broadcast 那一条后面。 */
+const SYNC_BROADCAST_HOW_TO =
+  "The list includes guests in grey rows too. On hold and Cancelled orders are left out. Once it is sent, those rows are no longer grey and move up.";
 
 export function TourTrackingView() {
   // date 为空表示还没在浏览器里算出要看哪天（避免服务端 / 浏览器不一致）。
@@ -157,8 +176,10 @@ export function TourTrackingView() {
     // dashboard 订单查询的「Open tracking →」带 ?q=单号：搜索框预填这一单。
     setSearch(takeSearchParam("q") ?? "");
     setVis(parseVis(readLocal(COLUMN_VIS_KEY)));
+    // G180：账号里只有 17 个旧列；Order Status 排在哪一列后面另记在本机。
+    const statusAfter = readLocal(ORDER_STATUS_AFTER_KEY);
     const cached = parseLegacyOrder(readLocal(COLUMN_ORDER_CACHE_KEY));
-    if (cached) setOrder(cached);
+    setOrder(withOrderStatus(cached ?? defaultOrder(), statusAfter));
     const controller = new AbortController();
     // 列顺序跟着账号（tour_col_order，和旧页面共用、存列号）：本机缓存先画，账号里的到了再覆盖。
     // 没存过（null）或读不到就保持本机的（同旧页面）。
@@ -166,7 +187,7 @@ export function TourTrackingView() {
       .then((raw) => {
         const remote = parseLegacyOrder(raw);
         if (remote && !orderTouchedRef.current) {
-          setOrder(remote);
+          setOrder(withOrderStatus(remote, readLocal(ORDER_STATUS_AFTER_KEY)));
           writeLocal(COLUMN_ORDER_CACHE_KEY, toLegacyOrder(remote));
         }
       })
@@ -254,6 +275,7 @@ export function TourTrackingView() {
     setOrder(next);
     const payload = toLegacyOrder(next);
     writeLocal(COLUMN_ORDER_CACHE_KEY, payload);
+    writeLocal(ORDER_STATUS_AFTER_KEY, orderStatusAfter(next));
     // partner 不存账号偏好（后端 G204 对 partner 的列 / 版面 key 回 403），只记在本机。
     if (perms.partnerView) return;
     saveUserPref("tour_col_order", payload).catch(() => {
@@ -329,13 +351,24 @@ export function TourTrackingView() {
   const data = state.kind === "ready" ? state.data : null;
   const allRows = useMemo(() => data?.rows ?? [], [data]);
   const meta = useMemo(() => tourMeta(tourTypes), [tourTypes]);
-  const pills = useMemo(() => tourPills(allRows, meta), [allRows, meta]);
+  // G180（灰底版，Annie 2026-11-05「同意全部推荐，动手」）：旧后端没有 send_state / order_state ⇒ 页面跟现在一样。
+  const sync = useMemo(() => hasSyncFields(allRows), [allRows]);
+  /** 团胶囊、数字卡只算发过的（11/03 题 2 A）。 */
+  const sentRows = useMemo(
+    () => allRows.filter((r) => !isUnsent(r)),
+    [allRows],
+  );
+  const pills = useMemo(() => tourPills(sentRows, meta), [sentRows, meta]);
   // 没勾 orders.money_view（题 8）：上传名单里算钱 / 代理商的表头不出，Columns 里也勾不上。
   const headers = useMemo(
     () => withoutMoneyHeaders(uploadedHeaders(allRows), perms.canSeeMoney),
     [allRows, perms.canSeeMoney],
   );
-  const columns = visibleColumns(order, vis, headers);
+  const columns = visibleColumns(
+    sync ? order : order.filter((k) => k !== "order_status"),
+    vis,
+    headers,
+  );
   const filtered = useMemo(
     () =>
       orderRows(
@@ -343,15 +376,23 @@ export function TourTrackingView() {
           (r) =>
             matchesTourPill(r, tourFilter) &&
             matchesSearch(r, search) &&
-            (!statusFilter || statusOf(r) === statusFilter),
+            // 点数字卡筛客人回复：灰行没发过、不算在那些数里，也不出现。
+            (!statusFilter || (statusOf(r) === statusFilter && !isUnsent(r))),
         ),
       ),
     [allRows, tourFilter, search, statusFilter],
   );
-  const stats = data ? computeStats(filtered, meta) : null;
+  const stats = data
+    ? computeStats(
+        filtered.filter((r) => !isUnsent(r)),
+        meta,
+      )
+    : null;
+  /** To notify 卡：当前团 / 搜索下的灰行数。 */
+  const unsentCount = filtered.filter(isUnsent).length;
   const today = date ? laToday(new Date(now)) : "";
   const tomorrow = today ? shiftYmd(today, 1) : "";
-  const allReplied = allRows.filter((r) => statusOf(r) !== "pending").length;
+  const allReplied = sentRows.filter((r) => statusOf(r) !== "pending").length;
 
   const conversationRow =
     conversationId === null
@@ -504,7 +545,7 @@ export function TourTrackingView() {
                   active={!tourFilter}
                   label="All"
                   replied={allReplied}
-                  total={allRows.length}
+                  total={sentRows.length}
                   onClick={() => setTourFilter("")}
                 />
                 {pills.map((p) => (
@@ -522,8 +563,11 @@ export function TourTrackingView() {
 
             <section
               aria-label="Summary"
-              // 手机上 7 格排一行（午餐那块自己一行）。
-              className="mb-4 flex flex-wrap items-stretch gap-2.5 max-sm:mb-2.5 max-sm:grid max-sm:grid-cols-7 max-sm:gap-1"
+              // 手机上 7 格排一行（午餐那块自己一行）；G180 多一张 To notify 卡时 8 格一行。
+              className={cn(
+                "mb-4 flex flex-wrap items-stretch gap-2.5 max-sm:mb-2.5 max-sm:grid max-sm:gap-1",
+                sync ? "max-sm:grid-cols-8" : "max-sm:grid-cols-7",
+              )}
             >
               <StatCard
                 label="Total"
@@ -572,6 +616,14 @@ export function TourTrackingView() {
                 active={statusFilter === "cancel"}
                 onClick={() => setStatusFilter("cancel")}
               />
+              {sync ? (
+                <StatCard
+                  label="To notify"
+                  value={data ? unsentCount : undefined}
+                  title="Grey rows: orders from the Main manifest with nothing sent yet"
+                  grey
+                />
+              ) : null}
               <StatCard
                 label="Response Rate"
                 title="Replied (non-pending) / successfully sent"
@@ -584,7 +636,7 @@ export function TourTrackingView() {
                 }
               />
               {stats?.lunch.length ? (
-                <div className="flex flex-wrap gap-2 max-sm:col-span-7 max-sm:gap-1">
+                <div className="flex flex-wrap gap-2 max-sm:col-span-full max-sm:gap-1">
                   {stats.lunch.map((g) => (
                     <div
                       key={g.label}
@@ -635,7 +687,11 @@ export function TourTrackingView() {
                 className="[&_[data-phone-more]]:border-[#d0e0d4] [&_[data-phone-more]]:bg-paper [&_[data-phone-more]]:text-[#1a3a2a]"
               >
                 <ColumnPicker
-                  columns={SYSTEM_COLUMNS}
+                  columns={
+                    sync
+                      ? SYSTEM_COLUMNS
+                      : SYSTEM_COLUMNS.filter((c) => c.key !== "order_status")
+                  }
                   prefs={vis}
                   headers={headers}
                   note="Hidden columns and uploaded-file columns are saved in this browser only. Column order (drag the headers) is saved to your account."
@@ -685,6 +741,22 @@ export function TourTrackingView() {
             </div>
 
             {broadcasts.length ? <BroadcastPanel items={broadcasts} /> : null}
+
+            {sync ? (
+              <p
+                data-unsent-note
+                className="mb-2 flex items-center gap-1.5 text-[12.5px] text-[#1a1a1a]"
+              >
+                <span
+                  aria-hidden
+                  className="inline-block h-3.5 w-3.5 shrink-0 rounded-[3px] border border-[#c7cad1]"
+                  style={{ background: UNSENT_ROW_BG }}
+                />
+                <PhoneOneLine className="min-w-0 flex-1">
+                  {UNSENT_NOTE}
+                </PhoneOneLine>
+              </p>
+            ) : null}
 
             <section className="overflow-hidden rounded-[14px] border border-[#d0e0d4] bg-white/[.92] shadow-[0_4px_20px_rgba(26,58,42,0.08)]">
               <div className="flex items-center border-b border-[#d0e0d4] bg-[linear-gradient(180deg,#e8f2ea_0%,#ddeae0_100%)] px-[18px] py-[11px]">
@@ -761,6 +833,7 @@ export function TourTrackingView() {
             <HowToUse
               title="How to use — Tour Confirmation Tracking"
               items={[
+                ...(sync ? [SYNC_HOW_TO] : []),
                 "Pick the tour date with the arrows, the date box, Today or Tomorrow. Click a tour button to see one tour only.",
                 "Click a number box (YES, Modify, Modified, Pending, Cancel) to see only those guests. Click Total to see everyone. The search box finds an order #, name or phone.",
                 // 「Once you’ve called …」一句照旧页面（后端 `7c03bd3`）；Cancel 那句是 ops 原有的。
@@ -774,7 +847,7 @@ export function TourTrackingView() {
                 "⬇ Download CSV saves everything for this date, whatever columns are showing: every column of the uploaded manifest, then the status columns. Older orders have no manifest columns, so those cells are blank.",
                 "⬆ Upload adds orders that were not sent from this system. Choose the tour, then the CSV or .xlsx file. Orders already in the list are skipped unless you tick Insert anyway. Nothing is sent to guests.",
                 // 照旧页面（`a5b3bfd`）这一条替换了原来 ops 自己写的「📣 Broadcast sends … Untick anyone」那句。
-                "Broadcast sends one message to many guests at once. By tour picks guests from the tours you check. By pickup location ignores tour and groups today’s guests by where they get picked up — pick one or more locations, review the names, then send. Guests whose pickup spot is not in Settings → Pickup Locations show up under “Not found” so you can still message them; add an alias there later to merge the spelling.",
+                `Broadcast sends one message to many guests at once. By tour picks guests from the tours you check. By pickup location ignores tour and groups today’s guests by where they get picked up — pick one or more locations, review the names, then send. Guests whose pickup spot is not in Settings → Pickup Locations show up under “Not found” so you can still message them; add an alias there later to merge the spelling.${sync ? ` ${SYNC_BROADCAST_HOW_TO}` : ""}`,
               ]}
               warning="If the list does not load, click ↻ Refresh or reload the page. If it still fails, take a screenshot and tell Annie."
             />
@@ -790,8 +863,9 @@ export function TourTrackingView() {
           audience="mtlv"
           byPickup
           tourDate={date}
-          tours={toursOnDate(allRows, meta)}
-          candidates={broadcastCandidates(allRows)}
+          tours={toursOnDate(broadcastRows(allRows), meta)}
+          // G180：灰行也在名单里，On hold / Cancelled 不在；发完重读，那些行不再是灰的。
+          candidates={broadcastCandidates(broadcastRows(allRows))}
           onClose={() => setBroadcastOpen(false)}
           onSent={() => void load(dateRef.current, true)}
           onUnauthorized={redirectToLogin}
@@ -910,6 +984,7 @@ function StatCard({
   title,
   active,
   onClick,
+  grey,
 }: {
   label: string;
   value: number | string | undefined;
@@ -917,6 +992,8 @@ function StatCard({
   title?: string;
   active?: boolean;
   onClick?: () => void;
+  /** G180 To notify 卡：灰底（同灰行）。 */
+  grey?: boolean;
 }) {
   const body = (
     <>
@@ -935,9 +1012,11 @@ function StatCard({
   );
   const cls = cn(
     "flex min-w-[80px] cursor-pointer flex-col justify-center rounded-[12px] border px-5 py-2.5 text-center shadow-[0_2px_8px_rgba(26,58,42,0.07)] transition-[box-shadow,border-color] duration-150 hover:border-[#4f7f62] hover:shadow-[0_4px_14px_rgba(26,58,42,0.12)] max-sm:min-w-0 max-sm:rounded-[9px] max-sm:px-0.5 max-sm:py-1",
-    active
-      ? "border-[1.5px] border-[#2f5e46] bg-[#d4e8d8]"
-      : "border-[#d0e0d4] bg-white/90",
+    grey
+      ? "cursor-default border-[#c7cad1] bg-[#e1e4e8] hover:border-[#c7cad1]"
+      : active
+        ? "border-[1.5px] border-[#2f5e46] bg-[#d4e8d8]"
+        : "border-[#d0e0d4] bg-white/90",
   );
   return onClick ? (
     <button
