@@ -42,6 +42,7 @@
   - 7a 出 v2（1793916821-c9db）：照 Relay 挑酒店（Add ticket type 下拉 + 胶囊，别行已挑的灰字「- 3 days before」），字段 tickets.lead_groups；How to use 第 4 条改写；题 2 改写、新题 6（提前几天 / 几点发，推荐 A 只是提前几天）。
   - **Annie 问 Daily report 和 summary 的区别，e8 解释后 Annie（原话）**：「没必要，发一份就够了，我建议只发晚上的那个」⇒ 题 3 = C：早上 9:00 的 Day-before summary 不要了，只留傍晚的 Daily report（收件人默认 antelope@，可以改，reservations@ 要的话自己加进去）。preview 要跟着拿掉「Day-before summary at」「Send the summary to」两格，How to use 相关句改写。题 1、2、4、5、6 还没答，还没「动手」。
   - 7a 出 v3（1793917176-f58d）：拿掉 Day-before summary 两格，How to use 改写。✅ **Annie（原话）：「Auto Send 都选 A。动手」** ⇒ 题 1 报告在最后一批发完马上发；题 2 上线时 lead_groups 空着；题 4 全发完也发一封短的；题 5 团确认跳过提醒不变；题 6 只设提前几天。后端规格已整理发给后端主窗口（7 条）；派 7a 开 task/auto-send-limits，先照 mock 写，今天推 WIP，不合 main，等后端字段定了核完再合。
+  - 后端：编号 G259，字段照前端拟的（存在 auto_send 设置 JSON 里，缺键落默认值，不用迁移）。明天先做 1、2、3、5、6、7，估计明天下午上 main；4「间隔 1 秒」跟 G257 同一批文件，排在 G257 之后。G258（团确认 Last Minute 模板）4 题 Annie 还没答，不在这次范围。
 
 ### 三、明天开工
 1. 报对话名；git pull；问后端主窗口 G180 / G257 / Last Minute 进度。
