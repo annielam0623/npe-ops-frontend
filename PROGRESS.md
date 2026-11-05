@@ -6,6 +6,21 @@
 
 > **下一个主窗口：先读下面「2026-11-04 收工交接：前端主窗口 2c」，再看置顶「📌 等 Annie 确认」。**
 
+## 2026-11-05 页面提速第一件：`task/perf-shell-parallel`（工作窗口 `npe-ops-frontend-19`[1e2a0d]，主窗口 e8 派）—— ✅ 合 main
+- Annie 原话（后端主窗口转）：「改变速度的三步，动手」。只改速度、样子不变，不出 preview。
+- 改了什么：
+  - `/api/me` 全站共用一份（`lib/shared-request.ts` + `lib/auth-api.ts`）：整页只读一次，站内换页不重读，失败不留。
+  - `/api/me/permissions` 不再等 `/api/me` 回来才发，和 `/api/me`、dashboard-widgets 同一轮（`lib/staff-permissions.ts`）。
+  - Dashboard 的 Today's team 和 Schedule 两块原来各读一遍 `/api/settings/schedule`、`/api/schedule/employees`、`/api/schedule/weeks/<周>`，现在 15 秒内共用一份（`lib/schedule-api.ts` 的 `dashboardSchedule*`）；Staff Schedule 页照旧每次读新的。
+  - `operation-reports` 两种（`?limit=1` 统计行、不带参数的 DOR 列表）查询不同，没合。
+- 量的（mock，每个接口 300ms；员工视角，数据开始请求的时刻，改前 → 改后）：Dashboard 1.47s → 0.92s；Manifests 1.24s → 0.84s；Dispatch 第一个数据接口 1.14s → 0.49s，全部读完 2.08s → 1.43s。
+  Super Admin 看 Dashboard：21 个请求 → 15 个；`/api/me` 5 次 → 1 次；数据请求从分 4 批变成 0.89s 一批全部发出。
+- 没做（试过、撤回）：权限门判断期间先把页面藏着挂上。da 套 partner 那组 17 条失败：partner 打开 Dispatch 会先发 POST sync / pull、请求 farm-out，违反「不能发写操作」。
+- 还剩一处，要 Annie 定（e8 问）：权限门放行后，路由自带的 `app/loading.tsx` 闪一下「加载中…」，React 19 会让内容再等满 300ms（Annie 截图里「中间空到约 1000ms」那段的一部分）。修法 A：去掉 `app/loading.tsx`（站内换页时旧页面留到新页面出来；这个「加载中…」本身也是中文）；修法 B：等 Next 带的 React 有 Activity。
+- 检查（合最新 main 后）：perm 54/54、dr 89/89、da 521/521、man 411/411、nav 38/38、tp 193/193、users 80/80、tasks 144/144；tsc 0；eslint 0 错（3 条旧 warning）；build 过。
+  users 在 8 套连跑时崩过一次（Team 页 dev 冷编译超时，37s），单独重跑 80/80；da 第一轮 3 条换车失败是偶发，后两轮全过。
+- Annie 验收怎么看：线上 Dashboard → F12 → Network（勾 Disable cache，过滤 /api/）→ F5：`/api/me` 只出现 1 次；schedule、employees、本周 2026-11-01 各 1 次；读数据的请求挤在一批里一起发，不再分好几批。
+
 ## 2026-11-05 前端主窗口 `npe-ops-frontend-e8`[6ce7da] 开工（公司电脑；只分工和汇报，不写代码）
 - Annie：「开工，你是今天的主窗口」。git pull 到 50b28d29（昨晚家里 78 / 77 / ef 的提交都到了）；工作区干净。
 - 资源：空闲内存 35.6 / 61.8 GB，node + chrome 68 个（6.7 GB）⇒ 可开 2–3 个工作窗口。
