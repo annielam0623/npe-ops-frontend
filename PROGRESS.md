@@ -26,7 +26,7 @@
 - **置顶 89 Auto Send**：题全答了（按门票团设提前几天；门票第 1、2 批各 150、第 3 批剩下全部；团确认第 1 批 100、第 2 批剩下全部；间隔 1 秒；每日报告给 antelope@ 带开关默认关；action 原文定了）。**还没「动手」**，7a 在出 preview（进度见置顶 89）。Last Minute 自动发 4 题后端在问 Annie，答了加进同一份 preview。
 - 后端 G257（发送时不占数据库连接，Annie「A」）：11 在做，上了发 SHA，前端不用改。
 
-- **Farm out › Partners & rates 子项价格**（后端主窗口转 Annie 原话）：「有的tour是分项太多，就像west rim，没有办法按照单一的adult和child来统计，如果我只列了一个价钱的话，就是默认大小同价，然后就把列在主项上的两个空格忽略，或者允许我打N/A」「是你的设计需要来配合生意，不是生意来将就你的设计」。前端：① 有子项的团，主项 Adult / Child 不再红色 not set，改灰字 N/A、不要求填；② 子项价格不放在 Child 列下面，改一格跨两列的「Price (all ages)」。后端结算 compute_payable 明天做。派 19 先出 preview（task/farmout-subitem-price），等 Annie「动手」再合。
+- **Farm out › Partners & rates 子项价格**（后端主窗口转 Annie 原话）：「有的tour是分项太多，就像west rim，没有办法按照单一的adult和child来统计，如果我只列了一个价钱的话，就是默认大小同价，然后就把列在主项上的两个空格忽略，或者允许我打N/A」「是你的设计需要来配合生意，不是生意来将就你的设计」。前端：① 有子项的团，主项 Adult / Child 不再红色 not set，改灰字 N/A、不要求填；② 子项价格不放在 Child 列下面，改一格跨两列的「Price (all ages)」。后端结算 compute_payable 明天做。派 19 先出 preview（task/farmout-subitem-price），等 Annie「动手」再合。⚠️ **Annie 更正（原话）**：「子项的adult和child因为你没有提供空格来填，最好把两个格都放上去，同价就填两个一样的价钱就好了」⇒ ② 作废：子项也要 Adult、Child 两格，后端先加子项儿童价（迁移 + 新字段），前端等新形状再做。19 现在只做 ①（主项 N/A）。
 - **Auto Send preview**（7a）：https://claude.ai/artifact/BYv5FXVG7FqYuQ7gFEpV1a ，5 题已转 Annie，推荐都选 A：1 报告在最后一批发完后马上发；2 各团天数上线时空着；3 9:00 前一天汇总 antelope@ 照收；4 全发完也发一封短的；5 团确认跳过提醒不变。
 
 ### 三、明天开工
