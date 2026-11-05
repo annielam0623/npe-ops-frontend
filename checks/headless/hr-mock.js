@@ -28,6 +28,75 @@ const spellings = { 1: ["JOE ROD"] };
 function withSpellings(p) {
   return ctl.spellings ? { ...p, other_spellings: spellings[p.id] ?? [] } : p;
 }
+// ── 置顶 86 Working Record（后端 18 WIP origin/task/day-snapshot 的形状）。日子按「洛杉矶今天那一周」排：d0 = 周日。
+function laToday() {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Los_Angeles", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+}
+function addDays(ymd, n) {
+  const [y, m, d] = ymd.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
+}
+function weekDay(i) {
+  const t = laToday();
+  const [y, m, d] = t.split("-").map(Number);
+  return addDays(t, i - new Date(Date.UTC(y, m - 1, d)).getUTCDay());
+}
+/** 那天洛杉矶的钟点 ⇒ 带时区的 ISO（夏令时也对）。 */
+function la(ymd, hm) {
+  const [y, m, d] = ymd.split("-").map(Number);
+  const [hh, mm] = hm.split(":").map(Number);
+  const guess = Date.UTC(y, m - 1, d, hh, mm);
+  const offAt = (t) => Number(new Intl.DateTimeFormat("en-US", { timeZone: "America/Los_Angeles", timeZoneName: "shortOffset" })
+    .formatToParts(new Date(t)).find((x) => x.type === "timeZoneName").value.replace("GMT", "")) || 0; // "GMT-8" ⇒ -8
+  // 两次：先按猜的时刻取偏移，再按算出的真实时刻重取（夏令时切换那天才对）。
+  const first = guess - offAt(guess) * 3600000;
+  return new Date(guess - offAt(first) * 3600000).toISOString();
+}
+const run = (shift, title, van, as, extra = {}) => ({ shift, kind: shift.startsWith("relay") ? "relay" : "tour", title, manifest_id: 1, tour_name: shift.startsWith("relay") ? "" : title, van, as, start_at: null, end_at: null, ...extra });
+function wrPeople() {
+  const [d0, d1, d2, d3] = [0, 1, 2, 3].map(weekDay);
+  return [
+    { hr_id: 101, name: "ZZ Test Dan", position: "driver", days: [
+      { date: d0, role: "driver", source: "completed", snapshot: true, runs: [run("private_tour", "Private Tour", "", "driver")] },
+      { date: d1, role: "driver", source: "completed", snapshot: true, runs: [run("bus_tour", "Bus tour South Rim", "2622", "driver")] },
+      { date: d2, role: "driver", source: "not_completed", snapshot: true, runs: [run("relay", "Hotel pickups to Treasure Island", "Van 12", "driver"), run("bus_tour", "Bus tour Bryce & Zion", "2610", "driver")] },
+      { date: d3, role: "driver", source: "live", snapshot: false, runs: [run("bus_tour", "Bus tour South Rim", "2622", "driver")] },
+    ] },
+    { hr_id: 102, name: "ZZ Test Carlos", position: "both", days: [
+      { date: d1, role: "both", source: "completed", snapshot: true, runs: [run("bus_tour", "Bus tour South Rim", "2622", "driver"), run("bus_tour", "Bus tour South Rim", "2622", "guide")] },
+      { date: d3, role: "driver", source: "live", snapshot: false, runs: [run("relay_2", "Hotel pickups to Treasure Island", "Van 7", "driver")] },
+    ] },
+    { hr_id: 103, name: "ZZ Test Lankun", position: "guide", days: [
+      { date: d1, role: "guide", source: "completed", snapshot: true, runs: [run("bus_tour", "Bus tour Antelope Canyon", "2356", "guide")] },
+    ] },
+    { hr_id: 104, name: "ZZ Test Lee", position: "guide", days: [
+      { date: d0, role: "guide", source: "completed", snapshot: false, runs: [run("bus_tour", "", "", "guide", { tour_name: "" })] },
+    ] },
+    { hr_id: 105, name: "ZZ Test Nopos", position: "", days: [
+      { date: d2, role: "driver", source: "completed", snapshot: false, runs: [run("bus_tour", "Bus tour West Rim", "2400", "driver")] },
+    ] },
+  ];
+}
+function wrSnapshots() {
+  const d1 = weekDay(1);
+  const data = (title, van) => ({
+    shifts: [{ shift: "bus_tour", title, van }],
+    stops: [{ van, location_id: 1, hotel: "Excalibur", arrived_at: la(d1, "05:42"), left_at: la(d1, "05:51"), dwell_minutes: 9 }],
+    sms: { sent: 3, by: [{ author: "ZZ Test Dan", count: 3, source: "driver_page" }] },
+    guests: { pax: 23, picked_up: 21, boarded: 0, no_show: 2, not_marked: 0 },
+    roster: [{ order_number: "CHDZZ001", pax: 2, status: "picked_up", at: la(d1, "05:45"), by: "ZZ Test Dan", source: "relay" },
+      { order_number: "CHDZZ002", pax: 1, status: "no_show", at: la(d1, "05:50"), by: "ZZ Test Dan", source: "relay" },
+      { order_number: "CHDZZ003", pax: 1, status: null, at: null, by: "", source: "relay" }],
+    generated_at: la(d1, "19:00"),
+  });
+  const snap = (hr_id, name, kind, version, trigger, at, d) => ({ hr_id, name, kind, run_date: d1, version, trigger, created_at: la(d1, at), data: d });
+  return {
+    [`101|${d1}|driver`]: [snap(101, "ZZ Test Dan", "driver", 1, "checked_out", "19:00", data("Bus tour South Rim", "2622")),
+      snap(101, "ZZ Test Dan", "driver", 2, "after_completion", "19:12", { ...data("Bus tour South Rim", "2622"), sms: { sent: 4, by: [] } })],
+    [`102|${d1}|driver`]: [snap(102, "ZZ Test Carlos", "driver", 1, "checked_out", "19:05", data("Bus tour South Rim", "2622"))],
+    [`102|${d1}|guide`]: [snap(102, "ZZ Test Carlos", "guide", 1, "guide_time", "18:00", { ...data("Bus tour South Rim", "2622"), sms: { sent: 0, by: [] } })],
+  };
+}
 function send(res, status, body, headers = {}) {
   res.statusCode = status;
   res.setHeader("Content-Type", "application/json");
@@ -71,7 +140,33 @@ http.createServer(async (req, res) => {
     if (req.method === "PUT") { const b = await readBody(req); entry.body = b; pref = b.value; return send(res, 200, { ok: true }); }
     return send(res, 200, { key: "hr_list_layout", value: pref });
   }
-  if (ctl.writeForbidden && req.method !== "GET" && p.startsWith("/api/hr/")) return send(res, 403, { detail: "Admin access required" });
+  // 置顶 86 Working Record：ctl.widgets = [{key, visibility, visible_to_me}] 时回页面开关（不带 tick 也回）。
+  if (ctl.widgets && p === "/api/settings/dashboard-widgets") return send(res, 200, { readable: true, widgets: ctl.widgets.map((w) => ({ label: w.key, default: "super_admin_only", ...w })) });
+  if (p === "/api/field-calendar") {
+    if (ctl.wrMissing) return send(res, 404, { detail: "Not Found" });
+    if (ctl.wrFail) return send(res, 500, { detail: "Could not load the snapshots. Try again." });
+    if (ctl.wrForbidden) return send(res, 403, { detail: "This page is not open to you." });
+    const from = url.searchParams.get("from");
+    const to = url.searchParams.get("to");
+    const inRange = (person) => ({ ...person, days: person.days.filter((d) => d.date >= from && d.date <= to) });
+    const hrId = url.searchParams.get("hr_id");
+    if (hrId) {
+      const one = wrPeople().find((x) => x.hr_id === Number(hrId));
+      return send(res, 200, { ...inRange(one), from, to });
+    }
+    // 同后端 G249（c1b5a06f）：不带 hr_id 只列这段时间有排班的人，按名字排。
+    return send(res, 200, { from, to, people: wrPeople().map(inRange).filter((x) => x.days.length).sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()) || a.hr_id - b.hr_id) });
+  }
+  const fs = /^\/api\/field-snapshots\/(\d+)$/.exec(p);
+  if (fs) {
+    const key = `${fs[1]}|${url.searchParams.get("date")}|${url.searchParams.get("kind")}`;
+    const all = wrSnapshots()[key];
+    if (!all) return send(res, 404, { detail: "No snapshot for that day." });
+    const v = Number(url.searchParams.get("version")) || all.length;
+    const pick = all[v - 1];
+    return send(res, 200, { ...pick, versions: all.map((s) => ({ version: s.version, trigger: s.trigger, created_at: s.created_at })) });
+  }
+  if (ctl.writeForbidden && req.method !== "GET" && p.startsWith("/api/hr/"))return send(res, 403, { detail: "Admin access required" });
   if (p === "/api/hr/profiles" && req.method === "GET") {
     if (ctl.fail500) return send(res, 500, { detail: "Human Resource is misconfigured and has been disabled: x This needs a code fix, not a settings change." });
     return send(res, 200, { profiles: [...profiles].sort((a, b) => a.legal_name.localeCompare(b.legal_name)).map(withSpellings) });
