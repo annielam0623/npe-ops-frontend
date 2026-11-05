@@ -1093,6 +1093,7 @@ D. 已完成、待从置顶移走：
   - How to use 原文：「If you change the access or account type of someone who hasn't accepted their invite yet, their old invite link stops working right away. Click Copy Link and send them the new link.」
   - 灰字原文：「The old invite link no longer works. Click Copy Link and send the new one.」
   - ✅ **Annie 选 A 并「动手」**：e8 问「你那句『同意全部推荐，动手』是不是也包括 Working Record 去掉 Hours 和置顶 88」，Annie 答「是的」。派 7a（Shuttle 那件合完后做）：task/team-invite-renewed-hint，先出截图给 Annie 看灰字，她点头再合 main。同一句「是的」也覆盖 86 Working Record 去掉 Hours：G249 SHA 到了 a0 核完字段直接合。
+  - ⚠️ 7a 发现：Team 页待注册那一行只有 Copy Link / Cancel invite，没有 Edit 键（users-table.tsx:439-442 只有 !pending 才出），Role 下拉也不给（:277），所以在 Team 页改不了待注册的人的权限 / 账号类型，灰字永远不会出现；只有旧 Users 页改 role 会换链接。新题已问 Annie：A（推荐）待注册行加 Edit 键（灰底小键，放 Copy Link 左边，打开同一个 Edit 框），存好以后权限或账号类型真的变了才出灰字，点了 Copy Link 或离开页面后消失，How to use 加那一句；B 不加 Edit，只加 How to use；C 都不做。7a 先按 A 推分支、出截图，不合 main。
 
 ### 87. Outbound shuttle 从 TI 出发：Dispatch 提示和 Manifest setup 说明要不要跟着改（2026-11-04 晚，Annie 在 ef 窗口提，78 已问，没动手）
 - 原话：「还有一个规则要记住，outbound shuttle的出发点是TI，所以也不需要单独挑酒店的」。
