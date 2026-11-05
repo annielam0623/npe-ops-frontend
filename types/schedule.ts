@@ -7,6 +7,11 @@ export interface ScheduleShiftType {
   /** 班次默认上下班时间（"HH:MM"）：新建时段时预填；没设 / 后端还没上线 = 没有。superadmin 才能改。 */
   default_start_time?: string | null;
   default_end_time?: string | null;
+  /**
+   * 格子颜色（置顶 85，后端 schedule_shift_types.color）：open / mid / close / amber / rose / teal / orange / grey。
+   * 没有 = 后端还没上这一列，前端按 key 给默认颜色（lib/schedule-shift-colors.ts）。
+   */
+  color?: string | null;
 }
 
 /** 工作时段：这段时间内每天必须有人在岗，判空档用；只有 superadmin 能改。 */

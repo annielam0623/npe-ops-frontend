@@ -20,6 +20,7 @@ import {
   setPickupLocationActive,
   setPickupLocationDirection,
   setPickupLocationTourDeparture,
+  setPickupLocationArrivalPoint,
   updatePickupLocation,
 } from "@/lib/pickup-locations-api";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
@@ -32,6 +33,7 @@ import { PickupImportPanel } from "./import-panel";
 import {
   draftOf,
   emptyDraft,
+  arrivalPointOf,
   inputOf,
   type LocationDraft,
   matchesSearch,
@@ -240,6 +242,14 @@ export function PickupLocationsView() {
     const edit = edits[id];
     if (!edit || edit.saving) return;
     const input = inputOf(edit.draft, typesSupported);
+    // Samsara 到站的坐标（后端上线了才有）：改过才另发 PATCH …/arrival-point。
+    const pointChanged =
+      arrivalSupported &&
+      !!edit.original &&
+      (["coordinates", "radius"] as const).some(
+        (k) => edit.draft[k].trim() !== edit.original![k].trim(),
+      );
+    const point = pointChanged ? arrivalPointOf(edit.draft) : null;
     // 页面上就看得出来的错：红字，不发请求，改动留着。
     const localError = !input.hotel_name
       ? "Hotel name is required."
@@ -251,7 +261,9 @@ export function PickupLocationsView() {
               currentSeasons(seasons),
               routeNames(routes, locations),
             )
-          : null;
+          : point && "error" in point
+            ? point.error
+            : null;
     if (localError) {
       setEdits((all) => ({
         ...all,
@@ -272,13 +284,6 @@ export function PickupLocationsView() {
       otherSaved = true;
       // Direction 是单独的接口（置顶 72），同一个 Save 一起存，没改就不发。
       if (directionChanged) await setPickupLocationDirection(id, direction);
-      closeEdit(id);
-      const n = input.times?.length ?? 0;
-      showSaved(
-        id,
-        `✓ Saved ${input.hotel_name}${typesSupported && edit.draft.is_shuttle ? ` · ${n} ${n === 1 ? "time" : "times"}` : ""}`,
-      );
-      void refresh();
     } catch (error) {
       if (isStatus(error, 401)) {
         redirectToLogin();
@@ -307,6 +312,37 @@ export function PickupLocationsView() {
             }
           : all,
       );
+      return;
+    }
+    try {
+      if (point && "point" in point)
+        await setPickupLocationArrivalPoint(id, point.point);
+      closeEdit(id);
+      const n = input.times?.length ?? 0;
+      showSaved(
+        id,
+        `✓ Saved ${input.hotel_name}${typesSupported && edit.draft.is_shuttle ? ` · ${n} ${n === 1 ? "time" : "times"}` : ""}`,
+      );
+      void refresh();
+    } catch (error) {
+      if (isStatus(error, 401)) {
+        redirectToLogin();
+        return;
+      }
+      // 酒店的其他格已经存了，只有坐标没存：改动留着，再按 Save 会再发一次（同样的内容，不会重复）。
+      setEdits((all) =>
+        all[id]
+          ? {
+              ...all,
+              [id]: {
+                ...all[id],
+                saving: false,
+                error: `The hotel was saved, but not the pickup point: ${describeError(error)}`,
+              },
+            }
+          : all,
+      );
+      void refresh();
     }
   }
 
@@ -417,6 +453,8 @@ export function PickupLocationsView() {
   const visible = locations.filter((loc) => matchesSearch(loc, search));
   /** 后端已经有类别（GET 带 is_tour_bus）：分块、两个勾、时间。没有就照旧一张 All Locations。 */
   const typesSupported = locations.some((l) => l.is_tour_bus !== undefined);
+  /** 后端已经有 Samsara 到站（GET 带 latitude）：编辑行出坐标格。 */
+  const arrivalSupported = locations.some((l) => l.latitude !== undefined);
   // 有没存的改动（打开的编辑行改过、季节改过）时离开页面先问（全站规矩）。
   const dirty =
     seasonsDirty ||
@@ -721,6 +759,15 @@ function HowToUse() {
         the extra orders go to a middle bus first, then to the other bus. Auto
         never splits an order: guests who still do not fit stay in Not on a bus
         for you to place. Not set counts as Flexible.
+      </li>
+      <li>
+        <b>Pickup point (live tracking)</b>: click ✏ Edit on a hotel. In Google
+        Maps, right-click the spot where the van stops for these guests and
+        click the numbers at the top of the menu to copy them (for example
+        36.106711, -115.176612). Paste them into Coordinates, keep Within 10 m
+        unless the stop is large, then press Save. Live tracking then records
+        when a relay van gets there and when it leaves. Empty Coordinates to
+        stop recording this hotel.
       </li>
       <li>
         Tour bus departure (only in the Tour bus block): tick it for a place

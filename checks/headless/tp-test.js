@@ -647,8 +647,9 @@ async function fill(page, label, value) {
   await ctl("reset=1&viewer=admin");
   await page.reload({ waitUntil: "domcontentloaded" });
   await waitText(page, "Grace Liu", 60000);
-  const teamCalls = (await ctl("log=1")).filter((l) => l.includes("/api/team/")).length;
-  check("admin: page opens, Team API never called", teamCalls === 0, `got ${teamCalls}`);
+  // G212 起 admin 也去读 /api/team（等后端 B6）；旧后端 403 ⇒ 只读了名单那一次，不写、不报错，照以前。
+  const teamCalls = (await ctl("log=1")).filter((l) => l.includes("/api/team/"));
+  check("admin, old backend: Team API only read (403), no write, no error banner", teamCalls.every((l) => l.startsWith("GET ")) && !(await text(page)).includes("Could not load permissions"), teamCalls.join(" | "));
   t = await text(page);
   check("admin: no Super Admin row, no Access / duties / Home columns, no Edit, no mailbox", !t.includes("@annie") && !t.includes("Notification duties") && !/\bEdit\b/.test(t) && !t.includes("Department mailbox"));
   check("admin: staff row keeps Reset password / ✏️ Name / Deactivate", /Reset password[\s\S]*✏️ Name[\s\S]*Deactivate/.test(await rowText(page, "@ben")));
@@ -790,8 +791,9 @@ async function fill(page, label, value) {
   await click(page, "+ Add person");
   await waitText(page, "Generate Invite Link");
   check("admin Invite Staff: basic dialog + default note", (await dialogText(page)).includes("New staff get the default staff permissions"));
-  const teamCalls2 = (await ctl("log=1")).slice(logStart).filter((l) => l.includes("/api/team/")).length;
-  check("admin Invite Staff never calls Team API", teamCalls2 === 0, `got ${teamCalls2}`);
+  // 旧后端（admin 读 /api/team 403）：Add person 照旧开基础邀请，不另读 / 写 Team API（页面加载时那几次 GET 除外）。
+  const teamCalls2 = (await ctl("log=1")).slice(logStart).filter((l) => l.includes("/api/team/") && !l.startsWith("GET "));
+  check("admin, old backend: Add person opens the basic invite, no Team API write", teamCalls2.length === 0, teamCalls2.join(" | "));
 
   // ── Columns（10-28 合并 preview v3「动手」那批；后端 92 的 team_list_layout，同 HR 的 hr_list_layout）──
   {
@@ -1002,6 +1004,111 @@ async function fill(page, label, value) {
     await page.goto(PAGE, { waitUntil: "domcontentloaded" });
     await waitText(page, "Grace Liu", 60000);
     check("import: admin has no ⬆ Import", !(await page.evaluate(() => [...document.querySelectorAll("button")].some((b) => b.innerText.trim() === "⬆ Import"))));
+    await ctl("reset=1");
+  }
+
+  // ── G212 B5 / B6 / B7 + SA-2 / SA-6 + B3（后端 f4 没上线，mock g212=1；preview v3「a看不到 b不能 c不能 d不能」）──
+  {
+    const rowHas = async (who, s) => ((await rowText(page, who)) || "").includes(s);
+    const pendingRows = () =>
+      page.evaluate(() =>
+        [...document.querySelectorAll("tbody tr")]
+          .filter((tr) => tr.innerText.includes("Pending registration"))
+          .map((tr) => ({ lock: tr.querySelector("[data-edit-block]")?.innerText.trim() || "", copy: tr.innerText.includes("Copy Link"), cancel: tr.innerText.includes("Cancel invite") })),
+      );
+    await ctl("reset=1&g212=1&viewer=admin");
+    await page.goto(PAGE, { waitUntil: "domcontentloaded" });
+    await waitText(page, "Daniel Park", 60000);
+    let t = await text(page);
+    check("G212 admin: list from /api/team/members — no Super Admin row (Qa), no mailbox row (Q9)", !t.includes("@annie") && !t.includes("Department mailbox"));
+    check("G212 admin: driver account added from /api/users, keeps its keys (Reset password / ✏️ Name / Deactivate)", /Reset password[\s\S]*✏️ Name[\s\S]*Deactivate/.test((await rowText(page, "@zz.driver")) || ""), await rowText(page, "@zz.driver"));
+    check("G212 admin: Access / Notification duties columns now shown (catalog + details readable)", /notification duties/i.test(t) && /\d+ modules/.test((await rowText(page, "@ben")) || ""), (await rowText(page, "@ben")) || "");
+    const kevin = (await rowText(page, "@kevin")) || "";
+    check("G212 admin: other admin row — only 🔒 + backend reason, no Edit / Deactivate / role menu",
+      kevin.includes("🔒 Only a Super Admin can change another admin.") && !/\bEdit\b|Deactivate|Reset password/.test(kevin) &&
+        !(await page.evaluate(() => [...document.querySelectorAll("tbody tr")].find((r) => r.innerText.includes("@kevin")).querySelector("select"))), kevin);
+    const self = (await rowText(page, "@grace")) || "";
+    check("G212 admin: own row — no Edit (Qb), Reset password (greyed) + ✏️ Name (preview v3 ②), no lock text", !/\bEdit\b/.test(self) && self.includes("Reset password") && self.includes("✏️ Name") && !self.includes("🔒"), self);
+    const ben = (await rowText(page, "@ben")) || "";
+    check("G212 admin: staff row — Edit · Reset password · ✏️ Name · Deactivate", /Edit[\s\S]*Reset password[\s\S]*✏️ Name[\s\S]*Deactivate/.test(ben), ben);
+    const opts = await page.evaluate(() => [...[...document.querySelectorAll("tbody tr")].find((r) => r.innerText.includes("@ben")).querySelectorAll("select option")].map((o) => o.textContent.trim()));
+    check("G212 admin: role menu only roles below admin (Qc: no Admin / Super Admin)", opts.length > 0 && !opts.includes("Admin") && !opts.includes("Super Admin") && opts.includes("Supervisor"), opts.join(","));
+    const pend = await pendingRows();
+    check("G212 admin: pending invites — normal ones keep Copy Link + Cancel invite; SA-6 admin invite and SA-2 out-of-range invite show 🔒 reason, no Copy Link, no Cancel",
+      pend.filter((r) => !r.lock && r.copy && r.cancel).length === 2 &&
+        pend.some((r) => r.lock === "🔒 Only a Super Admin can change another admin." && !r.copy && !r.cancel) &&
+        pend.some((r) => r.lock === "🔒 Only a Super Admin can share this invite." && !r.copy && !r.cancel), JSON.stringify(pend));
+    check("G212 admin: Action Log panel shown (Q6: admin can read /api/team/action-log)", (await text(page)).includes("Action Log") || (await page.$("[data-action-log]")) !== null);
+    // Edit 框：Qd 灰掉、没有 Delete
+    await click(page, "Edit", "@ben");
+    await page.waitForSelector("[data-own-items-note]", { timeout: 15000 }).catch(() => {});
+    await page.evaluate(() => {
+      const d = document.querySelector('[role="dialog"]');
+      const g = [...d.querySelectorAll("button[aria-expanded]")].find((b) => /^\s*▸?\s*Settings\b/.test(b.innerText));
+      g?.click();
+    });
+    await sleep(300);
+    const qd = await page.evaluate(() => {
+      const d = document.querySelector('[role="dialog"]');
+      const grp = [...d.querySelectorAll('[role="group"]')].find((g) => /schedule work window/i.test(g.getAttribute('aria-label') || ""));
+      const locked = grp ? [...grp.querySelectorAll("button")].filter((b) => b.disabled && b.dataset.beyondOwn).map((b) => b.innerText.trim()) : null;
+      const other = [...d.querySelectorAll('[role="group"]')].find((g) => /vehicles/i.test(g.getAttribute('aria-label') || ""));
+      return {
+        note: d.querySelector("[data-own-items-note]")?.innerText.trim(),
+        locked,
+        otherFree: other ? [...other.querySelectorAll("button")].every((b) => !b.disabled) : null,
+        del: !!d.querySelector("[data-delete-person]"),
+        labels: [...d.querySelectorAll('[role="group"]')].map((g) => g.getAttribute('aria-label')).join(" / "),
+      };
+    });
+    check("G212 admin Edit (Qd): note + the item admin doesn't have (Settings: Schedule…) can't be turned on, items admin has stay free; no Delete (B8)",
+      qd.note === "Greyed-out choices would give or take away permissions you don't have yourself. Only a Super Admin can change those." && Array.isArray(qd.locked) && qd.locked.length > 0 && qd.otherFree === true && !qd.del, JSON.stringify(qd));
+    await click(page, "Cancel", "dialog").catch(() => page.keyboard.press("Escape"));
+    await sleep(300);
+    // 改角色：Supervisor（下一层）能改
+    const roleLog = (await ctl("log=1")).length;
+    await page.evaluate(() => {
+      const s = [...document.querySelectorAll("tbody tr")].find((r) => r.innerText.includes("@ben")).querySelector("select");
+      const set = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value").set;
+      set.call(s, "supervisor");
+      s.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    await waitText(page, "Change Role");
+    await click(page, "Change Role", "dialog");
+    await waitFor(page, async () => (await ctl("log=1")).slice(roleLog).some((l) => l.startsWith("POST /api/users/7/role")));
+    check("G212 admin: change Ben to Supervisor → POST role supervisor", (await ctl("log=1")).slice(roleLog).some((l) => l.startsWith("POST /api/users/7/role") && l.includes('"supervisor"')));
+    // Add person：admin 也开完整的表（B6 以后），默认组里自己没有的项不带
+    await waitNoText(page, "Change Role");
+    const addLog = (await ctl("log=1")).length;
+    await click(page, "+ Add person");
+    await page.waitForSelector("[data-own-items-note]", { timeout: 15000 }).catch(() => {});
+    check("G212 admin: + Add person opens the full form with the Qd note (not the basic invite)", !!(await page.$("[data-own-items-note]")) && !(await dialogText(page)).includes("Generate Invite Link"));
+    await page.keyboard.press("Escape");
+    await sleep(300);
+    check("G212 admin: nothing written while just opening dialogs", (await ctl("log=1")).slice(addLog).every((l) => l.startsWith("GET ")));
+
+    // Super Admin：Super Admin 行写原因 + ✏️ Name；Delete 409（B3）照显示 + Deactivate instead
+    await ctl("reset=1&g212=1");
+    await page.goto(PAGE, { waitUntil: "domcontentloaded" });
+    await waitText(page, "Grace Liu", 60000);
+    t = await text(page);
+    check("G212 SA: own row unchanged (Reset password), mailbox row still there, driver row added", await rowHas("@annie", "Reset password") && t.includes("Department mailbox") && t.includes("@zz.driver"));
+    const kevinSa = (await rowText(page, "@kevin")) || "";
+    check("G212 SA: other admins fully editable (Edit · Deactivate · role menu incl. Admin)", /Edit[\s\S]*Deactivate/.test(kevinSa) &&
+      (await page.evaluate(() => [...[...document.querySelectorAll("tbody tr")].find((r) => r.innerText.includes("@kevin")).querySelectorAll("select option")].map((o) => o.textContent.trim()).includes("Admin"))), kevinSa);
+    check("G212 SA: all pending invites have Copy Link + Cancel invite", (await pendingRows()).every((r) => r.copy && r.cancel && !r.lock));
+    await click(page, "Edit", "@zz.test");
+    await page.waitForSelector("[data-delete-person]");
+    check("G212 SA Edit: no Qd note (SA has everything)", !(await page.$("[data-own-items-note]")));
+    await ctl("delfail=linked");
+    await page.click("[data-delete-person]");
+    await page.waitForSelector("[data-delete-person-confirm]");
+    await click(page, "Yes", "dialog");
+    await waitText(page, "is still linked to 3 task handovers");
+    check("G212 B3: 409 sentence shown as is + Deactivate instead",
+      (await dialogText(page)).includes("ZZ Test Staff is still linked to 3 task handovers and 12 Dispatch assignments, so the account cannot be deleted. Deactivate it instead, or reassign those first.") &&
+        (await page.evaluate(() => [...document.querySelectorAll('[role="dialog"] button')].some((b) => b.innerText.trim() === "Deactivate instead"))));
+    await page.keyboard.press("Escape");
     await ctl("reset=1");
   }
 

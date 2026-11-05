@@ -1357,7 +1357,7 @@ async function run() {
   await waitFor("document.querySelector('[data-open-settings]')");
   await openSettings();
   const roText = await evaluate(`return ${SD}.textContent;`);
-  check("没勾 settings.schedule 的排班人：⚙ Settings 打开只读——时间是字、没有 Save，底下写怎么要权限", ["3:00 AM – 9:30 PM", "Open 2:00 AM – 10:00 AM", "Mid 8:00 AM – 5:00 PM", "Close 1:30 PM – 9:30 PM", "Gaps are checked inside these hours.", "Pre-filled times for new shifts only.", "Settings: Schedule work window and shift types"].every((t) => roText.includes(t)) && (await evaluate(`return !${SD}.querySelector('[data-settings-save]') && !${SD}.querySelector('input');`)), roText);
+  check("没勾 settings.schedule 的排班人：⚙ Settings 打开只读——时间是字、没有 Save，底下写怎么要权限", ["3:00 AM – 9:30 PM", "Open 2:00 AM – 10:00 AM", "Mid 8:00 AM – 5:00 PM", "Close 1:30 PM – 9:30 PM", "Gaps are checked inside these hours.", "Default times pre-fill new shifts only.", "Settings: Schedule work window and shift types"].every((t) => roText.includes(t)) && (await evaluate(`return !${SD}.querySelector('[data-settings-save]') && !${SD}.querySelector('input');`)), roText);
   await evaluate(`$btn('Close', ${SD}).click();`);
   await waitFor(`!${SD}`);
   await ctl({ tick: null, role: "staff", meName: "Veronica" });
@@ -1395,7 +1395,16 @@ async function run() {
   await evaluate(`const el = ${SD}.querySelector('input[aria-label="Mid start"]'); el.focus(); $setValue(el, ''); el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));`);
   await waitFor(`!!${SD}.querySelector('[data-settings-unsaved]')`);
   await evaluate(`${SD}.querySelector('[data-settings-save]').click();`);
-  check("只清了 Mid 的开始：后端 400，红字「Default shift times not saved — Mid: 后端原话」，没存的还在（黄字不消失、输入框还是空的）", (await waitFor(`${SD}.querySelector('[data-settings-error]')?.textContent.includes('Default shift times not saved — Mid: Send both default_start_time and default_end_time, or neither.')`)) && (await evaluate(`return ${SD}.querySelector('input[aria-label="Mid start"]').value === '' && !${SD}.querySelector('[data-settings-save]').disabled;`)), await evaluate(`return ${SD}.querySelector('[data-settings-error]')?.textContent;`));
+  // 置顶 85 起页面上先查（默认时间只填一个），不送后端。
+  check("只清了 Mid 的开始：红字「Enter both default times for Mid, or leave both empty.」，没发请求，没存的还在（输入框还是空的、Save 能按）", (await waitFor(`${SD}.querySelector('[data-settings-error]')?.textContent === 'Enter both default times for Mid, or leave both empty.'`)) && (await since(setFrom, (e) => e.method === "PUT")).length === 0 && (await evaluate(`return ${SD}.querySelector('input[aria-label="Mid start"]').value === '' && !${SD}.querySelector('[data-settings-save]').disabled;`)), await evaluate(`return ${SD}.querySelector('[data-settings-error]')?.textContent;`));
+  // 后端 400：红字写哪一种、后端原话，改动留在页面上
+  await evaluate(`$setValue(${SD}.querySelector('input[aria-label="Mid start"]'), '08:00');`);
+  await evaluate(`$setValue(${SD}.querySelector('input[aria-label="Mid end"]'), '08:00');`);
+  await waitFor(`!!${SD}.querySelector('[data-settings-unsaved]')`);
+  await ctl({ shiftTypePutFail: "mid" });
+  await evaluate(`${SD}.querySelector('[data-settings-save]').click();`);
+  check("后端 400（Mid）：红字「Shift type not saved — Mid: 后端原话」，改动留着、Save 能再按", (await waitFor(`${SD}.querySelector('[data-settings-error]')?.textContent === 'Shift type not saved — Mid: default_start_time and default_end_time cannot be the same.'`)) && (await evaluate(`return ${SD}.querySelector('input[aria-label="Mid end"]').value !== '' && !${SD}.querySelector('[data-settings-save]').disabled;`)), await evaluate(`return ${SD}.querySelector('input[aria-label="Mid start"]').value + ' / ' + ${SD}.querySelector('input[aria-label="Mid end"]').value + ' / save disabled ' + ${SD}.querySelector('[data-settings-save]').disabled;`));
+  await ctl({ shiftTypePutFail: null });
   await evaluate(`$btn('Cancel', ${SD}).click();`);
   await waitFor(`!!${SD}.querySelector('[data-settings-ask-close]')`);
   await evaluate(`$btn('Discard', ${SD}.querySelector('[data-settings-ask-close]')).click();`);
@@ -1469,6 +1478,271 @@ async function run() {
     $btn('Cancel', d).click();
     return ok;
   `));
+
+  // ── 置顶 85：⚙ Settings › Shift types（Annie 2026-11-04「排班这个全部同意推荐，动手吧」，preview v4 9LFRCau1uBg5sQ5aPbdSZt）──
+  //    新增 / 改名 / 停用（+ 还有规则在用的黄字）/ 排序 / 颜色；全部暂存、按 Save 一起存；Unassigned 不上色。
+  {
+    const ST = `${SD}.querySelector('[data-shift-types]')`;
+    const rowOf = (id) => `${SD}.querySelector('[data-shift-type-row="${id}"]')`;
+    const newRow = `[...${SD}.querySelectorAll('[data-shift-type-row][data-new]')].pop()`;
+    const savedTypes = async () => (await (await fetch(`${MOCK}/api/settings/schedule`)).json()).shift_types;
+    const waitSaved = () => waitFor(`!!${SD}.querySelector('[data-settings-saved]') || !!${SD}.querySelector('[data-settings-error]')`);
+    const unsavedText = () => evaluate(`return ${SD}.querySelector('[data-settings-unsaved]')?.textContent;`);
+    const errText = () => evaluate(`return ${SD}.querySelector('[data-settings-error]')?.textContent;`);
+    const order = () => evaluate(`return [...${SD}.querySelectorAll('[data-shift-type-row]')].map((r) => r.dataset.shiftTypeRow).join(',');`);
+    const writes = (from) => since(from, (e) => (e.method === "POST" || e.method === "PUT") && e.path.startsWith("/api/settings/schedule/shift-types"));
+    await ctl({ phase2: true, role: "superadmin", tick: null, resetShiftTypes: true, shiftColors: false });
+    const rulesBefore = await (await fetch(`${MOCK}/api/schedule/rules`)).json();
+    await openPage(`${APP}/schedule?week=${P2}`);
+    await waitFor("document.querySelector('[data-open-settings]')");
+    await openSettings();
+    check(
+      "85 Shift types：标题 Shift types，三行 Open / Mid / Close（⋮⋮、色块、名字框、两格默认时间、Active 勾着），说明里有 How to use 那段",
+      (await order()) === "open,mid,close" &&
+        (await evaluate(`const s = ${SD}.querySelector('[data-settings-defaults]'); return s.querySelector('h3').textContent.trim().startsWith('Shift types') && [...s.querySelectorAll('[data-shift-type-row]')].every((r) => r.querySelector('[data-shift-type-grip]') && r.querySelector('[data-shift-type-color]') && r.querySelector('input[data-shift-type-name]') && r.querySelectorAll('input:not([data-shift-type-name]):not([type=checkbox])').length === 2 && r.querySelector('[data-shift-type-active]').checked) && s.querySelector('[data-shift-types-help]').textContent.includes('Drag ⋮⋮ to change the order of the buttons in Add shift.') && s.textContent.includes('Default times pre-fill new shifts only.');`)),
+      await evaluate(`const s = ${SD}.querySelector('[data-settings-defaults]'); return JSON.stringify({ labels: [...s.querySelector('[data-shift-type-row]').querySelectorAll('input')].map((i) => i.getAttribute('aria-label') + ':' + i.type), all: [...${SD}.querySelectorAll('input')].map((i) => i.getAttribute('aria-label')).join('|'), h3: s.querySelector('h3').textContent, rows: [...s.querySelectorAll('[data-shift-type-row]')].map((r) => [!!r.querySelector('[data-shift-type-grip]'), !!r.querySelector('[data-shift-type-color]'), !!r.querySelector('input[data-shift-type-name]'), r.querySelectorAll('input:not([data-shift-type-name]):not([type=checkbox])').length, r.querySelector('[data-shift-type-active]')?.checked]), help: s.querySelector('[data-shift-types-help]')?.textContent });`),
+    );
+    check("85 旧后端没 color：色块按 key 给 Open 绿 / Mid 蓝 / Close 紫", await evaluate(`return [...${SD}.querySelectorAll('[data-shift-type-color]')].map((b) => b.dataset.shiftTypeColor).join(',') === 'open,mid,close';`));
+    check(
+      "85 「+ Add shift type」是灰绿 #6b8e74、白字",
+      await evaluate(`const b = ${SD}.querySelector('[data-add-shift-type]'); const cs = getComputedStyle(b); return b.textContent.trim() === '+ Add shift type' && cs.backgroundColor === 'rgb(107, 142, 116)' && cs.color === 'rgb(255, 255, 255)';`),
+      await evaluate(`return getComputedStyle(${SD}.querySelector('[data-add-shift-type]')).backgroundColor;`),
+    );
+    // 后端还不存颜色（settings 没带 color 键，2c 2026-11-04「现在就合，不等 color」）：只显示默认色，不给挑；新类型灰白；POST 不带 color。
+    check("85 旧后端没 color：色块只是显示（不是按钮），没有选色小窗", await evaluate(`return [...${SD}.querySelectorAll('[data-shift-type-row]')].every((r) => { const s = [...r.querySelectorAll('[data-shift-type-color]')]; return s.length === 1 && s[0].tagName === 'SPAN' && s[0].hasAttribute('data-color-fixed'); }) && !${SD}.querySelector('[data-shift-color-pop]');`));
+    let ncFrom = (await mockLog()).length;
+    await evaluate(`${SD}.querySelector('[data-add-shift-type]').click();`);
+    await waitFor(`!!${newRow}`);
+    check("85 旧后端没 color：新加的一行是灰白色块", await evaluate(`return ${newRow}.querySelector('[data-shift-type-color]').dataset.shiftTypeColor === 'grey';`));
+    await evaluate(`$setValue(${newRow}.querySelector('input[data-shift-type-name]'), 'ZZ Test Nocolor');`);
+    await evaluate(`${SD}.querySelector('[data-settings-save]').click();`);
+    await waitSaved();
+    let ncw = await writes(ncFrom);
+    check("85 旧后端没 color：按 Save 的 POST 不带 color", ncw.length === 1 && ncw[0].method === "POST" && !("color" in ncw[0].body) && ncw[0].body.key === "zz_test_nocolor", JSON.stringify(ncw.map((e) => e.body)));
+    // 下面照后端上了 color 列来测（选色小窗、存颜色）。
+    await evaluate(`$btn('Close', ${SD}).click();`);
+    await waitFor(`!${SD}`);
+    await ctl({ resetShiftTypes: true, shiftColors: true });
+    await openPage(`${APP}/schedule?week=${P2}`);
+    await waitFor("document.querySelector('[data-open-settings]')");
+    await openSettings();
+    check("85 后端带 color：色块是按钮，能点开选色", await evaluate(`return [...${SD}.querySelectorAll('[data-shift-type-row] [data-shift-type-color]')].every((b) => b.tagName === 'BUTTON');`));
+    // 新增：空名字挡住
+    let stFrom = (await mockLog()).length;
+    await evaluate(`${SD}.querySelector('[data-add-shift-type]').click();`);
+    check(
+      "85 点 + Add shift type：多一行空的（颜色 = 还没人用的黄），名字框拿到焦点，黄字 Not saved yet: new shift type added",
+      (await waitFor(`!!${newRow}`)) &&
+        (await evaluate(`const r = ${newRow}; return r.querySelector('[data-shift-type-color]').dataset.shiftTypeColor === 'amber' && document.activeElement === r.querySelector('input[data-shift-type-name]');`)) &&
+        (await unsavedText()) === "Not saved yet: new shift type added",
+      await unsavedText(),
+    );
+    await evaluate(`${SD}.querySelector('[data-settings-save]').click();`);
+    check(
+      "85 名字空着按 Save：红字「Enter a name for the new shift type.」、名字框红框，没发请求",
+      (await waitFor(`${SD}.querySelector('[data-settings-error]')?.textContent === 'Enter a name for the new shift type.'`)) &&
+        (await evaluate(`return ${newRow}.querySelector('input[data-shift-type-name]').className.includes('border-red-400');`)) &&
+        (await writes(stFrom)).length === 0,
+      await errText(),
+    );
+    // 重名挡住
+    await evaluate(`$setValue(${newRow}.querySelector('input[data-shift-type-name]'), 'open');`);
+    await evaluate(`${SD}.querySelector('[data-settings-save]').click();`);
+    check(
+      "85 跟已有的重名（不分大小写）：红字「There is already a shift type called “open”.」，没发请求",
+      (await waitFor(`${SD}.querySelector('[data-settings-error]')?.textContent === 'There is already a shift type called “open”.'`)) && (await writes(stFrom)).length === 0,
+      await errText(),
+    );
+    // 填好：名字、颜色、默认时间
+    await evaluate(`$setValue(${newRow}.querySelector('input[data-shift-type-name]'), 'ZZ Test Training');`);
+    await evaluate(`${newRow}.querySelector('[data-shift-type-color]').click();`);
+    check(
+      "85 点色块：出 8 种颜色（绿蓝紫黄粉青橙灰），标题 Colour for ZZ Test Training",
+      (await waitFor(`!!${SD}.querySelector('[data-shift-color-pop]')`)) &&
+        (await evaluate(`const p = ${SD}.querySelector('[data-shift-color-pop]'); return [...p.querySelectorAll('[data-pick-color]')].map((b) => b.dataset.pickColor).join(',') === 'open,mid,close,amber,rose,teal,orange,grey' && p.textContent.includes('Colour for ZZ Test Training');`)),
+    );
+    await evaluate(`${SD}.querySelector('[data-shift-color-pop] [data-pick-color="teal"]').click();`);
+    await evaluate(`const r = ${newRow}; $setValue(r.querySelector('input[aria-label="ZZ Test Training start"]'), '13:00'); $setValue(r.querySelector('input[aria-label="ZZ Test Training end"]'), '16:00');`);
+    check(
+      "85 选了青色、填了 1:00 PM – 4:00 PM：小窗收起，黄字 Not saved yet: new shift type ZZ Test Training added",
+      (await waitFor(`!${SD}.querySelector('[data-shift-color-pop]') && ${newRow}.querySelector('[data-shift-type-color]').dataset.shiftTypeColor === 'teal'`)) &&
+        (await unsavedText()) === "Not saved yet: new shift type ZZ Test Training added",
+      await unsavedText(),
+    );
+    await evaluate(`${SD}.querySelector('[data-settings-save]').click();`);
+    await waitSaved();
+    let w = await writes(stFrom);
+    check(
+      "85 按 Save：一个 POST（key 从名字来 zz_test_training、sort_order 接在最后 13、teal、13:00–16:00），没 PUT 别的类型，绿字 Saved，那一行变成已存的",
+      w.length === 1 &&
+        w[0].method === "POST" &&
+        JSON.stringify(w[0].body) === JSON.stringify({ label: "ZZ Test Training", sort_order: 13, default_start_time: "13:00", default_end_time: "16:00", color: "teal", key: "zz_test_training" }) &&
+        (await evaluate(`return !!${SD}.querySelector('[data-settings-saved]') && !!${rowOf("zz_test_training")} && !${SD}.querySelector('[data-shift-type-row][data-new]');`)),
+      JSON.stringify(w.map((e) => [e.method, e.body])) + " " + (await errText()),
+    );
+    // × 去掉没存的新行
+    await evaluate(`${SD}.querySelector('[data-add-shift-type]').click();`);
+    await waitFor(`!!${newRow}`);
+    await evaluate(`${newRow}.querySelector('[data-remove-new-type]').click();`);
+    check("85 没存的新行点 ×：去掉，黄字没了", await waitFor(`!${SD}.querySelector('[data-shift-type-row][data-new]') && !${SD}.querySelector('[data-settings-unsaved]')`));
+    // key 重了加 _2
+    stFrom = (await mockLog()).length;
+    await evaluate(`${SD}.querySelector('[data-add-shift-type]').click();`);
+    await waitFor(`!!${newRow}`);
+    await evaluate(`$setValue(${newRow}.querySelector('input[data-shift-type-name]'), 'ZZ Test  Training!');`);
+    await evaluate(`${SD}.querySelector('[data-settings-save]').click();`);
+    await waitSaved();
+    w = await writes(stFrom);
+    check(
+      "85 名字生成的 key 已经有了：加 _2（zz_test_training_2），没填时间送 null",
+      w.length === 1 && w[0].body.key === "zz_test_training_2" && w[0].body.default_start_time === null && w[0].body.default_end_time === null,
+      JSON.stringify(w.map((e) => e.body)),
+    );
+    // 改名
+    stFrom = (await mockLog()).length;
+    await evaluate(`$setValue(${rowOf("mid")}.querySelector('input[data-shift-type-name]'), 'Midday');`);
+    check(
+      "85 改名 Mid → Midday：名字框黄框，下面黄字「Was “Mid” — not saved yet」，页脚 Not saved yet: Mid renamed",
+      (await waitFor(`${rowOf("mid")}.querySelector('[data-shift-type-was]')?.textContent === 'Was “Mid” — not saved yet'`)) &&
+        (await evaluate(`return ${rowOf("mid")}.querySelector('input[data-shift-type-name]').className.includes('border-amber-400');`)) &&
+        (await unsavedText()) === "Not saved yet: Mid renamed",
+      await unsavedText(),
+    );
+    await evaluate(`${SD}.querySelector('button[aria-label="Close"]').click();`);
+    check("85 改了名没存就点 ×：不关，问 Keep editing / Discard / Save", await waitFor(`!!${SD}?.querySelector('[data-settings-ask-close]')`));
+    await evaluate(`$btn('Keep editing', ${SD}.querySelector('[data-settings-ask-close]')).click();`);
+    await evaluate(`${SD}.querySelector('[data-settings-save]').click();`);
+    await waitSaved();
+    w = await writes(stFrom);
+    check(
+      "85 改名按 Save：只 PUT mid 一个（label Midday；sort_order / Active / 默认时间照旧；key 不变），绿字 Saved，黄字没了",
+      w.length === 1 &&
+        w[0].path === "/api/settings/schedule/shift-types/mid" &&
+        w[0].body.label === "Midday" &&
+        w[0].body.sort_order === 2 &&
+        w[0].body.is_active === true &&
+        w[0].body.default_start_time === "08:00" &&
+        (await evaluate(`return !!${SD}.querySelector('[data-settings-saved]') && !${rowOf("mid")}.querySelector('[data-shift-type-was]');`)),
+      JSON.stringify(w.map((e) => [e.path, e.body])),
+    );
+    // 排序（键盘 ↑，同拖 ⋮⋮）
+    stFrom = (await mockLog()).length;
+    await evaluate(`const g = ${rowOf("close")}.querySelector('[data-shift-type-grip]'); g.focus(); g.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }));`);
+    check(
+      "85 ⋮⋮ 把 Close 挪到 Midday 前面：先暂存（没发请求），黄字 order of shift types changed",
+      (await waitFor(`[...${SD}.querySelectorAll('[data-shift-type-row]')].map((r) => r.dataset.shiftTypeRow).join(',') === 'open,close,mid,zz_test_training,zz_test_training_2'`)) &&
+        (await unsavedText()) === "Not saved yet: order of shift types changed" &&
+        (await writes(stFrom)).length === 0,
+      (await order()) + " / " + (await unsavedText()),
+    );
+    await evaluate(`${SD}.querySelector('[data-settings-save]').click();`);
+    await waitSaved();
+    const so = (await savedTypes()).map((t) => `${t.key}:${t.sort_order}`).join(",");
+    check("85 排序按 Save：整份按 10、20、30… 重排，库里顺序 Open, Close, Midday, ZZ Test Training…", so === "open:10,close:20,mid:30,zz_test_training:40,zz_test_training_2:50", so);
+    await evaluate(`$btn('Close', ${SD}).click();`);
+    await waitFor(`!${SD}`);
+    // Add shift 弹窗：顺序 + 改名
+    const addDlg = "[...document.querySelectorAll('[role=dialog]')].find((d) => d.textContent.includes('Add shift'))";
+    const shiftButtons = `const d = ${addDlg}; return d ? [...d.querySelectorAll('button')].map((b) => b.textContent.trim()).filter((t) => ['Open', 'Close', 'Midday', 'Mid', 'ZZ Test Training', 'ZZ Test  Training!'].includes(t)).join(',') : '';`;
+    await evaluate(`${cell("needs|" + P2)}.querySelector('button[aria-label="Add a shift"]').click();`);
+    await waitFor(addDlg);
+    const btns1 = await evaluate(shiftButtons);
+    check("85 Add shift 弹窗：Shift 那一排按新顺序 Open, Close, Midday, ZZ Test Training…（改名跟着变）", btns1.startsWith("Open,Close,Midday,ZZ Test Training"), btns1);
+    await evaluate(`const d = ${addDlg}; $btn('Cancel', d)?.click();`);
+    await waitFor(`!${addDlg}`);
+    // 停用 + 还有规则在用的黄字
+    const coverageRule = { id: "zz85", type: "coverage", enabled: true, params: { shift_type: "zz_test_training", min: 1, days: [5] } };
+    await fetch(`${MOCK}/api/schedule/rules`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...rulesBefore, rules: [...(rulesBefore.rules || []), coverageRule] }) });
+    await openPage(`${APP}/schedule?week=${P2}`);
+    await waitFor("document.querySelector('[data-open-settings]')");
+    await openSettings();
+    stFrom = (await mockLog()).length;
+    await evaluate(`${rowOf("zz_test_training")}.querySelector('[data-shift-type-active]').click();`);
+    check(
+      "85 停用 ZZ Test Training（还有一条规则用它）：那一行变淡，名单下面黄字写哪条规则、Auto-fill 还会照规则排",
+      (await waitFor(`!!${SD}.querySelector('[data-inactive-rule-note="zz_test_training"]')`)) &&
+        (await evaluate(`return ${SD}.querySelector('[data-inactive-rule-note="zz_test_training"]').textContent === 'ZZ Test Training is still used by 1 rule (Coverage: Fri has at least 1 ZZ Test Training). Auto-fill keeps using it until you change that rule in Rules.' && ${rowOf("zz_test_training")}.dataset.inactive === 'true';`)) &&
+        (await unsavedText()) === "Not saved yet: ZZ Test Training turned off",
+      (await evaluate(`return ${SD}.querySelector('[data-inactive-rule-note]')?.textContent;`)) + " / " + (await unsavedText()),
+    );
+    await evaluate(`${SD}.querySelector('[data-settings-save]').click();`);
+    await waitSaved();
+    w = await writes(stFrom);
+    check(
+      "85 停用按 Save：PUT zz_test_training is_active=false；停用的还列着（能勾回来），黄字还在",
+      w.length === 1 && w[0].body.is_active === false && (await evaluate(`return !!${rowOf("zz_test_training")} && !${rowOf("zz_test_training")}.querySelector('[data-shift-type-active]').checked && !!${SD}.querySelector('[data-inactive-rule-note="zz_test_training"]');`)),
+      JSON.stringify(w.map((e) => e.body)),
+    );
+    await evaluate(`$btn('Close', ${SD}).click();`);
+    await waitFor(`!${SD}`);
+    await evaluate(`${cell("needs|" + P2)}.querySelector('button[aria-label="Add a shift"]').click();`);
+    await waitFor(addDlg);
+    const btns2 = await evaluate(shiftButtons);
+    check("85 停用以后 Add shift 弹窗里没有 ZZ Test Training", !btns2.split(",").includes("ZZ Test Training") && btns2.includes("Midday"), btns2);
+    await evaluate(`const d = ${addDlg}; $btn('Cancel', d)?.click();`);
+    await waitFor(`!${addDlg}`);
+    // 颜色：后端上了 color 列
+    await ctl({ shiftColors: true });
+    const zzNeeds = await (await fetch(`${MOCK}/api/schedule/weeks/2026-10-04/slots`, { method: "POST", body: JSON.stringify({ date: "2026-10-08", shift_type: "close", start_time: "13:30", end_time: "21:30" }) })).json();
+    await openPage(`${APP}/schedule?week=2026-10-04`);
+    await waitFor(`${cell("1|2026-10-04")}`);
+    const openCard = "[...document.querySelectorAll('[data-cell]:not([data-needs-cell]) [data-slot-id]')].find((c) => c.querySelector('b')?.textContent.trim() === 'Open')";
+    check("85 后端带 color、Open 存的是 open：周表 Open 卡片照旧绿色", await evaluate(`const c = ${openCard}; return !!c && c.className.includes('border-emerald-400/40');`), await evaluate(`return ${openCard}?.className;`));
+    await openSettings();
+    stFrom = (await mockLog()).length;
+    await evaluate(`${rowOf("open")}.querySelector('[data-shift-type-color]').click();`);
+    await waitFor(`!!${SD}.querySelector('[data-shift-color-pop]')`);
+    await evaluate(`${SD}.querySelector('[data-shift-color-pop] [data-pick-color="rose"]').click();`);
+    check(
+      "85 改 Open 的颜色：色块琥珀圈，黄字 Not saved yet: colour for Open changed",
+      (await waitFor(`${SD}.querySelector('[data-settings-unsaved]')?.textContent === 'Not saved yet: colour for Open changed'`)) && (await evaluate(`return ${rowOf("open")}.querySelector('[data-shift-type-color]').className.includes('ring-amber-400');`)),
+      await unsavedText(),
+    );
+    await evaluate(`${SD}.querySelector('[data-settings-save]').click();`);
+    await waitSaved();
+    w = await writes(stFrom);
+    await evaluate(`$btn('Close', ${SD}).click();`);
+    await waitFor(`!${SD}`);
+    check(
+      "85 存了 Open = rose：PUT open color rose；周表 Open 卡片马上变粉（不用刷新）",
+      w.length === 1 && w[0].body.color === "rose" && (await waitFor(`${openCard}?.className.includes('border-rose-400/45')`)),
+      JSON.stringify(w.map((e) => e.body)) + " " + (await evaluate(`return ${openCard}?.className;`)),
+    );
+    // Unassigned 不上色
+    check(
+      "85 Unassigned 行头：不是暗红底，底色同员工行，「Unassigned」白字",
+      await evaluate(`const h = document.querySelector('[data-unassigned-head]'); const n = [...document.querySelectorAll('[data-sch-grid] .sticky')][1]; return !!h && h !== n && getComputedStyle(h).backgroundColor === getComputedStyle(n).backgroundColor && getComputedStyle(h.querySelector('span')).color === 'rgb(255, 255, 255)';`),
+      await evaluate(`const h = document.querySelector('[data-unassigned-head]'); return h ? getComputedStyle(h).backgroundColor + ' ' + getComputedStyle(h.querySelector('span')).color : 'none';`),
+    );
+    const needsCard = "document.querySelector('[data-needs-cell] [data-slot-id]')";
+    check(
+      "85 Unassigned 的格子不上底色；里头的卡片整张不上色：白色虚线框、透明底、白字（不按班次颜色）",
+      await evaluate(`const c = ${needsCard}; if (!c) return false; const cellEl = c.closest('[data-needs-cell]'); const cs = getComputedStyle(c); return getComputedStyle(cellEl).backgroundColor === 'rgba(0, 0, 0, 0)' && cs.borderTopStyle === 'dashed' && cs.backgroundColor === 'rgba(0, 0, 0, 0)' && cs.color === 'rgb(255, 255, 255)' && (cs.borderTopColor === 'rgba(255, 255, 255, 0.75)' || (cs.borderTopColor.startsWith('oklab(0.99') && cs.borderTopColor.endsWith('/ 0.75)')));`),
+      await evaluate(`const c = ${needsCard}; if (!c) return 'no needs card'; const cs = getComputedStyle(c); return [getComputedStyle(c.closest('[data-needs-cell]')).backgroundColor, cs.borderTopStyle, cs.backgroundColor, cs.color, cs.borderTopColor].join(' | ');`),
+    );
+    // Rules 标签那句
+    await evaluate("[...document.querySelectorAll('[role=tab]')].find(b => b.textContent.trim() === 'Rules')?.click();");
+    check(
+      "85 Rules 卡片灰字后面接一句：New shift types show up in the Shift list of every rule. …",
+      await waitFor("document.querySelector('[data-rules-shift-types-note]')?.textContent.trim() === 'New shift types show up in the Shift list of every rule. Auto-fill uses the times from the Shift times rule, so add one for a new shift type; without it, Auto-fill uses the whole working hours.'"),
+      await evaluate("return document.querySelector('[data-rules-shift-types-note]')?.textContent;"),
+    );
+    // 只读的人：看不到改的地方
+    await ctl({ role: "admin", tick: { switchOn: false, codes: STANDARD_SUP.filter((c) => c !== "settings.schedule") } });
+    await openPage(`${APP}/schedule?week=${P2}`);
+    await waitFor("document.querySelector('[data-open-settings]')");
+    await openSettings();
+    check(
+      "85 没勾 settings.schedule（非 Super Admin）：Shift types 只读一句（只列在用的），没有 + Add shift type、⋮⋮、色块、名字框",
+      await evaluate(`const s = ${SD}.querySelector('[data-settings-defaults]'); return !${ST} && !s.querySelector('[data-add-shift-type]') && !s.querySelector('input') && s.textContent.includes('Midday') && !s.textContent.includes('ZZ Test Training ');`),
+      await evaluate(`return ${SD}.querySelector('[data-settings-defaults]').textContent;`),
+    );
+    await evaluate(`$btn('Close', ${SD}).click();`);
+    // 收尾：规则、班次类型、颜色开关、加的 Unassigned 班都放回去
+    await fetch(`${MOCK}/api/schedule/weeks/2026-10-04/slots/${zzNeeds.id}`, { method: "DELETE" });
+    await fetch(`${MOCK}/api/schedule/rules`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(rulesBefore) });
+    await ctl({ phase2: false, role: "superadmin", tick: null, resetShiftTypes: true, shiftColors: false });
+  }
 
   // ── Dashboard 上的排班表（单独一块、只读、只给看已发布的周；Annie 2026-10-18）──
   // 把「今天」固定在 2026-10-06（周二）：这一周 10/4–10/10 前面已经发布过。

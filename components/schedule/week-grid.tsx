@@ -333,8 +333,13 @@ export function WeekGrid({
 
         {showNeeds ? (
           <>
-            <div className="sticky left-0 z-[1] flex flex-col justify-center rounded-[6px] bg-[#1b0d12] px-2 py-1.5">
-              <span className="text-[17px] leading-tight font-bold text-red-200">
+            {/* Unassigned 不上色（Annie 2026-11-04「unsign不上色吧，这个透明就好」，置顶 85 Q6）：行头同页面背景、白字。
+                行头底色同员工行（#0b1727，sticky 要不透明才盖得住横向滚过来的格子）。 */}
+            <div
+              data-unassigned-head
+              className="sticky left-0 z-[1] flex flex-col justify-center rounded-[6px] bg-[#0b1727] px-2 py-1.5"
+            >
+              <span className="text-[17px] leading-tight font-bold text-white">
                 Unassigned
               </span>
               {canEdit ? (
@@ -657,12 +662,13 @@ function Cell({
             }
           : undefined
       }
+      // Unassigned 那一行的格子不上底色（置顶 85 Q6，原来是淡红 bg-red-500/[.04]）。
+      data-needs-cell={needs || undefined}
       className={cn(
         "group relative flex min-h-[52px] flex-col gap-[2px] rounded-[6px] p-0",
         changed && "outline-2 outline-offset-[-2px] outline-amber-500",
         today && "bg-sky-400/[.05]",
         mine && "bg-sky-400/[.08]",
-        needs && "bg-red-500/[.04]",
         targetable && "cursor-pointer outline outline-1 outline-sky-400/50",
         dragOver && "bg-emerald-400/[.14]",
       )}
@@ -822,8 +828,10 @@ function SlotCard({
       data-slot-error={error || undefined}
       className={cn(
         "group/card flex flex-1 flex-col justify-center gap-0.5 rounded-[6px] border px-2 py-1 text-[11px] leading-tight",
+        // 没人的班：整张卡不上色，只有白色虚线框 + 白字（Annie 2026-11-04「是卡片整个不上色，只是个虚线白框然后里头有文字」）；
+        // 派给人以后才按班次颜色。
         needs
-          ? "border-dashed border-red-400/70 bg-red-500/[.1] text-red-200"
+          ? "border-dashed border-white/75 bg-transparent text-white"
           : shiftCardClass(slot.shift_type),
         badRange && "border-amber-400/60 bg-amber-400/[.12]",
         notCounted && "border-dashed opacity-55",

@@ -388,6 +388,8 @@ export function MorningTrackingView() {
     [nsSeen, now],
   );
   const showMarks = hasLiveMarks(allRows);
+  // 置顶 58：后端带了到 / 离时间才出 Arrived at / Left at 两列（旧后端没有这两个键）。
+  const showArrivals = allRows.some((r) => "arrived_at" in r);
   const livePeople = useMemo(() => {
     const people = live.kind === "ready" ? live.data.people : [];
     if (!activeDriver) return people;
@@ -734,7 +736,9 @@ export function MorningTrackingView() {
                         // 没勾 See prices, agent & commission（orders.money_view，题 8）：Agent 列整列不出（后端给的是空字符串）。
                         (canSeeMoney || k !== "agent_name") &&
                         // 后端还没带司机标记（旧版）：Driver mark 列不出。
-                        (showMarks || k !== "driver_mark"),
+                        (showMarks || k !== "driver_mark") &&
+                        (showArrivals ||
+                          (k !== "arrived_at" && k !== "left_at")),
                     )}
                     onReorder={reorderColumns}
                     onOpenConversation={(row) => openConversation(row, false)}

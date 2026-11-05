@@ -1,4 +1,5 @@
 import { apiFetch } from "@/lib/api-client";
+import { rememberShiftTypeColors } from "@/lib/schedule-shift-colors";
 import { ApiError } from "@/types";
 
 /**
@@ -38,6 +39,8 @@ export interface ConfirmShiftType {
   label: string;
   default_start_time?: string | null;
   default_end_time?: string | null;
+  /** 格子颜色（置顶 85）；没有 = 按 key 给默认颜色。 */
+  color?: string | null;
 }
 
 /** 这一周的一个时段；employee_id = null 是空班。 */
@@ -147,15 +150,24 @@ function base(token?: string): string {
     : "/api/schedule/confirmation";
 }
 
+/** 员工确认页的格子也按班次类型存的颜色画（置顶 85）：读到就记下。 */
+async function withColors(p: Promise<MyConfirmation>): Promise<MyConfirmation> {
+  const data = await p;
+  rememberShiftTypeColors(data.shift_types);
+  return data;
+}
+
 export function fetchMyConfirmation(
   opts: { week?: string; token?: string },
   signal?: AbortSignal,
 ): Promise<MyConfirmation> {
-  return apiFetch<MyConfirmation>(base(opts.token), {
-    cache: "no-store",
-    signal,
-    query: { week: opts.week },
-  });
+  return withColors(
+    apiFetch<MyConfirmation>(base(opts.token), {
+      cache: "no-store",
+      signal,
+      query: { week: opts.week },
+    }),
+  );
 }
 
 /** Looks good。返回同 GET。 */
@@ -163,10 +175,12 @@ export function acceptMyConfirmation(opts: {
   week: string;
   token?: string;
 }): Promise<MyConfirmation> {
-  return apiFetch<MyConfirmation>(`${base(opts.token)}/accept`, {
-    method: "POST",
-    body: { week_start: opts.week },
-  });
+  return withColors(
+    apiFetch<MyConfirmation>(`${base(opts.token)}/accept`, {
+      method: "POST",
+      body: { week_start: opts.week },
+    }),
+  );
 }
 
 /** Send my changes：一次发出这一页上攒的改动。返回同 GET。 */
@@ -175,10 +189,12 @@ export function submitMyChanges(opts: {
   token?: string;
   requests: ChangeRequestBody[];
 }): Promise<MyConfirmation> {
-  return apiFetch<MyConfirmation>(`${base(opts.token)}/changes`, {
-    method: "POST",
-    body: { week_start: opts.week, requests: opts.requests },
-  });
+  return withColors(
+    apiFetch<MyConfirmation>(`${base(opts.token)}/changes`, {
+      method: "POST",
+      body: { week_start: opts.week, requests: opts.requests },
+    }),
+  );
 }
 
 /** 别人找我换班：Accept 交给排班的人；Decline 结束、恢复原样。返回同 GET。 */
@@ -187,9 +203,11 @@ export function answerPeerRequest(opts: {
   answer: "accept" | "decline";
   token?: string;
 }): Promise<MyConfirmation> {
-  return apiFetch<MyConfirmation>(
-    `${base(opts.token)}/requests/${opts.id}/answer`,
-    { method: "POST", body: { answer: opts.answer } },
+  return withColors(
+    apiFetch<MyConfirmation>(`${base(opts.token)}/requests/${opts.id}/answer`, {
+      method: "POST",
+      body: { answer: opts.answer },
+    }),
   );
 }
 

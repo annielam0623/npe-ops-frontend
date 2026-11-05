@@ -9,11 +9,14 @@ import {
 import { usePhoneInfo } from "@/components/ui/phone";
 import { describeError } from "@/lib/api-errors";
 import {
+  createShiftType,
   fetchScheduleSettings,
-  updateShiftTypeDefaults,
+  shiftTypeKeyFor,
+  updateShiftType,
   updateWorkHours,
   updateWorkWindow,
 } from "@/lib/schedule-api";
+import type { Rule } from "@/lib/schedule-engine";
 import { formatClock } from "@/lib/schedule-time";
 import {
   type DayHours,
@@ -24,30 +27,28 @@ import {
 } from "@/lib/schedule-work-hours";
 import { useLeaveGuard } from "@/lib/use-leave-guard";
 import { cn } from "@/lib/utils";
-import type {
-  ScheduleSettings,
-  ScheduleShiftType,
-  ScheduleWorkHours,
-} from "@/types";
+import type { ScheduleSettings, ScheduleWorkHours } from "@/types";
 
+import type { DescribeContext } from "./rules";
+import {
+  rowChanges,
+  rowsOf,
+  type ShiftTypeRow,
+  ShiftTypesEditor,
+  sortOrders,
+  unsavedShiftTypeParts,
+  validateShiftTypes,
+} from "./shift-types-editor";
 import { TimePicker } from "./time-picker";
 
 /** 能改的人没改时也照样看得到的那句：怎么要权限（Annie 2026-11-02「需要加一个可以edit的权限让我来Admin里勾选」）。 */
 const ASK_PERMISSION =
   "You can view these. Ask a Super Admin for the “Settings: Schedule work window and shift types” permission to change them.";
 
-type Defaults = Record<string, [string, string]>;
-
-function defaultsOf(types: ScheduleShiftType[]): Defaults {
-  const out: Defaults = {};
-  for (const t of types)
-    out[t.key] = [t.default_start_time ?? "", t.default_end_time ?? ""];
-  return out;
-}
-
 /**
  * 排班页的设置集中一处（Annie 2026-11-02「所以两个edit，到底哪个管用」「可以集中在一起管各自不同的功能么」，
- * preview 97MgNcpw28p7W4DxXmpgrM 第 3 版「同意全部推荐。动手」）：Working hours、Default shift times 两块，
+ * preview 97MgNcpw28p7W4DxXmpgrM 第 3 版「同意全部推荐。动手」）：Working hours、Shift types 两块
+ * （Shift types 原来叫 Default shift times，置顶 85 起能新增 / 改名 / 停用 / 排序 / 选颜色，见 shift-types-editor.tsx），
  * 一个 Save（10-29 规矩：先暂存、按 Save 才存；有没存的改动时关窗先问）。
  * 能改照 Team 页的勾 settings.schedule（Super Admin 恒能改，后端保存接口本来就按这一项查）；没勾的排班人只读。
  * Working hours 按星期几（Annie 2026-11-02「可以选择一周的时间，也可以分别设置几天的时间不同」，⑦⑧⑨ A）：
@@ -57,18 +58,27 @@ function defaultsOf(types: ScheduleShiftType[]): Defaults {
 export function ScheduleSettingsDialog({
   settings,
   canChange,
+  rules,
+  ruleCtx,
   onSaved,
   onClose,
 }: {
   settings: ScheduleSettings;
   canChange: boolean;
+  /** 停用提醒用（还有开着的规则用这个班次类型）；读不到 = 不提醒。 */
+  rules: Rule[] | null;
+  ruleCtx: DescribeContext;
   onSaved: (settings: ScheduleSettings) => void;
   onClose: () => void;
 }) {
   const titleId = useId();
-  const types = settings.shift_types.filter((t) => t.is_active);
-  // 后端还没带默认时间（旧版）时整块不出（同原来的 DefaultShiftTimes）。
+  // Shift types（置顶 85）：停用的也列出来（能再勾回 Active），按后端顺序。
+  const types = settings.shift_types;
+  const activeTypes = types.filter((t) => t.is_active);
+  // 后端还没带默认时间（旧版）时不出时间那两格。
   const hasDefaults = types.some((t) => t.default_start_time !== undefined);
+  // 后端 shift_types 带 color 键（schedule_shift_types.color 上线）才能选颜色；没带 = 照 key 默认色，不给挑、不送。
+  const colorSupported = types.some((t) => t.color !== undefined);
   // 后端带了 work_hours（v144）才能按天设。
   const byDaySupported = !!settings.work_hours;
   const savedDays = weekDays(settings);
@@ -77,7 +87,8 @@ export function ScheduleSettingsDialog({
   const [end, setEnd] = useState(settings.work_window.end_time);
   const [same, setSame] = useState(savedSame);
   const [days, setDays] = useState<DayHours[]>(savedDays);
-  const [defaults, setDefaults] = useState<Defaults>(() => defaultsOf(types));
+  const [rows, setRows] = useState<ShiftTypeRow[]>(() => rowsOf(types));
+  const [errorIds, setErrorIds] = useState<Set<string>>(new Set());
   const [state, setState] = useState<
     | { kind: "idle" }
     | { kind: "saving" }
@@ -87,7 +98,7 @@ export function ScheduleSettingsDialog({
   const [askClose, setAskClose] = useState(false);
   const pressedOnBackdropRef = useRef(false);
   const hoursInfo = usePhoneInfo("About working hours");
-  const defaultsInfo = usePhoneInfo("About default shift times");
+  const defaultsInfo = usePhoneInfo("About shift types");
   const confirmInfo = usePhoneInfo("About staff confirmation");
 
   /** 要存的那一份（按天设）：Same every day 时 7 天都是那一组、都不勾 No coverage needed。 */
@@ -108,23 +119,23 @@ export function ScheduleSettingsDialog({
       end !== settings.work_window.end_time;
   const setDay = (i: number, patch: Partial<DayHours>) =>
     setDays((cur) => cur.map((d, j) => (j === i ? { ...d, ...patch } : d)));
-  const changedTypes = types.filter((t) => {
-    const [s, e] = defaults[t.key] ?? ["", ""];
-    return (
-      s !== (t.default_start_time ?? "") || e !== (t.default_end_time ?? "")
-    );
-  });
-  const dirty = canChange && (hoursDirty || changedTypes.length > 0);
+  const typeParts = unsavedShiftTypeParts(rows, types);
+  const dirty = canChange && (hoursDirty || typeParts.length > 0);
   useLeaveGuard(dirty, "You have unsaved schedule settings.");
 
-  const unsaved = [
-    hoursDirty ? "working hours" : null,
-    changedTypes.length
-      ? `default times for ${changedTypes.map((t) => t.label).join(", ")}`
-      : null,
-  ].filter(Boolean);
+  const unsaved = [hoursDirty ? "working hours changed" : null, ...typeParts]
+    .filter(Boolean)
+    .join(", ");
 
   async function save(): Promise<boolean> {
+    // 名字空着 / 重名 / 默认时间只填一个：页面上先挡，一样都不存。
+    const invalid = validateShiftTypes(rows, types);
+    if (invalid.length) {
+      setErrorIds(new Set(invalid.map(([id]) => id)));
+      setState({ kind: "error", lines: invalid.map(([, l]) => l) });
+      return false;
+    }
+    setErrorIds(new Set());
     setState({ kind: "saving" });
     const lines: string[] = [];
     let hoursOk = true;
@@ -137,19 +148,54 @@ export function ScheduleSettingsDialog({
         lines.push(`Working hours not saved — ${describeError(err)}`);
       }
     }
+    // 班次类型：改了的已有类型逐个 PUT（整行一起送），新加的逐个 POST；一个失败不挡别的，失败的留在弹窗里。
     const failedTypes = new Set<string>();
-    for (const t of changedTypes) {
-      const [s, e] = defaults[t.key] ?? ["", ""];
+    const sorts = sortOrders(rows, types);
+    const byKey = new Map(types.map((t) => [t.key, t]));
+    const taken = types.map((t) => t.key);
+    for (const r of rows) {
+      const saved = r.key ? byKey.get(r.key) : undefined;
+      const sort = sorts.get(r.id) ?? 0;
+      const input = {
+        label: r.label.trim(),
+        sort_order: sort,
+        // 后端：两个都带时间 = 设置，两个都 null = 清除。
+        default_start_time: r.start || null,
+        default_end_time: r.end || null,
+        // 后端还不存颜色时不带（2c 2026-11-04：存不住就不送，也不给挑）。
+        ...(colorSupported ? { color: r.color } : {}),
+      };
+      if (saved) {
+        const c = rowChanges(r, saved);
+        if (
+          !c.renamed &&
+          !c.color &&
+          !c.times &&
+          !c.active &&
+          sort === saved.sort_order
+        )
+          continue;
+        try {
+          await updateShiftType(saved.key, { ...input, is_active: r.active });
+        } catch (err) {
+          failedTypes.add(r.id);
+          lines.push(
+            `Shift type not saved — ${saved.label}: ${describeError(err)}`,
+          );
+        }
+        continue;
+      }
+      const key = shiftTypeKeyFor(input.label, taken);
+      taken.push(key);
       try {
-        // 后端：两个都带时间 = 设置，两个都 null = 清除；只填一个会 400（原话显示出来）。
-        await updateShiftTypeDefaults(t, {
-          default_start_time: s || null,
-          default_end_time: e || null,
-        });
+        await createShiftType({ ...input, key });
+        // 新加时就不勾 Active 的：后端 POST 不收 is_active，建好再停用。
+        if (!r.active)
+          await updateShiftType(key, { ...input, is_active: false });
       } catch (err) {
-        failedTypes.add(t.key);
+        failedTypes.add(r.id);
         lines.push(
-          `Default shift times not saved — ${t.label}: ${describeError(err)}`,
+          `Shift type not saved — ${input.label}: ${describeError(err)}`,
         );
       }
     }
@@ -168,12 +214,25 @@ export function ScheduleSettingsDialog({
         setSame(sameEveryDay(fresh));
         setDays(weekDays(fresh));
       }
-      const next = defaultsOf(fresh.shift_types.filter((t) => t.is_active));
-      setDefaults((cur) => {
-        const out = { ...next };
-        for (const key of failedTypes) if (cur[key]) out[key] = cur[key];
-        return out;
-      });
+      const next = rowsOf(fresh.shift_types);
+      if (failedTypes.size === 0) setRows(next);
+      else {
+        // 存上的跟着库里走；没存上的（含没建成的新类型）留在原位置，改了再按 Save。
+        const freshById = new Map(next.map((r) => [r.id, r]));
+        setRows((cur) => {
+          const out = cur.flatMap((r) =>
+            failedTypes.has(r.id)
+              ? [r]
+              : r.key && freshById.has(r.key)
+                ? [freshById.get(r.key)!]
+                : [],
+          );
+          // 这次新建成功的类型从库里补进来（它们在页面上是 new-N，库里有了 key）。
+          for (const r of next)
+            if (!out.some((x) => x.key === r.key)) out.push(r);
+          return out;
+        });
+      }
     }
     setState(lines.length ? { kind: "error", lines } : { kind: "saved" });
     return lines.length === 0;
@@ -368,85 +427,64 @@ export function ScheduleSettingsDialog({
           )}
         </section>
 
-        {hasDefaults ? (
-          <section
-            data-settings-defaults
-            className="border-t border-white/10 py-3"
-          >
-            <h3 className="flex items-center gap-2 text-[13.5px] font-semibold text-white">
-              Default shift times {defaultsInfo.button}
-            </h3>
-            <p
-              className={cn(
-                "mt-0.5 mb-2 text-[12.5px] text-white/75",
-                defaultsInfo.hide,
-              )}
-            >
-              Pre-filled times for new shifts only. Does not change shifts
-              already scheduled or the gap check.
-            </p>
-            {canChange ? (
-              <div className="grid grid-cols-[minmax(52px,110px)_auto_auto_auto_1fr] items-center gap-x-2 gap-y-1.5 text-[13px]">
-                {types.map((t) => {
-                  const [s, e] = defaults[t.key] ?? ["", ""];
-                  const set = (i: 0 | 1, v: string) =>
-                    setDefaults((d) => {
-                      const cur = d[t.key] ?? ["", ""];
-                      const next: [string, string] = [cur[0], cur[1]];
-                      next[i] = v;
-                      return { ...d, [t.key]: next };
-                    });
-                  return (
-                    <div
-                      key={t.key}
-                      className="contents"
-                      data-default-row={t.key}
-                    >
-                      <span className="font-semibold text-white/90">
-                        {t.label}
-                      </span>
-                      <TimePicker
-                        ariaLabel={`${t.label} start`}
-                        allowEmpty
-                        value={s}
-                        onChange={(v) => set(0, v)}
-                      />
-                      <span className="text-white/60">–</span>
-                      <TimePicker
-                        ariaLabel={`${t.label} end`}
-                        allowEmpty
-                        value={e}
-                        onChange={(v) => set(1, v)}
-                      />
-                      <span>
-                        {s || e ? (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setDefaults((d) => ({ ...d, [t.key]: ["", ""] }))
-                            }
-                            className="cursor-pointer text-[11.5px] text-white/55 hover:text-white"
-                          >
-                            Clear
-                          </button>
-                        ) : null}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <p className="text-[13px] text-white/85">
-                {types
-                  .map(
-                    (t) =>
-                      `${t.label} ${timeText(t.default_start_time, t.default_end_time)}`,
-                  )
-                  .join(" · ")}
-              </p>
+        <section
+          data-settings-defaults
+          className="border-t border-white/10 py-3"
+        >
+          <h3 className="flex items-center gap-2 text-[13.5px] font-semibold text-white">
+            Shift types {defaultsInfo.button}
+          </h3>
+          <div
+            className={cn(
+              "mt-0.5 mb-2 flex flex-col gap-1 text-[12.5px] text-white/75",
+              defaultsInfo.hide,
             )}
-          </section>
-        ) : null}
+          >
+            <p>
+              Default times pre-fill new shifts only. Untick Active to stop
+              offering a shift type; shifts already scheduled keep it.
+            </p>
+            {/* How to use 那段（置顶 85 Q5，2c 定放这里的说明里，不另加框）。 */}
+            <p data-shift-types-help className="text-white/60">
+              Shift types (Super Admin): open ⚙ Settings → Shift types. Click +
+              Add shift type, type a name, pick a colour and, if you like,
+              default times, then press Save. To rename a shift type, change its
+              name and press Save; shifts already scheduled and your rules show
+              the new name. Untick Active to stop offering a shift type; shifts
+              already scheduled keep it. Drag ⋮⋮ to change the order of the
+              buttons in Add shift.
+            </p>
+          </div>
+          {canChange ? (
+            <ShiftTypesEditor
+              rows={rows}
+              setRows={(update) => {
+                setRows(update);
+                // 页面上没过检查的红字：一改就收起，页脚回到黄字「Not saved yet」（后端的红字留到下次 Save）。
+                if (errorIds.size) {
+                  setErrorIds(new Set());
+                  setState({ kind: "idle" });
+                }
+              }}
+              types={types}
+              showTimes={hasDefaults}
+              canPickColor={colorSupported}
+              rules={rules}
+              ruleCtx={ruleCtx}
+              errorIds={errorIds}
+            />
+          ) : (
+            <p className="text-[13px] text-white/85">
+              {activeTypes
+                .map((t) =>
+                  hasDefaults
+                    ? `${t.label} ${timeText(t.default_start_time, t.default_end_time)}`
+                    : t.label,
+                )
+                .join(" · ")}
+            </p>
+          )}
+        </section>
 
         <section className="border-t border-white/10 py-3">
           <h3 className="flex items-center gap-2 text-[13.5px] font-semibold text-white">
@@ -513,7 +551,7 @@ export function ScheduleSettingsDialog({
               </div>
             ) : dirty ? (
               <span data-settings-unsaved className="text-[#fcd34d]">
-                Not saved yet: {unsaved.join(", ")} changed
+                Not saved yet: {unsaved}
               </span>
             ) : state.kind === "saved" ? (
               <span

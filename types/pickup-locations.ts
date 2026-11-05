@@ -25,10 +25,24 @@ export interface PickupLocation {
   /** Shuttle 站每条线路、每个季节车到这一站的时间（全部季节一次给）。没有这一格 = 那一季还没填。 */
   times?: PickupStopTime[];
   /**
+   * Samsara 到站（后端 samsara-arrivals / migrate_v146）：接客门口的坐标（staff 手填，Annie「我们提供的经纬坐标非常准」），
+   * relay 车离它 arrival_radius_m 米以内算到了。**没有这几个键 = 后端还没上线**，页面不出这几格。
+   */
+  latitude?: number | null;
+  longitude?: number | null;
+  arrival_radius_m?: number | null;
+  /**
    * Auto 分车用的方向（置顶 72，Annie 2026-11-04「动手」）：null = Not set（排座当 Flexible）。
    * **没有这个键 = 后端还没上线**，页面不出 Direction 列。改用 PATCH /{id}/direction。
    */
   direction?: PickupDirection | null;
+}
+
+/** PATCH /api/pickup-locations/{id}/arrival-point 的 body（两个坐标都 null = 清掉；radius_m 1–500 整数）。 */
+export interface ArrivalPoint {
+  latitude: number | null;
+  longitude: number | null;
+  radius_m: number;
 }
 
 export type PickupDirection = "north" | "south" | "flexible";

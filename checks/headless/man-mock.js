@@ -34,6 +34,9 @@ const sentTickets = new Map();
 const prefs = { manifest_cols_bus: null, manifest_cols_tickets: null, manifest_cols_admin_fee: null };
 const log = [];
 const cfm = new Map(); // row_key → {confirmation_no, updated_by, updated_at}
+// G245（置顶 82）：ctl.mismatch = 这几单 Rezdy 的 Cfm # 跟产品不符（staff 填了 Cfm # 就不算）；ctl.mismatchLate = 页面上没标、发的那一刻后端才挡。
+const MISMATCH = { other_label: "Antelope Canyon X Confirmation #", other_value: "387826855" };
+const mismatchOf = (order, key) => ((ctl.mismatch ?? []).includes(order) && !cfm.get(key)?.confirmation_no ? MISMATCH : null);
 // G198（后端 8a bbf3d08）：按「日期 + 团 + 节」存的 Cfm #。ctl.g198 开着时 Antelope 的 UPPER ANTELOPE 节开了格。
 const sectionCfm = new Map(); // `${date}|${manifest_id}|${section}` → {cfm_no, updated_by, updated_at}
 
@@ -347,6 +350,7 @@ function page(url) {
       return { row_key: key, order_number: r.order_number, product_code: r.product_code, tour_date: date, lane_source: r.lane_source,
         section: sectionsOn ? SECTION_OF[r.order_number] : null, values,
         ...(ctl.waiver ? { waiver_link_required: !!r.waiver } : {}),
+        ...(ctl.mismatch ? { cfm_mismatch: mismatchOf(r.order_number, key) } : {}),
         // G36：returnLeg 开着时把 CHD1002 当成往返 shuttle 的回程那一行。
         leg: ctl.returnLeg && r.order_number === "CHD1002" ? "return" : null,
         // G189：shuttleRows 里的单带 shuttle: true（后端每行的 shuttle 标记），其余 false；没设 = 旧后端，不带这个字段。
@@ -563,8 +567,11 @@ http
         ...(!cfm.get(k)?.confirmation_no || (ctl.tkBlock ?? []).includes(byKey(k).order_number) ? ["No Cfm #"] : []),
         ...(byKey(k).waiver && !waiver.get(k)?.waiver_link ? ["No waiver link"] : []),
       ];
-      const noCfm = body.row_keys.filter((k) => reasonsOf(k).length);
-      const blocked = noCfm.filter((k) => !sa.has(byKey(k).order_number)).map((k) => ({ order_number: byKey(k).order_number, reasons: reasonsOf(k), can_override: true }));
+      // G245：号不对 = 硬拦（can_override false），send_anyway 也不放。
+      const hard = (k) => mismatchOf(byKey(k).order_number, k) || (ctl.mismatchLate ?? []).includes(byKey(k).order_number);
+      const hardBlocked = body.row_keys.filter(hard).map((k) => ({ order_number: byKey(k).order_number, reasons: [`Cfm # doesn't match the product (${MISMATCH.other_label}: ${MISMATCH.other_value})`], can_override: false }));
+      const noCfm = body.row_keys.filter((k) => !hard(k) && reasonsOf(k).length);
+      const blocked = [...hardBlocked, ...noCfm.filter((k) => !sa.has(byKey(k).order_number)).map((k) => ({ order_number: byKey(k).order_number, reasons: reasonsOf(k), can_override: true }))];
       const keys = body.row_keys.filter((k) => !blocked.some((b) => b.order_number === byKey(k).order_number));
       const { results, skipped } = sendRows(keys, sentTickets, body);
       // 发出去了 ⇒ 记下这次的链接（Changed since sent 跟着消失）。

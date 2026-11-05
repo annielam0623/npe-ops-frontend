@@ -179,7 +179,24 @@ http.createServer(async (req, res) => {
   }
   if (p === "/api/pickup-locations" && req.method === "GET") {
     if (ctl.failList) return send(res, 500, { detail: "Internal Server Error" });
-    return send(res, 200, { locations: [...locations].sort((a, b) => a.hotel_name.localeCompare(b.hotel_name)) });
+    // arrival：后端 samsara-arrivals 上线了（每条带 latitude / longitude / arrival_radius_m，默认 10）。
+    const withArrival = (l) => (ctl.arrival ? { latitude: null, longitude: null, arrival_radius_m: 10, ...l } : l);
+    return send(res, 200, { locations: [...locations].sort((a, b) => a.hotel_name.localeCompare(b.hotel_name)).map(withArrival) });
+  }
+  // PATCH …/arrival-point（后端 samsara_arrivals.clean_point 同样的校验和原话）。
+  const ap = p.match(/^\/api\/pickup-locations\/(\d+)\/arrival-point$/);
+  if (ap && req.method === "PATCH") {
+    const body = await readBody(req);
+    entry.body = body;
+    if (ctl.arrivalFail) return send(res, 500, { detail: "Internal Server Error" });
+    const { latitude: lat, longitude: lon, radius_m: r } = body;
+    if ((lat == null) !== (lon == null)) return send(res, 400, { detail: "Send both latitude and longitude, or neither to clear them." });
+    if (lat != null && (typeof lat !== "number" || typeof lon !== "number")) return send(res, 400, { detail: "Latitude and longitude must be numbers." });
+    if (r != null && (!Number.isInteger(r) || r < 1 || r > 500)) return send(res, 400, { detail: "radius_m must be a whole number from 1 to 500." });
+    const loc = locations.find((l) => l.id === Number(ap[1]));
+    if (!loc) return send(res, 404, { detail: "That hotel is not in the list any more." });
+    Object.assign(loc, { latitude: lat, longitude: lon, arrival_radius_m: r ?? loc.arrival_radius_m ?? 10 });
+    return send(res, 200, { success: true, latitude: loc.latitude, longitude: loc.longitude, arrival_radius_m: loc.arrival_radius_m });
   }
   if (p === "/api/pickup-locations" && req.method === "POST") {
     const body = await readBody(req);

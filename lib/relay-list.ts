@@ -5,7 +5,7 @@ import { orientationOf, type Orientation } from "@/lib/relay-list-settings-api";
  * Relay list（Dispatch › Morning Relay「📋 Relay list」，task/relay-print）：把 relay-pull 的两轮排成纸本那几张单。
  * 样子照 Annie 定的 preview https://claude.ai/artifact/3p3STHAw1rk7ewCeQW1dma （v11）和纸本 4796_001.pdf 第 9–13 页：
  * - 每一轮一张 RELAY SPLITS 总表（字段照纸本 100% 复制），后面每台有客人的车一张分表；没客人的车不印分表（Q5）。
- * - 这台车当天也是某个团的大巴（后端 car.tour_buses 1 个）⇒ 抬头写这辆大巴、用团色；0 个 = 「Relay N」。
+ * - 这台车当天也是某个团的大巴（后端 car.tour_buses 1 个）⇒ 抬头写这辆大巴、用团色，人名只读 relay 卡司机（relayCrew，总表图例里这辆大巴也一样）；0 个 = 「Relay N」。
  * - 排序：时间 → 车 → 这台车的站序（排车页，Q20）→ 名字 A–Z；没站序的排后面按酒店名。
  * - Tour 列用后端的 product_short（纸本的 GC South / LOWER / X，Annie「简写纸本里用哪个就用哪个」）。
  * - Hoover 的 Tour bus pick up 不印（Annie「hoover的司机用他的bus manifest就好了」），所以只排 relay / relay_2 两轮。
@@ -107,6 +107,19 @@ export function crewText(b: {
   return d || g || "No driver";
 }
 
+/**
+ * 兼大巴的 relay 车，抬头 / 总表图例上的人：只读 relay 卡上的司机（Annie 2026-11-04 选 B「最终relay split只读staff放在relay卡里的数据」）。
+ * relay 卡司机就是这辆大巴自己的司机 ⇒ 照纸本「Carlos + Glenn」带导游；换了人开 ⇒ 只写 relay 卡司机（Annie「同意你定的」）。
+ */
+export function relayCrew(
+  relayDriver: string | null | undefined,
+  bus: { driver: string | null; guide: string | null },
+): { driver: string | null; guide: string | null } {
+  const d = (relayDriver || "").trim();
+  const same = !!d && d.toLowerCase() === (bus.driver || "").trim().toLowerCase();
+  return { driver: d || null, guide: same ? bus.guide : null };
+}
+
 /** 大巴在图例 / 抬头上的名字：「SOUTH」「ANTELOPE A」（团简称没设就用团名）。 */
 export function busName(b: {
   tour: string;
@@ -195,7 +208,9 @@ export function buildRound(
       return {
         ...base,
         title: tb.map(busName).join(" · "),
-        who: tb.map((x) => `${crewText(x)} - ${vanText(x)}`).join(" · "),
+        who: tb
+          .map((x) => `${crewText(relayCrew(b.car.driver, x))} - ${vanText(x)}`)
+          .join(" · "),
         color: tb[0].color || NO_TOUR_COLOR,
         isBus: true,
       };
@@ -222,6 +237,11 @@ export function buildRound(
         a.idx - b.idx,
     )
     .map(({ guest, car }) => ({ guest, car }));
+  const relayCrewByBus = new Map<string, ReturnType<typeof relayCrew>>();
+  for (const b of blocks)
+    for (const x of b.car.tour_buses ?? [])
+      if (!relayCrewByBus.has(busKey(x)))
+        relayCrewByBus.set(busKey(x), relayCrew(b.car.driver, x));
   const label = data.round_labels?.[round];
   return {
     round,
@@ -230,10 +250,14 @@ export function buildRound(
     cars,
     rows,
     // 纸本图例：客人要去的大巴 + 这一轮里顺路接一站的大巴（South 1855=C 也列在大巴那几排）。
+    // 这一轮当 relay 车开的大巴，人名换成 relay 卡司机（同抬头）；分段、团色照旧。
     buses: uniqueBuses([
       ...rows.map((r) => r.guest.bus),
       ...blocks.flatMap((b) => b.car.tour_buses ?? []),
-    ]),
+    ]).map((x) => {
+      const crew = relayCrewByBus.get(busKey(x));
+      return crew ? { ...x, ...crew } : x;
+    }),
   };
 }
 
