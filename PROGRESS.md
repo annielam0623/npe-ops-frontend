@@ -1123,6 +1123,8 @@ D. 已完成、待从置顶移走：
 - 原话：「auto send的ticket reminder也要改一下，需要按照产品来选择提前几点发。然后我需要每天给antelope@一个email提醒他们今天哪些订单因为什么原因没有发出去，每天就汇总当天的一次发给他们就好了」。
 - 现状（前端 auto-send-view.tsx）：Ticket reminders 只有一套设置——Send times、days before the service date（所有产品一样）、Day-before summary at（前一天发一封「明天还没发的单 + 原因」）、Send the summary to。另外 G245「Cfm # 不符」每次跑完给 antelope@ 发一封。
 - e8 已问 Annie 细节（Q1–Q5），派 7a 只读查后端逻辑和工作量。答了出 preview。
+- 7a 查后端（auto_send.py，origin/main 51984bf0）：默认每天 9:00 / 12:00 / 17:00 三批，范围是服务日期明天到第 5 天，当天不发。跳过原因 7 条：No ticket tour type set for this product / No Cfm # yet / Cfm # doesn't match the product / No waiver link yet / Tour time not found in Rezdy / Check-in minutes are not set / Guest count not found 或 Order is listed twice。Day-before summary 每天 9:00 AM 发给 antelope@ + reservations@，只看明天的单，标题「Ticket reminders for <day>: n of N not sent」，表三列 Order / Product / Why not。Cfm 不符邮件每批最多一封，只给 antelope@，不去重。按产品设的存法：A 按门票团（tix_tour_types，几个团，推荐）/ B 按 Rezdy 产品（products 表，要一个个设）。入场时间能算（团时间 − check-in 分钟）。工作量：提前几天 + 固定时刻半天到 1 天；按小时往前推 1–1.5 天（调度要改）；每日汇总改现有 summary 约半天。
+- e8 补问 Annie Q6（「产品」是门票团还是 Rezdy 产品），并更正 Q2 / Q3：现有的前一天汇总已经发给 antelope@ + reservations@。
 
 ### ⏰ 提醒 Annie：G180 Tour Tracking 回填以前的日子（**下周，2026-11-09 周一起提醒**）
 - Annie 原话（2026-11-05）：「回填数据可以等我有时间再做，只需要先把上线那一刻的今天及以后的数据放进去，等运行起来之后下周你提醒我做数据回填」。
