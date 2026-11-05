@@ -32,7 +32,7 @@ import {
   saveDispatchDay,
   saveDispatchSection,
 } from "@/lib/dispatch-api";
-import { syncManifests } from "@/lib/dispatch-manifest-api";
+import { fetchManifest, syncManifests } from "@/lib/dispatch-manifest-api";
 import {
   type DriverFollowResult,
   followSkippedText,
@@ -357,6 +357,44 @@ export function DispatchView() {
     done: GuestListsDone | null;
     any: boolean;
   } | null>(null);
+  /**
+   * 每个巴士团当天 Bus manifest 里 Shuttle 节（outbound / inbound）的人数（Annie 2026-10-31 Shuttle 上车点提示）。
+   * 卡片每次重读（存好、同步、上传）都跟着重读；读不到的团不提醒。
+   */
+  const [shuttlePax, setShuttlePax] = useState<{
+    date: string;
+    byId: Record<number, number>;
+  } | null>(null);
+  useEffect(() => {
+    if (!tourCards) return;
+    const { date } = tourCards;
+    const ids = Object.entries(tourCards.byId)
+      .filter(([, c]) => c.uploaded && c.pax > 0)
+      .map(([id]) => Number(id));
+    const ac = new AbortController();
+    Promise.all(
+      ids.map((id) =>
+        fetchManifest(date, id, ac.signal).then(
+          (m) => {
+            let n = 0;
+            for (const sec of [
+              ...m.blocks.flatMap((b) => b.sections),
+              ...m.unplaced.sections,
+            ])
+              if (sec.kind !== "tour") n += sec.pax;
+            return [id, n] as const;
+          },
+          () => null,
+        ),
+      ),
+    ).then((list) => {
+      if (ac.signal.aborted) return;
+      const byId: Record<number, number> = {};
+      for (const x of list) if (x) byId[x[0]] = x[1];
+      setShuttlePax({ date, byId });
+    });
+    return () => ac.abort();
+  }, [tourCards]);
   /** 没客人的团展开没有：Step 1、Step 2 同一个开关。 */
   const [showEmpty, setShowEmpty] = useState(false);
   /** G82：点 Re-match 加 1，重新给 Private 车配订单。 */
@@ -461,7 +499,17 @@ export function DispatchView() {
   }
 
   const L = useMemo(() => (day ? makeLookup(day) : null), [day]);
-  const analysis = useMemo(() => (L ? analyze(rows, L) : null), [rows, L]);
+  const analysis = useMemo(
+    () =>
+      L
+        ? analyze(
+            rows,
+            L,
+            shuttlePax?.date === L.day.run_date ? shuttlePax.byId : undefined,
+          )
+        : null,
+    [rows, L, shuttlePax],
+  );
   // Step 1 团卡片（ManifestsPanel，另读 /api/dispatch/manifests，没有 color 字段）要和这里的团色条
   // 用同一个颜色：从 day.sections（有 color，G142）按 manifest_id 做一张表传过去。
   const colorByManifestId = useMemo(() => {
@@ -2167,6 +2215,7 @@ export function DispatchView() {
                         onRemove: () => edit(rows.filter((_, j) => j !== i)),
                         orders: day.private_orders,
                         save: unitSaveState(unitOf(rows[i])),
+                        shuttleAsk: analysis.shuttleAsk.get(i),
                       });
                       const renderSec = (s: Sec, cardIdx: number) => {
                         // G82：后端带了 Rezdy 订单 => Private Tour 按订单分卡（上面订单 / 团名，下面这张订单的车）。
