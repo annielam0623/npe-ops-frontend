@@ -57,7 +57,10 @@ import {
   serializeSavedCols,
   paxOf,
   canSend,
+  cfmMismatch,
+  cfmMismatchTip,
   plural,
+  REZDY_CFM_KEY,
   PREF_KEY,
   requestFields,
   sectionBg,
@@ -97,6 +100,9 @@ type SavedFields = Record<ManifestTabKey, SavedCols | undefined>;
 /** base.html 的 .btn：深色底上的半透明按钮。 */
 const LEGACY_BTN_CLASS =
   "inline-flex h-9 items-center justify-center gap-2 rounded-[10px] border border-white/10 bg-white/[.04] px-3.5 text-[13px] font-[650] whitespace-nowrap text-white transition hover:bg-white/[.08] disabled:cursor-not-allowed disabled:opacity-50";
+/** 淡红确认条上的次要键（「Go fill them in」）：同 LEGACY_BTN_CLASS 的大小，字用条上的深红（白字在淡红底上看不见）。 */
+const RED_BAR_BTN_CLASS =
+  "inline-flex h-9 items-center justify-center gap-2 rounded-[10px] border border-[#e4a5a0] bg-white/60 px-3.5 text-[13px] font-[650] whitespace-nowrap text-[#7a2424] transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50 night:border-rose-400/30 night:bg-white/[.04] night:text-rose-200 night:hover:bg-white/[.08]";
 /** manifests.html 的 .btn-nav（‹ ›）。 */
 const NAV_BTN_CLASS =
   "flex h-7 w-7 items-center justify-center rounded-[7px] border-[0.5px] border-black/15 bg-paper text-[15px] text-[#1a1a1a] hover:bg-[#f5f5f3] disabled:opacity-50 night:border-white/15 night:bg-white/[.04] night:text-white/80 night:hover:bg-white/[.08]";
@@ -576,8 +582,16 @@ export function ManifestsView() {
           softBlocks(r, tab).length > 0,
       )
     : [];
-  // 只缺 Cfm #（没有 waiver 的事）⇒ 红条照原来的写法。
-  const onlyCfmMissing = missingPicked.every((r) => !missingWaiver(r));
+  // 只缺 Cfm #（没有 waiver、号也没不对）⇒ 红条照原来的写法。
+  const onlyCfmMissing = missingPicked.every(
+    (r) => !missingWaiver(r) && !cfmMismatch(r, tab),
+  );
+  // G245：号不对的单不能 Send anyway（后端 can_override=false）；Send anyway 只带其余缺 Cfm # / waiver 的单。
+  const softPicked = missingPicked.filter((r) => !cfmMismatch(r, tab));
+  const anyMismatchPicked = softPicked.length < missingPicked.length;
+  // 这页门票里有没有号不对的行（表格上方黄字多半句）。
+  const anyMismatch =
+    tab === "tickets" && !!shown?.rows.some((r) => !!r.cfm_mismatch);
   // 这页门票里有没有还没填 Cfm # 的行（不看有没有勾）：表格上方要不要出黄字提示。
   const anyMissingCfm =
     tab === "tickets" && !!shown?.rows.some((r) => !isSelectable(r, tab));
@@ -1027,13 +1041,17 @@ export function ManifestsView() {
                       ))}
                     </ul>
                     Fill them in, or skip and send the rest.
+                    {anyMismatchPicked
+                      ? " An order with a Cfm # that doesn't match the product can't be sent anyway."
+                      : ""}
                   </span>
                 )}
                 <span className="flex flex-wrap gap-2">
                   <button
                     type="button"
                     onClick={() => setPendingSend(null)}
-                    className={LEGACY_BTN_CLASS}
+                    // 只修 bug：原来用深色底的白字键，放在淡红条上看不见；改成红条的深红字（同条上的文字），别的不变。
+                    className={RED_BAR_BTN_CLASS}
                   >
                     Go fill them in
                   </button>
@@ -1049,19 +1067,19 @@ export function ManifestsView() {
                   >
                     Skip & send {pickedRows.length}
                   </button>
-                  {pendingSend === "reminder" ? (
+                  {pendingSend === "reminder" && softPicked.length ? (
                     // G129：手动发送的拦截都是软的：缺 Cfm # 也可以照发，确认号栏留空，Send Log 里留痕。
                     <button
                       type="button"
                       data-send-anyway-cfm
                       onClick={() => {
-                        setCfmOver(missingPicked.map((r) => r.order_number));
+                        setCfmOver(softPicked.map((r) => r.order_number));
                         setSendDialog("reminder");
                         setPendingSend(null);
                       }}
                       className={PRIMARY_ACTION_CLASS}
                     >
-                      Send anyway {pickedRows.length + missingPicked.length}
+                      Send anyway {pickedRows.length + softPicked.length}
                     </button>
                   ) : null}
                 </span>
@@ -1072,11 +1090,21 @@ export function ManifestsView() {
               <p className="mb-2 text-[12.5px] font-medium text-[#ba7517] night:text-amber-300">
                 Orders without a Cfm # or a waiver link will be stopped when you
                 send. Click the cell to fill one in anytime.
+                {anyMismatch ? ` ${MISMATCH_HINT}` : ""}
               </p>
             ) : !noConfirm && !seeingHidden && anyMissingCfm ? (
               <p className="mb-2 text-[12.5px] font-medium text-[#ba7517] night:text-amber-300">
                 Orders without a Cfm # will be skipped when you send. Click the
                 Cfm # cell to fill one in anytime.
+                {anyMismatch ? ` ${MISMATCH_HINT}` : ""}
+              </p>
+            ) : !noConfirm && !seeingHidden && anyMismatch ? (
+              // G245：只有号不对的行时，黄字只写这半句。
+              <p
+                data-mismatch-hint
+                className="mb-2 text-[12.5px] font-medium text-[#ba7517] night:text-amber-300"
+              >
+                {MISMATCH_HINT}
               </p>
             ) : null}
 
@@ -1223,9 +1251,7 @@ export function ManifestsView() {
         {sendDialog === "reminder" && shown ? (
           <ReminderDialog
             date={shown.date}
-            rows={
-              cfmOver.length ? [...pickedRows, ...missingPicked] : pickedRows
-            }
+            rows={cfmOver.length ? [...pickedRows, ...softPicked] : pickedRows}
             noCfmOrders={cfmOver}
             overReasons={Object.fromEntries(
               missingPicked
@@ -1551,6 +1577,8 @@ function ManifestTable({
                 onDirty={onWaiverDirty}
                 onUnauthorized={onUnauthorized}
               />
+            ) : k === REZDY_CFM_KEY && cfmMismatch(r, tab) ? (
+              <CfmMismatchCell row={r} />
             ) : (
               <Cell field={byKey.get(k)} row={r} fieldKey={k} />
             )}
@@ -1753,6 +1781,48 @@ function Cell({
     </span>
   );
 }
+
+/**
+ * G245（置顶 82 Q1 C）：Rezdy 的 Cfm # 跟产品不符 ⇒ 那一格红底白字（行不变色）。鼠标停上去写原因；
+ * 手机上没有鼠标，点一下在格子下面展开同一句，再点收起。
+ */
+function CfmMismatchCell({ row }: { row: ManifestRow }) {
+  const [open, setOpen] = useState(false);
+  const m = row.cfm_mismatch;
+  if (!m) return null;
+  const tip = cfmMismatchTip(m);
+  const text = String(row.values[REZDY_CFM_KEY] ?? "");
+  return (
+    <span className="inline-flex flex-col items-start gap-0.5">
+      <button
+        type="button"
+        data-cfm-mismatch
+        title={tip}
+        aria-label={`${text} — ${tip}`}
+        aria-expanded={open}
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen((o) => !o);
+        }}
+        className="cursor-help rounded-[4px] bg-[#d9534f] px-1.5 py-px font-bold whitespace-nowrap text-white"
+      >
+        {text || "—"}
+      </button>
+      {open ? (
+        <span
+          data-cfm-mismatch-tip
+          className="block max-w-[260px] text-[11px] leading-snug whitespace-normal text-[#a32d2d] night:text-red-300"
+        >
+          {tip}
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
+/** G245 Q2 A：表格上方黄字的半句（Annie 要去 Rezdy 改，所以两种改法都写）。 */
+const MISMATCH_HINT =
+  "Orders with a red Cfm # can't be sent until the Cfm # is fixed in Rezdy or in the Cfm # cell.";
 
 type CfmState = "saving" | "saved" | "failed";
 

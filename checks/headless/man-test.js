@@ -1252,6 +1252,49 @@ async function run() {
   );
   await evaluate("$btn('Cancel', $dialog().lastElementChild).click();");
   await waitFor("!$dialog()");
+
+  // ── G245（置顶 82，Annie「羚羊谷，请动手」）：Rezdy 的 Cfm # 跟产品不符 ⇒ 那一格红底白字、停上去 / 点一下出原因；发送时硬拦 ──
+  {
+    const TIP = "Wrong Cfm # for this product — Rezdy has it under Antelope Canyon X Confirmation #: 387826855. Fix it in Rezdy.";
+    const REASON = "Cfm # doesn't match the product (Antelope Canyon X Confirmation #: 387826855)";
+    await ctl({ rezdyTix: true, mismatch: ["CHD2005"] });
+    await openPage(`${APP}/manifests?date=${today}&tab=tickets&pill=t%3Aantelope`);
+    await waitFor("$box('CHD2005')?.closest('tr').querySelector('[data-cfm-mismatch]')");
+    const cell = "$box('CHD2005').closest('tr').querySelector('[data-cfm-mismatch]')";
+    check("G245 Cfm # (Rezdy) 那一格红底白字、写 Rezdy 的号；行不变色", await evaluate(`const c = ${cell}; const st = getComputedStyle(c); return c.textContent === 'RZ-2005' && st.backgroundColor === 'rgb(217, 83, 79)' && st.color === 'rgb(255, 255, 255)' && !$box('CHD2005').closest('tr').className.includes('bg-[#fdeceb]');`), await evaluate(`return ${cell}?.outerHTML;`));
+    check("G245 鼠标停上去的提示（title）照 Annie 定的短句", await evaluate(`return ${cell}.title === ${JSON.stringify(TIP)};`), await evaluate(`return ${cell}?.title;`));
+    await evaluate(`${cell}.click();`);
+    check("G245 点一下（手机）在格子下面展开同一句，再点收起", (await waitFor(`$box('CHD2005').closest('tr').querySelector('[data-cfm-mismatch-tip]')?.textContent === ${JSON.stringify(TIP)}`)) && (await evaluate(`${cell}.click(); return 1;`)) && (await waitFor("!$box('CHD2005').closest('tr').querySelector('[data-cfm-mismatch-tip]')")));
+    check("G245 没问题的行（CHD2004 没号）照旧没有红格", await evaluate("return !$box('CHD2004').closest('tr').querySelector('[data-cfm-mismatch]');"));
+    check("G245 表格上方黄字多半句 Orders with a red Cfm #…", await evaluate("return document.body.textContent.includes(\"Orders with a red Cfm # can't be sent until the Cfm # is fixed in Rezdy or in the Cfm # cell.\");"));
+    // 勾号不对的 + 没号的 ⇒ 红条逐单写原因，Send anyway 只带没号的那一单
+    await evaluate("for (const b of document.querySelectorAll('tbody input[type=checkbox]')) if (b.checked) b.click(); $box('CHD2005').click(); $box('CHD2004').click();");
+    await evaluate("$btn('Send reminder', $bar()).click();");
+    await waitFor("document.querySelector('[data-soft-blocked]')");
+    check("G245 红条逐单写原因（后端原话）+ 号不对的不能 Send anyway 那句", await evaluate(`const t = document.querySelector('[data-soft-blocked]').textContent; return document.querySelector('[data-soft-block=\"CHD2005\"]').textContent.includes(${JSON.stringify(REASON)}) && document.querySelector('[data-soft-block=\"CHD2004\"]').textContent.includes('No Cfm #') && t.includes("An order with a Cfm # that doesn't match the product can't be sent anyway.");`), await evaluate("return document.querySelector('[data-soft-blocked]')?.textContent;"));
+    check("只修 bug：红条上 Go fill them in 是深红字（原来白字在淡红底上看不见）", await evaluate("const b = [...document.querySelectorAll('button')].find(x => x.textContent.trim() === 'Go fill them in'); return !!b && getComputedStyle(b).color === 'rgb(122, 36, 36)';"));
+    check("G245 Send anyway 只算没号的那一单（Send anyway 1）", await evaluate("const b = document.querySelector('[data-send-anyway-cfm]'); return !!b && b.textContent.trim() === 'Send anyway 1';"), await evaluate("return document.querySelector('[data-send-anyway-cfm]')?.textContent;"));
+    await evaluate("$btn('Go fill them in').click();");
+    // 只勾号不对的 ⇒ 没有 Send anyway
+    await evaluate("$box('CHD2004').click();");
+    await evaluate("$btn('Send reminder', $bar()).click();");
+    await waitFor("document.querySelector('[data-soft-blocked]')");
+    check("G245 只勾号不对的：红条有、没有 Send anyway 键", await evaluate("return !!document.querySelector('[data-soft-block=\"CHD2005\"]') && !document.querySelector('[data-send-anyway-cfm]');"));
+    await evaluate("$btn('Go fill them in').click();");
+    // 页面上没标、发的那一刻后端才挡（例如刚在 Rezdy 改了单）⇒ 结果里红框 Not sent，原话，没有 Send anyway
+    await ctl({ mismatch: [], mismatchLate: ["CHD2005"] });
+    await openPage(`${APP}/manifests?date=${today}&tab=tickets&pill=t%3Aantelope`);
+    await waitFor("$box('CHD2005')");
+    await evaluate("for (const b of document.querySelectorAll('tbody input[type=checkbox]')) if (b.checked) b.click(); $box('CHD2005').click();");
+    await evaluate("$btn('Send reminder', $bar()).click();");
+    await waitFor("$dialog()");
+    await evaluate("$btn('✉️ Send 1 reminder', $dialog()).click();");
+    await waitFor("$dialog()?.querySelector('[data-blocked=\"CHD2005\"]')");
+    check("G245 后端硬拦：发送结果红框 Not sent (1)，原因照后端原话、名字写上，没有 Send anyway 勾选", await evaluate(`const b = $dialog().querySelector('[data-blocked=\"CHD2005\"]'); const t = $dialog().textContent; return b.textContent.includes(${JSON.stringify(REASON)}) && b.textContent.includes('ZZ Ticket Rezdy') && t.includes('Not sent (1)') && t.includes('1 order not sent, see below.') && /Not sents*1/.test($dialog().querySelector('[class*=\"mb-0\"]')?.textContent ?? t) && !$dialog().querySelector('input[data-anyway=\"CHD2005\"]') && !$dialog().querySelector('[data-skipped=\"CHD2005\"]');`), await evaluate("return $dialog().textContent;"));
+    await evaluate("$btn('Done', $dialog()).click();");
+    await waitFor("!$dialog()");
+    await ctl({ mismatch: null, mismatchLate: [] });
+  }
   await ctl({ rezdyTix: false });
 
   // 混合勾选（CHD2001 有 Cfm #、CHD2004 没有）：Skip & send 只发有号的；发完后缺号的继续留着勾选和标红，不悄悄一起清掉

@@ -334,7 +334,9 @@ function HowToUse() {
       <li>
         Ticket reminders go out at each send time to ticket orders that have a
         Cfm #. The day before, a summary email lists what is still not sent for
-        the next day and why. Test orders are left out of the summary.
+        the next day and why. Test orders are left out of the summary. Orders
+        whose Cfm # doesn&apos;t match the product are skipped and listed
+        together in one email after each run.
       </li>
       <li>
         Orders already sent by hand are not sent again, and the other way round.
