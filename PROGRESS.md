@@ -1073,6 +1073,8 @@ D. 已完成、待从置顶移走：
   - ① Dispatch › Tour bus（2026-10-31 上线，components/dispatch/vehicle-row.tsx:516、config.ts:445）：团有 Shuttle 客人（outbound + inbound 人数加起来）、车上没选 Shuttle 站时，第一台车 Add hotel 右边琥珀字「Select today's shuttle pick-up here · N shuttle guests」，Schedule check 一条「<团>: shuttle pick-up not chosen」。问：A（推荐）只算 inbound shuttle 客人，团只有 outbound 时不提醒；B 整条提示和 Schedule check 去掉；C 不改。
   - ② Products › Bus Manifest setup 的 How to use（manifest-setup-panel.tsx:1602）现句：「The guest then shows up twice on that day: in the outbound section (pickup from the order) and in the inbound section (the return pickup you typed).」问：A（推荐）改成「in the outbound section (departs from TI) and in the inbound section (the return pickup you typed).」；B 不改。
   - 后端有没有按订单酒店排 outbound shuttle 接客的逻辑，已转 46 只读核。
+  - 46 核完（只读，没改；后端交接 7d89f872，明天写进待办）：① relay 分车 relay_pull.split()（relay_pull.py:171-206）不分节类型，outbound shuttle 客人跟团客一样按订单 pickup_location 配接客点：订单写 TI ⇒ departure 在 TI 上车，写别的酒店 ⇒ 分进排了那站的 relay 车，没车 ⇒ Need a look（前提团设了 relay_round）；② Seat guests 南北分车 seat_plan()（tour_manifest.py:2238-2251）outbound shuttle 客人也按订单酒店方向算 A 车给哪方；③ Main / Bus Manifest outbound 节照订单显示接客时间 / 地点（manifest_list.py:272，只显示）；④ SEATS USED = 团 + max(inbound, outbound) 只算人数，无关。没细看：Morning tracking / morning_pickup.py、司机页 / 导游页模板各一处 outbound。
+  - 78 追问 Annie（关键题，决定后端①②③改不改）：Q0 outbound shuttle 客人是 A 自己到 TI 上车（不坐 relay）⇒ 后端①②③都要改成一律按 TI；B 跟团客一样由 relay 从酒店接到 TI，「不需要单独挑酒店」只是说 Dispatch 不用给 shuttle 另选上车站 ⇒ 后端不改，前端只改 ① 提示 / ② 说明。
 
 ### 86. 司机 / 导游 live 页每天的快照（2026-11-04，Annie 在主窗口-2c 提，没动手）
 - 原话：「我还有个需求，司机和导游的live 记录，是否可以有快照，就是他这一天在哪个站停留了多久，发了多少短信，汇报了多少picked up和no show，在工作结束前它的页面有个快照」。
