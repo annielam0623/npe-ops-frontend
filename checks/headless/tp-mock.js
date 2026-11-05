@@ -68,6 +68,9 @@ let teamLayout = null, teamLayout404 = false;
 const log = [];
 // 停用 / 恢复成功后多出来的 Action Log 行（新的在上），reset 清空。
 const extraLog = [];
+// G212 SA-8：待注册的人勾的集合 / 账号类型真的变了 ⇒ 换新令牌（tokv + 1），旧链接作废。
+const tokenOf = (p) => "tok-" + p.id + (p.tokv ? "-v" + p.tokv : "");
+const sameSet = (a, b) => { const x = new Set(a), y = new Set(b); return x.size === y.size && [...x].every((c) => y.has(c)); };
 function person(id, username, display_name, items, o = {}) {
   return { id, username, display_name, email: o.email === undefined ? `${username}@example.com` : o.email, role: o.role || "staff",
     is_active: o.is_active !== false, invite_used: o.invite_used !== false, items: [...items].sort(),
@@ -107,7 +110,7 @@ const row = (p) => {
     const reason = blockReason(p);
     Object.assign(r, { role: p.role, is_active: p.is_active, initials: null, is_self: p.id === viewerId(),
       created_by: "annie", created_at: "2026-09-27T03:30:00+00:00",
-      invite_token: !p.invite_used && !reason ? "tok-" + p.id : null,
+      invite_token: !p.invite_used && !reason ? tokenOf(p) : null,
       can_edit: reason === null, edit_block_reason: reason });
   }
   return r;
@@ -309,7 +312,9 @@ http.createServer((req, res) => {
           if (who.role === "partner" && body.duties !== undefined) return send(res, 400, { detail: "External partner accounts cannot have notification duties." });
           const err = validate(body);
           if (err) return send(res, 400, { detail: err });
+          const beforeItems = [...who.items];
           apply(who, who.role === "partner" ? { ...body, items: stripSend(body.items) } : body);
+          if (!who.invite_used && !sameSet(beforeItems, who.items)) who.tokv = (who.tokv || 0) + 1;
           return send(res, 200, { ok: true, member: detail(who) });
         }
       }
@@ -335,6 +340,8 @@ http.createServer((req, res) => {
         if (!who) return send(res, 404, { detail: "Member not found" });
         if (who.role === "superadmin") return send(res, 403, { detail: "A Super Admin account cannot be edited here" });
         if (!["staff", "partner"].includes(body.account_type)) return send(res, 400, { detail: BAD_TYPE });
+        const wasPartner = who.role === "partner";
+        if (!who.invite_used && wasPartner !== (body.account_type === "partner")) who.tokv = (who.tokv || 0) + 1;
         if (body.account_type === "partner") {
           who.role = "partner";
           who.items = stripSend(who.items).sort();
@@ -354,7 +361,7 @@ http.createServer((req, res) => {
     if (p === "/api/users" && m === "GET") {
       if (viewer === "anon") return send(res, 401, { detail: "Authentication required" });
       return send(res, 200, people.map((x) => ({ id: x.id, username: x.username, display_name: x.display_name,
-        initials: null, role: x.role, is_active: x.is_active, invite_used: x.invite_used, invite_token: x.invite_used ? null : "tok-" + x.id,
+        initials: null, role: x.role, is_active: x.is_active, invite_used: x.invite_used, invite_token: x.invite_used ? null : tokenOf(x),
         created_by: "annie", created_at: "2026-09-27T03:30:00+00:00", team_ids: x.team_ids, is_self: g212 ? x.id === viewerId() : x.id === 1,
         // G212 ①：/api/users 每行也带（同一个判断）；admin 看司机 / 导游 = true。
         ...(g212 ? { can_edit: blockReason(x) === null, edit_block_reason: blockReason(x) } : {}) })));

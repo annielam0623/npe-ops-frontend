@@ -261,15 +261,16 @@ export function usePermissions(): Permissions {
   // 只看勾：除 Super Admin 外都读（不再看总开关）。
   const loadTicks = vis.loaded && !vis.isSuperAdmin;
   const [snap, setSnap] = useState(snapshot);
+  // 和 /api/me、dashboard-widgets 同时发（页面提速，Annie 2026-11-05「改变速度的三步，动手」）：
+  // 不再等 /api/me 回来、知道是不是 Super Admin 才发；Super Admin 读回来的结果不用（loadTicks 为 false）。
   useEffect(() => {
-    if (!loadTicks) return;
     const listener = () => setSnap(snapshot);
     listeners.add(listener);
     void ensureLoaded().then(listener);
     return () => {
       listeners.delete(listener);
     };
-  }, [loadTicks]);
+  }, []);
 
   const ready = vis.loaded && (!loadTicks || snap.loaded);
   // 读失败：员工照旧（不藏）；partner 什么都不给看（codes 是空的）。

@@ -12,9 +12,9 @@ import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchCurrentUser } from "@/lib/auth-api";
 import { laToday, shiftYmd, weekStartYmd } from "@/lib/la-date";
 import {
-  fetchScheduleEmployees,
-  fetchScheduleSettings,
-  fetchScheduleWeek,
+  dashboardScheduleEmployees,
+  dashboardScheduleSettings,
+  dashboardScheduleWeek,
 } from "@/lib/schedule-api";
 import { formatClock } from "@/lib/schedule-time";
 import { sortByName } from "@/lib/schedule-timeline";
@@ -81,8 +81,8 @@ export function ScheduleSection({
       try {
         const [me, settings, employees] = await Promise.all([
           fetchCurrentUser(signal),
-          fetchScheduleSettings(signal),
-          fetchScheduleEmployees(signal),
+          dashboardScheduleSettings(signal),
+          dashboardScheduleEmployees(signal),
         ]);
         if (signal.aborted) return;
         setShared({
@@ -108,7 +108,7 @@ export function ScheduleSection({
     async (signal: AbortSignal) => {
       setWeek({ kind: "loading" });
       try {
-        const data = await fetchScheduleWeek(weekStart, signal);
+        const data = await dashboardScheduleWeek(weekStart, signal);
         if (signal.aborted) return;
         // 主管读一个没人排过的周后端会顺手建草稿：Dashboard 只给看已发布的，草稿一律当「还没发布」。
         setWeek(

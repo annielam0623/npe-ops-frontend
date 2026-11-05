@@ -11,9 +11,9 @@ import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchCurrentUser } from "@/lib/auth-api";
 import { laToday, weekStartYmd } from "@/lib/la-date";
 import {
-  fetchScheduleEmployees,
-  fetchScheduleSettings,
-  fetchScheduleWeek,
+  dashboardScheduleEmployees,
+  dashboardScheduleSettings,
+  dashboardScheduleWeek,
 } from "@/lib/schedule-api";
 import { formatClock } from "@/lib/schedule-time";
 import {
@@ -102,9 +102,9 @@ export function TodayTeamSection({
       try {
         const [me, settings, employees, week] = await Promise.all([
           fetchCurrentUser(signal),
-          fetchScheduleSettings(signal),
-          fetchScheduleEmployees(signal),
-          fetchScheduleWeek(weekStartYmd(today), signal),
+          dashboardScheduleSettings(signal),
+          dashboardScheduleEmployees(signal),
+          dashboardScheduleWeek(weekStartYmd(today), signal),
         ]);
         if (signal.aborted) return;
         // 主管读没人排过的周后端会顺手建草稿：Dashboard 只给看已发布的。
