@@ -6,6 +6,14 @@
 
 > **下一个主窗口：先读下面「2026-11-05 收工交接：前端主窗口 e8」，再看置顶「📌 等 Annie 确认」。**
 
+## 2026-11-05 Farm out › Partners & rates：有子项的团，主项 Adult / Child 写灰字 N/A（`task/farmout-subitem-price`，工作窗口 `npe-ops-frontend-19`[1e2a0d]，主窗口 e8 派）—— ⏸ 等 Annie 看 preview、说「动手」再合
+- Annie 原话（后端主窗口转）：「有的tour是分项太多，就像west rim，没有办法按照单一的adult和child来统计，如果我只列了一个价钱的话，就是默认大小同价，然后就把列在主项上的两个空格忽略，或者允许我打N/A」「是你的设计需要来配合生意，不是生意来将就你的设计」。
+- 后来两次改定（e8 转）：「子项的adult和child因为你没有提供空格来填，最好把两个格都放上去……」，再后来「其实你可以跟Rezdy一样，就设几个选项，adult，child，infant，drop down选择」⇒ 子项（主项同理）以后每行下拉选 Adult / Child / Infant 再填价，**等后端明天给接口再做**；这次子项不动。
+- 这次只做：有子项的团，主项 Adult / Child 空着 ⇒ 灰字 N/A（不再红色 not set），编辑时提示字也是 N/A；本来就能空着存，校验不用改。没子项的团照旧红色 not set。
+- Preview：https://claude.ai/artifact/HZ1yfgBd93DZoQKSE4B8fS（现在 vs 改后，电脑 + 手机，平时看 + 编辑时；How to use 一题 A 加一句 / B 不加，原文在页里）。
+- 分支提交 8d9ae4c1（推了 origin/task/farmout-subitem-price，没合 main）。检查：fo-settings 132/132、nav 39/39、perm 54/54；tsc 0；eslint 0 错；build 过。
+- 下一步：Annie 看了说「动手」⇒ 按 How to use 的选择改文字（选 A 就加那句）、合最新 main 重跑 fo-settings、合 main。
+
 ## 2026-11-05 收工交接：前端主窗口 `今日主窗口-e8`[6ce7da]（公司电脑）
 > 窗口：前端工作窗口 a0 [02f088]、7a [32d617]、19 [1e2a0d]；后端主窗口「今日后端主窗口e8」[df009e]（后端 54 / 4c / 11 / 17）。⚠️ 前后端主窗口今天都叫 e8，发消息要带 ref。
 
