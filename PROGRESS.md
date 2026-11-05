@@ -11,6 +11,9 @@
 - 资源：空闲内存 35.6 / 61.8 GB，node + chrome 68 个（6.7 GB）⇒ 可开 2–3 个工作窗口。
 - 在线：后端 `npe-confirmation-service-b3`[df009e]（身份待确认，已发消息报前端主窗口名字、问两件 SHA）；前端工作窗口暂无。
 - 后端 origin/main 7d89f872（46 昨晚交接）：G245 已上；**还没上**：① /api/dispatch/manifest pickup_location_id / pickup_is_vegas（Shuttle 提示改按上车点）② G249 field-calendar 所有人 + hours + 开关 hr_working_record（Working Record 合 main）。SHA 到了派工作窗口核字段合。
+- b3 确认是今天后端主窗口，后改名「今日主窗口e8」[df009e]（跟前端同名，发消息要带 ref）；两件已登记，等后端子窗口派。
+- Annie 发「动手」，e8 问是不是置顶 87 Q0（后端三处改按 TI），Annie 反问（原话）：「订单上面显示的酒店是什么」⇒ e8 已请后端 df009e 只读查：Vegas 出发 outbound shuttle 订单的 pickup_location 原文 / 单数、pickup_lookup.match 对上哪家、is_tour_bus、2–3 个例子。结果到了转 Annie，**还不算动手**。
+- 前端工作窗口 `npe-ops-frontend-a0`[02f088] 已开，暂未派工。
 
 ## 2026-11-04 晚 前端主窗口 `npe-ops-frontend-78`[6e88e1] 接班（家里电脑；只分工和汇报，不写代码）
 - Annie：「你是今天的主窗口，跟5C交接一下昨天的工作」「pull今天公司完成的工作」。已 git pull 到 6e151cba（公司 2c / 81 / c8 今天的提交全部到了）。
