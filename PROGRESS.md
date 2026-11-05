@@ -12,6 +12,7 @@
 - Annie：「完成公司没完成的任务啊」。78 核：后端 origin/main 223e0c4a，G245（82）和 Working Record（86 field-calendar / field-snapshots / Hours）都还没上。fa、9e、da、36、5c 都已关，现在在线只有 主窗口-46 [5b93cd]。
   - 前端待派（等 Annie 开 1 个工作窗口，家里空闲内存 10.6 GB）：① 86 Profile 分节 origin/task/hr-profile-sections 3a72805 合最新 main 跑 hr / nav + tsc / eslint / build 后合 main（Annie 已「working record这里全部同意推荐，动手」，含 Profile Q1 A / Q2 A）；② 86 Working Record 开 task/hr-working-record 照 mock 做、推分支不合（等后端）。
   - 82 G245 前端 e736302 已写好，等后端 cfm_mismatch 上线再合。已问 46（如是后端主窗口）今晚能否做 G245 / Working Record 后端，及 G212 B3 / B6 / B7、61 题 1①。
+  - 46 回（今晚家里后端主窗口 npe-confirmation-service-46）：① G245 今晚接，落地 task/g245-antelope-x-first db6eb24e（多一笔：不符提醒只发 antelope@），v149 已执行不再执行，**要 Annie 在 46 窗口批 C→B、跑 release.py**，上 main 发 SHA；② Working Record 今晚不接（Scope v3 要 Annie 先确认 + 实测 Samsara HOS 权限），照明天；③ G212 B3 / B6 / B7 已全上（a3b3d613 / b68aa0e9）；④ 61 题 1① 修法在 61 窗口等 Annie 答，今晚不排。另：Annie 报 Relay Splits relay 卡车号刚好是某团大巴时抬头写成大巴司机 + 导游，46 等 Annie 选 A / B，定了再说前端要不要动。
 
 ## 2026-11-04 收工：工作窗口 `npe-ops-frontend-c8`[a65365]（2c 派；dev server / Chrome 已全关）
 - 今天合了 main（详细做法、检查数、Annie 验收点各在自己那一节）：
