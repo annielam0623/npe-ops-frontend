@@ -6,6 +6,12 @@
 
 > **下一个主窗口：先读下面「2026-11-04 收工交接：前端主窗口 2c」，再看置顶「📌 等 Annie 确认」。**
 
+## 2026-11-05 前端主窗口 `npe-ops-frontend-e8`[6ce7da] 开工（公司电脑；只分工和汇报，不写代码）
+- Annie：「开工，你是今天的主窗口」。git pull 到 50b28d29（昨晚家里 78 / 77 / ef 的提交都到了）；工作区干净。
+- 资源：空闲内存 35.6 / 61.8 GB，node + chrome 68 个（6.7 GB）⇒ 可开 2–3 个工作窗口。
+- 在线：后端 `npe-confirmation-service-b3`[df009e]（身份待确认，已发消息报前端主窗口名字、问两件 SHA）；前端工作窗口暂无。
+- 后端 origin/main 7d89f872（46 昨晚交接）：G245 已上；**还没上**：① /api/dispatch/manifest pickup_location_id / pickup_is_vegas（Shuttle 提示改按上车点）② G249 field-calendar 所有人 + hours + 开关 hr_working_record（Working Record 合 main）。SHA 到了派工作窗口核字段合。
+
 ## 2026-11-04 晚 前端主窗口 `npe-ops-frontend-78`[6e88e1] 接班（家里电脑；只分工和汇报，不写代码）
 - Annie：「你是今天的主窗口，跟5C交接一下昨天的工作」「pull今天公司完成的工作」。已 git pull 到 6e151cba（公司 2c / 81 / c8 今天的提交全部到了）。
 - 5c 交接（11-03 晚）里的 75 agent-ref、51 B、Restaurant ⬆ Import、G212 都已由公司 2c 派 81 / c8 合 main（见上面 2c 收工交接表），不再派。接着按 2c 交接「四、明天开工」和置顶走。
