@@ -160,6 +160,29 @@ export interface DispatchDay {
   edit_lock?: DispatchEditLock | null;
   /** 编辑锁的计时（秒，G71）：前端照这几个数计时，不写死。 */
   edit_timing?: DispatchEditTiming;
+  /**
+   * G250（置顶 93，Annie「93：全按推荐，动手」）：团车出发 1 小时后锁定，只有 Super Admin 能改。
+   * 读不出 = null（页面照常）；旧后端没有这个键。
+   */
+  tour_locks?: DispatchTourLocks | null;
+}
+
+/** 一个锁定单元（一个团 / 一轮 Morning Relay）：时间是洛杉矶的 ISO；拿不到出发时间 = null、locked false。 */
+export interface DispatchLockEntry {
+  locked: boolean;
+  departure: string | null;
+  locks_at: string | null;
+}
+
+export interface DispatchTourLocks {
+  /** 这一天早于今天（洛杉矶）：整天所有团、每轮 relay、Private Custom 的车都锁（Annie 在 4c 选 B）。 */
+  past_day?: boolean;
+  /** 键 = manifest_id（字符串）。 */
+  tours: Record<string, DispatchLockEntry>;
+  /** relay / relay_2。 */
+  rounds: Record<string, DispatchLockEntry>;
+  /** 当前登录的人能不能改锁住的（Super Admin）。 */
+  can_edit_locked: boolean;
 }
 
 export interface DispatchEditLock {

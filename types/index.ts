@@ -260,6 +260,8 @@ export type {
   DispatchCopyResult,
   DispatchDay,
   DispatchEditLock,
+  DispatchLockEntry,
+  DispatchTourLocks,
   DispatchEditTiming,
   DispatchDriver,
   DispatchMeta,

@@ -171,14 +171,15 @@ http.createServer(async (req, res) => {
   if (p === "/api/dispatch/day" && ctl.foVis && !ctl.partner) {
     // 2026-10-05 团 3：两辆巴士团车（id 41 = A、42 = B，同 GET manifest 的 bus.id），再加一辆别的团的车（不该被送去）。
     const row = (id, label, manifest_id, driver) => ({ id, shift: "bus_tour", driver_hr_id: 7, driver_typed_name: null, vehicle_id: id, manifest_id, custom_tour_name: null, guide_hr_id: null, guide_typed_name: null, bus_label: label, note: "", location_ids: [3], driver_name: driver, guide_name: null, ccl: null });
-    return send(res, 200, { run_date: q.date, today: q.date, rows: [row(41, "A", 3, "FREDDY"), row(42, "B", 3, "FREDDY"), row(43, "A", 9, "OTHER")], sections: [], orphans: [], drivers: [], vehicles: [], locations: [], tours: [], guides: [], copy_from: null, meta: { bus_tour_shift: "bus_tour" } });
+    return send(res, 200, { run_date: q.date, today: q.date, rows: [row(41, "A", 3, "FREDDY"), row(42, "B", 3, "FREDDY"), row(43, "A", 9, "OTHER")], sections: [], orphans: [], drivers: [], vehicles: [], locations: [], tours: [], guides: [], copy_from: null, meta: { bus_tour_shift: "bus_tour" }, ...(ctl.tourLocks ? { tour_locks: ctl.tourLocks } : {}) });
   }
   if (p === "/api/dispatch/day") {
     const LA = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Los_Angeles", year: "numeric", month: "2-digit", day: "2-digit" });
     const t = LA.format(new Date());
     const [y, m, d] = t.split("-").map(Number);
     const tomorrow = new Date(Date.UTC(y, m - 1, d + 1)).toISOString().slice(0, 10);
-    return send(res, 200, { run_date: q.date || tomorrow, today: t, rows: [], sections: [], orphans: [], drivers: [], vehicles: [], locations: [], tours: [], guides: [], copy_from: null });
+    // G250（置顶 93）：tourLocks = 后端 tour_locks 原样（Bus Manifest 换车下拉读它）。
+    return send(res, 200, { run_date: q.date || tomorrow, today: t, rows: [], sections: [], orphans: [], drivers: [], vehicles: [], locations: [], tours: [], guides: [], copy_from: null, ...(ctl.tourLocks ? { tour_locks: ctl.tourLocks } : {}) });
   }
   if (p === "/api/dispatch/imports/day") return send(res, 200, { last_ok: "", prefill: null });
   if (p === "/api/dispatch/imports/pull") return send(res, 200, { status: "nothing", message: "Nothing new", last_ok: "" });
@@ -255,6 +256,8 @@ http.createServer(async (req, res) => {
   if (p === "/api/dispatch/manifests/guest-bus") {
     const b = JSON.parse(await readRaw(req)); entry.body = b;
     if (ctl.busFail) return send(res, 400, { detail: ctl.busFail });
+    // G250：团锁了 ⇒ 409 原话；lockAfter409 = 之后 GET day 带的 tour_locks。
+    if (ctl.bus409) { if (ctl.lockAfter409) ctl.tourLocks = ctl.lockAfter409; return send(res, 409, { detail: ctl.bus409 }); }
     state.guests.find((g) => g.id === b.guest_id).bus_label = b.bus_label;
     return send(res, 200, { ok: true, id: b.guest_id, bus_label: b.bus_label });
   }

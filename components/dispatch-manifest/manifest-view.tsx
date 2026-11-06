@@ -12,7 +12,15 @@ import {
 } from "react";
 import { flushSync } from "react-dom";
 
-import { fmtShort } from "@/components/dispatch/config";
+import {
+  fmtShort,
+  isTourLockMessage,
+  type LockInfo,
+  lockedForMe,
+  lockOf,
+} from "@/components/dispatch/config";
+import { LockBar } from "@/components/dispatch/tour-lock";
+import { fetchDispatchDay } from "@/lib/dispatch-api";
 import { hasInAppHistory } from "@/components/nav/in-app-history";
 import { ErrorBanner } from "@/components/ui/panel";
 import { PhoneMore, PhoneOneLine } from "@/components/ui/phone";
@@ -265,6 +273,13 @@ export function ManifestView() {
   );
   const [view, setView] = useState<ViewState>({ kind: "loading" });
   const [reloadKey, setReloadKey] = useState(0);
+  /**
+   * G250（置顶 93 Q5 A）：这个团的锁定状态，从 GET /api/dispatch/day 的 tour_locks 读（Bus Manifest 接口没有）。
+   * 读不到 = null，换车照常（后端照样拦）。
+   */
+  const [busLock, setBusLock] = useState<LockInfo | null>(null);
+  /** 换车存的时候后端说锁了：客人 id → 「Not saved: 」+ 原话。 */
+  const [busErrors, setBusErrors] = useState<Record<number, string>>({});
   const [actionError, setActionError] = useState<string | null>(null);
   // 整页 Save（Annie 2026-10-29「缓存，然后等整页存」）：版式、字号、换车、黄框都先放在这里。
   const [pending, setPending] = useState<Pending>(EMPTY_PENDING);
@@ -360,6 +375,23 @@ export function ManifestView() {
     void load(controller.signal);
     return () => controller.abort();
   }, [params, reloadKey, load]);
+
+  useEffect(() => {
+    if (!params) return;
+    const controller = new AbortController();
+    fetchDispatchDay(params.date, controller.signal).then(
+      (d) => {
+        if (controller.signal.aborted || d.run_date !== params.date) return;
+        setBusLock(
+          lockOf(d.tour_locks, { shift: "bus_tour", manifest_id: params.tour }),
+        );
+      },
+      () => {
+        if (!controller.signal.aborted) setBusLock(null);
+      },
+    );
+    return () => controller.abort();
+  }, [params, reloadKey]);
 
   function onActionError(error: unknown) {
     if (isStatus(error, 401)) redirectToLogin();
@@ -535,16 +567,29 @@ export function ManifestView() {
       for (const g of sec.guests) orders.set(g.id, g.order_number);
     // 换车先存、字号后存：后端字号的整行只收「这台车上现在的订单号」，换到新车的客人要先落库才能调那一行。
     const moved: Pending["moves"] = {};
+    const lockFails: Record<number, string> = {};
     for (const [id, label] of Object.entries(pending.moves)) {
-      if (
-        await attempt(`Bus for ${orders.get(Number(id)) ?? id}`, () =>
-          setGuestBus(Number(id), label || null),
-        )
-      ) {
+      // G250 Q5 A：团锁了（409 原话）⇒ 这一笔不再留在暂存里（客人回原车），红字写在那张下拉旁边。
+      try {
+        await setGuestBus(Number(id), label || null);
         moved[Number(id)] = label;
         delete next.moves[Number(id)];
+        continue;
+      } catch (error) {
+        if (isStatus(error, 409) && isTourLockMessage(describeError(error))) {
+          lockFails[Number(id)] = `Not saved: ${describeError(error)}`;
+          delete next.moves[Number(id)];
+          continue;
+        }
+        if (isStatus(error, 401)) unauthorized = true;
+        else
+          fails.push(
+            `Bus for ${orders.get(Number(id)) ?? id}: ${describeError(error)}`,
+          );
       }
     }
+    setBusErrors(lockFails);
+    if (Object.keys(lockFails).length) setReloadKey((k) => k + 1);
     // Special Requirements 放在换车之后发（主窗口 eb 2026-10-30）：每位客人一条 PUT，null = 恢复 Rezdy 原文。
     for (const [id, n] of Object.entries(pending.notes)) {
       if (
@@ -621,6 +666,12 @@ export function ManifestView() {
       const message = `Could not save: ${fails.join("; ")}. ${fails.length < total ? "The rest was saved. " : ""}What was not saved is still marked; click Save to try again.`;
       setSaveState({ kind: "error", message });
       return { error: message, data: fresh };
+    }
+    // G250：换车被锁挡下（红字已在下拉旁边），整页状态也不写 Saved。
+    const lockMsg = Object.values(lockFails)[0];
+    if (lockMsg) {
+      setSaveState({ kind: "error", message: lockMsg });
+      return { error: lockMsg, data: fresh };
     }
     setSaveState({
       kind: "saved",
@@ -1031,6 +1082,9 @@ export function ManifestView() {
                 </div>
               ) : null}
 
+              {shown.mode === "lettered" && !viewOnly ? (
+                <LockBar l={busLock} className="mb-3 rounded-md border" />
+              ) : null}
               <Stage.Provider
                 value={{
                   movedFrom,
@@ -1038,6 +1092,8 @@ export function ManifestView() {
                   stageAttraction,
                   notes: pending.notes,
                   failed: saveState.kind === "error",
+                  busLocked: lockedForMe(busLock),
+                  busErrors,
                 }}
               >
                 {shown.blocks.map((block, i) => (
@@ -2310,8 +2366,9 @@ function BusSelect({
   onChange: (guest: ManifestGuest, label: string) => void;
 }) {
   const viewOnly = useViewOnly();
-  const { movedFrom } = useStage();
+  const { movedFrom, busLocked, busErrors } = useStage();
   const value = guest.bus_label ?? "";
+  const lockErr = busErrors?.[guest.id];
   const unset = !value || !labels.includes(value);
   const moved = movedFrom.has(guest.id);
   if (viewOnly)
@@ -2325,11 +2382,12 @@ function BusSelect({
       <select
         aria-label={`Bus for ${guest.name}`}
         value={value}
+        disabled={busLocked}
         // 换车先放在页面上（客人马上挪到新车），整页 Save 才存（Q4）。
         onChange={(e) => onChange(guest, e.target.value)}
         className={cn(
           // .mf-card select.bus（.unset 橙框）
-          "h-[26px] rounded-md px-1 font-[inherit] text-[12px] text-[#111]",
+          "h-[26px] rounded-md px-1 font-[inherit] text-[12px] text-[#111] disabled:cursor-not-allowed disabled:opacity-55",
           moved
             ? cn("border border-[#f59e0b] bg-[#fffbeb]", UNSAVED_RING)
             : unset
@@ -2350,6 +2408,15 @@ function BusSelect({
       {moved ? (
         <span data-moved-from className={UNSAVED_TAG}>
           from {movedFrom.get(guest.id) || "no bus"} · not saved
+        </span>
+      ) : null}
+      {lockErr ? (
+        <span
+          role="alert"
+          data-bus-lock-error
+          className="max-w-[260px] text-[11px] font-semibold text-[#b91c1c]"
+        >
+          {lockErr}
         </span>
       ) : null}
     </span>

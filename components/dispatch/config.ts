@@ -1,4 +1,10 @@
-import type { DispatchDay, DispatchMeta, DispatchRow } from "@/types";
+import { LA_TIME_ZONE } from "@/lib/la-date";
+import type {
+  DispatchDay,
+  DispatchMeta,
+  DispatchRow,
+  DispatchTourLocks,
+} from "@/types";
 
 /**
  * 排车页的 7 个常量：以 `GET /api/dispatch/day` 的 `meta` 为准（后端 `dispatch.page_meta()`，与旧页面模板同一份），
@@ -74,6 +80,79 @@ export function unitOf(r: {
   if (isRelay(r.shift)) return "relay";
   if (r.shift === META.bus_tour_shift) return `tour:${r.manifest_id}`;
   return r.shift;
+}
+
+/**
+ * G250 锁定（置顶 93，Annie「93：全按推荐，动手」，preview SgRWaBvRcTie4cTdziPjtD Q1–Q9 全 A）：
+ * 一个团（按 manifest_id，巴士团和选了团的 Private 车）/ 一轮 Morning Relay 出发 1 小时后锁；过去的日子整天锁
+ * （Private Custom 也锁）。没锁 / 后端没带 / 没团的 Private Custom（当天）⇒ null。
+ */
+export interface LockInfo {
+  kind: "tour" | "round" | "day";
+  departure: string | null;
+  locks_at: string | null;
+  /** Super Admin：照常能改，只提示。 */
+  canEdit: boolean;
+}
+
+export function lockOf(
+  locks: DispatchTourLocks | null | undefined,
+  r: { shift: string; manifest_id: number | null },
+): LockInfo | null {
+  if (!locks) return null;
+  const canEdit = locks.can_edit_locked === true;
+  if (locks.past_day)
+    return { kind: "day", departure: null, locks_at: null, canEdit };
+  const e = isRelay(r.shift)
+    ? locks.rounds?.[r.shift]
+    : r.manifest_id != null
+      ? locks.tours?.[String(r.manifest_id)]
+      : undefined;
+  if (!e?.locked) return null;
+  return {
+    kind: isRelay(r.shift) ? "round" : "tour",
+    departure: e.departure,
+    locks_at: e.locks_at,
+    canEdit,
+  };
+}
+
+/** 锁住、而且当前的人不能改（不是 Super Admin）。 */
+export function lockedForMe(l: LockInfo | null): boolean {
+  return !!l && !l.canEdit;
+}
+
+function laClock(iso: string | null): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleTimeString("en-US", {
+    timeZone: LA_TIME_ZONE,
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+/** 说明条原文（preview Q1 / Q2 / Q3；过去的日子用 40 转的两句）。 */
+export function lockText(l: LockInfo): string {
+  const tail = l.canEdit
+    ? "You can still change it as a Super Admin."
+    : "Only a Super Admin can change it.";
+  if (l.kind === "day") return `This day is locked. ${tail}`;
+  const at = laClock(l.locks_at);
+  const dep = laClock(l.departure);
+  const after =
+    l.kind === "round" ? "1 hour after its tours left" : "1 hour after departure";
+  if (!at || !dep) return `Locked ${after}. ${tail}`;
+  return `Locked at ${at}, ${after} (${dep}). ${tail}`;
+}
+
+/** 后端锁定 409 的两句原话（dispatch_tour_lock.TOUR_LOCKED_MESSAGE / ROUND_LOCKED_MESSAGE）；别的 409（G71 编辑锁）不算。 */
+export function isTourLockMessage(text: string): boolean {
+  return (
+    text.startsWith("This tour is locked") ||
+    text.startsWith("This Morning Relay round is locked")
+  );
 }
 
 /**
@@ -587,10 +666,26 @@ export function analyze(
     });
   });
 
+  // G250 Q8 A：锁住的团 / Relay 轮不列（锁定是系统自动的，不用员工处理）。
+  const locks = day.tour_locks;
+  const lockedIssue = (it: RailIssue) => {
+    if (!locks) return false;
+    if (it.idx != null && rows[it.idx]) return !!lockOf(locks, rows[it.idx]);
+    if (it.sec) {
+      const s = day.sections.find((x) => sectionKey(x) === it.sec);
+      return !!s && !!lockOf(locks, s);
+    }
+    return false;
+  };
+  const shown = issues.filter((it) => !lockedIssue(it));
+  const shownTitles = missingTitles.filter((t) =>
+    shown.some((it) => it.title === t),
+  );
+
   return {
     sections,
-    issues,
-    missingTitles,
+    issues: shown,
+    missingTitles: shownTitles,
     coverage: META.coverage_shifts.map((c) => ({
       shift: c,
       covered: activeLocs.filter((l) => relayHotels[c].has(l.id)).length,

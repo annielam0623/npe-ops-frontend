@@ -2410,6 +2410,81 @@ async function run() {
     await ctl({ loggedInAt: false });
   }
 
+  // ── G250 团车出发 1 小时后锁定（置顶 93，Annie「93：全按推荐，动手」，preview SgRWaBvRcTie4cTdziPjtD Q1–Q9 全 A；
+  //    过去的日子整天锁（Annie 在 4c 选 B），说明条两句 40 转、等 Annie 确认）──
+  {
+    const DEP = "2026-10-18T06:30:00-07:00", AT = "2026-10-18T07:30:00-07:00";
+    const L1 = { locked: true, departure: DEP, locks_at: AT };
+    const wr = sec("West Rim Bus Tour"), r1 = sec("Morning Relay · 1st Round"), r2 = sec("Morning Relay · 2nd Round");
+    const TOUR_MSG = "This tour is locked (1 hour after departure). Only a Super Admin can change it.";
+    const open = async (date = "2026-10-18") => {
+      promptAnswer = "";
+      await goto("about:blank");
+      await sleep(300);
+      promptAnswer = null;
+      await goto(`${APP}/dispatch?date=${date}`);
+      await waitFor(`!!${r2}`, 60000);
+      await sleep(1500);
+      await helpers();
+    };
+    const barOf = (s) => `(${s}?.querySelector('[data-lock-bar]')?.textContent ?? '')`;
+    const hasAdd = (s) => `[...${s}.querySelectorAll('button')].some(b => b.textContent.includes('+ Add vehicle'))`;
+    const relayMissing = "[...document.querySelectorAll('[aria-label=\"Schedule check\"] [aria-label=Issues] > li')].some(l => l.textContent.includes('with no Morning Relay · 1st Round'))";
+    await ctl({ tourLocks: null, lock409: null, lockAfter409: null, hotelGroups: false });
+    await open();
+    check("93 没带 tour_locks（旧后端）：没有锁标签 / 说明条，1st Round 没车的酒店照常列", (await evaluate("return !document.querySelector('[data-lock-badge], [data-lock-bar]');")) && (await evaluate(`return ${relayMissing};`)));
+
+    await ctl({ tourLocks: { tours: { "3": L1 }, rounds: { relay: L1 }, can_edit_locked: false } });
+    await open();
+    check("93 Q1 员工：West Rim 团名旁灰字「🔒 Locked」", await evaluate(`const b = ${wr}.querySelector('[data-lock-badge=staff]'); return !!b && b.textContent === '🔒 Locked' && getComputedStyle(b).color === 'rgb(75, 85, 99)';`));
+    check("93 Q1 员工：灰条原文", (await evaluate(`return ${barOf(wr)};`)) === "Locked at 7:30 AM, 1 hour after departure (6:30 AM). Only a Super Admin can change it.", await evaluate(`return ${barOf(wr)};`));
+    check("93 Q1 员工：整块灰掉、下拉都按不了，Edit / Save / + Add vehicle 收起", await evaluate(`const s = ${wr}; const sels = [...s.querySelectorAll('.vrow select')]; return !!s.querySelector('[data-locked-body]') && sels.length > 0 && sels.every(x => x.matches(':disabled')) && !s.querySelector('[data-row-save]') && !(${hasAdd(wr)}) && ![...s.querySelectorAll('button')].some(b => b.textContent.trim().startsWith('Edit'));`));
+    check("93 Q3 员工：Morning Relay 1st Round 同一套，「1 hour after its tours left」", (await evaluate(`return ${barOf(r1)};`)) === "Locked at 7:30 AM, 1 hour after its tours left (6:30 AM). Only a Super Admin can change it." && !(await evaluate(`return ${hasAdd(r1)};`)), await evaluate(`return ${barOf(r1)};`));
+    check("93 没锁的 2nd Round 照常：没有标签 / 说明条、能 + Add vehicle", await evaluate(`return !${r2}.querySelector('[data-lock-badge], [data-lock-bar]') && ${hasAdd(r2)};`));
+    check("93 Q8：Schedule check 不列锁住的 1st Round（没车的酒店那条没了）", !(await evaluate(`return ${relayMissing};`)));
+    check("93 Q9：How to use 最后一条照原句", await evaluate("return document.body.textContent.replace(/\\s+/g, ' ').includes('Each tour and its Morning Relay round lock 1 hour after the tour leaves. After that only a Super Admin can change its buses, drivers, hotels or seats. Picked up, No show and Boarded can still be ticked.');"));
+
+    await ctl({ tourLocks: { tours: { "3": L1 }, rounds: { relay: L1 }, can_edit_locked: true } });
+    await open();
+    check("93 Q2 Super Admin：琥珀「🔒 Locked」+ 浅黄条原文", await evaluate(`const b = ${wr}.querySelector('[data-lock-badge=sa]'); const bar = ${wr}.querySelector('[data-lock-bar=sa]'); return !!b && getComputedStyle(b).color === 'rgb(180, 83, 9)' && !!bar && bar.textContent === 'Locked at 7:30 AM, 1 hour after departure (6:30 AM). You can still change it as a Super Admin.' && getComputedStyle(bar).backgroundColor === 'rgb(255, 251, 235)';`), await evaluate(`return ${barOf(wr)};`));
+    check("93 Q2 Super Admin：照常能改（下拉能选、有 + Add vehicle、不灰）", await evaluate(`const s = ${wr}; return !s.querySelector('[data-locked-body]') && [...s.querySelectorAll('.vrow select')].some(x => !x.matches(':disabled')) && ${hasAdd(wr)};`));
+    check("93 Q3 Super Admin：Relay 1st Round 浅黄条原文", (await evaluate(`return ${barOf(r1)};`)) === "Locked at 7:30 AM, 1 hour after its tours left (6:30 AM). You can still change it as a Super Admin.");
+
+    await ctl({ tourLocks: { past_day: true, tours: {}, rounds: {}, can_edit_locked: false } });
+    await open();
+    check("93 过去的日子（past_day）：每一块都锁，员工条「This day is locked. Only a Super Admin can change it.」", await evaluate(`return ${barOf(wr)} === 'This day is locked. Only a Super Admin can change it.' && ${barOf(r2)} === 'This day is locked. Only a Super Admin can change it.' && !(${hasAdd(r2)});`), await evaluate(`return ${barOf(r2)};`));
+
+    // Q4：出发前打开、过了锁定时间才按 Save ⇒ 后端 409 原话，卡片里红框、标题右边红字 Not saved，刷新成锁住的样子
+    await ctl({ tourLocks: null, lock409: TOUR_MSG, lockAfter409: { tours: { "3": L1 }, rounds: {}, can_edit_locked: false } });
+    await open();
+    const wrRow = await evaluate(`return ${wr}.querySelector('.vrow')?.dataset.idx ?? null;`);
+    const drv0 = await evaluate(`return ${vrow(wrRow)}.querySelector('[data-f=driver]').value;`);
+    await pick(`${vrow(wrRow)}.querySelector('[data-f=driver]')`, "4");
+    await sleep(300);
+    await evaluate(`${vrow(wrRow)}.querySelector('[data-row-save]')?.click();`);
+    await waitFor(`!!${wr}.querySelector('[data-lock-error]')`, 10000);
+    check("93 Q4：409 红框在 West Rim 卡片里、说明条下面，「Not saved: 」+ 后端原话", await evaluate(`const s = ${wr}; const e = s.querySelector('[data-lock-error]'); const bar = s.querySelector('[data-lock-bar]'); return !!e && e.textContent === 'Not saved: ${TOUR_MSG}' && !!bar && !!(bar.compareDocumentPosition(e) & Node.DOCUMENT_POSITION_FOLLOWING);`), await evaluate(`return ${wr}.textContent;`));
+    check("93 Q4：标题右边 Saved 变红字 Not saved", await evaluate(`const t = ${wr}.querySelector('[data-unit-state=locked]'); return !!t && t.textContent === 'Not saved' && getComputedStyle(t).color === 'rgb(220, 38, 38)';`));
+    check("93 Q4：页面刷新成锁住的样子（灰字标签、整块灰），这一块退回已存的司机；别的块照常能改（不是编辑锁的只读）", await evaluate(`return !!${wr}.querySelector('[data-lock-badge=staff]') && !!${wr}.querySelector('[data-locked-body]') && ${vrow(wrRow)}.querySelector('[data-f=driver]').value === ${JSON.stringify(drv0)} && ${hasAdd(r2)};`), await evaluate(`return ${vrow(wrRow)}.querySelector('[data-f=driver]').value;`));
+
+    // Q7：员工 Apply CCL 改版时锁住的 1st Round 不动，只改没锁的；旁边灰字列出没动的
+    await ctl({ lock409: null, lockAfter409: null, revAuto: true, tourLocks: { tours: {}, rounds: { relay: { locked: true, departure: "2026-10-07T06:30:00-07:00", locks_at: "2026-10-07T07:30:00-07:00" } }, can_edit_locked: false } });
+    await ctl({ revAuto: false });
+    await open("2026-10-07");
+    await waitFor("[...document.querySelectorAll('button')].some(b => b.textContent.trim() === 'Apply changes')", 15000);
+    await evaluate("$btn('Apply changes').click();");
+    await sleep(400);
+    check("93 Q7：Apply changes 时锁住的 1st Round 不动（司机还是原来的），没锁的 Private Tour 照加", await evaluate(`return ${vrow(0)}.querySelector('[data-f=driver]').value === '1' && document.querySelectorAll('.vrow').length === 2;`), await evaluate("return [...document.querySelectorAll('.vrow')].map(r => r.querySelector('[data-f=driver]')?.value).join('|');"));
+    check("93 Q7：Pull from Discord 旁边灰字「Locked, not changed: Morning Relay · 1st Round.」", (await evaluate("return document.querySelector('[data-pull-locked]')?.textContent ?? '';")) === "Locked, not changed: Morning Relay · 1st Round.", await evaluate("return document.querySelector('[data-pull-locked]')?.textContent ?? '';"));
+
+    await ctl({ tourLocks: null, lock409: null, lockAfter409: null, revAuto: true });
+    await ctl({ revAuto: false });
+    promptAnswer = "";
+    await goto("about:blank");
+    await sleep(300);
+    promptAnswer = null;
+  }
+
   // 401
   await ctl({ fail401: true });
   await goto(`${APP}/dispatch`);

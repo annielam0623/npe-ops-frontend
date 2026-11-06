@@ -298,6 +298,10 @@ export interface StageCtx {
   notes: Pending["notes"];
   /** 存失败的那几样（Save 后还在 pending 里）：标得更醒目。 */
   failed: boolean;
+  /** G250 Q5 A：这个团锁了、当前的人不能改 ⇒ 换车下拉灰掉。 */
+  busLocked?: boolean;
+  /** G250 Q5 A：换车存的时候后端说锁了（409）：按客人 id，红字写在那张下拉旁边。 */
+  busErrors?: Record<number, string>;
 }
 
 export const Stage = createContext<StageCtx>({

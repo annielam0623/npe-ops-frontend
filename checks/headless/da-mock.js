@@ -213,6 +213,8 @@ function day(date) {
     copy_from: date === "2026-10-08" ? "2026-10-07" : date === "2026-10-05" ? "2026-10-04" : date === "2026-10-21" ? "2026-10-20" : null,
     version: ver(date),
     edit_lock: ctl.lockOther ? { by_me: false, ...ctl.lockOther } : null,
+    // G250（置顶 93）：tourLocks = 后端 GET /api/dispatch/day 的 tour_locks 原样；不设 = 旧后端没这个键。
+    ...(ctl.tourLocks ? { tour_locks: ctl.tourLocks } : {}),
     ...(ctl.timing ? { edit_timing: ctl.timing } : {}),
   };
 }
@@ -385,6 +387,8 @@ http.createServer(async (req, res) => {
   // 后端 K：只存一个单元（relay / tour:<manifest_id> / private_tour），这一块整块替换，别的块不动。
   if (p === "/api/dispatch/section" && req.method === "POST") {
     const b = JSON.parse(await readRaw(req)); entry.body = b;
+    // G250：lock409 = 后端锁定 409 原话；lockAfter409 = 回 409 之后 GET day 带的 tour_locks（页面重读锁定状态）。
+    if (ctl.lock409) { if (ctl.lockAfter409) ctl.tourLocks = ctl.lockAfter409; return send(res, 409, { detail: ctl.lock409 }); }
     if (ctl.save409) return send(res, 409, { detail: "veronica is editing this day now. Your changes were not saved." });
     if (ctl.saveDelay) await new Promise((r) => setTimeout(r, ctl.saveDelay));
     if (ctl.saveErr) return send(res, 400, { detail: ctl.saveErr });
@@ -398,6 +402,8 @@ http.createServer(async (req, res) => {
   }
   if (p === "/api/dispatch/day" && req.method === "POST") {
     const b = JSON.parse(await readRaw(req)); entry.body = b;
+    // G250：lock409 = 后端锁定 409 原话；lockAfter409 = 回 409 之后 GET day 带的 tour_locks（页面重读锁定状态）。
+    if (ctl.lock409) { if (ctl.lockAfter409) ctl.tourLocks = ctl.lockAfter409; return send(res, 409, { detail: ctl.lock409 }); }
     if (ctl.save409) return send(res, 409, { detail: "veronica is editing this day now. Your changes were not saved." });
     // saveDelay：模拟存得慢（测存的时候行里的框关着）。
     if (ctl.saveDelay) await new Promise((r) => setTimeout(r, ctl.saveDelay));

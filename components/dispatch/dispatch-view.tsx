@@ -83,6 +83,9 @@ import {
   fmtShort,
   isBlankRow,
   isRelay,
+  isTourLockMessage,
+  lockedForMe,
+  lockOf,
   makeLookup,
   META,
   rowKey,
@@ -117,6 +120,7 @@ import {
   withoutAutoWindows,
 } from "./bus-windows";
 import { UnitError, UnitStatus } from "./unit-save";
+import { LockBadge, LockBar, LockError, LockNotSaved } from "./tour-lock";
 import {
   ArrangeBoard,
   seatNotes,
@@ -177,6 +181,35 @@ function unitDirty(
       unitRowsOf(list, unit),
     ) > 0
   );
+}
+
+/** 一行车属于的锁定单元的名字（块标题；Private 选了团的写团名）。 */
+function lockName(d: DispatchDay | null, r: DispatchRow): string {
+  if (r.shift === "private_tour" && r.manifest_id != null)
+    return (
+      d?.tours.find((t) => t.id === r.manifest_id)?.display_name ||
+      "Private Tour"
+    );
+  return d?.sections.find((x) => secOf(x) === secOf(r))?.title || r.shift;
+}
+
+/** G250 Q7 A：员工预填时拿掉锁住的团 / Relay 轮的车（Super Admin 照常全填）。 */
+function skipLocked(
+  d: DispatchDay | null,
+  list: DispatchRow[],
+): { keep: DispatchRow[]; names: string | null } {
+  const names = new Set<string>();
+  const keep = list.filter((r) => {
+    if (!lockedForMe(lockOf(d?.tour_locks, r))) return true;
+    names.add(lockName(d, r));
+    return false;
+  });
+  return { keep, names: lockedNote([...names]) };
+}
+
+/** G250 Q7：「Locked, not changed: West Rim Bus Tour, Morning Relay · 1st Round.」；没有 = null。 */
+function lockedNote(names: string[]): string | null {
+  return names.length ? `Locked, not changed: ${names.join(", ")}.` : null;
 }
 
 function omitKey<T>(o: Record<string, T>, key: string): Record<string, T> {
@@ -251,6 +284,13 @@ export function DispatchView() {
   /** 按单元保存：正在存的单元（只锁它）/ 每个单元挡下来的原因（原文）/ 自动保存存不上的那份行（不重试）。 */
   const [unitBusy, setUnitBusy] = useState<Record<string, boolean>>({});
   const [unitError, setUnitError] = useState<Record<string, string>>({});
+  /**
+   * G250 Q4 A：存的时候后端说锁了（409）。键 = 块（secOf）；Private 选了团的车 = `row:<id>`。
+   * 值 = 「Not saved: 」+ 后端原话，写在那张卡片的说明条下面；换天 / 重读清掉。
+   */
+  const [lockError, setLockError] = useState<Record<string, string>>({});
+  /** G250 Q7 A：员工 Pull from Discord 时没动的锁住的团 / Relay 轮（「Locked, not changed: …」）；换天清掉。 */
+  const [pullLocked, setPullLocked] = useState<string | null>(null);
   /** 这次打开这一天以来存好过的单元（✓ Saved / Auto-saved 3:42 PM 一直留到再改，preview Q3）。换天清掉。 */
   const [unitSaved, setUnitSaved] = useState<
     Record<string, { auto: boolean; at: string }>
@@ -595,8 +635,12 @@ export function DispatchView() {
     stateRef.current = { ...cur, prefill: p };
     if (!cur.base.length) {
       if (!p.rows?.length) return;
+      // G250 Q7 A：员工预填时锁住的团 / Relay 轮不填（Super Admin 照常全填）。
+      const { keep, names } = skipLocked(cur.day, p.rows);
+      setPullLocked(names);
+      if (!keep.length) return;
       setCclImportId(p.import_id);
-      setRows(cloneRows(p.rows));
+      setRows(cloneRows(keep));
       setBanner("prefill");
     } else if (p.changes?.length) {
       setBanner("revision");
@@ -676,6 +720,8 @@ export function DispatchView() {
         lastFailRef.current = null;
         unitFailRef.current = {};
         setUnitError({});
+        setLockError({});
+        setPullLocked(null);
         setActionError(null);
         setLoadError(null);
         setPrefill(null);
@@ -963,10 +1009,29 @@ export function DispatchView() {
             ? "Could not reach the server - the order was not moved. Try again."
             : `Not moved: ${describeError(e)}`,
       });
+      // G250 Q5：团锁了 ⇒ 重读锁定状态，这个团变成锁住的样子（排车不重读）。
+      if (isStatus(e, 409) && isTourLockMessage(describeError(e)))
+        void refreshLocks();
       return false;
     } finally {
       setSeatMoving(false);
       setSeatVersion((v) => v + 1);
+    }
+  }
+
+  async function refreshLocks() {
+    const date = stateRef.current.day?.run_date;
+    if (!date) return;
+    try {
+      const fresh = await fetchDispatchDay(date);
+      const cur = stateRef.current;
+      if (!cur.day || cur.day.run_date !== date || fresh.run_date !== date)
+        return;
+      const nextDay = { ...cur.day, tour_locks: fresh.tour_locks ?? null };
+      stateRef.current = { ...cur, day: nextDay };
+      setDay(nextDay);
+    } catch {
+      // 读不到就算了，后端照样拦
     }
   }
 
@@ -1239,6 +1304,11 @@ export function DispatchView() {
         redirectToLogin();
         return false;
       }
+      // G250：锁住的团 / Relay 轮被改了（409 那两句原话）⇒ 那张卡片里写红框、退回已存的样子；不是编辑锁。
+      if (isStatus(e, 409) && isTourLockMessage(describeError(e))) {
+        await tourLocked(describeError(e), date);
+        return false;
+      }
       // 409（G71）：别人在改 / 自己的编辑已结束。照原文显示，页面变只读。
       if (isStatus(e, 409)) {
         lock.forget();
@@ -1378,6 +1448,10 @@ export function DispatchView() {
         redirectToLogin();
         return false;
       }
+      if (isStatus(e, 409) && isTourLockMessage(describeError(e))) {
+        await tourLocked(describeError(e), date);
+        return false;
+      }
       // 409（G71）：别人在改 / 自己的编辑已结束。照原文显示，页面变只读。
       if (isStatus(e, 409)) {
         lock.forget();
@@ -1397,6 +1471,74 @@ export function DispatchView() {
       setUnitBusy((b) => omitKey(b, unit));
     }
   }
+  /**
+   * G250 Q4 A：后端说锁了（409）。只重读这一天的锁定状态（不重读排车：别的块没存的改动留着）；
+   * 现在锁住、又被改过的块退回已存的样子（页面变成锁住的样子），卡片里写红框「Not saved: 」+ 原话。
+   * 一块都对不上（不太会）就写在页面最上面。
+   */
+  async function tourLocked(msg: string, date: string) {
+    let locks = stateRef.current.day?.tour_locks ?? null;
+    try {
+      const fresh = await fetchDispatchDay(date);
+      if (fresh.run_date === date) locks = fresh.tour_locks ?? locks;
+    } catch {
+      // 读不到就用手上的锁定状态
+    }
+    const cur = stateRef.current;
+    if (!cur.day || cur.day.run_date !== date) return;
+    const text = `Not saved: ${msg}`;
+    const mine = (r: { shift: string; manifest_id: number | null }) =>
+      lockedForMe(lockOf(locks, r));
+    const same = (a: DispatchRow[], b: DispatchRow[]) =>
+      JSON.stringify(a.map(rowKey)) === JSON.stringify(b.map(rowKey));
+    const errs: Record<string, string> = {};
+    let dropped = false;
+    let next = cur.rows;
+    // 巴士团 / Relay 轮（过去的日子连 Private 一起）：整块退回。
+    for (const sct of cur.day.sections) {
+      const k = secOf(sct);
+      if (sct.shift === "private_tour" && !locks?.past_day) continue;
+      if (!mine(sct)) continue;
+      const was = cur.base.filter((r) => secOf(r) === k);
+      if (same(next.filter((r) => secOf(r) === k), was)) continue;
+      next = [...next.filter((r) => secOf(r) !== k), ...cloneRows(was)];
+      errs[k] = text;
+    }
+    // 当天的 Private 车选了团：跟那个团锁，按车退回。
+    if (!locks?.past_day) {
+      const pv = (r: DispatchRow) => r.shift === "private_tour" && mine(r);
+      const baseById = new Map(
+        cur.base.filter((r) => r.id != null).map((r) => [r.id, r]),
+      );
+      const kept: DispatchRow[] = [];
+      for (const r of next) {
+        if (!pv(r)) {
+          kept.push(r);
+          continue;
+        }
+        const b = r.id != null ? baseById.get(r.id) : undefined;
+        if (!b) {
+          dropped = true;
+          continue;
+        }
+        if (rowKey(b) !== rowKey(r)) errs[`row:${b.id}`] = text;
+        kept.push(cloneRow(b));
+      }
+      for (const b of cur.base)
+        if (pv(b) && !kept.some((r) => r.id === b.id)) {
+          kept.push(cloneRow(b));
+          errs[`row:${b.id}`] = text;
+        }
+      next = kept;
+    }
+    const nextDay = { ...cur.day, tour_locks: locks };
+    stateRef.current = { ...cur, rows: next, day: nextDay };
+    setRows(next);
+    setDay(nextDay);
+    setLockError(errs);
+    if (dropped || !Object.keys(errs).length) setActionError(text);
+  }
+
   const saveUnitRef = useRef(saveUnit);
   saveUnitRef.current = saveUnit;
 
@@ -1523,6 +1665,9 @@ export function DispatchView() {
         redirectToLogin();
         return { status: "redirecting" };
       }
+      // G250：照抄会盖掉锁住的团 ⇒ 后端整笔不抄，原话写在弹窗里。
+      if (isStatus(e, 409) && isTourLockMessage(describeError(e)))
+        return { status: "error", message: `Not saved: ${describeError(e)}` };
       // 409（G71）：同 Save。
       if (isStatus(e, 409)) {
         lock.forget();
@@ -1550,18 +1695,28 @@ export function DispatchView() {
     );
     const drop = new Set<number>();
     const added: DispatchRow[] = [];
+    // G250 Q7 A：员工按的时候，锁住的团 / Relay 轮不动，只改没锁的；没动的列在 Pull from Discord 旁边。
+    const locks = day?.tour_locks;
+    const skipped = new Set<string>();
+    const isLocked = (r: DispatchRow | undefined) => {
+      if (!r || !lockedForMe(lockOf(locks, r))) return false;
+      skipped.add(lockName(day, r));
+      return true;
+    };
     for (const c of prefill.changes) {
       if (c.kind === "removed") {
+        if (isLocked(rows.find((r) => r.id === c.row_id))) continue;
         drop.add(c.row_id);
         continue;
       }
       const n = prefill.rows[c.ccl_row];
       if (c.kind === "added") {
+        if (isLocked(n)) continue;
         added.push(cloneRow(n));
         continue;
       }
       const r = byId.get(c.row_id);
-      if (!r) continue;
+      if (!r || isLocked(r)) continue;
       for (const f of c.fields) {
         if (f === "driver")
           Object.assign(r, {
@@ -1585,10 +1740,12 @@ export function DispatchView() {
       .filter((r) => !(r.id != null && drop.has(r.id)))
       .concat(added);
     edit(next);
+    setPullLocked(lockedNote([...skipped]));
     setCclImportId(prefill.import_id);
     setBanner("none");
     setRevisionLater(false);
   }
+
 
   function addVehicle(shift: string, tour: number | null, order?: string) {
     if (!L) return;
@@ -2062,6 +2219,14 @@ export function DispatchView() {
                         {pullMsg}
                       </span>
                     ) : null}
+                    {pullLocked ? (
+                      <span
+                        data-pull-locked
+                        className="text-[11.5px] text-[#94a3b8]"
+                      >
+                        {pullLocked}
+                      </span>
+                    ) : null}
                   </div>
                 )}
 
@@ -2234,7 +2399,10 @@ export function DispatchView() {
                           (rows[i].seat_adjustment ?? 0) !==
                           (base.find((b) => b.id != null && b.id === rows[i].id)
                             ?.seat_adjustment ?? 0),
-                        disabled: disabled || !!unitBusy[unitOf(rows[i])],
+                        disabled:
+                          disabled ||
+                          !!unitBusy[unitOf(rows[i])] ||
+                          lockedForMe(lockOf(day.tour_locks, rows[i])),
                         onChange: (n: DispatchRow) => {
                           edit(rows.map((r, j) => (j === i ? n : r)));
                         },
@@ -2278,9 +2446,28 @@ export function DispatchView() {
                                   ) : null}
                                 </>
                               }
-                              renderVan={(i) => (
-                                <VanBlock key={i} {...vanProps(i, cardIdx)} />
-                              )}
+                              renderVan={(i) => {
+                                // G250：Private 车选了团 = 跟那个团一起锁；Custom 只有过去的日子锁。
+                                const rl = lockOf(day.tour_locks, rows[i]);
+                                if (!rl)
+                                  return (
+                                    <VanBlock key={i} {...vanProps(i, cardIdx)} />
+                                  );
+                                const mine = lockedForMe(rl);
+                                return (
+                                  <Fragment key={i}>
+                                    <LockBar l={rl} className="rounded-md border" />
+                                    <LockError
+                                      text={lockError[`row:${rows[i].id ?? i}`]}
+                                    />
+                                    <ViewOnly.Provider value={viewOnly || mine}>
+                                      <div className={cn(mine && "opacity-55")}>
+                                        <VanBlock {...vanProps(i, cardIdx)} />
+                                      </div>
+                                    </ViewOnly.Provider>
+                                  </Fragment>
+                                );
+                              }}
                               onAdd={(order) =>
                                 addVehicle(s.shift, s.manifest_id, order)
                               }
@@ -2289,6 +2476,10 @@ export function DispatchView() {
                           );
                         }
                         const key = secOf(s);
+                        // G250：锁住的团 / Relay 轮。员工整块只读、灰掉；Super Admin 照常能改，只出浅黄提示。
+                        const lk = lockOf(day.tour_locks, s);
+                        const staffLocked = lockedForMe(lk);
+                        const secViewOnly = viewOnly || staffLocked;
                         const tc = tourCard(s);
                         const idxs = rows.flatMap((r, i) =>
                           secOf(r) === key ? [i] : [],
@@ -2396,7 +2587,7 @@ export function DispatchView() {
                                     ? seatOpen.n
                                     : undefined
                                 }
-                                disabled={navDisabled || seatMoving}
+                                disabled={navDisabled || seatMoving || staffLocked}
                                 onMove={(m) =>
                                   void moveSeat(seat.manifest_id, m)
                                 }
@@ -2449,6 +2640,7 @@ export function DispatchView() {
                               <span className="text-[18px] font-bold tracking-[-.01em] text-[#111827]">
                                 {s.title}
                               </span>
+                              <LockBadge l={lk} />
                               {closed ? (
                                 <span className="max-w-full rounded-full bg-[#e9e9e6] px-2.5 py-[3px] text-[11.5px] font-bold whitespace-normal text-[#1a1a1a]">
                                   {closed.note || "Closed"}
@@ -2489,15 +2681,31 @@ export function DispatchView() {
                                   </span>
                                 ))}
                               </span>
-                              <UnitStatus unit={unit} s={unitSaveState(unit)} />
+                              {lockError[key] ? (
+                                <LockNotSaved />
+                              ) : (
+                                <UnitStatus
+                                  unit={unit}
+                                  s={unitSaveState(unit)}
+                                />
+                              )}
                             </div>
+                            <LockBar l={lk} />
+                            <LockError text={lockError[key]} />
                             {unitSaveState(unit).dirty ? (
                               <UnitError
                                 unit={unit}
                                 text={unitError[unit] ?? null}
                               />
                             ) : null}
-                            <div className="px-5 pt-0.5 pb-4 text-[#111827]">
+                            <ViewOnly.Provider value={secViewOnly}>
+                            <div
+                              data-locked-body={staffLocked ? "" : undefined}
+                              className={cn(
+                                "px-5 pt-0.5 pb-4 text-[#111827]",
+                                staffLocked && "opacity-55",
+                              )}
+                            >
                               {idxs.length === 0 ? (
                                 closed ? (
                                   <p className="m-0 px-2 pt-[18px] pb-4 text-center text-[13px] text-[#1a1a1a]">
@@ -2509,7 +2717,7 @@ export function DispatchView() {
                                     <span className="text-[14px] font-semibold text-[#1a1a1a]">
                                       No vehicles assigned yet
                                     </span>
-                                    {viewOnly ? null : (
+                                    {secViewOnly ? null : (
                                       <div className="flex flex-wrap justify-center gap-2.5">
                                         <button
                                           type="button"
@@ -2540,7 +2748,7 @@ export function DispatchView() {
                                 )
                               ) : (
                                 <>
-                                  {!viewOnly &&
+                                  {!secViewOnly &&
                                   s.shift === META.relay_shifts[1] &&
                                   canCopyFirstRound(s.shift) ? (
                                     // 第 2 轮只有空车（什么都没填）：也给复制，空车被换掉。
@@ -2683,7 +2891,7 @@ export function DispatchView() {
                                     <ArrangeBoard
                                       tour={seat}
                                       day={dayState}
-                                      disabled={navDisabled || seatMoving}
+                                      disabled={navDisabled || seatMoving || staffLocked}
                                       onMoveMany={(orders, to) =>
                                         moveSeatMany(
                                           seat.manifest_id,
@@ -2712,7 +2920,7 @@ export function DispatchView() {
                                       {seatRemind.text}
                                     </p>
                                   ) : null}
-                                  {!closed && !viewOnly ? (
+                                  {!closed && !secViewOnly ? (
                                     <button
                                       type="button"
                                       disabled={secDisabled}
@@ -2727,6 +2935,7 @@ export function DispatchView() {
                                 </>
                               )}
                             </div>
+                            </ViewOnly.Provider>
                           </section>
                         );
                       };
@@ -3221,6 +3430,11 @@ function HowToUse() {
           without activity on the page. If you leave or change the day before
           saving, the page asks first. A red message says what to fix. Only one
           person can edit a day at a time.
+        </li>
+        <li>
+          Each tour and its Morning Relay round lock 1 hour after the tour
+          leaves. After that only a Super Admin can change its buses, drivers,
+          hotels or seats. Picked up, No show and Boarded can still be ticked.
         </li>
       </ol>
     </details>

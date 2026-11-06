@@ -1203,6 +1203,32 @@ async function runHotelColour() {
   await waitFor("document.querySelector('[data-layout-status=\"saved\"]')");
   await evaluate("$btn('Cancel', document.querySelector('[data-manifest-layout]')).click();");
   await ctl({ layout: false, layoutReset: true });
+
+  // ── G250 Bus Manifest 换车（置顶 93 Q5 A）：员工下拉灰掉 + 灰条（同 Q1），Super Admin 照常 + 浅黄条（同 Q2），409 红字在下拉旁边 ──
+  {
+    const L1 = { locked: true, departure: "2026-10-05T06:30:00-07:00", locks_at: "2026-10-05T07:30:00-07:00" };
+    const URLL = `${APP}/dispatch/manifest?date=2026-10-05&tour=3`;
+    const MSG = "This tour is locked (1 hour after departure). Only a Super Admin can change it.";
+    const sels = "[...document.querySelectorAll('tr[data-guest] select')]";
+    const bar = "(document.querySelector('[data-lock-bar]')?.textContent ?? '')";
+    const openL = async () => { await openPage(URLL); await waitFor(`${sels}.length > 0`, 30000); await sleep(800); };
+    await ctl({ tourLocks: null, bus409: "", lockAfter409: null });
+    await openL();
+    check("93 Q5 没带 tour_locks：换车下拉照常、没有说明条", await evaluate(`return ${sels}.every(s => !s.disabled) && !document.querySelector('[data-lock-bar]');`));
+    await ctl({ tourLocks: { tours: { "3": L1 }, rounds: {}, can_edit_locked: false } });
+    await openL();
+    check("93 Q5 员工：换车下拉都灰掉，上面灰条（同 Q1 原文）", (await evaluate(`return ${sels}.every(s => s.disabled) && !!document.querySelector('[data-lock-bar=staff]');`)) && (await evaluate(`return ${bar};`)) === "Locked at 7:30 AM, 1 hour after departure (6:30 AM). Only a Super Admin can change it.", await evaluate(`return ${bar};`));
+    await ctl({ tourLocks: { tours: { "3": L1 }, rounds: {}, can_edit_locked: true } });
+    await openL();
+    check("93 Q5 Super Admin：照常能换，上面浅黄条（同 Q2 原文）", (await evaluate(`return ${sels}.every(s => !s.disabled) && !!document.querySelector('[data-lock-bar=sa]');`)) && (await evaluate(`return ${bar};`)) === "Locked at 7:30 AM, 1 hour after departure (6:30 AM). You can still change it as a Super Admin.", await evaluate(`return ${bar};`));
+    await ctl({ tourLocks: null, bus409: MSG, lockAfter409: { tours: { "3": L1 }, rounds: {}, can_edit_locked: false } });
+    await openL();
+    const gid = await evaluate(`const s = ${sels}[0]; const v = s.value; const o = [...s.options].map(x => x.value).find(x => x && x !== v); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, o); s.dispatchEvent(new Event('change', { bubbles: true })); return s.closest('tr').dataset.guest;`);
+    await sleep(200);
+    await evaluate("document.querySelector('[data-page-save]').click(); return 1;");
+    check("93 Q5 409：红字「Not saved: 」+ 原话写在那张下拉旁边，客人回原车（不再标 not saved），下拉变灰", await waitFor(`(() => { const e = document.querySelector('tr[data-guest=${gid}] [data-bus-lock-error]'); return !!e && e.textContent === 'Not saved: ${MSG}' && !document.querySelector('[data-moved-from]') && ${sels}.every(s => s.disabled); })()`, 15000), await evaluate("return document.querySelector('[data-bus-lock-error]')?.textContent ?? '';"));
+    await ctl({ tourLocks: null, bus409: "", lockAfter409: null });
+  }
 }
 
 main().catch((e) => { console.error(e); process.exit(2); });
