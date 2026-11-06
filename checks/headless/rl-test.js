@@ -261,6 +261,16 @@ async function run() {
     check("?car=902：请求 date + car", !!hit && hit.query === `?date=${D}&car=902`, JSON.stringify(hit));
   }
   await ctl({ excel: null });
+  // 权限同 Bus Manifest Download：没勾 manifests.export、或是 partner 账号 ⇒ 没有 ⬇ Excel 键（Print 照旧）。
+  await ctl({ noExport: true });
+  await open(URL0);
+  await waitFor("document.querySelector('[data-relay-print]')", 30000);
+  check("没勾 manifests.export：没有 ⬇ Excel 键，🖨 Print 照旧", await evaluate("return !document.querySelector('[data-relay-excel]') && !!document.querySelector('[data-relay-print]');"));
+  await ctl({ noExport: false, partner: true });
+  await open(URL0);
+  await waitFor("document.querySelector('[data-relay-print]')", 30000);
+  check("partner 账号（勾了 manifests.export 也一样）：没有 ⬇ Excel 键", await evaluate("return !document.querySelector('[data-relay-excel]');"));
+  await ctl({ partner: false });
 
   // 旧后端（还没有打印字段）：照样能看，缺的格子空着、Tour 写团名
   await ctl({ old: true });

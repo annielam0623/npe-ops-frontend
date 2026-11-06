@@ -85,6 +85,10 @@ export function RelayListView() {
   const canEdit =
     !perms.partnerLacks("dispatch.edit") &&
     byTick(perms, "dispatch.edit", { superAdmin: isSuperAdmin });
+  // ⬇ Excel 跟 Bus Manifest 的 Download 一样（后端 07：manifests.export）：要勾了导出，partner 一律没有（系统定过 partner 不能导出客人资料）。
+  const canExcel =
+    !perms.isPartner &&
+    byTick(perms, "manifests.export", { superAdmin: isSuperAdmin });
 
   const redirectToLogin = useCallback(() => {
     if (!redirectingRef.current) {
@@ -169,7 +173,7 @@ export function RelayListView() {
             🖨 Print
           </button>
         ) : null}
-        {view.kind === "ready" && params ? (
+        {view.kind === "ready" && params && canExcel ? (
           <PhoneMore label="Download">
             <ExcelButton
               date={params.date}
