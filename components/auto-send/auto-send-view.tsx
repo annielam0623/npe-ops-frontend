@@ -650,7 +650,13 @@ function TourCard({
       onSave={() => {
         const bad = checkTour(draft);
         if (bad) return Promise.resolve({ status: "error", message: bad });
-        return onSave({ ...saved.tour, ...draft, enabled: saved.tour.enabled });
+        // 草稿以外已存的键（如 last_minute_cutoff）原样带回去，接在后面（键的顺序照旧）。
+        const extra = Object.fromEntries(
+          Object.entries(saved.tour).filter(
+            ([k]) => k !== "enabled" && !(k in draft),
+          ),
+        );
+        return onSave({ ...draft, enabled: saved.tour.enabled, ...extra });
       }}
     >
       <TimesField
