@@ -1202,7 +1202,7 @@ D. 已完成、待从置顶移走：
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
-### 94. Dispatch Schedule check「hotels with no Morning Relay vehicle」：TI 不算、当天没客人的酒店不算（2026-11-05，Annie 在后端 07 提，46 转）
+### 94. Dispatch Schedule check「hotels with no Morning Relay vehicle」：TI 不算、当天没客人的酒店不算（2026-11-05，Annie 在后端 07 提，46 转；✅ Annie「动手」）
 - 46 转：前端算（components/dispatch/config.ts:394-431）。07 在跟 Annie 确认口径，定了直接发前端。
 - 78 派 ef 先只读查现状 / 数据 / TI 怎么认，等口径再改。
 - ef 查（config.ts 约 391-431）：清单 = day.locations active + is_tour_bus + 非 is_tour_departure、这一轮没排车的，跟有没有客人无关。TI 已按 is_tour_departure 排除（Annie 10-31 A），线上还见 TI ⇒ 多半生产 TI 那行没勾「Tour bus departure」（已请 07 只读查）。前端没有可靠的每轮有客人酒店。
@@ -1215,6 +1215,12 @@ D. 已完成、待从置顶移走：
   - ef 回（问 Annie，没定）：Q1 A（推荐）照团在 Bus Manifest setup 设的轮次（manifests.relay_round；后端分 Relay / Relay split / Send 都照它，Annie 10-14「分轮按团，不按时间」），后端 need_a_look 每条加 round 一个字段，三处永远一致；B 前端按团最后出发时间推，后端不改，时间和设定对不上的日子会跟 Relay split 不一致。其余（带人数、说明小字）照原推荐。等 Annie 答「94 Q1 A / B」。
 - **Annie（原话）**：「通常第一轮是antelope south和BZ，第二轮是west，第三轮是hoover，hoover已经固定那三家，都不用统计了」
   - ef 回：这就是 Bus Manifest setup 现设的 relay_round（第 1 轮 Antelope / South / BZ，第 2 轮 West，Hoover = Tour bus pick up 用自己的大巴），照 Q1 A 后端按设定标轮次，结果正好如此；Schedule check 只查第 1、2 轮，Hoover 本来就不进这份清单，不用另处理。已请 Annie 确认「94 全按推荐，动手」，还没答。
+- ✅ **Annie（原话，ef 窗口）**：「94 全按推荐，动手」⇒ 定稿：
+  - Q1 A：数据用 relay-pull 的 need_a_look 里 reason =「No relay car stops at this hotel in this round」那些；**要后端加**：need_a_look 每条加 round（relay / relay_2，按团的 relay_round；第 1 轮 Antelope / South / BZ、第 2 轮 West，Hoover = tour_car 不进）。
+  - 前端：Schedule check「N hotels with no Morning Relay · 1st/2nd Round vehicle」只列这一轮 need_a_look（no car）里的酒店，按酒店合并；页面上这一轮加了那家酒店（没存）就先拿掉，存了跟后端对齐；后端没带 round 时照旧（现在的写法），不坏。
+  - Q2 A：名单带人数「MGM (4)」。
+  - Q3 A：说明小字改「Only hotels with guests on this round's tours. Treasure Island is left out because the tours start there.」
+  - 派工：后端加 round → 40 派给 Annie 新开的前端窗口（ef 退下，内容太长）。前端：config.ts analyze() 那段 + dispatch-view 读 relay-pull + da 检查（mock）。
 
 ### 93. G250 Dispatch 团车出发 1 小时后自动锁定：前端样子（2026-11-05，后端 4c 转；没动手）
 - Annie 已定（⛔，后端那边）：系统行为、没有按键；锁后只有 Super Admin 能改；Picked up / No show / Boarded 打勾不锁；Completed 照旧，跟锁定无关。
