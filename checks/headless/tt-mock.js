@@ -52,7 +52,19 @@ http.createServer(async (req, res) => {
     if (p === "/api/settings/dashboard-widgets") return send(res, 200, { readable: true, widgets: [] });
     if (p === "/api/me/permissions") return send(res, 200, { is_superadmin: false, permissions: (ctl.partnerCodes || ["tour.view", "tour.send", "broadcast.send", "messages.view", "messages.reply"]).map((code) => ({ code, module: code.split(".")[0], wired: true })), default_home: "/tour-confirmation/tracking" });
   }
-  if (p === "/api/me") return send(res, 200, { id: 1, username: "annie", display_name: "Annie", initials: "AZ", role: "admin", is_admin: true, is_superadmin: false });
+  if (p === "/api/me") return send(res, 200, { id: 1, username: "annie", display_name: "Annie", initials: "AZ", role: ctl.superadmin ? "superadmin" : "admin", is_admin: true, is_superadmin: !!ctl.superadmin });
+  // 置顶 95：G180 三档开关（后端 15d41632，只给 Super Admin）。ctl.syncMode = null ⇒ 404（旧后端）；ctl.syncFail = PUT 400 原话。
+  if (p === "/api/settings/tracking-sync") {
+    if (!ctl.superadmin) return send(res, 403, { detail: "Super Admin access required" });
+    if (!ctl.syncMode) return send(res, 404, { detail: "Not Found" });
+    if (req.method === "PUT") {
+      const b = JSON.parse((await new Promise((r) => { let d = ""; req.on("data", (c) => (d += c)); req.on("end", () => r(d)); })) || "{}");
+      entry.body = b;
+      if (ctl.syncFail) return send(res, 400, { detail: ctl.syncFail });
+      ctl.syncMode = b.mode;
+    }
+    return send(res, 200, { mode: ctl.syncMode, enabled: ctl.syncMode !== "off" });
+  }
   if (p === "/api/notifications/tour-confirmation/tour-types") return send(res, 200, TYPES);
   if (p === "/api/notifications/tour-confirmation/tracking") {
     let out = rows;

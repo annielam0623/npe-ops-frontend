@@ -78,6 +78,7 @@ import {
 } from "@/components/ui/phone";
 import { PageLink } from "@/components/ui/page-link";
 import { TourUploadDialog } from "./tour-upload-dialog";
+import { useTrackingSyncSwitch } from "./sync-switch";
 import { setVisibleInterval } from "@/lib/visible-poll";
 
 type LoadState =
@@ -205,6 +206,10 @@ export function TourTrackingView() {
     return () => controller.abort();
   }, [redirectToLogin]);
 
+  // 置顶 95：开关存好后静悄悄重读这一天（灰行跟着出 / 不出）。
+  const reloadRef = useRef<() => void>(() => {});
+  const syncSwitch = useTrackingSyncSwitch(() => reloadRef.current());
+
   const load = useCallback(
     async (target: string, silent: boolean) => {
       const seq = ++requestSeqRef.current;
@@ -295,6 +300,10 @@ export function TourTrackingView() {
     setVis(next);
     writeLocal(COLUMN_VIS_KEY, JSON.stringify(next));
   }
+
+  reloadRef.current = () => {
+    if (date) void load(date, true);
+  };
 
   function changeDate(next: string) {
     if (!isYmd(next) || next === date) return;
@@ -501,7 +510,10 @@ export function TourTrackingView() {
               >
                 Tomorrow
               </button>
+              {/* 置顶 95：G180 三档开关，只给 Super Admin（读不到就不出）。 */}
+              {syncSwitch.control}
             </div>
+            {syncSwitch.below}
 
             {typesError ? (
               <TrackingBanner>

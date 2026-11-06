@@ -851,6 +851,51 @@ async function run() {
   check("手机：Download CSV / Upload 不在外面、有 ⋯；拖动提示不显示", await evaluate(`const vis = (el) => !!el && el.getBoundingClientRect().height > 0 && el.getBoundingClientRect().width > 0; const noSway = document.documentElement.scrollWidth <= innerWidth + 1; const btn = (t, root = document) => [...root.querySelectorAll('button, a')].find((b) => b.textContent.trim().startsWith(t)); const out = [...document.querySelectorAll('main a, main button')].filter((b) => /Download CSV|⬆ Upload/.test(b.textContent) && vis(b) && !b.closest('[data-phone-more-menu]')); const drag = [...document.querySelectorAll('span')].find((s) => s.textContent.includes('Drag to reorder')); return out.length === 0 && vis(document.querySelector('[data-phone-more]')) && !vis(drag);`));
   await cdp("Emulation.clearDeviceMetricsOverride");
 
+  // ── 置顶 95：G180 三档开关（Annie「全按推荐，动手」，preview 7DDLeUsSSczzovwb2pncrb 三题全 A）──
+  {
+    const sw = "document.querySelector('[data-sync-switch]')";
+    const sel = "document.querySelector('select[aria-label=\"Main manifest sync\"]')";
+    const help = "document.querySelector('[data-sync-help]')?.textContent";
+    const pick = (v) => evaluate(`const s = ${sel}; Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, '${v}'); s.dispatchEvent(new Event('change', { bubbles: true }));`);
+    const isPut = (e) => e.path === "/api/settings/tracking-sync" && e.method === "PUT";
+    const isGetTracking = (e) => e.path === "/api/notifications/tour-confirmation/tracking" && e.method === "GET";
+    await ctl({ superadmin: false, syncMode: "off", syncFail: "", sync: false });
+    await open();
+    check("置顶 95：不是 Super Admin ⇒ 没有 Main manifest sync 下拉", await evaluate(`return !${sw} && !document.querySelector('[data-sync-help]');`));
+    await ctl({ superadmin: true, syncMode: null });
+    await open();
+    await sleep(500);
+    check("置顶 95：Super Admin 但读不到（旧后端 404）⇒ 不出下拉", await evaluate(`return !${sw};`));
+    await ctl({ syncMode: "off" });
+    await open();
+    await waitFor(sw);
+    check("置顶 95：Super Admin ⇒ 日期那一行最右边「Main manifest sync」下拉 Off / Super Admin only / Staff，当前 Off，旁边小字", await evaluate(`const s = ${sel}; return [...s.options].map((o) => o.textContent).join('|') === 'Off|Super Admin only|Staff' && s.value === 'off' && ${sw}.textContent.includes('Only Super Admins see this setting.') && !!${sw}.closest('.mb-4');`));
+    check("置顶 95：Off 的说明原文", (await evaluate(`return ${help};`)) === "Off: orders that have not been sent yet don't show here, and there is no Order Status column. The page works as before.");
+    let b = (await mockLog()).length;
+    await pick("super_admin_only");
+    await waitFor(`${sw}.querySelector('[data-sync-result]')?.textContent === 'Saved'`);
+    await sleep(400);
+    check("置顶 95：选 Super Admin only ⇒ 马上 PUT {mode}、绿字 Saved、说明换、页面重读", JSON.stringify((await since(b, isPut))[0]?.body) === JSON.stringify({ mode: "super_admin_only" }) && (await evaluate(`return getComputedStyle(${sw}.querySelector('[data-sync-result]')).color === 'rgb(21, 128, 61)';`)) && (await evaluate(`return ${help};`)) === "Super Admin only: you see grey rows and Order Status. Staff still see the page as before." && (await since(b, isGetTracking)).length >= 1);
+    b = (await mockLog()).length;
+    await pick("staff");
+    await waitFor("document.querySelector('[data-sync-confirm]')");
+    check("置顶 95：选 Staff ⇒ 先出黄框原文、还没存", (await evaluate("return document.querySelector('[data-sync-confirm]').textContent.replace(/\\s+/g, ' ');")).includes("Staff will start seeing grey rows (orders not sent yet) and the Order Status column on this page. Turn on for staff?") && (await since(b, isPut)).length === 0);
+    await evaluate("[...document.querySelectorAll('[data-sync-confirm] button')].find((x) => x.textContent === 'Cancel').click();");
+    await sleep(200);
+    check("置顶 95：Cancel ⇒ 黄框没了、退回 Super Admin only、没存", (await evaluate(`return !document.querySelector('[data-sync-confirm]') && ${sel}.value === 'super_admin_only';`)) && (await since(b, isPut)).length === 0);
+    await pick("staff");
+    await waitFor("document.querySelector('[data-sync-confirm]')");
+    await evaluate("[...document.querySelectorAll('[data-sync-confirm] button')].find((x) => x.textContent === 'Turn on for staff').click();");
+    await waitFor(`!document.querySelector('[data-sync-confirm]') && ${sel}.value === 'staff'`);
+    check("置顶 95：Turn on for staff ⇒ PUT staff、说明换成 Staff 那句", JSON.stringify((await since(b, isPut))[0]?.body) === JSON.stringify({ mode: "staff" }) && (await evaluate(`return ${help};`)) === "Staff: everyone who can open this page sees grey rows and Order Status.");
+    await ctl({ syncFail: "Only a Super Admin can change this." });
+    await pick("off");
+    await waitFor(`${sw}.querySelector('[role=alert]')`);
+    check("置顶 95：存不上 ⇒ 红字照原话、下拉退回原档", (await evaluate(`return ${sw}.querySelector('[role=alert]').textContent;`)) === "Only a Super Admin can change this." && (await evaluate(`return ${sel}.value;`)) === "staff");
+    check("置顶 95：How to use 不提开关", !(await evaluate("return document.body.textContent.includes('Main manifest sync') && [...document.querySelectorAll('details')].some((d) => d.textContent.includes('Main manifest sync'));")));
+    await ctl({ superadmin: false, syncMode: "off", syncFail: "" });
+  }
+
   await ctl({ fail401: true });
   await goto(`${APP}/tour-confirmation/tracking?date=${D}`);
   await waitFor("location.pathname === '/auth/login'");
