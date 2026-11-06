@@ -4,9 +4,34 @@
 
 > 6d 交接（下面「2026-10-27 交接：前端主窗口 6d」那节）的后端需求已于 10/27 晚由 ad 转给家里后端主窗口 17。
 
-> **下一个主窗口（明天公司）：先读下面「2026-11-05 晚 收工交接：前端主窗口 40」，再读「2026-11-05 收工交接：前端主窗口 e8」，再看置顶「📌 等 Annie 确认」。**
->
-> 11-06 早：公司 e8 [6ce7da] 退下（Annie：「这个窗口的对话太长了，我新开个窗口接手吧，你们交接一下」）。e8 收工后没有新变化，交接以上面两节为准；公司电脑 C:\Code\npe-ops-frontend-wt-g180（a0，G180 灰底版 e0548c6e）、C:\Code\npe-ops-frontend-wt-shuttle（7a，Auto Send task/auto-send-limits 8614fb03）两个 worktree 留着，分支都已推 origin。
+> **下一个主窗口：先读下面「2026-11-06 收工交接：前端主窗口 49」，再看置顶「📌 等 Annie 确认」。**
+
+## 2026-11-06 收工交接：前端主窗口 `前端主窗口-49`[8db054]（公司电脑）
+> 49 只分工和汇报，没写代码。前端工作窗口只有 `npe-ops-frontend-c3`[a398e9]（13:06 收尾，进程都关了）。后端主窗口 `后端主窗口-4a`[3b2d6f]（后端 0f / 2c / 2e / a2）。详细过程见下面「49 接班」一节。
+
+### 一、今天上 main（等 Annie 线上验收，验收点都已转她）
+| 件 | 前端 | 后端 | 验收看 |
+|---|---|---|---|
+| G259 + G258 Auto Send（上限、按门票团设天数、Daily report、Last Minute 两行模板） | bb76cfb7 | f361134c | Settings › Auto Send：Max per batch 100 / 150、Message template 两行、Start sending by ticket type、填 0 出红字 |
+| Last Minute 最后一次扫描改前一天 11:59 PM | 0dc4224a | ff3205cd | 卡片说明 + How to use 写 11:59 PM，末句手动发 |
+| 置顶 98 两张卡 Daily report 时间可选 | d250a72f | 81802ed8 | Tour 卡新 Daily report（默认 reservations@）；「Send the report after [.. (last batch) ▾]」；选早出灰字；截图 MuY71zAp3U1TsbvkzdWb2v |
+| G264 Relay list ⬇ Excel 照 ⚙ 版式设定 | 不用改 | 97bba481 | 改颜色 / 纸张 / 字号 Save → Excel 跟屏幕一样 |
+| G180 Main manifest → Tour Tracking 灰底版 | 5bf71f92 | 15d41632（v154 12:01 已执行） | 开关 Off：页面跟以前一样 |
+| 置顶 95 G180 三档开关 | 1d77e0e4 | 同上 | Tour Tracking 日期行右边「Main manifest sync」（只 SA）；SA only 马上存；Staff 先黄框 |
+| G266 ① Dispatch 每人 Sent / Not sent | 85304f15 | 60963f35 | ② Send › Step 1 两表加 Sent 列、淡黄行「Sent by … on …」 |
+
+### 二、没合 / 等
+- **G266 ② 卡片 Notes**（Annie「我要的在卡片下方写notes的地方呢」）：前端 task/dispatch-card-notes **e83c529c**（c3，worktree C:\Code\npe-ops-frontend-wt-shuttle；da 548、nav 39，tsc / eslint / build 过；已修「存 Assign 后没存的字丢」）。后端 2e task/dispatch-card-notes 82710ee7，**迁移 v159 SQL 已在 2e 窗口给 Annie，等她执行** → 后端上 main 发 SHA → 前端只读核 GET / PUT 字段 → 合 main。
+- **G263 Farm out 团 → 产品（v3）**（Annie「同意推荐，动手」，定稿见置顶 99）：前端 task/farmout-products **bd472400 + eb939b30**（c3，worktree C:\Code\npe-ops-frontend-wt-g180）：Partners & rates 页已写；还差 Dispatch 选产品、Farm out Report Product 列、Import 预览、How to use 定稿、mock / 检查（清单在置顶 99）。后端 2c 今晚家里做，迁移 **v160**，接口形状见「49 接班」节。待 Annie：没有 money_view 的人能不能改单子的产品（4a 在问，推荐不能）。
+- 置顶 96 题 1（How to use Message template 那条字）没正式答，线上已照 c3 的稿；不滚动重问。
+- 93 G250 past_day 两句、Task Board 中文那题照旧没答，不滚动重问。
+- G257（发送不占数据库连接）：后端等 Annie 确认升 Risk C + 迁移，排在 G259 后，今天没做；前端不用改。
+
+### 三、明天开工
+1. 报对话名；git pull；问后端主窗口 Notes（v159）、G263（v160）进度。
+2. Notes 后端上 → 派工作窗口核字段合 task/dispatch-card-notes。
+3. G263：后端上前把前端剩下几项写完（照 mock），后端上了核字段合 main，附截图 + How to use 定稿给 Annie。
+4. ⏰ 11/09 那周提醒 Annie G180 回填以前的日子。
 
 ## 2026-11-06 前端主窗口 `npe-ops-frontend-49`[8db054] 接班（公司电脑，接 e8 [6ce7da]；只分工和汇报，不写代码）
 - e8 回（交接三问）：① 收工后除 Annie 早上那句没有新变化，后端没发新 SHA；工作窗口 a0 / 7a / 19 都已关，a0（wt-g180，e0548c6e）、7a（wt-shuttle，8614fb03）分支已推、worktree 留着。⚠️ 8614fb03 **还没有** G258 两行模板下拉，要补。② 没有派出未收回的活；都在等后端（G180 等 Annie 在 4c 执行 v153、17 执行 v154；G259 + G258 今天下午；G263 接口形状；G257 只记 SHA）或 Annie（93 past_day 两句）。没问 / 没答：G180 三档开关放哪（e8 推荐 A：Tour Tracking 页顶给 SA 一个下拉，先 preview 再问）；Task Board 中文题。11/09 周起提醒 G180 回填。③ 后端主窗口仍是「今日后端主窗口e8」[df009e]（Annie 今天可能新开，留意 ListAgents）。e8 已告诉后端以后发 49。
