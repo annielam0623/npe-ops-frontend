@@ -2446,6 +2446,50 @@ async function run() {
     await ctl({ loggedInAt: false });
   }
 
+  // ── G266 每人发过没（Annie「G266 Dispatch同意推荐，动手」，preview X7ptbfdS5zbqgqUNb8fSmg 全 A；后端 60963f35）──
+  {
+    const dp = "document.querySelector('section[aria-label=\"Send to drivers & guides\"]')";
+    const dlg = "document.querySelector('[role=dialog]')";
+    const heads = (box) => `[...${dp}.querySelector('[aria-label="${box}"] thead tr').children].map((th) => th.textContent.trim()).slice(1).join('|')`;
+    const mark = (sel) => `${dp}.querySelector('${sel} [data-notice-mark]')`;
+    const openSend = async () => {
+      await goto(`${APP}/dispatch?date=2026-10-05&tab=send`);
+      await waitFor("document.querySelector('.vrow')", 60000);
+      await helpers();
+      await waitFor(`${dp}?.querySelector('[aria-label="Send to guide"] tbody tr')`, 30000);
+      await sleep(300);
+    };
+    // 旧后端（people 没有 sent_at）：不出 Sent 列
+    await ctl({ marks: false, noticeMarks: {}, driverAllOk: true, driverAlt: false, guideFail: false });
+    await openSend();
+    check("G266 旧后端：司机 / 导游表没有 Sent 列、How to use 没有新条", (await evaluate(`return ${heads("Send to driver")};`)) === "Driver|Mobile|Runs|Can text?" && (await evaluate(`return ${heads("Send to guide")};`)) === "Guide|Mobile|Buses|Can text?" && (await evaluate("return !document.querySelector('[data-howto-sent-marks]');")));
+    // 新后端、都没发过
+    await ctl({ marks: true, noticeMarks: {} });
+    await openSend();
+    check("G266：Sent 列紧跟名字（Driver|Sent|… / Guide|Sent|…）", (await evaluate(`return ${heads("Send to driver")};`)) === "Driver|Sent|Mobile|Runs|Can text?" && (await evaluate(`return ${heads("Send to guide")};`)) === "Guide|Sent|Mobile|Buses|Can text?", await evaluate(`return ${heads("Send to driver")};`));
+    check("G266：都没发过 ⇒ 每行灰字 Not sent、没有淡黄行", await evaluate(`const m = [...${dp}.querySelectorAll('[data-notice-mark]')]; return m.length >= 5 && m.every((x) => x.dataset.noticeMark === 'not-sent' && x.textContent === 'Not sent' && getComputedStyle(x).color === 'rgb(107, 114, 128)') && ![...${dp}.querySelectorAll('tbody tr')].some((tr) => tr.className.includes('bg-[#fff8e1]'));`));
+    check("G266：How to use 加了三条（原文）", await evaluate(`const t = ${dp}.textContent.replace(/\\s+/g, ' '); return t.includes('Each driver and guide shows “Sent by Annie on Oct 5, 9:53 PM” once a text went out to them for this day, or “Not sent”.') && t.includes('Only the people you ticked and texted are marked Sent. To text someone you missed, tick only that person and click Send texts now.') && t.includes('If a text failed, that person stays “Not sent”. Check their mobile number in Human Resource, then send to them again.');`));
+    // 发给 FREDDY（默认只勾 relay 的 FREDDY）⇒ 重读后 FREDDY 淡黄 + 标签，GIA 还是 Not sent
+    await evaluate(`$btn('Send texts now', ${dp}.querySelector('[aria-label="Send to driver"]')).click();`);
+    await waitFor(dlg);
+    await evaluate(`$btn('Text 1 driver', ${dlg}).click();`);
+    await waitFor(`!${dlg} && ${mark('tr[data-key="hr:1"]')}?.dataset.noticeMark === 'sent'`);
+    check("G266：发完重读 ⇒ FREDDY 整行淡黄、标签「Sent by Annie on Oct 4, 9:53 PM」（洛杉矶时间）", await evaluate(`const tr = ${dp}.querySelector('tr[data-key="hr:1"]'); return tr.className.includes('bg-[#fff8e1]') && ${mark('tr[data-key="hr:1"]')}.textContent.replace(/\\s/g, ' ') === 'Sent by Annie on Oct 4, 9:53 PM';`), await evaluate(`return ${mark('tr[data-key="hr:1"]')}?.textContent;`));
+    check("G266：没勾的 GIA 还是 Not sent、不淡黄", await evaluate(`return ${mark('tr[data-key="hr:2"]')}.textContent === 'Not sent' && !${dp}.querySelector('tr[data-key="hr:2"]').className.includes('bg-[#fff8e1]');`));
+    // 导游：KEVIN 发失败、MARIA 发成功
+    await ctl({ guideFail: true });
+    await evaluate(`$btn('Send texts now', ${dp}.querySelector('[aria-label="Send to guide"]')).click();`);
+    await waitFor(dlg);
+    await evaluate(`[...${dlg}.querySelectorAll('button')].find((b) => /^Text \\d+ guides?$/.test(b.textContent.trim())).click();`);
+    await waitFor(`${mark('tr[data-guide-key="hr:22"]')}?.dataset.noticeMark === 'sent'`);
+    check("G266：导游 MARIA 发成功 ⇒ 淡黄 + 「Sent by Annie on Oct 4, 9:55 PM」", await evaluate(`return ${dp}.querySelector('tr[data-guide-key="hr:22"]').className.includes('bg-[#fff8e1]') && ${mark('tr[data-guide-key="hr:22"]')}.textContent.replace(/\\s/g, ' ') === 'Sent by Annie on Oct 4, 9:55 PM';`), await evaluate(`return ${mark('tr[data-guide-key="hr:22"]')}?.textContent;`));
+    check("G266：KEVIN 发失败（只有 failed_at）⇒ 照写 Not sent、不出 Failed、不淡黄（题 2 A）", await evaluate(`return ${mark('tr[data-guide-key="hr:21"]')}.textContent === 'Not sent' && !${dp}.textContent.includes('Failed ') && !${dp}.querySelector('tr[data-guide-key="hr:21"]').className.includes('bg-[#fff8e1]');`));
+    // 发过的照旧默认勾（题 3 A）：重开页面，FREDDY 还是勾着
+    await openSend();
+    check("G266：发过的人照旧默认勾（FREDDY 发过、重开还是勾着）", await evaluate(`return ${dp}.querySelector('tr[data-key="hr:1"] input').checked && ${mark('tr[data-key="hr:1"]')}.dataset.noticeMark === 'sent';`));
+    await ctl({ marks: false, noticeMarks: {}, guideFail: false, driverAllOk: false });
+  }
+
   // 401
   await ctl({ fail401: true });
   await goto(`${APP}/dispatch`);

@@ -116,6 +116,43 @@ const LAST_FORMAT = new Intl.DateTimeFormat("en-US", {
   minute: "2-digit",
 });
 
+/**
+ * G266（Annie「G266 Dispatch同意推荐，动手」，preview X7ptbfdS5zbqgqUNb8fSmg 题 1–3、5 全 A）：
+ * 司机 / 导游名单每人「发过没」。后端带了 sent_at 才出 Sent 列（旧后端不出）。
+ */
+interface NoticeMark {
+  sent_at?: string | null;
+  sent_by?: string;
+}
+const hasMarks = (people: NoticeMark[]) =>
+  people.some((p) => p.sent_at !== undefined);
+
+/** 发过的那一行整行淡黄（同 Morning Relay 客人表、全站发送页）。 */
+const SENT_ROW = "bg-[#fff8e1]";
+
+/** Sent 列：发过 ⇒「Sent by 谁 on 时间」标签；没发过（含最近一次失败的，题 2 A）⇒ 灰字 Not sent。 */
+function SentMark({ p }: { p: NoticeMark }) {
+  if (!p.sent_at) {
+    return (
+      <span data-notice-mark="not-sent" className="text-[#6b7280]">
+        Not sent
+      </span>
+    );
+  }
+  const at = new Date(p.sent_at);
+  const when = Number.isNaN(at.getTime())
+    ? p.sent_at
+    : LAST_FORMAT.format(at).replace(/\s/g, " ");
+  return (
+    <span
+      data-notice-mark="sent"
+      className={cn(DUP_BADGE, "inline-block whitespace-nowrap")}
+    >
+      Sent by {p.sent_by || "staff"} on {when}
+    </span>
+  );
+}
+
 /** 能勾的客人：No show 不发（同以前）。 */
 const pickable = (g: RelayGuest) => g.relay_status !== "no_show";
 
@@ -667,6 +704,7 @@ export function RelayPanel({
   const canText = drivers?.people.filter((p) => p.can_send) ?? [];
   const picked = drivers ? pickedPeople(drivers, skipped) : [];
   const allPicked = canText.length > 0 && picked.length === canText.length;
+  const driverMarks = !!drivers && hasMarks(drivers.people);
 
   function toggleDriver(key: string, on: boolean) {
     setSkipped((s) => {
@@ -752,6 +790,26 @@ export function RelayPanel({
               one text message and use plain English letters.
             </li>
             <li>You can only send for today or tomorrow.</li>
+            {/* G266 preview 题 5 A（第 9 条 Notes 等 ② 上了再加）。 */}
+            {driverMarks ? (
+              <>
+                <li data-howto-sent-marks>
+                  Each driver and guide shows &ldquo;Sent by Annie on Oct 5,
+                  9:53 PM&rdquo; once a text went out to them for this day, or
+                  &ldquo;Not sent&rdquo;.
+                </li>
+                <li>
+                  Only the people you ticked and texted are marked Sent. To text
+                  someone you missed, tick only that person and click Send texts
+                  now.
+                </li>
+                <li>
+                  If a text failed, that person stays &ldquo;Not sent&rdquo;.
+                  Check their mobile number in Human Resource, then send to them
+                  again.
+                </li>
+              </>
+            ) : null}
           </ol>
         </details>
 
@@ -795,7 +853,11 @@ export function RelayPanel({
           >
             {drivers.people.length ? (
               <Table
-                head={["Driver", "Mobile", "Runs", "Can text?"]}
+                head={
+                  driverMarks
+                    ? ["Driver", "Sent", "Mobile", "Runs", "Can text?"]
+                    : ["Driver", "Mobile", "Runs", "Can text?"]
+                }
                 lead={
                   <input
                     type="checkbox"
@@ -810,8 +872,11 @@ export function RelayPanel({
                   <tr
                     key={p.key}
                     data-key={p.key}
-                    // 旧 `.rp-t tr.off td`：发不了的那行灰字。
-                    className={p.can_send ? "" : "text-[#9ca3af]"}
+                    // 旧 `.rp-t tr.off td`：发不了的那行灰字。G266：发过的整行淡黄。
+                    className={cn(
+                      p.can_send ? "" : "text-[#9ca3af]",
+                      driverMarks && p.sent_at && SENT_ROW,
+                    )}
                   >
                     <td className={cn(TD, RP_PAD, CHK_CELL)}>
                       <input
@@ -823,6 +888,11 @@ export function RelayPanel({
                       />
                     </td>
                     <td className={cn(TD, RP_PAD)}>{p.name}</td>
+                    {driverMarks ? (
+                      <td className={cn(TD, RP_PAD)}>
+                        <SentMark p={p} />
+                      </td>
+                    ) : null}
                     <td className={cn(TD, RP_PAD, MONO)}>{p.phone || "—"}</td>
                     <td className={cn(TD, RP_PAD)}>
                       {p.cars.map((c, j) => (
@@ -1401,6 +1471,7 @@ function GuideBox({
   const picked = canText.filter((p) => !skipped.has(p.key));
   const allPicked = canText.length > 0 && picked.length === canText.length;
   const lastText = lastSentText(guides);
+  const guideMarks = hasMarks(guides.people);
   const extraMax = guides.extra_max;
   const extraText = extra.trim();
   const bad = nonGsmChars(extra);
@@ -1589,7 +1660,11 @@ function GuideBox({
         ) : null}
         {guides.people.length ? (
           <Table
-            head={["Guide", "Mobile", "Buses", "Can text?"]}
+            head={
+              guideMarks
+                ? ["Guide", "Sent", "Mobile", "Buses", "Can text?"]
+                : ["Guide", "Mobile", "Buses", "Can text?"]
+            }
             lead={
               <input
                 type="checkbox"
@@ -1610,7 +1685,10 @@ function GuideBox({
               <tr
                 key={p.key}
                 data-guide-key={p.key}
-                className={p.can_send ? "" : "text-[#9ca3af]"}
+                className={cn(
+                  p.can_send ? "" : "text-[#9ca3af]",
+                  guideMarks && p.sent_at && SENT_ROW,
+                )}
               >
                 <td className={cn(TD, RP_PAD, CHK_CELL)}>
                   <input
@@ -1622,6 +1700,11 @@ function GuideBox({
                   />
                 </td>
                 <td className={cn(TD, RP_PAD)}>{p.name}</td>
+                {guideMarks ? (
+                  <td className={cn(TD, RP_PAD)}>
+                    <SentMark p={p} />
+                  </td>
+                ) : null}
                 <td className={cn(TD, RP_PAD, MONO)}>{p.phone || "—"}</td>
                 <td className={cn(TD, RP_PAD)}>
                   {p.cars.map((c, j) => (
