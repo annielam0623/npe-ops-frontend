@@ -27,25 +27,27 @@ import { apiFetch } from "@/lib/api-client";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { useLeaveGuard } from "@/lib/use-leave-guard";
 import { cn } from "@/lib/utils";
+import type { RelayPull } from "@/lib/dispatch-api";
 import type { ManifestTextSize, ManifestTextSizeChange } from "@/types";
 
 /**
  * Relay Splits 当天的「Aa Text size」（置顶 92 Q5 A，Annie「relay split也需要可以自己调字体大小，设置就跟bus manifest一样」）：
  * 每张单（总表每轮一张、每台 relay 车一张）各调各的，整列 / 整行 / 整页、A− / A+（−2..+10 px）、Regular / Bold；
  * 只存这一天；Done 先留在页面上，页面顶上的蓝色 Save 才存；dispatch.edit 能改；每张单上方看最近 5 次。
- * ⚠️ 后端要新表，07 还没给形状：先照 77 草案 mock ——
- *   GET /api/dispatch/relay-list/text-size?date= ⇒ {sheets: {<sheet>: {text_size, history}}}（没有这个接口 = 不出 Aa 键）
- *   PUT 同路径 {date, sheet, text_size} ⇒ {ok, text_size, history}
- *   sheet = summary:relay / summary:relay_2 / car:<轮>:<车号>（用车号认车，排车行 id 每次保存会换）。
+ * 后端 07（task/print-layout-2 c71452ca，migrate_v157）：没有单独的 GET，字号跟着 GET /api/dispatch/relay-pull 来——
+ *   summary_text_size = {relay | relay_2: {sheet, text_size, history}}；每台车 car.text_size_sheet / text_size / text_size_history
+ *   （sheet = "car:<轮>:<车号>"，没车号 = null，这台车不能调）。relay-pull 没有 summary_text_size = 旧后端，不出 Aa 键。
+ *   PUT /api/dispatch/relay-list/text-size {date, sheet, text_size} ⇒ {ok, sheet, text_size, text_size_history}（最近 5 次）。
  */
 
+/** 列键同后端 relay_text_size.COLUMN_KEYS（第 6 列纸本叫 Tour，键是 product）。 */
 export const RELAY_COLUMNS = [
   "time",
   "hotel",
   "qty",
   "name",
   "phone",
-  "tour",
+  "product",
   "order",
 ] as const;
 export type RelayColumn = (typeof RELAY_COLUMNS)[number];
@@ -56,13 +58,9 @@ const COLUMN_LABEL: Record<RelayColumn, string> = {
   qty: "Qty",
   name: "Name",
   phone: "Phone",
-  tour: "Tour",
+  product: "Tour",
   order: "Order #",
 };
-
-export const summarySheet = (round: string) => `summary:${round}`;
-export const carSheet = (round: string, van: string, key: string) =>
-  `car:${round}:${van || key}`;
 
 interface SheetText {
   text_size: ManifestTextSize;
@@ -71,18 +69,36 @@ interface SheetText {
 
 const API = "/api/dispatch/relay-list/text-size";
 
-function fetchRelayTextSizes(
-  date: string,
-  signal?: AbortSignal,
-): Promise<{ sheets: Record<string, SheetText> }> {
-  return apiFetch(API, { cache: "no-store", signal, query: { date } });
+/** relay-pull 带的每张单的当天字号（键 = sheet）；null = 旧后端（没有 summary_text_size）。 */
+function sheetsOf(pull: RelayPull | null): Record<string, SheetText> | null {
+  if (!pull?.summary_text_size) return null;
+  const out: Record<string, SheetText> = {};
+  for (const s of Object.values(pull.summary_text_size))
+    if (s?.sheet)
+      out[s.sheet] = {
+        text_size: s.text_size ?? EMPTY_TEXT_SIZE,
+        history: s.history ?? [],
+      };
+  for (const blocks of Object.values(pull.rounds ?? {}))
+    for (const b of blocks) {
+      const sheet = b.car.text_size_sheet;
+      if (sheet)
+        out[sheet] = {
+          text_size: b.car.text_size ?? EMPTY_TEXT_SIZE,
+          history: b.car.text_size_history ?? [],
+        };
+    }
+  return out;
 }
 
 function saveRelayTextSize(
   date: string,
   sheet: string,
   textSize: ManifestTextSize,
-): Promise<{ text_size: ManifestTextSize; history: ManifestTextSizeChange[] }> {
+): Promise<{
+  text_size: ManifestTextSize;
+  text_size_history?: ManifestTextSizeChange[];
+}> {
   return apiFetch(API, {
     method: "PUT",
     body: { date, sheet, text_size: textSize },
@@ -125,6 +141,7 @@ export function useRelayTextSize(
   date: string | null,
   canEdit: boolean,
   onUnauthorized: () => void,
+  pull: RelayPull | null,
 ): RelayTextState {
   const [ready, setReady] = useState(false);
   const [sheets, setSheets] = useState<Record<string, SheetText>>({});
@@ -135,21 +152,12 @@ export function useRelayTextSize(
   const [picks, setPicks] = useState<TextPick[]>([]);
   const [save, setSave] = useState<SaveState>({ kind: "idle" });
 
+  // 每次读 relay-pull（打开、存好颜色后重读）都换成后端那份。
   useEffect(() => {
-    if (!date) return;
-    const ctrl = new AbortController();
-    fetchRelayTextSizes(date, ctrl.signal)
-      .then((r) => {
-        setSheets(r.sheets ?? {});
-        setReady(true);
-      })
-      .catch((e: unknown) => {
-        if (ctrl.signal.aborted) return;
-        if (isStatus(e, 401)) onUnauthorized();
-        setReady(false);
-      });
-    return () => ctrl.abort();
-  }, [date, onUnauthorized]);
+    const got = sheetsOf(pull);
+    setReady(got !== null);
+    setSheets(got ?? {});
+  }, [pull]);
 
   const dirty = canEdit && (Object.keys(staged).length > 0 || draft !== null);
   useLeaveGuard(
@@ -231,7 +239,10 @@ export function useRelayTextSize(
       for (const [sheet, ts] of todo) {
         try {
           const r = await saveRelayTextSize(date, sheet, ts);
-          next[sheet] = { text_size: r.text_size, history: r.history ?? [] };
+          next[sheet] = {
+            text_size: r.text_size,
+            history: r.text_size_history ?? [],
+          };
         } catch (e) {
           if (isStatus(e, 401)) {
             onUnauthorized();
@@ -251,10 +262,10 @@ export function useRelayTextSize(
 export const RelayTextContext = createContext<RelayTextState | null>(null);
 
 /** 一格的字号（只管客人表格：基础字号 = 每天的起点；当天的整页 / 整列 / 整行加在上面）和编辑时的点选。 */
-export function useRelayCellFont(sheet: string, basePx: number) {
+export function useRelayCellFont(sheet: string | null, basePx: number) {
   const t = useContext(RelayTextContext);
   return (col: RelayColumn, order: string) => {
-    if (!t?.ready)
+    if (!t?.ready || !sheet)
       return { style: undefined as CSSProperties | undefined, className: "", onClick: undefined };
     const ts = t.current(sheet);
     const layers = [ts.page, ts.columns[col], ts.rows[order]];
@@ -303,12 +314,13 @@ export function SheetTextBar({
   sheet,
   orders,
 }: {
-  sheet: string;
+  /** null = 这张单不能调（没车号）。 */
+  sheet: string | null;
   /** 这张单上的订单号（整行选中时写名字用）。 */
   orders: string[];
 }) {
   const t = useContext(RelayTextContext);
-  if (!t?.ready) return null;
+  if (!t?.ready || !sheet) return null;
   const editing = t.editing === sheet;
   const history = t.sheets[sheet]?.history ?? [];
   const current = t.draft ?? EMPTY_TEXT_SIZE;

@@ -501,7 +501,7 @@ async function textChecks() {
   await open(URL0);
   await waitFor("document.querySelectorAll('[data-relay-total]').length === 2", 30000);
   await sleep(500);
-  check("当天字号：接口没有（404）⇒ 每张单上方没有 Aa Text size", !(await evaluate("return !!document.querySelector('[data-relay-text-open]');")));
+  check("当天字号：relay-pull 没带 summary_text_size（旧后端）⇒ 每张单上方没有 Aa Text size", !(await evaluate("return !!document.querySelector('[data-relay-text-open]');")));
   check("Text：键名「⚙ Colours, text & page」", await evaluate("return document.querySelector('[data-relay-settings-open]').textContent === '⚙ Colours, text & page';"));
 
   // 每天的起点：Text 页
@@ -532,6 +532,7 @@ async function textChecks() {
   await waitFor("document.querySelector('[data-relay-text-open]')", 30000);
   await helpers();
   check("当天字号：每张单上方一个 Aa Text size（总表 2 张 + 有客人的车）", await evaluate("return document.querySelectorAll('[data-relay-text-open]').length === document.querySelectorAll('.rl-sheet').length && !!document.querySelector('[data-relay-text-open=\"summary:relay\"]');"));
+  check("当天字号：Tour 列的键是 product（同后端 07 的七个列键）", await evaluate("return !!document.querySelector('td[data-relay-col=product]') && !document.querySelector('[data-relay-col=tour]');"));
   check("当天字号：How to use 多 Aa 那句", await evaluate("return document.body.textContent.includes('Aa Text size (above each sheet): pick Whole column, Whole row or Whole page, click the table');"));
   await evaluate("document.querySelector('[data-relay-text-open=\"summary:relay\"]').click();");
   await waitFor("document.querySelector('[data-text-size-toolbar]')");

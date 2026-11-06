@@ -62,12 +62,10 @@ import {
   RelaySettingsDialog,
 } from "./relay-settings-dialog";
 import {
-  carSheet,
   type RelayColumn,
   RelayTextContext,
   RelayTextSave,
   SheetTextBar,
-  summarySheet,
   useRelayCellFont,
   useRelayTextSize,
 } from "./relay-text-size";
@@ -152,6 +150,7 @@ export function RelayListView() {
     params?.date ?? null,
     canEdit,
     redirectToLogin,
+    view.kind === "ready" ? view.data : null,
   );
 
   useEffect(() => {
@@ -664,7 +663,7 @@ function TotalSheet({
   orientation: "portrait" | "landscape";
 }) {
   const hotelStyle = useHotelStyle();
-  const sheet = summarySheet(round.round);
+  const sheet = round.textSheet;
   const font = useRelayCellFont(sheet, useContext(RelayLookContext).summaryPx);
   let prev: { guest: RelayGuest; carKey: string } | null = null;
   return (
@@ -746,7 +745,7 @@ function CarSheet({
   dateShort: string;
 }) {
   const hotelStyle = useHotelStyle();
-  const sheet = carSheet(round, car.van, car.key);
+  const sheet = car.textSheet;
   const font = useRelayCellFont(sheet, useContext(RelayLookContext).carPx);
   let prev: { guest: RelayGuest; carKey: string } | null = null;
   return (
@@ -867,7 +866,7 @@ function GuestCells({
       <td {...cell("qty")}>{g.pax ?? ""}</td>
       <td {...cell("name")}>{g.name}</td>
       <td {...cell("phone")}>{g.phone ?? ""}</td>
-      <td {...cell("tour")}>{tourText(g)}</td>
+      <td {...cell("product")}>{tourText(g)}</td>
       <td {...cell("order")}>{g.order_number}</td>
     </>
   );

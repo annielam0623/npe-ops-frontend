@@ -208,18 +208,17 @@ http
       entry.method = req.method;
       const q = Object.fromEntries(url.searchParams);
       if (await layoutMock({ ...ctl, layoutForbidden: !ctl.edit }, p, q, req, res, send, readRaw, entry)) return;
-      // 置顶 92 Q5：Relay Splits 当天字号（77 草案，07 还没定）。ctl.textSize = true 才有；ctl.textFail = PUT 400 原话。
+      // 置顶 92 Q5：Relay Splits 当天字号（后端 07 c71452ca：只有 PUT；读跟着 relay-pull）。ctl.textSize = true 才有；ctl.textFail = PUT 400 原话。
       if (p === "/api/dispatch/relay-list/text-size") {
-        if (!ctl.textSize) return send(res, 404, { detail: "Not Found" });
-        if (req.method === "PUT") {
+        if (!ctl.textSize || req.method !== "PUT") return send(res, 404, { detail: "Not Found" });
+        {
           const b = JSON.parse((await readRaw(req)) || "{}"); entry.body = b;
           if (!ctl.edit) return send(res, 403, { detail: "You do not have permission to edit Dispatch." });
           if (ctl.textFail) return send(res, 400, { detail: ctl.textFail });
           const prev = textStore[b.sheet]?.history ?? [];
           textStore[b.sheet] = { text_size: b.text_size, history: [{ by: "ZZ Test", at: "Nov 3, 6:00 PM", what: "Text size changed" }, ...prev].slice(0, 5) };
-          return send(res, 200, { ok: true, ...textStore[b.sheet] });
+          return send(res, 200, { ok: true, sheet: b.sheet, text_size: textStore[b.sheet].text_size, text_size_history: textStore[b.sheet].history });
         }
-        return send(res, 200, { sheets: textStore });
       }
     }
     if (p === "/api/settings/relay-list") {
@@ -239,7 +238,23 @@ http
     }
     if (p === "/api/dispatch/relay-pull") {
       if (ctl.fail500) return send(res, 500, { detail: "Internal Server Error" });
-      return send(res, 200, relayPull(url.searchParams.get("date")));
+      const body = relayPull(url.searchParams.get("date"));
+      // 后端 07：summary_text_size[轮] = {sheet, text_size, history}；车上 text_size_sheet（没车号 = null）/ text_size / text_size_history。
+      if (ctl.textSize) {
+        const EMPTY = { page: {}, columns: {}, rows: {} };
+        const got = (sheet) => textStore[sheet] ?? { text_size: EMPTY, history: [] };
+        body.summary_text_size = {};
+        for (const rnd of ["relay", "relay_2"]) {
+          const sheet = `summary:${rnd}`;
+          body.summary_text_size[rnd] = { sheet, text_size: got(sheet).text_size, history: got(sheet).history };
+          for (const b of body.rounds?.[rnd] ?? []) {
+            const van = (b.car.van || "").trim();
+            const cs = van ? `car:${rnd}:${van}` : null;
+            Object.assign(b.car, { text_size_sheet: cs, text_size: cs ? got(cs).text_size : EMPTY, text_size_history: cs ? got(cs).history : [] });
+          }
+        }
+      }
+      return send(res, 200, body);
     }
     return send(res, 404, { detail: "Not Found" });
   })

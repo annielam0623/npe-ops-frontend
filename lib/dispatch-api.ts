@@ -14,6 +14,8 @@ import type {
   DispatchSectionSaveResult,
   DispatchSeating,
   SeatingMoveResult,
+  ManifestTextSize,
+  ManifestTextSizeChange,
   MorningSendResult,
 } from "@/types";
 
@@ -334,9 +336,25 @@ export interface RelayPull {
         relay_color?: string | null;
         /** 置顶 73：这张车单的纸张方向（后端按 Relay N / 团 / 字母的设置算好）；没有 = portrait。 */
         orientation?: "portrait" | "landscape";
+        /**
+         * 置顶 92 Q5（后端 07 c71452ca）：这张车单当天字号的 sheet（"car:<轮>:<车号>"）；没车号 = null（不能调）。
+         * 旧后端 / tour_car 轮没有这几个键。
+         */
+        text_size_sheet?: string | null;
+        text_size?: ManifestTextSize;
+        text_size_history?: ManifestTextSizeChange[];
       };
       guests: RelayGuest[];
     }[]
+  >;
+  /** 置顶 92 Q5：两轮总表当天字号（sheet = "summary:<轮>"）；旧后端没有这个键 = 不出 Aa 键。 */
+  summary_text_size?: Record<
+    string,
+    {
+      sheet: string;
+      text_size: ManifestTextSize;
+      history: ManifestTextSizeChange[];
+    }
   >;
   need_a_look: (RelayGuest & {
     reason: string;
