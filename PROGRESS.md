@@ -1213,6 +1213,8 @@ D. 已完成、待从置顶移走：
   - 改法（ef 建议，已回 Annie，**还没定、没动手**）：Schedule check 用这份清单，按酒店合并带人数「MGM (4)」；后端只加一个字段：need_a_look 每条加 round（relay / relay_2），才能按轮分开列。清单按已保存的排车算，前端边改边减：这一轮在页面上加了那家酒店（没存）就先从名单拿掉，存了以后跟后端对齐。Q2 带人数、Q3 说明小字照原推荐。等 Annie 一句「94 用 Need a look 那份，其余按推荐」。
 - **Annie（原话）**：「第几轮就看这个tour最后一个出发时间就能看出来了啊」
   - ef 回（问 Annie，没定）：Q1 A（推荐）照团在 Bus Manifest setup 设的轮次（manifests.relay_round；后端分 Relay / Relay split / Send 都照它，Annie 10-14「分轮按团，不按时间」），后端 need_a_look 每条加 round 一个字段，三处永远一致；B 前端按团最后出发时间推，后端不改，时间和设定对不上的日子会跟 Relay split 不一致。其余（带人数、说明小字）照原推荐。等 Annie 答「94 Q1 A / B」。
+- **Annie（原话）**：「通常第一轮是antelope south和BZ，第二轮是west，第三轮是hoover，hoover已经固定那三家，都不用统计了」
+  - ef 回：这就是 Bus Manifest setup 现设的 relay_round（第 1 轮 Antelope / South / BZ，第 2 轮 West，Hoover = Tour bus pick up 用自己的大巴），照 Q1 A 后端按设定标轮次，结果正好如此；Schedule check 只查第 1、2 轮，Hoover 本来就不进这份清单，不用另处理。已请 Annie 确认「94 全按推荐，动手」，还没答。
 
 ### 93. G250 Dispatch 团车出发 1 小时后自动锁定：前端样子（2026-11-05，后端 4c 转；没动手）
 - Annie 已定（⛔，后端那边）：系统行为、没有按键；锁后只有 Super Admin 能改；Picked up / No show / Boarded 打勾不锁；Completed 照旧，跟锁定无关。
