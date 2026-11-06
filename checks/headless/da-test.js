@@ -2524,6 +2524,18 @@ async function run() {
     await evaluate("document.querySelector('button[aria-label=\"Next day\"]').click();");
     await sleep(500);
     check("G266 ②：没存就换日期 ⇒ 先问，按取消留在这一天、字还在", (await evaluate("return window.__asked;")) === 1 && (await evaluate("return location.search;")).includes("2026-10-05") && (await evaluate(`return ${box("guide")}.querySelector('textarea').value;`)) === "Meet guides at Door 3 by 6:15.");
+    // Assign 存好后 Send 面板会重建：没存的 Notes 字不能丢（Annie：没存的改动不能悄悄丢掉）
+    await evaluate("document.getElementById('tab-assign').click();");
+    await waitFor("!document.getElementById('panel-assign').hidden");
+    const v0 = `${vrow(0)}.querySelector('[data-f=vehicle]')`;
+    const cur = await evaluate(`return ${v0}.value;`);
+    const other = await evaluate(`return [...${v0}.options].map((o) => o.value).find((x) => x && x !== ${JSON.stringify("")} && x !== ${v0}.value);`);
+    await pick(v0, other);
+    await saveNow();
+    await sleep(1200);
+    await evaluate("document.getElementById('tab-send').click();");
+    await waitFor(`${box("guide")}`, 30000);
+    check("G266 ②：没存的 Notes ⇒ 去 Assign 改车并存好（Send 面板重建）⇒ 回来字还在、Save 还能点", (await evaluate(`return ${box("guide")}.querySelector('textarea').value;`)) === "Meet guides at Door 3 by 6:15." && !(await evaluate(`return ${box("guide")}.querySelector('[data-notes-save]').disabled;`)), JSON.stringify({ cur, other }));
     // Save
     let b = (await mockLog()).length;
     await evaluate(`${box("guide")}.querySelector('[data-notes-save]').click();`);

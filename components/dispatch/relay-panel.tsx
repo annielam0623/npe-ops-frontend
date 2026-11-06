@@ -346,7 +346,8 @@ export function RelayPanel({
   onCopyFirstRound,
   onSave,
   canEditNotes = false,
-  onNotesDirty,
+  notesDrafts,
+  onNotesDraft,
 }: {
   date: string;
   /** Send 标签正显示着：第一次显示（以及显示着时重建）就自动列名单、取客人。 */
@@ -362,21 +363,20 @@ export function RelayPanel({
   onSave?: () => Promise<boolean>;
   /** G266 ②：有 dispatch.edit 或 dispatch.send 才能改 Notes，不然只看。 */
   canEditNotes?: boolean;
-  /** G266 ②：两张卡的 Notes 有没有没存的改动（父组件拦换日期 / 离开）。 */
-  onNotesDirty?: (dirty: boolean) => void;
+  /** G266 ②：两张卡没存的 Notes（父组件管，key = "<日期>|<driver|guide>"；面板重建也不丢）。 */
+  notesDrafts?: Record<string, string>;
+  onNotesDraft?: (key: string, text: string | null) => void;
 }) {
   const [data, setData] = useState<RelayPull | null>(null);
   // G266 ② 卡片 Notes：面板真显示出来才取；后端没上（404）/ partner（403）⇒ 不出。
   const cardNotes = useCardNotes(date, active, onUnauthorized);
-  const notesDirtyRef = useRef<Record<string, boolean>>({});
-  const onNotesDirtyRef = useRef(onNotesDirty);
-  onNotesDirtyRef.current = onNotesDirty;
-  const reportNotesDirty = useCallback((card: CardNoteKind, d: boolean) => {
-    notesDirtyRef.current = { ...notesDirtyRef.current, [card]: d };
-    onNotesDirtyRef.current?.(
-      Object.values(notesDirtyRef.current).some(Boolean),
-    );
-  }, []);
+  const onNotesDraftRef = useRef(onNotesDraft);
+  onNotesDraftRef.current = onNotesDraft;
+  const reportNotesDraft = useCallback(
+    (card: CardNoteKind, text: string | null) =>
+      onNotesDraftRef.current?.(`${date}|${card}`, text),
+    [date],
+  );
   const notesFor = (card: CardNoteKind) =>
     cardNotes.state.kind === "ready" ? (
       <CardNotesBox
@@ -385,7 +385,8 @@ export function RelayPanel({
         note={cardNotes.state.data[card]}
         canEdit={canEditNotes}
         onSaved={(n) => cardNotes.replace(card, n)}
-        onDirty={reportNotesDirty}
+        draftText={notesDrafts?.[`${date}|${card}`]}
+        onDraft={reportNotesDraft}
         onUnauthorized={onUnauthorized}
       />
     ) : null;

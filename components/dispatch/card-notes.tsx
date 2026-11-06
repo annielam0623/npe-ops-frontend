@@ -81,7 +81,8 @@ export function CardNotesBox({
   note,
   canEdit,
   onSaved,
-  onDirty,
+  draftText,
+  onDraft,
   onUnauthorized,
 }: {
   date: string;
@@ -89,17 +90,20 @@ export function CardNotesBox({
   note: CardNote;
   canEdit: boolean;
   onSaved: (note: CardNote) => void;
-  onDirty: (card: CardNoteKind, dirty: boolean) => void;
+  /**
+   * 没存的字放在父组件（Dispatch 页）：Assign 存好后 Send 面板会重建，字不能丢（Annie：没存的改动不能悄悄丢掉）。
+   * undefined = 没改；onDraft(null) = 跟已存的一样了 / 存好了。
+   */
+  draftText?: string;
+  onDraft: (card: CardNoteKind, text: string | null) => void;
   onUnauthorized: () => void;
 }) {
-  const [draft, setDraft] = useState(note.text);
+  const draft = draftText ?? note.text;
   const [saving, setSaving] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; text: string } | null>(
     null,
   );
-  const dirty = draft !== note.text;
-  useEffect(() => onDirty(card, dirty), [card, dirty, onDirty]);
-  useEffect(() => () => onDirty(card, false), [card, onDirty]);
+  const dirty = draftText !== undefined && draftText !== note.text;
 
   async function save() {
     if (!dirty || saving) return;
@@ -108,7 +112,7 @@ export function CardNotesBox({
     try {
       const saved = await saveCardNote(date, card, draft);
       onSaved(saved);
-      setDraft(saved.text);
+      onDraft(card, null);
       setResult({ ok: true, text: "Saved." });
     } catch (e) {
       if (isStatus(e, 401)) onUnauthorized();
@@ -140,7 +144,8 @@ export function CardNotesBox({
         placeholder={canEdit ? COPY[card].placeholder : "No notes."}
         value={draft}
         onChange={(e) => {
-          setDraft(e.target.value);
+          const v = e.target.value;
+          onDraft(card, v === note.text ? null : v);
           setResult(null);
         }}
         className={cn(

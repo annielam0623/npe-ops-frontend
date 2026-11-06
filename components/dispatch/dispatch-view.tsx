@@ -600,7 +600,20 @@ export function DispatchView() {
   /** staff 改了、还没存好：离开要问、标签上写 Saving。 */
   const pendingSave = userEdited && unsaved;
   /** G266 ②：Send 标签两张卡的 Notes 有没存的改动。 */
-  const [notesDirty, setNotesDirty] = useState(false);
+  // 没存的字放在这里（key = "<日期>|<driver|guide>"），Send 面板重建（Assign 存好、复制第 1 轮）也不丢。
+  const [notesDrafts, setNotesDrafts] = useState<Record<string, string>>({});
+  const notesDirty = Object.keys(notesDrafts).length > 0;
+  const setNotesDraft = useCallback((key: string, text: string | null) => {
+    setNotesDrafts((all) => {
+      if (text === null) {
+        if (!(key in all)) return all;
+        const next = { ...all };
+        delete next[key];
+        return next;
+      }
+      return all[key] === text ? all : { ...all, [key]: text };
+    });
+  }, []);
 
   // 同一天同时只能一个人编辑（后端 G71，Annie 2026-10-15 看过预览）。
   /** 占的时候 409（别人在改）的原话；null = 看 day.edit_lock。 */
@@ -1151,6 +1164,7 @@ export function DispatchView() {
       )
     )
       return;
+    if (notesDirty) setNotesDrafts({});
     if (pendingSave) setPending({ kind: "leave", to: date });
     else void goTo(date);
   }
@@ -2940,7 +2954,8 @@ export function DispatchView() {
                   onSave={viewOnly ? undefined : () => saveRef.current()}
                   // G266 ②：有 dispatch.edit 或 dispatch.send 才能改 Notes。
                   canEditNotes={(!viewOnly || canSend) && !perms.isPartner}
-                  onNotesDirty={setNotesDirty}
+                  notesDrafts={notesDrafts}
+                  onNotesDraft={setNotesDraft}
                 />
               </div>
             ) : null}
