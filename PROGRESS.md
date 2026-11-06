@@ -1184,6 +1184,7 @@ D. 已完成、待从置顶移走：
   - Q10 怎么存：A（推荐）暂存 + 蓝 Save + 关前问 + Reset / Reset all to paper + Action Log；B 改一项存一项。
   - ✅ **Annie（原话）**：「看了，同意全部推荐，记得要可以下载」⇒ Q1–Q11 全 A 定稿（含 Q8 Relay list 加 ⬇ Excel；Bus Manifest Excel 照设定）。**还不是「动手」**，78 已问是否现在动手；定稿已发 46 排后端。
   - ✅ **Annie「动手」（原话，2026-11-05）**。前端派 77：task/print-layout-1 第 1 批 Colours + Page + Relay ⬇ Excel 键，照草案 mock，推分支不合；第 2 批 Text + Relay 当天 Aa。后端 46 另开窗口评估字段（迁移 SQL 先给 Annie），上线 SHA 发前端后核字段合。
+  - 后端 07 定第 1 批字段（已原样转 77）：settings 两键 print_layout:bus_manifest / print_layout:relay_list，**第 1 批无迁移**；GET / PUT /api/settings/print-layout?page=…（页面设置键叫 page_setup）；colours {all, tours{id:{…, sections}}}、box 清单（Bus Manifest 18 种 + col_<列键>；Relay hotel_cell / column_titles）；车抬头颜色仍走 /api/settings/relay-list tour_colors，团色仍 Products Colour；ticket_rules ≤30 条（默认现 4 条）；palette ≤40；text 存加减 d（第 2 批生效）；page_setup；GET manifest 加 view.print_layout；Relay Excel GET /api/dispatch/relay-list/excel?date=。Relay 当天字号新表放第 2 批。
   - Q11 How to use：A（推荐）原文见 preview / 77 消息（「⚙ Colours, text & page: choose the colour of each box … on top of the everyday size.」）；B 她改字。
 
 ### 91. Bus Manifest 背景颜色打印不出来（2026-11-05，Annie 在 46 报，46 转；ef 查完前端不用改）
