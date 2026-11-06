@@ -1167,6 +1167,11 @@ D. 已完成、待从置顶移走：
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 93. G250 Dispatch 团车出发 1 小时后自动锁定：前端样子（2026-11-05，后端 4c 转；没动手）
+- Annie 已定（⛔，后端那边）：系统行为、没有按键；锁后只有 Super Admin 能改；Picked up / No show / Boarded 打勾不锁；Completed 照旧，跟锁定无关。
+- 后端 4c 形状（在审没上线）：GET /api/dispatch/day 加 tour_locks {tours{id:{locked, departure, locks_at}}, rounds{relay|relay_2}, can_edit_locked}；锁后非 SA 改 ⇒ 409 原话（day / section / copy / guest-bus / seating/move）；锁定单元 = 一团所有车 / 一轮 relay 所有车，Private Custom 不锁。
+- 前端灰掉 / 提示是新样子 ⇒ 78 派 ef 出 preview（staff vs SA、锁哪些控件、409 红字、换车提示、How to use），等 Annie 答 + 「动手」。
+
 ### 92. 版式设置交给 staff：颜色 / 哪些格上色 / 字体 / 页面大小（2026-11-05，Annie 在后端 4c 提，46 转；B 级新功能，没动手）
 - 原话：「把对颜色编辑，加减颜色，哪个框还需要上色的功能都交给staff」「包括字体编辑，页面大小的设置，不要每次都让 我们改编码」。
 - 范围：Bus Manifest（屏幕 + 打印 + Excel 下载）+ Relay list（总表 + 车单）；置顶 90 Relay Splits 字号并进来。后端现有：manifests.paper_colors、G197 manifest_text_size、manifest_version、settings relay_list。
