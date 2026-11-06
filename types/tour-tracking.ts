@@ -75,6 +75,13 @@ export interface TourTrackingRow {
   wa_fallback: string;
   /** 转给合作公司的订单才有：两套上车资料 + 谁放前面（后端算）。 */
   farm_out_view?: FarmOutView;
+  /**
+   * G180（37 冻结的形状）：sent = 发过（除 Morning 外任何一类发送动作做了，发失败也算）；
+   * unsent = 从 Main manifest 进来、还没发。旧后端没有这个键 ⇒ 当 sent。
+   */
+  send_state?: "sent" | "unsent";
+  /** G180：订单本身的状态，来自 Order List（不是客人回复）。旧后端没有 ⇒ 当 confirmed。 */
+  order_state?: "confirmed" | "on_hold" | "cancelled";
 }
 
 export interface TourTracking {

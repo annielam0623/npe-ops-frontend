@@ -24,9 +24,12 @@ import {
   isFileColumn,
   isModifyStatus,
   isShuttleTourType,
+  isUnsent,
   mtlvBubble,
   mtlvCells,
   notesBubble,
+  ORDER_STATE_LABEL,
+  orderStateOf,
   smsLabel,
   STATUS_CLASS,
   STATUS_OPTIONS,
@@ -36,11 +39,13 @@ import {
   ticketsBubble,
   ticketValue,
   type TourMeta,
+  UNSENT_ROW_BG,
   uploadedValue,
 } from "./config";
 
 const HEAD: Record<SystemColumnKey, ReactNode> = {
   order_number: "Order #",
+  order_status: "Order Status",
   status: "Status",
   tour: "Tour",
   tour_date: "Tour Date",
@@ -255,7 +260,17 @@ export function TourTable({
               <Fragment key={row.id}>
                 <tr
                   data-id={row.id}
-                  className="border-b border-[rgba(208,224,212,0.5)] last:border-b-0 even:bg-[rgba(244,240,230,0.35)] hover:bg-[#ddede1]"
+                  // G180：还没发过的整行灰底（取代 preview 早先的粉红），字 #1a1a1a；发过的照旧。
+                  data-unsent={isUnsent(row) ? "" : undefined}
+                  style={
+                    isUnsent(row) ? { background: UNSENT_ROW_BG } : undefined
+                  }
+                  className={cn(
+                    "border-b border-[rgba(208,224,212,0.5)] last:border-b-0",
+                    isUnsent(row)
+                      ? "text-[#1a1a1a]"
+                      : "even:bg-[rgba(244,240,230,0.35)] hover:bg-[#ddede1]",
+                  )}
                 >
                   {columns.map((key, index) => (
                     <Cell
@@ -463,7 +478,23 @@ function Cell({
       );
       className = "font-semibold whitespace-nowrap text-[#2F7851]";
       break;
+    case "order_status": {
+      // Order List 里订单本身的状态（题 3 A：灰行也照写）。
+      const state = orderStateOf(row);
+      content = ORDER_STATE_LABEL[state];
+      className = cn(
+        "whitespace-nowrap",
+        state === "on_hold" && "font-bold text-[#b45309]",
+        state === "cancelled" && "font-bold text-[#b91c1c]",
+      );
+      break;
+    }
     case "status":
+      // 题 2 A：还没发过的，客人没收到，写「—」、不出下拉。
+      if (isUnsent(row)) {
+        content = DASH;
+        break;
+      }
       content = (
         <StatusCell
           row={row}

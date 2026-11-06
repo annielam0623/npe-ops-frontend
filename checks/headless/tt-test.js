@@ -761,6 +761,87 @@ async function run() {
     check(`${label}：☰ Columns ${see ? "有" : "没有"}上传列 Agent，Hotel Note 照旧`, st.agent === see && st.note && st.n === 17 + (see ? 3 : 2), JSON.stringify(st));
   }
   await ctl({ staffPerms: null, superAdmin: false });
+
+  // ── G180 Main manifest 同步：灰底版（Annie 2026-11-05「同意全部推荐，动手」，preview Fz4f3awLiNauihh2n655JT）──
+  await ctl({ pref: null, sync: false });
+  await evaluate("localStorage.removeItem('npe_ops_tour_col_order'); localStorage.removeItem('npe_ops_tour_order_status_after'); localStorage.removeItem('npe_ops_tour_col_vis');");
+  await open();
+  const oldHeads = await heads();
+  const summaryOf = () => evaluate("return [...document.querySelector('section[aria-label=Summary]').children].map((c) => c.textContent).join('|');");
+  const pillsOf = () => evaluate("return [...document.querySelectorAll('[aria-label=\"Filter by tour\"] button')].map(b => b.textContent).join('|');");
+  const oldSummary = await summaryOf();
+  const oldPills = await pillsOf();
+  const oldRecords = await evaluate("return [...document.querySelectorAll('span')].find((e) => /^\\d+ records$/.test(e.textContent))?.textContent;");
+  check("G180 旧后端（没有 send_state / order_state）：没有 Order Status 列、没有灰底说明、没有 To notify 卡", !oldHeads.includes("Order Status") && !(await evaluate("return !!document.querySelector('[data-unsent-note]') || !!document.querySelector('tr[data-unsent]');")) && !oldSummary.includes("To notify"), oldHeads.join("|"));
+
+  await ctl({ sync: true });
+  await open();
+  await waitFor("document.querySelector('tr[data-id=\"23\"]')");
+  const syncHeads = await heads();
+  check("G180：Order Status 列紧跟 Order #，其余列顺序不变，没有 Notified 列", syncHeads[0] === "Order #" && syncHeads[1] === "Order Status" && syncHeads.filter((h) => h !== "Order Status").join("|") === oldHeads.join("|") && !syncHeads.some((h) => /Notified/.test(h)), syncHeads.join("|"));
+  const ids = await evaluate("return [...document.querySelectorAll('tbody tr[data-id]')].map((r) => r.dataset.id + (r.hasAttribute('data-unsent') ? 'u' : ''));");
+  check("G180：没发过的 N201–N203 排在发过的下面（接口里夹在中间），两组里面顺序照旧", ids.slice(-3).join(",") === "21u,22u,23u" && ids.slice(0, -3).every((x) => !x.endsWith("u")), ids.join(","));
+  check("G180：灰行整行底色 #e1e4e8，发过的行不是灰的", await evaluate(`return getComputedStyle(${tr(21)}).backgroundColor === 'rgb(225, 228, 232)' && getComputedStyle(${tr(23)}).backgroundColor === 'rgb(225, 228, 232)' && getComputedStyle(${tr(6)}).backgroundColor !== 'rgb(225, 228, 232)';`));
+  check("G180：灰行 Status 写「—」、没有下拉；发过的照旧有下拉", await evaluate(`return ${cell(21, "status")}.textContent === '—' && !${cell(21, "status")}.querySelector('select') && !!${cell(6, "status")}.querySelector('select');`));
+  check("G180：Order Status 照 order_state 写（灰行也照写）：T02 On hold 橙、T04 Cancelled 红、N203 On hold、N201 Confirmed", await evaluate(`const t = (id) => ${tr("' + id + '")}; const os = (id) => document.querySelector('tr[data-id="' + id + '"] td[data-c="order_status"]'); return os(2).textContent === 'On hold' && getComputedStyle(os(2)).color === 'rgb(180, 83, 9)' && os(4).textContent === 'Cancelled' && getComputedStyle(os(4)).color === 'rgb(185, 28, 28)' && os(23).textContent === 'On hold' && os(21).textContent === 'Confirmed' && os(6).textContent === 'Confirmed';`));
+  const syncSummary = await summaryOf();
+  check("G180：数字卡只算发过的（和旧后端一样）+ 灰色 To notify 3", syncSummary.replace("|3To notify", "") === oldSummary && syncSummary.includes("|3To notify|"), `${oldSummary}  ⇒  ${syncSummary}`);
+  check("G180：To notify 卡灰底、不是筛选键", await evaluate("const c = [...document.querySelector('section[aria-label=Summary]').children].find((x) => x.textContent === '3To notify'); return c.tagName === 'DIV' && getComputedStyle(c).backgroundColor === 'rgb(225, 228, 232)';"));
+  check("G180：团胶囊只算发过的（和旧后端一样）", (await pillsOf()) === oldPills, await pillsOf());
+  check("G180：records 数含灰行（多 3）", await evaluate("return [...document.querySelectorAll('span')].find((e) => /^\\d+ records$/.test(e.textContent))?.textContent;") === `${Number(oldRecords.split(" ")[0]) + 3} records`);
+  check("G180：表格上方一句说明（题 1 A 原文）+ 灰色小方块", await evaluate("const n = document.querySelector('[data-unsent-note]'); return n.querySelector('[data-phone-oneline] > span').textContent === 'Grey rows: no confirmation, Last Minute, Shuttle or Broadcast message has been sent yet.' && getComputedStyle(n.querySelector('span')).backgroundColor === 'rgb(225, 228, 232)';"));
+  await evaluate("[...document.querySelector('section[aria-label=Summary]').children].find((x) => x.textContent.endsWith('Pending')).click();");
+  await sleep(300);
+  check("G180：点 Pending 卡筛客人回复：灰行不出现", await evaluate(`return !${tr(21)} && !${tr(22)} && !${tr(23)} && !!document.querySelector('tbody tr[data-id]');`));
+  await evaluate("[...document.querySelector('section[aria-label=Summary]').children].find((x) => x.textContent.endsWith('Total')).click();");
+  await sleep(300);
+  check("G180：How to use 第一条 = 题 6 A 原文；Broadcast 那条后面接灰行那句", await evaluate("const t = document.body.textContent; return t.includes(\"Every order in the Main manifest shows here. A grey row means nothing has been sent for that order yet: no confirmation, Last Minute, Shuttle or Broadcast message (Morning pickup messages don't count). Grey rows are listed below the others, are not counted in the numbers at the top, and show — in Status.\") && t.includes('⇄ Farmed out means the order was handed to a partner.') && t.includes('add an alias there later to merge the spelling. The list includes guests in grey rows too. On hold and Cancelled orders are left out. Once it is sent, those rows are no longer grey and move up.');"));
+  // ☰ Columns：Order Status 能隐藏
+  await evaluate("$btn('☰ Columns').click();");
+  await waitFor(dialog);
+  check("G180：☰ Columns 里有 Order Status（紧跟 Order #）", await evaluate(`const l = [...${dialog}.querySelectorAll('label')].map((x) => x.textContent.trim()); return l[0] === 'Order #' && l[1] === 'Order Status';`), await evaluate(`return [...${dialog}.querySelectorAll('label')].map((x) => x.textContent.trim()).join('|');`));
+  await evaluate(`[...${dialog}.querySelectorAll('label')].find((x) => x.textContent.trim() === 'Order Status').querySelector('input').click();`);
+  await sleep(200);
+  check("G180：取消勾 Order Status ⇒ 列不见了", !(await heads()).includes("Order Status"));
+  await evaluate(`[...${dialog}.querySelectorAll('label')].find((x) => x.textContent.trim() === 'Order Status').querySelector('input').click();`);
+  await sleep(200);
+  await cdp("Input.dispatchKeyEvent", { type: "keyDown", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 });
+  await sleep(200);
+  if (await evaluate(`return !!${dialog};`)) await evaluate("$btn('☰ Columns').click();");
+  // 拖动：Order Status 拖到 Tour 上 ⇒ 落在 Tour 后面；账号里照旧只存 17 个列号（旧页面要正好 17 个）
+  before = (await mockLog()).length;
+  await evaluate("window.__dt = new DataTransfer(); document.querySelector('th[data-col=order_status]').dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer: window.__dt }));");
+  await sleep(150);
+  await evaluate("document.querySelector('th[data-col=tour]').dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: window.__dt }));");
+  await sleep(150);
+  await evaluate("document.querySelector('th[data-col=tour]').dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: window.__dt }));");
+  await sleep(300);
+  const prs = (await waitReq(before, (e) => e.path === "/api/user-prefs/tour_col_order" && e.method === "PUT"))[0]?.body;
+  check("G180：拖 Order Status 到 Tour 上 ⇒ 落在 Tour 后面", (await heads()).slice(0, 4).join("|") === "Order #|Status|Tour|Order Status", (await heads()).slice(0, 4).join("|"));
+  check("G180：拖完账号里存的还是 17 个旧列号（不含 Order Status，旧页面能读）", prs && JSON.parse(prs.value).length === 17 && prs.value === JSON.stringify(Array.from({ length: 17 }, (_, i) => String(i))), prs?.value);
+  await open();
+  await waitFor("document.querySelector('th[data-col=order_status]')");
+  check("G180：重开页面，Order Status 还在 Tour 后面（本机记得）", (await heads()).slice(0, 4).join("|") === "Order #|Status|Tour|Order Status", (await heads()).slice(0, 4).join("|"));
+  await evaluate("localStorage.removeItem('npe_ops_tour_order_status_after');");
+  await ctl({ pref: null });
+  // 群发：灰行在名单里，On hold / Cancelled 不在
+  await evaluate("$btn('📣 Broadcast').click();");
+  await waitFor(`${dialog} && ${dialog}.textContent.includes('Step 2')`);
+  for (const t of ["AC-U", "AC-L", "South", "West"]) await evaluate(`[...${dialog}.querySelectorAll('label')].find(l => l.textContent.trim() === '${t}')?.querySelector('input').click();`);
+  await sleep(300);
+  const bcText = await evaluate(`return ${dialog}.textContent;`);
+  check("G180 群发 By tour：灰行 N201 / N202 在名单里；On hold（T02、N203）和 Cancelled（T04）不在", /ZZ Test Lee/.test(bcText) && /ZZ Test Garcia/.test(bcText) && !/ZZ Test Patel/.test(bcText) && !/ZZ Two/.test(bcText) && !/ZZ Four/.test(bcText), bcText.slice(0, 600));
+  await evaluate(`$btn('Cancel', ${dialog}).click();`);
+  await sleep(200);
+  // 手机：8 张卡一行、不横晃、说明收成一行
+  await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+  await openPage(`${APP}/tour-confirmation/tracking?date=${D}`);
+  await waitFor("document.querySelector('tr[data-id=\"23\"]')");
+  await sleep(400);
+  check("G180 手机：8 张统计卡一行（含 To notify）、整页不左右晃", await evaluate("const c = [...document.querySelector('section[aria-label=\"Summary\"]').children].filter((x) => !x.querySelector('[data-lunch]')); return c.length === 8 && new Set(c.map((x) => Math.round(x.getBoundingClientRect().top))).size === 1 && document.documentElement.scrollWidth <= innerWidth + 1;"));
+  await cdp("Emulation.clearDeviceMetricsOverride");
+  await ctl({ sync: false });
+
   // ── 手机版第 ③ 批（Annie 2026-11-01 手机版规则）：统计 7 格一行、团按钮一行、Columns / Download / Upload 进 ⋯、拖动提示不显示、不横晃 ──
   await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
   await openPage(`${APP}/tour-confirmation/tracking?date=${D}`);
@@ -769,6 +850,51 @@ async function run() {
   check("手机：7 张统计卡一行、团按钮一行", await evaluate(`const c = [...document.querySelector('section[aria-label="Summary"]').children].filter((x) => !x.querySelector('[data-lunch]')); const p = [...document.querySelector('[aria-label="Filter by tour"]').children]; return c.length === 7 && new Set(c.map((x) => Math.round(x.getBoundingClientRect().top))).size === 1 && new Set(p.map((x) => Math.round(x.getBoundingClientRect().top))).size === 1;`));
   check("手机：Download CSV / Upload 不在外面、有 ⋯；拖动提示不显示", await evaluate(`const vis = (el) => !!el && el.getBoundingClientRect().height > 0 && el.getBoundingClientRect().width > 0; const noSway = document.documentElement.scrollWidth <= innerWidth + 1; const btn = (t, root = document) => [...root.querySelectorAll('button, a')].find((b) => b.textContent.trim().startsWith(t)); const out = [...document.querySelectorAll('main a, main button')].filter((b) => /Download CSV|⬆ Upload/.test(b.textContent) && vis(b) && !b.closest('[data-phone-more-menu]')); const drag = [...document.querySelectorAll('span')].find((s) => s.textContent.includes('Drag to reorder')); return out.length === 0 && vis(document.querySelector('[data-phone-more]')) && !vis(drag);`));
   await cdp("Emulation.clearDeviceMetricsOverride");
+
+  // ── 置顶 95：G180 三档开关（Annie「全按推荐，动手」，preview 7DDLeUsSSczzovwb2pncrb 三题全 A）──
+  {
+    const sw = "document.querySelector('[data-sync-switch]')";
+    const sel = "document.querySelector('select[aria-label=\"Main manifest sync\"]')";
+    const help = "document.querySelector('[data-sync-help]')?.textContent";
+    const pick = (v) => evaluate(`const s = ${sel}; Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, '${v}'); s.dispatchEvent(new Event('change', { bubbles: true }));`);
+    const isPut = (e) => e.path === "/api/settings/tracking-sync" && e.method === "PUT";
+    const isGetTracking = (e) => e.path === "/api/notifications/tour-confirmation/tracking" && e.method === "GET";
+    await ctl({ superadmin: false, syncMode: "off", syncFail: "", sync: false });
+    await open();
+    check("置顶 95：不是 Super Admin ⇒ 没有 Main manifest sync 下拉", await evaluate(`return !${sw} && !document.querySelector('[data-sync-help]');`));
+    await ctl({ superadmin: true, syncMode: null });
+    await open();
+    await sleep(500);
+    check("置顶 95：Super Admin 但读不到（旧后端 404）⇒ 不出下拉", await evaluate(`return !${sw};`));
+    await ctl({ syncMode: "off" });
+    await open();
+    await waitFor(sw);
+    check("置顶 95：Super Admin ⇒ 日期那一行最右边「Main manifest sync」下拉 Off / Super Admin only / Staff，当前 Off，旁边小字", await evaluate(`const s = ${sel}; return [...s.options].map((o) => o.textContent).join('|') === 'Off|Super Admin only|Staff' && s.value === 'off' && ${sw}.textContent.includes('Only Super Admins see this setting.') && !!${sw}.closest('.mb-4');`));
+    check("置顶 95：Off 的说明原文", (await evaluate(`return ${help};`)) === "Off: orders that have not been sent yet don't show here, and there is no Order Status column. The page works as before.");
+    let b = (await mockLog()).length;
+    await pick("super_admin_only");
+    await waitFor(`${sw}.querySelector('[data-sync-result]')?.textContent === 'Saved'`);
+    await sleep(400);
+    check("置顶 95：选 Super Admin only ⇒ 马上 PUT {mode}、绿字 Saved、说明换、页面重读", JSON.stringify((await since(b, isPut))[0]?.body) === JSON.stringify({ mode: "super_admin_only" }) && (await evaluate(`return getComputedStyle(${sw}.querySelector('[data-sync-result]')).color === 'rgb(21, 128, 61)';`)) && (await evaluate(`return ${help};`)) === "Super Admin only: you see grey rows and Order Status. Staff still see the page as before." && (await since(b, isGetTracking)).length >= 1);
+    b = (await mockLog()).length;
+    await pick("staff");
+    await waitFor("document.querySelector('[data-sync-confirm]')");
+    check("置顶 95：选 Staff ⇒ 先出黄框原文、还没存", (await evaluate("return document.querySelector('[data-sync-confirm]').textContent.replace(/\\s+/g, ' ');")).includes("Staff will start seeing grey rows (orders not sent yet) and the Order Status column on this page. Turn on for staff?") && (await since(b, isPut)).length === 0);
+    await evaluate("[...document.querySelectorAll('[data-sync-confirm] button')].find((x) => x.textContent === 'Cancel').click();");
+    await sleep(200);
+    check("置顶 95：Cancel ⇒ 黄框没了、退回 Super Admin only、没存", (await evaluate(`return !document.querySelector('[data-sync-confirm]') && ${sel}.value === 'super_admin_only';`)) && (await since(b, isPut)).length === 0);
+    await pick("staff");
+    await waitFor("document.querySelector('[data-sync-confirm]')");
+    await evaluate("[...document.querySelectorAll('[data-sync-confirm] button')].find((x) => x.textContent === 'Turn on for staff').click();");
+    await waitFor(`!document.querySelector('[data-sync-confirm]') && ${sel}.value === 'staff'`);
+    check("置顶 95：Turn on for staff ⇒ PUT staff、说明换成 Staff 那句", JSON.stringify((await since(b, isPut))[0]?.body) === JSON.stringify({ mode: "staff" }) && (await evaluate(`return ${help};`)) === "Staff: everyone who can open this page sees grey rows and Order Status.");
+    await ctl({ syncFail: "Only a Super Admin can change this." });
+    await pick("off");
+    await waitFor(`${sw}.querySelector('[role=alert]')`);
+    check("置顶 95：存不上 ⇒ 红字照原话、下拉退回原档", (await evaluate(`return ${sw}.querySelector('[role=alert]').textContent;`)) === "Only a Super Admin can change this." && (await evaluate(`return ${sel}.value;`)) === "staff");
+    check("置顶 95：How to use 不提开关", !(await evaluate("return document.body.textContent.includes('Main manifest sync') && [...document.querySelectorAll('details')].some((d) => d.textContent.includes('Main manifest sync'));")));
+    await ctl({ superadmin: false, syncMode: "off", syncFail: "" });
+  }
 
   await ctl({ fail401: true });
   await goto(`${APP}/tour-confirmation/tracking?date=${D}`);
