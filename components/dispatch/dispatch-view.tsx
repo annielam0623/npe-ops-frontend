@@ -2469,7 +2469,11 @@ export function DispatchView() {
                       const renderSec = (s: Sec, cardIdx: number) => {
                         // G82：后端带了 Rezdy 订单 => Private Tour 按订单分卡（上面订单 / 团名，下面这张订单的车）。
                         const unit = unitOf(s);
-                        const secDisabled = disabled || !!unitBusy[unit];
+                        // G250：锁住的团 / Relay 轮（过去的日子连 Private）。员工整块只读、灰掉；Super Admin 照常能改，只出浅黄提示。
+                        const lk = lockOf(day.tour_locks, s);
+                        const staffLocked = lockedForMe(lk);
+                        const secDisabled =
+                          disabled || !!unitBusy[unit] || staffLocked;
                         if (s.shift === "private_tour" && day.private_orders) {
                           const us = unitSaveState(unit);
                           return (
@@ -2531,9 +2535,6 @@ export function DispatchView() {
                           );
                         }
                         const key = secOf(s);
-                        // G250：锁住的团 / Relay 轮。员工整块只读、灰掉；Super Admin 照常能改，只出浅黄提示。
-                        const lk = lockOf(day.tour_locks, s);
-                        const staffLocked = lockedForMe(lk);
                         const secViewOnly = viewOnly || staffLocked;
                         const tc = tourCard(s);
                         const idxs = rows.flatMap((r, i) =>

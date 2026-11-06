@@ -2466,7 +2466,7 @@ async function run() {
     const barOf = (s) => `(${s}?.querySelector('[data-lock-bar]')?.textContent ?? '')`;
     const hasAdd = (s) => `[...${s}.querySelectorAll('button')].some(b => b.textContent.includes('+ Add vehicle'))`;
     const relayMissing = "[...document.querySelectorAll('[aria-label=\"Schedule check\"] [aria-label=Issues] > li')].some(l => l.textContent.includes('with no Morning Relay · 1st Round'))";
-    await ctl({ tourLocks: null, lock409: null, lockAfter409: null, hotelGroups: false });
+    await ctl({ tourLocks: null, tourLock409: null, lockAfter409: null, hotelGroups: false });
     await open();
     check("93 没带 tour_locks（旧后端）：没有锁标签 / 说明条，1st Round 没车的酒店照常列", (await evaluate("return !document.querySelector('[data-lock-badge], [data-lock-bar]');")) && (await evaluate(`return ${relayMissing};`)));
 
@@ -2491,20 +2491,23 @@ async function run() {
     check("93 过去的日子（past_day）：每一块都锁，员工条「This day is locked. Only a Super Admin can change it.」", await evaluate(`return ${barOf(wr)} === 'This day is locked. Only a Super Admin can change it.' && ${barOf(r2)} === 'This day is locked. Only a Super Admin can change it.' && !(${hasAdd(r2)});`), await evaluate(`return ${barOf(r2)};`));
 
     // Q4：出发前打开、过了锁定时间才按 Save ⇒ 后端 409 原话，卡片里红框、标题右边红字 Not saved，刷新成锁住的样子
-    await ctl({ tourLocks: null, lock409: TOUR_MSG, lockAfter409: { tours: { "3": L1 }, rounds: {}, can_edit_locked: false } });
+    await ctl({ tourLocks: null, tourLock409: TOUR_MSG, lockAfter409: { tours: { "3": L1 }, rounds: {}, can_edit_locked: false } });
     await open();
     const wrRow = await evaluate(`return ${wr}.querySelector('.vrow')?.dataset.idx ?? null;`);
     const drv0 = await evaluate(`return ${vrow(wrRow)}.querySelector('[data-f=driver]').value;`);
-    await pick(`${vrow(wrRow)}.querySelector('[data-f=driver]')`, "4");
-    await sleep(300);
-    await evaluate(`${vrow(wrRow)}.querySelector('[data-row-save]')?.click();`);
+    const b409 = (await mockLog()).length;
+    const drvTo = drv0 === "4" ? "5" : "4";
+    await pick(`${vrow(wrRow)}.querySelector('[data-f=driver]')`, drvTo);
+    await waitFor(`${vrow(wrRow)}.querySelector('[data-row-save]') && !${vrow(wrRow)}.querySelector('[data-row-save]').disabled`, 10000);
+    await evaluate(`${vrow(wrRow)}.querySelector('[data-row-save]').click();`);
     await waitFor(`!!${wr}.querySelector('[data-lock-error]')`, 10000);
-    check("93 Q4：409 红框在 West Rim 卡片里、说明条下面，「Not saved: 」+ 后端原话", await evaluate(`const s = ${wr}; const e = s.querySelector('[data-lock-error]'); const bar = s.querySelector('[data-lock-bar]'); return !!e && e.textContent === 'Not saved: ${TOUR_MSG}' && !!bar && !!(bar.compareDocumentPosition(e) & Node.DOCUMENT_POSITION_FOLLOWING);`), await evaluate(`return ${wr}.textContent;`));
+    const sent409 = JSON.stringify((await since(b409, () => true)).filter((e) => e.method !== "GET").map((e) => e.path));
+    check("93 Q4：409 红框在 West Rim 卡片里、说明条下面，「Not saved: 」+ 后端原话", await evaluate(`const s = ${wr}; const e = s.querySelector('[data-lock-error]'); const bar = s.querySelector('[data-lock-bar]'); return !!e && e.textContent === 'Not saved: ${TOUR_MSG}' && !!bar && !!(bar.compareDocumentPosition(e) & Node.DOCUMENT_POSITION_FOLLOWING);`), `${sent409} drv0=${drv0} now=${await evaluate(`return ${vrow(wrRow)}.querySelector('[data-f=driver]').value;`)}`);
     check("93 Q4：标题右边 Saved 变红字 Not saved", await evaluate(`const t = ${wr}.querySelector('[data-unit-state=locked]'); return !!t && t.textContent === 'Not saved' && getComputedStyle(t).color === 'rgb(220, 38, 38)';`));
     check("93 Q4：页面刷新成锁住的样子（灰字标签、整块灰），这一块退回已存的司机；别的块照常能改（不是编辑锁的只读）", await evaluate(`return !!${wr}.querySelector('[data-lock-badge=staff]') && !!${wr}.querySelector('[data-locked-body]') && ${vrow(wrRow)}.querySelector('[data-f=driver]').value === ${JSON.stringify(drv0)} && ${hasAdd(r2)};`), await evaluate(`return ${vrow(wrRow)}.querySelector('[data-f=driver]').value;`));
 
     // Q7：员工 Apply CCL 改版时锁住的 1st Round 不动，只改没锁的；旁边灰字列出没动的
-    await ctl({ lock409: null, lockAfter409: null, revAuto: true, tourLocks: { tours: {}, rounds: { relay: { locked: true, departure: "2026-10-07T06:30:00-07:00", locks_at: "2026-10-07T07:30:00-07:00" } }, can_edit_locked: false } });
+    await ctl({ tourLock409: null, lockAfter409: null, revAuto: true, tourLocks: { tours: {}, rounds: { relay: { locked: true, departure: "2026-10-07T06:30:00-07:00", locks_at: "2026-10-07T07:30:00-07:00" } }, can_edit_locked: false } });
     await ctl({ revAuto: false });
     await open("2026-10-07");
     await waitFor("[...document.querySelectorAll('button')].some(b => b.textContent.trim() === 'Apply changes')", 15000);
@@ -2513,7 +2516,7 @@ async function run() {
     check("93 Q7：Apply changes 时锁住的 1st Round 不动（司机还是原来的），没锁的 Private Tour 照加", await evaluate(`return ${vrow(0)}.querySelector('[data-f=driver]').value === '1' && document.querySelectorAll('.vrow').length === 2;`), await evaluate("return [...document.querySelectorAll('.vrow')].map(r => r.querySelector('[data-f=driver]')?.value).join('|');"));
     check("93 Q7：Pull from Discord 旁边灰字「Locked, not changed: Morning Relay · 1st Round.」", (await evaluate("return document.querySelector('[data-pull-locked]')?.textContent ?? '';")) === "Locked, not changed: Morning Relay · 1st Round.", await evaluate("return document.querySelector('[data-pull-locked]')?.textContent ?? '';"));
 
-    await ctl({ tourLocks: null, lock409: null, lockAfter409: null, revAuto: true });
+    await ctl({ tourLocks: null, tourLock409: null, lockAfter409: null, revAuto: true });
     await ctl({ revAuto: false });
     promptAnswer = "";
     await goto("about:blank");
