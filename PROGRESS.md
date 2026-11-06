@@ -10,7 +10,14 @@
 
 ## 2026-11-06 前端主窗口 `npe-ops-frontend-49`[8db054] 接班（公司电脑，接 e8 [6ce7da]；只分工和汇报，不写代码）
 - e8 回（交接三问）：① 收工后除 Annie 早上那句没有新变化，后端没发新 SHA；工作窗口 a0 / 7a / 19 都已关，a0（wt-g180，e0548c6e）、7a（wt-shuttle，8614fb03）分支已推、worktree 留着。⚠️ 8614fb03 **还没有** G258 两行模板下拉，要补。② 没有派出未收回的活；都在等后端（G180 等 Annie 在 4c 执行 v153、17 执行 v154；G259 + G258 今天下午；G263 接口形状；G257 只记 SHA）或 Annie（93 past_day 两句）。没问 / 没答：G180 三档开关放哪（e8 推荐 A：Tour Tracking 页顶给 SA 一个下拉，先 preview 再问）；Task Board 中文题。11/09 周起提醒 G180 回填。③ 后端主窗口仍是「今日后端主窗口e8」[df009e]（Annie 今天可能新开，留意 ListAgents）。e8 已告诉后端以后发 49。
-- 49 已问后端主窗口 G180 / G257 / G259 / G258 / G263 / 92 Relay list 照设定读的进度，等回。
+- 49 已问后端主窗口 G180 / G257 / G259 / G258 / G263 / 92 Relay list 照设定读的进度。
+- 后端 e8 [df009e] 回：**后端今天主窗口是 `npe-confirmation-service-4a`[3b2d6f]**（49 已告诉 4a）。
+  1. G180 没上 main：v2 tip ea623e4b；v153 Annie 已执行（14ac3ce9），**v154 还没执行**；四审 deploy-guard 剩 DG-1 / 2 / 4，等 v154 执行合并后重跑。开关上线是 off。
+  2. G257 只有方案（task/send-release-conn fe14363e），等 Annie 确认升 Risk C + 迁移 v156 才开工。
+  3. G259 还没派，时间由 4a 定（「今天下午」不算承诺）。字段：tickets.lead_groups=[{days_before,ticket_types}]、tickets.max_per_batch=150、tour.max_per_batch=100、tickets.daily_report{enabled,emails}；GET /api/settings/auto-send 带 ticket_types [{key,label}]（按 Content Studio 顺序）；缺键落默认，不迁移。
+  4. G258 跟 G259 同一批：tour.template_regular / tour.template_last_minute，值 tour_confirmation / last_minute；tour_templates [{key,label}] 已转 4a。
+  5. G263 没开工（迁移，Risk C），接口形状由接手的子窗口发来。
+  6. 92 Relay list 照设定读：还没派。
 
 ## 2026-11-05 晚 收工交接：前端主窗口 `前端主窗口40`[325a5e]（家里电脑）
 > Annie：「好的，把今天这个完成就收工吧，详情记录下来明天公司好继续」。40 只分工和汇报，没写代码。过程见下面「40 接班」一节。今晚前端工作窗口只有 `01`[4a9dda]（端口 3777 / 9177 / 9777）；77、ef、78 已退。后端主窗口 `主窗口-46`[5b93cd]（后端 07 / 4c / 61）。
