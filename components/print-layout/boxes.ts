@@ -5,8 +5,8 @@
 export interface BoxDef {
   key: string;
   label: string;
-  kind: "colour" | "toggle" | "bus_header" | "section";
-  /** toggle 那种写它用谁的颜色。 */
+  kind: "colour" | "toggle" | "bus_header" | "section" | "colour_or_own";
+  /** toggle 写它用谁的颜色；colour_or_own 写没填颜色时用谁的（例「Section colour」）。 */
   note?: string;
   /** 默认是关着的那种（整列上色）：放在最后一组。 */
   extra?: boolean;
@@ -40,11 +40,12 @@ export const BUS_MANIFEST_BOXES: BoxDef[] = [
   { key: "section", label: "Section title and Cfm # box", kind: "section" },
   { key: "shuttle_out", label: "Shuttle out section", kind: "colour" },
   { key: "shuttle_in", label: "Shuttle back section", kind: "colour" },
+  // Annie「要也让 staff 自己选颜色」：没填颜色 = 用节色（07：color null = 节色）。
   {
     key: "hotel_group",
     label: "Every other hotel group (first row)",
-    kind: "toggle",
-    note: "Uses the section colour",
+    kind: "colour_or_own",
+    note: "Section colour",
   },
   {
     key: "extra_row",
@@ -73,11 +74,12 @@ export const BUS_MANIFEST_BOXES: BoxDef[] = [
 ];
 
 export const RELAY_LIST_BOXES: BoxDef[] = [
+  // 同 hotel_group：没填颜色 = 用车色（07：color null = 车色）。
   {
     key: "hotel_cell",
     label: "Hotel cell",
-    kind: "toggle",
-    note: "Uses the car colour",
+    kind: "colour_or_own",
+    note: "Car colour",
   },
   { key: "column_titles", label: "Column titles", kind: "colour" },
 ];

@@ -115,6 +115,7 @@ async function main() {
   try {
     await run();
     await layoutChecks();
+    await hotelColourChecks();
   } finally {
     ws.close();
     chrome.kill();
@@ -442,6 +443,27 @@ async function layoutChecks() {
   await open(URL0);
   await openSettings();
   check("版式设置：没有 dispatch.edit ⇒ 只读（没有 Save、开关灰）", await evaluate(`const d = ${dlg}; return !d.querySelector('[data-relay-settings-save]') && d.querySelector('[data-layout-toggle]').disabled;`));
+  await ctl({ reset: true, layoutReset: true, layout: false, edit: false });
+}
+
+// ── 置顶 92：Hotel 格也能选颜色（07：hotel_cell.color null = 车色）──
+async function hotelColourChecks() {
+  const sumHotel = "document.querySelector('[data-relay-total=relay] tbody tr[data-relay-row] td:nth-child(2)')";
+  await ctl({ reset: true, layoutReset: true, layout: true, edit: true, noSettings: false });
+  await open(URL0);
+  await waitFor("document.querySelectorAll('[data-relay-total]').length === 2", 30000);
+  await openSettings();
+  check("Hotel 格：没选颜色 ⇒ 写 Car colour + Choose a colour", await evaluate(`return ${dlg}.querySelector('[data-layout-own-colour="hotel_cell"]')?.textContent === 'Car colour' && !!${dlg}.querySelector('[data-layout-pick-colour="hotel_cell"]');`));
+  await evaluate(`${dlg}.querySelector('[data-layout-pick-colour="hotel_cell"]').click();`);
+  await waitFor("document.querySelector(\"[aria-label='Hotel cell colour code']\")");
+  await evaluate("$setValue(document.querySelector(\"[aria-label='Hotel cell colour code']\"), '#00ffff');");
+  check("Hotel 格：选 #00ffff ⇒ 总表 Hotel 格马上变（不再用车色）", await waitFor(`getComputedStyle(${sumHotel}).backgroundColor === 'rgb(0, 255, 255)'`));
+  const b0 = (await mockLog()).length;
+  await evaluate(`${dlg}.querySelector('[data-relay-settings-save]').click();`);
+  await waitFor("document.querySelector('[data-relay-settings-status=saved]')");
+  const lp = (await since(b0, (e) => e.method === "PUT" && e.path === "/api/settings/print-layout"))[0];
+  check("Hotel 格：Save ⇒ colours.all.hotel_cell {on:null, color:#00ffff}", JSON.stringify(lp?.body) === JSON.stringify({ colours: { all: { hotel_cell: { on: null, color: "#00ffff" } } } }), JSON.stringify(lp?.body));
+  await evaluate(`$btn('Cancel', ${dlg}).click();`);
   await ctl({ reset: true, layoutReset: true, layout: false, edit: false });
 }
 

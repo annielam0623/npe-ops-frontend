@@ -61,7 +61,11 @@ import {
 } from "./relay-settings-dialog";
 
 /** 版式设置（置顶 92）里画在单子上的：Hotel 格涂不涂车色。纸张 / 边距 / 表头色走 CSS 变量。 */
-const RelayLookContext = createContext({ hotelCell: true });
+const RelayLookContext = createContext<{
+  hotelCell: boolean;
+  /** Hotel 格的颜色；null = 用车色（07）。 */
+  hotelColor: string | null;
+}>({ hotelCell: true, hotelColor: null });
 
 /** 纸张尺寸（mm，竖放）。 */
 const PAPER_MM = { a4: [210, 297], letter: [215.9, 279.4] } as const;
@@ -202,10 +206,10 @@ export function RelayListView() {
     layout && ls
       ? resolveBox(ls, layout.defaults, "column_titles", null)
       : null;
-  const hotelCell =
-    layout && ls
-      ? resolveBox(ls, layout.defaults, "hotel_cell", null).on
-      : true;
+  const hotelBox =
+    layout && ls ? resolveBox(ls, layout.defaults, "hotel_cell", null) : null;
+  const hotelCell = hotelBox ? hotelBox.on : true;
+  const hotelColor = hotelBox?.color ?? null;
   const [pw, ph] = PAPER_MM[paper];
   const sheetVars = {
     ...(paper !== "a4" ? { "--rl-pw": `${pw}mm`, "--rl-ph": `${ph}mm` } : {}),
@@ -282,7 +286,7 @@ export function RelayListView() {
           className="overflow-x-auto print:overflow-visible"
           style={sheetVars}
         >
-          <RelayLookContext.Provider value={{ hotelCell }}>
+          <RelayLookContext.Provider value={{ hotelCell, hotelColor }}>
             <Sheets data={view.data} date={params.date} onlyCar={params.car} />
           </RelayLookContext.Provider>
         </div>
@@ -480,9 +484,11 @@ function Legend({ round }: { round: RelayRoundList }) {
 
 /** Hotel 格涂车色（版式设置可以关）。 */
 function useHotelStyle() {
-  const { hotelCell } = useContext(RelayLookContext);
+  const { hotelCell, hotelColor } = useContext(RelayLookContext);
   return (color: string | null | undefined): CSSProperties | undefined =>
-    hotelCell && color ? { background: color } : undefined;
+    hotelCell && (hotelColor ?? color)
+      ? { background: hotelColor ?? color ?? undefined }
+      : undefined;
 }
 
 function TotalSheet({

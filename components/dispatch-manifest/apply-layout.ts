@@ -25,6 +25,8 @@ const OFF_CELL = "transparent";
 /** 数据里放不下的那几样（列标题、自定格、隔组标色、餐不符、整列上色），用 context 给到表格。 */
 export interface ManifestLook {
   hotelGroup: boolean;
+  /** 隔组标色的颜色；null = 用节色（07）。 */
+  hotelGroupColor: string | null;
   columnTitles: string | null;
   footCustom: string | null;
   lunchMismatch: { on: boolean; color: string | null };
@@ -36,6 +38,7 @@ export interface ManifestLook {
 
 export const DEFAULT_LOOK: ManifestLook = {
   hotelGroup: true,
+  hotelGroupColor: null,
   columnTitles: null,
   footCustom: null,
   lunchMismatch: { on: true, color: null },
@@ -154,6 +157,7 @@ export function applyLayout(
   const mismatch = box("lunch_mismatch");
   const look: ManifestLook = {
     hotelGroup: box("hotel_group").on,
+    hotelGroupColor: box("hotel_group").color,
     columnTitles: titles.on ? titles.color : OFF_CELL,
     footCustom: custom.on ? custom.color : OFF_CELL,
     lunchMismatch: { on: mismatch.on, color: mismatch.color },
