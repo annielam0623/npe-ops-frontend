@@ -1308,7 +1308,7 @@ D. 已完成、待从置顶移走：
 - ✅ 11:59 PM 后端上 main ff3205cd（关包 0a67150a）⇒ ✅ 前端合 main **0dc4224a**（c3；as 98、nav 39，tsc / eslint / build 过），验收点已转 Annie。G263 2c 更正：子项价格照旧存「子项 × 票种」行（不改三列），GET 子项照旧给 prices，不再给 products / product_codes。
 - 0f 98 后端 task/daily-report-both 写完在审（排在 a2 推 G180 之后上 main）：tickets.daily_report / tour.daily_report {enabled, emails（tour 默认 reservations@）, after_time}，不在发送时间里就落回最后一批；tour run 的 summary 也带 daily_report；门票报告挂在 after_time 那批；Action Log 改名 ticket / tour daily report on/off。已转 c3。
 - c3：98 前端 task/auto-send-report-time **8069782f** 推了没合（基于 11:59 分支 52f71f0a；as 112、nav 39，tsc / eslint / build 过），等 0f SHA。
-- ✅ **Annie 在 c3 窗口（原话）：「G266 Dispatch同意推荐，动手」** ⇒ 置顶 97 五题全 A。c3 开 task/dispatch-sent-marks：① 后端已上，检查过直接合 main；② Notes 另放分支，等后端 v160 上 main 核字段再合（49 要求不要藏在 main 里）。G263 还没「动手」。
+- ✅ **Annie 在 c3 窗口（原话）：「G266 Dispatch同意推荐，动手」** ⇒ 置顶 97 五题全 A。c3 开 task/dispatch-sent-marks：① 后端已上，✅ **合 main 85304f15**（da 536、nav 39，tsc / eslint / build 过，验收点已转 Annie）；② Notes 另放分支，等后端 v160 上 main 核字段再合（49 要求不要藏在 main 里）。G263 还没「动手」。
 - G263 preview 已加题 7（同链接新版）。11:59 分支修了「Checkedevery」少空格，tip 52f71f0a。
 - 原问：「两边」指什么（a 前端后端都改 / b 门票、团确认两张卡都要报告且都能选时间），时间怎么选（A 推荐：从当天的发送时间里下拉选，默认最后一批；B 随便填几点），选的时间早于最后一批时报告算到哪（A 推荐：只算到那一刻为止已过的批次）。答了出 preview。
 
