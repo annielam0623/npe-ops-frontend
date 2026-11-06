@@ -22,6 +22,13 @@
 - ✅ 93 G250 后端上 main **68b69380**（4c 转，字段同上，生产已生效）。已转 01 核字段、准备合；past_day 文字等 Annie 答完就合。
 - Annie 要关旧窗口：78、ef、77 可关（77 交完）。后端 07 / 61 / 4c / 46 还在做或等 Annie，先别关。下次 92 第 2 批 SHA 到了要另开工作窗口接 print-layout-2。
 
+## 2026-11-05 晚 置顶 94 Schedule check 按这一轮 Need a look 列酒店（`task/schedule-check-need-a-look`，工作窗口 `npe-ops-frontend-01`[4a9dda]，40 派）—— ✅ 合 main
+- 依据：Annie「94 全按推荐，动手」（ef 窗口），定稿见置顶 94；后端 307d6895（need_a_look 每条加 round），01 只读核过（routers/relay_pull.py：round = 团的 relay_round；Hoover = tour_car，不出 no car 那条）。
+- 做了：Dispatch › Assign 右栏 Schedule check「N hotels with no Morning Relay · 1st / 2nd Round vehicle」改用 relay-pull need_a_look 里 reason =「No relay car stops at this hotel in this round」、round = 这一轮的那几条，按酒店合并人数「MGM (5)」（A–Z）；页面上这一轮加了那家酒店（没存）先拿掉；说明小字改「Only hotels with guests on this round's tours. Treasure Island is left out because the tours start there.」。打开这一天、每次存好都重读 relay-pull。后端没带 round / 读不到 ⇒ 照旧按所有 Vegas 酒店算（原来那句说明）。2nd Round 没排车照旧不列。
+- 改的：components/dispatch/config.ts analyze()（加 relayNoCar 参数）、dispatch-view.tsx（读 relay-pull）、lib/dispatch-api.ts（round 类型、RELAY_REASON_NO_CAR）。
+- 检查：da 527/527（+6 条 94；老检查「停在 Assign 不取 relay-pull」改成取 1 次——Schedule check 要用，司机 / 导游两份照旧不取）、nav 39/39；tsc 0；eslint 0 错（原有 3 warning）；build 过。
+- Annie 验收怎么看：Dispatch › Assign 右栏 Schedule check，Morning Relay 那条只列这一轮有客人、没车停的酒店，后面带人数「MGM (4)」；Treasure Island、Hoover 的酒店不出现；在 1st Round 某台车 Add hotel 加上名单里的酒店（先不存），那家马上从名单拿掉；说明小字是新句。
+
 ## 2026-11-05 晚 交接：前端主窗口 `前端主窗口-78`[6e88e1] → 新主窗口（家里电脑）
 > Annie：「你这个窗口的内容太长了，我重新开一个窗口你交接一下吧」。78 只分工和汇报，没写代码。详细过程都在 78 接班节（2026-11-04 晚）和置顶 87、90–94。
 > 在线窗口：前端工作窗口 `npe-ops-frontend-77`[b4c0cd]（端口 APP 3677 / MOCK 9077 / CDP 9677）、`npe-ops-frontend-ef`[fcce18]（3777 / 9177 / 9777）；后端主窗口 `主窗口-46`[5b93cd]，后端工作窗口 `07`、`4c`。⚠️ 工作窗口提交 PROGRESS 要在自己的 worktree（先 pull），主目录 D:\npe-ops-frontend 留给主窗口。
