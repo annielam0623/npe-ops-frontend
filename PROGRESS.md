@@ -4,7 +4,39 @@
 
 > 6d 交接（下面「2026-10-27 交接：前端主窗口 6d」那节）的后端需求已于 10/27 晚由 ad 转给家里后端主窗口 17。
 
-> **下一个主窗口：先读下面「2026-11-05 收工交接：前端主窗口 e8」，再看置顶「📌 等 Annie 确认」。**
+> **下一个主窗口：先读下面「40 接班」，再读「2026-11-05 晚 交接：前端主窗口 78 → 新主窗口」，再读「2026-11-05 收工交接：前端主窗口 e8」，再看置顶「📌 等 Annie 确认」。**
+
+## 2026-11-05 晚 前端主窗口 `npe-ops-frontend-40`[325a5e] 接班（家里电脑；只分工和汇报，不写代码）
+- 接 78（78 补交接：那节之后没新变化，交完停）。已告诉 46、77、ef 新主窗口名字；ef 空闲待命（worktree 已删、没在跑的进程）。
+- ⚠️ 78 交接「二」有两条已过时：**87 正式版（按上车点）main 2bc2714d（7a）+ 后端 G253**、**86 Working Record main 0b0e1619（a0，去掉 Hours）+ 后端 G249**，公司 e8 今天都已合（见 e8 收工交接）。已回 46 不用再做。
+- 46 回：92 第 2 批 07 做 Relay 当天字号（新表，SQL 等 Annie 看）→ Relay list 照设定读，61 做 Text 起点接打印 / Excel，SHA 到了发 40 → 派 77 合 task/print-layout-2。G250 4c 在 task/dispatch-tour-lock，**等 Annie 在 4c 窗口选 A（今晚加表存锁）/ B（先只锁过去的日子）**；接口 GET /api/dispatch/day 加 tour_locks，锁了改就 409。94 后端没收到过：40 已把背景转 46，等 Annie 答 3 题后再发定稿。
+- 等回信：77 → print-layout-1 合 main SHA + 验收点。
+
+## 2026-11-05 晚 交接：前端主窗口 `前端主窗口-78`[6e88e1] → 新主窗口（家里电脑）
+> Annie：「你这个窗口的内容太长了，我重新开一个窗口你交接一下吧」。78 只分工和汇报，没写代码。详细过程都在 78 接班节（2026-11-04 晚）和置顶 87、90–94。
+> 在线窗口：前端工作窗口 `npe-ops-frontend-77`[b4c0cd]（端口 APP 3677 / MOCK 9077 / CDP 9677）、`npe-ops-frontend-ef`[fcce18]（3777 / 9177 / 9777）；后端主窗口 `主窗口-46`[5b93cd]，后端工作窗口 `07`、`4c`。⚠️ 工作窗口提交 PROGRESS 要在自己的 worktree（先 pull），主目录 D:\npe-ops-frontend 留给主窗口。
+
+### 一、今天 / 今晚上 main 的（等 Annie 线上验收）
+| 件 | 前端 | 后端 | 验收 |
+|---|---|---|---|
+| 91 Bus Manifest 打印 / Excel 颜色 | 合作公司栏 Hotel 格上色 e9e46731 | 344b20f7、acddd738 | 11/6 Antelope Bus 1960=A 打印预览 + Excel 对照屏幕：Hotel 隔组色、Lunch「-」粉底红字、Order # 正文字体、节标题 (CHECK-IN …) 小一号 + 没号印灰字「· CFM # —」；✓ 列照旧不印 |
+| Relay list ⬇ Excel | ea667617 | 3d3bdd9b | Dispatch › Morning Relay › Relay list 点 ⬇ Excel；车 Print 页只下那台；没 manifests.export / partner 看不到 |
+| 87 Shuttle 提醒临时版 | ad136c9d | — | 产品名含「Las Vegas to」不提醒，其余提醒（见置顶 87） |
+| 搜索框关窗口自动清空 | f9c2672a | — | 顶栏搜单，✕ / 暗处 / Esc / 点链接后框空 |
+| 82 / Relay Splits 抬头 / 86 Profile 分节 | bd2ed2c1 / 776810bb / 58956ba4 | — | 见 78 接班节 |
+
+### 二、在做 / 等后端
+- **92 版式设置**（Annie「看了，同意全部推荐，记得要可以下载」+「动手」）：后端第 1 批 8a72f830 已上 main ⇒ **77 正在核字段、合 task/print-layout-1**（回 SHA 后告诉 Annie 验收点）。task/print-layout-2（Text 页 + Relay 当天 Aa，9df7f172）先别合：等后端第 2 批（今晚 46：Relay list 照设定读、Text 起点接打印 / Excel；Relay 当天字号新表明天做，迁移 SQL 先给 Annie）。
+- **87 Shuttle 提醒正式版**：等后端 /api/dispatch/manifest 每位客人加 pickup_location_id / pickup_is_vegas（46 记了待办）⇒ 改按上车点、拿掉 departsVegas()（Annie「是要看他们的上车点…只有这个location不属于vegas酒店，就要提醒」）。
+- **86 Working Record**：task/hr-working-record 9cc2d142（Annie「动手」），等后端 G249（所有人日历 + hours + 开关 hr_working_record）上 main 核字段直接合。
+- **93 G250 Dispatch 出发 1 小时后自动锁定**：后端 4c 在审；前端 preview https://claude.ai/artifact/SgRWaBvRcTie4cTdziPjtD 9 题（全推荐 A）已发 Annie，**等答 + 「动手」**。
+- **94 Schedule check 酒店清单**：生产 TI 已排除（07 查 id 14 三勾都对）；3 题已发 Annie（Q1 A 后端给 relay_guest_hotels {relay:{location_id: pax}, relay_2}、Q2 名单带人数、Q3 说明句，07 另建议「Hotels ticked Tour bus departure (Treasure Island) are not counted.」），**等答**；定了 46 派后端（07 可接），前端 ef 半天内合。
+
+### 三、新主窗口开工
+1. ListAgents 报对话名；告诉 46、77、ef 新主窗口名字。
+2. 等 77 回 print-layout-1 合 main 的 SHA → 把验收点发 Annie。
+3. Annie 答 93 / 94 后按原话派 ef；后端 SHA 到了按上面「二」派。
+4. 不滚动重问：93、94 已整段问过，内容没变不再发。
 
 ## 2026-11-05 Farm out › Partners & rates：有子项的团，主项 Adult / Child 写灰字 N/A（`task/farmout-subitem-price`，工作窗口 `npe-ops-frontend-19`[1e2a0d]，主窗口 e8 派）—— ✅ 合 main（Annie「Farm out  A 动手」）
 - Annie 原话（后端主窗口转）：「有的tour是分项太多，就像west rim，没有办法按照单一的adult和child来统计，如果我只列了一个价钱的话，就是默认大小同价，然后就把列在主项上的两个空格忽略，或者允许我打N/A」「是你的设计需要来配合生意，不是生意来将就你的设计」。
