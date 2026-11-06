@@ -24,6 +24,18 @@
 - 93 前端 task/dispatch-tour-lock **a7c07e61** 已推、没合（01；da 544、mf 283、nav 39，tsc / eslint / build 过；含最新 main + 94）。**只等 Annie 答 past_day 两句**（改字只动 config.ts lockText）。print-layout-2 01 已照 07 形状改 f36dfa19（rl 107），跑完推分支不合。
 - Annie 要关旧窗口：78、ef、77 可关（77 交完）。后端 07 / 61 / 4c / 46 还在做或等 Annie，先别关。下次 92 第 2 批 SHA 到了要另开工作窗口接 print-layout-2。
 
+## 2026-11-05 晚 置顶 93 G250 锁定 + 置顶 92 第 2 批前端（工作窗口 `npe-ops-frontend-01`[4a9dda]，40 派）—— 分支推了，没合 main
+- **93**（Annie「93：全按推荐，动手」；后端 68b69380 已上 main、生产生效，01 只读核过 tour_locks {past_day, tours, rounds, can_edit_locked} 和两句 409）：`task/dispatch-tour-lock` **a7c07e61**（worktree D:
+pe-ops-frontend-wt-tourlock）。
+  - 锁住的团 / Relay 轮：团名旁「🔒 Locked」（员工灰 / SA 琥珀）+ 标题下说明条（员工灰底 / SA 浅黄，原句照 preview；past_day 先用 40 给的两句「This day is locked. Only a Super Admin can change it.」/「… You can still change it as a Super Admin.」，等 Annie 确认，改字只动 config.ts lockText）。员工整块只读灰掉（ViewOnly + fieldset disabled，Farm out / Seat guests 也关），Edit / Save / + Add vehicle / Copy 1st Round 收起。Private 车选了团跟团锁，Custom 只在过去的日子锁。
+  - 409（只认后端两句锁定原话，别的 409 照旧当 G71 编辑锁）：卡片里说明条下红框「Not saved: 」+ 原话、标题右边红字 Not saved；只重读锁定状态，这块退回已存的样子，别的块没存的改动留着。照抄 409 原话写在 Copy 弹窗；Seat guests 挪车 409 红字照旧 + 重读锁定状态。
+  - Bus Manifest 换车：另读 GET /api/dispatch/day 的 tour_locks（manifest 接口没有）；员工下拉灰 + 灰条，SA 浅黄条；409 红字在那张下拉旁边、客人回原车、整页不写 Saved。
+  - Pull from Discord 预填 / Apply changes：员工跳过锁住的，旁边灰字「Locked, not changed: …」。Schedule check 不列锁住的（Q8）。How to use 加 Q9 原句。
+  - 检查：da 544/544（+17）、mf 283/283（+4；老检查「重读 manifest 后的请求顺序」允许最后多一次 day）、nav 39/39；tsc 0；eslint 0 错；build 过。⚠️ da mock 原来就有 ctl.lock409（编辑锁），G250 的叫 tourLock409。
+  - 下一步：Annie 答 past_day 两句（40 问）→ 合最新 main 重跑 → 合 main。
+- **92 第 2 批**（Annie「看了，同意全部推荐，记得要可以下载」+「动手」；77 做的 task/print-layout-2 接手）：`task/print-layout-2` **a9964c00**（worktree D:
+pe-ops-frontend-wt-layout）。照后端 07 c71452ca 改：没有单独 GET，字号跟 relay-pull 来（summary_text_size[轮] = {sheet, text_size, history}；car.text_size_sheet / text_size / text_size_history，没车号 = null 不出 Aa）；PUT 回 text_size_history；Tour 列键 product。合 main 时解了 relay-list-view 冲突（当天字号 Save 键 + main 的 ⬇ Excel 都留）。检查：rl 108/108、mf 289/289、da 527/527、nav 39/39；tsc 0；eslint 0 错；build 过。等 07 那部分上 main、核字段后再合。
+
 ## 2026-11-05 晚 置顶 94 Schedule check 按这一轮 Need a look 列酒店（`task/schedule-check-need-a-look`，工作窗口 `npe-ops-frontend-01`[4a9dda]，40 派）—— ✅ 合 main
 - 依据：Annie「94 全按推荐，动手」（ef 窗口），定稿见置顶 94；后端 307d6895（need_a_look 每条加 round），01 只读核过（routers/relay_pull.py：round = 团的 relay_round；Hoover = tour_car，不出 no car 那条）。
 - 做了：Dispatch › Assign 右栏 Schedule check「N hotels with no Morning Relay · 1st / 2nd Round vehicle」改用 relay-pull need_a_look 里 reason =「No relay car stops at this hotel in this round」、round = 这一轮的那几条，按酒店合并人数「MGM (5)」（A–Z）；页面上这一轮加了那家酒店（没存）先拿掉；说明小字改「Only hotels with guests on this round's tours. Treasure Island is left out because the tours start there.」。打开这一天、每次存好都重读 relay-pull。后端没带 round / 读不到 ⇒ 照旧按所有 Vegas 酒店算（原来那句说明）。2nd Round 没排车照旧不列。
