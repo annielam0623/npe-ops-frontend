@@ -1167,6 +1167,10 @@ D. 已完成、待从置顶移走：
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 94. Dispatch Schedule check「hotels with no Morning Relay vehicle」：TI 不算、当天没客人的酒店不算（2026-11-05，Annie 在后端 07 提，46 转）
+- 46 转：前端算（components/dispatch/config.ts:394-431）。07 在跟 Annie 确认口径，定了直接发前端。
+- 78 派 ef 先只读查现状 / 数据 / TI 怎么认，等口径再改。
+
 ### 93. G250 Dispatch 团车出发 1 小时后自动锁定：前端样子（2026-11-05，后端 4c 转；没动手）
 - Annie 已定（⛔，后端那边）：系统行为、没有按键；锁后只有 Super Admin 能改；Picked up / No show / Boarded 打勾不锁；Completed 照旧，跟锁定无关。
 - 后端 4c 形状（在审没上线）：GET /api/dispatch/day 加 tour_locks {tours{id:{locked, departure, locks_at}}, rounds{relay|relay_2}, can_edit_locked}；锁后非 SA 改 ⇒ 409 原话（day / section / copy / guest-bus / seating/move）；锁定单元 = 一团所有车 / 一轮 relay 所有车，Private Custom 不锁。
