@@ -4,7 +4,118 @@
 
 > 6d 交接（下面「2026-10-27 交接：前端主窗口 6d」那节）的后端需求已于 10/27 晚由 ad 转给家里后端主窗口 17。
 
-> **下一个主窗口：先读下面「2026-11-05 收工交接：前端主窗口 e8」，再看置顶「📌 等 Annie 确认」。**
+> **下一个主窗口（明天公司）：先读下面「2026-11-05 晚 收工交接：前端主窗口 40」，再读「2026-11-05 收工交接：前端主窗口 e8」，再看置顶「📌 等 Annie 确认」。**
+>
+> 11-06 早：公司 e8 [6ce7da] 退下（Annie：「这个窗口的对话太长了，我新开个窗口接手吧，你们交接一下」）。e8 收工后没有新变化，交接以上面两节为准；公司电脑 C:\Code\npe-ops-frontend-wt-g180（a0，G180 灰底版 e0548c6e）、C:\Code\npe-ops-frontend-wt-shuttle（7a，Auto Send task/auto-send-limits 8614fb03）两个 worktree 留着，分支都已推 origin。
+
+## 2026-11-06 前端主窗口 `npe-ops-frontend-49`[8db054] 接班（公司电脑，接 e8 [6ce7da]；只分工和汇报，不写代码）
+- e8 回（交接三问）：① 收工后除 Annie 早上那句没有新变化，后端没发新 SHA；工作窗口 a0 / 7a / 19 都已关，a0（wt-g180，e0548c6e）、7a（wt-shuttle，8614fb03）分支已推、worktree 留着。⚠️ 8614fb03 **还没有** G258 两行模板下拉，要补。② 没有派出未收回的活；都在等后端（G180 等 Annie 在 4c 执行 v153、17 执行 v154；G259 + G258 今天下午；G263 接口形状；G257 只记 SHA）或 Annie（93 past_day 两句）。没问 / 没答：G180 三档开关放哪（e8 推荐 A：Tour Tracking 页顶给 SA 一个下拉，先 preview 再问）；Task Board 中文题。11/09 周起提醒 G180 回填。③ 后端主窗口仍是「今日后端主窗口e8」[df009e]（Annie 今天可能新开，留意 ListAgents）。e8 已告诉后端以后发 49。
+- 49 已问后端主窗口 G180 / G257 / G259 / G258 / G263 / 92 Relay list 照设定读的进度。
+- 后端 e8 [df009e] 回：**后端今天主窗口是 `npe-confirmation-service-4a`[3b2d6f]**（49 已告诉 4a）。
+  1. G180 没上 main：v2 tip ea623e4b；v153 Annie 已执行（14ac3ce9），**v154 还没执行**；四审 deploy-guard 剩 DG-1 / 2 / 4，等 v154 执行合并后重跑。开关上线是 off。
+  2. G257 只有方案（task/send-release-conn fe14363e），等 Annie 确认升 Risk C + 迁移 v156 才开工。
+  3. G259 还没派，时间由 4a 定（「今天下午」不算承诺）。字段：tickets.lead_groups=[{days_before,ticket_types}]、tickets.max_per_batch=150、tour.max_per_batch=100、tickets.daily_report{enabled,emails}；GET /api/settings/auto-send 带 ticket_types [{key,label}]（按 Content Studio 顺序）；缺键落默认，不迁移。
+  4. G258 跟 G259 同一批：tour.template_regular / tour.template_last_minute，值 tour_confirmation / last_minute；tour_templates [{key,label}] 已转 4a。
+  5. G263 没开工（迁移，Risk C），接口形状由接手的子窗口发来。
+  6. 92 Relay list 照设定读：还没派。
+- 4a [3b2d6f] 回排期（都是粗估，不是承诺，上了发 SHA）：G259 + G258 一个窗口，不迁移，目标今天下午 14:25 前（审不过就今晚家里）；92 Relay list 照设定读（编号 **G264**）一个窗口，前端预计不用改，目标中午前后；G263 先发接口形状（目标上午晚些），代码要迁移 + Annie 执行 SQL，今天不上；G180 要 Annie 约 13:30 前执行 v154 + 复审过才可能今天上；G257 等 Annie 确认 Risk C + v156，排在 G259 后，今天不做；**新：G266 Dispatch 每个司机的已发标记 + 卡片 Notes**，后端今天开工，接口形状起草后发前端（可能要迁移）。
+- **Annie：「今天上」**（G180）⇒ 49 已转 4a：请把 v154 完整 SQL 和执行方式发给 Annie，执行后复审合 main 发 SHA。
+- 派 **`npe-ops-frontend-c3`[a398e9]**：G180 ① wt-g180 合最新 main 重跑 tt / nav / tour / mt / os / dr + tsc / eslint / build，推分支不合；② 出开关位置 preview（A Tour Tracking 页顶 SA 三档下拉（推荐）/ B Settings › Notifications 一行），链接 + 每题原文发 49；③ 后端上 main 后核字段 → 合 main。
+  - 4a 发 **G259 + G258 Auto Send 接口形状**（后端 0f，task/auto-send-limits，还没提交）：GET 带 ticket_types、tour_templates；tour.max_per_batch（默认 100）、tour.template_regular / template_last_minute；tickets.max_per_batch（默认 150）、lead_groups、daily_report；summary_time / summary_emails / cfm_alert_emails 不再用（9:00 汇总和每批 Cfm # 邮件停）；Last Minute 每个整点扫、最后 00:00、短信 + 邮件；runs 加 kind=last_minute。⇒ **派 c3**（worktree wt-shuttle，接 8614fb03）：核键名、加两行模板下拉、校验、Recent runs 文字、as 检查，推分支不合；后端 SHA 到了核字段再合，带截图。G180 SHA 先到就先做 G180。
+  - ✅ **92 / G264 Relay list 照版式设定读 后端上 main**（4a 转：内容 f76888fc、合并 41c6d36f、关包 97bba481）：Relay ⬇ Excel 照 print_layout:relay_list（酒店格色 / 关、列标题色 / 关、Text 起点字号 / 粗细、A4 / Letter、边距；当天 Aa 叠在上面）；没设过 ⇒ Excel 跟以前逐格一样。前端不用改。relay-pull print_extras 节色值改得跟 Bus Manifest 同规则，但前端页面和司机页都没用这个值，看不出变化。Annie 验收：Relay list「⚙ Colours, text & page」改颜色 / 纸张 / 字号 → Save → ⬇ Excel 跟屏幕一样。
+  - c3 回：① 完成，task/tracking-sync-gray 合 main a3ee25b1 无冲突，推 **2a1d090c**（没合）；tt 157、nav 39、tour 65、mt 253、os 85、dr 89，tsc / eslint 0 错，build 过；进程已关。② preview 7DDLeUsSSczzovwb2pncrb 三题已转 Annie（置顶 95）。等 Annie 答 + 「动手」再写开关；等后端 SHA 再合。
+- 4a 发来接口形状（定稿草稿，都还没上 main）：
+  - **G263 Farm out › Partners & rates**（后端 2c，要迁移，今天不上）：GET/PUT /api/farm-out/partners/{pid}/rates，每个团 `prices: [{ticket_type: adult|child|infant, price}]`（主项，空 = 有子项时显示 N/A）、`items: [{id, name, sort_order, prices: [...], product_codes: [...]}]`、`products: [{product_code, name, is_active, item_id}]`（候选码）；旧字段 adult_price / child_price 保留 + infant_price，新界面只用 prices。PUT 同形状，items 给了就整组替换（顺序 = sort_order），不给不动；400 英文：子项至少一行价、ticket_type 不重复、码属于该团、一个码最多挂一个子项、价 ≥0 两位小数。PUT 成功回 {ok, rates}。向后兼容，前端可以晚于后端上。结算：挂在子项的行用子项该票种价，缺了用主项；没挂用主项；Infant 都没价 = 0；Adult / Child 没价 ⇒ payable 空 + missing 提示，staff 手改。2c 会发 How to use 英文稿。⇒ 前端要先出 preview。
+  - **G266 Dispatch 已发标记 + 卡片 Notes**（后端 2e）：① 先上（不加表）：GET /api/dispatch/driver-notice、guide-notice 的 people[] 每行加 sent_at（UTC ISO | null，显示 LA 时间「Sent 9:53 PM by Annie」）、sent_by（"" ⇒ Not sent）、failed_at（Annie 只要 Sent / Not sent，显不显失败前端定；失败算 Not sent）。⚠️ 4a 更正：failed_error 拿掉了（这两个 GET 是 dispatch.view，partner 也能看，报错原文可能带 Twilio 回复；发送的人照旧在 POST send 回复里看到原因）。② 后上（新表 dispatch_card_notes，迁移）：GET /api/dispatch/card-notes?date= → {run_date, driver:{text, updated_at, updated_by}, guide:{...}}；PUT {date, card: driver|guide, text}（trim，≤2000 字，"" 清空）；要 dispatch.edit 或 dispatch.send；每张卡每天一个 Notes，只给 staff，不发给司机导游，改动进 Action Log。2e 在 ① 上了后发 How to use。⇒ 前端要先出 preview（PROGRESS 里还没找到 Annie 对 G266 的原话）。
+
+## 2026-11-05 晚 收工交接：前端主窗口 `前端主窗口40`[325a5e]（家里电脑）
+> Annie：「好的，把今天这个完成就收工吧，详情记录下来明天公司好继续」。40 只分工和汇报，没写代码。过程见下面「40 接班」一节。今晚前端工作窗口只有 `01`[4a9dda]（端口 3777 / 9177 / 9777）；77、ef、78 已退。后端主窗口 `主窗口-46`[5b93cd]（后端 07 / 4c / 61）。
+
+### 一、今晚上 main（等 Annie 线上验收）
+| 件 | 前端 | 后端 | 验收看 |
+|---|---|---|---|
+| 92 版式设置第 1 批（⚙ Colours & page） | b7fd8a73（77） | 8a72f830 | Bus Manifest / Relay list 弹窗 Colours / Page；试完 Reset all to paper + Save（设定全站生效） |
+| 92 Text 起点字号接 Bus Manifest 打印 / Excel | 不用改 | 1630d366（61） | Text 页改 Table text 大小 / Bold，打印页、Excel 跟着变 |
+| 94 Schedule check 酒店清单 | ed518553（01） | 307d6895（4c） | Dispatch › Assign 右栏 Morning Relay：只列这一轮没车停的酒店带人数「MGM (4)」；TI / Hoover 不出；没存的 Add hotel 马上从名单拿掉；新说明小字 |
+| 92 第 2 批前端（Text 页 + Relay 当天 Aa） | **bc02fc78**（01；rl 108、mf 289、da 527、nav 39，tsc / eslint / build 过） | 0d339c0b（07） | ① Bus Manifest / Relay list「⚙ Colours, text & page」→ Text 页：每种字「− 16.5 px +」、Regular / Bold、Reset，Save 后打印 / ⬇ Excel 照它 ② Morning Relay「📋 Relay list」每张单上方「Aa Text size」：选列 / 行 / 整页 → A− / A+、Bold → Done → 蓝色 Save → 绿字 Saved，出最近 5 次「Text size changes」；只算当天；没车号的单没有 Aa ③ ⬇ Excel / 🖨 Print 字号同屏幕 ④ 没 dispatch.edit 的人没有 Aa、Text 页改不了 |
+
+### 二、没合 / 等
+- **93 G250 Dispatch 自动锁定**：后端 68b69380 **已在生产生效**（当天出发 + 1h 锁，过去的日子整天锁——Annie 在 4c 选 B）；前端 `task/dispatch-tour-lock` **a7c07e61**（01，worktree D:\npe-ops-frontend-wt-tourlock，da 544 / mf 283 / nav 39，tsc / eslint / build 过）**没合**，**只等 Annie 确认 past_day 说明条两句**：员工「This day is locked. Only a Super Admin can change it.」/ SA「This day is locked. You can still change it as a Super Admin.」（40 已整段问过，不滚动重问；改字只动 config.ts lockText）。她答了 ⇒ 合最新 main 重跑 da / mf / nav + build ⇒ 合 main，验收点见下面 01 那节。⚠️ 前端没合之前员工改锁住的车只会在 Save 时收到英文 409，所以优先。
+- 01 收尾：dev server / Chrome 都关了；本机 worktree wt-lock、wt-tourlock、wt-layout 干净留着，分支都已推 origin（公司电脑直接从 origin 拉）。
+- **92「Relay list 照版式设定读」**（Relay ⬇ Excel / 打印 / 色条读 print_layout:relay_list 的 hotel_cell / column_titles / text / page_setup）：后端**还没做**，46 明天派；前端预计不用改。现在 Relay Excel 仍照旧色、A4、边距 12×11mm。
+
+### 三、明天开工
+1. 报对话名；git pull；问后端主窗口「Relay list 照设定读」进度。
+2. 93：Annie 答 past_day 两句 ⇒ 派工作窗口（01 不在就新开，分支 a7c07e61 已推）合 main，验收点转 Annie。
+3. 接着照 e8 收工交接「三、明天开工」（G180、Auto Send G258 / G259、Farm out 子项价格行）。
+
+## 2026-11-05 晚 前端主窗口 `npe-ops-frontend-40`[325a5e] 接班（家里电脑；只分工和汇报，不写代码）
+- 接 78（78 补交接：那节之后没新变化，交完停）。已告诉 46、77、ef 新主窗口名字；ef 空闲待命（worktree 已删、没在跑的进程）。
+- ⚠️ 78 交接「二」有两条已过时：**87 正式版（按上车点）main 2bc2714d（7a）+ 后端 G253**、**86 Working Record main 0b0e1619（a0，去掉 Hours）+ 后端 G249**，公司 e8 今天都已合（见 e8 收工交接）。已回 46 不用再做。
+- 46 回：92 第 2 批 07 做 Relay 当天字号（新表，SQL 等 Annie 看）→ Relay list 照设定读，61 做 Text 起点接打印 / Excel，SHA 到了发 40 → 派 77 合 task/print-layout-2。G250 4c 在 task/dispatch-tour-lock，**等 Annie 在 4c 窗口选 A（今晚加表存锁）/ B（先只锁过去的日子）**；接口 GET /api/dispatch/day 加 tour_locks，锁了改就 409。94 后端没收到过：40 已把背景转 46，等 Annie 答 3 题后再发定稿。
+- ✅ 77 回：**92 版式设置第 1 批 main b7fd8a73**（PROGRESS eb844f27；后端 8a72f830 核过；mf 279、rl 87、da 521、nav 39，tsc / eslint / build 过）。验收点已转 Annie（Bus Manifest / Relay list「⚙ Colours & page」，试完 Reset all to paper + Save）。task/print-layout-2 9df7f172 留在 worktree D:\npe-ops-frontend-wt-layout 等后端第 2 批；wt-layout1 可删。
+- ✅ **Annie（原话）：「93：全按推荐，动手」** ⇒ G250 前端 preview SgRWaBvRcTie4cTdziPjtD Q1–Q9 全 A。已派 ef：前端 task/dispatch-tour-lock 照 mock 做、推分支不合；后端 4c task/dispatch-tour-lock 上 main 后核字段再合。已告诉 46。后端 A / B 仍等 Annie 在 4c 窗口选。
+  - ef 退下（Annie 在 ef 说「算了，我重新开新窗口吧，你的内容太长了」），没开分支、没改代码 ⇒ 改派 Annie 新开的窗口。ef 交接：Step 2 各块 `<section data-sec="relay" | "relay_2" | "bus_tour:<manifest_id>">`（components/dispatch/dispatch-view.tsx，标题行右边「Saved」；底部 HOW_TO）；vehicle-row.tsx（司机 / 导游 / 车 / 字母 / Add hotel / 酒店 × / Note / Edit 菜单 / Save）；config.ts analyze()（Schedule check 不列锁住的）；Pull from Discord 跳过锁住单元；Seat guests 名单；Bus Manifest 换车 components/dispatch-manifest/manifest-view.tsx。后端 4c task/dispatch-tour-lock：tour_locks = {tours:{"<manifest_id>":{locked, departure, locks_at}}, rounds:{relay|relay_2:{…}}, can_edit_locked}，409 原话两句（团 / Relay 轮）。preview 截图注入脚本（样子参考，不是功能代码）：C:\Users\annzh\AppData\Local\Temp\claude\d--npe-ops-frontend\b9f92cd0-31d5-45de-af78-22e8b5564b11\scratchpad\pc\lock.js。
+- ✅ **94 Annie（原话，在 ef 窗口）：「94 全按推荐，动手」**（定稿见置顶 94，ef 记）⇒ relay_guest_hotels 作废；40 已派 46：need_a_look 每条加 round（relay / relay_2，按团 relay_round，Hoover 不进）。前端（Schedule check 用这一轮 need_a_look、带人数、边改边减、说明小字新句）和 93 一起等 Annie 新开的工作窗口报到后派。
+- 46 回：94 need_a_look 加 round 派给 4c。前端新工作窗口 `npe-ops-frontend-01`[4a9dda] 报到，40 派两件（端口 3777 / 9177 / 9777）：① 93 前端 task/dispatch-tour-lock 照 mock 做、推分支不合；② 94 task/schedule-check-need-a-look 照 mock 做、推分支不合。后端 SHA 到了转 01 核字段后合 main。ef、77 已退（77 留 worktree D:\npe-ops-frontend-wt-layout = print-layout-2，等第 2 批另派）。
+- 07 回（92 Q5 Relay list 当天字号，后端 task/print-layout-2 **c71452ca** 已推 origin，**没上 main**；v157 Annie 已在生产执行）：PUT /api/dispatch/relay-list/text-size（dispatch.edit），body {date, sheet, text_size:{page, columns, rows}}，层 = {d: −2..+10 整数, bold?}（同 G197）；sheet = "summary:relay" / "summary:relay_2" / "car:<轮>:<车号>"（如 "car:relay_2:1855"，没车号 text_size_sheet = null 不能调）；columns 键 time, hotel, qty, name, phone, product, order；rows 键 = 订单号（只收这张单上现有的）；返回 {ok, sheet, text_size, text_size_history:[{by, at, what}] 最近 5 条}；坏值 / 不认识的单 / 当天不在 ⇒ 400 英文整句；改了才写 action_log。GET relay-pull 只加键：summary_text_size = {relay:{sheet, text_size, history}, relay_2:{…}}，每台车 car.text_size_sheet / text_size / text_size_history，没调过 = 空对象。⬇ Excel 已照当天字号（页 + 列 + 行叠加）。⇒ 前端 task/print-layout-2（9df7f172，worktree D:\npe-ops-frontend-wt-layout）照这形状核 / 改，排给 01 在 93 之后做；后端上 main 后合。
+- ✅ 94 后端上 main **307d6895**（46 转）：relay-pull need_a_look 每条加 "round"（relay / relay_2；Hoover 客人 tour_car，不出那条）。已转 01：核字段后直接合 main（不用等）。
+- 4c 发 G250 最终形状（没上 main）：Annie 在 4c 选 **B（过去的日子整天锁）**。tour_locks 加 past_day（run_date 早于今天 LA ⇒ 全天所有团 / relay 轮 / Private Custom 都锁）；当天出发 + 1h 锁、拿不到出发时间不锁、Private Custom 当天不锁；读不出 tour_locks = null。409 也覆盖 guest-bus、seating/move。已转 01。**待问 Annie**：past_day 说明条原文（preview 没有），推荐员工「This day is locked. Only a Super Admin can change it.」/ SA「This day is locked. You can still change it as a Super Admin.」，01 先照推荐做。
+- 92 第 2 批之一后端上 main **1630d366**（46 转，61 做）：Text 页起点字号接 Bus Manifest 打印 / Excel，G197 当天字号叠在上面；没加字段，前端不用改。Relay 当天字号（07）排在 G250 后上 main ⇒ print-layout-2 等它。已转 01。
+- ✅ 93 G250 后端上 main **68b69380**（4c 转，字段同上，生产已生效）。已转 01 核字段、准备合；past_day 文字等 Annie 答完就合。
+- ✅ 94 前端上 main **ed518553**（01；da 527、nav 39，tsc / eslint / build 过）。验收点已转 Annie。
+- 93 前端 task/dispatch-tour-lock **a7c07e61** 已推、没合（01；da 544、mf 283、nav 39，tsc / eslint / build 过；含最新 main + 94）。**只等 Annie 答 past_day 两句**（改字只动 config.ts lockText）。print-layout-2 01 已照 07 形状改 f36dfa19（rl 107），跑完推分支不合。
+- 92 Q5 Relay list 当天字号后端上 main **0d339c0b**（07 / 46 转）⇒ 已派 01 核字段、合 task/print-layout-2（a9964c00）。46：**「Relay list 照版式设定读」（Relay ⬇ Excel / 打印照 ⚙ Colours & page）还没做，明天派**，上了再告诉前端（前端预计不用改）。
+- Annie 要关旧窗口：78、ef、77 可关（77 交完）。后端 07 / 61 / 4c / 46 还在做或等 Annie，先别关。下次 92 第 2 批 SHA 到了要另开工作窗口接 print-layout-2。
+
+## 2026-11-05 晚 置顶 93 G250 锁定 + 置顶 92 第 2 批前端（工作窗口 `npe-ops-frontend-01`[4a9dda]，40 派）—— 92 第 2 批 ✅ 合 main；93 分支推了，没合
+- **93**（Annie「93：全按推荐，动手」；后端 68b69380 已上 main、生产生效，01 只读核过 tour_locks {past_day, tours, rounds, can_edit_locked} 和两句 409）：`task/dispatch-tour-lock` **a7c07e61**（worktree D:
+pe-ops-frontend-wt-tourlock）。
+  - 锁住的团 / Relay 轮：团名旁「🔒 Locked」（员工灰 / SA 琥珀）+ 标题下说明条（员工灰底 / SA 浅黄，原句照 preview；past_day 先用 40 给的两句「This day is locked. Only a Super Admin can change it.」/「… You can still change it as a Super Admin.」，等 Annie 确认，改字只动 config.ts lockText）。员工整块只读灰掉（ViewOnly + fieldset disabled，Farm out / Seat guests 也关），Edit / Save / + Add vehicle / Copy 1st Round 收起。Private 车选了团跟团锁，Custom 只在过去的日子锁。
+  - 409（只认后端两句锁定原话，别的 409 照旧当 G71 编辑锁）：卡片里说明条下红框「Not saved: 」+ 原话、标题右边红字 Not saved；只重读锁定状态，这块退回已存的样子，别的块没存的改动留着。照抄 409 原话写在 Copy 弹窗；Seat guests 挪车 409 红字照旧 + 重读锁定状态。
+  - Bus Manifest 换车：另读 GET /api/dispatch/day 的 tour_locks（manifest 接口没有）；员工下拉灰 + 灰条，SA 浅黄条；409 红字在那张下拉旁边、客人回原车、整页不写 Saved。
+  - Pull from Discord 预填 / Apply changes：员工跳过锁住的，旁边灰字「Locked, not changed: …」。Schedule check 不列锁住的（Q8）。How to use 加 Q9 原句。
+  - 检查：da 544/544（+17）、mf 283/283（+4；老检查「重读 manifest 后的请求顺序」允许最后多一次 day）、nav 39/39；tsc 0；eslint 0 错；build 过。⚠️ da mock 原来就有 ctl.lock409（编辑锁），G250 的叫 tourLock409。
+  - **明天怎么接（93）**：今晚不合（Annie 还没答 past_day 两句，40 在问）。分支 origin/task/dispatch-tour-lock a7c07e61 已推（家里 worktree D:
+pe-ops-frontend-wt-tourlock 留着；公司电脑直接 `git worktree add … origin/task/dispatch-tour-lock` 再 npm ci）。Annie 答了 ⇒ ① 文字有改就改 components/dispatch/config.ts 的 lockText()（kind === "day" 那句）和 da-test.js「93 过去的日子（past_day）」那条检查的原句；② 合最新 main；③ 跑 da / mf / nav + tsc / eslint / build；④ 合 main，把验收点回主窗口（见 01 发 40 的五条：员工锁住灰掉、SA 浅黄能改、昨天整天锁、过了时间才按 Save 出红框、Bus Manifest 换车灰掉）。⚠️ 后端 68b69380 已在生产生效，前端没跟上时员工改锁住的车会直接看到 409 红字（G71 那套「编辑已结束」的只读提示），所以优先。
+- **92 第 2 批**（Annie「看了，同意全部推荐，记得要可以下载」+「动手」；77 做的 task/print-layout-2 接手）：`task/print-layout-2` **a9964c00**（worktree D:
+pe-ops-frontend-wt-layout）。照后端 07 c71452ca 改：没有单独 GET，字号跟 relay-pull 来（summary_text_size[轮] = {sheet, text_size, history}；car.text_size_sheet / text_size / text_size_history，没车号 = null 不出 Aa）；PUT 回 text_size_history；Tour 列键 product。合 main 时解了 relay-list-view 冲突（当天字号 Save 键 + main 的 ⬇ Excel 都留）。检查：rl 108/108、mf 289/289、da 527/527、nav 39/39；tsc 0；eslint 0 错；build 过。
+  - ✅ 后端 07 上 main **0d339c0b**（40 转；01 只读核过：跟 c71452ca 一样，main 上只多 94 的 round）。合最新 main 重跑：rl 108/108、mf 289/289、da 527/527、nav 39/39；tsc 0；eslint 0 错（原有 3 warning）；build 过 ⇒ 合 main（SHA 见下一行）。
+  - 合 main：**bc02fc78**（功能 4ff1696a / f36dfa19，接 77 的 ae4febeb）。
+  - Annie 验收怎么看：① Bus Manifest / Relay list 页头「⚙ Colours, text & page」→ Text 页：每种字（Table text / Pax / Section titles / Column titles；Relay 总表 / 车单各一套）「− 16.5 px +」、Regular / Bold、Reset，单子马上跟着变，Save 后打印 / ⬇ Excel 照它；② Relay list（Dispatch › Morning Relay「📋 Relay list」）每张单上方「Aa Text size」：选整列 / 整行 / 整页，A− / A+、Regular / Bold → Done → 页面顶上蓝色 Save，绿字 Saved，单子上方出最近 5 次「Text size changes」；只算这一天，第二天回到 Text 页设的起点；没车号的车那张单没有 Aa；③ 改完点 ⬇ Excel / 🖨 Print，字号跟屏幕一样；④ 只有看的权限（没勾 dispatch.edit）的人看不到 Aa 和 Text 页的改动键。
+
+## 2026-11-05 晚 置顶 94 Schedule check 按这一轮 Need a look 列酒店（`task/schedule-check-need-a-look`，工作窗口 `npe-ops-frontend-01`[4a9dda]，40 派）—— ✅ 合 main
+- 依据：Annie「94 全按推荐，动手」（ef 窗口），定稿见置顶 94；后端 307d6895（need_a_look 每条加 round），01 只读核过（routers/relay_pull.py：round = 团的 relay_round；Hoover = tour_car，不出 no car 那条）。
+- 做了：Dispatch › Assign 右栏 Schedule check「N hotels with no Morning Relay · 1st / 2nd Round vehicle」改用 relay-pull need_a_look 里 reason =「No relay car stops at this hotel in this round」、round = 这一轮的那几条，按酒店合并人数「MGM (5)」（A–Z）；页面上这一轮加了那家酒店（没存）先拿掉；说明小字改「Only hotels with guests on this round's tours. Treasure Island is left out because the tours start there.」。打开这一天、每次存好都重读 relay-pull。后端没带 round / 读不到 ⇒ 照旧按所有 Vegas 酒店算（原来那句说明）。2nd Round 没排车照旧不列。
+- 改的：components/dispatch/config.ts analyze()（加 relayNoCar 参数）、dispatch-view.tsx（读 relay-pull）、lib/dispatch-api.ts（round 类型、RELAY_REASON_NO_CAR）。
+- 检查：da 527/527（+6 条 94；老检查「停在 Assign 不取 relay-pull」改成取 1 次——Schedule check 要用，司机 / 导游两份照旧不取）、nav 39/39；tsc 0；eslint 0 错（原有 3 warning）；build 过。
+- Annie 验收怎么看：Dispatch › Assign 右栏 Schedule check，Morning Relay 那条只列这一轮有客人、没车停的酒店，后面带人数「MGM (4)」；Treasure Island、Hoover 的酒店不出现；在 1st Round 某台车 Add hotel 加上名单里的酒店（先不存），那家马上从名单拿掉；说明小字是新句。
+
+## 2026-11-05 晚 交接：前端主窗口 `前端主窗口-78`[6e88e1] → 新主窗口（家里电脑）
+> Annie：「你这个窗口的内容太长了，我重新开一个窗口你交接一下吧」。78 只分工和汇报，没写代码。详细过程都在 78 接班节（2026-11-04 晚）和置顶 87、90–94。
+> 在线窗口：前端工作窗口 `npe-ops-frontend-77`[b4c0cd]（端口 APP 3677 / MOCK 9077 / CDP 9677）、`npe-ops-frontend-ef`[fcce18]（3777 / 9177 / 9777）；后端主窗口 `主窗口-46`[5b93cd]，后端工作窗口 `07`、`4c`。⚠️ 工作窗口提交 PROGRESS 要在自己的 worktree（先 pull），主目录 D:\npe-ops-frontend 留给主窗口。
+
+### 一、今天 / 今晚上 main 的（等 Annie 线上验收）
+| 件 | 前端 | 后端 | 验收 |
+|---|---|---|---|
+| 91 Bus Manifest 打印 / Excel 颜色 | 合作公司栏 Hotel 格上色 e9e46731 | 344b20f7、acddd738 | 11/6 Antelope Bus 1960=A 打印预览 + Excel 对照屏幕：Hotel 隔组色、Lunch「-」粉底红字、Order # 正文字体、节标题 (CHECK-IN …) 小一号 + 没号印灰字「· CFM # —」；✓ 列照旧不印 |
+| Relay list ⬇ Excel | ea667617 | 3d3bdd9b | Dispatch › Morning Relay › Relay list 点 ⬇ Excel；车 Print 页只下那台；没 manifests.export / partner 看不到 |
+| 87 Shuttle 提醒临时版 | ad136c9d | — | 产品名含「Las Vegas to」不提醒，其余提醒（见置顶 87） |
+| 搜索框关窗口自动清空 | f9c2672a | — | 顶栏搜单，✕ / 暗处 / Esc / 点链接后框空 |
+| 82 / Relay Splits 抬头 / 86 Profile 分节 | bd2ed2c1 / 776810bb / 58956ba4 | — | 见 78 接班节 |
+
+### 二、在做 / 等后端
+- **92 版式设置**（Annie「看了，同意全部推荐，记得要可以下载」+「动手」）：后端第 1 批 8a72f830 已上 main ⇒ **77 正在核字段、合 task/print-layout-1**（回 SHA 后告诉 Annie 验收点）。task/print-layout-2（Text 页 + Relay 当天 Aa，9df7f172）先别合：等后端第 2 批（今晚 46：Relay list 照设定读、Text 起点接打印 / Excel；Relay 当天字号新表明天做，迁移 SQL 先给 Annie）。
+- **87 Shuttle 提醒正式版**：等后端 /api/dispatch/manifest 每位客人加 pickup_location_id / pickup_is_vegas（46 记了待办）⇒ 改按上车点、拿掉 departsVegas()（Annie「是要看他们的上车点…只有这个location不属于vegas酒店，就要提醒」）。
+- **86 Working Record**：task/hr-working-record 9cc2d142（Annie「动手」），等后端 G249（所有人日历 + hours + 开关 hr_working_record）上 main 核字段直接合。
+- **93 G250 Dispatch 出发 1 小时后自动锁定**：后端 4c 在审；前端 preview https://claude.ai/artifact/SgRWaBvRcTie4cTdziPjtD 9 题（全推荐 A）已发 Annie，**等答 + 「动手」**。
+- **94 Schedule check 酒店清单**：生产 TI 已排除（07 查 id 14 三勾都对）；3 题已发 Annie（Q1 A 后端给 relay_guest_hotels {relay:{location_id: pax}, relay_2}、Q2 名单带人数、Q3 说明句，07 另建议「Hotels ticked Tour bus departure (Treasure Island) are not counted.」），**等答**；定了 46 派后端（07 可接），前端 ef 半天内合。
+
+### 三、新主窗口开工
+1. ListAgents 报对话名；告诉 46、77、ef 新主窗口名字。
+2. 等 77 回 print-layout-1 合 main 的 SHA → 把验收点发 Annie。
+3. Annie 答 93 / 94 后按原话派 ef；后端 SHA 到了按上面「二」派。
+4. 不滚动重问：93、94 已整段问过，内容没变不再发。
 
 ## 2026-11-05 Farm out › Partners & rates：有子项的团，主项 Adult / Child 写灰字 N/A（`task/farmout-subitem-price`，工作窗口 `npe-ops-frontend-19`[1e2a0d]，主窗口 e8 派）—— ✅ 合 main（Annie「Farm out  A 动手」）
 - Annie 原话（后端主窗口转）：「有的tour是分项太多，就像west rim，没有办法按照单一的adult和child来统计，如果我只列了一个价钱的话，就是默认大小同价，然后就把列在主项上的两个空格忽略，或者允许我打N/A」「是你的设计需要来配合生意，不是生意来将就你的设计」。
@@ -42,11 +153,16 @@
   - 7a 出 v2（1793916821-c9db）：照 Relay 挑酒店（Add ticket type 下拉 + 胶囊，别行已挑的灰字「- 3 days before」），字段 tickets.lead_groups；How to use 第 4 条改写；题 2 改写、新题 6（提前几天 / 几点发，推荐 A 只是提前几天）。
   - **Annie 问 Daily report 和 summary 的区别，e8 解释后 Annie（原话）**：「没必要，发一份就够了，我建议只发晚上的那个」⇒ 题 3 = C：早上 9:00 的 Day-before summary 不要了，只留傍晚的 Daily report（收件人默认 antelope@，可以改，reservations@ 要的话自己加进去）。preview 要跟着拿掉「Day-before summary at」「Send the summary to」两格，How to use 相关句改写。题 1、2、4、5、6 还没答，还没「动手」。
   - 7a 出 v3（1793917176-f58d）：拿掉 Day-before summary 两格，How to use 改写。✅ **Annie（原话）：「Auto Send 都选 A。动手」** ⇒ 题 1 报告在最后一批发完马上发；题 2 上线时 lead_groups 空着；题 4 全发完也发一封短的；题 5 团确认跳过提醒不变；题 6 只设提前几天。后端规格已整理发给后端主窗口（7 条）；派 7a 开 task/auto-send-limits，先照 mock 写，今天推 WIP，不合 main，等后端字段定了核完再合。
+  - 后端：编号 G259，字段照前端拟的（存在 auto_send 设置 JSON 里，缺键落默认值，不用迁移）。明天先做 1、2、3、5、6、7，估计明天下午上 main；4「间隔 1 秒」跟 G257 同一批文件，排在 G257 之后。G258（团确认 Last Minute 模板）4 题 Annie 还没答，不在这次范围。
+  - 7a 推 WIP origin/task/auto-send-limits **8614fb03**（没合）：两张卡片 Max per batch、按门票团挑选（照 Relay）、Daily report 块、后端带 daily_report 时不出 Day-before summary、How to use v3；旧后端没有这些键时页面跟现在一样（as 69/69）。还差：核键名、校验、as 套新检查、截图核对、Recent runs 里每日报告的文字、合 main。已请后端在 GET /api/settings/auto-send 里带 ticket_types [{key, label}]（现在读 tix-tour-types 要 admin + Content Studio 开关）。
+  - G258 Last Minute 4 题：Annie 要看原文，e8 已整段发给她（题 1 分界几点；题 2 推荐 A 每 15 分钟扫一次；题 3 推荐 A 两行模板下拉；题 4 推荐 A 留手动按钮），等答。**题 1 Annie（原话）**：「是的，还是应该保持原来的早上7点以后下的订单的界线，这个时候已经进入不能退改的时间了，不需要客人确认是否参加，所以发last minute」⇒ 分界照旧团期前一天 07:00，之后下的单自动发 Last Minute。已转后端。题 2–4 再跟她确认。**题 2 Annie（原话）**：「15分钟太频繁了，每个整点扫一次就好了，我们的团最晚凌晨12点关闭销售」⇒ 07:00 以后下的单每个整点扫一次，最后一次是 00:00。已转后端（后端：夜里整点照发没问题，只会扫到上一小时刚下的单）。**Annie 补（原话）**：「last minute的订单，短信和email都发」⇒ 已转后端。**题 3、4 Annie：「都选A」** ⇒ 两行模板下拉（分界前默认团确认、分界后默认 Last Minute）；手动 Last Minute 按钮保留。四题全答完，**还没「动手」**：明天把两行下拉补进 Auto Send preview（BYv5FXVG7FqYuQ7gFEpV1a 的 Last Minute 一节）给她看。已转后端登记，请它拟字段名。后端定：tour.template_regular / tour.template_last_minute，值 "tour_confirmation" / "last_minute"（缺键落这两个默认）；GET /api/settings/auto-send 带 tour_templates: [{key, label}]（只这两项）。手动和自动走同一份 send_log 去重。✅ **Annie（原话）：「动手」**（在 e8 说「明天补进 preview 给你看，你说动手后再开工」之后）⇒ 不等 preview，G258 跟 G259 明天一起做；前端在 task/auto-send-limits 上加两行模板下拉，合 main 时附截图给她验收。已转后端。
 
 ### 三、明天开工
 1. 报对话名；git pull；问后端主窗口 G180 / G257 / Last Minute 进度。
 2. G180 上 main → 派 a0（或新窗口）核字段合 main；同时问 Annie 三档开关放哪（推荐 Tour Tracking 页顶部给 SA 一个小下拉，或 Settings › Notifications 一行），先 preview。
 3. 7a 的 Auto Send preview 转 Annie（附每题原文），等「动手」。
+3b. Auto Send：G259 后端明天下午上 → 7a 分支 task/auto-send-limits 8614fb03 接着做（核键名、校验、检查、截图、合 main）；G258 Annie 已「动手」：同一分支加 Tour confirmations 两行模板下拉（tour.template_regular / template_last_minute，候选读 tour_templates），后端上线核字段后合 main，截图给 Annie 验收。
+3c. Farm out 子项价格行（Adult / Child / Infant 下拉）：等后端 G263 接口，出 preview。
 4. 置顶 Task Board 中文那题（A 改英文 / B 保持中文）还没答，不滚动重问。
 
 ## 2026-11-05 Forecast：Canyon X 的简称又变成 C（`task/forecast-canyon-x-letter`，工作窗口 `npe-ops-frontend-19`[1e2a0d]）—— ✅ 合 main（只修 bug）
@@ -1162,6 +1278,113 @@ D. 已完成、待从置顶移走：
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 95. G180 三档开关放哪、怎么存、界面文字（2026-11-06，c3 出 preview，49 转 Annie）
+- preview：https://claude.ai/artifact/7DDLeUsSSczzovwb2pncrb（模拟数据，可切 A / B / 员工看到的样子）。推荐都选 A。
+- 题 1 放哪：A 在 Tour Confirmation Tracking 日期那一行最右边放小下拉「Main manifest sync」，只有 Super Admin 看得到；B 放在 Settings › Notifications。
+- 题 2 怎么存：A 选了就存，出绿字 Saved，切到 Staff 先出黄框确认；B 旁边放蓝色 Save，选好再按。
+- 题 3 文字：下拉 Main manifest sync；三项 Off / Super Admin only / Staff；小字 Only Super Admins see this setting.；说明随选项变（Off / Super Admin only / Staff 三句，原文见 preview 和 49 回复）；黄框 Staff will start seeing grey rows (orders not sent yet) and the Order Status column on this page. Turn on for staff? [Cancel] [Turn on for staff]
+- ✅ Off 那句后端 4a 核过（task/tracking-sync-v2 539ae88e，notifications.py:744-746 / 820-821、tracking_sync.py:90-99）：Off / 员工看不到时，接口根本不返回没发的行，也不带两个键；CSV 和 Utilities 同样。原句照用。
+
+### 94. Dispatch Schedule check「hotels with no Morning Relay vehicle」：TI 不算、当天没客人的酒店不算（2026-11-05，Annie 在后端 07 提，46 转；✅ Annie「动手」）
+- 46 转：前端算（components/dispatch/config.ts:394-431）。07 在跟 Annie 确认口径，定了直接发前端。
+- 78 派 ef 先只读查现状 / 数据 / TI 怎么认，等口径再改。
+- ef 查（config.ts 约 391-431）：清单 = day.locations active + is_tour_bus + 非 is_tour_departure、这一轮没排车的，跟有没有客人无关。TI 已按 is_tour_departure 排除（Annie 10-31 A），线上还见 TI ⇒ 多半生产 TI 那行没勾「Tour bus departure」（已请 07 只读查）。前端没有可靠的每轮有客人酒店。
+- 78 问 Annie：Q1 A（推荐）后端 /api/dispatch/day 加 relay_guest_hotels {relay:{location_id: pax}, relay_2}（relay_pull 同规则），前端只列这一轮有客人、没排车的；B relay-pull need_a_look 加 round 前端拼。Q2 名单带人数「MGM (4)」：A（推荐）带 / B 不带。Q3 说明小字原文：现「Only … counts here - each round is counted on its own, and the tours start from Treasure Island.」→ A（推荐）「Only hotels with guests on this round's tours. Treasure Island is left out because the tours start there.」/ B 她改。
+- 07 只读查生产：叫 Treasure / T.I. / TI 的 + 勾 Tour bus departure 的只有 1 行 id 14「Treasure Island」（active、is_tour_bus、is_tour_departure 都 true）⇒ TI 线上已排除，Annie 截图 6 家里也没有 TI；多半是说明那句「…the tours start from Treasure Island」让她以为 TI 在算。07 建议说明改「Hotels ticked Tour bus departure (Treasure Island) are not counted.」（在问 Annie）。07 同意 Q1 A，Annie 定了由 46 派后端（07 可接）。
+- **Annie（原话，ef 窗口，2026-11-05 晚）**：「Q1 这一轮有客人的酒店，数据从哪来--- 其实在选完了酒店以后，后端就会出一个清单列了哪些酒店没有安排车，这个清单在relay split里能看到，在send page上也能看到的」
+  - ef 只读核：就是 relay-pull 的 need_a_look 里 reason =「No relay car stops at this hotel in this round」那些（后端 relay_pull.py:215；Relay list 的「Not on any relay car yet」、Send 页 Relay 面板都用它）。每条带 location_id、manifest_id、pax，只含当天有客人的酒店；TI 上车的进 departure 不在里面。⇒ 不用另做 relay_guest_hotels。
+  - 改法（ef 建议，已回 Annie，**还没定、没动手**）：Schedule check 用这份清单，按酒店合并带人数「MGM (4)」；后端只加一个字段：need_a_look 每条加 round（relay / relay_2），才能按轮分开列。清单按已保存的排车算，前端边改边减：这一轮在页面上加了那家酒店（没存）就先从名单拿掉，存了以后跟后端对齐。Q2 带人数、Q3 说明小字照原推荐。等 Annie 一句「94 用 Need a look 那份，其余按推荐」。
+- **Annie（原话）**：「第几轮就看这个tour最后一个出发时间就能看出来了啊」
+  - ef 回（问 Annie，没定）：Q1 A（推荐）照团在 Bus Manifest setup 设的轮次（manifests.relay_round；后端分 Relay / Relay split / Send 都照它，Annie 10-14「分轮按团，不按时间」），后端 need_a_look 每条加 round 一个字段，三处永远一致；B 前端按团最后出发时间推，后端不改，时间和设定对不上的日子会跟 Relay split 不一致。其余（带人数、说明小字）照原推荐。等 Annie 答「94 Q1 A / B」。
+- **Annie（原话）**：「通常第一轮是antelope south和BZ，第二轮是west，第三轮是hoover，hoover已经固定那三家，都不用统计了」
+  - ef 回：这就是 Bus Manifest setup 现设的 relay_round（第 1 轮 Antelope / South / BZ，第 2 轮 West，Hoover = Tour bus pick up 用自己的大巴），照 Q1 A 后端按设定标轮次，结果正好如此；Schedule check 只查第 1、2 轮，Hoover 本来就不进这份清单，不用另处理。已请 Annie 确认「94 全按推荐，动手」，还没答。
+- ✅ **Annie（原话，ef 窗口）**：「94 全按推荐，动手」⇒ 定稿：
+  - Q1 A：数据用 relay-pull 的 need_a_look 里 reason =「No relay car stops at this hotel in this round」那些；**要后端加**：need_a_look 每条加 round（relay / relay_2，按团的 relay_round；第 1 轮 Antelope / South / BZ、第 2 轮 West，Hoover = tour_car 不进）。
+  - 前端：Schedule check「N hotels with no Morning Relay · 1st/2nd Round vehicle」只列这一轮 need_a_look（no car）里的酒店，按酒店合并；页面上这一轮加了那家酒店（没存）就先拿掉，存了跟后端对齐；后端没带 round 时照旧（现在的写法），不坏。
+  - Q2 A：名单带人数「MGM (4)」。
+  - Q3 A：说明小字改「Only hotels with guests on this round's tours. Treasure Island is left out because the tours start there.」
+  - 派工：后端加 round → 40 派给 Annie 新开的前端窗口（ef 退下，内容太长）。前端：config.ts analyze() 那段 + dispatch-view 读 relay-pull + da 检查（mock）。
+
+### 93. G250 Dispatch 团车出发 1 小时后自动锁定：前端样子（2026-11-05，后端 4c 转；没动手）
+- Annie 已定（⛔，后端那边）：系统行为、没有按键；锁后只有 Super Admin 能改；Picked up / No show / Boarded 打勾不锁；Completed 照旧，跟锁定无关。
+- 后端 4c 形状（在审没上线）：GET /api/dispatch/day 加 tour_locks {tours{id:{locked, departure, locks_at}}, rounds{relay|relay_2}, can_edit_locked}；锁后非 SA 改 ⇒ 409 原话（day / section / copy / guest-bus / seating/move）；锁定单元 = 一团所有车 / 一轮 relay 所有车，Private Custom 不锁。
+- 前端灰掉 / 提示是新样子 ⇒ 78 派 ef 出 preview（staff vs SA、锁哪些控件、409 红字、换车提示、How to use），等 Annie 答 + 「动手」。
+- **preview**：https://claude.ai/artifact/SgRWaBvRcTie4cTdziPjtD （ef，2026-11-05 晚；在真 Dispatch 页上用模拟数据把锁住的样子改出来截的图，没写功能代码）。等 Annie 答 + 「动手」；后端 G250 上线、核过字段才合 main。题目（推荐都是 A）：
+  - Q1 员工看到的团卡片：A 团名旁灰字「🔒 Locked」+ 标题下灰条「Locked at 7:30 AM, 1 hour after departure (6:30 AM). Only a Super Admin can change it.」，整块灰掉、控件都按不了，Edit / Save / + Add vehicle / Remove 收起；B 换成只读文字；C 样子不变、存时才红字。
+  - Q2 Super Admin：A 照常能改 + 琥珀「🔒 Locked」+ 浅黄条「Locked at 7:30 AM, 1 hour after departure (6:30 AM). You can still change it as a Super Admin.」；B 什么都不提示。
+  - Q3 Morning Relay 一轮：A 同团卡片一套，时间写它那批团的出发时间（「Locked at 7:30 AM, 1 hour after its tours left (6:30 AM). …」）；B 只灰控件不写说明。
+  - Q4 409 红字：A 红框在那个团 / 那一轮卡片里说明条下面，标题右边 Saved 变红字 Not saved，页面刷新成锁住的样子；原文「Not saved: This tour is locked (1 hour after departure). Only a Super Admin can change it.」（Relay 用 This Morning Relay round is locked…）；B 红框在页面最上面。
+  - Q5 Seat guests / Bus Manifest 换车：A 员工下拉灰掉 + 名单上面灰字（同 Q1），SA 照常 + 浅黄字（同 Q2），409 红字在下拉旁；B 下拉照常、换了才红字。
+  - Q6 锁 / 不锁清单：锁 = 司机、导游、车、字母、Add hotel、删酒店 ×、酒店排序、Note for yourself、Edit 菜单（删车 / Farm out / Copy）、Save、+ Add vehicle、Not needed Remove、Seat guests / Bus Manifest 换车、Pull from Discord 不动锁住的；不锁 = Picked up / No show / Boarded、Completed、② Send、Relay list Print / ⬇ Excel、Private Custom、没有出发时间的团。A 照表；B 指出要改的格。
+  - Q7 Pull from Discord：A 员工按时锁住的团 / 那轮 Relay 不动、只填没锁的，旁边灰字「Locked, not changed: West Rim Bus Tour, Morning Relay · 1st Round.」，SA 照现在全填；B 也填、存时整笔 409。
+  - Q8 Schedule check：A 不列锁住的团（只列要处理的）；B 列一行灰字「West Rim Bus Tour · Locked at 7:30 AM」。
+  - Q9 How to use（Buses & drivers 最后一条）：A「Each tour and its Morning Relay round lock 1 hour after the tour leaves. After that only a Super Admin can change its buses, drivers, hotels or seats. Picked up, No show and Boarded can still be ticked.」；B Annie 给改法。
+
+### 92. 版式设置交给 staff：颜色 / 哪些格上色 / 字体 / 页面大小（2026-11-05，Annie 在后端 4c 提，46 转；B 级新功能，没动手）
+- 原话：「把对颜色编辑，加减颜色，哪个框还需要上色的功能都交给staff」「包括字体编辑，页面大小的设置，不要每次都让 我们改编码」。
+- 范围：Bus Manifest（屏幕 + 打印 + Excel 下载）+ Relay list（总表 + 车单）；置顶 90 Relay Splits 字号并进来。后端现有：manifests.paper_colors、G197 manifest_text_size、manifest_version、settings relay_list。
+- 78 派 77 出 preview（现状对照、放哪、哪些格设什么、默认 = 现在、范围、谁能改、暂存 Save、三处一致、Reset、字段草案），等 Annie 答 + 「动手」，定稿转 46。
+- **preview v2**：https://claude.ai/artifact/SQJtqNHSm7QSphrQiejaHL （77；置顶 90 的 7 题合成 Q5，90 不用再答）。现状对照 16 行；弹窗「⚙ Colours, text & page」分 Colours / Text / Page；11 题；后端字段草案（GET / PUT /api/settings/print-layout?page=bus_manifest|relay_list；palette / colours{all, tours} / ticket_rules / text / page；现有常量搬成默认；Relay 当天字号 PUT /api/dispatch/relay-list/text-size；新表，迁移先给 Annie；后端 3–4 天、前端约 3 天，可分两批）。
+  - Q1 放哪：A（推荐）每页一个 ⚙；B 全放 Products › Bus Manifest setup；C 新开 Settings › Print layouts。
+  - Q2 颜色管到哪：A（推荐）All tours 一份 + 可挑团另设（团盖过 All，车抬头按字母）；B 只一份；C 每团各一份。
+  - Q3 加减颜色 / 哪些格上色：A（推荐）每种格 Coloured 开关（也能给没颜色的格开）+ 票型规则表「Text contains … → colour」可加删 + 色盘可加删 / 打 #rrggbb；B 只能改已有颜色。
+  - Q4 每天起点字号：A（推荐）⚙ Text 设起点（Bus Manifest 按版式 General / Lankun / Marcello / West；Relay 总表、车单各一套），当天 Aa 再加减；B 只要当天 Aa。
+  - Q5 Relay Splits 当天 Aa Text size：A（推荐）同 Bus Manifest（每张单、整列 / 行 / 页、A− / A+、Bold、只存这天、Save、dispatch.edit、最近 5 次 + Action Log）；B 不要。
+  - Q6 页面大小：A（推荐）纸张 A4 / Letter、每种单竖横、边距 mm，每页一份所有团通用，打印 + Excel 照它；B 只加纸张。
+  - Q7 颜色全印：A（推荐）全印，午餐对不上浅红底变 Colours 一行默认开；B 浅红底只在屏幕。（Annie 今天已说「所有设置了的颜色都要打印」，实为确认）
+  - Q8 Relay list 加 ⬇ Excel：A（推荐）加，一张单一个工作表；B 不加。
+  - Q9 谁能改：A（推荐）dispatch.edit；B 先只 SA + 开关。
+  - Q10 怎么存：A（推荐）暂存 + 蓝 Save + 关前问 + Reset / Reset all to paper + Action Log；B 改一项存一项。
+  - ✅ **Annie（原话）**：「看了，同意全部推荐，记得要可以下载」⇒ Q1–Q11 全 A 定稿（含 Q8 Relay list 加 ⬇ Excel；Bus Manifest Excel 照设定）。**还不是「动手」**，78 已问是否现在动手；定稿已发 46 排后端。
+  - ✅ **Annie「动手」（原话，2026-11-05）**。前端派 77：task/print-layout-1 第 1 批 Colours + Page + Relay ⬇ Excel 键，照草案 mock，推分支不合；第 2 批 Text + Relay 当天 Aa。后端 46 另开窗口评估字段（迁移 SQL 先给 Annie），上线 SHA 发前端后核字段合。
+  - 后端 07 定第 1 批字段（已原样转 77）：settings 两键 print_layout:bus_manifest / print_layout:relay_list，**第 1 批无迁移**；GET / PUT /api/settings/print-layout?page=…（页面设置键叫 page_setup）；colours {all, tours{id:{…, sections}}}、box 清单（Bus Manifest 18 种 + col_<列键>；Relay hotel_cell / column_titles）；车抬头颜色仍走 /api/settings/relay-list tour_colors，团色仍 Products Colour；ticket_rules ≤30 条（默认现 4 条）；palette ≤40；text 存加减 d（第 2 批生效）；page_setup；GET manifest 加 view.print_layout；Relay Excel GET /api/dispatch/relay-list/excel?date=。Relay 当天字号新表放第 2 批。
+  - 77 第 1 批推 task/print-layout-1 f8f05b85（没合，等 07 SHA）；3 点转 07（view.print_layout 一致性、hotel_group 要不要颜色格（78 倾向给）、defaults 同源）。78 派 77 接着做第 2 批 task/print-layout-2（Text 页 + 键名 / How to use 完整原文 + Relay 当天 Aa，mock）。
+  - Q11 How to use：A（推荐）原文见 preview / 77 消息（「⚙ Colours, text & page: choose the colour of each box … on top of the everyday size.」）；B 她改字。
+  - **前端第 1 批（Colours + Page，mock，推分支没合）**：工作窗口 `npe-ops-frontend-77`[b4c0cd]（78 派；依据 Annie「看了，同意全部推荐，记得要可以下载」+「动手」），`task/print-layout-1` **f8f05b85**（功能 d6dd521a，已合 main），worktree D:
+pe-ops-frontend-wt-layout。接口照后端 07 的第 1 批形状（lib/print-layout.ts：normalize 进、只送改了的顶层键出，null = 回默认）。
+    - Bus Manifest：页头加「⚙ Colours & page」（白底，在 Version 左边；后端 404 时不出）。弹窗 Colours / Page 两页；Apply to「All tours / 团名」（团盖过 All）；每种格一行（Coloured 开关 + 颜色 + 色盘 ▾ 快选 + Reset，改过左边橙线）：bus_header（选团后按 All buses / 字母设色，写 /api/settings/relay-list 的 tour_colors，同一颜色只一份）、section（选团后每节一格，存 tours[id].sections）、shuttle 去 / 回、隔组标色、Heli 整行、Special Requirements、表头、底部格头、自定格、Cfm # 小框、午餐单各格、lunch_total_row、sandwich_head、餐不符、整列 col_*（默认关，含 assist）；Ticket colours 规则表（+ Add ticket colour 灰绿 / Remove / 其他带「+」= ticket_plus 那格）；Colour choices（+ Add colour / ×）；Page：A4 / Letter、Bus sheet / Lunch sheet 竖横、边距 5–25 mm。改了单子马上跟着变（applyLayout 套在页面数据上，只管屏幕；打印 / Excel 后端画）；暂存 + 蓝 Save + 绿 Saved / 红 Not saved: 原话 + 没存关窗先问 + Reset all to paper；只能看 Dispatch 的人只读。
+    - Relay list：原「⚙ Colours & page」加 Colours / Page 两页：Colours 多 Other boxes（Hotel cell 开关、Column titles 颜色）+ Colour choices；Page = Set all to Portrait / Landscape + 纸张 + 边距（12 × 11 mm 默认）。单子用 CSS 变量画纸宽 / 边距 / 表头色，Letter 时打印 @page 也换。Save 时颜色 / 方向照旧 PUT relay-list，版式另 PUT print-layout?page=relay_list，只送改了的。⬇ Excel 键改派 ef（task/relay-list-excel），本分支不做（写过的已拿掉）。
+    - How to use：Bus Manifest 用 Q11 原文的第 1 批部分（「⚙ Colours & page: choose the colour of each box on the sheet, turn colouring on or off for each box, add or remove ticket colours and colour choices, and set the paper, Portrait or Landscape, and margins. Pick All tours, or pick a tour to give it its own colours. Changes show on the sheet right away; press Save to keep them. Reset puts one item back to the paper default, and Reset all to paper puts everything back. Saved settings are used on screen, when you print and in ⬇ Excel, for everyone and every day.」）；字号那半句和键名「⚙ Colours, text & page」等第 2 批 Text 上了再换回原文。Relay list 加一句（Hotel cell / column titles / colour choices / paper / margins；Excel 那半句等 ef 的键上了再加）。
+    - 检查（端口 3677 / 9077 / 9677）：mf 274/274（+34：没上线不出键、上线没设一模一样、两页 / 两层、格子清单、隔组关、整列 Phone、表头色、色盘快选、节色、车抬头字母、票型规则加一条（不分大小写、忽略空格）、Page 默认值、边距超范围红字、关窗先问、400 原话、PUT 只带改了的键和形状、relay-list tour_colors、绿 Saved、重开照画、Reset all 送 null、Discard、只读）、rl 75/75（+12）、da 521/521、nav 39/39；tsc 0、eslint 0 错（3 条原有 warning）、build 过。
+    - 还没做 / 跟后端核：GET manifest 的 view.print_layout 前端先没读（页面自己合并，结果一样）；hotel_group 先只有开关（07 说可带颜色，null = 节色）；07 的 defaults.colours 前端没用，默认取 boxes[]。下一步：07 上线 → 只读核字段 → 合最新 main 重跑 mf / rl / da / nav → 合 main；第 2 批 Text + Relay 当天 Aa 另开分支。
+    - **补（2026-11-05 晚，3154ae6d 推 task/print-layout-1，没合）**：① **Annie（原话，78 转）：「要也让 staff 自己选颜色」** ⇒ Bus Manifest「Every other hotel group」、Relay list「Hotel cell」多颜色格：没选 = 写「Section colour」/「Car colour」+「Choose a colour」，选了 = 色块 / #rrggbb / 色盘 ▾ / Reset（07：color null = 节色 / 车色）。② 只读核 07 的 task/print-layout 4d2331be：colours / text / page_setup 是**按格合并**（每格 / 每项 null = 回默认，没带的不动；palette / ticket_rules 整张换）⇒ Save 改送按格的差异（例 {colours:{all:{hotel_group:{on:false, color:null}}}}；Reset all 送每一格 null）；Relay list 不再送 sheets（后端 400）。③ 边距只收 5–25 的整数（后端 400 小数），红字「Enter a whole number from 5 to 25.」。07 答前端 3 点：view.print_layout 上线后 07 对一次；sections[].color / guests[].ticket_color 后端已按设定算好；defaults.colours 和 boxes[] 同源。检查：mf 279/279（+5）、rl 78/78（+3），tsc / eslint 0 错、build 过。
+  - ✅ **前端第 1 批上 main b7fd8a73**（2026-11-05 晚，77；主窗口 78 → 40 派；依据 Annie「看了，同意全部推荐，记得要可以下载」+「动手」）。后端 07 第 1 批已上 main 8a72f830，只读核过：boxes[] 键 / 默认值 / has_color 跟前端一致（defaults.colours 同源）；合并 团 > all > 默认，on / color 各自；hotel_group / hotel_cell 颜色不填 = 节色 / 车色；车抬头关 = #ffffff；colours / text / page_setup 按格合并 null = 回默认；边距 5–25 整数；GET tours[] 只列启用的团。合最新 main 时跟 ef 的 Relay ⬇ Excel（relay-list-view / rl-mock）撞了，两边都留。检查（端口 3677 / 9077 / 9677）：mf 279/279、rl 87/87（含 ef 的 Excel 用例）、da 521/521、nav 39/39；tsc 0、eslint 0 错（3 条原有 warning）、build 过。
+    - **Annie 验收看哪里**（线上 ops；⚠️ 设定对所有人、所有日子生效，试完请在弹窗按「Reset all to paper」再 Save；车抬头按字母改色会同时改 Relay list 色条和司机页）：① Dispatch › Bus Manifest 任一团（先看 ZZ Test 团）：页头 Version 左边「⚙ Colours & page」，打开有 Colours / Page 两页；什么都不改时单子跟以前一样。② 关「Every other hotel group」⇒ Hotel 格隔组高亮马上没了；开回来点「Choose a colour」选个色 ⇒ 高亮换成那个色；Cancel → Discard 回原样。③ Apply to 选这个团 ⇒ 每节一格颜色、车抬头 All buses / Bus A… 一格颜色，改了单子马上变。④ Ticket colours：+ Add ticket colour 加一条（例 Trail Of Time），那种票型格马上上色。⑤ Page：Letter / 边距 8 ⇒ Save 后 Print all buses 打印页、Download 的 Excel 照它（打印 / Excel 是后端照设定出的）。⑥ Dispatch › Relay list「⚙ Colours & page」：多 Colours / Page 两页，Hotel cell 开关 / 颜色、Column titles 颜色、Page 的 Letter / 边距，单子马上变，打印照它（Relay ⬇ Excel 跟不跟设定等后端第 2 批）。⑦ 只能看 Dispatch 的账号打开是只读。
+    - 还没合：task/print-layout-2（Text 页 + Relay Splits 当天 Aa，9df7f172）等 07 第 2 批 + 当天字号形状；合之前要先合最新 main（含本次 b7fd8a73）重跑。
+  - **前端第 2 批（Text + Relay Splits 当天 Aa，mock，推分支没合）**：77，`task/print-layout-2` **9df7f172**（功能 ae4febeb；已合 print-layout-1 的 3154ae6d 和最新 main，worktree D:
+pe-ops-frontend-wt-layout）。依据 Annie「动手」覆盖整套（78 派）。
+    - ⚙ 键名换成「⚙ Colours, text & page」（Relay list 后端没上线时照旧「⚙ Colours & page」）；How to use 换回 Q11 完整原文（Bus Manifest）。
+    - Text 页（Q4 A，07 形状 text {<layout>:{<element>:{d −4..+12, bold?}}}）：Bus Manifest 版式 General / Lankun / Marcello / West（默认打开这一页的版式）× Table text / Pax / Section titles / Column titles；Relay list 总表（Table text / Legend / Column titles）/ 车单（Header / Table text / Total Pax / Bus bars）。每行「− 16.5 px +」+ Regular / Bold + Reset，显示的是加好的大小；单子马上跟着变（Bus Manifest 叠在版式默认上，当天 Aa 再加在上面；Relay list 走 CSS 变量）。
+    - Relay Splits 当天「Aa Text size」（Q5 A）：每张单上方一个（总表每轮一张、每台有客人的车一张），编辑条同 Bus Manifest（整列 / 整行 / 整页、A− / A+、Regular / Bold、Reset、Cancel、Done），叠在每天的起点上；Done 留在页面上、单子上方「Text size not saved」、页面顶上蓝色 Save +「n sheets with text size not saved」，没存离开先问；存好绿 Saved、失败红字原话；最近 5 次「Text size changes」；只能看的人没有 Aa 键、照样画；打印不印 Aa / 提示。接口照 77 草案（07 还没给）：GET /api/dispatch/relay-list/text-size?date= ⇒ {sheets:{<sheet>:{text_size, history}}}，PUT {date, sheet, text_size}，sheet = summary:relay / summary:relay_2 / car:<轮>:<车号>（车号认车）；没这个接口 = 不出 Aa。How to use 加一句「Aa Text size (above each sheet): pick Whole column, Whole row or Whole page, click the table, then press A− or A+ and Regular or Bold. Press Done, then Save at the top. Text size is saved for this day only and prints as you see it; the next day starts from the everyday size.」（第 1 版 preview Q7 原文，最后半句按「每天的起点」改）。
+    - 检查（合 print-layout-1 后）：mf 289/289、rl 98/98；合之前 da 521/521、nav 39/39；tsc 0、eslint 0 错、build 过。
+    - 下一步：07 给当天字号的形状 → 改 relay-text-size.tsx 的接口；07 第 1 批上线 → 核字段 → 先合 print-layout-1，再合 print-layout-2。
+- **Relay list ⬇ Excel 键先单独上**（78 派 ef；Annie「看了，同意全部推荐，记得要可以下载」「动手」，又说「下载功能不用给i我preview了，直接上线」）：前端推分支 task/relay-list-excel ffedfcb6，没合 main，等后端 07 GET /api/dispatch/relay-list/excel?date= 上 main。白底键在 🖨 Print 和 ⚙ 之间（手机收进 ⋯）；fetch + blob，文件名取 Content-Disposition（没有时 Relay_list_日期.xlsx）；404 红字「Excel download isn't available yet.」，其余红字「Could not download: 后端原话」，401 跳登录。rl 70/70（mock 新加 5 条）、nav 39/39、tsc / eslint 过。后端 SHA 到了：核路径 / 权限 / 回包头 → 合最新 main 重跑 → 直接合 main。
+  - ✅ **已合 main ea667617**（ef，task/relay-list-excel：ffedfcb6 → f1d8f19c 带 car / 文件名 → f9393f75 权限）。后端 07 上 main 3d3bdd9b（合并 86916901）只读核过：app/routers/relay_pull.py:150 GET /api/dispatch/relay-list/excel?date=&car=（car = 排车行 id），权限 require_perm("manifests.export")，回 xlsx + Content-Disposition filename=relay-list-日期(-car-id).xlsx + Cache-Control: no-store，两句 400「No relay cars are saved for this day yet.」「This car is not on the saved Morning Relay for this day.」，每次下载记 action_log。前端：「⬇ Excel」白底键在 🖨 Print 后、⚙ 前（手机收进 ⋯），只给不是 partner 且勾了 manifests.export 的人（Super Admin 都有，同 Bus Manifest Download）；车头的 Print 页（&car=）只下载那一台；400 / 403 红字「Could not download: 后端原话」，404「Excel download isn't available yet.」，401 跳登录。检查：rl 74/74（Excel 9 条）、nav 39/39；合最新 main 后 tsc 0、eslint 0 错（3 旧 warning）、build 过。**Annie 验收**：Dispatch › Morning Relay「📋 Relay list」→ 点「⬇ Excel」下载 relay-list-日期.xlsx，一张单一个工作表（每轮总表 + 每台有客人的车）；从某台车的 Print 打开的页面点 ⬇ Excel 只有那一台。
+
+### 91. Bus Manifest 背景颜色打印不出来（2026-11-05，Annie 在 46 报，46 转；ef 查完前端不用改）
+- 原话：「bus manifest的背景颜色打印不出来」。
+- ef 查：ops Bus Manifest 的 Print / Print all buses 开后端旧页 /admin/dispatch/manifest/print（lib/dispatch-manifest-api.ts:270），前端没有自己的打印样式。后端 tour_manifest_print.html:20 已有 print-color-adjust: exact，@media print 没清格子底色；headless Chrome 实测不勾 Background graphics 也有底色。
+- 78 问 Annie：怎么打的（① 屏幕页直接 Ctrl+P 没点 Print 键 ② 打印对话框 Color 选了黑白 / 打印机默认灰度 ③ 不是 Chrome / Edge ④ 打的是 Download 出来的 Excel），附打印预览截图。确认点 Print 键 + Chrome + 彩色仍没底色 ⇒ 转 46 查后端页面。
+- Annie 发了截图「应该得样子和实际得样子」（Antelope Canyon 11/6 Bus 1960=A，屏幕 vs Print 页）：节标题底色打印**有**；打印**没有**：① Hotel 格按节色高亮的底色（MGM Grand / T.I. 浅蓝、MandalayBay / Bellagio 橙、Bellagio / T.I. 绿）；② Lunch「-」浅粉红底。⇒ 不是浏览器设置，是打印页没画这两种格子底色。78 派 ef 只读查这两种底色出处（前端算 / 后端字段、条件、颜色值），结论转 46 改后端打印页。
+- ef 查完（前端不用改）：① Hotel 格底色是前端 manifest-view.tsx:1674 hotelMarks() 算的（G198 Q2 A：只 tour 节，同节同酒店连着一组，第 2、4…组标第一行，颜色 = 节颜色），后端打印页没这套 ⇒ 转 46 补（属照规格修 bug）；③ 打印页 Order # 仍等宽 td.mono（G198 已定用正文字体）⇒ 转 46 改；② Lunch「-」粉底是 lunch_mismatch，照 Bus Manifest Q17「纸上不印红」规格不印。
+- 78 问 Annie（Q1）：Lunch「-」粉底打印要不要印：A（推荐）照 Q17 不印（打印 / 下载前已弹提醒，Q21）；B 改成也印。（Q2）Excel 下载要不要也加 Hotel 格底色：A（推荐）不加，只改打印页；B 也加。
+- 后端工作窗口（Annie 转贴）：打印页给合作公司那份 Hotel 格也上了色，屏幕上那份还不标，请前端补。
+- ✅ **Annie（原话）**：「要打印，所有设置了的颜色都要打印，不要替staff做主」⇒ Q1 = B（Lunch「-」粉底打印也印，取代 Q17「纸上不印红」）；打印页凡是屏幕上有的底色都印；合作公司那份 Hotel 格保留上色，前端屏幕上也补（派 ef，task/partner-hotel-marks）。已转 46。
+- ✅ **Annie 答 Q2（原话）**：「要加，一切都要如实反映」⇒ Excel 下载也跟屏幕一样带全部底色。已转 46（Excel 是后端生成，前端 lib 里没有）。46：打印 v2（4c）在审，屏幕 vs 打印只漏 lunch 粉底红字一处已补，SHA 待发。
+- Annie「hotel上也漏掉了啊」（46 说只漏 lunch 一处不对）+ 再发同一组截图。78 逐格对照转 46 全部差异：① Hotel 格节色高亮 ② Lunch「-」粉底红字 ③ Order # 等宽字 ④ 节标题少「· CFM # —」、(CHECK-IN …) 字号 ⑤ 最右 ✓ 列打印没有。④⑤ 若规格定过只在屏幕上，46 回出处再问 Annie；否则照「如实反映」补。
+  - 46 / 4c 查出处：④a「· CFM # —」打印不写 = G198 定过（Annie 10-27「198全按推荐」：没号网页灰字、打印不写）；⑤ ✓ 列打印去掉 = Lankun 版式定过（Annie 10-30「5 按推荐动手」，manifest-view.tsx:1547-1551）；④b (CHECK-IN …) 小一号没定过 ⇒ 4c 照「如实反映」补（打印 + Excel）。④a、⑤ 要不要推翻，46 在后端窗口直接问 Annie，前端不再问。v2 在推。
+  - ✅ 后端打印 v2 上 main **344b20f7**（Hotel 隔组上色主份 + 合作公司、Lunch 粉底红字、Order # 正文字体）。前端屏幕合作公司栏 e9e46731（ef）。Annie 补定：✓ 列照旧不印；「· CFM # —」没号也要印（原话「打印」，推翻 G198「打印不写」）。这条 + Excel 底色 + (CHECK-IN …) 小一号 4c 下一笔做。验收：11/6 Antelope Bus 1960=A 打印预览对照屏幕。
+  - ✅ 后端 **acddd738**（46）：Excel 补 Hotel 隔组高亮（车页、Not on a bus、合作公司）、Lunch 粉底红字、Order # 正文字体；打印 + Excel 节标题 (CHECK-IN …) 小一号、没号印灰字「· CFM # —」；✓ 列照旧不印；屏幕 heading 没动。置顶 91 全部做完，等 Annie 用 11/6 Bus 1960=A 的打印预览 + Excel 对照屏幕验收后移走。
+- ✅ **前端：Affiliate（合作公司）那栏 Hotel 格也隔组标色，已合 main e9e46731**（ef，task/partner-hotel-marks 功能 4a3e66cc）。依据 Annie 原话「要打印，所有设置了的颜色都要打印，不要替staff做主」+ 后端打印页 Affiliate 那份已按 hotel_marks 上色（后端 mark_hotel_groups(affiliate["sections"])，46 WIP）。规则同车上的表、同后端：每节各自数、只给 tour 节、同一家酒店连着一组、第 2、4…组标第一行、颜色 = 节颜色（section.color → tour.section_color）。hotelMarks / sectionColor 从 manifest-view.tsx 挪到 components/dispatch-manifest/hotel-marks.ts，车上的表和 affiliate-card.tsx 共用。检查：mf 245/245（新加 Affiliate 栏 Paris 不标、Venetian 首行 #bfe3b0）、nav 39/39；合最新 main 后 tsc 0、eslint 0 错（3 旧 warning）、build 过。**Annie 验收**：Dispatch › Bus Manifest 打开有 Farm out 客人的团，底部 Affiliate 那栏的 Pick-up Location 跟车上的表一样隔组上节颜色，跟 Print 出来的那页一致（打印页要等后端 46 那版上线）。
+
+### 90. Relay Splits 可以自己调字体大小（2026-11-05，Annie 在后端 46 窗口提，46 转；没动手）
+- 原话：「relay split也需要可以自己调字体大小，设置就跟bus manifest一样」。
+- 46：后端 app/ 里没有 Bus Manifest 字体设置，应是前端存的；要后端存（如 settings relay_list）就把字段形状发它。
+- 78 派 77 只读查 Bus Manifest 字体设置怎么做 / 怎么存，出 preview（范围、放哪、存哪、谁能改、打印生效），等 Annie 看 preview + 「动手」。
+- **preview**：https://claude.ai/artifact/SQJtqNHSm7QSphrQiejaHL （77，mock，没写代码）。现状：Bus Manifest 字号（G197）每台车「Aa Text size」编辑条（整列 / 整行 / 整页、A− / A+ −2 到 +10 px、Regular / Bold、Reset / Cancel / Done，按整页 Save 才存，后端 PUT /api/dispatch/manifests/text-size 只存这天这团这车，dispatch.edit，Text size changes 最近 5 次）；Relay list 字号写死（总表 12.5 / 图例 10.5 / 车单 15 / 抬头 24 px）。
+  - Q1 怎么调：A（推荐）同 Bus Manifest 编辑条；B ⚙ 里每张单一个整页大小。Q2 调哪几张：A（推荐）总表（每轮）和每台车单各调各的；B 一个设定管全天。Q3 存多久：A（推荐）只存这一天；B 所有日子通用（存 ⚙）。Q4 怎么存：A（推荐）Done 暂存、顶上蓝 Save、离开前问；B Done 直接存。Q5 谁能改：A（推荐）dispatch.edit；B 能看 Relay list 的都能改。Q6 Text size changes：A（推荐）要，最近 5 次 + Action Log；B 不要。Q7 How to use：A（推荐）「Aa Text size (above each sheet): pick Whole column, Whole row or Whole page, click the table, then press A− or A+ and Regular or Bold. Press Done, then Save at the top. Text size is saved for this day only and prints as you see it; the next day starts from the default size.」；B 她改字。
+  - 需要后端（Q3 A）：PUT /api/dispatch/relay-list/text-size {date, sheet, text_size}，sheet = summary:relay / summary:relay_2 / car:<轮>:<车号>（按车号认，不用 assignment id），relay-pull 每张单带 text_size + text_size_history，action_log，dispatch.edit，新表（迁移先给 Annie 看）。前端共用 text-size.tsx 约 1 天。
+
 ### 89. Auto Send › Ticket reminders：按产品设提前多久发 + 每天给 antelope@ 一封「今天没发出去的单」汇总（2026-11-05，Annie 在 e8 提，没动手）
 - 原话：「auto send的ticket reminder也要改一下，需要按照产品来选择提前几点发。然后我需要每天给antelope@一个email提醒他们今天哪些订单因为什么原因没有发出去，每天就汇总当天的一次发给他们就好了」。
 - 现状（前端 auto-send-view.tsx）：Ticket reminders 只有一套设置——Send times、days before the service date（所有产品一样）、Day-before summary at（前一天发一封「明天还没发的单 + 原因」）、Send the summary to。另外 G245「Cfm # 不符」每次跑完给 antelope@ 发一封。
@@ -1181,6 +1404,11 @@ D. 已完成、待从置顶移走：
   - 下一步：Annie 答题 + 看 preview → 后端按定稿做（字段名以后端为准）→ 前端照 preview 改 components/auto-send/auto-send-view.tsx + as 套。截图脚本在 7a 的 scratchpad，不进仓库。
   - ✅ **v2（同一链接新版本，2026-11-05 14:13）**：Annie 看 v1 后（原话）「ticket那边的设计很愚蠢，你就像dispatch里挑酒店一样，设置一个时间，然后让我去一堆名字里选，选中了就变黑色；第二个时间就在剩下的里头选，也是选中了变黑色」「跟relay酒店一摸一样」⇒ 14 行小表改成照 Dispatch › Morning Relay 车挑酒店：一行「Start sending N days before」+「Add ticket type」下拉（样式照 vehicle-row.tsx 的 ADDSTOP / Chips：可选的黑字，别的行已挑的灰、点不了、后面写「- 3 days before」，这一行已挑的不列），挑了的成胶囊（#eef2f7，✕ 拿掉），右边 × 删整行，「+ Add another time」灰绿 #6b8e74；没挑进任何一行的团灰字列「Using the default (5 days): …」；整块暂存按蓝色 Save。preview 里 Relay 挑酒店截图和改后并排。拟字段改成 tickets.lead_groups: [{days_before, ticket_types:[key…]}]（一个团只能在一组）。How to use 第 4 条改写（标 [changed]）。题 2 跟着改写；新加**题 6**：「设置一个时间」是提前几天（A 推荐，发送时刻照三批共用）还是每行再加几点发（B）。其余不变。
   - ✅ **v3（同一链接，14:19）**：题 3 Annie（原话）「没必要，发一份就够了，我建议只发晚上的那个」⇒ 早上 9:00 的 Day-before summary 拿掉：卡片上「Day-before summary at」「Send the summary to」两格去掉，只留傍晚的 Daily report（收件人默认 antelope@、能改）。How to use：原句「The day before, a summary email lists what is still not sent for the next day and why. Test orders are left out of the summary.」拿掉；Daily report 那条改标 [changed]，原文「Daily report: after the last batch of the day, one email lists the ticket orders that were due but not sent, why, and what to do (orders whose Cfm # doesn't match the product included). It is the only summary email; there is no morning summary any more. It has its own switch, off until you turn it on.」。拟字段注明 summary_time / summary_emails 不再用（删不删后端定）。题 3 标已答；还等 Annie：题 1、2、4、5、6。
+  - ✅ **Annie（原话）：「Auto Send 都选 A。动手」** ⇒ 题 1、2、4、5、6 都 A，题 3 只留晚上的报告。e8 派 7a 照 v3 写。
+  - 🟡 **7a WIP 已推 origin/task/auto-send-limits 8614fb03（不合 main）**，只改 components/auto-send/auto-send-view.tsx、types/auto-send.ts：
+    - 做了：两张卡片 Max per batch（灰字「The last batch of the day sends everything left.」）；门票「Start sending (default)」+「Start sending, by ticket type」照 Relay 挑酒店（每行 N days before + Add ticket type 下拉；别的行已挑的灰、点不了、写「- N days before」；挑了成胶囊、✕ 拿掉；× 删行；+ Add another time 灰绿；灰字列「Using the default (N days): …」；门票团清单读 GET /api/settings/tix-tour-types 只要没停用的）；Daily report 块（开关点了就存、先确认，照卡片抬头开关；「Sends after the last batch of the day (最后一个 send time)」；收件人跟卡片 Save 一起存）；后端带 daily_report 时不出 Day-before summary 两格；How to use 换成 v3 全文（后端带新键时才换）。
+    - 旧后端没有这些键：Max per batch / 按门票团 / Daily report 都不出、Day-before summary 照旧、How to use 照旧、保存时也不发这些键 ⇒ as 69/69 照旧过。tsc 0、eslint 0 错。
+    - **还差**：① 后端定字段后核键名（拟的 tour.max_per_batch、tickets.lead_groups [{days_before, ticket_types}]、tickets.max_per_batch、tickets.daily_report {enabled, emails}）；② 门票团清单：/api/settings/tix-tour-types 要 admin + Content Studio 开关，读不到时下拉是空的、胶囊只显示 key ⇒ 最好请后端在 GET /api/settings/auto-send 里直接带 ticket_types [{key,label}]（写进「需要后端」，等后端主窗口答）；③ 前端校验（天数 1–14、上限正整数、一行至少一个团）还没做，现在靠后端 400；④ as 套 mock 加新键 + 新检查（Relay 式挑选、灰掉、默认灰字、Daily report 开关立即存、旧后端不出）；⑤ 截图和 preview 对一遍（电脑 + 手机）；⑥ Recent runs 里每日报告那一种的文字（kind 名等后端定）；⑦ 合最新 main 跑 as / nav + tsc / eslint / build 后合 main。
 ### ⏰ 提醒 Annie：G180 Tour Tracking 回填以前的日子（**下周，2026-11-09 周一起提醒**）
 - Annie 原话（2026-11-05）：「回填数据可以等我有时间再做，只需要先把上线那一刻的今天及以后的数据放进去，等运行起来之后下周你提醒我做数据回填」。
 - Annie 又问（原话）：「开开关之前staff看不到页面的变化么」。e8 核：前端灰底版只要接口带 send_state / order_state，就出 Order Status 列和说明句。开关关着时后端带不带这两个键、旧模板、CSV 变不变，已问后端。推荐开关关着时 staff 什么都看不到。

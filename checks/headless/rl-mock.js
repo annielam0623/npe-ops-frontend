@@ -1,9 +1,13 @@
 // 模拟后端：Relay list（/dispatch/relay-list，task/relay-print）。只回 relay-pull 加了打印字段的形状（后端 fc 定的键）。
-// 控制：POST /__ctl {fail401, fail500, old, many, swap, noSettings, edit, failPut, reset}
+// 控制：POST /__ctl {fail401, fail500, old, many, swap, excel, noExport, partner, noSettings, edit, failPut, reset}
 //   swap = 1st Round 多一台 2556：relay 卡司机 ZZ Robert，当天这台车是 Antelope 大巴（大巴司机 ZZ John + 导游 ZZ Olivia）。
 //   many = 2nd Round 那台车 40 个客人，一张单要印两页；old = 旧后端，没有 phone / product_short / bus / location_ids / tour_buses；
 //   置顶 73：noSettings = 设置接口还没上线（404）；edit = 我有 dispatch.edit；failPut = 存设置 500；reset = 设置回默认。GET /__log。
 const http = require("http");
+const layoutMock = require("./print-layout-mock");
+// 置顶 92 版式设置：ctl.layout = true ⇒ 有 /api/settings/print-layout?page=relay_list；__ctl {layoutReset: true} 清掉存的。
+const textStore = {};
+function readRaw(req) { return new Promise((r) => { const c = []; req.on("data", (d) => c.push(d)); req.on("end", () => r(Buffer.concat(c).toString("utf8"))); }); }
 
 const ctl = { fail401: false, fail500: false, old: false, many: false, swap: false, noSettings: false, edit: false, failPut: false };
 if (process.env.MOCK_CTL) Object.assign(ctl, JSON.parse(process.env.MOCK_CTL));
@@ -171,7 +175,10 @@ http
       await new Promise((r) => req.on("end", r));
       const body = JSON.parse(d || "{}");
       if (body.reset) st = fresh();
+      if (body.layoutReset) layoutMock.reset();
+      if (body.layoutReset) for (const k of Object.keys(textStore)) delete textStore[k];
       delete body.reset;
+      delete body.layoutReset;
       Object.assign(ctl, body);
       return send(res, 200, ctl);
     }
@@ -181,8 +188,39 @@ http
     }
     log.push({ path: p, query: url.search });
     if (ctl.fail401) return send(res, 401, { detail: "Authentication required" });
-    if (p === "/api/me") return send(res, 200, { id: 1, username: "zztest", display_name: "ZZ Test", initials: "ZT", role: "staff", is_admin: false, is_superadmin: false });
-    if (p === "/api/me/permissions") return send(res, 200, { is_superadmin: false, permissions: [{ code: "dispatch.view", module: "dispatch", wired: true }, ...(ctl.edit ? [{ code: "dispatch.edit", module: "dispatch", wired: true }] : [])], default_home: null });
+    if (p === "/api/me") return send(res, 200, { id: 1, username: "zztest", display_name: "ZZ Test", initials: "ZT", role: ctl.partner ? "partner" : "staff", is_admin: false, is_superadmin: false });
+    // ⬇ Excel 要 manifests.export（默认有；noExport = 没勾）；partner = 合作公司账号（勾了也不给）。
+    if (p === "/api/me/permissions") return send(res, 200, { is_superadmin: false, permissions: [{ code: "dispatch.view", module: "dispatch", wired: true }, ...(ctl.edit ? [{ code: "dispatch.edit", module: "dispatch", wired: true }] : []), ...(ctl.noExport ? [] : [{ code: "manifests.export", module: "manifests", wired: true }])], default_home: null });
+    // Relay list ⬇ Excel：ctl.excel = "ok" 回一个 xlsx；"fail" = 400 原话；没设 = 404（后端还没上）。
+    if (p === "/api/dispatch/relay-list/excel") {
+      if (ctl.excel === "ok") {
+        res.writeHead(200, {
+          "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          "Content-Disposition": `attachment; filename="relay-list-${url.searchParams.get("date")}${url.searchParams.get("car") ? `-car-${url.searchParams.get("car")}` : ""}.xlsx"`,
+        });
+        return res.end(Buffer.from("PK\u0003\u0004mock-xlsx"));
+      }
+      if (ctl.excel === "fail") return send(res, 400, { detail: "No relay cars are saved for this day yet." });
+      return send(res, 404, { detail: "Not Found" });
+    }
+    {
+      const entry = log[log.length - 1];
+      entry.method = req.method;
+      const q = Object.fromEntries(url.searchParams);
+      if (await layoutMock({ ...ctl, layoutForbidden: !ctl.edit }, p, q, req, res, send, readRaw, entry)) return;
+      // 置顶 92 Q5：Relay Splits 当天字号（后端 07 c71452ca：只有 PUT；读跟着 relay-pull）。ctl.textSize = true 才有；ctl.textFail = PUT 400 原话。
+      if (p === "/api/dispatch/relay-list/text-size") {
+        if (!ctl.textSize || req.method !== "PUT") return send(res, 404, { detail: "Not Found" });
+        {
+          const b = JSON.parse((await readRaw(req)) || "{}"); entry.body = b;
+          if (!ctl.edit) return send(res, 403, { detail: "You do not have permission to edit Dispatch." });
+          if (ctl.textFail) return send(res, 400, { detail: ctl.textFail });
+          const prev = textStore[b.sheet]?.history ?? [];
+          textStore[b.sheet] = { text_size: b.text_size, history: [{ by: "ZZ Test", at: "Nov 3, 6:00 PM", what: "Text size changed" }, ...prev].slice(0, 5) };
+          return send(res, 200, { ok: true, sheet: b.sheet, text_size: textStore[b.sheet].text_size, text_size_history: textStore[b.sheet].history });
+        }
+      }
+    }
     if (p === "/api/settings/relay-list") {
       if (ctl.noSettings) return send(res, 404, { detail: "Not Found" });
       if (req.method === "PUT") {
@@ -200,7 +238,23 @@ http
     }
     if (p === "/api/dispatch/relay-pull") {
       if (ctl.fail500) return send(res, 500, { detail: "Internal Server Error" });
-      return send(res, 200, relayPull(url.searchParams.get("date")));
+      const body = relayPull(url.searchParams.get("date"));
+      // 后端 07：summary_text_size[轮] = {sheet, text_size, history}；车上 text_size_sheet（没车号 = null）/ text_size / text_size_history。
+      if (ctl.textSize) {
+        const EMPTY = { page: {}, columns: {}, rows: {} };
+        const got = (sheet) => textStore[sheet] ?? { text_size: EMPTY, history: [] };
+        body.summary_text_size = {};
+        for (const rnd of ["relay", "relay_2"]) {
+          const sheet = `summary:${rnd}`;
+          body.summary_text_size[rnd] = { sheet, text_size: got(sheet).text_size, history: got(sheet).history };
+          for (const b of body.rounds?.[rnd] ?? []) {
+            const van = (b.car.van || "").trim();
+            const cs = van ? `car:${rnd}:${van}` : null;
+            Object.assign(b.car, { text_size_sheet: cs, text_size: cs ? got(cs).text_size : EMPTY, text_size_history: cs ? got(cs).history : [] });
+          }
+        }
+      }
+      return send(res, 200, body);
     }
     return send(res, 404, { detail: "Not Found" });
   })

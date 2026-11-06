@@ -52,10 +52,16 @@ export interface RelayCarSheet {
   tourBuses: Omit<RelayBus, "sections">[];
   /** 司机 - 车号（设置弹窗用）。 */
   driverVan: string;
+  /** 车号。 */
+  van: string;
+  /** 当天字号的 sheet（后端给，"car:<轮>:<车号>"）；没车号 / 旧后端 = null（这张单不出 Aa 键）。 */
+  textSheet: string | null;
 }
 
 export interface RelayRoundList {
   round: RelayListRound;
+  /** 总表当天字号的 sheet（后端 summary_text_size[轮].sheet）；旧后端 = null。 */
+  textSheet: string | null;
   /** 「Morning Relay · 1st Round」。 */
   name: string;
   when: string;
@@ -203,6 +209,8 @@ export function buildRound(
       orientation: orientationOf(b.car.orientation ?? tb[0]?.orientation),
       tourBuses: tb,
       driverVan: `${(b.car.driver || "No driver").trim()} - ${b.car.van || "No vehicle"}`,
+      van: (b.car.van || "").trim(),
+      textSheet: b.car.text_size_sheet ?? null,
     };
     if (tb.length >= 1) {
       return {
@@ -245,6 +253,7 @@ export function buildRound(
   const label = data.round_labels?.[round];
   return {
     round,
+    textSheet: data.summary_text_size?.[round]?.sheet ?? null,
     name: label?.name || round,
     when: label?.when || "",
     cars,
