@@ -1295,6 +1295,8 @@ D. 已完成、待从置顶移走：
 - Annie 原话（看着「Sends after the last batch of the day (5:00 PM)」那行）：「这个两边都把时间改成可选吧」。
 - 现在：报告固定在当天最后一批门票发完后马上发（11-05 题 1 A），页面只写出最后一批的时间，不能改。Daily report 只有 Ticket reminders 有，Tour confirmations 没有报告。
 - ✅ **Annie 答（原话）：「1. B  2. A 3 A」** ⇒ ① 门票、团确认两张卡都要 Daily report，各自能选时间（团确认是新加的一份报告：列当天该发没发出去的团确认单、原因、要做什么；开关默认关、收件人能改）；② 时间从当天的发送时间里下拉选，默认最后一批；③ 选的早于最后一批 ⇒ 只算到那一刻为止已发过的批次，报告注明后面的批次没算。**还没「动手」**：先出 preview。已转 4a 估后端、拟字段；派 c3 在 G263 preview 之后做。0f 估：字段 tickets.daily_report.after_time、tour.daily_report {enabled, emails, after_time}，不迁移，约半天；after_time 不在发送时间里就落回最后一批（不报错）；团确认报告理由沿用现有跳过原因 + 要做的事；Shuttle / 回程不列；两题放进 preview：① 团确认报告默认收件人（推荐 reservations@）② 报告早于最后一批时，被上限留到后面批次的单列不列（推荐列）。已转 c3。
+- c3 出 preview https://claude.ai/artifact/7jq2UBosVHwRR9drFUjEdX ，6 题（推荐都 A）已转 Annie：1 Tour 报告默认收件人 reservations@ / antelope@；2 报告早于最后一批时被上限挤到后面的单列 / 不列；3 时间行「Send the report after [5:00 PM (last batch) ▾]」/ 不写 (last batch)；4 选早时灰字「Only batches up to 12:00 PM are in the report. The email says 5:00 PM is not included.」/ 不写；5 选的时间被删时回最后一批 + 灰字 / 不提示；6 How to use 两条原文（见 49 回复）。
+- G263 preview 已加题 7（同链接新版）。11:59 分支修了「Checkedevery」少空格，tip 52f71f0a。
 - 原问：「两边」指什么（a 前端后端都改 / b 门票、团确认两张卡都要报告且都能选时间），时间怎么选（A 推荐：从当天的发送时间里下拉选，默认最后一批；B 随便填几点），选的时间早于最后一批时报告算到哪（A 推荐：只算到那一刻为止已过的批次）。答了出 preview。
 
 ### 97. G266 Dispatch › Send to driver / guide：每人发过没 + 卡片 Notes（2026-11-06，c3 出 preview，49 转 Annie）
