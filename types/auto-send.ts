@@ -24,6 +24,8 @@ export interface AutoSendConfig {
     template_last_minute?: string;
     /** 前一天这个时间（"HH:MM" 洛杉矶时间）以后下的单算 Last Minute；后端缺省 "07:00"。这页只读来写说明。 */
     last_minute_cutoff?: string;
+    /** 置顶 98（Annie「同意推荐，动手」）：团确认的每日报告，新的；后端带了才出这一块。 */
+    daily_report?: AutoSendDailyReport;
   };
   tickets: {
     /** 门票提醒总开关（门票汇总邮件跟着这个开关走）。 */
@@ -41,8 +43,18 @@ export interface AutoSendConfig {
     /** 当天最后一批之前每批最多发几单（所有门票团合计，接客时间早的先发）；最后一批发剩下的全部。 */
     max_per_batch?: number;
     /** 每日报告：当天最后一批跑完后一封（没发出去的单 + 原因 + Action），默认关。有它时不出 Day-before summary 两格。 */
-    daily_report?: { enabled: boolean; emails: string[] };
+    daily_report?: AutoSendDailyReport;
   };
+}
+
+export interface AutoSendDailyReport {
+  enabled: boolean;
+  emails: string[];
+  /**
+   * 置顶 98：哪一批发完以后发（"HH:MM"，必须是这张卡的 times 之一）。后端缺 / 不在 times 里 ⇒ 落到最后一批，
+   * GET / PUT 返回的已经是落好的值。没有这个键（旧后端）⇒ 页面照旧写「Sends after the last batch of the day」。
+   */
+  after_time?: string;
 }
 
 export interface AutoSendLeadGroup {
