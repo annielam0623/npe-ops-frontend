@@ -445,7 +445,8 @@ async function run() {
     const l = await since(b, (e) => ["/api/dispatch/relay-pull", "/api/dispatch/driver-notice", "/api/dispatch/guide-notice"].includes(e.path));
     return ["relay-pull", "driver-notice", "guide-notice"].map((p) => l.filter((e) => e.path === `/api/dispatch/${p}`).length).join(",");
   };
-  check("send-auto-open：停在 Assign 时 Send 那三份都不取（relay-pull、driver-notice、guide-notice 0 次）", (await sendReads(bOpen)) === "0,0,0", await sendReads(bOpen));
+  // 置顶 94（Annie「94 全按推荐，动手」）：Assign 的 Schedule check 要 relay-pull 的 need_a_look ⇒ 打开取 1 次；司机 / 导游两份照旧不取。
+  check("send-auto-open：停在 Assign 时 Send 的司机 / 导游两份不取；relay-pull 只为 Schedule check 取 1 次（置顶 94）", (await sendReads(bOpen)) === "1,0,0", await sendReads(bOpen));
   // 10-07 起拆两个标签（Annie）：Assign = Step 1 Guest lists、Step 2 Buses & drivers；
   // Send = Step 1 Send to drivers、Step 2 Morning Relay — text guests（原来的早班发送）。
   const rp = "document.querySelector('section[aria-label=\"Morning Relay — text guests\"]')";
@@ -2138,6 +2139,41 @@ async function run() {
       check("Schedule check 没有 Relay 车的酒店：只列 Las Vegas（aria 在），St George / Page / Kanab 这些 shuttle 站和没归类的都不列", !!relayIssue && relayIssue.includes("aria") && !SH.some((n) => relayIssue.includes(n)), String(relayIssue));
       // 勾了「Tour bus departure」的点（TI）也不列：团车在 TI 直接上客（Annie 2026-10-31 选 A，11-01「动手」）
       check("Schedule check 没有 Relay 车的酒店：勾了 Tour bus departure 的 Treasure Island 不列", !!relayIssue && relayIssue.includes("aria") && !relayIssue.split("Fix ›").pop().includes("Treasure Island"), String(relayIssue));
+    }
+    // 置顶 94（Annie「94 全按推荐，动手」，后端 307d6895 need_a_look 每条带 round）：只列这一轮 need_a_look「No relay car stops…」的酒店，
+    // 按酒店合并人数「MGM (5)」；页面上这一轮加了那家酒店（没存）先拿掉；说明小字换新句；后端没带 round 时照旧（上面两条）。
+    {
+      const relayLi = "[...document.querySelectorAll('[aria-label=\"Schedule check\"] [aria-label=Issues] > li')].find(l => l.textContent.includes('with no Morning Relay · 1st Round'))";
+      const read = () => evaluate(`const li = ${relayLi}; if (!li) return null; const b = [...li.querySelectorAll('button')].find(x => x.textContent.startsWith('View ')); if (b) b.click(); return li.textContent;`);
+      await ctl({ hotelGroups: true, needRound: true });
+      await goto(`${APP}/dispatch?date=2026-10-18`);
+      await waitFor(sel, 60000);
+      await sleep(1500);
+      await helpers();
+      let t = await read();
+      check("94 Schedule check：1st Round 只列 need_a_look 没车停的酒店，按酒店合并人数（MGM 2 + 3 = 5）、A–Z，标题 2 hotels", !!t && t.includes("2 hotels with no Morning Relay · 1st Round vehicle") && t.includes("aria (4)") && t.includes("MGM (5)") && t.indexOf("aria (4)") < t.indexOf("MGM (5)"), String(t));
+      const names = (x) => String(x).split("Fix ›").pop();
+      check("94：没时间的 Excalibur（别的原因）、2nd Round 的、Hoover tour_car 的、Treasure Island 都不进 1st Round 名单", !!t && names(t) === "aria (4) · MGM (5)", String(t));
+      check("94：说明小字换成新句", !!t && t.includes("Only hotels with guests on this round's tours. Treasure Island is left out because the tours start there.") && !t.includes("each round is counted on its own"), String(t));
+      check("94：2nd Round 没排车（没有车）照旧不列", !(await evaluate("return [...document.querySelectorAll('[aria-label=\"Schedule check\"] [aria-label=Issues] > li')].some(l => l.textContent.includes('2nd Round vehicle'));")));
+      // 边改边减：在 1st Round 加一台车、加 MGM（没存）
+      await evaluate(`$btn('+ Add vehicle', ${sec("Morning Relay · 1st Round")}).click();`);
+      await sleep(200);
+      const newRow = await evaluate(`const r = [...${sec("Morning Relay · 1st Round")}.querySelectorAll('.vrow')].pop(); return r ? r.dataset.idx : null;`);
+      await pick(`${vrow(newRow)}.querySelector('[data-f=addstop]')`, "101");
+      await sleep(300);
+      t = await read();
+      check("94：页面上 1st Round 加了 MGM（没存）⇒ 名单先拿掉 MGM，标题变 1 hotel", !!t && t.includes("1 hotel with no Morning Relay · 1st Round vehicle") && t.includes("aria (4)") && !t.includes("MGM"), String(t));
+      await ctl({ needRound: false, needRoundEmpty: true });
+      promptAnswer = "";
+      await goto("about:blank");
+      await sleep(300);
+      promptAnswer = null;
+      await goto(`${APP}/dispatch?date=2026-10-18`);
+      await waitFor(sel, 60000);
+      await sleep(1500);
+      check("94：need_a_look 是空的 ⇒ 没有「hotels with no Morning Relay」这条", !(await evaluate(`return !!${relayLi};`)), String(await read()));
+      await ctl({ needRoundEmpty: false });
     }
     await ctl({ hotelGroups: false });
     await goto("about:blank");

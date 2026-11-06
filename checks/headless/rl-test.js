@@ -234,6 +234,47 @@ async function run() {
   await waitFor("document.querySelector('[data-relay-car]')", 30000);
   check("?car=902：只有这一台车的分表，没有总表", await evaluate("return document.querySelectorAll('[data-relay-car]').length === 1 && document.querySelector('[data-relay-car]').dataset.relayCar === '902' && !document.querySelector('[data-relay-total]');"));
 
+  // ── ⬇ Excel（置顶 92 Q8 A）：白底键在 Print 和 ⚙ 之间，下载这一天；404 / 400 红字 ──
+  await open(URL0);
+  await waitFor("document.querySelector('[data-relay-excel]')", 30000);
+  check("⬇ Excel 键：白底（不是蓝色）、在 🖨 Print 后面", await evaluate("const b = document.querySelector('[data-relay-excel]'); const p = document.querySelector('[data-relay-print]'); return b.textContent.trim() === '⬇ Excel' && getComputedStyle(b).backgroundColor !== 'rgb(59, 130, 246)' && !!(p.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);"));
+  await evaluate("window.__dl = []; HTMLAnchorElement.prototype.click = function () { if (this.download) window.__dl.push(this.download); }; return 1;");
+  {
+    const before = (await mockLog()).length;
+    await evaluate("document.querySelector('[data-relay-excel]').click(); return 1;");
+    check("后端还没上（404）：红字「Excel download isn't available yet.」，不下载", await waitFor("document.querySelector('[data-relay-excel-error]')?.textContent === \"Excel download isn't available yet.\" && window.__dl.length === 0", 15000));
+    const hit = (await mockLog()).slice(before).find((l) => l.path === "/api/dispatch/relay-list/excel");
+    check("请求 GET /api/dispatch/relay-list/excel?date=页面的日期", !!hit && hit.query === `?date=${D}`, JSON.stringify(hit));
+  }
+  await ctl({ excel: "fail" });
+  await evaluate("document.querySelector('[data-relay-excel]').click(); return 1;");
+  check("后端报错（400）：红字写后端原话", await waitFor("document.querySelector('[data-relay-excel-error]')?.textContent === 'Could not download: No relay cars are saved for this day yet.'", 15000));
+  await ctl({ excel: "ok" });
+  await evaluate("document.querySelector('[data-relay-excel]').click(); return 1;");
+  check("下载成功：文件名取后端 Content-Disposition（relay-list-日期.xlsx），红字消失", await waitFor(`window.__dl[0] === 'relay-list-${D}.xlsx' && !document.querySelector('[data-relay-excel-error]')`, 15000));
+  // 车头的 Print（&car=）：只下载这一台车那张。
+  await open(`${URL0}&car=902`);
+  await waitFor("document.querySelector('[data-relay-excel]')", 30000);
+  await evaluate("window.__dl = []; HTMLAnchorElement.prototype.click = function () { if (this.download) window.__dl.push(this.download); }; return 1;");
+  {
+    const before = (await mockLog()).length;
+    await evaluate("document.querySelector('[data-relay-excel]').click(); return 1;");
+    check("?car=902：下载带 car=902，文件名 relay-list-日期-car-902.xlsx", await waitFor(`window.__dl[0] === 'relay-list-${D}-car-902.xlsx'`, 15000));
+    const hit = (await mockLog()).slice(before).find((l) => l.path === "/api/dispatch/relay-list/excel");
+    check("?car=902：请求 date + car", !!hit && hit.query === `?date=${D}&car=902`, JSON.stringify(hit));
+  }
+  await ctl({ excel: null });
+  // 权限同 Bus Manifest Download：没勾 manifests.export、或是 partner 账号 ⇒ 没有 ⬇ Excel 键（Print 照旧）。
+  await ctl({ noExport: true });
+  await open(URL0);
+  await waitFor("document.querySelector('[data-relay-print]')", 30000);
+  check("没勾 manifests.export：没有 ⬇ Excel 键，🖨 Print 照旧", await evaluate("return !document.querySelector('[data-relay-excel]') && !!document.querySelector('[data-relay-print]');"));
+  await ctl({ noExport: false, partner: true });
+  await open(URL0);
+  await waitFor("document.querySelector('[data-relay-print]')", 30000);
+  check("partner 账号（勾了 manifests.export 也一样）：没有 ⬇ Excel 键", await evaluate("return !document.querySelector('[data-relay-excel]');"));
+  await ctl({ partner: false });
+
   // 旧后端（还没有打印字段）：照样能看，缺的格子空着、Tour 写团名
   await ctl({ old: true });
   await open(URL0);

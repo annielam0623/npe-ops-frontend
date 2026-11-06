@@ -16,9 +16,10 @@ import {
 import { HowToUse } from "@/components/ui/how-to-use";
 import { ErrorBanner } from "@/components/ui/panel";
 import { PageLink } from "@/components/ui/page-link";
-import { usePhoneInfo } from "@/components/ui/phone";
+import { PhoneMore, usePhoneInfo } from "@/components/ui/phone";
 import { describeError, isStatus } from "@/lib/api-errors";
 import {
+  downloadRelayListExcel,
   fetchRelayPull,
   type RelayGuest,
   type RelayPull,
@@ -134,6 +135,10 @@ export function RelayListView() {
   const canEdit =
     !perms.partnerLacks("dispatch.edit") &&
     byTick(perms, "dispatch.edit", { superAdmin: isSuperAdmin });
+  // ⬇ Excel 跟 Bus Manifest 的 Download 一样（后端 07：manifests.export）：要勾了导出，partner 一律没有（系统定过 partner 不能导出客人资料）。
+  const canExcel =
+    !perms.isPartner &&
+    byTick(perms, "manifests.export", { superAdmin: isSuperAdmin });
 
   const redirectToLogin = useCallback(() => {
     if (!redirectingRef.current) {
@@ -265,6 +270,15 @@ export function RelayListView() {
             <RelayTextSave />
           </RelayTextContext.Provider>
         ) : null}
+        {view.kind === "ready" && params && canExcel ? (
+          <PhoneMore label="Download">
+            <ExcelButton
+              date={params.date}
+              car={params.car}
+              onUnauthorized={redirectToLogin}
+            />
+          </PhoneMore>
+        ) : null}
         {view.kind === "ready" && settings ? (
           <button
             type="button"
@@ -380,6 +394,73 @@ const RELAY_LAYOUT_HOW_TO =
 /** 置顶 92 Q5 A（第 1 版 preview Q7 的原文，按「每天的起点」改了最后半句）。 */
 const RELAY_AA_HOW_TO =
   "Aa Text size (above each sheet): pick Whole column, Whole row or Whole page, click the table, then press A− or A+ and Regular or Bold. Press Done, then Save at the top. Text size is saved for this day only and prints as you see it; the next day starts from the everyday size.";
+
+/**
+ * 「⬇ Excel」（置顶 92 Q8 A，Annie「记得要可以下载」「下载功能不用给i我preview了，直接上线」）：下载这一天的 Relay list，
+ * 一张单一个工作表，后端生成（GET /api/dispatch/relay-list/excel）。白底次要键，放 ⚙ 左边；出错红字写原话，404 = 后端还没上。
+ */
+function ExcelButton({
+  date,
+  car,
+  onUnauthorized,
+}: {
+  date: string;
+  /** 页面带 &car=（车头的 Print）：只下载这一台车那张。 */
+  car: number | null;
+  onUnauthorized: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  async function download() {
+    setBusy(true);
+    setError(null);
+    try {
+      const { blob, filename } = await downloadRelayListExcel(date, car);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      if (isStatus(e, 401)) {
+        onUnauthorized();
+        return;
+      }
+      setError(
+        isStatus(e, 404)
+          ? "Excel download isn't available yet."
+          : `Could not download: ${describeError(e)}`,
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <>
+      <button
+        type="button"
+        data-relay-excel
+        disabled={busy}
+        onClick={() => void download()}
+        className={`${WHITE_BTN} disabled:cursor-default disabled:opacity-60`}
+      >
+        {busy ? "Downloading…" : "⬇ Excel"}
+      </button>
+      {error ? (
+        <span
+          role="alert"
+          data-relay-excel-error
+          className="text-[12.5px] font-semibold text-[#f87171]"
+        >
+          {error}
+        </span>
+      ) : null}
+    </>
+  );
+}
 
 /** 当天的团（设置弹窗默认只列这些）和「同时是团大巴的 relay 车」。 */
 function todayTours(data: RelayPull): {

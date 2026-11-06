@@ -1,5 +1,5 @@
 // 模拟后端：Relay list（/dispatch/relay-list，task/relay-print）。只回 relay-pull 加了打印字段的形状（后端 fc 定的键）。
-// 控制：POST /__ctl {fail401, fail500, old, many, swap, noSettings, edit, failPut, reset}
+// 控制：POST /__ctl {fail401, fail500, old, many, swap, excel, noExport, partner, noSettings, edit, failPut, reset}
 //   swap = 1st Round 多一台 2556：relay 卡司机 ZZ Robert，当天这台车是 Antelope 大巴（大巴司机 ZZ John + 导游 ZZ Olivia）。
 //   many = 2nd Round 那台车 40 个客人，一张单要印两页；old = 旧后端，没有 phone / product_short / bus / location_ids / tour_buses；
 //   置顶 73：noSettings = 设置接口还没上线（404）；edit = 我有 dispatch.edit；failPut = 存设置 500；reset = 设置回默认。GET /__log。
@@ -188,8 +188,21 @@ http
     }
     log.push({ path: p, query: url.search });
     if (ctl.fail401) return send(res, 401, { detail: "Authentication required" });
-    if (p === "/api/me") return send(res, 200, { id: 1, username: "zztest", display_name: "ZZ Test", initials: "ZT", role: "staff", is_admin: false, is_superadmin: false });
-    if (p === "/api/me/permissions") return send(res, 200, { is_superadmin: false, permissions: [{ code: "dispatch.view", module: "dispatch", wired: true }, ...(ctl.edit ? [{ code: "dispatch.edit", module: "dispatch", wired: true }] : [])], default_home: null });
+    if (p === "/api/me") return send(res, 200, { id: 1, username: "zztest", display_name: "ZZ Test", initials: "ZT", role: ctl.partner ? "partner" : "staff", is_admin: false, is_superadmin: false });
+    // ⬇ Excel 要 manifests.export（默认有；noExport = 没勾）；partner = 合作公司账号（勾了也不给）。
+    if (p === "/api/me/permissions") return send(res, 200, { is_superadmin: false, permissions: [{ code: "dispatch.view", module: "dispatch", wired: true }, ...(ctl.edit ? [{ code: "dispatch.edit", module: "dispatch", wired: true }] : []), ...(ctl.noExport ? [] : [{ code: "manifests.export", module: "manifests", wired: true }])], default_home: null });
+    // Relay list ⬇ Excel：ctl.excel = "ok" 回一个 xlsx；"fail" = 400 原话；没设 = 404（后端还没上）。
+    if (p === "/api/dispatch/relay-list/excel") {
+      if (ctl.excel === "ok") {
+        res.writeHead(200, {
+          "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          "Content-Disposition": `attachment; filename="relay-list-${url.searchParams.get("date")}${url.searchParams.get("car") ? `-car-${url.searchParams.get("car")}` : ""}.xlsx"`,
+        });
+        return res.end(Buffer.from("PK\u0003\u0004mock-xlsx"));
+      }
+      if (ctl.excel === "fail") return send(res, 400, { detail: "No relay cars are saved for this day yet." });
+      return send(res, 404, { detail: "Not Found" });
+    }
     {
       const entry = log[log.length - 1];
       entry.method = req.method;

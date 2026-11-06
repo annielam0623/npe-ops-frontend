@@ -1,5 +1,6 @@
 import type { DriverFollowed } from "@/lib/driver-follow";
 import { apiFetch } from "@/lib/api-client";
+import { ApiError } from "@/types";
 import type {
   DispatchCopyResult,
   DispatchDay,
@@ -337,7 +338,14 @@ export interface RelayPull {
       guests: RelayGuest[];
     }[]
   >;
-  need_a_look: (RelayGuest & { reason: string })[];
+  need_a_look: (RelayGuest & {
+    reason: string;
+    /**
+     * 置顶 94（后端 307d6895）：这位客人的团在 Bus Manifest setup 设的轮次——"relay" / "relay_2"；
+     * Hoover 这类 tour_car 团是 "tour_car"。旧后端没有这个键。
+     */
+    round?: string | null;
+  })[];
   /** 置顶 73：RELAY SPLITS 总表的纸张方向；没有 = portrait。 */
   summary_orientation?: "portrait" | "landscape";
   /** 在团车出发点（Tour bus departure）上车、不进 relay 的单数。 */
@@ -346,12 +354,39 @@ export interface RelayPull {
   checked_at?: string;
 }
 
+/** need_a_look 里「这一轮没有 relay 车停这家酒店」那条的原话（后端 relay_pull.REASON_NO_CAR）。 */
+export const RELAY_REASON_NO_CAR =
+  "No relay car stops at this hotel in this round";
+
 /** 当天两轮 + Need a look（只读：按已保存的排车和当天上传的 manifest 算，不写库、不发东西）。 */
 export function fetchRelayPull(date: string): Promise<RelayPull> {
   return apiFetch<RelayPull>(`${API}/relay-pull`, {
     cache: "no-store",
     query: { date },
   });
+}
+
+/**
+ * Relay list 下载 Excel（置顶 92 Q8 A：一张单一个工作表，颜色 / 字号 / 纸张 / 方向照页面；后端 07 生成）。
+ * 带 car（页面 &car=）只出那一台车那张。
+ * 不是 JSON，所以不走 apiFetch：出错照样抛 ApiError（401 跳登录、4xx 写原话）。
+ */
+export async function downloadRelayListExcel(
+  date: string,
+  car: number | null = null,
+): Promise<{ blob: Blob; filename: string }> {
+  const q = new URLSearchParams({ date });
+  if (car !== null) q.set("car", String(car));
+  const res = await fetch(`${API}/relay-list/excel?${q}`, {
+    credentials: "include",
+    cache: "no-store",
+  });
+  if (!res.ok) throw await ApiError.fromResponse(res);
+  const disposition = res.headers.get("content-disposition") ?? "";
+  const filename =
+    /filename="?([^";]+)"?/.exec(disposition)?.[1] ??
+    `relay-list-${date}${car !== null ? `-car-${car}` : ""}.xlsx`;
+  return { blob: await res.blob(), filename };
 }
 
 /** 发某一轮之前：这次会发几位、已经发过几位（服务端重算，只读）。 */

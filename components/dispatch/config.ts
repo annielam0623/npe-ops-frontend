@@ -355,10 +355,21 @@ export function needsShuttlePickup(g: { pickup_is_vegas?: boolean | null }): boo
  * shuttlePax：团（manifest_id）→ 当天 Bus manifest 里要在 Shuttle 站上车的 Shuttle 客人数
  * （Shuttle 节里上车点不是 Vegas 酒店的，见 needsShuttlePickup）；没读到的团不提醒。
  */
+/**
+ * relayNoCar：轮次（relay / relay_2）→ relay-pull need_a_look 里「No relay car stops at this hotel in this round」的酒店
+ * （置顶 94，Annie「94 全按推荐，动手」：按已保存的排车算，只含这一轮有客人的酒店，TI 上车的不在里面）。
+ * 没给 = 读不到 / 后端没带 round ⇒ Schedule check 照旧按所有 Vegas 酒店算。
+ */
+export type RelayNoCar = Record<
+  string,
+  { location_id: number; name: string; pax: number }[]
+>;
+
 export function analyze(
   rows: DispatchRow[],
   L: Lookup,
   shuttlePax?: Record<number, number>,
+  relayNoCar?: RelayNoCar,
 ): Analysis {
   const day = L.day;
   const sectionKey = (s: { shift: string; manifest_id: number | null }) =>
@@ -417,14 +428,23 @@ export function analyze(
   const missingTitles: string[] = [];
   META.coverage_shifts.forEach((c, i) => {
     if (i > 0 && !byKey.get(c)?.vans) return;
-    const missing = activeLocs.filter((l) => !relayHotels[c].has(l.id));
-    if (!missing.length) return;
-    const title = `${missing.length} hotel${missing.length === 1 ? "" : "s"} with no ${covName(c)} vehicle`;
+    // 置顶 94：用后端那份清单（这一轮有客人、没车停的酒店，带人数「MGM (4)」）；页面上这一轮加了那家酒店（没存）先拿掉。
+    const names = relayNoCar
+      ? (relayNoCar[c] ?? [])
+          .filter((h) => !relayHotels[c].has(h.location_id))
+          .map((h) => `${h.name} (${h.pax})`)
+      : activeLocs
+          .filter((l) => !relayHotels[c].has(l.id))
+          .map((l) => l.name);
+    if (!names.length) return;
+    const title = `${names.length} hotel${names.length === 1 ? "" : "s"} with no ${covName(c)} vehicle`;
     missingTitles.push(title);
     issues.push({
       title,
-      detail: `Only ${covName(c)} counts here - each round is counted on its own, and the tours start from Treasure Island.`,
-      names: missing.map((l) => l.name),
+      detail: relayNoCar
+        ? "Only hotels with guests on this round's tours. Treasure Island is left out because the tours start there."
+        : `Only ${covName(c)} counts here - each round is counted on its own, and the tours start from Treasure Island.`,
+      names,
       namesKey: `missing:${c}`,
       sec: c,
     });
