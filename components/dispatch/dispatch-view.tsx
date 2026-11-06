@@ -25,10 +25,12 @@ import {
   copyDispatchDay,
   fetchDispatchDay,
   fetchDispatchPrefill,
+  fetchRelayPull,
   fetchSeating,
   matchPrivateOrders,
   moveSeating,
   pullFromDiscord,
+  RELAY_REASON_NO_CAR,
   saveDispatchDay,
   saveDispatchSection,
 } from "@/lib/dispatch-api";
@@ -79,6 +81,7 @@ import {
   cloneRows,
   countChanges,
   needsShuttlePickup,
+  type RelayNoCar,
   fmtLong,
   fmtShort,
   isBlankRow,
@@ -445,6 +448,55 @@ export function DispatchView() {
     });
     return () => ac.abort();
   }, [tourCards]);
+  /**
+   * 置顶 94（Annie「94 全按推荐，动手」）：Schedule check「hotels with no Morning Relay · … vehicle」只列这一轮
+   * relay-pull need_a_look 里「No relay car stops at this hotel in this round」的酒店，按酒店合并人数。
+   * 后端按已保存的排车算 ⇒ 打开这一天、每次存好（base 换了）都重读；读不到 / 后端没带 round ⇒ null，照旧算。
+   */
+  const [relayNoCar, setRelayNoCar] = useState<{
+    date: string;
+    byRound: RelayNoCar;
+  } | null>(null);
+  const noCarDate = day?.run_date;
+  useEffect(() => {
+    if (!noCarDate) return;
+    let gone = false;
+    fetchRelayPull(noCarDate).then(
+      (pull) => {
+        if (gone) return;
+        const list = pull.need_a_look ?? [];
+        if (list.length && !list.some((g) => g.round)) {
+          setRelayNoCar(null);
+          return;
+        }
+        const byRound: RelayNoCar = {};
+        for (const g of list) {
+          if (g.reason !== RELAY_REASON_NO_CAR || !g.round) continue;
+          if (g.location_id == null) continue;
+          const hs = (byRound[g.round] ??= []);
+          const h = hs.find((x) => x.location_id === g.location_id);
+          if (h) h.pax += g.pax ?? 0;
+          else
+            hs.push({
+              location_id: g.location_id,
+              name: g.hotel || g.pickup_location,
+              pax: g.pax ?? 0,
+            });
+        }
+        for (const hs of Object.values(byRound))
+          hs.sort((a, b) =>
+            a.name.localeCompare(b.name, "en", { sensitivity: "base" }),
+          );
+        setRelayNoCar({ date: noCarDate, byRound });
+      },
+      () => {
+        if (!gone) setRelayNoCar(null);
+      },
+    );
+    return () => {
+      gone = true;
+    };
+  }, [noCarDate, base]);
   /** 没客人的团展开没有：Step 1、Step 2 同一个开关。 */
   const [showEmpty, setShowEmpty] = useState(false);
   /** G82：点 Re-match 加 1，重新给 Private 车配订单。 */
@@ -556,9 +608,12 @@ export function DispatchView() {
             rows,
             L,
             shuttlePax?.date === L.day.run_date ? shuttlePax.byId : undefined,
+            relayNoCar?.date === L.day.run_date
+              ? relayNoCar.byRound
+              : undefined,
           )
         : null,
-    [rows, L, shuttlePax],
+    [rows, L, shuttlePax, relayNoCar],
   );
   // Step 1 团卡片（ManifestsPanel，另读 /api/dispatch/manifests，没有 color 字段）要和这里的团色条
   // 用同一个颜色：从 day.sections（有 color，G142）按 manifest_id 做一张表传过去。

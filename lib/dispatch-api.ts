@@ -338,7 +338,14 @@ export interface RelayPull {
       guests: RelayGuest[];
     }[]
   >;
-  need_a_look: (RelayGuest & { reason: string })[];
+  need_a_look: (RelayGuest & {
+    reason: string;
+    /**
+     * 置顶 94（后端 307d6895）：这位客人的团在 Bus Manifest setup 设的轮次——"relay" / "relay_2"；
+     * Hoover 这类 tour_car 团是 "tour_car"。旧后端没有这个键。
+     */
+    round?: string | null;
+  })[];
   /** 置顶 73：RELAY SPLITS 总表的纸张方向；没有 = portrait。 */
   summary_orientation?: "portrait" | "landscape";
   /** 在团车出发点（Tour bus departure）上车、不进 relay 的单数。 */
@@ -346,6 +353,10 @@ export interface RelayPull {
   /** 查发送状态之前的服务器时间：勾 Send anyway 时原样带回发送键（preview_at）。 */
   checked_at?: string;
 }
+
+/** need_a_look 里「这一轮没有 relay 车停这家酒店」那条的原话（后端 relay_pull.REASON_NO_CAR）。 */
+export const RELAY_REASON_NO_CAR =
+  "No relay car stops at this hotel in this round";
 
 /** 当天两轮 + Need a look（只读：按已保存的排车和当天上传的 manifest 算，不写库、不发东西）。 */
 export function fetchRelayPull(date: string): Promise<RelayPull> {

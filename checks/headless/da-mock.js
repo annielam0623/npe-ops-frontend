@@ -481,7 +481,16 @@ http.createServer(async (req, res) => {
         relay_2: [{ car: { id: 802, van: null, driver: null, ...(ctl.relayNoTracking ? { has_tracking: false } : {}), ...(ctl.relayBlocked ? { problems: BAD_CAR_2.problems } : {}) }, guests: [] }],
         tour_car: ctl.tourCar ? [{ car: tourCarCar, guests: tourCarGuests }, ...tourCarSecond] : [],
       },
-      need_a_look: [g({ id: 9, order_number: "R9", pickup_time: "7:30 AM", reason: "Pickup time could not be worked out from the time in Rezdy" })],
+      // needRound（置顶 94，后端 307d6895）：每条带 round；1st Round MGM 两单（2 + 3 人）、aria 4 人没车停，
+      // relay_2 Excalibur 1 人，Hoover（tour_car）一条别的原因；1st Round 另有一条没时间的（不算没车）。
+      need_a_look: ctl.needRound ? [
+        g({ id: 40, order_number: "N1", pickup_location: "MGM Grand", location_id: 101, hotel: "MGM", pax: 2, reason: "No relay car stops at this hotel in this round", round: "relay" }),
+        g({ id: 41, order_number: "N2", pickup_location: "MGM", location_id: 101, hotel: "MGM", pax: 3, reason: "No relay car stops at this hotel in this round", round: "relay" }),
+        g({ id: 42, order_number: "N3", pickup_location: "Aria Resort", location_id: 105, hotel: "aria", pax: 4, reason: "No relay car stops at this hotel in this round", round: "relay" }),
+        g({ id: 43, order_number: "N4", pickup_location: "Excalibur", location_id: 100, hotel: "Excalibur", pax: 1, reason: "No relay car stops at this hotel in this round", round: "relay_2" }),
+        g({ id: 44, order_number: "N5", pickup_location: "Excalibur", location_id: 100, hotel: "Excalibur", pickup_time: "", reason: "Pickup time could not be worked out from the time in Rezdy", round: "relay" }),
+        g({ id: 45, order_number: "N6", tour: "Hoover Dam", pickup_time: "", reason: "Pickup time could not be worked out from the time in Rezdy", round: "tour_car" }),
+      ] : ctl.needRoundEmpty ? [] : [g({ id: 9, order_number: "R9", pickup_time: "7:30 AM", reason: "Pickup time could not be worked out from the time in Rezdy" })],
       departure: 4 });
   }
   if (p === "/api/dispatch/relay-send/preview") {
