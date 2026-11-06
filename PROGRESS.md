@@ -11,6 +11,7 @@
 - ⚠️ 78 交接「二」有两条已过时：**87 正式版（按上车点）main 2bc2714d（7a）+ 后端 G253**、**86 Working Record main 0b0e1619（a0，去掉 Hours）+ 后端 G249**，公司 e8 今天都已合（见 e8 收工交接）。已回 46 不用再做。
 - 46 回：92 第 2 批 07 做 Relay 当天字号（新表，SQL 等 Annie 看）→ Relay list 照设定读，61 做 Text 起点接打印 / Excel，SHA 到了发 40 → 派 77 合 task/print-layout-2。G250 4c 在 task/dispatch-tour-lock，**等 Annie 在 4c 窗口选 A（今晚加表存锁）/ B（先只锁过去的日子）**；接口 GET /api/dispatch/day 加 tour_locks，锁了改就 409。94 后端没收到过：40 已把背景转 46，等 Annie 答 3 题后再发定稿。
 - ✅ 77 回：**92 版式设置第 1 批 main b7fd8a73**（PROGRESS eb844f27；后端 8a72f830 核过；mf 279、rl 87、da 521、nav 39，tsc / eslint / build 过）。验收点已转 Annie（Bus Manifest / Relay list「⚙ Colours & page」，试完 Reset all to paper + Save）。task/print-layout-2 9df7f172 留在 worktree D:\npe-ops-frontend-wt-layout 等后端第 2 批；wt-layout1 可删。
+- ✅ **Annie（原话）：「93：全按推荐，动手」** ⇒ G250 前端 preview SgRWaBvRcTie4cTdziPjtD Q1–Q9 全 A。已派 ef：前端 task/dispatch-tour-lock 照 mock 做、推分支不合；后端 4c task/dispatch-tour-lock 上 main 后核字段再合。已告诉 46。后端 A / B 仍等 Annie 在 4c 窗口选。
 - Annie 要关旧窗口：78、ef、77 可关（77 交完）。后端 07 / 61 / 4c / 46 还在做或等 Annie，先别关。下次 92 第 2 批 SHA 到了要另开工作窗口接 print-layout-2。
 
 ## 2026-11-05 晚 交接：前端主窗口 `前端主窗口-78`[6e88e1] → 新主窗口（家里电脑）
