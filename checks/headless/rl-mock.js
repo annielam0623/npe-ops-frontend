@@ -188,11 +188,11 @@ http
       if (ctl.excel === "ok") {
         res.writeHead(200, {
           "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-          "Content-Disposition": `attachment; filename="Relay_list_${url.searchParams.get("date")}.xlsx"`,
+          "Content-Disposition": `attachment; filename="relay-list-${url.searchParams.get("date")}${url.searchParams.get("car") ? `-car-${url.searchParams.get("car")}` : ""}.xlsx"`,
         });
         return res.end(Buffer.from("PK\u0003\u0004mock-xlsx"));
       }
-      if (ctl.excel === "fail") return send(res, 400, { detail: "No relay cars are saved for this day." });
+      if (ctl.excel === "fail") return send(res, 400, { detail: "No relay cars are saved for this day yet." });
       return send(res, 404, { detail: "Not Found" });
     }
     if (p === "/api/settings/relay-list") {

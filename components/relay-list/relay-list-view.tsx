@@ -171,7 +171,11 @@ export function RelayListView() {
         ) : null}
         {view.kind === "ready" && params ? (
           <PhoneMore label="Download">
-            <ExcelButton date={params.date} onUnauthorized={redirectToLogin} />
+            <ExcelButton
+              date={params.date}
+              car={params.car}
+              onUnauthorized={redirectToLogin}
+            />
           </PhoneMore>
         ) : null}
         {view.kind === "ready" && settings ? (
@@ -258,9 +262,12 @@ const HOW_TO = [
  */
 function ExcelButton({
   date,
+  car,
   onUnauthorized,
 }: {
   date: string;
+  /** 页面带 &car=（车头的 Print）：只下载这一台车那张。 */
+  car: number | null;
   onUnauthorized: () => void;
 }) {
   const [busy, setBusy] = useState(false);
@@ -269,7 +276,7 @@ function ExcelButton({
     setBusy(true);
     setError(null);
     try {
-      const { blob, filename } = await downloadRelayListExcel(date);
+      const { blob, filename } = await downloadRelayListExcel(date, car);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;

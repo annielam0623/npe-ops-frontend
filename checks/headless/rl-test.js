@@ -245,10 +245,21 @@ async function run() {
   }
   await ctl({ excel: "fail" });
   await evaluate("document.querySelector('[data-relay-excel]').click(); return 1;");
-  check("后端报错（400）：红字写后端原话", await waitFor("document.querySelector('[data-relay-excel-error]')?.textContent === 'Could not download: No relay cars are saved for this day.'", 15000));
+  check("后端报错（400）：红字写后端原话", await waitFor("document.querySelector('[data-relay-excel-error]')?.textContent === 'Could not download: No relay cars are saved for this day yet.'", 15000));
   await ctl({ excel: "ok" });
   await evaluate("document.querySelector('[data-relay-excel]').click(); return 1;");
-  check("下载成功：文件名取后端 Content-Disposition（Relay_list_日期.xlsx），红字消失", await waitFor(`window.__dl[0] === 'Relay_list_${D}.xlsx' && !document.querySelector('[data-relay-excel-error]')`, 15000));
+  check("下载成功：文件名取后端 Content-Disposition（relay-list-日期.xlsx），红字消失", await waitFor(`window.__dl[0] === 'relay-list-${D}.xlsx' && !document.querySelector('[data-relay-excel-error]')`, 15000));
+  // 车头的 Print（&car=）：只下载这一台车那张。
+  await open(`${URL0}&car=902`);
+  await waitFor("document.querySelector('[data-relay-excel]')", 30000);
+  await evaluate("window.__dl = []; HTMLAnchorElement.prototype.click = function () { if (this.download) window.__dl.push(this.download); }; return 1;");
+  {
+    const before = (await mockLog()).length;
+    await evaluate("document.querySelector('[data-relay-excel]').click(); return 1;");
+    check("?car=902：下载带 car=902，文件名 relay-list-日期-car-902.xlsx", await waitFor(`window.__dl[0] === 'relay-list-${D}-car-902.xlsx'`, 15000));
+    const hit = (await mockLog()).slice(before).find((l) => l.path === "/api/dispatch/relay-list/excel");
+    check("?car=902：请求 date + car", !!hit && hit.query === `?date=${D}&car=902`, JSON.stringify(hit));
+  }
   await ctl({ excel: null });
 
   // 旧后端（还没有打印字段）：照样能看，缺的格子空着、Tour 写团名
