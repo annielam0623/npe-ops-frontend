@@ -27,6 +27,7 @@ const TOUR_TEMPLATES = [
   { key: "last_minute", label: "Last Minute" },
 ];
 const V3_RUNS = [
+  { run_key: "last_minute|2026-11-06|23:59", kind: "last_minute", status: "done", stale: false, started_at: "2026-11-07T07:59:00Z", finished_at: "2026-11-07T07:59:04Z", summary: { dates: ["2026-11-07"], sent: 2, already_sent: 0, skipped: 0, alerted: 0, alert_failed: [] } },
   { run_key: "last_minute|2026-11-06|14:00", kind: "last_minute", status: "done", stale: false, started_at: "2026-11-06T22:00:00Z", finished_at: "2026-11-06T22:00:09Z", summary: { dates: ["2026-11-07"], sent: 4, already_sent: 1, skipped: 1, alerted: 1, alert_failed: [] } },
   { run_key: "last_minute|2026-11-06|13:00", kind: "last_minute", status: "done", stale: false, started_at: "2026-11-06T21:00:00Z", finished_at: "2026-11-06T21:00:03Z", summary: { dates: ["2026-11-07"], sent: 1, already_sent: 0, skipped: 0, alerted: 0, alert_failed: ["antelope@nationalparkexpress.com", "ops@example.com"] } },
   { run_key: "tickets:2026-11-05T17:00", kind: "tickets", status: "done", stale: false, started_at: "2026-11-06T01:00:00Z", finished_at: "2026-11-06T01:03:00Z", summary: { sent: 40, already_sent: 0, waiting: 2, deferred: 0, cap: null, daily_report: { status: "sent", listed: 3, email_failed: [] } } },

@@ -406,9 +406,10 @@ function HowToUseV3({ lastMinute }: { lastMinute: boolean }) {
           template picked for &ldquo;Orders before the cutoff&rdquo;. Orders
           placed after the cutoff the day before the tour are checked every hour
           on the hour and sent by SMS and email with the template picked for
-          &ldquo;Orders after the cutoff&rdquo;; the last check is at 12:00 AM
-          on the tour day. Max per batch doesn&apos;t apply to them, and orders
-          already sent by hand are not sent again.
+          &ldquo;Orders after the cutoff&rdquo;; the last check is at 11:59 PM
+          the day before the tour. Max per batch doesn&apos;t apply to them, and
+          orders already sent by hand are not sent again. Orders placed after
+          11:59 PM need to be sent by hand on Manifests.
         </li>
       ) : null}
       <li>
@@ -1506,9 +1507,10 @@ function TemplatesField({
       </div>
       <p className={cn(NOTE, "m-0")} data-template-note>
         Orders placed after {clock(cutoff)} the day before the tour. Checked
-        every hour on the hour; the last check is at 12:00 AM on the tour day.
-        SMS and email. Max per batch doesn&apos;t apply. Orders sent by hand are
-        not sent again.
+        {/* Annie 2026-11-06「那就改成头天11：59pm最后一次扫描」：后端最后一次扫描挪到团期前一天 23:59。 */}
+        every hour on the hour; the last check is at 11:59 PM the day before the
+        tour. SMS and email. Max per batch doesn&apos;t apply. Orders sent by
+        hand are not sent again.
       </p>
     </div>
   );
