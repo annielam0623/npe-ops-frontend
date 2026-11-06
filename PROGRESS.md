@@ -1174,6 +1174,8 @@ D. 已完成、待从置顶移走：
 - Annie 发了截图「应该得样子和实际得样子」（Antelope Canyon 11/6 Bus 1960=A，屏幕 vs Print 页）：节标题底色打印**有**；打印**没有**：① Hotel 格按节色高亮的底色（MGM Grand / T.I. 浅蓝、MandalayBay / Bellagio 橙、Bellagio / T.I. 绿）；② Lunch「-」浅粉红底。⇒ 不是浏览器设置，是打印页没画这两种格子底色。78 派 ef 只读查这两种底色出处（前端算 / 后端字段、条件、颜色值），结论转 46 改后端打印页。
 - ef 查完（前端不用改）：① Hotel 格底色是前端 manifest-view.tsx:1674 hotelMarks() 算的（G198 Q2 A：只 tour 节，同节同酒店连着一组，第 2、4…组标第一行，颜色 = 节颜色），后端打印页没这套 ⇒ 转 46 补（属照规格修 bug）；③ 打印页 Order # 仍等宽 td.mono（G198 已定用正文字体）⇒ 转 46 改；② Lunch「-」粉底是 lunch_mismatch，照 Bus Manifest Q17「纸上不印红」规格不印。
 - 78 问 Annie（Q1）：Lunch「-」粉底打印要不要印：A（推荐）照 Q17 不印（打印 / 下载前已弹提醒，Q21）；B 改成也印。（Q2）Excel 下载要不要也加 Hotel 格底色：A（推荐）不加，只改打印页；B 也加。
+- 后端工作窗口（Annie 转贴）：打印页给合作公司那份 Hotel 格也上了色，屏幕上那份还不标，请前端补。
+- ✅ **Annie（原话）**：「要打印，所有设置了的颜色都要打印，不要替staff做主」⇒ Q1 = B（Lunch「-」粉底打印也印，取代 Q17「纸上不印红」）；打印页凡是屏幕上有的底色都印；合作公司那份 Hotel 格保留上色，前端屏幕上也补（派 ef，task/partner-hotel-marks）。已转 46。Q2 Excel 未答。
 
 ### 90. Relay Splits 可以自己调字体大小（2026-11-05，Annie 在后端 46 窗口提，46 转；没动手）
 - 原话：「relay split也需要可以自己调字体大小，设置就跟bus manifest一样」。
