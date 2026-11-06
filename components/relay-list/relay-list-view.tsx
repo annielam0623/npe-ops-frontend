@@ -512,7 +512,7 @@ function Sheets({
     const round = rounds.find((r) => r.cars.some((c) => c.carId === onlyCar));
     const car = round?.cars.find((c) => c.carId === onlyCar);
     return car && round ? (
-      <CarSheet car={car} round={round.round} dateShort={dates.short} />
+      <CarSheet car={car} dateShort={dates.short} />
     ) : (
       <p className="text-[13px] text-[#cbd5e1]">
         This car is not on the saved Morning Relay for this day.
@@ -542,7 +542,6 @@ function Sheets({
               <CarSheet
                 key={c.key}
                 car={c}
-                round={r.round}
                 dateShort={dates.short}
               />
             ))}
@@ -737,11 +736,9 @@ function TotalSheet({
 
 function CarSheet({
   car,
-  round,
   dateShort,
 }: {
   car: RelayCarSheet;
-  round: string;
   dateShort: string;
 }) {
   const hotelStyle = useHotelStyle();
