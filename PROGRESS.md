@@ -1211,6 +1211,8 @@ D. 已完成、待从置顶移走：
 - **Annie（原话，ef 窗口，2026-11-05 晚）**：「Q1 这一轮有客人的酒店，数据从哪来--- 其实在选完了酒店以后，后端就会出一个清单列了哪些酒店没有安排车，这个清单在relay split里能看到，在send page上也能看到的」
   - ef 只读核：就是 relay-pull 的 need_a_look 里 reason =「No relay car stops at this hotel in this round」那些（后端 relay_pull.py:215；Relay list 的「Not on any relay car yet」、Send 页 Relay 面板都用它）。每条带 location_id、manifest_id、pax，只含当天有客人的酒店；TI 上车的进 departure 不在里面。⇒ 不用另做 relay_guest_hotels。
   - 改法（ef 建议，已回 Annie，**还没定、没动手**）：Schedule check 用这份清单，按酒店合并带人数「MGM (4)」；后端只加一个字段：need_a_look 每条加 round（relay / relay_2），才能按轮分开列。清单按已保存的排车算，前端边改边减：这一轮在页面上加了那家酒店（没存）就先从名单拿掉，存了以后跟后端对齐。Q2 带人数、Q3 说明小字照原推荐。等 Annie 一句「94 用 Need a look 那份，其余按推荐」。
+- **Annie（原话）**：「第几轮就看这个tour最后一个出发时间就能看出来了啊」
+  - ef 回（问 Annie，没定）：Q1 A（推荐）照团在 Bus Manifest setup 设的轮次（manifests.relay_round；后端分 Relay / Relay split / Send 都照它，Annie 10-14「分轮按团，不按时间」），后端 need_a_look 每条加 round 一个字段，三处永远一致；B 前端按团最后出发时间推，后端不改，时间和设定对不上的日子会跟 Relay split 不一致。其余（带人数、说明小字）照原推荐。等 Annie 答「94 Q1 A / B」。
 
 ### 93. G250 Dispatch 团车出发 1 小时后自动锁定：前端样子（2026-11-05，后端 4c 转；没动手）
 - Annie 已定（⛔，后端那边）：系统行为、没有按键；锁后只有 Super Admin 能改；Picked up / No show / Boarded 打勾不锁；Completed 照旧，跟锁定无关。
