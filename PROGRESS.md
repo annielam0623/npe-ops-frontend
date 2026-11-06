@@ -20,6 +20,8 @@
 - 4c 发 G250 最终形状（没上 main）：Annie 在 4c 选 **B（过去的日子整天锁）**。tour_locks 加 past_day（run_date 早于今天 LA ⇒ 全天所有团 / relay 轮 / Private Custom 都锁）；当天出发 + 1h 锁、拿不到出发时间不锁、Private Custom 当天不锁；读不出 tour_locks = null。409 也覆盖 guest-bus、seating/move。已转 01。**待问 Annie**：past_day 说明条原文（preview 没有），推荐员工「This day is locked. Only a Super Admin can change it.」/ SA「This day is locked. You can still change it as a Super Admin.」，01 先照推荐做。
 - 92 第 2 批之一后端上 main **1630d366**（46 转，61 做）：Text 页起点字号接 Bus Manifest 打印 / Excel，G197 当天字号叠在上面；没加字段，前端不用改。Relay 当天字号（07）排在 G250 后上 main ⇒ print-layout-2 等它。已转 01。
 - ✅ 93 G250 后端上 main **68b69380**（4c 转，字段同上，生产已生效）。已转 01 核字段、准备合；past_day 文字等 Annie 答完就合。
+- ✅ 94 前端上 main **ed518553**（01；da 527、nav 39，tsc / eslint / build 过）。验收点已转 Annie。
+- 93 前端 task/dispatch-tour-lock **a7c07e61** 已推、没合（01；da 544、mf 283、nav 39，tsc / eslint / build 过；含最新 main + 94）。**只等 Annie 答 past_day 两句**（改字只动 config.ts lockText）。print-layout-2 01 已照 07 形状改 f36dfa19（rl 107），跑完推分支不合。
 - Annie 要关旧窗口：78、ef、77 可关（77 交完）。后端 07 / 61 / 4c / 46 还在做或等 Annie，先别关。下次 92 第 2 批 SHA 到了要另开工作窗口接 print-layout-2。
 
 ## 2026-11-05 晚 置顶 94 Schedule check 按这一轮 Need a look 列酒店（`task/schedule-check-need-a-look`，工作窗口 `npe-ops-frontend-01`[4a9dda]，40 派）—— ✅ 合 main
