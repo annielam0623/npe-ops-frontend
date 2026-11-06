@@ -985,7 +985,10 @@ async function run() {
   await waitFor("document.querySelector('[data-farm-out-done]')");
   await sleep(300);
   const foLog = (await mockLog()).slice(before).filter((e) => ["/api/dispatch/edit-lock", "/api/dispatch/day", "/api/dispatch/section", "/api/dispatch/edit-lock/release", "/api/dispatch/manifest"].includes(e.path));
-  check("请求顺序：edit-lock → day → section → edit-lock/release → 重读 manifest", JSON.stringify(foLog.map((e) => e.path.replace("/api/dispatch/", ""))) === JSON.stringify(["edit-lock", "day", "section", "edit-lock/release", "manifest"]), JSON.stringify(foLog.map((e) => e.path)));
+  // G250（置顶 93）：重读时另取一次 day 读锁定状态（换车下拉灰不灰），排在重读 manifest 后面也算。
+  const foOrder = foLog.map((e) => e.path.replace("/api/dispatch/", ""));
+  if (foOrder.at(-1) === "day" && foOrder.at(-2) === "manifest") foOrder.pop();
+  check("请求顺序：edit-lock → day → section → edit-lock/release → 重读 manifest（之后可再读一次 day 拿锁定状态）", JSON.stringify(foOrder) === JSON.stringify(["edit-lock", "day", "section", "edit-lock/release", "manifest"]), JSON.stringify(foLog.map((e) => e.path)));
   const sec = foLog.find((e) => e.path === "/api/dispatch/section")?.body;
   check("section：只送团 3（unit tour:3、两辆车），带 edit_token；第二辆车 farm_out + partner_id 5、司机 / 车 / 导游 / 酒店清空；第一辆原样", !!sec && sec.unit === "tour:3" && sec.edit_token === "zz-lock" && sec.rows.length === 2 && sec.rows[1].id === 42 && sec.rows[1].farm_out === true && sec.rows[1].partner_id === 5 && sec.rows[1].bus_label === "B" && sec.rows[1].driver_hr_id === null && sec.rows[1].vehicle_id === null && sec.rows[1].guide_hr_id === null && sec.rows[1].location_ids.length === 0 && sec.rows[0].id === 41 && sec.rows[0].driver_hr_id === 7 && !("farm_out" in sec.rows[0]), JSON.stringify(sec));
   check("转完：页面上方黄条「Bus 2042=B is farmed out to ZZ Test Partner Tours」带 Dispatch 链接，× 关掉", await evaluate("const b = document.querySelector('[data-farm-out-done]'); return b.textContent.includes('Bus 2042=B is farmed out to ZZ Test Partner Tours') && b.querySelector('a').getAttribute('href') === '/dispatch?date=2026-10-05';"));
