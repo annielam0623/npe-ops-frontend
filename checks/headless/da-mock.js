@@ -5,7 +5,7 @@ const staffPerm = require("./staff-perm-mock");
 const DRIVER_PAGE_OFF = "Driver page is off. Turn it on in Page visibility before sending.";
 const GUIDE_PAGE_OFF = "Guide page is off. Turn it on in Page visibility before sending.";
 const GUIDE_EXTRA_MAX = 60;
-const ctl = { completed: false, saveErr: "", fail401: false, pullStatus: "nothing", dayDelay: 0, failDay: false, altMeta: false, noMeta: false, relaySent: [], relayExtra: false, relayHotels: false, relayLater: [], relayRace: [], relayGone: [], relay409: false, relay502: false, driverFail: false, saveDelay: 0, driverAlt: false, relayBlocked: false, relayOnlyBad: false, relayBlockLate: false, foDraft: false, driverAllOk: false, emptyHoover: false,
+const ctl = { marks: false, noticeMarks: {}, completed: false, saveErr: "", fail401: false, pullStatus: "nothing", dayDelay: 0, failDay: false, altMeta: false, noMeta: false, relaySent: [], relayExtra: false, relayHotels: false, relayLater: [], relayRace: [], relayGone: [], relay409: false, relay502: false, driverFail: false, saveDelay: 0, driverAlt: false, relayBlocked: false, relayOnlyBad: false, relayBlockLate: false, foDraft: false, driverAllOk: false, emptyHoover: false,
   // G118 tour_car 轮（Hoover Dam）：tourCar = 这个团当天排了 bus_tour 车、有客人；tourCarNoCar = 排了团但当天一台 bus_tour 车都没排（整块挡住）；
   // tourCarBlocked = 排了车但没司机（这台车挡住，客人进 blocked_cars）。
   // tourCarB2 = 后端已补 car.tour_name / bus_label（B2），并且这个团排了两台车（Bus A / Bus B）。
@@ -20,7 +20,10 @@ const ctl = { completed: false, saveErr: "", fail401: false, pullStatus: "nothin
   lockOther: null, lock409: false, acquireErr: "", acquireDelay: 0, hb409: false, save409: false, copy409: false, timing: null };
 if (process.env.MOCK_CTL) Object.assign(ctl, JSON.parse(process.env.MOCK_CTL));
 const log = [];
-function send(res, status, body) { res.statusCode = status; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify(body)); }
+// G266：ctl.marks 开着时，driver-notice / guide-notice 的 people 每行带 sent_at / sent_by / failed_at（照后端 notice_marks）。
+function send(res, status, body) {
+  if (ctl.marks && body && Array.isArray(body.people) && body.run_date) body = { ...body, people: body.people.map((x) => ({ ...x, ...(ctl.noticeMarks[x.key] || { sent_at: null, sent_by: "", failed_at: null }) })) };
+  res.statusCode = status; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify(body)); }
 function readRaw(req) { return new Promise((r) => { const c = []; req.on("data", (d) => c.push(d)); req.on("end", () => r(Buffer.concat(c).toString("utf8"))); }); }
 const TODAY = "2026-10-04";
 const row = (o) => ({ id: null, shift: "relay", driver_hr_id: null, vehicle_id: null, note: "", manifest_id: null, guide_hr_id: null, bus_label: null,
@@ -532,6 +535,7 @@ http.createServer(async (req, res) => {
              ...(ctl.driverAlt ? [{ key: "typed:PAM", name: "PAM", phone: "+17025550102", can_send: true, why: "", cars: [{ shift: "relay_2", van: "1328", tour: null }] }] : [])] });
   if (p === "/api/dispatch/driver-notice/send") {
     const b = JSON.parse(await readRaw(req)); entry.body = b; ctl.driverSentAt = true;
+    if (ctl.marks && !ctl.driver502 && !ctl.driver400) for (const k of b.recipients || []) ctl.noticeMarks[k] = { sent_at: "2026-10-05T04:53:00+00:00", sent_by: "Annie", failed_at: null };
     if (ctl.driver502) return send(res, 502, { detail: "Bad gateway" });
     if (ctl.driver400) return send(res, 400, { detail: DRIVER_PAGE_OFF });
     return send(res, 200, { sent: ["FREDDY"], failed: ctl.driverFail ? [{ name: "BOB", error: "Twilio 21211" }] : [] });
@@ -565,6 +569,7 @@ http.createServer(async (req, res) => {
     ctl.guideSentAt = true;
     const names = { "hr:21": "KEVIN", "hr:22": "MARIA", "hr:23": "JASON" };
     const sent = (b.recipients || []).map((k) => names[k]).filter(Boolean);
+    if (ctl.marks) (b.recipients || []).forEach((k, i) => { if (ctl.guideFail && i === 0) ctl.noticeMarks[k] = { ...(ctl.noticeMarks[k] || { sent_at: null, sent_by: "" }), failed_at: "2026-10-05T05:02:00+00:00" }; else ctl.noticeMarks[k] = { sent_at: "2026-10-05T04:55:00+00:00", sent_by: "Annie", failed_at: null }; });
     if (ctl.guideFail) return send(res, 200, { sent: sent.slice(1), failed: [{ name: sent[0], error: "Carrier rejected the number" }] });
     return send(res, 200, { sent, failed: [] });
   }

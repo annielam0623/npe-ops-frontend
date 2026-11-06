@@ -484,6 +484,14 @@ export interface DriverNotice {
     can_send: boolean;
     /** 发不了的原因（没手机号、HR 没连登录账号等）。 */
     why: string;
+    /**
+     * G266（后端 60963f35，Annie「G266 Dispatch同意推荐，动手」）：这一天最近一次发成功的时间（UTC ISO），没发过 = null；
+     * sent_by 发的人（没发过 = ""）；failed_at 最近一次失败、且晚于最近一次成功时才有（页面照写 Not sent，不另外显示）。
+     * 没带这几个键（旧后端）= 不出 Sent 列。上线前的发送记录按名字对，同名的两个人共用一个标记（后端说明）。
+     */
+    sent_at?: string | null;
+    sent_by?: string;
+    failed_at?: string | null;
     cars: { shift: string; van: string | null; tour: string | null }[];
   }[];
 }
@@ -534,6 +542,14 @@ export interface GuideNotice {
     phone: string;
     can_send: boolean;
     why: string;
+    /**
+     * G266（后端 60963f35，Annie「G266 Dispatch同意推荐，动手」）：这一天最近一次发成功的时间（UTC ISO），没发过 = null；
+     * sent_by 发的人（没发过 = ""）；failed_at 最近一次失败、且晚于最近一次成功时才有（页面照写 Not sent，不另外显示）。
+     * 没带这几个键（旧后端）= 不出 Sent 列。上线前的发送记录按名字对，同名的两个人共用一个标记（后端说明）。
+     */
+    sent_at?: string | null;
+    sent_by?: string;
+    failed_at?: string | null;
     cars: { van: string | null; tour: string | null }[];
   }[];
 }
