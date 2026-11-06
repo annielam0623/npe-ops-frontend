@@ -1171,6 +1171,18 @@ D. 已完成、待从置顶移走：
 - 原话：「把对颜色编辑，加减颜色，哪个框还需要上色的功能都交给staff」「包括字体编辑，页面大小的设置，不要每次都让 我们改编码」。
 - 范围：Bus Manifest（屏幕 + 打印 + Excel 下载）+ Relay list（总表 + 车单）；置顶 90 Relay Splits 字号并进来。后端现有：manifests.paper_colors、G197 manifest_text_size、manifest_version、settings relay_list。
 - 78 派 77 出 preview（现状对照、放哪、哪些格设什么、默认 = 现在、范围、谁能改、暂存 Save、三处一致、Reset、字段草案），等 Annie 答 + 「动手」，定稿转 46。
+- **preview v2**：https://claude.ai/artifact/SQJtqNHSm7QSphrQiejaHL （77；置顶 90 的 7 题合成 Q5，90 不用再答）。现状对照 16 行；弹窗「⚙ Colours, text & page」分 Colours / Text / Page；11 题；后端字段草案（GET / PUT /api/settings/print-layout?page=bus_manifest|relay_list；palette / colours{all, tours} / ticket_rules / text / page；现有常量搬成默认；Relay 当天字号 PUT /api/dispatch/relay-list/text-size；新表，迁移先给 Annie；后端 3–4 天、前端约 3 天，可分两批）。
+  - Q1 放哪：A（推荐）每页一个 ⚙；B 全放 Products › Bus Manifest setup；C 新开 Settings › Print layouts。
+  - Q2 颜色管到哪：A（推荐）All tours 一份 + 可挑团另设（团盖过 All，车抬头按字母）；B 只一份；C 每团各一份。
+  - Q3 加减颜色 / 哪些格上色：A（推荐）每种格 Coloured 开关（也能给没颜色的格开）+ 票型规则表「Text contains … → colour」可加删 + 色盘可加删 / 打 #rrggbb；B 只能改已有颜色。
+  - Q4 每天起点字号：A（推荐）⚙ Text 设起点（Bus Manifest 按版式 General / Lankun / Marcello / West；Relay 总表、车单各一套），当天 Aa 再加减；B 只要当天 Aa。
+  - Q5 Relay Splits 当天 Aa Text size：A（推荐）同 Bus Manifest（每张单、整列 / 行 / 页、A− / A+、Bold、只存这天、Save、dispatch.edit、最近 5 次 + Action Log）；B 不要。
+  - Q6 页面大小：A（推荐）纸张 A4 / Letter、每种单竖横、边距 mm，每页一份所有团通用，打印 + Excel 照它；B 只加纸张。
+  - Q7 颜色全印：A（推荐）全印，午餐对不上浅红底变 Colours 一行默认开；B 浅红底只在屏幕。（Annie 今天已说「所有设置了的颜色都要打印」，实为确认）
+  - Q8 Relay list 加 ⬇ Excel：A（推荐）加，一张单一个工作表；B 不加。
+  - Q9 谁能改：A（推荐）dispatch.edit；B 先只 SA + 开关。
+  - Q10 怎么存：A（推荐）暂存 + 蓝 Save + 关前问 + Reset / Reset all to paper + Action Log；B 改一项存一项。
+  - Q11 How to use：A（推荐）原文见 preview / 77 消息（「⚙ Colours, text & page: choose the colour of each box … on top of the everyday size.」）；B 她改字。
 
 ### 91. Bus Manifest 背景颜色打印不出来（2026-11-05，Annie 在 46 报，46 转；ef 查完前端不用改）
 - 原话：「bus manifest的背景颜色打印不出来」。
