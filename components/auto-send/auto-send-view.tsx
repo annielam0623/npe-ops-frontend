@@ -1505,9 +1505,9 @@ function TemplatesField({
           (v) => onChange({ template_last_minute: v }),
         )}
       </div>
+      {/* Annie 2026-11-06「那就改成头天11：59pm最后一次扫描」：后端最后一次扫描挪到团期前一天 23:59。 */}
       <p className={cn(NOTE, "m-0")} data-template-note>
         Orders placed after {clock(cutoff)} the day before the tour. Checked
-        {/* Annie 2026-11-06「那就改成头天11：59pm最后一次扫描」：后端最后一次扫描挪到团期前一天 23:59。 */}
         every hour on the hour; the last check is at 11:59 PM the day before the
         tour. SMS and email. Max per batch doesn&apos;t apply. Orders sent by
         hand are not sent again.
