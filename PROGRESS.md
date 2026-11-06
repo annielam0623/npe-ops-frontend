@@ -1170,6 +1170,8 @@ D. 已完成、待从置顶移走：
 ### 94. Dispatch Schedule check「hotels with no Morning Relay vehicle」：TI 不算、当天没客人的酒店不算（2026-11-05，Annie 在后端 07 提，46 转）
 - 46 转：前端算（components/dispatch/config.ts:394-431）。07 在跟 Annie 确认口径，定了直接发前端。
 - 78 派 ef 先只读查现状 / 数据 / TI 怎么认，等口径再改。
+- ef 查（config.ts 约 391-431）：清单 = day.locations active + is_tour_bus + 非 is_tour_departure、这一轮没排车的，跟有没有客人无关。TI 已按 is_tour_departure 排除（Annie 10-31 A），线上还见 TI ⇒ 多半生产 TI 那行没勾「Tour bus departure」（已请 07 只读查）。前端没有可靠的每轮有客人酒店。
+- 78 问 Annie：Q1 A（推荐）后端 /api/dispatch/day 加 relay_guest_hotels {relay:{location_id: pax}, relay_2}（relay_pull 同规则），前端只列这一轮有客人、没排车的；B relay-pull need_a_look 加 round 前端拼。Q2 名单带人数「MGM (4)」：A（推荐）带 / B 不带。Q3 说明小字原文：现「Only … counts here - each round is counted on its own, and the tours start from Treasure Island.」→ A（推荐）「Only hotels with guests on this round's tours. Treasure Island is left out because the tours start there.」/ B 她改。
 
 ### 93. G250 Dispatch 团车出发 1 小时后自动锁定：前端样子（2026-11-05，后端 4c 转；没动手）
 - Annie 已定（⛔，后端那边）：系统行为、没有按键；锁后只有 Super Admin 能改；Picked up / No show / Boarded 打勾不锁；Completed 照旧，跟锁定无关。
