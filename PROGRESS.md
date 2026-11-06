@@ -1171,6 +1171,7 @@ D. 已完成、待从置顶移走：
 - 原话：「bus manifest的背景颜色打印不出来」。
 - ef 查：ops Bus Manifest 的 Print / Print all buses 开后端旧页 /admin/dispatch/manifest/print（lib/dispatch-manifest-api.ts:270），前端没有自己的打印样式。后端 tour_manifest_print.html:20 已有 print-color-adjust: exact，@media print 没清格子底色；headless Chrome 实测不勾 Background graphics 也有底色。
 - 78 问 Annie：怎么打的（① 屏幕页直接 Ctrl+P 没点 Print 键 ② 打印对话框 Color 选了黑白 / 打印机默认灰度 ③ 不是 Chrome / Edge ④ 打的是 Download 出来的 Excel），附打印预览截图。确认点 Print 键 + Chrome + 彩色仍没底色 ⇒ 转 46 查后端页面。
+- Annie 发了截图「应该得样子和实际得样子」（Antelope Canyon 11/6 Bus 1960=A，屏幕 vs Print 页）：节标题底色打印**有**；打印**没有**：① Hotel 格按节色高亮的底色（MGM Grand / T.I. 浅蓝、MandalayBay / Bellagio 橙、Bellagio / T.I. 绿）；② Lunch「-」浅粉红底。⇒ 不是浏览器设置，是打印页没画这两种格子底色。78 派 ef 只读查这两种底色出处（前端算 / 后端字段、条件、颜色值），结论转 46 改后端打印页。
 
 ### 90. Relay Splits 可以自己调字体大小（2026-11-05，Annie 在后端 46 窗口提，46 转；没动手）
 - 原话：「relay split也需要可以自己调字体大小，设置就跟bus manifest一样」。
