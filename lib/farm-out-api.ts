@@ -6,6 +6,7 @@ import type {
   FarmOutOrderPatched,
   FarmOutPartner,
   FarmOutRate,
+  FarmOutRatePut,
   FarmOutReport,
   FarmOutTimetable,
   FarmOutTimetableParse,
@@ -54,10 +55,10 @@ export function fetchPartnerRates(id: number): Promise<FarmOutRate[]> {
   });
 }
 
-/** 整张表覆盖式保存。 */
+/** 整张表保存；G263 v3：带 products 的团整组替换，只带 manifest_id 的团不动。 */
 export async function savePartnerRates(
   id: number,
-  rates: FarmOutRate[],
+  rates: FarmOutRatePut[],
 ): Promise<FarmOutRate[]> {
   const r = await apiFetch<{ rates: FarmOutRate[] }>(
     `${API}/partners/${id}/rates`,
@@ -170,6 +171,8 @@ export async function patchFarmOutOrder(
     checkin_time?: string | null;
     depart_time?: string | null;
     payable_amount?: number | null;
+    /** G263 v3：选产品（null = 不选）。应付没手改过就按这个产品重算。 */
+    rate_item_id?: number | null;
   },
 ): Promise<FarmOutOrderPatched> {
   const r = await apiFetch<{ farm_out: FarmOutOrderPatched }>(
