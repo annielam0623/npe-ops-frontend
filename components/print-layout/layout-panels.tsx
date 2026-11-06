@@ -15,6 +15,10 @@ import {
   ownBox,
   resolveBox,
   setBox,
+  setText,
+  TEXT_D_MAX,
+  TEXT_D_MIN,
+  textOf,
   type Paper,
   type PrintLayoutDefaults,
   type PrintLayoutSettings,
@@ -24,6 +28,7 @@ import type { Orientation } from "@/lib/relay-list-settings-api";
 import { cn } from "@/lib/utils";
 
 import type { BoxDef } from "./boxes";
+import type { TextElement } from "./text-elements";
 
 /**
  * 版式设置弹窗里共用的几块（置顶 92 preview v2 ②）：Colours 每格一行（开关 + 颜色 + Reset）、
@@ -679,6 +684,124 @@ export function TabBar<T extends string>({
           {t.label}
         </button>
       ))}
+    </div>
+  );
+}
+
+/**
+ * Text 页（置顶 92 第 2 批）：选一种版式，每种字一行「− 16.5 px +」+ Regular / Bold + Reset。
+ * 存的是加减（07：−4..+12 px），显示的是加好的大小。
+ */
+export function TextPanel({
+  settings,
+  canEdit,
+  layouts,
+  layout,
+  onLayout,
+  elements,
+  note,
+  onChange,
+}: {
+  settings: PrintLayoutSettings;
+  canEdit: boolean;
+  layouts: readonly { key: string; label: string }[];
+  layout: string;
+  onLayout: (l: string) => void;
+  elements: TextElement[];
+  note: string;
+  onChange: (next: PrintLayoutSettings) => void;
+}) {
+  return (
+    <div data-layout-text className="flex flex-col">
+      <div className="mb-1 flex flex-wrap items-center gap-2 text-[12.5px]">
+        <span>{layouts.length > 2 ? "Layout" : "Sheet"}</span>
+        <span className={SEG}>
+          {layouts.map((l) => (
+            <button
+              key={l.key}
+              type="button"
+              aria-pressed={layout === l.key}
+              data-layout-text-layout={l.key}
+              onClick={() => onLayout(l.key)}
+              className={SEG_BTN}
+            >
+              {l.label}
+            </button>
+          ))}
+        </span>
+      </div>
+      {elements.map((el) => {
+        const t = textOf(settings, layout, el.key);
+        const own = settings.text[layout]?.[el.key];
+        const bold = t.bold ?? el.bold;
+        const px = Math.round((el.px + t.d) * 10) / 10;
+        return (
+          <PageRow key={el.key} label={el.label} changed={!!own}>
+            <span className={SEG} data-layout-text-el={el.key}>
+              <button
+                type="button"
+                aria-label={`${el.label} smaller`}
+                disabled={!canEdit || t.d <= TEXT_D_MIN}
+                onClick={() =>
+                  onChange(setText(settings, layout, el.key, { ...t, d: t.d - 1 }))
+                }
+                className={SEG_BTN}
+              >
+                −
+              </button>
+              <span
+                data-layout-text-px
+                className="inline-block min-w-[64px] border-r border-[#9aa] bg-white px-2 py-1 text-center text-[12px] font-bold tabular-nums"
+              >
+                {px} px
+              </span>
+              <button
+                type="button"
+                aria-label={`${el.label} bigger`}
+                disabled={!canEdit || t.d >= TEXT_D_MAX}
+                onClick={() =>
+                  onChange(setText(settings, layout, el.key, { ...t, d: t.d + 1 }))
+                }
+                className={SEG_BTN}
+              >
+                +
+              </button>
+            </span>
+            <span className={SEG}>
+              {([false, true] as const).map((b) => (
+                <button
+                  key={String(b)}
+                  type="button"
+                  aria-pressed={bold === b}
+                  disabled={!canEdit}
+                  onClick={() =>
+                    onChange(
+                      setText(settings, layout, el.key, {
+                        d: t.d,
+                        ...(b === el.bold ? {} : { bold: b }),
+                      }),
+                    )
+                  }
+                  className={SEG_BTN}
+                >
+                  {b ? "Bold" : "Regular"}
+                </button>
+              ))}
+            </span>
+            {own && canEdit ? (
+              <button
+                type="button"
+                className={LINK_BTN}
+                data-layout-text-reset={el.key}
+                onClick={() => onChange(setText(settings, layout, el.key, null))}
+              >
+                Reset
+              </button>
+            ) : null}
+          </PageRow>
+        );
+      })}
+      <p className="mt-2 text-[12px] text-[#64748b]">{note}</p>
     </div>
   );
 }

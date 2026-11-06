@@ -115,6 +115,7 @@ async function main() {
   try {
     await run();
     await layoutChecks();
+    await textChecks();
   } finally {
     ws.close();
     chrome.kill();
@@ -410,7 +411,7 @@ async function layoutChecks() {
 
   // 弹窗：Colours / Page
   await openSettings();
-  check("版式设置：弹窗两页 Colours / Page；Colours 里多 Other boxes（Hotel cell、Column titles）和 Colour choices", await evaluate(`const d = ${dlg}; return [...d.querySelectorAll('[data-layout-tab]')].map((b) => b.textContent).join('|') === 'Colours|Page' && !!d.querySelector('[data-layout-box="hotel_cell"]') && !!d.querySelector('[data-layout-box="column_titles"]') && !!d.querySelector('[data-layout-palette]') && !!${row("relay-1")};`));
+  check("版式设置：弹窗三页 Colours / Text / Page；Colours 里多 Other boxes（Hotel cell、Column titles）和 Colour choices", await evaluate(`const d = ${dlg}; return [...d.querySelectorAll('[data-layout-tab]')].map((b) => b.textContent).join('|') === 'Colours|Text|Page' && !!d.querySelector('[data-layout-box="hotel_cell"]') && !!d.querySelector('[data-layout-box="column_titles"]') && !!d.querySelector('[data-layout-palette]') && !!${row("relay-1")};`));
   await evaluate(`${dlg}.querySelector('[data-layout-box="hotel_cell"] [data-layout-toggle]').click();`);
   check("版式设置：关 Hotel cell ⇒ 总表的 Hotel 格马上不涂车色", await waitFor(`${bg(hotelTd)} === 'rgba(0, 0, 0, 0)'`));
   await evaluate(`$setValue(document.querySelector("[aria-label='Column titles colour code']"), '#ffcc00');`);
@@ -443,6 +444,112 @@ async function layoutChecks() {
   await openSettings();
   check("版式设置：没有 dispatch.edit ⇒ 只读（没有 Save、开关灰）", await evaluate(`const d = ${dlg}; return !d.querySelector('[data-relay-settings-save]') && d.querySelector('[data-layout-toggle]').disabled;`));
   await ctl({ reset: true, layoutReset: true, layout: false, edit: false });
+}
+
+// ── 置顶 92 第 2 批：Relay list Text 页（每天的起点）+ Relay Splits 当天 Aa Text size（Q5 A，接口照 77 草案 mock）──
+async function textChecks() {
+  const sumHotel = "document.querySelector('[data-relay-total=relay] tbody tr[data-relay-row] td[data-relay-col=hotel]')";
+  const sumName = "document.querySelector('[data-relay-total=relay] tbody tr[data-relay-row] td[data-relay-col=name]')";
+  const carHead = "document.querySelector('[data-relay-car] .rl-head')";
+  const fs = (e) => `getComputedStyle(${e}).fontSize`;
+  const fw = (e) => `getComputedStyle(${e}).fontWeight`;
+
+  // 当天字号接口没有 ⇒ 没有 Aa 键
+  await ctl({ reset: true, layoutReset: true, layout: true, edit: true, textSize: false, noSettings: false });
+  await open(URL0);
+  await waitFor("document.querySelectorAll('[data-relay-total]').length === 2", 30000);
+  await sleep(500);
+  check("当天字号：接口没有（404）⇒ 每张单上方没有 Aa Text size", !(await evaluate("return !!document.querySelector('[data-relay-text-open]');")));
+  check("Text：键名「⚙ Colours, text & page」", await evaluate("return document.querySelector('[data-relay-settings-open]').textContent === '⚙ Colours, text & page';"));
+
+  // 每天的起点：Text 页
+  await openSettings();
+  await evaluate(`${dlg}.querySelector('[data-layout-tab="text"]').click();`);
+  await waitFor(`${dlg}.querySelector('[data-layout-text]')`);
+  check("Text：Relay 两套（总表 / 车单），总表 3 种字、默认 Table text 12.5 px", await evaluate(`const d = ${dlg}; return [...d.querySelectorAll('[data-layout-text-layout]')].map((b) => b.dataset.layoutTextLayout).join('|') === 'summary|car' && [...d.querySelectorAll('[data-layout-text-el]')].map((e) => e.dataset.layoutTextEl).join('|') === 'table_text|legend|column_titles' && d.querySelector('[data-layout-text-el="table_text"] [data-layout-text-px]').textContent === '12.5 px';`));
+  await evaluate(`document.querySelector('[data-layout-text-el="table_text"] [aria-label$="bigger"]').click();`);
+  check("Text：总表 Table text + 1 ⇒ 总表正文马上 13.5px", await waitFor(`${fs(sumName)} === '13.5px'`));
+  await evaluate(`${dlg}.querySelector('[data-layout-text-layout="car"]').click();`);
+  await waitFor(`${dlg}.querySelector('[data-layout-text-el="header"]')`);
+  await evaluate(`document.querySelector('[data-layout-text-el="header"] [aria-label$="bigger"]').click();`);
+  await waitFor(`document.querySelector('[data-layout-text-el="header"] [data-layout-text-px]').textContent === '25 px'`);
+  await evaluate(`document.querySelector('[data-layout-text-el="header"] [aria-label$="bigger"]').click();`);
+  await evaluate(`[...document.querySelector('[data-layout-text-el="header"]').closest('div').querySelectorAll('button')].find((b) => b.textContent === 'Regular').click();`);
+  check("Text：车单 Header + 2、Regular ⇒ 车单抬头 26px 不粗", await waitFor(`${fs(carHead)} === '26px' && ${fw(carHead)} === '400'`));
+  let b0 = (await mockLog()).length;
+  await evaluate(`${dlg}.querySelector('[data-relay-settings-save]').click();`);
+  await waitFor("document.querySelector('[data-relay-settings-status=saved]')");
+  const lp = (await since(b0, (e) => e.method === "PUT" && e.path === "/api/settings/print-layout"))[0];
+  check("Text：Save ⇒ PUT text {summary:{table_text:{d:1}}, car:{header:{d:2, bold:false}}}", JSON.stringify(lp?.body) === JSON.stringify({ text: { summary: { table_text: { d: 1 } }, car: { header: { d: 2, bold: false } } } }), JSON.stringify(lp?.body));
+  await evaluate(`$btn('Cancel', ${dlg}).click();`);
+  await waitFor(`!${dlg}`);
+
+  // 当天 Aa
+  await ctl({ textSize: true });
+  await open(URL0);
+  await waitFor("document.querySelector('[data-relay-text-open]')", 30000);
+  await helpers();
+  check("当天字号：每张单上方一个 Aa Text size（总表 2 张 + 有客人的车）", await evaluate("return document.querySelectorAll('[data-relay-text-open]').length === document.querySelectorAll('.rl-sheet').length && !!document.querySelector('[data-relay-text-open=\"summary:relay\"]');"));
+  check("当天字号：How to use 多 Aa 那句", await evaluate("return document.body.textContent.includes('Aa Text size (above each sheet): pick Whole column, Whole row or Whole page, click the table');"));
+  await evaluate("document.querySelector('[data-relay-text-open=\"summary:relay\"]').click();");
+  await waitFor("document.querySelector('[data-text-size-toolbar]')");
+  await evaluate(`${sumHotel}.click();`);
+  await evaluate("document.querySelector('[data-text-size-toolbar] [aria-label=Bigger]').click();");
+  await evaluate("document.querySelector('[data-text-size-toolbar] [aria-label=Bigger]').click();");
+  await evaluate("$btn('Regular', document.querySelector('[data-text-size-toolbar]')).click();");
+  check("当天字号：选 Hotel 整列、A+ 两下、Regular ⇒ 总表 Hotel 格 13.5 + 2 = 15.5px 不粗，别的列不变；编辑时选中蓝框", await waitFor(`${fs(sumHotel)} === '15.5px' && ${fw(sumHotel)} === '400' && ${fs(sumName)} === '13.5px' && ${sumHotel}.className.includes('outline')`), await evaluate(`return ${fs(sumHotel)} + ' ' + ${fw(sumHotel)} + ' ' + ${fs(sumName)};`));
+  check("当天字号：编辑条写 Picked: Hotel (column)", await evaluate("return document.querySelector('[data-text-size-toolbar]').textContent.includes('Hotel (column)');"));
+  await evaluate("document.querySelector('[data-text-size-done]').click();");
+  check("当天字号：Done ⇒ 编辑条收起、单子上方「Text size not saved」、页面顶上蓝色 Save + 1 sheet with text size not saved", await waitFor("!document.querySelector('[data-text-size-toolbar]') && !!document.querySelector('[data-relay-text-unsaved=\"summary:relay\"]') && getComputedStyle(document.querySelector('[data-relay-text-save]')).backgroundColor === 'rgb(59, 130, 246)' && document.querySelector('[data-relay-text-status]').textContent === '1 sheet with text size not saved'"));
+  check("当天字号：Done 后字号留在页面上（15.5px）", await evaluate(`return ${fs(sumHotel)} === '15.5px';`));
+  // 车单：整行
+  const carKey = await evaluate("return document.querySelector('[data-relay-text-open^=\"car:\"]').dataset.relayTextOpen;");
+  check("当天字号：车单按「轮 + 车号」认（car:relay:1724）", carKey === "car:relay:1724", carKey);
+  await evaluate(`document.querySelector('[data-relay-text-open="${carKey}"]').click();`);
+  await waitFor("document.querySelector('[data-text-size-toolbar]')");
+  await evaluate("$btn('Whole row', document.querySelector('[data-text-size-toolbar]')).click();");
+  await evaluate("document.querySelector('[data-relay-car=\"901\"] tbody tr[data-relay-row] td[data-relay-col=name]').click();");
+  await evaluate("document.querySelector('[data-text-size-toolbar] [aria-label=Bigger]').click();");
+  await evaluate("document.querySelector('[data-text-size-done]').click();");
+  await waitFor("document.querySelector('[data-relay-text-status]').textContent === '2 sheets with text size not saved'");
+  b0 = (await mockLog()).length;
+  await evaluate("document.querySelector('[data-relay-text-save]').click();");
+  await waitFor("document.querySelector('[data-relay-text-status=saved]')");
+  const puts = await since(b0, (e) => e.method === "PUT" && e.path === "/api/dispatch/relay-list/text-size");
+  const sum = puts.find((e) => e.body?.sheet === "summary:relay");
+  const car = puts.find((e) => e.body?.sheet === carKey);
+  check("当天字号：Save ⇒ 每张改过的单一个 PUT {date, sheet, text_size}（总表 Hotel 列 +2 Regular；车单那一行 +1）",
+    puts.length === 2 && sum?.body?.date === D && JSON.stringify(sum.body.text_size) === JSON.stringify({ page: {}, columns: { hotel: { d: 2, bold: false } }, rows: {} }) && Object.values(car?.body?.text_size?.rows ?? {}).length === 1 && Object.values(car.body.text_size.rows)[0].d === 1,
+    JSON.stringify(puts.map((e) => e.body)));
+  check("当天字号：存好 ⇒ 绿字 Saved、蓝 Save 不见、没存提示不见、出 Text size changes", await waitFor("document.querySelector('[data-relay-text-status=saved]').textContent === 'Saved' && getComputedStyle(document.querySelector('[data-relay-text-status=saved]')).color === 'rgb(74, 222, 128)' && !document.querySelector('[data-relay-text-save]') && !document.querySelector('[data-relay-text-unsaved]') && document.querySelector('[data-relay-text-bar=\"summary:relay\"]').textContent.includes('Text size changes')"));
+  // 重开：存好的照样画；打印时 Aa 不印
+  await open(URL0);
+  await waitFor("document.querySelector('[data-relay-text-open]')", 30000);
+  await sleep(500);
+  check("当天字号：重开页面 ⇒ 存好的照样画（总表 Hotel 15.5px）", await evaluate(`return ${fs(sumHotel)} === '15.5px';`));
+  await cdp("Emulation.setEmulatedMedia", { media: "print" });
+  check("当天字号：打印时 Aa 键 / 提示不印，字号照印", await evaluate(`return getComputedStyle(document.querySelector('[data-relay-text-bar]')).display === 'none' && ${fs(sumHotel)} === '15.5px';`));
+  await cdp("Emulation.setEmulatedMedia", { media: "" });
+  // 400：红字、留着没存
+  await evaluate("document.querySelector('[data-relay-text-open=\"summary:relay\"]').click();");
+  await waitFor("document.querySelector('[data-text-size-toolbar]')");
+  await evaluate("$btn('Whole page', document.querySelector('[data-text-size-toolbar]')).click();");
+  await evaluate("document.querySelector('[data-text-size-toolbar] [aria-label=Bigger]').click();");
+  await evaluate("document.querySelector('[data-text-size-done]').click();");
+  await ctl({ textFail: "Text size must be from -2 to +10 px." });
+  await evaluate("document.querySelector('[data-relay-text-save]').click();");
+  check("当天字号：存不上 ⇒ 红字 Text size not saved: 原话，蓝 Save 还在", await waitFor("document.querySelector('[data-relay-text-status=error]')?.textContent === 'Text size not saved: Text size must be from -2 to +10 px.' && !!document.querySelector('[data-relay-text-save]')"));
+  await ctl({ textFail: "" });
+  await evaluate("document.querySelector('[data-relay-text-save]').click();");
+  check("当天字号：再按 Save ⇒ 存上（绿字 Saved）", await waitFor("document.querySelector('[data-relay-text-status=saved]')?.textContent === 'Saved'"));
+  // 只能看：没有 Aa 键，字号照样画
+  await ctl({ edit: false });
+  await open(URL0);
+  await waitFor("document.querySelectorAll('[data-relay-total]').length === 2", 30000);
+  await sleep(800);
+  // 前面 400 那次重存了整页 +1：13.5 + 1 + 2 = 16.5px。
+  check("当天字号：没有 dispatch.edit ⇒ 没有 Aa 键，存好的照样画", await evaluate(`return !document.querySelector('[data-relay-text-open]') && ${fs(sumHotel)} === '16.5px';`), await evaluate(`return ${fs(sumHotel)};`));
+  await ctl({ reset: true, layoutReset: true, layout: false, textSize: false, edit: false });
 }
 
 main().catch((e) => {

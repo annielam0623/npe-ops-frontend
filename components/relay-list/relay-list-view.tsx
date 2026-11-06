@@ -52,6 +52,7 @@ import {
 } from "@/lib/relay-list-settings-api";
 import { usePageVisibility } from "@/lib/page-visibility";
 import { byTick } from "@/lib/permissions";
+import { relayTextElements } from "@/components/print-layout/text-elements";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
 import { usePermissions } from "@/lib/staff-permissions";
 
@@ -59,9 +60,24 @@ import {
   type AlsoRelayCar,
   RelaySettingsDialog,
 } from "./relay-settings-dialog";
+import {
+  carSheet,
+  type RelayColumn,
+  RelayTextContext,
+  RelayTextSave,
+  SheetTextBar,
+  summarySheet,
+  useRelayCellFont,
+  useRelayTextSize,
+} from "./relay-text-size";
 
 /** 版式设置（置顶 92）里画在单子上的：Hotel 格涂不涂车色。纸张 / 边距 / 表头色走 CSS 变量。 */
-const RelayLookContext = createContext({ hotelCell: true });
+const RelayLookContext = createContext({
+  hotelCell: true,
+  /** 客人表正文现在的字号（每天的起点，置顶 92 第 2 批）：当天 Aa 加在它上面。 */
+  summaryPx: 12.5,
+  carPx: 15,
+});
 
 /** 纸张尺寸（mm，竖放）。 */
 const PAPER_MM = { a4: [210, 297], letter: [215.9, 279.4] } as const;
@@ -123,6 +139,13 @@ export function RelayListView() {
       window.location.href = buildLegacyLoginRedirectUrl(window.location.href);
     }
   }, []);
+
+  // Relay Splits 当天字号（置顶 92 Q5 A）：接口没有 = 不出 Aa 键。
+  const textState = useRelayTextSize(
+    params?.date ?? null,
+    canEdit,
+    redirectToLogin,
+  );
 
   useEffect(() => {
     const q = new URLSearchParams(window.location.search);
@@ -213,7 +236,10 @@ export function RelayListView() {
     ...(th
       ? { "--rl-th": th.on ? (th.color ?? "#d9d9d9") : "transparent" }
       : {}),
+    ...(ls ? textVars(ls.text) : {}),
   } as CSSProperties;
+  const summaryPx = 12.5 + (ls?.text.summary?.table_text?.d ?? 0);
+  const carPx = 15 + (ls?.text.car?.table_text?.d ?? 0);
 
   // 横版单 297mm 宽（置顶 73）：max-w 放得下一整张。
   return (
@@ -232,6 +258,11 @@ export function RelayListView() {
             🖨 Print
           </button>
         ) : null}
+        {view.kind === "ready" ? (
+          <RelayTextContext.Provider value={textState}>
+            <RelayTextSave />
+          </RelayTextContext.Provider>
+        ) : null}
         {view.kind === "ready" && settings ? (
           <button
             type="button"
@@ -239,7 +270,7 @@ export function RelayListView() {
             onClick={() => setSettingsOpen(true)}
             className={WHITE_BTN}
           >
-            ⚙ Colours &amp; page
+            {layout ? "⚙ Colours, text & page" : "⚙ Colours & page"}
           </button>
         ) : null}
         {info.button}
@@ -282,14 +313,24 @@ export function RelayListView() {
           className="overflow-x-auto print:overflow-visible"
           style={sheetVars}
         >
-          <RelayLookContext.Provider value={{ hotelCell }}>
-            <Sheets data={view.data} date={params.date} onlyCar={params.car} />
+          <RelayLookContext.Provider value={{ hotelCell, summaryPx, carPx }}>
+            <RelayTextContext.Provider value={textState}>
+              <Sheets
+                data={view.data}
+                date={params.date}
+                onlyCar={params.car}
+              />
+            </RelayTextContext.Provider>
           </RelayLookContext.Provider>
         </div>
       ) : null}
       {view.kind === "ready" && settings ? (
         <div className="rl-screen-only">
-          <HowToUse dark title="How to use — Relay list" items={layout ? [...HOW_TO, RELAY_LAYOUT_HOW_TO] : HOW_TO}
+          <HowToUse dark title="How to use — Relay list" items={[
+              ...HOW_TO,
+              ...(layout ? [RELAY_LAYOUT_HOW_TO] : []),
+              ...(textState.ready ? [RELAY_AA_HOW_TO] : []),
+            ]}
           />
         </div>
       ) : null}
@@ -330,7 +371,11 @@ const HOW_TO = [
 
 /** 置顶 92 Q11 A 原文（第 1 批、Relay list 用得上的部分；字号那半句等第 2 批）。 */
 const RELAY_LAYOUT_HOW_TO =
-  "In ⚙ Colours & page you can also turn colouring on or off for the Hotel cell and the column titles, add or remove colour choices, and on the Page tab set the paper (A4 or Letter) and margins. Changes show on the sheet right away; press Save to keep them. Reset all to paper puts everything back. Saved settings are used on screen and when you print, for everyone and every day.";
+  "In ⚙ Colours, text & page you can also turn colouring on or off for the Hotel cell and the column titles, add or remove colour choices, set the everyday text size, and on the Page tab set the paper (A4 or Letter) and margins. Changes show on the sheet right away; press Save to keep them. Reset all to paper puts everything back. Saved settings are used on screen and when you print, for everyone and every day.";
+
+/** 置顶 92 Q5 A（第 1 版 preview Q7 的原文，按「每天的起点」改了最后半句）。 */
+const RELAY_AA_HOW_TO =
+  "Aa Text size (above each sheet): pick Whole column, Whole row or Whole page, click the table, then press A− or A+ and Regular or Bold. Press Done, then Save at the top. Text size is saved for this day only and prints as you see it; the next day starts from the everyday size.";
 
 /** 当天的团（设置弹窗默认只列这些）和「同时是团大巴的 relay 车」。 */
 function todayTours(data: RelayPull): {
@@ -380,9 +425,10 @@ function Sheets({
     (r): r is RelayRoundList => !!r && r.cars.length > 0,
   );
   if (onlyCar !== null) {
-    const car = rounds.flatMap((r) => r.cars).find((c) => c.carId === onlyCar);
-    return car ? (
-      <CarSheet car={car} dateShort={dates.short} />
+    const round = rounds.find((r) => r.cars.some((c) => c.carId === onlyCar));
+    const car = round?.cars.find((c) => c.carId === onlyCar);
+    return car && round ? (
+      <CarSheet car={car} round={round.round} dateShort={dates.short} />
     ) : (
       <p className="text-[13px] text-[#cbd5e1]">
         This car is not on the saved Morning Relay for this day.
@@ -409,7 +455,12 @@ function Sheets({
           {r.cars
             .filter((c) => c.rows.length > 0)
             .map((c) => (
-              <CarSheet key={c.key} car={c} dateShort={dates.short} />
+              <CarSheet
+                key={c.key}
+                car={c}
+                round={r.round}
+                dateShort={dates.short}
+              />
             ))}
         </Fragment>
       ))}
@@ -478,6 +529,34 @@ function Legend({ round }: { round: RelayRoundList }) {
   );
 }
 
+/** Total Pax 那一行（每天的起点字号 car.total_pax，置顶 92 第 2 批）。 */
+const TOTAL_PAX: CSSProperties = {
+  fontSize: "var(--rl-car-total, 20px)",
+  fontWeight: "var(--rl-car-total-w, 700)" as CSSProperties["fontWeight"],
+};
+
+/** 每天的起点字号 ⇒ CSS 变量（只写设了的）。 */
+const TEXT_VARS: Record<string, Record<string, string>> = {
+  summary: { table_text: "--rl-sum-td", legend: "--rl-sum-legend", column_titles: "--rl-sum-th" },
+  car: { header: "--rl-car-head", table_text: "--rl-car-td", total_pax: "--rl-car-total", bus_bars: "--rl-car-bar" },
+};
+function textVars(
+  text: PrintLayoutSettings["text"],
+): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [layout, vars] of Object.entries(TEXT_VARS)) {
+    const els = relayTextElements(layout);
+    for (const [el, name] of Object.entries(vars)) {
+      const t = text[layout]?.[el];
+      const def = els.find((e) => e.key === el);
+      if (!t || !def) continue;
+      if (t.d) out[name] = `${def.px + t.d}px`;
+      if (t.bold !== undefined) out[`${name}-w`] = t.bold ? "700" : "400";
+    }
+  }
+  return out;
+}
+
 /** Hotel 格涂车色（版式设置可以关）。 */
 function useHotelStyle() {
   const { hotelCell } = useContext(RelayLookContext);
@@ -498,8 +577,15 @@ function TotalSheet({
   orientation: "portrait" | "landscape";
 }) {
   const hotelStyle = useHotelStyle();
+  const sheet = summarySheet(round.round);
+  const font = useRelayCellFont(sheet, useContext(RelayLookContext).summaryPx);
   let prev: { guest: RelayGuest; carKey: string } | null = null;
   return (
+    <>
+    <SheetTextBar
+      sheet={sheet}
+      orders={round.rows.map((r) => r.guest.order_number)}
+    />
     <section
       data-relay-total={round.round}
       data-orient={orientation}
@@ -545,13 +631,12 @@ function TotalSheet({
                     </tr>
                   ) : null}
                   <tr data-relay-row={g.order_number}>
-                    <td>{g.pickup_time}</td>
-                    <td style={hotelStyle(car.color)}>{hotelText(g)}</td>
-                    <td>{g.pax ?? ""}</td>
-                    <td>{g.name}</td>
-                    <td>{g.phone ?? ""}</td>
-                    <td>{tourText(g)}</td>
-                    <td>{g.order_number}</td>
+                    <GuestCells
+                      g={g}
+                      color={car.color}
+                      hotelStyle={hotelStyle}
+                      font={font}
+                    />
                   </tr>
                 </Fragment>
               );
@@ -560,19 +645,26 @@ function TotalSheet({
         </tbody>
       </table>
     </section>
+    </>
   );
 }
 
 function CarSheet({
   car,
+  round,
   dateShort,
 }: {
   car: RelayCarSheet;
+  round: string;
   dateShort: string;
 }) {
   const hotelStyle = useHotelStyle();
+  const sheet = carSheet(round, car.van, car.key);
+  const font = useRelayCellFont(sheet, useContext(RelayLookContext).carPx);
   let prev: { guest: RelayGuest; carKey: string } | null = null;
   return (
+    <>
+    <SheetTextBar sheet={sheet} orders={car.rows.map((g) => g.order_number)} />
     <section
       data-relay-car={car.key}
       data-orient={car.orientation}
@@ -616,13 +708,12 @@ function CarSheet({
                   </tr>
                 ) : null}
                 <tr data-relay-row={g.order_number}>
-                  <td>{g.pickup_time}</td>
-                  <td style={hotelStyle(car.color)}>{hotelText(g)}</td>
-                  <td>{g.pax ?? ""}</td>
-                  <td>{g.name}</td>
-                  <td>{g.phone ?? ""}</td>
-                  <td>{tourText(g)}</td>
-                  <td>{g.order_number}</td>
+                  <GuestCells
+                    g={g}
+                    color={car.color}
+                    hotelStyle={hotelStyle}
+                    font={font}
+                  />
                 </tr>
               </Fragment>
             );
@@ -631,10 +722,10 @@ function CarSheet({
             <td className="rl-gap" colSpan={7} />
           </tr>
           <tr>
-            <td colSpan={2} className="!text-right !text-[20px]">
+            <td colSpan={2} className="!text-right" style={TOTAL_PAX}>
               Total Pax
             </td>
-            <td data-relay-total-pax className="!text-[20px]">
+            <td data-relay-total-pax style={TOTAL_PAX}>
               {car.pax}
             </td>
             <td colSpan={4} className="!border-0" />
@@ -656,10 +747,45 @@ function CarSheet({
         </div>
       ) : null}
     </section>
+    </>
   );
 }
 
 /** 还没上任何 relay 车的客人：只在屏幕上，给 staff 看还差谁没排（不印）。 */
+/** 客人一行的 7 格（总表、车单同一套）：Hotel 格涂车色；字号照当天 Aa（置顶 92 Q5）。 */
+function GuestCells({
+  g,
+  color,
+  hotelStyle,
+  font,
+}: {
+  g: RelayGuest;
+  color: string;
+  hotelStyle: (c: string | null | undefined) => CSSProperties | undefined;
+  font: ReturnType<typeof useRelayCellFont>;
+}) {
+  const cell = (col: RelayColumn, extra?: CSSProperties) => {
+    const f = font(col, g.order_number);
+    return {
+      "data-relay-col": col,
+      style: extra || f.style ? { ...extra, ...f.style } : undefined,
+      className: f.className || undefined,
+      onClick: f.onClick,
+    };
+  };
+  return (
+    <>
+      <td {...cell("time")}>{g.pickup_time}</td>
+      <td {...cell("hotel", hotelStyle(color))}>{hotelText(g)}</td>
+      <td {...cell("qty")}>{g.pax ?? ""}</td>
+      <td {...cell("name")}>{g.name}</td>
+      <td {...cell("phone")}>{g.phone ?? ""}</td>
+      <td {...cell("tour")}>{tourText(g)}</td>
+      <td {...cell("order")}>{g.order_number}</td>
+    </>
+  );
+}
+
 function Unplaced({ guests }: { guests: (RelayGuest & { reason: string })[] }) {
   const pax = guests.reduce((s, g) => s + (g.pax ?? 0), 0);
   return (

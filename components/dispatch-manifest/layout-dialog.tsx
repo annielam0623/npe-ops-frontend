@@ -24,6 +24,7 @@ import {
 } from "@/lib/relay-list-settings-api";
 import { useLeaveGuard } from "@/lib/use-leave-guard";
 import { cn } from "@/lib/utils";
+import type { ManifestVersion } from "@/types";
 
 import { BUS_MANIFEST_BOXES } from "../print-layout/boxes";
 import {
@@ -35,8 +36,13 @@ import {
   PaletteEditor,
   SectionTitle,
   TabBar,
+  TextPanel,
   TicketRules,
 } from "../print-layout/layout-panels";
+import {
+  BUS_MANIFEST_TEXT_LAYOUTS,
+  busManifestTextElements,
+} from "../print-layout/text-elements";
 
 const SAVE_BTN =
   "h-8 cursor-pointer rounded-[8px] bg-[#3b82f6] px-[18px] text-[13px] font-bold text-white hover:bg-[#2f76e8] disabled:cursor-not-allowed disabled:opacity-60";
@@ -76,6 +82,7 @@ export function relayHeaderColor(
  */
 export function ManifestLayoutDialog({
   tour,
+  version,
   sectionTitles,
   busKeys,
   layout,
@@ -90,6 +97,8 @@ export function ManifestLayoutDialog({
   onClose,
 }: {
   tour: { id: number; name: string };
+  /** 这一页现在的版式（Text 页默认打开这一套）。 */
+  version: ManifestVersion;
   sectionTitles: { title: string; color: string }[];
   busKeys: string[];
   layout: PrintLayoutResponse;
@@ -104,7 +113,8 @@ export function ManifestLayoutDialog({
   /** discard = 丢掉暂存（Cancel / Discard）。 */
   onClose: (discard: boolean) => void;
 }) {
-  const [tab, setTab] = useState<"colours" | "page">("colours");
+  const [tab, setTab] = useState<"colours" | "text" | "page">("colours");
+  const [textLayout, setTextLayout] = useState<ManifestVersion>(version);
   const [scope, setScope] = useState<"all" | "tour">("all");
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const [asking, setAsking] = useState(false);
@@ -179,7 +189,7 @@ export function ManifestLayoutDialog({
       <div data-manifest-layout className="contents">
         <header className="flex items-center justify-between border-b border-black/[.08] px-[18px] py-3.5">
           <h2 id="manifest-layout-title" className="text-[16px] font-bold">
-            Bus Manifest · Colours &amp; page
+            Bus Manifest · Colours, text &amp; page
           </h2>
           <button
             type="button"
@@ -193,6 +203,7 @@ export function ManifestLayoutDialog({
         <TabBar
           tabs={[
             { key: "colours", label: "Colours" },
+            { key: "text", label: "Text" },
             { key: "page", label: "Page" },
           ]}
           value={tab}
@@ -411,6 +422,19 @@ export function ManifestLayoutDialog({
                 />
               </div>
             </>
+          ) : tab === "text" ? (
+            <div className="px-[18px] py-3">
+              <TextPanel
+                settings={draft}
+                canEdit={canEdit}
+                layouts={BUS_MANIFEST_TEXT_LAYOUTS}
+                layout={textLayout}
+                onLayout={(l) => setTextLayout(l as ManifestVersion)}
+                elements={busManifestTextElements(textLayout)}
+                note="This is where every day starts, for every tour with this layout. Aa Text size still changes one day's sheet on top of it."
+                onChange={edit}
+              />
+            </div>
           ) : (
             <div className="px-[18px] py-3">
               <PagePanel

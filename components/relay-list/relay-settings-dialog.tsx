@@ -9,7 +9,12 @@ import {
   PaletteEditor,
   SectionTitle,
   TabBar,
+  TextPanel,
 } from "@/components/print-layout/layout-panels";
+import {
+  RELAY_TEXT_LAYOUTS,
+  relayTextElements,
+} from "@/components/print-layout/text-elements";
 import { Modal } from "@/components/ui/modal";
 import { describeError } from "@/lib/api-errors";
 import {
@@ -107,7 +112,8 @@ export function RelaySettingsDialog({
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const [asking, setAsking] = useState(false);
   const [showAll, setShowAll] = useState(false);
-  const [tab, setTab] = useState<"colours" | "page">("colours");
+  const [tab, setTab] = useState<"colours" | "text" | "page">("colours");
+  const [textLayout, setTextLayout] = useState<string>("summary");
   const lDraft = layoutDraft ?? layout?.settings ?? null;
   const layoutPatch =
     layout && lDraft ? buildLayoutPatch(layout.settings, lDraft) : null;
@@ -178,7 +184,7 @@ export function RelaySettingsDialog({
       <div data-relay-settings className="contents">
         <header className="flex items-center justify-between border-b border-black/[.08] px-[18px] py-3.5">
           <h2 id="relay-settings-title" className="text-[16px] font-bold">
-            Relay list colours &amp; page
+            Relay list colours, text &amp; page
           </h2>
           <button
             type="button"
@@ -193,6 +199,7 @@ export function RelaySettingsDialog({
           <TabBar
             tabs={[
               { key: "colours", label: "Colours" },
+              { key: "text", label: "Text" },
               { key: "page", label: "Page" },
             ]}
             value={tab}
@@ -200,7 +207,23 @@ export function RelaySettingsDialog({
           />
         ) : null}
         <div className="min-h-0 flex-1 overflow-y-auto border-t border-black/[.06]">
-          {tab === "page" && layout && lDraft ? (
+          {tab === "text" && layout && lDraft ? (
+            <section className="px-[18px] py-3">
+              <TextPanel
+                settings={lDraft}
+                canEdit={canEdit}
+                layouts={RELAY_TEXT_LAYOUTS}
+                layout={textLayout}
+                onLayout={setTextLayout}
+                elements={relayTextElements(textLayout)}
+                note="This is where every day starts. Aa Text size above each sheet still changes one day's sheet on top of it."
+                onChange={(n) => {
+                  onLayoutDraft(n);
+                  setStatus({ kind: "idle" });
+                }}
+              />
+            </section>
+          ) : tab === "page" && layout && lDraft ? (
             <section className="px-[18px] py-3">
               {canEdit ? (
                 <div className="mb-2 flex flex-wrap items-center gap-2 text-[13px]">

@@ -112,6 +112,7 @@ async function main() {
   try {
     await run();
     await runLayout();
+    await runLayoutText();
   } finally {
     ws.close();
     chrome.kill();
@@ -1174,6 +1175,56 @@ async function run() {
   await sleep(500);
   check("电脑：Print all buses / Download 照旧在页头，没有 ⋯；How to use 在 Action Log 上面", await evaluate(`const vis = (el) => !!el && el.getBoundingClientRect().height > 0 && el.getBoundingClientRect().width > 0; const noSway = document.documentElement.scrollWidth <= innerWidth + 1; const btn = (t, root = document) => [...root.querySelectorAll('button, a')].find((b) => b.textContent.trim().startsWith(t)); const h = [...document.querySelectorAll('details')].find((d) => d.textContent.includes('How to use — Tour manifest')); return vis(btn('Print all buses')) && vis(btn('Download')) && !vis(document.querySelector('header [data-phone-more]')) && h.getBoundingClientRect().top < document.querySelector('[data-manifest-log]').getBoundingClientRect().top;`));
 }
+// ── 置顶 92 第 2 批：Bus Manifest ⚙ Colours, text & page 的 Text 页（每天的起点，07：text 存 d −4..+12 + bold）──
+async function runLayoutText() {
+  const URL0 = `${APP}/dispatch/manifest?date=2026-10-05&tour=3`;
+  const DLG = "document.querySelector('[data-manifest-layout]')";
+  const nameCell = "[...document.querySelectorAll('section[aria-label=\"Bus 2041=A\"] tbody td')].find((td) => /^Test\\d+$/.test(td.textContent.trim()))";
+  const firstTh = "document.querySelector('section[aria-label=\"Bus 2041=A\"] thead th')";
+  const lowerHead = "[...document.querySelectorAll('section[aria-label=\"Bus 2041=A\"] td[colspan]')].find((td) => td.textContent.includes('LOWER ANTELOPE'))";
+  const fs = (e) => `getComputedStyle(${e}).fontSize`;
+  const fw = (e) => `getComputedStyle(${e}).fontWeight`;
+  await ctl({ layout: true, layoutReset: true, staffPerms: null, superAdmin: false, partner: false });
+  await goto(URL0);
+  await waitFor("document.querySelector('[data-layout-open]')", 60000);
+  await helpers();
+  check("Text：键名换成「⚙ Colours, text & page」", await evaluate("return document.querySelector('[data-layout-open]').textContent === '⚙ Colours, text & page';"));
+  check("Text：How to use 换回 Q11 完整原文", await evaluate("return document.body.textContent.includes(\"set the everyday text size, and set the paper, Portrait or Landscape, and margins.\") && document.body.textContent.includes(\"Aa Text size changes one day's sheet on top of the everyday size.\");"));
+  const before = await evaluate(`return [${fs(nameCell)}, ${fs(firstTh)}, ${fw(firstTh)}, ${fs(lowerHead)}].join('|');`);
+  check("Text：没设过 ⇒ 正文 16.5px、表头 9.5px 粗、节标题 17px（同现在）", before === "16.5px|9.5px|700|17px", before);
+  await evaluate("document.querySelector('[data-layout-open]').click();");
+  await waitFor(DLG);
+  await evaluate(`${DLG}.querySelector('[data-layout-tab="text"]').click();`);
+  await waitFor(`${DLG}.querySelector('[data-layout-text]')`);
+  check("Text：三页 Colours / Text / Page；默认打开这一页的版式 General；4 种字（Table text / Pax / Section titles / Column titles）", await evaluate(`const d = ${DLG}; return [...d.querySelectorAll('[data-layout-tab]')].map((b) => b.textContent).join('|') === 'Colours|Text|Page' && d.querySelector('[data-layout-text-layout="general"]').getAttribute('aria-pressed') === 'true' && [...d.querySelectorAll('[data-layout-text-el]')].map((e) => e.dataset.layoutTextEl).join('|') === 'table_text|pax|section_titles|column_titles' && d.querySelector('[data-layout-text-el="table_text"] [data-layout-text-px]').textContent === '16.5 px';`));
+  const plus = (el) => `document.querySelector('[data-layout-text-el="${el}"] [aria-label$="bigger"]').click();`;
+  await evaluate(plus("table_text"));
+  await evaluate(plus("table_text"));
+  check("Text：Table text + 两下 ⇒ 弹窗写 18.5 px、单子正文马上 18.5px", await waitFor(`${DLG}.querySelector('[data-layout-text-el="table_text"] [data-layout-text-px]').textContent === '18.5 px' && ${fs(nameCell)} === '18.5px'`));
+  await evaluate(plus("section_titles"));
+  check("Text：Section titles + 一下 ⇒ 节标题 18px", await waitFor(`${fs(lowerHead)} === '18px'`));
+  await evaluate(`[...[...document.querySelectorAll('[data-layout-text]')][0].querySelectorAll('button')].find((b) => b.textContent === 'Regular' && b.closest('div').textContent.includes('Column titles')).click();`);
+  check("Text：Column titles 选 Regular ⇒ 表头马上不粗", await waitFor(`${fw(firstTh)} === '400'`));
+  // Marcello 那一套单独存，不影响 General
+  await evaluate(`${DLG}.querySelector('[data-layout-text-layout="marcello"]').click();`);
+  check("Text：换到 Marcello ⇒ 显示 Marcello 的默认（正文 21 px），General 改的不跟过去", await waitFor(`${DLG}.querySelector('[data-layout-text-el="table_text"] [data-layout-text-px]').textContent === '21 px'`));
+  const lb = (await mockLog()).length;
+  await evaluate("document.querySelector('[data-layout-save]').click();");
+  await waitFor("document.querySelector('[data-layout-status=\"saved\"]')");
+  const put = (await mockLog()).slice(lb).find((e) => e.method === "PUT" && e.path === "/api/settings/print-layout");
+  check("Text：Save ⇒ 只带 text，形状 {general:{table_text:{d:2}, section_titles:{d:1}, column_titles:{d:0, bold:false}}}",
+    JSON.stringify(Object.keys(put?.body ?? {})) === '["text"]' && JSON.stringify(put.body.text) === JSON.stringify({ general: { table_text: { d: 2 }, section_titles: { d: 1 }, column_titles: { d: 0, bold: false } } }), JSON.stringify(put?.body));
+  await evaluate("$btn('Cancel', document.querySelector('[data-manifest-layout]')).click();");
+  // 起点 + 当天 Aa：A 车存好的 Pick-up Location 整列 +3（mock textSize）叠在起点 +2 上
+  await ctl({ textSize: true });
+  await goto(URL0);
+  await waitFor("document.querySelector('[data-layout-open]')", 60000);
+  await sleep(500);
+  const hotelCell = "[...document.querySelectorAll('section[aria-label=\"Bus 2041=A\"] tbody td')].find((td) => td.textContent.trim() === 'Excalibur' || td.textContent.trim() === 'MGM Grand')";
+  check("Text：当天 Aa（整列 +3）叠在每天的起点（+2）上 ⇒ 16.5 + 2 + 3 = 21.5px；别的列 18.5px", await evaluate(`return ${fs(hotelCell)} === '21.5px' && ${fs(nameCell)} === '18.5px';`), await evaluate(`return ${fs(hotelCell)} + ' ' + ${fs(nameCell)};`));
+  await ctl({ textSize: false, layout: false, layoutReset: true });
+}
+
 main().catch((e) => { console.error(e); process.exit(2); });
 
 // ── 置顶 92 版式设置第 1 批（Annie「看了，同意全部推荐，记得要可以下载」+「动手」）：Bus Manifest「⚙ Colours & page」──
@@ -1206,11 +1257,11 @@ async function runLayout() {
   await waitFor("document.querySelector('[data-layout-open]')");
   const after0 = await evaluate(`return [${bg(lowerHead)}, ${bg(band)}, ${bg(firstTh)}, document.querySelectorAll('[data-hotel-mark]').length].join('|');`);
   check("版式设置：上线了、没设过 ⇒ 单子一模一样（节标题、车抬头、表头、隔组标色）", before0 === after0, `${before0} vs ${after0}`);
-  check("版式设置：How to use 多 ⚙ Colours & page 那句（Q11 第 1 批部分）", await evaluate("return document.body.textContent.includes('⚙ Colours & page: choose the colour of each box on the sheet, turn colouring on or off for each box, add or remove ticket colours and colour choices, and set the paper, Portrait or Landscape, and margins.');"));
+  check("版式设置：How to use 多 Q11 那句", await evaluate("return document.body.textContent.includes('⚙ Colours, text & page: choose the colour of each box on the sheet, turn colouring on or off for each box, add or remove ticket colours and colour choices, set the everyday text size, and set the paper, Portrait or Landscape, and margins.');"));
 
   await evaluate("document.querySelector('[data-layout-open]').click();");
   await waitFor(DLG);
-  check("版式设置：弹窗两页 Colours / Page，Apply to All tours / 团名", await evaluate(`return [...${DLG}.querySelectorAll('[data-layout-tab]')].map((b) => b.textContent).join('|') === 'Colours|Page' && ${DLG}.querySelector('[data-layout-scope="tour"]').textContent === 'Antelope Canyon' && ${DLG}.querySelector('[data-layout-scope="all"]').getAttribute('aria-pressed') === 'true';`));
+  check("版式设置：弹窗三页 Colours / Text / Page，Apply to All tours / 团名", await evaluate(`return [...${DLG}.querySelectorAll('[data-layout-tab]')].map((b) => b.textContent).join('|') === 'Colours|Text|Page' && ${DLG}.querySelector('[data-layout-scope="tour"]').textContent === 'Antelope Canyon' && ${DLG}.querySelector('[data-layout-scope="all"]').getAttribute('aria-pressed') === 'true';`));
   check("版式设置：每种格一行（车抬头、节、Shuttle、隔组、Heli、Special Requirements、表头…、整列默认关）", await evaluate(`const keys = [...${DLG}.querySelectorAll('[data-layout-box]')].map((r) => r.dataset.layoutBox); return ['bus_header','section','shuttle_out','hotel_group','extra_row','notes','column_titles','lunch_mismatch','lunch_total_row','sandwich_head','col_phone','col_assist'].every((k) => keys.includes(k)) && !keys.includes('ticket_plus') && ${DLG}.querySelector('[data-layout-box="col_phone"] [data-layout-toggle]').dataset.layoutToggle === 'off';`));
   check("版式设置：All tours 层的车抬头 / 节：提示先选团", await evaluate(`return ${DLG}.querySelector('[data-layout-box="section"]').textContent.includes('Pick Antelope Canyon above to set its colours.');`));
 

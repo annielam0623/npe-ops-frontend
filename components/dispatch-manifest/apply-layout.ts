@@ -7,6 +7,7 @@ import {
   ticketColorBy,
   type PrintLayoutDefaults,
   type PrintLayoutSettings,
+  type TextSetting,
 } from "@/lib/print-layout";
 import type { ManifestSection, ManifestView as ManifestData } from "@/types";
 
@@ -32,6 +33,8 @@ export interface ManifestLook {
   columnFill: Record<string, string>;
   lunchTotalRow: string | null;
   sandwichHead: string | null;
+  /** 每天的起点字号（第 2 批）：这个团现在的版式那一套，element ⇒ {d, bold?}。 */
+  text: Record<string, TextSetting>;
 }
 
 export const DEFAULT_LOOK: ManifestLook = {
@@ -42,6 +45,7 @@ export const DEFAULT_LOOK: ManifestLook = {
   columnFill: {},
   lunchTotalRow: null,
   sandwichHead: null,
+  text: {},
 };
 
 export const ManifestLookContext = createContext<ManifestLook>(DEFAULT_LOOK);
@@ -160,6 +164,7 @@ export function applyLayout(
     columnFill,
     lunchTotalRow: pick("lunch_total_row", undefined, OFF_CELL) ?? null,
     sandwichHead: pick("sandwich_head", undefined, OFF_CELL) ?? null,
+    text: s.text[data.tour.manifest_version ?? "general"] ?? {},
   };
   return { data: out, look };
 }

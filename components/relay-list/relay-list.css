@@ -28,9 +28,10 @@
   border: 1px solid #bbb;
   padding: 2px 4px;
 }
+/* 每天的起点字号（置顶 92 第 2 批）：--rl-car-* / --rl-sum-* = 车单 / 总表各种字的大小和粗细；没设 = 现在的。 */
 .rl-sheet td {
-  font-size: 15px;
-  font-weight: 700;
+  font-size: var(--rl-car-td, 15px);
+  font-weight: var(--rl-car-td-w, 700);
   border: 1px solid #c8c8c8;
   padding: 4px 6px;
   text-align: center;
@@ -42,14 +43,17 @@
   border-right: 0;
 }
 .rl-total td {
-  font-size: 12.5px;
+  font-size: var(--rl-sum-td, 12.5px);
+  font-weight: var(--rl-sum-td-w, 700);
   padding: 2px 5px;
 }
 .rl-total th {
-  font-size: 9px;
+  font-size: var(--rl-sum-th, 9px);
+  font-weight: var(--rl-sum-th-w, 600);
 }
 .rl-legend td {
-  font-size: 10.5px;
+  font-size: var(--rl-sum-legend, 10.5px);
+  font-weight: var(--rl-sum-legend-w, 700);
   padding: 2px 6px;
 }
 .rl-head {
@@ -58,13 +62,13 @@
   align-items: center;
   gap: 12px;
   padding: 6px 12px;
-  font-size: 24px;
-  font-weight: 700;
+  font-size: var(--rl-car-head, 24px);
+  font-weight: var(--rl-car-head-w, 700);
 }
 .rl-bar {
   text-align: center;
-  font-size: 18px;
-  font-weight: 700;
+  font-size: var(--rl-car-bar, 18px);
+  font-weight: var(--rl-car-bar-w, 700);
   padding: 5px;
 }
 

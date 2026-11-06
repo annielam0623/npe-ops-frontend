@@ -52,6 +52,8 @@ export interface RelayCarSheet {
   tourBuses: Omit<RelayBus, "sections">[];
   /** 司机 - 车号（设置弹窗用）。 */
   driverVan: string;
+  /** 车号（当天字号按「轮 + 车号」认车，置顶 92 Q5：排车行 id 每次保存会换）。 */
+  van: string;
 }
 
 export interface RelayRoundList {
@@ -203,6 +205,7 @@ export function buildRound(
       orientation: orientationOf(b.car.orientation ?? tb[0]?.orientation),
       tourBuses: tb,
       driverVan: `${(b.car.driver || "No driver").trim()} - ${b.car.van || "No vehicle"}`,
+      van: (b.car.van || "").trim(),
     };
     if (tb.length >= 1) {
       return {

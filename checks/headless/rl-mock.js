@@ -6,6 +6,7 @@
 const http = require("http");
 const layoutMock = require("./print-layout-mock");
 // 置顶 92 版式设置：ctl.layout = true ⇒ 有 /api/settings/print-layout?page=relay_list；__ctl {layoutReset: true} 清掉存的。
+const textStore = {};
 function readRaw(req) { return new Promise((r) => { const c = []; req.on("data", (d) => c.push(d)); req.on("end", () => r(Buffer.concat(c).toString("utf8"))); }); }
 
 const ctl = { fail401: false, fail500: false, old: false, many: false, swap: false, noSettings: false, edit: false, failPut: false };
@@ -175,6 +176,7 @@ http
       const body = JSON.parse(d || "{}");
       if (body.reset) st = fresh();
       if (body.layoutReset) layoutMock.reset();
+      if (body.layoutReset) for (const k of Object.keys(textStore)) delete textStore[k];
       delete body.reset;
       delete body.layoutReset;
       Object.assign(ctl, body);
@@ -193,6 +195,19 @@ http
       entry.method = req.method;
       const q = Object.fromEntries(url.searchParams);
       if (await layoutMock({ ...ctl, layoutForbidden: !ctl.edit }, p, q, req, res, send, readRaw, entry)) return;
+      // 置顶 92 Q5：Relay Splits 当天字号（77 草案，07 还没定）。ctl.textSize = true 才有；ctl.textFail = PUT 400 原话。
+      if (p === "/api/dispatch/relay-list/text-size") {
+        if (!ctl.textSize) return send(res, 404, { detail: "Not Found" });
+        if (req.method === "PUT") {
+          const b = JSON.parse((await readRaw(req)) || "{}"); entry.body = b;
+          if (!ctl.edit) return send(res, 403, { detail: "You do not have permission to edit Dispatch." });
+          if (ctl.textFail) return send(res, 400, { detail: ctl.textFail });
+          const prev = textStore[b.sheet]?.history ?? [];
+          textStore[b.sheet] = { text_size: b.text_size, history: [{ by: "ZZ Test", at: "Nov 3, 6:00 PM", what: "Text size changed" }, ...prev].slice(0, 5) };
+          return send(res, 200, { ok: true, ...textStore[b.sheet] });
+        }
+        return send(res, 200, { sheets: textStore });
+      }
     }
     if (p === "/api/settings/relay-list") {
       if (ctl.noSettings) return send(res, 404, { detail: "Not Found" });

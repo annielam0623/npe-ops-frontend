@@ -860,7 +860,7 @@ export function ManifestView() {
                       }}
                       className="inline-flex h-8 cursor-pointer items-center rounded-[9px] border border-black/25 bg-paper px-[14px] text-[12.5px] font-semibold text-[#111]"
                     >
-                      ⚙ Colours &amp; page
+                      ⚙ Colours, text &amp; page
                     </button>
                   ) : null}
                   {data.tour.manifest_version !== undefined ? (
@@ -1197,6 +1197,7 @@ export function ManifestView() {
       {layoutOpen && layout && data ? (
         <ManifestLayoutDialog
           tour={{ id: data.tour.id, name: data.tour.name }}
+          version={shown?.tour.manifest_version ?? "general"}
           sectionTitles={tourSections}
           busKeys={data.blocks.map((b) => b.bus_key).filter(Boolean)}
           layout={layout}
@@ -1695,10 +1696,14 @@ function GuestTable({
     columns.length + (lettered ? 1 : 0) + (assist ? 1 : 0) + (boarding ? 1 : 0);
   // 版式设置（置顶 92）：Column titles 的底色（没设 = 照旧 #e6eaee）。
   const look = useManifestLook();
+  // 每天的起点字号（置顶 92 第 2 批）：表头 / 节标题 / 正文 / 人数各加减 d、可改粗细。
+  const tt = look.text;
   const th = {
-    fontSize: `${HEAD_PX[version].th}px`,
+    fontSize: `${HEAD_PX[version].th + (tt.column_titles?.d ?? 0)}px`,
+    ...(tt.column_titles?.bold === false ? { fontWeight: 400 } : null),
     ...(look.columnTitles ? { background: look.columnTitles } : null),
   };
+  const start = { cell: tt.table_text, pax: tt.pax };
   // Canyon order 分页的地方（置顶 41 题 3 A）：屏幕上画一条「New page」虚线；真正换页在后端的打印页。
   const breaks = newPageBefore(sections, data.tour.canyon_pages);
   if (sections.length === 0) {
@@ -1710,7 +1715,7 @@ function GuestTable({
   }
   const font: CellFont = {
     style: (col, order) => {
-      const t = cellText(textSize, col, order, phone, version);
+      const t = cellText(textSize, col, order, phone, version, start);
       return { fontSize: t.fontSize, fontWeight: t.fontWeight };
     },
     edit: (col, order) => {
@@ -1719,7 +1724,14 @@ function GuestTable({
         isPicked(edit.picks, "page") ||
         isPicked(edit.picks, "column", col) ||
         (order !== null && isPicked(edit.picks, "row", order));
-      const changed = cellText(textSize, col, order, false, version).changed;
+      const changed = cellText(
+        textSize,
+        col,
+        order,
+        false,
+        version,
+        start,
+      ).changed;
       return {
         className: cn(editCellClass(selected, changed), "cursor-pointer"),
         onClick: () =>
@@ -1799,7 +1811,9 @@ function GuestTable({
               lettered={lettered}
               boarding={boarding}
               boardingClass={boardingClass}
-              sectionPx={HEAD_PX[version].section}
+              sectionPx={
+                HEAD_PX[version].section + (tt.section_titles?.d ?? 0)
+              }
               onBusChange={onBusChange}
               onNotesChange={onNotesChange}
               attraction={attraction}
@@ -2126,7 +2140,13 @@ function SectionRows({
         <td
           colSpan={cols}
           className={cn(TD, "text-center font-extrabold")}
-          style={{ background: color, fontSize: `${sectionPx}px` }}
+          style={{
+            background: color,
+            fontSize: `${sectionPx}px`,
+            ...(look.text.section_titles?.bold === false
+              ? { fontWeight: 400 }
+              : null),
+          }}
         >
           <SectionHeading section={s} />
         </td>
@@ -2782,11 +2802,9 @@ function LunchNotes({
   );
 }
 
-/**
- * 置顶 92 Q11 A 原文的第 1 批部分（字号那半句等第 2 批 Text 上了再加回去，原文见 PROGRESS 置顶 92）。
- */
+/** 置顶 92 Q11 A 原文（Annie「同意全部推荐」）。 */
 const LAYOUT_HOW_TO =
-  "⚙ Colours & page: choose the colour of each box on the sheet, turn colouring on or off for each box, add or remove ticket colours and colour choices, and set the paper, Portrait or Landscape, and margins. Pick All tours, or pick a tour to give it its own colours. Changes show on the sheet right away; press Save to keep them. Reset puts one item back to the paper default, and Reset all to paper puts everything back. Saved settings are used on screen, when you print and in ⬇ Excel, for everyone and every day.";
+  "⚙ Colours, text & page: choose the colour of each box on the sheet, turn colouring on or off for each box, add or remove ticket colours and colour choices, set the everyday text size, and set the paper, Portrait or Landscape, and margins. Pick All tours, or pick a tour to give it its own colours. Changes show on the sheet right away; press Save to keep them. Reset puts one item back to the paper default, and Reset all to paper puts everything back. Saved settings are used on screen, when you print and in ⬇ Excel, for everyone and every day. Aa Text size changes one day's sheet on top of the everyday size.";
 
 function HowToUse({ layout }: { layout: boolean }) {
   return (

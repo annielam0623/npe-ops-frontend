@@ -45,6 +45,12 @@ export interface PrintLayoutSettings {
   };
   /** 只 Bus Manifest：票型规则表；null = 默认（现在的 4 条）。其他带「+」的颜色是 ticket_plus 那一格。 */
   ticket_rules: TicketRule[] | null;
+  /**
+   * 每天的起点字号（第 2 批，07 定的形状）：{<layout>:{<element>:{d, bold?}}}，d = 相对前端版式默认的加减（−4..+12 px）。
+   * bus_manifest layout = general | lankun | marcello | west，element = table_text | pax | section_titles | column_titles；
+   * relay_list layout = summary（table_text | legend | column_titles）/ car（header | table_text | total_pax | bus_bars）。
+   */
+  text: Record<string, Record<string, TextSetting>>;
   page: {
     paper: Paper | null;
     /** 四边一个边距；null = 现在的边距。 */
@@ -52,6 +58,11 @@ export interface PrintLayoutSettings {
     /** 每种单的竖 / 横（Bus Manifest：bus / lunch）；Relay list 的方向照旧在 relay_list 设置里。 */
     sheets: Record<string, Orientation | null>;
   };
+}
+
+export interface TextSetting {
+  d: number;
+  bold?: boolean;
 }
 
 export interface BoxInfo {
@@ -100,7 +111,7 @@ interface ApiLayout {
     tours?: Record<string, ApiTour>;
   } | null;
   ticket_rules?: TicketRule[] | null;
-  text?: unknown;
+  text?: Record<string, Record<string, TextSetting>> | null;
   page_setup?: ApiPageSetup | null;
   defaults?: {
     palette?: string[];
@@ -115,6 +126,7 @@ export interface PrintLayoutPatch {
   palette?: string[] | null;
   colours?: ApiLayout["colours"];
   ticket_rules?: TicketRule[] | null;
+  text?: Record<string, Record<string, TextSetting>> | null;
   page_setup?: ApiPageSetup | null;
 }
 
@@ -156,6 +168,9 @@ export const isHexColor = (v: unknown): v is string =>
 export const MARGIN_MIN = 5;
 export const MARGIN_MAX = 25;
 export const RULES_MAX = 30;
+/** 起点字号的加减范围（07：−4..+12 px）。 */
+export const TEXT_D_MIN = -4;
+export const TEXT_D_MAX = 12;
 export const PALETTE_MAX = 40;
 
 const lower = (v: unknown) => (isHexColor(v) ? v.toLowerCase() : null);
@@ -175,6 +190,25 @@ function cleanRules(v: unknown): TicketRule[] | null {
   return v
     .filter((r) => r && typeof r.contains === "string")
     .map((r) => ({ contains: r.contains as string, color: lower(r.color) }));
+}
+
+function cleanText(v: unknown): Record<string, Record<string, TextSetting>> {
+  const out: Record<string, Record<string, TextSetting>> = {};
+  for (const [layout, els] of Object.entries((v as object) ?? {})) {
+    const one: Record<string, TextSetting> = {};
+    for (const [el, t] of Object.entries((els as object) ?? {})) {
+      const x = t as TextSetting;
+      const d =
+        Number.isInteger(x?.d) && x.d >= TEXT_D_MIN && x.d <= TEXT_D_MAX
+          ? x.d
+          : 0;
+      const bold = typeof x?.bold === "boolean" ? x.bold : undefined;
+      if (d || bold !== undefined)
+        one[el] = { d, ...(bold !== undefined ? { bold } : {}) };
+    }
+    if (Object.keys(one).length) out[layout] = one;
+  }
+  return out;
 }
 
 function cleanSheets(v: unknown): Record<string, Orientation | null> {
@@ -220,6 +254,7 @@ export function normalize(r: ApiLayout): PrintLayoutResponse {
       : null,
     colours: { all, tours },
     ticket_rules: cleanRules(r.ticket_rules),
+    text: cleanText(r.text),
     page: {
       paper: ps.paper === "a4" || ps.paper === "letter" ? ps.paper : null,
       margin_mm:
@@ -269,6 +304,7 @@ export const EMPTY_SETTINGS: PrintLayoutSettings = {
   palette: null,
   colours: { all: {}, tours: {} },
   ticket_rules: null,
+  text: {},
   page: { paper: null, margin_mm: null, sheets: {} },
 };
 
@@ -427,6 +463,8 @@ export function buildLayoutPatch(
   }
   if (!same(base.ticket_rules, d.ticket_rules))
     patch.ticket_rules = d.ticket_rules;
+  if (!same(base.text, d.text))
+    patch.text = Object.keys(d.text).length ? d.text : null;
   if (!same(base.page, d.page))
     patch.page_setup = pageEmpty(d.page)
       ? null
@@ -460,6 +498,9 @@ export function countChanges(
       if (!same(a.sections?.[k], b.sections?.[k])) n++;
   }
   if (!same(base.ticket_rules, d.ticket_rules)) n++;
+  for (const l of keys(base.text, d.text))
+    for (const el of keys(base.text[l], d.text[l]))
+      if (!same(base.text[l]?.[el], d.text[l]?.[el])) n++;
   if (!same(base.page.paper, d.page.paper)) n++;
   if (!same(base.page.margin_mm, d.page.margin_mm)) n++;
   for (const k of keys(base.page.sheets, d.page.sheets))
@@ -469,3 +510,32 @@ export function countChanges(
 
 /** Reset all to paper：全部清掉（= 全回默认）。 */
 export const resetAll = (): PrintLayoutSettings => EMPTY_SETTINGS;
+
+/** 起点字号的一格（没设 = d 0、粗细照默认）。 */
+export function textOf(
+  s: PrintLayoutSettings,
+  layout: string,
+  el: string,
+): TextSetting {
+  return s.text[layout]?.[el] ?? { d: 0 };
+}
+
+/** 改起点字号的一格；d 0 且没设粗细 ⇒ 删掉（= 回默认）。 */
+export function setText(
+  s: PrintLayoutSettings,
+  layout: string,
+  el: string,
+  next: TextSetting | null,
+): PrintLayoutSettings {
+  const text = { ...s.text };
+  const one = { ...(text[layout] ?? {}) };
+  const d = next
+    ? Math.max(TEXT_D_MIN, Math.min(TEXT_D_MAX, Math.round(next.d)))
+    : 0;
+  if (next && (d || next.bold !== undefined))
+    one[el] = { d, ...(next.bold !== undefined ? { bold: next.bold } : {}) };
+  else delete one[el];
+  if (Object.keys(one).length) text[layout] = one;
+  else delete text[layout];
+  return { ...s, text };
+}
