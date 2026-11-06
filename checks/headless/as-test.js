@@ -347,12 +347,12 @@ async function run() {
   check("新后端：Tour 卡片 Max per batch 100", (await evaluate("return $q('#tour-max')?.value;")) === "100");
   check("G258：两行模板下拉，选项照 tour_templates（Tour confirmation / Last Minute），值照 config", await evaluate("const r = $q('#tour-template-regular'), l = $q('#tour-template-last-minute'); return [...r.options].map(o => o.textContent).join('|') === 'Tour confirmation|Last Minute' && r.value === 'tour_confirmation' && l.value === 'last_minute';"), await evaluate("return $q('[data-field=tour-templates]')?.textContent;"));
   check("G258：两行的名字 Orders before the cutoff / Orders after the cutoff", await evaluate("const t = $q('[data-field=tour-templates]').textContent; return t.includes('Message template') && t.includes('Orders before the cutoff') && t.includes('Orders after the cutoff');"));
-  check("G258：说明写 cutoff 时间（15:00 ⇒ 3:00 PM the day before）、每小时整点、12:00 AM", await evaluate("const t = $q('[data-template-note]').textContent; return t.includes('after 3:00 PM the day before the tour') && t.includes('every hour on the hour') && t.includes('12:00 AM on the tour day');"), await evaluate("return $q('[data-template-note]')?.textContent;"));
+  check("G258：说明写 cutoff 时间（15:00 ⇒ 3:00 PM the day before）、每小时整点、11:59 PM the day before", await evaluate("const t = $q('[data-template-note]').textContent; return t.includes('after 3:00 PM the day before the tour') && t.includes('Checked every hour on the hour') && t.includes('the last check is at 11:59 PM the day before the tour.');"), await evaluate("return $q('[data-template-note]')?.textContent;"));
   check("G259：Tickets 卡片不出 Day-before summary 两格，Max per batch 150", await evaluate("return !$q('#tickets-summary-time') && !$q('[data-field=tickets-summary]') && $q('#tickets-max').value === '150';"));
   check("G259：门票团名字读 GET 里的 ticket_types（Lower Antelope 胶囊），不再另读 /api/settings/tix-tour-types", (await evaluate("return $q('[data-type-chip=lower]')?.textContent.includes('Lower Antelope');")) && (await since(from, (e) => e.path === "/api/settings/tix-tour-types")).length === 0);
   check("G259：没挑的团灰字列默认（5 days）", (await evaluate("return $q('[data-lead-default]')?.textContent;")) === "Using the default (5 days): Upper Antelope, Horseshoe Bend, Canyon X.", await evaluate("return $q('[data-lead-default]')?.textContent;"));
   check("G259：Daily report 收件人 antelope@nationalparkexpress.com", (await evaluate("return $emails($q('[data-daily-report]'));")) === "antelope@nationalparkexpress.com");
-  check("G258：How to use 有 Message template 那一条", await evaluate("return !!$q('[data-howto-last-minute]') && $q('[data-howto-last-minute]').textContent.includes('Orders after the cutoff');"));
+  check("G258：How to use 有 Message template 那一条（最后一次 11:59 PM the day before，没有 12:00 AM on the tour day）", await evaluate("return !!$q('[data-howto-last-minute]') && $q('[data-howto-last-minute]').textContent.includes('Orders after the cutoff') && $q('[data-howto-last-minute]').textContent.includes('the last check is at 11:59 PM the day before the tour') && $q('[data-howto-last-minute]').textContent.includes('Orders placed after 11:59 PM need to be sent by hand on Manifests.') && !document.body.textContent.includes('12:00 AM on the tour day');"));
 
   // 改 Last Minute 模板 ⇒ Save ⇒ PUT 带两个模板、保留 last_minute_cutoff；tickets 不带不再用的键
   await evaluate("$pick($q('#tour-template-last-minute'), 'tour_confirmation');");
@@ -420,6 +420,8 @@ async function run() {
   await waitFor("$q('tr[data-run]')");
 
   // Recent runs 的新写法
+  r = await evaluate("return $run('last_minute|2026-11-06|23:59');");
+  check("11:59 PM 那次扫描（run_key …|23:59）：Started Nov 6, 11:59 PM、Last Minute (tours)、2 sent · 0 skipped", r?.[0] === "Nov 6, 11:59 PM" && r?.[1] === "Last Minute (tours)" && r?.[3] === "2 sent · 0 skipped", JSON.stringify(r));
   r = await evaluate("return $run('last_minute|2026-11-06|14:00');");
   check("Last Minute run：What 写 Last Minute (tours)、4 sent · 1 skipped", r?.[1] === "Last Minute (tours)" && r?.[3] === "4 sent · 1 skipped", JSON.stringify(r));
   r = await evaluate("return $run('last_minute|2026-11-06|13:00');");

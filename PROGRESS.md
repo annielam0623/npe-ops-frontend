@@ -1283,6 +1283,11 @@ D. 已完成、待从置顶移走：
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
 ### 99. G263 Farm out › Partners & rates 价格行（Adult / Child / Infant 下拉）（2026-11-06，c3 出 preview，49 转 Annie）
+- ⚠️ **Annie 改设计（原话）**：「其实这是我们设计有问题，你干脆改一下，把每个tour单独列出，然后再下面加产品和价格不就好了，就没有母项子项这么麻烦了」⇒ 不要主项 / 子项：每个团只是一个标题，下面一行一个「产品」（名字自己填，不是 Rezdy 代码）+ 成人 / 儿童 / 婴儿价；团本身不再有价。下面题 1–10 里跟主项 / 子项有关的作废，c3 照新设计重出 preview，2c 重估。**还没「动手」**。
+- 2c v3 估：更简单，约 1 天，仍 v159（重写）。生产只读：只有 C Tour；主价 1 行 VOF-H/D 70/70；子项 5 行（West Rim Premium Pass 98、Admission Only 83、Admission+Grab&Go 93；Antelope Lower Canyon Bus Tour 158、One Way Shuttle 65）；farm out 单 0 张。迁移后各变成同名产品，VOF-H/D 变一个同名产品。题给 Annie：多产品新单默认空着要选（推荐）/ 默认第一个；存价重算（推荐）；Import CSV 改 Partner / Tour / Product / Adult / Child / Infant，名字对不上新建（推荐）/ 报错；How to use 重写。⇒ 派 c3 重出 preview。
+- **Annie 答（原话）**：「Farm out：1. 同意A，但是不需要产品编码，因为是farm out，不需要在我们的系统里建产品编码，只要有产品名就好了，记录这一笔来往及将来付款；子项跟主项一样有3列成人/儿童/婴儿。 2 A  3 不需要勾产品  4 B 5A」⇒ 题 1 A（三列 Adult / Child / Infant，子项也是三列）但列表不列产品代码；题 2 A；题 3 子项不挂产品（只有名字 + 价格）；题 4 B 不提醒；题 5 A。题 6（How to use）、题 7（存价格重算）还没答；**还没「动手」**。
+- ⚠️ 子项不挂产品以后，结算不知道一张 farm out 单该用哪个子项的价 ⇒ 49 问 Annie 怎么定（推荐：在 Dispatch › Farm out guests 每张单上选子项，默认主项），同时问 4a / 2c 可行性和改动量（2c 现在的分支按产品代码配子项）。
+- 2c 评估：可行。farm_out_orders 加 rate_item_id（null = 主项价），PATCH 订单可改，改了重算（手改应付的不动），Action Log 记「Price item」；子项删了 ⇒ 单回到主项价；换合作方 ⇒ 清掉。约 1 天，仍是一条迁移 v159（重写），产品代码表删掉。编辑照下拉行、显示三列都合适。新单默认主项价，不按名字猜。两题给 Annie：多产品单（近 60 天 21 张 West Rim / Antelope 单同一天同团两行产品）一单一个子项、多产品的手改应付（推荐） / 每行产品各选子项（更准，多一张表、界面多）；Farm out Report 显示选的子项名（推荐显示）。⇒ 49 已问 Annie 题 8–10。
 - preview：https://claude.ai/artifact/FCnzWr3MtKki8bxPfS1Yhg 。后端 2c 8e256f22 没上 main（迁移 v159）。推荐都 A。
 - 题 1 平时显示：A 列表加 Infant 列（Adult / Child / Infant 三列，没设灰「—」，有子项没主项价灰 N/A，子项后列产品代码）；B 合成一列 Prices 写一串。
 - 题 2 编辑价格行：A [Adult ▾][110.00] × + 灰绿「+ Add price」，已有票种在下拉里灰掉；B 不灰，存时报重复。
@@ -1297,6 +1302,8 @@ D. 已完成、待从置顶移走：
 - ✅ **Annie 答（原话）：「1. B  2. A 3 A」** ⇒ ① 门票、团确认两张卡都要 Daily report，各自能选时间（团确认是新加的一份报告：列当天该发没发出去的团确认单、原因、要做什么；开关默认关、收件人能改）；② 时间从当天的发送时间里下拉选，默认最后一批；③ 选的早于最后一批 ⇒ 只算到那一刻为止已发过的批次，报告注明后面的批次没算。**还没「动手」**：先出 preview。已转 4a 估后端、拟字段；派 c3 在 G263 preview 之后做。0f 估：字段 tickets.daily_report.after_time、tour.daily_report {enabled, emails, after_time}，不迁移，约半天；after_time 不在发送时间里就落回最后一批（不报错）；团确认报告理由沿用现有跳过原因 + 要做的事；Shuttle / 回程不列；两题放进 preview：① 团确认报告默认收件人（推荐 reservations@）② 报告早于最后一批时，被上限留到后面批次的单列不列（推荐列）。已转 c3。
 - c3 出 preview https://claude.ai/artifact/7jq2UBosVHwRR9drFUjEdX ，6 题（推荐都 A）已转 Annie：1 Tour 报告默认收件人 reservations@ / antelope@；2 报告早于最后一批时被上限挤到后面的单列 / 不列；3 时间行「Send the report after [5:00 PM (last batch) ▾]」/ 不写 (last batch)；4 选早时灰字「Only batches up to 12:00 PM are in the report. The email says 5:00 PM is not included.」/ 不写；5 选的时间被删时回最后一批 + 灰字 / 不提示；6 How to use 两条原文（见 49 回复）。
 - ✅ **Annie（原话）：「同意推荐，动手」**（在 49 发完 98 六题 + G263 题 7 之后）⇒ 49 按 98 六题全 A 理解，已转 4a（0f 做后端：Tour 报告默认 reservations@、早发时列被上限挤后的单）和 c3（task/auto-send-report-time，推分支，等后端 SHA 再合）。G263 / G266 包不包括，49 在问 Annie。
+- ✅ 11:59 PM 后端上 main ff3205cd（关包 0a67150a）⇒ 派 c3 核字段合 task/auto-send-lm-2359。G263 2c 更正：子项价格照旧存「子项 × 票种」行（不改三列），GET 子项照旧给 prices，不再给 products / product_codes。
+- 0f 98 后端 task/daily-report-both 写完在审（排在 a2 推 G180 之后上 main）：tickets.daily_report / tour.daily_report {enabled, emails（tour 默认 reservations@）, after_time}，不在发送时间里就落回最后一批；tour run 的 summary 也带 daily_report；门票报告挂在 after_time 那批；Action Log 改名 ticket / tour daily report on/off。已转 c3。
 - c3：98 前端 task/auto-send-report-time **8069782f** 推了没合（基于 11:59 分支 52f71f0a；as 112、nav 39，tsc / eslint / build 过），等 0f SHA。
 - ✅ **Annie 在 c3 窗口（原话）：「G266 Dispatch同意推荐，动手」** ⇒ 置顶 97 五题全 A。c3 开 task/dispatch-sent-marks：① 后端已上，检查过直接合 main；② Notes 另放分支，等后端 v160 上 main 核字段再合（49 要求不要藏在 main 里）。G263 还没「动手」。
 - G263 preview 已加题 7（同链接新版）。11:59 分支修了「Checkedevery」少空格，tip 52f71f0a。
