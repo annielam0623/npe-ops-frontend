@@ -1278,6 +1278,11 @@ D. 已完成、待从置顶移走：
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 96. Auto Send How to use 两处文字（2026-11-06，c3 写，没经过 preview，49 转 Annie）
+- 前端 task/auto-send-limits 4ec9a4ee（c3，as 97/97、nav 39，tsc / eslint / build 过，没合，等后端 G259 / G258 SHA）；截图 https://claude.ai/artifact/PWJdBedTYSeTC51ZmxhYZZ 。
+- 题 1：新加的 How to use 第 3 条（后端带 tour_templates 才出），原文：「Message template: orders placed before the Last Minute cutoff get the template picked for "Orders before the cutoff". Orders placed after the cutoff the day before the tour are checked every hour on the hour and sent by SMS and email with the template picked for "Orders after the cutoff"; the last check is at 12:00 AM on the tour day. Max per batch doesn't apply to them, and orders already sent by hand are not sent again.」A（推荐）照用；B Annie 改字。
+- 题 2：第 2 条现有原句「Tour confirmations go out at each send time to bus tour orders from the set number of days before the tour up to the day before. Nothing goes out on the tour day.」跟 Last Minute 团当天 00:00 那次扫描矛盾。A（推荐）有 Last Minute 时末句改成「Nothing goes out on the tour day, except the Last Minute check at 12:00 AM (see below).」；B 照旧不改。
+
 ### 95. G180 三档开关放哪、怎么存、界面文字（2026-11-06，c3 出 preview，49 转 Annie）
 - preview：https://claude.ai/artifact/7DDLeUsSSczzovwb2pncrb（模拟数据，可切 A / B / 员工看到的样子）。推荐都选 A。
 - 题 1 放哪：A 在 Tour Confirmation Tracking 日期那一行最右边放小下拉「Main manifest sync」，只有 Super Admin 看得到；B 放在 Settings › Notifications。
