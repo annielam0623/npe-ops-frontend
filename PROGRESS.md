@@ -1334,7 +1334,7 @@ D. 已完成、待从置顶移走：
 - 题 2：第 2 条现有原句「Tour confirmations go out at each send time to bus tour orders from the set number of days before the tour up to the day before. Nothing goes out on the tour day.」跟 Last Minute 团当天 00:00 那次扫描矛盾。A（推荐）有 Last Minute 时末句改成「Nothing goes out on the tour day, except the Last Minute check at 12:00 AM (see below).」；B 照旧不改。
 
 ### 95. G180 三档开关放哪、怎么存、界面文字（2026-11-06，c3 出 preview，49 转 Annie）
-- ✅ **Annie（原话）：「全按推荐，动手」** ⇒ 三题全 A。派 c3：G180 灰底合完后开 task/tracking-sync-switch，后端已在 main，检查过直接合。
+- ✅ **Annie（原话）：「全按推荐，动手」** ⇒ 三题全 A。派 c3：G180 灰底合完后开 task/tracking-sync-switch，后端已在 main，检查过直接合。✅ **合 main 1d77e0e4**（tt 167、nav 39，tsc / eslint / build 过），验收点已转 Annie。
 - preview：https://claude.ai/artifact/7DDLeUsSSczzovwb2pncrb（模拟数据，可切 A / B / 员工看到的样子）。推荐都选 A。
 - 题 1 放哪：A 在 Tour Confirmation Tracking 日期那一行最右边放小下拉「Main manifest sync」，只有 Super Admin 看得到；B 放在 Settings › Notifications。
 - 题 2 怎么存：A 选了就存，出绿字 Saved，切到 Staff 先出黄框确认；B 旁边放蓝色 Save，选好再按。
