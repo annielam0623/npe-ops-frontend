@@ -46,12 +46,7 @@ import type {
   FarmOutRatePut,
 } from "@/types/farm-out";
 
-import {
-  gateFromError,
-  type LoadGate,
-  parsePriceInput,
-  priceText,
-} from "./config";
+import { gateFromError, type LoadGate } from "./config";
 import { PartnerDetail } from "./partner-detail";
 import { TourProducts } from "./tour-products";
 import {
