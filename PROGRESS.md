@@ -1176,6 +1176,9 @@ D. 已完成、待从置顶移走：
 - 原话：「relay split也需要可以自己调字体大小，设置就跟bus manifest一样」。
 - 46：后端 app/ 里没有 Bus Manifest 字体设置，应是前端存的；要后端存（如 settings relay_list）就把字段形状发它。
 - 78 派 77 只读查 Bus Manifest 字体设置怎么做 / 怎么存，出 preview（范围、放哪、存哪、谁能改、打印生效），等 Annie 看 preview + 「动手」。
+- **preview**：https://claude.ai/artifact/SQJtqNHSm7QSphrQiejaHL （77，mock，没写代码）。现状：Bus Manifest 字号（G197）每台车「Aa Text size」编辑条（整列 / 整行 / 整页、A− / A+ −2 到 +10 px、Regular / Bold、Reset / Cancel / Done，按整页 Save 才存，后端 PUT /api/dispatch/manifests/text-size 只存这天这团这车，dispatch.edit，Text size changes 最近 5 次）；Relay list 字号写死（总表 12.5 / 图例 10.5 / 车单 15 / 抬头 24 px）。
+  - Q1 怎么调：A（推荐）同 Bus Manifest 编辑条；B ⚙ 里每张单一个整页大小。Q2 调哪几张：A（推荐）总表（每轮）和每台车单各调各的；B 一个设定管全天。Q3 存多久：A（推荐）只存这一天；B 所有日子通用（存 ⚙）。Q4 怎么存：A（推荐）Done 暂存、顶上蓝 Save、离开前问；B Done 直接存。Q5 谁能改：A（推荐）dispatch.edit；B 能看 Relay list 的都能改。Q6 Text size changes：A（推荐）要，最近 5 次 + Action Log；B 不要。Q7 How to use：A（推荐）「Aa Text size (above each sheet): pick Whole column, Whole row or Whole page, click the table, then press A− or A+ and Regular or Bold. Press Done, then Save at the top. Text size is saved for this day only and prints as you see it; the next day starts from the default size.」；B 她改字。
+  - 需要后端（Q3 A）：PUT /api/dispatch/relay-list/text-size {date, sheet, text_size}，sheet = summary:relay / summary:relay_2 / car:<轮>:<车号>（按车号认，不用 assignment id），relay-pull 每张单带 text_size + text_size_history，action_log，dispatch.edit，新表（迁移先给 Annie 看）。前端共用 text-size.tsx 约 1 天。
 
 ### 89. Auto Send › Ticket reminders：按产品设提前多久发 + 每天给 antelope@ 一封「今天没发出去的单」汇总（2026-11-05，Annie 在 e8 提，没动手）
 - 原话：「auto send的ticket reminder也要改一下，需要按照产品来选择提前几点发。然后我需要每天给antelope@一个email提醒他们今天哪些订单因为什么原因没有发出去，每天就汇总当天的一次发给他们就好了」。
