@@ -1200,6 +1200,7 @@ D. 已完成、待从置顶移走：
   - ✅ **Annie（原话）**：「看了，同意全部推荐，记得要可以下载」⇒ Q1–Q11 全 A 定稿（含 Q8 Relay list 加 ⬇ Excel；Bus Manifest Excel 照设定）。**还不是「动手」**，78 已问是否现在动手；定稿已发 46 排后端。
   - ✅ **Annie「动手」（原话，2026-11-05）**。前端派 77：task/print-layout-1 第 1 批 Colours + Page + Relay ⬇ Excel 键，照草案 mock，推分支不合；第 2 批 Text + Relay 当天 Aa。后端 46 另开窗口评估字段（迁移 SQL 先给 Annie），上线 SHA 发前端后核字段合。
   - 后端 07 定第 1 批字段（已原样转 77）：settings 两键 print_layout:bus_manifest / print_layout:relay_list，**第 1 批无迁移**；GET / PUT /api/settings/print-layout?page=…（页面设置键叫 page_setup）；colours {all, tours{id:{…, sections}}}、box 清单（Bus Manifest 18 种 + col_<列键>；Relay hotel_cell / column_titles）；车抬头颜色仍走 /api/settings/relay-list tour_colors，团色仍 Products Colour；ticket_rules ≤30 条（默认现 4 条）；palette ≤40；text 存加减 d（第 2 批生效）；page_setup；GET manifest 加 view.print_layout；Relay Excel GET /api/dispatch/relay-list/excel?date=。Relay 当天字号新表放第 2 批。
+  - 77 第 1 批推 task/print-layout-1 f8f05b85（没合，等 07 SHA）；3 点转 07（view.print_layout 一致性、hotel_group 要不要颜色格（78 倾向给）、defaults 同源）。78 派 77 接着做第 2 批 task/print-layout-2（Text 页 + 键名 / How to use 完整原文 + Relay 当天 Aa，mock）。
   - Q11 How to use：A（推荐）原文见 preview / 77 消息（「⚙ Colours, text & page: choose the colour of each box … on top of the everyday size.」）；B 她改字。
   - **前端第 1 批（Colours + Page，mock，推分支没合）**：工作窗口 `npe-ops-frontend-77`[b4c0cd]（78 派；依据 Annie「看了，同意全部推荐，记得要可以下载」+「动手」），`task/print-layout-1` **f8f05b85**（功能 d6dd521a，已合 main），worktree D:
 pe-ops-frontend-wt-layout。接口照后端 07 的第 1 批形状（lib/print-layout.ts：normalize 进、只送改了的顶层键出，null = 回默认）。
