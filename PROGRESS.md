@@ -1167,6 +1167,11 @@ D. 已完成、待从置顶移走：
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 91. Bus Manifest 背景颜色打印不出来（2026-11-05，Annie 在 46 报，46 转；ef 查完前端不用改）
+- 原话：「bus manifest的背景颜色打印不出来」。
+- ef 查：ops Bus Manifest 的 Print / Print all buses 开后端旧页 /admin/dispatch/manifest/print（lib/dispatch-manifest-api.ts:270），前端没有自己的打印样式。后端 tour_manifest_print.html:20 已有 print-color-adjust: exact，@media print 没清格子底色；headless Chrome 实测不勾 Background graphics 也有底色。
+- 78 问 Annie：怎么打的（① 屏幕页直接 Ctrl+P 没点 Print 键 ② 打印对话框 Color 选了黑白 / 打印机默认灰度 ③ 不是 Chrome / Edge ④ 打的是 Download 出来的 Excel），附打印预览截图。确认点 Print 键 + Chrome + 彩色仍没底色 ⇒ 转 46 查后端页面。
+
 ### 90. Relay Splits 可以自己调字体大小（2026-11-05，Annie 在后端 46 窗口提，46 转；没动手）
 - 原话：「relay split也需要可以自己调字体大小，设置就跟bus manifest一样」。
 - 46：后端 app/ 里没有 Bus Manifest 字体设置，应是前端存的；要后端存（如 settings relay_list）就把字段形状发它。
