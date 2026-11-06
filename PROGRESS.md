@@ -4,7 +4,28 @@
 
 > 6d 交接（下面「2026-10-27 交接：前端主窗口 6d」那节）的后端需求已于 10/27 晚由 ad 转给家里后端主窗口 17。
 
-> **下一个主窗口：先读下面「40 接班」，再读「2026-11-05 晚 交接：前端主窗口 78 → 新主窗口」，再读「2026-11-05 收工交接：前端主窗口 e8」，再看置顶「📌 等 Annie 确认」。**
+> **下一个主窗口（明天公司）：先读下面「2026-11-05 晚 收工交接：前端主窗口 40」，再读「2026-11-05 收工交接：前端主窗口 e8」，再看置顶「📌 等 Annie 确认」。**
+
+## 2026-11-05 晚 收工交接：前端主窗口 `前端主窗口40`[325a5e]（家里电脑）
+> Annie：「好的，把今天这个完成就收工吧，详情记录下来明天公司好继续」。40 只分工和汇报，没写代码。过程见下面「40 接班」一节。今晚前端工作窗口只有 `01`[4a9dda]（端口 3777 / 9177 / 9777）；77、ef、78 已退。后端主窗口 `主窗口-46`[5b93cd]（后端 07 / 4c / 61）。
+
+### 一、今晚上 main（等 Annie 线上验收）
+| 件 | 前端 | 后端 | 验收看 |
+|---|---|---|---|
+| 92 版式设置第 1 批（⚙ Colours & page） | b7fd8a73（77） | 8a72f830 | Bus Manifest / Relay list 弹窗 Colours / Page；试完 Reset all to paper + Save（设定全站生效） |
+| 92 Text 起点字号接 Bus Manifest 打印 / Excel | 不用改 | 1630d366（61） | Text 页改 Table text 大小 / Bold，打印页、Excel 跟着变 |
+| 94 Schedule check 酒店清单 | ed518553（01） | 307d6895（4c） | Dispatch › Assign 右栏 Morning Relay：只列这一轮没车停的酒店带人数「MGM (4)」；TI / Hoover 不出；没存的 Add hotel 马上从名单拿掉；新说明小字 |
+| 92 第 2 批前端（Text 页 + Relay 当天 Aa） | 见下「二」 | 0d339c0b（07） | 01 合了才算上线 |
+
+### 二、没合 / 等
+- **93 G250 Dispatch 自动锁定**：后端 68b69380 **已在生产生效**（当天出发 + 1h 锁，过去的日子整天锁——Annie 在 4c 选 B）；前端 `task/dispatch-tour-lock` **a7c07e61**（01，worktree D:\npe-ops-frontend-wt-tourlock，da 544 / mf 283 / nav 39，tsc / eslint / build 过）**没合**，**只等 Annie 确认 past_day 说明条两句**：员工「This day is locked. Only a Super Admin can change it.」/ SA「This day is locked. You can still change it as a Super Admin.」（40 已整段问过，不滚动重问；改字只动 config.ts lockText）。她答了 ⇒ 合最新 main 重跑 da / mf / nav + build ⇒ 合 main，验收点见下面 01 那节。⚠️ 前端没合之前员工改锁住的车只会在 Save 时收到英文 409，所以优先。
+- **92 第 2 批前端 `task/print-layout-2`**：见本节最后一条（01 合 main 的结果）。
+- **92「Relay list 照版式设定读」**（Relay ⬇ Excel / 打印 / 色条读 print_layout:relay_list 的 hotel_cell / column_titles / text / page_setup）：后端**还没做**，46 明天派；前端预计不用改。现在 Relay Excel 仍照旧色、A4、边距 12×11mm。
+
+### 三、明天开工
+1. 报对话名；git pull；问后端主窗口「Relay list 照设定读」进度。
+2. 93：Annie 答 past_day 两句 ⇒ 派工作窗口（01 不在就新开，分支 a7c07e61 已推）合 main，验收点转 Annie。
+3. 接着照 e8 收工交接「三、明天开工」（G180、Auto Send G258 / G259、Farm out 子项价格行）。
 
 ## 2026-11-05 晚 前端主窗口 `npe-ops-frontend-40`[325a5e] 接班（家里电脑；只分工和汇报，不写代码）
 - 接 78（78 补交接：那节之后没新变化，交完停）。已告诉 46、77、ef 新主窗口名字；ef 空闲待命（worktree 已删、没在跑的进程）。
