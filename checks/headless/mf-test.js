@@ -111,6 +111,7 @@ async function main() {
 
   try {
     await run();
+    await runLayout();
   } finally {
     ws.close();
     chrome.kill();
@@ -1174,3 +1175,150 @@ async function run() {
   check("电脑：Print all buses / Download 照旧在页头，没有 ⋯；How to use 在 Action Log 上面", await evaluate(`const vis = (el) => !!el && el.getBoundingClientRect().height > 0 && el.getBoundingClientRect().width > 0; const noSway = document.documentElement.scrollWidth <= innerWidth + 1; const btn = (t, root = document) => [...root.querySelectorAll('button, a')].find((b) => b.textContent.trim().startsWith(t)); const h = [...document.querySelectorAll('details')].find((d) => d.textContent.includes('How to use — Tour manifest')); return vis(btn('Print all buses')) && vis(btn('Download')) && !vis(document.querySelector('header [data-phone-more]')) && h.getBoundingClientRect().top < document.querySelector('[data-manifest-log]').getBoundingClientRect().top;`));
 }
 main().catch((e) => { console.error(e); process.exit(2); });
+
+// ── 置顶 92 版式设置第 1 批（Annie「看了，同意全部推荐，记得要可以下载」+「动手」）：Bus Manifest「⚙ Colours & page」──
+// 形状照后端 07（78 转）：GET / PUT /api/settings/print-layout?page=bus_manifest；车抬头色走 /api/settings/relay-list 的 tour_colors。
+async function runLayout() {
+  const URL0 = `${APP}/dispatch/manifest?date=2026-10-05&tour=3`;
+  const DLG = "document.querySelector('[data-manifest-layout]')";
+  const bg = (expr) => `getComputedStyle(${expr}).backgroundColor`;
+  const lowerHead = "[...document.querySelectorAll('section[aria-label=\"Bus 2041=A\"] td[colspan]')].find((td) => td.textContent.includes('LOWER ANTELOPE'))";
+  // CHD1 是 Heli（Extra 整行色盖过整列色），看 CHD3 那一行。
+  const phoneCell = "[...[...document.querySelectorAll('tbody tr')].find((tr) => (tr.textContent.includes('CHD2') || tr.textContent.includes('CHD3')) && tr.textContent.includes('+1555')).children].find((td) => td.textContent.trim() === '+1555')";
+  const band = "document.querySelector('section[aria-label=\"Bus 2041=A\"]').firstElementChild";
+  const firstTh = "document.querySelector('section[aria-label=\"Bus 2041=A\"] thead th')";
+  const open = async () => {
+    await goto(URL0);
+    await waitFor("document.querySelector('section[aria-label^=\"Bus\"]')", 60000);
+    await helpers();
+  };
+  const setText = async (sel, v) => evaluate(`$setValue(document.querySelector(${JSON.stringify(sel)}), ${JSON.stringify(v)});`);
+
+  // 后端没上线（404）：没有 ⚙ 键，页面照旧。
+  await ctl({ layout: false, paper: true, staffPerms: null, superAdmin: false, partner: false });
+  await open();
+  await sleep(500);
+  check("版式设置：后端没上线（404）⇒ 没有 ⚙ Colours & page 键", !(await evaluate("return !!document.querySelector('[data-layout-open]');")));
+  const before0 = await evaluate(`return [${bg(lowerHead)}, ${bg(band)}, ${bg(firstTh)}, document.querySelectorAll('[data-hotel-mark]').length].join('|');`);
+
+  await ctl({ layout: true, layoutReset: true });
+  await open();
+  await waitFor("document.querySelector('[data-layout-open]')");
+  const after0 = await evaluate(`return [${bg(lowerHead)}, ${bg(band)}, ${bg(firstTh)}, document.querySelectorAll('[data-hotel-mark]').length].join('|');`);
+  check("版式设置：上线了、没设过 ⇒ 单子一模一样（节标题、车抬头、表头、隔组标色）", before0 === after0, `${before0} vs ${after0}`);
+  check("版式设置：How to use 多 ⚙ Colours & page 那句（Q11 第 1 批部分）", await evaluate("return document.body.textContent.includes('⚙ Colours & page: choose the colour of each box on the sheet, turn colouring on or off for each box, add or remove ticket colours and colour choices, and set the paper, Portrait or Landscape, and margins.');"));
+
+  await evaluate("document.querySelector('[data-layout-open]').click();");
+  await waitFor(DLG);
+  check("版式设置：弹窗两页 Colours / Page，Apply to All tours / 团名", await evaluate(`return [...${DLG}.querySelectorAll('[data-layout-tab]')].map((b) => b.textContent).join('|') === 'Colours|Page' && ${DLG}.querySelector('[data-layout-scope="tour"]').textContent === 'Antelope Canyon' && ${DLG}.querySelector('[data-layout-scope="all"]').getAttribute('aria-pressed') === 'true';`));
+  check("版式设置：每种格一行（车抬头、节、Shuttle、隔组、Heli、Special Requirements、表头…、整列默认关）", await evaluate(`const keys = [...${DLG}.querySelectorAll('[data-layout-box]')].map((r) => r.dataset.layoutBox); return ['bus_header','section','shuttle_out','hotel_group','extra_row','notes','column_titles','lunch_mismatch','lunch_total_row','sandwich_head','col_phone','col_assist'].every((k) => keys.includes(k)) && !keys.includes('ticket_plus') && ${DLG}.querySelector('[data-layout-box="col_phone"] [data-layout-toggle]').dataset.layoutToggle === 'off';`));
+  check("版式设置：All tours 层的车抬头 / 节：提示先选团", await evaluate(`return ${DLG}.querySelector('[data-layout-box="section"]').textContent.includes('Pick Antelope Canyon above to set its colours.');`));
+
+  // 关掉隔组标色 ⇒ 马上没了；底下写没存
+  await evaluate(`${DLG}.querySelector('[data-layout-box="hotel_group"] [data-layout-toggle]').click();`);
+  check("版式设置：关掉「Every other hotel group」⇒ 单子上马上没有隔组标色、行左边橙线、底下 1 change not saved", await waitFor(`document.querySelectorAll('[data-hotel-mark]').length === 0 && ${DLG}.querySelector('[data-layout-box="hotel_group"]').className.includes('inset_3px') && document.querySelector('[data-layout-unsaved]')?.textContent === '1 change not saved'`));
+  // 整列 Phone 开上色
+  await evaluate(`${DLG}.querySelector('[data-layout-box="col_phone"] [data-layout-toggle]').click();`);
+  await setText("[aria-label='Phone column colour code']", "#dbeafe");
+  check("版式设置：给整列 Phone 开上色 #dbeafe ⇒ 电话格马上变色", await waitFor(`${bg(phoneCell)} === 'rgb(219, 234, 254)'`), await evaluate(`try { return [${bg(phoneCell)}, ${phoneCell}.outerHTML.slice(0, 200), document.querySelector("[aria-label='Phone column colour code']")?.value, document.querySelector('[data-layout-box="col_phone"] [data-layout-toggle]')?.dataset.layoutToggle].join(' | '); } catch (e) { return String(e); }`));
+  // 表头颜色
+  await setText("[aria-label='Column titles colour code']", "#ffcc00");
+  check("版式设置：Column titles 换色 ⇒ 表头马上变", await waitFor(`${bg(firstTh)} === 'rgb(255, 204, 0)'`));
+  // 色盘快选
+  await evaluate(`${DLG}.querySelector('[data-layout-box="notes"] [data-layout-palette-open]').click();`);
+  await waitFor("document.querySelector('[data-layout-palette-pop]')");
+  check("版式设置：颜色旁 ▾ 出色盘（默认 7 个色）", await evaluate("return document.querySelectorAll('[data-layout-palette-pop] [data-layout-pick]').length === 7;"));
+  await evaluate("document.querySelector('[data-layout-palette-pop] [data-layout-pick=\"#c5e8b7\"]').click();");
+  check("版式设置：点色盘里的色 ⇒ 那一格换成它", await waitFor("document.querySelector(\"[aria-label='Special Requirements with text colour code']\").value === '#c5e8b7'"));
+
+  // 选团：节色、车抬头字母
+  await evaluate(`${DLG}.querySelector('[data-layout-scope="tour"]').click();`);
+  await waitFor(`${DLG}.querySelector('[data-layout-section="LOWER ANTELOPE"]')`);
+  await setText("[aria-label='LOWER ANTELOPE colour code']", "#ff0000");
+  check("版式设置：选了团 ⇒ 每节一格颜色；LOWER ANTELOPE 改红 ⇒ 节标题马上变红", await waitFor(`${bg(lowerHead)} === 'rgb(255, 0, 0)'`));
+  await setText("[aria-label='Bus A header colour code']", "#00ff00");
+  check("版式设置：车抬头 Bus A 改色 ⇒ A 车色条马上变（存进 Relay list 设置，同一颜色只一份）", await waitFor(`${bg(band)} === 'rgb(0, 255, 0)'`));
+
+  // 票型规则：加一条
+  await evaluate(`${DLG}.querySelector('[data-layout-rule-add]').click();`);
+  const nRules = await evaluate(`return ${DLG}.querySelectorAll('[data-layout-rule]').length;`);
+  check("版式设置：票型规则默认 4 条 + Add 一条 = 5 条，Add 是灰绿", nRules === 5 && (await evaluate(`return getComputedStyle(${DLG}.querySelector('[data-layout-rule-add]')).backgroundColor === 'rgb(107, 142, 116)';`)), String(nRules));
+  await setText("[aria-label='Rule 5 text']", "1 child");
+  await setText("[aria-label='Rule 5 colour code']", "#123456");
+  check("版式设置：加「1 child」→ #123456 ⇒ CHD2 那格（2 Adult + 1 Child）马上变色（不分大小写、忽略空格）", await waitFor(`(() => { const td = [...document.querySelectorAll('td')].find((t) => t.textContent.trim() === '2 Adult + 1 Child'); return td && getComputedStyle(td).backgroundColor === 'rgb(18, 52, 86)'; })()`));
+
+  // Page 页
+  await evaluate(`${DLG}.querySelector('[data-layout-tab="page"]').click();`);
+  await waitFor(`${DLG}.querySelector('[data-layout-page]')`);
+  check("版式设置：Page 页默认 A4、Bus sheet Landscape、Lunch sheet Portrait、边距空（默认 10 mm, lunch sheet 9 mm）", await evaluate(`const d = ${DLG}; const on = (sel) => [...d.querySelectorAll(sel + ' button')].find((b) => b.getAttribute('aria-pressed') === 'true')?.textContent; return d.querySelector('[data-layout-paper="a4"]').getAttribute('aria-pressed') === 'true' && on('[data-layout-sheet="bus"]') === 'Landscape' && on('[data-layout-sheet="lunch"]') === 'Portrait' && d.querySelector('[data-layout-margin]').value === '' && d.textContent.includes('(default 10 mm, lunch sheet 9 mm)');`));
+  await evaluate(`${DLG}.querySelector('[data-layout-paper="letter"]').click();`);
+  await setText("[data-layout-margin]", "40");
+  check("版式设置：边距超范围 ⇒ 红字 5 到 25", await waitFor(`${DLG}.textContent.includes('Enter a number from 5 to 25.')`));
+  await setText("[data-layout-margin]", "8");
+
+  // 关窗没存 ⇒ 问
+  await evaluate("$btn('Cancel', document.querySelector('[data-manifest-layout]')).click();");
+  check("版式设置：有没存的就 Cancel ⇒ 先问 Save them before closing?", await waitFor("document.querySelector('[data-layout-ask]')?.textContent.includes('Save them before closing?')"));
+  await evaluate("$btn('Keep editing', document.querySelector('[data-layout-ask]')).click();");
+
+  // 存：400 原话
+  await ctl({ layoutFail: "Each colour must look like #rrggbb." });
+  await evaluate("document.querySelector('[data-layout-save]').click();");
+  check("版式设置：存不上 ⇒ 红字 Not saved: 后端原话、弹窗不关", await waitFor("document.querySelector('[data-layout-status=\"error\"]')?.textContent === 'Not saved: Each colour must look like #rrggbb.' && !!document.querySelector('[data-manifest-layout]')"));
+  await ctl({ layoutFail: "" });
+  let lb = (await mockLog()).length;
+  await evaluate("document.querySelector('[data-layout-save]').click();");
+  await waitFor("document.querySelector('[data-layout-status=\"saved\"]')");
+  const puts = (await mockLog()).slice(lb).filter((e) => e.method === "PUT");
+  const put = puts.find((e) => e.path === "/api/settings/print-layout");
+  const rput = puts.find((e) => e.path === "/api/settings/relay-list");
+  const b = put?.body ?? {};
+  check("版式设置：Save ⇒ 一个 PUT print-layout?page=bus_manifest，只带改了的顶层键（colours / ticket_rules / page_setup，没 palette）",
+    put?.q?.page === "bus_manifest" && JSON.stringify(Object.keys(b).sort()) === JSON.stringify(["colours", "page_setup", "ticket_rules"]), JSON.stringify(b));
+  check("版式设置：colours 形状（all 里 hotel_group off、col_phone on + 色；团里 sections 节名小写）",
+    b.colours?.all?.hotel_group?.on === false && b.colours?.all?.col_phone?.on === true && b.colours?.all?.col_phone?.color === "#dbeafe" && b.colours?.tours?.["3"]?.sections?.["lower antelope"] === "#ff0000", JSON.stringify(b.colours));
+  check("版式设置：ticket_rules 整张（5 条，最后一条 1 child）；page_setup letter / 8 mm",
+    b.ticket_rules?.length === 5 && b.ticket_rules[4].contains === "1 child" && b.page_setup?.paper === "letter" && b.page_setup?.margin_mm === 8, JSON.stringify([b.ticket_rules, b.page_setup]));
+  check("版式设置：车抬头 Bus A 另 PUT /api/settings/relay-list 的 tour_colors（只这一项）", JSON.stringify(rput?.body) === JSON.stringify({ tour_colors: { 3: { buses: { A: "#00ff00" } } } }), JSON.stringify(rput?.body));
+  check("版式设置：存好绿字 Saved", await evaluate("return getComputedStyle(document.querySelector('[data-layout-status=\"saved\"]')).color === 'rgb(22, 163, 74)';"));
+  await evaluate("$btn('Cancel', document.querySelector('[data-manifest-layout]')).click();");
+  await waitFor("!document.querySelector('[data-manifest-layout]')");
+  // 重开页面：存好的照样画
+  await open();
+  await waitFor("document.querySelector('[data-layout-open]')");
+  await sleep(500);
+  check("版式设置：重开页面 ⇒ 存好的照样画（隔组标色关、电话列蓝、节标题红）", await evaluate(`return document.querySelectorAll('[data-hotel-mark]').length === 0 && ${bg(phoneCell)} === 'rgb(219, 234, 254)' && ${bg(lowerHead)} === 'rgb(255, 0, 0)';`));
+
+  // Reset all to paper ⇒ 全回默认（也要 Save）
+  await evaluate("document.querySelector('[data-layout-open]').click();");
+  await waitFor(DLG);
+  await evaluate("document.querySelector('[data-layout-reset-all]').click();");
+  check("版式设置：Reset all to paper ⇒ 单子马上回原样（还没存）", await waitFor(`document.querySelectorAll('[data-hotel-mark]').length === 1 && ${bg(phoneCell)} !== 'rgb(219, 234, 254)'`));
+  lb = (await mockLog()).length;
+  await evaluate("document.querySelector('[data-layout-save]').click();");
+  await waitFor("document.querySelector('[data-layout-status=\"saved\"]')");
+  const reset = (await mockLog()).slice(lb).find((e) => e.method === "PUT" && e.path === "/api/settings/print-layout");
+  check("版式设置：Reset all 存 ⇒ 改过的顶层键送 null（回默认）", reset?.body?.colours === null && reset?.body?.ticket_rules === null && reset?.body?.page_setup === null, JSON.stringify(reset?.body));
+  await evaluate("$btn('Cancel', document.querySelector('[data-manifest-layout]')).click();");
+
+  // Discard：没存的丢掉，单子回去
+  await open();
+  await waitFor("document.querySelector('[data-layout-open]')");
+  await evaluate("document.querySelector('[data-layout-open]').click();");
+  await waitFor(DLG);
+  await evaluate(`${DLG}.querySelector('[data-layout-box="hotel_group"] [data-layout-toggle]').click();`);
+  await waitFor("document.querySelectorAll('[data-hotel-mark]').length === 0");
+  await evaluate("$btn('Cancel', document.querySelector('[data-manifest-layout]')).click();");
+  await waitFor("document.querySelector('[data-layout-ask]')");
+  await evaluate("$btn('Discard', document.querySelector('[data-layout-ask]')).click();");
+  check("版式设置：Discard ⇒ 弹窗关、单子回到存好的样子", await waitFor("!document.querySelector('[data-manifest-layout]') && document.querySelectorAll('[data-hotel-mark]').length === 1"));
+
+  // 只能看 Dispatch 的人：弹窗只读
+  await ctl({ staffPerms: ["dispatch.view", "manifests.view"] });
+  await open();
+  await waitFor("document.querySelector('[data-layout-open]')", 30000);
+  await evaluate("document.querySelector('[data-layout-open]').click();");
+  await waitFor(DLG);
+  check("版式设置：没勾 dispatch.edit ⇒ 弹窗只读（View only、没有 Save、开关灰）", await evaluate(`const d = ${DLG}; return d.textContent.includes('View only. Ask someone who can edit Dispatch to change these.') && !d.querySelector('[data-layout-save]') && d.querySelector('[data-layout-toggle]').disabled;`));
+  await ctl({ staffPerms: null, layout: false, layoutReset: true, paper: false });
+}

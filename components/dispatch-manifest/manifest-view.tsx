@@ -38,6 +38,17 @@ import { cn } from "@/lib/utils";
 import { PageLink } from "@/components/ui/page-link";
 import { useViewOnly, ViewOnly } from "@/components/ui/view-only";
 import {
+  fetchPrintLayout,
+  type PrintLayoutResponse,
+  type PrintLayoutSettings,
+} from "@/lib/print-layout";
+import {
+  fetchRelayListSettings,
+  type RelayListSettings,
+  type RelaySettingsDraft,
+  toDraft,
+} from "@/lib/relay-list-settings-api";
+import {
   type ActionVerb,
   ActionLogPanel,
 } from "@/components/action-log/action-log-panel";
@@ -50,6 +61,13 @@ import { AffiliateCard } from "./affiliate-card";
 import { hotelMarks, sectionColor } from "./hotel-marks";
 import { FarmOutButton, usePartners } from "./farm-out-button";
 import { CanyonOrderPicker } from "./canyon-order";
+import {
+  applyLayout,
+  DEFAULT_LOOK,
+  ManifestLookContext,
+  useManifestLook,
+} from "./apply-layout";
+import { ManifestLayoutDialog, relayHeaderColor } from "./layout-dialog";
 import {
   applyCanyonOrder,
   applyMoves,
@@ -348,6 +366,36 @@ export function ManifestView() {
     else setActionError(describeError(error));
   }
 
+  // 版式设置（置顶 92 第 1 批）：读不到（后端没上线 404 / 出错）就当没有，页面照旧、不出 ⚙ 键。
+  // 车抬头的颜色在 Relay list 设置里（同 Relay list ⚙），一起读。改了先暂存在这里，单子马上跟着变，Save 才存。
+  const [layout, setLayout] = useState<PrintLayoutResponse | null>(null);
+  const [layoutDraft, setLayoutDraft] = useState<PrintLayoutSettings | null>(
+    null,
+  );
+  const [relaySettings, setRelaySettings] = useState<RelayListSettings | null>(
+    null,
+  );
+  const [relayDraft, setRelayDraft] = useState<RelaySettingsDraft | null>(
+    null,
+  );
+  const [layoutOpen, setLayoutOpen] = useState(false);
+  const layoutEdit =
+    !perms.isPartner &&
+    byTick(perms, "dispatch.edit", { superAdmin: isSuperAdmin });
+  useEffect(() => {
+    if (!params) return;
+    const controller = new AbortController();
+    fetchPrintLayout("bus_manifest", controller.signal)
+      .then(setLayout)
+      .catch((e: unknown) => {
+        if (!controller.signal.aborted && isStatus(e, 401)) redirectToLogin();
+      });
+    fetchRelayListSettings(params.date, controller.signal)
+      .then(setRelaySettings)
+      .catch(() => undefined);
+    return () => controller.abort();
+  }, [params, reloadKey, redirectToLogin]);
+
   const data = view.kind === "ready" ? view.data : null;
   const dirty = !viewOnly && isDirty(pending);
   /**
@@ -625,8 +673,8 @@ export function ManifestView() {
   const busOrders = (busKey: string) => (d: ManifestData) =>
     d.blocks.find((b) => b.bus_key === busKey)?.lunch_mismatch_orders ?? [];
 
-  /** 页面上画的样子 = 库里的 + 没存的版式 / Canyon order / 换车。 */
-  const shown = data
+  /** 页面上画的样子 = 库里的 + 没存的版式 / Canyon order / 换车 + 版式设置的颜色（置顶 92）。 */
+  const shownRaw = data
     ? (() => {
         const tour = {
           ...data.tour,
@@ -639,6 +687,26 @@ export function ManifestView() {
         );
       })()
     : null;
+  const laid =
+    shownRaw && layout
+      ? applyLayout(
+          shownRaw,
+          layoutDraft ?? layout.settings,
+          layout.defaults,
+          // 没在改的时候照后端算好的车抬头色（band_color）；改的时候按暂存的 Relay list 设置画。
+          (busKey) =>
+            relayDraft
+              ? relayHeaderColor(
+                  relaySettings,
+                  relayDraft,
+                  shownRaw.tour.id,
+                  busKey,
+                )
+              : null,
+        )
+      : null;
+  const shown = laid ? laid.data : shownRaw;
+  const look = laid?.look ?? DEFAULT_LOOK;
   const savedBus = data ? savedBusOf(data) : new Map<number, string>();
   const movedFrom = new Map(
     Object.keys(pending.moves).map((id) => [
@@ -657,7 +725,41 @@ export function ManifestView() {
       : [];
   const backHref = params ? `/dispatch?date=${params.date}` : "/dispatch";
 
+  /** 页面数据里现在的颜色（版式设置弹窗里没设时显示的那个色）。 */
+  const dataColor = (key: string): string | null => {
+    if (!data) return null;
+    const p = data.paper_colors ?? {};
+    const m: Record<string, string | undefined> = {
+      shuttle_out: data.shuttle_colors.outbound,
+      shuttle_in: data.shuttle_colors.inbound,
+      extra_row: data.extra_row_color,
+      notes: p.notes ?? "#fff200",
+      confirm_box: p.confirm_box ?? "#fff27a",
+      foot_head: p.foot_head ?? "#c9d3dc",
+      lunch_bar: p.lunch_bar ?? "#fff27a",
+      lunch_notes: p.lunch_notes ?? "#fff909",
+      lunch_default_row: p.lunch_default_row ?? "#fff200",
+      column_titles: "#e6eaee",
+      foot_custom: "#ddd0f0",
+      lunch_mismatch: "#ffe1e1",
+    };
+    return m[key] ?? null;
+  };
+  const tourSections = data
+    ? [
+        ...new Map(
+          [
+            ...data.blocks.flatMap((b) => b.sections),
+            ...data.unplaced.sections,
+          ]
+            .filter((sec) => sec.kind === "tour")
+            .map((sec) => [sec.title, { title: sec.title, color: sec.color }]),
+        ).values(),
+      ]
+    : [];
+
   return (
+    <ManifestLookContext.Provider value={look}>
     <ViewOnly.Provider value={viewOnly}>
       <main data-phone-compact className="text-stone-800">
         {/* 手机上整页排成一列，How to use 用 order 放到最底（Annie 2026-11-01 手机版规则）。 */}
@@ -745,6 +847,22 @@ export function ManifestView() {
                       {saveState.kind === "saving" ? "Saving…" : "Save"}
                     </button>
                   )}
+                  {layout && !perms.isPartner ? (
+                    <button
+                      type="button"
+                      data-layout-open
+                      onClick={() => {
+                        setLayoutDraft(layout.settings);
+                        setRelayDraft(
+                          relaySettings ? toDraft(relaySettings) : null,
+                        );
+                        setLayoutOpen(true);
+                      }}
+                      className="inline-flex h-8 cursor-pointer items-center rounded-[9px] border border-black/25 bg-paper px-[14px] text-[12.5px] font-semibold text-[#111]"
+                    >
+                      ⚙ Colours &amp; page
+                    </button>
+                  ) : null}
                   {data.tour.manifest_version !== undefined ? (
                     <VersionPicker
                       version={versionOf(shown)}
@@ -993,7 +1111,7 @@ export function ManifestView() {
 
               {viewOnly ? null : (
                 <div className="max-sm:order-last">
-                  <HowToUse />
+                  <HowToUse layout={!!layout} />
                 </div>
               )}
               {/* 改动记录（Annie 2026-10-30「同意所有推荐。动手」，preview https://claude.ai/artifact/YEgERHNDiL45TCkbzyJisa ）：
@@ -1076,7 +1194,35 @@ export function ManifestView() {
           )}
         </div>
       </main>
+      {layoutOpen && layout && data ? (
+        <ManifestLayoutDialog
+          tour={{ id: data.tour.id, name: data.tour.name }}
+          sectionTitles={tourSections}
+          busKeys={data.blocks.map((b) => b.bus_key).filter(Boolean)}
+          layout={layout}
+          draft={layoutDraft ?? layout.settings}
+          onDraft={setLayoutDraft}
+          relay={relaySettings}
+          relayDraft={relayDraft}
+          onRelayDraft={setRelayDraft}
+          dataColor={dataColor}
+          canEdit={layoutEdit}
+          onSaved={(next) => {
+            setLayout(next);
+            setLayoutDraft(null);
+            setRelayDraft(null);
+            // 车抬头等颜色后端重算：重读这一页（和 Relay list 设置）。
+            setReloadKey((k) => k + 1);
+          }}
+          onClose={() => {
+            setLayoutOpen(false);
+            setLayoutDraft(null);
+            setRelayDraft(null);
+          }}
+        />
+      ) : null}
     </ViewOnly.Provider>
+    </ManifestLookContext.Provider>
   );
 }
 
@@ -1547,7 +1693,12 @@ function GuestTable({
   const assist = !!data.tour.assist_column;
   const cols =
     columns.length + (lettered ? 1 : 0) + (assist ? 1 : 0) + (boarding ? 1 : 0);
-  const th = { fontSize: `${HEAD_PX[version].th}px` };
+  // 版式设置（置顶 92）：Column titles 的底色（没设 = 照旧 #e6eaee）。
+  const look = useManifestLook();
+  const th = {
+    fontSize: `${HEAD_PX[version].th}px`,
+    ...(look.columnTitles ? { background: look.columnTitles } : null),
+  };
   // Canyon order 分页的地方（置顶 41 题 3 A）：屏幕上画一条「New page」虚线；真正换页在后端的打印页。
   const breaks = newPageBefore(sections, data.tour.canyon_pages);
   if (sections.length === 0) {
@@ -1861,16 +2012,29 @@ function LunchCell({
   font: CellFont;
 }) {
   const e = font.edit("lunch", g.order_number);
+  // 版式设置（置顶 92）：「Lunch doesn't match Pax」可以关、可以换色；没设 = 照旧浅红底红字。
+  const look = useManifestLook();
+  const mismatch = g.lunch_mismatch && look.lunchMismatch.on;
+  const fill = look.columnFill.lunch;
   return (
     <td
       data-lunch-cell
-      data-mismatch={g.lunch_mismatch || undefined}
+      data-mismatch={mismatch || undefined}
       onClick={e.onClick}
-      style={font.style("lunch", g.order_number)}
+      style={{
+        ...(fill ? { background: fill } : null),
+        ...font.style("lunch", g.order_number),
+        ...(mismatch && look.lunchMismatch.color
+          ? { background: look.lunchMismatch.color }
+          : null),
+      }}
       className={cn(
         TD,
         "border-x-2 border-x-[#444] text-center",
-        g.lunch_mismatch && "bg-[#ffe1e1] text-[#c00000]",
+        mismatch &&
+          (look.lunchMismatch.color
+            ? "text-[#c00000]"
+            : "bg-[#ffe1e1] text-[#c00000]"),
         e.className,
       )}
     >
@@ -1927,13 +2091,23 @@ function SectionRows({
   editing: boolean;
 }) {
   const color = sectionColor(data, s);
-  const marks = s.kind === "tour" ? hotelMarks(s.guests) : [];
+  // 版式设置（置顶 92）：隔组标色可以关；整列上色是最底下一层（格子自己的颜色、Extra 整行盖过它）。
+  const look = useManifestLook();
+  const marks =
+    s.kind === "tour" && look.hotelGroup ? hotelMarks(s.guests) : [];
   /** 一格的 className / style / 点击（字号来自 G197，编辑时可点选）。 */
   const cell = (col: ManifestColumnKey, g: ManifestGuest, className = TD) => {
     const e = font.edit(col, g.order_number);
+    const fill =
+      g.extra && data.extra_row_color && data.extra_row_color !== "transparent"
+        ? undefined
+        : look.columnFill[col];
     return {
       className: cn(className, e.className),
-      style: font.style(col, g.order_number),
+      style: {
+        ...(fill ? { background: fill } : null),
+        ...font.style(col, g.order_number),
+      },
       onClick: e.onClick,
     };
   };
@@ -2314,6 +2488,7 @@ function Footer({
   /** Marcello：合计一排的数字一起放大（Q24）。 */
   big?: boolean;
 }) {
+  const look = useManifestLook();
   if (!cells.length) return null;
   return (
     // .mf-foot：一排连在一起的格子
@@ -2327,10 +2502,18 @@ function Footer({
           <span
             className={cn(
               "flex h-8 w-full items-center justify-center px-[3px] py-0.5 text-center text-[11px] leading-[1.2] font-extrabold text-[#222] uppercase",
-              c.custom ? "bg-[#ddd0f0]" : !headColor && "bg-[#c9d3dc]",
+              c.custom
+                ? !look.footCustom && "bg-[#ddd0f0]"
+                : !headColor && "bg-[#c9d3dc]",
             )}
             style={
-              !c.custom && headColor ? { background: headColor } : undefined
+              c.custom
+                ? look.footCustom
+                  ? { background: look.footCustom }
+                  : undefined
+                : headColor
+                  ? { background: headColor }
+                  : undefined
             }
           >
             {/* 名字照后端给的画（后端按团的版式写死，照纸本；Annie「全部按照我上传的纸本颜色来，不要改」）。 */}
@@ -2351,7 +2534,15 @@ function Footer({
           data-total-sandwich
           className="flex min-w-[150px] flex-[2.2_1_0] flex-col items-center border-l-2 border-[#444]"
         >
-          <span className="flex h-8 w-full items-center justify-center bg-[#fff200] px-[3px] py-0.5 text-center text-[11px] leading-[1.2] font-extrabold text-[#222] uppercase">
+          <span
+            className={cn(
+              "flex h-8 w-full items-center justify-center px-[3px] py-0.5 text-center text-[11px] leading-[1.2] font-extrabold text-[#222] uppercase",
+              !look.sandwichHead && "bg-[#fff200]",
+            )}
+            style={
+              look.sandwichHead ? { background: look.sandwichHead } : undefined
+            }
+          >
             TOTAL SANDWICH
           </span>
           <span className="py-[3px] text-[17px] font-extrabold whitespace-nowrap">
@@ -2386,6 +2577,7 @@ function LunchSheet({
   block: ManifestBlock;
   tourSections: ManifestSection[];
 }) {
+  const look = useManifestLook();
   const LTD =
     "border border-[#c8ced2] px-1.5 leading-6 text-[16.5px] font-bold whitespace-nowrap";
   const N = cn(LTD, "w-[72px] text-center text-[17px]");
@@ -2487,7 +2679,14 @@ function LunchSheet({
                 </Fragment>
               );
             })}
-            <tr className="bg-[#dfe5ea]">
+            <tr
+              className={cn(!look.lunchTotalRow && "bg-[#dfe5ea]")}
+              style={
+                look.lunchTotalRow
+                  ? { background: look.lunchTotalRow }
+                  : undefined
+              }
+            >
               <td className={LTD} />
               <td className={cn(N, "font-extrabold")}>{t.pax}</td>
               <td className={cn(N, "font-extrabold")}>{t.turkey}</td>
@@ -2583,7 +2782,13 @@ function LunchNotes({
   );
 }
 
-function HowToUse() {
+/**
+ * 置顶 92 Q11 A 原文的第 1 批部分（字号那半句等第 2 批 Text 上了再加回去，原文见 PROGRESS 置顶 92）。
+ */
+const LAYOUT_HOW_TO =
+  "⚙ Colours & page: choose the colour of each box on the sheet, turn colouring on or off for each box, add or remove ticket colours and colour choices, and set the paper, Portrait or Landscape, and margins. Pick All tours, or pick a tour to give it its own colours. Changes show on the sheet right away; press Save to keep them. Reset puts one item back to the paper default, and Reset all to paper puts everything back. Saved settings are used on screen, when you print and in ⬇ Excel, for everyone and every day.";
+
+function HowToUse({ layout }: { layout: boolean }) {
   return (
     // .howto-d（旧页的蓝框，默认收起）
     <details className="group mt-6 mb-8 max-w-[760px] rounded-[10px] border border-[#b5d4f4] bg-[#e8f3fc] px-5 py-3 text-[12px] leading-[1.9] text-[#0c3a6b]">
@@ -2595,6 +2800,7 @@ function HowToUse() {
           This page shows one tour for one day, laid out like the paper
           manifest. Each bus on the Dispatch schedule gets its own block.
         </li>
+        {layout ? <li>{LAYOUT_HOW_TO}</li> : null}
         <li>
           Changes to the Version, text size, a guest&rsquo;s bus, the yellow
           boxes and Special Requirements stay on the page, marked orange, until

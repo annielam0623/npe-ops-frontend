@@ -1,6 +1,9 @@
 // 模拟后端：Tour manifest。控制：POST /__ctl {syncFail, syncSkipped, syncPast, busFail, allUploaded, done, pending, pendingOff, handledFail}；GET /__log。
 const http = require("http");
 const staffPerm = require("./staff-perm-mock");
+const layoutMock = require("./print-layout-mock");
+// 置顶 92 版式设置：ctl.layout = true ⇒ 有 /api/settings/print-layout 和 Relay list 设置（车抬头色）；__ctl {layoutReset: true} 清掉存的。
+const relayStore = { tour_colors: {} };
 // affiliate: true ⇒ GET manifest 带 affiliate 组（被转单客人）；notesEdit: true ⇒ 客人带 notes_edited / rezdy_notes 且有 PUT guest-notes；notesFail: 该接口 400 的原话。
 const ctl = { syncFail: "", syncSkipped: false, syncPast: false, busFail: "", allUploaded: false, done: null, pending: [], pendingOff: false, handledFail: "", affiliate: false, notesEdit: false, notesFail: "", g198: false, g198Plain: false, textSize: false, textSizeFail: "", bmv: false, versionFail: "" };
 // bmv: true ⇒ Bus Manifest 三版式（后端 task/bus-manifest-versions WIP f494b5b5 的形状）：tour.manifest_version / lunch_column、
@@ -138,7 +141,7 @@ http.createServer(async (req, res) => {
   const p = url.pathname;
   const q = Object.fromEntries(url.searchParams);
   if (p === "/__log") return send(res, 200, log);
-  if (p === "/__ctl") { const b = JSON.parse(await readRaw(req)); if (b.version) { state.version = b.version; delete b.version; } Object.assign(ctl, b); return send(res, 200, ctl); }
+  if (p === "/__ctl") { const b = JSON.parse(await readRaw(req)); if (b.layoutReset) { layoutMock.reset(); relayStore.tour_colors = {}; delete b.layoutReset; } if (b.version) { state.version = b.version; delete b.version; } Object.assign(ctl, b); return send(res, 200, ctl); }
   if (p === "/auth/login") { res.setHeader("Content-Type", "text/html"); return res.end("LOGIN"); }
   const entry = { method: req.method, path: p, q };
   log.push(entry);
@@ -293,6 +296,18 @@ http.createServer(async (req, res) => {
     if (ctl.versionFail) return send(res, 400, { detail: ctl.versionFail });
     state.version = b.version;
     return send(res, 200, { ok: true, version: b.version });
+  }
+  if (await layoutMock(ctl, p, q, req, res, send, readRaw, entry)) return;
+  if (p === "/api/settings/relay-list" && ctl.layout) {
+    if (req.method === "PUT") {
+      const b = JSON.parse((await readRaw(req)) || "{}"); entry.body = b;
+      for (const [id, c] of Object.entries(b.tour_colors || {})) relayStore.tour_colors[id] = { ...(relayStore.tour_colors[id] || {}), ...c, buses: { ...((relayStore.tour_colors[id] || {}).buses || {}), ...(c.buses || {}) } };
+      return send(res, 200, { ok: true });
+    }
+    const tc = relayStore.tour_colors["3"] || {};
+    const bus = (label, dflt) => ({ label, color: tc.buses?.[label] || tc.all || dflt, default_color: dflt, header_color: tc.buses?.[label] || tc.all || dflt, header_default_color: dflt, color_set: !!tc.buses?.[label] });
+    return send(res, 200, { colors: [], tour_colors: relayStore.tour_colors, orientations: { relay: [], tours: {} }, defaults: { colors: [] },
+      tours: [{ manifest_id: 3, name: "Antelope Canyon", color: tc.all || "#8db76f", default_color: "#8db76f", header_color: tc.all || "#8db76f", header_default_color: "#8db76f", color_set: !!tc.all, buses: [bus("A", "#8db76f"), bus("B", "#8db76f")] }] });
   }
   if (p === "/admin/dispatch/manifest/guide") { res.setHeader("Content-Type", "text/html"); return res.end(`<html><title>GUIDE ${q.bus}</title><body>GUIDE</body></html>`); }
   if (p === "/admin/dispatch/manifest/print") { res.setHeader("Content-Type", "text/html"); return res.end(`<html><title>PRINT ${q.date} ${q.tour} ${q.bus ?? "all"}</title><body>PRINT</body></html>`); }

@@ -114,6 +114,7 @@ async function main() {
 
   try {
     await run();
+    await layoutChecks();
   } finally {
     ws.close();
     chrome.kill();
@@ -381,6 +382,67 @@ async function settingsChecks() {
   check("打印：How to use 不印", await evaluate("const d = [...document.querySelectorAll('details')].find(x => x.textContent.includes('How to use — Relay list')); return getComputedStyle(d.closest('.rl-screen-only')).display === 'none';"));
   await cdp("Emulation.setEmulatedMedia", { media: "" });
   await ctl({ reset: true, edit: false });
+}
+
+// ── 置顶 92 版式设置第 1 批（Annie「看了，同意全部推荐，记得要可以下载」+「动手」）：Relay list ⚙ 多 Colours / Page 两页 ──
+// 形状照后端 07（78 转）：GET / PUT /api/settings/print-layout?page=relay_list。⬇ Excel 键改派 ef（task/relay-list-excel），不在这里测。
+async function layoutChecks() {
+  const hotelTd = "document.querySelector('[data-relay-total=relay] tbody tr[data-relay-row] td:nth-child(2)')";
+  const th = "document.querySelector('[data-relay-total=relay] thead th')";
+  const sheet = "document.querySelector('[data-relay-total=relay]')";
+  const bg = (e) => `getComputedStyle(${e}).backgroundColor`;
+
+  // 后端没上线：单子照旧
+  await ctl({ reset: true, layoutReset: true, layout: false, edit: true, noSettings: false });
+  await open(URL0);
+  await waitFor("document.querySelectorAll('[data-relay-total]').length === 2", 30000);
+  const before = await evaluate(`return [${bg(hotelTd)}, ${bg(th)}, ${sheet}.getBoundingClientRect().width].join('|');`);
+
+  await ctl({ layout: true });
+  await open(URL0);
+  await waitFor("document.querySelectorAll('[data-relay-total]').length === 2", 30000);
+  await sleep(800);
+  await helpers();
+  const after = await evaluate(`return [${bg(hotelTd)}, ${bg(th)}, ${sheet}.getBoundingClientRect().width].join('|');`);
+  check("版式设置：上线了、没设过 ⇒ 单子一模一样（Hotel 格车色、表头灰、A4 宽）", before === after, `${before} vs ${after}`);
+  check("版式设置：How to use 多一句（8 句）", await evaluate("const d = [...document.querySelectorAll('details')].find(x => x.textContent.includes('How to use — Relay list')); return d.querySelectorAll('li').length === 8 && d.textContent.includes('turn colouring on or off for the Hotel cell and the column titles');"));
+
+
+  // 弹窗：Colours / Page
+  await openSettings();
+  check("版式设置：弹窗两页 Colours / Page；Colours 里多 Other boxes（Hotel cell、Column titles）和 Colour choices", await evaluate(`const d = ${dlg}; return [...d.querySelectorAll('[data-layout-tab]')].map((b) => b.textContent).join('|') === 'Colours|Page' && !!d.querySelector('[data-layout-box="hotel_cell"]') && !!d.querySelector('[data-layout-box="column_titles"]') && !!d.querySelector('[data-layout-palette]') && !!${row("relay-1")};`));
+  await evaluate(`${dlg}.querySelector('[data-layout-box="hotel_cell"] [data-layout-toggle]').click();`);
+  check("版式设置：关 Hotel cell ⇒ 总表的 Hotel 格马上不涂车色", await waitFor(`${bg(hotelTd)} === 'rgba(0, 0, 0, 0)'`));
+  await evaluate(`$setValue(document.querySelector("[aria-label='Column titles colour code']"), '#ffcc00');`);
+  check("版式设置：Column titles 换色 ⇒ 表头马上变", await waitFor(`${bg(th)} === 'rgb(255, 204, 0)'`));
+  await evaluate(`${dlg}.querySelector('[data-layout-tab="page"]').click();`);
+  await waitFor(`${dlg}.querySelector('[data-layout-page]')`);
+  check("版式设置：Page 页有 Set all to Portrait / Landscape、Paper、Margins（默认 12 × 11 mm）", await evaluate(`const d = ${dlg}; return !!$btn('Set all to Portrait', d) && d.querySelector('[data-layout-paper="a4"]').getAttribute('aria-pressed') === 'true' && d.textContent.includes('(default 12 × 11 mm)');`));
+  await evaluate(`${dlg}.querySelector('[data-layout-paper="letter"]').click();`);
+  await evaluate(`$setValue(${dlg}.querySelector('[data-layout-margin]'), '8');`);
+  check("版式设置：Letter + 8 mm ⇒ 单子马上变 Letter 宽、边距 8mm，打印的 @page 换 letter", await waitFor(`Math.abs(${sheet}.getBoundingClientRect().width - 215.9 * 96 / 25.4) < 2 && Math.abs(parseFloat(getComputedStyle(${sheet}).paddingLeft) - 8 * 96 / 25.4) < 0.5`) && (await evaluate("return [...document.querySelectorAll('style')].some((s) => s.textContent.includes('size: letter portrait'));")));
+
+  const b0 = (await mockLog()).length;
+  await evaluate(`${dlg}.querySelector('[data-relay-settings-save]').click();`);
+  await waitFor("document.querySelector('[data-relay-settings-status=saved]')");
+  const puts = await since(b0, (e) => e.method === "PUT");
+  const lp = puts.find((e) => e.path === "/api/settings/print-layout");
+  check("版式设置：Save ⇒ PUT print-layout?page=relay_list（colours + page_setup），没改车色就不 PUT relay-list",
+    lp?.query === "?page=relay_list" && lp.body?.colours?.all?.hotel_cell?.on === false && lp.body?.colours?.all?.column_titles?.color === "#ffcc00" && lp.body?.page_setup?.paper === "letter" && lp.body?.page_setup?.margin_mm === 8 && !puts.some((e) => e.path === "/api/settings/relay-list"),
+    JSON.stringify(puts.map((e) => [e.path, e.query, e.body])));
+  await evaluate(`$btn('Cancel', ${dlg}).click();`);
+  await waitFor(`!${dlg}`);
+  await open(URL0);
+  await waitFor("document.querySelectorAll('[data-relay-total]').length === 2", 30000);
+  await sleep(500);
+  check("版式设置：重开页面 ⇒ 存好的照样画（Hotel 格不涂、表头黄、Letter）", await evaluate(`return ${bg(hotelTd)} === 'rgba(0, 0, 0, 0)' && ${bg(th)} === 'rgb(255, 204, 0)' && Math.abs(${sheet}.getBoundingClientRect().width - 215.9 * 96 / 25.4) < 2;`));
+
+  // 只能看
+  await ctl({ edit: false });
+  await open(URL0);
+  await openSettings();
+  check("版式设置：没有 dispatch.edit ⇒ 只读（没有 Save、开关灰）", await evaluate(`const d = ${dlg}; return !d.querySelector('[data-relay-settings-save]') && d.querySelector('[data-layout-toggle]').disabled;`));
+  await ctl({ reset: true, layoutReset: true, layout: false, edit: false });
 }
 
 main().catch((e) => {

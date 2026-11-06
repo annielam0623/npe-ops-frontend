@@ -2,7 +2,16 @@
 
 import "./relay-list.css";
 
-import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import {
+  createContext,
+  type CSSProperties,
+  Fragment,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 import { HowToUse } from "@/components/ui/how-to-use";
 import { ErrorBanner } from "@/components/ui/panel";
@@ -29,6 +38,14 @@ import {
   tourText,
 } from "@/lib/relay-list";
 import {
+  effectiveMargin,
+  effectivePaper,
+  fetchPrintLayout,
+  type PrintLayoutResponse,
+  type PrintLayoutSettings,
+  resolveBox,
+} from "@/lib/print-layout";
+import {
   fetchRelayListSettings,
   orientationOf,
   type RelayListSettings,
@@ -42,6 +59,16 @@ import {
   type AlsoRelayCar,
   RelaySettingsDialog,
 } from "./relay-settings-dialog";
+
+/** 版式设置（置顶 92）里画在单子上的：Hotel 格涂不涂车色。纸张 / 边距 / 表头色走 CSS 变量。 */
+const RelayLookContext = createContext({ hotelCell: true });
+
+/** 纸张尺寸（mm，竖放）。 */
+const PAPER_MM = { a4: [210, 297], letter: [215.9, 279.4] } as const;
+
+/** 纸张是 Letter：打印的 @page 跟着换（竖 / 横两种命名页同 relay-list.css）。 */
+const LETTER_PAGE =
+  "@media print { @page { size: letter portrait; margin: 0; } @page rl-land { size: letter landscape; margin: 0; } }";
 
 type ViewState =
   | { kind: "loading" }
@@ -77,6 +104,11 @@ export function RelayListView() {
   const [settings, setSettings] = useState<RelayListSettings | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [refreshError, setRefreshError] = useState<string | null>(null);
+  /** 版式设置（置顶 92 第 1 批）：后端没上线（404）= null，单子照旧。暂存的那份放这里，单子马上跟着变。 */
+  const [layout, setLayout] = useState<PrintLayoutResponse | null>(null);
+  const [layoutDraft, setLayoutDraft] = useState<PrintLayoutSettings | null>(
+    null,
+  );
   const info = usePhoneInfo("About this page");
   // 能改 = 能编辑 Dispatch（题 5 A；同 Dispatch 页：partner 只看，Super Admin 全给）。PUT 后端也按 dispatch.edit 挡。
   const perms = usePermissions();
@@ -122,6 +154,17 @@ export function RelayListView() {
     };
   }, [params, reloadKey, redirectToLogin]);
 
+  useEffect(() => {
+    if (!params) return;
+    const ctrl = new AbortController();
+    fetchPrintLayout("relay_list", ctrl.signal)
+      .then(setLayout)
+      .catch((e: unknown) => {
+        if (!ctrl.signal.aborted && isStatus(e, 401)) redirectToLogin();
+      });
+    return () => ctrl.abort();
+  }, [params, redirectToLogin]);
+
   // 带 ?date=：弹窗只列那天排车出现过 / 配过色的字母。
   useEffect(() => {
     if (!params) return;
@@ -150,6 +193,27 @@ export function RelayListView() {
   }, [params]);
 
   const backHref = params ? `/dispatch?date=${params.date}` : "/dispatch";
+
+  // 版式设置画到单子上（暂存的优先）：没设的全是现在的样子。
+  const ls = layout ? (layoutDraft ?? layout.settings) : null;
+  const paper = layout && ls ? effectivePaper(ls, layout.defaults) : "a4";
+  const margin = layout && ls ? effectiveMargin(ls, layout.defaults) : null;
+  const th =
+    layout && ls
+      ? resolveBox(ls, layout.defaults, "column_titles", null)
+      : null;
+  const hotelCell =
+    layout && ls
+      ? resolveBox(ls, layout.defaults, "hotel_cell", null).on
+      : true;
+  const [pw, ph] = PAPER_MM[paper];
+  const sheetVars = {
+    ...(paper !== "a4" ? { "--rl-pw": `${pw}mm`, "--rl-ph": `${ph}mm` } : {}),
+    ...(margin !== null ? { "--rl-pad": `${margin}mm` } : {}),
+    ...(th
+      ? { "--rl-th": th.on ? (th.color ?? "#d9d9d9") : "transparent" }
+      : {}),
+  } as CSSProperties;
 
   // 横版单 297mm 宽（置顶 73）：max-w 放得下一整张。
   return (
@@ -184,6 +248,7 @@ export function RelayListView() {
           Dispatch, then reload this page.
         </span>
       </div>
+      {paper === "letter" ? <style>{LETTER_PAGE}</style> : null}
       {refreshError ? (
         <div className="rl-screen-only mb-3">
           <ErrorBanner
@@ -213,13 +278,19 @@ export function RelayListView() {
         </ErrorBanner>
       ) : params ? (
         // A4 宽 210mm：手机上这一块自己左右滑，整页不晃（手机版规则）。
-        <div className="overflow-x-auto print:overflow-visible">
-          <Sheets data={view.data} date={params.date} onlyCar={params.car} />
+        <div
+          className="overflow-x-auto print:overflow-visible"
+          style={sheetVars}
+        >
+          <RelayLookContext.Provider value={{ hotelCell }}>
+            <Sheets data={view.data} date={params.date} onlyCar={params.car} />
+          </RelayLookContext.Provider>
         </div>
       ) : null}
       {view.kind === "ready" && settings ? (
         <div className="rl-screen-only">
-          <HowToUse dark title="How to use — Relay list" items={HOW_TO} />
+          <HowToUse dark title="How to use — Relay list" items={layout ? [...HOW_TO, RELAY_LAYOUT_HOW_TO] : HOW_TO}
+          />
         </div>
       ) : null}
       {settingsOpen && settings && view.kind === "ready" ? (
@@ -227,8 +298,19 @@ export function RelayListView() {
           settings={settings}
           canEdit={canEdit}
           {...todayTours(view.data)}
-          onSaved={afterSave}
-          onClose={() => setSettingsOpen(false)}
+          layout={layout}
+          layoutDraft={layoutDraft}
+          onLayoutDraft={setLayoutDraft}
+          onSaved={async () => {
+            await afterSave();
+            if (layout && layoutDraft)
+              setLayout({ ...layout, settings: layoutDraft });
+            setLayoutDraft(null);
+          }}
+          onClose={() => {
+            setSettingsOpen(false);
+            setLayoutDraft(null);
+          }}
         />
       ) : null}
     </main>
@@ -245,6 +327,10 @@ const HOW_TO = [
   "Nothing is saved until you press Save. Reset puts one colour back to the paper colour; Reset to paper colours puts them all back (press Save after).",
   "Some older printers need Auto-rotate turned on in the print window to print Portrait and Landscape sheets together.",
 ];
+
+/** 置顶 92 Q11 A 原文（第 1 批、Relay list 用得上的部分；字号那半句等第 2 批）。 */
+const RELAY_LAYOUT_HOW_TO =
+  "In ⚙ Colours & page you can also turn colouring on or off for the Hotel cell and the column titles, add or remove colour choices, and on the Page tab set the paper (A4 or Letter) and margins. Changes show on the sheet right away; press Save to keep them. Reset all to paper puts everything back. Saved settings are used on screen and when you print, for everyone and every day.";
 
 /** 当天的团（设置弹窗默认只列这些）和「同时是团大巴的 relay 车」。 */
 function todayTours(data: RelayPull): {
@@ -392,6 +478,13 @@ function Legend({ round }: { round: RelayRoundList }) {
   );
 }
 
+/** Hotel 格涂车色（版式设置可以关）。 */
+function useHotelStyle() {
+  const { hotelCell } = useContext(RelayLookContext);
+  return (color: string | null | undefined): CSSProperties | undefined =>
+    hotelCell && color ? { background: color } : undefined;
+}
+
 function TotalSheet({
   round,
   dateLong,
@@ -404,6 +497,7 @@ function TotalSheet({
   many: boolean;
   orientation: "portrait" | "landscape";
 }) {
+  const hotelStyle = useHotelStyle();
   let prev: { guest: RelayGuest; carKey: string } | null = null;
   return (
     <section
@@ -452,7 +546,7 @@ function TotalSheet({
                   ) : null}
                   <tr data-relay-row={g.order_number}>
                     <td>{g.pickup_time}</td>
-                    <td style={{ background: car.color }}>{hotelText(g)}</td>
+                    <td style={hotelStyle(car.color)}>{hotelText(g)}</td>
                     <td>{g.pax ?? ""}</td>
                     <td>{g.name}</td>
                     <td>{g.phone ?? ""}</td>
@@ -476,6 +570,7 @@ function CarSheet({
   car: RelayCarSheet;
   dateShort: string;
 }) {
+  const hotelStyle = useHotelStyle();
   let prev: { guest: RelayGuest; carKey: string } | null = null;
   return (
     <section
@@ -522,7 +617,7 @@ function CarSheet({
                 ) : null}
                 <tr data-relay-row={g.order_number}>
                   <td>{g.pickup_time}</td>
-                  <td style={{ background: car.color }}>{hotelText(g)}</td>
+                  <td style={hotelStyle(car.color)}>{hotelText(g)}</td>
                   <td>{g.pax ?? ""}</td>
                   <td>{g.name}</td>
                   <td>{g.phone ?? ""}</td>

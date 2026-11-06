@@ -4,6 +4,9 @@
 //   many = 2nd Round 那台车 40 个客人，一张单要印两页；old = 旧后端，没有 phone / product_short / bus / location_ids / tour_buses；
 //   置顶 73：noSettings = 设置接口还没上线（404）；edit = 我有 dispatch.edit；failPut = 存设置 500；reset = 设置回默认。GET /__log。
 const http = require("http");
+const layoutMock = require("./print-layout-mock");
+// 置顶 92 版式设置：ctl.layout = true ⇒ 有 /api/settings/print-layout?page=relay_list；__ctl {layoutReset: true} 清掉存的。
+function readRaw(req) { return new Promise((r) => { const c = []; req.on("data", (d) => c.push(d)); req.on("end", () => r(Buffer.concat(c).toString("utf8"))); }); }
 
 const ctl = { fail401: false, fail500: false, old: false, many: false, swap: false, noSettings: false, edit: false, failPut: false };
 if (process.env.MOCK_CTL) Object.assign(ctl, JSON.parse(process.env.MOCK_CTL));
@@ -171,7 +174,9 @@ http
       await new Promise((r) => req.on("end", r));
       const body = JSON.parse(d || "{}");
       if (body.reset) st = fresh();
+      if (body.layoutReset) layoutMock.reset();
       delete body.reset;
+      delete body.layoutReset;
       Object.assign(ctl, body);
       return send(res, 200, ctl);
     }
@@ -183,6 +188,12 @@ http
     if (ctl.fail401) return send(res, 401, { detail: "Authentication required" });
     if (p === "/api/me") return send(res, 200, { id: 1, username: "zztest", display_name: "ZZ Test", initials: "ZT", role: "staff", is_admin: false, is_superadmin: false });
     if (p === "/api/me/permissions") return send(res, 200, { is_superadmin: false, permissions: [{ code: "dispatch.view", module: "dispatch", wired: true }, ...(ctl.edit ? [{ code: "dispatch.edit", module: "dispatch", wired: true }] : [])], default_home: null });
+    {
+      const entry = log[log.length - 1];
+      entry.method = req.method;
+      const q = Object.fromEntries(url.searchParams);
+      if (await layoutMock({ ...ctl, layoutForbidden: !ctl.edit }, p, q, req, res, send, readRaw, entry)) return;
+    }
     if (p === "/api/settings/relay-list") {
       if (ctl.noSettings) return send(res, 404, { detail: "Not Found" });
       if (req.method === "PUT") {
