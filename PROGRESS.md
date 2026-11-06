@@ -22,6 +22,7 @@
 - **Annie：「今天上」**（G180）⇒ 49 已转 4a：请把 v154 完整 SQL 和执行方式发给 Annie，执行后复审合 main 发 SHA。
 - 派 **`npe-ops-frontend-c3`[a398e9]**：G180 ① wt-g180 合最新 main 重跑 tt / nav / tour / mt / os / dr + tsc / eslint / build，推分支不合；② 出开关位置 preview（A Tour Tracking 页顶 SA 三档下拉（推荐）/ B Settings › Notifications 一行），链接 + 每题原文发 49；③ 后端上 main 后核字段 → 合 main。
   - 4a 发 **G259 + G258 Auto Send 接口形状**（后端 0f，task/auto-send-limits，还没提交）：GET 带 ticket_types、tour_templates；tour.max_per_batch（默认 100）、tour.template_regular / template_last_minute；tickets.max_per_batch（默认 150）、lead_groups、daily_report；summary_time / summary_emails / cfm_alert_emails 不再用（9:00 汇总和每批 Cfm # 邮件停）；Last Minute 每个整点扫、最后 00:00、短信 + 邮件；runs 加 kind=last_minute。⇒ **派 c3**（worktree wt-shuttle，接 8614fb03）：核键名、加两行模板下拉、校验、Recent runs 文字、as 检查，推分支不合；后端 SHA 到了核字段再合，带截图。G180 SHA 先到就先做 G180。
+  - G263 后端（2c）task/farm-out-item-rates 8e256f22 四审 PASS，**没上 main**（迁移 v159，排 v154 后，Annie 执行 SQL）。形状同前，子项多一个过渡字段 price（只给旧页面，新页面不管）；新挂的码不属于该团报「<code> is not a product of <tour>.」。2c 发了 How to use 英文稿。⇒ 派 c3 出 preview，并核「pick the hotel again on the order」跟我们订单页重算 payable 的做法对不对。
   - ✅ **Auto Send 前端合 main bb76cfb7**（c3；核过 f361134c 字段，alert_failed 是收件人列表已改按个数写；as 97、nav 39，tsc / eslint / build 过）。截图 + 验收点 https://claude.ai/artifact/PWJdBedTYSeTC51ZmxhYZZ ，已转 Annie。
   - ✅ **G258 + G259 Auto Send 后端上 main**（4a 转：合并 f361134c，分支 d7477276，关包 667d5ac8）。形状同前。⇒ 派 c3 核字段、合 main（4ec9a4ee），文字暂照后端现状「12:00 AM on the tour day」，等 Annie 对 11:59 PM「动手」再前后端一起改。4a 建议：Daily report 默认关、每批 Cfm # 邮件停了 ⇒ 没开报告前 Cfm # 不符只在 Manifests 红标，建议 Ticket reminders 开关旁加提示「turn on Daily report too」——前端没做，49 问 Annie。
   - ✅ **G266 ① 后端上 main**（4a 转：合并 60963f35，分支 task/dispatch-sent-marks 9c5d52a9，关包 3795576e）：driver-notice / guide-notice 的 people[] 加 sent_at / sent_by / failed_at（没有 failed_error）。已知不挡：上线前的发送记录按名字配，同名两人共用标记（CR-1）。2e 的 How to use 稿（按页面真按钮名改）：「Each driver shows "Sent 9:53 PM by Annie" once a text went out to them for this day, or "Not sent".」「Only the people you ticked and texted are marked Sent. To text someone you missed, tick only that person and press Send to driver.」「If a text failed, that person stays "Not sent". Check their mobile number in Human Resource, then send to them again.」「The Send to guide card works the same way.」② 卡片 Notes（迁移 v160）还没上。⇒ 派 c3 先出 preview（G180 / Auto Send SHA 到了优先）。
@@ -1281,6 +1282,24 @@ D. 已完成、待从置顶移走：
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 99. G263 Farm out › Partners & rates 价格行（Adult / Child / Infant 下拉）（2026-11-06，c3 出 preview，49 转 Annie）
+- preview：https://claude.ai/artifact/FCnzWr3MtKki8bxPfS1Yhg 。后端 2c 8e256f22 没上 main（迁移 v159）。推荐都 A。
+- 题 1 平时显示：A 列表加 Infant 列（Adult / Child / Infant 三列，没设灰「—」，有子项没主项价灰 N/A，子项后列产品代码）；B 合成一列 Prices 写一串。
+- 题 2 编辑价格行：A [Adult ▾][110.00] × + 灰绿「+ Add price」，已有票种在下拉里灰掉；B 不灰，存时报重复。
+- 题 3 子项勾产品：A 列全部产品打勾，挂在别的子项的灰掉写「· on Skywalk」，停用的不列（已勾的写 (inactive)）；B 照挑酒店的下拉 + 胶囊。
+- 题 4 主项没价又有产品没挂子项：A 橙字提醒「WR-BUS is not on an item and the tour has no price.」，照样能存；B 不提醒。
+- 题 5 怎么存：A 照现在一个团一个 Save，没存离开要拦，400 红字写在团下面；B 整页一个 Save。
+- 题 6 How to use 8 条原文（见 49 回复）；第 7 条怎么重算应付等 2c 答（c3 发现「再选一次酒店」不会重算：推荐 (a) 存价格时把这个合作方 + 团、没手改过应付、今天以后的单一起重算；(b) 后端不改，写「改一下这单任何东西」）。2c 答：现在只有 PATCH 订单才重算，存价格不动已有的单（生产现在 0 单）；⬆ Import rates 照旧只管主项 Adult / Child（G220），不会清子项 / Infant。**新题 7**：A（2c 和 49 推荐）存价格 / Import 时，把这个合作方改了的团、没撤销、应付没手改、今天及以后的单一起重算，改了的进 Action Log，存后绿字「3 open farm out orders were updated」，风险是口头谈了别的价又没手改应付的单会被盖掉（旧值在 Action Log），后端约半天；B 后端不改，How to use 写「改价不影响已有应付，要更新就在 Dispatch 改一下酒店或手填」。已转 Annie，c3 加进 preview。
+
+### 98. Auto Send › Ticket reminders › Daily report 发送时间改成可选（2026-11-06，Annie 提，没动手）
+- Annie 原话（看着「Sends after the last batch of the day (5:00 PM)」那行）：「这个两边都把时间改成可选吧」。
+- 现在：报告固定在当天最后一批门票发完后马上发（11-05 题 1 A），页面只写出最后一批的时间，不能改。Daily report 只有 Ticket reminders 有，Tour confirmations 没有报告。
+- ✅ **Annie 答（原话）：「1. B  2. A 3 A」** ⇒ ① 门票、团确认两张卡都要 Daily report，各自能选时间（团确认是新加的一份报告：列当天该发没发出去的团确认单、原因、要做什么；开关默认关、收件人能改）；② 时间从当天的发送时间里下拉选，默认最后一批；③ 选的早于最后一批 ⇒ 只算到那一刻为止已发过的批次，报告注明后面的批次没算。**还没「动手」**：先出 preview。已转 4a 估后端、拟字段；派 c3 在 G263 preview 之后做。0f 估：字段 tickets.daily_report.after_time、tour.daily_report {enabled, emails, after_time}，不迁移，约半天；after_time 不在发送时间里就落回最后一批（不报错）；团确认报告理由沿用现有跳过原因 + 要做的事；Shuttle / 回程不列；两题放进 preview：① 团确认报告默认收件人（推荐 reservations@）② 报告早于最后一批时，被上限留到后面批次的单列不列（推荐列）。已转 c3。
+- c3 出 preview https://claude.ai/artifact/7jq2UBosVHwRR9drFUjEdX ，6 题（推荐都 A）已转 Annie：1 Tour 报告默认收件人 reservations@ / antelope@；2 报告早于最后一批时被上限挤到后面的单列 / 不列；3 时间行「Send the report after [5:00 PM (last batch) ▾]」/ 不写 (last batch)；4 选早时灰字「Only batches up to 12:00 PM are in the report. The email says 5:00 PM is not included.」/ 不写；5 选的时间被删时回最后一批 + 灰字 / 不提示；6 How to use 两条原文（见 49 回复）。
+- ✅ **Annie（原话）：「同意推荐，动手」**（在 49 发完 98 六题 + G263 题 7 之后）⇒ 49 按 98 六题全 A 理解，已转 4a（0f 做后端：Tour 报告默认 reservations@、早发时列被上限挤后的单）和 c3（task/auto-send-report-time，推分支，等后端 SHA 再合）。G263 / G266 包不包括，49 在问 Annie。
+- G263 preview 已加题 7（同链接新版）。11:59 分支修了「Checkedevery」少空格，tip 52f71f0a。
+- 原问：「两边」指什么（a 前端后端都改 / b 门票、团确认两张卡都要报告且都能选时间），时间怎么选（A 推荐：从当天的发送时间里下拉选，默认最后一批；B 随便填几点），选的时间早于最后一批时报告算到哪（A 推荐：只算到那一刻为止已过的批次）。答了出 preview。
+
 ### 97. G266 Dispatch › Send to driver / guide：每人发过没 + 卡片 Notes（2026-11-06，c3 出 preview，49 转 Annie）
 - preview：https://claude.ai/artifact/X7ptbfdS5zbqgqUNb8fSmg （真页面 + 画上去的新东西；现在 / 推荐 / 手机 / 另一种）。推荐都 A。① 后端已上 main 60963f35；② Notes 等迁移 v160。
 - 题 1 发过没放哪：A 名字后加「Sent」列，发过整行淡黄 + 标签「Sent by Annie on Oct 5, 9:53 PM」，没发灰字「Not sent」（照全站发送格式）；B 最后一列绿字「Sent 9:53 PM by Annie」，不加淡黄。
@@ -1289,9 +1308,10 @@ D. 已完成、待从置顶移走：
 - 题 4 Notes：A 每张卡最下面，标题 Notes + 灰字「For staff only. Drivers never see this.」/「Guides never see this.」，提示字「Notes about today's texts to drivers」/「…to guides」，右下「Last edited by Annie on Oct 5, 9:58 PM · 69 / 2000」+ 蓝 Save，绿字 Saved. / 红字失败，没存离开要拦；B 放卡片抬头下面。
 - 题 5 How to use 第 6–9 条原文见 c3 回复（49 已原样转 Annie）。
 - 不问照做：只算当天、只算发成功；发完重读；旧后端照现在；同名共用标记（后端已知）。
+- ② Notes 后端 2e task/dispatch-card-notes 82710ee7 写完没上 main，等迁移 v160（排 v154 → v159 → v160，Annie 执行）；接口同上午，Action Log 记「Driver notes」/「Guide notes」；2e How to use 稿：「Use Notes under the card to leave a message for the staff working this day. Drivers and guides never see it.」「Type your note and press Save. The note shows who saved it last and when.」「Notes belong to the date at the top of the page. Change the date to see another day's notes.」「To remove a note, clear the box and press Save. Every change is kept in the Action Log at the bottom of the page.」前端 ② 要等 SHA 才上。
 
 ### 96. Auto Send How to use 两处文字（2026-11-06，c3 写，没经过 preview，49 转 Annie）
-- **Annie（原话，回题 2）：「那就改成头天11：59pm最后一次扫描」** ⇒ Last Minute 最后一次扫描从团当天 00:00 改到团期前一天 11:59 PM，团当天什么都不发，第 2 条原句「Nothing goes out on the tour day.」照旧成立（题 2 就不用改了）。要跟着改：后端扫描时间（0f）；前端卡片说明和 How to use 第 3 条里「the last check is at 12:00 AM on the tour day」⇒「the last check is at 11:59 PM the day before the tour」。49 问是否现在动手，✅ **Annie：「动手」** ⇒ 已转 4a（后端改扫描时间）和 c3（前端改字，新分支，等后端 SHA 再合）。题 1（第 3 条其余文字）、Daily report 提示还没答。
+- **Annie（原话，回题 2）：「那就改成头天11：59pm最后一次扫描」** ⇒ Last Minute 最后一次扫描从团当天 00:00 改到团期前一天 11:59 PM，团当天什么都不发，第 2 条原句「Nothing goes out on the tour day.」照旧成立（题 2 就不用改了）。要跟着改：后端扫描时间（0f）；前端卡片说明和 How to use 第 3 条里「the last check is at 12:00 AM on the tour day」⇒「the last check is at 11:59 PM the day before the tour」。49 问是否现在动手，✅ **Annie：「动手」** ⇒ 已转 4a（后端 0f task/lm-last-scan：23:59 那次 run_key last_minute|<前一天>|23:59，23:00 照旧另一行，summary.dates 只有明天）和 c3（前端 task/auto-send-lm-2359 **93346a45** 推了没合：卡片说明 + How to use 第 3 条改 11:59 PM，末尾加「Orders placed after 11:59 PM need to be sent by hand on Manifests.」；as 98、nav 39，tsc / eslint / build 过；等后端 SHA 再合）。题 1（第 3 条其余文字）、Daily report 提示还没答。
 - 前端 task/auto-send-limits 4ec9a4ee（c3，as 97/97、nav 39，tsc / eslint / build 过，没合，等后端 G259 / G258 SHA）；截图 https://claude.ai/artifact/PWJdBedTYSeTC51ZmxhYZZ 。
 - 题 1：新加的 How to use 第 3 条（后端带 tour_templates 才出），原文：「Message template: orders placed before the Last Minute cutoff get the template picked for "Orders before the cutoff". Orders placed after the cutoff the day before the tour are checked every hour on the hour and sent by SMS and email with the template picked for "Orders after the cutoff"; the last check is at 12:00 AM on the tour day. Max per batch doesn't apply to them, and orders already sent by hand are not sent again.」A（推荐）照用；B Annie 改字。
 - 题 2：第 2 条现有原句「Tour confirmations go out at each send time to bus tour orders from the set number of days before the tour up to the day before. Nothing goes out on the tour day.」跟 Last Minute 团当天 00:00 那次扫描矛盾。A（推荐）有 Last Minute 时末句改成「Nothing goes out on the tour day, except the Last Minute check at 12:00 AM (see below).」；B 照旧不改。
