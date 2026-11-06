@@ -1184,6 +1184,7 @@ D. 已完成、待从置顶移走：
 - ✅ **Annie 答 Q2（原话）**：「要加，一切都要如实反映」⇒ Excel 下载也跟屏幕一样带全部底色。已转 46（Excel 是后端生成，前端 lib 里没有）。46：打印 v2（4c）在审，屏幕 vs 打印只漏 lunch 粉底红字一处已补，SHA 待发。
 - Annie「hotel上也漏掉了啊」（46 说只漏 lunch 一处不对）+ 再发同一组截图。78 逐格对照转 46 全部差异：① Hotel 格节色高亮 ② Lunch「-」粉底红字 ③ Order # 等宽字 ④ 节标题少「· CFM # —」、(CHECK-IN …) 字号 ⑤ 最右 ✓ 列打印没有。④⑤ 若规格定过只在屏幕上，46 回出处再问 Annie；否则照「如实反映」补。
   - 46 / 4c 查出处：④a「· CFM # —」打印不写 = G198 定过（Annie 10-27「198全按推荐」：没号网页灰字、打印不写）；⑤ ✓ 列打印去掉 = Lankun 版式定过（Annie 10-30「5 按推荐动手」，manifest-view.tsx:1547-1551）；④b (CHECK-IN …) 小一号没定过 ⇒ 4c 照「如实反映」补（打印 + Excel）。④a、⑤ 要不要推翻，46 在后端窗口直接问 Annie，前端不再问。v2 在推。
+- ✅ **前端：Affiliate（合作公司）那栏 Hotel 格也隔组标色，已合 main e9e46731**（ef，task/partner-hotel-marks 功能 4a3e66cc）。依据 Annie 原话「要打印，所有设置了的颜色都要打印，不要替staff做主」+ 后端打印页 Affiliate 那份已按 hotel_marks 上色（后端 mark_hotel_groups(affiliate["sections"])，46 WIP）。规则同车上的表、同后端：每节各自数、只给 tour 节、同一家酒店连着一组、第 2、4…组标第一行、颜色 = 节颜色（section.color → tour.section_color）。hotelMarks / sectionColor 从 manifest-view.tsx 挪到 components/dispatch-manifest/hotel-marks.ts，车上的表和 affiliate-card.tsx 共用。检查：mf 245/245（新加 Affiliate 栏 Paris 不标、Venetian 首行 #bfe3b0）、nav 39/39；合最新 main 后 tsc 0、eslint 0 错（3 旧 warning）、build 过。**Annie 验收**：Dispatch › Bus Manifest 打开有 Farm out 客人的团，底部 Affiliate 那栏的 Pick-up Location 跟车上的表一样隔组上节颜色，跟 Print 出来的那页一致（打印页要等后端 46 那版上线）。
 
 ### 90. Relay Splits 可以自己调字体大小（2026-11-05，Annie 在后端 46 窗口提，46 转；没动手）
 - 原话：「relay split也需要可以自己调字体大小，设置就跟bus manifest一样」。
