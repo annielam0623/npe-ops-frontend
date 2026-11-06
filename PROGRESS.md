@@ -1279,6 +1279,15 @@ D. 已完成、待从置顶移走：
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 97. G266 Dispatch › Send to driver / guide：每人发过没 + 卡片 Notes（2026-11-06，c3 出 preview，49 转 Annie）
+- preview：https://claude.ai/artifact/X7ptbfdS5zbqgqUNb8fSmg （真页面 + 画上去的新东西；现在 / 推荐 / 手机 / 另一种）。推荐都 A。① 后端已上 main 60963f35；② Notes 等迁移 v160。
+- 题 1 发过没放哪：A 名字后加「Sent」列，发过整行淡黄 + 标签「Sent by Annie on Oct 5, 9:53 PM」，没发灰字「Not sent」（照全站发送格式）；B 最后一列绿字「Sent 9:53 PM by Annie」，不加淡黄。
+- 题 2 发失败的：A 照写 Not sent；B 加红字「· Failed 10:02 PM」。
+- 题 3 发过的默认勾不勾：A 照现在（司机开 Morning Relay 车的默认勾、能发的导游全勾）；B 当天发过的默认不勾。
+- 题 4 Notes：A 每张卡最下面，标题 Notes + 灰字「For staff only. Drivers never see this.」/「Guides never see this.」，提示字「Notes about today's texts to drivers」/「…to guides」，右下「Last edited by Annie on Oct 5, 9:58 PM · 69 / 2000」+ 蓝 Save，绿字 Saved. / 红字失败，没存离开要拦；B 放卡片抬头下面。
+- 题 5 How to use 第 6–9 条原文见 c3 回复（49 已原样转 Annie）。
+- 不问照做：只算当天、只算发成功；发完重读；旧后端照现在；同名共用标记（后端已知）。
+
 ### 96. Auto Send How to use 两处文字（2026-11-06，c3 写，没经过 preview，49 转 Annie）
 - **Annie（原话，回题 2）：「那就改成头天11：59pm最后一次扫描」** ⇒ Last Minute 最后一次扫描从团当天 00:00 改到团期前一天 11:59 PM，团当天什么都不发，第 2 条原句「Nothing goes out on the tour day.」照旧成立（题 2 就不用改了）。要跟着改：后端扫描时间（0f）；前端卡片说明和 How to use 第 3 条里「the last check is at 12:00 AM on the tour day」⇒「the last check is at 11:59 PM the day before the tour」。49 已问 Annie 是否现在动手；题 1（第 3 条其余文字）还没答。
 - 前端 task/auto-send-limits 4ec9a4ee（c3，as 97/97、nav 39，tsc / eslint / build 过，没合，等后端 G259 / G258 SHA）；截图 https://claude.ai/artifact/PWJdBedTYSeTC51ZmxhYZZ 。
