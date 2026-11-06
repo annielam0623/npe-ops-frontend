@@ -2193,7 +2193,9 @@ function SectionRows({
                         : undefined
                     }
                     style={
-                      marks[i] ? { ...c.style, background: color } : c.style
+                      marks[i]
+                        ? { ...c.style, background: look.hotelGroupColor ?? color }
+                        : c.style
                     }
                   >
                     {g.hotel_short ?? g.pickup_location}

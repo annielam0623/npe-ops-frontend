@@ -236,6 +236,39 @@ export function BoxRows({
           />
         ) : def.kind === "toggle" ? (
           <span className="text-[12px] text-[#64748b]">{def.note}</span>
+        ) : def.kind === "colour_or_own" ? (
+          r.color ? (
+            <ColorField
+              value={r.color}
+              palette={palette}
+              disabled={!canEdit || !r.on}
+              label={`${def.label} colour`}
+              onChange={(c) =>
+                onChange(setBox(settings, def.key, tourId, { ...own, color: c }))
+              }
+            />
+          ) : (
+            <span className="flex items-center gap-2 text-[12px] text-[#64748b]">
+              <span data-layout-own-colour={def.key}>{def.note}</span>
+              {canEdit && r.on ? (
+                <button
+                  type="button"
+                  className={LINK_BTN}
+                  data-layout-pick-colour={def.key}
+                  onClick={() =>
+                    onChange(
+                      setBox(settings, def.key, tourId, {
+                        ...own,
+                        color: palette[0] ?? "#fff200",
+                      }),
+                    )
+                  }
+                >
+                  Choose a colour
+                </button>
+              ) : null}
+            </span>
+          )
         ) : (
           renderSpecial?.(def, r.on)
         )}
@@ -532,7 +565,7 @@ export function PagePanel({
   const bad =
     text.trim() !== "" &&
     !(
-      /^\d+(\.\d)?$/.test(text.trim()) &&
+      /^\d+$/.test(text.trim()) &&
       Number(text) >= MARGIN_MIN &&
       Number(text) <= MARGIN_MAX
     );
@@ -593,7 +626,7 @@ export function PagePanel({
       <PageRow label="Margins" changed={settings.page.margin_mm !== null}>
         <input
           type="text"
-          inputMode="decimal"
+          inputMode="numeric"
           aria-label="Margins in mm"
           data-layout-margin
           value={text}
@@ -605,7 +638,7 @@ export function PagePanel({
             const n = Number(v);
             if (v.trim() === "") setPage({ margin_mm: null });
             else if (
-              /^\d+(\.\d)?$/.test(v.trim()) &&
+              /^\d+$/.test(v.trim()) &&
               n >= MARGIN_MIN &&
               n <= MARGIN_MAX
             )
@@ -624,7 +657,7 @@ export function PagePanel({
         </span>
         {bad ? (
           <span role="alert" className="basis-full text-[12px] text-[#dc2626]">
-            Enter a number from {MARGIN_MIN} to {MARGIN_MAX}.
+            Enter a whole number from {MARGIN_MIN} to {MARGIN_MAX}.
           </span>
         ) : null}
       </PageRow>

@@ -121,12 +121,24 @@ interface ApiLayout {
   boxes?: BoxInfo[];
 }
 
-/** PUT：只带改了的顶层键，整块替换；null = 回默认。 */
+/**
+ * PUT：只带改了的。后端 07（task/print-layout 4d2331be）是**按格合并**：colours / text / page_setup 里每一格、每一项
+ * null = 回默认，没带的不动；palette / ticket_rules 整张换（null = 默认）。所以这里送的是差异，不是整块。
+ */
 export interface PrintLayoutPatch {
   palette?: string[] | null;
-  colours?: ApiLayout["colours"];
+  colours?: {
+    all?: Record<string, { on: boolean | null; color: string | null } | null>;
+    tours?: Record<
+      string,
+      | (Record<string, { on: boolean | null; color: string | null } | null> & {
+          sections?: Record<string, string | null>;
+        })
+      | null
+    >;
+  };
   ticket_rules?: TicketRule[] | null;
-  text?: Record<string, Record<string, TextSetting>> | null;
+  text?: Record<string, Record<string, TextSetting | null> | null>;
   page_setup?: ApiPageSetup | null;
 }
 
@@ -289,17 +301,6 @@ export function normalize(r: ApiLayout): PrintLayoutResponse {
   return { page: r.page, settings, defaults, boxes };
 }
 
-/** 前端用的 colours ⇒ 接口形状（团的格子摊平，sections 照旧）。 */
-function coloursToApi(c: PrintLayoutSettings["colours"]): ApiLayout["colours"] {
-  const tours: Record<string, ApiTour> = {};
-  for (const [id, t] of Object.entries(c.tours)) {
-    const one: ApiTour = { ...(t.boxes ?? {}) };
-    if (t.sections && Object.keys(t.sections).length) one.sections = t.sections;
-    if (Object.keys(one).length) tours[id] = one;
-  }
-  return { all: c.all, tours };
-}
-
 export const EMPTY_SETTINGS: PrintLayoutSettings = {
   palette: null,
   colours: { all: {}, tours: {} },
@@ -444,37 +445,80 @@ export const effectiveSheet = (
 const same = (a: unknown, b: unknown) =>
   JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
 
-const pageEmpty = (p: PrintLayoutSettings["page"]) =>
-  p.paper === null &&
-  p.margin_mm === null &&
-  Object.values(p.sheets).every((v) => !v);
+const keysOf = (a: object | undefined, b: object | undefined) =>
+  [...new Set([...Object.keys(a ?? {}), ...Object.keys(b ?? {})])];
 
-/** 存的时候只发改了的顶层键（整块）；没改 = null。整块回到默认 ⇒ 送 null。 */
+/** 一层格子的差异：去掉了 ⇒ null；改了 ⇒ {on, color} 两项都带（没设的那项 null = 回默认）。 */
+function boxesDiff(
+  a: Record<string, BoxSetting> | undefined,
+  b: Record<string, BoxSetting> | undefined,
+) {
+  const out: Record<string, { on: boolean | null; color: string | null } | null> =
+    {};
+  for (const k of keysOf(a, b)) {
+    if (same(a?.[k], b?.[k])) continue;
+    const x = b?.[k];
+    out[k] = x ? { on: x.on ?? null, color: x.color ?? null } : null;
+  }
+  return out;
+}
+
+/** 存的时候只发改了的（按格的差异）；没改 = null。 */
 export function buildLayoutPatch(
   base: PrintLayoutSettings,
   d: PrintLayoutSettings,
 ): PrintLayoutPatch | null {
   const patch: PrintLayoutPatch = {};
   if (!same(base.palette, d.palette)) patch.palette = d.palette;
-  if (!same(base.colours, d.colours)) {
-    const empty =
-      !Object.keys(d.colours.all).length && !Object.keys(d.colours.tours).length;
-    patch.colours = empty ? null : coloursToApi(d.colours);
+  const colours: NonNullable<PrintLayoutPatch["colours"]> = {};
+  const all = boxesDiff(base.colours.all, d.colours.all);
+  if (Object.keys(all).length) colours.all = all;
+  const tours: NonNullable<NonNullable<PrintLayoutPatch["colours"]>["tours"]> =
+    {};
+  for (const id of keysOf(base.colours.tours, d.colours.tours)) {
+    const a = base.colours.tours[id];
+    const b = d.colours.tours[id];
+    if (same(a, b)) continue;
+    if (!b) {
+      tours[id] = null;
+      continue;
+    }
+    const one: Record<string, unknown> = boxesDiff(a?.boxes, b.boxes);
+    const secs: Record<string, string | null> = {};
+    for (const k of keysOf(a?.sections, b.sections))
+      if (!same(a?.sections?.[k], b.sections?.[k]))
+        secs[k] = b.sections?.[k] ?? null;
+    if (Object.keys(secs).length) one.sections = secs;
+    tours[id] = one as NonNullable<typeof tours[string]>;
   }
+  if (Object.keys(tours).length) colours.tours = tours;
+  if (Object.keys(colours).length) patch.colours = colours;
   if (!same(base.ticket_rules, d.ticket_rules))
     patch.ticket_rules = d.ticket_rules;
-  if (!same(base.text, d.text))
-    patch.text = Object.keys(d.text).length ? d.text : null;
-  if (!same(base.page, d.page))
-    patch.page_setup = pageEmpty(d.page)
-      ? null
-      : {
-          paper: d.page.paper,
-          margin_mm: d.page.margin_mm,
-          sheets: Object.fromEntries(
-            Object.entries(d.page.sheets).filter(([, v]) => v),
-          ),
-        };
+  const text: Record<string, Record<string, TextSetting | null> | null> = {};
+  for (const l of keysOf(base.text, d.text)) {
+    const a = base.text[l];
+    const b = d.text[l];
+    if (same(a, b)) continue;
+    if (!b) {
+      text[l] = null;
+      continue;
+    }
+    const one: Record<string, TextSetting | null> = {};
+    for (const el of keysOf(a, b))
+      if (!same(a?.[el], b[el])) one[el] = b[el] ?? null;
+    text[l] = one;
+  }
+  if (Object.keys(text).length) patch.text = text;
+  const ps: ApiPageSetup = {};
+  if (base.page.paper !== d.page.paper) ps.paper = d.page.paper;
+  if (base.page.margin_mm !== d.page.margin_mm) ps.margin_mm = d.page.margin_mm;
+  const sheets: Record<string, Orientation | null> = {};
+  for (const k of keysOf(base.page.sheets, d.page.sheets))
+    if ((base.page.sheets[k] ?? null) !== (d.page.sheets[k] ?? null))
+      sheets[k] = d.page.sheets[k] ?? null;
+  if (Object.keys(sheets).length) ps.sheets = sheets;
+  if (Object.keys(ps).length) patch.page_setup = ps;
   return Object.keys(patch).length ? patch : null;
 }
 

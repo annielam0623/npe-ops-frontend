@@ -25,7 +25,7 @@ const BM_BOXES = [
     .map((k) => [`col_${k}`, `${k} column`, true, false, null]),
 ];
 const RL_BOXES = [
-  ["hotel_cell", "Hotel cell", false, true, null],
+  ["hotel_cell", "Hotel cell", true, true, null],
   ["column_titles", "Column titles", true, true, "#d9d9d9"],
 ];
 const PALETTE = ["#fff200", "#ffc05b", "#83b7e8", "#c5e8b7", "#d9c8f0", "#f6c6d6", "#dbeafe"];
@@ -58,10 +58,22 @@ function full(page) {
   };
 }
 
+function merge(cur, patch) {
+  const out = { ...cur };
+  for (const [k, v] of Object.entries(patch)) {
+    if (v === null) delete out[k];
+    else if (typeof v === "object" && !Array.isArray(v)) {
+      const m = merge(typeof out[k] === "object" && out[k] ? out[k] : {}, v);
+      if (Object.keys(m).length) out[k] = m;
+      else delete out[k];
+    } else out[k] = v;
+  }
+  return out;
+}
 const HEX = /^#[0-9a-fA-F]{6}$/;
 function bad(body) {
   if (body.palette && (!Array.isArray(body.palette) || body.palette.some((c) => !HEX.test(c)))) return "Each colour must look like #rrggbb.";
-  if (body.page_setup?.margin_mm != null && (body.page_setup.margin_mm < 5 || body.page_setup.margin_mm > 25)) return "Margins must be from 5 to 25 mm.";
+  if (body.page_setup?.margin_mm != null && (!Number.isInteger(body.page_setup.margin_mm) || body.page_setup.margin_mm < 5 || body.page_setup.margin_mm > 25)) return "Margins: use a whole number from 5 to 25 mm.";
   if (Array.isArray(body.ticket_rules) && body.ticket_rules.length > 30) return "Up to 30 ticket colours.";
   return null;
 }
@@ -78,9 +90,12 @@ module.exports = async function layoutMock(ctl, p, q, req, res, send, readRaw, e
     if (ctl.layoutFail) return send(res, 400, { detail: ctl.layoutFail }), true;
     const why = bad(body);
     if (why) return send(res, 400, { detail: why }), true;
+    // 同后端 07（4d2331be）：palette / ticket_rules 整张换；colours / text / page_setup 按格合并，null = 那一项回默认。
+    if (page === "relay_list" && body.page_setup && "sheets" in body.page_setup) return send(res, 400, { detail: "Page: send margin_mm, paper. Reload the page and try again." }), true;
     for (const k of KEYS) if (k in body) {
       if (body[k] === null) delete stored[page][k];
-      else stored[page][k] = body[k];
+      else if (k === "palette" || k === "ticket_rules") stored[page][k] = body[k];
+      else stored[page][k] = merge(stored[page][k] ?? {}, body[k]);
     }
     return send(res, 200, { ok: true, ...full(page) }), true;
   }

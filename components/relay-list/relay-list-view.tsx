@@ -72,12 +72,14 @@ import {
 } from "./relay-text-size";
 
 /** 版式设置（置顶 92）里画在单子上的：Hotel 格涂不涂车色。纸张 / 边距 / 表头色走 CSS 变量。 */
-const RelayLookContext = createContext({
-  hotelCell: true,
+const RelayLookContext = createContext<{
+  hotelCell: boolean;
+  /** Hotel 格的颜色；null = 用车色（07）。 */
+  hotelColor: string | null;
   /** 客人表正文现在的字号（每天的起点，置顶 92 第 2 批）：当天 Aa 加在它上面。 */
-  summaryPx: 12.5,
-  carPx: 15,
-});
+  summaryPx: number;
+  carPx: number;
+}>({ hotelCell: true, hotelColor: null, summaryPx: 12.5, carPx: 15 });
 
 /** 纸张尺寸（mm，竖放）。 */
 const PAPER_MM = { a4: [210, 297], letter: [215.9, 279.4] } as const;
@@ -225,10 +227,10 @@ export function RelayListView() {
     layout && ls
       ? resolveBox(ls, layout.defaults, "column_titles", null)
       : null;
-  const hotelCell =
-    layout && ls
-      ? resolveBox(ls, layout.defaults, "hotel_cell", null).on
-      : true;
+  const hotelBox =
+    layout && ls ? resolveBox(ls, layout.defaults, "hotel_cell", null) : null;
+  const hotelCell = hotelBox ? hotelBox.on : true;
+  const hotelColor = hotelBox?.color ?? null;
   const [pw, ph] = PAPER_MM[paper];
   const sheetVars = {
     ...(paper !== "a4" ? { "--rl-pw": `${pw}mm`, "--rl-ph": `${ph}mm` } : {}),
@@ -313,7 +315,9 @@ export function RelayListView() {
           className="overflow-x-auto print:overflow-visible"
           style={sheetVars}
         >
-          <RelayLookContext.Provider value={{ hotelCell, summaryPx, carPx }}>
+          <RelayLookContext.Provider
+            value={{ hotelCell, hotelColor, summaryPx, carPx }}
+          >
             <RelayTextContext.Provider value={textState}>
               <Sheets
                 data={view.data}
@@ -559,9 +563,11 @@ function textVars(
 
 /** Hotel 格涂车色（版式设置可以关）。 */
 function useHotelStyle() {
-  const { hotelCell } = useContext(RelayLookContext);
+  const { hotelCell, hotelColor } = useContext(RelayLookContext);
   return (color: string | null | undefined): CSSProperties | undefined =>
-    hotelCell && color ? { background: color } : undefined;
+    hotelCell && (hotelColor ?? color)
+      ? { background: hotelColor ?? color ?? undefined }
+      : undefined;
 }
 
 function TotalSheet({
