@@ -19,6 +19,11 @@
   5. G263 没开工（迁移，Risk C），接口形状由接手的子窗口发来。
   6. 92 Relay list 照设定读：还没派。
 - 4a [3b2d6f] 回排期（都是粗估，不是承诺，上了发 SHA）：G259 + G258 一个窗口，不迁移，目标今天下午 14:25 前（审不过就今晚家里）；92 Relay list 照设定读（编号 **G264**）一个窗口，前端预计不用改，目标中午前后；G263 先发接口形状（目标上午晚些），代码要迁移 + Annie 执行 SQL，今天不上；G180 要 Annie 约 13:30 前执行 v154 + 复审过才可能今天上；G257 等 Annie 确认 Risk C + v156，排在 G259 后，今天不做；**新：G266 Dispatch 每个司机的已发标记 + 卡片 Notes**，后端今天开工，接口形状起草后发前端（可能要迁移）。
+- **Annie：「今天上」**（G180）⇒ 49 已转 4a：请把 v154 完整 SQL 和执行方式发给 Annie，执行后复审合 main 发 SHA。
+- 派 **`npe-ops-frontend-c3`[a398e9]**：G180 ① wt-g180 合最新 main 重跑 tt / nav / tour / mt / os / dr + tsc / eslint / build，推分支不合；② 出开关位置 preview（A Tour Tracking 页顶 SA 三档下拉（推荐）/ B Settings › Notifications 一行），链接 + 每题原文发 49；③ 后端上 main 后核字段 → 合 main。
+- 4a 发来接口形状（定稿草稿，都还没上 main）：
+  - **G263 Farm out › Partners & rates**（后端 2c，要迁移，今天不上）：GET/PUT /api/farm-out/partners/{pid}/rates，每个团 `prices: [{ticket_type: adult|child|infant, price}]`（主项，空 = 有子项时显示 N/A）、`items: [{id, name, sort_order, prices: [...], product_codes: [...]}]`、`products: [{product_code, name, is_active, item_id}]`（候选码）；旧字段 adult_price / child_price 保留 + infant_price，新界面只用 prices。PUT 同形状，items 给了就整组替换（顺序 = sort_order），不给不动；400 英文：子项至少一行价、ticket_type 不重复、码属于该团、一个码最多挂一个子项、价 ≥0 两位小数。PUT 成功回 {ok, rates}。向后兼容，前端可以晚于后端上。结算：挂在子项的行用子项该票种价，缺了用主项；没挂用主项；Infant 都没价 = 0；Adult / Child 没价 ⇒ payable 空 + missing 提示，staff 手改。2c 会发 How to use 英文稿。⇒ 前端要先出 preview。
+  - **G266 Dispatch 已发标记 + 卡片 Notes**（后端 2e）：① 先上（不加表）：GET /api/dispatch/driver-notice、guide-notice 的 people[] 每行加 sent_at（UTC ISO | null，显示 LA 时间「Sent 9:53 PM by Annie」）、sent_by（"" ⇒ Not sent）、failed_at、failed_error（Annie 只要 Sent / Not sent，显不显失败前端定；失败算 Not sent）。② 后上（新表 dispatch_card_notes，迁移）：GET /api/dispatch/card-notes?date= → {run_date, driver:{text, updated_at, updated_by}, guide:{...}}；PUT {date, card: driver|guide, text}（trim，≤2000 字，"" 清空）；要 dispatch.edit 或 dispatch.send；每张卡每天一个 Notes，只给 staff，不发给司机导游，改动进 Action Log。2e 在 ① 上了后发 How to use。⇒ 前端要先出 preview（PROGRESS 里还没找到 Annie 对 G266 的原话）。
 
 ## 2026-11-05 晚 收工交接：前端主窗口 `前端主窗口40`[325a5e]（家里电脑）
 > Annie：「好的，把今天这个完成就收工吧，详情记录下来明天公司好继续」。40 只分工和汇报，没写代码。过程见下面「40 接班」一节。今晚前端工作窗口只有 `01`[4a9dda]（端口 3777 / 9177 / 9777）；77、ef、78 已退。后端主窗口 `主窗口-46`[5b93cd]（后端 07 / 4c / 61）。
