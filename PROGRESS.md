@@ -1167,6 +1167,11 @@ D. 已完成、待从置顶移走：
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 92. 版式设置交给 staff：颜色 / 哪些格上色 / 字体 / 页面大小（2026-11-05，Annie 在后端 4c 提，46 转；B 级新功能，没动手）
+- 原话：「把对颜色编辑，加减颜色，哪个框还需要上色的功能都交给staff」「包括字体编辑，页面大小的设置，不要每次都让 我们改编码」。
+- 范围：Bus Manifest（屏幕 + 打印 + Excel 下载）+ Relay list（总表 + 车单）；置顶 90 Relay Splits 字号并进来。后端现有：manifests.paper_colors、G197 manifest_text_size、manifest_version、settings relay_list。
+- 78 派 77 出 preview（现状对照、放哪、哪些格设什么、默认 = 现在、范围、谁能改、暂存 Save、三处一致、Reset、字段草案），等 Annie 答 + 「动手」，定稿转 46。
+
 ### 91. Bus Manifest 背景颜色打印不出来（2026-11-05，Annie 在 46 报，46 转；ef 查完前端不用改）
 - 原话：「bus manifest的背景颜色打印不出来」。
 - ef 查：ops Bus Manifest 的 Print / Print all buses 开后端旧页 /admin/dispatch/manifest/print（lib/dispatch-manifest-api.ts:270），前端没有自己的打印样式。后端 tour_manifest_print.html:20 已有 print-color-adjust: exact，@media print 没清格子底色；headless Chrome 实测不勾 Background graphics 也有底色。
@@ -1175,7 +1180,8 @@ D. 已完成、待从置顶移走：
 - ef 查完（前端不用改）：① Hotel 格底色是前端 manifest-view.tsx:1674 hotelMarks() 算的（G198 Q2 A：只 tour 节，同节同酒店连着一组，第 2、4…组标第一行，颜色 = 节颜色），后端打印页没这套 ⇒ 转 46 补（属照规格修 bug）；③ 打印页 Order # 仍等宽 td.mono（G198 已定用正文字体）⇒ 转 46 改；② Lunch「-」粉底是 lunch_mismatch，照 Bus Manifest Q17「纸上不印红」规格不印。
 - 78 问 Annie（Q1）：Lunch「-」粉底打印要不要印：A（推荐）照 Q17 不印（打印 / 下载前已弹提醒，Q21）；B 改成也印。（Q2）Excel 下载要不要也加 Hotel 格底色：A（推荐）不加，只改打印页；B 也加。
 - 后端工作窗口（Annie 转贴）：打印页给合作公司那份 Hotel 格也上了色，屏幕上那份还不标，请前端补。
-- ✅ **Annie（原话）**：「要打印，所有设置了的颜色都要打印，不要替staff做主」⇒ Q1 = B（Lunch「-」粉底打印也印，取代 Q17「纸上不印红」）；打印页凡是屏幕上有的底色都印；合作公司那份 Hotel 格保留上色，前端屏幕上也补（派 ef，task/partner-hotel-marks）。已转 46。Q2 Excel 未答。
+- ✅ **Annie（原话）**：「要打印，所有设置了的颜色都要打印，不要替staff做主」⇒ Q1 = B（Lunch「-」粉底打印也印，取代 Q17「纸上不印红」）；打印页凡是屏幕上有的底色都印；合作公司那份 Hotel 格保留上色，前端屏幕上也补（派 ef，task/partner-hotel-marks）。已转 46。
+- ✅ **Annie 答 Q2（原话）**：「要加，一切都要如实反映」⇒ Excel 下载也跟屏幕一样带全部底色。已转 46（Excel 是后端生成，前端 lib 里没有）。46：打印 v2（4c）在审，屏幕 vs 打印只漏 lunch 粉底红字一处已补，SHA 待发。
 
 ### 90. Relay Splits 可以自己调字体大小（2026-11-05，Annie 在后端 46 窗口提，46 转；没动手）
 - 原话：「relay split也需要可以自己调字体大小，设置就跟bus manifest一样」。
