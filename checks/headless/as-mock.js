@@ -4,7 +4,8 @@
 // GET /__log（每个请求 {method, path, body}）。
 const http = require("http");
 const { permsBody } = require("./role-standard");
-const ctl = { fail401: false, staff: false, admin: false, unreadable: false, failPut: "", slowPut: 0, runs: "default", failGet: false, v3: false };
+const ctl = { fail401: false, staff: false, admin: false, unreadable: false, failPut: "", slowPut: 0, runs: "default", failGet: false, v3: false, r98: false };
+// r98：置顶 98 的后端（tickets.daily_report.after_time、tour.daily_report {enabled, emails, after_time}）。
 const log = [];
 
 const DEFAULT_CONFIG = {
@@ -34,6 +35,7 @@ const V3_RUNS = [
   { run_key: "tickets:2026-11-05T12:00", kind: "tickets", status: "done", stale: false, started_at: "2026-11-05T20:00:00Z", finished_at: "2026-11-05T20:03:00Z", summary: { sent: 150, already_sent: 0, waiting: 1, deferred: 12, cap: 150 } },
   { run_key: "tickets:2026-11-04T17:00", kind: "tickets", status: "done", stale: false, started_at: "2026-11-05T01:00:00Z", finished_at: "2026-11-05T01:01:00Z", summary: { sent: 9, already_sent: 0, waiting: 0, deferred: 0, cap: null, daily_report: { status: "sent", listed: 0, email_failed: [] } } },
   { run_key: "tickets:2026-11-03T17:00", kind: "tickets", status: "done", stale: false, started_at: "2026-11-04T01:00:00Z", finished_at: "2026-11-04T01:01:00Z", summary: { sent: 5, already_sent: 0, waiting: 0, deferred: 0, cap: null, daily_report: { status: "email_failed", listed: 2, email_failed: ["antelope@nationalparkexpress.com"] } } },
+  { run_key: "tour:2026-11-02T18:00", kind: "tour", status: "done", stale: false, started_at: "2026-11-03T02:00:00Z", finished_at: "2026-11-03T02:01:00Z", summary: { sent: 50, already_sent: 0, skipped: 0, deferred: 0, cap: null, alerted: 0, alert_failed: [], daily_report: { status: "sent", listed: 2, email_failed: [] } } },
   { run_key: "tour:2026-11-03T07:00", kind: "tour", status: "done", stale: false, started_at: "2026-11-03T15:00:00Z", finished_at: "2026-11-03T15:02:00Z", summary: { sent: 100, already_sent: 0, skipped: 1, deferred: 7, cap: 100 } },
 ];
 let config = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
@@ -91,6 +93,10 @@ http.createServer(async (req, res) => {
     const b = (await readBody(req)) || {};
     if (b.reset || b.v3 !== undefined) {
       config = JSON.parse(JSON.stringify(b.v3 ?? ctl.v3 ? V3_CONFIG : DEFAULT_CONFIG));
+      if ((b.v3 ?? ctl.v3) && (b.r98 ?? ctl.r98)) {
+        config.tickets.daily_report.after_time = "17:00";
+        config.tour.daily_report = { enabled: false, emails: ["reservations@nationalparkexpress.com"], after_time: "18:00" };
+      }
       delete b.reset;
     }
     if (b.config) {
@@ -132,6 +138,11 @@ http.createServer(async (req, res) => {
     if (bad) return send(res, 400, { detail: bad });
     const kept = ctl.v3 ? { tour: { ...config.tour, ...b.tour }, tickets: { ...config.tickets, ...b.tickets } } : b;
     config = JSON.parse(JSON.stringify(kept));
+    // 同后端：after_time 不在这张卡的 times 里 ⇒ 落到最后一批（不报错）。
+    for (const sec of ["tour", "tickets"]) {
+      const dr = config[sec].daily_report;
+      if (dr && dr.after_time !== undefined && !config[sec].times.includes(dr.after_time)) dr.after_time = [...config[sec].times].sort().at(-1);
+    }
     ctl.unreadable = false;
     return send(res, 200, config);
   }

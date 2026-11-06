@@ -4,9 +4,34 @@
 
 > 6d 交接（下面「2026-10-27 交接：前端主窗口 6d」那节）的后端需求已于 10/27 晚由 ad 转给家里后端主窗口 17。
 
-> **下一个主窗口（明天公司）：先读下面「2026-11-05 晚 收工交接：前端主窗口 40」，再读「2026-11-05 收工交接：前端主窗口 e8」，再看置顶「📌 等 Annie 确认」。**
->
-> 11-06 早：公司 e8 [6ce7da] 退下（Annie：「这个窗口的对话太长了，我新开个窗口接手吧，你们交接一下」）。e8 收工后没有新变化，交接以上面两节为准；公司电脑 C:\Code\npe-ops-frontend-wt-g180（a0，G180 灰底版 e0548c6e）、C:\Code\npe-ops-frontend-wt-shuttle（7a，Auto Send task/auto-send-limits 8614fb03）两个 worktree 留着，分支都已推 origin。
+> **下一个主窗口：先读下面「2026-11-06 收工交接：前端主窗口 49」，再看置顶「📌 等 Annie 确认」。**
+
+## 2026-11-06 收工交接：前端主窗口 `前端主窗口-49`[8db054]（公司电脑）
+> Annie：「今天到5点」⇒ 今天 17:00 才收尾（不是 13:35），本节到时再更新。49 只分工和汇报，没写代码。前端工作窗口只有 `npe-ops-frontend-c3`[a398e9]（13:06 收尾，进程都关了）。后端主窗口 `后端主窗口-4a`[3b2d6f]（后端 0f / 2c / 2e / a2）。详细过程见下面「49 接班」一节。
+
+### 一、今天上 main（等 Annie 线上验收，验收点都已转她）
+| 件 | 前端 | 后端 | 验收看 |
+|---|---|---|---|
+| G259 + G258 Auto Send（上限、按门票团设天数、Daily report、Last Minute 两行模板） | bb76cfb7 | f361134c | Settings › Auto Send：Max per batch 100 / 150、Message template 两行、Start sending by ticket type、填 0 出红字 |
+| Last Minute 最后一次扫描改前一天 11:59 PM | 0dc4224a | ff3205cd | 卡片说明 + How to use 写 11:59 PM，末句手动发 |
+| 置顶 98 两张卡 Daily report 时间可选 | d250a72f | 81802ed8 | Tour 卡新 Daily report（默认 reservations@）；「Send the report after [.. (last batch) ▾]」；选早出灰字；截图 MuY71zAp3U1TsbvkzdWb2v |
+| G264 Relay list ⬇ Excel 照 ⚙ 版式设定 | 不用改 | 97bba481 | 改颜色 / 纸张 / 字号 Save → Excel 跟屏幕一样 |
+| G180 Main manifest → Tour Tracking 灰底版 | 5bf71f92 | 15d41632（v154 12:01 已执行） | 开关 Off：页面跟以前一样 |
+| 置顶 95 G180 三档开关 | 1d77e0e4 | 同上 | Tour Tracking 日期行右边「Main manifest sync」（只 SA）；SA only 马上存；Staff 先黄框 |
+| G266 ① Dispatch 每人 Sent / Not sent | 85304f15 | 60963f35 | ② Send › Step 1 两表加 Sent 列、淡黄行「Sent by … on …」 |
+
+### 二、没合 / 等
+- **G266 ② 卡片 Notes**（Annie「我要的在卡片下方写notes的地方呢」）：前端 task/dispatch-card-notes **e83c529c**（c3，worktree C:\Code\npe-ops-frontend-wt-shuttle；da 548、nav 39，tsc / eslint / build 过；已修「存 Assign 后没存的字丢」）。后端 2e task/dispatch-card-notes 82710ee7，**迁移 v159 SQL 已在 2e 窗口给 Annie，等她执行** → 后端上 main 发 SHA → 前端只读核 GET / PUT 字段 → 合 main。
+- **G263 Farm out 团 → 产品（v3）**（Annie「同意推荐，动手」，定稿见置顶 99）：前端 task/farmout-products **bd472400 + eb939b30**（c3，worktree C:\Code\npe-ops-frontend-wt-g180）：Partners & rates 页已写；还差 Dispatch 选产品、Farm out Report Product 列、Import 预览、How to use 定稿、mock / 检查（清单在置顶 99）。后端 2c 今晚家里做，迁移 **v160**，接口形状见「49 接班」节。待 Annie：没有 money_view 的人能不能改单子的产品（4a 在问，推荐不能）。
+- 置顶 96 题 1（How to use Message template 那条字）没正式答，线上已照 c3 的稿；不滚动重问。
+- 93 G250 past_day 两句、Task Board 中文那题照旧没答，不滚动重问。
+- G257（发送不占数据库连接）：后端等 Annie 确认升 Risk C + 迁移，排在 G259 后，今天没做；前端不用改。
+
+### 三、明天开工
+1. 报对话名；git pull；问后端主窗口 Notes（v159）、G263（v160）进度。
+2. Notes 后端上 → 派工作窗口核字段合 task/dispatch-card-notes。
+3. G263：后端上前把前端剩下几项写完（照 mock），后端上了核字段合 main，附截图 + How to use 定稿给 Annie。
+4. ⏰ 11/09 那周提醒 Annie G180 回填以前的日子。
 
 ## 2026-11-06 前端主窗口 `npe-ops-frontend-49`[8db054] 接班（公司电脑，接 e8 [6ce7da]；只分工和汇报，不写代码）
 - e8 回（交接三问）：① 收工后除 Annie 早上那句没有新变化，后端没发新 SHA；工作窗口 a0 / 7a / 19 都已关，a0（wt-g180，e0548c6e）、7a（wt-shuttle，8614fb03）分支已推、worktree 留着。⚠️ 8614fb03 **还没有** G258 两行模板下拉，要补。② 没有派出未收回的活；都在等后端（G180 等 Annie 在 4c 执行 v153、17 执行 v154；G259 + G258 今天下午；G263 接口形状；G257 只记 SHA）或 Annie（93 past_day 两句）。没问 / 没答：G180 三档开关放哪（e8 推荐 A：Tour Tracking 页顶给 SA 一个下拉，先 preview 再问）；Task Board 中文题。11/09 周起提醒 G180 回填。③ 后端主窗口仍是「今日后端主窗口e8」[df009e]（Annie 今天可能新开，留意 ListAgents）。e8 已告诉后端以后发 49。
@@ -1282,6 +1307,10 @@ D. 已完成、待从置顶移走：
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 100. Content Studio › ✎ Edit tour 加「不需要 Cfm #」勾选（2026-11-06 收工后，后端 a2 转，Annie「现在就要看到能改」）
+- 背景（a2）：Annie 要三处门票改动（Cfm # 不足 6 位挡住、上传可覆盖已存 Cfm #、Hogan 两个 Upper Antelope 团不要 Cfm # 也发）。a2 建议 Hogan 用现有 tix_tour_types.skip_confirmation_no 列（生产只有 upper_antelope_hogan_transport / upper_antelope_hogan_hiking 为 true）；现在这一列只让提醒邮件写 Check-in 说明而不是 Confirmation#。第 3 版 Edit tour 没放这一勾（当时取舍：Annie 要就加）。后端不用改：GET 已带、PATCH 已收并写 action_log。「不要 Cfm # 也能发」那部分后端还等 Annie 对三点「动手」。
+- 49 问 Annie：文字两种（A 现在只写邮件效果，后端上了再改；B 直接写最终效果），是否不出 preview 直接做、合 main 附截图。
+
 ### 99. G263 Farm out › Partners & rates 价格行（Adult / Child / Infant 下拉）（2026-11-06，c3 出 preview，49 转 Annie）
 - ⚠️ **Annie 改设计（原话）**：「其实这是我们设计有问题，你干脆改一下，把每个tour单独列出，然后再下面加产品和价格不就好了，就没有母项子项这么麻烦了」⇒ 不要主项 / 子项：每个团只是一个标题，下面一行一个「产品」（名字自己填，不是 Rezdy 代码）+ 成人 / 儿童 / 婴儿价；团本身不再有价。下面题 1–10 里跟主项 / 子项有关的作废，c3 照新设计重出 preview，2c 重估。**还没「动手」**。
 - 2c v3 估：更简单，约 1 天，仍 v159（重写）。生产只读：只有 C Tour；主价 1 行 VOF-H/D 70/70；子项 5 行（West Rim Premium Pass 98、Admission Only 83、Admission+Grab&Go 93；Antelope Lower Canyon Bus Tour 158、One Way Shuttle 65）；farm out 单 0 张。迁移后各变成同名产品，VOF-H/D 变一个同名产品。题给 Annie：多产品新单默认空着要选（推荐）/ 默认第一个；存价重算（推荐）；Import CSV 改 Partner / Tour / Product / Adult / Child / Infant，名字对不上新建（推荐）/ 报错；How to use 重写。⇒ 派 c3 重出 preview。
@@ -1309,11 +1338,15 @@ D. 已完成、待从置顶移走：
 - ✅ **Annie 答（原话）：「1. B  2. A 3 A」** ⇒ ① 门票、团确认两张卡都要 Daily report，各自能选时间（团确认是新加的一份报告：列当天该发没发出去的团确认单、原因、要做什么；开关默认关、收件人能改）；② 时间从当天的发送时间里下拉选，默认最后一批；③ 选的早于最后一批 ⇒ 只算到那一刻为止已发过的批次，报告注明后面的批次没算。**还没「动手」**：先出 preview。已转 4a 估后端、拟字段；派 c3 在 G263 preview 之后做。0f 估：字段 tickets.daily_report.after_time、tour.daily_report {enabled, emails, after_time}，不迁移，约半天；after_time 不在发送时间里就落回最后一批（不报错）；团确认报告理由沿用现有跳过原因 + 要做的事；Shuttle / 回程不列；两题放进 preview：① 团确认报告默认收件人（推荐 reservations@）② 报告早于最后一批时，被上限留到后面批次的单列不列（推荐列）。已转 c3。
 - c3 出 preview https://claude.ai/artifact/7jq2UBosVHwRR9drFUjEdX ，6 题（推荐都 A）已转 Annie：1 Tour 报告默认收件人 reservations@ / antelope@；2 报告早于最后一批时被上限挤到后面的单列 / 不列；3 时间行「Send the report after [5:00 PM (last batch) ▾]」/ 不写 (last batch)；4 选早时灰字「Only batches up to 12:00 PM are in the report. The email says 5:00 PM is not included.」/ 不写；5 选的时间被删时回最后一批 + 灰字 / 不提示；6 How to use 两条原文（见 49 回复）。
 - ✅ **Annie（原话）：「同意推荐，动手」**（在 49 发完 98 六题 + G263 题 7 之后）⇒ 49 按 98 六题全 A 理解，已转 4a（0f 做后端：Tour 报告默认 reservations@、早发时列被上限挤后的单）和 c3（task/auto-send-report-time，推分支，等后端 SHA 再合）。G263 / G266 包不包括，49 在问 Annie。
+- ✅ **98 两张卡 Daily report 后端上 main**（合并 81802ed8，关包 984eb468 + bcd36747）⇒ ✅ **前端合 main d250a72f**（c3；as 112、nav 39，tsc / eslint / build 过；截图 https://claude.ai/artifact/MuY71zAp3U1TsbvkzdWb2v ），验收点已转 Annie。Notes v159 SQL 已在 2e 窗口给 Annie。
+- ✅ **G180 后端上 main**（4a 转：合并 15d41632 + 9068a0d0 + 951ff589，关包 cc1ccff8，Annie 发布；v154 12:01 执行；开关 off，没跑真同步）。⇒ ✅ **前端合 main 5bf71f92**（c3；tt 157、nav 39、tour 65、mt 253、os 85、dr 89，tsc / eslint / build 过），开关 off 页面不变，验收点已转 Annie。Notes 分支 task/dispatch-card-notes **66c8de29**（da 547、nav 39）推了没合，⚠️ 存 Assign 后没存的 Notes 字会丢，合前要修。
 - ✅ 11:59 PM 后端上 main ff3205cd（关包 0a67150a）⇒ ✅ 前端合 main **0dc4224a**（c3；as 98、nav 39，tsc / eslint / build 过），验收点已转 Annie。G263 2c 更正：子项价格照旧存「子项 × 票种」行（不改三列），GET 子项照旧给 prices，不再给 products / product_codes。
 - 0f 98 后端 task/daily-report-both 写完在审（排在 a2 推 G180 之后上 main）：tickets.daily_report / tour.daily_report {enabled, emails（tour 默认 reservations@）, after_time}，不在发送时间里就落回最后一批；tour run 的 summary 也带 daily_report；门票报告挂在 after_time 那批；Action Log 改名 ticket / tour daily report on/off。已转 c3。
 - c3：98 前端 task/auto-send-report-time **8069782f** 推了没合（基于 11:59 分支 52f71f0a；as 112、nav 39，tsc / eslint / build 过），等 0f SHA。
 - ✅ **Annie 在 c3 窗口（原话）：「G266 Dispatch同意推荐，动手」** ⇒ 置顶 97 五题全 A。c3 开 task/dispatch-sent-marks：① 后端已上，✅ **合 main 85304f15**（da 536、nav 39，tsc / eslint / build 过，验收点已转 Annie）；② Notes 另放分支，等后端 v160 上 main 核字段再合（49 要求不要藏在 main 里）。G263 还没「动手」。
 - G263 preview 已加题 7（同链接新版）。11:59 分支修了「Checkedevery」少空格，tip 52f71f0a。
+- 🟡 **c3 前端做完，task/auto-send-report-time 推分支、没合 main**（基于 task/auto-send-lm-2359 52f71f0a + 最新 main，wt-shuttle）：两张卡「Send the report after [时间 (last batch) ▾]」（选项 = 这张卡的 Send times，跟卡片 Save 一起存，存的是落好的值）；Tour 卡新加 Daily report 块（开关点了就存、先确认；收件人默认读后端，preview 里 reservations@；1–10 个，前端先挡）；选得早灰字「Only batches up to 12:00 PM are in the report. The email says 5:00 PM is not included.」；把选中的时间从 Send times 删掉 ⇒ 下拉回到最后一批 + 灰字「The time you picked is no longer a send time, so the report goes after the last batch.」；How to use 换题 6 A 原文（门票条换、Tour 条新加，后端带了才出）；Recent runs Tour 那批 summary.daily_report 写法同门票。旧后端（没有 after_time / tour.daily_report）照旧。字段照 0f 估算：tickets.daily_report.after_time、tour.daily_report {enabled, emails, after_time}。检查：as 112/112（新加 14 条）、nav 39/39、tsc 0、eslint 0 错（3 旧 warning）、build 过。下一步：0f 上 main ⇒ 只读核字段 ⇒ 合 main（11:59 分支要先合或一起合），截图发 49。
+- ✅ **后端 98 上 main 81802ed8 ⇒ c3 只读核字段、前端合 main**：tickets.daily_report.after_time、tour.daily_report {enabled, emails 默认 reservations@, after_time 默认 18:00}，不在 times 里落回最晚那批；tour run summary.daily_report 只在 after_time 那批有（同门票）。合最新 main 后 as 112/112、nav 39/39、tsc 0、eslint 0 错、build 过。截图 https://claude.ai/artifact/MuY71zAp3U1TsbvkzdWb2v （带验收点）。
 - 原问：「两边」指什么（a 前端后端都改 / b 门票、团确认两张卡都要报告且都能选时间），时间怎么选（A 推荐：从当天的发送时间里下拉选，默认最后一批；B 随便填几点），选的时间早于最后一批时报告算到哪（A 推荐：只算到那一刻为止已过的批次）。答了出 preview。
 
 ### 97. G266 Dispatch › Send to driver / guide：每人发过没 + 卡片 Notes（2026-11-06，c3 出 preview，49 转 Annie）
@@ -1325,6 +1358,7 @@ D. 已完成、待从置顶移走：
 - 题 5 How to use 第 6–9 条原文见 c3 回复（49 已原样转 Annie）。
 - 不问照做：只算当天、只算发成功；发完重读；旧后端照现在；同名共用标记（后端已知）。
 - ② Notes 后端 2e task/dispatch-card-notes 82710ee7 写完没上 main，等迁移 v160（排 v154 → v159 → v160，Annie 执行）；接口同上午，Action Log 记「Driver notes」/「Guide notes」；2e How to use 稿：「Use Notes under the card to leave a message for the staff working this day. Drivers and guides never see it.」「Type your note and press Save. The note shows who saved it last and when.」「Notes belong to the date at the top of the page. Change the date to see another day's notes.」「To remove a note, clear the box and press Save. Every change is kept in the Action Log at the bottom of the page.」前端 ② 要等 SHA 才上。
+- Annie（原话）：「我要的在卡片下方写notes的地方呢」⇒ 49 请 4a 把 v160 排到 v154 后、v159 前（G263 今天不上）；4a：Notes 改号 **v159**（G263 改 v160），G180 推完 2e 就把 SQL 发 Annie，目标 14:15 前。G180：v154 已于 12:01 在生产执行成功，四审 PASS，**只等 Annie 在 a2 窗口批 Scope 5、C→B、release.py** 就推（开关关着）；之后 0f daily-report-both 上，再 Notes。派 c3 先写 ②（task/dispatch-card-notes，照 preview 题 4 A），推分支，后端上了核字段再合。
 - ✅ **Annie 在 c3 窗口（原话）：「G266 Dispatch同意推荐，动手」** ⇒ 5 题全 A。49 定：① 先合 main，② Notes 另开 task/dispatch-card-notes，后端 v160 上了核完字段再合（不藏在 main 里等接口出现）。
 - ✅ **① c3 合 main**（task/dispatch-sent-marks；后端 60963f35 只读核过 notice_marks：people[] 每行 sent_at / sent_by / failed_at）：两张表名字后加 Sent 列（后端带 sent_at 才出）；发过整行淡黄 #fff8e1 + DUP_BADGE「Sent by 谁 on 时间」（洛杉矶）；没发 / 最后一次失败都写灰字 Not sent；默认勾照旧；发完照旧重读名单；How to use 加第 6–8 条原文（第 9 条 Notes 等 ②）。代码 components/dispatch/relay-panel.tsx、lib/dispatch-api.ts。检查：da 536/536（新加 9 条：旧后端没 Sent 列、列位置、全 Not sent 灰字、How to use 三条原文、发 FREDDY 后淡黄 + 标签时间、没勾的 GIA 照旧、导游 MARIA 成功 / KEVIN 失败照写 Not sent、发过的照旧默认勾）、nav 39/39、tsc 0、eslint 0 错（3 旧 warning）、build 过。
 
@@ -1335,6 +1369,7 @@ D. 已完成、待从置顶移走：
 - 题 2：第 2 条现有原句「Tour confirmations go out at each send time to bus tour orders from the set number of days before the tour up to the day before. Nothing goes out on the tour day.」跟 Last Minute 团当天 00:00 那次扫描矛盾。A（推荐）有 Last Minute 时末句改成「Nothing goes out on the tour day, except the Last Minute check at 12:00 AM (see below).」；B 照旧不改。
 
 ### 95. G180 三档开关放哪、怎么存、界面文字（2026-11-06，c3 出 preview，49 转 Annie）
+- ✅ **Annie（原话）：「全按推荐，动手」** ⇒ 三题全 A。派 c3：G180 灰底合完后开 task/tracking-sync-switch，后端已在 main，检查过直接合。✅ **合 main 1d77e0e4**（tt 167、nav 39，tsc / eslint / build 过），验收点已转 Annie。
 - preview：https://claude.ai/artifact/7DDLeUsSSczzovwb2pncrb（模拟数据，可切 A / B / 员工看到的样子）。推荐都选 A。
 - 题 1 放哪：A 在 Tour Confirmation Tracking 日期那一行最右边放小下拉「Main manifest sync」，只有 Super Admin 看得到；B 放在 Settings › Notifications。
 - 题 2 怎么存：A 选了就存，出绿字 Saved，切到 Staff 先出黄框确认；B 旁边放蓝色 Save，选好再按。
@@ -1982,6 +2017,11 @@ pe-ops-wt-login-default`，mock，**没合 main，等后端 57 的 logged_in_at 
     - 检查（端口 3877 / 9277 / 9877）：tt 157/157（G180 新加 21 条：旧后端不变、列位置、灰行在下、底色、Status —、Order Status 颜色、数字卡 / 胶囊只算发过的、To notify 3、records、说明原文、Pending 筛选不含灰行、How to use 原文、Columns 隐藏、拖列后账号仍 17 个列号、重开记得位置、群发名单、手机 8 卡一行不晃）、nav 38/38、tour 65/65、mt 253/253、os 85/85、dr 过；tsc 0、eslint 0 错（3 条原有 warning）、build 过。
     - 下一步：后端 G180（task/tracking-sync-v2）上 main → e8 转 SHA → 只读核 send_state / order_state → 合最新 main 重跑 → 合 main。
     - **11-05 收工现状（a0）**：前端 task/tracking-sync-gray e0548c6e 已推、worktree C:\Code\npe-ops-frontend-wt-g180 干净、进程都关了，没合 main。后端今天上不了：17 推了 WIP c16857c0（开关三档 GET/PUT /api/settings/tracking-sync {"mode": off / super_admin_only / staff}；tracking 接口只给看得到的人带 send_state / order_state，前端不用改）。家里或明天后端上 main 后：只读核字段 → 合最新 main 重跑 tt / nav / tour / mt / os / dr + tsc / eslint / build → 合 main。
+    - **11-06 c3 [a398e9] 接手（49 派）**：分支合最新 main（a3ee25b1，无冲突），端口 3977 / 9377 / 9977：tt 157/157、nav 39/39、tour 65/65、mt 253/253、os 85/85、dr 89/89；tsc 0、eslint 0 错（3 条原有 warning）、build 过；推分支、没合 main。
+    - 三档开关前端还没有 UI：c3 出 preview https://claude.ai/artifact/7DDLeUsSSczzovwb2pncrb （题 1 放哪 A 页顶 SA 下拉 / B Settings › Notifications；题 2 A 选了就存、切 Staff 先黄框确认 / B 蓝 Save；题 3 英文原文），49 已转 Annie（置顶 95），等「动手」才写。4a 确认（539ae88e）：Off 或员工看不到时，没发的行整行不返回，Off 那句说明照写。
+    - 下一步：后端 G180 上 main → 49 转 SHA → 只读核字段 → 再合最新 main 重跑 → 合 main。
+    - ✅ **11-06 后端 G180 上 main 15d41632（v154 12:01 执行，开关 off）⇒ c3 只读核字段、前端合 main**：notifications.py 只在 tracking_sync.shown_to 为真时带 send_state / order_state、出没发的行，CSV 才加两列；order_state 值 confirmed / on_hold / cancelled，跟前端一样；开关 off 时接口跟以前一样。合最新 main 后 tt 157/157、nav 39/39、tour 65/65、mt 253/253、os 85/85、dr 89/89、tsc 0、eslint 0 错（3 旧 warning）、build 过（端口 3978 / 9378 / 9978）。开关 UI（置顶 95，Annie「全按推荐，动手」）另开 task/tracking-sync-switch。
+    - ✅ **置顶 95 开关 c3 合 main**（task/tracking-sync-switch；后端 routers/tracking_sync.py GET / PUT /api/settings/tracking-sync 只给 Super Admin，返回 {mode, enabled}，PUT 记 action_log「Tracking sync set to …」）：Tour Tracking 日期那一行最右边虚线框「Main manifest sync [Off / Super Admin only / Staff]」+ 小字「Only Super Admins see this setting.」，下面一行说明随档位变（题 3 A 原文）；选了就存（绿字 Saved、页面静悄悄重读）；切 Staff 先出黄框「Staff will start seeing grey rows (orders not sent yet) and the Order Status column on this page. Turn on for staff?」[Cancel] [Turn on for staff]，Cancel 退回原档；存不上红字原话、下拉退回原档；手机收进「⋯」；How to use 不提；读不到（不是 SA / 403 / 404）不出。代码 components/tour-tracking/sync-switch.tsx、lib/tracking-sync-api.ts、tour-tracking-view.tsx。检查：tt 167/167（新加 10 条）、nav 39/39、tsc 0、eslint 0 错、build 过。
 - ✅ **G253 上车点字段后端上 main 4c54e895**（关包 c4d1c88f）：/api/dispatch/manifest 的 blocks / unplaced 各节，每位客人加 pickup_location_id（int | null）、pickup_is_vegas（bool | null：TI 是 true，外地站 false，空 / OFFICE / 对不上是 null）。现有字段不变。⇒ 前端要做：Dispatch Shuttle 提示改成按上车点判断，pickup_is_vegas = true 不算，false / null 照旧提醒、计人数；拿掉 departsVegas() 按产品名判断那段。样子照 10-31 版，属修 bug、样子不变，不出 preview，跑完 da / nav + tsc / eslint / build 直接合 main。等 Annie 开工作窗口派（a0 在做 G180 preview）。
   - 派 `npe-ops-frontend-7a`[32d617]：task/shuttle-hint-pickup，worktree C:\Code\npe-ops-frontend-wt-shuttle，端口 3977 / 9377 / 9977，做完直接合 main。
 - **页面越开越慢（后端主窗口转 Annie 原话）**：「为什么现在感觉打开一个页面的时间越来越长了」，她说昨天就问过。前端 PROGRESS 没有昨天这条记录。后端派 54 只读查慢查询、首屏接口、定时任务。要前端查三件：① 这两周首屏 bundle 大小的变化，有没有没做懒加载的大页面；② 打开一个普通页面，并发调了多少个后端接口、各用多少毫秒（/api/me、dashboard-widgets、导航、通知 / 站内消息轮询）；③ 有没有间隔太短、切页面后没停的轮询。结果发后端主窗口合并给 Annie。等 Annie 开工作窗口派（只查不改）。

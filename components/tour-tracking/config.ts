@@ -95,6 +95,7 @@ export function tourPills(rows: TourTrackingRow[], meta: TourMeta): TourPill[] {
 
 export type SystemColumnKey =
   | "order_number"
+  | "order_status"
   | "status"
   | "tour"
   | "tour_date"
@@ -117,8 +118,8 @@ export type SystemColumnKey =
  * 列顺序存在账号的 tour_col_order 里，存的是列号（"0".."16"），和旧页面共用——改了就和旧页面对不上。
  * label 是 ☰ Columns 里的名字（同旧页面 SYS_COL_NAMES）。
  */
-export const SYSTEM_COLUMNS: readonly {
-  key: SystemColumnKey;
+const LEGACY_COLUMNS: readonly {
+  key: Exclude<SystemColumnKey, "order_status">;
   label: string;
 }[] = [
   { key: "order_number", label: "Order #" },
@@ -140,9 +141,27 @@ export const SYSTEM_COLUMNS: readonly {
   { key: "submitted", label: "Submitted" },
 ];
 
-const DEFAULT_ORDER = SYSTEM_COLUMNS.map((c) => c.key);
+/** 旧页面的 17 列（账号里的列号就是这里的下标）。 */
+const DEFAULT_ORDER: SystemColumnKey[] = LEGACY_COLUMNS.map((c) => c.key);
 
-/** 账号里的列顺序（列号数组的 JSON）→ 列键。列数对不上就当没存过（同旧页面的长度校验）。 */
+/**
+ * G180（Annie 2026-11-05「同意全部推荐，动手」）：Order Status 列，默认紧跟 Order #。
+ * 旧页面没有这一列，账号里的 tour_col_order 照旧只存 17 个列号（旧页面要求正好 17 个，多一个它就当没存过）；
+ * Order Status 排在哪一列后面另外只记在这个浏览器（ORDER_STATUS_AFTER_KEY，""= 排第一）。
+ */
+export const ORDER_STATUS_AFTER_KEY = "npe_ops_tour_order_status_after";
+
+/** ☰ Columns 里的列（Order Status 紧跟 Order #）。 */
+export const SYSTEM_COLUMNS: readonly { key: SystemColumnKey; label: string }[] =
+  [
+    LEGACY_COLUMNS[0],
+    { key: "order_status", label: "Order Status" },
+    ...LEGACY_COLUMNS.slice(1),
+  ];
+
+const ALL_KEYS: SystemColumnKey[] = SYSTEM_COLUMNS.map((c) => c.key);
+
+/** 账号里的列顺序（列号数组的 JSON）→ 17 个旧列键。列数对不上就当没存过（同旧页面的长度校验）。 */
 export function parseLegacyOrder(raw: string | null): SystemColumnKey[] | null {
   if (!raw) return null;
   let list: unknown;
@@ -157,9 +176,33 @@ export function parseLegacyOrder(raw: string | null): SystemColumnKey[] | null {
   return keys as SystemColumnKey[];
 }
 
-/** 列键 → 账号里存的列号数组（字符串，同旧页面）。 */
+/** 列键 → 账号里存的列号数组（字符串，同旧页面）；Order Status 不进去。 */
 export function toLegacyOrder(order: SystemColumnKey[]): string {
-  return JSON.stringify(order.map((k) => String(DEFAULT_ORDER.indexOf(k))));
+  return JSON.stringify(
+    order
+      .filter((k) => k !== "order_status")
+      .map((k) => String(DEFAULT_ORDER.indexOf(k))),
+  );
+}
+
+/** 17 个旧列 + Order Status 插在 after 后面（after 为 "" ⇒ 最前；null / 认不出 ⇒ Order # 后面）。 */
+export function withOrderStatus(
+  legacy: SystemColumnKey[],
+  after: string | null,
+): SystemColumnKey[] {
+  const base: SystemColumnKey[] = legacy.filter((k) => k !== "order_status");
+  if (after === "") return ["order_status", ...base];
+  const anchor: SystemColumnKey = base.includes(after as SystemColumnKey)
+    ? (after as SystemColumnKey)
+    : "order_number";
+  const i = base.indexOf(anchor);
+  return [...base.slice(0, i + 1), "order_status", ...base.slice(i + 1)];
+}
+
+/** 现在 Order Status 排在哪一列后面（存进 ORDER_STATUS_AFTER_KEY）。 */
+export function orderStatusAfter(order: SystemColumnKey[]): string {
+  const i = order.indexOf("order_status");
+  return i > 0 ? order[i - 1] : "";
 }
 
 /** 隐藏的页面列、要显示的上传列：只存在这个浏览器（同旧页面，旧页面的键在旧后台域名下，带不过来）。 */
@@ -168,7 +211,7 @@ export const COLUMN_VIS_KEY = "npe_ops_tour_col_vis";
 export const COLUMN_ORDER_CACHE_KEY = "npe_ops_tour_col_order";
 
 export function defaultOrder(): SystemColumnKey[] {
-  return [...DEFAULT_ORDER];
+  return withOrderStatus(DEFAULT_ORDER, null);
 }
 
 export function parseVis(raw: string | null): TourColumnVis {
@@ -177,7 +220,7 @@ export function parseVis(raw: string | null): TourColumnVis {
     if (v && Array.isArray(v.hide) && Array.isArray(v.file)) {
       return {
         hide: v.hide.filter((k): k is SystemColumnKey =>
-          DEFAULT_ORDER.includes(k as SystemColumnKey),
+          ALL_KEYS.includes(k as SystemColumnKey),
         ),
         file: v.file.filter((h): h is string => typeof h === "string" && !!h),
       };
@@ -222,6 +265,54 @@ export function visibleColumns(
       .filter((h) => vis.file.includes(h))
       .map((h) => `file:${h}` as const),
   ];
+}
+
+// ── G180 Main manifest 同步（灰底版，Annie 2026-11-05「同意全部推荐，动手」）────────
+
+/** 还没发过（灰行）。旧后端没有 send_state ⇒ 当发过。 */
+export function isUnsent(r: TourTrackingRow): boolean {
+  return r.send_state === "unsent";
+}
+
+/** 后端有没有 G180 两个字段：没有（旧后端）⇒ 页面跟现在一样（不出 Order Status 列、说明、To notify 卡）。 */
+export function hasSyncFields(rows: TourTrackingRow[]): boolean {
+  return rows.some(
+    (r) => r.send_state !== undefined || r.order_state !== undefined,
+  );
+}
+
+export const ORDER_STATE_LABEL: Record<
+  NonNullable<TourTrackingRow["order_state"]>,
+  string
+> = {
+  confirmed: "Confirmed",
+  on_hold: "On hold",
+  cancelled: "Cancelled",
+};
+
+export function orderStateOf(
+  r: TourTrackingRow,
+): NonNullable<TourTrackingRow["order_state"]> {
+  return r.order_state && r.order_state in ORDER_STATE_LABEL
+    ? r.order_state
+    : "confirmed";
+}
+
+/** 灰行：整行底色 #e1e4e8、字 #1a1a1a（preview 定稿）。 */
+export const UNSENT_ROW_BG = "#e1e4e8";
+
+/** 表格上方那句（题 1 A 原文）。 */
+export const UNSENT_NOTE =
+  "Grey rows: no confirmation, Last Minute, Shuttle or Broadcast message has been sent yet.";
+
+/** 发过的在上、灰行在下，两组里面的先后不动。 */
+export function sentFirst(rows: TourTrackingRow[]): TourTrackingRow[] {
+  return [...rows.filter((r) => !isUnsent(r)), ...rows.filter(isUnsent)];
+}
+
+/** 群发名单：灰行也在，On hold / Cancelled 的单不在（37 冻结：只在浏览器端排除）。 */
+export function broadcastRows(rows: TourTrackingRow[]): TourTrackingRow[] {
+  return rows.filter((r) => orderStateOf(r) === "confirmed");
 }
 
 // ── 状态 ────────────────────────────────────────────────────────────────────
@@ -481,12 +572,15 @@ export function ticketValue(
 
 // ── 排序 / 搜索 ─────────────────────────────────────────────────────────────
 
-/** 后端已排好序；客人发来 WhatsApp 还没人处理的单顶到最上面（最新的在前），其余顺序不动。 */
+/**
+ * 后端已排好序；客人发来 WhatsApp 还没人处理的单顶到最上面（最新的在前），其余顺序不动。
+ * G180：还没发过的（灰行）一律排在发过的下面，两组各自照这个排法。
+ */
 export function orderRows(rows: TourTrackingRow[]): TourTrackingRow[] {
   const floated = rows
     .filter((r) => r.wa_unhandled)
     .sort((a, b) => (b.latest_wa_ts || "").localeCompare(a.latest_wa_ts || ""));
-  return [...floated, ...rows.filter((r) => !r.wa_unhandled)];
+  return sentFirst([...floated, ...rows.filter((r) => !r.wa_unhandled)]);
 }
 
 export function matchesSearch(r: TourTrackingRow, search: string): boolean {

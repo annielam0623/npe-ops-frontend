@@ -129,11 +129,14 @@ function runResult(r: AutoSendRun): { text: string; bad?: boolean } {
   const alertText = alertFailed
     ? ` · ${alertFailed} alert email${alertFailed === 1 ? "" : "s"} failed`
     : "";
-  if (r.kind === "tour")
+  if (r.kind === "tour") {
+    // 置顶 98：团确认也有每日报告，写法同门票（summary.daily_report，只在报告那一批有）。
+    const report = dailyReportText(s.daily_report);
     return {
-      text: `${num(s.sent)} sent · ${num(s.skipped)} skipped${deferredText(s)}${alertText}`,
-      bad: alertFailed > 0,
+      text: `${num(s.sent)} sent · ${num(s.skipped)} skipped${deferredText(s)}${alertText}${report ? ` · ${report.text}` : ""}`,
+      bad: alertFailed > 0 || !!report?.bad,
     };
+  }
   if (r.kind === "last_minute")
     return {
       text: `${num(s.sent)} sent · ${num(s.skipped)} skipped${alertText}`,
@@ -286,6 +289,10 @@ export function AutoSendView() {
                 data.config.tickets.max_per_batch !== undefined)
             }
             lastMinute={!!data?.tour_templates?.length}
+            reportTime={
+              data?.config.tickets.daily_report?.after_time !== undefined
+            }
+            tourReport={data?.config.tour.daily_report !== undefined}
           />
           {!view.data.readable ? (
             <p
@@ -345,8 +352,25 @@ export function AutoSendView() {
 }
 
 /** v3 = 后端带了置顶 89 的新键（preview v3 的全文）；旧后端照以前的 6 条。 */
-function HowToUse({ v3, lastMinute }: { v3: boolean; lastMinute: boolean }) {
-  if (v3) return <HowToUseV3 lastMinute={lastMinute} />;
+function HowToUse({
+  v3,
+  lastMinute,
+  reportTime,
+  tourReport,
+}: {
+  v3: boolean;
+  lastMinute: boolean;
+  reportTime: boolean;
+  tourReport: boolean;
+}) {
+  if (v3)
+    return (
+      <HowToUseV3
+        lastMinute={lastMinute}
+        reportTime={reportTime}
+        tourReport={tourReport}
+      />
+    );
   return (
     <LegacyHowTo title="How to use — Auto Send">
       <li>
@@ -386,7 +410,17 @@ function HowToUse({ v3, lastMinute }: { v3: boolean; lastMinute: boolean }) {
 }
 
 /** 置顶 89 preview v3 的 How to use（Annie 2026-11-05「Auto Send 都选 A。动手」）。 */
-function HowToUseV3({ lastMinute }: { lastMinute: boolean }) {
+function HowToUseV3({
+  lastMinute,
+  reportTime,
+  tourReport,
+}: {
+  lastMinute: boolean;
+  /** 置顶 98：门票每日报告带 after_time ⇒ 换成 preview 题 6 A 那条。 */
+  reportTime: boolean;
+  /** 置顶 98：后端带 tour.daily_report ⇒ 加团确认每日报告那条。 */
+  tourReport: boolean;
+}) {
   return (
     <LegacyHowTo title="How to use — Auto Send">
       <li>
@@ -433,13 +467,36 @@ function HowToUseV3({ lastMinute }: { lastMinute: boolean }) {
         An order that can&apos;t be sent yet is tried again in every batch until
         the day before the service date.
       </li>
-      <li>
-        Daily report: after the last batch of the day, one email lists the
-        ticket orders that were due but not sent, why, and what to do (orders
-        whose Cfm # doesn&apos;t match the product included). It is the only
-        summary email; there is no morning summary any more. It has its own
-        switch, off until you turn it on.
-      </li>
+      {reportTime ? (
+        <li data-howto-report-time>
+          Daily report (ticket reminders): one email a day lists the ticket
+          orders that were due but not sent, why, and what to do (orders whose
+          Cfm # doesn&apos;t match the product included). It goes out after the
+          batch you pick in Send the report after; the last batch of the day is
+          the default. If you pick an earlier batch, the email says which later
+          batches are not included. It is the only ticket summary email; there
+          is no morning summary any more. It has its own switch, off until you
+          turn it on.
+        </li>
+      ) : (
+        <li>
+          Daily report: after the last batch of the day, one email lists the
+          ticket orders that were due but not sent, why, and what to do (orders
+          whose Cfm # doesn&apos;t match the product included). It is the only
+          summary email; there is no morning summary any more. It has its own
+          switch, off until you turn it on.
+        </li>
+      )}
+      {tourReport ? (
+        <li data-howto-tour-report>
+          Daily report (tour confirmations): one email a day, after the batch
+          you pick, lists the bus tour orders that should have had a
+          confirmation by then but didn&apos;t, why, and what to do. Shuttle and
+          return legs are not listed; Last Minute orders are listed only if
+          something is wrong with them. Skipped orders are still emailed one by
+          one as before. It has its own switch, off until you turn it on.
+        </li>
+      ) : null}
       <li>
         Messages go out one guest at a time, about one second apart, so a big
         batch takes a few minutes.
@@ -638,6 +695,13 @@ function TourCard({
     ...(t.template_last_minute !== undefined
       ? { template_last_minute: t.template_last_minute }
       : {}),
+    // 置顶 98：团确认的每日报告（新的；后端带了才有）。开关点了就存，草稿只管收件人和时间。
+    ...(t.daily_report !== undefined
+      ? { daily_report_emails: t.daily_report.emails }
+      : {}),
+    ...(t.daily_report?.after_time !== undefined
+      ? { daily_report_after: t.daily_report.after_time }
+      : {}),
   });
   const [draft, setDraft] = useState(fieldsOf(saved.tour));
   const savedKey = JSON.stringify(fieldsOf(saved.tour));
@@ -655,13 +719,33 @@ function TourCard({
       onSave={() => {
         const bad = checkTour(draft);
         if (bad) return Promise.resolve({ status: "error", message: bad });
+        const { daily_report_emails, daily_report_after, ...rest } = draft;
         // 草稿以外已存的键（如 last_minute_cutoff）原样带回去，接在后面（键的顺序照旧）。
         const extra = Object.fromEntries(
           Object.entries(saved.tour).filter(
-            ([k]) => k !== "enabled" && !(k in draft),
+            ([k]) => k !== "enabled" && k !== "daily_report" && !(k in rest),
           ),
         );
-        return onSave({ ...draft, enabled: saved.tour.enabled, ...extra });
+        return onSave({
+          ...rest,
+          enabled: saved.tour.enabled,
+          ...(saved.tour.daily_report && daily_report_emails
+            ? {
+                daily_report: {
+                  enabled: saved.tour.daily_report.enabled,
+                  emails: daily_report_emails,
+                  ...(daily_report_after !== undefined
+                    ? {
+                        after_time:
+                          reportTime(rest.times, daily_report_after)
+                            .effective ?? daily_report_after,
+                      }
+                    : {}),
+                },
+              }
+            : {}),
+          ...extra,
+        });
       }}
     >
       <TimesField
@@ -701,6 +785,27 @@ function TourCard({
         values={draft.alert_emails}
         onChange={(alert_emails) => setDraft({ ...draft, alert_emails })}
       />
+      {saved.tour.daily_report && draft.daily_report_emails ? (
+        <DailyReport
+          kind="tour"
+          enabled={saved.tour.daily_report.enabled}
+          times={draft.times}
+          afterTime={draft.daily_report_after}
+          onAfterTime={(daily_report_after) =>
+            setDraft({ ...draft, daily_report_after })
+          }
+          emails={draft.daily_report_emails}
+          onEmails={(daily_report_emails) =>
+            setDraft({ ...draft, daily_report_emails })
+          }
+          onToggle={(enabled) =>
+            onSave({
+              ...saved.tour,
+              daily_report: { ...saved.tour.daily_report!, enabled },
+            })
+          }
+        />
+      ) : null}
     </SettingsCard>
   );
 }
@@ -734,6 +839,10 @@ function TicketsCard({
     ...(t.daily_report !== undefined
       ? { daily_report_emails: t.daily_report.emails }
       : {}),
+    // 置顶 98：后端带了 after_time 才有
+    ...(t.daily_report?.after_time !== undefined
+      ? { daily_report_after: t.daily_report.after_time }
+      : {}),
   });
   const hasReport = saved.tickets.daily_report !== undefined;
   const [draft, setDraft] = useState(fieldsOf(saved.tickets));
@@ -757,7 +866,7 @@ function TicketsCard({
       onSave={() => {
         const bad = checkTickets(draft);
         if (bad) return Promise.resolve({ status: "error", message: bad });
-        const { daily_report_emails, ...rest } = draft;
+        const { daily_report_emails, daily_report_after, ...rest } = draft;
         return onSave({
           ...rest,
           enabled: saved.tickets.enabled,
@@ -766,6 +875,13 @@ function TicketsCard({
                 daily_report: {
                   enabled: saved.tickets.daily_report.enabled,
                   emails: daily_report_emails,
+                  ...(daily_report_after !== undefined
+                    ? {
+                        after_time:
+                          reportTime(rest.times, daily_report_after)
+                            .effective ?? daily_report_after,
+                      }
+                    : {}),
                 },
               }
             : {}),
@@ -844,8 +960,13 @@ function TicketsCard({
       )}
       {saved.tickets.daily_report && draft.daily_report_emails ? (
         <DailyReport
+          kind="tickets"
           enabled={saved.tickets.daily_report.enabled}
-          lastTime={[...draft.times].sort().at(-1) ?? null}
+          times={draft.times}
+          afterTime={draft.daily_report_after}
+          onAfterTime={(daily_report_after) =>
+            setDraft({ ...draft, daily_report_after })
+          }
           emails={draft.daily_report_emails}
           onEmails={(daily_report_emails) =>
             setDraft({ ...draft, daily_report_emails })
@@ -1299,23 +1420,53 @@ function LeadGroupsField({
   );
 }
 
-/** 每日报告：开关点了就存（照卡片抬头的开关，先确认）；收件人跟卡片的 Save 一起存。 */
+/** 这张卡的 times 排好序；pick 不在里面（times 改过）⇒ 落到最后一批（同后端）。 */
+function reportTime(times: string[], pick: string | undefined) {
+  const sorted = [...times].filter((t) => /^\d{1,2}:\d{2}$/.test(t)).sort();
+  const last = sorted.at(-1) ?? null;
+  const fellBack = !!pick && !!last && !sorted.includes(pick);
+  const effective = pick && sorted.includes(pick) ? pick : last;
+  const later = effective ? sorted.filter((t) => t > effective) : [];
+  return { sorted, last, effective, fellBack, later };
+}
+
+/** 每日报告的说明（置顶 98 preview 题 3 A 原文）。 */
+const REPORT_DESC = {
+  tickets:
+    "(One email a day: the orders that were due but not sent, why, and what to do. Orders whose Cfm # doesn't match the product are in it too.)",
+  tour: "(One email a day: the bus tour orders that should have had a confirmation by then but didn't, why, and what to do.)",
+} as const;
+
+/**
+ * 每日报告：开关点了就存（照卡片抬头的开关，先确认）；收件人、时间跟卡片的 Save 一起存。
+ * 置顶 98（Annie「同意推荐，动手」，preview 7jq2UBosVHwRR9drFUjEdX 6 题全 A）：后端带 after_time ⇒
+ * 「Send the report after [时间 ▾]」，选项是这张卡的 Send times（最后一个写 (last batch)）；选得早出灰字；
+ * 选的时间被删掉 ⇒ 下拉回到最后一批、出灰字。没有 after_time（旧后端）⇒ 照旧一句「Sends after the last batch」。
+ */
 function DailyReport({
+  kind,
   enabled,
-  lastTime,
+  times,
+  afterTime,
+  onAfterTime,
   emails,
   onEmails,
   onToggle,
 }: {
+  kind: "tickets" | "tour";
   enabled: boolean;
-  lastTime: string | null;
+  times: string[];
+  afterTime?: string;
+  onAfterTime: (next: string) => void;
   emails: string[];
   onEmails: (next: string[]) => void;
   onToggle: (next: boolean) => Promise<ActionResult>;
 }) {
+  const rt = reportTime(times, afterTime);
+  const selectId = `${kind}-report-time`;
   return (
     <div
-      data-daily-report
+      data-daily-report={kind}
       className="flex flex-col gap-2.5 border-t-[0.5px] border-black/[.08] pt-3 night:border-white/10"
     >
       <div className="flex flex-wrap items-center gap-3">
@@ -1328,17 +1479,48 @@ function DailyReport({
         />
         <span className={NOTE}>Off until you turn it on.</span>
       </div>
-      <div className="flex flex-wrap items-center gap-2 text-[12.5px] text-[#1a1a1a] night:text-white/80">
-        Sends after the last batch of the day
-        {lastTime ? <b className="font-semibold">({clock(lastTime)})</b> : null}
-        <span className={NOTE}>
-          (One email a day: the orders that were due but not sent, why, and what
-          to do. Orders whose Cfm # doesn&apos;t match the product are in it
-          too.)
-        </span>
-      </div>
+      {afterTime === undefined ? (
+        <div className="flex flex-wrap items-center gap-2 text-[12.5px] text-[#1a1a1a] night:text-white/80">
+          Sends after the last batch of the day
+          {rt.last ? <b className="font-semibold">({clock(rt.last)})</b> : null}
+          <span className={NOTE}>{REPORT_DESC[kind]}</span>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-1">
+          <div className="flex flex-wrap items-center gap-2 text-[12.5px] text-[#1a1a1a] night:text-white/80">
+            <label htmlFor={selectId}>Send the report after</label>
+            <select
+              id={selectId}
+              value={rt.effective ?? ""}
+              disabled={!rt.sorted.length}
+              onChange={(e) => onAfterTime(e.target.value)}
+              className={cn(INLINE_INPUT_BASE, "w-auto cursor-pointer")}
+            >
+              {rt.sorted.map((t) => (
+                <option key={t} value={t}>
+                  {clock(t)}
+                  {t === rt.last ? " (last batch)" : ""}
+                </option>
+              ))}
+            </select>
+            <span className={NOTE}>{REPORT_DESC[kind]}</span>
+          </div>
+          {rt.fellBack ? (
+            <p data-report-fallback className={cn(NOTE, "m-0 text-[#6b7280]")}>
+              The time you picked is no longer a send time, so the report goes
+              after the last batch.
+            </p>
+          ) : rt.later.length ? (
+            <p data-report-early className={cn(NOTE, "m-0 text-[#6b7280]")}>
+              Only batches up to {clock(rt.effective!)} are in the report. The
+              email says {rt.later.map(clock).join(", ")}{" "}
+              {rt.later.length === 1 ? "is" : "are"} not included.
+            </p>
+          ) : null}
+        </div>
+      )}
       <EmailsField
-        id="tickets-report"
+        id={`${kind}-report`}
         label="Send the daily report to"
         values={emails}
         onChange={onEmails}
@@ -1372,11 +1554,17 @@ const wholeIn = (v: number, lo: number, hi: number) =>
 function checkTour(d: {
   days_before: number;
   max_per_batch?: number;
+  daily_report_emails?: string[];
 }): string | null {
   if (!wholeIn(d.days_before, 1, 14))
     return "Start sending must be a whole number of days from 1 to 14.";
   if (d.max_per_batch !== undefined && !wholeIn(d.max_per_batch, 1, 2000))
     return "Max per batch must be a whole number from 1 to 2000.";
+  if (
+    d.daily_report_emails !== undefined &&
+    (d.daily_report_emails.length < 1 || d.daily_report_emails.length > 10)
+  )
+    return "Send the daily report to: add 1 to 10 email addresses.";
   return null;
 }
 
