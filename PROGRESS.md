@@ -1074,6 +1074,11 @@ D. 已完成、待从置顶移走：
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 88. Relay Splits 可以自己调字体大小（2026-11-05，Annie 在后端 46 窗口提，46 转；没动手）
+- 原话：「relay split也需要可以自己调字体大小，设置就跟bus manifest一样」。
+- 46：后端 app/ 里没有 Bus Manifest 字体设置，应是前端存的；要后端存（如 settings relay_list）就把字段形状发它。
+- 78 派 77 只读查 Bus Manifest 字体设置怎么做 / 怎么存，出 preview（范围、放哪、存哪、谁能改、打印生效），等 Annie 看 preview + 「动手」。
+
 ### 87. Outbound shuttle 从 TI 出发：Dispatch 提示和 Manifest setup 说明要不要跟着改（2026-11-04 晚，Annie 在 ef 窗口提，78 已问，没动手）
 - 原话：「还有一个规则要记住，outbound shuttle的出发点是TI，所以也不需要单独挑酒店的」。
 - ef 只读查到前端可能冲突的两处（没改）：
