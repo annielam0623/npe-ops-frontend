@@ -7,9 +7,10 @@ import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { HowToUse } from "@/components/ui/how-to-use";
 import { ErrorBanner } from "@/components/ui/panel";
 import { PageLink } from "@/components/ui/page-link";
-import { usePhoneInfo } from "@/components/ui/phone";
+import { PhoneMore, usePhoneInfo } from "@/components/ui/phone";
 import { describeError, isStatus } from "@/lib/api-errors";
 import {
+  downloadRelayListExcel,
   fetchRelayPull,
   type RelayGuest,
   type RelayPull,
@@ -168,6 +169,11 @@ export function RelayListView() {
             🖨 Print
           </button>
         ) : null}
+        {view.kind === "ready" && params ? (
+          <PhoneMore label="Download">
+            <ExcelButton date={params.date} onUnauthorized={redirectToLogin} />
+          </PhoneMore>
+        ) : null}
         {view.kind === "ready" && settings ? (
           <button
             type="button"
@@ -245,6 +251,70 @@ const HOW_TO = [
   "Nothing is saved until you press Save. Reset puts one colour back to the paper colour; Reset to paper colours puts them all back (press Save after).",
   "Some older printers need Auto-rotate turned on in the print window to print Portrait and Landscape sheets together.",
 ];
+
+/**
+ * 「⬇ Excel」（置顶 92 Q8 A，Annie「记得要可以下载」「下载功能不用给i我preview了，直接上线」）：下载这一天的 Relay list，
+ * 一张单一个工作表，后端生成（GET /api/dispatch/relay-list/excel）。白底次要键，放 ⚙ 左边；出错红字写原话，404 = 后端还没上。
+ */
+function ExcelButton({
+  date,
+  onUnauthorized,
+}: {
+  date: string;
+  onUnauthorized: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  async function download() {
+    setBusy(true);
+    setError(null);
+    try {
+      const { blob, filename } = await downloadRelayListExcel(date);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      if (isStatus(e, 401)) {
+        onUnauthorized();
+        return;
+      }
+      setError(
+        isStatus(e, 404)
+          ? "Excel download isn't available yet."
+          : `Could not download: ${describeError(e)}`,
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <>
+      <button
+        type="button"
+        data-relay-excel
+        disabled={busy}
+        onClick={() => void download()}
+        className={`${WHITE_BTN} disabled:cursor-default disabled:opacity-60`}
+      >
+        {busy ? "Downloading…" : "⬇ Excel"}
+      </button>
+      {error ? (
+        <span
+          role="alert"
+          data-relay-excel-error
+          className="text-[12.5px] font-semibold text-[#f87171]"
+        >
+          {error}
+        </span>
+      ) : null}
+    </>
+  );
+}
 
 /** 当天的团（设置弹窗默认只列这些）和「同时是团大巴的 relay 车」。 */
 function todayTours(data: RelayPull): {

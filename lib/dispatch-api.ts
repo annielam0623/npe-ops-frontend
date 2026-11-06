@@ -1,5 +1,6 @@
 import type { DriverFollowed } from "@/lib/driver-follow";
 import { apiFetch } from "@/lib/api-client";
+import { ApiError } from "@/types";
 import type {
   DispatchCopyResult,
   DispatchDay,
@@ -352,6 +353,25 @@ export function fetchRelayPull(date: string): Promise<RelayPull> {
     cache: "no-store",
     query: { date },
   });
+}
+
+/**
+ * Relay list 下载 Excel（置顶 92 Q8 A：一张单一个工作表，颜色 / 字号 / 纸张 / 方向照页面；后端 07 生成）。
+ * 不是 JSON，所以不走 apiFetch：出错照样抛 ApiError（401 跳登录、4xx 写原话）。
+ */
+export async function downloadRelayListExcel(
+  date: string,
+): Promise<{ blob: Blob; filename: string }> {
+  const res = await fetch(
+    `${API}/relay-list/excel?${new URLSearchParams({ date })}`,
+    { credentials: "include", cache: "no-store" },
+  );
+  if (!res.ok) throw await ApiError.fromResponse(res);
+  const disposition = res.headers.get("content-disposition") ?? "";
+  const filename =
+    /filename="?([^";]+)"?/.exec(disposition)?.[1] ??
+    `Relay_list_${date}.xlsx`;
+  return { blob: await res.blob(), filename };
 }
 
 /** 发某一轮之前：这次会发几位、已经发过几位（服务端重算，只读）。 */
