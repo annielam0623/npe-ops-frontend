@@ -10,7 +10,8 @@
 - 接 78（78 补交接：那节之后没新变化，交完停）。已告诉 46、77、ef 新主窗口名字；ef 空闲待命（worktree 已删、没在跑的进程）。
 - ⚠️ 78 交接「二」有两条已过时：**87 正式版（按上车点）main 2bc2714d（7a）+ 后端 G253**、**86 Working Record main 0b0e1619（a0，去掉 Hours）+ 后端 G249**，公司 e8 今天都已合（见 e8 收工交接）。已回 46 不用再做。
 - 46 回：92 第 2 批 07 做 Relay 当天字号（新表，SQL 等 Annie 看）→ Relay list 照设定读，61 做 Text 起点接打印 / Excel，SHA 到了发 40 → 派 77 合 task/print-layout-2。G250 4c 在 task/dispatch-tour-lock，**等 Annie 在 4c 窗口选 A（今晚加表存锁）/ B（先只锁过去的日子）**；接口 GET /api/dispatch/day 加 tour_locks，锁了改就 409。94 后端没收到过：40 已把背景转 46，等 Annie 答 3 题后再发定稿。
-- 等回信：77 → print-layout-1 合 main SHA + 验收点。
+- ✅ 77 回：**92 版式设置第 1 批 main b7fd8a73**（PROGRESS eb844f27；后端 8a72f830 核过；mf 279、rl 87、da 521、nav 39，tsc / eslint / build 过）。验收点已转 Annie（Bus Manifest / Relay list「⚙ Colours & page」，试完 Reset all to paper + Save）。task/print-layout-2 9df7f172 留在 worktree D:\npe-ops-frontend-wt-layout 等后端第 2 批；wt-layout1 可删。
+- Annie 要关旧窗口：78、ef、77 可关（77 交完）。后端 07 / 61 / 4c / 46 还在做或等 Annie，先别关。下次 92 第 2 批 SHA 到了要另开工作窗口接 print-layout-2。
 
 ## 2026-11-05 晚 交接：前端主窗口 `前端主窗口-78`[6e88e1] → 新主窗口（家里电脑）
 > Annie：「你这个窗口的内容太长了，我重新开一个窗口你交接一下吧」。78 只分工和汇报，没写代码。详细过程都在 78 接班节（2026-11-04 晚）和置顶 87、90–94。
