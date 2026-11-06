@@ -1307,6 +1307,10 @@ D. 已完成、待从置顶移走：
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 100. Content Studio › ✎ Edit tour 加「不需要 Cfm #」勾选（2026-11-06 收工后，后端 a2 转，Annie「现在就要看到能改」）
+- 背景（a2）：Annie 要三处门票改动（Cfm # 不足 6 位挡住、上传可覆盖已存 Cfm #、Hogan 两个 Upper Antelope 团不要 Cfm # 也发）。a2 建议 Hogan 用现有 tix_tour_types.skip_confirmation_no 列（生产只有 upper_antelope_hogan_transport / upper_antelope_hogan_hiking 为 true）；现在这一列只让提醒邮件写 Check-in 说明而不是 Confirmation#。第 3 版 Edit tour 没放这一勾（当时取舍：Annie 要就加）。后端不用改：GET 已带、PATCH 已收并写 action_log。「不要 Cfm # 也能发」那部分后端还等 Annie 对三点「动手」。
+- 49 问 Annie：文字两种（A 现在只写邮件效果，后端上了再改；B 直接写最终效果），是否不出 preview 直接做、合 main 附截图。
+
 ### 99. G263 Farm out › Partners & rates 价格行（Adult / Child / Infant 下拉）（2026-11-06，c3 出 preview，49 转 Annie）
 - ⚠️ **Annie 改设计（原话）**：「其实这是我们设计有问题，你干脆改一下，把每个tour单独列出，然后再下面加产品和价格不就好了，就没有母项子项这么麻烦了」⇒ 不要主项 / 子项：每个团只是一个标题，下面一行一个「产品」（名字自己填，不是 Rezdy 代码）+ 成人 / 儿童 / 婴儿价；团本身不再有价。下面题 1–10 里跟主项 / 子项有关的作废，c3 照新设计重出 preview，2c 重估。**还没「动手」**。
 - 2c v3 估：更简单，约 1 天，仍 v159（重写）。生产只读：只有 C Tour；主价 1 行 VOF-H/D 70/70；子项 5 行（West Rim Premium Pass 98、Admission Only 83、Admission+Grab&Go 93；Antelope Lower Canyon Bus Tour 158、One Way Shuttle 65）；farm out 单 0 张。迁移后各变成同名产品，VOF-H/D 变一个同名产品。题给 Annie：多产品新单默认空着要选（推荐）/ 默认第一个；存价重算（推荐）；Import CSV 改 Partner / Tour / Product / Adult / Child / Infant，名字对不上新建（推荐）/ 报错；How to use 重写。⇒ 派 c3 重出 preview。
