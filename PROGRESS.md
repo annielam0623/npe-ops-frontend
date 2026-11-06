@@ -46,7 +46,7 @@
 - 92 Q5 Relay list 当天字号后端上 main **0d339c0b**（07 / 46 转）⇒ 已派 01 核字段、合 task/print-layout-2（a9964c00）。46：**「Relay list 照版式设定读」（Relay ⬇ Excel / 打印照 ⚙ Colours & page）还没做，明天派**，上了再告诉前端（前端预计不用改）。
 - Annie 要关旧窗口：78、ef、77 可关（77 交完）。后端 07 / 61 / 4c / 46 还在做或等 Annie，先别关。下次 92 第 2 批 SHA 到了要另开工作窗口接 print-layout-2。
 
-## 2026-11-05 晚 置顶 93 G250 锁定 + 置顶 92 第 2 批前端（工作窗口 `npe-ops-frontend-01`[4a9dda]，40 派）—— 分支推了，没合 main
+## 2026-11-05 晚 置顶 93 G250 锁定 + 置顶 92 第 2 批前端（工作窗口 `npe-ops-frontend-01`[4a9dda]，40 派）—— 92 第 2 批 ✅ 合 main；93 分支推了，没合
 - **93**（Annie「93：全按推荐，动手」；后端 68b69380 已上 main、生产生效，01 只读核过 tour_locks {past_day, tours, rounds, can_edit_locked} 和两句 409）：`task/dispatch-tour-lock` **a7c07e61**（worktree D:
 pe-ops-frontend-wt-tourlock）。
   - 锁住的团 / Relay 轮：团名旁「🔒 Locked」（员工灰 / SA 琥珀）+ 标题下说明条（员工灰底 / SA 浅黄，原句照 preview；past_day 先用 40 给的两句「This day is locked. Only a Super Admin can change it.」/「… You can still change it as a Super Admin.」，等 Annie 确认，改字只动 config.ts lockText）。员工整块只读灰掉（ViewOnly + fieldset disabled，Farm out / Seat guests 也关），Edit / Save / + Add vehicle / Copy 1st Round 收起。Private 车选了团跟团锁，Custom 只在过去的日子锁。
@@ -54,9 +54,12 @@ pe-ops-frontend-wt-tourlock）。
   - Bus Manifest 换车：另读 GET /api/dispatch/day 的 tour_locks（manifest 接口没有）；员工下拉灰 + 灰条，SA 浅黄条；409 红字在那张下拉旁边、客人回原车、整页不写 Saved。
   - Pull from Discord 预填 / Apply changes：员工跳过锁住的，旁边灰字「Locked, not changed: …」。Schedule check 不列锁住的（Q8）。How to use 加 Q9 原句。
   - 检查：da 544/544（+17）、mf 283/283（+4；老检查「重读 manifest 后的请求顺序」允许最后多一次 day）、nav 39/39；tsc 0；eslint 0 错；build 过。⚠️ da mock 原来就有 ctl.lock409（编辑锁），G250 的叫 tourLock409。
-  - 下一步：Annie 答 past_day 两句（40 问）→ 合最新 main 重跑 → 合 main。
+  - **明天怎么接（93）**：今晚不合（Annie 还没答 past_day 两句，40 在问）。分支 origin/task/dispatch-tour-lock a7c07e61 已推（家里 worktree D:
+pe-ops-frontend-wt-tourlock 留着；公司电脑直接 `git worktree add … origin/task/dispatch-tour-lock` 再 npm ci）。Annie 答了 ⇒ ① 文字有改就改 components/dispatch/config.ts 的 lockText()（kind === "day" 那句）和 da-test.js「93 过去的日子（past_day）」那条检查的原句；② 合最新 main；③ 跑 da / mf / nav + tsc / eslint / build；④ 合 main，把验收点回主窗口（见 01 发 40 的五条：员工锁住灰掉、SA 浅黄能改、昨天整天锁、过了时间才按 Save 出红框、Bus Manifest 换车灰掉）。⚠️ 后端 68b69380 已在生产生效，前端没跟上时员工改锁住的车会直接看到 409 红字（G71 那套「编辑已结束」的只读提示），所以优先。
 - **92 第 2 批**（Annie「看了，同意全部推荐，记得要可以下载」+「动手」；77 做的 task/print-layout-2 接手）：`task/print-layout-2` **a9964c00**（worktree D:
-pe-ops-frontend-wt-layout）。照后端 07 c71452ca 改：没有单独 GET，字号跟 relay-pull 来（summary_text_size[轮] = {sheet, text_size, history}；car.text_size_sheet / text_size / text_size_history，没车号 = null 不出 Aa）；PUT 回 text_size_history；Tour 列键 product。合 main 时解了 relay-list-view 冲突（当天字号 Save 键 + main 的 ⬇ Excel 都留）。检查：rl 108/108、mf 289/289、da 527/527、nav 39/39；tsc 0；eslint 0 错；build 过。等 07 那部分上 main、核字段后再合。
+pe-ops-frontend-wt-layout）。照后端 07 c71452ca 改：没有单独 GET，字号跟 relay-pull 来（summary_text_size[轮] = {sheet, text_size, history}；car.text_size_sheet / text_size / text_size_history，没车号 = null 不出 Aa）；PUT 回 text_size_history；Tour 列键 product。合 main 时解了 relay-list-view 冲突（当天字号 Save 键 + main 的 ⬇ Excel 都留）。检查：rl 108/108、mf 289/289、da 527/527、nav 39/39；tsc 0；eslint 0 错；build 过。
+  - ✅ 后端 07 上 main **0d339c0b**（40 转；01 只读核过：跟 c71452ca 一样，main 上只多 94 的 round）。合最新 main 重跑：rl 108/108、mf 289/289、da 527/527、nav 39/39；tsc 0；eslint 0 错（原有 3 warning）；build 过 ⇒ 合 main（SHA 见下一行）。
+  - Annie 验收怎么看：① Bus Manifest / Relay list 页头「⚙ Colours, text & page」→ Text 页：每种字（Table text / Pax / Section titles / Column titles；Relay 总表 / 车单各一套）「− 16.5 px +」、Regular / Bold、Reset，单子马上跟着变，Save 后打印 / ⬇ Excel 照它；② Relay list（Dispatch › Morning Relay「📋 Relay list」）每张单上方「Aa Text size」：选整列 / 整行 / 整页，A− / A+、Regular / Bold → Done → 页面顶上蓝色 Save，绿字 Saved，单子上方出最近 5 次「Text size changes」；只算这一天，第二天回到 Text 页设的起点；没车号的车那张单没有 Aa；③ 改完点 ⬇ Excel / 🖨 Print，字号跟屏幕一样；④ 只有看的权限（没勾 dispatch.edit）的人看不到 Aa 和 Text 页的改动键。
 
 ## 2026-11-05 晚 置顶 94 Schedule check 按这一轮 Need a look 列酒店（`task/schedule-check-need-a-look`，工作窗口 `npe-ops-frontend-01`[4a9dda]，40 派）—— ✅ 合 main
 - 依据：Annie「94 全按推荐，动手」（ef 窗口），定稿见置顶 94；后端 307d6895（need_a_look 每条加 round），01 只读核过（routers/relay_pull.py：round = 团的 relay_round；Hoover = tour_car，不出 no car 那条）。
