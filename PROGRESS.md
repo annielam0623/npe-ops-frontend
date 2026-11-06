@@ -19,6 +19,7 @@
 - ✅ 94 后端上 main **307d6895**（46 转）：relay-pull need_a_look 每条加 "round"（relay / relay_2；Hoover 客人 tour_car，不出那条）。已转 01：核字段后直接合 main（不用等）。
 - 4c 发 G250 最终形状（没上 main）：Annie 在 4c 选 **B（过去的日子整天锁）**。tour_locks 加 past_day（run_date 早于今天 LA ⇒ 全天所有团 / relay 轮 / Private Custom 都锁）；当天出发 + 1h 锁、拿不到出发时间不锁、Private Custom 当天不锁；读不出 tour_locks = null。409 也覆盖 guest-bus、seating/move。已转 01。**待问 Annie**：past_day 说明条原文（preview 没有），推荐员工「This day is locked. Only a Super Admin can change it.」/ SA「This day is locked. You can still change it as a Super Admin.」，01 先照推荐做。
 - 92 第 2 批之一后端上 main **1630d366**（46 转，61 做）：Text 页起点字号接 Bus Manifest 打印 / Excel，G197 当天字号叠在上面；没加字段，前端不用改。Relay 当天字号（07）排在 G250 后上 main ⇒ print-layout-2 等它。已转 01。
+- ✅ 93 G250 后端上 main **68b69380**（4c 转，字段同上，生产已生效）。已转 01 核字段、准备合；past_day 文字等 Annie 答完就合。
 - Annie 要关旧窗口：78、ef、77 可关（77 交完）。后端 07 / 61 / 4c / 46 还在做或等 Annie，先别关。下次 92 第 2 批 SHA 到了要另开工作窗口接 print-layout-2。
 
 ## 2026-11-05 晚 交接：前端主窗口 `前端主窗口-78`[6e88e1] → 新主窗口（家里电脑）
