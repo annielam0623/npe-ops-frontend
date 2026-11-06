@@ -1280,7 +1280,7 @@ D. 已完成、待从置顶移走：
 - 题 1 放哪：A 在 Tour Confirmation Tracking 日期那一行最右边放小下拉「Main manifest sync」，只有 Super Admin 看得到；B 放在 Settings › Notifications。
 - 题 2 怎么存：A 选了就存，出绿字 Saved，切到 Staff 先出黄框确认；B 旁边放蓝色 Save，选好再按。
 - 题 3 文字：下拉 Main manifest sync；三项 Off / Super Admin only / Staff；小字 Only Super Admins see this setting.；说明随选项变（Off / Super Admin only / Staff 三句，原文见 preview 和 49 回复）；黄框 Staff will start seeing grey rows (orders not sent yet) and the Order Status column on this page. Turn on for staff? [Cancel] [Turn on for staff]
-- ⚠️ Off 那句「还没发的单不出现在这页」等后端 a2 确认（已问 4a：Off / 员工看不到时，接口是否根本不返回没发的行）。
+- ✅ Off 那句后端 4a 核过（task/tracking-sync-v2 539ae88e，notifications.py:744-746 / 820-821、tracking_sync.py:90-99）：Off / 员工看不到时，接口根本不返回没发的行，也不带两个键；CSV 和 Utilities 同样。原句照用。
 
 ### 94. Dispatch Schedule check「hotels with no Morning Relay vehicle」：TI 不算、当天没客人的酒店不算（2026-11-05，Annie 在后端 07 提，46 转；✅ Annie「动手」）
 - 46 转：前端算（components/dispatch/config.ts:394-431）。07 在跟 Annie 确认口径，定了直接发前端。
