@@ -59,6 +59,7 @@ pe-ops-frontend-wt-tourlock 留着；公司电脑直接 `git worktree add … or
 - **92 第 2 批**（Annie「看了，同意全部推荐，记得要可以下载」+「动手」；77 做的 task/print-layout-2 接手）：`task/print-layout-2` **a9964c00**（worktree D:
 pe-ops-frontend-wt-layout）。照后端 07 c71452ca 改：没有单独 GET，字号跟 relay-pull 来（summary_text_size[轮] = {sheet, text_size, history}；car.text_size_sheet / text_size / text_size_history，没车号 = null 不出 Aa）；PUT 回 text_size_history；Tour 列键 product。合 main 时解了 relay-list-view 冲突（当天字号 Save 键 + main 的 ⬇ Excel 都留）。检查：rl 108/108、mf 289/289、da 527/527、nav 39/39；tsc 0；eslint 0 错；build 过。
   - ✅ 后端 07 上 main **0d339c0b**（40 转；01 只读核过：跟 c71452ca 一样，main 上只多 94 的 round）。合最新 main 重跑：rl 108/108、mf 289/289、da 527/527、nav 39/39；tsc 0；eslint 0 错（原有 3 warning）；build 过 ⇒ 合 main（SHA 见下一行）。
+  - 合 main：**bc02fc78**（功能 4ff1696a / f36dfa19，接 77 的 ae4febeb）。
   - Annie 验收怎么看：① Bus Manifest / Relay list 页头「⚙ Colours, text & page」→ Text 页：每种字（Table text / Pax / Section titles / Column titles；Relay 总表 / 车单各一套）「− 16.5 px +」、Regular / Bold、Reset，单子马上跟着变，Save 后打印 / ⬇ Excel 照它；② Relay list（Dispatch › Morning Relay「📋 Relay list」）每张单上方「Aa Text size」：选整列 / 整行 / 整页，A− / A+、Regular / Bold → Done → 页面顶上蓝色 Save，绿字 Saved，单子上方出最近 5 次「Text size changes」；只算这一天，第二天回到 Text 页设的起点；没车号的车那张单没有 Aa；③ 改完点 ⬇ Excel / 🖨 Print，字号跟屏幕一样；④ 只有看的权限（没勾 dispatch.edit）的人看不到 Aa 和 Text 页的改动键。
 
 ## 2026-11-05 晚 置顶 94 Schedule check 按这一轮 Need a look 列酒店（`task/schedule-check-need-a-look`，工作窗口 `npe-ops-frontend-01`[4a9dda]，40 派）—— ✅ 合 main
