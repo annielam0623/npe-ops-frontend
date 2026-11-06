@@ -38,6 +38,7 @@ import { cn } from "@/lib/utils";
 import type {
   AutoSendConfig,
   AutoSendLeadGroup,
+  AutoSendOption,
   AutoSendRun,
   AutoSendSettings,
 } from "@/types/auto-send";
@@ -103,6 +104,7 @@ const KIND_LABEL: Record<AutoSendRun["kind"], string> = {
   tour: "Tour confirmations",
   tickets: "Ticket reminders",
   tickets_summary: "Ticket summary email",
+  last_minute: "Last Minute (tours)",
 };
 
 const num = (v: unknown) => (typeof v === "number" ? v : 0);
@@ -121,11 +123,25 @@ function runResult(r: AutoSendRun): { text: string; bad?: boolean } {
         }
       : { text: "Sending…" };
   if (r.kind === "tour")
-    return { text: `${num(s.sent)} sent · ${num(s.skipped)} skipped` };
-  if (r.kind === "tickets")
     return {
-      text: `${num(s.sent)} sent · ${num(s.waiting)} not ready (no Cfm #)`,
+      text: `${num(s.sent)} sent · ${num(s.skipped)} skipped${deferredText(s)}`,
     };
+  if (r.kind === "last_minute")
+    return {
+      text: `${num(s.sent)} sent · ${num(s.skipped)} skipped${
+        num(s.alert_failed)
+          ? ` · ${num(s.alert_failed)} alert emails failed`
+          : ""
+      }`,
+      bad: num(s.alert_failed) > 0,
+    };
+  if (r.kind === "tickets") {
+    const report = dailyReportText(s.daily_report);
+    return {
+      text: `${num(s.sent)} sent · ${num(s.waiting)} not ready (no Cfm #)${deferredText(s)}${report ? ` · ${report.text}` : ""}`,
+      bad: report?.bad,
+    };
+  }
   switch (s.status) {
     case "sent":
       return { text: `Emailed · ${num(s.unsent)} not sent yet for the day` };
@@ -209,7 +225,7 @@ export function AutoSendView() {
   /** 存一份整份设置；成功后页面上的「已存」换成返回的，并重拉一次记录。 */
   async function save(config: AutoSendConfig): Promise<ActionResult> {
     try {
-      const saved = await saveAutoSend(config);
+      const saved = await saveAutoSend(withoutRetiredKeys(config));
       setView((v) =>
         v.kind === "ready"
           ? {
@@ -265,6 +281,7 @@ export function AutoSendView() {
                 data.config.tickets.lead_groups !== undefined ||
                 data.config.tickets.max_per_batch !== undefined)
             }
+            lastMinute={!!data?.tour_templates?.length}
           />
           {!view.data.readable ? (
             <p
@@ -281,6 +298,7 @@ export function AutoSendView() {
             <TourCard
               saved={view.data.config}
               readable={readable}
+              templates={view.data.tour_templates}
               onSave={(tour) => save({ ...view.data.config, tour })}
               onToggleEnabled={(enabled) =>
                 save({
@@ -292,6 +310,7 @@ export function AutoSendView() {
             <TicketsCard
               saved={view.data.config}
               readable={readable}
+              ticketTypes={view.data.ticket_types}
               onSave={(tickets) => save({ ...view.data.config, tickets })}
               onToggleEnabled={(enabled) =>
                 save({
@@ -322,8 +341,8 @@ export function AutoSendView() {
 }
 
 /** v3 = 后端带了置顶 89 的新键（preview v3 的全文）；旧后端照以前的 6 条。 */
-function HowToUse({ v3 }: { v3: boolean }) {
-  if (v3) return <HowToUseV3 />;
+function HowToUse({ v3, lastMinute }: { v3: boolean; lastMinute: boolean }) {
+  if (v3) return <HowToUseV3 lastMinute={lastMinute} />;
   return (
     <LegacyHowTo title="How to use — Auto Send">
       <li>
@@ -363,7 +382,7 @@ function HowToUse({ v3 }: { v3: boolean }) {
 }
 
 /** 置顶 89 preview v3 的 How to use（Annie 2026-11-05「Auto Send 都选 A。动手」）。 */
-function HowToUseV3() {
+function HowToUseV3({ lastMinute }: { lastMinute: boolean }) {
   return (
     <LegacyHowTo title="How to use — Auto Send">
       <li>
@@ -376,6 +395,18 @@ function HowToUseV3() {
         set number of days before the tour up to the day before. Nothing goes
         out on the tour day.
       </li>
+      {/* G258（后端带 tour_templates 才有）：Annie 答完 4 题「动手」，不另出 preview，合 main 时附截图。 */}
+      {lastMinute ? (
+        <li data-howto-last-minute>
+          Message template: orders placed before the Last Minute cutoff get the
+          template picked for &ldquo;Orders before the cutoff&rdquo;. Orders
+          placed after the cutoff the day before the tour are checked every hour
+          on the hour and sent by SMS and email with the template picked for
+          &ldquo;Orders after the cutoff&rdquo;; the last check is at 12:00 AM
+          on the tour day. Max per batch doesn&apos;t apply to them, and orders
+          already sent by hand are not sent again.
+        </li>
+      ) : null}
       <li>
         Each bus product needs a tour type in Settings → Products. Orders
         without one, with a pickup time that can&apos;t be read, or with two
@@ -574,11 +605,14 @@ function SettingsCard({
 function TourCard({
   saved,
   readable,
+  templates,
   onSave,
   onToggleEnabled,
 }: {
   saved: AutoSendConfig;
   readable: boolean;
+  /** G258：后端带了 tour_templates 才出两行模板下拉。 */
+  templates?: AutoSendOption[];
   onSave: (tour: AutoSendConfig["tour"]) => Promise<ActionResult>;
   onToggleEnabled: (enabled: boolean) => Promise<ActionResult>;
 }) {
@@ -591,6 +625,13 @@ function TourCard({
     // 置顶 89：后端带了才有（旧后端没有这个键 ⇒ 不出这一格、也不发回去）
     ...(t.max_per_batch !== undefined
       ? { max_per_batch: t.max_per_batch }
+      : {}),
+    // G258：两个模板（旧后端没有 ⇒ 不出、也不发回去）。last_minute_cutoff 不在这张卡上改，只读来写说明。
+    ...(t.template_regular !== undefined
+      ? { template_regular: t.template_regular }
+      : {}),
+    ...(t.template_last_minute !== undefined
+      ? { template_last_minute: t.template_last_minute }
       : {}),
   });
   const [draft, setDraft] = useState(fieldsOf(saved.tour));
@@ -606,7 +647,11 @@ function TourCard({
       nextRun={nextRun(saved.tour.times)}
       onToggleEnabled={onToggleEnabled}
       dirty={JSON.stringify(draft) !== savedKey}
-      onSave={() => onSave({ ...draft, enabled: saved.tour.enabled })}
+      onSave={() => {
+        const bad = checkTour(draft);
+        if (bad) return Promise.resolve({ status: "error", message: bad });
+        return onSave({ ...saved.tour, ...draft, enabled: saved.tour.enabled });
+      }}
     >
       <TimesField
         id="tour-times"
@@ -627,6 +672,17 @@ function TourCard({
           onChange={(max_per_batch) => setDraft({ ...draft, max_per_batch })}
         />
       ) : null}
+      {templates?.length &&
+      draft.template_regular !== undefined &&
+      draft.template_last_minute !== undefined ? (
+        <TemplatesField
+          options={templates}
+          regular={draft.template_regular}
+          lastMinute={draft.template_last_minute}
+          cutoff={saved.tour.last_minute_cutoff ?? "07:00"}
+          onChange={(next) => setDraft({ ...draft, ...next })}
+        />
+      ) : null}
       <EmailsField
         id="tour-alerts"
         label="Email skipped orders to"
@@ -641,19 +697,24 @@ function TourCard({
 function TicketsCard({
   saved,
   readable,
+  ticketTypes,
   onSave,
   onToggleEnabled,
 }: {
   saved: AutoSendConfig;
   readable: boolean;
+  /** G259：后端带的门票团清单；旧后端没有 ⇒ LeadGroupsField 自己读。 */
+  ticketTypes?: AutoSendOption[];
   onSave: (tickets: AutoSendConfig["tickets"]) => Promise<ActionResult>;
   onToggleEnabled: (enabled: boolean) => Promise<ActionResult>;
 }) {
   const fieldsOf = (t: AutoSendConfig["tickets"]) => ({
     times: t.times,
     days_before: t.days_before,
-    summary_time: t.summary_time,
-    summary_emails: t.summary_emails,
+    // G259 起后端不再用（有 daily_report 时不显示、不发回去）
+    ...(t.daily_report === undefined
+      ? { summary_time: t.summary_time, summary_emails: t.summary_emails }
+      : {}),
     // 置顶 89：后端带了才有（旧后端没有 ⇒ 不出、也不发回去）。daily_report 的开关点了就存（见 DailyReport），草稿只管收件人。
     ...(t.lead_groups !== undefined ? { lead_groups: t.lead_groups } : {}),
     ...(t.max_per_batch !== undefined
@@ -674,12 +735,17 @@ function TicketsCard({
       label="Ticket reminders"
       switchLabel="ticket reminders"
       enabled={readable && saved.tickets.enabled}
-      nextRun={nextRun(saved.tickets.times, {
-        time: saved.tickets.summary_time,
-      })}
+      nextRun={nextRun(
+        saved.tickets.times,
+        !hasReport && saved.tickets.summary_time
+          ? { time: saved.tickets.summary_time }
+          : undefined,
+      )}
       onToggleEnabled={onToggleEnabled}
       dirty={JSON.stringify(draft) !== savedKey}
       onSave={() => {
+        const bad = checkTickets(draft);
+        if (bad) return Promise.resolve({ status: "error", message: bad });
         const { daily_report_emails, ...rest } = draft;
         return onSave({
           ...rest,
@@ -718,6 +784,7 @@ function TicketsCard({
       />
       {draft.lead_groups !== undefined ? (
         <LeadGroupsField
+          options={ticketTypes}
           groups={draft.lead_groups}
           defaultDays={draft.days_before}
           onChange={(lead_groups) => setDraft({ ...draft, lead_groups })}
@@ -740,7 +807,7 @@ function TicketsCard({
               <input
                 id="tickets-summary-time"
                 type="time"
-                value={draft.summary_time}
+                value={draft.summary_time ?? ""}
                 onChange={(e) =>
                   setDraft({ ...draft, summary_time: e.target.value })
                 }
@@ -757,7 +824,7 @@ function TicketsCard({
           <EmailsField
             id="tickets-summary"
             label="Send the summary to"
-            values={draft.summary_emails}
+            values={draft.summary_emails ?? []}
             onChange={(summary_emails) =>
               setDraft({ ...draft, summary_emails })
             }
@@ -1042,11 +1109,16 @@ const TYPE_CHIP =
   "inline-flex cursor-pointer items-center gap-[7px] rounded-[7px] border-[0.5px] border-black/[.09] bg-[#eef2f7] px-[9px] py-[5px] text-[12.5px] text-[#1a1a1a] hover:bg-[#e2e8f0]";
 
 /** 门票团清单（Content Studio 的 tix_tour_types，只要没停用的）。读不到 ⇒ null（只显示 key）。 */
-function useTicketTypes() {
-  const [types, setTypes] = useState<{ key: string; label: string }[] | null>(
-    null,
+function useTicketTypes(fromBackend?: AutoSendOption[]) {
+  const [types, setTypes] = useState<AutoSendOption[] | null>(
+    fromBackend ?? null,
   );
   useEffect(() => {
+    // G259：GET /api/settings/auto-send 带了 ticket_types 就用它，不再另读（那个接口要 Content Studio 权限）。
+    if (fromBackend) {
+      setTypes(fromBackend);
+      return;
+    }
     const ac = new AbortController();
     fetchTixTourTypes(ac.signal)
       .then((r) =>
@@ -1060,20 +1132,22 @@ function useTicketTypes() {
         if (!ac.signal.aborted) setTypes(null);
       });
     return () => ac.abort();
-  }, []);
+  }, [fromBackend]);
   return types;
 }
 
 function LeadGroupsField({
+  options,
   groups,
   defaultDays,
   onChange,
 }: {
+  options?: AutoSendOption[];
   groups: AutoSendLeadGroup[];
   defaultDays: number;
   onChange: (next: AutoSendLeadGroup[]) => void;
 }) {
-  const types = useTicketTypes();
+  const types = useTicketTypes(options);
   const nameOf = (k: string) => types?.find((t) => t.key === k)?.label ?? k;
   const all = types?.map((t) => t.key) ?? [];
   const set = (i: number, g: AutoSendLeadGroup) =>
@@ -1186,6 +1260,12 @@ function LeadGroupsField({
         <button
           type="button"
           data-add-lead
+          disabled={groups.length >= MAX_LEAD_GROUPS}
+          title={
+            groups.length >= MAX_LEAD_GROUPS
+              ? `Up to ${MAX_LEAD_GROUPS} times.`
+              : undefined
+          }
           onClick={() =>
             onChange([
               ...groups,
@@ -1252,6 +1332,174 @@ function DailyReport({
         values={emails}
         onChange={onEmails}
       />
+    </div>
+  );
+}
+
+// ── G258 / G259（后端 task/auto-send-limits，0f；49 转字段 2026-11-06）──
+
+/** 后端一组最多 20 个时间。 */
+const MAX_LEAD_GROUPS = 20;
+
+/**
+ * G259 起后端不再用 tickets.summary_time / summary_emails / cfm_alert_emails：
+ * 新后端（带 daily_report）时不发回去；旧后端照旧发。
+ */
+function withoutRetiredKeys(config: AutoSendConfig): AutoSendConfig {
+  if (config.tickets.daily_report === undefined) return config;
+  const tickets: Record<string, unknown> = { ...config.tickets };
+  delete tickets.summary_time;
+  delete tickets.summary_emails;
+  delete tickets.cfm_alert_emails;
+  return { ...config, tickets: tickets as AutoSendConfig["tickets"] };
+}
+
+const wholeIn = (v: number, lo: number, hi: number) =>
+  Number.isInteger(v) && v >= lo && v <= hi;
+
+/** 存之前先挡（同后端的范围），挡住的写红字，不发请求。 */
+function checkTour(d: {
+  days_before: number;
+  max_per_batch?: number;
+}): string | null {
+  if (!wholeIn(d.days_before, 1, 14))
+    return "Start sending must be a whole number of days from 1 to 14.";
+  if (d.max_per_batch !== undefined && !wholeIn(d.max_per_batch, 1, 2000))
+    return "Max per batch must be a whole number from 1 to 2000.";
+  return null;
+}
+
+function checkTickets(d: {
+  days_before: number;
+  max_per_batch?: number;
+  lead_groups?: AutoSendLeadGroup[];
+  daily_report_emails?: string[];
+}): string | null {
+  if (!wholeIn(d.days_before, 1, 14))
+    return "Start sending (default) must be a whole number of days from 1 to 14.";
+  if (d.lead_groups) {
+    if (d.lead_groups.length > MAX_LEAD_GROUPS)
+      return `Start sending, by ticket type: up to ${MAX_LEAD_GROUPS} times.`;
+    if (d.lead_groups.some((g) => !wholeIn(g.days_before, 1, 14)))
+      return "Start sending, by ticket type: days must be a whole number from 1 to 14.";
+  }
+  if (d.max_per_batch !== undefined && !wholeIn(d.max_per_batch, 1, 2000))
+    return "Max per batch must be a whole number from 1 to 2000.";
+  if (
+    d.daily_report_emails !== undefined &&
+    (d.daily_report_emails.length < 1 || d.daily_report_emails.length > 10)
+  )
+    return "Send the daily report to: add 1 to 10 email addresses.";
+  return null;
+}
+
+/** 上限挤到下一批的单（tour / tickets 的 summary.deferred）。 */
+function deferredText(s: Record<string, unknown>): string {
+  const n = num(s.deferred);
+  return n ? ` · ${n} left for the next batch` : "";
+}
+
+/** 当天最后一批门票的 summary.daily_report = {status, listed, email_failed}；没开 / 不是最后一批 ⇒ 没这个键。 */
+function dailyReportText(v: unknown): { text: string; bad?: boolean } | null {
+  if (!v || typeof v !== "object") return null;
+  const r = v as { status?: unknown; listed?: unknown; email_failed?: unknown };
+  const failed = Array.isArray(r.email_failed)
+    ? r.email_failed.map(String)
+    : [];
+  if (r.status === "email_failed")
+    return { text: "Daily report could not be emailed", bad: true };
+  if (r.status === "already_sent")
+    return { text: "Daily report already sent today" };
+  const listed = num(r.listed);
+  const base = listed
+    ? `Daily report emailed (${listed} not sent)`
+    : "Daily report emailed (all sent)";
+  return failed.length
+    ? { text: `${base}; not delivered to ${failed.join(", ")}`, bad: true }
+    : { text: base };
+}
+
+/**
+ * G258：Tour confirmations 两行模板下拉（cutoff 之前 / 之后下的单）。选项读后端 tour_templates；
+ * 跟卡片其他格一起暂存，按 Save 才存。cutoff 是 config.tour.last_minute_cutoff（洛杉矶时间，缺省 07:00）。
+ */
+function TemplatesField({
+  options,
+  regular,
+  lastMinute,
+  cutoff,
+  onChange,
+}: {
+  options: AutoSendOption[];
+  regular: string;
+  lastMinute: string;
+  cutoff: string;
+  onChange: (next: {
+    template_regular?: string;
+    template_last_minute?: string;
+  }) => void;
+}) {
+  const select = (
+    id: string,
+    label: string,
+    value: string,
+    set: (v: string) => void,
+  ) => (
+    <select
+      id={id}
+      aria-label={label}
+      value={value}
+      onChange={(e) => set(e.target.value)}
+      className={cn(INLINE_INPUT_BASE, "w-[200px] max-w-full cursor-pointer")}
+    >
+      {options.some((o) => o.key === value) ? null : (
+        <option value={value}>{value}</option>
+      )}
+      {options.map((o) => (
+        <option key={o.key} value={o.key}>
+          {o.label}
+        </option>
+      ))}
+    </select>
+  );
+  return (
+    <div className="flex flex-col gap-1.5" data-field="tour-templates">
+      <span className={LABEL}>Message template</span>
+      <div
+        data-template-row="regular"
+        className="flex flex-wrap items-center gap-2 text-[12.5px] text-[#1a1a1a] night:text-white/80"
+      >
+        <label htmlFor="tour-template-regular" className="w-[170px]">
+          Orders before the cutoff
+        </label>
+        {select(
+          "tour-template-regular",
+          "Template for orders before the cutoff",
+          regular,
+          (v) => onChange({ template_regular: v }),
+        )}
+        <span className={NOTE}>(Sent at the send times above.)</span>
+      </div>
+      <div
+        data-template-row="last_minute"
+        className="flex flex-wrap items-center gap-2 text-[12.5px] text-[#1a1a1a] night:text-white/80"
+      >
+        <label htmlFor="tour-template-last-minute" className="w-[170px]">
+          Orders after the cutoff
+        </label>
+        {select(
+          "tour-template-last-minute",
+          "Template for orders after the cutoff",
+          lastMinute,
+          (v) => onChange({ template_last_minute: v }),
+        )}
+      </div>
+      <p className={cn(NOTE, "m-0")} data-template-note>
+        Orders placed after {clock(cutoff)} the day before the tour. Checked
+        every hour on the hour; the last check is at 12:00 AM on the tour day.
+        SMS and email. Max per batch doesn&apos;t apply. Orders sent by hand are
+        not sent again.
+      </p>
     </div>
   );
 }

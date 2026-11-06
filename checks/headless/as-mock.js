@@ -1,15 +1,40 @@
 // 模拟后端：Settings → Auto Send（后端 auto-send G76，接口说明 docs/interfaces/auto-send-2026-10-15.md）。
 // 控制：POST /__ctl {fail401, staff, unreadable, failGet, failPut（400 的那句话）, slowPut（ms）, runs（"empty" | "default"）, config（整份换掉）, reset}；
+// v3：true = 新后端（G258 / G259，0f task/auto-send-limits）：config 带新键，GET 另带 ticket_types / tour_templates，runs 带 last_minute / daily_report。
 // GET /__log（每个请求 {method, path, body}）。
 const http = require("http");
 const { permsBody } = require("./role-standard");
-const ctl = { fail401: false, staff: false, admin: false, unreadable: false, failPut: "", slowPut: 0, runs: "default", failGet: false };
+const ctl = { fail401: false, staff: false, admin: false, unreadable: false, failPut: "", slowPut: 0, runs: "default", failGet: false, v3: false };
 const log = [];
 
 const DEFAULT_CONFIG = {
   tour: { enabled: false, times: ["09:00", "18:00"], days_before: 2, alert_emails: ["ops@example.com"] },
   tickets: { enabled: false, times: ["10:00"], days_before: 3, summary_time: "17:00", summary_emails: ["tickets@example.com"] },
 };
+// 新后端：GET 里照旧带着不再用的 summary_time / summary_emails / cfm_alert_emails（前端要不显示、也不发回去）。
+const V3_CONFIG = {
+  tour: { enabled: false, times: ["07:00", "18:00"], days_before: 3, alert_emails: ["ops@example.com"], last_minute_cutoff: "15:00", max_per_batch: 100, template_regular: "tour_confirmation", template_last_minute: "last_minute" },
+  tickets: { enabled: false, times: ["09:00", "12:00", "17:00"], days_before: 5, summary_time: "09:00", summary_emails: ["old@example.com"], cfm_alert_emails: ["old@example.com"], max_per_batch: 150, lead_groups: [{ days_before: 3, ticket_types: ["lower"] }], daily_report: { enabled: false, emails: ["antelope@nationalparkexpress.com"] } },
+};
+const TICKET_TYPES = [
+  { key: "lower", label: "Lower Antelope" },
+  { key: "upper", label: "Upper Antelope" },
+  { key: "horseshoe", label: "Horseshoe Bend" },
+  { key: "canyon_x", label: "Canyon X" },
+];
+const TOUR_TEMPLATES = [
+  { key: "tour_confirmation", label: "Tour confirmation" },
+  { key: "last_minute", label: "Last Minute" },
+];
+const V3_RUNS = [
+  { run_key: "last_minute|2026-11-06|14:00", kind: "last_minute", status: "done", stale: false, started_at: "2026-11-06T22:00:00Z", finished_at: "2026-11-06T22:00:09Z", summary: { dates: ["2026-11-07"], sent: 4, already_sent: 1, skipped: 1, alerted: 1, alert_failed: 0 } },
+  { run_key: "last_minute|2026-11-06|13:00", kind: "last_minute", status: "done", stale: false, started_at: "2026-11-06T21:00:00Z", finished_at: "2026-11-06T21:00:03Z", summary: { dates: ["2026-11-07"], sent: 1, already_sent: 0, skipped: 0, alerted: 0, alert_failed: 2 } },
+  { run_key: "tickets:2026-11-05T17:00", kind: "tickets", status: "done", stale: false, started_at: "2026-11-06T01:00:00Z", finished_at: "2026-11-06T01:03:00Z", summary: { sent: 40, already_sent: 0, waiting: 2, deferred: 0, cap: null, daily_report: { status: "sent", listed: 3, email_failed: [] } } },
+  { run_key: "tickets:2026-11-05T12:00", kind: "tickets", status: "done", stale: false, started_at: "2026-11-05T20:00:00Z", finished_at: "2026-11-05T20:03:00Z", summary: { sent: 150, already_sent: 0, waiting: 1, deferred: 12, cap: 150 } },
+  { run_key: "tickets:2026-11-04T17:00", kind: "tickets", status: "done", stale: false, started_at: "2026-11-05T01:00:00Z", finished_at: "2026-11-05T01:01:00Z", summary: { sent: 9, already_sent: 0, waiting: 0, deferred: 0, cap: null, daily_report: { status: "sent", listed: 0, email_failed: [] } } },
+  { run_key: "tickets:2026-11-03T17:00", kind: "tickets", status: "done", stale: false, started_at: "2026-11-04T01:00:00Z", finished_at: "2026-11-04T01:01:00Z", summary: { sent: 5, already_sent: 0, waiting: 0, deferred: 0, cap: null, daily_report: { status: "email_failed", listed: 2, email_failed: ["antelope@nationalparkexpress.com"] } } },
+  { run_key: "tour:2026-11-03T07:00", kind: "tour", status: "done", stale: false, started_at: "2026-11-03T15:00:00Z", finished_at: "2026-11-03T15:02:00Z", summary: { sent: 100, already_sent: 0, skipped: 1, deferred: 7, cap: 100 } },
+];
 let config = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
 
 // 最近的批次（新的在前）：每种状态 / 结果各一行。
@@ -44,8 +69,16 @@ const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
 /** 同后端的检查（不合法 ⇒ 400 + 一句英文）。 */
 function validate(c) {
   if (!c?.tour || !c.tickets || typeof c.tour.enabled !== "boolean" || typeof c.tickets.enabled !== "boolean") return "Send the whole settings.";
-  for (const t of [...c.tour.times, ...c.tickets.times, c.tickets.summary_time]) if (!HHMM.test(t)) return `${t} is not a time like 09:00.`;
+  const times = [...c.tour.times, ...c.tickets.times, ...(ctl.v3 ? [] : [c.tickets.summary_time])];
+  for (const t of times) if (!HHMM.test(t)) return `${t} is not a time like 09:00.`;
   for (const d of [c.tour.days_before, c.tickets.days_before]) if (!Number.isInteger(d) || d < 1 || d > 14) return "Days before must be a whole number from 1 to 14.";
+  if (ctl.v3) {
+    const seen = new Set();
+    for (const g of c.tickets.lead_groups || []) for (const k of g.ticket_types) {
+      if (seen.has(k)) return `Start sending, by ticket type: a ticket type can be in one time only (${k}).`;
+      seen.add(k);
+    }
+  }
   return "";
 }
 
@@ -55,8 +88,8 @@ http.createServer(async (req, res) => {
   if (p === "/__log") return send(res, 200, log);
   if (p === "/__ctl") {
     const b = (await readBody(req)) || {};
-    if (b.reset) {
-      config = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+    if (b.reset || b.v3 !== undefined) {
+      config = JSON.parse(JSON.stringify(b.v3 ?? ctl.v3 ? V3_CONFIG : DEFAULT_CONFIG));
       delete b.reset;
     }
     if (b.config) {
@@ -86,6 +119,7 @@ http.createServer(async (req, res) => {
     const cfg = ctl.unreadable
       ? { tour: { ...config.tour, enabled: false }, tickets: { ...config.tickets, enabled: false } }
       : config;
+    if (ctl.v3) return send(res, 200, { config: cfg, readable: !ctl.unreadable, runs: ctl.runs === "empty" ? [] : V3_RUNS, ticket_types: TICKET_TYPES, tour_templates: TOUR_TEMPLATES });
     return send(res, 200, { config: cfg, readable: !ctl.unreadable, runs: ctl.runs === "empty" ? [] : RUNS });
   }
   if (p === "/api/settings/auto-send" && req.method === "PUT") {
@@ -95,7 +129,8 @@ http.createServer(async (req, res) => {
     if (ctl.failPut) return send(res, 400, { detail: ctl.failPut });
     const bad = validate(b);
     if (bad) return send(res, 400, { detail: bad });
-    config = JSON.parse(JSON.stringify(b));
+    const kept = ctl.v3 ? { tour: { ...config.tour, ...b.tour }, tickets: { ...config.tickets, ...b.tickets } } : b;
+    config = JSON.parse(JSON.stringify(kept));
     ctl.unreadable = false;
     return send(res, 200, config);
   }

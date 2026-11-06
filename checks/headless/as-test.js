@@ -89,6 +89,9 @@ async function openPage() {
 const isPut = (e) => e.path === "/api/settings/auto-send" && e.method === "PUT";
 const isGet = (e) => e.path === "/api/settings/auto-send" && e.method === "GET";
 
+// 新后端（as-mock V3_CONFIG 一样）。
+const V3_TOUR = { enabled: false, times: ["07:00", "18:00"], days_before: 3, alert_emails: ["ops@example.com"], last_minute_cutoff: "15:00", max_per_batch: 100, template_regular: "tour_confirmation", template_last_minute: "last_minute" };
+const V3_TICKETS = { enabled: false, times: ["09:00", "12:00", "17:00"], days_before: 5, max_per_batch: 150, lead_groups: [{ days_before: 3, ticket_types: ["lower"] }], daily_report: { enabled: false, emails: ["antelope@nationalparkexpress.com"] } };
 const DEFAULT_TICKETS = { enabled: false, times: ["10:00"], days_before: 3, summary_time: "17:00", summary_emails: ["tickets@example.com"] };
 
 /**
@@ -332,6 +335,106 @@ async function run() {
   await waitFor("!$dialog() && $switch($tour()).getAttribute('aria-checked') === 'true'");
   puts = await since(from, isPut);
   check("存一次：PUT tour.enabled true、黄条消失、Tour ON", puts.length === 1 && puts[0].body.tour.enabled === true && (await evaluate("return !document.querySelector('[data-unreadable]');")), JSON.stringify(puts.map((e) => e.body)));
+
+  // ── G258 / G259 新后端（置顶 89；0f task/auto-send-limits，49 转字段 2026-11-06）──
+  await openPage();
+  check("旧后端：不出模板两行、Max per batch、按门票团、Daily report；Day-before summary 照旧", await evaluate("return !$q('[data-field=tour-templates]') && !$q('#tour-max') && !$q('#tickets-max') && !$q('[data-lead-groups]') && !$q('[data-daily-report]') && !!$q('#tickets-summary-time') && !$q('[data-howto-last-minute]');"));
+  await ctl({ v3: true });
+  from = (await mockLog()).length;
+  await openPage();
+  await waitFor("$q('[data-field=tour-templates]')");
+  await evaluate(`window.$pick = (el, v) => { Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(el, v); el.dispatchEvent(new Event('change', { bubbles: true })); };`);
+  check("新后端：Tour 卡片 Max per batch 100", (await evaluate("return $q('#tour-max')?.value;")) === "100");
+  check("G258：两行模板下拉，选项照 tour_templates（Tour confirmation / Last Minute），值照 config", await evaluate("const r = $q('#tour-template-regular'), l = $q('#tour-template-last-minute'); return [...r.options].map(o => o.textContent).join('|') === 'Tour confirmation|Last Minute' && r.value === 'tour_confirmation' && l.value === 'last_minute';"), await evaluate("return $q('[data-field=tour-templates]')?.textContent;"));
+  check("G258：两行的名字 Orders before the cutoff / Orders after the cutoff", await evaluate("const t = $q('[data-field=tour-templates]').textContent; return t.includes('Message template') && t.includes('Orders before the cutoff') && t.includes('Orders after the cutoff');"));
+  check("G258：说明写 cutoff 时间（15:00 ⇒ 3:00 PM the day before）、每小时整点、12:00 AM", await evaluate("const t = $q('[data-template-note]').textContent; return t.includes('after 3:00 PM the day before the tour') && t.includes('every hour on the hour') && t.includes('12:00 AM on the tour day');"), await evaluate("return $q('[data-template-note]')?.textContent;"));
+  check("G259：Tickets 卡片不出 Day-before summary 两格，Max per batch 150", await evaluate("return !$q('#tickets-summary-time') && !$q('[data-field=tickets-summary]') && $q('#tickets-max').value === '150';"));
+  check("G259：门票团名字读 GET 里的 ticket_types（Lower Antelope 胶囊），不再另读 /api/settings/tix-tour-types", (await evaluate("return $q('[data-type-chip=lower]')?.textContent.includes('Lower Antelope');")) && (await since(from, (e) => e.path === "/api/settings/tix-tour-types")).length === 0);
+  check("G259：没挑的团灰字列默认（5 days）", (await evaluate("return $q('[data-lead-default]')?.textContent;")) === "Using the default (5 days): Upper Antelope, Horseshoe Bend, Canyon X.", await evaluate("return $q('[data-lead-default]')?.textContent;"));
+  check("G259：Daily report 收件人 antelope@nationalparkexpress.com", (await evaluate("return $emails($q('[data-daily-report]'));")) === "antelope@nationalparkexpress.com");
+  check("G258：How to use 有 Message template 那一条", await evaluate("return !!$q('[data-howto-last-minute]') && $q('[data-howto-last-minute]').textContent.includes('Orders after the cutoff');"));
+
+  // 改 Last Minute 模板 ⇒ Save ⇒ PUT 带两个模板、保留 last_minute_cutoff；tickets 不带不再用的键
+  await evaluate("$pick($q('#tour-template-last-minute'), 'tour_confirmation');");
+  check("改模板：Save 能点（暂存，没马上存）", (await evaluate("return !$save($tour()).disabled;")) && (await since(from, isPut)).length === 0);
+  from = (await mockLog()).length;
+  await evaluate("$save($tour()).click();");
+  await waitFor("$status($tour()) === 'Saved.'");
+  {
+    const puts = await since(from, isPut);
+    const b = puts[0]?.body;
+    check("存 Tour：PUT tour.template_regular=tour_confirmation、template_last_minute=tour_confirmation、last_minute_cutoff 15:00、max_per_batch 100", puts.length === 1 && b.tour.template_regular === "tour_confirmation" && b.tour.template_last_minute === "tour_confirmation" && b.tour.last_minute_cutoff === "15:00" && b.tour.max_per_batch === 100, JSON.stringify(b?.tour));
+    check("存 Tour：tickets 不带 summary_time / summary_emails / cfm_alert_emails", puts.length === 1 && !("summary_time" in b.tickets) && !("summary_emails" in b.tickets) && !("cfm_alert_emails" in b.tickets) && b.tickets.daily_report?.emails?.[0] === "antelope@nationalparkexpress.com", JSON.stringify(b?.tickets));
+    check("存好：绿字 Saved.", await evaluate("return $status($tour()) === 'Saved.' && $tour().querySelector('[role=status]').className.includes('3B6D11');"), await evaluate("return $tour().querySelector('[role=status]')?.className;"));
+  }
+
+  // 前端先挡：不发请求、红字
+  await evaluate("$setValue($q('#tour-max'), '0');");
+  from = (await mockLog()).length;
+  await evaluate("$save($tour()).click();");
+  await waitFor("$status($tour()).startsWith('Max per batch')");
+  check("Max per batch 0：红字 Max per batch must be a whole number from 1 to 2000.、不发 PUT", (await evaluate("return $status($tour());")) === "Max per batch must be a whole number from 1 to 2000." && (await since(from, isPut)).length === 0, await evaluate("return $status($tour());"));
+  await evaluate("$setValue($q('#tour-max'), '2001');");
+  await evaluate("$save($tour()).click();");
+  await sleep(300);
+  check("Max per batch 2001：也挡住", (await evaluate("return $status($tour());")) === "Max per batch must be a whole number from 1 to 2000." && (await since(from, isPut)).length === 0);
+  await evaluate("$setValue($q('#tour-max'), '100');");
+
+  await evaluate("$setValue($q('[aria-label=\"Days before, time 1\"]'), '20');");
+  from = (await mockLog()).length;
+  await evaluate("$save($tix()).click();");
+  await waitFor("$status($tix()).startsWith('Start sending')");
+  check("按门票团天数 20：红字、不发 PUT", (await evaluate("return $status($tix());")) === "Start sending, by ticket type: days must be a whole number from 1 to 14." && (await since(from, isPut)).length === 0, await evaluate("return $status($tix());"));
+  await evaluate("$setValue($q('[aria-label=\"Days before, time 1\"]'), '3');");
+
+  // 加一行、挑 Upper ⇒ Save
+  await evaluate("$q('[data-add-lead]').click();");
+  await waitFor("$q('[data-lead-row=\"1\"]')");
+  check("+ Add another time：新一行，Lower 灰、点不了、写 - 3 days before", await evaluate("const o = [...$q('[data-lead-row=\"1\"] select').options].find(o => o.value === 'lower'); return !!o && o.disabled && o.textContent.includes('- 3 days before');"));
+  await evaluate("$setValue($q('[aria-label=\"Days before, time 2\"]'), '7');");
+  await evaluate("$pick($q('[data-lead-row=\"1\"] select'), 'upper');");
+  from = (await mockLog()).length;
+  await evaluate("$save($tix()).click();");
+  await waitFor("$status($tix()) === 'Saved.'");
+  {
+    const puts = await since(from, isPut);
+    const t = puts[0]?.body?.tickets;
+    check("存 Tickets：lead_groups 两组（3 天 Lower / 7 天 Upper）、max_per_batch 150、不带 summary_*", puts.length === 1 && JSON.stringify(t.lead_groups) === JSON.stringify([{ days_before: 3, ticket_types: ["lower"] }, { days_before: 7, ticket_types: ["upper"] }]) && t.max_per_batch === 150 && !("summary_time" in t) && !("summary_emails" in t), JSON.stringify(t));
+  }
+
+  // 同一个团两组（后端 400 原话）
+  await ctl({ failPut: "Start sending, by ticket type: a ticket type can be in one time only (lower)." });
+  await evaluate("$setValue($q('#tickets-max'), '140');");
+  await evaluate("$save($tix()).click();");
+  await waitFor("$status($tix()).includes('one time only')");
+  check("后端 400（同一个团两组）：红字照原话", (await evaluate("return $status($tix());")) === "Start sending, by ticket type: a ticket type can be in one time only (lower)." && (await evaluate("return $tix().querySelector('[role=status]').className.includes('A32D2D');")), await evaluate("return $tix().querySelector('[role=status]')?.className;"));
+  await ctl({ failPut: "" });
+
+  // 20 组上限
+  await ctl({ config: { tour: V3_TOUR, tickets: { ...V3_TICKETS, lead_groups: Array.from({ length: 20 }, (_, i) => ({ days_before: (i % 14) + 1, ticket_types: [] })) } } });
+  await openPage();
+  await waitFor("$q('[data-add-lead]')");
+  check("已有 20 个时间：+ Add another time 不能点", await evaluate("return $q('[data-add-lead]').disabled;"));
+  await ctl({ v3: true });
+  await openPage();
+  await waitFor("$q('tr[data-run]')");
+
+  // Recent runs 的新写法
+  r = await evaluate("return $run('last_minute|2026-11-06|14:00');");
+  check("Last Minute run：What 写 Last Minute (tours)、4 sent · 1 skipped", r?.[1] === "Last Minute (tours)" && r?.[3] === "4 sent · 1 skipped", JSON.stringify(r));
+  r = await evaluate("return $run('last_minute|2026-11-06|13:00');");
+  check("Last Minute run 提醒邮件没发出：红字 · 2 alert emails failed", r?.[3] === "1 sent · 0 skipped · 2 alert emails failed" && (await evaluate("return $runRed('last_minute|2026-11-06|13:00');")), JSON.stringify(r));
+  r = await evaluate("return $run('tickets:2026-11-05T17:00');");
+  check("当天最后一批门票带每日报告：· Daily report emailed (3 not sent)", r?.[3] === "40 sent · 2 not ready (no Cfm #) · Daily report emailed (3 not sent)", JSON.stringify(r));
+  r = await evaluate("return $run('tickets:2026-11-05T12:00');");
+  check("上限挤到下一批：· 12 left for the next batch", r?.[3] === "150 sent · 1 not ready (no Cfm #) · 12 left for the next batch", JSON.stringify(r));
+  r = await evaluate("return $run('tickets:2026-11-04T17:00');");
+  check("全发了：· Daily report emailed (all sent)", r?.[3] === "9 sent · 0 not ready (no Cfm #) · Daily report emailed (all sent)", JSON.stringify(r));
+  r = await evaluate("return $run('tickets:2026-11-03T17:00');");
+  check("每日报告发不出：红字 · Daily report could not be emailed", r?.[3] === "5 sent · 0 not ready (no Cfm #) · Daily report could not be emailed" && (await evaluate("return $runRed('tickets:2026-11-03T17:00');")), JSON.stringify(r));
+  r = await evaluate("return $run('tour:2026-11-03T07:00');");
+  check("Tour 上限挤到下一批：100 sent · 1 skipped · 7 left for the next batch", r?.[3] === "100 sent · 1 skipped · 7 left for the next batch", JSON.stringify(r));
+  await ctl({ reset: true, v3: false });
 
   // ── 没有记录 ──
   await ctl({ runs: "empty" });

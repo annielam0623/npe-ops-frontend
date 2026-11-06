@@ -13,9 +13,17 @@ export interface AutoSendConfig {
     alert_emails: string[];
     /**
      * 置顶 89（Annie 2026-11-05「Auto Send 都选 A。动手」，preview BYv5FXVG7FqYuQ7gFEpV1a v3）：当天最后一批之前每批最多发几单，
-     * 最后一批发剩下的全部。⏳ 前端拟的键，等后端定；旧后端没有 ⇒ 页面不出这一格。
+     * 最后一批发剩下的全部。后端 G259（1–2000，默认 100）；旧后端没有 ⇒ 页面不出这一格。
      */
     max_per_batch?: number;
+    /**
+     * G258 Last Minute（Annie 在后端答完 4 题「动手」）：cutoff 之前下的单用哪个模板（默认 tour_confirmation）、
+     * cutoff 之后下的单用哪个模板（默认 last_minute，每小时整点扫）。值是 tour_templates 的 key。旧后端没有 ⇒ 不出这两行。
+     */
+    template_regular?: string;
+    template_last_minute?: string;
+    /** 前一天这个时间（"HH:MM" 洛杉矶时间）以后下的单算 Last Minute；后端缺省 "07:00"。这页只读来写说明。 */
+    last_minute_cutoff?: string;
   };
   tickets: {
     /** 门票提醒总开关（门票汇总邮件跟着这个开关走）。 */
@@ -24,8 +32,9 @@ export interface AutoSendConfig {
     /** service date 前几天开始发（只发有 Cfm # 的）。 */
     days_before: number;
     /** 前一天几点发汇总邮件。 */
-    summary_time: string;
-    summary_emails: string[];
+    summary_time?: string;
+    /** ⚠️ G259 起后端不再用 summary_time / summary_emails：有 daily_report 时不显示、PUT 也不带。 */
+    summary_emails?: string[];
     // ── 置顶 89（⏳ 前端拟的键，等后端定；旧后端没有 ⇒ 对应的格不出，页面跟以前一样）──
     /** 按门票团设提前几天：一行一组，一个团只能在一组；不在任何一组的团用 days_before。 */
     lead_groups?: AutoSendLeadGroup[];
@@ -42,7 +51,9 @@ export interface AutoSendLeadGroup {
   ticket_types: string[];
 }
 
-export type AutoSendRunKind = "tour" | "tickets" | "tickets_summary";
+/** tickets_summary：G259 起不再出现（旧记录可能还有）；last_minute：G258 每小时整点扫一次（什么都没做的不返回）。 */
+export type AutoSendRunKind =
+  "tour" | "tickets" | "tickets_summary" | "last_minute";
 export type AutoSendRunStatus = "done" | "failed" | "off" | "running";
 
 export interface AutoSendRun {
@@ -66,4 +77,13 @@ export interface AutoSendSettings {
   readable: boolean;
   /** 最近 30 批，新的在前。 */
   runs: AutoSendRun[];
+  /** G259：门票团清单（Content Studio 顺序）。旧后端没有 ⇒ 前端自己读 /api/settings/tix-tour-types。 */
+  ticket_types?: AutoSendOption[];
+  /** G258：Tour 两个模板下拉的选项。旧后端没有 ⇒ 不出这两行。 */
+  tour_templates?: AutoSendOption[];
+}
+
+export interface AutoSendOption {
+  key: string;
+  label: string;
 }
