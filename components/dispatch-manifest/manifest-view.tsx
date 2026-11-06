@@ -47,6 +47,7 @@ import { usePermissions } from "@/lib/staff-permissions";
 import { usePageVisibility } from "@/lib/page-visibility";
 
 import { AffiliateCard } from "./affiliate-card";
+import { hotelMarks, sectionColor } from "./hotel-marks";
 import { FarmOutButton, usePartners } from "./farm-out-button";
 import { CanyonOrderPicker } from "./canyon-order";
 import {
@@ -985,7 +986,7 @@ export function ManifestView() {
               </Stage.Provider>
 
               {data.affiliate ? (
-                <AffiliateCard affiliate={data.affiliate} />
+                <AffiliateCard affiliate={data.affiliate} data={data} />
               ) : null}
 
               {data.gone?.length ? <GoneCard gone={data.gone} /> : null}
@@ -1491,12 +1492,6 @@ const SHUTTLE_WORD: Record<string, string> = {
   inbound: "INBOUND",
 };
 
-function sectionColor(data: ManifestData, s: ManifestSection): string {
-  if (s.color) return s.color;
-  if (s.kind === "tour") return data.tour.section_color;
-  return data.shuttle_colors[s.kind];
-}
-
 /** G197 编辑中：现在选的是哪种、选了哪些，点表格时回调。 */
 interface TextEdit {
   mode: TextMode;
@@ -1665,25 +1660,6 @@ function GuestTable({
       </table>
     </div>
   );
-}
-
-/**
- * 酒店隔组标色（G198 Q2 A，Annie「198全按推荐」）：同一家连着的算一组，第一组不标、第二组标、第三组不标……，
- * 标的那组只标第一行。比的是 Pick-up Location 原文（去空格、不分大小写）。只给 tour 节。
- */
-function hotelMarks(guests: ManifestGuest[]): boolean[] {
-  const out = guests.map(() => false);
-  let group = -1;
-  let prev: string | null = null;
-  guests.forEach((g, i) => {
-    const h = g.pickup_location.trim().toLowerCase();
-    if (h !== prev) {
-      group += 1;
-      prev = h;
-      if (group % 2 === 1) out[i] = true;
-    }
-  });
-  return out;
 }
 
 /**

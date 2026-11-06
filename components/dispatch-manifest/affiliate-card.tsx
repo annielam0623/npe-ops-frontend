@@ -1,4 +1,6 @@
-import type { ManifestAffiliate } from "@/types";
+import type { ManifestAffiliate, ManifestView as ManifestData } from "@/types";
+
+import { hotelMarks, sectionColor } from "./hotel-marks";
 
 const TH =
   "border-b border-[#d1d5db] px-1.5 py-px text-left text-[10px] font-semibold text-[#9ca3af]";
@@ -10,9 +12,22 @@ const TD =
  * 样子照 preview 第 6 版：只占整页一半、靠左，比主表小一号、灰色、行距紧；五列（订单号、接客时间、酒店、姓名、人数）；
  * 有 Affiliate 自己的小计行，没有任何总和（不和我们车上的人相加）；没有小字。
  * ⛔ 不出现合作公司名：栏标题只写 Affiliate，接口本来就不带 partner_name，这里也不渲染产品分节标题。
+ * Hotel 格隔组标色同车上的表（每节各自数、只给 tour 节、颜色 = 节颜色）：打印页这一栏也标（Annie 2026-11-05
+ * 「要打印，所有设置了的颜色都要打印，不要替staff做主」），屏幕上跟着标，两边一样。
  */
-export function AffiliateCard({ affiliate }: { affiliate: ManifestAffiliate }) {
-  const guests = affiliate.sections.flatMap((s) => s.guests);
+export function AffiliateCard({
+  affiliate,
+  data,
+}: {
+  affiliate: ManifestAffiliate;
+  data: ManifestData;
+}) {
+  const rows = affiliate.sections.flatMap((s) => {
+    const marks = s.kind === "tour" ? hotelMarks(s.guests) : [];
+    const color = sectionColor(data, s);
+    return s.guests.map((g, i) => ({ g, mark: marks[i] ? color : null }));
+  });
+  const guests = rows.map((r) => r.g);
   if (guests.length === 0) return null;
   return (
     <section
@@ -41,13 +56,21 @@ export function AffiliateCard({ affiliate }: { affiliate: ManifestAffiliate }) {
             </tr>
           </thead>
           <tbody>
-            {guests.map((g) => (
+            {rows.map(({ g, mark }) => (
               <tr key={g.id} data-affiliate-guest={g.order_number}>
-                <td className={`${TD} font-['Courier_New',monospace] whitespace-nowrap`}>
+                <td
+                  className={`${TD} font-['Courier_New',monospace] whitespace-nowrap`}
+                >
                   {g.order_number}
                 </td>
                 <td className={`${TD} whitespace-nowrap`}>{g.pickup_time}</td>
-                <td className={TD}>{g.pickup_location}</td>
+                <td
+                  className={TD}
+                  data-hotel-mark={mark ? true : undefined}
+                  style={mark ? { background: mark } : undefined}
+                >
+                  {g.pickup_location}
+                </td>
                 <td className={TD}>
                   {[g.first_name, g.last_name].filter(Boolean).join(" ") ||
                     g.name}
