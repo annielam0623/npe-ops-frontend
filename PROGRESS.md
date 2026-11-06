@@ -1171,6 +1171,16 @@ D. 已完成、待从置顶移走：
 - Annie 已定（⛔，后端那边）：系统行为、没有按键；锁后只有 Super Admin 能改；Picked up / No show / Boarded 打勾不锁；Completed 照旧，跟锁定无关。
 - 后端 4c 形状（在审没上线）：GET /api/dispatch/day 加 tour_locks {tours{id:{locked, departure, locks_at}}, rounds{relay|relay_2}, can_edit_locked}；锁后非 SA 改 ⇒ 409 原话（day / section / copy / guest-bus / seating/move）；锁定单元 = 一团所有车 / 一轮 relay 所有车，Private Custom 不锁。
 - 前端灰掉 / 提示是新样子 ⇒ 78 派 ef 出 preview（staff vs SA、锁哪些控件、409 红字、换车提示、How to use），等 Annie 答 + 「动手」。
+- **preview**：https://claude.ai/artifact/SgRWaBvRcTie4cTdziPjtD （ef，2026-11-05 晚；在真 Dispatch 页上用模拟数据把锁住的样子改出来截的图，没写功能代码）。等 Annie 答 + 「动手」；后端 G250 上线、核过字段才合 main。题目（推荐都是 A）：
+  - Q1 员工看到的团卡片：A 团名旁灰字「🔒 Locked」+ 标题下灰条「Locked at 7:30 AM, 1 hour after departure (6:30 AM). Only a Super Admin can change it.」，整块灰掉、控件都按不了，Edit / Save / + Add vehicle / Remove 收起；B 换成只读文字；C 样子不变、存时才红字。
+  - Q2 Super Admin：A 照常能改 + 琥珀「🔒 Locked」+ 浅黄条「Locked at 7:30 AM, 1 hour after departure (6:30 AM). You can still change it as a Super Admin.」；B 什么都不提示。
+  - Q3 Morning Relay 一轮：A 同团卡片一套，时间写它那批团的出发时间（「Locked at 7:30 AM, 1 hour after its tours left (6:30 AM). …」）；B 只灰控件不写说明。
+  - Q4 409 红字：A 红框在那个团 / 那一轮卡片里说明条下面，标题右边 Saved 变红字 Not saved，页面刷新成锁住的样子；原文「Not saved: This tour is locked (1 hour after departure). Only a Super Admin can change it.」（Relay 用 This Morning Relay round is locked…）；B 红框在页面最上面。
+  - Q5 Seat guests / Bus Manifest 换车：A 员工下拉灰掉 + 名单上面灰字（同 Q1），SA 照常 + 浅黄字（同 Q2），409 红字在下拉旁；B 下拉照常、换了才红字。
+  - Q6 锁 / 不锁清单：锁 = 司机、导游、车、字母、Add hotel、删酒店 ×、酒店排序、Note for yourself、Edit 菜单（删车 / Farm out / Copy）、Save、+ Add vehicle、Not needed Remove、Seat guests / Bus Manifest 换车、Pull from Discord 不动锁住的；不锁 = Picked up / No show / Boarded、Completed、② Send、Relay list Print / ⬇ Excel、Private Custom、没有出发时间的团。A 照表；B 指出要改的格。
+  - Q7 Pull from Discord：A 员工按时锁住的团 / 那轮 Relay 不动、只填没锁的，旁边灰字「Locked, not changed: West Rim Bus Tour, Morning Relay · 1st Round.」，SA 照现在全填；B 也填、存时整笔 409。
+  - Q8 Schedule check：A 不列锁住的团（只列要处理的）；B 列一行灰字「West Rim Bus Tour · Locked at 7:30 AM」。
+  - Q9 How to use（Buses & drivers 最后一条）：A「Each tour and its Morning Relay round lock 1 hour after the tour leaves. After that only a Super Admin can change its buses, drivers, hotels or seats. Picked up, No show and Boarded can still be ticked.」；B Annie 给改法。
 
 ### 92. 版式设置交给 staff：颜色 / 哪些格上色 / 字体 / 页面大小（2026-11-05，Annie 在后端 4c 提，46 转；B 级新功能，没动手）
 - 原话：「把对颜色编辑，加减颜色，哪个框还需要上色的功能都交给staff」「包括字体编辑，页面大小的设置，不要每次都让 我们改编码」。
@@ -1191,6 +1201,7 @@ D. 已完成、待从置顶移走：
   - ✅ **Annie「动手」（原话，2026-11-05）**。前端派 77：task/print-layout-1 第 1 批 Colours + Page + Relay ⬇ Excel 键，照草案 mock，推分支不合；第 2 批 Text + Relay 当天 Aa。后端 46 另开窗口评估字段（迁移 SQL 先给 Annie），上线 SHA 发前端后核字段合。
   - 后端 07 定第 1 批字段（已原样转 77）：settings 两键 print_layout:bus_manifest / print_layout:relay_list，**第 1 批无迁移**；GET / PUT /api/settings/print-layout?page=…（页面设置键叫 page_setup）；colours {all, tours{id:{…, sections}}}、box 清单（Bus Manifest 18 种 + col_<列键>；Relay hotel_cell / column_titles）；车抬头颜色仍走 /api/settings/relay-list tour_colors，团色仍 Products Colour；ticket_rules ≤30 条（默认现 4 条）；palette ≤40；text 存加减 d（第 2 批生效）；page_setup；GET manifest 加 view.print_layout；Relay Excel GET /api/dispatch/relay-list/excel?date=。Relay 当天字号新表放第 2 批。
   - Q11 How to use：A（推荐）原文见 preview / 77 消息（「⚙ Colours, text & page: choose the colour of each box … on top of the everyday size.」）；B 她改字。
+- **Relay list ⬇ Excel 键先单独上**（78 派 ef；Annie「看了，同意全部推荐，记得要可以下载」「动手」，又说「下载功能不用给i我preview了，直接上线」）：前端推分支 task/relay-list-excel ffedfcb6，没合 main，等后端 07 GET /api/dispatch/relay-list/excel?date= 上 main。白底键在 🖨 Print 和 ⚙ 之间（手机收进 ⋯）；fetch + blob，文件名取 Content-Disposition（没有时 Relay_list_日期.xlsx）；404 红字「Excel download isn't available yet.」，其余红字「Could not download: 后端原话」，401 跳登录。rl 70/70（mock 新加 5 条）、nav 39/39、tsc / eslint 过。后端 SHA 到了：核路径 / 权限 / 回包头 → 合最新 main 重跑 → 直接合 main。
 
 ### 91. Bus Manifest 背景颜色打印不出来（2026-11-05，Annie 在 46 报，46 转；ef 查完前端不用改）
 - 原话：「bus manifest的背景颜色打印不出来」。
