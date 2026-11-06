@@ -1282,6 +1282,11 @@ D. 已完成、待从置顶移走：
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 98. Auto Send › Ticket reminders › Daily report 发送时间改成可选（2026-11-06，Annie 提，没动手）
+- Annie 原话（看着「Sends after the last batch of the day (5:00 PM)」那行）：「这个两边都把时间改成可选吧」。
+- 现在：报告固定在当天最后一批门票发完后马上发（11-05 题 1 A），页面只写出最后一批的时间，不能改。Daily report 只有 Ticket reminders 有，Tour confirmations 没有报告。
+- 49 在问 Annie：「两边」指什么（a 前端后端都改 / b 门票、团确认两张卡都要报告且都能选时间），时间怎么选（A 推荐：从当天的发送时间里下拉选，默认最后一批；B 随便填几点），选的时间早于最后一批时报告算到哪（A 推荐：只算到那一刻为止已过的批次）。答了出 preview。
+
 ### 97. G266 Dispatch › Send to driver / guide：每人发过没 + 卡片 Notes（2026-11-06，c3 出 preview，49 转 Annie）
 - preview：https://claude.ai/artifact/X7ptbfdS5zbqgqUNb8fSmg （真页面 + 画上去的新东西；现在 / 推荐 / 手机 / 另一种）。推荐都 A。① 后端已上 main 60963f35；② Notes 等迁移 v160。
 - 题 1 发过没放哪：A 名字后加「Sent」列，发过整行淡黄 + 标签「Sent by Annie on Oct 5, 9:53 PM」，没发灰字「Not sent」（照全站发送格式）；B 最后一列绿字「Sent 9:53 PM by Annie」，不加淡黄。
