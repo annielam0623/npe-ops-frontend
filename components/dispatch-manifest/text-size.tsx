@@ -56,6 +56,14 @@ export const HEAD_PX: Record<ManifestVersion, { th: number; section: number }> =
     west: { th: 9.5, section: 17 },
   };
 
+/** 版式默认字号（Text 页显示「16.5 px」这种用）：正文 / 人数。 */
+export const BASE_PX: Record<ManifestVersion, { cell: number; pax: number }> = {
+  general: { cell: BASE.general.cell[0], pax: BASE.general.pax[0] },
+  lankun: { cell: BASE.lankun.cell[0], pax: BASE.lankun.pax[0] },
+  marcello: { cell: BASE.marcello.cell[0], pax: BASE.marcello.pax[0] },
+  west: { cell: BASE.west.cell[0], pax: BASE.west.pax[0] },
+};
+
 export const EMPTY_TEXT_SIZE: ManifestTextSize = {
   page: {},
   columns: {},
@@ -64,16 +72,26 @@ export const EMPTY_TEXT_SIZE: ManifestTextSize = {
 
 const clamp = (n: number, max: number) => Math.max(TEXT_MIN, Math.min(max, n));
 
-/** 一格最后的字号 / 粗细（每格都用它，没存过设定时就是纸本默认）。 */
+/** 每天的起点（版式设置 Text 页，置顶 92 第 2 批）：在版式默认上加减 d px；bold 不设 = 照版式默认。 */
+export interface TextStart {
+  d: number;
+  bold?: boolean;
+}
+
+/** 一格最后的字号 / 粗细（每格都用它，没存过设定时就是纸本默认）。start = 每天的起点（正文 / 人数）；当天 Aa 再加在上面。 */
 export function cellText(
   ts: ManifestTextSize | null | undefined,
   col: ManifestColumnKey,
   order: string | null,
   phone: boolean,
   version: ManifestVersion = "general",
+  start?: { cell?: TextStart; pax?: TextStart },
 ): { fontSize: string; fontWeight: number; changed: boolean } {
   const base = BASE[version] ?? BASE.general;
-  const [px, baseBold] = col === "pax" ? base.pax : base.cell;
+  const [px0, bold0] = col === "pax" ? base.pax : base.cell;
+  const s0 = col === "pax" ? start?.pax : start?.cell;
+  const px = px0 + (s0?.d ?? 0);
+  const baseBold = s0?.bold ?? bold0;
   const layers = ts
     ? [ts.page, ts.columns[col], order ? ts.rows[order] : undefined]
     : [];
@@ -112,9 +130,10 @@ export function usePhoneWidth(): boolean {
   return phone;
 }
 
+/** column 的 id：Bus Manifest 是 ManifestColumnKey；Relay list 当天字号（置顶 92 Q5）用它自己的列键。 */
 export type TextPick =
   | { kind: "page" }
-  | { kind: "column"; id: ManifestColumnKey }
+  | { kind: "column"; id: string }
   | { kind: "row"; id: string };
 export type TextMode = TextPick["kind"];
 

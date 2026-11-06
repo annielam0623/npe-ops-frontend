@@ -114,6 +114,7 @@ async function main() {
     await run();
     await runTicks();
     await runSpellings();
+    await runWorkingRecord();
   } finally {
     ws.close();
     chrome.kill();
@@ -594,4 +595,199 @@ async function runTicks() {
     check(`全部按照勾选 · Human Resource：${name}`, got === edit, `能改：${got}`);
   }
   await ctl({ staff: false, supervisor: false, superadmin: false, tick: null });
+}
+
+// ── 置顶 86 Working Record（Annie「working record这里全部同意推荐，动手」，preview v2 U951qPXH1hNBzLbuSGY6Hm）──
+// 日历 GET /api/field-calendar（不带 hr_id = 所有人）、快照 GET /api/field-snapshots/{hr_id}；先只 Super Admin（开关 hr_working_record）。
+function wrLaToday() {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Los_Angeles", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+}
+function wrAdd(ymd, n) {
+  const [y, m, d] = ymd.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
+}
+function wrDay(i) {
+  const t = wrLaToday();
+  const [y, m, d] = t.split("-").map(Number);
+  return wrAdd(t, i - new Date(Date.UTC(y, m - 1, d)).getUTCDay());
+}
+async function runWorkingRecord() {
+  const [d0, d1, d2, d3] = [0, 1, 2, 3].map(wrDay);
+  const today = wrLaToday();
+  const monthFrom = `${today.slice(0, 8)}01`;
+  const [yy, mm] = today.split("-").map(Number);
+  const monthTo = `${today.slice(0, 8)}${String(new Date(Date.UTC(yy, mm, 0)).getUTCDate()).padStart(2, "0")}`;
+  const cell = (id, d) => `document.querySelector('[data-wr-cell="${id}|${d}"]')`;
+  const TAB = `document.querySelector('[data-hr-tab="record"]')`;
+  const openTab = async () => {
+    await goto(`${APP}/settings/hr`);
+    await waitFor("document.body.textContent.includes('Alice Driver')");
+    await helpers();
+    await evaluate(`
+      window.__downloads = []; window.__blobs = [];
+      const orig = URL.createObjectURL; URL.createObjectURL = (b) => { window.__blobs.push(b); return orig(b); };
+      HTMLAnchorElement.prototype.click = function () { if (this.download) window.__downloads.push(this.download); };`);
+  };
+
+  // admin（开关默认只 Super Admin）：没有这个页签
+  await ctl({ fail401: false, staff: false, supervisor: false, superadmin: false, tick: null, widgets: null, wrMissing: false, wrFail: false });
+  await openTab();
+  await sleep(800);
+  check("Working Record：admin（开关默认只 Super Admin）看不到页签", !(await evaluate(`return !!${TAB};`)));
+
+  await ctl({ superadmin: true });
+  await openTab();
+  await waitFor(TAB);
+  check("Working Record：Super Admin 有页签、标 Super Admin only", await evaluate(`return ${TAB}.textContent === 'Working RecordSuper Admin only';`));
+  let before = (await mockLog()).length;
+  await evaluate(`${TAB}.click();`);
+  await waitFor(`${cell(101, d1)} && ${cell(101, d1)}.textContent.includes('2622')`);
+  const cal = (await since(before, (e) => e.path === "/api/field-calendar"))[0];
+  check("Working Record：周表读所有人（不带 hr_id）、周日到周六", cal && cal.query === `?from=${d0}&to=${wrAdd(d0, 6)}`, cal?.query);
+  check("Working Record：抬头写这一周", await evaluate("return /^\\w{3} \\d+\\/\\d+ – \\w{3} \\d+\\/\\d+, \\d{4}$/.test(document.querySelector('[data-wr-title]').textContent);"));
+  check("Working Record：Drivers 节（driver + both）、Guides 节、Position not set 最下", await evaluate(`
+    const t = (k) => document.querySelector('[data-wr-section="' + k + '"]');
+    const names = (k) => [...t(k).querySelectorAll('[data-wr-name]')].map((b) => b.textContent);
+    return JSON.stringify([names('drivers'), names('guides'), names('unset')]) === JSON.stringify([['ZZ Test Carlos', 'ZZ Test Dan'], ['ZZ Test Lankun', 'ZZ Test Lee'], ['ZZ Test Nopos']])
+      && t('drivers').textContent.includes('Drivers — 2') && t('guides').textContent.includes('Guides — 2');`));
+  check("Working Record：格子 = 角色 + 团名 + 车号 + 📷，没有钟点（不做 Hours）", await evaluate(`
+    const c = ${cell(101, d1)};
+    return c.querySelector('[data-wr-job] b').textContent === 'Driver📷' && c.textContent === 'Driver📷Bus tour South Rim · 2622'
+      && !document.querySelector('[data-wr-hours], [data-wr-hours-check]') && !/ h\\b|AM|PM|Samsara|Tour times/.test(document.querySelector('[data-wr-section="drivers"]').textContent + document.querySelector('[data-wr-section="guides"]').textContent);`), await evaluate(`return ${cell(101, d1)}.textContent;`));
+  check("Working Record：角色颜色 Driver 蓝 / Guide 紫 / Driver & Guide 青", await evaluate(`
+    const col = (id, d) => getComputedStyle(document.querySelector('[data-wr-cell="' + id + '|' + d + '"] [data-wr-job] b')).color;
+    return col(101, '${d1}') === 'rgb(29, 78, 216)' && col(103, '${d1}') === 'rgb(124, 58, 237)' && col(102, '${d1}') === 'rgb(15, 118, 110)';`));
+  check("Working Record：一天两段写两行；relay 写第几轮", await evaluate(`
+    const jobs = [...${cell(101, d2)}.querySelectorAll('[data-wr-job]')].map((j) => j.textContent);
+    return jobs.length === 2 && jobs[0].endsWith('Hotel pickups to Treasure Island · 1st round · Van 12') && jobs[1].endsWith('Bus tour Bryce & Zion · 2610');`));
+  check("Working Record：没存档 ⇒ 虚线框 + live、没有 📷", await evaluate(`
+    const c = ${cell(101, d3)}; const j = c.querySelector('[data-wr-job]');
+    return j.hasAttribute('data-wr-live') && getComputedStyle(j).borderTopStyle === 'dashed' && j.textContent.includes('live') && !c.querySelector('[data-wr-cam]');`));
+  check("Working Record：车号没填写 no van；团名没填写 no tour name；没快照没有 📷", await evaluate(`
+    return ${cell(101, d0)}.textContent.includes('Private Tour · no van') && ${cell(104, d0)}.textContent.includes('no tour name · no van') && !${cell(104, d0)}.querySelector('[data-wr-cam]');`));
+  check("Working Record：同一段又开车又带团 ⇒ 一张 Driver & Guide", await evaluate(`
+    const jobs = ${cell(102, d1)}.querySelectorAll('[data-wr-job]'); return jobs.length === 1 && jobs[0].querySelector('b').textContent.startsWith('Driver & Guide');`));
+  check("Working Record：导游格子只写角色 + 团名 + 车号", await evaluate(`
+    return ${cell(103, d1)}.textContent === 'Guide📷Bus tour Antelope Canyon · 2356';`), await evaluate(`return ${cell(103, d1)}.textContent;`));
+
+  // 📷 快照弹窗
+  before = (await mockLog()).length;
+  await evaluate(`document.querySelector('[data-wr-cam="101|${d1}"]').click();`);
+  await waitFor("document.querySelector('[data-wr-version]')");
+  const s1 = (await since(before, (e) => e.path.startsWith("/api/field-snapshots/")))[0];
+  check("Working Record 快照：点 📷 读最新一版（kind=driver）", s1 && s1.path === "/api/field-snapshots/101" && s1.query === `?date=${d1}&kind=driver`, JSON.stringify(s1));
+  check("Working Record 快照：卡头选版本，默认最新「Version 2 of 2」", await evaluate(`
+    const s = document.querySelector('[data-wr-version]'); const d = document.querySelector('[data-wr-snapshot]');
+    return s.value === '2' && [...s.options].map((o) => o.textContent).join('|') === 'Changed after completion · 7:12 PM|Checked out · 7:00 PM' && d.textContent.includes('Version 2 of 2');`),
+    await evaluate("return [...document.querySelector('[data-wr-version]').options].map((o) => o.textContent).join('|');"));
+  check("Working Record 快照：Work（段 / 车）、Stops、SMS，没有 Hours；人数 / 订单默认收起", await evaluate(`
+    const d = document.querySelector('[data-wr-snapshot]');
+    return d.textContent.includes('Bus tour South Rim2622') && !document.querySelector('[data-wr-snapshot-hours]') && !d.textContent.includes('Hours')
+      && d.textContent.includes('Excalibur5:42 AM5:51 AM9 min') && d.textContent.includes('SMS sent from the driver page: 4') && !document.querySelector('[data-wr-guests]');`),
+    await evaluate("return document.querySelector('[data-wr-snapshot]').textContent;"));
+  await evaluate("document.querySelector('[data-wr-guests-toggle]').click();");
+  await waitFor("document.querySelector('[data-wr-guests]')");
+  check("Working Record 快照：展开 ⇒ 人数 + 每张单状态 / 时间 / 谁", await evaluate(`
+    const g = document.querySelector('[data-wr-guests]');
+    return g.textContent.includes('Pax 23 · Picked up 21 · No show 2 · Not marked 0') && g.textContent.includes('CHDZZ0021No show5:50 AMZZ Test Dan') && g.textContent.includes('CHDZZ0031Not marked——');`),
+    await evaluate("return document.querySelector('[data-wr-guests]').textContent;"));
+  before = (await mockLog()).length;
+  await selectValue("document.querySelector('[data-wr-version]')", "1");
+  await waitFor("document.querySelector('[data-wr-snapshot]')?.textContent.includes('Version 1 of 2')");
+  const s2 = (await since(before, (e) => e.path.startsWith("/api/field-snapshots/")))[0];
+  check("Working Record 快照：选旧版 ⇒ 带 version=1 再读", s2 && s2.query === `?date=${d1}&kind=driver&version=1`, JSON.stringify(s2));
+  await cdp("Input.dispatchKeyEvent", { type: "keyDown", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 });
+  check("Working Record 快照：Esc 关", await waitFor("!document.querySelector('[data-wr-snapshot]')"));
+  // 又开车又带团：弹窗里能切 As guide
+  await evaluate(`document.querySelector('[data-wr-cam="102|${d1}"]').click();`);
+  await waitFor(`document.querySelector('[data-wr-kind="guide"]') && document.querySelector('[data-wr-version]')`);
+  before = (await mockLog()).length;
+  await evaluate(`document.querySelector('[data-wr-kind="guide"]').click();`);
+  await waitFor("document.querySelector('[data-wr-snapshot]')?.textContent.includes('Guide ·') && document.querySelector('[data-wr-version]')");
+  const s3 = (await since(before, (e) => e.path.startsWith("/api/field-snapshots/")))[0];
+  check("Working Record 快照：Driver & Guide 那天能切 As guide（kind=guide），导游不写 SMS", s3 && s3.query === `?date=${d1}&kind=guide` && !(await evaluate("return document.querySelector('[data-wr-snapshot]').textContent.includes('SMS sent');")), JSON.stringify(s3));
+  await evaluate("$btn('Close', document.querySelector('[data-wr-snapshot]')).click();");
+  await waitFor("!document.querySelector('[data-wr-snapshot]')");
+
+  // 周表 Export：整月（另读一次整月）
+  before = (await mockLog()).length;
+  await evaluate("document.querySelector('[data-wr-export]').click();");
+  await waitFor("window.__downloads.length === 1");
+  const ex = (await since(before, (e) => e.path === "/api/field-calendar"))[0];
+  const file1 = await evaluate("return window.__downloads[0];");
+  check("Working Record：周表 ⬇ Export for payroll ⇒ 另读整月、文件名带月份", ex?.query === `?from=${monthFrom}&to=${monthTo}` && file1 === `working-record_${monthFrom}_${monthTo}.csv`, `${ex?.query} ${file1}`);
+  const csv = await evaluate("return await window.__blobs.at(-1).text();");
+  check("Working Record：Export 每人每天一行 + 合计行，没有 Start / End / Hours 列", csv.startsWith("Name,Date,Role,Tours,Vans,Saved") && !/Hours|Start|Samsara/.test(csv)
+    && (d2 < monthFrom || csv.includes(`ZZ Test Dan,${d2},Driver,Hotel pickups to Treasure Island · 1st round / Bus tour Bryce & Zion,Van 12 / 2610,Saved`))
+    && csv.includes(`ZZ Test Dan — total,${monthFrom} to ${monthTo}`), csv.slice(0, 600));
+
+  // 点名字 ⇒ 月历 + 合计
+  before = (await mockLog()).length;
+  await evaluate(`document.querySelector('[data-wr-name="101"]').click();`);
+  await waitFor("document.querySelector('[data-wr-totals]')");
+  const one = (await since(before, (e) => e.path === "/api/field-calendar"))[0];
+  check("Working Record：点名字 ⇒ 读这个人（hr_id）整月补满的周", /^\?hr_id=101&from=\d{4}-\d{2}-\d{2}&to=\d{4}-\d{2}-\d{2}$/.test(one?.query ?? ""), one?.query);
+  check("Working Record：月历抬头写人名 · 职位、月份", await evaluate("return document.querySelector('[data-wr-person]').textContent === 'ZZ Test Dan · Driver' && /^[A-Z][a-z]+ \\d{4}$/.test(document.querySelector('[data-wr-title]').textContent);"));
+  const inMonth = [d0, d1, d2, d3].filter((d) => d >= monthFrom && d <= monthTo);
+  const totalsText = await evaluate("return document.querySelector('[data-wr-totals]').textContent;");
+  check("Working Record：当月合计（天数、各团、live），没有 Hours / 要核对的天",
+    totalsText.includes(`Days as Driver${inMonth.length}`) && totalsText.includes("Days as Guide0") && totalsText.includes("By tour")
+      && !/Hours|Samsara|⚠/.test(totalsText)
+      && (!inMonth.includes(d3) || totalsText.includes("includes 1 live day")), totalsText);
+  check("Working Record：月历格子同周表（📷、两段）", await evaluate(`
+    return (${!inMonth.includes(d2)} || ${cell(101, d2)}.querySelectorAll('[data-wr-job]').length === 2) && (${!inMonth.includes(d1)} || !!${cell(101, d1)}.querySelector('[data-wr-cam]'));`));
+  await evaluate("document.querySelector('[data-wr-export]').click();");
+  await waitFor("window.__downloads.length === 2");
+  const file2 = await evaluate("return window.__downloads[1];");
+  check("Working Record：月历 Export 文件名带人名", file2 === `working-record_ZZ-Test-Dan_${monthFrom}_${monthTo}.csv`, file2);
+  await evaluate("document.querySelector('[data-wr-back]').click();");
+  check("Working Record：← All people 回周表", await waitFor(`document.querySelector('[data-wr-section="drivers"]') && document.querySelector('[data-wr-span="week"]').getAttribute('aria-pressed') === 'true'`));
+
+  // ‹ 上一周 / Month
+  before = (await mockLog()).length;
+  await evaluate("document.querySelector('[data-wr-prev]').click();");
+  await waitFor("document.querySelector('[data-wr-today]')");
+  const prev = (await waitReq(before, (e) => e.path === "/api/field-calendar" && e.query.startsWith(`?from=${wrAdd(d0, -7)}`)))[0];
+  check("Working Record：‹ 上一周 ⇒ 前七天、出 This week", prev?.query === `?from=${wrAdd(d0, -7)}&to=${wrAdd(d0, -1)}`, prev?.query);
+  check("Working Record：那一周没人排班 ⇒ 不出人（后端只列有排班的人），Drivers / Guides 两节写 No … worked in this period.", await waitFor("document.querySelector('[data-wr-section=\"drivers\"]')?.textContent.includes('No drivers worked in this period.') && document.querySelector('[data-wr-section=\"guides\"]').textContent.includes('No guides worked in this period.') && !document.querySelector('[data-wr-name]') && !document.querySelector('[data-wr-section=\"unset\"]')"));
+  await evaluate("document.querySelector('[data-wr-today]').click();");
+  await waitFor(`${cell(101, d1)}`);
+  before = (await mockLog()).length;
+  await evaluate(`document.querySelector('[data-wr-span="month"]').click();`);
+  await waitFor(`document.querySelectorAll('[data-wr-section="drivers"] tbody[data-wr-week]').length >= 4`);
+  const mon = (await waitReq(before, (e) => e.path === "/api/field-calendar"))[0];
+  check("Working Record：Month ⇒ 整月按周叠（读整月补满的周）", /^\?from=\d{4}-\d{2}-\d{2}&to=\d{4}-\d{2}-\d{2}$/.test(mon?.query ?? "") && mon.query.slice(6, 16) <= monthFrom && mon.query.slice(-10) >= monthTo, mon?.query);
+
+  // How to use：只剩 Q7 原文，Hours 那句去掉
+  check("Working Record：How to use 照 Q7 原文、没有 Hours 那句", await evaluate("return document.body.textContent.includes('Working Record: what each driver and guide did each day, for payroll.') && !document.body.textContent.includes('Check those days with the driver before payroll.') && !document.body.textContent.includes('A guide\\'s hours are the tour times');"));
+
+  // 后端没上线 / 出错
+  await ctl({ wrMissing: true });
+  await evaluate(`document.querySelector('[data-wr-span="week"]').click();`);
+  check("Working Record：后端没上线（404）⇒ 一句说明、不报错", await waitFor("document.querySelector('[data-wr-missing]')?.textContent === 'The Working Record is not available on the server yet.'"));
+  await ctl({ wrMissing: false, wrForbidden: true });
+  await evaluate("document.querySelector('[data-wr-next]').click();");
+  check("Working Record：开关没对这个人开（403）⇒ 一句英文、不白屏、不报红", await waitFor("document.querySelector('[data-wr-forbidden]')?.textContent === 'The Working Record is not open to you yet. Ask a Super Admin if you need it.'")
+    && !(await evaluate("return document.body.textContent.includes('Could not load the Working Record');")) && await evaluate("return !!document.querySelector('[data-wr-bar]');"));
+  await ctl({ wrForbidden: false });
+  await evaluate("document.querySelector('[data-wr-prev]').click();");
+  await ctl({ wrMissing: false, wrFail: true });
+  await evaluate("document.querySelector('[data-wr-next]').click();");
+  check("Working Record：出错 ⇒ 红条原话 + Retry", await waitFor("document.body.textContent.includes('Could not load the Working Record: Could not load the snapshots. Try again.')"));
+  await ctl({ wrFail: false });
+  await evaluate("$btn('Retry').click();");
+  check("Working Record：Retry 重读成功", await waitFor(`document.querySelector('[data-wr-section="drivers"]')`));
+
+  // 开关开给 admin、但 admin 看不到 Live drivers ⇒ 有页签、没有 📷、没有 Super Admin only
+  await ctl({ superadmin: false, widgets: [
+    { key: "hr_working_record", visibility: "admin", visible_to_me: true },
+    { key: "morning_live_drivers", visibility: "super_admin_only", visible_to_me: false },
+  ] });
+  await openTab();
+  await waitFor(TAB);
+  check("Working Record：开关开给 admin ⇒ admin 有页签、不标 Super Admin only", await evaluate(`return ${TAB}.textContent === 'Working Record';`));
+  await evaluate(`${TAB}.click();`);
+  await waitFor(`${cell(101, d1)}`);
+  check("Working Record：看不到 Live drivers ⇒ 没有 📷（Q6 A），说明不提 📷", await evaluate("return !document.querySelector('[data-wr-cam]') && !document.querySelector('[data-working-record]').textContent.includes(\"📷 opens that day's snapshot\");"));
+  await ctl({ widgets: null });
 }

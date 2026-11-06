@@ -1112,6 +1112,71 @@ async function fill(page, label, value) {
     await ctl("reset=1");
   }
 
+  // ── 置顶 88（Annie 2026-11-05 选 A「按推荐，动手」）：待注册行也能 Edit；改了权限 / 账号类型 ⇒ 后端换新链接（G212 SA-8），
+  //    那一行下面出灰字；点 Copy Link 或刷新页面后消失；How to use 加一句 ──
+  {
+    await ctl("reset=1&g212=1&acctype=1");
+    await page.goto(PAGE, { waitUntil: "domcontentloaded" });
+    await waitText(page, "Grace Liu", 60000);
+    const firstPending = `[...document.querySelectorAll("tbody tr")].find((r) => r.innerText.includes("Pending registration"))`;
+    const editPending = () => page.evaluate(`(() => { const b = [...${firstPending}.querySelectorAll("button")].find((x) => x.innerText.trim() === "Edit"); if (!b) return false; b.click(); return true; })()`);
+    const renewedRow = () => page.evaluate(`(() => { const r = document.querySelector("[data-invite-renewed]"); if (!r) return null; return { text: r.innerText.trim(), color: getComputedStyle(r.querySelector("td")).color, under: (r.previousElementSibling?.innerText || "").includes("Pending registration"), n: document.querySelectorAll("[data-invite-renewed]").length }; })()`);
+    const grey = "The old invite link no longer works. Click Copy Link and send the new one.";
+    const pendEdit = await page.evaluate(`[...document.querySelectorAll("tbody tr")].filter((r) => r.innerText.includes("Pending registration")).map((r) => { const bs = [...r.querySelectorAll("button")].map((b) => b.innerText.trim()); return bs.indexOf("Edit") >= 0 && bs.indexOf("Edit") < bs.findIndex((x) => x.includes("Copy Link")); })`);
+    check("88: every pending invite row has Edit, left of Copy Link", pendEdit.length >= 2 && pendEdit.every(Boolean), JSON.stringify(pendEdit));
+    check("88: How to use has the new sentence", (await page.$eval("details", (d) => d.textContent.replace(/\s+/g, " "))).includes("If you change the access or account type of someone who hasn't accepted their invite yet, their old invite link stops working right away. Click Copy Link and send them the new link."));
+    check("88: no grey line before any change", (await renewedRow()) === null);
+    // 只改职责（不算权限）：不换链接、不出灰字
+    check("88: Edit opens on a pending row", await editPending());
+    await page.waitForSelector('[role="group"][aria-label="Logs access"]', { timeout: 15000 });
+    check("88: pending Edit has no Delete (row already has Cancel invite)", !(await page.$("[data-delete-person]")));
+    const n0 = (await ctl("log=1")).length;
+    await tick(page, "Accidents & emergencies");
+    await click(page, "Save", "dialog");
+    await waitNoText(page, "Copy access from");
+    await sleep(800);
+    check("88: duties-only change saves (PUT) but no grey line", (await ctl("log=1")).slice(n0).some((l) => /^PUT \/api\/team\/members\/\d+ /.test(l)) && (await renewedRow()) === null);
+    // 改权限：出灰字
+    await editPending();
+    await page.waitForSelector('[role="group"][aria-label="Logs access"]', { timeout: 15000 });
+    const logs = await access(page, "Logs");
+    await choose(page, "Logs", logs.options.find((o) => o !== logs.on));
+    await click(page, "Save", "dialog");
+    await waitNoText(page, "Copy access from");
+    await waitFor(page, async () => !!(await renewedRow()), 8000);
+    const r1 = await renewedRow();
+    check("88: access change on a pending invite ⇒ grey line right under that row, exact text, grey (#6b7280)", !!r1 && r1.n === 1 && r1.text === grey && r1.under && r1.color === "rgb(107, 114, 128)", JSON.stringify(r1));
+    await page.evaluate(`[...${firstPending}.querySelectorAll("button")].find((x) => x.innerText.includes("Copy Link")).click()`);
+    await sleep(500);
+    const clip = await page.evaluate(() => navigator.clipboard.readText());
+    check("88: Copy Link copies the new link (token renewed) and the grey line goes away", /\/register\/tok-\d+-v1$/.test(clip) && (await renewedRow()) === null, clip);
+    // 改账号类型（Change… 确认）：也出灰字；刷新页面后不留
+    await editPending();
+    await page.waitForSelector('[role="group"][aria-label="Logs access"]', { timeout: 15000 });
+    await click(page, "Change…", "dialog");
+    await waitText(page, "to External partner?");
+    await confirmChange();
+    await waitNoText(page, "to External partner?");
+    await sleep(300);
+    await page.click('[role="dialog"] button[aria-label="Close"]');
+    await page.waitForFunction(() => !document.querySelector('[role="dialog"]'), { timeout: 8000 });
+    await waitFor(page, async () => !!(await renewedRow()), 8000);
+    check("88: account type change on a pending invite ⇒ grey line", (await renewedRow())?.text === grey, JSON.stringify(await renewedRow()));
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await waitText(page, "Grace Liu", 60000);
+    check("88: after reload the grey line is gone", (await renewedRow()) === null);
+    // 已注册的人改权限：不出灰字
+    await click(page, "Edit", "@ben");
+    await page.waitForSelector('[role="group"][aria-label="Logs access"]');
+    const bl = await access(page, "Logs");
+    await choose(page, "Logs", bl.options.find((o) => o !== bl.on));
+    await click(page, "Save", "dialog");
+    await waitNoText(page, "Copy access from");
+    await sleep(800);
+    check("88: registered account access change ⇒ no grey line", (await renewedRow()) === null);
+    await ctl("reset=1");
+  }
+
   check("no page errors", consoleErrors.length === 0, consoleErrors.join(" | "));
   await browser.close();
   console.log(failures ? `\n${failures} FAILED` : "\nALL PASS");

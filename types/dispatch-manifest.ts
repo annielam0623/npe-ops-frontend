@@ -89,6 +89,13 @@ export interface ManifestGuest {
    */
   hotel_short?: string;
   pickup_time_short?: string;
+  /** G253（后端 4c54e895）：订单上车点对上的 Pickup Locations id；空、OFFICE、对不上 = null。旧后端没有这个键。 */
+  pickup_location_id?: number | null;
+  /**
+   * G253：上车点是不是 Vegas 酒店（对上那家的 is_tour_bus）；对不上 = null。旧后端没有这个键。
+   * Dispatch 的 Shuttle 上车点提示只不算 true 的（Annie 2026-11-05「只有这个location不属于vegas酒店，就要提醒」）。
+   */
+  pickup_is_vegas?: boolean | null;
   /**
    * 后端 36 给的 Pick-up Location 涂色（relay_color + hotel_first）：Annie 还没定哪几家涂、涂什么色（纸本是节色 / 车色、不是每家都涂），
    * 先不用，照旧隔组涂节色。

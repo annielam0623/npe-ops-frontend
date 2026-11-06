@@ -25,6 +25,7 @@ import { cn } from "@/lib/utils";
 import type { BookingNote, NoteCreate, NoteLine } from "@/types";
 
 import { ModalShell } from "@/components/tracking-ui/modal-shell";
+import { setVisibleInterval } from "@/lib/visible-poll";
 
 /** 弹窗开着时每 20 秒重拉一次对话（与旧页面一致）。 */
 const NOTES_POLL_MS = 20_000;
@@ -446,12 +447,12 @@ function ConversationModalInner({
   useEffect(() => {
     const controller = new AbortController();
     void loadNotes(controller.signal);
-    const timer = setInterval(
+    const stopPoll = setVisibleInterval(
       () => void loadNotes(controller.signal),
       NOTES_POLL_MS,
     );
     return () => {
-      clearInterval(timer);
+      stopPoll();
       controller.abort();
     };
   }, [loadNotes]);

@@ -7,6 +7,7 @@ import { DOR_CHANGED_EVENT } from "@/components/daily-report/config";
 import { isStatus } from "@/lib/api-errors";
 import { fetchOperationReports } from "@/lib/daily-report-api";
 import { cn } from "@/lib/utils";
+import { setVisibleInterval } from "@/lib/visible-poll";
 
 /** 点一下，页内滚到对应的那一块（顶栏是 sticky，.db-section 带了 scroll-margin-top）。 */
 function scrollTo(selector: () => Element | null | undefined) {
@@ -172,13 +173,13 @@ function useOpenReports(onUnauthorized: () => void): number | null | undefined {
     }
     setCount((c) => (c === undefined ? null : c));
     void load();
-    const timer = setInterval(load, 60_000);
+    const stopPoll = setVisibleInterval(() => void load(), 60_000);
     const onChanged = () => void load();
     window.addEventListener(DOR_CHANGED_EVENT, onChanged);
     return () => {
       stopped = true;
       controller.abort();
-      clearInterval(timer);
+      stopPoll();
       window.removeEventListener(DOR_CHANGED_EVENT, onChanged);
     };
   }, [state, onUnauthorized]);

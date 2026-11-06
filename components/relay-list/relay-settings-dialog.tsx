@@ -2,8 +2,29 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+import { RELAY_LIST_BOXES } from "@/components/print-layout/boxes";
+import {
+  BoxRows,
+  PagePanel,
+  PaletteEditor,
+  SectionTitle,
+  TabBar,
+  TextPanel,
+} from "@/components/print-layout/layout-panels";
+import {
+  RELAY_TEXT_LAYOUTS,
+  relayTextElements,
+} from "@/components/print-layout/text-elements";
 import { Modal } from "@/components/ui/modal";
 import { describeError } from "@/lib/api-errors";
+import {
+  buildLayoutPatch,
+  countChanges,
+  resetAll,
+  savePrintLayout,
+  type PrintLayoutResponse,
+  type PrintLayoutSettings,
+} from "@/lib/print-layout";
 import {
   buildPatch,
   busColor,
@@ -58,10 +79,20 @@ export function RelaySettingsDialog({
   todayTourIds,
   todayTourNames,
   alsoRelay,
+  layout,
+  layoutDraft,
+  onLayoutDraft,
   onSaved,
   onClose,
 }: {
   settings: RelayListSettings;
+  /**
+   * 版式设置（置顶 92 第 1 批）：Hotel 格 / 表头颜色、色盘、纸张、边距。没有（后端没上线）= null ⇒ 只有原来那些。
+   * 暂存的那份在页面上（单子马上跟着变）。
+   */
+  layout: PrintLayoutResponse | null;
+  layoutDraft: PrintLayoutSettings | null;
+  onLayoutDraft: (next: PrintLayoutSettings) => void;
   canEdit: boolean;
   /** 当天有车 / 有客人的团（manifest_id）；默认只列这些，「Show all tours」展开全部。 */
   todayTourIds: Set<number>;
@@ -81,6 +112,11 @@ export function RelaySettingsDialog({
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const [asking, setAsking] = useState(false);
   const [showAll, setShowAll] = useState(false);
+  const [tab, setTab] = useState<"colours" | "text" | "page">("colours");
+  const [textLayout, setTextLayout] = useState<string>("summary");
+  const lDraft = layoutDraft ?? layout?.settings ?? null;
+  const layoutPatch =
+    layout && lDraft ? buildLayoutPatch(layout.settings, lDraft) : null;
 
   // 存好后父组件给的新设置：暂存那份跟着换成存好的。
   useEffect(() => {
@@ -91,7 +127,9 @@ export function RelaySettingsDialog({
     () => buildPatch(base, draft, defaults),
     [base, draft, defaults],
   );
-  const dirty = canEdit && patch !== null;
+  const dirty = canEdit && (patch !== null || layoutPatch !== null);
+  const layoutChanges =
+    layout && lDraft ? countChanges(layout.settings, lDraft) : 0;
   useLeaveGuard(
     dirty,
     "Your colour and page changes are not saved. Leave without saving?",
@@ -105,13 +143,14 @@ export function RelaySettingsDialog({
     edit({ ...draft, tours: { ...draft.tours, [id]: fn(draft.tours[id]) } });
 
   async function save(): Promise<boolean> {
-    if (!patch) {
+    if (!patch && !layoutPatch) {
       setStatus({ kind: "saved" });
       return true;
     }
     setStatus({ kind: "saving" });
     try {
-      await saveRelayListSettings(patch);
+      if (patch) await saveRelayListSettings(patch);
+      if (layoutPatch) await savePrintLayout("relay_list", layoutPatch);
     } catch (e) {
       setStatus({ kind: "error", text: describeError(e) });
       return false;
@@ -145,7 +184,7 @@ export function RelaySettingsDialog({
       <div data-relay-settings className="contents">
         <header className="flex items-center justify-between border-b border-black/[.08] px-[18px] py-3.5">
           <h2 id="relay-settings-title" className="text-[16px] font-bold">
-            Relay list colours &amp; page
+            Relay list colours, text &amp; page
           </h2>
           <button
             type="button"
@@ -156,8 +195,74 @@ export function RelaySettingsDialog({
             ✕
           </button>
         </header>
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          {canEdit ? (
+        {layout ? (
+          <TabBar
+            tabs={[
+              { key: "colours", label: "Colours" },
+              { key: "text", label: "Text" },
+              { key: "page", label: "Page" },
+            ]}
+            value={tab}
+            onChange={setTab}
+          />
+        ) : null}
+        <div className="min-h-0 flex-1 overflow-y-auto border-t border-black/[.06]">
+          {tab === "text" && layout && lDraft ? (
+            <section className="px-[18px] py-3">
+              <TextPanel
+                settings={lDraft}
+                canEdit={canEdit}
+                layouts={RELAY_TEXT_LAYOUTS}
+                layout={textLayout}
+                onLayout={setTextLayout}
+                elements={relayTextElements(textLayout)}
+                note="This is where every day starts. Aa Text size above each sheet still changes one day's sheet on top of it."
+                onChange={(n) => {
+                  onLayoutDraft(n);
+                  setStatus({ kind: "idle" });
+                }}
+              />
+            </section>
+          ) : tab === "page" && layout && lDraft ? (
+            <section className="px-[18px] py-3">
+              {canEdit ? (
+                <div className="mb-2 flex flex-wrap items-center gap-2 text-[13px]">
+                  <span>Page direction:</span>
+                  <button
+                    type="button"
+                    className={WHITE_BTN}
+                    onClick={() => edit(setAllOrientations(draft, "portrait"))}
+                  >
+                    Set all to Portrait
+                  </button>
+                  <button
+                    type="button"
+                    className={WHITE_BTN}
+                    onClick={() => edit(setAllOrientations(draft, "landscape"))}
+                  >
+                    Set all to Landscape
+                  </button>
+                  <span className="text-[12px] text-[#64748b]">
+                    Each sheet&apos;s own direction is on its row under Colours.
+                  </span>
+                </div>
+              ) : null}
+              <PagePanel
+                settings={lDraft}
+                defaults={layout.defaults}
+                canEdit={canEdit}
+                sheets={[]}
+                note="Printing uses these. Smaller margins fit more rows on a page."
+                marginNote="12 × 11 mm"
+                onChange={(n) => {
+                  onLayoutDraft(n);
+                  setStatus({ kind: "idle" });
+                }}
+              />
+            </section>
+          ) : (
+          <>
+          {canEdit && !layout ? (
             <div className="flex flex-wrap items-center gap-2 border-b border-black/[.06] bg-[#f8fafc] px-[18px] py-2.5 text-[13px]">
               <span>Page direction:</span>
               <button
@@ -175,11 +280,11 @@ export function RelaySettingsDialog({
                 Set all to Landscape
               </button>
             </div>
-          ) : (
+          ) : !canEdit ? (
             <p className="border-b border-black/[.06] bg-[#f8fafc] px-[18px] py-2.5 text-[12.5px] text-[#475569]">
               View only. Ask someone who can edit Dispatch to change these.
             </p>
-          )}
+          ) : null}
 
           <Section title="Summary">
             <Row label="RELAY SPLITS" data="summary">
@@ -374,6 +479,38 @@ export function RelaySettingsDialog({
               </button>
             ) : null}
           </Section>
+          {layout && lDraft ? (
+            <Section title="Other boxes">
+              <BoxRows
+                boxes={RELAY_LIST_BOXES.filter(
+                  (b) =>
+                    !layout.boxes.length ||
+                    layout.boxes.some((x) => x.key === b.key),
+                )}
+                settings={lDraft}
+                defaults={layout.defaults}
+                tourId={null}
+                canEdit={canEdit}
+                dataColor={(k) => (k === "column_titles" ? "#d9d9d9" : null)}
+                onChange={(n) => {
+                  onLayoutDraft(n);
+                  setStatus({ kind: "idle" });
+                }}
+              />
+              <SectionTitle>Colour choices</SectionTitle>
+              <PaletteEditor
+                settings={lDraft}
+                defaults={layout.defaults}
+                canEdit={canEdit}
+                onChange={(n) => {
+                  onLayoutDraft(n);
+                  setStatus({ kind: "idle" });
+                }}
+              />
+            </Section>
+          ) : null}
+          </>
+          )}
         </div>
 
         <footer className="flex flex-wrap items-center gap-2.5 border-t border-black/[.08] px-[18px] py-3">
@@ -383,10 +520,22 @@ export function RelaySettingsDialog({
               type="button"
               className={WHITE_BTN}
               disabled={saving}
-              onClick={() => edit(resetColors(draft, defaults))}
+              onClick={() => {
+                edit(resetColors(draft, defaults));
+                if (layout) onLayoutDraft(resetAll());
+              }}
             >
-              Reset to paper colours
+              {layout ? "Reset all to paper" : "Reset to paper colours"}
             </button>
+          ) : null}
+          {dirty && layout ? (
+            <span
+              data-layout-unsaved
+              className="text-[12.5px] font-semibold text-[#b45309]"
+            >
+              Changes not saved
+              {layoutChanges ? ` (${layoutChanges} on page and boxes)` : ""}
+            </span>
           ) : null}
           <span className="flex-1" />
           <button

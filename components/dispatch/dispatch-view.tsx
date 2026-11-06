@@ -25,10 +25,12 @@ import {
   copyDispatchDay,
   fetchDispatchDay,
   fetchDispatchPrefill,
+  fetchRelayPull,
   fetchSeating,
   matchPrivateOrders,
   moveSeating,
   pullFromDiscord,
+  RELAY_REASON_NO_CAR,
   saveDispatchDay,
   saveDispatchSection,
 } from "@/lib/dispatch-api";
@@ -78,7 +80,8 @@ import {
   cloneRow,
   cloneRows,
   countChanges,
-  departsVegas,
+  needsShuttlePickup,
+  type RelayNoCar,
   fmtLong,
   fmtShort,
   isBlankRow,
@@ -266,6 +269,11 @@ export function DispatchView() {
   const [manifestVersion, setManifestVersion] = useState(0);
   /** 最近一次 Step 1 名单同步的结果（G35）。 */
   const [syncInfo, setSyncInfo] = useState<SyncInfo | null>(null);
+  /**
+   * 提速（Annie 2026-11-05「动手」，后端主窗口转）：名单同步放后台跑，跑完名单真的变了就加一，
+   * 只让 Step 1 卡片 / 待处理、Seat guests 重读；不碰排车行（没存的改动不丢），也不重建 Relay 面板。
+   */
+  const [syncTick, setSyncTick] = useState(0);
   /** Seat guests（每台车下面的客人）：读的是已保存的排车 + Step 1 的名单。 */
   const [seating, setSeating] = useState<DispatchSeating | null>(null);
   const [seatVersion, setSeatVersion] = useState(0);
@@ -360,9 +368,8 @@ export function DispatchView() {
   } | null>(null);
   /**
    * 每个巴士团当天 Bus manifest 里要提醒选上车点的 Shuttle 客人数（Annie 2026-10-31 Shuttle 上车点提示）。
-   * 临时版（Annie 2026-11-04「选产品名从vegas开始的shuttle，不提醒」）：产品从 Las Vegas 出发的不算，不分 outbound / inbound
-   * （round trip 回程段也不算）；别的（St George → Page、X to Las Vegas…）照算。
-   * ⏳ 后端给每位客人带 pickup_is_vegas 后改成看上车点（Annie「是要看他们的上车点…只有这个location不属于vegas酒店，就要提醒」），产品名判断拿掉。
+   * 按上车点（Annie 2026-11-05「是要看他们的上车点…只有这个location不属于vegas酒店，就要提醒」）：Shuttle 节（outbound / inbound）里
+   * pickup_is_vegas === true 的不算；false / null / 旧后端没这个键照算（needsShuttlePickup）。
    * 卡片每次重读（存好、同步、上传）都跟着重读；读不到的团不提醒。
    */
   const [shuttlePax, setShuttlePax] = useState<{
@@ -387,7 +394,7 @@ export function DispatchView() {
             ])
               if (sec.kind !== "tour")
                 for (const g of sec.guests ?? [])
-                  if (!departsVegas(g.product)) n += g.pax;
+                  if (needsShuttlePickup(g)) n += g.pax;
             return [id, n] as const;
           },
           () => null,
@@ -401,6 +408,55 @@ export function DispatchView() {
     });
     return () => ac.abort();
   }, [tourCards]);
+  /**
+   * 置顶 94（Annie「94 全按推荐，动手」）：Schedule check「hotels with no Morning Relay · … vehicle」只列这一轮
+   * relay-pull need_a_look 里「No relay car stops at this hotel in this round」的酒店，按酒店合并人数。
+   * 后端按已保存的排车算 ⇒ 打开这一天、每次存好（base 换了）都重读；读不到 / 后端没带 round ⇒ null，照旧算。
+   */
+  const [relayNoCar, setRelayNoCar] = useState<{
+    date: string;
+    byRound: RelayNoCar;
+  } | null>(null);
+  const noCarDate = day?.run_date;
+  useEffect(() => {
+    if (!noCarDate) return;
+    let gone = false;
+    fetchRelayPull(noCarDate).then(
+      (pull) => {
+        if (gone) return;
+        const list = pull.need_a_look ?? [];
+        if (list.length && !list.some((g) => g.round)) {
+          setRelayNoCar(null);
+          return;
+        }
+        const byRound: RelayNoCar = {};
+        for (const g of list) {
+          if (g.reason !== RELAY_REASON_NO_CAR || !g.round) continue;
+          if (g.location_id == null) continue;
+          const hs = (byRound[g.round] ??= []);
+          const h = hs.find((x) => x.location_id === g.location_id);
+          if (h) h.pax += g.pax ?? 0;
+          else
+            hs.push({
+              location_id: g.location_id,
+              name: g.hotel || g.pickup_location,
+              pax: g.pax ?? 0,
+            });
+        }
+        for (const hs of Object.values(byRound))
+          hs.sort((a, b) =>
+            a.name.localeCompare(b.name, "en", { sensitivity: "base" }),
+          );
+        setRelayNoCar({ date: noCarDate, byRound });
+      },
+      () => {
+        if (!gone) setRelayNoCar(null);
+      },
+    );
+    return () => {
+      gone = true;
+    };
+  }, [noCarDate, base]);
   /** 没客人的团展开没有：Step 1、Step 2 同一个开关。 */
   const [showEmpty, setShowEmpty] = useState(false);
   /** G82：点 Re-match 加 1，重新给 Private 车配订单。 */
@@ -512,9 +568,12 @@ export function DispatchView() {
             rows,
             L,
             shuttlePax?.date === L.day.run_date ? shuttlePax.byId : undefined,
+            relayNoCar?.date === L.day.run_date
+              ? relayNoCar.byRound
+              : undefined,
           )
         : null,
-    [rows, L, shuttlePax],
+    [rows, L, shuttlePax, relayNoCar],
   );
   // Step 1 团卡片（ManifestsPanel，另读 /api/dispatch/manifests，没有 color 字段）要和这里的团色条
   // 用同一个颜色：从 day.sections（有 color，G142）按 manifest_id 做一张表传过去。
@@ -608,6 +667,43 @@ export function DispatchView() {
     [prefillInner],
   );
 
+  /**
+   * 后台同步 Step 1 名单（见 load）。只认最后一次（连点换天时先发的可能后到）；跑完时已换到别的日子就不管。
+   * 结果 / 报错照旧交给 Step 1（syncInfo）；名单有变化才 syncTick + 1。
+   */
+  const syncSeqRef = useRef(0);
+  const runSync = useCallback(
+    async (date: string) => {
+      const seq = ++syncSeqRef.current;
+      let info: SyncInfo;
+      try {
+        info = { date, result: await syncManifests(date) };
+      } catch (e) {
+        if (isStatus(e, 401)) {
+          redirectToLogin();
+          return;
+        }
+        info = {
+          date,
+          error:
+            e instanceof TypeError
+              ? "Could not reach the server."
+              : describeError(e),
+        };
+      }
+      if (seq !== syncSeqRef.current) return;
+      if (stateRef.current.day?.run_date !== date) return;
+      setSyncInfo(info);
+      if (
+        info.result?.tours.some(
+          (t) => t.changed_any || t.added || t.removed || t.changed,
+        )
+      )
+        setSyncTick((t) => t + 1);
+    },
+    [redirectToLogin],
+  );
+
   const load = useCallback(
     async (
       date: string | null,
@@ -618,31 +714,10 @@ export function DispatchView() {
       try {
         const d = await fetchDispatchDay(date);
         if (seq !== loadSeqRef.current) return false;
-        // 打开页面 / 换天：先按主 Manifest 同步 Step 1 的名单（G35，Annie 2026-10-12），再让下面的卡片、
-        // 车下面的名单去读。保存 / 复制后的重读不同步（名单没动）。同步失败不挡排车，Step 1 写出来。
-        if (opts.sync && !viewOnlyRef.current) {
-          let info: SyncInfo;
-          try {
-            info = {
-              date: d.run_date,
-              result: await syncManifests(d.run_date),
-            };
-          } catch (e) {
-            if (isStatus(e, 401)) {
-              redirectToLogin();
-              return false;
-            }
-            info = {
-              date: d.run_date,
-              error:
-                e instanceof TypeError
-                  ? "Could not reach the server."
-                  : describeError(e),
-            };
-          }
-          if (seq !== loadSeqRef.current) return false;
-          setSyncInfo(info);
-        }
+        // 打开页面 / 换天：按主 Manifest 同步 Step 1 的名单（G35，Annie 2026-10-12）。保存 / 复制后的重读不同步（名单没动）。
+        // 提速（2026-11-05）：不再等同步跑完才画页面——先用已存的名单画出来，同步在后台跑（runSync），
+        // 名单真的变了再让卡片、车下面的名单重读。同步失败不挡排车，Step 1 照旧写出来。
+        if (opts.sync && !viewOnlyRef.current) void runSync(d.run_date);
         applyDispatchMeta(d.meta);
         setStale(false);
         setBlockedBy(null);
@@ -694,7 +769,7 @@ export function DispatchView() {
         return false;
       }
     },
-    [redirectToLogin],
+    [redirectToLogin, runSync],
   );
 
   const pull = useCallback(
@@ -782,7 +857,7 @@ export function DispatchView() {
     "This day has changes that are not saved yet. Leave without saving?",
   );
 
-  // Seat guests：换天、保存 / 重读（manifestVersion）、Step 1 Apply、挪车以后重读。读不到就不显示（不挡排车）。
+  // Seat guests：换天、保存 / 重读（manifestVersion）、Step 1 Apply、挪车、后台名单同步有变化（syncTick）以后重读。读不到就不显示（不挡排车）。
   const runDate = day?.run_date ?? null;
   useEffect(() => {
     if (!runDate) return;
@@ -797,7 +872,7 @@ export function DispatchView() {
         else setSeating(null);
       });
     return () => controller.abort();
-  }, [runDate, manifestVersion, seatVersion, redirectToLogin]);
+  }, [runDate, manifestVersion, seatVersion, syncTick, redirectToLogin]);
 
   // 名单（卡片）一到就补开，不等 CCL（Annie 2026-10-11）；CCL 预填、存好重读以后再补一遍。补开的空车不存。
   useEffect(() => {
@@ -1911,8 +1986,8 @@ export function DispatchView() {
                 key={day.run_date}
                 date={day.run_date}
                 colorByManifestId={colorByManifestId}
-                // 两个都只会变大：存好 / 重读、点过 Completed 都让卡片重读。
-                version={manifestVersion + doneTick}
+                // 三个都只会变大：存好 / 重读、点过 Completed、后台名单同步有变化（syncTick）都让卡片重读。
+                version={manifestVersion + doneTick + syncTick}
                 sync={syncInfo?.date === day.run_date ? syncInfo : null}
                 // 上传 Rezdy CSV 并 Apply 了：重读卡片和车下面的名单（同上）。
                 onUnauthorized={redirectToLogin}

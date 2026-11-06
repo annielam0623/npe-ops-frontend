@@ -1,4 +1,5 @@
 import { apiFetch } from "@/lib/api-client";
+import { shareRequest } from "@/lib/shared-request";
 import { rememberShiftTypeColors } from "@/lib/schedule-shift-colors";
 import { ApiError } from "@/types";
 import type {
@@ -333,5 +334,46 @@ export function sendScheduleChanges(
   return apiFetch<ScheduleSendChangesResult>(
     `/api/schedule/weeks/${weekStart}/employees/${employeeId}/send-changes`,
     { method: "POST" },
+  );
+}
+
+/**
+ * Dashboard 用的共用读法（页面提速，Annie 2026-11-05「改变速度的三步，动手」）：Today's team 和 Schedule 两块
+ * 都要设置、名单、这一周，原来各发一遍；现在 15 秒内共用一份（失败不留）。
+ * Staff Schedule 页本身要改完马上看到新数据，照旧用上面不共用的那几个。
+ */
+const DASHBOARD_SHARE_MS = 15_000;
+
+export function dashboardScheduleSettings(
+  signal?: AbortSignal,
+): Promise<ScheduleSettings> {
+  return shareRequest(
+    "dashboard:schedule-settings",
+    () => fetchScheduleSettings(),
+    DASHBOARD_SHARE_MS,
+    signal,
+  );
+}
+
+export function dashboardScheduleEmployees(
+  signal?: AbortSignal,
+): Promise<ScheduleEmployee[]> {
+  return shareRequest(
+    "dashboard:schedule-employees",
+    () => fetchScheduleEmployees(),
+    DASHBOARD_SHARE_MS,
+    signal,
+  );
+}
+
+export function dashboardScheduleWeek(
+  weekStart: string,
+  signal?: AbortSignal,
+): Promise<ScheduleWeek> {
+  return shareRequest(
+    `dashboard:schedule-week:${weekStart}`,
+    () => fetchScheduleWeek(weekStart),
+    DASHBOARD_SHARE_MS,
+    signal,
   );
 }

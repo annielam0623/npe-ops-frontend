@@ -342,23 +342,34 @@ export interface Analysis {
 }
 
 /**
- * Shuttle 产品从 Las Vegas 出发（临时版：Annie 2026-11-04「选产品名从vegas开始的shuttle，不提醒」；后端带 pickup_is_vegas 后改看上车点）。
- * 看 Rezdy 产品名：从 Vegas 出发的都写「Las Vegas to …」（One-way Shuttle: Las Vegas to Page, Arizona、
- * Las Vegas to Grand Canyon South Round-trip Shuttle…）；回 Vegas 的写「… to Las Vegas」，不算 Vegas 出发（照提醒）。认不出的当不是 ⇒ 照旧提醒（宁可多提醒）。
+ * Shuttle 客人要不要提醒选上车点：看订单上车点（Annie 2026-11-05「是要看他们的上车点，也就是出发的location，
+ * 只有这个location不属于vegas酒店，就要提醒」）。后端 G253 pickup_is_vegas：true（Vegas 酒店，如 TI）⇒ 不提醒；
+ * false（外地 shuttle 站）、null（空 / OFFICE / 对不上）、旧后端没这个键 ⇒ 提醒（宁多不漏）。
  */
-export function departsVegas(product: string | null | undefined): boolean {
-  return /\blas vegas to\b/i.test(product ?? "");
+export function needsShuttlePickup(g: { pickup_is_vegas?: boolean | null }): boolean {
+  return g.pickup_is_vegas !== true;
 }
 
 /** 右栏 Schedule check、顶部统计（同旧页面 render / renderRail 的口径）。 */
 /**
  * shuttlePax：团（manifest_id）→ 当天 Bus manifest 里要在 Shuttle 站上车的 Shuttle 客人数
- * （产品从 Las Vegas 出发的不算，不分 outbound / inbound，Annie 2026-11-04 临时版；别的照算）；没读到的团不提醒。
+ * （Shuttle 节里上车点不是 Vegas 酒店的，见 needsShuttlePickup）；没读到的团不提醒。
  */
+/**
+ * relayNoCar：轮次（relay / relay_2）→ relay-pull need_a_look 里「No relay car stops at this hotel in this round」的酒店
+ * （置顶 94，Annie「94 全按推荐，动手」：按已保存的排车算，只含这一轮有客人的酒店，TI 上车的不在里面）。
+ * 没给 = 读不到 / 后端没带 round ⇒ Schedule check 照旧按所有 Vegas 酒店算。
+ */
+export type RelayNoCar = Record<
+  string,
+  { location_id: number; name: string; pax: number }[]
+>;
+
 export function analyze(
   rows: DispatchRow[],
   L: Lookup,
   shuttlePax?: Record<number, number>,
+  relayNoCar?: RelayNoCar,
 ): Analysis {
   const day = L.day;
   const sectionKey = (s: { shift: string; manifest_id: number | null }) =>
@@ -417,20 +428,29 @@ export function analyze(
   const missingTitles: string[] = [];
   META.coverage_shifts.forEach((c, i) => {
     if (i > 0 && !byKey.get(c)?.vans) return;
-    const missing = activeLocs.filter((l) => !relayHotels[c].has(l.id));
-    if (!missing.length) return;
-    const title = `${missing.length} hotel${missing.length === 1 ? "" : "s"} with no ${covName(c)} vehicle`;
+    // 置顶 94：用后端那份清单（这一轮有客人、没车停的酒店，带人数「MGM (4)」）；页面上这一轮加了那家酒店（没存）先拿掉。
+    const names = relayNoCar
+      ? (relayNoCar[c] ?? [])
+          .filter((h) => !relayHotels[c].has(h.location_id))
+          .map((h) => `${h.name} (${h.pax})`)
+      : activeLocs
+          .filter((l) => !relayHotels[c].has(l.id))
+          .map((l) => l.name);
+    if (!names.length) return;
+    const title = `${names.length} hotel${names.length === 1 ? "" : "s"} with no ${covName(c)} vehicle`;
     missingTitles.push(title);
     issues.push({
       title,
-      detail: `Only ${covName(c)} counts here - each round is counted on its own, and the tours start from Treasure Island.`,
-      names: missing.map((l) => l.name),
+      detail: relayNoCar
+        ? "Only hotels with guests on this round's tours. Treasure Island is left out because the tours start there."
+        : `Only ${covName(c)} counts here - each round is counted on its own, and the tours start from Treasure Island.`,
+      names,
       namesKey: `missing:${c}`,
       sec: c,
     });
   });
 
-  // Shuttle 上车点（Annie 2026-10-31，preview BewNcepgfaJMDPDMvo2Pdz v3 样子 1 + Schedule check；11-04 起产品从 Las Vegas 出发的客人不算（临时版））：这个团当天有要提醒的 Shuttle 客人、
+  // Shuttle 上车点（Annie 2026-10-31，preview BewNcepgfaJMDPDMvo2Pdz v3 样子 1 + Schedule check；11-05 起上车点是 Vegas 酒店的客人不算，见 needsShuttlePickup）：这个团当天有要提醒的 Shuttle 客人、
   // 这个团哪台车都还没有 Shuttle 站（Pickup Locations 没勾 Tour bus 的点）时提醒；默认第一台车，在别的车选了也算（不拦）。
   // 后端没带 is_tour_bus 时分不出 Shuttle 站，不提醒。
   const shuttleAsk = new Map<number, number>();

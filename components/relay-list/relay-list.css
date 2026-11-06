@@ -1,9 +1,10 @@
 /* Relay list：A4（每张单自己的方向，置顶 73），照纸本 4796_001.pdf 第 9–13 页（Calibri 粗体、表头灰、酒店涂车色、换酒店空一行）。 */
+/* 纸张 / 边距 / 表头色来自版式设置（置顶 92）：--rl-pw / --rl-ph = 纸的宽 / 高，--rl-pad = 边距，--rl-th = 表头底色；没设 = A4、12mm × 11mm、#d9d9d9。 */
 .rl-sheet {
-  width: 210mm;
-  min-height: 297mm;
+  width: var(--rl-pw, 210mm);
+  min-height: var(--rl-ph, 297mm);
   margin: 0 auto 18px;
-  padding: 12mm 11mm;
+  padding: var(--rl-pad, 12mm 11mm);
   background: #fff;
   color: #111;
   box-shadow:
@@ -13,8 +14,8 @@
 }
 /* 横版（置顶 73）：屏幕上也按横版画，看到的就是打出来的。 */
 .rl-sheet[data-orient="landscape"] {
-  width: 297mm;
-  min-height: 210mm;
+  width: var(--rl-ph, 297mm);
+  min-height: var(--rl-pw, 210mm);
 }
 .rl-sheet table {
   border-collapse: collapse;
@@ -23,13 +24,14 @@
 .rl-sheet th {
   font-size: 10px;
   font-weight: 600;
-  background: #d9d9d9;
+  background: var(--rl-th, #d9d9d9);
   border: 1px solid #bbb;
   padding: 2px 4px;
 }
+/* 每天的起点字号（置顶 92 第 2 批）：--rl-car-* / --rl-sum-* = 车单 / 总表各种字的大小和粗细；没设 = 现在的。 */
 .rl-sheet td {
-  font-size: 15px;
-  font-weight: 700;
+  font-size: var(--rl-car-td, 15px);
+  font-weight: var(--rl-car-td-w, 700);
   border: 1px solid #c8c8c8;
   padding: 4px 6px;
   text-align: center;
@@ -41,14 +43,17 @@
   border-right: 0;
 }
 .rl-total td {
-  font-size: 12.5px;
+  font-size: var(--rl-sum-td, 12.5px);
+  font-weight: var(--rl-sum-td-w, 700);
   padding: 2px 5px;
 }
 .rl-total th {
-  font-size: 9px;
+  font-size: var(--rl-sum-th, 9px);
+  font-weight: var(--rl-sum-th-w, 600);
 }
 .rl-legend td {
-  font-size: 10.5px;
+  font-size: var(--rl-sum-legend, 10.5px);
+  font-weight: var(--rl-sum-legend-w, 700);
   padding: 2px 6px;
 }
 .rl-head {
@@ -57,13 +62,13 @@
   align-items: center;
   gap: 12px;
   padding: 6px 12px;
-  font-size: 24px;
-  font-weight: 700;
+  font-size: var(--rl-car-head, 24px);
+  font-weight: var(--rl-car-head-w, 700);
 }
 .rl-bar {
   text-align: center;
-  font-size: 18px;
-  font-weight: 700;
+  font-size: var(--rl-car-bar, 18px);
+  font-weight: var(--rl-car-bar-w, 700);
   padding: 5px;
 }
 
