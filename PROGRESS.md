@@ -1283,6 +1283,8 @@ D. 已完成、待从置顶移走：
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
 ### 99. G263 Farm out › Partners & rates 价格行（Adult / Child / Infant 下拉）（2026-11-06，c3 出 preview，49 转 Annie）
+- **Annie 答（原话）**：「Farm out：1. 同意A，但是不需要产品编码，因为是farm out，不需要在我们的系统里建产品编码，只要有产品名就好了，记录这一笔来往及将来付款；子项跟主项一样有3列成人/儿童/婴儿。 2 A  3 不需要勾产品  4 B 5A」⇒ 题 1 A（三列 Adult / Child / Infant，子项也是三列）但列表不列产品代码；题 2 A；题 3 子项不挂产品（只有名字 + 价格）；题 4 B 不提醒；题 5 A。题 6（How to use）、题 7（存价格重算）还没答；**还没「动手」**。
+- ⚠️ 子项不挂产品以后，结算不知道一张 farm out 单该用哪个子项的价 ⇒ 49 问 Annie 怎么定（推荐：在 Dispatch › Farm out guests 每张单上选子项，默认主项），同时问 4a / 2c 可行性和改动量（2c 现在的分支按产品代码配子项）。
 - preview：https://claude.ai/artifact/FCnzWr3MtKki8bxPfS1Yhg 。后端 2c 8e256f22 没上 main（迁移 v159）。推荐都 A。
 - 题 1 平时显示：A 列表加 Infant 列（Adult / Child / Infant 三列，没设灰「—」，有子项没主项价灰 N/A，子项后列产品代码）；B 合成一列 Prices 写一串。
 - 题 2 编辑价格行：A [Adult ▾][110.00] × + 灰绿「+ Add price」，已有票种在下拉里灰掉；B 不灰，存时报重复。
