@@ -1,6 +1,13 @@
 "use client";
 
-import { Fragment, useEffect, useRef, useState } from "react";
+import {
+  Fragment,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 import { MorningResults } from "@/components/morning-send/morning-results";
 import {
@@ -32,6 +39,7 @@ import {
   sendGuideNotice,
   sendRelayRound,
 } from "@/lib/dispatch-api";
+import type { CardNoteKind } from "@/lib/dispatch-api";
 import { LA_TIME_ZONE } from "@/lib/la-date";
 import { gsmLength, nonGsmChars } from "@/lib/sms-gsm";
 import { cn } from "@/lib/utils";
@@ -48,6 +56,7 @@ import {
   TH,
 } from "./legacy-styles";
 import { useRelayListOpener } from "./relay-list-open";
+import { CardNotesBox, useCardNotes } from "./card-notes";
 import { StepBox } from "./step-box";
 
 /** 两轮的键和按钮字；轮名和时间段由接口的 round_labels 给（后端 dispatch.SHIFTS，同旧页面）。 */
@@ -336,6 +345,8 @@ export function RelayPanel({
   onUnauthorized,
   onCopyFirstRound,
   onSave,
+  canEditNotes = false,
+  onNotesDirty,
 }: {
   date: string;
   /** Send 标签正显示着：第一次显示（以及显示着时重建）就自动列名单、取客人。 */
@@ -349,8 +360,35 @@ export function RelayPanel({
   onCopyFirstRound?: () => void;
   /** 存这一天（Relay list 前有没存的改动时先存）；存好返回 true。没有 = 只读，不问、直接打开已保存的。 */
   onSave?: () => Promise<boolean>;
+  /** G266 ②：有 dispatch.edit 或 dispatch.send 才能改 Notes，不然只看。 */
+  canEditNotes?: boolean;
+  /** G266 ②：两张卡的 Notes 有没有没存的改动（父组件拦换日期 / 离开）。 */
+  onNotesDirty?: (dirty: boolean) => void;
 }) {
   const [data, setData] = useState<RelayPull | null>(null);
+  // G266 ② 卡片 Notes：面板真显示出来才取；后端没上（404）/ partner（403）⇒ 不出。
+  const cardNotes = useCardNotes(date, active, onUnauthorized);
+  const notesDirtyRef = useRef<Record<string, boolean>>({});
+  const onNotesDirtyRef = useRef(onNotesDirty);
+  onNotesDirtyRef.current = onNotesDirty;
+  const reportNotesDirty = useCallback((card: CardNoteKind, d: boolean) => {
+    notesDirtyRef.current = { ...notesDirtyRef.current, [card]: d };
+    onNotesDirtyRef.current?.(
+      Object.values(notesDirtyRef.current).some(Boolean),
+    );
+  }, []);
+  const notesFor = (card: CardNoteKind) =>
+    cardNotes.state.kind === "ready" ? (
+      <CardNotesBox
+        date={date}
+        card={card}
+        note={cardNotes.state.data[card]}
+        canEdit={canEditNotes}
+        onSaved={(n) => cardNotes.replace(card, n)}
+        onDirty={reportNotesDirty}
+        onUnauthorized={onUnauthorized}
+      />
+    ) : null;
   const [pulling, setPulling] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<Record<string, RoundResult>>({});
@@ -810,6 +848,16 @@ export function RelayPanel({
                 </li>
               </>
             ) : null}
+            {/* G266 ② 题 5 第 9 条（并进 2e 的几句）：后端带了 Notes 才出。 */}
+            {cardNotes.state.kind === "ready" ? (
+              <li data-howto-notes>
+                Each table has a Notes box for the staff working this day.
+                Drivers and guides never see it. Notes belong to the date at the
+                top of the page. Click Save under the box to keep it; to remove
+                a note, clear the box and click Save. Every change is kept in
+                the Action Log.
+              </li>
+            ) : null}
           </ol>
         </details>
 
@@ -917,6 +965,7 @@ export function RelayPanel({
                 No drivers on the schedule for this day.
               </p>
             )}
+            {notesFor("driver")}
           </Box>
         ) : null}
 
@@ -927,6 +976,7 @@ export function RelayPanel({
           dirty={dirty}
           onUnauthorized={onUnauthorized}
           onLoaded={setGuideHint}
+          notes={notesFor("guide")}
         />
       </StepBox>
 
@@ -1399,8 +1449,11 @@ function GuideBox({
   dirty,
   onUnauthorized,
   onLoaded,
+  notes,
 }: {
   date: string;
+  /** G266 ②：卡片最下面的 Notes（父组件给；没有 = 不出）。 */
+  notes?: ReactNode;
   /** 父组件每列一次名单（打开 Send、↻ Refresh）就 +1：0 = 还没列过。 */
   listKey: number;
   disabled: boolean;
@@ -1727,6 +1780,7 @@ function GuideBox({
         ) : (
           <p className={RP_EMPTY}>No guides on the schedule for this day.</p>
         )}
+        {notes}
       </Box>
       {confirm ? (
         <ConfirmDialog

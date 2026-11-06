@@ -599,6 +599,8 @@ export function DispatchView() {
   const unsaved = countChanges(base, withoutAutoWindows(rows)) > 0;
   /** staff 改了、还没存好：离开要问、标签上写 Saving。 */
   const pendingSave = userEdited && unsaved;
+  /** G266 ②：Send 标签两张卡的 Notes 有没存的改动。 */
+  const [notesDirty, setNotesDirty] = useState(false);
 
   // 同一天同时只能一个人编辑（后端 G71，Annie 2026-10-15 看过预览）。
   /** 占的时候 409（别人在改）的原话；null = 看 day.edit_lock。 */
@@ -852,9 +854,12 @@ export function DispatchView() {
   }, [load, maybePrefill, pull, canSend]);
 
   // 改了还没存好时离开先问：关标签 / 刷新、站内链接（侧栏、Open manifest）、浏览器后退 / 前进。
+  // G266 ②：卡片 Notes 没存也拦（同一时刻只能挂一个哨兵，合在一起）。
   useLeaveGuard(
-    pendingSave,
-    "This day has changes that are not saved yet. Leave without saving?",
+    pendingSave || notesDirty,
+    pendingSave
+      ? "This day has changes that are not saved yet. Leave without saving?"
+      : "Your notes are not saved yet. Leave without saving?",
   );
 
   // Seat guests：换天、保存 / 重读（manifestVersion）、Step 1 Apply、挪车、后台名单同步有变化（syncTick）以后重读。读不到就不显示（不挡排车）。
@@ -1137,6 +1142,14 @@ export function DispatchView() {
   function requestGo(date: string) {
     // 日期框边打字边触发 change（年份打到一半是 0202-…）：没打完的年份不跳。
     if (!day || !isYmd(date) || date < "2000-01-01" || date === day.run_date)
+      return;
+    // G266 ②：Notes 没存 ⇒ 先问（换天会丢）。
+    if (
+      notesDirty &&
+      !window.confirm(
+        "Your notes are not saved yet. Change the date without saving?",
+      )
+    )
       return;
     if (pendingSave) setPending({ kind: "leave", to: date });
     else void goTo(date);
@@ -2925,6 +2938,9 @@ export function DispatchView() {
                   }
                   // Relay list 前有没存的改动：先存（只读的人不存，直接看已保存的）。
                   onSave={viewOnly ? undefined : () => saveRef.current()}
+                  // G266 ②：有 dispatch.edit 或 dispatch.send 才能改 Notes。
+                  canEditNotes={(!viewOnly || canSend) && !perms.isPartner}
+                  onNotesDirty={setNotesDirty}
                 />
               </div>
             ) : null}

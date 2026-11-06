@@ -604,3 +604,39 @@ export function moveSeating(
     body: { guest_ids: guestIds, bus_label: busLabel ?? "" },
   });
 }
+
+/**
+ * G266 ② 卡片 Notes（Annie「G266 Dispatch同意推荐，动手」，preview X7ptbfdS5zbqgqUNb8fSmg 题 4 A；
+ * 后端 2e task/dispatch-card-notes 82710ee7，迁移 v160）：Send to driver / Send to guide 每张卡每天一份，只给 staff 看，
+ * 从来不发给司机 / 导游；改动记 Action Log「Driver notes」/「Guide notes」。partner / 只看的人 403。
+ */
+export interface CardNote {
+  text: string;
+  updated_at: string | null;
+  updated_by: string | null;
+}
+export type CardNoteKind = "driver" | "guide";
+export interface CardNotes {
+  run_date: string;
+  driver: CardNote;
+  guide: CardNote;
+}
+
+export function fetchCardNotes(date: string): Promise<CardNotes> {
+  return apiFetch<CardNotes>(`${API}/card-notes`, {
+    cache: "no-store",
+    query: { date },
+  });
+}
+
+/** 存一张卡的 Notes（≤2000 字；"" = 清空）。400 = 一句英文原话。 */
+export function saveCardNote(
+  date: string,
+  card: CardNoteKind,
+  text: string,
+): Promise<CardNote> {
+  return apiFetch<CardNote>(`${API}/card-notes`, {
+    method: "PUT",
+    body: { date, card, text },
+  });
+}

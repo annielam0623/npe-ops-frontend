@@ -5,7 +5,7 @@ const staffPerm = require("./staff-perm-mock");
 const DRIVER_PAGE_OFF = "Driver page is off. Turn it on in Page visibility before sending.";
 const GUIDE_PAGE_OFF = "Guide page is off. Turn it on in Page visibility before sending.";
 const GUIDE_EXTRA_MAX = 60;
-const ctl = { marks: false, noticeMarks: {}, completed: false, saveErr: "", fail401: false, pullStatus: "nothing", dayDelay: 0, failDay: false, altMeta: false, noMeta: false, relaySent: [], relayExtra: false, relayHotels: false, relayLater: [], relayRace: [], relayGone: [], relay409: false, relay502: false, driverFail: false, saveDelay: 0, driverAlt: false, relayBlocked: false, relayOnlyBad: false, relayBlockLate: false, foDraft: false, driverAllOk: false, emptyHoover: false,
+const ctl = { cardNotes: null, notesFail: "", marks: false, noticeMarks: {}, completed: false, saveErr: "", fail401: false, pullStatus: "nothing", dayDelay: 0, failDay: false, altMeta: false, noMeta: false, relaySent: [], relayExtra: false, relayHotels: false, relayLater: [], relayRace: [], relayGone: [], relay409: false, relay502: false, driverFail: false, saveDelay: 0, driverAlt: false, relayBlocked: false, relayOnlyBad: false, relayBlockLate: false, foDraft: false, driverAllOk: false, emptyHoover: false,
   // G118 tour_car 轮（Hoover Dam）：tourCar = 这个团当天排了 bus_tour 车、有客人；tourCarNoCar = 排了团但当天一台 bus_tour 车都没排（整块挡住）；
   // tourCarBlocked = 排了车但没司机（这台车挡住，客人进 blocked_cars）。
   // tourCarB2 = 后端已补 car.tour_name / bus_label（B2），并且这个团排了两台车（Bus A / Bus B）。
@@ -525,6 +525,18 @@ http.createServer(async (req, res) => {
       results: sentNow.map((o) => ({ order: `CHD${o}`, name: "ZZ Test Relay", phone: "+15550000009", pickup_time: "6:15 AM", sms_status: "sent:SM1", email_status: "", skipped: false })) });
   }
   // G215（后端 49c400a）：ctl.driverPage = null（默认，旧后端不带字段）| true | false（司机页开关关着，带后端原文）；ctl.driver400 = 发送时后端拒发。
+  // G266 ② 卡片 Notes（后端 2e task/dispatch-card-notes 82710ee7）：ctl.cardNotes = null（默认，后端没上 ⇒ 404）| {driver, guide}；
+  // ctl.notesFail = PUT 400 的原话。
+  if (p === "/api/dispatch/card-notes") {
+    if (!ctl.cardNotes) return send(res, 404, { detail: "Not Found" });
+    if (req.method === "GET") return send(res, 200, { run_date: q.date, ...ctl.cardNotes });
+    const b = JSON.parse(await readRaw(req)); entry.body = b;
+    if (ctl.notesFail) return send(res, 400, { detail: ctl.notesFail });
+    if (typeof b.text !== "string" || b.text.length > 2000) return send(res, 400, { detail: "Notes can be up to 2000 characters." });
+    const note = { text: b.text, updated_at: "2026-10-05T04:58:00+00:00", updated_by: "Annie" };
+    ctl.cardNotes = { ...ctl.cardNotes, [b.card]: note };
+    return send(res, 200, note);
+  }
   if (p === "/api/dispatch/driver-notice") return send(res, 200, { run_date: q.date, ...(ctl.driverPage == null ? {} : { page_open: ctl.driverPage, page_off_text: DRIVER_PAGE_OFF }), text: `NPE: Your manifest for Mon, Oct 5 is ready. Log in to see your bus and guests: https://confirm.nationalparkexpress.com/driver?date=${q.date}`, last_sent: ctl.driverSentAt ? { at: "2026-10-04T22:00:00+00:00", by: "annie", label: "Texted 1 driver" } : null,
     people: [{ key: "hr:1", name: "FREDDY", phone: "+17025550101", can_send: true, why: "", cars: [{ shift: "relay", van: "768", tour: null }] },
              // driverAllOk：GIA 也能发（测收起状态的提示行显示 Last sent，而不是橙字）。

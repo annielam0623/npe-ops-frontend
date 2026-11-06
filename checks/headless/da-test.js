@@ -2490,6 +2490,64 @@ async function run() {
     await ctl({ marks: false, noticeMarks: {}, guideFail: false, driverAllOk: false });
   }
 
+  // ── G266 ② 卡片 Notes（Annie「G266 Dispatch同意推荐，动手」「我要的在卡片下方写notes的地方呢」，preview 题 4 A）──
+  {
+    const dp = "document.querySelector('section[aria-label=\"Send to drivers & guides\"]')";
+    const box = (k) => `${dp}.querySelector('[data-card-notes=${k}]')`;
+    const isNotesPut = (e) => e.path === "/api/dispatch/card-notes" && e.method === "PUT";
+    const openSend = async () => {
+      await goto(`${APP}/dispatch?date=2026-10-05&tab=send`);
+      await waitFor("document.querySelector('.vrow')", 60000);
+      await helpers();
+      await waitFor(`${dp}?.querySelector('[aria-label="Send to guide"] tbody tr')`, 30000);
+      await sleep(400);
+    };
+    // 后端没上（404）：不出 Notes、没有报错条
+    await ctl({ cardNotes: null, notesFail: "", driverAllOk: true });
+    await openSend();
+    check("G266 ② 后端没上（404）：两张卡都没有 Notes、How to use 没有 Notes 那条", await evaluate(`return !${box("driver")} && !${box("guide")} && !document.querySelector('[data-howto-notes]');`));
+    // 有 Notes：司机那张已有一段，导游那张空
+    const driverText = "PAM covers 2nd Round for FREDDY today - call him if the text bounces.";
+    await ctl({ cardNotes: { driver: { text: driverText, updated_at: "2026-10-05T04:58:00+00:00", updated_by: "Annie" }, guide: { text: "", updated_at: null, updated_by: null } } });
+    await openSend();
+    await waitFor(box("guide"));
+    check("G266 ②：两张卡最下面各一个 Notes（标题 + 灰字 For staff only. Drivers / Guides never see this.）", await evaluate(`const d = ${box("driver")}, g = ${box("guide")}; return d.closest('[aria-label="Send to driver"]') && g.closest('[aria-label="Send to guide"]') && d.textContent.includes('Notes') && d.textContent.includes('For staff only. Drivers never see this.') && g.textContent.includes('For staff only. Guides never see this.');`));
+    check("G266 ②：提示字 Notes about today's texts to drivers / …to guides", await evaluate(`return ${box("driver")}.querySelector('textarea').placeholder === "Notes about today's texts to drivers" && ${box("guide")}.querySelector('textarea').placeholder === "Notes about today's texts to guides";`));
+    check("G266 ②：司机那张带原文、Last edited by Annie on Oct 4, 9:58 PM、69 / 2000、Save 灰着（没改）", await evaluate(`const d = ${box("driver")}; return d.querySelector('textarea').value === ${JSON.stringify(driverText)} && d.querySelector('[data-notes-edited]').textContent.replace(/\\s/g, ' ') === 'Last edited by Annie on Oct 4, 9:58 PM' && d.querySelector('[data-notes-count]').textContent.replace(/\\s+/g, ' ') === '69 / 2000' && d.querySelector('[data-notes-save]').disabled;`), await evaluate(`return ${box("driver")}.textContent;`));
+    check("G266 ②：导游那张空的、没有 Last edited、0 / 2000、框 maxlength 2000", await evaluate(`const g = ${box("guide")}; return g.querySelector('textarea').value === '' && !g.querySelector('[data-notes-edited]') && g.querySelector('[data-notes-count]').textContent.replace(/\\s+/g, ' ') === '0 / 2000' && g.querySelector('textarea').maxLength === 2000;`));
+    check("G266 ②：How to use 有第 9 条（原文）", await evaluate("return document.querySelector('[data-howto-notes]')?.textContent.replace(/\\s+/g, ' ').trim() === 'Each table has a Notes box for the staff working this day. Drivers and guides never see it. Notes belong to the date at the top of the page. Click Save under the box to keep it; to remove a note, clear the box and click Save. Every change is kept in the Action Log.';"));
+    // 打字 ⇒ Save 能点；换日期先问，Cancel 留下
+    await evaluate(`const t = ${box("guide")}.querySelector('textarea'); Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(t, 'Meet guides at Door 3 by 6:15.'); t.dispatchEvent(new Event('input', { bubbles: true }));`);
+    await sleep(200);
+    check("G266 ②：打了字 ⇒ 导游那张 Save 能点、计数 30 / 2000、还没发请求", await evaluate(`return !${box("guide")}.querySelector('[data-notes-save]').disabled && ${box("guide")}.querySelector('[data-notes-count]').textContent.replace(/\\s+/g, ' ') === '30 / 2000';`));
+    await evaluate("window.__asked = 0; window.confirm = () => { window.__asked++; return false; };");
+    await evaluate("document.querySelector('button[aria-label=\"Next day\"]').click();");
+    await sleep(500);
+    check("G266 ②：没存就换日期 ⇒ 先问，按取消留在这一天、字还在", (await evaluate("return window.__asked;")) === 1 && (await evaluate("return location.search;")).includes("2026-10-05") && (await evaluate(`return ${box("guide")}.querySelector('textarea').value;`)) === "Meet guides at Door 3 by 6:15.");
+    // Save
+    let b = (await mockLog()).length;
+    await evaluate(`${box("guide")}.querySelector('[data-notes-save]').click();`);
+    await waitFor(`${box("guide")}.querySelector('[role=status]')?.textContent === 'Saved.'`);
+    {
+      const put = (await since(b, isNotesPut))[0]?.body;
+      check("G266 ②：Save ⇒ PUT {date 2026-10-05, card guide, text}、绿字 Saved.、出 Last edited、Save 又灰着", JSON.stringify(put) === JSON.stringify({ date: "2026-10-05", card: "guide", text: "Meet guides at Door 3 by 6:15." }) && (await evaluate(`const g = ${box("guide")}; return g.querySelector('[role=status]').className.includes('3B6D11') && g.querySelector('[data-notes-edited]').textContent.includes('Last edited by Annie') && g.querySelector('[data-notes-save]').disabled;`)), JSON.stringify(put));
+    }
+    // 400 ⇒ 红字原话
+    await ctl({ notesFail: "Notes can be up to 2000 characters." });
+    await evaluate(`const t = ${box("driver")}.querySelector('textarea'); Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(t, ''); t.dispatchEvent(new Event('input', { bubbles: true }));`);
+    await sleep(150);
+    await evaluate(`${box("driver")}.querySelector('[data-notes-save]').click();`);
+    await waitFor(`${box("driver")}.querySelector('[role=alert]')`);
+    check("G266 ②：存不上（400）⇒ 红字照原话、Save 还能点", await evaluate(`const d = ${box("driver")}; const a = d.querySelector('[role=alert]'); return a.textContent === 'Notes can be up to 2000 characters.' && a.className.includes('A32D2D') && !d.querySelector('[data-notes-save]').disabled;`));
+    // 清空再存 ⇒ PUT text ""
+    await ctl({ notesFail: "" });
+    b = (await mockLog()).length;
+    await evaluate(`${box("driver")}.querySelector('[data-notes-save]').click();`);
+    await waitFor(`${box("driver")}.querySelector('[role=status]')?.textContent === 'Saved.'`);
+    check("G266 ②：清空再 Save ⇒ PUT text \"\"（删掉）", (await since(b, isNotesPut))[0]?.body?.text === "");
+    await ctl({ cardNotes: null, notesFail: "", driverAllOk: false });
+  }
+
   // 401
   await ctl({ fail401: true });
   await goto(`${APP}/dispatch`);
