@@ -22,6 +22,8 @@
 - **Annie：「今天上」**（G180）⇒ 49 已转 4a：请把 v154 完整 SQL 和执行方式发给 Annie，执行后复审合 main 发 SHA。
 - 派 **`npe-ops-frontend-c3`[a398e9]**：G180 ① wt-g180 合最新 main 重跑 tt / nav / tour / mt / os / dr + tsc / eslint / build，推分支不合；② 出开关位置 preview（A Tour Tracking 页顶 SA 三档下拉（推荐）/ B Settings › Notifications 一行），链接 + 每题原文发 49；③ 后端上 main 后核字段 → 合 main。
   - 4a 发 **G259 + G258 Auto Send 接口形状**（后端 0f，task/auto-send-limits，还没提交）：GET 带 ticket_types、tour_templates；tour.max_per_batch（默认 100）、tour.template_regular / template_last_minute；tickets.max_per_batch（默认 150）、lead_groups、daily_report；summary_time / summary_emails / cfm_alert_emails 不再用（9:00 汇总和每批 Cfm # 邮件停）；Last Minute 每个整点扫、最后 00:00、短信 + 邮件；runs 加 kind=last_minute。⇒ **派 c3**（worktree wt-shuttle，接 8614fb03）：核键名、加两行模板下拉、校验、Recent runs 文字、as 检查，推分支不合；后端 SHA 到了核字段再合，带截图。G180 SHA 先到就先做 G180。
+  - ✅ **G258 + G259 Auto Send 后端上 main**（4a 转：合并 f361134c，分支 d7477276，关包 667d5ac8）。形状同前。⇒ 派 c3 核字段、合 main（4ec9a4ee），文字暂照后端现状「12:00 AM on the tour day」，等 Annie 对 11:59 PM「动手」再前后端一起改。4a 建议：Daily report 默认关、每批 Cfm # 邮件停了 ⇒ 没开报告前 Cfm # 不符只在 Manifests 红标，建议 Ticket reminders 开关旁加提示「turn on Daily report too」——前端没做，49 问 Annie。
+  - ✅ **G266 ① 后端上 main**（4a 转：合并 60963f35，分支 task/dispatch-sent-marks 9c5d52a9，关包 3795576e）：driver-notice / guide-notice 的 people[] 加 sent_at / sent_by / failed_at（没有 failed_error）。已知不挡：上线前的发送记录按名字配，同名两人共用标记（CR-1）。2e 的 How to use 稿（按页面真按钮名改）：「Each driver shows "Sent 9:53 PM by Annie" once a text went out to them for this day, or "Not sent".」「Only the people you ticked and texted are marked Sent. To text someone you missed, tick only that person and press Send to driver.」「If a text failed, that person stays "Not sent". Check their mobile number in Human Resource, then send to them again.」「The Send to guide card works the same way.」② 卡片 Notes（迁移 v160）还没上。⇒ 派 c3 先出 preview（G180 / Auto Send SHA 到了优先）。
   - ✅ **92 / G264 Relay list 照版式设定读 后端上 main**（4a 转：内容 f76888fc、合并 41c6d36f、关包 97bba481）：Relay ⬇ Excel 照 print_layout:relay_list（酒店格色 / 关、列标题色 / 关、Text 起点字号 / 粗细、A4 / Letter、边距；当天 Aa 叠在上面）；没设过 ⇒ Excel 跟以前逐格一样。前端不用改。relay-pull print_extras 节色值改得跟 Bus Manifest 同规则，但前端页面和司机页都没用这个值，看不出变化。Annie 验收：Relay list「⚙ Colours, text & page」改颜色 / 纸张 / 字号 → Save → ⬇ Excel 跟屏幕一样。
   - c3 回：① 完成，task/tracking-sync-gray 合 main a3ee25b1 无冲突，推 **2a1d090c**（没合）；tt 157、nav 39、tour 65、mt 253、os 85、dr 89，tsc / eslint 0 错，build 过；进程已关。② preview 7DDLeUsSSczzovwb2pncrb 三题已转 Annie（置顶 95）。等 Annie 答 + 「动手」再写开关；等后端 SHA 再合。
 - 4a 发来接口形状（定稿草稿，都还没上 main）：
@@ -1277,6 +1279,21 @@ D. 已完成、待从置顶移走：
 - 需要后端：user_prefs 白名单加 `manifest_cols_admin_fee`（这个标签的 Columns 才存得住；没有时页面写「Could not load your saved columns」并用默认列）。
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
+
+### 97. G266 Dispatch › Send to driver / guide：每人发过没 + 卡片 Notes（2026-11-06，c3 出 preview，49 转 Annie）
+- preview：https://claude.ai/artifact/X7ptbfdS5zbqgqUNb8fSmg （真页面 + 画上去的新东西；现在 / 推荐 / 手机 / 另一种）。推荐都 A。① 后端已上 main 60963f35；② Notes 等迁移 v160。
+- 题 1 发过没放哪：A 名字后加「Sent」列，发过整行淡黄 + 标签「Sent by Annie on Oct 5, 9:53 PM」，没发灰字「Not sent」（照全站发送格式）；B 最后一列绿字「Sent 9:53 PM by Annie」，不加淡黄。
+- 题 2 发失败的：A 照写 Not sent；B 加红字「· Failed 10:02 PM」。
+- 题 3 发过的默认勾不勾：A 照现在（司机开 Morning Relay 车的默认勾、能发的导游全勾）；B 当天发过的默认不勾。
+- 题 4 Notes：A 每张卡最下面，标题 Notes + 灰字「For staff only. Drivers never see this.」/「Guides never see this.」，提示字「Notes about today's texts to drivers」/「…to guides」，右下「Last edited by Annie on Oct 5, 9:58 PM · 69 / 2000」+ 蓝 Save，绿字 Saved. / 红字失败，没存离开要拦；B 放卡片抬头下面。
+- 题 5 How to use 第 6–9 条原文见 c3 回复（49 已原样转 Annie）。
+- 不问照做：只算当天、只算发成功；发完重读；旧后端照现在；同名共用标记（后端已知）。
+
+### 96. Auto Send How to use 两处文字（2026-11-06，c3 写，没经过 preview，49 转 Annie）
+- **Annie（原话，回题 2）：「那就改成头天11：59pm最后一次扫描」** ⇒ Last Minute 最后一次扫描从团当天 00:00 改到团期前一天 11:59 PM，团当天什么都不发，第 2 条原句「Nothing goes out on the tour day.」照旧成立（题 2 就不用改了）。要跟着改：后端扫描时间（0f）；前端卡片说明和 How to use 第 3 条里「the last check is at 12:00 AM on the tour day」⇒「the last check is at 11:59 PM the day before the tour」。49 已问 Annie 是否现在动手；题 1（第 3 条其余文字）还没答。
+- 前端 task/auto-send-limits 4ec9a4ee（c3，as 97/97、nav 39，tsc / eslint / build 过，没合，等后端 G259 / G258 SHA）；截图 https://claude.ai/artifact/PWJdBedTYSeTC51ZmxhYZZ 。
+- 题 1：新加的 How to use 第 3 条（后端带 tour_templates 才出），原文：「Message template: orders placed before the Last Minute cutoff get the template picked for "Orders before the cutoff". Orders placed after the cutoff the day before the tour are checked every hour on the hour and sent by SMS and email with the template picked for "Orders after the cutoff"; the last check is at 12:00 AM on the tour day. Max per batch doesn't apply to them, and orders already sent by hand are not sent again.」A（推荐）照用；B Annie 改字。
+- 题 2：第 2 条现有原句「Tour confirmations go out at each send time to bus tour orders from the set number of days before the tour up to the day before. Nothing goes out on the tour day.」跟 Last Minute 团当天 00:00 那次扫描矛盾。A（推荐）有 Last Minute 时末句改成「Nothing goes out on the tour day, except the Last Minute check at 12:00 AM (see below).」；B 照旧不改。
 
 ### 95. G180 三档开关放哪、怎么存、界面文字（2026-11-06，c3 出 preview，49 转 Annie）
 - preview：https://claude.ai/artifact/7DDLeUsSSczzovwb2pncrb（模拟数据，可切 A / B / 员工看到的样子）。推荐都选 A。
