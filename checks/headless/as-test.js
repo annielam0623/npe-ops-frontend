@@ -436,6 +436,72 @@ async function run() {
   check("每日报告发不出：红字 · Daily report could not be emailed", r?.[3] === "5 sent · 0 not ready (no Cfm #) · Daily report could not be emailed" && (await evaluate("return $runRed('tickets:2026-11-03T17:00');")), JSON.stringify(r));
   r = await evaluate("return $run('tour:2026-11-03T07:00');");
   check("Tour 上限挤到下一批：100 sent · 1 skipped · 7 left for the next batch", r?.[3] === "100 sent · 1 skipped · 7 left for the next batch", JSON.stringify(r));
+  r = await evaluate("return $run('tour:2026-11-02T18:00');");
+  check("置顶 98：Tour 那批带每日报告：· Daily report emailed (2 not sent)", r?.[3] === "50 sent · 0 skipped · Daily report emailed (2 not sent)", JSON.stringify(r));
+  check("置顶 98 后端还没上（没有 after_time / tour.daily_report）：门票照旧 Sends after the last batch、没有时间下拉、Tour 没有每日报告", await evaluate("return !$q('#tickets-report-time') && $q('[data-daily-report=tickets]').textContent.includes('Sends after the last batch of the day') && !$q('[data-daily-report=tour]') && !$q('[data-howto-tour-report]') && !$q('[data-howto-report-time]');"));
+
+  // ── 置顶 98：两张卡都有 Daily report、时间可选（Annie「同意推荐，动手」，preview 7jq2UBosVHwRR9drFUjEdX 全 A）──
+  await ctl({ v3: true, r98: true });
+  await openPage();
+  await waitFor("$q('#tour-report-time')");
+  await evaluate(`window.$pick = (el, v) => { Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(el, v); el.dispatchEvent(new Event('change', { bubbles: true })); };`);
+  const opts = (id) => evaluate(`return [...$q('#${id}').options].map(o => o.textContent).join('|');`);
+  check("置顶 98：门票「Send the report after」下拉 = 门票的 Send times，最后一个写 (last batch)，默认 5:00 PM", (await opts("tickets-report-time")) === "9:00 AM|12:00 PM|5:00 PM (last batch)" && (await evaluate("return $q('#tickets-report-time').value;")) === "17:00", await opts("tickets-report-time"));
+  check("置顶 98：Tour 卡新的 Daily report：开关 OFF、下拉 7:00 AM|6:00 PM (last batch) 默认 6:00 PM、收件人 reservations@", (await opts("tour-report-time")) === "7:00 AM|6:00 PM (last batch)" && (await evaluate("const d = $q('[data-daily-report=tour]'); return $q('#tour-report-time').value === '18:00' && $switch(d).getAttribute('aria-checked') === 'false' && $emails(d) === 'reservations@nationalparkexpress.com' && d.textContent.includes(\"the bus tour orders that should have had a confirmation by then but didn't\");")));
+  check("置顶 98：默认最后一批时没有灰字", await evaluate("return !$q('[data-report-early]') && !$q('[data-report-fallback]');"));
+  check("置顶 98：How to use 换成新的门票 Daily report 条、加 Tour Daily report 条", await evaluate("return $q('[data-howto-report-time]')?.textContent.includes('It goes out after the batch you pick in Send the report after') && $q('[data-howto-tour-report]')?.textContent.includes('Shuttle and return legs are not listed');"));
+
+  await evaluate("$pick($q('#tickets-report-time'), '12:00');");
+  check("置顶 98：门票选 12:00 PM ⇒ 灰字原文、Save 能点（暂存）", (await evaluate("return $q('[data-daily-report=tickets] [data-report-early]')?.textContent.replace(/\\s+/g, ' ').trim();")) === "Only batches up to 12:00 PM are in the report. The email says 5:00 PM is not included." && (await evaluate("return !$save($tix()).disabled;")), await evaluate("return $q('[data-report-early]')?.textContent;"));
+  from = (await mockLog()).length;
+  await evaluate("$save($tix()).click();");
+  await waitFor("$status($tix()) === 'Saved.'");
+  {
+    const b = (await since(from, isPut))[0]?.body;
+    check("置顶 98：存门票 ⇒ PUT tickets.daily_report {enabled false, emails antelope@, after_time 12:00}", JSON.stringify(b?.tickets?.daily_report) === JSON.stringify({ enabled: false, emails: ["antelope@nationalparkexpress.com"], after_time: "12:00" }), JSON.stringify(b?.tickets?.daily_report));
+  }
+  // 把选中的 12:00 从 Send times 删掉 ⇒ 下拉回到最后一批 + 灰字
+  await evaluate("$tix().querySelector('button[aria-label=\"Remove 12:00\"]').click();");
+  await waitFor("$q('[data-report-fallback]')");
+  check("置顶 98：删掉选中的 12:00 ⇒ 下拉回到 5:00 PM (last batch)、灰字原文", (await evaluate("return $q('#tickets-report-time').value;")) === "17:00" && (await evaluate("return $q('[data-report-fallback]').textContent.replace(/\\s+/g, ' ').trim();")) === "The time you picked is no longer a send time, so the report goes after the last batch.");
+  from = (await mockLog()).length;
+  await evaluate("$save($tix()).click();");
+  await waitFor("$status($tix()) === 'Saved.'");
+  {
+    const t = (await since(from, isPut))[0]?.body?.tickets;
+    check("置顶 98：存 ⇒ PUT times 09:00,17:00、after_time 17:00；存好后灰字没了", JSON.stringify(t?.times) === JSON.stringify(["09:00", "17:00"]) && t?.daily_report?.after_time === "17:00" && (await evaluate("return !$q('[data-report-fallback]') && !$q('[data-report-early]');")), JSON.stringify(t));
+  }
+
+  // Tour 卡：选早一批 + 存
+  await evaluate("$pick($q('#tour-report-time'), '07:00');");
+  check("置顶 98：Tour 选 7:00 AM ⇒ 灰字「…up to 7:00 AM… 6:00 PM is not included.」", (await evaluate("return $q('[data-daily-report=tour] [data-report-early]')?.textContent.replace(/\\s+/g, ' ').trim();")) === "Only batches up to 7:00 AM are in the report. The email says 6:00 PM is not included.");
+  from = (await mockLog()).length;
+  await evaluate("$save($tour()).click();");
+  await waitFor("$status($tour()) === 'Saved.'");
+  {
+    const t = (await since(from, isPut))[0]?.body?.tour;
+    check("置顶 98：存 Tour ⇒ PUT tour.daily_report {enabled false, emails reservations@, after_time 07:00}，last_minute_cutoff 照带", JSON.stringify(t?.daily_report) === JSON.stringify({ enabled: false, emails: ["reservations@nationalparkexpress.com"], after_time: "07:00" }) && t?.last_minute_cutoff === "15:00", JSON.stringify(t));
+  }
+  // Tour 报告收件人清空 ⇒ 前端挡
+  await evaluate("$q('[data-daily-report=tour]').querySelector('button[aria-label=\"Remove reservations@nationalparkexpress.com\"]').click();");
+  from = (await mockLog()).length;
+  await evaluate("$save($tour()).click();");
+  await waitFor("$status($tour()).startsWith('Send the daily report to')");
+  check("置顶 98：Tour 报告没有收件人 ⇒ 红字、不发 PUT", (await evaluate("return $status($tour());")) === "Send the daily report to: add 1 to 10 email addresses." && (await since(from, isPut)).length === 0);
+  // Tour 报告开关：点了先确认、确认就存
+  await openPage();
+  await waitFor("$q('[data-daily-report=tour]')");
+  await evaluate("$switch($q('[data-daily-report=tour]')).click();");
+  await waitFor("$dialog()");
+  from = (await mockLog()).length;
+  await evaluate("$btn('Turn on', $dialog()).click();");
+  await waitFor("$switch($q('[data-daily-report=tour]')).getAttribute('aria-checked') === 'true'");
+  {
+    const t = (await since(from, isPut))[0]?.body?.tour;
+    check("置顶 98：Tour 报告开关 Turn on ⇒ PUT tour.daily_report.enabled true、其余照已存的", t?.daily_report?.enabled === true && t?.daily_report?.after_time === "07:00" && t?.daily_report?.emails?.[0] === "reservations@nationalparkexpress.com", JSON.stringify(t?.daily_report));
+  }
+  await ctl({ r98: false });
+
   await ctl({ reset: true, v3: false });
 
   // ── 没有记录 ──
