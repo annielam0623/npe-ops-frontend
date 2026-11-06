@@ -222,9 +222,11 @@ http.createServer(async (req, res) => {
   if (p === "/api/dispatch/manifests/sync") {
     const raw = await readRaw(req);
     entry.date = /name="date"\r\n\r\n([\d-]+)/.exec(raw)?.[1];
+    // syncDelayMs：同步慢（生产 150–250ms，看页面先画出来不等它）；syncChanged：同步后团 3 名单有变化 ⇒ 前端该重读卡片。
+    if (ctl.syncDelayMs) await new Promise((r) => setTimeout(r, ctl.syncDelayMs));
     if (ctl.syncFail) return send(res, 500, { detail: ctl.syncFail });
     if (ctl.syncPast) return send(res, 200, { ok: true, run_date: entry.date, synced: false, tours: [] });
-    const t = (id, skipped = []) => ({ manifest_id: id, added: 0, removed: 0, changed: 0, rows: 4, pax: 8, changed_any: false, skipped_orders: skipped });
+    const t = (id, skipped = []) => ({ manifest_id: id, added: ctl.syncChanged && id === 3 ? 1 : 0, removed: 0, changed: 0, rows: 4, pax: 8, changed_any: !!ctl.syncChanged && id === 3, skipped_orders: skipped });
     return send(res, 200, { ok: true, run_date: entry.date, synced: true,
       tours: [t(3, ctl.syncSkipped ? ["CHD88", "CHD89"] : []), t(5), t(7)] });
   }

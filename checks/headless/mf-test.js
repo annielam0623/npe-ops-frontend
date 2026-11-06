@@ -147,8 +147,8 @@ async function run() {
   {
     const lg = await mockLog();
     const iSync = lg.findIndex((e) => e.path === "/api/dispatch/manifests/sync");
-    const iCards = lg.findIndex((e) => e.path === "/api/dispatch/manifests");
-    check("打开排车页：先 POST 同步（带这一天），再读卡片（G35）", iSync >= 0 && lg[iSync].method === "POST" && lg[iSync].date === tomorrow && iCards > iSync, JSON.stringify(lg.map((e) => e.path)));
+    // 提速（2026-11-05）：同步放后台，卡片不再等它（顺序不限）；名单有变化才再读一次卡片，见下面「后台同步」一组。
+    check("打开排车页：POST 同步（带这一天，G35），卡片照常读出来", iSync >= 0 && lg[iSync].method === "POST" && lg[iSync].date === tomorrow && lg.some((e) => e.path === "/api/dispatch/manifests"), JSON.stringify(lg.map((e) => e.path)));
   }
   check("已上传的卡：同旧版只写车数和人数（不放午餐 / 单数 / 上传人，Annie 2026-10-08）、团名下橙字写问题（Check the bus 改版 cb3887d：不再挂右上角标签）、Open manifest 链接（已切换：ops 的 manifest 页）", await evaluate(`const t = ${card(3)}.textContent; return t.includes('2 guests awaiting seat assignment') && !t.includes('not on a bus') && !t.includes('CSV loaded') && t.includes('2 buses assigned · 8 guests loaded') && !t.includes('Turkey') && !t.includes('orders') && !t.includes('by Annie') && ${card(3)}.querySelector('a').getAttribute('href') === '/dispatch/manifest?date=${tomorrow}&tour=3';`));
   check("面板是 Step 1 Guest lists；排了车的卡 Check the bus（描边）、没排车的卡 Assign Bus（实心，Annie 2026-10-13）", await evaluate(`return !!document.querySelector('section[aria-label="Guest lists"]') && !!$btn('Check the bus', ${card(3)}) && !$btn('Assign Bus', ${card(3)}) && !!$btn('Assign Bus', ${card(5)}) && !$btn('Check the bus', ${card(5)}) && $btn('Assign Bus', ${card(5)}).className.includes('bg-') && !$btn('Assign Bus', ${card(5)}).className.includes('bg-white');`));
@@ -190,6 +190,37 @@ async function run() {
   await waitFor(`${card(3)} && [...document.querySelectorAll('[role=alert]')].some(a => a.textContent.includes('Could not update the guest lists'))`);
   await helpers();
   check("同步失败：卡片照常显示，红字说名单可能是旧的、请再试或看 Manifests 页（不再叫人上传 Rezdy CSV）（Annie 2026-10-30「4 全按推荐 动手」：订单流固定，不再叫人去 Rezdy）", await evaluate("const t = [...document.querySelectorAll('[role=alert]')].map(a => a.textContent).join(' '); return t.includes('Could not update the guest lists from the Manifests page') && t.includes('may be out of date') && t.includes('check the Manifests page') && !t.includes('Rezdy') && !t.includes('confirm.nationalparkexpress.com');") && !!(await evaluate(`return !!${card(3)};`)));
+
+  // ── 后台同步（提速 2026-11-05，Annie「动手」）：同步慢也先画卡片；同步回来名单变了才重读卡片，没变不重读 ──
+  {
+    await ctl({ syncFail: "", syncDelayMs: 2500, syncChanged: false });
+    let b0 = (await mockLog()).length;
+    const t0 = Date.now();
+    await goto(`${APP}/dispatch?date=2026-10-05`);
+    await waitFor(`${card(3)}`);
+    const shown = Date.now() - t0;
+    const n1 = (await since(b0, "/api/dispatch/manifests")).length;
+    const syncedAtShow = (await since(b0, "/api/dispatch/manifests/sync")).length;
+    await helpers();
+    check(`同步要 2.5 秒：卡片先画出来，不等同步（${shown}ms 出卡片）`, shown < 2500 && n1 >= 1, `shown=${shown} n1=${n1} sync=${syncedAtShow}`);
+    await sleep(3200);
+    const n2 = (await since(b0, "/api/dispatch/manifests")).length;
+    check("同步回来、名单没变（changed_any 都 false）⇒ 卡片不重读", n2 === n1, `${n1} → ${n2}`);
+    await ctl({ syncDelayMs: 1500, syncChanged: true });
+    b0 = (await mockLog()).length;
+    await goto(`${APP}/dispatch?date=2026-10-05`);
+    await waitFor(`${card(3)}`);
+    const m1 = (await since(b0, "/api/dispatch/manifests")).length;
+    await sleep(2500);
+    const m2 = (await since(b0, "/api/dispatch/manifests")).length;
+    check("同步回来、团 3 名单有变化 ⇒ 卡片自动再读一次，卡片还在（没闪成 loading）", m2 === m1 + 1 && (await evaluate(`return !!${card(3)};`)), `${m1} → ${m2}`);
+    await ctl({ syncDelayMs: 1500, syncChanged: false, syncFail: "Internal Server Error" });
+    await goto(`${APP}/dispatch?date=2026-10-05`);
+    await waitFor(`${card(3)}`);
+    const red = await waitFor("[...document.querySelectorAll('[role=alert]')].some(a => a.textContent.includes('Could not update the guest lists'))", 8000);
+    check("后台同步失败：照旧出原来的红字「Could not update the guest lists from the Manifests page…」", red);
+    await ctl({ syncDelayMs: 0, syncChanged: false, syncFail: "" });
+  }
 
   // ── 同步失败的后备「Upload Rezdy CSV」去掉了（Annie 2026-10-30「4 全按推荐 动手」：订单流固定，不再叫人去 Rezdy） ──
   check("卡片上没有 Upload Rezdy CSV、页面上没有上传文件框", await evaluate("return ![...document.querySelectorAll('button')].some((b) => b.textContent.includes('Upload Rezdy CSV')) && !document.querySelector('[data-upload-csv]') && !document.querySelector('[data-upload-input]');"));

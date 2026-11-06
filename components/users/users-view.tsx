@@ -304,6 +304,22 @@ async function fetchPage(isSuperAdmin: boolean, signal?: AbortSignal) {
 export function TeamView() {
   const [view, setView] = useState<ViewState>({ kind: "loading" });
   const [dialog, setDialog] = useState<DialogState>(null);
+  /**
+   * 这次改过、邀请链接已被后端换新的待注册行（G212 SA-8，Annie 2026-11-05 选 A）：行下面出灰字提醒重新发。
+   * 点那一行的 Copy Link 就去掉；只存在页面上，离开 / 刷新页面不留。
+   */
+  const [renewedInvites, setRenewedInvites] = useState<ReadonlySet<number>>(
+    () => new Set(),
+  );
+  const markRenewed = useCallback((id: number, renewed: boolean) => {
+    setRenewedInvites((prev) => {
+      if (prev.has(id) === renewed) return prev;
+      const next = new Set(prev);
+      if (renewed) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }, []);
   // 不弹框的操作（恢复账号）出错时显示在列表上方。
   const [actionError, setActionError] = useState<string | null>(null);
   // 删除 / 停用成功后的一句绿字。
@@ -420,17 +436,40 @@ export function TeamView() {
 
   const isSuperAdmin = view.kind === "ready" && view.isSuperAdmin;
 
-  /** 操作成功后重新拉列表，不切回整页 Loading，避免列表闪一下。 */
-  const refreshList = useCallback(async () => {
+  /** 操作成功后重新拉列表，不切回整页 Loading，避免列表闪一下。返回新名单（读不到 = null）。 */
+  const refreshList = useCallback(async (): Promise<AdminUser[] | null> => {
     // 调到这里的都是刚做成的操作：日志里已经有新的一条。
     setLogVersion((v) => v + 1);
     try {
       const data = await fetchPage(isSuperAdmin);
       setView((prev) => (prev.kind === "ready" ? { ...prev, ...data } : prev));
+      return data.users;
     } catch (error) {
       applyLoadError(error);
+      return null;
     }
   }, [isSuperAdmin, applyLoadError]);
+
+  /**
+   * 邀请链接刚被换新（G212 SA-8）：重读名单拿新令牌。重读还没回来时点 Copy Link 先等它，免得复制到已作废的旧链接。
+   */
+  const renewWaitRef = useRef(new Map<number, Promise<string | null>>());
+  const refreshAfterSave = useCallback(
+    (id: number, renewed: boolean) => {
+      const reload = refreshList();
+      if (!renewed) return;
+      const token = reload.then(
+        (users) => users?.find((u) => u.id === id)?.invite_token ?? null,
+      );
+      renewWaitRef.current.set(id, token);
+      void token.finally(() => {
+        if (renewWaitRef.current.get(id) === token)
+          renewWaitRef.current.delete(id);
+      });
+      markRenewed(id, true);
+    },
+    [refreshList, markRenewed],
+  );
 
   const toActionError = useCallback(
     (error: unknown): ActionFailure => {
@@ -485,7 +524,12 @@ export function TeamView() {
     if (!user.invite_token) {
       return false;
     }
-    const url = buildInviteUrl(user.invite_token);
+    // 刚换新、名单还在重读：等新令牌（拿不到就用手上的）。
+    const wait = renewWaitRef.current.get(user.id);
+    const token = (wait ? await wait : null) ?? user.invite_token;
+    // 拿到的就是新链接：灰字提醒完成任务，去掉。
+    markRenewed(user.id, false);
+    const url = buildInviteUrl(token);
     if (await copyText(url)) {
       return true;
     }
@@ -606,6 +650,7 @@ export function TeamView() {
             ? null
             : homeLabel(m.home_path),
         email: m.email,
+        inviteRenewed: renewedInvites.has(m.id),
         noEmail: m.duties.length > 0 && !m.email?.trim(),
         // G212 B6 / B7：照后端的 can_edit 出 Edit（不自己另算）；后端还没带时照以前：Super Admin 对非 Super Admin 的人。
         onEdit: (
@@ -619,7 +664,7 @@ export function TeamView() {
       });
     }
     return map;
-  }, [lookups, dutyNames, viewerIsSuperAdmin]);
+  }, [lookups, dutyNames, viewerIsSuperAdmin, renewedInvites]);
 
   /** admin 看不到 Super Admin 的行（Annie Qa）；再按搜索框和 Show 筛。 */
   const visibleUsers = useMemo(() => {
@@ -935,18 +980,25 @@ export function TeamView() {
           members={lookups.memberUsers}
           summaries={lookups.summaries}
           ownItems={view.ownItems ?? undefined}
-          onSaved={() => {
+          onSaved={(result) => {
             if (dialog.mode.kind === "edit") {
               setDialog(null);
-            }
-            void refreshList();
+              refreshAfterSave(dialog.mode.member.id, !!result?.inviteRenewed);
+            } else void refreshList();
           }}
           onClose={closeDialog}
           toFailure={toActionError}
-          onAccountTypeChanged={() => void refreshList()}
+          onAccountTypeChanged={(result) => {
+            if (dialog.mode.kind === "edit")
+              refreshAfterSave(dialog.mode.member.id, !!result?.inviteRenewed);
+            else void refreshList();
+          }}
           onDelete={
             // 彻底删除只给 Super Admin（B8）：admin 打开的 Edit 框最下面没有 Delete。
-            dialog.mode.kind === "edit" && view.isSuperAdmin
+            // 待注册的人不出（行上已有 🗑 Cancel invite）。
+            dialog.mode.kind === "edit" &&
+            view.isSuperAdmin &&
+            !dialog.mode.member.pending_invite
               ? deleteTarget(dialog.mode.member, usersById, (user, member) =>
                   setDialog({ kind: "delete-person", user, member }),
                 )
@@ -1271,7 +1323,10 @@ function TeamHowTo({ isSuperAdmin }: { isSuperAdmin: boolean }) {
             ? "Tick their permissions, then send an invite link (they choose their own username and password) or create the account now with a username and password."
             : "Click Generate Invite Link, then Copy, and send the link to them. They pick their own username and password when they open it."}{" "}
           Until they register their row shows Pending; Copy Link copies the link
-          again and 🗑 Cancel invite stops the link working.
+          again and 🗑 Cancel invite stops the link working. If you change the
+          access or account type of someone who hasn&apos;t accepted their
+          invite yet, their old invite link stops working right away. Click Copy
+          Link and send them the new link.
         </li>
         <li>
           Find someone: type in the search box, or pick Show to see only active

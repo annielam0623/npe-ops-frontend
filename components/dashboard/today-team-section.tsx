@@ -11,9 +11,9 @@ import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchCurrentUser } from "@/lib/auth-api";
 import { laToday, weekStartYmd } from "@/lib/la-date";
 import {
-  fetchScheduleEmployees,
-  fetchScheduleSettings,
-  fetchScheduleWeek,
+  dashboardScheduleEmployees,
+  dashboardScheduleSettings,
+  dashboardScheduleWeek,
 } from "@/lib/schedule-api";
 import { formatClock } from "@/lib/schedule-time";
 import {
@@ -26,6 +26,7 @@ import { cn } from "@/lib/utils";
 import type { ScheduleEmployee, ScheduleSettings, ScheduleWeek } from "@/types";
 
 import { TeamMessageDialog } from "./team-message-dialog";
+import { setVisibleInterval } from "@/lib/visible-poll";
 
 /** 在线名单多久重拉一次。 */
 const PEOPLE_POLL_MS = 60_000;
@@ -84,10 +85,10 @@ export function TodayTeamSection({
           else setPeople(null);
         });
     void load();
-    const timer = setInterval(() => void load(), PEOPLE_POLL_MS);
+    const stopPoll = setVisibleInterval(() => void load(), PEOPLE_POLL_MS);
     return () => {
       controller.abort();
-      clearInterval(timer);
+      stopPoll();
     };
   }, [messagingOn, onUnauthorized]);
   const [reloadKey, setReloadKey] = useState(0);
@@ -101,9 +102,9 @@ export function TodayTeamSection({
       try {
         const [me, settings, employees, week] = await Promise.all([
           fetchCurrentUser(signal),
-          fetchScheduleSettings(signal),
-          fetchScheduleEmployees(signal),
-          fetchScheduleWeek(weekStartYmd(today), signal),
+          dashboardScheduleSettings(signal),
+          dashboardScheduleEmployees(signal),
+          dashboardScheduleWeek(weekStartYmd(today), signal),
         ]);
         if (signal.aborted) return;
         // 主管读没人排过的周后端会顺手建草稿：Dashboard 只给看已发布的。
