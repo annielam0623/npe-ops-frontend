@@ -15,11 +15,11 @@
 | 92 版式设置第 1 批（⚙ Colours & page） | b7fd8a73（77） | 8a72f830 | Bus Manifest / Relay list 弹窗 Colours / Page；试完 Reset all to paper + Save（设定全站生效） |
 | 92 Text 起点字号接 Bus Manifest 打印 / Excel | 不用改 | 1630d366（61） | Text 页改 Table text 大小 / Bold，打印页、Excel 跟着变 |
 | 94 Schedule check 酒店清单 | ed518553（01） | 307d6895（4c） | Dispatch › Assign 右栏 Morning Relay：只列这一轮没车停的酒店带人数「MGM (4)」；TI / Hoover 不出；没存的 Add hotel 马上从名单拿掉；新说明小字 |
-| 92 第 2 批前端（Text 页 + Relay 当天 Aa） | 见下「二」 | 0d339c0b（07） | 01 合了才算上线 |
+| 92 第 2 批前端（Text 页 + Relay 当天 Aa） | **bc02fc78**（01；rl 108、mf 289、da 527、nav 39，tsc / eslint / build 过） | 0d339c0b（07） | ① Bus Manifest / Relay list「⚙ Colours, text & page」→ Text 页：每种字「− 16.5 px +」、Regular / Bold、Reset，Save 后打印 / ⬇ Excel 照它 ② Morning Relay「📋 Relay list」每张单上方「Aa Text size」：选列 / 行 / 整页 → A− / A+、Bold → Done → 蓝色 Save → 绿字 Saved，出最近 5 次「Text size changes」；只算当天；没车号的单没有 Aa ③ ⬇ Excel / 🖨 Print 字号同屏幕 ④ 没 dispatch.edit 的人没有 Aa、Text 页改不了 |
 
 ### 二、没合 / 等
 - **93 G250 Dispatch 自动锁定**：后端 68b69380 **已在生产生效**（当天出发 + 1h 锁，过去的日子整天锁——Annie 在 4c 选 B）；前端 `task/dispatch-tour-lock` **a7c07e61**（01，worktree D:\npe-ops-frontend-wt-tourlock，da 544 / mf 283 / nav 39，tsc / eslint / build 过）**没合**，**只等 Annie 确认 past_day 说明条两句**：员工「This day is locked. Only a Super Admin can change it.」/ SA「This day is locked. You can still change it as a Super Admin.」（40 已整段问过，不滚动重问；改字只动 config.ts lockText）。她答了 ⇒ 合最新 main 重跑 da / mf / nav + build ⇒ 合 main，验收点见下面 01 那节。⚠️ 前端没合之前员工改锁住的车只会在 Save 时收到英文 409，所以优先。
-- **92 第 2 批前端 `task/print-layout-2`**：见本节最后一条（01 合 main 的结果）。
+- 01 收尾：dev server / Chrome 都关了；本机 worktree wt-lock、wt-tourlock、wt-layout 干净留着，分支都已推 origin（公司电脑直接从 origin 拉）。
 - **92「Relay list 照版式设定读」**（Relay ⬇ Excel / 打印 / 色条读 print_layout:relay_list 的 hotel_cell / column_titles / text / page_setup）：后端**还没做**，46 明天派；前端预计不用改。现在 Relay Excel 仍照旧色、A4、边距 12×11mm。
 
 ### 三、明天开工
