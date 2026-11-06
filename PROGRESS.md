@@ -1282,6 +1282,15 @@ D. 已完成、待从置顶移走：
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 99. G263 Farm out › Partners & rates 价格行（Adult / Child / Infant 下拉）（2026-11-06，c3 出 preview，49 转 Annie）
+- preview：https://claude.ai/artifact/FCnzWr3MtKki8bxPfS1Yhg 。后端 2c 8e256f22 没上 main（迁移 v159）。推荐都 A。
+- 题 1 平时显示：A 列表加 Infant 列（Adult / Child / Infant 三列，没设灰「—」，有子项没主项价灰 N/A，子项后列产品代码）；B 合成一列 Prices 写一串。
+- 题 2 编辑价格行：A [Adult ▾][110.00] × + 灰绿「+ Add price」，已有票种在下拉里灰掉；B 不灰，存时报重复。
+- 题 3 子项勾产品：A 列全部产品打勾，挂在别的子项的灰掉写「· on Skywalk」，停用的不列（已勾的写 (inactive)）；B 照挑酒店的下拉 + 胶囊。
+- 题 4 主项没价又有产品没挂子项：A 橙字提醒「WR-BUS is not on an item and the tour has no price.」，照样能存；B 不提醒。
+- 题 5 怎么存：A 照现在一个团一个 Save，没存离开要拦，400 红字写在团下面；B 整页一个 Save。
+- 题 6 How to use 8 条原文（见 49 回复）；第 7 条怎么重算应付等 2c 答（c3 发现「再选一次酒店」不会重算：推荐 (a) 存价格时把这个合作方 + 团、没手改过应付、今天以后的单一起重算；(b) 后端不改，写「改一下这单任何东西」）。已问 4a / 2c，另问 ⬆ Import rates 要不要支持子项 / Infant。
+
 ### 98. Auto Send › Ticket reminders › Daily report 发送时间改成可选（2026-11-06，Annie 提，没动手）
 - Annie 原话（看着「Sends after the last batch of the day (5:00 PM)」那行）：「这个两边都把时间改成可选吧」。
 - 现在：报告固定在当天最后一批门票发完后马上发（11-05 题 1 A），页面只写出最后一批的时间，不能改。Daily report 只有 Ticket reminders 有，Tour confirmations 没有报告。
