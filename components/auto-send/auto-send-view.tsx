@@ -122,18 +122,22 @@ function runResult(r: AutoSendRun): { text: string; bad?: boolean } {
           bad: true,
         }
       : { text: "Sending…" };
+  // 后端 f361134c：alert_failed 是没收到「跳过的单」提醒邮件的收件人列表（tour / last_minute 都有）。
+  const alertFailed = Array.isArray(s.alert_failed)
+    ? s.alert_failed.length
+    : num(s.alert_failed);
+  const alertText = alertFailed
+    ? ` · ${alertFailed} alert email${alertFailed === 1 ? "" : "s"} failed`
+    : "";
   if (r.kind === "tour")
     return {
-      text: `${num(s.sent)} sent · ${num(s.skipped)} skipped${deferredText(s)}`,
+      text: `${num(s.sent)} sent · ${num(s.skipped)} skipped${deferredText(s)}${alertText}`,
+      bad: alertFailed > 0,
     };
   if (r.kind === "last_minute")
     return {
-      text: `${num(s.sent)} sent · ${num(s.skipped)} skipped${
-        num(s.alert_failed)
-          ? ` · ${num(s.alert_failed)} alert emails failed`
-          : ""
-      }`,
-      bad: num(s.alert_failed) > 0,
+      text: `${num(s.sent)} sent · ${num(s.skipped)} skipped${alertText}`,
+      bad: alertFailed > 0,
     };
   if (r.kind === "tickets") {
     const report = dailyReportText(s.daily_report);
