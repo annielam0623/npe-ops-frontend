@@ -22,7 +22,7 @@
 
 ### 二、没合 / 等
 - **G266 ② 卡片 Notes**（Annie「我要的在卡片下方写notes的地方呢」）：前端 task/dispatch-card-notes **e83c529c**（c3，worktree C:\Code\npe-ops-frontend-wt-shuttle；da 548、nav 39，tsc / eslint / build 过；已修「存 Assign 后没存的字丢」）。后端 2e task/dispatch-card-notes 82710ee7，**迁移 v159 SQL 已在 2e 窗口给 Annie，等她执行** → 后端上 main 发 SHA → 前端只读核 GET / PUT 字段 → 合 main。
-- **G263 Farm out 团 → 产品（v3）**（Annie「同意推荐，动手」，定稿见置顶 99）：前端 task/farmout-products **bd472400 + eb939b30**（c3，worktree C:\Code\npe-ops-frontend-wt-g180）：Partners & rates 页已写；还差 Dispatch 选产品、Farm out Report Product 列、Import 预览、How to use 定稿、mock / 检查（清单在置顶 99）。后端 2c 今晚家里做，迁移 **v160**，接口形状见「49 接班」节。待 Annie：没有 money_view 的人能不能改单子的产品（4a 在问，推荐不能）。
+- **G263 Farm out 团 → 产品（v3）**（Annie「同意推荐，动手」，定稿见置顶 99）：前端 task/farmout-products **456a23a3**（c3 收工推的 WIP，已合最新 main，tsc / eslint 干净；接手从置顶 99 节 ① Dispatch Product 列开始）（c3，worktree C:\Code\npe-ops-frontend-wt-g180）：Partners & rates 页已写；还差 Dispatch 选产品、Farm out Report Product 列、Import 预览、How to use 定稿、mock / 检查（清单在置顶 99）。后端 2c 今晚家里做，迁移 **v160**，接口形状见「49 接班」节。待 Annie：没有 money_view 的人能不能改单子的产品（4a 在问，推荐不能）。
 - 置顶 96 题 1（How to use Message template 那条字）没正式答，线上已照 c3 的稿；不滚动重问。
 - 93 G250 past_day 两句、Task Board 中文那题照旧没答，不滚动重问。
 - **置顶 100 Content Studio › Edit tour「No Cfm # needed」勾选**（a2 转，Annie「现在就要看到能改」）：两题已问 Annie（文字 A 只写邮件效果 / B 写最终效果；A 不出 preview 直接做附截图 / B 先 preview），等答 + 「动手」再派。后端不用改。
