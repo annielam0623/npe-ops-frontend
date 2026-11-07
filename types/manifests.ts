@@ -94,6 +94,13 @@ export interface ManifestRow {
    * 有值时不能发（手动、自动都挡，不能 Send anyway）。旧后端没有这个键。
    */
   cfm_mismatch?: { other_label: string; other_value: string } | null;
+  /**
+   * 门票 Cfm # 规则（后端 51ffe2ca，Annie 2026-11-06「全按推荐，动手」）：这个门票团不需要 Cfm #
+   * （tix_tour_types.skip_confirmation_no，Hogan 两个团）⇒ 没号 / 号短都不挡。旧后端没有 ⇒ 当 false。
+   */
+  cfm_not_needed?: boolean;
+  /** 有号、但整串里的数字不到 6 个（「1」「TBA」）⇒ 发送当没号挡（可 Send anyway 照发原值）。只看门票。 */
+  cfm_short?: boolean;
   reason?: string | null;
   /** 不能发的原因，例如 "Admin fee - not sent, not dispatched"。 */
   reason_label?: string | null;

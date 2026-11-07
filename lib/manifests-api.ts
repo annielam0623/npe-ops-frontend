@@ -51,6 +51,8 @@ export interface ManifestCfmPreviewItem {
   current: string;
   incoming: string;
   already_sent: boolean;
+  /** 存着的号不到 6 位数字（后端 51ffe2ca）⇒ Overwrite 默认勾（Annie 2026-11-06）。旧后端没有 ⇒ 当 false。 */
+  current_too_short?: boolean;
 }
 export function previewManifestCfm(input: {
   tour_date: string;

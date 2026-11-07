@@ -132,14 +132,32 @@ export function cfmMismatchTip(m: {
   return `Wrong Cfm # for this product — Rezdy has it under ${m.other_label}: ${m.other_value}. Fix it in Rezdy.`;
 }
 
+/** 发送前红条 / 后端 blocked 的原话（同后端 manifest_send.NO_CFM_REASON / SHORT_CFM_REASON）。 */
+export const NO_CFM_REASON = "No Cfm #";
+export const SHORT_CFM_REASON = "Cfm # is too short (under 6 digits)";
+
+/**
+ * 门票这一行的 Cfm # 够不够发（同后端 manifest_send.cfm_problem()，后端 51ffe2ca）：
+ * 不需要号的团（cfm_not_needed）⇒ null；没号 ⇒「No Cfm #」；号不到 6 位数字（cfm_short）⇒ 短号原因。巴士不看。
+ */
+export function cfmProblem(
+  row: ManifestRow,
+  tab: ManifestTabKey,
+): string | null {
+  if (tab !== "tickets" || row.cfm_not_needed) return null;
+  if (!isSelectable(row, tab)) return NO_CFM_REASON;
+  return row.cfm_short ? SHORT_CFM_REASON : null;
+}
+
 /**
  * 门票这一行发送前缺什么（同后端 split_ticket_soft_blocks，一行两个原因合成一条）：
- * 「No Cfm #」「No waiver link」；不缺 = []。巴士不看。
+ * 「No Cfm #」/「Cfm # is too short (under 6 digits)」「No waiver link」；不缺 = []。巴士不看。
  */
 export function softBlocks(row: ManifestRow, tab: ManifestTabKey): string[] {
   if (tab !== "tickets") return [];
+  const cfm = cfmProblem(row, tab);
   return [
-    ...(isSelectable(row, tab) ? [] : ["No Cfm #"]),
+    ...(cfm ? [cfm] : []),
     ...(missingWaiver(row) ? [WAIVER_MISSING] : []),
     // G245：号不对是硬拦（不算进 Send anyway），原因同后端原话。
     ...(row.cfm_mismatch ? [cfmMismatchReason(row.cfm_mismatch)] : []),
