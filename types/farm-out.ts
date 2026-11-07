@@ -209,6 +209,8 @@ export interface FarmOutNoticeSendResponse {
 export interface FarmOutReportRow {
   date: string;
   tour: string;
+  /** G263 v3：产品全名「<团> <产品> - <合作公司>」，没选 = ""；旧后端没有（undefined）。 */
+  product?: string;
   order_number: string;
   ota_conf_number: string;
   guest: string;

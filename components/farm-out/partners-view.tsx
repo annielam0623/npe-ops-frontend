@@ -378,6 +378,7 @@ export function PartnersView() {
                 </>
               }
               endpoint="/api/farm-out/rates/import"
+              statusText={{ new: "New product" }}
               labelOf={(k) => RATE_IMPORT_LABEL[k] ?? k}
               template={() => ({
                 blob: csvBlob(
@@ -676,58 +677,38 @@ export function PartnersView() {
 }
 
 /** 页面说明（同其它 Settings 页的蓝色 How to use 条）。 */
-/** money = false（没勾 orders.money_view）：不讲价格、子项和 Import rates。 */
+/** money = false（没勾 orders.money_view）：不讲价格、产品和 Import rates。 */
 function HowToUse({ money }: { money: boolean }) {
   return (
-    <LegacyHowTo
-      title="How to use — Farm out Partners"
-      padY="py-2.5"
-      footer={
-        money
-          ? "Infants are never counted in the settlement amount, on any tour."
-          : undefined
-      }
-    >
-      {money ? (
-        <MoneyHowTo />
-      ) : (
-        <li>Add a partner: type its name and click Add.</li>
-      )}
+    <LegacyHowTo title="How to use — Farm out Partners" padY="py-2.5">
+      {money ? <MoneyHowTo /> : null}
+      <li>Add a partner: type its name and click Add.</li>
       <PartnerHowTo />
     </LegacyHowTo>
   );
 }
 
+/**
+ * G263 v3 定稿（Annie「同意推荐，动手」）：preview 题 d A 稿；第 2 条加全名一句，第 7 条用题 b B 句，
+ * 第 8 条短名 / 全名都能对上。
+ */
+export const RATES_HOW_TO = [
+  "Find the partner, then the tour, and click Edit.",
+  "Each tour lists its products. Click + Add product and type its name (for example Premium Pass, Admission Only). Names must be different within a tour. ↑ ↓ change the order; × removes a product. Everywhere else the system shows the full name: tour, product and partner, for example West Rim Premium Pass - C Tour.",
+  "Prices: under each product, click + Add price, choose Adult, Child or Infant and type the price. Same price for adults and children? Add an Adult row and a Child row with the same price. × removes a price row.",
+  "Click Save on the tour. Nothing is kept until you do.",
+  "In Dispatch › Farm out guests, pick the product for each order. A tour with only one product uses it automatically. The payable is the product's price for each ticket type; infants with no price count as 0.",
+  "An order with more than one product: pick one of them, then type the payable by hand.",
+  "If the product has no Adult or Child price, the order shows “no adult rate” (or child) and its payable stays empty. Add the price here, then pick the product again on the order, or type the payable by hand. Changing a price here does not change orders that already have a payable.",
+  "⬆ Import rates: the file has the columns Partner, Tour, Product, Adult, Child, Infant. Rows are matched by partner, tour and product name; the product can be the short name (Premium Pass) or the full name (West Rim Premium Pass - C Tour). A blank cell changes nothing. A product name that is not on the tour yet is added as a new product. Partners and tours must already be here.",
+];
+
 function MoneyHowTo() {
   return (
     <>
-      <li>
-        Add a partner: type its name and click Add. Its tours appear under it
-        with prices not set; click Edit on a tour to set them.
-      </li>
-      <li>
-        Every tour is listed under its partner with the Adult and Child price,
-        even tours with no price yet. Click Edit on a tour row, change the
-        prices and click Save. A tour with no price cannot get a payable amount
-        in Dispatch until you set one. A tour with items under it shows N/A when
-        its Adult and Child are blank — the prices are on its items, so nothing
-        is missing.
-      </li>
-      <li>
-        Click ＋ on a tour to add an item under it — a name and a price per
-        person (for example Lunch 15.00). Add as many as you need with ＋ Add
-        item; ↑↓ changes the order and ✕ removes one. Items are saved together
-        with the Adult and Child prices when you click Save. They are a price
-        list only and are not added to the amount payable in Dispatch.
-      </li>
-      <li>
-        To change many prices at once (for example the yearly price change),
-        click ⬆ Import in Partners &amp; rates, then ⬇ Download template (every
-        partner and tour with today&apos;s prices). Change the prices in Excel,
-        choose the file, check the preview and click Save. Rows are matched by
-        Partner and Tour; a blank cell never clears a price; rows marked Error
-        are not saved.
-      </li>
+      {RATES_HOW_TO.map((t) => (
+        <li key={t}>{t}</li>
+      ))}
     </>
   );
 }
