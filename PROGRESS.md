@@ -11,6 +11,7 @@
 - 已问后端 `主窗口-46`[7d15d6]：Notes v159、G263 v160 进度 + 最终接口形状、G257；告诉它以后发 a4。`33`[9162ea] 回：是后端子窗口（46 派的团出发时间 / G250 锁定钟点），不是前端 ⇒ 前端现在没有工作窗口，请 Annie 开。
 - 46 回：Notes 没上 main，SQL 没执行（今天家里后端没人接）；G263 后端 8f951f4c WIP，v160 草稿，接口形状等接手窗口确认；G257 没进展。46 报早班邮件问题 ⇒ a4 只读查到原因，记进置顶 101，等 Annie。
 - 前端工作窗口 `npe-ops-frontend-3c`[8c373c] 报到 ⇒ 派 Cfm # 规则前端对齐 ①②（task/cfm-rule-align，端口 3877 / 9277 / 9877），做完合 main；③④ 等置顶 100。
+- 前端工作窗口 `npe-ops-frontend-86`[e4bb84] 报到 ⇒ 派 G263 前端剩下几项（接 task/farmout-products 456a23a3，端口 3977 / 9377 / 9977），照 mock 写、推分支不合，等后端最终形状 + SHA。
 - 资源：空闲内存 12.9 / 31.7 GB，chrome 15 个（1.7 GB），node 1 个。
 - 今天可派（等工作窗口报到）：① 门票 Cfm # 规则前端对齐（softBlocks cfm_not_needed / cfm_short、上传 current_too_short 默认勾，只修跟后端对齐、样子不变）；② G263 前端剩下几项照 mock 写；③ Notes 后端上 main 后核字段合。置顶 100 两题、Cfm # How to use 文字仍等 Annie。
 
@@ -1322,7 +1323,7 @@ D. 已完成、待从置顶移走：
 - 现状：send_log 里 morning_pickup 最后一封邮件是 10/20；11/3–11/7 每一批 send_type 都是 sms（Veronica、Jtian 发的），今天 97 条全是短信。Tour 确认、Last Minute 的邮件正常。
 - 原因：发送页的「Send via」默认值写死成 SMS Only（components/morning-send/config.ts:21，照旧页面 send_morning.html 搬的），每换一份 manifest 就重置回去；哪里都没存「SMS + Email」，所以 Annie 选一次只管那一次。Tickets 发送页默认是 Both。
 - 选法：A（推荐）前端把默认改成 Both (SMS + Email)，staff 还能手动改成 SMS Only / Email Only，后端不用改，小修半天内上；B 加一个全站设置（Super Admin 选默认发送方式），要后端存值 + 前端加设置，要先 preview；C 不改，靠 staff 每次手动选 Both。
-- 等 Annie 选 + 「动手」。
+- ✅ Annie（原话）：「早班发送的，选A」⇒ 默认改 Both (SMS + Email)。✅ Annie：「动手」⇒ 派 3c（task/morning-default-both），做完直接合 main。
 
 ### 100. Content Studio › ✎ Edit tour 加「不需要 Cfm #」勾选（2026-11-06 收工后，后端 a2 转，Annie「现在就要看到能改」）
 - 背景（a2）：Annie 要三处门票改动（Cfm # 不足 6 位挡住、上传可覆盖已存 Cfm #、Hogan 两个 Upper Antelope 团不要 Cfm # 也发）。a2 建议 Hogan 用现有 tix_tour_types.skip_confirmation_no 列（生产只有 upper_antelope_hogan_transport / upper_antelope_hogan_hiking 为 true）；现在这一列只让提醒邮件写 Check-in 说明而不是 Confirmation#。第 3 版 Edit tour 没放这一勾（当时取舍：Annie 要就加）。后端不用改：GET 已带、PATCH 已收并写 action_log。「不要 Cfm # 也能发」那部分后端还等 Annie 对三点「动手」。
