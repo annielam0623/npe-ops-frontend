@@ -916,6 +916,30 @@ async function run() {
   await waitFor(`!${editForm}`);
   const tixPatches = await since(before, (e) => e.method === "PATCH");
   check("Edit Save：只 PATCH 改了的项（不带 key / label）", tixPatches.length === 1 && JSON.stringify(tixPatches[0].body) === JSON.stringify({ sms_label: "ZZ Horseshoe Bend Tour", abbr: "ZZ-HB", is_active: false }), JSON.stringify(tixPatches.map((e) => e.body)));
+  // 置顶 100「No Cfm # needed」（Annie 2026-11-07「同意全部推荐-动手」，小字 B）：Active 旁同样式，跟 Save 一起存，点一下不存
+  await evaluate("$btn('✎ Edit tour').click();");
+  await waitFor(`!!${editForm}`);
+  const noCfmBox = `[...${editForm}.querySelectorAll('label')].find(l => l.textContent.trim() === 'No Cfm # needed')`;
+  check("Edit tour：有 No Cfm # needed 勾选（默认没勾），小字 B 原句", await evaluate(`const l = ${noCfmBox}; return !!l && !l.querySelector('input').checked && ${editForm}.textContent.includes('Orders for this tour are sent without a Cfm #. The reminder email shows the check-in instructions instead of a Confirmation #.');`));
+  check("No Cfm # needed 和 Active 同样式", await evaluate(`const a = [...${editForm}.querySelectorAll('label')].find(l => l.textContent.trim() === 'Active'); const b = ${noCfmBox}; const sa = getComputedStyle(a), sb = getComputedStyle(b); return sa.fontSize === sb.fontSize && sa.color === sb.color;`));
+  before = (await mockLog()).length;
+  await evaluate(`${noCfmBox}.querySelector('input').click();`);
+  await sleep(400);
+  check("勾上不马上存（等 Save）", (await since(before, (e) => e.method === "PATCH")).length === 0);
+  await evaluate(`$btn('Save', ${editForm}).click();`);
+  await waitFor(`!${editForm}`);
+  const noCfmPatches = await since(before, (e) => e.method === "PATCH");
+  check("Save：PATCH 只带 {skip_confirmation_no:true}", noCfmPatches.length === 1 && JSON.stringify(noCfmPatches[0].body) === JSON.stringify({ skip_confirmation_no: true }), JSON.stringify(noCfmPatches.map((e) => e.body)));
+  await evaluate("$btn('✎ Edit tour').click();");
+  await waitFor(`!!${editForm}`);
+  check("再打开：No Cfm # needed 已勾", await evaluate(`return ${noCfmBox}.querySelector('input').checked;`));
+  if (process.env.CS_SHOT) {
+    const shot = await cdp("Page.captureScreenshot", { format: "png", captureBeyondViewport: false });
+    require("fs").writeFileSync(process.env.CS_SHOT, Buffer.from(shot.data, "base64"));
+  }
+  await evaluate(`$btn('Cancel', ${editForm}).click();`);
+  await waitFor(`!${editForm}`);
+  check("How to use 有 Edit tour 的 No Cfm # needed 句（B 版原句），排在 Cancel only undoes … 后面", await evaluate(`const t = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Content Studio')); const li = [...t.querySelectorAll('li')].map(l => l.textContent); const i = li.indexOf('Cancel only undoes changes you have not saved.'); return i >= 0 && li[i + 1] === "Tickets Reminder → ✎ Edit tour: tick No Cfm # needed for a tour whose guests don't get a confirmation number (for example the two Hogan Upper Antelope tours). Its orders are sent without a Cfm #, and the reminder email shows the check-in instructions instead. Click Save.";`));
   check("停用后按钮写 · Off，没有删除按钮", await evaluate(`return ${tixPills}.includes('ZZ Test Horseshoe Bend · Off') && ![...document.querySelectorAll('button')].some(b => /delete/i.test(b.textContent));`));
   await ctl({ tixTypes: 403 });
 

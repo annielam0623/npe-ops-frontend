@@ -14,6 +14,7 @@ export interface TixTourType {
   sms_label: string;
   /** Tickets Tracking 表里的简称。 */
   abbr: string;
+  /** 不需要 Cfm #（Hogan 两个团）：门票发送不因缺 / 短 Cfm # 挡，邮件那格显示 check-in 说明。 */
   skip_confirmation_no: boolean;
   sort_order: number;
   is_active: boolean;
@@ -47,6 +48,7 @@ export function updateTixTourType(
     label?: string;
     sms_label?: string;
     abbr?: string;
+    skip_confirmation_no?: boolean;
     is_active?: boolean;
   },
 ): Promise<TixTourType> {

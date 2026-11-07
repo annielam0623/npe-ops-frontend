@@ -321,6 +321,7 @@ function EditTourForm({
   const [smsLabel, setSmsLabel] = useState(tour.sms_label);
   const [abbr, setAbbr] = useState(tour.abbr);
   const [active, setActive] = useState(tour.is_active);
+  const [noCfm, setNoCfm] = useState(tour.skip_confirmation_no);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -330,6 +331,7 @@ function EditTourForm({
     if (smsLabel.trim() !== tour.sms_label) patch.sms_label = smsLabel.trim();
     if (abbr.trim() !== tour.abbr) patch.abbr = abbr.trim();
     if (active !== tour.is_active) patch.is_active = active;
+    if (noCfm !== tour.skip_confirmation_no) patch.skip_confirmation_no = noCfm;
     if (!Object.keys(patch).length) {
       onCancel();
       return;
@@ -416,15 +418,28 @@ function EditTourForm({
             className={INPUT}
           />
         </label>
-        <label className="flex items-center gap-1.5 self-center pt-3 text-[11px] whitespace-nowrap text-[#1a1a1a] night:text-white/75">
-          <input
-            type="checkbox"
-            checked={active}
-            disabled={busy}
-            onChange={(e) => setActive(e.target.checked)}
-          />
-          Active
-        </label>
+        {/* Active 下面放「No Cfm # needed」（tix_tour_types.skip_confirmation_no，Annie 2026-11-07「同意全部推荐-动手」）：
+            同样式，跟 Save 一起存；小字（B 版）放下面说明里，紧跟 Untick Active 那句。 */}
+        <span className="flex flex-col gap-1.5 self-center pt-3">
+          <label className="flex items-center gap-1.5 text-[11px] whitespace-nowrap text-[#1a1a1a] night:text-white/75">
+            <input
+              type="checkbox"
+              checked={active}
+              disabled={busy}
+              onChange={(e) => setActive(e.target.checked)}
+            />
+            Active
+          </label>
+          <label className="flex items-center gap-1.5 text-[11px] whitespace-nowrap text-[#1a1a1a] night:text-white/75">
+            <input
+              type="checkbox"
+              checked={noCfm}
+              disabled={busy}
+              onChange={(e) => setNoCfm(e.target.checked)}
+            />
+            No Cfm # needed
+          </label>
+        </span>
         <span className="flex gap-2 self-center pt-3">
           <button type="submit" disabled={busy} className={BUTTON}>
             {busy ? "Saving…" : "Save"}
@@ -446,6 +461,10 @@ function EditTourForm({
       <p className={NOTE}>
         Untick Active to turn the tour off. It stays in old orders; there is no
         delete.
+      </p>
+      <p className={NOTE}>
+        Orders for this tour are sent without a Cfm #. The reminder email shows
+        the check-in instructions instead of a Confirmation #.
       </p>
       {error ? (
         <p

@@ -2073,10 +2073,20 @@ function ManifestsHowToUse() {
           send a shuttle confirmation again, do it from Manifests.
         </>,
         <>
-          <b>Tickets</b>: rows without a Cfm # are highlighted in red; you can
-          still tick them. Clicking <b>Send reminder</b> with some of those
-          ticked asks you to skip them (send the rest) or fill them in first.
-          Sent rows move to the bottom.
+          <b>Tickets</b>: rows without a Cfm #, or with a Cfm # under 6 digits,
+          are highlighted in red; you can still tick them. Clicking{" "}
+          <b>Send reminder</b> with some of those ticked asks you to skip them
+          (send the rest), fill them in first, or Send anyway. Sent rows move to
+          the bottom.
+        </>,
+        <>
+          A Cfm # with fewer than 6 digits (for example &quot;1&quot; or
+          &quot;TBA&quot;) counts as no Cfm #. The scheduled send skips these
+          orders and the daily report lists them as &quot;Cfm # is too short
+          (under 6 digits)&quot;. When you send by hand you can still Send
+          anyway; the number goes out as it is. Tour types ticked No Cfm #
+          needed in Settings → Content Studio (such as the two Hogan Upper
+          Antelope tours) are sent without a Cfm #.
         </>,
         <>
           <b>Send message</b>: write your own text, choose SMS and/or Email,
@@ -2115,7 +2125,9 @@ function ManifestsHowToUse() {
           not just the one you&apos;re viewing. Rows that match cleanly get the
           Cfm # written in; a pax mismatch, more than one system row for the
           same order, or a duplicate in the file are left red for you to check
-          by hand instead of guessing.
+          by hand instead of guessing. If the saved Cfm # has fewer than 6
+          digits, Overwrite is ticked for you; untick it to keep the saved
+          number.
         </>,
         <>
           <b>Waiver link</b>: Upper Antelope (Brenda) orders need a waiver link.
