@@ -635,6 +635,24 @@ async function run() {
   await waitFor("!$dialog()");
   await ctl({ cfmPreviewFail: false, reminderSent: [], clearCfm: true });
 
+  // ── 门票 Cfm # 规则（后端 51ffe2ca，Annie 2026-11-06）：存着的号不到 6 位数字（current_too_short）⇒ Overwrite 默认勾 ──
+  await ctl({ cfmRule: {}, seedCfmMap: [["CHD1002", "1"], ["CHD1004", "OLD444444"], ["CHD2001", "OLD555555"]] });
+  await evaluate("$btn('↑ Upload confirmation #s').click();");
+  await waitFor("$dialog()");
+  await setFile('input[aria-label="Confirmation spreadsheet"]', "cfm-upload-conflict.csv");
+  await waitFor("$dialog().textContent.includes('rows read')");
+  {
+    const a = await rowOf("CHD1002");
+    const b = await rowOf("CHD1004");
+    const c = await rowOf("CHD2001");
+    check("Cfm 规则：存着的号是「1」（不到 6 位数字）的 CHD1002 Overwrite 默认勾上", a && a.cells[0].startsWith("different") && a.cells[5] === "1" && a.box === true, JSON.stringify(a));
+    check("Cfm 规则：存着的号够 6 位的（CHD1004 已发过、CHD2001 文件空格）照旧默认不勾", b && b.box === false && c && c.box === false, JSON.stringify([b, c]));
+    check("Cfm 规则：蓝键跟着变 Save 2 and overwrite 1（新的 CHD1001 / CHD1003 + 默认勾的 CHD1002；staff 仍可取消）", await evaluate("return $btn('Save', $dialog().lastElementChild).textContent.trim() === 'Save 2 and overwrite 1';"), await evaluate("return $btn('Save', $dialog().lastElementChild)?.textContent;"));
+  }
+  await evaluate("$btn('Close', $dialog()).click();");
+  await waitFor("!$dialog()");
+  await ctl({ cfmRule: null, clearCfm: true });
+
   // ── 表头缺订单号 / 确认号列：报错、不显示预览表、不让误操作 ──
   await evaluate("$btn('↑ Upload confirmation #s').click();");
   await waitFor("$dialog()");
@@ -1294,6 +1312,50 @@ async function run() {
     await evaluate("$btn('Done', $dialog()).click();");
     await waitFor("!$dialog()");
     await ctl({ mismatch: null, mismatchLate: [] });
+  }
+
+  // ── 门票 Cfm # 规则（后端 51ffe2ca，Annie 2026-11-06「全按推荐，动手」）：不需要号的团（Hogan）不挡；
+  //    号不到 6 位数字（CHD2005 的 RZ-2005 只有 4 个数字）同没号一样软拦，原因照后端原话，可 Send anyway 照发原值 ──
+  {
+    const SHORT = "Cfm # is too short (under 6 digits)";
+    const uncheck = "for (const b of document.querySelectorAll('tbody input[type=checkbox]')) if (b.checked) b.click();";
+    await ctl({ cfmRule: { notNeeded: ["CHD2004"] } });
+    await openPage(`${APP}/manifests?date=${today}&tab=tickets&pill=t%3Aantelope`);
+    await waitFor("$box('CHD2005') && $box('CHD2004')");
+    check(
+      "Cfm 规则：不需要号的团（CHD2004 没号）不标红；号太短的 CHD2005 整行标红",
+      await evaluate("return !$box('CHD2004').closest('tr').className.includes('bg-[#fdeceb]') && $box('CHD2005').closest('tr').className.includes('bg-[#fdeceb]');"),
+      await evaluate("return [$box('CHD2004')?.closest('tr')?.className, $box('CHD2005')?.closest('tr')?.className].join(' || ');"),
+    );
+    await evaluate(`${uncheck} $box('CHD2004').click();`);
+    await evaluate("$btn('Send reminder', $bar()).click();");
+    await waitFor("$dialog()");
+    check("Cfm 规则：只勾不需要号的 CHD2004 点 Send reminder：没有红条，直接开发送弹窗", await evaluate("return !document.querySelector('[role=alert]') && $dialog().textContent.includes('CHD2004');"));
+    await evaluate("$btn('Cancel', $dialog().lastElementChild).click();");
+    await waitFor("!$dialog()");
+    await evaluate(`${uncheck} $box('CHD2005').click();`);
+    await evaluate("$btn('Send reminder', $bar()).click();");
+    await waitFor("document.querySelector('[data-soft-blocked]')");
+    check(
+      "Cfm 规则：勾号太短的 CHD2005：红条逐单写后端原话 Cfm # is too short (under 6 digits)，有 Send anyway 1",
+      await evaluate(`return document.querySelector('[data-soft-block="CHD2005"]')?.textContent.includes(${JSON.stringify(SHORT)}) && document.querySelector('[data-send-anyway-cfm]')?.textContent.trim() === 'Send anyway 1';`),
+      await evaluate("return document.querySelector('[data-soft-blocked]')?.textContent;"),
+    );
+    await evaluate("document.querySelector('[data-send-anyway-cfm]').click();");
+    await waitFor("$dialog()");
+    check("Cfm 规则：Send anyway 弹窗写明 CHD2005 号太短、Send Log 留痕", await evaluate(`const n = $dialog().querySelector('[data-send-anyway-note]'); return !!n && n.textContent.includes(${JSON.stringify(`CHD2005 (${SHORT})`)}) && n.textContent.includes('Send Log');`), await evaluate("return $dialog().querySelector('[data-send-anyway-note]')?.textContent;"));
+    const from = (await mockLog()).length;
+    await evaluate("$btn('✉️ Send 1 reminder', $dialog()).click();");
+    await waitFor("$dialog() && [...$dialog().querySelectorAll('button')].some((b) => b.textContent.trim() === 'Done')");
+    const sb = (await since(from, (e) => e.path === "/api/manifests/send-tickets"))[0]?.body;
+    check(
+      "Cfm 规则：Send anyway 照发：send_anyway 带 CHD2005、结果里没有 Not sent",
+      sb && (sb.send_anyway ?? []).includes("CHD2005") && sb.row_keys.some((k) => k.startsWith("CHD2005|")) && (await evaluate("return !$dialog().querySelector('[data-blocked=\"CHD2005\"]');")),
+      JSON.stringify(sb),
+    );
+    await evaluate("$btn('Done', $dialog()).click();");
+    await waitFor("!$dialog()");
+    await ctl({ cfmRule: null });
   }
   await ctl({ rezdyTix: false });
 

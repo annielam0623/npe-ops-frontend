@@ -148,6 +148,14 @@ export function CfmUploadPanel({
         rows,
         checked: new Map(checkedList.map((c) => [c.row.file.line, c])),
       });
+      // Annie 2026-11-06：存着的号不到 6 位数字（「1」「TBA」）⇒ Overwrite 默认勾，staff 仍可取消。
+      setOverwrite(
+        new Set(
+          checkedList
+            .filter((c) => c.check === "different" && c.currentTooShort)
+            .map((c) => c.row.file.line),
+        ),
+      );
     } catch (e) {
       if (isStatus(e, 401)) {
         onUnauthorized();

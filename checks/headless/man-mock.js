@@ -10,7 +10,11 @@ const staffPerm = require("./staff-perm-mock");
 // busTour：{订单号: 产品默认的 tour type 键}，没列的是 ""（产品没配）。
 // 这一天上次从 Rezdy 同步（{at, by} 或 null；/__ctl {rezdyLast} 设）。
 let rezdyLast = null;
-const ctl = { hiddenMode: "today", fail401: false, role: "admin", moneyAdminOnly: false, fail: false, prefsFail: false, cfm404: false, sections: false, sendFail: "", minus15: false, bcAlready: [], bcRace: [], bcBusy: false, bcCheckFail: 0, rezdyListsErr: "", busTour: {}, msgNames: null, msgEmails: null, sendDelay: 0, cfmPreviewFail: false, reminderSent: [], noBatch: false };
+const ctl = { hiddenMode: "today", fail401: false, role: "admin", moneyAdminOnly: false, fail: false, prefsFail: false, cfm404: false, sections: false, sendFail: "", minus15: false, bcAlready: [], bcRace: [], bcBusy: false, bcCheckFail: 0, rezdyListsErr: "", busTour: {}, msgNames: null, msgEmails: null, sendDelay: 0, cfmPreviewFail: false, reminderSent: [], noBatch: false, cfmRule: null };
+// cfmRule（后端 51ffe2ca 门票 Cfm # 规则）：null = 旧后端（行不带 cfm_not_needed / cfm_short，对比不带 current_too_short）；
+// { notNeeded: [订单号] } = 这些单的门票团不需要 Cfm #（Hogan）。号短不短照后端算：整串里数字不到 6 个。
+const cfmDigits = (v) => [...String(v ?? "")].filter((c) => c >= "0" && c <= "9").length;
+const shortCfm = (v) => !!String(v ?? "").trim() && cfmDigits(v) < 6;
 let batchSeq = 9000;
 // 后端 G154：send_sms / send_email 都缺省 = SMS + Email；传了就都得是 bool、不能都 false。
 function channels(body) {
@@ -196,6 +200,8 @@ const PILL_LABEL = {
 const PILL_COLOR = { "g:3": "#111827", "g:7": null, "g:none": null, "t:antelope": null, "t:brenda": null, "t:none": null };
 const rowKey = (r, date) => `${r.order_number}|${r.product_code}|${date}`;
 const SECTION_OF = { CHD1001: "tour:UPPER ANTELOPE", CHD1002: "outbound:SHUTTLE: LAS VEGAS → PAGE" };
+// 实际要发的号：staff 填的优先，没有再用 Rezdy 自带的（同后端 cfm_value）。
+const cfmOf = (r, key) => (cfm.get(key)?.confirmation_no ?? "").trim() || String(r?.v?.rezdy_cfm ?? "").trim();
 const byKey = (key) => allRows().find((r) => rowKey(r, today) === key);
 
 /** 发送接口共用：400 / 502、row_key 不在名单里整批 400。failOnCall：第 N 次发送请求回 502（测分批中途出错）。 */
@@ -351,6 +357,12 @@ function page(url) {
         section: sectionsOn ? SECTION_OF[r.order_number] : null, values,
         ...(ctl.waiver ? { waiver_link_required: !!r.waiver } : {}),
         ...(ctl.mismatch ? { cfm_mismatch: mismatchOf(r.order_number, key) } : {}),
+        ...(ctl.cfmRule && r.tab === "tickets"
+          ? (() => {
+              const nn = (ctl.cfmRule.notNeeded ?? []).includes(r.order_number);
+              return { cfm_not_needed: nn, cfm_short: !nn && shortCfm(cfmOf(r, key)) };
+            })()
+          : {}),
         // G36：returnLeg 开着时把 CHD1002 当成往返 shuttle 的回程那一行。
         leg: ctl.returnLeg && r.order_number === "CHD1002" ? "return" : null,
         // G189：shuttleRows 里的单带 shuttle: true（后端每行的 shuttle 标记），其余 false；没设 = 旧后端，不带这个字段。
@@ -563,8 +575,9 @@ http
       // G129：缺 Cfm # 不再整批 400：没发的进 blocked（can_override: true），其余照发；订单号在 send_anyway 里就照发（Cfm # 留空）。
       const sa = new Set(body.send_anyway ?? []);
       // tkBlock：这几单（发送那一刻才发现缺 Cfm #）后端照样给 blocked；订单号在 send_anyway 里才放行。
+      const notNeeded = (k) => !!ctl.cfmRule && (ctl.cfmRule.notNeeded ?? []).includes(byKey(k).order_number);
       const reasonsOf = (k) => [
-        ...(!cfm.get(k)?.confirmation_no || (ctl.tkBlock ?? []).includes(byKey(k).order_number) ? ["No Cfm #"] : []),
+        ...(notNeeded(k) ? [] : !cfmOf(byKey(k), k) || (ctl.tkBlock ?? []).includes(byKey(k).order_number) ? ["No Cfm #"] : ctl.cfmRule && shortCfm(cfmOf(byKey(k), k)) ? ["Cfm # is too short (under 6 digits)"] : []),
         ...(byKey(k).waiver && !waiver.get(k)?.waiver_link ? ["No waiver link"] : []),
       ];
       // G245：号不对 = 硬拦（can_override false），send_anyway 也不放。
@@ -637,7 +650,8 @@ http
         const current = inLane ? (cfm.get(rowKey(r, today))?.confirmation_no ?? "").trim() : "";
         const incoming = (it.confirmation_no ?? "").trim();
         const status = !inLane ? "not_found" : !current ? "new" : current === incoming ? "same" : "conflict";
-        return { order_number: it.order_number, product_code: it.product_code, status, current, incoming, already_sent: ctl.reminderSent.includes(it.order_number) };
+        return { order_number: it.order_number, product_code: it.product_code, status, current, incoming, already_sent: ctl.reminderSent.includes(it.order_number),
+          ...(ctl.cfmRule ? { current_too_short: shortCfm(current) } : {}) };
       });
       return send(res, 200, { tour_date: body.tour_date, items });
     }

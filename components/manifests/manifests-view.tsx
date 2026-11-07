@@ -47,7 +47,8 @@ import {
   csvFilename,
   formatValue,
   isLegacy,
-  isSelectable,
+  cfmProblem,
+  NO_CFM_REASON,
   isTabKey,
   colsFor,
   EMPTY_COLS,
@@ -582,9 +583,12 @@ export function ManifestsView() {
           softBlocks(r, tab).length > 0,
       )
     : [];
-  // 只缺 Cfm #（没有 waiver、号也没不对）⇒ 红条照原来的写法。
+  // 只缺 Cfm #（没有 waiver、号也没不对、也不是号太短）⇒ 红条照原来的写法；别的逐单列原因。
   const onlyCfmMissing = missingPicked.every(
-    (r) => !missingWaiver(r) && !cfmMismatch(r, tab),
+    (r) =>
+      !missingWaiver(r) &&
+      !cfmMismatch(r, tab) &&
+      cfmProblem(r, tab) === NO_CFM_REASON,
   );
   // G245：号不对的单不能 Send anyway（后端 can_override=false）；Send anyway 只带其余缺 Cfm # / waiver 的单。
   const softPicked = missingPicked.filter((r) => !cfmMismatch(r, tab));
@@ -594,7 +598,8 @@ export function ManifestsView() {
     tab === "tickets" && !!shown?.rows.some((r) => !!r.cfm_mismatch);
   // 这页门票里有没有还没填 Cfm # 的行（不看有没有勾）：表格上方要不要出黄字提示。
   const anyMissingCfm =
-    tab === "tickets" && !!shown?.rows.some((r) => !isSelectable(r, tab));
+    tab === "tickets" &&
+    !!shown?.rows.some((r) => cfmProblem(r, tab) === NO_CFM_REASON);
   const anyMissingWaiver =
     tab === "tickets" && !!shown?.rows.some((r) => missingWaiver(r));
 
@@ -1501,13 +1506,14 @@ function ManifestTable({
   }
 
   function rowTr(r: ManifestRow, n: number | null) {
-    const hasCfm = isSelectable(r, tab);
+    // 门票 Cfm # 规则（后端 51ffe2ca）：不需要号的团不标红；号不到 6 位数字同没号一样标红。
+    const cfmBad = !!cfmProblem(r, tab);
     // 门票提醒发过的（后端已经把它们排到最后）：原来整行变灰；Annie 2026-10-15「灰字都要黑」⇒
     // 字照常黑，改用发送页统一的淡黄行（同 legacy-ui / manifest-preview 的 #fff8e1）标出发过。
     const sentTickets = tab === "tickets" && !!sentAt(r, "tickets");
     // 没填 Cfm # 的门票行：整行标红提醒（Annie 2026-10-17）；勾选本身不再被这个挡住，
     // 真正拦截挪到了发送前的 Skip & send 确认条（见上面 requestSend）。
-    const missingCfm = tab === "tickets" && (!hasCfm || missingWaiver(r));
+    const missingCfm = tab === "tickets" && (cfmBad || missingWaiver(r));
     // 费用单（不能发的行）没收齐款：Due 不是 0 ⇒ 整行同样的淡红（Annie 2026-11-02 题 1 选 B）。
     // 看不到钱的人不标（标了就等于告诉他没收齐款）。
     const unpaidFee =

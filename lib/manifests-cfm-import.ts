@@ -275,6 +275,8 @@ export interface CfmCheckedRow {
   incoming: string;
   /** 这单这天发过门票提醒：客人收到的是旧号，默认保留旧值，页面上更醒目。 */
   alreadySent: boolean;
+  /** 存着的号不到 6 位数字（后端 current_too_short）：different 的行 Overwrite 默认勾上。 */
+  currentTooShort: boolean;
 }
 
 /** 要送去对比的行：能定位到唯一一行（match，或文件格子是空的）。人数不符 / 重复 / 找不到的不用对比。 */
@@ -319,7 +321,14 @@ export async function checkCfmRows(
             : incoming
               ? "new"
               : "ignore";
-    return { row, check, current, incoming, alreadySent: !!it.already_sent };
+    return {
+      row,
+      check,
+      current,
+      incoming,
+      alreadySent: !!it.already_sent,
+      currentTooShort: !!it.current_too_short,
+    };
   });
 }
 

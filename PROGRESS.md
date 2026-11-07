@@ -6,8 +6,18 @@
 
 > **下一个主窗口：先读下面「2026-11-06 收工交接：前端主窗口 49」，再看置顶「📌 等 Annie 确认」。**
 
+## 2026-11-07 前端主窗口 `npe-ops-frontend-a4`[8b80ee] 开工（家里电脑；只分工和汇报，不写代码）
+- 接 49 收工交接。git pull 到 ff0e05e1；11-06 晚家里前端没有新提交，分支状态同 49 交接（Notes e83c529c、G263 456a23a3 都没合）。
+- 已问后端 `主窗口-46`[7d15d6]：Notes v159、G263 v160 进度 + 最终接口形状、G257；告诉它以后发 a4。`33`[9162ea] 回：是后端子窗口（46 派的团出发时间 / G250 锁定钟点），不是前端 ⇒ 前端现在没有工作窗口，请 Annie 开。
+- 46 回：Notes 没上 main，SQL 没执行（今天家里后端没人接）；G263 后端 8f951f4c WIP，v160 草稿，接口形状等接手窗口确认；G257 没进展。46 报早班邮件问题 ⇒ a4 只读查到原因，记进置顶 101，等 Annie。
+- 前端工作窗口 `npe-ops-frontend-3c`[8c373c] 报到 ⇒ 派 Cfm # 规则前端对齐 ①②（task/cfm-rule-align，端口 3877 / 9277 / 9877），做完合 main；③④ 等置顶 100。
+  - ✅ **3c 合 main：门票 Cfm # 规则前端对齐 ①②**（task/cfm-rule-align；后端 51ffe2ca 字段只读核过，跟派工说的一致）：`components/manifests/config.ts` 新 `cfmProblem()`（同后端 `manifest_send.cfm_problem()`）：cfm_not_needed ⇒ 不挡、行不标红；没号 ⇒「No Cfm #」；cfm_short ⇒「Cfm # is too short (under 6 digits)」，走现有红条逐单列原因 + Send anyway（照发原值）。只缺号时红条照原写法；表格上方黄字「Orders without a Cfm # …」只算真没号的（号短的不出这句，文字没改，等 ③ How to use 一起定）。Cfm 上传预览 current_too_short 的 different 行 Overwrite 默认勾（staff 可取消）。man-mock 加 `cfmRule` 开关；man 419/419、nav 39/39，tsc / eslint / build 过。
+- 前端工作窗口 `npe-ops-frontend-86`[e4bb84] 报到 ⇒ 派 G263 前端剩下几项（接 task/farmout-products 456a23a3，端口 3977 / 9377 / 9977），照 mock 写、推分支不合，等后端最终形状 + SHA。
+- 资源：空闲内存 12.9 / 31.7 GB，chrome 15 个（1.7 GB），node 1 个。
+- 今天可派（等工作窗口报到）：① 门票 Cfm # 规则前端对齐（softBlocks cfm_not_needed / cfm_short、上传 current_too_short 默认勾，只修跟后端对齐、样子不变）；② G263 前端剩下几项照 mock 写；③ Notes 后端上 main 后核字段合。置顶 100 两题、Cfm # How to use 文字仍等 Annie。
+
 ## 2026-11-06 收工交接：前端主窗口 `前端主窗口-49`[8db054]（公司电脑）
-> Annie：「今天到5点」⇒ 今天 17:00 才收尾（不是 13:35），本节到时再更新。49 只分工和汇报，没写代码。前端工作窗口只有 `npe-ops-frontend-c3`[a398e9]（13:06 收尾，进程都关了）。后端主窗口 `后端主窗口-4a`[3b2d6f]（后端 0f / 2c / 2e / a2）。详细过程见下面「49 接班」一节。
+> Annie 先说「今天到5点」，随后「算了，收工回家做吧」⇒ 公司现在收工，今晚家里接着做（新主窗口读本节）。49 只分工和汇报，没写代码。前端工作窗口只有 `npe-ops-frontend-c3`[a398e9]（13:06 收尾，进程都关了）。后端主窗口 `后端主窗口-4a`[3b2d6f]（后端 0f / 2c / 2e / a2）。详细过程见下面「49 接班」一节。
 
 ### 一、今天上 main（等 Annie 线上验收，验收点都已转她）
 | 件 | 前端 | 后端 | 验收看 |
@@ -22,9 +32,12 @@
 
 ### 二、没合 / 等
 - **G266 ② 卡片 Notes**（Annie「我要的在卡片下方写notes的地方呢」）：前端 task/dispatch-card-notes **e83c529c**（c3，worktree C:\Code\npe-ops-frontend-wt-shuttle；da 548、nav 39，tsc / eslint / build 过；已修「存 Assign 后没存的字丢」）。后端 2e task/dispatch-card-notes 82710ee7，**迁移 v159 SQL 已在 2e 窗口给 Annie，等她执行** → 后端上 main 发 SHA → 前端只读核 GET / PUT 字段 → 合 main。
-- **G263 Farm out 团 → 产品（v3）**（Annie「同意推荐，动手」，定稿见置顶 99）：前端 task/farmout-products **bd472400 + eb939b30**（c3，worktree C:\Code\npe-ops-frontend-wt-g180）：Partners & rates 页已写；还差 Dispatch 选产品、Farm out Report Product 列、Import 预览、How to use 定稿、mock / 检查（清单在置顶 99）。后端 2c 今晚家里做，迁移 **v160**，接口形状见「49 接班」节。待 Annie：没有 money_view 的人能不能改单子的产品（4a 在问，推荐不能）。
+- **G263 Farm out 团 → 产品（v3）**（Annie「同意推荐，动手」，定稿见置顶 99）：前端 task/farmout-products **456a23a3**（c3 收工推的 WIP，已合最新 main，tsc / eslint 干净；接手从置顶 99 节 ① Dispatch Product 列开始）（c3，worktree C:\Code\npe-ops-frontend-wt-g180）：Partners & rates 页已写；还差 Dispatch 选产品、Farm out Report Product 列、Import 预览、How to use 定稿、mock / 检查（清单在置顶 99）。后端 2c 今晚家里做，迁移 **v160**，接口形状见「49 接班」节。待 Annie：没有 money_view 的人能不能改单子的产品（4a 在问，推荐不能）。
 - 置顶 96 题 1（How to use Message template 那条字）没正式答，线上已照 c3 的稿；不滚动重问。
 - 93 G250 past_day 两句、Task Board 中文那题照旧没答，不滚动重问。
+- **置顶 100 Content Studio › Edit tour「No Cfm # needed」勾选**（a2 转，Annie「现在就要看到能改」）：两题已问 Annie（文字 A 只写邮件效果 / B 写最终效果；A 不出 preview 直接做附截图 / B 先 preview），等答 + 「动手」再派。后端不用改。
+- ✅ **门票 Cfm # 规则后端上 main 51ffe2ca**（a2 转；Annie 在 a2「全按推荐，动手」）：Cfm # 不足 6 位（整串数字个数，按实际要发的那个，staff 优先再 Rezdy）⇒ 自动发跳过、每日报告写「Cfm # is too short (under 6 digits)」；手动发 blocked[] 带这句 + can_override（Send anyway 照发原值）；skip_confirmation_no 的团（Hogan 两个）不因缺 / 短 Cfm # 挡。新字段：GET /api/manifests 行加 cfm_not_needed、cfm_short；POST /api/manifests/cfm/preview items 加 current_too_short（Annie 定：已存的不足 6 位 ⇒ Overwrite 默认勾）。⚠️ 41 张 lower_antelope_kens 单 Rezdy Cfm 是「1」（到 12/31）+ 1 张 staff「TBA」，要上传真号才会自动发。
+  - 前端要做（家里派）：① components/manifests/config.ts:142 softBlocks()：cfm_not_needed 的行不再出「No Cfm #」，cfm_short 的行发前出短号原因；② Cfm 上传预览 current_too_short ⇒ Overwrite 默认勾；③ Manifests How to use；④ 置顶 100 勾选现在真的管发送 ⇒ 文字用 B（最终效果）那句。①② 属跟后端对齐的修正，③④ 文字 + 新勾选：置顶 100 题 2（要不要 preview）还等 Annie。
 - G257（发送不占数据库连接）：后端等 Annie 确认升 Risk C + 迁移，排在 G259 后，今天没做；前端不用改。
 
 ### 三、明天开工
@@ -1307,9 +1320,16 @@ D. 已完成、待从置顶移走：
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 101. Morning Pickup › Send 早班提醒默认只发短信，10/20 起没有邮件（2026-11-07，后端 46 查生产、a4 查前端）
+- 现状：send_log 里 morning_pickup 最后一封邮件是 10/20；11/3–11/7 每一批 send_type 都是 sms（Veronica、Jtian 发的），今天 97 条全是短信。Tour 确认、Last Minute 的邮件正常。
+- 原因：发送页的「Send via」默认值写死成 SMS Only（components/morning-send/config.ts:21，照旧页面 send_morning.html 搬的），每换一份 manifest 就重置回去；哪里都没存「SMS + Email」，所以 Annie 选一次只管那一次。Tickets 发送页默认是 Both。
+- 选法：A（推荐）前端把默认改成 Both (SMS + Email)，staff 还能手动改成 SMS Only / Email Only，后端不用改，小修半天内上；B 加一个全站设置（Super Admin 选默认发送方式），要后端存值 + 前端加设置，要先 preview；C 不改，靠 staff 每次手动选 Both。
+- ✅ Annie（原话）：「早班发送的，选A」⇒ 默认改 Both (SMS + Email)。✅ Annie：「动手」⇒ 派 3c（task/morning-default-both），做完直接合 main。
+
 ### 100. Content Studio › ✎ Edit tour 加「不需要 Cfm #」勾选（2026-11-06 收工后，后端 a2 转，Annie「现在就要看到能改」）
 - 背景（a2）：Annie 要三处门票改动（Cfm # 不足 6 位挡住、上传可覆盖已存 Cfm #、Hogan 两个 Upper Antelope 团不要 Cfm # 也发）。a2 建议 Hogan 用现有 tix_tour_types.skip_confirmation_no 列（生产只有 upper_antelope_hogan_transport / upper_antelope_hogan_hiking 为 true）；现在这一列只让提醒邮件写 Check-in 说明而不是 Confirmation#。第 3 版 Edit tour 没放这一勾（当时取舍：Annie 要就加）。后端不用改：GET 已带、PATCH 已收并写 action_log。「不要 Cfm # 也能发」那部分后端还等 Annie 对三点「动手」。
 - 49 问 Annie：文字两种（A 现在只写邮件效果，后端上了再改；B 直接写最终效果），是否不出 preview 直接做、合 main 附截图。
+- 11-07 加一题（3c 合 Cfm # 对齐 2dd78a22 时发现）：Manifests › Tickets 表格上方的黄字现在是「Orders without a Cfm # will be skipped when you send. Click the Cfm # cell to fill one in anytime.」，只在有完全没号的单时出现；号不足 6 位的单只整行淡红、发之前红条写原因，不出这句黄字。选法：A（推荐）号短的也出黄字，句子改成「Orders without a Cfm #, or with one under 6 digits, will be skipped when you send. Click the Cfm # cell to fill one in anytime.」；B 不改，只靠淡红行和发前红条。跟 ③ How to use 一起定。✅ Annie（原话）：「同意推荐，动手」⇒ 选 A，派 3c（task/cfm-short-hint）。同时让 3c 起草 ③ Manifests How to use、置顶 100 勾选说明 A / B 原文，a4 拿到后整段问 Annie。
 
 ### 99. G263 Farm out › Partners & rates 价格行（Adult / Child / Infant 下拉）（2026-11-06，c3 出 preview，49 转 Annie）
 - ⚠️ **Annie 改设计（原话）**：「其实这是我们设计有问题，你干脆改一下，把每个tour单独列出，然后再下面加产品和价格不就好了，就没有母项子项这么麻烦了」⇒ 不要主项 / 子项：每个团只是一个标题，下面一行一个「产品」（名字自己填，不是 Rezdy 代码）+ 成人 / 儿童 / 婴儿价；团本身不再有价。下面题 1–10 里跟主项 / 子项有关的作废，c3 照新设计重出 preview，2c 重估。**还没「动手」**。
