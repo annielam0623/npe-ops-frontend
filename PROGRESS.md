@@ -26,6 +26,8 @@
 - 置顶 96 题 1（How to use Message template 那条字）没正式答，线上已照 c3 的稿；不滚动重问。
 - 93 G250 past_day 两句、Task Board 中文那题照旧没答，不滚动重问。
 - **置顶 100 Content Studio › Edit tour「No Cfm # needed」勾选**（a2 转，Annie「现在就要看到能改」）：两题已问 Annie（文字 A 只写邮件效果 / B 写最终效果；A 不出 preview 直接做附截图 / B 先 preview），等答 + 「动手」再派。后端不用改。
+- ✅ **门票 Cfm # 规则后端上 main 51ffe2ca**（a2 转；Annie 在 a2「全按推荐，动手」）：Cfm # 不足 6 位（整串数字个数，按实际要发的那个，staff 优先再 Rezdy）⇒ 自动发跳过、每日报告写「Cfm # is too short (under 6 digits)」；手动发 blocked[] 带这句 + can_override（Send anyway 照发原值）；skip_confirmation_no 的团（Hogan 两个）不因缺 / 短 Cfm # 挡。新字段：GET /api/manifests 行加 cfm_not_needed、cfm_short；POST /api/manifests/cfm/preview items 加 current_too_short（Annie 定：已存的不足 6 位 ⇒ Overwrite 默认勾）。⚠️ 41 张 lower_antelope_kens 单 Rezdy Cfm 是「1」（到 12/31）+ 1 张 staff「TBA」，要上传真号才会自动发。
+  - 前端要做（家里派）：① components/manifests/config.ts:142 softBlocks()：cfm_not_needed 的行不再出「No Cfm #」，cfm_short 的行发前出短号原因；② Cfm 上传预览 current_too_short ⇒ Overwrite 默认勾；③ Manifests How to use；④ 置顶 100 勾选现在真的管发送 ⇒ 文字用 B（最终效果）那句。①② 属跟后端对齐的修正，③④ 文字 + 新勾选：置顶 100 题 2（要不要 preview）还等 Annie。
 - G257（发送不占数据库连接）：后端等 Annie 确认升 Risk C + 迁移，排在 G259 后，今天没做；前端不用改。
 
 ### 三、明天开工
