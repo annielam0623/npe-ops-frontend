@@ -596,10 +596,10 @@ export function ManifestsView() {
   // 这页门票里有没有号不对的行（表格上方黄字多半句）。
   const anyMismatch =
     tab === "tickets" && !!shown?.rows.some((r) => !!r.cfm_mismatch);
-  // 这页门票里有没有还没填 Cfm # 的行（不看有没有勾）：表格上方要不要出黄字提示。
+  // 这页门票里有没有还没填 Cfm # 或号不到 6 位数字的行（不看有没有勾）：表格上方要不要出黄字提示
+  // （Annie 2026-11-07「同意推荐，动手」：号短的也出黄字）。
   const anyMissingCfm =
-    tab === "tickets" &&
-    !!shown?.rows.some((r) => cfmProblem(r, tab) === NO_CFM_REASON);
+    tab === "tickets" && !!shown?.rows.some((r) => !!cfmProblem(r, tab));
   const anyMissingWaiver =
     tab === "tickets" && !!shown?.rows.some((r) => missingWaiver(r));
 
@@ -1093,14 +1093,16 @@ export function ManifestsView() {
 
             {!noConfirm && !seeingHidden && anyMissingWaiver ? (
               <p className="mb-2 text-[12.5px] font-medium text-[#ba7517] night:text-amber-300">
-                Orders without a Cfm # or a waiver link will be stopped when you
-                send. Click the cell to fill one in anytime.
+                Orders without a Cfm # or a waiver link, or with a Cfm # under 6
+                digits, will be stopped when you send. Click the cell to fill
+                one in anytime.
                 {anyMismatch ? ` ${MISMATCH_HINT}` : ""}
               </p>
             ) : !noConfirm && !seeingHidden && anyMissingCfm ? (
               <p className="mb-2 text-[12.5px] font-medium text-[#ba7517] night:text-amber-300">
-                Orders without a Cfm # will be skipped when you send. Click the
-                Cfm # cell to fill one in anytime.
+                Orders without a Cfm #, or with one under 6 digits, will be
+                skipped when you send. Click the Cfm # cell to fill one in
+                anytime.
                 {anyMismatch ? ` ${MISMATCH_HINT}` : ""}
               </p>
             ) : !noConfirm && !seeingHidden && anyMismatch ? (
