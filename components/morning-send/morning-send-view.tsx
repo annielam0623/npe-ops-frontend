@@ -480,7 +480,7 @@ function MorningHowToUse() {
         They stay in the main list, ticked, and Send tries again.
       </li>
       <li>
-        Default send mode is SMS Only. Switch to SMS + Email or Email Only if
+        Default send mode is SMS + Email. Switch to SMS Only or Email Only if
         needed.
       </li>
       <li>
