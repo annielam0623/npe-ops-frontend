@@ -11,6 +11,7 @@
 - 已问后端 `主窗口-46`[7d15d6]：Notes v159、G263 v160 进度 + 最终接口形状、G257；告诉它以后发 a4。`33`[9162ea] 回：是后端子窗口（46 派的团出发时间 / G250 锁定钟点），不是前端 ⇒ 前端现在没有工作窗口，请 Annie 开。
 - 46 回：Notes 没上 main，SQL 没执行（今天家里后端没人接）；G263 后端 8f951f4c WIP，v160 草稿，接口形状等接手窗口确认；G257 没进展。46 报早班邮件问题 ⇒ a4 只读查到原因，记进置顶 101，等 Annie。
 - 前端工作窗口 `npe-ops-frontend-3c`[8c373c] 报到 ⇒ 派 Cfm # 规则前端对齐 ①②（task/cfm-rule-align，端口 3877 / 9277 / 9877），做完合 main；③④ 等置顶 100。
+- 前端工作窗口 `npe-ops-frontend-86`[e4bb84] 报到 ⇒ 派 G263 前端剩下几项（接 task/farmout-products 456a23a3，端口 3977 / 9377 / 9977），照 mock 写、推分支不合，等后端最终形状 + SHA。
 - 资源：空闲内存 12.9 / 31.7 GB，chrome 15 个（1.7 GB），node 1 个。
 - 今天可派（等工作窗口报到）：① 门票 Cfm # 规则前端对齐（softBlocks cfm_not_needed / cfm_short、上传 current_too_short 默认勾，只修跟后端对齐、样子不变）；② G263 前端剩下几项照 mock 写；③ Notes 后端上 main 后核字段合。置顶 100 两题、Cfm # How to use 文字仍等 Annie。
 
