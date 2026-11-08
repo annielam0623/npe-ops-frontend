@@ -31,6 +31,7 @@ import {
   sendDriverNotice,
   sendGuideNotice,
   sendRelayRound,
+  RELAY_SEND_TYPE,
 } from "@/lib/dispatch-api";
 import { LA_TIME_ZONE } from "@/lib/la-date";
 import { gsmLength, nonGsmChars } from "@/lib/sms-gsm";
@@ -591,7 +592,7 @@ export function RelayPanel({
       setConfirm(null);
       await pull();
       setError(
-        `${e instanceof TypeError ? "Lost contact with the server." : describeError(e)} Some texts may already have gone out — check which guests show Sent before sending again.`,
+        `${e instanceof TypeError ? "Lost contact with the server." : describeError(e)} Some messages may already have gone out — check which guests show Sent before sending again.`,
       );
       return { status: "ok" };
     }
@@ -932,8 +933,8 @@ export function RelayPanel({
 
       <StepBox
         n={2}
-        title="Morning Relay — text guests"
-        desc="Text hotel guests their morning pickup. Guests go to the 1st or 2nd Round by their tour, on the car that stops at their hotel."
+        title="Morning Relay — send to guests"
+        desc="Send hotel guests their morning pickup reminder by SMS and email. Guests go to the 1st or 2nd Round by their tour, on the car that stops at their hotel."
       >
         <div className="flex flex-wrap items-baseline gap-3">
           {/* 打开就取（题 8 A）；↻ Refresh 再取一次（只读，不发）。 */}
@@ -963,7 +964,7 @@ export function RelayPanel({
               tour manifests. Check Need a look, then Preview & send for the 1st
               or 2nd Round. Click Refresh after changing the Assign tab. A car
               needs a driver and at least one pickup stop, or its guests are not
-              texted.
+              sent the reminder.
             </li>
             <li>
               Need a look: no car stops at that hotel, the hotel name was not
@@ -971,27 +972,27 @@ export function RelayPanel({
               Assign tab and save; the list loads again.
             </li>
             <li>
-              Guests who already got the text are skipped. Tick Send anyway to
-              text them again (for example Changed after sent).
+              Guests who already got the reminder are skipped. Tick Send anyway
+              to send it again (for example Changed after sent).
             </li>
             <li>
-              Driver changed after guests were texted? Change the driver on the
-              Assign tab and Save. Their tracking links then follow the new
-              driver, so you don&rsquo;t need to text them again. Their row says
+              Driver changed after guests got the reminder? Change the driver on
+              the Assign tab and Save. Their tracking links then follow the new
+              driver, so you don&rsquo;t need to send it again. Their row says
               &ldquo;Driver changed after send — link now follows …&rdquo;.
               Guest links use the driver saved in Dispatch, so make sure each
               car has the right driver.
             </li>
             <li>
               A car marked No tracking has no live GPS. Its guests still get the
-              text and the link to check in; the text doesn&rsquo;t mention live
-              tracking. Nothing is blocked.
+              reminder and the link to check in; the SMS and email don&rsquo;t
+              mention live tracking. Nothing is blocked.
             </li>
             <li>
               Under each car, guests are grouped by hotel. Use the button on a
               hotel&rsquo;s bar to select or deselect everyone not sent yet at
               that hotel. For guests already sent at that hotel, Send anyway
-              (all) ticks them all to text them again. Select all never ticks
+              (all) ticks them all to send to them again. Select all never ticks
               guests who were already sent.
             </li>
           </ol>
@@ -1060,7 +1061,7 @@ export function RelayPanel({
                       {res.results?.length || !res.blocked_cars?.length ? (
                         <MorningResults
                           sending={false}
-                          sendType="sms"
+                          sendType={RELAY_SEND_TYPE}
                           orders={(res.results ?? []).map((r) => r.order)}
                           results={res.results ?? []}
                           alreadySent={res.already_sent}
@@ -1211,7 +1212,7 @@ export function RelayPanel({
                             (b.car.id != null ? `#${b.car.id}` : "This tour"),
                         )
                         .join(", ")}
-                      ): their guests will not be texted. Fix them on the Assign
+                      ): their guests will not get the reminder. Fix them on the Assign
                       tab and save.
                     </p>
                   ) : null}
@@ -1263,7 +1264,8 @@ export function RelayPanel({
           }
         >
           <p>
-            Send the Morning Pickup text for <b>{date}</b>. Check who gets it:
+            Send the Morning Pickup reminder (SMS + Email) for <b>{date}</b>.
+            Check who gets it:
           </p>
           <div data-will-send>
             <b className="mb-1 block text-[#14532d]">
@@ -1346,7 +1348,7 @@ export function RelayPanel({
               {confirm.sentSincePull.join(", ")}.
             </p>
           ) : null}
-          <p>Texts go out to real guests and cannot be recalled.</p>
+          <p>Messages go out to real guests and cannot be recalled.</p>
         </ConfirmDialog>
       ) : confirm?.kind === "drivers" ? (
         <ConfirmDialog
