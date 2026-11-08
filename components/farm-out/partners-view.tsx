@@ -379,6 +379,7 @@ export function PartnersView() {
               }
               endpoint="/api/farm-out/rates/import"
               statusText={{ new: "New product" }}
+              labelColumn="product"
               labelOf={(k) => RATE_IMPORT_LABEL[k] ?? k}
               template={() => ({
                 blob: csvBlob(

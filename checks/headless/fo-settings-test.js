@@ -320,6 +320,7 @@ async function partnersChecks() {
     check("预览：New 1 / Will update 2 / No change 1 / Errors 2，栏名 Partner / Tour / Product / Adult / Child / Infant", await evaluate("const t = document.querySelector('[data-bulk-counts]').textContent; const h = [...document.querySelectorAll('[data-bulk-import] thead th')].map(th => th.textContent); return t.includes('New: 1') && t.includes('Will update: 2') && t.includes('No change: 1') && t.includes('Errors: 2') && JSON.stringify(h) === JSON.stringify(['Import','Partner','Tour','Product','Adult','Child','Infant']);"));
     check("预览：团下面对不上的产品标「New product」（G263 v3 题 c：新建）；别的状态照旧 Update / No change / Error", await evaluate("const tag = (st) => [...document.querySelectorAll('[data-bulk-import] tr[data-status=' + st + ']')].map(r => r.cells[0].textContent.trim()); return JSON.stringify(tag('new')) === JSON.stringify(['New product']) && tag('update').every(x => x === 'Update') && tag('unchanged')[0] === 'No change' && tag('error').every(x => x === 'Error') && document.querySelector('[data-bulk-import] tr[data-status=new]').textContent.includes('ZZ Test Day Pass');"));
     check("预览：价钱 旧 → 新（没设的旧值写 —）、全名写法照样对上、对不上的合作公司和不是数字的红字", await evaluate("const ch = [...document.querySelectorAll('[data-bulk-changed]')].map(e => e.textContent); const es = [...document.querySelectorAll('[data-bulk-error]')].map(e => e.textContent); return ch.includes('98.00 → 109.00') && ch.includes('— → 80.00') && $txt().includes('West Rim Admission Only - Partner A') && es.includes('No partner called “Partner Z”.') && es.includes('The adult price must be a number such as 45 or 45.50.');"));
+    check("预览（旧后端，行里没有 label）：Product 栏照文件里写的（短名照短名、全名照全名）", await evaluate("const pc = () => [...document.querySelectorAll('[data-bulk-import] tbody tr[data-status]')].map(r => r.cells[3].textContent.trim()); return JSON.stringify(pc()) === JSON.stringify(['Premium Pass', 'West Rim Admission Only - Partner A', 'ZZ Test Day Pass', 'VOF-H/D', 'Day Pass', 'Day Pass']);"), await evaluate("const pc = () => [...document.querySelectorAll('[data-bulk-import] tbody tr[data-status]')].map(r => r.cells[3].textContent.trim()); return JSON.stringify(pc());"));
     await ctl({ importFail: true });
     await evaluate("$btn('Save 3 rows').click(); return 1;");
     await waitFor("document.querySelector('[data-bulk-import] [role=alert]')?.textContent.includes('Not saved')");
@@ -336,6 +337,20 @@ async function partnersChecks() {
     await evaluate("$btn('Close', document.querySelector('[data-bulk-import]')).click(); return 1;");
     check("Close：Import 块收起", await waitFor("!document.querySelector('[data-bulk-import]')"));
     check("How to use 说明 ⬆ Import rates 六列、对不上的产品新建", await evaluate("return $txt().includes('⬆ Import rates: the file has the columns Partner, Tour, Product, Adult, Child, Infant.') && $txt().includes('A product name that is not on the tour yet is added as a new product.');"));
+    // 后端 c2：预览每行带 label（全名「<Tour> <Product> - <Partner>」，error 行 ""）⇒ Product 栏写全名；error 行照文件里写的
+    await ctl({ importLabel: true });
+    await evaluate(`$btn('⬆ Import', ${card}).click(); return 1;`);
+    await waitFor("document.querySelector('[data-bulk-import] input[type=file]')");
+    {
+      const { root } = await cdp("DOM.getDocument", { depth: -1, pierce: true });
+      const { nodeId } = await cdp("DOM.querySelector", { nodeId: root.nodeId, selector: "[data-bulk-import] input[type=file]" });
+      await cdp("DOM.setFileInputFiles", { nodeId, files: [`${__dirname.replace(/\\/g, "/")}/fo-rates-import.csv`] });
+    }
+    await waitFor("document.querySelector('[data-bulk-counts]')");
+    check("预览（后端带 label）：Product 栏写全名（短名那行也写全名、新产品也是全名）；error 行 label 是空的 ⇒ 照文件里写的；状态和数字不变", await evaluate("const pc = () => [...document.querySelectorAll('[data-bulk-import] tbody tr[data-status]')].map(r => r.cells[3].textContent.trim()); const t = document.querySelector('[data-bulk-counts]').textContent; return JSON.stringify(pc()) === JSON.stringify(['West Rim Premium Pass - Partner A', 'West Rim Admission Only - Partner A', 'Zion ZZ Test Day Pass - Partner A', 'West Rim VOF-H/D - Partner B', 'Day Pass', 'Day Pass']) && t.includes('New: 1') && t.includes('Errors: 2') && document.querySelector('[data-bulk-import] tr[data-status=new]').cells[0].textContent.trim() === 'New product';"), await evaluate("const pc = () => [...document.querySelectorAll('[data-bulk-import] tbody tr[data-status]')].map(r => r.cells[3].textContent.trim()); return JSON.stringify(pc());"));
+    await ctl({ importLabel: false });
+    await evaluate("$btn('Cancel', document.querySelector('[data-bulk-import]')).click(); return 1;");
+    await waitFor("!document.querySelector('[data-bulk-import]')");
     // 文件本身有问题：后端 400 一句英文，预览那里红字照原话，没有表、没有 Save
     await ctl({ importFileError: "Missing column: Partner" });
     await evaluate(`$btn('⬆ Import', ${card}).click(); return 1;`);

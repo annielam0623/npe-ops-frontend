@@ -3,7 +3,7 @@
 // 控制：POST /__ctl {reset, fail401, staff, unavailable, foVis（farm_out_settings 的档：staff / admin / super_admin_only；null = 后端还没登记）}；GET /__log。端口默认 8799（环境变量 MOCK_PORT 可改）。
 const http = require("http");
 
-const ctl = { fail401: false, staff: false, partner: false, unavailable: false, foVis: "staff", log403: false, itemsFail: false, importFail: false, importConflict: false, importFileError: "" };
+const ctl = { fail401: false, staff: false, partner: false, unavailable: false, foVis: "staff", log403: false, itemsFail: false, importFail: false, importConflict: false, importFileError: "", importLabel: false };
 const log = [];
 
 const TOURS = [
@@ -144,7 +144,7 @@ http
       if (ctl.importFileError) return send(res, 400, { detail: ctl.importFileError });
       if (sub.endsWith("/preview")) {
         // G263 v3（后端 plan_rate_import）：Partner / Tour / Product / Adult / Child / Infant；产品写短名或全名都对上；
-        // 对不上的产品 = new（后端不给 label，前端标「New product」）；公司 / 团对不上 = error。
+        // 对不上的产品 = new（前端标「New product」）；公司 / 团对不上 = error。
         const V = (partner, tour_name, product, adult_price, child_price, infant_price) => ({ partner, tour_name, product, adult_price, child_price, infant_price });
         const rows = [
           { status: "update", id: 1, row: 2, values: V("Partner A", "West Rim", "Premium Pass", "109.00", "98.00", ""), before: { adult_price: "98.00" }, changed: ["adult_price"], blanked: ["infant_price"], errors: [] },
@@ -154,6 +154,11 @@ http
           { status: "error", id: null, row: 6, values: V("Partner Z", "Zion", "Day Pass", "100.00", "90.00", ""), before: {}, changed: [], blanked: [], errors: [{ field: "partner", message: "No partner called “Partner Z”." }] },
           { status: "error", id: null, row: 7, values: V("Partner B", "Zion", "Day Pass", "abc", "90.00", ""), before: {}, changed: [], blanked: [], errors: [{ field: "adult_price", message: "The adult price must be a number such as 45 or 45.50." }] },
         ];
+        // 后端 c2（8f951f4c 之后）：每行多一个 label = 全名，error 行是 ""；ctl.importLabel 关着 = 旧后端没有这一项。
+        if (ctl.importLabel) {
+          const L = ["West Rim Premium Pass - Partner A", "West Rim Admission Only - Partner A", "Zion ZZ Test Day Pass - Partner A", "West Rim VOF-H/D - Partner B", "", ""];
+          rows.forEach((r, i) => { r.label = L[i]; });
+        }
         const counts = { new: 0, update: 0, unchanged: 0, error: 0 };
         for (const r of rows) counts[r.status]++;
         return send(res, 200, { columns: ["partner", "tour_name", "product", "adult_price", "child_price", "infant_price"], rows, counts });

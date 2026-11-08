@@ -518,12 +518,17 @@ function PreviewRow({
 export function fromImportResponse(
   p: ImportPreviewResponse,
   labelOf: (key: string) => string,
+  /** 后端给了非空 `label`（全名）时，这一栏显示全名；没给照旧显示文件里写的。 */
+  labelColumn?: string,
 ): BulkImportPreview {
   return {
     columns: p.columns.map((k) => ({ key: k, label: labelOf(k) })),
     rows: p.rows.map((row) => ({
       status: row.status,
-      values: row.values,
+      values:
+        labelColumn && row.label
+          ? { ...row.values, [labelColumn]: row.label }
+          : row.values,
       before: row.before,
       changed: row.changed,
       blanked: row.blanked,
@@ -554,6 +559,7 @@ export function StandardImport({
   template,
   canCreate,
   statusText,
+  labelColumn,
   onClose,
   onSaved,
   onUnauthorized,
@@ -566,6 +572,8 @@ export function StandardImport({
   template: () => { blob: Blob; filename: string };
   canCreate?: boolean;
   statusText?: Partial<Record<BulkImportStatus, string>>;
+  /** 见 `fromImportResponse`：这一栏用后端给的全名 `label`。 */
+  labelColumn?: string;
   onClose: () => void;
   onSaved: () => void;
   onUnauthorized: () => void;
@@ -576,7 +584,11 @@ export function StandardImport({
       help={help}
       template={async () => template()}
       preview={async (file, signal) =>
-        fromImportResponse(await previewImport(endpoint, file, signal), labelOf)
+        fromImportResponse(
+          await previewImport(endpoint, file, signal),
+          labelOf,
+          labelColumn,
+        )
       }
       commit={async (file) =>
         importResultText(await commitImport(endpoint, file))

@@ -20,6 +20,8 @@ export interface ImportPreviewRow {
   errors: { field: string | null; message: string }[];
   /** 按别名对上时是哪个别名（Pickup Locations 用）。 */
   matched_alias?: string | null;
+  /** 这一行对上的东西的全名（G263 结算价导入：「<Tour> <Product> - <Partner>」；error 行是 ""）。旧后端没有。 */
+  label?: string;
 }
 
 export interface ImportPreviewResponse {
