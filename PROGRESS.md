@@ -1327,7 +1327,7 @@ D. 已完成、待从置顶移走：
 - 现状：send_log 里 morning_pickup 最后一封邮件是 10/20；11/3–11/7 每一批 send_type 都是 sms（Veronica、Jtian 发的），今天 97 条全是短信。Tour 确认、Last Minute 的邮件正常。
 - 原因：发送页的「Send via」默认值写死成 SMS Only（components/morning-send/config.ts:21，照旧页面 send_morning.html 搬的），每换一份 manifest 就重置回去；哪里都没存「SMS + Email」，所以 Annie 选一次只管那一次。Tickets 发送页默认是 Both。
 - 选法：A（推荐）前端把默认改成 Both (SMS + Email)，staff 还能手动改成 SMS Only / Email Only，后端不用改，小修半天内上；B 加一个全站设置（Super Admin 选默认发送方式），要后端存值 + 前端加设置，要先 preview；C 不改，靠 staff 每次手动选 Both。
-- ✅ Annie（原话）：「早班发送的，选A」⇒ 默认改 Both (SMS + Email)。✅ Annie：「动手」⇒ 派 3c（task/morning-default-both），✅ 合 main **0cfbd804**（mt 257、nav 39，tsc / eslint / build 过；How to use 改「Default send mode is SMS + Email. Switch to SMS Only or Email Only if needed.」），验收点已转 Annie。答完，待移出置顶。
+- ✅ Annie（原话）：「早班发送的，选A」⇒ 默认改 Both (SMS + Email)。✅ Annie：「动手」⇒ 派 3c（task/morning-default-both），✅ 合 main **0cfbd804**（mt 257、nav 39，tsc / eslint / build 过；How to use 改「Default send mode is SMS + Email. Switch to SMS Only or Email Only if needed.」），验收点已转 Annie。答完，待移出置顶。⚠️ 11-08 46 查：批次 7196（03:56 Jtian，32 行）还是 sms、没发邮件。a4 查：线上 ops chunk 04f2af3ea51b57b1.js 已是新句，部署了；main 两处重置都是 combined。怀疑 Jtian 在 confirm 域名开的旧页 send_morning.html（默认 SMS Only，不跳 ops），或标签页用的还是旧 JS，或她手动选了 SMS。已请 46 查那次请求的 Host / Referer。
 
 ### 100. Content Studio › ✎ Edit tour 加「不需要 Cfm #」勾选（2026-11-06 收工后，后端 a2 转，Annie「现在就要看到能改」）
 - 背景（a2）：Annie 要三处门票改动（Cfm # 不足 6 位挡住、上传可覆盖已存 Cfm #、Hogan 两个 Upper Antelope 团不要 Cfm # 也发）。a2 建议 Hogan 用现有 tix_tour_types.skip_confirmation_no 列（生产只有 upper_antelope_hogan_transport / upper_antelope_hogan_hiking 为 true）；现在这一列只让提醒邮件写 Check-in 说明而不是 Confirmation#。第 3 版 Edit tour 没放这一勾（当时取舍：Annie 要就加）。后端不用改：GET 已带、PATCH 已收并写 action_log。「不要 Cfm # 也能发」那部分后端还等 Annie 对三点「动手」。
