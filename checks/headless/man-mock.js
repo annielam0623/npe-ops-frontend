@@ -560,7 +560,8 @@ http
         const blocked = g.row_keys.filter(why).map((k) => ({ order_number: byKey(k).order_number, reasons: [why(k)], can_override: false }));
         const { results, skipped } = sendRows(g.row_keys.filter((k) => !why(k)), sentTour, body);
         return { tour_type: g.tour_type, total: g.row_keys.length, sent: results.length,
-          results: results.map((r) => ({ order: r.order_number, name: r.v.guest_name, email_status: ch.email ? "sent" : "", sms_status: ch.sms ? (r.v.phone ? "sent:SM1" : "skipped - no phone") : "" })),
+          // 置顶 109：ctl.tourSmsFail = 这几单邮件发出、短信号码错（failed: Invalid phone）——前端只算一次 Sent，不算 Failed。
+          results: results.map((r) => ({ order: r.order_number, name: r.v.guest_name, email_status: ch.email ? "sent" : "", sms_status: ch.sms ? ((ctl.tourSmsFail ?? []).includes(r.order_number) ? "failed: Invalid phone: 555" : r.v.phone ? "sent:SM1" : "skipped - no phone") : "" })),
           skipped, ...(blocked.length ? { blocked } : {}), ...(ctl.noBatch ? {} : { batch_id: ++batchSeq }) };
       });
       return send(res, 200, { checked_at: "2026-10-07T18:29:00+00:00", sent: groups.reduce((n, g) => n + g.sent, 0), groups });

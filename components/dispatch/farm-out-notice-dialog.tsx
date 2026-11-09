@@ -522,7 +522,7 @@ export function FarmOutNoticeDialog({
               <ResultStat
                 label="Sent"
                 value={counts.sent}
-                className="text-[#BA7517]"
+                className="text-[#3B6D11]"
               />
               <ResultStat
                 label="Failed"
@@ -557,9 +557,12 @@ export function FarmOutNoticeDialog({
                         key={i}
                         className={cn(
                           TD,
+                          // 置顶 109 Q7：Sent 绿字（成功绿、失败红）；没发这个渠道 / 跳过的照旧琥珀。
                           isFailed(s)
                             ? "text-[#A32D2D]"
-                            : "font-medium text-[#BA7517]",
+                            : s?.startsWith("sent")
+                              ? "font-medium text-[#3B6D11]"
+                              : "text-[#BA7517]",
                         )}
                       >
                         {statusText(s)}

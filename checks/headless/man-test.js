@@ -834,12 +834,15 @@ async function run() {
   await evaluate("$pick($dialog().querySelector('select'), 'grand_canyon_west');");
   await evaluate("$dialog().querySelector('[data-again=\"CHD1002\"]').click();");
   check("勾 Send anyway：行里的勾选框跟着勾上、小字写要再发几位", await evaluate("return $dialog().querySelector('[data-pick=\"CHD1002\"]').checked && $dialog().textContent.includes('1 already sent, 1 to send again');"));
+  await ctl({ tourSmsFail: ["CHD1002"] });
   from = (await mockLog()).length;
   await evaluate("$btn('✉️ Send', $dialog().lastElementChild).click();");
   await waitFor("$dialog()?.textContent.includes('order sent')");
   st = (await since(from, (e) => e.path === "/api/manifests/send-tour"))[0]?.body;
   check("Send anyway（第一步）：只发勾的那单、send_anyway = [CHD1002]、preview_at = 页面显示的发送时间", JSON.stringify(st?.groups) === JSON.stringify([{ tour_type: "grand_canyon_west", row_keys: [`CHD1002|ANT01|${today}`] }]) && JSON.stringify(st?.send_anyway) === '["CHD1002"]' && st?.preview_at === "2026-10-06T23:12:00+00:00", JSON.stringify(st));
   check("Send anyway（第一步）：发出 1 位、没有跳过", await evaluate("const t = $dialog().textContent; return t.includes('1 order sent') && !t.includes('skipped.');"), await evaluate("return $dialog().textContent;"));
+  check("置顶 109：邮件发出、短信号码错的单只算一次——汇总 Sent 1 / Failed 0 / Skipped 0 / Total 1；Email 绿字 sent、SMS 红字 failed: Invalid phone", await evaluate("const n = [...$dialog().querySelectorAll('[data-stat]')].map((e) => e.textContent).join('|'); const tr = $dialog().querySelector('[data-outcome=CHD1002]'); const c = (i) => tr.children[i]; const k = tr.children.length; return n === '1|0|0|1' && c(k - 2).textContent === 'sent' && getComputedStyle(c(k - 2)).color === 'rgb(59, 109, 17)' && c(k - 1).textContent.startsWith('failed: Invalid phone') && getComputedStyle(c(k - 1)).color === 'rgb(163, 45, 45)';"), await evaluate("return [...$dialog().querySelectorAll('[data-stat]')].map((e) => e.textContent).join('|') + ' / ' + $dialog().querySelector('[data-outcome=CHD1002]')?.textContent;"));
+  await ctl({ tourSmsFail: [] });
   await evaluate("$btn('Done', $dialog()).click();");
   await waitFor("!$dialog()");
 

@@ -1371,21 +1371,31 @@ function tourOutcomes(
   // 没选的渠道写 —（没发，不算失败）。
   const useEmail = type !== "sms";
   const useSms = type !== "email";
-  return {
-    sent: res.sent,
-    outcomes: res.groups.flatMap((g) =>
-      g.results.map((r) => ({
+  // 置顶 109（Annie「全 A」「动手」）：一位客人只算一次——任一渠道 sent = Sent；都没发出、有渠道真失败 = Failed。
+  // 以前 Sent 用后端 res.sent（只数邮件），Failed 又数「有一个渠道 failed」，一个发出一个失败的单两边都算。
+  const outcomes = res.groups.flatMap((g) =>
+    g.results.map((r) => {
+      const wentOut =
+        (useEmail && /^sent/i.test(r.email_status)) ||
+        (useSms && /^sent/i.test(r.sms_status));
+      return {
         order: r.order,
         name: r.name,
         first: useEmail ? r.email_status || "—" : "—",
         second: useSms
           ? (r.sms_status || "—").replace(/^sent:.*/, "sent")
           : "—",
+        sent: wentOut,
         failed:
-          (useEmail && /^failed/i.test(r.email_status)) ||
-          (useSms && /^failed/i.test(r.sms_status)),
-      })),
-    ),
+          !wentOut &&
+          ((useEmail && /^failed/i.test(r.email_status)) ||
+            (useSms && /^failed/i.test(r.sms_status))),
+      };
+    }),
+  );
+  return {
+    sent: outcomes.filter((o) => o.sent).length,
+    outcomes,
     skipped: res.groups.flatMap((g) => g.skipped ?? []),
     blocked: res.groups.flatMap((g) =>
       (g.blocked ?? []).map((b) => ({
@@ -1916,7 +1926,10 @@ function ticketOutcomes(
   const useSms = type !== "email";
   const useEmail = type !== "sms";
   return {
-    sent: res.sent,
+    // 置顶 109：任一渠道 ok 才算 Sent（后端 res.sent 是全部试过的行，两个渠道都失败的也算）。
+    sent: res.results.filter(
+      (r) => (useSms && r.sms_ok) || (useEmail && r.email_ok),
+    ).length,
     outcomes: res.results.map((r) => ({
       order: r.chd_number,
       name: r.name,

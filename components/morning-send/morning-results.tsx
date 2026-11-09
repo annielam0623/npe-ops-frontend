@@ -32,7 +32,7 @@ export interface MorningSendStop {
  */
 type ChannelOutcome = "sent" | "failed" | "no-address" | "not-selected";
 const OUTCOME: Record<ChannelOutcome, { label: string; className: string }> = {
-  sent: { label: "Sent", className: "font-medium text-[#BA7517]" },
+  sent: { label: "Sent", className: "font-medium text-[#3B6D11]" },
   failed: { label: "Failed", className: "text-[#A32D2D]" },
   // 标签按渠道换（NO_ADDRESS_LABEL），这里的字只是占位。
   "no-address": { label: "No address", className: "text-[#1a1a1a]" },
@@ -177,7 +177,7 @@ export function MorningResults({
       ) : null}
 
       <div className={RESULT_SUMMARY}>
-        <ResultStat label="Sent" value={sent} className="text-[#BA7517]" />
+        <ResultStat label="Sent" value={sent} className="text-[#3B6D11]" />
         <ResultStat label="Failed" value={failed} className="text-[#A32D2D]" />
         {noAddressStats(sendType, countNo("sms"), countNo("email")).map((s) => (
           <ResultStat
