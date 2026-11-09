@@ -1426,6 +1426,7 @@ D. 已完成、待从置顶移走：
 - Annie 答 +「动手」后前后端所有入口一起改。
 - ✅ **Annie 11-09 答（原话）：「全 A」** ⇒ Q1–Q7 都 A。35 已转 d4 估后端工作量 / 拆分。
 - ✅ **Annie 11-09（原话）：「动手」**（紧接「全 A」之后）⇒ 109 全部开工：后端 d4 拆窗口做、先发接口形状；前端 79（G263 之后，worktree task/send-rules-uniform）先做不依赖后端的（Q7 Sent 绿字、Manifests 弹窗重复计数），其余照后端形状 mock 做，后端上了核字段再合。
+- d4 后端拆法：W1 先建唯一判定点 send_outcome.py + 形状文档（约 2 小时，上 main 后别的窗口开工），再做早班 / Tour 一族 / send_guard / send_batches / manifest_send / relay-send；W2 门票 + auto_send；W3（a3）Broadcast、Farm out、单单重发、staff 回复、司机快回 + 告警；W4 日报 + 员工 / 司机 / 导游通知。不迁移（历史空号码 failed 展示时认作 No contact，不回写）。约 1.5 天。新字段大致：sent / failed / no_contact，Farm out n_no_contact，司机 / 导游 no_contact [{name, why}]，以 W1 形状文档为准。要 Annie 开 3 个后端窗口（W1、W2、W4）。
 
 ### 108. （并入 109）早班 SMS + Email：没手机号的客人，短信那栏记 failed、预览挂红「SMS failed」（2026-11-09，后端 a3 查出，35 问 Annie）
 
