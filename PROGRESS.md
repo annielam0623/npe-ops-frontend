@@ -1431,6 +1431,7 @@ D. 已完成、待从置顶移走：
   - ✅ a3 已重拉写回（Annie 在 a3 窗口确认）：CHDATEDW1（11-12）、CHDJ0JUJ7（11-11）电话都已换成 Rezdy 上的新号（号码不写进仓库）；其余列不变。Order List、Main Manifest 已是新号；Dispatch 11-11 / 11-12 同步时带新号。**Tour Tracking（bookings 表）仍是旧号**（tracking_sync 开关 off）；今天 staff 回这两位的两条消息（send_log 49907 / 49908）发到了旧号。
   - 原因：Rezdy 改客人资料**不推 webhook**，dateUpdated 也不变 ⇒ 对账只看状态 / dateUpdated 永远发现不了 ⇒ 35 问 Annie Q2（对账对电话 / 邮箱，要直接比字段）+ Tracking 那两位旧号怎么办。
   - ✅ Q2 Annie 在 d4 窗口答（原话）：「要的」⇒ 每日对账也比电话 / 邮箱，不一致走 sync_rezdy_order_from_payload 重写，对账报告列改了哪几单；d4 登记后端待办，和单张重拉接口一起派。Q3（Tracking 两位旧号）：✅ Annie（原话）「最后一个问题：要」⇒ A，只改这两张单 bookings 电话，tracking_sync 开关不动；已转 d4 / a3（先 dry run 给 Annie 看）。
+  - a3 查：**不用改，什么都没执行**。重拉后 ANITA 重发了团确认（send_log 49916 / 49917），发送路径把 Main Manifest 的电话写回 bookings ⇒ 两单 Tracking 已是新号，短信 + 邮件都 delivered 到新号。49907 / 49908 是 ANITA 更早的回复，发到旧号；之后回复都走新号。tracking_sync 没动。
 
 ### 110. Staff Schedule › Rules 自定义规则（2026-11-09，Annie 在后端 d4 那边提；前端先出 preview，没动手）
 
