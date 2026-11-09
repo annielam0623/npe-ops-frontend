@@ -19,7 +19,7 @@
 - 前端工作窗口 `npe-ops-frontend-86`[e4bb84] 报到 ⇒ 派 G263 前端剩下几项（接 task/farmout-products 456a23a3，端口 3977 / 9377 / 9977），照 mock 写、推分支不合，等后端最终形状 + SHA。
 - 资源：空闲内存 12.9 / 31.7 GB，chrome 15 个（1.7 GB），node 1 个。
 - 11-08 Annie「今早导游从他的页面能看到他带的这台bus全部的客人么」⇒ 46 生产只读查（查的是 11-08 下午库里现状，不是早上快照）：4 台 bus tour 车都排了 HR 里的导游，导游页人数 = 这台车在名单上的人数，unplaced 0。Scarlett G South Rim 1957 31 pax / 15 单；OLIVIA Antelope A 2356 31 / 14（没账号，只能短信链接进）；Lankun W Antelope B 2719 36 / 22；Robert L HooverDam 2355 29 / 10。没有只打名字没连 HR 的导游。今天 4 位导游没有登录 / 点链接记录，但以前点过链接的 cookie 一直有效、再开不留记录 ⇒ 看没看过查不出。规则提醒：两台车的团两台都要标字母，没标导游 / 司机页一个客人都看不到（tour_manifest.py:694-700），今天没出现。
-- 11-08 Annie「把completed today' assignment这个键隐藏起来」⇒ 只记下、没动。两个仓库都搜不到这几个字；最像的是 Dispatch Step 2 底下蓝键「Completed — this day's dispatch is done」（`components/dispatch-manifest/manifests-panel.tsx:458`），已问 Annie 是不是这个键、隐藏后的后果（见回复），等她确认 +「动手」。
+- 11-08 Annie「把completed today' assignment这个键隐藏起来」⇒ 只记下、没动。两个仓库都搜不到这几个字；最像的是 Dispatch Step 2 底下蓝键「Completed — this day's dispatch is done」（`components/dispatch-manifest/manifests-panel.tsx:458`），已问 Annie 是不是这个键、隐藏后的后果（见回复），等她确认 +「动手」。Annie「对，把这个键，同意推荐。动手」⇒ 选 A（只对 staff 隐藏，Super Admin 照旧能看能点；已点过的「Dispatch completed by …」状态字大家都看得到；How to use 里叫 staff 点 Completed 那句只给 Super Admin）⇒ 派 3c（task/hide-completed-staff），做完合 main。
 - 今天可派（等工作窗口报到）：① 门票 Cfm # 规则前端对齐（softBlocks cfm_not_needed / cfm_short、上传 current_too_short 默认勾，只修跟后端对齐、样子不变）；② G263 前端剩下几项照 mock 写；③ Notes 后端上 main 后核字段合。置顶 100 两题、Cfm # How to use 文字仍等 Annie。
 
 ## 2026-11-06 收工交接：前端主窗口 `前端主窗口-49`[8db054]（公司电脑）
