@@ -1338,7 +1338,8 @@ async function run() {
   check("How to use 写了 Copy 1st Round", await evaluate("return document.body.textContent.replace(/\\s+/g, ' ').includes('2nd Round: Copy 1st Round copies the cars, drivers and hotels.');"));
 
   // ── 没客人的团收起来、有客人的写人数、Save 后滚到 Completed（Annie 2026-10-15）──
-  await ctl({ emptyHoover: true });
+  // Completed 键只给 Super Admin（Annie 2026-11-08 选 A），这一段按 Super Admin 跑。
+  await ctl({ emptyHoover: true, superAdmin: true });
   await goto(`${APP}/dispatch?date=2026-10-05`);
   await waitFor("document.querySelector('[data-empty-sections]') && document.querySelector('[data-guest-lists-done]')");
   await helpers();
@@ -1364,8 +1365,30 @@ async function run() {
   const iSv = lgC.findIndex(isSave), iCp = lgC.findIndex((e) => e.path === "/api/dispatch/manifests/complete");
   check("还没存就点 Completed：先存（不等 3 秒）、存好才标完成", iSv >= 0 && iSv < iCp && lgC[iSv].body.rows[0].vehicle_id === 12, JSON.stringify(lgC.map((e) => e.method + " " + e.path)));
   check("自动存不滚动（不跳到 Completed）", await evaluate("return !window.__scrolled.includes('dispatch-completed');"), await evaluate("return JSON.stringify(window.__scrolled);"));
-  await ctl({ emptyHoover: false });
+  // Annie 2026-11-08「把completed today' assignment这个键隐藏起来」「对，把这个键，同意推荐。动手」（选 A）：
+  // staff 没有 Completed 键、How to use 不写 click Completed；Super Admin 点过的那天状态字照旧给 staff 看。
+  await ctl({ emptyHoover: false, superAdmin: false, completed: false });
   await goto(`${APP}/dispatch?date=2026-10-09`);
+  await waitFor(`${sec("West Rim Bus Tour")}`);
+  await sleep(500);
+  check("staff：没有 Completed 键", await evaluate("return !document.getElementById('dispatch-completed') && ![...document.querySelectorAll('button')].some(b => b.textContent.startsWith('Completed'));"));
+  check("staff：Guest lists 的 How to use 不写 click Completed", await evaluate("const d = [...document.querySelectorAll('details')].find(x => x.textContent.includes('How to use — Guest lists')); return !!d && !d.textContent.includes('click Completed');"));
+  await ctl({ completed: true });
+  await goto(`${APP}/dispatch?date=2026-10-09`);
+  await waitFor("document.getElementById('dispatch-completed')");
+  check("staff：点过的那天照样看到 Dispatch completed by Annie … Next: go to ② Send（没有按钮）", await evaluate("const c = document.getElementById('dispatch-completed'); return c.textContent.includes('Dispatch completed by Annie') && c.textContent.includes('Next: go to ② Send') && !c.querySelector('button');"));
+  await ctl({ superAdmin: true });
+  await goto(`${APP}/dispatch?date=2026-10-09`);
+  await waitFor("document.getElementById('dispatch-completed')");
+  check("Super Admin：点过的那天也是同一句状态字", await evaluate("const c = document.getElementById('dispatch-completed'); return c.textContent.includes('Dispatch completed by Annie') && !c.querySelector('button');"));
+  await ctl({ completed: false });
+  await goto(`${APP}/dispatch?date=2026-10-09`);
+  await waitFor("document.getElementById('dispatch-completed')");
+  await helpers();
+  await sleep(300);
+  check("Super Admin：有 Completed 键，How to use 写 When the day is done, click Completed at the bottom of Step 2.", await evaluate("const d = [...document.querySelectorAll('details')].find(x => x.textContent.includes('How to use — Guest lists')); return !!$btn('Completed — this day’s dispatch is done', document.getElementById('dispatch-completed')) && d.textContent.replace(/\\s+/g, ' ').includes('When the day is done, click Completed at the bottom of Step 2.');"));
+  await ctl({ superAdmin: false });
+    await goto(`${APP}/dispatch?date=2026-10-09`);
   await waitFor(`${sec("West Rim Bus Tour")}`);
   await waitFor(`${sec("West Rim Bus Tour")}.textContent.includes('pax ·')`);
   await helpers();

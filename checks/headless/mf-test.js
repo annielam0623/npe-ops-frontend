@@ -141,7 +141,8 @@ const tomorrow = (() => { const [y, m, d] = LA.format(new Date()).split("-").map
 
 async function run() {
   require("fs").writeFileSync(`${DIR}/ant.csv`, "Order Number\nCHD7\n");
-  // ── 面板 ──
+  // ── 面板 ──（Completed 键只给 Super Admin，Annie 2026-11-08 选 A：下面 Completed 那几段按 Super Admin 跑，跑完再看 staff）
+  await ctl({ superAdmin: true });
   await goto(`${APP}/dispatch`);
   await waitFor(`${card(3)}`);
   await helpers();
@@ -310,7 +311,26 @@ async function run() {
   await sleep(300);
   check("接口还没上线（404）：不显示那一块、也不报错", !(await evaluate("return !!document.querySelector('[data-pending]') || [...document.querySelectorAll('[role=alert]')].some(a => a.textContent.includes('changes after Completed'));")));
   check("How to use 精简成 3 条（Annie 2026-10-15 精简成 5 条，10-17 拿掉 Sync Rezdy 键时去掉一条，10-30 拿掉上传 Rezdy CSV 再去掉一条），写了 Completed 在 Step 2 底下", await evaluate("const d = document.querySelector('section[aria-label=\"Guest lists\"] details'); return d.querySelectorAll('li').length === 3 && d.textContent.replace(/\\s+/g, ' ').includes('When the day is done, click Completed at the bottom of Step 2.');"));
-  await ctl({ pendingOff: false, pending: [], done: null });
+  // Annie 2026-11-08「把completed today' assignment这个键隐藏起来」「对，把这个键，同意推荐。动手」（选 A）：
+  // staff 没有 Completed 键、How to use 不写 click Completed；点过的那句状态字照旧人人看得到。
+  await ctl({ pendingOff: false, pending: [], done: null, superAdmin: false });
+  await goto(`${APP}/dispatch?date=2026-10-05`);
+  await waitFor(`${card(3)}`);
+  await helpers();
+  await sleep(500);
+  check("staff：没有 Completed 键（整条不出）", await evaluate("return !$btn('Completed — this day’s dispatch is done') && !document.querySelector('[data-guest-lists-done]');"));
+  check("staff：How to use 不写 click Completed（剩 2 条）", await evaluate("const d = document.querySelector('section[aria-label=\"Guest lists\"] details'); return d.querySelectorAll('li').length === 2 && !d.textContent.includes('click Completed');"));
+  await ctl({ done: { completed_by: "Annie", completed_at: "2026-10-04T22:40:00+00:00" } });
+  await goto(`${APP}/dispatch?date=2026-10-05`);
+  await waitFor("document.querySelector('[data-guest-lists-done]')");
+  check("staff：Super Admin 点过的那天，照样看到 Dispatch completed by Annie · … Next: go to ② Send …（普通文字、没有按钮）", await evaluate("const c = document.querySelector('[data-guest-lists-done]'); return c.textContent.includes('Dispatch completed by Annie') && c.textContent.includes('Next: go to ② Send') && !c.querySelector('button');"));
+  await ctl({ done: null, superAdmin: true });
+  await goto(`${APP}/dispatch?date=2026-10-05`);
+  await waitFor("document.querySelector('[data-guest-lists-done]')");
+  await helpers();
+  await sleep(300);
+  check("Super Admin：Completed 键和 How to use 那句都在（3 条）", await evaluate("const d = document.querySelector('section[aria-label=\"Guest lists\"] details'); return !!$btn('Completed — this day’s dispatch is done') && d.querySelectorAll('li').length === 3 && d.textContent.includes('When the day is done, click Completed at the bottom of Step 2.');"));
+  await ctl({ superAdmin: false });
   await goto(`${APP}/dispatch?date=2026-10-05`);
   await waitFor(`${card(3)}`);
   await helpers();

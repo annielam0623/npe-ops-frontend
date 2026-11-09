@@ -21,6 +21,7 @@ import {
 } from "@/lib/dispatch-manifest-api";
 import { PendingChanges } from "@/components/dispatch-manifest/pending-changes";
 import { LA_TIME_ZONE } from "@/lib/la-date";
+import { usePageVisibility } from "@/lib/page-visibility";
 import { resolveTourColor } from "@/lib/tour-colors";
 import { cn } from "@/lib/utils";
 import { PageLink } from "@/components/ui/page-link";
@@ -384,6 +385,8 @@ export function EmptyToursToggle({
  * 之后名单再变的单列在 Step 1 顶上的「changes after Completed」里（G56，PendingChanges）。
  * Annie 2026-10-15：从 Step 1 底下挪到 Step 2 底下，用 Save schedule 的蓝（原来的深蓝在深底上看不见）；
  * 点了先存好还没存的排车（Annie 2026-10-15 去掉了 Save schedule 键），再标完成、滚到步骤条的 ② Send（不切过去、不发东西）。
+ * Annie 2026-11-08「把completed today' assignment这个键隐藏起来」「对，把这个键，同意推荐。动手」（选 A）：
+ * 按钮只给 Super Admin（`canComplete`）；点过之后那句状态字照旧人人看得到。
  */
 export function CompletedBar({
   date,
@@ -392,9 +395,12 @@ export function CompletedBar({
   onUnauthorized,
   beforeComplete,
   disabled = false,
+  canComplete,
 }: {
   date: string;
   done: GuestListsDone | null;
+  /** 能不能点 Completed：只有 Super Admin（Annie 2026-11-08 选 A）。false 且没点过 ⇒ 整条不出。 */
+  canComplete: boolean;
   /** 标好了：排车页重读卡片、滚到 ② Send。 */
   onDone: () => void;
   onUnauthorized: () => void;
@@ -425,6 +431,8 @@ export function CompletedBar({
       setCompleting(false);
     }
   }
+
+  if (!done && !canComplete) return null;
 
   return (
     <div
@@ -624,6 +632,8 @@ function DocIcon() {
 }
 
 function HowToUse() {
+  // 「click Completed」那句只给 Super Admin（按钮只有 Super Admin 有，Annie 2026-11-08 选 A）。
+  const { isSuperAdmin } = usePageVisibility();
   return (
     // 旧 `.tm-howto`：标题行最右边（Sync Rezdy 键在标题旁边），书本图标 + 浅蓝字链接；展开后占满一行，深底上浅色字。Annie 2026-10-15：精简成 5 条。
     <details className="ml-auto max-w-full text-[12.5px] leading-[1.85] text-[#cbd5e1] open:order-last open:ml-0 open:basis-full">
@@ -650,7 +660,11 @@ function HowToUse() {
           Click Open manifest to check the guests, print, or fill in the
           Antelope confirmation #.
         </li>
-        <li>When the day is done, click Completed at the bottom of Step 2.</li>
+        {isSuperAdmin ? (
+          <li>
+            When the day is done, click Completed at the bottom of Step 2.
+          </li>
+        ) : null}
       </ol>
     </details>
   );

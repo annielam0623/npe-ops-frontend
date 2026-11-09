@@ -152,7 +152,7 @@ http.createServer(async (req, res) => {
     if (p === "/api/settings/dashboard-widgets") return send(res, 200, { readable: true, widgets: [] });
     if (p === "/api/me/permissions") return send(res, 200, { is_superadmin: false, permissions: (ctl.partnerCodes || ["dispatch.view", "dispatch.edit", "dispatch.send", "manifests.view"]).map((code) => ({ code, module: code.split(".")[0], wired: true })), default_home: "/dispatch" });
   }
-  if (p === "/api/me") return send(res, 200, { id: 1, username: "zztest", display_name: "ZZ Test", initials: "ZT", role: "staff", is_admin: false, is_superadmin: false });
+  if (p === "/api/me") return send(res, 200, { id: 1, username: "zztest", display_name: "ZZ Test", initials: "ZT", role: "staff", is_admin: false, is_superadmin: !!ctl.superAdmin });
   // 第二辆车的 ⇄ Farm out（preview 7uRp5FHfFTsnRYemrrm1Wf）：foVis = 开关 farm_out_dispatch 对我开着；foPartners = 合作公司；
   // foLocked = 别人正在改这一天（edit-lock 409 的原话）；foSaveFail = section 400 的原话。
   if (p === "/api/settings/dashboard-widgets" && ctl.foVis) return send(res, 200, { readable: true, widgets: [{ key: "farm_out_dispatch", label: "Dispatch · Farm out", visibility: "staff", default: "super_admin_only", visible_to_me: true }] });
