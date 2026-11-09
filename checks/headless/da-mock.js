@@ -539,7 +539,7 @@ http.createServer(async (req, res) => {
     }
     // results 同后端 send_morning_row() 的每行形状（Morning Pickup 发送页同一个）。
     return send(res, 200, { round: b.round, sent: sentNow.length, failed: 0, already_sent: skipped.length, already_sent_orders: skipped, resent, not_on_round: notOnRound, checked_at: "2026-10-05T12:01:00+00:00", blocked_cars: bl, overridden_orders: bl.flatMap((c) => c.overridden_orders).filter((o) => sentNow.includes(o)),
-      results: sentNow.map((o) => ({ order: `CHD${o}`, name: "ZZ Test Relay", phone: "+15550000009", pickup_time: "6:15 AM", sms_status: "sent:SM1", email_status: "", skipped: false })) });
+      results: sentNow.map((o) => ({ order: `CHD${o}`, name: "ZZ Test Relay", phone: "+15550000009", pickup_time: "6:15 AM", sms_status: b.send_type === "email" ? "" : "sent:SM1", email_status: b.send_type === "combined" || b.send_type === "email" ? "sent" : "", skipped: false })) });
   }
   // G215（后端 49c400a）：ctl.driverPage = null（默认，旧后端不带字段）| true | false（司机页开关关着，带后端原文）；ctl.driver400 = 发送时后端拒发。
   if (p === "/api/dispatch/driver-notice") return send(res, 200, { run_date: q.date, ...(ctl.driverPage == null ? {} : { page_open: ctl.driverPage, page_off_text: DRIVER_PAGE_OFF }), text: `NPE: Your manifest for Mon, Oct 5 is ready. Log in to see your bus and guests: https://confirm.nationalparkexpress.com/driver?date=${q.date}`, last_sent: ctl.driverSentAt ? { at: "2026-10-04T22:00:00+00:00", by: "annie", label: "Texted 1 driver" } : null,

@@ -448,13 +448,13 @@ async function run() {
   // 置顶 94（Annie「94 全按推荐，动手」）：Assign 的 Schedule check 要 relay-pull 的 need_a_look ⇒ 打开取 1 次；司机 / 导游两份照旧不取。
   check("send-auto-open：停在 Assign 时 Send 的司机 / 导游两份不取；relay-pull 只为 Schedule check 取 1 次（置顶 94）", (await sendReads(bOpen)) === "1,0,0", await sendReads(bOpen));
   // 10-07 起拆两个标签（Annie）：Assign = Step 1 Guest lists、Step 2 Buses & drivers；
-  // Send = Step 1 Send to drivers、Step 2 Morning Relay — text guests（原来的早班发送）。
-  const rp = "document.querySelector('section[aria-label=\"Morning Relay — text guests\"]')";
+  // Send = Step 1 Send to drivers、Step 2 Morning Relay — send to guests（原来的早班发送）。
+  const rp = "document.querySelector('section[aria-label=\"Morning Relay — send to guests\"]')";
   const dp = "document.querySelector('section[aria-label=\"Send to drivers & guides\"]')";
   const tabBtn = (name) => `document.getElementById('tab-${name}')`;
   const panel = (name) => `document.getElementById('panel-${name}')`;
   check("标签：默认 Assign，Send 那一页藏着，地址不带 tab", await evaluate(`return ${tabBtn("assign")}.getAttribute('aria-selected') === 'true' && ${tabBtn("send")}.getAttribute('aria-selected') === 'false' && !${panel("assign")}.hidden && ${panel("send")}.hidden && !location.search.includes('tab=');`));
-  check("Assign 里是 Guest lists → Buses & drivers；Send 里是 Send to drivers & guides → Morning Relay — text guests", await evaluate(`const l = (p) => [...p.querySelectorAll('section[aria-label]')].map(s => s.getAttribute('aria-label')).filter(x => ['Guest lists', 'Buses & drivers', 'Send to drivers & guides', 'Morning Relay — text guests'].includes(x)).join('|'); return l(${panel("assign")}) === 'Guest lists|Buses & drivers' && l(${panel("send")}) === 'Send to drivers & guides|Morning Relay — text guests';`));
+  check("Assign 里是 Guest lists → Buses & drivers；Send 里是 Send to drivers & guides → Morning Relay — send to guests", await evaluate(`const l = (p) => [...p.querySelectorAll('section[aria-label]')].map(s => s.getAttribute('aria-label')).filter(x => ['Guest lists', 'Buses & drivers', 'Send to drivers & guides', 'Morning Relay — send to guests'].includes(x)).join('|'); return l(${panel("assign")}) === 'Guest lists|Buses & drivers' && l(${panel("send")}) === 'Send to drivers & guides|Morning Relay — send to guests';`));
   const bSend = (await mockLog()).length;
   await evaluate(`${tabBtn("send")}.click();`);
   await waitFor(`!${panel("send")}.hidden`);
@@ -514,7 +514,7 @@ async function run() {
   await waitFor(`${rp}.querySelector('[data-no-tracking]')`);
   check("No tracking（题 3 A）：1st Round 车 768 没定位 ⇒ 车号后面红点标 No tracking；只标不拦（Preview & send 照常能点）", await evaluate(`const box = ${rp}.querySelector('[aria-label="1st Round · 4:30 - 5:15 AM"]'); const m = box.querySelector('[data-no-tracking]'); return !!m && m.textContent.trim() === 'No tracking' && m.closest('td').textContent.startsWith('768') && !$btn('Preview & send', box).disabled && !box.querySelector('[data-car-blocked]');`));
   check("No tracking：没配车的占位车（No vehicle，后端也给 false）不标", await evaluate(`const box = ${rp}.querySelector('[aria-label="2nd Round · 5:40 - 6:30 AM"]'); return box.textContent.includes('No vehicle · No driver') && !box.querySelector('[data-no-tracking]');`));
-  check("No tracking：Morning Relay 的 How to use 有那一句", await evaluate(`return ${rp}.textContent.includes('A car marked No tracking has no live GPS. Its guests still get the text and the link to check in');`));
+  check("No tracking：Morning Relay 的 How to use 有那一句", await evaluate(`return ${rp}.textContent.includes('A car marked No tracking has no live GPS. Its guests still get the reminder and the link to check in');`));
   await ctl({ relayNoTracking: false });
   await evaluate(`$btn('↻ Refresh', ${rp}).click();`);
   await waitFor(`!${rp}.querySelector('[data-no-tracking]')`);
@@ -524,7 +524,7 @@ async function run() {
   await waitFor(`${rp}.querySelector('[data-driver-followed]')`);
   check("G234 题 1 A / 4 B：R2 的 Status 格：Sent by 标签 → Driver changed after send (was BRUCE) — link now follows FREDDY → 橙字 Changed after sent", await evaluate(`const td = ${rp}.querySelector('tr[data-order="R2"] [data-sent-label]').parentElement; const kids = [...td.children]; const f = td.querySelector('[data-driver-followed]'); return f?.textContent === 'Driver changed after send (was BRUCE) — link now follows FREDDY' && kids.indexOf(td.querySelector('[data-sent-label]')) < kids.indexOf(f) && kids.indexOf(f) < kids.indexOf(td.querySelector('[data-changed]'));`), await evaluate(`return ${rp}.querySelector('tr[data-order="R2"]')?.textContent;`));
   check("G234 题 3 A：灰色小字（不是橙、红、绿）；别的行不出；照旧默认不勾", await evaluate(`const f = ${rp}.querySelector('[data-driver-followed]'); return getComputedStyle(f).color === 'rgb(107, 114, 128)' && ${rp}.querySelectorAll('[data-driver-followed]').length === 1 && !${rp}.querySelector('tr[data-order="R2"] input[data-pick]').checked;`));
-  check("G234：Morning Relay 的 How to use 写了换司机只要在 Assign 改好 Save、不用重发、司机要填对", await evaluate(`return ${rp}.textContent.replace(/\\s+/g, ' ').includes("Driver changed after guests were texted? Change the driver on the Assign tab and Save. Their tracking links then follow the new driver, so you don’t need to text them again. Their row says “Driver changed after send — link now follows …”. Guest links use the driver saved in Dispatch, so make sure each car has the right driver.");`));
+  check("G234：Morning Relay 的 How to use 写了换司机只要在 Assign 改好 Save、不用重发、司机要填对", await evaluate(`return ${rp}.textContent.replace(/\\s+/g, ' ').includes("Driver changed after guests got the reminder? Change the driver on the Assign tab and Save. Their tracking links then follow the new driver, so you don’t need to send it again. Their row says “Driver changed after send — link now follows …”. Guest links use the driver saved in Dispatch, so make sure each car has the right driver.");`));
   await ctl({ relayFollowed: false });
   await evaluate(`$btn('↻ Refresh', ${rp}).click();`);
   await waitFor(`!${rp}.querySelector('[data-driver-followed]')`);
@@ -564,7 +564,7 @@ async function run() {
   await evaluate(`$btn('Preview & send', ${rp}).click();`);
   await waitFor(dialog);
   // 跳过几位按页面上勾不到的「发过」算（No show 的 R3 不算），确认框只写勾了的人。
-  check("发送前先问服务端谁发过、确认框写人数和跳过几位，还没发", await evaluate(`return ${dialog}.textContent.includes('Preview & send · 1st Round · 4:30 - 5:15 AM') && ${dialog}.textContent.includes('1 guest') && ${dialog}.textContent.includes('1 already sent before will be skipped');`) && (await since(b0, (e) => e.path === "/api/dispatch/relay-send")).length === 0 && (await since(b0, (e) => e.path === "/api/dispatch/relay-send/preview"))[0]?.q.round === "relay");
+  check("发送前先问服务端谁发过、确认框写人数和跳过几位，还没发", await evaluate(`return ${dialog}.textContent.includes('Preview & send · 1st Round · 4:30 - 5:15 AM') && ${dialog}.textContent.includes('1 guest') && ${dialog}.textContent.includes('1 already sent before will be skipped') && ${dialog}.textContent.replace(/\s+/g, ' ').includes('Send the Morning Pickup reminder (SMS + Email) for') && ${dialog}.textContent.includes('Messages go out to real guests and cannot be recalled.');`) && (await since(b0, (e) => e.path === "/api/dispatch/relay-send")).length === 0 && (await since(b0, (e) => e.path === "/api/dispatch/relay-send/preview"))[0]?.q.round === "relay");
   await ctl({ relay409: true });
   await evaluate(`$btn('Send to 1 guest', ${dialog}).click();`);
   await waitFor(`${dialog}.textContent.includes('Nothing was sent')`);
@@ -576,7 +576,11 @@ async function run() {
   // G61：只送勾的单（order_numbers），服务端只看这几单，所以 Skipped = 0（没勾的发过的不算进去）。
   check("发完照全站发送页格式：结果数字（Sent 1、Skipped 0）+ 逐单表（单号、名字、接客时间、SMS 状态），没有 Send Another、没有跳过框", await evaluate(`const t = ${rp}.textContent; const stats = [...${rp}.querySelectorAll('[data-stat]')].map(e => e.textContent); return stats[0] === '1' && stats[3] === '0' && t.includes('CHDR1') && t.includes('6:15 AM') && t.includes('Sent') && !t.includes('Send Another') && !${rp}.querySelector('[data-relay-skipped]') && !${rp}.querySelector('[data-relay-not-on-round]');`), await evaluate(`return ${rp}.textContent;`));
   const rs = (await since(b0, (e) => e.path === "/api/dispatch/relay-send"))[0]?.body;
-  check("发送：送日期、轮、勾的单 order_numbers = [R1]（没勾 Send anyway ⇒ 不带 send_anyway / preview_at）；重拉后 R1 变「Sent by annie」、没人可勾 ⇒ 按钮灰掉", rs?.date === "2026-10-05" && rs?.round === "relay" && JSON.stringify(rs?.order_numbers) === '["R1"]' && Object.keys(rs).length === 3 && (await evaluate(`return $btn('Preview & send', ${rp}).disabled && ${rp}.querySelector('tr[data-order="R1"] [data-sent-label]')?.textContent === 'Sent by annie on Oct 5, 5:00 AM';`)), JSON.stringify(rs));
+  check("发送：送日期、轮、勾的单 order_numbers = [R1]（没勾 Send anyway ⇒ 不带 send_anyway / preview_at）；重拉后 R1 变「Sent by annie」、没人可勾 ⇒ 按钮灰掉", rs?.date === "2026-10-05" && rs?.round === "relay" && JSON.stringify(rs?.order_numbers) === '["R1"]' && Object.keys(rs).length === 4 && (await evaluate(`return $btn('Preview & send', ${rp}).disabled && ${rp}.querySelector('tr[data-order="R1"] [data-sent-label]')?.textContent === 'Sent by annie on Oct 5, 5:00 AM';`)), JSON.stringify(rs));
+  // 早班接客提醒在 Dispatch 发也要短信 + 邮件（Annie：「我设置的是 sms 和 email 都要用」，置顶 101 选 A）
+  check("发客人 POST body 带 send_type=combined", rs?.send_type === "combined", JSON.stringify(rs));
+  check("结果表有 Email Status 列、照实写 Sent；表头写 SMS + Email", await evaluate(`const tr = ${rp}.querySelector('table tr td') && [...${rp}.querySelectorAll('tbody tr')].find(r => r.textContent.includes('CHDR1')); const h = [...tr.closest('table').querySelectorAll('thead th')].map(th => th.textContent.trim()); const c = [...tr.children].map(td => td.textContent.trim()); return h[h.indexOf('Email Status')] === 'Email Status' && c[h.indexOf('Email Status')] === 'Sent' && c[h.indexOf('SMS Status')] === 'Sent' && ${rp}.textContent.includes('SMS + Email');`), await evaluate(`return ${rp}.textContent;`));
+  check("确认框 / 说明不再说只发 text：标题 send to guests、How to use 写 reminder", await evaluate(`const t = ${rp}.textContent; return !t.includes('got the text') && !t.includes('text guests') && t.includes('Send hotel guests their morning pickup reminder by SMS and email.');`));
   // ✕ Close 收起结果卡片（Annie 2026-10-14）；第 2 轮还没排车时 Send 页也有 Copy 1st Round（白键）
   await evaluate(`$btn('✕ Close', ${rp}).click();`);
   await waitFor(`!${rp}.textContent.includes('Send Results')`);
@@ -592,7 +596,7 @@ async function run() {
   await evaluate(`$btn('Send to 1 guest', ${dialog}).click();`);
   await waitFor(`!${dialog}`);
   await sleep(300);
-  check("发送 502：弹窗关掉、重拉、面板写「可能已发」", (await since(b0, (e) => e.path === "/api/dispatch/relay-pull")).length >= 1 && (await evaluate(`return ${rp}.querySelector('[role=alert]').textContent.includes('Some texts may already have gone out');`)));
+  check("发送 502：弹窗关掉、重拉、面板写「可能已发」", (await since(b0, (e) => e.path === "/api/dispatch/relay-pull")).length >= 1 && (await evaluate(`return ${rp}.querySelector('[role=alert]').textContent.includes('Some messages may already have gone out');`)));
   await ctl({ relay502: false, relaySent: ["R1"] });
   // Send to drivers（后端 2026-10-10 `8cdacda`：按钮改名 Check the list、收起状态一行提示、每人一个勾选框）
   check("打开 Send 就显示发给司机的原文（链接可点、新标签页）和导游那格（Send to guide 以后写导游的原文）", await evaluate(`const d = ${dp}.querySelector('[data-driver-text]'); const a = d && d.querySelector('a'); const g = ${dp}.querySelector('[data-guide-text]'); return !!d && d.textContent.startsWith('NPE: Your manifest for Mon, Oct 5 is ready.') && !!a && a.href === 'https://confirm.nationalparkexpress.com/driver?date=2026-10-05' && a.target === '_blank' && !!g && g.textContent.startsWith('NPE guide Mon Oct 5: ');`), await evaluate(`return ${dp}.textContent;`));
@@ -712,7 +716,7 @@ async function run() {
   await evaluate(`$btn('Send to 2 guests', ${dialog}).click();`);
   await waitFor(`${rp}.querySelector('[data-relay-not-on-round]')`);
   check("G61 结果：黄框 Skipped, already sent: R1.、红框 Not on this round any more, not sent: R4.", await evaluate(`const y = ${rp}.querySelector('[data-relay-skipped]')?.textContent ?? ''; const r = ${rp}.querySelector('[data-relay-not-on-round]').textContent; return y.includes('Skipped, already sent: R1.') && !y.includes('Sent again') && r.includes('Not on this round any more, not sent: R4.');`), await evaluate(`return ${rp}.textContent.slice(0, 2000);`));
-  check("G61 How to use — Morning Relay 写了勾选、Send anyway", await evaluate(`const t = [...${rp}.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Morning Relay')).textContent; return t.includes('Guests who already got the text are skipped. Tick Send anyway to text them again');`));
+  check("G61 How to use — Morning Relay 写了勾选、Send anyway", await evaluate(`const t = [...${rp}.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Morning Relay')).textContent; return t.includes('Guests who already got the reminder are skipped. Tick Send anyway to send it again');`));
   await evaluate(`$btn('✕ Close', ${rp}).click();`);
 
   // ── Morning Relay 按酒店整组勾选（后端 2026-10-19，Annie「relay 酒店可以动手」）──
@@ -787,7 +791,7 @@ async function run() {
   await waitFor(`${tcBox}.textContent.includes('Send Results')`);
   check("发完：结果卡片 Sent 2（同全站发送页格式）", await evaluate(`const stats = [...${tcBox}.querySelectorAll('[data-stat]')].map(e => e.textContent); return stats[0] === '2';`), await evaluate(`return ${tcBox}.textContent;`));
   const tcSend = (await since(b0, (e) => e.path === "/api/dispatch/relay-send"))[0]?.body;
-  check("发送请求：round=tour_car，order_numbers 含这个团的 2 单（HD1、HD2）", tcSend?.round === "tour_car" && JSON.stringify([...(tcSend?.order_numbers ?? [])].sort()) === '["HD1","HD2"]', JSON.stringify(tcSend));
+  check("发送请求：round=tour_car，order_numbers 含这个团的 2 单（HD1、HD2），也带 send_type=combined", tcSend?.round === "tour_car" && tcSend?.send_type === "combined" && JSON.stringify([...(tcSend?.order_numbers ?? [])].sort()) === '["HD1","HD2"]', JSON.stringify(tcSend));
   await evaluate(`$btn('✕ Close', ${tcBox}).click();`);
   // 这个团当天一台 bus_tour 车都没排：整块挡住，红字原因是后端原话，发送键关着（没有客人可勾）。
   await ctl({ tourCarNoCar: true });
@@ -1334,7 +1338,8 @@ async function run() {
   check("How to use 写了 Copy 1st Round", await evaluate("return document.body.textContent.replace(/\\s+/g, ' ').includes('2nd Round: Copy 1st Round copies the cars, drivers and hotels.');"));
 
   // ── 没客人的团收起来、有客人的写人数、Save 后滚到 Completed（Annie 2026-10-15）──
-  await ctl({ emptyHoover: true });
+  // Completed 键只给 Super Admin（Annie 2026-11-08 选 A），这一段按 Super Admin 跑。
+  await ctl({ emptyHoover: true, superAdmin: true });
   await goto(`${APP}/dispatch?date=2026-10-05`);
   await waitFor("document.querySelector('[data-empty-sections]') && document.querySelector('[data-guest-lists-done]')");
   await helpers();
@@ -1360,8 +1365,30 @@ async function run() {
   const iSv = lgC.findIndex(isSave), iCp = lgC.findIndex((e) => e.path === "/api/dispatch/manifests/complete");
   check("还没存就点 Completed：先存（不等 3 秒）、存好才标完成", iSv >= 0 && iSv < iCp && lgC[iSv].body.rows[0].vehicle_id === 12, JSON.stringify(lgC.map((e) => e.method + " " + e.path)));
   check("自动存不滚动（不跳到 Completed）", await evaluate("return !window.__scrolled.includes('dispatch-completed');"), await evaluate("return JSON.stringify(window.__scrolled);"));
-  await ctl({ emptyHoover: false });
+  // Annie 2026-11-08「把completed today' assignment这个键隐藏起来」「对，把这个键，同意推荐。动手」（选 A）：
+  // staff 没有 Completed 键、How to use 不写 click Completed；Super Admin 点过的那天状态字照旧给 staff 看。
+  await ctl({ emptyHoover: false, superAdmin: false, completed: false });
   await goto(`${APP}/dispatch?date=2026-10-09`);
+  await waitFor(`${sec("West Rim Bus Tour")}`);
+  await sleep(500);
+  check("staff：没有 Completed 键", await evaluate("return !document.getElementById('dispatch-completed') && ![...document.querySelectorAll('button')].some(b => b.textContent.startsWith('Completed'));"));
+  check("staff：Guest lists 的 How to use 不写 click Completed", await evaluate("const d = [...document.querySelectorAll('details')].find(x => x.textContent.includes('How to use — Guest lists')); return !!d && !d.textContent.includes('click Completed');"));
+  await ctl({ completed: true });
+  await goto(`${APP}/dispatch?date=2026-10-09`);
+  await waitFor("document.getElementById('dispatch-completed')");
+  check("staff：点过的那天照样看到 Dispatch completed by Annie … Next: go to ② Send（没有按钮）", await evaluate("const c = document.getElementById('dispatch-completed'); return c.textContent.includes('Dispatch completed by Annie') && c.textContent.includes('Next: go to ② Send') && !c.querySelector('button');"));
+  await ctl({ superAdmin: true });
+  await goto(`${APP}/dispatch?date=2026-10-09`);
+  await waitFor("document.getElementById('dispatch-completed')");
+  check("Super Admin：点过的那天也是同一句状态字", await evaluate("const c = document.getElementById('dispatch-completed'); return c.textContent.includes('Dispatch completed by Annie') && !c.querySelector('button');"));
+  await ctl({ completed: false });
+  await goto(`${APP}/dispatch?date=2026-10-09`);
+  await waitFor("document.getElementById('dispatch-completed')");
+  await helpers();
+  await sleep(300);
+  check("Super Admin：有 Completed 键，How to use 写 When the day is done, click Completed at the bottom of Step 2.", await evaluate("const d = [...document.querySelectorAll('details')].find(x => x.textContent.includes('How to use — Guest lists')); return !!$btn('Completed — this day’s dispatch is done', document.getElementById('dispatch-completed')) && d.textContent.replace(/\\s+/g, ' ').includes('When the day is done, click Completed at the bottom of Step 2.');"));
+  await ctl({ superAdmin: false });
+    await goto(`${APP}/dispatch?date=2026-10-09`);
   await waitFor(`${sec("West Rim Bus Tour")}`);
   await waitFor(`${sec("West Rim Bus Tour")}.textContent.includes('pax ·')`);
   await helpers();

@@ -7,7 +7,7 @@ export const MESSAGE_PREVIEW_TABS: readonly PreviewTab[] = [
   { key: "guest_page", label: "🖥️ Guest Page", kind: "html" },
 ];
 
-/** 顺序与旧页面一致；默认 SMS Only。 */
+/** 顺序与旧页面一致；默认 Both（置顶 101，Annie 2026-11-07「早班发送的，选A」「动手」；原来默认 SMS Only）。 */
 export const SEND_TYPES: readonly {
   value: MorningSendType;
   label: string;
@@ -18,7 +18,7 @@ export const SEND_TYPES: readonly {
   { value: "email", label: "Email Only", short: "Email Only" },
 ];
 
-export const DEFAULT_SEND_TYPE: MorningSendType = "sms";
+export const DEFAULT_SEND_TYPE: MorningSendType = "combined";
 
 export function sendTypeShort(value: MorningSendType): string {
   return SEND_TYPES.find((t) => t.value === value)?.short ?? value;

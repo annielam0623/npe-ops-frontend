@@ -1235,7 +1235,7 @@ async function run() {
   );
   check(
     "表头上方黄字提示（纯文字，不是按钮式的 +Add #）",
-    await evaluate("return document.body.textContent.includes('Orders without a Cfm # will be skipped when you send.');"),
+    await evaluate("return document.body.textContent.includes('Orders without a Cfm #, or with one under 6 digits, will be skipped when you send. Click the Cfm # cell to fill one in anytime.');"),
   );
   await evaluate("document.querySelector('thead th input').click();");
   check("Select all 不再被 Cfm # 过滤：缺号的也勾上了", await evaluate("return $box('CHD2002').checked;"));
@@ -1319,13 +1319,18 @@ async function run() {
   {
     const SHORT = "Cfm # is too short (under 6 digits)";
     const uncheck = "for (const b of document.querySelectorAll('tbody input[type=checkbox]')) if (b.checked) b.click();";
-    await ctl({ cfmRule: { notNeeded: ["CHD2004"] } });
+    await ctl({ cfmRule: { notNeeded: ["CHD2004", "CHD2001"] } }); // CHD2001 预存的号也不到 6 位，设成不需要号，页面上只剩 CHD2005 号短
     await openPage(`${APP}/manifests?date=${today}&tab=tickets&pill=t%3Aantelope`);
     await waitFor("$box('CHD2005') && $box('CHD2004')");
     check(
       "Cfm 规则：不需要号的团（CHD2004 没号）不标红；号太短的 CHD2005 整行标红",
       await evaluate("return !$box('CHD2004').closest('tr').className.includes('bg-[#fdeceb]') && $box('CHD2005').closest('tr').className.includes('bg-[#fdeceb]');"),
       await evaluate("return [$box('CHD2004')?.closest('tr')?.className, $box('CHD2005')?.closest('tr')?.className].join(' || ');"),
+    );
+    check(
+      "Cfm 黄字（Annie 11-07「同意推荐，动手」）：只有号短的 CHD2005 标红时也出表格上方黄字，原句一字不差",
+      await evaluate("const red = [...document.querySelectorAll('tbody tr')].filter((t) => t.className.includes('bg-[#fdeceb]')).map((t) => (t.dataset.row ?? '').split('|')[0]); return red.join(',') === 'CHD2005' &&document.body.textContent.includes(" + JSON.stringify("Orders without a Cfm #, or with one under 6 digits, will be skipped when you send. Click the Cfm # cell to fill one in anytime.") + ");"),
+      await evaluate("return [...document.querySelectorAll('tbody tr')].filter((t) => t.className.includes('bg-[#fdeceb]')).map((t) => t.dataset.row).join('|') + ' || ' + (document.querySelector('p.mb-2')?.textContent ?? '');"),
     );
     await evaluate(`${uncheck} $box('CHD2004').click();`);
     await evaluate("$btn('Send reminder', $bar()).click();");
@@ -1668,6 +1673,18 @@ async function run() {
     const [y, mo, da] = today.split("-").map(Number);
     const label = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" }).format(new Date(Date.UTC(y, mo - 1, da)));
     check("搜索框灰字写明搜哪一天：Search <日期> orders…", (await evaluate("return document.querySelector('input[aria-label=\"Search this day\\'s orders\"]').placeholder;")) === `Search ${label} orders: #, name, phone, email…`, await evaluate("return document.querySelector('input[aria-label=\"Search this day\\'s orders\"]').placeholder;"));
+  }
+  {
+    // 置顶 100 稿 1（Annie 2026-11-07「同意全部推荐-动手」）：第 15 条改、新第 16 条、第 21 条末加一句——一字不差
+    const items = await evaluate("const d = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Manifests')); return [...d.querySelectorAll('li')].map(l => l.textContent.replace(/\\s+/g, ' ').trim());");
+    const A = "Tickets: rows without a Cfm #, or with a Cfm # under 6 digits, are highlighted in red; you can still tick them. Clicking Send reminder with some of those ticked asks you to skip them (send the rest), fill them in first, or Send anyway. Sent rows move to the bottom.";
+    const B = 'A Cfm # with fewer than 6 digits (for example "1" or "TBA") counts as no Cfm #. The scheduled send skips these orders and the daily report lists them as "Cfm # is too short (under 6 digits)". When you send by hand you can still Send anyway; the number goes out as it is. Tour types ticked No Cfm # needed in Settings → Content Studio (such as the two Hogan Upper Antelope tours) are sent without a Cfm #.';
+    const C = "If the saved Cfm # has fewer than 6 digits, Overwrite is ticked for you; untick it to keep the saved number.";
+    const i = items.indexOf(A);
+    check("How to use 第 15 条（Cfm # 号短 + Send anyway）原句", i === 14, JSON.stringify(items[14]));
+    check("How to use 新第 16 条（号短算没号 / No Cfm # needed）原句", items[15] === B, JSON.stringify(items[15]));
+    const up = items.find((x) => x.startsWith("↑ Upload confirmation #s")) || "";
+    check("How to use 原第 21 条（↑ Upload confirmation #s，现第 22 条）末加 Overwrite 默认勾那句", up.endsWith(C), JSON.stringify(up));
   }
   check("How to use 写了搜索", await evaluate("return [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Manifests')).textContent.includes('every tab and group on this day');"));
 
@@ -2045,7 +2062,7 @@ async function waiverChecks() {
   check("要 waiver 没填（CHD2101）：红「No waiver link」、整行淡红", await evaluate(`const t = ${wCell("CHD2101")}.querySelector('[data-waiver-status=missing]'); return !!t && t.textContent === 'No waiver link' && ${tr("CHD2101")}.className.includes('bg-[#fdeceb]');`));
   check("填了的（CHD2102）：框里是链接、Open ↗ 新窗口打开、下面写谁", await evaluate(`const c = ${wCell("CHD2102")}; const a = c.querySelector('[data-waiver-open]'); return ${wInput("CHD2102")}.value === 'https://waiver.example.com/s/B2' && a.href === 'https://waiver.example.com/s/B2' && a.target === '_blank' && a.rel.includes('noopener') && c.textContent.includes('veronica') && !c.querySelector('[data-waiver-status]');`));
   check("发过又改了（CHD2103）：黄「Changed since sent」", await evaluate(`const t = ${wCell("CHD2103")}.querySelector('[data-waiver-status=changed]'); return !!t && t.textContent === 'Changed since sent';`));
-  check("表头上方黄字提示写到 Cfm # 和 waiver link", await evaluate("return document.body.textContent.includes('Orders without a Cfm # or a waiver link will be stopped when you send.');"));
+  check("表头上方黄字提示写到 Cfm # 和 waiver link", await evaluate("return document.body.textContent.includes('Orders without a Cfm # or a waiver link, or with a Cfm # under 6 digits, will be stopped when you send. Click the cell to fill one in anytime.');"));
 
   await openPage(ANT);
   await waitFor("$heads().includes('Cfm #')", 20000);

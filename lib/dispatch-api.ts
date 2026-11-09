@@ -426,7 +426,13 @@ export function fetchRelaySendPreview(
 }
 
 /**
- * ⚠️ 真实发送：给这一轮还没发过的客人发早班短信（同 Morning Pickup 发送页的消息）。
+ * Dispatch 发客人的早班接客提醒一律短信 + 邮件（Annie：「我设置的是 sms 和 email 都要用」，置顶 101 选 A）。
+ * ⚠️ 后端 relay_pull 没带 send_type 时当 "sms"，所以每次都要明确带上。
+ */
+export const RELAY_SEND_TYPE = "combined" as const;
+
+/**
+ * ⚠️ 真实发送：给这一轮还没发过的客人发早班接客提醒（短信 + 邮件，同 Morning Pickup 发送页的消息）。
  * 服务端自己重算名单、跳过发过的；同一轮同时只能一个人发（409）；只能发今天 / 明天（或全是测试单的测试日）。
  * G61：`order_numbers` 只发勾的这几单；发过的要再发放进 `send_anyway`，`preview_at` 带 relay-pull 的 checked_at。
  */
@@ -459,7 +465,7 @@ export function sendRelayRound(
 }> {
   return apiFetch(`${API}/relay-send`, {
     method: "POST",
-    body: { date, round, ...pick },
+    body: { date, round, send_type: RELAY_SEND_TYPE, ...pick },
     cache: "no-store",
   });
 }

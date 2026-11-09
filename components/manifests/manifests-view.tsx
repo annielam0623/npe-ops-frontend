@@ -596,10 +596,10 @@ export function ManifestsView() {
   // 这页门票里有没有号不对的行（表格上方黄字多半句）。
   const anyMismatch =
     tab === "tickets" && !!shown?.rows.some((r) => !!r.cfm_mismatch);
-  // 这页门票里有没有还没填 Cfm # 的行（不看有没有勾）：表格上方要不要出黄字提示。
+  // 这页门票里有没有还没填 Cfm # 或号不到 6 位数字的行（不看有没有勾）：表格上方要不要出黄字提示
+  // （Annie 2026-11-07「同意推荐，动手」：号短的也出黄字）。
   const anyMissingCfm =
-    tab === "tickets" &&
-    !!shown?.rows.some((r) => cfmProblem(r, tab) === NO_CFM_REASON);
+    tab === "tickets" && !!shown?.rows.some((r) => !!cfmProblem(r, tab));
   const anyMissingWaiver =
     tab === "tickets" && !!shown?.rows.some((r) => missingWaiver(r));
 
@@ -1093,14 +1093,16 @@ export function ManifestsView() {
 
             {!noConfirm && !seeingHidden && anyMissingWaiver ? (
               <p className="mb-2 text-[12.5px] font-medium text-[#ba7517] night:text-amber-300">
-                Orders without a Cfm # or a waiver link will be stopped when you
-                send. Click the cell to fill one in anytime.
+                Orders without a Cfm # or a waiver link, or with a Cfm # under 6
+                digits, will be stopped when you send. Click the cell to fill
+                one in anytime.
                 {anyMismatch ? ` ${MISMATCH_HINT}` : ""}
               </p>
             ) : !noConfirm && !seeingHidden && anyMissingCfm ? (
               <p className="mb-2 text-[12.5px] font-medium text-[#ba7517] night:text-amber-300">
-                Orders without a Cfm # will be skipped when you send. Click the
-                Cfm # cell to fill one in anytime.
+                Orders without a Cfm #, or with one under 6 digits, will be
+                skipped when you send. Click the Cfm # cell to fill one in
+                anytime.
                 {anyMismatch ? ` ${MISMATCH_HINT}` : ""}
               </p>
             ) : !noConfirm && !seeingHidden && anyMismatch ? (
@@ -2071,10 +2073,20 @@ function ManifestsHowToUse() {
           send a shuttle confirmation again, do it from Manifests.
         </>,
         <>
-          <b>Tickets</b>: rows without a Cfm # are highlighted in red; you can
-          still tick them. Clicking <b>Send reminder</b> with some of those
-          ticked asks you to skip them (send the rest) or fill them in first.
-          Sent rows move to the bottom.
+          <b>Tickets</b>: rows without a Cfm #, or with a Cfm # under 6 digits,
+          are highlighted in red; you can still tick them. Clicking{" "}
+          <b>Send reminder</b> with some of those ticked asks you to skip them
+          (send the rest), fill them in first, or Send anyway. Sent rows move to
+          the bottom.
+        </>,
+        <>
+          A Cfm # with fewer than 6 digits (for example &quot;1&quot; or
+          &quot;TBA&quot;) counts as no Cfm #. The scheduled send skips these
+          orders and the daily report lists them as &quot;Cfm # is too short
+          (under 6 digits)&quot;. When you send by hand you can still Send
+          anyway; the number goes out as it is. Tour types ticked No Cfm #
+          needed in Settings → Content Studio (such as the two Hogan Upper
+          Antelope tours) are sent without a Cfm #.
         </>,
         <>
           <b>Send message</b>: write your own text, choose SMS and/or Email,
@@ -2113,7 +2125,9 @@ function ManifestsHowToUse() {
           not just the one you&apos;re viewing. Rows that match cleanly get the
           Cfm # written in; a pax mismatch, more than one system row for the
           same order, or a duplicate in the file are left red for you to check
-          by hand instead of guessing.
+          by hand instead of guessing. If the saved Cfm # has fewer than 6
+          digits, Overwrite is ticked for you; untick it to keep the saved
+          number.
         </>,
         <>
           <b>Waiver link</b>: Upper Antelope (Brenda) orders need a waiver link.

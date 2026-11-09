@@ -809,6 +809,7 @@ async function run() {
     require("fs").writeFileSync(`${DIR}/morning-zz.xlsx`, "not really xlsx");
     const sends = async (from) => (await mockLog()).slice(from).filter((e) => e.path === "/send/morning-pickup");
     const stats = "return [...document.querySelectorAll('main section [data-stat]')].map(e => e.textContent).join('|');";
+    const RADIO = "[...document.querySelectorAll('[role=radiogroup][aria-label=\"Send type\"] [role=radio]')]";
     async function uploadMorning() {
       await waitFor("document.querySelector('input[type=file]')");
       await helpers();
@@ -817,12 +818,50 @@ async function run() {
       await cdp("DOM.setFileInputFiles", { nodeId, files: [`${DIR}/morning-zz.xlsx`] });
       await sleep(200);
       await evaluate("$btn('📂 Upload & Preview').click();");
-      await waitFor("!!$btn('📱 Send to Selected') && !$btn('📱 Send to Selected').disabled");
+      await waitFor("!!$btn('✉️ Send to Selected') && !$btn('✉️ Send to Selected').disabled");
+      await pickSms();
+    }
+    // 置顶 101（Annie 2026-11-07「选A」「动手」）：默认 Both。下面原有的检查按「只发短信」写的，上传后手动换成 SMS Only。
+    async function pickSms() {
+      await evaluate(`${RADIO}.find((b) => b.textContent.includes('SMS Only')).click();`);
+      await waitFor("!!$btn('📱 Send to Selected')");
     }
     async function startSend() {
       await evaluate("$btn('📱 Send to Selected').click();");
       await waitFor("!!document.querySelector('[role=dialog]') && !!$btn('Send to 12 orders', document.querySelector('[role=dialog]'))");
       await evaluate("$btn('Send to 12 orders', document.querySelector('[role=dialog]')).click();");
+    }
+
+    // ── 置顶 101：早班发送默认 Both (SMS + Email)；换一份 manifest 还是 Both；发送的 FormData send_type=combined ──
+    await ctl({ morning400: "", morningDelay: 0, fail401: false });
+    await goto(`${APP}/morning-pickup/send`);
+    {
+      async function uploadMorningBoth() {
+        await waitFor("document.querySelector('input[type=file]')");
+        await helpers();
+        const { root } = await cdp("DOM.getDocument", { depth: -1, pierce: true });
+        const { nodeId } = await cdp("DOM.querySelector", { nodeId: root.nodeId, selector: "input[type=file]" });
+        await cdp("DOM.setFileInputFiles", { nodeId, files: [`${DIR}/morning-zz.xlsx`] });
+        await sleep(200);
+        await evaluate("$btn('📂 Upload & Preview').click();");
+        await waitFor("!!$btn('✉️ Send to Selected')");
+      }
+      await uploadMorningBoth();
+      const active = `return ${RADIO}.filter((b) => b.getAttribute('aria-checked') === 'true').map((b) => b.textContent.trim()).join('|');`;
+      check("置顶 101：打开页面上传后，Send via 默认选中 Both (SMS + Email)，发送键写 ✉️ Send to Selected (SMS + Email)", (await evaluate(active)).endsWith("Both (SMS + Email)") && (await evaluate("return $btn('✉️ Send to Selected').textContent.trim().startsWith('✉️ Send to Selected (SMS + Email)');")), await evaluate(active));
+      check("置顶 101：How to use 写 Default send mode is SMS + Email.", await evaluate("return [...document.querySelectorAll('details')].some((d) => d.textContent.replace(/\\s+/g, ' ').includes('Default send mode is SMS + Email. Switch to SMS Only or Email Only if needed.'));"));
+      await pickSms();
+      // 换一份 manifest：选了 SMS Only 之后 ↩ Start Over 再上传，默认回到 Both
+      await evaluate("$btn('↩ Start Over').click();");
+      await uploadMorningBoth();
+      check("置顶 101：选 SMS Only 后 ↩ Start Over 换一份 manifest 上传，Send via 回到 Both", (await evaluate(active)).endsWith("Both (SMS + Email)"), await evaluate(active));
+      const from = (await mockLog()).length;
+      await evaluate("$btn('✉️ Send to Selected').click();");
+      await waitFor("!!document.querySelector('[role=dialog]') && !!$btn('Send to 12 orders', document.querySelector('[role=dialog]'))");
+      await evaluate("$btn('Send to 12 orders', document.querySelector('[role=dialog]')).click();");
+      await waitFor("[...document.querySelectorAll('h2')].some(h => h.textContent === '📬 Send Results')", 20000);
+      const st = (await sends(from)).map((e) => e.body.send_type);
+      check("置顶 101：默认发送的 FormData 里 send_type=combined（每批都是）", st.length > 0 && st.every((t) => t === "combined"), JSON.stringify(st));
     }
 
     // No address：只发短信、M03 没手机号 → 单独算，不算 Failed；行里的标签照旧
@@ -867,7 +906,8 @@ async function run() {
       await cdp("DOM.setFileInputFiles", { nodeId, files: [`${DIR}/morning-zz.xlsx`] });
       await sleep(200);
       await evaluate("$btn('📂 Upload & Preview').click();");
-      await waitFor("!!$btn('📱 Send to Selected')");
+      await waitFor("!!$btn('✉️ Send to Selected')");
+      await pickSms();
     }
     check("已发过那块：一个渠道失败的红胶囊（SMS failed + Email delivered）、抬头写 1 with one channel failed",
       (await evaluate("const tr = [...document.querySelectorAll('tbody tr')].find(t => t.children[1].textContent === 'M11'); return !!tr && tr.textContent.includes('SMS failed') && tr.textContent.includes('Email delivered') && document.body.textContent.includes('1 with one channel failed');")) &&
@@ -908,7 +948,8 @@ async function run() {
       await cdp("DOM.setFileInputFiles", { nodeId, files: [`${DIR}/morning-zz.xlsx`] });
       await sleep(200);
       await evaluate("$btn('📂 Upload & Preview').click();");
-      await waitFor("!!$btn('📱 Send to Selected')");
+      await waitFor("!!$btn('✉️ Send to Selected')");
+      await pickSms();
     }
     const cbOf = (o) => `[...document.querySelectorAll('input[type=checkbox]')].find(c => c.getAttribute('aria-label') === 'Send to ${o}')`;
     const trOf = (o) => `[...document.querySelectorAll('tbody tr')].find(t => t.children[1].textContent === '${o}')`;
@@ -965,7 +1006,8 @@ async function run() {
       await cdp("DOM.setFileInputFiles", { nodeId, files: [`${DIR}/morning-zz.xlsx`] });
       await sleep(200);
       await evaluate("$btn('📂 Upload & Preview').click();");
-      await waitFor("!!$btn('📱 Send to Selected')");
+      await waitFor("!!$btn('✉️ Send to Selected')");
+      await pickSms();
     }
     await evaluate(`${cbOf("M04")}.click();`);
     await evaluate("$btn('📱 Send to Selected').click();");
@@ -1045,7 +1087,7 @@ async function run() {
       await evaluate("$btn('📂 Upload & Preview').click();");
       const rows = await waitFor("!!document.querySelector('main tbody tr')");
       await sleep(300);
-      const has = await evaluate("return !!$btn('📱 Send to Selected');");
+      const has = await evaluate("return !!$btn('✉️ Send to Selected');"); // 置顶 101：默认 Both
       check(`${label}：早班发送预览照出、${canSend ? "有" : "没有"} Send to Selected`, rows && has === canSend, String(has));
     }
     await ctl({ staffPerms: null, superAdmin: false });

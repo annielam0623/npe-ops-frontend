@@ -2877,6 +2877,7 @@ export function DispatchView() {
                       unsaved ? saveRef.current() : Promise.resolve(true)
                     }
                     disabled={disabled}
+                    canComplete={isSuperAdmin}
                   />
                 ) : null}
               </StepBox>
