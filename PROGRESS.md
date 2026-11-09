@@ -1428,6 +1428,8 @@ D. 已完成、待从置顶移走：
 - 35 回 Annie 两题：Q1 放哪（A 推荐 Order List：页面级按日期「Sync from Rezdy」+ 每单详情「Refresh from Rezdy」，Main manifest 不放键、新单标绿保留在 Main manifest；B Main manifest 照旧；C 两处都放）；Q2 每日对账要不要也对电话 / 邮箱（A 推荐对电话、邮箱，不一致按 Rezdy 改；B 再加人数 / 接客时间；C 不扩大）。另请她给那张单号，后端查那次为什么没过来。
 - ✅ **Annie Q1（原话）：「好，就放order的详情页吧」** ⇒ 只在 Order 详情页（/orders/{单号}）加单张「Refresh from Rezdy」；页面级按日期同步不做；Main manifest 不放键；新单标绿保留。新键 ⇒ 先 preview（等有前端窗口），后端要单张重拉接口。Q2（对账对电话 / 邮箱）未答，等后端查出原因再问。
 - Annie（原话）：「你帮我拉一下CHDATEDW1 & CHDJ0JUJ7这两张单，改了客人电话半天没有过来」⇒ 已转 d4：先只读查原因（webhook 有没有来），再按 Rezdy 当前数据重写这两张单，回改前 / 改后电话。
+  - ✅ a3 已重拉写回（Annie 在 a3 窗口确认）：CHDATEDW1（11-12）、CHDJ0JUJ7（11-11）电话都已换成 Rezdy 上的新号（号码不写进仓库）；其余列不变。Order List、Main Manifest 已是新号；Dispatch 11-11 / 11-12 同步时带新号。**Tour Tracking（bookings 表）仍是旧号**（tracking_sync 开关 off）；今天 staff 回这两位的两条消息（send_log 49907 / 49908）发到了旧号。
+  - 原因：Rezdy 改客人资料**不推 webhook**，dateUpdated 也不变 ⇒ 对账只看状态 / dateUpdated 永远发现不了 ⇒ 35 问 Annie Q2（对账对电话 / 邮箱，要直接比字段）+ Tracking 那两位旧号怎么办。
 
 ### 110. Staff Schedule › Rules 自定义规则（2026-11-09，Annie 在后端 d4 那边提；前端先出 preview，没动手）
 
