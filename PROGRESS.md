@@ -11,6 +11,21 @@
 > 11-09 公司前端主窗口：`npe-ops-frontend-35`[4a0f5a] 接班（只分工和汇报，不写代码）。49 口头补充：今天没跟 Annie / 4a 有别的交流；没有在跑的工作窗口 / 分支（c3 11-06 已收工，dispatch-card-notes、farmout-products 归 a4 / 86 那条）；G180 回填 49 已提（后端先只读 dry run 给她看，同意再跑），Annie 没回，让她有空跟新主窗口说，白天不追问；49 没开 dev server / Chrome。
 > 今天后端主窗口改为 `npe-confirmation-service-d4`[8d5665]（4a 已交接给它）。d4 排期：① G263 第一（Annie 另开主目录窗口合 0995f31d + C→B 确认 + release.py，上 main 后发 SHA 给前端）；② G267 第二（relay-send / Morning Send 一律 SMS+Email、记 Origin/Referer、admin HTML no-store，接口形状不变）；③ v159（G266②）等 G263 后由同一窗口 -Resume，SQL 先给 Annie 看；v161（G268）排 v159 后。35 已提醒 d4：G267 里 send.py:1206 那部分属置顶 106，Annie 还没「动手」，且要和前端拿掉 SendTypePicker 同时上。
 
+## 2026-11-09 收工交接：前端主窗口 `前端主窗口-35`[4a0f5a]（公司电脑）
+### 一、今天上 main（等 Annie 线上验收，验收点已转她）
+- **dcc04e1a** 置顶 106 前端：Morning Pickup › Send 拿掉渠道选择，一律 send_type=combined，How to use 改句（79）。后端 relay:329 / send.py:1206 / 两个旧模板由 d4 G267 做，未上 main。
+- **e6b1e8cc** 置顶 109 第一部分：全站发送结果 Sent 绿字；Manifests 团确认 / Last Minute / 门票提醒弹窗一位客人只算一次（79）。
+### 二、在做 / 等后端
+- G263：79 在 worktree C:\Code\npe-ops-frontend-wt-g180 task/farmout-products tip 449305b6，检查全过、字段已对上后端 0995f31d；等 d4 合后端发 SHA ⇒ 再核 tour_manifest.py 最终形状后合 main。合前旧 Partners & rates 对 C Tour 报错。
+- 109 剩下（Q1 灰字 No number / No email、Q2 No contact、Q6 员工 / 司机 / 导游通知、前端自判没号码改为以后端为准）：79 worktree C:\Code\npe-ops-frontend-wt-send-rules task/send-rules-uniform，等后端 W1 形状文档（send_outcome.py）。后端拆 W1–W4 + a3，约 1.5 天，不迁移。
+- 112 Relay list 压空白：79 出 preview 中。
+- 110 排班 Rules 四项、111 Order 详情页「Refresh from Rezdy」：都要先出 preview，**没有前端窗口做**（请 Annie 开）；111 后端还要单张重拉接口 + 对账比电话 / 邮箱（Annie「要的」，d4 已登记）。
+- Notes v159、Period share v161：等后端（d4 排在 G263 / v160 之后）。
+### 三、等 Annie（详见置顶，不滚动重问）
+- 107、105、104 同 a4 交接；112 preview；110 Jessica 那题（d4 问过）。
+### 四、明天开工
+- 新主窗口：读本节 → 置顶 109–112 → git pull；问 d4（或接手后端主窗口）G263 SHA、W1 形状、G267 进度。
+
 ## 2026-11-09 早 收工交接：前端主窗口 `前端主窗口-a4`[8b80ee]（家里电脑；Annie 今天转公司电脑）
 ### 一、今早上 main
 - **7639a213**（3c，task/html-no-cache）：ops 网页 HTML 改 `Cache-Control: private, no-cache, no-store, max-age=0, must-revalidate`（next.config.ts `headers()`，只管 text/html 文档；/_next/static、/api、旧页面 fallback 不变）。
@@ -1417,6 +1432,12 @@ D. 已完成、待从置顶移走：
 - 需要后端：user_prefs 白名单加 `manifest_cols_admin_fee`（这个标签的 Columns 才存得住；没有时页面写「Could not load your saved columns」并用默认列）。
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
+
+### 112. Relay list 一张单超一页：先自动压空白，压不下再提示（2026-11-09，Annie 在后端 d4 窗口定，d4 转；79 出 preview，没动手）
+
+- 起因：staff 用 Aa Text size 放大后一页变两页，staff 不会调页边距。只做 Relay list（Bus manifest 要不要一样 Annie 没答，不做）。
+- 已定：不改字号；只压空白，先酒店间隙（td.rl-gap 12px）再行内上下 padding（4px），一页就停；酒店之间永远留最小间隔（数值 79 定，preview 里写明）；全压完仍超 ⇒ 单子上方提示「This sheet will print on 2 pages. Make the text smaller or move guests to another car.」，不自动缩字；每张单各算各的；屏幕 = 打印；不改后端、不存新设置；How to use 加一条。
+- 待 Annie：看 preview（最小间隔数值、提示原文、How to use 原文）+「动手」。
 
 ### 111. Main Manifest 的 Sync Rezdy 键恢复（2026-11-09，Annie 原话：「把main manifest上的Rezdy同步钮打开吧」；35 问清再派）
 
