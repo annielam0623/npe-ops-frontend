@@ -156,6 +156,19 @@ export interface DashboardWidget {
   default: DashboardWidgetVisibility;
   /** 后端算好的「对我可见吗」：前端只信它，不自己拿角色去推。 */
   visible_to_me: boolean;
+  /**
+   * 这一项能不能「另外按人放开」（后端 33，2026-11-08：目前只有 schedule_period）。没带 = 后端还旧。
+   */
+  allow_list?: boolean;
+  /** 另外放开的人：Super Admin 拿到 {id, name, role}，其他人只拿到 id。 */
+  allowed_users?: (AllowedUser | number)[];
+}
+
+/** Page visibility「Also allowed」名单上的一个人（admin_users）。 */
+export interface AllowedUser {
+  id: number;
+  name: string;
+  role: string;
 }
 
 export interface DashboardWidgets {

@@ -203,7 +203,9 @@ export function ResponsesCard({
   const requestText = useCallback(
     (r: ConfirmRequest) => {
       const slotText = (s: RequestSlot | null) =>
-        s ? `${DAY_LABELS[shiftDays(weekStart, s.date)] ?? md(s.date)} ${shiftTypes.find((t) => t.key === s.shift_type)?.label ?? s.shift_type}` : "";
+        s
+          ? `${DAY_LABELS[shiftDays(weekStart, s.date)] ?? md(s.date)} ${shiftTypes.find((t) => t.key === s.shift_type)?.label ?? s.shift_type}`
+          : "";
       const day = (d: string | null) =>
         d ? (DAY_LABELS[shiftDays(weekStart, d)] ?? md(d)) : "";
       const type = (k: string | null) =>
@@ -319,7 +321,6 @@ export function ResponsesCard({
     const t = Date.parse(data.deadline);
     return Number.isNaN(t) ? data.deadline : DEADLINE_FMT.format(t);
   })();
-
 
   const buttons = (r: ConfirmRequest) =>
     canEdit && r.status === "pending" ? (
@@ -609,7 +610,9 @@ function ResponsesRow({
                   <small className="text-[10px] font-bold">{c.note}</small>
                 </div>
                 {c.request ? (
-                  <div className="flex justify-center">{buttons(c.request)}</div>
+                  <div className="flex justify-center">
+                    {buttons(c.request)}
+                  </div>
                 ) : null}
               </div>
             ))}

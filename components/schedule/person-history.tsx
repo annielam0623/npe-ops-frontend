@@ -102,11 +102,16 @@ function Body({
     : e.request_kind === "swap"
       ? "the swap"
       : "";
-  const slotText = (s: { date: string; shift_type: string } | null | undefined) =>
-    s ? `${dayLabel(s.date)} ${shiftLabel(s.shift_type)}` : "";
+  const slotText = (
+    s: { date: string; shift_type: string } | null | undefined,
+  ) => (s ? `${dayLabel(s.date)} ${shiftLabel(s.shift_type)}` : "");
   // 换班的两个人两个班（16 2026-11-01：from_slot / request 按提请求的人的视角，requester + peer）；没带全时 null，照旧写法。
   const swapPair =
-    e.request_kind === "swap" && e.requester && e.peer && e.from_slot && e.request
+    e.request_kind === "swap" &&
+    e.requester &&
+    e.peer &&
+    e.from_slot &&
+    e.request
       ? `${e.requester}\u2019s ${slotText(e.from_slot)} \u2194 ${e.peer}\u2019s ${req}`
       : null;
   // move 带了原来那天的班：「the move Thu 10/8 Close to Fri 10/9」。
@@ -206,8 +211,9 @@ function Body({
         <span>
           {e.request_kind === "move" ? (
             <>
-              <span className={CHANGE}>Asked to move</span> {slotText(e.from_slot)}{" "}
-              to {e.request ? dayLabel(e.request.date) : ""}
+              <span className={CHANGE}>Asked to move</span>{" "}
+              {slotText(e.from_slot)} to{" "}
+              {e.request ? dayLabel(e.request.date) : ""}
             </>
           ) : (
             <>
@@ -228,16 +234,16 @@ function Body({
     case "swap_agreed":
       return (
         <span>
-          <span className={GOOD}>Agreed to swap</span> {req} ↔{" "}
-          {e.peer ?? ""}&rsquo;s {slotText(e.from_slot)}
+          <span className={GOOD}>Agreed to swap</span> {req} ↔ {e.peer ?? ""}
+          &rsquo;s {slotText(e.from_slot)}
           <span className={SUB}> · waiting for approval</span>
         </span>
       );
     case "swap_declined_by_peer":
       return (
         <span>
-          <span className={BAD}>Declined the swap</span> {req} ↔{" "}
-          {e.peer ?? ""}&rsquo;s {slotText(e.from_slot)}
+          <span className={BAD}>Declined the swap</span> {req} ↔ {e.peer ?? ""}
+          &rsquo;s {slotText(e.from_slot)}
         </span>
       );
     case "request_closed_on_publish":
