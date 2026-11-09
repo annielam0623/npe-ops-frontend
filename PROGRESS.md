@@ -1418,7 +1418,14 @@ D. 已完成、待从置顶移走：
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
-### 108. 早班 SMS + Email：没手机号的客人，短信那栏记 failed、预览挂红「SMS failed」（2026-11-09，后端 a3 查出，35 问 Annie）
+### 109. 全系统发送 / 汇报规则统一（2026-11-09，Annie：「记住，我们整个系统的发送和汇报规则都是一样的，你去查查其他模块」；108 并入；79 出决定页，没动手）
+
+- 决定页：https://claude.ai/artifact/UXKAmSgwheNBEA5NKLaEKV（13 个模块对照表 + Q1–Q7 + 照 bug 修的 5 条）。7 题推荐都 A，原文已贴 Annie（35 11-09 回复）：
+  Q1 没号码 / 没邮箱不试发、记 skipped、灰字 No number / No email；Q2 任一渠道发出 = Sent，有真失败 = Failed，两渠道都没地址 = 单独「No contact」；Q3 没地址不告警、号码错 / 失败告警，所有客人发送都加，收件人照旧；Q4 不重复发，补了联系方式下一轮自动补发（B 每轮试 / C 永不再试）；Q5 日报「No contact on file」单独一格，门票结果也进日报；Q6 员工 / 司机 / 导游通知同一套，排班周三确认不多算；Q7 全站 Sent 绿字。
+- 照 bug 修（不用选）：Manifests 团确认 / Last Minute 弹窗一渠道发出一渠道真失败时重复计数；Tour 一族 sent 只数邮件；门票 sent = 全部行；排班周三确认多算；单单重发可能 500 + 不写 send_log（d4 在核）。
+- Annie 答 +「动手」后前后端所有入口一起改。
+
+### 108. （并入 109）早班 SMS + Email：没手机号的客人，短信那栏记 failed、预览挂红「SMS failed」（2026-11-09，后端 a3 查出，35 问 Annie）
 
 - 现在（现有行为，106 没改它）：没手机号、有邮箱 ⇒ 邮件照发；这一位算「发出去了」，不发失败告警；但 send_log 短信栏记「failed: Invalid phone」，Morning Pickup 预览已发区域挂红色「SMS failed」，Send Log 也显示 failed（a3：send.py:1127 不看有没有号码照样发短信；send_guard.py:147-151 算 partial）。
 - 选法：
