@@ -28,6 +28,11 @@
 - CHDATEDW1 / CHDJ0JUJ7 电话：a3 已从 Rezdy 重拉；Tracking 因 ANITA 重发确认已是新号，不用改。原因：Rezdy 改客人资料不推 webhook。
 - 教训：客人电话等个人信息不写进仓库（35 写 PROGRESS 时 push 被拦，已删号码只留单号）。
 - 收工时 79 还在做 112 preview，做完它自己收尾（推分支、写 PROGRESS、关 dev server / Chrome）；preview 链接如果今天没到，明天新主窗口问 79 或看 PROGRESS 112。
+  - ✅ 79 收尾：112 preview 已做（链接 + 5 题原文见置顶 112）。三个分支都已推：
+    - task/farmout-products **449305b6**（wt-g180，G263，没合 main）：下一步等 d4 合并 SHA ⇒ 只读再对字段（尤其 tour_manifest.py）⇒ 合最新 main ⇒ fo-settings / fod / fr / da / nav + tsc / eslint / build ⇒ 合 main。
+    - task/morning-send-combined **dcc04e1a**（106，已合 main，分支可删）。
+    - task/send-rules-uniform **e6b1e8cc**（109 第 1 部分已合 main）：剩下 Q1 / Q2 / Q6、结果数字、前端自判「没号码」改以后端为准，等 d4 W1 形状（send_outcome.py）⇒ 从最新 main 拉新分支照形状 mock 做；另问 35 的 Send Log / Tracking 状态标签要不要也变绿，未答。
+    - 79 没起 dev server / Chrome 在跑。
 ### 五、明天开工
 - 新主窗口：读本节 → 置顶 109–112 → git pull；问 d4（或接手后端主窗口）G263 SHA、W1 形状、G267 进度。
 
@@ -1443,6 +1448,14 @@ D. 已完成、待从置顶移走：
 - 起因：staff 用 Aa Text size 放大后一页变两页，staff 不会调页边距。只做 Relay list（Bus manifest 要不要一样 Annie 没答，不做）。
 - 已定：不改字号；只压空白，先酒店间隙（td.rl-gap 12px）再行内上下 padding（4px），一页就停；酒店之间永远留最小间隔（数值 79 定，preview 里写明）；全压完仍超 ⇒ 单子上方提示「This sheet will print on 2 pages. Make the text smaller or move guests to another car.」，不自动缩字；每张单各算各的；屏幕 = 打印；不改后端、不存新设置；How to use 加一条。
 - 待 Annie：看 preview（最小间隔数值、提示原文、How to use 原文）+「动手」。
+- ✅ **79 preview 做好（模拟数据，代码没动）：https://claude.ai/artifact/QWBDj3uBURELbUJUzuThWY**。A4 竖向、默认页边距：① 15px 一页 → 不压，和现在一样；② Whole page A+ 18px、超一页 → 酒店空隙 12→最小 6px（每步 2px）、行内上下 padding 4→1px（每步 1px），一页就停，压过空隙的单酒店之间上下两条线变 2px 深灰 #6b6b6b；③ 全压完还超 → 单上方黄框（照 legacy-ui 黄框 #f0d080 / #fff8e1 / #7C4A00，只在屏幕、不打印），不缩字。preview 里的红色虚线「end of page 1」只是给 Annie 看的，真页面没有。
+- 要 Annie 定的（原文）：
+  - **Q1 最小间隔**：现在 preview = 空隙最小 6px（平时 12px），压过的单上下两条线 2px 深灰 #6b6b6b。A 6px + 2px 深灰线（如 preview，推荐）；B 8px + 2px 深灰线（空多一点、能压出的行少一点）；C 4px + 2px 深灰线（压得更多、两站更贴近）。
+  - **Q2 提示原文**：「This sheet will print on 2 pages. Make the text smaller or move guests to another car.」（「2」按实际页数变）。A 用这句（推荐）；B 改字。
+  - **Q3 How to use 原文**：「If a sheet no longer fits on one page after you make the text bigger, the space between hotels and inside each row gets smaller by itself until the sheet fits. Your text size does not change. If the sheet still does not fit, a yellow note above it says how many pages it will print on; make the text smaller or move guests to another car.」A 用这段（推荐）；B 改字。
+  - **Q4 总表（Total）要不要一样压**：preview 只做了车单；总表也有酒店空隙，放大后同样会两页。A 总表也照同样规则压 / 提示（推荐）；B 只做车单。
+  - **Q5 压过的单要不要说一声**：A 不说，安静地压（如 preview，推荐）；B 单上方屏幕上一行灰字「Spacing tightened to fit one page.」（不打印）。
+- 动手时（79 想法）：components/relay-list/relay-list.css 加 `--rl-gap` / `--rl-py` 变量和 `[data-squeezed]` 线；relay-list-view.tsx 每张单渲染后量内容高度 vs 它自己的纸高 − 上下页边距（A4 / Letter、横竖），按步压、超了出黄框；字号 / Aa 改动、换纸张后重算。验收见 35 派工：放大超几行 → 自动一页、间隔看得见；压不下 → 印 2 页 + 提示；一页的单、颜色 / 方向 / 页边距 / 字号、11-03 空白页修法都不变。
 
 ### 111. Main Manifest 的 Sync Rezdy 键恢复（2026-11-09，Annie 原话：「把main manifest上的Rezdy同步钮打开吧」；35 问清再派）
 
