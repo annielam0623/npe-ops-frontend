@@ -1418,6 +1418,15 @@ D. 已完成、待从置顶移走：
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 110. Staff Schedule › Rules 自定义规则（2026-11-09，Annie 在后端 d4 那边提；前端先出 preview，没动手）
+
+- Annie 原话：「我需要在staff schedule里头的rules这项可以自定义规则，现在的设置不够用」「ok，加一条：每个班一天只能有一个人」「你列出来要不要算进去那些需要全部算进去」。
+- 四项：① 新规则「每个班一天最多几人」（班次 + 星期几 + 人数，Annie 要 1）：自动排班严格遵守、排不下写进预览；手动排班不拦，标出「这天 Close 有 2 人」。② 「某种班至少几天」（min_days_on_shift）可选多人或「除了某几人」。③ 「每周最多 N 天」（days_per_week max）管到周末轮值和固定班（schedule-engine.ts:407-501；例 Veronica 周一到周五固定 + 每周六轮值 = 6 天），排不下写进预览。④ 每周超 40 小时提醒（例「Veronica: 42 h this week」），只提醒不拦。
+- d4 只读查生产：「close 每 4 周 6 天」对所有人生效（Anita、ZZTest、Veronica、Jessica 都被报）；Jessica 不在任何 days_per_week 名单里，引擎从不给她排；周六轮值 3 位置配 3 人。
+- ⚠️ 等 Annie（d4 已问过，**不要再问**）：每班一人 = 一周最多 21 班位，加 Jessica 是 5 人 × 5 天 = 25 班：Jessica 当替补（推荐）/ 有人每周只上 4 天 / Jessica 固定几个班。
+- 后端：schedule_rules.py:289-298 白名单校验，前端定新类型 / 新字段形状发 d4，不迁移。
+- 35 请 Annie 新开一个前端工作窗口做 preview + 形状。
+
 ### 109. 全系统发送 / 汇报规则统一（2026-11-09，Annie：「记住，我们整个系统的发送和汇报规则都是一样的，你去查查其他模块」；108 并入；79 出决定页，没动手）
 
 - 决定页：https://claude.ai/artifact/UXKAmSgwheNBEA5NKLaEKV（13 个模块对照表 + Q1–Q7 + 照 bug 修的 5 条）。7 题推荐都 A，原文已贴 Annie（35 11-09 回复）：
