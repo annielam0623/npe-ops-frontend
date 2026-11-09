@@ -1434,6 +1434,7 @@ D. 已完成、待从置顶移走：
   旧 confirm 的 relay 面板（_relay_pull_panel.html:265）和旧 Morning Send 页同样固定。没有邮箱的客人照旧只发短信（不算失败）。
 - 合 main：前后端各自检查过就合；Annie 说「动手」后派。
 - 11-09 公司：后端主窗口 d4 同意上面写法，后端所有入口（relay:329、send.py:1206、两个旧模板）都等这一次「动手」一起上（G267 里不改发送行为的 Origin/Referer、admin HTML no-store 先做）。**「动手」只问 Annie 一次**：她对 106 说了，35 转 d4 原话，d4 不再单独问。
+- ✅ **Annie 11-09 公司（原话）：「动手」**（35 刚报完 106 前后端一起改、只说一次即可之后）⇒ 35 按 106 理解，已转 d4（后端 relay:329、send.py:1206、旧 relay 面板、旧 Morning Send 一律 combined）；前端派 79（G263 之后，另开 worktree task/morning-send-combined）。
 
 ### 105. Products › Bus Manifest setup 加「Includes lunch」勾选框（2026-11-09 早，46 转后端 ab 任务 product-includes-lunch；86 出 preview，没动手）
 
