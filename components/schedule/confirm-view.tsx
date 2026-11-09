@@ -726,8 +726,7 @@ function Row({
           (t) => t.employee_id === emp && t.date === date,
         );
         const extra = view.extras.get(`${emp}|${date}`) ?? [];
-        const openDay =
-          isMe && !off && slots.length === 0 && extra.length === 0;
+        const openDay = isMe && !off && slots.length === 0 && extra.length === 0;
         const moveTarget = openDay && armed !== null;
         return (
           <div
