@@ -1423,6 +1423,9 @@ D. 已完成、待从置顶移走：
 - 现状：这个键不是藏起来 / 关着，是 10-30 照 Annie「不留，彻底删掉」删掉的（task/rezdy-sync-remove，e59375f），连同「Last updated from Rezdy」、新单标绿、How to use 那条；后端 92 也删了三个 Sync Rezdy 接口（只读查后端 app/routers 已没有 rezdy-sync 路由）。⇒ 恢复要前后端都做。
 - 跟 CLAUDE.md「订单流固定 … 不许跳过前面的环节直接去 Rezdy 拉单」的关系：旧记录（PROGRESS 4900 行）写过 Main Manifest 自己的 Sync Rezdy 属于订单流上游、不冲突；Dispatch 那个不恢复。
 - 35 问 Annie：A（推荐）照删之前原样恢复（键 + Last updated from Rezdy + 新单标绿 + How to use 那条，权限照旧 manifests.edit），只 Main Manifest，Dispatch 不恢复；B 只恢复键。原样恢复不用 preview。等她选 + 确认动手。
+- Annie（原话）：「新单标绿还是要保留；我想问一下，这个同步键放到哪里比较合理，因为现在发生我们在Rezdy改客人电话过了很久都没有过来，所以我应该是放在main manifest好呢，还是放在order list页面比较合理」
+- 35 只读查后端：rezdy_reconciliation.py 文件头——每日对账（未来 30 天）只补「本地缺的单」和「状态不一致」，电话等其它字段不对（Annie 10-06 定的范围）。电话改动只靠 Rezdy webhook，webhook 不重试、漏了就永远不过来 ⇒ 键放哪都只是事后补救。
+- 35 回 Annie 两题：Q1 放哪（A 推荐 Order List：页面级按日期「Sync from Rezdy」+ 每单详情「Refresh from Rezdy」，Main manifest 不放键、新单标绿保留在 Main manifest；B Main manifest 照旧；C 两处都放）；Q2 每日对账要不要也对电话 / 邮箱（A 推荐对电话、邮箱，不一致按 Rezdy 改；B 再加人数 / 接客时间；C 不扩大）。另请她给那张单号，后端查那次为什么没过来。
 
 ### 110. Staff Schedule › Rules 自定义规则（2026-11-09，Annie 在后端 d4 那边提；前端先出 preview，没动手）
 
