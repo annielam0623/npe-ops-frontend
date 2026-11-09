@@ -1435,6 +1435,15 @@ D. 已完成、待从置顶移走：
 - 合 main：前后端各自检查过就合；Annie 说「动手」后派。
 - 11-09 公司：后端主窗口 d4 同意上面写法，后端所有入口（relay:329、send.py:1206、两个旧模板）都等这一次「动手」一起上（G267 里不改发送行为的 Origin/Referer、admin HTML no-store 先做）。**「动手」只问 Annie 一次**：她对 106 说了，35 转 d4 原话，d4 不再单独问。
 - ✅ **Annie 11-09 公司（原话）：「动手」**（35 刚报完 106 前后端一起改、只说一次即可之后）⇒ 35 按 106 理解，已转 d4（后端 relay:329、send.py:1206、旧 relay 面板、旧 Morning Send 一律 combined）；前端派 79（G263 之后，另开 worktree task/morning-send-combined）。
+- ✅ **79 [3815aa] 前端做完（35 派）**，worktree C:\Code\npe-ops-frontend-wt-morning-combined，task/morning-send-combined：
+  - Morning Pickup › Send：拿掉 `SendTypePicker`（Both / SMS Only / Email Only），发送键固定「✉️ Send to Selected (SMS + Email) — N orders」，确认框「… by SMS + Email.」；
+    `lib/morning-send-api.ts` 新常量 `MORNING_SEND_TYPE = "combined"`，`sendMorningBatch` 去掉 sendType 参数，FormData 一律 send_type=combined（调用处传不了别的）。
+    config.ts 删 `SEND_TYPES` / `DEFAULT_SEND_TYPE`，`sendTypeShort` 留给结果表。结果表照旧逐位 Email / SMS 两栏、单渠道失败红胶囊、没邮箱写 No email（不算 Failed）。
+  - How to use 改一条。原文「Default send mode is SMS + Email. Switch to SMS Only or Email Only if needed.」⇒ 新「Every reminder goes out by SMS and email. A guest with no email address gets the SMS only, and a guest with no phone number gets the email only.」
+  - 全仓 send_type / sendType / SendTypePicker 逐处：① `lib/morning-send-api.ts` 改（固定 combined）；② `components/morning-send/*` 改（拿掉选择器 / 状态）；③ `lib/dispatch-api.ts` RELAY_SEND_TYPE="combined" + relay-panel.tsx:1064 —— 已固定，不改（da 两条检查盯着）；
+    ④ `components/manifests/send-dialogs.tsx`、`components/dispatch/farm-out-notice-dialog.tsx`、tickets-send / tour-send 页的 SendTypePicker —— 不是早班（Tour 确认、Last Minute、门票提醒、Farm out 通知），不改；⑤ types/send-log、send-batches 的 send_type 只是显示记录，不改。
+    后端（d4）：relay_pull.py:329、send.py:1206、旧 `_relay_pull_panel.html`、旧 Morning Send 页——前端不改，d4 做。
+  - 检查：tsc 0、eslint 0 error（3 旧 warning）、build 过；mt 259/259（置顶 101 那组换成 106：上传后没有渠道选择、发送键文字、How to use 新句、Start Over 再上传仍没有选择、确认框 by SMS + Email、每批 FormData send_type=combined；原来按「只发短信」写的 4 条结果数字改成 combined 的 No email 格）、da 544/544（Dispatch relay-send 仍 combined）。只用 mock，没真发。
 
 ### 105. Products › Bus Manifest setup 加「Includes lunch」勾选框（2026-11-09 早，46 转后端 ab 任务 product-includes-lunch；86 出 preview，没动手）
 
