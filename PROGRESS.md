@@ -1425,6 +1425,7 @@ D. 已完成、待从置顶移走：
   - **A（推荐）** 没号码就不试短信，像没邮箱一样显示灰字「No phone」，不算失败、不挂红。前后端都要改（后端 send.py / relay_pull.py 两个入口一起改，前端结果表 + 预览加 No phone）。
   - B 不改行为，只改 How to use 第二句为：「A guest with no phone number gets the email only. Their SMS shows as failed (Invalid phone); that is expected, no action needed.」
   - C 都不改（现在 How to use 写「a guest with no phone number gets the email only」，没提红字）。
+- ⏸ Annie（原话）：「记住，我们整个系统的发送和汇报规则都是一样的，你去查查其他模块」⇒ 108 暂不定，先做全系统对照表。前端 79 盘点已交（11 处：Morning / relay / Tickets 前端自判，黑字 No number；Tour 认后端「skipped - no phone」琥珀；Manifests 团确认 / Last Minute、Farm out、Send Log 不判断，后端写 failed 就红；Manifests 门票提醒琥珀 not sent；只有 Morning 预览已发区挂红 partial；Manifests 团确认 / Last Minute 弹窗会把一渠道 sent 一渠道 failed 的单同时算进 Sent 和 Failed——全站唯一重复计数；Sent 颜色琥珀 / 绿两种）。后端 a3 盘点在做（d4 派）。两份到齐 35 合成对照表给 Annie。
 - 106 前端已上 dcc04e1a，How to use 现在写：「Every reminder goes out by SMS and email. A guest with no email address gets the SMS only, and a guest with no phone number gets the email only.」
 
 ### 107. 「有新版本，请刷新」提示条（2026-11-09，Annie：「第四条，做」；3c 出 preview，没动手）
