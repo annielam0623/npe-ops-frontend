@@ -41,6 +41,13 @@ export const VISIBILITY_KEYS = {
     where: "/schedule/confirm and the Responses card",
     default: "staff",
   },
+  // Staff Schedule › Period（Annie 2026-11-08「动手吧」：新功能，先只 Super Admin；按人另外放开要后端加名单）。
+  schedule_period: {
+    label: "Staff Schedule · Period",
+    where:
+      "/schedule Period tab (several weeks at once, Auto-fill with chosen rules)",
+    default: "super_admin_only",
+  },
   dashboard_week_schedule: {
     label: "Dashboard · full-week schedule",
     where: "Bottom of the Dashboard",

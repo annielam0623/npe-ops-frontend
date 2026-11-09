@@ -1244,6 +1244,65 @@ async function run() {
     for (let k = 1; k <= 4; k++) await fetch(`${MOCK}/api/schedule/weeks/${add(thisWeek, k * 7)}/slots/bulk`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ replace: true, slots: [] }) });
   }
 
+  // ── Period（Annie 2026-11-08「动手吧」，preview HnBVL6wANcCZYs1r1enq3W 全 A + 「最重要一点，可以选择执行哪些rules」）──
+  //    开关 schedule_period 没登记 ⇒ 默认只 Super Admin；多周只读表；Auto-fill these weeks 勾选这次执行哪些规则（不改 Rules 标签）。
+  {
+    const tabNames = "[...document.querySelectorAll('[role=tab]')].map((b) => b.textContent.trim())";
+    await ctl({ role: "supervisor", meName: "" });
+    await openPage(`${APP}/schedule?week=2026-10-11`);
+    await waitFor(`${cell("1|2026-10-11")} && ${tabNames}.includes('Rules')`);
+    check("Period：supervisor 看不到 Period 标签（开关没登记 ⇒ 默认只 Super Admin）", await evaluate(`return !${tabNames}.includes('Period');`), await evaluate(`return ${tabNames}.join('|');`));
+    await ctl({ role: "superadmin", meName: "" });
+    await openPage(`${APP}/schedule?week=2026-10-11`);
+    await waitFor(`${cell("1|2026-10-11")} && ${tabNames}.includes('Period')`);
+    check("Period：Super Admin 有 Schedule / Period / Rules 三个标签（Period 在中间）", await evaluate(`return ${tabNames}.join('|') === 'Schedule|Period|Rules';`), await evaluate(`return ${tabNames}.join('|');`));
+    await evaluate("[...document.querySelectorAll('[role=tab]')].find(b => b.textContent.trim() === 'Period').click();");
+    await waitFor("document.querySelector('[data-period]')");
+    await evaluate("$setValue(document.querySelector('[data-period-start]'), '2026-10-07');");
+    await evaluate("$setValue(document.querySelector('[data-period-weeks]'), '3');");
+    await waitFor("document.querySelectorAll('[data-period-week]').length === 3 && document.querySelector('[data-period-grid]')", 30000);
+    check("Period：Start 选 10/7（周三）⇒ 对齐到周日 10/4；3 周 ⇒ 标题 Oct 4 – Oct 24, 2026 · 3 weeks、三个周头", await evaluate("return document.querySelector('[data-period-title]').textContent.trim() === 'Oct 4 – Oct 24, 2026 · 3 weeks' && document.querySelector('[data-period-start]').value === '2026-10-04' && [...document.querySelectorAll('[data-period-week]')].map(t => t.dataset.periodWeek).join() === '2026-10-04,2026-10-11,2026-10-18';"), await evaluate("return document.querySelector('[data-period-title]').textContent;"));
+    check("Period：每周写 Published / Draft（10/4 已发布）", await evaluate("return document.querySelector('[data-period-week=\"2026-10-04\"] [data-period-status]').dataset.periodStatus === 'published' && document.querySelector('[data-period-week=\"2026-10-04\"]').textContent.includes('Published');"));
+    check("Period：每人一行、21 天，有班的格子写短时间（例如 2a–10a）", await evaluate("const rows = [...document.querySelectorAll('[data-period-row]')]; return rows.length > 0 && rows.every(r => r.querySelectorAll('td').length === 22) && [...document.querySelectorAll('[data-period-shift]')].some(s => /^\\d{1,2}(:\\d{2})?[ap]–\\d{1,2}(:\\d{2})?[ap]$/.test(s.textContent.trim()));"), await evaluate("return [...document.querySelectorAll('[data-period-shift]')].slice(0,3).map(s=>s.textContent).join(' ');"));
+    check("Period：Share with staff 灰着、挂 SOON（后端还没好）", await evaluate("const b = document.querySelector('[data-period-share]'); return b.disabled && b.textContent.includes('SOON');"));
+    check("Period：How to use 写了 Auto-fill 只管这一次、Rules 标签不变", await evaluate("return document.querySelector('[data-period]').textContent.includes('Unticking a rule here only affects this fill. The Rules tab does not change.');"));
+
+    // Auto-fill these weeks：规则清单（6 条可选 + 3 条 shift_times 固定 + Settings 那行），取消 Fixed shift
+    await evaluate("document.querySelector('[data-period-autofill]').click();");
+    await waitFor(`${dlg} && ${dlg}.querySelector('[data-autofill-rules]')`);
+    check("Auto-fill these weeks：标题写这一段 Oct 4 – Oct 24；不出 This week / Next 4 weeks", await evaluate(`return ${dlg}.textContent.includes('Auto-fill Oct 4 – Oct 24') && ![...${dlg}.querySelectorAll('button[role=radio]')].some(b => b.offsetParent !== null && b.textContent.includes('Next 4 weeks'));`), await evaluate(`return ${dlg}.querySelector('h2').textContent;`));
+    check("规则清单：默认全勾、写 6 of 6 rules ticked；Shift times 勾着、灰掉、写 always used", await evaluate(`const d = ${dlg}; const opt = [...d.querySelectorAll('[data-autofill-rule]')].filter(l => l.dataset.autofillRule !== 'shift_times'); const st = [...d.querySelectorAll('[data-autofill-rule=shift_times]')]; return opt.length === 6 && opt.every(l => l.querySelector('input').checked && !l.querySelector('input').disabled) && st.length === 3 && st.every(l => l.querySelector('input').checked && l.querySelector('input').disabled && l.textContent.includes('always used')) && d.querySelector('[data-autofill-rules-count]').textContent.trim() === '6 of 6 rules ticked.';`), await evaluate(`return ${dlg}.querySelector('[data-autofill-rules]').textContent;`));
+    await evaluate(`${dlg}.querySelector('[data-autofill-rule=fixed_shift] input').click();`);
+    check("取消 Fixed shift：写 5 of 6 rules ticked", await waitFor(`${dlg}.querySelector('[data-autofill-rules-count]').textContent.trim() === '5 of 6 rules ticked.'`));
+    const r0 = (await (await fetch(`${MOCK}/__log`)).json()).length;
+    await evaluate(`$btn('Preview', ${dlg}).click();`);
+    await waitFor(`${dlg}.querySelector('[data-autofill-week]') || ${dlg}.querySelector('[data-autofill-existing]')`, 30000);
+    if (await evaluate(`return !!${dlg}.querySelector('[data-autofill-existing]');`)) {
+      await evaluate(`[...${dlg}.querySelectorAll('button[role=radio]')].find(b => b.textContent.includes('Replace them')).click();`);
+      await evaluate(`$btn('Preview', ${dlg}).click();`);
+    }
+    await waitFor(`${dlg}.querySelectorAll('[data-autofill-week]').length === 3`, 30000);
+    check("预览 3 周：10/4 已发布 ⇒ published — skipped", await evaluate(`return ${dlg}.querySelector('[data-autofill-week="2026-10-04"]').textContent.includes('published — skipped');`));
+    const createBtn = `[...${dlg}.querySelectorAll('button')].find(b => /^Create/.test(b.textContent.trim()))`;
+    await evaluate(`${createBtn}.click();`);
+    check("建好：绿条写 for 2 weeks、1 published week skipped（Period 标签上也看得到）", await waitFor("document.querySelector('[data-autofill-banner]')?.textContent.includes('for 2 weeks') && document.querySelector('[data-autofill-banner]').textContent.includes('1 published week skipped') && !!document.querySelector('[data-period]')", 30000), await evaluate("return document.querySelector('[data-autofill-banner]')?.textContent;"));
+    const pb = (await (await fetch(`${MOCK}/__log`)).json()).slice(r0).filter((e) => e.path.endsWith("/slots/bulk"));
+    check("一周一个 bulk（10/11、10/18），10/11 也直接建（不放到页面上等 Save）", pb.length === 2 && pb.some((e) => e.path.includes("2026-10-11")) && pb.some((e) => e.path.includes("2026-10-18")), JSON.stringify(pb.map((e) => e.path)));
+    const vWeek = (ws) => {
+      const [y, m, dd] = ws.split("-").map(Number);
+      const days = [1, 2, 3, 4, 5].map((d) => new Date(Date.UTC(y, m - 1, dd + d)).toISOString().slice(0, 10));
+      return (pb.find((e) => e.path.includes(ws))?.body?.slots || []).filter((x) => x.employee_id === 1 && days.includes(x.date) && x.shift_type === "open").length;
+    };
+    check("取消的 Fixed shift 这次没执行：Veronica 不是两周周一到周五都 Open", !(vWeek("2026-10-11") === 5 && vWeek("2026-10-18") === 5), `${vWeek("2026-10-11")} ${vWeek("2026-10-18")}`);
+    const rd = await (await fetch(`${MOCK}/api/schedule/rules`)).json();
+    check("Rules 标签不变：Fixed shift 仍开着", rd.rules.find((r) => r.id === "f1")?.enabled === true);
+    await waitFor("document.querySelector('[data-period-grid]')", 30000);
+    // 点周名 ⇒ 回 Schedule 标签看那一周
+    await evaluate("document.querySelector('[data-period-week=\"2026-10-18\"] button').click();");
+    check("点 Week of Oct 18 ⇒ 回 Schedule 标签、看 10/18 那周", await waitFor("[...document.querySelectorAll('[role=tab]')].find(b => b.getAttribute('aria-selected') === 'true')?.textContent.trim() === 'Schedule' && !!document.querySelector('[data-cell$=\"|2026-10-18\"]')", 30000));
+    await ctl({ role: "supervisor", meName: "" });
+  }
+
   // ── 二期：时段备注 / 休假 / 班次默认时间（后端 ①②③，Annie 2026-10-18「可以，动手」）──
   await ctl({ phase2: true, role: "supervisor", meName: "" });
   const P2 = "2026-12-06"; // 离种子数据很远：一周全空的草稿

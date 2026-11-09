@@ -23,6 +23,7 @@ import { cn } from "@/lib/utils";
 import type { ScheduleEmployee, ScheduleSettings, ScheduleWeek } from "@/types";
 
 import { DAY_LABELS, personDotColor, shiftCardClass } from "./config";
+import { type DescribeContext, describeRule } from "./rules";
 import { OffCard } from "./week-grid";
 
 /** 往前看几周当「历史」（周末轮值接着往下排、跨周休息间隔用）。 */
@@ -91,6 +92,11 @@ interface AutoFillDialogProps {
    * 后面几周照旧直接建草稿。没传 = 照旧全部直接建。replace = 这一周原来的班要删掉。
    */
   onDraftThisWeek?: (made: Proposal["create"], replace: boolean) => void;
+  /**
+   * Staff Schedule › Period（Annie 2026-11-08「最重要一点，可以选择执行哪些rules」）：排这一段（开始那周 + 周数），
+   * 不出「Which weeks」/ 基础周的起止选择；多一张规则清单，取消勾选的这一次不执行（不改 Rules 标签）。
+   */
+  period?: { start: string; weeks: number; ctx: DescribeContext };
 }
 
 function planOf(week: ScheduleWeek, employees: ScheduleEmployee[]): WeekPlan {
@@ -126,7 +132,10 @@ export function AutoFillDialog({
   onClose,
   onDone,
   onDraftThisWeek,
+  period,
 }: AutoFillDialogProps) {
+  /** Period 模式下这一次不执行的规则（rules 里的下标）；Shift times 不能取消。 */
+  const [skipped, setSkipped] = useState<ReadonlySet<number>>(() => new Set());
   const titleId = useId();
   const pressedOnBackdropRef = useRef(false);
   const [weeksCount, setWeeksCount] = useState<1 | 4>(1);
@@ -150,14 +159,25 @@ export function AutoFillDialog({
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [busy, onClose]);
 
-  const firstWeek = fill === "base" ? baseStart : weekStart;
-  const targetCount = fill === "base" ? baseCount : weeksCount;
+  const firstWeek = period
+    ? period.start
+    : fill === "base"
+      ? baseStart
+      : weekStart;
+  const targetCount = period
+    ? period.weeks
+    : fill === "base"
+      ? baseCount
+      : weeksCount;
   const targets = Array.from({ length: targetCount }, (_, i) =>
     shiftYmd(firstWeek, i * 7),
   );
+  const usedRules = period
+    ? rules.filter((r, i) => r.type === "shift_times" || !skipped.has(i))
+    : rules;
   // 班次默认时间（后端正式来源）排在最后，盖过旧的 shift_times 规则。
   const allRules: Rule[] = [
-    ...rules,
+    ...usedRules,
     ...settings.shift_types.flatMap((t): Rule[] =>
       t.default_start_time && t.default_end_time
         ? [
@@ -467,7 +487,9 @@ export function AutoFillDialog({
         <h2 id={titleId} className="text-[17px] font-semibold text-white">
           {step.kind === "preview"
             ? `Preview · ${rangeText(firstWeek, targetCount)}`
-            : "Auto-fill schedule"}
+            : period
+              ? `Auto-fill ${rangeText(period.start, period.weeks)}`
+              : "Auto-fill schedule"}
         </h2>
 
         {step.kind === "setup" ? (
@@ -518,7 +540,12 @@ export function AutoFillDialog({
                       ))}
                   </select>
                 </label>
-                <label className="flex flex-wrap items-center gap-2 text-[12.5px] text-white/85">
+                <label
+                  className={cn(
+                    "flex flex-wrap items-center gap-2 text-[12.5px] text-white/85",
+                    period && "hidden",
+                  )}
+                >
                   Fill
                   <select
                     data-base-count
@@ -568,10 +595,25 @@ export function AutoFillDialog({
                 </p>
               </div>
             ) : null}
+            {period ? (
+              <RulePicker
+                rules={rules}
+                ctx={period.ctx}
+                skipped={skipped}
+                onToggle={(i) =>
+                  setSkipped((prev) => {
+                    const next = new Set(prev);
+                    if (next.has(i)) next.delete(i);
+                    else next.add(i);
+                    return next;
+                  })
+                }
+              />
+            ) : null}
             <div
               className={cn(
                 "flex flex-col gap-1.5",
-                fill === "base" && "hidden",
+                (fill === "base" || period) && "hidden",
               )}
             >
               <span className="text-[12px] font-medium text-white/75">
@@ -737,6 +779,77 @@ export function AutoFillDialog({
       setStep({ kind: "error", message: describeError(error) });
     }
   }
+}
+
+/**
+ * Period 的规则清单：Rules 标签上开着的每条一个勾，默认全勾；取消的这一次不执行。
+ * Shift times（上下班时间）排班一定要用：勾着、灰掉（preview ①b）。
+ */
+function RulePicker({
+  rules,
+  ctx,
+  skipped,
+  onToggle,
+}: {
+  rules: Rule[];
+  ctx: DescribeContext;
+  skipped: ReadonlySet<number>;
+  onToggle: (index: number) => void;
+}) {
+  const optional = rules.filter((r) => r.type !== "shift_times").length;
+  const ticked = rules.filter(
+    (r, i) => r.type !== "shift_times" && !skipped.has(i),
+  ).length;
+  return (
+    <div className="flex flex-col gap-1.5" data-autofill-rules>
+      <span className="text-[12px] font-medium text-white/75">
+        Rules to use this time
+      </span>
+      <p className="text-[12px] text-white/70">
+        Unticked rules are skipped for this fill only. The Rules tab does not
+        change.
+      </p>
+      <div className="flex flex-col gap-1">
+        {rules.map((r, i) => {
+          const always = r.type === "shift_times";
+          return (
+            <label
+              key={r.id ?? i}
+              data-autofill-rule={r.type}
+              className={cn(
+                "flex items-start gap-2 text-[13px]",
+                always ? "text-white/50" : "text-white/90",
+              )}
+            >
+              <input
+                type="checkbox"
+                checked={always || !skipped.has(i)}
+                disabled={always}
+                onChange={() => onToggle(i)}
+                className="mt-[3px] size-[14px] shrink-0 accent-[#3b82f6]"
+              />
+              <span>
+                {describeRule(r, ctx)}
+                {always ? " — always used" : ""}
+              </span>
+            </label>
+          );
+        })}
+        <label className="flex items-start gap-2 text-[13px] text-white/50">
+          <input
+            type="checkbox"
+            checked
+            disabled
+            className="mt-[3px] size-[14px] shrink-0"
+          />
+          <span>Shift times from Settings — always used</span>
+        </label>
+      </div>
+      <p data-autofill-rules-count className="text-[12px] text-white/60">
+        {ticked} of {optional} rule{optional === 1 ? "" : "s"} ticked.
+      </p>
+    </div>
+  );
 }
 
 function rangeText(weekStart: string, weeks: number): string {

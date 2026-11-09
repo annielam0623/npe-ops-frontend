@@ -74,6 +74,7 @@ import { ApiError } from "@/types";
 import { AddEmployeeDialog } from "./add-employee-dialog";
 import type { AddTimeOffInput } from "./add-shift-dialog";
 import { AutoFillDialog } from "./auto-fill-dialog";
+import { PeriodView } from "./period-view";
 import { EmployeesDialog } from "./employees-dialog";
 import { RulesView } from "./rules-view";
 import { CARD, CARD_HEADER, ICON_BTN, MUTED } from "./config";
@@ -197,7 +198,14 @@ export function ScheduleView() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   // 规则（后端没上线 / 读不到 ⇒ null ⇒ 不显示 Rules 标签和 Auto-fill 键）。
   const [rules, setRules] = useState<Rule[] | null>(null);
-  const [tab, setTab] = useState<"schedule" | "rules">("schedule");
+  const [tab, setTab] = useState<"schedule" | "period" | "rules">("schedule");
+  // Period（Annie 2026-11-08）：开始那一周（周日）+ 周数，默认这周起 4 周。
+  const [period, setPeriod] = useState(() => ({
+    start: weekStartYmd(laToday()),
+    weeks: 4,
+  }));
+  const [periodReload, setPeriodReload] = useState(0);
+  const [periodAutoFilling, setPeriodAutoFilling] = useState(false);
   const [autoFilling, setAutoFilling] = useState(false);
   const [autoFillBanner, setAutoFillBanner] = useState<string | null>(null);
   const [confirmingPublish, setConfirmingPublish] = useState(false);
@@ -941,15 +949,22 @@ export function ScheduleView() {
     setTimelineDay({ week: weekStart, date });
     timelineRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
+  // Period 标签：开关 schedule_period（默认只 Super Admin）。
+  const periodVisible = pageVisibility.visible("schedule_period");
+  const tabs = [
+    "schedule" as const,
+    ...(periodVisible ? (["period"] as const) : []),
+    ...(rules !== null ? (["rules"] as const) : []),
+  ];
 
   return (
     <main data-phone-compact className="text-white/90">
       <CenteredPage className="flex flex-col gap-5 max-sm:gap-3">
         <h1 className="sr-only">Staff Schedule</h1>
 
-        {rules !== null ? (
+        {tabs.length > 1 ? (
           <div role="tablist" className="-mb-2 flex gap-2">
-            {(["schedule", "rules"] as const).map((t) => (
+            {tabs.map((t) => (
               <button
                 key={t}
                 type="button"
@@ -962,13 +977,61 @@ export function ScheduleView() {
                     : DARK_SECONDARY_BUTTON_CLASS
                 }
               >
-                {t === "schedule" ? "Schedule" : "Rules"}
+                {t === "schedule"
+                  ? "Schedule"
+                  : t === "period"
+                    ? "Period"
+                    : "Rules"}
               </button>
             ))}
           </div>
         ) : null}
 
-        {tab === "rules" && rules !== null ? (
+        {tab === "period" && periodVisible ? (
+          <>
+            {autoFillBanner ? (
+              <div
+                data-autofill-banner
+                className="flex items-center justify-between gap-2 rounded-[10px] border border-emerald-400/30 bg-emerald-400/10 px-4 py-2.5 text-[13px] text-emerald-200"
+              >
+                <span>✅ {autoFillBanner}</span>
+                <button
+                  type="button"
+                  onClick={() => setAutoFillBanner(null)}
+                  className="cursor-pointer text-emerald-300 hover:text-emerald-100"
+                  aria-label="Dismiss"
+                >
+                  ✕
+                </button>
+              </div>
+            ) : null}
+            <PeriodView
+              employees={orderedEmployees}
+              canEdit={canEdit}
+              start={period.start}
+              weeks={period.weeks}
+              onChangeRange={(start, weeks) => setPeriod({ start, weeks })}
+              reloadKey={periodReload}
+              onOpenWeek={(ws) => {
+                setTab("schedule");
+                void changeWeek(ws);
+              }}
+              onAutoFill={
+                canEdit && rules !== null
+                  ? () => setPeriodAutoFilling(true)
+                  : undefined
+              }
+              autoFillBlocked={
+                anyDirty
+                  ? "Save or discard the changes on the Schedule tab first."
+                  : !rules?.some((r) => r.enabled)
+                    ? "Turn on some rules in the Rules tab first."
+                    : null
+              }
+              onUnauthorized={redirectToLogin}
+            />
+          </>
+        ) : tab === "rules" && rules !== null ? (
           <RulesView
             rules={rules}
             ctx={{ employees, shiftTypes: settings.shift_types }}
@@ -1271,6 +1334,27 @@ export function ScheduleView() {
           onDone={(message) => {
             setAutoFilling(false);
             setAutoFillBanner(message);
+            void loadWeek(undefined, true);
+          }}
+        />
+      ) : null}
+
+      {periodAutoFilling && rules !== null ? (
+        <AutoFillDialog
+          weekStart={period.start}
+          rules={rules.filter((r) => r.enabled)}
+          employees={employees}
+          settings={settings}
+          period={{
+            start: period.start,
+            weeks: period.weeks,
+            ctx: { employees, shiftTypes: settings.shift_types },
+          }}
+          onClose={() => setPeriodAutoFilling(false)}
+          onDone={(message) => {
+            setPeriodAutoFilling(false);
+            setAutoFillBanner(message);
+            setPeriodReload((n) => n + 1);
             void loadWeek(undefined, true);
           }}
         />
