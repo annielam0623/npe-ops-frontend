@@ -56,6 +56,19 @@
 ### 四、明天开工
 - 公司电脑新主窗口：读本节 → 置顶 101–103 → git pull。worktree D:\npe-ops-frontend-wt-cfmrule / wt-cfmhint / wt-fop 在家里电脑，公司电脑从 origin 拉分支。
 
+## 2026-11-09 修 bug：页面不许被浏览器当旧页面用（`task/html-no-cache`，工作窗口 `npe-ops-frontend-3c`[8c373c]，a4 派）
+
+- 起因：11-09 03:15 第 7305 批（Jtian，Dispatch 1st Round 30 位）记成 sms、邮件全空，而 send_type=combined 11-08 10:15 已上线。
+  3c 排查（只读）：ops 现在的代码每次都带 send_type（`lib/dispatch-api.ts` sendRelayRound，唯一调用处 relay-panel.tsx）；
+  最可能是浏览器跑了修之前的旧代码——ops 页面只带 `s-maxage`，Chrome 点「返回 / 前进」（恢复标签页可能也是）直接用硬盘里的旧 HTML，
+  旧的 /_next/static 也在硬盘里，旧代码照样能发。另一种可能：confirm 上的旧后台 Dispatch（`_relay_pull_panel.html:265` 不带 send_type）。
+  要定案的证据（Referer / ops 日志 / 问 Jtian）已交 a4、46。
+- 改法（样子不变，按 bug 修）：`next.config.ts` 加 `headers()`，浏览器要页面（Accept 带 text/html）时给
+  `private, no-cache, no-store, max-age=0, must-revalidate`（同 Next 动态页默认值）。headless 实测只写 no-cache 不够，Chrome 返回时照样用硬盘的，必须 no-store。
+  服务器端预渲染缓存照旧（x-nextjs-cache HIT）；/_next/static（immutable）、/api/*、站内跳转的 RSC 请求、转给后端的旧后台页（用后端自己的响应头）都不变。
+- ⚠️ 没管到的：经 ops 转发的旧后台页面用后端的响应头，要防同样的问题得后端自己加 no-store（需要后端，可选）。
+- 检查：新 `checks/headless/html-cache-check.js`（对着生产 build 跑，不进 run-all）11/11（含对照：改之前的响应头返回时仍是旧版本）。
+
 ## 2026-11-08 晚 Staff Schedule › Period（`task/schedule-period`，工作窗口 `npe-ops-frontend-3c`[8c373c]，Annie 直接在 3c 提）—— ✅ 合 main **943974db**（功能 9af7a4fb）
 - Annie 原话：「今晚还要完成一个工作就是，staff schedule，我需要一个地方可以展示我设定的期限的一个工作排版，比如从那天开始的总共几周的排班，而且可以share给staff让他们确认」→ preview https://claude.ai/artifact/HnBVL6wANcCZYs1r1enq3W →「全部同意推荐。然后是super admin用，然后要可以assign给几个admin也可以用」→「最重要一点，可以选择执行哪些rules」→（题 6、7 推荐 A）→「动手吧」。
 - 定了（全 A）：用已排好的周表连起来看（不另做轮班模板）；staff 一次确认整段、单日提改动；staff 只看自己的；没发布的周不能分享；先只 Super Admin + 她指定的几个 admin；选 rules 只管这一次（不改 Rules 标签）；Auto-fill 放 Period 标签上。

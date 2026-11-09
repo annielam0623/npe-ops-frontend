@@ -5,6 +5,10 @@ import { redirects } from "./lib/page-switch";
 
 const apiProxyTarget = resolveApiProxyTarget();
 
+/** 页面（HTML）的 Cache-Control，见下面 headers()。checks/headless/html-cache-check.js 对着它查。 */
+const PAGE_CACHE_CONTROL =
+  "private, no-cache, no-store, max-age=0, must-revalidate";
+
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   // 检查脚本（checks/headless/run-all.js）起的 dev 用单独的目录。和本地 dev 共用 .next 时，
@@ -19,6 +23,21 @@ const nextConfig: NextConfig = {
   // 全部用 307（非永久）：以后切换清单变了，浏览器不会记住旧的跳转。
   async redirects() {
     return redirects();
+  },
+  // 页面（HTML）每次都要问服务器（2026-11-09，第 7305 批只发了短信）：预渲染页默认只带 `s-maxage`，没有校验值，
+  // Chrome 点「返回 / 前进」、恢复标签页时会直接用硬盘里的旧页面、跑旧版代码（修过的 bug 又回来）。
+  // 必须带 no-store：Chrome 返回 / 前进时连 no-cache 都不管，照样用硬盘里的（headless 实测）；不存就只能重新问服务器。
+  // 值同 Next 给动态页的默认值。只改浏览器这一头：服务器端的预渲染缓存（x-nextjs-cache HIT）照旧。
+  // 只管浏览器要页面的请求（Accept 带 text/html）；/_next/static（带 hash、immutable）、/api/*、站内跳转的 RSC 请求不碰；
+  // 转给后端的旧后台页用后端自己的响应头（转发会盖掉这里的）。
+  async headers() {
+    return [
+      {
+        source: "/((?!_next/|api/).*)",
+        has: [{ type: "header", key: "accept", value: ".*text/html.*" }],
+        headers: [{ key: "Cache-Control", value: PAGE_CACHE_CONTROL }],
+      },
+    ];
   },
   async rewrites() {
     // fallback：ops 自己没有的路径（页面、上面的转发都没对上）一律原样转给后端——旧后台的页面、样式（/static）、

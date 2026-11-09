@@ -29,6 +29,9 @@ node run-all.js --keep-dev   # 跑完不关 next dev
   例：`MOCK_PORT=8899 APP_PORT=3298 CDP_PORT=9433 node run-all.js tp users teams`（Git Bash 写法）。
   `teams` 套的 Chrome 每次用临时目录、端口由 Chrome 自己挑；`tp` / `users` 用 puppeteer，也不占固定调试端口。
 - `run-all.js` 收尾时只关**本目录**（本 worktree）起的 headless Chrome，不会关别的窗口正在跑的检查。
+- **`html-cache-check.js` 不进 `run-all.js`**：页面的缓存头（`next.config.ts` 的 `headers()`，返回 / 前进不许用硬盘里的旧页面）
+  要对着生产 build 查，dev 的缓存头不一样。跑法写在文件开头（先 `NEXT_DIST_DIR=.next-build` build，再跑脚本；
+  脚本自己起 next start、模拟后端、Chrome，跑完都关掉）。改了 `next.config.ts` 的 headers / rewrites 要跑一次。
 
 ## 各套对应的页面
 
