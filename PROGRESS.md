@@ -6,6 +6,23 @@
 
 > **下一个主窗口：先读下面「2026-11-06 收工交接：前端主窗口 49」，再看置顶「📌 等 Annie 确认」。**
 
+## 2026-11-08 晚 Staff Schedule › Period（`task/schedule-period`，工作窗口 `npe-ops-frontend-3c`[8c373c]，Annie 直接在 3c 提）—— ✅ 合 main **943974db**（功能 9af7a4fb）
+- Annie 原话：「今晚还要完成一个工作就是，staff schedule，我需要一个地方可以展示我设定的期限的一个工作排版，比如从那天开始的总共几周的排班，而且可以share给staff让他们确认」→ preview https://claude.ai/artifact/HnBVL6wANcCZYs1r1enq3W →「全部同意推荐。然后是super admin用，然后要可以assign给几个admin也可以用」→「最重要一点，可以选择执行哪些rules」→（题 6、7 推荐 A）→「动手吧」。
+- 定了（全 A）：用已排好的周表连起来看（不另做轮班模板）；staff 一次确认整段、单日提改动；staff 只看自己的；没发布的周不能分享；先只 Super Admin + 她指定的几个 admin；选 rules 只管这一次（不改 Rules 标签）；Auto-fill 放 Period 标签上。
+- **做了（已上线）**：
+  - 排班页标签 Schedule / **Period** / Rules。Period：Start（任选一天，对齐到周日）+ Weeks 1–8；每人一行、几周连排，每周头写 Published / Draft，点周名回 Schedule 标签看那一周；有没派人的时段时最下一行 Not assigned 按天数；只看不改。How to use 在卡片底部。
+  - **Auto-fill these weeks**（要 schedule.edit + Rules 接口有）：AutoFillDialog 的 period 模式，排这一段；规则清单默认全勾，取消的这一次不执行；Shift times（规则里的 + Settings 的班次时间）固定勾、灰掉；照旧先 Preview、已有排班先问 Replace / Add、已发布的周跳过；每周直接 bulk 建草稿（不走页面暂存）。Schedule 标签有没存的改动时键灰掉、写「Save or discard the changes on the Schedule tab first.」。
+  - **Share with staff**：灰键挂 SOON（等后端）。
+  - 可见性新 key `schedule_period`（Settings › Notifications › Page visibility「Staff Schedule · Period」，默认 super_admin_only）；后端没登记时前端按默认只给 Super Admin。
+  - ⚠️ Period 按周顺序 GET 各周：没打开过的未来周，后端会照上一周复制一份草稿（同在周表翻到那周）。
+- **检查**：sch 425/425（新 16 条 Period）、ns 50/50（Page visibility 改成 24 行 + schedule_period 那行）、nav 39/39；tsc 0、eslint 0 错（1 条旧警告 ScheduleWorkWindow 未用）、build 过。端口 MOCK 9377 / APP 3977 / CDP 9977（9277 那组一度被占）。dev / Chrome 都由 run-all 关掉。
+- **还没做（需要后端，a4 已转 46 / 33）**：
+  1. Share with staff：发整段邮件（每人一条 token 链接，指向整段确认页）——等 33 的接口形状 + SHA。整段确认可由前端循环现有每周的 GET/accept（token 认人不认周），后端定。
+  2. 可见性按人放开：dashboard-widgets 加「另外允许的人」名单（如 allowed_user_ids），visible_to_me 算上名单；前端再在 Page visibility 加 Also allowed 一行（preview ⑤）。
+  3. 后端登记 `schedule_period` 这个 key（没登记前 Super Admin 在 Page visibility 改档可能报错）。
+  4. staff 整段确认页、Period 表最右「Confirmed?」列：等 1 落地再做。
+- 另：Tasks 编辑（preview https://claude.ai/artifact/3aVYWfWYk4RgntEaBjovTh，Annie「A+B」「同意推荐」）还没说「动手」，没写代码；A 要后端 PATCH /api/tasks/today/{id}（形状 46 已给）。
+
 ## 2026-11-07 前端主窗口 `npe-ops-frontend-a4`[8b80ee] 开工（家里电脑；只分工和汇报，不写代码）
 - 接 49 收工交接。git pull 到 ff0e05e1；11-06 晚家里前端没有新提交，分支状态同 49 交接（Notes e83c529c、G263 456a23a3 都没合）。
 - 已问后端 `主窗口-46`[7d15d6]：Notes v159、G263 v160 进度 + 最终接口形状、G257；告诉它以后发 a4。`33`[9162ea] 回：是后端子窗口（46 派的团出发时间 / G250 锁定钟点），不是前端 ⇒ 前端现在没有工作窗口，请 Annie 开。
