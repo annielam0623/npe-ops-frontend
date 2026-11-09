@@ -16,11 +16,15 @@
   - 可见性新 key `schedule_period`（Settings › Notifications › Page visibility「Staff Schedule · Period」，默认 super_admin_only）；后端没登记时前端按默认只给 Super Admin。
   - ⚠️ Period 按周顺序 GET 各周：没打开过的未来周，后端会照上一周复制一份草稿（同在周表翻到那周）。
 - **检查**：sch 425/425（新 16 条 Period）、ns 50/50（Page visibility 改成 24 行 + schedule_period 那行）、nav 39/39；tsc 0、eslint 0 错（1 条旧警告 ScheduleWorkWindow 未用）、build 过。端口 MOCK 9377 / APP 3977 / CDP 9977（9277 那组一度被占）。dev / Chrome 都由 run-all 关掉。
-- **还没做（需要后端，a4 已转 46 / 33）**：
-  1. Share with staff：发整段邮件（每人一条 token 链接，指向整段确认页）——等 33 的接口形状 + SHA。整段确认可由前端循环现有每周的 GET/accept（token 认人不认周），后端定。
-  2. 可见性按人放开：dashboard-widgets 加「另外允许的人」名单（如 allowed_user_ids），visible_to_me 算上名单；前端再在 Page visibility 加 Also allowed 一行（preview ⑤）。
-  3. 后端登记 `schedule_period` 这个 key（没登记前 Super Admin 在 Page visibility 改档可能报错）。
-  4. staff 整段确认页、Period 表最右「Confirmed?」列：等 1 落地再做。
+- **第二批 Share with staff（前端做完、检查全过，⏸️ 没合 main，等后端）**：分支 `task/schedule-period-share` @ **6a940d3c**（已含最新 main）。对着后端 33 `task/schedule-period-share` @ 0c50c168（WIP，上 main 要等 v161 种子执行，33 说大概 11-09）。
+  - Period 上蓝色 **Share with staff**（schedule.publish）：先 POST /api/schedule/period/share `dry_run: true` 列收件人 / 收不到的人和原因；有没发布的周红框、Send 灰；同一段发过黄框「Already shared: by … on …」；Send to N staff → 绿字 Sent to N staff.、红字 Not sent 逐人原因；409 unpublished 取嵌套 detail。后端 404 ⇒ 写「Share with staff is not available yet.」。
+  - Period 表最右 **Confirmed?**：已发布的周逐周读 /weeks/{week}/confirmations 合起来（绿 Confirmed / 黄 Asked for a change / 红 Not confirmed）；读不到不出这一列。
+  - staff 整段确认页 `/schedule/confirm/period/[token]?start=&weeks=`（不用登录、没侧栏）：只看自己的班、一周一块；蓝键 Confirm all N weeks = 逐周 accept（中途失败红字写哪一周、键变 Confirm the other N weeks）；每天 Request change 打开那一周的 /schedule/confirm/link/{token}?week=；过期 / 链接不全各一句。
+  - Page visibility「**Also allowed**」：后端带 allow_list 的那行下面，+ Add person（Team 名单里在用的非 Super Admin、非 partner）、× 移除，按 Save 才存（PUT {allowed_users:{schedule_period:[ids]}} 整份替换），Saved 绿 / 后端原话红。
+  - Content Studio › Team Messages 加 3 个键（sched_period_subject / intro / link_text，变量 {start} {end} {weeks}）和「Share several weeks」邮件预览。
+  - 检查：sch 433/433、sc 44/44（新整段确认 10 条）、ns 56/56（Also allowed 6 条）、cs 190/190（27 个键 + period 预览）、nav 39/39；tsc 0、eslint 0 错、build 过。端口 9377 / 3977 / 9977。
+  - **接着做**：33 上 main 并执行 v161 后，`git merge origin/main` 进分支、再跑 sch sc ns cs nav，过了就合 main；Annie 验收：Period 选全已发布的几周 → Share → 确认框 → 发（只发 ZZ Test / azhou@ 测试员工，生产后端会真发邮件！）。
+  - 后端还要登记 `schedule_period`（33 的分支里已登记，随 v161 上）。
 - 另：Tasks 编辑（preview https://claude.ai/artifact/3aVYWfWYk4RgntEaBjovTh，Annie「A+B」「同意推荐」）还没说「动手」，没写代码；A 要后端 PATCH /api/tasks/today/{id}（形状 46 已给）。
 
 ## 2026-11-07 前端主窗口 `npe-ops-frontend-a4`[8b80ee] 开工（家里电脑；只分工和汇报，不写代码）
