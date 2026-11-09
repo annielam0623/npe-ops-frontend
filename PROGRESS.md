@@ -1418,6 +1418,15 @@ D. 已完成、待从置顶移走：
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 108. 早班 SMS + Email：没手机号的客人，短信那栏记 failed、预览挂红「SMS failed」（2026-11-09，后端 a3 查出，35 问 Annie）
+
+- 现在（现有行为，106 没改它）：没手机号、有邮箱 ⇒ 邮件照发；这一位算「发出去了」，不发失败告警；但 send_log 短信栏记「failed: Invalid phone」，Morning Pickup 预览已发区域挂红色「SMS failed」，Send Log 也显示 failed（a3：send.py:1127 不看有没有号码照样发短信；send_guard.py:147-151 算 partial）。
+- 选法：
+  - **A（推荐）** 没号码就不试短信，像没邮箱一样显示灰字「No phone」，不算失败、不挂红。前后端都要改（后端 send.py / relay_pull.py 两个入口一起改，前端结果表 + 预览加 No phone）。
+  - B 不改行为，只改 How to use 第二句为：「A guest with no phone number gets the email only. Their SMS shows as failed (Invalid phone); that is expected, no action needed.」
+  - C 都不改（现在 How to use 写「a guest with no phone number gets the email only」，没提红字）。
+- 106 前端已上 dcc04e1a，How to use 现在写：「Every reminder goes out by SMS and email. A guest with no email address gets the SMS only, and a guest with no phone number gets the email only.」
+
 ### 107. 「有新版本，请刷新」提示条（2026-11-09，Annie：「第四条，做」；3c 出 preview，没动手）
 
 - preview：https://claude.ai/artifact/BbcwRLCvyK7ecfL6cz2LEv（模拟数据）。检测：build 时把 commit SHA 写进代码和 public/version.json，每个标签页 5 分钟 + 切回来时查一次，不动后端。
