@@ -104,6 +104,9 @@
     Morning Pickup › Send（上传文件发，`lib/morning-send-api.ts` → 后端 `send.py` Morning Send）；旧 confirm 的 relay 面板和 Morning Send 页也算。
     2026-11-08 只改了 Dispatch、后端默认没跟着改，11-09 batch 7305 就只发了短信。
   - 前端改了、后端也要跟着改的（默认值、校验），写进「需要后端」交给后端主窗口，不能只改一边。
+  - **整个系统的发送和汇报规则都一样**（Annie 2026-11-09，原话：「记住，我们整个系统的发送和汇报规则都是一样的，你去查查其他模块」）：
+    没号码 / 没邮箱怎么算、什么算失败、结果怎么显示、怎么告警，所有发送模块（早班、Tour 确认、Last Minute、门票、Farm out 通知、crew 通知等）都要一样。
+    改一个模块的这类规则前，先查其他模块现在怎么做，照统一的做；不一样的列出来给 Annie 定。
 - 新页面参照已上线的 `/promotion-stats` 和已完成的 teams / users 页：组件放 `components/<页面>/`，
   接口封装放 `lib/<页面>-api.ts`，统一走 `lib/api-client.ts` 的 `apiFetch`。
 
