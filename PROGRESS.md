@@ -4,7 +4,29 @@
 
 > 6d 交接（下面「2026-10-27 交接：前端主窗口 6d」那节）的后端需求已于 10/27 晚由 ad 转给家里后端主窗口 17。
 
-> **下一个主窗口：先读下面「2026-11-06 收工交接：前端主窗口 49」，再看置顶「📌 等 Annie 确认」。**
+> **下一个主窗口：先读下面「2026-11-08 晚 收工交接：前端主窗口 a4」，再看置顶「📌 等 Annie 确认」。**
+
+## 2026-11-08 晚 收工交接：前端主窗口 `前端主窗口-a4`[8b80ee]（家里电脑；明天 Annie 在公司电脑）
+### 一、今天上 main（等 Annie 线上验收，验收点都已转她）
+- 0cfbd804 Morning Pickup › Send 默认 SMS + Email；1ad9b24c Dispatch 发客人早班提醒固定 combined（置顶 101）。46 从 batch_id > 7200 起查下一批早班是否真发了邮件 ⇒ 明早要看 46 / 接手后端窗口的结果转 Annie。
+- efb21f7c（代码 a3de076e）Dispatch Completed 键只给 Super Admin（Annie「对，把这个键，同意推荐。动手」）。
+- 之前：2dd78a22 / bb3d563b / 2ad77d96 Cfm # 规则、黄字、No Cfm # needed。
+### 二、没合 / 进行中
+- ✅ 3c 合 main **943974db**（功能 9af7a4fb，交接 4c33126c）：Staff Schedule › Period 多周表 + Auto-fill these weeks 选 rules，只 Super Admin；Share with staff 挂 SOON（sch 425、ns 50、nav 39，tsc / eslint / build 过），验收点已转 Annie。剩下：Share with staff、allowed_user_ids、登记 schedule_period、staff 整段确认页 + Confirmed? 列，等后端 33。33 形状已发 3c（POST /api/schedule/period/share {start, weeks, dry_run}，dry_run 回收件人 / 发不到 / 未发布周 / already_shared，真发回 {notified, not_reached}；链接 /schedule/confirm/period/{token}?start=&weeks=，逐周调现有 confirmation/link；Page visibility GET 每项多 allow_list / allowed_users，PUT {"allowed_users": {"schedule_period": [ids]}} 只 SA；Content Studio 新键 sched_period_subject / _intro / _link_text）。后端分支 task/schedule-period-share WIP **0c50c168**（审查后改：allowed_users 只回给 SA；dry_run 必须是布尔否则 400，已告诉 3c），上 main 等 Annie 执行 v161 种子 SQL。明天前端窗口照形状 mock 做（可见性 allowed_user_ids + schedule_period 键 + POST /api/schedule/period/share + 种子迁移要 Annie 执行 SQL，排在 c2 G263 v160 之后）。3c 交接见下一节。
+- 86 task/farmout-products 928fc15a（G263）：等 c2 G263 v160 SQL + SHA，核字段后合。
+- task/dispatch-card-notes e83c529c（Notes）：等后端 v159 上 main。
+- 置顶 102 Tasks 编辑：Annie「A+B」「同意推荐」，**还没「动手」**；动手后 3c 先做 B，A 等后端 PATCH /api/tasks/today/{id}（46 形状已记）。
+### 三、等 Annie（都已问，不要重复问）
+- 置顶 101 Dispatch 三句文字 A/B/C；只发了短信的早班批次（10/28 起 644 行）补不补邮件。
+- 置顶 100 No Cfm # needed 小字位置 A / B。
+- OLIVIA「Not in HR」：等她截图（哪天、哪台车、哪处）。
+- PAUL SR 错挂：Annie（原话）「第一项已经改了」（a4 理解为 PAUL SR：HR 写法移到 Paul T + 11-09 South Rim 1957 改司机），46 只读核 ✅：'PAUL SR' → hr 13（Annie 20:05 在 HR 改）；11-09 South Rim · B 1957 司机 hr 13（20:06 存，行号现 1280）；Paul R 11-09 只剩 2622 relay + Bryce&Zion；11-09 司机 / 导游通知都还没发，没人收到错链接。过去几天排班改不改她定。
+- 「补材料」清单四个决定（过去 South Rim 排班、办公室员工要不要 HR 档案、哪些团挂餐厅、驾照号 / 体检卡是否必填）；问过要不要做成网页清单。
+- Railway 变量 DISABLE_SCHEDULER / UNCLASSIFIED_ALERT_EMAILS 请她看。
+- 发 crew SMS 通知前：确认 Page visibility dispatch_roster 已放开给 staff。
+- G263 c2 窗口两题（Scope v3、Lap Child）；11/09 那周提醒 G180 补过去日期。
+### 四、明天开工
+- 公司电脑新主窗口：读本节 → 置顶 101–103 → git pull。worktree D:\npe-ops-frontend-wt-cfmrule / wt-cfmhint / wt-fop 在家里电脑，公司电脑从 origin 拉分支。
 
 ## 2026-11-08 晚 Staff Schedule › Period（`task/schedule-period`，工作窗口 `npe-ops-frontend-3c`[8c373c]，Annie 直接在 3c 提）—— ✅ 合 main **943974db**（功能 9af7a4fb）
 - Annie 原话：「今晚还要完成一个工作就是，staff schedule，我需要一个地方可以展示我设定的期限的一个工作排版，比如从那天开始的总共几周的排班，而且可以share给staff让他们确认」→ preview https://claude.ai/artifact/HnBVL6wANcCZYs1r1enq3W →「全部同意推荐。然后是super admin用，然后要可以assign给几个admin也可以用」→「最重要一点，可以选择执行哪些rules」→（题 6、7 推荐 A）→「动手吧」。
@@ -38,6 +60,8 @@
 - 资源：空闲内存 12.9 / 31.7 GB，chrome 15 个（1.7 GB），node 1 个。
 - 11-08 Annie「今早导游从他的页面能看到他带的这台bus全部的客人么」⇒ 46 生产只读查（查的是 11-08 下午库里现状，不是早上快照）：4 台 bus tour 车都排了 HR 里的导游，导游页人数 = 这台车在名单上的人数，unplaced 0。Scarlett G South Rim 1957 31 pax / 15 单；OLIVIA Antelope A 2356 31 / 14（没账号，只能短信链接进）；Lankun W Antelope B 2719 36 / 22；Robert L HooverDam 2355 29 / 10。没有只打名字没连 HR 的导游。今天 4 位导游没有登录 / 点链接记录，但以前点过链接的 cookie 一直有效、再开不留记录 ⇒ 看没看过查不出。规则提醒：两台车的团两台都要标字母，没标导游 / 司机页一个客人都看不到（tour_manifest.py:694-700），今天没出现。
 - 11-08 Annie「把completed today' assignment这个键隐藏起来」⇒ 只记下、没动。两个仓库都搜不到这几个字；最像的是 Dispatch Step 2 底下蓝键「Completed — this day's dispatch is done」（`components/dispatch-manifest/manifests-panel.tsx:458`），已问 Annie 是不是这个键、隐藏后的后果（见回复），等她确认 +「动手」。Annie「对，把这个键，同意推荐。动手」⇒ 选 A（只对 staff 隐藏，Super Admin 照旧能看能点；已点过的「Dispatch completed by …」状态字大家都看得到；How to use 里叫 staff 点 Completed 那句只给 Super Admin）⇒ 派 3c（task/hide-completed-staff），做完合 main。
+- 11-08 46 只读查（a4 转 Annie）：① G51 没归组产品邮件在跑（10-28 PLHMYK、10-29 PE4GYZ 已提醒 azhou / lxu）；PLHMYK 11-11 两单、PE4GYZ 11-22 一单不进 Dispatch，要去 Products 归组；Railway 变量 DISABLE_SCHEDULER / UNCLASSIFIED_ALERT_EMAILS 46 看不到，请 Annie 看。② OLIVIA「Not in HR」：后端数据 / 日志 / 导入 / 发导游名单都连 hr 57，ops 代码三处（Not in HR 胶囊、was removed from Human Resource、Guide no longer on the list）按数据都不会出现 ⇒ 等 Annie 截图（哪天、哪台车、哪个位置）。③ 'PAUL SR' 别名错挂 hr 12 Paul R（10-06 19:51 存 10-07 排班时 apply_after_save 自动记），10-09 起 CCL「PAUL SR」都认成 Paul R；Paul T（hr 13）从没被排过；11-09 #1245 South Rim 1957 也是 Paul R ⇒ Annie 自己在页面改（HR 先删后加、11-09 改司机），过去几天要不要改她定；不改代码。④「还要补材料」清单已转 Annie（HR 缺项、过期驾照 Zilin S / Hanssel S、2719 等 5 台没 Samsara、DOR 收件人含测试号、Farm out 三张表空、Private Tour 节没默认团类型、v159 / v160 SQL 等），问是否做成网页清单。
+- 11-08 Annie「以后如有过进来的单没有group，记得发邮件给azhou和lxu」⇒ 已有（G51 unclassified_alert，10-12 上线，每 15 分钟、每产品一封），没动。
 - 今天可派（等工作窗口报到）：① 门票 Cfm # 规则前端对齐（softBlocks cfm_not_needed / cfm_short、上传 current_too_short 默认勾，只修跟后端对齐、样子不变）；② G263 前端剩下几项照 mock 写；③ Notes 后端上 main 后核字段合。置顶 100 两题、Cfm # How to use 文字仍等 Annie。
 
 ## 2026-11-06 收工交接：前端主窗口 `前端主窗口-49`[8db054]（公司电脑）
@@ -1343,6 +1367,23 @@ D. 已完成、待从置顶移走：
 - 需要后端：user_prefs 白名单加 `manifest_cols_admin_fee`（这个标签的 Columns 才存得住；没有时页面写「Could not load your saved columns」并用默认列）。
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
+
+### 103. Staff Schedule 多周排班展示 + 分享给 staff 确认（2026-11-08 晚，Annie 在 3c 窗口提，要今晚完成；没动手）
+- Annie（原话）：「今晚还要完成一个工作就是，staff schedule，我需要一个地方可以展示我设定的期限的一个工作排版，比如从那天开始的总共几周的排班，而且可以share给staff让他们确认」
+- 3c preview https://claude.ai/artifact/HnBVL6wANcCZYs1r1enq3W ：① 排班页加 Period 标签（Start + Weeks 1–8，每人一行几周连排，只看，最右每人确认状态）；② Share with staff（每人一封邮件一条免登录链接，同每周发布 token；有没发布的周不能分享）；③ staff 手机页只看自己的、「Confirm all N weeks」、单日 Request change。5 题推荐都 A：1 用已排好的周表；2 一次确认整段；3 staff 只看自己的；4 没发布的周不能分享；5 先只有 Super Admin 能用。
+- 需要后端：发整段邮件（链接带 start + weeks）；整段确认前端可循环现有每周 accept；可选整段状态汇总。a4 已预告 46 问今晚能否做、token 复用、邮件走哪条。等 Annie 答 + 「动手」。
+- 46 回：今晚后端上不了（新接口真发邮件给 staff + 免登录链接要 security-auditor；邮件文字放 Content Studio Team Messages 要 seed 迁移，Annie 执行 SQL；约半天到一天；21:30 收尾）。形状：POST /api/schedule/period/share {start, weeks}（schedule.publish 权限，先 SA；有没发布的周 409；每个有班的人一封；回 {notified, not_reached}，同 publish）；可选 GET /api/schedule/period/confirmations。token 复用 schedule_link.make_token（只签员工、12 周有效），前端链接 /schedule/confirm/period/{token}?start=&weeks=，逐周 accept；建议开始日期最多 4 周后（不然链接可能过期）。动手后 46 明早派。a4 问 Annie：今晚先上只看的 Period 表（现有接口，只 SA）+ 明天上分享 / 确认，开始日期最多 4 周后。
+- ✅ Annie（原话，3c 窗口）：「全部同意推荐。然后是super admin用，然后要可以assign给几个admin也可以用」「最重要一点，可以选择执行哪些rules」⇒ 5 题全 A；preview 第 3 版（同链接）加 ⑤ 按人开权限（Page visibility 选 Super Admin only，下面「Also allowed」按人加）——**需要后端**：dashboard-widgets 加另外允许的人名单（如 allowed_user_ids），visible_to_me 算上；①b Period 上「Auto-fill these weeks」，列 Rules 页开着的规则，每条勾、默认全勾，取消的只这一次不执行，Shift times 固定要用，先 Preview 再建草稿（纯前端，Auto-fill 周数放开到这段）。新题 6（只管这一次）、7（按钮放 Period 标签）推荐 A，在问。后端合计：可见性按人名单、整段分享邮件、（整段确认前端循环）。
+- ✅ **Annie（原话）：「动手吧」** ⇒ 题 6、7 A。3c 开 task/schedule-period 今晚做纯前端（Period 标签只读多周表 + Auto-fill these weeks 选 rules；开关 key schedule_period 默认 super_admin_only；Share with staff 后端没好挂 Soon）。a4 已转 46 派后端三件（可见性 allowed_user_ids + 登记 schedule_period；POST /api/schedule/period/share，开始日期 ≤4 周后；整段状态可选），46 明早派。
+
+### 102. Tasks 能编辑（2026-11-08，Annie 在 3c 窗口提；没动手）
+- Annie（原话）：「对了，我那天提出的要实现task也编辑呢」（之前 PROGRESS 里没记过）。3c 查现状：主管能加临时任务、改截止、交接、打勾；今天的任务改不了标题 / 优先级 / 负责人；模板后端有 POST / PATCH /api/tasks/templates，ops 没页面（lib/tasks-api.ts createTaskTemplate / updateTaskTemplate 没人调）。
+- 选项：A 今天已加好的任务能改标题、优先级、负责人；B 每天固定出现的模板能新增 / 修改 / 停用。✅ Annie（原话）：「A+B」。
+- 第 2 题「谁能编辑」没答；preview 先按推荐（只有 Supervisor / Admin，同现在加任务），preview 里写明。
+- 需要后端（A）：PATCH /api/tasks/today/{task_id}（title / priority / 负责人，权限同 POST _manage，写 action_log，回 DailyTask）——a4 11-08 已转 46 估形状、问换负责人要不要清 accept / pass-over。B 后端已有，前端可直接做。
+- 3c 出 preview（A 的 Edit 弹框 + B 模板管理），Annie 看了「动手」才写代码。
+- 46 回形状（已 cc 3c）：A PATCH /api/tasks/today/{task_id}，title / priority / assigned_admin_user_id 或 assigned_to_username（null = 共享任务），不带的不动，校验同 POST，权限 _manage，回 DailyTask，action_log daily_tasks update 只记改了的；交接还没被接收时改负责人 ⇒ 409「Waiting for <name> to accept the pass-over」（不然接收时会改回去），标题 / 优先级随时能改；做完的也能改；不动模板。B 模板接口已有，停用 = PATCH {"is_active": false}；改模板只影响之后生成的日子（已生成的明天照旧），How to use 要写。后端约半天、无迁移；Annie「动手」后 46 次日派。
+- 3c preview https://claude.ai/artifact/3aVYWfWYk4RgntEaBjovTh 4 题推荐都 A：① 只有 Supervisor / Admin 能编辑；② 今天的任务能改标题、优先级、给谁；③ Daily task list 入口在 Today's tasks 标题行右边，点开是窗口；④ 模板不删，用 Active 停用，停用的灰色标 OFF。✅ Annie（原话，3c 窗口）：「同意推荐」⇒ 4 题全 A。**还没「动手」**，3c 已问。动手后：3c 先做 B（后端已有）；A 等 46 派后端 PATCH /api/tasks/today/{id}。
 
 ### 101. Morning Pickup › Send 早班提醒默认只发短信，10/20 起没有邮件（2026-11-07，后端 46 查生产、a4 查前端）
 - 现状：send_log 里 morning_pickup 最后一封邮件是 10/20；11/3–11/7 每一批 send_type 都是 sms（Veronica、Jtian 发的），今天 97 条全是短信。Tour 确认、Last Minute 的邮件正常。
