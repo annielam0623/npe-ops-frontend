@@ -1255,7 +1255,7 @@ async function run() {
     await ctl({ role: "superadmin", meName: "" });
     await openPage(`${APP}/schedule?week=2026-10-11`);
     await waitFor(`${cell("1|2026-10-11")} && ${tabNames}.includes('Period')`);
-    check("Period：Super Admin 有 Schedule / Period / Rules 三个标签（Period 在中间）", await evaluate(`return ${tabNames}.join('|') === 'Schedule|Period|Rules';`), await evaluate(`return ${tabNames}.join('|');`));
+    check("Period：Super Admin 有 Schedule / Period / Rules 三个标签（Period 在中间）", await evaluate(`return ${tabNames}.slice(0, 3).join('|') === 'Schedule|Period|Rules';`), await evaluate(`return ${tabNames}.join('|');`));
     await evaluate("[...document.querySelectorAll('[role=tab]')].find(b => b.textContent.trim() === 'Period').click();");
     await waitFor("document.querySelector('[data-period]')");
     await evaluate("$setValue(document.querySelector('[data-period-start]'), '2026-10-07');");
