@@ -34,8 +34,8 @@ import type {
 } from "@/types";
 
 import {
-  DEFAULT_SEND_TYPE,
   MESSAGE_PREVIEW_TABS,
+  MORNING_SEND_TYPE,
   sendTypeShort,
 } from "./config";
 import { MorningPreviewStep } from "./morning-preview";
@@ -105,7 +105,6 @@ export function MorningSendView() {
 
   const [step, setStep] = useState<Step>({ kind: "form" });
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
-  const [sendType, setSendType] = useState<MorningSendType>(DEFAULT_SEND_TYPE);
   const [confirming, setConfirming] = useState(false);
   // 出错后回到预览页（照旧 send_morning.html，Annie 2026-10-20「改回」#2）：红字写在发送键旁，发送键恢复可点。
   // 旧页面一次请求发完整批；现在分小批，已经发出去的几批下次点 Send 会被服务端防重发跳过，不会重发。
@@ -160,7 +159,6 @@ export function MorningSendView() {
             .map((r) => r.order_number),
         ),
       );
-      setSendType(DEFAULT_SEND_TYPE);
       setStep({
         kind: "preview",
         manifest: {
@@ -180,7 +178,7 @@ export function MorningSendView() {
 
   /** 分小批依次发送；任何一批出错就停，不自动重试（那一批可能已经发出去了）。 */
   async function runSend(manifest: Manifest, orders: string[]) {
-    const type = sendType;
+    const type = MORNING_SEND_TYPE;
     setSendError("");
     const results: MorningSendResult[] = [];
     const base = { manifest, sendType: type, orders } as const;
@@ -197,7 +195,7 @@ export function MorningSendView() {
     for (const group of chunk(orders, SEND_BATCH_SIZE)) {
       if (!mountedRef.current) return;
       try {
-        const response = await sendMorningBatch(manifest.file, type, group, {
+        const response = await sendMorningBatch(manifest.file, group, {
           sendAnyway: group.filter((o) => alreadySent.has(o)),
           vanAnyway: group.filter((o) => vanInvalid.has(o)),
           previewAt: manifest.previewAt,
@@ -242,7 +240,6 @@ export function MorningSendView() {
     setFileInputKey((k) => k + 1);
     setUploadError(null);
     setSelected(new Set());
-    setSendType(DEFAULT_SEND_TYPE);
   }
 
   const closeConfirm = useCallback(() => setConfirming(false), []);
@@ -337,8 +334,6 @@ export function MorningSendView() {
           onSelectedChange={setSelected}
           badPax={badPaxOrders(step.manifest.rows, selected)}
           farmOutLeftOut={step.manifest.farmOutLeftOut}
-          sendType={sendType}
-          onSendTypeChange={setSendType}
           onSend={() => {
             setSendError("");
             setConfirming(true);
@@ -380,7 +375,7 @@ export function MorningSendView() {
           <p>
             <b>{pendingOrders.length}</b> order
             {pendingOrders.length === 1 ? "" : "s"} will get today&apos;s pickup
-            reminder by <b>{sendTypeShort(sendType)}</b>.
+            reminder by <b>{sendTypeShort(MORNING_SEND_TYPE)}</b>.
           </p>
           {resendCount > 0 ? (
             <p className="font-medium text-[#A32D2D]">
@@ -480,8 +475,9 @@ function MorningHowToUse() {
         They stay in the main list, ticked, and Send tries again.
       </li>
       <li>
-        Default send mode is SMS + Email. Switch to SMS Only or Email Only if
-        needed.
+        Every reminder goes out by SMS and email. A guest with no email address
+        gets the SMS only, and a guest with no phone number gets the email
+        only.
       </li>
       <li>
         Click Send to Selected to send reminders only to checked guests. Guests

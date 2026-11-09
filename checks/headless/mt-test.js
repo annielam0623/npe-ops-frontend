@@ -819,20 +819,19 @@ async function run() {
       await sleep(200);
       await evaluate("$btn('📂 Upload & Preview').click();");
       await waitFor("!!$btn('✉️ Send to Selected') && !$btn('✉️ Send to Selected').disabled");
-      await pickSms();
     }
-    // 置顶 101（Annie 2026-11-07「选A」「动手」）：默认 Both。下面原有的检查按「只发短信」写的，上传后手动换成 SMS Only。
+    // 置顶 106（Annie 2026-11-09「前后端都写死，mornning发送就是sms+email」「动手」）：页面上没有渠道选择，一律 SMS + Email。
+    // 原来这里换成 SMS Only；现在只等发送键出来（下面原有的检查照 SMS + Email 跑）。
     async function pickSms() {
-      await evaluate(`${RADIO}.find((b) => b.textContent.includes('SMS Only')).click();`);
-      await waitFor("!!$btn('📱 Send to Selected')");
+      await waitFor("!!$btn('✉️ Send to Selected')");
     }
     async function startSend() {
-      await evaluate("$btn('📱 Send to Selected').click();");
+      await evaluate("$btn('✉️ Send to Selected').click();");
       await waitFor("!!document.querySelector('[role=dialog]') && !!$btn('Send to 12 orders', document.querySelector('[role=dialog]'))");
       await evaluate("$btn('Send to 12 orders', document.querySelector('[role=dialog]')).click();");
     }
 
-    // ── 置顶 101：早班发送默认 Both (SMS + Email)；换一份 manifest 还是 Both；发送的 FormData send_type=combined ──
+    // ── 置顶 106：早班发送固定 SMS + Email：页面上没有渠道选择；发送键写 SMS + Email；每批 FormData send_type=combined ──
     await ctl({ morning400: "", morningDelay: 0, fail401: false });
     await goto(`${APP}/morning-pickup/send`);
     {
@@ -847,21 +846,22 @@ async function run() {
         await waitFor("!!$btn('✉️ Send to Selected')");
       }
       await uploadMorningBoth();
-      const active = `return ${RADIO}.filter((b) => b.getAttribute('aria-checked') === 'true').map((b) => b.textContent.trim()).join('|');`;
-      check("置顶 101：打开页面上传后，Send via 默认选中 Both (SMS + Email)，发送键写 ✉️ Send to Selected (SMS + Email)", (await evaluate(active)).endsWith("Both (SMS + Email)") && (await evaluate("return $btn('✉️ Send to Selected').textContent.trim().startsWith('✉️ Send to Selected (SMS + Email)');")), await evaluate(active));
-      check("置顶 101：How to use 写 Default send mode is SMS + Email.", await evaluate("return [...document.querySelectorAll('details')].some((d) => d.textContent.replace(/\\s+/g, ' ').includes('Default send mode is SMS + Email. Switch to SMS Only or Email Only if needed.'));"));
-      await pickSms();
-      // 换一份 manifest：选了 SMS Only 之后 ↩ Start Over 再上传，默认回到 Both
+      const pickerGone = `return ${RADIO}.length === 0 && !document.querySelector('[role=radiogroup]') && !document.body.textContent.includes('SMS Only') && !document.body.textContent.includes('Email Only') && !document.body.textContent.includes('Send via');`;
+      check("置顶 106：上传后页面上没有渠道选择（没有 Send type 单选、没有 SMS Only / Email Only / Send via）", await evaluate(pickerGone));
+      check("置顶 106：发送键写 ✉️ Send to Selected (SMS + Email) — 12 orders", await evaluate("return $btn('✉️ Send to Selected').textContent.replace(/\\s+/g, ' ').trim() === '✉️ Send to Selected (SMS + Email) — 12 orders';"), await evaluate("return $btn('✉️ Send to Selected').textContent.replace(/\\s+/g, ' ').trim();"));
+      check("置顶 106：How to use 写 Every reminder goes out by SMS and email.，没有 Switch to SMS Only", await evaluate("const t = [...document.querySelectorAll('details')].map((d) => d.textContent.replace(/\\s+/g, ' ')).join(' '); return t.includes('Every reminder goes out by SMS and email. A guest with no email address gets the SMS only, and a guest with no phone number gets the email only.') && !t.includes('Switch to SMS Only') && !t.includes('Default send mode');"));
+      // 换一份 manifest 照样没有选择、照样 combined
       await evaluate("$btn('↩ Start Over').click();");
       await uploadMorningBoth();
-      check("置顶 101：选 SMS Only 后 ↩ Start Over 换一份 manifest 上传，Send via 回到 Both", (await evaluate(active)).endsWith("Both (SMS + Email)"), await evaluate(active));
+      check("置顶 106：↩ Start Over 换一份 manifest 上传，照样没有渠道选择", await evaluate(pickerGone));
       const from = (await mockLog()).length;
       await evaluate("$btn('✉️ Send to Selected').click();");
       await waitFor("!!document.querySelector('[role=dialog]') && !!$btn('Send to 12 orders', document.querySelector('[role=dialog]'))");
+      check("置顶 106：确认框写 by SMS + Email", await evaluate("return document.querySelector('[role=dialog]').textContent.includes('reminder by SMS + Email.');"));
       await evaluate("$btn('Send to 12 orders', document.querySelector('[role=dialog]')).click();");
       await waitFor("[...document.querySelectorAll('h2')].some(h => h.textContent === '📬 Send Results')", 20000);
       const st = (await sends(from)).map((e) => e.body.send_type);
-      check("置顶 101：默认发送的 FormData 里 send_type=combined（每批都是）", st.length > 0 && st.every((t) => t === "combined"), JSON.stringify(st));
+      check("置顶 106：Morning Send 每一批请求的 FormData 都带 send_type=combined", st.length > 0 && st.every((t) => t === "combined"), JSON.stringify(st));
     }
 
     // No address：只发短信、M03 没手机号 → 单独算，不算 Failed；行里的标签照旧
@@ -880,8 +880,8 @@ async function run() {
     let b0 = (await mockLog()).length;
     await startSend();
     await waitFor("[...document.querySelectorAll('h2')].some(h => h.textContent === '📬 Send Results')", 20000);
-    check("Morning 结果：和 Tickets / Tour 一样的五格 Sent 11 / Failed 0 / No number 1（M03 没手机号）/ Skipped 0 / Total 12", (await evaluate(stats)) === "11|0|1|0|12", await evaluate(stats));
-    check("Morning 结果：逐单表 Email Status 在前、SMS Status 在后；M03 短信写 No number（后端原因放在悬停提示里）、邮件没选写 —", await evaluate("const ths = [...document.querySelectorAll('thead th')].map(t => t.textContent); const tr = [...document.querySelectorAll('tbody tr')].find(t => t.children[0].textContent === 'M03'); return ths.slice(-2).join('|') === 'Email Status|SMS Status' && !!tr && tr.children[5].textContent === 'No number' && tr.children[5].title.includes('Twilio 21604 missing To') && tr.children[4].textContent === '—';"), await evaluate("return [...document.querySelectorAll('thead th')].map(t => t.textContent).join('|');"));
+    check("Morning 结果：和 Tickets / Tour 一样的六格（置顶 106 固定 SMS + Email ⇒ 多 No email）Sent 11 / Failed 0 / No number 1 / No email 1（M03 没手机号也没邮箱）/ Skipped 0 / Total 12", (await evaluate(stats)) === "11|0|1|1|0|12", await evaluate(stats));
+    check("Morning 结果：逐单表 Email Status 在前、SMS Status 在后；M03 短信写 No number（后端原因放在悬停提示里）、邮件写 No email（置顶 106 固定 SMS + Email）", await evaluate("const ths = [...document.querySelectorAll('thead th')].map(t => t.textContent); const tr = [...document.querySelectorAll('tbody tr')].find(t => t.children[0].textContent === 'M03'); return ths.slice(-2).join('|') === 'Email Status|SMS Status' && !!tr && tr.children[5].textContent === 'No number' && tr.children[5].title.includes('Twilio 21604 missing To') && tr.children[4].textContent === 'No email';"), await evaluate("return [...document.querySelectorAll('thead th')].map(t => t.textContent).join('|');"));
     check("Morning 结果：Sent 是琥珀色 #BA7517（同 Tickets / Tour）", await evaluate("const tr = [...document.querySelectorAll('tbody tr')].find(t => t.children[0].textContent === 'M01'); return getComputedStyle(tr.children[5]).color === 'rgb(186, 117, 23)' && tr.children[5].textContent === 'Sent';"));
     check("Morning：分两批发（10 + 2）", (await sends(b0)).map((e) => e.body.orders.length).join(",") === "10,2", JSON.stringify((await sends(b0)).map((e) => e.body.orders.length)));
 
@@ -915,13 +915,13 @@ async function run() {
     check("没有车号无效的行（接口没有 van_invalid）：没有红汇总行、没有红标，页面和以前一样",
       await evaluate("return !document.querySelector('[data-van-invalid]') && !document.body.textContent.includes('No valid vehicle #');"));
     check("选中的单人数算不出：红框写单号、Send 灰掉",
-      await evaluate("return document.body.textContent.includes('Guest count not found in Quantities: M05') && $btn('📱 Send to Selected').disabled;"));
+      await evaluate("return document.body.textContent.includes('Guest count not found in Quantities: M05') && $btn('✉️ Send to Selected').disabled;"));
     await evaluate("[...document.querySelectorAll('input[type=checkbox]')].find(c => c.getAttribute('aria-label') === 'Send to M05').click();");
-    await waitFor("!$btn('📱 Send to Selected').disabled");
+    await waitFor("!$btn('✉️ Send to Selected').disabled");
     check("取消勾 M05：红框消失、能发", !(await evaluate("return document.body.textContent.includes('Guest count not found');")));
     await evaluate("[...document.querySelectorAll('input[type=checkbox]')].find(c => c.getAttribute('aria-label') === 'Send to M11').click();");
     b0 = (await mockLog()).length;
-    await evaluate("$btn('📱 Send to Selected').click();");
+    await evaluate("$btn('✉️ Send to Selected').click();");
     await waitFor("!!document.querySelector('[role=dialog]') && !!$btn('Send to 10 orders', document.querySelector('[role=dialog]'))");
     check("确认框写 1 个会收到第二条", await evaluate("return document.querySelector('[role=dialog]').textContent.includes('1 of them already got');"));
     await evaluate("$btn('Send to 10 orders', document.querySelector('[role=dialog]')).click();");
@@ -932,7 +932,7 @@ async function run() {
       check("请求带 send_anyway（只有下面那块勾中的 M11）和预览给的 preview_at",
         req.send_anyway === '["M11"]' && req.van_anyway === "[]" && req.preview_at === "2026-10-06T06:00:00-07:00" && all.length === 1, JSON.stringify(req));
     }
-    check("结果：Sent 8 / Failed 0 / No number 1 / Skipped 2 / Total 12（发 10 + 没勾 2）", (await evaluate(stats)) === "8|0|1|2|12", await evaluate(stats));
+    check("结果：Sent 8 / Failed 0 / No number 1 / No email 1 / Skipped 2 / Total 12（发 10 + 没勾 2）", (await evaluate(stats)) === "8|0|1|1|2|12", await evaluate(stats));
     check("跳过的行写服务端原因：M02 Already sent today、M01 第二行 Listed twice in this file；M11 Send anyway 发出",
       await evaluate("const rows = [...document.querySelectorAll('tbody tr')]; const m02 = rows.find(t => t.children[0].textContent === 'M02'); return !!m02 && m02.textContent.includes('Already sent today') && rows.some(t => t.children[0].textContent === 'M01' && t.textContent.includes('Listed twice in this file')) && rows.some(t => t.children[0].textContent === 'M11' && t.children[5].textContent === 'Sent');"));
     await ctl({ morningGuard: false, morningSentSince: [] });
@@ -981,7 +981,7 @@ async function run() {
     await evaluate(`${cbOf("M02")}.click();`);
     await evaluate(`${cbOf("M11")}.click();`);
     b0 = (await mockLog()).length;
-    await evaluate("$btn('📱 Send to Selected').click();");
+    await evaluate("$btn('✉️ Send to Selected').click();");
     await waitFor("!!document.querySelector('[role=dialog]') && !!$btn('Send to 5 orders', document.querySelector('[role=dialog]'))");
     check("确认框：2 单车号无效的红字（客人没有追踪按钮）、1 个会收到第二条",
       await evaluate("const t = document.querySelector('[role=dialog]').textContent.replace(/\\s+/g, ' '); return t.includes('2 of them have no valid Vehicle #. The message is sent, but the guest gets no tracking button.') && t.includes('1 of them already got');"));
@@ -993,8 +993,8 @@ async function run() {
       check("请求：van_anyway = 勾中的车号无效单（M02、M11），send_anyway = 只有 M11",
         req.van_anyway === '["M02","M11"]' && req.send_anyway === '["M11"]' && all.length === 1, JSON.stringify(req));
     }
-    check("结果：M02 / M11 车号无效但勾了 → 照常发出；Sent 4 / Failed 0 / No number 1 / Skipped 0 / Total 8（M03 没手机号）",
-      (await evaluate(stats)) === "4|0|1|0|8", await evaluate(stats));
+    check("结果：M02 / M11 车号无效但勾了 → 照常发出；Sent 4 / Failed 0 / No number 1 / No email 1 / Skipped 0 / Total 8（M03 没手机号也没邮箱）",
+      (await evaluate(stats)) === "4|0|1|1|0|8", await evaluate(stats));
     // 没带 van_anyway 的后端（假装）：勾了的车号无效单被跳过，结果里照原文写
     await ctl({ morningVanIgnore: true });
     await goto(`${APP}/morning-pickup/send`);
@@ -1010,7 +1010,7 @@ async function run() {
       await pickSms();
     }
     await evaluate(`${cbOf("M04")}.click();`);
-    await evaluate("$btn('📱 Send to Selected').click();");
+    await evaluate("$btn('✉️ Send to Selected').click();");
     await waitFor("!!document.querySelector('[role=dialog]') && !!$btn('Send to 4 orders', document.querySelector('[role=dialog]'))");
     await evaluate("$btn('Send to 4 orders', document.querySelector('[role=dialog]')).click();");
     await waitFor("[...document.querySelectorAll('h2')].some(h => h.textContent === '📬 Send Results')", 20000);
