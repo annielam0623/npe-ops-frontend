@@ -33,8 +33,11 @@
     - task/morning-send-combined **dcc04e1a**（106，已合 main，分支可删）。
     - task/send-rules-uniform **e6b1e8cc**（109 第 1 部分已合 main）：剩下 Q1 / Q2 / Q6、结果数字、前端自判「没号码」改以后端为准，等 d4 W1 形状（send_outcome.py）⇒ 从最新 main 拉新分支照形状 mock 做；另问 35 的 Send Log / Tracking 状态标签要不要也变绿，未答。
     - 79 没起 dev server / Chrome 在跑。
-### 五、明天开工
-- 新主窗口：读本节 → 置顶 109–112 → git pull；问 d4（或接手后端主窗口）G263 SHA、W1 形状、G267 进度。
+### 五、今晚家里 / 明天开工
+- Annie 收工前（原话）：「收工写交接，我回家做」⇒ 今晚家里开新前端主窗口接本节。
+- 家里电脑没有公司的 worktree（wt-g180 / wt-send-rules / wt-morning-combined），从 origin 拉分支：task/farmout-products 449305b6、task/send-rules-uniform e6b1e8cc。
+- 先做：① 112 按 Annie 新原话更新 preview（去掉换车），再问 Q1 / Q4 / Q5；② 110 排班 Rules、111 Order 详情页「Refresh from Rezdy」派窗口出 preview；③ 问后端主窗口 G263 SHA、109 W1 形状、G267 进度（公司后端 d4 今天收工，看家里谁接）。
+- 新主窗口：读本节 → 置顶 109–112 → git pull。
 
 ## 2026-11-09 早 收工交接：前端主窗口 `前端主窗口-a4`[8b80ee]（家里电脑；Annie 今天转公司电脑）
 ### 一、今早上 main
@@ -1455,6 +1458,10 @@ D. 已完成、待从置顶移走：
   - **Q3 How to use 原文**：「If a sheet no longer fits on one page after you make the text bigger, the space between hotels and inside each row gets smaller by itself until the sheet fits. Your text size does not change. If the sheet still does not fit, a yellow note above it says how many pages it will print on; make the text smaller or move guests to another car.」A 用这段（推荐）；B 改字。
   - **Q4 总表（Total）要不要一样压**：preview 只做了车单；总表也有酒店空隙，放大后同样会两页。A 总表也照同样规则压 / 提示（推荐）；B 只做车单。
   - **Q5 压过的单要不要说一声**：A 不说，安静地压（如 preview，推荐）；B 单上方屏幕上一行灰字「Spacing tightened to fit one page.」（不打印）。
+  - ✅ **Annie 11-09 收工前（原话）：「这是relay list，只存在是否打印得下，不需要给客人换车」** ⇒ Q2 / Q3 都去掉「move guests to another car」。改后原文（35 拟，要更新 preview 再给她看）：
+    - Q2 提示：「This sheet will print on 2 pages. Make the text smaller.」
+    - Q3 How to use：「If a sheet no longer fits on one page after you make the text bigger, the space between hotels and inside each row gets smaller by itself until the sheet fits. Your text size does not change. If the sheet still does not fit, a yellow note above it says how many pages it will print on; make the text smaller.」
+    - Q1 / Q4 / Q5 没答；**还没「动手」**。家里窗口：先派工作窗口按上面两句更新 preview（同链接），再把 Q1 / Q4 / Q5 + 新两句给 Annie。
 - 动手时（79 想法）：components/relay-list/relay-list.css 加 `--rl-gap` / `--rl-py` 变量和 `[data-squeezed]` 线；relay-list-view.tsx 每张单渲染后量内容高度 vs 它自己的纸高 − 上下页边距（A4 / Letter、横竖），按步压、超了出黄框；字号 / Aa 改动、换纸张后重算。验收见 35 派工：放大超几行 → 自动一页、间隔看得见；压不下 → 印 2 页 + 提示；一页的单、颜色 / 方向 / 页边距 / 字号、11-03 空白页修法都不变。
 
 ### 111. Main Manifest 的 Sync Rezdy 键恢复（2026-11-09，Annie 原话：「把main manifest上的Rezdy同步钮打开吧」；35 问清再派）
