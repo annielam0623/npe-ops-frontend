@@ -4,7 +4,35 @@
 
 > 6d 交接（下面「2026-10-27 交接：前端主窗口 6d」那节）的后端需求已于 10/27 晚由 ad 转给家里后端主窗口 17。
 
-> **下一个主窗口：先读下面「2026-11-08 晚 收工交接：前端主窗口 a4」，再看置顶「📌 等 Annie 确认」。**
+> **下一个主窗口：先读下面「2026-11-09 早 收工交接：前端主窗口 a4」，再读「2026-11-08 晚」那节，再看置顶「📌 等 Annie 确认」。**
+
+## 2026-11-09 早 收工交接：前端主窗口 `前端主窗口-a4`[8b80ee]（家里电脑；Annie 今天转公司电脑）
+### 一、今早上 main
+- **7639a213**（3c，task/html-no-cache）：ops 网页 HTML 改 `Cache-Control: private, no-cache, no-store, max-age=0, must-revalidate`（next.config.ts `headers()`，只管 text/html 文档；/_next/static、/api、旧页面 fallback 不变）。
+  15:06:44Z 线上已生效。新检查 checks/headless/html-cache-check.js 11/11（不在 run-all，跑法见文件头）；tsc / eslint / build、da 544、nav 39 过。页面样子不变。
+  只 no-cache 不够（Chrome 后退照旧拿硬盘旧页），必须 no-store。
+### 二、batch 7305 只发短信（查完，原因已定）
+- 11-09 03:15 Jtian 在 ops Dispatch 发 1st Round，30 位，send_type sms，邮件 0 封（29 位有邮箱）；短信 25 送达、3 已发、2 失败（CHDUXP0JY Thao Tran、CHDT2JLPR Talin Ger，截图里还没按 Send）。
+- 46 核：后端只照请求的 send_type 记，没 UPDATE；请求里没带 combined。Annie 确认 Jtian 登录的是 ops；03:14 save_section 只有 ops 有。
+- 3c 核：1ad9b24c 之后 ops 没有任何路径会漏 send_type；headless 证明旧 HTML 的 `s-maxage` 让 Chrome 后退 / 前进直接用硬盘里修复前的旧页面 + 旧 JS ⇒ 最可能原因。已由 7639a213 堵上。
+- Annie 质问：「那我昨天修的东西你没跟后端统一？」「你不是说后端本来就是这样设置的，然后是前端没有么」「前端根本就没有让staff可以选的地方，我们怎么又绕回来了，你给我查记录去」——教训：先查记录再说原因，不要先推测。
+### 三、Annie 新规矩（已写进 CLAUDE.md「改了一种发送的要求…」）
+- 原话：「写到工作里：一旦改动发送接口的要求，那么相关的都要跟着改，比如morning发送改了，那两个发送的页面都要改，一个是直接发的，一个是上传文件发送的，都一样的改」。已转 46 写进后端规则。
+### 四、交给后端（46 已登记给公司后端窗口）
+- relay-send「没带 send_type → combined」（relay_pull.py:329）；发送记 Origin/Referer；旧后台 admin HTML 加 no-store（经 ops fallback 的旧页不受 7639a213 保护）。
+- 置顶 106（写死 SMS + Email）动手后：send.py:1206 `Form("sms")`、旧 relay 面板 / 旧 Morning Send 一律 combined。
+### 五、等 Annie（都已问，不要重复问）
+- **置顶 106** 早班前后端写死 SMS + Email：Annie「前后端都写死，mornning发送就是sms+email」，**还没「动手」**；动手后前端派 3c（拿掉 Morning Pickup › Send 的 SendTypePicker），后端派公司后端窗口。
+- **置顶 107**「有新版本，请刷新」提示条：preview https://claude.ai/artifact/BbcwRLCvyK7ecfL6cz2LEv，5 题（推荐都 A），等答 +「动手」，3c 做。
+- **置顶 105** Includes lunch：Annie「但是west rim的lunch跟其他tour的lunch完全不是一个概念哦」「记下来回公司处理」；题 0（A/B/C）+ 4 题，86 待命。后端已上 main 28c7c479，没有产品被勾。
+- **置顶 104** 旧 confirm Dispatch 网址藏起来（A 跳 ops / B 拿掉侧栏链接 / C 404）。
+- 预防清单第 5 条「只发短信就报警」：Annie 没回，不再追问。
+- 其余同 11-08 晚那节第三部分（101、100、OLIVIA 截图、South Rim 旧日子、补材料 4 项、Railway 变量等）。
+### 六、在等的工作
+- **G263**（86，task/farmout-products 6350101c，检查全过）：Annie 选 A 要今晚上，但 46 说合 main 要 Annie 本人在同一窗口确认 + release.py ⇒ 改由公司后端主窗口合；c2 已核 money_view 只读是对的。后端 SHA 一到 86 核对 0995f31d 后合前端推。**合之前旧 Partners & rates 对 C Tour 报错。**
+- Period share（3c task/schedule-period-share 6a940d3c）：等后端 33 v161 种子 SQL。
+- Notes v159（task/dispatch-card-notes e83c529c）：等后端。
+- PROGRESS / CLAUDE.md：本地提交，`git push` 被自动权限拦，**要 Annie 自己推**。
 
 ## 2026-11-08 晚 收工交接：前端主窗口 `前端主窗口-a4`[8b80ee]（家里电脑；明天 Annie 在公司电脑）
 ### 一、今天上 main（等 Annie 线上验收，验收点都已转她）
@@ -1371,6 +1399,44 @@ D. 已完成、待从置顶移走：
 - 需要后端：user_prefs 白名单加 `manifest_cols_admin_fee`（这个标签的 Columns 才存得住；没有时页面写「Could not load your saved columns」并用默认列）。
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
+
+### 107. 「有新版本，请刷新」提示条（2026-11-09，Annie：「第四条，做」；3c 出 preview，没动手）
+
+- preview：https://claude.ai/artifact/BbcwRLCvyK7ecfL6cz2LEv（模拟数据）。检测：build 时把 commit SHA 写进代码和 public/version.json，每个标签页 5 分钟 + 切回来时查一次，不动后端。
+- 5 题（3c 推荐都 A）：Q1 位置 Notice 下面（A）/ shortcuts 和 Notice 中间（B）/ 屏幕底部固定（C）；Q2 Reload 键实心黄（A）/ 蓝（B）/ 黄边框（C）；
+  Q3 有没存的改动时 Reload 先弹「Save / Don't save / Cancel」（只确认）；Q4 发送页过期时 Send 变灰 + 红字、按 Send 时再查一次（A）/ 弹窗可 Send anyway（B）/ 不管（C）；
+  Q5 不能关（A）/「Later」藏 1 小时（B）。原文见 a4 回复 Annie。
+- 同日 7639a213（ops 网页 no-store）已上线，15:06:44Z 线上已是新 header。
+
+### 106. 早班接客提醒前后端写死 SMS + Email（2026-11-09 早，Annie 原话：「前后端都写死，mornning发送就是sms+email」；等「动手」）
+
+- 前端（3c）：Morning Pickup › Send 页拿掉渠道选择（morning-preview.tsx:296 `SendTypePicker`），发送键固定「Send to Selected (SMS + Email)」，lib/morning-send-api.ts 固定传 combined；
+  Dispatch relay-send 已固定 combined（b4eb5980）。结果表照旧逐位显示 SMS / Email 两栏，一个渠道失败照旧红胶囊。
+- 后端（公司后端窗口）：relay-send（relay_pull.py:329）和 Morning Send（send.py:1206 `Form("sms")`）都不再收渠道，一律 combined；
+  旧 confirm 的 relay 面板（_relay_pull_panel.html:265）和旧 Morning Send 页同样固定。没有邮箱的客人照旧只发短信（不算失败）。
+- 合 main：前后端各自检查过就合；Annie 说「动手」后派。
+
+### 105. Products › Bus Manifest setup 加「Includes lunch」勾选框（2026-11-09 早，46 转后端 ab 任务 product-includes-lunch；86 出 preview，没动手）
+
+- preview：https://claude.ai/artifact/6C1Xujuq66gXjtkn1KnHwq（模拟数据）。后端接口 GET manifest-setup 每个产品多 `includes_lunch`；PUT `/api/settings/manifest-setup/products/{id}/includes-lunch`（require_admin）；ab 未上 main。
+- 4 题（86 推荐都 A）：① 列放 Type 后面（A）/ Product 名后面（B）；② 勾了马上存、绿字 Saved（A）/ 跟 Section、Type 一起按 Save（B）；
+  ③ 批量黑条不加（A）/ 加 Lunch 下拉（B）；④ 说明只放 How to use 第 5 条、用后端原文（A）/ Sections 灰字再加一句（B）。原文见 a4 回复 Annie。
+- 后端已上 main 28c7c479（merge 1dbaf044，task 5fcf7d0f）。现在任何 bus tour 产品都能勾，勾了就算 LUNCH、上三明治单、进司机 / 导游午餐、餐厅通知（tour_manifest.has_lunch）。
+- ⚠️ Annie 2026-11-09 早原话：「但是west rim的lunch跟其他tour的lunch完全不是一个概念哦」「记下来回公司处理」。
+  West Rim 在 tour_confirmation.py:160 的 lunch_group 是 ""（VOF-H、HD 也是）。题 0（先答这个再做）：
+  A（推荐）只在有午餐汇总的团（South / BZ / Antelope / VOF-F）显示勾选框；B 全部显示、West Rim 勾了也照三明治算；
+  C 全部显示，但 West Rim 勾了只标「含午餐」、不进 LUNCH / 三明治单 / 司机导游午餐（要 Annie 讲清 West Rim 午餐是怎么回事）。A、C 都要后端改。
+- 回公司处理：等 Annie 在公司答题 0 + 4 题 +「动手」，86 才开分支；目前没有产品被勾，不影响线上。
+
+### 104. 旧 confirm 后台的 Dispatch 网址藏起来（2026-11-09 早，Annie：「可以把这个网址隐藏起来么」；没动手，要后端做）
+
+- 起因：11-09 03:15 batch 7305（Jtian，30 位）早班接客提醒只发了短信。46 核实走的是 relay-send、请求没带 send_type；
+  可能来源之一是旧 confirm 的 Dispatch 页（`/admin/dispatch/assignments`，后端 dispatch.py:167，含 `_relay_pull_panel.html`，:265 发送不带 send_type → 后端默认 sms）。
+  旧 confirm 侧栏 base.html:487-490 还有 Dispatch / Dispatch Imports / Work Sheet / Guide Sheet 链接。ops 里这些旧路径已自动跳新页面；只有直接开 confirm 网址才进旧页。
+- 做法（推荐 A）：A. 在 confirm 网址打开旧 Dispatch 这几页（assignments / imports / work-sheet / guide-sheet / manifest）一律自动跳到 ops 对应新页面，旧侧栏链接也改指 ops；
+  B. 只把旧侧栏的链接拿掉，网址本身照旧能开；C. 旧页面直接关掉（打开报 404）。
+- 不管选哪个，后端 relay-send「没带 send_type → combined」照做（46 已交给公司后端窗口）。
+- 全是后端改动，Annie 说「动手」后由 46 / 公司后端窗口派工。
 
 ### 103. Staff Schedule 多周排班展示 + 分享给 staff 确认（2026-11-08 晚，Annie 在 3c 窗口提，要今晚完成；没动手）
 - Annie（原话）：「今晚还要完成一个工作就是，staff schedule，我需要一个地方可以展示我设定的期限的一个工作排版，比如从那天开始的总共几周的排班，而且可以share给staff让他们确认」
