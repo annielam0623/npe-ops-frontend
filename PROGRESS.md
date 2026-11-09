@@ -1418,6 +1418,12 @@ D. 已完成、待从置顶移走：
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 111. Main Manifest 的 Sync Rezdy 键恢复（2026-11-09，Annie 原话：「把main manifest上的Rezdy同步钮打开吧」；35 问清再派）
+
+- 现状：这个键不是藏起来 / 关着，是 10-30 照 Annie「不留，彻底删掉」删掉的（task/rezdy-sync-remove，e59375f），连同「Last updated from Rezdy」、新单标绿、How to use 那条；后端 92 也删了三个 Sync Rezdy 接口（只读查后端 app/routers 已没有 rezdy-sync 路由）。⇒ 恢复要前后端都做。
+- 跟 CLAUDE.md「订单流固定 … 不许跳过前面的环节直接去 Rezdy 拉单」的关系：旧记录（PROGRESS 4900 行）写过 Main Manifest 自己的 Sync Rezdy 属于订单流上游、不冲突；Dispatch 那个不恢复。
+- 35 问 Annie：A（推荐）照删之前原样恢复（键 + Last updated from Rezdy + 新单标绿 + How to use 那条，权限照旧 manifests.edit），只 Main Manifest，Dispatch 不恢复；B 只恢复键。原样恢复不用 preview。等她选 + 确认动手。
+
 ### 110. Staff Schedule › Rules 自定义规则（2026-11-09，Annie 在后端 d4 那边提；前端先出 preview，没动手）
 
 - Annie 原话：「我需要在staff schedule里头的rules这项可以自定义规则，现在的设置不够用」「ok，加一条：每个班一天只能有一个人」「你列出来要不要算进去那些需要全部算进去」。
