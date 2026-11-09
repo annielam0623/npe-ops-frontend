@@ -148,6 +148,10 @@ const TEAM = [
   ["sched_confirm_link_text", "Confirm link text", "Confirm my schedule", true, SCHED, ""],
   ["sched_weekly_confirm_subject", "Weekly confirm subject", "Confirm your schedule — week of {week}", true, SUBJ, ""],
   ["sched_weekly_confirm_intro", "Weekly confirm intro", "Your schedule for the week of {week} is up. Please confirm it:", false, SCHED, ""],
+  // 整段排班（Period › Share with staff，后端 33 v161 种子）。
+  ["sched_period_subject", "Period subject", "Your schedule — {start} to {end}", true, ["{start}", "{end}", "{weeks}"], ""],
+  ["sched_period_intro", "Period intro", "Here is your schedule for the next {weeks} weeks ({start} – {end}). Please confirm it:", false, ["{start}", "{end}", "{weeks}"], ""],
+  ["sched_period_link_text", "Period link text", "Confirm my schedule", true, [], ""],
 ];
 const TEAM_RULES = {};
 for (const [id, label, seed, required, allowed, kind] of TEAM) {

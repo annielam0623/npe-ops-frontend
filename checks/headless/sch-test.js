@@ -1264,8 +1264,38 @@ async function run() {
     check("Period：Start 选 10/7（周三）⇒ 对齐到周日 10/4；3 周 ⇒ 标题 Oct 4 – Oct 24, 2026 · 3 weeks、三个周头", await evaluate("return document.querySelector('[data-period-title]').textContent.trim() === 'Oct 4 – Oct 24, 2026 · 3 weeks' && document.querySelector('[data-period-start]').value === '2026-10-04' && [...document.querySelectorAll('[data-period-week]')].map(t => t.dataset.periodWeek).join() === '2026-10-04,2026-10-11,2026-10-18';"), await evaluate("return document.querySelector('[data-period-title]').textContent;"));
     check("Period：每周写 Published / Draft（10/4 已发布）", await evaluate("return document.querySelector('[data-period-week=\"2026-10-04\"] [data-period-status]').dataset.periodStatus === 'published' && document.querySelector('[data-period-week=\"2026-10-04\"]').textContent.includes('Published');"));
     check("Period：每人一行、21 天，有班的格子写短时间（例如 2a–10a）", await evaluate("const rows = [...document.querySelectorAll('[data-period-row]')]; return rows.length > 0 && rows.every(r => r.querySelectorAll('td').length === 22) && [...document.querySelectorAll('[data-period-shift]')].some(s => /^\\d{1,2}(:\\d{2})?[ap]–\\d{1,2}(:\\d{2})?[ap]$/.test(s.textContent.trim()));"), await evaluate("return [...document.querySelectorAll('[data-period-shift]')].slice(0,3).map(s=>s.textContent).join(' ');"));
-    check("Period：Share with staff 灰着、挂 SOON（后端还没好）", await evaluate("const b = document.querySelector('[data-period-share]'); return b.disabled && b.textContent.includes('SOON');"));
-    check("Period：How to use 写了 Auto-fill 只管这一次、Rules 标签不变", await evaluate("return document.querySelector('[data-period]').textContent.includes('Unticking a rule here only affects this fill. The Rules tab does not change.');"));
+    check("Period：Super Admin 有蓝色 Share with staff（提交类）", await evaluate("const b = document.querySelector('[data-period-share]'); return !!b && !b.disabled && b.textContent.trim() === 'Share with staff' && getComputedStyle(b).backgroundColor === 'rgb(59, 130, 246)';"));
+    // 后端没上线（404）：框里写 not available yet，没有 Send
+    await evaluate("document.querySelector('[data-period-share]').click();");
+    check("Share：后端没上线（404）⇒ 写 Share with staff is not available yet.，没有 Send 键", await waitFor("!!document.querySelector('[data-share-unavailable]') && !document.querySelector('[data-share-send]')"));
+    await evaluate("$btn('Cancel', document.querySelector('[data-share-period]')).click();");
+    await ctl({ periodShare: true, periodShared: false });
+    const s0 = (await (await fetch(`${MOCK}/__log`)).json()).length;
+    await evaluate("document.querySelector('[data-period-share]').click();");
+    await waitFor("document.querySelector('[data-share-recipients]')", 30000);
+    const shareCalls = (await (await fetch(`${MOCK}/__log`)).json()).slice(s0).filter((e) => e.path === "/api/schedule/period/share");
+    check("Share 确认框：先 dry_run（JSON 布尔 true），标题 Share Oct 4 – Oct 24 with staff?", shareCalls.length === 1 && shareCalls[0].body.dry_run === true && shareCalls[0].body.start === "2026-10-04" && shareCalls[0].body.weeks === 3 && (await evaluate("return document.querySelector('[data-share-period] h2').textContent.trim() === 'Share Oct 4 – Oct 24 with staff?';")), JSON.stringify(shareCalls.map((e) => e.body)));
+    check("有没发布的周：红框写 Week of Oct 11, Week of Oct 18 are not published yet…，Send 灰掉", await evaluate("const u = document.querySelector('[data-share-unpublished]'); return !!u && u.textContent.includes('Week of Oct 11, Week of Oct 18 are not published yet. Publish them on the Schedule tab first.') && document.querySelector('[data-share-send]').disabled;"), await evaluate("return document.querySelector('[data-share-unpublished]')?.textContent;"));
+    check("列出会收到的人（2 staff will get it: Veronica, Lizzie）和收不到的（Anita — no email，红字）", await evaluate("const d = document.querySelector('[data-share-period]'); return d.querySelector('[data-share-recipients]').textContent.includes('2 staff will get it:') && d.querySelector('[data-share-recipients]').textContent.includes('Veronica, Lizzie') && d.querySelector('[data-share-not-reached]').textContent.includes('Anita — no email');"));
+    await evaluate("$btn('Cancel', document.querySelector('[data-share-period]')).click();");
+    // 只看已发布的 10/4 那一周 ⇒ 能发
+    await evaluate("$setValue(document.querySelector('[data-period-weeks]'), '1');");
+    await waitFor("document.querySelectorAll('[data-period-week]').length === 1", 30000);
+    await evaluate("document.querySelector('[data-period-share]').click();");
+    await waitFor("document.querySelector('[data-share-send]') && !document.querySelector('[data-share-send]').disabled", 30000);
+    check("全部已发布：Send 键蓝色、写 Send to 2 staff", await evaluate("const b = document.querySelector('[data-share-send]'); return b.textContent.trim() === 'Send to 2 staff' && getComputedStyle(b).backgroundColor === 'rgb(59, 130, 246)';"));
+    const s1 = (await (await fetch(`${MOCK}/__log`)).json()).length;
+    await evaluate("document.querySelector('[data-share-send]').click();");
+    check("Send：POST dry_run:false，结果绿字 Sent to 2 staff.、红字 Not sent: Anita — no email，键变 Close", (await waitFor("(document.querySelector('[data-share-done]')?.textContent || '') === 'Sent to 2 staff.' && document.querySelector('[data-share-period] [data-share-not-reached]').textContent.includes('Anita — no email') && !!$btn('Close', document.querySelector('[data-share-period]'))", 30000)) && (await (await fetch(`${MOCK}/__log`)).json()).slice(s1).filter((e) => e.path === "/api/schedule/period/share").map((e) => e.body.dry_run).join() === "false");
+    check("Sent to 2 staff. 是绿字", await evaluate("const c = getComputedStyle(document.querySelector('[data-share-done]')).color; return c === 'rgb(74, 222, 128)' || c === 'rgb(26, 127, 75)';"), await evaluate("return getComputedStyle(document.querySelector('[data-share-done]')).color;"));
+    await evaluate("$btn('Close', document.querySelector('[data-share-period]')).click();");
+    await evaluate("document.querySelector('[data-period-share]').click();");
+    check("同一段再分享：黄框写 Already shared: by Annie on Oct 3, 3:15 PM. Sending again emails everyone again.", await waitFor("(document.querySelector('[data-share-already]')?.textContent || '').includes('Already shared: by Annie on Oct 3, 3:15 PM. Sending again emails everyone again.')", 30000), await evaluate("return document.querySelector('[data-share-already]')?.textContent;"));
+    await evaluate("$btn('Cancel', document.querySelector('[data-share-period]')).click();");
+    await ctl({ periodShare: false, periodShared: false });
+    await evaluate("$setValue(document.querySelector('[data-period-weeks]'), '3');");
+    await waitFor("document.querySelectorAll('[data-period-week]').length === 3", 30000);
+    check("Period：How to use 写了 Auto-fill 只管这一次、Rules 标签不变、Share 先发布每周", await evaluate("const t = document.querySelector('[data-period]').textContent; return t.includes('Unticking a rule here only affects this fill. The Rules tab does not change.') && t.includes('Publish every week first. Then click Share with staff');"));
 
     // Auto-fill these weeks：规则清单（6 条可选 + 3 条 shift_times 固定 + Settings 那行），取消 Fixed shift
     await evaluate("document.querySelector('[data-period-autofill]').click();");

@@ -292,6 +292,34 @@ async function run() {
   await evaluate("document.querySelector('[data-confirm-send]').click();");
   await waitFor("document.querySelector('[data-confirm-status]').textContent === 'Your changes were sent.'");
   check("邮件链接里发改动：POST /api/schedule/confirmation/link/tok-abc/changes", (await since(from, (e) => e.path === "/api/schedule/confirmation/link/tok-abc/changes" && e.method === "POST")).length === 1);
+  // ── 整段确认（Period › Share with staff 邮件链接，Annie 2026-11-08 preview ③ 全 A；后端 33：逐周调现有接口）──
+  await ctl({ reset: true, published: false, past: false });
+  const PL = `${APP}/schedule/confirm/period/tok-abc?start=2026-11-01&weeks=3`;
+  from = (await mockLog()).length;
+  await goto(PL);
+  await waitFor("document.querySelectorAll('[data-period-confirm-week]').length === 3", 30000);
+  const pg = await since(from, (e) => e.path === "/api/schedule/confirmation/link/tok-abc" && e.method === "GET");
+  check("整段链接：逐周读 /confirmation/link/tok-abc?week=（11/1、11/8、11/15），没有侧栏 / 顶栏", pg.map((e) => e.q.week).join() === "2026-11-01,2026-11-08,2026-11-15" && (await evaluate("return !document.querySelector('nav[aria-label=Main]') && !document.querySelector('header');")), JSON.stringify(pg.map((e) => e.q)));
+  check("整段链接：标题 Hi Jing, your schedule、写 Nov 1 – Nov 21 · 3 weeks · 12 shifts", await evaluate("const t = document.body.innerText; return t.includes('Hi Jing, your schedule') && t.includes('Nov 1 – Nov 21 · 3 weeks · 12 shifts');"), await evaluate("return document.body.innerText.slice(0, 200);"));
+  check("每周一块、只有自己的班（Sun Open、Tue Mid、Thu Close、Sat Close），没班的天写 Off；每周写 Not confirmed（红）", await evaluate("const w = document.querySelector('[data-period-confirm-week=\"2026-11-08\"]'); const d = (x) => w.querySelector('[data-period-day=\"' + x + '\"]').textContent; return w.dataset.weekStatus === 'not_yet' && d('2026-11-08').includes('Open') && d('2026-11-10').includes('Mid') && d('2026-11-12').includes('Close') && d('2026-11-14').includes('Close') && d('2026-11-09').includes('Off') && !w.textContent.includes('Lizzie');"));
+  check("Request change：打开那一周的确认页（同一个 token）", await evaluate("return document.querySelector('[data-period-confirm-week=\"2026-11-15\"] [data-period-request-change]').getAttribute('href') === '/schedule/confirm/link/tok-abc?week=2026-11-15';"));
+  check("蓝键写 Confirm all 3 weeks", await evaluate("const b = document.querySelector('[data-period-confirm-all]'); return b.textContent.trim() === 'Confirm all 3 weeks' && getComputedStyle(b).backgroundColor === 'rgb(59, 130, 246)';"));
+  from = (await mockLog()).length;
+  await evaluate("document.querySelector('[data-period-confirm-all]').click();");
+  check("Confirm all：逐周 POST …/link/tok-abc/accept 三次，写绿字 Confirmed. Thank you!，三周都 Confirmed、键收起", await waitFor("document.querySelector('[data-period-confirmed]')?.textContent === 'Confirmed. Thank you!' && [...document.querySelectorAll('[data-period-confirm-week]')].every(w => w.dataset.weekStatus === 'confirmed') && !document.querySelector('[data-period-confirm-all]')", 30000) && (await since(from, (e) => e.path === "/api/schedule/confirmation/link/tok-abc/accept")).map((e) => e.body.week_start).join() === "2026-11-01,2026-11-08,2026-11-15");
+  check("Confirmed. Thank you! 是绿字", await evaluate("return getComputedStyle(document.querySelector('[data-period-confirmed]')).color === 'rgb(74, 222, 128)';"));
+  // 中途一周失败：红字写哪一周、后端原话；前面的照样确认了
+  await ctl({ reset: true, periodAcceptFail: "2026-11-08" });
+  await goto(PL);
+  await waitFor("!!document.querySelector('[data-period-confirm-all]')", 30000);
+  await evaluate("document.querySelector('[data-period-confirm-all]').click();");
+  check("中途失败：红字写 Week of Nov 8: This week has started…；11/1 已确认，键改成 Confirm the other 2 weeks", await waitFor("(document.querySelector('[role=alert]')?.textContent || '').includes('Week of Nov 8: This week has started') && document.querySelector('[data-period-confirm-week=\"2026-11-01\"]').dataset.weekStatus === 'confirmed' && document.querySelector('[data-period-confirm-all]')?.textContent.trim() === 'Confirm the other 2 weeks'", 30000), await evaluate("return document.body.innerText.slice(0, 400);"));
+  await ctl({ reset: true, periodAcceptFail: null });
+  await goto(`${APP}/schedule/confirm/period/tok-abc?start=bad`);
+  check("链接不完整（没有 start / weeks）：This link is not complete. Ask the office to send it again.", await waitFor("document.body.innerText.includes('This link is not complete. Ask the office to send it again.')"));
+  await goto(`${APP}/schedule/confirm/period/expired?start=2026-11-01&weeks=2`);
+  check("整段链接过期：This link has expired.", await waitFor("document.body.innerText.includes('This link has expired. Ask the office to send you a new one.')"));
+
   await goto(`${APP}/schedule/confirm/link/expired`);
   await waitFor("document.body.innerText.includes('This link has expired.')");
   check("过期的链接：This link has expired. Ask the office to send you a new one.", await evaluate("return document.body.innerText.includes('Ask the office to send you a new one.');"));

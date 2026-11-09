@@ -14,7 +14,15 @@ const log = [];
 let state;
 let widgetVis;
 let sc;
+// Page visibility「Also allowed」（后端 33，2026-11-08）：ctl.allowList 开着时 schedule_period 带 allow_list / allowed_users。
+const PEOPLE = [
+  { id: 7, name: "Lina Park", role: "admin" },
+  { id: 8, name: "Joy Chen", role: "supervisor" },
+  { id: 9, name: "Ken Ito", role: "staff" },
+];
+let allowed;
 function fresh() {
+  allowed = [7];
   state = { operation_report_notify: { on: false, at: null }, daily_task_reminders: { on: false, at: null } };
   // 「谁看得到」开关（2026-10-25）：开始时一个都没登记（同后端现状），PUT 过的才有。
   widgetVis = {};
@@ -90,11 +98,24 @@ http.createServer(async (req, res) => {
       const body = JSON.parse(await raw(req));
       entry.body = body;
       if (role !== "superadmin") return send(res, 403, { detail: "Super Admin access required." });
+      if (body.allowed_users) {
+        if (ctl.allowFail) return send(res, 400, { detail: "Only active staff accounts can be added." });
+        allowed = [...body.allowed_users.schedule_period];
+      }
       Object.assign(widgetVis, body.widgets || {});
     }
     const widgets = Object.entries(widgetVis).map(([key, visibility]) => ({ key, label: key, visibility, default: visibility, visible_to_me: visibility === "staff" || role === "superadmin" || (visibility === "admin" && role === "admin") }));
+    if (ctl.allowList && !widgetVis.schedule_period)
+      widgets.push({ key: "schedule_period", label: "Staff Schedule · Period", visibility: "super_admin_only", default: "super_admin_only", visible_to_me: role === "superadmin", allow_list: true, ...(role === "superadmin" ? { allowed_users: allowed.map((id) => PEOPLE.find((x) => x.id === id)) } : {}) });
     return send(res, 200, { readable: true, widgets });
   }
+
+  if (p === "/api/team/members")
+    return send(res, 200, [
+      ...PEOPLE.map((x) => ({ kind: "user", id: x.id, username: x.name.toLowerCase().replace(" ", "."), display_name: x.name, email: null, can_login: true, pending_invite: false, is_superadmin: false, team_ids: [], item_count: 0, duties: [], role: x.role, is_active: true })),
+      { kind: "user", id: 1, username: "zztest", display_name: "ZZ Test", email: null, can_login: true, pending_invite: false, is_superadmin: true, team_ids: [], item_count: 0, duties: [], role: "superadmin", is_active: true },
+      { kind: "user", id: 20, username: "partner", display_name: "CCL", email: null, can_login: true, pending_invite: false, is_superadmin: false, team_ids: [], item_count: 0, duties: [], role: "partner", account_type: "partner", is_active: true },
+    ]);
 
   if (p === "/api/settings/notification-switches") {
     if (req.method === "PUT" && role !== "superadmin") return send(res, 403, { detail: "Super Admin access required" });
