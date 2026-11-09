@@ -1441,6 +1441,12 @@ D. 已完成、待从置顶移走：
 - Annie 答 +「动手」后前后端所有入口一起改。
 - ✅ **Annie 11-09 答（原话）：「全 A」** ⇒ Q1–Q7 都 A。35 已转 d4 估后端工作量 / 拆分。
 - ✅ **Annie 11-09（原话）：「动手」**（紧接「全 A」之后）⇒ 109 全部开工：后端 d4 拆窗口做、先发接口形状；前端 79（G263 之后，worktree task/send-rules-uniform）先做不依赖后端的（Q7 Sent 绿字、Manifests 弹窗重复计数），其余照后端形状 mock 做，后端上了核字段再合。
+- 🟡 **79 [3815aa] 第一部分（不依赖后端，35 派）**，worktree C:\Code\npe-ops-frontend-wt-send-rules，task/send-rules-uniform：
+  - Q7 Sent 绿字 #3B6D11（Tour 发送页、Manifests 弹窗本来就是这个绿）：Tickets 发送页结果（tickets-send/send-results.tsx 汇总 Sent + 逐单 Sent）、Morning Pickup 发送结果 + Dispatch relay 结果（morning-send/morning-results.tsx，relay 共用）、Farm out 通知结果（dispatch/farm-out-notice-dialog.tsx 汇总 Sent + 逐单 Sent；没发 / 跳过照旧琥珀、失败红）。
+    没改：Send Log / Tracking 页的状态胶囊（Sent / Delivered 是发送记录的状态，不是这次发送的结果），淡黄「Sent by 谁 on 时间」标签。
+  - 照 bug 修：Manifests 团确认 / Last Minute 弹窗一位客人只算一次（components/manifests/send-dialogs.tsx tourOutcomes：任一选了的渠道 sent = Sent，都没发出且有渠道 failed = Failed；Sent 数字改成前端按逐单算，不再用后端只数邮件的 res.sent）；门票提醒弹窗（ticketOutcomes）Sent 也改成任一渠道 ok 才算（后端 res.sent = 全部行）。
+  - 检查：tsc 0、eslint 0 error（3 旧 warning）、build 过；man 424/424（新：邮件 sent + 短信 failed: Invalid phone ⇒ 汇总 1|0|0|1、Email 绿、SMS 红）、mt 259/259（Sent 颜色检查改绿）、tsend 62/62（新：Sent 绿）、fod 49/49（新：Farm out 通知 Sent 绿）、tour 65/65、da 544/544。只 mock。
+  - 其余（Q1 / Q2 / Q6 和各结果数字、前端自判没号码改成以后端为准）等 d4 接口形状。
 - d4 后端拆法：W1 先建唯一判定点 send_outcome.py + 形状文档（约 2 小时，上 main 后别的窗口开工），再做早班 / Tour 一族 / send_guard / send_batches / manifest_send / relay-send；W2 门票 + auto_send；W3（a3）Broadcast、Farm out、单单重发、staff 回复、司机快回 + 告警；W4 日报 + 员工 / 司机 / 导游通知。不迁移（历史空号码 failed 展示时认作 No contact，不回写）。约 1.5 天。新字段大致：sent / failed / no_contact，Farm out n_no_contact，司机 / 导游 no_contact [{name, why}]，以 W1 形状文档为准。要 Annie 开 3 个后端窗口（W1、W2、W4）。
 
 ### 108. （并入 109）早班 SMS + Email：没手机号的客人，短信那栏记 failed、预览挂红「SMS failed」（2026-11-09，后端 a3 查出，35 问 Annie）
