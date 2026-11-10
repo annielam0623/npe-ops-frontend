@@ -1492,6 +1492,7 @@ D. 已完成、待从置顶移走：
     - relay-list.css：td padding / 空隙改 --rl-py / --rl-px / --rl-gap 变量（没压 = 原值），.rl-sheet position: relative。Total Pax 跟当天 Whole page 加减（Q6 A，整列 / 整行不跟）。How to use 加压缩句（Q3 定稿）+ 太宽句（Q7 A）。
     - 检查：rl 131/131（新 23 条：不压 / 22 站压回一页 + PDF 页数 = 单数 / 40 站黄框 + 页数和 PDF 一致 + 换页线 + 打印不印 / Total Pax 整页跟、整列不跟 / A+10 太宽压内边距 + 挪中 + 黄框 + 纸边线 / 回默认全撤）；mf 293/293、da 546/546、nav 39/39；tsc 0、eslint 0 错（3 条旧 warning）、build 过。rl-mock 的 ctl.many 可给数字。
     - Spacing −/+：要后端（text_size 只收 page / columns / rows）。后端 78 task/relay-spacing ee74a6cd 形状已到（spacing {row 1–10, gap 偶数 2–24}，默认车单 row 4、总表 row 2、gap 12，relay-pull 总带 spacing），等上 main 的 SHA 另开小分支接。
+      - 🟡 前端已照形状做完、推分支没合：**task/relay-spacing ff04303f**。Aa 编辑条（共用 TextSizeToolbar 加可选 extra 行，Bus Manifest 不变）最下面「Spacing [−] [+]  Default spacing」，不写 px；档位 k −3..+6：gap = 12 + 2k、row = 默认（车单 4 / 总表 2）+ k（1–10）；存 text_size.spacing，跟字号一起 Save；relay-pull 不带 spacing 键（旧后端）不出这一行；Reset whole table 不动行距；sheet-fit 把 staff 的数当上限往下压。How to use 加一句（不提 px）。检查：rl 142/142（新 11 条）、mf 293/293、nav 39/39；tsc / eslint / build 过。截图（模拟数据）https://claude.ai/artifact/BRMen1u877VFwvB5b7s2HM 。**等后端 SHA ⇒ 核字段 ⇒ 合最新 main ⇒ 重跑 rl / mf / nav ⇒ 合 main**。
 - 动手时（79 想法）：components/relay-list/relay-list.css 加 `--rl-gap` / `--rl-py` 变量和 `[data-squeezed]` 线；relay-list-view.tsx 每张单渲染后量内容高度 vs 它自己的纸高 − 上下页边距（A4 / Letter、横竖），按步压、超了出黄框；字号 / Aa 改动、换纸张后重算。验收见 35 派工：放大超几行 → 自动一页、间隔看得见；压不下 → 印 2 页 + 提示；一页的单、颜色 / 方向 / 页边距 / 字号、11-03 空白页修法都不变。
 
 ### 111. Main Manifest 的 Sync Rezdy 键恢复（2026-11-09，Annie 原话：「把main manifest上的Rezdy同步钮打开吧」；35 问清再派）
