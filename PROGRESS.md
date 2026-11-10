@@ -16,6 +16,10 @@
 - 资源：空闲内存 11.6 / 31.7 GB，chrome 41 个（3.9 GB），node 2 个。
 - 0a 回：G263 今晚后端 78 在家里主目录重合 0995f31d 后推 main（最终 tour_manifest.py 以合并后为准，28c7c479 午餐勾也改了它），SHA 到了发前端；G267 a3 分支 task/morning-combined e8916315 排 G263 后，同由 78 落地并核三项；之后单单 resend（task/resend-email-result 06e666e1）。109：0a 今晚开 W1（send_outcome.py + 形状文档，worktree），W1 后半段（relay-send / 早班）等 G267 落地；78 已发 109 全文给 0a。110：以前端起草的形状为准，发形状时抄 0a；Jessica 那题不再问 Annie。111：后端出 POST /api/orders/{code}/refresh-from-rezdy 形状，Annie 确认后发前端 ⇒ 前端 111 preview 等形状。v159 排 G263 后；v161 今晚后端接着做。
 - 前端工作窗口暂无 ⇒ 请 Annie 开 2 个：A 做 112 preview 更新（去掉 move guests）+ 111 Order 详情页「Refresh from Rezdy」preview，G263 SHA 到了接着核字段合 main；B 做 110 排班 Rules 四项 preview + 发 d4 / 0a 的规则形状。
+- 工作窗口：`59`[66d88c]（端口 3677 / 9077 / 9677）、`03`[44f0b4]（3577 / 8977 / 9577）。
+- **今晚前端上 main（验收点都已转 Annie）**：G263 Farm out 产品 c081a247（59）；109 发送结果统一 648a149a（03）；skipped - no phone / email 显示 4c7f8a71（03）；Period share 150377f4（03）；112 Relay list 自动压 / 超宽挪中 / 屏幕 = 打印 147d9866（59）；112 Spacing −/+ d8cb465f（59）；111 Refresh from Rezdy e484189e（59）；110 Schedule Rules 59d44a6d（03）。
+- 后端今晚上 main（0a 汇总）：G263 72fbcdfa、G267 c7e6b756、resend c62e4e68、109 W1 8e1e062a、G268 9825a375、relay-spacing 4c7b1858、W4① 1335e804、W2 2accdb38、111 26b5a464、隐藏 Lunch 列（设置页版）1e8006fc、110 8d7ea90f。W2 / W4① 前端核过不用改。
+- 等 Annie（原文都已发，不滚动重问）：113 Bus Manifest 页 Columns（preview 第 2 版 6 题；后端 3e 明天按她「谁能改」写新 PUT /api/dispatch/manifest/hidden-columns，并删设置页那个 PUT）；114 Relay list 键整理（Q1–Q7 + 手机 M1–M5）；115 手机键缩小 / 省地方（8 题）；Auto Send › Recent runs 加 Failed / No contact（A 加要 preview / B 不加）；110 页头加句（A / B）；107 五题；109 How to use 两句。
 
 ## 2026-11-09 收工交接：前端主窗口 `前端主窗口-35`[4a0f5a]（公司电脑）
 ### 一、今天上 main（等 Annie 线上验收，验收点已转她）
