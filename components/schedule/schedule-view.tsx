@@ -75,6 +75,7 @@ import { AddEmployeeDialog } from "./add-employee-dialog";
 import type { AddTimeOffInput } from "./add-shift-dialog";
 import { AutoFillDialog } from "./auto-fill-dialog";
 import { PeriodView } from "./period-view";
+import { SharePeriodDialog } from "./share-period-dialog";
 import { EmployeesDialog } from "./employees-dialog";
 import { RulesView } from "./rules-view";
 import { CARD, CARD_HEADER, ICON_BTN, MUTED } from "./config";
@@ -206,6 +207,7 @@ export function ScheduleView() {
   }));
   const [periodReload, setPeriodReload] = useState(0);
   const [periodAutoFilling, setPeriodAutoFilling] = useState(false);
+  const [sharingPeriod, setSharingPeriod] = useState(false);
   const [autoFilling, setAutoFilling] = useState(false);
   const [autoFillBanner, setAutoFillBanner] = useState<string | null>(null);
   const [confirmingPublish, setConfirmingPublish] = useState(false);
@@ -1021,6 +1023,10 @@ export function ScheduleView() {
                   ? () => setPeriodAutoFilling(true)
                   : undefined
               }
+              // Share with staff：后端照 schedule.publish 的勾放行（33，2026-11-08）。
+              onShare={
+                canPublishTick ? () => setSharingPeriod(true) : undefined
+              }
               autoFillBlocked={
                 anyDirty
                   ? "Save or discard the changes on the Schedule tab first."
@@ -1336,6 +1342,18 @@ export function ScheduleView() {
             setAutoFillBanner(message);
             void loadWeek(undefined, true);
           }}
+        />
+      ) : null}
+
+      {sharingPeriod ? (
+        <SharePeriodDialog
+          start={period.start}
+          weeks={period.weeks}
+          onClose={() => {
+            setSharingPeriod(false);
+            setPeriodReload((n) => n + 1);
+          }}
+          onUnauthorized={redirectToLogin}
         />
       ) : null}
 

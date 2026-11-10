@@ -1452,6 +1452,25 @@ D. 已完成、待从置顶移走：
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 115. 手机版键再缩小 + 页头 / 工具区省地方（2026-11-09 晚，78 派 03；只出 preview，没「动手」）
+
+- Annie 原话：「你记得做一个设计，它们手机网页上所有的键都缩小一点，不要占太多地方，尤其是staff经常操作的那些页面」；看 114 又说：「手机版能不能省点地方啊，一整屏都占完了」。
+- preview：https://claude.ai/artifact/3dJPBmBq9hJShSvcA8ccwE（模拟数据、390×844 真页面截图，8 页 × 现在 / C 28px / A 26px / B 24px 并排）。
+- 盘点：`[data-phone-compact]`（app-frame 包整个内容区）只改内边距 3/10px、字 13px，大部分键已 24–26px；没管到的：写死 h-8 / h-9 的键（‹ › Today、Manifests 发送键、Bus Manifest Save、Orders Clear / Refresh / Export、View Tracking、Dispatch Send 页发送键）32–36px，顶栏 ☰ 30 / ★ 32 / ⌕ 40，右下 ↑↓ 34，多行大块（Tour Tracking 统计格 54、Relay List 51、Assign / Send 分段键、⚠ issues）。
+- 内容起点（目标工具区 ≤ 281px = 1/3 屏）：Dispatch › Assign 494、Tour Tracking 480、Manifests 432 超；其余 Morning Tracking 271、Relay list 209、Dispatch Send 205、Orders 193、Schedule 172、Bus Manifest ≈165、Morning Send ≈100 不用改。
+- 8 题（推荐都 A，原文已交 78）：题 1 缩多少 A 26 / B 24 / C 28；题 2 全站 vs 只 staff 常用 10 页；题 3 蓝主提交键同样缩；题 4 表格行内小键同档；题 5 ↑↓ 缩到 30px；题 6 顶栏 ☰ ★ ⌕ 一起缩；题 7 多行大块这次不动；题 8 超 1/3 屏的三页照表并一行 / 收 ⋯ / 收 i（动手前每页再给改后截图）。
+- 59 的 114 Relay list 编辑卡（先按 28px 画）题 M6 写「最终跟 115 题 1 走」，已对齐。
+
+### 114. Relay list 功能键统一整理（2026-11-09 晚，Annie 看 Spacing 截图后提，78 派 59；先 preview，没「动手」）
+
+- Annie 原话：「你现在应该整理一下这些功能键，左一个右一个，能否将它们统一整理一下好看好用呢」。
+- 范围（78 / 59 理解，preview 开头写明）：Dispatch › Relay list 页头那一行（← Dispatch、🖨 Print、Save、⬇ Excel、⚙ Colours, text & page）+ 每张单上方 Aa Text size 编辑条（含新的 Spacing）。只挪位置 / 分组，不改作用、不删键，蓝色只给 Save。这页没有 Pull / 轮次切换。
+- preview（现状截图电脑 + 手机 + 两种方案，模拟数据）：https://claude.ai/artifact/TopyompWt81k2rZL8uqoES 。题：Q1 方案（A 按用途两组、位置固定 / B 一条工具栏照顺序）、Q2 Save 没改动时（A 一直在、灰着）、Q3 三个撤回键（A 电脑并排、手机合成 Reset…）、Q4 Bus Manifest 同一个编辑条要不要一起变（A 一起）、Q5 手机收进 ⋯（A Print / Excel / ⚙ 都收），都推荐 A；How to use：Spacing 句改「in Aa Text size」，Q2 A 加半句。等 Annie 答 +「动手」。Spacing 分支（task/relay-spacing）还没合，整理动手时一起改。
+- （Spacing 已于 11-09 晚合 main d8cb465f。）
+- **Annie 附参考图（原话，78 转）：「你参考一下这个设计，仍然用我们的主色调，把所有的编辑功能键都弄成这样归类和显示」**。图在本机 C:\Users\annzh\AppData\Local\Temp\claude\3c3ab1c43bc46910\ed1bef5b-1ceb-4ac6-beb4-b9d3ea6c2a03\images\1.png（也嵌在 preview 第 2 版里）。
+- ✅ preview 第 2 版（同链接）：照图的归类和摆法、用我们的颜色（深色外框 + 白卡片，选中深灰 #1f2937，蓝只给 Save）。按图定、不再问：页头左 ‹ Dispatch，右「● 未存黄字｜Save（一直在、没改动灰）｜Print｜Excel」；编辑卡横排 Apply To（Column / Row / Page）｜Text Size｜Font Weight｜Spacing（只 Relay list）｜Quick Actions（三个白键，不能用灰）；手机照图（Print、Excel + ⋯，卡片竖排，底部 Cancel + Done）；Bus Manifest 同一个编辑卡一起改（没 Spacing）；键名每词大写开头。新题 7 道（都推荐 A）：Q1 图里标题「Colours, Text & Page」（A 照旧当白键放 Excel 后 / 手机进 ⋯）、Q2 编辑卡何时出现（A 保留每张单 Aa 开关）、Q3 电脑 Cancel / Done（A 卡片最右一组）、Q4 Done 颜色（A 深灰 + ✓，不用棕 / 蓝）、Q5 Picked 那行（A 留，小灰字卡片下边）、Q6 Bus Manifest 页头（A 这次不动）、Q7 图标（A 自己画线条图标，不加库）。How to use：Aa 句、Spacing 句换新键名（原文在 preview）。等 Annie 答 +「动手」。
+- **Annie（原话，78 转）：「手机版能不能省点地方啊，一整屏都占完了」** ⇒ preview 第 3 版（同链接）加 ②b：390 × 844 屏里并排比，第 2 版手机「页头 + 编辑卡」占 491px（58%），省地方新版占 167px（20%）。新版：页头一行 ‹ Dispatch｜黄点 +「1 not saved」｜Save｜⋯（Print、Excel、⚙ 都进 ⋯，和参考图不同，照「省地方」改）；编辑卡两行「Aa｜Col / Row / Page｜A− A+｜✕」「Reg / Bold｜行距图标 − +｜Reset…｜✓ Done」，不出组小标题，不单独出 Close text size，手机不出 Picked；电脑版不变。新题 M1–M5 都推荐 A，M6 键高跟置顶 115 题 1 那档走（已和 03 对齐）。等 Annie 答 +「动手」。
+
 ### 113. Bus Manifest 按团藏列（今晚只有 Lunch；Antelope 不印 Lunch 列）（2026-11-09 晚，Annie 在后端 3e 窗口提，78 派 59；先 preview，没「动手」）
 
 - Annie 原话（在 3e）：「你可以把bus manifest也改成main manifest那样可以用filer来选么」「fillter」「同意A」。A = 按团选：Manifest setup 每个团一排列的勾，屏幕 / 打印 / Excel 都照它，谁打印都一样（B 是按人选，像 Main Manifest）。今晚后端只做 Lunch 一列，完整列选择明天做。
@@ -1492,6 +1511,8 @@ D. 已完成、待从置顶移走：
     - relay-list.css：td padding / 空隙改 --rl-py / --rl-px / --rl-gap 变量（没压 = 原值），.rl-sheet position: relative。Total Pax 跟当天 Whole page 加减（Q6 A，整列 / 整行不跟）。How to use 加压缩句（Q3 定稿）+ 太宽句（Q7 A）。
     - 检查：rl 131/131（新 23 条：不压 / 22 站压回一页 + PDF 页数 = 单数 / 40 站黄框 + 页数和 PDF 一致 + 换页线 + 打印不印 / Total Pax 整页跟、整列不跟 / A+10 太宽压内边距 + 挪中 + 黄框 + 纸边线 / 回默认全撤）；mf 293/293、da 546/546、nav 39/39；tsc 0、eslint 0 错（3 条旧 warning）、build 过。rl-mock 的 ctl.many 可给数字。
     - Spacing −/+：要后端（text_size 只收 page / columns / rows）。后端 78 task/relay-spacing ee74a6cd 形状已到（spacing {row 1–10, gap 偶数 2–24}，默认车单 row 4、总表 row 2、gap 12，relay-pull 总带 spacing），等上 main 的 SHA 另开小分支接。
+      - 🟡 前端已照形状做完、推分支没合：**task/relay-spacing ff04303f**。Aa 编辑条（共用 TextSizeToolbar 加可选 extra 行，Bus Manifest 不变）最下面「Spacing [−] [+]  Default spacing」，不写 px；档位 k −3..+6：gap = 12 + 2k、row = 默认（车单 4 / 总表 2）+ k（1–10）；存 text_size.spacing，跟字号一起 Save；relay-pull 不带 spacing 键（旧后端）不出这一行；Reset whole table 不动行距；sheet-fit 把 staff 的数当上限往下压。How to use 加一句（不提 px）。检查：rl 142/142（新 11 条）、mf 293/293、nav 39/39；tsc / eslint / build 过。截图（模拟数据）https://claude.ai/artifact/BRMen1u877VFwvB5b7s2HM 。**等后端 SHA ⇒ 核字段 ⇒ 合最新 main ⇒ 重跑 rl / mf / nav ⇒ 合 main**。
+      - ✅ **11-09 晚 合 main（59）**：后端 relay-spacing 上 main 4c7b1858（合并 53feeebc）。只读核：PUT text_size 收 spacing {row, gap}、回包带 spacing（等于默认的项不存）、relay-pull 每张单总带 spacing（没调 = {}）、超范围 400 detail 原话（前端红字照显示）；前端档位 k≠0 时 gap 一定 ≠ 12，不会被当默认丢掉 ⇒ 前端没改。合最新 main 后：rl 142/142、mf 293/293、nav 39/39；tsc 0、eslint 0 错、build 过。
 - 动手时（79 想法）：components/relay-list/relay-list.css 加 `--rl-gap` / `--rl-py` 变量和 `[data-squeezed]` 线；relay-list-view.tsx 每张单渲染后量内容高度 vs 它自己的纸高 − 上下页边距（A4 / Letter、横竖），按步压、超了出黄框；字号 / Aa 改动、换纸张后重算。验收见 35 派工：放大超几行 → 自动一页、间隔看得见；压不下 → 印 2 页 + 提示；一页的单、颜色 / 方向 / 页边距 / 字号、11-03 空白页修法都不变。
 
 ### 111. Main Manifest 的 Sync Rezdy 键恢复（2026-11-09，Annie 原话：「把main manifest上的Rezdy同步钮打开吧」；35 问清再派）
@@ -1510,6 +1531,7 @@ D. 已完成、待从置顶移走：
   - a3 查：**不用改，什么都没执行**。重拉后 ANITA 重发了团确认（send_log 49916 / 49917），发送路径把 Main Manifest 的电话写回 bookings ⇒ 两单 Tracking 已是新号，短信 + 邮件都 delivered 到新号。49907 / 49908 是 ANITA 更早的回复，发到旧号；之后回复都走新号。tracking_sync 没动。
 - 🟡 11-09 晚 preview（工作窗口 `npe-ops-frontend-59`[66d88c]，78 派；模拟数据，代码没动）：https://claude.ai/artifact/SbACRHDjKVwHkcoqxjxki2 。照后端 3e 形状（POST /api/operations/orders/{单号}/refresh-from-rezdy，后端 task/order-refresh-rezdy 未上线）。查清：详情页 `editable` = 旧表单（有 Edit）；新 Rezdy 表单是 Read-only、没有 Edit 键 ⇒ 后端 409「not in Order List's Rezdy feed」只会出在旧表单，能重拉的单没有「没存的编辑」问题。画了：键在订单号行最右（蓝）、Refreshing…、updated 绿字 + Field/Before/After 表、up to date、cancelled、not_applied 黄框、kept 黄框、各错误红字。题 Q1 位置（A 订单号行）、Q2 颜色（A 蓝）、Q3 确认框（A 不要）、Q4 哪些单出键（A 只新表单）、Q5 结果留多久（A 一直留）、Q6 not_applied / kept 颜色（A 黄框），都推荐 A。需要后端确认：重拉后 Activity 卡会不会多一条。等 Annie 答 +「动手」+ 后端上线。
   - 后端 3e 答（78 转）：① 有字段变了 ⇒ activity_log 多一条 event_type=refreshed_from_rezdy、actor=按键人、actor_type=staff、detail「Refreshed from Rezdy — Phone: '…' → '…'; …」，详情页 Activity 卡直接显示；没变化 / not_applied 不记；原有 booking_updated（actor=rezdy）照常。② 权限改挂 orders.edit：前端按 /api/me/permissions 有没有 orders.edit（同页 Edit 键的 useTick("orders.edit")）决定出不出键，仍只在原始 editable=false 的新表单出。preview 说明已同步（第 2 版），题不变。
+  - 🟡 **11-09 晚 前端做完、推分支没合**（Annie「111， 112 全 A + 动手」；59）：分支 **task/order-refresh-rezdy d79ed5fb**。新 components/orders/refresh-from-rezdy.tsx + lib/orders-api.ts refreshOrderFromRezdy（POST /api/operations/orders/{单号}/refresh-from-rezdy）+ types OrderRefreshResult；订单号行最右蓝键（只新表单 + useTick("orders.edit")，partner 不出），点了直接拉、Refreshing… 灰掉；结果卡（订单号下）一直留：绿字原话（kept 那句拆出来单独黄框）+ Field / Before → After（空写 empty）；not_applied 黄框；错误红字原话；401 跳登录；updated 后静默重读。How to use 加一句（preview 原句）。检查：orders 77/77（新 24 条，mock ctl.refresh 切 updated / same / kept / not_applied / cancelled / 404 / 409busy / 502 / 503 / 500 + 权限 / partner）、nav 39/39；tsc 0、eslint 0 错、build 过。**等后端 3e 上 main 的 SHA ⇒ 只读核字段 ⇒ 合最新 main ⇒ 重跑 orders / nav ⇒ 合 main**。
   - ✅ Annie 11-09 晚（原话，在 78）：「111选A」（紧接 78 问「谁能按：A 跟 orders.edit 勾走（推荐）/ B 所有 staff 不看勾」）⇒ 权限照后端挂 orders.edit。78 已问是否 6 题也全 A；**还没「动手」**。
 
 ### 110. Staff Schedule › Rules 自定义规则（2026-11-09，Annie 在后端 d4 那边提；前端先出 preview，没动手）
@@ -1523,6 +1545,15 @@ D. 已完成、待从置顶移走：
 - ✅ **Annie 11-09 晚（原话，在 78）：「统一全部推荐，但是还要加一条，可以设置一个班最多几个人」** ⇒ 78 理解为 110 题 1–8 全 A；「加一条」78 核对：题 ① Max people on a shift 已是「班次 + 星期几 + 人数（1–20）」，可以每种班各设一个数（Close 1、Open 2 各一条）——已问 Annie 是不是这个意思、还是另有不同；「全部推荐」是否也包括 107 / 112 也问了。**还没「动手」**。
   - ✅ Annie（原话）：「110排班 A」⇒ 「加一条」= 现有 Max people on a shift（班次 + 星期几 + 人数 1–20，每种班可各设一条），照 preview 做，不另加；110 题 1–8 全 A 定稿。「全部推荐」只答了 110，107 / 112 另等。**还没「动手」**（已问）。
   - ✅ **Annie 11-09 晚（原话，在 78）：「110动手」** ⇒ 前端派 03（推分支，后端先上 main 后核字段再合）；后端已转 0a 派 40 开工。
+- ✅ **（另一件，78 派）Staff Schedule › Period「Share with staff」已上 main 150377f4（03，11-09）**：3c 的分支 origin/task/schedule-period-share 6a940d3c 合最新 main；只读核后端 9825a375（G268 + v161）字段和 mock 一致（dry_run 真 bool；预览 {start,end,weeks,week_starts,unpublished,recipients,not_reached,already_shared}；409 unpublished；成功 {notified,not_reached}；reason "no email" / "email could not be sent" / "link could not be made"）。照 109 改结果显示：没邮箱灰字「No email: 名字.」不算失败，真失败红字 Not sent + 原因，Sent to N staff. 绿 #3B6D11。检查：sch 433、sc 44、ns 56、cs 190、nav 39、tsc / eslint 0 error / build 过。Annie 验收：Period 选只有 ZZ Test / azhou@ 员工的周，Share with staff 预览看名单和灰字 No email，真发只发测试员工。
+- 🟡 **03 [44f0b4] 110 功能已写完，分支 `task/110-rules` dbd9d4de（worktree D:
+pe-ops-frontend-03c），推分支、不合 main**：等后端 40 上 main 给 SHA，核字段再合（后端先上，否则存新规则 400）。照 preview + 形状，题 1–8 全 A：
+  - Max people on a shift（`max_per_shift_day`）：Auto-fill 严格遵守、排不下写预览；固定 / 保留的班本身超了照排、写「Mon close has 2, at most 1 (fixed or kept shifts).」；手动排班不拦，日期下琥珀「Close 2 (max 1)」+ 班卡琥珀框。
+  - Minimum days on a shift：Who 三选一（employee_ids / exclude_employee_ids，Everyone 不带键）；旧 employee_id 打开当 Only，存时换写法。
+  - Days per week 管到固定班 + 周末轮值：超了这周轮值跳过此人换下一位，没人接空着进预览；固定班本身超了写一条。
+  - Weekly hours alert（`weekly_hours_alert {hours}`）：整段算、不扣休息、休假不算；排班表名字下琥珀「42.5 h this week」+ Auto-fill 预览一行「Over 40 hours: …」。
+  - 互相打架的规则：清单两条下面各一行琥珀字 + 改规则弹窗同一句，不拦。
+  - 检查：tsc 0、eslint 0 error、build 过；引擎 27/27（新 7）、sch 447/447（新 22，mock 照后端 40 形状校验）、nav 39/39。只 mock。How to use 不用改（Rules 标签没有 How to use 框）。
 - 🟡 **03 [44f0b4] preview + 接口形状已交 78（11-09，没动手）**：preview https://claude.ai/artifact/C4WjXh8cnTnDVUUgyoAThX（模拟数据：Rules 清单、新增 / 改规则弹窗、Auto-fill 黄框带「哪条规则卡住」、手动排班列头琥珀「Close 2 (max 1)」+ 名字下「42.5 h this week」）+ 7 题（推荐都 A）：
   题 1 固定班 + 轮值超「最多 N 天」⇒ A 轮值跳过此人换下一位，没人接就空着写预览；题 2 固定 / 保留的班本身超人数 ⇒ A 照排 + 提醒；题 3 40 小时放哪 ⇒ A 名字下 + Auto-fill 预览；题 4 ⇒ A 做成一条规则「Weekly hours alert」可改可关；题 5 小时算法 ⇒ A 上下班整段、不扣休息、PTO 不算；题 6 手动超人数 ⇒ A 列头一行 + 班卡琥珀框；题 7 选人 ⇒ A 下拉 Everyone / Only these people / Everyone except。
   形状：新 type `max_per_shift_day {shift_type?（不写 = 每种班各算）, max 1..20, days?}`；`min_days_on_shift` 加 `employee_ids?` / `exclude_employee_ids?`（和旧 `employee_id` 三选一）；`days_per_week` 形状不变（前端数固定班 + 轮值 + 保留的班）；新 type `weekly_hours_alert {hours 1..80}`（题 4 选 B 则不要）。全在前端算，后端只放行白名单。全文由 78 转 d4 / 0a。
@@ -1542,6 +1573,7 @@ D. 已完成、待从置顶移走：
   - 照 bug 修：Manifests 团确认 / Last Minute 弹窗一位客人只算一次（components/manifests/send-dialogs.tsx tourOutcomes：任一选了的渠道 sent = Sent，都没发出且有渠道 failed = Failed；Sent 数字改成前端按逐单算，不再用后端只数邮件的 res.sent）；门票提醒弹窗（ticketOutcomes）Sent 也改成任一渠道 ok 才算（后端 res.sent = 全部行）。
   - 检查：tsc 0、eslint 0 error（3 旧 warning）、build 过；man 424/424（新：邮件 sent + 短信 failed: Invalid phone ⇒ 汇总 1|0|0|1、Email 绿、SMS 红）、mt 259/259（Sent 颜色检查改绿）、tsend 62/62（新：Sent 绿）、fod 49/49（新：Farm out 通知 Sent 绿）、tour 65/65、da 544/544。只 mock。
   - 其余（Q1 / Q2 / Q6 和各结果数字、前端自判没号码改成以后端为准）等 d4 接口形状。
+- ✅ **03 [44f0b4] W2 原文显示修复已上 main 4c7f8a71（11-09，78 说 W1 已在写 skipped - no …，不等 W2）**：Send Log 明细、Tour / Tickets / Morning Tracking、订单查询碰到「skipped - no phone / skipped - no email」写灰字 No number / No email（Send Log 灰胶囊），不显示原文、不当失败（lib/send-outcome.ts noAddressLabel）。检查：tt 168、catchup 58、tk 135、mt 261、orders 54、nav 39、build 过。Annie 验收：今晚之后的 Morning / Relay 批次在 Send Log 明细、Morning Tracking 看灰字 No number。
 - ✅ **03 [44f0b4] 第二部分已上 main 648a149a（11-09）**：后端 W1 上 main（合并 1437f31a、关包 8e1e062a）后核过字段（outcome / sms_outcome / email_outcome 取值同 send_outcome.py；早班 results 里 skipped:true 的行没 outcome、照旧进 Skipped、不进四个数）。追加 Send Log 批次小结：summary.no_contact 灰色「No contact N」胶囊（有才出），「x of N in this send match」的 N = Sent + Failed + No contact；红框照旧只看 failed / not_sent（Q3 没地址不告警）。门票、Broadcast、Farm out、司机 / 导游通知后端还是老字段（W2–W4），前端走回退。检查：tsc 0、eslint 0 error、build 过；unit 24/24；man 425、mt 261、tsend 64、fod 59、tour 69、da 546、nav 39、catchup 57、tk 135、tt 167 全过。How to use 两句等 Annie，定了另起小提交。
   - Annie 线上验收看：Tour Confirmation 发送页 / Morning Pickup 发送页 / Dispatch Morning Relay 的 Send Results（汇总 Sent 绿 / Failed 红 / No contact 灰、没号码那格灰字 No number）；Manifests 团确认弹窗结果（Sent / Failed: 原因）；Send Log 组头胶囊。
 - 🟡 （历史）**03 [44f0b4] 第二部分（照后端 W1 形状 docs/interfaces/send-outcome-2026-11-09.md mock 做，78 派）**：分支 `task/send-outcome-ui` c788afd4（worktree D:\npe-ops-frontend-03b），**只推分支、不合 main**，等后端 W1 各入口上 main 核字段再合。

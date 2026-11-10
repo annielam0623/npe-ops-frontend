@@ -57,6 +57,7 @@ const ROUTE_PERMISSIONS: readonly (readonly [
   ["/schedule", ["schedule.view"]],
   // 周三确认排班的邮件链接页：不用登录，不拦。
   ["/schedule/confirm/link", null],
+  ["/schedule/confirm/period", null],
   ["/daily-report", ["report.view"]],
   ["/morning-pickup", ["morning.view"]],
   ["/tour-confirmation", ["tour.view"]],

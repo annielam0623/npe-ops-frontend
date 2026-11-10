@@ -14,7 +14,8 @@ import { type RefObject, useEffect, useLayoutEffect, useState } from "react";
  */
 
 const MM = 96 / 25.4;
-const GAPS = [10, 8, 6];
+/** 自动压的最小值：酒店间空隙 6px、行内上下 1px（Q1 A）。staff 自己调得更小就照 staff 的。 */
+const MIN_GAP = 6;
 /** 最少留的左右页边距（大多数打印机贴边 3–5mm 印不出来）。 */
 const MIN_SIDE_MM = 5;
 /** 量出来和纸高差 2px 以内也当放得下以外：留 2px 余量，免得打印时差一点点溢到第二页。 */
@@ -47,8 +48,15 @@ function widest(sheet: HTMLElement): number {
   return w;
 }
 
+/** staff 当天调的行距（Q10 A：当上限，超页时从这里往下压）；null = 默认。 */
+export type SheetSpacing = { row: number; gap: number } | null;
+
 /** 量一次、压一次（直接改 sheet 的内联样式），返回结果。 */
-export function fitSheet(sheet: HTMLElement, total: boolean): SheetFit {
+export function fitSheet(
+  sheet: HTMLElement,
+  total: boolean,
+  spacing: SheetSpacing = null,
+): SheetFit {
   const s = sheet.style;
   s.removeProperty("--rl-gap");
   s.removeProperty("--rl-py");
@@ -56,6 +64,12 @@ export function fitSheet(sheet: HTMLElement, total: boolean): SheetFit {
   s.removeProperty("padding-left");
   s.removeProperty("padding-right");
   sheet.removeAttribute("data-squeezed");
+  const gap0 = spacing?.gap ?? 12;
+  const py0 = spacing?.row ?? (total ? 2 : 4);
+  if (spacing) {
+    s.setProperty("--rl-gap", `${gap0}px`);
+    s.setProperty("--rl-py", `${py0}px`);
+  }
 
   const cs = getComputedStyle(sheet);
   const padTop = parseFloat(cs.paddingTop);
@@ -83,12 +97,12 @@ export function fitSheet(sheet: HTMLElement, total: boolean): SheetFit {
 
   // 上下：先酒店间空隙，再行内上下内边距。
   if (contentHeight(sheet) > limit) {
-    sheet.setAttribute("data-squeezed", "");
-    for (const g of GAPS) {
+    if (gap0 > MIN_GAP) sheet.setAttribute("data-squeezed", "");
+    for (let g = gap0 - 2; g >= MIN_GAP; g -= 2) {
       s.setProperty("--rl-gap", `${g}px`);
       if (contentHeight(sheet) <= limit) break;
     }
-    for (let py = total ? 1 : 3; py >= 1 && contentHeight(sheet) > limit; py--)
+    for (let py = py0 - 1; py >= 1 && contentHeight(sheet) > limit; py--)
       s.setProperty("--rl-py", `${py}px`);
   }
   // 打印时第 2 页起从纸的最上面接着印（@page margin 0，上边距只在第一页）。
@@ -103,6 +117,7 @@ export function fitSheet(sheet: HTMLElement, total: boolean): SheetFit {
 export function useSheetFit(
   ref: RefObject<HTMLElement | null>,
   total: boolean,
+  spacing: SheetSpacing = null,
 ): SheetFit {
   const [fit, setFit] = useState<SheetFit>(FIT_OK);
   const [fontsTick, setFontsTick] = useState(0);
@@ -120,7 +135,7 @@ export function useSheetFit(
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const next = fitSheet(el, total);
+    const next = fitSheet(el, total, spacing);
     setFit((f) =>
       f.pages === next.pages && f.wide === next.wide && f.paperH === next.paperH
         ? f

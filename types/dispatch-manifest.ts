@@ -229,6 +229,11 @@ export interface ManifestTextSize {
   page: ManifestTextLayer;
   columns: Record<string, ManifestTextLayer>;
   rows: Record<string, ManifestTextLayer>;
+  /**
+   * 只有 Relay list 有（置顶 112，后端 78 relay-spacing）：行内上下空白 row 1–10、酒店之间空隙 gap 偶数 2–24；
+   * 没给的项 = 默认（车单 row 4、总表 row 2、gap 12）。新后端总带这个键（没调过 = {}），旧后端没有。
+   */
+  spacing?: { row?: number; gap?: number };
 }
 
 export interface ManifestTextSizeChange {
