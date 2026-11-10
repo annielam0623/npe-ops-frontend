@@ -322,6 +322,12 @@ export interface ManifestView {
     manifest_version?: ManifestVersion;
     /** 出不出 Lunch 列（排了餐厅的团才出，三个版式都出）。 */
     lunch_column?: boolean;
+    /**
+     * 置顶 113（Annie「113全选A，动手」）：这个团 Bus Manifest 藏起来的列键（[] = 都显示），按团存、对所有人一样；
+     * 能藏的列在 bus_column_options（今晚只有 lunch）。没带 = 后端没上线，不出 Columns。
+     */
+    bus_hidden_columns?: string[];
+    bus_column_options?: { key: string; label: string }[];
     /** 底部汇总框的版式（后端按团写死，照纸本）：standard / south / west / hoover。前端不出下拉，只照 footer 画。 */
     footer_style?: string;
     /** 纸本只有 Antelope 有：true 时 Special Requirements 右边多一列空的 ASSIST（给手写打勾）。 */

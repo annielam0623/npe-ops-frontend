@@ -26,6 +26,7 @@ import {
   manifestPrintUrl,
   saveAttraction,
   saveGuestNotes,
+  saveBusHiddenColumns,
   saveManifestVersion,
   saveTextSize,
   setGuestBus,
@@ -433,6 +434,18 @@ export function ManifestView() {
     setSaveState({ kind: "idle" });
   }
 
+  /** 置顶 113 Columns：勾了先放在页面上（同 Version），整页 Save 才存成这个团的；和库里一样 = 没改。 */
+  function stageHiddenColumns(cols: string[]) {
+    if (!data) return;
+    const saved = [...(data.tour.bus_hidden_columns ?? [])].sort();
+    const next = [...cols].sort();
+    setPending((p) => ({
+      ...p,
+      hiddenColumns: JSON.stringify(next) === JSON.stringify(saved) ? null : next,
+    }));
+    setSaveState({ kind: "idle" });
+  }
+
   /** Aa Text size 框按 Done（Q2）：调好的字号留在页面上；和库里一样 = 没改。 */
   function stageTextSize(busKey: string, textSize: ManifestTextSize) {
     if (!data) return;
@@ -508,6 +521,7 @@ export function ManifestView() {
       moves: { ...pending.moves },
       attractions: { ...pending.attractions },
       notes: { ...pending.notes },
+      hiddenColumns: pending.hiddenColumns,
     };
     const fails: string[] = [];
     let unauthorized = false;
@@ -526,6 +540,11 @@ export function ManifestView() {
       const v = next.version;
       if (await attempt("Version", () => saveManifestVersion(params.tour, v)))
         next.version = null;
+    }
+    if (next.hiddenColumns !== null) {
+      const cols = next.hiddenColumns;
+      if (await attempt("Columns", () => saveBusHiddenColumns(params.tour, cols)))
+        next.hiddenColumns = null;
     }
     const orders = new Map<number, string>();
     for (const b of data.blocks)
@@ -614,6 +633,7 @@ export function ManifestView() {
     if (fails.length) {
       const total =
         (pending.version ? 1 : 0) +
+        (pending.hiddenColumns !== null ? 1 : 0) +
         Object.keys(pending.textSizes).length +
         Object.keys(pending.moves).length +
         Object.keys(pending.attractions).length +
@@ -679,6 +699,14 @@ export function ManifestView() {
         const tour = {
           ...data.tour,
           ...(pending.version ? { manifest_version: pending.version } : {}),
+          // 置顶 113：没存的 Columns 也马上照着画（Lunch 列只有排了餐厅的团才有）。
+          ...(pending.hiddenColumns !== null
+            ? {
+                lunch_column:
+                  hasLunchVendor(data) &&
+                  !pending.hiddenColumns.includes("lunch"),
+              }
+            : {}),
           ...(canyonPages ? { canyon_pages: canyonPages } : {}),
         };
         return applyMoves(
@@ -879,7 +907,21 @@ export function ManifestView() {
                     />
                   ) : null}
                   {/* 手机上 Print all buses / Download 收进「⋯」（手机版规则：次要按钮）。 */}
-                  <PhoneMore label="Print or download">
+                  <PhoneMore label="Columns, print or download">
+                    {data.tour.bus_column_options?.length ? (
+                      <ColumnsPicker
+                        options={data.tour.bus_column_options}
+                        hidden={
+                          pending.hiddenColumns ??
+                          data.tour.bus_hidden_columns ??
+                          []
+                        }
+                        noLunchVendor={!hasLunchVendor(data)}
+                        readOnly={viewOnly}
+                        unsaved={pending.hiddenColumns !== null}
+                        onChange={stageHiddenColumns}
+                      />
+                    ) : null}
                     {canPrint && data.manifest && data.blocks.length > 0 ? (
                       <a
                         href={manifestPrintUrl(
@@ -1111,7 +1153,10 @@ export function ManifestView() {
 
               {viewOnly ? null : (
                 <div className="max-sm:order-last">
-                  <HowToUse layout={!!layout} />
+                  <HowToUse
+                    layout={!!layout}
+                    columns={!!data.tour.bus_column_options?.length}
+                  />
                 </div>
               )}
               {/* 改动记录（Annie 2026-10-30「同意所有推荐。动手」，preview https://claude.ai/artifact/YEgERHNDiL45TCkbzyJisa ）：
@@ -2808,7 +2853,11 @@ function LunchNotes({
 const LAYOUT_HOW_TO =
   "⚙ Colours, text & page: choose the colour of each box on the sheet, turn colouring on or off for each box, add or remove ticket colours and colour choices, set the everyday text size, and set the paper, Portrait or Landscape, and margins. Pick All tours, or pick a tour to give it its own colours. Changes show on the sheet right away; press Save to keep them. Reset puts one item back to the paper default, and Reset all to paper puts everything back. Saved settings are used on screen, when you print and in ⬇ Excel, for everyone and every day. Aa Text size changes one day's sheet on top of the everyday size.";
 
-function HowToUse({ layout }: { layout: boolean }) {
+/** 置顶 113（Annie「113全选A，动手」）preview 第 2 版原句。 */
+const COLUMNS_HOW_TO =
+  "Columns: press Columns at the top to choose which columns this tour's Bus Manifest shows. Untick a column to leave it off, then press Save. It is the same for everyone and every day — on screen, when printed and in Excel. The lunch sheet and lunch counts do not change.";
+
+function HowToUse({ layout, columns }: { layout: boolean; columns: boolean }) {
   return (
     // .howto-d（旧页的蓝框，默认收起）
     <details className="group mt-6 mb-8 max-w-[760px] rounded-[10px] border border-[#b5d4f4] bg-[#e8f3fc] px-5 py-3 text-[12px] leading-[1.9] text-[#0c3a6b]">
@@ -2821,6 +2870,7 @@ function HowToUse({ layout }: { layout: boolean }) {
           manifest. Each bus on the Dispatch schedule gets its own block.
         </li>
         {layout ? <li>{LAYOUT_HOW_TO}</li> : null}
+        {columns ? <li>{COLUMNS_HOW_TO}</li> : null}
         <li>
           Changes to the Version, text size, a guest&rsquo;s bus, the yellow
           boxes and Special Requirements stay on the page, marked orange, until
@@ -2907,5 +2957,118 @@ function HowToUse({ layout }: { layout: boolean }) {
         </li>
       </ol>
     </details>
+  );
+}
+
+/** 这个团排了午餐店（Lunch 列只有这种团才有）：后端说出 Lunch 列，或者有午餐表。 */
+function hasLunchVendor(d: ManifestData): boolean {
+  return !!d.tour.lunch_column || d.blocks.some((b) => !!b.lunch);
+}
+
+/**
+ * 置顶 113「Columns ▾」：这个团 Bus Manifest 显示哪些列（同 Version 下拉的样子、同一套存法）。
+ * 勾上 = 显示；点开一个小框勾列，按 Done 收起；改了框变橙、先放在页面上，按页头 Save 才存。没编辑权只看灰字。
+ */
+function ColumnsPicker({
+  options,
+  hidden,
+  noLunchVendor,
+  readOnly,
+  unsaved,
+  onChange,
+}: {
+  options: { key: string; label: string }[];
+  hidden: string[];
+  noLunchVendor: boolean;
+  readOnly: boolean;
+  unsaved: boolean;
+  onChange: (hidden: string[]) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [open]);
+  const labels = options.filter((o) => hidden.includes(o.key)).map((o) => o.label);
+  const value = labels.length ? `${labels.join(", ")} hidden` : "All";
+  if (readOnly)
+    return (
+      <span data-columns-text className="text-[12.5px] text-[#cbd5e1]">
+        Columns: {value}
+      </span>
+    );
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        data-columns-open
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        className={cn(
+          "inline-flex h-8 cursor-pointer items-center gap-1 rounded-[9px] border bg-transparent px-2.5 text-[12.5px] text-[#cbd5e1]",
+          unsaved ? "border-[#f59e0b]" : "border-white/[.18]",
+        )}
+      >
+        Columns: <b className="font-semibold text-white">{value}</b> ▾
+      </button>
+      {open ? (
+        <div
+          data-columns-menu
+          className="absolute right-0 z-50 mt-1 w-[300px] rounded-[10px] border-[0.5px] border-black/15 bg-paper p-3 text-[13px] text-[#1a1a1a] shadow-[0_8px_24px_rgba(0,0,0,.35)] max-sm:left-0 max-sm:right-auto max-sm:w-[260px]"
+        >
+          <div className="mb-1 font-semibold">Columns for this tour</div>
+          <p className="mb-2 text-[12px] leading-[1.5] text-[#555]">
+            Untick a column to leave it off this tour&apos;s Bus Manifest — on
+            screen, when printed and in Excel, for everyone, every day. Press
+            Save at the top to keep it.
+          </p>
+          {options.map((o) => (
+            <div key={o.key} className="py-1">
+              <label className="flex cursor-pointer items-center gap-2">
+                <input
+                  type="checkbox"
+                  data-columns-option={o.key}
+                  checked={!hidden.includes(o.key)}
+                  onChange={(e) =>
+                    onChange(
+                      e.target.checked
+                        ? hidden.filter((k) => k !== o.key)
+                        : [...hidden, o.key],
+                    )
+                  }
+                />
+                {o.label}
+              </label>
+              {o.key === "lunch" && noLunchVendor ? (
+                <div
+                  data-columns-no-vendor
+                  className="mt-0.5 pl-6 text-[12px] text-[#888]"
+                >
+                  No lunch vendor for this tour, so there is no Lunch column.
+                </div>
+              ) : null}
+            </div>
+          ))}
+          <div className="text-[12px] text-[#999] italic">
+            More columns will be added here later.
+          </div>
+          <div className="mt-2 flex justify-end">
+            <button
+              type="button"
+              data-columns-done
+              onClick={() => setOpen(false)}
+              className="cursor-pointer rounded-[7px] border border-[#9aa] bg-white px-3 py-1 text-[12px] font-bold text-[#222]"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      ) : null}
+    </div>
   );
 }
