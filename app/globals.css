@@ -200,4 +200,47 @@ table.afm .col-resizer {
     padding-bottom: 4px;
     min-height: 0;
   }
+  /* 置顶 115（Annie「114，115，107全选A。动手」，preview https://claude.ai/artifact/3dJPBmBq9hJShSvcA8ccwE）：
+   * 题 1 / 3 / 4 A：代码里写死高度（h-7 … h-11、h-[30–40px]）的单行键上面那条管不到，一律压到 26px、字 13px——
+   * 蓝色提交键一样缩（靠颜色区分）；本来就更小的行内小键不变大。多行大块（题 7）不写死高度，不受影响。 */
+  [data-phone-compact]
+    :is(button, a, label, summary, [role="tab"]):not([data-phone-keep]):is(
+      [class~="h-7"],
+      [class~="h-8"],
+      [class~="h-9"],
+      [class~="h-10"],
+      [class~="h-11"],
+      [class~="h-[30px]"],
+      [class~="h-[32px]"],
+      [class~="h-[34px]"],
+      [class~="h-[36px]"],
+      [class~="h-[38px]"],
+      [class~="h-[40px]"]
+    ) {
+    height: 26px;
+    min-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    font-size: 13px;
+    line-height: 1;
+  }
+  /* 方块键（‹ ›、图标键）照样 26 × 26，不变成长条。 */
+  [data-phone-compact]
+    :is(button, a, label, summary, [role="tab"]):not([data-phone-keep]):is(
+      [class~="size-7"],
+      [class~="size-8"],
+      [class~="size-9"],
+      [class~="size-10"],
+      [class~="size-[30px]"],
+      [class~="size-[32px]"],
+      [class~="size-[34px]"],
+      [class~="size-[36px]"]
+    ) {
+    width: 26px;
+    height: 26px;
+    min-height: 0;
+    padding: 0;
+    font-size: 13px;
+    line-height: 1;
+  }
 }

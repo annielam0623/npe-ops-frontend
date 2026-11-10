@@ -151,7 +151,7 @@ export function TopOrderSearch() {
           setTimeout(() => inputRef.current?.focus(), 0);
         }}
         className={cn(
-          "flex size-10 items-center justify-center rounded-[6px] bg-[rgba(251,191,36,.05)] text-[17px] font-bold text-white hover:bg-[rgba(251,191,36,.10)] xl:hidden",
+          "flex size-10 items-center justify-center rounded-[6px] bg-[rgba(251,191,36,.05)] text-[17px] font-bold text-white hover:bg-[rgba(251,191,36,.10)] xl:hidden max-sm:size-[26px] max-sm:text-[14px]",
           AMBER_BOX,
           expanded && "hidden",
         )}
