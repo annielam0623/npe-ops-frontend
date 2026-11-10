@@ -117,6 +117,77 @@ function EditCell({
   );
 }
 
+/**
+ * G263 v3 一单的产品状态：none = 没 farm_out / 后端没带候选；empty = 这个团在这家公司下没有产品；
+ * single = 只有一个产品（后端自动用它）；picked = 选了；unpicked = 有好几个、还没选（题 a A：空着要 staff 选）。
+ */
+export function productState(
+  o: SeatingOrder,
+): "none" | "empty" | "single" | "picked" | "unpicked" {
+  const f = o.farm_out;
+  if (!f || !Array.isArray(f.product_options)) return "none";
+  const opts = f.product_options;
+  if (!opts.length) return "empty";
+  if (f.rate_item_id != null && opts.some((p) => p.id === f.rate_item_id))
+    return "picked";
+  if (opts.length === 1) return "single";
+  return "unpicked";
+}
+
+/** Product 格：只有一个 ⇒ 直接写全名；好几个 ⇒ 下拉（没选虚线琥珀框「Pick a product」，同 Choose hotel…）；不能改 ⇒ 只读。 */
+function ProductCell({
+  order,
+  canPick,
+  disabled,
+  onPick,
+}: {
+  order: SeatingOrder;
+  canPick: boolean;
+  disabled: boolean;
+  onPick: (id: number | null) => void;
+}) {
+  const f = order.farm_out;
+  const state = productState(order);
+  if (!f || state === "none" || state === "empty")
+    return <span className="text-[#999]">—</span>;
+  const opts = f.product_options ?? [];
+  const picked = opts.find((p) => p.id === f.rate_item_id) ?? null;
+  if (state === "single" || !canPick) {
+    const name =
+      picked?.display_name ??
+      (state === "single" ? opts[0].display_name : null) ??
+      f.product_display_name;
+    return name ? (
+      <span data-product-name>{name}</span>
+    ) : (
+      <span data-product-name className="text-[#8a5a00]">
+        Not picked
+      </span>
+    );
+  }
+  return (
+    <select
+      aria-label={`Product for ${order.name || order.order_number}`}
+      disabled={disabled}
+      value={picked?.id ?? ""}
+      onChange={(e) => onPick(e.target.value ? Number(e.target.value) : null)}
+      className={cn(
+        "h-7 max-w-[240px] rounded-md px-1",
+        picked
+          ? "border-[0.5px] border-black/25 bg-paper"
+          : "border border-dashed border-[#e7b75a] bg-[#fdf6e7] text-[#8a5a00]",
+      )}
+    >
+      <option value="">Pick a product</option>
+      {opts.map((p) => (
+        <option key={p.id} value={p.id}>
+          {p.display_name}
+        </option>
+      ))}
+    </select>
+  );
+}
+
 export function FarmOutGuests({
   tour,
   bus,
@@ -168,6 +239,17 @@ export function FarmOutGuests({
       o.farm_out.payable_amount == null &&
       !o.farm_out.payable_set_by_staff,
   ).length;
+  // G263 v3：后端带 product_options 才出 Product 列（旧后端没有 ⇒ 页面照旧）。
+  const showProduct = orders.some((o) =>
+    Array.isArray(o.farm_out?.product_options),
+  );
+  // 没勾 money_view 的人能不能改产品：Annie 还没答，先照后端推荐「不能」（后端 PATCH 带 rate_item_id 会 403）⇒ 只读显示。
+  // Annie 定了能改，就把这一行改成 true（后端那道闸也要一起放开）。
+  const canPickProduct = seeMoney;
+  const productUnpicked = showProduct
+    ? orders.filter((o) => productState(o) === "unpicked").length
+    : 0;
+  const colCount = 7 + (showProduct ? 1 : 0) + (seeMoney ? 1 : 0);
   const others = tour.buses.filter(
     (b): b is SeatingBus & { label: string } => !!b.label,
   );
@@ -247,6 +329,7 @@ export function FarmOutGuests({
                     "Guest · Order",
                     "OTA conf#",
                     "Adult / Child / Infant",
+                    ...(showProduct ? ["Product"] : []),
                     "Pick-up hotel",
                     "Check-in",
                     "Departs",
@@ -302,6 +385,16 @@ export function FarmOutGuests({
                           ? `${o.adult} / ${o.child ?? 0} / ${o.infant ?? 0}`
                           : o.pax}
                       </td>
+                      {showProduct ? (
+                        <td className="px-2 py-2" data-product-cell>
+                          <ProductCell
+                            order={o}
+                            canPick={editable && canPickProduct}
+                            disabled={off}
+                            onPick={(id) => void patch(o, { rate_item_id: id })}
+                          />
+                        </td>
+                      ) : null}
                       <td className="px-2 py-2">
                         {editable ? (
                           <select
@@ -436,7 +529,7 @@ export function FarmOutGuests({
                     return (
                       <tr key={`n-${o.guest_ids.join("-")}`}>
                         <td
-                          colSpan={seeMoney ? 8 : 7}
+                          colSpan={colCount}
                           className="px-2 pb-2 text-[11px] text-[#1d4ed8]"
                         >
                           {o.name || o.order_number}: changed by staff
@@ -467,10 +560,20 @@ export function FarmOutGuests({
                   hotels in Supplier → Partners.
                 </span>
               ) : null}
+              {productUnpicked ? (
+                <span
+                  data-no-product
+                  className="text-[12px] text-[#8a5a00]"
+                >
+                  Product is not picked for {plural(productUnpicked, "order")}.
+                </span>
+              ) : null}
               {noPayable ? (
                 <span data-no-payable className="text-[12px] text-[#8a5a00]">
-                  Payable is not set for {plural(noPayable, "order")}. Add this
-                  tour’s prices in Supplier → Partners, or type an amount.
+                  Payable is not set for {plural(noPayable, "order")}.{" "}
+                  {productUnpicked
+                    ? "Pick a product, or type an amount."
+                    : "Add this tour’s prices in Supplier → Partners, or type an amount."}
                 </span>
               ) : null}
               {hotelless.map((o) => (

@@ -3,7 +3,7 @@
 // 控制：POST /__ctl {reset, fail401, staff, unavailable, foVis（farm_out_settings 的档：staff / admin / super_admin_only；null = 后端还没登记）}；GET /__log。端口默认 8799（环境变量 MOCK_PORT 可改）。
 const http = require("http");
 
-const ctl = { fail401: false, staff: false, partner: false, unavailable: false, foVis: "staff", log403: false, itemsFail: false, importFail: false, importConflict: false, importFileError: "" };
+const ctl = { fail401: false, staff: false, partner: false, unavailable: false, foVis: "staff", log403: false, itemsFail: false, importFail: false, importConflict: false, importFileError: "", importLabel: false };
 const log = [];
 
 const TOURS = [
@@ -12,18 +12,29 @@ const TOURS = [
 ];
 let partners, rates, locations, cells, tourMeta, nextPartnerId, nextLocId, nextItemId;
 
+/** 后端 farm_out_common.product_display_name：「<团> <产品> - <合作公司>」。 */
+function withNames(pid, list) {
+  const partner = (partners || []).find((x) => x.id === pid)?.name ?? "";
+  return list.map((r) => ({ ...r, products: (r.products || []).map((x, i) => ({ ...x, sort_order: i, display_name: `${r.tour_name} ${x.name} - ${partner}` })) }));
+}
+
 function reset() {
   partners = [
     { id: 1, name: "Partner A", slug: "partner-a", is_active: true },
     { id: 2, name: "Partner B", slug: "partner-b", is_active: true },
   ];
+  // G263 v3（后端 2c task/farm-out-item-rates 8f951f4c 的 get_rates）：合作方 → 团 → products [{id, name, sort_order, display_name, prices}]。
   rates = {
     1: [
-      { manifest_id: 10, tour_name: "West Rim", adult_price: 105, child_price: 95 },
-      { manifest_id: 11, tour_name: "Zion", adult_price: null, child_price: null },
+      { manifest_id: 10, tour_name: "West Rim", products: [
+        { id: 701, name: "Premium Pass", sort_order: 0, prices: [{ ticket_type: "adult", price: 98 }, { ticket_type: "child", price: 98 }] },
+        { id: 702, name: "Admission Only", sort_order: 1, prices: [{ ticket_type: "adult", price: 83 }] },
+      ] },
+      { manifest_id: 11, tour_name: "Zion", products: [] },
     ],
-    2: TOURS.map((t) => ({ ...t, adult_price: 110, child_price: 99, items: t.manifest_id === 10 ? [{ id: 801, name: "Lunch", price: 15, sort_order: 0 }] : [] })),
+    2: TOURS.map((t) => ({ ...t, products: t.manifest_id === 10 ? [{ id: 801, name: "VOF-H/D", sort_order: 0, prices: [{ ticket_type: "adult", price: 70 }, { ticket_type: "child", price: 70 }] }] : [] })),
   };
+  for (const pid of Object.keys(rates)) rates[pid] = withNames(Number(pid), rates[pid]);
   locations = {
     1: [
       { id: 101, hotel_name: "Bellagio", spot: "Underground South Tour Lobby", address: "3600 S Las Vegas Blvd", map_link: "https://goo.gl/maps/aaa", sort_order: 0 },
@@ -132,22 +143,34 @@ http
       entry.hasFile = /filename="fo-rates-import\.csv"/.test(entry.rawText || "");
       if (ctl.importFileError) return send(res, 400, { detail: ctl.importFileError });
       if (sub.endsWith("/preview")) {
+        // G263 v3（后端 plan_rate_import）：Partner / Tour / Product / Adult / Child / Infant；产品写短名或全名都对上；
+        // 对不上的产品 = new（前端标「New product」）；公司 / 团对不上 = error。
+        const V = (partner, tour_name, product, adult_price, child_price, infant_price) => ({ partner, tour_name, product, adult_price, child_price, infant_price });
         const rows = [
-          { status: "update", id: 1, row: 2, values: { partner: "Partner A", tour_name: "West Rim", adult_price: "109.00", child_price: "95.00" }, before: { adult_price: "105.00" }, changed: ["adult_price"], blanked: [], errors: [] },
-          { status: "update", id: 1, row: 3, values: { partner: "partner a", tour_name: "Zion", adult_price: "120.00", child_price: "" }, before: { adult_price: "" }, changed: ["adult_price"], blanked: [], errors: [] },
-          { status: "unchanged", id: 2, row: 4, values: { partner: "Partner B", tour_name: "West Rim", adult_price: "110.00", child_price: "99.00" }, before: {}, changed: [], blanked: [], errors: [] },
-          { status: "error", id: null, row: 5, values: { partner: "Partner Z", tour_name: "Zion", adult_price: "100.00", child_price: "90.00" }, before: {}, changed: [], blanked: [], errors: [{ field: "partner", message: "No partner called “Partner Z”." }] },
-          { status: "error", id: null, row: 6, values: { partner: "Partner B", tour_name: "Zion", adult_price: "abc", child_price: "90.00" }, before: {}, changed: [], blanked: [], errors: [{ field: "adult_price", message: "The adult price must be a number such as 45 or 45.50." }] },
+          { status: "update", id: 1, row: 2, values: V("Partner A", "West Rim", "Premium Pass", "109.00", "98.00", ""), before: { adult_price: "98.00" }, changed: ["adult_price"], blanked: ["infant_price"], errors: [] },
+          { status: "update", id: 1, row: 3, values: V("partner a", "West Rim", "West Rim Admission Only - Partner A", "83.00", "80.00", ""), before: { child_price: "" }, changed: ["child_price"], blanked: ["infant_price"], errors: [] },
+          { status: "new", id: 1, row: 4, values: V("Partner A", "Zion", "ZZ Test Day Pass", "120.00", "100.00", ""), before: {}, changed: ["adult_price", "child_price"], blanked: [], errors: [] },
+          { status: "unchanged", id: 2, row: 5, values: V("Partner B", "West Rim", "VOF-H/D", "70.00", "70.00", ""), before: {}, changed: [], blanked: [], errors: [] },
+          { status: "error", id: null, row: 6, values: V("Partner Z", "Zion", "Day Pass", "100.00", "90.00", ""), before: {}, changed: [], blanked: [], errors: [{ field: "partner", message: "No partner called “Partner Z”." }] },
+          { status: "error", id: null, row: 7, values: V("Partner B", "Zion", "Day Pass", "abc", "90.00", ""), before: {}, changed: [], blanked: [], errors: [{ field: "adult_price", message: "The adult price must be a number such as 45 or 45.50." }] },
         ];
+        // 后端 c2（8f951f4c 之后）：每行多一个 label = 全名，error 行是 ""；ctl.importLabel 关着 = 旧后端没有这一项。
+        if (ctl.importLabel) {
+          const L = ["West Rim Premium Pass - Partner A", "West Rim Admission Only - Partner A", "Zion ZZ Test Day Pass - Partner A", "West Rim VOF-H/D - Partner B", "", ""];
+          rows.forEach((r, i) => { r.label = L[i]; });
+        }
         const counts = { new: 0, update: 0, unchanged: 0, error: 0 };
         for (const r of rows) counts[r.status]++;
-        return send(res, 200, { columns: ["partner", "tour_name", "adult_price", "child_price"], rows, counts });
+        return send(res, 200, { columns: ["partner", "tour_name", "product", "adult_price", "child_price", "infant_price"], rows, counts });
       }
       if (ctl.importConflict) return send(res, 409, { detail: "Someone changed this list while the file was being saved. Nothing was saved — check the preview again." });
       if (ctl.importFail) return send(res, 500, { detail: "Database is busy" });
-      rates[1].find((r) => r.manifest_id === 10).adult_price = 109;
-      rates[1].find((r) => r.manifest_id === 11).adult_price = 120;
-      return send(res, 200, { created: 0, updated: 2, unchanged: 1, skipped: 2 });
+      const wr = rates[1].find((r) => r.manifest_id === 10).products;
+      wr.find((x) => x.name === "Premium Pass").prices.find((x) => x.ticket_type === "adult").price = 109;
+      wr.find((x) => x.name === "Admission Only").prices.push({ ticket_type: "child", price: 80 });
+      rates[1].find((r) => r.manifest_id === 11).products.push({ id: nextItemId++, name: "ZZ Test Day Pass", prices: [{ ticket_type: "adult", price: 120 }, { ticket_type: "child", price: 100 }] });
+      rates[1] = withNames(1, rates[1]);
+      return send(res, 200, { created: 1, updated: 2, unchanged: 1, skipped: 2 });
     }
     if (sub === "/partners" && req.method === "GET") return send(res, 200, partners);
     if (sub === "/partners" && req.method === "POST") {
@@ -155,7 +178,7 @@ http
       if (partners.some((x) => x.name.toLowerCase() === name.toLowerCase())) return send(res, 400, { detail: `"${name}" already exists` });
       const created = { id: nextPartnerId++, name, slug: name.toLowerCase().replace(/\W+/g, "-"), is_active: true };
       partners.push(created);
-      rates[created.id] = TOURS.map((t) => ({ ...t, adult_price: null, child_price: null }));
+      rates[created.id] = TOURS.map((t) => ({ ...t, products: [] }));
       locations[created.id] = [];
       cells[created.id] = {};
       return send(res, 200, { ok: true, partner: created });
@@ -203,35 +226,46 @@ http
       const what = m[2];
       if (what === "rates") {
         if (req.method === "PUT") {
-          if (entry.body.some((r) => "infant_price" in r)) return send(res, 400, { detail: "no infant price" });
-          // 子项（G221，后端 task/g221-farmout-rate-items 6a876f79 的 _clean_rate_items / put_rates）：
-          // 带了 items 就整组替换（顺序 = sort_order），没带或 null 就不动，[] = 删光。逐项查：名字必填、≤80、同团不重名（不分大小写）、
-          // 价钱必填且是数字；最后查带来的 id 还在不在这家这个团。有一条不对就 400、一条都不写（后端原话）。
+          // G263 v3（后端 put_rates / _clean_products / _clean_prices 原话）：带 products 的团整组替换（顺序 = sort_order），
+          // 没带 = 不动；旧主项价 adult_price / child_price 有值 ⇒ 400。名字必填、≤80、同团不重名（不分大小写）；
+          // 每个产品至少一行价，票种只认 adult / child / infant、不重复，价钱必填、≥0；带来的 id 要还在这家这个团。一条不对 ⇒ 400、一条不写。
+          const LABEL = { adult: "Adult", child: "Child", infant: "Infant" };
           const tourName = (r) => TOURS.find((t) => t.manifest_id === r.manifest_id)?.tour_name ?? r.tour_name;
           for (const r of entry.body) {
-            if (r.items == null) continue;
             const tour = tourName(r);
+            if (r.adult_price != null || r.child_price != null) return send(res, 400, { detail: "Tour prices are now products. Reload the page." });
+            if (r.products == null) continue;
             const seen = new Set();
-            for (const it of r.items) {
+            for (const it of r.products) {
               const name = String(it.name ?? "").trim();
-              if (!name) return send(res, 400, { detail: `Every item on ${tour} needs a name.` });
-              if (name.length > 80) return send(res, 400, { detail: `The item name on ${tour} is ${name.length} characters - the limit is 80.` });
+              if (!name) return send(res, 400, { detail: `Every product on ${tour} needs a name.` });
+              if (name.length > 80) return send(res, 400, { detail: `The product name on ${tour} is ${name.length} characters - the limit is 80.` });
               if (seen.has(name.toLowerCase())) return send(res, 400, { detail: `${name} is already on ${tour}.` });
               seen.add(name.toLowerCase());
-              if (it.price === null || it.price === undefined || it.price === "") return send(res, 400, { detail: `Enter a price for ${name} on ${tour}.` });
-              if (typeof it.price === "boolean" || !Number.isFinite(Number(it.price))) return send(res, 400, { detail: `The price for ${name} on ${tour} must be a number such as 45 or 45.50.` });
+              const where = `${name} on ${tour}`;
+              if (!Array.isArray(it.prices) || !it.prices.length) return send(res, 400, { detail: `Enter a price for ${where}.` });
+              const kinds = new Set();
+              for (const x of it.prices) {
+                if (!LABEL[x.ticket_type]) return send(res, 400, { detail: `Pick Adult, Child or Infant for every price on ${where}.` });
+                if (kinds.has(x.ticket_type)) return send(res, 400, { detail: `${LABEL[x.ticket_type]} is listed twice on ${where}.` });
+                kinds.add(x.ticket_type);
+                if (x.price === null || x.price === undefined || x.price === "") return send(res, 400, { detail: `Enter the ${x.ticket_type} price on ${where}.` });
+                if (typeof x.price === "boolean" || !Number.isFinite(Number(x.price))) return send(res, 400, { detail: `The ${x.ticket_type} price on ${where} must be a number such as 45 or 45.50.` });
+                if (Number(x.price) < 0) return send(res, 400, { detail: `The ${x.ticket_type} price on ${where} cannot be negative.` });
+              }
             }
           }
           for (const r of entry.body) {
-            if (r.items == null) continue;
-            const mine = new Set(((rates[pid] || []).find((o) => o.manifest_id === r.manifest_id)?.items || []).map((it) => it.id));
-            if (r.items.some((it) => it.id != null && !mine.has(it.id))) return send(res, 400, { detail: "An item in the price list no longer exists. Reload the page and try again." });
+            if (r.products == null) continue;
+            const mine = new Set(((rates[pid] || []).find((o) => o.manifest_id === r.manifest_id)?.products || []).map((it) => it.id));
+            if (r.products.some((it) => it.id != null && !mine.has(it.id))) return send(res, 400, { detail: "A product in the price list no longer exists. Reload the page and try again." });
           }
           if (ctl.itemsFail) return send(res, 500, { detail: "Database is busy" });
           const old = rates[pid] || [];
-          rates[pid] = entry.body.map((r) => ({
-            ...r,
-            items: r.items ? r.items.map((it, i) => ({ id: it.id ?? nextItemId++, name: it.name, price: it.price, sort_order: i })) : (old.find((o) => o.manifest_id === r.manifest_id)?.items || []),
+          rates[pid] = withNames(pid, old.map((o) => {
+            const r = entry.body.find((x) => x.manifest_id === o.manifest_id);
+            if (!r || r.products == null) return o;
+            return { ...o, products: r.products.map((it) => ({ id: it.id ?? nextItemId++, name: String(it.name).trim(), prices: it.prices.map((x) => ({ ticket_type: x.ticket_type, price: Number(x.price) })) })) };
           }));
           return send(res, 200, { ok: true, rates: rates[pid] });
         }

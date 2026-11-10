@@ -23,6 +23,13 @@ export interface FarmOutOrder {
   payable_changed_at: string | null;
   notice_sent_at: string | null;
   notice_sent_by: string | null;
+  /**
+   * G263 v3：这单选的产品（null = 没选；这个团只有一个产品时后端自动用它）、它的全名、这个合作方这个团能选的产品。
+   * 后端还没上（没有 product_options）⇒ 不出 Product 列。
+   */
+  rate_item_id?: number | null;
+  product_display_name?: string | null;
+  product_options?: { id: number; display_name: string }[];
 }
 
 /** PATCH /orders/{order} 的返回：`{ok, farm_out: {..., missing}}`；missing = 这单还缺什么（人话，英文）。 */
@@ -60,6 +67,39 @@ export interface FarmOutRate {
    * PUT 时带了就整组替换（数组顺序 = sort_order），没带就不动。
    */
   items?: FarmOutRateItem[];
+  /**
+   * G263 v3（Annie「同意推荐，动手」；后端 2c docs/interfaces/farm-out-2026-10-16.md）：每个团下面直接列产品，
+   * 一个产品一行，价格 Adult / Child / Infant（没设的那种票不在 prices 里）。新页面只读这个，不再读 items / adult_price / child_price。
+   */
+  products?: FarmOutProduct[];
+}
+
+export type FarmOutTicketType = "adult" | "child" | "infant";
+
+export interface FarmOutPrice {
+  ticket_type: FarmOutTicketType;
+  price: number;
+}
+
+export interface FarmOutProduct {
+  /** 新加的没有 id（PUT 时不带）。 */
+  id: number | null;
+  /** staff 打的短名（同团不重名，不分大小写，≤80）。 */
+  name: string;
+  /** 后端拼好的全名「<团> <产品> - <合作公司>」，前端不自己拼。 */
+  display_name?: string;
+  sort_order?: number;
+  prices: FarmOutPrice[];
+}
+
+/** PUT /partners/{id}/rates 的一个团：带 products 就整组替换（数组顺序 = sort_order），不带就不动。 */
+export interface FarmOutRatePut {
+  manifest_id: number;
+  products?: {
+    id?: number;
+    name: string;
+    prices: FarmOutPrice[];
+  }[];
 }
 
 export interface FarmOutLocation {
@@ -173,6 +213,8 @@ export interface FarmOutNoticeSendResponse {
 export interface FarmOutReportRow {
   date: string;
   tour: string;
+  /** G263 v3：产品全名「<团> <产品> - <合作公司>」，没选 = ""；旧后端没有（undefined）。 */
+  product?: string;
   order_number: string;
   ota_conf_number: string;
   guest: string;

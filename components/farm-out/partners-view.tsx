@@ -38,19 +38,17 @@ import {
 import { usePermissions } from "@/lib/staff-permissions";
 import { csvBlob } from "@/lib/csv";
 import { cn } from "@/lib/utils";
+import { useLeaveGuard } from "@/lib/use-leave-guard";
 import type {
   FarmOutPartner,
+  FarmOutPrice,
   FarmOutRate,
-  FarmOutRateItem,
+  FarmOutRatePut,
 } from "@/types/farm-out";
 
-import {
-  gateFromError,
-  type LoadGate,
-  parsePriceInput,
-  priceText,
-} from "./config";
+import { gateFromError, type LoadGate } from "./config";
 import { PartnerDetail } from "./partner-detail";
+import { TourProducts } from "./tour-products";
 import {
   BTN_BLUE_SMALL,
   CELL_INPUT,
@@ -60,77 +58,18 @@ import {
 } from "./ui";
 
 /** Settings → Farm out Partners：合作公司名单、改名、停用，展开改结算价和它自己的上车点。 */
-const ITEM_ROW_CLASS = "bg-[#fbfbfa] night:bg-white/[.02]";
-const ITEM_ERROR_CLASS =
-  "mt-0.5 block text-left text-[11px] text-[#b3261e] night:text-red-300";
-const BAD_INPUT = "border-[#dc2626] bg-[#fef2f2] night:bg-red-500/10";
-
-function move<T>(all: T[], i: number, dir: -1 | 1): T[] {
-  if (i + dir < 0 || i + dir >= all.length) return all;
-  const next = [...all];
-  [next[i], next[i + dir]] = [next[i + dir], next[i]];
-  return next;
-}
-
-/** 编辑中的一个子项（价钱先存成输入的文字，Save 时才解析）。 */
-interface ItemDraft {
-  key: string;
-  id: number | null;
-  name: string;
-  price: string;
-}
-
-let itemKey = 0;
-const toItemDrafts = (items: FarmOutRateItem[] | undefined): ItemDraft[] =>
-  (items ?? []).map((it) => ({
-    key: `item-${itemKey++}`,
-    id: it.id,
-    name: it.name,
-    price: priceText(it.price),
-  }));
-const blankItem = (): ItemDraft => ({
-  key: `item-${itemKey++}`,
-  id: null,
-  name: "",
-  price: "",
-});
-
-/** 子项的错：名字、价钱都必填，同一个团里名字不重复（不分大小写）。 */
-function itemErrors(
-  items: ItemDraft[],
-): Record<string, { name?: string; price?: string }> {
-  const out: Record<string, { name?: string; price?: string }> = {};
-  const seen = new Set<string>();
-  for (const it of items) {
-    const e: { name?: string; price?: string } = {};
-    const name = it.name.trim();
-    if (!name) e.name = "Enter a name.";
-    else if (seen.has(name.toLowerCase()))
-      e.name = `${name} is already on this tour.`;
-    else seen.add(name.toLowerCase());
-    const price = parsePriceInput(it.price);
-    if (price === null) e.price = "Enter a price.";
-    else if (price === undefined)
-      e.price = "Price must be a number, e.g. 15 or 15.50.";
-    if (e.name || e.price) out[it.key] = e;
-  }
-  return out;
-}
-
-/** PUT 时别的团不带 items（后端「没带就不动」）。 */
-const rateOnly = (r: FarmOutRate): FarmOutRate => ({
-  manifest_id: r.manifest_id,
-  tour_name: r.tour_name,
-  adult_price: r.adult_price,
-  child_price: r.child_price,
-});
-/** ⬆ Import 的栏：key → 模板 / 预览里的栏名。 */
+/** ⬆ Import 的栏：key → 模板 / 预览里的栏名（G263 v3：多了 Product、Infant）。 */
 const RATE_IMPORT_LABEL: Record<string, string> = {
   partner: "Partner",
   tour_name: "Tour",
+  product: "Product",
   adult_price: "Adult",
   child_price: "Child",
+  infant_price: "Infant",
 };
+
+const priceCell = (prices: FarmOutPrice[], t: string) =>
+  prices.find((x) => x.ticket_type === t)?.price ?? "";
 
 export function PartnersView() {
   const [gate, setGate] = useState<LoadGate>({ kind: "loading" });
@@ -154,18 +93,17 @@ export function PartnersView() {
   const [rates, setRates] = useState<Record<number, FarmOutRate[] | "error">>(
     {},
   );
-  const [editingRate, setEditingRate] = useState<{
+  /** 正在编辑的团（一次只开一个；G263 v3 一个团一个 Save）。 */
+  const [editingTour, setEditingTour] = useState<{
     partnerId: number;
     manifestId: number;
-    adult: string;
-    child: string;
-    /** 这个团的子项（加 / 改 / 删 / 调顺序都先放在这里，和价钱一起 Save）。 */
-    items: ItemDraft[];
-    /** 按过一次 Save：之后子项的错才显示成红字。 */
-    tried: boolean;
-    saving: boolean;
-    error: string | null;
   } | null>(null);
+  /** 正在编辑的团有没存的改动：离开页面先问。 */
+  const [tourDirty, setTourDirty] = useState(false);
+  useLeaveGuard(
+    tourDirty,
+    "You have unsaved product prices. Leave without saving?",
+  );
   /** 刚存好的团（`<合作公司 id>|<团 id>`）：团名旁边写绿字 ✓ Saved，再编辑就去掉。 */
   const [savedRow, setSavedRow] = useState<string | null>(null);
   const [importOpen, setImportOpen] = useState(false);
@@ -176,7 +114,7 @@ export function PartnersView() {
   // 合作方的价格也算）：价格列、每个团的价格行、Import rates 都不出，也不请求价格；合作公司本身照 settings.farm_out 照旧。
   const seeMoney = perms.canSeeMoney;
   /** 价格那几列算不算在表里（没勾时表只剩 Partner / Status / Actions）。 */
-  const cols = seeMoney ? 5 : 3;
+  const cols = seeMoney ? 6 : 3;
 
   /** 导入存好后静悄悄重拉（不回到 Loading，Import 块和展开的上车点都留着）。 */
   const refreshAll = useCallback(async () => {
@@ -305,49 +243,34 @@ export function PartnersView() {
     }
   }
 
-  async function saveRateRow(partnerId: number) {
-    const e = editingRate;
+  /** 存一个团的产品：别的团只带 manifest_id（后端「没带 products 就不动」）。返回 null = 存好，字符串 = 原话。 */
+  async function saveTour(
+    partnerId: number,
+    put: FarmOutRatePut,
+  ): Promise<string | null> {
     const list = rates[partnerId];
-    if (!e || e.saving || !Array.isArray(list)) return;
-    const adult = parsePriceInput(e.adult);
-    const child = parsePriceInput(e.child);
-    if (adult === undefined || child === undefined) {
-      setEditingRate({
-        ...e,
-        tried: true,
-        error: "Prices must be numbers like 105 or 105.00.",
-      });
-      return;
-    }
-    if (Object.keys(itemErrors(e.items)).length > 0) {
-      setEditingRate({ ...e, tried: true, error: null });
-      return;
-    }
-    setEditingRate({ ...e, tried: true, saving: true, error: null });
+    if (!Array.isArray(list)) return "Reload the page and try again.";
     try {
       const saved = await savePartnerRates(
         partnerId,
         list.map((r) =>
-          r.manifest_id === e.manifestId
-            ? {
-                ...rateOnly(r),
-                adult_price: adult,
-                child_price: child,
-                items: e.items.map((it) => ({
-                  id: it.id,
-                  name: it.name.trim(),
-                  price: parsePriceInput(it.price) as number,
-                })),
-              }
-            : rateOnly(r),
+          r.manifest_id === put.manifest_id
+            ? put
+            : { manifest_id: r.manifest_id },
         ),
       );
       setRates((all) => ({ ...all, [partnerId]: saved }));
-      setEditingRate(null);
-      setSavedRow(`${partnerId}|${e.manifestId}`);
+      setTourDirty(false);
+      setEditingTour(null);
+      setSavedRow(`${partnerId}|${put.manifest_id}`);
+      setLogVersion((v) => v + 1);
+      return null;
     } catch (error) {
-      if (isStatus(error, 401)) redirectToLogin();
-      else setEditingRate({ ...e, saving: false, error: describeError(error) });
+      if (isStatus(error, 401)) {
+        redirectToLogin();
+        return null;
+      }
+      return describeError(error);
     }
   }
 
@@ -447,27 +370,34 @@ export function PartnersView() {
               title="Import rates"
               help={
                 <>
-                  <b>Partner</b> and <b>Tour</b> find the row; a partner or tour
-                  not on the list is an error (add partners above). Adult and
-                  Child are numbers, e.g. 105. A blank cell never clears a
-                  price.
+                  <b>Partner</b>, <b>Tour</b> and <b>Product</b> find the row
+                  (the short or the full product name). A partner or tour not on
+                  the list is an error (add partners above); a product not on
+                  the tour is added as a new product. Adult, Child and Infant
+                  are numbers, e.g. 98. A blank cell never clears a price.
                 </>
               }
               endpoint="/api/farm-out/rates/import"
+              statusText={{ new: "New product" }}
+              labelColumn="product"
               labelOf={(k) => RATE_IMPORT_LABEL[k] ?? k}
               template={() => ({
                 blob: csvBlob(
-                  ["Partner", "Tour", "Adult", "Child"],
+                  ["Partner", "Tour", "Product", "Adult", "Child", "Infant"],
                   partners.flatMap((p) => {
                     const list = rates[p.id];
                     return list === "error" || !list
                       ? []
-                      : list.map((r) => [
-                          p.name,
-                          r.tour_name,
-                          r.adult_price ?? "",
-                          r.child_price ?? "",
-                        ]);
+                      : list.flatMap((r) =>
+                          (r.products ?? []).map((x) => [
+                            p.name,
+                            r.tour_name,
+                            x.name,
+                            priceCell(x.prices, "adult"),
+                            priceCell(x.prices, "child"),
+                            priceCell(x.prices, "infant"),
+                          ]),
+                        );
                   }),
                 ),
                 filename: "farm_out_rates_template.csv",
@@ -486,14 +416,14 @@ export function PartnersView() {
               <span
                 hidden={!seeMoney}
                 title={
-                  editingRate
-                    ? "Save or cancel the price you are editing first."
+                  editingTour
+                    ? "Save or cancel the prices you are editing first."
                     : ""
                 }
               >
                 <BulkImportButton
                   onClick={() => setImportOpen(true)}
-                  disabled={importOpen || editingRate !== null}
+                  disabled={importOpen || editingTour !== null}
                 />
               </span>
             </div>
@@ -501,11 +431,14 @@ export function PartnersView() {
               <table className="w-full min-w-[720px] border-collapse text-[12px]">
                 <thead>
                   <tr>
-                    <th className={TH_CLASS}>Partner / Tour</th>
+                    <th className={TH_CLASS}>
+                      {seeMoney ? "Partner / Tour / Product" : "Partner"}
+                    </th>
                     {seeMoney ? (
                       <>
                         <th className={cn(TH_CLASS, "text-right")}>Adult</th>
                         <th className={cn(TH_CLASS, "text-right")}>Child</th>
+                        <th className={cn(TH_CLASS, "text-right")}>Infant</th>
                       </>
                     ) : null}
                     <th className={TH_CLASS}>Status</th>
@@ -536,7 +469,7 @@ export function PartnersView() {
                           >
                             <td
                               className={cn(TD_CLASS, "font-semibold")}
-                              colSpan={seeMoney ? 3 : 1}
+                              colSpan={seeMoney ? 4 : 1}
                             >
                               {renaming?.id === p.id ? (
                                 <span className="flex flex-wrap items-center gap-2">
@@ -646,7 +579,7 @@ export function PartnersView() {
                           {!seeMoney ? null : list === "error" ? (
                             <tr className={TR_CLASS}>
                               <td
-                                colSpan={5}
+                                colSpan={6}
                                 className={cn(TD_CLASS, "pl-6 text-[#A32D2D]")}
                               >
                                 Could not load this partner&apos;s prices.
@@ -654,398 +587,38 @@ export function PartnersView() {
                             </tr>
                           ) : Array.isArray(list) && list.length === 0 ? (
                             <tr className={TR_CLASS}>
-                              <td colSpan={5} className={cn(TD_CLASS, "pl-6")}>
+                              <td colSpan={6} className={cn(TD_CLASS, "pl-6")}>
                                 No tours yet.
                               </td>
                             </tr>
                           ) : (
-                            (list ?? []).map((r) => {
-                              const editing =
-                                editingRate?.partnerId === p.id &&
-                                editingRate.manifestId === r.manifest_id
-                                  ? editingRate
-                                  : null;
-                              const startEdit = (addItem: boolean) => {
-                                setSavedRow(null);
-                                setEditingRate({
-                                  partnerId: p.id,
-                                  manifestId: r.manifest_id,
-                                  adult: priceText(r.adult_price),
-                                  child: priceText(r.child_price),
-                                  items: [
-                                    ...toItemDrafts(r.items),
-                                    ...(addItem ? [blankItem()] : []),
-                                  ],
-                                  tried: false,
-                                  saving: false,
-                                  error: null,
-                                });
-                              };
-                              const errs = editing?.tried
-                                ? itemErrors(editing.items)
-                                : {};
-                              // 用最新的 state 改（连着点 ↑ 再点 ＋ Add item 不会互相盖掉）。
-                              const patchItems = (
-                                next: (items: ItemDraft[]) => ItemDraft[],
-                              ) =>
-                                setEditingRate((cur) =>
-                                  cur
-                                    ? {
-                                        ...cur,
-                                        items: next(cur.items),
-                                        error: null,
-                                      }
-                                    : cur,
-                                );
-                              return (
-                                <Fragment key={r.manifest_id}>
-                                  <tr
-                                    className={cn(
-                                      TR_CLASS,
-                                      !p.is_active && "opacity-60",
-                                    )}
-                                    data-rate-row={`${p.name}|${r.tour_name}`}
-                                  >
-                                    <td className={cn(TD_CLASS, "pl-6")}>
-                                      {r.tour_name}
-                                      {savedRow ===
-                                      `${p.id}|${r.manifest_id}` ? (
-                                        <span
-                                          role="status"
-                                          className="ml-2 text-[12px] font-semibold text-[#1e6b43] night:text-emerald-300"
-                                        >
-                                          ✓ Saved
-                                        </span>
-                                      ) : null}
-                                      {editing?.error ? (
-                                        <span
-                                          role="alert"
-                                          className="ml-2 text-[12px] text-[#A32D2D] night:text-red-300"
-                                        >
-                                          {editing.error}
-                                        </span>
-                                      ) : null}
-                                    </td>
-                                    {(["adult", "child"] as const).map(
-                                      (kind) => {
-                                        const price =
-                                          kind === "adult"
-                                            ? r.adult_price
-                                            : r.child_price;
-                                        return (
-                                          <td
-                                            key={kind}
-                                            className={cn(
-                                              TD_CLASS,
-                                              "text-right tabular-nums",
-                                            )}
-                                          >
-                                            {editing ? (
-                                              <input
-                                                type="text"
-                                                inputMode="decimal"
-                                                aria-label={`${r.tour_name} ${kind} price`}
-                                                placeholder={
-                                                  editing.items.length > 0
-                                                    ? "N/A"
-                                                    : "not set"
-                                                }
-                                                value={editing[kind]}
-                                                onChange={(e) =>
-                                                  setEditingRate({
-                                                    ...editing,
-                                                    [kind]: e.target.value,
-                                                    error: null,
-                                                  })
-                                                }
-                                                className={cn(
-                                                  CELL_INPUT,
-                                                  "w-[88px] text-right",
-                                                )}
-                                              />
-                                            ) : price == null &&
-                                              (r.items?.length ?? 0) > 0 ? (
-                                              // 有子项的团：价钱都在子项上，主项的 Adult / Child 不算缺（Annie 2026-11-05「把列在主项上的两个空格忽略，或者允许我打N/A」）。
-                                              <span
-                                                data-price-na
-                                                className="text-[#9ca3af] night:text-white/45"
-                                              >
-                                                N/A
-                                              </span>
-                                            ) : price == null ? (
-                                              <span className="text-[#A32D2D] italic night:text-red-300">
-                                                not set
-                                              </span>
-                                            ) : (
-                                              `$${price.toFixed(2)}`
-                                            )}
-                                          </td>
-                                        );
-                                      },
-                                    )}
-                                    <td className={TD_CLASS} />
-                                    <td
-                                      className={cn(
-                                        TD_CLASS,
-                                        "whitespace-nowrap",
-                                      )}
-                                    >
-                                      {!p.is_active ? null : editing ? (
-                                        <span className="inline-flex gap-1.5">
-                                          <button
-                                            type="button"
-                                            disabled={
-                                              editing.saving ||
-                                              Object.keys(errs).length > 0
-                                            }
-                                            className={BTN_BLUE_SMALL}
-                                            onClick={() =>
-                                              void saveRateRow(p.id)
-                                            }
-                                          >
-                                            {editing.saving
-                                              ? "Saving…"
-                                              : "Save"}
-                                          </button>
-                                          <button
-                                            type="button"
-                                            className={BTN_EDIT_CLASS}
-                                            onClick={() => setEditingRate(null)}
-                                          >
-                                            Cancel
-                                          </button>
-                                        </span>
-                                      ) : (
-                                        <span className="inline-flex gap-1.5">
-                                          <button
-                                            type="button"
-                                            aria-label={`Edit ${r.tour_name} prices`}
-                                            className={BTN_EDIT_CLASS}
-                                            onClick={() => startEdit(false)}
-                                          >
-                                            Edit
-                                          </button>
-                                          <button
-                                            type="button"
-                                            aria-label={`Add an item to ${r.tour_name}`}
-                                            title="Add an item (name and price)"
-                                            className={cn(
-                                              BTN_EDIT_CLASS,
-                                              "font-bold",
-                                            )}
-                                            onClick={() => startEdit(true)}
-                                          >
-                                            ＋
-                                          </button>
-                                        </span>
-                                      )}
-                                    </td>
-                                  </tr>
-                                  {editing
-                                    ? editing.items.map((it, i) => (
-                                        <tr
-                                          key={it.key}
-                                          className={cn(
-                                            TR_CLASS,
-                                            ITEM_ROW_CLASS,
-                                          )}
-                                          data-rate-item-edit={i + 1}
-                                        >
-                                          <td className={cn(TD_CLASS, "pl-12")}>
-                                            <span className="mr-1 text-[#9ca3af]">
-                                              ↳
-                                            </span>
-                                            <input
-                                              type="text"
-                                              aria-label={`${r.tour_name} item ${i + 1} name`}
-                                              placeholder="Item name"
-                                              maxLength={80}
-                                              autoFocus={
-                                                !it.name &&
-                                                i === editing.items.length - 1
-                                              }
-                                              value={it.name}
-                                              onChange={(e) =>
-                                                patchItems((all) =>
-                                                  all.map((x) =>
-                                                    x.key === it.key
-                                                      ? {
-                                                          ...x,
-                                                          name: e.target.value,
-                                                        }
-                                                      : x,
-                                                  ),
-                                                )
-                                              }
-                                              className={cn(
-                                                CELL_INPUT,
-                                                "w-[200px]",
-                                                errs[it.key]?.name && BAD_INPUT,
-                                              )}
-                                            />
-                                            {errs[it.key]?.name ? (
-                                              <span
-                                                data-item-error
-                                                className={ITEM_ERROR_CLASS}
-                                              >
-                                                {errs[it.key].name}
-                                              </span>
-                                            ) : null}
-                                          </td>
-                                          <td
-                                            colSpan={2}
-                                            className={cn(
-                                              TD_CLASS,
-                                              "text-right whitespace-nowrap",
-                                            )}
-                                          >
-                                            <input
-                                              type="text"
-                                              inputMode="decimal"
-                                              aria-label={`${r.tour_name} item ${i + 1} price`}
-                                              placeholder="0.00"
-                                              value={it.price}
-                                              onChange={(e) =>
-                                                patchItems((all) =>
-                                                  all.map((x) =>
-                                                    x.key === it.key
-                                                      ? {
-                                                          ...x,
-                                                          price: e.target.value,
-                                                        }
-                                                      : x,
-                                                  ),
-                                                )
-                                              }
-                                              className={cn(
-                                                CELL_INPUT,
-                                                "w-[88px] text-right",
-                                                errs[it.key]?.price &&
-                                                  BAD_INPUT,
-                                              )}
-                                            />
-                                            <span className="ml-1.5 inline-flex gap-1">
-                                              <button
-                                                type="button"
-                                                aria-label={`Move ${it.name || `item ${i + 1}`} up`}
-                                                disabled={i === 0}
-                                                className={BTN_EDIT_CLASS}
-                                                onClick={() =>
-                                                  patchItems((all) =>
-                                                    move(all, i, -1),
-                                                  )
-                                                }
-                                              >
-                                                ↑
-                                              </button>
-                                              <button
-                                                type="button"
-                                                aria-label={`Move ${it.name || `item ${i + 1}`} down`}
-                                                disabled={
-                                                  i === editing.items.length - 1
-                                                }
-                                                className={BTN_EDIT_CLASS}
-                                                onClick={() =>
-                                                  patchItems((all) =>
-                                                    move(all, i, 1),
-                                                  )
-                                                }
-                                              >
-                                                ↓
-                                              </button>
-                                              <button
-                                                type="button"
-                                                aria-label={`Remove ${it.name || `item ${i + 1}`}`}
-                                                className="cursor-pointer border-none bg-transparent px-1 text-[13px] font-bold text-[#A32D2D] night:text-red-300"
-                                                onClick={() =>
-                                                  patchItems((all) =>
-                                                    all.filter(
-                                                      (x) => x.key !== it.key,
-                                                    ),
-                                                  )
-                                                }
-                                              >
-                                                ✕
-                                              </button>
-                                            </span>
-                                            {errs[it.key]?.price ? (
-                                              <span
-                                                data-item-error
-                                                className={ITEM_ERROR_CLASS}
-                                              >
-                                                {errs[it.key].price}
-                                              </span>
-                                            ) : null}
-                                          </td>
-                                          <td className={TD_CLASS} />
-                                          <td className={TD_CLASS} />
-                                        </tr>
-                                      ))
-                                    : (r.items ?? []).map((it) => (
-                                        <tr
-                                          key={it.id ?? it.name}
-                                          className={cn(
-                                            TR_CLASS,
-                                            ITEM_ROW_CLASS,
-                                            !p.is_active && "opacity-60",
-                                          )}
-                                          data-rate-item={`${p.name}|${r.tour_name}|${it.name}`}
-                                        >
-                                          <td className={cn(TD_CLASS, "pl-12")}>
-                                            <span className="mr-1 text-[#9ca3af]">
-                                              ↳
-                                            </span>
-                                            {it.name}
-                                          </td>
-                                          <td
-                                            colSpan={2}
-                                            className={cn(
-                                              TD_CLASS,
-                                              "text-right tabular-nums",
-                                            )}
-                                          >
-                                            ${it.price.toFixed(2)}
-                                          </td>
-                                          <td className={TD_CLASS} />
-                                          <td className={TD_CLASS} />
-                                        </tr>
-                                      ))}
-                                  {editing ? (
-                                    <tr
-                                      className={cn(TR_CLASS, ITEM_ROW_CLASS)}
-                                    >
-                                      <td
-                                        colSpan={5}
-                                        className={cn(TD_CLASS, "pl-12")}
-                                      >
-                                        <button
-                                          type="button"
-                                          className="cursor-pointer border-none bg-transparent p-0 text-[12px] font-semibold text-[#1f4e79] hover:underline night:text-sky-300"
-                                          onClick={() =>
-                                            setEditingRate((cur) =>
-                                              cur
-                                                ? {
-                                                    ...cur,
-                                                    items: [
-                                                      ...cur.items,
-                                                      blankItem(),
-                                                    ],
-                                                    // 新加的空行不马上标红，下次 Save 再查。
-                                                    tried: false,
-                                                    error: null,
-                                                  }
-                                                : cur,
-                                            )
-                                          }
-                                        >
-                                          ＋ Add item
-                                        </button>
-                                      </td>
-                                    </tr>
-                                  ) : null}
-                                </Fragment>
-                              );
-                            })
+                            (list ?? []).map((r) => (
+                              <TourProducts
+                                key={r.manifest_id}
+                                partnerName={p.name}
+                                active={p.is_active}
+                                rate={r}
+                                editing={
+                                  editingTour?.partnerId === p.id &&
+                                  editingTour.manifestId === r.manifest_id
+                                }
+                                saved={savedRow === `${p.id}|${r.manifest_id}`}
+                                disabled={editingTour !== null}
+                                onStartEdit={() => {
+                                  setSavedRow(null);
+                                  setEditingTour({
+                                    partnerId: p.id,
+                                    manifestId: r.manifest_id,
+                                  });
+                                }}
+                                onCancel={() => {
+                                  setTourDirty(false);
+                                  setEditingTour(null);
+                                }}
+                                onSave={(put) => saveTour(p.id, put)}
+                                onDirty={setTourDirty}
+                              />
+                            ))
                           )}
                           {openId === p.id ? (
                             <tr className={TR_CLASS}>
@@ -1105,58 +678,38 @@ export function PartnersView() {
 }
 
 /** 页面说明（同其它 Settings 页的蓝色 How to use 条）。 */
-/** money = false（没勾 orders.money_view）：不讲价格、子项和 Import rates。 */
+/** money = false（没勾 orders.money_view）：不讲价格、产品和 Import rates。 */
 function HowToUse({ money }: { money: boolean }) {
   return (
-    <LegacyHowTo
-      title="How to use — Farm out Partners"
-      padY="py-2.5"
-      footer={
-        money
-          ? "Infants are never counted in the settlement amount, on any tour."
-          : undefined
-      }
-    >
-      {money ? (
-        <MoneyHowTo />
-      ) : (
-        <li>Add a partner: type its name and click Add.</li>
-      )}
+    <LegacyHowTo title="How to use — Farm out Partners" padY="py-2.5">
+      {money ? <MoneyHowTo /> : null}
+      <li>Add a partner: type its name and click Add.</li>
       <PartnerHowTo />
     </LegacyHowTo>
   );
 }
 
+/**
+ * G263 v3 定稿（Annie「同意推荐，动手」）：preview 题 d A 稿；第 2 条加全名一句，第 7 条用题 b B 句，
+ * 第 8 条短名 / 全名都能对上。
+ */
+export const RATES_HOW_TO = [
+  "Find the partner, then the tour, and click Edit.",
+  "Each tour lists its products. Click + Add product and type its name (for example Premium Pass, Admission Only). Names must be different within a tour. ↑ ↓ change the order; × removes a product. Everywhere else the system shows the full name: tour, product and partner, for example West Rim Premium Pass - C Tour.",
+  "Prices: under each product, click + Add price, choose Adult, Child or Infant and type the price. Same price for adults and children? Add an Adult row and a Child row with the same price. × removes a price row.",
+  "Click Save on the tour. Nothing is kept until you do.",
+  "In Dispatch › Farm out guests, pick the product for each order. A tour with only one product uses it automatically. The payable is the product's price for each ticket type; infants with no price count as 0.",
+  "An order with more than one product: pick one of them, then type the payable by hand.",
+  "If the product has no Adult or Child price, the order shows “no adult rate” (or child) and its payable stays empty. Add the price here, then pick the product again on the order, or type the payable by hand. Changing a price here does not change orders that already have a payable.",
+  "⬆ Import rates: the file has the columns Partner, Tour, Product, Adult, Child, Infant. Rows are matched by partner, tour and product name; the product can be the short name (Premium Pass) or the full name (West Rim Premium Pass - C Tour). A blank cell changes nothing. A product name that is not on the tour yet is added as a new product. Partners and tours must already be here.",
+];
+
 function MoneyHowTo() {
   return (
     <>
-      <li>
-        Add a partner: type its name and click Add. Its tours appear under it
-        with prices not set; click Edit on a tour to set them.
-      </li>
-      <li>
-        Every tour is listed under its partner with the Adult and Child price,
-        even tours with no price yet. Click Edit on a tour row, change the
-        prices and click Save. A tour with no price cannot get a payable amount
-        in Dispatch until you set one. A tour with items under it shows N/A when
-        its Adult and Child are blank — the prices are on its items, so nothing
-        is missing.
-      </li>
-      <li>
-        Click ＋ on a tour to add an item under it — a name and a price per
-        person (for example Lunch 15.00). Add as many as you need with ＋ Add
-        item; ↑↓ changes the order and ✕ removes one. Items are saved together
-        with the Adult and Child prices when you click Save. They are a price
-        list only and are not added to the amount payable in Dispatch.
-      </li>
-      <li>
-        To change many prices at once (for example the yearly price change),
-        click ⬆ Import in Partners &amp; rates, then ⬇ Download template (every
-        partner and tour with today&apos;s prices). Change the prices in Excel,
-        choose the file, check the preview and click Save. Rows are matched by
-        Partner and Tour; a blank cell never clears a price; rows marked Error
-        are not saved.
-      </li>
+      {RATES_HOW_TO.map((t) => (
+        <li key={t}>{t}</li>
+      ))}
     </>
   );
 }

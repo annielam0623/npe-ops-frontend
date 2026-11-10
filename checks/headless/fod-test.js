@@ -288,6 +288,50 @@ async function run() {
     const st = await evaluate(`const g = document.querySelector('[data-farm-out-guests]'); const h = [...g.querySelectorAll('thead th')].map(t => t.textContent.trim()); const r = ${farmOrder("CHDF001")}; return { head: h.includes('Payable'), input: !!g.querySelector('[aria-label^="Payable for"]'), money: [...g.querySelectorAll('input')].some(i => i.value.includes('$305')), note: !!g.querySelector('[data-no-payable]'), cells: r.children.length === h.length };`);
     check(`${label}：Farm out 名单 ${see ? "有" : "没有"} Payable 栏（表头、输入框、$305）${see ? "" : "，不提 Payable is not set"}`, st.head === see && st.input === see && st.money === see && (see || !st.note) && st.cells, JSON.stringify(st));
   }
+  // ── G263 v3（Annie「同意推荐，动手」，题 a A）：每单选产品；后端带 product_options 才出 Product 列 ──
+  {
+    const WIDGET = [{ key: "farm_out_dispatch", label: "Dispatch · Farm out", visibility: "staff", default: "super_admin_only", visible_to_me: true }];
+    const pick = (label, v) => `const el = document.querySelector('[aria-label="${label}"]'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(el, '${v}'); el.dispatchEvent(new Event('change', { bubbles: true }));`;
+    const headsOf = "return [...document.querySelector('[data-farm-out-guests]').querySelectorAll('thead th')].map(t => t.textContent.trim());";
+    const openGuests = async () => {
+      await openDay(D_FO, `document.querySelector('[data-farm-out-guests]')`);
+      await evaluate(`${guestsBtn}.click();`);
+      await waitFor(farmOrder("CHDF003"));
+      await sleep(300);
+    };
+    await ctl({ staffPerms: null, extraWidgets: null, foVis: "staff", resetFo: true, foProducts: false });
+    await openGuests();
+    check("G263 旧后端（没有 product_options）：Farm out 名单没有 Product 列、没有黄字", await evaluate(`const h = (() => { ${headsOf} })(); return !h.includes('Product') && !document.querySelector('[data-no-product]');`));
+
+    await ctl({ resetFo: true, foProducts: "multi" });
+    await openGuests();
+    const h = await evaluate(headsOf);
+    const i = h.indexOf("Product");
+    check("G263：Product 列在 Adult / Child / Infant 后面、Pick-up hotel 前面；每行格数 = 表头数", i > 0 && h[i - 1] === "Adult / Child / Infant" && h[i + 1] === "Pick-up hotel" && (await evaluate(`return ${farmOrder("CHDF001")}.children.length === ${h.length};`)), JSON.stringify(h));
+    check("G263：选了的单下拉显示全名、普通框；没选的写 Pick a product、虚线琥珀框（同 Choose hotel…），选项是后端给的全名", await evaluate(`const a = document.querySelector('[aria-label="Product for ZZ Test Sent"]'), c = document.querySelector('[aria-label="Product for ZZ Test Three"]'); return a.value === '701' && a.selectedOptions[0].textContent === 'West Rim Premium Pass - Partner A' && !/border-dashed/.test(a.className) && c.value === '' && /border-dashed/.test(c.className) && /e7b75a/.test(c.className) && JSON.stringify([...c.options].map(o => o.textContent)) === JSON.stringify(['Pick a product', 'West Rim Premium Pass - Partner A', 'West Rim Admission Only - Partner A']);`));
+    check("G263：表下黄字 Product is not picked for 2 orders.；应付那句改成 Pick a product, or type an amount.", await evaluate(`const n = document.querySelector('[data-no-product]'); return n?.textContent.trim() === 'Product is not picked for 2 orders.' && getComputedStyle(n).color === 'rgb(138, 90, 0)';`), await evaluate("return document.querySelector('[data-no-product]')?.textContent;"));
+    let b0 = (await mockLog()).length;
+    await evaluate(pick("Product for ZZ Test Three", "702"));
+    const pr0 = (await waitReq(b0, foPatch))[0];
+    check("G263：选产品 ⇒ PATCH /api/farm-out/orders/CHDF003 {rate_item_id: 702}（只带这一项）", pr0?.path.endsWith("/CHDF003") && pr0.q.date === D_FO && JSON.stringify(pr0.body) === JSON.stringify({ rate_item_id: 702 }), JSON.stringify(pr0));
+    check("G263：存好重读：下拉换成选的产品、黄字变 1 order、应付按产品重算 $83.00", await waitFor(`document.querySelector('[aria-label="Product for ZZ Test Three"]')?.value === '702' && document.querySelector('[data-no-product]')?.textContent.trim() === 'Product is not picked for 1 order.' && document.querySelector('[aria-label="Payable for ZZ Test Three"]')?.value === '$83.00'`), await evaluate(`return [document.querySelector('[aria-label="Product for ZZ Test Three"]')?.value, document.querySelector('[data-no-product]')?.textContent, document.querySelector('[aria-label="Payable for ZZ Test Three"]')?.value].join(' | ');`));
+    b0 = (await mockLog()).length;
+    await evaluate(pick("Product for ZZ Test Three", ""));
+    const pr1 = (await waitReq(b0, foPatch))[0];
+    check("G263：改回 Pick a product ⇒ {rate_item_id: null}，又出虚线框", JSON.stringify(pr1?.body) === JSON.stringify({ rate_item_id: null }) && (await waitFor(`document.querySelector('[aria-label="Product for ZZ Test Three"]')?.value === '' && /border-dashed/.test(document.querySelector('[aria-label="Product for ZZ Test Three"]').className)`)), JSON.stringify(pr1?.body));
+
+    await ctl({ resetFo: true, foProducts: "single" });
+    await openGuests();
+    check("G263：团只有一个产品 ⇒ 直接写全名、没有下拉、没有黄字（后端自动用它）", await evaluate(`const names = [...document.querySelectorAll('[data-farm-out-guests] [data-product-name]')].map(e => e.textContent); return names.length === 3 && names.every(n => n === 'West Rim VOF-H/D - Partner A') && !document.querySelector('[aria-label^="Product for"]') && !document.querySelector('[data-no-product]');`));
+
+    // 没勾 orders.money_view：先照后端推荐「不能改」（等 Annie），只读显示，不发 PATCH（后端会 403）
+    await ctl({ resetFo: true, foProducts: "multi", staffPerms: ["dispatch.view", "dispatch.edit", "dispatch.send", "manifests.view"], extraWidgets: WIDGET });
+    b0 = (await mockLog()).length;
+    await openGuests();
+    check("G263 没勾 orders.money_view：产品只读（选了的写全名、没选的琥珀字 Not picked），没有下拉、没发 PATCH；黄字照样提醒", (await evaluate(`const cell = (n) => document.querySelector('[data-farm-order="' + n + '"] [data-product-cell]'); return !document.querySelector('[aria-label^="Product for"]') && cell('CHDF001').textContent.trim() === 'West Rim Premium Pass - Partner A' && cell('CHDF003').textContent.trim() === 'Not picked' && document.querySelector('[data-no-product]')?.textContent.trim() === 'Product is not picked for 2 orders.';`)) && (await since(b0, foPatch)).length === 0);
+    await ctl({ staffPerms: null, extraWidgets: null, foProducts: false, resetFo: true });
+  }
+
   await ctl({ staffPerms: null, extraWidgets: null });
   await ctl({ foVis: "staff", resetFo: true });
   await openDay(D_FO, `document.querySelector('[data-farm-out-guests]')`);

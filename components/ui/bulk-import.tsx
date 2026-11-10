@@ -115,6 +115,7 @@ export function BulkImport({
   commit,
   atomic,
   canCreate = true,
+  statusText,
   describe,
   onClose,
   onSaved,
@@ -133,6 +134,8 @@ export function BulkImport({
   atomic: boolean;
   /** false = 这页导入不建新记录（Team：只改已有的人），数字里不写 New。 */
   canCreate?: boolean;
+  /** 换某种状态的标签字（例如 Farm out 结算价把 New 写成「New product」）；没给的照 STATUS_TEXT。 */
+  statusText?: Partial<Record<BulkImportStatus, string>>;
   describe: (error: unknown) => string;
   onClose: () => void;
   /** 存好了：父组件重拉列表、日志。 */
@@ -361,7 +364,12 @@ export function BulkImport({
               </thead>
               <tbody>
                 {ready.rows.map((row, i) => (
-                  <PreviewRow key={i} row={row} columns={ready.columns} />
+                  <PreviewRow
+                    key={i}
+                    row={row}
+                    columns={ready.columns}
+                    statusText={statusText}
+                  />
                 ))}
               </tbody>
             </table>
@@ -404,9 +412,11 @@ export function BulkImport({
 function PreviewRow({
   row,
   columns,
+  statusText,
 }: {
   row: BulkImportRow;
   columns: BulkImportColumn[];
+  statusText?: Partial<Record<BulkImportStatus, string>>;
 }) {
   const isError = row.status === "error";
   const rowErrors = (row.errors ?? []).filter((e) => e.field === null);
@@ -424,7 +434,7 @@ function PreviewRow({
               STATUS_CLASS[row.status],
             )}
           >
-            {STATUS_TEXT[row.status]}
+            {statusText?.[row.status] ?? STATUS_TEXT[row.status]}
           </span>
         </td>
         {columns.map((c) => {
@@ -508,12 +518,17 @@ function PreviewRow({
 export function fromImportResponse(
   p: ImportPreviewResponse,
   labelOf: (key: string) => string,
+  /** 后端给了非空 `label`（全名）时，这一栏显示全名；没给照旧显示文件里写的。 */
+  labelColumn?: string,
 ): BulkImportPreview {
   return {
     columns: p.columns.map((k) => ({ key: k, label: labelOf(k) })),
     rows: p.rows.map((row) => ({
       status: row.status,
-      values: row.values,
+      values:
+        labelColumn && row.label
+          ? { ...row.values, [labelColumn]: row.label }
+          : row.values,
       before: row.before,
       changed: row.changed,
       blanked: row.blanked,
@@ -543,6 +558,8 @@ export function StandardImport({
   labelOf,
   template,
   canCreate,
+  statusText,
+  labelColumn,
   onClose,
   onSaved,
   onUnauthorized,
@@ -554,6 +571,9 @@ export function StandardImport({
   labelOf: (key: string) => string;
   template: () => { blob: Blob; filename: string };
   canCreate?: boolean;
+  statusText?: Partial<Record<BulkImportStatus, string>>;
+  /** 见 `fromImportResponse`：这一栏用后端给的全名 `label`。 */
+  labelColumn?: string;
   onClose: () => void;
   onSaved: () => void;
   onUnauthorized: () => void;
@@ -564,13 +584,18 @@ export function StandardImport({
       help={help}
       template={async () => template()}
       preview={async (file, signal) =>
-        fromImportResponse(await previewImport(endpoint, file, signal), labelOf)
+        fromImportResponse(
+          await previewImport(endpoint, file, signal),
+          labelOf,
+          labelColumn,
+        )
       }
       commit={async (file) =>
         importResultText(await commitImport(endpoint, file))
       }
       atomic
       canCreate={canCreate}
+      statusText={statusText}
       describe={describeError}
       onClose={onClose}
       onSaved={onSaved}
