@@ -26,6 +26,8 @@ pe-ops-wt-1a-110ex，已推 task/110-exceptions（sch 467、引擎 32、nav 39�
 - ✅ **113 Bus Manifest 隐藏列上 main 982ef764**（1a；后端 G275 f06f6e7a / 合并 00573e44）：字段逐项一致前端没改；已删的设置页接口前端没用到；mf 308、nav 39，tsc / eslint / build 过。验收点已转 Annie；**要 Annie 在 Bus Manifest 页把 Antelope 的 Lunch 勾掉、按页头 Save**。1a 手上空了。
 - 109 W4 第二段前端：问 Annie 派 79（推荐）还是新开窗口，等她回。
 - ✅ **Annie（原话）：「114，115，107全选A。动手」**（置顶 114 / 115 / 107 已标）。派工：114 → 1a（Relay list + Bus Manifest 编辑卡，手机键高 26px 跟 115）；115、107 请 Annie 开新窗口（115 不动 Relay list 页头 / 编辑卡，那块归 114）。
+- ✅ 后端 **G271 W4 第二段上 main**（d9：任务提交 cbcf558d，合并 0d9c94f2，后端 main f30d895a；完整形状在后端 docs/interfaces/send-outcome-2026-11-09.md 第 5 节）。跟早上那份有两处更正：多周分享 failed 的 reason "no link" 改成 "link could not be made"；Operation report 的 no_contact 永远是 []（同 Staff Messages）。前端改成读新键、上线后把 SHA 发 d9，后端再删 not_reached。前端还没派（等 Annie 定 79 / 新窗口）。
+- 🟡 Annie 随后改 107（原话）：「107要改一下，登录进来之后直接弹窗，更新以后才可以继续」⇒ 107 暂停，先出新 preview（派给新开的 107 窗口），细节 N1–N3 见置顶 107。
 
 ## 2026-11-09 晚 收工交接：前端主窗口 `前端主窗口-78`[426278]（家里电脑；明天 Annie 在公司电脑）
 > Annie（原话）：「ok，今晚就到这里吧，收工，请详细记录今天做完和未完成的方便我明天在公司电脑继续」。78 只分工和汇报，没写功能代码。今晚工作窗口 `59`[66d88c]、`03`[44f0b4]；后端主窗口 `后端主窗口0a`[45ce5d]（子窗口 78 [fdaaf2]、37、40、3e、12），后端交接已推 abc6bb66。过程见下面「78 开工」一节。
@@ -1685,7 +1687,9 @@ pe-ops-frontend-03c），推分支、不合 main**：等后端 40 上 main 给 S
   - 35 派 79 做对照页 + 统一方案 Q1–Q7（推荐都 A），做好后连每题原文发 Annie。d4 已知：统一方案定之前各模块行为不动。
 - 106 前端已上 dcc04e1a，How to use 现在写：「Every reminder goes out by SMS and email. A guest with no email address gets the SMS only, and a guest with no phone number gets the email only.」
 
-### 107. 「有新版本，请刷新」提示条（2026-11-09，Annie：「第四条，做」；3c 出 preview）—— ✅ 已答 + 动手，见「11-10 62 开工」
+### 107. 「有新版本，请刷新」提示条（2026-11-09，Annie：「第四条，做」；3c 出 preview）—— ⏸️ 11-10 Annie 改方案，暂停，等新 preview +「动手」
+
+- 🟡 **Annie 11-10 改（原话）：「107要改一下，登录进来之后直接弹窗，更新以后才可以继续」** ⇒ 提示条改成挡住整页的弹窗，刷新后才能继续用。原来的 Q1 位置、Q5 能不能关不再适用。要新 preview。62 问了 Annie 三个细节，原文见 62 回复：N1 什么时候弹（A 打开页面和用的中途都弹 / B 只在打开页面时）；N2 有没存的改动（A 弹窗里放 Save and reload + Reload without saving / B 等存完再弹）；N3 正在发送（A 发完再弹）。
 
 - ✅ **Annie 11-10（原话）：「114，115，107全选A。动手」**：Q1 Notice 下面、Q2 实心黄 Reload、Q3 有没存的改动先问 Save / Don't save / Cancel、Q4 发送页过期 Send 灰 + 红字且按 Send 时再查、Q5 不能关。
 
