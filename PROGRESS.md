@@ -1477,6 +1477,7 @@ D. 已完成、待从置顶移走：
 - 后端 3e 形状（task/hide-lunch-column，审查中，未上线）：GET /api/settings/manifest-setup 顶层 bus_column_options [{key:"lunch", label:"Lunch"}]，groups[] 加 bus_hidden_columns（[] = 都显示）；PUT /api/settings/manifest-setup/groups/{manifest_id}/bus-hidden-columns {hidden_columns} 整组替换，回 {ok, hidden_columns}，require_admin，400 detail 原话。效果：/api/dispatch/manifest tour.lunch_column = false ⇒ 打印 / Excel 不出 Lunch 列；午餐单、lunch_mismatch、restaurant、lunch_note 不变。上线后在页面把 Antelope（manifests id 3）的 Lunch 勾掉。
 - 59 只读查：Bus Manifest 屏幕和打印同一套，已照 tour.lunch_column 出不出 Lunch 列（manifest-view.tsx columnsFor）⇒ Bus Manifest 页不用改。勾放在 Products › Manifest setup › Bus Manifest setup（A6 那页，每格一个 Save、10 分钟没活动自动存、换团 / 离开先问），新格照同一套 useBlockSave。
 - preview（模拟数据）：https://claude.ai/artifact/QFf5CH4r5WVK3KsqJNHUba 。题：Q1 放哪（A 午餐那格下面新的一格「Bus Manifest columns」）、Q2 勾的意思（A 勾上 = 显示，默认全勾）、Q3 怎么存（A 同这页其他格）、Q4 没排餐厅的团（A 照样出勾 + 灰字），都推荐 A；How to use 一句原文在 preview。等 Annie 答 +「动手」+ 后端 SHA。
+- 后端 3e 已上 main 1e8006fc（59 只读核，和 preview 写法一致、前端不用改形状）：GET 顶层 bus_column_options [{key:"lunch", label:"Lunch"}]、groups[].bus_hidden_columns（[] = 都显示）；PUT …/groups/{id}/bus-hidden-columns {hidden_columns} 整组替换、回 {ok, hidden_columns}、require_admin、400 detail 原话（例「notes is not a Bus Manifest column that can be hidden.」）；tour.lunch_column = 有午餐店 且 没勾掉 ⇒ Q4 的灰字用 group.lunch_restaurant（null = 没排餐厅）判断。还等 Annie 答 4 题 +「动手」。
 
 ### 112. Relay list 一张单超一页：先自动压空白，压不下再提示（2026-11-09，Annie 在后端 d4 窗口定，d4 转；79 出 preview，没动手）
 
