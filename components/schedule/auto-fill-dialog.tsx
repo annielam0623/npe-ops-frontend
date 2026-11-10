@@ -17,6 +17,8 @@ import {
   type Problem,
   type Rule,
   type WeekPlan,
+  overHours,
+  weeklyHoursLimit,
 } from "@/lib/schedule-engine";
 import { formatClock } from "@/lib/schedule-time";
 import { cn } from "@/lib/utils";
@@ -717,6 +719,7 @@ export function AutoFillDialog({
             step={step}
             employees={active}
             settings={settings}
+            hoursRules={rules}
             baseWeek={fill === "base" ? baseWeek : null}
             onAnother={() => {
               // 重排：同样的输入、换一个 seed；需要重读现状时回到 inspect 太慢，这里直接用上一次读到的
@@ -897,6 +900,7 @@ function PreviewBody({
   step,
   employees,
   settings,
+  hoursRules,
   baseWeek,
   onAnother,
   onCreate,
@@ -905,6 +909,8 @@ function PreviewBody({
   step: Extract<Step, { kind: "preview" }>;
   employees: ScheduleEmployee[];
   settings: ScheduleSettings;
+  /** 看「每周超几小时提醒」用的规则（置顶 110 题 3 / 4）。 */
+  hoursRules: Rule[];
   /** 按基础周排时是哪一周；照 Rules 排 = null。 */
   baseWeek: string | null;
   onAnother: () => void;
@@ -915,6 +921,15 @@ function PreviewBody({
   const problems = step.proposals.flatMap((p) => p.problems);
   const label = (key: string) =>
     settings.shift_types.find((t) => t.key === key)?.label ?? key;
+  // 置顶 110 题 3 A：超过每周提醒小时数的人，黄框下面单独一行琥珀字（只提醒，不算排不下）。
+  const limit = weeklyHoursLimit(hoursRules);
+  const live = step.proposals.filter((p) => !p.skipped);
+  const over = live.flatMap((p) =>
+    overHours(hoursRules, p.plan, employees).map((o) => ({
+      ...o,
+      week: p.weekStart,
+    })),
+  );
   return (
     <>
       {baseWeek ? (
@@ -951,6 +966,21 @@ function PreviewBody({
           </p>
         </div>
       )}
+      {limit != null && over.length ? (
+        <p
+          data-autofill-over-hours
+          className="text-[13px] font-semibold text-[#fcd34d]"
+        >
+          Over {limit} hours:{" "}
+          {over
+            .map(
+              (o) =>
+                `${o.name} ${o.hours} h ${live.length > 1 ? `(${rangeText(o.week, 1)})` : "this week"}`,
+            )
+            .join(", ")}
+          .
+        </p>
+      ) : null}
       {step.proposals.map((p) => (
         <div
           key={p.weekStart}

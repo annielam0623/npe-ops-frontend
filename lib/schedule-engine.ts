@@ -28,7 +28,9 @@ export type RuleType =
   | "min_rest"
   | "after_shift"
   | "coverage"
-  | "exclude_from_rotation";
+  | "exclude_from_rotation"
+  | "max_per_shift_day"
+  | "weekly_hours_alert";
 
 /** 规则清单里的一条；`enabled: false` 的引擎不看。params 的形状看下面各 *Params。 */
 export interface Rule {
@@ -73,9 +75,15 @@ export interface DaysPerWeekParams {
   n: number;
   employee_ids?: number[];
 }
-/** 某人（不写 = 所有人）某种班每周 / 每 4 周至少 n 天。 */
+/**
+ * 某种班每周 / 每 4 周至少 n 天。选人三选一（置顶 110 题 7）：employee_ids = 只算这几个人；
+ * exclude_employee_ids = 除了这几个人；都不写 = 所有人（不含 exclude_from_rotation 的人）。
+ * employee_id 是旧规则的写法（只读，存的时候前端换成 employee_ids）。
+ */
 export interface MinDaysOnShiftParams {
   employee_id?: number;
+  employee_ids?: number[];
+  exclude_employee_ids?: number[];
   shift_type: string;
   n: number;
   per: "week" | "4weeks";
@@ -98,6 +106,19 @@ export interface CoverageParams {
 /** 不参加轮换的人：周末轮值、以及排满天数时多出来的班都不排他（只排固定班）。 */
 export interface ExcludeFromRotationParams {
   employee_id: number;
+}
+/**
+ * 每个班一天最多几人（置顶 110 ①）：shift_type 不写 = 每种班各自算；days 不写 = 每天。
+ * Auto-fill 严格遵守（固定班 / 保留的班本身超了照排、写进预览，不再加人）；手动排班不拦，只标出来。
+ */
+export interface MaxPerShiftDayParams {
+  shift_type?: string;
+  max: number;
+  days?: DayIndex[];
+}
+/** 每周超过 hours 小时提醒（置顶 110 ④）：只提醒、不拦，排班引擎不看它。 */
+export interface WeeklyHoursAlertParams {
+  hours: number;
 }
 
 /** 一个人一周 7 天的班：下标 0..6，休息 = null。 */
@@ -188,6 +209,7 @@ interface Compiled {
   after: AfterShiftParams[];
   coverage: CoverageParams[];
   excluded: Set<number>;
+  maxPer: MaxPerShiftDayParams[];
 }
 
 function compile(rules: Rule[]): Compiled {
@@ -211,7 +233,119 @@ function compile(rules: Rule[]): Compiled {
         (r) => r.employee_id,
       ),
     ),
+    maxPer: enabled<MaxPerShiftDayParams>(rules, "max_per_shift_day"),
   };
+}
+
+/** 这一天这种班最多几人（几条规则取最小）；没有规则管 = null。 */
+function capFor(c: Compiled, day: DayIndex, type: string): number | null {
+  let cap: number | null = null;
+  for (const r of c.maxPer) {
+    if (r.shift_type && r.shift_type !== type) continue;
+    if (r.days && r.days.length && !r.days.includes(day)) continue;
+    cap = cap == null ? r.max : Math.min(cap, r.max);
+  }
+  return cap;
+}
+
+/** 开着的规则里，这一天这种班最多几人（没有规则管 = null）。手动排班标超人数用（置顶 110 题 6）。 */
+export function maxPeopleOn(
+  rules: Rule[],
+  day: DayIndex,
+  type: string,
+): number | null {
+  return capFor(compile(rules), day, type);
+}
+
+/** 某种班「至少几天」这条规则管哪些人（三选一，见 MinDaysOnShiftParams）。 */
+function minDaysTargets(
+  c: Compiled,
+  r: MinDaysOnShiftParams,
+  emps: EngineEmployee[],
+): EngineEmployee[] {
+  if (r.employee_ids && r.employee_ids.length)
+    return emps.filter((e) => r.employee_ids!.includes(e.id));
+  if (r.employee_id != null) return emps.filter((e) => e.id === r.employee_id);
+  const out = new Set(r.exclude_employee_ids ?? []);
+  return emps.filter((e) => !c.excluded.has(e.id) && !out.has(e.id));
+}
+
+/** 这一天这种班有几个人。 */
+function headcount(
+  byEmployee: Record<number, DayShift[]>,
+  emps: EngineEmployee[],
+  day: number,
+  type: string,
+): number {
+  let n = 0;
+  for (const e of emps) if (byEmployee[e.id]?.[day]?.type === type) n++;
+  return n;
+}
+
+const DAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+/**
+ * 一周里超了「每个班最多几人」的格子（手动排班标出来用，置顶 110 题 6；也是 Auto-fill 的判官）。
+ * 返回 day + 班次 + 现在几人 + 最多几人。
+ */
+export function overCapacity(
+  rules: Rule[],
+  plan: WeekPlan,
+  employees: EngineEmployee[],
+): { day: DayIndex; type: string; count: number; max: number }[] {
+  const c = compile(rules);
+  if (!c.maxPer.length) return [];
+  const out: { day: DayIndex; type: string; count: number; max: number }[] = [];
+  for (let d = 0; d < 7; d++) {
+    const types = new Set<string>();
+    for (const e of employees) {
+      const s = plan.byEmployee[e.id]?.[d];
+      if (s) types.add(s.type);
+    }
+    for (const type of types) {
+      const max = capFor(c, d as DayIndex, type);
+      if (max == null) continue;
+      const count = headcount(plan.byEmployee, employees, d, type);
+      if (count > max) out.push({ day: d as DayIndex, type, count, max });
+    }
+  }
+  return out;
+}
+
+/** 一个班几个小时：上班到下班整段算、不扣休息；下班不晚于上班按跨午夜（置顶 110 题 5）。 */
+export function shiftHours(start: string, end: string): number {
+  const h = hours(end) - hours(start);
+  return h > 0 ? h : h + 24;
+}
+
+/** 开着的「每周超几小时提醒」取最小的那条；没有 = null。 */
+export function weeklyHoursLimit(rules: Rule[]): number | null {
+  const list = enabled<WeeklyHoursAlertParams>(rules, "weekly_hours_alert");
+  return list.length ? Math.min(...list.map((r) => r.hours)) : null;
+}
+
+/** 这一周超过提醒小时数的人（按小时从多到少）；没有提醒规则 = []。PTO / Sick / Personal 不在班里，不算。 */
+export function overHours(
+  rules: Rule[],
+  plan: WeekPlan,
+  employees: EngineEmployee[],
+): { employeeId: number; name: string; hours: number }[] {
+  const limit = weeklyHoursLimit(rules);
+  if (limit == null) return [];
+  const out: { employeeId: number; name: string; hours: number }[] = [];
+  for (const e of employees) {
+    let h = 0;
+    for (const s of plan.byEmployee[e.id] ?? [])
+      if (s) h += shiftHours(s.start, s.end);
+    if (h > limit)
+      out.push({ employeeId: e.id, name: e.name, hours: roundHours(h) });
+  }
+  return out.sort((a, b) => b.hours - a.hours);
+}
+
+/** 小时数写法：42.5、42（不写多余的 .0）。 */
+export function roundHours(h: number): number {
+  return Math.round(h * 100) / 100;
 }
 
 function timesFor(c: Compiled, type: string, fallback: TimeRange): TimeRange {
@@ -326,6 +460,9 @@ export function findViolations(
       }
     }
   }
+  for (const o of overCapacity(rules, plan, employees)) {
+    out.push(`day ${o.day}: ${o.type} has ${o.count}, at most ${o.max}`);
+  }
   return out;
 }
 
@@ -412,6 +549,34 @@ export function generateWeek(input: GenerateInput): GenerateResult {
     }
   }
 
+  // 1b) 固定班 / 保留的班本身就超人数（置顶 110 题 2 A）：照排、写进预览，后面不再往这些格子加人。
+  const baseOver = overCapacity(
+    input.rules,
+    { weekStart: input.weekStart, byEmployee: days },
+    emps,
+  );
+  for (const o of baseOver) {
+    problems.push({
+      date: dateOf(o.day),
+      message: `${DAY_SHORT[o.day]} ${o.type} has ${o.count}, at most ${o.max} (fixed or kept shifts).`,
+    });
+  }
+  // 1c) 固定班 / 保留的班本身就超过每周天数（置顶 110 题 1）：固定班不动，写进预览。
+  for (const e of emps) {
+    const t = targetDays(c, e.id);
+    const n = days[e.id].filter(Boolean).length;
+    if (t != null && n > t) {
+      problems.push({
+        message: `${e.name}: fixed or kept shifts come to ${n} days, Days per week says at most ${t}.`,
+      });
+    }
+  }
+  /** 这一天这种班还能不能再加一个人（每个班最多几人）。 */
+  const roomFor = (day: DayIndex, type: string) => {
+    const cap = capFor(c, day, type);
+    return cap == null || headcount(days, emps, day, type) < cap;
+  };
+
   // 2) 周末轮值：这一周所有位置一起找「历史上排得最均匀」的分法（位置少，直接穷举 + 剪枝），
   //    不是一个位置一个位置贪心——贪心到最后一个位置常常只剩下一个已经排过的人，几周后就不公平了。
   for (const rot of c.rotation) {
@@ -428,6 +593,11 @@ export function generateWeek(input: GenerateInput): GenerateResult {
     ) => {
       if (days[e.id][slot.day]) return false;
       if (!canWork(c, e.id, slot.day, slot.shift_type)) return false;
+      // 置顶 110 ①：这个班这一天已经满了。
+      if (!roomFor(slot.day, slot.shift_type)) return false;
+      // 置顶 110 题 1 A：固定班 + 轮值超过每周天数 ⇒ 这周轮值跳过这个人，换下一位。
+      const cap = targetDays(c, e.id);
+      if (cap != null && days[e.id].filter(Boolean).length >= cap) return false;
       const t = timesFor(c, slot.shift_type, input.fallbackTimes);
       const before = slot.day === 0 ? prevLast(e.id) : days[e.id][slot.day - 1];
       if (!followOk(c, before, { type: slot.shift_type, start: t.start }))
@@ -575,8 +745,27 @@ export function generateWeek(input: GenerateInput): GenerateResult {
   }
 
   const histWithPrev = history;
+  // 固定班 / 保留的班本身已经超了的格子：罚分从那个人数算起（那是照排的，换不掉）。
+  const baseCount = new Map<string, number>();
+  for (const o of baseOver) baseCount.set(`${o.day}|${o.type}`, o.count);
   const score = (choice: Map<number, Pattern>): number => {
     let s = 0;
+    // 每个班一天最多几人（硬，置顶 110 ①）
+    if (c.maxPer.length) {
+      for (const d of WEEKDAYS) {
+        const per = new Map<string, number>();
+        for (const e of emps) {
+          const t = choice.get(e.id)?.[d]?.type;
+          if (t) per.set(t, (per.get(t) ?? 0) + 1);
+        }
+        for (const [t, n] of per) {
+          const cap = capFor(c, d, t);
+          if (cap == null) continue;
+          const allowed = Math.max(cap, baseCount.get(`${d}|${t}`) ?? 0);
+          if (n > allowed) s += 1000 * (n - allowed);
+        }
+      }
+    }
     // 每天最少人数（硬）
     for (const cov of c.coverage) {
       for (const d of WEEKDAYS) {
@@ -589,10 +778,7 @@ export function generateWeek(input: GenerateInput): GenerateResult {
     }
     // 某种班至少几天（每周的当场算；每 4 周的按历史 + 这一周）
     for (const r of c.minDays) {
-      const targets =
-        r.employee_id != null
-          ? emps.filter((e) => e.id === r.employee_id)
-          : emps.filter((e) => !c.excluded.has(e.id));
+      const targets = minDaysTargets(c, r, emps);
       for (const e of targets) {
         const pat = choice.get(e.id)!;
         const thisWeek = pat.filter((x) => x && x.type === r.shift_type).length;
@@ -649,7 +835,36 @@ export function generateWeek(input: GenerateInput): GenerateResult {
       best = new Map(cur);
     }
   }
+  // 补排前每人已有的班（固定 / 保留 / 轮值）：严格遵守人数上限时只拿掉补排加的。
+  const forcedDays = new Map(ids.map((id) => [id, days[id].slice()]));
   if (best) for (const id of ids) days[id] = best.get(id)!.slice();
+
+  // 3b) 每个班最多几人：局部搜索还是超了（排不下）⇒ 拿掉补排加的那几个班，写进预览（Auto-fill 严格遵守，置顶 110 ①）。
+  if (c.maxPer.length) {
+    for (const d of WEEKDAYS) {
+      const types = new Set<string>();
+      for (const e of emps) {
+        const t = days[e.id][d]?.type;
+        if (t) types.add(t);
+      }
+      for (const t of types) {
+        const cap = capFor(c, d, t);
+        if (cap == null) continue;
+        const allowed = Math.max(cap, baseCount.get(`${d}|${t}`) ?? 0);
+        let n = headcount(days, emps, d, t);
+        for (const e of [...emps].reverse()) {
+          if (n <= allowed) break;
+          if (days[e.id][d]?.type !== t || forcedDays.get(e.id)?.[d]) continue;
+          days[e.id][d] = null;
+          n--;
+          problems.push({
+            date: dateOf(d),
+            message: `${e.name}: no shift left on ${dateOf(d)}. Max people on a shift: ${t} allows ${cap} a day.`,
+          });
+        }
+      }
+    }
+  }
 
   // 4) 剩下的问题：每天最少人数没排满
   for (const cov of c.coverage) {
@@ -667,10 +882,7 @@ export function generateWeek(input: GenerateInput): GenerateResult {
     }
   }
   for (const r of c.minDays) {
-    const targets =
-      r.employee_id != null
-        ? emps.filter((e) => e.id === r.employee_id)
-        : emps.filter((e) => !c.excluded.has(e.id));
+    const targets = minDaysTargets(c, r, emps);
     for (const e of targets) {
       const thisWeek = days[e.id].filter(
         (x) => x && x.type === r.shift_type,

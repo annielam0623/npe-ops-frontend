@@ -677,10 +677,19 @@ http
         const b = await readBody(req);
         entry.body = b;
         if (b.version !== 1) return send(res, 400, { detail: 'Only "version": 1 is supported.' });
-        const known = ["shift_times", "fixed_shift", "weekend_rotation", "cannot_work", "days_per_week", "min_days_on_shift", "min_rest", "after_shift", "coverage", "exclude_from_rotation"];
+        // 置顶 110（后端 40 核过的形状）：多了 max_per_shift_day、weekly_hours_alert；min_days_on_shift 选人三选一、employee_ids: [] 拒。
+        const known = ["shift_times", "fixed_shift", "weekend_rotation", "cannot_work", "days_per_week", "min_days_on_shift", "min_rest", "after_shift", "coverage", "exclude_from_rotation", "max_per_shift_day", "weekly_hours_alert"];
         for (let i = 0; i < (b.rules || []).length; i++) {
           const r = b.rules[i];
           if (!known.includes(r.type)) return send(res, 400, { detail: `Rule ${i + 1}: unknown type ${r.type}.` });
+          const pr = r.params || {};
+          if (r.type === "min_days_on_shift") {
+            const given = ["employee_id", "employee_ids", "exclude_employee_ids"].filter((k) => pr[k] != null);
+            if (given.length > 1) return send(res, 400, { detail: `Rule ${i + 1} (min_days_on_shift, id "${r.id}"): params: use only one of employee_id, employee_ids, exclude_employee_ids.` });
+            if (Array.isArray(pr.employee_ids) && !pr.employee_ids.length) return send(res, 400, { detail: `Rule ${i + 1} (min_days_on_shift, id "${r.id}"): params.employee_ids must list at least one employee.` });
+          }
+          if (r.type === "max_per_shift_day" && !(Number.isInteger(pr.max) && pr.max >= 1 && pr.max <= 20)) return send(res, 400, { detail: `Rule ${i + 1} (max_per_shift_day, id "${r.id}"): params.max must be a whole number from 1 to 20.` });
+          if (r.type === "weekly_hours_alert" && !(typeof pr.hours === "number" && pr.hours >= 1 && pr.hours <= 80)) return send(res, 400, { detail: `Rule ${i + 1} (weekly_hours_alert, id "${r.id}"): params.hours must be a number from 1 to 80.` });
         }
         rulesDoc = { version: 1, rules: b.rules || [], updated_at: new Date().toISOString().slice(0, 19), updated_by: 1 };
         return send(res, 200, rulesDoc);

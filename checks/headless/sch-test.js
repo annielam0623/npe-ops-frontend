@@ -1118,6 +1118,87 @@ async function run() {
   const rulesText = await evaluate("return document.querySelector('[data-rules-view]').textContent;");
   check("规则列表里每条都是人话（Veronica always works Open on Mon–Fri / Weekend rotation / exactly 5 days / Close coverage）", rulesText.includes("Veronica always works Open on Mon–Fri") && rulesText.includes("Sat Open, Sat Close, Sun Open, Sun Close") && rulesText.includes("Everyone works exactly 5 days a week") && rulesText.includes("Every day has at least 1 Close"), rulesText.slice(0, 400));
 
+  // ───────── 置顶 110（Annie「110动手」，题 1–8 全 A）─────────
+  const putRules = async (rules) => (await fetch(`${MOCK}/api/schedule/rules`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ version: 1, rules }) })).ok;
+  const getRules = async () => (await (await fetch(`${MOCK}/api/schedule/rules`)).json()).rules;
+  const rulesTab = async () => {
+    await openPage(`${APP}/schedule?week=2026-10-11`);
+    await waitFor(`${cell("1|2026-10-11")} && [...document.querySelectorAll('[role=tab]')].some((b) => b.textContent.trim() === 'Rules')`);
+    await evaluate("[...document.querySelectorAll('[role=tab]')].find(b => b.textContent.trim() === 'Rules').click();");
+    await waitFor("document.querySelector('[data-rules-view]')");
+  };
+  // ① 新规则 Max people on a shift：Every shift、最多 1 人 ⇒ 存的是 {max: 1}（不带 shift_type，后端 40 核过的形状）
+  await evaluate("$btn('Add rule').click();");
+  await waitFor(`${dlg} && ${dlg}.textContent.includes('Add rule')`);
+  await evaluate(`$setValue(${dlg}.querySelector('select[aria-label="Rule type"]'), 'max_per_shift_day');`);
+  await waitFor(`${dlg}.querySelector('input[aria-label="max"]')`);
+  check("110 ①：类型下拉有 Max people on a shift；Shift 默认 Every shift、At most 1；预览 Every shift: at most 1 person a day, every day", await evaluate(`const sh = ${dlg}.querySelector('select[aria-label="Shift"]'); return sh.options[sh.selectedIndex].text === 'Every shift' && ${dlg}.querySelector('input[aria-label="max"]').value === '1' && ${dlg}.querySelector('[data-rule-preview]').textContent === 'Every shift: at most 1 person a day, every day';`), await evaluate(`return ${dlg}.querySelector('[data-rule-preview]')?.textContent;`));
+  await evaluate(`$btn('Save rule', ${dlg}).click();`);
+  await waitFor(`!${dlg} && document.querySelector('[data-rules-view]').textContent.includes('Every shift: at most 1 person a day')`);
+  let saved = (await getRules()).find((r) => r.type === "max_per_shift_day");
+  check("110 ①：存的形状 {max: 1}，没有 shift_type、没有 days", !!saved && JSON.stringify(saved.params) === '{"max":1}', JSON.stringify(saved));
+
+  // 题 8 A：Coverage Close 至少 2 跟 Max people 最多 1 打架 ⇒ 两条下面各一行琥珀字；改规则弹窗里也写，不拦
+  const conflictRules = [...fullRules.map((x) => (x.id === "c2" ? R("c2", "coverage", { shift_type: "close", min: 2 }) : x)), R("m1", "max_per_shift_day", { max: 1 }), R("m2", "max_per_shift_day", { shift_type: "close", max: 2, days: [6] })];
+  check("（存一套打架的规则）", await putRules(conflictRules));
+  await rulesTab();
+  check("题 8 A：Coverage 下面琥珀字 Conflicts with “Max people on a shift” (at most 1 Close)…；Max people 下面 Conflicts with “Coverage” (at least 2 Close).", await evaluate(`const c = document.querySelector('[data-rule-conflict="c2"]'), m = document.querySelector('[data-rule-conflict="m1"]'); return !!c && c.textContent === 'Conflicts with “Max people on a shift” (at most 1 Close). Auto-fill places at most 1 and lists the shortfall.' && !!m && m.textContent === 'Conflicts with “Coverage” (at least 2 Close).' && getComputedStyle(c).color === 'rgb(252, 211, 77)';`), await evaluate("return [...document.querySelectorAll('[data-rule-conflict]')].map(e => e.dataset.ruleConflict + ':' + e.textContent).join(' | ');"));
+  check("题 8 A：同一种班两条 Max people ⇒ 大的那条写 Auto-fill uses the smaller number (1)", await evaluate(`const t = [...document.querySelectorAll('[data-rule-conflict="m2"]')].map(e => e.textContent).join('|'); return t.includes('Another rule also limits Close on Sat. Auto-fill uses the smaller number (1).');`), await evaluate(`return [...document.querySelectorAll('[data-rule-conflict="m2"]')].map(e => e.textContent).join('|');`));
+  await evaluate(`$btn('Edit', document.querySelector('[data-rule-row="c2"]')).click();`);
+  await waitFor(`${dlg} && ${dlg}.textContent.includes('Edit rule')`);
+  check("题 8 A：改规则弹窗里同一句琥珀字，Save rule 照样能按", await evaluate(`const n = ${dlg}.querySelector('[data-rule-dialog-conflict]'); return !!n && n.textContent.startsWith('Conflicts with “Max people on a shift”') && !$btn('Save rule', ${dlg}).disabled;`));
+  await evaluate(`$btn('Cancel', ${dlg}).click();`);
+  await waitFor(`!${dlg}`);
+
+  // ② 题 7 A：Who 下拉三选一；Everyone except ⇒ 存 exclude_employee_ids；没点人 ⇒ 提示先点人
+  check("（规则恢复）", await putRules(fullRules));
+  await rulesTab();
+  await evaluate("$btn('Add rule').click();");
+  await waitFor(`${dlg} && ${dlg}.textContent.includes('Add rule')`);
+  await evaluate(`$setValue(${dlg}.querySelector('select[aria-label="Rule type"]'), 'min_days_on_shift');`);
+  await waitFor(`${dlg}.querySelector('select[aria-label="Who"]')`);
+  check("题 7 A：Who 下拉 Everyone / Only these people / Everyone except", await evaluate(`return [...${dlg}.querySelector('select[aria-label="Who"]').options].map(o => o.text).join('|') === 'Everyone|Only these people|Everyone except';`));
+  await evaluate(`$setValue(${dlg}.querySelector('select[aria-label="Who"]'), 'except');`);
+  await waitFor(`${dlg}.textContent.includes('Leave out')`);
+  await evaluate(`$btn('Save rule', ${dlg}).click();`);
+  check("题 7：Everyone except 但一个都没点 ⇒ 红字 Pick at least one person.，不发请求", await waitFor(`${dlg}?.querySelector('[role=alert]')?.textContent === 'Pick at least one person.'`));
+  await evaluate(`[...${dlg}.querySelectorAll('button[aria-pressed]')].find(b => b.textContent === 'Anita').click();`);
+  await sleep(100);
+  check("题 7：预览 Everyone except Anita works at least 2 Open days per week", await evaluate(`return ${dlg}.querySelector('[data-rule-preview]').textContent.startsWith('Everyone except Anita works at least 2');`), await evaluate(`return ${dlg}.querySelector('[data-rule-preview]').textContent;`));
+  await evaluate(`$btn('Save rule', ${dlg}).click();`);
+  await waitFor(`!${dlg}`);
+  saved = (await getRules()).find((r) => r.type === "min_days_on_shift");
+  check("题 7：存 exclude_employee_ids: [5]，没有 employee_id / employee_ids", !!saved && JSON.stringify(saved.params.exclude_employee_ids) === "[5]" && !("employee_id" in saved.params) && !("employee_ids" in saved.params), JSON.stringify(saved));
+
+  // 旧规则（employee_id）打开 ⇒ Only these people [那个人]，存的时候换成 employee_ids
+  check("（存一条旧写法的 min_days_on_shift）", await putRules([...fullRules, R("k9", "min_days_on_shift", { employee_id: 2, shift_type: "close", n: 2, per: "week" })]));
+  await rulesTab();
+  await evaluate(`$btn('Edit', document.querySelector('[data-rule-row="k9"]')).click();`);
+  await waitFor(`${dlg} && ${dlg}.querySelector('select[aria-label="Who"]')`);
+  check("旧规则 employee_id：打开是 Only these people、Lizzie 选上", await evaluate(`return ${dlg}.querySelector('select[aria-label="Who"]').value === 'only' && [...${dlg}.querySelectorAll('button[aria-pressed=true]')].some(b => b.textContent === 'Lizzie');`));
+  await evaluate(`$btn('Save rule', ${dlg}).click();`);
+  await waitFor(`!${dlg}`);
+  saved = (await getRules()).find((r) => r.id === "k9");
+  check("旧规则存回去：employee_ids: [2]，employee_id 去掉", JSON.stringify(saved?.params.employee_ids) === "[2]" && !("employee_id" in (saved?.params ?? {})), JSON.stringify(saved));
+
+  // 题 6 A + 题 3 A：手动排班不拦，只标出——Lizzie、Nadia 都排周一 Close（最多 1）；Veronica 周一到周五 8:30–5:00 = 42.5 小时（提醒 40）
+  check("（存 Max people 1 + Weekly hours alert 40）", await putRules([...fullRules, R("m1", "max_per_shift_day", { max: 1 }), R("h1", "weekly_hours_alert", { hours: 40 })]));
+  const W = "2026-12-06";
+  const D = (n) => `2026-12-${String(6 + n).padStart(2, "0")}`;
+  const bulk = await fetch(`${MOCK}/api/schedule/weeks/${W}/slots/bulk`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ replace: true, slots: [
+    ...[1, 2, 3, 4, 5].map((n) => ({ date: D(n), shift_type: "mid", start_time: "08:30", end_time: "17:00", employee_id: 1 })),
+    { date: D(1), shift_type: "close", start_time: "13:30", end_time: "21:30", employee_id: 2 },
+    { date: D(1), shift_type: "close", start_time: "13:30", end_time: "21:30", employee_id: 3 },
+  ] }) });
+  check("（建一周测试班）", bulk.ok, String(bulk.status));
+  await openPage(`${APP}/schedule?week=${W}`);
+  await waitFor(`${cell(`1|${D(1)}`)}`);
+  check("题 6 A：周一日期下面琥珀一行 Close 2 (max 1)；别的日子没有", await waitFor(`document.querySelector('[data-over-cap="${D(1)}|close"]')?.textContent.trim() === 'Close 2 (max 1)' && document.querySelectorAll('[data-over-cap]').length === 1`), await evaluate("return [...document.querySelectorAll('[data-over-cap]')].map(e => e.dataset.overCap + ':' + e.textContent).join('|');"));
+  check("题 6 A：那两张 Close 卡琥珀框（outline #f59e0b），Mid 卡没有", await evaluate(`const c = [...document.querySelectorAll('[data-slot-over-cap]')]; return c.length === 2 && c.every(x => getComputedStyle(x).outlineColor === 'rgb(245, 158, 11)') && ![...${cell(`1|${D(1)}`)}.querySelectorAll('[data-slot-id]')].some(x => x.dataset.slotOverCap);`), await evaluate("return document.querySelectorAll('[data-slot-over-cap]').length;"));
+  check("题 3 A：Veronica 名字下面琥珀字 42.5 h this week；没超的人没有", await evaluate(`const v = document.querySelector('[data-over-hours="1"]'); return !!v && v.textContent === '42.5 h this week' && getComputedStyle(v).color === 'rgb(252, 211, 77)' && document.querySelectorAll('[data-over-hours]').length === 1;`), await evaluate("return [...document.querySelectorAll('[data-over-hours]')].map(e => e.dataset.overHours + ':' + e.textContent).join('|');"));
+  // 题 3 A：后面的 Auto-fill 预览带一条「每周超 39 小时提醒」（Veronica 固定 Open 8 小时 × 5 = 40）。
+  check("（规则恢复 + Weekly hours alert 39）", await putRules([...fullRules, R("h1", "weekly_hours_alert", { hours: 39 })]));
+
   // 员工只读：看得到规则，没有 Add rule / Edit / Delete，开关点不了
   await ctl({ role: "staff", meName: "Jing" });
   await openPage(`${APP}/schedule?week=2026-10-04`);
@@ -1142,11 +1223,13 @@ async function run() {
   check("决定页写明 Replace 会先删现有的班", await evaluate(`return ${dlg}.textContent.includes('Replace them') && ${dlg}.textContent.includes('Add to them') && ${dlg}.textContent.includes('deletes the existing shifts');`));
   await evaluate(`$btn('Preview', ${dlg}).click();`);
   check("预览：所有规则都满足", await waitFor(`${dlg}.querySelector('[data-autofill-ok]') && ${dlg}.querySelector('[data-autofill-week]')`));
+  check("题 3 A：黄框 / 绿框下面琥珀一行 Over 39 hours: …，写 Veronica 40 h this week（只提醒，仍是所有规则都满足）", await evaluate(`const n = ${dlg}.querySelector('[data-autofill-over-hours]'); return !!n && n.textContent.startsWith('Over 39 hours:') && n.textContent.includes('Veronica 40 h this week') && getComputedStyle(n).color === 'rgb(252, 211, 77)';`), await evaluate(`return ${dlg}.querySelector('[data-autofill-over-hours]')?.textContent;`));
+  check("（规则恢复：去掉 Weekly hours alert，后面 Period 的勾选数照旧）", await putRules(fullRules));
   const previewShifts = await evaluate(`return ${dlg}.querySelectorAll('[data-autofill-week] [class*="rounded-[6px]"][class*="border"]:not([data-off])').length;`);
   check("预览表里的班数 = 活跃的人数 × 5", previewShifts >= 30, String(previewShifts));
   await evaluate(`$btn('Create draft', ${dlg}).click();`);
   // 当前这一周（B9 Q6）：填出来的班先放在页面上等 Save，不直接建；Replace = 原来的班标删掉。
-  check("建好：绿条写「Put 30 shifts on this week. Click Save to keep them. … Nothing is published」，没发 bulk", (await waitFor("document.querySelector('[data-autofill-banner]')?.textContent.includes('Put 30 shifts on this week. Click Save to keep them.') && document.querySelector('[data-autofill-banner]').textContent.includes('Nothing is published')")) && (await (await fetch(`${MOCK}/__log`)).json()).filter((e) => e.path.endsWith("/slots/bulk")).length === 0, await evaluate("return document.querySelector('[data-autofill-banner]')?.textContent;"));
+  check("建好：绿条写「Put 30 shifts on this week. Click Save to keep them. … Nothing is published」，没发 bulk", (await waitFor("document.querySelector('[data-autofill-banner]')?.textContent.includes('Put 30 shifts on this week. Click Save to keep them.') && document.querySelector('[data-autofill-banner]').textContent.includes('Nothing is published')")) && (await (await fetch(`${MOCK}/__log`)).json()).filter((e) => e.path.endsWith("/2026-10-11/slots/bulk")).length === 0, await evaluate("return document.querySelector('[data-autofill-banner]')?.textContent;"));
   check("页面上：新班标 new、原来的班灰掉划线；Not saved yet 写 30 shifts added", await evaluate("const n = document.querySelector('[data-unsaved-summary]')?.textContent || ''; return n.includes('30 shifts added') && n.includes('shifts removed') && document.querySelectorAll('[data-mark=new]').length === 30 && document.querySelectorAll('[data-mark=deleted]').length > 0;"), await evaluate("return document.querySelector('[data-unsaved-summary]')?.textContent;"));
   let wk;
   await saveWeek();

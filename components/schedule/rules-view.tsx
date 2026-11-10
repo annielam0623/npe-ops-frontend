@@ -14,7 +14,12 @@ import { cn } from "@/lib/utils";
 
 import { CARD, CARD_HEADER, MUTED } from "./config";
 import { RuleDialog } from "./rule-dialog";
-import { describeRule, RULE_TYPES, type DescribeContext } from "./rules";
+import {
+  describeRule,
+  RULE_TYPES,
+  ruleConflicts,
+  type DescribeContext,
+} from "./rules";
 
 interface RulesViewProps {
   rules: Rule[];
@@ -53,6 +58,8 @@ export function RulesView({ rules, ctx, canEdit, onSave }: RulesViewProps) {
     RULE_TYPES.find((t) => t.type === "shift_times")!,
   ];
   const ordered = groups.flatMap((g) => rules.filter((r) => r.type === g.type));
+  // 置顶 110 题 8 A：互相打架的规则下面各一行琥珀字（不拦）。
+  const conflicts = ruleConflicts(rules, ctx);
 
   return (
     <section className={CARD} data-rules-view>
@@ -133,6 +140,15 @@ export function RulesView({ rules, ctx, canEdit, onSave }: RulesViewProps) {
                 >
                   {describeRule(rule, ctx)}
                 </span>
+                {(rule.id ? (conflicts.get(rule.id) ?? []) : []).map((t) => (
+                  <span
+                    key={t}
+                    data-rule-conflict={rule.id}
+                    className="block text-[12px] text-[#fcd34d]"
+                  >
+                    {t}
+                  </span>
+                ))}
               </div>
               {canEdit ? (
                 <div className="flex gap-1.5 max-sm:col-span-2 max-sm:justify-end">
@@ -161,6 +177,7 @@ export function RulesView({ rules, ctx, canEdit, onSave }: RulesViewProps) {
         <RuleDialog
           ctx={ctx}
           initial={editing === "new" ? undefined : editing}
+          others={rules}
           onClose={() => setEditing(null)}
           onSave={async (rule) => {
             const next =

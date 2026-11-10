@@ -6,7 +6,10 @@ import {
   findViolations,
   generateWeek,
   generateWeeks,
+  overCapacity,
+  overHours,
   restHours,
+  shiftHours,
 } from "../lib/schedule-engine.ts";
 
 let passed = 0;
@@ -279,6 +282,91 @@ check("同样的输入同样的 seed ⇒ 结果一样（可重复）", () => {
   const a = JSON.stringify(run(baseRules()).map((x) => x.shifts));
   const b = JSON.stringify(run(baseRules()).map((x) => x.shifts));
   assert.equal(a, b);
+});
+
+// ───────── 置顶 110（Annie 2026-11-09「110动手」，题 1–8 全 A）─────────
+
+check("110 ①：每个班一天最多 1 人（不写班次 = 每种班）⇒ 4 周里没有哪天哪种班超过 1 人；排不下的写进预览", () => {
+  const rules = [...baseRules(), r("m1", "max_per_shift_day", { max: 1 })];
+  const res = run(rules);
+  for (const w of res) {
+    assert.deepEqual(overCapacity(rules, w.plan, employees), [], w.plan.weekStart);
+    assert.deepEqual(findViolations(rules, w.plan, null, employees).filter((v) => v.includes("at most")), []);
+  }
+  // 5 人 × 5 天 = 25 班，三种班 × 7 天 = 21 个位置：一定有排不下的
+  assert.ok(res.some((w) => w.problems.length > 0));
+});
+
+check("110 ①：只管某种班、某几天（Close 周六最多 1 人），别的照旧", () => {
+  const rules = [...baseRules(), r("m1", "max_per_shift_day", { shift_type: "close", max: 1, days: [6] })];
+  for (const w of run(rules)) {
+    const sat = employees.filter((e) => w.plan.byEmployee[e.id][6]?.type === "close").length;
+    assert.ok(sat <= 1, `${w.plan.weekStart} Sat close ${sat}`);
+  }
+});
+
+check("110 题 1 A：固定周一到周五 + 每周最多 5 天 ⇒ 周末轮值跳过他、给下一位；没人接就空着、写进预览", () => {
+  const rules = [
+    r("t3", "shift_times", { shift_type: "close", start: "13:30", end: "21:30" }),
+    r("f1", "fixed_shift", { employee_id: V, days: [1, 2, 3, 4, 5], shift_type: "close" }),
+    r("w1", "weekend_rotation", { slots: [{ day: 6, shift_type: "close" }], employee_ids: [V, L] }),
+    r("d1", "days_per_week", { mode: "max", n: 5 }),
+  ];
+  const res = run(rules, 4);
+  for (const w of res) {
+    assert.ok(w.plan.byEmployee[V].filter(Boolean).length <= 5, "Veronica <= 5 days");
+    assert.equal(w.plan.byEmployee[L][6]?.type, "close", "Lizzie takes Sat close");
+  }
+  // 轮值里只有 Veronica ⇒ 没人接，空着、黄框写一条
+  const solo = rules.map((x) => (x.id === "w1" ? r("w1", "weekend_rotation", { slots: [{ day: 6, shift_type: "close" }], employee_ids: [V] }) : x));
+  const one = run(solo, 1)[0];
+  assert.equal(one.plan.byEmployee[V][6], null);
+  assert.ok(one.problems.some((p) => p.message.startsWith("Weekend rotation: nobody can take close")), JSON.stringify(one.problems));
+});
+
+check("110 题 2 A：两个人都固定周一 Close、最多 1 人 ⇒ 照排两个，预览写 Mon close has 2, at most 1，不再加人", () => {
+  const rules = [
+    r("t3", "shift_times", { shift_type: "close", start: "13:30", end: "21:30" }),
+    r("f1", "fixed_shift", { employee_id: V, days: [1], shift_type: "close" }),
+    r("f2", "fixed_shift", { employee_id: L, days: [1], shift_type: "close" }),
+    r("d1", "days_per_week", { mode: "exactly", n: 3, employee_ids: [N] }),
+    r("m1", "max_per_shift_day", { shift_type: "close", max: 1 }),
+  ];
+  const w = run(rules, 1)[0];
+  assert.equal(w.plan.byEmployee[V][1]?.type, "close");
+  assert.equal(w.plan.byEmployee[L][1]?.type, "close");
+  assert.equal(w.plan.byEmployee[N][1], null, "nobody added on Mon close");
+  assert.ok(w.problems.some((p) => p.message === "Mon close has 2, at most 1 (fixed or kept shifts)."), JSON.stringify(w.problems));
+});
+
+check("110 题 1：固定班本身超过每周天数 ⇒ 固定班不动，预览写一条", () => {
+  const rules = [
+    r("f1", "fixed_shift", { employee_id: V, days: [0, 1, 2, 3, 4, 5], shift_type: "open" }),
+    r("d1", "days_per_week", { mode: "max", n: 5, employee_ids: [V] }),
+  ];
+  const w = run(rules, 1)[0];
+  assert.equal(w.plan.byEmployee[V].filter(Boolean).length, 6);
+  assert.ok(w.problems.some((p) => p.message === "Veronica: fixed or kept shifts come to 6 days, Days per week says at most 5."), JSON.stringify(w.problems));
+});
+
+check("110 ②：某种班至少几天——Everyone except Anita ⇒ 不报 Anita；Only these people ⇒ 只报名单里的", () => {
+  const ex = [...baseRules(), r("k1", "min_days_on_shift", { shift_type: "mid", n: 3, per: "week", exclude_employee_ids: [A] })];
+  const w1 = run(ex, 1)[0];
+  assert.ok(!w1.problems.some((p) => p.message.startsWith("Anita:") && p.message.includes("mid")), JSON.stringify(w1.problems));
+  const only = [...baseRules(), r("k1", "min_days_on_shift", { shift_type: "mid", n: 3, per: "week", employee_ids: [L, N] })];
+  const w2 = run(only, 1)[0];
+  const who = w2.problems.filter((p) => p.message.includes("mid day")).map((p) => p.message.split(":")[0]);
+  assert.ok(who.every((n) => n === "Lizzie" || n === "Nadia"), JSON.stringify(who));
+});
+
+check("110 ④ 题 5：小时数上班到下班整段算、跨午夜 +24；超过提醒小时数的人列出来；规则关着不提醒", () => {
+  assert.equal(shiftHours("08:30", "17:00"), 8.5);
+  assert.equal(shiftHours("22:00", "06:00"), 8);
+  const mid = { type: "mid", start: "08:30", end: "17:00" };
+  const plan = { weekStart: START, byEmployee: { [V]: [null, mid, mid, mid, mid, mid, null], [L]: [null, { type: "mid", start: "08:00", end: "16:00" }, null, null, null, null, null] } };
+  const rules = [r("h1", "weekly_hours_alert", { hours: 40 })];
+  assert.deepEqual(overHours(rules, plan, employees), [{ employeeId: V, name: "Veronica", hours: 42.5 }]);
+  assert.deepEqual(overHours([{ ...rules[0], enabled: false }], plan, employees), []);
 });
 
 console.log(`\n${passed}/${passed + failed} passed`);

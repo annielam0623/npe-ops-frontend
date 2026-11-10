@@ -8,6 +8,7 @@ import { gapRangeShort } from "@/lib/schedule-gaps";
 import { readRecentShifts, type RecentShift } from "@/lib/schedule-recent";
 import { formatClock, hasBadTimeRange } from "@/lib/schedule-time";
 import { coversGaps } from "@/lib/schedule-timeline";
+import type { Rule } from "@/lib/schedule-engine";
 import { cn } from "@/lib/utils";
 import type {
   ScheduleEmployee,
@@ -34,6 +35,7 @@ import { sentTime } from "./send-changes-dialog";
 import { NotCountedTag, TestTag } from "./employees-dialog";
 import { TimeEditPopup } from "./time-edit-popup";
 import { gapSentence, type SlotMark } from "./week-draft";
+import { ruleChecks } from "./rule-checks";
 
 interface WeekGridProps {
   weekStart: string;
@@ -102,6 +104,11 @@ interface WeekGridProps {
   onReorder?: (dragId: number, targetId: number, after: boolean) => void;
   /** 换过位置、还没存的行：琥珀色框（同改过的班）。 */
   movedRows?: ReadonlySet<number>;
+  /**
+   * 置顶 110：开着的规则。手动排班不拦，只标出来——超过「每个班最多几人」的日子列头琥珀一行 + 班卡琥珀框（题 6），
+   * 超过「每周提醒小时数」的人名字下面琥珀字（题 3）。只给能改排班的人传。
+   */
+  rules?: Rule[];
 }
 
 const COLS = "grid-cols-[130px_repeat(7,minmax(118px,1fr))]";
@@ -131,6 +138,7 @@ export function WeekGrid({
   onDeleteTimeOff,
   gapsByDay,
   onGapDay,
+  rules,
   marks,
   movedFrom,
   onUndoDelete,
@@ -248,6 +256,7 @@ export function WeekGrid({
             selected={selectedSlotId === slot.id}
             mark={marks?.get(slot.id)}
             error={errorSlotId === slot.id}
+            overCap={checks.overSlot.has(slot.id)}
             gaps={gapNotes?.get(slot.id)}
             onSelect={() =>
               setSelectedSlotId((id) => (id === slot.id ? null : slot.id))
@@ -284,6 +293,15 @@ export function WeekGrid({
     );
   }
 
+  // 置顶 110：手动排班不拦，只标出（每个班最多几人 / 每周超几小时）。
+  const checks = ruleChecks(
+    rules,
+    weekStart,
+    slots,
+    employees,
+    marks,
+    shiftTypes,
+  );
   return (
     <div className="overflow-x-auto p-3" data-sch-grid>
       <div className={cn("grid min-w-[960px] gap-[2px]", COLS)}>
@@ -328,6 +346,20 @@ export function WeekGrid({
                   : ""}
               </button>
             ) : null}
+            {(checks.overByDate.get(date) ?? []).map((o) => (
+              <div
+                key={o.type}
+                data-over-cap={`${date}|${o.type}`}
+                title="More people on this shift than the Max people on a shift rule allows. You can still save and publish."
+                className="mx-auto mt-0.5 flex items-center justify-center gap-1 text-[10.5px] font-semibold text-[#fcd34d]"
+              >
+                <span
+                  aria-hidden
+                  className="inline-block size-2 rounded-full bg-[#f59e0b]"
+                />
+                {o.label} {o.count} (max {o.max})
+              </div>
+            ))}
           </div>
         ))}
 
@@ -357,6 +389,7 @@ export function WeekGrid({
             key={e.id}
             employee={e}
             mine={e.id === meId}
+            overHours={checks.overHours.get(e.id)}
             reorder={
               onReorder
                 ? {
@@ -484,9 +517,12 @@ function PersonRow({
   change,
   onSendChanges,
   sendBlocked = false,
+  overHours,
 }: {
   employee: ScheduleEmployee;
   mine: boolean;
+  /** 置顶 110 题 3：这周排了几小时（超过提醒小时数才有）。 */
+  overHours?: number;
   /** 检查空档时不算这个人（Employees 里取消了 Counts toward coverage）。 */
   notCounted?: boolean;
   /** 拖行排顺序（只给能改排班的人）。 */
@@ -568,6 +604,15 @@ function PersonRow({
           {employee.is_test ? <TestTag /> : null}
           {notCounted ? <NotCountedTag /> : null}
         </span>
+        {overHours != null ? (
+          <span
+            data-over-hours={employee.id}
+            title="Over the weekly hours alert in the Rules. You can still save and publish."
+            className="pl-[17px] text-[11px] font-semibold text-[#fcd34d]"
+          >
+            {overHours} h this week
+          </span>
+        ) : null}
         {change && change.items.length > 0 && onSendChanges ? (
           <span
             data-person-changes={employee.id}
@@ -770,6 +815,7 @@ function SlotCard({
   selected,
   mark,
   error,
+  overCap = false,
   gaps,
   onSelect,
   onStartEdit,
@@ -787,6 +833,8 @@ function SlotCard({
   notCounted?: boolean;
   selected: boolean;
   /** 没存的改动（整周一个 Save）；undefined = 和库里一样。 */
+  /** 置顶 110 题 6：这一天这种班超过人数上限（琥珀框，不拦）。 */
+  overCap?: boolean;
   mark?: SlotMark;
   /** 后端 400 指出的就是这一个：标红。 */
   error: boolean;
@@ -826,6 +874,7 @@ function SlotCard({
       data-not-counted={notCounted || undefined}
       data-mark={deleted ? "deleted" : words.join(" ") || undefined}
       data-slot-error={error || undefined}
+      data-slot-over-cap={overCap || undefined}
       className={cn(
         "group/card flex flex-1 flex-col justify-center gap-0.5 rounded-[6px] border px-2 py-1 text-[11px] leading-tight",
         // 没人的班：整张卡不上色，只有白色虚线框 + 白字（Annie 2026-11-04「是卡片整个不上色，只是个虚线白框然后里头有文字」）；
@@ -844,6 +893,7 @@ function SlotCard({
         gaps?.length &&
           "border-2 border-solid border-red-500 bg-red-500/[.16] opacity-100 ring-0",
         live && "cursor-grab",
+        overCap && "outline-2 outline-offset-1 outline-[#f59e0b]",
         selected && "ring-2 ring-sky-400/70",
       )}
     >

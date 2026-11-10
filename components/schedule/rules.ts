@@ -6,12 +6,14 @@ import type {
   DaysPerWeekParams,
   ExcludeFromRotationParams,
   FixedShiftParams,
+  MaxPerShiftDayParams,
   MinDaysOnShiftParams,
   MinRestParams,
   Rule,
   RuleType,
   ShiftTimesParams,
   WeekendRotationParams,
+  WeeklyHoursAlertParams,
 } from "@/lib/schedule-engine";
 import { formatClock } from "@/lib/schedule-time";
 import type { ScheduleEmployee, ScheduleShiftType } from "@/types";
@@ -61,9 +63,19 @@ export const RULE_TYPES: { type: RuleType; label: string; hint: string }[] = [
     hint: "At least N people on a shift every day",
   },
   {
+    type: "max_per_shift_day",
+    label: "Max people on a shift",
+    hint: "At most N people on a shift each day",
+  },
+  {
     type: "exclude_from_rotation",
     label: "Exclude from rotation",
     hint: "Not in the weekend rotation or the filler shifts",
+  },
+  {
+    type: "weekly_hours_alert",
+    label: "Weekly hours alert",
+    hint: "Show an alert when someone is over N hours in a week",
   },
   {
     type: "shift_times",
@@ -155,11 +167,34 @@ export function describeRule(rule: Rule, ctx: DescribeContext): string {
       const who = names(ctx, p.employee_ids);
       const verb =
         p.employee_ids && p.employee_ids.length > 1 ? "work" : "works";
-      return `${who === "everyone" ? "Everyone" : who} ${verb} ${p.mode === "exactly" ? "exactly" : "at most"} ${p.n} day${p.n === 1 ? "" : "s"} a week`;
+      // 置顶 110 ③：固定班和周末轮值都算进天数。
+      return `${who === "everyone" ? "Everyone" : who} ${verb} ${p.mode === "exactly" ? "exactly" : "at most"} ${p.n} day${p.n === 1 ? "" : "s"} a week (fixed shifts and the weekend rotation count)`;
     }
     case "min_days_on_shift": {
       const p = rule.params as unknown as MinDaysOnShiftParams;
-      return `${empName(ctx, p.employee_id)} work${p.employee_id != null ? "s" : ""} at least ${p.n} ${shiftLabel(ctx, p.shift_type)} day${p.n === 1 ? "" : "s"} per ${p.per === "week" ? "week" : "4 weeks"}`;
+      const who = minDaysWho(p);
+      const many =
+        who.mode === "everyone" || who.mode === "except" || who.ids.length > 1;
+      const subject =
+        who.mode === "everyone"
+          ? "Everyone"
+          : who.mode === "except"
+            ? `Everyone except ${names(ctx, who.ids)}`
+            : names(ctx, who.ids);
+      return `${subject} work${many && who.mode === "only" ? "" : "s"} at least ${p.n} ${shiftLabel(ctx, p.shift_type)} day${p.n === 1 ? "" : "s"} per ${p.per === "week" ? "week" : "4 weeks"}`;
+    }
+    case "max_per_shift_day": {
+      const p = rule.params as unknown as MaxPerShiftDayParams;
+      const shift = p.shift_type
+        ? shiftLabel(ctx, p.shift_type)
+        : "Every shift";
+      const when =
+        p.days && p.days.length ? `on ${describeDays(p.days)}` : "every day";
+      return `${shift}: at most ${p.max} ${p.max === 1 ? "person" : "people"} a day, ${when}`;
+    }
+    case "weekly_hours_alert": {
+      const p = rule.params as unknown as WeeklyHoursAlertParams;
+      return `Show an alert when someone is scheduled over ${p.hours} hours in a week (alert only, nothing is blocked)`;
     }
     case "min_rest": {
       const p = rule.params as unknown as MinRestParams;
@@ -178,6 +213,19 @@ export function describeRule(rule: Rule, ctx: DescribeContext): string {
       return `${empName(ctx, p.employee_id)} is not in the rotation`;
     }
   }
+}
+
+/** 「某种班至少几天」选的是谁（置顶 110 题 7）：旧规则的 employee_id 当成 Only these people。 */
+export function minDaysWho(p: MinDaysOnShiftParams): {
+  mode: "everyone" | "only" | "except";
+  ids: number[];
+} {
+  if (p.employee_ids && p.employee_ids.length)
+    return { mode: "only", ids: p.employee_ids };
+  if (p.employee_id != null) return { mode: "only", ids: [p.employee_id] };
+  if (p.exclude_employee_ids && p.exclude_employee_ids.length)
+    return { mode: "except", ids: p.exclude_employee_ids };
+  return { mode: "everyone", ids: [] };
 }
 
 /** 这条规则提到了哪些班次类型（停用提醒用，置顶 85 Q4）。 */
@@ -237,5 +285,72 @@ export function defaultParams(
       return { shift_type: firstShift, min: 1 };
     case "exclude_from_rotation":
       return { employee_id: firstEmp };
+    case "max_per_shift_day":
+      // 不写 shift_type = Every shift（Annie「每个班一天只能有一个人」）。
+      return { max: 1 };
+    case "weekly_hours_alert":
+      return { hours: 40 };
   }
+}
+
+const dayOverlap = (a?: number[], b?: number[]) =>
+  !a || !a.length || !b || !b.length || a.some((d) => b.includes(d));
+
+/**
+ * 两条规则互相打架（置顶 110 题 8 A）：后端不判，页面在两条规则下面各写一行琥珀字、存的时候也提示，不拦。
+ * - Coverage 至少 N 人 > 同一种班、日子有重叠的 Max people 最多 M 人；
+ * - 同一种班、日子有重叠的两条 Max people（数字不同）：Auto-fill 用小的那个。
+ * 只看开着的规则。返回 规则 id → 要显示的句子。
+ */
+export function ruleConflicts(
+  rules: Rule[],
+  ctx: DescribeContext,
+): Map<string, string[]> {
+  const out = new Map<string, string[]>();
+  const add = (id: string | undefined, text: string) => {
+    if (!id) return;
+    const list = out.get(id) ?? [];
+    if (!list.includes(text)) list.push(text);
+    out.set(id, list);
+  };
+  const on = rules.filter((r) => r.enabled);
+  const maxes = on.filter((r) => r.type === "max_per_shift_day");
+  for (const cov of on.filter((r) => r.type === "coverage")) {
+    const c = cov.params as unknown as CoverageParams;
+    for (const m of maxes) {
+      const p = m.params as unknown as MaxPerShiftDayParams;
+      if (p.shift_type && p.shift_type !== c.shift_type) continue;
+      if (!dayOverlap(c.days, p.days) || c.min <= p.max) continue;
+      const shift = shiftLabel(ctx, c.shift_type);
+      add(
+        cov.id,
+        `Conflicts with “Max people on a shift” (at most ${p.max} ${shift}). Auto-fill places at most ${p.max} and lists the shortfall.`,
+      );
+      add(m.id, `Conflicts with “Coverage” (at least ${c.min} ${shift}).`);
+    }
+  }
+  for (let i = 0; i < maxes.length; i++) {
+    for (let j = i + 1; j < maxes.length; j++) {
+      const a = maxes[i].params as unknown as MaxPerShiftDayParams;
+      const b = maxes[j].params as unknown as MaxPerShiftDayParams;
+      if (a.max === b.max) continue;
+      if (a.shift_type && b.shift_type && a.shift_type !== b.shift_type)
+        continue;
+      if (!dayOverlap(a.days, b.days)) continue;
+      const [big, small] = a.max > b.max ? [maxes[i], b] : [maxes[j], a];
+      const bigP = big.params as unknown as MaxPerShiftDayParams;
+      const shift = bigP.shift_type
+        ? shiftLabel(ctx, bigP.shift_type)
+        : small.shift_type
+          ? shiftLabel(ctx, small.shift_type)
+          : "this shift";
+      const when =
+        bigP.days && bigP.days.length ? ` on ${describeDays(bigP.days)}` : "";
+      add(
+        big.id,
+        `Another rule also limits ${shift}${when}. Auto-fill uses the smaller number (${small.max}).`,
+      );
+    }
+  }
+  return out;
 }

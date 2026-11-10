@@ -16,8 +16,10 @@ import { TimePicker } from "./time-picker";
 import {
   defaultParams,
   describeRule,
+  minDaysWho,
   newRuleId,
   RULE_TYPES,
+  ruleConflicts,
   type DescribeContext,
 } from "./rules";
 
@@ -25,6 +27,8 @@ type Params = Record<string, unknown>;
 
 interface RuleDialogProps {
   ctx: DescribeContext;
+  /** 别的规则（算「互相打架」用，置顶 110 题 8）；不传 = 不提示。 */
+  others?: Rule[];
   /** 有 = 改这一条；没有 = 加新的（先选类型）。 */
   initial?: Rule;
   onSave: (rule: Rule) => Promise<ActionResult>;
@@ -34,14 +38,33 @@ interface RuleDialogProps {
 const SELECT = cn(INPUT, "w-full");
 
 /** 加 / 改一条规则：选类型 → 填空（不用自由写字，系统才能照着排）。不走共用 Modal（这页永久深色）。 */
-export function RuleDialog({ ctx, initial, onSave, onClose }: RuleDialogProps) {
+export function RuleDialog({
+  ctx,
+  initial,
+  others = [],
+  onSave,
+  onClose,
+}: RuleDialogProps) {
   const titleId = useId();
   const pressedOnBackdropRef = useRef(false);
   const [type, setType] = useState<RuleType>(
     initial?.type ?? "weekend_rotation",
   );
-  const [params, setParams] = useState<Params>(
-    initial ? structuredClone(initial.params) : defaultParams(type, ctx),
+  const [params, setParams] = useState<Params>(() => {
+    if (!initial) return defaultParams(type, ctx);
+    const p = structuredClone(initial.params);
+    // 置顶 110 题 7：旧规则的 employee_id 打开时当成 Only these people，存的时候写 employee_ids。
+    if (initial.type === "min_days_on_shift" && p.employee_id != null) {
+      p.employee_ids = [p.employee_id as number];
+      delete p.employee_id;
+    }
+    return p;
+  });
+  /** min_days_on_shift 的 Who：Everyone / Only these people / Everyone except。 */
+  const [whoMode, setWhoMode] = useState<"everyone" | "only" | "except">(() =>
+    initial?.type === "min_days_on_shift"
+      ? minDaysWho(initial.params as never).mode
+      : "everyone",
   );
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -69,11 +92,19 @@ export function RuleDialog({ ctx, initial, onSave, onClose }: RuleDialogProps) {
         delete out[k];
     }
     if (
-      (type === "cannot_work" || type === "coverage") &&
+      (type === "cannot_work" ||
+        type === "coverage" ||
+        type === "max_per_shift_day") &&
       Array.isArray(out.days) &&
       (out.days as unknown[]).length === 0
     )
       delete out.days;
+    if (type === "min_days_on_shift") {
+      // 三选一只带一个键；Everyone 什么都不带（后端拒 employee_ids: []，40 核过）。
+      delete out.employee_id;
+      if (whoMode !== "only") delete out.employee_ids;
+      if (whoMode !== "except") delete out.exclude_employee_ids;
+    }
     return out;
   };
 
@@ -102,6 +133,31 @@ export function RuleDialog({ ctx, initial, onSave, onClose }: RuleDialogProps) {
       return "Pick who this is for.";
     if (type === "shift_times" && (!p.start || !p.end))
       return "Fill start and end time.";
+    if (
+      type === "min_days_on_shift" &&
+      whoMode !== "everyone" &&
+      !(
+        Array.isArray(
+          whoMode === "only" ? p.employee_ids : p.exclude_employee_ids,
+        ) &&
+        (
+          (whoMode === "only"
+            ? p.employee_ids
+            : p.exclude_employee_ids) as unknown[]
+        ).length
+      )
+    )
+      return "Pick at least one person.";
+    if (
+      type === "max_per_shift_day" &&
+      (typeof p.max !== "number" || p.max < 1 || p.max > 20)
+    )
+      return "At most must be a number from 1 to 20.";
+    if (
+      type === "weekly_hours_alert" &&
+      (typeof p.hours !== "number" || p.hours < 1 || p.hours > 80)
+    )
+      return "Hours must be a number from 1 to 80.";
     return null;
   }
 
@@ -133,6 +189,19 @@ export function RuleDialog({ ctx, initial, onSave, onClose }: RuleDialogProps) {
       return describeRule({ type, enabled: true, params: clean() }, ctx);
     } catch {
       return "";
+    }
+  })();
+  // 置顶 110 题 8 A：存之前就提示这条会跟哪条打架（不拦）。
+  const conflictText = (() => {
+    const id = initial?.id ?? "__new__";
+    const list = [
+      ...others.filter((r) => r.id !== initial?.id),
+      { id, type, enabled: initial?.enabled ?? true, params: clean() },
+    ];
+    try {
+      return ruleConflicts(list, ctx).get(id) ?? [];
+    } catch {
+      return [];
     }
   })();
 
@@ -191,7 +260,14 @@ export function RuleDialog({ ctx, initial, onSave, onClose }: RuleDialogProps) {
             </Field>
           )}
 
-          <Fields type={type} params={params} set={set} ctx={ctx} />
+          <Fields
+            type={type}
+            params={params}
+            set={set}
+            ctx={ctx}
+            whoMode={whoMode}
+            setWhoMode={setWhoMode}
+          />
 
           {preview ? (
             <p
@@ -201,6 +277,15 @@ export function RuleDialog({ ctx, initial, onSave, onClose }: RuleDialogProps) {
               {preview}
             </p>
           ) : null}
+          {conflictText.map((t) => (
+            <p
+              key={t}
+              data-rule-dialog-conflict
+              className="text-[12.5px] text-[#fcd34d]"
+            >
+              {t}
+            </p>
+          ))}
           {error ? (
             <p role="alert" className="text-[12.5px] text-red-300">
               {error}
@@ -250,11 +335,15 @@ function Fields({
   params,
   set,
   ctx,
+  whoMode,
+  setWhoMode,
 }: {
   type: RuleType;
   params: Params;
   set: (patch: Params) => void;
   ctx: DescribeContext;
+  whoMode: "everyone" | "only" | "except";
+  setWhoMode: (m: "everyone" | "only" | "except") => void;
 }) {
   const active = ctx.employees.filter((e) => e.is_active);
   const shifts = ctx.shiftTypes.filter((t) => t.is_active);
@@ -556,8 +645,28 @@ function Fields({
       return (
         <>
           <Field label="Who">
-            <EmployeeSelect anyLabel="Everyone" />
+            <select
+              aria-label="Who"
+              value={whoMode}
+              onChange={(e) =>
+                setWhoMode(e.target.value as "everyone" | "only" | "except")
+              }
+              className={SELECT}
+            >
+              <option value="everyone">Everyone</option>
+              <option value="only">Only these people</option>
+              <option value="except">Everyone except</option>
+            </select>
           </Field>
+          {whoMode === "only" ? (
+            <Field label="These people">
+              <People field="employee_ids" />
+            </Field>
+          ) : whoMode === "except" ? (
+            <Field label="Leave out">
+              <People field="exclude_employee_ids" />
+            </Field>
+          ) : null}
           <Field label="Shift">
             <ShiftSelect field="shift_type" />
           </Field>
@@ -606,6 +715,24 @@ function Fields({
       return (
         <Field label="Who">
           <EmployeeSelect />
+        </Field>
+      );
+    case "max_per_shift_day":
+      return (
+        <>
+          <Field label="Shift">
+            <ShiftSelect field="shift_type" anyLabel="Every shift" />
+          </Field>
+          <Field label="At most (people)">{num("max", 1, 20)}</Field>
+          <Field label="Days (none picked = every day)">
+            <Days field="days" />
+          </Field>
+        </>
+      );
+    case "weekly_hours_alert":
+      return (
+        <Field label="Alert when someone is over (hours a week)">
+          {num("hours", 1, 80)}
         </Field>
       );
   }

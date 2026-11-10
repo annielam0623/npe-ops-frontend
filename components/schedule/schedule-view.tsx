@@ -1194,6 +1194,7 @@ export function ScheduleView() {
               onRetry={() => void loadWeek()}
               // 空档提示只给能改排班的人（Annie Q3：staff 看不到）。
               gapsByDay={canEdit ? gapDays : undefined}
+              rules={canEdit && rules ? rules : undefined}
               onGapDay={jumpToDay}
               draftView={
                 derived
@@ -1973,6 +1974,7 @@ function WeekBody({
   onRetry,
   gapsByDay,
   onGapDay,
+  rules,
   draftView,
   onUndoDelete,
   pendingChanges,
@@ -2015,6 +2017,8 @@ function WeekBody({
   onDeleteTimeOff: (id: number) => void;
   onRetry: () => void;
   gapsByDay?: Map<string, ScheduleGap[]>;
+  /** 置顶 110：手动排班照规则标出超人数 / 超小时（不拦）；只给能改排班的人。 */
+  rules?: Rule[];
   onGapDay?: (date: string) => void;
   pendingChanges?: SchedulePendingChange[];
   onSendChanges?: (employeeId: number) => void;
@@ -2073,6 +2077,7 @@ function WeekBody({
         onDeleteTimeOff={onDeleteTimeOff}
         gapsByDay={gapsByDay}
         onGapDay={onGapDay}
+        rules={rules}
         pendingChanges={pendingChanges}
         onSendChanges={onSendChanges}
         sendBlocked={sendBlocked}
