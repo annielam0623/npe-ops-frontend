@@ -33,6 +33,7 @@ pe-ops-wt-1a-110ex，已推 task/110-exceptions（sch 467、引擎 32、nav 39�
 - ✅ **115 第一批（题 1–6 全站手机键 26px）上 main d1dae38d**（1a）：50 套 headless 全过（da 546、mf 311、rl 159、man 425、tt 168、sch 471、mt 204 …）、nav 39，tsc / eslint / build 过；验收点已转 Annie。第二批 task/phone-toolbars-115 87b5f59b 等 Annie P1–P4。
 - 109 W4 第二段前端派给 79（task/send-rules-w4，照后端 docs/interfaces/send-outcome-2026-11-09.md 第 5 节；上了把 SHA 发 d9 删 not_reached）。
 - ✅ **109 W4 第二段前端上 main 5955b76c**（79，task/send-rules-w4）：排班发布横幅 / Period Share / Staff Messages / Operation report 把 No contact（灰）和 Failed（红）分开；旧后端退回 not_reached。publish-notice-unit 15、sch 475、tasks 148、dor 78、nav 39，tsc / eslint / build 过。SHA 已发 d9 删 not_reached。验收点已转 Annie。问 Annie：一个人都没通知到时的整句红框（10-30 原文）要不要也按「没联系方式算灰」改。
+- 后端删 not_reached 上 main 1914005b（d9：任务提交 bca93163，合并 a7c183e7）：排班发布 / 多周分享只回 notified / no_contact / failed。前端 not_reached 兜底先留着（无害，以后顺手删）。
 - 🟡 Annie 随后改 107（原话）：「107要改一下，登录进来之后直接弹窗，更新以后才可以继续」⇒ 107 暂停，先出新 preview（派给新开的 107 窗口），细节 N1–N3 见置顶 107。
 
 ## 2026-11-09 晚 收工交接：前端主窗口 `前端主窗口-78`[426278]（家里电脑；明天 Annie 在公司电脑）
