@@ -1454,6 +1454,8 @@ D. 已完成、待从置顶移走：
 
 ### 112. Relay list 一张单超一页：先自动压空白，压不下再提示（2026-11-09，Annie 在后端 d4 窗口定，d4 转；79 出 preview，没动手）
 
+- ✅ Annie 11-09 晚（原话，在 78）：「112全A」（对第 4 版 Q1 / Q5–Q10）⇒ Q1 A、Q5 A、Q6 A、Q8 A、Q9 A、Q10 A。⚠️ Q7 推荐的是 C（折两行），「全A」按字面是 Q7 A（只自动压内边距 + 挪中间，不折行，真名单约 A+4–A+5 起出黄框）⇒ 78 已问 Q7 A 还是 C。**还没「动手」**。
+
 - 起因：staff 用 Aa Text size 放大后一页变两页，staff 不会调页边距。只做 Relay list（Bus manifest 要不要一样 Annie 没答，不做）。
 - 已定：不改字号；只压空白，先酒店间隙（td.rl-gap 12px）再行内上下 padding（4px），一页就停；酒店之间永远留最小间隔（数值 79 定，preview 里写明）；全压完仍超 ⇒ 单子上方提示「This sheet will print on 2 pages. Make the text smaller or move guests to another car.」，不自动缩字；每张单各算各的；屏幕 = 打印；不改后端、不存新设置；How to use 加一条。
 - 待 Annie：看 preview（最小间隔数值、提示原文、How to use 原文）+「动手」。
