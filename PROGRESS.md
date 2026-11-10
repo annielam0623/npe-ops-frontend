@@ -1520,6 +1520,12 @@ D. 已完成、待从置顶移走：
   - 照 bug 修：Manifests 团确认 / Last Minute 弹窗一位客人只算一次（components/manifests/send-dialogs.tsx tourOutcomes：任一选了的渠道 sent = Sent，都没发出且有渠道 failed = Failed；Sent 数字改成前端按逐单算，不再用后端只数邮件的 res.sent）；门票提醒弹窗（ticketOutcomes）Sent 也改成任一渠道 ok 才算（后端 res.sent = 全部行）。
   - 检查：tsc 0、eslint 0 error（3 旧 warning）、build 过；man 424/424（新：邮件 sent + 短信 failed: Invalid phone ⇒ 汇总 1|0|0|1、Email 绿、SMS 红）、mt 259/259（Sent 颜色检查改绿）、tsend 62/62（新：Sent 绿）、fod 49/49（新：Farm out 通知 Sent 绿）、tour 65/65、da 544/544。只 mock。
   - 其余（Q1 / Q2 / Q6 和各结果数字、前端自判没号码改成以后端为准）等 d4 接口形状。
+- 🟡 **03 [44f0b4] 第二部分（照后端 W1 形状 docs/interfaces/send-outcome-2026-11-09.md mock 做，78 派）**：分支 `task/send-outcome-ui` c788afd4（worktree D:\npe-ops-frontend-03b），**只推分支、不合 main**，等后端 W1 各入口上 main 核字段再合。
+  - 新 lib/send-outcome.ts 唯一判定：后端每行带 outcome / sms_outcome / email_outcome 就照它，旧后端按原状态换算同样的结论（前端先上不空）。汇总 Sent 绿 / Failed 红 / No contact 灰（Not sent 有才出）；渠道格 Sent 绿 / Failed 红 / No number、No email 灰 #6B6B6B；去掉单独的 No number / No email 计数格。
+  - 改的入口：Tour 发送页、Tickets 发送页、Morning Pickup + Dispatch relay（共用结果组件）、Manifests 团确认 / Last Minute / 门票弹窗（原文小写 sent / failed: … 改成同发送页 Sent / Failed: …）、Farm out 通知（「邮件发出、短信失败」以前算 Failed，现在 Sent）、司机 / 导游通知（新 no_contact 灰字一行「No contact: 名字 (No number).」）。
+  - 没动：员工通知（排班 Publish / send-changes、Staff Messages、Operation report）——37 说 W4 形状未设计，明天定、发 78 抄 03。单张重发 ops 前端没有调用，不在范围。
+  - 检查：tsc 0、eslint 0 error、build 过；send-outcome-unit 24/24；man 425/425、mt 259/259、tsend 64/64、fod 50/50、tour 69/69、da 546/546、nav 39/39（各 mock 加 ctl.newOutcome = 新后端形状，各套加新形状检查）。只 mock。
+  - How to use 改句（待 Annie 定，原文已交 78）：Tour / Tickets「Send Results shows Sent, Failed and Skipped…」、Morning「Every reminder goes out by SMS and email…」各加 No contact 说明。
 - d4 后端拆法：W1 先建唯一判定点 send_outcome.py + 形状文档（约 2 小时，上 main 后别的窗口开工），再做早班 / Tour 一族 / send_guard / send_batches / manifest_send / relay-send；W2 门票 + auto_send；W3（a3）Broadcast、Farm out、单单重发、staff 回复、司机快回 + 告警；W4 日报 + 员工 / 司机 / 导游通知。不迁移（历史空号码 failed 展示时认作 No contact，不回写）。约 1.5 天。新字段大致：sent / failed / no_contact，Farm out n_no_contact，司机 / 导游 no_contact [{name, why}]，以 W1 形状文档为准。要 Annie 开 3 个后端窗口（W1、W2、W4）。
 
 ### 108. （并入 109）早班 SMS + Email：没手机号的客人，短信那栏记 failed、预览挂红「SMS failed」（2026-11-09，后端 a3 查出，35 问 Annie）
