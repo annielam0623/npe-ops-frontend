@@ -39,6 +39,20 @@ export function updateDashboardWidgets(
   });
 }
 
+/**
+ * 「Also allowed」整份替换（只有 Super Admin；后端 33，2026-11-08）：[] = 清空。
+ * 名单只收在用的后台账号，别的 ⇒ 400（后端原话），什么都不写。
+ */
+export function updateAllowedUsers(
+  key: string,
+  userIds: number[],
+): Promise<DashboardWidgets> {
+  return apiFetch<DashboardWidgets>("/api/settings/dashboard-widgets", {
+    method: "PUT",
+    body: { allowed_users: { [key]: userIds } },
+  });
+}
+
 /** 不带 status = 后端默认 open,in_progress（Dashboard 块直接用）。 */
 export function fetchOperationReports(
   query: OperationReportQuery = {},

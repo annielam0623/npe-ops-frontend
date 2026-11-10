@@ -1,6 +1,8 @@
 "use client";
 
 import { VisibilityControl } from "@/components/ui/visibility-control";
+
+import { AlsoAllowed } from "./also-allowed";
 import {
   usePageVisibility,
   VISIBILITY_KEYS,
@@ -28,8 +30,7 @@ export function PageVisibilityList({
         Page visibility
       </div>
       <p className="mb-2.5 max-w-[78ch] text-[13px] text-white/60">
-        Who can see each new page or block. Only Super Admin can change
-        these.
+        Who can see each new page or block. Only Super Admin can change these.
       </p>
       <div className="rounded-[16px] border border-white/[.14] bg-[#0b1a2c]">
         {KEYS.map((key) => (
@@ -46,10 +47,8 @@ export function PageVisibilityList({
                 {VISIBILITY_KEYS[key].where}
               </div>
             </div>
-            <VisibilityControl
-              pageKey={key}
-              onUnauthorized={onUnauthorized}
-            />
+            <VisibilityControl pageKey={key} onUnauthorized={onUnauthorized} />
+            <AlsoAllowed pageKey={key} onUnauthorized={onUnauthorized} />
           </div>
         ))}
       </div>

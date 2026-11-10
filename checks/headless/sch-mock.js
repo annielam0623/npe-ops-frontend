@@ -465,6 +465,24 @@ http
       return send(res, 200, { released: true });
     }
 
+    // ── Period › Share with staff（后端 33 task/schedule-period-share，2026-11-08）：ctl.periodShare 没开 = 404 ──
+    if (p === "/api/schedule/period/share" && req.method === "POST") {
+      const b = await readBody(req);
+      entry.body = b;
+      if (!ctl.periodShare) return send(res, 404, { detail: "Not Found" });
+      if (typeof b?.dry_run !== "boolean") return send(res, 400, { detail: "dry_run must be true or false." });
+      const add = (ymd, n) => { const [y, m, d] = ymd.split("-").map(Number); return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10); };
+      const week_starts = Array.from({ length: b.weeks }, (_, i) => add(b.start, i * 7));
+      const unpublished = week_starts.filter((w) => weeks.get(w)?.status !== "published");
+      const recipients = [{ employee_id: 1, name: "Veronica" }, { employee_id: 2, name: "Lizzie" }];
+      const not_reached = [{ employee_id: 5, name: "Anita", reason: "no email" }];
+      const end = add(b.start, b.weeks * 7 - 1);
+      if (b.dry_run) return send(res, 200, { start: b.start, end, weeks: b.weeks, week_starts, unpublished, recipients, not_reached, already_shared: ctl.periodShared ? [{ at: "2026-10-03T22:15:00+00:00", by: "Annie" }] : [] });
+      if (unpublished.length) return send(res, 409, { detail: { detail: "Publish every week first.", code: "unpublished", weeks: unpublished } });
+      ctl.periodShared = true;
+      return send(res, 200, { start: b.start, end, weeks: b.weeks, notified: recipients.map((r) => ({ ...r, channels: ["email", "in_app"] })), not_reached });
+    }
+
     // ── 周三确认下周排班（后端 G138 已上线，`npe-confirmation-service` 4368567，接口说明
     // docs/interfaces/schedule-wed-confirm-2026-10-20.md）── ctl.confirm 没开 = 当没有这个功能（404）。
     // 想加的班：Lizzie 周三 Mid、周五 Open，等 Approve / Decline。

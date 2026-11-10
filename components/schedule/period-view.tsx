@@ -2,12 +2,18 @@
 
 import { Fragment, useEffect, useState } from "react";
 
-import { SoonTag } from "@/components/nav/app-frame";
-import { DARK_SECONDARY_BUTTON_CLASS } from "@/components/ui/buttons";
+import {
+  DARK_PRIMARY_BUTTON_CLASS,
+  DARK_SECONDARY_BUTTON_CLASS,
+} from "@/components/ui/buttons";
 import { HowToUse } from "@/components/ui/how-to-use";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { laToday, shiftYmd, weekStartYmd } from "@/lib/la-date";
 import { fetchScheduleWeek } from "@/lib/schedule-api";
+import {
+  type ConfirmationPerson,
+  fetchWeekConfirmations,
+} from "@/lib/schedule-confirm-api";
 import { SHIFT_SWATCH, shiftColorOf } from "@/lib/schedule-shift-colors";
 import { formatClock } from "@/lib/schedule-time";
 import { cn } from "@/lib/utils";
@@ -20,14 +26,42 @@ export const PERIOD_MAX_WEEKS = 8;
 
 type Load =
   | { kind: "loading" }
-  | { kind: "ready"; weeks: ScheduleWeek[] }
+  | {
+      kind: "ready";
+      weeks: ScheduleWeek[];
+      /** 每人这一段的确认情况（只算已发布的周）；读不到 = null，不出这一列。 */
+      confirmed: Map<number, PersonConfirm> | null;
+    }
   | { kind: "error"; message: string };
+
+/** 绿 = 每周都确认了；黄 = 有一周提了改动；红 = 还有没确认的周（Annie 规矩：没处理红点、处理了绿点）。 */
+type PersonConfirm = "confirmed" | "changes" | "not_yet";
+
+const CONFIRM_TEXT: Record<PersonConfirm, string> = {
+  confirmed: "Confirmed",
+  changes: "Asked for a change",
+  not_yet: "Not confirmed",
+};
+const CONFIRM_DOT: Record<PersonConfirm, string> = {
+  confirmed: "bg-[#4ade80]",
+  changes: "bg-[#fbbf24]",
+  not_yet: "bg-[#f87171]",
+};
+
+/** 各周的回应合起来：有一周想改 ⇒ 黄；全部 accepted / counted_accepted ⇒ 绿；其余红。 */
+function combine(answers: ConfirmationPerson["answer"][]): PersonConfirm {
+  if (answers.includes("wants_changes")) return "changes";
+  return answers.every((a) => a === "accepted" || a === "counted_accepted")
+    ? "confirmed"
+    : "not_yet";
+}
 
 /**
  * Staff Schedule › Period（Annie 2026-11-08「动手吧」，preview https://claude.ai/artifact/HnBVL6wANcCZYs1r1enq3W，题全 A）：
  * 自己定开始的那一周和周数，把这几周已经排好的周表连起来看（只看不改，点周名回 Schedule 标签改那一周）；
  * 「Auto-fill these weeks」按这次勾选的 Rules 排这几周（AutoFillDialog 的 period 模式）。
- * 「Share with staff」要后端发整段邮件，后端没好之前挂 Soon。可见性开关 schedule_period（默认只 Super Admin）。
+ * 「Share with staff」（schedule.publish）：SharePeriodDialog，后端 33 的 /api/schedule/period/share；最右「Confirmed?」逐周读确认情况合起来。
+ * 可见性开关 schedule_period（默认只 Super Admin，可另外按人放开：Page visibility 的 Also allowed）。
  */
 export function PeriodView({
   employees,
@@ -38,6 +72,7 @@ export function PeriodView({
   reloadKey,
   onOpenWeek,
   onAutoFill,
+  onShare,
   autoFillBlocked,
   onUnauthorized,
 }: {
@@ -52,6 +87,8 @@ export function PeriodView({
   reloadKey: number;
   onOpenWeek: (weekStart: string) => void;
   onAutoFill?: () => void;
+  /** Share with staff（要 schedule.publish）；没传 = 不出这个键。 */
+  onShare?: () => void;
   /** Auto-fill 不能点的原因（例如 Schedule 标签上有没存的改动）；null = 能点。 */
   autoFillBlocked: string | null;
   onUnauthorized: () => void;
@@ -71,7 +108,36 @@ export function PeriodView({
             await fetchScheduleWeek(shiftYmd(start, i * 7), controller.signal),
           );
         }
-        if (!controller.signal.aborted) setLoad({ kind: "ready", weeks: list });
+        // 确认情况：已发布的周逐周读 /weeks/{week}/confirmations（后端 33：不另开整段接口）；读不到就不出这一列。
+        let confirmed: Map<number, PersonConfirm> | null = null;
+        if (canEdit) {
+          try {
+            const answers = new Map<number, ConfirmationPerson["answer"][]>();
+            const published = list.filter((w) => w.status === "published");
+            for (const w of published) {
+              const c = await fetchWeekConfirmations(
+                w.week_start,
+                controller.signal,
+              );
+              for (const p of c.people) {
+                answers.set(p.employee_id, [
+                  ...(answers.get(p.employee_id) ?? []),
+                  p.answer,
+                ]);
+              }
+            }
+            if (published.length > 0) {
+              confirmed = new Map(
+                [...answers].map(([id, a]) => [id, combine(a)]),
+              );
+            }
+          } catch (error) {
+            if (isStatus(error, 401)) throw error;
+            confirmed = null;
+          }
+        }
+        if (!controller.signal.aborted)
+          setLoad({ kind: "ready", weeks: list, confirmed });
       } catch (error) {
         if (controller.signal.aborted) return;
         if (isStatus(error, 401)) onUnauthorized();
@@ -79,7 +145,7 @@ export function PeriodView({
       }
     })();
     return () => controller.abort();
-  }, [start, weeks, reloadKey, retry, onUnauthorized]);
+  }, [start, weeks, reloadKey, retry, canEdit, onUnauthorized]);
 
   const thisWeek = weekStartYmd(laToday());
 
@@ -135,17 +201,16 @@ export function PeriodView({
               Auto-fill these weeks
             </button>
           ) : null}
-          <button
-            type="button"
-            data-period-share
-            disabled
-            className={cn(
-              DARK_SECONDARY_BUTTON_CLASS,
-              "inline-flex items-center gap-1.5",
-            )}
-          >
-            Share with staff <SoonTag />
-          </button>
+          {onShare ? (
+            <button
+              type="button"
+              data-period-share
+              onClick={onShare}
+              className={DARK_PRIMARY_BUTTON_CLASS}
+            >
+              Share with staff
+            </button>
+          ) : null}
         </div>
       </div>
 
@@ -178,6 +243,7 @@ export function PeriodView({
             employees={employees}
             thisWeek={thisWeek}
             onOpenWeek={onOpenWeek}
+            confirmed={load.confirmed}
           />
         )}
       </div>
@@ -195,7 +261,12 @@ export function PeriodView({
                   "Unticking a rule here only affects this fill. The Rules tab does not change.",
                 ]
               : []),
-            "Share with staff is coming soon.",
+            ...(onShare
+              ? [
+                  "Publish every week first. Then click Share with staff: it lists who will get the email and who can't be reached. Click Send to email each person one link to their own shifts for these weeks.",
+                  "Each person confirms all the weeks at once, or asks for a change on a day. Confirmed? shows each person: green = confirmed every week, yellow = asked for a change, red = not confirmed yet.",
+                ]
+              : []),
           ]}
         />
       </div>
@@ -208,11 +279,13 @@ function PeriodGrid({
   employees,
   thisWeek,
   onOpenWeek,
+  confirmed,
 }: {
   weeks: ScheduleWeek[];
   employees: ScheduleEmployee[];
   thisWeek: string;
   onOpenWeek: (weekStart: string) => void;
+  confirmed: Map<number, PersonConfirm> | null;
 }) {
   const dates = weeks.flatMap((w) =>
     Array.from({ length: 7 }, (_, d) => shiftYmd(w.week_start, d)),
@@ -292,6 +365,14 @@ function PeriodGrid({
                 </span>
               </th>
             ))}
+            {confirmed ? (
+              <th
+                rowSpan={2}
+                className="border-b border-white/10 px-2 py-1 text-left font-semibold whitespace-nowrap text-white/55"
+              >
+                Confirmed?
+              </th>
+            ) : null}
           </tr>
           <tr>
             {weeks.map((w) =>
@@ -328,6 +409,27 @@ function PeriodGrid({
                   </td>
                 )),
               )}
+              {confirmed ? (
+                <td
+                  data-period-confirm={confirmed.get(e.id) ?? ""}
+                  className="border-b border-white/[.06] px-2 py-1 text-[12px] whitespace-nowrap"
+                >
+                  {confirmed.has(e.id) ? (
+                    <>
+                      <span
+                        aria-hidden
+                        className={cn(
+                          "mr-1.5 inline-block size-[7px] rounded-full align-[1px]",
+                          CONFIRM_DOT[confirmed.get(e.id) as PersonConfirm],
+                        )}
+                      />
+                      {CONFIRM_TEXT[confirmed.get(e.id) as PersonConfirm]}
+                    </>
+                  ) : (
+                    <span className="text-white/30">–</span>
+                  )}
+                </td>
+              ) : null}
             </tr>
           ))}
           {openByDate.size > 0 ? (

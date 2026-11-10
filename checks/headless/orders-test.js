@@ -111,6 +111,7 @@ async function main() {
 
   try {
     await run();
+    await refreshChecks();
   } finally {
     ws.close();
     chrome.kill();
@@ -337,6 +338,94 @@ async function run() {
   await waitFor("location.pathname === '/auth/login'");
   check("未登录跳旧后台登录页", (await evaluate("return location.href;")).startsWith(`${APP}/auth/login?next=`));
   await ctl({ fail401: false });
+}
+
+// ── 置顶 111：Order 详情页「Refresh from Rezdy」（后端 3e 形状，mock）──
+async function refreshChecks() {
+  const btn = "document.querySelector('[data-order-refresh]')";
+  const card = "document.querySelector('[data-order-refresh-result]')";
+  const openDetail = async (id) => {
+    await goto(`${APP}/orders/${id}`);
+    await waitFor("document.querySelector('h1')?.textContent.startsWith('CHD')", 20000);
+    await sleep(300);
+    await helpers();
+  };
+  await ctl({ partner: null, staffPerms: null, superAdmin: false, refresh: "updated", refreshDelay: 0 });
+
+  // 旧表的单（editable = true）不出键
+  await openDetail("CHDTESTORDER1");
+  check("Refresh：旧表的单（能编辑）不出 Refresh from Rezdy 键", !(await evaluate(`return !!${btn};`)));
+
+  // 新 Rezdy 表的单出键（权限总开关关着 = 照旧都有）
+  await openDetail("CHDNEW");
+  const b = await evaluate(`const b = ${btn}; const h = b?.closest('header'); return b ? { text: b.textContent, bg: getComputedStyle(b).backgroundColor, inHead: !!h && h.querySelector('h1').textContent === 'CHDNEW', last: h?.lastElementChild === b } : null;`);
+  check("Refresh：新 Rezdy 表的单 ⇒ 订单号那一行最右边蓝色「Refresh from Rezdy」", b && b.text === "Refresh from Rezdy" && b.bg === "rgb(59, 130, 246)" && b.inHead && b.last, JSON.stringify(b));
+  check("Refresh：How to use 多一句（原文）", await evaluate("return document.body.textContent.includes(\"Refresh from Rezdy (next to the order number): gets this order from Rezdy again and updates Order List right away.\");"));
+  check("Refresh：按之前没有结果卡", !(await evaluate(`return !!${card};`)));
+
+  // updated：不弹确认，Refreshing…，绿字 + 表，静默重读
+  await ctl({ refreshDelay: 800 });
+  let n0 = (await mockLog()).length;
+  await evaluate(`${btn}.click();`);
+  check("Refresh：点了不弹确认，键马上变灰「Refreshing…」", await waitFor(`${btn}.disabled && ${btn}.textContent === 'Refreshing…' && !document.querySelector('[role=dialog]')`, 3000));
+  await waitFor(`!!${card}`, 8000);
+  const post = (await mockLog()).slice(n0).filter((e) => e.method === "POST" && e.path === "/api/operations/orders/CHDNEW/refresh-from-rezdy");
+  check("Refresh：POST /api/operations/orders/CHDNEW/refresh-from-rezdy 一次", post.length === 1, JSON.stringify(post));
+  const r = await evaluate(`const c = ${card}; return { msg: c.querySelector('[data-order-refresh-message]')?.textContent, color: getComputedStyle(c.querySelector('[data-order-refresh-message]')).color, rows: [...c.querySelectorAll('[data-order-refresh-change]')].map((tr) => [...tr.children].map((td) => td.textContent)), strike: getComputedStyle(c.querySelector('[data-order-refresh-change] td:nth-child(2)')).textDecorationLine };`);
+  check("Refresh：updated ⇒ 绿字原话「Updated from Rezdy: 2 field(s) changed.」", r.msg === "Updated from Rezdy: 2 field(s) changed." && r.color === "rgb(21, 128, 61)", JSON.stringify(r));
+  check("Refresh：改了什么列成表 Field / Before → After，空的写 empty，Before 划掉", JSON.stringify(r.rows) === JSON.stringify([["Phone", "+1555", "→", "+15550109999"], ["Pickup time (P0ABCD)", "empty", "→", "5:45 AM"]]) && r.strike === "line-through", JSON.stringify(r));
+  check("Refresh：成功后静默重读 ⇒ Guest 卡电话已是新值、Activity 多一条 Refreshed from Rezdy、不闪 Loading", await waitFor("document.body.textContent.includes('+15550109999') && document.body.textContent.includes(\"Refreshed from Rezdy — Phone: '+1555' → '+15550109999'\") && !document.body.textContent.includes('Loading…')", 8000));
+  check("Refresh：重读后结果卡还在、键恢复", await evaluate(`return !!${card} && !${btn}.disabled && ${btn}.textContent === 'Refresh from Rezdy';`));
+  await ctl({ refreshDelay: 0 });
+
+  // 其他结果
+  const press = async (kind) => {
+    await ctl({ refresh: kind });
+    const before = await evaluate(`return ${card}?.textContent ?? '';`);
+    await evaluate(`${btn}.click();`);
+    await waitFor(`${card} && ${card}.textContent !== ${JSON.stringify(before)} && !${btn}.disabled`, 8000);
+    await sleep(200);
+  };
+  await press("same");
+  check("Refresh：没变化 ⇒ 绿字「Already up to date with Rezdy. Nothing changed.」，没有表", await evaluate(`const c = ${card}; return c.querySelector('[data-order-refresh-message]').textContent === 'Already up to date with Rezdy. Nothing changed.' && !c.querySelector('[data-order-refresh-changes]');`));
+  await press("kept");
+  const k = await evaluate(`const c = ${card}; return { msg: c.querySelector('[data-order-refresh-message]').textContent, kept: [...c.querySelectorAll('[data-order-refresh-kept]')].map((e) => [e.textContent, getComputedStyle(e).backgroundColor]) };`);
+  check("Refresh：kept ⇒ 绿字只写前半句，「Rezdy has no phone…kept the existing one.」单独一行黄框，不重复", k.msg === "Updated from Rezdy: 1 field(s) changed." && k.kept.length === 1 && k.kept[0][0] === "Rezdy has no phone for this order — kept the existing one." && k.kept[0][1] === "rgb(255, 248, 225)", JSON.stringify(k));
+  await press("not_applied");
+  check("Refresh：not_applied ⇒ 黄框原话，没有绿字", await evaluate(`const c = ${card}; const e = c.querySelector('[data-order-refresh-not-applied]'); return !!e && e.textContent === 'Rezdy sent this order without its details (status PROCESSING). Nothing was changed.' && getComputedStyle(e).backgroundColor === 'rgb(255, 248, 225)' && !c.querySelector('[data-order-refresh-message]');`));
+  for (const [kind, text] of [
+    ["404", "Order not found in Rezdy. Nothing was changed."],
+    ["409busy", "A refresh for this order is already running. Please wait a moment."],
+    ["502", "Could not reach Rezdy. Nothing was changed. Please try again in a minute."],
+    ["503", "Refresh from Rezdy is not available right now. Nothing was changed."],
+    ["500", "Could not save the update from Rezdy. Nothing was changed."],
+  ]) {
+    await press(kind);
+    check(`Refresh：${kind} ⇒ 红字原话「${text}」，键恢复可按`, await evaluate(`const e = ${card}.querySelector('[data-order-refresh-error]'); return !!e && e.textContent === ${JSON.stringify(text)} && getComputedStyle(e).color === 'rgb(179, 38, 30)' && !${btn}.disabled;`));
+  }
+  await press("cancelled");
+  check("Refresh：Rezdy 已取消 ⇒ 绿字原话 + Status CONFIRMED → CANCELLED", await evaluate(`const c = ${card}; return c.querySelector('[data-order-refresh-message]').textContent === 'This order is CANCELLED in Rezdy. Order List now shows it as cancelled.' && c.querySelector('[data-order-refresh-change=Status]')?.textContent.includes('CANCELLED');`));
+
+  // 401 ⇒ 跳登录
+  await ctl({ refresh: "updated" });
+  await openDetail("CHDNEW");
+  await ctl({ fail401: true });
+  await evaluate(`${btn}.click();`);
+  check("Refresh：没登录（401）⇒ 跳旧后台登录页", await waitFor("location.pathname === '/auth/login'", 8000));
+  await ctl({ fail401: false });
+
+  // 权限总开关开着：没勾 orders.edit 不出键；勾了出
+  await ctl({ staffPerms: ["orders.view"] });
+  await openDetail("CHDNEW");
+  check("Refresh：权限开着、没勾 orders.edit ⇒ 不出键", !(await evaluate(`return !!${btn};`)));
+  await ctl({ staffPerms: ["orders.view", "orders.edit"] });
+  await openDetail("CHDNEW");
+  check("Refresh：勾了 orders.edit ⇒ 出键", await evaluate(`return !!${btn};`));
+  // partner 不出
+  await ctl({ staffPerms: null, partner: ["orders.view", "orders.edit"] });
+  await openDetail("CHDNEW");
+  check("Refresh：partner ⇒ 不出键", !(await evaluate(`return !!${btn};`)));
+  await ctl({ partner: null, staffPerms: null, refresh: "updated" });
 }
 
 main().catch((e) => {

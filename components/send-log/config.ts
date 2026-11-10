@@ -1,3 +1,4 @@
+import { noAddressLabel } from "@/lib/send-outcome";
 import type { SendLogModule, SendLogRow } from "@/types";
 
 const LA_TIME_ZONE = "America/Los_Angeles";
@@ -79,7 +80,8 @@ export function fullName(row: SendLogRow): string {
 
 // ── 状态胶囊 ──────────────────────────────────────────────────────────────────
 
-export type StatusTone = "ok" | "sent" | "fail" | "pending";
+/** muted：没号码 / 没邮箱、没试（置顶 109 Q1，灰）。 */
+export type StatusTone = "ok" | "sent" | "fail" | "pending" | "muted";
 
 export interface StatusPill {
   label: string;
@@ -97,6 +99,8 @@ export function emailStatus(status: string | null): StatusPill | null {
   if (status === "spam") return { label: "Spam", tone: "fail" };
   if (status.startsWith("sent")) return { label: "Sent", tone: "ok" };
   if (status.startsWith("failed")) return { label: "Failed", tone: "fail" };
+  const none = noAddressLabel(status, "email");
+  if (none) return { label: none, tone: "muted" };
   return { label: status, tone: "pending" };
 }
 
@@ -111,6 +115,8 @@ export function smsStatus(status: string | null): StatusPill | null {
   if (status.includes("delivered")) return { label: "Delivered", tone: "ok" };
   if (status.includes("sent")) return { label: "Sent", tone: "sent" };
   if (status.includes("failed")) return { label: "Failed", tone: "fail" };
+  const none = noAddressLabel(status, "sms");
+  if (none) return { label: none, tone: "muted" };
   return { label: status, tone: "pending" };
 }
 
@@ -121,6 +127,7 @@ export const TONE_CLASS: Record<StatusTone, string> = {
   fail: "bg-[#FCEBEB] night:bg-red-500/10 text-[#A32D2D] night:text-red-300",
   pending:
     "bg-[#E6F1FB] night:bg-sky-400/[.08] text-[#185FA5] night:text-sky-300",
+  muted: "bg-[#f1efe8] night:bg-white/[.04] text-[#6B6B6B] night:text-white/55",
 };
 
 /** 错误区「Channel」一列：哪条渠道失败了。 */

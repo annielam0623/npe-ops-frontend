@@ -38,6 +38,7 @@ export type {
   ReportStatus,
   ReportType,
 } from "./daily-report";
+export type { AllowedUser } from "./daily-report";
 export type {
   BugTaskCreate,
   BugTaskList,
@@ -99,6 +100,7 @@ export type {
   OrderListPage,
   OrderListQuery,
   OrderPatch,
+  OrderRefreshResult,
   OrderRow,
 } from "./orders";
 export type {

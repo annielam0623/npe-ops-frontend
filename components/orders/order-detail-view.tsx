@@ -25,6 +25,13 @@ import { cn } from "@/lib/utils";
 import { PageLink } from "@/components/ui/page-link";
 import type { OrderDetail, OrderPatch } from "@/types";
 
+import {
+  RefreshButton,
+  RefreshResultCard,
+  type RefreshState,
+  useOrderRefresh,
+} from "./refresh-from-rezdy";
+
 // 样子照旧后台 admin/order_detail.html（Annie 2026-10-07：和旧版一模一样）。
 /** .od-input */
 const INPUT =
@@ -115,6 +122,13 @@ export function OrderDetailView({ orderNumber }: { orderNumber: string }) {
     return () => controller.abort();
   }, [reload, reloadKey]);
 
+  // 「Refresh from Rezdy」（置顶 111）：结果放在这里，静默重读后结果卡照样留着。
+  const quietReload = useCallback(() => void reload(undefined, true), [reload]);
+  const refresh = useOrderRefresh(orderNumber, quietReload, redirectToLogin);
+  // 只在新 Rezdy 表的单（后端原始 editable = false）、有 orders.edit 时出；partner 不出（后端 3e：挂 orders.edit）。
+  const canRefresh =
+    state.kind === "ready" && !partner && canEditOrder && !state.order.editable;
+
   return (
     <main className="text-stone-800 night:text-white/90">
       <PageLink
@@ -123,7 +137,9 @@ export function OrderDetailView({ orderNumber }: { orderNumber: string }) {
       >
         ← Back to Orders
       </PageLink>
-      {partner ? null : <HowToUse money={perms.canSeeMoney} />}
+      {partner ? null : (
+        <HowToUse money={perms.canSeeMoney} refresh={canRefresh} />
+      )}
       {state.kind === "loading" ? (
         <div className={OD_LOADING}>Loading…</div>
       ) : state.kind === "notfound" ? (
@@ -148,6 +164,7 @@ export function OrderDetailView({ orderNumber }: { orderNumber: string }) {
           }
           partner={partner}
           storedReadOnly={!state.order.editable}
+          refresh={canRefresh ? refresh : null}
           onSaved={() => void reload(undefined, true)}
           onUnauthorized={redirectToLogin}
         />
@@ -160,11 +177,14 @@ function OrderBody({
   order: o,
   partner,
   storedReadOnly,
+  refresh,
   onSaved,
   onUnauthorized,
 }: {
   order: OrderDetail;
   partner: boolean;
+  /** null = 不出 Refresh from Rezdy 键。 */
+  refresh: { state: RefreshState; run: () => Promise<void> } | null;
   /** 后端说这单本来就改不了（新 Rezdy 表）：才写 Read-only 那句；只是没勾 orders.edit 不写。 */
   storedReadOnly: boolean;
   onSaved: () => void;
@@ -204,7 +224,14 @@ function OrderBody({
         >
           {o.source}
         </span>
+        {refresh ? (
+          <RefreshButton
+            busy={refresh.state.kind === "busy"}
+            onClick={() => void refresh.run()}
+          />
+        ) : null}
       </header>
+      {refresh ? <RefreshResultCard state={refresh.state} /> : null}
       {/* 置顶 51 B：一点跳到 Main manifest 的那一单（标黄、预勾）。 */}
       <ManifestLinks order={o} className="mt-2 mb-3" />
       {storedReadOnly && !partner ? (
@@ -959,7 +986,7 @@ function RawBlock({ title, value }: { title: string; value: unknown }) {
 }
 
 /** money = false（没勾 orders.money_view）：不提价格卡、代理商和 Raw Rezdy。 */
-function HowToUse({ money }: { money: boolean }) {
+function HowToUse({ money, refresh }: { money: boolean; refresh: boolean }) {
   return (
     // 旧页这里是一直展开的蓝框（不是可折叠的 details），样式照 send_morning.html。
     <div className="mb-4 rounded-[10px] border border-[#b5d4f4] bg-[#e8f3fc] px-5 py-3.5 text-[12px] leading-[1.8] text-[#0c3a6b] night:border-sky-400/20 night:bg-sky-400/[.08] night:text-sky-300">
@@ -989,6 +1016,17 @@ function HowToUse({ money }: { money: boolean }) {
           <li>
             You can have both cards open at once. Saving one does not lose what
             you typed in the other.
+          </li>
+        ) : null}
+        {refresh ? (
+          <li>
+            Refresh from Rezdy (next to the order number): gets this order from
+            Rezdy again and updates Order List right away. Use it when a
+            guest&apos;s details were changed in Rezdy but did not come through.
+            The result shows under the order number: what changed (before →
+            after), or that nothing changed. If Rezdy has no phone or email for
+            the order, the one we have is kept. If it does not work, the reason
+            shows in red and nothing is changed.
           </li>
         ) : null}
         <li>

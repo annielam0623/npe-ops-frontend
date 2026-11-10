@@ -6,9 +6,15 @@ import { isStatus } from "@/lib/api-errors";
 import { fetchCurrentUser } from "@/lib/auth-api";
 import {
   fetchDashboardWidgets,
+  updateAllowedUsers,
   updateDashboardWidgets,
 } from "@/lib/daily-report-api";
-import type { CurrentUser, DashboardWidgetVisibility } from "@/types";
+import type {
+  AllowedUser,
+  CurrentUser,
+  DashboardWidget,
+  DashboardWidgetVisibility,
+} from "@/types";
 
 /**
  * 新板块 / 新页面对谁可见（Annie 2026-10-25：「从 my task 开始的所有新板块都要有这个开关，只有 super admin 可以控制」）。
@@ -186,6 +192,10 @@ export function visibleByRule(v: Visibility, me: CurrentUser | null): boolean {
 interface Entry {
   visibility: Visibility;
   visibleToMe: boolean;
+  /** 能「另外按人放开」（后端 allow_list）。 */
+  allowList: boolean;
+  /** 另外放开的人（只有 Super Admin 拿得到名字；别人这里是空的）。 */
+  allowedUsers: AllowedUser[];
 }
 
 interface Snapshot {
@@ -212,14 +222,19 @@ function publish(next: Snapshot) {
   for (const l of listeners) l();
 }
 
-function entriesFrom(
-  widgets: { key: string; visibility: string; visible_to_me: boolean }[],
-): Snapshot["entries"] {
+function entriesFrom(widgets: DashboardWidget[]): Snapshot["entries"] {
   const out: Snapshot["entries"] = {};
   for (const w of widgets) {
     const v = w.visibility;
     if (v !== "staff" && v !== "admin" && v !== "super_admin_only") continue;
-    out[w.key] = { visibility: v, visibleToMe: !!w.visible_to_me };
+    out[w.key] = {
+      visibility: v,
+      visibleToMe: !!w.visible_to_me,
+      allowList: w.allow_list === true,
+      allowedUsers: (w.allowed_users ?? []).filter(
+        (u): u is AllowedUser => typeof u === "object" && u !== null,
+      ),
+    };
   }
   return out;
 }
@@ -261,6 +276,12 @@ export interface PageVisibility {
   visibilityOf: (key: VisibilityKey) => Visibility;
   /** Super Admin 改档：PUT 后以接口返回的为准；失败抛出后端原话。 */
   setVisibility: (key: VisibilityKey, v: Visibility) => Promise<void>;
+  /** 这一项能不能另外按人放开（后端带 allow_list: true）。 */
+  hasAllowList: (key: VisibilityKey) => boolean;
+  /** 另外放开的人（Super Admin 才有名字）。 */
+  allowedUsersOf: (key: VisibilityKey) => AllowedUser[];
+  /** Super Admin 整份替换名单；失败抛出后端原话。 */
+  setAllowedUsers: (key: VisibilityKey, ids: number[]) => Promise<void>;
 }
 
 export function usePageVisibility(onUnauthorized?: () => void): PageVisibility {
@@ -293,6 +314,15 @@ export function usePageVisibility(onUnauthorized?: () => void): PageVisibility {
     visibilityOf,
     setVisibility: async (key, v) => {
       const result = await updateDashboardWidgets({ [key]: v });
+      publish({
+        ...snapshot,
+        entries: { ...snapshot.entries, ...entriesFrom(result.widgets) },
+      });
+    },
+    hasAllowList: (key) => snap.entries[key]?.allowList === true,
+    allowedUsersOf: (key) => snap.entries[key]?.allowedUsers ?? [],
+    setAllowedUsers: async (key, ids) => {
+      const result = await updateAllowedUsers(key, ids);
       publish({
         ...snapshot,
         entries: { ...snapshot.entries, ...entriesFrom(result.widgets) },

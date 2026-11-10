@@ -52,6 +52,8 @@ interface TeamField {
 
 const SCHED_SUBJECT = ["{week}"];
 const SCHED_TEXT = ["{name}", "{week}"];
+/** 整段排班（Period › Share with staff，后端 33 v161 种子）的变量。 */
+const PERIOD_VARS = ["{start}", "{end}", "{weeks}"];
 
 const SMS_FIELDS: TeamField[] = [
   {
@@ -134,7 +136,7 @@ const sentence = (
 interface SchedGroup {
   title: string;
   /** 右边预览画哪一封。 */
-  email?: "week" | "changed" | "confirm" | "weekly";
+  email?: "week" | "changed" | "confirm" | "weekly" | "period";
   /** 灰字说明（Notice 标题不在这里改，Annie 第 3 题 A）。 */
   lock?: string;
   fields: TeamField[];
@@ -200,9 +202,33 @@ const SCHED_GROUPS: SchedGroup[] = [
       sentence("sched_weekly_confirm_intro", "Intro"),
     ],
   },
+  {
+    // Staff Schedule › Period › Share with staff（Annie 2026-11-08；后端 33 v161 种子加的 3 个键）。
+    title: "Share several weeks (Period)",
+    email: "period",
+    fields: [
+      {
+        id: "sched_period_subject",
+        label: "Email subject",
+        required: true,
+        insert: PERIOD_VARS,
+        allowed: PERIOD_VARS,
+      },
+      {
+        id: "sched_period_intro",
+        label: "Intro",
+        insert: PERIOD_VARS,
+        allowed: PERIOD_VARS,
+      },
+      sentence("sched_period_link_text", "Link text", [], {
+        required: true,
+        allowed: [],
+      }),
+    ],
+  },
 ];
 
-/** 全部 23 个键（找标签、算未存改动用）。 */
+/** 全部 26 个键（找标签、算未存改动用；11-08 加 Period 3 个）。 */
 export const TEAM_FIELDS: TeamField[] = [
   ...SMS_FIELDS,
   ...REST_FIELDS,
@@ -223,6 +249,9 @@ const SAMPLE: Record<string, string> = {
   "{tour}": "Grand Canyon West Rim",
   "{name}": "Maria",
   "{week}": "Sun, Nov 1",
+  "{start}": "Sun, Nov 8",
+  "{end}": "Sat, Dec 5",
+  "{weeks}": "4",
 };
 const GUIDE_SAMPLE: Record<string, string> = {
   ...SAMPLE,
@@ -629,6 +658,17 @@ export function TeamMessagesPreview({
             <Line text={v("sched_weekly_confirm_intro")} />
             <ShiftList />
             {link(v("sched_confirm_link_text"))}
+          </div>
+        </div>
+        <div className={BOX} data-team-preview="period">
+          <div className={LABEL}>Share several weeks (sample)</div>
+          <div className={MAIL}>
+            <div className="mb-2.5 border-b border-[#e5e7eb] pb-1.5 font-bold">
+              Subject: {v("sched_period_subject")}
+            </div>
+            <Line text={greet} />
+            <Line text={v("sched_period_intro")} />
+            {link(v("sched_period_link_text"))}
           </div>
         </div>
       </>

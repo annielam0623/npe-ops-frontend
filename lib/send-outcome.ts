@@ -164,3 +164,21 @@ export function legacyChannel(
   if (s.startsWith("skipped")) return "skipped";
   return "failed";
 }
+
+/**
+ * 状态原文是「没地址、没试」（后端 W1 / W2 起早班、relay、门票写 "skipped - no phone" / "skipped - no email"）：
+ * Tracking / Send Log 这类直接显示原文的地方照 Q1 写灰字 No number / No email，不当失败、不显示原文。
+ */
+export function noAddressLabel(
+  raw: string | null | undefined,
+  channel: "sms" | "email",
+): string | null {
+  const s = (raw ?? "").trim().toLowerCase();
+  if (!s.startsWith("skipped - no")) return null;
+  return channel === "sms" ? "No number" : "No email";
+}
+
+/** noAddressLabel 给出的两种字（表格里按字上灰色用）。 */
+export function isNoAddressLabel(label: string): boolean {
+  return label === "No number" || label === "No email";
+}

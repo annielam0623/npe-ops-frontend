@@ -1,5 +1,6 @@
 "use client";
 
+import { isNoAddressLabel } from "@/lib/send-outcome";
 import { type DragEvent, type ReactNode, useRef, useState } from "react";
 
 import { ChannelIcon, WHATSAPP_GREEN } from "@/components/ui/channel-icon";
@@ -34,6 +35,13 @@ const TONE_CLASS: Record<DeliveryTone, string> = {
   bad: "text-[12px] font-bold text-[#dc3545]",
   none: "text-[12px] text-[#1a1a1a]",
 };
+
+/** No number / No email 灰字（置顶 109 Q1），其余照旧。 */
+function statusClass(s: { label: string; tone: DeliveryTone }): string {
+  return isNoAddressLabel(s.label)
+    ? "text-[12px] text-[#6B6B6B]"
+    : TONE_CLASS[s.tone];
+}
 
 /** 旧页面表头 th 的样子。 */
 const TH =
@@ -364,12 +372,12 @@ function Cell({
       break;
     case "email": {
       const status = emailLabel(row);
-      content = <span className={TONE_CLASS[status.tone]}>{status.label}</span>;
+      content = <span className={statusClass(status)}>{status.label}</span>;
       break;
     }
     case "sms": {
       const status = smsLabel(row.sms_status);
-      content = <span className={TONE_CLASS[status.tone]}>{status.label}</span>;
+      content = <span className={statusClass(status)}>{status.label}</span>;
       break;
     }
     case "status":

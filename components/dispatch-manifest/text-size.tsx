@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 
 import { cn } from "@/lib/utils";
 import type {
@@ -211,7 +211,10 @@ export function TextSizeToolbar({
   onResetAll,
   onCancel,
   onDone,
+  extra,
 }: {
+  /** 编辑条最下面多一行（Relay list 的 Spacing）；Bus Manifest 不给。 */
+  extra?: ReactNode;
   mode: TextMode;
   onMode: (m: TextMode) => void;
   picks: TextPick[];
@@ -338,6 +341,7 @@ export function TextSizeToolbar({
           {pickedLabel || "nothing yet — click the table"}
         </b>
       </span>
+      {extra}
     </div>
   );
 }

@@ -3,7 +3,9 @@ import {
   channelCell,
   countOutcomes,
   guestFromChannels,
+  isNoAddressLabel,
   legacyChannel,
+  noAddressLabel,
   outcomeStats,
   resolveOutcome,
 } from "../../lib/send-outcome.ts";
@@ -63,6 +65,13 @@ eq(
   outcomeStats({ sent: 0, failed: 0, no_contact: 0, not_sent: 1 }).map((s) => s.label),
   ["Sent", "Failed", "No contact", "Not sent"],
 );
+
+// Tracking / Send Log 直接显示原文的地方（W2 起门票也写 skipped - no …）
+eq("skipped - no phone ⇒ No number", noAddressLabel("skipped - no phone", "sms"), "No number");
+eq("skipped - no email ⇒ No email", noAddressLabel("Skipped - no email", "email"), "No email");
+eq("failed 不是没地址", noAddressLabel("failed: Invalid phone", "sms"), null);
+eq("空 ⇒ null（照旧 —）", noAddressLabel("", "sms"), null);
+eq("isNoAddressLabel", [isNoAddressLabel("No number"), isNoAddressLabel("—")], [true, false]);
 
 console.log(bad ? `\n${bad} FAILED` : "\nALL PASS");
 process.exit(bad ? 1 : 0);

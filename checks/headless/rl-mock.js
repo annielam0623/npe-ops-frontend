@@ -121,8 +121,10 @@ function relayPull(date) {
         }]
       : []),
   ];
-  const extra = ctl.many
-    ? Array.from({ length: 40 }, (_, i) => rich({ id: 100 + i, order_number: `CHDZZL${String(i).padStart(2, "0")}`, name: `ZZ Long ${i}`, pickup_time: "5:45 AM", pickup_location: `ZZ Hotel ${i}`, location_id: 200 + i, hotel: `ZZ Hotel ${i}`, tour: "West Rim" }, { phone: "+15550100100", manifest_id: 2, product_short: "West", short_tag: "West", hotel_short: `ZZ Hotel ${i}`, bus: BUS.west }))
+  // ctl.many：true = 40 家酒店各 1 单；数字 = 这么多家（置顶 112 自动压的检查用）。
+  const nMany = ctl.many === true ? 40 : Number(ctl.many) || 0;
+  const extra = nMany
+    ? Array.from({ length: nMany }, (_, i) => rich({ id: 100 + i, order_number: `CHDZZL${String(i).padStart(2, "0")}`, name: `ZZ Long ${i}`, pickup_time: "5:45 AM", pickup_location: `ZZ Hotel ${i}`, location_id: 200 + i, hotel: `ZZ Hotel ${i}`, tour: "West Rim" }, { phone: "+15550100100", manifest_id: 2, product_short: "West", short_tag: "West", hotel_short: `ZZ Hotel ${i}`, bus: BUS.west }))
     : [];
   const r2 = [{ car: { id: 905, van: "1724", driver: "ZZ Bruce", ...(ctl.old ? {} : { location_ids: [11], tour_buses: [] }) }, guests: [rich({ id: 6, order_number: "CHDZZW01", name: "Wes West", pickup_time: "5:40 AM", pickup_location: "Aria Resort", location_id: 11, hotel: "Aria Resort", tour: "West Rim" }, { phone: "+15550100006", manifest_id: 2, product_short: "West", short_tag: "West", hotel_short: "Aria", bus: BUS.west }), ...extra] }];
   // Hoover 自己接（Tour bus pick up）：Relay list 不印。
@@ -215,6 +217,11 @@ http
           const b = JSON.parse((await readRaw(req)) || "{}"); entry.body = b;
           if (!ctl.edit) return send(res, 403, { detail: "You do not have permission to edit Dispatch." });
           if (ctl.textFail) return send(res, 400, { detail: ctl.textFail });
+          // 置顶 112 Spacing（后端 78 relay-spacing 形状）：ctl.spacing = 新后端；旧后端多一个键就 400。
+          const sp = b.text_size?.spacing;
+          if (sp !== undefined && !ctl.spacing) return send(res, 400, { detail: "Text size is not valid. Reload the page and try again." });
+          if (sp && ((sp.row !== undefined && !(Number.isInteger(sp.row) && sp.row >= 1 && sp.row <= 10)) || (sp.gap !== undefined && !(Number.isInteger(sp.gap) && sp.gap % 2 === 0 && sp.gap >= 2 && sp.gap <= 24)))) return send(res, 400, { detail: "Spacing is not valid." });
+          if (ctl.spacing && b.text_size) b.text_size = { ...b.text_size, spacing: b.text_size.spacing ?? {} };
           const prev = textStore[b.sheet]?.history ?? [];
           textStore[b.sheet] = { text_size: b.text_size, history: [{ by: "ZZ Test", at: "Nov 3, 6:00 PM", what: "Text size changed" }, ...prev].slice(0, 5) };
           return send(res, 200, { ok: true, sheet: b.sheet, text_size: textStore[b.sheet].text_size, text_size_history: textStore[b.sheet].history });
@@ -241,7 +248,7 @@ http
       const body = relayPull(url.searchParams.get("date"));
       // 后端 07：summary_text_size[轮] = {sheet, text_size, history}；车上 text_size_sheet（没车号 = null）/ text_size / text_size_history。
       if (ctl.textSize) {
-        const EMPTY = { page: {}, columns: {}, rows: {} };
+        const EMPTY = { page: {}, columns: {}, rows: {}, ...(ctl.spacing ? { spacing: {} } : {}) };
         const got = (sheet) => textStore[sheet] ?? { text_size: EMPTY, history: [] };
         body.summary_text_size = {};
         for (const rnd of ["relay", "relay_2"]) {

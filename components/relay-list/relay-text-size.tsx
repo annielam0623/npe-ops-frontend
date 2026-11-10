@@ -69,6 +69,40 @@ interface SheetText {
 
 const API = "/api/dispatch/relay-list/text-size";
 
+/**
+ * 当天行距（置顶 112 Q8–Q10 A + Annie「用-+是最好，一目了然，就是立刻可以看到效果就行了，不要让staff去判断px」）：
+ * 一组 [−] [+] 同时调行内上下空白和酒店之间空隙，不显示 px；存在 text_size.spacing {row, gap}（后端 78 relay-spacing）。
+ * 档位 k：酒店间 gap = 12 + 2k（k −3..+6 ⇒ 6–24px），行内 row = 默认 + k（车单默认 4、总表 2，夹在 1–10）。
+ */
+export const SPACING_MIN = -3;
+export const SPACING_MAX = 6;
+const GAP_DEFAULT = 12;
+const rowDefault = (sheet: string) => (sheet.startsWith("summary:") ? 2 : 4);
+
+export function spacingLevel(ts: ManifestTextSize): number {
+  const g = ts.spacing?.gap;
+  return typeof g === "number" ? Math.round((g - GAP_DEFAULT) / 2) : 0;
+}
+
+function spacingFor(sheet: string, k: number): ManifestTextSize["spacing"] {
+  if (!k) return {};
+  return {
+    gap: GAP_DEFAULT + 2 * k,
+    row: Math.max(1, Math.min(10, rowDefault(sheet) + k)),
+  };
+}
+
+/** 这张单现在的行距（px）；没调 / 旧后端 = null（照 CSS 默认）。 */
+export function useRelaySpacing(
+  sheet: string | null,
+): { row: number; gap: number } | null {
+  const t = useContext(RelayTextContext);
+  if (!t?.ready || !t.spacingReady || !sheet) return null;
+  const sp = t.current(sheet).spacing;
+  if (!sp || (sp.row === undefined && sp.gap === undefined)) return null;
+  return { row: sp.row ?? rowDefault(sheet), gap: sp.gap ?? GAP_DEFAULT };
+}
+
 /** relay-pull 带的每张单的当天字号（键 = sheet）；null = 旧后端（没有 summary_text_size）。 */
 function sheetsOf(pull: RelayPull | null): Record<string, SheetText> | null {
   if (!pull?.summary_text_size) return null;
@@ -114,6 +148,10 @@ type SaveState =
 export interface RelayTextState {
   /** 后端有这个接口（没有 = 不出 Aa 键）。 */
   ready: boolean;
+  /** 后端认 spacing（relay-pull 的 text_size 带 spacing 键）：才出 Spacing 那一行。 */
+  spacingReady: boolean;
+  spacingStep: (n: 1 | -1) => void;
+  spacingReset: () => void;
   canEdit: boolean;
   sheets: Record<string, SheetText>;
   staged: Record<string, ManifestTextSize>;
@@ -153,10 +191,14 @@ export function useRelayTextSize(
   const [save, setSave] = useState<SaveState>({ kind: "idle" });
 
   // 每次读 relay-pull（打开、存好颜色后重读）都换成后端那份。
+  const [spacingReady, setSpacingReady] = useState(false);
   useEffect(() => {
     const got = sheetsOf(pull);
     setReady(got !== null);
     setSheets(got ?? {});
+    setSpacingReady(
+      !!got && Object.values(got).some((s) => s.text_size.spacing !== undefined),
+    );
   }, [pull]);
 
   const dirty = canEdit && (Object.keys(staged).length > 0 || draft !== null);
@@ -174,11 +216,23 @@ export function useRelayTextSize(
 
   const change = (fn: (l: { d?: number; bold?: boolean }) => { d?: number; bold?: boolean }) => {
     if (!draft || !picks.length) return;
-    setDraft(updateLayers(draft, picks, fn));
+    // updateLayers 只认 page / columns / rows：spacing 要带回去。
+    const next = updateLayers(draft, picks, fn);
+    setDraft(draft.spacing !== undefined ? { ...next, spacing: draft.spacing } : next);
+  };
+  const setLevel = (k: number) => {
+    if (!draft || !editing) return;
+    setDraft({
+      ...draft,
+      spacing: spacingFor(editing, Math.max(SPACING_MIN, Math.min(SPACING_MAX, k))),
+    });
   };
 
   return {
     ready,
+    spacingReady,
+    spacingStep: (n) => draft && setLevel(spacingLevel(draft) + n),
+    spacingReset: () => setLevel(0),
     canEdit,
     sheets,
     staged,
@@ -210,7 +264,12 @@ export function useRelayTextSize(
     bold: (b) => change((l) => ({ ...l, bold: b })),
     resetSelection: () => change(() => ({})),
     resetAll: () => {
-      setDraft(EMPTY_TEXT_SIZE);
+      // Reset whole table 只管字号；行距有自己的 Default spacing。
+      setDraft(
+        draft?.spacing !== undefined
+          ? { ...EMPTY_TEXT_SIZE, spacing: draft.spacing }
+          : EMPTY_TEXT_SIZE,
+      );
       setPicks([]);
     },
     done: () => {
@@ -309,6 +368,14 @@ export function useRelayCellFont(sheet: string | null, basePx: number) {
   };
 }
 
+/** 这张单当天「Whole page」加减了几 px（置顶 112 Q6 A：Total Pax 只跟整页走，不跟整列 / 整行）。 */
+export function useRelayPageDelta(sheet: string | null): number {
+  const t = useContext(RelayTextContext);
+  if (!t?.ready || !sheet) return 0;
+  const d = t.current(sheet).page?.d ?? 0;
+  return Math.max(TEXT_MIN, Math.min(TEXT_MAX, d));
+}
+
 /** 每张单上方（只在屏幕上）：「Aa Text size」键、没存的提示、最近 5 次，编辑时下面是编辑条。 */
 export function SheetTextBar({
   sheet,
@@ -379,6 +446,7 @@ export function SheetTextBar({
           onResetAll={t.resetAll}
           onCancel={t.close}
           onDone={t.done}
+          extra={t.spacingReady ? <SpacingRow /> : undefined}
         />
       ) : null}
     </div>
@@ -422,5 +490,56 @@ export function RelayTextSave() {
               : `${n} sheets with text size not saved`}
       </span>
     </>
+  );
+}
+
+const SEG = "inline-flex overflow-hidden rounded-[7px] border border-[#9aa]";
+const CHIP =
+  "cursor-pointer border-r border-[#9aa] bg-white px-3 py-1 text-[13px] font-bold text-[#222] last:border-r-0 disabled:cursor-default disabled:opacity-40";
+
+/** 编辑条最下面一行：Spacing [−] [+]  Default spacing。管整张单，按了单子马上变；不写 px。 */
+function SpacingRow() {
+  const t = useContext(RelayTextContext);
+  if (!t?.draft) return null;
+  const k = spacingLevel(t.draft);
+  return (
+    <span
+      data-relay-spacing
+      data-level={k}
+      className="flex basis-full flex-wrap items-center gap-x-3.5 gap-y-2 border-t border-dashed border-[#c8ccd2] pt-2"
+    >
+      <span className="font-bold">Spacing</span>
+      <span className={SEG}>
+        <button
+          type="button"
+          aria-label="Less space"
+          data-relay-spacing-less
+          disabled={k <= SPACING_MIN}
+          onClick={() => t.spacingStep(-1)}
+          className={CHIP}
+        >
+          −
+        </button>
+        <button
+          type="button"
+          aria-label="More space"
+          data-relay-spacing-more
+          disabled={k >= SPACING_MAX}
+          onClick={() => t.spacingStep(1)}
+          className={CHIP}
+        >
+          +
+        </button>
+      </span>
+      <button
+        type="button"
+        data-relay-spacing-default
+        disabled={k === 0}
+        onClick={() => t.spacingReset()}
+        className="cursor-pointer text-[12px] text-[#1d4ed8] underline disabled:cursor-default disabled:opacity-40"
+      >
+        Default spacing
+      </button>
+    </span>
   );
 }
