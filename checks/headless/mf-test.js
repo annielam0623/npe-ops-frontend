@@ -1324,12 +1324,12 @@ async function runColumns() {
   check("Columns：再勾掉（= 库里那样）⇒ 不算改动，Save 灰", await waitFor(`${save}.disabled && getComputedStyle(${pill}).borderTopColor !== 'rgb(245, 158, 11)'`, 3000));
   await tick();
   // 存不上
-  await ctl({ colsFail: "Could not save the columns." });
+  await ctl({ colsFail: "That tour is not in the bus tour list." });
   b0 = (await mockLog()).length;
   await evaluate("document.querySelector('[data-columns-done]').click();");
   await evaluate(`${save}.click();`);
   await waitReq(b0, "/api/dispatch/manifest/hidden-columns");
-  check("Columns：存不上 ⇒ 红字带「Columns: 原话」，框还是橙", await waitFor(`document.body.textContent.includes('Columns: Could not save the columns.') && getComputedStyle(${pill}).borderTopColor === 'rgb(245, 158, 11)'`, 8000));
+  check("Columns：存不上（后端 G275 400 原话）⇒ 红字带「Columns: 原话」，框还是橙", await waitFor(`document.body.textContent.includes('Columns: That tour is not in the bus tour list.') && getComputedStyle(${pill}).borderTopColor === 'rgb(245, 158, 11)'`, 8000));
   await ctl({ colsFail: "" });
   await evaluate(`${save}.click();`);
   check("Columns：再按 Save ⇒ 存上，回到「All」", await waitFor(`${pill}.textContent.trim() === 'Columns: All ▾' && ${save}.disabled`, 8000));
