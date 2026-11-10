@@ -150,9 +150,12 @@ export function RuleDialog({
       return "Pick at least one person.";
     if (
       type === "max_per_shift_day" &&
-      (typeof p.max !== "number" || p.max < 1 || p.max > 20)
+      (typeof p.max !== "number" ||
+        !Number.isInteger(p.max) ||
+        p.max < 1 ||
+        p.max > 20)
     )
-      return "At most must be a number from 1 to 20.";
+      return "At most must be a whole number from 1 to 20.";
     if (
       type === "weekly_hours_alert" &&
       (typeof p.hours !== "number" || p.hours < 1 || p.hours > 80)
