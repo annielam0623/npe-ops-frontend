@@ -4,8 +4,50 @@
 
 > 6d 交接（下面「2026-10-27 交接：前端主窗口 6d」那节）的后端需求已于 10/27 晚由 ad 转给家里后端主窗口 17。
 
-> **下一个主窗口：先读下面「2026-11-09 收工交接：前端主窗口-35」，再读「2026-11-09 早 收工交接：a4」，再看置顶「📌 等 Annie 确认」（109–112 是今天新的）。**
->
+> **下一个主窗口（11-10 公司电脑）：先读下面「2026-11-09 晚 收工交接：前端主窗口-78」，再看置顶「📌 等 Annie 确认」（113–115 是今晚新的）。35 / a4 的交接是更早的历史。**
+
+## 2026-11-09 晚 收工交接：前端主窗口 `前端主窗口-78`[426278]（家里电脑；明天 Annie 在公司电脑）
+> Annie（原话）：「ok，今晚就到这里吧，收工，请详细记录今天做完和未完成的方便我明天在公司电脑继续」。78 只分工和汇报，没写功能代码。今晚工作窗口 `59`[66d88c]、`03`[44f0b4]；后端主窗口 `后端主窗口0a`[45ce5d]（子窗口 78 [fdaaf2]、37、40、3e、12），后端交接已推 abc6bb66。过程见下面「78 开工」一节。
+
+### 一、今晚上 main（都等 Annie 线上验收，验收点已在对话里逐件转她）
+| 件 | 前端 | 后端 | 验收看 |
+|---|---|---|---|
+| G263 Farm out 团 → 产品 | c081a247（59） | 72fbcdfa | Partners & rates 产品 / 价；Dispatch Farm out guests 多 Product 列；Farm out Report / CSV Product 列；Import 六列；截图 7tGCCY8sq6zXMxxQ8KkGJ1 |
+| G267 早班一律 SMS + Email、记 Origin/Referer、admin HTML no-store | 不用改 | c7e6b756 | — |
+| 单单 resend 按真实结果判邮件 | 不用改 | c62e4e68 | — |
+| 109 发送结果统一（W1 / W2 / W4①） | 648a149a + 4c7f8a71（03） | 8e1e062a / 2accdb38 / 1335e804 | Tour / Morning / Relay 发送结果 Sent 绿 / Failed 红 / No contact 灰；Manifests 弹窗 Sent / Failed: 原因；Send Log 组头灰「No contact N」；Send Log 明细 / Morning Tracking / Tour Tracking 没号码灰 No number（不是原文） |
+| G268 Staff Schedule › Period Share with staff | 150377f4（03） | 9825a375（v161 已执行） | Page visibility 那行；Share 确认框；没邮箱灰 No email；只发 ZZ Test / azhou@ |
+| 112 Relay list 自动压 / 超宽挪中 / 屏幕 = 打印 / Total Pax 跟整页 | 147d9866（59） | — | 截图 MBcnXqD1UGtr6raZXQdQDo；红虚线 Page 2 starts here / Paper edge；黄框只屏幕 |
+| 112 Spacing −/+ | d8cb465f（59） | 4c7b1858 | Aa 编辑条最下行 Spacing − + / Default spacing，不出 px；跟 Save；打印一致 |
+| 111 Order 详情页 Refresh from Rezdy | e484189e（59） | 26b5a464 | 新 Rezdy 表的单订单号行蓝键；结果卡 before → after；Activity 多一条；⚠️ 点了真改，挑 Rezdy 改过电话的单 |
+| 110 Staff Schedule › Rules 四项 | 59d44a6d（03） | 8d7ea90f | Max people on a shift / Weekly hours alert / Who 三选一 / 冲突琥珀 / 手动超人数琥珀 / Over 40 hours |
+| 113 隐藏 Lunch 列（设置页版） | 不接 | 1e8006fc | 作废：Annie 改成放 Bus Manifest 页，见二 |
+
+### 二、在分支、等后端（明天先做）
+- **113 Bus Manifest 页「Columns ▾」**（Annie「隐藏键不要放在设置这边，应该就在bus manifest上给staff用的」→「113全选A，动手」）：前端 **origin/task/bus-columns 4b51badc**（59，mf 308、nav 39，tsc / eslint / build 过；「没午餐店」看 tour.lunch_restaurant）。后端 **G275** 还没写：abc6bb66 里 G275 还写「等 Annie 定谁能改」⇒ **明天开工第一件：把 PROGRESS「78 开工」节里 113 那段原文发后端主窗口**（PUT /api/dispatch/manifest/hidden-columns {tour, hidden_columns}，_edit；GET tour 加 bus_hidden_columns + bus_column_options；删设置页 PUT）。后端上 main ⇒ 核字段 ⇒ 合 main ⇒ Annie 在 Bus Manifest 页把 Antelope Lunch 勾掉 Save。
+- **110 例外（某天允许一个班两个人）**（Annie「我要在某个时段或者某天允许一个shift可以有两个人」→「1 A 2 B 3 A 4C 5A  6A  7 A。动手」）：前端 **origin/task/110-exceptions b06dc248**（03，sch 467、引擎 32、nav 39，tsc / eslint / build 过）。后端没登记 ⇒ **明天第一件同时发后端主窗口**（G272 接续，定稿形状见「78 开工」节 110 例外那段）；后端先上前端后上（否则 400）。
+- 家里 worktree（D:\npe-ops-frontend-wt-59、D:\npe-ops-frontend-03 等）公司电脑没有 ⇒ 从 origin 拉上面两个分支，公司开新前端工作窗口接。
+
+### 三、等 Annie（原文都已发她、都在置顶，**不滚动重问**）
+- **114** Relay list 功能键整理（照她给的参考图）：preview https://claude.ai/artifact/TopyompWt81k2rZL8uqoES（第 3 版）；电脑 Q1–Q7 + 手机 M1–M5（M6 跟 115 题 1），推荐都 A。59 做的。
+- **115** 手机键缩小 + 页面省地方：preview https://claude.ai/artifact/3dJPBmBq9hJShSvcA8ccwE ，8 题推荐都 A。03 做的。
+- **Auto Send › Recent runs** 要不要加 Failed / No contact（A 加、先 preview / B 不加）。
+- **110 页头**要不要加「Max people on a shift and Weekly hours alert are also checked when you change the schedule by hand: they are marked in amber, and you can still save and publish.」（A / B）。
+- **107**「有新版本，请刷新」提示条 5 题（preview BbcwRLCvyK7ecfL6cz2LEv；3c 做的）。
+- **109** How to use 两句（Tour / Tickets 发送页加 No contact 说明；Morning Pickup 加「A guest with neither shows as No contact…」），原文见置顶 109。
+- 其余旧的（104、105、OLIVIA 截图、补材料、Railway 变量、G180 回填提醒等）同 35 / a4 交接。
+
+### 四、后端还没做 / 排期（来自 0a）
+- Notes v159（G266②）：排 G263 后，今晚没上，SQL 先给 Annie。前端 task/dispatch-card-notes e83c529c 等。
+- 109 W3（Broadcast、Farm out、staff 回复、司机快回 + 告警）没派；W4 员工通知（排班 Publish 横幅「couldn't be reached」红字）37 明天定形状 ⇒ 前端照形状改。
+- G275（113）、G272 接续（110 例外）：见二。
+
+### 五、明天开工（公司电脑）
+1. 报对话名；git pull；ListAgents 看后端主窗口是谁。
+2. 发后端主窗口：113 G275 + 110 例外两段（原文在「78 开工」节）。
+3. 请 Annie 开 1–2 个前端工作窗口：接 task/bus-columns、task/110-exceptions，后端 SHA 到了核字段合 main；Annie 答了 114 / 115 就派做。
+4. ⏰ 本周提醒 Annie G180 回填以前的日子（还没回）。
+
 > 11-09 公司开工：`前端主窗口-49`[d221b2]（11-06 公司主窗口）只写这条交接就退下，Annie 新开窗口当今天前端主窗口。49 11-06 那节的未完事项（Notes v159、G263、置顶 100 Edit tour「No Cfm # needed」勾选 + 门票 Cfm # 规则前端跟进）周末家里 a4 / 86 已接手，**以 a4 11-09 早交接为准**。今天公司在线：后端主窗口 `后端主窗口-4a`[3c385a]；前端工作窗口暂无。⏰ **本周要提醒 Annie G180 回填以前的日子**（置顶「⏰ 提醒」那节，49 已在 11-09 开工回复里提了一次）。
 >
 > 11-09 公司前端主窗口：`npe-ops-frontend-35`[4a0f5a] 接班（只分工和汇报，不写代码）。49 口头补充：今天没跟 Annie / 4a 有别的交流；没有在跑的工作窗口 / 分支（c3 11-06 已收工，dispatch-card-notes、farmout-products 归 a4 / 86 那条）；G180 回填 49 已提（后端先只读 dry run 给她看，同意再跑），Annie 没回，让她有空跟新主窗口说，白天不追问；49 没开 dev server / Chrome。
