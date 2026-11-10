@@ -11,6 +11,11 @@
 > 11-09 公司前端主窗口：`npe-ops-frontend-35`[4a0f5a] 接班（只分工和汇报，不写代码）。49 口头补充：今天没跟 Annie / 4a 有别的交流；没有在跑的工作窗口 / 分支（c3 11-06 已收工，dispatch-card-notes、farmout-products 归 a4 / 86 那条）；G180 回填 49 已提（后端先只读 dry run 给她看，同意再跑），Annie 没回，让她有空跟新主窗口说，白天不追问；49 没开 dev server / Chrome。
 > 今天后端主窗口改为 `npe-confirmation-service-d4`[8d5665]（4a 已交接给它）。d4 排期：① G263 第一（Annie 另开主目录窗口合 0995f31d + C→B 确认 + release.py，上 main 后发 SHA 给前端）；② G267 第二（relay-send / Morning Send 一律 SMS+Email、记 Origin/Referer、admin HTML no-store，接口形状不变）；③ v159（G266②）等 G263 后由同一窗口 -Resume，SQL 先给 Annie 看；v161（G268）排 v159 后。35 已提醒 d4：G267 里 send.py:1206 那部分属置顶 106，Annie 还没「动手」，且要和前端拿掉 SendTypePicker 同时上。
 
+## 2026-11-09 晚 前端主窗口 `npe-ops-frontend-78`[426278] 开工（家里电脑；只分工和汇报，不写代码）
+- 接 35 收工交接。git pull 到 3b4e09e5。今晚后端主窗口 `后端主窗口0a`[45ce5d]（另有后端 `npe-confirmation-service-78`[fdaaf2]）；已问 0a：G263 SHA、109 W1 形状、G267、v159 / v161 排期。
+- 资源：空闲内存 11.6 / 31.7 GB，chrome 41 个（3.9 GB），node 2 个。
+- 前端工作窗口暂无 ⇒ 请 Annie 开 2 个：A 做 112 preview 更新（去掉 move guests）+ 111 Order 详情页「Refresh from Rezdy」preview，G263 SHA 到了接着核字段合 main；B 做 110 排班 Rules 四项 preview + 发 d4 / 0a 的规则形状。
+
 ## 2026-11-09 收工交接：前端主窗口 `前端主窗口-35`[4a0f5a]（公司电脑）
 ### 一、今天上 main（等 Annie 线上验收，验收点已转她）
 - **dcc04e1a** 置顶 106 前端：Morning Pickup › Send 拿掉渠道选择，一律 send_type=combined，How to use 改句（79）。后端 relay:329 / send.py:1206 / 两个旧模板由 d4 G267 做，未上 main。
