@@ -1469,6 +1469,9 @@ D. 已完成、待从置顶移走：
     - Q3 How to use：「If a sheet no longer fits on one page after you make the text bigger, the space between hotels and inside each row gets smaller by itself until the sheet fits. Your text size does not change. If the sheet still does not fit, a yellow note above it says how many pages it will print on; make the text smaller.」
     - Q1 / Q4 / Q5 没答；**还没「动手」**。家里窗口：先派工作窗口按上面两句更新 preview（同链接），再把 Q1 / Q4 / Q5 + 新两句给 Annie。
     - ✅ 11-09 晚 preview 已按原话更新（工作窗口 `npe-ops-frontend-59`[66d88c]，78 派；同链接 https://claude.ai/artifact/QWBDj3uBURELbUJUzuThWY 第 2 版）：黄框和 How to use 换成上面两句，题表 Q2 / Q3 标「已按 Annie 原话改」，Q1 / Q4 / Q5 保留待答。代码没动。
+  - ✅ **Annie 11-09 晚（原话，78 转）：「我的要求：页面上的字体变得时候Total Pax这一行也要跟着变。然后压缩这要是第一页汇总页压缩。如果出现像图上这种右边框超出答应范围了，是否可以点击整体移动到页中央以适应页面？」** ⇒ Total Pax 跟字号变；Q4 = A（总表也压，59 理解为总表和车单都压，preview 里请她确认）；右边超出新题 Q7。**还没「动手」**。
+    - 59 只读查现状：① Total Pax 行（relay-list-view.tsx `TOTAL_PAX`）只用版式设置的每天起点字号 `--rl-car-total`（20px），当天 Aa 只改客人格（`GuestCells` → relay-text-size.tsx `useRelayCellFont`），所以不跟。② 打印顺序每轮 TotalSheet（RELAY SPLITS）在前、车单在后 ⇒ 总表 = 每轮第一页。③ 右边超出：relay-list.css `.rl-sheet td { white-space: nowrap }`，长酒店名 + 放大字时表格比纸宽，`.rl-sheet` 没有任何居中 / 缩放，打印右边被切。实测（Calibri、A4 竖、默认边距）有一个长酒店名 18px 就宽约 48mm，每 +1px 多约 11mm；挪到中间（边距最少 5mm）最多救约 12mm，加压格子左右内边距 6→2px 共约 27mm ⇒ 只挪位置解决不了大多数情况。
+    - preview 第 3 版（同链接）：②③ Total Pax 跟着变；④ 总表照规则压；⑤ 现在右边超出；⑥⑦ Q7-A；⑧ Q7-C。新题 Q6（Total Pax 只跟 Whole page A 推荐 / B 也跟 Qty 列）、Q7（A 自动压内边距 + 挪中间，不够出黄框 / B「Center on page」键 / C = A + 太长酒店名折两行，推荐 C）。Q1、Q5 仍待答。
 - 动手时（79 想法）：components/relay-list/relay-list.css 加 `--rl-gap` / `--rl-py` 变量和 `[data-squeezed]` 线；relay-list-view.tsx 每张单渲染后量内容高度 vs 它自己的纸高 − 上下页边距（A4 / Letter、横竖），按步压、超了出黄框；字号 / Aa 改动、换纸张后重算。验收见 35 派工：放大超几行 → 自动一页、间隔看得见；压不下 → 印 2 页 + 提示；一页的单、颜色 / 方向 / 页边距 / 字号、11-03 空白页修法都不变。
 
 ### 111. Main Manifest 的 Sync Rezdy 键恢复（2026-11-09，Annie 原话：「把main manifest上的Rezdy同步钮打开吧」；35 问清再派）
