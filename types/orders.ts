@@ -137,3 +137,20 @@ export interface OrderPatch {
   total_due?: number | null;
   currency?: string | null;
 }
+
+/**
+ * Order 详情页「Refresh from Rezdy」（置顶 111，后端 3e task/order-refresh-rezdy）：
+ * POST /api/operations/orders/{单号}/refresh-from-rezdy（无请求体，orders.edit）。
+ */
+export interface OrderRefreshResult {
+  order_number: string;
+  /** updated = 照 Rezdy 写了（可能什么都没变）；not_applied = Rezdy 回的单没有细节，什么都没改。 */
+  result: "updated" | "not_applied";
+  rezdy_status: string | null;
+  /** 原样显示（可能接着 kept 那句）。 */
+  message: string;
+  /** 改了的每一项；before / after null = 空。field 例：Phone、Pickup time (P0ABCD)、Item P0ABCD。 */
+  changed: { field: string; before: string | null; after: string | null }[];
+  /** Rezdy 那项是空的、Order List 保留原值的字段（例 ["Phone"]）。 */
+  kept: string[];
+}

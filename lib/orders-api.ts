@@ -6,6 +6,7 @@ import {
   type OrderListPage,
   type OrderListQuery,
   type OrderPatch,
+  type OrderRefreshResult,
 } from "@/types";
 
 /**
@@ -84,6 +85,19 @@ export function unlockOrderPrice(
   return apiFetch(`${API}/${encodeURIComponent(orderNumber)}/unlock-price`, {
     method: "POST",
   });
+}
+
+/**
+ * 「Refresh from Rezdy」（置顶 111）：按 Rezdy 现在的数据重写这张单。只有新 Rezdy 表的单（editable = false）能用，
+ * 要 orders.edit。错误 detail 原样显示（404 / 409 / 502 / 503 / 500）。
+ */
+export function refreshOrderFromRezdy(
+  orderNumber: string,
+): Promise<OrderRefreshResult> {
+  return apiFetch(
+    `${API}/${encodeURIComponent(orderNumber)}/refresh-from-rezdy`,
+    { method: "POST" },
+  );
 }
 
 /** 422 的 detail 是数组：取每项的字段名和 msg，拼成一句人话。 */

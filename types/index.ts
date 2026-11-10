@@ -99,6 +99,7 @@ export type {
   OrderListPage,
   OrderListQuery,
   OrderPatch,
+  OrderRefreshResult,
   OrderRow,
 } from "./orders";
 export type {
