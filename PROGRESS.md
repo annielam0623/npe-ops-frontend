@@ -4,7 +4,20 @@
 
 > 6d 交接（下面「2026-10-27 交接：前端主窗口 6d」那节）的后端需求已于 10/27 晚由 ad 转给家里后端主窗口 17。
 
-> **下一个主窗口（11-10 公司电脑）：先读下面「2026-11-09 晚 收工交接：前端主窗口-78」，再看置顶「📌 等 Annie 确认」（113–115 是今晚新的）。35 / a4 的交接是更早的历史。**
+> **11-10 公司主窗口 62 已接班（见「11-10 62 开工」）。下一个主窗口：先读 62 那节，再读下面「2026-11-09 晚 收工交接：前端主窗口-78」，再看置顶「📌 等 Annie 确认」（113–115 是今晚新的）。35 / a4 的交接是更早的历史。**
+
+## 2026-11-10 前端主窗口 `npe-ops-frontend-62`[53f9cb] 开工（公司电脑；只分工和汇报，不写代码）
+- Annie 指定 62 为今天前端主窗口，向 35 [4a0f5a] 交接。35 发来 11-09 公司交接（PROGRESS「35 收工交接」那节），其中 G263 / 109 第一段 / 112 / 111 / 110 昨晚家里 78 已做完上 main，以 78 那节为准。git pull 到 d2a3a156。
+- 资源：空闲内存 37.7 / 61.8 GB，chrome 49 个（5.7 GB），node 0。
+- 今天后端主窗口 `新后端主窗口-d9`[7936c0]。d9 派工：G275（113 Bus Manifest 隐藏列）dc 做；G271 W3 a3 做；W4 第二段 2e 做；G276 门票 Records 栏 c1 做（方案等 Annie）。
+- 62 已发 d9：113 G275 原话 + 形状；**110 例外 G272 接续**原话 + 定稿形状（d9 回的派工里还没有这件，待它确认）；问 v159、W3 / W4 排期。
+- d9（经 35 转）**109 W4 第二段 G271** 形状（2e 做，未上 main）：只加新键、旧键保留——
+  1. POST /api/schedule/weeks/{week}/publish（含 Publish again）、POST /api/schedule/period/share（真发和 dry_run）：加 no_contact: [{employee_id, name, why}]（发布 "No email or login"，分享 "No email"）、failed: [{employee_id, name, reason}]（"email could not be sent"；分享还有 "no link"）；not_reached 暂留（= no_contact + failed）。前端改 components/schedule/publish-notice.ts:37 读 no_contact / failed，读不到退回 not_reached，两种分开显示；前端上了告诉 d9，后端再删 not_reached。notified 不变。
+  2. POST /api/team/messages：加 sent: [名字]、failed: [{name, error}]、no_contact: [{name, why}]、email: {sent, failed, no_email}。/reply 不变。
+  3. POST /api/operation-reports 的 notification：加 sent、failed: [{name, error}]、no_contact: [{name, why}]，按人算，部门邮箱按地址列。
+  4. 日报邮件加门票发送结果，前端不用改。
+  口径同置顶 109（Sent 绿 / Failed 红 / No contact 灰）。
+- 待派前端工作窗口：① 113 task/bus-columns 4b51badc、110 例外 task/110-exceptions b06dc248（等后端 SHA 核字段合 main）；② 109 W4 第二段（照上面形状 mock 做）。
 
 ## 2026-11-09 晚 收工交接：前端主窗口 `前端主窗口-78`[426278]（家里电脑；明天 Annie 在公司电脑）
 > Annie（原话）：「ok，今晚就到这里吧，收工，请详细记录今天做完和未完成的方便我明天在公司电脑继续」。78 只分工和汇报，没写功能代码。今晚工作窗口 `59`[66d88c]、`03`[44f0b4]；后端主窗口 `后端主窗口0a`[45ce5d]（子窗口 78 [fdaaf2]、37、40、3e、12），后端交接已推 abc6bb66。过程见下面「78 开工」一节。
