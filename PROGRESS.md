@@ -1454,6 +1454,9 @@ D. 已完成、待从置顶移走：
 
 ### 112. Relay list 一张单超一页：先自动压空白，压不下再提示（2026-11-09，Annie 在后端 d4 窗口定，d4 转；79 出 preview，没动手）
 
+- ✅ Annie 11-09 晚（原话，在 78）：「112全A」（对第 4 版 Q1 / Q5–Q10）⇒ Q1 A、Q5 A、Q6 A、Q8 A、Q9 A、Q10 A。⚠️ Q7 推荐的是 C（折两行），「全A」按字面是 Q7 A（只自动压内边距 + 挪中间，不折行，真名单约 A+4–A+5 起出黄框）⇒ 78 已问 Q7 A 还是 C。**还没「动手」**。
+- ✅ **Annie 11-09 晚（原话，在 78）：「111， 112 全 A + 动手」**（紧接 78 问 Q7 A 还是 C 之后）⇒ 112 Q1 / Q5–Q10 全 A，**Q7 = A**（自动压内边距 + 挪中间，还宽出黄框，不折行）；111 6 题全 A + 权限 orders.edit。两件都派 59：先 112（纯前端，做完直接合 main），再 111（照 mock 做，推分支，后端 3e task/order-refresh-rezdy 上 main 后核字段再合）。
+
 - 起因：staff 用 Aa Text size 放大后一页变两页，staff 不会调页边距。只做 Relay list（Bus manifest 要不要一样 Annie 没答，不做）。
 - 已定：不改字号；只压空白，先酒店间隙（td.rl-gap 12px）再行内上下 padding（4px），一页就停；酒店之间永远留最小间隔（数值 79 定，preview 里写明）；全压完仍超 ⇒ 单子上方提示「This sheet will print on 2 pages. Make the text smaller or move guests to another car.」，不自动缩字；每张单各算各的；屏幕 = 打印；不改后端、不存新设置；How to use 加一条。
 - 待 Annie：看 preview（最小间隔数值、提示原文、How to use 原文）+「动手」。
@@ -1493,6 +1496,7 @@ D. 已完成、待从置顶移走：
   - a3 查：**不用改，什么都没执行**。重拉后 ANITA 重发了团确认（send_log 49916 / 49917），发送路径把 Main Manifest 的电话写回 bookings ⇒ 两单 Tracking 已是新号，短信 + 邮件都 delivered 到新号。49907 / 49908 是 ANITA 更早的回复，发到旧号；之后回复都走新号。tracking_sync 没动。
 - 🟡 11-09 晚 preview（工作窗口 `npe-ops-frontend-59`[66d88c]，78 派；模拟数据，代码没动）：https://claude.ai/artifact/SbACRHDjKVwHkcoqxjxki2 。照后端 3e 形状（POST /api/operations/orders/{单号}/refresh-from-rezdy，后端 task/order-refresh-rezdy 未上线）。查清：详情页 `editable` = 旧表单（有 Edit）；新 Rezdy 表单是 Read-only、没有 Edit 键 ⇒ 后端 409「not in Order List's Rezdy feed」只会出在旧表单，能重拉的单没有「没存的编辑」问题。画了：键在订单号行最右（蓝）、Refreshing…、updated 绿字 + Field/Before/After 表、up to date、cancelled、not_applied 黄框、kept 黄框、各错误红字。题 Q1 位置（A 订单号行）、Q2 颜色（A 蓝）、Q3 确认框（A 不要）、Q4 哪些单出键（A 只新表单）、Q5 结果留多久（A 一直留）、Q6 not_applied / kept 颜色（A 黄框），都推荐 A。需要后端确认：重拉后 Activity 卡会不会多一条。等 Annie 答 +「动手」+ 后端上线。
   - 后端 3e 答（78 转）：① 有字段变了 ⇒ activity_log 多一条 event_type=refreshed_from_rezdy、actor=按键人、actor_type=staff、detail「Refreshed from Rezdy — Phone: '…' → '…'; …」，详情页 Activity 卡直接显示；没变化 / not_applied 不记；原有 booking_updated（actor=rezdy）照常。② 权限改挂 orders.edit：前端按 /api/me/permissions 有没有 orders.edit（同页 Edit 键的 useTick("orders.edit")）决定出不出键，仍只在原始 editable=false 的新表单出。preview 说明已同步（第 2 版），题不变。
+  - ✅ Annie 11-09 晚（原话，在 78）：「111选A」（紧接 78 问「谁能按：A 跟 orders.edit 勾走（推荐）/ B 所有 staff 不看勾」）⇒ 权限照后端挂 orders.edit。78 已问是否 6 题也全 A；**还没「动手」**。
 
 ### 110. Staff Schedule › Rules 自定义规则（2026-11-09，Annie 在后端 d4 那边提；前端先出 preview，没动手）
 
@@ -1504,6 +1508,7 @@ D. 已完成、待从置顶移走：
 - 35 请 Annie 新开一个前端工作窗口做 preview + 形状。
 - ✅ **Annie 11-09 晚（原话，在 78）：「统一全部推荐，但是还要加一条，可以设置一个班最多几个人」** ⇒ 78 理解为 110 题 1–8 全 A；「加一条」78 核对：题 ① Max people on a shift 已是「班次 + 星期几 + 人数（1–20）」，可以每种班各设一个数（Close 1、Open 2 各一条）——已问 Annie 是不是这个意思、还是另有不同；「全部推荐」是否也包括 107 / 112 也问了。**还没「动手」**。
   - ✅ Annie（原话）：「110排班 A」⇒ 「加一条」= 现有 Max people on a shift（班次 + 星期几 + 人数 1–20，每种班可各设一条），照 preview 做，不另加；110 题 1–8 全 A 定稿。「全部推荐」只答了 110，107 / 112 另等。**还没「动手」**（已问）。
+  - ✅ **Annie 11-09 晚（原话，在 78）：「110动手」** ⇒ 前端派 03（推分支，后端先上 main 后核字段再合）；后端已转 0a 派 40 开工。
 - 🟡 **03 [44f0b4] preview + 接口形状已交 78（11-09，没动手）**：preview https://claude.ai/artifact/C4WjXh8cnTnDVUUgyoAThX（模拟数据：Rules 清单、新增 / 改规则弹窗、Auto-fill 黄框带「哪条规则卡住」、手动排班列头琥珀「Close 2 (max 1)」+ 名字下「42.5 h this week」）+ 7 题（推荐都 A）：
   题 1 固定班 + 轮值超「最多 N 天」⇒ A 轮值跳过此人换下一位，没人接就空着写预览；题 2 固定 / 保留的班本身超人数 ⇒ A 照排 + 提醒；题 3 40 小时放哪 ⇒ A 名字下 + Auto-fill 预览；题 4 ⇒ A 做成一条规则「Weekly hours alert」可改可关；题 5 小时算法 ⇒ A 上下班整段、不扣休息、PTO 不算；题 6 手动超人数 ⇒ A 列头一行 + 班卡琥珀框；题 7 选人 ⇒ A 下拉 Everyone / Only these people / Everyone except。
   形状：新 type `max_per_shift_day {shift_type?（不写 = 每种班各算）, max 1..20, days?}`；`min_days_on_shift` 加 `employee_ids?` / `exclude_employee_ids?`（和旧 `employee_id` 三选一）；`days_per_week` 形状不变（前端数固定班 + 轮值 + 保留的班）；新 type `weekly_hours_alert {hours 1..80}`（题 4 选 B 则不要）。全在前端算，后端只放行白名单。全文由 78 转 d4 / 0a。
