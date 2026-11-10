@@ -1452,6 +1452,13 @@ D. 已完成、待从置顶移走：
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 113. Bus Manifest 按团藏列（今晚只有 Lunch；Antelope 不印 Lunch 列）（2026-11-09 晚，Annie 在后端 3e 窗口提，78 派 59；先 preview，没「动手」）
+
+- Annie 原话（在 3e）：「你可以把bus manifest也改成main manifest那样可以用filer来选么」「fillter」「同意A」。A = 按团选：Manifest setup 每个团一排列的勾，屏幕 / 打印 / Excel 都照它，谁打印都一样（B 是按人选，像 Main Manifest）。今晚后端只做 Lunch 一列，完整列选择明天做。
+- 后端 3e 形状（task/hide-lunch-column，审查中，未上线）：GET /api/settings/manifest-setup 顶层 bus_column_options [{key:"lunch", label:"Lunch"}]，groups[] 加 bus_hidden_columns（[] = 都显示）；PUT /api/settings/manifest-setup/groups/{manifest_id}/bus-hidden-columns {hidden_columns} 整组替换，回 {ok, hidden_columns}，require_admin，400 detail 原话。效果：/api/dispatch/manifest tour.lunch_column = false ⇒ 打印 / Excel 不出 Lunch 列；午餐单、lunch_mismatch、restaurant、lunch_note 不变。上线后在页面把 Antelope（manifests id 3）的 Lunch 勾掉。
+- 59 只读查：Bus Manifest 屏幕和打印同一套，已照 tour.lunch_column 出不出 Lunch 列（manifest-view.tsx columnsFor）⇒ Bus Manifest 页不用改。勾放在 Products › Manifest setup › Bus Manifest setup（A6 那页，每格一个 Save、10 分钟没活动自动存、换团 / 离开先问），新格照同一套 useBlockSave。
+- preview（模拟数据）：https://claude.ai/artifact/QFf5CH4r5WVK3KsqJNHUba 。题：Q1 放哪（A 午餐那格下面新的一格「Bus Manifest columns」）、Q2 勾的意思（A 勾上 = 显示，默认全勾）、Q3 怎么存（A 同这页其他格）、Q4 没排餐厅的团（A 照样出勾 + 灰字），都推荐 A；How to use 一句原文在 preview。等 Annie 答 +「动手」+ 后端 SHA。
+
 ### 112. Relay list 一张单超一页：先自动压空白，压不下再提示（2026-11-09，Annie 在后端 d4 窗口定，d4 转；79 出 preview，没动手）
 
 - ✅ Annie 11-09 晚（原话，在 78）：「112全A」（对第 4 版 Q1 / Q5–Q10）⇒ Q1 A、Q5 A、Q6 A、Q8 A、Q9 A、Q10 A。⚠️ Q7 推荐的是 C（折两行），「全A」按字面是 Q7 A（只自动压内边距 + 挪中间，不折行，真名单约 A+4–A+5 起出黄框）⇒ 78 已问 Q7 A 还是 C。**还没「动手」**。
