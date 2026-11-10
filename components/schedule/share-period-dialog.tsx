@@ -10,6 +10,7 @@ import { Modal } from "@/components/ui/modal";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { shiftYmd } from "@/lib/la-date";
 import {
+  type PeriodNotReached,
   previewPeriodShare,
   type PeriodSharePreview,
   type PeriodShareResult,
@@ -216,21 +217,7 @@ function ReadyBody({
       ) : (
         <p data-share-nobody>Nobody is scheduled in these weeks.</p>
       )}
-      {preview.not_reached.length > 0 ? (
-        <div
-          data-share-not-reached
-          className="text-[#A32D2D] night:text-red-300"
-        >
-          <p className="font-semibold">Not sent:</p>
-          <ul className="list-disc pl-5">
-            {preview.not_reached.map((p) => (
-              <li key={p.employee_id}>
-                {p.name} — {p.reason}
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
+      <NotReached list={preview.not_reached} />
     </>
   );
 }
@@ -240,24 +227,43 @@ function DoneBody({ result }: { result: PeriodShareResult }) {
     <>
       <p
         data-share-done
-        className="font-semibold text-[#1a7f4b] night:text-[#4ade80]"
+        className="font-semibold text-[#3B6D11] night:text-[#4ade80]"
       >
         Sent to {result.notified.length} staff.
       </p>
-      {result.not_reached.length > 0 ? (
+      <NotReached list={result.not_reached} />
+    </>
+  );
+}
+
+/**
+ * 没收到的人（置顶 109 Q1 / Q6，员工通知和客人发送同一套）：没邮箱 = 灰字 No email，不算失败；
+ * 真的发失败（email could not be sent / link could not be made）= 红字 Not sent + 原因。
+ */
+function NotReached({ list }: { list: PeriodNotReached[] }) {
+  const noEmail = list.filter((p) => p.reason === "no email");
+  const failed = list.filter((p) => p.reason !== "no email");
+  return (
+    <>
+      {failed.length > 0 ? (
         <div
           data-share-not-reached
           className="text-[#A32D2D] night:text-red-300"
         >
           <p className="font-semibold">Not sent:</p>
           <ul className="list-disc pl-5">
-            {result.not_reached.map((p) => (
+            {failed.map((p) => (
               <li key={p.employee_id}>
                 {p.name} — {p.reason}
               </li>
             ))}
           </ul>
         </div>
+      ) : null}
+      {noEmail.length > 0 ? (
+        <p data-share-no-email className="text-[#6B6B6B] night:text-white/55">
+          No email: {noEmail.map((p) => p.name).join(", ")}.
+        </p>
       ) : null}
     </>
   );
