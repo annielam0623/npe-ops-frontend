@@ -157,6 +157,9 @@ http.createServer(async (req, res) => {
       // 后端最终形状（5faa891e）：{report, duplicate, notification}；duplicate:true 时 notification 是 null；
       // 开关关着多 skipped:"switch_off"，通知出错 skipped:"error"。
       const notification = ctl.notifyError ? { in_app: 0, email: 0, used_fallback: false, skipped: "error" } : ctl.notifyOff ? { in_app: 0, email: 0, used_fallback: false, skipped: "switch_off" } : { in_app: 2, email: 3, used_fallback: true };
+      // 置顶 109 W4 第二段（后端 f30d895a）：按人算的 sent / failed / no_contact；ctl.notifyFailed = 部门邮箱发不出；ctl.notifyAllFailed = 谁都没通知到；ctl.notifyLegacy = 旧后端。
+      const RES = { name: "reservations@nationalparkexpress.com", error: "Email could not be sent" };
+      if (!ctl.notifyLegacy) Object.assign(notification, notification.skipped ? { sent: [], failed: [], no_contact: [] } : ctl.notifyAllFailed ? { sent: [], failed: [{ name: "Sup", error: "In-app notice could not be written; email could not be sent" }, RES], no_contact: [] } : { sent: ["Staff Two", "Sup", ...(ctl.notifyFailed ? [] : [RES.name])], failed: ctl.notifyFailed ? [RES] : [], no_contact: [] });
       if (tokens.has(key)) return send(res, 200, { report: tokens.get(key), notification: null, duplicate: true });
       const r = {
         id: nextId++, report_type: body.report_type, complaint_about: body.complaint_about,

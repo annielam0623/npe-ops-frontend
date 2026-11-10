@@ -475,12 +475,16 @@ http
       const week_starts = Array.from({ length: b.weeks }, (_, i) => add(b.start, i * 7));
       const unpublished = week_starts.filter((w) => weeks.get(w)?.status !== "published");
       const recipients = [{ employee_id: 1, name: "Veronica" }, { employee_id: 2, name: "Lizzie" }];
-      const not_reached = [{ employee_id: 5, name: "Anita", reason: "no email" }];
+      // 置顶 109 W4 第二段：no_contact（没邮箱，why "No email"）+ failed（ctl.periodFailed：Bo 链接做不出）；not_reached = failed + no_contact（过渡旧形状）；ctl.periodLegacy = 旧后端只有 not_reached。
+      const no_contact = [{ employee_id: 5, name: "Anita", why: "No email" }];
+      const failed = ctl.periodFailed ? [{ employee_id: 6, name: "Bo", reason: "link could not be made" }] : [];
+      const not_reached = [...failed, ...no_contact.map((p) => ({ employee_id: p.employee_id, name: p.name, reason: "no email" }))];
+      const split = ctl.periodLegacy ? {} : { no_contact, failed };
       const end = add(b.start, b.weeks * 7 - 1);
-      if (b.dry_run) return send(res, 200, { start: b.start, end, weeks: b.weeks, week_starts, unpublished, recipients, not_reached, already_shared: ctl.periodShared ? [{ at: "2026-10-03T22:15:00+00:00", by: "Annie" }] : [] });
+      if (b.dry_run) return send(res, 200, { start: b.start, end, weeks: b.weeks, week_starts, unpublished, recipients, not_reached, ...split, already_shared: ctl.periodShared ? [{ at: "2026-10-03T22:15:00+00:00", by: "Annie" }] : [] });
       if (unpublished.length) return send(res, 409, { detail: { detail: "Publish every week first.", code: "unpublished", weeks: unpublished } });
       ctl.periodShared = true;
-      return send(res, 200, { start: b.start, end, weeks: b.weeks, notified: recipients.map((r) => ({ ...r, channels: ["email", "in_app"] })), not_reached });
+      return send(res, 200, { start: b.start, end, weeks: b.weeks, notified: recipients.map((r) => ({ ...r, channels: ["email", "in_app"] })), not_reached, ...split });
     }
 
     // ── 周三确认下周排班（后端 G138 已上线，`npe-confirmation-service` 4368567，接口说明
@@ -1056,6 +1060,13 @@ http
           return {
             notified: all.filter((p) => !(p.employee_id in nr)),
             ...(ctl.notReached ? { not_reached: all.filter((p) => p.employee_id in nr).map((p) => ({ employee_id: p.employee_id, name: p.name, reason: nr[p.employee_id] })) } : {}),
+            // 置顶 109 W4 第二段（后端 f30d895a）：not_reached 拆成 no_contact（why "No email or login"）/ failed（reason 原话）；ctl.legacyNotReached = 旧后端只有 not_reached。
+            ...(ctl.notReached && !ctl.legacyNotReached
+              ? {
+                  no_contact: all.filter((p) => nr[p.employee_id] === "no email or login").map((p) => ({ employee_id: p.employee_id, name: p.name, why: "No email or login" })),
+                  failed: all.filter((p) => p.employee_id in nr && nr[p.employee_id] !== "no email or login").map((p) => ({ employee_id: p.employee_id, name: p.name, reason: nr[p.employee_id] })),
+                }
+              : {}),
           };
         })(),
         // 后端 G217（ef，10-30）：有人变了才通知主管层（所有在用的 supervisor / admin / superadmin，去掉按的人）；首次发布 / 没人变 = []。

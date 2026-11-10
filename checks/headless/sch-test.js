@@ -875,13 +875,26 @@ async function run() {
     await evaluate("$btn('Publish again', document.querySelector('[role=dialog]')).click();");
     await waitFor("!!document.querySelector('[data-publish-banner]') && !document.querySelector('[role=dialog]')");
   }
-  // 有人没收到：绿字照旧写通知了谁，后面红字写没收到的人和原因
+  // 置顶 109 W4 第二段：没联系方式（后端 no_contact）= 灰字、不算失败；发失败（failed）= 红字
   await republishWith("11:30", { notReached: { 4: "no email or login" } });
   check(
-    "有人没收到：绿字「Published again. Notified 2 schedule editors.」，后面红字「1 couldn't be reached: Jing (no email or login).」",
-    await evaluate("const b = document.querySelector('[data-publish-banner]'); const ok = b.querySelector('[data-publish-ok]'); const r = b.querySelector('[data-publish-unreached]'); return b.dataset.publishBanner === 'some-missed' && ok.textContent === 'Published again. Notified 2 schedule editors.' && !!r && r.textContent === \"1 couldn't be reached: Jing (no email or login).\" && getComputedStyle(r).color !== getComputedStyle(ok).color && r.className.includes('text-red');"),
+    "没联系方式：绿字「Published again. Notified 2 schedule editors.」，后面灰字「No email or login: Jing.」，没有红字",
+    await evaluate("const b = document.querySelector('[data-publish-banner]'); const ok = b.querySelector('[data-publish-ok]'); const g = b.querySelector('[data-publish-no-contact]'); return b.dataset.publishBanner === 'some-missed' && ok.textContent === 'Published again. Notified 2 schedule editors.' && !!g && g.textContent === 'No email or login: Jing.' && g.className.includes('text-white/55') && !b.querySelector('[data-publish-unreached]');"),
     await evaluate("return document.querySelector('[data-publish-banner]')?.innerText;"),
   );
+  await republishWith("11:35", { notReached: { 4: "email could not be sent" } });
+  check(
+    "发失败：后面红字「1 couldn't be reached: Jing (email could not be sent).」，没有灰字",
+    await evaluate("const b = document.querySelector('[data-publish-banner]'); const ok = b.querySelector('[data-publish-ok]'); const r = b.querySelector('[data-publish-unreached]'); return b.dataset.publishBanner === 'some-missed' && !!r && r.textContent === \"1 couldn't be reached: Jing (email could not be sent).\" && getComputedStyle(r).color !== getComputedStyle(ok).color && r.className.includes('text-red') && !b.querySelector('[data-publish-no-contact]');"),
+    await evaluate("return document.querySelector('[data-publish-banner]')?.innerText;"),
+  );
+  await republishWith("11:40", { notReached: { 4: "no email or login" }, legacyNotReached: true });
+  check(
+    "旧后端（只有 not_reached）：按 reason 拆，没联系方式照样灰字「No email or login: Jing.」",
+    await evaluate("const b = document.querySelector('[data-publish-banner]'); const g = b.querySelector('[data-publish-no-contact]'); return !!g && g.textContent === 'No email or login: Jing.' && !b.querySelector('[data-publish-unreached]');"),
+    await evaluate("return document.querySelector('[data-publish-banner]')?.innerText;"),
+  );
+  await ctl({ legacyNotReached: false });
   // 谁都没收到：整句红字
   await republishWith("11:45", { notReached: { 4: "no email or login" }, noneReached: true });
   check(
@@ -1445,6 +1458,18 @@ async function run() {
     await evaluate("document.querySelector('[data-period-share]').click();");
     check("同一段再分享：黄框写 Already shared: by Annie on Oct 3, 3:15 PM. Sending again emails everyone again.", await waitFor("(document.querySelector('[data-share-already]')?.textContent || '').includes('Already shared: by Annie on Oct 3, 3:15 PM. Sending again emails everyone again.')", 30000), await evaluate("return document.querySelector('[data-share-already]')?.textContent;"));
     await evaluate("$btn('Cancel', document.querySelector('[data-share-period]')).click();");
+    // 置顶 109 W4 第二段（后端 f30d895a）：读 no_contact / failed；发失败红字 Not sent + 原因，没邮箱灰字；旧后端退回 not_reached
+    await ctl({ periodFailed: true });
+    await evaluate("document.querySelector('[data-period-share]').click();");
+    await waitFor("document.querySelector('[data-share-recipients]')", 30000);
+    check("后端 failed：红字 Not sent: Bo — link could not be made；没邮箱的 Anita 仍是灰字、不进红字", await evaluate("const d = document.querySelector('[data-share-period]'); const r = d.querySelector('[data-share-not-reached]'); const g = d.querySelector('[data-share-no-email]'); return !!r && r.textContent.includes('Not sent:') && r.textContent.includes('Bo — link could not be made') && !r.textContent.includes('Anita') && getComputedStyle(r).color === 'rgb(163, 45, 45)' && g?.textContent === 'No email: Anita.';"), await evaluate("return document.querySelector('[data-share-period]')?.innerText;"));
+    await evaluate("$btn('Cancel', document.querySelector('[data-share-period]')).click();");
+    await ctl({ periodFailed: true, periodLegacy: true });
+    await evaluate("document.querySelector('[data-period-share]').click();");
+    await waitFor("document.querySelector('[data-share-recipients]')", 30000);
+    check("旧后端（只有 not_reached）：照样拆成红字 Bo、灰字 No email: Anita.", await evaluate("const d = document.querySelector('[data-share-period]'); const r = d.querySelector('[data-share-not-reached]'); return !!r && r.textContent.includes('Bo — link could not be made') && !r.textContent.includes('Anita') && d.querySelector('[data-share-no-email]')?.textContent === 'No email: Anita.';"), await evaluate("return document.querySelector('[data-share-period]')?.innerText;"));
+    await evaluate("$btn('Cancel', document.querySelector('[data-share-period]')).click();");
+    await ctl({ periodFailed: false, periodLegacy: false });
     await ctl({ periodShare: false, periodShared: false });
     await evaluate("$setValue(document.querySelector('[data-period-weeks]'), '3');");
     await waitFor("document.querySelectorAll('[data-period-week]').length === 3", 30000);

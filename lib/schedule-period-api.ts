@@ -30,8 +30,16 @@ export interface PeriodSharePreview {
   unpublished: string[];
   recipients: PeriodPerson[];
   not_reached: PeriodNotReached[];
+  /** 置顶 109 W4 第二段（后端 f30d895a）：没邮箱的人，why = "No email"。没带 = 旧后端，按 not_reached 拆。 */
+  no_contact?: PeriodNoContact[];
+  /** 有邮箱、发不出 / 链接做不出（reason "email could not be sent" / "link could not be made"）。 */
+  failed?: PeriodNotReached[];
   /** 同一个 start + weeks 以前发过的。 */
   already_shared: { at: string; by: string }[];
+}
+
+export interface PeriodNoContact extends PeriodPerson {
+  why: string;
 }
 
 export interface PeriodShareResult {
@@ -40,6 +48,32 @@ export interface PeriodShareResult {
   weeks: number;
   notified: (PeriodPerson & { channels: string[] })[];
   not_reached: PeriodNotReached[];
+  no_contact?: PeriodNoContact[];
+  failed?: PeriodNotReached[];
+}
+
+/**
+ * 没收到的人拆成两份（置顶 109：没联系方式灰字、不算失败；发失败红字）。后端带 no_contact / failed 就用；
+ * 旧后端只有 not_reached，reason "no email" = 没联系方式。
+ */
+export function splitMissed(r: {
+  not_reached?: PeriodNotReached[];
+  no_contact?: PeriodNoContact[];
+  failed?: PeriodNotReached[];
+}): { noContact: PeriodNoContact[]; failed: PeriodNotReached[] } {
+  if (r.no_contact || r.failed)
+    return { noContact: r.no_contact ?? [], failed: r.failed ?? [] };
+  const all = r.not_reached ?? [];
+  return {
+    noContact: all
+      .filter((p) => p.reason.toLowerCase() === "no email")
+      .map((p) => ({
+        employee_id: p.employee_id,
+        name: p.name,
+        why: "No email",
+      })),
+    failed: all.filter((p) => p.reason.toLowerCase() !== "no email"),
+  };
 }
 
 export function previewPeriodShare(

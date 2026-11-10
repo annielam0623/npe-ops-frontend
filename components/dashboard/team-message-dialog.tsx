@@ -6,8 +6,10 @@ import { DARK_PRIMARY_BUTTON_CLASS } from "@/components/ui/buttons";
 import { describeError, isStatus } from "@/lib/api-errors";
 import {
   MESSAGE_MAX,
+  messageEmailOutcome,
   personName,
   sendTeamMessage,
+  type TeamMessageEmail,
   type TeamPerson,
 } from "@/lib/team-messages-api";
 
@@ -29,7 +31,7 @@ export function TeamMessageDialog({
   const [state, setState] = useState<
     | { kind: "idle" }
     | { kind: "sending" }
-    | { kind: "sent"; emailed: boolean }
+    | { kind: "sent"; email: TeamMessageEmail }
     | { kind: "error"; message: string }
   >({ kind: "idle" });
   const name = personName(person);
@@ -41,7 +43,7 @@ export function TeamMessageDialog({
     setState({ kind: "sending" });
     try {
       const r = await sendTeamMessage(person.id, text);
-      setState({ kind: "sent", emailed: r.emailed ?? person.has_email });
+      setState({ kind: "sent", email: messageEmailOutcome(r) });
       setBody("");
     } catch (err) {
       if (isStatus(err, 401)) onUnauthorized();
@@ -94,12 +96,31 @@ export function TeamMessageDialog({
           />
         </label>
         {state.kind === "sent" ? (
-          <p
-            role="status"
-            className="mt-2 text-[12.5px] font-semibold text-[#4ade80]"
-          >
-            ✓ Sent{state.emailed ? " — also emailed" : ""}.
-          </p>
+          <>
+            <p
+              role="status"
+              className="mt-2 text-[12.5px] font-semibold text-[#4ade80]"
+            >
+              ✓ Sent{state.email === "emailed" ? " — also emailed" : ""}.
+            </p>
+            {/* 置顶 109：邮件发信出错 = 红字；没邮箱 = 灰字，不算失败（站内 Notice 已写，整条算 Sent）。 */}
+            {state.email === "failed" ? (
+              <p
+                data-message-email="failed"
+                className="mt-1 text-[12px] text-[#f87171]"
+              >
+                The email could not be sent. They&apos;ll only see it in their
+                Notice.
+              </p>
+            ) : state.email === "no_email" ? (
+              <p
+                data-message-email="no_email"
+                className="mt-1 text-[12px] text-white/55"
+              >
+                No email on file, so it was not emailed.
+              </p>
+            ) : null}
+          </>
         ) : state.kind === "error" ? (
           <p role="alert" className="mt-2 text-[12.5px] text-[#f87171]">
             Not sent — {state.message}

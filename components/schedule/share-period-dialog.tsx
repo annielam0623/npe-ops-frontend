@@ -10,12 +10,12 @@ import { Modal } from "@/components/ui/modal";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { shiftYmd } from "@/lib/la-date";
 import {
-  type PeriodNotReached,
   previewPeriodShare,
   type PeriodSharePreview,
   type PeriodShareResult,
   sendPeriodShare,
   shareErrorOf,
+  splitMissed,
 } from "@/lib/schedule-period-api";
 import { isUnavailable } from "@/lib/schedule-confirm-api";
 
@@ -217,7 +217,7 @@ function ReadyBody({
       ) : (
         <p data-share-nobody>Nobody is scheduled in these weeks.</p>
       )}
-      <NotReached list={preview.not_reached} />
+      <NotReached from={preview} />
     </>
   );
 }
@@ -231,7 +231,7 @@ function DoneBody({ result }: { result: PeriodShareResult }) {
       >
         Sent to {result.notified.length} staff.
       </p>
-      <NotReached list={result.not_reached} />
+      <NotReached from={result} />
     </>
   );
 }
@@ -239,10 +239,14 @@ function DoneBody({ result }: { result: PeriodShareResult }) {
 /**
  * 没收到的人（置顶 109 Q1 / Q6，员工通知和客人发送同一套）：没邮箱 = 灰字 No email，不算失败；
  * 真的发失败（email could not be sent / link could not be made）= 红字 Not sent + 原因。
+ * W4 第二段起读后端的 no_contact / failed，旧后端退回 not_reached（splitMissed）。
  */
-function NotReached({ list }: { list: PeriodNotReached[] }) {
-  const noEmail = list.filter((p) => p.reason === "no email");
-  const failed = list.filter((p) => p.reason !== "no email");
+function NotReached({
+  from,
+}: {
+  from: PeriodSharePreview | PeriodShareResult;
+}) {
+  const { noContact: noEmail, failed } = splitMissed(from);
   return (
     <>
       {failed.length > 0 ? (
