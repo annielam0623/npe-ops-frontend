@@ -73,6 +73,30 @@ function data() {
   };
 }
 
+// 整段确认（Period，11-08）：别的周 = 同一份班往后挪，回应按周记（WEEK 那周照旧用 response）。
+const periodResp = {};
+function shiftDate(ymd, n) {
+  const [y, m, d] = ymd.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
+}
+function weekData(wk) {
+  if (!wk || wk === WEEK) return data();
+  const n = Math.round((Date.parse(`${wk}T00:00:00Z`) - Date.parse(`${WEEK}T00:00:00Z`)) / 86400000);
+  const base = data();
+  return {
+    ...base,
+    week_start: wk,
+    open: true,
+    closed_reason: null,
+    deadline: `${shiftDate("2026-10-29", n)}T12:00:00-07:00`,
+    slots: base.slots.map((x) => ({ ...x, id: x.id + n * 10, date: shiftDate(x.date, n) })),
+    time_off: base.time_off.map((x) => ({ ...x, date: shiftDate(x.date, n) })),
+    my_response: periodResp[wk] ?? null,
+    my_requests: [],
+    requests_for_me: [],
+  };
+}
+
 function toRequest(b) {
   const base = { id: nextReqId++, from: { employee_id: ME, name: "Jing" }, my_slot: null, their_slot: null, peer: null, date: null, shift_type: null, peer_timed_out: false, created_at: "2026-10-28T21:00:00Z", decided_at: null };
   if (b.kind === "swap") {
@@ -105,6 +129,7 @@ http
     if (p === "/__ctl") {
       const b = (await readBody(req)) || {};
       if (b.reset) {
+        for (const k of Object.keys(periodResp)) delete periodResp[k];
         response = null;
         myRequests = [];
         peerAnswered = false;
@@ -130,7 +155,12 @@ http
       if (!m[2] && req.method === "GET") {
         // 后端 `week` 是必填 Query(...)，登录态和 token 态都一样，不带会 422。
         if (!url.searchParams.get("week")) return send(res, 422, { detail: [{ loc: ["query", "week"], msg: "field required" }] });
-        return send(res, 200, data());
+        return send(res, 200, weekData(url.searchParams.get("week")));
+      }
+      if (m[2] === "/accept" && req.method === "POST" && entry.body?.week_start && entry.body.week_start !== WEEK) {
+        if (ctl.periodAcceptFail === entry.body.week_start) return send(res, 409, { detail: "This week has started, so requests are closed." });
+        periodResp[entry.body.week_start] = { answer: "accepted", answered_at: "2026-10-28T16:20:00+00:00" };
+        return send(res, 200, weekData(entry.body.week_start));
       }
       if (req.method === "POST" && !data().open && m[2] !== "/accept")
         return send(res, 409, { detail: "The deadline to reply was Thu, Oct 29 at 12:00 PM. Ask your supervisor for any changes." });

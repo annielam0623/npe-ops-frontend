@@ -289,6 +289,28 @@ async function run() {
   await waitFor(`${vcur('product_categories')} === 'staff'`);
   check("点 Products · Categories 的 Everyone：PUT {widgets:{product_categories:'staff'}}，选中跟着变，这行写 Everyone can see this", (await since(from, (e) => e.method === "PUT" && e.path === "/api/settings/dashboard-widgets")).map((e) => JSON.stringify(e.body)).join() === '{"widgets":{"product_categories":"staff"}}' && (await evaluate("return document.querySelector('[data-visibility-row=product_categories]').textContent.includes('Everyone can see this');")));
 
+  // ── Page visibility「Also allowed」（Annie 2026-11-08「要可以assign给几个admin也可以用」；后端 33 allow_list / allowed_users）──
+  await ctl({ allowList: true });
+  await open();
+  await waitFor("document.querySelector('[data-also-allowed=schedule_period]')", 30000);
+  const aa = "document.querySelector('[data-also-allowed=schedule_period]')";
+  check("Also allowed：只出在 schedule_period 那行（后端带 allow_list），写 Lina Park；Save 灰着；别的行没有", await evaluate(`return ${aa}.closest('[data-visibility-row]').dataset.visibilityRow === 'schedule_period' && document.querySelectorAll('[data-also-allowed]').length === 1 && !!${aa}.querySelector('[data-also-allowed-person="7"]') && ${aa}.querySelector('[data-also-allowed-save]').disabled;`));
+  check("+ Add person 下拉：只列能加的（Joy Chen、Ken Ito），没有已加的 Lina、Super Admin、partner", await evaluate(`return [...${aa}.querySelectorAll('[data-also-allowed-add] option')].slice(1).map(o => o.textContent).join('|') === 'Joy Chen (supervisor)|Ken Ito (staff)';`), await evaluate(`return [...${aa}.querySelectorAll('[data-also-allowed-add] option')].map(o => o.textContent).join('|');`));
+  from = (await mockLog()).length;
+  await evaluate(`const sel = ${aa}.querySelector('[data-also-allowed-add]'); sel.value = '8'; sel.dispatchEvent(new Event('change', { bubbles: true }));`);
+  check("挑 Joy：先放在页面上（没发 PUT），Save 变蓝能点", (await waitFor(`!!${aa}.querySelector('[data-also-allowed-person="8"]') && !${aa}.querySelector('[data-also-allowed-save]').disabled`)) && (await since(from, (e) => e.method === "PUT")).length === 0 && (await evaluate(`return getComputedStyle(${aa}.querySelector('[data-also-allowed-save]')).backgroundColor === 'rgb(59, 130, 246)';`)));
+  await evaluate(`${aa}.querySelector('[data-also-allowed-save]').click();`);
+  check("Save：PUT {allowed_users:{schedule_period:[7,8]}}（整份），写绿字 Saved", (await waitFor(`!!${aa}.querySelector('[data-also-allowed-saved]')`)) && (await since(from, (e) => e.method === "PUT" && e.path === "/api/settings/dashboard-widgets")).map((e) => JSON.stringify(e.body)).join() === '{"allowed_users":{"schedule_period":[7,8]}}' && (await evaluate(`return getComputedStyle(${aa}.querySelector('[data-also-allowed-saved]')).color === 'rgb(74, 222, 128)';`)));
+  from = (await mockLog()).length;
+  await evaluate(`${aa}.querySelector('[aria-label="Remove Lina Park"]').click();`);
+  await evaluate(`${aa}.querySelector('[data-also-allowed-save]').click();`);
+  check("× 移除 Lina 再 Save：PUT [8]", await waitFor(`!${aa}.querySelector('[data-also-allowed-person="7"]') && !!${aa}.querySelector('[data-also-allowed-saved]')`) && (await since(from, (e) => e.method === "PUT")).map((e) => JSON.stringify(e.body)).join() === '{"allowed_users":{"schedule_period":[8]}}');
+  await ctl({ allowFail: true });
+  await evaluate(`const sel = ${aa}.querySelector('[data-also-allowed-add]'); sel.value = '9'; sel.dispatchEvent(new Event('change', { bubbles: true }));`);
+  await evaluate(`${aa}.querySelector('[data-also-allowed-save]').click();`);
+  check("后端拒（400）：红字照后端原话，Ken 还留在页面上", await waitFor(`(${aa}.querySelector('[role=alert]')?.textContent || '') === 'Only active staff accounts can be added.' && !!${aa}.querySelector('[data-also-allowed-person="9"]')`));
+  await ctl({ allowFail: false, allowList: false });
+
   // ── 普通 admin ──
   await ctl({ reset: true, role: "admin", extras: false });
   from = (await mockLog()).length;
