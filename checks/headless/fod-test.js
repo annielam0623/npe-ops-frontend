@@ -404,6 +404,7 @@ async function run() {
   check("Send anyway 发送：只发 CHDF003，send_anyway 带上它", JSON.stringify(sr?.body) === JSON.stringify({ date: D_FO, orders: [{ manifest_id: 3, order_number: "CHDF003" }], channel: "both", send_anyway: ["CHDF003"] }), JSON.stringify(sr?.body));
   await waitFor(`document.body.textContent.includes('Send results')`);
   check("结果：CHDF003 发出（Sent 1），没有 Not sent", await evaluate(`const s = [...document.querySelectorAll('[data-stat]')].map(e => e.textContent).join(','); return s === '1,0,0,1' && !document.querySelector('[data-blocked-row]');`), await evaluate(`return [...document.querySelectorAll('[data-stat]')].map(e => e.textContent).join(',');`));
+  check("置顶 109 Q7：Farm out 通知结果 Sent 数字、逐单 Sent 绿字 #3B6D11", await evaluate(`const st = document.querySelector('[data-stat]'); const cell = [...document.querySelectorAll('[role=dialog] tbody td')].find((td) => td.textContent === 'Sent'); return getComputedStyle(st).color === 'rgb(59, 109, 17)' && !!cell && getComputedStyle(cell).color === 'rgb(59, 109, 17)';`));
   await evaluate(`[...document.querySelectorAll('[role=dialog] button')].find(b => b.textContent.trim() === 'Close').click();`);
   await waitFor(`!document.querySelector('[role=dialog]')`);
 

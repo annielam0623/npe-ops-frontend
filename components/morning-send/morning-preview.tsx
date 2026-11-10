@@ -7,7 +7,6 @@ import {
   RED_BOX,
   SEND_ICON,
   SendErrorText,
-  SendTypePicker,
   sendButtonClass,
   TABLE,
   TABLE_WRAP,
@@ -16,17 +15,13 @@ import {
 import { PhoneOneLine } from "@/components/ui/phone";
 import { useTick } from "@/lib/use-tick";
 import { cn } from "@/lib/utils";
-import type {
-  MorningManifestRow,
-  MorningPartial,
-  MorningSendType,
-} from "@/types";
+import type { MorningManifestRow, MorningPartial } from "@/types";
 
 import {
   describeAlreadySent,
   formatLaClock,
   groupByLocation,
-  SEND_TYPES,
+  MORNING_SEND_TYPE,
   sendTypeShort,
 } from "./config";
 
@@ -46,8 +41,6 @@ export function MorningPreviewStep({
   onSelectedChange,
   badPax,
   farmOutLeftOut = 0,
-  sendType,
-  onSendTypeChange,
   onSend,
   sendError = "",
   onStartOver,
@@ -60,8 +53,6 @@ export function MorningPreviewStep({
   badPax: string[];
   /** 转单（Farm out）客人不在名单里，他们收转单通知（G40）。 */
   farmOutLeftOut?: number;
-  sendType: MorningSendType;
-  onSendTypeChange: (value: MorningSendType) => void;
   onSend: () => void;
   /** 发送出错：红字写在发送键旁，发送键照旧可点（旧页面 #send-err，服务端防重发兜底）。 */
   sendError?: string;
@@ -293,11 +284,6 @@ export function MorningPreviewStep({
             the CSV again and upload it, or untick these guests.
           </p>
         ) : null}
-        <SendTypePicker
-          types={SEND_TYPES}
-          value={sendType}
-          onChange={onSendTypeChange}
-        />
         <div className="mt-2.5 flex flex-wrap items-center gap-2.5">
           {canSend ? (
             <button
@@ -306,8 +292,9 @@ export function MorningPreviewStep({
               onClick={onSend}
               className={sendButtonClass("blue")}
             >
-              {SEND_ICON[sendType]} Send to Selected ({sendTypeShort(sendType)})
-              — {selected.size} order{selected.size === 1 ? "" : "s"}
+              {SEND_ICON[MORNING_SEND_TYPE]} Send to Selected (
+              {sendTypeShort(MORNING_SEND_TYPE)}) — {selected.size} order
+              {selected.size === 1 ? "" : "s"}
             </button>
           ) : null}
           <button type="button" onClick={onStartOver} className={DARK_BUTTON}>

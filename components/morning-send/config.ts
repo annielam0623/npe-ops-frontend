@@ -7,21 +7,20 @@ export const MESSAGE_PREVIEW_TABS: readonly PreviewTab[] = [
   { key: "guest_page", label: "🖥️ Guest Page", kind: "html" },
 ];
 
-/** 顺序与旧页面一致；默认 Both（置顶 101，Annie 2026-11-07「早班发送的，选A」「动手」；原来默认 SMS Only）。 */
-export const SEND_TYPES: readonly {
-  value: MorningSendType;
-  label: string;
-  short: string;
-}[] = [
-  { value: "combined", label: "Both (SMS + Email)", short: "SMS + Email" },
-  { value: "sms", label: "SMS Only", short: "SMS Only" },
-  { value: "email", label: "Email Only", short: "Email Only" },
-];
+/**
+ * 早班接客提醒一律 SMS + Email，页面上不给选（置顶 106，Annie 2026-11-09「前后端都写死，mornning发送就是sms+email」「动手」）。
+ * 值定义在 lib/morning-send-api.ts（发送接口只会带它）；结果表的文字照旧按 send_type 写。
+ */
+export { MORNING_SEND_TYPE } from "@/lib/morning-send-api";
 
-export const DEFAULT_SEND_TYPE: MorningSendType = "combined";
+const SEND_TYPE_SHORT: Record<MorningSendType, string> = {
+  combined: "SMS + Email",
+  sms: "SMS Only",
+  email: "Email Only",
+};
 
 export function sendTypeShort(value: MorningSendType): string {
-  return SEND_TYPES.find((t) => t.value === value)?.short ?? value;
+  return SEND_TYPE_SHORT[value] ?? value;
 }
 
 export interface LocationGroup {

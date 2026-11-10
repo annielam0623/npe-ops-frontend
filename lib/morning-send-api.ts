@@ -6,6 +6,12 @@ import type {
   MorningSendType,
 } from "@/types";
 
+/**
+ * 早班接客提醒一律 SMS + Email（置顶 106，Annie 2026-11-09「前后端都写死，mornning发送就是sms+email」「动手」）。
+ * 两个入口一起：这里（Morning Pickup › Send，上传文件发）和 Dispatch 的 relay-send（lib/dispatch-api.ts RELAY_SEND_TYPE）。
+ */
+export const MORNING_SEND_TYPE: MorningSendType = "combined";
+
 /** 早班只有一个模板，用示例客人渲染短信和客人追踪页。纯读。 */
 export function fetchMorningMessagePreview(
   signal?: AbortSignal,
@@ -37,10 +43,11 @@ export function previewMorningManifest(file: File): Promise<MorningPreview> {
  * 服务端查重（后端 2026-10-06，E141）：今天早班线发过的单一律跳过（reason "already_sent"），
  * 除非它在 sendAnyway 里、而且最近一次发出去早于 previewAt（预览接口给的时间）——所以 Send anyway 只多发一次。
  * 文件里同一单两行只发第一行（reason "listed_twice"）。
+ *
+ * 渠道固定 SMS + Email（置顶 106）：send_type 一律 MORNING_SEND_TYPE，调用处传不了别的值。
  */
 export function sendMorningBatch(
   file: File,
-  sendType: MorningSendType,
   orders: string[],
   guard: { sendAnyway: string[]; vanAnyway: string[]; previewAt: string },
 ): Promise<MorningSendResponse> {
@@ -49,7 +56,7 @@ export function sendMorningBatch(
   }
   const form = new FormData();
   form.append("file", file);
-  form.append("send_type", sendType);
+  form.append("send_type", MORNING_SEND_TYPE);
   form.append("selected_orders", JSON.stringify(orders));
   form.append("send_anyway", JSON.stringify(guard.sendAnyway));
   // 车号无效的单：不在这个数组里就被后端跳过（invalid_van），重复单的 send_anyway 代替不了它。旧后端会忽略这个字段。
