@@ -1,3 +1,4 @@
+import type { OutcomeFields } from "@/lib/send-outcome";
 import type { TicketsSendType } from "./tickets-send";
 
 /** 两块发送：团确认（Regular）/ Last Minute（跳过再确认，直接选午餐和接客信息）。 */
@@ -93,7 +94,7 @@ export interface TourHeld {
   message: string;
 }
 
-export interface TourSendResult {
+export interface TourSendResult extends OutcomeFields {
   order: string;
   name: string;
   /** "sent" / "failed: …" / "skipped - no email" / ""（没选这条渠道）。 */
@@ -113,7 +114,11 @@ export interface TourSkipped {
 
 export interface TourSendBulkResponse {
   total: number;
+  /** 置顶 109 起按客人（任一渠道）算；旧后端只数邮件。页面按每行 outcome 自己数。 */
   sent: number;
+  failed?: number;
+  no_contact?: number;
+  not_sent?: number;
   results: TourSendResult[];
   skipped?: TourSkipped[];
 }

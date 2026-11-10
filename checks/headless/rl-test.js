@@ -117,6 +117,7 @@ async function main() {
     await layoutChecks();
     await hotelColourChecks();
     await textChecks();
+    await fitChecks();
   } finally {
     ws.close();
     chrome.kill();
@@ -420,7 +421,7 @@ async function settingsChecks() {
   check("Discard：关窗、什么都不存（没有 PUT），单子不变", (await waitFor(`!${dlg}`)) && !(await since(b0, (e) => e.method === "PUT")).length && (await evaluate("return document.querySelector('[data-relay-total=relay]').dataset.orient === 'landscape';")));
 
   // How to use（题 6 A）：屏幕上折起、打印不印。
-  check("How to use — Relay list：7 句、第 3 句写三处一起变", await evaluate("const d = [...document.querySelectorAll('details')].find(x => x.textContent.includes('How to use — Relay list')); return !!d && !d.open && d.querySelectorAll('li').length === 7 && d.querySelectorAll('li')[2].textContent.includes('Bus Manifest bus header');"));
+  check("How to use — Relay list：7 句 + 112 两句 = 9 句、第 3 句写三处一起变", await evaluate("const d = [...document.querySelectorAll('details')].find(x => x.textContent.includes('How to use — Relay list')); return !!d && !d.open && d.querySelectorAll('li').length === 9 && d.querySelectorAll('li')[2].textContent.includes('Bus Manifest bus header');"));
   await cdp("Emulation.setEmulatedMedia", { media: "print" });
   check("打印：How to use 不印", await evaluate("const d = [...document.querySelectorAll('details')].find(x => x.textContent.includes('How to use — Relay list')); return getComputedStyle(d.closest('.rl-screen-only')).display === 'none';"));
   await cdp("Emulation.setEmulatedMedia", { media: "" });
@@ -448,7 +449,7 @@ async function layoutChecks() {
   await helpers();
   const after = await evaluate(`return [${bg(hotelTd)}, ${bg(th)}, ${sheet}.getBoundingClientRect().width].join('|');`);
   check("版式设置：上线了、没设过 ⇒ 单子一模一样（Hotel 格车色、表头灰、A4 宽）", before === after, `${before} vs ${after}`);
-  check("版式设置：How to use 多一句（8 句）", await evaluate("const d = [...document.querySelectorAll('details')].find(x => x.textContent.includes('How to use — Relay list')); return d.querySelectorAll('li').length === 8 && d.textContent.includes('turn colouring on or off for the Hotel cell and the column titles');"));
+  check("版式设置：How to use 多一句（8 句 + 112 两句 = 10 句）", await evaluate("const d = [...document.querySelectorAll('details')].find(x => x.textContent.includes('How to use — Relay list')); return d.querySelectorAll('li').length === 10 && d.textContent.includes('turn colouring on or off for the Hotel cell and the column titles');"));
 
 
   // 弹窗：Colours / Page
@@ -614,6 +615,90 @@ async function hotelColourChecks() {
   check("Hotel 格：Save ⇒ colours.all.hotel_cell {on:null, color:#00ffff}", JSON.stringify(lp?.body) === JSON.stringify({ colours: { all: { hotel_cell: { on: null, color: "#00ffff" } } } }), JSON.stringify(lp?.body));
   await evaluate(`$btn('Cancel', ${dlg}).click();`);
   await ctl({ reset: true, layoutReset: true, layout: false, edit: false });
+}
+
+// ── 置顶 112（Annie「111， 112 全 A + 动手」，preview 第 4 版）：一页放不下 / 比纸宽时自动压空白 ──
+async function fitChecks() {
+  const car2 = "[...document.querySelectorAll('[data-relay-car]')].find((s) => s.querySelector('[data-relay-row=CHDZZW01]'))";
+  const sheets = "document.querySelectorAll('.rl-sheet').length";
+  const warnOf = (sel) => `(${sel}.previousElementSibling?.matches('[data-relay-fit-warn]') ? ${sel}.previousElementSibling : null)`;
+  const MM = 96 / 25.4;
+
+  // 1) 一页的单：什么都不动
+  await ctl({ reset: true, layoutReset: true, edit: true, textSize: true, many: 0 });
+  await open(URL0);
+  await waitFor("document.querySelectorAll('[data-relay-total]').length === 2", 30000);
+  await sleep(600);
+  check("自动压：单子都放得下 ⇒ 没有黄框、没有 data-squeezed、没有内联压缩变量", await evaluate("return !document.querySelector('[data-relay-fit-warn]') && !document.querySelector('.rl-sheet[data-squeezed]') && [...document.querySelectorAll('.rl-sheet')].every((s) => !s.style.getPropertyValue('--rl-gap') && !s.style.getPropertyValue('--rl-py') && !s.style.paddingLeft);"));
+  check("自动压：没压的单酒店空隙照旧 12px、车单行内 4px 6px", await evaluate(`const s = ${car2}; const gap = s.querySelector('td.rl-gap'); const td = s.querySelector('tr[data-relay-row] td'); return Math.round(gap.getBoundingClientRect().height) === 12 && getComputedStyle(td).paddingTop === '4px' && getComputedStyle(td).paddingLeft === '6px';`));
+  check("How to use：压缩那句 + 太宽那句（112 Q3 / Q7 A 原句）", await evaluate("const t = document.body.textContent; return t.includes('If a sheet no longer fits on one page after you make the text bigger, the space between hotels and inside each row gets smaller by itself until the sheet fits. Your text size does not change. If the sheet still does not fit, a yellow note above it says how many pages it will print on; make the text smaller.') && t.includes('If a sheet is too wide for the paper, the space inside each cell gets smaller and the sheet moves to the middle of the paper by itself. If it is still too wide, a yellow note above it says so; make the text smaller.') && !t.includes('move guests');"));
+
+  // 2) 22 家酒店：超一页 ⇒ 压回一页
+  await ctl({ many: 22 });
+  await open(URL0);
+  await waitFor(`${car2}`, 30000);
+  await sleep(800);
+  const sq = await evaluate(`const s = ${car2}; const g = getComputedStyle(s.querySelector('td.rl-gap')); return { sq: s.hasAttribute('data-squeezed'), gap: s.style.getPropertyValue('--rl-gap'), py: s.style.getPropertyValue('--rl-py'), warn: !!${warnOf(car2)}, line: g.borderTopWidth + ' ' + g.borderTopColor };`);
+  check("自动压：22 站的车单超一页 ⇒ 压了（data-squeezed、空隙变小），没出黄框", sq.sq && /^(10|8|6)px$/.test(sq.gap) && !sq.warn, JSON.stringify(sq));
+  check("自动压：压过的单酒店间两条线 2px 深灰 #6b6b6b", sq.line === "2px rgb(107, 107, 107)", sq.line);
+  check("自动压：没超页的单（第 1 轮）照旧不压", await evaluate("return [...document.querySelectorAll('[data-relay-car]')].filter((s) => !s.querySelector('[data-relay-row=CHDZZW01]')).every((s) => !s.hasAttribute('data-squeezed'));"));
+  check("自动压：字号不变（车单正文 15px）", await evaluate(`return getComputedStyle(${car2}.querySelector('tr[data-relay-row] td[data-relay-col=name]')).fontSize === '15px';`));
+  {
+    const n = await evaluate(`return ${sheets};`);
+    const pages = await pdfPages();
+    check("自动压：打印 = 屏幕，压过后每张单一页（PDF 页数 = 单数）", pages === n, `pages ${pages}, sheets ${n}`);
+  }
+
+  // 3) 40 家酒店：全压完还超 ⇒ 黄框写实际页数，不缩字
+  await ctl({ many: 40 });
+  await open(URL0);
+  await waitFor(`${car2}`, 30000);
+  await sleep(800);
+  const w = await evaluate(`const s = ${car2}; const w = ${warnOf(car2)}; return { text: w?.textContent, pages: w?.dataset.pages, gap: s.style.getPropertyValue('--rl-gap'), py: s.style.getPropertyValue('--rl-py'), fs: getComputedStyle(s.querySelector('tr[data-relay-row] td[data-relay-col=name]')).fontSize, bg: w ? getComputedStyle(w).backgroundColor : '' };`);
+  check("黄框：40 站压完还超 ⇒ 单上方黄框「This sheet will print on 2 pages. Make the text smaller.」", w.text === "This sheet will print on 2 pages. Make the text smaller." && w.pages === "2" && w.bg === "rgb(255, 248, 225)", JSON.stringify(w));
+  check("黄框：压到最小（空隙 6px、行内 1px），字号不缩（15px）", w.gap === "6px" && w.py === "1px" && w.fs === "15px", JSON.stringify(w));
+  {
+    const n = await evaluate(`return ${sheets};`);
+    const extra = await evaluate("return [...document.querySelectorAll('[data-relay-fit-warn]')].reduce((a, w) => a + Number(w.dataset.pages) - 1, 0);");
+    const pages = await pdfPages();
+    check("黄框：每个黄框写的页数加起来 = 真打出来的（PDF 页数 = 单数 + 黄框多出的页）", extra >= 1 && pages === n + extra, `pages ${pages}, sheets ${n}, extra ${extra}`);
+  }
+  check("屏幕 = 打印：超页的单上画出「Page 2 starts here」红虚线，位置在一页纸高处", await evaluate(`const s = ${car2}; const m = s.querySelector('[data-relay-page-break="2"]'); const ph = parseFloat(getComputedStyle(s).minHeight); return !!m && m.textContent === 'Page 2 starts here' && Math.abs(m.offsetTop - ph) < 1 && getComputedStyle(m).borderTopStyle === 'dashed';`));
+  check("屏幕 = 打印：放得下的单没有换页线", await evaluate("return [...document.querySelectorAll('.rl-sheet')].filter((s) => !s.querySelector('[data-relay-row=CHDZZW01]')).every((s) => !s.querySelector('[data-relay-page-break]'));"));
+  await cdp("Emulation.setEmulatedMedia", { media: "print" });
+  check("黄框 / 换页线：打印时不印", await evaluate("return [...document.querySelectorAll('[data-relay-fit-warn], [data-relay-fit-mark]')].every((e) => getComputedStyle(e).display === 'none');"));
+  await cdp("Emulation.setEmulatedMedia", { media: "" });
+
+  // 4) Total Pax 跟整页（Q6 A），整列不跟；太宽（Q7 A）先压内边距、再挪中间、还宽出黄框
+  await ctl({ many: 0 });
+  await open(URL0);
+  await waitFor("document.querySelector('[data-relay-text-open]')", 30000);
+  await helpers();
+  const carSel = "document.querySelector('[data-relay-car]')";
+  const tp = `getComputedStyle(${carSel}.querySelector('[data-relay-total-pax]')).fontSize`;
+  check("Total Pax：没调字号 ⇒ 20px", await evaluate(`return ${tp} === '20px';`));
+  const sheetKey = await evaluate(`let e = ${carSel}.previousElementSibling; while (e && !e.matches('[data-relay-text-bar]')) e = e.previousElementSibling; return e?.dataset.relayTextBar;`);
+  await evaluate(`document.querySelector('[data-relay-text-open="${sheetKey}"]').click();`);
+  await waitFor("document.querySelector('[data-text-size-toolbar]')");
+  await evaluate(`${carSel}.querySelector('td[data-relay-col=qty]').click();`);
+  await evaluate("document.querySelector('[data-text-size-toolbar] [aria-label=Bigger]').click();");
+  check("Total Pax：只改 Qty 整列 ⇒ Total Pax 不跟（20px）", (await waitFor(`getComputedStyle(${carSel}.querySelector('td[data-relay-col=qty]')).fontSize === '16px'`)) && (await evaluate(`return ${tp} === '20px';`)), String(sheetKey));
+  await evaluate("$btn('Reset whole table', document.querySelector('[data-text-size-toolbar]')).click();");
+  await evaluate("$btn('Whole page', document.querySelector('[data-text-size-toolbar]')).click();");
+  for (let i = 0; i < 3; i++) await evaluate("document.querySelector('[data-text-size-toolbar] [aria-label=Bigger]').click();");
+  check("Total Pax：Whole page A+3 ⇒ Total Pax 两格 20→23px", await waitFor(`${tp} === '23px' && getComputedStyle(${carSel}.querySelector('[data-relay-total-pax]').previousElementSibling).fontSize === '23px'`), await evaluate(`return ${tp};`));
+  for (let i = 0; i < 7; i++) await evaluate("document.querySelector('[data-text-size-toolbar] [aria-label=Bigger]').click();");
+  await sleep(400);
+  const wide = await evaluate(`const s = ${carSel}; const cs = getComputedStyle(s); const t = s.querySelector('table').getBoundingClientRect().width; const inner = s.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight); const w = ${warnOf(carSel)}; return { tp: ${tp}, px: s.style.getPropertyValue('--rl-px'), pl: parseFloat(cs.paddingLeft), pr: parseFloat(cs.paddingRight), fits: t <= inner + 0.5, warn: w?.textContent ?? null, wideAttr: w?.dataset.wide ?? null };`);
+  check("太宽：Whole page A+10 ⇒ 格子左右内边距压过（< 6px）", /^[2-5]px$/.test(wide.px), JSON.stringify(wide));
+  check("太宽：挪到纸中间 ⇒ 左右页边距一样、比 11mm 小、不少于 5mm", Math.abs(wide.pl - wide.pr) < 0.5 && wide.pl < 11 * MM - 0.5 && wide.pl >= 5 * MM - 0.5, JSON.stringify(wide));
+  check("太宽：还宽 ⇒ 黄框「This sheet is too wide for the paper. Make the text smaller.」；放得下 ⇒ 不出", wide.fits ? wide.warn === null : wide.warn === "This sheet is too wide for the paper. Make the text smaller." && wide.wideAttr === "1", JSON.stringify(wide));
+  check("Total Pax：A+10 ⇒ 30px", wide.tp === "30px", wide.tp);
+  check("屏幕 = 打印：还宽 ⇒ 纸的右边画红虚线「Paper edge — anything to the right is cut off」；放得下 ⇒ 没有", await evaluate(`const e = ${carSel}.querySelector('[data-relay-paper-edge]'); return ${JSON.stringify(wide.fits)} ? !e : !!e && e.textContent === 'Paper edge — anything to the right is cut off';`));
+  await evaluate("$btn('Reset whole table', document.querySelector('[data-text-size-toolbar]')).click();");
+  await sleep(400);
+  check("太宽：字号回默认 ⇒ 内边距 / 页边距恢复（没有内联 padding、--rl-px），黄框不见", await evaluate(`const s = ${carSel}; return !s.style.paddingLeft && !s.style.getPropertyValue('--rl-px') && !${warnOf(carSel)} && ${tp} === '20px';`));
+  await ctl({ reset: true, layoutReset: true, textSize: false, edit: false, many: 0 });
 }
 
 main().catch((e) => {

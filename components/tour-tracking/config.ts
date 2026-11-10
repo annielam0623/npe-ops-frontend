@@ -1,3 +1,4 @@
+import { noAddressLabel } from "@/lib/send-outcome";
 import type { BroadcastCandidate } from "@/components/ui/broadcast-dialog";
 import type { ColumnVisibility } from "@/components/ui/column-picker";
 import type { ContactBadge } from "@/components/ui/conversation-modal";
@@ -152,12 +153,14 @@ const DEFAULT_ORDER: SystemColumnKey[] = LEGACY_COLUMNS.map((c) => c.key);
 export const ORDER_STATUS_AFTER_KEY = "npe_ops_tour_order_status_after";
 
 /** ☰ Columns 里的列（Order Status 紧跟 Order #）。 */
-export const SYSTEM_COLUMNS: readonly { key: SystemColumnKey; label: string }[] =
-  [
-    LEGACY_COLUMNS[0],
-    { key: "order_status", label: "Order Status" },
-    ...LEGACY_COLUMNS.slice(1),
-  ];
+export const SYSTEM_COLUMNS: readonly {
+  key: SystemColumnKey;
+  label: string;
+}[] = [
+  LEGACY_COLUMNS[0],
+  { key: "order_status", label: "Order Status" },
+  ...LEGACY_COLUMNS.slice(1),
+];
 
 const ALL_KEYS: SystemColumnKey[] = SYSTEM_COLUMNS.map((c) => c.key);
 
@@ -372,7 +375,10 @@ export function smsLabel(s: string): { label: string; tone: DeliveryTone } {
     case "failed":
       return { label: "Failed", tone: "bad" };
     default:
-      return s ? { label: s, tone: "none" } : { label: "—", tone: "none" };
+      // 置顶 109 Q1：没号码、没试（skipped - no phone）⇒ 灰字 No number，不显示原文。
+      return s
+        ? { label: noAddressLabel(s, "sms") ?? s, tone: "none" }
+        : { label: "—", tone: "none" };
   }
 }
 
@@ -400,7 +406,11 @@ export function emailLabel(r: TourTrackingRow): {
     case "failed":
       return { label: "Failed", tone: "bad" };
     default:
-      return { label: "—", tone: "none" };
+      // 置顶 109 Q1：没邮箱、没试（skipped - no email）⇒ 灰字 No email。
+      return {
+        label: noAddressLabel(r.email_status, "email") ?? "—",
+        tone: "none",
+      };
   }
 }
 

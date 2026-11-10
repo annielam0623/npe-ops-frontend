@@ -1,5 +1,6 @@
 // 模拟后端：Dispatch Assignments。控制：POST /__ctl；GET /__log。
 const http = require("http");
+const outcomeMock = require("./outcome-mock");
 const staffPerm = require("./staff-perm-mock");
 // 截图用：环境变量 MOCK_CTL（JSON）在启动时预设控制项，例 MOCK_CTL='{"completed":true}'（shoot.js 起模拟接口时会带上环境变量）。
 const DRIVER_PAGE_OFF = "Driver page is off. Turn it on in Page visibility before sending.";
@@ -12,6 +13,10 @@ const ctl = { marks: false, noticeMarks: {}, completed: false, saveErr: "", fail
   tourCar: false, tourCarNoCar: false, tourCarBlocked: false, tourCarB2: false,
   // Farm out（G40）：farmOut = 开着才有 /api/farm-out/*（关着 404，页面和以前一样）；foSendErr = 发通知某一批 500。
   farmOut: false, foSendErr: false,
+  // G263 v3（后端 2c 8f951f4c）：foProducts = "multi" ⇒ Seat guests 的 farm_out 带 rate_item_id / product_display_name / product_options
+  // （Partner A × West Rim 两个产品，CHDF001 选了 Premium Pass、另两单没选）；"single" ⇒ 只有一个产品、都没选（后端自动用它）；
+  // false = 旧后端，没有这几个键。
+  foProducts: false,
   // 「谁看得到」开关 farm_out_dispatch（2026-10-25）：默认当已放给所有人（其余检查照旧）；null = 后端还没登记（404，前端按默认只 Super Admin 算）。
   foVis: "staff",
   // G71 编辑锁：lockOther = {by, since, by_me?}（GET 带 edit_lock；by_me 不为 true 时占的时候 409）；lock409 = 只有占的时候 409（GET 不带）；
@@ -93,6 +98,19 @@ const foOrders = [
     farm_out: foFarm({ payable_amount: 105 }) },
 ];
 const FO_PRISTINE = JSON.stringify(foOrders);
+// G263 v3：Partner A × West Rim 的产品（后端 product_options：只有名字没有价；价钱只给 PATCH 算应付用）。
+const FO_PRODUCTS = {
+  multi: [{ id: 701, display_name: "West Rim Premium Pass - Partner A", prices: { adult: 98, child: 98 } }, { id: 702, display_name: "West Rim Admission Only - Partner A", prices: { adult: 83, child: 83 } }],
+  single: [{ id: 801, display_name: "West Rim VOF-H/D - Partner A", prices: { adult: 70, child: 70 } }],
+};
+const foRateItem = {};
+function foProductFields(o) {
+  const list = FO_PRODUCTS[ctl.foProducts];
+  if (!list || !o.farm_out) return {};
+  const id = o.order_number in foRateItem ? foRateItem[o.order_number] : ctl.foProducts === "multi" && o.order_number === "CHDF001" ? 701 : null;
+  const chosen = list.find((x) => x.id === id) ?? null;
+  return { rate_item_id: id, product_display_name: chosen?.display_name ?? null, product_options: list.map(({ id, display_name }) => ({ id, display_name })) };
+}
 const FO_LOCS = [
   { id: 1, hotel_name: "Bellagio", spot: "Underground South Tour Lobby", address: "3600 S Las Vegas Blvd", map_link: "https://goo.gl/maps/x", sort_order: 1 },
   { id: 2, hotel_name: "Venetian", spot: "Ground Transportation Area", address: "3355 S Las Vegas Blvd", map_link: "https://goo.gl/maps/y", sort_order: 2 },
@@ -127,7 +145,7 @@ function seating(date) {
     const bus = (label, van) => ({ label, van, seats: label === "B" ? null : 14, capacity: label === "B" ? null : 14, pax: foOrders.filter((o) => o.bus_label === label).reduce((n, o) => n + o.pax, 0), ...(label === "B" ? { farm_out: true, partner_name: "Partner A" } : {}) });
     const onB = foOrders.filter((o) => o.bus_label === "B").reduce((n, o) => n + o.pax, 0);
     return { run_date: date, tours: [{ manifest_id: 3, title: "West Rim Bus Tour", name: "West Rim", uploaded: true, mode: "lettered", guests_per_bus: 14, pax: 10, pax_farm_out: onB, pax_ours: 10 - onB,
-      buses: [bus("A", "2056"), bus("B", "")], orders: foOrders.map((o) => JSON.parse(JSON.stringify(o))) }] };
+      buses: [bus("A", "2056"), bus("B", "")], orders: foOrders.map((o) => { const c = JSON.parse(JSON.stringify(o)); if (c.farm_out) Object.assign(c.farm_out, foProductFields(o)); return c; }) }] };
   }
   if (date !== "2026-10-09") return { run_date: date, tours: [{ manifest_id: 3, title: "West Rim Bus Tour", name: "West Rim", uploaded: false, mode: "lettered", guests_per_bus: 4, pax: 0, buses: [], orders: [] }] };
   const bus = (label, van) => ({ label, van, seats: 4, capacity: 4, pax: seatOrders.filter((o) => o.bus_label === label).reduce((n, o) => n + o.pax, 0) });
@@ -290,7 +308,7 @@ http.createServer(async (req, res) => {
     // revAuto：10-07 的改版回到没应用（前面的检查可能 Apply + 存过），存的排车回到只有 901 那台。
     if (ctl.revAuto) { prefills["2026-10-07"].status = "pending"; saved["2026-10-07"] = [row({ id: 901, shift: "relay", driver_hr_id: 1, vehicle_id: 10, location_ids: [100] })]; }
     // resetSeats：Seat guests 的单回到自动分车的位置（前面的检查挪过车）。
-    if (ctl.resetFo) { const fresh = JSON.parse(FO_PRISTINE); foOrders.splice(0, foOrders.length, ...fresh); ctl.resetFo = false; }
+    if (ctl.resetFo) { const fresh = JSON.parse(FO_PRISTINE); foOrders.splice(0, foOrders.length, ...fresh); for (const k of Object.keys(foRateItem)) delete foRateItem[k]; ctl.resetFo = false; }
     if (ctl.resetSeats) { for (const o of seatOrders) { o.bus_label = o.auto; o.staff = false; } ctl.resetSeats = false; }
     // otherSave = {date, vehicle_id}：别人存了这一天（第一台车换车、版本加 1）。
     if (ctl.otherSave) { const o = ctl.otherSave; saved[o.date][0] = { ...saved[o.date][0], vehicle_id: o.vehicle_id }; bump(o.date); ctl.otherSave = null; }
@@ -538,7 +556,9 @@ http.createServer(async (req, res) => {
     if (ctl.marks && !ctl.driver502 && !ctl.driver400) for (const k of b.recipients || []) ctl.noticeMarks[k] = { sent_at: "2026-10-05T04:53:00+00:00", sent_by: "Annie", failed_at: null };
     if (ctl.driver502) return send(res, 502, { detail: "Bad gateway" });
     if (ctl.driver400) return send(res, 400, { detail: DRIVER_PAGE_OFF });
-    return send(res, 200, { sent: ["FREDDY"], failed: ctl.driverFail ? [{ name: "BOB", error: "Twilio 21211" }] : [] });
+    return send(res, 200, { sent: ["FREDDY"], failed: ctl.driverFail ? [{ name: "BOB", error: "Twilio 21211" }] : [],
+      // 置顶 109 Q6：新后端多一个 no_contact（HR 里有、但没号码）。
+      ...(ctl.noticeNoContact ? { no_contact: [{ name: "GIA", why: "No number" }] } : {}) });
   }
   // Send to guide（Annie 2026-10-30「1. 动手」；后端 57 在改：缩短固定段、extra、extra_max / preview_text、400 原话）。
   // ctl.guidePage = null（默认，没带）| true | false；ctl.guideNoExtra = 后端还不收 extra（不带 extra_max）；
@@ -571,6 +591,8 @@ http.createServer(async (req, res) => {
     const sent = (b.recipients || []).map((k) => names[k]).filter(Boolean);
     if (ctl.marks) (b.recipients || []).forEach((k, i) => { if (ctl.guideFail && i === 0) ctl.noticeMarks[k] = { ...(ctl.noticeMarks[k] || { sent_at: null, sent_by: "" }), failed_at: "2026-10-05T05:02:00+00:00" }; else ctl.noticeMarks[k] = { sent_at: "2026-10-05T04:55:00+00:00", sent_by: "Annie", failed_at: null }; });
     if (ctl.guideFail) return send(res, 200, { sent: sent.slice(1), failed: [{ name: sent[0], error: "Carrier rejected the number" }] });
+    // 置顶 109 Q6：新后端多一个 no_contact（HR 里有、但没号码）。
+    if (ctl.noticeNoContact) return send(res, 200, { sent: sent.slice(1), failed: [], no_contact: [{ name: sent[0], why: "No number" }] });
     return send(res, 200, { sent, failed: [] });
   }
   // Farm out（G40）：形状照后端真代码（2026-10-17 核对：routers/farm_out*.py、docs 第八节）。ctl.farmOut 开着才有，关着 404。
@@ -589,9 +611,26 @@ http.createServer(async (req, res) => {
       if ("partner_location_id" in b) { f.partner_location_id = b.partner_location_id; if (b.partner_location_id && !f.depart_time_set_by_staff) { f.checkin_time = "06:40"; f.depart_time = "06:50"; } }
       if ("checkin_time" in b) { f.checkin_time = b.checkin_time; f.checkin_time_set_by_staff = true; }
       if ("depart_time" in b) { f.depart_time = b.depart_time; f.depart_time_set_by_staff = true; }
+      // G263：没勾 orders.money_view 改应付 / 换产品 ⇒ 403（后端 routers/farm_out.py 同一道闸）。
+      if (ctl.staffPerms && !ctl.staffPerms.includes("orders.money_view") && ("payable_amount" in b || "rate_item_id" in b)) return send(res, 403, { detail: "You do not have permission to do this." });
+      const list = FO_PRODUCTS[ctl.foProducts];
+      if ("rate_item_id" in b) {
+        if (!list) return send(res, 400, { detail: "mock: no products" });
+        if (b.rate_item_id != null && !list.some((x) => x.id === b.rate_item_id)) return send(res, 400, { detail: "That product is not on this tour for this partner. Reload the page." });
+        foRateItem[o.order_number] = b.rate_item_id;
+      }
       if ("payable_amount" in b) { f.payable_amount = b.payable_amount; f.payable_set_by_staff = true; f.payable_changed_by = "Annie"; f.payable_changed_at = "2026-10-16T02:00:00+00:00"; }
+      const missing = f.partner_location_id ? [] : ["pick-up location"];
+      if (list) {
+        const pf = foProductFields(o);
+        const chosen = list.find((x) => x.id === pf.rate_item_id) ?? (list.length === 1 ? list[0] : null);
+        if (!chosen) missing.push("product (pick one for this order)");
+        // 应付没手改过 ⇒ 按选的产品重算（后端 compute_payable：各票种人数 × 价，Infant 没价算 0）。
+        if (!f.payable_set_by_staff) f.payable_amount = chosen ? (o.adult || 0) * (chosen.prices.adult ?? 0) + (o.child || 0) * (chosen.prices.child ?? 0) : null;
+        return send(res, 200, { ok: true, farm_out: { ...f, ...pf, missing } });
+      }
       // 真后端返回 {ok, farm_out: {..., missing}}，不是裸的 farm_out。
-      return send(res, 200, { ok: true, farm_out: { ...f, missing: f.partner_location_id ? [] : ["pick-up location"] } });
+      return send(res, 200, { ok: true, farm_out: { ...f, missing } });
     }
     if (p === "/api/farm-out/notices/preview") {
       const b = JSON.parse(await readRaw(req)); entry.body = b;
@@ -609,8 +648,13 @@ http.createServer(async (req, res) => {
         .concat(ctl.foSmsBad ? b.orders.map((r) => r.order_number).filter((n) => n === ctl.foSmsBad).map((n) => ({ manifest_id: 3, order_number: n, missing: ["The SMS has characters carriers reject"], can_override: false })) : []);
       const results = b.orders.map((r) => r.order_number).filter((n) => !blockedList.some((x) => x.order_number === n)).map((n) => { const o = foOrders.find((x) => x.order_number === n); if (o?.farm_out) { o.farm_out.notice_sent_at = "2026-10-16T03:00:00+00:00"; o.farm_out.notice_sent_by = "Annie"; }
         // 真后端：没发的渠道是 null；成功 "sent" / "sent:<sid>"；失败 "failed: 原因"。
-        return { order_number: n, name: o?.name ?? n, email_status: b.channel === "sms" ? null : "sent", sms_status: b.channel === "email" ? null : (n === "CHDF002" ? "failed: number unreachable" : "sent:SMabc"), log_failed: false }; });
-      const failed = results.filter((r) => /failed/.test(r.sms_status ?? "")).length;
+        // 置顶 109：ctl.foNoContact = 这一单没号码也没邮箱（旧后端记两个 skipped、算进 failed）；ctl.newOutcome = 新后端（每行带 outcome）。
+        if (ctl.foNoContact === n) { const row = { order_number: n, name: o?.name ?? n, email_status: b.channel === "sms" ? null : "skipped - no email", sms_status: b.channel === "email" ? null : "skipped - no phone", log_failed: false };
+          return ctl.newOutcome ? outcomeMock.withOutcome(row, { sms: outcomeMock.channel(row.sms_status, row.sms_status != null), email: outcomeMock.channel(row.email_status, row.email_status != null) }) : row; }
+        const row = { order_number: n, name: o?.name ?? n, email_status: b.channel === "sms" ? null : "sent", sms_status: b.channel === "email" ? null : (n === "CHDF002" ? "failed: number unreachable" : "sent:SMabc"), log_failed: false };
+        return ctl.newOutcome ? outcomeMock.withOutcome(row, { sms: outcomeMock.channel(row.sms_status, row.sms_status != null), email: outcomeMock.channel(row.email_status, row.email_status != null) }) : row; });
+      // 旧后端：两个渠道都没地址的也算 failed（置顶 109 之前的真后端行为）。
+      const failed = results.filter((r) => /failed|skipped/.test(`${r.sms_status ?? ""} ${r.email_status ?? ""}`) && !/sent/.test(`${r.sms_status ?? ""} ${r.email_status ?? ""}`)).length;
       return send(res, 200, { ok: true, total: results.length, sent: results.length - failed, failed, skipped: 0, results, blocked: blockedList, skipped_sent: [], overridden_orders: results.map((r) => r.order_number).filter((n) => missingOf(n) && sa.has(n)) });
     }
     return send(res, 404, { detail: "mock: not found" });

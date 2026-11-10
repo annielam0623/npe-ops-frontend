@@ -44,7 +44,7 @@ function groupFromDetail(d: SendBatchDetail): SendLogGroup {
     started_at: "",
     started_at_label: d.started_at,
     summary: d.summary,
-    matched_rows: d.summary.sent + d.summary.failed,
+    matched_rows: attempted(d.summary),
     matched_orders: [],
   };
 }
@@ -252,7 +252,7 @@ export function SendGroups({
                       >
                         {g.matched_rows} of{" "}
                         {Math.max(
-                          g.summary.sent + g.summary.failed,
+                          attempted(g.summary),
                           g.matched_rows,
                         )}{" "}
                         in this send match
@@ -458,6 +458,11 @@ function GroupSummary({
 /** 旧页面 .chip。 */
 const CHIP = "rounded-[10px] px-2 py-px text-[11px] font-semibold";
 
+/** 这一批真的走到发送那一步的客人（置顶 109：No contact 也算在内，三个数加起来才对得上）。 */
+function attempted(s: SendBatchSummary): number {
+  return s.sent + s.failed + (s.no_contact ?? 0);
+}
+
 function Chips({ s }: { s: SendBatchSummary }) {
   return (
     <span className="flex flex-wrap gap-1" data-chips>
@@ -477,6 +482,18 @@ function Chips({ s }: { s: SendBatchSummary }) {
           )}
         >
           Failed {s.failed}
+        </span>
+      ) : null}
+      {s.no_contact ? (
+        // 置顶 109 Q1 / Q2：没号码也没邮箱 = 灰，不算失败、不进红框。
+        <span
+          data-chip-no-contact
+          className={cn(
+            CHIP,
+            "bg-[#f1efe8] text-[#6B6B6B] night:bg-white/[.04] night:text-white/55",
+          )}
+        >
+          No contact {s.no_contact}
         </span>
       ) : null}
       {s.skipped ? (

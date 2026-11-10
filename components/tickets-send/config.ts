@@ -1,4 +1,5 @@
 import type { PreviewTab } from "@/components/ui/message-preview-panel";
+import { type ChannelOutcome, resolveOutcome } from "@/lib/send-outcome";
 import type {
   TicketsGuest,
   TicketsManifestRow,
@@ -209,61 +210,35 @@ export function toGuest(
   };
 }
 
-/** 没号码 / 没邮箱的写法（Annie 2026-10-23：不叫 No address，直接写缺什么）。 */
-export const NO_ADDRESS_LABEL = { sms: "No number", email: "No email" } as const;
-
 /**
- * 结果汇总里「没号码 / 没邮箱」的格子，按这次发送的渠道命名：只发短信 No number、只发邮件 No email、
- * Both 拆成两格（两样都缺的客人两格各算一次）。noNumber / noEmail 是没发出去、且该渠道缺地址的客人数。
+ * 旧后端（只回 sms_ok / email_ok 真假）时某条渠道的结果：没选 = not_used；客人没号码 / 没邮箱 = no_address；
+ * 否则看真假。后端带了 *_outcome 就不用这个（置顶 109）。
  */
-export function noAddressStats(
-  sendType: TicketsSendType,
-  noNumber: number,
-  noEmail: number,
-): { label: string; value: number }[] {
-  const sms = { label: NO_ADDRESS_LABEL.sms, value: noNumber };
-  const email = { label: NO_ADDRESS_LABEL.email, value: noEmail };
-  return sendType === "sms" ? [sms] : sendType === "email" ? [email] : [sms, email];
-}
-
-export type ChannelOutcome = "sent" | "failed" | "no-address" | "not-selected";
-
-/** 某条渠道对这位客人的结果。没勾这条渠道、或者这位客人没有号码 / 邮箱，不算失败。 */
-export function channelOutcome(
+function legacyTicketChannel(
   channel: "sms" | "email",
   sendType: TicketsSendType,
   guest: TicketsGuest | undefined,
   result: TicketsSendResult,
 ): ChannelOutcome {
-  if (sendType !== "combined" && sendType !== channel) {
-    return "not-selected";
-  }
+  if (sendType !== "combined" && sendType !== channel) return "not_used";
   const address = guest
     ? channel === "sms"
       ? guest.phone
       : guest.customer_email
     : null;
-  if (address !== null && !address.trim()) {
-    return "no-address";
-  }
+  if (address !== null && !address.trim()) return "no_address";
   const ok = channel === "sms" ? result.sms_ok : result.email_ok;
   return ok ? "sent" : "failed";
 }
 
-/** 至少一条渠道发成功就算这位客人发出去了（与旧页面、send_log 的 error_msg 口径一致）。 */
-export function isGuestSent(result: TicketsSendResult): boolean {
-  return !!result.sms_ok || !!result.email_ok;
-}
-
-/** 没发出去，而且选了的渠道都是没号码 / 没邮箱（结果页单独算 No address，不算 Failed）。 */
-export function isGuestNoAddress(
+/** 一位客人的结论（置顶 109）：后端 outcome 优先，旧后端按真假 + 客人有没有号码 / 邮箱推。 */
+export function ticketRowOutcome(
   sendType: TicketsSendType,
   guest: TicketsGuest | undefined,
   result: TicketsSendResult,
-): boolean {
-  if (isGuestSent(result)) return false;
-  const outcomes = (["sms", "email"] as const).map((c) =>
-    channelOutcome(c, sendType, guest, result),
-  );
-  return outcomes.includes("no-address") && !outcomes.includes("failed");
+) {
+  return resolveOutcome(result, {
+    sms: legacyTicketChannel("sms", sendType, guest, result),
+    email: legacyTicketChannel("email", sendType, guest, result),
+  });
 }

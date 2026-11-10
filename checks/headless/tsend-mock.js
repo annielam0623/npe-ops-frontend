@@ -1,6 +1,7 @@
 // 模拟后端：门票发送（防重发）。控制：POST /__ctl {scenario, serverSkip, fail502At, reject400, fail401, noPhone, applyDelay}；GET /__log。
 const http = require("http");
 const staffPerm = require("./staff-perm-mock");
+const outcomeMock = require("./outcome-mock");
 const ctl = { scenario: "normal", serverSkip: ["T05"], fail502At: 0, reject400: "", fail401: false, batchFail: false, noPhone: [], applyDelay: 0 };
 let nextBatch = 700;
 const log = [];
@@ -81,7 +82,15 @@ http.createServer(async (req, res) => {
       // 同后端：没号码 / 没邮箱的那条渠道不发，记 false。
       const smsOk = body.send_type !== "email" && !!g.phone;
       const emailOk = body.send_type !== "sms" && g.customer_email ? { message_id: "m" } : false;
-      results.push({ record_id: 1, sms_ok: smsOk, email_ok: emailOk, name: `${g.first_name} ${g.last_name}`, chd_number: g.chd_number });
+      const row = { record_id: 1, sms_ok: smsOk, email_ok: emailOk, name: `${g.first_name} ${g.last_name}`, chd_number: g.chd_number };
+      // 置顶 109：ctl.newOutcome = 新后端；没号码 / 没邮箱 = no_address。
+      const useSms = body.send_type !== "email", useEmail = body.send_type !== "sms";
+      results.push(ctl.newOutcome
+        ? outcomeMock.withOutcome(row, {
+          sms: !useSms ? "not_used" : !g.phone ? "no_address" : smsOk ? "sent" : "failed",
+          email: !useEmail ? "not_used" : !g.customer_email ? "no_address" : emailOk ? "sent" : "failed",
+        }, (ctl.outcomeOverride ?? {})[g.chd_number])
+        : row);
     }
     return send(res, 200, { sent: results.length, results, skipped });
   }

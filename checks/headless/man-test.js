@@ -834,12 +834,29 @@ async function run() {
   await evaluate("$pick($dialog().querySelector('select'), 'grand_canyon_west');");
   await evaluate("$dialog().querySelector('[data-again=\"CHD1002\"]').click();");
   check("勾 Send anyway：行里的勾选框跟着勾上、小字写要再发几位", await evaluate("return $dialog().querySelector('[data-pick=\"CHD1002\"]').checked && $dialog().textContent.includes('1 already sent, 1 to send again');"));
+  await ctl({ tourSmsFail: ["CHD1002"] });
   from = (await mockLog()).length;
   await evaluate("$btn('✉️ Send', $dialog().lastElementChild).click();");
   await waitFor("$dialog()?.textContent.includes('order sent')");
   st = (await since(from, (e) => e.path === "/api/manifests/send-tour"))[0]?.body;
   check("Send anyway（第一步）：只发勾的那单、send_anyway = [CHD1002]、preview_at = 页面显示的发送时间", JSON.stringify(st?.groups) === JSON.stringify([{ tour_type: "grand_canyon_west", row_keys: [`CHD1002|ANT01|${today}`] }]) && JSON.stringify(st?.send_anyway) === '["CHD1002"]' && st?.preview_at === "2026-10-06T23:12:00+00:00", JSON.stringify(st));
   check("Send anyway（第一步）：发出 1 位、没有跳过", await evaluate("const t = $dialog().textContent; return t.includes('1 order sent') && !t.includes('skipped.');"), await evaluate("return $dialog().textContent;"));
+  check("置顶 109：邮件发出、短信号码错的单只算一次——汇总 Sent 1 / Failed 0 / No contact 0 / Skipped 0 / Total 1；Email 绿字 Sent、SMS 红字 Failed: Invalid phone", await evaluate("const n = [...$dialog().querySelectorAll('[data-stat]')].map((e) => e.textContent).join('|'); const tr = $dialog().querySelector('[data-outcome=CHD1002]'); const c = (i) => tr.children[i]; const k = tr.children.length; return n === '1|0|0|0|1' && c(k - 2).textContent === 'Sent' && getComputedStyle(c(k - 2)).color === 'rgb(59, 109, 17)' && c(k - 1).textContent.startsWith('Failed: Invalid phone') && getComputedStyle(c(k - 1)).color === 'rgb(163, 45, 45)';"), await evaluate("return [...$dialog().querySelectorAll('[data-stat]')].map((e) => e.textContent).join('|') + ' / ' + $dialog().querySelector('[data-outcome=CHD1002]')?.textContent;"));
+  await ctl({ tourSmsFail: [] });
+  await evaluate("$btn('Done', $dialog()).click();");
+  await waitFor("!$dialog()");
+
+  // 置顶 109：新后端（每行带 outcome / *_outcome）——CHD1002 没邮箱、短信号码错 ⇒ Failed（有东西可修），Email 灰字 No email。
+  await evaluate("$box('CHD1002').click();");
+  await evaluate("$btn('Send tour confirmation', $bar()).click();");
+  await waitFor("$dialog() && $dialog().querySelectorAll('select option').length > 2");
+  await evaluate("$pick($dialog().querySelector('select'), 'grand_canyon_west');");
+  await evaluate("$dialog().querySelector('[data-again=\"CHD1002\"]').click();");
+  await ctl({ tourSmsFail: ["CHD1002"], tourNoEmail: ["CHD1002"], newOutcome: true });
+  await evaluate("$btn('✉️ Send', $dialog().lastElementChild).click();");
+  await waitFor("$dialog()?.textContent.includes('order') && $dialog().querySelector('[data-stat]')");
+  check("新后端：CHD1002 没邮箱 + 短信失败 ⇒ Sent 0 / Failed 1 / No contact 0 / Skipped 0 / Total 1；Email 灰字 No email、SMS 红字 Failed；句子写 1 failed", await evaluate("const n = [...$dialog().querySelectorAll('[data-stat]')].map((e) => e.textContent).join('|'); const tr = $dialog().querySelector('[data-outcome=CHD1002]'); const k = tr.children.length; const e = tr.children[k - 2], s = tr.children[k - 1]; return n === '0|1|0|0|1' && tr.dataset.guestOutcome === 'failed' && e.textContent === 'No email' && getComputedStyle(e).color === 'rgb(107, 107, 107)' && s.textContent.startsWith('Failed') && $dialog().textContent.includes('1 failed, see below.');"), await evaluate("return [...$dialog().querySelectorAll('[data-stat]')].map((e) => e.textContent).join('|') + ' / ' + $dialog().querySelector('[data-outcome=CHD1002]')?.outerHTML;"));
+  await ctl({ tourSmsFail: [], tourNoEmail: [], newOutcome: false });
   await evaluate("$btn('Done', $dialog()).click();");
   await waitFor("!$dialog()");
 
@@ -1709,7 +1726,7 @@ async function run() {
   await waitFor("$dialog()?.textContent.includes('order sent')");
   let ch = (await since(from, (e) => e.path === "/api/manifests/send-tour"))[0]?.body;
   check("SMS Only：请求带 send_sms: true、send_email: false", ch && ch.send_sms === true && ch.send_email === false, JSON.stringify(ch));
-  check("SMS Only 结果：Email 列写 —、SMS 列 sent、不算失败；句子写 (SMS only)", await evaluate("const tr = $dialog().querySelector('[data-outcome=\"CHD1001\"]'); const c = [...tr.querySelectorAll('td')].map((x) => x.textContent.trim()); return c[2] === '—' && c[3] === 'sent' && $dialog().textContent.includes('1 order sent (SMS only).') && $dialog().textContent.includes('Failed0');"), await evaluate("return $dialog().textContent;"));
+  check("SMS Only 结果：Email 列写 —、SMS 列 Sent、不算失败；句子写 (SMS only)", await evaluate("const tr = $dialog().querySelector('[data-outcome=\"CHD1001\"]'); const c = [...tr.querySelectorAll('td')].map((x) => x.textContent.trim()); return c[2] === '—' && c[3] === 'Sent' && $dialog().textContent.includes('1 order sent (SMS only).') && $dialog().textContent.includes('Failed0');"), await evaluate("return $dialog().textContent;"));
   check("View this send：链接指向 Send Log 批次（G164 的 groups[0].batch_id）", await evaluate("const a = $dialog().querySelector('a[data-view-send]'); return !!a && a.textContent.includes('View this send') && a.getAttribute('href').startsWith('/send-log?batch=') && a.target === '_blank';"), await evaluate("return [...$dialog().querySelectorAll('a')].map((a) => a.href).join(' ');"));
   await evaluate("$btn('Done', $dialog()).click();");
   await waitFor("!$dialog()");
@@ -1728,7 +1745,7 @@ async function run() {
   await waitFor("$dialog()?.textContent.includes('reminder sent')");
   ch = (await since(from, (e) => e.path === "/api/manifests/send-tickets"))[0]?.body;
   check("Email Only：请求带 send_sms: false、send_email: true", ch && ch.send_sms === false && ch.send_email === true, JSON.stringify(ch));
-  check("Email Only 结果：列顺序 Email、SMS（Annie 2026-10-23）——Email 列 sent、SMS 列 —；View this send 链接在", await evaluate("const tr = $dialog().querySelector('[data-outcome=\"CHD2001\"]'); const c = [...tr.querySelectorAll('td')].map((x) => x.textContent.trim()); return c[2] === 'sent' && c[3] === '—' && !!$dialog().querySelector('a[data-view-send]');"), await evaluate("return $dialog().textContent;"));
+  check("Email Only 结果：列顺序 Email、SMS（Annie 2026-10-23）——Email 列 Sent、SMS 列 —；View this send 链接在", await evaluate("const tr = $dialog().querySelector('[data-outcome=\"CHD2001\"]'); const c = [...tr.querySelectorAll('td')].map((x) => x.textContent.trim()); return c[2] === 'Sent' && c[3] === '—' && !!$dialog().querySelector('a[data-view-send]');"), await evaluate("return $dialog().textContent;"));
   await evaluate("$btn('Done', $dialog()).click();");
   await waitFor("!$dialog()");
 

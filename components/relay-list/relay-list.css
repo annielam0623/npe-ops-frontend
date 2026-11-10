@@ -11,6 +11,41 @@
     0 1px 3px rgba(0, 0, 0, 0.25),
     0 8px 24px rgba(0, 0, 0, 0.12);
   font-family: Calibri, Carlito, Arial, sans-serif;
+  /* 换页线 / 纸边线（sheet-fit.tsx SheetFitMarks）以这张纸为准。 */
+  position: relative;
+}
+/* 屏幕 = 打印（置顶 112）：超页时第 2 页从哪开始、超宽时纸的右边，红虚线只在屏幕上（.rl-screen-only 打印时藏）。 */
+.rl-pagebreak {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 2px dashed #d00000;
+  pointer-events: none;
+}
+.rl-pagebreak span,
+.rl-paperedge span {
+  position: absolute;
+  font: 700 11px Arial, sans-serif;
+  color: #d00000;
+  background: #fff;
+  padding: 0 4px;
+  white-space: nowrap;
+}
+.rl-pagebreak span {
+  right: 6px;
+  top: 2px;
+}
+.rl-paperedge {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  border-right: 2px dashed #d00000;
+  pointer-events: none;
+}
+.rl-paperedge span {
+  top: 4px;
+  right: 6px;
 }
 /* 横版（置顶 73）：屏幕上也按横版画，看到的就是打出来的。 */
 .rl-sheet[data-orient="landscape"] {
@@ -33,19 +68,25 @@
   font-size: var(--rl-car-td, 15px);
   font-weight: var(--rl-car-td-w, 700);
   border: 1px solid #c8c8c8;
-  padding: 4px 6px;
+  /* --rl-py / --rl-px：一页放不下 / 比纸宽时 sheet-fit.tsx 往下压（置顶 112）；没压 = 现在的 4px 6px。 */
+  padding: var(--rl-py, 4px) var(--rl-px, 6px);
   text-align: center;
   white-space: nowrap;
 }
 .rl-sheet td.rl-gap {
-  height: 12px;
+  height: var(--rl-gap, 12px);
   border-left: 0;
   border-right: 0;
+}
+/* 空隙压过的单：酒店之间那段上下两条线变 2px 深灰，司机仍分得清各站（置顶 112 Q1 A）。 */
+.rl-sheet[data-squeezed] td.rl-gap {
+  border-top: 2px solid #6b6b6b;
+  border-bottom: 2px solid #6b6b6b;
 }
 .rl-total td {
   font-size: var(--rl-sum-td, 12.5px);
   font-weight: var(--rl-sum-td-w, 700);
-  padding: 2px 5px;
+  padding: var(--rl-py, 2px) var(--rl-px, 5px);
 }
 .rl-total th {
   font-size: var(--rl-sum-th, 9px);

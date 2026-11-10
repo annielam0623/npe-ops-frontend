@@ -1,10 +1,13 @@
 import { isCsvRow } from "@/components/tickets-send/config";
 import type { SendTheme } from "@/components/tickets-send/legacy-ui";
 import type { PreviewTab } from "@/components/ui/message-preview-panel";
+import { legacyChannel, resolveOutcome } from "@/lib/send-outcome";
 import type {
+  TicketsSendType,
   TourGuest,
   TourLane,
   TourManifestRow,
+  TourSendResult,
   TourTypeOption,
 } from "@/types";
 
@@ -100,47 +103,21 @@ export function toGuest(row: TourManifestRow): TourGuest {
   };
 }
 
-export type StatusTone = "sent" | "failed" | "no-address" | "none";
+/** 这次发送有没有用到这个渠道。 */
+export function usesChannel(
+  sendType: TicketsSendType,
+  channel: "sms" | "email",
+): boolean {
+  return sendType === "combined" || sendType === channel;
+}
 
 /**
- * 一条渠道的发送结果（后端原值）→ 显示。旧页面把原值照抄（例 sent:SM…），这里写成人话。
- * "" = 没选这条渠道。
+ * 一行结果的结论（置顶 109）：后端带 outcome / *_outcome 就用；旧后端按状态原文换算
+ * （"sent…" / "failed: …" / "skipped - no email|phone" / "" = 没选这个渠道）。
  */
-export function channelStatus(raw: string): { tone: StatusTone; text: string } {
-  const s = (raw || "").trim();
-  if (!s) return { tone: "none", text: "—" };
-  if (s.startsWith("sent")) return { tone: "sent", text: "Sent" };
-  if (s === "skipped - no email")
-    return { tone: "no-address", text: "No email" };
-  if (s === "skipped - no phone")
-    return { tone: "no-address", text: "No number" };
-  if (s.startsWith("failed")) {
-    const why = s.replace(/^failed:?\s*/, "");
-    return { tone: "failed", text: why ? `Failed: ${why}` : "Failed" };
-  }
-  return { tone: "failed", text: s };
-}
-
-/** 发出去了 = 至少一条渠道 sent（同旧页面 renderTourResults）。 */
-export function isResultSent(r: {
-  email_status: string;
-  sms_status: string;
-}): boolean {
-  return (
-    (r.email_status || "").startsWith("sent") ||
-    (r.sms_status || "").startsWith("sent")
-  );
-}
-
-/** 没发出去，而且没有哪条渠道真的失败——只是没邮箱 / 没手机号（结果页单独算，不算 Failed）。 */
-export function isResultNoAddress(r: {
-  email_status: string;
-  sms_status: string;
-}): boolean {
-  if (isResultSent(r)) return false;
-  const tones = [
-    channelStatus(r.email_status),
-    channelStatus(r.sms_status),
-  ].map((c) => c.tone);
-  return tones.includes("no-address") && !tones.includes("failed");
+export function tourRowOutcome(r: TourSendResult, sendType: TicketsSendType) {
+  return resolveOutcome(r, {
+    sms: legacyChannel(r.sms_status, usesChannel(sendType, "sms")),
+    email: legacyChannel(r.email_status, usesChannel(sendType, "email")),
+  });
 }

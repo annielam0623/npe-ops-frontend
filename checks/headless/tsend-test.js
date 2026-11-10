@@ -197,7 +197,8 @@ async function run() {
   const tb = (await since(before, (e) => e.path === "/api/tickets-reminder/batches"))[0]?.body;
   check("先建批次（同旧页面）：产品、日期、方式、文件行数、页面留下的两单；每批带 batch_id", tb && tb.tour_type === "upper_antelope_tsosie" && tb.service_date === DATE && tb.send_type === "combined" && tb.file_rows === 13 && tb.held.map((h) => h.chd_number + ":" + h.message).join("|") === "T01:Already sent for this date and tour|T02:Listed twice in this file" && bulks.every((b) => b.body.batch_id === 701), JSON.stringify(tb));
   check("CSV 送 Quantities 原文和 upload_row", g0[0]?.no_of_pax === "Adult: 2" && g0[0]?.upload_row?.["Order Number"] === g0[0]?.chd_number, JSON.stringify(g0[0]));
-  check("结果：Sent 10、Failed 0、No number 0、No email 0、Skipped 3、Total 13", await evaluate("const t = [...document.querySelectorAll('section [data-stat]')].map(e => e.textContent); return t.join('|') === '10|0|0|0|3|13';"), await evaluate("return [...document.querySelectorAll('section [data-stat]')].map(e => e.textContent).join('|');"));
+  check("结果（置顶 109）：Sent 10、Failed 0、No contact 0、Skipped 3、Total 13", await evaluate("const t = [...document.querySelectorAll('section [data-stat]')].map(e => e.textContent); return t.join('|') === '10|0|0|3|13';"), await evaluate("return [...document.querySelectorAll('section [data-stat]')].map(e => e.textContent).join('|');"));
+  check("置顶 109 Q7：Sent 数字和逐单 Sent 都是绿字 #3B6D11", await evaluate("const st = document.querySelector('section [data-stat]'); const cell = [...document.querySelectorAll('section tbody td')].find((td) => td.textContent === 'Sent'); return getComputedStyle(st).color === 'rgb(59, 109, 17)' && !!cell && getComputedStyle(cell).color === 'rgb(59, 109, 17)';"));
   check("结果页 View this send → /send-log?batch=701（新标签页）", await evaluate("const a = [...document.querySelectorAll('a')].find(a => a.textContent.includes('View this send')); return !!a && a.getAttribute('href') === '/send-log?batch=701' && a.target === '_blank';"));
   check("跳过的单逐条写原因（服务端查重跳过的 T05 也在）", await evaluate(`return [...document.querySelectorAll('tr[data-skipped]')].map(tr => tr.textContent).join('|').includes('T05') && document.body.textContent.includes('Skipped: Already sent for this date and tour') && document.body.textContent.includes('Skipped: Listed twice in this file');`));
 
@@ -299,8 +300,17 @@ async function run() {
   await evaluate(`[...${dialog}.querySelectorAll('button')].find(b => b.textContent.startsWith('Send to')).click();`);
   await waitFor("[...document.querySelectorAll('h2')].some(h => h.textContent === '📬 Send Results')");
   const statsNow = "return [...document.querySelectorAll('section [data-stat]')].map(e => e.textContent).join('|');";
-  check("No number：Sent 10、Failed 0、No number 1（T03 没手机号）、Skipped 2、Total 13", (await evaluate(statsNow)) === "10|0|1|2|13", await evaluate(statsNow));
-  check("No number：T03 那一行 SMS 写 No number", await evaluate("const tr = [...document.querySelectorAll('tbody tr')].find(t => t.children[0].textContent === 'T03'); return !!tr && tr.children[3].textContent === 'No number';"));
+  check("No contact（置顶 109）：Sent 10、Failed 0、No contact 1（只发短信、T03 没手机号）、Skipped 2、Total 13", (await evaluate(statsNow)) === "10|0|1|2|13", await evaluate(statsNow));
+  check("No number：T03 那一行 SMS 写 No number，灰字 #6B6B6B（置顶 109 Q1）", await evaluate("const tr = [...document.querySelectorAll('tbody tr')].find(t => t.children[0].textContent === 'T03'); return !!tr && tr.children[3].textContent === 'No number' && getComputedStyle(tr.children[3]).color === 'rgb(107, 107, 107)';"));
+
+  // 置顶 109：新后端（每行带 outcome / *_outcome）——SMS + Email，T03 没手机号但邮件发出 ⇒ Sent；T04 后端说两个渠道都真失败 ⇒ Failed。
+  await upload("normal", { serverSkip: [], noPhone: ["T03"], newOutcome: true, outcomeOverride: { T04: { outcome: "failed", sms_outcome: "failed", email_outcome: "failed" } } });
+  await sendAll();
+  await evaluate(`[...${dialog}.querySelectorAll('button')].find(b => b.textContent.startsWith('Send to')).click();`);
+  await waitFor("[...document.querySelectorAll('h2')].some(h => h.textContent === '📬 Send Results')");
+  check("新后端：照每行 outcome 数——Sent 10 / Failed 1（T04）/ No contact 0 / Skipped 2 / Total 13", (await evaluate(statsNow)) === "10|1|0|2|13", await evaluate(statsNow));
+  check("新后端：T03 邮件绿字 Sent、短信灰字 No number；T04 两格红字 Failed", await evaluate("const row = (o) => [...document.querySelectorAll('tbody tr')].find(t => t.children[0].textContent === o); const a = row('T03'), b = row('T04'); const c = (e) => getComputedStyle(e).color; return a.dataset.outcome === 'sent' && a.children[2].textContent === 'Sent' && c(a.children[2]) === 'rgb(59, 109, 17)' && a.children[3].textContent === 'No number' && b.dataset.outcome === 'failed' && b.children[2].textContent === 'Failed' && c(b.children[3]) === 'rgb(163, 45, 45)';"), await evaluate("return [...document.querySelectorAll('tbody tr')].slice(0, 4).map(t => t.textContent).join(' / ');"));
+  await ctl({ newOutcome: false, outcomeOverride: {} });
 
   // Apply 只在「人数算不出」时拦（Annie 2026-10-23 #15，同旧页面）
   await upload("reupload-conflict");

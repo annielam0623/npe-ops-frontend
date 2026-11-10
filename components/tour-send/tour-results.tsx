@@ -14,8 +14,13 @@ import {
   YELLOW_BOX,
 } from "@/components/tickets-send/legacy-ui";
 import { PhoneOneLine } from "@/components/ui/phone";
-import { noAddressStats } from "@/components/tickets-send/config";
 import { sendBatchHref } from "@/lib/send-log-api";
+import {
+  channelCell,
+  countOutcomes,
+  failedReason,
+  outcomeStats,
+} from "@/lib/send-outcome";
 import { cn } from "@/lib/utils";
 import type {
   TourGuest,
@@ -25,14 +30,7 @@ import type {
   TourSkipped,
 } from "@/types";
 
-import {
-  channelStatus,
-  isResultNoAddress,
-  isResultSent,
-  LANES,
-  type StatusTone,
-  sendTypeShort,
-} from "./config";
+import { LANES, sendTypeShort, tourRowOutcome } from "./config";
 
 /** 中途停下：原因 + 状态不明的那一组（请求发出去了但没拿到结果）。 */
 export interface TourSendStop {
@@ -41,14 +39,6 @@ export interface TourSendStop {
   /** 断开 / 超时 / 服务器出错：这一组可能已经在服务器上发出去了。 */
   maybeSent?: boolean;
 }
-
-/** 旧页面 .status-ok / .status-fail / .status-skip（没发的 — 旧页面也是 status-skip 橙色）。 */
-const TONE: Record<StatusTone, string> = {
-  sent: "font-medium text-[#3B6D11]",
-  failed: "text-[#A32D2D]",
-  "no-address": "text-[#BA7517]",
-  none: "text-[#BA7517]",
-};
 
 export function TourResults({
   lane,
@@ -77,22 +67,15 @@ export function TourResults({
   batchId: number | null;
   onStartOver: () => void;
 }) {
-  const sent = results.filter(isResultSent).length;
-  // 没发出去、也没有哪条渠道真失败（只是没邮箱 / 没手机号）：单独算，不算失败；汇总格按渠道写 No number / No email。
-  const noAddressResults = results.filter(isResultNoAddress);
-  const noAddress = noAddressResults.length;
-  const noNumberCount = noAddressResults.filter(
-    (r) => channelStatus(r.sms_status).tone === "no-address",
-  ).length;
-  const noEmailCount = noAddressResults.filter(
-    (r) => channelStatus(r.email_status).tone === "no-address",
-  ).length;
+  // 置顶 109：一位客人一个结论（Sent / Failed / No contact / Not sent），后端 outcome 优先。
+  const rows = results.map((r) => ({ r, o: tourRowOutcome(r, sendType) }));
+  const counts = countOutcomes(rows.map((x) => x.o.outcome));
   const uncertain = stop?.uncertain.length ?? 0;
   const notAttempted = stop ? guests.slice(processed + uncertain) : [];
-  const noEmail = results.filter(
-    (r) => r.email_status === "skipped - no email",
-  );
-  const noPhone = results.filter((r) => r.sms_status === "skipped - no phone");
+  const noEmail = rows
+    .filter((x) => x.o.email === "no_address")
+    .map((x) => x.r);
+  const noPhone = rows.filter((x) => x.o.sms === "no_address").map((x) => x.r);
   const link = batchId ? (
     <a
       href={sendBatchHref(batchId)}
@@ -177,18 +160,12 @@ export function TourResults({
         ) : null}
 
         <div className={RESULT_SUMMARY}>
-          <ResultStat label="Sent" value={sent} className="text-[#3B6D11]" />
-          <ResultStat
-            label="Failed"
-            value={results.length - sent - noAddress}
-            className="text-[#A32D2D]"
-          />
-          {noAddressStats(sendType, noNumberCount, noEmailCount).map((s) => (
+          {outcomeStats(counts).map((s) => (
             <ResultStat
               key={s.label}
               label={s.label}
               value={s.value}
-              className="text-[#BA7517]"
+              className={s.className}
             />
           ))}
           <ResultStat
@@ -211,15 +188,23 @@ export function TourResults({
                 </tr>
               </thead>
               <tbody>
-                {results.map((r, i) => {
-                  const email = channelStatus(r.email_status);
-                  const sms = channelStatus(r.sms_status);
+                {rows.map(({ r, o }, i) => {
+                  const email = channelCell(
+                    "email",
+                    o.email,
+                    failedReason(r.email_status),
+                  );
+                  const sms = channelCell(
+                    "sms",
+                    o.sms,
+                    failedReason(r.sms_status),
+                  );
                   return (
-                    <tr key={`r${i}`} className={TR}>
+                    <tr key={`r${i}`} data-outcome={o.outcome} className={TR}>
                       <td className={TD}>{r.order}</td>
                       <td className={TD}>{r.name}</td>
-                      <td className={cn(TD, TONE[email.tone])}>{email.text}</td>
-                      <td className={cn(TD, TONE[sms.tone])}>{sms.text}</td>
+                      <td className={cn(TD, email.className)}>{email.label}</td>
+                      <td className={cn(TD, sms.className)}>{sms.label}</td>
                     </tr>
                   );
                 })}

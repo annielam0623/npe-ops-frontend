@@ -1,7 +1,8 @@
 // 模拟后端：Farm out Report（/api/farm-out/*）。控制：POST /__ctl {fail401, fail403, fail404, fail500, empty}；GET /__log。
 const http = require("http");
 // sa：当 Super Admin。frVis：「谁看得到」开关 farm_out_report 的档（2026-10-25）；默认当已放给所有人（其余检查照旧），null = 后端还没登记（404）。
-const ctl = { fail401: false, fail403: false, fail404: false, fail500: false, empty: false, frVis: "staff" };
+// v3：G263 v3 后端（2c 8f951f4c farm_out_report.build）每行多一个 product（全名，没选 = ""）；默认 false = 旧后端没有这个键。
+const ctl = { fail401: false, fail403: false, fail404: false, fail500: false, empty: false, frVis: "staff", v3: false };
 // 截图用：环境变量 MOCK_CTL（JSON）在启动时预设控制项。
 if (process.env.MOCK_CTL) Object.assign(ctl, JSON.parse(process.env.MOCK_CTL));
 const log = [];
@@ -49,7 +50,8 @@ http.createServer(async (req, res) => {
   if (p === "/api/farm-out/report") {
     if (ctl.fail500) return send(res, 500, { detail: "Internal Server Error" });
     const pid = url.searchParams.get("partner_id");
-    let out = ctl.empty ? [] : rows;
+    const PRODUCT = ["West Rim Premium Pass - Partner A", "", "Zion Day Pass - Partner B"];
+    let out = ctl.empty ? [] : ctl.v3 ? rows.map((r, i) => ({ ...r, product: PRODUCT[i] })) : rows;
     if (pid) out = out.filter((r) => r.partner === partners.find((x) => String(x.id) === pid)?.name);
     return send(res, 200, { rows: out });
   }

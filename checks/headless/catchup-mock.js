@@ -7,14 +7,14 @@ const YMD = /^\d{4}-\d{2}-\d{2}$/;
 const row = (id, batch_id, module, order, first, extra = {}) => ({ id, batch_id, sent_at: "2026-10-04T21:00:00+00:00", module, order_number: order, first_name: first, last_name: "Test", email: order.toLowerCase() + "@x", phone: "+1", tour_date: "2026-10-05", tour_type: "x", email_status: "sent", sms_status: "delivered", error_msg: null, sent_by: "annie", mtlv_eligible: false, ...extra });
 const GROUP_ROWS = {
   702: [row(7023, 702, "tour_confirmation", "CHD7", "ZZ Seven"), row(7022, 702, "tour_confirmation", "CHD6", "ZZ Six"), row(7021, 702, "tour_confirmation", "CHD5", "ZZ Five")],
-  701: [row(7013, 701, "tickets_reminder", "CHD3", "ZZ Three"), row(7012, 701, "tickets_reminder", "CHD2", "ZZ Two", { sms_status: "failed: 21211", email_status: "", error_msg: "Twilio 21211 invalid number" }), row(7011, 701, "tickets_reminder", "CHD1", "ZZ <b>One</b>", { mtlv_eligible: true, email_status: "" })],
+  701: [row(7013, 701, "tickets_reminder", "CHD3", "ZZ Three", { email_status: "skipped - no email" }), row(7012, 701, "tickets_reminder", "CHD2", "ZZ Two", { sms_status: "failed: 21211", email_status: "", error_msg: "Twilio 21211 invalid number" }), row(7011, 701, "tickets_reminder", "CHD1", "ZZ <b>One</b>", { mtlv_eligible: true, email_status: "" })],
   703: [row(7031, 703, "reply_sms", "CHD12", "ZZ Twelve", { email_status: "", sent_by: "jchen" })],
 };
 // ?batch=650：不在今天的组（不在组列表里，只有明细和行）。
 const EXTRA_ROWS = { 650: [row(6501, 650, "tour_confirmation", "CHD650", "ZZ Hoover")] };
 const GROUP_HEADS = [
   { batch_id: 702, module: "last_minute", tour_type: "grand_canyon_west", tour_label: "Grand Canyon West Rim Bus Tour (Last Minute)", tour_date: "2026-10-05", send_type: "combined", sent_by: "annie", started_at: "2026-10-04T22:10:00+00:00", started_at_label: "Oct 4, 2026 3:10 PM", summary: { file_rows: 3, sent: 3, failed: 0, skipped: 0, not_sent: 0 } },
-  { batch_id: 701, module: "tickets_reminder", tour_type: "upper_antelope_tsosie", tour_label: "Chief Tsosie Tours", tour_date: "2026-10-05", send_type: "sms", sent_by: "max", started_at: "2026-10-04T21:00:00+00:00", started_at_label: "Oct 4, 2026 2:00 PM", summary: { file_rows: 13, sent: 9, failed: 1, skipped: 2, not_sent: 1 } },
+  { batch_id: 701, module: "tickets_reminder", tour_type: "upper_antelope_tsosie", tour_label: "Chief Tsosie Tours", tour_date: "2026-10-05", send_type: "sms", sent_by: "max", started_at: "2026-10-04T21:00:00+00:00", started_at_label: "Oct 4, 2026 2:00 PM", summary: { file_rows: 14, sent: 9, failed: 1, no_contact: 1, skipped: 2, not_sent: 1 } },
   { batch_id: 703, module: "reply_sms", tour_type: "", tour_label: "Guest reply", tour_date: "", send_type: "sms", sent_by: "jchen", started_at: "2026-10-04T20:00:00+00:00", started_at_label: "Oct 4, 2026 1:00 PM", summary: { file_rows: 1, sent: 1, failed: 0, skipped: 0, not_sent: 0 } },
 ];
 /** 同后端 _send_log_where 的行筛选（日期不看）。 */
@@ -71,7 +71,7 @@ http.createServer(async (req, res) => {
   if (p === "/api/send-batches") {
     return send(res, 200, { batches: [
       { id: 702, module: "last_minute", tour_type: "grand_canyon_west", tour_label: "Grand Canyon West Rim Bus Tour (Last Minute)", tour_date: "2026-10-05", send_type: "combined", sent_by: "annie", started_at: "Oct 4, 2026 3:10 PM", summary: { file_rows: 3, sent: 3, failed: 0, skipped: 0, not_sent: 0 } },
-      { id: 701, module: "tickets_reminder", tour_type: "upper_antelope_tsosie", tour_label: "Chief Tsosie Tours", tour_date: "2026-10-05", send_type: "sms", sent_by: "max", started_at: "Oct 4, 2026 2:00 PM", summary: { file_rows: 13, sent: 9, failed: 1, skipped: 2, not_sent: 1 } },
+      { id: 701, module: "tickets_reminder", tour_type: "upper_antelope_tsosie", tour_label: "Chief Tsosie Tours", tour_date: "2026-10-05", send_type: "sms", sent_by: "max", started_at: "Oct 4, 2026 2:00 PM", summary: { file_rows: 14, sent: 9, failed: 1, no_contact: 1, skipped: 2, not_sent: 1 } },
     ] });
   }
   const bm = p.match(/^\/api\/send-batches\/(\d+)$/);
@@ -85,7 +85,7 @@ http.createServer(async (req, res) => {
       ? { id: 650, module: "tour_confirmation", tour_type: "hoover_dam", tour_label: "Hoover Dam Tour", tour_date: "2026-09-30", send_type: "email", sent_by: "annie", started_at: "Sep 29, 2026 11:52 PM" }
       : { id, module: "tickets_reminder", tour_type: "upper_antelope_tsosie", tour_label: "Chief Tsosie Tours", tour_date: "2026-10-05", send_type: "sms", sent_by: "max", started_at: "Oct 4, 2026 2:00 PM" };
     return send(res, 200, { ...base,
-      summary: { file_rows: 13, sent: 9, failed: 1, skipped: 2, not_sent: 1, email: { delivered: 0, waiting: 0, problem: 0, none: 10 }, sms: { delivered: 7, waiting: 2, problem: 1, none: 0 } },
+      summary: { file_rows: 14, sent: 9, failed: 1, no_contact: 1, skipped: 2, not_sent: 1, email: { delivered: 0, waiting: 0, problem: 0, none: 10 }, sms: { delivered: 7, waiting: 2, problem: 1, none: 0 } },
       rows: [
         { order_number: "CHD1", name: "ZZ <b>One</b>", email: "a@x", phone: "+1", sent_at: "Oct 4, 2026 2:00 PM", went_out: true, email_status: "", email_state: "none", sms_status: "delivered", sms_state: "delivered", error_msg: "" },
         { order_number: "CHD2", name: "ZZ Two", email: "b@x", phone: "+2", sent_at: "Oct 4, 2026 2:00 PM", went_out: false, email_status: "", email_state: "none", sms_status: "failed: 21211", sms_state: "problem", error_msg: "" },

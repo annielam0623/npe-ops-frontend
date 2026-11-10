@@ -4,7 +4,109 @@
 
 > 6d 交接（下面「2026-10-27 交接：前端主窗口 6d」那节）的后端需求已于 10/27 晚由 ad 转给家里后端主窗口 17。
 
-> **下一个主窗口：先读下面「2026-11-06 收工交接：前端主窗口 49」，再看置顶「📌 等 Annie 确认」。**
+> **下一个主窗口：先读下面「2026-11-09 收工交接：前端主窗口-35」，再读「2026-11-09 早 收工交接：a4」，再看置顶「📌 等 Annie 确认」（109–112 是今天新的）。**
+>
+> 11-09 公司开工：`前端主窗口-49`[d221b2]（11-06 公司主窗口）只写这条交接就退下，Annie 新开窗口当今天前端主窗口。49 11-06 那节的未完事项（Notes v159、G263、置顶 100 Edit tour「No Cfm # needed」勾选 + 门票 Cfm # 规则前端跟进）周末家里 a4 / 86 已接手，**以 a4 11-09 早交接为准**。今天公司在线：后端主窗口 `后端主窗口-4a`[3c385a]；前端工作窗口暂无。⏰ **本周要提醒 Annie G180 回填以前的日子**（置顶「⏰ 提醒」那节，49 已在 11-09 开工回复里提了一次）。
+>
+> 11-09 公司前端主窗口：`npe-ops-frontend-35`[4a0f5a] 接班（只分工和汇报，不写代码）。49 口头补充：今天没跟 Annie / 4a 有别的交流；没有在跑的工作窗口 / 分支（c3 11-06 已收工，dispatch-card-notes、farmout-products 归 a4 / 86 那条）；G180 回填 49 已提（后端先只读 dry run 给她看，同意再跑），Annie 没回，让她有空跟新主窗口说，白天不追问；49 没开 dev server / Chrome。
+> 今天后端主窗口改为 `npe-confirmation-service-d4`[8d5665]（4a 已交接给它）。d4 排期：① G263 第一（Annie 另开主目录窗口合 0995f31d + C→B 确认 + release.py，上 main 后发 SHA 给前端）；② G267 第二（relay-send / Morning Send 一律 SMS+Email、记 Origin/Referer、admin HTML no-store，接口形状不变）；③ v159（G266②）等 G263 后由同一窗口 -Resume，SQL 先给 Annie 看；v161（G268）排 v159 后。35 已提醒 d4：G267 里 send.py:1206 那部分属置顶 106，Annie 还没「动手」，且要和前端拿掉 SendTypePicker 同时上。
+
+## 2026-11-09 晚 前端主窗口 `npe-ops-frontend-78`[426278] 开工（家里电脑；只分工和汇报，不写代码）
+- 接 35 收工交接。git pull 到 3b4e09e5。今晚后端主窗口 `后端主窗口0a`[45ce5d]（另有后端 `npe-confirmation-service-78`[fdaaf2]）；已问 0a：G263 SHA、109 W1 形状、G267、v159 / v161 排期。
+- 资源：空闲内存 11.6 / 31.7 GB，chrome 41 个（3.9 GB），node 2 个。
+- 0a 回：G263 今晚后端 78 在家里主目录重合 0995f31d 后推 main（最终 tour_manifest.py 以合并后为准，28c7c479 午餐勾也改了它），SHA 到了发前端；G267 a3 分支 task/morning-combined e8916315 排 G263 后，同由 78 落地并核三项；之后单单 resend（task/resend-email-result 06e666e1）。109：0a 今晚开 W1（send_outcome.py + 形状文档，worktree），W1 后半段（relay-send / 早班）等 G267 落地；78 已发 109 全文给 0a。110：以前端起草的形状为准，发形状时抄 0a；Jessica 那题不再问 Annie。111：后端出 POST /api/orders/{code}/refresh-from-rezdy 形状，Annie 确认后发前端 ⇒ 前端 111 preview 等形状。v159 排 G263 后；v161 今晚后端接着做。
+- 前端工作窗口暂无 ⇒ 请 Annie 开 2 个：A 做 112 preview 更新（去掉 move guests）+ 111 Order 详情页「Refresh from Rezdy」preview，G263 SHA 到了接着核字段合 main；B 做 110 排班 Rules 四项 preview + 发 d4 / 0a 的规则形状。
+
+## 2026-11-09 收工交接：前端主窗口 `前端主窗口-35`[4a0f5a]（公司电脑）
+### 一、今天上 main（等 Annie 线上验收，验收点已转她）
+- **dcc04e1a** 置顶 106 前端：Morning Pickup › Send 拿掉渠道选择，一律 send_type=combined，How to use 改句（79）。后端 relay:329 / send.py:1206 / 两个旧模板由 d4 G267 做，未上 main。
+- **e6b1e8cc** 置顶 109 第一部分：全站发送结果 Sent 绿字；Manifests 团确认 / Last Minute / 门票提醒弹窗一位客人只算一次（79）。
+### 二、在做 / 等后端
+- G263：79 在 worktree C:\Code\npe-ops-frontend-wt-g180 task/farmout-products tip 449305b6，检查全过、字段已对上后端 0995f31d；等 d4 合后端发 SHA ⇒ 再核 tour_manifest.py 最终形状后合 main。合前旧 Partners & rates 对 C Tour 报错。
+- 109 剩下（Q1 灰字 No number / No email、Q2 No contact、Q6 员工 / 司机 / 导游通知、前端自判没号码改为以后端为准）：79 worktree C:\Code\npe-ops-frontend-wt-send-rules task/send-rules-uniform，等后端 W1 形状文档（send_outcome.py）。后端拆 W1–W4 + a3，约 1.5 天，不迁移。
+- 112 Relay list 压空白：79 出 preview 中。
+- 110 排班 Rules 四项、111 Order 详情页「Refresh from Rezdy」：都要先出 preview，**没有前端窗口做**（请 Annie 开）；111 后端还要单张重拉接口 + 对账比电话 / 邮箱（Annie「要的」，d4 已登记）。
+- Notes v159、Period share v161：等后端（d4 排在 G263 / v160 之后）。
+### 三、等 Annie（详见置顶，不滚动重问）
+- 107、105、104 同 a4 交接；112 preview；110 Jessica 那题（d4 问过）。
+### 四、今天其他
+- Annie 新规矩「整个系统的发送和汇报规则都是一样的」已写进 CLAUDE.md。
+- CHDATEDW1 / CHDJ0JUJ7 电话：a3 已从 Rezdy 重拉；Tracking 因 ANITA 重发确认已是新号，不用改。原因：Rezdy 改客人资料不推 webhook。
+- 教训：客人电话等个人信息不写进仓库（35 写 PROGRESS 时 push 被拦，已删号码只留单号）。
+- 收工时 79 还在做 112 preview，做完它自己收尾（推分支、写 PROGRESS、关 dev server / Chrome）；preview 链接如果今天没到，明天新主窗口问 79 或看 PROGRESS 112。
+  - ✅ 79 收尾：112 preview 已做（链接 + 5 题原文见置顶 112）。三个分支都已推：
+    - task/farmout-products **449305b6**（wt-g180，G263，没合 main）：下一步等 d4 合并 SHA ⇒ 只读再对字段（尤其 tour_manifest.py）⇒ 合最新 main ⇒ fo-settings / fod / fr / da / nav + tsc / eslint / build ⇒ 合 main。
+    - task/morning-send-combined **dcc04e1a**（106，已合 main，分支可删）。
+    - task/send-rules-uniform **e6b1e8cc**（109 第 1 部分已合 main）：剩下 Q1 / Q2 / Q6、结果数字、前端自判「没号码」改以后端为准，等 d4 W1 形状（send_outcome.py）⇒ 从最新 main 拉新分支照形状 mock 做；另问 35 的 Send Log / Tracking 状态标签要不要也变绿，未答。
+    - 79 没起 dev server / Chrome 在跑。
+### 五、今晚家里 / 明天开工
+- Annie 收工前（原话）：「收工写交接，我回家做」⇒ 今晚家里开新前端主窗口接本节。
+- 家里电脑没有公司的 worktree（wt-g180 / wt-send-rules / wt-morning-combined），从 origin 拉分支：task/farmout-products 449305b6、task/send-rules-uniform e6b1e8cc。
+- 先做：① 112 按 Annie 新原话更新 preview（去掉换车），再问 Q1 / Q4 / Q5；② 110 排班 Rules、111 Order 详情页「Refresh from Rezdy」派窗口出 preview；③ 问后端主窗口 G263 SHA、109 W1 形状、G267 进度（公司后端 d4 今天收工，看家里谁接）。
+- 新主窗口：读本节 → 置顶 109–112 → git pull。
+
+## 2026-11-09 早 收工交接：前端主窗口 `前端主窗口-a4`[8b80ee]（家里电脑；Annie 今天转公司电脑）
+### 一、今早上 main
+- **7639a213**（3c，task/html-no-cache）：ops 网页 HTML 改 `Cache-Control: private, no-cache, no-store, max-age=0, must-revalidate`（next.config.ts `headers()`，只管 text/html 文档；/_next/static、/api、旧页面 fallback 不变）。
+  15:06:44Z 线上已生效。新检查 checks/headless/html-cache-check.js 11/11（不在 run-all，跑法见文件头）；tsc / eslint / build、da 544、nav 39 过。页面样子不变。
+  只 no-cache 不够（Chrome 后退照旧拿硬盘旧页），必须 no-store。
+### 二、batch 7305 只发短信（查完，原因已定）
+- 11-09 03:15 Jtian 在 ops Dispatch 发 1st Round，30 位，send_type sms，邮件 0 封（29 位有邮箱）；短信 25 送达、3 已发、2 失败（CHDUXP0JY Thao Tran、CHDT2JLPR Talin Ger，截图里还没按 Send）。
+- 46 核：后端只照请求的 send_type 记，没 UPDATE；请求里没带 combined。Annie 确认 Jtian 登录的是 ops；03:14 save_section 只有 ops 有。
+- 3c 核：1ad9b24c 之后 ops 没有任何路径会漏 send_type；headless 证明旧 HTML 的 `s-maxage` 让 Chrome 后退 / 前进直接用硬盘里修复前的旧页面 + 旧 JS ⇒ 最可能原因。已由 7639a213 堵上。
+- Annie 质问：「那我昨天修的东西你没跟后端统一？」「你不是说后端本来就是这样设置的，然后是前端没有么」「前端根本就没有让staff可以选的地方，我们怎么又绕回来了，你给我查记录去」——教训：先查记录再说原因，不要先推测。
+### 三、Annie 新规矩（已写进 CLAUDE.md「改了一种发送的要求…」）
+- 原话：「写到工作里：一旦改动发送接口的要求，那么相关的都要跟着改，比如morning发送改了，那两个发送的页面都要改，一个是直接发的，一个是上传文件发送的，都一样的改」。已转 46 写进后端规则。
+### 四、交给后端（46 已登记给公司后端窗口）
+- relay-send「没带 send_type → combined」（relay_pull.py:329）；发送记 Origin/Referer；旧后台 admin HTML 加 no-store（经 ops fallback 的旧页不受 7639a213 保护）。
+- 置顶 106（写死 SMS + Email）动手后：send.py:1206 `Form("sms")`、旧 relay 面板 / 旧 Morning Send 一律 combined。
+### 五、等 Annie（都已问，不要重复问）
+- **置顶 106** 早班前后端写死 SMS + Email：Annie「前后端都写死，mornning发送就是sms+email」，**还没「动手」**；动手后前端派 3c（拿掉 Morning Pickup › Send 的 SendTypePicker），后端派公司后端窗口。
+- **置顶 107**「有新版本，请刷新」提示条：preview https://claude.ai/artifact/BbcwRLCvyK7ecfL6cz2LEv，5 题（推荐都 A），等答 +「动手」，3c 做。
+- **置顶 105** Includes lunch：Annie「但是west rim的lunch跟其他tour的lunch完全不是一个概念哦」「记下来回公司处理」；题 0（A/B/C）+ 4 题，86 待命。后端已上 main 28c7c479，没有产品被勾。
+- **置顶 104** 旧 confirm Dispatch 网址藏起来（A 跳 ops / B 拿掉侧栏链接 / C 404）。
+- 预防清单第 5 条「只发短信就报警」：Annie 没回，不再追问。
+- 其余同 11-08 晚那节第三部分（101、100、OLIVIA 截图、South Rim 旧日子、补材料 4 项、Railway 变量等）。
+### 六、在等的工作
+- **G263**（86，task/farmout-products 6350101c，检查全过）：Annie 选 A 要今晚上，但 46 说合 main 要 Annie 本人在同一窗口确认 + release.py ⇒ 改由公司后端主窗口合；c2 已核 money_view 只读是对的。后端 SHA 一到 86 核对 0995f31d 后合前端推。**合之前旧 Partners & rates 对 C Tour 报错。**
+- Period share（3c task/schedule-period-share 6a940d3c）：等后端 33 v161 种子 SQL。
+- Notes v159（task/dispatch-card-notes e83c529c）：等后端。
+- PROGRESS / CLAUDE.md：本地提交，`git push` 被自动权限拦，**要 Annie 自己推**。
+
+## 2026-11-08 晚 收工交接：前端主窗口 `前端主窗口-a4`[8b80ee]（家里电脑；明天 Annie 在公司电脑）
+### 一、今天上 main（等 Annie 线上验收，验收点都已转她）
+- 0cfbd804 Morning Pickup › Send 默认 SMS + Email；1ad9b24c Dispatch 发客人早班提醒固定 combined（置顶 101）。46 从 batch_id > 7200 起查下一批早班是否真发了邮件 ⇒ 明早要看 46 / 接手后端窗口的结果转 Annie。
+- efb21f7c（代码 a3de076e）Dispatch Completed 键只给 Super Admin（Annie「对，把这个键，同意推荐。动手」）。
+- 之前：2dd78a22 / bb3d563b / 2ad77d96 Cfm # 规则、黄字、No Cfm # needed。
+### 二、没合 / 进行中
+- ✅ 3c 合 main **943974db**（功能 9af7a4fb，交接 4c33126c）：Staff Schedule › Period 多周表 + Auto-fill these weeks 选 rules，只 Super Admin；Share with staff 挂 SOON（sch 425、ns 50、nav 39，tsc / eslint / build 过），验收点已转 Annie。剩下：Share with staff、allowed_user_ids、登记 schedule_period、staff 整段确认页 + Confirmed? 列，等后端 33。33 形状已发 3c（POST /api/schedule/period/share {start, weeks, dry_run}，dry_run 回收件人 / 发不到 / 未发布周 / already_shared，真发回 {notified, not_reached}；链接 /schedule/confirm/period/{token}?start=&weeks=，逐周调现有 confirmation/link；Page visibility GET 每项多 allow_list / allowed_users，PUT {"allowed_users": {"schedule_period": [ids]}} 只 SA；Content Studio 新键 sched_period_subject / _intro / _link_text）。后端分支 task/schedule-period-share WIP **0c50c168**（审查后改：allowed_users 只回给 SA；dry_run 必须是布尔否则 400，已告诉 3c），上 main 等 Annie 执行 v161 种子 SQL。明天前端窗口照形状 mock 做（可见性 allowed_user_ids + schedule_period 键 + POST /api/schedule/period/share + 种子迁移要 Annie 执行 SQL，排在 c2 G263 v160 之后）。3c 交接见下一节。
+- 86 task/farmout-products 928fc15a（G263）：等 c2 G263 v160 SQL + SHA，核字段后合。
+- task/dispatch-card-notes e83c529c（Notes）：等后端 v159 上 main。
+- 置顶 102 Tasks 编辑：Annie「A+B」「同意推荐」，**还没「动手」**；动手后 3c 先做 B，A 等后端 PATCH /api/tasks/today/{id}（46 形状已记）。
+### 三、等 Annie（都已问，不要重复问）
+- 置顶 101 Dispatch 三句文字 A/B/C；只发了短信的早班批次（10/28 起 644 行）补不补邮件。
+- 置顶 100 No Cfm # needed 小字位置 A / B。
+- OLIVIA「Not in HR」：等她截图（哪天、哪台车、哪处）。
+- PAUL SR 错挂：Annie（原话）「第一项已经改了」（a4 理解为 PAUL SR：HR 写法移到 Paul T + 11-09 South Rim 1957 改司机），46 只读核 ✅：'PAUL SR' → hr 13（Annie 20:05 在 HR 改）；11-09 South Rim · B 1957 司机 hr 13（20:06 存，行号现 1280）；Paul R 11-09 只剩 2622 relay + Bryce&Zion；11-09 司机 / 导游通知都还没发，没人收到错链接。过去几天排班改不改她定。
+- 「补材料」清单四个决定（过去 South Rim 排班、办公室员工要不要 HR 档案、哪些团挂餐厅、驾照号 / 体检卡是否必填）；问过要不要做成网页清单。
+- Railway 变量 DISABLE_SCHEDULER / UNCLASSIFIED_ALERT_EMAILS 请她看。
+- 发 crew SMS 通知前：确认 Page visibility dispatch_roster 已放开给 staff。
+- G263 c2 窗口两题（Scope v3、Lap Child）；11/09 那周提醒 G180 补过去日期。
+### 四、明天开工
+- 公司电脑新主窗口：读本节 → 置顶 101–103 → git pull。worktree D:\npe-ops-frontend-wt-cfmrule / wt-cfmhint / wt-fop 在家里电脑，公司电脑从 origin 拉分支。
+
+## 2026-11-09 修 bug：页面不许被浏览器当旧页面用（`task/html-no-cache`，工作窗口 `npe-ops-frontend-3c`[8c373c]，a4 派）
+
+- 起因：11-09 03:15 第 7305 批（Jtian，Dispatch 1st Round 30 位）记成 sms、邮件全空，而 send_type=combined 11-08 10:15 已上线。
+  3c 排查（只读）：ops 现在的代码每次都带 send_type（`lib/dispatch-api.ts` sendRelayRound，唯一调用处 relay-panel.tsx）；
+  最可能是浏览器跑了修之前的旧代码——ops 页面只带 `s-maxage`，Chrome 点「返回 / 前进」（恢复标签页可能也是）直接用硬盘里的旧 HTML，
+  旧的 /_next/static 也在硬盘里，旧代码照样能发。另一种可能：confirm 上的旧后台 Dispatch（`_relay_pull_panel.html:265` 不带 send_type）。
+  要定案的证据（Referer / ops 日志 / 问 Jtian）已交 a4、46。
+- 改法（样子不变，按 bug 修）：`next.config.ts` 加 `headers()`，浏览器要页面（Accept 带 text/html）时给
+  `private, no-cache, no-store, max-age=0, must-revalidate`（同 Next 动态页默认值）。headless 实测只写 no-cache 不够，Chrome 返回时照样用硬盘的，必须 no-store。
+  服务器端预渲染缓存照旧（x-nextjs-cache HIT）；/_next/static（immutable）、/api/*、站内跳转的 RSC 请求、转给后端的旧后台页（用后端自己的响应头）都不变。
+- ⚠️ 没管到的：经 ops 转发的旧后台页面用后端的响应头，要防同样的问题得后端自己加 no-store（需要后端，可选）。
+- 检查：新 `checks/headless/html-cache-check.js`（对着生产 build 跑，不进 run-all）11/11（含对照：改之前的响应头返回时仍是旧版本）。
 
 ## 2026-11-08 晚 Staff Schedule › Period（`task/schedule-period`，工作窗口 `npe-ops-frontend-3c`[8c373c]，Annie 直接在 3c 提）—— ✅ 合 main **943974db**（功能 9af7a4fb）
 - Annie 原话：「今晚还要完成一个工作就是，staff schedule，我需要一个地方可以展示我设定的期限的一个工作排版，比如从那天开始的总共几周的排班，而且可以share给staff让他们确认」→ preview https://claude.ai/artifact/HnBVL6wANcCZYs1r1enq3W →「全部同意推荐。然后是super admin用，然后要可以assign给几个admin也可以用」→「最重要一点，可以选择执行哪些rules」→（题 6、7 推荐 A）→「动手吧」。
@@ -16,11 +118,15 @@
   - 可见性新 key `schedule_period`（Settings › Notifications › Page visibility「Staff Schedule · Period」，默认 super_admin_only）；后端没登记时前端按默认只给 Super Admin。
   - ⚠️ Period 按周顺序 GET 各周：没打开过的未来周，后端会照上一周复制一份草稿（同在周表翻到那周）。
 - **检查**：sch 425/425（新 16 条 Period）、ns 50/50（Page visibility 改成 24 行 + schedule_period 那行）、nav 39/39；tsc 0、eslint 0 错（1 条旧警告 ScheduleWorkWindow 未用）、build 过。端口 MOCK 9377 / APP 3977 / CDP 9977（9277 那组一度被占）。dev / Chrome 都由 run-all 关掉。
-- **还没做（需要后端，a4 已转 46 / 33）**：
-  1. Share with staff：发整段邮件（每人一条 token 链接，指向整段确认页）——等 33 的接口形状 + SHA。整段确认可由前端循环现有每周的 GET/accept（token 认人不认周），后端定。
-  2. 可见性按人放开：dashboard-widgets 加「另外允许的人」名单（如 allowed_user_ids），visible_to_me 算上名单；前端再在 Page visibility 加 Also allowed 一行（preview ⑤）。
-  3. 后端登记 `schedule_period` 这个 key（没登记前 Super Admin 在 Page visibility 改档可能报错）。
-  4. staff 整段确认页、Period 表最右「Confirmed?」列：等 1 落地再做。
+- **第二批 Share with staff（前端做完、检查全过，⏸️ 没合 main，等后端）**：分支 `task/schedule-period-share` @ **6a940d3c**（已含最新 main）。对着后端 33 `task/schedule-period-share` @ 0c50c168（WIP，上 main 要等 v161 种子执行，33 说大概 11-09）。
+  - Period 上蓝色 **Share with staff**（schedule.publish）：先 POST /api/schedule/period/share `dry_run: true` 列收件人 / 收不到的人和原因；有没发布的周红框、Send 灰；同一段发过黄框「Already shared: by … on …」；Send to N staff → 绿字 Sent to N staff.、红字 Not sent 逐人原因；409 unpublished 取嵌套 detail。后端 404 ⇒ 写「Share with staff is not available yet.」。
+  - Period 表最右 **Confirmed?**：已发布的周逐周读 /weeks/{week}/confirmations 合起来（绿 Confirmed / 黄 Asked for a change / 红 Not confirmed）；读不到不出这一列。
+  - staff 整段确认页 `/schedule/confirm/period/[token]?start=&weeks=`（不用登录、没侧栏）：只看自己的班、一周一块；蓝键 Confirm all N weeks = 逐周 accept（中途失败红字写哪一周、键变 Confirm the other N weeks）；每天 Request change 打开那一周的 /schedule/confirm/link/{token}?week=；过期 / 链接不全各一句。
+  - Page visibility「**Also allowed**」：后端带 allow_list 的那行下面，+ Add person（Team 名单里在用的非 Super Admin、非 partner）、× 移除，按 Save 才存（PUT {allowed_users:{schedule_period:[ids]}} 整份替换），Saved 绿 / 后端原话红。
+  - Content Studio › Team Messages 加 3 个键（sched_period_subject / intro / link_text，变量 {start} {end} {weeks}）和「Share several weeks」邮件预览。
+  - 检查：sch 433/433、sc 44/44（新整段确认 10 条）、ns 56/56（Also allowed 6 条）、cs 190/190（27 个键 + period 预览）、nav 39/39；tsc 0、eslint 0 错、build 过。端口 9377 / 3977 / 9977。
+  - **接着做**：33 上 main 并执行 v161 后，`git merge origin/main` 进分支、再跑 sch sc ns cs nav，过了就合 main；Annie 验收：Period 选全已发布的几周 → Share → 确认框 → 发（只发 ZZ Test / azhou@ 测试员工，生产后端会真发邮件！）。
+  - 后端还要登记 `schedule_period`（33 的分支里已登记，随 v161 上）。
 - 另：Tasks 编辑（preview https://claude.ai/artifact/3aVYWfWYk4RgntEaBjovTh，Annie「A+B」「同意推荐」）还没说「动手」，没写代码；A 要后端 PATCH /api/tasks/today/{id}（形状 46 已给）。
 
 ## 2026-11-07 前端主窗口 `npe-ops-frontend-a4`[8b80ee] 开工（家里电脑；只分工和汇报，不写代码）
@@ -38,6 +144,8 @@
 - 资源：空闲内存 12.9 / 31.7 GB，chrome 15 个（1.7 GB），node 1 个。
 - 11-08 Annie「今早导游从他的页面能看到他带的这台bus全部的客人么」⇒ 46 生产只读查（查的是 11-08 下午库里现状，不是早上快照）：4 台 bus tour 车都排了 HR 里的导游，导游页人数 = 这台车在名单上的人数，unplaced 0。Scarlett G South Rim 1957 31 pax / 15 单；OLIVIA Antelope A 2356 31 / 14（没账号，只能短信链接进）；Lankun W Antelope B 2719 36 / 22；Robert L HooverDam 2355 29 / 10。没有只打名字没连 HR 的导游。今天 4 位导游没有登录 / 点链接记录，但以前点过链接的 cookie 一直有效、再开不留记录 ⇒ 看没看过查不出。规则提醒：两台车的团两台都要标字母，没标导游 / 司机页一个客人都看不到（tour_manifest.py:694-700），今天没出现。
 - 11-08 Annie「把completed today' assignment这个键隐藏起来」⇒ 只记下、没动。两个仓库都搜不到这几个字；最像的是 Dispatch Step 2 底下蓝键「Completed — this day's dispatch is done」（`components/dispatch-manifest/manifests-panel.tsx:458`），已问 Annie 是不是这个键、隐藏后的后果（见回复），等她确认 +「动手」。Annie「对，把这个键，同意推荐。动手」⇒ 选 A（只对 staff 隐藏，Super Admin 照旧能看能点；已点过的「Dispatch completed by …」状态字大家都看得到；How to use 里叫 staff 点 Completed 那句只给 Super Admin）⇒ 派 3c（task/hide-completed-staff），做完合 main。
+- 11-08 46 只读查（a4 转 Annie）：① G51 没归组产品邮件在跑（10-28 PLHMYK、10-29 PE4GYZ 已提醒 azhou / lxu）；PLHMYK 11-11 两单、PE4GYZ 11-22 一单不进 Dispatch，要去 Products 归组；Railway 变量 DISABLE_SCHEDULER / UNCLASSIFIED_ALERT_EMAILS 46 看不到，请 Annie 看。② OLIVIA「Not in HR」：后端数据 / 日志 / 导入 / 发导游名单都连 hr 57，ops 代码三处（Not in HR 胶囊、was removed from Human Resource、Guide no longer on the list）按数据都不会出现 ⇒ 等 Annie 截图（哪天、哪台车、哪个位置）。③ 'PAUL SR' 别名错挂 hr 12 Paul R（10-06 19:51 存 10-07 排班时 apply_after_save 自动记），10-09 起 CCL「PAUL SR」都认成 Paul R；Paul T（hr 13）从没被排过；11-09 #1245 South Rim 1957 也是 Paul R ⇒ Annie 自己在页面改（HR 先删后加、11-09 改司机），过去几天要不要改她定；不改代码。④「还要补材料」清单已转 Annie（HR 缺项、过期驾照 Zilin S / Hanssel S、2719 等 5 台没 Samsara、DOR 收件人含测试号、Farm out 三张表空、Private Tour 节没默认团类型、v159 / v160 SQL 等），问是否做成网页清单。
+- 11-08 Annie「以后如有过进来的单没有group，记得发邮件给azhou和lxu」⇒ 已有（G51 unclassified_alert，10-12 上线，每 15 分钟、每产品一封），没动。
 - 今天可派（等工作窗口报到）：① 门票 Cfm # 规则前端对齐（softBlocks cfm_not_needed / cfm_short、上传 current_too_short 默认勾，只修跟后端对齐、样子不变）；② G263 前端剩下几项照 mock 写；③ Notes 后端上 main 后核字段合。置顶 100 两题、Cfm # How to use 文字仍等 Annie。
 
 ## 2026-11-06 收工交接：前端主窗口 `前端主窗口-49`[8db054]（公司电脑）
@@ -1344,6 +1452,201 @@ D. 已完成、待从置顶移走：
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 114. Relay list 功能键统一整理（2026-11-09 晚，Annie 看 Spacing 截图后提，78 派 59；先 preview，没「动手」）
+
+- Annie 原话：「你现在应该整理一下这些功能键，左一个右一个，能否将它们统一整理一下好看好用呢」。
+- 范围（78 / 59 理解，preview 开头写明）：Dispatch › Relay list 页头那一行（← Dispatch、🖨 Print、Save、⬇ Excel、⚙ Colours, text & page）+ 每张单上方 Aa Text size 编辑条（含新的 Spacing）。只挪位置 / 分组，不改作用、不删键，蓝色只给 Save。这页没有 Pull / 轮次切换。
+- preview（现状截图电脑 + 手机 + 两种方案，模拟数据）：https://claude.ai/artifact/TopyompWt81k2rZL8uqoES 。题：Q1 方案（A 按用途两组、位置固定 / B 一条工具栏照顺序）、Q2 Save 没改动时（A 一直在、灰着）、Q3 三个撤回键（A 电脑并排、手机合成 Reset…）、Q4 Bus Manifest 同一个编辑条要不要一起变（A 一起）、Q5 手机收进 ⋯（A Print / Excel / ⚙ 都收），都推荐 A；How to use：Spacing 句改「in Aa Text size」，Q2 A 加半句。等 Annie 答 +「动手」。Spacing 分支（task/relay-spacing）还没合，整理动手时一起改。
+
+### 113. Bus Manifest 按团藏列（今晚只有 Lunch；Antelope 不印 Lunch 列）（2026-11-09 晚，Annie 在后端 3e 窗口提，78 派 59；先 preview，没「动手」）
+
+- Annie 原话（在 3e）：「你可以把bus manifest也改成main manifest那样可以用filer来选么」「fillter」「同意A」。A = 按团选：Manifest setup 每个团一排列的勾，屏幕 / 打印 / Excel 都照它，谁打印都一样（B 是按人选，像 Main Manifest）。今晚后端只做 Lunch 一列，完整列选择明天做。
+- 后端 3e 形状（task/hide-lunch-column，审查中，未上线）：GET /api/settings/manifest-setup 顶层 bus_column_options [{key:"lunch", label:"Lunch"}]，groups[] 加 bus_hidden_columns（[] = 都显示）；PUT /api/settings/manifest-setup/groups/{manifest_id}/bus-hidden-columns {hidden_columns} 整组替换，回 {ok, hidden_columns}，require_admin，400 detail 原话。效果：/api/dispatch/manifest tour.lunch_column = false ⇒ 打印 / Excel 不出 Lunch 列；午餐单、lunch_mismatch、restaurant、lunch_note 不变。上线后在页面把 Antelope（manifests id 3）的 Lunch 勾掉。
+- 59 只读查：Bus Manifest 屏幕和打印同一套，已照 tour.lunch_column 出不出 Lunch 列（manifest-view.tsx columnsFor）⇒ Bus Manifest 页不用改。勾放在 Products › Manifest setup › Bus Manifest setup（A6 那页，每格一个 Save、10 分钟没活动自动存、换团 / 离开先问），新格照同一套 useBlockSave。
+- preview（模拟数据）：https://claude.ai/artifact/QFf5CH4r5WVK3KsqJNHUba 。题：Q1 放哪（A 午餐那格下面新的一格「Bus Manifest columns」）、Q2 勾的意思（A 勾上 = 显示，默认全勾）、Q3 怎么存（A 同这页其他格）、Q4 没排餐厅的团（A 照样出勾 + 灰字），都推荐 A；How to use 一句原文在 preview。等 Annie 答 +「动手」+ 后端 SHA。
+
+### 112. Relay list 一张单超一页：先自动压空白，压不下再提示（2026-11-09，Annie 在后端 d4 窗口定，d4 转；79 出 preview，没动手）
+
+- ✅ Annie 11-09 晚（原话，在 78）：「112全A」（对第 4 版 Q1 / Q5–Q10）⇒ Q1 A、Q5 A、Q6 A、Q8 A、Q9 A、Q10 A。⚠️ Q7 推荐的是 C（折两行），「全A」按字面是 Q7 A（只自动压内边距 + 挪中间，不折行，真名单约 A+4–A+5 起出黄框）⇒ 78 已问 Q7 A 还是 C。**还没「动手」**。
+- ✅ **Annie 11-09 晚（原话，在 78）：「111， 112 全 A + 动手」**（紧接 78 问 Q7 A 还是 C 之后）⇒ 112 Q1 / Q5–Q10 全 A，**Q7 = A**（自动压内边距 + 挪中间，还宽出黄框，不折行）；111 6 题全 A + 权限 orders.edit。两件都派 59：先 112（纯前端，做完直接合 main），再 111（照 mock 做，推分支，后端 3e task/order-refresh-rezdy 上 main 后核字段再合）。
+
+- 起因：staff 用 Aa Text size 放大后一页变两页，staff 不会调页边距。只做 Relay list（Bus manifest 要不要一样 Annie 没答，不做）。
+- 已定：不改字号；只压空白，先酒店间隙（td.rl-gap 12px）再行内上下 padding（4px），一页就停；酒店之间永远留最小间隔（数值 79 定，preview 里写明）；全压完仍超 ⇒ 单子上方提示「This sheet will print on 2 pages. Make the text smaller or move guests to another car.」，不自动缩字；每张单各算各的；屏幕 = 打印；不改后端、不存新设置；How to use 加一条。
+- 待 Annie：看 preview（最小间隔数值、提示原文、How to use 原文）+「动手」。
+- ✅ **79 preview 做好（模拟数据，代码没动）：https://claude.ai/artifact/QWBDj3uBURELbUJUzuThWY**。A4 竖向、默认页边距：① 15px 一页 → 不压，和现在一样；② Whole page A+ 18px、超一页 → 酒店空隙 12→最小 6px（每步 2px）、行内上下 padding 4→1px（每步 1px），一页就停，压过空隙的单酒店之间上下两条线变 2px 深灰 #6b6b6b；③ 全压完还超 → 单上方黄框（照 legacy-ui 黄框 #f0d080 / #fff8e1 / #7C4A00，只在屏幕、不打印），不缩字。preview 里的红色虚线「end of page 1」只是给 Annie 看的，真页面没有。
+- 要 Annie 定的（原文）：
+  - **Q1 最小间隔**：现在 preview = 空隙最小 6px（平时 12px），压过的单上下两条线 2px 深灰 #6b6b6b。A 6px + 2px 深灰线（如 preview，推荐）；B 8px + 2px 深灰线（空多一点、能压出的行少一点）；C 4px + 2px 深灰线（压得更多、两站更贴近）。
+  - **Q2 提示原文**：「This sheet will print on 2 pages. Make the text smaller or move guests to another car.」（「2」按实际页数变）。A 用这句（推荐）；B 改字。
+  - **Q3 How to use 原文**：「If a sheet no longer fits on one page after you make the text bigger, the space between hotels and inside each row gets smaller by itself until the sheet fits. Your text size does not change. If the sheet still does not fit, a yellow note above it says how many pages it will print on; make the text smaller or move guests to another car.」A 用这段（推荐）；B 改字。
+  - **Q4 总表（Total）要不要一样压**：preview 只做了车单；总表也有酒店空隙，放大后同样会两页。A 总表也照同样规则压 / 提示（推荐）；B 只做车单。
+  - **Q5 压过的单要不要说一声**：A 不说，安静地压（如 preview，推荐）；B 单上方屏幕上一行灰字「Spacing tightened to fit one page.」（不打印）。
+  - ✅ **Annie 11-09 收工前（原话）：「这是relay list，只存在是否打印得下，不需要给客人换车」** ⇒ Q2 / Q3 都去掉「move guests to another car」。改后原文（35 拟，要更新 preview 再给她看）：
+    - Q2 提示：「This sheet will print on 2 pages. Make the text smaller.」
+    - Q3 How to use：「If a sheet no longer fits on one page after you make the text bigger, the space between hotels and inside each row gets smaller by itself until the sheet fits. Your text size does not change. If the sheet still does not fit, a yellow note above it says how many pages it will print on; make the text smaller.」
+    - Q1 / Q4 / Q5 没答；**还没「动手」**。家里窗口：先派工作窗口按上面两句更新 preview（同链接），再把 Q1 / Q4 / Q5 + 新两句给 Annie。
+    - ✅ 11-09 晚 preview 已按原话更新（工作窗口 `npe-ops-frontend-59`[66d88c]，78 派；同链接 https://claude.ai/artifact/QWBDj3uBURELbUJUzuThWY 第 2 版）：黄框和 How to use 换成上面两句，题表 Q2 / Q3 标「已按 Annie 原话改」，Q1 / Q4 / Q5 保留待答。代码没动。
+  - ✅ **Annie 11-09 晚（原话，78 转）：「我的要求：页面上的字体变得时候Total Pax这一行也要跟着变。然后压缩这要是第一页汇总页压缩。如果出现像图上这种右边框超出答应范围了，是否可以点击整体移动到页中央以适应页面？」** ⇒ Total Pax 跟字号变；Q4 = A（总表也压，59 理解为总表和车单都压，preview 里请她确认）；右边超出新题 Q7。**还没「动手」**。
+    - 59 只读查现状：① Total Pax 行（relay-list-view.tsx `TOTAL_PAX`）只用版式设置的每天起点字号 `--rl-car-total`（20px），当天 Aa 只改客人格（`GuestCells` → relay-text-size.tsx `useRelayCellFont`），所以不跟。② 打印顺序每轮 TotalSheet（RELAY SPLITS）在前、车单在后 ⇒ 总表 = 每轮第一页。③ 右边超出：relay-list.css `.rl-sheet td { white-space: nowrap }`，长酒店名 + 放大字时表格比纸宽，`.rl-sheet` 没有任何居中 / 缩放，打印右边被切。实测（Calibri、A4 竖、默认边距）有一个长酒店名 18px 就宽约 48mm，每 +1px 多约 11mm；挪到中间（边距最少 5mm）最多救约 12mm，加压格子左右内边距 6→2px 共约 27mm ⇒ 只挪位置解决不了大多数情况。
+    - preview 第 3 版（同链接）：②③ Total Pax 跟着变；④ 总表照规则压；⑤ 现在右边超出；⑥⑦ Q7-A；⑧ Q7-C。新题 Q6（Total Pax 只跟 Whole page A 推荐 / B 也跟 Qty 列）、Q7（A 自动压内边距 + 挪中间，不够出黄框 / B「Center on page」键 / C = A + 太长酒店名折两行，推荐 C）。Q1、Q5 仍待答。
+  - **Annie 11-09 晚（原话，78 转）：「relay preview我建议你用我们真名单和酒店名的简写来preview」「然后干脆把行距也给staff可以自己调算了」** ⇒ 第 4 版：用一天真 Relay list（真名单 + 系统里的酒店 / 产品简称，不放电话 / 邮箱，客人信息不进仓库，PROGRESS 只写用的哪天），按真数据重新实测宽度、改 Q7 数字和推荐；加行距新题（放哪 / 调什么 / 和自动压的关系 / How to use 原文，控件照现有 Aa 的样子）。**还没「动手」**。
+    - 59：简称来自后端 relay-pull 的 hotel_short / product_short（lib/relay-list.ts hotelText / tourText），要真数据得有登录；已问 78 怎么拿（推荐 Annie 在那天 Relay list 点 ⬇ Excel 给文件，只读、不进仓库）。
+    - ✅ 第 4 版（同链接）：Annie 给了 **11-09** 的 Relay list Excel（电话打码，客人信息不进仓库）。真名单实测：车单最多 9 行，A+10 也只占约 58% 页 ⇒ 车单不会超页，超页的只有人多的总表（1st Round 默认 94%，A+3 压得回一页，A+4 起出黄框）；右边撑宽的是 Full Name 列（酒店简称都短），最宽的 ANTELOPE CANYON A：A+3 超 7mm、A+5 超 26mm、A+7 超 45mm、A+10 超 73mm；A（压内边距 + 挪中间，约 27mm）够到 A+4–A+5，C 改成「长名字（Full Name，其次酒店名）折两行」，A+10 也印得下，仍推荐 C。加了 ⑨ 行距控件和 Q8–Q10（都推荐 A）。Q1 / Q5 / Q6 / Q7–Q10 待答，没「动手」。
+  - Annie（原话，78 转）：「59怎样调都i可以，但是要设置得简单，让staff一看就会」「用-+是最好，一目了然，就是立刻可以看到效果就行了，不要让staff去判断px」⇒ Spacing 用一组 [−] [+]，按了单子马上变，不显示 px，留一个回默认的键；不用 Compact / Normal / Roomy。
+  - Annie（原话，78 转）：「一定要看到得页面页面也就是打印得页面，不要yipreview打印，超出去很多，就要重新调」「快点做，这个优先上线」⇒ 屏幕 = 打印：超页时屏幕上画出第 2 页从哪开始，超宽时画出纸边，即时变；不再先出截图，直接做进去合 main。
+  - ✅ **11-09 晚 合 main（task/relay-fit，59）**：按「111， 112 全 A + 动手」（Q7 = A，不折行）。
+    - 新 components/relay-list/sheet-fit.tsx：每张单（总表、车单）画完量自己的纸（A4 / Letter、横竖、页边距）。太宽：格子左右内边距 6→2px（总表 5→2），还宽左右页边距一起变小（最少 5mm）；太高：酒店空隙 12→10→8→6px，再行内上下 →1px，一页就停；压过的单酒店间两条线 2px 深灰；还超 / 还宽出黄框（「This sheet will print on N pages. Make the text smaller.」/「This sheet is too wide for the paper. Make the text smaller.」/ 合成句），只屏幕。屏幕上超页画红虚线「Page 2 starts here」（在一页纸高处）、超宽画纸右边红虚线「Paper edge — anything to the right is cut off」，只屏幕。不缩字、不出「压过了」的字（Q5 A）。
+    - relay-list.css：td padding / 空隙改 --rl-py / --rl-px / --rl-gap 变量（没压 = 原值），.rl-sheet position: relative。Total Pax 跟当天 Whole page 加减（Q6 A，整列 / 整行不跟）。How to use 加压缩句（Q3 定稿）+ 太宽句（Q7 A）。
+    - 检查：rl 131/131（新 23 条：不压 / 22 站压回一页 + PDF 页数 = 单数 / 40 站黄框 + 页数和 PDF 一致 + 换页线 + 打印不印 / Total Pax 整页跟、整列不跟 / A+10 太宽压内边距 + 挪中 + 黄框 + 纸边线 / 回默认全撤）；mf 293/293、da 546/546、nav 39/39；tsc 0、eslint 0 错（3 条旧 warning）、build 过。rl-mock 的 ctl.many 可给数字。
+    - Spacing −/+：要后端（text_size 只收 page / columns / rows）。后端 78 task/relay-spacing ee74a6cd 形状已到（spacing {row 1–10, gap 偶数 2–24}，默认车单 row 4、总表 row 2、gap 12，relay-pull 总带 spacing），等上 main 的 SHA 另开小分支接。
+      - 🟡 前端已照形状做完、推分支没合：**task/relay-spacing ff04303f**。Aa 编辑条（共用 TextSizeToolbar 加可选 extra 行，Bus Manifest 不变）最下面「Spacing [−] [+]  Default spacing」，不写 px；档位 k −3..+6：gap = 12 + 2k、row = 默认（车单 4 / 总表 2）+ k（1–10）；存 text_size.spacing，跟字号一起 Save；relay-pull 不带 spacing 键（旧后端）不出这一行；Reset whole table 不动行距；sheet-fit 把 staff 的数当上限往下压。How to use 加一句（不提 px）。检查：rl 142/142（新 11 条）、mf 293/293、nav 39/39；tsc / eslint / build 过。截图（模拟数据）https://claude.ai/artifact/BRMen1u877VFwvB5b7s2HM 。**等后端 SHA ⇒ 核字段 ⇒ 合最新 main ⇒ 重跑 rl / mf / nav ⇒ 合 main**。
+- 动手时（79 想法）：components/relay-list/relay-list.css 加 `--rl-gap` / `--rl-py` 变量和 `[data-squeezed]` 线；relay-list-view.tsx 每张单渲染后量内容高度 vs 它自己的纸高 − 上下页边距（A4 / Letter、横竖），按步压、超了出黄框；字号 / Aa 改动、换纸张后重算。验收见 35 派工：放大超几行 → 自动一页、间隔看得见；压不下 → 印 2 页 + 提示；一页的单、颜色 / 方向 / 页边距 / 字号、11-03 空白页修法都不变。
+
+### 111. Main Manifest 的 Sync Rezdy 键恢复（2026-11-09，Annie 原话：「把main manifest上的Rezdy同步钮打开吧」；35 问清再派）
+
+- 现状：这个键不是藏起来 / 关着，是 10-30 照 Annie「不留，彻底删掉」删掉的（task/rezdy-sync-remove，e59375f），连同「Last updated from Rezdy」、新单标绿、How to use 那条；后端 92 也删了三个 Sync Rezdy 接口（只读查后端 app/routers 已没有 rezdy-sync 路由）。⇒ 恢复要前后端都做。
+- 跟 CLAUDE.md「订单流固定 … 不许跳过前面的环节直接去 Rezdy 拉单」的关系：旧记录（PROGRESS 4900 行）写过 Main Manifest 自己的 Sync Rezdy 属于订单流上游、不冲突；Dispatch 那个不恢复。
+- 35 问 Annie：A（推荐）照删之前原样恢复（键 + Last updated from Rezdy + 新单标绿 + How to use 那条，权限照旧 manifests.edit），只 Main Manifest，Dispatch 不恢复；B 只恢复键。原样恢复不用 preview。等她选 + 确认动手。
+- Annie（原话）：「新单标绿还是要保留；我想问一下，这个同步键放到哪里比较合理，因为现在发生我们在Rezdy改客人电话过了很久都没有过来，所以我应该是放在main manifest好呢，还是放在order list页面比较合理」
+- 35 只读查后端：rezdy_reconciliation.py 文件头——每日对账（未来 30 天）只补「本地缺的单」和「状态不一致」，电话等其它字段不对（Annie 10-06 定的范围）。电话改动只靠 Rezdy webhook，webhook 不重试、漏了就永远不过来 ⇒ 键放哪都只是事后补救。
+- 35 回 Annie 两题：Q1 放哪（A 推荐 Order List：页面级按日期「Sync from Rezdy」+ 每单详情「Refresh from Rezdy」，Main manifest 不放键、新单标绿保留在 Main manifest；B Main manifest 照旧；C 两处都放）；Q2 每日对账要不要也对电话 / 邮箱（A 推荐对电话、邮箱，不一致按 Rezdy 改；B 再加人数 / 接客时间；C 不扩大）。另请她给那张单号，后端查那次为什么没过来。
+- ✅ **Annie Q1（原话）：「好，就放order的详情页吧」** ⇒ 只在 Order 详情页（/orders/{单号}）加单张「Refresh from Rezdy」；页面级按日期同步不做；Main manifest 不放键；新单标绿保留。新键 ⇒ 先 preview（等有前端窗口），后端要单张重拉接口。Q2（对账对电话 / 邮箱）未答，等后端查出原因再问。
+- Annie（原话）：「你帮我拉一下CHDATEDW1 & CHDJ0JUJ7这两张单，改了客人电话半天没有过来」⇒ 已转 d4：先只读查原因（webhook 有没有来），再按 Rezdy 当前数据重写这两张单，回改前 / 改后电话。
+  - ✅ a3 已重拉写回（Annie 在 a3 窗口确认）：CHDATEDW1（11-12）、CHDJ0JUJ7（11-11）电话都已换成 Rezdy 上的新号（号码不写进仓库）；其余列不变。Order List、Main Manifest 已是新号；Dispatch 11-11 / 11-12 同步时带新号。**Tour Tracking（bookings 表）仍是旧号**（tracking_sync 开关 off）；今天 staff 回这两位的两条消息（send_log 49907 / 49908）发到了旧号。
+  - 原因：Rezdy 改客人资料**不推 webhook**，dateUpdated 也不变 ⇒ 对账只看状态 / dateUpdated 永远发现不了 ⇒ 35 问 Annie Q2（对账对电话 / 邮箱，要直接比字段）+ Tracking 那两位旧号怎么办。
+  - ✅ Q2 Annie 在 d4 窗口答（原话）：「要的」⇒ 每日对账也比电话 / 邮箱，不一致走 sync_rezdy_order_from_payload 重写，对账报告列改了哪几单；d4 登记后端待办，和单张重拉接口一起派。Q3（Tracking 两位旧号）：✅ Annie（原话）「最后一个问题：要」⇒ A，只改这两张单 bookings 电话，tracking_sync 开关不动；已转 d4 / a3（先 dry run 给 Annie 看）。
+  - a3 查：**不用改，什么都没执行**。重拉后 ANITA 重发了团确认（send_log 49916 / 49917），发送路径把 Main Manifest 的电话写回 bookings ⇒ 两单 Tracking 已是新号，短信 + 邮件都 delivered 到新号。49907 / 49908 是 ANITA 更早的回复，发到旧号；之后回复都走新号。tracking_sync 没动。
+- 🟡 11-09 晚 preview（工作窗口 `npe-ops-frontend-59`[66d88c]，78 派；模拟数据，代码没动）：https://claude.ai/artifact/SbACRHDjKVwHkcoqxjxki2 。照后端 3e 形状（POST /api/operations/orders/{单号}/refresh-from-rezdy，后端 task/order-refresh-rezdy 未上线）。查清：详情页 `editable` = 旧表单（有 Edit）；新 Rezdy 表单是 Read-only、没有 Edit 键 ⇒ 后端 409「not in Order List's Rezdy feed」只会出在旧表单，能重拉的单没有「没存的编辑」问题。画了：键在订单号行最右（蓝）、Refreshing…、updated 绿字 + Field/Before/After 表、up to date、cancelled、not_applied 黄框、kept 黄框、各错误红字。题 Q1 位置（A 订单号行）、Q2 颜色（A 蓝）、Q3 确认框（A 不要）、Q4 哪些单出键（A 只新表单）、Q5 结果留多久（A 一直留）、Q6 not_applied / kept 颜色（A 黄框），都推荐 A。需要后端确认：重拉后 Activity 卡会不会多一条。等 Annie 答 +「动手」+ 后端上线。
+  - 后端 3e 答（78 转）：① 有字段变了 ⇒ activity_log 多一条 event_type=refreshed_from_rezdy、actor=按键人、actor_type=staff、detail「Refreshed from Rezdy — Phone: '…' → '…'; …」，详情页 Activity 卡直接显示；没变化 / not_applied 不记；原有 booking_updated（actor=rezdy）照常。② 权限改挂 orders.edit：前端按 /api/me/permissions 有没有 orders.edit（同页 Edit 键的 useTick("orders.edit")）决定出不出键，仍只在原始 editable=false 的新表单出。preview 说明已同步（第 2 版），题不变。
+  - 🟡 **11-09 晚 前端做完、推分支没合**（Annie「111， 112 全 A + 动手」；59）：分支 **task/order-refresh-rezdy d79ed5fb**。新 components/orders/refresh-from-rezdy.tsx + lib/orders-api.ts refreshOrderFromRezdy（POST /api/operations/orders/{单号}/refresh-from-rezdy）+ types OrderRefreshResult；订单号行最右蓝键（只新表单 + useTick("orders.edit")，partner 不出），点了直接拉、Refreshing… 灰掉；结果卡（订单号下）一直留：绿字原话（kept 那句拆出来单独黄框）+ Field / Before → After（空写 empty）；not_applied 黄框；错误红字原话；401 跳登录；updated 后静默重读。How to use 加一句（preview 原句）。检查：orders 77/77（新 24 条，mock ctl.refresh 切 updated / same / kept / not_applied / cancelled / 404 / 409busy / 502 / 503 / 500 + 权限 / partner）、nav 39/39；tsc 0、eslint 0 错、build 过。**等后端 3e 上 main 的 SHA ⇒ 只读核字段 ⇒ 合最新 main ⇒ 重跑 orders / nav ⇒ 合 main**。
+  - ✅ Annie 11-09 晚（原话，在 78）：「111选A」（紧接 78 问「谁能按：A 跟 orders.edit 勾走（推荐）/ B 所有 staff 不看勾」）⇒ 权限照后端挂 orders.edit。78 已问是否 6 题也全 A；**还没「动手」**。
+
+### 110. Staff Schedule › Rules 自定义规则（2026-11-09，Annie 在后端 d4 那边提；前端先出 preview，没动手）
+
+- Annie 原话：「我需要在staff schedule里头的rules这项可以自定义规则，现在的设置不够用」「ok，加一条：每个班一天只能有一个人」「你列出来要不要算进去那些需要全部算进去」。
+- 四项：① 新规则「每个班一天最多几人」（班次 + 星期几 + 人数，Annie 要 1）：自动排班严格遵守、排不下写进预览；手动排班不拦，标出「这天 Close 有 2 人」。② 「某种班至少几天」（min_days_on_shift）可选多人或「除了某几人」。③ 「每周最多 N 天」（days_per_week max）管到周末轮值和固定班（schedule-engine.ts:407-501；例 Veronica 周一到周五固定 + 每周六轮值 = 6 天），排不下写进预览。④ 每周超 40 小时提醒（例「Veronica: 42 h this week」），只提醒不拦。
+- d4 只读查生产：「close 每 4 周 6 天」对所有人生效（Anita、ZZTest、Veronica、Jessica 都被报）；Jessica 不在任何 days_per_week 名单里，引擎从不给她排；周六轮值 3 位置配 3 人。
+- ⚠️ 等 Annie（d4 已问过，**不要再问**）：每班一人 = 一周最多 21 班位，加 Jessica 是 5 人 × 5 天 = 25 班：Jessica 当替补（推荐）/ 有人每周只上 4 天 / Jessica 固定几个班。
+- 后端：schedule_rules.py:289-298 白名单校验，前端定新类型 / 新字段形状发 d4，不迁移。
+- 35 请 Annie 新开一个前端工作窗口做 preview + 形状。
+- ✅ **Annie 11-09 晚（原话，在 78）：「统一全部推荐，但是还要加一条，可以设置一个班最多几个人」** ⇒ 78 理解为 110 题 1–8 全 A；「加一条」78 核对：题 ① Max people on a shift 已是「班次 + 星期几 + 人数（1–20）」，可以每种班各设一个数（Close 1、Open 2 各一条）——已问 Annie 是不是这个意思、还是另有不同；「全部推荐」是否也包括 107 / 112 也问了。**还没「动手」**。
+  - ✅ Annie（原话）：「110排班 A」⇒ 「加一条」= 现有 Max people on a shift（班次 + 星期几 + 人数 1–20，每种班可各设一条），照 preview 做，不另加；110 题 1–8 全 A 定稿。「全部推荐」只答了 110，107 / 112 另等。**还没「动手」**（已问）。
+  - ✅ **Annie 11-09 晚（原话，在 78）：「110动手」** ⇒ 前端派 03（推分支，后端先上 main 后核字段再合）；后端已转 0a 派 40 开工。
+- 🟡 **03 [44f0b4] 110 功能已写完，分支 `task/110-rules` dbd9d4de（worktree D:
+pe-ops-frontend-03c），推分支、不合 main**：等后端 40 上 main 给 SHA，核字段再合（后端先上，否则存新规则 400）。照 preview + 形状，题 1–8 全 A：
+  - Max people on a shift（`max_per_shift_day`）：Auto-fill 严格遵守、排不下写预览；固定 / 保留的班本身超了照排、写「Mon close has 2, at most 1 (fixed or kept shifts).」；手动排班不拦，日期下琥珀「Close 2 (max 1)」+ 班卡琥珀框。
+  - Minimum days on a shift：Who 三选一（employee_ids / exclude_employee_ids，Everyone 不带键）；旧 employee_id 打开当 Only，存时换写法。
+  - Days per week 管到固定班 + 周末轮值：超了这周轮值跳过此人换下一位，没人接空着进预览；固定班本身超了写一条。
+  - Weekly hours alert（`weekly_hours_alert {hours}`）：整段算、不扣休息、休假不算；排班表名字下琥珀「42.5 h this week」+ Auto-fill 预览一行「Over 40 hours: …」。
+  - 互相打架的规则：清单两条下面各一行琥珀字 + 改规则弹窗同一句，不拦。
+  - 检查：tsc 0、eslint 0 error、build 过；引擎 27/27（新 7）、sch 447/447（新 22，mock 照后端 40 形状校验）、nav 39/39。只 mock。How to use 不用改（Rules 标签没有 How to use 框）。
+- 🟡 **03 [44f0b4] preview + 接口形状已交 78（11-09，没动手）**：preview https://claude.ai/artifact/C4WjXh8cnTnDVUUgyoAThX（模拟数据：Rules 清单、新增 / 改规则弹窗、Auto-fill 黄框带「哪条规则卡住」、手动排班列头琥珀「Close 2 (max 1)」+ 名字下「42.5 h this week」）+ 7 题（推荐都 A）：
+  题 1 固定班 + 轮值超「最多 N 天」⇒ A 轮值跳过此人换下一位，没人接就空着写预览；题 2 固定 / 保留的班本身超人数 ⇒ A 照排 + 提醒；题 3 40 小时放哪 ⇒ A 名字下 + Auto-fill 预览；题 4 ⇒ A 做成一条规则「Weekly hours alert」可改可关；题 5 小时算法 ⇒ A 上下班整段、不扣休息、PTO 不算；题 6 手动超人数 ⇒ A 列头一行 + 班卡琥珀框；题 7 选人 ⇒ A 下拉 Everyone / Only these people / Everyone except。
+  形状：新 type `max_per_shift_day {shift_type?（不写 = 每种班各算）, max 1..20, days?}`；`min_days_on_shift` 加 `employee_ids?` / `exclude_employee_ids?`（和旧 `employee_id` 三选一）；`days_per_week` 形状不变（前端数固定班 + 轮值 + 保留的班）；新 type `weekly_hours_alert {hours 1..80}`（题 4 选 B 则不要）。全在前端算，后端只放行白名单。全文由 78 转 d4 / 0a。
+  - 后端 40 [a4bf80] 核对形状可行（只改 _RULE_SPECS + 两个 _r_ 函数，不迁移；后端先上）。前端 03 回 40（抄 0a、78）定 3 点：① `employee_ids: []` 后端拒、前端 Everyone 不带键，`exclude_employee_ids: []` 放行，三选一按「键存在且非 null」数；② 跨规则冲突（coverage.min > max、同班两条 max）后端不判、前端提示 ⇒ preview 加**题 8**（推荐 A：冲突两条规则下面各一行琥珀字 + 存时弹窗同一句，不拦；B 不让存；C 只在 Auto-fill 黄框看到），题数改 8；③ min_days「所有人」排除 exclude_from_rotation 是前端口径，后端不碰。等 Annie 答 8 题 +「动手」。
+
+### 109. 全系统发送 / 汇报规则统一（2026-11-09，Annie：「记住，我们整个系统的发送和汇报规则都是一样的，你去查查其他模块」；108 并入；79 出决定页，没动手）
+
+- 决定页：https://claude.ai/artifact/UXKAmSgwheNBEA5NKLaEKV（13 个模块对照表 + Q1–Q7 + 照 bug 修的 5 条）。7 题推荐都 A，原文已贴 Annie（35 11-09 回复）：
+  Q1 没号码 / 没邮箱不试发、记 skipped、灰字 No number / No email；Q2 任一渠道发出 = Sent，有真失败 = Failed，两渠道都没地址 = 单独「No contact」；Q3 没地址不告警、号码错 / 失败告警，所有客人发送都加，收件人照旧；Q4 不重复发，补了联系方式下一轮自动补发（B 每轮试 / C 永不再试）；Q5 日报「No contact on file」单独一格，门票结果也进日报；Q6 员工 / 司机 / 导游通知同一套，排班周三确认不多算；Q7 全站 Sent 绿字。
+- 照 bug 修（不用选）：Manifests 团确认 / Last Minute 弹窗一渠道发出一渠道真失败时重复计数；Tour 一族 sent 只数邮件；门票 sent = 全部行；排班周三确认多算；单单重发可能 500 + 不写 send_log（d4 在核）。
+- Annie 答 +「动手」后前后端所有入口一起改。
+- ✅ **Annie 11-09 答（原话）：「全 A」** ⇒ Q1–Q7 都 A。35 已转 d4 估后端工作量 / 拆分。
+- ✅ **Annie 11-09（原话）：「动手」**（紧接「全 A」之后）⇒ 109 全部开工：后端 d4 拆窗口做、先发接口形状；前端 79（G263 之后，worktree task/send-rules-uniform）先做不依赖后端的（Q7 Sent 绿字、Manifests 弹窗重复计数），其余照后端形状 mock 做，后端上了核字段再合。
+- 🟡 **79 [3815aa] 第一部分（不依赖后端，35 派）**，worktree C:\Code\npe-ops-frontend-wt-send-rules，task/send-rules-uniform：
+  - Q7 Sent 绿字 #3B6D11（Tour 发送页、Manifests 弹窗本来就是这个绿）：Tickets 发送页结果（tickets-send/send-results.tsx 汇总 Sent + 逐单 Sent）、Morning Pickup 发送结果 + Dispatch relay 结果（morning-send/morning-results.tsx，relay 共用）、Farm out 通知结果（dispatch/farm-out-notice-dialog.tsx 汇总 Sent + 逐单 Sent；没发 / 跳过照旧琥珀、失败红）。
+    没改：Send Log / Tracking 页的状态胶囊（Sent / Delivered 是发送记录的状态，不是这次发送的结果），淡黄「Sent by 谁 on 时间」标签。
+  - 照 bug 修：Manifests 团确认 / Last Minute 弹窗一位客人只算一次（components/manifests/send-dialogs.tsx tourOutcomes：任一选了的渠道 sent = Sent，都没发出且有渠道 failed = Failed；Sent 数字改成前端按逐单算，不再用后端只数邮件的 res.sent）；门票提醒弹窗（ticketOutcomes）Sent 也改成任一渠道 ok 才算（后端 res.sent = 全部行）。
+  - 检查：tsc 0、eslint 0 error（3 旧 warning）、build 过；man 424/424（新：邮件 sent + 短信 failed: Invalid phone ⇒ 汇总 1|0|0|1、Email 绿、SMS 红）、mt 259/259（Sent 颜色检查改绿）、tsend 62/62（新：Sent 绿）、fod 49/49（新：Farm out 通知 Sent 绿）、tour 65/65、da 544/544。只 mock。
+  - 其余（Q1 / Q2 / Q6 和各结果数字、前端自判没号码改成以后端为准）等 d4 接口形状。
+- ✅ **03 [44f0b4] W2 原文显示修复已上 main 4c7f8a71（11-09，78 说 W1 已在写 skipped - no …，不等 W2）**：Send Log 明细、Tour / Tickets / Morning Tracking、订单查询碰到「skipped - no phone / skipped - no email」写灰字 No number / No email（Send Log 灰胶囊），不显示原文、不当失败（lib/send-outcome.ts noAddressLabel）。检查：tt 168、catchup 58、tk 135、mt 261、orders 54、nav 39、build 过。Annie 验收：今晚之后的 Morning / Relay 批次在 Send Log 明细、Morning Tracking 看灰字 No number。
+- ✅ **03 [44f0b4] 第二部分已上 main 648a149a（11-09）**：后端 W1 上 main（合并 1437f31a、关包 8e1e062a）后核过字段（outcome / sms_outcome / email_outcome 取值同 send_outcome.py；早班 results 里 skipped:true 的行没 outcome、照旧进 Skipped、不进四个数）。追加 Send Log 批次小结：summary.no_contact 灰色「No contact N」胶囊（有才出），「x of N in this send match」的 N = Sent + Failed + No contact；红框照旧只看 failed / not_sent（Q3 没地址不告警）。门票、Broadcast、Farm out、司机 / 导游通知后端还是老字段（W2–W4），前端走回退。检查：tsc 0、eslint 0 error、build 过；unit 24/24；man 425、mt 261、tsend 64、fod 59、tour 69、da 546、nav 39、catchup 57、tk 135、tt 167 全过。How to use 两句等 Annie，定了另起小提交。
+  - Annie 线上验收看：Tour Confirmation 发送页 / Morning Pickup 发送页 / Dispatch Morning Relay 的 Send Results（汇总 Sent 绿 / Failed 红 / No contact 灰、没号码那格灰字 No number）；Manifests 团确认弹窗结果（Sent / Failed: 原因）；Send Log 组头胶囊。
+- 🟡 （历史）**03 [44f0b4] 第二部分（照后端 W1 形状 docs/interfaces/send-outcome-2026-11-09.md mock 做，78 派）**：分支 `task/send-outcome-ui` c788afd4（worktree D:\npe-ops-frontend-03b），**只推分支、不合 main**，等后端 W1 各入口上 main 核字段再合。
+  - 新 lib/send-outcome.ts 唯一判定：后端每行带 outcome / sms_outcome / email_outcome 就照它，旧后端按原状态换算同样的结论（前端先上不空）。汇总 Sent 绿 / Failed 红 / No contact 灰（Not sent 有才出）；渠道格 Sent 绿 / Failed 红 / No number、No email 灰 #6B6B6B；去掉单独的 No number / No email 计数格。
+  - 改的入口：Tour 发送页、Tickets 发送页、Morning Pickup + Dispatch relay（共用结果组件）、Manifests 团确认 / Last Minute / 门票弹窗（原文小写 sent / failed: … 改成同发送页 Sent / Failed: …）、Farm out 通知（「邮件发出、短信失败」以前算 Failed，现在 Sent）、司机 / 导游通知（新 no_contact 灰字一行「No contact: 名字 (No number).」）。
+  - 没动：员工通知（排班 Publish / send-changes、Staff Messages、Operation report）——37 说 W4 形状未设计，明天定、发 78 抄 03。单张重发 ops 前端没有调用，不在范围。
+  - 检查：tsc 0、eslint 0 error、build 过；send-outcome-unit 24/24；man 425/425、mt 259/259、tsend 64/64、fod 50/50、tour 69/69、da 546/546、nav 39/39（各 mock 加 ctl.newOutcome = 新后端形状，各套加新形状检查）。只 mock。
+  - How to use 改句（待 Annie 定，原文已交 78）：Tour / Tickets「Send Results shows Sent, Failed and Skipped…」、Morning「Every reminder goes out by SMS and email…」各加 No contact 说明。
+- d4 后端拆法：W1 先建唯一判定点 send_outcome.py + 形状文档（约 2 小时，上 main 后别的窗口开工），再做早班 / Tour 一族 / send_guard / send_batches / manifest_send / relay-send；W2 门票 + auto_send；W3（a3）Broadcast、Farm out、单单重发、staff 回复、司机快回 + 告警；W4 日报 + 员工 / 司机 / 导游通知。不迁移（历史空号码 failed 展示时认作 No contact，不回写）。约 1.5 天。新字段大致：sent / failed / no_contact，Farm out n_no_contact，司机 / 导游 no_contact [{name, why}]，以 W1 形状文档为准。要 Annie 开 3 个后端窗口（W1、W2、W4）。
+
+### 108. （并入 109）早班 SMS + Email：没手机号的客人，短信那栏记 failed、预览挂红「SMS failed」（2026-11-09，后端 a3 查出，35 问 Annie）
+
+- 现在（现有行为，106 没改它）：没手机号、有邮箱 ⇒ 邮件照发；这一位算「发出去了」，不发失败告警；但 send_log 短信栏记「failed: Invalid phone」，Morning Pickup 预览已发区域挂红色「SMS failed」，Send Log 也显示 failed（a3：send.py:1127 不看有没有号码照样发短信；send_guard.py:147-151 算 partial）。
+- 选法：
+  - **A（推荐）** 没号码就不试短信，像没邮箱一样显示灰字「No phone」，不算失败、不挂红。前后端都要改（后端 send.py / relay_pull.py 两个入口一起改，前端结果表 + 预览加 No phone）。
+  - B 不改行为，只改 How to use 第二句为：「A guest with no phone number gets the email only. Their SMS shows as failed (Invalid phone); that is expected, no action needed.」
+  - C 都不改（现在 How to use 写「a guest with no phone number gets the email only」，没提红字）。
+- ⏸ Annie（原话）：「记住，我们整个系统的发送和汇报规则都是一样的，你去查查其他模块」⇒ 108 暂不定，先做全系统对照表。前端 79 盘点已交（11 处：Morning / relay / Tickets 前端自判，黑字 No number；Tour 认后端「skipped - no phone」琥珀；Manifests 团确认 / Last Minute、Farm out、Send Log 不判断，后端写 failed 就红；Manifests 门票提醒琥珀 not sent；只有 Morning 预览已发区挂红 partial；Manifests 团确认 / Last Minute 弹窗会把一渠道 sent 一渠道 failed 的单同时算进 Sent 和 Failed——全站唯一重复计数；Sent 颜色琥珀 / 绿两种）。后端 a3 盘点在做（d4 派）。两份到齐 35 合成对照表给 Annie。
+  - 后端 a3 盘点已交（全文 C:\Users\annzh\AppData\Local\Temp\claude\e2e38ae65d150b65\2e18170f-c1bf-4284-b5ac-7fae5359c566\scratchpad\G108_send_rules_inventory.md）：客人没号码 5 种做法（早班试发记 failed；Tour 一族 / Broadcast / Farm out 记 skipped；门票记光秃 failed；staff 回复 / 单单重发不记；司机快回 400）；计数各不同（Tour sent 只数邮件、门票 sent = 全部、Farm out 两渠道 skipped 算 failed、排班周三确认多算）；去重 Tour 永不再试 vs 门票每轮再试；告警只有早班 / relay / Tour / 门票有；日报同一种没号码进 3 个格。另查出单单重发可能 500（notifications.py:2805）+ 不写 send_log ⇒ 已请 d4 照 bug 核实修。
+  - 35 派 79 做对照页 + 统一方案 Q1–Q7（推荐都 A），做好后连每题原文发 Annie。d4 已知：统一方案定之前各模块行为不动。
+- 106 前端已上 dcc04e1a，How to use 现在写：「Every reminder goes out by SMS and email. A guest with no email address gets the SMS only, and a guest with no phone number gets the email only.」
+
+### 107. 「有新版本，请刷新」提示条（2026-11-09，Annie：「第四条，做」；3c 出 preview，没动手）
+
+- preview：https://claude.ai/artifact/BbcwRLCvyK7ecfL6cz2LEv（模拟数据）。检测：build 时把 commit SHA 写进代码和 public/version.json，每个标签页 5 分钟 + 切回来时查一次，不动后端。
+- 5 题（3c 推荐都 A）：Q1 位置 Notice 下面（A）/ shortcuts 和 Notice 中间（B）/ 屏幕底部固定（C）；Q2 Reload 键实心黄（A）/ 蓝（B）/ 黄边框（C）；
+  Q3 有没存的改动时 Reload 先弹「Save / Don't save / Cancel」（只确认）；Q4 发送页过期时 Send 变灰 + 红字、按 Send 时再查一次（A）/ 弹窗可 Send anyway（B）/ 不管（C）；
+  Q5 不能关（A）/「Later」藏 1 小时（B）。原文见 a4 回复 Annie。
+- 同日 7639a213（ops 网页 no-store）已上线，15:06:44Z 线上已是新 header。
+
+### 106. 早班接客提醒前后端写死 SMS + Email（2026-11-09 早，Annie 原话：「前后端都写死，mornning发送就是sms+email」；等「动手」）
+
+- 前端（3c）：Morning Pickup › Send 页拿掉渠道选择（morning-preview.tsx:296 `SendTypePicker`），发送键固定「Send to Selected (SMS + Email)」，lib/morning-send-api.ts 固定传 combined；
+  Dispatch relay-send 已固定 combined（b4eb5980）。结果表照旧逐位显示 SMS / Email 两栏，一个渠道失败照旧红胶囊。
+- 后端（公司后端窗口）：relay-send（relay_pull.py:329）和 Morning Send（send.py:1206 `Form("sms")`）都不再收渠道，一律 combined；
+  旧 confirm 的 relay 面板（_relay_pull_panel.html:265）和旧 Morning Send 页同样固定。没有邮箱的客人照旧只发短信（不算失败）。
+- 合 main：前后端各自检查过就合；Annie 说「动手」后派。
+- 11-09 公司：后端主窗口 d4 同意上面写法，后端所有入口（relay:329、send.py:1206、两个旧模板）都等这一次「动手」一起上（G267 里不改发送行为的 Origin/Referer、admin HTML no-store 先做）。**「动手」只问 Annie 一次**：她对 106 说了，35 转 d4 原话，d4 不再单独问。
+- ✅ **Annie 11-09 公司（原话）：「动手」**（35 刚报完 106 前后端一起改、只说一次即可之后）⇒ 35 按 106 理解，已转 d4（后端 relay:329、send.py:1206、旧 relay 面板、旧 Morning Send 一律 combined）；前端派 79（G263 之后，另开 worktree task/morning-send-combined）。
+- ✅ **79 [3815aa] 前端做完（35 派）**，worktree C:\Code\npe-ops-frontend-wt-morning-combined，task/morning-send-combined：
+  - Morning Pickup › Send：拿掉 `SendTypePicker`（Both / SMS Only / Email Only），发送键固定「✉️ Send to Selected (SMS + Email) — N orders」，确认框「… by SMS + Email.」；
+    `lib/morning-send-api.ts` 新常量 `MORNING_SEND_TYPE = "combined"`，`sendMorningBatch` 去掉 sendType 参数，FormData 一律 send_type=combined（调用处传不了别的）。
+    config.ts 删 `SEND_TYPES` / `DEFAULT_SEND_TYPE`，`sendTypeShort` 留给结果表。结果表照旧逐位 Email / SMS 两栏、单渠道失败红胶囊、没邮箱写 No email（不算 Failed）。
+  - How to use 改一条。原文「Default send mode is SMS + Email. Switch to SMS Only or Email Only if needed.」⇒ 新「Every reminder goes out by SMS and email. A guest with no email address gets the SMS only, and a guest with no phone number gets the email only.」
+  - 全仓 send_type / sendType / SendTypePicker 逐处：① `lib/morning-send-api.ts` 改（固定 combined）；② `components/morning-send/*` 改（拿掉选择器 / 状态）；③ `lib/dispatch-api.ts` RELAY_SEND_TYPE="combined" + relay-panel.tsx:1064 —— 已固定，不改（da 两条检查盯着）；
+    ④ `components/manifests/send-dialogs.tsx`、`components/dispatch/farm-out-notice-dialog.tsx`、tickets-send / tour-send 页的 SendTypePicker —— 不是早班（Tour 确认、Last Minute、门票提醒、Farm out 通知），不改；⑤ types/send-log、send-batches 的 send_type 只是显示记录，不改。
+    后端（d4）：relay_pull.py:329、send.py:1206、旧 `_relay_pull_panel.html`、旧 Morning Send 页——前端不改，d4 做。
+  - 检查：tsc 0、eslint 0 error（3 旧 warning）、build 过；mt 259/259（置顶 101 那组换成 106：上传后没有渠道选择、发送键文字、How to use 新句、Start Over 再上传仍没有选择、确认框 by SMS + Email、每批 FormData send_type=combined；原来按「只发短信」写的 4 条结果数字改成 combined 的 No email 格）、da 544/544（Dispatch relay-send 仍 combined）。只用 mock，没真发。
+
+### 105. Products › Bus Manifest setup 加「Includes lunch」勾选框（2026-11-09 早，46 转后端 ab 任务 product-includes-lunch；86 出 preview，没动手）
+
+- preview：https://claude.ai/artifact/6C1Xujuq66gXjtkn1KnHwq（模拟数据）。后端接口 GET manifest-setup 每个产品多 `includes_lunch`；PUT `/api/settings/manifest-setup/products/{id}/includes-lunch`（require_admin）；ab 未上 main。
+- 4 题（86 推荐都 A）：① 列放 Type 后面（A）/ Product 名后面（B）；② 勾了马上存、绿字 Saved（A）/ 跟 Section、Type 一起按 Save（B）；
+  ③ 批量黑条不加（A）/ 加 Lunch 下拉（B）；④ 说明只放 How to use 第 5 条、用后端原文（A）/ Sections 灰字再加一句（B）。原文见 a4 回复 Annie。
+- 后端已上 main 28c7c479（merge 1dbaf044，task 5fcf7d0f）。现在任何 bus tour 产品都能勾，勾了就算 LUNCH、上三明治单、进司机 / 导游午餐、餐厅通知（tour_manifest.has_lunch）。
+- ⚠️ Annie 2026-11-09 早原话：「但是west rim的lunch跟其他tour的lunch完全不是一个概念哦」「记下来回公司处理」。
+  West Rim 在 tour_confirmation.py:160 的 lunch_group 是 ""（VOF-H、HD 也是）。题 0（先答这个再做）：
+  A（推荐）只在有午餐汇总的团（South / BZ / Antelope / VOF-F）显示勾选框；B 全部显示、West Rim 勾了也照三明治算；
+  C 全部显示，但 West Rim 勾了只标「含午餐」、不进 LUNCH / 三明治单 / 司机导游午餐（要 Annie 讲清 West Rim 午餐是怎么回事）。A、C 都要后端改。
+- 回公司处理：等 Annie 在公司答题 0 + 4 题 +「动手」，86 才开分支；目前没有产品被勾，不影响线上。
+
+### 104. 旧 confirm 后台的 Dispatch 网址藏起来（2026-11-09 早，Annie：「可以把这个网址隐藏起来么」；没动手，要后端做）
+
+- 起因：11-09 03:15 batch 7305（Jtian，30 位）早班接客提醒只发了短信。46 核实走的是 relay-send、请求没带 send_type；
+  可能来源之一是旧 confirm 的 Dispatch 页（`/admin/dispatch/assignments`，后端 dispatch.py:167，含 `_relay_pull_panel.html`，:265 发送不带 send_type → 后端默认 sms）。
+  旧 confirm 侧栏 base.html:487-490 还有 Dispatch / Dispatch Imports / Work Sheet / Guide Sheet 链接。ops 里这些旧路径已自动跳新页面；只有直接开 confirm 网址才进旧页。
+- 做法（推荐 A）：A. 在 confirm 网址打开旧 Dispatch 这几页（assignments / imports / work-sheet / guide-sheet / manifest）一律自动跳到 ops 对应新页面，旧侧栏链接也改指 ops；
+  B. 只把旧侧栏的链接拿掉，网址本身照旧能开；C. 旧页面直接关掉（打开报 404）。
+- 不管选哪个，后端 relay-send「没带 send_type → combined」照做（46 已交给公司后端窗口）。
+- 全是后端改动，Annie 说「动手」后由 46 / 公司后端窗口派工。
+
+### 103. Staff Schedule 多周排班展示 + 分享给 staff 确认（2026-11-08 晚，Annie 在 3c 窗口提，要今晚完成；没动手）
+- Annie（原话）：「今晚还要完成一个工作就是，staff schedule，我需要一个地方可以展示我设定的期限的一个工作排版，比如从那天开始的总共几周的排班，而且可以share给staff让他们确认」
+- 3c preview https://claude.ai/artifact/HnBVL6wANcCZYs1r1enq3W ：① 排班页加 Period 标签（Start + Weeks 1–8，每人一行几周连排，只看，最右每人确认状态）；② Share with staff（每人一封邮件一条免登录链接，同每周发布 token；有没发布的周不能分享）；③ staff 手机页只看自己的、「Confirm all N weeks」、单日 Request change。5 题推荐都 A：1 用已排好的周表；2 一次确认整段；3 staff 只看自己的；4 没发布的周不能分享；5 先只有 Super Admin 能用。
+- 需要后端：发整段邮件（链接带 start + weeks）；整段确认前端可循环现有每周 accept；可选整段状态汇总。a4 已预告 46 问今晚能否做、token 复用、邮件走哪条。等 Annie 答 + 「动手」。
+- 46 回：今晚后端上不了（新接口真发邮件给 staff + 免登录链接要 security-auditor；邮件文字放 Content Studio Team Messages 要 seed 迁移，Annie 执行 SQL；约半天到一天；21:30 收尾）。形状：POST /api/schedule/period/share {start, weeks}（schedule.publish 权限，先 SA；有没发布的周 409；每个有班的人一封；回 {notified, not_reached}，同 publish）；可选 GET /api/schedule/period/confirmations。token 复用 schedule_link.make_token（只签员工、12 周有效），前端链接 /schedule/confirm/period/{token}?start=&weeks=，逐周 accept；建议开始日期最多 4 周后（不然链接可能过期）。动手后 46 明早派。a4 问 Annie：今晚先上只看的 Period 表（现有接口，只 SA）+ 明天上分享 / 确认，开始日期最多 4 周后。
+- ✅ Annie（原话，3c 窗口）：「全部同意推荐。然后是super admin用，然后要可以assign给几个admin也可以用」「最重要一点，可以选择执行哪些rules」⇒ 5 题全 A；preview 第 3 版（同链接）加 ⑤ 按人开权限（Page visibility 选 Super Admin only，下面「Also allowed」按人加）——**需要后端**：dashboard-widgets 加另外允许的人名单（如 allowed_user_ids），visible_to_me 算上；①b Period 上「Auto-fill these weeks」，列 Rules 页开着的规则，每条勾、默认全勾，取消的只这一次不执行，Shift times 固定要用，先 Preview 再建草稿（纯前端，Auto-fill 周数放开到这段）。新题 6（只管这一次）、7（按钮放 Period 标签）推荐 A，在问。后端合计：可见性按人名单、整段分享邮件、（整段确认前端循环）。
+- ✅ **Annie（原话）：「动手吧」** ⇒ 题 6、7 A。3c 开 task/schedule-period 今晚做纯前端（Period 标签只读多周表 + Auto-fill these weeks 选 rules；开关 key schedule_period 默认 super_admin_only；Share with staff 后端没好挂 Soon）。a4 已转 46 派后端三件（可见性 allowed_user_ids + 登记 schedule_period；POST /api/schedule/period/share，开始日期 ≤4 周后；整段状态可选），46 明早派。
+
+### 102. Tasks 能编辑（2026-11-08，Annie 在 3c 窗口提；没动手）
+- Annie（原话）：「对了，我那天提出的要实现task也编辑呢」（之前 PROGRESS 里没记过）。3c 查现状：主管能加临时任务、改截止、交接、打勾；今天的任务改不了标题 / 优先级 / 负责人；模板后端有 POST / PATCH /api/tasks/templates，ops 没页面（lib/tasks-api.ts createTaskTemplate / updateTaskTemplate 没人调）。
+- 选项：A 今天已加好的任务能改标题、优先级、负责人；B 每天固定出现的模板能新增 / 修改 / 停用。✅ Annie（原话）：「A+B」。
+- 第 2 题「谁能编辑」没答；preview 先按推荐（只有 Supervisor / Admin，同现在加任务），preview 里写明。
+- 需要后端（A）：PATCH /api/tasks/today/{task_id}（title / priority / 负责人，权限同 POST _manage，写 action_log，回 DailyTask）——a4 11-08 已转 46 估形状、问换负责人要不要清 accept / pass-over。B 后端已有，前端可直接做。
+- 3c 出 preview（A 的 Edit 弹框 + B 模板管理），Annie 看了「动手」才写代码。
+- 46 回形状（已 cc 3c）：A PATCH /api/tasks/today/{task_id}，title / priority / assigned_admin_user_id 或 assigned_to_username（null = 共享任务），不带的不动，校验同 POST，权限 _manage，回 DailyTask，action_log daily_tasks update 只记改了的；交接还没被接收时改负责人 ⇒ 409「Waiting for <name> to accept the pass-over」（不然接收时会改回去），标题 / 优先级随时能改；做完的也能改；不动模板。B 模板接口已有，停用 = PATCH {"is_active": false}；改模板只影响之后生成的日子（已生成的明天照旧），How to use 要写。后端约半天、无迁移；Annie「动手」后 46 次日派。
+- 3c preview https://claude.ai/artifact/3aVYWfWYk4RgntEaBjovTh 4 题推荐都 A：① 只有 Supervisor / Admin 能编辑；② 今天的任务能改标题、优先级、给谁；③ Daily task list 入口在 Today's tasks 标题行右边，点开是窗口；④ 模板不删，用 Active 停用，停用的灰色标 OFF。✅ Annie（原话，3c 窗口）：「同意推荐」⇒ 4 题全 A。**还没「动手」**，3c 已问。动手后：3c 先做 B（后端已有）；A 等 46 派后端 PATCH /api/tasks/today/{id}。
+
 ### 101. Morning Pickup › Send 早班提醒默认只发短信，10/20 起没有邮件（2026-11-07，后端 46 查生产、a4 查前端）
 - 现状：send_log 里 morning_pickup 最后一封邮件是 10/20；11/3–11/7 每一批 send_type 都是 sms（Veronica、Jtian 发的），今天 97 条全是短信。Tour 确认、Last Minute 的邮件正常。
 - 原因：发送页的「Send via」默认值写死成 SMS Only（components/morning-send/config.ts:21，照旧页面 send_morning.html 搬的），每换一份 manifest 就重置回去；哪里都没存「SMS + Email」，所以 Annie 选一次只管那一次。Tickets 发送页默认是 Both。
@@ -1362,11 +1665,29 @@ D. 已完成、待从置顶移走：
   - ✅ 合 main **2ad77d96**（cs 189、man 423、nav 39，tsc / eslint / build 过；截图 https://claude.ai/artifact/1ae7jUsTAGUqXfKNMeZhTB ）。⚠️ 跟派工差一处：小字 B 句没贴着勾选，放在表单下方说明的最后一行（贴旁边会把那一行挤断）。a4 问 Annie：A 照现在放在说明最后一行 / B 挪到勾选正下方单独一行灰色小字（推荐 B，靠近勾选、不挤行）。
 
 ### 99. G263 Farm out › Partners & rates 价格行（Adult / Child / Infant 下拉）（2026-11-06，c3 出 preview，49 转 Annie）
+- ✅ **11-09 晚 合 main（家里工作窗口 `npe-ops-frontend-59`[66d88c]，78 派）**：后端 G263 已上 main（合并 248a2e16 = 任务 0995f31d，关包 72fbcdfa，推送 0956943e..72fbcdfa）。只读核：248a2e16 上 farm_out*.py（routers / services）、farm_out_common.py、docs/interfaces/farm-out-2026-10-16.md、migrate_v160.sql 与 0995f31d **完全一样**；tour_manifest.py 相对 0995f31d 只多了 28c7c479 午餐勾（名单行多 `product_lunch`，farm out 不用）⇒ 79 照 0995f31d 核过的前端字段都对，**前端没改**。分支合最新 main（无冲突）后检查：tsc 0、eslint 0 错（3 条旧 warning）、build 过；fo-settings 127/127、fod 58/58、fr 27/27、da 544/544、nav 39/39（端口 MOCK 9077 / APP 3677 / CDP 9677）。等 Annie 线上验收。
+- 🟡 **11-09 公司 79 [3815aa] 接手（35 派；86 今天不在公司）**：worktree C:Code
+pe-ops-frontend-wt-g180，task/farmout-products 6350101c 合最新 main（e652fd0d，无冲突）。
+  检查：tsc 0、eslint 0 error（3 条旧 warning）、build 过；fo-settings 127/127、fod 57/57、fr 27/27、da 544/544、nav 39/39。推分支，**没合 main**，等 d4 后端上 main 的 SHA（35 转）。
+  只读对照后端 0995f31d（task/farm-out-item-rates）：GET / PUT rates（products / display_name / prices，回 {ok, rates}）、转单对象 rate_item_id / product_display_name / product_options、PATCH rate_item_id（没 money_view 403）、Report product + CSV Product 列、导入预览 label（error 行 ""）+ Partner/Tour/Product/Adult/Child/Infant 六列 + new 行——前端类型和 mock 都对得上，没有要改的。
+  只是 mock 没覆盖、前端照原话转红字的后端报错：「That tour is not a bus tour…」「<tour> appears twice in the price list.」「The same product appears twice…」；团一个产品都没有时后端 missing「no products for this tour - add them in Partners & rates」，前端 Product 格写灰「—」。d4 说合并时 tour_manifest.py 会和 28c7c479 一起重审，SHA 到了再核一遍。
 - 🟡 **11-08 晚 86 交接（明天公司电脑接）**：分支 task/farmout-products **928fc15a**（已推 origin，没合 main；worktree D:
 pe-ops-frontend-wt-fop，家里）。做完：① Dispatch › Farm out guests Product 列（多产品下拉、没选「Pick a product」虚线琥珀框 + 黄字、一个产品自动用、没 money_view 只读）；② Farm out Report Product 列；③ Import rates 预览「New product」+ 有后端 label 就写全名、没有照文件里写的（11-08 补）；④ How to use A 稿（两句补写 Annie「farm out同意A」）；⑤ mock / 检查。检查：fo-settings 127/127、fod / fr 全过、da 536/536、nav 39/39；tsc / build 过，eslint 0 error。**等**：后端 c2 G263 v160 SQL（Annie 跑）+ 上 main 的 SHA ⇒ 86（或接手窗口）只读核字段（rates products / farm_out product_options / PATCH rate_item_id / report product / import preview label）、合最新 main、重跑 fo-settings / fod / fr / da / nav + tsc / eslint / build、合 main，截图 + 验收点交主窗口。**还在等 Annie**：没 money_view 的人能不能改单子的产品（现在只读；要改只动 farm-out-guests.tsx 的 `canPickProduct`，后端也要放开 403）。dev server / Chrome 已关。
 - 11-07 86 写完前端 ①–⑤，分支 task/farmout-products **2d1d4833**，没合（照后端 8f951f4c 核的）。**问 Annie：How to use 有两句 preview 里没有原文，是 86 补写的**：第 2 条末尾加「Everywhere else the system shows the full name: tour, product and partner, for example West Rim Premium Pass - C Tour.」；第 8 条中间加「the product can be the short name (Premium Pass) or the full name (West Rim Premium Pass - C Tour).」。A（推荐）照用；B Annie 改字。✅ Annie（原话）：「farm out同意A」⇒ 照用，已告诉 86。11-08 46 转：后端 c2 只多 import/preview 每行 label（全名，error 行 ""），其余同 8f951f4c；后端等 Annie 答两题（Scope v3、Lap Child）再审、迁移、上 main。已派 86 预览用 label。另外 Import 预览新建的行显示文件里写的名字（后端 preview 没给全名，46 已问能不能加 label，可选）。
 - ⚠️ **Annie 改设计（原话）**：「其实这是我们设计有问题，你干脆改一下，把每个tour单独列出，然后再下面加产品和价格不就好了，就没有母项子项这么麻烦了」⇒ 不要主项 / 子项：每个团只是一个标题，下面一行一个「产品」（名字自己填，不是 Rezdy 代码）+ 成人 / 儿童 / 婴儿价；团本身不再有价。下面题 1–10 里跟主项 / 子项有关的作废，c3 照新设计重出 preview，2c 重估。**还没「动手」**。
 - 2c v3 估：更简单，约 1 天，仍 v159（重写）。生产只读：只有 C Tour；主价 1 行 VOF-H/D 70/70；子项 5 行（West Rim Premium Pass 98、Admission Only 83、Admission+Grab&Go 93；Antelope Lower Canyon Bus Tour 158、One Way Shuttle 65）；farm out 单 0 张。迁移后各变成同名产品，VOF-H/D 变一个同名产品。题给 Annie：多产品新单默认空着要选（推荐）/ 默认第一个；存价重算（推荐）；Import CSV 改 Partner / Tour / Product / Adult / Child / Infant，名字对不上新建（推荐）/ 报错；How to use 重写。⇒ 派 c3 重出 preview。
+- 🟡 **c3 WIP（11-06 收工前）task/farmout-products bd472400，没合 main**（Annie「preview里的问题  1A 2 B 3 这个产品必须跟着partner的名字 比如 West Rim Premium Pass - Ctour」「同意推荐，动手」；接口照 2c docs/interfaces/farm-out-2026-10-16.md，49 转）：
+  - 做了：types/farm-out.ts 加 FarmOutProduct / FarmOutPrice / FarmOutRatePut、FarmOutOrder 加 rate_item_id / product_display_name / product_options；lib/farm-out-api.ts savePartnerRates 收 FarmOutRatePut[]（别的团只带 manifest_id）、patchFarmOutOrder 收 rate_item_id；新文件 components/farm-out/tour-products.tsx（团只是标题；一个产品一行 Adult / Child / Infant 三列、没设「—」；Edit 后名字框 + 灰字全名 display_name（名字没改才出）+ 下拉价格行（已有的票种灰掉）+ 灰绿「+ Add price」「+ Add product」、↑↓×；前端先挡：名字必填 ≤80 同团不重名、至少一行价、价 ≥0；一个团一个蓝 Save，400 原话红字写在团名后）；partners-view.tsx 换用它、表头 Partner / Tour / Product · Adult · Child · Infant、有没存的改动离开拦（useLeaveGuard）、Import 模板 / 说明换成六列。tsc 过。
+  - 还没做：① Dispatch › Farm out guests 加 Product 列（product_options 下拉、只有一个自动用、多个没选红字「Pick a product」虚线框 + 表下黄字「Product is not picked for N orders.」、PATCH rate_item_id）；② Farm out Report 多一列 Product（rows.product）；③ Import 预览 new = 「New product」、row.label = display_name、changed 键 adult_price / child_price / infant_price；④ How to use 换定稿（题 a A、b B 第 7 条用 B 句、第 2 条加全名那句、第 8 条短名 / 全名都认）；⑤ fo-settings / da / fr 套 mock 和检查；⑥ ~~partners-view 两条 unused import~~（11-06 已删，eslint 干净）。
+  - 11-06 13:10 c3 停在这里（Annie「算了，收工回家做吧」）：已合最新 main（1b7255a9），tsc 过。家里接手从 ① 开始：components/dispatch/farm-out-guests.tsx 表头在「Adult / Child / Infant」后面加「Product」（只在有订单带 product_options 时出），格子：只有一个选项 ⇒ 直接写 display_name；多个 ⇒ 下拉（空着时虚线琥珀框「Pick a product」，同 Choose hotel…），onChange 调 patch(o, {rate_item_id})；表下黄字「Product is not picked for N orders.」（放在 noPayable 那句前面）。然后 ②–⑤。
+  - 后端 2c 还没上 main（迁移 v160，排 v154 → v159（Notes）→ v160）。上了以后只读核字段 ⇒ 合 main，合时贴 How to use 定稿 + 截图。
+  - 🟡 **11-07 家里 86 [e4bb84] 接手做完 ①–⑤（a4 派），推分支、没合 main**（字段照后端 2c task/farm-out-item-rates **8f951f4c** 只读核对；最终形状等 a4 转后端 SHA）：
+    - ① components/dispatch/farm-out-guests.tsx：Seat guests 的 farm_out 带 product_options 才出 Product 列（在 Adult / Child / Infant 后、Pick-up hotel 前）。只有一个产品 ⇒ 直接写全名；好几个 ⇒ 下拉（选项 = 后端给的全名），没选是「Pick a product」虚线琥珀框（同 Choose hotel…），选了 PATCH {rate_item_id}（改回空 = null），存好重读；表下黄字「Product is not picked for N orders.」，这时应付那句换成「Pick a product, or type an amount.」。没勾 orders.money_view ⇒ 只读（选了的写全名、没选的琥珀字 Not picked），不发 PATCH（后端带 rate_item_id 会 403）——**等 Annie 答**，改成能改只动 `canPickProduct` 那一行（后端闸也要一起放）。
+    - ② Farm out Report：后端行里带 product 才出 Product 列（Tour 后面，同后端 CSV 列序），没选写灰「—」，合计行跟着挪。CSV 后端已加 Product 列，前端不用改。
+    - ③ ⬆ Import rates：预览里 new 行标「New product」（components/ui/bulk-import.tsx 加可选 statusText，别的页面不变）。后端 preview 行不带 label（RowResult.to_json 没输出），所以预览显示文件里写的产品名，不显示后端拼的全名；要显示全名得后端把 label 输出到 JSON（**需要后端，非必须**）。
+      - **11-08 补**（a4 转后端 c2：preview 每行多一个 label = 全名，error 行 ""，只加在结算价导入上）：Import 预览行有非空 label ⇒ Product 栏写全名；没有（旧后端）或空 ⇒ 照文件里写的。StandardImport / fromImportResponse 加可选 labelColumn（只有结算价导入传 "product"，别的页面不变）。fo-settings 补 2 条（旧后端照文件、带 label 写全名 / error 行照文件）127/127；tsc / eslint（0 error，3 条旧 warning 不是这次的）/ build 过。没合 main，等后端 SHA。
+    - ④ How to use 换定稿（partners-view.tsx `RATES_HOW_TO` 8 条：preview 题 d A 稿；第 2 条末加「Everywhere else the system shows the full name: tour, product and partner, for example West Rim Premium Pass - C Tour.」；第 7 条用题 b B 句；第 8 条加「the product can be the short name (Premium Pass) or the full name (West Rim Premium Pass - C Tour)」）。第 2、8 条加的那两句是 86 照「加全名那句 / 短名全名都能对」写的，preview 里没原文，合 main 时把原文一起给 Annie 看。去掉旧的「Infants are never counted…」页脚（v3 Infant 有价就算）。
+    - ⑤ 检查：fo-settings 125/125（mock rates 换 v3 products、PUT 校验照后端原话；价格段整段重写：三列显示、No products yet.、Edit / 全名灰字 / 票种灰掉 / + Add price / + Add product / 前端先挡 / ↑ / PUT 形状 / ✓ Saved / 500 / 过期 id / How to use；Import 六列 + New product + 全名对上）、fod 57/57（da-mock 加 ctl.foProducts：旧后端没列 / 多产品下拉 + PATCH + 重算应付 / 单产品直接写 / 没 money_view 只读）、fr 27/27（fr-mock 加 ctl.v3）、tsc 0、eslint 0 错（3 旧 warning）。
 - c3 出 v3 preview（同链接 FCnzWr3MtKki8bxPfS1Yhg 新版本，整页换成团 → 产品），题 a–d（推荐都 A）+ How to use 8 条原文已原样转 Annie。
 - **Annie 答（原话）**：「preview里的问题  1A 2 B 3 这个产品必须跟着partner的名字 比如 West Rim Premium Pass - Ctour」⇒ 题 a A（多产品新单空着要选）；题 b B（存价不重算，How to use 第 7 条用 B 句）；题 c：产品名要带合作公司名，例「West Rim Premium Pass - Ctour」，新建 / 报错没明说。49 在问：名字是系统自动拼（staff 只打 Premium Pass，到处显示「West Rim Premium Pass - C Tour」）还是 staff 打全名；导入对不上时新建还是报错。题 d 没答。49 追问两点（推荐：系统自动拼全名「<Tour> <Product> - <Partner>」，staff 只打短名；导入对不上就新建，短名 / 全名都能对）。
 - ✅ **Annie（原话）：「同意推荐，动手」** ⇒ G263 v3 定稿：题 a A、题 b B、全名系统自动拼、导入新建、How to use 用 A 稿（第 7 条 B 句、第 2 条加全名一句、第 8 条短名 / 全名都能对）。已转 4a / 2c（请后端给 display_name、v159 SQL 给 Annie；2c 约 1 天，今天不上，14:15 推 WIP，今晚家里接着做，先发最终接口形状）和 c3（task/farmout-products，排在 G266 ①、98 之后，照 mock 做，后端上了核字段再合）。

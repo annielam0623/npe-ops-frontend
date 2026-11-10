@@ -166,6 +166,8 @@ export function FarmOutReportView() {
       : state.kind === "loading"
         ? state.previous
         : null;
+  // G263 v3：后端带 product 才出 Product 列（旧后端照旧 12 列）。
+  const showProduct = !!rows?.some((r) => r.product !== undefined);
   const today = range ? laToday() : "";
   const csvUrl = range ? farmOutReportCsvUrl(range.from, range.to, pid) : "#";
 
@@ -248,6 +250,7 @@ export function FarmOutReportView() {
                   <tr>
                     <th className={TH}>Date</th>
                     <th className={TH}>Tour</th>
+                    {showProduct ? <th className={TH}>Product</th> : null}
                     <th className={TH}>Order#</th>
                     <th className={TH}>OTA conf#</th>
                     <th className={TH}>Guest</th>
@@ -264,7 +267,7 @@ export function FarmOutReportView() {
                   {!rows || rows.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={12}
+                        colSpan={showProduct ? 13 : 12}
                         className="p-6 text-center text-[#1a1a1a] night:text-white/35"
                       >
                         {state.kind === "loading"
@@ -283,6 +286,15 @@ export function FarmOutReportView() {
                         >
                           <td className={TD}>{shortDate(r.date)}</td>
                           <td className={TD}>{r.tour}</td>
+                          {showProduct ? (
+                            <td className={TD} data-report-product>
+                              {r.product || (
+                                <span className="text-[#999] night:text-white/35">
+                                  —
+                                </span>
+                              )}
+                            </td>
+                          ) : null}
                           <td className={cn(TD, "font-mono")}>
                             {r.order_number}
                             {r.status === "gone_after_farm_out" ? (
@@ -324,7 +336,7 @@ export function FarmOutReportView() {
                         </tr>
                       ))}
                       <tr className="bg-[#efeee8] font-semibold night:bg-white/[.06]">
-                        <td className={TD} colSpan={5}>
+                        <td className={TD} colSpan={showProduct ? 6 : 5}>
                           Total · {rows.length}{" "}
                           {rows.length === 1 ? "order" : "orders"}
                         </td>

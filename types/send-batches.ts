@@ -4,7 +4,10 @@ export interface SendBatchSummary {
   file_rows: number;
   /** 至少一条渠道发出去的。 */
   sent: number;
+  /** 置顶 109 起不含两个渠道都没地址的客人（那些在 no_contact）。 */
   failed: number;
+  /** 置顶 109 W1：没号码也没邮箱、什么都没发的客人（旧后端没有 = 0）。 */
+  no_contact?: number;
   skipped: number;
   /** 文件里有、但这一批既没有发送记录也没有跳过记录的（断开后剩下的几组）。 */
   not_sent: number;

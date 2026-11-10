@@ -156,6 +156,24 @@ async function run() {
   check("合作公司下拉：All partners + 启用的公司", JSON.stringify(await evaluate("return [...document.querySelector('select[aria-label=Partner]').options].map(o => o.textContent);")) === JSON.stringify(["All partners", "Partner A", "Partner B"]));
   check("Export CSV 是下载链接：format=csv、日期范围", await evaluate(`const a = [...document.querySelectorAll('a')].find(a => a.textContent.trim() === 'Export CSV'); return !!a && a.hasAttribute('download') && a.getAttribute('href').startsWith('/api/farm-out/report?') && a.getAttribute('href').includes('format=csv') && a.getAttribute('href').includes('from=${monthStart}') && !a.getAttribute('href').includes('partner_id');`));
 
+  // G263 v3：后端带 product ⇒ Tour 后面多一列 Product（全名，同 CSV 的列序）；没选产品的写灰「—」；合计行跟着往后挪一格
+  await ctl({ v3: true });
+  await goto(`${APP}/farm-out-report`);
+  await waitFor("document.querySelectorAll('thead th').length === 13 && document.querySelectorAll('tbody tr').length === 4");
+  await helpers();
+  {
+    const h3 = await evaluate("return $heads();");
+    check("G263 v3：13 列，Product 在 Tour 后面（同后端 CSV 列序）", JSON.stringify(h3) === JSON.stringify(["Date", "Tour", "Product", "Order#", "OTA conf#", "Guest", "Adults", "Children", "Partner", "Handled by", "Guest paid", "Payable", "Difference"]), JSON.stringify(h3));
+    const r3 = await evaluate("return $rows();");
+    check("G263 v3：Product 写后端拼好的全名；没选产品的写 —（灰）", r3[0][2] === "West Rim Premium Pass - Partner A" && r3[1][2] === "—" && (await evaluate("return getComputedStyle(document.querySelectorAll('[data-report-product]')[1].querySelector('span')).color === 'rgb(153, 153, 153)';")), JSON.stringify(r3.slice(0, 3).map((r) => r[2])));
+    check("G263 v3：合计行照旧对齐（成人 / 儿童 / 金额在各自的列下）", JSON.stringify(r3[3].filter(Boolean)) === JSON.stringify(["Total · 3 orders", "5", "1", "$895.00", "$505.00", "$240.00"]) && r3[3].length === 7 && (await evaluate("const t = document.querySelectorAll('tbody tr')[3].children; return t[0].colSpan === 6 && t[1].textContent === '5';")), JSON.stringify(r3[3]));
+  }
+  await ctl({ v3: false });
+  await goto(`${APP}/farm-out-report`);
+  await waitFor("document.querySelectorAll('thead th').length === 12 && document.querySelectorAll('tbody tr').length === 4");
+  await helpers();
+  await evaluate(SEL);
+
   let before = (await mockLog()).length;
   await evaluate("$sel(document.querySelector('select[aria-label=Partner]'), '1');");
   await waitFor("document.querySelectorAll('tbody tr').length === 3");

@@ -1,3 +1,5 @@
+import type { OutcomeFields } from "@/lib/send-outcome";
+
 /** 早班发送方式；旧页面默认 SMS Only。 */
 export type MorningSendType = "combined" | "sms" | "email";
 
@@ -48,7 +50,7 @@ export interface MorningPreview {
 }
 
 /** POST /send/morning-pickup 结果里的一行；文件里每一行都有，没选中的 skipped=true。 */
-export interface MorningSendResult {
+export interface MorningSendResult extends OutcomeFields {
   order: string;
   name: string;
   phone: string;
@@ -71,6 +73,9 @@ export interface MorningSendResponse {
   total: number;
   sent: number;
   failed: number;
+  /** 置顶 109：没号码也没邮箱的客人（旧后端没有）。页面按每行 outcome 自己数。 */
+  no_contact?: number;
+  not_sent?: number;
   skipped: number;
   results: MorningSendResult[];
 }

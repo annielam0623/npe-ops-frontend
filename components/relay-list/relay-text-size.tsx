@@ -309,6 +309,14 @@ export function useRelayCellFont(sheet: string | null, basePx: number) {
   };
 }
 
+/** 这张单当天「Whole page」加减了几 px（置顶 112 Q6 A：Total Pax 只跟整页走，不跟整列 / 整行）。 */
+export function useRelayPageDelta(sheet: string | null): number {
+  const t = useContext(RelayTextContext);
+  if (!t?.ready || !sheet) return 0;
+  const d = t.current(sheet).page?.d ?? 0;
+  return Math.max(TEXT_MIN, Math.min(TEXT_MAX, d));
+}
+
 /** 每张单上方（只在屏幕上）：「Aa Text size」键、没存的提示、最近 5 次，编辑时下面是编辑条。 */
 export function SheetTextBar({
   sheet,

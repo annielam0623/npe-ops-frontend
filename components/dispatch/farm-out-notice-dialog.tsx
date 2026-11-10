@@ -30,6 +30,14 @@ import { describeError } from "@/lib/api-errors";
 import { previewFarmOutNotice, sendFarmOutNotice } from "@/lib/farm-out-api";
 import { formatTime } from "@/lib/farm-out-time";
 import { chunk, SEND_BATCH_SIZE } from "@/lib/send-batches";
+import {
+  channelCell,
+  countOutcomes,
+  failedReason,
+  legacyChannel,
+  outcomeStats,
+  resolveOutcome,
+} from "@/lib/send-outcome";
 import { cn } from "@/lib/utils";
 import type { SeatingOrder } from "@/types";
 import type {
@@ -41,13 +49,16 @@ import type {
 
 import { sentLabel, whenText } from "./farm-out-guests";
 
-/** 渠道状态给 staff 看的写法：sent:<sid> → Sent；没发这个渠道 → —；失败 / 跳过保留后端的原因。 */
-function statusText(s: string | null | undefined): string {
-  if (!s) return "—";
-  if (s.startsWith("sent")) return "Sent";
-  return s;
+/**
+ * 一行的结论（置顶 109）：后端 outcome / *_outcome 优先；旧后端按原文换算——null = 没发这个渠道，
+ * "sent…" / "failed: …" / "skipped - no email|phone"。失败照旧把后端原因写在格子里。
+ */
+function rowOutcome(r: FarmOutNoticeResult) {
+  return resolveOutcome(r, {
+    sms: legacyChannel(r.sms_status, r.sms_status != null),
+    email: legacyChannel(r.email_status, r.email_status != null),
+  });
 }
-const isFailed = (s: string | null | undefined) => !!s && /fail/i.test(s);
 
 type Channel = "combined" | "sms" | "email";
 const TYPES = [
@@ -99,7 +110,6 @@ export function FarmOutNoticeDialog({
   // 后端说没发的：缺资料 / 短信超长（blocked）、已发过又没勾 Send anyway（skipped_sent）。
   const [blocked, setBlocked] = useState<FarmOutNoticeBlocked[]>([]);
   const [skippedSent, setSkippedSent] = useState<FarmOutNoticeSkipped[]>([]);
-  const [counts, setCounts] = useState({ sent: 0, failed: 0 });
   const [stop, setStop] = useState<{
     maybe: string[];
     notSent: string[];
@@ -182,14 +192,11 @@ export function FarmOutNoticeDialog({
     setResults([]);
     setBlocked([]);
     setSkippedSent([]);
-    setCounts({ sent: 0, failed: 0 });
     setStop(null);
     const batches = chunk(nums, SEND_BATCH_SIZE);
     const all: FarmOutNoticeResult[] = [];
     const allBlocked: FarmOutNoticeBlocked[] = [];
     const allSkipped: FarmOutNoticeSkipped[] = [];
-    let sentN = 0;
-    let failedN = 0;
     for (let i = 0; i < batches.length; i++) {
       try {
         const r = await sendFarmOutNotice(
@@ -201,12 +208,9 @@ export function FarmOutNoticeDialog({
         all.push(...r.results);
         allBlocked.push(...(r.blocked ?? []));
         allSkipped.push(...(r.skipped_sent ?? []));
-        sentN += r.sent;
-        failedN += r.failed;
         setResults([...all]);
         setBlocked([...allBlocked]);
         setSkippedSent([...allSkipped]);
-        setCounts({ sent: sentN, failed: failedN });
         setProgress(all.length + allBlocked.length + allSkipped.length);
       } catch (e) {
         setStop({
@@ -224,6 +228,10 @@ export function FarmOutNoticeDialog({
   const nameOf = (n: string) =>
     list.find((o) => o.order_number === n)?.name || "";
   const notSentCount = blocked.length + skippedSent.length;
+  // 置顶 109：一单一个结论，按每行算（旧后端把两个渠道都没地址的算进 failed，这里归 No contact）。
+  const outcomeCounts = countOutcomes(
+    results.map((r) => rowOutcome(r).outcome),
+  );
   const logFailed = results.filter((r) => r.log_failed);
 
   return (
@@ -519,19 +527,17 @@ export function FarmOutNoticeDialog({
           ) : null}
           {phase === "done" ? (
             <div className={RESULT_SUMMARY}>
-              <ResultStat
-                label="Sent"
-                value={counts.sent}
-                className="text-[#BA7517]"
-              />
-              <ResultStat
-                label="Failed"
-                value={counts.failed}
-                className="text-[#A32D2D]"
-              />
+              {outcomeStats({ ...outcomeCounts, not_sent: 0 }).map((s) => (
+                <ResultStat
+                  key={s.label}
+                  label={s.label}
+                  value={s.value}
+                  className={s.className}
+                />
+              ))}
               <ResultStat
                 label="Not sent"
-                value={notSentCount}
+                value={notSentCount + outcomeCounts.not_sent}
                 className="text-[#A32D2D]"
               />
               <ResultStat label="Total" value={results.length + notSentCount} />
@@ -548,25 +554,28 @@ export function FarmOutNoticeDialog({
                 </tr>
               </thead>
               <tbody>
-                {results.map((r) => (
-                  <tr key={r.order_number} className={TR}>
-                    <td className={TD}>{r.order_number}</td>
-                    <td className={TD}>{r.name}</td>
-                    {[r.email_status, r.sms_status].map((s, i) => (
-                      <td
-                        key={i}
-                        className={cn(
-                          TD,
-                          isFailed(s)
-                            ? "text-[#A32D2D]"
-                            : "font-medium text-[#BA7517]",
-                        )}
-                      >
-                        {statusText(s)}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
+                {results.map((r) => {
+                  const o = rowOutcome(r);
+                  const cells = [
+                    channelCell("email", o.email, failedReason(r.email_status)),
+                    channelCell("sms", o.sms, failedReason(r.sms_status)),
+                  ];
+                  return (
+                    <tr
+                      key={r.order_number}
+                      data-outcome={o.outcome}
+                      className={TR}
+                    >
+                      <td className={TD}>{r.order_number}</td>
+                      <td className={TD}>{r.name}</td>
+                      {cells.map((c, i) => (
+                        <td key={i} className={cn(TD, c.className)}>
+                          {c.label}
+                        </td>
+                      ))}
+                    </tr>
+                  );
+                })}
                 {blocked.map((b) => (
                   <tr
                     key={`b-${b.order_number}`}

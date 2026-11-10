@@ -12,9 +12,12 @@ import {
   TR,
 } from "@/components/tickets-send/legacy-ui";
 import {
-  NO_ADDRESS_LABEL,
-  noAddressStats,
-} from "@/components/tickets-send/config";
+  channelCell,
+  countOutcomes,
+  legacyChannel,
+  outcomeStats,
+  resolveOutcome,
+} from "@/lib/send-outcome";
 import { cn } from "@/lib/utils";
 import type { MorningSendResult, MorningSendType } from "@/types";
 
@@ -27,53 +30,18 @@ export interface MorningSendStop {
 }
 
 /**
- * 逐单表每个渠道的写法，和 Tickets / Tour 结果页一模一样（Annie 2026-10-20：morning 的算法要跟 tour 和
- * ticket 的一样，分开算，分开显示）：Sent 琥珀色 / Failed 红 / No number、No email / — 没选这个渠道。
+ * 一行的结论（置顶 109）：后端带 outcome / *_outcome 就用；旧后端按原文换算——没手机号时后端照样试发短信、
+ * 记 failed，所以短信看号码本身；没邮箱时 email_status 留空。
  */
-type ChannelOutcome = "sent" | "failed" | "no-address" | "not-selected";
-const OUTCOME: Record<ChannelOutcome, { label: string; className: string }> = {
-  sent: { label: "Sent", className: "font-medium text-[#BA7517]" },
-  failed: { label: "Failed", className: "text-[#A32D2D]" },
-  // 标签按渠道换（NO_ADDRESS_LABEL），这里的字只是占位。
-  "no-address": { label: "No address", className: "text-[#1a1a1a]" },
-  "not-selected": { label: "—", className: "text-[#1a1a1a]" },
-};
-
-/**
- * 一个渠道的结果。后端没邮箱时不发、email_status 留空；没手机号时照样调短信接口、记 failed，
- * 所以短信看号码本身（同 isResultNoAddress）。
- */
-function channelOutcome(
-  channel: "sms" | "email",
-  sendType: MorningSendType,
-  r: MorningSendResult,
-): ChannelOutcome {
-  if (sendType !== "combined" && sendType !== channel) return "not-selected";
-  const raw = channel === "sms" ? r.sms_status : r.email_status;
-  if (channelStatus(raw).tone === "sent") return "sent";
-  if (channel === "sms" ? !(r.phone ?? "").trim() : !raw) return "no-address";
-  return "failed";
-}
-
-export function isResultSent(r: MorningSendResult): boolean {
-  return (
-    channelStatus(r.sms_status).tone === "sent" ||
-    channelStatus(r.email_status).tone === "sent"
-  );
-}
-
-/**
- * 一条都没发、而且选了的渠道都是因为没地址（没手机号 / 没邮箱）：单独算（汇总格写 No number / No email），不算失败。
- * 后端没邮箱时不发、email_status 留空；没手机号时照样调短信接口，记 failed，所以看号码本身。
- */
-export function isResultNoAddress(
+export function morningRowOutcome(
   r: MorningSendResult,
   sendType: MorningSendType,
-): boolean {
-  if (r.skipped || isResultSent(r)) return false;
-  const smsNoAddress = sendType === "email" || !(r.phone ?? "").trim();
-  const emailNoAddress = sendType === "sms" || !r.email_status;
-  return smsNoAddress && emailNoAddress;
+) {
+  const on = (c: "sms" | "email") => sendType === "combined" || sendType === c;
+  return resolveOutcome(r, {
+    sms: legacyChannel(r.sms_status, on("sms"), !!(r.phone ?? "").trim()),
+    email: legacyChannel(r.email_status, on("email")),
+  });
 }
 
 export function MorningResults({
@@ -108,18 +76,14 @@ export function MorningResults({
 }) {
   // 服务端查重跳过的（Already sent today / Listed twice in this file）：没发，单独算。
   const skippedInResults = results.filter((r) => r.skipped).length;
-  // 不在 results 里的「以前发过」只加进 Skipped 这一格，不参与下面 Failed 的减法。
+  // 不在 results 里的「以前发过」只加进 Skipped 这一格。
   const skipped = skippedInResults + alreadySent;
-  const sent = results.filter(isResultSent).length;
-  const noAddressResults = results.filter((r) =>
-    isResultNoAddress(r, sendType),
+  // 置顶 109：一位客人一个结论，后端 outcome 优先；没号码 / 没邮箱不算失败。
+  const counts = countOutcomes(
+    results
+      .filter((r) => !r.skipped)
+      .map((r) => morningRowOutcome(r, sendType).outcome),
   );
-  const noAddress = noAddressResults.length;
-  const countNo = (channel: "sms" | "email") =>
-    noAddressResults.filter(
-      (r) => channelOutcome(channel, sendType, r) === "no-address",
-    ).length;
-  const failed = results.length - skippedInResults - sent - noAddress;
   // 进度按订单算：文件里同一单第二行（Listed twice）也会回一条结果。
   const doneOrders = new Set(results.map((r) => r.order));
   const uncertain = new Set(stop?.uncertain ?? []);
@@ -177,14 +141,12 @@ export function MorningResults({
       ) : null}
 
       <div className={RESULT_SUMMARY}>
-        <ResultStat label="Sent" value={sent} className="text-[#BA7517]" />
-        <ResultStat label="Failed" value={failed} className="text-[#A32D2D]" />
-        {noAddressStats(sendType, countNo("sms"), countNo("email")).map((s) => (
+        {outcomeStats(counts).map((s) => (
           <ResultStat
             key={s.label}
             label={s.label}
             value={s.value}
-            className="text-[#1a1a1a]"
+            className={s.className}
           />
         ))}
         <ResultStat
@@ -225,11 +187,7 @@ export function MorningResults({
                 // 服务端跳过的：两列并成一格写原因（同 Tickets / Tour）。
                 if (r.skipped) {
                   return (
-                    <tr
-                      key={`${r.order}-${i}`}
-                      data-skipped
-                      className={TR}
-                    >
+                    <tr key={`${r.order}-${i}`} data-skipped className={TR}>
                       {left}
                       <td colSpan={2} className={cn(TD, "text-[#1a1a1a]")}>
                         Skipped: {r.message || "Skipped"}
@@ -237,18 +195,16 @@ export function MorningResults({
                     </tr>
                   );
                 }
-                const emailOutcome = channelOutcome("email", sendType, r);
-                const smsOutcome = channelOutcome("sms", sendType, r);
-                const email =
-                  emailOutcome === "no-address"
-                    ? { ...OUTCOME[emailOutcome], label: NO_ADDRESS_LABEL.email }
-                    : OUTCOME[emailOutcome];
-                const sms =
-                  smsOutcome === "no-address"
-                    ? { ...OUTCOME[smsOutcome], label: NO_ADDRESS_LABEL.sms }
-                    : OUTCOME[smsOutcome];
+                const o = morningRowOutcome(r, sendType);
+                // 失败原因照旧放在鼠标悬停（title），格子里只写 Failed。
+                const email = channelCell("email", o.email);
+                const sms = channelCell("sms", o.sms);
                 return (
-                  <tr key={`${r.order}-${i}`} className={TR}>
+                  <tr
+                    key={`${r.order}-${i}`}
+                    data-outcome={o.outcome}
+                    className={TR}
+                  >
                     {left}
                     <td
                       title={channelStatus(r.email_status).label}

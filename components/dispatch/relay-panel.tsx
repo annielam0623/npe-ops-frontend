@@ -25,6 +25,7 @@ import {
   fetchGuideNotice,
   fetchRelayPull,
   fetchRelaySendPreview,
+  noContactLine,
   type GuideNotice,
   type RelayGuest,
   type RelayPull,
@@ -364,6 +365,8 @@ export function RelayPanel({
   const [blockAny, setBlockAny] = useState<Set<string>>(() => new Set());
   /** Send to driver 在自己那一块，出错写在那一块里（不写进早班发送那一块，人看不到）。 */
   const [driverError, setDriverError] = useState<string | null>(null);
+  /** 置顶 109 Q6：这次没号码、没发的司机（灰字，不算失败）。 */
+  const [driverNoContact, setDriverNoContact] = useState<string | null>(null);
   /** 司机短信原文那格用：列名单 / 发完重读时跟着更新。 */
   const [hint, setHint] = useState<DriverNotice | null>(null);
   /** 导游短信原文那格用（打开这一天就拉一次；读不到 = 照旧写「还不发」）。 */
@@ -671,6 +674,7 @@ export function RelayPanel({
     try {
       const res = await sendDriverNotice(date, keys);
       setConfirm(null);
+      setDriverNoContact(noContactLine(res));
       if (res.failed.length) {
         setDriverError(
           `Not delivered to: ${res.failed.map((f) => `${f.name} (${f.error})`).join(", ")}`,
@@ -817,6 +821,11 @@ export function RelayPanel({
         {driverError ? (
           <p role="alert" className={cn(DARK_ERR, "m-0")}>
             {driverError}
+          </p>
+        ) : null}
+        {driverNoContact ? (
+          <p data-driver-no-contact className="m-0 text-[12.5px] text-white/60">
+            {driverNoContact}
           </p>
         ) : null}
 
@@ -1212,8 +1221,8 @@ export function RelayPanel({
                             (b.car.id != null ? `#${b.car.id}` : "This tour"),
                         )
                         .join(", ")}
-                      ): their guests will not get the reminder. Fix them on the Assign
-                      tab and save.
+                      ): their guests will not get the reminder. Fix them on the
+                      Assign tab and save.
                     </p>
                   ) : null}
                 </Box>
@@ -1417,6 +1426,8 @@ function GuideBox({
   const [checking, setChecking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [okText, setOkText] = useState<string | null>(null);
+  /** 置顶 109 Q6：这次没号码、没发的导游（灰字，不算失败）。 */
+  const [noContactText, setNoContactText] = useState<string | null>(null);
   const [skipped, setSkipped] = useState<ReadonlySet<string>>(new Set());
   const [extra, setExtra] = useState("");
   const [confirm, setConfirm] = useState<{
@@ -1537,6 +1548,7 @@ function GuideBox({
     try {
       const res = await sendGuideNotice(date, keys, extraText);
       setConfirm(null);
+      setNoContactText(noContactLine(res));
       setOkText(
         res.sent.length
           ? `✓ Texted ${plural(res.sent.length, "guide")}: ${res.sent.join(", ")}.`
@@ -1580,6 +1592,11 @@ function GuideBox({
       {okText ? (
         <p data-guide-ok className="m-0 text-[12.5px] text-[#4ade80]">
           {okText}
+        </p>
+      ) : null}
+      {noContactText ? (
+        <p data-guide-no-contact className="m-0 text-[12.5px] text-white/60">
+          {noContactText}
         </p>
       ) : null}
       <Box

@@ -1,4 +1,5 @@
 import { sendBatchHref } from "@/lib/send-log-api";
+import { channelCell, countOutcomes, outcomeStats } from "@/lib/send-outcome";
 import { cn } from "@/lib/utils";
 import type {
   TicketsGuest,
@@ -7,15 +8,7 @@ import type {
   TicketsSkipped,
 } from "@/types";
 
-import {
-  type ChannelOutcome,
-  channelOutcome,
-  isGuestNoAddress,
-  isGuestSent,
-  NO_ADDRESS_LABEL,
-  noAddressStats,
-  sendTypeShort,
-} from "./config";
+import { sendTypeShort, ticketRowOutcome } from "./config";
 import {
   LIGHT_BUTTON,
   RESULT_CARD,
@@ -38,15 +31,6 @@ export interface SendStop {
   /** 断开 / 超时 / 服务器出错：这一批可能已经在服务器上发出去了。 */
   maybeSent?: boolean;
 }
-
-/** 颜色同旧页面 .status-ok / .status-fail / .status-skip。 */
-const OUTCOME: Record<ChannelOutcome, { label: string; className: string }> = {
-  sent: { label: "Sent", className: "font-medium text-[#BA7517]" },
-  failed: { label: "Failed", className: "text-[#A32D2D]" },
-  // 标签按渠道换（NO_ADDRESS_LABEL），这里的字只是占位。
-  "no-address": { label: "No address", className: "text-[#1a1a1a]" },
-  "not-selected": { label: "—", className: "text-[#1a1a1a]" },
-};
 
 export function SendResults({
   sending,
@@ -73,25 +57,18 @@ export function SendResults({
   batchId?: number | null;
   onStartOver: () => void;
 }) {
-  const sent = results.filter(isGuestSent).length;
   const uncertainCount = stop?.uncertain.length ?? 0;
   const notAttemptedGuests = stop
     ? guests.slice(processed + uncertainCount)
     : [];
   // 服务端跳过的客人不在 results 里：按订单号对回客人（同一单不会出现两次，预览已经拦过）。
   const guestByOrder = new Map(guests.map((g) => [g.chd_number, g]));
-  // 没号码 / 没邮箱的单独算，不算失败；汇总格和每行的标签按渠道写 No number / No email。
-  const noAddressResults = results.filter((r) =>
-    isGuestNoAddress(sendType, guestByOrder.get(r.chd_number), r),
-  );
-  const noAddress = noAddressResults.length;
-  const countNo = (channel: "sms" | "email") =>
-    noAddressResults.filter(
-      (r) =>
-        channelOutcome(channel, sendType, guestByOrder.get(r.chd_number), r) ===
-        "no-address",
-    ).length;
-  const failed = results.length - sent - noAddress;
+  // 置顶 109：一位客人一个结论，后端 outcome 优先；没号码 / 没邮箱不算失败。
+  const rows = results.map((r) => ({
+    r,
+    o: ticketRowOutcome(sendType, guestByOrder.get(r.chd_number), r),
+  }));
+  const counts = countOutcomes(rows.map((x) => x.o.outcome));
 
   return (
     <section className={RESULT_CARD}>
@@ -156,14 +133,12 @@ export function SendResults({
       ) : null}
 
       <div className={RESULT_SUMMARY}>
-        <ResultStat label="Sent" value={sent} className="text-[#BA7517]" />
-        <ResultStat label="Failed" value={failed} className="text-[#A32D2D]" />
-        {noAddressStats(sendType, countNo("sms"), countNo("email")).map((s) => (
+        {outcomeStats(counts).map((s) => (
           <ResultStat
             key={s.label}
             label={s.label}
             value={s.value}
-            className="text-[#1a1a1a]"
+            className={s.className}
           />
         ))}
         <ResultStat
@@ -190,32 +165,13 @@ export function SendResults({
               </tr>
             </thead>
             <tbody>
-              {results.map((result, i) => {
-                const guest = guestByOrder.get(result.chd_number);
-                const emailOutcome = channelOutcome(
-                  "email",
-                  sendType,
-                  guest,
-                  result,
-                );
-                const smsOutcome = channelOutcome(
-                  "sms",
-                  sendType,
-                  guest,
-                  result,
-                );
-                const email =
-                  emailOutcome === "no-address"
-                    ? { ...OUTCOME[emailOutcome], label: NO_ADDRESS_LABEL.email }
-                    : OUTCOME[emailOutcome];
-                const sms =
-                  smsOutcome === "no-address"
-                    ? { ...OUTCOME[smsOutcome], label: NO_ADDRESS_LABEL.sms }
-                    : OUTCOME[smsOutcome];
+              {rows.map(({ r, o }, i) => {
+                const email = channelCell("email", o.email);
+                const sms = channelCell("sms", o.sms);
                 return (
-                  <tr key={`r${i}`} className={TR}>
-                    <td className={TD}>{result.chd_number}</td>
-                    <td className={TD}>{result.name}</td>
+                  <tr key={`r${i}`} data-outcome={o.outcome} className={TR}>
+                    <td className={TD}>{r.chd_number}</td>
+                    <td className={TD}>{r.name}</td>
                     <td className={cn(TD, email.className)}>{email.label}</td>
                     <td className={cn(TD, sms.className)}>{sms.label}</td>
                   </tr>

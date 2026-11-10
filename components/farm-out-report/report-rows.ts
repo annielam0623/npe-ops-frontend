@@ -23,6 +23,8 @@ export function reportRows(data: unknown): FarmOutReportRow[] {
     return {
       date: str(r.date),
       tour: str(r.tour),
+      // G263 v3：这单按哪个产品结算（后端拼好的全名，没选 = ""）；旧后端没有这个键 ⇒ undefined，不出 Product 列。
+      product: typeof r.product === "string" ? r.product : undefined,
       order_number: str(r.order_number),
       ota_conf_number: str(r.ota_conf_number),
       guest: str(r.guest),

@@ -1,3 +1,4 @@
+import type { OutcomeFields } from "@/lib/send-outcome";
 /** 发送方式：两条都发 / 只发短信 / 只发邮件。 */
 export type TicketsSendType = "combined" | "sms" | "email";
 
@@ -80,7 +81,7 @@ export interface TicketsGuest {
   upload_row?: unknown;
 }
 
-export interface TicketsSendResult {
+export interface TicketsSendResult extends OutcomeFields {
   record_id: number;
   sms_ok: boolean;
   /** 成功时后端返回 {message_id} 对象，失败为 false——按真假判断。 */
@@ -98,7 +99,11 @@ export interface TicketsSkipped {
 }
 
 export interface TicketsSendBulkResponse {
+  /** 置顶 109 起按客人算（旧后端 = 全部试过的行）；页面按每行 outcome 自己数。 */
   sent: number;
+  failed?: number;
+  no_contact?: number;
+  not_sent?: number;
   results: TicketsSendResult[];
   skipped?: TicketsSkipped[];
 }

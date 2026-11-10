@@ -2,6 +2,7 @@
 // 控制：POST /__ctl {endMinute, fail401, pref, morning400, morningDelay}；GET /__log 取请求记录。
 const http = require("http");
 const staffPerm = require("./staff-perm-mock");
+const outcomeMock = require("./outcome-mock");
 
 const LA = "America/Los_Angeles";
 const today = new Intl.DateTimeFormat("en-CA", {
@@ -520,11 +521,19 @@ http
       const results = morningRows.map((r) => {
         if (!orders.includes(r.order_number))
           return { order: r.order_number, name: r.name, phone: r.phone, pickup_time: r.pickup_time, sms_status: "", email_status: "", skipped: true };
-        // 同后端：没手机号照样调短信接口 → failed；没邮箱不发、留空。
+        // 旧后端：没手机号照样调短信接口 → failed；没邮箱不发、留空。
+        // 置顶 109：ctl.newOutcome = 新后端——没号码记 "skipped - no phone"，每行带 outcome / *_outcome。
+        if (ctl.newOutcome) {
+          const sms = sendType === "email" ? "" : r.phone ? "sent:SM1" : "skipped - no phone";
+          const email = sendType === "sms" ? "" : r.email ? "sent" : "skipped - no email";
+          const row = { order: r.order_number, name: r.name, phone: r.phone, pickup_time: r.pickup_time, sms_status: sms, email_status: email, skipped: false };
+          return outcomeMock.withOutcome(row, { sms: outcomeMock.channel(sms, sendType !== "email"), email: outcomeMock.channel(email, sendType !== "sms") });
+        }
         const sms = sendType === "email" ? "" : r.phone ? "sent:SM1" : "failed: Twilio 21604 missing To";
         const email = sendType === "sms" ? "" : r.email ? "sent" : "";
         return { order: r.order_number, name: r.name, phone: r.phone, pickup_time: r.pickup_time, sms_status: sms, email_status: email, skipped: false };
       });
+      if (ctl.newOutcome) return send(res, 200, { total: results.length, ...outcomeMock.counts(results.filter((r) => !r.skipped)), results });
       return send(res, 200, { total: results.length, results });
     }
     send(res, 404, { detail: "mock: not found" });
