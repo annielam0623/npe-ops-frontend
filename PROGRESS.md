@@ -1551,7 +1551,8 @@ D. 已完成、待从置顶移走：
   - ✅ Annie（原话）：「110排班 A」⇒ 「加一条」= 现有 Max people on a shift（班次 + 星期几 + 人数 1–20，每种班可各设一条），照 preview 做，不另加；110 题 1–8 全 A 定稿。「全部推荐」只答了 110，107 / 112 另等。**还没「动手」**（已问）。
   - ✅ **Annie 11-09 晚（原话，在 78）：「110动手」** ⇒ 前端派 03（推分支，后端先上 main 后核字段再合）；后端已转 0a 派 40 开工。
 - ✅ **（另一件，78 派）Staff Schedule › Period「Share with staff」已上 main 150377f4（03，11-09）**：3c 的分支 origin/task/schedule-period-share 6a940d3c 合最新 main；只读核后端 9825a375（G268 + v161）字段和 mock 一致（dry_run 真 bool；预览 {start,end,weeks,week_starts,unpublished,recipients,not_reached,already_shared}；409 unpublished；成功 {notified,not_reached}；reason "no email" / "email could not be sent" / "link could not be made"）。照 109 改结果显示：没邮箱灰字「No email: 名字.」不算失败，真失败红字 Not sent + 原因，Sent to N staff. 绿 #3B6D11。检查：sch 433、sc 44、ns 56、cs 190、nav 39、tsc / eslint 0 error / build 过。Annie 验收：Period 选只有 ZZ Test / azhou@ 员工的周，Share with staff 预览看名单和灰字 No email，真发只发测试员工。
-- 🟡 **03 [44f0b4] 110 功能已写完，分支 `task/110-rules` dbd9d4de（worktree D:
+- ✅ **03 [44f0b4] 110 已上 main 59d44a6d（11-09 晚）**：后端 40 先上 main 8d7ea90f（合并 a7d6981c）；只读核 schedule_rules.py 的 _r_max_per_shift_day / _r_weekly_hours_alert / _r_min_days_on_shift 和前端存的形状一致；顺手补 Max people 只收整数（同后端）。合最新 main 后 sch 455/455、nav 39/39、引擎 27/27、tsc / eslint 0 error / build 过。Annie 验收：Staff Schedule › Rules 加 Max people on a shift（Every shift、1）和 Weekly hours alert（40），看清单冲突琥珀字、Schedule 标签日期下「Close 2 (max 1)」+ 班卡琥珀框、名字下「xx h this week」、Auto-fill 预览黄框原因 + Over 40 hours 一行。
+- （历史）🟡 **03 [44f0b4] 110 功能已写完，分支 `task/110-rules` dbd9d4de（worktree D:
 pe-ops-frontend-03c），推分支、不合 main**：等后端 40 上 main 给 SHA，核字段再合（后端先上，否则存新规则 400）。照 preview + 形状，题 1–8 全 A：
   - Max people on a shift（`max_per_shift_day`）：Auto-fill 严格遵守、排不下写预览；固定 / 保留的班本身超了照排、写「Mon close has 2, at most 1 (fixed or kept shifts).」；手动排班不拦，日期下琥珀「Close 2 (max 1)」+ 班卡琥珀框。
   - Minimum days on a shift：Who 三选一（employee_ids / exclude_employee_ids，Everyone 不带键）；旧 employee_id 打开当 Only，存时换写法。
