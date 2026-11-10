@@ -1,3 +1,4 @@
+import { noAddressLabel } from "@/lib/send-outcome";
 import type { ContactBadge } from "@/components/ui/conversation-modal";
 import { LA_TIME_ZONE } from "@/lib/la-date";
 import type { MorningTrackingRow } from "@/types";
@@ -134,7 +135,12 @@ export function smsStatusOf(raw: string): {
     return { label: "Sent", tone: "neutral", sent: true };
   if (s.includes("failed"))
     return { label: "Failed", tone: "bad", sent: false };
-  return { label: raw, tone: "none", sent: false };
+  // 置顶 109 Q1：没号码、没试（后端 W1 起写 skipped - no phone）⇒ 灰字 No number，不显示原文。
+  return {
+    label: noAddressLabel(raw, "sms") ?? raw,
+    tone: "none",
+    sent: false,
+  };
 }
 
 export function emailStatusOf(state: MorningTrackingRow["email_state"]): {

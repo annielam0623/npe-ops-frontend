@@ -1,5 +1,6 @@
 "use client";
 
+import { isNoAddressLabel } from "@/lib/send-outcome";
 import {
   type DragEvent,
   Fragment,
@@ -549,7 +550,11 @@ function Cell({
           <span
             className={cn(
               "inline-block text-[11px] font-semibold",
-              s.label === "Undelivered" ? "text-[#c97a00]" : TONE_CLASS[s.tone],
+              s.label === "Undelivered"
+                ? "text-[#c97a00]"
+                : isNoAddressLabel(s.label)
+                  ? "text-[#6B6B6B]"
+                  : TONE_CLASS[s.tone],
             )}
           >
             {s.label}

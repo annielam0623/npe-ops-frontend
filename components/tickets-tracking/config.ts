@@ -1,3 +1,4 @@
+import { noAddressLabel } from "@/lib/send-outcome";
 import type { BroadcastCandidate } from "@/components/ui/broadcast-dialog";
 import type { ContactBadge } from "@/components/ui/conversation-modal";
 import { tourTypeLabel } from "@/components/tickets-send/config";
@@ -266,7 +267,8 @@ export function smsLabel(raw: string): { label: string; tone: DeliveryTone } {
     case "undelivered":
       return { label: "✗ Undelivered", tone: "bad" };
     default:
-      return { label: "—", tone: "none" };
+      // 置顶 109 Q1：没号码、没试（后端 W2 起写 skipped - no phone）⇒ 灰字 No number。
+      return { label: noAddressLabel(raw, "sms") ?? "—", tone: "none" };
   }
 }
 
@@ -287,7 +289,11 @@ export function emailLabel(row: TicketsTrackingRow): {
     case "failed":
       return { label: "✗ Failed", tone: "bad" };
     default:
-      return { label: "—", tone: "none" };
+      // 置顶 109 Q1：没邮箱、没试 ⇒ 灰字 No email。
+      return {
+        label: noAddressLabel(row.email_status, "email") ?? "—",
+        tone: "none",
+      };
   }
 }
 

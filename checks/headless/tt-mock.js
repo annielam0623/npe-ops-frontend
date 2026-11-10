@@ -29,7 +29,7 @@ let rows = [
     notes_count: 2, latest_note_body: "Thanks", latest_note_direction: "sms_in", latest_note_channel: "sms", action_taken_by: "Annie" }),
   row({ id: 5, order_number: "T05", guest_name: "ZZ Five", pickup_time: "7:15 AM", pickup_location: "", pickup_location_id: 0, pickup_hotel_name: "", wa_count: 1, latest_wa_body: "Hello?", latest_wa_direction: "whatsapp_in", latest_wa_ts: "2026-10-09T18:00:00+00:00", wa_unhandled: true, wa_is_newer: true,
     wa_in_ts: new Date().toISOString(), upload_row: [["Order Number", "T05"], ["Agent", "Viator"]] }),
-  row({ id: 6, order_number: "T06", guest_name: "ZZ Six", tour_type: "mystery_tour", sms_status: "", email_status: "", email_state: "" }),
+  row({ id: 6, order_number: "T06", guest_name: "ZZ Six", tour_type: "mystery_tour", sms_status: "skipped - no phone", email_status: "skipped - no email", email_state: "" }),
 ];
 const notes = {};
 // G62 群发查重：check 回的 checked_at；已收过的每单「谁、几点」发的（洛杉矶 Oct 9, 3:00 PM）。

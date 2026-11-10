@@ -7,7 +7,7 @@ const YMD = /^\d{4}-\d{2}-\d{2}$/;
 const row = (id, batch_id, module, order, first, extra = {}) => ({ id, batch_id, sent_at: "2026-10-04T21:00:00+00:00", module, order_number: order, first_name: first, last_name: "Test", email: order.toLowerCase() + "@x", phone: "+1", tour_date: "2026-10-05", tour_type: "x", email_status: "sent", sms_status: "delivered", error_msg: null, sent_by: "annie", mtlv_eligible: false, ...extra });
 const GROUP_ROWS = {
   702: [row(7023, 702, "tour_confirmation", "CHD7", "ZZ Seven"), row(7022, 702, "tour_confirmation", "CHD6", "ZZ Six"), row(7021, 702, "tour_confirmation", "CHD5", "ZZ Five")],
-  701: [row(7013, 701, "tickets_reminder", "CHD3", "ZZ Three"), row(7012, 701, "tickets_reminder", "CHD2", "ZZ Two", { sms_status: "failed: 21211", email_status: "", error_msg: "Twilio 21211 invalid number" }), row(7011, 701, "tickets_reminder", "CHD1", "ZZ <b>One</b>", { mtlv_eligible: true, email_status: "" })],
+  701: [row(7013, 701, "tickets_reminder", "CHD3", "ZZ Three", { email_status: "skipped - no email" }), row(7012, 701, "tickets_reminder", "CHD2", "ZZ Two", { sms_status: "failed: 21211", email_status: "", error_msg: "Twilio 21211 invalid number" }), row(7011, 701, "tickets_reminder", "CHD1", "ZZ <b>One</b>", { mtlv_eligible: true, email_status: "" })],
   703: [row(7031, 703, "reply_sms", "CHD12", "ZZ Twelve", { email_status: "", sent_by: "jchen" })],
 };
 // ?batch=650：不在今天的组（不在组列表里，只有明细和行）。
