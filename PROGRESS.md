@@ -1468,6 +1468,7 @@ D. 已完成、待从置顶移走：
     - Q2 提示：「This sheet will print on 2 pages. Make the text smaller.」
     - Q3 How to use：「If a sheet no longer fits on one page after you make the text bigger, the space between hotels and inside each row gets smaller by itself until the sheet fits. Your text size does not change. If the sheet still does not fit, a yellow note above it says how many pages it will print on; make the text smaller.」
     - Q1 / Q4 / Q5 没答；**还没「动手」**。家里窗口：先派工作窗口按上面两句更新 preview（同链接），再把 Q1 / Q4 / Q5 + 新两句给 Annie。
+    - ✅ 11-09 晚 preview 已按原话更新（工作窗口 `npe-ops-frontend-59`[66d88c]，78 派；同链接 https://claude.ai/artifact/QWBDj3uBURELbUJUzuThWY 第 2 版）：黄框和 How to use 换成上面两句，题表 Q2 / Q3 标「已按 Annie 原话改」，Q1 / Q4 / Q5 保留待答。代码没动。
 - 动手时（79 想法）：components/relay-list/relay-list.css 加 `--rl-gap` / `--rl-py` 变量和 `[data-squeezed]` 线；relay-list-view.tsx 每张单渲染后量内容高度 vs 它自己的纸高 − 上下页边距（A4 / Letter、横竖），按步压、超了出黄框；字号 / Aa 改动、换纸张后重算。验收见 35 派工：放大超几行 → 自动一页、间隔看得见；压不下 → 印 2 页 + 提示；一页的单、颜色 / 方向 / 页边距 / 字号、11-03 空白页修法都不变。
 
 ### 111. Main Manifest 的 Sync Rezdy 键恢复（2026-11-09，Annie 原话：「把main manifest上的Rezdy同步钮打开吧」；35 问清再派）
