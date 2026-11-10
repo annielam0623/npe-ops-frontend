@@ -166,7 +166,7 @@ function Frame({
                 type="button"
                 aria-label="Open menu"
                 onClick={() => setOpen(true)}
-                className="rounded-[10px] border border-white/10 bg-white/[.04] px-2.5 py-1 text-sm text-white lg:hidden"
+                className="rounded-[10px] border border-white/10 bg-white/[.04] px-2.5 py-1 text-sm text-white lg:hidden max-sm:inline-flex max-sm:size-[26px] max-sm:items-center max-sm:justify-center max-sm:rounded-[7px] max-sm:p-0 max-sm:text-[13px]"
               >
                 ☰
               </button>
@@ -421,7 +421,7 @@ function FloatButton({
       aria-label={`Scroll to ${label.toLowerCase()}`}
       onClick={onClick}
       // 蓝色粗箭头（Annie 2026-10-11：「反正也是功能键」，照旧页面 cb3887d 的 .float-btn）。
-      className="flex size-[34px] items-center justify-center rounded-full border border-white/10 bg-[rgba(15,23,42,.84)] text-[#3b82f6] backdrop-blur-[10px] hover:bg-white/[.08] hover:text-[#60a5fa]"
+      className="flex size-[34px] items-center justify-center rounded-full max-sm:size-[30px] border border-white/10 bg-[rgba(15,23,42,.84)] text-[#3b82f6] backdrop-blur-[10px] hover:bg-white/[.08] hover:text-[#60a5fa]"
     >
       {children}
     </button>

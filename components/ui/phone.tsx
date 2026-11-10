@@ -26,7 +26,7 @@ export function PhoneShortcutStar({ className }: { className?: string }) {
       data-phone-star
       onClick={() => setPhoneShortcutsOpen(!open)}
       className={cn(
-        "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] border text-[15px] sm:hidden",
+        "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] border text-[15px] sm:hidden max-sm:h-[26px] max-sm:w-[26px] max-sm:rounded-[7px] max-sm:text-[13px]",
         open
           ? "border-[#facc15]/60 bg-[#facc15]/15 text-[#facc15]"
           : "border-white/15 bg-white/[.04] text-[#facc15]",

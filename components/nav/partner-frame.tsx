@@ -82,7 +82,7 @@ export function PartnerFrame({
             aria-label="Open menu"
             aria-expanded={menuOpen}
             onClick={() => setMenuOpen((o) => !o)}
-            className="rounded-[10px] border border-white/10 bg-white/[.04] px-2.5 py-1 text-sm text-white lg:hidden"
+            className="rounded-[10px] border border-white/10 bg-white/[.04] px-2.5 py-1 text-sm text-white lg:hidden max-sm:inline-flex max-sm:size-[26px] max-sm:items-center max-sm:justify-center max-sm:rounded-[7px] max-sm:p-0 max-sm:text-[13px]"
           >
             ☰
           </button>
