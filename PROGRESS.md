@@ -1497,6 +1497,7 @@ D. 已完成、待从置顶移走：
 - ⚠️ 等 Annie（d4 已问过，**不要再问**）：每班一人 = 一周最多 21 班位，加 Jessica 是 5 人 × 5 天 = 25 班：Jessica 当替补（推荐）/ 有人每周只上 4 天 / Jessica 固定几个班。
 - 后端：schedule_rules.py:289-298 白名单校验，前端定新类型 / 新字段形状发 d4，不迁移。
 - 35 请 Annie 新开一个前端工作窗口做 preview + 形状。
+- ✅ **Annie 11-09 晚（原话，在 78）：「统一全部推荐，但是还要加一条，可以设置一个班最多几个人」** ⇒ 78 理解为 110 题 1–8 全 A；「加一条」78 核对：题 ① Max people on a shift 已是「班次 + 星期几 + 人数（1–20）」，可以每种班各设一个数（Close 1、Open 2 各一条）——已问 Annie 是不是这个意思、还是另有不同；「全部推荐」是否也包括 107 / 112 也问了。**还没「动手」**。
 - 🟡 **03 [44f0b4] preview + 接口形状已交 78（11-09，没动手）**：preview https://claude.ai/artifact/C4WjXh8cnTnDVUUgyoAThX（模拟数据：Rules 清单、新增 / 改规则弹窗、Auto-fill 黄框带「哪条规则卡住」、手动排班列头琥珀「Close 2 (max 1)」+ 名字下「42.5 h this week」）+ 7 题（推荐都 A）：
   题 1 固定班 + 轮值超「最多 N 天」⇒ A 轮值跳过此人换下一位，没人接就空着写预览；题 2 固定 / 保留的班本身超人数 ⇒ A 照排 + 提醒；题 3 40 小时放哪 ⇒ A 名字下 + Auto-fill 预览；题 4 ⇒ A 做成一条规则「Weekly hours alert」可改可关；题 5 小时算法 ⇒ A 上下班整段、不扣休息、PTO 不算；题 6 手动超人数 ⇒ A 列头一行 + 班卡琥珀框；题 7 选人 ⇒ A 下拉 Everyone / Only these people / Everyone except。
   形状：新 type `max_per_shift_day {shift_type?（不写 = 每种班各算）, max 1..20, days?}`；`min_days_on_shift` 加 `employee_ids?` / `exclude_employee_ids?`（和旧 `employee_id` 三选一）；`days_per_week` 形状不变（前端数固定班 + 轮值 + 保留的班）；新 type `weekly_hours_alert {hours 1..80}`（题 4 选 B 则不要）。全在前端算，后端只放行白名单。全文由 78 转 d4 / 0a。
