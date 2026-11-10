@@ -40,6 +40,18 @@ import { chunk, SEND_BATCH_SIZE } from "@/lib/send-batches";
 import { sendBatchHref } from "@/lib/send-log-api";
 import { expandForCount, smsCheck, smsProblem } from "@/lib/sms-limit";
 import { fetchTourTypes } from "@/lib/tour-send-api";
+import {
+  backendChannel,
+  backendGuest,
+  channelCell,
+  countOutcomes,
+  failedReason,
+  type GuestOutcome,
+  guestFromChannels,
+  legacyChannel,
+  outcomeStats,
+  resolveOutcome,
+} from "@/lib/send-outcome";
 import { cn } from "@/lib/utils";
 import type {
   ManifestBroadcastCheck,
@@ -93,11 +105,10 @@ const ERR_BOX = cn(RED_BOX, "mb-0 max-w-none");
 /** 定宽表格里放不下的文字截成省略号（不压到下一格）。 */
 const CLIP = "overflow-hidden text-ellipsis";
 
-/** 旧页面 .status-ok / .status-fail。 */
-function statusClass(text: string): string {
-  if (/^failed/i.test(text)) return "text-[#A32D2D]";
-  if (/^sent/i.test(text)) return "font-medium text-[#3B6D11]";
-  return "text-[#BA7517]";
+/** 一个渠道格子的字和颜色（置顶 109：Sent 绿 / Failed 红 / No number、No email 灰）。 */
+interface Cell {
+  label: string;
+  className: string;
 }
 
 /**
@@ -722,13 +733,13 @@ interface Blocked {
   reasons: string[];
 }
 
-/** 一行的发送结果，统一成表格里的样子。 */
+/** 一行的发送结果，统一成表格里的样子。first = Email、second = SMS。 */
 interface Outcome {
   order: string;
   name: string;
-  first: string;
-  second: string;
-  failed: boolean;
+  first: Cell;
+  second: Cell;
+  outcome: GuestOutcome;
 }
 
 interface RunState {
@@ -1148,11 +1159,16 @@ function OutcomeTable({
   return (
     <ListTable label="Send results" heads={["Order #", "Guest", ...heads]}>
       {outcomes.map((o, i) => (
-        <tr key={`${o.order}-${i}`} data-outcome={o.order} className={TR}>
+        <tr
+          key={`${o.order}-${i}`}
+          data-outcome={o.order}
+          data-guest-outcome={o.outcome}
+          className={TR}
+        >
           <td className={TD}>{o.order}</td>
           <td className={TD}>{o.name}</td>
-          <td className={cn(TD, statusClass(o.first))}>{o.first}</td>
-          <td className={cn(TD, statusClass(o.second))}>{o.second}</td>
+          <td className={cn(TD, o.first.className)}>{o.first.label}</td>
+          <td className={cn(TD, o.second.className)}>{o.second.label}</td>
         </tr>
       ))}
     </ListTable>
@@ -1259,30 +1275,39 @@ function Progress({ run, theme }: { run: RunState; theme: SendTheme }) {
   );
 }
 
-/** 结果数字（同发送页 .result-summary）。 */
+/**
+ * 结果数字（同发送页 .result-summary）。置顶 109：一单一个结论——Sent 绿 / Failed 红 / No contact 灰（没号码也没邮箱，不算失败）；
+ * notSent = 弹窗这边没发的（没选 tour type、被拦下），再加上后端回 not_sent 的。
+ */
 function ResultNumbers({
   run,
-  failed,
   notSent = 0,
 }: {
   run: RunState;
-  failed: number;
   notSent?: number;
 }) {
+  const c = countOutcomes(run.outcomes.map((o) => o.outcome));
+  const notSentAll = notSent + c.not_sent;
   return (
     <>
       <div className={cn(RESULT_SUMMARY, "mb-0")}>
-        <ResultStat label="Sent" value={run.sent} className="text-[#3B6D11]" />
-        <ResultStat label="Failed" value={failed} className="text-[#A32D2D]" />
+        {outcomeStats({ ...c, not_sent: 0 }).map((s) => (
+          <ResultStat
+            key={s.label}
+            label={s.label}
+            value={s.value}
+            className={s.className}
+          />
+        ))}
         <ResultStat
           label="Skipped"
           value={run.skipped.length}
           className="text-[#BA7517]"
         />
-        {notSent ? (
+        {notSentAll ? (
           <ResultStat
             label="Not sent"
-            value={notSent}
+            value={notSentAll}
             className="text-[#1a1a1a]"
           />
         ) : null}
@@ -1368,33 +1393,27 @@ function tourOutcomes(
   type: TicketsSendType,
   nameOf: (order: string) => string,
 ) {
-  // 没选的渠道写 —（没发，不算失败）。
   const useEmail = type !== "sms";
   const useSms = type !== "email";
-  // 置顶 109（Annie「全 A」「动手」）：一位客人只算一次——任一渠道 sent = Sent；都没发出、有渠道真失败 = Failed。
-  // 以前 Sent 用后端 res.sent（只数邮件），Failed 又数「有一个渠道 failed」，一个发出一个失败的单两边都算。
-  const outcomes = res.groups.flatMap((g) =>
+  // 置顶 109（Annie「全 A」「动手」）：一位客人只算一次——后端 outcome 优先；旧后端按状态原文换算（任一渠道 sent = Sent；
+  // 都没发出、有渠道真失败 = Failed；选了的渠道都没地址 = No contact）。没选的渠道写 —。
+  const outcomes: Outcome[] = res.groups.flatMap((g) =>
     g.results.map((r) => {
-      const wentOut =
-        (useEmail && /^sent/i.test(r.email_status)) ||
-        (useSms && /^sent/i.test(r.sms_status));
+      const o = resolveOutcome(r, {
+        sms: legacyChannel(r.sms_status, useSms),
+        email: legacyChannel(r.email_status, useEmail),
+      });
       return {
         order: r.order,
         name: r.name,
-        first: useEmail ? r.email_status || "—" : "—",
-        second: useSms
-          ? (r.sms_status || "—").replace(/^sent:.*/, "sent")
-          : "—",
-        sent: wentOut,
-        failed:
-          !wentOut &&
-          ((useEmail && /^failed/i.test(r.email_status)) ||
-            (useSms && /^failed/i.test(r.sms_status))),
+        first: channelCell("email", o.email, failedReason(r.email_status)),
+        second: channelCell("sms", o.sms, failedReason(r.sms_status)),
+        outcome: o.outcome,
       };
     }),
   );
   return {
-    sent: outcomes.filter((o) => o.sent).length,
+    sent: outcomes.filter((o) => o.outcome === "sent").length,
     outcomes,
     skipped: res.groups.flatMap((g) => g.skipped ?? []),
     blocked: res.groups.flatMap((g) =>
@@ -1643,7 +1662,7 @@ export function TourConfirmDialog({
 
   const titleId = "manifest-tour-title";
   if (run) {
-    const failed = run.outcomes.filter((o) => o.failed).length;
+    const c = countOutcomes(run.outcomes.map((o) => o.outcome));
     const blockedOrders = new Set(run.blocked.map((b) => b.order)).size;
     return (
       <DialogFrame
@@ -1690,17 +1709,16 @@ export function TourConfirmDialog({
         ) : null}
         {!sending ? (
           <>
-            <ResultNumbers
-              run={run}
-              failed={failed}
-              notSent={dontSend + blockedOrders}
-            />
+            <ResultNumbers run={run} notSent={dontSend + blockedOrders} />
             <div role="status" className={OK_BOX}>
-              {plural(run.sent, "order")} sent
+              {plural(c.sent, "order")} sent
               {lastMinute ? " as Last Minute Order" : ""} (
               {sendType === "combined" ? "email + SMS" : channelWords(sendType)}
               ).
-              {failed ? ` ${failed} with a failed channel, see below.` : ""}
+              {c.failed ? ` ${c.failed} failed, see below.` : ""}
+              {c.no_contact
+                ? ` ${c.no_contact} with no phone number or email.`
+                : ""}
               {run.skipped.length ? ` ${run.skipped.length} skipped.` : ""}
               {dontSend ? ` ${dontSend} not sent, no tour type.` : ""}
               {blockedOrders ? ` ${blockedOrders} not sent, see below.` : ""}
@@ -1925,20 +1943,38 @@ function ticketOutcomes(
 ) {
   const useSms = type !== "email";
   const useEmail = type !== "sms";
-  return {
-    // 置顶 109：任一渠道 ok 才算 Sent（后端 res.sent 是全部试过的行，两个渠道都失败的也算）。
-    sent: res.results.filter(
-      (r) => (useSms && r.sms_ok) || (useEmail && r.email_ok),
-    ).length,
-    outcomes: res.results.map((r) => ({
+  // 置顶 109：后端带 outcome / *_outcome 就照它（Sent 绿 / Failed 红 / No number、No email 灰）。
+  // 旧后端只回真假、不回原因（没号码 / 没邮箱也是 false），照旧写 not sent（琥珀），两个渠道都没成算 Failed。
+  // 列顺序 Email、SMS，同三个发送页和 Tour 弹窗（Annie 2026-10-23 #24b）。
+  const legacyCell = (used: boolean, ok: unknown): Cell =>
+    !used
+      ? { label: "—", className: "text-[#1a1a1a]" }
+      : ok
+        ? channelCell("email", "sent")
+        : { label: "not sent", className: "text-[#BA7517]" };
+  const outcomes: Outcome[] = res.results.map((r) => {
+    const sms = backendChannel(r.sms_outcome);
+    const email = backendChannel(r.email_outcome);
+    const wentOut = (useSms && !!r.sms_ok) || (useEmail && !!r.email_ok);
+    return {
       order: r.chd_number,
       name: r.name,
-      // 后端只回真假、不回原因（没号码 / 没邮箱也是 false），所以写 not sent，不写 failed。没选的渠道写 —。
-      // 列顺序 Email、SMS，同三个发送页和 Tour 弹窗（Annie 2026-10-23 #24b）。
-      first: useEmail ? (r.email_ok ? "sent" : "not sent") : "—",
-      second: useSms ? (r.sms_ok ? "sent" : "not sent") : "—",
-      failed: !(useSms && r.sms_ok) && !(useEmail && r.email_ok),
-    })),
+      first: email
+        ? channelCell("email", email)
+        : legacyCell(useEmail, r.email_ok),
+      second: sms ? channelCell("sms", sms) : legacyCell(useSms, r.sms_ok),
+      outcome:
+        backendGuest(r.outcome) ??
+        (sms && email
+          ? guestFromChannels(sms, email)
+          : wentOut
+            ? "sent"
+            : "failed"),
+    };
+  });
+  return {
+    sent: outcomes.filter((o) => o.outcome === "sent").length,
+    outcomes,
     batchIds: validBatchIds([res.batch_id]),
     skipped: [
       ...(res.skipped ?? []),
@@ -2045,7 +2081,7 @@ export function ReminderDialog({
 
   const titleId = "manifest-reminder-title";
   if (run) {
-    const failed = run.outcomes.filter((o) => o.failed).length;
+    const c = countOutcomes(run.outcomes.map((o) => o.outcome));
     return (
       <DialogFrame
         titleId={titleId}
@@ -2093,12 +2129,14 @@ export function ReminderDialog({
           <>
             <ResultNumbers
               run={run}
-              failed={failed}
               notSent={new Set(run.blocked.map((b) => b.order)).size}
             />
             <div role="status" className={OK_BOX}>
-              {plural(run.sent, "order")} sent.
-              {failed ? ` ${failed} not sent by SMS or email, see below.` : ""}
+              {plural(c.sent, "order")} sent.
+              {c.failed ? ` ${c.failed} failed, see below.` : ""}
+              {c.no_contact
+                ? ` ${c.no_contact} with no phone number or email.`
+                : ""}
               {run.skipped.length ? ` ${run.skipped.length} skipped.` : ""}
               {run.blocked.length
                 ? ` ${plural(new Set(run.blocked.map((b) => b.order)).size, "order")} not sent, see below.`

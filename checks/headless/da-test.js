@@ -627,7 +627,14 @@ async function run() {
   await waitFor(`${dp}.textContent.includes('Last sent')`);
   const ds = (await since(b0, (e) => e.path === "/api/dispatch/driver-notice/send"))[0]?.body;
   check("确认后才发、只发勾选的 key、发不到的写出来、名单重拉显示上次发的人", ds?.date === "2026-10-05" && JSON.stringify(ds?.recipients) === '["hr:1"]' && (await evaluate(`const t = ${dp}.textContent; return t.includes('Not delivered to: BOB (Twilio 21211)') && t.includes('by annie');`)), JSON.stringify(ds));
-  await ctl({ driverFail: false, driver502: true });
+  // 置顶 109 Q6：新后端多回 no_contact（HR 里有、没号码）⇒ 灰字一行 No contact: 名字 (No number)，不算失败、不进红字。
+  await ctl({ driverFail: false, noticeNoContact: true });
+  await evaluate(`$btn('Send texts now', ${dp}).click();`);
+  await waitFor(dialog);
+  await evaluate(`$btn('Text 1 driver', ${dialog}).click();`);
+  await waitFor(`${dp}.querySelector('[data-driver-no-contact]')`);
+  check("置顶 109 Q6：司机没号码 ⇒ 灰字 No contact: GIA (No number).，不出红字 Not delivered", await evaluate(`const p = ${dp}.querySelector('[data-driver-no-contact]'); return p.textContent === 'No contact: GIA (No number).' && !${dp}.textContent.includes('Not delivered to');`), await evaluate(`return ${dp}.querySelector('[data-driver-no-contact]')?.textContent;`));
+  await ctl({ noticeNoContact: false, driver502: true });
   await evaluate(`$btn('Send texts now', ${dp}).click();`);
   await waitFor(dialog);
   await evaluate(`$btn('Text 1 driver', ${dialog}).click();`);
@@ -963,6 +970,14 @@ async function run() {
     const gs = (await since(g0, (e) => e.path === "/api/dispatch/guide-notice/send"))[0]?.body;
     check("发送：只发勾了的 key、带 extra", JSON.stringify(gs?.recipients) === '["hr:21","hr:22"]' && gs?.extra === "Meet at Door 3 by 6:15" && gs?.date === "2026-10-05", JSON.stringify(gs));
     check("发完：绿字 ✓ Texted 2 guides、框头写 Last sent … by annie（重拉了名单）", await waitFor(`${dp}.querySelector('[data-guide-ok]')?.textContent === '✓ Texted 2 guides: KEVIN, MARIA.' && ${gbox}.textContent.includes('by annie (Texted 2 guides for 2026-10-05).')`), await evaluate(`return ${dp}.querySelector('[data-guide-ok]')?.textContent + ' | ' + ${gbox}.textContent.slice(0, 160);`));
+    // 置顶 109 Q6：新后端多回 no_contact ⇒ 灰字一行，绿字只列发出去的。
+    await ctl({ noticeNoContact: true });
+    await evaluate(`${gSend}.click();`);
+    await waitFor(dialog);
+    await evaluate(`$btn('Text 2 guides', ${dialog}).click();`);
+    await waitFor(`${dp}.querySelector('[data-guide-no-contact]')`);
+    check("置顶 109 Q6：导游没号码 ⇒ 灰字 No contact: KEVIN (No number).；绿字只写发出去的 MARIA", await evaluate(`return ${dp}.querySelector('[data-guide-no-contact]').textContent === 'No contact: KEVIN (No number).' && ${dp}.querySelector('[data-guide-ok]')?.textContent === '✓ Texted 1 guide: MARIA.' && !${dp}.querySelector('[data-guide-error]');`), await evaluate(`return ${dp}.querySelector('[data-guide-no-contact]')?.textContent + ' | ' + ${dp}.querySelector('[data-guide-ok]')?.textContent;`));
+    await ctl({ noticeNoContact: false });
     // 再发：确认框提醒会再收到（Q4 A）
     await evaluate(`${gSend}.click();`);
     await waitFor(dialog);

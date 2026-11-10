@@ -321,8 +321,10 @@ async function run() {
   await evaluate(`document.querySelector('[data-farm-out-send-go]').click();`);
   let sr = (await waitReq(b, foSend))[0];
   check("发送：只发 CHDF002、channel both、send_anyway 空", JSON.stringify(sr?.body) === JSON.stringify({ date: D_FO, orders: [{ manifest_id: 3, order_number: "CHDF002" }], channel: "both", send_anyway: [] }), JSON.stringify(sr?.body));
-  await waitFor(`document.body.textContent.includes('Send results') && document.body.textContent.includes('failed: number unreachable')`);
-  check("结果：Email Sent、SMS 写明失败原因；Sent 0 / Failed 1 / Not sent 0 / Total 1", await evaluate(`const s = [...document.querySelectorAll('[data-stat]')].map(e => e.textContent).join(','); return document.body.textContent.includes('failed: number unreachable') && s === '0,1,0,1';`), await evaluate(`return [...document.querySelectorAll('[data-stat]')].map(e => e.textContent).join(',');`));
+  await waitFor(`document.body.textContent.includes('Send results') && document.body.textContent.includes('Failed: number unreachable')`);
+  // 置顶 109 Q2：任一渠道发出就算 Sent（以前后端把「邮件发出、短信失败」算 Failed）。
+  check("结果：Email Sent、SMS 红字写明失败原因；邮件发出 ⇒ Sent 1 / Failed 0 / No contact 0 / Not sent 0 / Total 1（置顶 109）", await evaluate(`const s = [...document.querySelectorAll('[data-stat]')].map(e => e.textContent).join(','); const td = [...document.querySelectorAll('[role=dialog] tbody td')].find((x) => x.textContent === 'Failed: number unreachable'); return !!td && getComputedStyle(td).color === 'rgb(163, 45, 45)' && s === '1,0,0,0,1';`), await evaluate(`return [...document.querySelectorAll('[data-stat]')].map(e => e.textContent).join(',');`));
+  check("置顶 109 Q7：Farm out 通知结果 Sent 数字、逐单 Sent 绿字 #3B6D11", await evaluate(`const st = document.querySelector('[data-stat]'); const cell = [...document.querySelectorAll('[role=dialog] tbody td')].find((td) => td.textContent === 'Sent'); return getComputedStyle(st).color === 'rgb(59, 109, 17)' && !!cell && getComputedStyle(cell).color === 'rgb(59, 109, 17)';`));
   await evaluate(`[...document.querySelectorAll('[role=dialog] button')].find(b => b.textContent.trim() === 'Close').click();`);
   await waitFor(`!document.querySelector('[role=dialog]')`);
   await waitFor(`/Notice sent by Annie on/.test(${farmOrder("CHDF002")}.textContent)`);
@@ -354,13 +356,16 @@ async function run() {
   await sleep(200);
   check("勾 CHDF003 的 Send anyway：行淡黄、行首框可用并勾上、按钮 Send 1 notice、出现说明（缺 pick-up location、那部分会是空的、Send Log 留痕）", await evaluate(`const r = ${m3}; const n = document.querySelector('[data-send-anyway-note]'); const go = document.querySelector('[data-farm-out-send-go]'); const f = r.querySelector('input[type=checkbox]'); return /fff8e1/.test(r.className) && !/fdecec/.test(r.className) && !f.disabled && f.checked && go.textContent.replace(/\s+/g, ' ').trim() === 'Send 1 notice (SMS + Email)' && !!n && n.textContent.includes('CHDF003') && n.textContent.includes('pick-up location') && n.textContent.includes('blank') && n.textContent.includes('Send Log');`), await evaluate(`return document.querySelector('[data-farm-out-send-go]').textContent + ' | ' + (document.querySelector('[data-send-anyway-note]')?.textContent ?? 'no note');`));
   // CHDF001 / CHDF002 前面已经发过（默认不勾），这一次就只发 CHDF003。
+  // 置顶 109：这一次用新后端（每行带 outcome），CHDF003 没号码也没邮箱 ⇒ No contact（以前算 Failed）。
+  await ctl({ newOutcome: true, foNoContact: "CHDF003" });
   b = (await mockLog()).length;
   await evaluate(`document.querySelector('[data-farm-out-send-go]').click();`);
   sr = (await waitReq(b, foSend))[0];
   check("Send anyway 发送：只发 CHDF003，send_anyway 带上它", JSON.stringify(sr?.body) === JSON.stringify({ date: D_FO, orders: [{ manifest_id: 3, order_number: "CHDF003" }], channel: "both", send_anyway: ["CHDF003"] }), JSON.stringify(sr?.body));
   await waitFor(`document.body.textContent.includes('Send results')`);
-  check("结果：CHDF003 发出（Sent 1），没有 Not sent", await evaluate(`const s = [...document.querySelectorAll('[data-stat]')].map(e => e.textContent).join(','); return s === '1,0,0,1' && !document.querySelector('[data-blocked-row]');`), await evaluate(`return [...document.querySelectorAll('[data-stat]')].map(e => e.textContent).join(',');`));
-  check("置顶 109 Q7：Farm out 通知结果 Sent 数字、逐单 Sent 绿字 #3B6D11", await evaluate(`const st = document.querySelector('[data-stat]'); const cell = [...document.querySelectorAll('[role=dialog] tbody td')].find((td) => td.textContent === 'Sent'); return getComputedStyle(st).color === 'rgb(59, 109, 17)' && !!cell && getComputedStyle(cell).color === 'rgb(59, 109, 17)';`));
+  check("新后端：CHDF003 没号码也没邮箱 ⇒ Sent 0 / Failed 0 / No contact 1 / Not sent 0 / Total 1，没有 Not sent 行", await evaluate(`const s = [...document.querySelectorAll('[data-stat]')].map(e => e.textContent).join(','); return s === '0,0,1,0,1' && !document.querySelector('[data-blocked-row]');`), await evaluate(`return [...document.querySelectorAll('[data-stat]')].map(e => e.textContent).join(',');`));
+  check("新后端：CHDF003 一行灰字 No email / No number（#6B6B6B），No contact 数字灰", await evaluate(`const tr = document.querySelector('[role=dialog] tbody tr[data-outcome]'); const g = (e) => getComputedStyle(e).color === 'rgb(107, 107, 107)'; const st = [...document.querySelectorAll('[data-stat]')][2]; return tr.dataset.outcome === 'no_contact' && tr.children[2].textContent === 'No email' && tr.children[3].textContent === 'No number' && g(tr.children[2]) && g(tr.children[3]) && g(st);`), await evaluate(`return document.querySelector('[role=dialog] tbody tr')?.outerHTML;`));
+  await ctl({ newOutcome: false, foNoContact: "" });
   await evaluate(`[...document.querySelectorAll('[role=dialog] button')].find(b => b.textContent.trim() === 'Close').click();`);
   await waitFor(`!document.querySelector('[role=dialog]')`);
 

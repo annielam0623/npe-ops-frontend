@@ -1,3 +1,4 @@
+import type { OutcomeFields } from "@/lib/send-outcome";
 /**
  * Manifests 页（`GET /api/manifests`，后端 `task/manifests-fields` 的接口契约 A–D，提交 04f3fa0）。
  * 标签 / 胶囊 / 字段目录全由后端下发，前端不写死；字段键跨天稳定，账号里存的列选择就存这些键。
@@ -258,12 +259,12 @@ export interface ManifestSendTourResult {
     total: number;
     sent: number;
     /** 同团确认发送页：email_status / sms_status 是 "sent…" / "failed: …" / "skipped - …"。 */
-    results: {
+    results: ({
       order: string;
       name: string;
       email_status: string;
       sms_status: string;
-    }[];
+    } & OutcomeFields)[];
     skipped?: ManifestSendSkipped[];
     /** G189：这一组里被拦、没发的单（shuttle 模板没填齐、没选 tour type、Last Minute 下的 shuttle 等）；其余照发。 */
     blocked?: {
@@ -280,12 +281,12 @@ export interface ManifestSendTicketsResult {
   sent: number;
   /** Send Log 批次号（后端 G164）；全被 Cfm # 拦住时是 null，旧后端没有，都当没有批次。 */
   batch_id?: number | null;
-  results: {
+  results: ({
     chd_number: string;
     name: string;
     sms_ok: boolean;
     email_ok: unknown;
-  }[];
+  } & OutcomeFields)[];
   skipped?: ManifestSendSkipped[];
   /** G129：缺 Cfm # 没发的单（其余照发）；`can_override` 为 true 才能 Send anyway。 */
   blocked?: {

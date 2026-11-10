@@ -880,10 +880,20 @@ async function run() {
     let b0 = (await mockLog()).length;
     await startSend();
     await waitFor("[...document.querySelectorAll('h2')].some(h => h.textContent === '📬 Send Results')", 20000);
-    check("Morning 结果：和 Tickets / Tour 一样的六格（置顶 106 固定 SMS + Email ⇒ 多 No email）Sent 11 / Failed 0 / No number 1 / No email 1（M03 没手机号也没邮箱）/ Skipped 0 / Total 12", (await evaluate(stats)) === "11|0|1|1|0|12", await evaluate(stats));
+    check("Morning 结果（置顶 109）：和 Tickets / Tour 一样 Sent 11 / Failed 0 / No contact 1（M03 没手机号也没邮箱）/ Skipped 0 / Total 12", (await evaluate(stats)) === "11|0|1|0|12", await evaluate(stats));
     check("Morning 结果：逐单表 Email Status 在前、SMS Status 在后；M03 短信写 No number（后端原因放在悬停提示里）、邮件写 No email（置顶 106 固定 SMS + Email）", await evaluate("const ths = [...document.querySelectorAll('thead th')].map(t => t.textContent); const tr = [...document.querySelectorAll('tbody tr')].find(t => t.children[0].textContent === 'M03'); return ths.slice(-2).join('|') === 'Email Status|SMS Status' && !!tr && tr.children[5].textContent === 'No number' && tr.children[5].title.includes('Twilio 21604 missing To') && tr.children[4].textContent === 'No email';"), await evaluate("return [...document.querySelectorAll('thead th')].map(t => t.textContent).join('|');"));
     check("Morning 结果：Sent 是绿字 #3B6D11（置顶 109 Q7，全站成功绿）", await evaluate("const tr = [...document.querySelectorAll('tbody tr')].find(t => t.children[0].textContent === 'M01'); return getComputedStyle(tr.children[5]).color === 'rgb(59, 109, 17)' && tr.children[5].textContent === 'Sent';"));
     check("Morning：分两批发（10 + 2）", (await sends(b0)).map((e) => e.body.orders.length).join(",") === "10,2", JSON.stringify((await sends(b0)).map((e) => e.body.orders.length)));
+
+    // 置顶 109：新后端——没号码记 skipped - no phone、每行带 outcome；页面照后端结论（M03 No contact，灰字），不再看号码自己判。
+    await ctl({ newOutcome: true });
+    await goto(`${APP}/morning-pickup/send`);
+    await uploadMorning();
+    await startSend();
+    await waitFor("[...document.querySelectorAll('h2')].some(h => h.textContent === '📬 Send Results')", 20000);
+    check("新后端：Sent 11 / Failed 0 / No contact 1 / Skipped 0 / Total 12", (await evaluate(stats)) === "11|0|1|0|12", await evaluate(stats));
+    check("新后端：M03 一行 data-outcome=no_contact，两格灰字 No email / No number", await evaluate("const tr = [...document.querySelectorAll('tbody tr')].find(t => t.children[0].textContent === 'M03'); const g = (e) => getComputedStyle(e).color === 'rgb(107, 107, 107)'; return !!tr && tr.dataset.outcome === 'no_contact' && tr.children[4].textContent === 'No email' && tr.children[5].textContent === 'No number' && g(tr.children[4]) && g(tr.children[5]);"), await evaluate("return [...document.querySelectorAll('tbody tr')].find(t => t.children[0].textContent === 'M03')?.outerHTML;"));
+    await ctl({ newOutcome: false });
 
     // 400：后端发第一条之前就拒了 → 这一批列为没发、写服务端原因
     await ctl({ morning400: "Guest count not found in Quantities: M02" });
@@ -932,7 +942,7 @@ async function run() {
       check("请求带 send_anyway（只有下面那块勾中的 M11）和预览给的 preview_at",
         req.send_anyway === '["M11"]' && req.van_anyway === "[]" && req.preview_at === "2026-10-06T06:00:00-07:00" && all.length === 1, JSON.stringify(req));
     }
-    check("结果：Sent 8 / Failed 0 / No number 1 / No email 1 / Skipped 2 / Total 12（发 10 + 没勾 2）", (await evaluate(stats)) === "8|0|1|1|2|12", await evaluate(stats));
+    check("结果（置顶 109）：Sent 8 / Failed 0 / No contact 1 / Skipped 2 / Total 12（发 10 + 没勾 2）", (await evaluate(stats)) === "8|0|1|2|12", await evaluate(stats));
     check("跳过的行写服务端原因：M02 Already sent today、M01 第二行 Listed twice in this file；M11 Send anyway 发出",
       await evaluate("const rows = [...document.querySelectorAll('tbody tr')]; const m02 = rows.find(t => t.children[0].textContent === 'M02'); return !!m02 && m02.textContent.includes('Already sent today') && rows.some(t => t.children[0].textContent === 'M01' && t.textContent.includes('Listed twice in this file')) && rows.some(t => t.children[0].textContent === 'M11' && t.children[5].textContent === 'Sent');"));
     await ctl({ morningGuard: false, morningSentSince: [] });
@@ -993,8 +1003,8 @@ async function run() {
       check("请求：van_anyway = 勾中的车号无效单（M02、M11），send_anyway = 只有 M11",
         req.van_anyway === '["M02","M11"]' && req.send_anyway === '["M11"]' && all.length === 1, JSON.stringify(req));
     }
-    check("结果：M02 / M11 车号无效但勾了 → 照常发出；Sent 4 / Failed 0 / No number 1 / No email 1 / Skipped 0 / Total 8（M03 没手机号也没邮箱）",
-      (await evaluate(stats)) === "4|0|1|1|0|8", await evaluate(stats));
+    check("结果：M02 / M11 车号无效但勾了 → 照常发出；Sent 4 / Failed 0 / No contact 1 / Skipped 0 / Total 8（M03 没手机号也没邮箱，置顶 109）",
+      (await evaluate(stats)) === "4|0|1|0|8", await evaluate(stats));
     // 没带 van_anyway 的后端（假装）：勾了的车号无效单被跳过，结果里照原文写
     await ctl({ morningVanIgnore: true });
     await goto(`${APP}/morning-pickup/send`);

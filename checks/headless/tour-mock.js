@@ -1,6 +1,7 @@
 // 模拟后端：Tour Confirmation 发送页。控制：POST /__ctl；GET /__log。
 const http = require("http");
 const staffPerm = require("./staff-perm-mock");
+const outcomeMock = require("./outcome-mock");
 const ctl = { scenario: "normal", serverSkip: [], fail502At: 0, reject400: "", applyFail: false, batchFail: false, fail401: false, typesFail: false, applyDelay: 0, batchHtml: false, bulkHtmlAt: 0, bulkDelay: 0 };
 const log = [];
 function send(res, status, body) { res.statusCode = status; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify(body)); }
@@ -98,8 +99,13 @@ http.createServer(async (req, res) => {
       if (ctl.serverSkip.includes(g.order_number)) { skipped.push({ order: g.order_number, order_number: g.order_number, name: `${g.first_name} ${g.last_name}`, reason: "already_sent", message: "Already sent for this date and tour" }); continue; }
       const em = b.send_type === "sms" ? "" : g.customer_email ? "sent" : "skipped - no email";
       const sm = b.send_type === "email" ? "" : g.phone ? (g.order_number === "N05" ? "failed: Twilio 21211 invalid number" : "sent:SM123") : "skipped - no phone";
-      results.push({ order: g.order_number, name: `${g.first_name} ${g.last_name}`, email_status: em, sms_status: sm });
+      const row = { order: g.order_number, name: `${g.first_name} ${g.last_name}`, email_status: em, sms_status: sm };
+      // 置顶 109：ctl.newOutcome 开着 = 新后端（每行带 outcome / *_outcome，顶层四计数）；ctl.outcomeOverride 按单号强指定。
+      results.push(ctl.newOutcome
+        ? outcomeMock.withOutcome(row, { sms: outcomeMock.channel(sm, b.send_type !== "email"), email: outcomeMock.channel(em, b.send_type !== "sms") }, (ctl.outcomeOverride ?? {})[g.order_number])
+        : row);
     }
+    if (ctl.newOutcome) return send(res, 200, { total: b.guests.length, ...outcomeMock.counts(results), results, skipped });
     return send(res, 200, { total: b.guests.length, sent: results.length, results, skipped });
   }
   if (p === "/send/tour-confirmation-apply") {

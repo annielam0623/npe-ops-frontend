@@ -5,6 +5,7 @@
 // role: admin（默认，有金额组）| staff（没有金额组）| driver（403）。
 const http = require("http");
 const staffPerm = require("./staff-perm-mock");
+const outcomeMock = require("./outcome-mock");
 // sections：Antelope（g:3）分两节；sendFail：发送接口回 "400" / "502"；sendOf：记下每次发送的请求体。
 // minus15：后端 7c 减 15 上线后（有 guest_pickup_time，CHD1002 当成 Rezdy 时间读不出 ⇒ 空）。
 // busTour：{订单号: 产品默认的 tour type 键}，没列的是 ""（产品没配）。
@@ -561,7 +562,11 @@ http
         const { results, skipped } = sendRows(g.row_keys.filter((k) => !why(k)), sentTour, body);
         return { tour_type: g.tour_type, total: g.row_keys.length, sent: results.length,
           // 置顶 109：ctl.tourSmsFail = 这几单邮件发出、短信号码错（failed: Invalid phone）——前端只算一次 Sent，不算 Failed。
-          results: results.map((r) => ({ order: r.order_number, name: r.v.guest_name, email_status: ch.email ? "sent" : "", sms_status: ch.sms ? ((ctl.tourSmsFail ?? []).includes(r.order_number) ? "failed: Invalid phone: 555" : r.v.phone ? "sent:SM1" : "skipped - no phone") : "" })),
+          results: results.map((r) => {
+            const row = { order: r.order_number, name: r.v.guest_name, email_status: ch.email ? ((ctl.tourNoEmail ?? []).includes(r.order_number) ? "skipped - no email" : "sent") : "", sms_status: ch.sms ? ((ctl.tourSmsFail ?? []).includes(r.order_number) ? "failed: Invalid phone: 555" : r.v.phone ? "sent:SM1" : "skipped - no phone") : "" };
+            // 置顶 109：ctl.newOutcome = 新后端（每行带 outcome / *_outcome）。
+            return ctl.newOutcome ? outcomeMock.withOutcome(row, { sms: outcomeMock.channel(row.sms_status, ch.sms), email: outcomeMock.channel(row.email_status, ch.email) }) : row;
+          }),
           skipped, ...(blocked.length ? { blocked } : {}), ...(ctl.noBatch ? {} : { batch_id: ++batchSeq }) };
       });
       return send(res, 200, { checked_at: "2026-10-07T18:29:00+00:00", sent: groups.reduce((n, g) => n + g.sent, 0), groups });
@@ -591,7 +596,12 @@ http
       // 发出去了 ⇒ 记下这次的链接（Changed since sent 跟着消失）。
       for (const r of results) if (r.waiver) waiverSent.set(rowKey(r, today), waiver.get(rowKey(r, today))?.waiver_link ?? "");
       return send(res, 200, { checked_at: "2026-10-07T18:29:00+00:00", sent: results.length,
-        results: results.map((r) => ({ record_id: 1, chd_number: r.order_number, name: r.v.guest_name, sms_ok: ch.sms, email_ok: ch.email ? { message_id: "m1" } : false })), skipped,
+        results: results.map((r) => {
+          const row = { record_id: 1, chd_number: r.order_number, name: r.v.guest_name, sms_ok: ch.sms && !!r.v.phone, email_ok: ch.email ? { message_id: "m1" } : false };
+          if (!ctl.newOutcome) return { ...row, sms_ok: ch.sms };
+          // 置顶 109：新后端——没号码 = no_address（不算失败）。
+          return outcomeMock.withOutcome(row, { sms: !ch.sms ? "not_used" : r.v.phone ? "sent" : "no_address", email: ch.email ? "sent" : "not_used" });
+        }), skipped,
         ...(ctl.noBatch ? {} : { batch_id: keys.length ? ++batchSeq : null }),
         blocked, overridden_orders: noCfm.map((k) => byKey(k).order_number).filter((o) => sa.has(o) && results.some((r) => r.order_number === o)) });
     }

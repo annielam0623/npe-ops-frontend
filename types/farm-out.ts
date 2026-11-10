@@ -5,6 +5,8 @@
  */
 
 /** 一张订单当前坐在 Farm out 车上时才有（seating 订单里的 `farm_out`）。时间 "HH:MM" 24 小时制。 */
+import type { OutcomeFields } from "@/lib/send-outcome";
+
 export interface FarmOutOrder {
   partner_id: number;
   /** 只显示；后端 `farm_out_object()` 带的，不送回。 */
@@ -126,7 +128,7 @@ export interface FarmOutNoticePreview {
   already_sent?: { sent_at: string; sent_by: string } | null;
 }
 
-export interface FarmOutNoticeResult {
+export interface FarmOutNoticeResult extends OutcomeFields {
   order_number: string;
   name: string;
   /** "sent" / "failed: 原因" / "skipped - no email"；这个渠道没发 = null。 */
@@ -158,6 +160,8 @@ export interface FarmOutNoticeSendResponse {
   total: number;
   sent: number;
   failed: number;
+  /** 置顶 109：两个渠道都没地址的客人（旧后端算进 failed）。页面按每行 outcome 自己数。 */
+  no_contact?: number;
   skipped?: number;
   results: FarmOutNoticeResult[];
   blocked?: FarmOutNoticeBlocked[];

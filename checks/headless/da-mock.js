@@ -1,5 +1,6 @@
 // 模拟后端：Dispatch Assignments。控制：POST /__ctl；GET /__log。
 const http = require("http");
+const outcomeMock = require("./outcome-mock");
 const staffPerm = require("./staff-perm-mock");
 // 截图用：环境变量 MOCK_CTL（JSON）在启动时预设控制项，例 MOCK_CTL='{"completed":true}'（shoot.js 起模拟接口时会带上环境变量）。
 const DRIVER_PAGE_OFF = "Driver page is off. Turn it on in Page visibility before sending.";
@@ -538,7 +539,9 @@ http.createServer(async (req, res) => {
     if (ctl.marks && !ctl.driver502 && !ctl.driver400) for (const k of b.recipients || []) ctl.noticeMarks[k] = { sent_at: "2026-10-05T04:53:00+00:00", sent_by: "Annie", failed_at: null };
     if (ctl.driver502) return send(res, 502, { detail: "Bad gateway" });
     if (ctl.driver400) return send(res, 400, { detail: DRIVER_PAGE_OFF });
-    return send(res, 200, { sent: ["FREDDY"], failed: ctl.driverFail ? [{ name: "BOB", error: "Twilio 21211" }] : [] });
+    return send(res, 200, { sent: ["FREDDY"], failed: ctl.driverFail ? [{ name: "BOB", error: "Twilio 21211" }] : [],
+      // 置顶 109 Q6：新后端多一个 no_contact（HR 里有、但没号码）。
+      ...(ctl.noticeNoContact ? { no_contact: [{ name: "GIA", why: "No number" }] } : {}) });
   }
   // Send to guide（Annie 2026-10-30「1. 动手」；后端 57 在改：缩短固定段、extra、extra_max / preview_text、400 原话）。
   // ctl.guidePage = null（默认，没带）| true | false；ctl.guideNoExtra = 后端还不收 extra（不带 extra_max）；
@@ -571,6 +574,8 @@ http.createServer(async (req, res) => {
     const sent = (b.recipients || []).map((k) => names[k]).filter(Boolean);
     if (ctl.marks) (b.recipients || []).forEach((k, i) => { if (ctl.guideFail && i === 0) ctl.noticeMarks[k] = { ...(ctl.noticeMarks[k] || { sent_at: null, sent_by: "" }), failed_at: "2026-10-05T05:02:00+00:00" }; else ctl.noticeMarks[k] = { sent_at: "2026-10-05T04:55:00+00:00", sent_by: "Annie", failed_at: null }; });
     if (ctl.guideFail) return send(res, 200, { sent: sent.slice(1), failed: [{ name: sent[0], error: "Carrier rejected the number" }] });
+    // 置顶 109 Q6：新后端多一个 no_contact（HR 里有、但没号码）。
+    if (ctl.noticeNoContact) return send(res, 200, { sent: sent.slice(1), failed: [], no_contact: [{ name: sent[0], why: "No number" }] });
     return send(res, 200, { sent, failed: [] });
   }
   // Farm out（G40）：形状照后端真代码（2026-10-17 核对：routers/farm_out*.py、docs 第八节）。ctl.farmOut 开着才有，关着 404。
@@ -609,8 +614,13 @@ http.createServer(async (req, res) => {
         .concat(ctl.foSmsBad ? b.orders.map((r) => r.order_number).filter((n) => n === ctl.foSmsBad).map((n) => ({ manifest_id: 3, order_number: n, missing: ["The SMS has characters carriers reject"], can_override: false })) : []);
       const results = b.orders.map((r) => r.order_number).filter((n) => !blockedList.some((x) => x.order_number === n)).map((n) => { const o = foOrders.find((x) => x.order_number === n); if (o?.farm_out) { o.farm_out.notice_sent_at = "2026-10-16T03:00:00+00:00"; o.farm_out.notice_sent_by = "Annie"; }
         // 真后端：没发的渠道是 null；成功 "sent" / "sent:<sid>"；失败 "failed: 原因"。
-        return { order_number: n, name: o?.name ?? n, email_status: b.channel === "sms" ? null : "sent", sms_status: b.channel === "email" ? null : (n === "CHDF002" ? "failed: number unreachable" : "sent:SMabc"), log_failed: false }; });
-      const failed = results.filter((r) => /failed/.test(r.sms_status ?? "")).length;
+        // 置顶 109：ctl.foNoContact = 这一单没号码也没邮箱（旧后端记两个 skipped、算进 failed）；ctl.newOutcome = 新后端（每行带 outcome）。
+        if (ctl.foNoContact === n) { const row = { order_number: n, name: o?.name ?? n, email_status: b.channel === "sms" ? null : "skipped - no email", sms_status: b.channel === "email" ? null : "skipped - no phone", log_failed: false };
+          return ctl.newOutcome ? outcomeMock.withOutcome(row, { sms: outcomeMock.channel(row.sms_status, row.sms_status != null), email: outcomeMock.channel(row.email_status, row.email_status != null) }) : row; }
+        const row = { order_number: n, name: o?.name ?? n, email_status: b.channel === "sms" ? null : "sent", sms_status: b.channel === "email" ? null : (n === "CHDF002" ? "failed: number unreachable" : "sent:SMabc"), log_failed: false };
+        return ctl.newOutcome ? outcomeMock.withOutcome(row, { sms: outcomeMock.channel(row.sms_status, row.sms_status != null), email: outcomeMock.channel(row.email_status, row.email_status != null) }) : row; });
+      // 旧后端：两个渠道都没地址的也算 failed（置顶 109 之前的真后端行为）。
+      const failed = results.filter((r) => /failed|skipped/.test(`${r.sms_status ?? ""} ${r.email_status ?? ""}`) && !/sent/.test(`${r.sms_status ?? ""} ${r.email_status ?? ""}`)).length;
       return send(res, 200, { ok: true, total: results.length, sent: results.length - failed, failed, skipped: 0, results, blocked: blockedList, skipped_sent: [], overridden_orders: results.map((r) => r.order_number).filter((n) => missingOf(n) && sa.has(n)) });
     }
     return send(res, 404, { detail: "mock: not found" });

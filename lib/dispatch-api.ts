@@ -470,6 +470,23 @@ export function sendRelayRound(
   });
 }
 
+/**
+ * 司机 / 导游通知 send 的返回。no_contact（置顶 109 Q6，后端 W4；旧后端没有）：这次勾了、HR 里有这个人但没号码的，
+ * why = "No number" / "No email" / "No number or email"。不算失败，页面灰字列出。
+ */
+export interface NoticeSendResult {
+  sent: string[];
+  failed: { name: string; error: string }[];
+  no_contact?: { name: string; why: string }[];
+}
+
+/** 没联系方式的人那一句（灰字）；没有 = null。 */
+export function noContactLine(res: NoticeSendResult): string | null {
+  const list = res.no_contact ?? [];
+  if (!list.length) return null;
+  return `No contact: ${list.map((p) => `${p.name} (${p.why})`).join(", ")}.`;
+}
+
 export interface DriverNotice {
   run_date: string;
   /**
@@ -517,7 +534,7 @@ export function fetchDriverNotice(date: string): Promise<DriverNotice> {
 export function sendDriverNotice(
   date: string,
   recipients: string[],
-): Promise<{ sent: string[]; failed: { name: string; error: string }[] }> {
+): Promise<NoticeSendResult> {
   return apiFetch(`${API}/driver-notice/send`, {
     method: "POST",
     body: { date, recipients },
@@ -576,7 +593,7 @@ export function sendGuideNotice(
   date: string,
   recipients: string[],
   extra: string,
-): Promise<{ sent: string[]; failed: { name: string; error: string }[] }> {
+): Promise<NoticeSendResult> {
   return apiFetch(`${API}/guide-notice/send`, {
     method: "POST",
     body: { date, recipients, ...(extra ? { extra } : {}) },
