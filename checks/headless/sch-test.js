@@ -1196,6 +1196,76 @@ async function run() {
   check("题 6 A：周一日期下面琥珀一行 Close 2 (max 1)；别的日子没有", await waitFor(`document.querySelector('[data-over-cap="${D(1)}|close"]')?.textContent.trim() === 'Close 2 (max 1)' && document.querySelectorAll('[data-over-cap]').length === 1`), await evaluate("return [...document.querySelectorAll('[data-over-cap]')].map(e => e.dataset.overCap + ':' + e.textContent).join('|');"));
   check("题 6 A：那两张 Close 卡琥珀框（outline #f59e0b），Mid 卡没有", await evaluate(`const c = [...document.querySelectorAll('[data-slot-over-cap]')]; return c.length === 2 && c.every(x => getComputedStyle(x).outlineColor === 'rgb(245, 158, 11)') && ![...${cell(`1|${D(1)}`)}.querySelectorAll('[data-slot-id]')].some(x => x.dataset.slotOverCap);`), await evaluate("return document.querySelectorAll('[data-slot-over-cap]').length;"));
   check("题 3 A：Veronica 名字下面琥珀字 42.5 h this week；没超的人没有", await evaluate(`const v = document.querySelector('[data-over-hours="1"]'); return !!v && v.textContent === '42.5 h this week' && getComputedStyle(v).color === 'rgb(252, 211, 77)' && document.querySelectorAll('[data-over-hours]').length === 1;`), await evaluate("return [...document.querySelectorAll('[data-over-hours]')].map(e => e.dataset.overHours + ':' + e.textContent).join('|');"));
+  // ───────── 置顶 110 续：Max people 的例外（Annie「1 A 2 B 3 A 4C 5A 6A 7 A。动手」）─────────
+  // 题 4 C（Rules 那边）：Edit Max people → + Add exception → 班次 Close、12/08、最多 2 ⇒ 存 exceptions [{from, max, shift_type}]（不带 to）
+  check("（存 Max people 1 + 一条过期的例外 10/31）", await putRules([...fullRules, R("m1", "max_per_shift_day", { max: 1, exceptions: [{ from: "2026-10-31", max: 2, shift_type: "close" }] })]));
+  await rulesTab();
+  check("题 5 A：过期的例外灰掉写 (past)，还留着", await evaluate(`const e = document.querySelector('[data-rule-exceptions="m1"]'); const p = e?.querySelector('[data-exception-past]'); return !!e && e.textContent.startsWith('Exceptions:') && !!p && p.textContent.includes('Close: at most 2 on Oct 31 (past)') && p.className.includes('text-white/40');`), await evaluate(`return document.querySelector('[data-rule-exceptions="m1"]')?.outerHTML;`));
+  await evaluate(`$btn('Edit', document.querySelector('[data-rule-row="m1"]')).click();`);
+  await waitFor(`${dlg} && ${dlg}.textContent.includes('Exceptions')`);
+  await evaluate(`$btn('+ Add exception', ${dlg}).click();`);
+  await waitFor(`${dlg}.querySelectorAll('[data-exception-row]').length === 2`);
+  await evaluate(`$btn('Save rule', ${dlg}).click();`);
+  check("例外没填日期 ⇒ 红字 Exception 2: pick the date.，不存", await waitFor(`${dlg}?.querySelector('[role=alert]')?.textContent === 'Exception 2: pick the date.'`));
+  await evaluate(`const row = ${dlg}.querySelector('[data-exception-row="1"]'); $setValue(row.querySelector('select[aria-label="Exception shift"]'), 'close'); $setValue(row.querySelector('input[aria-label="Exception from"]'), '2026-12-08');`);
+  await sleep(150);
+  // 1a 11-10：后端 G272 回 400 ⇒ 弹窗里红字原样是后端原话，弹窗不关、没存
+  const EXC400 = 'Rule 14 (max_per_shift_day, id "m1"): params.exceptions item 2: to must be on or after from.';
+  await ctl({ rulesFailDetail: EXC400 });
+  await evaluate(`$btn('Save rule', ${dlg}).click();`);
+  check("后端 400（G272 原话）⇒ Rules 弹窗红字原样 + 不关", await waitFor(`${dlg}?.querySelector('[role=alert]')?.textContent === ${JSON.stringify(EXC400)} && ${dlg}.querySelector('[role=alert]').className.includes('text-red')`), await evaluate(`return ${dlg}?.querySelector('[role=alert]')?.textContent;`));
+  check("400 时没存（还是只有一条过期例外）", (await getRules()).find((r) => r.id === "m1")?.params.exceptions?.length === 1);
+  await ctl({ rulesFailDetail: null });
+  await sleep(150);
+  await evaluate(`$btn('Save rule', ${dlg}).click();`);
+  await waitFor(`!${dlg}`);
+  saved = (await getRules()).find((r) => r.id === "m1");
+  check("题 4 C：存 exceptions 两条，新的 {from: 2026-12-08, max: 2, shift_type: close}，没有 to", JSON.stringify(saved?.params.exceptions?.[1]) === '{"from":"2026-12-08","max":2,"shift_type":"close"}', JSON.stringify(saved?.params));
+  check("清单写 Exceptions: … Close: at most 2 on Dec 8", await waitFor(`document.querySelector('[data-rule-exceptions="m1"]')?.textContent.includes('Close: at most 2 on Dec 8')`));
+
+  // 题 4 C（Schedule 那边）+ 题 7 A：Lizzie、Nadia 都排 12/07 Close ⇒ 先是琥珀；点日期选 Allow 2 people on Close this day → Save ⇒ 琥珀没了、灰字 Close max 2 today
+  check("（例外清空）", await putRules([...fullRules, R("m1", "max_per_shift_day", { max: 1 })]));
+  const W2 = "2026-12-06";
+  const D2 = (n) => `2026-12-${String(6 + n).padStart(2, "0")}`;
+  await fetch(`${MOCK}/api/schedule/weeks/${W2}/slots/bulk`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ replace: true, slots: [
+    { date: D2(1), shift_type: "close", start_time: "13:30", end_time: "21:30", employee_id: 2 },
+    { date: D2(1), shift_type: "close", start_time: "13:30", end_time: "21:30", employee_id: 3 },
+  ] }) });
+  await openPage(`${APP}/schedule?week=${W2}`);
+  await waitFor(`${cell(`2|${D2(1)}`)} && document.querySelector('[data-over-cap="${D2(1)}|close"]')`);
+  check("没有例外：12/07 日期下琥珀 Close 2 (max 1)，日期可以点", await evaluate(`return !!document.querySelector('[data-over-cap="${D2(1)}|close"]') && !!document.querySelector('[data-day-rule="${D2(1)}"]');`));
+  await evaluate(`document.querySelector('[data-day-rule="${D2(1)}"]').click();`);
+  await waitFor(`document.querySelector('[data-day-rule-dialog="${D2(1)}"]')`);
+  const dd = `document.querySelector('[data-day-rule-dialog="${D2(1)}"]')`;
+  check("日期小窗：标题 Max people on Mon, Dec 7；有 Allow 2 people on Close this day / every shift / Back to the rule (at most 1)；没改时 Save 灰着", await evaluate(`const d = ${dd}; return d.textContent.includes('Max people on Mon, Dec 7') && d.textContent.includes('Allow 2 people on Close this day') && d.textContent.includes('Allow 2 people on every shift this day') && d.textContent.includes('Back to the rule (at most 1)') && $btn('Save', d).disabled;`), await evaluate(`return ${dd}?.textContent;`));
+  await evaluate(`${dd}.querySelector('[data-day-rule-option="close"]').click();`);
+  await sleep(100);
+  await evaluate(`$btn('Save', ${dd}).click();`);
+  await waitFor(`!${dd}`);
+  saved = (await getRules()).find((r) => r.id === "m1");
+  check("按 Save 才存：同一份 exceptions 多一条 {from: 2026-12-07, max: 2, shift_type: close}", JSON.stringify(saved?.params.exceptions) === '[{"from":"2026-12-07","max":2,"shift_type":"close"}]', JSON.stringify(saved?.params));
+  check("题 7 A：存完琥珀没了，日期下灰字 Close max 2 today", await waitFor(`!document.querySelector('[data-over-cap="${D2(1)}|close"]') && document.querySelector('[data-day-exception="${D2(1)}"]')?.textContent === 'Close max 2 today'`), await evaluate(`return document.querySelector('[data-day-exception="${D2(1)}"]')?.textContent + ' / ' + !!document.querySelector('[data-over-cap]');`));
+  await evaluate(`document.querySelector('[data-day-rule="${D2(1)}"]').click();`);
+  await waitFor(`document.querySelector('[data-day-rule-dialog="${D2(1)}"]')`);
+  await evaluate(`${dd}.querySelector('[data-day-rule-option="rule"]').click();`);
+  await sleep(100);
+  await evaluate(`$btn('Save', ${dd}).click();`);
+  await waitFor(`!${dd}`);
+  saved = (await getRules()).find((r) => r.id === "m1");
+  check("Back to the rule：这一天的例外去掉（exceptions 整个不带），琥珀又出来", !("exceptions" in (saved?.params ?? {})) && (await waitFor(`!!document.querySelector('[data-over-cap="${D2(1)}|close"]')`)), JSON.stringify(saved?.params));
+  // 1a 11-10：Schedule 日期小窗存的时候后端 400 ⇒ 小窗红字原样、不关、没存
+  await ctl({ rulesFailDetail: EXC400 });
+  await evaluate(`document.querySelector('[data-day-rule="${D2(1)}"]').click();`);
+  await waitFor(`document.querySelector('[data-day-rule-dialog="${D2(1)}"]')`);
+  await evaluate(`${dd}.querySelector('[data-day-rule-option="close"]').click();`);
+  await sleep(100);
+  await evaluate(`$btn('Save', ${dd}).click();`);
+  check("后端 400（G272 原话）⇒ 日期小窗红字原样 + 不关", await waitFor(`${dd}?.querySelector('[role=alert]')?.textContent === ${JSON.stringify(EXC400)}`), await evaluate(`return ${dd}?.querySelector('[role=alert]')?.textContent;`));
+  check("400 时没存（exceptions 还是没有）", !("exceptions" in ((await getRules()).find((r) => r.id === "m1")?.params ?? {})));
+  await ctl({ rulesFailDetail: null });
+  await evaluate(`$btn('Cancel', ${dd}).click();`);
+  await waitFor(`!${dd}`);
+  check("（规则恢复）", await putRules(fullRules));
   // 题 3 A：后面的 Auto-fill 预览带一条「每周超 39 小时提醒」（Veronica 固定 Open 8 小时 × 5 = 40）。
   check("（规则恢复 + Weekly hours alert 39）", await putRules([...fullRules, R("h1", "weekly_hours_alert", { hours: 39 })]));
 

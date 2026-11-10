@@ -5,7 +5,7 @@ const { permsBody, STANDARD } = require("./role-standard");
 /** 后端 require_perm：Super Admin 全放行；设了 ctl.tick 按勾，否则按角色标准。 */
 const holds = (code) => ctl.role === "superadmin" || (ctl.tick ? ctl.tick.codes.includes(code) : (STANDARD[ctl.role] || []).includes(code));
 // phase2: true ⇒ 二期字段（备注 note / 休假 time_off / 班次默认时间）和接口都开（POST /__ctl {phase2:true}）。
-const ctl = { fail401: false, role: "supervisor", meName: "", rulesMissing: false, phase2: false };
+const ctl = { fail401: false, role: "supervisor", meName: "", rulesMissing: false, phase2: false, rulesFailDetail: null };
 let timeOff = []; // {id, employee_id, date, kind, note}
 let nextTimeOffId = 1;
 // 往来记录（ctl.history）：`${week}|${employee_id}` → events（从旧到新）。Jing（4）默认一整套 9 种，别人空。
@@ -695,7 +695,10 @@ http
         const b = await readBody(req);
         entry.body = b;
         if (b.version !== 1) return send(res, 400, { detail: 'Only "version": 1 is supported.' });
+        // 1a 11-10：强制回后端 G272（b898617f）的 400 原话，看前端是不是原样红字。
+        if (ctl.rulesFailDetail) return send(res, 400, { detail: ctl.rulesFailDetail });
         // 置顶 110（后端 40 核过的形状）：多了 max_per_shift_day、weekly_hours_alert；min_days_on_shift 选人三选一、employee_ids: [] 拒。
+        const pre = (i, r) => `Rule ${i + 1} (${r.type}, id "${r.id}"): `;
         const known = ["shift_times", "fixed_shift", "weekend_rotation", "cannot_work", "days_per_week", "min_days_on_shift", "min_rest", "after_shift", "coverage", "exclude_from_rotation", "max_per_shift_day", "weekly_hours_alert"];
         for (let i = 0; i < (b.rules || []).length; i++) {
           const r = b.rules[i];
@@ -707,6 +710,18 @@ http
             if (Array.isArray(pr.employee_ids) && !pr.employee_ids.length) return send(res, 400, { detail: `Rule ${i + 1} (min_days_on_shift, id "${r.id}"): params.employee_ids must list at least one employee.` });
           }
           if (r.type === "max_per_shift_day" && !(Number.isInteger(pr.max) && pr.max >= 1 && pr.max <= 20)) return send(res, 400, { detail: `Rule ${i + 1} (max_per_shift_day, id "${r.id}"): params.max must be a whole number from 1 to 20.` });
+          // 置顶 110 续（后端 G272 b898617f 已上 main，文案照后端）：exceptions [{from, to?, max, shift_type?}]。
+          if (r.type === "max_per_shift_day" && pr.exceptions != null) {
+            if (!Array.isArray(pr.exceptions)) return send(res, 400, { detail: `${pre(i, r)}params.exceptions must be a list.` });
+            for (let j = 0; j < pr.exceptions.length; j++) {
+              const x = pr.exceptions[j];
+              const bad = Object.keys(x).filter((k) => !["from", "to", "max", "shift_type"].includes(k));
+              if (bad.length) return send(res, 400, { detail: `${pre(i, r)}params.exceptions item ${j + 1} has unknown key(s): ${bad.join(", ")}.` });
+              if (!/^\d{4}-\d{2}-\d{2}$/.test(x.from || "")) return send(res, 400, { detail: `${pre(i, r)}params.exceptions item ${j + 1}: from must be a date like "2026-11-15".` });
+              if (x.to != null && (!/^\d{4}-\d{2}-\d{2}$/.test(x.to) || x.to < x.from)) return send(res, 400, { detail: `${pre(i, r)}params.exceptions item ${j + 1}: to must be on or after from.` });
+              if (!(Number.isInteger(x.max) && x.max >= 1 && x.max <= 20)) return send(res, 400, { detail: `${pre(i, r)}params.exceptions item ${j + 1}: max must be a whole number from 1 to 20.` });
+            }
+          }
           if (r.type === "weekly_hours_alert" && !(typeof pr.hours === "number" && pr.hours >= 1 && pr.hours <= 80)) return send(res, 400, { detail: `Rule ${i + 1} (weekly_hours_alert, id "${r.id}"): params.hours must be a number from 1 to 80.` });
         }
         rulesDoc = { version: 1, rules: b.rules || [], updated_at: new Date().toISOString().slice(0, 19), updated_by: 1 };

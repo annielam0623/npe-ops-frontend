@@ -115,6 +115,18 @@ export interface MaxPerShiftDayParams {
   shift_type?: string;
   max: number;
   days?: DayIndex[];
+  /**
+   * 例外（置顶 110 续，Annie 2026-11-09「1 A 2 B 3 A 4C 5A 6A 7 A。动手」）：这些日子用例外的人数，盖过这条规则
+   * （可比一般的多，也可更少）。from 必填，to 不写 = 同一天；shift_type 不写 = 跟这条规则（规则也没写 = 每种班）。
+   * 过期的照存，页面灰掉写 (past)。几条规则之间照旧取小的（题 2 B）。
+   */
+  exceptions?: MaxPerShiftException[];
+}
+export interface MaxPerShiftException {
+  from: string;
+  to?: string;
+  max: number;
+  shift_type?: string;
 }
 /** 每周超过 hours 小时提醒（置顶 110 ④）：只提醒、不拦，排班引擎不看它。 */
 export interface WeeklyHoursAlertParams {
@@ -237,24 +249,77 @@ function compile(rules: Rule[]): Compiled {
   };
 }
 
-/** 这一天这种班最多几人（几条规则取最小）；没有规则管 = null。 */
-function capFor(c: Compiled, day: DayIndex, type: string): number | null {
+/** 这条规则的例外里，这一天这种班匹配到的（几条都匹配取小的）；没有 = null。 */
+export function exceptionMax(
+  r: MaxPerShiftDayParams,
+  date: string,
+  type: string,
+): number | null {
   let cap: number | null = null;
-  for (const r of c.maxPer) {
-    if (r.shift_type && r.shift_type !== type) continue;
-    if (r.days && r.days.length && !r.days.includes(day)) continue;
-    cap = cap == null ? r.max : Math.min(cap, r.max);
+  for (const x of r.exceptions ?? []) {
+    const shift = x.shift_type ?? r.shift_type;
+    if (shift && shift !== type) continue;
+    if (date < x.from || date > (x.to || x.from)) continue;
+    cap = cap == null ? x.max : Math.min(cap, x.max);
   }
   return cap;
+}
+
+/**
+ * 这一天这种班最多几人；没有规则管 = null。每条规则：这一天有例外就用例外的人数（题 3 A，盖过这条规则），
+ * 没有就看这条规则管不管这一天；几条规则之间取最小（题 2 B）。
+ */
+function capFor(
+  c: Compiled,
+  date: string,
+  day: DayIndex,
+  type: string,
+): number | null {
+  let cap: number | null = null;
+  for (const r of c.maxPer) {
+    const ex = exceptionMax(r, date, type);
+    let v: number | null = ex;
+    if (v == null) {
+      if (r.shift_type && r.shift_type !== type) continue;
+      if (r.days && r.days.length && !r.days.includes(day)) continue;
+      v = r.max;
+    }
+    cap = cap == null ? v : Math.min(cap, v);
+  }
+  return cap;
+}
+
+function dayOfDate(date: string): DayIndex {
+  const [y, m, d] = date.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d)).getUTCDay() as DayIndex;
 }
 
 /** 开着的规则里，这一天这种班最多几人（没有规则管 = null）。手动排班标超人数用（置顶 110 题 6）。 */
 export function maxPeopleOn(
   rules: Rule[],
-  day: DayIndex,
+  date: string,
   type: string,
 ): number | null {
-  return capFor(compile(rules), day, type);
+  return capFor(compile(rules), date, dayOfDate(date), type);
+}
+
+/**
+ * 这一天生效的例外（排班表日期下灰字「max 2 today」用，题 7 A）：每种班一条，班次 null = 每种班。
+ * 只看开着的规则。
+ */
+export function exceptionsOn(
+  rules: Rule[],
+  date: string,
+): { shift_type: string | null; max: number }[] {
+  const out = new Map<string, number>();
+  for (const r of enabled<MaxPerShiftDayParams>(rules, "max_per_shift_day")) {
+    for (const x of r.exceptions ?? []) {
+      if (date < x.from || date > (x.to || x.from)) continue;
+      const k = x.shift_type ?? r.shift_type ?? "";
+      out.set(k, Math.min(out.get(k) ?? Infinity, x.max));
+    }
+  }
+  return [...out].map(([k, max]) => ({ shift_type: k || null, max }));
 }
 
 /** 某种班「至少几天」这条规则管哪些人（三选一，见 MinDaysOnShiftParams）。 */
@@ -303,7 +368,7 @@ export function overCapacity(
       if (s) types.add(s.type);
     }
     for (const type of types) {
-      const max = capFor(c, d as DayIndex, type);
+      const max = capFor(c, addDays(plan.weekStart, d), d as DayIndex, type);
       if (max == null) continue;
       const count = headcount(plan.byEmployee, employees, d, type);
       if (count > max) out.push({ day: d as DayIndex, type, count, max });
@@ -573,7 +638,7 @@ export function generateWeek(input: GenerateInput): GenerateResult {
   }
   /** 这一天这种班还能不能再加一个人（每个班最多几人）。 */
   const roomFor = (day: DayIndex, type: string) => {
-    const cap = capFor(c, day, type);
+    const cap = capFor(c, dateOf(day), day, type);
     return cap == null || headcount(days, emps, day, type) < cap;
   };
 
@@ -759,7 +824,7 @@ export function generateWeek(input: GenerateInput): GenerateResult {
           if (t) per.set(t, (per.get(t) ?? 0) + 1);
         }
         for (const [t, n] of per) {
-          const cap = capFor(c, d, t);
+          const cap = capFor(c, dateOf(d), d, t);
           if (cap == null) continue;
           const allowed = Math.max(cap, baseCount.get(`${d}|${t}`) ?? 0);
           if (n > allowed) s += 1000 * (n - allowed);
@@ -848,7 +913,7 @@ export function generateWeek(input: GenerateInput): GenerateResult {
         if (t) types.add(t);
       }
       for (const t of types) {
-        const cap = capFor(c, d, t);
+        const cap = capFor(c, dateOf(d), d, t);
         if (cap == null) continue;
         const allowed = Math.max(cap, baseCount.get(`${d}|${t}`) ?? 0);
         let n = headcount(days, emps, d, t);

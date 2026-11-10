@@ -99,6 +99,17 @@ export function RuleDialog({
       (out.days as unknown[]).length === 0
     )
       delete out.days;
+    if (type === "max_per_shift_day" && Array.isArray(out.exceptions)) {
+      // 例外：to 跟 from 同一天 / 空就不带；班次空 = 跟这条规则（不带键）。
+      out.exceptions = (out.exceptions as Record<string, unknown>[]).map(
+        (x) => {
+          const y: Record<string, unknown> = { from: x.from, max: x.max };
+          if (x.to && x.to !== x.from) y.to = x.to;
+          if (x.shift_type) y.shift_type = x.shift_type;
+          return y;
+        },
+      );
+    }
     if (type === "min_days_on_shift") {
       // 三选一只带一个键；Everyone 什么都不带（后端拒 employee_ids: []，40 核过）。
       delete out.employee_id;
@@ -148,6 +159,26 @@ export function RuleDialog({
       )
     )
       return "Pick at least one person.";
+    if (type === "max_per_shift_day" && Array.isArray(p.exceptions)) {
+      const list = p.exceptions as {
+        from?: string;
+        to?: string;
+        max?: number;
+      }[];
+      for (let i = 0; i < list.length; i++) {
+        const x = list[i];
+        if (!x.from) return `Exception ${i + 1}: pick the date.`;
+        if (x.to && x.to < x.from)
+          return `Exception ${i + 1}: the end date is before the start date.`;
+        if (
+          typeof x.max !== "number" ||
+          !Number.isInteger(x.max) ||
+          x.max < 1 ||
+          x.max > 20
+        )
+          return `Exception ${i + 1}: at most must be a whole number from 1 to 20.`;
+      }
+    }
     if (
       type === "max_per_shift_day" &&
       (typeof p.max !== "number" ||
@@ -730,6 +761,7 @@ function Fields({
           <Field label="Days (none picked = every day)">
             <Days field="days" />
           </Field>
+          <Exceptions params={params} set={set} shifts={shifts} />
         </>
       );
     case "weekly_hours_alert":
@@ -739,4 +771,116 @@ function Fields({
         </Field>
       );
   }
+}
+
+type ExceptionDraft = {
+  from?: string;
+  to?: string;
+  max?: number;
+  shift_type?: string;
+};
+
+/**
+ * Max people 的例外（置顶 110 续，Annie「4C」：这里和 Schedule 标签点日期都能加，同一份数据）：
+ * 班次（不选 = 跟这条规则）+ 起止日期（结束不填 = 同一天）+ 最多几人。按 Save rule 才存。
+ */
+function Exceptions({
+  params,
+  set,
+  shifts,
+}: {
+  params: Params;
+  set: (patch: Params) => void;
+  shifts: { key: string; label: string }[];
+}) {
+  const list = (params.exceptions as ExceptionDraft[] | undefined) ?? [];
+  const put = (i: number, patch: ExceptionDraft) =>
+    set({
+      exceptions: list.map((x, j) => (j === i ? { ...x, ...patch } : x)),
+    });
+  const same = params.shift_type
+    ? (shifts.find((t) => t.key === params.shift_type)?.label ??
+      String(params.shift_type))
+    : "Every shift";
+  return (
+    <Field label="Exceptions (these dates use their own number)">
+      <div className="flex flex-col gap-1.5">
+        {list.map((x, i) => (
+          <div
+            key={i}
+            data-exception-row={i}
+            className="flex flex-wrap items-center gap-1.5"
+          >
+            <select
+              aria-label="Exception shift"
+              value={x.shift_type ?? ""}
+              onChange={(e) =>
+                put(i, { shift_type: e.target.value || undefined })
+              }
+              className={cn(INPUT, "w-[120px]")}
+            >
+              <option value="">{same}</option>
+              {params.shift_type
+                ? null
+                : shifts.map((t) => (
+                    <option key={t.key} value={t.key}>
+                      {t.label}
+                    </option>
+                  ))}
+            </select>
+            <input
+              type="date"
+              aria-label="Exception from"
+              value={x.from ?? ""}
+              onChange={(e) => put(i, { from: e.target.value || undefined })}
+              className={cn(INPUT, "w-[140px]")}
+            />
+            <span className="text-[12px] text-white/60">to</span>
+            <input
+              type="date"
+              aria-label="Exception to"
+              value={x.to ?? ""}
+              onChange={(e) => put(i, { to: e.target.value || undefined })}
+              className={cn(INPUT, "w-[140px]")}
+            />
+            <span className="text-[12px] text-white/60">at most</span>
+            <input
+              type="number"
+              aria-label="Exception max"
+              min={1}
+              max={20}
+              value={x.max ?? ""}
+              onChange={(e) =>
+                put(i, {
+                  max:
+                    e.target.value === "" ? undefined : Number(e.target.value),
+                })
+              }
+              className={cn(INPUT, "w-[64px]")}
+            />
+            <button
+              type="button"
+              aria-label="Remove exception"
+              onClick={() =>
+                set({ exceptions: list.filter((_, j) => j !== i) })
+              }
+              className="cursor-pointer rounded px-2 text-[15px] text-white/70 hover:bg-red-500/20 hover:text-red-200"
+            >
+              ×
+            </button>
+          </div>
+        ))}
+        <button
+          type="button"
+          onClick={() => set({ exceptions: [...list, { max: 2 }] })}
+          className={cn(DARK_ADD_BUTTON_CLASS, "w-fit")}
+        >
+          + Add exception
+        </button>
+        <span className="text-[11.5px] text-white/55">
+          Leave the end date empty for one day.
+        </span>
+      </div>
+    </Field>
+  );
 }

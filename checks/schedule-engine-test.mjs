@@ -5,7 +5,9 @@ import {
   addDays,
   findViolations,
   generateWeek,
+  exceptionsOn,
   generateWeeks,
+  maxPeopleOn,
   overCapacity,
   overHours,
   restHours,
@@ -367,6 +369,52 @@ check("110 ④ 题 5：小时数上班到下班整段算、跨午夜 +24；超�
   const rules = [r("h1", "weekly_hours_alert", { hours: 40 })];
   assert.deepEqual(overHours(rules, plan, employees), [{ employeeId: V, name: "Veronica", hours: 42.5 }]);
   assert.deepEqual(overHours([{ ...rules[0], enabled: false }], plan, employees), []);
+});
+
+// ───────── 置顶 110 续：Max people 的例外（Annie「1 A 2 B 3 A 4C 5A 6A 7 A。动手」）─────────
+
+const closeOn = (ids, dayIdx) => {
+  const by = {};
+  for (const e of employees) by[e.id] = Array(7).fill(null);
+  for (const id of ids) by[id][dayIdx] = { type: "close", start: "13:30", end: "21:30" };
+  return { weekStart: START, byEmployee: by };
+};
+
+check("110 续 题 3 A：Every shift 最多 1 + 例外 Close 10/20 最多 2 ⇒ 那天 Close 2 人不算超；别的日子照旧超", () => {
+  const rules = [r("m1", "max_per_shift_day", { max: 1, exceptions: [{ from: "2026-10-20", max: 2, shift_type: "close" }] })];
+  assert.deepEqual(overCapacity(rules, closeOn([V, L], 2), employees), []);
+  assert.deepEqual(overCapacity(rules, closeOn([V, L], 3), employees), [{ day: 3, type: "close", count: 2, max: 1 }]);
+  assert.equal(maxPeopleOn(rules, "2026-10-20", "close"), 2);
+  assert.equal(maxPeopleOn(rules, "2026-10-20", "open"), 1, "exception only for Close");
+});
+
+check("110 续 题 3 A：例外也可以收紧（规则最多 2，例外那天最多 1）；日期段 from–to 都算", () => {
+  const rules = [r("m1", "max_per_shift_day", { max: 2, exceptions: [{ from: "2026-10-19", to: "2026-10-21", max: 1 }] })];
+  assert.equal(maxPeopleOn(rules, "2026-10-19", "close"), 1);
+  assert.equal(maxPeopleOn(rules, "2026-10-21", "mid"), 1);
+  assert.equal(maxPeopleOn(rules, "2026-10-22", "close"), 2);
+  assert.deepEqual(overCapacity(rules, closeOn([V, L], 2), employees), [{ day: 2, type: "close", count: 2, max: 1 }]);
+});
+
+check("110 续 题 2 B：两条 Max people 照旧取小的（Every shift 1 + Close 周六 2 ⇒ 周六 Close 还是 1）", () => {
+  const rules = [r("m1", "max_per_shift_day", { max: 1 }), r("m2", "max_per_shift_day", { shift_type: "close", max: 2, days: [6] })];
+  assert.equal(maxPeopleOn(rules, "2026-10-24", "close"), 1);
+});
+
+check("110 续 题 6 A：Auto-fill 只是允许——例外那天不超过 2，别的日子不超过 1", () => {
+  const rules = [...baseRules(), r("m1", "max_per_shift_day", { max: 1, exceptions: [{ from: "2026-10-20", max: 2, shift_type: "close" }] })];
+  const w = run(rules, 1)[0];
+  assert.deepEqual(overCapacity(rules, w.plan, employees), []);
+  const tue = employees.filter((e) => w.plan.byEmployee[e.id][2]?.type === "close").length;
+  assert.ok(tue <= 2, `Tue close ${tue}`);
+});
+
+check("110 续 题 7：exceptionsOn 给出那天生效的例外（班次 null = 每种班）；规则关着就没有", () => {
+  const rules = [r("m1", "max_per_shift_day", { max: 1, exceptions: [{ from: "2026-10-20", max: 2, shift_type: "close" }, { from: "2026-12-20", to: "2027-01-05", max: 2 }] })];
+  assert.deepEqual(exceptionsOn(rules, "2026-10-20"), [{ shift_type: "close", max: 2 }]);
+  assert.deepEqual(exceptionsOn(rules, "2027-01-01"), [{ shift_type: null, max: 2 }]);
+  assert.deepEqual(exceptionsOn(rules, "2026-10-21"), []);
+  assert.deepEqual(exceptionsOn([{ ...rules[0], enabled: false }], "2026-10-20"), []);
 });
 
 console.log(`\n${passed}/${passed + failed} passed`);
