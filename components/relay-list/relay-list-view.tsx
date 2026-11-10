@@ -67,8 +67,10 @@ import {
   RelayTextSave,
   SheetTextBar,
   useRelayCellFont,
+  useRelayPageDelta,
   useRelayTextSize,
 } from "./relay-text-size";
+import { SheetFitMarks, SheetFitWarn, useSheetFit } from "./sheet-fit";
 
 /** 版式设置（置顶 92）里画在单子上的：Hotel 格涂不涂车色。纸张 / 边距 / 表头色走 CSS 变量。 */
 const RelayLookContext = createContext<{
@@ -347,6 +349,7 @@ export function RelayListView() {
               ...HOW_TO,
               ...(layout ? [RELAY_LAYOUT_HOW_TO] : []),
               ...(textState.ready ? [RELAY_AA_HOW_TO] : []),
+              ...RELAY_FIT_HOW_TO,
             ]}
           />
         </div>
@@ -393,6 +396,12 @@ const RELAY_LAYOUT_HOW_TO =
 /** 置顶 92 Q5 A（第 1 版 preview Q7 的原文，按「每天的起点」改了最后半句）。 */
 const RELAY_AA_HOW_TO =
   "Aa Text size (above each sheet): pick Whole column, Whole row or Whole page, click the table, then press A− or A+ and Regular or Bold. Press Done, then Save at the top. Text size is saved for this day only and prints as you see it; the next day starts from the everyday size.";
+
+/** 置顶 112（Annie「111， 112 全 A + 动手」）：Q3 定稿原文 + Q7 A 原文。 */
+const RELAY_FIT_HOW_TO = [
+  "If a sheet no longer fits on one page after you make the text bigger, the space between hotels and inside each row gets smaller by itself until the sheet fits. Your text size does not change. If the sheet still does not fit, a yellow note above it says how many pages it will print on; make the text smaller.",
+  "If a sheet is too wide for the paper, the space inside each cell gets smaller and the sheet moves to the middle of the paper by itself. If it is still too wide, a yellow note above it says so; make the text smaller.",
+];
 
 /**
  * 「⬇ Excel」（置顶 92 Q8 A，Annie「记得要可以下载」「下载功能不用给i我preview了，直接上线」）：下载这一天的 Relay list，
@@ -612,11 +621,18 @@ function Legend({ round }: { round: RelayRoundList }) {
   );
 }
 
-/** Total Pax 那一行（每天的起点字号 car.total_pax，置顶 92 第 2 批）。 */
-const TOTAL_PAX: CSSProperties = {
-  fontSize: "var(--rl-car-total, 20px)",
-  fontWeight: "var(--rl-car-total-w, 700)" as CSSProperties["fontWeight"],
-};
+/**
+ * Total Pax 那一行（每天的起点字号 car.total_pax，置顶 92 第 2 批）；当天 Aa 整页加减几 px 它也跟着加减（置顶 112 Q6 A，
+ * Annie「页面上的字体变得时候Total Pax这一行也要跟着变」）。
+ */
+function totalPaxStyle(pageDelta: number): CSSProperties {
+  return {
+    fontSize: pageDelta
+      ? `calc(var(--rl-car-total, 20px) + ${pageDelta}px)`
+      : "var(--rl-car-total, 20px)",
+    fontWeight: "var(--rl-car-total-w, 700)" as CSSProperties["fontWeight"],
+  };
+}
 
 /** 每天的起点字号 ⇒ CSS 变量（只写设了的）。 */
 const TEXT_VARS: Record<string, Record<string, string>> = {
@@ -664,6 +680,8 @@ function TotalSheet({
   const hotelStyle = useHotelStyle();
   const sheet = round.textSheet;
   const font = useRelayCellFont(sheet, useContext(RelayLookContext).summaryPx);
+  const ref = useRef<HTMLElement>(null);
+  const fit = useSheetFit(ref, true);
   let prev: { guest: RelayGuest; carKey: string } | null = null;
   return (
     <>
@@ -671,11 +689,14 @@ function TotalSheet({
       sheet={sheet}
       orders={round.rows.map((r) => r.guest.order_number)}
     />
+    <SheetFitWarn fit={fit} />
     <section
+      ref={ref}
       data-relay-total={round.round}
       data-orient={orientation}
       className="rl-sheet rl-total"
     >
+      <SheetFitMarks fit={fit} />
       <div className="flex items-baseline justify-between text-[20px] font-bold">
         <span>RELAY SPLITS</span>
         <span>
@@ -744,15 +765,21 @@ function CarSheet({
   const hotelStyle = useHotelStyle();
   const sheet = car.textSheet;
   const font = useRelayCellFont(sheet, useContext(RelayLookContext).carPx);
+  const totalPax = totalPaxStyle(useRelayPageDelta(sheet));
+  const ref = useRef<HTMLElement>(null);
+  const fit = useSheetFit(ref, false);
   let prev: { guest: RelayGuest; carKey: string } | null = null;
   return (
     <>
     <SheetTextBar sheet={sheet} orders={car.rows.map((g) => g.order_number)} />
+    <SheetFitWarn fit={fit} />
     <section
+      ref={ref}
       data-relay-car={car.key}
       data-orient={car.orientation}
       className="rl-sheet"
     >
+      <SheetFitMarks fit={fit} />
       <div className="rl-head" style={{ background: car.color }}>
         <span>
           {car.title} &nbsp;{car.who}
@@ -805,10 +832,10 @@ function CarSheet({
             <td className="rl-gap" colSpan={7} />
           </tr>
           <tr>
-            <td colSpan={2} className="!text-right" style={TOTAL_PAX}>
+            <td colSpan={2} className="!text-right" style={totalPax}>
               Total Pax
             </td>
-            <td data-relay-total-pax style={TOTAL_PAX}>
+            <td data-relay-total-pax style={totalPax}>
               {car.pax}
             </td>
             <td colSpan={4} className="!border-0" />

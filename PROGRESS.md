@@ -1478,6 +1478,13 @@ D. 已完成、待从置顶移走：
   - **Annie 11-09 晚（原话，78 转）：「relay preview我建议你用我们真名单和酒店名的简写来preview」「然后干脆把行距也给staff可以自己调算了」** ⇒ 第 4 版：用一天真 Relay list（真名单 + 系统里的酒店 / 产品简称，不放电话 / 邮箱，客人信息不进仓库，PROGRESS 只写用的哪天），按真数据重新实测宽度、改 Q7 数字和推荐；加行距新题（放哪 / 调什么 / 和自动压的关系 / How to use 原文，控件照现有 Aa 的样子）。**还没「动手」**。
     - 59：简称来自后端 relay-pull 的 hotel_short / product_short（lib/relay-list.ts hotelText / tourText），要真数据得有登录；已问 78 怎么拿（推荐 Annie 在那天 Relay list 点 ⬇ Excel 给文件，只读、不进仓库）。
     - ✅ 第 4 版（同链接）：Annie 给了 **11-09** 的 Relay list Excel（电话打码，客人信息不进仓库）。真名单实测：车单最多 9 行，A+10 也只占约 58% 页 ⇒ 车单不会超页，超页的只有人多的总表（1st Round 默认 94%，A+3 压得回一页，A+4 起出黄框）；右边撑宽的是 Full Name 列（酒店简称都短），最宽的 ANTELOPE CANYON A：A+3 超 7mm、A+5 超 26mm、A+7 超 45mm、A+10 超 73mm；A（压内边距 + 挪中间，约 27mm）够到 A+4–A+5，C 改成「长名字（Full Name，其次酒店名）折两行」，A+10 也印得下，仍推荐 C。加了 ⑨ 行距控件和 Q8–Q10（都推荐 A）。Q1 / Q5 / Q6 / Q7–Q10 待答，没「动手」。
+  - Annie（原话，78 转）：「59怎样调都i可以，但是要设置得简单，让staff一看就会」「用-+是最好，一目了然，就是立刻可以看到效果就行了，不要让staff去判断px」⇒ Spacing 用一组 [−] [+]，按了单子马上变，不显示 px，留一个回默认的键；不用 Compact / Normal / Roomy。
+  - Annie（原话，78 转）：「一定要看到得页面页面也就是打印得页面，不要yipreview打印，超出去很多，就要重新调」「快点做，这个优先上线」⇒ 屏幕 = 打印：超页时屏幕上画出第 2 页从哪开始，超宽时画出纸边，即时变；不再先出截图，直接做进去合 main。
+  - ✅ **11-09 晚 合 main（task/relay-fit，59）**：按「111， 112 全 A + 动手」（Q7 = A，不折行）。
+    - 新 components/relay-list/sheet-fit.tsx：每张单（总表、车单）画完量自己的纸（A4 / Letter、横竖、页边距）。太宽：格子左右内边距 6→2px（总表 5→2），还宽左右页边距一起变小（最少 5mm）；太高：酒店空隙 12→10→8→6px，再行内上下 →1px，一页就停；压过的单酒店间两条线 2px 深灰；还超 / 还宽出黄框（「This sheet will print on N pages. Make the text smaller.」/「This sheet is too wide for the paper. Make the text smaller.」/ 合成句），只屏幕。屏幕上超页画红虚线「Page 2 starts here」（在一页纸高处）、超宽画纸右边红虚线「Paper edge — anything to the right is cut off」，只屏幕。不缩字、不出「压过了」的字（Q5 A）。
+    - relay-list.css：td padding / 空隙改 --rl-py / --rl-px / --rl-gap 变量（没压 = 原值），.rl-sheet position: relative。Total Pax 跟当天 Whole page 加减（Q6 A，整列 / 整行不跟）。How to use 加压缩句（Q3 定稿）+ 太宽句（Q7 A）。
+    - 检查：rl 131/131（新 23 条：不压 / 22 站压回一页 + PDF 页数 = 单数 / 40 站黄框 + 页数和 PDF 一致 + 换页线 + 打印不印 / Total Pax 整页跟、整列不跟 / A+10 太宽压内边距 + 挪中 + 黄框 + 纸边线 / 回默认全撤）；mf 293/293、da 546/546、nav 39/39；tsc 0、eslint 0 错（3 条旧 warning）、build 过。rl-mock 的 ctl.many 可给数字。
+    - Spacing −/+：要后端（text_size 只收 page / columns / rows）。后端 78 task/relay-spacing ee74a6cd 形状已到（spacing {row 1–10, gap 偶数 2–24}，默认车单 row 4、总表 row 2、gap 12，relay-pull 总带 spacing），等上 main 的 SHA 另开小分支接。
 - 动手时（79 想法）：components/relay-list/relay-list.css 加 `--rl-gap` / `--rl-py` 变量和 `[data-squeezed]` 线；relay-list-view.tsx 每张单渲染后量内容高度 vs 它自己的纸高 − 上下页边距（A4 / Letter、横竖），按步压、超了出黄框；字号 / Aa 改动、换纸张后重算。验收见 35 派工：放大超几行 → 自动一页、间隔看得见；压不下 → 印 2 页 + 提示；一页的单、颜色 / 方向 / 页边距 / 字号、11-03 空白页修法都不变。
 
 ### 111. Main Manifest 的 Sync Rezdy 键恢复（2026-11-09，Annie 原话：「把main manifest上的Rezdy同步钮打开吧」；35 问清再派）
