@@ -30,6 +30,8 @@ pe-ops-wt-1a-110ex，已推 task/110-exceptions（sch 467、引擎 32、nav 39�
 - ✅ **114 Relay list 功能键整理上 main 09c41a5b**（1a，task/relay-list-toolbar）：截图 https://claude.ai/artifact/R6bkQH2L5rngsh5bsHqgHz ；rl 159、mf 311、nav 39，tsc / eslint / build 过；没动 globals.css / phone.tsx，页头和编辑卡加 data-phone-keep。preview 没画但留着的：Text Size 旁灰字当前值（如「+1 px」）。验收点已转 Annie。
 - 115 派给 1a（Annie 还没开新窗口，1a 空出来了）：三页超 1/3 屏的（Dispatch › Assign、Tour Tracking、Manifests）先给改后截图，Annie 看过再合。
 - 115（1a）截图 https://claude.ai/artifact/PCUBMtMDeK782hpZxjXs3C ：第一批题 1–6 task/phone-compact-26 e656cc97（全套在跑，过了就合）；第二批题 8 三页 task/phone-toolbars-115 87b5f59b（没合，等 Annie）：Assign 494→353、Tour Tracking 480→303、Manifests 432→270。问 Annie 4 题（P1 第二批能否合 / P2 Assign「Last pull from Discord」收进 ⋯ / P3 题 7 题 8 冲突按题 8 做三页 / P4 Dispatch Step 1 提醒默认收起），原文见 62 回复，置顶 115 也记了。
+- ✅ **115 第一批（题 1–6 全站手机键 26px）上 main d1dae38d**（1a）：50 套 headless 全过（da 546、mf 311、rl 159、man 425、tt 168、sch 471、mt 204 …）、nav 39，tsc / eslint / build 过；验收点已转 Annie。第二批 task/phone-toolbars-115 87b5f59b 等 Annie P1–P4。
+- 109 W4 第二段前端派给 79（task/send-rules-w4，照后端 docs/interfaces/send-outcome-2026-11-09.md 第 5 节；上了把 SHA 发 d9 删 not_reached）。
 - 🟡 Annie 随后改 107（原话）：「107要改一下，登录进来之后直接弹窗，更新以后才可以继续」⇒ 107 暂停，先出新 preview（派给新开的 107 窗口），细节 N1–N3 见置顶 107。
 
 ## 2026-11-09 晚 收工交接：前端主窗口 `前端主窗口-78`[426278]（家里电脑；明天 Annie 在公司电脑）
