@@ -1,5 +1,5 @@
 import {
-  type DayIndex,
+  exceptionsOn,
   maxPeopleOn,
   roundHours,
   type Rule,
@@ -22,6 +22,8 @@ export interface RuleChecks {
   >;
   /** 落在超人数格子里的班（班卡琥珀框）。 */
   overSlot: Set<number>;
+  /** 日期 → 那天生效的例外（列头灰字「max 2 today」，题 7 A）。 */
+  exceptionByDate: Map<string, { label: string | null; max: number }[]>;
   /** 员工 id → 这周几小时（只放超过提醒小时数的人）。 */
   overHours: Map<number, number>;
 }
@@ -29,6 +31,7 @@ export interface RuleChecks {
 const EMPTY: RuleChecks = {
   overByDate: new Map(),
   overSlot: new Set(),
+  exceptionByDate: new Map(),
   overHours: new Map(),
 };
 
@@ -70,7 +73,7 @@ export function ruleChecks(
     const [date, type] = k.split("|");
     const d = dayOf(date);
     if (d < 0 || d > 6) continue;
-    const max = maxPeopleOn(on, d as DayIndex, type);
+    const max = maxPeopleOn(on, date, type);
     const count = new Set(list.map((s) => s.employee_id)).size;
     if (max == null || count <= max) continue;
     const label = shiftTypes.find((t) => t.key === type)?.label ?? type;
@@ -79,6 +82,21 @@ export function ruleChecks(
       { type, label, count, max },
     ]);
     for (const s of list) overSlot.add(s.id);
+  }
+
+  const exceptionByDate: RuleChecks["exceptionByDate"] = new Map();
+  for (let d = 0; d < 7; d++) {
+    const date = new Date(Date.parse(`${weekStart}T00:00:00Z`) + d * 86400000)
+      .toISOString()
+      .slice(0, 10);
+    const list = exceptionsOn(on, date).map((x) => ({
+      label: x.shift_type
+        ? (shiftTypes.find((t) => t.key === x.shift_type)?.label ??
+          x.shift_type)
+        : null,
+      max: x.max,
+    }));
+    if (list.length) exceptionByDate.set(date, list);
   }
 
   const overHours = new Map<number, number>();
@@ -91,5 +109,5 @@ export function ruleChecks(
     }
     for (const [id, h] of sum) if (h > limit) overHours.set(id, roundHours(h));
   }
-  return { overByDate, overSlot, overHours };
+  return { overByDate, overSlot, exceptionByDate, overHours };
 }

@@ -14,7 +14,11 @@ import { cn } from "@/lib/utils";
 
 import { CARD, CARD_HEADER, MUTED } from "./config";
 import { RuleDialog } from "./rule-dialog";
+import { laToday } from "@/lib/la-date";
+import type { MaxPerShiftDayParams } from "@/lib/schedule-engine";
+
 import {
+  describeExceptions,
   describeRule,
   RULE_TYPES,
   ruleConflicts,
@@ -60,6 +64,7 @@ export function RulesView({ rules, ctx, canEdit, onSave }: RulesViewProps) {
   const ordered = groups.flatMap((g) => rules.filter((r) => r.type === g.type));
   // 置顶 110 题 8 A：互相打架的规则下面各一行琥珀字（不拦）。
   const conflicts = ruleConflicts(rules, ctx);
+  const today = laToday();
 
   return (
     <section className={CARD} data-rules-view>
@@ -140,6 +145,32 @@ export function RulesView({ rules, ctx, canEdit, onSave }: RulesViewProps) {
                 >
                   {describeRule(rule, ctx)}
                 </span>
+                {rule.type === "max_per_shift_day" &&
+                (rule.params as unknown as MaxPerShiftDayParams).exceptions
+                  ?.length ? (
+                  // 置顶 110 续：例外另起一行；过期的灰掉写 (past)（题 5 A）。
+                  <span
+                    data-rule-exceptions={rule.id}
+                    className="block text-[12.5px] text-sky-200"
+                  >
+                    Exceptions:{" "}
+                    {describeExceptions(
+                      rule.params as unknown as MaxPerShiftDayParams,
+                      ctx,
+                      today,
+                    ).map((x, i) => (
+                      <span
+                        key={i}
+                        data-exception-past={x.past || undefined}
+                        className={x.past ? "text-white/40" : undefined}
+                      >
+                        {i ? " · " : ""}
+                        {x.text}
+                        {x.past ? " (past)" : ""}
+                      </span>
+                    ))}
+                  </span>
+                ) : null}
                 {(rule.id ? (conflicts.get(rule.id) ?? []) : []).map((t) => (
                   <span
                     key={t}
