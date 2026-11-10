@@ -1472,6 +1472,8 @@ D. 已完成、待从置顶移走：
   - ✅ **Annie 11-09 晚（原话，78 转）：「我的要求：页面上的字体变得时候Total Pax这一行也要跟着变。然后压缩这要是第一页汇总页压缩。如果出现像图上这种右边框超出答应范围了，是否可以点击整体移动到页中央以适应页面？」** ⇒ Total Pax 跟字号变；Q4 = A（总表也压，59 理解为总表和车单都压，preview 里请她确认）；右边超出新题 Q7。**还没「动手」**。
     - 59 只读查现状：① Total Pax 行（relay-list-view.tsx `TOTAL_PAX`）只用版式设置的每天起点字号 `--rl-car-total`（20px），当天 Aa 只改客人格（`GuestCells` → relay-text-size.tsx `useRelayCellFont`），所以不跟。② 打印顺序每轮 TotalSheet（RELAY SPLITS）在前、车单在后 ⇒ 总表 = 每轮第一页。③ 右边超出：relay-list.css `.rl-sheet td { white-space: nowrap }`，长酒店名 + 放大字时表格比纸宽，`.rl-sheet` 没有任何居中 / 缩放，打印右边被切。实测（Calibri、A4 竖、默认边距）有一个长酒店名 18px 就宽约 48mm，每 +1px 多约 11mm；挪到中间（边距最少 5mm）最多救约 12mm，加压格子左右内边距 6→2px 共约 27mm ⇒ 只挪位置解决不了大多数情况。
     - preview 第 3 版（同链接）：②③ Total Pax 跟着变；④ 总表照规则压；⑤ 现在右边超出；⑥⑦ Q7-A；⑧ Q7-C。新题 Q6（Total Pax 只跟 Whole page A 推荐 / B 也跟 Qty 列）、Q7（A 自动压内边距 + 挪中间，不够出黄框 / B「Center on page」键 / C = A + 太长酒店名折两行，推荐 C）。Q1、Q5 仍待答。
+  - **Annie 11-09 晚（原话，78 转）：「relay preview我建议你用我们真名单和酒店名的简写来preview」「然后干脆把行距也给staff可以自己调算了」** ⇒ 第 4 版：用一天真 Relay list（真名单 + 系统里的酒店 / 产品简称，不放电话 / 邮箱，客人信息不进仓库，PROGRESS 只写用的哪天），按真数据重新实测宽度、改 Q7 数字和推荐；加行距新题（放哪 / 调什么 / 和自动压的关系 / How to use 原文，控件照现有 Aa 的样子）。**还没「动手」**。
+    - 59：简称来自后端 relay-pull 的 hotel_short / product_short（lib/relay-list.ts hotelText / tourText），要真数据得有登录；已问 78 怎么拿（推荐 Annie 在那天 Relay list 点 ⬇ Excel 给文件，只读、不进仓库）。
 - 动手时（79 想法）：components/relay-list/relay-list.css 加 `--rl-gap` / `--rl-py` 变量和 `[data-squeezed]` 线；relay-list-view.tsx 每张单渲染后量内容高度 vs 它自己的纸高 − 上下页边距（A4 / Letter、横竖），按步压、超了出黄框；字号 / Aa 改动、换纸张后重算。验收见 35 派工：放大超几行 → 自动一页、间隔看得见；压不下 → 印 2 页 + 提示；一页的单、颜色 / 方向 / 页边距 / 字号、11-03 空白页修法都不变。
 
 ### 111. Main Manifest 的 Sync Rezdy 键恢复（2026-11-09，Annie 原话：「把main manifest上的Rezdy同步钮打开吧」；35 问清再派）
