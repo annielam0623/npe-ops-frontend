@@ -36,6 +36,7 @@ import { NotCountedTag, TestTag } from "./employees-dialog";
 import { TimeEditPopup } from "./time-edit-popup";
 import { gapSentence, type SlotMark } from "./week-draft";
 import { ruleChecks } from "./rule-checks";
+import { DayRuleDialog, dayRuleTarget } from "./day-rule-dialog";
 
 interface WeekGridProps {
   weekStart: string;
@@ -109,6 +110,8 @@ interface WeekGridProps {
    * 超过「每周提醒小时数」的人名字下面琥珀字（题 3）。只给能改排班的人传。
    */
   rules?: Rule[];
+  /** 置顶 110 续（Annie「4C」）：点日期「Allow 2 people on … this day」存整份规则；不传 = 没有这个入口。 */
+  onSaveRules?: (next: Rule[]) => Promise<unknown>;
 }
 
 const COLS = "grid-cols-[130px_repeat(7,minmax(118px,1fr))]";
@@ -139,6 +142,7 @@ export function WeekGrid({
   gapsByDay,
   onGapDay,
   rules,
+  onSaveRules,
   marks,
   movedFrom,
   onUndoDelete,
@@ -152,6 +156,7 @@ export function WeekGrid({
 }: WeekGridProps) {
   // 拖员工行：正拖着哪一行、放下会落在哪一行的前 / 后（蓝线）。
   const [rowDrag, setRowDrag] = useState<number | null>(null);
+  const [dayRule, setDayRule] = useState<string | null>(null);
   const [rowDrop, setRowDrop] = useState<{
     id: number;
     after: boolean;
@@ -304,6 +309,15 @@ export function WeekGrid({
   );
   return (
     <div className="overflow-x-auto p-3" data-sch-grid>
+      {dayRule && rules && onSaveRules ? (
+        <DayRuleDialog
+          date={dayRule}
+          rules={rules}
+          shiftTypes={shiftTypes}
+          onSave={onSaveRules}
+          onClose={() => setDayRule(null)}
+        />
+      ) : null}
       <div className={cn("grid min-w-[960px] gap-[2px]", COLS)}>
         <div
           className={cn(
@@ -322,12 +336,43 @@ export function WeekGrid({
               date === today ? "text-sky-300" : "text-white/90",
             )}
           >
-            <div className="text-[11px] font-bold tracking-[.06em] uppercase">
-              {DAY_LABELS[i]}
-            </div>
-            <div className="font-mono text-[10px] text-white/80">
-              {date.slice(5).replace("-", "/")}
-            </div>
+            {onSaveRules && rules && dayRuleTarget(rules) ? (
+              // 置顶 110 续：点日期 ⇒ 这一天某个班允许 2 个人（同 Rules 标签的 Exceptions）。
+              <button
+                type="button"
+                data-day-rule={date}
+                onClick={() => setDayRule(date)}
+                title="Allow 2 people on a shift this day"
+                className="mx-auto block cursor-pointer rounded px-1 hover:bg-white/[.06]"
+                data-phone-keep
+              >
+                <span className="block text-[11px] font-bold tracking-[.06em] uppercase">
+                  {DAY_LABELS[i]}
+                </span>
+                <span className="block font-mono text-[10px] text-white/80">
+                  {date.slice(5).replace("-", "/")}
+                </span>
+              </button>
+            ) : (
+              <>
+                <div className="text-[11px] font-bold tracking-[.06em] uppercase">
+                  {DAY_LABELS[i]}
+                </div>
+                <div className="font-mono text-[10px] text-white/80">
+                  {date.slice(5).replace("-", "/")}
+                </div>
+              </>
+            )}
+            {(checks.exceptionByDate.get(date) ?? []).map((x, k) => (
+              // 题 7 A：例外的日子没超就不出琥珀，灰字小标「max 2 today」。
+              <div
+                key={k}
+                data-day-exception={date}
+                className="mt-0.5 text-[10.5px] text-white/55"
+              >
+                {x.label ? `${x.label} ` : ""}max {x.max} today
+              </div>
+            ))}
             {gapsByDay?.get(date)?.length ? (
               <button
                 type="button"

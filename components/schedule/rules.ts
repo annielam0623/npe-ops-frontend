@@ -7,6 +7,7 @@ import type {
   ExcludeFromRotationParams,
   FixedShiftParams,
   MaxPerShiftDayParams,
+  MaxPerShiftException,
   MinDaysOnShiftParams,
   MinRestParams,
   Rule,
@@ -191,6 +192,7 @@ export function describeRule(rule: Rule, ctx: DescribeContext): string {
       const when =
         p.days && p.days.length ? `on ${describeDays(p.days)}` : "every day";
       return `${shift}: at most ${p.max} ${p.max === 1 ? "person" : "people"} a day, ${when}`;
+      // 例外另起一行显示（rules-view / rule-dialog 用 describeExceptions）。
     }
     case "weekly_hours_alert": {
       const p = rule.params as unknown as WeeklyHoursAlertParams;
@@ -213,6 +215,49 @@ export function describeRule(rule: Rule, ctx: DescribeContext): string {
       return `${empName(ctx, p.employee_id)} is not in the rotation`;
     }
   }
+}
+
+const MONTHS = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
+
+/** "2026-11-26" → "Nov 26"。 */
+export function shortDate(ymd: string): string {
+  const [, m, d] = ymd.split("-").map(Number);
+  return `${MONTHS[m - 1]} ${d}`;
+}
+
+/**
+ * Max people 的例外，一条一句（置顶 110 续）：「Close: at most 2 on Nov 26」「Every shift: at most 2 on Dec 20 – Jan 5」；
+ * 最后一天早于 today 的标 past（题 5 A：灰掉、留着）。
+ */
+export function describeExceptions(
+  p: MaxPerShiftDayParams,
+  ctx: DescribeContext,
+  today: string,
+): { text: string; past: boolean }[] {
+  return (p.exceptions ?? []).map((x: MaxPerShiftException) => {
+    const shift = x.shift_type ?? p.shift_type;
+    const when =
+      x.to && x.to !== x.from
+        ? `${shortDate(x.from)} – ${shortDate(x.to)}`
+        : shortDate(x.from);
+    return {
+      text: `${shift ? shiftLabel(ctx, shift) : "Every shift"}: at most ${x.max} on ${when}`,
+      past: (x.to || x.from) < today,
+    };
+  });
 }
 
 /** 「某种班至少几天」选的是谁（置顶 110 题 7）：旧规则的 employee_id 当成 Only these people。 */

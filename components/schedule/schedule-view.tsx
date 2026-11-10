@@ -1201,6 +1201,14 @@ export function ScheduleView() {
               // 空档提示只给能改排班的人（Annie Q3：staff 看不到）。
               gapsByDay={canEdit ? gapDays : undefined}
               rules={canEdit && rules ? rules : undefined}
+              onSaveRules={
+                canEdit && rules
+                  ? async (next: Rule[]) => {
+                      const saved = await saveScheduleRules(next);
+                      setRules(saved.rules);
+                    }
+                  : undefined
+              }
               onGapDay={jumpToDay}
               draftView={
                 derived
@@ -1993,6 +2001,7 @@ function WeekBody({
   gapsByDay,
   onGapDay,
   rules,
+  onSaveRules,
   draftView,
   onUndoDelete,
   pendingChanges,
@@ -2037,6 +2046,8 @@ function WeekBody({
   gapsByDay?: Map<string, ScheduleGap[]>;
   /** 置顶 110：手动排班照规则标出超人数 / 超小时（不拦）；只给能改排班的人。 */
   rules?: Rule[];
+  /** 置顶 110 续：点日期加单日例外（存整份规则）。 */
+  onSaveRules?: (next: Rule[]) => Promise<unknown>;
   onGapDay?: (date: string) => void;
   pendingChanges?: SchedulePendingChange[];
   onSendChanges?: (employeeId: number) => void;
@@ -2096,6 +2107,7 @@ function WeekBody({
         gapsByDay={gapsByDay}
         onGapDay={onGapDay}
         rules={rules}
+        onSaveRules={onSaveRules}
         pendingChanges={pendingChanges}
         onSendChanges={onSendChanges}
         sendBlocked={sendBlocked}

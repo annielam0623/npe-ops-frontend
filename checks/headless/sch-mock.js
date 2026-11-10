@@ -707,6 +707,18 @@ http
             if (Array.isArray(pr.employee_ids) && !pr.employee_ids.length) return send(res, 400, { detail: `Rule ${i + 1} (min_days_on_shift, id "${r.id}"): params.employee_ids must list at least one employee.` });
           }
           if (r.type === "max_per_shift_day" && !(Number.isInteger(pr.max) && pr.max >= 1 && pr.max <= 20)) return send(res, 400, { detail: `Rule ${i + 1} (max_per_shift_day, id "${r.id}"): params.max must be a whole number from 1 to 20.` });
+          // 置顶 110 续（形状草稿，后端明天做）：exceptions [{from, to?, max, shift_type?}]。
+          if (r.type === "max_per_shift_day" && pr.exceptions != null) {
+            if (!Array.isArray(pr.exceptions)) return send(res, 400, { detail: `Rule ${i + 1}: params.exceptions must be a list.` });
+            for (let j = 0; j < pr.exceptions.length; j++) {
+              const x = pr.exceptions[j];
+              const bad = Object.keys(x).filter((k) => !["from", "to", "max", "shift_type"].includes(k));
+              if (bad.length) return send(res, 400, { detail: `Rule ${i + 1}: params.exceptions item ${j + 1} has unknown key(s): ${bad.join(", ")}.` });
+              if (!/^\d{4}-\d{2}-\d{2}$/.test(x.from || "")) return send(res, 400, { detail: `Rule ${i + 1}: params.exceptions item ${j + 1}: from must be a date (YYYY-MM-DD).` });
+              if (x.to != null && (!/^\d{4}-\d{2}-\d{2}$/.test(x.to) || x.to < x.from)) return send(res, 400, { detail: `Rule ${i + 1}: params.exceptions item ${j + 1}: to must be on or after from.` });
+              if (!(Number.isInteger(x.max) && x.max >= 1 && x.max <= 20)) return send(res, 400, { detail: `Rule ${i + 1}: params.exceptions item ${j + 1}: max must be a whole number from 1 to 20.` });
+            }
+          }
           if (r.type === "weekly_hours_alert" && !(typeof pr.hours === "number" && pr.hours >= 1 && pr.hours <= 80)) return send(res, 400, { detail: `Rule ${i + 1} (weekly_hours_alert, id "${r.id}"): params.hours must be a number from 1 to 80.` });
         }
         rulesDoc = { version: 1, rules: b.rules || [], updated_at: new Date().toISOString().slice(0, 19), updated_by: 1 };
