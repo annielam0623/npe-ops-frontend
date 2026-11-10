@@ -23,6 +23,7 @@
 pe-ops-wt-1a-buscols，合 main 后已推 task/bus-columns（mf 308、nav 39）；110 worktree C:Code
 pe-ops-wt-1a-110ex，已推 task/110-exceptions（sch 467、引擎 32、nav 39）；tsc / eslint / build 都过，dev / Chrome 已关。等后端 SHA ⇒ 核字段 ⇒ 合 main。
 - ✅ **110 例外上 main 539a57a3**（1a；后端 G272 b898617f / 合并 88f199c7）：字段逐项一致前端没改；补 4 条 400 原话红字检查；sch 471、引擎 32、nav 39，tsc / eslint / build 过。验收点已转 Annie：Rules › Max people on a shift › Edit → + Add exception → Save rule；Schedule 点日期「Allow 2 people on Close this day」→ Save，灰字「Close max 2 today」、「Back to the rule (at most 1)」；过期 (past) 不删。
+- ✅ **113 Bus Manifest 隐藏列上 main 982ef764**（1a；后端 G275 f06f6e7a / 合并 00573e44）：字段逐项一致前端没改；已删的设置页接口前端没用到；mf 308、nav 39，tsc / eslint / build 过。验收点已转 Annie；**要 Annie 在 Bus Manifest 页把 Antelope 的 Lunch 勾掉、按页头 Save**。1a 手上空了。
 - 109 W4 第二段前端：问 Annie 派 79（推荐）还是新开窗口，等她回。
 
 ## 2026-11-09 晚 收工交接：前端主窗口 `前端主窗口-78`[426278]（家里电脑；明天 Annie 在公司电脑）
