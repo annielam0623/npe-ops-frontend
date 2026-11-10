@@ -1457,6 +1457,9 @@ D. 已完成、待从置顶移走：
 - Annie 原话：「你现在应该整理一下这些功能键，左一个右一个，能否将它们统一整理一下好看好用呢」。
 - 范围（78 / 59 理解，preview 开头写明）：Dispatch › Relay list 页头那一行（← Dispatch、🖨 Print、Save、⬇ Excel、⚙ Colours, text & page）+ 每张单上方 Aa Text size 编辑条（含新的 Spacing）。只挪位置 / 分组，不改作用、不删键，蓝色只给 Save。这页没有 Pull / 轮次切换。
 - preview（现状截图电脑 + 手机 + 两种方案，模拟数据）：https://claude.ai/artifact/TopyompWt81k2rZL8uqoES 。题：Q1 方案（A 按用途两组、位置固定 / B 一条工具栏照顺序）、Q2 Save 没改动时（A 一直在、灰着）、Q3 三个撤回键（A 电脑并排、手机合成 Reset…）、Q4 Bus Manifest 同一个编辑条要不要一起变（A 一起）、Q5 手机收进 ⋯（A Print / Excel / ⚙ 都收），都推荐 A；How to use：Spacing 句改「in Aa Text size」，Q2 A 加半句。等 Annie 答 +「动手」。Spacing 分支（task/relay-spacing）还没合，整理动手时一起改。
+- （Spacing 已于 11-09 晚合 main d8cb465f。）
+- **Annie 附参考图（原话，78 转）：「你参考一下这个设计，仍然用我们的主色调，把所有的编辑功能键都弄成这样归类和显示」**。图在本机 C:\Users\annzh\AppData\Local\Temp\claude\3c3ab1c43bc46910\ed1bef5b-1ceb-4ac6-beb4-b9d3ea6c2a03\images\1.png（也嵌在 preview 第 2 版里）。
+- ✅ preview 第 2 版（同链接）：照图的归类和摆法、用我们的颜色（深色外框 + 白卡片，选中深灰 #1f2937，蓝只给 Save）。按图定、不再问：页头左 ‹ Dispatch，右「● 未存黄字｜Save（一直在、没改动灰）｜Print｜Excel」；编辑卡横排 Apply To（Column / Row / Page）｜Text Size｜Font Weight｜Spacing（只 Relay list）｜Quick Actions（三个白键，不能用灰）；手机照图（Print、Excel + ⋯，卡片竖排，底部 Cancel + Done）；Bus Manifest 同一个编辑卡一起改（没 Spacing）；键名每词大写开头。新题 7 道（都推荐 A）：Q1 图里标题「Colours, Text & Page」（A 照旧当白键放 Excel 后 / 手机进 ⋯）、Q2 编辑卡何时出现（A 保留每张单 Aa 开关）、Q3 电脑 Cancel / Done（A 卡片最右一组）、Q4 Done 颜色（A 深灰 + ✓，不用棕 / 蓝）、Q5 Picked 那行（A 留，小灰字卡片下边）、Q6 Bus Manifest 页头（A 这次不动）、Q7 图标（A 自己画线条图标，不加库）。How to use：Aa 句、Spacing 句换新键名（原文在 preview）。等 Annie 答 +「动手」。
 
 ### 113. Bus Manifest 按团藏列（今晚只有 Lunch；Antelope 不印 Lunch 列）（2026-11-09 晚，Annie 在后端 3e 窗口提，78 派 59；先 preview，没「动手」）
 
