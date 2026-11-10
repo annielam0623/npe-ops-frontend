@@ -26,6 +26,7 @@ pe-ops-wt-1a-110ex，已推 task/110-exceptions（sch 467、引擎 32、nav 39�
 - ✅ **113 Bus Manifest 隐藏列上 main 982ef764**（1a；后端 G275 f06f6e7a / 合并 00573e44）：字段逐项一致前端没改；已删的设置页接口前端没用到；mf 308、nav 39，tsc / eslint / build 过。验收点已转 Annie；**要 Annie 在 Bus Manifest 页把 Antelope 的 Lunch 勾掉、按页头 Save**。1a 手上空了。
 - 109 W4 第二段前端：问 Annie 派 79（推荐）还是新开窗口，等她回。
 - ✅ **Annie（原话）：「114，115，107全选A。动手」**（置顶 114 / 115 / 107 已标）。派工：114 → 1a（Relay list + Bus Manifest 编辑卡，手机键高 26px 跟 115）；115、107 请 Annie 开新窗口（115 不动 Relay list 页头 / 编辑卡，那块归 114）。
+- ✅ 后端 **G271 W4 第二段上 main**（d9：任务提交 cbcf558d，合并 0d9c94f2，后端 main f30d895a；完整形状在后端 docs/interfaces/send-outcome-2026-11-09.md 第 5 节）。跟早上那份有两处更正：多周分享 failed 的 reason "no link" 改成 "link could not be made"；Operation report 的 no_contact 永远是 []（同 Staff Messages）。前端改成读新键、上线后把 SHA 发 d9，后端再删 not_reached。前端还没派（等 Annie 定 79 / 新窗口）。
 - 🟡 Annie 随后改 107（原话）：「107要改一下，登录进来之后直接弹窗，更新以后才可以继续」⇒ 107 暂停，先出新 preview（派给新开的 107 窗口），细节 N1–N3 见置顶 107。
 
 ## 2026-11-09 晚 收工交接：前端主窗口 `前端主窗口-78`[426278]（家里电脑；明天 Annie 在公司电脑）
