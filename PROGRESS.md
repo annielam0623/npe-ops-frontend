@@ -1452,6 +1452,12 @@ D. 已完成、待从置顶移走：
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 114. Relay list 功能键统一整理（2026-11-09 晚，Annie 看 Spacing 截图后提，78 派 59；先 preview，没「动手」）
+
+- Annie 原话：「你现在应该整理一下这些功能键，左一个右一个，能否将它们统一整理一下好看好用呢」。
+- 范围（78 / 59 理解，preview 开头写明）：Dispatch › Relay list 页头那一行（← Dispatch、🖨 Print、Save、⬇ Excel、⚙ Colours, text & page）+ 每张单上方 Aa Text size 编辑条（含新的 Spacing）。只挪位置 / 分组，不改作用、不删键，蓝色只给 Save。这页没有 Pull / 轮次切换。
+- preview（现状截图电脑 + 手机 + 两种方案，模拟数据）：https://claude.ai/artifact/TopyompWt81k2rZL8uqoES 。题：Q1 方案（A 按用途两组、位置固定 / B 一条工具栏照顺序）、Q2 Save 没改动时（A 一直在、灰着）、Q3 三个撤回键（A 电脑并排、手机合成 Reset…）、Q4 Bus Manifest 同一个编辑条要不要一起变（A 一起）、Q5 手机收进 ⋯（A Print / Excel / ⚙ 都收），都推荐 A；How to use：Spacing 句改「in Aa Text size」，Q2 A 加半句。等 Annie 答 +「动手」。Spacing 分支（task/relay-spacing）还没合，整理动手时一起改。
+
 ### 113. Bus Manifest 按团藏列（今晚只有 Lunch；Antelope 不印 Lunch 列）（2026-11-09 晚，Annie 在后端 3e 窗口提，78 派 59；先 preview，没「动手」）
 
 - Annie 原话（在 3e）：「你可以把bus manifest也改成main manifest那样可以用filer来选么」「fillter」「同意A」。A = 按团选：Manifest setup 每个团一排列的勾，屏幕 / 打印 / Excel 都照它，谁打印都一样（B 是按人选，像 Main Manifest）。今晚后端只做 Lunch 一列，完整列选择明天做。
