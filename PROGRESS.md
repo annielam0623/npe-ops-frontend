@@ -1615,6 +1615,7 @@ D. 已完成、待从置顶移走：
   - ✅ 合 main **2ad77d96**（cs 189、man 423、nav 39，tsc / eslint / build 过；截图 https://claude.ai/artifact/1ae7jUsTAGUqXfKNMeZhTB ）。⚠️ 跟派工差一处：小字 B 句没贴着勾选，放在表单下方说明的最后一行（贴旁边会把那一行挤断）。a4 问 Annie：A 照现在放在说明最后一行 / B 挪到勾选正下方单独一行灰色小字（推荐 B，靠近勾选、不挤行）。
 
 ### 99. G263 Farm out › Partners & rates 价格行（Adult / Child / Infant 下拉）（2026-11-06，c3 出 preview，49 转 Annie）
+- ✅ **11-09 晚 合 main（家里工作窗口 `npe-ops-frontend-59`[66d88c]，78 派）**：后端 G263 已上 main（合并 248a2e16 = 任务 0995f31d，关包 72fbcdfa，推送 0956943e..72fbcdfa）。只读核：248a2e16 上 farm_out*.py（routers / services）、farm_out_common.py、docs/interfaces/farm-out-2026-10-16.md、migrate_v160.sql 与 0995f31d **完全一样**；tour_manifest.py 相对 0995f31d 只多了 28c7c479 午餐勾（名单行多 `product_lunch`，farm out 不用）⇒ 79 照 0995f31d 核过的前端字段都对，**前端没改**。分支合最新 main（无冲突）后检查：tsc 0、eslint 0 错（3 条旧 warning）、build 过；fo-settings 127/127、fod 58/58、fr 27/27、da 544/544、nav 39/39（端口 MOCK 9077 / APP 3677 / CDP 9677）。等 Annie 线上验收。
 - 🟡 **11-09 公司 79 [3815aa] 接手（35 派；86 今天不在公司）**：worktree C:Code
 pe-ops-frontend-wt-g180，task/farmout-products 6350101c 合最新 main（e652fd0d，无冲突）。
   检查：tsc 0、eslint 0 error（3 条旧 warning）、build 过；fo-settings 127/127、fod 57/57、fr 27/27、da 544/544、nav 39/39。推分支，**没合 main**，等 d4 后端上 main 的 SHA（35 转）。
