@@ -1474,6 +1474,7 @@ D. 已完成、待从置顶移走：
     - preview 第 3 版（同链接）：②③ Total Pax 跟着变；④ 总表照规则压；⑤ 现在右边超出；⑥⑦ Q7-A；⑧ Q7-C。新题 Q6（Total Pax 只跟 Whole page A 推荐 / B 也跟 Qty 列）、Q7（A 自动压内边距 + 挪中间，不够出黄框 / B「Center on page」键 / C = A + 太长酒店名折两行，推荐 C）。Q1、Q5 仍待答。
   - **Annie 11-09 晚（原话，78 转）：「relay preview我建议你用我们真名单和酒店名的简写来preview」「然后干脆把行距也给staff可以自己调算了」** ⇒ 第 4 版：用一天真 Relay list（真名单 + 系统里的酒店 / 产品简称，不放电话 / 邮箱，客人信息不进仓库，PROGRESS 只写用的哪天），按真数据重新实测宽度、改 Q7 数字和推荐；加行距新题（放哪 / 调什么 / 和自动压的关系 / How to use 原文，控件照现有 Aa 的样子）。**还没「动手」**。
     - 59：简称来自后端 relay-pull 的 hotel_short / product_short（lib/relay-list.ts hotelText / tourText），要真数据得有登录；已问 78 怎么拿（推荐 Annie 在那天 Relay list 点 ⬇ Excel 给文件，只读、不进仓库）。
+    - ✅ 第 4 版（同链接）：Annie 给了 **11-09** 的 Relay list Excel（电话打码，客人信息不进仓库）。真名单实测：车单最多 9 行，A+10 也只占约 58% 页 ⇒ 车单不会超页，超页的只有人多的总表（1st Round 默认 94%，A+3 压得回一页，A+4 起出黄框）；右边撑宽的是 Full Name 列（酒店简称都短），最宽的 ANTELOPE CANYON A：A+3 超 7mm、A+5 超 26mm、A+7 超 45mm、A+10 超 73mm；A（压内边距 + 挪中间，约 27mm）够到 A+4–A+5，C 改成「长名字（Full Name，其次酒店名）折两行」，A+10 也印得下，仍推荐 C。加了 ⑨ 行距控件和 Q8–Q10（都推荐 A）。Q1 / Q5 / Q6 / Q7–Q10 待答，没「动手」。
 - 动手时（79 想法）：components/relay-list/relay-list.css 加 `--rl-gap` / `--rl-py` 变量和 `[data-squeezed]` 线；relay-list-view.tsx 每张单渲染后量内容高度 vs 它自己的纸高 − 上下页边距（A4 / Letter、横竖），按步压、超了出黄框；字号 / Aa 改动、换纸张后重算。验收见 35 派工：放大超几行 → 自动一页、间隔看得见；压不下 → 印 2 页 + 提示；一页的单、颜色 / 方向 / 页边距 / 字号、11-03 空白页修法都不变。
 
 ### 111. Main Manifest 的 Sync Rezdy 键恢复（2026-11-09，Annie 原话：「把main manifest上的Rezdy同步钮打开吧」；35 问清再派）
