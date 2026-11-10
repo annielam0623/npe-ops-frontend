@@ -14,6 +14,7 @@
 ## 2026-11-09 晚 前端主窗口 `npe-ops-frontend-78`[426278] 开工（家里电脑；只分工和汇报，不写代码）
 - 接 35 收工交接。git pull 到 3b4e09e5。今晚后端主窗口 `后端主窗口0a`[45ce5d]（另有后端 `npe-confirmation-service-78`[fdaaf2]）；已问 0a：G263 SHA、109 W1 形状、G267、v159 / v161 排期。
 - 资源：空闲内存 11.6 / 31.7 GB，chrome 41 个（3.9 GB），node 2 个。
+- 0a 回：G263 今晚后端 78 在家里主目录重合 0995f31d 后推 main（最终 tour_manifest.py 以合并后为准，28c7c479 午餐勾也改了它），SHA 到了发前端；G267 a3 分支 task/morning-combined e8916315 排 G263 后，同由 78 落地并核三项；之后单单 resend（task/resend-email-result 06e666e1）。109：0a 今晚开 W1（send_outcome.py + 形状文档，worktree），W1 后半段（relay-send / 早班）等 G267 落地；78 已发 109 全文给 0a。110：以前端起草的形状为准，发形状时抄 0a；Jessica 那题不再问 Annie。111：后端出 POST /api/orders/{code}/refresh-from-rezdy 形状，Annie 确认后发前端 ⇒ 前端 111 preview 等形状。v159 排 G263 后；v161 今晚后端接着做。
 - 前端工作窗口暂无 ⇒ 请 Annie 开 2 个：A 做 112 preview 更新（去掉 move guests）+ 111 Order 详情页「Refresh from Rezdy」preview，G263 SHA 到了接着核字段合 main；B 做 110 排班 Rules 四项 preview + 发 d4 / 0a 的规则形状。
 
 ## 2026-11-09 收工交接：前端主窗口 `前端主窗口-35`[4a0f5a]（公司电脑）
