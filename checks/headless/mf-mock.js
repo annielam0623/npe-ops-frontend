@@ -17,6 +17,7 @@ const guest = (id, order, extra = {}) => ({ id, row_key: order, row_no: id, orde
   boarding: null, boarding_at: null, name: "ZZ Test" + id, lunch: { turkey: 0, veggie: 0, beef: 0, default: false, check: false, has_lunch: false },
   lunch_text: "", ticket: "2 Adult", notes: "", notes_check: false, ticket_hl: false, ...extra });
 const state = {
+  hiddenCols: [],
   guests: [guest(1, "CHD1", { extra: "Heli" }),guest(2, "CHD2", { bus_label: null, notes: "1 Turkey ??", notes_check: true, ticket_hl: true, ticket: "2 Adult + 1 Child" }), guest(3, "CHD3", { pickup_location: "MGM Grand", boarding: "boarded", sync_status: "missing", sync_note: "Not in main manifest — check Rezdy" })],
   attraction: { checkin_time: "8:00", pax_text: "", tour_time: "", confirmation_no: "" },
   textSize: { A: { page: {}, columns: { pickup_location: { d: 3, bold: true } }, rows: {} }, B: { page: {}, columns: {}, rows: {} } },
@@ -108,7 +109,9 @@ function view0() {
     tour: { id: 3, name: "Antelope Canyon", color: "#8db76f", band_color: "#8db76f", section_color: "#d9ead0", lunch_note: "", ...(ctl.assist ? { assist_column: true, footer_style: "standard" } : {}),
       // 后端 1b2ea12a：开了 Cfm # 格的组 confirm_box = false（整团不出黄框），其他组 true。
       ...(ctl.g198 ? { confirm_box: false } : ctl.g198Plain ? { confirm_box: true } : {}),
-      ...(ctl.bmv ? { manifest_version: state.version, lunch_column: true } : {}) },
+      ...(ctl.bmv ? { manifest_version: state.version, lunch_column: true } : {}),
+      // 置顶 113（后端 3e 建议形状）：ctl.busCols = 新后端；ctl.noVendor = 这个团没排午餐店（Lunch 列本来就没有）。
+      ...(ctl.busCols ? { bus_hidden_columns: state.hiddenCols, bus_column_options: [{ key: "lunch", label: "Lunch" }], lunch_restaurant: ctl.noVendor ? null : { name: "ZZ Test Bee's", footer: "(TEXT) POC: ZZ TEST 555-0100" }, lunch_column: !ctl.noVendor && !state.hiddenCols.includes("lunch") } : {}) },
     shuttle_colors: { outbound: "#f8c9a0", inbound: "#b9d3f0" },
     extra_row_color: "#f8cbad",
     manifest: { id: 12, file_name: "ant.csv", uploaded_at: "2026-10-04T21:14:02+00:00", uploaded_by: "Annie" },
@@ -141,7 +144,7 @@ http.createServer(async (req, res) => {
   const p = url.pathname;
   const q = Object.fromEntries(url.searchParams);
   if (p === "/__log") return send(res, 200, log);
-  if (p === "/__ctl") { const b = JSON.parse(await readRaw(req)); if (b.layoutReset) { layoutMock.reset(); relayStore.tour_colors = {}; delete b.layoutReset; } if (b.version) { state.version = b.version; delete b.version; } Object.assign(ctl, b); return send(res, 200, ctl); }
+  if (p === "/__ctl") { const b = JSON.parse(await readRaw(req)); if (b.layoutReset) { layoutMock.reset(); relayStore.tour_colors = {}; delete b.layoutReset; } if (b.version) { state.version = b.version; delete b.version; } if (b.hiddenCols) { state.hiddenCols = b.hiddenCols; delete b.hiddenCols; } Object.assign(ctl, b); return send(res, 200, ctl); }
   if (p === "/auth/login") { res.setHeader("Content-Type", "text/html"); return res.end("LOGIN"); }
   const entry = { method: req.method, path: p, q };
   log.push(entry);
@@ -289,6 +292,15 @@ http.createServer(async (req, res) => {
     state.textSize[b.bus_label] = b.text_size;
     state.textHistory = [{ by: "ZZ Test Staff", at: "just now", what: "Changed" }, ...state.textHistory].slice(0, 5);
     return send(res, 200, { ok: true, text_size: b.text_size, text_size_history: state.textHistory });
+  }
+  if (p === "/api/dispatch/manifest/hidden-columns" && ctl.busCols) {
+    const b = JSON.parse(await readRaw(req)); entry.body = b; entry.method = req.method;
+    if (ctl.partner) return send(res, 403, { detail: "Partners can only view." });
+    if (ctl.colsFail) return send(res, 400, { detail: ctl.colsFail });
+    const bad = (b.hidden_columns || []).find((c) => c !== "lunch");
+    if (bad) return send(res, 400, { detail: `${bad} is not a Bus Manifest column that can be hidden.` });
+    state.hiddenCols = [...new Set(b.hidden_columns || [])].sort();
+    return send(res, 200, { ok: true, hidden_columns: state.hiddenCols });
   }
   if (p === "/api/dispatch/manifest/version" && ctl.bmv) {
     const b = JSON.parse(await readRaw(req)); entry.body = b; entry.method = req.method;

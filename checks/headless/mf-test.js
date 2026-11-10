@@ -114,6 +114,7 @@ async function main() {
     await runLayout();
     await runHotelColour();
     await runLayoutText();
+    await runColumns();
   } finally {
     ws.close();
     chrome.kill();
@@ -1274,6 +1275,92 @@ async function runHotelColour() {
   await waitFor("document.querySelector('[data-layout-status=\"saved\"]')");
   await evaluate("$btn('Cancel', document.querySelector('[data-manifest-layout]')).click();");
   await ctl({ layout: false, layoutReset: true });
+}
+
+// ── 置顶 113（Annie「113全选A，动手」）：Bus Manifest 页头「Columns ▾」按团藏列（今晚只有 Lunch）──
+async function runColumns() {
+  const URL0 = `${APP}/dispatch/manifest?date=2026-10-05&tour=3`;
+  const lunchTh = "[...document.querySelectorAll('section[aria-label=\"Bus 2041=A\"] thead th')].some((th) => th.textContent.trim() === 'Lunch')";
+  const pill = "document.querySelector('[data-columns-open]')";
+  const save = "document.querySelector('[data-page-save]')";
+  const openMenu = async () => { await evaluate(`${pill}.click();`); await waitFor("document.querySelector('[data-columns-menu]')"); };
+  const tick = async () => evaluate("document.querySelector('[data-columns-option=lunch]').click();");
+
+  // 旧后端：没有 Columns
+  await ctl({ bmv: true, version: "general", busCols: false, noVendor: false, colsFail: "", hiddenCols: [], partner: false, staffPerms: null, superAdmin: false, layout: false });
+  await goto(URL0);
+  await waitFor("document.querySelector('[data-page-save]')", 60000);
+  await sleep(500);
+  check("Columns：旧后端（tour 没带 bus_column_options）⇒ 没有 Columns 键", !(await evaluate("return !!document.querySelector('[data-columns-open], [data-columns-text]');")));
+
+  // 新后端（tour.lunch_restaurant 有值 = 排了午餐店；不开午餐单，证明不靠午餐单判断）
+  await ctl({ busCols: true, g198: false });
+  await goto(URL0);
+  await waitFor(`!!${pill}`, 60000);
+  await helpers();
+  check("Columns：页头出「Columns: All ▾」，Lunch 列在", (await evaluate(`return ${pill}.textContent.trim() === 'Columns: All ▾' && ${lunchTh};`)));
+  check("Columns：How to use 多一句（preview 原句）", await evaluate("return document.body.textContent.includes(\"Columns: press Columns at the top to choose which columns this tour's Bus Manifest shows. Untick a column to leave it off, then press Save.\");"));
+  await openMenu();
+  check("Columns：点开小框「Columns for this tour」，Lunch 勾着", await evaluate("const m = document.querySelector('[data-columns-menu]'); return m.textContent.includes('Columns for this tour') && document.querySelector('[data-columns-option=lunch]').checked && m.textContent.includes('More columns will be added here later.');"));
+  let b0 = (await mockLog()).length;
+  await tick();
+  await sleep(300);
+  const st = await evaluate(`return { th: ${lunchTh}, pill: ${pill}.textContent.trim(), border: getComputedStyle(${pill}).borderTopColor, save: ${save}.disabled };`);
+  check("Columns：勾掉 Lunch ⇒ 单子马上没有 Lunch 列、框变橙「Lunch hidden」、Save 能按，还没发请求", !st.th && st.pill === "Columns: Lunch hidden ▾" && st.border === "rgb(245, 158, 11)" && !st.save && (await since(b0, "/api/dispatch/manifest/hidden-columns")).length === 0, JSON.stringify(st));
+  await evaluate("document.querySelector('[data-columns-done]').click();");
+  await evaluate(`${save}.click();`);
+  const put = (await waitReq(b0, "/api/dispatch/manifest/hidden-columns"))[0];
+  check("Columns：按页头 Save ⇒ PUT /api/dispatch/manifest/hidden-columns {tour: 3, hidden_columns: [lunch]}", put?.method === "PUT" && JSON.stringify(put.body) === JSON.stringify({ tour: 3, hidden_columns: ["lunch"] }), JSON.stringify(put));
+  check("Columns：存好 ⇒ 框不橙、Save 灰、还是没有 Lunch 列", await waitFor(`getComputedStyle(${pill}).borderTopColor !== 'rgb(245, 158, 11)' && ${save}.disabled && !(${lunchTh})`, 8000));
+  await goto(URL0);
+  await waitFor(`!!${pill}`, 60000);
+  await sleep(400);
+  check("Columns：重开页面（按团存）⇒ 照样「Lunch hidden」、没有 Lunch 列", await evaluate(`return ${pill}.textContent.trim() === 'Columns: Lunch hidden ▾' && !(${lunchTh});`));
+  // 勾回来
+  await openMenu();
+  await tick();
+  check("Columns：勾回 Lunch ⇒ 和库里不一样就算改了（Lunch 列马上回来、框变橙）", await waitFor(`${lunchTh} && getComputedStyle(${pill}).borderTopColor === 'rgb(245, 158, 11)'`, 3000));
+  await tick();
+  check("Columns：再勾掉（= 库里那样）⇒ 不算改动，Save 灰", await waitFor(`${save}.disabled && getComputedStyle(${pill}).borderTopColor !== 'rgb(245, 158, 11)'`, 3000));
+  await tick();
+  // 存不上
+  await ctl({ colsFail: "That tour is not in the bus tour list." });
+  b0 = (await mockLog()).length;
+  await evaluate("document.querySelector('[data-columns-done]').click();");
+  await evaluate(`${save}.click();`);
+  await waitReq(b0, "/api/dispatch/manifest/hidden-columns");
+  check("Columns：存不上（后端 G275 400 原话）⇒ 红字带「Columns: 原话」，框还是橙", await waitFor(`document.body.textContent.includes('Columns: That tour is not in the bus tour list.') && getComputedStyle(${pill}).borderTopColor === 'rgb(245, 158, 11)'`, 8000));
+  await ctl({ colsFail: "" });
+  await evaluate(`${save}.click();`);
+  check("Columns：再按 Save ⇒ 存上，回到「All」", await waitFor(`${pill}.textContent.trim() === 'Columns: All ▾' && ${save}.disabled`, 8000));
+
+  // 没排午餐店的团
+  await ctl({ noVendor: true, g198: false });
+  await goto(URL0);
+  await waitFor(`!!${pill}`, 60000);
+  await helpers();
+  await openMenu();
+  check("Columns：没排午餐店 ⇒ Lunch 照样列出 + 灰字「No lunch vendor for this tour, so there is no Lunch column.」", await evaluate("const e = document.querySelector('[data-columns-no-vendor]'); return !!e && e.textContent === 'No lunch vendor for this tour, so there is no Lunch column.';"));
+  await ctl({ noVendor: false });
+
+  // 只能看：灰字、点不开
+  await ctl({ partner: true });
+  await goto(URL0);
+  await waitFor("document.querySelector('[data-columns-text], [data-columns-open]')", 60000);
+  check("Columns：没有编辑权（partner）⇒ 只有灰字「Columns: All」、没有可点的键", await evaluate("const t = document.querySelector('[data-columns-text]'); return !!t && t.textContent === 'Columns: All' && !document.querySelector('[data-columns-open]');"));
+  await ctl({ partner: false });
+
+  // 手机：收进 ⋯
+  await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+  await goto(URL0);
+  await waitFor("document.querySelector('[data-phone-more]')", 60000);
+  await sleep(500);
+  const ph = await evaluate("const vis = (e) => !!e && e.getBoundingClientRect().width > 0; const outside = [...document.querySelectorAll('[data-columns-open]')].filter((e) => !e.closest('[data-phone-more-menu]')); return { outsideVisible: outside.some(vis) };");
+  await evaluate("[...document.querySelectorAll('[data-phone-more]')].find((b) => b.getAttribute('aria-label') === 'Columns, print or download').click();");
+  const inMenu = await waitFor("[...document.querySelectorAll('[data-phone-more-menu] [data-columns-open]')].length === 1", 3000);
+  check("Columns：手机上收进 ⋯（外面看不到，⋯ 里有）", !ph.outsideVisible && inMenu, JSON.stringify(ph));
+  await cdp("Emulation.clearDeviceMetricsOverride");
+  await ctl({ busCols: false, hiddenCols: [] });
 }
 
 main().catch((e) => { console.error(e); process.exit(2); });

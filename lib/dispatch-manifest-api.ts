@@ -211,6 +211,22 @@ export async function saveAttraction(input: {
  * Bus Manifest 版式（Annie 10-28 定 22）：下拉选了马上存成这个团的，谁打开都一样。dispatch.edit；partner 403。
  * 形状照后端 task/bus-manifest-versions（WIP f494b5b5）：PUT {tour, version} → {ok, version}。
  */
+/**
+ * 置顶 113：这个团 Bus Manifest 藏哪些列（整组替换，[] = 都显示；按团存、对所有人一样）。
+ * 后端 3e 形状：PUT /api/dispatch/manifest/hidden-columns {tour, hidden_columns} ⇒ {ok, hidden_columns}，
+ * 权限同这页其他写入（dispatch.edit 或 manifests.edit）。
+ */
+export async function saveBusHiddenColumns(
+  tour: number,
+  hiddenColumns: string[],
+): Promise<string[]> {
+  const r = await apiFetch<{ ok: true; hidden_columns: string[] }>(
+    `${API}/manifest/hidden-columns`,
+    { method: "PUT", body: { tour, hidden_columns: hiddenColumns } },
+  );
+  return r.hidden_columns;
+}
+
 export async function saveManifestVersion(
   tour: number,
   version: ManifestVersion,

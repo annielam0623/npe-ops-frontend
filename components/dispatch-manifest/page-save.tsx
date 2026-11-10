@@ -45,6 +45,8 @@ export interface Pending {
   >;
   /** 按客人 id：改过的 Special Requirements（null = 恢复 Rezdy 原文，"" = 删空）；order 是单号（写在提示里）。 */
   notes: Record<number, { notes: string | null; order: string }>;
+  /** 置顶 113：这个团要藏的列（和库里一样 = null）。 */
+  hiddenColumns: string[] | null;
 }
 
 export const EMPTY_PENDING: Pending = {
@@ -53,6 +55,7 @@ export const EMPTY_PENDING: Pending = {
   moves: {},
   attractions: {},
   notes: {},
+  hiddenColumns: null,
 };
 
 export function isDirty(p: Pending): boolean {
@@ -61,7 +64,8 @@ export function isDirty(p: Pending): boolean {
     Object.keys(p.textSizes).length > 0 ||
     Object.keys(p.moves).length > 0 ||
     Object.keys(p.attractions).length > 0 ||
-    Object.keys(p.notes).length > 0
+    Object.keys(p.notes).length > 0 ||
+    p.hiddenColumns !== null
   );
 }
 
@@ -248,6 +252,7 @@ export function pendingSummary(
   savedVersion: ManifestVersion,
 ): string[] {
   const out: string[] = [];
+  if (p.hiddenColumns !== null) out.push("columns");
   if (p.version)
     out.push(
       `version ${versionLabel(savedVersion)} → ${versionLabel(p.version)}`,
