@@ -1293,8 +1293,8 @@ async function runColumns() {
   await sleep(500);
   check("Columns：旧后端（tour 没带 bus_column_options）⇒ 没有 Columns 键", !(await evaluate("return !!document.querySelector('[data-columns-open], [data-columns-text]');")));
 
-  // 新后端（g198 = 有午餐单 = 这个团排了午餐店，同真后端）
-  await ctl({ busCols: true, g198: true });
+  // 新后端（tour.lunch_restaurant 有值 = 排了午餐店；不开午餐单，证明不靠午餐单判断）
+  await ctl({ busCols: true, g198: false });
   await goto(URL0);
   await waitFor(`!!${pill}`, 60000);
   await helpers();

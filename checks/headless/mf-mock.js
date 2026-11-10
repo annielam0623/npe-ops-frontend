@@ -111,7 +111,7 @@ function view0() {
       ...(ctl.g198 ? { confirm_box: false } : ctl.g198Plain ? { confirm_box: true } : {}),
       ...(ctl.bmv ? { manifest_version: state.version, lunch_column: true } : {}),
       // 置顶 113（后端 3e 建议形状）：ctl.busCols = 新后端；ctl.noVendor = 这个团没排午餐店（Lunch 列本来就没有）。
-      ...(ctl.busCols ? { bus_hidden_columns: state.hiddenCols, bus_column_options: [{ key: "lunch", label: "Lunch" }], lunch_column: !ctl.noVendor && !state.hiddenCols.includes("lunch") } : {}) },
+      ...(ctl.busCols ? { bus_hidden_columns: state.hiddenCols, bus_column_options: [{ key: "lunch", label: "Lunch" }], lunch_restaurant: ctl.noVendor ? null : { name: "ZZ Test Bee's", footer: "(TEXT) POC: ZZ TEST 555-0100" }, lunch_column: !ctl.noVendor && !state.hiddenCols.includes("lunch") } : {}) },
     shuttle_colors: { outbound: "#f8c9a0", inbound: "#b9d3f0" },
     extra_row_color: "#f8cbad",
     manifest: { id: 12, file_name: "ant.csv", uploaded_at: "2026-10-04T21:14:02+00:00", uploaded_by: "Annie" },

@@ -2960,8 +2960,12 @@ function HowToUse({ layout, columns }: { layout: boolean; columns: boolean }) {
   );
 }
 
-/** 这个团排了午餐店（Lunch 列只有这种团才有）：后端说出 Lunch 列，或者有午餐表。 */
+/**
+ * 这个团排了午餐店（Lunch 列只有这种团才有）：看 tour.lunch_restaurant（不受藏列影响，3e）；
+ * 旧后端没带这个键时，退回看 Lunch 列 / 午餐表。
+ */
 function hasLunchVendor(d: ManifestData): boolean {
+  if (d.tour.lunch_restaurant !== undefined) return !!d.tour.lunch_restaurant;
   return !!d.tour.lunch_column || d.blocks.some((b) => !!b.lunch);
 }
 

@@ -327,6 +327,8 @@ export interface ManifestView {
      * 能藏的列在 bus_column_options（今晚只有 lunch）。没带 = 后端没上线，不出 Columns。
      */
     bus_hidden_columns?: string[];
+    /** 这个团的午餐店（不受藏列影响，后端 3e test_bus_hidden_columns 钉住）：null = 没排午餐店。 */
+    lunch_restaurant?: { name?: string; footer?: string } | null;
     bus_column_options?: { key: string; label: string }[];
     /** 底部汇总框的版式（后端按团写死，照纸本）：standard / south / west / hoover。前端不出下拉，只照 footer 画。 */
     footer_style?: string;
