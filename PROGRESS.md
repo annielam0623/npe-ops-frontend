@@ -4,8 +4,63 @@
 
 > 6d 交接（下面「2026-10-27 交接：前端主窗口 6d」那节）的后端需求已于 10/27 晚由 ad 转给家里后端主窗口 17。
 
-> **下一个主窗口：先读下面「2026-11-09 收工交接：前端主窗口-35」，再读「2026-11-09 早 收工交接：a4」，再看置顶「📌 等 Annie 确认」（109–112 是今天新的）。**
->
+> **11-10 公司主窗口 62 已接班（见「11-10 62 开工」）。下一个主窗口：先读 62 那节，再读下面「2026-11-09 晚 收工交接：前端主窗口-78」，再看置顶「📌 等 Annie 确认」（113–115 是今晚新的）。35 / a4 的交接是更早的历史。**
+
+## 2026-11-10 前端主窗口 `npe-ops-frontend-62`[53f9cb] 开工（公司电脑；只分工和汇报，不写代码）
+- Annie 指定 62 为今天前端主窗口，向 35 [4a0f5a] 交接。35 发来 11-09 公司交接（PROGRESS「35 收工交接」那节），其中 G263 / 109 第一段 / 112 / 111 / 110 昨晚家里 78 已做完上 main，以 78 那节为准。git pull 到 d2a3a156。
+- 资源：空闲内存 37.7 / 61.8 GB，chrome 49 个（5.7 GB），node 0。
+- 今天后端主窗口 `新后端主窗口-d9`[7936c0]。d9 派工：G275（113 Bus Manifest 隐藏列）dc 做；G271 W3 a3 做；W4 第二段 2e 做；G276 门票 Records 栏 c1 做（方案等 Annie）。
+- 62 已发 d9：113 G275 原话 + 形状；**110 例外 G272 接续**原话 + 定稿形状（d9 回的派工里还没有这件，待它确认）；问 v159、W3 / W4 排期。
+- d9（经 35 转）**109 W4 第二段 G271** 形状（2e 做，未上 main）：只加新键、旧键保留——
+  1. POST /api/schedule/weeks/{week}/publish（含 Publish again）、POST /api/schedule/period/share（真发和 dry_run）：加 no_contact: [{employee_id, name, why}]（发布 "No email or login"，分享 "No email"）、failed: [{employee_id, name, reason}]（"email could not be sent"；分享还有 "no link"）；not_reached 暂留（= no_contact + failed）。前端改 components/schedule/publish-notice.ts:37 读 no_contact / failed，读不到退回 not_reached，两种分开显示；前端上了告诉 d9，后端再删 not_reached。notified 不变。
+  2. POST /api/team/messages：加 sent: [名字]、failed: [{name, error}]、no_contact: [{name, why}]、email: {sent, failed, no_email}。/reply 不变。
+  3. POST /api/operation-reports 的 notification：加 sent、failed: [{name, error}]、no_contact: [{name, why}]，按人算，部门邮箱按地址列。
+  4. 日报邮件加门票发送结果，前端不用改。
+  口径同置顶 109（Sent 绿 / Failed 红 / No contact 灰）。
+- 待派前端工作窗口：① 113 task/bus-columns 4b51badc、110 例外 task/110-exceptions b06dc248（等后端 SHA 核字段合 main）；② 109 W4 第二段（照上面形状 mock 做）。
+
+## 2026-11-09 晚 收工交接：前端主窗口 `前端主窗口-78`[426278]（家里电脑；明天 Annie 在公司电脑）
+> Annie（原话）：「ok，今晚就到这里吧，收工，请详细记录今天做完和未完成的方便我明天在公司电脑继续」。78 只分工和汇报，没写功能代码。今晚工作窗口 `59`[66d88c]、`03`[44f0b4]；后端主窗口 `后端主窗口0a`[45ce5d]（子窗口 78 [fdaaf2]、37、40、3e、12），后端交接已推 abc6bb66。过程见下面「78 开工」一节。
+
+### 一、今晚上 main（都等 Annie 线上验收，验收点已在对话里逐件转她）
+| 件 | 前端 | 后端 | 验收看 |
+|---|---|---|---|
+| G263 Farm out 团 → 产品 | c081a247（59） | 72fbcdfa | Partners & rates 产品 / 价；Dispatch Farm out guests 多 Product 列；Farm out Report / CSV Product 列；Import 六列；截图 7tGCCY8sq6zXMxxQ8KkGJ1 |
+| G267 早班一律 SMS + Email、记 Origin/Referer、admin HTML no-store | 不用改 | c7e6b756 | — |
+| 单单 resend 按真实结果判邮件 | 不用改 | c62e4e68 | — |
+| 109 发送结果统一（W1 / W2 / W4①） | 648a149a + 4c7f8a71（03） | 8e1e062a / 2accdb38 / 1335e804 | Tour / Morning / Relay 发送结果 Sent 绿 / Failed 红 / No contact 灰；Manifests 弹窗 Sent / Failed: 原因；Send Log 组头灰「No contact N」；Send Log 明细 / Morning Tracking / Tour Tracking 没号码灰 No number（不是原文） |
+| G268 Staff Schedule › Period Share with staff | 150377f4（03） | 9825a375（v161 已执行） | Page visibility 那行；Share 确认框；没邮箱灰 No email；只发 ZZ Test / azhou@ |
+| 112 Relay list 自动压 / 超宽挪中 / 屏幕 = 打印 / Total Pax 跟整页 | 147d9866（59） | — | 截图 MBcnXqD1UGtr6raZXQdQDo；红虚线 Page 2 starts here / Paper edge；黄框只屏幕 |
+| 112 Spacing −/+ | d8cb465f（59） | 4c7b1858 | Aa 编辑条最下行 Spacing − + / Default spacing，不出 px；跟 Save；打印一致 |
+| 111 Order 详情页 Refresh from Rezdy | e484189e（59） | 26b5a464 | 新 Rezdy 表的单订单号行蓝键；结果卡 before → after；Activity 多一条；⚠️ 点了真改，挑 Rezdy 改过电话的单 |
+| 110 Staff Schedule › Rules 四项 | 59d44a6d（03） | 8d7ea90f | Max people on a shift / Weekly hours alert / Who 三选一 / 冲突琥珀 / 手动超人数琥珀 / Over 40 hours |
+| 113 隐藏 Lunch 列（设置页版） | 不接 | 1e8006fc | 作废：Annie 改成放 Bus Manifest 页，见二 |
+
+### 二、在分支、等后端（明天先做）
+- **113 Bus Manifest 页「Columns ▾」**（Annie「隐藏键不要放在设置这边，应该就在bus manifest上给staff用的」→「113全选A，动手」）：前端 **origin/task/bus-columns 4b51badc**（59，mf 308、nav 39，tsc / eslint / build 过；「没午餐店」看 tour.lunch_restaurant）。后端 **G275** 还没写：abc6bb66 里 G275 还写「等 Annie 定谁能改」⇒ **明天开工第一件：把 PROGRESS「78 开工」节里 113 那段原文发后端主窗口**（PUT /api/dispatch/manifest/hidden-columns {tour, hidden_columns}，_edit；GET tour 加 bus_hidden_columns + bus_column_options；删设置页 PUT）。后端上 main ⇒ 核字段 ⇒ 合 main ⇒ Annie 在 Bus Manifest 页把 Antelope Lunch 勾掉 Save。
+- **110 例外（某天允许一个班两个人）**（Annie「我要在某个时段或者某天允许一个shift可以有两个人」→「1 A 2 B 3 A 4C 5A  6A  7 A。动手」）：前端 **origin/task/110-exceptions b06dc248**（03，sch 467、引擎 32、nav 39，tsc / eslint / build 过）。后端没登记 ⇒ **明天第一件同时发后端主窗口**（G272 接续，定稿形状见「78 开工」节 110 例外那段）；后端先上前端后上（否则 400）。
+- 家里 worktree（D:\npe-ops-frontend-wt-59、D:\npe-ops-frontend-03 等）公司电脑没有 ⇒ 从 origin 拉上面两个分支，公司开新前端工作窗口接。
+
+### 三、等 Annie（原文都已发她、都在置顶，**不滚动重问**）
+- **114** Relay list 功能键整理（照她给的参考图）：preview https://claude.ai/artifact/TopyompWt81k2rZL8uqoES（第 3 版）；电脑 Q1–Q7 + 手机 M1–M5（M6 跟 115 题 1），推荐都 A。59 做的。
+- **115** 手机键缩小 + 页面省地方：preview https://claude.ai/artifact/3dJPBmBq9hJShSvcA8ccwE ，8 题推荐都 A。03 做的。
+- **Auto Send › Recent runs** 要不要加 Failed / No contact（A 加、先 preview / B 不加）。
+- **110 页头**要不要加「Max people on a shift and Weekly hours alert are also checked when you change the schedule by hand: they are marked in amber, and you can still save and publish.」（A / B）。
+- **107**「有新版本，请刷新」提示条 5 题（preview BbcwRLCvyK7ecfL6cz2LEv；3c 做的）。
+- **109** How to use 两句（Tour / Tickets 发送页加 No contact 说明；Morning Pickup 加「A guest with neither shows as No contact…」），原文见置顶 109。
+- 其余旧的（104、105、OLIVIA 截图、补材料、Railway 变量、G180 回填提醒等）同 35 / a4 交接。
+
+### 四、后端还没做 / 排期（来自 0a）
+- Notes v159（G266②）：排 G263 后，今晚没上，SQL 先给 Annie。前端 task/dispatch-card-notes e83c529c 等。
+- 109 W3（Broadcast、Farm out、staff 回复、司机快回 + 告警）没派；W4 员工通知（排班 Publish 横幅「couldn't be reached」红字）37 明天定形状 ⇒ 前端照形状改。
+- G275（113）、G272 接续（110 例外）：见二。
+
+### 五、明天开工（公司电脑）
+1. 报对话名；git pull；ListAgents 看后端主窗口是谁。
+2. 发后端主窗口：113 G275 + 110 例外两段（原文在「78 开工」节）。
+3. 请 Annie 开 1–2 个前端工作窗口：接 task/bus-columns、task/110-exceptions，后端 SHA 到了核字段合 main；Annie 答了 114 / 115 就派做。
+4. ⏰ 本周提醒 Annie G180 回填以前的日子（还没回）。
+
 > 11-09 公司开工：`前端主窗口-49`[d221b2]（11-06 公司主窗口）只写这条交接就退下，Annie 新开窗口当今天前端主窗口。49 11-06 那节的未完事项（Notes v159、G263、置顶 100 Edit tour「No Cfm # needed」勾选 + 门票 Cfm # 规则前端跟进）周末家里 a4 / 86 已接手，**以 a4 11-09 早交接为准**。今天公司在线：后端主窗口 `后端主窗口-4a`[3c385a]；前端工作窗口暂无。⏰ **本周要提醒 Annie G180 回填以前的日子**（置顶「⏰ 提醒」那节，49 已在 11-09 开工回复里提了一次）。
 >
 > 11-09 公司前端主窗口：`npe-ops-frontend-35`[4a0f5a] 接班（只分工和汇报，不写代码）。49 口头补充：今天没跟 Annie / 4a 有别的交流；没有在跑的工作窗口 / 分支（c3 11-06 已收工，dispatch-card-notes、farmout-products 归 a4 / 86 那条）；G180 回填 49 已提（后端先只读 dry run 给她看，同意再跑），Annie 没回，让她有空跟新主窗口说，白天不追问；49 没开 dev server / Chrome。
@@ -24,6 +79,8 @@
   - 0a / 3e 确认：113 在后端待办 **G275**（abc6bb66 里写的还是「等 Annie 定谁能改」，0a 已收工不再改文件）⇒ **明天前端主窗口开工第一件：把下面这段发给后端主窗口，请它更新 G275 并派工**：Annie「113全选A，动手」——谁能改 = dispatch.edit 或 manifests.edit（_edit）；按团存、天天生效；跟页头 Save 一起存；没排午餐店的团 Lunch 也列出、灰字；手机收进 ⋯；Manifest setup 不留；新开 PUT /api/dispatch/manifest/hidden-columns {tour, hidden_columns} → {ok, hidden_columns}（值变才记 action_log），GET /api/dispatch/manifest 的 tour 加 bus_hidden_columns + bus_column_options，删设置页 PUT /api/settings/manifest-setup/groups/{id}/bus-hidden-columns。
 - **110 例外（新，等 Annie 7 题 +「动手」）**：Annie 原话「我要在某个时段或者某天允许一个shift可以有两个人」⇒ 03 preview https://claude.ai/artifact/QRJRg6PAhQuMR13877uiLr（题全文见置顶 110）。后端形状草稿（**后端交接 abc6bb66 没收进去**，0a 说由前端交接带；Annie 答完 + 动手后把确认版发给明天的后端主窗口登记派工，接 G272，schedule_rules.py 白名单、不迁移）：max_per_shift_day.params 加可选 exceptions: [{from "YYYY-MM-DD" 必填, to? 不写 = 同一天且 >= from, max int 1..20 必填（可比一般大或小）, shift_type? 不写 = 跟规则}]，最多 100 条，未知键拒，错 ⇒ 400 英文（如「params.exceptions item 2: to must be on or after from.」），不写 = 现行为；过期不删；生效前端算；Schedule 标签加的也写进同一 exceptions 经 PUT /api/schedule/rules。题 1 选按钟点或题 6 选主动排满要重起草。
   - ✅ **Annie（原话）：「1 A 2 B 3 A 4C 5A  6A  7 A。动手」** ⇒ 日期段 / 只要具体某一天（每周某天不改、照旧取小）/ 例外优先 / Rules + Schedule 两处都能加（同一 exceptions）/ 过期灰掉留着 / 只允许不主动排 / 例外日没超出灰字「max 2 today」。形状草稿不变，去掉「写得更细的优先」。前端 03 mock 做、推分支；**明天前端主窗口把这条确认版发后端主窗口登记派工（G272 接续）**，后端先上前端后上。
+  - 前端 03 写完：task/110-exceptions **b06dc248**（推分支没合；sch 467、引擎 32、nav 39，tsc / eslint / build 过）。定稿形状（发后端用）：max_per_shift_day.params 加可选 exceptions: [{from "YYYY-MM-DD" 必填, to? >= from（同一天前端不带）, max int 1..20 必填, shift_type? 已知班次（跟规则时前端不带）}]；没有例外前端整个不带 exceptions；未知键拒，最多 100 条，过期照存不删；后端只校验不判生效。后端 SHA 到了转 03 核字段合 main。
+- 明天前端主窗口开工：① 发后端主窗口 G275（113）和 G272 接续（110 例外）两段（见上）；② 后端 SHA 到了：113 转 59（task/bus-columns 4b51badc），110 例外转 03（task/110-exceptions b06dc248）；③ 等 Annie：114、115、Auto Send Recent runs、110 页头加句、107、109 How to use。
 
 ## 2026-11-09 收工交接：前端主窗口 `前端主窗口-35`[4a0f5a]（公司电脑）
 ### 一、今天上 main（等 Annie 线上验收，验收点已转她）
@@ -1489,6 +1546,8 @@ D. 已完成、待从置顶移走：
 - **Annie（原话，78 转）：「隐藏键不要放在设置这边，应该就在bus manifest上给staff用的」** ⇒ 第 1 版（Manifest setup 里的勾）作废。preview 第 2 版（同链接 https://claude.ai/artifact/QFf5CH4r5WVK3KsqJNHUba ）：Dispatch › Bus Manifest 页头「Columns ▾」挨着 Version，点开勾列（今晚只有 Lunch），按团存、对所有人一样；存法同这页的 Version（59 只读查：Version 改了下拉变橙、先放页面上、按页头蓝 Save 才存、离开先问；权限 dispatch.edit 或 manifests.edit，tour_manifest.py _edit）；没编辑权只看灰字；手机收进 ⋯。Manifest setup 不留（3e：后端只留一个入口，设置页 PUT 删掉）。
   - 后端 3e 新形状（明天写）：PUT /api/dispatch/manifest/hidden-columns {tour: manifest_id, hidden_columns} → {ok, hidden_columns}，权限同这页其他写入；GET /api/dispatch/manifest 加 tour.bus_hidden_columns + bus_column_options。
   - 题（都推荐 A）：Q1 放哪（A 页头 Columns ▾ / B 表头 ✕）、Q2 谁能改（A dispatch.edit 或 manifests.edit）、Q3 按团还是这一天（A 按团，确认之前的选择）、Q4 怎么存（A 同 Version 跟 Save）、Q5 没排餐厅的团（A 照样列 + 灰字）、Q6 手机（A 收进 ⋯）。How to use 原句在 preview。等 Annie 答 +「动手」+ 后端新接口。
+- ✅ **Annie（原话，78 转）：「113全选A，动手」** ⇒ 前端照 3e 建议形状 mock 做完、**推分支没合**：**task/bus-columns 41927953**（59）。Bus Manifest 页头「Columns: All / Lunch hidden ▾」（放进页头那个 ⋯「Columns, print or download」的最前面：电脑展开在 Version / Canyon order 后、Print 前，手机收进 ⋯）；点开小框「Columns for this tour」勾列（勾上 = 显示）+ Done；同 Version：Pending.hiddenColumns 暂存、框变橙、单子马上照着画（tour.lunch_column = 有午餐店 且 没勾掉；有没有午餐店看 lunch_column 或有没有午餐单），按页头 Save 才 PUT /api/dispatch/manifest/hidden-columns {tour, hidden_columns}，离开先问、存不上红字「Columns: 原话」；没编辑权（dispatch.edit / manifests.edit）只看灰字；没排午餐店的团 Lunch 旁灰字「No lunch vendor for this tour, so there is no Lunch column.」；tour 没带 bus_column_options（旧后端）不出。How to use 加 preview 原句。检查：mf 308/308（新 14 条）、nav 39/39；tsc 0、eslint 0 错、build 过。设置页那个 PUT 没接（后端会删）。**等 3e 新接口上 main 的 SHA ⇒ 核字段 ⇒ 合最新 main ⇒ 重跑 mf / nav ⇒ 合 main；上线后在 Bus Manifest 页把 Antelope 的 Lunch 勾掉、Save。**
+  - 3e（78 转）：不加新字段，tour.lunch_restaurant 不受藏列影响（空 = 没午餐店；有值 + lunch_column false = 被藏了）⇒ 59 改成看 tour.lunch_restaurant（旧后端没这个键时退回看 Lunch 列 / 午餐单），mock 同步：分支 **task/bus-columns 4b51badc**；mf 308/308、nav 39/39、tsc / eslint / build 过。等 3e G275 SHA。
 
 ### 112. Relay list 一张单超一页：先自动压空白，压不下再提示（2026-11-09，Annie 在后端 d4 窗口定，d4 转；79 出 preview，没动手）
 
@@ -1559,6 +1618,7 @@ D. 已完成、待从置顶移走：
   - ✅ Annie（原话）：「110排班 A」⇒ 「加一条」= 现有 Max people on a shift（班次 + 星期几 + 人数 1–20，每种班可各设一条），照 preview 做，不另加；110 题 1–8 全 A 定稿。「全部推荐」只答了 110，107 / 112 另等。**还没「动手」**（已问）。
   - ✅ **Annie 11-09 晚（原话，在 78）：「110动手」** ⇒ 前端派 03（推分支，后端先上 main 后核字段再合）；后端已转 0a 派 40 开工。
 - ✅ **（另一件，78 派）Staff Schedule › Period「Share with staff」已上 main 150377f4（03，11-09）**：3c 的分支 origin/task/schedule-period-share 6a940d3c 合最新 main；只读核后端 9825a375（G268 + v161）字段和 mock 一致（dry_run 真 bool；预览 {start,end,weeks,week_starts,unpublished,recipients,not_reached,already_shared}；409 unpublished；成功 {notified,not_reached}；reason "no email" / "email could not be sent" / "link could not be made"）。照 109 改结果显示：没邮箱灰字「No email: 名字.」不算失败，真失败红字 Not sent + 原因，Sent to N staff. 绿 #3B6D11。检查：sch 433、sc 44、ns 56、cs 190、nav 39、tsc / eslint 0 error / build 过。Annie 验收：Period 选只有 ZZ Test / azhou@ 员工的周，Share with staff 预览看名单和灰字 No email，真发只发测试员工。
+- 🟡 **110 续 前端已写完，分支 `task/110-exceptions` b06dc248（03，推分支不合 main）**：Annie 原话「1 A 2 B 3 A 4C 5A  6A  7 A。动手」。照形状 mock 做：max_per_shift_day.params.exceptions [{from, to?, max, shift_type?}]；例外优先、几条规则照旧取小的；Rules 里 Exceptions + Schedule 点日期「Allow 2 people on … this day」同一份数据、按 Save 才存；过期灰掉 (past)；Auto-fill 只是允许；例外日没超不出琥珀、日期下灰字「Close max 2 today」。检查：引擎 32/32、sch 467/467、nav 39/39、tsc / eslint 0 error / build 过。等后端（G272 接续，明天）上 main 核字段再合。How to use 不用改。
 - 🟡 **110 续：某天 / 某段日期一个班允许两个人（2026-11-09 晚，Annie 原话：「我要在某个时段或者某天允许一个shift可以有两个人」；03 出 preview + 形状，没动手）**：preview https://claude.ai/artifact/QRJRg6PAhQuMR13877uiLr 。现在做不到：Max people 只能按星期几，且几条取小的（Every shift 1 + Close 周六 2 ⇒ 还是 1）。7 题（推荐都 A，原文已交 78）：题 1「时段」= 一段日期（B 一天里的钟点、C 都要）；题 2 具体某一天用例外，每周某天改成「写得更细的那条优先」；题 3 例外优先（可放宽可收紧）；题 4 在 Rules 那条 Max people 里加 Exceptions（B Schedule 点日期、C 两处）；题 5 过期灰掉写 (past)；题 6 Auto-fill 只是允许、不保证排满（B 主动排到 2 人）；题 7 例外日不出琥珀、日期下灰字「max 2 today」。形状草稿：max_per_shift_day.params 加 exceptions?: [{from, to?, max, shift_type?}]，由 78 转 0a / 40。
 - ✅ **03 [44f0b4] 110 已上 main 59d44a6d（11-09 晚）**：后端 40 先上 main 8d7ea90f（合并 a7d6981c）；只读核 schedule_rules.py 的 _r_max_per_shift_day / _r_weekly_hours_alert / _r_min_days_on_shift 和前端存的形状一致；顺手补 Max people 只收整数（同后端）。合最新 main 后 sch 455/455、nav 39/39、引擎 27/27、tsc / eslint 0 error / build 过。Annie 验收：Staff Schedule › Rules 加 Max people on a shift（Every shift、1）和 Weekly hours alert（40），看清单冲突琥珀字、Schedule 标签日期下「Close 2 (max 1)」+ 班卡琥珀框、名字下「xx h this week」、Auto-fill 预览黄框原因 + Over 40 hours 一行。
 - （历史）🟡 **03 [44f0b4] 110 功能已写完，分支 `task/110-rules` dbd9d4de（worktree D:
