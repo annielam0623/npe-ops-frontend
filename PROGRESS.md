@@ -29,6 +29,7 @@ pe-ops-wt-1a-110ex，已推 task/110-exceptions（sch 467、引擎 32、nav 39�
 - ✅ 后端 **G271 W4 第二段上 main**（d9：任务提交 cbcf558d，合并 0d9c94f2，后端 main f30d895a；完整形状在后端 docs/interfaces/send-outcome-2026-11-09.md 第 5 节）。跟早上那份有两处更正：多周分享 failed 的 reason "no link" 改成 "link could not be made"；Operation report 的 no_contact 永远是 []（同 Staff Messages）。前端改成读新键、上线后把 SHA 发 d9，后端再删 not_reached。前端还没派（等 Annie 定 79 / 新窗口）。
 - ✅ **114 Relay list 功能键整理上 main 09c41a5b**（1a，task/relay-list-toolbar）：截图 https://claude.ai/artifact/R6bkQH2L5rngsh5bsHqgHz ；rl 159、mf 311、nav 39，tsc / eslint / build 过；没动 globals.css / phone.tsx，页头和编辑卡加 data-phone-keep。preview 没画但留着的：Text Size 旁灰字当前值（如「+1 px」）。验收点已转 Annie。
 - 115 派给 1a（Annie 还没开新窗口，1a 空出来了）：三页超 1/3 屏的（Dispatch › Assign、Tour Tracking、Manifests）先给改后截图，Annie 看过再合。
+- 115（1a）截图 https://claude.ai/artifact/PCUBMtMDeK782hpZxjXs3C ：第一批题 1–6 task/phone-compact-26 e656cc97（全套在跑，过了就合）；第二批题 8 三页 task/phone-toolbars-115 87b5f59b（没合，等 Annie）：Assign 494→353、Tour Tracking 480→303、Manifests 432→270。问 Annie 4 题（P1 第二批能否合 / P2 Assign「Last pull from Discord」收进 ⋯ / P3 题 7 题 8 冲突按题 8 做三页 / P4 Dispatch Step 1 提醒默认收起），原文见 62 回复，置顶 115 也记了。
 - 🟡 Annie 随后改 107（原话）：「107要改一下，登录进来之后直接弹窗，更新以后才可以继续」⇒ 107 暂停，先出新 preview（派给新开的 107 窗口），细节 N1–N3 见置顶 107。
 
 ## 2026-11-09 晚 收工交接：前端主窗口 `前端主窗口-78`[426278]（家里电脑；明天 Annie 在公司电脑）
@@ -1532,6 +1533,11 @@ D. 已完成、待从置顶移走：
 ### 115. 手机版键再缩小 + 页头 / 工具区省地方（2026-11-09 晚，78 派 03）—— ✅ 已答 + 动手，见「11-10 62 开工」
 
 - ✅ **Annie 11-10（原话）：「114，115，107全选A。动手」**：8 题全 A（26px、全站、蓝提交键同缩、行内小键同档、↑↓ 30px、顶栏一起缩、多行大块不动、超 1/3 屏三页并一行 / 收 ⋯ / 收 i，**动手前每页先给改后截图**）。
+- 🟡 **等 Annie（11-10，1a 做完截图 https://claude.ai/artifact/PCUBMtMDeK782hpZxjXs3C ）**：第一批（全站键 26px，题 1–6）照「动手」合 main；第二批（题 8 三页，task/phone-toolbars-115 87b5f59b）等她答：
+  - P1 第二批（Dispatch › Assign 494→353px、Tour Tracking 480→303px、Manifests 432→270px）能不能合。
+  - P2 Assign 还比 1/3 屏多 72px：把「Last pull from Discord」那行小字收进 ⋯，再省约 30px（推荐做）/ 不做。
+  - P3 题 7（统计格等大块不动）和题 8 的表冲突：这三页照题 8 改了统计格 / 统计条，别的页照题 7 不动——这样理解对不对（推荐对）。
+  - P4 手机上 Dispatch Step 1 收成一行，里面的提醒（如没传名单的团）要点 Show 才看到：A 照这样 / B 有提醒时自动展开（推荐 B）；Super Admin 的 Driver / Guide page preview 链接在手机挪到日期下面单独一行。
 
 - Annie 原话：「你记得做一个设计，它们手机网页上所有的键都缩小一点，不要占太多地方，尤其是staff经常操作的那些页面」；看 114 又说：「手机版能不能省点地方啊，一整屏都占完了」。
 - preview：https://claude.ai/artifact/3dJPBmBq9hJShSvcA8ccwE（模拟数据、390×844 真页面截图，8 页 × 现在 / C 28px / A 26px / B 24px 并排）。
