@@ -38,6 +38,8 @@ export function useOrderRefresh(
         return;
       }
       setState({ kind: "error", message: describeError(e), at: new Date() });
+      // 后端 500「Updated from Rezdy, but the existing phone / email could not be kept…」时已经写了：重读一次，页面是真实状态。
+      if (isStatus(e, 500)) onRefreshed();
     }
   }, [orderNumber, onRefreshed, onUnauthorized]);
   return { state, run };
