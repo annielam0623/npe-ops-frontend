@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   TrackingBanner,
@@ -75,6 +75,7 @@ import {
   PhoneMore,
   PhoneOneLine,
   PhoneShortcutStar,
+  usePhoneInfo,
 } from "@/components/ui/phone";
 import { PageLink } from "@/components/ui/page-link";
 import { TourUploadDialog } from "./tour-upload-dialog";
@@ -149,6 +150,8 @@ export function TourTrackingView() {
   const noBroadcast = perms.partnerLacks("broadcast.send") || !canBroadcast;
   const [conversationId, setConversationId] = useState<number | null>(null);
   const [lunchId, setLunchId] = useState<number | null>(null);
+  /** 置顶 115 题 8 A：手机上午餐小卡收进 i。 */
+  const lunchInfo = usePhoneInfo("Lunch counts");
   /** 状态下拉改了还没按 ✓ 的（按行 id）。 */
   const [drafts, setDrafts] = useState<Map<number, string>>(new Map());
   const [busyId, setBusyId] = useState<number | null>(null);
@@ -573,11 +576,94 @@ export function TourTrackingView() {
               </div>
             ) : null}
 
+            {/* 置顶 115 题 8 A（Annie「114，115，107全选A。动手」）：手机上统计格换成一行小字，点一下照旧筛选；
+                午餐小卡收进 i；电脑版照旧是格子。 */}
+            <div
+              data-phone-stats
+              className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[12px] text-[#1a1a1a] sm:hidden"
+            >
+              {(
+                [
+                  ["Total", stats?.total, "", ""],
+                  ["YES", stats?.yes, "text-[#1e7a45]", "yes"],
+                  ["Modify", stats?.modify, "text-[#c97a00]", "modify_req"],
+                  ["Modified", stats?.modified, "text-[#4c3da8]", "modified"],
+                  ["Pending", stats?.pending, "text-[#185FA5]", "pending"],
+                  ["Cancel", stats?.cancel, "text-[#c94040]", "cancel"],
+                ] as const
+              ).map(([label, value, color, filter], i) => (
+                <Fragment key={label}>
+                  {i ? (
+                    <span aria-hidden className="text-[#9aa6a0]">
+                      ·
+                    </span>
+                  ) : null}
+                  <button
+                    type="button"
+                    data-phone-keep
+                    data-phone-stat={label}
+                    aria-pressed={!!filter && statusFilter === filter}
+                    title={filter ? `Filter ${label}` : "Show all"}
+                    onClick={() => setStatusFilter(filter)}
+                    className={cn(
+                      "cursor-pointer rounded-[5px] px-0.5 whitespace-nowrap",
+                      filter && statusFilter === filter && "bg-[#d4e8d8] font-semibold",
+                    )}
+                  >
+                    <b className={cn("font-extrabold tabular-nums", color)}>
+                      {value ?? "—"}
+                    </b>{" "}
+                    {label}
+                  </button>
+                </Fragment>
+              ))}
+              {sync ? (
+                <span
+                  className="whitespace-nowrap text-[#5b6470]"
+                  title="Grey rows: orders from the Main manifest with nothing sent yet"
+                >
+                  · <b className="tabular-nums">{data ? unsentCount : "—"}</b> to
+                  notify
+                </span>
+              ) : null}
+              <span
+                className="whitespace-nowrap"
+                title="Replied (non-pending) / successfully sent"
+              >
+                ·{" "}
+                <b className="tabular-nums">
+                  {stats
+                    ? stats.responseRate === null
+                      ? "—"
+                      : `${stats.responseRate}%`
+                    : "—"}
+                </b>{" "}
+                replied
+              </span>
+              {stats?.lunch.length ? lunchInfo.button : null}
+              {stats?.lunch.length && lunchInfo.open ? (
+                <div data-phone-lunch className="flex basis-full flex-wrap gap-1">
+                  {stats.lunch.map((g) => (
+                    <span
+                      key={g.label}
+                      className="rounded-[7px] border border-[#d0e0d4] bg-white/90 px-2 py-0.5 text-[11.5px] font-semibold whitespace-nowrap"
+                    >
+                      <b className="text-[10.5px] text-[#2f5e46] uppercase">
+                        {g.label}
+                      </b>{" "}
+                      🦃 {g.turkey}&nbsp; 🥗 {g.veggie}
+                      {g.hasBeef ? <>&nbsp; 🥩 {g.beef}</> : null}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+            </div>
             <section
               aria-label="Summary"
               // 手机上 7 格排一行（午餐那块自己一行）；G180 多一张 To notify 卡时 8 格一行。
+              // 置顶 115 题 8 A：手机上换成上面那行小字，这里收起。
               className={cn(
-                "mb-4 flex flex-wrap items-stretch gap-2.5 max-sm:mb-2.5 max-sm:grid max-sm:gap-1",
+                "mb-4 flex flex-wrap items-stretch gap-2.5 max-sm:hidden max-sm:mb-2.5 max-sm:grid max-sm:gap-1",
                 sync ? "max-sm:grid-cols-8" : "max-sm:grid-cols-7",
               )}
             >
@@ -669,8 +755,8 @@ export function TourTrackingView() {
               ) : null}
             </section>
 
-            <div className="mb-3.5 flex flex-wrap items-center gap-2.5 max-sm:mb-2.5 max-sm:gap-1.5">
-              <span className="text-[12px] whitespace-nowrap text-[#1a1a1a]">
+            <div className="mb-3.5 flex flex-wrap items-center gap-2.5 max-sm:mb-2 max-sm:flex-nowrap max-sm:gap-1.5">
+              <span className="text-[12px] whitespace-nowrap text-[#1a1a1a] max-sm:hidden">
                 {data ? `${filtered.length} records` : "— records"}
               </span>
               <input
@@ -679,7 +765,7 @@ export function TourTrackingView() {
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search order #, name, phone…"
                 aria-label="Search"
-                className="w-[220px] rounded-lg border border-[#d0e0d4] bg-white/90 px-3 py-1.5 font-[inherit] text-[13px] shadow-[0_1px_4px_rgba(26,58,42,0.06)] outline-none focus:border-[#2f5e46] max-sm:order-first max-sm:w-full max-sm:basis-full [&::-webkit-search-cancel-button]:appearance-none"
+                className="w-[220px] rounded-lg border border-[#d0e0d4] bg-white/90 px-3 py-1.5 font-[inherit] text-[13px] shadow-[0_1px_4px_rgba(26,58,42,0.06)] outline-none focus:border-[#2f5e46] max-sm:order-first max-sm:w-auto max-sm:min-w-0 max-sm:flex-1 [&::-webkit-search-cancel-button]:appearance-none"
               />
               <select
                 aria-label="Status"
@@ -731,6 +817,17 @@ export function TourTrackingView() {
                 >
                   ⬆ Upload
                 </button>
+                {noBroadcast ? null : (
+                  <button
+                    type="button"
+                    data-phone-broadcast
+                    onClick={() => setBroadcastOpen(true)}
+                    disabled={!data}
+                    className="flex cursor-pointer items-center gap-[5px] rounded-[7px] border-none bg-[linear-gradient(135deg,#ffce21,#ee8e00)] px-3.5 py-[5px] text-[12px] font-bold text-[#1a1a1a] disabled:cursor-not-allowed disabled:opacity-60 sm:hidden"
+                  >
+                    📣 Broadcast
+                  </button>
+                )}
               </PhoneMore>
               <button
                 type="button"
@@ -745,7 +842,7 @@ export function TourTrackingView() {
                   type="button"
                   onClick={() => setBroadcastOpen(true)}
                   disabled={!data}
-                  className="ml-auto flex cursor-pointer items-center gap-[5px] rounded-[7px] border-none bg-[linear-gradient(135deg,#ffce21,#ee8e00)] px-3.5 py-[5px] text-[12px] font-bold text-[#1a1a1a] disabled:cursor-not-allowed disabled:opacity-60"
+                  className="ml-auto flex cursor-pointer items-center gap-[5px] rounded-[7px] border-none bg-[linear-gradient(135deg,#ffce21,#ee8e00)] px-3.5 py-[5px] text-[12px] font-bold text-[#1a1a1a] disabled:cursor-not-allowed disabled:opacity-60 max-sm:hidden"
                 >
                   📣 Broadcast
                 </button>
@@ -1049,13 +1146,39 @@ function StatCard({
 
 /** 当天发过的群发（同旧页面 #broadcast-panel：奶油色框，点一条展开正文）。 */
 function BroadcastPanel({ items }: { items: BroadcastLogEntry[] }) {
+  // 置顶 115 题 8 A：手机上默认收成标题一行，点标题展开；电脑上一直展开。
+  const [open, setOpen] = useState(false);
   return (
-    <section className="mb-2.5 overflow-hidden rounded-lg border border-[#f0d080] bg-[#fffbea]">
+    <section
+      data-broadcast-panel
+      className="mb-2.5 overflow-hidden rounded-lg border border-[#f0d080] bg-[#fffbea]"
+    >
       <h2 className="bg-[#fff3cd] px-3 py-1.5 text-[11px] font-bold text-[#7a4f00]">
-        📣 Broadcasts sent for this date ({items.length})
+        <span className="max-sm:hidden">
+          📣 Broadcasts sent for this date ({items.length})
+        </span>
+        <button
+          type="button"
+          data-phone-keep
+          data-broadcast-panel-toggle
+          aria-expanded={open}
+          onClick={() => setOpen((v) => !v)}
+          className="cursor-pointer text-left sm:hidden"
+        >
+          <span aria-hidden className="mr-1.5">
+            {open ? "▾" : "▸"}
+          </span>
+          📣 Broadcasts sent for this date ({items.length})
+        </button>
       </h2>
       {items.map((b) => (
-        <details key={b.id} className="group border-t border-[#f0dfae]">
+        <details
+          key={b.id}
+          className={cn(
+            "group border-t border-[#f0dfae]",
+            !open && "max-sm:hidden",
+          )}
+        >
           <summary className="flex cursor-pointer list-none flex-wrap items-baseline gap-2 px-3 py-[7px] text-[10px] text-[#8a6d1f] [&::-webkit-details-marker]:hidden">
             <span className="text-[9px] group-open:hidden">▶</span>
             <span className="hidden text-[9px] group-open:inline">▼</span>

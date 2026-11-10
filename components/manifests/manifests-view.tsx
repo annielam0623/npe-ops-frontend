@@ -1,6 +1,10 @@
 "use client";
 
-import { PhoneMore, PhoneOneLine } from "@/components/ui/phone";
+import {
+  PhoneMore,
+  PhoneOneLine,
+  usePhoneInfo,
+} from "@/components/ui/phone";
 import {
   type CSSProperties,
   useCallback,
@@ -135,6 +139,8 @@ const TAB_FALLBACK_LABEL: Record<ManifestTabKey, string> = {
 };
 
 export function ManifestsView() {
+  /** 置顶 115 题 8 A：Legacy 黄框手机上收进 i。 */
+  const legacyInfo = usePhoneInfo("About legacy rows");
   // partner 只能看（Annie 2026-10-27「合作方只能看manifest和订单，不能改或者选任何功能，比如加colum之类的」）：
   // 勾了 manifests.edit 也不上传确认号、不改 Cfm #、不 Sync Rezdy；Columns、拖表头、Export CSV、Show hidden rows 都不出。
   // 发送（团确认 / 门票提醒 / Send message）partner 一律没有（Annie「发送只能是我们内部员工发送」），也就没有勾选框。员工照旧。
@@ -758,10 +764,12 @@ export function ManifestsView() {
             <h2 className="sr-only">Manifest</h2>
 
             {/* Annie 2026-10-14：照 Dispatch Assign / Send 的黄框标签（选中的黄框 + 浅黄底 + 底边黄条）。 */}
+            {/* 置顶 115 题 8 A：手机上黄框「… frozen …」收进标签后面的 i。 */}
+            <div className="mb-3.5 flex flex-wrap items-center max-sm:mb-2.5">
             <div
               role="tablist"
               aria-label="Manifest type"
-              className="mb-3.5 flex flex-wrap"
+              className="flex flex-wrap"
             >
               {tabs.map((t, n) => {
                 const on = t.key === tab;
@@ -794,6 +802,8 @@ export function ManifestsView() {
                 );
               })}
             </div>
+            {legacyCount > 0 ? legacyInfo.button : null}
+            </div>
 
             {prefNote ? <p className={NOTE_CLASS}>{prefNote}</p> : null}
 
@@ -815,7 +825,8 @@ export function ManifestsView() {
               <div
                 role="group"
                 aria-label={tab === "bus" ? "Group" : "Tour type"}
-                className="mb-5 flex flex-wrap gap-2"
+                // 置顶 115 题 8 A：手机上一行横着滑（不折两行）。
+                className="mb-5 flex flex-wrap gap-2 max-sm:mb-3 max-sm:flex-nowrap max-sm:overflow-x-auto max-sm:pt-0.5 max-sm:pb-1.5 max-sm:[&>button]:shrink-0"
               >
                 {shown.pills.map((p) => (
                   <button
@@ -931,7 +942,7 @@ export function ManifestsView() {
             ) : null}
 
             {legacyCount > 0 ? (
-              <p className={NOTE_CLASS}>
+              <p data-legacy-note className={cn(NOTE_CLASS, legacyInfo.hide)}>
                 <PhoneOneLine>
                   ⚠️ {plural(legacyCount, "row")} on this page{" "}
                   {legacyCount === 1 ? "comes" : "come"} from data frozen before
@@ -966,7 +977,14 @@ export function ManifestsView() {
               <div
                 role="group"
                 aria-label="Selected guests"
-                className="mb-3 flex flex-wrap items-center gap-2 rounded-[10px] border border-white/10 bg-white/[.04] px-3 py-2 text-[13px] max-sm:flex-nowrap max-sm:gap-1.5 max-sm:overflow-x-auto max-sm:px-2 max-sm:py-1.5 max-sm:[&>button]:shrink-0 max-sm:[&>button]:whitespace-nowrap"
+                data-selected-bar
+                // 置顶 115 题 8 A：手机上没勾选时不占位；勾了浮在屏幕底部（右边让开 ↑↓）。
+                className={cn(
+                  "mb-3 flex flex-wrap items-center gap-2 rounded-[10px] border border-white/10 bg-white/[.04] px-3 py-2 text-[13px] max-sm:flex-nowrap max-sm:gap-1.5 max-sm:overflow-x-auto max-sm:px-2 max-sm:py-1.5 max-sm:[&>button]:shrink-0 max-sm:[&>button]:whitespace-nowrap",
+                  selected.size
+                    ? "max-sm:fixed max-sm:right-[60px] max-sm:bottom-[calc(12px+env(safe-area-inset-bottom,0px))] max-sm:left-3 max-sm:z-[90] max-sm:mb-0 max-sm:border-white/20 max-sm:bg-[#0b1726] max-sm:shadow-[0_8px_24px_rgba(0,0,0,.5)]"
+                    : "max-sm:hidden",
+                )}
               >
                 <span className="mr-auto text-[#cbd5e1] tabular-nums max-sm:shrink-0 max-sm:whitespace-nowrap">
                   {plural(pickedOrders, "order")} selected · {pickedPax} pax

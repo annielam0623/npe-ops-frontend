@@ -6,8 +6,8 @@
 
 // ── 深底上的按钮（旧 `.dnav` `.dpick` `.btn-ghost` `.btn-blue` `.btn-discord`）──
 const DARK_DISABLED = "disabled:cursor-not-allowed disabled:opacity-45";
-export const DNAV = `h-8 w-8 rounded-[9px] border border-white/16 bg-white/[.04] text-[15px] leading-none text-[#cbd5e1] hover:bg-white/[.09] ${DARK_DISABLED}`;
-export const DPICK = `h-8 cursor-pointer rounded-[9px] border border-white/16 bg-white/[.04] px-2.5 text-[13px] text-[#e2e8f0] tabular-nums [color-scheme:dark] ${DARK_DISABLED}`;
+export const DNAV = `h-8 w-8 rounded-[9px] max-sm:w-[26px] max-sm:rounded-[7px] border border-white/16 bg-white/[.04] text-[15px] leading-none text-[#cbd5e1] hover:bg-white/[.09] ${DARK_DISABLED}`;
+export const DPICK = `h-8 cursor-pointer rounded-[9px] border border-white/16 bg-white/[.04] px-2.5 text-[13px] max-sm:h-[26px] max-sm:px-1 text-[#e2e8f0] tabular-nums [color-scheme:dark] ${DARK_DISABLED}`;
 export const BTN_GHOST = `h-8 rounded-[9px] border border-white/18 bg-transparent px-[13px] text-[12.5px] whitespace-nowrap text-[#cbd5e1] hover:bg-white/[.07] ${DARK_DISABLED}`;
 export const BTN_BLUE = `h-8 rounded-[9px] border border-[#3b82f6] bg-[#3b82f6] px-4 text-[12.5px] font-semibold whitespace-nowrap text-white hover:bg-[#2f76e8] ${DARK_DISABLED}`;
 export const BTN_DISCORD = `inline-flex h-8 items-center gap-[7px] rounded-[9px] border border-[#5865F2] bg-[#5865F2] px-3.5 text-[12.5px] font-semibold whitespace-nowrap text-white hover:border-[#4752C4] hover:bg-[#4752C4] ${DARK_DISABLED}`;

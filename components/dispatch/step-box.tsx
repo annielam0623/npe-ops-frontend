@@ -2,7 +2,7 @@
 
 import { createContext, useContext, type ReactNode } from "react";
 
-import { usePhoneInfo } from "@/components/ui/phone";
+import { usePhoneCollapse, usePhoneInfo } from "@/components/ui/phone";
 import { cn } from "@/lib/utils";
 
 /** 手机上这一步的「i」开没开（这一步里的 How to use 框跟着它显示 / 收起）。电脑上不管。 */
@@ -26,6 +26,7 @@ export function StepBox({
   desc,
   id,
   headExtra,
+  phoneFold = false,
   children,
 }: {
   n: number;
@@ -34,16 +35,28 @@ export function StepBox({
   id?: string;
   /** 标题行右边的东西（Guest lists 的 How to use 链接，同旧页面 `.tm-howto`）。 */
   headExtra?: ReactNode;
+  /** 置顶 115 题 8 A：手机上这一步默认收成一行（标题 + Show），点开才展开；电脑上一直展开。 */
+  phoneFold?: boolean;
   children: ReactNode;
 }) {
   const info = usePhoneInfo(`About ${title}`);
+  const fold = usePhoneCollapse();
+  const folded = phoneFold ? fold.hide : "";
   return (
     <section
       id={id}
       aria-label={title}
-      className="max-w-full min-w-0 scroll-mt-20 rounded-[14px] border border-white/10 bg-white/[.025] p-4 max-sm:p-3"
+      className={cn(
+        "max-w-full min-w-0 scroll-mt-20 rounded-[14px] border border-white/10 bg-white/[.025] p-4 max-sm:p-3",
+        phoneFold && !fold.open && "max-sm:py-2",
+      )}
     >
-      <div className="mb-1 flex flex-wrap items-baseline gap-2.5">
+      <div
+        className={cn(
+          "mb-1 flex flex-wrap items-baseline gap-2.5",
+          phoneFold && !fold.open && "max-sm:mb-0",
+        )}
+      >
         <span className="font-mono text-[12px] tracking-[.08em] text-[#fbbf24] uppercase">
           Step {n}
         </span>
@@ -52,7 +65,18 @@ export function StepBox({
           {info.button}
         </h2>
         {headExtra ? (
-          <span className={cn("contents", info.hide)}>{headExtra}</span>
+          <span className={cn("contents", info.hide, folded)}>{headExtra}</span>
+        ) : null}
+        {phoneFold ? (
+          <button
+            type="button"
+            data-step-fold={n}
+            aria-expanded={fold.open}
+            onClick={fold.toggle}
+            className="ml-auto cursor-pointer text-[12.5px] font-semibold text-[#93c5fd] sm:hidden"
+          >
+            {fold.open ? "Hide ▾" : "Show ▸"}
+          </button>
         ) : null}
       </div>
       {/* 说明告诉 staff 这一步做什么 / 发什么（Annie 2026-10-07：原来 12px 浅灰看不清，放大到 14px）。
@@ -62,12 +86,15 @@ export function StepBox({
         className={cn(
           "mb-3 space-y-1 text-[14px] leading-relaxed text-[#cbd5e1] [&_b]:text-white",
           info.hide,
+          folded,
         )}
       >
         {desc}
       </div>
       <StepInfoContext.Provider value={info.open}>
-        <div className="flex min-w-0 flex-col gap-3">{children}</div>
+        <div className={cn("flex min-w-0 flex-col gap-3", folded)}>
+          {children}
+        </div>
       </StepInfoContext.Provider>
     </section>
   );

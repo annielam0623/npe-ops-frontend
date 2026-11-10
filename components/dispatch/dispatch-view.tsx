@@ -129,7 +129,7 @@ import {
   TourSeatingNotes,
 } from "./seating";
 import { StepBox, useStepInfoHide } from "./step-box";
-import { usePhoneInfo } from "@/components/ui/phone";
+import { PhoneMore, usePhoneInfo } from "@/components/ui/phone";
 import { lockedByText, useEditLock } from "./use-edit-lock";
 import { PrivateOrderCards } from "./private-orders";
 import { RelayRow, VanBlock } from "./vehicle-row";
@@ -1740,15 +1740,19 @@ export function DispatchView() {
     <ViewOnly.Provider value={viewOnly}>
       <Shell gutter={checkOpen}>
         {/* 照旧页面 `.dhead`：日期是这一页的主标题（深底上，白字），右边换日期。 */}
-        <header className="mb-4 flex flex-wrap items-start justify-between gap-[18px]">
-          <div>
-            <h1 className="m-0 flex flex-wrap items-center gap-3 text-[29px] leading-[1.12] font-bold tracking-[-.02em] text-white max-sm:gap-2 max-sm:text-[22px]">
+        {/* 置顶 115 题 8 A（Annie「114，115，107全选A。动手」）：手机上大标题并进日期那一行——日期框本来就写着日期，
+            大字收起，i 和 TOMORROW 跟在 ‹ 日期 › Today 后面。电脑版不变。 */}
+        <header className="mb-4 flex flex-wrap items-start justify-between gap-[18px] max-sm:mb-3 max-sm:items-center max-sm:justify-start max-sm:gap-1">
+          <div className="max-sm:order-2 max-sm:flex-none">
+            <h1 className="m-0 flex flex-wrap items-center gap-3 text-[29px] leading-[1.12] font-bold tracking-[-.02em] text-white max-sm:flex-nowrap max-sm:gap-1 max-sm:text-[22px]">
               <span>
-                {day ? fmtLong(day.run_date) : " "}
+                <span data-day-title className="max-sm:hidden">
+                  {day ? fmtLong(day.run_date) : " "}
+                </span>
                 {viewOnly ? null : headInfo.button}
               </span>
               {tag ? (
-                <span className="relative -top-0.5 rounded-full border border-[rgba(59,130,246,.35)] bg-[rgba(59,130,246,.18)] px-2.5 py-1 text-[11px] font-bold tracking-[.05em] text-[#93c5fd] uppercase">
+                <span className="relative -top-0.5 rounded-full border border-[rgba(59,130,246,.35)] bg-[rgba(59,130,246,.18)] px-2.5 py-1 text-[11px] font-bold tracking-[.05em] text-[#93c5fd] uppercase max-sm:top-0 max-sm:px-1.5 max-sm:py-0.5 max-sm:text-[9.5px] max-sm:tracking-normal">
                   {tag}
                 </span>
               ) : null}
@@ -1767,7 +1771,7 @@ export function DispatchView() {
               </p>
             )}
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 max-sm:contents">
             <button
               type="button"
               aria-label="Previous day"
@@ -1806,7 +1810,7 @@ export function DispatchView() {
                 ops 自己没有 /driver，经 next.config 的 fallback 原样转给后端（同 Bus Manifest 打印，用的是 ops 这一个登录）。
                 导游页同理：后端 /guide/preview（be1f4447）不带 hr_id 是选人页，写法和司机那个一样。 */}
             {isSuperAdmin && day ? (
-              <>
+              <span className="contents max-sm:order-3 max-sm:flex max-sm:basis-full max-sm:gap-3">
                 <a
                   href={`/driver/preview?date=${day.run_date}`}
                   target="_blank"
@@ -1825,7 +1829,7 @@ export function DispatchView() {
                 >
                   Guide page preview ↗
                 </a>
-              </>
+              </span>
             ) : null}
           </div>
         </header>
@@ -2056,6 +2060,8 @@ export function DispatchView() {
                       <DiscordIcon />
                       Pull from Discord
                     </button>
+                    {/* 置顶 115 题 8 A：手机上 Import history、Drivers & guides、Copy 收进 ⋯，只留 Pull from Discord。 */}
+                    <PhoneMore label="More Step 2 actions">
                     {/* Dispatch Imports 合进 Dispatch、侧栏不再单列（Annie 2026-10-11）：入口放在用得着它的地方——
                     拉 Discord 旁边，看拉过哪些、读没读懂。 */}
                     <PageLink
@@ -2084,6 +2090,7 @@ export function DispatchView() {
                         Copy {fmtShort(day.copy_from)}
                       </button>
                     ) : null}
+                    </PhoneMore>
                     {/* Save schedule 键去掉了（Annie 2026-10-15）：这里写自动保存的状态。 */}
                     <span
                       role="status"
@@ -2214,7 +2221,7 @@ export function DispatchView() {
                   aria-label="Summary"
                   className="flex min-w-0 items-stretch gap-3"
                 >
-                  <div className="flex min-w-0 flex-1 flex-nowrap items-stretch overflow-hidden rounded-[14px] border border-white/10 bg-white/[.04] px-1.5 py-0.5">
+                  <div className="flex min-w-0 flex-1 flex-nowrap items-stretch overflow-hidden rounded-[14px] border border-white/10 bg-white/[.04] px-1.5 py-0.5 max-sm:rounded-[10px] max-sm:px-0.5 max-sm:py-0">
                     <Stat
                       icon="👤"
                       value={analysis.driversUsed}
@@ -2249,7 +2256,7 @@ export function DispatchView() {
                     data-relay-list
                     disabled={navDisabled}
                     onClick={() => relayList.open(null)}
-                    className="inline-flex flex-none items-center gap-1.5 rounded-[14px] border border-[#fff605] bg-[#fff605] px-5 text-[16px] font-bold whitespace-nowrap text-[#111] hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50 max-sm:px-3 max-sm:text-[14px]"
+                    className="inline-flex flex-none items-center gap-1.5 rounded-[14px] border border-[#fff605] bg-[#fff605] px-5 text-[16px] font-bold whitespace-nowrap text-[#111] hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50 max-sm:rounded-[10px] max-sm:px-2.5 max-sm:py-0 max-sm:text-[13px]"
                   >
                     📋 Relay List
                   </button>
@@ -3119,21 +3126,21 @@ function Stat({
     // 四格等宽、图标对齐，数字在上、说明在下（置顶 70）；窄了说明字截成「…」。
     <div
       className={cn(
-        "flex min-w-0 flex-1 basis-0 items-center gap-2.5 px-[clamp(8px,1.2vw,16px)] py-1.5",
+        "flex min-w-0 flex-1 basis-0 items-center gap-2.5 px-[clamp(8px,1.2vw,16px)] py-1.5 max-sm:gap-1 max-sm:px-1.5 max-sm:py-1",
         border && "border-l border-white/10",
       )}
     >
       <span
         aria-hidden
-        className="flex size-6 flex-none items-center justify-center rounded-lg bg-white/[.07] text-[12px]"
+        className="flex size-6 flex-none items-center justify-center rounded-lg bg-white/[.07] text-[12px] max-sm:hidden"
       >
         {icon}
       </span>
       <span className="flex min-w-0 flex-col leading-[1.15]">
-        <span className="text-[17px] font-bold whitespace-nowrap text-white tabular-nums">
+        <span className="text-[17px] font-bold whitespace-nowrap text-white tabular-nums max-sm:text-[14px]">
           {value}
         </span>
-        <span className="truncate text-[11.5px] text-[#94a3b8]" title={label}>
+        <span className="truncate text-[11.5px] text-[#94a3b8] max-sm:text-[10.5px]" title={label}>
           {label}
         </span>
       </span>

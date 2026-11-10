@@ -231,6 +231,7 @@ export function ManifestsPanel({
     <StepBox
       n={1}
       title="Guest lists"
+      phoneFold
       headExtra={
         // Annie 2026-10-17 夜：Dispatch 上拿掉手动 Sync Rezdy 键（打开 / 换天时照旧自动同步；Main Manifest 上的键不动）。
         viewOnly ? null : <HowToUse />
