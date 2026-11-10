@@ -118,6 +118,7 @@ async function main() {
     await hotelColourChecks();
     await textChecks();
     await fitChecks();
+    await spacingChecks();
   } finally {
     ws.close();
     chrome.kill();
@@ -699,6 +700,86 @@ async function fitChecks() {
   await sleep(400);
   check("太宽：字号回默认 ⇒ 内边距 / 页边距恢复（没有内联 padding、--rl-px），黄框不见", await evaluate(`const s = ${carSel}; return !s.style.paddingLeft && !s.style.getPropertyValue('--rl-px') && !${warnOf(carSel)} && ${tp} === '20px';`));
   await ctl({ reset: true, layoutReset: true, textSize: false, edit: false, many: 0 });
+}
+
+// ── 置顶 112 Spacing（Annie「用-+是最好，一目了然，就是立刻可以看到效果就行了，不要让staff去判断px」；后端 78 relay-spacing 形状）──
+async function spacingChecks() {
+  const carSel = "document.querySelector('[data-relay-car]')";
+  const sheetKeyOf = async (sel) => evaluate(`let e = ${sel}.previousElementSibling; while (e && !e.matches('[data-relay-text-bar]')) e = e.previousElementSibling; return e?.dataset.relayTextBar;`);
+  const row = "document.querySelector('[data-relay-spacing]')";
+  const padTop = `getComputedStyle(${carSel}.querySelector('tr[data-relay-row] td')).paddingTop`;
+
+  // 旧后端（relay-pull 的 text_size 没有 spacing 键）⇒ 不出 Spacing 那一行
+  await ctl({ reset: true, layoutReset: true, edit: true, textSize: true, spacing: false, many: 0 });
+  await open(URL0);
+  await waitFor("document.querySelector('[data-relay-text-open]')", 30000);
+  await helpers();
+  let key = await sheetKeyOf(carSel);
+  await evaluate(`document.querySelector('[data-relay-text-open="${key}"]').click();`);
+  await waitFor("document.querySelector('[data-text-size-toolbar]')");
+  check("Spacing：旧后端 ⇒ Aa 编辑条里没有 Spacing 那一行", !(await evaluate(`return !!${row};`)));
+
+  // 新后端
+  await ctl({ spacing: true });
+  await open(URL0);
+  await waitFor("document.querySelector('[data-relay-text-open]')", 30000);
+  await helpers();
+  key = await sheetKeyOf(carSel);
+  await evaluate(`document.querySelector('[data-relay-text-open="${key}"]').click();`);
+  await waitFor(`!!${row}`);
+  const r0 = await evaluate(`const r = ${row}; return { text: r.textContent, def: r.querySelector('[data-relay-spacing-default]').disabled, inBar: !!r.closest('[data-text-size-toolbar]') };`);
+  check("Spacing：Aa 编辑条最下面一行「Spacing − + Default spacing」，不写 px；默认时 Default spacing 灰掉", r0.inBar && r0.text === "Spacing−+Default spacing" && !/px/.test(r0.text) && r0.def, JSON.stringify(r0));
+  check("Spacing：How to use 多 Spacing 那句（不提 px）", await evaluate("const t = document.body.textContent; return t.includes('Spacing (at the bottom of Aa Text size): press − for less space between rows and between hotels, + for more.');"));
+  // + 两下：马上变（不用选格子）
+  await evaluate("document.querySelector('[data-relay-spacing-more]').click();");
+  await evaluate("document.querySelector('[data-relay-spacing-more]').click();");
+  const r1 = await evaluate(`const s = ${carSel}; return { pad: ${padTop}, gap: Math.round(s.querySelector('td.rl-gap').getBoundingClientRect().height), lvl: ${row}.dataset.level, def: ${row}.querySelector('[data-relay-spacing-default]').disabled };`);
+  check("Spacing：按 + 两下 ⇒ 单子马上变宽松（车单行内 4→6px、酒店间 12→16px），Default spacing 可按", r1.pad === "6px" && r1.gap === 16 && r1.lvl === "2" && !r1.def, JSON.stringify(r1));
+  // Reset whole table 不动行距
+  await evaluate("$btn('Reset whole table', document.querySelector('[data-text-size-toolbar]')).click();");
+  check("Spacing：Reset whole table 只管字号，行距不变", await evaluate(`return ${padTop} === '6px';`));
+  // Done + Save ⇒ PUT 带 spacing
+  await evaluate("document.querySelector('[data-text-size-done]').click();");
+  const b0 = (await mockLog()).length;
+  await evaluate("document.querySelector('[data-relay-text-save]').click();");
+  await waitFor("document.querySelector('[data-relay-text-status=saved]')?.textContent === 'Saved'");
+  const put = (await since(b0, (e) => e.method === "PUT" && e.path === "/api/dispatch/relay-list/text-size"))[0];
+  check("Spacing：Done + 页面顶上 Save ⇒ PUT text_size.spacing {gap:16, row:6}（跟字号一起存）", put?.body?.sheet === key && JSON.stringify(put.body.text_size.spacing) === JSON.stringify({ gap: 16, row: 6 }), JSON.stringify(put?.body));
+  await open(URL0);
+  await waitFor("document.querySelector('[data-relay-text-open]')", 30000);
+  await sleep(500);
+  check("Spacing：重开页面 ⇒ 存好的行距照样画（行内 6px）", await evaluate(`return ${padTop} === '6px';`));
+  await cdp("Emulation.setEmulatedMedia", { media: "print" });
+  check("Spacing：打印 = 屏幕（行内 6px 照印）", await evaluate(`return ${padTop} === '6px';`));
+  await cdp("Emulation.setEmulatedMedia", { media: "" });
+  // − 到底、Default spacing
+  await helpers();
+  await evaluate(`document.querySelector('[data-relay-text-open="${key}"]').click();`);
+  await waitFor(`!!${row}`);
+  for (let i = 0; i < 12; i++) await evaluate("document.querySelector('[data-relay-spacing-less]').click();");
+  const r2 = await evaluate(`return { lvl: ${row}.dataset.level, less: ${row}.querySelector('[data-relay-spacing-less]').disabled, pad: ${padTop} };`);
+  check("Spacing：一直按 − ⇒ 到最紧就灰掉（行内 1px）", r2.lvl === "-3" && r2.less && r2.pad === "1px", JSON.stringify(r2));
+  await evaluate("document.querySelector('[data-relay-spacing-default]').click();");
+  check("Spacing：Default spacing ⇒ 回到默认（行内 4px、酒店间 12px）", await evaluate(`return ${padTop} === '4px' && Math.round(${carSel}.querySelector('td.rl-gap').getBoundingClientRect().height) === 12 && ${row}.dataset.level === '0';`));
+  await evaluate("document.querySelector('[data-text-size-done]').click();");
+
+  // 调大了超一页 ⇒ 从 staff 的数往下自动压（Q10 A）
+  await ctl({ many: 18 });
+  await open(URL0);
+  const car2 = "[...document.querySelectorAll('[data-relay-car]')].find((s) => s.querySelector('[data-relay-row=CHDZZW01]'))";
+  await waitFor(`${car2}`, 30000);
+  await sleep(600);
+  await helpers();
+  const fitsBefore = await evaluate(`return !${car2}.hasAttribute('data-squeezed');`);
+  const k2 = await sheetKeyOf(car2);
+  await evaluate(`document.querySelector('[data-relay-text-open="${k2}"]').click();`);
+  await waitFor(`!!${row}`);
+  for (let i = 0; i < 6; i++) await evaluate("document.querySelector('[data-relay-spacing-more]').click();");
+  await sleep(300);
+  const r3 = await evaluate(`const s = ${car2}; const w = s.previousElementSibling?.matches('[data-relay-fit-warn]'); return { sq: s.hasAttribute('data-squeezed'), gap: s.style.getPropertyValue('--rl-gap'), lvl: ${row}.dataset.level, warn: !!w };`);
+  check("Spacing：18 站的车单本来一页，+ 到最松超页 ⇒ 自动从 staff 的数往下压回一页（staff 设的 24px 当上限）", fitsBefore && r3.lvl === "6" && r3.sq && parseInt(r3.gap) < 24 && !r3.warn, JSON.stringify({ fitsBefore, ...r3 }));
+  await evaluate("document.querySelector('[data-text-size-toolbar] [data-text-size-done]')?.click();");
+  await ctl({ reset: true, layoutReset: true, textSize: false, spacing: false, edit: false, many: 0 });
 }
 
 main().catch((e) => {

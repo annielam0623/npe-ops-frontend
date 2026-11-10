@@ -68,6 +68,7 @@ import {
   SheetTextBar,
   useRelayCellFont,
   useRelayPageDelta,
+  useRelaySpacing,
   useRelayTextSize,
 } from "./relay-text-size";
 import { SheetFitMarks, SheetFitWarn, useSheetFit } from "./sheet-fit";
@@ -350,6 +351,7 @@ export function RelayListView() {
               ...(layout ? [RELAY_LAYOUT_HOW_TO] : []),
               ...(textState.ready ? [RELAY_AA_HOW_TO] : []),
               ...RELAY_FIT_HOW_TO,
+              ...(textState.spacingReady ? [RELAY_SPACING_HOW_TO] : []),
             ]}
           />
         </div>
@@ -396,6 +398,10 @@ const RELAY_LAYOUT_HOW_TO =
 /** 置顶 92 Q5 A（第 1 版 preview Q7 的原文，按「每天的起点」改了最后半句）。 */
 const RELAY_AA_HOW_TO =
   "Aa Text size (above each sheet): pick Whole column, Whole row or Whole page, click the table, then press A− or A+ and Regular or Bold. Press Done, then Save at the top. Text size is saved for this day only and prints as you see it; the next day starts from the everyday size.";
+
+/** 置顶 112 Spacing（Annie「用-+是最好，一目了然…不要让staff去判断px」）：一组 − / +，不提 px。 */
+const RELAY_SPACING_HOW_TO =
+  "Spacing (at the bottom of Aa Text size): press − for less space between rows and between hotels, + for more. The sheet changes right away. It is saved with the text size for this day only and prints as you see it. If the sheet no longer fits on one page, the space gets smaller by itself until it fits. Default spacing puts it back.";
 
 /** 置顶 112（Annie「111， 112 全 A + 动手」）：Q3 定稿原文 + Q7 A 原文。 */
 const RELAY_FIT_HOW_TO = [
@@ -681,7 +687,7 @@ function TotalSheet({
   const sheet = round.textSheet;
   const font = useRelayCellFont(sheet, useContext(RelayLookContext).summaryPx);
   const ref = useRef<HTMLElement>(null);
-  const fit = useSheetFit(ref, true);
+  const fit = useSheetFit(ref, true, useRelaySpacing(sheet));
   let prev: { guest: RelayGuest; carKey: string } | null = null;
   return (
     <>
@@ -767,7 +773,7 @@ function CarSheet({
   const font = useRelayCellFont(sheet, useContext(RelayLookContext).carPx);
   const totalPax = totalPaxStyle(useRelayPageDelta(sheet));
   const ref = useRef<HTMLElement>(null);
-  const fit = useSheetFit(ref, false);
+  const fit = useSheetFit(ref, false, useRelaySpacing(sheet));
   let prev: { guest: RelayGuest; carKey: string } | null = null;
   return (
     <>

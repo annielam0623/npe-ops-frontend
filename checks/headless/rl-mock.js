@@ -217,6 +217,11 @@ http
           const b = JSON.parse((await readRaw(req)) || "{}"); entry.body = b;
           if (!ctl.edit) return send(res, 403, { detail: "You do not have permission to edit Dispatch." });
           if (ctl.textFail) return send(res, 400, { detail: ctl.textFail });
+          // 置顶 112 Spacing（后端 78 relay-spacing 形状）：ctl.spacing = 新后端；旧后端多一个键就 400。
+          const sp = b.text_size?.spacing;
+          if (sp !== undefined && !ctl.spacing) return send(res, 400, { detail: "Text size is not valid. Reload the page and try again." });
+          if (sp && ((sp.row !== undefined && !(Number.isInteger(sp.row) && sp.row >= 1 && sp.row <= 10)) || (sp.gap !== undefined && !(Number.isInteger(sp.gap) && sp.gap % 2 === 0 && sp.gap >= 2 && sp.gap <= 24)))) return send(res, 400, { detail: "Spacing is not valid." });
+          if (ctl.spacing && b.text_size) b.text_size = { ...b.text_size, spacing: b.text_size.spacing ?? {} };
           const prev = textStore[b.sheet]?.history ?? [];
           textStore[b.sheet] = { text_size: b.text_size, history: [{ by: "ZZ Test", at: "Nov 3, 6:00 PM", what: "Text size changed" }, ...prev].slice(0, 5) };
           return send(res, 200, { ok: true, sheet: b.sheet, text_size: textStore[b.sheet].text_size, text_size_history: textStore[b.sheet].history });
@@ -243,7 +248,7 @@ http
       const body = relayPull(url.searchParams.get("date"));
       // 后端 07：summary_text_size[轮] = {sheet, text_size, history}；车上 text_size_sheet（没车号 = null）/ text_size / text_size_history。
       if (ctl.textSize) {
-        const EMPTY = { page: {}, columns: {}, rows: {} };
+        const EMPTY = { page: {}, columns: {}, rows: {}, ...(ctl.spacing ? { spacing: {} } : {}) };
         const got = (sheet) => textStore[sheet] ?? { text_size: EMPTY, history: [] };
         body.summary_text_size = {};
         for (const rnd of ["relay", "relay_2"]) {
