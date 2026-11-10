@@ -4,7 +4,33 @@
 
 > 6d 交接（下面「2026-10-27 交接：前端主窗口 6d」那节）的后端需求已于 10/27 晚由 ad 转给家里后端主窗口 17。
 
-> **11-10 公司主窗口 62 已接班（见「11-10 62 开工」）。下一个主窗口：先读 62 那节，再读下面「2026-11-09 晚 收工交接：前端主窗口-78」，再看置顶「📌 等 Annie 确认」（113–115 是今晚新的）。35 / a4 的交接是更早的历史。**
+> **下一个主窗口（11-10 晚家里）：先读下面「2026-11-10 收工交接：前端主窗口-62」，再看置顶 107 / 115 / 109。62 开工那节是今天的过程记录；78 及更早的是历史。**
+
+## 2026-11-10 收工交接：前端主窗口 `npe-ops-frontend-62`[53f9cb]（公司电脑；Annie「收工，回家继续」）
+### 一、今天上 main（都等 Annie 线上验收，验收点已在对话里逐件转她）
+| 件 | 前端 | 后端 | 验收看 |
+|---|---|---|---|
+| 110 排班例外（某天允许一个班两个人） | 539a57a3（1a） | G272 b898617f | Rules › Max people on a shift › Edit → + Add exception；Schedule 点日期「Allow 2 people on Close this day」、灰字「Close max 2 today」；过期 (past) |
+| 113 Bus Manifest 页 Columns ▾ | 982ef764（1a） | G275 f06f6e7a | Columns: All ▾ → 勾掉 Lunch → 页头 Save；Action Log「Hidden columns: (empty) → Lunch」。⚠️ **Annie 要自己在 Bus Manifest 把 Antelope 的 Lunch 勾掉、Save**（没确认做了没） |
+| 114 Relay list 功能键整理 | 09c41a5b（1a） | — | 截图 https://claude.ai/artifact/R6bkQH2L5rngsh5bsHqgHz ；⚠️ 62 曾说「先看截图再上线」，实际 1a 照派工直接合了，已如实告诉 Annie；留了 Text Size 旁「+1 px」灰字，她不要可去掉 |
+| 115 第一批 全站手机键 26px（题 1–6） | d1dae38d（1a） | — | 手机：顶栏 ☰ ★ ⌕、↑↓ 30px、各页 h-8 / h-9 键变小；多行大块没动 |
+| 109 W4 第二段 员工通知 | 5955b76c（79） | cbcf558d + 删 not_reached 1914005b | Publish again 灰「No email or login」；Period Share 灰「No email」/ 红「Not sent」；Staff Messages 灰 / 红小行；Operation report 红「Could not notify」 |
+
+### 二、在分支、等 Annie
+- **115 第二批**（题 8 三页压矮）：origin/task/phone-toolbars-115 **87b5f59b**（1a，da 546、tt 168、man 425、nav 39 过），截图 https://claude.ai/artifact/PCUBMtMDeK782hpZxjXs3C 。等 Annie P1–P4（原文在置顶 115）。她说可以后：合最新 main → 重跑 da / tt / man / nav → 合；P2 选做就先把「Last pull from Discord」收进 ⋯。
+### 三、等 Annie（原文都已发她、都在置顶，**不滚动重问**）
+- **107** 改成挡整页弹窗（Annie「107要改一下，登录进来之后直接弹窗，更新以后才可以继续」）：N1 何时弹 / N2 有没存的改动 / N3 发送中 + 弹窗英文原文，等答 ⇒ 派窗口出新 preview ⇒ 再等「动手」。原 preview BbcwRLCvyK7ecfL6cz2LEv。
+- **115 P1–P4**（见二）。
+- **109** 排班 Publish「一个都没通知到」整句红框：A 照旧红（推荐）/ B 改灰。
+- 其余旧的同 78 交接第三部分（Auto Send Recent runs、110 页头加句、109 How to use 两句、104、105、OLIVIA 截图、补材料、Railway 变量等）。⏰ G180 回填提醒本周还要提（今天没提）。
+### 四、后端（d9 今天）
+- 已上 main：G272、G275、G271 W4 第二段 + 删 not_reached。
+- 在做：G271 W3（a3：Broadcast、Farm out、单单重发、staff 回复、司机快回 + 告警）⇒ 出形状后前端照做；G276 门票 Records 栏（c1，方案等 Annie）。
+- Notes v159：等 Annie 执行 v159 SQL，后端 task/dispatch-card-notes a17e330a（dc）；前端 task/dispatch-card-notes e83c529c 等。
+### 五、窗口 / 环境
+- 今天前端工作窗口 `npe-ops-frontend-1a`[a03b71]（worktree C:\Code\npe-ops-wt-1a-*）、`79`[3815aa]（wt-send-w4），都已关 dev server / Chrome。家里没有这些 worktree，从 origin 拉 task/phone-toolbars-115。
+- 教训：PROGRESS.md 仓库里是 CRLF；用 Edit 工具后要转回 CRLF、`git -c core.autocrlf=false add`，否则整份文件变 diff（9a91a0dd 误改、157a0bc8 改回）。
+
 
 ## 2026-11-10 前端主窗口 `npe-ops-frontend-62`[53f9cb] 开工（公司电脑；只分工和汇报，不写代码）
 - Annie 指定 62 为今天前端主窗口，向 35 [4a0f5a] 交接。35 发来 11-09 公司交接（PROGRESS「35 收工交接」那节），其中 G263 / 109 第一段 / 112 / 111 / 110 昨晚家里 78 已做完上 main，以 78 那节为准。git pull 到 d2a3a156。
