@@ -23,6 +23,7 @@ import {
   togglePick,
   updateLayers,
 } from "@/components/dispatch-manifest/text-size";
+import { LineIcon } from "@/components/dispatch-manifest/line-icons";
 import { apiFetch } from "@/lib/api-client";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { useLeaveGuard } from "@/lib/use-leave-guard";
@@ -414,7 +415,10 @@ export function SheetTextBar({
             type="button"
             data-relay-text-open={sheet}
             onClick={() => (editing ? t.close() : t.open(sheet))}
-            className="inline-flex h-7 cursor-pointer items-center rounded-[7px] border border-black/25 bg-paper px-3 text-[12px] font-bold text-[#111]"
+            className={cn(
+              "inline-flex h-7 cursor-pointer items-center rounded-[7px] border border-black/25 bg-paper px-3 text-[12px] font-bold text-[#111] max-sm:h-[26px]",
+              editing && "max-sm:hidden",
+            )}
           >
             {editing ? "Close text size" : "Aa Text size"}
           </button>
@@ -446,100 +450,88 @@ export function SheetTextBar({
           onResetAll={t.resetAll}
           onCancel={t.close}
           onDone={t.done}
-          extra={t.spacingReady ? <SpacingRow /> : undefined}
+          spacing={
+            t.spacingReady && t.draft
+              ? {
+                  level: spacingLevel(t.draft),
+                  min: SPACING_MIN,
+                  max: SPACING_MAX,
+                  onStep: t.spacingStep,
+                  onReset: t.spacingReset,
+                }
+              : undefined
+          }
         />
       ) : null}
     </div>
   );
 }
 
-/** 页面顶上：有没存的当天字号时出蓝色 Save（提交键）+ Saving… / 绿 Saved / 红字。 */
+/**
+ * 页面顶上（置顶 114 Q1/Q2 A、M1/M2 A）：「● 未存黄字｜Save」。Save 一直在，没改动时灰着（蓝色只给提交键）；
+ * 存好绿字 Saved，存不上红字原话。手机上黄字缩成「1 not saved」，键 26px。
+ */
 export function RelayTextSave() {
   const t = useContext(RelayTextContext);
   if (!t?.ready || !t.canEdit) return null;
   const n = Object.keys(t.staged).length;
-  if (!n && t.save.kind === "idle") return null;
+  const status =
+    t.save.kind === "error"
+      ? `Text size not saved: ${t.save.text}`
+      : t.save.kind === "saved" && !n
+        ? "Saved"
+        : n === 1
+          ? "1 sheet with text size not saved"
+          : n
+            ? `${n} sheets with text size not saved`
+            : "";
+  const tone = cn(
+    "inline-flex items-center gap-1.5 font-semibold",
+    t.save.kind === "error"
+      ? "text-[#f87171]"
+      : t.save.kind === "saved" && !n
+        ? "text-[#4ade80]"
+        : "text-[#fbbf24]",
+  );
+  const dot =
+    n && t.save.kind !== "error" ? (
+      <i className="inline-block h-2 w-2 shrink-0 rounded-full bg-[#fbbf24]" />
+    ) : null;
   return (
     <>
-      {n ? (
-        <button
-          type="button"
-          data-relay-text-save
-          disabled={t.save.kind === "saving"}
-          onClick={() => void t.saveAll()}
-          className="inline-flex h-8 cursor-pointer items-center rounded-[8px] bg-[#3b82f6] px-[18px] text-[13px] font-bold text-white disabled:opacity-60"
-        >
-          {t.save.kind === "saving" ? "Saving…" : "Save"}
-        </button>
+      {status ? (
+        <>
+          <span
+            data-relay-text-status={t.save.kind}
+            className={cn(tone, "text-[12.5px] max-sm:hidden")}
+          >
+            {dot}
+            {status}
+          </span>
+          <span
+            data-relay-text-status-phone={t.save.kind}
+            className={cn(tone, "text-[11px] whitespace-nowrap sm:hidden")}
+          >
+            {dot}
+            {t.save.kind === "error"
+              ? "Not saved"
+              : t.save.kind === "saved" && !n
+                ? "Saved"
+                : `${n} not saved`}
+          </span>
+        </>
       ) : null}
-      <span
-        data-relay-text-status={t.save.kind}
-        className={cn(
-          "text-[12.5px] font-semibold",
-          t.save.kind === "saved" && "text-[#4ade80]",
-          t.save.kind === "error" && "text-[#f87171]",
-          (t.save.kind === "idle" || t.save.kind === "saving") && "text-[#fbbf24]",
-        )}
-      >
-        {t.save.kind === "error"
-          ? `Text size not saved: ${t.save.text}`
-          : t.save.kind === "saved" && !n
-            ? "Saved"
-            : n === 1
-              ? "1 sheet with text size not saved"
-              : `${n} sheets with text size not saved`}
-      </span>
-    </>
-  );
-}
-
-const SEG = "inline-flex overflow-hidden rounded-[7px] border border-[#9aa]";
-const CHIP =
-  "cursor-pointer border-r border-[#9aa] bg-white px-3 py-1 text-[13px] font-bold text-[#222] last:border-r-0 disabled:cursor-default disabled:opacity-40";
-
-/** 编辑条最下面一行：Spacing [−] [+]  Default spacing。管整张单，按了单子马上变；不写 px。 */
-function SpacingRow() {
-  const t = useContext(RelayTextContext);
-  if (!t?.draft) return null;
-  const k = spacingLevel(t.draft);
-  return (
-    <span
-      data-relay-spacing
-      data-level={k}
-      className="flex basis-full flex-wrap items-center gap-x-3.5 gap-y-2 border-t border-dashed border-[#c8ccd2] pt-2"
-    >
-      <span className="font-bold">Spacing</span>
-      <span className={SEG}>
-        <button
-          type="button"
-          aria-label="Less space"
-          data-relay-spacing-less
-          disabled={k <= SPACING_MIN}
-          onClick={() => t.spacingStep(-1)}
-          className={CHIP}
-        >
-          −
-        </button>
-        <button
-          type="button"
-          aria-label="More space"
-          data-relay-spacing-more
-          disabled={k >= SPACING_MAX}
-          onClick={() => t.spacingStep(1)}
-          className={CHIP}
-        >
-          +
-        </button>
-      </span>
       <button
         type="button"
-        data-relay-spacing-default
-        disabled={k === 0}
-        onClick={() => t.spacingReset()}
-        className="cursor-pointer text-[12px] text-[#1d4ed8] underline disabled:cursor-default disabled:opacity-40"
+        data-relay-text-save
+        data-phone-keep
+        disabled={!n || t.save.kind === "saving"}
+        onClick={() => void t.saveAll()}
+        className="inline-flex h-[34px] cursor-pointer items-center gap-1.5 rounded-[9px] bg-[#3b82f6] px-3.5 text-[13.5px] font-bold text-white disabled:cursor-default disabled:opacity-45 max-sm:h-[26px] max-sm:rounded-[7px] max-sm:px-2.5 max-sm:text-[12.5px]"
       >
-        Default spacing
+        <LineIcon name="save" />
+        {t.save.kind === "saving" ? "Saving…" : "Save"}
       </button>
-    </span>
+    </>
   );
 }

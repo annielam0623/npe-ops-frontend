@@ -2,6 +2,10 @@
 
 import { type ReactNode, useEffect, useState } from "react";
 
+import {
+  LineIcon,
+  type LineIconName,
+} from "@/components/dispatch-manifest/line-icons";
 import { cn } from "@/lib/utils";
 import type {
   ManifestTextLayer,
@@ -196,9 +200,80 @@ export function isPicked(
 
 const SEG = "inline-flex overflow-hidden rounded-[7px] border border-[#9aa]";
 const CHIP =
-  "cursor-pointer border-r border-[#9aa] bg-white px-2.5 py-1 text-[12px] font-bold text-[#222] last:border-r-0 disabled:cursor-default disabled:opacity-40 aria-pressed:bg-[#1f2937] aria-pressed:text-white";
+  "cursor-pointer border-r border-[#9aa] bg-white px-2.5 py-[5px] text-[12.5px] font-bold text-[#222] last:border-r-0 disabled:cursor-default disabled:opacity-40 aria-pressed:bg-[#1f2937] aria-pressed:text-white";
+/** 白键（Quick Actions、Cancel）：不能用时灰（置顶 114）。 */
+const WHITE_KEY =
+  "inline-flex cursor-pointer items-center justify-center rounded-[7px] border border-[#9aa] bg-white px-2 py-[5px] text-[12px] font-bold whitespace-nowrap text-[#222] disabled:cursor-default disabled:opacity-40";
+/** Done：深灰 #1f2937 + ✓（置顶 114 Q4 A；不是提交键，真正存是页头的 Save）。 */
+const DONE_KEY =
+  "inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-[7px] bg-[#1f2937] px-3.5 py-1.5 text-[12px] font-bold whitespace-nowrap text-white";
+/** 手机编辑卡的键（置顶 114 M6 = 115 题 1：26px）；data-phone-keep，全站手机样式不再改它。 */
+const P_CHIP =
+  "h-[26px] cursor-pointer border-r border-[#9aa] bg-white px-[7px] text-[12px] font-bold text-[#222] last:border-r-0 disabled:cursor-default disabled:opacity-40 aria-pressed:bg-[#1f2937] aria-pressed:text-white";
+const P_QUICK =
+  "inline-flex h-[26px] cursor-pointer items-center rounded-[6px] border border-[#9aa] bg-white px-2.5 text-[12px] font-bold whitespace-nowrap text-[#222] disabled:cursor-default disabled:opacity-40";
 
-/** 表格上方的编辑条（白底虚线框，同 preview）。Done 是白色：调好的字号留在页面上，跟整页 Save 一起存（Annie 10-29 Q2）。 */
+/** 屏宽 < 640px（全站手机版的分界，同 components/ui/phone.tsx 用的 sm:）。 */
+function useNarrow(): boolean {
+  const [narrow, setNarrow] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 639.98px)");
+    const update = () => setNarrow(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+  return narrow;
+}
+
+/** Relay list 才有的 Spacing 组（置顶 112）：管整张单，− / +，不写 px。 */
+export interface SpacingControl {
+  level: number;
+  min: number;
+  max: number;
+  onStep: (n: 1 | -1) => void;
+  onReset: () => void;
+}
+
+/** 电脑版编辑卡的一组：上面「图标 + 小标题」，下面键；组之间竖线。 */
+function Group({
+  icon,
+  title,
+  name,
+  level,
+  children,
+}: {
+  icon: LineIconName;
+  title: string;
+  name: string;
+  /** 只有 Spacing 组：带 data-relay-spacing / data-level（检查用）。 */
+  level?: number;
+  children: ReactNode;
+}) {
+  return (
+    <div
+      data-text-size-group={name}
+      {...(level !== undefined
+        ? { "data-relay-spacing": "", "data-level": level }
+        : null)}
+      className="flex flex-col gap-[7px] border-r border-[#e2e5e9] px-2.5 py-2.5"
+    >
+      <span className="inline-flex items-center gap-1.5 font-bold text-[#333]">
+        <LineIcon name={icon} />
+        {title}
+      </span>
+      {children}
+    </div>
+  );
+}
+
+/**
+ * 表格上方的编辑卡（置顶 114，Annie「你参考一下这个设计，仍然用我们的主色调，把所有的编辑功能键都弄成这样归类和显示」
+ * →「114，115，107全选A。动手」；preview https://claude.ai/artifact/TopyompWt81k2rZL8uqoES 第 3 版）。
+ * 电脑：白卡片横排几组（图标 + 小标题，竖线隔开）Apply To｜Text Size｜Font Weight｜Spacing（只 Relay list）｜Quick Actions｜Cancel / Done，
+ * 卡片下边小灰字 Picked。手机（< 640px）：两行，不出小标题、不出 Picked；第 1 行最右 ✕ = Cancel，第 2 行最右 ✓ Done。
+ * 只是挪位置、分组，键的作用不变。Done 不存：调好的字号留在页面上，跟整页 Save 一起存（Annie 10-29 Q2）。
+ */
 export function TextSizeToolbar({
   mode,
   onMode,
@@ -211,10 +286,10 @@ export function TextSizeToolbar({
   onResetAll,
   onCancel,
   onDone,
-  extra,
+  spacing,
 }: {
-  /** 编辑条最下面多一行（Relay list 的 Spacing）；Bus Manifest 不给。 */
-  extra?: ReactNode;
+  /** Relay list 的 Spacing（置顶 112）；Bus Manifest 不给。 */
+  spacing?: SpacingControl;
   mode: TextMode;
   onMode: (m: TextMode) => void;
   picks: TextPick[];
@@ -227,121 +302,306 @@ export function TextSizeToolbar({
   onCancel: () => void;
   onDone: () => void;
 }) {
+  const narrow = useNarrow();
+  const [resetOpen, setResetOpen] = useState(false);
   const any = picks.length > 0;
   const d = current.d ?? 0;
+  const modes = [
+    ["column", "Column", "Col"],
+    ["row", "Row", "Row"],
+    ["page", "Page", "Page"],
+  ] as const;
+  /** Quick Actions 三个白键（手机收进「Reset…」）。 */
+  const quick = (cls: string) => (
+    <>
+      <button
+        type="button"
+        data-phone-keep
+        disabled={!any}
+        onClick={onResetSelection}
+        className={cls}
+      >
+        Reset Selection
+      </button>
+      <button
+        type="button"
+        data-phone-keep
+        onClick={onResetAll}
+        className={cls}
+      >
+        Reset Whole Table
+      </button>
+      {spacing ? (
+        <button
+          type="button"
+          data-phone-keep
+          data-relay-spacing-default
+          disabled={spacing.level === 0}
+          onClick={spacing.onReset}
+          className={cls}
+        >
+          Default Spacing
+        </button>
+      ) : null}
+    </>
+  );
+  const spacingKeys = (cls: string) =>
+    spacing ? (
+      <span className={SEG}>
+        <button
+          type="button"
+          data-phone-keep
+          aria-label="Less space"
+          data-relay-spacing-less
+          disabled={spacing.level <= spacing.min}
+          onClick={() => spacing.onStep(-1)}
+          className={cls}
+        >
+          −
+        </button>
+        <button
+          type="button"
+          data-phone-keep
+          aria-label="More space"
+          data-relay-spacing-more
+          disabled={spacing.level >= spacing.max}
+          onClick={() => spacing.onStep(1)}
+          className={cls}
+        >
+          +
+        </button>
+      </span>
+    ) : null;
+  const sizeKeys = (cls: string) => (
+    <span className={SEG}>
+      <button
+        type="button"
+        data-phone-keep
+        aria-label="Smaller"
+        disabled={!any || d <= TEXT_MIN}
+        onClick={() => onStep(-1)}
+        className={cls}
+      >
+        A−
+      </button>
+      <button
+        type="button"
+        data-phone-keep
+        aria-label="Bigger"
+        disabled={!any || d >= TEXT_MAX}
+        onClick={() => onStep(1)}
+        className={cls}
+      >
+        A+
+      </button>
+    </span>
+  );
+
+  if (narrow)
+    return (
+      <div
+        role="group"
+        aria-label="Text size"
+        data-text-size-toolbar
+        data-text-size-phone
+        className="mt-2 flex flex-col gap-1.5 rounded-[9px] bg-white px-2 py-1.5 font-[Arial,sans-serif] text-[12px] text-[#222]"
+      >
+        <div className="flex flex-nowrap items-center gap-1.5">
+          <span className="text-[12px] font-bold text-[#555]">Aa</span>
+          <span className={SEG}>
+            {modes.map(([m, label, short]) => (
+              <button
+                key={m}
+                type="button"
+                data-phone-keep
+                aria-label={label}
+                aria-pressed={mode === m}
+                onClick={() => onMode(m)}
+                className={P_CHIP}
+              >
+                {short}
+              </button>
+            ))}
+          </span>
+          {sizeKeys(P_CHIP)}
+          <span className="flex-1" />
+          <button
+            type="button"
+            data-phone-keep
+            data-text-size-cancel
+            aria-label="Cancel"
+            title="Cancel"
+            onClick={onCancel}
+            className="inline-flex h-[26px] w-[26px] cursor-pointer items-center justify-center rounded-[7px] border border-[#9aa] bg-white text-[13px] font-bold text-[#222]"
+          >
+            ✕
+          </button>
+        </div>
+        <div className="relative flex flex-nowrap items-center gap-1.5">
+          <span className={SEG}>
+            <button
+              type="button"
+              data-phone-keep
+              aria-label="Regular"
+              aria-pressed={current.bold === false}
+              disabled={!any}
+              onClick={() => onBold(false)}
+              className={P_CHIP}
+            >
+              Reg
+            </button>
+            <button
+              type="button"
+              data-phone-keep
+              aria-pressed={current.bold === true}
+              disabled={!any}
+              onClick={() => onBold(true)}
+              className={P_CHIP}
+            >
+              Bold
+            </button>
+          </span>
+          {spacing ? (
+            <span
+              data-relay-spacing
+              data-level={spacing.level}
+              className="inline-flex items-center gap-1"
+            >
+              <span title="Spacing" className="text-[#555]">
+                <LineIcon name="space" />
+              </span>
+              {spacingKeys(P_CHIP)}
+            </span>
+          ) : null}
+          <button
+            type="button"
+            data-phone-keep
+            data-text-size-reset-menu
+            aria-expanded={resetOpen}
+            onClick={() => setResetOpen((v) => !v)}
+            className="cursor-pointer px-0.5 text-[12px] font-bold whitespace-nowrap text-[#1d4ed8] underline"
+          >
+            Reset…
+          </button>
+          <span className="flex-1" />
+          <button
+            type="button"
+            data-phone-keep
+            data-text-size-done
+            onClick={onDone}
+            className="inline-flex h-[26px] cursor-pointer items-center gap-1 rounded-[7px] bg-[#1f2937] px-[9px] text-[12px] font-bold whitespace-nowrap text-white"
+          >
+            <LineIcon name="check" className="h-3 w-3" />
+            Done
+          </button>
+          {resetOpen ? (
+            <div
+              data-text-size-reset-list
+              className="absolute top-full left-0 z-30 mt-1 flex flex-col items-stretch gap-1 rounded-[8px] border border-black/15 bg-[#f4f3ee] p-1.5 shadow-[0_8px_20px_rgba(0,0,0,.25)]"
+            >
+              {quick(P_QUICK)}
+            </div>
+          ) : null}
+        </div>
+      </div>
+    );
+
   return (
     <div
       role="group"
       aria-label="Text size"
       data-text-size-toolbar
-      className="mt-2 flex flex-wrap items-center gap-x-3.5 gap-y-2 rounded-lg border border-dashed border-[#8a94a0] bg-white px-2.5 py-2 text-[12px] text-[#333]"
+      className="mt-2 overflow-hidden rounded-[10px] border border-black/10 bg-white font-[Arial,sans-serif] text-[12.5px] text-[#222]"
     >
-      <span className="font-bold">Change</span>
-      <span className={SEG}>
-        {(
-          [
-            ["column", "Whole column"],
-            ["row", "Whole row"],
-            ["page", "Whole page"],
-          ] as const
-        ).map(([m, label]) => (
-          <button
-            key={m}
-            type="button"
-            aria-pressed={mode === m}
-            onClick={() => onMode(m)}
-            className={CHIP}
+      <div className="flex flex-wrap items-stretch">
+        <Group icon="apply" title="Apply To" name="apply">
+          <span className={SEG}>
+            {modes.map(([m, label]) => (
+              <button
+                key={m}
+                type="button"
+                aria-pressed={mode === m}
+                onClick={() => onMode(m)}
+                className={CHIP}
+              >
+                {label}
+              </button>
+            ))}
+          </span>
+        </Group>
+        <Group icon="size" title="Text Size" name="size">
+          <span className="inline-flex items-center gap-2">
+            {sizeKeys(CHIP)}
+            <span
+              data-text-size-value
+              className="inline-block min-w-10 text-[11.5px] font-bold text-[#555] tabular-nums"
+            >
+              {any ? (d ? `${d > 0 ? "+" : ""}${d} px` : "Default") : "—"}
+            </span>
+          </span>
+        </Group>
+        <Group icon="bold" title="Font Weight" name="weight">
+          <span className={SEG}>
+            <button
+              type="button"
+              aria-pressed={current.bold === false}
+              disabled={!any}
+              onClick={() => onBold(false)}
+              className={CHIP}
+            >
+              Regular
+            </button>
+            <button
+              type="button"
+              aria-pressed={current.bold === true}
+              disabled={!any}
+              onClick={() => onBold(true)}
+              className={CHIP}
+            >
+              Bold
+            </button>
+          </span>
+        </Group>
+        {spacing ? (
+          <Group
+            icon="space"
+            title="Spacing"
+            name="spacing"
+            level={spacing.level}
           >
-            {label}
+            {spacingKeys(CHIP)}
+          </Group>
+        ) : null}
+        <Group icon="reset" title="Quick Actions" name="quick">
+          <span className="flex flex-nowrap gap-1">{quick(WHITE_KEY)}</span>
+        </Group>
+        <div
+          data-text-size-group="finish"
+          className="ml-auto flex items-center gap-1.5 px-2.5 py-2.5"
+        >
+          <button type="button" onClick={onCancel} className={WHITE_KEY}>
+            Cancel
           </button>
-        ))}
-      </span>
-      <span className="font-bold">Size</span>
-      <span className={SEG}>
-        <button
-          type="button"
-          aria-label="Smaller"
-          disabled={!any || d <= TEXT_MIN}
-          onClick={() => onStep(-1)}
-          className={CHIP}
-        >
-          A−
-        </button>
-        <button
-          type="button"
-          aria-label="Bigger"
-          disabled={!any || d >= TEXT_MAX}
-          onClick={() => onStep(1)}
-          className={CHIP}
-        >
-          A+
-        </button>
-      </span>
-      <span
-        data-text-size-value
-        className="inline-block min-w-16 text-center font-bold text-[#222] tabular-nums"
+          <button
+            type="button"
+            data-text-size-done
+            onClick={onDone}
+            className={DONE_KEY}
+          >
+            <LineIcon name="check" className="h-3.5 w-3.5" />
+            Done
+          </button>
+        </div>
+      </div>
+      <div
+        data-text-size-picked
+        className="px-4 pb-2 text-[11.5px] text-[#666]"
       >
-        {any ? (d ? `${d > 0 ? "+" : ""}${d} px` : "Default") : "—"}
-      </span>
-      <span className="font-bold">Weight</span>
-      <span className={SEG}>
-        <button
-          type="button"
-          aria-pressed={current.bold === false}
-          disabled={!any}
-          onClick={() => onBold(false)}
-          className={CHIP}
-        >
-          Regular
-        </button>
-        <button
-          type="button"
-          aria-pressed={current.bold === true}
-          disabled={!any}
-          onClick={() => onBold(true)}
-          className={CHIP}
-        >
-          Bold
-        </button>
-      </span>
-      <span className="flex-1" />
-      <button
-        type="button"
-        disabled={!any}
-        onClick={onResetSelection}
-        className="cursor-pointer text-[12px] text-[#1d4ed8] underline disabled:cursor-default disabled:opacity-40"
-      >
-        Reset selection
-      </button>
-      <button
-        type="button"
-        onClick={onResetAll}
-        className="cursor-pointer text-[12px] text-[#1d4ed8] underline disabled:opacity-40"
-      >
-        Reset whole table
-      </button>
-      <button
-        type="button"
-        onClick={onCancel}
-        className="cursor-pointer rounded-[7px] border border-[#9aa] bg-white px-2.5 py-1 text-[12px] font-bold text-[#222] disabled:opacity-60"
-      >
-        Cancel
-      </button>
-      <button
-        type="button"
-        data-text-size-done
-        onClick={onDone}
-        className="cursor-pointer rounded-[7px] border border-[#9aa] bg-white px-3.5 py-1 text-[12px] font-bold text-[#222]"
-      >
-        Done
-      </button>
-      <span className="basis-full text-[#555]">
         Picked:{" "}
         <b className="text-[#111]">
           {pickedLabel || "nothing yet — click the table"}
         </b>
-      </span>
-      {extra}
+      </div>
     </div>
   );
 }

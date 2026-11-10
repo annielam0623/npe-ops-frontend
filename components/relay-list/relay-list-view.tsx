@@ -16,6 +16,7 @@ import {
 import { HowToUse } from "@/components/ui/how-to-use";
 import { ErrorBanner } from "@/components/ui/panel";
 import { PageLink } from "@/components/ui/page-link";
+import { LineIcon } from "@/components/dispatch-manifest/line-icons";
 import { PhoneMore, usePhoneInfo } from "@/components/ui/phone";
 import { describeError, isStatus } from "@/lib/api-errors";
 import {
@@ -97,12 +98,12 @@ type ViewState =
   | { kind: "error"; message: string }
   | { kind: "ready"; data: RelayPull };
 
-/** .mf-nav a.back（同 Bus Manifest 页的返回键）。 */
+/** 返回键（置顶 114：页头左边「‹ Dispatch」，34px；手机 26px）。 */
 const NAV_LINK =
-  "inline-flex h-7 items-center rounded-lg border border-[rgba(147,197,253,.35)] px-[11px] text-[13px] text-[#93c5fd] no-underline hover:bg-white/[.07]";
-/** 白底键（Print 不是提交键，不用蓝色）。 */
+  "inline-flex h-[34px] items-center gap-1.5 rounded-[9px] border border-[rgba(147,197,253,.35)] px-3 text-[13.5px] font-semibold text-[#93c5fd] no-underline hover:bg-white/[.07] max-sm:h-[26px] max-sm:rounded-[7px] max-sm:px-[9px] max-sm:text-[12.5px]";
+/** 白底键（Print / Excel / ⚙ 不是提交键，不用蓝色；置顶 114 前面带线条图标）。 */
 const WHITE_BTN =
-  "inline-flex h-8 cursor-pointer items-center rounded-[8px] border border-black/25 bg-paper px-3.5 text-[13px] font-bold text-[#111]";
+  "inline-flex h-[34px] cursor-pointer items-center gap-1.5 rounded-[9px] border border-black/25 bg-paper px-3.5 text-[13.5px] font-bold whitespace-nowrap text-[#111] max-sm:h-[26px] max-sm:rounded-[7px] max-sm:px-2.5 max-sm:text-[12.5px]";
 
 /**
  * Relay list：Dispatch › Morning Relay「📋 Relay list」打开（Annie：「排完relay并保存了以后，应该加一个按键显示这些relay的list」）。
@@ -253,49 +254,59 @@ export function RelayListView() {
   // 横版单 297mm 宽（置顶 73）：max-w 放得下一整张。
   return (
     <main className="mx-auto w-full max-w-[1180px] px-4 py-5 sm:px-6 print:max-w-none print:p-0">
-      <div className="rl-screen-only mb-4 flex flex-wrap items-center gap-3">
+      {/* 置顶 114（Annie「114，115，107全选A。动手」）：左「‹ Dispatch」；右「● 未存黄字｜Save｜Print｜Excel｜⚙ Colours, Text & Page」，
+          位置固定。手机一行：‹ Dispatch｜黄点 + 小字｜Save｜⋯（Print、Excel、⚙ 收进 ⋯）。 */}
+      <div
+        data-relay-header
+        className="rl-screen-only mb-4 flex flex-wrap items-center gap-3 max-sm:gap-2"
+      >
         <PageLink href={backHref} className={NAV_LINK}>
-          ← Dispatch
+          ‹ Dispatch
         </PageLink>
-        {view.kind === "ready" ? (
-          <button
-            type="button"
-            data-relay-print
-            onClick={() => window.print()}
-            className={WHITE_BTN}
-          >
-            🖨 Print
-          </button>
-        ) : null}
+        {info.button}
+        <span
+          className={`order-last basis-full text-[12.5px] text-[#cbd5e1] ${info.hide}`}
+        >
+          Shows the saved Dispatch schedule. Changed something? Save it on
+          Dispatch, then reload this page.
+        </span>
+        <span className="flex-1" />
         {view.kind === "ready" ? (
           <RelayTextContext.Provider value={textState}>
             <RelayTextSave />
           </RelayTextContext.Provider>
         ) : null}
-        {view.kind === "ready" && params && canExcel ? (
-          <PhoneMore label="Download">
-            <ExcelButton
-              date={params.date}
-              car={params.car}
-              onUnauthorized={redirectToLogin}
-            />
+        {view.kind === "ready" ? (
+          <PhoneMore label="More actions">
+            <button
+              type="button"
+              data-relay-print
+              onClick={() => window.print()}
+              className={WHITE_BTN}
+            >
+              <LineIcon name="print" />
+              Print
+            </button>
+            {params && canExcel ? (
+              <ExcelButton
+                date={params.date}
+                car={params.car}
+                onUnauthorized={redirectToLogin}
+              />
+            ) : null}
+            {settings ? (
+              <button
+                type="button"
+                data-relay-settings-open
+                onClick={() => setSettingsOpen(true)}
+                className={WHITE_BTN}
+              >
+                <LineIcon name="gear" />
+                {layout ? "Colours, Text & Page" : "Colours & Page"}
+              </button>
+            ) : null}
           </PhoneMore>
         ) : null}
-        {view.kind === "ready" && settings ? (
-          <button
-            type="button"
-            data-relay-settings-open
-            onClick={() => setSettingsOpen(true)}
-            className={WHITE_BTN}
-          >
-            {layout ? "⚙ Colours, text & page" : "⚙ Colours & page"}
-          </button>
-        ) : null}
-        {info.button}
-        <span className={`text-[12.5px] text-[#cbd5e1] ${info.hide}`}>
-          Shows the saved Dispatch schedule. Changed something? Save it on
-          Dispatch, then reload this page.
-        </span>
       </div>
       {paper === "letter" ? <style>{LETTER_PAGE}</style> : null}
       {refreshError ? (
@@ -395,13 +406,13 @@ const HOW_TO = [
 const RELAY_LAYOUT_HOW_TO =
   "In ⚙ Colours, text & page you can also turn colouring on or off for the Hotel cell and the column titles, add or remove colour choices, set the everyday text size, and on the Page tab set the paper (A4 or Letter) and margins. Changes show on the sheet right away; press Save to keep them. Reset all to paper puts everything back. Saved settings are used on screen and when you print, for everyone and every day.";
 
-/** 置顶 92 Q5 A（第 1 版 preview Q7 的原文，按「每天的起点」改了最后半句）。 */
+/** 置顶 92 Q5 A；置顶 114 换成新键名（preview 第 3 版原文，Q2 A 加「Save stays grey…」）。 */
 const RELAY_AA_HOW_TO =
-  "Aa Text size (above each sheet): pick Whole column, Whole row or Whole page, click the table, then press A− or A+ and Regular or Bold. Press Done, then Save at the top. Text size is saved for this day only and prints as you see it; the next day starts from the everyday size.";
+  "Aa Text size (above each sheet): under Apply To pick Column, Row or Page, click the table, then use Text Size (A− / A+) and Font Weight (Regular / Bold). Press Done, then Save at the top. Save stays grey until something is changed. Text size is saved for this day only and prints as you see it; the next day starts from the everyday size.";
 
 /** 置顶 112 Spacing（Annie「用-+是最好，一目了然…不要让staff去判断px」）：一组 − / +，不提 px。 */
 const RELAY_SPACING_HOW_TO =
-  "Spacing (at the bottom of Aa Text size): press − for less space between rows and between hotels, + for more. The sheet changes right away. It is saved with the text size for this day only and prints as you see it. If the sheet no longer fits on one page, the space gets smaller by itself until it fits. Default spacing puts it back.";
+  "Spacing (in Aa Text size): press − for less space between rows and between hotels, + for more. The sheet changes right away. It is saved with the text size for this day only and prints as you see it. If the sheet no longer fits on one page, the space gets smaller by itself until it fits. Default Spacing (under Quick Actions) puts it back.";
 
 /** 置顶 112（Annie「111， 112 全 A + 动手」）：Q3 定稿原文 + Q7 A 原文。 */
 const RELAY_FIT_HOW_TO = [
@@ -461,7 +472,8 @@ function ExcelButton({
         onClick={() => void download()}
         className={`${WHITE_BTN} disabled:cursor-default disabled:opacity-60`}
       >
-        {busy ? "Downloading…" : "⬇ Excel"}
+        <LineIcon name="download" />
+        {busy ? "Downloading…" : "Excel"}
       </button>
       {error ? (
         <span
