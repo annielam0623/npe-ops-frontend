@@ -1452,6 +1452,15 @@ D. 已完成、待从置顶移走：
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 115. 手机版键再缩小 + 页头 / 工具区省地方（2026-11-09 晚，78 派 03；只出 preview，没「动手」）
+
+- Annie 原话：「你记得做一个设计，它们手机网页上所有的键都缩小一点，不要占太多地方，尤其是staff经常操作的那些页面」；看 114 又说：「手机版能不能省点地方啊，一整屏都占完了」。
+- preview：https://claude.ai/artifact/3dJPBmBq9hJShSvcA8ccwE（模拟数据、390×844 真页面截图，8 页 × 现在 / C 28px / A 26px / B 24px 并排）。
+- 盘点：`[data-phone-compact]`（app-frame 包整个内容区）只改内边距 3/10px、字 13px，大部分键已 24–26px；没管到的：写死 h-8 / h-9 的键（‹ › Today、Manifests 发送键、Bus Manifest Save、Orders Clear / Refresh / Export、View Tracking、Dispatch Send 页发送键）32–36px，顶栏 ☰ 30 / ★ 32 / ⌕ 40，右下 ↑↓ 34，多行大块（Tour Tracking 统计格 54、Relay List 51、Assign / Send 分段键、⚠ issues）。
+- 内容起点（目标工具区 ≤ 281px = 1/3 屏）：Dispatch › Assign 494、Tour Tracking 480、Manifests 432 超；其余 Morning Tracking 271、Relay list 209、Dispatch Send 205、Orders 193、Schedule 172、Bus Manifest ≈165、Morning Send ≈100 不用改。
+- 8 题（推荐都 A，原文已交 78）：题 1 缩多少 A 26 / B 24 / C 28；题 2 全站 vs 只 staff 常用 10 页；题 3 蓝主提交键同样缩；题 4 表格行内小键同档；题 5 ↑↓ 缩到 30px；题 6 顶栏 ☰ ★ ⌕ 一起缩；题 7 多行大块这次不动；题 8 超 1/3 屏的三页照表并一行 / 收 ⋯ / 收 i（动手前每页再给改后截图）。
+- 59 的 114 Relay list 编辑卡（先按 28px 画）题 M6 写「最终跟 115 题 1 走」，已对齐。
+
 ### 114. Relay list 功能键统一整理（2026-11-09 晚，Annie 看 Spacing 截图后提，78 派 59；先 preview，没「动手」）
 
 - Annie 原话：「你现在应该整理一下这些功能键，左一个右一个，能否将它们统一整理一下好看好用呢」。
