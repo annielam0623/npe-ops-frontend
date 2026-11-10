@@ -1493,6 +1493,8 @@ function BusCard({
                 BAND_LINK,
                 "cursor-pointer",
                 editing && "border-[#111] shadow-[inset_0_0_0_1px_#111]",
+                // 置顶 114 M4 A：手机上编辑时不单独出 Close text size，用编辑卡的 ✕ 关。
+                editing && "max-sm:hidden",
               )}
             >
               {editing ? "Close text size" : "Aa Text size"}
