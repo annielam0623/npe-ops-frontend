@@ -1209,6 +1209,14 @@ async function run() {
   check("例外没填日期 ⇒ 红字 Exception 2: pick the date.，不存", await waitFor(`${dlg}?.querySelector('[role=alert]')?.textContent === 'Exception 2: pick the date.'`));
   await evaluate(`const row = ${dlg}.querySelector('[data-exception-row="1"]'); $setValue(row.querySelector('select[aria-label="Exception shift"]'), 'close'); $setValue(row.querySelector('input[aria-label="Exception from"]'), '2026-12-08');`);
   await sleep(150);
+  // 1a 11-10：后端 G272 回 400 ⇒ 弹窗里红字原样是后端原话，弹窗不关、没存
+  const EXC400 = 'Rule 14 (max_per_shift_day, id "m1"): params.exceptions item 2: to must be on or after from.';
+  await ctl({ rulesFailDetail: EXC400 });
+  await evaluate(`$btn('Save rule', ${dlg}).click();`);
+  check("后端 400（G272 原话）⇒ Rules 弹窗红字原样 + 不关", await waitFor(`${dlg}?.querySelector('[role=alert]')?.textContent === ${JSON.stringify(EXC400)} && ${dlg}.querySelector('[role=alert]').className.includes('text-red')`), await evaluate(`return ${dlg}?.querySelector('[role=alert]')?.textContent;`));
+  check("400 时没存（还是只有一条过期例外）", (await getRules()).find((r) => r.id === "m1")?.params.exceptions?.length === 1);
+  await ctl({ rulesFailDetail: null });
+  await sleep(150);
   await evaluate(`$btn('Save rule', ${dlg}).click();`);
   await waitFor(`!${dlg}`);
   saved = (await getRules()).find((r) => r.id === "m1");
@@ -1245,6 +1253,18 @@ async function run() {
   await waitFor(`!${dd}`);
   saved = (await getRules()).find((r) => r.id === "m1");
   check("Back to the rule：这一天的例外去掉（exceptions 整个不带），琥珀又出来", !("exceptions" in (saved?.params ?? {})) && (await waitFor(`!!document.querySelector('[data-over-cap="${D2(1)}|close"]')`)), JSON.stringify(saved?.params));
+  // 1a 11-10：Schedule 日期小窗存的时候后端 400 ⇒ 小窗红字原样、不关、没存
+  await ctl({ rulesFailDetail: EXC400 });
+  await evaluate(`document.querySelector('[data-day-rule="${D2(1)}"]').click();`);
+  await waitFor(`document.querySelector('[data-day-rule-dialog="${D2(1)}"]')`);
+  await evaluate(`${dd}.querySelector('[data-day-rule-option="close"]').click();`);
+  await sleep(100);
+  await evaluate(`$btn('Save', ${dd}).click();`);
+  check("后端 400（G272 原话）⇒ 日期小窗红字原样 + 不关", await waitFor(`${dd}?.querySelector('[role=alert]')?.textContent === ${JSON.stringify(EXC400)}`), await evaluate(`return ${dd}?.querySelector('[role=alert]')?.textContent;`));
+  check("400 时没存（exceptions 还是没有）", !("exceptions" in ((await getRules()).find((r) => r.id === "m1")?.params ?? {})));
+  await ctl({ rulesFailDetail: null });
+  await evaluate(`$btn('Cancel', ${dd}).click();`);
+  await waitFor(`!${dd}`);
   check("（规则恢复）", await putRules(fullRules));
   // 题 3 A：后面的 Auto-fill 预览带一条「每周超 39 小时提醒」（Veronica 固定 Open 8 小时 × 5 = 40）。
   check("（规则恢复 + Weekly hours alert 39）", await putRules([...fullRules, R("h1", "weekly_hours_alert", { hours: 39 })]));
