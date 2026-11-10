@@ -1524,6 +1524,14 @@ D. 已完成、待从置顶移走：
 - ✅ **Annie 11-09 晚（原话，在 78）：「统一全部推荐，但是还要加一条，可以设置一个班最多几个人」** ⇒ 78 理解为 110 题 1–8 全 A；「加一条」78 核对：题 ① Max people on a shift 已是「班次 + 星期几 + 人数（1–20）」，可以每种班各设一个数（Close 1、Open 2 各一条）——已问 Annie 是不是这个意思、还是另有不同；「全部推荐」是否也包括 107 / 112 也问了。**还没「动手」**。
   - ✅ Annie（原话）：「110排班 A」⇒ 「加一条」= 现有 Max people on a shift（班次 + 星期几 + 人数 1–20，每种班可各设一条），照 preview 做，不另加；110 题 1–8 全 A 定稿。「全部推荐」只答了 110，107 / 112 另等。**还没「动手」**（已问）。
   - ✅ **Annie 11-09 晚（原话，在 78）：「110动手」** ⇒ 前端派 03（推分支，后端先上 main 后核字段再合）；后端已转 0a 派 40 开工。
+- 🟡 **03 [44f0b4] 110 功能已写完，分支 `task/110-rules` dbd9d4de（worktree D:
+pe-ops-frontend-03c），推分支、不合 main**：等后端 40 上 main 给 SHA，核字段再合（后端先上，否则存新规则 400）。照 preview + 形状，题 1–8 全 A：
+  - Max people on a shift（`max_per_shift_day`）：Auto-fill 严格遵守、排不下写预览；固定 / 保留的班本身超了照排、写「Mon close has 2, at most 1 (fixed or kept shifts).」；手动排班不拦，日期下琥珀「Close 2 (max 1)」+ 班卡琥珀框。
+  - Minimum days on a shift：Who 三选一（employee_ids / exclude_employee_ids，Everyone 不带键）；旧 employee_id 打开当 Only，存时换写法。
+  - Days per week 管到固定班 + 周末轮值：超了这周轮值跳过此人换下一位，没人接空着进预览；固定班本身超了写一条。
+  - Weekly hours alert（`weekly_hours_alert {hours}`）：整段算、不扣休息、休假不算；排班表名字下琥珀「42.5 h this week」+ Auto-fill 预览一行「Over 40 hours: …」。
+  - 互相打架的规则：清单两条下面各一行琥珀字 + 改规则弹窗同一句，不拦。
+  - 检查：tsc 0、eslint 0 error、build 过；引擎 27/27（新 7）、sch 447/447（新 22，mock 照后端 40 形状校验）、nav 39/39。只 mock。How to use 不用改（Rules 标签没有 How to use 框）。
 - 🟡 **03 [44f0b4] preview + 接口形状已交 78（11-09，没动手）**：preview https://claude.ai/artifact/C4WjXh8cnTnDVUUgyoAThX（模拟数据：Rules 清单、新增 / 改规则弹窗、Auto-fill 黄框带「哪条规则卡住」、手动排班列头琥珀「Close 2 (max 1)」+ 名字下「42.5 h this week」）+ 7 题（推荐都 A）：
   题 1 固定班 + 轮值超「最多 N 天」⇒ A 轮值跳过此人换下一位，没人接就空着写预览；题 2 固定 / 保留的班本身超人数 ⇒ A 照排 + 提醒；题 3 40 小时放哪 ⇒ A 名字下 + Auto-fill 预览；题 4 ⇒ A 做成一条规则「Weekly hours alert」可改可关；题 5 小时算法 ⇒ A 上下班整段、不扣休息、PTO 不算；题 6 手动超人数 ⇒ A 列头一行 + 班卡琥珀框；题 7 选人 ⇒ A 下拉 Everyone / Only these people / Everyone except。
   形状：新 type `max_per_shift_day {shift_type?（不写 = 每种班各算）, max 1..20, days?}`；`min_days_on_shift` 加 `employee_ids?` / `exclude_employee_ids?`（和旧 `employee_id` 三选一）；`days_per_week` 形状不变（前端数固定班 + 轮值 + 保留的班）；新 type `weekly_hours_alert {hours 1..80}`（题 4 选 B 则不要）。全在前端算，后端只放行白名单。全文由 78 转 d4 / 0a。
@@ -1543,6 +1551,7 @@ D. 已完成、待从置顶移走：
   - 照 bug 修：Manifests 团确认 / Last Minute 弹窗一位客人只算一次（components/manifests/send-dialogs.tsx tourOutcomes：任一选了的渠道 sent = Sent，都没发出且有渠道 failed = Failed；Sent 数字改成前端按逐单算，不再用后端只数邮件的 res.sent）；门票提醒弹窗（ticketOutcomes）Sent 也改成任一渠道 ok 才算（后端 res.sent = 全部行）。
   - 检查：tsc 0、eslint 0 error（3 旧 warning）、build 过；man 424/424（新：邮件 sent + 短信 failed: Invalid phone ⇒ 汇总 1|0|0|1、Email 绿、SMS 红）、mt 259/259（Sent 颜色检查改绿）、tsend 62/62（新：Sent 绿）、fod 49/49（新：Farm out 通知 Sent 绿）、tour 65/65、da 544/544。只 mock。
   - 其余（Q1 / Q2 / Q6 和各结果数字、前端自判没号码改成以后端为准）等 d4 接口形状。
+- ✅ **03 [44f0b4] W2 原文显示修复已上 main 4c7f8a71（11-09，78 说 W1 已在写 skipped - no …，不等 W2）**：Send Log 明细、Tour / Tickets / Morning Tracking、订单查询碰到「skipped - no phone / skipped - no email」写灰字 No number / No email（Send Log 灰胶囊），不显示原文、不当失败（lib/send-outcome.ts noAddressLabel）。检查：tt 168、catchup 58、tk 135、mt 261、orders 54、nav 39、build 过。Annie 验收：今晚之后的 Morning / Relay 批次在 Send Log 明细、Morning Tracking 看灰字 No number。
 - ✅ **03 [44f0b4] 第二部分已上 main 648a149a（11-09）**：后端 W1 上 main（合并 1437f31a、关包 8e1e062a）后核过字段（outcome / sms_outcome / email_outcome 取值同 send_outcome.py；早班 results 里 skipped:true 的行没 outcome、照旧进 Skipped、不进四个数）。追加 Send Log 批次小结：summary.no_contact 灰色「No contact N」胶囊（有才出），「x of N in this send match」的 N = Sent + Failed + No contact；红框照旧只看 failed / not_sent（Q3 没地址不告警）。门票、Broadcast、Farm out、司机 / 导游通知后端还是老字段（W2–W4），前端走回退。检查：tsc 0、eslint 0 error、build 过；unit 24/24；man 425、mt 261、tsend 64、fod 59、tour 69、da 546、nav 39、catchup 57、tk 135、tt 167 全过。How to use 两句等 Annie，定了另起小提交。
   - Annie 线上验收看：Tour Confirmation 发送页 / Morning Pickup 发送页 / Dispatch Morning Relay 的 Send Results（汇总 Sent 绿 / Failed 红 / No contact 灰、没号码那格灰字 No number）；Manifests 团确认弹窗结果（Sent / Failed: 原因）；Send Log 组头胶囊。
 - 🟡 （历史）**03 [44f0b4] 第二部分（照后端 W1 形状 docs/interfaces/send-outcome-2026-11-09.md mock 做，78 派）**：分支 `task/send-outcome-ui` c788afd4（worktree D:\npe-ops-frontend-03b），**只推分支、不合 main**，等后端 W1 各入口上 main 核字段再合。
