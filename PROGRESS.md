@@ -18,6 +18,11 @@
   4. 日报邮件加门票发送结果，前端不用改。
   口径同置顶 109（Sent 绿 / Failed 红 / No contact 灰）。
 - 待派前端工作窗口：① 113 task/bus-columns 4b51badc、110 例外 task/110-exceptions b06dc248（等后端 SHA 核字段合 main）；② 109 W4 第二段（照上面形状 mock 做）。
+- d9 回：G275 → 后端 dc（对着 task/bus-columns 核字段）；G272 例外 → 后端 c1；v159 等 Annie 执行 SQL（后端分支 task/dispatch-card-notes a17e330a，dc）；W3 a3 做、W4 第二段 2e 做。SHA 到了 d9 发 62。
+- 前端工作窗口 `npe-ops-frontend-1a`[a03b71]：派 113 + 110 例外。准备已做完：113 worktree C:Code
+pe-ops-wt-1a-buscols，合 main 后已推 task/bus-columns（mf 308、nav 39）；110 worktree C:Code
+pe-ops-wt-1a-110ex，已推 task/110-exceptions（sch 467、引擎 32、nav 39）；tsc / eslint / build 都过，dev / Chrome 已关。等后端 SHA ⇒ 核字段 ⇒ 合 main。
+- 109 W4 第二段前端：问 Annie 派 79（推荐）还是新开窗口，等她回。
 
 ## 2026-11-09 晚 收工交接：前端主窗口 `前端主窗口-78`[426278]（家里电脑；明天 Annie 在公司电脑）
 > Annie（原话）：「ok，今晚就到这里吧，收工，请详细记录今天做完和未完成的方便我明天在公司电脑继续」。78 只分工和汇报，没写功能代码。今晚工作窗口 `59`[66d88c]、`03`[44f0b4]；后端主窗口 `后端主窗口0a`[45ce5d]（子窗口 78 [fdaaf2]、37、40、3e、12），后端交接已推 abc6bb66。过程见下面「78 开工」一节。
