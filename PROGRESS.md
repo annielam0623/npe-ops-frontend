@@ -1478,6 +1478,9 @@ D. 已完成、待从置顶移走：
 - 59 只读查：Bus Manifest 屏幕和打印同一套，已照 tour.lunch_column 出不出 Lunch 列（manifest-view.tsx columnsFor）⇒ Bus Manifest 页不用改。勾放在 Products › Manifest setup › Bus Manifest setup（A6 那页，每格一个 Save、10 分钟没活动自动存、换团 / 离开先问），新格照同一套 useBlockSave。
 - preview（模拟数据）：https://claude.ai/artifact/QFf5CH4r5WVK3KsqJNHUba 。题：Q1 放哪（A 午餐那格下面新的一格「Bus Manifest columns」）、Q2 勾的意思（A 勾上 = 显示，默认全勾）、Q3 怎么存（A 同这页其他格）、Q4 没排餐厅的团（A 照样出勾 + 灰字），都推荐 A；How to use 一句原文在 preview。等 Annie 答 +「动手」+ 后端 SHA。
 - 后端 3e 已上 main 1e8006fc（59 只读核，和 preview 写法一致、前端不用改形状）：GET 顶层 bus_column_options [{key:"lunch", label:"Lunch"}]、groups[].bus_hidden_columns（[] = 都显示）；PUT …/groups/{id}/bus-hidden-columns {hidden_columns} 整组替换、回 {ok, hidden_columns}、require_admin、400 detail 原话（例「notes is not a Bus Manifest column that can be hidden.」）；tour.lunch_column = 有午餐店 且 没勾掉 ⇒ Q4 的灰字用 group.lunch_restaurant（null = 没排餐厅）判断。还等 Annie 答 4 题 +「动手」。
+- **Annie（原话，78 转）：「隐藏键不要放在设置这边，应该就在bus manifest上给staff用的」** ⇒ 第 1 版（Manifest setup 里的勾）作废。preview 第 2 版（同链接 https://claude.ai/artifact/QFf5CH4r5WVK3KsqJNHUba ）：Dispatch › Bus Manifest 页头「Columns ▾」挨着 Version，点开勾列（今晚只有 Lunch），按团存、对所有人一样；存法同这页的 Version（59 只读查：Version 改了下拉变橙、先放页面上、按页头蓝 Save 才存、离开先问；权限 dispatch.edit 或 manifests.edit，tour_manifest.py _edit）；没编辑权只看灰字；手机收进 ⋯。Manifest setup 不留（3e：后端只留一个入口，设置页 PUT 删掉）。
+  - 后端 3e 新形状（明天写）：PUT /api/dispatch/manifest/hidden-columns {tour: manifest_id, hidden_columns} → {ok, hidden_columns}，权限同这页其他写入；GET /api/dispatch/manifest 加 tour.bus_hidden_columns + bus_column_options。
+  - 题（都推荐 A）：Q1 放哪（A 页头 Columns ▾ / B 表头 ✕）、Q2 谁能改（A dispatch.edit 或 manifests.edit）、Q3 按团还是这一天（A 按团，确认之前的选择）、Q4 怎么存（A 同 Version 跟 Save）、Q5 没排餐厅的团（A 照样列 + 灰字）、Q6 手机（A 收进 ⋯）。How to use 原句在 preview。等 Annie 答 +「动手」+ 后端新接口。
 
 ### 112. Relay list 一张单超一页：先自动压空白，压不下再提示（2026-11-09，Annie 在后端 d4 窗口定，d4 转；79 出 preview，没动手）
 
