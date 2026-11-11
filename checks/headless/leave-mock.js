@@ -201,7 +201,7 @@ http.createServer(async (req, res) => {
   if (ctl.hrDuty && ctl.upstream === "tp" && req.method === "GET" && (p === "/api/team/catalog" || p === "/api/team/members/2")) {
     const r = await fetch(`http://127.0.0.1:${TP_PORT}${req.url}`, { headers: { cookie: req.headers.cookie || "" } });
     const body = await r.json();
-    if (p === "/api/team/catalog") body.duties = [...(body.duties || []), { code: "hr", display_name: "HR", description: "Gets a notice and an email when someone's leave is approved." }];
+    if (p === "/api/team/catalog") body.duties = [...(body.duties || []), { code: "hr", display_name: "HR", description: "Gets a copy of every approved leave request.", sort_order: 100 }];
     else body.duties = [...(body.duties || []), "hr"];
     return send(res, r.status, body);
   }
