@@ -381,6 +381,42 @@ async function run() {
     check("109 W3 staff 回复号码错（sms_outcome failed）：照旧黄框「Saved, but NOT delivered to the guest via SMS…」", await evaluate(`return ${notice}.textContent.startsWith('Saved, but NOT delivered to the guest via SMS.');`), await evaluate(`return ${notice}?.textContent;`));
     await ctl({ w3Note: "" });
   }
+  // 置顶 116（Annie「全部同意推荐。动手」）：回复真发给客人（任一渠道 sent）⇒ 后端记成回复人处理过；
+  // 前端发完重拉，弹窗底部和表格格子都显示 ✓。只 Save note、没号码、发送失败 ⇒ 不变。
+  {
+    const footer = `[...${dialog}.querySelectorAll('button')].find((b) => /Mark as actioned|Actioned by/.test(b.textContent))?.textContent.trim()`;
+    const t02Cell = `${cell(2, "notes")}.textContent`;
+    await ctl({ autoAction: true, w3Note: "" });
+    await evaluate(`$setValue(${dialog}.querySelector('textarea'), 'ZZ Test 116 internal note');`);
+    await sleep(100);
+    before = (await mockLog()).length;
+    await evaluate(`$btn('Save note', ${dialog}).click();`);
+    await waitReq(before, (e) => e.path === "/booking-notes/by-order/T02" && e.method === "POST");
+    await sleep(800);
+    check("116 只 Save note：不算处理过——弹窗底部仍是「✓ Mark as actioned」、格子仍是 ⚠️ Take action", (await evaluate(`return ${footer};`)) === "✓ Mark as actioned" && (await evaluate(`return ${t02Cell}.includes('Take action');`)), await evaluate(`return ${footer} + ' | ' + ${t02Cell};`));
+    for (const [kind, label] of [["no_contact", "没号码也没邮箱（两个渠道都 No contact）"], ["failed", "号码错、发送失败、没邮箱"]]) {
+      await ctl({ autoAction: true, w3Note: kind });
+      await evaluate(`$setValue(${dialog}.querySelector('textarea'), 'ZZ Test 116 ${kind}');`);
+      await sleep(100);
+      before = (await mockLog()).length;
+      await evaluate(`$btn('Send', ${dialog}).click();`);
+      await waitReq(before, (e) => e.path === "/booking-notes/by-order/T02" && e.method === "POST");
+      await sleep(800);
+      check(`116 ${label}：没真发出去 ⇒ 不算处理过，仍是 ✓ Mark as actioned / ⚠️ Take action`, (await evaluate(`return ${footer};`)) === "✓ Mark as actioned" && (await evaluate(`return ${t02Cell}.includes('Take action');`)), await evaluate(`return ${footer} + ' | ' + ${t02Cell};`));
+    }
+    await ctl({ autoAction: true, w3Note: "" });
+    await evaluate(`$setValue(${dialog}.querySelector('textarea'), 'ZZ Test 116 reply');`);
+    await sleep(100);
+    before = (await mockLog()).length;
+    await evaluate(`$btn('Send', ${dialog}).click();`);
+    await waitReq(before, (e) => e.path === "/booking-notes/by-order/T02" && e.method === "POST");
+    check("116 回复发出去（SMS sent）⇒ 发完重拉：弹窗底部变「✓ Actioned by Annie」", await waitFor(`${footer} === '✓ Actioned by Annie'`, 8000), await evaluate(`return ${footer};`));
+    check("116 回复发出去 ⇒ 表格 T02 的 Notes 格变「✓ Annie」、不再是 ⚠️ Take action", await waitFor(`${t02Cell}.includes('✓ Annie') && !${t02Cell}.includes('Take action')`, 8000), await evaluate(`return ${t02Cell};`));
+    await ctl({ autoAction: false });
+    // 撤回，后面的检查要 T02 还是没处理。
+    await evaluate(`[...${dialog}.querySelectorAll('button')].find((b) => b.textContent.trim() === '✓ Actioned by Annie').click();`);
+    await waitFor(`${footer} === '✓ Mark as actioned'`, 8000);
+  }
   await evaluate(`[...${dialog}.querySelectorAll('button')].find(b => b.getAttribute('aria-label') === 'Close' || b.textContent.trim() === '×').click();`);
   await waitFor(`!${dialog}`);
 

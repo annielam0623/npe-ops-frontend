@@ -13,7 +13,7 @@ function w3Row(order, useSms, useEmail, kind) {
   const raw = (c, ch) => (c === "sent" ? (ch === "sms" ? "sent:SM1" : "sent") : c === "failed" ? "failed: Invalid phone" : c === "no_address" ? (ch === "sms" ? "skipped - no phone" : "skipped - no email") : null);
   return { order_number: order, sms_status: raw(sms, "sms"), email_status: raw(email, "email"), outcome, sms_outcome: sms, email_outcome: email };
 }
-const ctl = { partner: false, fail401: false, confFail: false, pref: null, newMsg: false, importBad: false, notesActionBy: "", slowTake: 0, extraRow: false, staleAction: false, modifyMsg: false, bcAlready: [], bcRace: [], bcBusy: false, bcCheckFail: 0, w3: null, w3Note: "" };
+const ctl = { partner: false, fail401: false, confFail: false, pref: null, newMsg: false, importBad: false, notesActionBy: "", slowTake: 0, extraRow: false, staleAction: false, modifyMsg: false, bcAlready: [], bcRace: [], bcBusy: false, bcCheckFail: 0, w3: null, w3Note: "", autoAction: false };
 const log = [];
 function send(res, status, body) { res.statusCode = status; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify(body)); }
 function readRaw(req) { return new Promise((r) => { const c = []; req.on("data", (d) => c.push(d)); req.on("end", () => r(Buffer.concat(c).toString("utf8"))); }); }
@@ -141,14 +141,22 @@ http.createServer(async (req, res) => {
     if (req.method === "POST") {
       const body = JSON.parse(await readRaw(req)); entry.body = body;
       const note = { id: 900, booking_id: 0, author_username: "Annie", direction: body.direction, body: body.body, sms_status: body.send_sms ? "sent" : null, email_status: body.send_email ? "sent" : null, created_at: "2026-10-09 10:00" };
+      // 置顶 116：ctl.autoAction = 同后端 booking_notes.py:903-909——短信或邮件真发出去（sent）就把这单所有行记成回复人处理过；
+      // 只 Save note、没发出（failed / 没号码）不记。
+      const markHandled = (smsStatus, emailStatus) => {
+        if (!ctl.autoAction || (smsStatus !== "sent" && emailStatus !== "sent")) return;
+        for (const r of rows) if (r.order_number === o) { r.action_taken_by = "Annie"; r.notes_unhandled = false; }
+      };
       // 置顶 109 W3：ctl.w3Note = "no_number" | "failed" ⇒ 发给客人时带三个 outcome（没号码时 sms_status 是 null，同后端）。
       if (ctl.w3Note && (body.send_sms || body.send_email)) {
         const r = w3Row(o, body.send_sms, body.send_email, ctl.w3Note);
         note.sms_status = r.sms_status === "skipped - no phone" ? null : r.sms_status;
         note.email_status = r.email_status;
+        markHandled(note.sms_status, note.email_status);
         (notes[o] ||= []).push(note);
         return send(res, 200, { note, outcome: r.outcome, sms_outcome: r.sms_outcome, email_outcome: r.email_outcome });
       }
+      markHandled(note.sms_status, note.email_status);
       (notes[o] ||= []).push(note);
       return send(res, 200, { note });
     }
