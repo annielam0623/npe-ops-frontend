@@ -385,13 +385,7 @@ export function ManifestsView() {
 
   /** Select unsent（Annie 2026-10-18）：勾上当前页面里还没发过的订单，其余取消（门票缺 Cfm # 的也算没发）。 */
   function selectUnsent() {
-    setSelected(
-      new Set(
-        (shown?.rows ?? [])
-          .filter((row) => canSend(row) && !sentAt(row, tab))
-          .map((row) => row.row_key),
-      ),
-    );
+    setSelected(new Set(unsentKeys));
   }
 
   /** 存这个标签的列选择（整个 {shared, pages}）；失败 reject，原因原样给弹窗显示红字。 */
@@ -576,6 +570,10 @@ export function ManifestsView() {
           softBlocks(r, tab).length === 0,
       )
     : [];
+  // 还没发过、能勾的行（Select unsent 勾的就是这些）。
+  const unsentKeys = (shown?.rows ?? [])
+    .filter((row) => canSend(row) && !sentAt(row, tab))
+    .map((row) => row.row_key);
   const pickedPax = pickedRows.reduce((n, r) => n + paxOf(r), 0);
   const pickedOrders = new Set(pickedRows.map((r) => r.order_number)).size;
   // 勾了、但门票还没填 Cfm # 的行：点发送时先拦一道，不悄悄漏发。
@@ -1202,6 +1200,7 @@ export function ManifestsView() {
                     selectable={!noSend && tabSendable}
                     onToggle={toggleRows}
                     onSelectUnsent={selectUnsent}
+                    unsentKeys={unsentKeys}
                     onReorder={
                       noFeatures
                         ? undefined
@@ -1479,6 +1478,7 @@ function ManifestTable({
   selectable,
   onToggle,
   onSelectUnsent,
+  unsentKeys,
   onReorder,
   onCfmSaved,
   onCfmDirty,
@@ -1496,6 +1496,8 @@ function ManifestTable({
   onToggle: (rowKeys: readonly string[], on: boolean) => void;
   /** 只勾还没发过的订单。 */
   onSelectUnsent: () => void;
+  /** 还没发过、能勾的行（Select unsent 勾的就是这些；都勾着时这个框打勾）。 */
+  unsentKeys: readonly string[];
   /** 拖表头换了顺序：新的整列顺序。没有 = 表头不能拖（partner）。 */
   onReorder?: (fields: string[]) => void;
   onCfmSaved: (rowKey: string, values: ManifestRow["values"]) => void;
@@ -1526,6 +1528,8 @@ function ManifestTable({
   const pickable = data.rows.filter(canSend);
   const allOn =
     pickable.length > 0 && pickable.every((r) => selected.has(r.row_key));
+  const unsentOn =
+    unsentKeys.length > 0 && unsentKeys.every((k) => selected.has(k));
   const sections = data.sections ?? [];
   // 团胶囊「g:<id>」里的 id，存节的 Cfm # 用（G198）。
   const pillGroupId = /^g:(\d+)$/.exec(data.pill ?? "")?.[1];
@@ -1574,12 +1578,12 @@ function ManifestTable({
                 : "hover:bg-[#fafaf8] night:hover:bg-white/[.03]",
         )}
       >
-        <td className="w-9 p-0">
+        <td className="w-0 p-0">
           {/* 整个单元格都能点（Annie 2026-10-18：勾选框太小太难点中）。 */}
           {/* 不能发的行（CHD 组）没有勾选框，同 Show hidden rows 里的行。 */}
           <label
             hidden={viewOnly || !canSend(r)}
-            className="flex min-h-9 cursor-pointer items-center justify-center px-2.5 py-1.5"
+            className="flex min-h-9 cursor-pointer items-center justify-start px-2.5 py-1.5"
           >
             <input
               type="checkbox"
@@ -1660,34 +1664,42 @@ function ManifestTable({
         <thead className="border-b-[0.5px] border-black/[.08] text-left text-[11px] font-medium text-[#1a1a1a] night:border-white/10 night:text-white/45">
           <tr>
             {/* 表头左上角「Select all」（带文字，Annie 2026-10-09：不能只是一个框）。 */}
-            <th className="bg-paper px-2.5 py-[7px] font-medium whitespace-nowrap night:bg-transparent">
-              <label
-                hidden={viewOnly}
-                className="inline-flex cursor-pointer items-center gap-1.5 text-[#1a1a1a] night:text-white/85"
-              >
-                <input
-                  type="checkbox"
-                  className={CHECK_BIG}
-                  checked={allOn}
-                  disabled={!pickable.length}
-                  onChange={(e) =>
-                    onToggle(
-                      pickable.map((r) => r.row_key),
-                      e.target.checked,
-                    )
-                  }
-                />
-                Select all
-              </label>
-              <button
-                type="button"
-                hidden={viewOnly}
-                disabled={!pickable.length}
-                onClick={onSelectUnsent}
-                className="ml-2 cursor-pointer text-[#1a1a1a] disabled:cursor-not-allowed disabled:opacity-50 night:text-white/85"
-              >
-                Select all unsent tours
-              </button>
+            {/* 置顶 115 F2 第 4 版（Annie「为什么不把select all和select unsent叠起来？然后就用select unsent可以短一些」）：
+                表头上下叠「☐ Select all」/「☐ Select unsent」，每行勾选框在同一列、左对齐，列宽按内容压窄。 */}
+            <th className="w-0 bg-paper px-2.5 py-[7px] font-medium whitespace-nowrap night:bg-transparent">
+              <span hidden={viewOnly} className="flex flex-col gap-1">
+                <label className="inline-flex cursor-pointer items-center gap-1.5 text-[#1a1a1a] night:text-white/85">
+                  <input
+                    type="checkbox"
+                    data-select-all
+                    className={CHECK_BIG}
+                    checked={allOn}
+                    disabled={!pickable.length}
+                    onChange={(e) =>
+                      onToggle(
+                        pickable.map((r) => r.row_key),
+                        e.target.checked,
+                      )
+                    }
+                  />
+                  Select all
+                </label>
+                <label className="inline-flex cursor-pointer items-center gap-1.5 text-[#1a1a1a] night:text-white/85">
+                  <input
+                    type="checkbox"
+                    data-select-unsent
+                    className={CHECK_BIG}
+                    checked={unsentOn}
+                    disabled={!unsentKeys.length}
+                    onChange={(e) =>
+                      e.target.checked
+                        ? onSelectUnsent()
+                        : onToggle(unsentKeys, false)
+                    }
+                  />
+                  Select unsent
+                </label>
+              </span>
             </th>
             <th
               aria-label="Count"
