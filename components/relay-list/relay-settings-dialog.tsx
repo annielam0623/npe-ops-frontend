@@ -261,255 +261,271 @@ export function RelaySettingsDialog({
               />
             </section>
           ) : (
-          <>
-          {canEdit && !layout ? (
-            <div className="flex flex-wrap items-center gap-2 border-b border-black/[.06] bg-[#f8fafc] px-[18px] py-2.5 text-[13px]">
-              <span>Page direction:</span>
-              <button
-                type="button"
-                className={WHITE_BTN}
-                onClick={() => edit(setAllOrientations(draft, "portrait"))}
-              >
-                Set all to Portrait
-              </button>
-              <button
-                type="button"
-                className={WHITE_BTN}
-                onClick={() => edit(setAllOrientations(draft, "landscape"))}
-              >
-                Set all to Landscape
-              </button>
-            </div>
-          ) : !canEdit ? (
-            <p className="border-b border-black/[.06] bg-[#f8fafc] px-[18px] py-2.5 text-[12.5px] text-[#475569]">
-              View only. Ask someone who can edit Dispatch to change these.
-            </p>
-          ) : null}
+            <>
+              {canEdit && !layout ? (
+                <div className="flex flex-wrap items-center gap-2 border-b border-black/[.06] bg-[#f8fafc] px-[18px] py-2.5 text-[13px]">
+                  <span>Page direction:</span>
+                  <button
+                    type="button"
+                    className={WHITE_BTN}
+                    onClick={() => edit(setAllOrientations(draft, "portrait"))}
+                  >
+                    Set all to Portrait
+                  </button>
+                  <button
+                    type="button"
+                    className={WHITE_BTN}
+                    onClick={() => edit(setAllOrientations(draft, "landscape"))}
+                  >
+                    Set all to Landscape
+                  </button>
+                </div>
+              ) : !canEdit ? (
+                <p className="border-b border-black/[.06] bg-[#f8fafc] px-[18px] py-2.5 text-[12.5px] text-[#475569]">
+                  View only. Ask someone who can edit Dispatch to change these.
+                </p>
+              ) : null}
 
-          <Section title="Summary">
-            <Row label="RELAY SPLITS" data="summary">
-              <span className="text-[12px] text-[#64748b]">No colour</span>
-              <Orient
-                value={draft.summary}
-                disabled={!canEdit}
-                onPick={(o) => edit({ ...draft, summary: o })}
-              />
-            </Row>
-          </Section>
-
-          <Section title="Relay cars">
-            <p className="mb-1.5 text-[12.5px] text-[#475569]">
-              A relay car that is also a tour bus has no Relay number. Set it on
-              its bus row under Tour buses.
-            </p>
-            {Array.from({ length: RELAY_SLOTS }, (_, i) => {
-              const custom =
-                draft.colors[i] !== (defaults[i] ?? "").toLowerCase();
-              return (
-                <Row key={i} label={`Relay ${i + 1}`} data={`relay-${i + 1}`}>
-                  <ColorCell
-                    value={draft.colors[i]}
-                    disabled={!canEdit}
-                    onChange={(c) =>
-                      edit({
-                        ...draft,
-                        colors: draft.colors.map((x, j) => (j === i ? c : x)),
-                      })
-                    }
-                  />
-                  <Meta
-                    custom={custom}
-                    note="Paper colour"
-                    canEdit={canEdit}
-                    onReset={() =>
-                      edit({
-                        ...draft,
-                        colors: draft.colors.map((x, j) =>
-                          j === i && isHex(defaults[i])
-                            ? defaults[i].toLowerCase()
-                            : x,
-                        ),
-                      })
-                    }
-                  />
+              <Section title="Summary">
+                <Row label="RELAY SPLITS" data="summary">
+                  <span className="text-[12px] text-[#64748b]">No colour</span>
                   <Orient
-                    value={draft.relay[i]}
+                    value={draft.summary}
                     disabled={!canEdit}
-                    onPick={(o) =>
-                      edit({
-                        ...draft,
-                        relay: draft.relay.map((x, j) => (j === i ? o : x)),
-                      })
-                    }
+                    onPick={(o) => edit({ ...draft, summary: o })}
                   />
                 </Row>
-              );
-            })}
-            <p className="mt-1 text-[12px] text-[#64748b]">
-              Relay 7 and later reuse these from Relay 1.
-            </p>
-          </Section>
+              </Section>
 
-          <Section title="Tour buses">
-            {shown.length === 0 ? (
-              <p className="text-[12.5px] text-[#64748b]">No tours.</p>
-            ) : null}
-            {shown.map((t) => {
-              const id = String(t.manifest_id);
-              const d = draft.tours[id];
-              if (!d) return null;
-              return (
-                <div
-                  key={id}
-                  data-relay-settings-tour={t.manifest_id}
-                  className="border-t border-dashed border-black/10 py-1.5 first:border-t-0"
-                >
-                  <div className="my-0.5 font-bold">{t.name}</div>
-                  <Row label="All buses" data={`tour-${id}`} indent>
-                    <ColorCell
-                      value={tourAllColor(t, d)}
-                      disabled={!canEdit}
-                      onChange={(c) =>
-                        editTour(id, (x) => ({ ...x, color: c }))
-                      }
-                    />
-                    <Meta
-                      custom={d.color !== null}
-                      note="Default colour"
-                      canEdit={canEdit}
-                      onReset={() =>
-                        editTour(id, (x) => ({ ...x, color: null }))
-                      }
-                    />
-                    <Orient
-                      value={tourOrientation(d)}
-                      disabled={!canEdit}
-                      onPick={(o) =>
-                        editTour(id, (x) => ({ ...x, orientation: o }))
-                      }
-                    />
-                  </Row>
-                  {t.buses.map((b) => {
-                    const own = d.buses[b.label];
-                    const also = alsoRelay.filter(
-                      (a) =>
-                        (a.manifestId === t.manifest_id ||
-                          (a.manifestId === null && a.tour === t.name)) &&
-                        (a.label ?? "") === b.label,
-                    );
-                    return (
-                      <Row
-                        key={b.label}
-                        label={`Bus ${b.label}`}
-                        data={`tour-${id}-${b.label}`}
-                        indent
-                        sub
-                        note={
-                          also.length ? (
-                            <div
-                              data-also-relay
-                              className="w-full pl-4 text-[12px] text-[#0f766e]"
-                            >
-                              ↳ Also a relay car today:{" "}
-                              {also.map((a) => a.who).join(", ")}. Its relay
-                              sheet uses this row.
-                            </div>
-                          ) : null
+              <Section title="Relay cars">
+                <p className="mb-1.5 text-[12.5px] text-[#475569]">
+                  A relay car that is also a tour bus has no Relay number. Set
+                  it on its bus row under Tour buses.
+                </p>
+                {Array.from({ length: RELAY_SLOTS }, (_, i) => {
+                  const custom =
+                    draft.colors[i] !== (defaults[i] ?? "").toLowerCase();
+                  return (
+                    <Row
+                      key={i}
+                      label={`Relay ${i + 1}`}
+                      data={`relay-${i + 1}`}
+                    >
+                      <ColorCell
+                        value={draft.colors[i]}
+                        disabled={!canEdit}
+                        onChange={(c) =>
+                          edit({
+                            ...draft,
+                            colors: draft.colors.map((x, j) =>
+                              j === i ? c : x,
+                            ),
+                          })
                         }
-                      >
+                      />
+                      <Meta
+                        custom={custom}
+                        note="Paper colour"
+                        canEdit={canEdit}
+                        onReset={() =>
+                          edit({
+                            ...draft,
+                            colors: draft.colors.map((x, j) =>
+                              j === i && isHex(defaults[i])
+                                ? defaults[i].toLowerCase()
+                                : x,
+                            ),
+                          })
+                        }
+                      />
+                      <Orient
+                        value={draft.relay[i]}
+                        disabled={!canEdit}
+                        onPick={(o) =>
+                          edit({
+                            ...draft,
+                            relay: draft.relay.map((x, j) => (j === i ? o : x)),
+                          })
+                        }
+                      />
+                    </Row>
+                  );
+                })}
+                <p className="mt-1 text-[12px] text-[#64748b]">
+                  Relay 7 and later reuse these from Relay 1.
+                </p>
+              </Section>
+
+              <Section title="Tour buses">
+                {shown.length === 0 ? (
+                  <p className="text-[12.5px] text-[#64748b]">No tours.</p>
+                ) : null}
+                {shown.map((t) => {
+                  const id = String(t.manifest_id);
+                  const d = draft.tours[id];
+                  if (!d) return null;
+                  return (
+                    <div
+                      key={id}
+                      data-relay-settings-tour={t.manifest_id}
+                      className="border-t border-dashed border-black/10 py-1.5 first:border-t-0"
+                    >
+                      <div className="my-0.5 font-bold">{t.name}</div>
+                      <Row label="All buses" data={`tour-${id}`} indent>
                         <ColorCell
-                          value={busColor(t, d, b.label)}
+                          value={tourAllColor(t, d)}
                           disabled={!canEdit}
                           onChange={(c) =>
-                            editTour(id, (x) => ({
-                              ...x,
-                              buses: {
-                                ...x.buses,
-                                [b.label]: { ...x.buses[b.label], color: c },
-                              },
-                            }))
+                            editTour(id, (x) => ({ ...x, color: c }))
                           }
                         />
                         <Meta
-                          custom={!!own?.color}
-                          note={d.color ? "Uses All buses" : "Default colour"}
+                          custom={d.color !== null}
+                          note="Default colour"
                           canEdit={canEdit}
                           onReset={() =>
-                            editTour(id, (x) => ({
-                              ...x,
-                              buses: {
-                                ...x.buses,
-                                [b.label]: { ...x.buses[b.label], color: null },
-                              },
-                            }))
+                            editTour(id, (x) => ({ ...x, color: null }))
                           }
                         />
                         <Orient
-                          value={busOrientation(d, b.label)}
-                          follow={!own?.orientation}
+                          value={tourOrientation(d)}
                           disabled={!canEdit}
                           onPick={(o) =>
-                            editTour(id, (x) => ({
-                              ...x,
-                              buses: {
-                                ...x.buses,
-                                // 选的和 All buses 一样 = 不单独设（跟着团走）。
-                                [b.label]: {
-                                  ...x.buses[b.label],
-                                  orientation:
-                                    o === tourOrientation(x) ? null : o,
-                                },
-                              },
-                            }))
+                            editTour(id, (x) => ({ ...x, orientation: o }))
                           }
                         />
                       </Row>
-                    );
-                  })}
-                </div>
-              );
-            })}
-            {hidden > 0 || (showAll && todays.length > 0) ? (
-              <button
-                type="button"
-                className={cn(LINK_BTN, "mt-1")}
-                onClick={() => setShowAll((v) => !v)}
-              >
-                {showAll ? "Show only today's tours" : "Show all tours"}
-              </button>
-            ) : null}
-          </Section>
-          {layout && lDraft ? (
-            <Section title="Other boxes">
-              <BoxRows
-                boxes={RELAY_LIST_BOXES.filter(
-                  (b) =>
-                    !layout.boxes.length ||
-                    layout.boxes.some((x) => x.key === b.key),
-                )}
-                settings={lDraft}
-                defaults={layout.defaults}
-                tourId={null}
-                canEdit={canEdit}
-                dataColor={(k) => (k === "column_titles" ? "#d9d9d9" : null)}
-                onChange={(n) => {
-                  onLayoutDraft(n);
-                  setStatus({ kind: "idle" });
-                }}
-              />
-              <SectionTitle>Colour choices</SectionTitle>
-              <PaletteEditor
-                settings={lDraft}
-                defaults={layout.defaults}
-                canEdit={canEdit}
-                onChange={(n) => {
-                  onLayoutDraft(n);
-                  setStatus({ kind: "idle" });
-                }}
-              />
-            </Section>
-          ) : null}
-          </>
+                      {t.buses.map((b) => {
+                        const own = d.buses[b.label];
+                        const also = alsoRelay.filter(
+                          (a) =>
+                            (a.manifestId === t.manifest_id ||
+                              (a.manifestId === null && a.tour === t.name)) &&
+                            (a.label ?? "") === b.label,
+                        );
+                        return (
+                          <Row
+                            key={b.label}
+                            label={`Bus ${b.label}`}
+                            data={`tour-${id}-${b.label}`}
+                            indent
+                            sub
+                            note={
+                              also.length ? (
+                                <div
+                                  data-also-relay
+                                  className="w-full pl-4 text-[12px] text-[#0f766e]"
+                                >
+                                  ↳ Also a relay car today:{" "}
+                                  {also.map((a) => a.who).join(", ")}. Its relay
+                                  sheet uses this row.
+                                </div>
+                              ) : null
+                            }
+                          >
+                            <ColorCell
+                              value={busColor(t, d, b.label)}
+                              disabled={!canEdit}
+                              onChange={(c) =>
+                                editTour(id, (x) => ({
+                                  ...x,
+                                  buses: {
+                                    ...x.buses,
+                                    [b.label]: {
+                                      ...x.buses[b.label],
+                                      color: c,
+                                    },
+                                  },
+                                }))
+                              }
+                            />
+                            <Meta
+                              custom={!!own?.color}
+                              note={
+                                d.color ? "Uses All buses" : "Default colour"
+                              }
+                              canEdit={canEdit}
+                              onReset={() =>
+                                editTour(id, (x) => ({
+                                  ...x,
+                                  buses: {
+                                    ...x.buses,
+                                    [b.label]: {
+                                      ...x.buses[b.label],
+                                      color: null,
+                                    },
+                                  },
+                                }))
+                              }
+                            />
+                            <Orient
+                              value={busOrientation(d, b.label)}
+                              follow={!own?.orientation}
+                              disabled={!canEdit}
+                              onPick={(o) =>
+                                editTour(id, (x) => ({
+                                  ...x,
+                                  buses: {
+                                    ...x.buses,
+                                    // 选的和 All buses 一样 = 不单独设（跟着团走）。
+                                    [b.label]: {
+                                      ...x.buses[b.label],
+                                      orientation:
+                                        o === tourOrientation(x) ? null : o,
+                                    },
+                                  },
+                                }))
+                              }
+                            />
+                          </Row>
+                        );
+                      })}
+                    </div>
+                  );
+                })}
+                {hidden > 0 || (showAll && todays.length > 0) ? (
+                  <button
+                    type="button"
+                    className={cn(LINK_BTN, "mt-1")}
+                    onClick={() => setShowAll((v) => !v)}
+                  >
+                    {showAll ? "Show only today's tours" : "Show all tours"}
+                  </button>
+                ) : null}
+              </Section>
+              {layout && lDraft ? (
+                <Section title="Other boxes">
+                  <BoxRows
+                    boxes={RELAY_LIST_BOXES.filter(
+                      (b) =>
+                        !layout.boxes.length ||
+                        layout.boxes.some((x) => x.key === b.key),
+                    )}
+                    settings={lDraft}
+                    defaults={layout.defaults}
+                    tourId={null}
+                    canEdit={canEdit}
+                    dataColor={(k) =>
+                      k === "column_titles" ? "#d9d9d9" : null
+                    }
+                    onChange={(n) => {
+                      onLayoutDraft(n);
+                      setStatus({ kind: "idle" });
+                    }}
+                  />
+                  <SectionTitle>Colour choices</SectionTitle>
+                  <PaletteEditor
+                    settings={lDraft}
+                    defaults={layout.defaults}
+                    canEdit={canEdit}
+                    onChange={(n) => {
+                      onLayoutDraft(n);
+                      setStatus({ kind: "idle" });
+                    }}
+                  />
+                </Section>
+              ) : null}
+            </>
           )}
         </div>
 

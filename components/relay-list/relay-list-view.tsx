@@ -17,7 +17,6 @@ import { HowToUse } from "@/components/ui/how-to-use";
 import { ErrorBanner } from "@/components/ui/panel";
 import { PageLink } from "@/components/ui/page-link";
 import { LineIcon } from "@/components/dispatch-manifest/line-icons";
-import { usePhoneInfo } from "@/components/ui/phone";
 import { describeError, isStatus } from "@/lib/api-errors";
 import {
   downloadRelayListExcel,
@@ -130,7 +129,6 @@ export function RelayListView() {
   const [layoutDraft, setLayoutDraft] = useState<PrintLayoutSettings | null>(
     null,
   );
-  const info = usePhoneInfo("About this page");
   // 能改 = 能编辑 Dispatch（题 5 A；同 Dispatch 页：partner 只看，Super Admin 全给）。PUT 后端也按 dispatch.edit 挡。
   const perms = usePermissions();
   const isSuperAdmin = usePageVisibility().isSuperAdmin;
@@ -273,10 +271,11 @@ export function RelayListView() {
             <LineIcon name="gear" />
           </span>
           {layout ? "Colours, Text & Page" : "Colours & Page"}
-          {info.button}
         </h1>
+        {/* 置顶 114 第 4 版（d8 定，Annie「不要任何隐藏菜单」）：手机上这句也摊开，不收进「i」。 */}
         <span
-          className={`order-last basis-full text-[12.5px] text-[#cbd5e1] ${info.hide}`}
+          data-relay-about
+          className="order-last basis-full text-[12.5px] text-[#cbd5e1]"
         >
           Shows the saved Dispatch schedule. Changed something? Save it on
           Dispatch, then reload this page.
@@ -295,6 +294,7 @@ export function RelayListView() {
             <button
               type="button"
               data-relay-print
+              data-phone-keep
               onClick={() => window.print()}
               className={WHITE_BTN}
             >
@@ -312,6 +312,7 @@ export function RelayListView() {
               <button
                 type="button"
                 data-relay-settings-open
+                data-phone-keep
                 onClick={() => setSettingsOpen(true)}
                 className={WHITE_BTN}
               >
@@ -425,11 +426,11 @@ const RELAY_LAYOUT_HOW_TO =
 
 /** 置顶 92 Q5 A；置顶 114 换成新键名（preview 第 3 版原文，Q2 A 加「Save stays grey…」）。 */
 const RELAY_AA_HOW_TO =
-  "Aa Text size (above each sheet): under Apply To pick Column, Row or Page, click the table, then use Text Size (A− / A+) and Font Weight (Regular / Bold). Press Done, then Save at the top. Save stays grey until something is changed. Text size is saved for this day only and prints as you see it; the next day starts from the everyday size.";
+  "Text size (the card above each sheet): under Apply To pick Column, Row or Page, click the table, then use Text Size (A− / A+) and Font Weight (Regular / Bold). The sheet changes right away; press Save at the top to keep it. Save stays grey until something is changed. Text size is saved for this day only and prints as you see it; the next day starts from the everyday size.";
 
 /** 置顶 112 Spacing（Annie「用-+是最好，一目了然…不要让staff去判断px」）：一组 − / +，不提 px。 */
 const RELAY_SPACING_HOW_TO =
-  "Spacing (in Aa Text size): press − for less space between rows and between hotels, + for more. The sheet changes right away. It is saved with the text size for this day only and prints as you see it. If the sheet no longer fits on one page, the space gets smaller by itself until it fits. Default Spacing (under Quick Actions) puts it back.";
+  "Spacing (in the card above each sheet): press − for less space between rows and between hotels, + for more. The sheet changes right away. It is saved with the text size for this day only and prints as you see it. If the sheet no longer fits on one page, the space gets smaller by itself until it fits. Default Spacing (under Quick Actions) puts it back.";
 
 /** 置顶 112（Annie「111， 112 全 A + 动手」）：Q3 定稿原文 + Q7 A 原文。 */
 const RELAY_FIT_HOW_TO = [
@@ -485,6 +486,7 @@ function ExcelButton({
       <button
         type="button"
         data-relay-excel
+        data-phone-keep
         disabled={busy}
         onClick={() => void download()}
         className={`${WHITE_BTN} disabled:cursor-default disabled:opacity-60`}
