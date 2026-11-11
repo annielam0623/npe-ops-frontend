@@ -103,16 +103,23 @@ const STATUS_TAG: Record<string, { label: string; className: string }> = {
   },
 };
 
+/** Source 列（G280，Annie 2026-11-10「同一个 Order List，加一列 Source，哪家来的显示哪家」）：Rezdy / TripGuru。 */
 const SOURCE_TAG: Record<string, { label: string; className: string }> = {
   rezdy: {
-    label: "rezdy",
+    label: "Rezdy",
     className:
       "bg-[#f1efe8] night:bg-white/[.04] text-[#1a1a1a] night:text-white/65",
   },
   excel: {
-    label: "excel",
+    label: "Excel",
     className:
       "bg-[#EEEDFE] night:bg-violet-400/15 text-[#534AB7] night:text-violet-300",
+  },
+  // 颜色用本页已有的 Tickets 蓝标签（不加新色）。
+  tripguru: {
+    label: "TripGuru",
+    className:
+      "bg-[#E6F1FB] night:bg-sky-400/[.08] text-[#185FA5] night:text-sky-300",
   },
 };
 
@@ -425,7 +432,8 @@ export function OrdersListView() {
                       "Guest",
                       "Product",
                       "Type",
-                      "Rezdy Status",
+                      // G280：TripGuru 的单也在这一列，表头不再写 Rezdy。
+                      "Status",
                       "Tour Date",
                       "Pickup",
                       "Pax",
@@ -520,6 +528,7 @@ export function OrdersListView() {
               "The list shows upcoming tours. Search by order #, name, email, phone or product.",
               "Click 📅 Tour date to change the range (Custom: pick both dates, then Apply).",
               "Click an Order # to open the order.",
+              "The Source column shows where an order came from: Rezdy or TripGuru. TripGuru orders open read-only. Pickup time, pickup location and agent are blank for TripGuru orders for now.",
               ...(perms.canSeeMoney
                 ? [
                     "If you can see prices, agent & commission, you can also search by the agent reference — here and in the order search box at the top of every page.",

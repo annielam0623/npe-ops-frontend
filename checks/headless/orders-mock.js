@@ -21,6 +21,22 @@ const detail = {
   },
 };
 detail.CHDNEW = { ...detail.CHDTESTORDER1, order_number: "CHDNEW", editable: false, price: { ...detail.CHDTESTORDER1.price, overridden: false } };
+// G280（后端 task/tripguru-intake 26fdfa29）：ctl.tripguru = 列表最前面两张 TripGuru 单（source tripguru、小写 status、pickup / agent「—」）。
+const TG_ROWS = [
+  { ...row(901), order_number: "NPE-ZZ1001", lane: "tripguru", source: "tripguru", status: "confirmed", name: "ZZ TripGuru One", phone: "+15550109001", product_name: "Grand Canyon West Rim Bus Tour", product_type: "bus_tour", pickup_time: "—", pickup_location: "—", agent_name: "—", quantities: "2" },
+  { ...row(902), order_number: "NPE-ZZ1002", lane: "tripguru", source: "tripguru", status: "pending", name: "ZZ TripGuru Two", phone: "—", email: "tg2@x", product_name: "Antelope Canyon Tickets", product_type: "ticket", pickup_time: "—", pickup_location: "—", agent_name: "—", quantities: "3" },
+];
+detail["NPE-ZZ1001"] = {
+  ...detail.CHDTESTORDER1, order_number: "NPE-ZZ1001", status: "confirmed", source: "tripguru", booking_type: "bus_tour", editable: false,
+  guest: { name: "ZZ TripGuru One", email: "azhou@nationalparkexpress.com", phone: "+15550109001", pax: 2 },
+  product: { code: "GCW01", name: "Grand Canyon West Rim Bus Tour", type: "bus_tour", tour_date: "11/12/2026", tour_time: "", pickup_time: "—", pickup_location: "—", item_count: 1 },
+  ops: { driver: "", vehicle_no: "", driver_phone: "", agent_name: "", confirmation_no: "", tt_number: "", lunch_turkey: 0, lunch_veggie: 0, lunch_beef: 0 },
+  price: { total_amount: 258, currency: "USD", total_paid: 258, total_due: 0, overridden: false },
+  items_detail: [{ itemId: "it-1", product: { name: "Grand Canyon West Rim Bus Tour", code: "GCW01" }, selection: { kind: "dated", serviceDate: "2026-11-12", option: { name: "Standard" }, units: [{ name: "Adult", quantity: 2 }] }, bookingFields: [{ label: "Hotel", value: "ZZ Test Hotel" }, { label: "Dietary needs", value: "Vegetarian" }] }],
+  order_detail: { orderNumber: "NPE-ZZ1001", status: "confirmed", resellerReference: "TG-ZZ-77", supplier: { internalNote: "ZZ Test internal note: guest asked for a window seat." }, notes: "Celebrating an anniversary" },
+  special_requirements: "Celebrating an anniversary", notes: "", created_at: "11/10/2026", updated_at: "11/10/2026",
+  activity_log: [], booking_notes: [],
+};
 
 // Farm out（G40）：查单时两套上车资料；lead_with 由后端定（partner = 通知发出后到发车后 1 小时）。
 const FV = { partner_pickup: { hotel: "Bellagio South Tour Lobby", checkin_time: "06:40", depart_time: "06:50" }, notice_sent_at: null, notice_sent_by: null };
@@ -77,7 +93,7 @@ http.createServer(async (req, res) => {
     return send(res, 200, { is_superadmin: false, permissions: ctl.partner.map((code) => ({ code, module: code.split(".")[0], wired: true })), default_home: null });
   }
   if (p === "/api/operations/orders") {
-    let rows = all;
+    let rows = ctl.tripguru ? [...TG_ROWS, ...all] : all;
     // 置顶 75：q 以 TA- 开头 = 按 agent reference 搜（能看 agent 的人才对得上）：第一单带 reseller_reference + matched_agent_ref。
     if (q.get("q")?.startsWith("TA-")) rows = ctl.partner || lacksMoney() ? [] : [{ ...all[0], reseller_reference: "TA-55001", matched_agent_ref: true }];
     else if (q.get("q")) rows = rows.filter((r) => r.order_number.includes(q.get("q")) || r.name.toLowerCase().includes(q.get("q").toLowerCase()));
