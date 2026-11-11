@@ -615,7 +615,7 @@ export function ManifestsView() {
     !seeingHidden &&
     !!shown &&
     shown.rows.length > 0;
-  const sendBarFloating = sendBarOn && selected.size > 0;
+  const sendBarFloating = sendBarOn;
   const sendBarFloat = useDesktopFloat(sendBarFloating);
 
   useEffect(() => {
@@ -979,22 +979,16 @@ export function ManifestsView() {
 
             {sendBarOn ? (
               // 勾选后的操作条（Annie 2026-10-09 样稿第 3 版）：几位几人、发确认 / 提醒、自定义消息、清空。
-              // 外面这层量内容区的左右边（电脑版浮起来时照它定位，不盖住侧栏）；条浮起来后它高度为 0。
+              // 外面这层量内容区的左右边（电脑版照它定位，不盖住侧栏）；条是浮着的，这层高度为 0。
               <div ref={sendBarFloat.slotRef}>
               <div
                 role="group"
                 aria-label="Selected guests"
                 data-selected-bar
-                // 置顶 115 题 8 A：手机上没勾选时不占位；勾了浮在屏幕底部（右边让开 ↑↓）。
-                // 置顶 115 F2：电脑版一样——没勾不占位，勾了浮在屏幕底部、左边对齐内容区、右边让开 ↑↓。
+                // 置顶 115 F2（Annie：「勾不勾都要出，不然staff还以为这个功能没了」）：电脑、手机都一直浮在屏幕底部，
+                // 没勾时写「0 orders selected · 0 pax」、键灰着。电脑左边对齐内容区（不盖侧栏），右边让开 ↑↓。
                 style={sendBarFloat.style}
-                className={cn(
-                  // cn 不合并 Tailwind 类：底色、边框只写在浮起来那一支（没勾时整条不出）。
-                  "flex flex-wrap items-center gap-2 rounded-[10px] border px-3 py-2 text-[13px] max-sm:flex-nowrap max-sm:gap-1.5 max-sm:overflow-x-auto max-sm:px-2 max-sm:py-1.5 max-sm:[&>button]:shrink-0 max-sm:[&>button]:whitespace-nowrap",
-                  selected.size
-                    ? "fixed z-[90] border-white/20 bg-[#0b1726] shadow-[0_8px_24px_rgba(0,0,0,.5)] sm:bottom-4 max-sm:right-[60px] max-sm:bottom-[calc(12px+env(safe-area-inset-bottom,0px))] max-sm:left-3"
-                    : "hidden",
-                )}
+                className="fixed z-[90] flex flex-wrap items-center gap-2 rounded-[10px] border border-white/20 bg-[#0b1726] px-3 py-2 text-[13px] shadow-[0_8px_24px_rgba(0,0,0,.5)] sm:bottom-4 max-sm:right-[60px] max-sm:bottom-[calc(12px+env(safe-area-inset-bottom,0px))] max-sm:left-3 max-sm:flex-nowrap max-sm:gap-1.5 max-sm:overflow-x-auto max-sm:px-2 max-sm:py-1.5 max-sm:[&>button]:shrink-0 max-sm:[&>button]:whitespace-nowrap"
               >
                 <span className="mr-auto text-[#cbd5e1] tabular-nums max-sm:shrink-0 max-sm:whitespace-nowrap">
                   {plural(pickedOrders, "order")} selected · {pickedPax} pax
