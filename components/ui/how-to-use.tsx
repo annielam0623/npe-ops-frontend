@@ -13,16 +13,31 @@ export function HowToUse({
   items,
   warning,
   dark,
+  open,
+  onToggle,
+  className,
 }: {
   title: string;
   items: ReactNode[];
   warning?: ReactNode;
   dark?: boolean;
+  /** 由外面的键控制开关时传（例 Manifests 标签旁的「📖 How to use」）；不传 = 自己开关（默认收起）。 */
+  open?: boolean;
+  onToggle?: (open: boolean) => void;
+  /** 换掉默认的上下外边距（mt-4 mb-8）。 */
+  className?: string;
 }) {
   return (
     <details
+      open={open}
+      onToggle={
+        onToggle
+          ? (e) => onToggle((e.currentTarget as HTMLDetailsElement).open)
+          : undefined
+      }
       className={cn(
-        "mt-4 mb-8 max-w-[760px] rounded-[10px] border px-5 py-4 text-xs leading-[1.9]",
+        "max-w-[760px] rounded-[10px] border px-5 py-4 text-xs leading-[1.9]",
+        className ?? "mt-4 mb-8",
         dark
           ? "border-white/[.12] bg-[#1a2f4a] text-[#c8ddf0]"
           : // 全深色（lib/theme.ts）：照旁支 Manifests 的天蓝说明框。

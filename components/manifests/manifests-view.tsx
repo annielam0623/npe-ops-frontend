@@ -1,10 +1,6 @@
 "use client";
 
-import {
-  PhoneMore,
-  PhoneOneLine,
-  usePhoneInfo,
-} from "@/components/ui/phone";
+import { PhoneMore, PhoneOneLine, usePhoneInfo } from "@/components/ui/phone";
 import {
   type CSSProperties,
   useCallback,
@@ -141,6 +137,8 @@ const TAB_FALLBACK_LABEL: Record<ManifestTabKey, string> = {
 export function ManifestsView() {
   /** 置顶 115 题 8 A：Legacy 黄框手机上收进 i。 */
   const legacyInfo = usePhoneInfo("About legacy rows");
+  /** 置顶 115 F2（Annie：「把how to use放到bus tour和tickets tag旁边去」）：标签行最后的「📖 How to use」键，默认收着。 */
+  const [howOpen, setHowOpen] = useState(false);
   // partner 只能看（Annie 2026-10-27「合作方只能看manifest和订单，不能改或者选任何功能，比如加colum之类的」）：
   // 勾了 manifests.edit 也不上传确认号、不改 Cfm #、不 Sync Rezdy；Columns、拖表头、Export CSV、Show hidden rows 都不出。
   // 发送（团确认 / 门票提醒 / Send message）partner 一律没有（Annie「发送只能是我们内部员工发送」），也就没有勾选框。员工照旧。
@@ -608,15 +606,9 @@ export function ManifestsView() {
     tab === "tickets" && !!shown?.rows.some((r) => !!cfmProblem(r, tab));
   const anyMissingWaiver =
     tab === "tickets" && !!shown?.rows.some((r) => missingWaiver(r));
-  // 置顶 115 F2：电脑版勾选发送条也是勾了才出、浮在屏幕底部（同手机）。
+  // 置顶 115 F2：勾选发送条电脑、手机都一直出（sticky 在表格下面）。
   const sendBarOn =
-    !noSend &&
-    tabSendable &&
-    !seeingHidden &&
-    !!shown &&
-    shown.rows.length > 0;
-  const sendBarFloating = sendBarOn;
-  const sendBarFloat = useDesktopFloat(sendBarFloating);
+    !noSend && tabSendable && !seeingHidden && !!shown && shown.rows.length > 0;
 
   useEffect(() => {
     if (
@@ -639,6 +631,64 @@ export function ManifestsView() {
     }
     setSendDialog(kind);
   }
+
+  // 勾选后的操作条（Annie 2026-10-09 样稿第 3 版）：几位几人、发确认 / 提醒、自定义消息、清空。放在表格那一块里、表格下面。
+  const sendBar = sendBarOn ? (
+    <div
+      role="group"
+      aria-label="Selected guests"
+      data-selected-bar
+      // 置顶 115 F2（Annie：「勾不勾都要出，不然staff还以为这个功能没了」「键要在action log和how to use上面」）：
+      // 电脑、手机都 sticky 在表格下面——表格没滚完时贴在屏幕底部，滚到表格结尾就停在表格正下方（How to use / Action Log 上面）。
+      // 没勾时写「0 orders selected · 0 pax」、键灰着。右边留出右下角 ↑↓ 的位置。
+      className="sticky bottom-4 z-[90] mb-4 flex flex-wrap items-center gap-2 rounded-[10px] border border-white/20 bg-[#0b1726] px-3 py-2 text-[13px] shadow-[0_8px_24px_rgba(0,0,0,.5)] max-sm:bottom-[calc(12px+env(safe-area-inset-bottom,0px))] max-sm:mr-[48px] max-sm:flex-nowrap max-sm:gap-1.5 max-sm:overflow-x-auto max-sm:px-2 max-sm:py-1.5 sm:mr-[40px] max-sm:[&>button]:shrink-0 max-sm:[&>button]:whitespace-nowrap"
+    >
+      <span className="mr-auto text-[#cbd5e1] tabular-nums max-sm:shrink-0 max-sm:whitespace-nowrap">
+        {plural(pickedOrders, "order")} selected · {pickedPax} pax
+      </span>
+      {noConfirm ? null : (
+        <button
+          type="button"
+          disabled={!selected.size}
+          onClick={() => requestSend(tab === "bus" ? "tour" : "reminder")}
+          className={PRIMARY_ACTION_CLASS}
+        >
+          {tab === "bus" ? "Send tour confirmation" : "Send reminder"}
+        </button>
+      )}
+      {tab === "bus" && !noConfirm ? (
+        <button
+          type="button"
+          disabled={!selected.size}
+          onClick={() => requestSend("lastminute")}
+          className={LAST_MINUTE_CLASS}
+        >
+          Last Minute Order
+        </button>
+      ) : null}
+      {noMessage ? null : (
+        <button
+          type="button"
+          disabled={!selected.size}
+          onClick={() => requestSend("message")}
+          className={PRIMARY_ACTION_CLASS}
+        >
+          Send message
+        </button>
+      )}
+      <button
+        type="button"
+        disabled={!selected.size}
+        onClick={() => {
+          setSelected(new Set());
+          setPendingSend(null);
+        }}
+        className={LEGACY_BTN_CLASS}
+      >
+        Clear
+      </button>
+    </div>
+  ) : null;
 
   return (
     <ViewOnly.Provider value={viewOnly}>
@@ -775,44 +825,67 @@ export function ManifestsView() {
             {/* Annie 2026-10-14：照 Dispatch Assign / Send 的黄框标签（选中的黄框 + 浅黄底 + 底边黄条）。 */}
             {/* 置顶 115 题 8 A：手机上黄框「… frozen …」收进标签后面的 i。 */}
             <div className="mb-3.5 flex flex-wrap items-center max-sm:mb-2.5">
-            <div
-              role="tablist"
-              aria-label="Manifest type"
-              className="flex flex-wrap"
-            >
-              {tabs.map((t, n) => {
-                const on = t.key === tab;
-                return (
-                  <button
-                    key={t.key}
-                    type="button"
-                    role="tab"
-                    aria-selected={on}
-                    onClick={() => changeTab(t.key)}
-                    className={cn(
-                      "-ml-px inline-flex items-baseline gap-2 border px-4 py-[7px] text-left transition-colors first:ml-0",
-                      n === 0 && "rounded-l-[10px]",
-                      n === tabs.length - 1 && "rounded-r-[10px]",
-                      on
-                        ? "relative z-[1] border-[rgba(251,191,36,.6)] bg-[rgba(251,191,36,.10)] text-white shadow-[inset_0_-2px_0_#fbbf24]"
-                        : "border-white/10 bg-white/[.04] text-[#cbd5e1] hover:bg-white/[.07]",
-                    )}
-                  >
-                    <span className="text-[14px] font-semibold">{t.label}</span>{" "}
-                    <span
+              <div
+                role="tablist"
+                aria-label="Manifest type"
+                className="flex flex-wrap"
+              >
+                {tabs.map((t, n) => {
+                  const on = t.key === tab;
+                  return (
+                    <button
+                      key={t.key}
+                      type="button"
+                      role="tab"
+                      aria-selected={on}
+                      onClick={() => changeTab(t.key)}
                       className={cn(
-                        "text-[12.5px] tabular-nums",
-                        on ? "text-[#fde68a]" : "text-[#94a3b8]",
+                        "-ml-px inline-flex items-baseline gap-2 border px-4 py-[7px] text-left transition-colors first:ml-0",
+                        n === 0 && "rounded-l-[10px]",
+                        n === tabs.length - 1 && "rounded-r-[10px]",
+                        on
+                          ? "relative z-[1] border-[rgba(251,191,36,.6)] bg-[rgba(251,191,36,.10)] text-white shadow-[inset_0_-2px_0_#fbbf24]"
+                          : "border-white/10 bg-white/[.04] text-[#cbd5e1] hover:bg-white/[.07]",
                       )}
                     >
-                      {data ? `${t.orders} · ${t.pax} pax${unknownPax(t)}` : ""}
-                    </span>
-                  </button>
-                );
-              })}
+                      <span className="text-[14px] font-semibold">
+                        {t.label}
+                      </span>{" "}
+                      <span
+                        className={cn(
+                          "text-[12.5px] tabular-nums",
+                          on ? "text-[#fde68a]" : "text-[#94a3b8]",
+                        )}
+                      >
+                        {data
+                          ? `${t.orders} · ${t.pax} pax${unknownPax(t)}`
+                          : ""}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              {legacyCount > 0 ? legacyInfo.button : null}
+              {viewOnly && noSend ? null : (
+                <button
+                  type="button"
+                  data-howto-toggle
+                  aria-expanded={howOpen}
+                  onClick={() => setHowOpen((v) => !v)}
+                  className={cn(
+                    "ml-3 inline-flex items-center gap-1 rounded-[8px] border px-2.5 py-[5px] text-[12.5px] font-semibold whitespace-nowrap max-sm:ml-2",
+                    howOpen
+                      ? "border-[#86efac]/50 bg-[#86efac]/10 text-[#bbf7d0]"
+                      : "border-white/15 bg-white/[.04] text-[#bbf7d0] hover:bg-white/[.08]",
+                  )}
+                >
+                  📖 How to use
+                </button>
+              )}
             </div>
-            {legacyCount > 0 ? legacyInfo.button : null}
-            </div>
+            {howOpen && !(viewOnly && noSend) ? (
+              <ManifestsHowToUse open onToggle={setHowOpen} />
+            ) : null}
 
             {prefNote ? <p className={NOTE_CLASS}>{prefNote}</p> : null}
 
@@ -977,69 +1050,6 @@ export function ManifestsView() {
               </div>
             ) : null}
 
-            {sendBarOn ? (
-              // 勾选后的操作条（Annie 2026-10-09 样稿第 3 版）：几位几人、发确认 / 提醒、自定义消息、清空。
-              // 外面这层量内容区的左右边（电脑版照它定位，不盖住侧栏）；条是浮着的，这层高度为 0。
-              <div ref={sendBarFloat.slotRef}>
-              <div
-                role="group"
-                aria-label="Selected guests"
-                data-selected-bar
-                // 置顶 115 F2（Annie：「勾不勾都要出，不然staff还以为这个功能没了」）：电脑、手机都一直浮在屏幕底部，
-                // 没勾时写「0 orders selected · 0 pax」、键灰着。电脑左边对齐内容区（不盖侧栏），右边让开 ↑↓。
-                style={sendBarFloat.style}
-                className="fixed z-[90] flex flex-wrap items-center gap-2 rounded-[10px] border border-white/20 bg-[#0b1726] px-3 py-2 text-[13px] shadow-[0_8px_24px_rgba(0,0,0,.5)] sm:bottom-4 max-sm:right-[60px] max-sm:bottom-[calc(12px+env(safe-area-inset-bottom,0px))] max-sm:left-3 max-sm:flex-nowrap max-sm:gap-1.5 max-sm:overflow-x-auto max-sm:px-2 max-sm:py-1.5 max-sm:[&>button]:shrink-0 max-sm:[&>button]:whitespace-nowrap"
-              >
-                <span className="mr-auto text-[#cbd5e1] tabular-nums max-sm:shrink-0 max-sm:whitespace-nowrap">
-                  {plural(pickedOrders, "order")} selected · {pickedPax} pax
-                </span>
-                {noConfirm ? null : (
-                  <button
-                    type="button"
-                    disabled={!selected.size}
-                    onClick={() =>
-                      requestSend(tab === "bus" ? "tour" : "reminder")
-                    }
-                    className={PRIMARY_ACTION_CLASS}
-                  >
-                    {tab === "bus" ? "Send tour confirmation" : "Send reminder"}
-                  </button>
-                )}
-                {tab === "bus" && !noConfirm ? (
-                  <button
-                    type="button"
-                    disabled={!selected.size}
-                    onClick={() => requestSend("lastminute")}
-                    className={LAST_MINUTE_CLASS}
-                  >
-                    Last Minute Order
-                  </button>
-                ) : null}
-                {noMessage ? null : (
-                  <button
-                    type="button"
-                    disabled={!selected.size}
-                    onClick={() => requestSend("message")}
-                    className={PRIMARY_ACTION_CLASS}
-                  >
-                    Send message
-                  </button>
-                )}
-                <button
-                  type="button"
-                  disabled={!selected.size}
-                  onClick={() => {
-                    setSelected(new Set());
-                    setPendingSend(null);
-                  }}
-                  className={LEGACY_BTN_CLASS}
-                >
-                  Clear
-                </button>
-              </div>
-              </div>
-            ) : null}
-
             {!noConfirm && !seeingHidden && pendingSend ? (
               // 勾里有门票缺 Cfm # 的：先问清楚，staff 主动点了 Skip 才真的发（Annie 2026-10-17）。
               <div
@@ -1149,59 +1159,64 @@ export function ManifestsView() {
             ) : null}
 
             {!seeingHidden && shown && shown.rows.length ? (
-              <section
-                // 团色条：同一个团在 Main manifest → Dispatch → Bus manifest 一路同一个颜色（认 Products
-                // → Manifest setup 配的颜色，G142；没配时按团名猜，lib/tour-colors.ts）。
-                style={
-                  {
-                    "--c":
-                      !currentPill || currentPill.key.endsWith(":none")
-                        ? OTHER_TOUR_COLOR
-                        : resolveTourColor(
-                            currentPill.color,
-                            currentPill.label,
-                          ),
-                  } as CSSProperties
-                }
-                className={cn(
-                  "mb-4 overflow-hidden rounded-[10px] border-[0.5px] border-l-[5px] border-black/10 border-l-[var(--c)] bg-paper transition-opacity night:border-white/10 night:bg-white/[.032]",
-                  loading && "opacity-50",
-                )}
-              >
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b-[0.5px] border-black/[.08] bg-paper px-3.5 py-[9px] night:border-white/10 night:bg-white/[.03]">
-                  <h2 className="flex items-center gap-2 text-[13px] font-semibold text-[#1a1a1a] night:text-white/90">
-                    <span
-                      aria-hidden
-                      className="size-2.5 rounded-full bg-[var(--c)]"
-                    />
-                    {currentPill?.label ?? ""}
-                  </h2>
-                  <span className="text-[11px] text-[#1a1a1a] tabular-nums night:text-white/50">
-                    {currentPill
-                      ? `${plural(currentPill.orders, "order")} · ${currentPill.pax} pax${unknownPax(currentPill)} · ${plural(shown.rows.length, "row")}`
-                      : plural(shown.rows.length, "row")}
-                  </span>
-                </div>
-                <ManifestTable
-                  data={shown}
-                  fields={fields}
-                  selected={selected}
-                  highlight={highlight}
-                  selectable={!noSend && tabSendable}
-                  onToggle={toggleRows}
-                  onSelectUnsent={selectUnsent}
-                  onReorder={
-                    noFeatures ? undefined : (next) => void reorderFields(next)
+              // 表格和发送条一起包一层：发送条 sticky 只在这一块里，滚过表格就停在表格下面。
+              <div data-table-block>
+                <section
+                  // 团色条：同一个团在 Main manifest → Dispatch → Bus manifest 一路同一个颜色（认 Products
+                  // → Manifest setup 配的颜色，G142；没配时按团名猜，lib/tour-colors.ts）。
+                  style={
+                    {
+                      "--c":
+                        !currentPill || currentPill.key.endsWith(":none")
+                          ? OTHER_TOUR_COLOR
+                          : resolveTourColor(
+                              currentPill.color,
+                              currentPill.label,
+                            ),
+                    } as CSSProperties
                   }
-                  onCfmSaved={onCfmSaved}
-                  onCfmDirty={onCfmDirty}
-                  onWaiverDirty={onWaiverDirty}
-                  onUnauthorized={redirectToLogin}
-                />
-              </section>
+                  className={cn(
+                    "mb-4 overflow-hidden rounded-[10px] border-[0.5px] border-l-[5px] border-black/10 border-l-[var(--c)] bg-paper transition-opacity night:border-white/10 night:bg-white/[.032]",
+                    loading && "opacity-50",
+                  )}
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b-[0.5px] border-black/[.08] bg-paper px-3.5 py-[9px] night:border-white/10 night:bg-white/[.03]">
+                    <h2 className="flex items-center gap-2 text-[13px] font-semibold text-[#1a1a1a] night:text-white/90">
+                      <span
+                        aria-hidden
+                        className="size-2.5 rounded-full bg-[var(--c)]"
+                      />
+                      {currentPill?.label ?? ""}
+                    </h2>
+                    <span className="text-[11px] text-[#1a1a1a] tabular-nums night:text-white/50">
+                      {currentPill
+                        ? `${plural(currentPill.orders, "order")} · ${currentPill.pax} pax${unknownPax(currentPill)} · ${plural(shown.rows.length, "row")}`
+                        : plural(shown.rows.length, "row")}
+                    </span>
+                  </div>
+                  <ManifestTable
+                    data={shown}
+                    fields={fields}
+                    selected={selected}
+                    highlight={highlight}
+                    selectable={!noSend && tabSendable}
+                    onToggle={toggleRows}
+                    onSelectUnsent={selectUnsent}
+                    onReorder={
+                      noFeatures
+                        ? undefined
+                        : (next) => void reorderFields(next)
+                    }
+                    onCfmSaved={onCfmSaved}
+                    onCfmDirty={onCfmDirty}
+                    onWaiverDirty={onWaiverDirty}
+                    onUnauthorized={redirectToLogin}
+                  />
+                </section>
+                {sendBar}
+              </div>
             ) : null}
 
-            {viewOnly && noSend ? null : <ManifestsHowToUse />}
             {/* Cfm # 的改动记录（G203，manifests.edit；partner 后端 403，干脆不出）。 */}
             {noFeatures ? null : (
               <ActionLogPanel
@@ -1318,58 +1333,9 @@ export function ManifestsView() {
             onUnauthorized={redirectToLogin}
           />
         ) : null}
-        {/* 发送条浮在底部时，页面最下面留出它的高度，滚到底时 Action Log 不被盖住。 */}
-        {sendBarFloating ? (
-          <div aria-hidden data-selected-bar-spacer className="h-[72px]" />
-        ) : null}
       </main>
     </ViewOnly.Provider>
   );
-}
-
-/** 右下角 ↑↓ 占的宽度（浮起来的发送条右边让开它，同手机的 right-[60px]）。 */
-const SCROLL_KEYS_GAP = 60;
-
-/**
- * 置顶 115 F2：电脑版（≥ 640px）发送条浮在屏幕底部时的左右位置——量外面那层（内容区一整列）的左右边，
- * 左边对齐内容区（不盖侧栏），右边取内容区右边和「屏幕右边 − ↑↓」里靠左的那个。手机上不给（用 max-sm 的类）。
- */
-function useDesktopFloat(active: boolean): {
-  slotRef: (el: HTMLDivElement | null) => void;
-  style: CSSProperties | undefined;
-} {
-  const [slot, setSlot] = useState<HTMLDivElement | null>(null);
-  const [box, setBox] = useState<{ left: number; width: number } | null>(null);
-  useEffect(() => {
-    if (!active || !slot) {
-      setBox(null);
-      return;
-    }
-    const desktop = window.matchMedia("(min-width: 640px)");
-    const measure = () => {
-      if (!desktop.matches) {
-        setBox(null);
-        return;
-      }
-      const r = slot.getBoundingClientRect();
-      const right = Math.min(r.right, window.innerWidth - SCROLL_KEYS_GAP);
-      setBox({ left: Math.round(r.left), width: Math.round(right - r.left) });
-    };
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(slot);
-    window.addEventListener("resize", measure);
-    desktop.addEventListener("change", measure);
-    return () => {
-      ro.disconnect();
-      window.removeEventListener("resize", measure);
-      desktop.removeEventListener("change", measure);
-    };
-  }, [active, slot]);
-  return {
-    slotRef: setSlot,
-    style: box ? { left: box.left, width: box.width } : undefined,
-  };
 }
 
 /** 隐藏行的只读表：没有勾选框 / Select all / 发送条；Group 和 Why hidden 两列（后端 reason_label 原样显示）。 */
@@ -2046,9 +2012,18 @@ function CfmInput({
   );
 }
 
-function ManifestsHowToUse() {
+function ManifestsHowToUse({
+  open,
+  onToggle,
+}: {
+  open: boolean;
+  onToggle: (open: boolean) => void;
+}) {
   return (
     <HowToUse
+      open={open}
+      onToggle={onToggle}
+      className="mt-0 mb-4"
       title="How to use — Manifests"
       items={[
         <>
