@@ -1565,6 +1565,7 @@ D. 已完成、待从置顶移走：
 - Annie 原话：「现在的rules不管我怎么制定都不对，我把需求告诉你，你帮我来重新设置一下rules。」需求：「Naida固定不上周六，Veronica是固定的opening，Lizzie一周最多一次closing，Jessica固定上10 - 6点，Jessica周一周二固定休息。头一天晚班第二天不能安排早班。除了Jessica之外，V，N，J和Lizzie每周上40小时，然后休两天」「一个班最多一个人」「班次是2-10， 9-5， 1：30 p-9：30p」「Jassica只能上白天的班，周三可以两个人一起上白天的班」「（2-10）是am」「空出来的那个班从jassica平时的白班里挤出一个白班来，其他人补早晚班」。J = Jing。
 - d8 整理：早班 02:00–10:00、白班 09:00–17:00、晚班 13:30–21:30、Jessica 10:00–18:00（算白班）。Naida Cannot work 周六；Veronica 只早班（Cannot work 白 / 晚）；Lizzie 晚班每周 ≤ 1（**新规则 max_days_on_shift，前后端都要改**）；Jessica Fixed 周三–周日 10–6、不上周一周二、不上早晚班、不轮值；晚班后不接早班（After a shift）；V / N / Jing / Lizzie 每周刚好 5 天 + 40 小时提醒；早晚班每天正好 1 人；白班周一周二 1 人，周三–周日除 Jessica 外最多 1 人、每周 1 天只有 Jessica（**Max people 要能不算 Jessica，或把 10–6 设成单独班次**）。合计 20 个班 = 4 人 × 5 天。
 - 等 6b 模拟 4 周 + preview（含「现在怎么设都不对」的原因）⇒ Annie 看 +「动手」。
+- 补（Annie 原话）：「如果周末还补不上，就把jing和Lizze以及Nadia的白天班挪过去」⇒ 周末早晚班优先排满；排不满时把 Jing / Lizzie / Naida 当周的白班挪到周末早晚班（其他规则照守：Naida 周六不能上、Lizzie 晚班 ≤ 1、晚班后不接早班、每人 5 天）。已转 6b。
 
 ### 117. Staff Schedule：Autofill 前先填已批的 Leave（2026-11-10 晚，Annie 在后端提，5c 转；d8 派 6b 出 preview）
 
