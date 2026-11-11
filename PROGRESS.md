@@ -1560,6 +1560,12 @@ D. 已完成、待从置顶移走：
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 118. Staff Schedule Rules 照 Annie 需求重设（2026-11-10 晚；d8 派 6b 先模拟 + preview）
+
+- Annie 原话：「现在的rules不管我怎么制定都不对，我把需求告诉你，你帮我来重新设置一下rules。」需求：「Naida固定不上周六，Veronica是固定的opening，Lizzie一周最多一次closing，Jessica固定上10 - 6点，Jessica周一周二固定休息。头一天晚班第二天不能安排早班。除了Jessica之外，V，N，J和Lizzie每周上40小时，然后休两天」「一个班最多一个人」「班次是2-10， 9-5， 1：30 p-9：30p」「Jassica只能上白天的班，周三可以两个人一起上白天的班」「（2-10）是am」「空出来的那个班从jassica平时的白班里挤出一个白班来，其他人补早晚班」。J = Jing。
+- d8 整理：早班 02:00–10:00、白班 09:00–17:00、晚班 13:30–21:30、Jessica 10:00–18:00（算白班）。Naida Cannot work 周六；Veronica 只早班（Cannot work 白 / 晚）；Lizzie 晚班每周 ≤ 1（**新规则 max_days_on_shift，前后端都要改**）；Jessica Fixed 周三–周日 10–6、不上周一周二、不上早晚班、不轮值；晚班后不接早班（After a shift）；V / N / Jing / Lizzie 每周刚好 5 天 + 40 小时提醒；早晚班每天正好 1 人；白班周一周二 1 人，周三–周日除 Jessica 外最多 1 人、每周 1 天只有 Jessica（**Max people 要能不算 Jessica，或把 10–6 设成单独班次**）。合计 20 个班 = 4 人 × 5 天。
+- 等 6b 模拟 4 周 + preview（含「现在怎么设都不对」的原因）⇒ Annie 看 +「动手」。
+
 ### 117. Staff Schedule：Autofill 前先填已批的 Leave（2026-11-10 晚，Annie 在后端提，5c 转；d8 派 6b 出 preview）
 
 - Annie 原话：「我现在需要你临时加一个rule，就是让我添加staff已经申请好了的假期，就是OFF day，让我选择autofill的时候可以先跳出一个窗口，点击哪些天是已经申请的Leave，不是平时每周的两天」。
