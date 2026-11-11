@@ -29,6 +29,7 @@
 - 🐞 7 Days Forecast 往前翻 bug（Annie 原话，54 转）：「7 days forecast 当日期往前追溯的时候，只是每个tour的header move了，内容没有跟着动」⇒ 派 96 task/forecast-backdate-fix：先查前端，是后端存档回包不对就把 URL / 参数 / 回包发 4c 转 54。只修 bug 不出 preview。
 - Annie 开始自己排 Staff Schedule（请假流程先跳过）⇒ 4c 给了 118 清单三步（第 13 条 Lizzie Close ≤ 1 后端已上，可存）。
 - ✅ **7 Days Forecast 往前翻 bug 修好上 main 22df90a6**（96，task/forecast-backdate-fix）：前端 mergePastDays 只合并长度 = 天数的数组，团里细行 rows / allotments 被跳过 ⇒ 改成按 label + kind 认行，存档没有的显示 0 / 空。后端没问题。tsc / eslint 0 错 / build 过；fc 199/199（新 3 项，旧代码会失败）、nav 39/39。验收：‹ 往前翻一天，灰表头（Saved）那列每团 Total 和细行都是那晚存档的数；点 Today 回实时。已告知 54。
+- 🟡 **121 Cannot work 一条规则选多个班**（Annie 原话）：「可以把某个不能work这个多设几个选项么，比如说V不能work morning，mid and closing，否则我需要开3个rules太麻烦了」⇒ 现状 cannot_work params 只有一个 shift_type（components/schedule/rules.ts）。4c 问：A 前端改成多选、存成几条（不改后端，推荐）/ B 后端改成 shift_types 数组 / C 并进 120 人卡。等答 + preview +「动手」。
 - Annie 新提：要做的三件 =「114，另外是staff schedule，还有导游页的重新设计」⇒ 导游页重新设计 PROGRESS 里没记录，4c 已问她哪个页面（A 手机 guide_home.html 后端 / B ops 里的导游页 / C 搬到 ops 重做）、想改成什么样、司机页要不要一起。
 - 🟡 **G282 preview（96）**：https://claude.ai/artifact/5PMGSaW5Rxz6AvcCkmAArG （模拟数据，没写代码）。4c 在本窗口问 Annie Q1–Q7（21 不重复问），另请她看：申请区 / 待批放 Staff Schedule 新 Leave 标签；Q5 B = 员工资料里设请假归属 team。答了转 21 + 96。
 - ✅ **118 后端上 main**（54 转）：内容 f8f0affc、合并 ebe3546d、关包 98de181c。形状 {type:max_days_on_shift, params:{shift_type 必填, n 0..7 必填, employee_ids / exclude_employee_ids 二选一可选}}，只按周，其他键 400。前端 components/schedule/rules.ts 已是同一形状（n 0..7），不用改。⇒ Annie 现在能存「Lizzie Close ≤ 1」。
