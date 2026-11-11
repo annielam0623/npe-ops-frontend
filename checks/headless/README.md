@@ -67,6 +67,7 @@ node run-all.js --keep-dev   # 跑完不关 next dev
 | tour | /tour-confirmation/send |
 | tsend | /tickets-reminder/send（防重发、比对 / Apply） |
 | tt | /tour-confirmation/tracking |
+| leave | G282 休假：/schedule?tab=leave（员工申请 / 撤回、批复人批准 / 驳回、409 别人先批、手机版）、/settings/team（成员弹窗 Manager、Reporting lines + Team leads）；leave-mock 自己起 sch-mock / tp-mock 当上游 |
 | users | /settings/users |
 | veh | /settings/vehicles |
 

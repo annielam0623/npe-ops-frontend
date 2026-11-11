@@ -116,7 +116,7 @@ http.createServer(async (req, res) => {
   if (p === "/__ctl") {
     const b = json();
     if (b.reset) { fresh(); log.length = 0; }
-    for (const k of ["upstream", "viewer", "notOnSchedule", "race", "failDecide", "failLead"]) if (k in b) ctl[k] = b[k];
+    for (const k of ["upstream", "viewer", "notOnSchedule", "race", "failDecide", "failLead", "hrDuty"]) if (k in b) ctl[k] = b[k];
     if (b.sch) await fetch(`http://127.0.0.1:${SCH_PORT}/__ctl`, { method: "POST", body: JSON.stringify(b.sch) });
     if (b.tp) await fetch(`http://127.0.0.1:${TP_PORT}/__control?${b.tp}`);
     return send(res, 200, { ok: true, ctl });
@@ -195,6 +195,15 @@ http.createServer(async (req, res) => {
     if (ctl.failLead) return send(res, 400, { detail: "Pick an active staff or admin account." });
     team.lead_user_id = b.lead_user_id;
     return send(res, 200, { team_id: id, lead_user_id: b.lead_user_id });
+  }
+
+  // 截图用（ctl.hrDuty）：后端 21 在迁移里加职责 hr（Team 页职责那一栏多一个勾「HR」），grace（2）勾上。
+  if (ctl.hrDuty && ctl.upstream === "tp" && req.method === "GET" && (p === "/api/team/catalog" || p === "/api/team/members/2")) {
+    const r = await fetch(`http://127.0.0.1:${TP_PORT}${req.url}`, { headers: { cookie: req.headers.cookie || "" } });
+    const body = await r.json();
+    if (p === "/api/team/catalog") body.duties = [...(body.duties || []), { code: "hr", display_name: "HR", description: "Gets a notice and an email when someone's leave is approved." }];
+    else body.duties = [...(body.duties || []), "hr"];
+    return send(res, r.status, body);
   }
 
   return proxy(req, res, buf);

@@ -129,10 +129,10 @@ export async function fetchLeaveQueue(
   status: "pending" | "decided",
   signal?: AbortSignal,
 ): Promise<LeaveQueue> {
-  const res = await apiFetch<Partial<LeaveQueue>>(
-    `${BASE}?status=${status}`,
-    { cache: "no-store", signal },
-  );
+  const res = await apiFetch<Partial<LeaveQueue>>(`${BASE}?status=${status}`, {
+    cache: "no-store",
+    signal,
+  });
   const requests = res.requests ?? [];
   return {
     is_approver: res.is_approver ?? requests.length > 0,
@@ -188,20 +188,20 @@ export function saveLeaveManager(
   userId: number,
   managerUserId: number | null,
 ): Promise<unknown> {
-  return apiFetch<unknown>(
-    `/api/schedule/leave-routing/managers/${userId}`,
-    { method: "PUT", body: { manager_user_id: managerUserId } },
-  );
+  return apiFetch<unknown>(`/api/schedule/leave-routing/managers/${userId}`, {
+    method: "PUT",
+    body: { manager_user_id: managerUserId },
+  });
 }
 
 export function saveTeamLead(
   teamId: number,
   leadUserId: number | null,
 ): Promise<unknown> {
-  return apiFetch<unknown>(
-    `/api/schedule/leave-routing/team-leads/${teamId}`,
-    { method: "PUT", body: { lead_user_id: leadUserId } },
-  );
+  return apiFetch<unknown>(`/api/schedule/leave-routing/team-leads/${teamId}`, {
+    method: "PUT",
+    body: { lead_user_id: leadUserId },
+  });
 }
 
 /** 两个日期（YYYY-MM-DD）之间一共几天，含头尾；格式不对 / 倒过来返回 0。 */

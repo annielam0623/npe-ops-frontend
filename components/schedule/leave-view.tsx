@@ -125,12 +125,15 @@ function Section({
   children,
   testId,
   extra,
+  bodyClassName,
 }: {
   title: string;
   hint?: string;
   children: ReactNode;
   testId: string;
   extra?: ReactNode;
+  /** 手机上收起时加在内容区上（usePhoneCollapse().hide），免得留一块空框。 */
+  bodyClassName?: string;
 }) {
   const info = usePhoneInfo();
   return (
@@ -149,7 +152,12 @@ function Section({
         </div>
         {extra}
       </div>
-      <div className="flex min-w-0 flex-col gap-3 px-4 py-3 max-sm:px-3">
+      <div
+        className={cn(
+          "flex min-w-0 flex-col gap-3 px-4 py-3 max-sm:px-3",
+          bodyClassName,
+        )}
+      >
         {children}
       </div>
     </section>
@@ -233,6 +241,7 @@ function RequestForm({
       testId="request"
       title="Request leave"
       hint="Ask for days off. Your approver decides, and you get an email either way."
+      bodyClassName={notOnSchedule ? undefined : collapse.hide}
       extra={
         notOnSchedule ? null : (
           <button
@@ -257,7 +266,6 @@ function RequestForm({
           data-leave-form
           className={cn(
             "grid grid-cols-[repeat(3,minmax(0,max-content))_1fr] items-end gap-3 max-sm:grid-cols-2",
-            collapse.hide,
           )}
           onSubmit={(e) => {
             e.preventDefault();
@@ -584,8 +592,8 @@ function ShiftWarning({ r }: { r: LeaveQueueItem }) {
       data-leave-shift-warn="block"
       className="mt-1.5 rounded-[7px] border border-red-400/35 bg-red-400/10 px-2.5 py-1.5 text-[12.5px] text-red-100"
     >
-      {r.employee_name} has a shift on {txt}. Move the shift on the Schedule
-      tab before approving.
+      {r.employee_name} has a shift on {txt}. Move the shift on the Schedule tab
+      before approving.
     </div>
   ) : (
     <div
@@ -663,7 +671,10 @@ function Decide({
                 setRejecting(false);
                 setError(null);
               }}
-              className={cn(SMALL_SECONDARY, "border-transparent bg-transparent")}
+              className={cn(
+                SMALL_SECONDARY,
+                "border-transparent bg-transparent",
+              )}
             >
               Cancel
             </button>

@@ -432,11 +432,7 @@ export function MemberFormDialog({
         const sent = selection(form);
         const res = await saveTeamMember(mode.member.id, sent);
         // G282：Manager 变了再单独存（后端 21：不混进整组替换的 PUT，免得 admin 保存时清掉）。
-        if (
-          canSetManager &&
-          routing &&
-          manager !== savedManagerRef.current
-        ) {
+        if (canSetManager && routing && manager !== savedManagerRef.current) {
           await saveLeaveManager(mode.member.id, manager);
           savedManagerRef.current = manager;
         }
