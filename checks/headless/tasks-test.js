@@ -124,12 +124,28 @@ async function runMessaging() {
   await waitFor("document.querySelector('[data-team-message-dialog] [role=status]')");
   let m = await msgs();
   check("Send：POST /api/team/messages {to_user_id: 34, body}；绿字 Sent（没 Email 不写 emailed）", m.length === 1 && m[0].kind === "send" && m[0].to_user_id === 34 && m[0].body === "ZZ test: please check the 3pm list" && (await evaluate("const s = document.querySelector('[data-team-message-dialog] [role=status]'); return s.textContent === '✓ Sent.' && getComputedStyle(s).color === 'rgb(74, 222, 128)';")), JSON.stringify(m));
+  check("置顶 109：没 Team Email（后端 email.no_email）⇒ Sent 下面灰字 No email on file, so it was not emailed.，不是红字", await evaluate("const g = document.querySelector('[data-team-message-dialog] [data-message-email]'); return !!g && g.dataset.messageEmail === 'no_email' && g.textContent === 'No email on file, so it was not emailed.' && g.className.includes('text-white/55');"));
   await evaluate("[...document.querySelectorAll('[data-team-message-dialog] button')].find(b => b.textContent === 'Close').click();");
   // 点 Jing（排班名单里、有 Email）
   await evaluate(`${row("Jing")}.querySelector('[data-team-message]').click();`);
   await waitFor("document.querySelector('[data-team-message-dialog]')");
   check("排班的人也能点：Message Jing，有 Email 不出黄字，写 also gets it by email", await evaluate("const d = document.querySelector('[data-team-message-dialog]'); return d.querySelector('h2').textContent === 'Message Jing' && !d.querySelector('[data-no-email]') && d.textContent.includes('gets it by email');"));
-  await evaluate("[...document.querySelectorAll('[data-team-message-dialog] button')].find(b => b.textContent === 'Cancel').click();");
+  // 置顶 109：有 Email 发出 ⇒ 「✓ Sent — also emailed.」；发信出错（email.failed）⇒ 仍是绿字 Sent（站内已写），下面红字 The email could not be sent.
+  const typeMsg = "const t = document.querySelector('[data-team-message-dialog] textarea'); const set = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set; set.call(t, 'ZZ test: email check'); t.dispatchEvent(new Event('input', { bubbles: true }));";
+  const sendMsg = "[...document.querySelectorAll('[data-team-message-dialog] button')].find(b => b.textContent === 'Send').click();";
+  await evaluate(typeMsg); await sleep(200); await evaluate(sendMsg);
+  await waitFor("document.querySelector('[data-team-message-dialog] [role=status]')");
+  check("有 Email、发出：✓ Sent — also emailed.，没有灰 / 红小字", await evaluate("const d = document.querySelector('[data-team-message-dialog]'); return d.querySelector('[role=status]').textContent === '✓ Sent — also emailed.' && !d.querySelector('[data-message-email]');"));
+  await ctl({ msgEmailFail: true });
+  await evaluate(typeMsg); await sleep(200); await evaluate(sendMsg);
+  await waitFor("document.querySelector('[data-team-message-dialog] [data-message-email]')");
+  check("发信出错：绿字 ✓ Sent.，下面红字 The email could not be sent. They'll only see it in their Notice.", await evaluate("const d = document.querySelector('[data-team-message-dialog]'); const r = d.querySelector('[data-message-email]'); return d.querySelector('[role=status]').textContent === '✓ Sent.' && r.dataset.messageEmail === 'failed' && r.textContent.includes('The email could not be sent.') && getComputedStyle(r).color === 'rgb(248, 113, 113)';"));
+  await ctl({ msgEmailFail: false, msgLegacy: true });
+  await evaluate(typeMsg); await sleep(200); await evaluate(sendMsg);
+  await sleep(800);
+  check("旧后端（只有 emailed）：照旧 ✓ Sent — also emailed.", await evaluate("const d = document.querySelector('[data-team-message-dialog]'); return d.querySelector('[role=status]')?.textContent === '✓ Sent — also emailed.' && !d.querySelector('[data-message-email]');"));
+  await ctl({ msgLegacy: false });
+  await evaluate("[...document.querySelectorAll('[data-team-message-dialog] button')].find(b => b.textContent === 'Close').click();");
   // Notice 里的站内消息（昨天来的也在）：Message 标签、全文、Reply 站内回复
   await waitFor("document.querySelector('[data-message-body]')", 15000);
   check("Notice：同事的站内消息（昨天来的、没读）显示，标签 Message，全文分行", await evaluate("const b = document.querySelector('[data-message-body]'); const li = b.closest('li'); return li.textContent.includes('Jing sent you a message') && li.textContent.toLowerCase().includes('message') && b.textContent.includes('They asked about bags.');"));

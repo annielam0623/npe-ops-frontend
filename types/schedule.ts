@@ -319,6 +319,13 @@ export interface SchedulePublishResult {
     name: string;
     reason: string;
   }[];
+  /**
+   * 置顶 109 W4 第二段（后端 d9 f30d895a，docs/interfaces/send-outcome-2026-11-09.md 第 5 节）：not_reached 拆成两份。
+   * no_contact = 没邮箱也没登录、一个渠道都没得发（不算失败，灰字）；failed = 有地址、这次没发成（红字）。
+   * 没带 = 旧后端，按 not_reached 的 reason 自己拆。
+   */
+  no_contact?: { employee_id: number; name: string; why: string }[];
+  failed?: { employee_id: number; name: string; reason: string }[];
 }
 
 export interface ScheduleNotified {

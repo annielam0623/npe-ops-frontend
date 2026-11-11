@@ -241,6 +241,24 @@ async function run() {
   check("Emergency：没有 Accident 详情，标签 People involved", await evaluate(`return !${dialog}.textContent.includes('Accident details') && !$field('Location');`));
   await evaluate(`$setValue($field('What happened'), 'ZZ Guest fainted'); $dialogBtn('Save').click();`);
   check("通知开着：提示 People in charge notified", await waitFor(`${sel}.textContent.includes('Saved. People in charge notified.')`));
+  check("置顶 109：都发出（后端 failed 空）⇒ 没有红字那行", await evaluate(`return !${sel}.querySelector('[data-dor-notify-failed]');`));
+
+  // 置顶 109 W4 第二段：有人没通知到（failed）⇒ 绿字照旧，后面红字 Could not notify: 谁 (原因).
+  await ctl({ notifyFailed: true });
+  await evaluate(openLog);
+  await waitFor(dialog);
+  await evaluate(`$btnIn(${dialog}, 'Emergency').click();`);
+  await waitFor(`$field('People involved')`);
+  await evaluate(`$setValue($field('What happened'), 'ZZ Notify partial'); $dialogBtn('Save').click();`);
+  check("部分没通知到：绿字 Saved. People in charge notified.，后面红字 Could not notify: reservations@… (Email could not be sent).", (await waitFor(`!!${sel}.querySelector('[data-dor-notify-failed]')`)) && (await evaluate(`const r = ${sel}.querySelector('[data-dor-notify-failed]'); return ${sel}.textContent.includes('Saved. People in charge notified.') && r.textContent === 'Could not notify: reservations@nationalparkexpress.com (Email could not be sent).' && getComputedStyle(r).color === 'rgb(248, 113, 113)';`)), await evaluate(`return ${sel}.textContent;`));
+  await ctl({ notifyFailed: false, notifyAllFailed: true });
+  await evaluate(openLog);
+  await waitFor(dialog);
+  await evaluate(`$btnIn(${dialog}, 'Emergency').click();`);
+  await waitFor(`$field('People involved')`);
+  await evaluate(`$setValue($field('What happened'), 'ZZ Notify none'); $dialogBtn('Save').click();`);
+  check("谁都没通知到：不说 People in charge notified，只写 Saved. + 红字列两位和原因", (await waitFor(`(${sel}.querySelector('[data-dor-notify-failed]')?.textContent || '').includes('Sup (In-app notice could not be written; email could not be sent)')`)) && (await evaluate(`return !${sel}.textContent.includes('People in charge notified') && ${sel}.querySelector('[role=status]').textContent.startsWith('Saved.') && ${sel}.querySelector('[data-dor-notify-failed]').textContent.includes('reservations@nationalparkexpress.com (Email could not be sent)');`)), await evaluate(`return ${sel}.textContent;`));
+  await ctl({ notifyAllFailed: false });
 
   // 通知出错（skipped:"error"）：记录已保存，但不能说成已通知，也不能说成开关关着
   await ctl({ notifyError: true });

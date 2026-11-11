@@ -122,6 +122,14 @@ export interface OperationReportNotification {
   used_fallback: boolean;
   /** "switch_off" = 通知总开关关着，没人被通知；"error" = 通知发送出错（记录已保存）。 */
   skipped?: string;
+  /**
+   * 置顶 109 W4 第二段（后端 f30d895a，send-outcome 文档第 5 节）：按人算——有账号的人站内或邮件任一发出 = sent（列名字），
+   * 部门邮箱 / reservations@ 按地址列；都没发出 = failed（error 英文原话）。no_contact 永远 []（都有账号）。
+   * 开关关 / 没收件人（有 skipped）时三份都空。没带 = 旧后端。
+   */
+  sent?: string[];
+  failed?: { name: string; error: string }[];
+  no_contact?: { name: string; why: string }[];
 }
 
 export interface OperationReportCreateResult {

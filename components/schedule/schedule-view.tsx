@@ -1151,7 +1151,9 @@ export function ScheduleView() {
             ) : publishBanner ? (
               <div
                 data-publish-banner={
-                  publishBanner.unreached ? "some-missed" : "ok"
+                  publishBanner.unreached || publishBanner.noContact
+                    ? "some-missed"
+                    : "ok"
                 }
                 className="rounded-[10px] border border-emerald-400/30 bg-emerald-400/10 px-4 py-2.5 text-[13px] text-emerald-200"
               >
@@ -1161,6 +1163,14 @@ export function ScheduleView() {
                     {" "}
                     <span data-publish-unreached className="text-red-300">
                       {publishBanner.unreached}
+                    </span>
+                  </>
+                ) : null}
+                {publishBanner.noContact ? (
+                  <>
+                    {" "}
+                    <span data-publish-no-contact className="text-white/55">
+                      {publishBanner.noContact}
                     </span>
                   </>
                 ) : null}

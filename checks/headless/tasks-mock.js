@@ -520,7 +520,11 @@ http
       const b = await readBody(req);
       teamMessages.push({ kind: "send", ...b });
       if (ctl.msgFail) return send(res, 400, { detail: "Write a message first." });
-      return send(res, 200, { ok: true, id: 100 + teamMessages.length, emailed: b.to_user_id !== 34 });
+      // 置顶 109 W4 第二段（后端 f30d895a）：加 sent / failed / no_contact 和 email 人数；Mia（34）没 Team Email；ctl.msgEmailFail = 发信出错；ctl.msgLegacy = 旧后端只有 emailed。
+      const emailed = b.to_user_id !== 34 && !ctl.msgEmailFail;
+      if (ctl.msgLegacy) return send(res, 200, { ok: true, id: 100 + teamMessages.length, emailed });
+      const email = b.to_user_id === 34 ? { sent: 0, failed: 0, no_email: 1 } : ctl.msgEmailFail ? { sent: 0, failed: 1, no_email: 0 } : { sent: 1, failed: 0, no_email: 0 };
+      return send(res, 200, { ok: true, id: 100 + teamMessages.length, emailed, recipients: 1, emailed_count: email.sent, sent: [b.to_user_id === 34 ? "Mia" : "Jing"], failed: [], no_contact: [], email });
     }
     const replyMatch = p.match(/^\/api\/team\/messages\/(\d+)\/reply$/);
     if (replyMatch && req.method === "POST") {

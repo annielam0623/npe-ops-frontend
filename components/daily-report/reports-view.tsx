@@ -27,7 +27,7 @@ import type {
 } from "@/types";
 
 import { REPORT_TYPES, TYPE_LABEL, TYPE_TEXT_CLASS } from "./config";
-import { LOG_BUTTON_CLASS, savedMessage } from "./dor-section";
+import { LOG_BUTTON_CLASS, savedFailure, savedMessage } from "./dor-section";
 import { LogIncidentDialog } from "./log-incident-dialog";
 import { ReportItem } from "./report-item";
 import { useDorVisible } from "./use-dor-visible";
@@ -181,6 +181,7 @@ function Reports({
   const [linked, setLinked] = useState<OperationReport | null>(null);
   const [logging, setLogging] = useState(false);
   const [toast, setToast] = useState("");
+  const [toastFailed, setToastFailed] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const reload = useCallback(() => setReloadKey((k) => k + 1), []);
 
@@ -287,6 +288,7 @@ function Reports({
           hidden={partner}
           onClick={() => {
             setToast("");
+            setToastFailed(null);
             setLogging(true);
           }}
           className={cn(LOG_BUTTON_CLASS, "ml-auto")}
@@ -369,6 +371,14 @@ function Reports({
 
       <p role="status" className="min-h-[18px] text-[12.5px] text-[#86efac]">
         {toast}
+        {toastFailed ? (
+          <>
+            {" "}
+            <span data-dor-notify-failed className="text-[#f87171]">
+              {toastFailed}
+            </span>
+          </>
+        ) : null}
       </p>
 
       {linked ? (
@@ -438,6 +448,7 @@ function Reports({
           onCreated={(result) => {
             setLogging(false);
             setToast(savedMessage(result));
+            setToastFailed(savedFailure(result));
             reload();
           }}
         />

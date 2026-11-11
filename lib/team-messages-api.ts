@@ -36,10 +36,37 @@ export async function fetchTeamPeople(
   return r.people ?? [];
 }
 
+/**
+ * POST /api/team/messages 的返回。置顶 109 W4 第二段（后端 f30d895a，send-outcome 文档第 5 节）加了 sent / failed / no_contact
+ * （站内 Notice 和消息同一个事务，人人都是 sent）和 email 人数：failed = 发信出错，no_email = 没有 Team Email
+ * （原来 emailed: false 分不出这两种）。没带 = 旧后端。
+ */
+export interface TeamMessageResult {
+  ok: boolean;
+  id?: number;
+  emailed?: boolean;
+  sent?: string[];
+  failed?: { name: string; error: string }[];
+  no_contact?: { name: string; why: string }[];
+  email?: { sent: number; failed: number; no_email: number };
+}
+
+/** 邮件这一路的结果：emailed 发出；failed 发信出错（红）；no_email 没邮箱（灰，不算失败）；unknown 旧后端没发出、分不清。 */
+export type TeamMessageEmail = "emailed" | "failed" | "no_email" | "unknown";
+
+export function messageEmailOutcome(r: TeamMessageResult): TeamMessageEmail {
+  if (r.email) {
+    if (r.email.sent > 0) return "emailed";
+    if (r.email.failed > 0) return "failed";
+    if (r.email.no_email > 0) return "no_email";
+  }
+  return r.emailed ? "emailed" : "unknown";
+}
+
 export function sendTeamMessage(
   toUserId: number,
   body: string,
-): Promise<{ ok: boolean; id?: number; emailed?: boolean }> {
+): Promise<TeamMessageResult> {
   return apiFetch("/api/team/messages", {
     method: "POST",
     body: { to_user_id: toUserId, body },

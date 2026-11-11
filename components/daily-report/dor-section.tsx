@@ -32,11 +32,24 @@ export const LOG_BUTTON_CLASS =
 export function savedMessage(result: OperationReportCreateResult): string {
   // duplicate:true 时 notification 是 null（同一个 client_token 再提交，不重复写库也不重复通知）。
   if (result.duplicate || !result.notification) return "Already saved.";
-  const { skipped } = result.notification;
+  const { skipped, sent, failed } = result.notification;
   if (skipped === "error") return "Saved. The notification could not be sent.";
-  return skipped
-    ? "Saved. Notifications are off."
-    : "Saved. People in charge notified.";
+  if (skipped) return "Saved. Notifications are off.";
+  // 置顶 109：一个都没通知到（新后端 sent 空、failed 有人）不说「已通知」，红字那行列谁没收到。
+  if (sent && sent.length === 0 && failed?.length) return "Saved.";
+  return "Saved. People in charge notified.";
+}
+
+/**
+ * 保存后红字那行（置顶 109，和发送页同一口径：发失败红字、列名字和原因）：
+ * 「Could not notify: reservations@nationalparkexpress.com (Email could not be sent).」。没人失败 / 旧后端 = null。
+ */
+export function savedFailure(
+  result: OperationReportCreateResult,
+): string | null {
+  const failed = result.duplicate ? [] : (result.notification?.failed ?? []);
+  if (!failed.length) return null;
+  return `Could not notify: ${failed.map((f) => `${f.name} (${f.error})`).join("; ")}.`;
 }
 
 /**
@@ -89,6 +102,7 @@ function DorBlock({
   const [assignees, setAssignees] = useState<ReportAssignee[]>([]);
   const [logging, setLogging] = useState(false);
   const [toast, setToast] = useState("");
+  const [toastFailed, setToastFailed] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
 
   const reload = useCallback(() => {
@@ -173,6 +187,7 @@ function DorBlock({
             type="button"
             onClick={() => {
               setToast("");
+              setToastFailed(null);
               setLogging(true);
             }}
             className={LOG_BUTTON_CLASS}
@@ -218,6 +233,14 @@ function DorBlock({
       <div className="mt-2.5 flex flex-wrap justify-between gap-x-3 gap-y-1.5 text-[12.5px] text-white/60">
         <span role="status" className="min-h-[18px] text-[#86efac]">
           {toast}
+          {toastFailed ? (
+            <>
+              {" "}
+              <span data-dor-notify-failed className="text-[#f87171]">
+                {toastFailed}
+              </span>
+            </>
+          ) : null}
         </span>
         <Link
           href="/daily-report"
@@ -234,6 +257,7 @@ function DorBlock({
           onCreated={(result) => {
             setLogging(false);
             setToast(savedMessage(result));
+            setToastFailed(savedFailure(result));
             reload();
           }}
         />

@@ -4,7 +4,33 @@
 
 > 6d 交接（下面「2026-10-27 交接：前端主窗口 6d」那节）的后端需求已于 10/27 晚由 ad 转给家里后端主窗口 17。
 
-> **11-10 公司主窗口 62 已接班（见「11-10 62 开工」）。下一个主窗口：先读 62 那节，再读下面「2026-11-09 晚 收工交接：前端主窗口-78」，再看置顶「📌 等 Annie 确认」（113–115 是今晚新的）。35 / a4 的交接是更早的历史。**
+> **下一个主窗口（11-10 晚家里）：先读下面「2026-11-10 收工交接：前端主窗口-62」，再看置顶 107 / 115 / 109。62 开工那节是今天的过程记录；78 及更早的是历史。**
+
+## 2026-11-10 收工交接：前端主窗口 `npe-ops-frontend-62`[53f9cb]（公司电脑；Annie「收工，回家继续」）
+### 一、今天上 main（都等 Annie 线上验收，验收点已在对话里逐件转她）
+| 件 | 前端 | 后端 | 验收看 |
+|---|---|---|---|
+| 110 排班例外（某天允许一个班两个人） | 539a57a3（1a） | G272 b898617f | Rules › Max people on a shift › Edit → + Add exception；Schedule 点日期「Allow 2 people on Close this day」、灰字「Close max 2 today」；过期 (past) |
+| 113 Bus Manifest 页 Columns ▾ | 982ef764（1a） | G275 f06f6e7a | Columns: All ▾ → 勾掉 Lunch → 页头 Save；Action Log「Hidden columns: (empty) → Lunch」。⚠️ **Annie 要自己在 Bus Manifest 把 Antelope 的 Lunch 勾掉、Save**（没确认做了没） |
+| 114 Relay list 功能键整理 | 09c41a5b（1a） | — | 截图 https://claude.ai/artifact/R6bkQH2L5rngsh5bsHqgHz ；⚠️ 62 曾说「先看截图再上线」，实际 1a 照派工直接合了，已如实告诉 Annie；留了 Text Size 旁「+1 px」灰字，她不要可去掉 |
+| 115 第一批 全站手机键 26px（题 1–6） | d1dae38d（1a） | — | 手机：顶栏 ☰ ★ ⌕、↑↓ 30px、各页 h-8 / h-9 键变小；多行大块没动 |
+| 109 W4 第二段 员工通知 | 5955b76c（79） | cbcf558d + 删 not_reached 1914005b | Publish again 灰「No email or login」；Period Share 灰「No email」/ 红「Not sent」；Staff Messages 灰 / 红小行；Operation report 红「Could not notify」 |
+
+### 二、在分支、等 Annie
+- **115 第二批**（题 8 三页压矮）：origin/task/phone-toolbars-115 **87b5f59b**（1a，da 546、tt 168、man 425、nav 39 过），截图 https://claude.ai/artifact/PCUBMtMDeK782hpZxjXs3C 。等 Annie P1–P4（原文在置顶 115）。她说可以后：合最新 main → 重跑 da / tt / man / nav → 合；P2 选做就先把「Last pull from Discord」收进 ⋯。
+### 三、等 Annie（原文都已发她、都在置顶，**不滚动重问**）
+- **107** 改成挡整页弹窗（Annie「107要改一下，登录进来之后直接弹窗，更新以后才可以继续」）：N1 何时弹 / N2 有没存的改动 / N3 发送中 + 弹窗英文原文，等答 ⇒ 派窗口出新 preview ⇒ 再等「动手」。原 preview BbcwRLCvyK7ecfL6cz2LEv。
+- **115 P1–P4**（见二）。
+- **109** 排班 Publish「一个都没通知到」整句红框：A 照旧红（推荐）/ B 改灰。
+- 其余旧的同 78 交接第三部分（Auto Send Recent runs、110 页头加句、109 How to use 两句、104、105、OLIVIA 截图、补材料、Railway 变量等）。⏰ G180 回填提醒本周还要提（今天没提）。
+### 四、后端（d9 今天）
+- 已上 main：G272、G275、G271 W4 第二段 + 删 not_reached。
+- 在做：G271 W3（a3：Broadcast、Farm out、单单重发、staff 回复、司机快回 + 告警）⇒ 出形状后前端照做；G276 门票 Records 栏（c1，方案等 Annie）。
+- Notes v159：等 Annie 执行 v159 SQL，后端 task/dispatch-card-notes a17e330a（dc）；前端 task/dispatch-card-notes e83c529c 等。
+### 五、窗口 / 环境
+- 今天前端工作窗口 `npe-ops-frontend-1a`[a03b71]（worktree C:\Code\npe-ops-wt-1a-*）、`79`[3815aa]（wt-send-w4），都已关 dev server / Chrome。家里没有这些 worktree，从 origin 拉 task/phone-toolbars-115。
+- 教训：PROGRESS.md 仓库里是 CRLF；用 Edit 工具后要转回 CRLF、`git -c core.autocrlf=false add`，否则整份文件变 diff（9a91a0dd 误改、157a0bc8 改回）。
+
 
 ## 2026-11-10 前端主窗口 `npe-ops-frontend-62`[53f9cb] 开工（公司电脑；只分工和汇报，不写代码）
 - Annie 指定 62 为今天前端主窗口，向 35 [4a0f5a] 交接。35 发来 11-09 公司交接（PROGRESS「35 收工交接」那节），其中 G263 / 109 第一段 / 112 / 111 / 110 昨晚家里 78 已做完上 main，以 78 那节为准。git pull 到 d2a3a156。
@@ -29,6 +55,11 @@ pe-ops-wt-1a-110ex，已推 task/110-exceptions（sch 467、引擎 32、nav 39�
 - ✅ 后端 **G271 W4 第二段上 main**（d9：任务提交 cbcf558d，合并 0d9c94f2，后端 main f30d895a；完整形状在后端 docs/interfaces/send-outcome-2026-11-09.md 第 5 节）。跟早上那份有两处更正：多周分享 failed 的 reason "no link" 改成 "link could not be made"；Operation report 的 no_contact 永远是 []（同 Staff Messages）。前端改成读新键、上线后把 SHA 发 d9，后端再删 not_reached。前端还没派（等 Annie 定 79 / 新窗口）。
 - ✅ **114 Relay list 功能键整理上 main 09c41a5b**（1a，task/relay-list-toolbar）：截图 https://claude.ai/artifact/R6bkQH2L5rngsh5bsHqgHz ；rl 159、mf 311、nav 39，tsc / eslint / build 过；没动 globals.css / phone.tsx，页头和编辑卡加 data-phone-keep。preview 没画但留着的：Text Size 旁灰字当前值（如「+1 px」）。验收点已转 Annie。
 - 115 派给 1a（Annie 还没开新窗口，1a 空出来了）：三页超 1/3 屏的（Dispatch › Assign、Tour Tracking、Manifests）先给改后截图，Annie 看过再合。
+- 115（1a）截图 https://claude.ai/artifact/PCUBMtMDeK782hpZxjXs3C ：第一批题 1–6 task/phone-compact-26 e656cc97（全套在跑，过了就合）；第二批题 8 三页 task/phone-toolbars-115 87b5f59b（没合，等 Annie）：Assign 494→353、Tour Tracking 480→303、Manifests 432→270。问 Annie 4 题（P1 第二批能否合 / P2 Assign「Last pull from Discord」收进 ⋯ / P3 题 7 题 8 冲突按题 8 做三页 / P4 Dispatch Step 1 提醒默认收起），原文见 62 回复，置顶 115 也记了。
+- ✅ **115 第一批（题 1–6 全站手机键 26px）上 main d1dae38d**（1a）：50 套 headless 全过（da 546、mf 311、rl 159、man 425、tt 168、sch 471、mt 204 …）、nav 39，tsc / eslint / build 过；验收点已转 Annie。第二批 task/phone-toolbars-115 87b5f59b 等 Annie P1–P4。
+- 109 W4 第二段前端派给 79（task/send-rules-w4，照后端 docs/interfaces/send-outcome-2026-11-09.md 第 5 节；上了把 SHA 发 d9 删 not_reached）。
+- ✅ **109 W4 第二段前端上 main 5955b76c**（79，task/send-rules-w4）：排班发布横幅 / Period Share / Staff Messages / Operation report 把 No contact（灰）和 Failed（红）分开；旧后端退回 not_reached。publish-notice-unit 15、sch 475、tasks 148、dor 78、nav 39，tsc / eslint / build 过。SHA 已发 d9 删 not_reached。验收点已转 Annie。问 Annie：一个人都没通知到时的整句红框（10-30 原文）要不要也按「没联系方式算灰」改。
+- 后端删 not_reached 上 main 1914005b（d9：任务提交 bca93163，合并 a7c183e7）：排班发布 / 多周分享只回 notified / no_contact / failed。前端 not_reached 兜底先留着（无害，以后顺手删）。
 - 🟡 Annie 随后改 107（原话）：「107要改一下，登录进来之后直接弹窗，更新以后才可以继续」⇒ 107 暂停，先出新 preview（派给新开的 107 窗口），细节 N1–N3 见置顶 107。
 
 ## 2026-11-09 晚 收工交接：前端主窗口 `前端主窗口-78`[426278]（家里电脑；明天 Annie 在公司电脑）
@@ -1532,6 +1563,15 @@ D. 已完成、待从置顶移走：
 ### 115. 手机版键再缩小 + 页头 / 工具区省地方（2026-11-09 晚，78 派 03）—— ✅ 已答 + 动手，见「11-10 62 开工」
 
 - ✅ **Annie 11-10（原话）：「114，115，107全选A。动手」**：8 题全 A（26px、全站、蓝提交键同缩、行内小键同档、↑↓ 30px、顶栏一起缩、多行大块不动、超 1/3 屏三页并一行 / 收 ⋯ / 收 i，**动手前每页先给改后截图**）。
+- ✅ **11-10 第一批（题 1–6）上 main（1a [a03b71]，62 派，分支 task/phone-compact-26）**：只在 < 640px 生效。globals.css [data-phone-compact] 写死高度的单行键（[class~=h-7…h-11 / h-[30–40px]]，button / a / label / summary / tab）压到 26px、字 13px，蓝提交键同缩、行内小键不变大；size-7…size-[36px] 方块键 26×26（带方括号的类用 [class~="…"] 选，转义写法会被编译掉）。顶栏 ☰（app-frame、partner-frame）/ ★（phone.tsx PhoneShortcutStar）/ ⌕（top-order-search）26px，顶栏 48px 不变；右下 ↑↓ 30px；多行大块不动。390×844 量 10 页：内容区单行键 24–26px（Dispatch Step 1「▸ N tours with no guests yet」两行字框 43px 算多行大块），整页不左右晃。检查：全部 50 套 headless 全过（da 546、mf 311、rl 159、man 425、tt 168、sch 471、nav 39 …），tsc 0、eslint 0 error、build 过。截图 https://claude.ai/artifact/PCUBMtMDeK782hpZxjXs3C 。
+- 🟡 **第二批（题 8 三页）分支 task/phone-toolbars-115 87b5f59b（已推、没合，等 Annie 看截图 + 62 回「可以」）**：Dispatch › Assign 494 → 353px（大标题并进 ‹ 日期 › Today 一行、Step 1 收成一行 Show ▸、Import history / Drivers & guides / Copy 进 ⋯、统计条压矮）；Tour Tracking 480 → 303px（统计格换一行小字照旧可筛选、午餐进 i、搜索 + 状态 + ⋯ + Refresh 一行、Broadcast 进 ⋯、群发记录默认收起）；Manifests 432 → 270px（胶囊一行横滑、Legacy 黄框进 i、勾选条没勾不占位 / 勾了浮底部）。da 546、tt 168、man 425、nav 39，tsc 0。问 Annie：能否合；Dispatch 再把「Last pull from Discord」收进 ⋯（再省约 30px，推荐）；题 7 / 题 8 表冲突按题 8 做了这三页；手机上 Step 1 提醒默认收起、Super Admin 预览链接挪到日期下一行。合之前要先合进第一批的 main。
+- 🟡 **等 Annie（11-10，1a 做完截图 https://claude.ai/artifact/PCUBMtMDeK782hpZxjXs3C ）**：第一批（全站键 26px，题 1–6）照「动手」合 main；第二批（题 8 三页，task/phone-toolbars-115 87b5f59b）等她答：
+  - P1 第二批（Dispatch › Assign 494→353px、Tour Tracking 480→303px、Manifests 432→270px）能不能合。
+  - P2 Assign 还比 1/3 屏多 72px：把「Last pull from Discord」那行小字收进 ⋯，再省约 30px（推荐做）/ 不做。
+  - P3 题 7（统计格等大块不动）和题 8 的表冲突：这三页照题 8 改了统计格 / 统计条，别的页照题 7 不动——这样理解对不对（推荐对）。
+  - P4 手机上 Dispatch Step 1 收成一行，里面的提醒（如没传名单的团）要点 Show 才看到：A 照这样 / B 有提醒时自动展开（推荐 B）；Super Admin 的 Driver / Guide page preview 链接在手机挪到日期下面单独一行。
+  - 🟡 Annie 11-10 晚（原话，看截图「勾了一单」那张）：「发送条浮在底部（右边让开 ↑↓），可以左右滑看全部键---- 这个键可以浮动在页面下方么」。d8 核：分支 87b5f59b 手机上勾了就已经固定在屏幕底部（滚动也跟着，manifests-view.tsx max-sm:fixed）；电脑版没改，发送条在表格上面、一直占位、滚下去就看不见。截图左下黑圈「N」是本地 dev server 的标记，线上没有。已问 Annie：F1 只手机浮（现状）/ F2 电脑版也勾了才出、浮在底部（要先出 preview）。等答。
+  - ✅ **Annie 11-10 晚（原话）：「115全部同意推荐，动手」** ⇒ P1 第二批合；P2 「Last pull from Discord」收进 ⋯；P3 对（三页照题 8，别的页照题 7）；P4 B 有提醒时 Step 1 自动展开、Super Admin 预览链接挪日期下一行照做；F2 电脑版发送条也勾了才出、浮在底部——**这是电脑版样子改动，先出 preview 给 Annie，同意后再写**（F2 原文本就写了先 preview）。d8 请 Annie 开 1 个前端工作窗口（资源：空闲 7.9 / 31.7 GB，chrome 71 个 6.1 GB）。
 
 - Annie 原话：「你记得做一个设计，它们手机网页上所有的键都缩小一点，不要占太多地方，尤其是staff经常操作的那些页面」；看 114 又说：「手机版能不能省点地方啊，一整屏都占完了」。
 - preview：https://claude.ai/artifact/3dJPBmBq9hJShSvcA8ccwE（模拟数据、390×844 真页面截图，8 页 × 现在 / C 28px / A 26px / B 24px 并排）。
@@ -1670,6 +1710,15 @@ pe-ops-frontend-03c），推分支、不合 main**：等后端 40 上 main 给 S
 - ✅ **03 [44f0b4] W2 原文显示修复已上 main 4c7f8a71（11-09，78 说 W1 已在写 skipped - no …，不等 W2）**：Send Log 明细、Tour / Tickets / Morning Tracking、订单查询碰到「skipped - no phone / skipped - no email」写灰字 No number / No email（Send Log 灰胶囊），不显示原文、不当失败（lib/send-outcome.ts noAddressLabel）。检查：tt 168、catchup 58、tk 135、mt 261、orders 54、nav 39、build 过。Annie 验收：今晚之后的 Morning / Relay 批次在 Send Log 明细、Morning Tracking 看灰字 No number。
 - ✅ **03 [44f0b4] 第二部分已上 main 648a149a（11-09）**：后端 W1 上 main（合并 1437f31a、关包 8e1e062a）后核过字段（outcome / sms_outcome / email_outcome 取值同 send_outcome.py；早班 results 里 skipped:true 的行没 outcome、照旧进 Skipped、不进四个数）。追加 Send Log 批次小结：summary.no_contact 灰色「No contact N」胶囊（有才出），「x of N in this send match」的 N = Sent + Failed + No contact；红框照旧只看 failed / not_sent（Q3 没地址不告警）。门票、Broadcast、Farm out、司机 / 导游通知后端还是老字段（W2–W4），前端走回退。检查：tsc 0、eslint 0 error、build 过；unit 24/24；man 425、mt 261、tsend 64、fod 59、tour 69、da 546、nav 39、catchup 57、tk 135、tt 167 全过。How to use 两句等 Annie，定了另起小提交。
   - Annie 线上验收看：Tour Confirmation 发送页 / Morning Pickup 发送页 / Dispatch Morning Relay 的 Send Results（汇总 Sent 绿 / Failed 红 / No contact 灰、没号码那格灰字 No number）；Manifests 团确认弹窗结果（Sent / Failed: 原因）；Send Log 组头胶囊。
+- 🟡 **79 [3815aa] W4 第二段：员工通知（62 派，11-10）**，worktree C:Code
+pe-ops-frontend-wt-send-w4，task/send-rules-w4。后端 d9 f30d895a（任务 cbcf558d、合并 0d9c94f2），形状照后端 docs/interfaces/send-outcome-2026-11-09.md 第 5 节。不出 preview（62：显示口径就是 109 已定的 Sent 绿 / Failed 红 / No contact 灰）。
+  - 排班 Publish / Publish again 提示条（components/schedule/publish-notice.ts）：读 no_contact / failed，旧后端退回 not_reached 按 reason 拆。发失败 = 红字「1 couldn't be reached: Nadia (email could not be sent).」；没联系方式 = 灰字「No email or login: Jing, Anita.」（原来也算进红字，现在不算失败）。一个都没通知到的整句红框照旧（Annie 10-30 原文）。
+  - Period › Share with staff（确认框 + 结果）：读 no_contact / failed（lib/schedule-period-api.ts splitMissed），红字 Not sent: 谁 — link could not be made / email could not be sent，灰字 No email: 谁。
+  - Staff Messages（Message 小框）：读 email {sent, failed, no_email}。发出 ⇒「✓ Sent — also emailed.」照旧；发信出错 ⇒ 绿字 ✓ Sent. + 红字「The email could not be sent. They'll only see it in their Notice.」；没 Team Email ⇒ 绿字 ✓ Sent. + 灰字「No email on file, so it was not emailed.」。旧后端照旧。
+  - Operation report 保存提示（Dashboard 块 + /daily-report 页）：读 notification.failed。有人没通知到 ⇒ 绿字照旧 + 红字「Could not notify: reservations@nationalparkexpress.com (Email could not be sent).」；谁都没通知到 ⇒ 只写 Saved. + 红字列人和原因（不说 People in charge notified）。no_contact 后端永远 []，不显示。
+  - 日报邮件门票段：后端做，前端不用改。Send Log / Tracking 状态标签变绿：62 说这次不做。
+  - 检查：tsc 0、eslint 0 error（schedule-view 1 条旧 warning）、build 过；publish-notice-unit 15/15；sch 475/475、tasks 148/148、dor 78/78、nav 39/39（mock 加 ctl：sch legacyNotReached / periodFailed / periodLegacy，tasks msgEmailFail / msgLegacy，dor notifyFailed / notifyAllFailed / notifyLegacy）。
+- 🟡 **W3 后端上 main（11-10 晚，后端主窗口 5c [16e401]）**：后端 main ceba9aaa（合并 881b2193），形状在后端 docs/interfaces/send-outcome-2026-11-09.md §7。Broadcast 加 sent / failed / no_contact / not_sent + results[]；Farm out 加 no_contact / not_sent，failed 不再算两渠道都没地址的；单单重发加 sms_status / email_status + 三个 outcome；staff 回复、multi reply 加三个 outcome；司机快回形状不变。d8 派前端 6b [033d36]（排在 115 后面），不出 preview（口径已定），上 main 后把 SHA 发 5c。
 - 🟡 （历史）**03 [44f0b4] 第二部分（照后端 W1 形状 docs/interfaces/send-outcome-2026-11-09.md mock 做，78 派）**：分支 `task/send-outcome-ui` c788afd4（worktree D:\npe-ops-frontend-03b），**只推分支、不合 main**，等后端 W1 各入口上 main 核字段再合。
   - 新 lib/send-outcome.ts 唯一判定：后端每行带 outcome / sms_outcome / email_outcome 就照它，旧后端按原状态换算同样的结论（前端先上不空）。汇总 Sent 绿 / Failed 红 / No contact 灰（Not sent 有才出）；渠道格 Sent 绿 / Failed 红 / No number、No email 灰 #6B6B6B；去掉单独的 No number / No email 计数格。
   - 改的入口：Tour 发送页、Tickets 发送页、Morning Pickup + Dispatch relay（共用结果组件）、Manifests 团确认 / Last Minute / 门票弹窗（原文小写 sent / failed: … 改成同发送页 Sent / Failed: …）、Farm out 通知（「邮件发出、短信失败」以前算 Failed，现在 Sent）、司机 / 导游通知（新 no_contact 灰字一行「No contact: 名字 (No number).」）。
