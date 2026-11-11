@@ -32,7 +32,8 @@ export interface AddTimeOffInput {
 }
 
 const NOTE_MAX = 120;
-const TIME_OFF_KINDS: ScheduleTimeOffKind[] = ["pto", "sick", "personal"];
+// 置顶 117：先只有一种 Leave（存成 pto）；明天做假期分类时改回 ["pto", "sick", "personal"]。
+const TIME_OFF_KINDS: ScheduleTimeOffKind[] = ["pto"];
 
 /** 备注不能含换行 / 控制字符（后端会拒）：输入时直接去掉。 */
 export function cleanNote(raw: string): string {

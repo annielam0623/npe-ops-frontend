@@ -25,6 +25,7 @@ export type RuleType =
   | "cannot_work"
   | "days_per_week"
   | "min_days_on_shift"
+  | "max_days_on_shift"
   | "min_rest"
   | "after_shift"
   | "coverage"
@@ -87,6 +88,16 @@ export interface MinDaysOnShiftParams {
   shift_type: string;
   n: number;
   per: "week" | "4weeks";
+}
+/**
+ * 置顶 118（Annie「Lizzie一周最多一次closing」）：某种班每周最多 n 天。选人同 min_days_on_shift
+ * （employee_ids / exclude_employee_ids / 都不写 = 所有人）。Auto-fill 严格遵守。
+ */
+export interface MaxDaysOnShiftParams {
+  employee_ids?: number[];
+  exclude_employee_ids?: number[];
+  shift_type: string;
+  n: number;
 }
 /** 两个班之间至少隔 hours 小时（下班到下一个班的上班，跨周也算）。 */
 export interface MinRestParams {
@@ -166,6 +177,16 @@ export interface GenerateInput {
   /** 这一周里已经排好、要原样保留的班（「Add to them」：在现有班的基础上补）；这些天不会再排别的班，也不会被改。 */
   locked?: WeekPlan | null;
   seed?: number;
+  /**
+   * 置顶 117：已经批了的 Leave（PTO / Sick / Personal，后端 time-off）：员工 id → 这一周哪几天（0 = 周日）。
+   * 这些天这个人什么班都不排（固定班、轮值、补排都跳过）；后端同一人同一天既有班又有休假会拒。
+   */
+  leave?: Record<number, DayIndex[]>;
+  /**
+   * Leave 跟 Days per week 的关系：Annie 2026-11-10 定「leave另外加」⇒ 默认 false = Leave 另外算（目标天数 − Leave 天数，
+   * 每周两天固定休息照给）；true = Leave 算进每周的休息天（目标天数最多 7 − Leave 天数）。
+   */
+  leaveCountsAsOff?: boolean;
 }
 
 export interface GenerateResult {
@@ -217,11 +238,15 @@ interface Compiled {
   cannot: CannotWorkParams[];
   perWeek: DaysPerWeekParams[];
   minDays: MinDaysOnShiftParams[];
+  maxDays: MaxDaysOnShiftParams[];
   minRest: number | null;
   after: AfterShiftParams[];
   coverage: CoverageParams[];
   excluded: Set<number>;
   maxPer: MaxPerShiftDayParams[];
+  /** 置顶 117：每人这一周 Leave 几天（generateWeek 填）。 */
+  leaveDays: Map<number, number>;
+  leaveCountsAsOff: boolean;
 }
 
 function compile(rules: Rule[]): Compiled {
@@ -237,6 +262,7 @@ function compile(rules: Rule[]): Compiled {
     cannot: enabled<CannotWorkParams>(rules, "cannot_work"),
     perWeek: enabled<DaysPerWeekParams>(rules, "days_per_week"),
     minDays: enabled<MinDaysOnShiftParams>(rules, "min_days_on_shift"),
+    maxDays: enabled<MaxDaysOnShiftParams>(rules, "max_days_on_shift"),
     minRest: rests.length ? Math.max(...rests) : null,
     after: enabled<AfterShiftParams>(rules, "after_shift"),
     coverage: enabled<CoverageParams>(rules, "coverage"),
@@ -246,6 +272,8 @@ function compile(rules: Rule[]): Compiled {
       ),
     ),
     maxPer: enabled<MaxPerShiftDayParams>(rules, "max_per_shift_day"),
+    leaveDays: new Map(),
+    leaveCountsAsOff: false,
   };
 }
 
@@ -408,6 +436,32 @@ export function overHours(
   return out.sort((a, b) => b.hours - a.hours);
 }
 
+/** 置顶 119：这个人这周照 Days per week 该上几天（有休假的扣掉，同 Auto-fill）；没有规则 = null。 */
+export function weeklyTargetDays(
+  rules: Rule[],
+  employeeId: number,
+  leaveDays = 0,
+): number | null {
+  const c = compile(rules);
+  if (leaveDays > 0) c.leaveDays.set(employeeId, leaveDays);
+  return targetDays(c, employeeId);
+}
+
+/** 置顶 119：这一天这种班 Coverage 要至少几个人（几条取大的）；没有 = 0。 */
+export function coverageMinOn(
+  rules: Rule[],
+  day: DayIndex,
+  type: string,
+): number {
+  let min = 0;
+  for (const r of compile(rules).coverage) {
+    if (r.shift_type !== type) continue;
+    if (r.days && r.days.length && !r.days.includes(day)) continue;
+    min = Math.max(min, r.min);
+  }
+  return min;
+}
+
 /** 小时数写法：42.5、42（不写多余的 .0）。 */
 export function roundHours(h: number): number {
   return Math.round(h * 100) / 100;
@@ -439,7 +493,46 @@ function targetDays(c: Compiled, employeeId: number): number | null {
     if (r.employee_ids && !r.employee_ids.includes(employeeId)) continue;
     target = target == null ? r.n : Math.min(target, r.n);
   }
+  // 置顶 117：有 Leave 的人，目标天数照 Annie 选的算法扣。
+  const leave = c.leaveDays.get(employeeId) ?? 0;
+  if (target != null && leave > 0)
+    target = c.leaveCountsAsOff
+      ? Math.min(target, 7 - leave)
+      : Math.max(0, target - leave);
   return target;
+}
+
+/** 置顶 118：这个人这种班每周最多几天（没有规则 = null；几条取小的）。 */
+function maxDaysOn(
+  c: Compiled,
+  employeeId: number,
+  type: string,
+): number | null {
+  let max: number | null = null;
+  for (const r of c.maxDays) {
+    if (r.shift_type !== type) continue;
+    if (r.employee_ids?.length && !r.employee_ids.includes(employeeId))
+      continue;
+    if (r.exclude_employee_ids?.includes(employeeId)) continue;
+    max = max == null ? r.n : Math.min(max, r.n);
+  }
+  return max;
+}
+
+/** 置顶 118：一周的班里，有没有哪种班超过「每周最多几天」。 */
+function withinMaxDays(
+  c: Compiled,
+  employeeId: number,
+  week: DayShift[],
+): boolean {
+  if (!c.maxDays.length) return true;
+  const n = new Map<string, number>();
+  for (const s of week) if (s) n.set(s.type, (n.get(s.type) ?? 0) + 1);
+  for (const [type, k] of n) {
+    const max = maxDaysOn(c, employeeId, type);
+    if (max != null && k > max) return false;
+  }
+  return true;
 }
 
 /** 前一天的班 → 第二天这个班能不能接（间隔 + after_shift）。 */
@@ -466,8 +559,14 @@ export function findViolations(
   plan: WeekPlan,
   previous: WeekPlan | null,
   employees: EngineEmployee[],
+  /** 置顶 119：这一周的休假（员工 id → 星期几）：Days per week 扣掉、固定班那天不算没排。 */
+  leave?: Record<number, DayIndex[]>,
 ): string[] {
   const c = compile(rules);
+  for (const [id, ds] of Object.entries(leave ?? {}))
+    if (ds.length) c.leaveDays.set(Number(id), new Set(ds).size);
+  const onLeave = (id: number, d: number) =>
+    !!leave?.[id]?.includes(d as DayIndex);
   const out: string[] = [];
   const name = (id: number) =>
     employees.find((e) => e.id === id)?.name ?? String(id);
@@ -489,14 +588,19 @@ export function findViolations(
         );
       }
     }
+    if (!withinMaxDays(c, e.id, days)) {
+      out.push(
+        `${name(e.id)} works a shift type more days than "at most" allows`,
+      );
+    }
     const t = targetDays(c, e.id);
     const worked = days.filter(Boolean).length;
     const rule = c.perWeek.find(
       (r) => !r.employee_ids || r.employee_ids.includes(e.id),
     );
-    if (rule && rule.mode === "exactly" && worked !== rule.n) {
+    if (rule && rule.mode === "exactly" && worked !== (t ?? rule.n)) {
       out.push(
-        `${name(e.id)} works ${worked} days, rule says exactly ${rule.n}`,
+        `${name(e.id)} works ${worked} days, rule says exactly ${t ?? rule.n}`,
       );
     }
     if (rule && rule.mode === "max" && t != null && worked > t) {
@@ -504,7 +608,9 @@ export function findViolations(
     }
   }
   for (const f of c.fixed) {
+    if (!employees.some((e) => e.id === f.employee_id)) continue;
     for (const d of f.days) {
+      if (onLeave(f.employee_id, d)) continue;
       const s = plan.byEmployee[f.employee_id]?.[d];
       if (!s || s.type !== f.shift_type) {
         out.push(
@@ -569,6 +675,16 @@ function countWeekendSlot(
 
 export function generateWeek(input: GenerateInput): GenerateResult {
   const c = compile(input.rules);
+  // 置顶 117：Leave 的天当作「这个人这天不能上任何班」，并记下天数给 Days per week 用。
+  c.leaveCountsAsOff = input.leaveCountsAsOff ?? false;
+  const onLeave = (id: number, d: number) =>
+    !!input.leave?.[id]?.includes(d as DayIndex);
+  for (const [id, ds] of Object.entries(input.leave ?? {})) {
+    const uniq = [...new Set(ds)];
+    if (!uniq.length) continue;
+    c.cannot.push({ employee_id: Number(id), days: uniq });
+    c.leaveDays.set(Number(id), uniq.length);
+  }
   const rand = mulberry32(input.seed ?? 1);
   const problems: Problem[] = [];
   const history = [
@@ -610,6 +726,8 @@ export function generateWeek(input: GenerateInput): GenerateResult {
     if (!byId.has(f.employee_id)) continue;
     for (const d of f.days) {
       if (days[f.employee_id][d]) continue;
+      // 置顶 117：固定班碰到 Leave 那天就不排（不算问题，结果里那格写 Leave）。
+      if (onLeave(f.employee_id, d)) continue;
       days[f.employee_id][d] = mk(f.shift_type, { start: f.start, end: f.end });
     }
   }
@@ -658,6 +776,15 @@ export function generateWeek(input: GenerateInput): GenerateResult {
     ) => {
       if (days[e.id][slot.day]) return false;
       if (!canWork(c, e.id, slot.day, slot.shift_type)) return false;
+      // 置顶 118：这种班这周已经到「每周最多几天」。
+      {
+        const max = maxDaysOn(c, e.id, slot.shift_type);
+        if (
+          max != null &&
+          days[e.id].filter((x) => x?.type === slot.shift_type).length >= max
+        )
+          return false;
+      }
       // 置顶 110 ①：这个班这一天已经满了。
       if (!roomFor(slot.day, slot.shift_type)) return false;
       // 置顶 110 题 1 A：固定班 + 轮值超过每周天数 ⇒ 这周轮值跳过这个人，换下一位。
@@ -787,6 +914,8 @@ export function generateWeek(input: GenerateInput): GenerateResult {
     return out;
   };
   const patternOk = (id: number, p: Pattern): boolean => {
+    // 置顶 118：某种班每周最多几天。
+    if (!withinMaxDays(c, id, p)) return false;
     for (let d = 0; d < 7; d++) {
       const s = p[d];
       if (!s) continue;
@@ -922,9 +1051,18 @@ export function generateWeek(input: GenerateInput): GenerateResult {
           if (days[e.id][d]?.type !== t || forcedDays.get(e.id)?.[d]) continue;
           days[e.id][d] = null;
           n--;
+          // 置顶 118：提示写这个人那天能上、但都满了的全部班（原来只写被拿掉的那一种，看不出真正卡在哪）。
+          const full = typeOrder.filter((type) => {
+            if (!canWork(c, e.id, d, type)) return false;
+            const k = capFor(c, dateOf(d), d, type);
+            return k != null && headcount(days, emps, d, type) >= k;
+          });
+          const list = (full.length ? full : [t])
+            .map((type) => `${type} (at most ${capFor(c, dateOf(d), d, type) ?? cap})`)
+            .join(", ");
           problems.push({
             date: dateOf(d),
-            message: `${e.name}: no shift left on ${dateOf(d)}. Max people on a shift: ${t} allows ${cap} a day.`,
+            message: `${e.name}: no shift left on ${dateOf(d)}. Every shift they can work that day is full: ${list}.`,
           });
         }
       }
@@ -1041,8 +1179,16 @@ export function seedFromBase(input: {
   previous: WeekPlan | null;
   employees: EngineEmployee[];
   existing?: WeekPlan | null;
+  /** 置顶 117：已批的 Leave（同 GenerateInput.leave）：这些天不照抄基础周。 */
+  leave?: Record<number, DayIndex[]>;
+  leaveCountsAsOff?: boolean;
 }): { seed: WeekPlan; dropped: BaseDrop[] } {
   const c = compile(input.rules);
+  c.leaveCountsAsOff = input.leaveCountsAsOff ?? false;
+  for (const [id, ds] of Object.entries(input.leave ?? {}))
+    if (ds.length) c.leaveDays.set(Number(id), new Set(ds).size);
+  const onLeave = (id: number, d: number) =>
+    !!input.leave?.[id]?.includes(d as DayIndex);
   const dropped: BaseDrop[] = [];
   const rotating = (d: number, type: string) =>
     c.rotation.some((r) =>
@@ -1068,7 +1214,8 @@ export function seedFromBase(input: {
       const before: DayShift =
         d === 0 ? (input.previous?.byEmployee[e.id]?.[6] ?? null) : days[d - 1];
       let reason = "";
-      if (rotating(d, b.type)) reason = "Weekend rotation";
+      if (onLeave(e.id, d)) reason = "On leave";
+      else if (rotating(d, b.type)) reason = "Weekend rotation";
       else if (!canWork(c, e.id, day, b.type)) reason = "Cannot work";
       else if (fixed && fixed.shift_type !== b.type) reason = "Fixed shift";
       else if (!followOk(c, before, b)) reason = "Rest between shifts";

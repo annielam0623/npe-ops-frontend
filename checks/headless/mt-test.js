@@ -191,6 +191,7 @@ async function run() {
   check("How to use 写了 Driver 和 Guest Viewed", await evaluate("return document.body.textContent.includes('Click a Driver name to see where that driver is right now') && document.body.textContent.includes('Guest Viewed only works while live tracking links are turned on');"));
   check("How to use 写了短信最多 300 字、只能普通字符、超了发 email（Annie 2026-10-15）", await evaluate("return document.body.textContent.includes('click Send →. SMS can be at most 300 characters, plain characters only (no emoji, curly quotes or long dashes); if it is longer, send it by email.');"));
   check("How to use 写了 Phone AI 留言（后端 E188）",await evaluate("return document.body.textContent.includes('A Phone AI message means a guest called');"));
+  check("116 How to use：回复发出去就算处理过（原句，Annie「句子没问题」）", await evaluate("return document.body.textContent.includes('When your reply goes out to the guest (SMS or email sent), the message counts as handled and shows ✓ with your name. If no reply is needed, click ✓ Mark as actioned (or Take action in the table).');"));
   check("表格上方提示点 Bus # 看实时位置", await evaluate("return document.body.textContent.includes('Click a Bus # to see live tracking (opens Samsara in a new tab)');"));
   const col = async (label) => evaluate(`return $heads().indexOf(${JSON.stringify(label)});`);
   const byOrder = (order) => rows.find((r) => r[1] === order);

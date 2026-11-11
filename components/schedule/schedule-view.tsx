@@ -78,6 +78,7 @@ import { PeriodView } from "./period-view";
 import { SharePeriodDialog } from "./share-period-dialog";
 import { EmployeesDialog } from "./employees-dialog";
 import { RulesView } from "./rules-view";
+import { OverviewView } from "./overview-view";
 import { CARD, CARD_HEADER, ICON_BTN, MUTED } from "./config";
 import { type PublishNotice, publishNotice } from "./publish-notice";
 import { DayTimeline } from "./day-timeline";
@@ -199,7 +200,9 @@ export function ScheduleView() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   // 规则（后端没上线 / 读不到 ⇒ null ⇒ 不显示 Rules 标签和 Auto-fill 键）。
   const [rules, setRules] = useState<Rule[] | null>(null);
-  const [tab, setTab] = useState<"schedule" | "period" | "rules">("schedule");
+  const [tab, setTab] = useState<"schedule" | "overview" | "period" | "rules">(
+    "schedule",
+  );
   // Period（Annie 2026-11-08）：开始那一周（周日）+ 周数，默认这周起 4 周。
   const [period, setPeriod] = useState(() => ({
     start: weekStartYmd(laToday()),
@@ -245,6 +248,13 @@ export function ScheduleView() {
   // 整周一个 Save（Annie 2026-10-29「你不会用缓存么」「4项全部动手」；B9 Q1–Q7 照推荐）：
   // 拖班、加删、改时间、备注先记在页面上，按 Save 一次存（POST …/changes）。休假照旧马上存（窗口里按键提交的）。
   const [draft, setDraft] = useState<WeekDraft>(EMPTY_DRAFT);
+  /**
+   * 置顶 117：Auto-fill 在这一周新点的 Leave，那天原来有班（Replace 会在 Save 时删掉）——后端同一人同一天不能既有班又有休假，
+   * 所以等整周 Save 存好、旧班删掉以后再存（PUT time-off，kind pto）。员工 id → 日期。
+   */
+  const [pendingLeave, setPendingLeave] = useState<Record<number, string[]>>(
+    {},
+  );
   const [saveState, setSaveState] = useState<SaveState>({ kind: "idle" });
   /** 后端 400 指出的那一个班（标红）。 */
   const [errorSlotId, setErrorSlotId] = useState<number | null>(null);
@@ -595,6 +605,12 @@ export function ScheduleView() {
       setRejectedGapsOf(null);
       setSaveState({ kind: "saved", at: new Date().toISOString() });
       if (r.week.status === "published") setUnsentWeek(weekStart);
+      // 置顶 117：旧班删掉了，再存等着的 Leave（存不上写红字，班已经存好不回滚）。
+      const leaveErr = await savePendingLeave();
+      if (leaveErr) {
+        setSaveState({ kind: "error", message: leaveErr });
+        return leaveErr;
+      }
       // 存好就放开（preview ③），别人可以改；再动手时会重新占。
       void editLock.release();
       return null;
@@ -622,8 +638,33 @@ export function ScheduleView() {
     }
   }
 
+  /** 置顶 117：存 Auto-fill 留下的 Leave（整周 Save 之后）。成功返回 null；失败返回原话。 */
+  async function savePendingLeave(): Promise<string | null> {
+    const todo = Object.entries(pendingLeave).filter(([, d]) => d.length);
+    if (!todo.length) return null;
+    try {
+      for (const [id, dates] of todo)
+        await setScheduleTimeOff({
+          employee_id: Number(id),
+          dates: [...dates].sort(),
+          kind: "pto",
+          note: null,
+        });
+      setPendingLeave({});
+      await loadWeek(undefined, true);
+      return null;
+    } catch (error) {
+      if (isStatus(error, 401)) {
+        redirectToLogin();
+        return "Please sign in again.";
+      }
+      return `The shifts are saved, but the leave could not be saved: ${describeError(error)}`;
+    }
+  }
+
   /** 放弃全部没存的改动，回到已存的样子，放开锁。 */
   function discardDraft() {
+    setPendingLeave({});
     setDraft(EMPTY_DRAFT);
     setOrderDraft(null);
     setSaveState({ kind: "idle" });
@@ -754,7 +795,10 @@ export function ScheduleView() {
       employeeId: number | null;
     }[],
     replace: boolean,
+    /** 置顶 117：要等整周 Save 之后才能存的 Leave（那天原来有班）。 */
+    laterLeave: Record<number, string[]> = {},
   ) {
+    if (Object.keys(laterLeave).length) setPendingLeave(laterLeave);
     void change((d, s) => {
       let next: WeekDraft = replace ? { ...d, creates: [] } : d;
       if (replace) for (const slot of s) next = removeSlot(next, slot.id);
@@ -955,6 +999,8 @@ export function ScheduleView() {
   const periodVisible = pageVisibility.visible("schedule_period");
   const tabs = [
     "schedule" as const,
+    // 置顶 119（Annie「3个问题都同意A，动手」）：Overview 只看和分析，排在 Schedule 和 Rules 之间。
+    "overview" as const,
     ...(periodVisible ? (["period"] as const) : []),
     ...(rules !== null ? (["rules"] as const) : []),
   ];
@@ -981,15 +1027,25 @@ export function ScheduleView() {
               >
                 {t === "schedule"
                   ? "Schedule"
-                  : t === "period"
-                    ? "Period"
-                    : "Rules"}
+                  : t === "overview"
+                    ? "Overview"
+                    : t === "period"
+                      ? "Period"
+                      : "Rules"}
               </button>
             ))}
           </div>
         ) : null}
 
-        {tab === "period" && periodVisible ? (
+        {tab === "overview" ? (
+          <OverviewView
+            initialStart={weekStart}
+            employees={orderedEmployees.filter((e) => e.is_active)}
+            shiftTypes={settings.shift_types}
+            rules={rules}
+            onUnauthorized={redirectToLogin}
+          />
+        ) : tab === "period" && periodVisible ? (
           <>
             {autoFillBanner ? (
               <div

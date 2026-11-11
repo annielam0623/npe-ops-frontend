@@ -48,6 +48,12 @@ export const RULE_TYPES: { type: RuleType; label: string; hint: string }[] = [
     label: "Minimum days on a shift",
     hint: "Someone works a shift at least N days",
   },
+  // 置顶 118（Annie「Lizzie一周最多一次closing」）。
+  {
+    type: "max_days_on_shift",
+    label: "Maximum days on a shift",
+    hint: "Someone works a shift at most N days a week",
+  },
   {
     type: "min_rest",
     label: "Rest between shifts",
@@ -183,6 +189,19 @@ export function describeRule(rule: Rule, ctx: DescribeContext): string {
             ? `Everyone except ${names(ctx, who.ids)}`
             : names(ctx, who.ids);
       return `${subject} work${many && who.mode === "only" ? "" : "s"} at least ${p.n} ${shiftLabel(ctx, p.shift_type)} day${p.n === 1 ? "" : "s"} per ${p.per === "week" ? "week" : "4 weeks"}`;
+    }
+    case "max_days_on_shift": {
+      const p = rule.params as unknown as MinDaysOnShiftParams;
+      const who = minDaysWho(p);
+      const many =
+        who.mode === "everyone" || who.mode === "except" || who.ids.length > 1;
+      const subject =
+        who.mode === "everyone"
+          ? "Everyone"
+          : who.mode === "except"
+            ? `Everyone except ${names(ctx, who.ids)}`
+            : names(ctx, who.ids);
+      return `${subject} work${many && who.mode === "only" ? "" : "s"} at most ${p.n} ${shiftLabel(ctx, p.shift_type)} day${p.n === 1 ? "" : "s"} a week`;
     }
     case "max_per_shift_day": {
       const p = rule.params as unknown as MaxPerShiftDayParams;
@@ -322,6 +341,8 @@ export function defaultParams(
         n: 2,
         per: "week",
       };
+    case "max_days_on_shift":
+      return { employee_ids: [firstEmp], shift_type: firstShift, n: 1 };
     case "min_rest":
       return { hours: 12 };
     case "after_shift":

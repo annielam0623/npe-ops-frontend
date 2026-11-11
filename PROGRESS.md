@@ -4,7 +4,53 @@
 
 > 6d 交接（下面「2026-10-27 交接：前端主窗口 6d」那节）的后端需求已于 10/27 晚由 ad 转给家里后端主窗口 17。
 
-> **下一个主窗口（11-10 晚家里）：先读下面「2026-11-10 收工交接：前端主窗口-62」，再看置顶 107 / 115 / 109。62 开工那节是今天的过程记录；78 及更早的是历史。**
+> **下一个主窗口（11-11 公司）：先读下面「2026-11-11 凌晨 收工交接：前端主窗口-d8」，再看置顶。62 及更早的是历史。**
+
+## 2026-11-11 前端主窗口 `npe-ops-frontend-4c`[fb4c29] 开工（公司电脑；只分工和汇报，不写代码）
+- 接 62 [726949] 交接（62 已退下）；以 d8 节「⏰ 明天开工第一件」为准。62 补充：113 要 Annie 自己在 Bus Manifest 把 Antelope 的 Lunch 勾掉按 Save（没确认做了没有）；114 先合后看已如实告诉 Annie；107 N1–N3、115 P1–P4、109 整句红框 A/B 仍等 Annie（不滚动重问）；⏰ G180 回填本周要提。
+- ✅ **113 Bus Manifest Columns 验收通过**。Annie（原话）：「113已通过验证」⇒ 结案（Antelope Lunch 那步不用再追）。
+- ✅ **114 Relay list 编辑区照参考图：Annie（原话）「114动手」**（她先问「为什么编辑工具的显示还是这个样子，都折腾两天了」，4c 答：新版在 task/relay-edit-always 970e0e17 等动手、没合 main）⇒ 范围：Relay list 方案 A（每张单上方一张编辑卡、一直显示、去 Aa 开关、页头一排 + ⚙ Settings 白键、标题旁 i 摊开、手机竖排 + 底部 Cancel / Done）+ Bus Manifest 一起改成一直显示（Q2 A），颜色只借排版。等开工作窗口派工。
+- 派工：114 ⇒ 工作窗口 `npe-ops-frontend-6b`[ab5dcf]（公司电脑，分支 task/relay-edit-always，Relay list + Bus Manifest 一起，合 main 后回 SHA + 验收点）。工作窗口 `npe-ops-frontend-96`[1c75f6] 待命，等下一件「动手」。
+- 今天后端主窗口：`npe-confirmation-service-54`[6a808b]（接 d9）。4c 已发 54：118 max_days_on_shift 白名单（附 Annie 11-10 晚原话「动手」）；116 / G283（回复即处理含 multi/reply、action_taken_by）54 等 Annie 开后端子窗口再派，做完发 SHA + 回包形状。
+
+## 2026-11-11 凌晨 收工交接：前端主窗口 `前端主窗口-d8`（家里电脑；11-10 晚接 78 / 62；Annie「我要睡觉了，你记录下来，明天到公司给我看这个」）
+d8 只分工和汇报，没写功能代码。今晚前端工作窗口只有 `6b`（家里 worktree，分支都推了 origin）；后端主窗口 `后端主窗口-5c`（已收工）、后端 `npe-confirmation-service-35`（G280）。
+
+### ⏰ 明天开工第一件
+1. **给 Annie 看 118 设置清单**：https://claude.ai/artifact/21xNVYuzYmK85ezX6jaCrV （d8 核过，跟她说的规则一致）。正式设置由她自己点：Settings 加班次 Day 10–6（10:00–18:00）→ Rules 13 条照顺序填。最后一条 Lizzie Close ≤ 1 要等后端白名单，现在存会出红字（预期）。第三步用 Auto-fill 试排、核对，再 Save / Publish。已知限制：Jing 或 Lizzie 周六请假一定缺一个班；周日早晚班三个人大致平均，**不是严格轮流**（Annie 说过「三人轮流」⇒ 问她要不要严格轮流，要的话放进 120）。
+2. **发给当天后端主窗口**（5c 收工前没写进后端待办）：
+   - 118：schedule_rules.py 的 _RULE_SPECS 白名单加 max_days_on_shift，params {shift_type 必填, n int 必填, employee_ids? / exclude_employee_ids? 二选一（同 min_days_on_shift）}，只按周算，未知键拒，400 文案照现有格式，不迁移。上了告诉前端，Annie 就能存 Lizzie 那条。
+   - 116：5c 说 ①–⑤ 已写进后端 116 待办，请当天后端主窗口确认：CHDB1HQ7R 回复后 action_taken_by 为什么空；multi/reply 要记处理人（后端补上后，前端再上 Dashboard Messages 那句 How to use）。
+3. 119 Overview、120 样稿看 6b 最后的回报（见下）。
+
+### 一、今晚上 main（等 Annie 线上验收）
+| 件 | 前端 | 后端 | 验收看 |
+|---|---|---|---|
+| 115 第二批 + P2 + P4 B | 73fef27f + f621c849（6b） | — | 手机 Dispatch › Assign ⋯ 里有 Last pull from Discord；Step 1 有提醒（含 N tours with no guests yet）自动展开；Tour Tracking / Manifests 照截图 PCUBMtMDeK782hpZxjXs3C |
+| 109 W3 发送结果 | 4b6cc43f（6b） | ceba9aaa | Tracking Broadcast 一行 Sent / Failed / No contact；没号码灰字「Saved. No number on file…」不出黄框；Manifests Send message 结果格 + 名单表 |
+| 117 Auto-fill 前先填 Leave | cac45397（6b） | 不用改 | Auto-fill → Next 4 weeks → Preview → Leave 表 → Create draft → 页面 Save；今晚只有一种 Leave（存 pto），明天分类 |
+| 116 How to use 三句 | 3d873326（6b） | — | Tour / Tickets / Morning Tracking 的 How to use 新句 |
+| G280 Order List Source / TripGuru 详情 | 9b0d0e4f（6b） | f4930195 + v163 | Source 原位写 Rezdy、表头 Status；TripGuru 单等 Annie 建第一张 TEST 单（35 通知后核 bookingFields / participants） |
+| 118 Rules：Maximum days on a shift + 排不下提示 | 60877745（功能 73d7bc57，6b） | 白名单明天 | Add rule 有 Maximum days on a shift，Who 默认 Only；存会出后端 400 红字（预期）；排不下的提示写真正满的班 |
+| d8 误提交 CRLF 已修 | fd872009 误改 15 个文件行尾 ⇒ d597ac5e 恢复（内容没变） | — | — |
+
+### 二、在分支 / 在做
+- ✅ **119 Overview 已上 main 4240ea78**（6b；sch 514、engine 38、nav 39，tsc / eslint / build 过；只读）。验收：标签 Schedule | Overview | Period | Rules；默认 4 周可切 1 周、‹ › 翻；每周一张表（班次色、Off 灰、Leave 深黄），每人右边几天几小时，不对红字「should be N」；表底每种班每天人数，少于 Coverage / 多于 Max 红；Analysis 每条规则每周 ✓ / ✗ + 原因直接列出、排不下的班；最下面每人 4 周合计；不收进 ⋯ / i；手机名字列固定、表格自己框里滑。
+- **120 Rules 简化 + 选的时候就提示冲突**：样稿做完（6b，没写代码、没分支）https://claude.ai/artifact/GFDkF7AJeDM2hqVmtpCd5X 。现在 Annie 那套规则要填 24 条；新样子 People（每人一张卡：能上哪些班、Days off、Fixed shift、Shift limits、Weekend rotation、每周几天，卡底「Can work N days · needs 5」）/ Shifts（时间、至少 / 至多几人、Exceptions、每天几人能上 7 格，0 红、只剩 2 人黄）/ General（晚班后不早班、Rest、40 h）+ 右边 Check（每改一处重算：要排几个班 vs 能排几个、没人能上的班、两项打架、引擎试排一周不存）。样稿顶上 3 个情况：Annie 的规则（都排得下，黄字「周六只有 Jing、Lizzie」「没有空余」）/ 故意冲突（Naida 周六周日都不上 ⇒ 红「1 short」+ 怎么改）/ 两项打架。存成现有规则，后端只差 118 白名单。**明天给 Annie 看，问 2 题（原文）**：
+  - Q1 新的样子放哪里？现在 Rules 标签是一条一条的规则清单。A（推荐）Rules 标签直接换成新样子；已有规则第一次打开自动换成卡片，换不进的（按日期的例外、自己写的 Weekend rotation 班位）放最下面「Other rules」照旧改；只有一个地方设。B 旧 Rules 留着，旁边加新标签「Setup」，两边改同一份规则，但同一件事两个地方能改，容易搞混。
+  - Q2 Check 有红字时还能不能按 Save？现在只挡格式错误。A（推荐）能存，红字留在 Check，Auto-fill 排不下的留空并列出（有些情况本来就补不上，挡住反而改不了别的）。B 有红字就不能存，Save 变灰。
+  - 另问：周日三人要不要严格轮流（要的话放进人卡的 Weekend rotation 一起做）。
+- **114 Relay list 编辑区照参考图**：task/relay-edit-always 970e0e17，preview 6FE1yuBB5sCbB8HR89zUW2。Annie：「我说的是relay list全部按A」（Q1 每张单上方各一张卡、Q2 Bus Manifest 一起改）+ 颜色只借排版。**还没说「动手」**。
+- **F2 Manifests 发送条 + 勾选列 + How to use**：task/manifests-float-bar 42c9b9d7，preview J8P3tHm8TwgUxt3r6mzwKJ。等 Annie 答 G1–G3、H1 +「动手」。
+- 116 前端检查：task/reply-auto-action（已随 3d873326 上了），Dashboard 句等后端 multi/reply。
+
+### 三、等 Annie（原文都在置顶 / 已发过，不滚动重问）
+- 114 一句「动手」；F2 的 G1–G3、H1；没有可用短信渠道时（no_channel）显示灰还是红（推荐 A 两处都红）；118 要不要严格三人轮流；之前的 107（挡整页弹窗 N1–N3）、Auto Send Recent runs、110 页头那句、109 How to use 两句等，同 62 交接。
+- Annie 自己要做的：照 118 清单设线上 Rules；建第一张 TripGuru TEST 单。
+
+### 四、结案 / 更正
+- Ricky 登录慢：Annie「算了，她在中国，应该是vpn的原因」⇒ 结案。顺带查清：ops 的 Railway Watch Paths 已是 `**` / `!**/*.md` / `!docs/**`，文档推送都 skip（Annie 确认），推 PROGRESS 不会部署。不要加 railway.json（config-as-code 旧文件只保证到 2026-12-01）。
+- 教训：PROGRESS 只用 `git -c core.autocrlf=false add PROGRESS.md` + 普通 commit，**不要 `commit -am`**；推前 `git show --stat HEAD`。
 
 ## 2026-11-10 收工交接：前端主窗口 `npe-ops-frontend-62`[53f9cb]（公司电脑；Annie「收工，回家继续」）
 ### 一、今天上 main（都等 Annie 线上验收，验收点已在对话里逐件转她）
@@ -1560,6 +1606,66 @@ D. 已完成、待从置顶移走：
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### ✅ 生产慢（2026-11-11 00:45 前，Annie 转 staff 投诉）—— 结案：Annie「算了，她在中国，应该是vpn的原因」，不用再跟后端跟进
+
+- Annie 原话：「Ricky投诉刚才登录花了5-6分钟才loading页面，然后loading message也非常慢」。
+- d8 只读测（00:45 后）：ops 页面 0.17–0.22s、ops 转发未登录 API 0.15–0.2s、confirm 0.13s，现在不慢；登录后的接口测不了。
+- 今晚上线：后端 G280 f4930195 + v163（约 23:00）、W3 ceba9aaa，可能还开了 G180 tracking-sync；前端推 main 多次（每次 Railway 重新部署）。
+- 已请后端 5c 只读查 Railway 日志 / 慢请求 / DB / 重启。问 Annie：Ricky 用的是 ops 还是 confirm、几点、哪一页的 message。等结果。
+- 5c 查（Annie 说约 00:20）：后端 23:08 后没部署；00:20 前后没有定时大任务（下一个 03:00 对账 + tracking-sync 全量）；00:39 / 00:40 生产库空闲（6 个连接、没有锁等待）；tracking-sync 是 super_admin_only（22:08 设），平时只同步来单那天；v163 4 张表空、TripGuru 轮询没事件；登录记录 00:20 前后只有 Annie 00:22，Rickie（id 14）上次登录成功 21:58；/auth/login 实测 0.35s。Railway 日志 / CPU 后端看不到，要 Annie 在 Railway 后台看。⇒ 后端没找到原因。
+- d8 查前端推 main 时间：功能 23:03 / 23:12 / 23:22；之后只有 PROGRESS 文档，00:03 一次，然后到 00:39 才有下一次 ⇒ 00:15–00:25 没有推送。~~发现：仓库没有 railway.json / toml ⇒ 只改 PROGRESS 也重新部署~~ **更正**：Annie 在 Railway 后台看到 Watch Paths 已经是 `**` / `!**/*.md` / `!docs/**`（Annie 确认原话：「我们的一系列全是doc，然后全部skip了」）⇒ PROGRESS 推送本来就不部署，今晚只有 23:03 / 23:12 / 23:22 三次功能部署，频繁部署不是原因。可选再加 `!checks/**`。不要加 railway.json（Railway config-as-code 已不推荐，旧文件只保证到 2026-12-01）。（已结案，不用发后端。）
+
+### 120. Staff Schedule Rules 简化 + 选的时候就提示冲突（2026-11-11，Annie 提；d8 派 6b 先出样稿）
+
+- Annie 原话：「排班那个，我需要你们把规则改得更简单一些，而且在我选得时候就应该提示有冲突或者有问题」。
+- d8 初步方向（样稿里可改）：按「人」和「班」设（每人一张卡：能上哪些班、固定休哪几天、每周几天、某班每周最多 / 至少几次、参不参加轮值；每个班一张卡：时间、每天最少 / 最多几人、例外日；全局：晚班后不接早班、最少休息小时），底下照旧存成现有规则；边选边检查（总账 需要几个班 vs 有几个位置、逐人天数够不够、某天某班没人能上、规则互相打架、试跑引擎列出排不下的），红字当场指出。样稿用 118 真实情况画，含一个故意的冲突。排在 118 合 main 之后。等样稿 + Annie 答 +「动手」。
+
+### 119. Staff Schedule 排班表做成 118 preview 的样子（一目了然 + 分析）（2026-11-11 凌晨，Annie 在 6b 窗口直接提；6b 出样稿）
+
+- Annie 原话：「我需要在staff schedule那里把排班做成你preview的那个样子，一目了然，还可以分析」。
+- 6b 样稿（只 preview，没写代码）：https://claude.ai/artifact/8vLNnqptWW3ddFvfNoVAvk 。理解：加一个 Overview 标签，只看和分析，原 Schedule 标签照旧排 / 拖 / 存 / 发布。排班表默认 4 周，一人一行、一天一格，按班次上色（Open / Day / Close / Day 10–6 / Off / Leave），每人每周末尾写天数、小时，不对红字；每周下面三行每天每种班几个人，少了 / 多了标红。Analysis：Rules 每条每周 ✓ / ✗，加「只有 Jessica 的白班日」「排不下的班」，每人 4 周合计。后端不用改。
+- 题（6b 已在 Annie 那边贴了）：Q1 放哪（A 新加 Overview 标签（推荐）/ B 直接把 Schedule 标签换成这样，要另出样稿）；Q2 一次看多长（A 默认 4 周、可切 1 周、‹ › 翻（推荐）/ B 只看 1 周）；Q3 分析查什么（A 照 Rules 逐条 + 每天人数 + 每人天数小时 + 排不下 + 4 周合计（推荐）/ B 只要天数小时和每天人数）。d8 提醒：她原话是「在staff schedule那里把排班做成」，Q1 要她确认是另加标签还是直接换。等答 +「动手」。
+- ✅ **Annie（原话）：「3个问题都同意A，动手」** ⇒ Q1 A 新加 Overview 标签 / Q2 A 默认 4 周可切 1 周 / Q3 A 照 Rules 逐条 + 合计。d8 派 6b（只读、不改后端、复用排班引擎判据、不收进 ⋯ / i、颜色用现有的），过了直接合 main。
+
+### 118. Staff Schedule Rules 照 Annie 需求重设（2026-11-10 晚；d8 派 6b 先模拟 + preview）
+
+- Annie 原话：「现在的rules不管我怎么制定都不对，我把需求告诉你，你帮我来重新设置一下rules。」需求：「Naida固定不上周六，Veronica是固定的opening，Lizzie一周最多一次closing，Jessica固定上10 - 6点，Jessica周一周二固定休息。头一天晚班第二天不能安排早班。除了Jessica之外，V，N，J和Lizzie每周上40小时，然后休两天」「一个班最多一个人」「班次是2-10， 9-5， 1：30 p-9：30p」「Jassica只能上白天的班，周三可以两个人一起上白天的班」「（2-10）是am」「空出来的那个班从jassica平时的白班里挤出一个白班来，其他人补早晚班」。J = Jing。
+- d8 整理：早班 02:00–10:00、白班 09:00–17:00、晚班 13:30–21:30、Jessica 10:00–18:00（算白班）。Naida Cannot work 周六；Veronica 只早班（Cannot work 白 / 晚）；Lizzie 晚班每周 ≤ 1（**新规则 max_days_on_shift，前后端都要改**）；Jessica Fixed 周三–周日 10–6、不上周一周二、不上早晚班、不轮值；晚班后不接早班（After a shift）；V / N / Jing / Lizzie 每周刚好 5 天 + 40 小时提醒；早晚班每天正好 1 人；白班周一周二 1 人，周三–周日除 Jessica 外最多 1 人、每周 1 天只有 Jessica（**Max people 要能不算 Jessica，或把 10–6 设成单独班次**）。合计 20 个班 = 4 人 × 5 天。
+- 等 6b 模拟 4 周 + preview（含「现在怎么设都不对」的原因）⇒ Annie 看 +「动手」。
+- 补（Annie 原话）：「如果周末还补不上，就把jing和Lizze以及Nadia的白天班挪过去」⇒ 周末早晚班优先排满；排不满时把 Jing / Lizzie / Naida 当周的白班挪到周末早晚班（其他规则照守：Naida 周六不能上、Lizzie 晚班 ≤ 1、晚班后不接早班、每人 5 天）。已转 6b。
+- 再补（Annie 原话）：「3个人轮值那天的空缺，原来的那天就安排Jessica一个人上白班」⇒ 三人轮流挪；被挪走那天白班只有 Jessica。推论：只能从周三–周五挪（周一、周二 Jessica 休），d8 已问 Annie 确认，已转 6b。
+- 🟡 **preview（6b）**：https://claude.ai/artifact/CLx99qVsvqLZK7ZgipkQAU ，分支 task/schedule-rules-118 8d1a2497（直接跑引擎，4 周 11/15–12/12）。原因：① 主因：Jessica 10–6 跟 9–5 算同一种白班，「最多 1 人」把她也算进去，其他四人每周只排到 3–4 天；② Lizzie 晚班 ≤ 1 现有规则写不出 ⇒ 新规则 max_days_on_shift（引擎 + Rules 页已写）；③ 排不下的提示写的班次名不一定对（明天修）；④ Veronica 要用 Cannot work，不用 Fixed shift。Jessica 用单独班次「Day 10–6」跑 4 周全部通过，3 种 seed 一样；周末缺人时引擎自动从周三–周五白班挪，现有引擎就会，不用改；三人轮流公平还没验证。问 Annie：Q1 Jessica 10–6 设成单独班次（A 推荐，不改后端 / 引擎）/ 在 Max people 里排除她（B，前后端都改）；Q2 只从周三–周五挪（A 推荐）/ 哪天都可以（B）。
+- ✅ **Annie（原话）：「全部同意A」**（118 Q1 / Q2）⇒ Q1 A Jessica 10–6 设成单独班次「Day 10–6」，白班「最多 1 人」只管 9–5；Q2 A 周末缺人只从周三–周五挪白班，三人轮流。还没说「动手」，d8 已问。
+- ✅ **Annie（原话）：「动手」** ⇒ d8 派 6b：合 main（max_days_on_shift 后端没上前存了 400 要写红字）、修提示班名、补公平 / Q2 / 周末固定休检查，另出给 Annie 照着点的设置清单（Settings 加 Day 10–6 + Rules 逐条怎么填；线上由 Annie 自己设）。⚠️ 明天第一件：把 max_days_on_shift 白名单发当天后端主窗口。
+- 需要后端：schedule_rules.py 白名单加 max_days_on_shift {shift_type, n, employee_ids? / exclude_employee_ids?}，固定按周 ⇒ d8 已发 5c，**5c 已收工、没写进后端待办**（补记：Annie 又说「Veronica 11/26-30休假」（取代 11/26–27）、「然后Veronica固定休周六周日」⇒ Cannot work Veronica 周六周日；都已转 6b 重跑） ⇒ ⚠️ 明天前端主窗口：Annie 说「动手」后，把这条形状发给当天的后端主窗口派工（不迁移，未知键拒，400 英文）。
+
+### 117. Staff Schedule：Autofill 前先填已批的 Leave（2026-11-10 晚，Annie 在后端提，5c 转；d8 派 6b 出 preview）
+
+- Annie 原话：「我现在需要你临时加一个rule，就是让我添加staff已经申请好了的假期，就是OFF day，让我选择autofill的时候可以先跳出一个窗口，点击哪些天是已经申请的Leave，不是平时每周的两天」。
+- 5c：后端现成可用、不用改。PUT /api/schedule/time-off（supervisor+，种类 pto / sick / personal，所有人可见），GET /api/schedule/time-off 读；同一人同一天班 + 休假服务层两头都拦，所以 autofill 不能排到 Leave 那天。接口说明在后端 docs/interfaces/schedule-phase2-notes-pto-defaults-2026-10-18.md。测试数据：Veronica 11/26–27、Jing 12/20–23、Lizzie 12/24–27。
+- 要问 Annie（preview 里）：有 Leave 的那周还排不排每周两天固定休息，Leave 算进那两天还是另外加（5c 点名）；种类分不分；弹窗里填的什么时候存。等 preview + 答 +「动手」。
+- ✅ **Annie（原话）：「leave另外加」** ⇒ Leave 不算进每周两天固定休息，有 Leave 的那周照样再排两天休息。已转 6b，preview 照这个画。
+- ✅ **Annie（原话）：「要的，但是今晚就先放Leave，明天我们回公司做假期申请的时候再分类。因为我现在要做接下来4周的排班，所以要把班先排出来，其中涉及到几个人已经请了假」** ⇒ 今晚只做一种「Leave」（后端种类存哪个由 6b 核文档，明天分类）；弹窗盖住接下来 4 周；加急，preview 从简，她「动手」后今晚上线。
+- preview（6b）：https://claude.ai/artifact/HMxJ3CoLoEUVwyFQxCksmV ，分支 task/schedule-leave-autofill 9a13c555。Auto-fill 点 Preview 先出 Leave 表（每人一行、范围 = 这次要排的每一天，已发布周不出，已录休假只读）；引擎 Leave 天不排班、Days per week 扣 Leave 天数、两天 Off 照给；结果 Leave 用休假卡深黄；今晚界面只有一种 Leave（存 pto，明天改 config.ts TIME_OFF_LABEL + add-shift-dialog 种类）；顺带修了 Auto-fill 原来不看休假的问题。后端不用改。
+- ✅ **Annie（原话）：Q1「A」，「117动手」** ⇒ Leave 按 Create draft 时一起存（先 Leave 后班），Cancel 不存。6b 补检查后今晚合 main。
+  - ✅ **上 main（6b）**：分支 task/schedule-leave-autofill。Auto-fill 点 Preview 先出 Leave 表（范围 = 实际要排的每一天，4 周 = 28 天，已发布的周不出；名字固定在左边、左右滑），已存的休假写 Leave、只读，点空格标 Leave。引擎（lib/schedule-engine.ts）：Leave 的天不排任何班（固定班 / 周末轮值 / 补排 / 照抄基础周都跳过），Days per week 目标 = n − Leave 天数（「leave另外加」，两天 Off 照给）。预览 Leave 格写 Leave（同排班页休假卡深黄）。今晚界面上休假一律写 Leave（config.ts TIME_OFF_LABEL 三种都写 Leave；add-shift-dialog 只剩一种，存 pto——后端不传 kind 的默认值），明天分类时改回。
+    - ⚠️ 跟派工写的「先 PUT time-off 再建班」不同：后端（mock 同）同一人同一天有班就拒存休假，新周常是从上周复制来的班 ⇒ 改成：直接建草稿的周先建班（Replace 删旧班）再存 Leave；这一周（班放页面等 Save）那天原来没班的 Create draft 时马上存、原来有班的等整周 Save 之后再存（schedule-view pendingLeave）；Add to them 保留了原来的班又碰上 Leave 的存不上，结果条写明。Cancel 不发任何请求（Q1 A）。
+    - 检查：sch 492/492（新 17 条 + 旧的休假种类检查改成今晚只有 Leave；Auto-fill 旧检查加 leaveContinue 过 Leave 一步）、引擎 32/32、nav 过；tsc 0、eslint 0 error、build 过。
+
+### 116. 回复了客人就自动算处理过（Take action）（2026-11-10 晚，Annie 附 Tour Tracking 截图提；d8 记，没派）
+
+- ✅ **How to use 三句上 main（6b，Annie「句子没问题」）**：分支 task/reply-auto-action。Tour Tracking「…reply. When your reply goes out to the guest (SMS or email sent), it counts as handled and the cell shows ✓ with your name. If no reply is needed, click Take action. If a new message…」；Tickets Tracking 同样一句（接 SMS 300 字那句）；Morning Tracking「When your reply goes out to the guest (SMS or email sent), the message counts as handled and shows ✓ with your name. If no reply is needed, click ✓ Mark as actioned (or Take action in the table). If a new message…」。前端排查：发完会重拉，弹窗看行的 action_taken_by、格子看 action_taken_by && !notes_unhandled，没 bug；tt 加 116 检查（mock ctl.autoAction 照后端 booking_notes.py:903-909：sent ⇒ 记处理人；Save note / 两渠道没地址 / 发送失败 ⇒ 不记）。tt 180、tk 136、mt 265、nav 39；tsc 0、eslint 0 error、build 过。
+  - ⏸ **没上：Dashboard Messages 那句**（原文：「Replied to the guest and it went out (SMS or email sent)? It counts as handled and leaves the list. No reply needed? Select Take action to remove it. It reappears if the guest messages again.」，换掉 components/dashboard/messages-section.tsx HELP_ITEMS 最后一句）——等后端 multi/reply 也记处理人再上。
+  - 🔴 需要后端：① 查 CHDB1HQ7R 为什么回复后 action_taken_by 是空的（6b 列的 4 个方向：bookings 行现值、那条回复的 sms/email_status 是不是正好 "sent"、21:25 后有没有入站留言清空、是不是从 Multi Orders 回的）；② multi/reply 发出去也记处理人。
+- Annie 原话：「有个前端交互，staff在留言框里已经回复了客人，take action就应该自动处于处理过的状态了，可是现在没有」。截图：Tour Tracking CHDB1HQ7R（Annie Test），Phone AI 留言后 Nadia 回「Hello MS. Annie」（SMS sent, Email sent），Notes 格仍是 ⚠️ Take action，底部仍是「✓ Mark as actioned」。
+- d8 只读查：现在的设计就是回复和处理分开，要另点 Take action / Mark as actioned（conversation-modal.tsx、conversation-preview.tsx；How to use 原句「When a message is handled, click ✓ Mark as actioned…」）。所以这是改规则，不是 bug。
+- 问 Annie：R1 怎样算回复（A 真发给客人、任一渠道 Sent 才算（推荐）/ B 写内部备注 Save note 也算）；R2 范围（A 所有有留言框的地方一起：Tour / Morning / Tickets Tracking、Dashboard 消息、订单查询，旧 confirm 页面也跟着，由后端在发送那一步记处理人（推荐）/ B 只 ops 前端）；R3 显示（A 照现有样子 ✓ 回复人名字，客人再来新留言照旧变回 ⚠️ Take action（推荐））。样子用现有的，d8 建议不出 preview。等答 +「动手」。
+- ✅ **Annie（原话）：「全部同意推荐。动手」** ⇒ R1 A / R2 A / R3 A，不出 preview。d8 派后端 5c（在发送那一步记处理人，列全部入口，回包是否带 action_taken_by）和前端 6b（各回复入口发出后立刻显示 ✓、改 How to use 句子（英文原文给 Annie 确认）、补检查；推分支，等后端 SHA 核字段再合）。
+- 5c 回：后端在发送那一步早就记处理人（booking_notes.py:903-909 by-order、:1154-1166 by id；入站清空 :897-901、:1137-1149）⇒ 截图那单多半是别的原因；今晚只登记，明天派子窗口查。
+- 6b 前端排查：前端没 bug（发完重拉整表；弹窗底部只看 action_taken_by；格子 = action_taken_by && !notes_unhandled，都用后端字段）⇒ 截图里重拉回来那一行的 action_taken_by 是空的。补检查 task/reply-auto-action c5678cff（tt 179）。已转 5c 明天查：① CHDB1HQ7R 的 action_taken_by / at；② 21:25 那条 sms / email_status 是否正好 "sent"、走的哪个端点；③ 之后有没有入站留言清空；④ Multi Orders multi/reply 不写 action_taken（R2 要补）；⑤ DB TimeZone。订单查询页没有回复框，不用改。
+- How to use 新句（6b 写，等 Annie 确认原文，见 d8 回复）：Tour / Tickets / Morning Tracking、Dashboard Messages 四处；Dashboard 那句要等后端补 multi/reply 后才上。
+- ✅ **Annie（原话）：「句子没问题」** ⇒ 6b 在 117 preview 之后，把 Tour / Tickets / Morning 三句合 main；Dashboard 句等后端补 multi/reply。
+
 ### 115. 手机版键再缩小 + 页头 / 工具区省地方（2026-11-09 晚，78 派 03）—— ✅ 已答 + 动手，见「11-10 62 开工」
 
 - ✅ **Annie 11-10（原话）：「114，115，107全选A。动手」**：8 题全 A（26px、全站、蓝提交键同缩、行内小键同档、↑↓ 30px、顶栏一起缩、多行大块不动、超 1/3 屏三页并一行 / 收 ⋯ / 收 i，**动手前每页先给改后截图**）。
@@ -1574,6 +1680,8 @@ D. 已完成、待从置顶移走：
   - 🟡 **Annie 11-10 晚看 F2 preview（J8P3tHm8TwgUxt3r6mzwKJ）原话：「勾不勾都要出，不然staff还以为这个功能没了」** ⇒ F2-2（没勾时的提示句）作废。冲突：115 第二批已上 main 的手机版是「没勾不占位」，要跟着改。d8 派 6b 改 preview：电脑 + 手机都一直浮在底部，没勾时「0 orders selected · 0 pax」+ 键灰着点不了；表格底部留白，不被浮条盖住。问 Annie 三题（见 d8 回复）：G1 电脑 + 手机都改（推荐）/ 只电脑；G2 一直浮在底部（推荐）/ 回到表格上面固定；G3 没勾时照电脑现在的样子（推荐）。等 preview + 「动手」。
     - ✅ preview 第 2 版（6b，同链接 J8P3tHm8TwgUxt3r6mzwKJ，代码分支 task/manifests-float-bar df813384，没合 main）：电脑 1440 × 800 + 手机 390 × 844 各「没勾」「勾了一单」「滚到底」，按 G1–G3 推荐画。量过：没勾写「0 orders selected · 0 pax」、四个键 disabled；电脑条 left 84 / right 1380（不盖侧栏，让开 ↑↓），手机 left 12 / right 330；滚到底最后的内容（Action Log）在条上面（电脑 680 < 730，手机 740 < 792）；整页不左右晃。题目同 G1–G3。等 Annie 答 +「动手」。
     - 🟡 **Annie 看第 2 版（原话）：「键要在action log和how to use上面。把how to use放到bus tour和tickets tag旁边去」**。d8 的理解：发送条做成 sticky，表格没滚完时贴屏幕底部，滚到表格结尾就停在表格下面、在 How to use / Action Log 上面；How to use 改成标签那一行最后的「📖 How to use」键，点开在标签下面展开，Action Log 留在最底。跟手机版规则「How to use 手机上放页面最底」冲突，问 Annie H1 手机也挪（推荐）/ 手机照规则留最底。派 6b 出第 3 版 preview。等 preview + 答 +「动手」。
+    - 🟡 **Annie（原话）：「我不明白为什么左边的勾选框这里有那么大的空白区域，为什么不把select all和select unsent叠起来？然后就用select unsent可以短一些」** ⇒ 勾选只留一列，表头上下叠「☐ Select all」/「☐ Select unsent」（原「Select all unsent tours」缩短），列宽压窄；作用不变。d8 派 6b 加进 F2 preview 第 4 版（排在 114 重做后面）。等 preview +「动手」。
+    - ✅ preview 第 4 版（6b，同链接 J8P3tHm8TwgUxt3r6mzwKJ，分支 task/manifests-float-bar 42c9b9d7，没合 main）：勾选只留一列，表头上下叠「☐ Select all」/「☐ Select unsent」（Bus / Tickets 同），每行勾选框左对齐，列宽按内容；作用不变（Select unsent 勾没发过的，都勾着时它打勾，再点取消这些）；partner 不动。实测勾选列宽：电脑 208 → 113px，手机 248 → 113px。第 3 版的发送条 / How to use 截图用新代码重截。照原话定，没新题；还剩 H1。
     - ✅ preview 第 3 版（6b，同链接 J8P3tHm8TwgUxt3r6mzwKJ，分支 task/manifests-float-bar 8bca15eb，没合 main）：发送条和表格包一层（data-table-block），sticky bottom-4（手机 bottom 12px + safe-area），右边 mr 40px / 手机 48px 让开 ↑↓；去掉第 2 版量位置的 hook 和底部空白。标签行最后「📖 How to use」键（浅绿字，不用蓝），点开在标签下面展开原来那块（HowToUse 加可选 open / onToggle / className），页面底部那块拿掉，Action Log 留最底。实测：电脑条 left 84 / right 1372，表格结尾时条在表格下 16px（表格底 620、条顶 636）；手机 left 12 / right 330，表格结尾表格底 713、条顶 729；整页不左右晃。手机上标签占满一行，How to use 键排到标签下一行（多约 30px）。限制：How to use 展开把表格推出屏幕时，条跟着表格在下面（sticky 不能离开自己那一块）。另附手机 B「照规则放最底」对比图（截图时临时挪的）。题 H1 原文在 preview。
   - ✅ **Annie 11-10 晚（原话）：「115全部同意推荐，动手」** ⇒ P1 第二批合；P2 「Last pull from Discord」收进 ⋯；P3 对（三页照题 8，别的页照题 7）；P4 B 有提醒时 Step 1 自动展开、Super Admin 预览链接挪日期下一行照做；F2 电脑版发送条也勾了才出、浮在底部——**这是电脑版样子改动，先出 preview 给 Annie，同意后再写**（F2 原文本就写了先 preview）。d8 请 Annie 开 1 个前端工作窗口（资源：空闲 7.9 / 31.7 GB，chrome 71 个 6.1 GB）。
   - ✅ **11-10 晚 第二批 + P2 + P4 B 上 main（6b [033d36]，d8 派，分支 task/phone-toolbars-115）**：87b5f59b 合最新 main，加：P2 手机上只写「Last pull from Discord: …」那句时收进 Step 2 的 ⋯（Import history 下面），拉的结果 / 报错照旧露在外面，电脑版不变；P4 B Step 1 有提醒时自动展开（同步失败、有单读不进来、Completed 之后的变化、读不出来的红字、卡上橙字 Needs saving / 要多开车 / 要排座），**没客人的团（No guests yet）不算提醒**（只列要处理的事），staff 点 Hide ▾ 收起后不再弹开；Super Admin 两个预览链接手机上在日期下一行（87b5f59b 已做，补了检查）。390×844 量 Assign 页头到 Step 2 统计条底边 316px（mock 10-05）。检查：da 555/555（新 10 条）、tt 168/168、man 425/425、mf 311/311、nav 39/39；tsc 0、eslint 0 error、build 过。F2 不在这次里（另出 preview）。
@@ -1588,6 +1696,22 @@ D. 已完成、待从置顶移走：
 - 59 的 114 Relay list 编辑卡（先按 28px 画）题 M6 写「最终跟 115 题 1 走」，已对齐。
 
 ### 114. Relay list 功能键统一整理（2026-11-09 晚，Annie 看 Spacing 截图后提，78 派 59）—— ✅ 已答 + 动手，见「11-10 62 开工」
+
+- 🔴 **11-10 晚 Annie 看线上（附参考图，原话）：「我想我说得很清楚，我要这个版面，除了颜色走我们自己的标准配色，我要这个版式，我不要任何隐藏菜单，我要一目了然」**。线上 09c41a5b 编辑卡收在每张单的「Aa Text size」开关里（Q2 A 被理解成保留开关，理解错了），手机 Print / Excel / ⚙ 收进 ⋯，都不符合。d8 派 6b 照参考图重做 preview：编辑卡一直显示、不要 Aa 开关；手机竖排，不要 ⋯ / Reset…，全部直接能点（这一页盖过手机版规则的 PhoneMore）；颜色用我们的（深色外框 + 白卡片，选中 #1f2937，蓝只给 Save）；多张单时卡放哪、Bus Manifest 同组件、原「Colours, Text & Page」设置入口放哪，preview 里说清。等 preview + 「动手」。
+- 🟡 **114 重做 preview（6b）**：https://claude.ai/artifact/6FE1yuBB5sCbB8HR89zUW2 ，分支 task/relay-edit-always e7de0e54（真代码只做了 Relay list 方案 A），没合 main。照图定：编辑卡一直显示、在每张单上方，去掉 Aa 开关；电脑页头「‹ Dispatch｜Colours, Text & Page 标题｜● N sheet(s) with text size not saved｜Save｜Print｜Excel｜⚙ Settings」，原设置入口改成一直看得见的白键 ⚙ Settings；电脑卡五组、没有 Cancel / Done（图里没有）；手机照图竖排，没有 ⋯ / Reset…，三个 Quick Actions 键都在卡上，底部 Cancel / Done；选中 #1f2937，蓝只给 Save。d8 定：标题旁「i」也摊开（「不要任何隐藏菜单」），动手时做。问 Annie：Q1 多张单时卡怎么放（A 每张单上方各一张（推荐）/ B 页顶一张 + Changes apply to）；Q2 Bus Manifest 一起改成一直显示（A 一起（推荐）/ B 只换样子，保留 Aa 开关）。等答 +「动手」。
+  - **Annie（原话）：「我要保留我们自己的页面配色，不是要你找参考页面的颜色，我只要它的排版」** ⇒ 参考图只借排版；编辑卡、键、选中态、黄字、图标颜色一律取线上 Relay list / Bus Manifest 现有的值，不出现参考图的棕色、米色卡底。d8 已叫 6b 逐个核，不一样的列出来改回线上。
+  - 6b 核完：只有手机分组小卡底色 #f7f7f5 是参考图带来的，已改回白底 + #e2e5e9（970e0e17），preview 重截。
+  - ✅ **Annie（原话）：「我说的是relay list全部按A」** ⇒ Q1 A 每张单上方各一张卡；Q2 A Bus Manifest 一起改（去掉 Aa 开关、两页用法一样）。还没说「动手」。
+    - ✅ 6b 核过（分支 970e0e17）：分支新加的色值只有手机分组小卡底色 #f7f7f5（参考图的米色，text-size.tsx PhoneGroup）不是线上有的，已改回 bg-white + 边 #e2e5e9（同电脑组间线）；其余（#9aa、#1f2937、#222/#333/#555/#666/#111、#fbbf24、#3b82f6、#e2e5e9、白卡、bg-paper）都是线上原有的，没有棕色。手机截图已重截、preview 补了颜色说明和「i 也拿掉（动手时做）」。
+- 🟡 **G280 TripGuru 接入：Order List 加 Source 列**（后端 35 [6a0fd2] 11-10 晚发，5c 派的；后端分支 task/tripguru-intake 26fdfa29，接口 docs/interfaces/tripguru-orders-2026-11-10.md，等 Annie 执行 v163 才上 main）。Annie 已定（后端转）：同一个列表加一列 Source（Rezdy / TripGuru），不开新标签页；TripGuru 订单详情只读（editable=false），内部备注 supplier.internalNote 有 orders.view 就能看。前端：新功能，先出 preview，d8 排给 6b（F2 第 4 版之后）。Source 列可先于后端上线。
+  - ✅ **前端上 main（6b，Annie「tripguru的动手」，Q1 A 留原位 / Q2 A / Q3 A，「怎么处理Rezdy就怎么处理TripGuru的」）**：分支 task/g280-source。列表 Source 留原位（Agent 后、Created 前）写 Rezdy / TripGuru，表头 Rezdy Status → Status，TripGuru 小写状态照本页标签（Pending / Confirmed / Cancelled），How to use 加后端原句；详情只读红字、不出 Edit / Refresh from Rezdy / Agent 卡，Items 卡（product / option / serviceDate / startsAt–endsAt 按 timezone / units label + quantity / bookingFields、participants 通用键值），Internal note (TripGuru)（null 不出卡、partner 不出），Raw TripGuru，价格规则同 Rezdy；详情 How to use 加一句。lane_source 只在 Manifests isLegacy 判 "legacy"，多 "tripguru" 不影响（核过）。检查：orders 89/89（新 13 条）、nav 39/39；tsc 0、eslint 0 error、build 过。**等 Annie 建第一张 TEST 单（35 通知）再核 bookingFields / participants 真实形状。**
+  - preview（6b）：https://claude.ai/artifact/C9KsDiAsqLR6vwTUwv5UQB ，分支 task/g280-source 42f77743（items_detail 已照 35 给的键名改：selection.units label + quantity、product.name、option.name、serviceDate、startsAt–endsAt；bookingFields / participants 先通用键值；internalNote null 不出卡）。题：Q1 Source 列位置、Q2 TripGuru 状态写法（A 首字母大写 + 表头改 Status，推荐）、Q3 只读怎么标（A 红字 Read-only 一行，推荐）；How to use 两句原文见 d8 回复。
+  - ✅ **Annie（原话）：「order list同意A，订单号就说明了来源了，放后面就可以了」** ⇒ Q1 A：Source 留在原位（Agent 后、Created 前），只把字改成 Rezdy / TripGuru。Q2、Q3、How to use 两句、「动手」还没答。
+  - ✅ **Annie（原话）：「TripGuru的订单和Rezdy的订单是一个级别的，怎么处理Rezdy就怎么处理TripGuru的」** ⇒ 原则：一切同 Rezdy。Q2 = A（状态写法、颜色同 Rezdy，表头改 Status）；Q3 = 同 Rezdy 新表单的只读写法（A）。已转后端 35 核不一样的地方：① 列表 pickup / agent 是「—」；② 会不会进 Main manifest / Dispatch / Tracking / 发送；③ 能改的地方是否同 Rezdy。等 35 回 + How to use 句子确认 +「动手」。
+  - 35 回（后端 task/tripguru-intake 292e1ca7，没上 main）：③ 能改的地方同 Rezdy 新表单（详情只读；Main manifest 填 Cfm # 按订单号 + 产品码 + 团期，应该一样能填，没单测）。② 订单流同 Rezdy：Main manifest 取单 SQL 加了 TripGuru，下游 Dispatch、Morning Relay、Tour Tracking 同步、Main manifest 发送、自动发送、Forecast、销售报表、电话 AI 都会收到；只收 confirmed；行 lane_source 多 "tripguru"（d8 查：前端只判断 "legacy"，不用改）。**不一样、待 Annie 定先做哪些**：① 列表 pickup_time / location / agent 是「—」（TripGuru 文档没写格式，要第一张 TEST 单才能填）⇒ 巴士团单没接客时间会进 Need a look、发送被拦；销售报表收入记在 Direct 下；② 没接的：转单时 Dispatch 座位格的 OTA 确认号 / 大人小孩 / 已付是空的；转单通知没有客人联系方式；客人来信对不上 TripGuru 单；羚羊剩余座位不随单子即时刷新（每天 5:00 照常）。另：TripGuru 产品码不在 Settings → Products 里，单就进不了 Main manifest，后端发邮件提醒。
+  - ✅ 后端 G280 上 main f4930195（35），v163 已执行。接口同文档。Annie 配好 TripGuru、建第一张 TEST 单前，Order List 里不会有 tripguru 行；单子进来 35 通知前端核详情字段。前端 task/g280-source 等 Annie「动手」。
+  - ✅ **Annie（原话）：「tripguru的动手」** ⇒ d8 派 6b：Source 留原位、Q2 A、Q3 A、How to use 两句照原文，列表 + 详情一起合 main；第一张 TEST 单进来后再核 bookingFields / participants。
+  - ✅ preview（6b）：https://claude.ai/artifact/C9KsDiAsqLR6vwTUwv5UQB ，分支 task/g280-source d3f826db，没合 main。列表：Source 列线上本来就有（Agent 后面，写小写 rezdy）⇒ 标签改 Rezdy / TripGuru（TripGuru 用本页已有的蓝标签）；表头「Rezdy Status」→「Status」；TripGuru 小写状态本页已有的标签就认（Pending / Confirmed / Cancelled）；How to use 加后端原句。详情：只读红字「Read-only — this order comes from TripGuru…」、不出 Refresh from Rezdy 和 Agent 卡、Items 卡（product / option / serviceDate / units / bookingFields，units 和 bookingFields 键名文档没写，先按 name/label + quantity/value 读）、Internal note (TripGuru) 卡（partner 不出）、Raw TripGuru；状态首字母大写；详情 How to use 加一句。orders-mock ctl.tripguru。题（原文在 preview）：Q1 Source 放哪（A 原位 / B 紧跟 Order #，推荐 B：手机不用滑）、Q2 状态首字母大写同 Rezdy 标签（推荐 A）、Q3 只读标示（A 红字同新 Rezdy 表，推荐）。
 
 - ✅ **Annie 11-10（原话）：「114，115，107全选A。动手」**：第 2 版 Q1–Q7 全 A + 第 3 版手机 M1–M5 全 A，M6 跟 115 题 1 = 26px。
 - ✅ **11-10 前端做完（1a [a03b71]，62 派，分支 task/relay-list-toolbar）**：照 preview 第 3 版。① Relay list 页头：左「‹ Dispatch」，右「● 未存黄字｜Save（一直在，没改时灰 opacity .45）｜Print｜Excel｜Colours, Text & Page」，前面自画线条图标（components/dispatch-manifest/line-icons.tsx，不加库）；页面说明那句挪到页头下一行；手机一行「‹ Dispatch｜黄点 + N not saved｜Save｜⋯」，Print / Excel / ⚙ 收进 ⋯，键 26px。② 编辑卡（text-size.tsx TextSizeToolbar，Relay list 和 Bus Manifest 共用）：电脑横排 Apply To（Column / Row / Page）｜Text Size（A− A+，旁边小灰字当前值照留）｜Font Weight｜Spacing（只 Relay list）｜Quick Actions（Reset Selection / Reset Whole Table / Default Spacing 白键，不能用灰）｜Cancel / Done（深灰 #1f2937 + ✓），Picked 小灰字在卡片下边；手机（< 640px）两行「Aa｜Col / Row / Page｜A− A+｜✕」「Reg / Bold｜行距图标 − +｜Reset…｜✓ Done」，键 26px（data-phone-keep），不出小标题 / Picked，编辑时 Aa 开关收起。③ How to use Aa / Spacing 两句换成 preview 原文（含 Q2「Save stays grey until something is changed.」）；Bus Manifest How to use 本来没有讲 Whole column 的句子，没改。没动 globals.css / components/ui/phone.tsx（115 的共用文件）。检查：rl 159/159（新 114 条：电脑页头 / 编辑卡 / 手机页头 / ⋯ / 手机编辑卡 / Reset… / ✕ / 高度 ≤ 300px）、mf 311/311（编辑卡分组 + 手机两行）、nav 39/39；tsc 0、eslint 0 error、build 过。截图（模拟数据）：https://claude.ai/artifact/R6bkQH2L5rngsh5bsHqgHz 。

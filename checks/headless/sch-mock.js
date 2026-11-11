@@ -706,7 +706,9 @@ http
         const known = ["shift_times", "fixed_shift", "weekend_rotation", "cannot_work", "days_per_week", "min_days_on_shift", "min_rest", "after_shift", "coverage", "exclude_from_rotation", "max_per_shift_day", "weekly_hours_alert"];
         for (let i = 0; i < (b.rules || []).length; i++) {
           const r = b.rules[i];
-          if (!known.includes(r.type)) return send(res, 400, { detail: `Rule ${i + 1}: unknown type ${r.type}.` });
+          // 置顶 118：max_days_on_shift 后端还没加进白名单（schedule_rules.py _RULE_SPECS）⇒ 照后端原话 400；ctl.maxDaysOk 模拟后端加好以后。
+          const allowed = ctl.maxDaysOk ? [...known, "max_days_on_shift"] : known;
+          if (!allowed.includes(r.type)) return send(res, 400, { detail: `Rule ${i + 1} (id "${r.id}"): type must be one of: ${known.join(", ")}.` });
           const pr = r.params || {};
           if (r.type === "min_days_on_shift") {
             const given = ["employee_id", "employee_ids", "exclude_employee_ids"].filter((k) => pr[k] != null);

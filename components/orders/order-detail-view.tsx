@@ -126,8 +126,13 @@ export function OrderDetailView({ orderNumber }: { orderNumber: string }) {
   const quietReload = useCallback(() => void reload(undefined, true), [reload]);
   const refresh = useOrderRefresh(orderNumber, quietReload, redirectToLogin);
   // 只在新 Rezdy 表的单（后端原始 editable = false）、有 orders.edit 时出；partner 不出（后端 3e：挂 orders.edit）。
+  // G280：TripGuru 的单不出（这个键是去 Rezdy 重拉）。
   const canRefresh =
-    state.kind === "ready" && !partner && canEditOrder && !state.order.editable;
+    state.kind === "ready" &&
+    !partner &&
+    canEditOrder &&
+    !state.order.editable &&
+    state.order.source !== "tripguru";
 
   return (
     <main className="text-stone-800 night:text-white/90">
@@ -194,6 +199,9 @@ function OrderBody({
   // 没勾 See prices, agent & commission（orders.money_view，题 8「除了客人的基本信息，CCL看不到任何有价格的信息」）：
   // 价格卡、Agent & Commission、票价、Raw Rezdy 都不出。后端这时 price = null、order_detail / items_detail 去掉代理商 / 付款 / 金额。
   const seeMoney = usePermissions().canSeeMoney && o.price !== null;
+  // G280：TripGuru 来的单（后端 26fdfa29）：只读，order_detail / items_detail 是 TripGuru 的键名。
+  const tripguru = o.source === "tripguru";
+  const raw = tripguru ? "TripGuru" : "Rezdy";
   return (
     <>
       {/* .od-head：订单号直接在深色底上，旧页的 #1a1a1a 看不见，改用旧后台正文色 #f8fafc。 */}
@@ -212,17 +220,22 @@ function OrderBody({
             "bg-[#EAF3DE] text-[#3B6D11] night:bg-emerald-400/10 night:text-emerald-300",
           )}
         >
-          {o.status}
+          {/* G280：TripGuru 的状态是小写原文（pending / confirmed / cancelled），首字母大写，同 Order List 的标签。 */}
+          {tripguru && o.status
+            ? o.status.charAt(0).toUpperCase() + o.status.slice(1)
+            : o.status}
         </span>
         <span
           className={cn(
             SP,
             o.source === "rezdy"
               ? "bg-[#f1efe8] text-[#1a1a1a] night:bg-white/[.04] night:text-white/65"
-              : "bg-[#EEEDFE] text-[#534AB7] night:bg-violet-400/15 night:text-violet-300",
+              : tripguru
+                ? "bg-[#E6F1FB] text-[#185FA5] night:bg-sky-400/[.08] night:text-sky-300"
+                : "bg-[#EEEDFE] text-[#534AB7] night:bg-violet-400/15 night:text-violet-300",
           )}
         >
-          {o.source}
+          {o.source === "rezdy" ? "Rezdy" : tripguru ? "TripGuru" : o.source}
         </span>
         {refresh ? (
           <RefreshButton
@@ -236,9 +249,10 @@ function OrderBody({
       <ManifestLinks order={o} className="mt-2 mb-3" />
       {storedReadOnly && !partner ? (
         // 旧页 .od-warn 是 #B3261E，深色底上看不清，用浅一点的红。
-        <p className="mt-1.5 mb-4 text-[11px] text-[#f87171]">
-          Read-only — this order is stored in the new Rezdy table. Confirmation
-          #, lunch counts and price cannot be edited here yet.
+        <p data-read-only className="mt-1.5 mb-4 text-[11px] text-[#f87171]">
+          {tripguru
+            ? "Read-only — this order comes from TripGuru. Confirmation #, lunch counts and price cannot be edited here."
+            : "Read-only — this order is stored in the new Rezdy table. Confirmation #, lunch counts and price cannot be edited here yet."}
         </p>
       ) : null}
 
@@ -279,7 +293,7 @@ function OrderBody({
                 ? ([
                     [
                       "Items",
-                      `${o.product.item_count} products in this order — the card above shows the first one. See Ticket Breakdown${partner || !seeMoney ? "" : " and Raw Rezdy items"} below.`,
+                      `${o.product.item_count} products in this order — the card above shows the first one. See ${tripguru ? "Items" : "Ticket Breakdown"}${partner || !seeMoney ? "" : ` and Raw ${raw} items`} below.`,
                     ],
                   ] as [string, unknown][])
                 : []),
@@ -294,8 +308,18 @@ function OrderBody({
           />
         ) : null}
         <OpsCard order={o} onSaved={onSaved} onUnauthorized={onUnauthorized} />
-        {partner || !seeMoney ? null : <AgentCard detail={o.order_detail} />}
-        <TicketsCard items={o.items_detail} prices={seeMoney} />
+        {/* TripGuru 的代理商现在是空的（后端：等第一张 TEST 单看到真实数据再接），不出 Agent 卡。 */}
+        {partner || !seeMoney || tripguru ? null : (
+          <AgentCard detail={o.order_detail} />
+        )}
+        {tripguru ? (
+          <TripGuruItemsCard items={o.items_detail} />
+        ) : (
+          <TicketsCard items={o.items_detail} prices={seeMoney} />
+        )}
+        {tripguru && !partner && tgInternalNote(o.order_detail) ? (
+          <InternalNoteCard note={tgInternalNote(o.order_detail) ?? ""} />
+        ) : null}
         <Card title="Notes">
           <Rows
             rows={[
@@ -358,8 +382,8 @@ function OrderBody({
       </div>
       {partner || !seeMoney ? null : (
         <>
-          <RawBlock title="Raw Rezdy items" value={o.items_detail} />
-          <RawBlock title="Raw Rezdy order" value={o.order_detail} />
+          <RawBlock title={`Raw ${raw} items`} value={o.items_detail} />
+          <RawBlock title={`Raw ${raw} order`} value={o.order_detail} />
         </>
       )}
     </>
@@ -961,6 +985,137 @@ function TicketsCard({ items, prices }: { items: unknown; prices: boolean }) {
   );
 }
 
+/**
+ * TripGuru 快照里一项（键名照后端 docs/integrations/tripguru-webhook-handoff-2026-11-10.md 第 2 节样例，35 转）。
+ * bookingFields / participants 文档里只有 []、形状未知：先当通用键值列表显示（每个元素的键原样列出），空的不显示。
+ */
+type TripGuruItem = {
+  product?: { id?: string; code?: string; name?: string };
+  selection?: {
+    serviceDate?: string;
+    startsAt?: string;
+    endsAt?: string;
+    timezone?: string;
+    option?: { id?: string; code?: string; name?: string };
+    /** quantity 是单位数量，不一定是人数（Group 不能当 Adult），不加总成 pax。 */
+    units?: { unitId?: string; label?: string; quantity?: number }[];
+  };
+  bookingFields?: unknown[];
+  participants?: unknown[];
+};
+
+/** 带时区的 ISO → 那个时区的钟点（例 7:30 AM）；读不懂就原样。 */
+function tgTime(iso: string | undefined, tz: string | undefined): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  try {
+    return new Intl.DateTimeFormat("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      ...(tz ? { timeZone: tz } : null),
+    }).format(d);
+  } catch {
+    return iso;
+  }
+}
+
+/** 形状未知的列表（bookingFields / participants）：每个元素的键原样列成一行，空的元素 / 空的值不出。 */
+function genericRows(
+  list: unknown[] | undefined,
+  prefix: string,
+): [string, unknown][] {
+  if (!Array.isArray(list)) return [];
+  return list.flatMap((el, i) => {
+    const head = list.length > 1 ? `${prefix} ${i + 1}` : prefix;
+    if (el && typeof el === "object" && !Array.isArray(el))
+      return Object.entries(el as Record<string, unknown>)
+        .filter(([, v]) => v !== null && v !== undefined && v !== "")
+        .map(
+          ([k, v]) =>
+            [
+              `${head} · ${k}`,
+              typeof v === "object" ? JSON.stringify(v) : v,
+            ] as [string, unknown],
+        );
+    return el === null || el === undefined || el === ""
+      ? []
+      : ([[head, typeof el === "object" ? JSON.stringify(el) : el]] as [
+          string,
+          unknown,
+        ][]);
+  });
+}
+
+/** G280：TripGuru 单的项目（产品、选项、日期、场次、每种数量、booking fields / participants）。没有单价（金额在 Price 卡）。 */
+function TripGuruItemsCard({ items }: { items: unknown }) {
+  const list = Array.isArray(items) ? (items as TripGuruItem[]) : [];
+  return (
+    <Card title="Items">
+      {list.length ? (
+        <div data-tripguru-items>
+          {list.map((it, i) => {
+            const sel = it.selection ?? {};
+            const start = tgTime(sel.startsAt, sel.timezone);
+            const end = tgTime(sel.endsAt, sel.timezone);
+            return (
+              <div key={i}>
+                <div className="px-1 pt-2 pb-0.5 text-[12px] font-semibold text-[#1a1a1a] night:text-white/55">
+                  {it.product?.name ?? "—"}
+                </div>
+                <Rows
+                  rows={[
+                    ["Option", sel.option?.name],
+                    ["Date", sel.serviceDate],
+                    ...(start
+                      ? ([["Time", end ? `${start} – ${end}` : start]] as [
+                          string,
+                          unknown,
+                        ][])
+                      : []),
+                    ...(sel.units ?? []).map(
+                      (u) =>
+                        [u.label ?? "Quantity", u.quantity] as [
+                          string,
+                          unknown,
+                        ],
+                    ),
+                    ...genericRows(it.bookingFields, "Booking field"),
+                    ...genericRows(it.participants, "Participant"),
+                  ]}
+                />
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className={OD_LOADING_IN_CARD}>No item detail.</div>
+      )}
+    </Card>
+  );
+}
+
+/** TripGuru 的内部备注（order_detail.supplier.internalNote，字符串或 null）。 */
+function tgInternalNote(detail: unknown): string | null {
+  const note = (detail as { supplier?: { internalNote?: unknown } } | null)
+    ?.supplier?.internalNote;
+  return typeof note === "string" && note.trim() ? note : null;
+}
+
+/** G280：TripGuru 的内部备注卡。有 orders.view 就能看；只在员工后台，不进客人页面；没有备注（null）就不出卡。 */
+function InternalNoteCard({ note }: { note: string }) {
+  return (
+    <Card title="Internal note (TripGuru)">
+      <div
+        data-tripguru-internal-note
+        className="px-1 py-1.5 text-[12px] [overflow-wrap:anywhere] whitespace-pre-wrap text-[#1a1a1a] night:text-white/90"
+      >
+        {note}
+      </div>
+    </Card>
+  );
+}
+
 const RAW_LIMIT = 20000;
 
 function RawBlock({ title, value }: { title: string; value: unknown }) {
@@ -1029,6 +1184,11 @@ function HowToUse({ money, refresh }: { money: boolean; refresh: boolean }) {
             shows in red and nothing is changed.
           </li>
         ) : null}
+        <li>
+          Orders from TripGuru open read-only. Items shows each product with its
+          option, date, quantities and booking fields; Internal note (TripGuru)
+          is TripGuru&apos;s note for staff and is never shown to guests.
+        </li>
         <li>
           Ticket barcodes are hidden; click show to see one.
           {money
