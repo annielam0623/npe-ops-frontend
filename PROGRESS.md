@@ -1565,6 +1565,7 @@ D. 已完成、待从置顶移走：
 - Annie 原话：「我需要在staff schedule那里把排班做成你preview的那个样子，一目了然，还可以分析」。
 - 6b 样稿（只 preview，没写代码）：https://claude.ai/artifact/8vLNnqptWW3ddFvfNoVAvk 。理解：加一个 Overview 标签，只看和分析，原 Schedule 标签照旧排 / 拖 / 存 / 发布。排班表默认 4 周，一人一行、一天一格，按班次上色（Open / Day / Close / Day 10–6 / Off / Leave），每人每周末尾写天数、小时，不对红字；每周下面三行每天每种班几个人，少了 / 多了标红。Analysis：Rules 每条每周 ✓ / ✗，加「只有 Jessica 的白班日」「排不下的班」，每人 4 周合计。后端不用改。
 - 题（6b 已在 Annie 那边贴了）：Q1 放哪（A 新加 Overview 标签（推荐）/ B 直接把 Schedule 标签换成这样，要另出样稿）；Q2 一次看多长（A 默认 4 周、可切 1 周、‹ › 翻（推荐）/ B 只看 1 周）；Q3 分析查什么（A 照 Rules 逐条 + 每天人数 + 每人天数小时 + 排不下 + 4 周合计（推荐）/ B 只要天数小时和每天人数）。d8 提醒：她原话是「在staff schedule那里把排班做成」，Q1 要她确认是另加标签还是直接换。等答 +「动手」。
+- ✅ **Annie（原话）：「3个问题都同意A，动手」** ⇒ Q1 A 新加 Overview 标签 / Q2 A 默认 4 周可切 1 周 / Q3 A 照 Rules 逐条 + 合计。d8 派 6b（只读、不改后端、复用排班引擎判据、不收进 ⋯ / i、颜色用现有的），过了直接合 main。
 
 ### 118. Staff Schedule Rules 照 Annie 需求重设（2026-11-10 晚；d8 派 6b 先模拟 + preview）
 
