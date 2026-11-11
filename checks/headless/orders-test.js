@@ -426,6 +426,40 @@ async function refreshChecks() {
   await openDetail("CHDNEW");
   check("Refresh：partner ⇒ 不出键", !(await evaluate(`return !!${btn};`)));
   await ctl({ partner: null, staffPerms: null, refresh: "updated" });
+
+  // ── G280（Annie「tripguru的动手」；「TripGuru的订单和Rezdy的订单是一个级别的，怎么处理Rezdy就怎么处理TripGuru的」）──
+  // Order List：Source 留原位（Agent 后、Created 前），写 Rezdy / TripGuru；表头 Status；TripGuru 小写状态同 Rezdy 标签。
+  await ctl({ tripguru: true });
+  await goto(`${APP}/orders`);
+  await waitFor("document.body.textContent.includes('NPE-ZZ1001')", 30000);
+  const heads = await evaluate("return [...document.querySelectorAll('thead th')].map(t => t.textContent.trim());");
+  check("G280 表头：Rezdy Status 改 Status；Source 留原位（Agent 后、Created 前）", heads.includes("Status") && !heads.includes("Rezdy Status") && heads.indexOf("Source") === heads.indexOf("Created") - 1 && heads.indexOf("Source") === heads.indexOf("Agent") + 1, JSON.stringify(heads));
+  const rowText = (o) => `[...document.querySelectorAll('tbody tr')].find(tr => tr.textContent.includes('${o}'))`;
+  const cellOf = (o, h) => `(() => { const i = [...document.querySelectorAll('thead th')].findIndex(t => t.textContent.trim() === '${h}'); return ${rowText(o)}.children[i].textContent.trim(); })()`;
+  check("G280 Source：TripGuru 单写 TripGuru、Rezdy 单写 Rezdy（不再是小写 rezdy）", (await evaluate(`return ${cellOf("NPE-ZZ1001", "Source")};`)) === "TripGuru" && (await evaluate(`return ${cellOf("CHDZZ1", "Source")};`)) === "Rezdy");
+  check("G280 TripGuru 状态首字母大写、同 Rezdy 标签：confirmed ⇒ Confirmed、pending ⇒ Pending", (await evaluate(`return ${cellOf("NPE-ZZ1001", "Status")};`)) === "Confirmed" && (await evaluate(`return ${cellOf("NPE-ZZ1002", "Status")};`)) === "Pending");
+  check("G280 How to use 加了 Source 那句（原文）", await evaluate("return document.body.textContent.includes('The Source column shows where an order came from: Rezdy or TripGuru. TripGuru orders open read-only. Pickup time, pickup location and agent are blank for TripGuru orders for now.');"));
+  // 详情
+  await goto(`${APP}/orders/NPE-ZZ1001`);
+  await waitFor("document.querySelector('[data-tripguru-items]')", 30000);
+  check("G280 详情：订单号旁 Confirmed + TripGuru；只读红字「Read-only — this order comes from TripGuru…」；没有 Edit", await evaluate("const t = document.querySelector('main').textContent; return t.includes('Confirmed') && t.includes('TripGuru') && t.includes('Read-only — this order comes from TripGuru. Confirmation #, lunch counts and price cannot be edited here.') && ![...document.querySelectorAll('button')].some(b => b.textContent.trim() === 'Edit');"));
+  check("G280 详情：不出 Refresh from Rezdy、不出 Agent & Commission", await evaluate(`return !${btn} && !document.querySelector('main').textContent.includes('Agent & Commission');`));
+  check("G280 详情 Items：产品、Option Standard、Date、Time 7:30 AM – 6:00 PM、Adult 2、booking field 键值", await evaluate("const t = document.querySelector('[data-tripguru-items]').innerText.replace(/\\n+/g, ' | '); return t.includes('Grand Canyon West Rim Bus Tour') && t.includes('Standard') && t.includes('2026-11-12') && t.includes('7:30 AM – 6:00 PM') && t.includes('Adult') && t.includes('ZZ Test Hotel');"), await evaluate("return document.querySelector('[data-tripguru-items]')?.innerText;"));
+  check("G280 详情：Internal note (TripGuru) 卡写快照里的 supplier.internalNote；How to use 加了 TripGuru 那句", await evaluate("return document.querySelector('[data-tripguru-internal-note]')?.textContent.includes('window seat') && document.body.textContent.includes('Orders from TripGuru open read-only.');"));
+  check("G280 详情：底部 Raw TripGuru items / order（不写 Raw Rezdy）", await evaluate("const t = [...document.querySelectorAll('main details > summary')].map(x => x.textContent.trim().toUpperCase()); return t.includes('RAW TRIPGURU ITEMS') && t.includes('RAW TRIPGURU ORDER') && !t.some(x => x.startsWith('RAW REZDY'));"), await evaluate("return [...document.querySelectorAll('main details > summary')].map(x => x.textContent.trim()).join(' | ');"));
+  await goto(`${APP}/orders/NPE-ZZ1002`);
+  await waitFor("document.querySelector('[data-tripguru-items]')", 30000);
+  check("G280 详情：没有内部备注（null）⇒ 不出 Internal note 卡", await evaluate("return !document.querySelector('[data-tripguru-internal-note]') && ![...document.querySelectorAll('main h2, main h3, main [class*=uppercase]')].some(x => x.textContent.trim().toUpperCase() === 'INTERNAL NOTE (TRIPGURU)');"));
+  // 同 Rezdy 规矩：没勾 See prices 看不到价格；partner 看不到内部备注
+  await ctl({ staffPerms: ["orders.view"] });
+  await goto(`${APP}/orders/NPE-ZZ1001`);
+  await waitFor("document.querySelector('[data-tripguru-items]')", 30000);
+  check("G280 同 Rezdy：没勾 orders.money_view ⇒ 不出 Price 卡、不出 Raw TripGuru", await evaluate("const t = document.querySelector('main').textContent.toUpperCase(); return !t.includes('USD 258') && !t.includes('RAW TRIPGURU');"));
+  await ctl({ staffPerms: null, partner: ["orders.view"] });
+  await goto(`${APP}/orders/NPE-ZZ1001`);
+  await waitFor("document.querySelector('[data-tripguru-items]')", 30000);
+  check("G280 partner：不出 Internal note（只给员工）", await evaluate("return !document.querySelector('[data-tripguru-internal-note]');"));
+  await ctl({ partner: null, staffPerms: null, tripguru: false });
 }
 
 main().catch((e) => {
