@@ -234,7 +234,7 @@ const CARD =
 /** .mf-band a.print */
 /** 页头白键（置顶 114：照 Relay list 新版的 Print / Excel / Settings，34px、线条图标；不是提交键，不用蓝色）。 */
 const MF_WHITE_KEY =
-  "inline-flex h-[34px] cursor-pointer items-center justify-center gap-1.5 rounded-[9px] border border-black/25 bg-paper px-3.5 text-[13.5px] font-bold whitespace-nowrap text-[#111] max-sm:px-2 max-sm:text-[13px]";
+  "inline-flex h-[28px] cursor-pointer items-center justify-center gap-1.5 rounded-[8px] border border-black/25 bg-paper px-3 text-[12.5px] font-bold whitespace-nowrap text-[#111] max-sm:px-2 max-sm:text-[12px]";
 const BAND_LINK =
   "inline-flex h-7 items-center gap-1.5 rounded-[7px] border border-black/25 bg-paper px-3 text-[12px] font-bold text-[#111] no-underline";
 /** .mf-card th / td。客人表的字号 / 粗细照纸本（G198 Q1：正文 16.5px 粗体、人数 19px），每格由 `cellText()` 给。 */
@@ -912,7 +912,7 @@ export function ManifestView() {
                         data-phone-keep
                         disabled={!dirty || saveState.kind === "saving"}
                         onClick={() => void savePending()}
-                        className="inline-flex h-[34px] cursor-pointer items-center gap-1.5 rounded-[9px] bg-[#3b82f6] px-3.5 text-[13.5px] font-bold text-white disabled:cursor-default disabled:opacity-45 max-sm:text-[13px]"
+                        className="inline-flex h-[28px] cursor-pointer items-center gap-1.5 rounded-[8px] bg-[#3b82f6] px-3 text-[12.5px] font-bold text-white disabled:cursor-default disabled:opacity-45 max-sm:text-[12px]"
                       >
                         <LineIcon name="save" />
                         {saveState.kind === "saving" ? "Saving…" : "Save"}
@@ -1527,7 +1527,7 @@ function BusCard({
               Guide view
             </a>
           )}
-          {canEdit ? (
+          {false ? (
             <button
               type="button"
               data-text-size-button
@@ -1559,10 +1559,11 @@ function BusCard({
         {!viewOnly && block.text_size_history ? (
           <TextSizeHistory history={block.text_size_history} />
         ) : null}
-        {editing ? (
+        {canEdit ? (
           <TextSizeToolbar
             mode={mode}
             onMode={(m) => {
+              if (!editing) setDraft(current ?? null);
               setMode(m);
               setPicks(m === "page" ? [{ kind: "page" }] : []);
             }}

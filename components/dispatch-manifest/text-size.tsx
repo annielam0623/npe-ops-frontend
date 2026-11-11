@@ -200,18 +200,18 @@ export function isPicked(
 
 const SEG = "inline-flex overflow-hidden rounded-[7px] border border-[#9aa]";
 const CHIP =
-  "cursor-pointer border-r border-[#9aa] bg-white px-2.5 py-[5px] text-[12.5px] font-bold text-[#222] last:border-r-0 disabled:cursor-default disabled:opacity-40 aria-pressed:bg-[#1f2937] aria-pressed:text-white";
+  "cursor-pointer border-r border-[#9aa] bg-white px-2 py-[3px] text-[11.5px] font-bold text-[#222] last:border-r-0 disabled:cursor-default disabled:opacity-40 aria-pressed:bg-[#1f2937] aria-pressed:text-white";
 /** 白键（Quick Actions、Cancel）：不能用时灰（置顶 114）。 */
 const WHITE_KEY =
-  "inline-flex cursor-pointer items-center justify-center rounded-[7px] border border-[#9aa] bg-white px-2 py-[5px] text-[12px] font-bold whitespace-nowrap text-[#222] disabled:cursor-default disabled:opacity-40";
+  "inline-flex cursor-pointer items-center justify-center rounded-[7px] border border-[#9aa] bg-white px-2 py-[3px] text-[11.5px] font-bold whitespace-nowrap text-[#222] disabled:cursor-default disabled:opacity-40";
 /** Done：深灰 #1f2937 + ✓（置顶 114 Q4 A；不是提交键，真正存是页头的 Save）。 */
 const DONE_KEY =
-  "inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-[7px] bg-[#1f2937] px-3.5 py-1.5 text-[12px] font-bold whitespace-nowrap text-white";
+  "inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-[7px] bg-[#1f2937] px-3 py-1 text-[11.5px] font-bold whitespace-nowrap text-white";
 /** 手机编辑卡的键（置顶 114 M6 = 115 题 1：26px）；data-phone-keep，全站手机样式不再改它。 */
 const P_CHIP =
-  "h-[28px] cursor-pointer border-r border-[#9aa] bg-white text-[12.5px] font-bold text-[#222] last:border-r-0 disabled:cursor-default disabled:opacity-40 aria-pressed:bg-[#1f2937] aria-pressed:text-white";
+  "h-[24px] cursor-pointer border-r border-[#9aa] bg-white text-[12px] font-bold text-[#222] last:border-r-0 disabled:cursor-default disabled:opacity-40 aria-pressed:bg-[#1f2937] aria-pressed:text-white";
 const P_QUICK =
-  "inline-flex h-[28px] cursor-pointer items-center rounded-[6px] border border-[#9aa] bg-white px-2.5 text-[12px] font-bold whitespace-nowrap text-[#222] disabled:cursor-default disabled:opacity-40";
+  "inline-flex h-[24px] cursor-pointer items-center rounded-[6px] border border-[#9aa] bg-white px-1.5 text-[11px] font-bold whitespace-nowrap text-[#222] disabled:cursor-default disabled:opacity-40";
 
 /** 屏宽 < 640px（全站手机版的分界，同 components/ui/phone.tsx 用的 sm:）。 */
 function useNarrow(): boolean {
@@ -256,7 +256,7 @@ function Group({
       {...(level !== undefined
         ? { "data-relay-spacing": "", "data-level": level }
         : null)}
-      className="flex flex-col gap-[7px] border-r border-[#e2e5e9] px-2.5 py-2.5"
+      className="flex flex-col gap-1 border-r border-[#e2e5e9] px-2 py-1.5"
     >
       <span className="inline-flex items-center gap-1.5 font-bold text-[#333]">
         <LineIcon name={icon} />
@@ -287,7 +287,7 @@ function PhoneGroup({
       {...(level !== undefined
         ? { "data-relay-spacing": "", "data-level": level }
         : null)}
-      className="flex min-w-0 flex-col items-start gap-1.5 rounded-[9px] border border-[#e2e5e9] bg-white px-2 py-1.5"
+      className="flex min-w-0 flex-col items-start gap-1 rounded-[8px] border border-[#e2e5e9] bg-white px-1.5 py-1"
     >
       <span className="inline-flex items-center gap-1.5 font-bold text-[#333]">
         <LineIcon name={icon} />
@@ -442,7 +442,7 @@ export function TextSizeToolbar({
         aria-label="Text size"
         data-text-size-toolbar
         data-text-size-phone
-        className="mt-2 flex flex-col gap-1.5 rounded-[12px] bg-white p-1.5 font-[Arial,sans-serif] text-[12.5px] text-[#222]"
+        className="mt-1.5 flex flex-col gap-1 rounded-[10px] bg-white p-1 font-[Arial,sans-serif] text-[12px] text-[#222]"
       >
         <PhoneGroup icon="apply" title="Apply To" name="apply">
           <span className="flex w-full overflow-hidden rounded-[7px] border border-[#9aa]">
@@ -460,9 +460,14 @@ export function TextSizeToolbar({
             ))}
           </span>
         </PhoneGroup>
-        <div className="grid grid-cols-2 gap-1.5">
+        <div
+          className={cn(
+            "grid gap-1",
+            spacing ? "grid-cols-[auto_auto_1fr]" : "grid-cols-2",
+          )}
+        >
           <PhoneGroup icon="size" title="Text Size" name="size">
-            {sizeKeys(cn(P_CHIP, "px-3"))}
+            {sizeKeys(cn(P_CHIP, "px-2.5"))}
           </PhoneGroup>
           <PhoneGroup icon="bold" title="Font Weight" name="weight">
             <span className={SEG}>
@@ -472,7 +477,7 @@ export function TextSizeToolbar({
                 aria-pressed={current.bold === false}
                 disabled={!any}
                 onClick={() => onBold(false)}
-                className={cn(P_CHIP, "px-2.5")}
+                className={cn(P_CHIP, "px-2")}
               >
                 Regular
               </button>
@@ -482,16 +487,12 @@ export function TextSizeToolbar({
                 aria-pressed={current.bold === true}
                 disabled={!any}
                 onClick={() => onBold(true)}
-                className={cn(P_CHIP, "px-2.5")}
+                className={cn(P_CHIP, "px-2")}
               >
                 Bold
               </button>
             </span>
           </PhoneGroup>
-        </div>
-        <div
-          className={cn("grid gap-1.5", spacing ? "grid-cols-[auto_1fr]" : "")}
-        >
           {spacing ? (
             <PhoneGroup
               icon="space"
@@ -499,20 +500,22 @@ export function TextSizeToolbar({
               name="spacing"
               level={spacing.level}
             >
-              {spacingKeys(cn(P_CHIP, "px-3.5"))}
+              {spacingKeys(cn(P_CHIP, "px-2.5"))}
             </PhoneGroup>
           ) : null}
-          <PhoneGroup icon="reset" title="Quick Actions" name="quick">
-            <span className="flex flex-wrap gap-1">{quick(P_QUICK)}</span>
-          </PhoneGroup>
         </div>
-        <div data-text-size-group="finish" className="grid grid-cols-2 gap-1.5">
+        <PhoneGroup icon="reset" title="Quick Actions" name="quick">
+          <span className="flex w-full flex-nowrap gap-1 [&>button]:min-w-0 [&>button]:flex-1 [&>button]:justify-center">
+            {quick(P_QUICK)}
+          </span>
+        </PhoneGroup>
+        <div data-text-size-group="finish" className="grid grid-cols-2 gap-1">
           <button
             type="button"
             data-phone-keep
             data-text-size-cancel
             onClick={onCancel}
-            className="inline-flex h-[34px] cursor-pointer items-center justify-center rounded-[9px] border border-[#9aa] bg-white text-[13px] font-bold text-[#222]"
+            className="inline-flex h-[28px] cursor-pointer items-center justify-center rounded-[8px] border border-[#9aa] bg-white text-[12px] font-bold text-[#222]"
           >
             Cancel
           </button>
@@ -521,7 +524,7 @@ export function TextSizeToolbar({
             data-phone-keep
             data-text-size-done
             onClick={onDone}
-            className="inline-flex h-[34px] cursor-pointer items-center justify-center gap-1.5 rounded-[9px] bg-[#1f2937] text-[13px] font-bold text-white"
+            className="inline-flex h-[28px] cursor-pointer items-center justify-center gap-1.5 rounded-[8px] bg-[#1f2937] text-[12px] font-bold text-white"
           >
             <LineIcon name="check" className="h-3.5 w-3.5" />
             Done
@@ -541,7 +544,7 @@ export function TextSizeToolbar({
       role="group"
       aria-label="Text size"
       data-text-size-toolbar
-      className="mt-2 overflow-hidden rounded-[10px] border border-black/10 bg-white font-[Arial,sans-serif] text-[12.5px] text-[#222]"
+      className="mt-1.5 overflow-hidden rounded-[10px] border border-black/10 bg-white font-[Arial,sans-serif] text-[11.5px] text-[#222]"
     >
       <div className="flex flex-wrap items-stretch">
         <Group icon="apply" title="Apply To" name="apply">

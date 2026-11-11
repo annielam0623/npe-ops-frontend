@@ -546,7 +546,7 @@ export function RelayTextSave() {
         data-phone-keep
         disabled={!n || t.save.kind === "saving"}
         onClick={() => void t.saveAll()}
-        className="inline-flex h-[34px] cursor-pointer items-center gap-1.5 rounded-[9px] bg-[#3b82f6] px-3.5 text-[13.5px] font-bold text-white disabled:cursor-default disabled:opacity-45 max-sm:order-1 max-sm:ml-auto max-sm:px-3 max-sm:text-[13px]"
+        className="inline-flex h-[28px] cursor-pointer items-center gap-1.5 rounded-[8px] bg-[#3b82f6] px-3 text-[12.5px] font-bold text-white disabled:cursor-default disabled:opacity-45 max-sm:order-1 max-sm:ml-auto max-sm:px-2.5 max-sm:text-[12px]"
       >
         <LineIcon name="save" />
         {t.save.kind === "saving" ? "Saving…" : "Save"}

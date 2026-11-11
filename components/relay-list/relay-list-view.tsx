@@ -99,10 +99,10 @@ type ViewState =
 
 /** 返回键（置顶 114：页头左边「‹ Dispatch」，34px；手机 26px）。 */
 const NAV_LINK =
-  "inline-flex h-[34px] items-center gap-1.5 rounded-[9px] border border-[rgba(147,197,253,.35)] px-3 text-[13.5px] font-semibold text-[#93c5fd] no-underline hover:bg-white/[.07] max-sm:h-[26px] max-sm:rounded-[7px] max-sm:px-[9px] max-sm:text-[12.5px]";
+  "inline-flex h-[28px] items-center gap-1.5 rounded-[8px] border border-[rgba(147,197,253,.35)] px-2.5 text-[12.5px] font-semibold text-[#93c5fd] no-underline hover:bg-white/[.07] max-sm:h-[26px] max-sm:rounded-[7px] max-sm:px-[9px] max-sm:text-[12.5px]";
 /** 白底键（Print / Excel / ⚙ 不是提交键，不用蓝色；置顶 114 前面带线条图标）。 */
 const WHITE_BTN =
-  "inline-flex h-[34px] cursor-pointer items-center justify-center gap-1.5 rounded-[9px] border border-black/25 bg-paper px-3.5 text-[13.5px] font-bold whitespace-nowrap text-[#111] max-sm:h-[34px] max-sm:px-2 max-sm:text-[13px]";
+  "inline-flex h-[28px] cursor-pointer items-center justify-center gap-1.5 rounded-[8px] border border-black/25 bg-paper px-3 text-[12.5px] font-bold whitespace-nowrap text-[#111] max-sm:h-[28px] max-sm:px-2 max-sm:text-[12px]";
 
 /**
  * Relay list：Dispatch › Morning Relay「📋 Relay list」打开（Annie：「排完relay并保存了以后，应该加一个按键显示这些relay的list」）。
@@ -265,7 +265,7 @@ export function RelayListView() {
         </PageLink>
         <h1
           data-relay-title
-          className="m-0 inline-flex items-center gap-2 text-[22px] font-bold text-white max-sm:order-2 max-sm:basis-full max-sm:text-[18px]"
+          className="m-0 inline-flex items-center gap-2 text-[19px] font-bold text-white max-sm:order-2 max-sm:basis-full max-sm:text-[16px]"
         >
           <span className="sm:hidden">
             <LineIcon name="gear" />
