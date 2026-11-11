@@ -1566,6 +1566,7 @@ D. 已完成、待从置顶移走：
 - 5c：后端现成可用、不用改。PUT /api/schedule/time-off（supervisor+，种类 pto / sick / personal，所有人可见），GET /api/schedule/time-off 读；同一人同一天班 + 休假服务层两头都拦，所以 autofill 不能排到 Leave 那天。接口说明在后端 docs/interfaces/schedule-phase2-notes-pto-defaults-2026-10-18.md。测试数据：Veronica 11/26–27、Jing 12/20–23、Lizzie 12/24–27。
 - 要问 Annie（preview 里）：有 Leave 的那周还排不排每周两天固定休息，Leave 算进那两天还是另外加（5c 点名）；种类分不分；弹窗里填的什么时候存。等 preview + 答 +「动手」。
 - ✅ **Annie（原话）：「leave另外加」** ⇒ Leave 不算进每周两天固定休息，有 Leave 的那周照样再排两天休息。已转 6b，preview 照这个画。
+- ✅ **Annie（原话）：「要的，但是今晚就先放Leave，明天我们回公司做假期申请的时候再分类。因为我现在要做接下来4周的排班，所以要把班先排出来，其中涉及到几个人已经请了假」** ⇒ 今晚只做一种「Leave」（后端种类存哪个由 6b 核文档，明天分类）；弹窗盖住接下来 4 周；加急，preview 从简，她「动手」后今晚上线。
 
 ### 116. 回复了客人就自动算处理过（Take action）（2026-11-10 晚，Annie 附 Tour Tracking 截图提；d8 记，没派）
 
