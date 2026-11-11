@@ -62,9 +62,15 @@ export function RuleDialog({
   });
   /** min_days_on_shift 的 Who：Everyone / Only these people / Everyone except。 */
   const [whoMode, setWhoMode] = useState<"everyone" | "only" | "except">(() =>
-    initial?.type === "min_days_on_shift"
+    initial?.type === "min_days_on_shift" ||
+    initial?.type === "max_days_on_shift"
       ? minDaysWho(initial.params as never).mode
-      : "everyone",
+      : // 置顶 118：新加的 Maximum days 默认只给一个人（同 defaultParams）。
+        initial
+        ? "everyone"
+        : type === "max_days_on_shift"
+          ? "only"
+          : "everyone",
   );
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -110,7 +116,7 @@ export function RuleDialog({
         },
       );
     }
-    if (type === "min_days_on_shift") {
+    if (type === "min_days_on_shift" || type === "max_days_on_shift") {
       // 三选一只带一个键；Everyone 什么都不带（后端拒 employee_ids: []，40 核过）。
       delete out.employee_id;
       if (whoMode !== "only") delete out.employee_ids;
@@ -145,7 +151,7 @@ export function RuleDialog({
     if (type === "shift_times" && (!p.start || !p.end))
       return "Fill start and end time.";
     if (
-      type === "min_days_on_shift" &&
+      (type === "min_days_on_shift" || type === "max_days_on_shift") &&
       whoMode !== "everyone" &&
       !(
         Array.isArray(
@@ -716,6 +722,38 @@ function Fields({
               <option value="4weeks">4 weeks</option>
             </select>
           </Field>
+        </>
+      );
+    case "max_days_on_shift":
+      return (
+        <>
+          <Field label="Who">
+            <select
+              aria-label="Who"
+              value={whoMode}
+              onChange={(e) =>
+                setWhoMode(e.target.value as "everyone" | "only" | "except")
+              }
+              className={SELECT}
+            >
+              <option value="everyone">Everyone</option>
+              <option value="only">Only these people</option>
+              <option value="except">Everyone except</option>
+            </select>
+          </Field>
+          {whoMode === "only" ? (
+            <Field label="These people">
+              <People field="employee_ids" />
+            </Field>
+          ) : whoMode === "except" ? (
+            <Field label="Leave out">
+              <People field="exclude_employee_ids" />
+            </Field>
+          ) : null}
+          <Field label="Shift">
+            <ShiftSelect field="shift_type" />
+          </Field>
+          <Field label="At most (days a week)">{num("n", 0, 7)}</Field>
         </>
       );
     case "min_rest":
