@@ -417,5 +417,137 @@ check("110 续 题 7：exceptionsOn 给出那天生效的例外（班次 null = 
   assert.deepEqual(exceptionsOn([{ ...rules[0], enabled: false }], "2026-10-20"), []);
 });
 
+// ── 置顶 118（Annie「全部同意A」+「动手」）：照 Annie 说的整套规则跑 4 周 / 8 周。
+//    Jessica 的 10–6 单独一种班（jday）；Lizzie 晚班每周最多 1 次（max_days_on_shift）；Veronica 只上早班、固定休周六周日。
+{
+  const V8 = 1, N8 = 2, J8 = 3, L8 = 4, S8 = 5;
+  const emps118 = [
+    { id: V8, name: "Veronica" }, { id: N8, name: "Naida" }, { id: J8, name: "Jing" }, { id: L8, name: "Lizzie" }, { id: S8, name: "Jessica" },
+  ];
+  const R8 = (id, type, params) => ({ id, type, enabled: true, params });
+  const rules118 = [
+    R8("t1", "shift_times", { shift_type: "open", start: "02:00", end: "10:00" }),
+    R8("t2", "shift_times", { shift_type: "mid", start: "09:00", end: "17:00" }),
+    R8("t3", "shift_times", { shift_type: "close", start: "13:30", end: "21:30" }),
+    R8("t4", "shift_times", { shift_type: "jday", start: "10:00", end: "18:00" }),
+    R8("c1", "cannot_work", { employee_id: N8, days: [6] }),
+    R8("c2", "cannot_work", { employee_id: V8, shift_type: "mid" }),
+    R8("c3", "cannot_work", { employee_id: V8, shift_type: "close" }),
+    R8("c4", "cannot_work", { employee_id: V8, days: [6, 0] }),
+    ...[V8, N8, J8, L8].map((id) => R8(`cj${id}`, "cannot_work", { employee_id: id, shift_type: "jday" })),
+    R8("f1", "fixed_shift", { employee_id: S8, days: [3, 4, 5, 6, 0], shift_type: "jday" }),
+    R8("c5", "cannot_work", { employee_id: S8, days: [1, 2] }),
+    ...["open", "mid", "close"].map((t) => R8(`cs${t}`, "cannot_work", { employee_id: S8, shift_type: t })),
+    R8("x1", "exclude_from_rotation", { employee_id: S8 }),
+    R8("a1", "after_shift", { if_worked: "close", then_cannot: "open" }),
+    R8("d1", "days_per_week", { mode: "exactly", n: 5, employee_ids: [V8, N8, J8, L8] }),
+    R8("h1", "weekly_hours_alert", { hours: 40 }),
+    R8("v1", "coverage", { shift_type: "open", min: 1 }),
+    R8("v2", "coverage", { shift_type: "close", min: 1 }),
+    R8("v3", "coverage", { shift_type: "mid", min: 1, days: [1, 2] }),
+    ...["open", "close", "mid"].map((t) => R8(`m${t}`, "max_per_shift_day", { shift_type: t, max: 1 })),
+    R8("x2", "max_days_on_shift", { employee_ids: [L8], shift_type: "close", n: 1 }),
+  ];
+  const run118 = (weeks, seed, leaveFor = () => ({})) => {
+    const out = [];
+    let previous = null;
+    const history = [];
+    for (let i = 0; i < weeks; i++) {
+      const w = generateWeek({ weekStart: addDays("2026-11-15", i * 7), employees: emps118, rules: rules118, previous, history: [...history], fallbackTimes: { start: "02:00", end: "21:30" }, seed: seed + i, leave: leaveFor(i) });
+      out.push(w);
+      if (previous) history.push(previous);
+      previous = w.plan;
+    }
+    return out;
+  };
+  const cnt = (by, d, t) => emps118.filter((e) => by[e.id]?.[d]?.type === t).length;
+  const weekOk = (w, prev, leave = {}) => {
+    const by = w.plan.byEmployee;
+    const bad = [];
+    for (let d = 0; d < 7; d++) {
+      if (cnt(by, d, "open") !== 1) bad.push(`day ${d} open ${cnt(by, d, "open")}`);
+      if (cnt(by, d, "close") !== 1) bad.push(`day ${d} close ${cnt(by, d, "close")}`);
+    }
+    for (const id of [V8, N8, J8, L8]) {
+      const days = by[id].filter(Boolean);
+      const want = 5 - (leave[id]?.length ?? 0);
+      if (days.length !== want) bad.push(`emp ${id} ${days.length} days, want ${want}`);
+      if (days.some((s) => shiftHours(s.start, s.end) !== 8)) bad.push(`emp ${id} not 8 h`);
+    }
+    if (by[N8][6]) bad.push("Naida Sat");
+    if (by[V8].some((s) => s && s.type !== "open")) bad.push("Veronica not open");
+    if (by[V8][6] || by[V8][0]) bad.push("Veronica weekend");
+    if (by[L8].filter((s) => s?.type === "close").length > 1) bad.push("Lizzie close > 1");
+    for (const e of emps118) for (let d = 0; d < 7; d++) {
+      const p = d === 0 ? prev?.byEmployee[e.id]?.[6] : by[e.id][d - 1];
+      if (p?.type === "close" && by[e.id][d]?.type === "open") bad.push(`${e.name} close→open day ${d}`);
+    }
+    if (![3, 4, 5, 6, 0].every((d) => by[S8][d]?.type === "jday" && by[S8][d].start === "10:00") || by[S8][1] || by[S8][2]) bad.push("Jessica");
+    if (![1, 2].every((d) => cnt(by, d, "mid") === 1)) bad.push("Mon/Tue day shift");
+    if (w.problems.length) bad.push(...w.problems.map((p) => p.message));
+    return bad;
+  };
+
+  check("118 4 周表全部 ✓（3 种排法）：早晚班天天 1 人、四人每周 5 天 40 小时、Naida 周六不上、Veronica 只早班且周末休、Lizzie 晚班 ≤ 1、晚班后不早班、Jessica 周三到周日 10–6、周一二白班 1 人、没有排不下", () => {
+    for (const seed of [1, 7, 42]) {
+      const ws = run118(4, seed);
+      ws.forEach((w, i) => assert.deepEqual(weekOk(w, i ? ws[i - 1].plan : null), [], `seed ${seed} week ${i + 1}`));
+    }
+  });
+
+  check("118 Jessica 的 Day 10–6 是另一种班：不占 9–5 白班的名额（周三到周五有几天白班另有 1 人 + Jessica）", () => {
+    const ws = run118(4, 1);
+    const both = ws.flatMap((w) => [3, 4, 5].filter((d) => cnt(w.plan.byEmployee, d, "mid") === 1 && cnt(w.plan.byEmployee, d, "jday") === 1));
+    assert.ok(both.length >= 4, `only ${both.length} Wed–Fri days with 9–5 + 10–6`);
+    assert.equal(maxPeopleOn(rules118, "2026-11-18", "mid"), 1);
+  });
+
+  check("118 Q2 A：周末有人请假要补班时只从周三到周五挪白班，周一、周二白班不动（Lizzie 周日 Leave / Jing 周三 Leave / Veronica 11/26–30）", () => {
+    const cases = {
+      lizzieSun: (i) => (i === 0 ? { [L8]: [0] } : {}),
+      jingWed3: (i) => (i < 3 ? { [J8]: [3] } : {}),
+      veronica1126: (i) => (i === 1 ? { [V8]: [4, 5] } : i === 2 ? { [V8]: [1] } : {}),
+    };
+    for (const [name, lf] of Object.entries(cases)) for (const seed of [1, 7, 42]) {
+      const ws = run118(4, seed, lf);
+      ws.forEach((w, i) => assert.deepEqual(weekOk(w, i ? ws[i - 1].plan : null, lf(i)), [], `${name} seed ${seed} week ${i + 1}`));
+    }
+  });
+
+  check("118 周六 Jing 请假 ⇒ 只剩 Lizzie，排不下；提示写真正满了的班（不再写成别的班）", () => {
+    const w = run118(1, 1, () => ({ [J8]: [6] }))[0];
+    const sat = w.problems.filter((p) => p.date === "2026-11-21");
+    assert.ok(sat.length >= 1, JSON.stringify(w.problems));
+    assert.equal(cnt(w.plan.byEmployee, 6, "open") + cnt(w.plan.byEmployee, 6, "close"), 1);
+    for (const p of w.problems) {
+      assert.ok(!/Max people on a shift: \w+ allows/.test(p.message), p.message);
+    }
+  });
+
+  check("118 三人轮流（公平）：8 周里 Naida / Jing / Lizzie 各自的周末早晚班次数（只算大致平均，不是严格轮流）", () => {
+    for (const seed of [1, 7, 42]) {
+      const ws = run118(8, seed);
+      const n = { [N8]: 0, [J8]: 0, [L8]: 0 };
+      for (const w of ws) for (const d of [6, 0]) for (const id of [N8, J8, L8]) if (["open", "close"].includes(w.plan.byEmployee[id][d]?.type)) n[id]++;
+      // 8 周共 32 个周末早晚班；Veronica、Jessica 不上，Naida 周六不上 ⇒ 周六永远是 Jing + Lizzie（各 8 次），周日 16 个由三人分。
+      const sun = { [N8]: 0, [J8]: 0, [L8]: 0 };
+      for (const w of ws) for (const id of [N8, J8, L8]) if (["open", "close"].includes(w.plan.byEmployee[id][0]?.type)) sun[id]++;
+      console.log(`      seed ${seed}: weekend shifts Naida ${n[N8]} / Jing ${n[J8]} / Lizzie ${n[L8]}; Sundays Naida ${sun[N8]} / Jing ${sun[J8]} / Lizzie ${sun[L8]}`);
+      assert.equal(Object.values(sun).reduce((a, b) => a + b, 0), 16);
+      for (const id of [N8, J8, L8]) assert.ok(sun[id] >= 3, `seed ${seed} emp ${id} only ${sun[id]} Sundays`);
+    }
+  });
+
+  check("118 findViolations：Lizzie 一周 2 次晚班 ⇒ 报 Maximum days on a shift；1 次不报", () => {
+    const plan = run118(1, 1)[0].plan;
+    assert.equal(findViolations(rules118.filter((x) => x.type === "shift_times" || x.type === "max_days_on_shift"), plan, null, emps118).length, 0);
+    const by = structuredClone(plan.byEmployee);
+    const closeDays = [1, 2, 3, 4, 5].filter((d) => by[L8][d]?.type !== "close").slice(0, 2);
+    for (const d of closeDays) by[L8][d] = { type: "close", start: "13:30", end: "21:30" };
+    const v = findViolations(rules118.filter((x) => x.type === "shift_times" || x.type === "max_days_on_shift"), { ...plan, byEmployee: by }, null, emps118);
+    assert.ok(v.some((x) => /Lizzie/.test(x)), JSON.stringify(v));
+  });
+}
+
 console.log(`\n${passed}/${passed + failed} passed`);
 process.exit(failed ? 1 : 0);

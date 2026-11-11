@@ -1560,6 +1560,20 @@ D. 已完成、待从置顶移走：
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### ✅ 生产慢（2026-11-11 00:45 前，Annie 转 staff 投诉）—— 结案：Annie「算了，她在中国，应该是vpn的原因」，不用再跟后端跟进
+
+- Annie 原话：「Ricky投诉刚才登录花了5-6分钟才loading页面，然后loading message也非常慢」。
+- d8 只读测（00:45 后）：ops 页面 0.17–0.22s、ops 转发未登录 API 0.15–0.2s、confirm 0.13s，现在不慢；登录后的接口测不了。
+- 今晚上线：后端 G280 f4930195 + v163（约 23:00）、W3 ceba9aaa，可能还开了 G180 tracking-sync；前端推 main 多次（每次 Railway 重新部署）。
+- 已请后端 5c 只读查 Railway 日志 / 慢请求 / DB / 重启。问 Annie：Ricky 用的是 ops 还是 confirm、几点、哪一页的 message。等结果。
+- 5c 查（Annie 说约 00:20）：后端 23:08 后没部署；00:20 前后没有定时大任务（下一个 03:00 对账 + tracking-sync 全量）；00:39 / 00:40 生产库空闲（6 个连接、没有锁等待）；tracking-sync 是 super_admin_only（22:08 设），平时只同步来单那天；v163 4 张表空、TripGuru 轮询没事件；登录记录 00:20 前后只有 Annie 00:22，Rickie（id 14）上次登录成功 21:58；/auth/login 实测 0.35s。Railway 日志 / CPU 后端看不到，要 Annie 在 Railway 后台看。⇒ 后端没找到原因。
+- d8 查前端推 main 时间：功能 23:03 / 23:12 / 23:22；之后只有 PROGRESS 文档，00:03 一次，然后到 00:39 才有下一次 ⇒ 00:15–00:25 没有推送。~~发现：仓库没有 railway.json / toml ⇒ 只改 PROGRESS 也重新部署~~ **更正**：Annie 在 Railway 后台看到 Watch Paths 已经是 `**` / `!**/*.md` / `!docs/**`（Annie 确认原话：「我们的一系列全是doc，然后全部skip了」）⇒ PROGRESS 推送本来就不部署，今晚只有 23:03 / 23:12 / 23:22 三次功能部署，频繁部署不是原因。可选再加 `!checks/**`。不要加 railway.json（Railway config-as-code 已不推荐，旧文件只保证到 2026-12-01）。（已结案，不用发后端。）
+
+### 120. Staff Schedule Rules 简化 + 选的时候就提示冲突（2026-11-11，Annie 提；d8 派 6b 先出样稿）
+
+- Annie 原话：「排班那个，我需要你们把规则改得更简单一些，而且在我选得时候就应该提示有冲突或者有问题」。
+- d8 初步方向（样稿里可改）：按「人」和「班」设（每人一张卡：能上哪些班、固定休哪几天、每周几天、某班每周最多 / 至少几次、参不参加轮值；每个班一张卡：时间、每天最少 / 最多几人、例外日；全局：晚班后不接早班、最少休息小时），底下照旧存成现有规则；边选边检查（总账 需要几个班 vs 有几个位置、逐人天数够不够、某天某班没人能上、规则互相打架、试跑引擎列出排不下的），红字当场指出。样稿用 118 真实情况画，含一个故意的冲突。排在 118 合 main 之后。等样稿 + Annie 答 +「动手」。
+
 ### 119. Staff Schedule 排班表做成 118 preview 的样子（一目了然 + 分析）（2026-11-11 凌晨，Annie 在 6b 窗口直接提；6b 出样稿）
 
 - Annie 原话：「我需要在staff schedule那里把排班做成你preview的那个样子，一目了然，还可以分析」。
@@ -1575,6 +1589,8 @@ D. 已完成、待从置顶移走：
 - 补（Annie 原话）：「如果周末还补不上，就把jing和Lizze以及Nadia的白天班挪过去」⇒ 周末早晚班优先排满；排不满时把 Jing / Lizzie / Naida 当周的白班挪到周末早晚班（其他规则照守：Naida 周六不能上、Lizzie 晚班 ≤ 1、晚班后不接早班、每人 5 天）。已转 6b。
 - 再补（Annie 原话）：「3个人轮值那天的空缺，原来的那天就安排Jessica一个人上白班」⇒ 三人轮流挪；被挪走那天白班只有 Jessica。推论：只能从周三–周五挪（周一、周二 Jessica 休），d8 已问 Annie 确认，已转 6b。
 - 🟡 **preview（6b）**：https://claude.ai/artifact/CLx99qVsvqLZK7ZgipkQAU ，分支 task/schedule-rules-118 8d1a2497（直接跑引擎，4 周 11/15–12/12）。原因：① 主因：Jessica 10–6 跟 9–5 算同一种白班，「最多 1 人」把她也算进去，其他四人每周只排到 3–4 天；② Lizzie 晚班 ≤ 1 现有规则写不出 ⇒ 新规则 max_days_on_shift（引擎 + Rules 页已写）；③ 排不下的提示写的班次名不一定对（明天修）；④ Veronica 要用 Cannot work，不用 Fixed shift。Jessica 用单独班次「Day 10–6」跑 4 周全部通过，3 种 seed 一样；周末缺人时引擎自动从周三–周五白班挪，现有引擎就会，不用改；三人轮流公平还没验证。问 Annie：Q1 Jessica 10–6 设成单独班次（A 推荐，不改后端 / 引擎）/ 在 Max people 里排除她（B，前后端都改）；Q2 只从周三–周五挪（A 推荐）/ 哪天都可以（B）。
+- ✅ **Annie（原话）：「全部同意A」**（118 Q1 / Q2）⇒ Q1 A Jessica 10–6 设成单独班次「Day 10–6」，白班「最多 1 人」只管 9–5；Q2 A 周末缺人只从周三–周五挪白班，三人轮流。还没说「动手」，d8 已问。
+- ✅ **Annie（原话）：「动手」** ⇒ d8 派 6b：合 main（max_days_on_shift 后端没上前存了 400 要写红字）、修提示班名、补公平 / Q2 / 周末固定休检查，另出给 Annie 照着点的设置清单（Settings 加 Day 10–6 + Rules 逐条怎么填；线上由 Annie 自己设）。⚠️ 明天第一件：把 max_days_on_shift 白名单发当天后端主窗口。
 - 需要后端：schedule_rules.py 白名单加 max_days_on_shift {shift_type, n, employee_ids? / exclude_employee_ids?}，固定按周 ⇒ d8 已发 5c，**5c 已收工、没写进后端待办**（补记：Annie 又说「Veronica 11/26-30休假」（取代 11/26–27）、「然后Veronica固定休周六周日」⇒ Cannot work Veronica 周六周日；都已转 6b 重跑） ⇒ ⚠️ 明天前端主窗口：Annie 说「动手」后，把这条形状发给当天的后端主窗口派工（不迁移，未知键拒，400 英文）。
 
 ### 117. Staff Schedule：Autofill 前先填已批的 Leave（2026-11-10 晚，Annie 在后端提，5c 转；d8 派 6b 出 preview）

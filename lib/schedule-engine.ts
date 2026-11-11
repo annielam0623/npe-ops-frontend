@@ -25,6 +25,7 @@ export type RuleType =
   | "cannot_work"
   | "days_per_week"
   | "min_days_on_shift"
+  | "max_days_on_shift"
   | "min_rest"
   | "after_shift"
   | "coverage"
@@ -87,6 +88,16 @@ export interface MinDaysOnShiftParams {
   shift_type: string;
   n: number;
   per: "week" | "4weeks";
+}
+/**
+ * 置顶 118（Annie「Lizzie一周最多一次closing」）：某种班每周最多 n 天。选人同 min_days_on_shift
+ * （employee_ids / exclude_employee_ids / 都不写 = 所有人）。Auto-fill 严格遵守。
+ */
+export interface MaxDaysOnShiftParams {
+  employee_ids?: number[];
+  exclude_employee_ids?: number[];
+  shift_type: string;
+  n: number;
 }
 /** 两个班之间至少隔 hours 小时（下班到下一个班的上班，跨周也算）。 */
 export interface MinRestParams {
@@ -227,6 +238,7 @@ interface Compiled {
   cannot: CannotWorkParams[];
   perWeek: DaysPerWeekParams[];
   minDays: MinDaysOnShiftParams[];
+  maxDays: MaxDaysOnShiftParams[];
   minRest: number | null;
   after: AfterShiftParams[];
   coverage: CoverageParams[];
@@ -250,6 +262,7 @@ function compile(rules: Rule[]): Compiled {
     cannot: enabled<CannotWorkParams>(rules, "cannot_work"),
     perWeek: enabled<DaysPerWeekParams>(rules, "days_per_week"),
     minDays: enabled<MinDaysOnShiftParams>(rules, "min_days_on_shift"),
+    maxDays: enabled<MaxDaysOnShiftParams>(rules, "max_days_on_shift"),
     minRest: rests.length ? Math.max(...rests) : null,
     after: enabled<AfterShiftParams>(rules, "after_shift"),
     coverage: enabled<CoverageParams>(rules, "coverage"),
@@ -489,6 +502,39 @@ function targetDays(c: Compiled, employeeId: number): number | null {
   return target;
 }
 
+/** 置顶 118：这个人这种班每周最多几天（没有规则 = null；几条取小的）。 */
+function maxDaysOn(
+  c: Compiled,
+  employeeId: number,
+  type: string,
+): number | null {
+  let max: number | null = null;
+  for (const r of c.maxDays) {
+    if (r.shift_type !== type) continue;
+    if (r.employee_ids?.length && !r.employee_ids.includes(employeeId))
+      continue;
+    if (r.exclude_employee_ids?.includes(employeeId)) continue;
+    max = max == null ? r.n : Math.min(max, r.n);
+  }
+  return max;
+}
+
+/** 置顶 118：一周的班里，有没有哪种班超过「每周最多几天」。 */
+function withinMaxDays(
+  c: Compiled,
+  employeeId: number,
+  week: DayShift[],
+): boolean {
+  if (!c.maxDays.length) return true;
+  const n = new Map<string, number>();
+  for (const s of week) if (s) n.set(s.type, (n.get(s.type) ?? 0) + 1);
+  for (const [type, k] of n) {
+    const max = maxDaysOn(c, employeeId, type);
+    if (max != null && k > max) return false;
+  }
+  return true;
+}
+
 /** 前一天的班 → 第二天这个班能不能接（间隔 + after_shift）。 */
 function followOk(
   c: Compiled,
@@ -541,6 +587,11 @@ export function findViolations(
           `${name(e.id)} day ${d}: not enough rest after the previous shift`,
         );
       }
+    }
+    if (!withinMaxDays(c, e.id, days)) {
+      out.push(
+        `${name(e.id)} works a shift type more days than "at most" allows`,
+      );
     }
     const t = targetDays(c, e.id);
     const worked = days.filter(Boolean).length;
@@ -725,6 +776,15 @@ export function generateWeek(input: GenerateInput): GenerateResult {
     ) => {
       if (days[e.id][slot.day]) return false;
       if (!canWork(c, e.id, slot.day, slot.shift_type)) return false;
+      // 置顶 118：这种班这周已经到「每周最多几天」。
+      {
+        const max = maxDaysOn(c, e.id, slot.shift_type);
+        if (
+          max != null &&
+          days[e.id].filter((x) => x?.type === slot.shift_type).length >= max
+        )
+          return false;
+      }
       // 置顶 110 ①：这个班这一天已经满了。
       if (!roomFor(slot.day, slot.shift_type)) return false;
       // 置顶 110 题 1 A：固定班 + 轮值超过每周天数 ⇒ 这周轮值跳过这个人，换下一位。
@@ -854,6 +914,8 @@ export function generateWeek(input: GenerateInput): GenerateResult {
     return out;
   };
   const patternOk = (id: number, p: Pattern): boolean => {
+    // 置顶 118：某种班每周最多几天。
+    if (!withinMaxDays(c, id, p)) return false;
     for (let d = 0; d < 7; d++) {
       const s = p[d];
       if (!s) continue;
@@ -989,9 +1051,18 @@ export function generateWeek(input: GenerateInput): GenerateResult {
           if (days[e.id][d]?.type !== t || forcedDays.get(e.id)?.[d]) continue;
           days[e.id][d] = null;
           n--;
+          // 置顶 118：提示写这个人那天能上、但都满了的全部班（原来只写被拿掉的那一种，看不出真正卡在哪）。
+          const full = typeOrder.filter((type) => {
+            if (!canWork(c, e.id, d, type)) return false;
+            const k = capFor(c, dateOf(d), d, type);
+            return k != null && headcount(days, emps, d, type) >= k;
+          });
+          const list = (full.length ? full : [t])
+            .map((type) => `${type} (at most ${capFor(c, dateOf(d), d, type) ?? cap})`)
+            .join(", ");
           problems.push({
             date: dateOf(d),
-            message: `${e.name}: no shift left on ${dateOf(d)}. Max people on a shift: ${t} allows ${cap} a day.`,
+            message: `${e.name}: no shift left on ${dateOf(d)}. Every shift they can work that day is full: ${list}.`,
           });
         }
       }
