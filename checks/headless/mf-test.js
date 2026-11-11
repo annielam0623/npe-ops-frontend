@@ -422,7 +422,7 @@ async function run() {
 
   // 分车（Annie 10-29「bus manifest Q4 没存之前还是挪过去，缓存，然后等整页存」）
   check("没有改动：整页 Save 是蓝色、灰着（Q1）", await evaluate("const b = document.querySelector('[data-page-save]'); return !!b && b.disabled && getComputedStyle(b).backgroundColor === 'rgb(59, 130, 246)';"));
-  check("整页 Save 在工具条最前面（Print all 左边）", await evaluate("const b = document.querySelector('[data-page-save]'); const p = [...document.querySelectorAll('main a')].find(a => a.textContent.trim() === 'Print all buses'); return !p || !!(b.compareDocumentPosition(p) & Node.DOCUMENT_POSITION_FOLLOWING);"));
+  check("整页 Save 在工具条最前面（Print all 左边）", await evaluate("const b = document.querySelector('[data-page-save]'); const p = [...document.querySelectorAll('main a')].find(a => a.textContent.trim().startsWith('Print all buses')); return !p || !!(b.compareDocumentPosition(p) & Node.DOCUMENT_POSITION_FOLLOWING);"));
   before = (await mockLog()).length;
   await evaluate(`
     const sel = document.querySelector('section[aria-label="Not on a bus yet"] select');
@@ -493,7 +493,7 @@ async function run() {
   // ── G198 / G197 后端上线后的样子（mock 开 g198 = 后端 main 1b2ea12a 的形状；textSize 字段名暂定）──
   await ctl({ g198: true, textSize: true });
   await goto(`${APP}/dispatch/manifest?date=2026-10-05&tour=3`);
-  await waitFor("document.querySelector('[data-text-size-button]')");
+  await waitFor("document.querySelector('[data-text-size-toolbar]')");
   await helpers();
   const A = "document.querySelector('section[aria-label=\"Bus 2041=A\"]')";
   check("G198 开了格的节：照后端拼好的 heading（节名 Tour time (CHECK-IN …) - N PAX · CFM # 号），check-in 小一号，没有灰字", await evaluate(`const td = [...${A}.querySelectorAll('td')].find(td => td.textContent.startsWith('LOWER ANTELOPE 1:00P')); return !!td && td.textContent === 'LOWER ANTELOPE 1:00P (CHECK-IN 12:30P) - 4 PAX · CFM # 395067' && td.querySelector('[data-checkin]').textContent === ' (CHECK-IN 12:30P)' && !td.querySelector('[data-no-cfm]') && !td.querySelector('[data-no-tour-time]');`), await evaluate(`return [...${A}.querySelectorAll('td')].map(td => td.textContent).filter(t => t.startsWith('LOWER')).join(' | ');`));
@@ -505,71 +505,65 @@ async function run() {
   check("G198 午餐表底部：Bus # / Tour Guide / Driver 一行、亮黄两行页脚（换行照印）", await evaluate("const l = document.querySelector('section[data-lunch]'); const row = l.querySelectorAll('[data-lunch-info] tr'); const n = l.querySelector('[data-lunch-note]'); return row.length === 1 && row[0].children.length === 6 && getComputedStyle(n).backgroundColor === 'rgb(255, 255, 0)' && getComputedStyle(n).whiteSpace === 'pre-line' && n.textContent.includes('\\n');"));
   check("G198 B 车 lunch = null：不出午餐表", await evaluate("return document.querySelectorAll('section[data-lunch]').length === 1;"));
   check("G197 存好的设定照画：Pick-up Location 整列 +3（19.5px）；别的列照旧 16.5px", await evaluate("const r = document.querySelector('tr[data-guest=CHD1]'); return getComputedStyle(r.children[2]).fontSize === '19.5px' && getComputedStyle(r.children[1]).fontSize === '16.5px';"));
-  check("G197 Text size 键是白底（不是蓝色）；历史默认收起，写最后是谁改的", await evaluate(`const b = ${A}.querySelector('[data-text-size-button]'); const h = ${A}.querySelector('[data-text-size-history]'); return getComputedStyle(b).backgroundColor !== 'rgb(59, 130, 246)' && !!h && !h.open && h.textContent.includes('last by Veronica');`));
-  await evaluate(`${A}.querySelector('[data-text-size-button]').click(); return 1;`);
-  await waitFor("document.querySelector('[data-text-size-toolbar]')");
-  check("G197 / 置顶 114 编辑卡：Apply To（Column / Row / Page）｜Text Size｜Font Weight｜Quick Actions（Reset Selection / Reset Whole Table）｜Cancel / Done，没有 Spacing；Done 深灰 + ✓，没有蓝色键", await evaluate("const t = document.querySelector('[data-text-size-toolbar]'); const blues = [...t.querySelectorAll('button')].filter(b => getComputedStyle(b).backgroundColor === 'rgb(59, 130, 246)'); const d = t.querySelector('[data-text-size-done]'); const gs = [...t.querySelectorAll('[data-text-size-group]')]; const R = (e) => e.getBoundingClientRect(); const q = gs.find(g => g.dataset.textSizeGroup === 'quick'); return gs.map(g => g.dataset.textSizeGroup).join(',') === 'apply,size,weight,quick,finish' && gs.slice(0, 4).map(g => g.firstElementChild.textContent.trim()).join('|') === 'Apply To|Text Size|Font Weight|Quick Actions' && [...gs[0].querySelectorAll('button')].map(b => b.textContent).join('/') === 'Column/Row/Page' && [...q.querySelectorAll('button')].map(b => b.textContent).join('|') === 'Reset Selection|Reset Whole Table' && Math.max(...gs.map(g => Math.abs(R(g).top - R(gs[0]).top))) <= 2 && !t.querySelector('[data-relay-spacing]') && blues.length === 0 && !!d && d.textContent.trim() === 'Done' && getComputedStyle(d).backgroundColor === 'rgb(31, 41, 55)' && !!d.querySelector('svg[data-line-icon=check]') && /^Picked:/.test(t.querySelector('[data-text-size-picked]')?.textContent.trim() ?? '') && !t.querySelector('[data-text-size-save]');"), await evaluate("const t = document.querySelector('[data-text-size-toolbar]'); return [...t.querySelectorAll('[data-text-size-group]')].map(g => g.dataset.textSizeGroup + ':' + Math.round(g.getBoundingClientRect().top) + ':' + Math.round(g.getBoundingClientRect().width)).join(' ');"));
-  if (process.env.SHOT_DIR) { await evaluate("document.querySelector('[data-text-size-toolbar]').scrollIntoView({ block: 'center' }); return 1;"); await sleep(150); const r = await cdp("Page.captureScreenshot", { format: "png" }); require("fs").mkdirSync(process.env.SHOT_DIR, { recursive: true }); require("fs").writeFileSync(require("path").join(process.env.SHOT_DIR, "bus-manifest-desktop-editing.png"), Buffer.from(r.data, "base64")); }
-  // 整行：点 CHD3 的一格 → A+ 两次 → Bold
-  await evaluate("[...document.querySelectorAll('[data-text-size-toolbar] button')].find(b => b.textContent === 'Row').click(); return 1;");
+  // 置顶 114（Annie「我不要二级菜单，不要隐藏」→「1.A 2 动手」）：没有 Aa 键，编辑卡一直显示在每台车色条下面；电脑没有 Cancel / Done。
+  const TA = `${A}.querySelector('[data-text-size-toolbar]')`;
+  check("置顶 114：没有 Aa Text size 键；每台车色条下面一直有编辑卡；改动历史直接列出（不收起），写最后是谁改的", await evaluate(`const h = ${A}.querySelector('[data-text-size-history]'); return !document.querySelector('[data-text-size-button]') && !document.body.textContent.includes('Aa Text size') && !!${TA} && document.querySelectorAll('section[aria-label^="Bus "] [data-text-size-toolbar]').length === document.querySelectorAll('section[aria-label^="Bus "]').length && !!h && h.tagName === 'DIV' && h.textContent.includes('last by Veronica') && !!h.querySelector('li')?.offsetParent;`));
+  check("G197 / 置顶 114 编辑卡（电脑）：Apply To（Column / Row / Page）｜Text Size｜Font Weight｜Quick Actions（Reset Selection / Reset Whole Table），没有 Spacing、没有 Cancel / Done、没有蓝色键；Picked 小灰字", await evaluate(`const t = ${TA}; const blues = [...t.querySelectorAll('button')].filter(b => getComputedStyle(b).backgroundColor === 'rgb(59, 130, 246)'); const gs = [...t.querySelectorAll('[data-text-size-group]')]; const R = (e) => e.getBoundingClientRect(); const q = gs.find(g => g.dataset.textSizeGroup === 'quick'); return gs.map(g => g.dataset.textSizeGroup).join(',') === 'apply,size,weight,quick' && gs.map(g => g.firstElementChild.textContent.trim()).join('|') === 'Apply To|Text Size|Font Weight|Quick Actions' && [...gs[0].querySelectorAll('button')].map(b => b.textContent).join('/') === 'Column/Row/Page' && [...q.querySelectorAll('button')].map(b => b.textContent).join('|') === 'Reset Selection|Reset Whole Table' && Math.max(...gs.map(g => Math.abs(R(g).top - R(gs[0]).top))) <= 2 && !t.querySelector('[data-relay-spacing]') && blues.length === 0 && !t.querySelector('[data-text-size-done]') && /^Picked:/.test(t.querySelector('[data-text-size-picked]')?.textContent.trim() ?? '') && !t.querySelector('[data-text-size-save]');`), await evaluate(`return [...${TA}.querySelectorAll('[data-text-size-group]')].map(g => g.dataset.textSizeGroup).join(',');`));
+  check("置顶 114 键旁的字跟着缩小：组标题 10.5px、Picked 10.5px、Version / Columns 框 28px 高", await evaluate(`const t = ${TA}; const v = document.querySelector('[data-version-select]')?.closest('label'); const c = document.querySelector('[data-columns-inline]'); return getComputedStyle(t.querySelector('[data-text-size-group]').firstElementChild).fontSize === '10.5px' && getComputedStyle(t.querySelector('[data-text-size-picked]')).fontSize === '10.5px' && (!v || Math.round(v.getBoundingClientRect().height) === 28) && (!c || Math.round(c.getBoundingClientRect().height) === 28);`));
+  if (process.env.SHOT_DIR) { await evaluate(`${TA}.scrollIntoView({ block: 'center' }); return 1;`); await sleep(150); const r = await cdp("Page.captureScreenshot", { format: "png" }); require("fs").mkdirSync(process.env.SHOT_DIR, { recursive: true }); require("fs").writeFileSync(require("path").join(process.env.SHOT_DIR, "bus-manifest-desktop-editing.png"), Buffer.from(r.data, "base64")); }
+  // 整行：点 CHD3 的一格 → A+ 两次
+  before = (await mockLog()).length;
+  await evaluate(`[...${TA}.querySelectorAll('button')].find(b => b.textContent === 'Row').click(); return 1;`);
   await sleep(150);
   await evaluate("document.querySelector('tr[data-guest=CHD3]').children[1].click(); return 1;");
   await sleep(150);
-  await evaluate("const t = document.querySelector('[data-text-size-toolbar]'); t.querySelector('[aria-label=Bigger]').click(); return 1;");
+  await evaluate(`${TA}.querySelector('[aria-label=Bigger]').click(); return 1;`);
   await sleep(100);
-  await evaluate("const t = document.querySelector('[data-text-size-toolbar]'); t.querySelector('[aria-label=Bigger]').click(); return 1;");
+  await evaluate(`${TA}.querySelector('[aria-label=Bigger]').click(); return 1;`);
   await sleep(150);
-  check("G197 整行 +2：值写 +2 px、这一行变大，Pick-up Location 两层相加（+3 +2 = 21.5px）", await evaluate("const r = document.querySelector('tr[data-guest=CHD3]'); return document.querySelector('[data-text-size-value]').textContent === '+2 px' && getComputedStyle(r.children[1]).fontSize === '18.5px' && getComputedStyle(r.children[2]).fontSize === '21.5px';"));
-  check("G197 还没 Save：没发请求", (await since(before, "/api/dispatch/manifests/text-size")).length === 0);
-  before = (await mockLog()).length;
-  await evaluate("document.querySelector('[data-text-size-done]').click(); return 1;");
-  await sleep(200);
-  check("G197 Done：编辑条收起、调好的留在页面上（CHD3 还是 +2），不发请求；色条写 Text size not saved", (await since(before, "/api/dispatch/manifests/text-size")).length === 0 && (await evaluate(`return !document.querySelector('[data-text-size-toolbar]') && getComputedStyle(document.querySelector('tr[data-guest=CHD3]').children[1]).fontSize === '18.5px' && !!${A}.querySelector('[data-text-size-unsaved]') && document.querySelector('[data-page-unsaved]').textContent.includes('text size on Bus 2041=A');`)));
+  check("G197 整行 +2：值写 +2 px、这一行变大，Pick-up Location 两层相加（+3 +2 = 21.5px）", await evaluate(`const r = document.querySelector('tr[data-guest=CHD3]'); return ${TA}.querySelector('[data-text-size-value]').textContent === '+2 px' && getComputedStyle(r.children[1]).fontSize === '18.5px' && getComputedStyle(r.children[2]).fontSize === '21.5px';`));
+  check("置顶 114：调了马上放进整页暂存（不用按 Done）——色条写 Text size not saved、页头黄字、Save 能按；没发请求", (await since(before, "/api/dispatch/manifests/text-size")).length === 0 && (await evaluate(`return !!${A}.querySelector('[data-text-size-unsaved]') && document.querySelector('[data-page-unsaved]')?.textContent.includes('text size on Bus 2041=A') && !document.querySelector('[data-page-save]').disabled;`)));
   await evaluate("document.querySelector('[data-page-save]').click(); return 1;");
   const tsBody = (await waitReq(before, "/api/dispatch/manifests/text-size"))[0]?.body;
   check("G197 Save：PUT 车键 + 整张表的设定（整列 pickup_location +3 Bold、整行 CHD3 +2）", tsBody?.tour_manifest_id === 12 && tsBody?.bus_label === "A" && tsBody?.text_size?.columns?.pickup_location?.d === 3 && tsBody?.text_size?.rows?.CHD3?.d === 2, JSON.stringify(tsBody));
   check("G197 整页 Save 存好：标记没了、重读后照新设定画", (await waitFor("!document.querySelector('[data-text-size-unsaved]') && !!document.querySelector('[data-page-saved]') && getComputedStyle(document.querySelector('tr[data-guest=CHD3]').children[1]).fontSize === '18.5px'")));
   // 手机宽：最多 +4（屏幕上），整列 +3 +整行 +2 = +5 ⇒ 显示 +4
-  await cdp("Emulation.setDeviceMetricsOverride", { width: 420, height: 900, deviceScaleFactor: 1, mobile: true });
+  await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
   await sleep(500);
   check("G197 手机（< 600px）最多 +4：+3 +2 的格子显示 20.5px", await evaluate("return getComputedStyle(document.querySelector('tr[data-guest=CHD3]').children[2]).fontSize === '20.5px';"));
-  await evaluate(`${A}.querySelector('[data-text-size-button]').click(); return 1;`);
-  await waitFor("document.querySelector('[data-text-size-phone]')");
-  const mph = await evaluate(`const t = document.querySelector('[data-text-size-phone]'); const rows = [...t.children].filter(e => e.tagName === 'DIV'); const btns = [...t.querySelectorAll('button:not([data-text-size-reset-menu])')].filter(b => b.offsetParent);
-    return { rows: rows.length, r1: [...rows[0].querySelectorAll('button')].map(b => b.textContent.trim()).join(' '), r2: [...rows[1].querySelectorAll('button')].map(b => b.textContent.trim()).join(' '), h: [...new Set(btns.map(b => Math.round(b.getBoundingClientRect().height)))].join(','), titles: /Apply To|Quick Actions|Picked/.test(t.textContent), spacing: !!t.querySelector('[data-relay-spacing]'), toggle: !${A}.querySelector('[data-text-size-button]').offsetParent };`);
-  check("置顶 114 手机：Bus Manifest 编辑卡两行「Col Row Page A− A+ ✕」「Reg Bold Reset… Done」，键 26px，没有 Spacing / 小标题 / Picked，Aa 开关收起", mph.rows === 2 && mph.r1 === "Col Row Page A− A+ ✕" && mph.r2 === "Reg Bold Reset… Done" && mph.h === "26" && !mph.titles && !mph.spacing && mph.toggle, JSON.stringify(mph));
-  await evaluate("document.querySelector('[data-text-size-reset-menu]').click(); return 1;");
+  await waitFor(`!!${A}.querySelector('[data-text-size-phone]')`);
+  const mph = await evaluate(`const t = ${A}.querySelector('[data-text-size-phone]'); const gs = [...t.querySelectorAll('[data-text-size-group]')];
+    return { groups: gs.map(g => g.dataset.textSizeGroup).join(','), quick: [...t.querySelectorAll('[data-text-size-group=quick] button')].map(b => b.textContent.trim()).join('|'), keyH: Math.round(t.querySelector('[data-text-size-group=apply] button').getBoundingClientRect().height), finH: Math.round(t.querySelector('[data-text-size-cancel]').getBoundingClientRect().height), noMenu: !t.querySelector('[data-text-size-reset-menu]'), spacing: !!t.querySelector('[data-relay-spacing]'), scrollX: document.documentElement.scrollWidth <= window.innerWidth + 1 };`);
+  check("置顶 114 手机：Bus Manifest 编辑卡竖排 Apply To｜Text Size｜Font Weight｜Quick Actions｜Cancel / Done，没有 Reset… 菜单、没有 Spacing；键 24px、Cancel / Done 28px；整页不左右晃", mph.groups === "apply,size,weight,quick,finish" && mph.quick === "Reset Selection|Reset Whole Table" && mph.keyH === 24 && mph.finH === 28 && mph.noMenu && !mph.spacing && mph.scrollX, JSON.stringify(mph));
+  // 手机 Cancel：撤掉这台车没存的字号
+  await evaluate(`[...${A}.querySelectorAll('[data-text-size-phone] [data-text-size-group=apply] button')].find(b => b.textContent === 'Page').click(); return 1;`);
   await sleep(100);
-  check("置顶 114 手机：Bus Manifest「Reset…」里是 Reset Selection｜Reset Whole Table", await evaluate("const l = document.querySelector('[data-text-size-reset-list]'); return !!l && [...l.querySelectorAll('button')].map(b => b.textContent).join('|') === 'Reset Selection|Reset Whole Table';"));
-  await evaluate("document.querySelector('[data-text-size-cancel]').click(); return 1;");
-  check("置顶 114 手机：✕ = Cancel ⇒ 编辑卡关掉", await waitFor("!document.querySelector('[data-text-size-toolbar]')"));
+  await evaluate(`${A}.querySelector('[data-text-size-phone] [aria-label=Bigger]').click(); return 1;`);
+  await sleep(150);
+  const staged = await evaluate(`return !!${A}.querySelector('[data-text-size-unsaved]');`);
+  await evaluate(`${A}.querySelector('[data-text-size-cancel]').click(); return 1;`);
+  await sleep(150);
+  check("置顶 114 手机：Cancel ⇒ 这台车没存的字号撤掉（编辑卡还在）", staged && (await evaluate(`return !${A}.querySelector('[data-text-size-unsaved]') && !document.querySelector('[data-page-unsaved]') && !!${A}.querySelector('[data-text-size-phone]');`)));
   await cdp("Emulation.clearDeviceMetricsOverride");
   await sleep(300);
   // 换车 + 字号一起存（后端 156ae23：整行只收这台车上现在的订单号）：CHD3 A → B，B 车给 CHD3 整行 +1，A 车整页 +1。
   // 要先存换车、后存字号；A 车那份不再带 CHD3 的整行（已经换走）。
   const B = "document.querySelector('section[aria-label=\"Bus 2042=B\"]')";
-  await evaluate(`${A}.querySelector('[data-text-size-button]').click(); return 1;`);
-  await waitFor("document.querySelector('[data-text-size-toolbar]')");
-  await evaluate("[...document.querySelectorAll('[data-text-size-toolbar] button')].find(b => b.textContent === 'Page').click(); return 1;");
+  const TB = `${B}.querySelector('[data-text-size-toolbar]')`;
+  await evaluate(`[...${TA}.querySelectorAll('button')].find(b => b.textContent === 'Page').click(); return 1;`);
   await sleep(150);
-  await evaluate("document.querySelector('[data-text-size-toolbar] [aria-label=Bigger]').click(); return 1;");
-  await sleep(100);
-  await evaluate("document.querySelector('[data-text-size-done]').click(); return 1;");
+  await evaluate(`${TA}.querySelector('[aria-label=Bigger]').click(); return 1;`);
   await sleep(150);
   await evaluate(`
     const sel = document.querySelector('tr[data-guest=CHD3] select');
     Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(sel, 'B');
     sel.dispatchEvent(new Event('change', { bubbles: true }));`);
   await sleep(200);
-  await evaluate(`${B}.querySelector('[data-text-size-button]').click(); return 1;`);
-  await waitFor("document.querySelector('[data-text-size-toolbar]')");
-  await evaluate("[...document.querySelectorAll('[data-text-size-toolbar] button')].find(b => b.textContent === 'Row').click(); return 1;");
+  await evaluate(`[...${TB}.querySelectorAll('button')].find(b => b.textContent === 'Row').click(); return 1;`);
   await sleep(150);
   await evaluate(`${B}.querySelector('tr[data-guest=CHD3]').children[1].click(); return 1;`);
   await sleep(150);
-  await evaluate("document.querySelector('[data-text-size-toolbar] [aria-label=Bigger]').click(); return 1;");
-  await sleep(100);
-  await evaluate("document.querySelector('[data-text-size-done]').click(); return 1;");
+  await evaluate(`${TB}.querySelector('[aria-label=Bigger]').click(); return 1;`);
   await sleep(150);
   before = (await mockLog()).length;
   await evaluate("document.querySelector('[data-page-save]').click(); return 1;");
@@ -619,7 +613,7 @@ async function run() {
   check("三版式 + G197：存的字号照画（Pick-up Location +3 = 19.5px，CHD3 整行 +2 = 21.5px）",
     await evaluate("const r1 = document.querySelector('tr[data-guest=CHD1]'); const r3 = document.querySelector('tr[data-guest=CHD3]'); return getComputedStyle(r1.children[2]).fontSize === '19.5px' && getComputedStyle(r3.children[2]).fontSize === '21.5px' && getComputedStyle(r1.children[1]).fontSize === '16.5px';"));
   // Print all：A 车有两单不符 ⇒ 先弹提醒，不开新标签
-  await evaluate("[...document.querySelectorAll('main a')].find(a => a.textContent.trim() === 'Print all buses').click(); return 1;");
+  await evaluate("[...document.querySelectorAll('main a')].find(a => a.textContent.trim().startsWith('Print all buses')).click(); return 1;");
   await waitFor("document.querySelector('[data-lunch-mismatch-dialog]')", 3000);
   check("Print all buses：有餐不符 ⇒ 先弹提醒，不开打印页",
     await evaluate("const l = window.__links.at(-1); return !!document.querySelector('[data-lunch-mismatch-dialog]') && !!l && l.prevented && window.__opened.length === 0;"));
@@ -632,7 +626,7 @@ async function run() {
   await evaluate("$btn('Cancel', document.querySelector('[data-lunch-mismatch-dialog]')).click(); return 1;");
   await sleep(200);
   check("Cancel：框关掉、没开打印页", await evaluate("return !document.querySelector('[data-lunch-mismatch-dialog]') && window.__opened.length === 0;"));
-  await evaluate("[...document.querySelectorAll('main a')].find(a => a.textContent.trim() === 'Print all buses').click(); return 1;");
+  await evaluate("[...document.querySelectorAll('main a')].find(a => a.textContent.trim().startsWith('Print all buses')).click(); return 1;");
   await waitFor("document.querySelector('[data-mismatch-go]')", 3000);
   await evaluate("document.querySelector('[data-mismatch-go]').click(); return 1;");
   await sleep(200);
@@ -662,7 +656,7 @@ async function run() {
     Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(sel, 'B');
     sel.dispatchEvent(new Event('change', { bubbles: true }));`);
   await sleep(150);
-  await evaluate("[...document.querySelectorAll('main a')].find(a => a.textContent.trim() === 'Print all buses').click(); return 1;");
+  await evaluate("[...document.querySelectorAll('main a')].find(a => a.textContent.trim().startsWith('Print all buses')).click(); return 1;");
   await waitFor("document.querySelector('[data-save-first-dialog]')", 3000);
   check(
     "有没存的改动按 Print all：先问 Save before printing?（不是餐不符那个框），写哪样没存，没开打印页",
@@ -673,7 +667,7 @@ async function run() {
   await sleep(150);
   check("Cancel：框关掉，改动还在页面上（还没存）", await evaluate("return !document.querySelector('[data-save-first-dialog]') && !!document.querySelector('[data-moved-from]') && window.__opened.length === 0;"));
   before = (await mockLog()).length;
-  await evaluate("[...document.querySelectorAll('main a')].find(a => a.textContent.trim() === 'Print all buses').click(); return 1;");
+  await evaluate("[...document.querySelectorAll('main a')].find(a => a.textContent.trim().startsWith('Print all buses')).click(); return 1;");
   await waitFor("document.querySelector('[data-save-first-go]')", 3000);
   await evaluate("document.querySelector('[data-save-first-go]').click(); return 1;");
   const pmove = (await waitReq(before, "/api/dispatch/manifests/guest-bus"))[0]?.body;
@@ -737,7 +731,6 @@ async function run() {
     await evaluate("const r = document.querySelector('tr[data-guest=CHD1]'); const th = document.querySelector('section[aria-label=\"Bus 2041=A\"] thead th'); const sec = [...document.querySelectorAll('section[aria-label=\"Bus 2041=A\"] td[colspan]')].find(td => td.textContent.startsWith('LOWER ANTELOPE')); return getComputedStyle(r.children[1]).fontSize === '21px' && getComputedStyle(r.children[6]).fontSize === '24px' && getComputedStyle(r.children[2]).fontSize === '24px' && getComputedStyle(th).fontSize === '12px' && getComputedStyle(sec).fontSize === '21px';"),
     await evaluate("const r = document.querySelector('tr[data-guest=CHD1]'); return [1, 2, 6].map(i => getComputedStyle(r.children[i]).fontSize).join(',');"));
   // 字号编辑：Lunch 列能单独选（列键 lunch），Save 照形状 PUT
-  await evaluate(`document.querySelector('section[aria-label="Bus 2041=A"] [data-text-size-button]').click(); return 1;`);
   await waitFor("document.querySelector('[data-text-size-toolbar]')");
   await evaluate("document.querySelector('section[aria-label=\"Bus 2041=A\"] thead th[data-col=lunch]').click(); return 1;");
   await sleep(150);
@@ -746,8 +739,6 @@ async function run() {
   check("G197 Lunch 整列可选：Picked 写 column “Lunch”、Lunch 格 +1（Marcello 21 → 22px）",
     await evaluate("return document.querySelector('[data-text-size-toolbar]').textContent.includes('column “Lunch”') && getComputedStyle(document.querySelector('tr[data-guest=CHD1] [data-lunch-cell]')).fontSize === '22px';"));
   before = (await mockLog()).length;
-  await evaluate("document.querySelector('[data-text-size-done]').click(); return 1;");
-  await sleep(150);
   await evaluate("document.querySelector('[data-page-save]').click(); return 1;");
   const ts2 = (await waitReq(before, "/api/dispatch/manifests/text-size"))[0];
   check("G197 Save：PUT /api/dispatch/manifests/text-size {tour_manifest_id, bus_label, text_size{page, columns{lunch}, rows}}",
@@ -837,7 +828,7 @@ async function run() {
   await waitFor("document.querySelector('[data-version-select]')");
   await helpers();
   await evaluate(TRAP);
-  await evaluate("[...document.querySelectorAll('main a')].find(a => a.textContent.trim() === 'Print all buses').click(); return 1;");
+  await evaluate("[...document.querySelectorAll('main a')].find(a => a.textContent.trim().startsWith('Print all buses')).click(); return 1;");
   await sleep(300);
   check("没有餐不符：Print all buses 不弹提醒，照常开新标签", await evaluate("const l = window.__links.at(-1); return !document.querySelector('[data-lunch-mismatch-dialog]') && !!l && !l.prevented;"), await evaluate("return JSON.stringify(window.__links);"));
   await evaluate("[...document.querySelectorAll('main button')].find(b => b.textContent.trim() === 'Download').click(); return 1;");
@@ -872,9 +863,10 @@ async function run() {
   await ctl({ affiliate: false });
 
   // ── Special Requirements 可编辑（Annie 2026-10-18；后端接口没上线时只读）；2026-10-30 并进整页 Save（Annie「并进整页一起存 A 动手」）──
-  await ctl({ notesEdit: true });
+  // 置顶 114 起字号编辑卡一直显示：开着 textSize 跑，证明编辑卡在时 Special Requirements 格照旧点开编辑（不是选中）。
+  await ctl({ notesEdit: true, textSize: true });
   await goto(`${APP}/dispatch/manifest?date=2026-10-05&tour=3`);
-  await waitFor("document.querySelector('tr[data-guest=CHD1] [data-notes-cell]')");
+  await waitFor("document.querySelector('tr[data-guest=CHD1] [data-notes-cell]') && document.querySelector('[data-text-size-toolbar]')");
   await helpers();
   const nc = (o) => `document.querySelector('tr[data-guest=${o}] [data-notes-cell]')`;
   const pageSave = "document.querySelector('[data-page-save]').click(); return 1;";
@@ -1063,7 +1055,7 @@ async function run() {
   check("partner manifest 页：名单照常显示", mShown && (await evaluate("return document.body.textContent.includes('Mon, Oct 5, 2026 · 4 orders, 8 pax');")));
   check(
     "partner manifest 页（G208）：有 Print all buses / 每车 Print（后端打印页只要 dispatch.view）；没有 Download / Guide view、换车下拉、How to use",
-    await evaluate("const t = document.querySelector('main').textContent; const pa = [...document.querySelectorAll('main a[href*=manifest]')].map((a) => a.textContent.trim()); const hasPrint = pa.includes('Print all buses') && pa.includes('Print'); return hasPrint && !t.includes('Download') && !t.includes('Guide view') && !document.querySelector('main select') && !!document.querySelector('[data-bus-text]') && !t.includes('Back returns to the page you came from');"),
+    await evaluate("const t = document.querySelector('main').textContent; const pa = [...document.querySelectorAll('main a[href*=manifest]')].map((a) => a.textContent.trim()); const hasPrint = pa.some((x) => x.startsWith('Print all buses')) && pa.includes('Print'); return hasPrint && !t.includes('Download') && !t.includes('Guide view') && !document.querySelector('main select') && !!document.querySelector('[data-bus-text]') && !t.includes('Back returns to the page you came from');"),
   );
   check("partner manifest 页：备注格子点了不进编辑", await evaluate(`const c = ${nc("CHD1")}; c && c.click(); await new Promise((r) => setTimeout(r, 300)); return !document.querySelector('[data-notes-editor]');`));
   check("partner manifest 页：没有 ⇄ Farm out 键（有合作公司也没有）", await evaluate("return !document.querySelector('[data-farm-out-button]');"));
@@ -1097,7 +1089,7 @@ async function run() {
   await helpers();
   check(
     "partner 勾 manifests.edit：manifest 页照样只有 Print，没有 Guide view、换车下拉、How to use、Download",
-    await evaluate("const t = document.querySelector('main').textContent; const pa = [...document.querySelectorAll('main a[href*=manifest]')].map((a) => a.textContent.trim()); const hasPrint = pa.includes('Print all buses') && pa.includes('Print'); return hasPrint && !t.includes('Guide view') && !document.querySelector('main select') && !document.body.textContent.includes('Back returns to the page you came from') && !document.querySelector('main form[action$=\"/manifest/download\"]') && ![...document.querySelectorAll('main button')].some((b) => b.textContent.trim() === 'Download');"),
+    await evaluate("const t = document.querySelector('main').textContent; const pa = [...document.querySelectorAll('main a[href*=manifest]')].map((a) => a.textContent.trim()); const hasPrint = pa.some((x) => x.startsWith('Print all buses')) && pa.includes('Print'); return hasPrint && !t.includes('Guide view') && !document.querySelector('main select') && !document.body.textContent.includes('Back returns to the page you came from') && !document.querySelector('main form[action$=\"/manifest/download\"]') && ![...document.querySelectorAll('main button')].some((b) => b.textContent.trim() === 'Download');"),
     await evaluate("const t = document.querySelector('main').textContent; return JSON.stringify({ print: t.includes('Print'), guide: t.includes('Guide view'), select: !!document.querySelector('main select'), busText: !!document.querySelector('[data-bus-text]'), howto: document.body.textContent.includes('Back returns to the page you came from'), download: !!document.querySelector('main form[action$=\"/manifest/download\"]') });"),
   );
   check("partner 勾 manifests.edit：备注格子点了也不进编辑", await evaluate(`const c = ${nc("CHD1")}; c && c.click(); await new Promise((r) => setTimeout(r, 300)); return !document.querySelector('[data-notes-editor]');`));
@@ -1197,10 +1189,8 @@ async function run() {
   await waitFor("document.querySelector('section[aria-label^=\"Bus\"]')", 60000);
   await sleep(600);
   check("手机：Bus Manifest 整页不左右晃", await evaluate(`const vis = (el) => !!el && el.getBoundingClientRect().height > 0 && el.getBoundingClientRect().width > 0; const noSway = document.documentElement.scrollWidth <= innerWidth + 1; const btn = (t, root = document) => [...root.querySelectorAll('button, a')].find((b) => b.textContent.trim().startsWith(t)); return noSway;`));
-  check("手机：Print all buses / Download 不在外面，⋯ 和 Save 看得见", await evaluate(`const vis = (el) => !!el && el.getBoundingClientRect().height > 0 && el.getBoundingClientRect().width > 0; const noSway = document.documentElement.scrollWidth <= innerWidth + 1; const btn = (t, root = document) => [...root.querySelectorAll('button, a')].find((b) => b.textContent.trim().startsWith(t)); const out = [...document.querySelectorAll('header a, header button')].filter((b) => /Print all buses|^Download$/.test(b.textContent.trim()) && vis(b) && !b.closest('[data-phone-more-menu]')); return out.length === 0 && vis(document.querySelector('header [data-phone-more]')) && vis(document.querySelector('[data-page-save]'));`));
-  await evaluate("document.querySelector('header [data-phone-more]').click();");
-  await sleep(300);
-  check("手机：点 ⋯ 有 Print all buses 和 Download", await evaluate(`const m = document.querySelector('[data-phone-more-menu]'); return !!m && /Print all buses/.test(m.textContent) && /Download/.test(m.textContent);`));
+  // 置顶 114（Annie「不要二级菜单，不要隐藏」）：手机上不再收进 ⋯，Print all / Download / Settings 一排三格、28px。
+  check('置顶 114 手机：页头没有 ⋯；Print all｜Download（｜Settings）一排、28px；Save 看得见', await evaluate(`const vis = (el) => !!el && el.getBoundingClientRect().height > 0 && el.getBoundingClientRect().width > 0; const k = document.querySelector('[data-mf-output-keys]'); const keys = k ? [...k.querySelectorAll('a, button')].filter(vis) : []; const R = (e) => e.getBoundingClientRect(); return !document.querySelector('[data-mf-header-actions] [data-phone-more]') && keys.length >= 2 && keys[0].innerText.trim() === 'Print all' && keys[1].innerText.trim() === 'Download' && keys.every((b) => Math.abs(R(b).top - R(keys[0]).top) <= 2 && Math.round(R(b).height) === 28) && vis(document.querySelector('[data-page-save]'));`), await evaluate(`const k = document.querySelector('[data-mf-output-keys]'); return k ? [...k.querySelectorAll('a, button')].map((b) => b.textContent.trim() + ':' + Math.round(b.getBoundingClientRect().height)).join(' ') : 'none';`));
   check("手机：How to use 在 Action Log 下面（页面最底）", await evaluate(`const h = [...document.querySelectorAll('details')].find((d) => d.textContent.includes('How to use — Tour manifest')); const l = document.querySelector('[data-manifest-log]'); return !!h && !!l && h.getBoundingClientRect().top > l.getBoundingClientRect().top;`));
   await cdp("Emulation.clearDeviceMetricsOverride");
   await goto(`${APP}/dispatch/manifest?date=2026-10-05&tour=3`);
@@ -1221,7 +1211,7 @@ async function runLayoutText() {
   await goto(URL0);
   await waitFor("document.querySelector('[data-layout-open]')", 60000);
   await helpers();
-  check("Text：键名换成「⚙ Colours, text & page」", await evaluate("return document.querySelector('[data-layout-open]').textContent === '⚙ Colours, text & page';"));
+  check("Text / 置顶 114：键名照 Relay list 写「Settings」+ 齿轮线条图标", await evaluate("const b = document.querySelector('[data-layout-open]'); return b.textContent.trim() === 'Settings' && !!b.querySelector('svg[data-line-icon=gear]');"));
   check("Text：How to use 换回 Q11 完整原文", await evaluate("return document.body.textContent.includes(\"set the everyday text size, and set the paper, Portrait or Landscape, and margins.\") && document.body.textContent.includes(\"Aa Text size changes one day's sheet on top of the everyday size.\");"));
   const before = await evaluate(`return [${fs(nameCell)}, ${fs(firstTh)}, ${fw(firstTh)}, ${fs(lowerHead)}].join('|');`);
   check("Text：没设过 ⇒ 正文 16.5px、表头 9.5px 粗、节标题 17px（同现在）", before === "16.5px|9.5px|700|17px", before);
@@ -1292,9 +1282,11 @@ async function runHotelColour() {
 async function runColumns() {
   const URL0 = `${APP}/dispatch/manifest?date=2026-10-05&tour=3`;
   const lunchTh = "[...document.querySelectorAll('section[aria-label=\"Bus 2041=A\"] thead th')].some((th) => th.textContent.trim() === 'Lunch')";
-  const pill = "document.querySelector('[data-columns-open]')";
+  // 置顶 114（Annie「不要二级菜单，不要隐藏」）：不再点开小框，勾选框直接摊在页头。
+  const pill = "document.querySelector('[data-columns-inline]')";
+  const lunchOn = "document.querySelector('[data-columns-option=lunch]').checked";
   const save = "document.querySelector('[data-page-save]')";
-  const openMenu = async () => { await evaluate(`${pill}.click();`); await waitFor("document.querySelector('[data-columns-menu]')"); };
+  const openMenu = async () => {};
   const tick = async () => evaluate("document.querySelector('[data-columns-option=lunch]').click();");
 
   // 旧后端：没有 Columns
@@ -1302,23 +1294,22 @@ async function runColumns() {
   await goto(URL0);
   await waitFor("document.querySelector('[data-page-save]')", 60000);
   await sleep(500);
-  check("Columns：旧后端（tour 没带 bus_column_options）⇒ 没有 Columns 键", !(await evaluate("return !!document.querySelector('[data-columns-open], [data-columns-text]');")));
+  check("Columns：旧后端（tour 没带 bus_column_options）⇒ 没有 Columns 键", !(await evaluate("return !!document.querySelector('[data-columns-inline], [data-columns-text]');")));
 
   // 新后端（tour.lunch_restaurant 有值 = 排了午餐店；不开午餐单，证明不靠午餐单判断）
   await ctl({ busCols: true, g198: false });
   await goto(URL0);
   await waitFor(`!!${pill}`, 60000);
   await helpers();
-  check("Columns：页头出「Columns: All ▾」，Lunch 列在", (await evaluate(`return ${pill}.textContent.trim() === 'Columns: All ▾' && ${lunchTh};`)));
+  check("Columns：页头直接摊开「Columns: ☑ Lunch」（不用点开），Lunch 列在；28px 高", (await evaluate(`return ${pill}.textContent.trim().startsWith('Columns:') && ${pill}.textContent.includes('Lunch') && ${lunchOn} && ${lunchTh} && !document.querySelector('[data-columns-open], [data-columns-menu]') && Math.round(${pill}.getBoundingClientRect().height) === 28;`)));
   check("Columns：How to use 多一句（preview 原句）", await evaluate("return document.body.textContent.includes(\"Columns: press Columns at the top to choose which columns this tour's Bus Manifest shows. Untick a column to leave it off, then press Save.\");"));
   await openMenu();
-  check("Columns：点开小框「Columns for this tour」，Lunch 勾着", await evaluate("const m = document.querySelector('[data-columns-menu]'); return m.textContent.includes('Columns for this tour') && document.querySelector('[data-columns-option=lunch]').checked && m.textContent.includes('More columns will be added here later.');"));
+  check("Columns：说明放在 title（鼠标停上去看得到）", await evaluate(`return ${pill}.getAttribute('aria-label') === 'Columns for this tour' && ${pill}.title.startsWith("Untick a column to leave it off this tour's Bus Manifest");`));
   let b0 = (await mockLog()).length;
   await tick();
   await sleep(300);
-  const st = await evaluate(`return { th: ${lunchTh}, pill: ${pill}.textContent.trim(), border: getComputedStyle(${pill}).borderTopColor, save: ${save}.disabled };`);
-  check("Columns：勾掉 Lunch ⇒ 单子马上没有 Lunch 列、框变橙「Lunch hidden」、Save 能按，还没发请求", !st.th && st.pill === "Columns: Lunch hidden ▾" && st.border === "rgb(245, 158, 11)" && !st.save && (await since(b0, "/api/dispatch/manifest/hidden-columns")).length === 0, JSON.stringify(st));
-  await evaluate("document.querySelector('[data-columns-done]').click();");
+  const st = await evaluate(`return { th: ${lunchTh}, on: ${lunchOn}, border: getComputedStyle(${pill}).borderTopColor, save: ${save}.disabled };`);
+  check("Columns：勾掉 Lunch ⇒ 单子马上没有 Lunch 列、框变橙、Save 能按，还没发请求", !st.th && !st.on && st.border === "rgb(245, 158, 11)" && !st.save && (await since(b0, "/api/dispatch/manifest/hidden-columns")).length === 0, JSON.stringify(st));
   await evaluate(`${save}.click();`);
   const put = (await waitReq(b0, "/api/dispatch/manifest/hidden-columns"))[0];
   check("Columns：按页头 Save ⇒ PUT /api/dispatch/manifest/hidden-columns {tour: 3, hidden_columns: [lunch]}", put?.method === "PUT" && JSON.stringify(put.body) === JSON.stringify({ tour: 3, hidden_columns: ["lunch"] }), JSON.stringify(put));
@@ -1326,7 +1317,7 @@ async function runColumns() {
   await goto(URL0);
   await waitFor(`!!${pill}`, 60000);
   await sleep(400);
-  check("Columns：重开页面（按团存）⇒ 照样「Lunch hidden」、没有 Lunch 列", await evaluate(`return ${pill}.textContent.trim() === 'Columns: Lunch hidden ▾' && !(${lunchTh});`));
+  check("Columns：重开页面（按团存）⇒ Lunch 照样没勾、没有 Lunch 列", await evaluate(`return !(${lunchOn}) && !(${lunchTh});`));
   // 勾回来
   await openMenu();
   await tick();
@@ -1337,13 +1328,12 @@ async function runColumns() {
   // 存不上
   await ctl({ colsFail: "That tour is not in the bus tour list." });
   b0 = (await mockLog()).length;
-  await evaluate("document.querySelector('[data-columns-done]').click();");
   await evaluate(`${save}.click();`);
   await waitReq(b0, "/api/dispatch/manifest/hidden-columns");
   check("Columns：存不上（后端 G275 400 原话）⇒ 红字带「Columns: 原话」，框还是橙", await waitFor(`document.body.textContent.includes('Columns: That tour is not in the bus tour list.') && getComputedStyle(${pill}).borderTopColor === 'rgb(245, 158, 11)'`, 8000));
   await ctl({ colsFail: "" });
   await evaluate(`${save}.click();`);
-  check("Columns：再按 Save ⇒ 存上，回到「All」", await waitFor(`${pill}.textContent.trim() === 'Columns: All ▾' && ${save}.disabled`, 8000));
+  check("Columns：再按 Save ⇒ 存上，Save 灰", await waitFor(`${save}.disabled && getComputedStyle(${pill}).borderTopColor !== 'rgb(245, 158, 11)'`, 8000));
 
   // 没排午餐店的团
   await ctl({ noVendor: true, g198: false });
@@ -1351,25 +1341,23 @@ async function runColumns() {
   await waitFor(`!!${pill}`, 60000);
   await helpers();
   await openMenu();
-  check("Columns：没排午餐店 ⇒ Lunch 照样列出 + 灰字「No lunch vendor for this tour, so there is no Lunch column.」", await evaluate("const e = document.querySelector('[data-columns-no-vendor]'); return !!e && e.textContent === 'No lunch vendor for this tour, so there is no Lunch column.';"));
+  check("Columns：没排午餐店 ⇒ Lunch 照样列出 + 灰字「(no lunch vendor)」，title 写全「No lunch vendor for this tour, so there is no Lunch column.」", await evaluate("const e = document.querySelector('[data-columns-no-vendor]'); return !!e && e.textContent === '(no lunch vendor)' && e.closest('label').title === 'No lunch vendor for this tour, so there is no Lunch column.';"));
   await ctl({ noVendor: false });
 
   // 只能看：灰字、点不开
   await ctl({ partner: true });
   await goto(URL0);
-  await waitFor("document.querySelector('[data-columns-text], [data-columns-open]')", 60000);
-  check("Columns：没有编辑权（partner）⇒ 只有灰字「Columns: All」、没有可点的键", await evaluate("const t = document.querySelector('[data-columns-text]'); return !!t && t.textContent === 'Columns: All' && !document.querySelector('[data-columns-open]');"));
+  await waitFor("document.querySelector('[data-columns-text], [data-columns-inline]')", 60000);
+  check("Columns：没有编辑权（partner）⇒ 只有灰字「Columns: All」、没有可点的键", await evaluate("const t = document.querySelector('[data-columns-text]'); return !!t && t.textContent === 'Columns: All' && !document.querySelector('[data-columns-inline]');"));
   await ctl({ partner: false });
 
-  // 手机：收进 ⋯
+  // 手机：置顶 114 起不收进 ⋯，直接摊在页头
   await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
   await goto(URL0);
-  await waitFor("document.querySelector('[data-phone-more]')", 60000);
+  await waitFor(`!!${pill}`, 60000);
   await sleep(500);
-  const ph = await evaluate("const vis = (e) => !!e && e.getBoundingClientRect().width > 0; const outside = [...document.querySelectorAll('[data-columns-open]')].filter((e) => !e.closest('[data-phone-more-menu]')); return { outsideVisible: outside.some(vis) };");
-  await evaluate("[...document.querySelectorAll('[data-phone-more]')].find((b) => b.getAttribute('aria-label') === 'Columns, print or download').click();");
-  const inMenu = await waitFor("[...document.querySelectorAll('[data-phone-more-menu] [data-columns-open]')].length === 1", 3000);
-  check("Columns：手机上收进 ⋯（外面看不到，⋯ 里有）", !ph.outsideVisible && inMenu, JSON.stringify(ph));
+  const ph = await evaluate(`return { shown: ${pill}.getBoundingClientRect().width > 0 && !${pill}.closest('[data-phone-more-menu]'), noMore: !document.querySelector('[data-mf-header-actions] [data-phone-more]'), scrollX: document.documentElement.scrollWidth <= window.innerWidth + 1 };`);
+  check("Columns：手机上直接摊在页头（没有 ⋯），整页不左右晃", ph.shown && ph.noMore && ph.scrollX, JSON.stringify(ph));
   await cdp("Emulation.clearDeviceMetricsOverride");
   await ctl({ busCols: false, hiddenCols: [] });
 }

@@ -650,22 +650,23 @@ export function TextSizeHistory({
   if (!history.length) return null;
   const [last] = history;
   return (
-    <details
+    // 置顶 114（Annie「不要隐藏」）：不再收起，最近几次直接列出来。
+    <div
       data-text-size-history
       className="mx-0.5 mt-1.5 text-[10.5px] text-[#555] print:hidden"
     >
-      <summary className="cursor-pointer">
+      <div>
         Text size changes · last by <b className="text-[#333]">{last.by}</b> ·{" "}
         {last.at}
-      </summary>
-      <ul className="mt-1 ml-3.5 flex flex-col gap-0.5">
+      </div>
+      <ul className="mt-0.5 ml-3.5 flex list-disc flex-col gap-0.5">
         {history.slice(0, 5).map((h, i) => (
           <li key={i}>
             <b className="text-[#333]">{h.by}</b> · {h.at} · {h.what}
           </li>
         ))}
       </ul>
-    </details>
+    </div>
   );
 }
 

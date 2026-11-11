@@ -1397,7 +1397,10 @@ function GoneCard({ gone }: { gone: ManifestGoneGuest[] }) {
 
 /**
  * 一台车的 Bus Manifest（色条 + 名单 + 合计行），后面接这台车的午餐表（G198）。
- * G197 字号编辑：后端带了 `text_size` 才出「Aa Text size」键（上线前看不到）；partner 只读，看得到存好的样子、没有键。
+ * G197 字号编辑：后端带了 `text_size` 才出编辑卡（上线前看不到）；partner 只读，看得到存好的样子、没有编辑卡。
+ * 置顶 114（Annie「我不要二级菜单，不要隐藏，否则staff都不知道这些功能」→「1.A 2 动手」）：没有 Aa 键，编辑卡一直显示在色条下面；
+ * 调的字号马上放进整页暂存、按页头 Save 才存（同 Relay list）；电脑没有 Cancel / Done，手机底部 Cancel（撤掉这台车没存的字号）/ Done（取消选中）。
+ * 点格子是选中；Special Requirements 格照旧点开编辑（整列靠点表头选），Bus 下拉照旧。
  */
 function BusCard({
   data,
@@ -1435,21 +1438,14 @@ function BusCard({
   const columns = columnsFor(version, !!data.tour.lunch_column);
   const saved = block.text_size;
   const canEdit = !viewOnly && saved !== undefined;
-  const [draft, setDraft] = useState<ManifestTextSize | null>(null);
   const [mode, setMode] = useState<TextMode>("column");
   const [picks, setPicks] = useState<TextPick[]>([]);
-  const editing = draft !== null;
-  /** 页面上现在的字号：按了 Done 没存的，否则库里的。 */
+  /** 页面上现在的字号：调了没存的，否则库里的。 */
   const current = stagedTextSize ?? saved;
-
-  function close() {
-    setDraft(null);
-    setPicks([]);
-  }
-  /** Done（Q2）：收起这一排，调好的留在页面上，跟整页 Save 一起存。 */
-  function done() {
-    if (draft) onStageTextSize(draft);
-    close();
+  const base = current ?? EMPTY_TEXT_SIZE;
+  /** 每调一下马上放进整页暂存（和库里一样 = 没改，stageTextSize 自己会撤掉）。 */
+  function change(fn: (t: ManifestTextSize) => ManifestTextSize) {
+    onStageTextSize(fn(base));
   }
 
   const names = new Map<string, string>();
@@ -1464,7 +1460,7 @@ function BusCard({
           : `row ${names.get(p.id) ?? p.id}`,
     )
     .join(", ");
-  const currentLayer = draft && picks.length ? layerOf(draft, picks[0]) : {};
+  const currentLayer = picks.length ? layerOf(base, picks[0]) : {};
 
   return (
     <>
@@ -1527,29 +1523,7 @@ function BusCard({
               Guide view
             </a>
           )}
-          {false ? (
-            <button
-              type="button"
-              data-text-size-button
-              aria-pressed={editing}
-              onClick={() =>
-                editing
-                  ? close()
-                  : (setDraft(current ?? null), setMode("column"))
-              }
-              className={cn(
-                BAND_LINK,
-                "cursor-pointer",
-                editing && "border-[#111] shadow-[inset_0_0_0_1px_#111]",
-                // 置顶 114 M4 A：手机上编辑时不单独出 Close text size，用编辑卡的 ✕ 关。
-                editing && "max-sm:hidden",
-              )}
-            >
-              <LineIcon name="size" />
-              {editing ? "Close text size" : "Aa Text size"}
-            </button>
-          ) : null}
-          {stagedTextSize && !editing ? (
+          {stagedTextSize ? (
             <span data-text-size-unsaved className={UNSAVED_TAG}>
               Text size not saved
             </span>
@@ -1561,9 +1535,9 @@ function BusCard({
         ) : null}
         {canEdit ? (
           <TextSizeToolbar
+            always
             mode={mode}
             onMode={(m) => {
-              if (!editing) setDraft(current ?? null);
               setMode(m);
               setPicks(m === "page" ? [{ kind: "page" }] : []);
             }}
@@ -1571,23 +1545,22 @@ function BusCard({
             pickedLabel={pickedLabel}
             current={currentLayer}
             onStep={(n) =>
-              setDraft((d) =>
-                d
-                  ? updateLayers(d, picks, (l) => ({ ...l, d: (l.d ?? 0) + n }))
-                  : d,
+              change((d) =>
+                updateLayers(d, picks, (l) => ({ ...l, d: (l.d ?? 0) + n })),
               )
             }
             onBold={(bold) =>
-              setDraft((d) =>
-                d ? updateLayers(d, picks, (l) => ({ ...l, bold })) : d,
-              )
+              change((d) => updateLayers(d, picks, (l) => ({ ...l, bold })))
             }
             onResetSelection={() =>
-              setDraft((d) => (d ? updateLayers(d, picks, () => ({})) : d))
+              change((d) => updateLayers(d, picks, () => ({})))
             }
-            onResetAll={() => setDraft(EMPTY_TEXT_SIZE)}
-            onCancel={close}
-            onDone={done}
+            onResetAll={() => change(() => EMPTY_TEXT_SIZE)}
+            onCancel={() => {
+              if (saved) onStageTextSize(saved);
+              setPicks(mode === "page" ? [{ kind: "page" }] : []);
+            }}
+            onDone={() => setPicks([])}
           />
         ) : null}
         <GuestTable
@@ -1595,10 +1568,10 @@ function BusCard({
           sections={block.sections}
           onBusChange={onBusChange}
           onNotesChange={onNotesChange}
-          textSize={draft ?? current}
+          textSize={current}
           phone={phone}
           edit={
-            editing
+            canEdit
               ? {
                   mode,
                   picks,
@@ -1984,12 +1957,12 @@ function NotesCell({
   /** 暂存（null = 恢复 Rezdy 原文）。 */
   onSave: (guest: ManifestGuest, notes: string | null) => void;
   font: CellFont;
-  /** G197 字号编辑中：点格子是选中，不打开备注编辑。 */
+  /** G197 字号编辑中（置顶 114 起一直是）：能编辑备注的格子照旧点开编辑，整列靠点表头选；不能编辑的点了是选中。 */
   editing: boolean;
 }) {
   const viewOnly = useViewOnly();
   const { notes: stagedNotes } = useStage();
-  const editable = !viewOnly && !textEditing && g.notes_edited !== undefined;
+  const editable = !viewOnly && g.notes_edited !== undefined;
   const textEdit = font.edit("notes", g.order_number);
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState("");
@@ -2061,13 +2034,13 @@ function NotesCell({
       data-notes-cell
       data-notes-unsaved={staged ? "" : undefined}
       onClick={
-        textEditing
-          ? textEdit.onClick
-          : editable
-            ? () => {
-                setValue(shown);
-                setEditing(true);
-              }
+        editable
+          ? () => {
+              setValue(shown);
+              setEditing(true);
+            }
+          : textEditing
+            ? textEdit.onClick
             : undefined
       }
       style={{
@@ -3042,17 +3015,6 @@ function ColumnsPicker({
   unsaved: boolean;
   onChange: (hidden: string[]) => void;
 }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    const close = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node))
-        setOpen(false);
-    };
-    document.addEventListener("mousedown", close);
-    return () => document.removeEventListener("mousedown", close);
-  }, [open]);
   const labels = options
     .filter((o) => hidden.includes(o.key))
     .map((o) => o.label);
@@ -3063,73 +3025,57 @@ function ColumnsPicker({
         Columns: {value}
       </span>
     );
+  // 置顶 114（Annie「不要二级菜单，不要隐藏」）：不再点开小框，勾选框直接摊在页头；说明放 title 和 How to use。
   return (
-    <div ref={ref} className="relative">
-      <button
-        type="button"
-        data-columns-open
-        aria-expanded={open}
-        onClick={() => setOpen((v) => !v)}
-        className={cn(
-          "inline-flex h-7 cursor-pointer items-center gap-1 rounded-[8px] border bg-transparent px-2.5 text-[11.5px] text-[#cbd5e1]",
-          unsaved ? "border-[#f59e0b]" : "border-white/[.18]",
-        )}
-      >
-        Columns: <b className="font-semibold text-white">{value}</b> ▾
-      </button>
-      {open ? (
-        <div
-          data-columns-menu
-          className="absolute right-0 z-50 mt-1 w-[300px] rounded-[10px] border-[0.5px] border-black/15 bg-paper p-3 text-[13px] text-[#1a1a1a] shadow-[0_8px_24px_rgba(0,0,0,.35)] max-sm:right-auto max-sm:left-0 max-sm:w-[260px]"
-        >
-          <div className="mb-1 font-semibold">Columns for this tour</div>
-          <p className="mb-2 text-[12px] leading-[1.5] text-[#555]">
-            Untick a column to leave it off this tour&apos;s Bus Manifest — on
-            screen, when printed and in Excel, for everyone, every day. Press
-            Save at the top to keep it.
-          </p>
-          {options.map((o) => (
-            <div key={o.key} className="py-1">
-              <label className="flex cursor-pointer items-center gap-2">
-                <input
-                  type="checkbox"
-                  data-columns-option={o.key}
-                  checked={!hidden.includes(o.key)}
-                  onChange={(e) =>
-                    onChange(
-                      e.target.checked
-                        ? hidden.filter((k) => k !== o.key)
-                        : [...hidden, o.key],
-                    )
-                  }
-                />
-                {o.label}
-              </label>
-              {o.key === "lunch" && noLunchVendor ? (
-                <div
-                  data-columns-no-vendor
-                  className="mt-0.5 pl-6 text-[12px] text-[#888]"
-                >
-                  No lunch vendor for this tour, so there is no Lunch column.
-                </div>
-              ) : null}
-            </div>
-          ))}
-          <div className="text-[12px] text-[#999] italic">
-            More columns will be added here later.
-          </div>
-          <div className="mt-2 flex justify-end">
-            <button
-              type="button"
-              data-columns-done
-              onClick={() => setOpen(false)}
-              className="cursor-pointer rounded-[7px] border border-[#9aa] bg-white px-3 py-1 text-[12px] font-bold text-[#222]"
-            >
-              Done
-            </button>
-          </div>
-        </div>
-      ) : null}
+    <div
+      data-columns-inline
+      role="group"
+      aria-label="Columns for this tour"
+      title="Untick a column to leave it off this tour's Bus Manifest — on screen, when printed and in Excel, for everyone, every day. Press Save at the top to keep it."
+      className={cn(
+        "inline-flex h-7 items-center gap-2 rounded-[8px] border px-2.5 text-[11.5px] text-[#cbd5e1]",
+        unsaved ? "border-[#f59e0b]" : "border-white/[.18]",
+      )}
+    >
+      Columns:
+      {options.map((o) => {
+        const noVendor = o.key === "lunch" && noLunchVendor;
+        return (
+          <label
+            key={o.key}
+            className="inline-flex cursor-pointer items-center gap-1 font-semibold text-white"
+            title={
+              noVendor
+                ? "No lunch vendor for this tour, so there is no Lunch column."
+                : undefined
+            }
+          >
+            <input
+              type="checkbox"
+              data-columns-option={o.key}
+              data-phone-keep
+              checked={!hidden.includes(o.key)}
+              onChange={(e) =>
+                onChange(
+                  e.target.checked
+                    ? hidden.filter((k) => k !== o.key)
+                    : [...hidden, o.key],
+                )
+              }
+              className="h-3.5 w-3.5"
+            />
+            {o.label}
+            {noVendor ? (
+              <span
+                data-columns-no-vendor
+                className="font-normal text-[#94a3b8]"
+              >
+                (no lunch vendor)
+              </span>
+            ) : null}
+          </label>
+        );
+      })}
     </div>
   );
 }
