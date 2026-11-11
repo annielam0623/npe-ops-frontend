@@ -1565,6 +1565,7 @@ D. 已完成、待从置顶移走：
 - Annie 原话：「我现在需要你临时加一个rule，就是让我添加staff已经申请好了的假期，就是OFF day，让我选择autofill的时候可以先跳出一个窗口，点击哪些天是已经申请的Leave，不是平时每周的两天」。
 - 5c：后端现成可用、不用改。PUT /api/schedule/time-off（supervisor+，种类 pto / sick / personal，所有人可见），GET /api/schedule/time-off 读；同一人同一天班 + 休假服务层两头都拦，所以 autofill 不能排到 Leave 那天。接口说明在后端 docs/interfaces/schedule-phase2-notes-pto-defaults-2026-10-18.md。测试数据：Veronica 11/26–27、Jing 12/20–23、Lizzie 12/24–27。
 - 要问 Annie（preview 里）：有 Leave 的那周还排不排每周两天固定休息，Leave 算进那两天还是另外加（5c 点名）；种类分不分；弹窗里填的什么时候存。等 preview + 答 +「动手」。
+- ✅ **Annie（原话）：「leave另外加」** ⇒ Leave 不算进每周两天固定休息，有 Leave 的那周照样再排两天休息。已转 6b，preview 照这个画。
 
 ### 116. 回复了客人就自动算处理过（Take action）（2026-11-10 晚，Annie 附 Tour Tracking 截图提；d8 记，没派）
 
