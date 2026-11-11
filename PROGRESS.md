@@ -17,6 +17,7 @@
 - G282 Annie（原话）：「我现在没有一个地方来挑选谁是某个team的负责人」⇒ 系统现在确实没有 team 负责人这个概念；21 方案是在 Team 页成员编辑里勾「Can approve leave for」（从人这边设）。4c 问她：A 在 team 那边设「Team leads」（推荐）/ B 照 preview 从人这边勾；以及负责人只管批假，还是以后别的（通知、报表）也发给负责人。
 - Annie 新提：要做的三件 =「114，另外是staff schedule，还有导游页的重新设计」⇒ 导游页重新设计 PROGRESS 里没记录，4c 已问她哪个页面（A 手机 guide_home.html 后端 / B ops 里的导游页 / C 搬到 ops 重做）、想改成什么样、司机页要不要一起。
 - 🟡 **G282 preview（96）**：https://claude.ai/artifact/5PMGSaW5Rxz6AvcCkmAArG （模拟数据，没写代码）。4c 在本窗口问 Annie Q1–Q7（21 不重复问），另请她看：申请区 / 待批放 Staff Schedule 新 Leave 标签；Q5 B = 员工资料里设请假归属 team。答了转 21 + 96。
+- ✅ **118 后端上 main**（54 转）：内容 f8f0affc、合并 ebe3546d、关包 98de181c。形状 {type:max_days_on_shift, params:{shift_type 必填, n 0..7 必填, employee_ids / exclude_employee_ids 二选一可选}}，只按周，其他键 400。前端 components/schedule/rules.ts 已是同一形状（n 0..7），不用改。⇒ Annie 现在能存「Lizzie Close ≤ 1」。
 - 今天后端主窗口：`npe-confirmation-service-54`[6a808b]（接 d9）。4c 已发 54：118 max_days_on_shift 白名单（附 Annie 11-10 晚原话「动手」）；116 / G283（回复即处理含 multi/reply、action_taken_by）54 等 Annie 开后端子窗口再派，做完发 SHA + 回包形状。
 
 ## 2026-11-11 凌晨 收工交接：前端主窗口 `前端主窗口-d8`（家里电脑；11-10 晚接 78 / 62；Annie「我要睡觉了，你记录下来，明天到公司给我看这个」）
