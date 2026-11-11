@@ -1576,6 +1576,7 @@ D. 已完成、待从置顶移走：
 - 再补（Annie 原话）：「3个人轮值那天的空缺，原来的那天就安排Jessica一个人上白班」⇒ 三人轮流挪；被挪走那天白班只有 Jessica。推论：只能从周三–周五挪（周一、周二 Jessica 休），d8 已问 Annie 确认，已转 6b。
 - 🟡 **preview（6b）**：https://claude.ai/artifact/CLx99qVsvqLZK7ZgipkQAU ，分支 task/schedule-rules-118 8d1a2497（直接跑引擎，4 周 11/15–12/12）。原因：① 主因：Jessica 10–6 跟 9–5 算同一种白班，「最多 1 人」把她也算进去，其他四人每周只排到 3–4 天；② Lizzie 晚班 ≤ 1 现有规则写不出 ⇒ 新规则 max_days_on_shift（引擎 + Rules 页已写）；③ 排不下的提示写的班次名不一定对（明天修）；④ Veronica 要用 Cannot work，不用 Fixed shift。Jessica 用单独班次「Day 10–6」跑 4 周全部通过，3 种 seed 一样；周末缺人时引擎自动从周三–周五白班挪，现有引擎就会，不用改；三人轮流公平还没验证。问 Annie：Q1 Jessica 10–6 设成单独班次（A 推荐，不改后端 / 引擎）/ 在 Max people 里排除她（B，前后端都改）；Q2 只从周三–周五挪（A 推荐）/ 哪天都可以（B）。
 - ✅ **Annie（原话）：「全部同意A」**（118 Q1 / Q2）⇒ Q1 A Jessica 10–6 设成单独班次「Day 10–6」，白班「最多 1 人」只管 9–5；Q2 A 周末缺人只从周三–周五挪白班，三人轮流。还没说「动手」，d8 已问。
+- ✅ **Annie（原话）：「动手」** ⇒ d8 派 6b：合 main（max_days_on_shift 后端没上前存了 400 要写红字）、修提示班名、补公平 / Q2 / 周末固定休检查，另出给 Annie 照着点的设置清单（Settings 加 Day 10–6 + Rules 逐条怎么填；线上由 Annie 自己设）。⚠️ 明天第一件：把 max_days_on_shift 白名单发当天后端主窗口。
 - 需要后端：schedule_rules.py 白名单加 max_days_on_shift {shift_type, n, employee_ids? / exclude_employee_ids?}，固定按周 ⇒ d8 已发 5c，**5c 已收工、没写进后端待办**（补记：Annie 又说「Veronica 11/26-30休假」（取代 11/26–27）、「然后Veronica固定休周六周日」⇒ Cannot work Veronica 周六周日；都已转 6b 重跑） ⇒ ⚠️ 明天前端主窗口：Annie 说「动手」后，把这条形状发给当天的后端主窗口派工（不迁移，未知键拒，400 英文）。
 
 ### 117. Staff Schedule：Autofill 前先填已批的 Leave（2026-11-10 晚，Annie 在后端提，5c 转；d8 派 6b 出 preview）
