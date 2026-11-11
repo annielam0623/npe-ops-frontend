@@ -364,6 +364,23 @@ async function run() {
   await evaluate(`$btn('Send', ${dialog}).click();`);
   const np = (await waitReq(before, (e) => e.path === "/booking-notes/by-order/T02" && e.method === "POST"))[0]?.body;
   check("发给客人：写的记成 line=tour、默认勾短信", np?.line === "tour" && np?.send_sms === true && np?.direction === "sms_out", JSON.stringify(np));
+  // 置顶 109 W3（后端 ceba9aaa）：回包带 sms_outcome。没号码 = 灰字、不算失败；号码错 = 照旧黄框 NOT delivered。
+  {
+    const notice = `${dialog}.querySelector('[data-notice-tone]')`;
+    await ctl({ w3Note: "no_number" });
+    await evaluate(`$setValue(${dialog}.querySelector('textarea'), 'ZZ Test W3 no number');`);
+    await sleep(100);
+    await evaluate(`$btn('Send', ${dialog}).click();`);
+    await waitFor(notice);
+    check("109 W3 staff 回复没号码（sms_outcome no_address、note.sms_status null）：灰字「Saved. No number on file, so no SMS was sent.」、不出 NOT delivered", await evaluate(`const n = ${notice}; return n.dataset.noticeTone === 'info' && n.textContent === 'Saved. No number on file, so no SMS was sent.' && n.className.includes('text-[#6B6B6B]') && !${dialog}.textContent.includes('NOT delivered');`), await evaluate(`return ${notice}?.outerHTML;`));
+    await ctl({ w3Note: "failed" });
+    await evaluate(`$setValue(${dialog}.querySelector('textarea'), 'ZZ Test W3 failed');`);
+    await sleep(100);
+    await evaluate(`$btn('Send', ${dialog}).click();`);
+    await waitFor(`${notice}?.dataset.noticeTone === 'warn'`);
+    check("109 W3 staff 回复号码错（sms_outcome failed）：照旧黄框「Saved, but NOT delivered to the guest via SMS…」", await evaluate(`return ${notice}.textContent.startsWith('Saved, but NOT delivered to the guest via SMS.');`), await evaluate(`return ${notice}?.textContent;`));
+    await ctl({ w3Note: "" });
+  }
   await evaluate(`[...${dialog}.querySelectorAll('button')].find(b => b.getAttribute('aria-label') === 'Close' || b.textContent.trim() === '×').click();`);
   await waitFor(`!${dialog}`);
 
@@ -609,6 +626,27 @@ async function run() {
   await waitFor(`${dialog}.querySelector('[data-broadcast-skipped]')`);
   check("G62 服务端全跳过（broadcast_id null）：Nothing was sent: everyone already got this message.、列出跳过的两单", await evaluate(`const t = ${dialog}.textContent; return t.includes('Nothing was sent: everyone already got this message.') && !t.includes('Broadcast sent.') && ${dialog}.querySelector('p[data-broadcast-skipped]').textContent === 'Skipped 2 (already got this message): T01, T05.';`), await evaluate(`return ${dialog}.textContent.slice(0, 400);`));
   await evaluate(`$btn('Done', ${dialog}).click();`);
+  // 置顶 109 W3（后端 ceba9aaa）：回包带 sent / failed / no_contact + results ⇒ 按客人写 Sent / Failed / No contact，
+  // 发失败的单红字带原因，没地址的灰字；不再写 SMS: x sent, y failed。
+  await ctl({ bcRace: [], w3: { T01: "failed", T05: "no_contact" } });
+  await openAcu();
+  await evaluate(`$btn('📣 Send broadcast', ${dialog}).click();`);
+  await waitFor(`${yesBtn} && !${yesBtn}.disabled`);
+  await evaluate(`${yesBtn}.click();`);
+  await waitFor(`${dialog}.querySelector('[data-broadcast-outcomes]')`);
+  check("109 W3 群发结果：一个都没发出 ⇒ 标题「No message went out. See below.」（不说 Broadcast sent.）", await evaluate(`return ${dialog}.textContent.includes('No message went out. See below.') && !${dialog}.textContent.includes('Broadcast sent.');`));
+  check("109 W3 群发结果：一行 Sent 0 / Failed 1 / No contact 1（绿 / 红 / 灰），不写 SMS: x sent", await evaluate(`const s = [...${dialog}.querySelectorAll('[data-broadcast-outcomes] span')].map(x => x.textContent + '|' + x.className); return s.length === 3 && s[0].startsWith('Sent 0|') && s[0].includes('#3B6D11') && s[1].startsWith('Failed 1|') && s[1].includes('#A32D2D') && s[2].startsWith('No contact 1|') && s[2].includes('#6B6B6B') && !${dialog}.textContent.includes('SMS: ');`), await evaluate(`return ${dialog}.textContent.slice(0, 400);`));
+  check("109 W3 群发结果：T01 红字「Failed: T01 (ZZ One) — SMS Failed: Invalid phone」；T05 灰字 No contact；T01 没邮箱灰字 No email", await evaluate(`const f = ${dialog}.querySelector('[data-broadcast-failed="T01"]'); const n = ${dialog}.querySelector('[data-broadcast-no-contact]'); return !!f && f.textContent === 'Failed: T01 (ZZ One) — SMS Failed: Invalid phone' && f.className.includes('#A32D2D') && !!n && n.textContent === 'No contact (no phone number or email): T05 (ZZ Five).' && n.className.includes('#6B6B6B') && ${dialog}.querySelector('[data-broadcast-no-email]')?.textContent === 'No email: T01 (ZZ One).';`), await evaluate(`return ${dialog}.textContent.slice(0, 500);`));
+  await evaluate(`$btn('Done', ${dialog}).click();`);
+  await ctl({ w3: {} });
+  await openAcu();
+  await evaluate(`$btn('📣 Send broadcast', ${dialog}).click();`);
+  await waitFor(`${yesBtn} && !${yesBtn}.disabled`);
+  await evaluate(`${yesBtn}.click();`);
+  await waitFor(`${dialog}.querySelector('[data-broadcast-outcomes]')`);
+  check("109 W3 群发都发出：Sent 2 / Failed 0 / No contact 0，没有红字 / 灰字名单", await evaluate(`const t = ${dialog}.querySelector('[data-broadcast-outcomes]').textContent; return t === 'Sent 2Failed 0No contact 0' && !${dialog}.querySelector('[data-broadcast-failed],[data-broadcast-no-contact],[data-broadcast-no-number]') && ${dialog}.textContent.includes('Broadcast sent.');`), await evaluate(`return ${dialog}.textContent.slice(0, 300);`));
+  await evaluate(`$btn('Done', ${dialog}).click();`);
+  await ctl({ w3: null });
   // 409：同一团期别人正在群发，什么都没发 ⇒ 回到编辑、写原因
   await ctl({ bcRace: [], bcBusy: true });
   await openAcu();

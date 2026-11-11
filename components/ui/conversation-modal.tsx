@@ -18,6 +18,7 @@ import {
   toggleTakeAction,
 } from "@/lib/booking-notes-api";
 import { isInbound } from "@/lib/channels";
+import { backendChannel, type ChannelOutcome } from "@/lib/send-outcome";
 import { SMS_CHAR_LIMIT, smsCheck, smsProblem } from "@/lib/sms-limit";
 import { LA_TIME_ZONE } from "@/lib/la-date";
 import { usePermissions } from "@/lib/staff-permissions";
@@ -294,7 +295,8 @@ function skinOf(theme: ConversationTheme) {
 const GRIP_IMAGE =
   "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M14 2 L2 14 M14 7 L7 14 M14 12 L12 14' stroke='%236c8f6f' stroke-width='1.6' fill='none' stroke-linecap='round'/></svg>\")";
 
-type Notice = { tone: "error" | "warn"; text: string } | null;
+/** info：没号码 / 没邮箱这类不算失败的结果（置顶 109，灰字）。 */
+type Notice = { tone: "error" | "warn" | "info"; text: string } | null;
 
 /**
  * 一单的对话：看全部往来、写内部备注、发短信 / 邮件给客人、标记已处理。
@@ -504,15 +506,36 @@ function ConversationModalInner({
         send_sms: toGuest && useSms,
         send_email: toGuest && useEmail,
       };
-      const note =
+      const res =
         sourceKind === "ticket"
           ? await createTicketNote(bookingId, payload)
           : await createBookingNote(orderNumber, { ...payload, line });
+      const note = res.note;
       setText("");
+      // 置顶 109 W3（后端 ceba9aaa）：发给客人时后端带 sms_outcome / email_outcome，照它判（同全站：
+      // 没号码 / 没邮箱 = 灰字、不算失败；有地址发不出 = 红；没有可用短信渠道 = skipped 灰字带原因）。
+      // 旧后端不带 ⇒ 照旧看 note 的状态原文。
+      const smsO = toGuest ? backendChannel(res.sms_outcome) : null;
+      const emailO = toGuest ? backendChannel(res.email_outcome) : null;
+      const fresh = smsO !== null || emailO !== null;
       const missed: string[] = [];
-      if (toGuest && useSms && note.sms_status !== "sent") missed.push("SMS");
-      if (toGuest && useEmail && note.email_status !== "sent") {
-        missed.push("email");
+      const quiet: string[] = [];
+      if (fresh) {
+        if (smsO === "failed") missed.push("SMS");
+        if (emailO === "failed") missed.push("email");
+        if (smsO === "no_address")
+          quiet.push("No number on file, so no SMS was sent.");
+        if (emailO === "no_address")
+          quiet.push("No email on file, so no email was sent.");
+        if (smsO === "skipped")
+          quiet.push(`SMS not sent: ${note.sms_status || "skipped"}.`);
+        if (emailO === "skipped")
+          quiet.push(`Email not sent: ${note.email_status || "skipped"}.`);
+      } else {
+        if (toGuest && useSms && note.sms_status !== "sent") missed.push("SMS");
+        if (toGuest && useEmail && note.email_status !== "sent") {
+          missed.push("email");
+        }
       }
       if (sendBoth && toGuest) {
         // 两个渠道分开写（后端各管各的：短信渠道判不出 = no_channel，只跳过短信，邮件照发）。
@@ -520,11 +543,42 @@ function ConversationModalInner({
           used: boolean,
           has: boolean,
           status: string | null | undefined,
+          outcome: ChannelOutcome | null,
           label: "SMS" | "Email",
           to: string,
           none: string,
-        ) =>
-          !has
+        ) => {
+          const bad = {
+            tone: "bad" as const,
+            text: `✗ ${label} NOT delivered${status ? ` (${status})` : ""}. The guest did not get it by ${label === "SMS" ? "text" : "email"}.`,
+          };
+          if (outcome) {
+            switch (outcome) {
+              case "sent":
+                return {
+                  tone: "ok" as const,
+                  text: `✓ ${label} sent to ${to}`,
+                };
+              case "no_address":
+                return {
+                  tone: "muted" as const,
+                  text: `${label} not sent — ${none}`,
+                };
+              case "skipped":
+                return {
+                  tone: "muted" as const,
+                  text: `${label} not sent: ${status === "no_channel" ? "no channel" : status || "skipped"}`,
+                };
+              case "not_used":
+                return {
+                  tone: "muted" as const,
+                  text: `${label} not sent — not ticked`,
+                };
+              case "failed":
+                return bad;
+            }
+          }
+          return !has
             ? { tone: "muted" as const, text: `${label} not sent — ${none}` }
             : !used
               ? {
@@ -538,15 +592,14 @@ function ConversationModalInner({
                       tone: "bad" as const,
                       text: `${label} not sent: no channel`,
                     }
-                  : {
-                      tone: "bad" as const,
-                      text: `✗ ${label} NOT delivered${status ? ` (${status})` : ""}. The guest did not get it by ${label === "SMS" ? "text" : "email"}.`,
-                    };
+                  : bad;
+        };
         setResults([
           line(
             useSms,
             hasPhone,
             note.sms_status,
+            smsO,
             "SMS",
             target.phone,
             "no phone on file",
@@ -555,6 +608,7 @@ function ConversationModalInner({
             useEmail,
             hasEmail,
             note.email_status,
+            emailO,
             "Email",
             target.email,
             "no email on file",
@@ -563,8 +617,10 @@ function ConversationModalInner({
       } else if (missed.length) {
         setNotice({
           tone: "warn",
-          text: `Saved, but NOT delivered to the guest via ${missed.join(" / ")}. The guest has not received this message — please reach them another way.`,
+          text: `Saved, but NOT delivered to the guest via ${missed.join(" / ")}. The guest has not received this message — please reach them another way.${quiet.length ? ` ${quiet.join(" ")}` : ""}`,
         });
+      } else if (quiet.length) {
+        setNotice({ tone: "info", text: `Saved. ${quiet.join(" ")}` });
       }
       await loadNotes();
       // 表格的预览和处理状态跟着刷新（发出去后端会把这单记成已处理）。
@@ -737,10 +793,17 @@ function ConversationModalInner({
         ) : null}
         {notice ? (
           <p
-            role="alert"
+            role={notice.tone === "info" ? "status" : "alert"}
+            data-notice-tone={notice.tone}
             className={cn(
               "mb-2 rounded-md px-3 py-2 text-[12px]",
-              notice.tone === "error" ? skin.error : skin.warn,
+              notice.tone === "error"
+                ? skin.error
+                : notice.tone === "info"
+                  ? theme === "morning"
+                    ? "text-[#8aa9c8]"
+                    : "text-[#6B6B6B]"
+                  : skin.warn,
             )}
           >
             {notice.text}

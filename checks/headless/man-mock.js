@@ -11,7 +11,17 @@ const outcomeMock = require("./outcome-mock");
 // busTour：{订单号: 产品默认的 tour type 键}，没列的是 ""（产品没配）。
 // 这一天上次从 Rezdy 同步（{at, by} 或 null；/__ctl {rezdyLast} 设）。
 let rezdyLast = null;
-const ctl = { hiddenMode: "today", fail401: false, role: "admin", moneyAdminOnly: false, fail: false, prefsFail: false, cfm404: false, sections: false, sendFail: "", minus15: false, bcAlready: [], bcRace: [], bcBusy: false, bcCheckFail: 0, rezdyListsErr: "", busTour: {}, msgNames: null, msgEmails: null, sendDelay: 0, cfmPreviewFail: false, reminderSent: [], noBatch: false, cfmRule: null };
+// 置顶 109 W3 一单的结果（同后端 send_outcome.py 判据）：kind = "failed"（短信号码错、没邮箱）/ "no_contact"（两边都没地址）/
+// "no_number"（只缺号码）/ 其余 sent。
+function w3Row(order, useSms, useEmail, kind) {
+  const sms = !useSms ? "not_used" : kind === "failed" ? "failed" : kind === "no_contact" || kind === "no_number" ? "no_address" : "sent";
+  const email = !useEmail ? "not_used" : kind === "no_contact" || kind === "failed" ? "no_address" : "sent";
+  const used = [sms, email].filter((c) => c !== "not_used");
+  const outcome = used.includes("sent") ? "sent" : used.includes("failed") ? "failed" : used.length && used.every((c) => c === "no_address") ? "no_contact" : "not_sent";
+  const raw = (c, ch) => (c === "sent" ? (ch === "sms" ? "sent:SM1" : "sent") : c === "failed" ? "failed: Invalid phone" : c === "no_address" ? (ch === "sms" ? "skipped - no phone" : "skipped - no email") : null);
+  return { order_number: order, sms_status: raw(sms, "sms"), email_status: raw(email, "email"), outcome, sms_outcome: sms, email_outcome: email };
+}
+const ctl = { hiddenMode: "today", fail401: false, role: "admin", moneyAdminOnly: false, fail: false, prefsFail: false, cfm404: false, sections: false, sendFail: "", minus15: false, bcAlready: [], bcRace: [], bcBusy: false, bcCheckFail: 0, rezdyListsErr: "", busTour: {}, msgNames: null, msgEmails: null, sendDelay: 0, cfmPreviewFail: false, reminderSent: [], noBatch: false, cfmRule: null, w3: null };
 // cfmRule（后端 51ffe2ca 门票 Cfm # 规则）：null = 旧后端（行不带 cfm_not_needed / cfm_short，对比不带 current_too_short）；
 // { notNeeded: [订单号] } = 这些单的门票团不需要 Cfm #（Hogan）。号短不短照后端算：整串里数字不到 6 个。
 const cfmDigits = (v) => [...String(v ?? "")].filter((c) => c >= "0" && c <= "9").length;
@@ -538,6 +548,14 @@ http
       const anyway = new Set(body.preview_at ? body.send_anyway ?? [] : []);
       const skipped = orders.filter((o) => ctl.bcRace.includes(o) || (ctl.bcAlready.includes(o) && !anyway.has(o)));
       const n = orders.length - skipped.length;
+      // 置顶 109 W3（后端 ceba9aaa）：ctl.w3 = { 订单号: kind } ⇒ 每条线带四个数 + 逐单 results。
+      if (ctl.w3) {
+        const rows = orders.filter((o) => !skipped.includes(o)).map((o) => w3Row(o, body.send_sms !== false, body.send_email !== false, ctl.w3[o]));
+        const count = (k) => rows.filter((r) => r.outcome === k).length;
+        return send(res, 200, { checked_at: "2026-10-07T18:41:00+00:00", skipped: skipped.map(bcSent), recipient_count: n,
+          results: n ? [{ module: "tour", broadcast_id: 301, recipient_count: n, sms_sent: rows.filter((r) => r.sms_outcome === "sent").length, sms_failed: rows.filter((r) => r.sms_outcome === "failed").length,
+            email_sent: rows.filter((r) => r.email_outcome === "sent").length, email_failed: 0, sent: count("sent"), failed: count("failed"), no_contact: count("no_contact"), not_sent: count("not_sent"), results: rows }] : [] });
+      }
       return send(res, 200, { checked_at: "2026-10-07T18:41:00+00:00", skipped: skipped.map(bcSent), recipient_count: n,
         results: n ? [{ module: "tour", broadcast_id: 301, recipient_count: n, sms_sent: n, sms_failed: 0, email_sent: n - 1, email_failed: 1 }] : [] });
     }

@@ -394,6 +394,10 @@ export function MessageDialog({
 
   const titleId = "manifest-message-title";
   if (phase.kind === "done" || phase.kind === "failed") {
+    const doneOutcomes =
+      phase.kind === "done"
+        ? broadcastOutcomes(phase.result, rows, sms, email)
+        : null;
     return (
       <DialogFrame
         titleId={titleId}
@@ -406,7 +410,9 @@ export function MessageDialog({
           </button>
         }
       >
-        {phase.kind === "done" ? (
+        {phase.kind === "done" && doneOutcomes ? (
+          <BroadcastResults result={phase.result} outcomes={doneOutcomes} />
+        ) : phase.kind === "done" ? (
           <>
             {phase.result.results.length ? (
               <div role="status" className={OK_BOX}>
@@ -1148,6 +1154,92 @@ function GuestTable({
 }
 
 /** 发完的逐单结果（同发送页 Send Results 的表）。 */
+/**
+ * 置顶 109 W3（后端 ceba9aaa）：Manifests 群发每条线带逐单 results 时，按客人算 Sent / Failed / No contact，
+ * 和团确认弹窗同一套结果格 + 名单表（Email、SMS 两列）。旧后端（没有 results）⇒ null，照旧只写每条线的渠道计数。
+ */
+function broadcastOutcomes(
+  result: ManifestBroadcastResult,
+  rows: ManifestRow[],
+  useSms: boolean,
+  useEmail: boolean,
+): Outcome[] | null {
+  if (!result.results.some((m) => Array.isArray(m.results))) return null;
+  const nameOf = new Map(
+    rows.map((r) => [r.order_number, String(r.values.guest_name ?? "")]),
+  );
+  return result.results.flatMap((m) =>
+    (m.results ?? []).map((r) => {
+      const o = resolveOutcome(r, {
+        sms: legacyChannel(r.sms_status, useSms),
+        email: legacyChannel(r.email_status, useEmail),
+      });
+      return {
+        order: r.order_number,
+        name: nameOf.get(r.order_number) ?? "",
+        first: channelCell("email", o.email, failedReason(r.email_status)),
+        second: channelCell("sms", o.sms, failedReason(r.sms_status)),
+        outcome: o.outcome,
+      };
+    }),
+  );
+}
+
+function BroadcastResults({
+  result,
+  outcomes,
+}: {
+  result: ManifestBroadcastResult;
+  outcomes: Outcome[];
+}) {
+  const c = countOutcomes(outcomes.map((o) => o.outcome));
+  const skipped = result.skipped?.length ?? 0;
+  return (
+    <>
+      <div className={cn(RESULT_SUMMARY, "mb-0")} data-broadcast-outcomes>
+        {outcomeStats(c).map((s) => (
+          <ResultStat
+            key={s.label}
+            label={s.label}
+            value={s.value}
+            className={s.className}
+          />
+        ))}
+        <ResultStat
+          label="Skipped"
+          value={skipped}
+          className="text-[#BA7517]"
+        />
+        <ResultStat label="Total" value={outcomes.length + skipped} />
+      </div>
+      {outcomes.length ? (
+        <div role="status" className={OK_BOX}>
+          {plural(c.sent, "order")} sent.
+          {c.failed ? ` ${c.failed} failed, see below.` : ""}
+          {c.no_contact
+            ? ` ${c.no_contact} with no phone number or email.`
+            : ""}{" "}
+          Saved in Broadcasting Log.
+        </div>
+      ) : (
+        <div role="status" className={NOTE_BOX}>
+          Nothing was sent: everyone already got this message.
+        </div>
+      )}
+      {skipped ? (
+        <p data-broadcast-skipped>
+          Skipped {skipped} (already got this message):{" "}
+          {result.skipped?.map((s) => s.order_number).join(", ")}.
+        </p>
+      ) : null}
+      <OutcomeTable heads={["Email", "SMS"]} outcomes={outcomes} />
+      <p className="text-[#1a1a1a]">
+        Replies show up in Tracking like any other guest reply.
+      </p>
+    </>
+  );
+}
+
 function OutcomeTable({
   heads,
   outcomes,

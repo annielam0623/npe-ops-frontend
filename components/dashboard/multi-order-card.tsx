@@ -5,6 +5,7 @@ import { useState } from "react";
 import { ChannelIcon, WhatsAppWindowPill } from "@/components/ui/channel-icon";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { channelKey, isInbound, whatsappWindow } from "@/lib/channels";
+import { backendGuest } from "@/lib/send-outcome";
 import {
   postMultiAssign,
   postMultiReply,
@@ -119,12 +120,21 @@ export function MultiOrderCard({
     }
     const result = await guard(() => postMultiReply(item.address, body));
     if (!result) return;
-    if (result.status === "sent") {
+    // 置顶 109 W3：后端带 outcome 就照它；旧后端看 status。来信的地址就是收件地址，没地址的情况基本不会有；
+    // 没有可用渠道（skipped）这种不是「发失败」，写原因，不叫 staff 重试。
+    const outcome =
+      backendGuest(result.outcome) ??
+      (result.status === "sent" ? "sent" : "failed");
+    if (outcome === "sent") {
       openMode(null);
       onChanged();
       return;
     }
-    fail("Not sent. The message did not go out; try again or call the guest.");
+    fail(
+      outcome === "failed"
+        ? "Not sent. The message did not go out; try again or call the guest."
+        : `Not sent${result.status ? ` (${result.status})` : ""}. The message did not go out; call the guest.`,
+    );
   }
 
   async function handleMove() {

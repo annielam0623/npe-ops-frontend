@@ -1,4 +1,5 @@
 import { apiFetch } from "@/lib/api-client";
+import type { OutcomeFields } from "@/lib/send-outcome";
 import type {
   BookingNote,
   BookingNotes,
@@ -30,18 +31,25 @@ export function fetchBookingNotes(
 }
 
 /**
- * 写一条备注或发给客人。⚠️ send_sms / send_email 为 true 时会**真实发送**；
- * 结果看返回的 note.sms_status / email_status（不是 "sent" 就是没发出去）。
+ * 发给客人后的返回：note + 置顶 109 W3 的三个结果（后端 ceba9aaa 起；内部备注、两个渠道都没勾时不带，旧后端也不带）。
+ * 没号码时 note.sms_status 仍是 null，「No number」要看 sms_outcome = no_address。
  */
-export async function createBookingNote(
+export interface NoteSendResult extends OutcomeFields {
+  note: BookingNote;
+}
+
+/**
+ * 写一条备注或发给客人。⚠️ send_sms / send_email 为 true 时会**真实发送**；
+ * 结果优先看 sms_outcome / email_outcome，旧后端看 note.sms_status / email_status（不是 "sent" 就是没发出去）。
+ */
+export function createBookingNote(
   orderNumber: string,
   payload: NoteCreate,
-): Promise<BookingNote> {
-  const result = await apiFetch<{ note: BookingNote }>(notesPath(orderNumber), {
+): Promise<NoteSendResult> {
+  return apiFetch<NoteSendResult>(notesPath(orderNumber), {
     method: "POST",
     body: payload,
   });
-  return result.note;
 }
 
 /**
@@ -60,15 +68,15 @@ export async function fetchTicketNotes(
 }
 
 /** 门票单写备注 / 发给客人。回信邮件的 Reply-To 是门票组的邮箱（后端按 source 定）。 */
-export async function createTicketNote(
+export function createTicketNote(
   ticketId: number,
   payload: Omit<NoteCreate, "line">,
-): Promise<BookingNote> {
-  const result = await apiFetch<{ note: BookingNote }>(
-    `/booking-notes/${ticketId}`,
-    { method: "POST", body: payload, query: { source: "tickets" } },
-  );
-  return result.note;
+): Promise<NoteSendResult> {
+  return apiFetch<NoteSendResult>(`/booking-notes/${ticketId}`, {
+    method: "POST",
+    body: payload,
+    query: { source: "tickets" },
+  });
 }
 
 /**

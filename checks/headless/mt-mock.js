@@ -427,6 +427,19 @@ http
           email_status: body.send_email ? (body.body.includes("FAILMAIL") ? "failed" : "sent") : null,
           created_at: "2026-10-03 08:00",
         };
+        // 置顶 109 W3（后端 ceba9aaa）：正文带「W3」⇒ 回包加三个 outcome。NOPHONE = 没号码（sms_status null，同后端）、
+        // NOMAIL = 没邮箱、NOCHANNEL = 没有可用短信渠道（skipped）、FAILME / FAILMAIL = 发失败。
+        let w3 = null;
+        if (body.body.includes("W3") && (body.send_sms || body.send_email)) {
+          const t = body.body;
+          const sms = !body.send_sms ? "not_used" : t.includes("NOPHONE") ? "no_address" : t.includes("NOCHANNEL") ? "skipped" : fail ? "failed" : "sent";
+          const email = !body.send_email ? "not_used" : t.includes("NOMAIL") ? "no_address" : t.includes("FAILMAIL") ? "failed" : "sent";
+          if (sms === "no_address") note.sms_status = null;
+          if (email === "no_address") note.email_status = "skipped - no email";
+          const used = [sms, email].filter((c) => c !== "not_used");
+          const outcome = used.includes("sent") ? "sent" : used.includes("failed") ? "failed" : used.every((c) => c === "no_address") ? "no_contact" : "not_sent";
+          w3 = { outcome, sms_outcome: sms, email_outcome: email };
+        }
         (notes[order] ||= []).push(note);
         if (r && body.direction === "staff_note") {
           r.notes_count += 1;
@@ -434,7 +447,7 @@ http
           r.latest_note_direction = "staff_note";
           r.latest_note_author = "ZZ Test";
         }
-        return send(res, 200, { note });
+        return send(res, 200, w3 ? { note, ...w3 } : { note });
       }
       return send(res, 200, { notes: notes[order] || [], guest_note: "", action_taken_by: r ? r.action_taken_by : "" });
     }
@@ -444,6 +457,8 @@ http
       entry.body = body;
       if (ctl.multi404 && body.address === MULTI_ADDR_ONE) return send(res, 404, { detail: "Conversation not found or already assigned" });
       const failed = (body.body || "").includes("FAILSEND");
+      // 置顶 109 W3：W3SKIP = 没有可用短信渠道（status no_channel，outcome not_sent / sms_outcome skipped）。
+      if ((body.body || "").includes("W3SKIP")) return send(res, 200, { ok: true, channel: "sms", status: "no_channel", outcome: "not_sent", sms_outcome: "skipped", email_outcome: "not_used" });
       return send(res, 200, { ok: true, channel: body.address === MULTI_ADDR_ZERO ? "email" : "sms", status: failed ? "failed" : "sent" });
     }
     if (p === "/booking-notes/multi/assign" && req.method === "POST") {

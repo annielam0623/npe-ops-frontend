@@ -235,7 +235,20 @@ export interface ManifestBroadcastResult {
     sms_failed: number;
     email_sent: number;
     email_failed: number;
+    /** 置顶 109 W3（后端 ceba9aaa）：按客人的四个数 + 逐单结果（每条线一份）。旧后端没有。 */
+    sent?: number;
+    failed?: number;
+    no_contact?: number;
+    not_sent?: number;
+    results?: ManifestBroadcastOrderResult[];
   }[];
+}
+
+/** Manifests 群发逐单结果（置顶 109 W3，同 Tracking 群发）。 */
+export interface ManifestBroadcastOrderResult extends OutcomeFields {
+  order_number: string;
+  sms_status: string | null;
+  email_status: string | null;
 }
 
 /** 发送页同一个循环跳过的一单（已发过 / 同一批里重复）。 */

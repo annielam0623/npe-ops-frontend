@@ -3,7 +3,17 @@ const http = require("http");
 const staffPerm = require("./staff-perm-mock");
 // notesActionBy：对话接口回的处理人（模拟读所有线时回的是别的线）；slowTake：take-action 延迟毫秒；extraRow：多一行 T07。
 // staleAction：T04 点过 Take action 之后客人又来了留言（notes_unhandled）；modifyMsg：T02 改期之后又有一条对话。
-const ctl = { partner: false, fail401: false, confFail: false, pref: null, newMsg: false, importBad: false, notesActionBy: "", slowTake: 0, extraRow: false, staleAction: false, modifyMsg: false, bcAlready: [], bcRace: [], bcBusy: false, bcCheckFail: 0 };
+// 置顶 109 W3 一单的结果（同后端 send_outcome.py 判据）：kind = "failed"（短信号码错、没邮箱）/ "no_contact"（两边都没地址）/
+// "no_number"（只缺号码）/ 其余 sent。
+function w3Row(order, useSms, useEmail, kind) {
+  const sms = !useSms ? "not_used" : kind === "failed" ? "failed" : kind === "no_contact" || kind === "no_number" ? "no_address" : "sent";
+  const email = !useEmail ? "not_used" : kind === "no_contact" || kind === "failed" ? "no_address" : "sent";
+  const used = [sms, email].filter((c) => c !== "not_used");
+  const outcome = used.includes("sent") ? "sent" : used.includes("failed") ? "failed" : used.length && used.every((c) => c === "no_address") ? "no_contact" : "not_sent";
+  const raw = (c, ch) => (c === "sent" ? (ch === "sms" ? "sent:SM1" : "sent") : c === "failed" ? "failed: Invalid phone" : c === "no_address" ? (ch === "sms" ? "skipped - no phone" : "skipped - no email") : null);
+  return { order_number: order, sms_status: raw(sms, "sms"), email_status: raw(email, "email"), outcome, sms_outcome: sms, email_outcome: email };
+}
+const ctl = { partner: false, fail401: false, confFail: false, pref: null, newMsg: false, importBad: false, notesActionBy: "", slowTake: 0, extraRow: false, staleAction: false, modifyMsg: false, bcAlready: [], bcRace: [], bcBusy: false, bcCheckFail: 0, w3: null, w3Note: "" };
 const log = [];
 function send(res, status, body) { res.statusCode = status; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify(body)); }
 function readRaw(req) { return new Promise((r) => { const c = []; req.on("data", (d) => c.push(d)); req.on("end", () => r(Buffer.concat(c).toString("utf8"))); }); }
@@ -131,6 +141,14 @@ http.createServer(async (req, res) => {
     if (req.method === "POST") {
       const body = JSON.parse(await readRaw(req)); entry.body = body;
       const note = { id: 900, booking_id: 0, author_username: "Annie", direction: body.direction, body: body.body, sms_status: body.send_sms ? "sent" : null, email_status: body.send_email ? "sent" : null, created_at: "2026-10-09 10:00" };
+      // 置顶 109 W3：ctl.w3Note = "no_number" | "failed" ⇒ 发给客人时带三个 outcome（没号码时 sms_status 是 null，同后端）。
+      if (ctl.w3Note && (body.send_sms || body.send_email)) {
+        const r = w3Row(o, body.send_sms, body.send_email, ctl.w3Note);
+        note.sms_status = r.sms_status === "skipped - no phone" ? null : r.sms_status;
+        note.email_status = r.email_status;
+        (notes[o] ||= []).push(note);
+        return send(res, 200, { note, outcome: r.outcome, sms_outcome: r.sms_outcome, email_outcome: r.email_outcome });
+      }
       (notes[o] ||= []).push(note);
       return send(res, 200, { note });
     }
@@ -151,6 +169,12 @@ http.createServer(async (req, res) => {
     const skip = (o) => ctl.bcRace.includes(o) || (ctl.bcAlready.includes(o) && !anyway.has(o));
     const skipped = [...new Set(body.recipients.map((r) => r.order_number).filter(skip))];
     const n = body.recipients.filter((r) => !skip(r.order_number)).length;
+    // 置顶 109 W3（后端 ceba9aaa）：ctl.w3 = { 订单号: "failed" | "no_contact" | "no_number" }（其余 sent）⇒ 带四个数 + 逐单 results。
+    if (ctl.w3) {
+      const results = body.recipients.filter((r) => !skip(r.order_number)).map((r) => w3Row(r.order_number, body.send_sms, body.send_email, ctl.w3[r.order_number]));
+      const count = (k) => results.filter((r) => r.outcome === k).length;
+      return send(res, 200, { broadcast_id: n ? 9 : null, recipient_count: n, sms_sent: results.filter((r) => r.sms_outcome === "sent").length, sms_failed: results.filter((r) => r.sms_outcome === "failed").length, email_sent: results.filter((r) => r.email_outcome === "sent").length, email_failed: 0, skipped: skipped.map(bcSent), checked_at: "2026-10-10T16:01:00+00:00", sent: count("sent"), failed: count("failed"), no_contact: count("no_contact"), not_sent: count("not_sent"), results });
+    }
     return send(res, 200, { broadcast_id: n ? 9 : null, recipient_count: n, sms_sent: n, sms_failed: 0, email_sent: 0, email_failed: 0, skipped: skipped.map(bcSent), checked_at: "2026-10-10T16:01:00+00:00" });
   }
   if (p === "/send/tour-tracking-import-preview") {

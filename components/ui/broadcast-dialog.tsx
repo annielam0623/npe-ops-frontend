@@ -13,6 +13,18 @@ import {
 } from "@/lib/broadcast-api";
 import { LA_TIME_ZONE } from "@/lib/la-date";
 import { smsCheck, smsProblem, tourDateText } from "@/lib/sms-limit";
+import {
+  type ChannelOutcome,
+  type GuestOutcome,
+  OUTCOME_GREY,
+  OUTCOME_RED,
+  channelCell,
+  countOutcomes,
+  failedReason,
+  legacyChannel,
+  outcomeStats,
+  resolveOutcome,
+} from "@/lib/send-outcome";
 import { cn } from "@/lib/utils";
 
 import { ModalShell } from "@/components/tracking-ui/modal-shell";
@@ -149,7 +161,6 @@ const CHANNELS: readonly { value: Channel; label: string }[] = [
   { value: "sms", label: "SMS only" },
   { value: "email", label: "Email only" },
 ];
-
 
 type Phase =
   | { kind: "edit"; error: string | null }
@@ -450,6 +461,23 @@ export function BroadcastDialog({
       return next;
     });
   const skin = theme === "tickets" ? TICKETS_SKIN : TOUR_SKIN;
+  // 置顶 109 W3（后端 ceba9aaa）：后端带逐单 results 就按客人写 Sent / Failed / No contact；旧后端 = null，照旧写渠道计数。
+  const doneOutcomes =
+    phase.kind === "done" && Array.isArray(phase.result.results)
+      ? phase.result.results.map((r) => {
+          const o = resolveOutcome(r, {
+            sms: legacyChannel(r.sms_status, wantSms),
+            email: legacyChannel(r.email_status, wantEmail),
+          });
+          return {
+            order: r.order_number,
+            name: nameOf.get(r.order_number) ?? "",
+            ...o,
+            smsReason: failedReason(r.sms_status),
+            emailReason: failedReason(r.email_status),
+          };
+        })
+      : null;
 
   return (
     <ModalShell
@@ -487,7 +515,10 @@ export function BroadcastDialog({
             <p className="font-semibold">
               {phase.result.broadcast_id === null
                 ? "Nothing was sent: everyone already got this message."
-                : "Broadcast sent."}
+                : doneOutcomes?.length &&
+                    !doneOutcomes.some((o) => o.outcome === "sent")
+                  ? "No message went out. See below."
+                  : "Broadcast sent."}
             </p>
             {phase.result.skipped?.length ? (
               <p data-broadcast-skipped>
@@ -496,7 +527,10 @@ export function BroadcastDialog({
                 {phase.result.skipped.map((s) => s.order_number).join(", ")}.
               </p>
             ) : null}
-            {wantSms ? (
+            {doneOutcomes ? (
+              <BroadcastOutcomeLines outcomes={doneOutcomes} />
+            ) : null}
+            {wantSms && !doneOutcomes ? (
               <p>
                 SMS: {phase.result.sms_sent} sent,{" "}
                 <span className={phase.result.sms_failed ? skin.failText : ""}>
@@ -504,7 +538,7 @@ export function BroadcastDialog({
                 </span>
               </p>
             ) : null}
-            {wantEmail ? (
+            {wantEmail && !doneOutcomes ? (
               <p>
                 Email: {phase.result.email_sent} sent,{" "}
                 <span
@@ -727,9 +761,7 @@ export function BroadcastDialog({
                 <p
                   className={cn(
                     "mt-1 text-[11px]",
-                    sms.over
-                      ? "font-semibold text-[#c0392b]"
-                      : skin.counter,
+                    sms.over ? "font-semibold text-[#c0392b]" : skin.counter,
                   )}
                 >
                   {smsCounterText}
@@ -1315,5 +1347,80 @@ function Chip({
       />
       <span className={textClassName}>{label}</span>
     </label>
+  );
+}
+
+/** 群发结果一位客人（置顶 109 W3）。 */
+interface BroadcastOutcome {
+  order: string;
+  name: string;
+  outcome: GuestOutcome;
+  sms: ChannelOutcome;
+  email: ChannelOutcome;
+  smsReason: string;
+  emailReason: string;
+}
+
+/**
+ * 群发结果（置顶 109 W3，全站同一口径）：一行 Sent 绿 / Failed 红 / No contact 灰（Not sent 有才出）；
+ * 下面只列要处理的：发失败的单红字带原因；两个渠道都没地址的、只缺一个渠道的灰字 No contact / No number / No email。
+ */
+function BroadcastOutcomeLines({ outcomes }: { outcomes: BroadcastOutcome[] }) {
+  const c = countOutcomes(outcomes.map((o) => o.outcome));
+  const who = (list: BroadcastOutcome[]) =>
+    list.map((o) => (o.name ? `${o.order} (${o.name})` : o.order)).join(", ");
+  const failed = outcomes.filter((o) => o.outcome === "failed");
+  const noContact = outcomes.filter((o) => o.outcome === "no_contact");
+  const noNumber = outcomes.filter(
+    (o) => o.outcome !== "no_contact" && o.sms === "no_address",
+  );
+  const noEmail = outcomes.filter(
+    (o) => o.outcome !== "no_contact" && o.email === "no_address",
+  );
+  const why = (o: BroadcastOutcome) =>
+    [
+      o.sms === "failed"
+        ? `SMS ${channelCell("sms", "failed", o.smsReason).label}`
+        : "",
+      o.email === "failed"
+        ? `Email ${channelCell("email", "failed", o.emailReason).label}`
+        : "",
+    ]
+      .filter(Boolean)
+      .join("; ");
+  return (
+    <>
+      <p data-broadcast-outcomes className="flex flex-wrap gap-x-3">
+        {outcomeStats(c).map((s) => (
+          <span key={s.label} className={cn("font-semibold", s.className)}>
+            {s.label} {s.value}
+          </span>
+        ))}
+      </p>
+      {failed.map((o) => (
+        <p
+          key={o.order}
+          data-broadcast-failed={o.order}
+          className={OUTCOME_RED}
+        >
+          Failed: {who([o])} — {why(o)}
+        </p>
+      ))}
+      {noContact.length ? (
+        <p data-broadcast-no-contact className={OUTCOME_GREY}>
+          No contact (no phone number or email): {who(noContact)}.
+        </p>
+      ) : null}
+      {noNumber.length ? (
+        <p data-broadcast-no-number className={OUTCOME_GREY}>
+          No number: {who(noNumber)}.
+        </p>
+      ) : null}
+      {noEmail.length ? (
+        <p data-broadcast-no-email className={OUTCOME_GREY}>
+          No email: {who(noEmail)}.
+        </p>
+      ) : null}
+    </>
   );
 }
