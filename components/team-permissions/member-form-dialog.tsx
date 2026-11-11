@@ -30,6 +30,11 @@ import {
   saveTeamContact,
   saveTeamMember,
 } from "@/lib/team-permissions-api";
+import {
+  fetchLeaveRouting,
+  saveLeaveManager,
+  type LeaveRouting,
+} from "@/lib/leave-api";
 import { buildInviteUrl } from "@/lib/users-api";
 import { cn } from "@/lib/utils";
 import type {
@@ -100,6 +105,8 @@ interface MemberFormDialogProps {
    * 会加上或拿掉自己没有的项的那个档位按钮灰掉；Super Admin 不传 = 不限。后端照样 400 挡。
    */
   ownItems?: ReadonlySet<string>;
+  /** G282：能不能改 Manager（只有 Super Admin）；不能时只读显示。 */
+  canSetManager?: boolean;
 }
 
 interface FormState {
@@ -164,6 +171,7 @@ export function MemberFormDialog({
   onAccountTypeChanged,
   onDelete,
   ownItems,
+  canSetManager = false,
 }: MemberFormDialogProps) {
   const titleId = useId();
   const groups = useMemo(
@@ -251,6 +259,27 @@ export function MemberFormDialog({
     field: "email" | "phone";
     message: string;
   } | null>(null);
+
+  // G282 Manager：编辑时另读 leave-routing（admin 只读、Super Admin 改）；读不到（后端没上 / 403）就不出这一节。
+  const [routing, setRouting] = useState<LeaveRouting | null>(null);
+  const [manager, setManager] = useState<number | null>(null);
+  const savedManagerRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (editId === null) return;
+    const controller = new AbortController();
+    fetchLeaveRouting(controller.signal).then(
+      (r) => {
+        if (controller.signal.aborted) return;
+        const m =
+          r.people.find((p) => p.user_id === editId)?.manager_user_id ?? null;
+        savedManagerRef.current = m;
+        setManager(m);
+        setRouting(r);
+      },
+      () => {},
+    );
+    return () => controller.abort();
+  }, [editId]);
 
   // 编辑：先拿这个人的完整勾选（列表里只有条数）。
   useEffect(() => {
@@ -402,6 +431,15 @@ export function MemberFormDialog({
         }
         const sent = selection(form);
         const res = await saveTeamMember(mode.member.id, sent);
+        // G282：Manager 变了再单独存（后端 21：不混进整组替换的 PUT，免得 admin 保存时清掉）。
+        if (
+          canSetManager &&
+          routing &&
+          manager !== savedManagerRef.current
+        ) {
+          await saveLeaveManager(mode.member.id, manager);
+          savedManagerRef.current = manager;
+        }
         const after = res?.member?.items ?? sent.items;
         const before = savedItemsRef.current;
         savedItemsRef.current = [...after];
@@ -723,6 +761,17 @@ export function MemberFormDialog({
                       </div>
                     )}
                   </Section>
+
+                  {!partner && routing && editId !== null ? (
+                    <ManagerSection
+                      editId={editId}
+                      name={mode.kind === "edit" ? memberName(mode.member) : ""}
+                      routing={routing}
+                      value={manager}
+                      canEdit={canSetManager}
+                      onChange={setManager}
+                    />
+                  ) : null}
 
                   {/* partner 不选首页（Q7 A）：首页固定是 partner 首页。 */}
                   {partner ? null : (
@@ -1071,6 +1120,87 @@ function AccountTypeConfirm({
         </div>
       </div>
     </Modal>
+  );
+}
+
+/**
+ * G282 Manager（Annie 2026-11-11「同意全部推荐。动手」，preview v3 Q8 / Q10 A）：批这个人的休假。
+ * 没设 ⇒ 发给他所在 team 的 Team lead；都没有 ⇒ Super Admin。候选人用后端 leave-routing 的 candidates
+ *（在用的 staff / supervisor / admin / superadmin，已去掉 driver / guide / partner），再去掉自己。
+ * 只有 Super Admin 能改（admin 只读），跟整个弹窗同一个 Save：先存勾选，Manager 变了再单独 PUT（不混进整组替换的接口）。
+ */
+function ManagerSection({
+  editId,
+  name,
+  routing,
+  value,
+  canEdit,
+  onChange,
+}: {
+  editId: number;
+  name: string;
+  routing: LeaveRouting;
+  value: number | null;
+  canEdit: boolean;
+  onChange: (id: number | null) => void;
+}) {
+  const nameOf = (id: number) =>
+    routing.candidates.find((c) => c.user_id === id)?.name ??
+    routing.people.find((p) => p.user_id === id)?.name ??
+    `Account #${id}`;
+  const candidates = routing.candidates
+    .filter((c) => c.user_id !== editId)
+    .sort((a, b) => a.name.localeCompare(b.name));
+  const current = value === null ? null : nameOf(value);
+  const reports = routing.people
+    .filter((p) => p.manager_user_id === editId)
+    .map((p) => p.name)
+    .sort();
+  return (
+    <Section title="Manager" aux="Approves this person's leave requests">
+      {canEdit ? (
+        <select
+          id="member-manager"
+          data-member-manager
+          value={value === null ? "" : String(value)}
+          onChange={(e) =>
+            onChange(e.target.value ? Number(e.target.value) : null)
+          }
+          className="max-w-full rounded-[8px] border border-[#ddd] bg-paper px-2.5 py-1.5 text-[14px] text-black"
+        >
+          <option value="">No manager (use team lead)</option>
+          {/* 原来选的人已不在候选里（停用等）也留着，免得一打开就被改掉。 */}
+          {value !== null && !candidates.some((c) => c.user_id === value) ? (
+            <option value={String(value)}>{current}</option>
+          ) : null}
+          {candidates.map((c) => (
+            <option key={c.user_id} value={String(c.user_id)}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+      ) : (
+        <p data-member-manager-ro className="m-0 text-[13px] text-[#1a1a1a]">
+          {current ?? "No manager"}
+        </p>
+      )}
+      <p className="m-0 mt-1.5 text-[12px] text-[#4b5563]">
+        {value === null
+          ? `No manager, so ${name}'s leave requests go to the team lead of each of their teams, or to Super Admin if there is none.`
+          : `${name}'s leave requests go to ${current}.`}{" "}
+        Super Admin can always approve.
+      </p>
+      {reports.length ? (
+        <p className="m-0 mt-1 text-[12px] text-[#4b5563]">
+          Reports to {name}: {reports.join(", ")}.
+        </p>
+      ) : null}
+      <p className="m-0 mt-1 text-[12px] text-[#4b5563]">
+        {canEdit
+          ? "You can pick active staff and admin accounts. Drivers, guides and partners can't be a manager, and nobody can be their own manager."
+          : "Only Super Admin can change this."}
+      </p>
+    </Section>
   );
 }
 

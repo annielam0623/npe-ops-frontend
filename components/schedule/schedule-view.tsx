@@ -54,6 +54,7 @@ import {
   fetchScheduleRules,
   saveScheduleRules,
 } from "@/lib/schedule-rules-api";
+import { fetchLeaveQueue } from "@/lib/leave-api";
 import { cn } from "@/lib/utils";
 import type {
   CurrentUser,
@@ -79,6 +80,7 @@ import { SharePeriodDialog } from "./share-period-dialog";
 import { EmployeesDialog } from "./employees-dialog";
 import { RulesView } from "./rules-view";
 import { OverviewView } from "./overview-view";
+import { LeaveView } from "./leave-view";
 import { CARD, CARD_HEADER, ICON_BTN, MUTED } from "./config";
 import { type PublishNotice, publishNotice } from "./publish-notice";
 import { DayTimeline } from "./day-timeline";
@@ -200,9 +202,19 @@ export function ScheduleView() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   // 规则（后端没上线 / 读不到 ⇒ null ⇒ 不显示 Rules 标签和 Auto-fill 键）。
   const [rules, setRules] = useState<Rule[] | null>(null);
-  const [tab, setTab] = useState<"schedule" | "overview" | "period" | "rules">(
-    "schedule",
-  );
+  const [tab, setTab] = useState<
+    "schedule" | "overview" | "period" | "rules" | "leave"
+  >("schedule");
+  // G282 Leave 标签上的「N waiting」：待我批的条数（接口没上 / 出错 ⇒ null，只写 Leave）。
+  const [leavePending, setLeavePending] = useState<number | null>(null);
+  useEffect(() => {
+    const ctl = new AbortController();
+    fetchLeaveQueue("pending", ctl.signal).then(
+      (q) => setLeavePending(q.pending_count),
+      () => {},
+    );
+    return () => ctl.abort();
+  }, []);
   // Period（Annie 2026-11-08）：开始那一周（周日）+ 周数，默认这周起 4 周。
   const [period, setPeriod] = useState(() => ({
     start: weekStartYmd(laToday()),
@@ -354,6 +366,9 @@ export function ScheduleView() {
   useEffect(() => {
     const fromUrl = new URLSearchParams(window.location.search).get("week");
     if (isYmd(fromUrl)) setWeekStart(weekStartYmd(fromUrl));
+    // G282：休假通知的链接是 /schedule?tab=leave，直接打开 Leave 标签。
+    if (new URLSearchParams(window.location.search).get("tab") === "leave")
+      setTab("leave");
   }, []);
 
   // 身份 + 设置 + 名单：和具体哪一周无关，只在打开页面 / 手动重试时加载一次。
@@ -1003,6 +1018,8 @@ export function ScheduleView() {
     "overview" as const,
     ...(periodVisible ? (["period"] as const) : []),
     ...(rules !== null ? (["rules"] as const) : []),
+    // G282（Annie 2026-11-11「同意全部推荐。动手」）：人人都有，员工申请 + 批复人批。
+    "leave" as const,
   ];
 
   return (
@@ -1011,7 +1028,7 @@ export function ScheduleView() {
         <h1 className="sr-only">Staff Schedule</h1>
 
         {tabs.length > 1 ? (
-          <div role="tablist" className="-mb-2 flex gap-2">
+          <div role="tablist" className="-mb-2 flex flex-wrap gap-2">
             {tabs.map((t) => (
               <button
                 key={t}
@@ -1031,13 +1048,23 @@ export function ScheduleView() {
                     ? "Overview"
                     : t === "period"
                       ? "Period"
-                      : "Rules"}
+                      : t === "leave"
+                        ? leavePending
+                          ? `Leave · ${leavePending} waiting`
+                          : "Leave"
+                        : "Rules"}
               </button>
             ))}
           </div>
         ) : null}
 
-        {tab === "overview" ? (
+        {tab === "leave" ? (
+          <LeaveView
+            superAdmin={superAdmin}
+            onUnauthorized={redirectToLogin}
+            onPendingCount={setLeavePending}
+          />
+        ) : tab === "overview" ? (
           <OverviewView
             initialStart={weekStart}
             employees={orderedEmployees.filter((e) => e.is_active)}
