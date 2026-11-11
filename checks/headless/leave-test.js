@@ -229,6 +229,7 @@ async function run() {
   check("待批三条：Nadia、Lizzie、Jing，都写 You are their manager", q.filter((r) => r.includes("Approve Reject")).length === 3 && ["Nadia", "Lizzie", "Jing"].every((n) => q.some((r) => r.startsWith(n) && r.includes("You are their manager"))), JSON.stringify(q));
   check("Lizzie 那天有班：红框写班名和时间、先挪班再批", await evaluate("const w = document.querySelector(\"[data-leave-queue='11'] [data-leave-shift-warn=block]\"); return !!w && w.textContent.includes('Close 14:00–22:00') && w.textContent.includes('before approving') && w.className.includes('red');"));
   check("Q7 B：有班 Approve 灰（按不了），Reject 照样能按", await evaluate("return document.querySelector(\"[data-leave-approve='11']\").disabled && !document.querySelector(\"[data-leave-reject='11']\").disabled;"));
+  check("Q7 B：有班的 Approve 是灰键、不是蓝", await evaluate("return getComputedStyle(document.querySelector(\"[data-leave-approve='11']\")).backgroundColor !== 'rgb(59, 130, 246)';"));
   check("Q7 B：How to use 写红框、先挪班", (await evaluate("return document.body.textContent;")).includes("A red line means the person already has a shift that day"));
   check("Jing 没班：没有黄框", await evaluate("return !document.querySelector(\"[data-leave-queue='12'] [data-leave-shift-warn]\");"));
   check("Approve 蓝、Reject 不是蓝", await evaluate("const a = getComputedStyle(document.querySelector(\"[data-leave-approve='12']\")).backgroundColor, r = getComputedStyle(document.querySelector(\"[data-leave-reject='12']\")).backgroundColor; return a === 'rgb(59, 130, 246)' && r !== a;"));

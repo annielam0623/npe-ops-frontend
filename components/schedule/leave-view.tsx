@@ -700,7 +700,15 @@ function Decide({
                 : undefined
             }
             onClick={() => void run("approve")}
-            className={SMALL_PRIMARY}
+            // Q7 B：有班 ⇒ 灰键（照 preview v3 B），不是半透明的蓝。
+            className={
+              blocked
+                ? cn(
+                    SMALL_SECONDARY,
+                    "cursor-not-allowed text-slate-500 opacity-70",
+                  )
+                : SMALL_PRIMARY
+            }
           >
             {busy === "approve" ? "Approving…" : "Approve"}
           </button>
