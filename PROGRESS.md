@@ -29,7 +29,10 @@ d8 只分工和汇报，没写功能代码。今晚前端工作窗口只有 `6b`
 
 ### 二、在分支 / 在做
 - ✅ **119 Overview 已上 main 4240ea78**（6b；sch 514、engine 38、nav 39，tsc / eslint / build 过；只读）。验收：标签 Schedule | Overview | Period | Rules；默认 4 周可切 1 周、‹ › 翻；每周一张表（班次色、Off 灰、Leave 深黄），每人右边几天几小时，不对红字「should be N」；表底每种班每天人数，少于 Coverage / 多于 Max 红；Analysis 每条规则每周 ✓ / ✗ + 原因直接列出、排不下的班；最下面每人 4 周合计；不收进 ⋯ / i；手机名字列固定、表格自己框里滑。
-- **120 Rules 简化 + 选的时候就提示冲突**：6b 在做样稿（只 preview），看 6b 回报。
+- **120 Rules 简化 + 选的时候就提示冲突**：样稿做完（6b，没写代码、没分支）https://claude.ai/artifact/GFDkF7AJeDM2hqVmtpCd5X 。现在 Annie 那套规则要填 24 条；新样子 People（每人一张卡：能上哪些班、Days off、Fixed shift、Shift limits、Weekend rotation、每周几天，卡底「Can work N days · needs 5」）/ Shifts（时间、至少 / 至多几人、Exceptions、每天几人能上 7 格，0 红、只剩 2 人黄）/ General（晚班后不早班、Rest、40 h）+ 右边 Check（每改一处重算：要排几个班 vs 能排几个、没人能上的班、两项打架、引擎试排一周不存）。样稿顶上 3 个情况：Annie 的规则（都排得下，黄字「周六只有 Jing、Lizzie」「没有空余」）/ 故意冲突（Naida 周六周日都不上 ⇒ 红「1 short」+ 怎么改）/ 两项打架。存成现有规则，后端只差 118 白名单。**明天给 Annie 看，问 2 题（原文）**：
+  - Q1 新的样子放哪里？现在 Rules 标签是一条一条的规则清单。A（推荐）Rules 标签直接换成新样子；已有规则第一次打开自动换成卡片，换不进的（按日期的例外、自己写的 Weekend rotation 班位）放最下面「Other rules」照旧改；只有一个地方设。B 旧 Rules 留着，旁边加新标签「Setup」，两边改同一份规则，但同一件事两个地方能改，容易搞混。
+  - Q2 Check 有红字时还能不能按 Save？现在只挡格式错误。A（推荐）能存，红字留在 Check，Auto-fill 排不下的留空并列出（有些情况本来就补不上，挡住反而改不了别的）。B 有红字就不能存，Save 变灰。
+  - 另问：周日三人要不要严格轮流（要的话放进人卡的 Weekend rotation 一起做）。
 - **114 Relay list 编辑区照参考图**：task/relay-edit-always 970e0e17，preview 6FE1yuBB5sCbB8HR89zUW2。Annie：「我说的是relay list全部按A」（Q1 每张单上方各一张卡、Q2 Bus Manifest 一起改）+ 颜色只借排版。**还没说「动手」**。
 - **F2 Manifests 发送条 + 勾选列 + How to use**：task/manifests-float-bar 42c9b9d7，preview J8P3tHm8TwgUxt3r6mzwKJ。等 Annie 答 G1–G3、H1 +「动手」。
 - 116 前端检查：task/reply-auto-action（已随 3d873326 上了），Dashboard 句等后端 multi/reply。
