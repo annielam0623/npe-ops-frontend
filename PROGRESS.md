@@ -12,6 +12,8 @@
 - ✅ **114 Relay list 编辑区照参考图：Annie（原话）「114动手」**（她先问「为什么编辑工具的显示还是这个样子，都折腾两天了」，4c 答：新版在 task/relay-edit-always 970e0e17 等动手、没合 main）⇒ 范围：Relay list 方案 A（每张单上方一张编辑卡、一直显示、去 Aa 开关、页头一排 + ⚙ Settings 白键、标题旁 i 摊开、手机竖排 + 底部 Cancel / Done）+ Bus Manifest 一起改成一直显示（Q2 A），颜色只借排版。等开工作窗口派工。
 - 派工：114 ⇒ 工作窗口 `npe-ops-frontend-6b`[ab5dcf]（公司电脑，分支 task/relay-edit-always，Relay list + Bus Manifest 一起，合 main 后回 SHA + 验收点）。工作窗口 `npe-ops-frontend-96`[1c75f6] 待命，等下一件「动手」。
 - G282 员工申请休假 + 按 team 批复：后端 21（54 派，只调查 + 方案，Annie 动手前不写代码）发来方案 ⇒ 4c 派 96 出 preview（申请区、待批列表、Team 页「Can approve leave for」、How to use、手机版；顶上列 21 的 Q1–Q7）。链接发 21 和 4c，21 问 Annie 一次，答复抄 4c。96 不再待命。
+- 🟡 **114 Bus Manifest 要 Annie 定（6b 问）**：编辑卡一直显示后，点表格格子算「选中」还是「改东西」（Notes 格改备注、Bus 格换车下拉）。A（推荐）一直能选，只 Notes 格 / Bus 下拉照旧改，调 Notes 列字号点表头或用 Page，改动按页头 Save 一起存；B 先按卡上 Column / Row / Page 才开始选，选时 Notes / Bus 不能动；C Bus Manifest 留 Aa 开关。6b 先照 A 写在分支，Bus Manifest 等答了再合；Relay list 可先合。
+- Annie 新提：要做的三件 =「114，另外是staff schedule，还有导游页的重新设计」⇒ 导游页重新设计 PROGRESS 里没记录，4c 已问她哪个页面（A 手机 guide_home.html 后端 / B ops 里的导游页 / C 搬到 ops 重做）、想改成什么样、司机页要不要一起。
 - 今天后端主窗口：`npe-confirmation-service-54`[6a808b]（接 d9）。4c 已发 54：118 max_days_on_shift 白名单（附 Annie 11-10 晚原话「动手」）；116 / G283（回复即处理含 multi/reply、action_taken_by）54 等 Annie 开后端子窗口再派，做完发 SHA + 回包形状。
 
 ## 2026-11-11 凌晨 收工交接：前端主窗口 `前端主窗口-d8`（家里电脑；11-10 晚接 78 / 62；Annie「我要睡觉了，你记录下来，明天到公司给我看这个」）
