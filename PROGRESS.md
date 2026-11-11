@@ -28,7 +28,7 @@ d8 只分工和汇报，没写功能代码。今晚前端工作窗口只有 `6b`
 | d8 误提交 CRLF 已修 | fd872009 误改 15 个文件行尾 ⇒ d597ac5e 恢复（内容没变） | — | — |
 
 ### 二、在分支 / 在做
-- **119 Overview**：task/schedule-overview 86b39c27（Annie「3个问题都同意A，动手」），d8 已叫 6b 合 main，看 6b 回报的 SHA。
+- ✅ **119 Overview 已上 main 4240ea78**（6b；sch 514、engine 38、nav 39，tsc / eslint / build 过；只读）。验收：标签 Schedule | Overview | Period | Rules；默认 4 周可切 1 周、‹ › 翻；每周一张表（班次色、Off 灰、Leave 深黄），每人右边几天几小时，不对红字「should be N」；表底每种班每天人数，少于 Coverage / 多于 Max 红；Analysis 每条规则每周 ✓ / ✗ + 原因直接列出、排不下的班；最下面每人 4 周合计；不收进 ⋯ / i；手机名字列固定、表格自己框里滑。
 - **120 Rules 简化 + 选的时候就提示冲突**：6b 在做样稿（只 preview），看 6b 回报。
 - **114 Relay list 编辑区照参考图**：task/relay-edit-always 970e0e17，preview 6FE1yuBB5sCbB8HR89zUW2。Annie：「我说的是relay list全部按A」（Q1 每张单上方各一张卡、Q2 Bus Manifest 一起改）+ 颜色只借排版。**还没说「动手」**。
 - **F2 Manifests 发送条 + 勾选列 + How to use**：task/manifests-float-bar 42c9b9d7，preview J8P3tHm8TwgUxt3r6mzwKJ。等 Annie 答 G1–G3、H1 +「动手」。
