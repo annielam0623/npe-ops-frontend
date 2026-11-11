@@ -1566,6 +1566,8 @@ D. 已完成、待从置顶移走：
 - d8 只读测（00:45 后）：ops 页面 0.17–0.22s、ops 转发未登录 API 0.15–0.2s、confirm 0.13s，现在不慢；登录后的接口测不了。
 - 今晚上线：后端 G280 f4930195 + v163（约 23:00）、W3 ceba9aaa，可能还开了 G180 tracking-sync；前端推 main 多次（每次 Railway 重新部署）。
 - 已请后端 5c 只读查 Railway 日志 / 慢请求 / DB / 重启。问 Annie：Ricky 用的是 ops 还是 confirm、几点、哪一页的 message。等结果。
+- 5c 查（Annie 说约 00:20）：后端 23:08 后没部署；00:20 前后没有定时大任务（下一个 03:00 对账 + tracking-sync 全量）；00:39 / 00:40 生产库空闲（6 个连接、没有锁等待）；tracking-sync 是 super_admin_only（22:08 设），平时只同步来单那天；v163 4 张表空、TripGuru 轮询没事件；登录记录 00:20 前后只有 Annie 00:22，Rickie（id 14）上次登录成功 21:58；/auth/login 实测 0.35s。Railway 日志 / CPU 后端看不到，要 Annie 在 Railway 后台看。⇒ 后端没找到原因。
+- d8 查前端推 main 时间：功能 23:03 / 23:12 / 23:22；之后只有 PROGRESS 文档，00:03 一次，然后到 00:39 才有下一次 ⇒ 00:15–00:25 没有推送。发现：仓库没有 railway.json / toml，没设 watch paths ⇒ 只改 PROGRESS 也整套重新 build、部署（今晚三十多次）。d8 从现在起攒着推 PROGRESS；要不要加 watch paths 问 Annie（部署配置）。⚠️ 明天发当天后端主窗口登记跟进。
 
 ### 119. Staff Schedule 排班表做成 118 preview 的样子（一目了然 + 分析）（2026-11-11 凌晨，Annie 在 6b 窗口直接提；6b 出样稿）
 
