@@ -1566,6 +1566,9 @@ D. 已完成、待从置顶移走：
 - d8 只读查：现在的设计就是回复和处理分开，要另点 Take action / Mark as actioned（conversation-modal.tsx、conversation-preview.tsx；How to use 原句「When a message is handled, click ✓ Mark as actioned…」）。所以这是改规则，不是 bug。
 - 问 Annie：R1 怎样算回复（A 真发给客人、任一渠道 Sent 才算（推荐）/ B 写内部备注 Save note 也算）；R2 范围（A 所有有留言框的地方一起：Tour / Morning / Tickets Tracking、Dashboard 消息、订单查询，旧 confirm 页面也跟着，由后端在发送那一步记处理人（推荐）/ B 只 ops 前端）；R3 显示（A 照现有样子 ✓ 回复人名字，客人再来新留言照旧变回 ⚠️ Take action（推荐））。样子用现有的，d8 建议不出 preview。等答 +「动手」。
 - ✅ **Annie（原话）：「全部同意推荐。动手」** ⇒ R1 A / R2 A / R3 A，不出 preview。d8 派后端 5c（在发送那一步记处理人，列全部入口，回包是否带 action_taken_by）和前端 6b（各回复入口发出后立刻显示 ✓、改 How to use 句子（英文原文给 Annie 确认）、补检查；推分支，等后端 SHA 核字段再合）。
+- 5c 回：后端在发送那一步早就记处理人（booking_notes.py:903-909 by-order、:1154-1166 by id；入站清空 :897-901、:1137-1149）⇒ 截图那单多半是别的原因；今晚只登记，明天派子窗口查。
+- 6b 前端排查：前端没 bug（发完重拉整表；弹窗底部只看 action_taken_by；格子 = action_taken_by && !notes_unhandled，都用后端字段）⇒ 截图里重拉回来那一行的 action_taken_by 是空的。补检查 task/reply-auto-action c5678cff（tt 179）。已转 5c 明天查：① CHDB1HQ7R 的 action_taken_by / at；② 21:25 那条 sms / email_status 是否正好 "sent"、走的哪个端点；③ 之后有没有入站留言清空；④ Multi Orders multi/reply 不写 action_taken（R2 要补）；⑤ DB TimeZone。订单查询页没有回复框，不用改。
+- How to use 新句（6b 写，等 Annie 确认原文，见 d8 回复）：Tour / Tickets / Morning Tracking、Dashboard Messages 四处；Dashboard 那句要等后端补 multi/reply 后才上。
 
 ### 115. 手机版键再缩小 + 页头 / 工具区省地方（2026-11-09 晚，78 派 03）—— ✅ 已答 + 动手，见「11-10 62 开工」
 
