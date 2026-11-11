@@ -258,8 +258,8 @@ function Group({
         : null)}
       className="flex flex-col gap-1 border-r border-[#e2e5e9] px-2 py-1.5"
     >
-      <span className="inline-flex items-center gap-1.5 font-bold text-[#333]">
-        <LineIcon name={icon} />
+      <span className="inline-flex items-center gap-1 font-bold text-[#333]">
+        <LineIcon name={icon} className="h-[13px] w-[13px]" />
         {title}
       </span>
       {children}
@@ -289,8 +289,8 @@ function PhoneGroup({
         : null)}
       className="flex min-w-0 flex-col items-start gap-1 rounded-[8px] border border-[#e2e5e9] bg-white px-1.5 py-1"
     >
-      <span className="inline-flex items-center gap-1.5 font-bold text-[#333]">
-        <LineIcon name={icon} />
+      <span className="inline-flex items-center gap-1 font-bold text-[#333]">
+        <LineIcon name={icon} className="h-[13px] w-[13px]" />
         {title}
       </span>
       {children}
@@ -442,7 +442,7 @@ export function TextSizeToolbar({
         aria-label="Text size"
         data-text-size-toolbar
         data-text-size-phone
-        className="mt-1.5 flex flex-col gap-1 rounded-[10px] bg-white p-1 font-[Arial,sans-serif] text-[12px] text-[#222]"
+        className="mt-1.5 flex flex-col gap-1 rounded-[10px] bg-white p-1 font-[Arial,sans-serif] text-[11px] text-[#222]"
       >
         <PhoneGroup icon="apply" title="Apply To" name="apply">
           <span className="flex w-full overflow-hidden rounded-[7px] border border-[#9aa]">
@@ -530,7 +530,7 @@ export function TextSizeToolbar({
             Done
           </button>
         </div>
-        <div data-text-size-picked className="px-1 text-[11.5px] text-[#666]">
+        <div data-text-size-picked className="px-1 text-[10.5px] text-[#666]">
           Picked:{" "}
           <b className="text-[#111]">
             {pickedLabel || "nothing yet — tap the table"}
@@ -544,7 +544,7 @@ export function TextSizeToolbar({
       role="group"
       aria-label="Text size"
       data-text-size-toolbar
-      className="mt-1.5 overflow-hidden rounded-[10px] border border-black/10 bg-white font-[Arial,sans-serif] text-[11.5px] text-[#222]"
+      className="mt-1.5 overflow-hidden rounded-[10px] border border-black/10 bg-white font-[Arial,sans-serif] text-[10.5px] text-[#222]"
     >
       <div className="flex flex-wrap items-stretch">
         <Group icon="apply" title="Apply To" name="apply">
@@ -567,7 +567,7 @@ export function TextSizeToolbar({
             {sizeKeys(CHIP)}
             <span
               data-text-size-value
-              className="inline-block min-w-10 text-[11.5px] font-bold text-[#555] tabular-nums"
+              className="inline-block min-w-10 text-[10.5px] font-bold text-[#555] tabular-nums"
             >
               {any ? (d ? `${d > 0 ? "+" : ""}${d} px` : "Default") : "—"}
             </span>
@@ -630,7 +630,7 @@ export function TextSizeToolbar({
       </div>
       <div
         data-text-size-picked
-        className="px-4 pb-2 text-[11.5px] text-[#666]"
+        className="px-4 pb-2 text-[10.5px] text-[#666]"
       >
         Picked:{" "}
         <b className="text-[#111]">
@@ -652,7 +652,7 @@ export function TextSizeHistory({
   return (
     <details
       data-text-size-history
-      className="mx-0.5 mt-1.5 text-[11.5px] text-[#555] print:hidden"
+      className="mx-0.5 mt-1.5 text-[10.5px] text-[#555] print:hidden"
     >
       <summary className="cursor-pointer">
         Text size changes · last by <b className="text-[#333]">{last.by}</b> ·{" "}

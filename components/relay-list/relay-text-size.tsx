@@ -452,7 +452,7 @@ export function SheetTextBar({
           {t.staged[sheet] ? (
             <span
               data-relay-text-unsaved={sheet}
-              className="text-[12px] font-semibold text-[#fbbf24]"
+              className="text-[11px] font-semibold text-[#fbbf24]"
             >
               Text size not saved
             </span>
@@ -533,7 +533,7 @@ export function RelayTextSave() {
           data-relay-text-status={t.save.kind}
           className={cn(
             tone,
-            "text-[12.5px] max-sm:order-3 max-sm:basis-full max-sm:text-[12px]",
+            "text-[11.5px] max-sm:order-3 max-sm:basis-full max-sm:text-[11px]",
           )}
         >
           {dot}

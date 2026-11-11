@@ -275,7 +275,7 @@ export function RelayListView() {
         {/* 置顶 114 第 4 版（d8 定，Annie「不要任何隐藏菜单」）：手机上这句也摊开，不收进「i」。 */}
         <span
           data-relay-about
-          className="order-last basis-full text-[12.5px] text-[#cbd5e1]"
+          className="order-last basis-full text-[11.5px] text-[#cbd5e1]"
         >
           Shows the saved Dispatch schedule. Changed something? Save it on
           Dispatch, then reload this page.
@@ -498,7 +498,7 @@ function ExcelButton({
         <span
           role="alert"
           data-relay-excel-error
-          className="text-[12.5px] font-semibold text-[#f87171]"
+          className="text-[11.5px] font-semibold text-[#f87171]"
         >
           {error}
         </span>

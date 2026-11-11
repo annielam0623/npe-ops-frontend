@@ -879,14 +879,14 @@ export function ManifestView() {
                       <span
                         role="alert"
                         data-page-save-error
-                        className="text-[12.5px] font-semibold text-[#fca5a5] max-sm:order-first max-sm:basis-full"
+                        className="text-[11.5px] font-semibold text-[#fca5a5] max-sm:order-first max-sm:basis-full"
                       >
                         {saveState.message}
                       </span>
                     ) : dirty ? (
                       <span
                         data-page-unsaved
-                        className="inline-flex max-w-[460px] items-start gap-1.5 text-[12.5px] font-semibold text-[#fcd34d] max-sm:order-first max-sm:max-w-none max-sm:basis-full"
+                        className="inline-flex max-w-[460px] items-start gap-1.5 text-[11.5px] font-semibold text-[#fcd34d] max-sm:order-first max-sm:max-w-none max-sm:basis-full"
                       >
                         <i className="mt-[5px] inline-block h-2 w-2 shrink-0 rounded-full bg-[#fbbf24]" />
                         <span>
@@ -899,7 +899,7 @@ export function ManifestView() {
                       <span
                         role="status"
                         data-page-saved
-                        className="text-[12.5px] font-semibold text-[#4ade80] max-sm:order-first max-sm:basis-full"
+                        className="text-[11.5px] font-semibold text-[#4ade80] max-sm:order-first max-sm:basis-full"
                       >
                         ✓ Saved · {saveState.at}
                       </span>
@@ -1664,14 +1664,14 @@ function VersionPicker({
   const label = VERSIONS.find((v) => v.value === version)?.label ?? version;
   if (readOnly)
     return (
-      <span data-version-text className="text-[12.5px] text-[#cbd5e1]">
+      <span data-version-text className="text-[11.5px] text-[#cbd5e1]">
         Version: {label}
       </span>
     );
   return (
     <label
       className={cn(
-        "inline-flex h-8 items-center gap-1.5 rounded-[9px] border pr-1 pl-[11px] text-[12.5px] text-[#cbd5e1]",
+        "inline-flex h-7 items-center gap-1 rounded-[8px] border pr-1 pl-2.5 text-[11.5px] text-[#cbd5e1]",
         unsaved ? "border-[#f59e0b]" : "border-white/[.18]",
       )}
     >
@@ -1681,7 +1681,7 @@ function VersionPicker({
         aria-label="Bus Manifest version"
         value={version}
         onChange={(e) => onChange(e.target.value as ManifestVersion)}
-        className="h-6 cursor-pointer rounded-md border-0 bg-transparent px-1 text-[12.5px] font-semibold text-white disabled:opacity-50 [&>option]:text-[#111]"
+        className="h-5 cursor-pointer rounded-md border-0 bg-transparent px-1 text-[11.5px] font-semibold text-white disabled:opacity-50 [&>option]:text-[#111]"
       >
         {VERSIONS.map((v) => (
           <option key={v.value} value={v.value}>
@@ -1692,7 +1692,7 @@ function VersionPicker({
       {unsaved ? (
         <span
           data-version-unsaved
-          className="pr-1.5 text-[11px] font-bold text-[#fcd34d]"
+          className="pr-1.5 text-[10.5px] font-bold text-[#fcd34d]"
         >
           Unsaved
         </span>
@@ -3058,7 +3058,7 @@ function ColumnsPicker({
   const value = labels.length ? `${labels.join(", ")} hidden` : "All";
   if (readOnly)
     return (
-      <span data-columns-text className="text-[12.5px] text-[#cbd5e1]">
+      <span data-columns-text className="text-[11.5px] text-[#cbd5e1]">
         Columns: {value}
       </span>
     );
@@ -3070,7 +3070,7 @@ function ColumnsPicker({
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          "inline-flex h-8 cursor-pointer items-center gap-1 rounded-[9px] border bg-transparent px-2.5 text-[12.5px] text-[#cbd5e1]",
+          "inline-flex h-7 cursor-pointer items-center gap-1 rounded-[8px] border bg-transparent px-2.5 text-[11.5px] text-[#cbd5e1]",
           unsaved ? "border-[#f59e0b]" : "border-white/[.18]",
         )}
       >
