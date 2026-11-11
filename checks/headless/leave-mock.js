@@ -74,7 +74,7 @@ const daysOf = (r) => Math.round((Date.parse(r.date_to) - Date.parse(r.date_from
 const pub = (r) => { const { shifts, user_id, ...rest } = r; return { ...rest, days: daysOf(r) }; };
 function queueItem(r) {
   const route = ctl.viewer === "superadmin" ? "super_admin" : "manager";
-  return { ...pub(r), user_id: r.user_id, team_names: [], route, approver_names: ["Tessa"], shifts: r.shifts || [], can_decide: true };
+  return { ...pub(r), user_id: r.user_id, team_names: [], route, approver_names: ["Tessa"], shifts: r.shifts || [], blocked: (r.shifts || []).length > 0, can_decide: true };
 }
 function visibleToApprover(r) {
   if (ctl.viewer === "superadmin") return true;

@@ -69,6 +69,8 @@ export interface LeaveQueueItem extends LeaveRequest {
   /** route = team_lead 时是哪几个 team。 */
   team_names?: string[] | null;
   shifts?: LeaveShift[] | null;
+  /** 那几天里有班 ⇒ 不能批（Q7 B，Annie 2026-11-11）。 */
+  blocked?: boolean;
 }
 
 export interface NewLeaveRequest {

@@ -45,11 +45,11 @@ import { CARD, CARD_HEADER, INPUT, MUTED } from "./config";
  */
 
 /**
- * Q7「申请那天已排班」：A（Annie 11-11 同意的推荐）= 照样能批、黄框提示；B = 有班的天不让批、红框、Approve 灰。
- * 后端现有规则是同一人同一天不能既有班又有休假（set_time_off 400），21 在问 Annie 改不改 B ⇒ 先做成一个开关，
- * Annie 定了改这一处。不管哪种，后端 400 的原话都照显示。
+ * Q7「申请那天已排班」：A = 照样能批、黄框提示；B = 有班的天不让批、红框、Approve 灰。
+ * Annie 2026-11-11 在后端 21 窗口定 B（「改成 B (Recommended)」）：后端同样挡（approve ⇒ 400 原话照显示），
+ * 队列每条带 blocked（那几天有班 = true）。留着开关，以后要改回 A 只改这一处。
  */
-export const SHIFT_BLOCKS_APPROVE = false;
+export const SHIFT_BLOCKS_APPROVE = true;
 
 type Load<T> =
   | { kind: "loading" }
@@ -573,6 +573,12 @@ function shiftsIn(r: LeaveQueueItem): LeaveShift[] {
   );
 }
 
+/** 有班不让批：以后端的 blocked 为准，没带就看那几天有没有班。 */
+function isBlocked(r: LeaveQueueItem): boolean {
+  if (!SHIFT_BLOCKS_APPROVE) return false;
+  return r.blocked ?? shiftsIn(r).length > 0;
+}
+
 /** 「Sat, Nov 15 (Day 10:00–18:00)」。 */
 function shiftText(s: LeaveShift): string {
   const time =
@@ -585,9 +591,11 @@ function shiftText(s: LeaveShift): string {
 
 function ShiftWarning({ r }: { r: LeaveQueueItem }) {
   const shifts = shiftsIn(r);
-  if (!shifts.length) return null;
-  const txt = shifts.map(shiftText).join(", ");
-  return SHIFT_BLOCKS_APPROVE ? (
+  if (!shifts.length && !isBlocked(r)) return null;
+  const txt = shifts.length
+    ? shifts.map(shiftText).join(", ")
+    : leaveRangeLabel(r.date_from, r.date_to);
+  return isBlocked(r) ? (
     <div
       data-leave-shift-warn="block"
       className="mt-1.5 rounded-[7px] border border-red-400/35 bg-red-400/10 px-2.5 py-1.5 text-[12.5px] text-red-100"
@@ -618,7 +626,7 @@ function Decide({
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState<"approve" | "reject" | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const blocked = SHIFT_BLOCKS_APPROVE && shiftsIn(r).length > 0;
+  const blocked = isBlocked(r);
 
   async function run(which: "approve" | "reject") {
     setBusy(which);
@@ -686,6 +694,11 @@ function Decide({
             type="button"
             data-leave-approve={r.id}
             disabled={busy !== null || blocked}
+            title={
+              blocked
+                ? "Move the shift on the Schedule tab before approving."
+                : undefined
+            }
             onClick={() => void run("approve")}
             className={SMALL_PRIMARY}
           >

@@ -227,15 +227,16 @@ async function run() {
     return !!w && !!h && (w.compareDocumentPosition(r) & Node.DOCUMENT_POSITION_FOLLOWING);`));
   const q = await evaluate("return [...document.querySelectorAll('[data-leave-queue]')].map(tr => tr.innerText.replace(/\\s+/g,' '));");
   check("待批三条：Nadia、Lizzie、Jing，都写 You are their manager", q.filter((r) => r.includes("Approve Reject")).length === 3 && ["Nadia", "Lizzie", "Jing"].every((n) => q.some((r) => r.startsWith(n) && r.includes("You are their manager"))), JSON.stringify(q));
-  check("Lizzie 那天有班：黄框写班名和时间", await evaluate("const w = document.querySelector(\"[data-leave-queue='11'] [data-leave-shift-warn=warn]\"); return !!w && w.textContent.includes('Close 14:00–22:00') && w.textContent.includes(\"won't change the schedule\");"));
-  check("Q7 A：有班也能点 Approve", await evaluate("return !document.querySelector(\"[data-leave-approve='11']\").disabled;"));
+  check("Lizzie 那天有班：红框写班名和时间、先挪班再批", await evaluate("const w = document.querySelector(\"[data-leave-queue='11'] [data-leave-shift-warn=block]\"); return !!w && w.textContent.includes('Close 14:00–22:00') && w.textContent.includes('before approving') && w.className.includes('red');"));
+  check("Q7 B：有班 Approve 灰（按不了），Reject 照样能按", await evaluate("return document.querySelector(\"[data-leave-approve='11']\").disabled && !document.querySelector(\"[data-leave-reject='11']\").disabled;"));
+  check("Q7 B：How to use 写红框、先挪班", (await evaluate("return document.body.textContent;")).includes("A red line means the person already has a shift that day"));
   check("Jing 没班：没有黄框", await evaluate("return !document.querySelector(\"[data-leave-queue='12'] [data-leave-shift-warn]\");"));
-  check("Approve 蓝、Reject 不是蓝", await evaluate("const a = getComputedStyle(document.querySelector(\"[data-leave-approve='11']\")).backgroundColor, r = getComputedStyle(document.querySelector(\"[data-leave-reject='11']\")).backgroundColor; return a === 'rgb(59, 130, 246)' && r !== a;"));
+  check("Approve 蓝、Reject 不是蓝", await evaluate("const a = getComputedStyle(document.querySelector(\"[data-leave-approve='12']\")).backgroundColor, r = getComputedStyle(document.querySelector(\"[data-leave-reject='12']\")).backgroundColor; return a === 'rgb(59, 130, 246)' && r !== a;"));
   check("Handled 里 Veronica：Approved by Tessa", (await evaluate("return document.querySelector('[data-leave-section=handled]').innerText;")).includes("by Tessa"));
 
-  await click("[data-leave-approve='11']");
-  await waitFor("document.querySelector(\"[data-leave-section=handled] [data-leave-queue='11']\")");
-  check("批准后 Lizzie 移到 Handled，绿字 Approved. Lizzie has been emailed.", await evaluate("const d = document.querySelector(\"[data-leave-done='11']\"); return !!d && d.textContent === 'Approved. Lizzie has been emailed.' && d.className.includes('emerald');"));
+  await click("[data-leave-approve='1']");
+  await waitFor("document.querySelector(\"[data-leave-section=handled] [data-leave-queue='1']\")");
+  check("批准后 Nadia 移到 Handled，绿字 Approved. Nadia has been emailed.", await evaluate("const d = document.querySelector(\"[data-leave-done='1']\"); return !!d && d.textContent === 'Approved. Nadia has been emailed.' && d.className.includes('emerald');"));
   check("标签条数跟着变 2 waiting", (await evaluate("return $t('[role=tab]');")).includes("Leave · 2 waiting"));
 
   // Reject：理由可空，填了就带上
@@ -248,9 +249,7 @@ async function run() {
   const rj = (await mockLog()).filter((l) => l.op === "reject").pop();
   check("驳回带 note", rj && rj.body.note === "Too many people off that weekend", JSON.stringify(rj));
   check("Handled 里 Jing 写 Rejected + 理由", (await evaluate("return document.querySelector(\"[data-leave-section=handled] [data-leave-queue='12']\").innerText;")).includes("Too many people off"));
-  await click("[data-leave-approve='1']");
-  await waitFor("document.querySelector(\"[data-leave-section=handled] [data-leave-queue='1']\")");
-  check("没有待批了：Nothing waiting", (await evaluate("return document.querySelector('[data-leave-section=waiting]').innerText;")).includes("Nothing waiting."));
+  check("只剩有班的 Lizzie 在等（挪班后才能批），标签 1 waiting", (await evaluate("return [...document.querySelectorAll('[data-leave-section=waiting] [data-leave-queue]')].map(e => e.dataset.leaveQueue).join();")) === "11" && (await evaluate("return $t('[role=tab]');")).includes("Leave · 1 waiting"));
 
   // 别人先批了 ⇒ 409 原话红字放 Handled
   await ctl({ reset: true, race: true });
@@ -258,11 +257,11 @@ async function run() {
   await click("[data-leave-approve='12']");
   await waitFor("document.querySelector(\"[data-leave-done='12']\")");
   check("别人先批了：红字后端原话，那条进 Handled", await evaluate("const d = document.querySelector(\"[data-leave-done='12']\"); return d.textContent === 'This request was already approved by Annie.' && d.className.includes('red');"));
-  await ctl({ race: false, failDecide: "Jing already has a shift on Sat, Nov 15, so time off can't be set for that day." });
+  await ctl({ reset: true, race: false, failDecide: "Jing has a shift on 2026-11-15. Move the shift on the Schedule tab before approving." });
   await openLeave();
-  await click("[data-leave-approve='11']");
-  await waitFor("document.querySelector(\"[data-leave-decide-error='11']\")");
-  check("后端 400 原话红字留在那一行", (await evaluate("return document.querySelector(\"[data-leave-decide-error='11']\").textContent;")).includes("time off can't be set"));
+  await click("[data-leave-approve='12']");
+  await waitFor("document.querySelector(\"[data-leave-decide-error='12']\")");
+  check("后端 400 原话红字留在那一行（页面打开后才排的班）", (await evaluate("const e = document.querySelector(\"[data-leave-decide-error='12']\"); return e.className.includes('red') ? e.textContent : '';")).includes("before approving") && !(await evaluate("return !!document.querySelector(\"[data-leave-done='12']\");")));
   await ctl({ failDecide: "" });
 
   // ── 手机 ──
@@ -278,7 +277,7 @@ async function run() {
   check("手机：整页不左右晃", await evaluate("return document.documentElement.scrollWidth <= window.innerWidth + 1;"));
   await ctl({ viewer: "approver", sch: { role: "admin", meName: "Tessa" } });
   await openLeave();
-  check("手机：待批也是卡片，黄框照出", (await evaluate(`return ${visible("[data-leave-queue-card]")};`)) && (await evaluate("return !!document.querySelector(\"[data-leave-queue-card='11'] [data-leave-shift-warn]\");")));
+  check("手机：待批也是卡片，红框照出", (await evaluate(`return ${visible("[data-leave-queue-card]")};`)) && (await evaluate("return !!document.querySelector(\"[data-leave-queue-card='11'] [data-leave-shift-warn=block]\");")));
   check("手机（批复人）：整页不左右晃", await evaluate("return document.documentElement.scrollWidth <= window.innerWidth + 1;"));
   await cdp("Emulation.clearDeviceMetricsOverride");
 
