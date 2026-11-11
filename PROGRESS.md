@@ -1567,6 +1567,8 @@ D. 已完成、待从置顶移走：
 - 要问 Annie（preview 里）：有 Leave 的那周还排不排每周两天固定休息，Leave 算进那两天还是另外加（5c 点名）；种类分不分；弹窗里填的什么时候存。等 preview + 答 +「动手」。
 - ✅ **Annie（原话）：「leave另外加」** ⇒ Leave 不算进每周两天固定休息，有 Leave 的那周照样再排两天休息。已转 6b，preview 照这个画。
 - ✅ **Annie（原话）：「要的，但是今晚就先放Leave，明天我们回公司做假期申请的时候再分类。因为我现在要做接下来4周的排班，所以要把班先排出来，其中涉及到几个人已经请了假」** ⇒ 今晚只做一种「Leave」（后端种类存哪个由 6b 核文档，明天分类）；弹窗盖住接下来 4 周；加急，preview 从简，她「动手」后今晚上线。
+- preview（6b）：https://claude.ai/artifact/HMxJ3CoLoEUVwyFQxCksmV ，分支 task/schedule-leave-autofill 9a13c555。Auto-fill 点 Preview 先出 Leave 表（每人一行、范围 = 这次要排的每一天，已发布周不出，已录休假只读）；引擎 Leave 天不排班、Days per week 扣 Leave 天数、两天 Off 照给；结果 Leave 用休假卡深黄；今晚界面只有一种 Leave（存 pto，明天改 config.ts TIME_OFF_LABEL + add-shift-dialog 种类）；顺带修了 Auto-fill 原来不看休假的问题。后端不用改。
+- ✅ **Annie（原话）：Q1「A」，「117动手」** ⇒ Leave 按 Create draft 时一起存（先 Leave 后班），Cancel 不存。6b 补检查后今晚合 main。
 
 ### 116. 回复了客人就自动算处理过（Take action）（2026-11-10 晚，Annie 附 Tour Tracking 截图提；d8 记，没派）
 
