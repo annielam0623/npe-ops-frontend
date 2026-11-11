@@ -608,6 +608,15 @@ export function ManifestsView() {
     tab === "tickets" && !!shown?.rows.some((r) => !!cfmProblem(r, tab));
   const anyMissingWaiver =
     tab === "tickets" && !!shown?.rows.some((r) => missingWaiver(r));
+  // 置顶 115 F2：电脑版勾选发送条也是勾了才出、浮在屏幕底部（同手机）。
+  const sendBarOn =
+    !noSend &&
+    tabSendable &&
+    !seeingHidden &&
+    !!shown &&
+    shown.rows.length > 0;
+  const sendBarFloating = sendBarOn && selected.size > 0;
+  const sendBarFloat = useDesktopFloat(sendBarFloating);
 
   useEffect(() => {
     if (
@@ -968,22 +977,23 @@ export function ManifestsView() {
               </div>
             ) : null}
 
-            {!noSend &&
-            tabSendable &&
-            !seeingHidden &&
-            shown &&
-            shown.rows.length ? (
+            {sendBarOn ? (
               // 勾选后的操作条（Annie 2026-10-09 样稿第 3 版）：几位几人、发确认 / 提醒、自定义消息、清空。
+              // 外面这层量内容区的左右边（电脑版浮起来时照它定位，不盖住侧栏）；条浮起来后它高度为 0。
+              <div ref={sendBarFloat.slotRef}>
               <div
                 role="group"
                 aria-label="Selected guests"
                 data-selected-bar
                 // 置顶 115 题 8 A：手机上没勾选时不占位；勾了浮在屏幕底部（右边让开 ↑↓）。
+                // 置顶 115 F2：电脑版一样——没勾不占位，勾了浮在屏幕底部、左边对齐内容区、右边让开 ↑↓。
+                style={sendBarFloat.style}
                 className={cn(
-                  "mb-3 flex flex-wrap items-center gap-2 rounded-[10px] border border-white/10 bg-white/[.04] px-3 py-2 text-[13px] max-sm:flex-nowrap max-sm:gap-1.5 max-sm:overflow-x-auto max-sm:px-2 max-sm:py-1.5 max-sm:[&>button]:shrink-0 max-sm:[&>button]:whitespace-nowrap",
+                  // cn 不合并 Tailwind 类：底色、边框只写在浮起来那一支（没勾时整条不出）。
+                  "flex flex-wrap items-center gap-2 rounded-[10px] border px-3 py-2 text-[13px] max-sm:flex-nowrap max-sm:gap-1.5 max-sm:overflow-x-auto max-sm:px-2 max-sm:py-1.5 max-sm:[&>button]:shrink-0 max-sm:[&>button]:whitespace-nowrap",
                   selected.size
-                    ? "max-sm:fixed max-sm:right-[60px] max-sm:bottom-[calc(12px+env(safe-area-inset-bottom,0px))] max-sm:left-3 max-sm:z-[90] max-sm:mb-0 max-sm:border-white/20 max-sm:bg-[#0b1726] max-sm:shadow-[0_8px_24px_rgba(0,0,0,.5)]"
-                    : "max-sm:hidden",
+                    ? "fixed z-[90] border-white/20 bg-[#0b1726] shadow-[0_8px_24px_rgba(0,0,0,.5)] sm:bottom-4 max-sm:right-[60px] max-sm:bottom-[calc(12px+env(safe-area-inset-bottom,0px))] max-sm:left-3"
+                    : "hidden",
                 )}
               >
                 <span className="mr-auto text-[#cbd5e1] tabular-nums max-sm:shrink-0 max-sm:whitespace-nowrap">
@@ -1032,6 +1042,7 @@ export function ManifestsView() {
                 >
                   Clear
                 </button>
+              </div>
               </div>
             ) : null}
 
@@ -1313,9 +1324,58 @@ export function ManifestsView() {
             onUnauthorized={redirectToLogin}
           />
         ) : null}
+        {/* 发送条浮在底部时，页面最下面留出它的高度，滚到底时 Action Log 不被盖住。 */}
+        {sendBarFloating ? (
+          <div aria-hidden data-selected-bar-spacer className="h-[72px]" />
+        ) : null}
       </main>
     </ViewOnly.Provider>
   );
+}
+
+/** 右下角 ↑↓ 占的宽度（浮起来的发送条右边让开它，同手机的 right-[60px]）。 */
+const SCROLL_KEYS_GAP = 60;
+
+/**
+ * 置顶 115 F2：电脑版（≥ 640px）发送条浮在屏幕底部时的左右位置——量外面那层（内容区一整列）的左右边，
+ * 左边对齐内容区（不盖侧栏），右边取内容区右边和「屏幕右边 − ↑↓」里靠左的那个。手机上不给（用 max-sm 的类）。
+ */
+function useDesktopFloat(active: boolean): {
+  slotRef: (el: HTMLDivElement | null) => void;
+  style: CSSProperties | undefined;
+} {
+  const [slot, setSlot] = useState<HTMLDivElement | null>(null);
+  const [box, setBox] = useState<{ left: number; width: number } | null>(null);
+  useEffect(() => {
+    if (!active || !slot) {
+      setBox(null);
+      return;
+    }
+    const desktop = window.matchMedia("(min-width: 640px)");
+    const measure = () => {
+      if (!desktop.matches) {
+        setBox(null);
+        return;
+      }
+      const r = slot.getBoundingClientRect();
+      const right = Math.min(r.right, window.innerWidth - SCROLL_KEYS_GAP);
+      setBox({ left: Math.round(r.left), width: Math.round(right - r.left) });
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(slot);
+    window.addEventListener("resize", measure);
+    desktop.addEventListener("change", measure);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", measure);
+      desktop.removeEventListener("change", measure);
+    };
+  }, [active, slot]);
+  return {
+    slotRef: setSlot,
+    style: box ? { left: box.left, width: box.width } : undefined,
+  };
 }
 
 /** 隐藏行的只读表：没有勾选框 / Select all / 发送条；Group 和 Why hidden 两列（后端 reason_label 原样显示）。 */
