@@ -210,11 +210,6 @@ const DONE_KEY =
 /** 手机编辑卡的键（置顶 114 M6 = 115 题 1：26px）；data-phone-keep，全站手机样式不再改它。 */
 const P_CHIP =
   "h-[28px] cursor-pointer border-r border-[#9aa] bg-white text-[12.5px] font-bold text-[#222] last:border-r-0 disabled:cursor-default disabled:opacity-40 aria-pressed:bg-[#1f2937] aria-pressed:text-white";
-/** Bus Manifest 手机旧两行用的键（26px，照线上）。 */
-const P_CHIP_26 =
-  "h-[26px] cursor-pointer border-r border-[#9aa] bg-white px-[7px] text-[12px] font-bold text-[#222] last:border-r-0 disabled:cursor-default disabled:opacity-40 aria-pressed:bg-[#1f2937] aria-pressed:text-white";
-const P_QUICK_26 =
-  "inline-flex h-[26px] cursor-pointer items-center rounded-[6px] border border-[#9aa] bg-white px-2.5 text-[12px] font-bold whitespace-nowrap text-[#222] disabled:cursor-default disabled:opacity-40";
 const P_QUICK =
   "inline-flex h-[28px] cursor-pointer items-center rounded-[6px] border border-[#9aa] bg-white px-2.5 text-[12px] font-bold whitespace-nowrap text-[#222] disabled:cursor-default disabled:opacity-40";
 
@@ -345,7 +340,6 @@ export function TextSizeToolbar({
   onDone: () => void;
 }) {
   const narrow = useNarrow();
-  const [resetOpen, setResetOpen] = useState(false);
   const any = picks.length > 0;
   const d = current.d ?? 0;
   const modes = [
@@ -438,116 +432,6 @@ export function TextSizeToolbar({
       </button>
     </span>
   );
-
-  if (narrow && !always)
-    // Bus Manifest（置顶 114：Annie「我要变的是格式，不是功能」，新样子等她看截图）：手机照旧两行。
-    return (
-      <div
-        role="group"
-        aria-label="Text size"
-        data-text-size-toolbar
-        data-text-size-phone
-        className="mt-2 flex flex-col gap-1.5 rounded-[9px] bg-white px-2 py-1.5 font-[Arial,sans-serif] text-[12px] text-[#222]"
-      >
-        <div className="flex flex-nowrap items-center gap-1.5">
-          <span className="text-[12px] font-bold text-[#555]">Aa</span>
-          <span className={SEG}>
-            {modes.map(([m, label, short]) => (
-              <button
-                key={m}
-                type="button"
-                data-phone-keep
-                aria-label={label}
-                aria-pressed={mode === m}
-                onClick={() => onMode(m)}
-                className={P_CHIP_26}
-              >
-                {short}
-              </button>
-            ))}
-          </span>
-          {sizeKeys(P_CHIP_26)}
-          <span className="flex-1" />
-          <button
-            type="button"
-            data-phone-keep
-            data-text-size-cancel
-            aria-label="Cancel"
-            title="Cancel"
-            onClick={onCancel}
-            className="inline-flex h-[26px] w-[26px] cursor-pointer items-center justify-center rounded-[7px] border border-[#9aa] bg-white text-[13px] font-bold text-[#222]"
-          >
-            ✕
-          </button>
-        </div>
-        <div className="relative flex flex-nowrap items-center gap-1.5">
-          <span className={SEG}>
-            <button
-              type="button"
-              data-phone-keep
-              aria-label="Regular"
-              aria-pressed={current.bold === false}
-              disabled={!any}
-              onClick={() => onBold(false)}
-              className={P_CHIP_26}
-            >
-              Reg
-            </button>
-            <button
-              type="button"
-              data-phone-keep
-              aria-pressed={current.bold === true}
-              disabled={!any}
-              onClick={() => onBold(true)}
-              className={P_CHIP_26}
-            >
-              Bold
-            </button>
-          </span>
-          {spacing ? (
-            <span
-              data-relay-spacing
-              data-level={spacing.level}
-              className="inline-flex items-center gap-1"
-            >
-              <span title="Spacing" className="text-[#555]">
-                <LineIcon name="space" />
-              </span>
-              {spacingKeys(P_CHIP_26)}
-            </span>
-          ) : null}
-          <button
-            type="button"
-            data-phone-keep
-            data-text-size-reset-menu
-            aria-expanded={resetOpen}
-            onClick={() => setResetOpen((v) => !v)}
-            className="cursor-pointer px-0.5 text-[12px] font-bold whitespace-nowrap text-[#1d4ed8] underline"
-          >
-            Reset…
-          </button>
-          <span className="flex-1" />
-          <button
-            type="button"
-            data-phone-keep
-            data-text-size-done
-            onClick={onDone}
-            className="inline-flex h-[26px] cursor-pointer items-center gap-1 rounded-[7px] bg-[#1f2937] px-[9px] text-[12px] font-bold whitespace-nowrap text-white"
-          >
-            <LineIcon name="check" className="h-3 w-3" />
-            Done
-          </button>
-          {resetOpen ? (
-            <div
-              data-text-size-reset-list
-              className="absolute top-full left-0 z-30 mt-1 flex flex-col items-stretch gap-1 rounded-[8px] border border-black/15 bg-[#f4f3ee] p-1.5 shadow-[0_8px_20px_rgba(0,0,0,.25)]"
-            >
-              {quick(P_QUICK_26)}
-            </div>
-          ) : null}
-        </div>
-      </div>
-    );
 
   if (narrow)
     // 手机（置顶 114 第 4 版）：照参考图竖排——Apply To｜Text Size + Font Weight｜Spacing + Quick Actions｜Cancel / Done，

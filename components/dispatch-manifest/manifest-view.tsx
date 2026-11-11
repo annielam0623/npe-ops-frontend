@@ -15,7 +15,8 @@ import { flushSync } from "react-dom";
 import { fmtShort } from "@/components/dispatch/config";
 import { hasInAppHistory } from "@/components/nav/in-app-history";
 import { ErrorBanner } from "@/components/ui/panel";
-import { PhoneMore, PhoneOneLine } from "@/components/ui/phone";
+import { PhoneOneLine } from "@/components/ui/phone";
+import { LineIcon } from "./line-icons";
 import { describeError, isStatus } from "@/lib/api-errors";
 import {
   ATTR_LEN,
@@ -231,8 +232,11 @@ const WARN =
 const CARD =
   "mb-[22px] overflow-hidden rounded-[10px] bg-paper px-3 pt-2.5 pb-3 font-[Arial,'Helvetica_Neue',Helvetica,sans-serif] text-[#111]";
 /** .mf-band a.print */
+/** 页头白键（置顶 114：照 Relay list 新版的 Print / Excel / Settings，34px、线条图标；不是提交键，不用蓝色）。 */
+const MF_WHITE_KEY =
+  "inline-flex h-[34px] cursor-pointer items-center justify-center gap-1.5 rounded-[9px] border border-black/25 bg-paper px-3.5 text-[13.5px] font-bold whitespace-nowrap text-[#111] max-sm:px-2 max-sm:text-[13px]";
 const BAND_LINK =
-  "inline-flex h-7 items-center rounded-[7px] border border-black/25 bg-paper px-3 text-[12px] font-bold text-[#111] no-underline";
+  "inline-flex h-7 items-center gap-1.5 rounded-[7px] border border-black/25 bg-paper px-3 text-[12px] font-bold text-[#111] no-underline";
 /** .mf-card th / td。客人表的字号 / 粗细照纸本（G198 Q1：正文 16.5px 粗体、人数 19px），每格由 `cellText()` 给。 */
 const TH =
   "border border-[#9aa] bg-[#e6eaee] px-1.5 py-1 text-left text-[9.5px] font-bold whitespace-nowrap";
@@ -376,9 +380,7 @@ export function ManifestView() {
   const [relaySettings, setRelaySettings] = useState<RelayListSettings | null>(
     null,
   );
-  const [relayDraft, setRelayDraft] = useState<RelaySettingsDraft | null>(
-    null,
-  );
+  const [relayDraft, setRelayDraft] = useState<RelaySettingsDraft | null>(null);
   const [layoutOpen, setLayoutOpen] = useState(false);
   const layoutEdit =
     !perms.isPartner &&
@@ -441,7 +443,8 @@ export function ManifestView() {
     const next = [...cols].sort();
     setPending((p) => ({
       ...p,
-      hiddenColumns: JSON.stringify(next) === JSON.stringify(saved) ? null : next,
+      hiddenColumns:
+        JSON.stringify(next) === JSON.stringify(saved) ? null : next,
     }));
     setSaveState({ kind: "idle" });
   }
@@ -543,7 +546,9 @@ export function ManifestView() {
     }
     if (next.hiddenColumns !== null) {
       const cols = next.hiddenColumns;
-      if (await attempt("Columns", () => saveBusHiddenColumns(params.tour, cols)))
+      if (
+        await attempt("Columns", () => saveBusHiddenColumns(params.tour, cols))
+      )
         next.hiddenColumns = null;
     }
     const orders = new Map<number, string>();
@@ -776,10 +781,7 @@ export function ManifestView() {
   const tourSections = data
     ? [
         ...new Map(
-          [
-            ...data.blocks.flatMap((b) => b.sections),
-            ...data.unplaced.sections,
-          ]
+          [...data.blocks.flatMap((b) => b.sections), ...data.unplaced.sections]
             .filter((sec) => sec.kind === "tour")
             .map((sec) => [sec.title, { title: sec.title, color: sec.color }]),
         ).values(),
@@ -788,126 +790,151 @@ export function ManifestView() {
 
   return (
     <ManifestLookContext.Provider value={look}>
-    <ViewOnly.Provider value={viewOnly}>
-      <main data-phone-compact className="text-stone-800">
-        {/* 手机上整页排成一列，How to use 用 order 放到最底（Annie 2026-11-01 手机版规则）。 */}
-        <div className="max-sm:flex max-sm:flex-col">
-          {/* 后端 G29 第 5 条（2026-10-05）：‹ Back 回到点进来的那一页（排车页回去还是那一天、原来的位置）；
+      <ViewOnly.Provider value={viewOnly}>
+        <main data-phone-compact className="text-stone-800">
+          {/* 手机上整页排成一列，How to use 用 order 放到最底（Annie 2026-11-01 手机版规则）。 */}
+          <div className="max-sm:flex max-sm:flex-col">
+            {/* 后端 G29 第 5 条（2026-10-05）：‹ Back 回到点进来的那一页（排车页回去还是那一天、原来的位置）；
             直接打开的 ⇒ 去排车页的这一天。Dispatch · <日子> 不管从哪来都打开排车页的这一天。 */}
-          <nav aria-label="Back" className="flex flex-wrap gap-2">
-            <Link
-              href={backHref}
-              onClick={(e) => {
-                if (!hasInAppHistory()) return;
-                e.preventDefault();
-                router.back();
-              }}
-              className={NAV_LINK}
-            >
-              ‹ Back
-            </Link>
-            <Link href={backHref} className={NAV_LINK}>
-              {params ? `Dispatch · ${fmtShort(params.date)}` : "Dispatch"}
-            </Link>
-          </nav>
-
-          {view.kind === "bad-link" ? (
-            <div className={cn(WARN, "mt-3.5")}>
-              <p className="font-medium">
-                This link is missing the day or the tour.
-              </p>
-              <p className="mt-1">
-                Open the manifest from{" "}
-                <PageLink href="/dispatch" className="text-[#93c5fd] underline">
-                  Dispatch
-                </PageLink>
-                .
-              </p>
-            </div>
-          ) : view.kind === "forbidden" ? (
-            <p className="mt-3.5 text-[13px] text-[#94a3b8]">
-              Staff access required
-            </p>
-          ) : view.kind === "error" ? (
-            <div className="mt-3.5">
-              <ErrorBanner
-                actionLabel="Retry"
-                onAction={() => setReloadKey((k) => k + 1)}
+            <nav aria-label="Back" className="flex flex-wrap gap-2">
+              <Link
+                href={backHref}
+                onClick={(e) => {
+                  if (!hasInAppHistory()) return;
+                  e.preventDefault();
+                  router.back();
+                }}
+                className={NAV_LINK}
               >
-                Could not load this manifest: {view.message}
-              </ErrorBanner>
-            </div>
-          ) : view.kind === "loading" || !data || !shown || !params ? (
-            <p className="py-10 text-center text-[13px] text-[#94a3b8]">
-              Loading…
-            </p>
-          ) : (
-            <>
-              {/* .mf-head：标题和返回键在左、Print all / Download 在右 */}
-              <header className="mt-1 mb-3.5 flex flex-wrap items-start justify-between gap-4">
-                <div>
-                  <h1 className="m-0 flex items-center gap-2.5 text-[24px] font-bold tracking-[-.02em] text-white">
-                    {/* 团色（同 Main manifest / Dispatch，Annie 2026-10-14）。 */}
-                    <span
-                      aria-hidden
-                      className="size-3.5 rounded-[4px]"
-                      style={{ background: tourColorFor(data.tour.name) }}
-                    />
-                    {data.tour.name}
-                  </h1>
-                  <p className="mt-1 text-[13px] text-[#94a3b8]">
-                    {data.date_label} ·{" "}
-                    {data.manifest
-                      ? `${ourOrders(data)} orders, ${ourPax(data)} pax · ${data.manifest.file_name}`
-                      : "no guests yet"}
-                  </p>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  {/* 整页 Save（Q1）：蓝色提交键，工具条最前面、Version 左边；没有改动时灰的。 */}
-                  {viewOnly ? null : (
-                    <button
-                      type="button"
-                      data-page-save
-                      disabled={!dirty || saveState.kind === "saving"}
-                      onClick={() => void savePending()}
-                      className="inline-flex h-8 cursor-pointer items-center rounded-[9px] border border-[#3b82f6] bg-[#3b82f6] px-[18px] text-[12.5px] font-semibold text-white disabled:cursor-default disabled:opacity-40"
-                    >
-                      {saveState.kind === "saving" ? "Saving…" : "Save"}
-                    </button>
-                  )}
-                  {layout && !perms.isPartner ? (
-                    <button
-                      type="button"
-                      data-layout-open
-                      onClick={() => {
-                        setLayoutDraft(layout.settings);
-                        setRelayDraft(
-                          relaySettings ? toDraft(relaySettings) : null,
-                        );
-                        setLayoutOpen(true);
-                      }}
-                      className="inline-flex h-8 cursor-pointer items-center rounded-[9px] border border-black/25 bg-paper px-[14px] text-[12.5px] font-semibold text-[#111]"
-                    >
-                      ⚙ Colours, text &amp; page
-                    </button>
-                  ) : null}
-                  {data.tour.manifest_version !== undefined ? (
-                    <VersionPicker
-                      version={versionOf(shown)}
-                      readOnly={viewOnly}
-                      unsaved={pending.version !== null}
-                      onChange={stageVersion}
-                    />
-                  ) : null}
-                  {shown?.tour.canyon_pages && data.tour.canyon_sections ? (
-                    <CanyonOrderPicker
-                      pages={shown.tour.canyon_pages}
-                      readOnly={viewOnly}
-                      onChange={(pages) => setCanyon({ key: canyonKey, pages })}
-                    />
-                  ) : null}
-                  {/* 手机上 Print all buses / Download 收进「⋯」（手机版规则：次要按钮）。 */}
-                  <PhoneMore label="Columns, print or download">
+                ‹ Back
+              </Link>
+              <Link href={backHref} className={NAV_LINK}>
+                {params ? `Dispatch · ${fmtShort(params.date)}` : "Dispatch"}
+              </Link>
+            </nav>
+
+            {view.kind === "bad-link" ? (
+              <div className={cn(WARN, "mt-3.5")}>
+                <p className="font-medium">
+                  This link is missing the day or the tour.
+                </p>
+                <p className="mt-1">
+                  Open the manifest from{" "}
+                  <PageLink
+                    href="/dispatch"
+                    className="text-[#93c5fd] underline"
+                  >
+                    Dispatch
+                  </PageLink>
+                  .
+                </p>
+              </div>
+            ) : view.kind === "forbidden" ? (
+              <p className="mt-3.5 text-[13px] text-[#94a3b8]">
+                Staff access required
+              </p>
+            ) : view.kind === "error" ? (
+              <div className="mt-3.5">
+                <ErrorBanner
+                  actionLabel="Retry"
+                  onAction={() => setReloadKey((k) => k + 1)}
+                >
+                  Could not load this manifest: {view.message}
+                </ErrorBanner>
+              </div>
+            ) : view.kind === "loading" || !data || !shown || !params ? (
+              <p className="py-10 text-center text-[13px] text-[#94a3b8]">
+                Loading…
+              </p>
+            ) : (
+              <>
+                {/* .mf-head：标题和返回键在左、Print all / Download 在右 */}
+                <header className="mt-1 mb-3.5 flex flex-wrap items-start justify-between gap-4">
+                  <div>
+                    <h1 className="m-0 flex items-center gap-2.5 text-[24px] font-bold tracking-[-.02em] text-white">
+                      {/* 团色（同 Main manifest / Dispatch，Annie 2026-10-14）。 */}
+                      <span
+                        aria-hidden
+                        className="size-3.5 rounded-[4px]"
+                        style={{ background: tourColorFor(data.tour.name) }}
+                      />
+                      {data.tour.name}
+                    </h1>
+                    <p className="mt-1 text-[13px] text-[#94a3b8]">
+                      {data.date_label} ·{" "}
+                      {data.manifest
+                        ? `${ourOrders(data)} orders, ${ourPax(data)} pax · ${data.manifest.file_name}`
+                        : "no guests yet"}
+                    </p>
+                  </div>
+                  {/* 置顶 114（Annie「我要变的是格式，不是功能。现在这些编辑工具杂乱地显示在那里，我需要它relay list那样整齐明了」）：
+                    排法照 Relay list 新版——右边一排「● 没存黄字｜Save｜Version｜Canyon order｜Columns｜Print all buses｜Download｜⚙ Settings」，
+                    键 34px、前面线条图标，蓝色只给 Save；手机不收进 ⋯，Print all buses / Download / Settings 一排三格。作用一个不变。 */}
+                  <div
+                    data-mf-header-actions
+                    className="flex flex-wrap items-center justify-end gap-2 max-sm:w-full max-sm:justify-start"
+                  >
+                    {/* 存好绿、失败红、有没存的黄（全站规矩）；照 Relay list 放在 Save 左边，前面黄点。 */}
+                    {viewOnly ? null : saveState.kind === "error" ? (
+                      <span
+                        role="alert"
+                        data-page-save-error
+                        className="text-[12.5px] font-semibold text-[#fca5a5] max-sm:order-first max-sm:basis-full"
+                      >
+                        {saveState.message}
+                      </span>
+                    ) : dirty ? (
+                      <span
+                        data-page-unsaved
+                        className="inline-flex max-w-[460px] items-start gap-1.5 text-[12.5px] font-semibold text-[#fcd34d] max-sm:order-first max-sm:max-w-none max-sm:basis-full"
+                      >
+                        <i className="mt-[5px] inline-block h-2 w-2 shrink-0 rounded-full bg-[#fbbf24]" />
+                        <span>
+                          Not saved yet: {summary.join(" · ")}. Click Save to
+                          keep
+                          {summary.length === 1 ? " it" : " them"}.
+                        </span>
+                      </span>
+                    ) : saveState.kind === "saved" ? (
+                      <span
+                        role="status"
+                        data-page-saved
+                        className="text-[12.5px] font-semibold text-[#4ade80] max-sm:order-first max-sm:basis-full"
+                      >
+                        ✓ Saved · {saveState.at}
+                      </span>
+                    ) : null}
+                    {/* 整页 Save（Q1）：蓝色提交键；没有改动时灰的。 */}
+                    {viewOnly ? null : (
+                      <button
+                        type="button"
+                        data-page-save
+                        data-phone-keep
+                        disabled={!dirty || saveState.kind === "saving"}
+                        onClick={() => void savePending()}
+                        className="inline-flex h-[34px] cursor-pointer items-center gap-1.5 rounded-[9px] bg-[#3b82f6] px-3.5 text-[13.5px] font-bold text-white disabled:cursor-default disabled:opacity-45 max-sm:text-[13px]"
+                      >
+                        <LineIcon name="save" />
+                        {saveState.kind === "saving" ? "Saving…" : "Save"}
+                      </button>
+                    )}
+                    {data.tour.manifest_version !== undefined ? (
+                      <VersionPicker
+                        version={versionOf(shown)}
+                        readOnly={viewOnly}
+                        unsaved={pending.version !== null}
+                        onChange={stageVersion}
+                      />
+                    ) : null}
+                    {shown?.tour.canyon_pages && data.tour.canyon_sections ? (
+                      <CanyonOrderPicker
+                        pages={shown.tour.canyon_pages}
+                        readOnly={viewOnly}
+                        onChange={(pages) =>
+                          setCanyon({ key: canyonKey, pages })
+                        }
+                      />
+                    ) : null}
                     {data.tour.bus_column_options?.length ? (
                       <ColumnsPicker
                         options={data.tour.bus_column_options}
@@ -922,352 +949,372 @@ export function ManifestView() {
                         onChange={stageHiddenColumns}
                       />
                     ) : null}
-                    {canPrint && data.manifest && data.blocks.length > 0 ? (
-                      <a
-                        href={manifestPrintUrl(
-                          params.date,
-                          params.tour,
-                          undefined,
-                          canyonPages,
-                        )}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => {
-                          const url = e.currentTarget.href;
-                          if (
-                            guardOutput("print", allOrders, () =>
-                              window.open(url, "_blank", "noopener,noreferrer"),
+                    <div
+                      data-mf-output-keys
+                      className="contents max-sm:grid max-sm:basis-full max-sm:grid-cols-3 max-sm:gap-2"
+                    >
+                      {canPrint && data.manifest && data.blocks.length > 0 ? (
+                        <a
+                          href={manifestPrintUrl(
+                            params.date,
+                            params.tour,
+                            undefined,
+                            canyonPages,
+                          )}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          data-phone-keep
+                          onClick={(e) => {
+                            const url = e.currentTarget.href;
+                            if (
+                              guardOutput("print", allOrders, () =>
+                                window.open(
+                                  url,
+                                  "_blank",
+                                  "noopener,noreferrer",
+                                ),
+                              )
                             )
-                          )
-                            e.preventDefault();
-                        }}
-                        className="inline-flex h-8 items-center rounded-[9px] border border-[#3b82f6] bg-[#3b82f6] px-[15px] text-[12.5px] font-semibold text-white no-underline"
-                      >
-                        Print all buses
-                      </a>
-                    ) : null}
-                    {viewOnly || !canDownload ? null : (
-                      <form
-                        ref={downloadRef}
-                        method="post"
-                        action={MANIFEST_DOWNLOAD_URL}
-                        className="m-0"
-                        onSubmit={(e) => {
-                          // form.submit() 不会再触发 onSubmit，所以「Download anyway」直接交。
-                          if (
-                            guardOutput("download", allOrders, () =>
-                              downloadRef.current?.submit(),
+                              e.preventDefault();
+                          }}
+                          className={cn(MF_WHITE_KEY, "no-underline")}
+                        >
+                          <LineIcon name="print" />
+                          <span className="max-sm:hidden">Print all buses</span>
+                          <span className="sm:hidden">Print all</span>
+                        </a>
+                      ) : null}
+                      {viewOnly || !canDownload ? null : (
+                        <form
+                          ref={downloadRef}
+                          method="post"
+                          action={MANIFEST_DOWNLOAD_URL}
+                          className="m-0 max-sm:contents"
+                          onSubmit={(e) => {
+                            // form.submit() 不会再触发 onSubmit，所以「Download anyway」直接交。
+                            if (
+                              guardOutput("download", allOrders, () =>
+                                downloadRef.current?.submit(),
+                              )
                             )
-                          )
-                            e.preventDefault();
-                        }}
-                      >
-                        <input type="hidden" name="date" value={params.date} />
-                        <input type="hidden" name="tour" value={params.tour} />
-                        {canyonPages ? (
+                              e.preventDefault();
+                          }}
+                        >
                           <input
                             type="hidden"
-                            name={CANYON_PARAM}
-                            value={JSON.stringify(canyonPages)}
+                            name="date"
+                            value={params.date}
                           />
-                        ) : null}
+                          <input
+                            type="hidden"
+                            name="tour"
+                            value={params.tour}
+                          />
+                          {canyonPages ? (
+                            <input
+                              type="hidden"
+                              name={CANYON_PARAM}
+                              value={JSON.stringify(canyonPages)}
+                            />
+                          ) : null}
+                          <button
+                            type="submit"
+                            data-phone-keep
+                            disabled={!data.manifest}
+                            className={cn(
+                              MF_WHITE_KEY,
+                              "disabled:cursor-default disabled:opacity-50 max-sm:w-full",
+                            )}
+                          >
+                            <LineIcon name="download" />
+                            Download
+                          </button>
+                        </form>
+                      )}
+                      {layout && !perms.isPartner ? (
                         <button
-                          type="submit"
-                          disabled={!data.manifest}
-                          className="inline-flex h-8 cursor-pointer items-center rounded-[9px] border border-white/[.18] bg-transparent px-[13px] text-[12.5px] text-[#cbd5e1] hover:bg-white/[.07] disabled:cursor-default disabled:opacity-50"
-                        >
-                          Download
-                        </button>
-                      </form>
-                    )}
-                  </PhoneMore>
-                  {/* 存好绿、失败红、有没存的琥珀色（全站规矩）。 */}
-                  {viewOnly ? null : saveState.kind === "error" ? (
-                    <span
-                      role="alert"
-                      data-page-save-error
-                      className="basis-full text-right text-[12.5px] font-semibold text-[#fca5a5]"
-                    >
-                      {saveState.message}
-                    </span>
-                  ) : dirty ? (
-                    <span
-                      data-page-unsaved
-                      className="basis-full text-right text-[12.5px] font-semibold text-[#fcd34d]"
-                    >
-                      Not saved yet: {summary.join(" · ")}. Click Save to keep
-                      {summary.length === 1 ? " it" : " them"}.
-                    </span>
-                  ) : saveState.kind === "saved" ? (
-                    <span
-                      role="status"
-                      data-page-saved
-                      className="basis-full text-right text-[12.5px] font-semibold text-[#4ade80]"
-                    >
-                      ✓ Saved · {saveState.at}
-                    </span>
-                  ) : null}
-                </div>
-              </header>
-
-              {!data.manifest ? (
-                <Warn>
-                  The main manifest has no orders for this tour on this day. An
-                  order whose product has no Group is not on any tour: set its
-                  Group in Settings → Products.
-                </Warn>
-              ) : null}
-              {data.mode === "none" ? (
-                <Warn>
-                  No bus is scheduled for this tour on this day yet. Add one on
-                  the Dispatch page.
-                </Warn>
-              ) : data.mode === "unlettered" ? (
-                <Warn>
-                  This tour has more than one bus, but not every bus has its own
-                  letter. Give each bus a letter (A, B ...) on the Dispatch
-                  page. Until then no guest can be put on a bus.
-                </Warn>
-              ) : null}
-
-              {actionError ? (
-                // .mf-err
-                <div
-                  role="alert"
-                  className="mb-3.5 flex flex-wrap items-center justify-between gap-2 rounded-[10px] border border-[rgba(239,68,68,.35)] bg-[rgba(239,68,68,.12)] px-3.5 py-2.5 text-[13px] text-[#fecaca]"
-                >
-                  <span>{actionError}</span>
-                  <button
-                    type="button"
-                    onClick={() => setActionError(null)}
-                    className="text-[12px] text-[#fecaca] underline"
-                  >
-                    Dismiss
-                  </button>
-                </div>
-              ) : null}
-
-              {farmedOut ? (
-                // Q3：转完提醒还要去 Dispatch 选酒店、发 Farm out 通知；点 × 关掉。
-                <div
-                  data-farm-out-done
-                  className="mb-3.5 flex flex-wrap items-center gap-x-3.5 gap-y-2 rounded-[10px] border border-[rgba(251,191,36,.34)] bg-[rgba(251,191,36,.10)] px-3.5 py-2.5 text-[13px] text-[#fde68a] max-sm:flex-nowrap"
-                >
-                  <PhoneOneLine className="max-sm:min-w-0 max-sm:flex-1">
-                    Bus {farmedOut.bus} is farmed out to{" "}
-                    <b>{farmedOut.partner}</b>. Pick each order&rsquo;s hotel
-                    and send the farm out notice on{" "}
-                    <Link href={backHref} className="text-[#93c5fd] underline">
-                      Dispatch
-                    </Link>
-                    .
-                  </PhoneOneLine>
-                  <button
-                    type="button"
-                    aria-label="Dismiss"
-                    onClick={() => setFarmedOut(null)}
-                    className="ml-auto text-[12px] text-[#fde68a] underline"
-                  >
-                    ×
-                  </button>
-                </div>
-              ) : null}
-
-              <Stage.Provider
-                value={{
-                  movedFrom,
-                  attractions: pending.attractions,
-                  stageAttraction,
-                  notes: pending.notes,
-                  failed: saveState.kind === "error",
-                }}
-              >
-                {shown.blocks.map((block, i) => (
-                  <BusCard
-                    key={block.bus.id}
-                    data={shown}
-                    params={params}
-                    block={block}
-                    farmOut={
-                      // 只有第二辆车有（同 Dispatch 的规矩，Q1）。
-                      farmOutOn && i === 1 ? (
-                        <FarmOutButton
-                          date={params.date}
-                          tour={params.tour}
-                          block={block}
-                          partners={partners}
-                          blocked={dirty}
-                          onDone={(partner) => {
-                            setActionError(null);
-                            setFarmedOut({ bus: block.bus_number, partner });
-                            setReloadKey((k) => k + 1);
+                          type="button"
+                          data-layout-open
+                          data-phone-keep
+                          onClick={() => {
+                            setLayoutDraft(layout.settings);
+                            setRelayDraft(
+                              relaySettings ? toDraft(relaySettings) : null,
+                            );
+                            setLayoutOpen(true);
                           }}
-                          onError={(m) => setActionError(m)}
-                          onUnauthorized={redirectToLogin}
-                        />
-                      ) : null
-                    }
-                    viewOnly={viewOnly}
-                    canPrint={canPrint}
-                    onBusChange={stageMove}
-                    onNotesChange={changeNotes}
-                    onActionError={onActionError}
-                    stagedTextSize={pending.textSizes[block.bus_key]}
-                    onStageTextSize={(ts) => stageTextSize(block.bus_key, ts)}
-                    onPrintGuard={(go) =>
-                      guardOutput("print", busOrders(block.bus_key), go)
-                    }
-                  />
-                ))}
-
-                {shown.unplaced.sections.length > 0 ? (
-                  <section aria-label="Not on a bus yet" className={CARD}>
-                    {/* 旧页同样是一个 .mf-card + 团色条，标题写 Not on a bus yet。 */}
-                    <div
-                      className="flex flex-wrap items-end gap-[22px] rounded-[3px] px-3 py-1.5"
-                      style={{ background: data.tour.band_color }}
-                    >
-                      <span className="text-[26px] font-extrabold">
-                        Not on a bus yet · {data.unplaced.totals.pax} pax
-                      </span>
-                      <span className="ml-auto text-[19px] font-bold">
-                        {data.date_label}
-                      </span>
+                          className={MF_WHITE_KEY}
+                        >
+                          <LineIcon name="gear" />
+                          Settings
+                        </button>
+                      ) : null}
                     </div>
-                    <GuestTable
+                  </div>
+                </header>
+
+                {!data.manifest ? (
+                  <Warn>
+                    The main manifest has no orders for this tour on this day.
+                    An order whose product has no Group is not on any tour: set
+                    its Group in Settings → Products.
+                  </Warn>
+                ) : null}
+                {data.mode === "none" ? (
+                  <Warn>
+                    No bus is scheduled for this tour on this day yet. Add one
+                    on the Dispatch page.
+                  </Warn>
+                ) : data.mode === "unlettered" ? (
+                  <Warn>
+                    This tour has more than one bus, but not every bus has its
+                    own letter. Give each bus a letter (A, B ...) on the
+                    Dispatch page. Until then no guest can be put on a bus.
+                  </Warn>
+                ) : null}
+
+                {actionError ? (
+                  // .mf-err
+                  <div
+                    role="alert"
+                    className="mb-3.5 flex flex-wrap items-center justify-between gap-2 rounded-[10px] border border-[rgba(239,68,68,.35)] bg-[rgba(239,68,68,.12)] px-3.5 py-2.5 text-[13px] text-[#fecaca]"
+                  >
+                    <span>{actionError}</span>
+                    <button
+                      type="button"
+                      onClick={() => setActionError(null)}
+                      className="text-[12px] text-[#fecaca] underline"
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                ) : null}
+
+                {farmedOut ? (
+                  // Q3：转完提醒还要去 Dispatch 选酒店、发 Farm out 通知；点 × 关掉。
+                  <div
+                    data-farm-out-done
+                    className="mb-3.5 flex flex-wrap items-center gap-x-3.5 gap-y-2 rounded-[10px] border border-[rgba(251,191,36,.34)] bg-[rgba(251,191,36,.10)] px-3.5 py-2.5 text-[13px] text-[#fde68a] max-sm:flex-nowrap"
+                  >
+                    <PhoneOneLine className="max-sm:min-w-0 max-sm:flex-1">
+                      Bus {farmedOut.bus} is farmed out to{" "}
+                      <b>{farmedOut.partner}</b>. Pick each order&rsquo;s hotel
+                      and send the farm out notice on{" "}
+                      <Link
+                        href={backHref}
+                        className="text-[#93c5fd] underline"
+                      >
+                        Dispatch
+                      </Link>
+                      .
+                    </PhoneOneLine>
+                    <button
+                      type="button"
+                      aria-label="Dismiss"
+                      onClick={() => setFarmedOut(null)}
+                      className="ml-auto text-[12px] text-[#fde68a] underline"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ) : null}
+
+                <Stage.Provider
+                  value={{
+                    movedFrom,
+                    attractions: pending.attractions,
+                    stageAttraction,
+                    notes: pending.notes,
+                    failed: saveState.kind === "error",
+                  }}
+                >
+                  {shown.blocks.map((block, i) => (
+                    <BusCard
+                      key={block.bus.id}
                       data={shown}
-                      sections={shown.unplaced.sections}
+                      params={params}
+                      block={block}
+                      farmOut={
+                        // 只有第二辆车有（同 Dispatch 的规矩，Q1）。
+                        farmOutOn && i === 1 ? (
+                          <FarmOutButton
+                            date={params.date}
+                            tour={params.tour}
+                            block={block}
+                            partners={partners}
+                            blocked={dirty}
+                            onDone={(partner) => {
+                              setActionError(null);
+                              setFarmedOut({ bus: block.bus_number, partner });
+                              setReloadKey((k) => k + 1);
+                            }}
+                            onError={(m) => setActionError(m)}
+                            onUnauthorized={redirectToLogin}
+                          />
+                        ) : null
+                      }
+                      viewOnly={viewOnly}
+                      canPrint={canPrint}
                       onBusChange={stageMove}
                       onNotesChange={changeNotes}
-                      attraction={null}
+                      onActionError={onActionError}
+                      stagedTextSize={pending.textSizes[block.bus_key]}
+                      onStageTextSize={(ts) => stageTextSize(block.bus_key, ts)}
+                      onPrintGuard={(go) =>
+                        guardOutput("print", busOrders(block.bus_key), go)
+                      }
                     />
-                  </section>
+                  ))}
+
+                  {shown.unplaced.sections.length > 0 ? (
+                    <section aria-label="Not on a bus yet" className={CARD}>
+                      {/* 旧页同样是一个 .mf-card + 团色条，标题写 Not on a bus yet。 */}
+                      <div
+                        className="flex flex-wrap items-end gap-[22px] rounded-[3px] px-3 py-1.5"
+                        style={{ background: data.tour.band_color }}
+                      >
+                        <span className="text-[26px] font-extrabold">
+                          Not on a bus yet · {data.unplaced.totals.pax} pax
+                        </span>
+                        <span className="ml-auto text-[19px] font-bold">
+                          {data.date_label}
+                        </span>
+                      </div>
+                      <GuestTable
+                        data={shown}
+                        sections={shown.unplaced.sections}
+                        onBusChange={stageMove}
+                        onNotesChange={changeNotes}
+                        attraction={null}
+                      />
+                    </section>
+                  ) : null}
+                </Stage.Provider>
+
+                {data.affiliate ? (
+                  <AffiliateCard affiliate={data.affiliate} data={data} />
                 ) : null}
-              </Stage.Provider>
 
-              {data.affiliate ? (
-                <AffiliateCard affiliate={data.affiliate} data={data} />
-              ) : null}
+                {data.gone?.length ? <GoneCard gone={data.gone} /> : null}
 
-              {data.gone?.length ? <GoneCard gone={data.gone} /> : null}
-
-              {viewOnly ? null : (
-                <div className="max-sm:order-last">
-                  <HowToUse
-                    layout={!!layout}
-                    columns={!!data.tour.bus_column_options?.length}
-                  />
-                </div>
-              )}
-              {/* 改动记录（Annie 2026-10-30「同意所有推荐。动手」，preview https://claude.ai/artifact/YEgERHNDiL45TCkbzyJisa ）：
+                {viewOnly ? null : (
+                  <div className="max-sm:order-last">
+                    <HowToUse
+                      layout={!!layout}
+                      columns={!!data.tour.bus_column_options?.length}
+                    />
+                  </div>
+                )}
+                {/* 改动记录（Annie 2026-10-30「同意所有推荐。动手」，preview https://claude.ai/artifact/YEgERHNDiL45TCkbzyJisa ）：
                   页面最下面，同 Dispatch 页那块；只看当前这个团（c）、打印 / 下载也列（a）、能改这页的人才看得到（b）。 */}
-              {viewOnly || !params ? null : (
-                <div className="mt-6" data-manifest-log>
-                  <ActionLogPanel
-                    refreshKey={`${params.date}|${params.tour}|${saveState.kind === "saved" ? saveState.at : ""}`}
-                    reloadOnOpen
-                    onUnauthorized={redirectToLogin}
-                    verbs={MANIFEST_LOG_VERBS}
-                    note={
-                      <>
-                        Changes to the Bus Manifest for <b>{data.tour.name}</b>{" "}
-                        on <b>{data.date_label}</b>. Newest first.
-                      </>
-                    }
-                    load={(before, signal) =>
-                      fetchActionLog(
-                        "/api/dispatch/manifest/action-log",
-                        before,
-                        signal,
-                        { date: params.date, tour: String(params.tour) },
-                      )
-                    }
+                {viewOnly || !params ? null : (
+                  <div className="mt-6" data-manifest-log>
+                    <ActionLogPanel
+                      refreshKey={`${params.date}|${params.tour}|${saveState.kind === "saved" ? saveState.at : ""}`}
+                      reloadOnOpen
+                      onUnauthorized={redirectToLogin}
+                      verbs={MANIFEST_LOG_VERBS}
+                      note={
+                        <>
+                          Changes to the Bus Manifest for{" "}
+                          <b>{data.tour.name}</b> on <b>{data.date_label}</b>.
+                          Newest first.
+                        </>
+                      }
+                      load={(before, signal) =>
+                        fetchActionLog(
+                          "/api/dispatch/manifest/action-log",
+                          before,
+                          signal,
+                          { date: params.date, tour: String(params.tour) },
+                        )
+                      }
+                    />
+                  </div>
+                )}
+                {saveFirst ? (
+                  <SaveFirstDialog
+                    action={saveFirst.action}
+                    items={summary}
+                    onCancel={() => setSaveFirst(null)}
+                    onConfirm={async () => {
+                      const r = await savePending();
+                      if (r.error) return r.error;
+                      const { action, ordersOf, go } = saveFirst;
+                      setSaveFirst(null);
+                      // 存好了：照新的数据看餐不符，没有就直接打开 / 下载。
+                      if (!guardMismatch(action, ordersOf(r.data ?? data), go))
+                        go();
+                      return null;
+                    }}
                   />
-                </div>
-              )}
-              {saveFirst ? (
-                <SaveFirstDialog
-                  action={saveFirst.action}
-                  items={summary}
-                  onCancel={() => setSaveFirst(null)}
-                  onConfirm={async () => {
-                    const r = await savePending();
-                    if (r.error) return r.error;
-                    const { action, ordersOf, go } = saveFirst;
-                    setSaveFirst(null);
-                    // 存好了：照新的数据看餐不符，没有就直接打开 / 下载。
-                    if (!guardMismatch(action, ordersOf(r.data ?? data), go))
+                ) : null}
+                {leaveAsk ? (
+                  <LeaveDialog
+                    items={summary}
+                    onCancel={() => {
+                      leaveAsk.resolve(false);
+                      setLeaveAsk(null);
+                    }}
+                    onDiscard={() => {
+                      leaveAsk.resolve(true);
+                      setLeaveAsk(null);
+                    }}
+                    onSave={async () => {
+                      const r = await savePending();
+                      if (r.error) return r.error;
+                      leaveAsk.resolve(true);
+                      setLeaveAsk(null);
+                      return null;
+                    }}
+                  />
+                ) : null}
+                {mismatch ? (
+                  <LunchMismatchDialog
+                    action={mismatch.action}
+                    dateLabel={data.date_label}
+                    orders={mismatch.orders}
+                    onCancel={() => setMismatch(null)}
+                    onConfirm={() => {
+                      const { go } = mismatch;
+                      setMismatch(null);
                       go();
-                    return null;
-                  }}
-                />
-              ) : null}
-              {leaveAsk ? (
-                <LeaveDialog
-                  items={summary}
-                  onCancel={() => {
-                    leaveAsk.resolve(false);
-                    setLeaveAsk(null);
-                  }}
-                  onDiscard={() => {
-                    leaveAsk.resolve(true);
-                    setLeaveAsk(null);
-                  }}
-                  onSave={async () => {
-                    const r = await savePending();
-                    if (r.error) return r.error;
-                    leaveAsk.resolve(true);
-                    setLeaveAsk(null);
-                    return null;
-                  }}
-                />
-              ) : null}
-              {mismatch ? (
-                <LunchMismatchDialog
-                  action={mismatch.action}
-                  dateLabel={data.date_label}
-                  orders={mismatch.orders}
-                  onCancel={() => setMismatch(null)}
-                  onConfirm={() => {
-                    const { go } = mismatch;
-                    setMismatch(null);
-                    go();
-                  }}
-                />
-              ) : null}
-            </>
-          )}
-        </div>
-      </main>
-      {layoutOpen && layout && data ? (
-        <ManifestLayoutDialog
-          tour={{ id: data.tour.id, name: data.tour.name }}
-          version={shown?.tour.manifest_version ?? "general"}
-          sectionTitles={tourSections}
-          busKeys={data.blocks.map((b) => b.bus_key).filter(Boolean)}
-          layout={layout}
-          draft={layoutDraft ?? layout.settings}
-          onDraft={setLayoutDraft}
-          relay={relaySettings}
-          relayDraft={relayDraft}
-          onRelayDraft={setRelayDraft}
-          dataColor={dataColor}
-          canEdit={layoutEdit}
-          onSaved={(next) => {
-            setLayout(next);
-            setLayoutDraft(null);
-            setRelayDraft(null);
-            // 车抬头等颜色后端重算：重读这一页（和 Relay list 设置）。
-            setReloadKey((k) => k + 1);
-          }}
-          onClose={() => {
-            setLayoutOpen(false);
-            setLayoutDraft(null);
-            setRelayDraft(null);
-          }}
-        />
-      ) : null}
-    </ViewOnly.Provider>
+                    }}
+                  />
+                ) : null}
+              </>
+            )}
+          </div>
+        </main>
+        {layoutOpen && layout && data ? (
+          <ManifestLayoutDialog
+            tour={{ id: data.tour.id, name: data.tour.name }}
+            version={shown?.tour.manifest_version ?? "general"}
+            sectionTitles={tourSections}
+            busKeys={data.blocks.map((b) => b.bus_key).filter(Boolean)}
+            layout={layout}
+            draft={layoutDraft ?? layout.settings}
+            onDraft={setLayoutDraft}
+            relay={relaySettings}
+            relayDraft={relayDraft}
+            onRelayDraft={setRelayDraft}
+            dataColor={dataColor}
+            canEdit={layoutEdit}
+            onSaved={(next) => {
+              setLayout(next);
+              setLayoutDraft(null);
+              setRelayDraft(null);
+              // 车抬头等颜色后端重算：重读这一页（和 Relay list 设置）。
+              setReloadKey((k) => k + 1);
+            }}
+            onClose={() => {
+              setLayoutOpen(false);
+              setLayoutDraft(null);
+              setRelayDraft(null);
+            }}
+          />
+        ) : null}
+      </ViewOnly.Provider>
     </ManifestLookContext.Provider>
   );
 }
@@ -1465,6 +1512,7 @@ function BusCard({
               }}
               className={BAND_LINK}
             >
+              <LineIcon name="print" />
               Print
             </a>
           ) : null}
@@ -1497,6 +1545,7 @@ function BusCard({
                 editing && "max-sm:hidden",
               )}
             >
+              <LineIcon name="size" />
               {editing ? "Close text size" : "Aa Text size"}
             </button>
           ) : null}
@@ -1858,9 +1907,7 @@ function GuestTable({
               lettered={lettered}
               boarding={boarding}
               boardingClass={boardingClass}
-              sectionPx={
-                HEAD_PX[version].section + (tt.section_titles?.d ?? 0)
-              }
+              sectionPx={HEAD_PX[version].section + (tt.section_titles?.d ?? 0)}
               onBusChange={onBusChange}
               onNotesChange={onNotesChange}
               attraction={attraction}
@@ -2241,7 +2288,10 @@ function SectionRows({
                     }
                     style={
                       marks[i]
-                        ? { ...c.style, background: look.hotelGroupColor ?? color }
+                        ? {
+                            ...c.style,
+                            background: look.hotelGroupColor ?? color,
+                          }
                         : c.style
                     }
                   >
@@ -2995,12 +3045,15 @@ function ColumnsPicker({
   useEffect(() => {
     if (!open) return;
     const close = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      if (ref.current && !ref.current.contains(e.target as Node))
+        setOpen(false);
     };
     document.addEventListener("mousedown", close);
     return () => document.removeEventListener("mousedown", close);
   }, [open]);
-  const labels = options.filter((o) => hidden.includes(o.key)).map((o) => o.label);
+  const labels = options
+    .filter((o) => hidden.includes(o.key))
+    .map((o) => o.label);
   const value = labels.length ? `${labels.join(", ")} hidden` : "All";
   if (readOnly)
     return (
@@ -3025,7 +3078,7 @@ function ColumnsPicker({
       {open ? (
         <div
           data-columns-menu
-          className="absolute right-0 z-50 mt-1 w-[300px] rounded-[10px] border-[0.5px] border-black/15 bg-paper p-3 text-[13px] text-[#1a1a1a] shadow-[0_8px_24px_rgba(0,0,0,.35)] max-sm:left-0 max-sm:right-auto max-sm:w-[260px]"
+          className="absolute right-0 z-50 mt-1 w-[300px] rounded-[10px] border-[0.5px] border-black/15 bg-paper p-3 text-[13px] text-[#1a1a1a] shadow-[0_8px_24px_rgba(0,0,0,.35)] max-sm:right-auto max-sm:left-0 max-sm:w-[260px]"
         >
           <div className="mb-1 font-semibold">Columns for this tour</div>
           <p className="mb-2 text-[12px] leading-[1.5] text-[#555]">
