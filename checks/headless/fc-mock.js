@@ -534,7 +534,14 @@ http
       const forecast = JSON.parse(JSON.stringify(payload()));
       forecast.today = date;
       forecast.days = daysFrom(date, N);
-      for (const b of forecast.blocks) b.total[0] = 900 + k;
+      for (const b of forecast.blocks) {
+        b.total[0] = 900 + k;
+        // 细行第一列写 800 + 往前几天；顺序倒过来，测前端按 label 认行（Annie 11-11：以前只有表头挪、细行数字不动）。
+        for (const r of b.rows) r.values[0] = 800 + k;
+        b.rows.reverse();
+      }
+      // 快照那天还没有第 2 块（模拟那天还没这条线）：接上去的那一列应是 0，不是今天的数。
+      if (ctl.historyDropBlock) forecast.blocks = forecast.blocks.filter((b) => b.manifest_id !== ctl.historyDropBlock);
       return send(res, 200, { date, taken_at: `${date}T23:55:00-07:00`, forecast });
     }
     if (p === "/api/forecast/60-day") {
