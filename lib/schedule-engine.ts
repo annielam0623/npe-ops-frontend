@@ -1017,9 +1017,18 @@ export function generateWeek(input: GenerateInput): GenerateResult {
           if (days[e.id][d]?.type !== t || forcedDays.get(e.id)?.[d]) continue;
           days[e.id][d] = null;
           n--;
+          // 置顶 118：提示写这个人那天能上、但都满了的全部班（原来只写被拿掉的那一种，看不出真正卡在哪）。
+          const full = typeOrder.filter((type) => {
+            if (!canWork(c, e.id, d, type)) return false;
+            const k = capFor(c, dateOf(d), d, type);
+            return k != null && headcount(days, emps, d, type) >= k;
+          });
+          const list = (full.length ? full : [t])
+            .map((type) => `${type} (at most ${capFor(c, dateOf(d), d, type) ?? cap})`)
+            .join(", ");
           problems.push({
             date: dateOf(d),
-            message: `${e.name}: no shift left on ${dateOf(d)}. Max people on a shift: ${t} allows ${cap} a day.`,
+            message: `${e.name}: no shift left on ${dateOf(d)}. Every shift they can work that day is full: ${list}.`,
           });
         }
       }

@@ -286,6 +286,8 @@ export function RuleDialog({
                   const next = e.target.value as RuleType;
                   setType(next);
                   setParams(defaultParams(next, ctx));
+                  // 置顶 118：换成 Maximum days 时 Who 跟着默认 Only（同 defaultParams 的 employee_ids），不然存出去变成每个人。
+                  setWhoMode(next === "max_days_on_shift" ? "only" : "everyone");
                   setError(null);
                 }}
                 className={SELECT}

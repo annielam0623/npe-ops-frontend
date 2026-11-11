@@ -1214,6 +1214,25 @@ async function run() {
   check("题 6 A：周一日期下面琥珀一行 Close 2 (max 1)；别的日子没有", await waitFor(`document.querySelector('[data-over-cap="${D(1)}|close"]')?.textContent.trim() === 'Close 2 (max 1)' && document.querySelectorAll('[data-over-cap]').length === 1`), await evaluate("return [...document.querySelectorAll('[data-over-cap]')].map(e => e.dataset.overCap + ':' + e.textContent).join('|');"));
   check("题 6 A：那两张 Close 卡琥珀框（outline #f59e0b），Mid 卡没有", await evaluate(`const c = [...document.querySelectorAll('[data-slot-over-cap]')]; return c.length === 2 && c.every(x => getComputedStyle(x).outlineColor === 'rgb(245, 158, 11)') && ![...${cell(`1|${D(1)}`)}.querySelectorAll('[data-slot-id]')].some(x => x.dataset.slotOverCap);`), await evaluate("return document.querySelectorAll('[data-slot-over-cap]').length;"));
   check("题 3 A：Veronica 名字下面琥珀字 42.5 h this week；没超的人没有", await evaluate(`const v = document.querySelector('[data-over-hours="1"]'); return !!v && v.textContent === '42.5 h this week' && getComputedStyle(v).color === 'rgb(252, 211, 77)' && document.querySelectorAll('[data-over-hours]').length === 1;`), await evaluate("return [...document.querySelectorAll('[data-over-hours]')].map(e => e.dataset.overHours + ':' + e.textContent).join('|');"));
+  // ───────── 置顶 118（Annie「全部同意A」+「动手」）：新规则 Maximum days on a shift。
+  // 后端还没加进白名单 ⇒ 存的时候弹窗红字原样是后端 400 原话、不关、没存；后端加好以后（ctl.maxDaysOk）照常存。
+  await rulesTab();
+  const before118 = (await getRules()).length;
+  await evaluate("$btn('Add rule').click();");
+  await waitFor(`${dlg} && ${dlg}.textContent.includes('Add rule')`);
+  check("118：Rule type 下拉里有 Maximum days on a shift", await evaluate(`return [...${dlg}.querySelector('select[aria-label="Rule type"]').options].some(o => o.value === 'max_days_on_shift' && o.textContent.startsWith('Maximum days on a shift'));`));
+  await evaluate(`$setValue(${dlg}.querySelector('select[aria-label="Rule type"]'), 'max_days_on_shift');`);
+  await sleep(150);
+  check("118：选了 Maximum days 以后 Who 默认 Only（一个人），不是 Everyone", await evaluate(`return ${dlg}.querySelector('select[aria-label="Who"]')?.value === 'only';`), await evaluate(`return ${dlg}.querySelector('select[aria-label="Who"]')?.value;`));
+  await evaluate(`$btn('Save rule', ${dlg}).click();`);
+  check("118：后端没加白名单 ⇒ 弹窗红字原样是后端原话（Rule N (id …): type must be one of: …）、不关", await waitFor(`((t) => t.startsWith('Rule ') && t.includes(' (id "') && t.includes('"): type must be one of: shift_times, ') && t.endsWith('weekly_hours_alert.'))(${dlg}?.querySelector('[role=alert]')?.textContent ?? '') &&${dlg}.querySelector('[role=alert]').className.includes('text-red')`), await evaluate(`return ${dlg}?.querySelector('[role=alert]')?.textContent;`));
+  check("118：400 时没存", (await getRules()).length === before118);
+  await ctl({ maxDaysOk: true });
+  await evaluate(`$btn('Save rule', ${dlg}).click();`);
+  await waitFor(`!${dlg}`);
+  const md118 = (await getRules()).find((x) => x.type === "max_days_on_shift");
+  check("118：后端加好白名单后照常存：{employee_ids, shift_type, n: 1}", !!md118 && Array.isArray(md118.params.employee_ids) && md118.params.employee_ids.length === 1 && typeof md118.params.shift_type === "string" && md118.params.n === 1, JSON.stringify(md118));
+  await ctl({ maxDaysOk: false });
   // ───────── 置顶 110 续：Max people 的例外（Annie「1 A 2 B 3 A 4C 5A 6A 7 A。动手」）─────────
   // 题 4 C（Rules 那边）：Edit Max people → + Add exception → 班次 Close、12/08、最多 2 ⇒ 存 exceptions [{from, max, shift_type}]（不带 to）
   check("（存 Max people 1 + 一条过期的例外 10/31）", await putRules([...fullRules, R("m1", "max_per_shift_day", { max: 1, exceptions: [{ from: "2026-10-31", max: 2, shift_type: "close" }] })]));
