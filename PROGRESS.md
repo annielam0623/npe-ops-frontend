@@ -35,6 +35,7 @@
 - G282 后端排期（21）：代码 + 测试约 14:30–15:00 写完 ⇒ 四个审查 ⇒ Annie 执行 v164 + 跑 release.py ⇒ 最早 15:30 上 main；SQL 先给 Annie 看。
 - G282 前端 Q7 B 已推 task/leave-requests d0502533（96，没合）：SHIFT_BLOCKS_APPROVE=true，按后端 blocked（没带就看有没有班）⇒ 红框「X has a shift on … Move the shift on the Schedule tab before approving.」+ Approve 灰，Reject 能按；How to use 同句；lib/leave-api.ts 加 blocked?。leave 63/63、sch 514、users 80、nav 39、tp 204。截图图 3 / 4 重截成红框。
 - G282 截图 Version 2（96）：同链接 JYESEohHrhaobBPowLcepW，图 3 / 4 红框 + Approve 灰（原来是半透明蓝，已改灰键 + 加检查，leave 64/64）；分支 task/leave-requests 9dd2da7e 已推没合。96 今天最终交接：等后端 21 上 main 核字段（含 blocked）+ Annie 看图 7 HR 勾同意 ⇒ 合最新 main 重跑 ⇒ 合 main。
+  - 🟡 Annie 在 6b 又提（原话）：「如果键本身变小了的话，那它周围相关显示的文字也应该跟着变小」⇒ 6b preview https://claude.ai/artifact/W4D9EUjACD5RnWskXB8fxt ，task/114-smaller 19e10244（没合）。已放进置顶 114b。等「动手」。
 - Annie 新提：要做的三件 =「114，另外是staff schedule，还有导游页的重新设计」⇒ 导游页重新设计 PROGRESS 里没记录，4c 已问她哪个页面（A 手机 guide_home.html 后端 / B ops 里的导游页 / C 搬到 ops 重做）、想改成什么样、司机页要不要一起。
 - 🟡 **G282 preview（96）**：https://claude.ai/artifact/5PMGSaW5Rxz6AvcCkmAArG （模拟数据，没写代码）。4c 在本窗口问 Annie Q1–Q7（21 不重复问），另请她看：申请区 / 待批放 Staff Schedule 新 Leave 标签；Q5 B = 员工资料里设请假归属 team。答了转 21 + 96。
 - ✅ **118 后端上 main**（54 转）：内容 f8f0affc、合并 ebe3546d、关包 98de181c。形状 {type:max_days_on_shift, params:{shift_type 必填, n 0..7 必填, employee_ids / exclude_employee_ids 二选一可选}}，只按周，其他键 400。前端 components/schedule/rules.ts 已是同一形状（n 0..7），不用改。⇒ Annie 现在能存「Lizzie Close ≤ 1」。
@@ -1721,6 +1722,10 @@ D. 已完成、待从置顶移走：
 - 内容起点（目标工具区 ≤ 281px = 1/3 屏）：Dispatch › Assign 494、Tour Tracking 480、Manifests 432 超；其余 Morning Tracking 271、Relay list 209、Dispatch Send 205、Orders 193、Schedule 172、Bus Manifest ≈165、Morning Send ≈100 不用改。
 - 8 题（推荐都 A，原文已交 78）：题 1 缩多少 A 26 / B 24 / C 28；题 2 全站 vs 只 staff 常用 10 页；题 3 蓝主提交键同样缩；题 4 表格行内小键同档；题 5 ↑↓ 缩到 30px；题 6 顶栏 ☰ ★ ⌕ 一起缩；题 7 多行大块这次不动；题 8 超 1/3 屏的三页照表并一行 / 收 ⋯ / 收 i（动手前每页再给改后截图）。
 - 59 的 114 Relay list 编辑卡（先按 28px 画）题 M6 写「最终跟 115 题 1 走」，已对齐。
+
+### 114b. Relay list + Bus Manifest 编辑区 11-11 收尾（等 Annie）
+- ① Relay list How to use 两句英文（6b 问，原文见 11-11 4c 节）：A 改成「Text size (the card above each sheet): … The sheet changes right away; press Save at the top to keep it. …」「Spacing (in the card above each sheet): …」（推荐）/ B 照旧 / C Annie 自己改。分支 task/relay-edit-always 1ddf4765。
+- ② 缩小（Annie 原话「你把这些功能键和文字再缩小一点就不占地方了」「如果键本身变小了的话，那它周围相关显示的文字也应该跟着变小」）：preview https://claude.ai/artifact/W4D9EUjACD5RnWskXB8fxt （键：页头 34→28px、编辑卡手机 28→24px、Cancel / Done 34→28px；字跟着降一号：组标题 11.5→10.5 / 手机 12→11、图标 15→13、数值 / Picked / Text size changes 11.5→10.5、页头保存状态 12.5→11.5、Relay list 说明句 12.5→11.5；Bus Manifest Version / Columns / Canyon 框 32→28px；Bus Manifest 卡一直显示、没有 Aa）。分支 task/114-smaller 19e10244。等「动手」。
 
 ### 114. Relay list 功能键统一整理（2026-11-09 晚，Annie 看 Spacing 截图后提，78 派 59）—— ✅ 已答 + 动手，见「11-10 62 开工」
 
