@@ -14,6 +14,7 @@
 - G282 员工申请休假 + 按 team 批复：后端 21（54 派，只调查 + 方案，Annie 动手前不写代码）发来方案 ⇒ 4c 派 96 出 preview（申请区、待批列表、Team 页「Can approve leave for」、How to use、手机版；顶上列 21 的 Q1–Q7）。链接发 21 和 4c，21 问 Annie 一次，答复抄 4c。96 不再待命。
 - 🟡 **114 Bus Manifest 要 Annie 定（6b 问）**：编辑卡一直显示后，点表格格子算「选中」还是「改东西」（Notes 格改备注、Bus 格换车下拉）。A（推荐）一直能选，只 Notes 格 / Bus 下拉照旧改，调 Notes 列字号点表头或用 Page，改动按页头 Save 一起存；B 先按卡上 Column / Row / Page 才开始选，选时 Notes / Bus 不能动；C Bus Manifest 留 Aa 开关。6b 先照 A 写在分支，Bus Manifest 等答了再合；Relay list 可先合。
   - ✅ Annie（原话）：「我要变的是格式，不是功能。现在这些编辑工具杂乱地显示在那里，我需要它relay list那样整齐明了」⇒ Bus Manifest 交互照旧（含 Aa 的作用），只把编辑工具摆放改成 Relay list 新版那样；6b 出前后对比截图，Annie 看过再合 Bus Manifest，Relay list 可先合。
+- G282 Annie（原话）：「我现在没有一个地方来挑选谁是某个team的负责人」⇒ 系统现在确实没有 team 负责人这个概念；21 方案是在 Team 页成员编辑里勾「Can approve leave for」（从人这边设）。4c 问她：A 在 team 那边设「Team leads」（推荐）/ B 照 preview 从人这边勾；以及负责人只管批假，还是以后别的（通知、报表）也发给负责人。
 - Annie 新提：要做的三件 =「114，另外是staff schedule，还有导游页的重新设计」⇒ 导游页重新设计 PROGRESS 里没记录，4c 已问她哪个页面（A 手机 guide_home.html 后端 / B ops 里的导游页 / C 搬到 ops 重做）、想改成什么样、司机页要不要一起。
 - 🟡 **G282 preview（96）**：https://claude.ai/artifact/5PMGSaW5Rxz6AvcCkmAArG （模拟数据，没写代码）。4c 在本窗口问 Annie Q1–Q7（21 不重复问），另请她看：申请区 / 待批放 Staff Schedule 新 Leave 标签；Q5 B = 员工资料里设请假归属 team。答了转 21 + 96。
 - 今天后端主窗口：`npe-confirmation-service-54`[6a808b]（接 d9）。4c 已发 54：118 max_days_on_shift 白名单（附 Annie 11-10 晚原话「动手」）；116 / G283（回复即处理含 multi/reply、action_taken_by）54 等 Annie 开后端子窗口再派，做完发 SHA + 回包形状。
