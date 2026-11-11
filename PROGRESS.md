@@ -1565,6 +1565,7 @@ D. 已完成、待从置顶移走：
 - Annie 原话：「有个前端交互，staff在留言框里已经回复了客人，take action就应该自动处于处理过的状态了，可是现在没有」。截图：Tour Tracking CHDB1HQ7R（Annie Test），Phone AI 留言后 Nadia 回「Hello MS. Annie」（SMS sent, Email sent），Notes 格仍是 ⚠️ Take action，底部仍是「✓ Mark as actioned」。
 - d8 只读查：现在的设计就是回复和处理分开，要另点 Take action / Mark as actioned（conversation-modal.tsx、conversation-preview.tsx；How to use 原句「When a message is handled, click ✓ Mark as actioned…」）。所以这是改规则，不是 bug。
 - 问 Annie：R1 怎样算回复（A 真发给客人、任一渠道 Sent 才算（推荐）/ B 写内部备注 Save note 也算）；R2 范围（A 所有有留言框的地方一起：Tour / Morning / Tickets Tracking、Dashboard 消息、订单查询，旧 confirm 页面也跟着，由后端在发送那一步记处理人（推荐）/ B 只 ops 前端）；R3 显示（A 照现有样子 ✓ 回复人名字，客人再来新留言照旧变回 ⚠️ Take action（推荐））。样子用现有的，d8 建议不出 preview。等答 +「动手」。
+- ✅ **Annie（原话）：「全部同意推荐。动手」** ⇒ R1 A / R2 A / R3 A，不出 preview。d8 派后端 5c（在发送那一步记处理人，列全部入口，回包是否带 action_taken_by）和前端 6b（各回复入口发出后立刻显示 ✓、改 How to use 句子（英文原文给 Annie 确认）、补检查；推分支，等后端 SHA 核字段再合）。
 
 ### 115. 手机版键再缩小 + 页头 / 工具区省地方（2026-11-09 晚，78 派 03）—— ✅ 已答 + 动手，见「11-10 62 开工」
 
