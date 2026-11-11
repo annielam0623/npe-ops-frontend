@@ -1560,6 +1560,32 @@ D. 已完成、待从置顶移走：
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 🔴 生产慢（2026-11-11 00:45 前，Annie 转 staff 投诉）
+
+- Annie 原话：「Ricky投诉刚才登录花了5-6分钟才loading页面，然后loading message也非常慢」。
+- d8 只读测（00:45 后）：ops 页面 0.17–0.22s、ops 转发未登录 API 0.15–0.2s、confirm 0.13s，现在不慢；登录后的接口测不了。
+- 今晚上线：后端 G280 f4930195 + v163（约 23:00）、W3 ceba9aaa，可能还开了 G180 tracking-sync；前端推 main 多次（每次 Railway 重新部署）。
+- 已请后端 5c 只读查 Railway 日志 / 慢请求 / DB / 重启。问 Annie：Ricky 用的是 ops 还是 confirm、几点、哪一页的 message。等结果。
+
+### 119. Staff Schedule 排班表做成 118 preview 的样子（一目了然 + 分析）（2026-11-11 凌晨，Annie 在 6b 窗口直接提；6b 出样稿）
+
+- Annie 原话：「我需要在staff schedule那里把排班做成你preview的那个样子，一目了然，还可以分析」。
+- 6b 样稿（只 preview，没写代码）：https://claude.ai/artifact/8vLNnqptWW3ddFvfNoVAvk 。理解：加一个 Overview 标签，只看和分析，原 Schedule 标签照旧排 / 拖 / 存 / 发布。排班表默认 4 周，一人一行、一天一格，按班次上色（Open / Day / Close / Day 10–6 / Off / Leave），每人每周末尾写天数、小时，不对红字；每周下面三行每天每种班几个人，少了 / 多了标红。Analysis：Rules 每条每周 ✓ / ✗，加「只有 Jessica 的白班日」「排不下的班」，每人 4 周合计。后端不用改。
+- 题（6b 已在 Annie 那边贴了）：Q1 放哪（A 新加 Overview 标签（推荐）/ B 直接把 Schedule 标签换成这样，要另出样稿）；Q2 一次看多长（A 默认 4 周、可切 1 周、‹ › 翻（推荐）/ B 只看 1 周）；Q3 分析查什么（A 照 Rules 逐条 + 每天人数 + 每人天数小时 + 排不下 + 4 周合计（推荐）/ B 只要天数小时和每天人数）。d8 提醒：她原话是「在staff schedule那里把排班做成」，Q1 要她确认是另加标签还是直接换。等答 +「动手」。
+- ✅ **Annie（原话）：「3个问题都同意A，动手」** ⇒ Q1 A 新加 Overview 标签 / Q2 A 默认 4 周可切 1 周 / Q3 A 照 Rules 逐条 + 合计。d8 派 6b（只读、不改后端、复用排班引擎判据、不收进 ⋯ / i、颜色用现有的），过了直接合 main。
+
+### 118. Staff Schedule Rules 照 Annie 需求重设（2026-11-10 晚；d8 派 6b 先模拟 + preview）
+
+- Annie 原话：「现在的rules不管我怎么制定都不对，我把需求告诉你，你帮我来重新设置一下rules。」需求：「Naida固定不上周六，Veronica是固定的opening，Lizzie一周最多一次closing，Jessica固定上10 - 6点，Jessica周一周二固定休息。头一天晚班第二天不能安排早班。除了Jessica之外，V，N，J和Lizzie每周上40小时，然后休两天」「一个班最多一个人」「班次是2-10， 9-5， 1：30 p-9：30p」「Jassica只能上白天的班，周三可以两个人一起上白天的班」「（2-10）是am」「空出来的那个班从jassica平时的白班里挤出一个白班来，其他人补早晚班」。J = Jing。
+- d8 整理：早班 02:00–10:00、白班 09:00–17:00、晚班 13:30–21:30、Jessica 10:00–18:00（算白班）。Naida Cannot work 周六；Veronica 只早班（Cannot work 白 / 晚）；Lizzie 晚班每周 ≤ 1（**新规则 max_days_on_shift，前后端都要改**）；Jessica Fixed 周三–周日 10–6、不上周一周二、不上早晚班、不轮值；晚班后不接早班（After a shift）；V / N / Jing / Lizzie 每周刚好 5 天 + 40 小时提醒；早晚班每天正好 1 人；白班周一周二 1 人，周三–周日除 Jessica 外最多 1 人、每周 1 天只有 Jessica（**Max people 要能不算 Jessica，或把 10–6 设成单独班次**）。合计 20 个班 = 4 人 × 5 天。
+- 等 6b 模拟 4 周 + preview（含「现在怎么设都不对」的原因）⇒ Annie 看 +「动手」。
+- 补（Annie 原话）：「如果周末还补不上，就把jing和Lizze以及Nadia的白天班挪过去」⇒ 周末早晚班优先排满；排不满时把 Jing / Lizzie / Naida 当周的白班挪到周末早晚班（其他规则照守：Naida 周六不能上、Lizzie 晚班 ≤ 1、晚班后不接早班、每人 5 天）。已转 6b。
+- 再补（Annie 原话）：「3个人轮值那天的空缺，原来的那天就安排Jessica一个人上白班」⇒ 三人轮流挪；被挪走那天白班只有 Jessica。推论：只能从周三–周五挪（周一、周二 Jessica 休），d8 已问 Annie 确认，已转 6b。
+- 🟡 **preview（6b）**：https://claude.ai/artifact/CLx99qVsvqLZK7ZgipkQAU ，分支 task/schedule-rules-118 8d1a2497（直接跑引擎，4 周 11/15–12/12）。原因：① 主因：Jessica 10–6 跟 9–5 算同一种白班，「最多 1 人」把她也算进去，其他四人每周只排到 3–4 天；② Lizzie 晚班 ≤ 1 现有规则写不出 ⇒ 新规则 max_days_on_shift（引擎 + Rules 页已写）；③ 排不下的提示写的班次名不一定对（明天修）；④ Veronica 要用 Cannot work，不用 Fixed shift。Jessica 用单独班次「Day 10–6」跑 4 周全部通过，3 种 seed 一样；周末缺人时引擎自动从周三–周五白班挪，现有引擎就会，不用改；三人轮流公平还没验证。问 Annie：Q1 Jessica 10–6 设成单独班次（A 推荐，不改后端 / 引擎）/ 在 Max people 里排除她（B，前后端都改）；Q2 只从周三–周五挪（A 推荐）/ 哪天都可以（B）。
+- ✅ **Annie（原话）：「全部同意A」**（118 Q1 / Q2）⇒ Q1 A Jessica 10–6 设成单独班次「Day 10–6」，白班「最多 1 人」只管 9–5；Q2 A 周末缺人只从周三–周五挪白班，三人轮流。还没说「动手」，d8 已问。
+- ✅ **Annie（原话）：「动手」** ⇒ d8 派 6b：合 main（max_days_on_shift 后端没上前存了 400 要写红字）、修提示班名、补公平 / Q2 / 周末固定休检查，另出给 Annie 照着点的设置清单（Settings 加 Day 10–6 + Rules 逐条怎么填；线上由 Annie 自己设）。⚠️ 明天第一件：把 max_days_on_shift 白名单发当天后端主窗口。
+- 需要后端：schedule_rules.py 白名单加 max_days_on_shift {shift_type, n, employee_ids? / exclude_employee_ids?}，固定按周 ⇒ d8 已发 5c，**5c 已收工、没写进后端待办**（补记：Annie 又说「Veronica 11/26-30休假」（取代 11/26–27）、「然后Veronica固定休周六周日」⇒ Cannot work Veronica 周六周日；都已转 6b 重跑） ⇒ ⚠️ 明天前端主窗口：Annie 说「动手」后，把这条形状发给当天的后端主窗口派工（不迁移，未知键拒，400 英文）。
+
 ### 117. Staff Schedule：Autofill 前先填已批的 Leave（2026-11-10 晚，Annie 在后端提，5c 转；d8 派 6b 出 preview）
 
 - Annie 原话：「我现在需要你临时加一个rule，就是让我添加staff已经申请好了的假期，就是OFF day，让我选择autofill的时候可以先跳出一个窗口，点击哪些天是已经申请的Leave，不是平时每周的两天」。
