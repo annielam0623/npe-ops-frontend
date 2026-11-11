@@ -401,6 +401,11 @@ async function run() {
   // ── 加时段：点 + 打开「Add shift」窗口：选班次、填时间、可以勾多天（Annie 2026-10-18）──
   const needsSat = cell("needs|2026-10-10");
   const dlg = "document.querySelector('[role=dialog]')";
+  // 置顶 117：Auto-fill 按 Preview 后先出 Leave 表；没新点的就直接 Continue，照原来的流程往下。
+  const leaveContinue = async () => {
+    if (await waitFor(`${dlg}?.querySelector('[data-autofill-leave-grid]') || ${dlg}?.textContent.includes('All these weeks are published')`, 30000))
+      await evaluate(`$btn('Continue', ${dlg}).click();`);
+  };
   await evaluate(`${needsSat}.querySelector('button[aria-label="Add a shift"]').click();`);
   await waitFor(`${dlg} && ${dlg}.textContent.includes('Add shift')`);
   check("Unassigned 的加班窗口标题写 Unassigned，默认勾上点的那一天（Sat 10/10）", await evaluate(`return ${dlg}.textContent.includes('Unassigned') && ${dlg}.querySelectorAll('[data-day][aria-pressed=true]').length === 1 && ${dlg}.querySelector('[data-day="2026-10-10"]').getAttribute('aria-pressed') === 'true';`));
@@ -1302,6 +1307,7 @@ async function run() {
   await waitFor(`${dlg} && ${dlg}.textContent.includes('Auto-fill schedule')`);
   check("Auto-fill 窗口：选 This week / Next 4 weeks，写明只建草稿不通知", await evaluate(`return ${dlg}.textContent.includes('This week') && ${dlg}.textContent.includes('Next 4 weeks') && ${dlg}.textContent.includes('nobody is notified');`));
   await evaluate(`$btn('Preview', ${dlg}).click();`);
+  await leaveContinue(); // 置顶 117：先过 Leave 那一步
   check("这周已经有班 ⇒ 问怎么处理（Replace them / Add to them）", await waitFor(`${dlg}.querySelector('[data-autofill-existing]')`));
   check("决定页写明 Replace 会先删现有的班", await evaluate(`return ${dlg}.textContent.includes('Replace them') && ${dlg}.textContent.includes('Add to them') && ${dlg}.textContent.includes('deletes the existing shifts');`));
   await evaluate(`$btn('Preview', ${dlg}).click();`);
@@ -1331,6 +1337,7 @@ async function run() {
   await waitFor(`${dlg} && ${dlg}.textContent.includes('Auto-fill schedule')`);
   await evaluate(`[...${dlg}.querySelectorAll('button[role=radio]')].find(b => b.textContent.includes('Next 4 weeks')).click();`);
   await evaluate(`$btn('Preview', ${dlg}).click();`);
+  await leaveContinue(); // 置顶 117：先过 Leave 那一步
   await waitFor(`${dlg}.querySelector('[data-autofill-week]') || ${dlg}.querySelector('[data-autofill-existing]')`);
   if (await evaluate(`return !!${dlg}.querySelector('[data-autofill-existing]');`)) {
     await evaluate(`$btn('Preview', ${dlg}).click();`);
@@ -1346,6 +1353,139 @@ async function run() {
   const w25 = await (await fetch(`${MOCK}/api/schedule/weeks/2026-10-25`)).json();
   check("10/18、10/25 两周都建好了、各 30 个班", w18.slots.length === 30 && w25.slots.length === 30, `${w18.slots.length} ${w25.slots.length}`);
   check("10/18 周末只有轮值的班：周六 / 周日各 1 Open + 1 Close（轮值的 4 个人里）", [6, 0].every((d) => ["open", "close"].every((t) => w18.slots.filter((x) => x.date === (d === 6 ? "2026-10-24" : "2026-10-18") && x.shift_type === t && [2, 3, 4, 5].includes(x.employee_id)).length === 1)));
+
+  // ── 置顶 117（Annie「点击哪些天是已经申请的Leave，不是平时每周的两天」「leave另外加」「今晚就先放Leave」「117动手」，Q1 A）──
+  // Auto-fill 按 Preview 先出 Leave 表：已存的休假列出来（写 Leave、只读），点空格标 Leave；排班跳过 Leave 的天，Days per week 扣掉 Leave 天数，两天 Off 照给；
+  // 后端同一人同一天不能既有班又有休假 ⇒ Create draft 时：那天原来没班的马上存；原来有班（Replace）的等整周 Save 删掉旧班后再存；Cancel 什么都不存。
+  {
+    await ctl({ phase2: true });
+    const W117 = "2026-10-18";
+    const days117 = Array.from({ length: 7 }, (_, i) => { const [y, m, d] = W117.split("-").map(Number); return new Date(Date.UTC(y, m - 1, d + i)).toISOString().slice(0, 10); });
+    const wk0 = await (await fetch(`${MOCK}/api/schedule/weeks/${W117}`)).json();
+    const has = (id, date) => wk0.slots.some((x) => x.employee_id === id && x.date === date);
+    // 已存的休假：Nadia（3）那周没班的一天；新点的：Lizzie（2）那周有班的一天（存的时候要等 Save）。
+    const nadiaDay = days117.find((d) => !has(3, d));
+    const lizzieDay = days117.find((d) => has(2, d) && new Date(`${d}T12:00:00Z`).getUTCDay() >= 1 && new Date(`${d}T12:00:00Z`).getUTCDay() <= 5);
+    const pre = await fetch(`${MOCK}/api/schedule/time-off`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ employee_id: 3, dates: [nadiaDay], kind: "pto", note: null }) });
+    check(`117（准备）已存一条休假：Nadia ${nadiaDay}；Lizzie ${lizzieDay} 那天原来有班`, pre.ok && !!nadiaDay && !!lizzieDay, `${pre.status} ${nadiaDay} ${lizzieDay}`);
+    const openLeaveStep = async (four) => {
+      await openPage(`${APP}/schedule?week=${W117}`);
+      await waitFor("!!$btn('Auto-fill') && !$btn('Auto-fill').disabled", 30000);
+      await evaluate("$btn('Auto-fill').click();");
+      await waitFor(`${dlg} && ${dlg}.textContent.includes('Auto-fill schedule')`);
+      if (four) await evaluate(`[...${dlg}.querySelectorAll('button[role=radio]')].find(b => b.textContent.includes('Next 4 weeks')).click();`);
+      await evaluate(`$btn('Preview', ${dlg}).click();`);
+      return waitFor(`${dlg}.querySelector('[data-autofill-leave-grid]')`, 30000);
+    };
+    // 4 周：Leave 表盖住要排的 4 周（28 天）；已发布的周不出。
+    await openLeaveStep(true);
+    const cols4 = await evaluate(`return [...${dlg}.querySelectorAll('[data-autofill-leave-grid] .font-mono')].map(x => x.textContent);`);
+    check("117 选 Next 4 weeks：Leave 表 28 天（4 周）、从 10/18 起", cols4.length === 28 && cols4[0] === "10/18", JSON.stringify(cols4.slice(0, 3)) + " … " + cols4.length);
+    await evaluate(`$btn('Back', ${dlg}).click();`);
+    await waitFor(`$btn('Cancel', ${dlg})`);
+    await evaluate(`$btn('Cancel', ${dlg}).click();`);
+    await sleep(200);
+    // 已发布的周（10/04）不出
+    await openPage(`${APP}/schedule?week=2026-10-04`);
+    await waitFor("!!$btn('Auto-fill') && !$btn('Auto-fill').disabled", 30000);
+    await evaluate("$btn('Auto-fill').click();");
+    await waitFor(`${dlg} && ${dlg}.textContent.includes('Auto-fill schedule')`);
+    await evaluate(`[...${dlg}.querySelectorAll('button[role=radio]')].find(b => b.textContent.includes('Next 4 weeks')).click();`);
+    await evaluate(`$btn('Preview', ${dlg}).click();`);
+    await waitFor(`${dlg}.querySelector('[data-autofill-leave-grid]')`, 30000);
+    const cols4p = await evaluate(`return [...${dlg}.querySelectorAll('[data-autofill-leave-grid] .font-mono')].map(x => x.textContent);`);
+    check("117 已发布的周不出：从 10/04 起 4 周，10/04 那周（已发布）不在 Leave 表里", cols4p.length === 21 && !cols4p.includes("10/04") && cols4p[0] === "10/11", JSON.stringify(cols4p.slice(0, 2)) + " … " + cols4p.length);
+    await evaluate(`$btn('Back', ${dlg}).click();`);
+    await waitFor(`$btn('Cancel', ${dlg})`);
+    await evaluate(`$btn('Cancel', ${dlg}).click();`);
+    await sleep(200);
+
+    check("117 Auto-fill 按 Preview：先出 Leave 表（这一周 7 天）、写明 Leave 是在每周休息之外", (await openLeaveStep(false)) && (await evaluate(`return [...${dlg}.querySelectorAll('[data-autofill-leave-grid] .font-mono')].length === 7 && ${dlg}.textContent.includes('Leave is on top of the weekly days off');`)));
+    check(`117 已存的休假先列出来：Nadia ${nadiaDay} 写 Leave（今晚一律 Leave，不写 PTO）、不是按钮（只读）`, await evaluate(`const c = ${dlg}.querySelector('[data-leave-saved="3|${nadiaDay}"]'); return !!c && c.textContent.trim() === 'Leave' && c.tagName !== 'BUTTON';`));
+    const cellSel = `${dlg}.querySelector('[data-leave-cell="2|${lizzieDay}"]')`;
+    await evaluate(`${cellSel}.click();`);
+    await sleep(150);
+    const st1 = await evaluate(`const c = ${cellSel}; return c.getAttribute('aria-pressed') === 'true' && c.textContent === 'Leave' && ${dlg}.querySelector('[data-autofill-leave-count]').textContent === '1 new leave day. They are saved when you create the draft.';`);
+    await evaluate(`${cellSel}.click();`);
+    await sleep(150);
+    const st2 = await evaluate(`return ${cellSel}.getAttribute('aria-pressed') === 'false' && ${dlg}.querySelector('[data-autofill-leave-count]').textContent === 'No new leave picked.';`);
+    await evaluate(`${cellSel}.click();`);
+    await sleep(150);
+    const st3 = await evaluate(`return ${cellSel}.getAttribute('aria-pressed') === 'true';`);
+    check("117 点空格标 Leave、写「1 new leave day. They are saved when you create the draft.」；再点取消、再点又标上", st1 && st2 && st3, JSON.stringify({ st1, st2, st3 }));
+    await evaluate(`$btn('Continue', ${dlg}).click();`);
+    await waitFor(`${dlg}.querySelector('[data-autofill-week]') || ${dlg}.querySelector('[data-autofill-existing]')`, 30000);
+    if (await evaluate(`return !!${dlg}.querySelector('[data-autofill-existing]');`)) {
+      await evaluate(`[...${dlg}.querySelectorAll('button[role=radio]')].find(b => b.textContent.includes('Replace them')).click();`);
+      await evaluate(`$btn('Preview', ${dlg}).click();`);
+    }
+    await waitFor(`${dlg}.querySelector('[data-autofill-week="${W117}"]')`, 30000);
+    const wk = `${dlg}.querySelector('[data-autofill-week="${W117}"]')`;
+    check("117 预览：Nadia、Lizzie 那两天写 Leave（不是 Off、没有班）", await evaluate(`return ${wk}.querySelectorAll('[data-autofill-leave="Leave"]').length === 2;`), await evaluate(`return ${wk}.querySelectorAll('[data-autofill-leave]').length;`));
+    const rowOf = (name) => `(() => { const g = ${wk}.querySelector('.grid'); const kids = [...g.children]; const i = kids.findIndex(k => k.textContent.trim() === '${name}'); return kids.slice(i + 1, i + 8); })()`;
+    for (const name of ["Nadia", "Lizzie"])
+      check(`117 leave另外加：${name} 这周 1 天 Leave ⇒ 排 4 天（5 − 1），照样 2 天 Off`, await evaluate(`const r = ${rowOf(name)}; return r.filter(c => c.querySelector('[data-autofill-leave]')).length === 1 && r.filter(c => c.querySelector('[data-off]')).length === 2 && r.filter(c => !c.querySelector('[data-autofill-leave]') && !c.querySelector('[data-off]')).length === 4;`), await evaluate(`return ${rowOf(name)}.map(c => c.textContent.trim()).join(' | ');`));
+    const b0 = (await (await fetch(`${MOCK}/__log`)).json()).length;
+    await evaluate(`$btn('Create draft', ${dlg}).click();`);
+    await waitFor("document.querySelector('[data-autofill-banner]')", 30000);
+    let lg = (await (await fetch(`${MOCK}/__log`)).json()).slice(b0);
+    check("117 Create draft（这一周的班放在页面上等 Save）：Lizzie 那天原来有班 ⇒ 还没存 Leave（没有 PUT time-off）", !lg.some((e) => e.path === "/api/schedule/time-off"), JSON.stringify(lg.map((e) => e.method + " " + e.path)));
+    check("117 结果条写「Leave saved: 1 day.」", await evaluate("return document.querySelector('[data-autofill-banner]').textContent.includes('Leave saved: 1 day.');"), await evaluate("return document.querySelector('[data-autofill-banner]')?.textContent;"));
+    const b1 = (await (await fetch(`${MOCK}/__log`)).json()).length;
+    await evaluate(`${SAVE}.click();`);
+    // 等页面 Save 之后的那次 PUT time-off（Nadia 的休假卡本来就在页面上，不能拿它当信号）。
+    for (let t = 0; t < 60; t++) {
+      lg = (await (await fetch(`${MOCK}/__log`)).json()).slice(b1);
+      if (lg.some((e) => e.path === "/api/schedule/time-off" && e.method === "PUT")) break;
+      await sleep(250);
+    }
+    await sleep(500);
+    lg = (await (await fetch(`${MOCK}/__log`)).json()).slice(b1);
+    const iSave = lg.findIndex((e) => e.path.includes(`/weeks/${W117}/`) && e.method !== "GET" && !e.path.endsWith("edit-lock"));
+    const iPut = lg.findIndex((e) => e.path === "/api/schedule/time-off" && e.method === "PUT");
+    const put = lg[iPut];
+    check(`117 按整周 Save：先存班（旧班删掉），再 PUT time-off {employee_id 2, dates [${lizzieDay}], kind pto}`, iSave >= 0 && iPut > iSave && put.body?.employee_id === 2 && JSON.stringify(put.body?.dates) === JSON.stringify([lizzieDay]) && put.body?.kind === "pto", JSON.stringify(lg.map((e) => e.method + " " + e.path)));
+    check(`117 存好后排班页 Lizzie ${lizzieDay} 那格是休假卡、写 Leave`, await waitFor(`[...document.querySelectorAll('[data-time-off]')].some(x => x.textContent.includes('Leave'))`, 10000));
+    // 后面几周（直接建草稿）：先建班，再存 Leave。
+    await openLeaveStep(true);
+    const nextDay = "2026-10-27";
+    await evaluate(`${dlg}.querySelector('[data-leave-cell="4|${nextDay}"]').click();`);
+    await evaluate(`$btn('Continue', ${dlg}).click();`);
+    await waitFor(`${dlg}.querySelector('[data-autofill-week]') || ${dlg}.querySelector('[data-autofill-existing]')`, 30000);
+    if (await evaluate(`return !!${dlg}.querySelector('[data-autofill-existing]');`)) {
+      await evaluate(`[...${dlg}.querySelectorAll('button[role=radio]')].find(b => b.textContent.includes('Replace them')).click();`);
+      await evaluate(`$btn('Preview', ${dlg}).click();`);
+    }
+    await waitFor(`${dlg}.querySelector('[data-autofill-week="2026-10-25"]')`, 30000);
+    const b2 = (await (await fetch(`${MOCK}/__log`)).json()).length;
+    await evaluate(`$btn('Create draft', ${dlg}).click();`);
+    await waitFor("document.querySelector('[data-autofill-banner]')", 30000);
+    lg = (await (await fetch(`${MOCK}/__log`)).json()).slice(b2);
+    const iBulk = lg.findIndex((e) => e.path === "/api/schedule/weeks/2026-10-25/slots/bulk");
+    const iPut2 = lg.findIndex((e) => e.path === "/api/schedule/time-off" && e.method === "PUT" && e.body?.employee_id === 4);
+    check(`117 后面的周（直接建草稿）：先建 10/25 那周的班（bulk），再 PUT time-off Jing ${nextDay}`, iBulk >= 0 && iPut2 > iBulk && JSON.stringify(lg[iPut2].body.dates) === JSON.stringify([nextDay]), JSON.stringify(lg.map((e) => e.method + " " + e.path)));
+    const w25 = await (await fetch(`${MOCK}/api/schedule/weeks/2026-10-25`)).json();
+    check(`117 10/25 那周 Jing ${nextDay} 没有班、有休假`, !w25.slots.some((x) => x.employee_id === 4 && x.date === nextDay) && (w25.time_off ?? []).some((t) => t.employee_id === 4 && t.date === nextDay));
+    // Cancel：什么都不存
+    await openLeaveStep(false);
+    await evaluate(`${dlg}.querySelector('[data-leave-cell]').click();`);
+    const b3 = (await (await fetch(`${MOCK}/__log`)).json()).length;
+    await evaluate(`$btn('Back', ${dlg}).click();`);
+    await waitFor(`$btn('Cancel', ${dlg})`);
+    await evaluate(`$btn('Cancel', ${dlg}).click();`);
+    await sleep(300);
+    check("117 点了 Leave 又 Cancel：不发 time-off 请求", (await (await fetch(`${MOCK}/__log`)).json()).slice(b3).every((e) => e.path !== "/api/schedule/time-off"));
+    // 手机：Leave 表左右滑，整页不左右晃
+    await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+    await openLeaveStep(true);
+    check("117 手机：Leave 表在框里左右滑，整页不左右晃", await evaluate(`const g = ${dlg}.querySelector('[data-autofill-leave-grid]'); return g.scrollWidth > g.clientWidth && document.documentElement.scrollWidth <= 390;`), await evaluate(`return document.documentElement.scrollWidth;`));
+    await evaluate(`$btn('Back', ${dlg}).click();`);
+    await waitFor(`$btn('Cancel', ${dlg})`);
+    await evaluate(`$btn('Cancel', ${dlg}).click();`);
+    await cdp("Emulation.clearDeviceMetricsOverride");
+    await sleep(200);
+    await ctl({ phase2: false });
+  }
 
   // ── 按基础周排（Annie 2026-11-02「用上周的排班为基数，来自动排班，遵守定好的这些role，然后把整个月的班都排出来」；
   //    preview https://claude.ai/artifact/L3gCgqBPvDLBxAC2ToDVxp 照推荐）：默认基础周 = 上周、从下周起 4 周，存草稿、只填空格 ──
@@ -1374,6 +1514,7 @@ async function run() {
     check("按基础周排：默认基础周 = 上周、从下周起 4 周；照 Rules 排的 This week / Next 4 weeks 收起来", await evaluate(`const d = ${dlg}; return d.querySelector('[data-base-week]').value === '${lastWeek}' && d.querySelector('[data-base-start]').value === '${nextWeek}' && d.querySelector('[data-base-count]').value === '4' && d.querySelector('[data-base-count]').options.length === 6 && ![...d.querySelectorAll('button[role=radio]')].some(b => b.offsetParent !== null && b.textContent.includes('Next 4 weeks'));`));
     let b0 = (await (await fetch(`${MOCK}/__log`)).json()).length;
     await evaluate(`$btn('Preview', ${dlg}).click();`);
+    await leaveContinue(); // 置顶 117：先过 Leave 那一步
     await waitFor(`${dlg}.querySelectorAll('[data-autofill-week]').length === 4`, 30000);
     check("按基础周排：不问 Replace / Add，直接预览 4 周；每周写明是换掉复制来的班还是只填空格", await evaluate(`return !${dlg}.querySelector('[data-autofill-existing]') && !!${dlg}.querySelector('[data-autofill-base-note]') && ${dlg}.querySelector('[data-autofill-week="${nextWeek}"] [data-base-mode]').dataset.baseMode === 'replace' && ${dlg}.querySelector('[data-autofill-week="${week2}"] [data-base-mode]').dataset.baseMode === 'fill';`));
     const wk1 = `${dlg}.querySelector('[data-autofill-week="${nextWeek}"]')`;
@@ -1400,6 +1541,7 @@ async function run() {
     await waitFor(`${dlg}.querySelector('[data-autofill-base]')`);
     const b1 = (await (await fetch(`${MOCK}/__log`)).json()).length;
     await evaluate(`$btn('Preview', ${dlg}).click();`);
+    await leaveContinue(); // 置顶 117：先过 Leave 那一步
     await waitFor(`${dlg}.querySelectorAll('[data-autofill-week]').length === 4`, 30000);
     await evaluate(`$btn('Create drafts for 4 weeks', ${dlg}).click();`);
     await waitFor("document.querySelector('[data-autofill-banner]')?.textContent.includes('for 4 weeks')", 30000);
@@ -1484,6 +1626,7 @@ async function run() {
     check("取消 Fixed shift：写 5 of 6 rules ticked", await waitFor(`${dlg}.querySelector('[data-autofill-rules-count]').textContent.trim() === '5 of 6 rules ticked.'`));
     const r0 = (await (await fetch(`${MOCK}/__log`)).json()).length;
     await evaluate(`$btn('Preview', ${dlg}).click();`);
+    await leaveContinue(); // 置顶 117：先过 Leave 那一步
     await waitFor(`${dlg}.querySelector('[data-autofill-week]') || ${dlg}.querySelector('[data-autofill-existing]')`, 30000);
     if (await evaluate(`return !!${dlg}.querySelector('[data-autofill-existing]');`)) {
       await evaluate(`[...${dlg}.querySelectorAll('button[role=radio]')].find(b => b.textContent.includes('Replace them')).click();`);
@@ -1558,19 +1701,21 @@ async function run() {
   check("二期：+ note → Enter ⇒ 显示 Pre close", await waitFor(`${hasText(`${cell("1|2026-12-07")}.querySelector('[data-slot-note]')`, "Pre close")}`));
   await saveWeek();
 
-  // 休假：Lizzie 周二录 Sick + 备注
+  // 休假：Lizzie 周二录休假 + 备注（置顶 117 今晚只有一种 Leave，存成 pto）
   await evaluate(`${cell("2|2026-12-08")}.querySelector('button[aria-label="Add a shift"]').click();`);
   await waitFor(`${dlg} && ${dlg}.querySelector('[data-mode=off]')`);
   await evaluate(`${dlg}.querySelector('[data-mode=off]').click();`);
-  check("二期：Time off 模式：标题 Add time off、有 PTO / Sick / Personal 三个选项", await evaluate(`return ${dlg}.textContent.includes('Add time off') && ['PTO', 'Sick', 'Personal'].every(t => $btn(t, ${dlg})) && !${dlg}.querySelector('input[data-time-input]');`));
-  await evaluate(`${dlg}.querySelector('[data-kind=sick]').click(); $setValue(${dlg}.querySelector('[data-note-input]'), 'Back Thursday');`);
+  check("二期 / 117：Time off 模式：标题 Add time off、只有一种 Leave（今晚不分 PTO / Sick / Personal）", await evaluate(`return ${dlg}.textContent.includes('Add time off') && !!$btn('Leave', ${dlg}) && !$btn('PTO', ${dlg}) && !$btn('Sick', ${dlg}) && !$btn('Personal', ${dlg}) && ${dlg}.querySelectorAll('[data-kind]').length === 1 && !${dlg}.querySelector('input[data-time-input]');`));
+  await evaluate(`${dlg}.querySelector('[data-kind=pto]').click(); $setValue(${dlg}.querySelector('[data-note-input]'), 'Back Thursday');`);
   check("Add day off 直接存进系统 ⇒ 照旧蓝色提交键（Annie 2026-10-30）", await evaluate(`return getComputedStyle($btn('Add day off', ${dlg})).backgroundColor === 'rgb(59, 130, 246)';`));
   await evaluate(`$btn('Add day off', ${dlg}).click();`);
-  check("二期：录好 ⇒ 格子写 Sick + 备注 Back Thursday，窗口关了", await waitFor(`${hasText(`${cell("2|2026-12-08")}.querySelector('[data-time-off=sick]')`, "Sick")} && ${hasText(`${cell("2|2026-12-08")}.querySelector('[data-time-off=sick]')`, "Back Thursday")} && !${dlg}`));
+  check("二期 / 117：录好 ⇒ 格子写 Leave + 备注 Back Thursday，窗口关了", await waitFor(`${hasText(`${cell("2|2026-12-08")}.querySelector('[data-time-off=pto]')`, "Leave")} && ${hasText(`${cell("2|2026-12-08")}.querySelector('[data-time-off=pto]')`, "Back Thursday")} && !${dlg}`));
   check("二期：休假格子比 Off 深一档的黄、主管有 ×", await evaluate(`const el = ${cell("2|2026-12-08")}.querySelector('[data-time-off]'); return getComputedStyle(el).backgroundColor.includes('0.28') && !!el.querySelector('[data-remove-time-off]');`));
   check("二期：同一天没有 Off 格子", await evaluate(`return !${cell("2|2026-12-08")}.querySelector('[data-off]');`));
   const toCall = (await (await fetch(`${MOCK}/__log`)).json()).filter((e) => e.path === "/api/schedule/time-off");
-  check("二期：PUT /api/schedule/time-off body 对（employee 2、dates、kind sick、note）", toCall.length === 1 && toCall[0].body.employee_id === 2 && toCall[0].body.kind === "sick" && toCall[0].body.note === "Back Thursday" && toCall[0].body.dates.join() === "2026-12-08", JSON.stringify(toCall));
+  // 置顶 117：前面 117 的检查也会 PUT time-off，这里只看这一次（2026-12-08）；今晚只有一种，存成 pto。
+  const toThis = toCall.filter((e) => e.body?.dates?.includes("2026-12-08"));
+  check("二期 / 117：PUT /api/schedule/time-off body 对（employee 2、dates、kind pto、note）", toThis.length === 1 && toThis[0].body.employee_id === 2 && toThis[0].body.kind === "pto" && toThis[0].body.note === "Back Thursday" && toThis[0].body.dates.join() === "2026-12-08", JSON.stringify(toCall));
 
   // 冲突（录休假 ⇒ 这天已有班）：红框原样显示后端原话，窗口不关
   await evaluate(`${cell("1|2026-12-07")}.querySelector('button[aria-label="Add a shift"]').click();`);
@@ -1603,7 +1748,7 @@ async function run() {
   await ctl({ role: "staff", meName: "Veronica" });
   await openPage(`${APP}/schedule?week=2026-09-27`);
   await waitFor(`${cell("4|2026-09-28")}`);
-  check("二期：员工看得到别人的休假类型和备注（Personal / Family）", await waitFor(`${hasText(`${cell("4|2026-09-28")}.querySelector('[data-time-off=personal]')`, "Personal")} && ${hasText(`${cell("4|2026-09-28")}.querySelector('[data-time-off=personal]')`, "Family")}`));
+  check("二期 / 117：员工看得到别人的休假和备注（存的是 personal，今晚一律写 Leave / Family）", await waitFor(`${hasText(`${cell("4|2026-09-28")}.querySelector('[data-time-off=personal]')`, "Leave")} && ${hasText(`${cell("4|2026-09-28")}.querySelector('[data-time-off=personal]')`, "Family")}`));
   check("二期：员工没有 ×、没有 + note、没有加班键", await evaluate(`return !document.querySelector('[data-remove-time-off]') && !document.querySelector('[data-add-note]') && !document.querySelector('button[aria-label="Add a shift"]');`));
 
   // ── ⚙ Settings：Working hours / Default shift times 集中一处（Annie 2026-11-02「所以两个edit，到底哪个管用」「可以集中在一起管各自不同的功能么」；

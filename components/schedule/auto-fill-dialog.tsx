@@ -85,6 +85,8 @@ interface Proposal {
   replace?: boolean;
   /** 置顶 117：这一周的 Leave 格子（`<员工 id>|<星期几>` → 显示的字：PTO / Sick / Personal / Leave）。 */
   leaveCells?: Record<string, string>;
+  /** 置顶 117：排之前服务器上这一周的班（存 Leave 时看那天原来有没有班）。 */
+  serverPlan?: WeekPlan;
 }
 
 type Step =
@@ -114,7 +116,12 @@ interface AutoFillDialogProps {
    * 当前这一周（排班页正在看的那一周）填出来的班交给页面暂存、等整周 Save（Annie 2026-10-29 B9 Q6）；
    * 后面几周照旧直接建草稿。没传 = 照旧全部直接建。replace = 这一周原来的班要删掉。
    */
-  onDraftThisWeek?: (made: Proposal["create"], replace: boolean) => void;
+  onDraftThisWeek?: (
+    made: Proposal["create"],
+    replace: boolean,
+    /** 置顶 117：那天原来有班、要等整周 Save 删掉旧班后再存的 Leave（员工 id → 日期）。 */
+    laterLeave?: Record<number, string[]>,
+  ) => void;
   /**
    * Staff Schedule › Period（Annie 2026-11-08「最重要一点，可以选择执行哪些rules」）：排这一段（开始那周 + 周数），
    * 不出「Which weeks」/ 基础周的起止选择；多一张规则清单，取消勾选的这一次不执行（不改 Rules 标签）。
@@ -358,6 +365,7 @@ export function AutoFillDialog({
         create,
         problems: result.problems,
         leaveCells: leaveCellsFor(w),
+        serverPlan: w.plan,
       });
       if (previous) hist.push(previous);
       previous = result.plan;
@@ -483,6 +491,7 @@ export function AutoFillDialog({
         changed,
         replace: w.copied && w.existingSlots > 0,
         leaveCells: leaveCellsFor(w),
+        serverPlan: w.plan,
       });
       if (previous) hist.push(previous);
       previous = plan;
@@ -492,35 +501,69 @@ export function AutoFillDialog({
 
   async function create(proposals: Proposal[]) {
     setStep({ kind: "creating" });
-    // 置顶 117：先存这次新点的 Leave（记成 PTO，一次最多 31 天）；存不上就停，什么班都不建。
-    try {
-      for (const [id, dates] of Object.entries(newLeave)) {
-        const sorted = [...dates].sort();
-        for (let i = 0; i < sorted.length; i += 31)
-          await setScheduleTimeOff({
-            employee_id: Number(id),
-            dates: sorted.slice(i, i + 31),
-            kind: "pto",
-            note: null,
-          });
-      }
-    } catch (error) {
-      setStep({
-        kind: "error",
-        message: `Could not save the leave: ${describeError(error)} Nothing was created.`,
-      });
-      return;
-    }
     let made = 0;
     let weeksMade = 0;
+    // 置顶 117：新点的 Leave 一周一周存。后端同一人同一天不能既有班又有休假，所以：
+    // 直接建草稿的周——先建班（Replace 先删旧班），再存这一周的 Leave；
+    // 这一周（班放在页面上等 Save）——那天原来没班的马上存，原来有班、Replace 的交给页面 Save 之后存；
+    // Add to them（保留原来的班）又碰上那天原来有班的，存不上，写进结果里。
+    const leaveSaved: string[] = [];
+    const leaveSkipped: string[] = [];
+    const nameOf = (id: number) =>
+      employees.find((e) => e.id === id)?.name ?? `#${id}`;
+    const leaveOf = (weekStart: string) => {
+      const out: Record<number, string[]> = {};
+      for (const [id, dates] of Object.entries(newLeave))
+        for (const date of dates) {
+          const d = dayIn(weekStart, date);
+          if (d >= 0 && d <= 6) (out[Number(id)] ??= []).push(date);
+        }
+      return out;
+    };
+    const putLeave = async (rec: Record<number, string[]>) => {
+      for (const [id, dates] of Object.entries(rec)) {
+        if (!dates.length) continue;
+        await setScheduleTimeOff({
+          employee_id: Number(id),
+          dates: [...dates].sort(),
+          kind: "pto",
+          note: null,
+        });
+        for (const d of dates) leaveSaved.push(`${nameOf(Number(id))} ${d}`);
+      }
+    };
     // 当前这一周：放到页面上等整周 Save（B9 Q6），不直接建。
     let onPage = 0;
     try {
       for (const p of proposals) {
         if (p.skipped) continue;
         const replace = p.replace ?? mode === "replace";
+        const lv = leaveOf(p.weekStart);
+        const had = (id: number, date: string) =>
+          !!p.serverPlan?.byEmployee[id]?.[dayIn(p.weekStart, date)];
+        const split = (keepIfHad: boolean) => {
+          const now: Record<number, string[]> = {};
+          const later: Record<number, string[]> = {};
+          for (const [k, dates] of Object.entries(lv)) {
+            const id = Number(k);
+            for (const date of dates) {
+              if (!had(id, date)) (now[id] ??= []).push(date);
+              else if (replace && keepIfHad) (later[id] ??= []).push(date);
+              else if (replace) (now[id] ??= []).push(date);
+              else leaveSkipped.push(`${nameOf(id)} ${date}`);
+            }
+          }
+          return { now, later };
+        };
         if (onDraftThisWeek && p.weekStart === weekStart) {
-          onDraftThisWeek(p.create, replace);
+          const { now, later } = split(true);
+          await putLeave(now);
+          onDraftThisWeek(p.create, replace, later);
+          for (const [id, dates] of Object.entries(later))
+            for (const d of dates)
+              leaveSaved.push(
+                `${nameOf(Number(id))} ${d} (after you click Save)`,
+              );
           onPage = p.create.length;
           continue;
         }
@@ -536,11 +579,13 @@ export function AutoFillDialog({
         });
         made += p.create.length;
         weeksMade++;
+        // 班建好了（Replace 已经删掉旧班），再存这一周的 Leave。
+        await putLeave(split(false).now);
       }
     } catch (error) {
       setStep({
         kind: "error",
-        message: `${describeError(error)}${weeksMade ? ` (${weeksMade} week(s) were already created as drafts before this.)` : " Nothing was created."}`,
+        message: `${describeError(error)}${weeksMade ? ` (${weeksMade} week(s) were already created as drafts before this.)` : " Nothing was created."}${leaveSaved.length ? ` Leave already saved: ${leaveSaved.join(", ")}.` : ""}`,
       });
       return;
     }
@@ -549,10 +594,13 @@ export function AutoFillDialog({
       ? ` (${skipped} published week${skipped === 1 ? "" : "s"} skipped)`
       : "";
     const pageText = `Put ${onPage} shift${onPage === 1 ? "" : "s"} on this week. Click Save to keep them.`;
+    // 置顶 117：Leave 存了几天 / 哪几天存不上（Add to them 保留了原来的班）。
+    const leaveText = `${leaveSaved.length ? ` Leave saved: ${leaveSaved.length} day${leaveSaved.length === 1 ? "" : "s"}.` : ""}${leaveSkipped.length ? ` Leave not saved because the shift there was kept: ${leaveSkipped.join(", ")}. Remove that shift, then add the leave on the schedule.` : ""}`;
     onDone(
-      weeksMade
+      (weeksMade
         ? `${onPage ? `${pageText} ` : ""}Created ${made} draft shift${made === 1 ? "" : "s"} for ${weeksMade}${onPage ? " other" : ""} week${weeksMade === 1 ? "" : "s"}${skippedText}. Nothing is published and nobody was notified.`
-        : `${pageText}${skippedText ? ` ${skippedText.trim()}.` : ""} Nothing is published and nobody was notified.`,
+        : `${pageText}${skippedText ? ` ${skippedText.trim()}.` : ""} Nothing is published and nobody was notified.`) +
+        leaveText,
     );
   }
 
