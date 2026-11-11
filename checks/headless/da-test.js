@@ -2319,6 +2319,12 @@ async function run() {
     await waitFor("location.search === '?date=2026-10-19'");
     check("换天：链接跟着换成 2026-10-19", await waitFor(`${link}?.getAttribute('href') === '/driver/preview?date=2026-10-19'`, 10000));
     check("换天：Guide 链接也跟着换成 2026-10-19", await waitFor(`${glink}?.getAttribute('href') === '/guide/preview?date=2026-10-19'`, 10000));
+    // 置顶 115 P4（Annie「115全部同意推荐，动手」）：手机上两个预览链接挪到 ‹ 日期 › Today 下面单独一行。
+    await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+    await sleep(500);
+    check("115 P4 手机：Driver / Guide page preview 在日期下面同一行、各自看得见", await evaluate(`const d = ${link}.getBoundingClientRect(), g = ${glink}.getBoundingClientRect(), p = document.querySelector('header input[type=date], header [aria-label="Next day"]').getBoundingClientRect(); return d.height > 0 && g.height > 0 && Math.round(d.top) === Math.round(g.top) && d.top >= p.bottom - 1 && d.left < 40 && g.right <= 390;`), await evaluate(`const d = ${link}.getBoundingClientRect(), p = document.querySelector('header [aria-label="Next day"]').getBoundingClientRect(); return JSON.stringify({ link: [d.left, d.top], next: [p.left, p.bottom] });`));
+    await cdp("Emulation.clearDeviceMetricsOverride");
+    await sleep(300);
     await ctl({ superAdmin: false });
     await goto("about:blank");
     await sleep(300);
@@ -2384,8 +2390,40 @@ async function run() {
     await evaluate("document.querySelector('[aria-label=\"Buses & drivers\"] [data-phone-info]').click();");
     await sleep(200);
     check("手机：点 Step 2 的 i 出说明和 How to use", await evaluate("const s = document.querySelector('[aria-label=\"Buses & drivers\"]'); const d = [...s.querySelectorAll('details')].find(x => x.textContent.includes('How to use — Buses')); return [...s.querySelectorAll('div')].some(x => x.textContent.startsWith(\"CCL's schedule from Discord\") && x.getBoundingClientRect().height > 0) && !!d && d.getBoundingClientRect().height > 0;"));
+    await evaluate("document.querySelector('[aria-label=\"Buses & drivers\"] [data-phone-info]').click();");
+    await sleep(200);
+
+    // 置顶 115 P2（Annie「115全部同意推荐，动手」）：手机上「Last pull from Discord: …」那句收进 Step 2 的 ⋯，外面不占一行。
+    await waitFor("document.querySelector('[data-pull-msg]')?.textContent.startsWith('Last pull from Discord:')", 15000);
+    check("115 P2 手机：外面那句「Last pull from Discord」不显示", await evaluate("return document.querySelector('[data-pull-msg]').getBoundingClientRect().height === 0;"));
+    const s2more = "document.querySelector('[aria-label=\"More Step 2 actions\"]')";
+    await evaluate(`${s2more}.click();`);
+    await sleep(200);
+    check("115 P2 手机：点 Step 2 的 ⋯，里面有 Import history 和「Last pull from Discord: 10/04 02:13 PM.」", await evaluate(`const m = ${s2more}.parentElement.querySelector('[data-phone-more-menu]'); const l = m?.querySelector('[data-phone-last-pull]'); return !!l && l.getBoundingClientRect().height > 0 && l.textContent === 'Last pull from Discord: 10/04 02:13 PM.' && m.textContent.includes('Import history');`), await evaluate(`return ${s2more}.parentElement.textContent;`));
+    await evaluate(`${s2more}.click();`);
+    await sleep(200);
+    // 内容起点：Step 2 统计条（Summary）底边——这以上都是页头 / 工具区。
+    const assignTop = await evaluate("return Math.round(document.querySelector('[aria-label=\"Summary\"]').getBoundingClientRect().bottom + window.scrollY);");
+    check(`115 P2 手机：Assign 工具区到统计条底边 ${assignTop}px`, typeof assignTop === "number" && assignTop > 0, String(assignTop));
+
+    // 置顶 115 P4 B：手机上 Step 1 默认收成一行；没有提醒时收着，有提醒（卡上 Needs saving 等橙字）时自动展开。
+    const s1 = "document.querySelector('[aria-label=\"Guest lists\"]')";
+    check("115 P4 手机：没有提醒（10-05 团都没客人）⇒ Step 1 收着、Show ▸", await evaluate(`const b = ${s1}.querySelector('[data-step-fold]'); return b.getAttribute('aria-expanded') === 'false' && b.textContent === 'Show ▸' && ${s1}.lastElementChild.getBoundingClientRect().height === 0;`));
+    await goto(`${APP}/dispatch?date=2026-10-12`);
+    await waitFor("document.querySelector('[aria-label=\"Guest lists\"] [data-step-fold]') && document.querySelector('[aria-label=\"Guest lists\"]').textContent.includes('Needs saving')", 60000);
+    await sleep(300);
+    check("115 P4 手机：有提醒（10-12 West Rim「Needs saving」）⇒ Step 1 自动展开、Hide ▾、卡片看得见", await evaluate(`const b = ${s1}.querySelector('[data-step-fold]'); const w = [...${s1}.querySelectorAll('*')].find(e => e.children.length === 0 && e.textContent === 'Needs saving'); return b.getAttribute('aria-expanded') === 'true' && b.textContent === 'Hide ▾' && !!w && w.getBoundingClientRect().height > 0;`));
+    await evaluate(`${s1}.querySelector('[data-step-fold]').click();`);
+    await sleep(300);
+    check("115 P4 手机：有提醒时 staff 点 Hide ▾ 仍能收起，不会马上又弹开", await evaluate(`const b = ${s1}.querySelector('[data-step-fold]'); return b.getAttribute('aria-expanded') === 'false' && ${s1}.lastElementChild.getBoundingClientRect().height === 0;`));
+    await goto(`${APP}/dispatch?date=2026-10-05`);
+    await waitFor("document.querySelector('#dispatch-steps') && document.querySelector('[aria-label=\"Buses & drivers\"]')", 60000);
+    await waitFor("document.querySelector('[data-pull-msg]')?.textContent.startsWith('Last pull from Discord:')", 15000);
+    await sleep(300);
     await cdp("Emulation.clearDeviceMetricsOverride");
     await sleep(300);
+    check("115 P2 电脑：「Last pull from Discord」照旧露在 Pull from Discord 那一行，⋯ 里那份不出", await evaluate("const m = document.querySelector('[data-pull-msg]'); return m.getBoundingClientRect().height > 0 && [...document.querySelectorAll('[data-phone-last-pull]')].every(x => x.getBoundingClientRect().height === 0);"));
+    check("115 P4 电脑：Step 1 一直展开，没有 Show / Hide", await evaluate(`return ${s1}.querySelector('[data-step-fold]').getBoundingClientRect().width === 0 && ${s1}.lastElementChild.getBoundingClientRect().height > 0;`));
     check("电脑：黄字、步骤小字照旧显示，没有 i", await evaluate("return " + yellow + ".getBoundingClientRect().height > 0 && [...document.querySelectorAll('[data-phone-info]')].every(b => b.getBoundingClientRect().width === 0) && [...document.querySelectorAll('#dispatch-steps [role=tab]')].every(x => [...x.children].pop().getBoundingClientRect().height > 0);"));
     await goto("about:blank");
     await sleep(300);

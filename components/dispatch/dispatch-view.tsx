@@ -146,6 +146,8 @@ type Pending = { kind: "leave"; to: string } | { kind: "copy" } | null;
  * 那才需要自动保存一下」）。没有活动 = 这个页面没有键盘、鼠标、触摸操作；切到别的标签页也算没有活动，计时照走。
  */
 const AUTOSAVE_MS = 10 * 60 * 1000;
+/** Pull from Discord 后那句「Last pull from Discord: 时间.」的开头（置顶 115 P2 手机上认它收进 ⋯）。 */
+const LAST_PULL = "Last pull from Discord:";
 
 /** 算「有活动」的事件（键盘、鼠标、点击、滚动、触摸；Annie 2026-10-29「没有在本页面有任何动作……或者完全没动鼠标」）。 */
 const ACTIVITY_EVENTS = [
@@ -264,6 +266,8 @@ export function DispatchView() {
   const [banner, setBanner] = useState<Banner>("none");
   const [cclImportId, setCclImportId] = useState<number | null>(null);
   const [pullMsg, setPullMsg] = useState("");
+  // 打开页面后台拉一次、没出错时只写这一句（置顶 115 P2：手机上收进 ⋯）。
+  const pullMsgLastOnly = pullMsg.startsWith(LAST_PULL);
   const [pulling, setPulling] = useState(false);
   const [pending, setPending] = useState<Pending>(null);
   const [manifestVersion, setManifestVersion] = useState(0);
@@ -795,7 +799,7 @@ export function DispatchView() {
         return;
       }
       setPulling(false);
-      const last = res.last_ok ? `Last pull from Discord: ${res.last_ok}.` : "";
+      const last = res.last_ok ? `${LAST_PULL} ${res.last_ok}.` : "";
       if (quiet && res.status !== "failed") setPullMsg(last);
       else
         setPullMsg(`${res.message || "Pull failed."}${last ? ` ${last}` : ""}`);
@@ -2090,6 +2094,16 @@ export function DispatchView() {
                         Copy {fmtShort(day.copy_from)}
                       </button>
                     ) : null}
+                    {/* 置顶 115 P2（Annie「115全部同意推荐，动手」）：手机上只写「Last pull from Discord: …」那句时收进 ⋯；
+                        拉的结果 / 报错照旧露在外面。电脑上这份不出（外面那句照旧）。 */}
+                    {pullMsgLastOnly ? (
+                      <span
+                        data-phone-last-pull
+                        className="px-1 text-[11.5px] text-[#94a3b8] sm:hidden"
+                      >
+                        {pullMsg}
+                      </span>
+                    ) : null}
                     </PhoneMore>
                     {/* Save schedule 键去掉了（Annie 2026-10-15）：这里写自动保存的状态。 */}
                     <span
@@ -2119,7 +2133,11 @@ export function DispatchView() {
                     {pullMsg ? (
                       <span
                         role="status"
-                        className="text-[11.5px] text-[#94a3b8]"
+                        data-pull-msg
+                        className={cn(
+                          "text-[11.5px] text-[#94a3b8]",
+                          pullMsgLastOnly && "max-sm:hidden",
+                        )}
                       >
                         {pullMsg}
                       </span>

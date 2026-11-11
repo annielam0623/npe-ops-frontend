@@ -225,6 +225,18 @@ export function ManifestsPanel({
       (pendingByTour.get(p.manifest_id) ?? 0) + 1,
     );
 
+  // 置顶 115 P4 B：手机上 Step 1 默认收成一行；下面这些要处理的提醒有一条就自动展开——
+  // 同步失败 / 有单读不进来、Completed 之后的变化、读不出来的红字、卡上有橙字（Needs saving、要多开车、要排座…）。
+  // 没客人的团（No guests yet）不算提醒（只列要处理的事）。
+  const stepAlert =
+    (!!sync &&
+      (sync.error !== undefined ||
+        sync.result.tours.some((t) => t.skipped_orders.length > 0))) ||
+    !!pendingError ||
+    (!viewOnly && pending.length > 0) ||
+    state.kind === "error" ||
+    (state.kind === "ready" && state.cards.some((c) => !!warnState(c)));
+
   return (
     // 样子照旧页面 _tour_manifests_panel.html：How to use 在标题行右边（`.tm-howto`），
     // 上传后的一句话跟在说明后面（`.tm-msg`），卡片两列（`.tm-grid`）。
@@ -232,6 +244,7 @@ export function ManifestsPanel({
       n={1}
       title="Guest lists"
       phoneFold
+      phoneAlert={stepAlert}
       headExtra={
         // Annie 2026-10-17 夜：Dispatch 上拿掉手动 Sync Rezdy 键（打开 / 换天时照旧自动同步；Main Manifest 上的键不动）。
         viewOnly ? null : <HowToUse />

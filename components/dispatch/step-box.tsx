@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, type ReactNode } from "react";
+import { createContext, useContext, useEffect, type ReactNode } from "react";
 
 import { usePhoneCollapse, usePhoneInfo } from "@/components/ui/phone";
 import { cn } from "@/lib/utils";
@@ -27,6 +27,7 @@ export function StepBox({
   id,
   headExtra,
   phoneFold = false,
+  phoneAlert = false,
   children,
 }: {
   n: number;
@@ -37,10 +38,17 @@ export function StepBox({
   headExtra?: ReactNode;
   /** 置顶 115 题 8 A：手机上这一步默认收成一行（标题 + Show），点开才展开；电脑上一直展开。 */
   phoneFold?: boolean;
+  /** 置顶 115 P4 B（Annie「115全部同意推荐，动手」）：这一步里有要处理的提醒时，手机上自动展开（之后仍可手动收起）。 */
+  phoneAlert?: boolean;
   children: ReactNode;
 }) {
   const info = usePhoneInfo(`About ${title}`);
   const fold = usePhoneCollapse();
+  const setFoldOpen = fold.setOpen;
+  // 提醒从无到有时展开一次；staff 自己收起后，提醒不变就不再弹开。
+  useEffect(() => {
+    if (phoneFold && phoneAlert) setFoldOpen(true);
+  }, [phoneFold, phoneAlert, setFoldOpen]);
   const folded = phoneFold ? fold.hide : "";
   return (
     <section

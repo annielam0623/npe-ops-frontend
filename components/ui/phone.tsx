@@ -174,6 +174,7 @@ export function usePhoneCollapse() {
   const [open, setOpen] = useState(false);
   return {
     open,
+    setOpen,
     toggle: () => setOpen((v) => !v),
     /** 加在要收起的内容上 */
     hide: open ? "" : "max-sm:hidden",
