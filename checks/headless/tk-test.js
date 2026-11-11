@@ -265,7 +265,8 @@ async function run() {
   log = await since(before, (e) => e.method === "PUT");
   check("对话框 Mark as actioned（没勾）：PUT …/take-action?source=tickets&want=on，按钮跟着表格变", log.some((e) => e.path === "/api/bookings/11/take-action" && e.query === "?source=tickets&want=on"), JSON.stringify(log));
   before = (await mockLog()).length;
-  check("How to use 写了短信最多 300 字、只能普通字符、超了发 email（Annie 2026-10-15）", await evaluate("return document.body.textContent.includes('Click Take action when it is handled. SMS can be at most 300 characters, plain characters only (no emoji, curly quotes or long dashes); if it is longer, send it by email.');"));
+  check("How to use 写了短信最多 300 字、只能普通字符、超了发 email（Annie 2026-10-15）", await evaluate("return document.body.textContent.includes('If no reply is needed, click Take action. SMS can be at most 300 characters, plain characters only (no emoji, curly quotes or long dashes); if it is longer, send it by email.');"));
+  check("116 How to use：回复发出去就算处理过（原句，Annie「句子没问题」）", await evaluate("return document.body.textContent.includes('When your reply goes out to the guest (SMS or email sent), it counts as handled and the cell shows ✓ with your name. If no reply is needed, click Take action.');"));
   await evaluate(`$setValue(${dialog}.querySelector('textarea'), 'ZZ hello');`);
   await sleep(50);
   check("对话框字数提示 8 / 300 chars", (await evaluate(`return ${dialog}.querySelector('[data-sms-count]')?.textContent.trim();`)) === "8 / 300 chars",

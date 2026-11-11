@@ -354,6 +354,7 @@ async function run() {
   check("打开对话：按订单号读、不带 line（看这单所有线）", nr && nr.method === "GET" && nr.q.line === undefined, JSON.stringify(nr?.q));
   check("对话框写电话、短信 Undelivered 标红", await evaluate(`return ${dialog}.textContent.includes('+15550000000') && ${dialog}.textContent.includes('Undelivered');`));
   check("电话 AI 留言标签 Phone AI（后端 E188）", await evaluate(`return ${dialog}.textContent.includes('Phone AI') && ${dialog}.textContent.includes('Guest called: no confirmation yet');`));
+  check("116 How to use：回复发出去就算处理过（原句，Annie「句子没问题」）", await evaluate("return document.body.textContent.includes('When your reply goes out to the guest (SMS or email sent), it counts as handled and the cell shows ✓ with your name. If no reply is needed, click Take action. If a new message or a new date-change request comes in afterward');"));
   check("How to use 写了 Phone AI 留言（后端 E188）", await evaluate("return document.body.textContent.includes('A Phone AI message means a guest called');"));
   check("How to use 写了短信最多 300 字、只能普通字符、超了发 email（Annie 2026-10-15）", await evaluate("return document.body.textContent.includes('clicking it once does not clear later messages too. SMS can be at most 300 characters, plain characters only (no emoji, curly quotes or long dashes); if it is longer, send it by email.');"));
   await evaluate(`$setValue(${dialog}.querySelector('textarea'), 'See you at 7');`);

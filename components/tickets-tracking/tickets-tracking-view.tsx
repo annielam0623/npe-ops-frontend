@@ -732,7 +732,7 @@ export function TicketsTrackingView() {
               items={[
                 "Pick the service date. Click a tour button to see one product only. The search box finds an order #, name or phone.",
                 "To change a guest’s status, pick it in the Status column, then click ✓ next to it to save (✕ puts it back). Saved shows in green; if it can’t be saved, the reason shows in red at the top.",
-                "Click a Notes or WhatsApp cell to read the guest’s messages and reply. Click Take action when it is handled. SMS can be at most 300 characters, plain characters only (no emoji, curly quotes or long dashes); if it is longer, send it by email.",
+                "Click a Notes or WhatsApp cell to read the guest’s messages and reply. When your reply goes out to the guest (SMS or email sent), it counts as handled and the cell shows ✓ with your name. If no reply is needed, click Take action. SMS can be at most 300 characters, plain characters only (no emoji, curly quotes or long dashes); if it is longer, send it by email.",
                 "☰ Columns chooses what shows on the page. Untick a page column to hide it. Under From the uploaded file, tick any column of the manifest you uploaded to show it. Reset to default brings back the normal page. Your choice is saved to your account, so it follows you to another computer.",
                 "Drag a column header to move it. Drag its right edge to make it wider.",
                 "⬇ Download CSV saves everything for this date, whatever columns are showing: every column of the uploaded manifest, then the status columns. Older orders have no manifest columns, so those cells are blank.",
