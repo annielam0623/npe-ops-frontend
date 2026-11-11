@@ -317,8 +317,8 @@ function OrderBody({
         ) : (
           <TicketsCard items={o.items_detail} prices={seeMoney} />
         )}
-        {tripguru && !partner ? (
-          <InternalNoteCard detail={o.order_detail} />
+        {tripguru && !partner && tgInternalNote(o.order_detail) ? (
+          <InternalNoteCard note={tgInternalNote(o.order_detail) ?? ""} />
         ) : null}
         <Card title="Notes">
           <Rows
@@ -985,59 +985,108 @@ function TicketsCard({ items, prices }: { items: unknown; prices: boolean }) {
   );
 }
 
-/** TripGuru 快照里一项（键名照 TripGuru；后端 tripguru_intake.parse_order 读的就是这些）。 */
+/**
+ * TripGuru 快照里一项（键名照后端 docs/integrations/tripguru-webhook-handoff-2026-11-10.md 第 2 节样例，35 转）。
+ * bookingFields / participants 文档里只有 []、形状未知：先当通用键值列表显示（每个元素的键原样列出），空的不显示。
+ */
 type TripGuruItem = {
-  product?: { name?: string; code?: string };
+  product?: { id?: string; code?: string; name?: string };
   selection?: {
     serviceDate?: string;
-    option?: { name?: string };
-    units?: {
-      name?: string;
-      label?: string;
-      code?: string;
-      quantity?: number;
-    }[];
+    startsAt?: string;
+    endsAt?: string;
+    timezone?: string;
+    option?: { id?: string; code?: string; name?: string };
+    /** quantity 是单位数量，不一定是人数（Group 不能当 Adult），不加总成 pax。 */
+    units?: { unitId?: string; label?: string; quantity?: number }[];
   };
-  bookingFields?: { label?: string; name?: string; value?: unknown }[];
+  bookingFields?: unknown[];
+  participants?: unknown[];
 };
 
-/** G280：TripGuru 单的项目（产品、选项、日期、每种数量、booking fields）。没有单价（金额在 Price 卡）。 */
+/** 带时区的 ISO → 那个时区的钟点（例 7:30 AM）；读不懂就原样。 */
+function tgTime(iso: string | undefined, tz: string | undefined): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  try {
+    return new Intl.DateTimeFormat("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      ...(tz ? { timeZone: tz } : null),
+    }).format(d);
+  } catch {
+    return iso;
+  }
+}
+
+/** 形状未知的列表（bookingFields / participants）：每个元素的键原样列成一行，空的元素 / 空的值不出。 */
+function genericRows(
+  list: unknown[] | undefined,
+  prefix: string,
+): [string, unknown][] {
+  if (!Array.isArray(list)) return [];
+  return list.flatMap((el, i) => {
+    const head = list.length > 1 ? `${prefix} ${i + 1}` : prefix;
+    if (el && typeof el === "object" && !Array.isArray(el))
+      return Object.entries(el as Record<string, unknown>)
+        .filter(([, v]) => v !== null && v !== undefined && v !== "")
+        .map(
+          ([k, v]) =>
+            [
+              `${head} · ${k}`,
+              typeof v === "object" ? JSON.stringify(v) : v,
+            ] as [string, unknown],
+        );
+    return el === null || el === undefined || el === ""
+      ? []
+      : ([[head, typeof el === "object" ? JSON.stringify(el) : el]] as [
+          string,
+          unknown,
+        ][]);
+  });
+}
+
+/** G280：TripGuru 单的项目（产品、选项、日期、场次、每种数量、booking fields / participants）。没有单价（金额在 Price 卡）。 */
 function TripGuruItemsCard({ items }: { items: unknown }) {
   const list = Array.isArray(items) ? (items as TripGuruItem[]) : [];
   return (
     <Card title="Items">
       {list.length ? (
         <div data-tripguru-items>
-          {list.map((it, i) => (
-            <div key={i}>
-              <div className="px-1 pt-2 pb-0.5 text-[12px] font-semibold text-[#1a1a1a] night:text-white/55">
-                {it.product?.name ?? "—"}
+          {list.map((it, i) => {
+            const sel = it.selection ?? {};
+            const start = tgTime(sel.startsAt, sel.timezone);
+            const end = tgTime(sel.endsAt, sel.timezone);
+            return (
+              <div key={i}>
+                <div className="px-1 pt-2 pb-0.5 text-[12px] font-semibold text-[#1a1a1a] night:text-white/55">
+                  {it.product?.name ?? "—"}
+                </div>
+                <Rows
+                  rows={[
+                    ["Option", sel.option?.name],
+                    ["Date", sel.serviceDate],
+                    ...(start
+                      ? ([["Time", end ? `${start} – ${end}` : start]] as [
+                          string,
+                          unknown,
+                        ][])
+                      : []),
+                    ...(sel.units ?? []).map(
+                      (u) =>
+                        [u.label ?? "Quantity", u.quantity] as [
+                          string,
+                          unknown,
+                        ],
+                    ),
+                    ...genericRows(it.bookingFields, "Booking field"),
+                    ...genericRows(it.participants, "Participant"),
+                  ]}
+                />
               </div>
-              <Rows
-                rows={[
-                  ["Option", it.selection?.option?.name],
-                  ["Date", it.selection?.serviceDate],
-                  ...(it.selection?.units ?? []).map(
-                    (u) =>
-                      [
-                        u.name ?? u.label ?? u.code ?? "Quantity",
-                        u.quantity,
-                      ] as [string, unknown],
-                  ),
-                  ...(Array.isArray(it.bookingFields)
-                    ? it.bookingFields
-                    : []
-                  ).map(
-                    (f) =>
-                      [f.label ?? f.name ?? "Field", f.value] as [
-                        string,
-                        unknown,
-                      ],
-                  ),
-                ]}
-              />
-            </div>
-          ))}
+            );
+          })}
         </div>
       ) : (
         <div className={OD_LOADING_IN_CARD}>No item detail.</div>
@@ -1046,22 +1095,23 @@ function TripGuruItemsCard({ items }: { items: unknown }) {
   );
 }
 
-/** G280：TripGuru 的内部备注（order_detail.supplier.internalNote）。有 orders.view 就能看；只在员工后台，不进客人页面。 */
-function InternalNoteCard({ detail }: { detail: unknown }) {
+/** TripGuru 的内部备注（order_detail.supplier.internalNote，字符串或 null）。 */
+function tgInternalNote(detail: unknown): string | null {
   const note = (detail as { supplier?: { internalNote?: unknown } } | null)
     ?.supplier?.internalNote;
+  return typeof note === "string" && note.trim() ? note : null;
+}
+
+/** G280：TripGuru 的内部备注卡。有 orders.view 就能看；只在员工后台，不进客人页面；没有备注（null）就不出卡。 */
+function InternalNoteCard({ note }: { note: string }) {
   return (
     <Card title="Internal note (TripGuru)">
-      {typeof note === "string" && note.trim() ? (
-        <div
-          data-tripguru-internal-note
-          className="px-1 py-1.5 text-[12px] [overflow-wrap:anywhere] whitespace-pre-wrap text-[#1a1a1a] night:text-white/90"
-        >
-          {note}
-        </div>
-      ) : (
-        <div className={OD_LOADING_IN_CARD}>No internal note.</div>
-      )}
+      <div
+        data-tripguru-internal-note
+        className="px-1 py-1.5 text-[12px] [overflow-wrap:anywhere] whitespace-pre-wrap text-[#1a1a1a] night:text-white/90"
+      >
+        {note}
+      </div>
     </Card>
   );
 }

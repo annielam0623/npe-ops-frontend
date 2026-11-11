@@ -32,11 +32,15 @@ detail["NPE-ZZ1001"] = {
   product: { code: "GCW01", name: "Grand Canyon West Rim Bus Tour", type: "bus_tour", tour_date: "11/12/2026", tour_time: "", pickup_time: "—", pickup_location: "—", item_count: 1 },
   ops: { driver: "", vehicle_no: "", driver_phone: "", agent_name: "", confirmation_no: "", tt_number: "", lunch_turkey: 0, lunch_veggie: 0, lunch_beef: 0 },
   price: { total_amount: 258, currency: "USD", total_paid: 258, total_due: 0, overridden: false },
-  items_detail: [{ itemId: "it-1", product: { name: "Grand Canyon West Rim Bus Tour", code: "GCW01" }, selection: { kind: "dated", serviceDate: "2026-11-12", option: { name: "Standard" }, units: [{ name: "Adult", quantity: 2 }] }, bookingFields: [{ label: "Hotel", value: "ZZ Test Hotel" }, { label: "Dietary needs", value: "Vegetarian" }] }],
+  // 形状照后端 docs/integrations/tripguru-webhook-handoff-2026-11-10.md 第 2 节样例（35 转）：units {unitId, label, quantity}、startsAt / endsAt 带时区；
+  // bookingFields / participants 形状未知，这里放一个通用键值的例子（真单到了再换）。
+  items_detail: [{ itemId: "it-1", product: { id: "p-1", code: "GCW01", name: "Grand Canyon West Rim Bus Tour" }, selection: { kind: "timed", serviceDate: "2026-11-12", startsAt: "2026-11-12T07:30:00-08:00", endsAt: "2026-11-12T18:00:00-08:00", timezone: "America/Los_Angeles", option: { id: "o-1", code: "STD", name: "Standard" }, units: [{ unitId: "u-1", label: "Adult", quantity: 2 }] }, bookingFields: [{ key: "hotel", value: "ZZ Test Hotel" }], participants: [] }],
   order_detail: { orderNumber: "NPE-ZZ1001", status: "confirmed", resellerReference: "TG-ZZ-77", supplier: { internalNote: "ZZ Test internal note: guest asked for a window seat." }, notes: "Celebrating an anniversary" },
   special_requirements: "Celebrating an anniversary", notes: "", created_at: "11/10/2026", updated_at: "11/10/2026",
   activity_log: [], booking_notes: [],
 };
+// 没有内部备注（internalNote null）⇒ 详情不出 Internal note 卡。
+detail["NPE-ZZ1002"] = { ...detail["NPE-ZZ1001"], order_number: "NPE-ZZ1002", status: "pending", order_detail: { ...detail["NPE-ZZ1001"].order_detail, orderNumber: "NPE-ZZ1002", supplier: { internalNote: null } } };
 
 // Farm out（G40）：查单时两套上车资料；lead_with 由后端定（partner = 通知发出后到发车后 1 小时）。
 const FV = { partner_pickup: { hotel: "Bellagio South Tour Lobby", checkin_time: "06:40", depart_time: "06:50" }, notice_sent_at: null, notice_sent_by: null };
