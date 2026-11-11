@@ -37,6 +37,7 @@
 - G282 截图 Version 2（96）：同链接 JYESEohHrhaobBPowLcepW，图 3 / 4 红框 + Approve 灰（原来是半透明蓝，已改灰键 + 加检查，leave 64/64）；分支 task/leave-requests 9dd2da7e 已推没合。96 今天最终交接：等后端 21 上 main 核字段（含 blocked）+ Annie 看图 7 HR 勾同意 ⇒ 合最新 main 重跑 ⇒ 合 main。
   - 🟡 Annie 在 6b 又提（原话）：「如果键本身变小了的话，那它周围相关显示的文字也应该跟着变小」⇒ 6b preview https://claude.ai/artifact/W4D9EUjACD5RnWskXB8fxt ，task/114-smaller 19e10244（没合）。已放进置顶 114b。等「动手」。
   - ✅ **114 Annie（原话）：「1.A 2 动手」** ⇒ How to use 两句照 A；缩小 preview 动手。派 6b 把 relay-edit-always + bus-manifest-format + 114-smaller 做完合 main（改 rl / mf 套，跑全套）；16:55 前来不及就推分支明天合。
+- ✅ G282 HR 勾（截图图 7）Annie 在 96 窗口（原话）：「可以。动手」⇒ 前端合 main 只差后端 21 上 main（96 15:19 查后端 origin/main 还没有）。21 上了 96 核字段（blocked、HR duty 文案）后合；16:55 前没上就留 9dd2da7e 明天做。
 - Annie 新提：要做的三件 =「114，另外是staff schedule，还有导游页的重新设计」⇒ 导游页重新设计 PROGRESS 里没记录，4c 已问她哪个页面（A 手机 guide_home.html 后端 / B ops 里的导游页 / C 搬到 ops 重做）、想改成什么样、司机页要不要一起。
 - 🟡 **G282 preview（96）**：https://claude.ai/artifact/5PMGSaW5Rxz6AvcCkmAArG （模拟数据，没写代码）。4c 在本窗口问 Annie Q1–Q7（21 不重复问），另请她看：申请区 / 待批放 Staff Schedule 新 Leave 标签；Q5 B = 员工资料里设请假归属 team。答了转 21 + 96。
 - ✅ **118 后端上 main**（54 转）：内容 f8f0affc、合并 ebe3546d、关包 98de181c。形状 {type:max_days_on_shift, params:{shift_type 必填, n 0..7 必填, employee_ids / exclude_employee_ids 二选一可选}}，只按周，其他键 400。前端 components/schedule/rules.ts 已是同一形状（n 0..7），不用改。⇒ Annie 现在能存「Lizzie Close ≤ 1」。
