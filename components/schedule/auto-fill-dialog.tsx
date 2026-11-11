@@ -8,11 +8,12 @@ import {
 } from "@/components/ui/buttons";
 import { describeError } from "@/lib/api-errors";
 import { laToday, shiftYmd, weekStartYmd } from "@/lib/la-date";
-import { fetchScheduleWeek } from "@/lib/schedule-api";
+import { fetchScheduleWeek, setScheduleTimeOff } from "@/lib/schedule-api";
 import { bulkCreateSlots } from "@/lib/schedule-rules-api";
 import {
   generateWeek,
   seedFromBase,
+  type DayIndex,
   type DayShift,
   type Problem,
   type Rule,
@@ -22,9 +23,19 @@ import {
 } from "@/lib/schedule-engine";
 import { formatClock } from "@/lib/schedule-time";
 import { cn } from "@/lib/utils";
-import type { ScheduleEmployee, ScheduleSettings, ScheduleWeek } from "@/types";
+import type {
+  ScheduleEmployee,
+  ScheduleSettings,
+  ScheduleTimeOff,
+  ScheduleWeek,
+} from "@/types";
 
-import { DAY_LABELS, personDotColor, shiftCardClass } from "./config";
+import {
+  DAY_LABELS,
+  personDotColor,
+  shiftCardClass,
+  TIME_OFF_LABEL,
+} from "./config";
 import { type DescribeContext, describeRule } from "./rules";
 import { OffCard } from "./week-grid";
 
@@ -51,6 +62,8 @@ interface WeekInfo {
   copied: boolean;
   /** 已发布 / 或者要保留的班（Add to them 时当 locked）。 */
   plan: WeekPlan;
+  /** 置顶 117：这一周已经存好的休假（PTO / Sick / Personal）。 */
+  timeOff: ScheduleTimeOff[];
 }
 
 interface Proposal {
@@ -70,11 +83,19 @@ interface Proposal {
   changed?: Record<string, string>;
   /** 存的时候先删掉这一周原来的班（按基础周排：复制来的周）；没写 = 照弹窗的 Replace / Add。 */
   replace?: boolean;
+  /** 置顶 117：这一周的 Leave 格子（`<员工 id>|<星期几>` → 显示的字：PTO / Sick / Personal / Leave）。 */
+  leaveCells?: Record<string, string>;
 }
 
 type Step =
   | { kind: "setup" }
   | { kind: "loading"; text: string }
+  | {
+      kind: "leave";
+      weeks: WeekInfo[];
+      history: WeekPlan[];
+      base: WeekPlan | null;
+    }
   | { kind: "decide"; weeks: WeekInfo[]; history: WeekPlan[] }
   | { kind: "preview"; proposals: Proposal[]; seed: number }
   | { kind: "creating" }
@@ -151,6 +172,42 @@ export function AutoFillDialog({
   const [baseCount, setBaseCount] = useState(4);
   const [step, setStep] = useState<Step>({ kind: "setup" });
   const active = employees.filter((e) => e.is_active);
+  /**
+   * 置顶 117（Annie「让我选择autofill的时候可以先跳出一个窗口，点击哪些天是已经申请的Leave」）：这次新点的 Leave，
+   * 员工 id → 日期。先暂存在弹窗里，排班结果确认（Create draft）时才存进系统（PUT /api/schedule/time-off，记成 PTO）。
+   */
+  const [newLeave, setNewLeave] = useState<Record<number, string[]>>({});
+  const dayIn = (weekStart: string, date: string) =>
+    Math.round(
+      (Date.parse(`${date}T00:00:00Z`) - Date.parse(`${weekStart}T00:00:00Z`)) /
+        86_400_000,
+    );
+  /** 这一周哪些人哪几天休假（已存的 + 这次新点的），给引擎用。 */
+  const leaveFor = (w: WeekInfo): Record<number, DayIndex[]> => {
+    const out: Record<number, DayIndex[]> = {};
+    const add = (id: number, date: string) => {
+      const d = dayIn(w.weekStart, date);
+      if (d < 0 || d > 6) return;
+      (out[id] ??= []).push(d as DayIndex);
+    };
+    for (const t of w.timeOff) add(t.employee_id, t.date);
+    for (const [id, dates] of Object.entries(newLeave))
+      for (const date of dates) add(Number(id), date);
+    return out;
+  };
+  /** 预览里 Leave 那几格写什么（已存的照种类，新点的写 Leave）。 */
+  const leaveCellsFor = (w: WeekInfo): Record<string, string> => {
+    const out: Record<string, string> = {};
+    for (const t of w.timeOff)
+      out[`${t.employee_id}|${dayIn(w.weekStart, t.date)}`] =
+        TIME_OFF_LABEL[t.kind] ?? "Leave"; // 置顶 117：今晚一律 Leave（config 里三种都写 Leave）
+    for (const [id, dates] of Object.entries(newLeave))
+      for (const date of dates) {
+        const d = dayIn(w.weekStart, date);
+        if (d >= 0 && d <= 6) out[`${id}|${d}`] = "Leave";
+      }
+    return out;
+  };
   const busy = step.kind === "loading" || step.kind === "creating";
 
   useEffect(() => {
@@ -215,22 +272,33 @@ export function AutoFillDialog({
           existingSlots: w.slots.length,
           copied: !!w.copied_from,
           plan: planOf(w, active),
+          timeOff: w.time_off ?? [],
         });
       }
-      if (fill === "base") {
-        // 按基础周排：已有草稿的周只填空格（题 ③ A），不问 Replace / Add。
-        const base = planOf(await fetchScheduleWeek(baseWeek), active);
-        runBase(weeks, history, base, 1);
-        return;
-      }
-      const hasExisting = weeks.some(
-        (w) => !w.published && w.existingSlots > 0,
-      );
-      if (hasExisting) setStep({ kind: "decide", weeks, history });
-      else runEngine(weeks, history, "replace", 1);
+      // 置顶 117：先出 Leave 那一步（已存的休假先列出来、点日期标新的 Leave），再排。
+      const base =
+        fill === "base"
+          ? planOf(await fetchScheduleWeek(baseWeek), active)
+          : null;
+      setStep({ kind: "leave", weeks, history, base });
     } catch (error) {
       setStep({ kind: "error", message: describeError(error) });
     }
+  }
+
+  /** Leave 那一步按 Continue：照原来的流程往下走。 */
+  function afterLeave(s: Extract<Step, { kind: "leave" }>) {
+    if (s.base) {
+      // 按基础周排：已有草稿的周只填空格（题 ③ A），不问 Replace / Add。
+      runBase(s.weeks, s.history, s.base, 1);
+      return;
+    }
+    const hasExisting = s.weeks.some(
+      (w) => !w.published && w.existingSlots > 0,
+    );
+    if (hasExisting)
+      setStep({ kind: "decide", weeks: s.weeks, history: s.history });
+    else runEngine(s.weeks, s.history, "replace", 1);
   }
 
   function runEngine(
@@ -271,6 +339,7 @@ export function AutoFillDialog({
         },
         seed: seed * 101 + i,
         locked,
+        leave: leaveFor(w),
       });
       const create = result.shifts.filter((s) => {
         if (chosen === "replace") return true;
@@ -288,6 +357,7 @@ export function AutoFillDialog({
         plan: result.plan,
         create,
         problems: result.problems,
+        leaveCells: leaveCellsFor(w),
       });
       if (previous) hist.push(previous);
       previous = result.plan;
@@ -352,6 +422,7 @@ export function AutoFillDialog({
         previous,
         employees: emps,
         existing: keep,
+        leave: leaveFor(w),
       });
       const result = generateWeek({
         weekStart: w.weekStart,
@@ -365,6 +436,7 @@ export function AutoFillDialog({
         },
         seed: seed * 101 + i,
         locked: start,
+        leave: leaveFor(w),
       });
       const dayOf = (date: string) =>
         Math.round(
@@ -410,6 +482,7 @@ export function AutoFillDialog({
         problems,
         changed,
         replace: w.copied && w.existingSlots > 0,
+        leaveCells: leaveCellsFor(w),
       });
       if (previous) hist.push(previous);
       previous = plan;
@@ -419,6 +492,25 @@ export function AutoFillDialog({
 
   async function create(proposals: Proposal[]) {
     setStep({ kind: "creating" });
+    // 置顶 117：先存这次新点的 Leave（记成 PTO，一次最多 31 天）；存不上就停，什么班都不建。
+    try {
+      for (const [id, dates] of Object.entries(newLeave)) {
+        const sorted = [...dates].sort();
+        for (let i = 0; i < sorted.length; i += 31)
+          await setScheduleTimeOff({
+            employee_id: Number(id),
+            dates: sorted.slice(i, i + 31),
+            kind: "pto",
+            note: null,
+          });
+      }
+    } catch (error) {
+      setStep({
+        kind: "error",
+        message: `Could not save the leave: ${describeError(error)} Nothing was created.`,
+      });
+      return;
+    }
     let made = 0;
     let weeksMade = 0;
     // 当前这一周：放到页面上等整周 Save（B9 Q6），不直接建。
@@ -662,6 +754,25 @@ export function AutoFillDialog({
           <p className="text-[13px] text-white/80">{step.text}</p>
         ) : null}
 
+        {step.kind === "leave" ? (
+          <LeaveStep
+            weeks={step.weeks}
+            employees={active}
+            newLeave={newLeave}
+            onToggle={(id, date) =>
+              setNewLeave((cur) => {
+                const have = cur[id] ?? [];
+                const next = have.includes(date)
+                  ? have.filter((x) => x !== date)
+                  : [...have, date];
+                return { ...cur, [id]: next };
+              })
+            }
+            onBack={() => setStep({ kind: "setup" })}
+            onContinue={() => afterLeave(step)}
+          />
+        ) : null}
+
         {step.kind === "decide" ? (
           <>
             <div
@@ -772,6 +883,7 @@ export function AutoFillDialog({
           existingSlots: w.slots.length,
           copied: !!w.copied_from,
           plan: planOf(w, active),
+          timeOff: w.time_off ?? [],
         });
       }
       if (fill === "base") {
@@ -1010,6 +1122,7 @@ function PreviewBody({
               employees={employees}
               label={label}
               changed={p.changed}
+              leaveCells={p.leaveCells}
             />
           )}
           {!p.skipped && baseWeek && p.problems.length ? (
@@ -1056,12 +1169,15 @@ function PlanTable({
   employees,
   label,
   changed,
+  leaveCells,
 }: {
   plan: WeekPlan;
   employees: ScheduleEmployee[];
   label: (key: string) => string;
   /** 按基础周排：跟基础周不一样的格子（`<员工 id>|<星期几>` → 原因），琥珀框。 */
   changed?: Record<string, string>;
+  /** 置顶 117：Leave 的格子（`<员工 id>|<星期几>` → PTO / Sick / Personal / Leave）。 */
+  leaveCells?: Record<string, string>;
 }) {
   const dates = DAY_LABELS.map((_, i) => shiftYmd(plan.weekStart, i));
   return (
@@ -1087,6 +1203,7 @@ function PlanTable({
             days={plan.byEmployee[e.id] ?? []}
             label={label}
             changed={changed}
+            leaveCells={leaveCells}
           />
         ))}
       </div>
@@ -1099,11 +1216,13 @@ function PlanRow({
   days,
   label,
   changed,
+  leaveCells,
 }: {
   employee: ScheduleEmployee;
   days: DayShift[];
   label: (key: string) => string;
   changed?: Record<string, string>;
+  leaveCells?: Record<string, string>;
 }) {
   return (
     <>
@@ -1140,10 +1259,182 @@ function PlanRow({
                   {formatClock(s.start)} – {formatClock(s.end)}
                 </span>
               </div>
+            ) : leaveCells?.[`${employee.id}|${d}`] ? (
+              <LeaveCard label={leaveCells[`${employee.id}|${d}`]} />
             ) : (
               <OffCard />
             )}
           </div>
+        );
+      })}
+    </>
+  );
+}
+
+/** 置顶 117：Leave 那一格，同排班页休假卡的黄色（跟灰色的每周 Off 分开）。 */
+function LeaveCard({ label }: { label: string }) {
+  return (
+    <div
+      data-autofill-leave={label}
+      className="flex flex-1 flex-col justify-center gap-0.5 rounded-[6px] border border-[rgba(250,204,21,.5)] bg-[rgba(253,224,71,.28)] px-2 py-1 text-[#fde68a]"
+    >
+      <b className="text-[12.5px] leading-tight">{label}</b>
+    </div>
+  );
+}
+
+/**
+ * 置顶 117：Auto-fill 排之前的 Leave 一步。每人一行、要排的每一天一格：已存的休假照种类显示（不能在这里改，到排班页那格改）；
+ * 点空格标 Leave（再点取消）。只暂存，排班结果按 Create draft 时才存。
+ */
+function LeaveStep({
+  weeks,
+  employees,
+  newLeave,
+  onToggle,
+  onBack,
+  onContinue,
+}: {
+  weeks: WeekInfo[];
+  employees: ScheduleEmployee[];
+  newLeave: Record<number, string[]>;
+  onToggle: (employeeId: number, date: string) => void;
+  onBack: () => void;
+  onContinue: () => void;
+}) {
+  const live = weeks.filter((w) => !w.published);
+  const dates = live.flatMap((w) =>
+    DAY_LABELS.map((_, i) => shiftYmd(w.weekStart, i)),
+  );
+  const saved = new Map(
+    live.flatMap((w) =>
+      w.timeOff.map((t) => [`${t.employee_id}|${t.date}`, t] as const),
+    ),
+  );
+  const picked = Object.values(newLeave).reduce((n, d) => n + d.length, 0);
+  return (
+    <>
+      <p className="text-[13px] text-white/80">
+        Click the days each person has approved leave. Leave is on top of the
+        weekly days off: Auto-fill gives no shift on these days and still gives
+        the usual days off. Leave already on the schedule is shown and kept.
+      </p>
+      {live.length === 0 ? (
+        <p className="text-[13px] text-white/80">
+          All these weeks are published. Nothing will be filled.
+        </p>
+      ) : (
+        <div className="overflow-x-auto" data-autofill-leave-grid>
+          <div
+            className="grid w-max gap-[2px]"
+            style={{
+              gridTemplateColumns: `104px repeat(${dates.length}, 58px)`,
+            }}
+          >
+            <div className="sticky left-0 z-10 bg-[#0d1b2e] pb-1 pl-[22px] text-[11px] font-bold tracking-[.06em] text-white/90 uppercase">
+              Staff
+            </div>
+            {dates.map((d, i) => (
+              <div key={d} className="pb-1 text-center text-white/90">
+                <div className="text-[10.5px] font-bold tracking-[.05em] uppercase">
+                  {DAY_LABELS[i % 7]}
+                </div>
+                <div className="font-mono text-[10px] text-white/80">
+                  {d.slice(5).replace("-", "/")}
+                </div>
+              </div>
+            ))}
+            {employees.map((e) => (
+              <LeaveRow
+                key={e.id}
+                employee={e}
+                dates={dates}
+                saved={saved}
+                picked={newLeave[e.id] ?? []}
+                onToggle={onToggle}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+      <p className="text-[12px] text-white/70" data-autofill-leave-count>
+        {picked
+          ? `${picked} new leave day${picked === 1 ? "" : "s"}. They are saved when you create the draft.`
+          : "No new leave picked."}
+      </p>
+      <Footer>
+        <button
+          type="button"
+          onClick={onBack}
+          className={DARK_SECONDARY_BUTTON_CLASS}
+        >
+          Back
+        </button>
+        <button
+          type="button"
+          onClick={onContinue}
+          className={DARK_PRIMARY_BUTTON_CLASS}
+        >
+          Continue
+        </button>
+      </Footer>
+    </>
+  );
+}
+
+function LeaveRow({
+  employee,
+  dates,
+  saved,
+  picked,
+  onToggle,
+}: {
+  employee: ScheduleEmployee;
+  dates: string[];
+  saved: Map<string, ScheduleTimeOff>;
+  picked: string[];
+  onToggle: (employeeId: number, date: string) => void;
+}) {
+  return (
+    <>
+      {/* 名字一列横向滚动时固定在左边（4 周 28 天要左右滑）。 */}
+      <div className="sticky left-0 z-10 flex min-h-[40px] items-center gap-[7px] rounded-[6px] bg-[#0b1727] px-2 text-[14px] leading-tight font-bold text-white">
+        <span
+          className="h-2.5 w-2.5 shrink-0 rounded-full"
+          style={{ backgroundColor: personDotColor(employee.id) }}
+        />
+        <span className="min-w-0 break-words">{employee.name}</span>
+      </div>
+      {dates.map((date) => {
+        const t = saved.get(`${employee.id}|${date}`);
+        if (t)
+          return (
+            <div
+              key={date}
+              data-leave-saved={`${employee.id}|${date}`}
+              title="Already on the schedule"
+              className="flex min-h-[40px] items-center justify-center rounded-[6px] border border-[rgba(250,204,21,.5)] bg-[rgba(253,224,71,.28)] text-[11.5px] font-bold text-[#fde68a]"
+            >
+              {TIME_OFF_LABEL[t.kind] ?? "Leave"}
+            </div>
+          );
+        const on = picked.includes(date);
+        return (
+          <button
+            key={date}
+            type="button"
+            data-leave-cell={`${employee.id}|${date}`}
+            aria-pressed={on}
+            onClick={() => onToggle(employee.id, date)}
+            className={cn(
+              "flex min-h-[40px] cursor-pointer items-center justify-center rounded-[6px] border text-[11.5px] font-bold",
+              on
+                ? "border-[rgba(250,204,21,.5)] bg-[rgba(253,224,71,.28)] text-[#fde68a]"
+                : "border-white/10 bg-white/[.03] text-white/35 hover:bg-white/[.07]",
+            )}
+          >
+            {on ? "Leave" : "—"}
+          </button>
         );
       })}
     </>

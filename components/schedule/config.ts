@@ -64,11 +64,15 @@ export function shiftColorClass(key: string | null): string {
   return SHIFT_COLOR_CLASSES[shiftColorOf(key)];
 }
 
-/** 休假在格子里的名字（后端值 pto / sick / personal）。 */
+/**
+ * 休假在格子里的名字（后端值 pto / sick / personal）。
+ * 置顶 117（Annie 2026-11-10「今晚就先放Leave，明天我们回公司做假期申请的时候再分类」）：先一律显示 Leave，
+ * 新录的存成 pto（后端不传 kind 的默认值）；分类时改回 PTO / Sick / Personal。
+ */
 export const TIME_OFF_LABEL: Record<string, string> = {
-  pto: "PTO",
-  sick: "Sick",
-  personal: "Personal",
+  pto: "Leave",
+  sick: "Leave",
+  personal: "Leave",
 };
 
 export const DAY_LABELS = [

@@ -166,6 +166,16 @@ export interface GenerateInput {
   /** 这一周里已经排好、要原样保留的班（「Add to them」：在现有班的基础上补）；这些天不会再排别的班，也不会被改。 */
   locked?: WeekPlan | null;
   seed?: number;
+  /**
+   * 置顶 117：已经批了的 Leave（PTO / Sick / Personal，后端 time-off）：员工 id → 这一周哪几天（0 = 周日）。
+   * 这些天这个人什么班都不排（固定班、轮值、补排都跳过）；后端同一人同一天既有班又有休假会拒。
+   */
+  leave?: Record<number, DayIndex[]>;
+  /**
+   * Leave 跟 Days per week 的关系：Annie 2026-11-10 定「leave另外加」⇒ 默认 false = Leave 另外算（目标天数 − Leave 天数，
+   * 每周两天固定休息照给）；true = Leave 算进每周的休息天（目标天数最多 7 − Leave 天数）。
+   */
+  leaveCountsAsOff?: boolean;
 }
 
 export interface GenerateResult {
@@ -222,6 +232,9 @@ interface Compiled {
   coverage: CoverageParams[];
   excluded: Set<number>;
   maxPer: MaxPerShiftDayParams[];
+  /** 置顶 117：每人这一周 Leave 几天（generateWeek 填）。 */
+  leaveDays: Map<number, number>;
+  leaveCountsAsOff: boolean;
 }
 
 function compile(rules: Rule[]): Compiled {
@@ -246,6 +259,8 @@ function compile(rules: Rule[]): Compiled {
       ),
     ),
     maxPer: enabled<MaxPerShiftDayParams>(rules, "max_per_shift_day"),
+    leaveDays: new Map(),
+    leaveCountsAsOff: false,
   };
 }
 
@@ -439,6 +454,12 @@ function targetDays(c: Compiled, employeeId: number): number | null {
     if (r.employee_ids && !r.employee_ids.includes(employeeId)) continue;
     target = target == null ? r.n : Math.min(target, r.n);
   }
+  // 置顶 117：有 Leave 的人，目标天数照 Annie 选的算法扣。
+  const leave = c.leaveDays.get(employeeId) ?? 0;
+  if (target != null && leave > 0)
+    target = c.leaveCountsAsOff
+      ? Math.min(target, 7 - leave)
+      : Math.max(0, target - leave);
   return target;
 }
 
@@ -569,6 +590,16 @@ function countWeekendSlot(
 
 export function generateWeek(input: GenerateInput): GenerateResult {
   const c = compile(input.rules);
+  // 置顶 117：Leave 的天当作「这个人这天不能上任何班」，并记下天数给 Days per week 用。
+  c.leaveCountsAsOff = input.leaveCountsAsOff ?? false;
+  const onLeave = (id: number, d: number) =>
+    !!input.leave?.[id]?.includes(d as DayIndex);
+  for (const [id, ds] of Object.entries(input.leave ?? {})) {
+    const uniq = [...new Set(ds)];
+    if (!uniq.length) continue;
+    c.cannot.push({ employee_id: Number(id), days: uniq });
+    c.leaveDays.set(Number(id), uniq.length);
+  }
   const rand = mulberry32(input.seed ?? 1);
   const problems: Problem[] = [];
   const history = [
@@ -610,6 +641,8 @@ export function generateWeek(input: GenerateInput): GenerateResult {
     if (!byId.has(f.employee_id)) continue;
     for (const d of f.days) {
       if (days[f.employee_id][d]) continue;
+      // 置顶 117：固定班碰到 Leave 那天就不排（不算问题，结果里那格写 Leave）。
+      if (onLeave(f.employee_id, d)) continue;
       days[f.employee_id][d] = mk(f.shift_type, { start: f.start, end: f.end });
     }
   }
@@ -1041,8 +1074,16 @@ export function seedFromBase(input: {
   previous: WeekPlan | null;
   employees: EngineEmployee[];
   existing?: WeekPlan | null;
+  /** 置顶 117：已批的 Leave（同 GenerateInput.leave）：这些天不照抄基础周。 */
+  leave?: Record<number, DayIndex[]>;
+  leaveCountsAsOff?: boolean;
 }): { seed: WeekPlan; dropped: BaseDrop[] } {
   const c = compile(input.rules);
+  c.leaveCountsAsOff = input.leaveCountsAsOff ?? false;
+  for (const [id, ds] of Object.entries(input.leave ?? {}))
+    if (ds.length) c.leaveDays.set(Number(id), new Set(ds).size);
+  const onLeave = (id: number, d: number) =>
+    !!input.leave?.[id]?.includes(d as DayIndex);
   const dropped: BaseDrop[] = [];
   const rotating = (d: number, type: string) =>
     c.rotation.some((r) =>
@@ -1068,7 +1109,8 @@ export function seedFromBase(input: {
       const before: DayShift =
         d === 0 ? (input.previous?.byEmployee[e.id]?.[6] ?? null) : days[d - 1];
       let reason = "";
-      if (rotating(d, b.type)) reason = "Weekend rotation";
+      if (onLeave(e.id, d)) reason = "On leave";
+      else if (rotating(d, b.type)) reason = "Weekend rotation";
       else if (!canWork(c, e.id, day, b.type)) reason = "Cannot work";
       else if (fixed && fixed.shift_type !== b.type) reason = "Fixed shift";
       else if (!followOk(c, before, b)) reason = "Rest between shifts";
