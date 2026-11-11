@@ -423,6 +423,32 @@ export function overHours(
   return out.sort((a, b) => b.hours - a.hours);
 }
 
+/** 置顶 119：这个人这周照 Days per week 该上几天（有休假的扣掉，同 Auto-fill）；没有规则 = null。 */
+export function weeklyTargetDays(
+  rules: Rule[],
+  employeeId: number,
+  leaveDays = 0,
+): number | null {
+  const c = compile(rules);
+  if (leaveDays > 0) c.leaveDays.set(employeeId, leaveDays);
+  return targetDays(c, employeeId);
+}
+
+/** 置顶 119：这一天这种班 Coverage 要至少几个人（几条取大的）；没有 = 0。 */
+export function coverageMinOn(
+  rules: Rule[],
+  day: DayIndex,
+  type: string,
+): number {
+  let min = 0;
+  for (const r of compile(rules).coverage) {
+    if (r.shift_type !== type) continue;
+    if (r.days && r.days.length && !r.days.includes(day)) continue;
+    min = Math.max(min, r.min);
+  }
+  return min;
+}
+
 /** 小时数写法：42.5、42（不写多余的 .0）。 */
 export function roundHours(h: number): number {
   return Math.round(h * 100) / 100;
@@ -487,8 +513,14 @@ export function findViolations(
   plan: WeekPlan,
   previous: WeekPlan | null,
   employees: EngineEmployee[],
+  /** 置顶 119：这一周的休假（员工 id → 星期几）：Days per week 扣掉、固定班那天不算没排。 */
+  leave?: Record<number, DayIndex[]>,
 ): string[] {
   const c = compile(rules);
+  for (const [id, ds] of Object.entries(leave ?? {}))
+    if (ds.length) c.leaveDays.set(Number(id), new Set(ds).size);
+  const onLeave = (id: number, d: number) =>
+    !!leave?.[id]?.includes(d as DayIndex);
   const out: string[] = [];
   const name = (id: number) =>
     employees.find((e) => e.id === id)?.name ?? String(id);
@@ -515,9 +547,9 @@ export function findViolations(
     const rule = c.perWeek.find(
       (r) => !r.employee_ids || r.employee_ids.includes(e.id),
     );
-    if (rule && rule.mode === "exactly" && worked !== rule.n) {
+    if (rule && rule.mode === "exactly" && worked !== (t ?? rule.n)) {
       out.push(
-        `${name(e.id)} works ${worked} days, rule says exactly ${rule.n}`,
+        `${name(e.id)} works ${worked} days, rule says exactly ${t ?? rule.n}`,
       );
     }
     if (rule && rule.mode === "max" && t != null && worked > t) {
@@ -525,7 +557,9 @@ export function findViolations(
     }
   }
   for (const f of c.fixed) {
+    if (!employees.some((e) => e.id === f.employee_id)) continue;
     for (const d of f.days) {
+      if (onLeave(f.employee_id, d)) continue;
       const s = plan.byEmployee[f.employee_id]?.[d];
       if (!s || s.type !== f.shift_type) {
         out.push(

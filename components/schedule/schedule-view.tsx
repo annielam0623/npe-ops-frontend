@@ -78,6 +78,7 @@ import { PeriodView } from "./period-view";
 import { SharePeriodDialog } from "./share-period-dialog";
 import { EmployeesDialog } from "./employees-dialog";
 import { RulesView } from "./rules-view";
+import { OverviewView } from "./overview-view";
 import { CARD, CARD_HEADER, ICON_BTN, MUTED } from "./config";
 import { type PublishNotice, publishNotice } from "./publish-notice";
 import { DayTimeline } from "./day-timeline";
@@ -199,7 +200,9 @@ export function ScheduleView() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   // 规则（后端没上线 / 读不到 ⇒ null ⇒ 不显示 Rules 标签和 Auto-fill 键）。
   const [rules, setRules] = useState<Rule[] | null>(null);
-  const [tab, setTab] = useState<"schedule" | "period" | "rules">("schedule");
+  const [tab, setTab] = useState<"schedule" | "overview" | "period" | "rules">(
+    "schedule",
+  );
   // Period（Annie 2026-11-08）：开始那一周（周日）+ 周数，默认这周起 4 周。
   const [period, setPeriod] = useState(() => ({
     start: weekStartYmd(laToday()),
@@ -996,6 +999,8 @@ export function ScheduleView() {
   const periodVisible = pageVisibility.visible("schedule_period");
   const tabs = [
     "schedule" as const,
+    // 置顶 119（Annie「3个问题都同意A，动手」）：Overview 只看和分析，排在 Schedule 和 Rules 之间。
+    "overview" as const,
     ...(periodVisible ? (["period"] as const) : []),
     ...(rules !== null ? (["rules"] as const) : []),
   ];
@@ -1022,15 +1027,25 @@ export function ScheduleView() {
               >
                 {t === "schedule"
                   ? "Schedule"
-                  : t === "period"
-                    ? "Period"
-                    : "Rules"}
+                  : t === "overview"
+                    ? "Overview"
+                    : t === "period"
+                      ? "Period"
+                      : "Rules"}
               </button>
             ))}
           </div>
         ) : null}
 
-        {tab === "period" && periodVisible ? (
+        {tab === "overview" ? (
+          <OverviewView
+            initialStart={weekStart}
+            employees={orderedEmployees.filter((e) => e.is_active)}
+            shiftTypes={settings.shift_types}
+            rules={rules}
+            onUnauthorized={redirectToLogin}
+          />
+        ) : tab === "period" && periodVisible ? (
           <>
             {autoFillBanner ? (
               <div

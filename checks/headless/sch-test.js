@@ -1487,6 +1487,66 @@ async function run() {
     await ctl({ phase2: false });
   }
 
+  // ── 置顶 119（Annie「3个问题都同意A，动手」）：Overview 标签——只看和分析。默认 4 周、可切 1 周、‹ › 翻；
+  //    每人每周几天几小时（对不上红字）、每天每种班几个人（少于 Coverage / 多于 Max 红）；Analysis 照 Rules 逐条 ✓ / ✗；不写任何数据。
+  {
+    await ctl({ phase2: true });
+    check("119（准备）规则：照 fullRules（Veronica 周一到周五固定 Open、每人每周 5 天、Open / Close 每天至少 1 人、周末轮值）", await putRules(fullRules));
+    const OW = "2027-01-03";
+    const dOf = (i) => { const [y, m, d] = OW.split("-").map(Number); return new Date(Date.UTC(y, m - 1, d + i)).toISOString().slice(0, 10); };
+    const slots = [
+      ...[1, 2, 3, 4, 5].map((i) => ({ date: dOf(i), shift_type: "open", start_time: "02:00", end_time: "10:00", employee_id: 1 })),
+      ...[1, 2, 3, 4].map((i) => ({ date: dOf(i), shift_type: "close", start_time: "13:30", end_time: "21:30", employee_id: 2 })),
+    ];
+    await fetch(`${MOCK}/api/schedule/weeks/${OW}`);
+    const bk = await fetch(`${MOCK}/api/schedule/weeks/${OW}/slots/bulk`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ replace: true, slots }) });
+    const lvp = await fetch(`${MOCK}/api/schedule/time-off`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ employee_id: 3, dates: [dOf(2)], kind: "pto", note: null }) });
+    check("119（准备）1/3 那周：Veronica 周一到周五 Open、Lizzie 周一到周四 Close；Nadia 1/5 休假", bk.ok && lvp.ok, `${bk.status} ${lvp.status}`);
+    await openPage(`${APP}/schedule?week=${OW}`);
+    await waitFor("[...document.querySelectorAll('[role=tab]')].some((b) => b.textContent.trim() === 'Overview')", 30000);
+    check("119 标签：Schedule | Overview | … | Rules，Overview 在 Schedule 后面", await evaluate("const t = [...document.querySelectorAll('[role=tab]')].map(b => b.textContent.trim()); return t[0] === 'Schedule' && t[1] === 'Overview' && t.includes('Rules');"), await evaluate("return [...document.querySelectorAll('[role=tab]')].map(b => b.textContent.trim()).join('|');"));
+    const l0 = (await (await fetch(`${MOCK}/__log`)).json()).length;
+    await evaluate("[...document.querySelectorAll('[role=tab]')].find(b => b.textContent.trim() === 'Overview').click();");
+    await waitFor("document.querySelectorAll('[data-overview-week]').length === 4", 30000);
+    check("119 默认 4 周：4 个周块、标题 Jan 3 – Jan 30, 2027", await evaluate("return document.querySelectorAll('[data-overview-week]').length === 4 && document.querySelector('[data-overview-range]').textContent === 'Jan 3 – Jan 30, 2027' && document.querySelector('[data-overview-count=\"4\"]').getAttribute('aria-checked') === 'true';"), await evaluate("return document.querySelector('[data-overview-range]')?.textContent;"));
+    const wk = `document.querySelector('[data-overview-week="${OW}"]')`;
+    check("119 格子：Veronica 1/4 是 Open（排班页的班次色）、1/3 是 Off；Nadia 1/5 是 Leave", await evaluate(`const c = (k) => ${wk}.querySelector('[data-overview-cell="' + k + '"]'); return c('1|${dOf(1)}').textContent.includes('Open') && c('1|${dOf(1)}').textContent.includes('2:00') && !!c('1|${dOf(0)}').querySelector('[data-off]') && !!c('3|${dOf(2)}').querySelector('[data-overview-leave]');`));
+    check("119 每人每周：Veronica 5 d / 40 h 不红；Lizzie 4 d 红字「should be 5」；Nadia 休 1 天 ⇒ 该上 4 天", await evaluate(`const s = (id) => ${wk}.querySelector('[data-overview-week-sum="' + id + '"]'); return s(1).textContent.replace(/\\s+/g, ' ').trim().startsWith('5 d 40 h') && !s(1).dataset.wrong && s(2).dataset.wrong === 'true' && s(2).textContent.includes('should be 5') && s(3).textContent.includes('should be 4');`), await evaluate(`return [1,2,3].map(id => ${wk}.querySelector('[data-overview-week-sum="' + id + '"]').textContent).join(' | ');`));
+    check("119 每天人数：Open 周一到周五 1、周日 0 红（Coverage 至少 1）；Close 周五 0 红", await evaluate(`const n = (k) => ${wk}.querySelector('[data-overview-count="' + k + '"]'); return n('open|${dOf(1)}').textContent === '1' && !n('open|${dOf(1)}').dataset.bad && n('open|${dOf(0)}').textContent === '0' && n('open|${dOf(0)}').dataset.bad === 'true' && n('close|${dOf(5)}').dataset.bad === 'true';`));
+    const markOf = (type, col) => `[...document.querySelectorAll('[data-overview-rule="${type}"]')].map(tr => tr.children[${col} + 1].dataset.mark)`;
+    check("119 Analysis：Fixed shift ✓；Days per week ✗；Coverage ✗；Weekend rotation 写 —（不是能查对错的）", await evaluate(`return ${markOf("fixed_shift", 0)}[0] === 'ok' && ${markOf("days_per_week", 0)}[0] === 'no' && ${markOf("coverage", 0)}.every(m => m === 'no') && ${markOf("weekend_rotation", 0)}[0] === 'na';`), await evaluate(`return [...document.querySelectorAll('[data-overview-rule]')].map(tr => tr.dataset.overviewRule + ':' + tr.children[1].dataset.mark).join(' ');`));
+    check("119 Analysis：「Shifts that could not be filled」第一周列出 Sun Open、Sat Close…（红）", await evaluate("const c = document.querySelector('[data-overview-unfilled]').children[1]; return c.textContent.includes('Sun Open') && c.textContent.includes('Sat Close') && c.className.includes('red');"), await evaluate("return document.querySelector('[data-overview-unfilled]').children[1].textContent;"));
+    check("119 Analysis：✗ 的原因直接列出来（Week of 1/3 — …），不藏在悬停里", await evaluate("const d = document.querySelector('[data-overview-details]'); return !!d && d.textContent.includes('Week of 1/3') && d.textContent.includes('Lizzie');"));
+    check("119 每人合计：Veronica 5 天 40 小时、Open 5；Nadia Leave 1", await evaluate("const r = (id) => [...document.querySelector('[data-overview-total=\"' + id + '\"]').children].map(x => x.textContent.trim()); const v = r(1), n = r(3); return v[1] === '5' && v[2] === '40' && v.includes('5') && n[n.length - 1] === '1';"), await evaluate("return [1,3].map(id => document.querySelector('[data-overview-total=\"' + id + '\"]').textContent).join(' | ');"));
+    check("119 一目了然：Overview 里没有 ⋯ / i 收起的菜单", await evaluate("const o = document.querySelector('[data-schedule-overview]'); return !o.querySelector('[data-phone-more], [data-phone-info], details');"));
+    // 1 周 / ‹ ›
+    await evaluate("document.querySelector('[data-overview-count=\"1\"]').click();");
+    await waitFor("document.querySelectorAll('[data-overview-week]').length === 1", 15000);
+    check("119 切 1 周：只剩 1/3 那一周", await evaluate(`return document.querySelectorAll('[data-overview-week]').length === 1 && !!${wk} && document.querySelector('[data-overview-range]').textContent === 'Jan 3 – Jan 9, 2027';`));
+    await evaluate("document.querySelector('button[aria-label=\"Next weeks\"]').click();");
+    await waitFor("document.querySelector('[data-overview-range]')?.textContent === 'Jan 10 – Jan 16, 2027'", 15000);
+    check("119 › 往后一周：Jan 10 – Jan 16", await evaluate("return !!document.querySelector('[data-overview-week=\"2027-01-10\"]');"));
+    await evaluate("document.querySelector('button[aria-label=\"Previous weeks\"]').click();");
+    await waitFor("document.querySelector('[data-overview-range]')?.textContent === 'Jan 3 – Jan 9, 2027'", 15000);
+    await evaluate("document.querySelector('[data-overview-count=\"4\"]').click();");
+    await waitFor("document.querySelectorAll('[data-overview-week]').length === 4", 15000);
+    await evaluate("document.querySelector('button[aria-label=\"Next weeks\"]').click();");
+    check("119 4 周时 › 一次翻 4 周：Jan 31 – Feb 27", await waitFor("document.querySelector('[data-overview-range]')?.textContent === 'Jan 31 – Feb 27, 2027' && document.querySelectorAll('[data-overview-week]').length === 4", 15000));
+    const writes = (await (await fetch(`${MOCK}/__log`)).json()).slice(l0).filter((e) => e.method !== "GET" && e.path.startsWith("/api/schedule") && !e.path.endsWith("edit-lock"));
+    check("119 只读：开 Overview、切 1 / 4 周、‹ › 都没有写请求", writes.length === 0, JSON.stringify(writes.map((e) => e.method + " " + e.path)));
+    // 手机
+    await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+    await openPage(`${APP}/schedule?week=${OW}`);
+    await waitFor("[...document.querySelectorAll('[role=tab]')].some((b) => b.textContent.trim() === 'Overview')", 30000);
+    await evaluate("[...document.querySelectorAll('[role=tab]')].find(b => b.textContent.trim() === 'Overview').click();");
+    await waitFor("document.querySelectorAll('[data-overview-week]').length === 4", 30000);
+    await sleep(300);
+    check("119 手机：整页不左右晃；周表在自己框里左右滑；名字列固定（sticky）", await evaluate(`const box = ${wk}.querySelector('.overflow-x-auto'); const name = ${wk}.querySelector('tbody th'); return document.documentElement.scrollWidth <= 390 && box.scrollWidth > box.clientWidth && getComputedStyle(name).position === 'sticky';`), await evaluate("return document.documentElement.scrollWidth;"));
+    await cdp("Emulation.clearDeviceMetricsOverride");
+    await sleep(200);
+    await ctl({ phase2: false });
+  }
+
   // ── 按基础周排（Annie 2026-11-02「用上周的排班为基数，来自动排班，遵守定好的这些role，然后把整个月的班都排出来」；
   //    preview https://claude.ai/artifact/L3gCgqBPvDLBxAC2ToDVxp 照推荐）：默认基础周 = 上周、从下周起 4 周，存草稿、只填空格 ──
   {
