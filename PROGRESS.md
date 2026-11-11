@@ -1560,6 +1560,13 @@ D. 已完成、待从置顶移走：
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 🔴 生产慢（2026-11-11 00:45 前，Annie 转 staff 投诉）
+
+- Annie 原话：「Ricky投诉刚才登录花了5-6分钟才loading页面，然后loading message也非常慢」。
+- d8 只读测（00:45 后）：ops 页面 0.17–0.22s、ops 转发未登录 API 0.15–0.2s、confirm 0.13s，现在不慢；登录后的接口测不了。
+- 今晚上线：后端 G280 f4930195 + v163（约 23:00）、W3 ceba9aaa，可能还开了 G180 tracking-sync；前端推 main 多次（每次 Railway 重新部署）。
+- 已请后端 5c 只读查 Railway 日志 / 慢请求 / DB / 重启。问 Annie：Ricky 用的是 ops 还是 confirm、几点、哪一页的 message。等结果。
+
 ### 119. Staff Schedule 排班表做成 118 preview 的样子（一目了然 + 分析）（2026-11-11 凌晨，Annie 在 6b 窗口直接提；6b 出样稿）
 
 - Annie 原话：「我需要在staff schedule那里把排班做成你preview的那个样子，一目了然，还可以分析」。
