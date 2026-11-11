@@ -1,4 +1,5 @@
 import { apiFetch } from "@/lib/api-client";
+import type { OutcomeFields } from "@/lib/send-outcome";
 
 export interface BroadcastTemplate {
   /** 槽位号（t1..t8），staff 看不到。 */
@@ -97,6 +98,19 @@ export interface BroadcastSendResult {
   /** 收过一模一样消息、这次跳过的（G62）。 */
   skipped?: BroadcastAlreadySent[];
   checked_at?: string;
+  /** 置顶 109 W3（后端 ceba9aaa）：按客人的四个数 + 逐单结果。旧后端没有；没人可发时都是 0 / []。 */
+  sent?: number;
+  failed?: number;
+  no_contact?: number;
+  not_sent?: number;
+  results?: BroadcastOrderResult[];
+}
+
+/** 群发逐单结果（置顶 109 W3）：Tracking 群发和 Manifests 群发同一种。 */
+export interface BroadcastOrderResult extends OutcomeFields {
+  order_number: string;
+  sms_status: string | null;
+  email_status: string | null;
 }
 
 /**

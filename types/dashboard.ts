@@ -1,3 +1,5 @@
+import type { OutcomeFields } from "@/lib/send-outcome";
+
 /** Dashboard Messages 区的四个窗口：Today's Pickup / Tour / Tickets / Multi Orders（后者只在有卡片时出现）。 */
 export type MessageLane = "morning" | "tour" | "tickets" | "multi";
 
@@ -82,7 +84,8 @@ export interface UnhandledMessages {
 }
 
 /** POST /booking-notes/multi/reply 的回包。 */
-export interface MultiReplyResult {
+/** 置顶 109 W3（后端 ceba9aaa）起另带 outcome / sms_outcome / email_outcome；旧后端没有。 */
+export interface MultiReplyResult extends OutcomeFields {
   ok: boolean;
   channel: string;
   /** "sent" | "failed"；不是 "sent" 时卡片留着、文字也留着，staff 可以重试或改打电话。 */

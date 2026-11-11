@@ -752,6 +752,10 @@ async function run() {
   await evaluate(`$btn('Send', document.querySelector('${sel(MULTI_ONE)}')).click();`);
   check("发送失败：提示 Not sent，文字留着可以重试", await waitFor(`document.querySelector('${sel(MULTI_ONE)}').textContent.includes('Not sent. The message did not go out')`));
   check("发送失败：文本框里的字没被清掉", (await evaluate(`return document.querySelector('${sel(MULTI_ONE)} textarea').value;`)) === "FAILSEND please");
+  // 置顶 109 W3：回包带 outcome。没有可用短信渠道（not_sent / skipped）⇒ 写原因、叫 staff 打电话，不说「try again」。
+  await evaluate(`$setValue(document.querySelector('${sel(MULTI_ONE)} textarea'), 'W3SKIP please');`);
+  await evaluate(`$btn('Send', document.querySelector('${sel(MULTI_ONE)}')).click();`);
+  check("109 W3 Multi Orders 回复没渠道：「Not sent (no_channel). The message did not go out; call the guest.」，字留着", await waitFor(`document.querySelector('${sel(MULTI_ONE)}').textContent.includes('Not sent (no_channel). The message did not go out; call the guest.')`) && (await evaluate(`return document.querySelector('${sel(MULTI_ONE)} textarea').value;`)) === "W3SKIP please");
   await evaluate(`$btn('Cancel', document.querySelector('${sel(MULTI_ONE)}')).click();`);
 
   // Assign：不选单先报错，选中 MO02 后 Move。
@@ -1216,6 +1220,12 @@ async function run() {
     check("Send →：一次 POST，send_sms + send_email 都是 true；发完两行绿字 ✓ SMS sent to … / ✓ Email sent to …", (await waitFor("document.querySelectorAll('[data-send-result=ok]').length === 2")) && (await mockLog()).slice(from).some((e) => e.method === "POST" && e.path === "/booking-notes/by-order/A1001" && e.body?.send_sms === true && e.body?.send_email === true), await evaluate("return document.querySelector('[data-send-results]')?.textContent;"));
     await evaluate("$setValue(document.querySelector('[role=dialog] textarea'), 'NOCHANNEL FAILMAIL test'); $btn('Send →', document.querySelector('[role=dialog]')).click();");
     check("短信渠道判不出 / 邮件失败：红字「SMS not sent: no channel」和「✗ Email NOT delivered」", await waitFor("document.querySelector('[data-send-results]')?.textContent.includes('SMS not sent: no channel') && document.querySelector('[data-send-results]').textContent.includes('Email NOT delivered') && document.querySelectorAll('[data-send-result=bad]').length === 2"), await evaluate("return document.querySelector('[data-send-results]')?.textContent;"));
+    // 置顶 109 W3（后端 ceba9aaa）：回包带 sms_outcome / email_outcome ⇒ 照它写：没号码 / 没邮箱灰字、不算失败；
+    // 没有可用短信渠道（skipped）灰字带原因，不再红；邮件真失败照旧红。
+    await evaluate("$setValue(document.querySelector('[role=dialog] textarea'), 'W3 NOPHONE NOMAIL test'); $btn('Send →', document.querySelector('[role=dialog]')).click();");
+    check("109 W3 两边都没地址：两行灰字「SMS not sent — no phone on file」「Email not sent — no email on file」，没有红字", await waitFor("(() => { const t = document.querySelector('[data-send-results]')?.textContent ?? ''; return t.includes('SMS not sent — no phone on file') && t.includes('Email not sent — no email on file') && document.querySelectorAll('[data-send-result=muted]').length === 2 && !document.querySelector('[data-send-result=bad]'); })()"), await evaluate("return document.querySelector('[data-send-results]')?.textContent;"));
+    await evaluate("$setValue(document.querySelector('[role=dialog] textarea'), 'W3 NOCHANNEL FAILMAIL test'); $btn('Send →', document.querySelector('[role=dialog]')).click();");
+    check("109 W3 没有可用短信渠道 = 灰字「SMS not sent: no channel」；邮件失败照旧红「✗ Email NOT delivered」", await waitFor("(() => { const m = [...document.querySelectorAll('[data-send-result=muted]')].map(x => x.textContent); const b = [...document.querySelectorAll('[data-send-result=bad]')].map(x => x.textContent); return m.length === 1 && m[0] === 'SMS not sent: no channel' && b.length === 1 && b[0].startsWith('✗ Email NOT delivered'); })()"), await evaluate("return document.querySelector('[data-send-results]')?.textContent;"));
     await evaluate("document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));");
     await sleep(200);
     if (await evaluate("return !!document.querySelector('[role=dialog]');")) await evaluate("[...document.querySelectorAll('[role=dialog] button')].find((b) => /close|×/i.test(b.getAttribute('aria-label') || b.textContent))?.click();");

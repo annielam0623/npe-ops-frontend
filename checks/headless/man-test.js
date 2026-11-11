@@ -951,6 +951,28 @@ async function run() {
   await evaluate("$btn('Done', $dialog()).click();");
   await waitFor("!$dialog()");
 
+  // 置顶 109 W3（后端 ceba9aaa）：每条线带逐单 results ⇒ 同团确认弹窗的结果格（Sent 绿 / Failed 红 / No contact 灰）+ 名单表（Email、SMS）。
+  // CHD1001 短信号码错、没邮箱 ⇒ Failed；CHD1002 没号码、邮件发出 ⇒ Sent（SMS 格灰字 No number）。
+  {
+    await ctl({ w3: { CHD1001: "failed", CHD1002: "no_number" } });
+    await waitFor("$box('CHD1001')");
+    await evaluate("if (!document.querySelector('thead th input').checked) document.querySelector('thead th input').click();");
+    await evaluate("$btn('Send message', $bar()).click();");
+    await waitFor("$dialog()?.querySelector('textarea')");
+    await evaluate("$setValue($dialog().querySelector('textarea'), 'ZZ Test W3 broadcast');");
+    await evaluate("$btn('Review', $dialog()).click();");
+    await waitFor("$dialog()?.textContent.includes('Send this to 2 orders?')");
+    await evaluate("$btn('Yes, send now', $dialog()).click();");
+    await waitFor("$dialog()?.querySelector('[data-broadcast-outcomes]')");
+    const stats = await evaluate("return [...$dialog().querySelector('[data-broadcast-outcomes]').children].map(x => x.textContent.replace(/\\s+/g, ' ').trim());");
+    check("109 W3 Manifests 群发结果格：Sent 1 / Failed 1 / No contact 0 / Skipped 0 / Total 2", JSON.stringify(stats) === JSON.stringify(["1 Sent", "1 Failed", "0 No contact", "0 Skipped", "2 Total"].map((s) => s.replace(" ", ""))), JSON.stringify(stats));
+    check("109 W3 Manifests 群发：绿框「1 order sent. 1 failed, see below. Saved in Broadcasting Log.」，不再写 Bus Tour: SMS x sent", await evaluate("const t = $dialog().textContent; return t.includes('1 order sent. 1 failed, see below. Saved in Broadcasting Log.') && !t.includes('Bus Tour: SMS');"), await evaluate("return $dialog().textContent;"));
+    check("109 W3 Manifests 群发名单表：CHD1001 SMS 红 Failed: Invalid phone、Email 灰 No email；CHD1002 SMS 灰 No number、Email 绿 Sent", await evaluate("const a = $dialog().querySelector('tr[data-outcome=\"CHD1001\"]'), b = $dialog().querySelector('tr[data-outcome=\"CHD1002\"]'); const cells = (tr) => [...tr.children].slice(2).map(td => td.textContent.trim() + '|' + (td.querySelector('[class]')?.className ?? td.className)); const ca = cells(a), cb = cells(b); return a.dataset.guestOutcome === 'failed' && b.dataset.guestOutcome === 'sent' && ca[0].startsWith('No email|') && ca[0].includes('#6B6B6B') && ca[1].startsWith('Failed: Invalid phone|') && ca[1].includes('#A32D2D') && cb[0].startsWith('Sent|') && cb[0].includes('#3B6D11') && cb[1].startsWith('No number|') && cb[1].includes('#6B6B6B');"), await evaluate("return [...$dialog().querySelectorAll('tr[data-outcome]')].map(t => t.outerHTML).join('\\n');"));
+    await evaluate("$btn('Done', $dialog()).click();");
+    await waitFor("!$dialog()");
+    await ctl({ w3: null });
+  }
+
   // ── G62：同一团期已经收过一模一样的消息 ⇒ 默认跳过，勾 Send anyway 才再发（Tracking / Manifests 互认）──
   const openMessage = async (msg = "ZZ Test same message") => {
     await waitFor("$box('CHD1001')");

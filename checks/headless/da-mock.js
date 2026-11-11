@@ -655,6 +655,11 @@ http.createServer(async (req, res) => {
         return ctl.newOutcome ? outcomeMock.withOutcome(row, { sms: outcomeMock.channel(row.sms_status, row.sms_status != null), email: outcomeMock.channel(row.email_status, row.email_status != null) }) : row; });
       // 旧后端：两个渠道都没地址的也算 failed（置顶 109 之前的真后端行为）。
       const failed = results.filter((r) => /failed|skipped/.test(`${r.sms_status ?? ""} ${r.email_status ?? ""}`) && !/sent/.test(`${r.sms_status ?? ""} ${r.email_status ?? ""}`)).length;
+      // 置顶 109 W3（后端 ceba9aaa）：新后端按客人数——failed 不再含两个渠道都没地址的，另给 no_contact / not_sent。
+      if (ctl.newOutcome) {
+        const count = (k) => results.filter((r) => r.outcome === k).length;
+        return send(res, 200, { ok: true, total: results.length, sent: count("sent"), failed: count("failed"), no_contact: count("no_contact"), not_sent: count("not_sent"), skipped: 0, results, blocked: blockedList, skipped_sent: [], overridden_orders: results.map((r) => r.order_number).filter((n) => missingOf(n) && sa.has(n)) });
+      }
       return send(res, 200, { ok: true, total: results.length, sent: results.length - failed, failed, skipped: 0, results, blocked: blockedList, skipped_sent: [], overridden_orders: results.map((r) => r.order_number).filter((n) => missingOf(n) && sa.has(n)) });
     }
     return send(res, 404, { detail: "mock: not found" });
