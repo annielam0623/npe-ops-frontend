@@ -1678,10 +1678,11 @@ function VersionPicker({
       Version:
       <select
         data-version-select
+        data-phone-keep
         aria-label="Bus Manifest version"
         value={version}
         onChange={(e) => onChange(e.target.value as ManifestVersion)}
-        className="h-5 cursor-pointer rounded-md border-0 bg-transparent px-1 text-[11.5px] font-semibold text-white disabled:opacity-50 [&>option]:text-[#111]"
+        className="h-6 cursor-pointer rounded-md border-0 bg-transparent px-1 py-0 text-[11.5px] leading-none font-semibold text-white disabled:opacity-50 [&>option]:text-[#111]"
       >
         {VERSIONS.map((v) => (
           <option key={v.value} value={v.value}>

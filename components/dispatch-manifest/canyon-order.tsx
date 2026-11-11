@@ -57,9 +57,10 @@ export function CanyonOrderPicker({
         <button
           type="button"
           data-canyon-open
+          data-phone-keep
           aria-expanded={open}
           onClick={() => setOpen((v) => !v)}
-          className="inline-flex h-5 cursor-pointer items-center gap-1.5 rounded-md border-0 bg-transparent px-1 text-[11.5px] font-semibold text-white"
+          className="inline-flex h-6 cursor-pointer items-center gap-1.5 rounded-md border-0 bg-transparent px-1 text-[11.5px] font-semibold text-white"
         >
           {canyonSummary(pages)}
           <svg width="10" height="6" viewBox="0 0 10 6" aria-hidden="true">
