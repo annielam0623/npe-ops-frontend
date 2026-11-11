@@ -4,7 +4,43 @@
 
 > 6d 交接（下面「2026-10-27 交接：前端主窗口 6d」那节）的后端需求已于 10/27 晚由 ad 转给家里后端主窗口 17。
 
-> **下一个主窗口（11-10 晚家里）：先读下面「2026-11-10 收工交接：前端主窗口-62」，再看置顶 107 / 115 / 109。62 开工那节是今天的过程记录；78 及更早的是历史。**
+> **下一个主窗口（11-11 公司）：先读下面「2026-11-11 凌晨 收工交接：前端主窗口-d8」，再看置顶。62 及更早的是历史。**
+
+## 2026-11-11 凌晨 收工交接：前端主窗口 `前端主窗口-d8`（家里电脑；11-10 晚接 78 / 62；Annie「我要睡觉了，你记录下来，明天到公司给我看这个」）
+d8 只分工和汇报，没写功能代码。今晚前端工作窗口只有 `6b`（家里 worktree，分支都推了 origin）；后端主窗口 `后端主窗口-5c`（已收工）、后端 `npe-confirmation-service-35`（G280）。
+
+### ⏰ 明天开工第一件
+1. **给 Annie 看 118 设置清单**：https://claude.ai/artifact/21xNVYuzYmK85ezX6jaCrV （d8 核过，跟她说的规则一致）。正式设置由她自己点：Settings 加班次 Day 10–6（10:00–18:00）→ Rules 13 条照顺序填。最后一条 Lizzie Close ≤ 1 要等后端白名单，现在存会出红字（预期）。第三步用 Auto-fill 试排、核对，再 Save / Publish。已知限制：Jing 或 Lizzie 周六请假一定缺一个班；周日早晚班三个人大致平均，**不是严格轮流**（Annie 说过「三人轮流」⇒ 问她要不要严格轮流，要的话放进 120）。
+2. **发给当天后端主窗口**（5c 收工前没写进后端待办）：
+   - 118：schedule_rules.py 的 _RULE_SPECS 白名单加 max_days_on_shift，params {shift_type 必填, n int 必填, employee_ids? / exclude_employee_ids? 二选一（同 min_days_on_shift）}，只按周算，未知键拒，400 文案照现有格式，不迁移。上了告诉前端，Annie 就能存 Lizzie 那条。
+   - 116：5c 说 ①–⑤ 已写进后端 116 待办，请当天后端主窗口确认：CHDB1HQ7R 回复后 action_taken_by 为什么空；multi/reply 要记处理人（后端补上后，前端再上 Dashboard Messages 那句 How to use）。
+3. 119 Overview、120 样稿看 6b 最后的回报（见下）。
+
+### 一、今晚上 main（等 Annie 线上验收）
+| 件 | 前端 | 后端 | 验收看 |
+|---|---|---|---|
+| 115 第二批 + P2 + P4 B | 73fef27f + f621c849（6b） | — | 手机 Dispatch › Assign ⋯ 里有 Last pull from Discord；Step 1 有提醒（含 N tours with no guests yet）自动展开；Tour Tracking / Manifests 照截图 PCUBMtMDeK782hpZxjXs3C |
+| 109 W3 发送结果 | 4b6cc43f（6b） | ceba9aaa | Tracking Broadcast 一行 Sent / Failed / No contact；没号码灰字「Saved. No number on file…」不出黄框；Manifests Send message 结果格 + 名单表 |
+| 117 Auto-fill 前先填 Leave | cac45397（6b） | 不用改 | Auto-fill → Next 4 weeks → Preview → Leave 表 → Create draft → 页面 Save；今晚只有一种 Leave（存 pto），明天分类 |
+| 116 How to use 三句 | 3d873326（6b） | — | Tour / Tickets / Morning Tracking 的 How to use 新句 |
+| G280 Order List Source / TripGuru 详情 | 9b0d0e4f（6b） | f4930195 + v163 | Source 原位写 Rezdy、表头 Status；TripGuru 单等 Annie 建第一张 TEST 单（35 通知后核 bookingFields / participants） |
+| 118 Rules：Maximum days on a shift + 排不下提示 | 60877745（功能 73d7bc57，6b） | 白名单明天 | Add rule 有 Maximum days on a shift，Who 默认 Only；存会出后端 400 红字（预期）；排不下的提示写真正满的班 |
+| d8 误提交 CRLF 已修 | fd872009 误改 15 个文件行尾 ⇒ d597ac5e 恢复（内容没变） | — | — |
+
+### 二、在分支 / 在做
+- **119 Overview**：task/schedule-overview 86b39c27（Annie「3个问题都同意A，动手」），d8 已叫 6b 合 main，看 6b 回报的 SHA。
+- **120 Rules 简化 + 选的时候就提示冲突**：6b 在做样稿（只 preview），看 6b 回报。
+- **114 Relay list 编辑区照参考图**：task/relay-edit-always 970e0e17，preview 6FE1yuBB5sCbB8HR89zUW2。Annie：「我说的是relay list全部按A」（Q1 每张单上方各一张卡、Q2 Bus Manifest 一起改）+ 颜色只借排版。**还没说「动手」**。
+- **F2 Manifests 发送条 + 勾选列 + How to use**：task/manifests-float-bar 42c9b9d7，preview J8P3tHm8TwgUxt3r6mzwKJ。等 Annie 答 G1–G3、H1 +「动手」。
+- 116 前端检查：task/reply-auto-action（已随 3d873326 上了），Dashboard 句等后端 multi/reply。
+
+### 三、等 Annie（原文都在置顶 / 已发过，不滚动重问）
+- 114 一句「动手」；F2 的 G1–G3、H1；没有可用短信渠道时（no_channel）显示灰还是红（推荐 A 两处都红）；118 要不要严格三人轮流；之前的 107（挡整页弹窗 N1–N3）、Auto Send Recent runs、110 页头那句、109 How to use 两句等，同 62 交接。
+- Annie 自己要做的：照 118 清单设线上 Rules；建第一张 TripGuru TEST 单。
+
+### 四、结案 / 更正
+- Ricky 登录慢：Annie「算了，她在中国，应该是vpn的原因」⇒ 结案。顺带查清：ops 的 Railway Watch Paths 已是 `**` / `!**/*.md` / `!docs/**`，文档推送都 skip（Annie 确认），推 PROGRESS 不会部署。不要加 railway.json（config-as-code 旧文件只保证到 2026-12-01）。
+- 教训：PROGRESS 只用 `git -c core.autocrlf=false add PROGRESS.md` + 普通 commit，**不要 `commit -am`**；推前 `git show --stat HEAD`。
 
 ## 2026-11-10 收工交接：前端主窗口 `npe-ops-frontend-62`[53f9cb]（公司电脑；Annie「收工，回家继续」）
 ### 一、今天上 main（都等 Annie 线上验收，验收点已在对话里逐件转她）
