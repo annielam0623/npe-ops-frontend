@@ -1560,6 +1560,12 @@ D. 已完成、待从置顶移走：
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 116. 回复了客人就自动算处理过（Take action）（2026-11-10 晚，Annie 附 Tour Tracking 截图提；d8 记，没派）
+
+- Annie 原话：「有个前端交互，staff在留言框里已经回复了客人，take action就应该自动处于处理过的状态了，可是现在没有」。截图：Tour Tracking CHDB1HQ7R（Annie Test），Phone AI 留言后 Nadia 回「Hello MS. Annie」（SMS sent, Email sent），Notes 格仍是 ⚠️ Take action，底部仍是「✓ Mark as actioned」。
+- d8 只读查：现在的设计就是回复和处理分开，要另点 Take action / Mark as actioned（conversation-modal.tsx、conversation-preview.tsx；How to use 原句「When a message is handled, click ✓ Mark as actioned…」）。所以这是改规则，不是 bug。
+- 问 Annie：R1 怎样算回复（A 真发给客人、任一渠道 Sent 才算（推荐）/ B 写内部备注 Save note 也算）；R2 范围（A 所有有留言框的地方一起：Tour / Morning / Tickets Tracking、Dashboard 消息、订单查询，旧 confirm 页面也跟着，由后端在发送那一步记处理人（推荐）/ B 只 ops 前端）；R3 显示（A 照现有样子 ✓ 回复人名字，客人再来新留言照旧变回 ⚠️ Take action（推荐））。样子用现有的，d8 建议不出 preview。等答 +「动手」。
+
 ### 115. 手机版键再缩小 + 页头 / 工具区省地方（2026-11-09 晚，78 派 03）—— ✅ 已答 + 动手，见「11-10 62 开工」
 
 - ✅ **Annie 11-10（原话）：「114，115，107全选A。动手」**：8 题全 A（26px、全站、蓝提交键同缩、行内小键同档、↑↓ 30px、顶栏一起缩、多行大块不动、超 1/3 屏三页并一行 / 收 ⋯ / 收 i，**动手前每页先给改后截图**）。
