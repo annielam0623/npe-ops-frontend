@@ -2406,9 +2406,13 @@ async function run() {
     const assignTop = await evaluate("return Math.round(document.querySelector('[aria-label=\"Summary\"]').getBoundingClientRect().bottom + window.scrollY);");
     check(`115 P2 手机：Assign 工具区到统计条底边 ${assignTop}px`, typeof assignTop === "number" && assignTop > 0, String(assignTop));
 
-    // 置顶 115 P4 B：手机上 Step 1 默认收成一行；没有提醒时收着，有提醒（卡上 Needs saving 等橙字）时自动展开。
+    // 置顶 115 P4 B：手机上 Step 1 默认收成一行；没有提醒时收着，有提醒（没客人的团「N tours with no guests yet」、卡上 Needs saving 等橙字）时自动展开。
     const s1 = "document.querySelector('[aria-label=\"Guest lists\"]')";
-    check("115 P4 手机：没有提醒（10-05 团都没客人）⇒ Step 1 收着、Show ▸", await evaluate(`const b = ${s1}.querySelector('[data-step-fold]'); return b.getAttribute('aria-expanded') === 'false' && b.textContent === 'Show ▸' && ${s1}.lastElementChild.getBoundingClientRect().height === 0;`));
+    check("115 P4 手机：有没客人的团（10-05「2 tours with no guests yet」）⇒ Step 1 自动展开、那一行看得见", await evaluate(`const b = ${s1}.querySelector('[data-step-fold]'); const t = [...${s1}.querySelectorAll('button')].find(x => x.textContent.includes('with no guests yet')); return b.getAttribute('aria-expanded') === 'true' && b.textContent === 'Hide ▾' && !!t && t.getBoundingClientRect().height > 0;`), await evaluate(`return ${s1}.textContent;`));
+    await goto(`${APP}/dispatch?date=2026-10-18`);
+    await waitFor("document.querySelector('[aria-label=\"Guest lists\"] [data-step-fold]') && document.querySelector('[aria-label=\"Guest lists\"]').textContent.includes('West Rim')", 60000);
+    await sleep(500);
+    check("115 P4 手机：没有提醒（10-18 West Rim 车够、都排了座）⇒ Step 1 收着、Show ▸", await evaluate(`const b = ${s1}.querySelector('[data-step-fold]'); return b.getAttribute('aria-expanded') === 'false' && b.textContent === 'Show ▸' && ${s1}.lastElementChild.getBoundingClientRect().height === 0;`), await evaluate(`return ${s1}.textContent;`));
     await goto(`${APP}/dispatch?date=2026-10-12`);
     await waitFor("document.querySelector('[aria-label=\"Guest lists\"] [data-step-fold]') && document.querySelector('[aria-label=\"Guest lists\"]').textContent.includes('Needs saving')", 60000);
     await sleep(300);

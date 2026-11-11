@@ -227,7 +227,7 @@ export function ManifestsPanel({
 
   // 置顶 115 P4 B：手机上 Step 1 默认收成一行；下面这些要处理的提醒有一条就自动展开——
   // 同步失败 / 有单读不进来、Completed 之后的变化、读不出来的红字、卡上有橙字（Needs saving、要多开车、要排座…）。
-  // 没客人的团（No guests yet）不算提醒（只列要处理的事）。
+  // 没客人的团（「N tours with no guests yet」，即还没传名单的团）也算——问 Annie 的 P4 原文拿它当例子（d8 11-10 核）。
   const stepAlert =
     (!!sync &&
       (sync.error !== undefined ||
@@ -235,7 +235,8 @@ export function ManifestsPanel({
     !!pendingError ||
     (!viewOnly && pending.length > 0) ||
     state.kind === "error" ||
-    (state.kind === "ready" && state.cards.some((c) => !!warnState(c)));
+    (state.kind === "ready" &&
+      state.cards.some((c) => !c.uploaded || !!warnState(c)));
 
   return (
     // 样子照旧页面 _tour_manifests_panel.html：How to use 在标题行右边（`.tm-howto`），
