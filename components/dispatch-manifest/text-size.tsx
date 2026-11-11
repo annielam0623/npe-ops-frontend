@@ -267,7 +267,7 @@ function Group({
   );
 }
 
-/** 手机编辑卡的一组（置顶 114 第 4 版，照参考图）：浅底小卡片，上面「图标 + 小标题」，下面键。 */
+/** 手机编辑卡的一组（置顶 114 第 4 版，照参考图的排版；颜色用线上已有的：白底 + #e2e5e9 边，同电脑版组间竖线）：上面「图标 + 小标题」，下面键。 */
 function PhoneGroup({
   icon,
   title,
@@ -287,7 +287,7 @@ function PhoneGroup({
       {...(level !== undefined
         ? { "data-relay-spacing": "", "data-level": level }
         : null)}
-      className="flex min-w-0 flex-col items-start gap-1.5 rounded-[9px] border border-[#e2e5e9] bg-[#f7f7f5] px-2 py-1.5"
+      className="flex min-w-0 flex-col items-start gap-1.5 rounded-[9px] border border-[#e2e5e9] bg-white px-2 py-1.5"
     >
       <span className="inline-flex items-center gap-1.5 font-bold text-[#333]">
         <LineIcon name={icon} />
