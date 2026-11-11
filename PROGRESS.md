@@ -33,6 +33,7 @@
 - ⏰ Annie「今天下午到5点下班」（只限 11-11，54 转）⇒ 前端照后端顺延：16:45 收尾、16:55 前推完、17:00 起不改文件；已通知 6b、96。
 - ✅ G282 Q7 改 B（Annie 在 21 窗口选择题点选「改成 B (Recommended)」，说明原文「有班的那几天先不让批。批复人看到红色提示，先去 Schedule 把这天的班换给别人，再回来点 Approve。现有规则不动。」；没选「批准时自动把班空出来」）：有班的天不让批，先去 Schedule 把班挪走再批 ⇒ 96 把 SHIFT_BLOCKS_APPROVE 改 true、重跑 leave 套。
 - G282 后端排期（21）：代码 + 测试约 14:30–15:00 写完 ⇒ 四个审查 ⇒ Annie 执行 v164 + 跑 release.py ⇒ 最早 15:30 上 main；SQL 先给 Annie 看。
+- G282 前端 Q7 B 已推 task/leave-requests d0502533（96，没合）：SHIFT_BLOCKS_APPROVE=true，按后端 blocked（没带就看有没有班）⇒ 红框「X has a shift on … Move the shift on the Schedule tab before approving.」+ Approve 灰，Reject 能按；How to use 同句；lib/leave-api.ts 加 blocked?。leave 63/63、sch 514、users 80、nav 39、tp 204。截图图 3 / 4 重截成红框。
 - Annie 新提：要做的三件 =「114，另外是staff schedule，还有导游页的重新设计」⇒ 导游页重新设计 PROGRESS 里没记录，4c 已问她哪个页面（A 手机 guide_home.html 后端 / B ops 里的导游页 / C 搬到 ops 重做）、想改成什么样、司机页要不要一起。
 - 🟡 **G282 preview（96）**：https://claude.ai/artifact/5PMGSaW5Rxz6AvcCkmAArG （模拟数据，没写代码）。4c 在本窗口问 Annie Q1–Q7（21 不重复问），另请她看：申请区 / 待批放 Staff Schedule 新 Leave 标签；Q5 B = 员工资料里设请假归属 team。答了转 21 + 96。
 - ✅ **118 后端上 main**（54 转）：内容 f8f0affc、合并 ebe3546d、关包 98de181c。形状 {type:max_days_on_shift, params:{shift_type 必填, n 0..7 必填, employee_ids / exclude_employee_ids 二选一可选}}，只按周，其他键 400。前端 components/schedule/rules.ts 已是同一形状（n 0..7），不用改。⇒ Annie 现在能存「Lizzie Close ≤ 1」。
