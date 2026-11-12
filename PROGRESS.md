@@ -1695,6 +1695,15 @@ D. 已完成、待从置顶移走：
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### G297. 团确认酒店空着：Notice 红色 + Order 页发送键（11-12，6b preview https://claude.ai/artifact/P2hYRXJkFeurqiHzkaMspF ，分支 task/g297-pickup-block 866922be）
+
+- 题 1 Notice 样子：A 红字标签「Pickup location missing」+ 左红边 + Open order → + Got it（推荐）；B 整卡红底；C 去掉 Got it。
+- 题 2 Order 页键位置：A 订单号那行右边、Refresh from Rezdy 左边（推荐）；B Product 卡 Location 行旁。
+- 题 3 点了要不要确认：A 点一下就发（推荐，照 A 原话）；B 先弹确认框。
+- 题 4 渠道：A 固定 SMS + Email（推荐）；B 加 Both / SMS Only / Email Only。
+- How to use 新句："Send tour confirmation (next to the order number): sends this order's tour confirmation by SMS and email, for the tour date of this order. Use it after you add a missing pickup location in Rezdy and click Refresh from Rezdy. Once it is sent, the Pickup location missing notice goes away for everyone. If it is not sent, the reason shows in red." 无日期小字："No tour date for this order, so it cannot be sent from here."
+- 入口核：Tour send Tour / Last Minute 已改；Manifests 弹窗不改（新后端回 skipped 后照显示）；ops Tracking 无重发；Order 页新键。等后端新文档 + Annie「动手」才合。
+
 ### 114d. Relay list ⚙ 设置弹窗说明还提「Aa Text size」（11-12，6b 发现，没改）
 
 - 哪里：Relay list › ⚙ 设置弹窗说明（relay-settings-dialog.tsx:219）。
