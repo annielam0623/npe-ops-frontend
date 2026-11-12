@@ -1699,6 +1699,15 @@ D. 已完成、待从置顶移走：
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 128. Content Studio › Guest Page 整页就地编辑（11-12，96 可点样稿 https://claude.ai/artifact/PnkpnXHaJbzrYTrUcfMYvX ）
+
+- 样子：整页照 guest.py GUEST_CSS / _render() 画；可改字虚线框（蓝 All tours / 绿 This tour only）+ ✎；改过淡黄底，红字「Not saved yet · N changes」，蓝 Save 一次存，绿「Saved」，Discard；换团 / 离开拦；平时看不到的块也画出标「Shown after …」；接客四步 ↑↓ 调顺序。
+- Q1 范围：A 先做 Tour Confirmation（推荐）/ B 连 Tickets、Shuttle（Tickets 要另写示例，Shuttle 还没真客人页）。
+- Q2 邮件：A 先只做客人页、邮件下一步（推荐）/ B 同时做（量翻倍）。
+- Q3 编辑方式：A 小编辑框 + Apply（推荐，不弄坏加粗换行）/ B 页面上直接打字。
+- Q4 旧表单：A 留「List view」切换（推荐）/ B 不留。
+- 需要后端（Annie 定了再转 54）：GET / POST /api/content-studio/guest-preview（POST 用草稿画不写库），回包 {html, keys[], sample}，sandbox iframe 无脚本；data-tmpl-key / -kind=lines / -attr / -empty / -step / -state 标记；示例数据补电话、团期 +7 天、8:00 AM、notes。保存走现有接口。MTLV 块后端关着没画。
+
 ### G297. 团确认酒店空着：Notice 红色 + Order 页发送键（11-12，6b preview https://claude.ai/artifact/P2hYRXJkFeurqiHzkaMspF ，分支 task/g297-pickup-block 866922be）
 
 - 题 1 Notice 样子：A 红字标签「Pickup location missing」+ 左红边 + Open order → + Got it（推荐）；B 整卡红底；C 去掉 Got it。
