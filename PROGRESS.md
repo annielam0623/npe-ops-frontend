@@ -4,7 +4,31 @@
 
 > 6d 交接（下面「2026-10-27 交接：前端主窗口 6d」那节）的后端需求已于 10/27 晚由 ad 转给家里后端主窗口 17。
 
-> **下一个主窗口（11-11 公司）：先读下面「2026-11-11 凌晨 收工交接：前端主窗口-d8」，再看置顶。62 及更早的是历史。**
+> **下一个主窗口：先读下面「2026-11-11 收工交接：前端主窗口 4c」，再看置顶。d8 及更早的是历史。**
+
+## 2026-11-11 收工交接：前端主窗口 `npe-ops-frontend-4c`[fb4c29]（公司电脑；Annie「今天下午到5点下班」）
+4c 只分工和汇报，没写功能代码。今天工作窗口：`6b`[ab5dcf]、`96`[1c75f6]（公司电脑，进程都已关）；后端主窗口 `npe-confirmation-service-54`（主窗口交接-54），后端 21（G282）、9e、fe。细节见下面 4c 开工节逐条。
+
+### 今天上 main（等 Annie 线上验收）
+| 件 | 前端 | 后端 | 验收 |
+|---|---|---|---|
+| 114 Relay list + Bus Manifest 编辑区（含缩小、How to use A） | 0498720c（6b） | — | 见 4c 回复 9 条验收点 |
+| 116 Dashboard Messages How to use | c7cf4e6b（6b） | G283 08d01d7a | Messages How to use 末句；回复发出去自动离开列表 |
+| 7 Days Forecast 往前翻细行不变 | 22df90a6（96） | 不用改 | ‹ 往前一天，Saved 列 Total 和细行都是存档数；Today 回实时 |
+| 118 Maximum days on a shift | 已在 main | ebe3546d（54） | Lizzie Close ≤ 1 能存 |
+| 113 Bus Manifest Columns | — | — | ✅ Annie「113已通过验证」 |
+
+### 在分支 / 等后端
+- **G282 员工请假批复**：前端 task/leave-requests 1017e206（96，检查全过）。Annie 已「同意全部推荐。动手」+ Q7 B + HR 勾「可以。动手」。只差后端 21 上 main（Annie 执行 v164 + release.py）⇒ 21 发 SHA ⇒ 96（或明天的工作窗口）合最新 main 重跑 leave / sch / tp / users / nav ⇒ 合 main。
+- **114c Bus Manifest How to use 三句**：Annie 选「A」，还没说「动手」（6b 问了）。动手后约 10 分钟。
+
+### 等 Annie（第一次问已写全，不滚动重问）
+- 120 Rules 简化 Q1 / Q2 + 周日严格轮流；121 Cannot work 多选 A / B / C（并确认 V 的例子是哪几个班）；123 同类规则合并（建议跟 120 / 121 一起做）。
+- 122 HR 名字后缀「Joe - Tour Guide」不发出去：Annie「今天必须查完」，后端 fe 在查（54 转），**结果明天第一件给 Annie**；4c 已问加后缀的目的（建议 Nickname 不带后缀、按 Position 标 Tour Guide）。
+- 午餐：Annie 自己在 Manifest setup 给 PTSELP 勾 Includes lunch；认 PGT0WX、Antelope Canyon X (Groupon)、Bryce & Zion (Groupon) 是否带餐。
+- Manifests 发送条 F2 的 G1–G3、H1 +「动手」（今天又问了一次，原文在 4c 回复）。
+- 107、109、115 等旧题同 d8 / 62 交接。⏰ G180 回填本周还要提（今天已提一次，没回）。
+- Staff Schedule 30 多秒 loading（21 报）：4c 测 ops 前端正常（/schedule 0.10s），PROGRESS 推送不部署（Watch Paths 排除 *.md）；怀疑后端在落 G282 重启 / schedule 接口慢，已请 21 查，明天看结论。
 
 ## 2026-11-11 前端主窗口 `npe-ops-frontend-4c`[fb4c29] 开工（公司电脑；只分工和汇报，不写代码）
 - 接 62 [726949] 交接（62 已退下）；以 d8 节「⏰ 明天开工第一件」为准。62 补充：113 要 Annie 自己在 Bus Manifest 把 Antelope 的 Lunch 勾掉按 Save（没确认做了没有）；114 先合后看已如实告诉 Annie；107 N1–N3、115 P1–P4、109 整句红框 A/B 仍等 Annie（不滚动重问）；⏰ G180 回填本周要提。
@@ -45,6 +69,7 @@
   - ✅ 114c Bus Manifest How to use 三句（① Colours 条末、② Settings › Text 说明、③ Columns 条，原文见 6b 消息 / 4c 回复）Annie 在 6b（原话）：「A」⇒ 三句照改；选项不算动手，6b 已问是否现在动手。置顶 114c 已移走。
 - 🐞 **Main manifest 认成没午餐**（Annie 原话 + Rezdy 截图）：「这个产品在main manifest里被识别成没有午餐了」——产品「Grand Canyon South Rim From Las Vegas with Helicopter Upgrade & Lunch (Gray Line) (Grayline South + Heli)」Nov 12。判断在后端 tour_manifest.has_lunch()（票型 No Lunch ⇒ 不带；票型有 lunch 或 Manifest setup 勾 Includes lunch ⇒ 带；否则看产品名）。已转 54 只读查原因（票型 / 名单产品名是不是短名 / 有没有勾）。
   - ✅ 原因（后端 9e 只读查）：逻辑没坏。PTSELP 在 Rezdy 原名「Grand Canyon South Rim From Las Vegas with Helicopter Upgrade (Gray Line)」没有 Lunch，LA 11-11 16:40 才改成「… & Lunch (Gray Line)」；Manifest setup 从没勾过 Includes lunch。11-12 只有 CHD2MA0XC，名单两行（旧名 missing 不带餐 / 新名带餐）。修法：Annie 在 Manifest setup 给 PTSELP 勾 Includes lunch；前端不用改。另要 Annie 认：PGT0WX（South Rim Helicopter Upgrade，非 Gray Line）、Antelope Canyon X (Groupon)、Bryce & Zion (Groupon) 名字没写 Lunch，是否带餐。
+- 🟡 **123 Rules 同类合并**（Annie 原话 + 截图 Coverage Open / Mid / Close 三条、Max people on a shift 三条）：「像这种就应该合并在一张页面上」⇒ 跟 120（Shifts 卡：每个班至少 / 至多几人一张表）和 121（Cannot work 多选）是同一方向；4c 建议三件并成一次改，问 Annie。等答 + preview +「动手」。
 - Annie 新提：要做的三件 =「114，另外是staff schedule，还有导游页的重新设计」⇒ 导游页重新设计 PROGRESS 里没记录，4c 已问她哪个页面（A 手机 guide_home.html 后端 / B ops 里的导游页 / C 搬到 ops 重做）、想改成什么样、司机页要不要一起。
 - 🟡 **G282 preview（96）**：https://claude.ai/artifact/5PMGSaW5Rxz6AvcCkmAArG （模拟数据，没写代码）。4c 在本窗口问 Annie Q1–Q7（21 不重复问），另请她看：申请区 / 待批放 Staff Schedule 新 Leave 标签；Q5 B = 员工资料里设请假归属 team。答了转 21 + 96。
 - ✅ **118 后端上 main**（54 转）：内容 f8f0affc、合并 ebe3546d、关包 98de181c。形状 {type:max_days_on_shift, params:{shift_type 必填, n 0..7 必填, employee_ids / exclude_employee_ids 二选一可选}}，只按周，其他键 400。前端 components/schedule/rules.ts 已是同一形状（n 0..7），不用改。⇒ Annie 现在能存「Lizzie Close ≤ 1」。
