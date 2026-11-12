@@ -1692,6 +1692,13 @@ D. 已完成、待从置顶移走：
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 126. Working Record 工作卡按角色上底色（11-12，96 preview https://claude.ai/artifact/WvtaXS5Kt8WMSDJvcLZ6ce ）
+
+- Q1 底色深浅：A 中间档 #dbeafe / #ede9fe / #ccfbf1（推荐）；B 浅档 #eff6ff / #f5f3ff / #f0fdfa（可能仍不明显）；C 深档 #bfdbfe / #ddd6fe / #99f6e4（最醒目，满周颜色重）。
+- Q2 live 卡也上底色？A 也上（推荐，live 靠橙色虚线框 + live 标）；B live 保持白底。
+- 顺带（只 night）：深底上角色字改同色系浅色 #93c5fd / #c4b5fd / #5eead4。
+- 等 Annie 选 + 「动手」，96 做。
+
 ### 114d. Relay list ⚙ 设置弹窗说明还提「Aa Text size」（11-12，6b 发现，没改）
 
 - 哪里：Relay list › ⚙ 设置弹窗说明（relay-settings-dialog.tsx:219）。
