@@ -1706,6 +1706,7 @@ D. 已完成、待从置顶移走：
 - Q2 邮件：A 先只做客人页、邮件下一步（推荐）/ B 同时做（量翻倍）。
 - Q3 编辑方式：A 小编辑框 + Apply（推荐，不弄坏加粗换行）/ B 页面上直接打字。
   - Annie（原话）：「Q3，我还是要每个团一个单独的页」——意思不清，4c 已问：A 每团单独一页改、共用字仍共用（即现样稿，Q3 仍待选）/ B 每团所有字完全独立、取消 All tours 共用（后端要把 27 条 global 复制到每团）。
+  - Annie（原话）：「哦，是我误会了。ok，在共用的那段，可以这样提醒，只是这个团单独的信息就不用提醒了」⇒ Q3 A 小编辑框；共用字编辑框照样提醒（改了所有团都变），只管这个团的字不提醒。96 更新样稿。非动手。
 - Q4 旧表单：A 留「List view」切换（推荐）/ B 不留。
 - 需要后端（Annie 定了再转 54）：GET / POST /api/content-studio/guest-preview（POST 用草稿画不写库），回包 {html, keys[], sample}，sandbox iframe 无脚本；data-tmpl-key / -kind=lines / -attr / -empty / -step / -state 标记；示例数据补电话、团期 +7 天、8:00 AM、notes。保存走现有接口。MTLV 块后端关着没画。
 
