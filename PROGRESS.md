@@ -21,6 +21,7 @@
   - G297 Order 页键 A 原文（54 给 Annie，无 preview）：「A（推荐）：Order 页上加一个「Send tour confirmation」键，staff 点一下就发，发成功 Notice 自动消。人看过酒店对了再发，不会把一封没检查过的信自动发给客人。」⇒ 键在 /orders/[orderNumber] 靠 Refresh from Rezdy，位置前端定。Notice 红色样子 + 键位置 6b 出 preview 给 Annie，看过再合。Tour send 页照旧页工作区版：预览标红 + 黄框，Send 不禁用，结果标 Skipped。
 2e. **126 Working Record 工作卡按角色上底色（11-12，Annie 在后端 9e 提）**：原话「在working record里，能把他们工作的格子背景变成蓝绿紫，就是现在用来区分他们工作的颜色么，现在太不明显了」。现状 components/hr/working-record.tsx DayJobs（:697 起）卡片 bg-white（:719），颜色只在角色字 ROLE_TEXT（:674-678 driver #1d4ed8 / guide #7c3aed / both #0f766e）。要：卡背景 Driver 浅蓝、Guide 浅紫、Driver & Guide 浅青绿（约 #dbeafe / #ede9fe / #ccfbf1），night 用同色系深底；字色、标签、live 虚线框、📷 照旧；Export / 接口不动。样子调整 ⇒ 先 preview，派 96 做 preview（不写真代码、不合 main），Annie 定了 + 「动手」再做。
   - ✅ 126 Annie（原话）「全部选A，动手」（preview WvtaXS5Kt8WMSDJvcLZ6ce：Q1 A 中间档、Q2 A live 也上底色、night 角色字浅色）⇒ 派 96 做、合 main。
+  - ✅ **126 上 main 10ce8548（96，task/wr-role-colors）**：tsc OK、eslint 0 error、build OK、hr 132/132（新 3 项）、nav 39/39，端口已关。验收：HR › Working Record 周表三种底色、live 卡有底色 + 橙虚线框、?theme=night 深底浅字。
 3. **125** Tour Tracking 没发过的单字也灰：派工作窗口出 preview（A 底和字都灰 / B 只字灰）。
 4. **Working Record 截止日**前端（后端已上，接口说明 docs/interfaces/working-record-cutoff-2026-11-11.md）：出 preview 还是直接做，先核 PROGRESS 里 Annie 有没有对它说过「动手」。
 5. ~~114c~~ ✅ 11-12 已上 main a50218cc（6b）；120 / 121 / 123 Rules 合并问 Annie 是否三件一起做。
