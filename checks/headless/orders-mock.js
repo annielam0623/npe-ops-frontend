@@ -159,11 +159,11 @@ http.createServer(async (req, res) => {
     entry.body = body;
     if (ctl.sendDelay) await new Promise((r) => setTimeout(r, ctl.sendDelay));
     const kind = ctl.sendTour || "sent";
-    if (kind === "400") return send(res, 400, { detail: "This order is cancelled in Order List, so no tour confirmation was sent." });
+    if (kind === "400") return send(res, 400, { detail: `Order ${body.order_number} is not on the Main manifest for ${body.date}. Nothing was sent.` });
     const d = detail[body.order_number] || {};
     const name = d.guest?.name || "ZZ Test Guest";
     const g = { tour_type: "grand_canyon_west", batch_id: 701, total: 1, sent: 0, results: [], skipped: [], blocked: [] };
-    if (kind === "nohotel") g.skipped.push({ order_number: body.order_number, name, reason: "no_pickup_location", message: "Pickup location is empty in Rezdy" });
+    if (kind === "nohotel") g.skipped.push({ order: body.order_number, order_number: body.order_number, name, reason: "no_pickup_location", message: "Pickup location is empty in Rezdy" });
     else if (kind === "failed") g.results.push({ order: body.order_number, name, email_status: "failed: SendGrid 550 mailbox unavailable", sms_status: "failed: Twilio 21211 invalid number" });
     else { g.sent = 1; g.results.push({ order: body.order_number, name, email_status: "sent", sms_status: "sent" }); }
     return send(res, 200, { checked_at: "2026-11-12T10:00:00-08:00", sent: g.sent, groups: [g] });

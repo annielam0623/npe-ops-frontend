@@ -237,6 +237,11 @@ function sendRows(keys, sentMap, body) {
   for (const k of keys) {
     const r = byKey(k);
     const name = r.v.guest_name;
+    // G297 第二版（后端 fc0049ce）：ctl.noHotel 里的单酒店空着 ⇒ 留下（skipped no_pickup_location），其余照发。
+    if ((ctl.noHotel ?? []).includes(r.order_number)) {
+      skipped.push({ order: r.order_number, order_number: r.order_number, name, reason: "no_pickup_location", message: "Pickup location is empty in Rezdy" });
+      continue;
+    }
     // 同后端：勾了 Send anyway 的单，只有最近一次发送不晚于 preview_at 才再发（看名单之后又有人发过 ⇒ 照样跳过）。
     const again = anyway.has(r.order_number) && body.preview_at && Date.parse(sentMap.get(k)) <= Date.parse(body.preview_at);
     if (sentMap.has(k) && !again) {

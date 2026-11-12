@@ -1322,12 +1322,30 @@ function AnywayPicker({
             <tr
               key={`${order}-${s.reason ?? ""}`}
               data-skipped={order}
-              className={cn(TR, "bg-[#fff8e1]")}
+              // G297（同 Tour send 页）：酒店空着被后端留下的标红。
+              data-no-hotel={s.reason === "no_pickup_location" || undefined}
+              className={cn(
+                TR,
+                s.reason === "no_pickup_location"
+                  ? "bg-[#fdecec]"
+                  : "bg-[#fff8e1]",
+              )}
             >
               <td className={TD}>{order}</td>
               <td className={TD}>{s.name}</td>
               <td className={TD}>
-                <span className={DUP_BADGE}>{s.message}</span>
+                <span
+                  className={
+                    s.reason === "no_pickup_location"
+                      ? DUP_BADGE.replace(
+                          "bg-[#FAEEDA]",
+                          "bg-[#fdecec]",
+                        ).replace("text-[#BA7517]", "text-[#A32D2D]")
+                      : DUP_BADGE
+                  }
+                >
+                  {s.message}
+                </span>
               </td>
               <td className={TD}>
                 {canPick ? (

@@ -493,7 +493,7 @@ async function g297() {
   await ctl({ sendTour: "400" });
   await evaluate("document.querySelector('[data-order-send-tour]').click();");
   await waitFor("document.querySelector('[data-order-send-error]')", 8000);
-  check("G297 被拒（400）：红字后端原话", await evaluate("return document.querySelector('[data-order-send-error]').textContent === 'This order is cancelled in Order List, so no tour confirmation was sent.';"));
+  check("G297 被拒（400）：红字后端原话", await evaluate("return document.querySelector('[data-order-send-error]').textContent === 'Order CHDZZ8J8VYD is not on the Main manifest for 2026-11-13. Nothing was sent.';"));
   await ctl({ sendTour: "sent", sendDelay: 1500 });
   await evaluate("document.querySelector('[data-order-send-tour]').click();");
   await sleep(200);

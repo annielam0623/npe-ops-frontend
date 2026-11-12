@@ -846,6 +846,20 @@ async function run() {
   await evaluate("$btn('Done', $dialog()).click();");
   await waitFor("!$dialog()");
 
+  // G297 第二版：酒店空着的单后端留下（skipped no_pickup_location）⇒ 结果里这一行标红、红字标签（同 Tour send 页）
+  await ctl({ noHotel: ["CHD1002"] });
+  await evaluate("$box('CHD1002').click();");
+  await evaluate("$btn('Send tour confirmation', $bar()).click();");
+  await waitFor("$dialog() && $dialog().querySelectorAll('select option').length > 2");
+  await evaluate("$pick($dialog().querySelector('select'), 'grand_canyon_west');");
+  await evaluate("$dialog().querySelector('[data-again=\"CHD1002\"]').click();");
+  await evaluate("$btn('✉️ Send', $dialog().lastElementChild).click();");
+  await waitFor("!!$dialog()?.querySelector('tr[data-no-hotel]')", 8000);
+  check("G297 Manifests 弹窗：酒店空着被留下的 CHD1002 整行标红、标签红字「Pickup location is empty in Rezdy」、没有 Send anyway", await evaluate("const tr = $dialog().querySelector('tr[data-no-hotel]'); const b = tr.querySelector('span'); return tr.dataset.skipped === 'CHD1002' && getComputedStyle(tr).backgroundColor === 'rgb(253, 236, 236)' && b.textContent === 'Pickup location is empty in Rezdy' && getComputedStyle(b).color === 'rgb(163, 45, 45)' && !tr.querySelector('[data-anyway]');"), await evaluate("const tr = $dialog().querySelector('tr[data-no-hotel]'); const b = tr.querySelector('span'); return JSON.stringify({ sk: tr.dataset.skipped, bg: getComputedStyle(tr).backgroundColor, b: b && b.textContent, c: b && getComputedStyle(b).color, cls: b && b.className });"));
+  await ctl({ noHotel: [] });
+  await evaluate("$btn('Done', $dialog()).click();");
+  await waitFor("!$dialog()");
+
   // 置顶 109：新后端（每行带 outcome / *_outcome）——CHD1002 没邮箱、短信号码错 ⇒ Failed（有东西可修），Email 灰字 No email。
   await evaluate("$box('CHD1002').click();");
   await evaluate("$btn('Send tour confirmation', $bar()).click();");

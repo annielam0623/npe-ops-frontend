@@ -541,7 +541,7 @@ http
       // directMsg：同事昨天发来的站内消息（type message，没读就一直在 Notice，不只今天的）。
       let items = ctl.directMsg ? [...base, ...directMsgNotices.filter((n) => !n.is_read)] : base;
       // G297：ctl.pickupNotice ⇒ 最前面一条「酒店空着、团确认没发」（category pickup_missing，href 到订单页带 tour_date）。
-      if (ctl.pickupNotice) items = [{ id: 97, type: "pickup_missing", title: "Tour confirmation not sent: CHDZZ8J8VYD", body: "Pickup location is empty in Rezdy (Grand Canyon West Rim Bus Tour, Nov 13). Add it in Rezdy, click Refresh from Rezdy, then Send tour confirmation.", created_at: new Date(Date.now() - 120 * 1000).toISOString(), is_read: false, read_at: null, ref: { kind: "order", order_number: "CHDZZ8J8VYD" }, link: "/orders/CHDZZ8J8VYD?tour_date=2026-11-13" }, ...items];
+      if (ctl.pickupNotice) items = [{ id: 97, type: "pickup_missing", title: "Pickup location missing: CHDZZ8J8VYD", body: "The tour confirmation for CHDZZ8J8VYD (Fri Nov 13, 2026) was not sent: the pickup location is empty in Rezdy. Add the pickup location to the order in Rezdy, click Refresh from Rezdy on the order, then click Send tour confirmation.<b>x</b>", created_at: new Date(Date.now() - 120 * 1000).toISOString(), is_read: false, read_at: null, ref: null, link: "/orders/CHDZZ8J8VYD?tour_date=2026-11-13" }, ...items];
       return send(res, 200, noticesWire(items, url));
     }
     const readMatch = p.match(/^\/api\/notices\/(\d+)\/read$/);
