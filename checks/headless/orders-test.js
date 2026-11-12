@@ -468,13 +468,23 @@ async function g297() {
   const SHOT = process.env.SHOT_DIR;
   const fsx = require("fs"), px = require("path");
   const shot = async (name, sel) => { if (!SHOT) return; fsx.mkdirSync(SHOT, { recursive: true }); if (sel) { await evaluate(`document.querySelector('${sel}')?.scrollIntoView({ block: 'center' });`); await sleep(200); } const r = await cdp("Page.captureScreenshot", { format: "png" }); fsx.writeFileSync(px.join(SHOT, name + ".png"), Buffer.from(r.data, "base64")); };
-  await ctl({ staffPerms: null, partner: null, superAdmin: false, sendTour: "sent", sendDelay: 0 });
+  await ctl({ staffPerms: null, partner: null, superAdmin: false, sendTour: "sent", sendDelay: 0, resetHotel: true });
   await goto(`${APP}/orders/CHDZZ8J8VYD?tour_date=2026-11-13`);
   await waitFor("document.querySelector('[data-order-send-tour]')", 30000);
-  const b = await evaluate("const b = document.querySelector('[data-order-send-tour]'); const r = document.querySelector('[data-order-refresh]'); return { text: b.textContent, bg: getComputedStyle(b).backgroundColor, disabled: b.disabled, sameRow: !!r && Math.abs(b.getBoundingClientRect().top - r.getBoundingClientRect().top) < 4, header: !!b.closest('header'), howto: document.querySelector('main').textContent.includes('Send tour confirmation (next to the order number)') };");
-  check("G297 Order 页：订单号那一行有蓝色「Send tour confirmation」，跟 Refresh from Rezdy 同一行；How to use 有一句", b.text === "Send tour confirmation" && b.bg === "rgb(59, 130, 246)" && !b.disabled && b.sameRow && b.header && b.howto, JSON.stringify(b));
-  await shot("order-before");
+  // Annie 2026-11-12「他点进订单后应该看到提醒这单缺少的信息是什么然后怎样解决…看到红字消失了才可以发」
+  const miss = await evaluate("const b = document.querySelector('[data-order-send-tour]'); const a = document.querySelector('[data-order-pickup-missing]'); const loc = document.querySelector('[data-order-location-missing]'); return { disabled: b.disabled, why: document.querySelector('[data-order-send-no-hotel]')?.textContent, alert: a?.textContent, alertColor: a && getComputedStyle(a).color, loc: loc?.textContent, under: !!a && a.getBoundingClientRect().top > document.querySelector('main header').getBoundingClientRect().bottom };");
+  check("G297 Order 页酒店空着：订单号下面红字写缺什么、怎么改；Location 那一行红字 Missing — add it in Rezdy；Send 灰掉、旁边写 Add the pickup location first.", miss.disabled && miss.why === "Add the pickup location first." && miss.alert === "⚠️ Pickup location is missing. Add the pickup location to this order in Rezdy, then click Refresh from Rezdy. You can send the tour confirmation once this message is gone." && miss.alertColor === "rgb(163, 45, 45)" && miss.loc === "Missing — add it in Rezdy" && miss.under, JSON.stringify(miss));
+  await shot("order-missing");
   let before = (await mockLog()).length;
+  await evaluate("document.querySelector('[data-order-send-tour]').click();");
+  await sleep(300);
+  check("G297 酒店空着：点灰着的 Send 不发请求", (await mockLog()).slice(before).every((e) => e.path !== "/api/manifests/send-tour-order"));
+  await evaluate("document.querySelector('[data-order-refresh]').click();");
+  await waitFor("!document.querySelector('[data-order-pickup-missing]')", 8000);
+  const b = await evaluate("const b = document.querySelector('[data-order-send-tour]'); const r = document.querySelector('[data-order-refresh]'); return { text: b.textContent, bg: getComputedStyle(b).backgroundColor, disabled: b.disabled, sameRow: !!r && Math.abs(b.getBoundingClientRect().top - r.getBoundingClientRect().top) < 4, header: !!b.closest('header'), howto: document.querySelector('main').textContent.includes('If the pickup location is missing, a red message says what to fix and the button stays grey'), loc: !document.querySelector('[data-order-location-missing]') && document.querySelector('main').textContent.includes('Excalibur'), why: !document.querySelector('[data-order-send-no-hotel]') };");
+  check("G297 Refresh from Rezdy 补上酒店后：红字消失、Location 写 Excalibur、蓝色 Send tour confirmation 能按（跟 Refresh 同一行）；How to use 有一句", b.text === "Send tour confirmation" && b.bg === "rgb(59, 130, 246)" && !b.disabled && b.sameRow && b.header && b.howto && b.loc && b.why, JSON.stringify(b));
+  await shot("order-refreshed");
+  before = (await mockLog()).length;
   await evaluate("document.querySelector('[data-order-send-tour]').click();");
   await waitFor("document.querySelector('[data-order-send-result]')", 8000);
   const req = (await mockLog()).slice(before).find((e) => e.path === "/api/manifests/send-tour-order");
@@ -527,6 +537,7 @@ async function g297() {
   await ctl({ partner: null, staffPerms: null });
   if (SHOT) {
     await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
+    await ctl({ resetHotel: true });
     await goto(`${APP}/orders/CHDZZ8J8VYD?tour_date=2026-11-13`);
     await waitFor("document.querySelector('[data-order-send-tour]')", 30000);
     await sleep(600);
@@ -536,7 +547,11 @@ async function g297() {
     check("G297 手机：整页不左右晃", await evaluate("return document.documentElement.scrollWidth <= window.innerWidth + 1;"));
     await cdp("Emulation.setDeviceMetricsOverride", { width: 1440, height: 900, deviceScaleFactor: 2, mobile: false });
     await goto(`${APP}/orders/CHDZZ8J8VYD?tour_date=2026-11-13&theme=night`);
-    await waitFor("document.querySelector('[data-order-send-tour]')", 30000);
+    await waitFor("document.querySelector('[data-order-pickup-missing]')", 30000);
+    await sleep(300);
+    await shot("order-night-missing");
+    await evaluate("document.querySelector('[data-order-refresh]').click();");
+    await waitFor("!document.querySelector('[data-order-pickup-missing]')", 8000);
     await evaluate("document.querySelector('[data-order-send-tour]').click();");
     await waitFor("document.querySelector('[data-order-send-result]')", 8000);
     await sleep(300);

@@ -63,13 +63,20 @@ export function useSendTourOrder(
   return { state, run };
 }
 
+/** 酒店空着时红字提醒的原文（Annie 2026-11-12「看到提醒这单缺少的信息是什么然后怎样解决…看到红字消失了才可以发」）。 */
+export const PICKUP_MISSING_TEXT =
+  "Pickup location is missing. Add the pickup location to this order in Rezdy, then click Refresh from Rezdy. You can send the tour confirmation once this message is gone.";
+
 export function SendTourButton({
   busy,
   date,
+  hotelMissing = false,
   onClick,
 }: {
   busy: boolean;
   date: string | null;
+  /** 酒店空着：键灰掉，旁边写原因（红字提醒在订单号下面）。 */
+  hotelMissing?: boolean;
   onClick: () => void;
 }) {
   return (
@@ -82,16 +89,34 @@ export function SendTourButton({
           No tour date for this order, so it cannot be sent from here.
         </span>
       )}
+      {date && hotelMissing ? (
+        <span data-order-send-no-hotel className="text-[11.5px] text-[#f87171]">
+          Add the pickup location first.
+        </span>
+      ) : null}
       <button
         type="button"
         data-order-send-tour
-        disabled={busy || !date}
+        disabled={busy || !date || hotelMissing}
         onClick={onClick}
         className="h-[26px] cursor-pointer rounded-md bg-[#3b82f6] px-3 text-[12px] font-semibold text-white disabled:cursor-default disabled:opacity-60"
       >
         {busy ? "Sending…" : "Send tour confirmation"}
       </button>
     </span>
+  );
+}
+
+/** 订单号下面的红字提醒：缺什么、怎么改；补好、Refresh 后自动消失。 */
+export function PickupMissingAlert() {
+  return (
+    <div
+      role="alert"
+      data-order-pickup-missing
+      className="mt-3 mb-3 rounded-[10px] border border-[#f5c2c0] bg-[#fdecec] px-4 py-2.5 text-[13px] font-semibold text-[#A32D2D] night:border-red-400/30 night:bg-red-400/10 night:text-red-300"
+    >
+      ⚠️ {PICKUP_MISSING_TEXT}
+    </div>
   );
 }
 

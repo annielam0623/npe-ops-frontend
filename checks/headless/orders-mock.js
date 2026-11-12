@@ -83,7 +83,12 @@ http.createServer(async (req, res) => {
   const url = new URL(req.url, "http://x");
   const p = url.pathname;
   if (p === "/__log") return send(res, 200, log);
-  if (p === "/__ctl") { Object.assign(ctl, await readBody(req)); return send(res, 200, ctl); }
+  if (p === "/__ctl") {
+    Object.assign(ctl, await readBody(req));
+    // G297：ctl.resetHotel ⇒ CHDZZ8J8VYD 的酒店重新变空（Refresh from Rezdy 会补上 Excalibur）。
+    if (ctl.resetHotel) { detail.CHDZZ8J8VYD.product.pickup_location = ""; ctl.resetHotel = false; }
+    return send(res, 200, ctl);
+  }
   if (p === "/auth/login") { res.setHeader("Content-Type", "text/html"); return res.end("LOGIN"); }
   const entry = { method: req.method, path: p, query: url.search };
   log.push(entry);
@@ -148,6 +153,11 @@ http.createServer(async (req, res) => {
     if (kind === "not_applied") return send(res, 200, { ...base, result: "not_applied", rezdy_status: "PROCESSING", message: "Rezdy sent this order without its details (status PROCESSING). Nothing was changed.", changed: [] });
     if (kind === "cancelled") { d.status = "cancelled"; return send(res, 200, { ...base, result: "updated", rezdy_status: "CANCELLED", message: "This order is CANCELLED in Rezdy. Order List now shows it as cancelled.", changed: [{ field: "Status", before: "CONFIRMED", after: "CANCELLED" }] }); }
     if (kind === "kept") return send(res, 200, { ...base, result: "updated", message: "Updated from Rezdy: 1 field(s) changed. Rezdy has no phone for this order — kept the existing one.", changed: [{ field: "Email", before: "old@x", after: "new@x" }], kept: ["Phone"] });
+    // G297：酒店空着的单 Refresh 后 Rezdy 补上了酒店。
+    if (!d.product.pickup_location) {
+      d.product = { ...d.product, pickup_location: "Excalibur" };
+      return send(res, 200, { ...base, result: "updated", message: "Updated from Rezdy: 1 field(s) changed.", changed: [{ field: "Pickup location", before: null, after: "Excalibur" }] });
+    }
     const before = d.guest.phone;
     d.guest = { ...d.guest, phone: "+15550109999" };
     d.activity_log = [{ id: 9001, event_type: "refreshed_from_rezdy", detail: `Refreshed from Rezdy — Phone: '${before}' → '+15550109999'`, actor: "ZZ Test Staff", actor_type: "staff", created_at: "11/9/2026 9:40 PM" }, ...(d.activity_log || [])];

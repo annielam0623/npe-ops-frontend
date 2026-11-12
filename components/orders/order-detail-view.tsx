@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  isValidElement,
   type ReactNode,
   useCallback,
   useEffect,
@@ -35,6 +36,7 @@ import {
 import {
   sendDateFor,
   type SendOrderState,
+  PickupMissingAlert,
   SendTourButton,
   SendTourResultCard,
   useSendTourOrder,
@@ -229,6 +231,13 @@ function OrderBody({
   const sendDate = sendTour
     ? sendDateFor(sendTour.urlDate, o.product.tour_date)
     : null;
+  // G297：酒店空着（Order List 的 pickup_location 空或「—」），门票单不算（没有接客）。
+  // 有发送键的人才看到红字提醒、键灰掉；Rezdy 补好、Refresh from Rezdy 后重读，红字自动消失、键能按。
+  const hotelMissing =
+    sendTour !== null &&
+    o.product.type !== "ticket" &&
+    o.booking_type !== "ticket" &&
+    isEmpty(String(o.product.pickup_location ?? "").trim());
   return (
     <>
       {/* .od-head：订单号直接在深色底上，旧页的 #1a1a1a 看不见，改用旧后台正文色 #f8fafc。 */}
@@ -270,6 +279,7 @@ function OrderBody({
               <SendTourButton
                 busy={sendTour.state.kind === "busy"}
                 date={sendDate}
+                hotelMissing={hotelMissing}
                 onClick={() => {
                   if (sendDate) void sendTour.run(sendDate);
                 }}
@@ -285,6 +295,7 @@ function OrderBody({
         ) : null}
       </header>
       {refresh ? <RefreshResultCard state={refresh.state} /> : null}
+      {hotelMissing ? <PickupMissingAlert /> : null}
       {sendTour ? <SendTourResultCard state={sendTour.state} /> : null}
       {/* 置顶 51 B：一点跳到 Main manifest 的那一单（标黄、预勾）。 */}
       <ManifestLinks order={o} className="mt-2 mb-3" />
@@ -329,7 +340,19 @@ function OrderBody({
               ["Tour date", o.product.tour_date],
               ["Tour time", o.product.tour_time],
               ["Pickup", o.product.pickup_time],
-              ["Location", o.product.pickup_location],
+              [
+                "Location",
+                hotelMissing ? (
+                  <span
+                    data-order-location-missing
+                    className="font-semibold text-[#A32D2D] night:text-red-300"
+                  >
+                    Missing — add it in Rezdy
+                  </span>
+                ) : (
+                  o.product.pickup_location
+                ),
+              ],
               ...(o.product.item_count > 1
                 ? ([
                     [
@@ -486,13 +509,17 @@ function Rows({ rows }: { rows: [string, unknown][] }) {
     <div>
       {rows.map(([k, v]) => (
         <OdRow key={k} k={k}>
-          <span
-            className={
-              isEmpty(v) ? "text-[#1a1a1a] night:text-white/35" : undefined
-            }
-          >
-            {show(v)}
-          </span>
+          {isValidElement(v) ? (
+            v
+          ) : (
+            <span
+              className={
+                isEmpty(v) ? "text-[#1a1a1a] night:text-white/35" : undefined
+              }
+            >
+              {show(v)}
+            </span>
+          )}
         </OdRow>
       ))}
     </div>
@@ -1237,10 +1264,12 @@ function HowToUse({
           <li>
             Send tour confirmation (next to the order number): sends this
             order&apos;s tour confirmation by SMS and email, for the tour date
-            of this order. Use it after you add a missing pickup location in
-            Rezdy and click Refresh from Rezdy. Once it is sent, the Pickup
-            location missing notice goes away for everyone. If it is not sent,
-            the reason shows in red.
+            of this order. If the pickup location is missing, a red message says
+            what to fix and the button stays grey: add the pickup location to
+            the order in Rezdy, then click Refresh from Rezdy. When the red
+            message is gone, click Send tour confirmation. Once it is sent, the
+            Pickup location missing notice goes away for everyone. If it is not
+            sent, the reason shows in red.
           </li>
         ) : null}
         <li>
