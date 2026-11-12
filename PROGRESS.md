@@ -13,6 +13,7 @@
 1. **G282 合 main**：确认后端 1bc204e4 新接口不再 404 ⇒ task/leave-requests（1017e206）合最新 main ⇒ tsc / eslint / build + leave / sch / tp / users / nav ⇒ 合 main ⇒ 验收点发 Annie（4c 回复里有）。
 2. **122**：问 Annie preview MZ5JjfriMFgJNUNXy7tGNG 的 Q1–Q3 有没有答（不滚动重问，答了才派）；提醒她自己改 Joe 的 Nickname + Dispatch 11-12 重存；后端删别名、guides[] 带 position 交 54。
 2a. **122 / G291 更新（11-12，96 转）**：Annie 在 96 窗口原话「所有Question都选A」。Q1 A（灰色小字：导游「Tour Guide」、司机不标、兼职「Driver + Guide」）；Q3 A（Juan (Beni) 保留不改）。Q2 有歧义：Q2 是六处逐处选 A 显示 / B 不显示，推荐 ①–④ A、⑤ Bus Manifest 打印单 B、⑥ HR 列表 B；照字面「都选 A」则打印单和 HR 列表也显示，与推荐不同——96 正在问 Annie 确认。**还没有「动手」，不写代码。**
+2b. **122 / G291 再更新（11-12，96 转）**：Annie 回 Q2（原话）「不需要，就把名字写成Joe Ri就可以了」⇒ 96 理解为整个标签都不做：前端不改代码，也不请后端在 guides[] 加 position。剩下：① Annie 自己在 HR 把 Joe（id 69）Nickname 改成「Joe Ri」→ Dispatch 11-12 那组重新 Save；② 后端删旧别名「JOE - TOUR GUIDE」（交 54）。Juan (Beni) 保留（Q3 A）。96 已跟 Annie 说：如果她只是指打印单和 HR 列表不要标签，请再说。
 3. **125** Tour Tracking 没发过的单字也灰：派工作窗口出 preview（A 底和字都灰 / B 只字灰）。
 4. **Working Record 截止日**前端（后端已上，接口说明 docs/interfaces/working-record-cutoff-2026-11-11.md）：出 preview 还是直接做，先核 PROGRESS 里 Annie 有没有对它说过「动手」。
 5. ~~114c~~ ✅ 11-12 已上 main a50218cc（6b）；120 / 121 / 123 Rules 合并问 Annie 是否三件一起做。
