@@ -9,6 +9,15 @@
 ## 2026-11-11 收工交接：前端主窗口 `npe-ops-frontend-4c`[fb4c29]（公司电脑；Annie「今天下午到5点下班」）
 4c 只分工和汇报，没写功能代码。今天工作窗口：`6b`[ab5dcf]、`96`[1c75f6]（公司电脑，进程都已关）；后端主窗口 `npe-confirmation-service-54`（主窗口交接-54），后端 21（G282）、9e、fe。细节见下面 4c 开工节逐条。
 
+### ⏰ 明天开工第一件
+1. **G282 合 main**：确认后端 1bc204e4 新接口不再 404 ⇒ task/leave-requests（1017e206）合最新 main ⇒ tsc / eslint / build + leave / sch / tp / users / nav ⇒ 合 main ⇒ 验收点发 Annie（4c 回复里有）。
+2. **122**：问 Annie preview MZ5JjfriMFgJNUNXy7tGNG 的 Q1–Q3 有没有答（不滚动重问，答了才派）；提醒她自己改 Joe 的 Nickname + Dispatch 11-12 重存；后端删别名、guides[] 带 position 交 54。
+3. **125** Tour Tracking 没发过的单字也灰：派工作窗口出 preview（A 底和字都灰 / B 只字灰）。
+4. **Working Record 截止日**前端（后端已上，接口说明 docs/interfaces/working-record-cutoff-2026-11-11.md）：出 preview 还是直接做，先核 PROGRESS 里 Annie 有没有对它说过「动手」。
+5. 114c 等 Annie「动手」；120 / 121 / 123 Rules 合并问 Annie 是否三件一起做。
+6. 查 Staff Schedule 30 多秒 loading 的结论（后端 21）。
+7. 用 PROGRESS 时少推几次：攒着一起推（21 反映过，虽然 *.md 不触发部署）。
+
 ### 今天上 main（等 Annie 线上验收）
 | 件 | 前端 | 后端 | 验收 |
 |---|---|---|---|
