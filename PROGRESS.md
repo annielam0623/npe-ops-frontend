@@ -1715,6 +1715,7 @@ D. 已完成、待从置顶移走：
 - 题 4 渠道：A 固定 SMS + Email（推荐）；B 加 Both / SMS Only / Email Only。
 - How to use 新句："Send tour confirmation (next to the order number): sends this order's tour confirmation by SMS and email, for the tour date of this order. Use it after you add a missing pickup location in Rezdy and click Refresh from Rezdy. Once it is sent, the Pickup location missing notice goes away for everyone. If it is not sent, the reason shows in red." 无日期小字："No tour date for this order, so it cannot be sent from here."
 - 入口核：Tour send Tour / Last Minute 已改；Manifests 弹窗不改（新后端回 skipped 后照显示）；ops Tracking 无重发；Order 页新键。等后端新文档 + Annie「动手」才合。
+- 后端 G297 第二版上 main fc0049ce（取代 e4aed734），接口文档整篇改版。Notice kind pickup_missing，href 订单号 URL 编码（Order 页 decode），title / body 一律纯文本；send-tour-order 三种 400 文案见文档。已转 6b 对齐分支。
 
 ### 114d. Relay list ⚙ 设置弹窗说明还提「Aa Text size」（11-12，6b 发现，没改）
 
