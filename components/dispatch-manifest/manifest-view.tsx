@@ -2878,11 +2878,11 @@ function LunchNotes({
 
 /** 置顶 92 Q11 A 原文（Annie「同意全部推荐」）。 */
 const LAYOUT_HOW_TO =
-  "⚙ Colours, text & page: choose the colour of each box on the sheet, turn colouring on or off for each box, add or remove ticket colours and colour choices, set the everyday text size, and set the paper, Portrait or Landscape, and margins. Pick All tours, or pick a tour to give it its own colours. Changes show on the sheet right away; press Save to keep them. Reset puts one item back to the paper default, and Reset all to paper puts everything back. Saved settings are used on screen, when you print and in ⬇ Excel, for everyone and every day. Aa Text size changes one day's sheet on top of the everyday size.";
+  "⚙ Colours, text & page: choose the colour of each box on the sheet, turn colouring on or off for each box, add or remove ticket colours and colour choices, set the everyday text size, and set the paper, Portrait or Landscape, and margins. Pick All tours, or pick a tour to give it its own colours. Changes show on the sheet right away; press Save to keep them. Reset puts one item back to the paper default, and Reset all to paper puts everything back. Saved settings are used on screen, when you print and in ⬇ Excel, for everyone and every day. The text size card above each bus changes one day's sheet on top of the everyday size.";
 
 /** 置顶 113（Annie「113全选A，动手」）preview 第 2 版原句。 */
 const COLUMNS_HOW_TO =
-  "Columns: press Columns at the top to choose which columns this tour's Bus Manifest shows. Untick a column to leave it off, then press Save. It is the same for everyone and every day — on screen, when printed and in Excel. The lunch sheet and lunch counts do not change.";
+  "Columns: untick a column next to Columns at the top to leave it off this tour's Bus Manifest, then press Save. It is the same for everyone and every day — on screen, when printed and in Excel. The lunch sheet and lunch counts do not change.";
 
 function HowToUse({ layout, columns }: { layout: boolean; columns: boolean }) {
   return (

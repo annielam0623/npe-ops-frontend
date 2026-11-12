@@ -1212,7 +1212,7 @@ async function runLayoutText() {
   await waitFor("document.querySelector('[data-layout-open]')", 60000);
   await helpers();
   check("Text / 置顶 114：键名照 Relay list 写「Settings」+ 齿轮线条图标", await evaluate("const b = document.querySelector('[data-layout-open]'); return b.textContent.trim() === 'Settings' && !!b.querySelector('svg[data-line-icon=gear]');"));
-  check("Text：How to use 换回 Q11 完整原文", await evaluate("return document.body.textContent.includes(\"set the everyday text size, and set the paper, Portrait or Landscape, and margins.\") && document.body.textContent.includes(\"Aa Text size changes one day's sheet on top of the everyday size.\");"));
+  check("Text：How to use 换回 Q11 完整原文", await evaluate("return document.body.textContent.includes(\"set the everyday text size, and set the paper, Portrait or Landscape, and margins.\") && document.body.textContent.includes(\"The text size card above each bus changes one day's sheet on top of the everyday size.\");"));
   const before = await evaluate(`return [${fs(nameCell)}, ${fs(firstTh)}, ${fw(firstTh)}, ${fs(lowerHead)}].join('|');`);
   check("Text：没设过 ⇒ 正文 16.5px、表头 9.5px 粗、节标题 17px（同现在）", before === "16.5px|9.5px|700|17px", before);
   await evaluate("document.querySelector('[data-layout-open]').click();");
@@ -1302,7 +1302,7 @@ async function runColumns() {
   await waitFor(`!!${pill}`, 60000);
   await helpers();
   check("Columns：页头直接摊开「Columns: ☑ Lunch」（不用点开），Lunch 列在；28px 高", (await evaluate(`return ${pill}.textContent.trim().startsWith('Columns:') && ${pill}.textContent.includes('Lunch') && ${lunchOn} && ${lunchTh} && !document.querySelector('[data-columns-open], [data-columns-menu]') && Math.round(${pill}.getBoundingClientRect().height) === 28;`)));
-  check("Columns：How to use 多一句（preview 原句）", await evaluate("return document.body.textContent.includes(\"Columns: press Columns at the top to choose which columns this tour's Bus Manifest shows. Untick a column to leave it off, then press Save.\");"));
+  check("Columns：How to use 那句（114c Annie 选 A）", await evaluate("return document.body.textContent.includes(\"Columns: untick a column next to Columns at the top to leave it off this tour's Bus Manifest, then press Save.\");"));
   await openMenu();
   check("Columns：说明放在 title（鼠标停上去看得到）", await evaluate(`return ${pill}.getAttribute('aria-label') === 'Columns for this tour' && ${pill}.title.startsWith("Untick a column to leave it off this tour's Bus Manifest");`));
   let b0 = (await mockLog()).length;

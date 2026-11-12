@@ -431,7 +431,7 @@ export function ManifestLayoutDialog({
                 layout={textLayout}
                 onLayout={(l) => setTextLayout(l as ManifestVersion)}
                 elements={busManifestTextElements(textLayout)}
-                note="This is where every day starts, for every tour with this layout. Aa Text size still changes one day's sheet on top of it."
+                note="This is where every day starts, for every tour with this layout. The text size card above each bus still changes one day's sheet on top of it."
                 onChange={edit}
               />
             </div>
