@@ -20,6 +20,7 @@
   - 🔄 **G297 规则改了（54 转 Annie 原话，在 54 窗口）**：「我觉得也不需要整批不发，可以发送已经有的，但是没有的这个就标红留下来」；「15分钟太密了，不要做这些拖慢系统的事情。我们还是在notice里吧，同时发给当班的人，然后处理的方式就跟处理message一样，点击后进入到那张订单，然后去Rezdy改了以后更新。处理完了以后直接发送成功，这个notice就自动消了」；Order 页加发送键「同意A，动手」。⇒ 新规则：酒店空的单留下不发、标红，其余照发（send-tour / tour-confirmation-bulk / last-minute-bulk 的 skipped[] 加 reason no_pickup_location，不再 400，Send 不禁用）；后端给当班的人发 Notice（category pickup_missing，前端显示红色，href /orders/<单号>?tour_date=）；Order 页新键「Send tour confirmation」= POST /api/manifests/send-tour-order {date, order_number}；发成功后 Notice 自动已读。旧 Tracking 单条重发仍 400。6b 已改照新规则做，等 54 上 main + 文档改版再合。
   - G297 Order 页键 A 原文（54 给 Annie，无 preview）：「A（推荐）：Order 页上加一个「Send tour confirmation」键，staff 点一下就发，发成功 Notice 自动消。人看过酒店对了再发，不会把一封没检查过的信自动发给客人。」⇒ 键在 /orders/[orderNumber] 靠 Refresh from Rezdy，位置前端定。Notice 红色样子 + 键位置 6b 出 preview 给 Annie，看过再合。Tour send 页照旧页工作区版：预览标红 + 黄框，Send 不禁用，结果标 Skipped。
 2e. **126 Working Record 工作卡按角色上底色（11-12，Annie 在后端 9e 提）**：原话「在working record里，能把他们工作的格子背景变成蓝绿紫，就是现在用来区分他们工作的颜色么，现在太不明显了」。现状 components/hr/working-record.tsx DayJobs（:697 起）卡片 bg-white（:719），颜色只在角色字 ROLE_TEXT（:674-678 driver #1d4ed8 / guide #7c3aed / both #0f766e）。要：卡背景 Driver 浅蓝、Guide 浅紫、Driver & Guide 浅青绿（约 #dbeafe / #ede9fe / #ccfbf1），night 用同色系深底；字色、标签、live 虚线框、📷 照旧；Export / 接口不动。样子调整 ⇒ 先 preview，派 96 做 preview（不写真代码、不合 main），Annie 定了 + 「动手」再做。
+  - ✅ 126 Annie（原话）「全部选A，动手」（preview WvtaXS5Kt8WMSDJvcLZ6ce：Q1 A 中间档、Q2 A live 也上底色、night 角色字浅色）⇒ 派 96 做、合 main。
 3. **125** Tour Tracking 没发过的单字也灰：派工作窗口出 preview（A 底和字都灰 / B 只字灰）。
 4. **Working Record 截止日**前端（后端已上，接口说明 docs/interfaces/working-record-cutoff-2026-11-11.md）：出 preview 还是直接做，先核 PROGRESS 里 Annie 有没有对它说过「动手」。
 5. ~~114c~~ ✅ 11-12 已上 main a50218cc（6b）；120 / 121 / 123 Rules 合并问 Annie 是否三件一起做。
@@ -1691,13 +1692,6 @@ D. 已完成、待从置顶移走：
 - 需要后端：user_prefs 白名单加 `manifest_cols_admin_fee`（这个标签的 Columns 才存得住；没有时页面写「Could not load your saved columns」并用默认列）。
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
-
-### 126. Working Record 工作卡按角色上底色（11-12，96 preview https://claude.ai/artifact/WvtaXS5Kt8WMSDJvcLZ6ce ）
-
-- Q1 底色深浅：A 中间档 #dbeafe / #ede9fe / #ccfbf1（推荐）；B 浅档 #eff6ff / #f5f3ff / #f0fdfa（可能仍不明显）；C 深档 #bfdbfe / #ddd6fe / #99f6e4（最醒目，满周颜色重）。
-- Q2 live 卡也上底色？A 也上（推荐，live 靠橙色虚线框 + live 标）；B live 保持白底。
-- 顺带（只 night）：深底上角色字改同色系浅色 #93c5fd / #c4b5fd / #5eead4。
-- 等 Annie 选 + 「动手」，96 做。
 
 ### 114d. Relay list ⚙ 设置弹窗说明还提「Aa Text size」（11-12，6b 发现，没改）
 
