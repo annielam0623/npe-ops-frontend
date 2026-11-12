@@ -672,9 +672,15 @@ function TotalsRow({
 }
 
 const ROLE_TEXT: Record<"driver" | "guide" | "both", string> = {
-  driver: "text-[#1d4ed8]",
-  guide: "text-[#7c3aed]",
-  both: "text-[#0f766e]",
+  driver: "text-[#1d4ed8] night:text-[#93c5fd]",
+  guide: "text-[#7c3aed] night:text-[#c4b5fd]",
+  both: "text-[#0f766e] night:text-[#5eead4]",
+};
+/** 卡片底色跟角色走（126，Annie 2026-11-12「全部选A，动手」）：中间一档，live 卡也上；night 用同色系深底、角色字换浅色。 */
+const ROLE_BG: Record<"driver" | "guide" | "both", string> = {
+  driver: "bg-[#dbeafe] night:bg-[#1e3a8a]/50",
+  guide: "bg-[#ede9fe] night:bg-[#4c1d95]/50",
+  both: "bg-[#ccfbf1] night:bg-[#134e4a]/60",
 };
 
 /** 同一段（同 shift + 段名 + 车）既开车又带团 ⇒ 合成一张「Driver & Guide」。 */
@@ -717,8 +723,10 @@ function DayJobs({
             key={i}
             data-wr-job
             data-wr-live={live ? "" : undefined}
+            data-wr-role={role}
             className={cn(
-              "mb-[3px] block rounded-[5px] border-[0.5px] bg-white px-[5px] py-0.5 leading-[1.3] text-[#1a1a1a] night:bg-white/[.06] night:text-white/90",
+              "mb-[3px] block rounded-[5px] border-[0.5px] px-[5px] py-0.5 leading-[1.3] text-[#1a1a1a] night:text-white/90",
+              ROLE_BG[role],
               live
                 ? "border border-dashed border-[#b45309]"
                 : "border-black/15 night:border-white/15",
