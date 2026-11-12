@@ -22,6 +22,8 @@ const detail = {
 };
 // G297：Notice 点进来的那一单（酒店空着）。
 detail.CHDZZ8J8VYD = { ...detail.CHDTESTORDER1, order_number: "CHDZZ8J8VYD", editable: false, guest: { name: "ZZ Test Annie", email: "azhou@nationalparkexpress.com", phone: "+15550100000", pax: 2 }, product: { ...detail.CHDTESTORDER1.product, code: "GCW01", name: "Grand Canyon West Rim Bus Tour", type: "bus_tour", tour_date: "11/13/2026", pickup_location: "", pickup_time: "6:30 AM" } };
+detail.CHDTBD = { ...detail.CHDTESTORDER1, order_number: "CHDTBD", editable: false, product: { ...detail.CHDTESTORDER1.product, pickup_location: "TBD" } };
+detail.CHDSPACES = { ...detail.CHDTESTORDER1, order_number: "CHDSPACES", editable: false, product: { ...detail.CHDTESTORDER1.product, pickup_location: "   " } };
 detail.CHDNODATE = { ...detail.CHDTESTORDER1, order_number: "CHDNODATE", product: { ...detail.CHDTESTORDER1.product, tour_date: "" } };
 detail.CHDNEW = { ...detail.CHDTESTORDER1, order_number: "CHDNEW", editable: false, price: { ...detail.CHDTESTORDER1.price, overridden: false } };
 // G280（后端 task/tripguru-intake 26fdfa29）：ctl.tripguru = 列表最前面两张 TripGuru 单（source tripguru、小写 status、pickup / agent「—」）。

@@ -523,6 +523,13 @@ async function g297() {
   await waitFor("document.querySelector('[data-order-send-tour]')", 30000);
   check("G297 没有日期：键灰掉、旁边写 No tour date for this order, so it cannot be sent from here.", await evaluate("return document.querySelector('[data-order-send-tour]').disabled && document.querySelector('[data-order-send-no-date]')?.textContent === 'No tour date for this order, so it cannot be sent from here.';"));
   await shot("order-nodate");
+  // 判空照后端：去掉空格后为空才算；「TBD」当有值
+  await goto(`${APP}/orders/CHDTBD?tour_date=2026-10-05`);
+  await waitFor("document.querySelector('[data-order-send-tour]')", 30000);
+  check("G297 判空照后端：Location 是 TBD ⇒ 不算缺（没有红字、键能按）", await evaluate("return !document.querySelector('[data-order-pickup-missing]') && !document.querySelector('[data-order-location-missing]') && !document.querySelector('[data-order-send-tour]').disabled;"));
+  await goto(`${APP}/orders/CHDSPACES?tour_date=2026-10-05`);
+  await waitFor("document.querySelector('[data-order-send-tour]')", 30000);
+  check("G297 判空照后端：Location 只有空格 ⇒ 算缺（红字、键灰）", await evaluate("return !!document.querySelector('[data-order-pickup-missing]') && document.querySelector('[data-order-send-tour]').disabled;"));
   // 没勾 manifests.send ⇒ 不出键；partner 不出
   await ctl({ staffPerms: ["orders.view", "orders.edit"] });
   await goto(`${APP}/orders/CHDZZ8J8VYD?tour_date=2026-11-13`);

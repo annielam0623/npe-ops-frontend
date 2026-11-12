@@ -231,13 +231,14 @@ function OrderBody({
   const sendDate = sendTour
     ? sendDateFor(sendTour.urlDate, o.product.tour_date)
     : null;
-  // G297：酒店空着（Order List 的 pickup_location 空或「—」），门票单不算（没有接客）。
+  // G297：酒店空着——照后端 send_guard.no_pickup_location_orders：原始字段去掉空格后为空才算（「TBD」「—」都当有值，
+  // 「—」只是页面显示空值的占位、库里没有）；门票单不算（没有接客）。
   // 有发送键的人才看到红字提醒、键灰掉；Rezdy 补好、Refresh from Rezdy 后重读，红字自动消失、键能按。
   const hotelMissing =
     sendTour !== null &&
     o.product.type !== "ticket" &&
     o.booking_type !== "ticket" &&
-    isEmpty(String(o.product.pickup_location ?? "").trim());
+    !String(o.product.pickup_location ?? "").trim();
   return (
     <>
       {/* .od-head：订单号直接在深色底上，旧页的 #1a1a1a 看不见，改用旧后台正文色 #f8fafc。 */}
