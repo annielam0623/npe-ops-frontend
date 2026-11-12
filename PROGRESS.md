@@ -20,6 +20,7 @@
   - 🔄 **G297 规则改了（54 转 Annie 原话，在 54 窗口）**：「我觉得也不需要整批不发，可以发送已经有的，但是没有的这个就标红留下来」；「15分钟太密了，不要做这些拖慢系统的事情。我们还是在notice里吧，同时发给当班的人，然后处理的方式就跟处理message一样，点击后进入到那张订单，然后去Rezdy改了以后更新。处理完了以后直接发送成功，这个notice就自动消了」；Order 页加发送键「同意A，动手」。⇒ 新规则：酒店空的单留下不发、标红，其余照发（send-tour / tour-confirmation-bulk / last-minute-bulk 的 skipped[] 加 reason no_pickup_location，不再 400，Send 不禁用）；后端给当班的人发 Notice（category pickup_missing，前端显示红色，href /orders/<单号>?tour_date=）；Order 页新键「Send tour confirmation」= POST /api/manifests/send-tour-order {date, order_number}；发成功后 Notice 自动已读。旧 Tracking 单条重发仍 400。6b 已改照新规则做，等 54 上 main + 文档改版再合。
   - G297 Order 页键 A 原文（54 给 Annie，无 preview）：「A（推荐）：Order 页上加一个「Send tour confirmation」键，staff 点一下就发，发成功 Notice 自动消。人看过酒店对了再发，不会把一封没检查过的信自动发给客人。」⇒ 键在 /orders/[orderNumber] 靠 Refresh from Rezdy，位置前端定。Notice 红色样子 + 键位置 6b 出 preview 给 Annie，看过再合。Tour send 页照旧页工作区版：预览标红 + 黄框，Send 不禁用，结果标 Skipped。
 2f. **127 Staff Schedule 页头功能键整理（11-12）**：Annie 附 /schedule 截图（原话）「我不明白为什么我们的功能键总是这样到处都是，不可以排列整齐一些，省一点地方么」。现状五层（Visible to / tab / 周导航 / Discard-Save-Auto-fill-Employees-Add employee-Settings / 蓝字提示），键大、约 300px 高。守 114 原话：不要二级菜单、不要隐藏，键和周围文字缩小、排整齐，参照 114 Relay list 页头。派 96 出 preview（不写真代码），Annie 选 + 「动手」再做。
+  - ✅ Annie 在 96（原话）「staff那页全部同意推荐，动手」⇒ Q1 A（她点的图 11：日期行 …… Visible to / 页签 | 操作键 / 蓝字第 3 行）、Q2 A 亮白框、Q5 A 手机留 ⋯。96 做 task/schedule-header，合 main。置顶 127 移到此处：### 127. Staff Schedule 页头整理（11-12，96 preview https://claude.ai/artifact/TeRScJAPs4SgR2R9HA9h28 ）  - 共用：键缩到 114 Relay list 尺寸（电脑 28px / 12.5px，手机 26px / 12px），五层变两层，周表上提约 140px，所有键留在页面上。 - Q1 排法：A 两行（页签 + 周导航 / 操作键）（推荐）；B 尽量一行（会随屏宽乱折）。   - Annie 回 Q1（原话）：「把日期和this week， next week 单独放一行，其他功能键一行」⇒ 96 更新 preview：周导航单独一行、功能键一行；页签放哪（同操作键一行 / 单独一行）截两种待定。非动手。   - 第 2 版（同链接 Version 2）Q1 更新：A 页签同操作键一行（1440/1280 一行放得下，<约 1200 折成三行，蓝字另占第 3 行）；B 页签单独一行（推荐：页签 + Visible to / 日期 + This week Next week + 蓝字 / 操作键，1100 也不折，只比 A 高约 12px，切页时页签不跳）。Q3 Q4 不再单问（Visible to 一律最上行最右；蓝字 A 第 3 行、B 日期行右边）。Q2、Q5 照旧待答。   - ✅ Annie 在 96（原话）「11 A · 1280 宽」⇒ Q1 选 A（图 11）：第 1 行日期 + This week / Next week …… Visible to；第 2 行页签 | 操作键；蓝字第 3 行（只复制周出现）；窄于约 1200 操作键折行。Q2、Q5 待答，未动手。 - Q2 选中页签：A 亮白框 + 浅底 + 粗字（推荐）；B 下划线。 - Q3 Visible to：A 并入第一行最右（推荐）；B 单独一行缩小。 - Q4 蓝字提示：A 放操作键那行最右（推荐）；B 单独一行缩小。 - Q5 手机 Auto-fill / Employees / + Add employee / ⚙ Settings：A 照手机统一规则留 ⋯（推荐）；B 手机也全摊开（多约 70px，和其他页手机版不同）。 - 等 Annie 选 + 「动手」，96 做。
 2e. **126 Working Record 工作卡按角色上底色（11-12，Annie 在后端 9e 提）**：原话「在working record里，能把他们工作的格子背景变成蓝绿紫，就是现在用来区分他们工作的颜色么，现在太不明显了」。现状 components/hr/working-record.tsx DayJobs（:697 起）卡片 bg-white（:719），颜色只在角色字 ROLE_TEXT（:674-678 driver #1d4ed8 / guide #7c3aed / both #0f766e）。要：卡背景 Driver 浅蓝、Guide 浅紫、Driver & Guide 浅青绿（约 #dbeafe / #ede9fe / #ccfbf1），night 用同色系深底；字色、标签、live 虚线框、📷 照旧；Export / 接口不动。样子调整 ⇒ 先 preview，派 96 做 preview（不写真代码、不合 main），Annie 定了 + 「动手」再做。
   - ✅ 126 Annie（原话）「全部选A，动手」（preview WvtaXS5Kt8WMSDJvcLZ6ce：Q1 A 中间档、Q2 A live 也上底色、night 角色字浅色）⇒ 派 96 做、合 main。
   - ✅ **126 上 main 10ce8548（96，task/wr-role-colors）**：tsc OK、eslint 0 error、build OK、hr 132/132（新 3 项）、nav 39/39，端口已关。验收：HR › Working Record 周表三种底色、live 卡有底色 + 橙虚线框、?theme=night 深底浅字。
@@ -1694,19 +1695,6 @@ D. 已完成、待从置顶移走：
 - 需要后端：user_prefs 白名单加 `manifest_cols_admin_fee`（这个标签的 Columns 才存得住；没有时页面写「Could not load your saved columns」并用默认列）。
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
-
-### 127. Staff Schedule 页头整理（11-12，96 preview https://claude.ai/artifact/TeRScJAPs4SgR2R9HA9h28 ）
-
-- 共用：键缩到 114 Relay list 尺寸（电脑 28px / 12.5px，手机 26px / 12px），五层变两层，周表上提约 140px，所有键留在页面上。
-- Q1 排法：A 两行（页签 + 周导航 / 操作键）（推荐）；B 尽量一行（会随屏宽乱折）。
-  - Annie 回 Q1（原话）：「把日期和this week， next week 单独放一行，其他功能键一行」⇒ 96 更新 preview：周导航单独一行、功能键一行；页签放哪（同操作键一行 / 单独一行）截两种待定。非动手。
-  - 第 2 版（同链接 Version 2）Q1 更新：A 页签同操作键一行（1440/1280 一行放得下，<约 1200 折成三行，蓝字另占第 3 行）；B 页签单独一行（推荐：页签 + Visible to / 日期 + This week Next week + 蓝字 / 操作键，1100 也不折，只比 A 高约 12px，切页时页签不跳）。Q3 Q4 不再单问（Visible to 一律最上行最右；蓝字 A 第 3 行、B 日期行右边）。Q2、Q5 照旧待答。
-  - ✅ Annie 在 96（原话）「11 A · 1280 宽」⇒ Q1 选 A（图 11）：第 1 行日期 + This week / Next week …… Visible to；第 2 行页签 | 操作键；蓝字第 3 行（只复制周出现）；窄于约 1200 操作键折行。Q2、Q5 待答，未动手。
-- Q2 选中页签：A 亮白框 + 浅底 + 粗字（推荐）；B 下划线。
-- Q3 Visible to：A 并入第一行最右（推荐）；B 单独一行缩小。
-- Q4 蓝字提示：A 放操作键那行最右（推荐）；B 单独一行缩小。
-- Q5 手机 Auto-fill / Employees / + Add employee / ⚙ Settings：A 照手机统一规则留 ⋯（推荐）；B 手机也全摊开（多约 70px，和其他页手机版不同）。
-- 等 Annie 选 + 「动手」，96 做。
 
 ### G297. 团确认酒店空着：Notice 红色 + Order 页发送键（11-12，6b preview https://claude.ai/artifact/P2hYRXJkFeurqiHzkaMspF ，分支 task/g297-pickup-block 866922be）
 
