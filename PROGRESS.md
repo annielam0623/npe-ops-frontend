@@ -42,6 +42,7 @@
 - G282 最终接口（21 分支 task/staff-leave-requests f9e1aebe，没上 main）：96 核过前端不用改，只把 mock 里 HR 职责说明换成后端原文「Gets a copy of every approved leave request.」，task/leave-requests 1017e206。顺序：Annie 执行 v164（21 已给她看 SQL）⇒ 后端推 main 发 SHA ⇒ 96 合最新 main 重跑 ⇒ 合 main。
 - 🟡 **122 HR 名字后缀不发出去**（Annie 原话）：「我在HR里把tour Guide Joe的nick name写成Joe - Tour Guide，但是在发短信的时候不要把这个后缀带出去」⇒ 名字来自 HR nickname，短信是后端拼的；已请 54 只读查哪些短信 / 邮件带 HR 名字、后缀会不会影响 CCL 导入认人 / typed link / Other spellings。4c 问 Annie 加后缀的目的。等评估 + 选项 + 动手。
   - 122 Annie（原话）：「今天必须查完」⇒ 已转 54（派后端 fe 只读评估），要求 16:45 前查完清单 + 影响 + 推荐。
+  - ✅ 114c Bus Manifest How to use 三句（① Colours 条末、② Settings › Text 说明、③ Columns 条，原文见 6b 消息 / 4c 回复）Annie 在 6b（原话）：「A」⇒ 三句照改；选项不算动手，6b 已问是否现在动手。置顶 114c 已移走。
 - Annie 新提：要做的三件 =「114，另外是staff schedule，还有导游页的重新设计」⇒ 导游页重新设计 PROGRESS 里没记录，4c 已问她哪个页面（A 手机 guide_home.html 后端 / B ops 里的导游页 / C 搬到 ops 重做）、想改成什么样、司机页要不要一起。
 - 🟡 **G282 preview（96）**：https://claude.ai/artifact/5PMGSaW5Rxz6AvcCkmAArG （模拟数据，没写代码）。4c 在本窗口问 Annie Q1–Q7（21 不重复问），另请她看：申请区 / 待批放 Staff Schedule 新 Leave 标签；Q5 B = 员工资料里设请假归属 team。答了转 21 + 96。
 - ✅ **118 后端上 main**（54 转）：内容 f8f0affc、合并 ebe3546d、关包 98de181c。形状 {type:max_days_on_shift, params:{shift_type 必填, n 0..7 必填, employee_ids / exclude_employee_ids 二选一可选}}，只按周，其他键 400。前端 components/schedule/rules.ts 已是同一形状（n 0..7），不用改。⇒ Annie 现在能存「Lizzie Close ≤ 1」。
@@ -1728,12 +1729,6 @@ D. 已完成、待从置顶移走：
 - 内容起点（目标工具区 ≤ 281px = 1/3 屏）：Dispatch › Assign 494、Tour Tracking 480、Manifests 432 超；其余 Morning Tracking 271、Relay list 209、Dispatch Send 205、Orders 193、Schedule 172、Bus Manifest ≈165、Morning Send ≈100 不用改。
 - 8 题（推荐都 A，原文已交 78）：题 1 缩多少 A 26 / B 24 / C 28；题 2 全站 vs 只 staff 常用 10 页；题 3 蓝主提交键同样缩；题 4 表格行内小键同档；题 5 ↑↓ 缩到 30px；题 6 顶栏 ☰ ★ ⌕ 一起缩；题 7 多行大块这次不动；题 8 超 1/3 屏的三页照表并一行 / 收 ⋯ / 收 i（动手前每页再给改后截图）。
 - 59 的 114 Relay list 编辑卡（先按 28px 画）题 M6 写「最终跟 115 题 1 走」，已对齐。
-
-### 114c. Bus Manifest How to use 三句还写旧的 Aa / Columns 键（6b 问，等 Annie）
-- ① 页面 How to use ⚙ Colours 条末：现「Aa Text size changes one day's sheet on top of the everyday size.」⇒ 改「The text size card above each bus changes one day's sheet on top of the everyday size.」
-- ② Settings › Text 页说明：现「This is where every day starts, for every tour with this layout. Aa Text size still changes one day's sheet on top of it.」⇒ 改「… The text size card above each bus still changes one day's sheet on top of it.」
-- ③ 页面 How to use Columns 条：现「Columns: press Columns at the top to choose which columns this tour's Bus Manifest shows. Untick a column to leave it off, then press Save. …」⇒ 改「Columns: untick a column next to Columns at the top to leave it off this tour's Bus Manifest, then press Save. It is the same for everyone and every day — on screen, when printed and in Excel. The lunch sheet and lunch counts do not change.」
-- 选法：A 三句都照改（推荐）/ B 照旧。答了 + 动手 ⇒ 6b 约 10 分钟。
 
 ### 114b. Relay list + Bus Manifest 编辑区 11-11 收尾 —— ✅ Annie（原话）「1.A 2 动手」（15:08，How to use 两句照 A；缩小 preview W4D9EUjACD5RnWskXB8fxt 动手）⇒ 派 6b 合 main
 - ① Relay list How to use 两句英文（6b 问，原文见 11-11 4c 节）：A 改成「Text size (the card above each sheet): … The sheet changes right away; press Save at the top to keep it. …」「Spacing (in the card above each sheet): …」（推荐）/ B 照旧 / C Annie 自己改。分支 task/relay-edit-always 1ddf4765。
