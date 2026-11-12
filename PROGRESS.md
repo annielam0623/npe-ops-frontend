@@ -15,7 +15,7 @@
 2a. **122 / G291 更新（11-12，96 转）**：Annie 在 96 窗口原话「所有Question都选A」。Q1 A（灰色小字：导游「Tour Guide」、司机不标、兼职「Driver + Guide」）；Q3 A（Juan (Beni) 保留不改）。Q2 有歧义：Q2 是六处逐处选 A 显示 / B 不显示，推荐 ①–④ A、⑤ Bus Manifest 打印单 B、⑥ HR 列表 B；照字面「都选 A」则打印单和 HR 列表也显示，与推荐不同——96 正在问 Annie 确认。**还没有「动手」，不写代码。**
 3. **125** Tour Tracking 没发过的单字也灰：派工作窗口出 preview（A 底和字都灰 / B 只字灰）。
 4. **Working Record 截止日**前端（后端已上，接口说明 docs/interfaces/working-record-cutoff-2026-11-11.md）：出 preview 还是直接做，先核 PROGRESS 里 Annie 有没有对它说过「动手」。
-5. 114c 等 Annie「动手」；120 / 121 / 123 Rules 合并问 Annie 是否三件一起做。
+5. ~~114c~~ ✅ 11-12 已上 main a50218cc（6b）；120 / 121 / 123 Rules 合并问 Annie 是否三件一起做。
 6. 查 Staff Schedule 30 多秒 loading 的结论（后端 21）。
 7. 用 PROGRESS 时少推几次：攒着一起推（21 反映过，虽然 *.md 不触发部署）。
 
@@ -36,7 +36,7 @@
 
 ### 在分支 / 等后端
 - **G282 员工请假批复**：前端 task/leave-requests 1017e206（96，检查全过）。Annie 已「同意全部推荐。动手」+ Q7 B + HR 勾「可以。动手」。只差后端 21 上 main（Annie 执行 v164 + release.py）⇒ 21 发 SHA ⇒ 96（或明天的工作窗口）合最新 main 重跑 leave / sch / tp / users / nav ⇒ 合 main。
-- **114c Bus Manifest How to use 三句**：Annie 选「A」，还没说「动手」（6b 问了）。动手后约 10 分钟。
+- ✅ **114c Bus Manifest How to use 三句**：Annie 选「A」，11-12 在 6b 说「动手」⇒ 上 main a50218cc（改动 bd8eb488，task/114c-howto）。
 
 ### 等 Annie（第一次问已写全，不滚动重问）
 - 120 Rules 简化 Q1 / Q2 + 周日严格轮流；121 Cannot work 多选 A / B / C（并确认 V 的例子是哪几个班）；123 同类规则合并（建议跟 120 / 121 一起做）。
@@ -83,6 +83,7 @@
 - 🟡 **122 HR 名字后缀不发出去**（Annie 原话）：「我在HR里把tour Guide Joe的nick name写成Joe - Tour Guide，但是在发短信的时候不要把这个后缀带出去」⇒ 名字来自 HR nickname，短信是后端拼的；已请 54 只读查哪些短信 / 邮件带 HR 名字、后缀会不会影响 CCL 导入认人 / typed link / Other spellings。4c 问 Annie 加后缀的目的。等评估 + 选项 + 动手。
   - 122 Annie（原话）：「今天必须查完」⇒ 已转 54（派后端 fe 只读评估），要求 16:45 前查完清单 + 影响 + 推荐。
   - ✅ 114c Bus Manifest How to use 三句（① Colours 条末、② Settings › Text 说明、③ Columns 条，原文见 6b 消息 / 4c 回复）Annie 在 6b（原话）：「A」⇒ 三句照改；选项不算动手，6b 已问是否现在动手。置顶 114c 已移走。
+  - ✅ **114c 上 main a50218cc（11-12，6b）**：Annie 在 6b（原话）「动手」。三句：① Colours 条末 "The text size card above each bus changes one day's sheet on top of the everyday size." ② 版式设置弹窗 "This is where every day starts, for every tour with this layout. The text size card above each bus still changes one day's sheet on top of it." ③ Columns 条 "Columns: untick a column next to Columns at the top to leave it off this tour's Bus Manifest, then press Save. It is the same for everyone and every day — on screen, when printed and in Excel. The lunch sheet and lunch counts do not change." tsc / eslint / build 过，mf 309/309、nav 39/39。同类 Relay 旧句见置顶 114d。
 - 🐞 **Main manifest 认成没午餐**（Annie 原话 + Rezdy 截图）：「这个产品在main manifest里被识别成没有午餐了」——产品「Grand Canyon South Rim From Las Vegas with Helicopter Upgrade & Lunch (Gray Line) (Grayline South + Heli)」Nov 12。判断在后端 tour_manifest.has_lunch()（票型 No Lunch ⇒ 不带；票型有 lunch 或 Manifest setup 勾 Includes lunch ⇒ 带；否则看产品名）。已转 54 只读查原因（票型 / 名单产品名是不是短名 / 有没有勾）。
   - ✅ 原因（后端 9e 只读查）：逻辑没坏。PTSELP 在 Rezdy 原名「Grand Canyon South Rim From Las Vegas with Helicopter Upgrade (Gray Line)」没有 Lunch，LA 11-11 16:40 才改成「… & Lunch (Gray Line)」；Manifest setup 从没勾过 Includes lunch。11-12 只有 CHD2MA0XC，名单两行（旧名 missing 不带餐 / 新名带餐）。修法：Annie 在 Manifest setup 给 PTSELP 勾 Includes lunch；前端不用改。另要 Annie 认：PGT0WX（South Rim Helicopter Upgrade，非 Gray Line）、Antelope Canyon X (Groupon)、Bryce & Zion (Groupon) 名字没写 Lunch，是否带餐。
 - 🟡 **123 Rules 同类合并**（Annie 原话 + 截图 Coverage Open / Mid / Close 三条、Max people on a shift 三条）：「像这种就应该合并在一张页面上」⇒ 跟 120（Shifts 卡：每个班至少 / 至多几人一张表）和 121（Cannot work 多选）是同一方向；4c 建议三件并成一次改，问 Annie。等答 + preview +「动手」。
@@ -1683,6 +1684,13 @@ D. 已完成、待从置顶移走：
 - 需要后端：user_prefs 白名单加 `manifest_cols_admin_fee`（这个标签的 Columns 才存得住；没有时页面写「Could not load your saved columns」并用默认列）。
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
+
+### 114d. Relay list ⚙ 设置弹窗说明还提「Aa Text size」（11-12，6b 发现，没改）
+
+- 哪里：Relay list › ⚙ 设置弹窗说明（relay-settings-dialog.tsx:219）。
+- 现在原文："This is where every day starts. Aa Text size above each sheet still changes one day's sheet on top of it."——Relay list 已经没有 Aa 键了（114 改成每张单上方一张卡），和 114c Bus Manifest 已改的那句是同类旧句。
+- 选法：A 改成 "This is where every day starts. The text size card above each sheet still changes one day's sheet on top of it."（推荐，和 Bus Manifest 那句一致）；B 不改。
+- 只改说明文字，等 Annie 选 + 「动手」，派 6b。
 
 ### ✅ 生产慢（2026-11-11 00:45 前，Annie 转 staff 投诉）—— 结案：Annie「算了，她在中国，应该是vpn的原因」，不用再跟后端跟进
 
