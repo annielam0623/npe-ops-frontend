@@ -222,6 +222,20 @@ export function sendManifestTour(input: {
   });
 }
 
+/**
+ * ⚠️ 真实发送：Order 详情页「Send tour confirmation」（G297，Annie「同意A，动手」）——只发这一单这一天的团确认。
+ * 权限 manifests.send；回包同 send-tour（groups[].results / skipped / blocked）。酒店还空着的回在 skipped 里（no_pickup_location）。
+ */
+export function sendTourOrder(input: {
+  date: string;
+  order_number: string;
+}): Promise<ManifestSendTourResult> {
+  return apiFetch<ManifestSendTourResult>("/api/manifests/send-tour-order", {
+    method: "POST",
+    body: input,
+  });
+}
+
 /** ⚠️ 真实发送：门票提醒（同门票发送页），确认号用 staff 填的 Cfm #，没填的整批 400。 */
 export function sendManifestTickets(input: {
   date: string;

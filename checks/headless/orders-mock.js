@@ -20,6 +20,9 @@ const detail = {
     booking_notes: [],
   },
 };
+// G297：Notice 点进来的那一单（酒店空着）。
+detail.CHDZZ8J8VYD = { ...detail.CHDTESTORDER1, order_number: "CHDZZ8J8VYD", editable: false, guest: { name: "ZZ Test Annie", email: "azhou@nationalparkexpress.com", phone: "+15550100000", pax: 2 }, product: { ...detail.CHDTESTORDER1.product, code: "GCW01", name: "Grand Canyon West Rim Bus Tour", type: "bus_tour", tour_date: "11/13/2026", pickup_location: "", pickup_time: "6:30 AM" } };
+detail.CHDNODATE = { ...detail.CHDTESTORDER1, order_number: "CHDNODATE", product: { ...detail.CHDTESTORDER1.product, tour_date: "" } };
 detail.CHDNEW = { ...detail.CHDTESTORDER1, order_number: "CHDNEW", editable: false, price: { ...detail.CHDTESTORDER1.price, overridden: false } };
 // G280（后端 task/tripguru-intake 26fdfa29）：ctl.tripguru = 列表最前面两张 TripGuru 单（source tripguru、小写 status、pickup / agent「—」）。
 const TG_ROWS = [
@@ -149,6 +152,21 @@ http.createServer(async (req, res) => {
     d.guest = { ...d.guest, phone: "+15550109999" };
     d.activity_log = [{ id: 9001, event_type: "refreshed_from_rezdy", detail: `Refreshed from Rezdy — Phone: '${before}' → '+15550109999'`, actor: "ZZ Test Staff", actor_type: "staff", created_at: "11/9/2026 9:40 PM" }, ...(d.activity_log || [])];
     return send(res, 200, { ...base, result: "updated", message: "Updated from Rezdy: 2 field(s) changed.", changed: [{ field: "Phone", before, after: "+15550109999" }, { field: "Pickup time (P0ABCD)", before: null, after: "5:45 AM" }] });
+  }
+  // G297：Order 页「Send tour confirmation」。ctl.sendTour = sent | nohotel | 400 | failed；没设 = sent。
+  if (p === "/api/manifests/send-tour-order" && req.method === "POST") {
+    const body = await readBody(req);
+    entry.body = body;
+    if (ctl.sendDelay) await new Promise((r) => setTimeout(r, ctl.sendDelay));
+    const kind = ctl.sendTour || "sent";
+    if (kind === "400") return send(res, 400, { detail: "This order is cancelled in Order List, so no tour confirmation was sent." });
+    const d = detail[body.order_number] || {};
+    const name = d.guest?.name || "ZZ Test Guest";
+    const g = { tour_type: "grand_canyon_west", batch_id: 701, total: 1, sent: 0, results: [], skipped: [], blocked: [] };
+    if (kind === "nohotel") g.skipped.push({ order_number: body.order_number, name, reason: "no_pickup_location", message: "Pickup location is empty in Rezdy" });
+    else if (kind === "failed") g.results.push({ order: body.order_number, name, email_status: "failed: SendGrid 550 mailbox unavailable", sms_status: "failed: Twilio 21211 invalid number" });
+    else { g.sent = 1; g.results.push({ order: body.order_number, name, email_status: "sent", sms_status: "sent" }); }
+    return send(res, 200, { checked_at: "2026-11-12T10:00:00-08:00", sent: g.sent, groups: [g] });
   }
   m = p.match(/^\/api\/operations\/orders\/([^/]+)\/unlock-price$/);
   if (m) { detail[decodeURIComponent(m[1])].price.overridden = false; return send(res, 200, { unlocked: true }); }

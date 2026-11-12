@@ -53,6 +53,18 @@ function rows(scenario) {
       warning: "This CSV is not saved as UTF-8. Check the names below.",
     };
   }
+  // G297：H01 酒店空、H02 只有空格 ⇒ 标红、照样送给后端，由后端留下；H03 正常；H04 已发过、酒店空（不标红，没勾 Send anyway 不发）。
+  if (scenario === "nohotel") {
+    return {
+      rows: [
+        row({ order_number: "H01", first_name: "ZZ1", name: "ZZ1 Test", pickup_location: "" }),
+        row({ order_number: "H02", first_name: "ZZ2", name: "ZZ2 Test", pickup_location: "   " }),
+        row({ order_number: "H03", first_name: "ZZ3", name: "ZZ3 Test" }),
+        row({ order_number: "H04", first_name: "ZZ4", name: "ZZ4 Test", pickup_location: "", duplicate: true, sent_label: "Sent by annie on 10/4 2:13 PM" }),
+      ],
+      listed_twice_conflicts: [],
+    };
+  }
   return { rows: [], listed_twice_conflicts: [] };
 }
 let bulkCalls = 0;
@@ -96,6 +108,8 @@ http.createServer(async (req, res) => {
     if (ctl.bulkDelay) await new Promise((r) => setTimeout(r, ctl.bulkDelay));
     const results = [], skipped = [];
     for (const g of b.guests) {
+      // G297 新后端：酒店空着的逐行留下（skipped reason no_pickup_location），其余照发。
+      if (!String(g.pickup_location ?? "").trim()) { skipped.push({ order: g.order_number, order_number: g.order_number, name: `${g.first_name} ${g.last_name}`, reason: "no_pickup_location", message: "Pickup location is empty in Rezdy" }); continue; }
       if (ctl.serverSkip.includes(g.order_number)) { skipped.push({ order: g.order_number, order_number: g.order_number, name: `${g.first_name} ${g.last_name}`, reason: "already_sent", message: "Already sent for this date and tour" }); continue; }
       const em = b.send_type === "sms" ? "" : g.customer_email ? "sent" : "skipped - no email";
       const sm = b.send_type === "email" ? "" : g.phone ? (g.order_number === "N05" ? "failed: Twilio 21211 invalid number" : "sent:SM123") : "skipped - no phone";
