@@ -18,6 +18,12 @@
 | 118 Maximum days on a shift | 已在 main | ebe3546d（54） | Lizzie Close ≤ 1 能存 |
 | 113 Bus Manifest Columns | — | — | ✅ Annie「113已通过验证」 |
 
+### 17:00 以后 Annie 继续在线（她直接让做的）
+- ✅ **124 Dispatch 车卡 Note 上 main 0a08faad**（96，task/dispatch-note-red）。Annie 原话：「帮我把dispatch页面的bus card里的notes的描述改成to yourself or others。然后输入的字体变成红色能让其他人注意」⇒ preview https://claude.ai/artifact/Tq67qe3c3uxhrcuxFjuZaf ⇒「全部推荐，动手」：placeholder「Note to yourself or others (not sent to drivers or guides)」、aria「Note」、Bus Tour 车卡 + Morning Relay 行一起、输入字 #b91c1c、placeholder 照旧灰；只读有字红。tsc / eslint 0 错 / build 过；da 562/562（da 要 SUITE_TIMEOUT_S=1200）、nav 39/39。验收：Dispatch 车卡 Note 空框灰字新文案、打字深红、Save 重开仍红；Morning Relay 行同样。
+- 🟡 **122 / 后端 G291 HR 名字后缀**：fe 查完（只发餐厅午餐短信带名字；后缀主要害在 CCL 导入 / typed link / Samsara 认人，「JOE」和司机 Joe R 撞）。Annie 原话：「现在出preview，选择B」⇒ Nickname 不带后缀、按 position 标签。96 preview https://claude.ai/artifact/MZ5JjfriMFgJNUNXy7tGNG ：Q1 标签写法 A 灰字只标导游 / 兼职（推荐）/ B 人人灰框 / C 字母圆标；Q2 六处显示（下拉 / Roster / 车卡 A，Bus Manifest 打印单 / HR 列表 B）；Q3 Juan (Beni) 改不改（Annie 定）。等答 +「动手」。需要后端：Dispatch guides[] / CCL guide_candidates 带 position；Annie 改完 Joe 名字后删别名「JOE - TOUR GUIDE」。Annie 自己：HR 改 Joe（69）Nickname ⇒ Dispatch 11-12 那组重新 Save。
+- 🟡 **125 Tour Tracking 自动带进来、没发过的单字也要灰**（Annie 原话）：「进到tracking页面的那些自动填充的订单的字体没有用灰色，还是正常的颜色，staff怎么看的出哪些发过哪些没发过」⇒ G180 当初只定了灰底。明天出 preview：A 底和字都灰（推荐）/ B 只字灰。
+- G282 后端已上 main 1bc204e4（v164 已执行），17:21 新接口还 404（Railway 部署中）；前端 task/leave-requests 1017e206 **明早第一件合**（Annie 没说今晚合）。Working Record 截止日后端也上了（docs/interfaces/working-record-cutoff-2026-11-11.md：status、through 后留空、Export Status 列、How to use 一句），明天派；G290 在 task/wr-cutoff 明天落。
+
 ### 在分支 / 等后端
 - **G282 员工请假批复**：前端 task/leave-requests 1017e206（96，检查全过）。Annie 已「同意全部推荐。动手」+ Q7 B + HR 勾「可以。动手」。只差后端 21 上 main（Annie 执行 v164 + release.py）⇒ 21 发 SHA ⇒ 96（或明天的工作窗口）合最新 main 重跑 leave / sch / tp / users / nav ⇒ 合 main。
 - **114c Bus Manifest How to use 三句**：Annie 选「A」，还没说「动手」（6b 问了）。动手后约 10 分钟。
