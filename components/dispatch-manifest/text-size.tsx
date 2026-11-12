@@ -200,18 +200,18 @@ export function isPicked(
 
 const SEG = "inline-flex overflow-hidden rounded-[7px] border border-[#9aa]";
 const CHIP =
-  "cursor-pointer border-r border-[#9aa] bg-white px-2.5 py-[5px] text-[12.5px] font-bold text-[#222] last:border-r-0 disabled:cursor-default disabled:opacity-40 aria-pressed:bg-[#1f2937] aria-pressed:text-white";
+  "cursor-pointer border-r border-[#9aa] bg-white px-2 py-[3px] text-[11.5px] font-bold text-[#222] last:border-r-0 disabled:cursor-default disabled:opacity-40 aria-pressed:bg-[#1f2937] aria-pressed:text-white";
 /** 白键（Quick Actions、Cancel）：不能用时灰（置顶 114）。 */
 const WHITE_KEY =
-  "inline-flex cursor-pointer items-center justify-center rounded-[7px] border border-[#9aa] bg-white px-2 py-[5px] text-[12px] font-bold whitespace-nowrap text-[#222] disabled:cursor-default disabled:opacity-40";
+  "inline-flex cursor-pointer items-center justify-center rounded-[7px] border border-[#9aa] bg-white px-2 py-[3px] text-[11.5px] font-bold whitespace-nowrap text-[#222] disabled:cursor-default disabled:opacity-40";
 /** Done：深灰 #1f2937 + ✓（置顶 114 Q4 A；不是提交键，真正存是页头的 Save）。 */
 const DONE_KEY =
-  "inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-[7px] bg-[#1f2937] px-3.5 py-1.5 text-[12px] font-bold whitespace-nowrap text-white";
+  "inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-[7px] bg-[#1f2937] px-3 py-1 text-[11.5px] font-bold whitespace-nowrap text-white";
 /** 手机编辑卡的键（置顶 114 M6 = 115 题 1：26px）；data-phone-keep，全站手机样式不再改它。 */
 const P_CHIP =
-  "h-[26px] cursor-pointer border-r border-[#9aa] bg-white px-[7px] text-[12px] font-bold text-[#222] last:border-r-0 disabled:cursor-default disabled:opacity-40 aria-pressed:bg-[#1f2937] aria-pressed:text-white";
+  "h-[24px] cursor-pointer border-r border-[#9aa] bg-white text-[12px] font-bold text-[#222] last:border-r-0 disabled:cursor-default disabled:opacity-40 aria-pressed:bg-[#1f2937] aria-pressed:text-white";
 const P_QUICK =
-  "inline-flex h-[26px] cursor-pointer items-center rounded-[6px] border border-[#9aa] bg-white px-2.5 text-[12px] font-bold whitespace-nowrap text-[#222] disabled:cursor-default disabled:opacity-40";
+  "inline-flex h-[24px] cursor-pointer items-center rounded-[6px] border border-[#9aa] bg-white px-1.5 text-[11px] font-bold whitespace-nowrap text-[#222] disabled:cursor-default disabled:opacity-40";
 
 /** 屏宽 < 640px（全站手机版的分界，同 components/ui/phone.tsx 用的 sm:）。 */
 function useNarrow(): boolean {
@@ -256,10 +256,41 @@ function Group({
       {...(level !== undefined
         ? { "data-relay-spacing": "", "data-level": level }
         : null)}
-      className="flex flex-col gap-[7px] border-r border-[#e2e5e9] px-2.5 py-2.5"
+      className="flex flex-col gap-1 border-r border-[#e2e5e9] px-2 py-1.5"
     >
-      <span className="inline-flex items-center gap-1.5 font-bold text-[#333]">
-        <LineIcon name={icon} />
+      <span className="inline-flex items-center gap-1 font-bold text-[#333]">
+        <LineIcon name={icon} className="h-[13px] w-[13px]" />
+        {title}
+      </span>
+      {children}
+    </div>
+  );
+}
+
+/** 手机编辑卡的一组（置顶 114 第 4 版，照参考图的排版；颜色用线上已有的：白底 + #e2e5e9 边，同电脑版组间竖线）：上面「图标 + 小标题」，下面键。 */
+function PhoneGroup({
+  icon,
+  title,
+  name,
+  level,
+  children,
+}: {
+  icon: LineIconName;
+  title: string;
+  name: string;
+  level?: number;
+  children: ReactNode;
+}) {
+  return (
+    <div
+      data-text-size-group={name}
+      {...(level !== undefined
+        ? { "data-relay-spacing": "", "data-level": level }
+        : null)}
+      className="flex min-w-0 flex-col items-start gap-1 rounded-[8px] border border-[#e2e5e9] bg-white px-1.5 py-1"
+    >
+      <span className="inline-flex items-center gap-1 font-bold text-[#333]">
+        <LineIcon name={icon} className="h-[13px] w-[13px]" />
         {title}
       </span>
       {children}
@@ -287,9 +318,15 @@ export function TextSizeToolbar({
   onCancel,
   onDone,
   spacing,
+  always = false,
 }: {
   /** Relay list 的 Spacing（置顶 112）；Bus Manifest 不给。 */
   spacing?: SpacingControl;
+  /**
+   * 编辑卡一直显示（置顶 114 第 4 版，Annie「我不要任何隐藏菜单，我要一目了然」）：电脑版照参考图不出 Cancel / Done
+   * （改动直接留在页面上，按页头 Save 存）；手机版照图底部仍有 Cancel / Done。
+   */
+  always?: boolean;
   mode: TextMode;
   onMode: (m: TextMode) => void;
   picks: TextPick[];
@@ -303,7 +340,6 @@ export function TextSizeToolbar({
   onDone: () => void;
 }) {
   const narrow = useNarrow();
-  const [resetOpen, setResetOpen] = useState(false);
   const any = picks.length > 0;
   const d = current.d ?? 0;
   const modes = [
@@ -398,110 +434,107 @@ export function TextSizeToolbar({
   );
 
   if (narrow)
+    // 手机（置顶 114 第 4 版）：照参考图竖排——Apply To｜Text Size + Font Weight｜Spacing + Quick Actions｜Cancel / Done，
+    // 每组带图标 + 小标题，键名写全，不收进任何菜单（原来的「Reset…」展开成三个键）。
     return (
       <div
         role="group"
         aria-label="Text size"
         data-text-size-toolbar
         data-text-size-phone
-        className="mt-2 flex flex-col gap-1.5 rounded-[9px] bg-white px-2 py-1.5 font-[Arial,sans-serif] text-[12px] text-[#222]"
+        className="mt-1.5 flex flex-col gap-1 rounded-[10px] bg-white p-1 font-[Arial,sans-serif] text-[11px] text-[#222]"
       >
-        <div className="flex flex-nowrap items-center gap-1.5">
-          <span className="text-[12px] font-bold text-[#555]">Aa</span>
-          <span className={SEG}>
-            {modes.map(([m, label, short]) => (
+        <PhoneGroup icon="apply" title="Apply To" name="apply">
+          <span className="flex w-full overflow-hidden rounded-[7px] border border-[#9aa]">
+            {modes.map(([m, label]) => (
               <button
                 key={m}
                 type="button"
                 data-phone-keep
-                aria-label={label}
                 aria-pressed={mode === m}
                 onClick={() => onMode(m)}
-                className={P_CHIP}
+                className={cn(P_CHIP, "flex-1 px-3")}
               >
-                {short}
+                {label}
               </button>
             ))}
           </span>
-          {sizeKeys(P_CHIP)}
-          <span className="flex-1" />
+        </PhoneGroup>
+        <div
+          className={cn(
+            "grid gap-1",
+            spacing ? "grid-cols-[auto_auto_1fr]" : "grid-cols-2",
+          )}
+        >
+          <PhoneGroup icon="size" title="Text Size" name="size">
+            {sizeKeys(cn(P_CHIP, "px-2.5"))}
+          </PhoneGroup>
+          <PhoneGroup icon="bold" title="Font Weight" name="weight">
+            <span className={SEG}>
+              <button
+                type="button"
+                data-phone-keep
+                aria-pressed={current.bold === false}
+                disabled={!any}
+                onClick={() => onBold(false)}
+                className={cn(P_CHIP, "px-2")}
+              >
+                Regular
+              </button>
+              <button
+                type="button"
+                data-phone-keep
+                aria-pressed={current.bold === true}
+                disabled={!any}
+                onClick={() => onBold(true)}
+                className={cn(P_CHIP, "px-2")}
+              >
+                Bold
+              </button>
+            </span>
+          </PhoneGroup>
+          {spacing ? (
+            <PhoneGroup
+              icon="space"
+              title="Spacing"
+              name="spacing"
+              level={spacing.level}
+            >
+              {spacingKeys(cn(P_CHIP, "px-2.5"))}
+            </PhoneGroup>
+          ) : null}
+        </div>
+        <PhoneGroup icon="reset" title="Quick Actions" name="quick">
+          <span className="flex w-full flex-nowrap gap-1 [&>button]:min-w-0 [&>button]:flex-1 [&>button]:justify-center">
+            {quick(P_QUICK)}
+          </span>
+        </PhoneGroup>
+        <div data-text-size-group="finish" className="grid grid-cols-2 gap-1">
           <button
             type="button"
             data-phone-keep
             data-text-size-cancel
-            aria-label="Cancel"
-            title="Cancel"
             onClick={onCancel}
-            className="inline-flex h-[26px] w-[26px] cursor-pointer items-center justify-center rounded-[7px] border border-[#9aa] bg-white text-[13px] font-bold text-[#222]"
+            className="inline-flex h-[28px] cursor-pointer items-center justify-center rounded-[8px] border border-[#9aa] bg-white text-[12px] font-bold text-[#222]"
           >
-            ✕
+            Cancel
           </button>
-        </div>
-        <div className="relative flex flex-nowrap items-center gap-1.5">
-          <span className={SEG}>
-            <button
-              type="button"
-              data-phone-keep
-              aria-label="Regular"
-              aria-pressed={current.bold === false}
-              disabled={!any}
-              onClick={() => onBold(false)}
-              className={P_CHIP}
-            >
-              Reg
-            </button>
-            <button
-              type="button"
-              data-phone-keep
-              aria-pressed={current.bold === true}
-              disabled={!any}
-              onClick={() => onBold(true)}
-              className={P_CHIP}
-            >
-              Bold
-            </button>
-          </span>
-          {spacing ? (
-            <span
-              data-relay-spacing
-              data-level={spacing.level}
-              className="inline-flex items-center gap-1"
-            >
-              <span title="Spacing" className="text-[#555]">
-                <LineIcon name="space" />
-              </span>
-              {spacingKeys(P_CHIP)}
-            </span>
-          ) : null}
-          <button
-            type="button"
-            data-phone-keep
-            data-text-size-reset-menu
-            aria-expanded={resetOpen}
-            onClick={() => setResetOpen((v) => !v)}
-            className="cursor-pointer px-0.5 text-[12px] font-bold whitespace-nowrap text-[#1d4ed8] underline"
-          >
-            Reset…
-          </button>
-          <span className="flex-1" />
           <button
             type="button"
             data-phone-keep
             data-text-size-done
             onClick={onDone}
-            className="inline-flex h-[26px] cursor-pointer items-center gap-1 rounded-[7px] bg-[#1f2937] px-[9px] text-[12px] font-bold whitespace-nowrap text-white"
+            className="inline-flex h-[28px] cursor-pointer items-center justify-center gap-1.5 rounded-[8px] bg-[#1f2937] text-[12px] font-bold text-white"
           >
-            <LineIcon name="check" className="h-3 w-3" />
+            <LineIcon name="check" className="h-3.5 w-3.5" />
             Done
           </button>
-          {resetOpen ? (
-            <div
-              data-text-size-reset-list
-              className="absolute top-full left-0 z-30 mt-1 flex flex-col items-stretch gap-1 rounded-[8px] border border-black/15 bg-[#f4f3ee] p-1.5 shadow-[0_8px_20px_rgba(0,0,0,.25)]"
-            >
-              {quick(P_QUICK)}
-            </div>
-          ) : null}
+        </div>
+        <div data-text-size-picked className="px-1 text-[10.5px] text-[#666]">
+          Picked:{" "}
+          <b className="text-[#111]">
+            {pickedLabel || "nothing yet — tap the table"}
+          </b>
         </div>
       </div>
     );
@@ -511,7 +544,7 @@ export function TextSizeToolbar({
       role="group"
       aria-label="Text size"
       data-text-size-toolbar
-      className="mt-2 overflow-hidden rounded-[10px] border border-black/10 bg-white font-[Arial,sans-serif] text-[12.5px] text-[#222]"
+      className="mt-1.5 overflow-hidden rounded-[10px] border border-black/10 bg-white font-[Arial,sans-serif] text-[10.5px] text-[#222]"
     >
       <div className="flex flex-wrap items-stretch">
         <Group icon="apply" title="Apply To" name="apply">
@@ -534,7 +567,7 @@ export function TextSizeToolbar({
             {sizeKeys(CHIP)}
             <span
               data-text-size-value
-              className="inline-block min-w-10 text-[11.5px] font-bold text-[#555] tabular-nums"
+              className="inline-block min-w-10 text-[10.5px] font-bold text-[#555] tabular-nums"
             >
               {any ? (d ? `${d > 0 ? "+" : ""}${d} px` : "Default") : "—"}
             </span>
@@ -575,27 +608,29 @@ export function TextSizeToolbar({
         <Group icon="reset" title="Quick Actions" name="quick">
           <span className="flex flex-nowrap gap-1">{quick(WHITE_KEY)}</span>
         </Group>
-        <div
-          data-text-size-group="finish"
-          className="ml-auto flex items-center gap-1.5 px-2.5 py-2.5"
-        >
-          <button type="button" onClick={onCancel} className={WHITE_KEY}>
-            Cancel
-          </button>
-          <button
-            type="button"
-            data-text-size-done
-            onClick={onDone}
-            className={DONE_KEY}
+        {always ? null : (
+          <div
+            data-text-size-group="finish"
+            className="ml-auto flex items-center gap-1.5 px-2.5 py-2.5"
           >
-            <LineIcon name="check" className="h-3.5 w-3.5" />
-            Done
-          </button>
-        </div>
+            <button type="button" onClick={onCancel} className={WHITE_KEY}>
+              Cancel
+            </button>
+            <button
+              type="button"
+              data-text-size-done
+              onClick={onDone}
+              className={DONE_KEY}
+            >
+              <LineIcon name="check" className="h-3.5 w-3.5" />
+              Done
+            </button>
+          </div>
+        )}
       </div>
       <div
         data-text-size-picked
-        className="px-4 pb-2 text-[11.5px] text-[#666]"
+        className="px-4 pb-2 text-[10.5px] text-[#666]"
       >
         Picked:{" "}
         <b className="text-[#111]">
@@ -615,22 +650,23 @@ export function TextSizeHistory({
   if (!history.length) return null;
   const [last] = history;
   return (
-    <details
+    // 置顶 114（Annie「不要隐藏」）：不再收起，最近几次直接列出来。
+    <div
       data-text-size-history
-      className="mx-0.5 mt-1.5 text-[11.5px] text-[#555] print:hidden"
+      className="mx-0.5 mt-1.5 text-[10.5px] text-[#555] print:hidden"
     >
-      <summary className="cursor-pointer">
+      <div>
         Text size changes · last by <b className="text-[#333]">{last.by}</b> ·{" "}
         {last.at}
-      </summary>
-      <ul className="mt-1 ml-3.5 flex flex-col gap-0.5">
+      </div>
+      <ul className="mt-0.5 ml-3.5 flex list-disc flex-col gap-0.5">
         {history.slice(0, 5).map((h, i) => (
           <li key={i}>
             <b className="text-[#333]">{h.by}</b> · {h.at} · {h.what}
           </li>
         ))}
       </ul>
-    </details>
+    </div>
   );
 }
 

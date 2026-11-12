@@ -11,6 +11,7 @@ import { CenteredPage } from "@/components/ui/centered-page";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ErrorBanner, Panel } from "@/components/ui/panel";
 import { PhoneMore } from "@/components/ui/phone";
+import { usePageVisibilityControl } from "@/components/ui/page-visibility-gate";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchCurrentUser } from "@/lib/auth-api";
 import {
@@ -81,7 +82,7 @@ import { EmployeesDialog } from "./employees-dialog";
 import { RulesView } from "./rules-view";
 import { OverviewView } from "./overview-view";
 import { LeaveView } from "./leave-view";
-import { CARD, CARD_HEADER, ICON_BTN, MUTED } from "./config";
+import { CARD, CARD_HEADER, MUTED } from "./config";
 import { type PublishNotice, publishNotice } from "./publish-notice";
 import { DayTimeline } from "./day-timeline";
 import { ScheduleLockedPanel } from "./lock-panel";
@@ -200,6 +201,8 @@ export function ScheduleView() {
   const [addingEmployee, setAddingEmployee] = useState(false);
   const [managingEmployees, setManagingEmployees] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  // Visible to（只有 Super Admin 有）：页头自己摆（127）。
+  const visControl = usePageVisibilityControl();
   // 规则（后端没上线 / 读不到 ⇒ null ⇒ 不显示 Rules 标签和 Auto-fill 键）。
   const [rules, setRules] = useState<Rule[] | null>(null);
   const [tab, setTab] = useState<
@@ -1022,39 +1025,58 @@ export function ScheduleView() {
     "leave" as const,
   ];
 
+  // 页签（127，Annie 2026-11-12）：选中的不用蓝底（蓝色只给提交键），白框 + 浅底 + 粗字；键 28px 跟 Relay list 页头一样。
+  const tabBar =
+    tabs.length > 1 ? (
+      <div role="tablist" className="flex flex-wrap gap-1.5">
+        {tabs.map((t) => (
+          <button
+            key={t}
+            type="button"
+            role="tab"
+            aria-selected={tab === t}
+            onClick={() => setTab(t)}
+            className={tab === t ? HEAD_TAB_ON : HEAD_BTN}
+          >
+            {t === "schedule"
+              ? "Schedule"
+              : t === "overview"
+                ? "Overview"
+                : t === "period"
+                  ? "Period"
+                  : t === "leave"
+                    ? leavePending
+                      ? `Leave · ${leavePending} waiting`
+                      : "Leave"
+                    : "Rules"}
+          </button>
+        ))}
+      </div>
+    ) : null;
+  const onScheduleTab = !(
+    tab === "leave" ||
+    tab === "overview" ||
+    (tab === "period" && periodVisible) ||
+    (tab === "rules" && rules !== null)
+  );
+
   return (
     <main data-phone-compact className="text-white/90">
       <CenteredPage className="flex flex-col gap-5 max-sm:gap-3">
         <h1 className="sr-only">Staff Schedule</h1>
 
-        {tabs.length > 1 ? (
-          <div role="tablist" className="-mb-2 flex flex-wrap gap-2">
-            {tabs.map((t) => (
-              <button
-                key={t}
-                type="button"
-                role="tab"
-                aria-selected={tab === t}
-                onClick={() => setTab(t)}
-                className={
-                  tab === t
-                    ? DARK_PRIMARY_BUTTON_CLASS
-                    : DARK_SECONDARY_BUTTON_CLASS
-                }
-              >
-                {t === "schedule"
-                  ? "Schedule"
-                  : t === "overview"
-                    ? "Overview"
-                    : t === "period"
-                      ? "Period"
-                      : t === "leave"
-                        ? leavePending
-                          ? `Leave · ${leavePending} waiting`
-                          : "Leave"
-                        : "Rules"}
-              </button>
-            ))}
+        {/* Schedule 页签：页签放进 WeekNav 第二行；其他页签：页签一行，Visible to 在右边。 */}
+        {!onScheduleTab && (tabBar || visControl) ? (
+          <div
+            data-schedule-head
+            className="flex flex-wrap items-center gap-x-2 gap-y-1.5"
+          >
+            {tabBar}
+            {visControl ? (
+              <span className="ml-auto max-sm:flex max-sm:w-full max-sm:justify-end">
+                {visControl}
+              </span>
+            ) : null}
           </div>
         ) : null}
 
@@ -1137,6 +1159,8 @@ export function ScheduleView() {
               weekStart={weekStart}
               onChange={(next) => void changeWeek(next)}
               canEdit={canEdit}
+              tabBar={tabBar}
+              visControl={visControl}
               saveControls={
                 canEdit && readyWeek ? (
                   <>
@@ -1145,7 +1169,7 @@ export function ScheduleView() {
                       data-week-discard
                       disabled={!anyDirty || saveState.kind === "saving"}
                       onClick={discardDraft}
-                      className={DARK_SECONDARY_BUTTON_CLASS}
+                      className={HEAD_BTN}
                     >
                       Discard
                     </button>
@@ -1154,7 +1178,7 @@ export function ScheduleView() {
                       data-week-save
                       disabled={!anyDirty || saveState.kind === "saving"}
                       onClick={() => void saveAll()}
-                      className={DARK_PRIMARY_BUTTON_CLASS}
+                      className={HEAD_SAVE}
                     >
                       {saveState.kind === "saving" ? "Saving…" : "Save"}
                     </button>
@@ -1200,7 +1224,7 @@ export function ScheduleView() {
             ) : null}
 
             {readyWeek?.copied_from ? (
-              <div className="-mt-2 text-[12px] text-sky-300">
+              <div className="-mt-3 text-[11.5px] text-sky-300 max-sm:-mt-1.5 max-sm:text-[11px]">
                 Started from last week&apos;s schedule — drag people to change
                 it.
               </div>
@@ -1836,6 +1860,26 @@ function formatBadgeTime(hhmm: string): string {
   return `${h12}:${String(m).padStart(2, "0")} ${period}`;
 }
 
+/**
+ * 页头的键（127，Annie 2026-11-12）：跟 Relay list 页头（114）一样 28px、字 12.5px（手机由 globals.css [data-phone-compact] 统一缩）。
+ * 「如果键本身变小了的话，那它周围相关显示的文字也应该跟着变小」⇒ 日期字 15→13.5px，Visible to 用 compact。
+ */
+/** 页头键的形状（不带颜色、粗细，免得两套 class 打架）。手机 26px / 12px，盖过 globals.css 的统一缩小，日期 + This week / Next week 才放得下一行。 */
+const HEAD_SHAPE =
+  "inline-flex h-[28px] cursor-pointer items-center justify-center rounded-[8px] border px-[11px] text-[12.5px] whitespace-nowrap text-white disabled:cursor-not-allowed disabled:opacity-60 max-sm:h-[26px]! max-sm:px-2! max-sm:py-0! max-sm:text-[12px]! max-sm:leading-none!";
+const HEAD_BTN = cn(
+  HEAD_SHAPE,
+  "border-white/10 bg-white/[.04] font-medium hover:bg-white/[.08]",
+);
+const HEAD_SAVE = cn(
+  HEAD_SHAPE,
+  "border-[#3b82f6] bg-[#3b82f6] font-medium hover:bg-[#2f76e8]",
+);
+/** 选中的页签：不用蓝底（蓝色只给提交键，Q2 A），白框 + 浅底 + 粗字。 */
+const HEAD_TAB_ON = cn(HEAD_SHAPE, "border-white/45 bg-white/[.16] font-bold");
+const HEAD_ICON =
+  "inline-flex h-[28px] w-[28px] cursor-pointer items-center justify-center rounded-[8px] border border-white/10 bg-white/[.04] text-white/80 transition hover:bg-white/[.08] max-sm:h-[26px]! max-sm:w-[26px]! max-sm:p-0!";
+
 function WeekNav({
   weekStart,
   onChange,
@@ -1846,10 +1890,16 @@ function WeekNav({
   onAutoFill,
   autoFillDisabled,
   saveControls,
+  tabBar,
+  visControl,
 }: {
   weekStart: string;
   onChange: (weekStart: string) => void;
   canEdit: boolean;
+  /** 页签（127：跟操作键同一行，前面）。 */
+  tabBar?: React.ReactNode;
+  /** Visible to（127：日期那一行最右边；只有 Super Admin 有）。 */
+  visControl?: React.ReactNode;
   onAddEmployee?: () => void;
   onManageEmployees?: () => void;
   /** ⚙ Settings（Working hours、Default shift times 集中一处，Annie 2026-11-02 preview 97MgNcpw28p7W4DxXmpgrM）。 */
@@ -1859,110 +1909,114 @@ function WeekNav({
   /** 整周一个 Save（B9 preview ①）：Save + Discard，放在 Auto-fill 左边。 */
   saveControls?: React.ReactNode;
 }) {
-  // 手机版（Annie 2026-11-01 手机版规则）：一行只放 ‹ 日期 ›；This week / Next week、Auto-fill、Employees、+ Add employee
-  // 收进右边那排的「⋯」，Discard / Save 照旧露在外面。没有右边那排（只能看的人）时 This week / Next week 照旧放在日期后面。
+  // 页头（127，Annie 2026-11-12「把日期和this week， next week 单独放一行，其他功能键一行」+「全部同意推荐，动手」）：
+  // 第 1 行 ‹ 日期 › This week / Next week …… Visible to；第 2 行 页签 | Discard Save Auto-fill Employees + Add employee ⚙ Settings。
+  // 键都留在页面上（不进菜单），只缩小到 28px。手机（11-01 手机版规则，Q5 A）：Auto-fill / Employees / + Add employee / ⚙ Settings 照旧收进「⋯」，
+  // This week / Next week 跟日期一行露在外面；操作键换到页签下面一行。
   const editRow = Boolean(
     (canEdit && (onAddEmployee || saveControls)) || onSettings,
   );
-  const jumpButtons = (inMenu: boolean) => (
-    <>
-      <button
-        type="button"
-        onClick={() => onChange(weekStartYmd(laToday()))}
-        className={cn(
-          DARK_SECONDARY_BUTTON_CLASS,
-          "whitespace-nowrap",
-          inMenu ? "sm:hidden" : cn("ml-1", editRow && "max-sm:hidden"),
-        )}
-      >
-        This week
-      </button>
-      <button
-        type="button"
-        onClick={() => onChange(shiftYmd(weekStartYmd(laToday()), 7))}
-        className={cn(
-          DARK_SECONDARY_BUTTON_CLASS,
-          "whitespace-nowrap",
-          inMenu ? "sm:hidden" : editRow && "max-sm:hidden",
-        )}
-      >
-        Next week
-      </button>
-    </>
-  );
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 max-sm:gap-2">
-      <div className="flex min-w-0 items-center gap-2 max-sm:flex-wrap">
+    <div data-schedule-head className="flex flex-col gap-2">
+      <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1.5">
         <button
           type="button"
           aria-label="Previous week"
           onClick={() => onChange(shiftYmd(weekStart, -7))}
-          className={ICON_BTN}
+          className={HEAD_ICON}
         >
           ‹
         </button>
-        <span className="min-w-[180px] text-center text-[15px] font-semibold text-white max-sm:min-w-0 max-sm:text-[14px] max-sm:whitespace-nowrap">
+        <span className="px-1 text-center text-[13.5px] font-semibold whitespace-nowrap text-white max-sm:text-[13px]">
           {weekRangeLabel(weekStart)}
         </span>
         <button
           type="button"
           aria-label="Next week"
           onClick={() => onChange(shiftYmd(weekStart, 7))}
-          className={ICON_BTN}
+          className={HEAD_ICON}
         >
           ›
         </button>
-        {jumpButtons(false)}
+        <button
+          type="button"
+          onClick={() => onChange(weekStartYmd(laToday()))}
+          className={cn(HEAD_BTN, "ml-1")}
+        >
+          This week
+        </button>
+        <button
+          type="button"
+          onClick={() => onChange(shiftYmd(weekStartYmd(laToday()), 7))}
+          className={HEAD_BTN}
+        >
+          Next week
+        </button>
+        {visControl ? (
+          <span className="ml-auto max-sm:order-first max-sm:flex max-sm:w-full max-sm:justify-end">
+            {visControl}
+          </span>
+        ) : null}
       </div>
-      {editRow ? (
-        <div className="flex flex-wrap items-center gap-2">
-          {saveControls}
-          <PhoneMore label="More schedule actions">
-            {jumpButtons(true)}
-            {onAutoFill ? (
-              <button
-                type="button"
-                onClick={onAutoFill}
-                disabled={autoFillDisabled}
-                title={
-                  autoFillDisabled
-                    ? "Turn on some rules in the Rules tab first."
-                    : "Fill this week (or the next 4 weeks) by the rules"
-                }
-                className={DARK_SECONDARY_BUTTON_CLASS}
-              >
-                Auto-fill
-              </button>
-            ) : null}
-            {onManageEmployees ? (
-              <button
-                type="button"
-                onClick={onManageEmployees}
-                className={DARK_SECONDARY_BUTTON_CLASS}
-              >
-                Employees
-              </button>
-            ) : null}
-            {onAddEmployee ? (
-              <button
-                type="button"
-                onClick={onAddEmployee}
-                className={DARK_SECONDARY_BUTTON_CLASS}
-              >
-                + Add employee
-              </button>
-            ) : null}
-            {onSettings ? (
-              <button
-                type="button"
-                data-open-settings
-                onClick={onSettings}
-                className={DARK_SECONDARY_BUTTON_CLASS}
-              >
-                ⚙ Settings
-              </button>
-            ) : null}
-          </PhoneMore>
+      {tabBar || editRow ? (
+        <div className="flex flex-wrap items-center gap-1.5">
+          {tabBar}
+          {tabBar && editRow ? (
+            <span
+              aria-hidden
+              className="mx-1 h-5 w-px bg-white/15 max-sm:hidden"
+            />
+          ) : null}
+          {editRow ? (
+            <div className="flex flex-wrap items-center gap-1.5 max-sm:basis-full">
+              {saveControls}
+              <PhoneMore label="More schedule actions">
+                {onAutoFill ? (
+                  <button
+                    type="button"
+                    onClick={onAutoFill}
+                    disabled={autoFillDisabled}
+                    title={
+                      autoFillDisabled
+                        ? "Turn on some rules in the Rules tab first."
+                        : "Fill this week (or the next 4 weeks) by the rules"
+                    }
+                    className={HEAD_BTN}
+                  >
+                    Auto-fill
+                  </button>
+                ) : null}
+                {onManageEmployees ? (
+                  <button
+                    type="button"
+                    onClick={onManageEmployees}
+                    className={HEAD_BTN}
+                  >
+                    Employees
+                  </button>
+                ) : null}
+                {onAddEmployee ? (
+                  <button
+                    type="button"
+                    onClick={onAddEmployee}
+                    className={HEAD_BTN}
+                  >
+                    + Add employee
+                  </button>
+                ) : null}
+                {onSettings ? (
+                  <button
+                    type="button"
+                    data-open-settings
+                    onClick={onSettings}
+                    className={HEAD_BTN}
+                  >
+                    ⚙ Settings
+                  </button>
+                ) : null}
+              </PhoneMore>
+            </div>
+          ) : null}
         </div>
       ) : null}
     </div>

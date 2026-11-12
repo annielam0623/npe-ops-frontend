@@ -10,7 +10,8 @@ export const metadata: Metadata = {
 export default function StaffSchedulePage() {
   return (
     // 可见性开关（Annie 2026-10-25，key schedule_page）：对我不可见时整页不画。
-    <PageVisibilityGate pageKey="schedule_page">
+    // Visible to 放进页头第一行右边（127，Annie 2026-11-12）。
+    <PageVisibilityGate pageKey="schedule_page" inlineControl>
       <ScheduleView />
     </PageVisibilityGate>
   );

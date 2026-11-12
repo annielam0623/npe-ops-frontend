@@ -33,7 +33,9 @@ export interface SheetFit {
 const FIT_OK: SheetFit = { pages: 1, wide: false, paperH: 0 };
 
 function contentHeight(sheet: HTMLElement): number {
-  const top = sheet.getBoundingClientRect().top + parseFloat(getComputedStyle(sheet).paddingTop);
+  const top =
+    sheet.getBoundingClientRect().top +
+    parseFloat(getComputedStyle(sheet).paddingTop);
   let bottom = top;
   for (const el of Array.from(sheet.children))
     if (!el.hasAttribute("data-relay-fit-mark"))
@@ -185,7 +187,11 @@ export function SheetFitMarks({ fit }: { fit: SheetFit }) {
         </div>
       ))}
       {fit.wide ? (
-        <div data-relay-fit-mark data-relay-paper-edge className="rl-screen-only rl-paperedge">
+        <div
+          data-relay-fit-mark
+          data-relay-paper-edge
+          className="rl-screen-only rl-paperedge"
+        >
           <span>Paper edge — anything to the right is cut off</span>
         </div>
       ) : null}

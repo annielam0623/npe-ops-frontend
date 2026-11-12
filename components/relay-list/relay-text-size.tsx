@@ -151,25 +151,30 @@ export interface RelayTextState {
   ready: boolean;
   /** 后端认 spacing（relay-pull 的 text_size 带 spacing 键）：才出 Spacing 那一行。 */
   spacingReady: boolean;
-  spacingStep: (n: 1 | -1) => void;
-  spacingReset: () => void;
+  spacingStep: (sheet: string, n: 1 | -1) => void;
+  spacingReset: (sheet: string) => void;
   canEdit: boolean;
   sheets: Record<string, SheetText>;
   staged: Record<string, ManifestTextSize>;
+  /**
+   * 正在改的那张单（置顶 114 第 4 版：每张单的编辑卡一直显示，点哪张单的表格或卡片，哪张就是这一张；点选只在这一张上）。
+   */
   editing: string | null;
-  draft: ManifestTextSize | null;
   mode: TextMode;
   picks: TextPick[];
   save: SaveState;
   dirty: boolean;
-  open: (sheet: string) => void;
-  close: () => void;
-  setMode: (m: TextMode) => void;
-  pick: (p: TextPick) => void;
+  /** 换到这张单（点选清空）。 */
+  activate: (sheet: string) => void;
+  setMode: (sheet: string, m: TextMode) => void;
+  pick: (sheet: string, p: TextPick) => void;
   step: (n: 1 | -1) => void;
   bold: (b: boolean) => void;
   resetSelection: () => void;
-  resetAll: () => void;
+  resetAll: (sheet: string) => void;
+  /** Cancel（手机）：这张单没存的改动全撤回，回到上次存的样子。 */
+  cancel: (sheet: string) => void;
+  /** Done（手机）：改完了，清掉点选（改动照旧留在页面上，按 Save 才存）。 */
   done: () => void;
   saveAll: () => Promise<void>;
   /** 这张单现在画的（编辑中的 → 暂存的 → 存好的）。 */
@@ -186,7 +191,6 @@ export function useRelayTextSize(
   const [sheets, setSheets] = useState<Record<string, SheetText>>({});
   const [staged, setStaged] = useState<Record<string, ManifestTextSize>>({});
   const [editing, setEditing] = useState<string | null>(null);
-  const [draft, setDraft] = useState<ManifestTextSize | null>(null);
   const [mode, setMode] = useState<TextMode>("column");
   const [picks, setPicks] = useState<TextPick[]>([]);
   const [save, setSave] = useState<SaveState>({ kind: "idle" });
@@ -198,11 +202,12 @@ export function useRelayTextSize(
     setReady(got !== null);
     setSheets(got ?? {});
     setSpacingReady(
-      !!got && Object.values(got).some((s) => s.text_size.spacing !== undefined),
+      !!got &&
+        Object.values(got).some((s) => s.text_size.spacing !== undefined),
     );
   }, [pull]);
 
-  const dirty = canEdit && (Object.keys(staged).length > 0 || draft !== null);
+  const dirty = canEdit && Object.keys(staged).length > 0;
   useLeaveGuard(
     dirty,
     "Your text size changes are not saved. Leave without saving?",
@@ -212,80 +217,101 @@ export function useRelayTextSize(
     (sheet: string) => sheets[sheet]?.text_size ?? EMPTY_TEXT_SIZE,
     [sheets],
   );
-  const current = (sheet: string) =>
-    (editing === sheet ? draft : null) ?? staged[sheet] ?? saved(sheet);
-
-  const change = (fn: (l: { d?: number; bold?: boolean }) => { d?: number; bold?: boolean }) => {
-    if (!draft || !picks.length) return;
-    // updateLayers 只认 page / columns / rows：spacing 要带回去。
-    const next = updateLayers(draft, picks, fn);
-    setDraft(draft.spacing !== undefined ? { ...next, spacing: draft.spacing } : next);
+  const current = (sheet: string) => staged[sheet] ?? saved(sheet);
+  /** 改动直接暂存在这张单上（和存好的一样就不算没存）；按页头 Save 才存。 */
+  const write = (sheet: string, next: ManifestTextSize) =>
+    setStaged((st) => {
+      const out = { ...st };
+      if (JSON.stringify(next) === JSON.stringify(saved(sheet)))
+        delete out[sheet];
+      else out[sheet] = next;
+      return out;
+    });
+  const activate = (sheet: string) => {
+    if (editing === sheet) return;
+    setEditing(sheet);
+    setPicks(mode === "page" ? [{ kind: "page" }] : []);
+    setSave({ kind: "idle" });
   };
-  const setLevel = (k: number) => {
-    if (!draft || !editing) return;
-    setDraft({
-      ...draft,
-      spacing: spacingFor(editing, Math.max(SPACING_MIN, Math.min(SPACING_MAX, k))),
+
+  const change = (
+    fn: (l: { d?: number; bold?: boolean }) => { d?: number; bold?: boolean },
+  ) => {
+    if (!editing || !picks.length) return;
+    const cur = current(editing);
+    // updateLayers 只认 page / columns / rows：spacing 要带回去。
+    const next = updateLayers(cur, picks, fn);
+    write(
+      editing,
+      cur.spacing !== undefined ? { ...next, spacing: cur.spacing } : next,
+    );
+  };
+  const setLevel = (sheet: string, k: number) => {
+    activate(sheet);
+    write(sheet, {
+      ...current(sheet),
+      spacing: spacingFor(
+        sheet,
+        Math.max(SPACING_MIN, Math.min(SPACING_MAX, k)),
+      ),
     });
   };
 
   return {
     ready,
     spacingReady,
-    spacingStep: (n) => draft && setLevel(spacingLevel(draft) + n),
-    spacingReset: () => setLevel(0),
+    spacingStep: (sheet, n) =>
+      setLevel(sheet, spacingLevel(current(sheet)) + n),
+    spacingReset: (sheet) => setLevel(sheet, 0),
     canEdit,
     sheets,
     staged,
     editing,
-    draft,
     mode,
     picks,
     save,
     dirty,
     current,
-    open: (sheet) => {
+    activate,
+    setMode: (sheet, m) => {
       setEditing(sheet);
-      setDraft(staged[sheet] ?? saved(sheet));
-      setPicks([]);
-      setMode("column");
-      setSave({ kind: "idle" });
-    },
-    close: () => {
-      setEditing(null);
-      setDraft(null);
-      setPicks([]);
-    },
-    setMode: (m) => {
       setMode(m);
       setPicks(m === "page" ? [{ kind: "page" }] : []);
     },
-    pick: (p) => setPicks((ps) => togglePick(ps, p)),
+    pick: (sheet, p) => {
+      if (editing !== sheet) {
+        setEditing(sheet);
+        setPicks([p]);
+        setSave({ kind: "idle" });
+        return;
+      }
+      setPicks((ps) => togglePick(ps, p));
+    },
     step: (n) => change((l) => ({ ...l, d: (l.d ?? 0) + n })),
     bold: (b) => change((l) => ({ ...l, bold: b })),
     resetSelection: () => change(() => ({})),
-    resetAll: () => {
+    resetAll: (sheet) => {
       // Reset whole table 只管字号；行距有自己的 Default spacing。
-      setDraft(
-        draft?.spacing !== undefined
-          ? { ...EMPTY_TEXT_SIZE, spacing: draft.spacing }
+      const cur = current(sheet);
+      activate(sheet);
+      write(
+        sheet,
+        cur.spacing !== undefined
+          ? { ...EMPTY_TEXT_SIZE, spacing: cur.spacing }
           : EMPTY_TEXT_SIZE,
       );
-      setPicks([]);
+    },
+    cancel: (sheet) => {
+      setStaged((st) => {
+        const out = { ...st };
+        delete out[sheet];
+        return out;
+      });
+      if (editing === sheet)
+        setPicks(mode === "page" ? [{ kind: "page" }] : []);
     },
     done: () => {
-      if (editing && draft) {
-        const same =
-          JSON.stringify(draft) === JSON.stringify(saved(editing));
-        setStaged((s) => {
-          const next = { ...s };
-          if (same) delete next[editing];
-          else next[editing] = draft;
-          return next;
-        });
-      }
       setEditing(null);
-      setDraft(null);
       setPicks([]);
     },
     saveAll: async () => {
@@ -326,7 +352,11 @@ export function useRelayCellFont(sheet: string | null, basePx: number) {
   const t = useContext(RelayTextContext);
   return (col: RelayColumn, order: string) => {
     if (!t?.ready || !sheet)
-      return { style: undefined as CSSProperties | undefined, className: "", onClick: undefined };
+      return {
+        style: undefined as CSSProperties | undefined,
+        className: "",
+        onClick: undefined,
+      };
     const ts = t.current(sheet);
     const layers = [ts.page, ts.columns[col], ts.rows[order]];
     let d = 0;
@@ -350,17 +380,20 @@ export function useRelayCellFont(sheet: string | null, basePx: number) {
           ...(bold !== undefined ? { fontWeight: bold ? 700 : 400 } : null),
         }
       : undefined;
+    // 置顶 114 第 4 版：编辑卡一直在，能改的人点哪张单的格子都能选（点了别的单就换到那张）。
+    if (!t.canEdit) return { style, className: "", onClick: undefined };
     const editing = t.editing === sheet;
-    if (!editing) return { style, className: "", onClick: undefined };
     const selected =
-      isPicked(t.picks, "page") ||
-      isPicked(t.picks, "column", col) ||
-      isPicked(t.picks, "row", order);
+      editing &&
+      (isPicked(t.picks, "page") ||
+        isPicked(t.picks, "column", col) ||
+        isPicked(t.picks, "row", order));
     return {
       style,
       className: cn(editCellClass(selected, changed), "cursor-pointer"),
       onClick: () =>
         t.pick(
+          sheet,
           t.mode === "row"
             ? { kind: "row", id: order }
             : { kind: "column", id: col },
@@ -377,7 +410,10 @@ export function useRelayPageDelta(sheet: string | null): number {
   return Math.max(TEXT_MIN, Math.min(TEXT_MAX, d));
 }
 
-/** 每张单上方（只在屏幕上）：「Aa Text size」键、没存的提示、最近 5 次，编辑时下面是编辑条。 */
+/**
+ * 每张单上方（只在屏幕上）：编辑卡一直显示（置顶 114 第 4 版，Annie「我不要任何隐藏菜单，我要一目了然」），
+ * 没有「Aa Text size」开关；上面一行是没存的提示和最近 5 次。点选只在正在改的那张单上（点哪张的表格或卡片就换到哪张）。
+ */
 export function SheetTextBar({
   sheet,
   orders,
@@ -389,11 +425,12 @@ export function SheetTextBar({
 }) {
   const t = useContext(RelayTextContext);
   if (!t?.ready || !sheet) return null;
-  const editing = t.editing === sheet;
+  const active = t.editing === sheet;
+  const picks = active ? t.picks : [];
   const history = t.sheets[sheet]?.history ?? [];
-  const current = t.draft ?? EMPTY_TEXT_SIZE;
-  const layer = t.picks.length ? layerOf(current, t.picks[0]) : {};
-  const label = t.picks
+  const current = t.current(sheet);
+  const layer = picks.length ? layerOf(current, picks[0]) : {};
+  const label = picks
     .map((p) =>
       p.kind === "page"
         ? "Whole page"
@@ -407,57 +444,48 @@ export function SheetTextBar({
   return (
     <div
       data-relay-text-bar={sheet}
+      data-active={active || undefined}
       className="rl-screen-only mx-auto mb-1.5 w-full max-w-[var(--rl-ph,297mm)] px-0.5"
     >
-      <div className="flex flex-wrap items-center gap-2.5">
-        {t.canEdit ? (
-          <button
-            type="button"
-            data-relay-text-open={sheet}
-            onClick={() => (editing ? t.close() : t.open(sheet))}
-            className={cn(
-              "inline-flex h-7 cursor-pointer items-center rounded-[7px] border border-black/25 bg-paper px-3 text-[12px] font-bold text-[#111] max-sm:h-[26px]",
-              editing && "max-sm:hidden",
-            )}
-          >
-            {editing ? "Close text size" : "Aa Text size"}
-          </button>
-        ) : null}
-        {t.staged[sheet] && !editing ? (
-          <span
-            data-relay-text-unsaved={sheet}
-            className="text-[12px] font-semibold text-[#fbbf24]"
-          >
-            Text size not saved
-          </span>
-        ) : null}
-        {history.length ? (
-          <span className="[&_details]:text-[#cbd5e1] [&_b]:!text-white [&_summary]:text-[#cbd5e1]">
-            <TextSizeHistory history={history} />
-          </span>
-        ) : null}
-      </div>
-      {editing ? (
+      {t.staged[sheet] || history.length ? (
+        <div className="flex flex-wrap items-center gap-2.5">
+          {t.staged[sheet] ? (
+            <span
+              data-relay-text-unsaved={sheet}
+              className="text-[11px] font-semibold text-[#fbbf24]"
+            >
+              Text size not saved
+            </span>
+          ) : null}
+          {history.length ? (
+            <span className="[&_b]:!text-white [&_details]:text-[#cbd5e1] [&_summary]:text-[#cbd5e1]">
+              <TextSizeHistory history={history} />
+            </span>
+          ) : null}
+        </div>
+      ) : null}
+      {t.canEdit ? (
         <TextSizeToolbar
+          always
           mode={t.mode}
-          onMode={t.setMode}
-          picks={t.picks}
+          onMode={(m) => t.setMode(sheet, m)}
+          picks={picks}
           pickedLabel={label}
           current={layer}
           onStep={t.step}
           onBold={t.bold}
           onResetSelection={t.resetSelection}
-          onResetAll={t.resetAll}
-          onCancel={t.close}
+          onResetAll={() => t.resetAll(sheet)}
+          onCancel={() => t.cancel(sheet)}
           onDone={t.done}
           spacing={
-            t.spacingReady && t.draft
+            t.spacingReady
               ? {
-                  level: spacingLevel(t.draft),
+                  level: spacingLevel(current),
                   min: SPACING_MIN,
                   max: SPACING_MAX,
-                  onStep: t.spacingStep,
-                  onReset: t.spacingReset,
+                  onStep: (n) => t.spacingStep(sheet, n),
+                  onReset: () => t.spacingReset(sheet),
                 }
               : undefined
           }
@@ -500,26 +528,17 @@ export function RelayTextSave() {
   return (
     <>
       {status ? (
-        <>
-          <span
-            data-relay-text-status={t.save.kind}
-            className={cn(tone, "text-[12.5px] max-sm:hidden")}
-          >
-            {dot}
-            {status}
-          </span>
-          <span
-            data-relay-text-status-phone={t.save.kind}
-            className={cn(tone, "text-[11px] whitespace-nowrap sm:hidden")}
-          >
-            {dot}
-            {t.save.kind === "error"
-              ? "Not saved"
-              : t.save.kind === "saved" && !n
-                ? "Saved"
-                : `${n} not saved`}
-          </span>
-        </>
+        // 置顶 114 第 4 版：手机照参考图把整句写出来，排在标题下面一行（不再缩成「1 not saved」）。
+        <span
+          data-relay-text-status={t.save.kind}
+          className={cn(
+            tone,
+            "text-[11.5px] max-sm:order-3 max-sm:basis-full max-sm:text-[11px]",
+          )}
+        >
+          {dot}
+          {status}
+        </span>
       ) : null}
       <button
         type="button"
@@ -527,7 +546,7 @@ export function RelayTextSave() {
         data-phone-keep
         disabled={!n || t.save.kind === "saving"}
         onClick={() => void t.saveAll()}
-        className="inline-flex h-[34px] cursor-pointer items-center gap-1.5 rounded-[9px] bg-[#3b82f6] px-3.5 text-[13.5px] font-bold text-white disabled:cursor-default disabled:opacity-45 max-sm:h-[26px] max-sm:rounded-[7px] max-sm:px-2.5 max-sm:text-[12.5px]"
+        className="inline-flex h-[28px] cursor-pointer items-center gap-1.5 rounded-[8px] bg-[#3b82f6] px-3 text-[12.5px] font-bold text-white disabled:cursor-default disabled:opacity-45 max-sm:order-1 max-sm:ml-auto max-sm:px-2.5 max-sm:text-[12px]"
       >
         <LineIcon name="save" />
         {t.save.kind === "saving" ? "Saving…" : "Save"}

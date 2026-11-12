@@ -147,7 +147,7 @@ const HELP_ITEMS = [
   "Other messages are sorted by departure, soonest first.",
   "Today’s Pickup: This morning’s send list. Tour & Tickets: Today onward.",
   "Scroll within each panel to see more. Click a message to reply to the guest right here.",
-  "No reply needed? Select Take action to remove it. It reappears if the guest messages again.",
+  "Replied to the guest and it went out (SMS or email sent)? It counts as handled and leaves the list. No reply needed? Select Take action to remove it. It reappears if the guest messages again.",
 ];
 
 export function MessagesSection({

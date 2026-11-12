@@ -17,7 +17,6 @@ import { HowToUse } from "@/components/ui/how-to-use";
 import { ErrorBanner } from "@/components/ui/panel";
 import { PageLink } from "@/components/ui/page-link";
 import { LineIcon } from "@/components/dispatch-manifest/line-icons";
-import { PhoneMore, usePhoneInfo } from "@/components/ui/phone";
 import { describeError, isStatus } from "@/lib/api-errors";
 import {
   downloadRelayListExcel,
@@ -100,10 +99,10 @@ type ViewState =
 
 /** 返回键（置顶 114：页头左边「‹ Dispatch」，34px；手机 26px）。 */
 const NAV_LINK =
-  "inline-flex h-[34px] items-center gap-1.5 rounded-[9px] border border-[rgba(147,197,253,.35)] px-3 text-[13.5px] font-semibold text-[#93c5fd] no-underline hover:bg-white/[.07] max-sm:h-[26px] max-sm:rounded-[7px] max-sm:px-[9px] max-sm:text-[12.5px]";
+  "inline-flex h-[28px] items-center gap-1.5 rounded-[8px] border border-[rgba(147,197,253,.35)] px-2.5 text-[12.5px] font-semibold text-[#93c5fd] no-underline hover:bg-white/[.07] max-sm:h-[26px] max-sm:rounded-[7px] max-sm:px-[9px] max-sm:text-[12.5px]";
 /** 白底键（Print / Excel / ⚙ 不是提交键，不用蓝色；置顶 114 前面带线条图标）。 */
 const WHITE_BTN =
-  "inline-flex h-[34px] cursor-pointer items-center gap-1.5 rounded-[9px] border border-black/25 bg-paper px-3.5 text-[13.5px] font-bold whitespace-nowrap text-[#111] max-sm:h-[26px] max-sm:rounded-[7px] max-sm:px-2.5 max-sm:text-[12.5px]";
+  "inline-flex h-[28px] cursor-pointer items-center justify-center gap-1.5 rounded-[8px] border border-black/25 bg-paper px-3 text-[12.5px] font-bold whitespace-nowrap text-[#111] max-sm:h-[28px] max-sm:px-2 max-sm:text-[12px]";
 
 /**
  * Relay list：Dispatch › Morning Relay「📋 Relay list」打开（Annie：「排完relay并保存了以后，应该加一个按键显示这些relay的list」）。
@@ -130,7 +129,6 @@ export function RelayListView() {
   const [layoutDraft, setLayoutDraft] = useState<PrintLayoutSettings | null>(
     null,
   );
-  const info = usePhoneInfo("About this page");
   // 能改 = 能编辑 Dispatch（题 5 A；同 Dispatch 页：partner 只看，Super Admin 全给）。PUT 后端也按 dispatch.edit 挡。
   const perms = usePermissions();
   const isSuperAdmin = usePageVisibility().isSuperAdmin;
@@ -254,33 +252,49 @@ export function RelayListView() {
   // 横版单 297mm 宽（置顶 73）：max-w 放得下一整张。
   return (
     <main className="mx-auto w-full max-w-[1180px] px-4 py-5 sm:px-6 print:max-w-none print:p-0">
-      {/* 置顶 114（Annie「114，115，107全选A。动手」）：左「‹ Dispatch」；右「● 未存黄字｜Save｜Print｜Excel｜⚙ Colours, Text & Page」，
-          位置固定。手机一行：‹ Dispatch｜黄点 + 小字｜Save｜⋯（Print、Excel、⚙ 收进 ⋯）。 */}
+      {/* 置顶 114 第 4 版（Annie「我要这个版式，我不要任何隐藏菜单，我要一目了然」，照参考图）：
+          电脑一行「‹ Dispatch｜Colours, Text & Page｜● 未存黄字｜Save｜Print｜Excel｜⚙ Settings」；
+          手机照图竖排：‹ Dispatch + Save → 标题 → 黄字 → Print / Excel / ⚙ Settings 一排，不收进 ⋯。
+          「Colours, Text & Page」照图变成标题；原来打开设置的键改名「⚙ Settings」，一直看得见。 */}
       <div
         data-relay-header
-        className="rl-screen-only mb-4 flex flex-wrap items-center gap-3 max-sm:gap-2"
+        className="rl-screen-only mb-4 flex flex-wrap items-center gap-3 max-sm:gap-x-2 max-sm:gap-y-2"
       >
         <PageLink href={backHref} className={NAV_LINK}>
           ‹ Dispatch
         </PageLink>
-        {info.button}
+        <h1
+          data-relay-title
+          className="m-0 inline-flex items-center gap-2 text-[19px] font-bold text-white max-sm:order-2 max-sm:basis-full max-sm:text-[16px]"
+        >
+          <span className="sm:hidden">
+            <LineIcon name="gear" />
+          </span>
+          {layout ? "Colours, Text & Page" : "Colours & Page"}
+        </h1>
+        {/* 置顶 114 第 4 版（d8 定，Annie「不要任何隐藏菜单」）：手机上这句也摊开，不收进「i」。 */}
         <span
-          className={`order-last basis-full text-[12.5px] text-[#cbd5e1] ${info.hide}`}
+          data-relay-about
+          className="order-last basis-full text-[11.5px] text-[#cbd5e1]"
         >
           Shows the saved Dispatch schedule. Changed something? Save it on
           Dispatch, then reload this page.
         </span>
-        <span className="flex-1" />
+        <span className="flex-1 max-sm:hidden" />
         {view.kind === "ready" ? (
           <RelayTextContext.Provider value={textState}>
             <RelayTextSave />
           </RelayTextContext.Provider>
         ) : null}
         {view.kind === "ready" ? (
-          <PhoneMore label="More actions">
+          <div
+            data-relay-actions
+            className="contents max-sm:order-4 max-sm:grid max-sm:basis-full max-sm:grid-cols-3 max-sm:gap-2"
+          >
             <button
               type="button"
               data-relay-print
+              data-phone-keep
               onClick={() => window.print()}
               className={WHITE_BTN}
             >
@@ -298,14 +312,15 @@ export function RelayListView() {
               <button
                 type="button"
                 data-relay-settings-open
+                data-phone-keep
                 onClick={() => setSettingsOpen(true)}
                 className={WHITE_BTN}
               >
                 <LineIcon name="gear" />
-                {layout ? "Colours, Text & Page" : "Colours & Page"}
+                Settings
               </button>
             ) : null}
-          </PhoneMore>
+          </div>
         ) : null}
       </div>
       {paper === "letter" ? <style>{LETTER_PAGE}</style> : null}
@@ -357,7 +372,10 @@ export function RelayListView() {
       ) : null}
       {view.kind === "ready" && settings ? (
         <div className="rl-screen-only">
-          <HowToUse dark title="How to use — Relay list" items={[
+          <HowToUse
+            dark
+            title="How to use — Relay list"
+            items={[
               ...HOW_TO,
               ...(layout ? [RELAY_LAYOUT_HOW_TO] : []),
               ...(textState.ready ? [RELAY_AA_HOW_TO] : []),
@@ -408,11 +426,11 @@ const RELAY_LAYOUT_HOW_TO =
 
 /** 置顶 92 Q5 A；置顶 114 换成新键名（preview 第 3 版原文，Q2 A 加「Save stays grey…」）。 */
 const RELAY_AA_HOW_TO =
-  "Aa Text size (above each sheet): under Apply To pick Column, Row or Page, click the table, then use Text Size (A− / A+) and Font Weight (Regular / Bold). Press Done, then Save at the top. Save stays grey until something is changed. Text size is saved for this day only and prints as you see it; the next day starts from the everyday size.";
+  "Text size (the card above each sheet): under Apply To pick Column, Row or Page, click the table, then use Text Size (A− / A+) and Font Weight (Regular / Bold). The sheet changes right away; press Save at the top to keep it. Save stays grey until something is changed. Text size is saved for this day only and prints as you see it; the next day starts from the everyday size.";
 
 /** 置顶 112 Spacing（Annie「用-+是最好，一目了然…不要让staff去判断px」）：一组 − / +，不提 px。 */
 const RELAY_SPACING_HOW_TO =
-  "Spacing (in Aa Text size): press − for less space between rows and between hotels, + for more. The sheet changes right away. It is saved with the text size for this day only and prints as you see it. If the sheet no longer fits on one page, the space gets smaller by itself until it fits. Default Spacing (under Quick Actions) puts it back.";
+  "Spacing (in the card above each sheet): press − for less space between rows and between hotels, + for more. The sheet changes right away. It is saved with the text size for this day only and prints as you see it. If the sheet no longer fits on one page, the space gets smaller by itself until it fits. Default Spacing (under Quick Actions) puts it back.";
 
 /** 置顶 112（Annie「111， 112 全 A + 动手」）：Q3 定稿原文 + Q7 A 原文。 */
 const RELAY_FIT_HOW_TO = [
@@ -468,6 +486,7 @@ function ExcelButton({
       <button
         type="button"
         data-relay-excel
+        data-phone-keep
         disabled={busy}
         onClick={() => void download()}
         className={`${WHITE_BTN} disabled:cursor-default disabled:opacity-60`}
@@ -479,7 +498,7 @@ function ExcelButton({
         <span
           role="alert"
           data-relay-excel-error
-          className="text-[12.5px] font-semibold text-[#f87171]"
+          className="text-[11.5px] font-semibold text-[#f87171]"
         >
           {error}
         </span>
@@ -566,11 +585,7 @@ function Sheets({
           {r.cars
             .filter((c) => c.rows.length > 0)
             .map((c) => (
-              <CarSheet
-                key={c.key}
-                car={c}
-                dateShort={dates.short}
-              />
+              <CarSheet key={c.key} car={c} dateShort={dates.short} />
             ))}
         </Fragment>
       ))}
@@ -654,12 +669,19 @@ function totalPaxStyle(pageDelta: number): CSSProperties {
 
 /** 每天的起点字号 ⇒ CSS 变量（只写设了的）。 */
 const TEXT_VARS: Record<string, Record<string, string>> = {
-  summary: { table_text: "--rl-sum-td", legend: "--rl-sum-legend", column_titles: "--rl-sum-th" },
-  car: { header: "--rl-car-head", table_text: "--rl-car-td", total_pax: "--rl-car-total", bus_bars: "--rl-car-bar" },
+  summary: {
+    table_text: "--rl-sum-td",
+    legend: "--rl-sum-legend",
+    column_titles: "--rl-sum-th",
+  },
+  car: {
+    header: "--rl-car-head",
+    table_text: "--rl-car-td",
+    total_pax: "--rl-car-total",
+    bus_bars: "--rl-car-bar",
+  },
 };
-function textVars(
-  text: PrintLayoutSettings["text"],
-): Record<string, string> {
+function textVars(text: PrintLayoutSettings["text"]): Record<string, string> {
   const out: Record<string, string> = {};
   for (const [layout, vars] of Object.entries(TEXT_VARS)) {
     const els = relayTextElements(layout);
@@ -703,72 +725,72 @@ function TotalSheet({
   let prev: { guest: RelayGuest; carKey: string } | null = null;
   return (
     <>
-    <SheetTextBar
-      sheet={sheet}
-      orders={round.rows.map((r) => r.guest.order_number)}
-    />
-    <SheetFitWarn fit={fit} />
-    <section
-      ref={ref}
-      data-relay-total={round.round}
-      data-orient={orientation}
-      className="rl-sheet rl-total"
-    >
-      <SheetFitMarks fit={fit} />
-      <div className="flex items-baseline justify-between text-[20px] font-bold">
-        <span>RELAY SPLITS</span>
-        <span>
-          {dateLong}
-          {many ? (
-            <span className="ml-2 text-[13px] font-semibold">
-              · {round.name}
-            </span>
-          ) : null}
-        </span>
-      </div>
-      <Legend round={round} />
-      <table className="mt-2">
-        <thead>
-          <tr>
-            {TOTAL_HEAD.map((h) => (
-              <th key={h}>{h}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {round.rows.length === 0 ? (
+      <SheetTextBar
+        sheet={sheet}
+        orders={round.rows.map((r) => r.guest.order_number)}
+      />
+      <SheetFitWarn fit={fit} />
+      <section
+        ref={ref}
+        data-relay-total={round.round}
+        data-orient={orientation}
+        className="rl-sheet rl-total"
+      >
+        <SheetFitMarks fit={fit} />
+        <div className="flex items-baseline justify-between text-[20px] font-bold">
+          <span>RELAY SPLITS</span>
+          <span>
+            {dateLong}
+            {many ? (
+              <span className="ml-2 text-[13px] font-semibold">
+                · {round.name}
+              </span>
+            ) : null}
+          </span>
+        </div>
+        <Legend round={round} />
+        <table className="mt-2">
+          <thead>
             <tr>
-              <td colSpan={7} className="!font-normal text-[#555]">
-                No guests on a relay car yet.
-              </td>
+              {TOTAL_HEAD.map((h) => (
+                <th key={h}>{h}</th>
+              ))}
             </tr>
-          ) : (
-            round.rows.map(({ guest: g, car }) => {
-              const cur = { guest: g, carKey: car.key };
-              const gap = newGroup(prev, cur);
-              prev = cur;
-              return (
-                <Fragment key={`${car.key}-${g.id}`}>
-                  {gap ? (
-                    <tr>
-                      <td className="rl-gap" colSpan={7} />
+          </thead>
+          <tbody>
+            {round.rows.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="!font-normal text-[#555]">
+                  No guests on a relay car yet.
+                </td>
+              </tr>
+            ) : (
+              round.rows.map(({ guest: g, car }) => {
+                const cur = { guest: g, carKey: car.key };
+                const gap = newGroup(prev, cur);
+                prev = cur;
+                return (
+                  <Fragment key={`${car.key}-${g.id}`}>
+                    {gap ? (
+                      <tr>
+                        <td className="rl-gap" colSpan={7} />
+                      </tr>
+                    ) : null}
+                    <tr data-relay-row={g.order_number}>
+                      <GuestCells
+                        g={g}
+                        color={car.color}
+                        hotelStyle={hotelStyle}
+                        font={font}
+                      />
                     </tr>
-                  ) : null}
-                  <tr data-relay-row={g.order_number}>
-                    <GuestCells
-                      g={g}
-                      color={car.color}
-                      hotelStyle={hotelStyle}
-                      font={font}
-                    />
-                  </tr>
-                </Fragment>
-              );
-            })
-          )}
-        </tbody>
-      </table>
-    </section>
+                  </Fragment>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </section>
     </>
   );
 }
@@ -789,92 +811,95 @@ function CarSheet({
   let prev: { guest: RelayGuest; carKey: string } | null = null;
   return (
     <>
-    <SheetTextBar sheet={sheet} orders={car.rows.map((g) => g.order_number)} />
-    <SheetFitWarn fit={fit} />
-    <section
-      ref={ref}
-      data-relay-car={car.key}
-      data-orient={car.orientation}
-      className="rl-sheet"
-    >
-      <SheetFitMarks fit={fit} />
-      <div className="rl-head" style={{ background: car.color }}>
-        <span>
-          {car.title} &nbsp;{car.who}
-        </span>
-        <span className="whitespace-nowrap">
-          Service Date: &nbsp;{dateShort}
-        </span>
-      </div>
-      {car.problems.map((p) => (
-        <p key={p} className="px-3 py-1 text-[14px] font-bold text-[#d00000]">
-          {p}
-        </p>
-      ))}
-      <table className="mt-1.5">
-        <thead>
-          <tr>
-            <th>Time</th>
-            <th>Hotel</th>
-            <th>Qty</th>
-            <th>Full Name</th>
-            <th>Phone #</th>
-            <th>Product</th>
-            <th>Order #</th>
-          </tr>
-        </thead>
-        <tbody>
-          {car.rows.map((g) => {
-            const cur = { guest: g, carKey: car.key };
-            const gap = newGroup(prev, cur);
-            prev = cur;
-            return (
-              <Fragment key={g.id}>
-                {gap ? (
-                  <tr>
-                    <td className="rl-gap" colSpan={7} />
-                  </tr>
-                ) : null}
-                <tr data-relay-row={g.order_number}>
-                  <GuestCells
-                    g={g}
-                    color={car.color}
-                    hotelStyle={hotelStyle}
-                    font={font}
-                  />
-                </tr>
-              </Fragment>
-            );
-          })}
-          <tr>
-            <td className="rl-gap" colSpan={7} />
-          </tr>
-          <tr>
-            <td colSpan={2} className="!text-right" style={totalPax}>
-              Total Pax
-            </td>
-            <td data-relay-total-pax style={totalPax}>
-              {car.pax}
-            </td>
-            <td colSpan={4} className="!border-0" />
-          </tr>
-        </tbody>
-      </table>
-      {car.buses.length ? (
-        <div className="mt-5">
-          {car.buses.map((b) => (
-            <div
-              key={`${b.tour}-${b.label}-${b.van}`}
-              data-relay-bus
-              className="rl-bar"
-              style={b.color ? { background: b.color } : undefined}
-            >
-              {busBar(b)}
-            </div>
-          ))}
+      <SheetTextBar
+        sheet={sheet}
+        orders={car.rows.map((g) => g.order_number)}
+      />
+      <SheetFitWarn fit={fit} />
+      <section
+        ref={ref}
+        data-relay-car={car.key}
+        data-orient={car.orientation}
+        className="rl-sheet"
+      >
+        <SheetFitMarks fit={fit} />
+        <div className="rl-head" style={{ background: car.color }}>
+          <span>
+            {car.title} &nbsp;{car.who}
+          </span>
+          <span className="whitespace-nowrap">
+            Service Date: &nbsp;{dateShort}
+          </span>
         </div>
-      ) : null}
-    </section>
+        {car.problems.map((p) => (
+          <p key={p} className="px-3 py-1 text-[14px] font-bold text-[#d00000]">
+            {p}
+          </p>
+        ))}
+        <table className="mt-1.5">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Hotel</th>
+              <th>Qty</th>
+              <th>Full Name</th>
+              <th>Phone #</th>
+              <th>Product</th>
+              <th>Order #</th>
+            </tr>
+          </thead>
+          <tbody>
+            {car.rows.map((g) => {
+              const cur = { guest: g, carKey: car.key };
+              const gap = newGroup(prev, cur);
+              prev = cur;
+              return (
+                <Fragment key={g.id}>
+                  {gap ? (
+                    <tr>
+                      <td className="rl-gap" colSpan={7} />
+                    </tr>
+                  ) : null}
+                  <tr data-relay-row={g.order_number}>
+                    <GuestCells
+                      g={g}
+                      color={car.color}
+                      hotelStyle={hotelStyle}
+                      font={font}
+                    />
+                  </tr>
+                </Fragment>
+              );
+            })}
+            <tr>
+              <td className="rl-gap" colSpan={7} />
+            </tr>
+            <tr>
+              <td colSpan={2} className="!text-right" style={totalPax}>
+                Total Pax
+              </td>
+              <td data-relay-total-pax style={totalPax}>
+                {car.pax}
+              </td>
+              <td colSpan={4} className="!border-0" />
+            </tr>
+          </tbody>
+        </table>
+        {car.buses.length ? (
+          <div className="mt-5">
+            {car.buses.map((b) => (
+              <div
+                key={`${b.tour}-${b.label}-${b.van}`}
+                data-relay-bus
+                className="rl-bar"
+                style={b.color ? { background: b.color } : undefined}
+              >
+                {busBar(b)}
+              </div>
+            ))}
+          </div>
+        ) : null}
+      </section>
     </>
   );
 }

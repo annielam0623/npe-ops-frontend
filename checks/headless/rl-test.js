@@ -505,8 +505,8 @@ async function textChecks() {
   await open(URL0);
   await waitFor("document.querySelectorAll('[data-relay-total]').length === 2", 30000);
   await sleep(500);
-  check("当天字号：relay-pull 没带 summary_text_size（旧后端）⇒ 每张单上方没有 Aa Text size", !(await evaluate("return !!document.querySelector('[data-relay-text-open]');")));
-  check("Text：键名「Colours, Text & Page」（置顶 114：每个词大写开头，前面线条齿轮）", await evaluate("const b = document.querySelector('[data-relay-settings-open]'); return b.textContent === 'Colours, Text & Page' && !!b.querySelector('svg[data-line-icon=gear]');"));
+  check("当天字号：relay-pull 没带 summary_text_size（旧后端）⇒ 每张单上方没有编辑卡", !(await evaluate("return !!document.querySelector('[data-relay-text-bar] [data-text-size-toolbar]');")));
+  check("Text：设置键「Settings」（置顶 114 第 4 版：标题写 Colours, Text & Page，键前面线条齿轮）", await evaluate("const b = document.querySelector('[data-relay-settings-open]'); return b.textContent === 'Settings' && document.querySelector('[data-relay-title]').textContent === 'Colours, Text & Page' && !!b.querySelector('svg[data-line-icon=gear]');"));
 
   // 每天的起点：Text 页
   await openSettings();
@@ -533,31 +533,31 @@ async function textChecks() {
   // 当天 Aa
   await ctl({ textSize: true });
   await open(URL0);
-  await waitFor("document.querySelector('[data-relay-text-open]')", 30000);
+  await waitFor("document.querySelector('[data-relay-text-bar] [data-text-size-toolbar]')", 30000);
   await helpers();
-  check("当天字号：每张单上方一个 Aa Text size（总表 2 张 + 有客人的车）", await evaluate("return document.querySelectorAll('[data-relay-text-open]').length === document.querySelectorAll('.rl-sheet').length && !!document.querySelector('[data-relay-text-open=\"summary:relay\"]');"));
+  check("当天字号：每张单上方一张编辑卡、一直显示（总表 2 张 + 有客人的车）", await evaluate("return document.querySelectorAll('[data-relay-text-bar] [data-text-size-toolbar]').length === document.querySelectorAll('.rl-sheet').length && !!document.querySelector('[data-relay-text-bar=\"summary:relay\"] [data-text-size-toolbar]');"));
   check("当天字号：Tour 列的键是 product（同后端 07 的七个列键）", await evaluate("return !!document.querySelector('td[data-relay-col=product]') && !document.querySelector('[data-relay-col=tour]');"));
-  check("当天字号：How to use 多 Aa 那句", await evaluate("return document.body.textContent.includes('Aa Text size (above each sheet): under Apply To pick Column, Row or Page, click the table, then use Text Size (A− / A+) and Font Weight (Regular / Bold). Press Done, then Save at the top. Save stays grey until something is changed.');"));
-  await evaluate("document.querySelector('[data-relay-text-open=\"summary:relay\"]').click();");
-  await waitFor("document.querySelector('[data-text-size-toolbar]')");
+  check("当天字号：How to use 多字号那句（置顶 114 第 4 版新字）", await evaluate("return document.body.textContent.includes('Text size (the card above each sheet): under Apply To pick Column, Row or Page, click the table, then use Text Size (A− / A+) and Font Weight (Regular / Bold). The sheet changes right away; press Save at the top to keep it. Save stays grey until something is changed.');"));
+  await evaluate("document.querySelector('[data-relay-text-bar=\"summary:relay\"] [data-text-size-group=apply] button').click();");
+  await waitFor("document.querySelector('[data-relay-text-bar][data-active] [data-text-size-toolbar]')");
   await evaluate(`${sumHotel}.click();`);
-  await evaluate("document.querySelector('[data-text-size-toolbar] [aria-label=Bigger]').click();");
-  await evaluate("document.querySelector('[data-text-size-toolbar] [aria-label=Bigger]').click();");
-  await evaluate("$btn('Regular', document.querySelector('[data-text-size-toolbar]')).click();");
+  await evaluate("document.querySelector('[data-relay-text-bar][data-active] [data-text-size-toolbar] [aria-label=Bigger]').click();");
+  await evaluate("document.querySelector('[data-relay-text-bar][data-active] [data-text-size-toolbar] [aria-label=Bigger]').click();");
+  await evaluate("$btn('Regular', document.querySelector('[data-relay-text-bar][data-active] [data-text-size-toolbar]')).click();");
   check("当天字号：选 Hotel 整列、A+ 两下、Regular ⇒ 总表 Hotel 格 13.5 + 2 = 15.5px 不粗，别的列不变；编辑时选中蓝框", await waitFor(`${fs(sumHotel)} === '15.5px' && ${fw(sumHotel)} === '400' && ${fs(sumName)} === '13.5px' && ${sumHotel}.className.includes('outline')`), await evaluate(`return ${fs(sumHotel)} + ' ' + ${fw(sumHotel)} + ' ' + ${fs(sumName)};`));
-  check("当天字号：编辑条写 Picked: Hotel (column)", await evaluate("return document.querySelector('[data-text-size-toolbar]').textContent.includes('Hotel (column)');"));
-  await evaluate("document.querySelector('[data-text-size-done]').click();");
-  check("当天字号：Done ⇒ 编辑条收起、单子上方「Text size not saved」、页面顶上蓝色 Save + 1 sheet with text size not saved", await waitFor("!document.querySelector('[data-text-size-toolbar]') && !!document.querySelector('[data-relay-text-unsaved=\"summary:relay\"]') && getComputedStyle(document.querySelector('[data-relay-text-save]')).backgroundColor === 'rgb(59, 130, 246)' && document.querySelector('[data-relay-text-status]').textContent === '1 sheet with text size not saved'"));
-  check("当天字号：Done 后字号留在页面上（15.5px）", await evaluate(`return ${fs(sumHotel)} === '15.5px';`));
+  check("当天字号：编辑条写 Picked: Hotel (column)", await evaluate("return document.querySelector('[data-relay-text-bar][data-active] [data-text-size-toolbar]').textContent.includes('Hotel (column)');"));
+  // 置顶 114 第 4 版：电脑编辑卡一直显示，没有 Done（改动直接留在页面上）。
+  check("当天字号：改了 ⇒ 编辑卡还在、单子上方「Text size not saved」、页面顶上蓝色 Save + 1 sheet with text size not saved", await waitFor("!!document.querySelector('[data-relay-text-bar][data-active] [data-text-size-toolbar]') && !!document.querySelector('[data-relay-text-unsaved=\"summary:relay\"]') && getComputedStyle(document.querySelector('[data-relay-text-save]')).backgroundColor === 'rgb(59, 130, 246)' && document.querySelector('[data-relay-text-status]').textContent === '1 sheet with text size not saved'"));
+  check("当天字号：字号留在页面上（15.5px）", await evaluate(`return ${fs(sumHotel)} === '15.5px';`));
   // 车单：整行
-  const carKey = await evaluate("return document.querySelector('[data-relay-text-open^=\"car:\"]').dataset.relayTextOpen;");
+  const carKey = await evaluate("return document.querySelector('[data-relay-text-bar^=\"car:\"]').dataset.relayTextBar;");
   check("当天字号：车单按「轮 + 车号」认（car:relay:1724）", carKey === "car:relay:1724", carKey);
-  await evaluate(`document.querySelector('[data-relay-text-open="${carKey}"]').click();`);
-  await waitFor("document.querySelector('[data-text-size-toolbar]')");
-  await evaluate("$btn('Row', document.querySelector('[data-text-size-toolbar]')).click();");
+  await evaluate(`document.querySelector('[data-relay-text-bar="${carKey}"] [data-text-size-group=apply] button').click();`);
+  await waitFor("document.querySelector('[data-relay-text-bar][data-active] [data-text-size-toolbar]')");
+  await evaluate("$btn('Row', document.querySelector('[data-relay-text-bar][data-active] [data-text-size-toolbar]')).click();");
   await evaluate("document.querySelector('[data-relay-car=\"901\"] tbody tr[data-relay-row] td[data-relay-col=name]').click();");
-  await evaluate("document.querySelector('[data-text-size-toolbar] [aria-label=Bigger]').click();");
-  await evaluate("document.querySelector('[data-text-size-done]').click();");
+  await evaluate("document.querySelector('[data-relay-text-bar][data-active] [data-text-size-toolbar] [aria-label=Bigger]').click();");
+  // 置顶 114 第 4 版：电脑编辑卡一直显示，没有 Done（改动直接留在页面上）。
   await waitFor("document.querySelector('[data-relay-text-status]').textContent === '2 sheets with text size not saved'");
   b0 = (await mockLog()).length;
   await evaluate("document.querySelector('[data-relay-text-save]').click();");
@@ -571,18 +571,18 @@ async function textChecks() {
   check("当天字号：存好 ⇒ 绿字 Saved、Save 还在但灰着、没存提示不见、出 Text size changes", await waitFor("document.querySelector('[data-relay-text-status=saved]').textContent === 'Saved' && getComputedStyle(document.querySelector('[data-relay-text-status=saved]')).color === 'rgb(74, 222, 128)' && document.querySelector('[data-relay-text-save]').disabled && getComputedStyle(document.querySelector('[data-relay-text-save]')).opacity === '0.45' && !document.querySelector('[data-relay-text-unsaved]') && document.querySelector('[data-relay-text-bar=\"summary:relay\"]').textContent.includes('Text size changes')"));
   // 重开：存好的照样画；打印时 Aa 不印
   await open(URL0);
-  await waitFor("document.querySelector('[data-relay-text-open]')", 30000);
+  await waitFor("document.querySelector('[data-relay-text-bar] [data-text-size-toolbar]')", 30000);
   await sleep(500);
   check("当天字号：重开页面 ⇒ 存好的照样画（总表 Hotel 15.5px）", await evaluate(`return ${fs(sumHotel)} === '15.5px';`));
   await cdp("Emulation.setEmulatedMedia", { media: "print" });
   check("当天字号：打印时 Aa 键 / 提示不印，字号照印", await evaluate(`return getComputedStyle(document.querySelector('[data-relay-text-bar]')).display === 'none' && ${fs(sumHotel)} === '15.5px';`));
   await cdp("Emulation.setEmulatedMedia", { media: "" });
   // 400：红字、留着没存
-  await evaluate("document.querySelector('[data-relay-text-open=\"summary:relay\"]').click();");
-  await waitFor("document.querySelector('[data-text-size-toolbar]')");
-  await evaluate("$btn('Page', document.querySelector('[data-text-size-toolbar]')).click();");
-  await evaluate("document.querySelector('[data-text-size-toolbar] [aria-label=Bigger]').click();");
-  await evaluate("document.querySelector('[data-text-size-done]').click();");
+  await evaluate("document.querySelector('[data-relay-text-bar=\"summary:relay\"] [data-text-size-group=apply] button').click();");
+  await waitFor("document.querySelector('[data-relay-text-bar][data-active] [data-text-size-toolbar]')");
+  await evaluate("$btn('Page', document.querySelector('[data-relay-text-bar][data-active] [data-text-size-toolbar]')).click();");
+  await evaluate("document.querySelector('[data-relay-text-bar][data-active] [data-text-size-toolbar] [aria-label=Bigger]').click();");
+  // 置顶 114 第 4 版：电脑编辑卡一直显示，没有 Done（改动直接留在页面上）。
   await ctl({ textFail: "Text size must be from -2 to +10 px." });
   await evaluate("document.querySelector('[data-relay-text-save]').click();");
   check("当天字号：存不上 ⇒ 红字 Text size not saved: 原话，蓝 Save 还在", await waitFor("document.querySelector('[data-relay-text-status=error]')?.textContent === 'Text size not saved: Text size must be from -2 to +10 px.' && !!document.querySelector('[data-relay-text-save]')"));
@@ -595,7 +595,7 @@ async function textChecks() {
   await waitFor("document.querySelectorAll('[data-relay-total]').length === 2", 30000);
   await sleep(800);
   // 前面 400 那次重存了整页 +1：13.5 + 1 + 2 = 16.5px。
-  check("当天字号：没有 dispatch.edit ⇒ 没有 Aa 键，存好的照样画", await evaluate(`return !document.querySelector('[data-relay-text-open]') && ${fs(sumHotel)} === '16.5px';`), await evaluate(`return ${fs(sumHotel)};`));
+  check("当天字号：没有 dispatch.edit ⇒ 没有编辑卡，存好的照样画", await evaluate(`return !document.querySelector('[data-relay-text-bar] [data-text-size-toolbar]') && ${fs(sumHotel)} === '16.5px';`), await evaluate(`return ${fs(sumHotel)};`));
   await ctl({ reset: true, layoutReset: true, layout: false, textSize: false, edit: false });
 }
 
@@ -675,22 +675,22 @@ async function fitChecks() {
   // 4) Total Pax 跟整页（Q6 A），整列不跟；太宽（Q7 A）先压内边距、再挪中间、还宽出黄框
   await ctl({ many: 0 });
   await open(URL0);
-  await waitFor("document.querySelector('[data-relay-text-open]')", 30000);
+  await waitFor("document.querySelector('[data-relay-text-bar] [data-text-size-toolbar]')", 30000);
   await helpers();
   const carSel = "document.querySelector('[data-relay-car]')";
   const tp = `getComputedStyle(${carSel}.querySelector('[data-relay-total-pax]')).fontSize`;
   check("Total Pax：没调字号 ⇒ 20px", await evaluate(`return ${tp} === '20px';`));
   const sheetKey = await evaluate(`let e = ${carSel}.previousElementSibling; while (e && !e.matches('[data-relay-text-bar]')) e = e.previousElementSibling; return e?.dataset.relayTextBar;`);
-  await evaluate(`document.querySelector('[data-relay-text-open="${sheetKey}"]').click();`);
-  await waitFor("document.querySelector('[data-text-size-toolbar]')");
+  await evaluate(`document.querySelector('[data-relay-text-bar="${sheetKey}"] [data-text-size-group=apply] button').click();`);
+  await waitFor("document.querySelector('[data-relay-text-bar][data-active] [data-text-size-toolbar]')");
   await evaluate(`${carSel}.querySelector('td[data-relay-col=qty]').click();`);
-  await evaluate("document.querySelector('[data-text-size-toolbar] [aria-label=Bigger]').click();");
+  await evaluate("document.querySelector('[data-relay-text-bar][data-active] [data-text-size-toolbar] [aria-label=Bigger]').click();");
   check("Total Pax：只改 Qty 整列 ⇒ Total Pax 不跟（20px）", (await waitFor(`getComputedStyle(${carSel}.querySelector('td[data-relay-col=qty]')).fontSize === '16px'`)) && (await evaluate(`return ${tp} === '20px';`)), String(sheetKey));
-  await evaluate("$btn('Reset Whole Table', document.querySelector('[data-text-size-toolbar]')).click();");
-  await evaluate("$btn('Page', document.querySelector('[data-text-size-toolbar]')).click();");
-  for (let i = 0; i < 3; i++) await evaluate("document.querySelector('[data-text-size-toolbar] [aria-label=Bigger]').click();");
+  await evaluate("$btn('Reset Whole Table', document.querySelector('[data-relay-text-bar][data-active] [data-text-size-toolbar]')).click();");
+  await evaluate("$btn('Page', document.querySelector('[data-relay-text-bar][data-active] [data-text-size-toolbar]')).click();");
+  for (let i = 0; i < 3; i++) await evaluate("document.querySelector('[data-relay-text-bar][data-active] [data-text-size-toolbar] [aria-label=Bigger]').click();");
   check("Total Pax：Whole page A+3 ⇒ Total Pax 两格 20→23px", await waitFor(`${tp} === '23px' && getComputedStyle(${carSel}.querySelector('[data-relay-total-pax]').previousElementSibling).fontSize === '23px'`), await evaluate(`return ${tp};`));
-  for (let i = 0; i < 7; i++) await evaluate("document.querySelector('[data-text-size-toolbar] [aria-label=Bigger]').click();");
+  for (let i = 0; i < 7; i++) await evaluate("document.querySelector('[data-relay-text-bar][data-active] [data-text-size-toolbar] [aria-label=Bigger]').click();");
   await sleep(400);
   const wide = await evaluate(`const s = ${carSel}; const cs = getComputedStyle(s); const t = s.querySelector('table').getBoundingClientRect().width; const inner = s.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight); const w = ${warnOf(carSel)}; return { tp: ${tp}, px: s.style.getPropertyValue('--rl-px'), pl: parseFloat(cs.paddingLeft), pr: parseFloat(cs.paddingRight), fits: t <= inner + 0.5, warn: w?.textContent ?? null, wideAttr: w?.dataset.wide ?? null };`);
   check("太宽：Whole page A+10 ⇒ 格子左右内边距压过（< 6px）", /^[2-5]px$/.test(wide.px), JSON.stringify(wide));
@@ -698,7 +698,7 @@ async function fitChecks() {
   check("太宽：还宽 ⇒ 黄框「This sheet is too wide for the paper. Make the text smaller.」；放得下 ⇒ 不出", wide.fits ? wide.warn === null : wide.warn === "This sheet is too wide for the paper. Make the text smaller." && wide.wideAttr === "1", JSON.stringify(wide));
   check("Total Pax：A+10 ⇒ 30px", wide.tp === "30px", wide.tp);
   check("屏幕 = 打印：还宽 ⇒ 纸的右边画红虚线「Paper edge — anything to the right is cut off」；放得下 ⇒ 没有", await evaluate(`const e = ${carSel}.querySelector('[data-relay-paper-edge]'); return ${JSON.stringify(wide.fits)} ? !e : !!e && e.textContent === 'Paper edge — anything to the right is cut off';`));
-  await evaluate("$btn('Reset Whole Table', document.querySelector('[data-text-size-toolbar]')).click();");
+  await evaluate("$btn('Reset Whole Table', document.querySelector('[data-relay-text-bar][data-active] [data-text-size-toolbar]')).click();");
   await sleep(400);
   check("太宽：字号回默认 ⇒ 内边距 / 页边距恢复（没有内联 padding、--rl-px），黄框不见", await evaluate(`const s = ${carSel}; return !s.style.paddingLeft && !s.style.getPropertyValue('--rl-px') && !${warnOf(carSel)} && ${tp} === '20px';`));
   await ctl({ reset: true, layoutReset: true, textSize: false, edit: false, many: 0 });
@@ -708,47 +708,47 @@ async function fitChecks() {
 async function spacingChecks() {
   const carSel = "document.querySelector('[data-relay-car]')";
   const sheetKeyOf = async (sel) => evaluate(`let e = ${sel}.previousElementSibling; while (e && !e.matches('[data-relay-text-bar]')) e = e.previousElementSibling; return e?.dataset.relayTextBar;`);
-  const row = "document.querySelector('[data-relay-spacing]')";
+  const row = "document.querySelector('[data-relay-text-bar][data-active] [data-relay-spacing]')";
   const padTop = `getComputedStyle(${carSel}.querySelector('tr[data-relay-row] td')).paddingTop`;
 
   // 旧后端（relay-pull 的 text_size 没有 spacing 键）⇒ 不出 Spacing 那一行
   await ctl({ reset: true, layoutReset: true, edit: true, textSize: true, spacing: false, many: 0 });
   await open(URL0);
-  await waitFor("document.querySelector('[data-relay-text-open]')", 30000);
+  await waitFor("document.querySelector('[data-relay-text-bar] [data-text-size-toolbar]')", 30000);
   await helpers();
   let key = await sheetKeyOf(carSel);
-  await evaluate(`document.querySelector('[data-relay-text-open="${key}"]').click();`);
-  await waitFor("document.querySelector('[data-text-size-toolbar]')");
+  await evaluate(`document.querySelector('[data-relay-text-bar="${key}"] [data-text-size-group=apply] button').click();`);
+  await waitFor("document.querySelector('[data-relay-text-bar][data-active] [data-text-size-toolbar]')");
   check("Spacing：旧后端 ⇒ Aa 编辑条里没有 Spacing 那一行", !(await evaluate(`return !!${row};`)));
 
   // 新后端
   await ctl({ spacing: true });
   await open(URL0);
-  await waitFor("document.querySelector('[data-relay-text-open]')", 30000);
+  await waitFor("document.querySelector('[data-relay-text-bar] [data-text-size-toolbar]')", 30000);
   await helpers();
   key = await sheetKeyOf(carSel);
-  await evaluate(`document.querySelector('[data-relay-text-open="${key}"]').click();`);
+  await evaluate(`document.querySelector('[data-relay-text-bar="${key}"] [data-text-size-group=apply] button').click();`);
   await waitFor(`!!${row}`);
-  const r0 = await evaluate(`const r = ${row}; const d = document.querySelector('[data-relay-spacing-default]'); return { text: r.textContent, def: d.disabled, defIn: d.closest('[data-text-size-group]')?.dataset.textSizeGroup, defText: d.textContent, inBar: !!r.closest('[data-text-size-toolbar]') };`);
+  const r0 = await evaluate(`const r = ${row}; const d = document.querySelector('[data-relay-text-bar][data-active] [data-relay-spacing-default]'); return { text: r.textContent, def: d.disabled, defIn: d.closest('[data-text-size-group]')?.dataset.textSizeGroup, defText: d.textContent, inBar: !!r.closest('[data-relay-text-bar][data-active] [data-text-size-toolbar]') };`);
   check("Spacing：编辑卡里 Spacing 一组「− +」，不写 px；Default Spacing 在 Quick Actions，默认时灰掉", r0.inBar && r0.text === "Spacing−+" && !/px/.test(r0.text) && r0.def && r0.defIn === "quick" && r0.defText === "Default Spacing", JSON.stringify(r0));
-  check("Spacing：How to use 多 Spacing 那句（不提 px）", await evaluate("const t = document.body.textContent; return t.includes('Spacing (in Aa Text size): press − for less space between rows and between hotels, + for more.') && t.includes('Default Spacing (under Quick Actions) puts it back.');"));
+  check("Spacing：How to use 多 Spacing 那句（不提 px）", await evaluate("const t = document.body.textContent; return t.includes('Spacing (in the card above each sheet): press − for less space between rows and between hotels, + for more.') && t.includes('Default Spacing (under Quick Actions) puts it back.');"));
   // + 两下：马上变（不用选格子）
-  await evaluate("document.querySelector('[data-relay-spacing-more]').click();");
-  await evaluate("document.querySelector('[data-relay-spacing-more]').click();");
-  const r1 = await evaluate(`const s = ${carSel}; return { pad: ${padTop}, gap: Math.round(s.querySelector('td.rl-gap').getBoundingClientRect().height), lvl: ${row}.dataset.level, def: document.querySelector('[data-relay-spacing-default]').disabled };`);
+  await evaluate("document.querySelector('[data-relay-text-bar][data-active] [data-relay-spacing-more]').click();");
+  await evaluate("document.querySelector('[data-relay-text-bar][data-active] [data-relay-spacing-more]').click();");
+  const r1 = await evaluate(`const s = ${carSel}; return { pad: ${padTop}, gap: Math.round(s.querySelector('td.rl-gap').getBoundingClientRect().height), lvl: ${row}.dataset.level, def: document.querySelector('[data-relay-text-bar][data-active] [data-relay-spacing-default]').disabled };`);
   check("Spacing：按 + 两下 ⇒ 单子马上变宽松（车单行内 4→6px、酒店间 12→16px），Default Spacing 可按", r1.pad === "6px" && r1.gap === 16 && r1.lvl === "2" && !r1.def, JSON.stringify(r1));
   // Reset Whole Table 不动行距
-  await evaluate("$btn('Reset Whole Table', document.querySelector('[data-text-size-toolbar]')).click();");
+  await evaluate("$btn('Reset Whole Table', document.querySelector('[data-relay-text-bar][data-active] [data-text-size-toolbar]')).click();");
   check("Spacing：Reset Whole Table 只管字号，行距不变", await evaluate(`return ${padTop} === '6px';`));
   // Done + Save ⇒ PUT 带 spacing
-  await evaluate("document.querySelector('[data-text-size-done]').click();");
+  // 置顶 114 第 4 版：电脑编辑卡一直显示，没有 Done（改动直接留在页面上）。
   const b0 = (await mockLog()).length;
   await evaluate("document.querySelector('[data-relay-text-save]').click();");
   await waitFor("document.querySelector('[data-relay-text-status=saved]')?.textContent === 'Saved'");
   const put = (await since(b0, (e) => e.method === "PUT" && e.path === "/api/dispatch/relay-list/text-size"))[0];
-  check("Spacing：Done + 页面顶上 Save ⇒ PUT text_size.spacing {gap:16, row:6}（跟字号一起存）", put?.body?.sheet === key && JSON.stringify(put.body.text_size.spacing) === JSON.stringify({ gap: 16, row: 6 }), JSON.stringify(put?.body));
+  check("Spacing：页面顶上 Save ⇒ PUT text_size.spacing {gap:16, row:6}（跟字号一起存）", put?.body?.sheet === key && JSON.stringify(put.body.text_size.spacing) === JSON.stringify({ gap: 16, row: 6 }), JSON.stringify(put?.body));
   await open(URL0);
-  await waitFor("document.querySelector('[data-relay-text-open]')", 30000);
+  await waitFor("document.querySelector('[data-relay-text-bar] [data-text-size-toolbar]')", 30000);
   await sleep(500);
   check("Spacing：重开页面 ⇒ 存好的行距照样画（行内 6px）", await evaluate(`return ${padTop} === '6px';`));
   await cdp("Emulation.setEmulatedMedia", { media: "print" });
@@ -756,14 +756,14 @@ async function spacingChecks() {
   await cdp("Emulation.setEmulatedMedia", { media: "" });
   // − 到底、Default Spacing
   await helpers();
-  await evaluate(`document.querySelector('[data-relay-text-open="${key}"]').click();`);
+  await evaluate(`document.querySelector('[data-relay-text-bar="${key}"] [data-text-size-group=apply] button').click();`);
   await waitFor(`!!${row}`);
-  for (let i = 0; i < 12; i++) await evaluate("document.querySelector('[data-relay-spacing-less]').click();");
-  const r2 = await evaluate(`return { lvl: ${row}.dataset.level, less: ${row}.querySelector('[data-relay-spacing-less]').disabled, pad: ${padTop} };`);
+  for (let i = 0; i < 12; i++) await evaluate("document.querySelector('[data-relay-text-bar][data-active] [data-relay-spacing-less]').click();");
+  const r2 = await evaluate(`return { lvl: ${row}.dataset.level, less: ${row}.querySelector('[data-relay-text-bar][data-active] [data-relay-spacing-less]').disabled, pad: ${padTop} };`);
   check("Spacing：一直按 − ⇒ 到最紧就灰掉（行内 1px）", r2.lvl === "-3" && r2.less && r2.pad === "1px", JSON.stringify(r2));
-  await evaluate("document.querySelector('[data-relay-spacing-default]').click();");
+  await evaluate("document.querySelector('[data-relay-text-bar][data-active] [data-relay-spacing-default]').click();");
   check("Spacing：Default Spacing ⇒ 回到默认（行内 4px、酒店间 12px）", await evaluate(`return ${padTop} === '4px' && Math.round(${carSel}.querySelector('td.rl-gap').getBoundingClientRect().height) === 12 && ${row}.dataset.level === '0';`));
-  await evaluate("document.querySelector('[data-text-size-done]').click();");
+  // 置顶 114 第 4 版：电脑编辑卡一直显示，没有 Done（改动直接留在页面上）。
 
   // 调大了超一页 ⇒ 从 staff 的数往下自动压（Q10 A）
   await ctl({ many: 18 });
@@ -774,20 +774,20 @@ async function spacingChecks() {
   await helpers();
   const fitsBefore = await evaluate(`return !${car2}.hasAttribute('data-squeezed');`);
   const k2 = await sheetKeyOf(car2);
-  await evaluate(`document.querySelector('[data-relay-text-open="${k2}"]').click();`);
+  await evaluate(`document.querySelector('[data-relay-text-bar="${k2}"] [data-text-size-group=apply] button').click();`);
   await waitFor(`!!${row}`);
-  for (let i = 0; i < 6; i++) await evaluate("document.querySelector('[data-relay-spacing-more]').click();");
+  for (let i = 0; i < 6; i++) await evaluate("document.querySelector('[data-relay-text-bar][data-active] [data-relay-spacing-more]').click();");
   await sleep(300);
   const r3 = await evaluate(`const s = ${car2}; const w = s.previousElementSibling?.matches('[data-relay-fit-warn]'); return { sq: s.hasAttribute('data-squeezed'), gap: s.style.getPropertyValue('--rl-gap'), lvl: ${row}.dataset.level, warn: !!w };`);
   check("Spacing：18 站的车单本来一页，+ 到最松超页 ⇒ 自动从 staff 的数往下压回一页（staff 设的 24px 当上限）", fitsBefore && r3.lvl === "6" && r3.sq && parseInt(r3.gap) < 24 && !r3.warn, JSON.stringify({ fitsBefore, ...r3 }));
-  await evaluate("document.querySelector('[data-text-size-toolbar] [data-text-size-done]')?.click();");
   await ctl({ reset: true, layoutReset: true, textSize: false, spacing: false, edit: false, many: 0 });
 }
 
-// ── 置顶 114（Annie「114，115，107全选A。动手」；preview https://claude.ai/artifact/TopyompWt81k2rZL8uqoES 第 3 版）──
-// 页头：左「‹ Dispatch」，右「● 未存黄字｜Save（一直在，没改时灰）｜Print｜Excel｜Colours, Text & Page」；
-// 编辑卡横排 Apply To｜Text Size｜Font Weight｜Spacing｜Quick Actions｜Cancel / Done，Picked 小灰字在卡片下边。
-// 手机 390×844：页头一行 ‹ Dispatch｜黄点 + 小字｜Save｜⋯；编辑卡两行，键 26px，不出小标题 / Picked / Close text size。
+// ── 置顶 114 第 4 版（Annie「我要这个版式，我不要任何隐藏菜单，我要一目了然」→「我说的是relay list全部按A」→「114动手」；
+// preview https://claude.ai/artifact/6FE1yuBB5sCbB8HR89zUW2）──
+// 电脑页头一行「‹ Dispatch｜Colours, Text & Page｜● 未存黄字｜Save｜Print｜Excel｜⚙ Settings」，说明那句摊开（不收进 i）；
+// 编辑卡一直显示在每张单正上方，五组 Apply To｜Text Size｜Font Weight｜Spacing｜Quick Actions，电脑没有 Cancel / Done。
+// 手机 390×844 照图竖排：没有 ⋯ / i / Reset…，Print / Excel / Settings 一排，卡上三个 Quick Actions 键，底部 Cancel / Done。
 // SHOT_DIR 设了就存截图（电脑 / 手机，给 Annie 核对）。
 async function shot(name) {
   if (!process.env.SHOT_DIR) return;
@@ -798,77 +798,71 @@ async function shot(name) {
 async function toolbar114Checks() {
   const carSel = "document.querySelector('[data-relay-car]')";
   const sheetKeyOf = async (sel) => evaluate(`let e = ${sel}.previousElementSibling; while (e && !e.matches('[data-relay-text-bar]')) e = e.previousElementSibling; return e?.dataset.relayTextBar;`);
-  const box = (sel) => `(() => { const e = ${sel}; if (!e) return null; const r = e.getBoundingClientRect(); return { l: Math.round(r.left), r: Math.round(r.right), t: Math.round(r.top), b: Math.round(r.bottom), h: Math.round(r.height), shown: !!e.offsetParent || getComputedStyle(e).position === 'fixed' }; })()`;
   await ctl({ reset: true, layoutReset: true, layout: true, edit: true, textSize: true, spacing: true, noSettings: false, many: 0 });
   await open(URL0);
-  await waitFor("document.querySelector('[data-relay-text-open]') && document.querySelector('[data-relay-settings-open]')", 30000);
+  await waitFor("document.querySelector('[data-relay-text-bar] [data-text-size-toolbar]') && document.querySelector('[data-relay-settings-open]')", 30000);
   await helpers();
 
   // 电脑页头
-  const hd = await evaluate(`const h = document.querySelector('[data-relay-header]'); const nav = h.querySelector('a'); const sv = document.querySelector('[data-relay-text-save]'); const pr = document.querySelector('[data-relay-print]'); const ex = document.querySelector('[data-relay-excel]'); const st = document.querySelector('[data-relay-settings-open]');
+  const hd = await evaluate(`const h = document.querySelector('[data-relay-header]'); const nav = h.querySelector('a'); const ti = document.querySelector('[data-relay-title]'); const sv = document.querySelector('[data-relay-text-save]'); const pr = document.querySelector('[data-relay-print]'); const ex = document.querySelector('[data-relay-excel]'); const st = document.querySelector('[data-relay-settings-open]'); const ab = document.querySelector('[data-relay-about]');
     const R = (e) => e.getBoundingClientRect();
-    return { nav: nav.textContent.trim(), order: R(nav).right < R(sv).left && R(sv).right <= R(pr).left && R(pr).right <= R(ex).left && R(ex).right <= R(st).left, row: Math.max(...[sv, pr, ex, st].map(e => Math.abs(R(e).top - R(sv).top))), rightGap: Math.round(R(h).right - R(st).right), saveOff: sv.disabled, saveOp: getComputedStyle(sv).opacity, saveBg: getComputedStyle(sv).backgroundColor, saveH: Math.round(R(sv).height), icons: [sv, pr, ex, st].map(e => e.querySelector('svg[data-line-icon]')?.dataset.lineIcon).join(','), names: [sv, pr, ex, st].map(e => e.textContent.trim()).join('|'), whites: [pr, ex, st].every(e => getComputedStyle(e).backgroundColor !== 'rgb(59, 130, 246)') };`);
-  check("114 电脑页头：左「‹ Dispatch」；右边 Save｜Print｜Excel｜Colours, Text & Page 同一行、靠右", hd.nav === "‹ Dispatch" && hd.order && hd.row <= 2 && hd.rightGap <= 2 && hd.names === "Save|Print|Excel|Colours, Text & Page", JSON.stringify(hd));
-  check("114 电脑页头：Save 一直在，没改时灰着（蓝、opacity .45、按不了），34px；别的键白底", hd.saveOff && hd.saveOp === "0.45" && hd.saveBg === "rgb(59, 130, 246)" && hd.saveH === 34 && hd.whites, JSON.stringify(hd));
+    return { nav: nav.textContent.trim(), title: ti.textContent.trim(), order: R(nav).right < R(ti).left && R(ti).right < R(sv).left && R(sv).right <= R(pr).left && R(pr).right <= R(ex).left && R(ex).right <= R(st).left, row: Math.max(...[ti, sv, pr, ex, st].map(e => Math.abs((R(e).top + R(e).bottom) / 2 - (R(sv).top + R(sv).bottom) / 2))), rightGap: Math.round(R(h).right - R(st).right), saveOff: sv.disabled, saveOp: getComputedStyle(sv).opacity, saveBg: getComputedStyle(sv).backgroundColor, saveH: Math.round(R(sv).height), icons: [sv, pr, ex, st].map(e => e.querySelector('svg[data-line-icon]')?.dataset.lineIcon).join(','), names: [sv, pr, ex, st].map(e => e.textContent.trim()).join('|'), whites: [pr, ex, st].every(e => getComputedStyle(e).backgroundColor !== 'rgb(59, 130, 246)'), settingsShown: !!st.offsetParent, about: ab?.textContent.trim().replace(/\\s+/g, ' '), aboutShown: !!ab?.offsetParent, noInfo: !h.querySelector('[data-phone-info]'), noMore: !h.querySelector('[data-phone-more]') };`);
+  check("114 电脑页头一行：‹ Dispatch｜Colours, Text & Page｜Save｜Print｜Excel｜Settings，靠右", hd.nav === "‹ Dispatch" && hd.title === "Colours, Text & Page" && hd.order && hd.row <= 3 && hd.rightGap <= 2 && hd.names === "Save|Print|Excel|Settings", JSON.stringify(hd));
+  check("114 电脑页头：Save 一直在，没改时灰着（蓝、opacity .45、按不了），28px（置顶 114 缩小）；Print / Excel / Settings 白底、一直看得见", hd.saveOff && hd.saveOp === "0.45" && hd.saveBg === "rgb(59, 130, 246)" && hd.saveH === 28 && hd.whites && hd.settingsShown, JSON.stringify(hd));
   check("114 电脑页头：四个键前都有线条图标（save / print / download / gear）", hd.icons === "save,print,download,gear", hd.icons);
+  check("114 说明那句摊开在页头下面（没有 i、没有 ⋯）", hd.about === "Shows the saved Dispatch schedule. Changed something? Save it on Dispatch, then reload this page." && hd.aboutShown && hd.noInfo && hd.noMore, JSON.stringify(hd));
+  check("114 没有 Aa Text size 开关", await evaluate("return !document.querySelector('[data-relay-text-open]') && !document.body.textContent.includes('Aa Text size');"));
+  await shot("relay-list-desktop-top");
 
-  // 电脑编辑卡
+  // 电脑编辑卡（不用点就有）
   const key = await sheetKeyOf(carSel);
-  await evaluate(`document.querySelector('[data-relay-text-open="${key}"]').click();`);
-  await waitFor("document.querySelector('[data-text-size-toolbar] [data-relay-spacing]')");
-  const tb = await evaluate(`const t = document.querySelector('[data-text-size-toolbar]'); const gs = [...t.querySelectorAll('[data-text-size-group]')]; const R = (e) => e.getBoundingClientRect(); const done = t.querySelector('[data-text-size-done]'); const picked = t.querySelector('[data-text-size-picked]');
-    return { groups: gs.map(g => g.dataset.textSizeGroup).join(','), titles: gs.slice(0, 5).map(g => g.firstElementChild.textContent.trim()).join('|'), titleIcons: gs.slice(0, 5).every(g => !!g.firstElementChild.querySelector('svg[data-line-icon]')), oneRow: Math.max(...gs.map(g => Math.abs(R(g).top - R(gs[0]).top))), apply: [...gs[0].querySelectorAll('button')].map(b => b.textContent).join('/'), quick: [...gs[4].querySelectorAll('button')].map(b => b.textContent).join('|'), finish: [...gs[5].querySelectorAll('button')].map(b => b.textContent.trim()).join('|'), finishRight: Math.round(R(t).right - R(gs[5]).right), doneBg: getComputedStyle(done).backgroundColor, doneFg: getComputedStyle(done).color, doneIcon: !!done.querySelector('svg[data-line-icon=check]'), cancelBg: getComputedStyle(gs[5].querySelector('button')).backgroundColor, picked: picked?.textContent.trim(), pickedBelow: !!picked && R(picked).top >= R(gs[0]).bottom - 1, pickedColor: picked ? getComputedStyle(picked).color : '', quickWhite: [...gs[4].querySelectorAll('button')].every(b => getComputedStyle(b).backgroundColor === 'rgb(255, 255, 255)'), quickOff: [...gs[4].querySelectorAll('button')].map(b => b.disabled ? getComputedStyle(b).opacity : 'on').join(','), toggle: document.querySelector('[data-relay-text-open="${key}"]').textContent, cardW: Math.round(R(t).width), widths: gs.map(g => Math.round(R(g).width)).join(',') };`);
-  check("114 编辑卡：横排六组 Apply To｜Text Size｜Font Weight｜Spacing｜Quick Actions｜Cancel / Done，同一行", tb.groups === "apply,size,weight,spacing,quick,finish" && tb.titles === "Apply To|Text Size|Font Weight|Spacing|Quick Actions" && tb.oneRow <= 2, JSON.stringify(tb));
+  const card = `document.querySelector('[data-relay-text-bar="${key}"] [data-text-size-toolbar]')`;
+  const tb = await evaluate(`const t = ${card}; const gs = [...t.querySelectorAll('[data-text-size-group]')]; const R = (e) => e.getBoundingClientRect(); const picked = t.querySelector('[data-text-size-picked]') ?? t.parentElement.querySelector('[data-text-size-picked]');
+    return { groups: gs.map(g => g.dataset.textSizeGroup).join(','), titles: gs.map(g => g.firstElementChild.textContent.trim()).join('|'), titleIcons: gs.every(g => !!g.firstElementChild.querySelector('svg[data-line-icon]')), oneRow: Math.max(...gs.map(g => Math.abs(R(g).top - R(gs[0]).top))), apply: [...gs[0].querySelectorAll('button')].map(b => b.textContent).join('/'), quick: [...gs[4].querySelectorAll('button')].map(b => b.textContent).join('|'), quickWhite: [...gs[4].querySelectorAll('button')].every(b => getComputedStyle(b).backgroundColor === 'rgb(255, 255, 255)'), quickOff: [...gs[4].querySelectorAll('button')].map(b => b.disabled ? getComputedStyle(b).opacity : 'on').join(','), noFinish: !t.querySelector('[data-text-size-done]') && !t.querySelector('[data-text-size-group=finish]'), picked: picked?.textContent.trim(), pickedColor: picked ? getComputedStyle(picked).color : '', sizeOff: t.querySelector('[aria-label=Bigger]').disabled, above: R(t).bottom <= R(${carSel}).top + 1 };`);
+  check("114 编辑卡：每张单正上方一直显示，横排五组 Apply To｜Text Size｜Font Weight｜Spacing｜Quick Actions，同一行", tb.groups === "apply,size,weight,spacing,quick" && tb.titles === "Apply To|Text Size|Font Weight|Spacing|Quick Actions" && tb.oneRow <= 2 && tb.above, JSON.stringify(tb));
   check("114 编辑卡：每组标题前有线条图标；Apply To 是 Column / Row / Page", tb.titleIcons && tb.apply === "Column/Row/Page", JSON.stringify(tb));
   check("114 编辑卡：Quick Actions 三个白键 Reset Selection｜Reset Whole Table｜Default Spacing，不能用时灰", tb.quick === "Reset Selection|Reset Whole Table|Default Spacing" && tb.quickWhite && tb.quickOff === "0.4,on,0.4", JSON.stringify(tb));
-  check("114 编辑卡：最右一组 Cancel（白）/ Done（深灰 #1f2937 白字 + ✓）", tb.finish === "Cancel|Done" && tb.finishRight <= 2 && tb.cancelBg === "rgb(255, 255, 255)" && tb.doneBg === "rgb(31, 41, 55)" && tb.doneFg === "rgb(255, 255, 255)" && tb.doneIcon, JSON.stringify(tb));
-  check("114 编辑卡：Picked 小灰字在卡片下边；电脑上 Aa 开关还在（Close text size）", /^Picked:/.test(tb.picked) && tb.pickedBelow && tb.pickedColor === "rgb(102, 102, 102)" && tb.toggle === "Close text size", JSON.stringify(tb));
-  // 改一下 ⇒ 黄点 + 黄字，Save 能按
-  await evaluate("$btn('Page', document.querySelector('[data-text-size-toolbar]')).click();");
-  await evaluate("document.querySelector('[data-text-size-toolbar] [aria-label=Bigger]').click();");
-  await evaluate("document.querySelector('[data-text-size-toolbar]').closest('[data-relay-text-bar]').scrollIntoView({ block: 'start' }); window.scrollBy(0, -160);");
+  check("114 编辑卡：电脑没有 Cancel / Done；没点格子 ⇒ A+ 灰着、Picked 写「nothing yet — click the table」小灰字", tb.noFinish && tb.sizeOff && tb.picked === "Picked: nothing yet — click the table" && tb.pickedColor === "rgb(102, 102, 102)", JSON.stringify(tb));
+  // 点 Page、A+ ⇒ 黄点 + 黄字，Save 能按
+  await evaluate(`$btn('Page', ${card}).click();`);
+  await evaluate(`${card}.querySelector('[aria-label=Bigger]').click();`);
+  const sel = await evaluate(`const b = $btn('Page', ${card}); return { bg: getComputedStyle(b).backgroundColor, fg: getComputedStyle(b).color, active: document.querySelector('[data-relay-text-bar="${key}"]').hasAttribute('data-active') };`);
+  check("114 编辑卡：选中的键深灰 #1f2937 白字；这张单算「正在改」", sel.bg === "rgb(31, 41, 55)" && sel.fg === "rgb(255, 255, 255)" && sel.active, JSON.stringify(sel));
+  await evaluate(`${card}.closest('[data-relay-text-bar]').scrollIntoView({ block: 'start' }); window.scrollBy(0, -160);`);
   await sleep(150);
   await shot("relay-list-desktop-editing");
-  await evaluate("document.querySelector('[data-text-size-done]').click();");
   const st = await evaluate("const s = document.querySelector('[data-relay-text-status]'); const sv = document.querySelector('[data-relay-text-save]'); return { text: s?.textContent, color: s ? getComputedStyle(s).color : '', dot: !!s?.querySelector('i'), before: !!(s && (s.compareDocumentPosition(sv) & Node.DOCUMENT_POSITION_FOLLOWING)), on: !sv.disabled, op: getComputedStyle(sv).opacity };");
   check("114 电脑页头：改了 ⇒ Save 左边黄点 + 黄字「1 sheet with text size not saved」，Save 能按", st.text === "1 sheet with text size not saved" && st.color === "rgb(251, 191, 36)" && st.dot && st.before && st.on && st.op === "1", JSON.stringify(st));
-  await shot("relay-list-desktop-unsaved");
+  // 换一张单：点总表的格子 ⇒ 改的换成总表
+  await evaluate("document.querySelector('[data-relay-total] td[data-relay-col=hotel]').click();");
+  check("114 点别的单的格子 ⇒ 正在改的换成那张（总表），车单那张没存的改动还在", await waitFor(`document.querySelector('[data-relay-text-bar="summary:relay"]').hasAttribute('data-active') && !document.querySelector('[data-relay-text-bar="${key}"]').hasAttribute('data-active') && !!document.querySelector('[data-relay-text-unsaved="${key}"]')`));
 
   // 手机 390×844
   await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
   await sleep(600);
   await evaluate("window.scrollTo(0, 0);");
   await sleep(150);
-  const ph = await evaluate(`const h = document.querySelector('[data-relay-header]'); const nav = h.querySelector('a'); const sv = document.querySelector('[data-relay-text-save]'); const more = h.querySelector('[data-phone-more]'); const tag = document.querySelector('[data-relay-text-status-phone]'); const R = (e) => e.getBoundingClientRect();
-    const mid = (e) => (R(e).top + R(e).bottom) / 2;
-    return { row: Math.max(...[sv, more, tag].map(e => Math.abs(mid(e) - mid(nav)))), order: R(nav).right < R(tag).left && R(tag).right <= R(sv).left && R(sv).right <= R(more).left, tag: tag.textContent, tagShown: !!tag.offsetParent, longHidden: !document.querySelector('[data-relay-text-status]').offsetParent, saveH: Math.round(R(sv).height), navH: Math.round(R(nav).height), outside: [document.querySelector('[data-relay-print]'), document.querySelector('[data-relay-excel]'), document.querySelector('[data-relay-settings-open]')].every(e => !e.offsetParent), scrollX: document.documentElement.scrollWidth <= window.innerWidth };`);
-  check("114 手机页头一行：‹ Dispatch｜黄点 + 「1 not saved」｜Save｜⋯；Print / Excel / ⚙ 不在外面", ph.row <= 3 && ph.order && ph.tag === "1 not saved" && ph.tagShown && ph.longHidden && ph.outside, JSON.stringify(ph));
-  check("114 手机页头：Save / ‹ Dispatch 26px（M6 跟 115 题 1）；整页不左右晃", ph.saveH === 26 && ph.navH === 26 && ph.scrollX, JSON.stringify(ph));
-  await evaluate("document.querySelector('[data-relay-header] [data-phone-more]').click();");
-  await sleep(150);
-  const menu = await evaluate("const m = document.querySelector('[data-relay-header] [data-phone-more-menu]'); return m ? [...m.querySelectorAll('button')].map(b => b.textContent.trim()).join('|') + ' @' + [...new Set([...m.querySelectorAll('button')].map(b => Math.round(b.getBoundingClientRect().height)))].join(',') : null;");
-  check("114 手机：⋯ 里是 Print｜Excel｜Colours, Text & Page，键 26px", menu === "Print|Excel|Colours, Text & Page @26", menu);
-  await shot("relay-list-phone-more");
-  await evaluate("document.querySelector('[data-relay-header] [data-phone-more]').click();");
-  await evaluate("window.scrollTo(0, 0); document.querySelector('[data-relay-text-open=\"summary:relay\"]').click();");
-  await waitFor("document.querySelector('[data-text-size-phone]')");
+  const ph = await evaluate(`const h = document.querySelector('[data-relay-header]'); const nav = h.querySelector('a'); const ti = document.querySelector('[data-relay-title]'); const sv = document.querySelector('[data-relay-text-save]'); const s = document.querySelector('[data-relay-text-status]'); const ab = document.querySelector('[data-relay-about]'); const acts = ['[data-relay-print]', '[data-relay-excel]', '[data-relay-settings-open]'].map(q => document.querySelector(q)); const R = (e) => e.getBoundingClientRect(); const mid = (e) => (R(e).top + R(e).bottom) / 2;
+    return { navSave: Math.abs(mid(nav) - mid(sv)), saveRight: Math.round(window.innerWidth - R(sv).right), titleBelow: R(ti).top >= R(nav).bottom - 1, status: s?.textContent, statusBelow: !!s && R(s).top >= R(ti).bottom - 1, actsRow: Math.max(...acts.map(e => Math.abs(mid(e) - mid(acts[0])))), actsBelow: !!s && R(acts[0]).top >= R(s).bottom - 1, acts: acts.map(e => e.textContent.trim()).join('|'), actsShown: acts.every(e => !!e.offsetParent), actsH: [...new Set(acts.map(e => Math.round(R(e).height)))].join(','), about: !!ab?.offsetParent, noInfo: !document.querySelector('[data-relay-header] [data-phone-info]'), noMore: !document.querySelector('[data-relay-header] [data-phone-more]'), scrollX: document.documentElement.scrollWidth <= window.innerWidth };`);
+  check("114 手机页头竖排：‹ Dispatch 和 Save 一行（Save 靠右）→ 标题 → 黄字整句 → Print｜Excel｜Settings 一排", ph.navSave <= 3 && ph.saveRight <= 32 && ph.titleBelow && ph.statusBelow && ph.status === "1 sheet with text size not saved" && ph.actsRow <= 2 && ph.actsBelow && ph.acts === "Print|Excel|Settings" && ph.actsShown, JSON.stringify(ph));
+  check("114 手机页头：没有 ⋯、没有 i，说明那句直接显示；Print / Excel / Settings 28px（置顶 114 缩小）；整页不左右晃", ph.noInfo && ph.noMore && ph.about && ph.actsH === "28" && ph.scrollX, JSON.stringify(ph));
+  await shot("relay-list-phone-top");
+  const pcard = "document.querySelector('[data-relay-text-bar=\"summary:relay\"] [data-text-size-phone]')";
+  await evaluate(`${pcard}.closest('[data-relay-text-bar]').scrollIntoView({ block: 'start' }); window.scrollBy(0, -60);`);
   await sleep(200);
-  const pt = await evaluate(`const t = document.querySelector('[data-text-size-phone]'); const rows = [...t.children].filter(e => e.tagName === 'DIV'); const R = (e) => e.getBoundingClientRect(); const btns = [...t.querySelectorAll('button:not([data-text-size-reset-menu])')].filter(b => b.offsetParent);
-    return { rows: rows.length, r1: [...rows[0].querySelectorAll('span, button')].filter(e => !e.children.length || e.tagName === 'BUTTON').map(e => e.textContent.trim()).filter(Boolean).join(' '), r2: [...rows[1].querySelectorAll('button')].map(e => e.textContent.trim()).join(' '), heights: [...new Set(btns.map(b => Math.round(R(b).height)))].join(','), titles: /Apply To|Text Size|Font Weight|Quick Actions/.test(t.textContent), picked: t.textContent.includes('Picked'), toggleHidden: !document.querySelector('[data-relay-text-open="summary:relay"]').offsetParent, wide: Math.round(R(t).right) <= window.innerWidth, doneBg: getComputedStyle(t.querySelector('[data-text-size-done]')).backgroundColor, bottom: Math.round(R(t).bottom + window.scrollY), scrollX: document.documentElement.scrollWidth <= window.innerWidth };`);
-  check("114 手机编辑卡两行：「Aa Col Row Page A− A+ ✕」和「Reg Bold − + Reset… Done」", pt.rows === 2 && pt.r1 === "Aa Col Row Page A− A+ ✕" && pt.r2 === "Reg Bold − + Reset… Done", JSON.stringify(pt));
-  check("114 手机编辑卡：键都 26px；不出组小标题、不出 Picked、不单独出 Close text size；不超出屏宽", pt.heights === "26" && !pt.titles && !pt.picked && pt.toggleHidden && pt.wide && pt.scrollX && pt.doneBg === "rgb(31, 41, 55)", JSON.stringify(pt));
-  await evaluate("document.querySelector('[data-text-size-reset-menu]').click();");
-  await sleep(100);
-  const rl = await evaluate("const l = document.querySelector('[data-text-size-reset-list]'); return l ? [...l.querySelectorAll('button')].map(b => b.textContent).join('|') : null;");
-  check("114 手机：「Reset…」点开是 Reset Selection｜Reset Whole Table｜Default Spacing", rl === "Reset Selection|Reset Whole Table|Default Spacing", rl);
-  await evaluate("document.querySelector('[data-text-size-reset-menu]').click();");
-  await evaluate("window.scrollTo(0, 0);");
-  await sleep(100);
-  const used = await evaluate("const t = document.querySelector('[data-text-size-phone]'); return Math.round(t.getBoundingClientRect().bottom);");
+  const pt = await evaluate(`const t = ${pcard}; const R = (e) => e.getBoundingClientRect(); const gs = [...t.querySelectorAll('[data-text-size-group]')]; const quick = t.querySelector('[data-text-size-group=quick]');
+    return { groups: gs.map(g => g.dataset.textSizeGroup).join(','), titles: gs.filter(g => g.dataset.textSizeGroup !== 'finish').map(g => g.firstElementChild.textContent.trim()).join('|'), quick: [...quick.querySelectorAll('button')].filter(b => b.offsetParent).map(b => b.textContent).join('|'), finish: [...t.querySelector('[data-text-size-group=finish]').querySelectorAll('button')].map(b => b.textContent.trim()).join('|'), noResetMenu: !t.querySelector('[data-text-size-reset-menu]'), doneBg: getComputedStyle(t.querySelector('[data-text-size-done]')).backgroundColor, wide: Math.round(R(t).right) <= window.innerWidth, allBar: document.querySelectorAll('[data-relay-text-bar] [data-text-size-phone]').length === document.querySelectorAll('.rl-sheet').length, scrollX: document.documentElement.scrollWidth <= window.innerWidth };`);
+  check("114 手机编辑卡竖排：Apply To｜Text Size + Font Weight｜Spacing + Quick Actions｜Cancel / Done，每张单上方都有", pt.groups === "apply,size,weight,spacing,quick,finish" && pt.titles === "Apply To|Text Size|Font Weight|Spacing|Quick Actions" && pt.finish === "Cancel|Done" && pt.allBar, JSON.stringify(pt));
+  check("114 手机编辑卡：三个 Quick Actions 键都在卡上（没有 Reset…）；Done 深灰；不超出屏宽、整页不左右晃", pt.quick === "Reset Selection|Reset Whole Table|Default Spacing" && pt.noResetMenu && pt.doneBg === "rgb(31, 41, 55)" && pt.wide && pt.scrollX, JSON.stringify(pt));
   await shot("relay-list-phone-editing");
-  check("114 手机：页头 + 编辑卡占的高度不超过约 1/3 屏（≤ 300px，含顶栏）", used <= 300, `${used}px of 844`);
-  await evaluate("document.querySelector('[data-text-size-cancel]').click();");
-  check("114 手机：✕ = Cancel ⇒ 编辑卡关掉，Aa 开关回来", await waitFor("!document.querySelector('[data-text-size-toolbar]') && !!document.querySelector('[data-relay-text-open]').offsetParent"));
+  // 手机 Cancel = 撤回这张单没存的改动
+  await evaluate(`$btn('Page', ${pcard}).click();`);
+  await evaluate(`${pcard}.querySelector('[aria-label=Bigger]').click();`);
+  await waitFor("document.querySelector('[data-relay-text-unsaved=\"summary:relay\"]')");
+  await evaluate(`${pcard}.querySelector('[data-text-size-cancel]').click();`);
+  check("114 手机 Cancel ⇒ 撤回这张单没存的改动（别的单的照旧没存）、卡还在", await waitFor(`!document.querySelector('[data-relay-text-unsaved="summary:relay"]') && !!document.querySelector('[data-relay-text-unsaved="${key}"]') && !!${pcard}`));
+  await evaluate(`${pcard}.querySelector('[data-text-size-done]').click();`);
+  check("114 手机 Done ⇒ 清掉点选（Picked 回 nothing yet），卡还在", await waitFor(`!!${pcard} && ${pcard}.querySelector('[data-text-size-picked]').textContent.includes('nothing yet')`));
   await cdp("Emulation.clearDeviceMetricsOverride");
   await sleep(300);
   await ctl({ reset: true, layoutReset: true, textSize: false, spacing: false, edit: false, many: 0 });

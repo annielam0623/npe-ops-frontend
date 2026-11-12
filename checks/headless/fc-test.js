@@ -709,6 +709,8 @@ async function run() {
     "接上的那天在今天左边、只读（没有按钮 / 绿色 +）；今天照旧写 Today、今天以后照样能点",
     await evaluate(`const ths = [...document.querySelectorAll('thead th[data-day]')].map(t => t.dataset.day); const past = [...document.querySelectorAll('td[data-day="${back(1)}"]')]; return ths[0] === '${back(1)}' && ths[1] === '${TODAY}' && past.length > 0 && past.every(td => !td.querySelector('button') && !td.querySelector('[data-add-plus]')) && document.querySelector('th[data-day="${TODAY}"]').textContent.includes('Today') && !!${cclTd(4, "Notes", DAYS[2])}.querySelector('button');`),
   );
+  const subPast = await evaluate(`return [...document.querySelectorAll('tr[data-kind="sub"]')].map(tr => { const td = tr.querySelector('td[data-day="${back(1)}"]'); return td ? td.textContent.trim() : null; }).filter(t => t !== null && /^[0-9]+$/.test(t));`);
+  check("往前翻：细行的数字也换成那天快照的（每行 801），不是今天的", subPast.length > 0 && subPast.every((t) => t === "801"), JSON.stringify(subPast));
   check("只读了那一天的快照", (await since(before, (e) => e.path.startsWith("/api/forecast/history/"))).map((e) => e.path).join(",") === `/api/forecast/history/${back(1)}`, JSON.stringify(await since(before, (e) => e.path.startsWith("/api/forecast/history"))));
   before = (await mockLog()).length;
   await evaluate("document.querySelector('[data-history-older]').click();");
@@ -741,6 +743,17 @@ async function run() {
     "点 Today：一下回到今天在第一列，› 灰、Today 键不可点",
     await evaluate(`return [...document.querySelectorAll('thead th[data-day]')].every(t => t.dataset.day >= '${DAYS[0]}') && document.querySelector('[data-history-newer]').disabled && document.querySelector('[data-history-today]').disabled;`),
   );
+  const subToday = await evaluate(`return [...document.querySelectorAll('tr[data-kind="sub"]')].map(tr => tr.querySelector('td[data-day="${TODAY}"]')?.textContent.trim() || '');`);
+  check("点 Today 回到今天：细行数字回到实时的（没有 80x）", subToday.length > 0 && !subToday.some((t) => /^80\d$/.test(t)), JSON.stringify(subToday));
+  // 快照那天还没有某一块（manifest 4）：接上去那一列是 0，不是今天的数
+  await ctl({ historyDropBlock: 4 });
+  await openPage(`${APP}/forecast`);
+  await waitFor("document.querySelector('[data-history-arrows]')");
+  await evaluate("document.querySelector('[data-history-older]').click();");
+  await waitFor("document.querySelector('th[data-past]')");
+  const drop = await evaluate(`const td = document.querySelector('td[data-kind="total-cell"][data-block="4"][data-day="${back(1)}"]'); return td ? td.textContent.trim() : null;`);
+  check("快照里没有这一块：往前翻那一列是 0 / 空，不拿今天的数垫", drop !== null && (drop === "0" || drop === "" || drop === "—" || drop === "-"), String(drop));
+  await ctl({ historyDropBlock: 0 });
   check("How to use 说明了 Past days（‹ › Today、7 天、No snapshot）", await evaluate("const t = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use')).textContent; return t.includes('Past days') && t.includes('up to 7 days back') && t.includes('No snapshot');"));
   await ctl({ history: false });
 

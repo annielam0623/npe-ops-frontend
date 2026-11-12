@@ -43,7 +43,7 @@ export function CanyonOrderPicker({
 
   if (readOnly)
     return (
-      <span data-canyon-text className="text-[12.5px] text-[#cbd5e1]">
+      <span data-canyon-text className="text-[11.5px] text-[#cbd5e1]">
         {title}: {canyonSummary(pages)}
       </span>
     );
@@ -51,15 +51,16 @@ export function CanyonOrderPicker({
     <div ref={wrapRef} className="relative inline-flex">
       <span
         data-canyon-order
-        className="inline-flex h-8 items-center gap-1.5 rounded-[9px] border border-white/[.18] pr-1 pl-[11px] text-[12.5px] text-[#cbd5e1]"
+        className="inline-flex h-7 items-center gap-1 rounded-[8px] border border-white/[.18] pr-1 pl-2.5 text-[11.5px] text-[#cbd5e1]"
       >
         {title}:
         <button
           type="button"
           data-canyon-open
+          data-phone-keep
           aria-expanded={open}
           onClick={() => setOpen((v) => !v)}
-          className="inline-flex h-6 cursor-pointer items-center gap-1.5 rounded-md border-0 bg-transparent px-1 text-[12.5px] font-semibold text-white"
+          className="inline-flex h-6 cursor-pointer items-center gap-1.5 rounded-md border-0 bg-transparent px-1 text-[11.5px] font-semibold text-white"
         >
           {canyonSummary(pages)}
           <svg width="10" height="6" viewBox="0 0 10 6" aria-hidden="true">

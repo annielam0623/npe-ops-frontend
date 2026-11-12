@@ -2075,6 +2075,36 @@ async function run() {
     }
   }
 
+  // ── 车卡 / Morning Relay 的 Note（Annie 2026-11-11「全部推荐，动手」）：placeholder 新原文、读屏名 Note、输入的字深红 #b91c1c、placeholder 照旧浅灰；两处同一个框 ──
+  {
+    await goto(`${APP}/dispatch?date=2026-10-05`);
+    await waitFor("document.querySelector('section[data-sec=relay] .vrow [data-f=note]') && document.querySelector('section[data-sec^=bus_tour] .vrow [data-f=note]')", 30000);
+    await helpers();
+    await evaluate(AUTOSAVE_OFF);
+    const PH = "Note to yourself or others (not sent to drivers or guides)";
+    const info = await evaluate("return ['section[data-sec=relay]', 'section[data-sec^=bus_tour]'].map((s) => { const el = document.querySelector(s + ' .vrow [data-f=note]'); return { ph: el.placeholder, aria: el.getAttribute('aria-label'), color: getComputedStyle(el).color, phColor: getComputedStyle(el, '::placeholder').color }; });");
+    check("Note：Morning Relay 行和 Bus Tour 车卡都是新 placeholder「Note to yourself or others (not sent to drivers or guides)」、读屏名 Note", info.every((i) => i.ph === PH && i.aria === "Note"), JSON.stringify(info));
+    check("Note：输入的字是深红 #b91c1c（两处）", info.every((i) => i.color === "rgb(185, 28, 28)"), JSON.stringify(info));
+    check("Note：placeholder 照旧浅灰（#94a3b8，不是红）", info.every((i) => i.phColor === "rgb(148, 163, 184)"), JSON.stringify(info));
+    check("Note：页面上没有旧原文 Note for yourself / Private note", await evaluate("return ![...document.querySelectorAll('[data-f=note]')].some((e) => e.placeholder.includes('Note for yourself') || e.getAttribute('aria-label') === 'Private note');"));
+    await goto("about:blank");
+    await sleep(800);
+  }
+  // 只读（partner）：有字的照样红字显示、改不了；没字的不出现。
+  {
+    await ctl({ partner: true, partnerPerms: ["dispatch.view", "manifests.view"], noteDemo: true });
+    await goto(`${APP}/dispatch?date=2026-10-05`);
+    await waitFor("document.querySelector('.vrow') && document.querySelector('[data-f=note]')", 60000);
+    await sleep(1500);
+    await helpers();
+    const ro = await evaluate("return [...document.querySelectorAll('[data-f=note]')].map((e) => ({ v: e.value, dis: e.disabled || !!e.closest('fieldset[disabled]'), color: getComputedStyle(e).color }));");
+    check("只读：有字的 Note 照样显示（bus 和 relay 各一条）、红字、改不了", ro.length === 2 && ro.some((r) => r.v === "ZZ Test bus note") && ro.some((r) => r.v === "ZZ Test relay note") && ro.every((r) => r.dis && r.color === "rgb(185, 28, 28)"), JSON.stringify(ro));
+    check("只读：没写 Note 的车不出现空框", await evaluate("return [...document.querySelectorAll('[data-f=note]')].every((e) => e.value !== '');"));
+    await ctl({ partner: false, partnerPerms: null, noteDemo: false });
+    await goto("about:blank");
+    await sleep(800);
+  }
+
      // ── partner（CCL）没勾 dispatch.edit（勾了 dispatch.send 也不算）：只看，不请求写接口和 Farm out 接口 ──
   // 先离开上一个（员工）页面、等它放开编辑锁（keepalive release），免得记到 partner 头上。
   await goto("about:blank");
