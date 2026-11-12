@@ -4,7 +4,34 @@
 
 > 6d 交接（下面「2026-10-27 交接：前端主窗口 6d」那节）的后端需求已于 10/27 晚由 ad 转给家里后端主窗口 17。
 
-> **下一个主窗口：先读下面「2026-11-11 收工交接：前端主窗口 4c」，再看置顶。d8 及更早的是历史。**
+> **下一个主窗口（家里）：先读下面「2026-11-12 收工交接：前端主窗口 4c」，再看置顶。11-11 及更早的是历史。**
+
+## 2026-11-12 收工交接：前端主窗口 `新主窗口-4c`[f2a514]（公司电脑；Annie「收工回家做」）
+
+4c 只分工和汇报，没写功能代码。今天工作窗口 `6b`、`96`（公司电脑）；后端主窗口 `主窗口交接-54`。家里的窗口名不同，开工按 CLAUDE.md 第 0 条重报。逐条细节和 Annie 原话见下面 11-11 节「⏰ 明天开工第一件」里的 1a、2a–2h 和置顶。
+
+### 今天上 main（等 Annie 线上验收）
+
+| 项 | SHA | 窗口 | 验收点 |
+|---|---|---|---|
+| G282 员工请假申请 / 批复 | e3e4c7ee | 96 | Staff Schedule › Leave；批复人 Manager → Team lead → Super Admin；有班那天 Approve 灰；HR 勾要先给 Tessa 等勾上 |
+| 127 Staff Schedule 页头整理 | e9b79546 | 96 | 日期行 …… Visible to / 页签 + 操作键 / 蓝字；选中页签白框非蓝；手机 ⋯ |
+| 126 Working Record 卡片按角色底色 | 10ce8548 | 96 | Driver 浅蓝 / Guide 浅紫 / Both 浅青绿，live 也上色，?theme=night |
+| 114c Bus Manifest How to use 三句 | a50218cc | 6b | — |
+
+### 在分支 / 等 Annie
+
+1. **G297 团确认酒店空着**（后端 fc0049ce 已上 main：空酒店那单留下不发、其余照发、给当班发 pickup_missing Notice；新接口 send-tour-order）。前端 6b 分支 task/g297-pickup-block（已对齐后端第二版、判空 = trim 后为空、TBD 算有值），preview https://claude.ai/artifact/P2hYRXJkFeurqiHzkaMspF 第 2 版 5 题（Notice 样子 / 红字放哪 / 键位置 / 要不要确认 / 渠道）待 Annie 答 + 动手。⚠️ 后端已上、前端没上：Tour send 页空酒店单不发，但结果只显示后端原话不标红。
+2. **128 Content Studio › Guest Page 整页就地编辑**：样稿 https://claude.ai/artifact/PnkpnXHaJbzrYTrUcfMYvX 第 3 版。已定：Q3 A 小编辑框（共用字提醒「Shared by all tours…」，这团的字不提醒）；不做 + Add section（新段落由后端加文字项）；加 Edit / Save（默认看的状态 = 客人真样子）。待答：Q1 范围（A 先 TC 推荐）、Q2 邮件（A 下一步推荐）、Q4 List view（A 留推荐）。答 + 动手后把 96 写的接口形状（置顶 128 节）转后端。
+3. **114d Relay list ⚙ 设置弹窗旧句「Aa Text size」**：置顶，A 改成 text size card 那句 / B 不改，待答。
+4. **G291 Joe**：不做标签；只剩 Annie 自己在 HR 把 Joe（id 69）Nickname 改成「Joe Ri」→ Dispatch 11-12 那组重新 Save。后端无别名可删。
+5. **125 Tour Tracking 未发的自动填充单灰字**：还没派 preview。
+6. 其余照 11-11 交接：Working Record cutoff 前端、120 / 121 / 123 Rules 合并、Staff Schedule 慢（21）、午餐 PTSELP 勾 Includes lunch、F2 Manifests 浮动条、107 / 109 / 115、G180 回填提醒、118 Sunday rotation。
+7. 检查套小问题：sch 里 Auto-fill「30 shifts added」偶发时序抖动；tp 接在 sch 后跑在 137 项崩（单跑 204/204）。有空派人修。
+
+### 今天查过的
+
+- 11-11 排班发布邮件：12/6–12/12 那周 5 人（Jessica / Jing / Lizzie / Nadia / Veronica）Notice + 邮件都发出无失败；真投递要在 Postmark Activity 查。5 人 Notice 都还未读。
 
 ## 2026-11-11 收工交接：前端主窗口 `npe-ops-frontend-4c`[fb4c29]（公司电脑；Annie「今天下午到5点下班」）
 4c 只分工和汇报，没写功能代码。今天工作窗口：`6b`[ab5dcf]、`96`[1c75f6]（公司电脑，进程都已关）；后端主窗口 `npe-confirmation-service-54`（主窗口交接-54），后端 21（G282）、9e、fe。细节见下面 4c 开工节逐条。
