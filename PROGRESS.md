@@ -43,6 +43,7 @@
 - 🟡 **122 HR 名字后缀不发出去**（Annie 原话）：「我在HR里把tour Guide Joe的nick name写成Joe - Tour Guide，但是在发短信的时候不要把这个后缀带出去」⇒ 名字来自 HR nickname，短信是后端拼的；已请 54 只读查哪些短信 / 邮件带 HR 名字、后缀会不会影响 CCL 导入认人 / typed link / Other spellings。4c 问 Annie 加后缀的目的。等评估 + 选项 + 动手。
   - 122 Annie（原话）：「今天必须查完」⇒ 已转 54（派后端 fe 只读评估），要求 16:45 前查完清单 + 影响 + 推荐。
   - ✅ 114c Bus Manifest How to use 三句（① Colours 条末、② Settings › Text 说明、③ Columns 条，原文见 6b 消息 / 4c 回复）Annie 在 6b（原话）：「A」⇒ 三句照改；选项不算动手，6b 已问是否现在动手。置顶 114c 已移走。
+- 🐞 **Main manifest 认成没午餐**（Annie 原话 + Rezdy 截图）：「这个产品在main manifest里被识别成没有午餐了」——产品「Grand Canyon South Rim From Las Vegas with Helicopter Upgrade & Lunch (Gray Line) (Grayline South + Heli)」Nov 12。判断在后端 tour_manifest.has_lunch()（票型 No Lunch ⇒ 不带；票型有 lunch 或 Manifest setup 勾 Includes lunch ⇒ 带；否则看产品名）。已转 54 只读查原因（票型 / 名单产品名是不是短名 / 有没有勾）。
 - Annie 新提：要做的三件 =「114，另外是staff schedule，还有导游页的重新设计」⇒ 导游页重新设计 PROGRESS 里没记录，4c 已问她哪个页面（A 手机 guide_home.html 后端 / B ops 里的导游页 / C 搬到 ops 重做）、想改成什么样、司机页要不要一起。
 - 🟡 **G282 preview（96）**：https://claude.ai/artifact/5PMGSaW5Rxz6AvcCkmAArG （模拟数据，没写代码）。4c 在本窗口问 Annie Q1–Q7（21 不重复问），另请她看：申请区 / 待批放 Staff Schedule 新 Leave 标签；Q5 B = 员工资料里设请假归属 team。答了转 21 + 96。
 - ✅ **118 后端上 main**（54 转）：内容 f8f0affc、合并 ebe3546d、关包 98de181c。形状 {type:max_days_on_shift, params:{shift_type 必填, n 0..7 必填, employee_ids / exclude_employee_ids 二选一可选}}，只按周，其他键 400。前端 components/schedule/rules.ts 已是同一形状（n 0..7），不用改。⇒ Annie 现在能存「Lizzie Close ≤ 1」。
