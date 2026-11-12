@@ -1718,6 +1718,7 @@ D. 已完成、待从置顶移走：
 - 入口核：Tour send Tour / Last Minute 已改；Manifests 弹窗不改（新后端回 skipped 后照显示）；ops Tracking 无重发；Order 页新键。等后端新文档 + Annie「动手」才合。
 - 后端 G297 第二版上 main fc0049ce（取代 e4aed734），接口文档整篇改版。Notice kind pickup_missing，href 订单号 URL 编码（Order 页 decode），title / body 一律纯文本；send-tour-order 三种 400 文案见文档。已转 6b 对齐分支。
 - Annie 对 Order 页（原话）：「他点进订单后应该看到提醒这单缺少的信息是什么然后怎样解决，等staff去Rezdy改了之后再来这边refresth，然后看到红字消失了才可以发」⇒ 6b 更新 preview：缺酒店时 Order 页红字说明缺什么 / 怎么改，Send 键灰掉；Refresh from Rezdy 后红字消失才能发。非动手。
+- **preview 第 2 版（同链接，分支 892d1caa 对齐 fc0049ce + 6a9dbc85 Order 页提醒；tour 77 / orders 103 / tasks 151 / man 429 全过）——题目改为 5 题，取代上面题 1–4**：题 1 Notice 样子 A 照图（推荐）/ B 红底 / C 去 Got it；题 2（新）红字放哪 A 订单号下红框 + Location 行红字（推荐）/ B 只红框 / C 只 Location 行，红框原文「⚠️ Pickup location is missing. Add the pickup location to this order in Rezdy, then click Refresh from Rezdy. You can send the tour confirmation once this message is gone.」灰键旁「Add the pickup location first.」Location 行「Missing — add it in Rezdy」；题 3 键位置 A Refresh 左边（推荐）/ B Location 行旁；题 4 点了要不要确认 A 直接发（推荐）/ B 弹框；题 5 渠道 A 固定两种（推荐）/ B 三选。Manifests 发送弹窗也把留下的单整行标红、无 Send anyway（统一）。Notice 纯文本已测。待问 54：Order 页看 Order List pickup_location，后端看 Main manifest，Refresh 是否两边都更新、「—」算不算空。
 
 ### 114d. Relay list ⚙ 设置弹窗说明还提「Aa Text size」（11-12，6b 发现，没改）
 
