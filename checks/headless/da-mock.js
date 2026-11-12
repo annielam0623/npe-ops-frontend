@@ -322,6 +322,8 @@ http.createServer(async (req, res) => {
   if (p === "/api/dispatch/day" && req.method === "GET") {
     if (ctl.dayDelay) await new Promise((r) => setTimeout(r, ctl.dayDelay));
     if (ctl.failDay) return send(res, 502, { detail: "Bad gateway" });
+    // noteDemo：第一台 bus_tour 车和第一行 relay 带一条 Note（车卡 Note 红字 / 只读有字照样显示，Annie 2026-11-11）。
+    if (ctl.noteDemo) { const d = day(q.date || "2026-10-05"); const bt = d.rows.find((r) => r.shift === "bus_tour"); const rl = d.rows.find((r) => r.shift === "relay"); if (bt) bt.note = "ZZ Test bus note"; if (rl) rl.note = "ZZ Test relay note"; return send(res, 200, d); }
     return send(res, 200, day(q.date || "2026-10-05"));
   }
   // partner（CCL）：dispatch.edit 按勾（后端 G177 P2）；dispatch.send 勾了也不给；Farm out 开关设成 staff 对 partner 也不画（待 Annie 定）。

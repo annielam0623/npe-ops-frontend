@@ -947,6 +947,10 @@ function Chips({
   );
 }
 
+/**
+ * 车卡 / Morning Relay 行最下面的 Note（Annie 2026-11-11「全部推荐，动手」）：写给自己或别的 staff，不发给司机导游；
+ * 输入的字深红 #b91c1c 让别人注意，placeholder 照旧（globals.css 的浅灰斜体）；只读时有字照样红、没字不出现。
+ */
 function NoteInput({
   row,
   onChange,
@@ -960,12 +964,12 @@ function NoteInput({
     <input
       type="text"
       data-f="note"
-      aria-label="Private note"
+      aria-label="Note"
       maxLength={200}
       value={row.note}
-      placeholder="Note for yourself (not sent to anyone)"
+      placeholder="Note to yourself or others (not sent to drivers or guides)"
       onChange={(e) => onChange({ ...row, note: e.target.value })}
-      className="h-8 w-full rounded-[7px] border border-[#cbd2dc] bg-paper px-[11px] text-[13px] text-[#111827]"
+      className="h-8 w-full rounded-[7px] border border-[#cbd2dc] bg-paper px-[11px] text-[13px] text-[#b91c1c]"
     />
   );
 }
