@@ -1710,6 +1710,7 @@ D. 已完成、待从置顶移走：
   - Annie（原话）：「哦，是我误会了。ok，在共用的那段，可以这样提醒，只是这个团单独的信息就不用提醒了」⇒ Q3 A 小编辑框；共用字编辑框照样提醒（改了所有团都变），只管这个团的字不提醒。96 更新样稿。非动手。
   - 样稿 Version 2（同链接）：共用字琥珀虚线 + 图例「Shared by all tours」，这个团的字普通蓝虚线不加字样；编辑框共用字顶部琥珀提醒 "Shared by all tours — changing it here changes every tour's page."，这团的字只有原文 + Apply + "Nothing is saved until you click Save."；List view 同样只标共用。整页大部分琥珀框（27 条共用）。Q1 Q2 Q4 待答。
   - 4c 问「+ Add section」（staff 自己加新段落）：Annie（原话）「选A，但是我需要在页面再加两个键：一个是edit，然后这个页面就进入可以编辑的状态，所有改完之后，点击save，页面就显示成客人真正看到的样子」⇒ 不做 Add section（新段落由后端加文字项）；加 Edit / Save：默认看的状态 = 客人真样子无框，Edit 进编辑状态（框 + ✎ + 弹框），Save 存完回看的状态，另有 Discard。派 96 改样稿（排在 G282 合 main 之后）。非动手。
+  - 样稿 Version 3（同链接）：看的状态无框无 ✎、隐藏块不出，工具条「Viewing — this is what guests see」；Edit（普通键）→「Editing」+ Discard + 蓝 Save，出框 / ✎ / ↑↓ / Shown after 块；Save 回看的状态绿「Saved」。演示键 7 个。Q4 A 建议 List view 共用同一 Edit / Save。Q1 Q2 Q4 待答。
 - Q4 旧表单：A 留「List view」切换（推荐）/ B 不留。
 - 需要后端（Annie 定了再转 54）：GET / POST /api/content-studio/guest-preview（POST 用草稿画不写库），回包 {html, keys[], sample}，sandbox iframe 无脚本；data-tmpl-key / -kind=lines / -attr / -empty / -step / -state 标记；示例数据补电话、团期 +7 天、8:00 AM、notes。保存走现有接口。MTLV 块后端关着没画。
 
