@@ -39,12 +39,15 @@ export function VisibilityControl({
   tone = "dark",
   onUnauthorized,
   showHint = true,
+  compact = false,
 }: {
   pageKey: VisibilityKey;
   /** 深色底（Dashboard、外框）还是白卡片上。 */
   tone?: "dark" | "light";
   onUnauthorized?: () => void;
   showHint?: boolean;
+  /** 放进页头一行时（127）：键和字都小一号，跟页头 28px 的键配。 */
+  compact?: boolean;
 }) {
   const vis = usePageVisibility(onUnauthorized);
   const [busy, setBusy] = useState(false);
@@ -72,7 +75,12 @@ export function VisibilityControl({
       data-visibility-control={pageKey}
       className="inline-flex max-w-full flex-col items-end gap-1"
     >
-      <span className="inline-flex flex-wrap items-center justify-end gap-1.5 text-xs">
+      <span
+        className={cn(
+          "inline-flex flex-wrap items-center justify-end gap-1.5",
+          compact ? "text-[11px]" : "text-xs",
+        )}
+      >
         <span
           className={cn(
             "font-semibold",
@@ -99,7 +107,10 @@ export function VisibilityControl({
                 onClick={() => void choose(o.value)}
                 title={VISIBILITY_HINT[o.value]}
                 className={cn(
-                  "cursor-pointer rounded-[7px] border px-2 py-[2px] text-[11.5px] font-bold disabled:cursor-default disabled:opacity-60",
+                  "cursor-pointer border font-bold disabled:cursor-default disabled:opacity-60",
+                  compact
+                    ? "rounded-[6px] px-[7px] py-px text-[11px]"
+                    : "rounded-[7px] px-2 py-[2px] text-[11.5px]",
                   on
                     ? (light ? SELECTED_LIGHT : SELECTED)[o.value]
                     : light
@@ -117,7 +128,7 @@ export function VisibilityControl({
         <span
           data-visibility-hint
           className={cn(
-            "text-[11px]",
+            compact ? "text-[10.5px]" : "text-[11px]",
             light ? "text-stone-500" : "text-white/55",
           )}
         >

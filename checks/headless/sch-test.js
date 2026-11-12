@@ -2706,14 +2706,47 @@ async function run() {
   await sleep(600);
   check("手机：员工行没有拖动把手（拖行题 ⑤A：手机上只看顺序）", await evaluate("const hs = [...document.querySelectorAll('[data-row-handle]')]; return hs.length > 0 && hs.every((h) => getComputedStyle(h).display === 'none');"));
   check("手机：Schedule 整页不左右晃", await evaluate(`const vis = (el) => !!el && el.getBoundingClientRect().height > 0 && el.getBoundingClientRect().width > 0; const noSway = document.documentElement.scrollWidth <= innerWidth + 1; const btn = (t, root = document) => [...root.querySelectorAll('button, a')].find((b) => b.textContent.trim().startsWith(t)); return noSway;`), await evaluate("return document.documentElement.scrollWidth + ' > ' + innerWidth;"));
-  check("手机：‹ 日期 › 一行；This week / Next week 不在外面；Save 和 ⋯ 看得见", await evaluate(`const vis = (el) => !!el && el.getBoundingClientRect().height > 0 && el.getBoundingClientRect().width > 0; const noSway = document.documentElement.scrollWidth <= innerWidth + 1; const btn = (t, root = document) => [...root.querySelectorAll('button, a')].find((b) => b.textContent.trim().startsWith(t)); const p = document.querySelector('[aria-label="Previous week"]').getBoundingClientRect(), n = document.querySelector('[aria-label="Next week"]').getBoundingClientRect(); const outside = [...document.querySelectorAll('button')].filter((b) => b.textContent.trim() === 'This week' && vis(b) && !b.closest('[data-phone-more-menu]')); return Math.abs(p.top - n.top) < 2 && outside.length === 0 && vis(document.querySelector('[data-week-save]')) && vis(document.querySelector('[data-phone-more]'));`));
+  // 127（Annie 2026-11-12「把日期和this week， next week 单独放一行」+「全部同意推荐，动手」）：手机上 This week / Next week 跟日期一行露在外面，Auto-fill 等照旧收进 ⋯（Q5 A）。
+  check("手机：‹ 日期 › This week / Next week 在外面（不在 ⋯ 里）；Save 和 ⋯ 看得见；Visible to 在最上面", await evaluate(`const vis = (el) => !!el && el.getBoundingClientRect().height > 0 && el.getBoundingClientRect().width > 0; const p = document.querySelector('[aria-label="Previous week"]').getBoundingClientRect(), n = document.querySelector('[aria-label="Next week"]').getBoundingClientRect(); const outside = (t) => [...document.querySelectorAll('button')].some((b) => b.textContent.trim() === t && vis(b) && !b.closest('[data-phone-more-menu]')); const vc = document.querySelector('[data-schedule-head] [data-visibility-control]'); return Math.abs(p.top - n.top) < 2 && outside('This week') && outside('Next week') && vis(document.querySelector('[data-week-save]')) && vis(document.querySelector('[data-phone-more]')) && !!vc && vc.getBoundingClientRect().top < p.top;`));
   await evaluate("document.querySelector('[data-phone-more]').click();");
   await sleep(300);
-  check("手机：点 ⋯ 列出 This week、Next week、Employees、+ Add employee", await evaluate(`const m = document.querySelector('[data-phone-more-menu]'); return !!m && ['This week', 'Next week', 'Employees', '+ Add employee'].every((t) => [...m.querySelectorAll('button')].some((b) => b.textContent.trim() === t && b.getBoundingClientRect().height > 0));`));
+  check("手机：点 ⋯ 列出 Auto-fill、Employees、+ Add employee、⚙ Settings（This week / Next week 不在里面）", await evaluate(`const m = document.querySelector('[data-phone-more-menu]'); const has = (t) => [...m.querySelectorAll('button')].some((b) => b.textContent.trim() === t && b.getBoundingClientRect().height > 0); return !!m && ['Auto-fill', 'Employees', '+ Add employee', '⚙ Settings'].every(has) && !has('This week') && !has('Next week');`));
   await cdp("Emulation.clearDeviceMetricsOverride");
   await goto(`${APP}/schedule`);
   await waitFor("document.querySelector('[data-week-save]')", 30000);
   await sleep(500);
+  // ── 127 页头（电脑）：两行；键 28px；选中页签不是蓝底；Visible to 在日期那一行右边，不另占一行 ──
+  {
+    await cdp("Emulation.setDeviceMetricsOverride", { width: 1400, height: 900, deviceScaleFactor: 1, mobile: false });
+    await goto(`${APP}/schedule`);
+    await waitFor("document.querySelector('[data-week-save]') && document.querySelector('[data-schedule-head] [data-visibility-control]')", 30000);
+    await sleep(500);
+    const head = await evaluate(`
+      const top = (el) => Math.round(el.getBoundingClientRect().top);
+      const btn = (t) => [...document.querySelectorAll('[data-schedule-head] button')].find((b) => b.textContent.trim() === t);
+      const tabOn = document.querySelector('[role=tab][aria-selected=true]');
+      const all = [...document.querySelectorAll('[data-schedule-head] button')].filter((b) => b.getBoundingClientRect().height > 0 && !b.closest('[data-visibility-control]'));
+      return {
+        r1: [top(document.querySelector('[aria-label="Previous week"]')), top(btn('This week')), top(btn('Next week')), top(document.querySelector('[data-schedule-head] [data-visibility-control]'))],
+        r2: [top(tabOn), top(document.querySelector('[data-week-discard]')), top(document.querySelector('[data-week-save]')), top(btn('Auto-fill')), top(btn('Employees')), top(btn('+ Add employee')), top(btn('⚙ Settings'))],
+        heights: [...new Set(all.map((b) => Math.round(b.getBoundingClientRect().height)))],
+        tabBg: getComputedStyle(tabOn).backgroundColor, tabFw: getComputedStyle(tabOn).fontWeight, saveBg: getComputedStyle(document.querySelector('[data-week-save]')).backgroundColor,
+        loneVis: [...document.querySelectorAll('[data-visibility-control]')].filter((v) => !v.closest('[data-schedule-head]')).length,
+      };`);
+    const same = (a) => a.every((x) => x === a[0]);
+    check("127：第 1 行 ‹ 日期 › This week / Next week …… Visible to（同一行）", same(head.r1.slice(0, 3)) && Math.abs(head.r1[3] - head.r1[0]) <= 8, JSON.stringify(head));
+    check("127：第 2 行 页签 + Discard / Save / Auto-fill / Employees / + Add employee / ⚙ Settings（同一行，在第 1 行下面）", same(head.r2) && head.r2[0] > head.r1[0], JSON.stringify(head));
+    check("127：页头的键都是 28px", head.heights.length === 1 && head.heights[0] === 28, JSON.stringify(head.heights));
+    check("127：选中的页签不是蓝底（亮白框、粗字），Save 还是蓝", head.tabBg !== "rgb(59, 130, 246)" && Number(head.tabFw) >= 700 && head.saveBg === "rgb(59, 130, 246)", JSON.stringify(head));
+    check("127：Visible to 没有单独占一行（只在页头里）", head.loneVis === 0, JSON.stringify(head));
+    await evaluate("[...document.querySelectorAll('[role=tab]')].find((b) => b.textContent.trim() === 'Overview')?.click();");
+    await sleep(500);
+    check("127：切到 Overview：页签一行，Visible to 在同一行右边", await evaluate(`const h = document.querySelector('[data-schedule-head]'); const t = h && h.querySelector('[role=tablist]'), v = h && h.querySelector('[data-visibility-control]'); return !!t && !!v && Math.abs(t.getBoundingClientRect().top - v.getBoundingClientRect().top) < 12 && !document.querySelector('[data-week-save]');`));
+    await evaluate("[...document.querySelectorAll('[role=tab]')].find((b) => b.textContent.trim() === 'Schedule')?.click();");
+    await sleep(300);
+    await cdp("Emulation.clearDeviceMetricsOverride");
+  }
+
   check("电脑：This week / Next week 照旧排在日期后面，没有 ⋯", await evaluate(`const vis = (el) => !!el && el.getBoundingClientRect().height > 0 && el.getBoundingClientRect().width > 0; const noSway = document.documentElement.scrollWidth <= innerWidth + 1; const btn = (t, root = document) => [...root.querySelectorAll('button, a')].find((b) => b.textContent.trim().startsWith(t)); return vis(btn('This week')) && vis(btn('Next week')) && !vis(document.querySelector('[data-phone-more]'));`));
 
   // 401：跳旧后台登录页。
