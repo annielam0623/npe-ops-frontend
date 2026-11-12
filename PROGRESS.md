@@ -1695,6 +1695,16 @@ D. 已完成、待从置顶移走：
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 127. Staff Schedule 页头整理（11-12，96 preview https://claude.ai/artifact/TeRScJAPs4SgR2R9HA9h28 ）
+
+- 共用：键缩到 114 Relay list 尺寸（电脑 28px / 12.5px，手机 26px / 12px），五层变两层，周表上提约 140px，所有键留在页面上。
+- Q1 排法：A 两行（页签 + 周导航 / 操作键）（推荐）；B 尽量一行（会随屏宽乱折）。
+- Q2 选中页签：A 亮白框 + 浅底 + 粗字（推荐）；B 下划线。
+- Q3 Visible to：A 并入第一行最右（推荐）；B 单独一行缩小。
+- Q4 蓝字提示：A 放操作键那行最右（推荐）；B 单独一行缩小。
+- Q5 手机 Auto-fill / Employees / + Add employee / ⚙ Settings：A 照手机统一规则留 ⋯（推荐）；B 手机也全摊开（多约 70px，和其他页手机版不同）。
+- 等 Annie 选 + 「动手」，96 做。
+
 ### G297. 团确认酒店空着：Notice 红色 + Order 页发送键（11-12，6b preview https://claude.ai/artifact/P2hYRXJkFeurqiHzkaMspF ，分支 task/g297-pickup-block 866922be）
 
 - 题 1 Notice 样子：A 红字标签「Pickup location missing」+ 左红边 + Open order → + Got it（推荐）；B 整卡红底；C 去掉 Got it。
