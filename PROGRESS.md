@@ -1863,6 +1863,7 @@ D. 已完成、待从置顶移走：
 - 要显示的状态：每段 run paid / no_rate / not_linked / no_guide，加 day_status not_completed。
 - 新页面 ⇒ 先 preview +「动手」。派 a3 出 preview（128 在等后端，a3 空着）。
 - a3 样稿 https://claude.ai/artifact/Pkg8TAFuFGBtPmHho2Ftoh （HR 第 4 个标签 Payroll）。已核 Dispatch 不用改：Private Tour 车卡本来就有 Guide 下拉（vehicle-row.tsx:1424）；手填名字在 Payroll 会是 Not linked。题 1 排法：A 按人一行可展开 + Not counted 单列（推荐）/ B 按日期。题 2 改费率默认从哪天起：A 正在看的这一期第一天（推荐）/ B 下一期第一天。题 3 Team 权限勾：A 合成一行「Payroll」None / Read only / Read & edit，非 Admin 灰掉 +「Admin only」+ 一句（推荐）/ B 两行分开。VOF / Death Valley 后端还没加团。待答 +「动手」。
+- 样稿第 2 版（同链接，a3）：Annie 在 a3 给了两张设计图（原话）「你按照这个设计吧，不要用它的颜色，用我们网站自己的」⇒ 照图排（Payroll 标题 + 期间 ‹ › + Export CSV；四格 Period total / People / Counted runs / Needs review；Payroll by person 可展开 + Save payroll changes；Needs review 表；可折叠 Pay rates + Effective date + Save rates），深色外框 + 白卡片。第 1 版题 1（按人排）、题 2（默认这一期第一天）按图定了。新题 1 Private 小费下的「Quote tips」：A 先不做（推荐）/ B 做，需要后端每个 Private run 带报价小费。新题 2 = 第 1 版题 3 Team 权限：A 合成一行（推荐）/ B 两行。跟图不同：页签用 HR 现有按钮、无衬线标题、「3 runs」普通琥珀字；No rate / Not linked / No guide / Not completed 照图做成琥珀小标签——跟「状态不做胶囊」（10-11）冲突，74 问 Annie。待答 +「动手」。
 
 ### 125. Tour Tracking 没发过的行字也变灰（11-12，6b 样稿 https://claude.ai/artifact/7YqY8VAeGAkB35Nxbx9DwU ，没改代码）
 - Annie 原话（11-11）：「进到tracking页面的那些自动填充的订单的字体没有用灰色，还是正常的颜色，staff怎么看的出哪些发过哪些没发过」
