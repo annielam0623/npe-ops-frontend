@@ -1731,6 +1731,13 @@ D. 已完成、待从置顶移走：
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 125. Tour Tracking 没发过的行字也变灰（11-12，6b 样稿 https://claude.ai/artifact/7YqY8VAeGAkB35Nxbx9DwU ，没改代码）
+- Annie 原话（11-11）：「进到tracking页面的那些自动填充的订单的字体没有用灰色，还是正常的颜色，staff怎么看的出哪些发过哪些没发过」
+- Q1 没发过的行（Main manifest 带进来、还没发过确认 / Last Minute / Shuttle / Broadcast）怎么显示？现在只有灰底，字色同发过的行（单号绿、名字电话深色）。A（推荐）灰底 + 灰字 #6b7280，差两样最容易看出；B 白底 + 灰字，只差字色，不如 A 显眼。
+- Q2 灰行里 Order Status 的 On hold（橙）/ Cancelled（红）要不要保留颜色？现在保留。A（推荐）保留，别的都灰只有它有色，一眼看到这单不用发（灰行没有链接和其他状态色，只这一处要定）；B 也变灰，整行一个颜色。
+- 深色版没截：Tour Tracking 还没做全深色，?theme=night 跟现在一样。
+- 动手时改 components/tour-tracking/tour-table.tsx:262-274 灰行 <tr>（现写死 text-[#1a1a1a]），留 :485 附近 on_hold / cancelled 色；How to use 要不要加 grey text 一句再定。
+
 ### 128. Content Studio › Guest Page 整页就地编辑（11-12，96 可点样稿 https://claude.ai/artifact/PnkpnXHaJbzrYTrUcfMYvX ）
 
 - 样子：整页照 guest.py GUEST_CSS / _render() 画；可改字虚线框（蓝 All tours / 绿 This tour only）+ ✎；改过淡黄底，红字「Not saved yet · N changes」，蓝 Save 一次存，绿「Saved」，Discard；换团 / 离开拦；平时看不到的块也画出标「Shown after …」；接客四步 ↑↓ 调顺序。
