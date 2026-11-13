@@ -4,7 +4,7 @@
 
 > 6d 交接（下面「2026-10-27 交接：前端主窗口 6d」那节）的后端需求已于 10/27 晚由 ad 转给家里后端主窗口 17。
 
-> **下一个主窗口（家里）：先读下面「2026-11-12 收工交接：前端主窗口 4c」，再看置顶。11-11 及更早的是历史。**
+> **下一个主窗口：先读下面「2026-11-13 4c → 74 交接」和「2026-11-12 家里开工 d8」，再看置顶。**
 
 ## 2026-11-12 家里开工：前端主窗口 `前端主窗口-d8`[1148ff]（只分工和汇报，不写代码）
 - 接 4c 11-12 收工交接。在线：前端 `6b`[837f59]（家里，不是公司那个 6b），后端主窗口 `后端主窗口-5c`[c5436b]、后端 `npe-confirmation-service-0f`。内存 12 GB 空闲。
@@ -50,6 +50,21 @@
 - **132 电话 AI 留言 → 跳 Main manifest 那单并勾上**（11-12 22:3x，5c 转 Annie 原话）「我觉得没必要加这个新功能，直接给个跳转到订单的main manifest这条订单并勾选，就跟search bar的那个操作一样。」（否了 bf 快捷回复方案 https://claude.ai/artifact/42XkJoFLrKSUuAhDrfufd9 ）⇒ conversation-modal 加跳转键。现成可复用：components/order-lookup/manifest-links.tsx ManifestLinks / manifestHref（/manifests?date&tab&pill&row，On Hold tick=0；数据来自订单详情 manifest_links），后端估计不用改。新键 ⇒ 先 preview，问：放哪些入口（只电话 AI 留言 / 所有消息）、键文字。6b 在赶 131，d8 请 Annie 开新窗口或排 131 后。做完 SHA 回 5c。
 - **130 Bus Manifest「Text size changes」记录**（11-12，Annie 截图 HooverDam Nov 13，原话「这个记录怎么会在这里」）：components/dispatch-manifest/text-size.tsx:645 TextSizeHistory，每台车色条下列谁改过字号；原本默认收起，11-11 114（Annie「不要隐藏」）改成直接列最近 5 条。另有 bug：时间直接显示后端原始 UTC「2026-11-13T04:14:48.268198+00:00」，没换成当地时间。d8 问 Annie：A 只留一行「Text size last changed by Nadia · Nov 12, 8:14 PM」（推荐）/ B 整块挪到页面最下面 / C 不在页面显示（记录仍在 Action log）。时间格式不管选哪个都修。
 - 派 6b：**125 Tour Tracking 灰行字也灰**，只出 preview（A 底和字都灰（推荐）/ B 只字灰，电脑 + 手机 + night），链接回 d8 再问 Annie。
+
+## 2026-11-13 4c → 新主窗口 `npe-ops-frontend-74` 交接（公司电脑；Annie「我开了个新窗口做今天的前端主窗口，你跟它交接一下工作吧」）
+
+后端主窗口今天是 `npe-confirmation-service-25`（接 54）；135 的接口由 `npe-confirmation-service-14` 直接发。工作窗口 `6b`、`96` 还开着。
+
+### 今天（11-13）已上 main
+- G297 团确认酒店空着 a8d64c35（6b，Annie「297同意推荐，动手」，5 题全 A）。等 Annie 线上验收。
+
+### 在手上
+1. **134 Dispatch 开当天登录 2:00 → 12:00 AM**（96，task/dispatch-login-midnight d417d6c9，全过）：**等 Annie「动手」**。她已经被问过两次，别再滚动问；她说动手就让 96 合 main，SHA 发 25。
+2. **135 Dispatch 非今天发送确认框**（6b，task/dispatch-confirm-other-day，在做）：范围 relay 各轮 / 团车客人 / Send to driver / Send to guide；Morning 上传页不改（54 定）。等 14 发 detail 原文 + commit 才合；确认框先出 preview 给 Annie 看。6b 在核团车客人发送是否在 relay-send / driver-notice/send / guide-notice/send 三个接口里。**等 Annie**：Send farm out notice 要不要也加（A 推荐 / B）。
+3. **128 Content Studio 整页编辑**（96，样稿 v4 https://claude.ai/artifact/PnkpnXHaJbzrYTrUcfMYvX ）：已定 Q3 A、Edit / Save 状态、不做 Add section、选餐区显示可改、GC South / Bryce / VoF Full 两选项照旧。**等 Annie**：Q1 范围 / Q2 邮件 / Q4 List view / Lunch Selection Incomplete 弹窗字能否改（A 推荐）+ 动手。动手后把 96 的接口形状（置顶 128 节「需要后端」）转 25。
+4. **Working Record cutoff 前端**：后端 G290 已上 main 4e91cece（25 更正），前端可以排（接口 docs/interfaces/working-record-cutoff-2026-11-11.md）。
+5. 置顶 114d（Relay 设置弹窗旧句）、122 Joe（Annie 自己改 HR）、125 Tour Tracking 灰字（没派 preview）及 11-12 交接里的其余项照旧。
+6. ⚠️ 编号：家里 d8 / 5c 11-12 晚用了 129–133（129 = Send 分步弹窗 G289），新号从 136 起，派号前先 grep PROGRESS 顶部。
 
 ## 2026-11-12 收工交接：前端主窗口 `新主窗口-4c`[f2a514]（公司电脑；Annie「收工回家做」）
 
