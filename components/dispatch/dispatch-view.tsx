@@ -590,7 +590,8 @@ export function DispatchView() {
       if (!left.length) continue;
       const pax = left.reduce((k, o) => k + o.pax, 0);
       const sec = day.sections.find(
-        (x) => x.shift === META.bus_tour_shift && x.manifest_id === t.manifest_id,
+        (x) =>
+          x.shift === META.bus_tour_shift && x.manifest_id === t.manifest_id,
       );
       out.push({
         title: `${sec?.title || t.title || t.name}: ${left.length} order${left.length === 1 ? "" : "s"} not on a bus`,
@@ -606,7 +607,9 @@ export function DispatchView() {
       if (!t?.uploaded || t.mode !== "lettered") continue;
       const label = base.find((b) => b.id === r.id)?.bus_label;
       if (label == null || !t.buses.some((b) => b.label === label)) continue;
-      const orders = t.orders.filter((o) => o.bus_label === label && o.farm_out);
+      const orders = t.orders.filter(
+        (o) => o.bus_label === label && o.farm_out,
+      );
       const noHotel = orders.filter(
         (o) => o.farm_out!.partner_location_id == null,
       ).length;
@@ -628,7 +631,8 @@ export function DispatchView() {
       ].filter(Boolean) as string[];
       if (!parts.length) continue;
       const sec = day.sections.find(
-        (x) => x.shift === META.bus_tour_shift && x.manifest_id === t.manifest_id,
+        (x) =>
+          x.shift === META.bus_tour_shift && x.manifest_id === t.manifest_id,
       );
       out.push({
         title: `${sec?.title || t.title || t.name}: farm-out Bus ${label} is not finished`,
@@ -2211,44 +2215,44 @@ export function DispatchView() {
                     </button>
                     {/* 置顶 115 题 8 A：手机上 Import history、Drivers & guides、Copy 收进 ⋯，只留 Pull from Discord。 */}
                     <PhoneMore label="More Step 2 actions">
-                    {/* Dispatch Imports 合进 Dispatch、侧栏不再单列（Annie 2026-10-11）：入口放在用得着它的地方——
+                      {/* Dispatch Imports 合进 Dispatch、侧栏不再单列（Annie 2026-10-11）：入口放在用得着它的地方——
                     拉 Discord 旁边，看拉过哪些、读没读懂。 */}
-                    <PageLink
-                      href="/dispatch/imports"
-                      className={cn(
-                        BTN_GHOST,
-                        "inline-flex items-center no-underline",
-                      )}
-                    >
-                      Import history →
-                    </PageLink>
-                    {roster ? (
-                      <RosterButton onClick={() => setRosterOpen(true)} />
-                    ) : null}
-                    {day.copy_from ? (
-                      <button
-                        type="button"
-                        disabled={disabled}
-                        onClick={() =>
-                          rows.length
-                            ? setPending({ kind: "copy" })
-                            : void copy()
-                        }
-                        className={BTN_GHOST}
+                      <PageLink
+                        href="/dispatch/imports"
+                        className={cn(
+                          BTN_GHOST,
+                          "inline-flex items-center no-underline",
+                        )}
                       >
-                        Copy {fmtShort(day.copy_from)}
-                      </button>
-                    ) : null}
-                    {/* 置顶 115 P2（Annie「115全部同意推荐，动手」）：手机上只写「Last pull from Discord: …」那句时收进 ⋯；
+                        Import history →
+                      </PageLink>
+                      {roster ? (
+                        <RosterButton onClick={() => setRosterOpen(true)} />
+                      ) : null}
+                      {day.copy_from ? (
+                        <button
+                          type="button"
+                          disabled={disabled}
+                          onClick={() =>
+                            rows.length
+                              ? setPending({ kind: "copy" })
+                              : void copy()
+                          }
+                          className={BTN_GHOST}
+                        >
+                          Copy {fmtShort(day.copy_from)}
+                        </button>
+                      ) : null}
+                      {/* 置顶 115 P2（Annie「115全部同意推荐，动手」）：手机上只写「Last pull from Discord: …」那句时收进 ⋯；
                         拉的结果 / 报错照旧露在外面。电脑上这份不出（外面那句照旧）。 */}
-                    {pullMsgLastOnly ? (
-                      <span
-                        data-phone-last-pull
-                        className="px-1 text-[11.5px] text-[#94a3b8] sm:hidden"
-                      >
-                        {pullMsg}
-                      </span>
-                    ) : null}
+                      {pullMsgLastOnly ? (
+                        <span
+                          data-phone-last-pull
+                          className="px-1 text-[11.5px] text-[#94a3b8] sm:hidden"
+                        >
+                          {pullMsg}
+                        </span>
+                      ) : null}
                     </PhoneMore>
                     {/* Save schedule 键去掉了（Annie 2026-10-15）：这里写自动保存的状态。 */}
                     <span
@@ -2290,7 +2294,7 @@ export function DispatchView() {
                   </div>
                 )}
 
-                {viewOnly ? null : <HowToUse />}
+                {viewOnly ? null : <HowToUse farmOut={farmOutVisible} />}
 
                 {banner !== "none" && prefill ? (
                   <div
@@ -3309,7 +3313,10 @@ function Stat({
         <span className="text-[17px] font-bold whitespace-nowrap text-white tabular-nums max-sm:text-[14px]">
           {value}
         </span>
-        <span className="truncate text-[11.5px] text-[#94a3b8] max-sm:text-[10.5px]" title={label}>
+        <span
+          className="truncate text-[11.5px] text-[#94a3b8] max-sm:text-[10.5px]"
+          title={label}
+        >
           {label}
         </span>
       </span>
@@ -3403,7 +3410,7 @@ function DiscordIcon() {
   );
 }
 
-function HowToUse() {
+function HowToUse({ farmOut }: { farmOut: boolean }) {
   // 手机上跟着 Step 2 标题后的「i」显示 / 收起。
   const stepHide = useStepInfoHide();
   return (
@@ -3433,8 +3440,8 @@ function HowToUse() {
           Schedule check (right side) lists everything not done yet: a vehicle
           with no driver, guide, vehicle or hotel, a tour or round with guests
           but no vehicle, orders in Need a look, and more. Fix › takes you
-          there. It shows &#10003; All good only when nothing is left. Nothing in
-          it stops you from saving.
+          there. It shows &#10003; All good only when nothing is left. Nothing
+          in it stops you from saving.
         </li>
         <li>
           Morning Relay: pick each car&rsquo;s hotels in Add hotel. 2nd Round:
@@ -3450,6 +3457,16 @@ function HowToUse() {
           again to untick; you can pick several), then pick the bus under the
           lists and click Move selected orders.
         </li>
+        {/* 135 题 2 B（Annie 2026-11-13「135  -1A 2B」「动手」）：跟 Farm out 键一起显示（看不到 Farm out 就不写这一句）。 */}
+        {farmOut ? (
+          <li data-howto-farm-out-other-day>
+            Send farm out notice: if the day is not today (Los Angeles time), a
+            box shows that day in large red letters. Click &ldquo;Yes, I need to
+            send for &hellip;&rdquo; only if you really mean to send for that
+            day; Cancel sends nothing. Farm out notices are usually sent the day
+            before, so the box shows almost every time.
+          </li>
+        ) : null}
         <li>
           A yellow bar means CCL posted a change: Apply changes puts it on the
           page.
