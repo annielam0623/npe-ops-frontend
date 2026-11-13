@@ -73,13 +73,29 @@ pe-ops-wt-wrdor（136 接着用）。
 | 134 Dispatch 开当天登录 12:00 AM | c98d2aad | 96 | 凌晨 12:00–8:30 登录开当天，8:30 后开第二天 |
 | 135 Dispatch 发的日子不是今天先弹框确认 | ae5c849a（后端 b645fe97 + farm out 8ef4f14d） | 6b | Dispatch 切到明天点任意发送 ⇒ 红日期框，Cancel 不发、Yes 才发；今天不弹；farm out 同样 |
 | 137 Working Record 留 DOR 位置（只改类型，页面不变） | a8386d94（功能 2f021128） | 5b | 页面上看不到变化；后端 G314 没做 |
+| 136 Working Record 只显示到今天 + Not completed（Annie「3个问题都是A」→「动手」） | 6158c991（功能 b3ccbea9） | 5b | HR › Working Record：今天那列日期下「Not completed」、卡橙色虚线框；点过 Completed 的日子实线框、没有 live；明天起格子空；Export 最后一列 Status。tsc / eslint / build、hr 135/135、nav 39/39 |
 
 ### 在分支 / 等 Annie / 等后端
 1. **128 Content Studio 客人页整页编辑**：a3 task/128-guest-page-edit head 24da02d0，所有题已答 + 动手，检查过了。**等后端**（task/g299-guest-page-edit，要 Annie 当场同意并做 SQL + 发布）上 main ⇒ 25 发 commit 和实际键名 ⇒ a3 核对、合最新 main（PROGRESS 冲突两边都留）、重跑 tsc / eslint / build / cs / nav ⇒ 合 main。后端没上就合的话，Guest Page 会出红字。
-2. **136 Working Record 只显示到今天 + Not completed**：5b 样稿 LWH8e8T6tDUJKEXRmU5dA9，3 题 + How to use 全文等 Annie（置顶 136）。
+2. ~~136~~ ✅ 已上 main 6158c991（见上表；置顶 136 原文移到下面）。
 3. **138 导游工资 Payroll**：a3 样稿 Pkg8TAFuFGBtPmHho2Ftoh，3 题等 Annie（置顶 138）。后端 task/guide-payroll 4fb7f66d 今晚家里做完；Dispatch 不用改。
 4. **Private Tour 在 Dispatch 看不到（CHDAKCDKL 11/19）**：订单在 Step 2「Private Tour」块（后端一直会给这一块），Step 1 本来就没有私团卡（10-15「先收口」）。74 已告诉 Annie 往下滚到 Step 2 看；看不到就是前端 bug。最小改法（Step 1 加一行 Private Tour + Assign Bus 跳过去）等 Annie 要不要，要的话先出 preview。
 5. 其余置顶照旧：114d、125、G291 Joe（Annie 自己改 HR）等。新编号从 139 起。
+
+### 136 置顶原文（已答已上，移自置顶）
+### 136. Working Record 只显示到今天 + Not completed（11-13，5b 样稿 https://claude.ai/artifact/LWH8e8T6tDUJKEXRmU5dA9 ，没写代码）
+- 后端 G290 4e91cece：through 之后留空；每天 status completed / not_completed；点过 Completed 的日子也读 live（所以现有「live」橙虚线框会落到所有日子上）。
+- 题 1 虚线框：A 只标 Not completed，去掉「live」字（推荐）/ B live 照旧再加 Not completed。
+- 题 2 Not completed 放哪（橙棕加粗普通字，夜间浅黄）：A 每天一次，周表日期下、月历日子号旁（推荐）/ B 每张卡右上角。
+- 题 3 Export CSV：A Saved 列换成 Status（Completed / Not completed），合计行「N day(s) not completed」，月历合计「includes N days not completed」（推荐）/ B 保留 Saved 再加 Status，7 列。
+- 文字：How to use 全文换（原文见 5b 消息 / 样稿）；页头小字改「A dashed box means nobody has clicked Completed on Dispatch for that day yet.」。
+- ✅ Annie（原话，5b）「3个问题都是A」⇒ 题 1 A 虚线框只标 Not completed、去掉 live；题 2 A 每天写一次（周表日期下、月历号码旁）；题 3 A Saved 列换 Status、合计行「N day(s) not completed」。How to use / 页头新文字是否照样稿、是否动手，5b 已问，等答。
+- ✅ Annie（原话，5b）「动手」⇒ How to use / 页头用样稿那版；5b 在 C:Code
+pe-ops-wt-wrdor 做 task/wr-cutoff，过检查合 main。
+- 待答 +「动手」，5b 做（task/wr-cutoff）。
+- 🆕 137（并在 136 下记）Annie（原话，5b 窗口）「我看到设计了，这里给每个tour都留一个接口，将来需要把daily report如有跟这个人有关的内容显示在这里」⇒ 每张工作卡（一天一段 tour）留位置，以后显示 Daily Operation Report 里跟这个人有关的内容。5b 核：DOR 跟人、tour 都没有硬关联（只有 order_number、subject_name、details.driver_name 这些手填字段，没有 hr_id、manifest），所以要后端来算 ⇒ 需要后端：field-calendar 每个 run 带 reports:[{id, report_type, headline, status}]，匹配规则等 Annie 定。5b 已直接问 Annie：① 卡上现在显示什么：A 只在代码里留位置、现在不显示（推荐）/ B 灰色「Daily report — Soon」；② 哪些算有关：A 只算直接点名的（投诉对象 / 事故司机是这个人，推荐）/ B 再加他那天跑的团里订单的所有报告。只记录，不动手；不影响 136 那三题。
+  - ✅ Annie（原话，5b）「2个问题都同意推荐，动手」（问过是指这件）⇒ ① A 现在卡上什么都不显示，只在代码里留位置，以后要显示先出 preview；② A 只算直接点名这个人的报告（投诉对象 / 事故司机）。5b 做 task/wr-dor-slot：types/hr-working-record.ts 的 FieldRun 加可选 reports，页面不变，过检查合 main。需要后端已交 25（field-calendar 每个 run 加 reports:[{id, report_type, headline, status}]，怎么对上人、字段名由后端定）。
+  - 后端登记为 G314（25），还没开始，家里后端主窗口接；之前前端当 reports 不存在。
 
 ### 窗口小知识
 - 5b：worktree 不能用 junction 链 node_modules（Turbopack 报 Symlink invalid），要在 worktree 里 npm ci。
@@ -1847,20 +1863,6 @@ D. 已完成、待从置顶移走：
 - 要显示的状态：每段 run paid / no_rate / not_linked / no_guide，加 day_status not_completed。
 - 新页面 ⇒ 先 preview +「动手」。派 a3 出 preview（128 在等后端，a3 空着）。
 - a3 样稿 https://claude.ai/artifact/Pkg8TAFuFGBtPmHho2Ftoh （HR 第 4 个标签 Payroll）。已核 Dispatch 不用改：Private Tour 车卡本来就有 Guide 下拉（vehicle-row.tsx:1424）；手填名字在 Payroll 会是 Not linked。题 1 排法：A 按人一行可展开 + Not counted 单列（推荐）/ B 按日期。题 2 改费率默认从哪天起：A 正在看的这一期第一天（推荐）/ B 下一期第一天。题 3 Team 权限勾：A 合成一行「Payroll」None / Read only / Read & edit，非 Admin 灰掉 +「Admin only」+ 一句（推荐）/ B 两行分开。VOF / Death Valley 后端还没加团。待答 +「动手」。
-
-### 136. Working Record 只显示到今天 + Not completed（11-13，5b 样稿 https://claude.ai/artifact/LWH8e8T6tDUJKEXRmU5dA9 ，没写代码）
-- 后端 G290 4e91cece：through 之后留空；每天 status completed / not_completed；点过 Completed 的日子也读 live（所以现有「live」橙虚线框会落到所有日子上）。
-- 题 1 虚线框：A 只标 Not completed，去掉「live」字（推荐）/ B live 照旧再加 Not completed。
-- 题 2 Not completed 放哪（橙棕加粗普通字，夜间浅黄）：A 每天一次，周表日期下、月历日子号旁（推荐）/ B 每张卡右上角。
-- 题 3 Export CSV：A Saved 列换成 Status（Completed / Not completed），合计行「N day(s) not completed」，月历合计「includes N days not completed」（推荐）/ B 保留 Saved 再加 Status，7 列。
-- 文字：How to use 全文换（原文见 5b 消息 / 样稿）；页头小字改「A dashed box means nobody has clicked Completed on Dispatch for that day yet.」。
-- ✅ Annie（原话，5b）「3个问题都是A」⇒ 题 1 A 虚线框只标 Not completed、去掉 live；题 2 A 每天写一次（周表日期下、月历号码旁）；题 3 A Saved 列换 Status、合计行「N day(s) not completed」。How to use / 页头新文字是否照样稿、是否动手，5b 已问，等答。
-- ✅ Annie（原话，5b）「动手」⇒ How to use / 页头用样稿那版；5b 在 C:Code
-pe-ops-wt-wrdor 做 task/wr-cutoff，过检查合 main。
-- 待答 +「动手」，5b 做（task/wr-cutoff）。
-- 🆕 137（并在 136 下记）Annie（原话，5b 窗口）「我看到设计了，这里给每个tour都留一个接口，将来需要把daily report如有跟这个人有关的内容显示在这里」⇒ 每张工作卡（一天一段 tour）留位置，以后显示 Daily Operation Report 里跟这个人有关的内容。5b 核：DOR 跟人、tour 都没有硬关联（只有 order_number、subject_name、details.driver_name 这些手填字段，没有 hr_id、manifest），所以要后端来算 ⇒ 需要后端：field-calendar 每个 run 带 reports:[{id, report_type, headline, status}]，匹配规则等 Annie 定。5b 已直接问 Annie：① 卡上现在显示什么：A 只在代码里留位置、现在不显示（推荐）/ B 灰色「Daily report — Soon」；② 哪些算有关：A 只算直接点名的（投诉对象 / 事故司机是这个人，推荐）/ B 再加他那天跑的团里订单的所有报告。只记录，不动手；不影响 136 那三题。
-  - ✅ Annie（原话，5b）「2个问题都同意推荐，动手」（问过是指这件）⇒ ① A 现在卡上什么都不显示，只在代码里留位置，以后要显示先出 preview；② A 只算直接点名这个人的报告（投诉对象 / 事故司机）。5b 做 task/wr-dor-slot：types/hr-working-record.ts 的 FieldRun 加可选 reports，页面不变，过检查合 main。需要后端已交 25（field-calendar 每个 run 加 reports:[{id, report_type, headline, status}]，怎么对上人、字段名由后端定）。
-  - 后端登记为 G314（25），还没开始，家里后端主窗口接；之前前端当 reports 不存在。
 
 ### 125. Tour Tracking 没发过的行字也变灰（11-12，6b 样稿 https://claude.ai/artifact/7YqY8VAeGAkB35Nxbx9DwU ，没改代码）
 - Annie 原话（11-11）：「进到tracking页面的那些自动填充的订单的字体没有用灰色，还是正常的颜色，staff怎么看的出哪些发过哪些没发过」
