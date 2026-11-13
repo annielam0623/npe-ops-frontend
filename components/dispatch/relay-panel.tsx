@@ -1095,8 +1095,9 @@ export function RelayPanel({
                               ? "These cars were not sent"
                               : "Nothing was sent for these cars"}
                           </b>
-                          {res.blocked_cars.map((c) => (
-                            <div key={c.car_id}>
+                          {res.blocked_cars.map((c, i) => (
+                            // 占位块（没排车的团）car_id 是 null：同一天两个这样的团不能撞 key。
+                            <div key={`${c.car_id ?? "nocar"}-${i}`}>
                               {c.car}: {c.problems.join("; ")} —{" "}
                               {c.orders.length
                                 ? `orders ${c.orders.join(", ")}`
@@ -1189,7 +1190,11 @@ export function RelayPanel({
                     >
                       {cars.map((b) => (
                         <CarRows
-                          key={b.car.id}
+                          // 2026-11-12 TI：没排车的团是占位块（car.id null），用团的 manifest_id 区分。
+                          key={
+                            b.car.id ??
+                            `nocar-${b.car.manifest_id ?? b.car.tour_name ?? ""}`
+                          }
                           car={b.car}
                           guests={b.guests}
                           pick={guestPick}
@@ -1218,7 +1223,11 @@ export function RelayPanel({
                         .map(
                           (b) =>
                             b.car.van ||
-                            (b.car.id != null ? `#${b.car.id}` : "This tour"),
+                            (b.car.id != null
+                              ? `#${b.car.id}`
+                              : b.car.tour_name ||
+                                b.guests[0]?.tour ||
+                                "This tour"),
                         )
                         .join(", ")}
                       ): their guests will not get the reminder. Fix them on the

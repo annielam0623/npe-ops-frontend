@@ -263,9 +263,11 @@ const relayIsSent = (o) => ["R2", "R3"].includes(o) || (o === "R5" && ctl.relayE
 const relayRound1 = () => (ctl.relayOnlyBad ? ["R6"] : ["R1", "R2", "R3", ...(ctl.relayExtra ? ["R4", "R5"] : []), ...(ctl.relayHotels ? ["R7", "R8", "R10", "R11"] : []), ...(ctl.relayBlocked ? ["R6"] : [])]);
 const BAD_CAR_1 = { car_id: 803, car: "Relay car 2103", problems: ["Relay car 2103 has no pickup stop"] };
 const BAD_CAR_2 = { car_id: 802, car: "Relay car #802", problems: ["Relay car #802 has no driver"] };
-const blockedCars = (round) => (round === "relay" && (ctl.relayBlocked || ctl.relayOnlyBad) ? [{ ...BAD_CAR_1, orders: ["R6"] }] : []).concat(round === "relay_2" && ctl.relayBlocked ? [{ ...BAD_CAR_2, orders: [] }] : []).concat(round === "tour_car" && ctl.tourCarBlocked ? [{ car_id: 804, car: "Bus 1841", problems: ["Bus 1841 has no driver"], orders: ["HD1", "HD2"] }] : []);
+const blockedCars = (round) => (round === "relay" && (ctl.relayBlocked || ctl.relayOnlyBad) ? [{ ...BAD_CAR_1, orders: ["R6"] }] : []).concat(round === "relay_2" && ctl.relayBlocked ? [{ ...BAD_CAR_2, orders: [] }] : []).concat(round === "tour_car" && ctl.tourCarBlocked ? [{ car_id: 804, car: "Bus 1841", problems: ["Bus 1841 has no driver"], orders: ["HD1", "HD2"] }] : [])
+  // 2026-11-12 TI：两个没排车的团（占位块，car_id null）。
+  .concat(round === "tour_car" && ctl.tourCarTI ? [{ car_id: null, car: "Grand Canyon South", problems: ["No bus assigned to this tour"], orders: ["TS1"] }, { car_id: null, car: "Hoover Dam", problems: ["No bus assigned to this tour"], orders: ["HD3"] }] : []);
 // G118 tour_car 轮：tourCarNoCar ⇒ 这个团当天没排 bus_tour 车，整块挡住、没有订单号可发。
-const tourCarRound = () => (ctl.tourCar && !ctl.tourCarNoCar ? ["HD1", "HD2"] : []);
+const tourCarRound = () => (ctl.tourCarTI ? ["TS1", "TI1", "HD3"] : ctl.tourCar && !ctl.tourCarNoCar ? ["HD1", "HD2"] : []);
 const ccl = (o) => ({ line_id: 345, driver_text: "FREDDY", guide_text: null, vehicle_text: "768", is_driver_guide: false, route_label: null, ccl_note: null, driver_candidates: [], guide_candidates: [], ...o });
 const prefills = {
   // 自动填充 + CCL 确认（Annie 2026-10-11）：没存过的一天，名单要两台、CCL 只给一台 ⇒ CCL 那台填进 A，B 留空（等 farm out）。
@@ -496,7 +498,13 @@ http.createServer(async (req, res) => {
         relay: [...(ctl.relayOnlyBad ? [] : [{ car: { id: 801, van: "768", driver: "FREDDY", ...(ctl.relayNoTracking ? { has_tracking: false } : {}) }, guests: [g({ id: 1, order_number: "R1", ...sentMeta("R1") }), g({ id: 2, order_number: "R2", ...sentMeta("R2"), changed: ["pickup time 4:45 AM → 5:00 AM"], ...(ctl.relayFollowed ? { driver_followed: { from: "BRUCE", to: "FREDDY", at: "2026-10-05T04:10:00-07:00", by: "annie" } } : {}) }), g({ id: 3, order_number: "R3", ...sentMeta("R3"), relay_status: "no_show" }), ...extra, ...hotelGuests] }]),
           ...(ctl.relayBlocked || ctl.relayOnlyBad ? [{ car: { id: 803, van: "2103", driver: "SAM", problems: BAD_CAR_1.problems }, guests: [g({ id: 6, order_number: "R6", name: "ZZ Park", pickup_location: "Best Western" })] }] : [])],
         relay_2: [{ car: { id: 802, van: null, driver: null, ...(ctl.relayNoTracking ? { has_tracking: false } : {}), ...(ctl.relayBlocked ? { problems: BAD_CAR_2.problems } : {}) }, guests: [] }],
-        tour_car: ctl.tourCar ? [{ car: tourCarCar, guests: tourCarGuests }, ...tourCarSecond] : [],
+        // 2026-11-12 TI（后端 relay-ti-2026-11-12）：Treasure Island 的客人进自己团的车；没排车的团是占位块（id null + manifest_id）。
+        // 后端顺序：1st Round 的团 → 2nd Round 的团 → tour_car 的团（Hoover）最后；西峡倒数第二。
+        tour_car: ctl.tourCarTI ? [
+          { car: { id: null, manifest_id: 7, tour_name: "Grand Canyon South", bus_label: null, van: "", driver: "", problems: ["No bus assigned to this tour"] }, guests: [g({ id: 50, order_number: "TS1", name: "ZZ South TI", tour: "Grand Canyon South", pickup_time: "6:00 AM", pickup_location: "Treasure Island", hotel: "Treasure Island", location_id: 102, ...sentMeta("TS1") })] },
+          { car: { id: 806, manifest_id: 3, tour_name: "West Rim Bus Tour", bus_label: "A", van: "1328", driver: "BRUCE O" }, guests: [g({ id: 51, order_number: "TI1", name: "ZZ West TI", tour: "West Rim Bus Tour", pickup_time: "6:30 AM", pickup_location: "Treasure Island", hotel: "Treasure Island", location_id: 102, ...sentMeta("TI1") })] },
+          { car: { id: null, manifest_id: 4, tour_name: "Hoover Dam", bus_label: null, van: "", driver: "", problems: ["No bus assigned to this tour"] }, guests: [g({ id: 52, order_number: "HD3", name: "ZZ Hoover TI", tour: "Hoover Dam", pickup_time: "9:00 AM", pickup_location: "Treasure Island", hotel: "Treasure Island", location_id: 102, ...sentMeta("HD3") })] },
+        ] : ctl.tourCar ? [{ car: tourCarCar, guests: tourCarGuests }, ...tourCarSecond] : [],
       },
       // needRound（置顶 94，后端 307d6895）：每条带 round；1st Round MGM 两单（2 + 3 人）、aria 4 人没车停，
       // relay_2 Excalibur 1 人，Hoover（tour_car）一条别的原因；1st Round 另有一条没时间的（不算没车）。
@@ -508,7 +516,7 @@ http.createServer(async (req, res) => {
         g({ id: 44, order_number: "N5", pickup_location: "Excalibur", location_id: 100, hotel: "Excalibur", pickup_time: "", reason: "Pickup time could not be worked out from the time in Rezdy", round: "relay" }),
         g({ id: 45, order_number: "N6", tour: "Hoover Dam", pickup_time: "", reason: "Pickup time could not be worked out from the time in Rezdy", round: "tour_car" }),
       ] : ctl.needRoundEmpty ? [] : [g({ id: 9, order_number: "R9", pickup_time: "7:30 AM", reason: "Pickup time could not be worked out from the time in Rezdy" })],
-      departure: 4 });
+      departure: ctl.tourCarTI ? 0 : 4 });
   }
   if (p === "/api/dispatch/relay-send/preview") {
     // relayBlockLate：preview 时还没挡、发送那一刻才挡（整轮只剩坏车 ⇒ sent 0、results 空）。
