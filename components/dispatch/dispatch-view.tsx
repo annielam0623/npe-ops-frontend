@@ -70,7 +70,7 @@ import type {
 
 import { CclBanner } from "./ccl-banner";
 import { FarmOutBlock } from "./farm-out-block";
-import { FarmOutGuests, whenText } from "./farm-out-guests";
+import { FarmOutGuests, productState, whenText } from "./farm-out-guests";
 import { FarmOutNoticeDialog } from "./farm-out-notice-dialog";
 import { RosterDialog } from "./roster-dialog";
 import { usePartners } from "./use-farm-out";
@@ -81,6 +81,7 @@ import {
   cloneRows,
   countChanges,
   needsShuttlePickup,
+  type RailIssue,
   type RelayNoCar,
   fmtLong,
   fmtShort,
@@ -574,6 +575,69 @@ export function DispatchView() {
   }
 
   const L = useMemo(() => (day ? makeLookup(day) : null), [day]);
+  /**
+   * G308 补（Annie「任何没有完成的都要标出来」）：Farm out 车客人名单底下的黄字 / 红字（没选上车酒店、没选产品、没填 Payable）
+   * 也算进 Schedule check，一台车一条。跟名单同一份座位表、同样的条件（看得到 Farm out、这台车存过、有字母）。
+   */
+  const seeMoney = perms.canSeeMoney;
+  const farmOutIssues = useMemo(() => {
+    if (!day || seating?.run_date !== day.run_date) return undefined;
+    const out: RailIssue[] = [];
+    // Arrange seats 里橙色的 Not on a bus（没车坐的单）：一个团一条，Fix 滚到那一栏。
+    for (const t of seating.tours) {
+      if (!t.uploaded || t.mode !== "lettered") continue;
+      const left = t.orders.filter((o) => o.bus_label == null);
+      if (!left.length) continue;
+      const pax = left.reduce((k, o) => k + o.pax, 0);
+      const sec = day.sections.find(
+        (x) => x.shift === META.bus_tour_shift && x.manifest_id === t.manifest_id,
+      );
+      out.push({
+        title: `${sec?.title || t.title || t.name}: ${left.length} order${left.length === 1 ? "" : "s"} not on a bus`,
+        detail: `${pax} guest${pax === 1 ? "" : "s"}. In Arrange seats, drag each order onto a bus or pick its bus.`,
+        target: `[data-unplaced="${t.manifest_id}"]`,
+      });
+    }
+    if (!farmOutVisible) return out;
+    for (const r of rows) {
+      if (!r.farm_out || r.id == null || r.shift !== META.bus_tour_shift)
+        continue;
+      const t = seating.tours.find((x) => x.manifest_id === r.manifest_id);
+      if (!t?.uploaded || t.mode !== "lettered") continue;
+      const label = base.find((b) => b.id === r.id)?.bus_label;
+      if (label == null || !t.buses.some((b) => b.label === label)) continue;
+      const orders = t.orders.filter((o) => o.bus_label === label && o.farm_out);
+      const noHotel = orders.filter(
+        (o) => o.farm_out!.partner_location_id == null,
+      ).length;
+      const noProduct = orders.filter(
+        (o) => productState(o) === "unpicked",
+      ).length;
+      const noPay = seeMoney
+        ? orders.filter(
+            (o) =>
+              o.farm_out!.payable_amount == null &&
+              !o.farm_out!.payable_set_by_staff,
+          ).length
+        : 0;
+      const n = (k: number) => `${k} order${k === 1 ? "" : "s"}`;
+      const parts = [
+        noHotel ? `No pick-up hotel for ${n(noHotel)}.` : null,
+        noProduct ? `Product is not picked for ${n(noProduct)}.` : null,
+        noPay ? `Payable is not set for ${n(noPay)}.` : null,
+      ].filter(Boolean) as string[];
+      if (!parts.length) continue;
+      const sec = day.sections.find(
+        (x) => x.shift === META.bus_tour_shift && x.manifest_id === t.manifest_id,
+      );
+      out.push({
+        title: `${sec?.title || t.title || t.name}: farm-out Bus ${label} is not finished`,
+        detail: parts.join(" "),
+        farm: { mid: t.manifest_id, label },
+      });
+    }
+    return out;
+  }, [day, farmOutVisible, seating, rows, base, seeMoney]);
   const analysis = useMemo(
     () =>
       L
@@ -585,9 +649,10 @@ export function DispatchView() {
               ? relayNoCar.byRound
               : undefined,
             needLook?.date === L.day.run_date ? needLook.n : undefined,
+            farmOutIssues,
           )
         : null,
-    [rows, L, shuttlePax, relayNoCar, needLook],
+    [rows, L, shuttlePax, relayNoCar, needLook, farmOutIssues],
   );
   // Step 1 团卡片（ManifestsPanel，另读 /api/dispatch/manifests，没有 color 字段）要和这里的团色条
   // 用同一个颜色：从 day.sections（有 color，G142）按 manifest_id 做一张表传过去。
@@ -1203,6 +1268,53 @@ export function DispatchView() {
         return;
       }
       el.scrollIntoView({ behavior: "smooth", block: "start" });
+      el.style.boxShadow = "0 0 0 3px #f5c518";
+      setTimeout(() => {
+        el.style.boxShadow = "";
+      }, 2000);
+    };
+    setTimeout(go, 0);
+  }
+
+  /** G308 补：Schedule check 里 Farm out 车那一条的 Fix：打开那个团的 Farm out 名单，滚过去、闪黄，光标到第一个没选的酒店。 */
+  function goFarm(f: { mid: number; label: string }) {
+    if (tab !== "assign") switchTab("assign");
+    setSeatOpen((o) => ({ mid: f.mid, n: (o?.n ?? 0) + 1 }));
+    let tries = 0;
+    const go = () => {
+      const box = document.querySelector<HTMLElement>(
+        `[data-farm-out-guests="${f.mid}:${CSS.escape(f.label)}"]`,
+      );
+      if (!box || !box.querySelector("table")) {
+        if (++tries < 60) setTimeout(go, 150);
+        return;
+      }
+      box.scrollIntoView({ behavior: "smooth", block: "center" });
+      box.style.boxShadow = "0 0 0 3px #f5c518";
+      setTimeout(() => {
+        box.style.boxShadow = "";
+      }, 2000);
+      const empty = [
+        ...box.querySelectorAll<HTMLSelectElement>(
+          'select[aria-label^="Pick-up hotel"]',
+        ),
+      ].find((x) => x.value === "");
+      empty?.focus({ preventScroll: true });
+    };
+    setTimeout(go, 0);
+  }
+
+  /** G308 补：Schedule check 的 Fix 滚到页面上某一块（Not on a bus），闪黄 2 秒。 */
+  function goTarget(selector: string) {
+    if (tab !== "assign") switchTab("assign");
+    let tries = 0;
+    const go = () => {
+      const el = document.querySelector<HTMLElement>(selector);
+      if (!el || !el.offsetParent) {
+        if (++tries < 40) setTimeout(go, 150);
+        return;
+      }
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
       el.style.boxShadow = "0 0 0 3px #f5c518";
       setTimeout(() => {
         el.style.boxShadow = "";
@@ -2921,6 +3033,8 @@ export function DispatchView() {
                   onGoto={(i, f) => focusRow(i, f)}
                   onGoSection={(k) => goSection(k)}
                   onGoNeedLook={canSend ? goNeedLook : undefined}
+                  onGoFarm={goFarm}
+                  onGoTarget={goTarget}
                 />
 
                 {!viewOnly &&

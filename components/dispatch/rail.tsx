@@ -51,6 +51,8 @@ export function Rail({
   onGoto,
   onGoSection,
   onGoNeedLook,
+  onGoFarm,
+  onGoTarget,
 }: {
   analysis: Analysis;
   /** 巴士团这一天有几位客人（Step 1 卡片）：键 = 块的 key。没有 = 不是巴士团 / 卡片还没读到，照常显示。 */
@@ -61,6 +63,10 @@ export function Rail({
   onGoSection: (key: string) => void;
   /** G308：去 Send 标签的 Need a look（不能发送的人没有 Send 标签 ⇒ 不给）。 */
   onGoNeedLook?: () => void;
+  /** G308 补：打开那台 Farm out 车的客人名单。 */
+  onGoFarm?: (f: { mid: number; label: string }) => void;
+  /** G308 补：滚到页面上某一块（Not on a bus）。 */
+  onGoTarget?: (selector: string) => void;
 }) {
   const [names, setNames] = useState<Record<string, boolean>>({});
   const [quietOpen, setQuietOpen] = useState(false);
@@ -127,7 +133,11 @@ export function Rail({
                   ? () => onGoSection(it.sec!)
                   : it.go === "need-a-look" && onGoNeedLook
                     ? onGoNeedLook
-                    : null;
+                    : it.farm && onGoFarm
+                      ? () => onGoFarm(it.farm!)
+                      : it.target && onGoTarget
+                        ? () => onGoTarget(it.target!)
+                        : null;
             return (
               <li key={i} className="flex items-start gap-2.5">
                 <Mark kind="warn" />

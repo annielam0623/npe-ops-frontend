@@ -329,6 +329,10 @@ export interface RailIssue {
   namesKey?: string;
   /** G308：点 Fix 去 Send 标签的 Need a look 那一块。 */
   go?: "need-a-look";
+  /** G308 补：点 Fix 打开这台 Farm out 车的客人名单（团 manifest_id + 车字母），光标放到第一个没选的酒店。 */
+  farm?: { mid: number; label: string };
+  /** G308 补：点 Fix 滚到页面上这一块（CSS 选择器，例如 Arrange seats 里的 Not on a bus）、闪黄。 */
+  target?: string;
 }
 
 export interface Analysis {
@@ -374,6 +378,8 @@ export function analyze(
   relayNoCar?: RelayNoCar,
   /** G308：relay-pull need_a_look 有几单（读不到 = undefined，不提醒）。 */
   needLook?: number,
+  /** G308 补：要座位表才算得出的（Farm out 车名单上没做完的、Not on a bus 的单），页面算好传进来，放在最后。 */
+  farmOut?: RailIssue[],
 ): Analysis {
   const day = L.day;
   const sectionKey = (s: { shift: string; manifest_id: number | null }) =>
@@ -667,6 +673,8 @@ export function analyze(
       idx,
     });
   });
+
+  if (farmOut) issues.push(...farmOut);
 
   return {
     sections,

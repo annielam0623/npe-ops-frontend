@@ -1220,6 +1220,19 @@ async function run() {
   check("板在这个团所有车的下面（最后一台车之后）", await evaluate(`const rows = [...document.querySelector('[data-sec="bus_tour:3"]').querySelectorAll('.vrow')]; const board = document.querySelector('[data-arrange-board="3"]'); return rows.length === 2 && (rows[1].compareDocumentPosition(board) & 4) && board.querySelectorAll('[data-arrange-col]').length === 3;`));
   check("一台车的团：写全部几位坐这台车、不列订单", (await evaluate(`return ${bg("4:single")}?.textContent || '';`)).includes("all 5 guests ride this bus"));
   check("没坐上车的：橙色 Not on a bus 一列，几单几位", (await evaluate("return document.querySelector('[data-unplaced=\"3\"]')?.textContent || '';")).includes("Not on a bus") && (await evaluate("return document.querySelector('[data-unplaced=\"3\"]').textContent;")).includes("1 order · 2 guests"));
+  // G308 补（Annie「任何没有完成的都要标出来」）：Not on a bus 的单也进 Schedule check，一个团一条；Fix › 滚到那一栏
+  {
+    await evaluate("document.querySelector('[data-schedule-pill]')?.click();");
+    await waitFor("document.getElementById('schedule-check')");
+    const nbLi = "[...document.querySelectorAll('#schedule-check [aria-label=Issues] > li')].find(l => l.textContent.includes('not on a bus'))";
+    const t = await evaluate(`return ${nbLi}?.textContent ?? null;`);
+    check("G308 Schedule check：「West Rim Bus Tour: 1 order not on a bus」+ 2 guests、去 Arrange seats", !!t && t.includes("West Rim Bus Tour: 1 order not on a bus") && t.includes("2 guests. In Arrange seats, drag each order onto a bus or pick its bus."), String(t));
+    await evaluate("window.scrollTo(0, 0);");
+    await sleep(200);
+    await evaluate(`${nbLi}.querySelector('[data-issue-fix]').click();`);
+    await sleep(1200);
+    check("G308 Not on a bus 那条的 Fix ›：滚到橙色 Not on a bus 那一栏", await evaluate("const r = document.querySelector('[data-unplaced=\"3\"]').getBoundingClientRect(); return window.scrollY > 100 && r.top >= 0 && r.bottom <= innerHeight;"));
+  }
   await sleep(100);
   check("点开：列订单（名字、单号、几位、接客时间地点、换车下拉）", await evaluate(`const t = ${bg("3:A")}.textContent; return ${bg("3:A")}.querySelectorAll('[data-seat-order]').length === 2 && t.includes('ZZ Test Alpha') && t.includes('SG1') && t.includes('6:30 AM · TI') && !!${bg("3:A")}.querySelector('select');`));
   // U / L / X 团类型筛选键（Annie 2026-10-18「C窗口可以动手」，后端 a307762）
