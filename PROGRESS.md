@@ -67,7 +67,7 @@
 ### 在分支 / 等 Annie
 
 0. **🔴 129 Dispatch 开当天登录时间段 2:00 AM → 12:00 AM（11-13，54 转 Annie 原话「把这个时间改成12：00am」）**：起因 11-13 Veronica 1:53 AM 登录，Dispatch 开成 11-14，31 个 relay 客人和 11-14 司机提前一天发出。只改前端：lib/la-date.ts:93 LOGIN_TODAY_FROM 0、dispatch-view.tsx:3416 How to use、注释、边界检查（1:59 / 0:00 当天，8:31 第二天）、HR 登录记录说明（如线上有）。8:30 不变。派 96 task/dispatch-login-midnight，先做完检查，4c 问 Annie 是否现在动手合 main。
-1. **G297 团确认酒店空着**（后端 fc0049ce 已上 main：空酒店那单留下不发、其余照发、给当班发 pickup_missing Notice；新接口 send-tour-order）。前端 6b 分支 task/g297-pickup-block（已对齐后端第二版、判空 = trim 后为空、TBD 算有值），preview https://claude.ai/artifact/P2hYRXJkFeurqiHzkaMspF 第 3 版 5 题（分支 5aa8e9e3；worktree 在公司电脑 C:Codeops-6b-relay，家里从远端拉分支接着做）（Notice 样子 / 红字放哪 / 键位置 / 要不要确认 / 渠道）待 Annie 答 + 动手。⚠️ 后端已上、前端没上：Tour send 页空酒店单不发，但结果只显示后端原话不标红。
+1. ✅ **G297 上 main a8d64c35（11-13，6b 快进 task/g297-pickup-block）**：Annie 在 6b（原话）「297同意推荐，动手」⇒ 5 题全 A（Notice 红标签红边 + Open order → + Got it；Order 页红框 + Location 红字；键在 Refresh from Rezdy 左；点一下就发；固定 SMS + Email）。tsc / eslint 0 / build 过；tour 77、orders 104、tasks 151、man 429 全过。入口：Tour / Last Minute 发送页、Manifests 弹窗、Dashboard Notice + history、Order 页均已改；后端 fc0049ce 无需再改。（以下为原记录）**G297 团确认酒店空着**（后端 fc0049ce 已上 main：空酒店那单留下不发、其余照发、给当班发 pickup_missing Notice；新接口 send-tour-order）。前端 6b 分支 task/g297-pickup-block（已对齐后端第二版、判空 = trim 后为空、TBD 算有值），preview https://claude.ai/artifact/P2hYRXJkFeurqiHzkaMspF 第 3 版 5 题（分支 5aa8e9e3；worktree 在公司电脑 C:Codeops-6b-relay，家里从远端拉分支接着做）（Notice 样子 / 红字放哪 / 键位置 / 要不要确认 / 渠道）待 Annie 答 + 动手。⚠️ 后端已上、前端没上：Tour send 页空酒店单不发，但结果只显示后端原话不标红。
 2. **128 Content Studio › Guest Page 整页就地编辑**：样稿 https://claude.ai/artifact/PnkpnXHaJbzrYTrUcfMYvX 第 3 版。已定：Q3 A 小编辑框（共用字提醒「Shared by all tours…」，这团的字不提醒）；不做 + Add section（新段落由后端加文字项）；加 Edit / Save（默认看的状态 = 客人真样子）。待答：Q1 范围（A 先 TC 推荐）、Q2 邮件（A 下一步推荐）、Q4 List view（A 留推荐）。答 + 动手后把 96 写的接口形状（置顶 128 节）转后端。
 3. **114d Relay list ⚙ 设置弹窗旧句「Aa Text size」**：置顶，A 改成 text size card 那句 / B 不改，待答。
 4. **G291 Joe**：不做标签；只剩 Annie 自己在 HR 把 Joe（id 69）Nickname 改成「Joe Ri」→ Dispatch 11-12 那组重新 Save。后端无别名可删。
@@ -1795,19 +1795,6 @@ D. 已完成、待从置顶移走：
   - 样稿 Version 3（同链接）：看的状态无框无 ✎、隐藏块不出，工具条「Viewing — this is what guests see」；Edit（普通键）→「Editing」+ Discard + 蓝 Save，出框 / ✎ / ↑↓ / Shown after 块；Save 回看的状态绿「Saved」。演示键 7 个。Q4 A 建议 List view 共用同一 Edit / Save。Q1 Q2 Q4 待答。
 - Q4 旧表单：A 留「List view」切换（推荐）/ B 不留。
 - 需要后端（Annie 定了再转 54）：GET / POST /api/content-studio/guest-preview（POST 用草稿画不写库），回包 {html, keys[], sample}，sandbox iframe 无脚本；data-tmpl-key / -kind=lines / -attr / -empty / -step / -state 标记；示例数据补电话、团期 +7 天、8:00 AM、notes。保存走现有接口。MTLV 块后端关着没画。
-
-### G297. 团确认酒店空着：Notice 红色 + Order 页发送键（11-12，6b preview https://claude.ai/artifact/P2hYRXJkFeurqiHzkaMspF ，分支 task/g297-pickup-block 866922be）
-
-- 题 1 Notice 样子：A 红字标签「Pickup location missing」+ 左红边 + Open order → + Got it（推荐）；B 整卡红底；C 去掉 Got it。
-- 题 2 Order 页键位置：A 订单号那行右边、Refresh from Rezdy 左边（推荐）；B Product 卡 Location 行旁。
-- 题 3 点了要不要确认：A 点一下就发（推荐，照 A 原话）；B 先弹确认框。
-- 题 4 渠道：A 固定 SMS + Email（推荐）；B 加 Both / SMS Only / Email Only。
-- How to use 新句："Send tour confirmation (next to the order number): sends this order's tour confirmation by SMS and email, for the tour date of this order. Use it after you add a missing pickup location in Rezdy and click Refresh from Rezdy. Once it is sent, the Pickup location missing notice goes away for everyone. If it is not sent, the reason shows in red." 无日期小字："No tour date for this order, so it cannot be sent from here."
-- 入口核：Tour send Tour / Last Minute 已改；Manifests 弹窗不改（新后端回 skipped 后照显示）；ops Tracking 无重发；Order 页新键。等后端新文档 + Annie「动手」才合。
-- 后端 G297 第二版上 main fc0049ce（取代 e4aed734），接口文档整篇改版。Notice kind pickup_missing，href 订单号 URL 编码（Order 页 decode），title / body 一律纯文本；send-tour-order 三种 400 文案见文档。已转 6b 对齐分支。
-- Annie 对 Order 页（原话）：「他点进订单后应该看到提醒这单缺少的信息是什么然后怎样解决，等staff去Rezdy改了之后再来这边refresth，然后看到红字消失了才可以发」⇒ 6b 更新 preview：缺酒店时 Order 页红字说明缺什么 / 怎么改，Send 键灰掉；Refresh from Rezdy 后红字消失才能发。非动手。
-- **preview 第 2 版（同链接，分支 892d1caa 对齐 fc0049ce + 6a9dbc85 Order 页提醒；tour 77 / orders 103 / tasks 151 / man 429 全过）——题目改为 5 题，取代上面题 1–4**：题 1 Notice 样子 A 照图（推荐）/ B 红底 / C 去 Got it；题 2（新）红字放哪 A 订单号下红框 + Location 行红字（推荐）/ B 只红框 / C 只 Location 行，红框原文「⚠️ Pickup location is missing. Add the pickup location to this order in Rezdy, then click Refresh from Rezdy. You can send the tour confirmation once this message is gone.」灰键旁「Add the pickup location first.」Location 行「Missing — add it in Rezdy」；题 3 键位置 A Refresh 左边（推荐）/ B Location 行旁；题 4 点了要不要确认 A 直接发（推荐）/ B 弹框；题 5 渠道 A 固定两种（推荐）/ B 三选。Manifests 发送弹窗也把留下的单整行标红、无 Send anyway（统一）。Notice 纯文本已测。待问 54：Order 页看 Order List pickup_location，后端看 Main manifest，Refresh 是否两边都更新、「—」算不算空。
-- 54 答：同一来源（Main manifest 现查 rezdy_bookings rezdy_lane.py:88；Refresh 写 rezdy_bookings rezdy_sync :187），Refresh 后两边同时更新。后端只认 trim 后为空；「—」是前端占位库里没有，「TBD」算有值 ⇒ 已让 6b 前端判空改成 trim 为空。 ✅ 6b 5aa8e9e3：只看原始 pickup_location trim 后为空，TBD / — 当有值，门票单不算；新加 2 条检查，orders 104/104、build 过。
 
 ### 114d. Relay list ⚙ 设置弹窗说明还提「Aa Text size」（11-12，6b 发现，没改）
 
