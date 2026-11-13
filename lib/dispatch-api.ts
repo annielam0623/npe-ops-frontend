@@ -415,6 +415,8 @@ export async function downloadRelayListExcel(
 export function fetchRelaySendPreview(
   date: string,
   round: string,
+  /** 131：tour_car 轮按团发，只看这个团（manifest_id）。relay / relay_2 不能带（后端 400）。 */
+  tour?: number | null,
 ): Promise<{
   to_send: number;
   already_sent: number;
@@ -425,7 +427,7 @@ export function fetchRelaySendPreview(
 }> {
   return apiFetch(`${API}/relay-send/preview`, {
     cache: "no-store",
-    query: { date, round },
+    query: { date, round, ...(typeof tour === "number" ? { tour } : {}) },
   });
 }
 
@@ -447,9 +449,13 @@ export function sendRelayRound(
     order_numbers: string[];
     send_anyway?: string[];
     preview_at?: string;
+    /** 131：tour_car 轮按团发（manifest_id），只发这个团的客人。relay / relay_2 不能带（后端 400）。 */
+    tour?: number;
   },
 ): Promise<{
   round: string;
+  /** 131：后端原样回这次发的团。 */
+  tour?: number | null;
   sent: number;
   failed: number;
   /** 以前发过、这次跳过的个数（不在 results 里）。 */

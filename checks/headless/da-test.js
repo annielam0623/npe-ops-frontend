@@ -779,63 +779,101 @@ async function run() {
   await ctl({ relayExtra: false, relaySent: ["R1"], relayLater: [], relayRace: [], relayGone: [] });
 
   // ── Morning Relay · Own bus（G118 tour_car 轮，Hoover Dam，2026-10-26）：早班短信照发，
-  // 接客是团自己的 bus_tour 车，不是 relay 车；后端早就支持，这里补的是 ops 之前漏接的第三块 UI。
+  // 接客是团自己的 bus_tour 车，不是 relay 车。131（Annie 2026-11-12「只要整节，也就是那个团的全部」「同意推荐，动手」）：
+  // 整轮的发送键拿掉，每个团一节（节头团色 + 自己的 Preview & send，只发这个团勾的）。
   await ctl({ tourCar: true });
   b0 = (await mockLog()).length;
   await evaluate(`$btn('↻ Refresh', ${rp}).click();`);
   // 面板打开以来早就拉过一次「Own bus」空框（round_labels 一直带这个 key），单看框存在不够，要等这次拉到的数据真的到了。
   const tcBox = `${rp}.querySelector('[aria-label="Own bus"]')`;
+  // 车头那一行（不是 131 的节头 / 已发 / 问题行）。
+  const carHead = `${tcBox}.querySelector('tbody tr:not([data-tour-section]):not([data-tour-sent]):not([data-tour-problem]) td')`;
+  const secOf = (name) => `${tcBox}.querySelector('tr[data-tour-section="${name}"]')`;
   await waitFor(`${tcBox}?.textContent.includes('1841')`);
   check("Own bus 轮一直显示在 1st/2nd Round 旁边（同它们一样不是按天有没有团才出现）；标题没有时间段（没有固定发车窗口）", await evaluate(`return !!${tcBox} && ${tcBox}.querySelector('b').textContent.trim() === 'Own bus';`));
   check("Own bus 轮：车号 1841 · 司机 ROBERT L，2 位 Hoover Dam 客人，各自的接客酒店照客人名单显示（不按车头站点筛）", await evaluate(`const t = ${tcBox}.textContent; return t.includes('1841 · ROBERT L') && t.includes('Excalibur Hotel') && t.includes('Horseshoe Hotel') && t.includes('ZZ Hoover') && t.includes('Hoover Dam');`), await evaluate(`return ${tcBox}.textContent.slice(0, 500);`));
   // Tour bus pick up 改名（Annie 2026-10-27「动手」）：车头用团名当车名，同 Assign 团卡片；后端还没给 car.tour_name 时取第一位客人的 Tour。
-  check("Tour bus pick up 车头：团名写在车号 / 司机前面（Hoover Dam · 1841 · ROBERT L），只有一台车不写字母；1st Round 的 relay 车头没有团名", await evaluate(`return ${tcBox}.querySelector('tbody tr td').textContent.trim().startsWith('Hoover Dam · 1841 · ROBERT L') && ${r1box}.querySelector('tbody tr td').textContent.trim().startsWith('768 · FREDDY');`), await evaluate(`return ${tcBox}.querySelector('tbody tr td').textContent.trim() + ' || ' + ${r1box}.querySelector('tbody tr td').textContent.trim();`));
-  await evaluate(`$btn('Preview & send', ${tcBox}).click();`);
+  check("Tour bus pick up 车头：团名写在车号 / 司机前面（Hoover Dam · 1841 · ROBERT L），只有一台车不写字母；1st Round 的 relay 车头没有团名", await evaluate(`return ${carHead}.textContent.trim().startsWith('Hoover Dam · 1841 · ROBERT L') && ${r1box}.querySelector('tbody tr td').textContent.trim().startsWith('768 · FREDDY');`), await evaluate(`return ${carHead}?.textContent.trim() + ' || ' + ${r1box}.querySelector('tbody tr td').textContent.trim();`));
+  check("131 旧后端（车没带 manifest_id）：按客人的团名分成一节 Hoover Dam，节头写 2 orders · 2 not sent yet", await evaluate(`const s = ${tcBox}.querySelectorAll('tr[data-tour-section]'); return s.length === 1 && s[0].getAttribute('data-tour-section') === 'Hoover Dam' && s[0].textContent.includes('2 orders') && s[0].textContent.includes('2 not sent yet');`), await evaluate(`return [...${tcBox}.querySelectorAll('tr[data-tour-section]')].map(r => r.textContent).join(' | ');`));
+  check("131：Tour bus pick up 没有整轮的 Preview & send，也没有整轮的全选框；1st Round 照旧有", await evaluate(`const b = ${tcBox}; return [...b.querySelectorAll('button')].filter(x => x.textContent.includes('Preview & send') && !x.hasAttribute('data-tour-send')).length === 0 && !b.querySelector('thead input') && !!b.querySelector('[data-tour-send]') && !!$btn('Preview & send', ${r1box}) && !!${r1box}.querySelector('thead input');`));
+  await evaluate(`${secOf("Hoover Dam")}.querySelector('[data-tour-send]').click();`);
   await waitFor(dialog);
-  check("确认框标题是 Preview & send · Own bus；预览请求 round=tour_car", await evaluate(`return ${dialog}.textContent.includes('Preview & send · Own bus');`) && (await since(b0, (e) => e.path === "/api/dispatch/relay-send/preview")).at(-1)?.q.round === "tour_car");
+  {
+    const pv = (await since(b0, (e) => e.path === "/api/dispatch/relay-send/preview")).at(-1)?.q;
+    check("131 确认框标题 Send Hoover Dam · 2 guests；预览 round=tour_car，旧后端没有 manifest_id ⇒ 不带 tour", await evaluate(`return ${dialog}.querySelector('h2').textContent.trim() === 'Send Hoover Dam · 2 guests';`) && pv?.round === "tour_car" && pv?.tour === undefined, `${await evaluate(`return ${dialog}.querySelector('h2').textContent;`)} ${JSON.stringify(pv)}`);
+  }
   b0 = (await mockLog()).length;
   await evaluate(`$btn('Send to 2 guests', ${dialog}).click();`);
   await waitFor(`${tcBox}.textContent.includes('Send Results')`);
-  check("发完：结果卡片 Sent 2（同全站发送页格式）", await evaluate(`const stats = [...${tcBox}.querySelectorAll('[data-stat]')].map(e => e.textContent); return stats[0] === '2';`), await evaluate(`return ${tcBox}.textContent;`));
+  check("发完：结果卡片 Sent 2（同全站发送页格式），在这一节里", await evaluate(`const stats = [...${tcBox}.querySelectorAll('[data-stat]')].map(e => e.textContent); return stats[0] === '2';`), await evaluate(`return ${tcBox}.textContent;`));
   const tcSend = (await since(b0, (e) => e.path === "/api/dispatch/relay-send"))[0]?.body;
-  check("发送请求：round=tour_car，order_numbers 含这个团的 2 单（HD1、HD2），也带 send_type=combined", tcSend?.round === "tour_car" && tcSend?.send_type === "combined" && JSON.stringify([...(tcSend?.order_numbers ?? [])].sort()) === '["HD1","HD2"]', JSON.stringify(tcSend));
+  check("发送请求：round=tour_car，order_numbers 含这个团的 2 单（HD1、HD2），也带 send_type=combined；没有 manifest_id 不带 tour", tcSend?.round === "tour_car" && tcSend?.send_type === "combined" && JSON.stringify([...(tcSend?.order_numbers ?? [])].sort()) === '["HD1","HD2"]' && tcSend?.tour === undefined, JSON.stringify(tcSend));
   await evaluate(`$btn('✕ Close', ${tcBox}).click();`);
   // 这个团当天一台 bus_tour 车都没排：整块挡住，红字原因是后端原话，发送键关着（没有客人可勾）。
   await ctl({ tourCarNoCar: true });
   await evaluate(`$btn('↻ Refresh', ${rp}).click();`);
   await waitFor(`${tcBox}.textContent.includes('No bus assigned to this tour')`);
-  check("没排 bus_tour 车：车头写 No vehicle · No driver，红字 No bus assigned to this tour；Preview & send 灰掉（没有客人可勾）", await evaluate(`return ${tcBox}.textContent.includes('No vehicle · No driver') && ${tcBox}.textContent.includes('No bus assigned to this tour') && $btn('Preview & send', ${tcBox}).disabled;`), await evaluate(`return ${tcBox}.textContent;`));
-  check("没排车的占位车没有客人、后端也没给团名：车头照旧从 No vehicle 开始，不写团名", await evaluate(`return ${tcBox}.querySelector('tbody tr td').textContent.trim().startsWith('No vehicle · No driver');`), await evaluate(`return ${tcBox}.querySelector('tbody tr td').textContent.trim();`));
+  check("没排 bus_tour 车：车头写 No vehicle · No driver，红字 No bus assigned to this tour；这一节的 Preview & send 灰掉（没有客人可勾）", await evaluate(`return ${tcBox}.textContent.includes('No vehicle · No driver') && ${tcBox}.textContent.includes('No bus assigned to this tour') && ${tcBox}.querySelector('[data-tour-send]').disabled;`), await evaluate(`return ${tcBox}.textContent;`));
+  check("没排车的占位车没有客人、后端也没给团名：车头照旧从 No vehicle 开始，不写团名", await evaluate(`return ${carHead}.textContent.trim().startsWith('No vehicle · No driver');`), await evaluate(`return ${carHead}?.textContent.trim();`));
   // 后端补了 car.tour_name / bus_label（B2）：占位车也写团名；一个团两台车加 Bus A / Bus B（同 Assign）。
   await ctl({ tourCarB2: true });
   await evaluate(`$btn('↻ Refresh', ${rp}).click();`);
-  await waitFor(`${tcBox}.querySelector('tbody tr td')?.textContent.trim().startsWith('Hoover Dam · No vehicle')`);
-  check("B2 占位车：车头 Hoover Dam · No vehicle · No driver（团名读后端 tour_name）", await evaluate(`return ${tcBox}.querySelector('tbody tr td').textContent.trim().startsWith('Hoover Dam · No vehicle · No driver');`), await evaluate(`return ${tcBox}.querySelector('tbody tr td').textContent.trim();`));
+  await waitFor(`${carHead}?.textContent.trim().startsWith('Hoover Dam · No vehicle')`);
+  check("B2 占位车：车头 Hoover Dam · No vehicle · No driver（团名读后端 tour_name）", await evaluate(`return ${carHead}.textContent.trim().startsWith('Hoover Dam · No vehicle · No driver');`), await evaluate(`return ${carHead}?.textContent.trim();`));
   await ctl({ tourCarNoCar: false });
   await evaluate(`$btn('↻ Refresh', ${rp}).click();`);
   await waitFor(`${tcBox}.textContent.includes('2205')`);
-  check("B2 一个团两台车：车头 Hoover Dam · Bus A · 1841 · ROBERT L 和 Hoover Dam · Bus B · 2205 · ZZ DRIVER（空车的团名也靠 tour_name）", await evaluate(`const h = [...${tcBox}.querySelectorAll('[data-car-blocked], tbody tr')].map(r => r.textContent.trim()); return h.some(t => t.startsWith('Hoover Dam · Bus A · 1841 · ROBERT L')) && h.some(t => t.startsWith('Hoover Dam · Bus B · 2205 · ZZ DRIVER'));`), await evaluate(`return [...${tcBox}.querySelectorAll('tbody tr')].map(r => r.textContent.trim().slice(0, 60)).join(' || ');`));
-  // 2026-11-12 TI（后端 relay-ti-2026-11-12，Annie「TI客人可以像HooverDam的一样……放在own bus tour那里一起发送」「西峡排在倒数第二，HooverDam排最后」）：
-  // TI 客人进自己团的车；两个没排车的团是占位块（car.id null、带 manifest_id），不能互相撞；departure 0 不写那句。
+  check("B2 一个团两台车：车头 Hoover Dam · Bus A · 1841 · ROBERT L 和 Hoover Dam · Bus B · 2205 · ZZ DRIVER（空车的团名也靠 tour_name）；两台车同一节", await evaluate(`const h = [...${tcBox}.querySelectorAll('tbody tr')].map(r => r.textContent.trim()); return h.some(t => t.startsWith('Hoover Dam · Bus A · 1841 · ROBERT L')) && h.some(t => t.startsWith('Hoover Dam · Bus B · 2205 · ZZ DRIVER')) && ${tcBox}.querySelectorAll('tr[data-tour-section]').length === 1;`), await evaluate(`return [...${tcBox}.querySelectorAll('tbody tr')].map(r => r.textContent.trim().slice(0, 60)).join(' || ');`));
+  // 2026-11-12 TI（后端 relay-ti-2026-11-12）：TI 客人进自己团的车；两个没排车的团是占位块（car.id null、带 manifest_id）。
+  // 131：每个团一节，节头团色（当天 Bus Manifest 的颜色：West Rim 设了 #2563eb；Hoover 没设 ⇒ 按团名的默认灰）。
   await ctl({ tourCarTI: true, tourCarB2: false, tourCarNoCar: false });
   await evaluate(`$btn('↻ Refresh', ${rp}).click();`);
   await waitFor(`${tcBox}?.textContent.includes('ZZ West TI')`);
   check("TI：三块都出来（两个占位块 + 西峡），三位 TI 客人各在自己团下面", await evaluate(`const b = ${tcBox}; return b.querySelectorAll('[data-car-blocked]').length === 2 && ['TS1', 'TI1', 'HD3'].every(o => !!b.querySelector('tr[data-order="' + o + '"]'));`), await evaluate(`return ${tcBox}.textContent;`));
-  check("TI：顺序照后端（Grand Canyon South → West Rim → Hoover Dam 最后），车头写团名", await evaluate(`const t = ${tcBox}.textContent; const a = t.indexOf('Grand Canyon South · No vehicle · No driver'), w = t.indexOf('West Rim Bus Tour · 1328 · BRUCE O'), h = t.indexOf('Hoover Dam · No vehicle · No driver'); return a >= 0 && a < w && w < h;`), await evaluate(`return [...${tcBox}.querySelectorAll('tbody tr td[colspan="9"]')].map(td => td.textContent.trim().slice(0, 40)).join(' | ');`));
+  check("131 TI：三节，顺序照后端（Grand Canyon South → West Rim Bus Tour → Hoover Dam 最后）", await evaluate(`return [...${tcBox}.querySelectorAll('tr[data-tour-section]')].map(r => r.getAttribute('data-tour-section')).join('|') === 'Grand Canyon South|West Rim Bus Tour|Hoover Dam';`), await evaluate(`return [...${tcBox}.querySelectorAll('tr[data-tour-section]')].map(r => r.getAttribute('data-tour-section')).join('|');`));
+  check("131 团色：West Rim 节头用当天 Bus Manifest 的 #2563eb、白字；Hoover 没设颜色 ⇒ 默认灰 #8f8c82", await evaluate(`const w = getComputedStyle(${secOf("West Rim Bus Tour")}.querySelector('td')), h = getComputedStyle(${secOf("Hoover Dam")}.querySelector('td')); return w.backgroundColor === 'rgb(37, 99, 235)' && w.color === 'rgb(255, 255, 255)' && h.backgroundColor === 'rgb(143, 140, 130)';`), await evaluate(`return [...${tcBox}.querySelectorAll('tr[data-tour-section] td')].map(td => getComputedStyle(td).backgroundColor + '/' + getComputedStyle(td).color).join(' | ');`));
+  check("131 没排车的团：节头下面一行红字写改哪里（On Assign, give the Grand Canyon South tour card a bus and a driver…），West Rim 没有这一行", await evaluate(`const p = [...${tcBox}.querySelectorAll('tr[data-tour-problem]')].map(r => r.textContent); return p.length === 2 && p[0].includes('No bus assigned to this tour.') && p[0].includes('On Assign, give the Grand Canyon South tour card a bus and a driver, then Save.') && p[0].includes('tick Send anyway') && p[1].includes('Hoover Dam tour card');`), await evaluate(`return [...${tcBox}.querySelectorAll('tr[data-tour-problem]')].map(r => r.textContent).join(' | ');`));
   check("TI：被挡的说明写两个团名（不是两个 This tour）", await evaluate(`const n = ${tcBox}.querySelector('[data-relay-blocked-note]'); return !!n && n.textContent.includes('Grand Canyon South, Hoover Dam');`), await evaluate(`return ${tcBox}.querySelector('[data-relay-blocked-note]')?.textContent;`));
   check("TI：departure 是 0 ⇒ 不写「board at the tour bus departure point」那句", await evaluate(`return !${rp}.textContent.includes('board at the tour bus departure point');`));
-  await evaluate(`$btn('Preview & send', ${tcBox}).click();`);
+  // 发 West Rim 一节：只带 tour=3 和这一节勾的 TI1。
+  b0 = (await mockLog()).length;
+  await evaluate(`${secOf("West Rim Bus Tour")}.querySelector('[data-tour-send]').click();`);
+  await waitFor(dialog);
+  {
+    const pv = (await since(b0, (e) => e.path === "/api/dispatch/relay-send/preview")).at(-1)?.q;
+    check("131 发 West Rim：确认框标题 Send West Rim Bus Tour · 1 guest，没有别的团的被挡车；预览带 tour=3", await evaluate(`return ${dialog}.querySelector('h2').textContent.trim() === 'Send West Rim Bus Tour · 1 guest' && !${dialog}.querySelector('[data-will-not-send]') && ${dialog}.textContent.includes('TI1') && !${dialog}.textContent.includes('TS1');`) && pv?.tour === "3", `${await evaluate(`return ${dialog}.textContent;`)} ${JSON.stringify(pv)}`);
+  }
+  b0 = (await mockLog()).length;
+  await evaluate(`$btn('Send to 1 guest', ${dialog}).click();`);
+  await waitFor(`${tcBox}.textContent.includes('Send Results')`);
+  {
+    const body = (await since(b0, (e) => e.path === "/api/dispatch/relay-send"))[0]?.body;
+    check("131 West Rim 发送请求：round=tour_car、tour=3、order_numbers 只有 TI1、没有 send_anyway", body?.round === "tour_car" && body?.tour === 3 && JSON.stringify(body?.order_numbers) === '["TI1"]' && body?.send_anyway === undefined, JSON.stringify(body));
+  }
+  await waitFor(`${secOf("West Rim Bus Tour")}?.nextElementSibling?.hasAttribute('data-tour-sent')`);
+  check("131 West Rim 发完：结果在 West Rim 这一节里（在 Hoover Dam 节头之前）；节头下面绿字 ✓ Sent 1 · by annie，键灰掉", await evaluate(`const rows = [...${tcBox}.querySelectorAll('tbody > tr')]; const w = rows.indexOf(${secOf("West Rim Bus Tour")}), h = rows.indexOf(${secOf("Hoover Dam")}), r = rows.findIndex(x => x.textContent.includes('Send Results')); const sent = ${secOf("West Rim Bus Tour")}.nextElementSibling; return w < r && r < h && sent.textContent.includes('✓ Sent 1 · by annie') && getComputedStyle(sent.querySelector('td')).color === 'rgb(21, 128, 61)' && ${secOf("West Rim Bus Tour")}.querySelector('[data-tour-send]').disabled;`), await evaluate(`return [...${tcBox}.querySelectorAll('tbody > tr')].map(r => r.textContent.trim().slice(0, 50)).join(' || ');`));
+  await evaluate(`$btn('✕ Close', ${tcBox}).click();`);
+  // 发 Grand Canyon South 一节：整节都在占位块上 ⇒ 照样弹框（131），只有 Will NOT be sent 和 Send anyway。
+  b0 = (await mockLog()).length;
+  await evaluate(`${secOf("Grand Canyon South")}.querySelector('[data-tour-send]').click();`);
   await waitFor(`${dialog}?.querySelector('[data-will-not-send]')`);
-  check("TI 确认框：两个占位块各自一段，各有自己的 Send anyway（TS1、HD3）", await evaluate(`const n = ${dialog}.querySelector('[data-will-not-send]'); return n.textContent.includes('Grand Canyon South: No bus assigned to this tour') && n.textContent.includes('Hoover Dam: No bus assigned to this tour') && !!n.querySelector('input[data-send-anyway=TS1]') && !!n.querySelector('input[data-send-anyway=HD3]') && n.querySelectorAll('input[data-send-anyway-all]').length === 2;`), await evaluate(`return ${dialog}.querySelector('[data-will-not-send]')?.textContent;`));
+  {
+    const pv = (await since(b0, (e) => e.path === "/api/dispatch/relay-send/preview")).at(-1)?.q;
+    check("131 没排车的团也弹确认框：只有 Grand Canyon South 一段 Will NOT be sent + Send anyway（TS1），没有 Hoover、没有空的 Will be sent；预览带 tour=7", await evaluate(`const n = ${dialog}.querySelector('[data-will-not-send]'); return n.textContent.includes('Grand Canyon South: No bus assigned to this tour') && !n.textContent.includes('Hoover Dam') && !!n.querySelector('input[data-send-anyway=TS1]') && !${dialog}.querySelector('[data-will-send]');`) && pv?.tour === "7", `${await evaluate(`return ${dialog}.textContent;`)} ${JSON.stringify(pv)}`);
+  }
+  b0 = (await mockLog()).length;
+  await evaluate(`$btn('Send to 0 guests', ${dialog}).click();`);
+  await sleep(300);
+  check("131 一个 Send anyway 都没勾就点发送：框里红字说要勾，不发请求", await evaluate(`return ${dialog}.textContent.includes('Tick Send anyway for at least one guest');`) && !(await since(b0, (e) => e.path === "/api/dispatch/relay-send")).length, await evaluate(`return ${dialog}.textContent;`));
   await evaluate(`${dialog}.querySelector('input[data-send-anyway=TS1]').click();`);
   await sleep(200);
-  check("TI：只勾 Grand Canyon South 的 Send anyway，Hoover Dam 那块不跟着勾", await evaluate(`const n = ${dialog}.querySelector('[data-will-not-send]'); return n.querySelector('input[data-send-anyway=TS1]').checked && !n.querySelector('input[data-send-anyway=HD3]').checked && !!$btn('Send to 2 guests', ${dialog});`), await evaluate(`return ${dialog}.textContent;`));
   b0 = (await mockLog()).length;
-  await evaluate(`$btn('Send to 2 guests', ${dialog}).click();`);
+  await evaluate(`$btn('Send to 1 guest', ${dialog}).click();`);
   await waitFor(`${tcBox}.textContent.includes('Send Results')`);
-  const tiSend = (await since(b0, (e) => e.path === "/api/dispatch/relay-send"))[0]?.body;
-  check("TI 发送请求：round=tour_car，发 TI1 + TS1，send_anyway 只有 TS1", tiSend?.round === "tour_car" && JSON.stringify(tiSend?.send_anyway) === '["TS1"]' && (tiSend?.order_numbers ?? []).includes("TI1") && (tiSend?.order_numbers ?? []).includes("TS1") && !(tiSend?.order_numbers ?? []).includes("HD3"), JSON.stringify(tiSend));
-  check("TI 发完：结果红框写 Hoover Dam 没发（占位块 car_id null 也照常列出）", await evaluate(`const r = ${tcBox}.querySelector('[data-relay-blocked]'); return !!r && r.textContent.includes('Hoover Dam: No bus assigned to this tour');`), await evaluate(`return ${tcBox}.querySelector('[data-relay-blocked]')?.textContent;`));
+  {
+    const body = (await since(b0, (e) => e.path === "/api/dispatch/relay-send"))[0]?.body;
+    check("131 Grand Canyon South 勾 Send anyway 发：tour=7、order_numbers [TS1]、send_anyway [TS1]", body?.round === "tour_car" && body?.tour === 7 && JSON.stringify(body?.order_numbers) === '["TS1"]' && JSON.stringify(body?.send_anyway) === '["TS1"]', JSON.stringify(body));
+  }
   await evaluate(`$btn('✕ Close', ${tcBox}).click();`);
   await ctl({ tourCarTI: false });
   await ctl({ tourCar: false, tourCarNoCar: false, tourCarBlocked: false, tourCarB2: false });

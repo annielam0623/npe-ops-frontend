@@ -2956,6 +2956,8 @@ export function DispatchView() {
                   }
                   // Relay list 前有没存的改动：先存（只读的人不存，直接看已保存的）。
                   onSave={viewOnly ? undefined : () => saveRef.current()}
+                  // 131：Tour bus pick up 每个团的节头用团色（同 Assign 团卡片 / Bus Manifest）。
+                  tourColors={colorByManifestId}
                 />
               </div>
             ) : null}

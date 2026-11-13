@@ -35,6 +35,8 @@ import {
   RELAY_SEND_TYPE,
 } from "@/lib/dispatch-api";
 import { LA_TIME_ZONE } from "@/lib/la-date";
+import { inkOnSolid } from "@/lib/shuttle-colors";
+import { resolveTourColor } from "@/lib/tour-colors";
 import { gsmLength, nonGsmChars } from "@/lib/sms-gsm";
 import { cn } from "@/lib/utils";
 
@@ -79,6 +81,12 @@ type Confirm =
   | {
       kind: "round";
       code: string;
+      /** 结果存在哪一格：relay / relay_2 是轮的代码；tour_car 按团发是 `tour_car:<团>`（131）。 */
+      unit: string;
+      /** 131：tour_car 按团发时这个团的 manifest_id（旧后端没给 = null，整块发）。 */
+      tour: number | null;
+      /** 131：按团发（标题写团名和人数）。 */
+      perTour: boolean;
       title: string;
       /** 这次发的订单号（没发过的 + Send anyway 的）。 */
       orders: string[];
@@ -338,6 +346,7 @@ export function RelayPanel({
   onUnauthorized,
   onCopyFirstRound,
   onSave,
+  tourColors,
 }: {
   date: string;
   /** Send 标签正显示着：第一次显示（以及显示着时重建）就自动列名单、取客人。 */
@@ -351,6 +360,8 @@ export function RelayPanel({
   onCopyFirstRound?: () => void;
   /** 存这一天（Relay list 前有没存的改动时先存）；存好返回 true。没有 = 只读，不问、直接打开已保存的。 */
   onSave?: () => Promise<boolean>;
+  /** 131：团色（manifest_id → Bus Manifest 的颜色，同 Assign 团卡片），Tour bus pick up 每个团的节头用。 */
+  tourColors?: Record<number, string | null>;
 }) {
   const [data, setData] = useState<RelayPull | null>(null);
   const [pulling, setPulling] = useState(false);
@@ -462,8 +473,12 @@ export function RelayPanel({
    * 先问服务端现在谁已经发过（拉名单之后别人可能发了），再按勾的人确认一次。
    * 只发勾的单；发过的只有勾了 Send anyway 才发。
    */
-  async function askRound(code: string) {
-    const guests = (data?.rounds[code] ?? []).flatMap((b) => b.guests);
+  async function askRound(code: string, sec?: TourSection) {
+    // 131：Tour bus pick up 按团发，只看这个团的车和客人。
+    const blocks = sec ? sec.blocks : (data?.rounds[code] ?? []);
+    const guests = blocks.flatMap((b) => b.guests);
+    const unit = sec ? sectionUnit(sec) : code;
+    const what = sec ? sec.name : roundTitle(code);
     const fresh = uniq(
       guests
         .filter((g) => !g.sent && guestPick.chosen(g))
@@ -476,10 +491,10 @@ export function RelayPanel({
       setError("Tick at least one guest.");
       return;
     }
-    setChecking(code);
+    setChecking(unit);
     setError(null);
     try {
-      const p = await fetchRelaySendPreview(date, code);
+      const p = await fetchRelaySendPreview(date, code, sec?.tour);
       const sentNow = new Set(p.already_sent_orders ?? []);
       const sentSincePull = fresh.filter((o) => sentNow.has(o));
       const wanted = [...fresh.filter((o) => !sentNow.has(o)), ...again];
@@ -489,7 +504,7 @@ export function RelayPanel({
       );
       const orders = wanted.filter((o) => !blockedOrders.has(o));
       const info = new Map<string, ConfirmGuest>();
-      for (const b of data?.rounds[code] ?? [])
+      for (const b of blocks)
         for (const g of b.guests)
           info.set(g.order_number, {
             order: g.order_number,
@@ -518,15 +533,18 @@ export function RelayPanel({
         rows: c.orders.filter((o) => wanted.includes(o)).map(rowOf),
       }));
       // 勾的客人全在被挡的车上：不弹确认框，写原因（Annie 2026-10-19「还是保留以前的写法吧」，没有 Send anyway 的入口）。
-      if (!orders.length) {
+      // 131 按团发例外：没排车的团整节都在占位块上，不弹框就永远勾不到 Send anyway（节头写着「勾 Send anyway 才发」），
+      // 所以照样弹，框里只有「Will NOT be sent」和 Send anyway；一个都没勾时发送键会报错、不发。
+      const blockedOnly = !!sec && blocked.some((c) => c.rows.length);
+      if (!orders.length && !blockedOnly) {
         setError(
           blocked.length
-            ? `None of the ticked guests in ${roundTitle(code)} can be texted. ${blocked
+            ? `None of the ticked guests in ${what} can be texted. ${blocked
                 .map((c) => `${c.car}: ${c.problems.join("; ")}.`)
                 .join(
                   " ",
                 )} Fix the cars on the Assign tab and save, then send again.`
-            : `The ticked guests in ${roundTitle(code)} were already sent by someone else. Click Refresh to see who sent them.`,
+            : `The ticked guests in ${what} were already sent by someone else. Click Refresh to see who sent them.`,
         );
         return;
       }
@@ -537,7 +555,10 @@ export function RelayPanel({
       setConfirm({
         kind: "round",
         code,
-        title: roundTitle(code),
+        unit,
+        tour: sec?.tour ?? null,
+        perTour: !!sec,
+        title: what,
         orders,
         sendRows: orders.map(rowOf),
         blocked,
@@ -559,13 +580,25 @@ export function RelayPanel({
     /** G129：勾了 Send anyway 的、被挡的车上的订单号（也在 orders 里）；anyAgain = 其中以前发过的。 */
     overridden: string[] = [],
     anyAgain: string[] = [],
+    unit: string = code,
+    tour: number | null = null,
   ): Promise<ActionResult> {
+    // 131：按团发、整节都在被挡的车上又一个 Send anyway 都没勾：不发空名单（后端 400 Pick at least one guest）。
+    if (!orders.length) {
+      return {
+        status: "error",
+        message:
+          "Tick Send anyway for at least one guest, or fix the bus on the Assign tab first.",
+      };
+    }
     try {
       // Send anyway 只重发「最近一次发送不晚于拉名单那一刻」的（拉名单之后别人又发过的照样跳过）。
       const resend = again.length && data?.checked_at ? again : [];
       const sendAnyway = uniq([...resend, ...overridden]);
       const res = await sendRelayRound(date, code, {
         order_numbers: orders,
+        // 131：tour_car 按团发只带这个团（勾的单 + tour）；orders 永远不空（askRound 先挡了）。
+        ...(tour !== null ? { tour } : {}),
         ...(sendAnyway.length
           ? {
               send_anyway: sendAnyway,
@@ -575,7 +608,7 @@ export function RelayPanel({
             }
           : {}),
       });
-      setResults((r) => ({ ...r, [code]: res }));
+      setResults((r) => ({ ...r, [unit]: res }));
       setConfirm(null);
       await pull();
       return { status: "ok" };
@@ -723,6 +756,95 @@ export function RelayPanel({
   /** 表头全选：只动能发的人（发不了的那几格本来就灰着、不勾）。 */
   function toggleAll(on: boolean) {
     setSkipped(on ? new Set() : new Set(canText.map((p) => p.key)));
+  }
+
+  /** 一次发送的结果（全站发送页的格式：结果数字 + 逐单表 + 被挡的车 / 跳过的）。unit = 存在 results 的哪一格。 */
+  function resultView(unit: string, label: string, res: RoundResult) {
+    return (
+      // 发送结果照全站发送页的格式（同 Morning Pickup 发送页：结果数字 + 逐单表）。
+      <div
+        role="status"
+        className="border-b-[0.5px] border-black/[.08] px-4 pt-3"
+      >
+        {/* 整轮只有被挡的车时 sent 是 0、results 空：不画「0 位」的结果卡，只写没发的车。 */}
+        {res.results?.length || !res.blocked_cars?.length ? (
+          <MorningResults
+            sending={false}
+            sendType={RELAY_SEND_TYPE}
+            orders={(res.results ?? []).map((r) => r.order)}
+            results={res.results ?? []}
+            alreadySent={res.already_sent}
+            label={label}
+            stop={null}
+            onClose={() =>
+              setResults((r) => {
+                const next = { ...r };
+                delete next[unit];
+                return next;
+              })
+            }
+          />
+        ) : null}
+        {res.blocked_cars?.length ? (
+          <div data-relay-blocked className={cn(RED_BOX, "max-w-none")}>
+            <b className="block">
+              {res.results?.length
+                ? "These cars were not sent"
+                : "Nothing was sent for these cars"}
+            </b>
+            {res.blocked_cars.map((c, i) => (
+              // 占位块（没排车的团）car_id 是 null：同一天两个这样的团不能撞 key。
+              <div key={`${c.car_id ?? "nocar"}-${i}`}>
+                {c.car}: {c.problems.join("; ")} —{" "}
+                {c.orders.length
+                  ? `orders ${c.orders.join(", ")}`
+                  : "no guests"}
+              </div>
+            ))}
+            <div className="text-[11.5px]">
+              Fix the car on the Assign tab and save, then send this round.
+            </div>
+            {!res.results?.length ? (
+              <button
+                type="button"
+                onClick={() =>
+                  setResults((r) => {
+                    const next = { ...r };
+                    delete next[unit];
+                    return next;
+                  })
+                }
+                className="mt-1 text-[12px] underline"
+              >
+                Dismiss
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+        {res.failed ? (
+          <p className="-mt-2 mb-3 text-[12px] text-[#b3261e]">
+            The booking team gets an email about the failed ones.
+          </p>
+        ) : null}
+        {res.already_sent_orders?.length || res.resent?.length ? (
+          <div data-relay-skipped className={YELLOW_BOX}>
+            {res.already_sent_orders?.length ? (
+              <div>
+                Skipped, already sent: {res.already_sent_orders.join(", ")}.
+              </div>
+            ) : null}
+            {res.resent?.length ? (
+              <div>Sent again (Send anyway): {res.resent.join(", ")}.</div>
+            ) : null}
+          </div>
+        ) : null}
+        {res.not_on_round?.length ? (
+          <div data-relay-not-on-round className={cn(RED_BOX, "max-w-none")}>
+            Not on this round any more, not sent: {res.not_on_round.join(", ")}.
+          </div>
+        ) : null}
+      </div>
+    );
   }
 
   // G129：确认框里被挡的车上勾了 Send anyway 的客人（会跟着发出去）。
@@ -981,6 +1103,12 @@ export function RelayPanel({
               Assign tab and save; the list loads again.
             </li>
             <li>
+              Tour bus pick up is sent one tour at a time. Each tour has its own
+              section in its Bus Manifest colour and its own Preview &amp; send,
+              which sends only the ticked guests of that tour. Send each tour
+              when it is due.
+            </li>
+            <li>
               Guests who already got the reminder are skipped. Tick Send anyway
               to send it again (for example Changed after sent).
             </li>
@@ -1047,128 +1175,43 @@ export function RelayPanel({
                           Copy 1st Round
                         </button>
                       ) : null}
-                      <button
-                        type="button"
-                        disabled={
-                          !ticked || checking !== null || disabled || dirty
-                        }
-                        onClick={() => void askRound(code)}
-                        className={RP_BTN_GREEN}
-                      >
-                        {checking === code ? "Checking…" : label}
-                      </button>
+                      {/* 131：Tour bus pick up 没有整轮的键，每个团在自己那一节发。 */}
+                      {code !== "tour_car" ? (
+                        <button
+                          type="button"
+                          disabled={
+                            !ticked || checking !== null || disabled || dirty
+                          }
+                          onClick={() => void askRound(code)}
+                          className={RP_BTN_GREEN}
+                        >
+                          {checking === code ? "Checking…" : label}
+                        </button>
+                      ) : null}
                     </span>
                   }
                 >
-                  {res ? (
-                    // 发送结果照全站发送页的格式（同 Morning Pickup 发送页：结果数字 + 逐单表）。
-                    <div
-                      role="status"
-                      className="border-b-[0.5px] border-black/[.08] px-4 pt-3"
-                    >
-                      {/* 整轮只有被挡的车时 sent 是 0、results 空：不画「0 位」的结果卡，只写没发的车。 */}
-                      {res.results?.length || !res.blocked_cars?.length ? (
-                        <MorningResults
-                          sending={false}
-                          sendType={RELAY_SEND_TYPE}
-                          orders={(res.results ?? []).map((r) => r.order)}
-                          results={res.results ?? []}
-                          alreadySent={res.already_sent}
-                          label={`${roundTitle(code)} · ${date}`}
-                          stop={null}
-                          onClose={() =>
-                            setResults((r) => {
-                              const next = { ...r };
-                              delete next[code];
-                              return next;
-                            })
-                          }
-                        />
-                      ) : null}
-                      {res.blocked_cars?.length ? (
-                        <div
-                          data-relay-blocked
-                          className={cn(RED_BOX, "max-w-none")}
-                        >
-                          <b className="block">
-                            {res.results?.length
-                              ? "These cars were not sent"
-                              : "Nothing was sent for these cars"}
-                          </b>
-                          {res.blocked_cars.map((c, i) => (
-                            // 占位块（没排车的团）car_id 是 null：同一天两个这样的团不能撞 key。
-                            <div key={`${c.car_id ?? "nocar"}-${i}`}>
-                              {c.car}: {c.problems.join("; ")} —{" "}
-                              {c.orders.length
-                                ? `orders ${c.orders.join(", ")}`
-                                : "no guests"}
-                            </div>
-                          ))}
-                          <div className="text-[11.5px]">
-                            Fix the car on the Assign tab and save, then send
-                            this round.
-                          </div>
-                          {!res.results?.length ? (
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setResults((r) => {
-                                  const next = { ...r };
-                                  delete next[code];
-                                  return next;
-                                })
-                              }
-                              className="mt-1 text-[12px] underline"
-                            >
-                              Dismiss
-                            </button>
-                          ) : null}
-                        </div>
-                      ) : null}
-                      {res.failed ? (
-                        <p className="-mt-2 mb-3 text-[12px] text-[#b3261e]">
-                          The booking team gets an email about the failed ones.
-                        </p>
-                      ) : null}
-                      {res.already_sent_orders?.length || res.resent?.length ? (
-                        <div data-relay-skipped className={YELLOW_BOX}>
-                          {res.already_sent_orders?.length ? (
-                            <div>
-                              Skipped, already sent:{" "}
-                              {res.already_sent_orders.join(", ")}.
-                            </div>
-                          ) : null}
-                          {res.resent?.length ? (
-                            <div>
-                              Sent again (Send anyway): {res.resent.join(", ")}.
-                            </div>
-                          ) : null}
-                        </div>
-                      ) : null}
-                      {res.not_on_round?.length ? (
-                        <div
-                          data-relay-not-on-round
-                          className={cn(RED_BOX, "max-w-none")}
-                        >
-                          Not on this round any more, not sent:{" "}
-                          {res.not_on_round.join(", ")}.
-                        </div>
-                      ) : null}
-                    </div>
-                  ) : null}
+                  {res && code !== "tour_car"
+                    ? resultView(code, `${roundTitle(code)} · ${date}`, res)
+                    : null}
                   {cars.length ? (
                     <Table
                       head={GUEST_HEAD}
                       lead={
-                        <input
-                          type="checkbox"
-                          aria-label={`Select all not sent in ${roundTitle(code)}`}
-                          checked={allFresh}
-                          disabled={!fresh.length}
-                          onChange={(e) =>
-                            guestPick.setChosen(fresh, e.target.checked)
-                          }
-                        />
+                        // 131：Tour bus pick up 各团分开发，整轮的全选没意义：每一节的节头各有一个。
+                        code === "tour_car" ? (
+                          <span aria-hidden />
+                        ) : (
+                          <input
+                            type="checkbox"
+                            aria-label={`Select all not sent in ${roundTitle(code)}`}
+                            checked={allFresh}
+                            disabled={!fresh.length}
+                            onChange={(e) =>
+                              guestPick.setChosen(fresh, e.target.checked)
+                            }
+                          />
+                        )
                       }
                       tail={
                         done.length ? (
@@ -1188,27 +1231,64 @@ export function RelayPanel({
                         )
                       }
                     >
-                      {cars.map((b) => (
-                        <CarRows
-                          // 2026-11-12 TI：没排车的团是占位块（car.id null），用团的 manifest_id 区分。
-                          key={
-                            b.car.id ??
-                            `nocar-${b.car.manifest_id ?? b.car.tour_name ?? ""}`
-                          }
-                          car={b.car}
-                          guests={b.guests}
-                          pick={guestPick}
-                          prefix={
-                            code === "tour_car" ? tourCarPrefix(b, cars) : ""
-                          }
-                          // Relay list 只排两轮（Hoover 的 Tour bus pick up 不印，Annie「用他的bus manifest就好了」）。
-                          onPrint={
-                            code !== "tour_car" && b.car.id && b.guests.length
-                              ? () => openRelayList(b.car.id)
-                              : undefined
-                          }
-                        />
-                      ))}
+                      {code === "tour_car"
+                        ? tourSections(cars).map((sec) => {
+                            const unit = sectionUnit(sec);
+                            const r = results[unit];
+                            return (
+                              <TourSectionRows
+                                key={unit}
+                                sec={sec}
+                                cars={cars}
+                                color={resolveTourColor(
+                                  sec.tour !== null
+                                    ? tourColors?.[sec.tour]
+                                    : null,
+                                  sec.name,
+                                )}
+                                pick={guestPick}
+                                checking={checking === unit}
+                                canSend={
+                                  checking === null && !disabled && !dirty
+                                }
+                                onSend={() => void askRound(code, sec)}
+                                result={
+                                  r
+                                    ? resultView(
+                                        unit,
+                                        `${sec.name} · ${date}`,
+                                        r,
+                                      )
+                                    : null
+                                }
+                              />
+                            );
+                          })
+                        : cars.map((b) => (
+                            <CarRows
+                              // 2026-11-12 TI：没排车的团是占位块（car.id null），用团的 manifest_id 区分。
+                              key={
+                                b.car.id ??
+                                `nocar-${b.car.manifest_id ?? b.car.tour_name ?? ""}`
+                              }
+                              car={b.car}
+                              guests={b.guests}
+                              pick={guestPick}
+                              prefix={
+                                code === "tour_car"
+                                  ? tourCarPrefix(b, cars)
+                                  : ""
+                              }
+                              // Relay list 只排两轮（Hoover 的 Tour bus pick up 不印，Annie「用他的bus manifest就好了」）。
+                              onPrint={
+                                code !== "tour_car" &&
+                                b.car.id &&
+                                b.guests.length
+                                  ? () => openRelayList(b.car.id)
+                                  : undefined
+                              }
+                            />
+                          ))}
                     </Table>
                   ) : (
                     <p className={RP_EMPTY}>No cars in this round.</p>
@@ -1266,7 +1346,11 @@ export function RelayPanel({
 
       {confirm?.kind === "round" ? (
         <ConfirmDialog
-          title={`Preview & send · ${confirm.title}`}
+          title={
+            confirm.perTour
+              ? `Send ${confirm.title} · ${plural(confirm.orders.length + anyRows.length, "guest")}`
+              : `Preview & send · ${confirm.title}`
+          }
           confirmLabel={`Send to ${plural(confirm.orders.length + anyRows.length, "guest")}`}
           busyLabel="Sending…"
           wide
@@ -1278,6 +1362,8 @@ export function RelayPanel({
               confirm.again,
               anyRows.map((r) => r.order),
               anyRows.filter((r) => r.again).map((r) => r.order),
+              confirm.unit,
+              confirm.tour,
             )
           }
         >
@@ -1285,13 +1371,16 @@ export function RelayPanel({
             Send the Morning Pickup reminder (SMS + Email) for <b>{date}</b>.
             Check who gets it:
           </p>
-          <div data-will-send>
-            <b className="mb-1 block text-[#14532d]">
-              Will be sent ·{" "}
-              {plural(confirm.sendRows.length + anyRows.length, "guest")}
-            </b>
-            <ConfirmTable rows={confirm.sendRows} showCar />
-          </div>
+          {/* 131：整节都在被挡的车上时没有「会发」的人，不画空表。 */}
+          {confirm.sendRows.length ? (
+            <div data-will-send>
+              <b className="mb-1 block text-[#14532d]">
+                Will be sent ·{" "}
+                {plural(confirm.sendRows.length + anyRows.length, "guest")}
+              </b>
+              <ConfirmTable rows={confirm.sendRows} showCar />
+            </div>
+          ) : null}
           {confirm.blocked.length ? (
             <div data-will-not-send className={cn(RED_BOX, "max-w-none")}>
               <b className="block">
@@ -2099,6 +2188,178 @@ function tourCarPrefix(b: RelayCarBlock, cars: RelayCarBlock[]): string {
   if (!tour) return "";
   const many = cars.filter((x) => tourOf(x) === tour).length > 1;
   return many && b.car.bus_label ? `${tour} · Bus ${b.car.bus_label}` : tour;
+}
+
+/** 131：Tour bus pick up 的一节 = 一个团（可能几台车 / 占位块）。 */
+interface TourSection {
+  key: string;
+  /** 团的 manifest_id；旧后端没给 = null（发的时候不带 tour，整块发）。 */
+  tour: number | null;
+  name: string;
+  blocks: RelayCarBlock[];
+}
+
+/** 按团分节（manifest_id，没有就按团名），保持后端给的顺序（1st Round 的团 → 2nd Round 的团 → Hoover）。 */
+function tourSections(cars: RelayCarBlock[]): TourSection[] {
+  const out: TourSection[] = [];
+  const byKey = new Map<string, TourSection>();
+  for (const b of cars) {
+    const name = b.car.tour_name || b.guests[0]?.tour || "Tour";
+    const mid =
+      typeof b.car.manifest_id === "number" ? b.car.manifest_id : null;
+    const key = mid !== null ? `m${mid}` : `n${name}`;
+    let sec = byKey.get(key);
+    if (!sec) {
+      sec = { key, tour: mid, name, blocks: [] };
+      byKey.set(key, sec);
+      out.push(sec);
+    }
+    sec.blocks.push(b);
+  }
+  return out;
+}
+
+const sectionUnit = (sec: TourSection) => `tour_car:${sec.key}`;
+
+/** 「Nov 13, 3:02 AM」（洛杉矶）。 */
+function sentWhen(at: string): string {
+  const d = new Date(at);
+  return Number.isNaN(d.getTime())
+    ? at
+    : LAST_FORMAT.format(d).replace(/\s/g, " ");
+}
+
+/**
+ * 131：Tour bus pick up 的一节（Annie 2026-11-12「只要整节，也就是那个团的全部」，Q1 A / Q2 A + 团色）：
+ * 节头用这个团在 Bus Manifest 的颜色（字白 / 黑看对比），勾选框全选这个团没发的、团名、几单几人几单没发，
+ * 右边绿色 Preview & send 只发这一节勾的。发完 / 有问题写在节头下面一行（彩色底上绿字红字看不清）。
+ */
+function TourSectionRows({
+  sec,
+  cars,
+  color,
+  pick,
+  checking,
+  canSend,
+  onSend,
+  result,
+}: {
+  sec: TourSection;
+  cars: RelayCarBlock[];
+  color: string;
+  pick: Pick;
+  checking: boolean;
+  canSend: boolean;
+  onSend: () => void;
+  result: React.ReactNode;
+}) {
+  const all = sec.blocks.flatMap((b) => b.guests);
+  const fresh = all.filter((g) => pickable(g) && !g.sent);
+  const sent = all.filter((g) => pickable(g) && g.sent);
+  const waiting = all.filter((g) => !g.sent).length;
+  const ticked = all.some((g) => pick.chosen(g));
+  const allFresh = fresh.length > 0 && fresh.every((g) => pick.chosen(g));
+  const ink = inkOnSolid(color);
+  const last = [...sent].sort((a, b) =>
+    (b.sent_at ?? "").localeCompare(a.sent_at ?? ""),
+  )[0];
+  const problems = [
+    ...new Set(sec.blocks.flatMap((b) => b.car.problems ?? [])),
+  ];
+  const noBus = sec.blocks.some((b) => b.car.id === null);
+  // 手机上表格左右滑：节头的字和键钉在左边，不跟着滑出屏幕。
+  const pin = "max-sm:sticky max-sm:left-3 max-sm:w-[300px]";
+  return (
+    <>
+      <tr data-tour-section={sec.name}>
+        <td
+          colSpan={9}
+          style={{ background: color, color: ink }}
+          className={cn(TD, "border-t-[6px] border-t-[#f3f1ec] px-3.5 py-2")}
+        >
+          <div
+            className={cn("flex flex-wrap items-center gap-x-3 gap-y-1.5", pin)}
+          >
+            <input
+              type="checkbox"
+              aria-label={`Select all not sent in ${sec.name}`}
+              checked={allFresh}
+              disabled={!fresh.length}
+              onChange={(e) => pick.setChosen(fresh, e.target.checked)}
+              className="size-[15px]"
+            />
+            <b className="text-[14px]">{sec.name}</b>
+            <span className="text-[12.5px] opacity-90">
+              {plural(all.length, "order")}, {paxOf(all)} pax · {waiting} not
+              sent yet
+            </span>
+            <span className="ml-auto max-sm:ml-0 max-sm:basis-full" />
+            <button
+              type="button"
+              data-tour-send
+              disabled={!ticked || !canSend}
+              onClick={onSend}
+              className={cn(RP_BTN_GREEN, "shadow-[0_0_0_1.5px_#fff]")}
+            >
+              {checking ? "Checking…" : "Preview & send"}
+            </button>
+          </div>
+        </td>
+      </tr>
+      {!waiting && last ? (
+        <tr data-tour-sent>
+          <td
+            colSpan={9}
+            className={cn(
+              TD,
+              "bg-[#f0fdf4] px-3.5 py-1.5 text-[12.5px] font-semibold text-[#15803d]",
+            )}
+          >
+            <div className={pin}>
+              ✓ Sent {sent.length} · by {last.sent_by || "staff"}
+              {last.sent_at ? `, ${sentWhen(last.sent_at)}` : ""}
+            </div>
+          </td>
+        </tr>
+      ) : null}
+      {problems.length ? (
+        <tr data-tour-problem>
+          <td
+            colSpan={9}
+            className={cn(
+              TD,
+              "bg-[#fdeceb] px-3.5 py-1.5 text-[12.5px] font-semibold text-[#b3261e]",
+            )}
+          >
+            <div className={pin}>
+              {problems.join("; ")}.{" "}
+              {noBus
+                ? `On Assign, give the ${sec.name} tour card a bus and a driver, then Save.`
+                : "Fix it on the Assign tab and save."}{" "}
+              Until then its guests are only sent if you tick Send anyway in the
+              confirm box.
+            </div>
+          </td>
+        </tr>
+      ) : null}
+      {result ? (
+        <tr>
+          <td colSpan={9} className="p-0">
+            {result}
+          </td>
+        </tr>
+      ) : null}
+      {sec.blocks.map((b) => (
+        <CarRows
+          key={b.car.id ?? `nocar-${b.car.manifest_id ?? sec.name}`}
+          car={b.car}
+          guests={b.guests}
+          pick={pick}
+          prefix={tourCarPrefix(b, cars)}
+        />
+      ))}
+    </>
+  );
 }
 
 function CarRows({

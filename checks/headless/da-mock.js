@@ -273,6 +273,9 @@ const blockedCars = (round) => (round === "relay" && (ctl.relayBlocked || ctl.re
   // 2026-11-12 TI：两个没排车的团（占位块，car_id null）。
   .concat(round === "tour_car" && ctl.tourCarTI ? [{ car_id: null, car: "Grand Canyon South", problems: ["No bus assigned to this tour"], orders: ["TS1"] }, { car_id: null, car: "Hoover Dam", problems: ["No bus assigned to this tour"], orders: ["HD3"] }] : []);
 // G118 tour_car 轮：tourCarNoCar ⇒ 这个团当天没排 bus_tour 车，整块挡住、没有订单号可发。
+// 131：按团发（tour = manifest_id）。TI 那天：TS1 = Grand Canyon South（7）、TI1 = West Rim（3）、HD3 = Hoover（4）。
+const TOUR_OF = { TS1: 7, TI1: 3, HD3: 4 };
+const inTour = (tour) => (o) => tour == null || TOUR_OF[o] === Number(tour);
 const tourCarRound = () => (ctl.tourCarTI ? ["TS1", "TI1", "HD3"] : ctl.tourCar && !ctl.tourCarNoCar ? ["HD1", "HD2"] : []);
 const ccl = (o) => ({ line_id: 345, driver_text: "FREDDY", guide_text: null, vehicle_text: "768", is_driver_guide: false, route_label: null, ccl_note: null, driver_candidates: [], guide_candidates: [], ...o });
 const prefills = {
@@ -529,22 +532,25 @@ http.createServer(async (req, res) => {
   }
   if (p === "/api/dispatch/relay-send/preview") {
     // relayBlockLate：preview 时还没挡、发送那一刻才挡（整轮只剩坏车 ⇒ sent 0、results 空）。
-    const bl = ctl.relayBlockLate ? [] : blockedCars(q.round);
+    if (q.tour != null && q.round !== "tour_car") return send(res, 400, { detail: "tour only works with round tour_car." });
+    const bl = (ctl.relayBlockLate ? [] : blockedCars(q.round)).filter((c) => q.tour == null || c.orders.some(inTour(q.tour)));
     const blockedOrders = bl.flatMap((c) => c.orders);
-    const orders = (q.round === "relay" ? relayRound1() : q.round === "tour_car" ? tourCarRound() : []).filter((o) => !blockedOrders.includes(o));
+    const orders = (q.round === "relay" ? relayRound1() : q.round === "tour_car" ? tourCarRound() : []).filter(inTour(q.tour)).filter((o) => !blockedOrders.includes(o));
     const already = orders.filter((o) => relayIsSent(o) || ctl.relayLater.includes(o));
-    return send(res, 200, { run_date: q.date, round: q.round, to_send: orders.length - already.length, already_sent: already.length, already_sent_orders: already, checked_at: "2026-10-05T11:58:00+00:00", blocked_cars: bl });
+    return send(res, 200, { run_date: q.date, round: q.round, ...(q.tour != null ? { tour: Number(q.tour) } : {}), to_send: orders.length - already.length, already_sent: already.length, already_sent_orders: already, checked_at: "2026-10-05T11:58:00+00:00", blocked_cars: bl });
   }
   if (p === "/api/dispatch/relay-send") {
     const b = JSON.parse(await readRaw(req)); entry.body = b;
     if (ctl.relay409) return send(res, 409, { detail: "Someone is already sending this round. Wait a minute and pull again." });
     if (ctl.relay502) return send(res, 502, { detail: "Bad gateway" });
     // 同后端：order_numbers 不传 = 这一轮全部；发过的跳过，除非在 send_anyway 里（带了 preview_at）。
-    const round = b.round === "relay" ? relayRound1() : b.round === "tour_car" ? tourCarRound() : [];
+    if (b.tour != null && b.round !== "tour_car") return send(res, 400, { detail: "tour only works with round tour_car." });
+    if (Array.isArray(b.order_numbers) && !b.order_numbers.length) return send(res, 400, { detail: "Pick at least one guest to send to." });
+    const round = (b.round === "relay" ? relayRound1() : b.round === "tour_car" ? tourCarRound() : []).filter(inTour(b.tour));
     const anyway = new Set(b.preview_at ? b.send_anyway ?? [] : []);
     // G129：被挡的车上的订单号在 send_anyway 里就照发（orders 只含仍被挡的，overridden_orders 是这次覆盖的）。
     const sa = new Set(b.send_anyway ?? []);
-    const bl = blockedCars(b.round).map((c) => ({ ...c, orders: c.orders.filter((o) => !sa.has(o)), overridden_orders: c.orders.filter((o) => sa.has(o) && (b.order_numbers ?? round).includes(o)) }));
+    const bl = blockedCars(b.round).filter((c) => b.tour == null || c.orders.some(inTour(b.tour))).map((c) => ({ ...c, orders: c.orders.filter((o) => !sa.has(o)), overridden_orders: c.orders.filter((o) => sa.has(o) && (b.order_numbers ?? round).includes(o)) }));
     const blockedOrders = bl.flatMap((c) => c.orders);
     const asked = (b.order_numbers ?? round).filter((o) => !blockedOrders.includes(o));
     const notOnRound = asked.filter((o) => !round.includes(o) || ctl.relayGone.includes(o));
@@ -558,7 +564,7 @@ http.createServer(async (req, res) => {
       if (!ctl.relaySent.includes(o)) ctl.relaySent.push(o);
     }
     // results 同后端 send_morning_row() 的每行形状（Morning Pickup 发送页同一个）。
-    return send(res, 200, { round: b.round, sent: sentNow.length, failed: 0, already_sent: skipped.length, already_sent_orders: skipped, resent, not_on_round: notOnRound, checked_at: "2026-10-05T12:01:00+00:00", blocked_cars: bl, overridden_orders: bl.flatMap((c) => c.overridden_orders).filter((o) => sentNow.includes(o)),
+    return send(res, 200, { round: b.round, ...(b.tour != null ? { tour: b.tour } : {}), sent: sentNow.length, failed: 0, already_sent: skipped.length, already_sent_orders: skipped, resent, not_on_round: notOnRound, checked_at: "2026-10-05T12:01:00+00:00", blocked_cars: bl, overridden_orders: bl.flatMap((c) => c.overridden_orders).filter((o) => sentNow.includes(o)),
       results: sentNow.map((o) => ({ order: `CHD${o}`, name: "ZZ Test Relay", phone: "+15550000009", pickup_time: "6:15 AM", sms_status: b.send_type === "email" ? "" : "sent:SM1", email_status: b.send_type === "combined" || b.send_type === "email" ? "sent" : "", skipped: false })) });
   }
   // G215（后端 49c400a）：ctl.driverPage = null（默认，旧后端不带字段）| true | false（司机页开关关着，带后端原文）；ctl.driver400 = 发送时后端拒发。
