@@ -727,37 +727,42 @@ http.createServer(async (req, res) => {
     const sum = (a) => a.reduce((s, g) => s + g.pax, 0);
     return send(res, 200, { run_date: q.date, blocks: [{ sections: [{ kind: "tour", pax: 9, guests: gs("West Rim Bus Tour", 9, "Excalibur", 7, false) }, { kind: "outbound", pax: sum(out), guests: out }] }], unplaced: { sections: [{ kind: "inbound", pax: sum(inb), guests: inb }] } });
   }
+  // G290：能不能点 Completed（后端 can_complete = Super Admin 或这天的 Open shift）。ctl.canComplete 没设 ⇒ 跟 superAdmin 一样；
+  // ctl.noCanComplete = 旧后端（没有这个键）。ctl.complete403 = POST complete 回 403（后端原话）。
+  if (p === "/api/dispatch/manifests/complete" && req.method === "POST" && ctl.complete403)
+    return send(res, 403, { detail: "Only the Open shift on this day or a Super Admin can mark it Completed." });
   if (p === "/api/dispatch/manifests") {
+    const sendM = (body) => send(res, 200, ctl.noCanComplete ? body : { ...body, can_complete: ctl.canComplete ?? !!ctl.superAdmin });
     const card = (id, title) => ({ manifest_id: id, title, uploaded: false, guests: 0, pax: 0, buses: 0, not_on_bus: 0, lunch: null, uploaded_at: null, uploaded_by: null, mode: "single" });
     // 2026-10-09（Check the bus 改版 cb3887d）：3 车够但还有人没分到车 ⇒ Seat guests；4 要多开一台车 ⇒ Check the bus 实心。
     // guests_per_bus 5 / 3（不是 4 / 2）：2026-10-16 开车窗改按已选车的座位数算，这两台存着的车（11、12）没填 seats、
     // 退回 guests_per_bus 当容量——数要能让「2 台已经够坐」这件事仍然成立（9 ≤ 5+5、5 ≤ 3+3），不然会多冒出一台。
-    if (q.date === "2026-10-09") return send(res, 200, { run_date: q.date, cards: [
+    if (q.date === "2026-10-09") return sendM({ run_date: q.date, cards: [
       { ...card(3, "West Rim Bus Tour"), uploaded: true, pax: 9, guests: 4, buses: 2, mode: "lettered", not_on_bus: 2, buses_needed: 2, guests_per_bus: 5 },
       { ...card(4, "Hoover Dam"), uploaded: true, pax: 5, guests: 2, buses: 1, mode: "single", not_on_bus: 3, buses_needed: 2, guests_per_bus: 3 },
     ], guest_lists_done: ctl.completed ? { completed_by: "Annie", completed_at: "2026-10-09T22:40:00+00:00" } : null });
-    if (q.date === "2026-10-12") return send(res, 200, { run_date: q.date, cards: [
+    if (q.date === "2026-10-12") return sendM({ run_date: q.date, cards: [
       { ...card(3, "West Rim Bus Tour"), uploaded: true, pax: 70, guests: 30, buses: 0, mode: "none", not_on_bus: 70, buses_needed: 2, guests_per_bus: 54, bus_pax: {} },
     ] });
     // 2026-10-16 紧急：59 人，Bus A 已经选了 1960（59 座，见 vehicles）⇒ 一台够坐，不该冒出 Bus B（旧算法 ceil(59/54)=2 会冒出）。
-    if (q.date === "2026-10-17") return send(res, 200, { run_date: q.date, cards: [
+    if (q.date === "2026-10-17") return sendM({ run_date: q.date, cards: [
       { ...card(3, "West Rim Bus Tour"), uploaded: true, pax: 59, guests: 20, buses: 1, mode: "lettered", not_on_bus: 0, buses_needed: 2, guests_per_bus: 54, bus_pax: { A: 59 } },
       // Schedule check：当天没客人的团（Hoover Dam，没排车）沉到浮窗最下面一块。
       { ...card(4, "Hoover Dam"), uploaded: true, pax: 0, guests: 0, buses: 0, mode: "none", not_on_bus: 0, buses_needed: 0, guests_per_bus: 50, bus_pax: {} },
     ] });
-    if (q.date === "2026-10-18" || q.date === "2026-10-19") return send(res, 200, { run_date: q.date, cards: [
+    if (q.date === "2026-10-18" || q.date === "2026-10-19") return sendM({ run_date: q.date, cards: [
       { ...card(3, "West Rim Bus Tour"), uploaded: true, pax: 10, guests: 4, buses: 2, mode: "lettered", not_on_bus: 0, buses_needed: 2, guests_per_bus: 14, bus_pax: { A: 3, B: 7 } },
     ] });
     // revAuto：West Rim 9 位、一台车只坐 5 位 ⇒ 要两台（页面给存着的那台字母 A、补开 B）。
-    if (q.date === "2026-10-07" && ctl.revAuto) return send(res, 200, { run_date: q.date, cards: [
+    if (q.date === "2026-10-07" && ctl.revAuto) return sendM({ run_date: q.date, cards: [
       { ...card(3, "West Rim Bus Tour"), uploaded: true, pax: 9, guests: 4, buses: 1, mode: "single", not_on_bus: 4, buses_needed: 2, guests_per_bus: 5, bus_pax: {} },
     ] });
-    if (q.date === "2026-10-10") return send(res, 200, { run_date: q.date, cards: [
+    if (q.date === "2026-10-10") return sendM({ run_date: q.date, cards: [
       { ...card(3, "West Rim Bus Tour"), uploaded: true, pax: 7, guests: 3, buses: 3, mode: "lettered", not_on_bus: 0, buses_needed: 2, guests_per_bus: 4, bus_pax: { A: 4, B: 0, C: 3 } },
       { ...card(4, "Hoover Dam"), uploaded: true, pax: 3, guests: 1, buses: 0, mode: "none", not_on_bus: 3, buses_needed: 1, guests_per_bus: 50, bus_pax: {} },
     ] });
     // emptyHoover：Hoover Dam 也有卡片、没客人（没排车）⇒ Step 2 收起来（Annie 2026-10-15）。
-    return send(res, 200, { run_date: q.date, cards: [card(3, "West Rim Bus Tour"), card(9, "Ghost Tour"), ...(ctl.emptyHoover ? [card(4, "Hoover Dam")] : [])] });
+    return sendM({ run_date: q.date, cards: [card(3, "West Rim Bus Tour"), card(9, "Ghost Tour"), ...(ctl.emptyHoover ? [card(4, "Hoover Dam")] : [])] });
   }
   send(res, 404, { detail: "mock: not found" });
 }).listen(Number(process.env.MOCK_PORT) || 8799, () => console.log("da mock on", process.env.MOCK_PORT || 8799));

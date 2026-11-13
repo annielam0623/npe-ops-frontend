@@ -369,6 +369,8 @@ export function DispatchView() {
     byId: Record<number, { uploaded: boolean; pax: number }>;
     done: GuestListsDone | null;
     any: boolean;
+    /** G290：后端 can_complete；旧后端没有 ⇒ null（照旧只给 Super Admin）。 */
+    canComplete: boolean | null;
   } | null>(null);
   /**
    * 每个巴士团当天 Bus manifest 里要提醒选上车点的 Shuttle 客人数（Annie 2026-10-31 Shuttle 上车点提示）。
@@ -2002,7 +2004,7 @@ export function DispatchView() {
                 onAssignBus={(mid) => assignBus(mid)}
                 showEmpty={showEmpty}
                 onToggleEmpty={() => setShowEmpty((v) => !v)}
-                onCards={(date, cards, done) => {
+                onCards={(date, cards, done, canComplete) => {
                   if (date !== stateRef.current.day?.run_date) return;
                   setTourCards({
                     date,
@@ -2014,6 +2016,7 @@ export function DispatchView() {
                     ),
                     done,
                     any: cards.length > 0,
+                    canComplete,
                   });
                   const m: Record<number, TourNeed> = {};
                   for (const c of cards)
@@ -2902,7 +2905,8 @@ export function DispatchView() {
                       unsaved ? saveRef.current() : Promise.resolve(true)
                     }
                     disabled={disabled}
-                    canComplete={isSuperAdmin}
+                    // G290：Super Admin 或这天的 Open shift（后端算好）；旧后端没有 can_complete 时照旧只给 Super Admin。
+                    canComplete={tourCards.canComplete ?? isSuperAdmin}
                   />
                 ) : null}
               </StepBox>
