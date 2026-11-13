@@ -61,6 +61,8 @@
 - ⚠️ Annie 紧接着说「算了」，意思不明（135 整件不做，还是只不问 farm out），4c 在问。6b 停在分支上不合。⚠️ 后端已经生效、前端没上 ⇒ 现在 Dispatch 发明天的都会 400。若 135 取消，要请 14 / 25 撤掉后端校验。
 - ✅ Annie 澄清（原话，4c 转）「135还是提醒一下吧，告诉staff他发的是这个日期，要他们确认」⇒ 135 照做；**Send farm out notice 也加确认框，改选 A**（三句原话顺序：「135不用，它是提前一天发的」→「算了」→「135还是提醒一下吧，告诉staff他发的是这个日期，要他们确认」）。后端 farm-out/notices/send 没有 confirm_date ⇒ 74 问 25 要不要加同样的校验（推荐加，统一发送规则）；6b 先在前端带上 confirm_date。preview 加 farm out 截图，Annie 看过 + 动手再合。
 - 25 答：farm-out/notices/send 会忽略不认识的字段（confirm_date 现在不起作用，前端可以先上）；后端会加同样的校验（14 做），**等 74 告诉 25「135 前端已上 main」+ SHA 后才推**，免得再出现今早那样前端没上、后端先拦的空档。
+- 14 farm out 后端分支 task/farm-out-confirm-date 8974847e（规则同 Dispatch，但不限今天 / 明天，昨天、下周也要 confirm_date），135 前端上 main 后才合。
+- 🟡 **135 preview https://claude.ai/artifact/GT9KaTkKUWzA8Rnn4ESgUa**（6b，分支 head 3cee5a51，能合、没合）：四个入口都有框；tsc / eslint 过、da 616/616（新 14）、fod 64/64（新 3）。待 Annie：Q1 A 单独小框（推荐，已做）/ B 并进原发送框；Q2 Farm out 的 How to use A 这次不加（推荐）/ B 加进 Step 2「How to use — Buses & drivers」；+「动手」。
 
 ## 2026-11-13 4c → 新主窗口 `npe-ops-frontend-74` 交接（公司电脑；Annie「我开了个新窗口做今天的前端主窗口，你跟它交接一下工作吧」）
 
