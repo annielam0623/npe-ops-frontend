@@ -1,12 +1,14 @@
 "use client";
 
 import {
+  isValidElement,
   type ReactNode,
   useCallback,
   useEffect,
   useRef,
   useState,
 } from "react";
+import { useSearchParams } from "next/navigation";
 import { ManifestLinks } from "@/components/order-lookup/manifest-links";
 
 import { FarmOutViewCard } from "@/components/farm-out/farm-out-view-card";
@@ -31,6 +33,14 @@ import {
   type RefreshState,
   useOrderRefresh,
 } from "./refresh-from-rezdy";
+import {
+  sendDateFor,
+  type SendOrderState,
+  PickupMissingAlert,
+  SendTourButton,
+  SendTourResultCard,
+  useSendTourOrder,
+} from "./send-tour-confirmation";
 
 // 样子照旧后台 admin/order_detail.html（Annie 2026-10-07：和旧版一模一样）。
 /** .od-input */
@@ -127,6 +137,10 @@ export function OrderDetailView({ orderNumber }: { orderNumber: string }) {
   const refresh = useOrderRefresh(orderNumber, quietReload, redirectToLogin);
   // 只在新 Rezdy 表的单（后端原始 editable = false）、有 orders.edit 时出；partner 不出（后端 3e：挂 orders.edit）。
   // G280：TripGuru 的单不出（这个键是去 Rezdy 重拉）。
+  // G297：「Send tour confirmation」——有 manifests.send 的员工；partner 不出。日期优先网址的 tour_date（Notice 链接带的）。
+  const canSendTour = useTick("manifests.send") && !partner;
+  const urlDate = useSearchParams().get("tour_date");
+  const sendTour = useSendTourOrder(orderNumber, redirectToLogin);
   const canRefresh =
     state.kind === "ready" &&
     !partner &&
@@ -143,7 +157,11 @@ export function OrderDetailView({ orderNumber }: { orderNumber: string }) {
         ← Back to Orders
       </PageLink>
       {partner ? null : (
-        <HowToUse money={perms.canSeeMoney} refresh={canRefresh} />
+        <HowToUse
+          money={perms.canSeeMoney}
+          refresh={canRefresh}
+          sendTour={canSendTour}
+        />
       )}
       {state.kind === "loading" ? (
         <div className={OD_LOADING}>Loading…</div>
@@ -170,6 +188,7 @@ export function OrderDetailView({ orderNumber }: { orderNumber: string }) {
           partner={partner}
           storedReadOnly={!state.order.editable}
           refresh={canRefresh ? refresh : null}
+          sendTour={canSendTour ? { ...sendTour, urlDate } : null}
           onSaved={() => void reload(undefined, true)}
           onUnauthorized={redirectToLogin}
         />
@@ -183,10 +202,17 @@ function OrderBody({
   partner,
   storedReadOnly,
   refresh,
+  sendTour,
   onSaved,
   onUnauthorized,
 }: {
   order: OrderDetail;
+  /** null = 不出 Send tour confirmation 键。 */
+  sendTour: {
+    state: SendOrderState;
+    run: (date: string) => Promise<void>;
+    urlDate: string | null;
+  } | null;
   partner: boolean;
   /** null = 不出 Refresh from Rezdy 键。 */
   refresh: { state: RefreshState; run: () => Promise<void> } | null;
@@ -202,6 +228,17 @@ function OrderBody({
   // G280：TripGuru 来的单（后端 26fdfa29）：只读，order_detail / items_detail 是 TripGuru 的键名。
   const tripguru = o.source === "tripguru";
   const raw = tripguru ? "TripGuru" : "Rezdy";
+  const sendDate = sendTour
+    ? sendDateFor(sendTour.urlDate, o.product.tour_date)
+    : null;
+  // G297：酒店空着——照后端 send_guard.no_pickup_location_orders：原始字段去掉空格后为空才算（「TBD」「—」都当有值，
+  // 「—」只是页面显示空值的占位、库里没有）；门票单不算（没有接客）。
+  // 有发送键的人才看到红字提醒、键灰掉；Rezdy 补好、Refresh from Rezdy 后重读，红字自动消失、键能按。
+  const hotelMissing =
+    sendTour !== null &&
+    o.product.type !== "ticket" &&
+    o.booking_type !== "ticket" &&
+    !String(o.product.pickup_location ?? "").trim();
   return (
     <>
       {/* .od-head：订单号直接在深色底上，旧页的 #1a1a1a 看不见，改用旧后台正文色 #f8fafc。 */}
@@ -237,14 +274,30 @@ function OrderBody({
         >
           {o.source === "rezdy" ? "Rezdy" : tripguru ? "TripGuru" : o.source}
         </span>
-        {refresh ? (
-          <RefreshButton
-            busy={refresh.state.kind === "busy"}
-            onClick={() => void refresh.run()}
-          />
+        {refresh || sendTour ? (
+          <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+            {sendTour ? (
+              <SendTourButton
+                busy={sendTour.state.kind === "busy"}
+                date={sendDate}
+                hotelMissing={hotelMissing}
+                onClick={() => {
+                  if (sendDate) void sendTour.run(sendDate);
+                }}
+              />
+            ) : null}
+            {refresh ? (
+              <RefreshButton
+                busy={refresh.state.kind === "busy"}
+                onClick={() => void refresh.run()}
+              />
+            ) : null}
+          </div>
         ) : null}
       </header>
       {refresh ? <RefreshResultCard state={refresh.state} /> : null}
+      {hotelMissing ? <PickupMissingAlert /> : null}
+      {sendTour ? <SendTourResultCard state={sendTour.state} /> : null}
       {/* 置顶 51 B：一点跳到 Main manifest 的那一单（标黄、预勾）。 */}
       <ManifestLinks order={o} className="mt-2 mb-3" />
       {storedReadOnly && !partner ? (
@@ -288,7 +341,19 @@ function OrderBody({
               ["Tour date", o.product.tour_date],
               ["Tour time", o.product.tour_time],
               ["Pickup", o.product.pickup_time],
-              ["Location", o.product.pickup_location],
+              [
+                "Location",
+                hotelMissing ? (
+                  <span
+                    data-order-location-missing
+                    className="font-semibold text-[#A32D2D] night:text-red-300"
+                  >
+                    Missing — add it in Rezdy
+                  </span>
+                ) : (
+                  o.product.pickup_location
+                ),
+              ],
               ...(o.product.item_count > 1
                 ? ([
                     [
@@ -445,13 +510,17 @@ function Rows({ rows }: { rows: [string, unknown][] }) {
     <div>
       {rows.map(([k, v]) => (
         <OdRow key={k} k={k}>
-          <span
-            className={
-              isEmpty(v) ? "text-[#1a1a1a] night:text-white/35" : undefined
-            }
-          >
-            {show(v)}
-          </span>
+          {isValidElement(v) ? (
+            v
+          ) : (
+            <span
+              className={
+                isEmpty(v) ? "text-[#1a1a1a] night:text-white/35" : undefined
+              }
+            >
+              {show(v)}
+            </span>
+          )}
         </OdRow>
       ))}
     </div>
@@ -1141,7 +1210,15 @@ function RawBlock({ title, value }: { title: string; value: unknown }) {
 }
 
 /** money = false（没勾 orders.money_view）：不提价格卡、代理商和 Raw Rezdy。 */
-function HowToUse({ money, refresh }: { money: boolean; refresh: boolean }) {
+function HowToUse({
+  money,
+  refresh,
+  sendTour,
+}: {
+  money: boolean;
+  refresh: boolean;
+  sendTour: boolean;
+}) {
   return (
     // 旧页这里是一直展开的蓝框（不是可折叠的 details），样式照 send_morning.html。
     <div className="mb-4 rounded-[10px] border border-[#b5d4f4] bg-[#e8f3fc] px-5 py-3.5 text-[12px] leading-[1.8] text-[#0c3a6b] night:border-sky-400/20 night:bg-sky-400/[.08] night:text-sky-300">
@@ -1182,6 +1259,18 @@ function HowToUse({ money, refresh }: { money: boolean; refresh: boolean }) {
             after), or that nothing changed. If Rezdy has no phone or email for
             the order, the one we have is kept. If it does not work, the reason
             shows in red and nothing is changed.
+          </li>
+        ) : null}
+        {sendTour ? (
+          <li>
+            Send tour confirmation (next to the order number): sends this
+            order&apos;s tour confirmation by SMS and email, for the tour date
+            of this order. If the pickup location is missing, a red message says
+            what to fix and the button stays grey: add the pickup location to
+            the order in Rezdy, then click Refresh from Rezdy. When the red
+            message is gone, click Send tour confirmation. Once it is sent, the
+            Pickup location missing notice goes away for everyone. If it is not
+            sent, the reason shows in red.
           </li>
         ) : null}
         <li>

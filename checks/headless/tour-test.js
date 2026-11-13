@@ -183,10 +183,12 @@ async function run() {
   // 「改回」（Annie 2026-10-20，审计 #18）：How to use 一字不差照旧 send_tour.html。
   {
     const pre = `const d = [...document.querySelectorAll('details')].find(x => x.querySelector('summary')?.textContent.includes('How to use — Tour Confirmation')); const n = (e) => e.textContent.replace(/\\s+/g, ' ').trim(); const t = n(d); `;
-    check("How to use（Tour）：共 16 步，最后一条是拖底部滚动条（Annie 2026-10-23 #19，原文）", await evaluate(pre + "const li = d.querySelectorAll('ol > li'); return li.length === 16 && li[15].textContent.replace(/\\s+/g, ' ').trim() === 'If the preview is wider than the window, a scrollbar shows along the bottom of the window. Drag it to see the columns on the right without scrolling down to the end of the list.';"), await evaluate(pre + "const li = d.querySelectorAll('ol > li'); return li.length + ' | ' + li[li.length - 1].textContent.replace(/\\s+/g, ' ').trim();"));
+    check("How to use（Tour）：共 17 步（G297 多一条酒店空着），最后一条是拖底部滚动条（Annie 2026-10-23 #19，原文）", await evaluate(pre + "const li = d.querySelectorAll('ol > li'); return li.length === 17 && li[16].textContent.replace(/\\s+/g, ' ').trim() === 'If the preview is wider than the window, a scrollbar shows along the bottom of the window. Drag it to see the columns on the right without scrolling down to the end of the list.';"), await evaluate(pre + "const li = d.querySelectorAll('ol > li'); return li.length + ' | ' + li[li.length - 1].textContent.replace(/\\s+/g, ' ').trim();"));
     check("How to use（Tour）第 8 步：flagged as Already Sent. Skip or override as needed.", await evaluate(pre + "return t.includes('Any orders already sent will be flagged as Already Sent . Skip or override as needed.') || t.includes('Any orders already sent will be flagged as Already Sent. Skip or override as needed.');"));
     check("How to use（Tour）发送条目：click Send to All. The button shows how many have been sent so far.", await evaluate(pre + "return t.includes('then click Send to All. The button shows how many have been sent so far. Keep the page open until Send Results appears.');"));
     check("How to use（Tour）Error Handling 照旧：do not click Send again / Start Over；页脚 no reminders will be sent", await evaluate(pre + "return t.includes('The page says it lost contact with the server: stop and do not click Send again. Click View this send to see which messages went out. If something really went wrong, wait a few minutes, then click Start Over and upload the file again: orders already sent are skipped and never sent twice.') && t.includes('This will break the upload and no reminders will be sent.');"));
+    check("G297 How to use（Tour）：多一句酒店空着（后端工作区 send_tour.html 原文）", await evaluate(pre + "return t.includes('If a row has no Pickup Location, it turns red. That order is not sent; the others are sent as usual. Staff on shift get a Notice for it. Open the Notice, add the pickup location to the order in Rezdy, click Refresh from Rezdy, then click Send tour confirmation.');"));
+    check("G297 How to use（Last Minute）：同一句", await evaluate(pre.replace('Tour Confirmation', 'Last Minute Order') + "return t.includes('If a row has no Pickup Location, it turns red. That order is not sent; the others are sent as usual. Staff on shift get a Notice for it. Open the Notice, add the pickup location to the order in Rezdy, click Refresh from Rezdy, then click Send tour confirmation.');"));
     check("How to use（Last Minute）：Click Send Last Minute and keep the page open…；Error Handling 用 click Cancel", await evaluate(pre.replace('Tour Confirmation', 'Last Minute Order') + "return t.includes('Click Send Last Minute and keep the page open until the results appear. Click View this send to open this send in the Send Log.') && t.includes('then click Cancel and upload the file again: orders already sent are skipped and never sent twice.') && t.includes('do not click Send again');"));
   }
   check("团型下拉来自接口（按顺序、下拉文字）", await evaluate(`return [...${lane("tour_confirmation")}.querySelector('select').options].map(o => o.value + ':' + o.text).join('|') === ':— Select tour type —|upper_antelope:Upper Antelope Canyon Bus Tour|grand_canyon_west:Grand Canyon West Rim Bus Tour|hoover_dam:Hoover Dam Tour';`));
@@ -330,6 +332,28 @@ async function run() {
   // ── 拦截 ──
   await upload("blocked");
   check("拦截：人数算不出 / 同单内容不同 / 缺订单号；发送按钮禁用；CSV 编码提示", await evaluate(`const a = ${lane("tour_confirmation")}.querySelector('[role=alert]').textContent; return a.includes('Guest count not found in Quantities: B01') && a.includes('Listed twice in this file with different details: B02') && a.includes('No order number: No Order Guest') && [...${lane("tour_confirmation")}.querySelectorAll('button')].find(b => /— \\d+ order/.test(b.textContent)).disabled && ${lane("tour_confirmation")}.textContent.includes('This CSV is not saved as UTF-8.') && ${lane("tour_confirmation")}.textContent.includes('⛔ Fix the problems in the red box before sending');`));
+
+  // ── G297：酒店空着（新规则：标红留下、其余照发，Send 不禁用）──
+  const sendBtnOf = (l) => `[...${lane(l)}.querySelectorAll("button")].find(b => /— \\d+ order/.test(b.textContent))`;
+  const RED_BG = "rgb(253, 236, 236)";
+  for (const l of ["tour_confirmation", "last_minute"]) {
+    await upload("nohotel", {}, l);
+    const nh = await evaluate(`const L = ${lane(l)}; const bg = (o) => getComputedStyle(L.querySelector('tr[data-order="' + o + '"]')).backgroundColor;
+      const y = L.querySelector("[data-no-hotel-line]");
+      return { red: ["H01","H02","H03","H04"].map(o => bg(o) === "${RED_BG}").join(","), yellow: y ? y.textContent.replace(/\\s+/g, " ").trim() : "", alert: !!L.querySelector("[role=alert]"), disabled: ${sendBtnOf(l)}.disabled, btn: ${sendBtnOf(l)}.textContent };`);
+    check(`G297 ${l}：H01（空）、H02（只有空格）标红；已发过的 H04、正常的 H03 不红；黄框列 H01, H02；没有红框、Send 能按`, nh.red === "true,true,false,false" && nh.yellow === "⚠️ Pickup location is empty in Rezdy (not sent, shown in red; staff on shift get a Notice): H01, H02" && !nh.alert && !nh.disabled, JSON.stringify(nh));
+    const g297shot = async (name, sel) => { if (!process.env.SHOT_DIR || l !== "tour_confirmation") return; await evaluate(`${sel}.scrollIntoView({ block: "start" }); window.scrollBy(0, -140);`); await sleep(250); const r = await cdp("Page.captureScreenshot", { format: "png" }); require("fs").mkdirSync(process.env.SHOT_DIR, { recursive: true }); require("fs").writeFileSync(require("path").join(process.env.SHOT_DIR, name + ".png"), Buffer.from(r.data, "base64")); };
+    await g297shot("tour-preview", `${lane(l)}.querySelector("table")`);
+    await clickSend(l);
+    before = (await mockLog()).length;
+    await evaluate(`[...${dialog}.querySelectorAll("button")].find(b => b.textContent.startsWith("Send")  && b.textContent.includes("order")).click();`);
+    await waitFor(`${lane(l)}.textContent.includes("📬 Send Results")`);
+    const sent = (await since(before, (e) => e.path.endsWith("-bulk"))).flatMap((b) => b.body.guests.map((x) => x.order_number));
+    check(`G297 ${l}：H01、H02、H03 照样送给后端（后端留下没酒店的）；H04 没勾 Send anyway 不送`, sent.join(",") === "H01,H02,H03", sent.join(","));
+    const res = await evaluate(`const L = ${lane(l)}; return [...L.querySelectorAll("tr[data-skipped]")].map(tr => tr.textContent.replace(/\\s+/g, " ").trim() + "|" + (tr.dataset.noHotel ? "red:" + (getComputedStyle(tr).backgroundColor === "${RED_BG}") : "plain")).join(" / ");`);
+    await g297shot("tour-results", `[...${lane(l)}.querySelectorAll("h2, h3, p, div")].find(e => e.textContent.trim().startsWith("📬 Send Results"))`);
+    check(`G297 ${l}：结果表 H01、H02 标红写「Skipped: Pickup location is empty in Rezdy」，H03 照常 Sent`, res.includes("H01ZZ1 TestSkipped: Pickup location is empty in Rezdy|red:true") && res.includes("H02ZZ2 TestSkipped: Pickup location is empty in Rezdy|red:true") && (await evaluate(`return [...${lane(l)}.querySelectorAll("tr[data-outcome]")].map(tr => tr.firstElementChild.textContent + ":" + tr.dataset.outcome).join(",") === "H03:sent";`)), res);
+  }
 
   // .xlsx：没有 Quantities 列，Qty 原值，送数字
   await upload("xlsx");

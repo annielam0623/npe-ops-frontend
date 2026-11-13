@@ -39,6 +39,7 @@ import {
   blockReasons,
   isCsvRow,
   LANES,
+  noHotelRow,
   mtlvLabel,
   paxText,
   SEND_TYPES,
@@ -127,6 +128,7 @@ export function TourPreview({
   const guests = csv ? rows.reduce((s, r) => s + (r.pax || 0), 0) : null;
   const noEmail = rows.filter((r) => !r.email).map((r) => r.order_number);
   const noPhone = rows.filter((r) => !r.phone).map((r) => r.order_number);
+  const noHotel = rows.filter(noHotelRow).map((r) => r.order_number || r.name);
   const dups = rows.filter((r) => r.duplicate).length;
   const meta = blocked.length
     ? {
@@ -233,7 +235,9 @@ export function TourPreview({
                   data-order={r.order_number}
                   className={cn(
                     TR,
-                    (isCsvRow(r) && !r.pax_ok) || r.listed_twice_conflict
+                    (isCsvRow(r) && !r.pax_ok) ||
+                      r.listed_twice_conflict ||
+                      noHotelRow(r)
                       ? "bg-[#fdecec]"
                       : (r.duplicate || r.listed_twice) && "bg-[#fff8e1]",
                   )}
@@ -293,7 +297,9 @@ export function TourPreview({
                     )}
                   </td>
                   <td className={TD}>{r.pickup_time}</td>
-                  <td className={TD}>{r.pickup_location}</td>
+                  <td data-no-hotel={noHotelRow(r) || undefined} className={TD}>
+                    {r.pickup_location}
+                  </td>
                   <td className={TD}>
                     {batch.compare && r.upload_status ? (
                       <CompareBadge kind={r.upload_status} />
@@ -370,12 +376,19 @@ export function TourPreview({
             ))}
           </div>
         ) : null}
-        {batch.warning || noEmail.length || noPhone.length ? (
+        {batch.warning || noHotel.length || noEmail.length || noPhone.length ? (
           <div data-testid="missing-info" className={YELLOW_BOX}>
             {/* 手机上压成一行 + More（手机版规则）：电脑上照旧一段一行，手机上接成一段。 */}
             <PhoneOneLine>
               {batch.warning ? (
                 <span className="sm:block">⚠️ {batch.warning} </span>
+              ) : null}
+              {noHotel.length ? (
+                <span data-no-hotel-line className="sm:block">
+                  ⚠️ <strong>Pickup location is empty in Rezdy</strong> (not
+                  sent, shown in red; staff on shift get a Notice):{" "}
+                  {noHotel.join(", ")}{" "}
+                </span>
               ) : null}
               {noEmail.length || noPhone.length ? (
                 <span className="sm:block">
