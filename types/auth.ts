@@ -14,7 +14,7 @@ export interface CurrentUser {
    */
   is_supervisor?: boolean;
   /**
-   * 这次会话的登录时间（ISO，UTC；置顶 83，后端 94）。Dispatch 凌晨 2:00–8:30（洛杉矶）登录的默认看今天。
+   * 这次会话的登录时间（ISO，UTC；置顶 83，后端 94）。Dispatch 12:00 AM–8:30 AM（洛杉矶）登录的默认看今天（134 起点由 2:00 改 0:00）。
    * 旧后端没有这个字段 ⇒ 照旧。
    */
   logged_in_at?: string | null;

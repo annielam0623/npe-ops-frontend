@@ -2663,9 +2663,9 @@ async function run() {
     await ctl({ pillDemo: false });
   }
 
-  // ── 置顶 83：凌晨 2:00–8:30（洛杉矶）登录的，Dispatch 默认看今天（登录那天）；Annie「1 登录时间选A   动手」──
+  // ── 置顶 83 / 134：12:00 AM–8:30 AM（洛杉矶）登录的，Dispatch 默认看今天（登录那天）；Annie「1 登录时间选A   动手」──
   {
-    // 2026-10-04 是夏令时（PDT，UTC-7）：LA 02:00 = 09:00Z。mock 不带 date 时回 2026-10-05（= 后端默认明天）。
+    // 2026-10-04 是夏令时（PDT，UTC-7）：LA 00:00 = 07:00Z，02:00 = 09:00Z。mock 不带 date 时回 2026-10-05（= 后端默认明天）。
     const dayGets = async (from) => (await mockLog()).slice(from).filter((e) => e.path === "/api/dispatch/day" && e.method === "GET");
     const openAt = async (loggedInAt, url = `${APP}/dispatch`) => {
       await ctl({ loggedInAt });
@@ -2680,7 +2680,11 @@ async function run() {
       ["2026-10-04T09:00:00Z", "2026-10-04", "02:00 登录 ⇒ 今天"],
       ["2026-10-04T15:30:59Z", "2026-10-04", "08:30:59 登录 ⇒ 今天"],
       ["2026-10-04T15:31:00Z", null, "08:31 登录 ⇒ 照旧（后端默认明天，不带 date）"],
-      ["2026-10-04T08:59:00Z", null, "01:59 登录 ⇒ 照旧"],
+      ["2026-10-04T08:59:00Z", "2026-10-04", "134 01:59 登录 ⇒ 今天（起点改 12:00 AM）"],
+      ["2026-10-04T08:53:00Z", "2026-10-04", "134 01:53 登录（11-13 Veronica 那次）⇒ 今天"],
+      ["2026-10-04T07:00:00Z", "2026-10-04", "134 00:00 登录 ⇒ 今天"],
+      ["2026-10-04T06:59:00Z", null, "134 前一天 11:59 PM 登录 ⇒ 照旧（后端默认明天）"],
+      ["2026-11-04T08:30:00Z", "2026-11-04", "134 冬令时（PST）00:30 登录 ⇒ 今天"],
       ["2026-11-04T10:15:00Z", "2026-11-04", "冬令时（PST）02:15 登录 ⇒ 今天"],
       [null, null, "logged_in_at = null ⇒ 照旧"],
     ];
@@ -2712,7 +2716,7 @@ async function run() {
     }
     r = await openAt("2026-10-04T10:00:00Z");
     check("83 从侧栏重新进 Dispatch（网址没日期）⇒ 仍按登录时间看今天", r.first && r.first.q.date === "2026-10-04", JSON.stringify(r));
-    check("83 How to use 写了凌晨登录看今天", await evaluate("return document.body.textContent.replace(/\\s+/g, ' ').includes('if you signed in between 2:00 AM and 8:30 AM (Las Vegas time), Dispatch opens on today until you sign in again');"));
+    check("83 How to use 写了凌晨登录看今天", await evaluate("return document.body.textContent.replace(/\\s+/g, ' ').includes('if you signed in between 12:00 AM and 8:30 AM (Las Vegas time), Dispatch opens on today until you sign in again');"));
     await ctl({ loggedInAt: false });
   }
 
