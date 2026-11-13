@@ -66,6 +66,7 @@
 
 ### 在分支 / 等 Annie
 
+0. **🔴 129 Dispatch 开当天登录时间段 2:00 AM → 12:00 AM（11-13，54 转 Annie 原话「把这个时间改成12：00am」）**：起因 11-13 Veronica 1:53 AM 登录，Dispatch 开成 11-14，31 个 relay 客人和 11-14 司机提前一天发出。只改前端：lib/la-date.ts:93 LOGIN_TODAY_FROM 0、dispatch-view.tsx:3416 How to use、注释、边界检查（1:59 / 0:00 当天，8:31 第二天）、HR 登录记录说明（如线上有）。8:30 不变。派 96 task/dispatch-login-midnight，先做完检查，4c 问 Annie 是否现在动手合 main。
 1. **G297 团确认酒店空着**（后端 fc0049ce 已上 main：空酒店那单留下不发、其余照发、给当班发 pickup_missing Notice；新接口 send-tour-order）。前端 6b 分支 task/g297-pickup-block（已对齐后端第二版、判空 = trim 后为空、TBD 算有值），preview https://claude.ai/artifact/P2hYRXJkFeurqiHzkaMspF 第 3 版 5 题（分支 5aa8e9e3；worktree 在公司电脑 C:Codeops-6b-relay，家里从远端拉分支接着做）（Notice 样子 / 红字放哪 / 键位置 / 要不要确认 / 渠道）待 Annie 答 + 动手。⚠️ 后端已上、前端没上：Tour send 页空酒店单不发，但结果只显示后端原话不标红。
 2. **128 Content Studio › Guest Page 整页就地编辑**：样稿 https://claude.ai/artifact/PnkpnXHaJbzrYTrUcfMYvX 第 3 版。已定：Q3 A 小编辑框（共用字提醒「Shared by all tours…」，这团的字不提醒）；不做 + Add section（新段落由后端加文字项）；加 Edit / Save（默认看的状态 = 客人真样子）。待答：Q1 范围（A 先 TC 推荐）、Q2 邮件（A 下一步推荐）、Q4 List view（A 留推荐）。答 + 动手后把 96 写的接口形状（置顶 128 节）转后端。
 3. **114d Relay list ⚙ 设置弹窗旧句「Aa Text size」**：置顶，A 改成 text size card 那句 / B 不改，待答。
