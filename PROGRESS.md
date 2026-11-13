@@ -63,7 +63,7 @@
 
 ## 2026-11-13 前端主窗口 `npe-ops-frontend-74`[fa6692]（公司电脑，接 4c；只分工和汇报）
 - 后端主窗口 25、后端 14；工作窗口 6b、96。
-- ✅ **135 上 main ae5c849a**（6b；Annie 在 6b 原话「动手」，前面「135  -1A 2B」）：四个入口（relay 各轮 + tour_car、driver、guide、farm out）非 LA 今天先弹红日期框，Yes 才发并带 confirm_date；Q2 B Step 2 How to use 第 8 条 farm out 那句（跟 Farm out 键一起显示）。tsc / eslint 0 错、build、da 620/620、fod 65/65。SHA 已发 25 / 14，farm out 后端 8974847e 可以合。验收：Dispatch 切到明天点任意发送 ⇒ 红日期框，Cancel 不发、Yes 才发；今天不弹（生产真发，只用 ZZ Test）。置顶 135 已移走。
+- ✅ **135 上 main ae5c849a**（6b；Annie 在 6b 原话「动手」，前面「135  -1A 2B」）：四个入口（relay 各轮 + tour_car、driver、guide、farm out）非 LA 今天先弹红日期框，Yes 才发并带 confirm_date；Q2 B Step 2 How to use 第 8 条 farm out 那句（跟 Farm out 键一起显示）。tsc / eslint 0 错、build、da 620/620、fod 65/65。SHA 已发 25 / 14，farm out 后端 8974847e 可以合。✅ farm out 后端校验上 main 8ef4f14d（14），ae5c849a 已带 confirm_date，135 前后端全部上齐。验收：Dispatch 切到明天点任意发送 ⇒ 红日期框，Cancel 不发、Yes 才发；今天不弹（生产真发，只用 ZZ Test）。置顶 135 已移走。
 - 6b、96 对话太长已停（Annie「这两个窗口的对话都太长了，做完手头的就开新窗口吧」）；6b 收工记录见「2026-11-13 公司 6b 收工」，96 的 128 交接在置顶 128 节。等 Annie 开新窗口接 128 和其余排队（Working Record cutoff、114d 等）。
 - ✅ **134 Dispatch 登录 12:00 AM 上 main c98d2aad**（96，功能 d417d6c9，task/dispatch-login-midnight；Annie「134动手上线」）：LOGIN_TODAY_FROM 0、How to use「between 12:00 AM and 8:30 AM」。合最新 main 后 tsc / eslint / build 过；合前 da 606/606、users 80/80（合进来的没有 Dispatch 改动，da 没重跑）。验收：凌晨 12:00–8:30 登录 Dispatch 开当天，8:30 后开第二天。SHA 已发 25。
 - 128 样稿第 5 版（96，同链接 PnkpnXHaJbzrYTrUcfMYvX）：Annie 选「+ Add line」B，要求 Email 页也能这样改；等她答 Q5（邮件写死的字要不要放开）和 Q2 先后，没动手。
