@@ -59,7 +59,7 @@
 - G297 团确认酒店空着 a8d64c35（6b，Annie「297同意推荐，动手」，5 题全 A）。等 Annie 线上验收。
 
 ### 在手上
-1. **134 Dispatch 开当天登录 2:00 → 12:00 AM**（96，task/dispatch-login-midnight d417d6c9，全过）：**等 Annie「动手」**。她已经被问过两次，别再滚动问；她说动手就让 96 合 main，SHA 发 25。
+1. **134 Dispatch 开当天登录 2:00 → 12:00 AM**（96，task/dispatch-login-midnight d417d6c9，全过）：✅ Annie（原话）「134动手上线」⇒ 4c 已让 96 合最新 main 后上 main，SHA 发 74 和 25；74 记 SHA、告诉 Annie 验收点。
 2. **135 Dispatch 非今天发送确认框**（6b，task/dispatch-confirm-other-day，在做）：范围 relay 各轮 / 团车客人 / Send to driver / Send to guide；Morning 上传页不改（54 定）。等 14 发 detail 原文 + commit 才合；确认框先出 preview 给 Annie 看。6b 在核团车客人发送是否在 relay-send / driver-notice/send / guide-notice/send 三个接口里。**等 Annie**：Send farm out notice 要不要也加（A 推荐 / B）。
 3. **128 Content Studio 整页编辑**（96，样稿 v4 https://claude.ai/artifact/PnkpnXHaJbzrYTrUcfMYvX ）：已定 Q3 A、Edit / Save 状态、不做 Add section、选餐区显示可改、GC South / Bryce / VoF Full 两选项照旧。**等 Annie**：Q1 范围 / Q2 邮件 / Q4 List view / Lunch Selection Incomplete 弹窗字能否改（A 推荐）+ 动手。动手后把 96 的接口形状（置顶 128 节「需要后端」）转 25。
 4. **Working Record cutoff 前端**：后端 G290 已上 main 4e91cece（25 更正），前端可以排（接口 docs/interfaces/working-record-cutoff-2026-11-11.md）。
