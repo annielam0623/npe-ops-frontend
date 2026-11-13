@@ -8,6 +8,7 @@
 
 ## 2026-11-12 家里开工：前端主窗口 `前端主窗口-d8`[1148ff]（只分工和汇报，不写代码）
 - 接 4c 11-12 收工交接。在线：前端 `6b`[837f59]（家里，不是公司那个 6b），后端主窗口 `后端主窗口-5c`[c5436b]、后端 `npe-confirmation-service-0f`。内存 12 GB 空闲。
+- **G290 Dispatch Completed 按 Open shift**：后端 82（5c 派）上 main 4e91cece（合并 d31c68fa），接口说明后端 docs/interfaces/dispatch-completed-open-shift-2026-11-11.md。Annie 原话（后端记）「就是上open shift的人啊」「只看排班」。前端要做：dispatch-view.tsx:2905 canComplete={isSuperAdmin} 改用 GET manifests 的 can_complete；POST 403 显示 detail「Only the Open shift on this day or a Super Admin can mark it Completed.」；How to use 加一句「Completed can be clicked by whoever is on the Open shift that day (Staff Schedule) or a Super Admin.」。前端没上之前，Open shift 的人看不到能按的 Completed（只有 SA 能按）。d8 已问 Annie 要「动手」。Annie（原话）：「3，不用加这句话，你在complete键旁边加一句话，before you complete， please double check all the driver and guide are correct for today's dispatch」⇒ How to use 那句不加；Completed 键旁加提醒句，是样子改动，派 6b 出 preview（建议英文 "Before you click Completed, please double-check that every driver and guide is correct for this day's dispatch."，A 键左同行（推荐）/ B 键上方一行）。①② 还没有「动手」。Annie 补（原话）「or before you click this button」。6b 样稿 https://claude.ai/artifact/RFbirM59Fo1sBabsZJnq6B ：Q1 放哪 A 键左同行、手机排到键上（推荐）/ B 键上方一行；Q2 开头 1「Before you click Completed,」（推荐）/ 2「Before you click this button,」，都用 this day's；字 #cbd5e1 12px；已 Completed 不显示。CompletedBar 在 components/dispatch-manifest/manifests-panel.tsx。待答 +「动手」。G294（旧 Jinja 面板的 Completed）等 Annie，不在这次。
 - 派 6b：**125 Tour Tracking 灰行字也灰**，只出 preview（A 底和字都灰（推荐）/ B 只字灰，电脑 + 手机 + night），链接回 d8 再问 Annie。
 
 ## 2026-11-12 收工交接：前端主窗口 `新主窗口-4c`[f2a514]（公司电脑；Annie「收工回家做」）
@@ -1736,6 +1737,8 @@ D. 已完成、待从置顶移走：
 - Q1 没发过的行（Main manifest 带进来、还没发过确认 / Last Minute / Shuttle / Broadcast）怎么显示？现在只有灰底，字色同发过的行（单号绿、名字电话深色）。A（推荐）灰底 + 灰字 #6b7280，差两样最容易看出；B 白底 + 灰字，只差字色，不如 A 显眼。
 - Q2 灰行里 Order Status 的 On hold（橙）/ Cancelled（红）要不要保留颜色？现在保留。A（推荐）保留，别的都灰只有它有色，一眼看到这单不用发（灰行没有链接和其他状态色，只这一处要定）；B 也变灰，整行一个颜色。
 - 深色版没截：Tour Tracking 还没做全深色，?theme=night 跟现在一样。
+- ✅ Annie（原话，11-12）：「1. A  但是字的灰可以再浅一点  2  A」⇒ Q1 A、Q2 A；灰字要比 #6b7280 浅，6b 出第 2 版并排 2–3 档浅灰给她挑。**不是动手。**
+- Q3（第 2 版，同链接 Version 2）灰字用哪一档？1（推荐）#8b929c 灰底上对比度 2.5:1，比第 1 版淡、单号电话还认得清；2 #9ca3af 2.0:1，小字要凑近看；3 #a8adb5 1.8:1，太浅不建议。待答 +「动手」。
 - 动手时改 components/tour-tracking/tour-table.tsx:262-274 灰行 <tr>（现写死 text-[#1a1a1a]），留 :485 附近 on_hold / cancelled 色；How to use 要不要加 grey text 一句再定。
 
 ### 128. Content Studio › Guest Page 整页就地编辑（11-12，96 可点样稿 https://claude.ai/artifact/PnkpnXHaJbzrYTrUcfMYvX ）
