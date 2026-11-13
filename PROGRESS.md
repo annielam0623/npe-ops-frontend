@@ -1816,6 +1816,14 @@ D. 已完成、待从置顶移走：
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 136. Working Record 只显示到今天 + Not completed（11-13，5b 样稿 https://claude.ai/artifact/LWH8e8T6tDUJKEXRmU5dA9 ，没写代码）
+- 后端 G290 4e91cece：through 之后留空；每天 status completed / not_completed；点过 Completed 的日子也读 live（所以现有「live」橙虚线框会落到所有日子上）。
+- 题 1 虚线框：A 只标 Not completed，去掉「live」字（推荐）/ B live 照旧再加 Not completed。
+- 题 2 Not completed 放哪（橙棕加粗普通字，夜间浅黄）：A 每天一次，周表日期下、月历日子号旁（推荐）/ B 每张卡右上角。
+- 题 3 Export CSV：A Saved 列换成 Status（Completed / Not completed），合计行「N day(s) not completed」，月历合计「includes N days not completed」（推荐）/ B 保留 Saved 再加 Status，7 列。
+- 文字：How to use 全文换（原文见 5b 消息 / 样稿）；页头小字改「A dashed box means nobody has clicked Completed on Dispatch for that day yet.」。
+- 待答 +「动手」，5b 做（task/wr-cutoff）。
+
 ### 125. Tour Tracking 没发过的行字也变灰（11-12，6b 样稿 https://claude.ai/artifact/7YqY8VAeGAkB35Nxbx9DwU ，没改代码）
 - Annie 原话（11-11）：「进到tracking页面的那些自动填充的订单的字体没有用灰色，还是正常的颜色，staff怎么看的出哪些发过哪些没发过」
 - Q1 没发过的行（Main manifest 带进来、还没发过确认 / Last Minute / Shuttle / Broadcast）怎么显示？现在只有灰底，字色同发过的行（单号绿、名字电话深色）。A（推荐）灰底 + 灰字 #6b7280，差两样最容易看出；B 白底 + 灰字，只差字色，不如 A 显眼。
