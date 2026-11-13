@@ -1803,6 +1803,12 @@ D. 已完成、待从置顶移走：
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 135. Dispatch 发送日子不是今天先弹框确认（11-13，6b 样稿 https://claude.ai/artifact/GT9KaTkKUWzA8Rnn4ESgUa ，分支 head 3cee5a51 能合、没合）
+- ⚠️ 急：后端 b645fe97 已生效，前端没上之前 Dispatch 发明天的都 400。
+- Q1 确认框：A 单独小框（推荐，已做，多点一下，样子完全不同不会顺手点过）/ B 并进原发送框（顶部红大日期 + 键改字，少点一下但容易看漏）。
+- Q2 Farm out How to use：A 这次不加（推荐，Farm out 现只 SA，开放时再写）/ B 加进 Step 2「How to use — Buses & drivers」。
+- 待答 +「动手」；合 main 后 SHA 发 25 / 14（14 才合 farm out 后端 8974847e）。
+
 ### 125. Tour Tracking 没发过的行字也变灰（11-12，6b 样稿 https://claude.ai/artifact/7YqY8VAeGAkB35Nxbx9DwU ，没改代码）
 - Annie 原话（11-11）：「进到tracking页面的那些自动填充的订单的字体没有用灰色，还是正常的颜色，staff怎么看的出哪些发过哪些没发过」
 - Q1 没发过的行（Main manifest 带进来、还没发过确认 / Last Minute / Shuttle / Broadcast）怎么显示？现在只有灰底，字色同发过的行（单号绿、名字电话深色）。A（推荐）灰底 + 灰字 #6b7280，差两样最容易看出；B 白底 + 灰字，只差字色，不如 A 显眼。
@@ -1825,6 +1831,10 @@ D. 已完成、待从置顶移走：
   - 样稿 Version 3（同链接）：看的状态无框无 ✎、隐藏块不出，工具条「Viewing — this is what guests see」；Edit（普通键）→「Editing」+ Discard + 蓝 Save，出框 / ✎ / ↑↓ / Shown after 块；Save 回看的状态绿「Saved」。演示键 7 个。Q4 A 建议 List view 共用同一 Edit / Save。Q1 Q2 Q4 待答。
   - 样稿 Version 4（11-13，96）：选餐区 + 「Lunch Selection Incomplete」弹窗看的状态也一直显示、带小标签。Annie（原话）「把选餐的样板也显示出来」→「可以，就这样显示，然后可以直接在上面改」；「这三个餐的选项只是给antelope tour的」（96 核：Turkey/Veggie/Beef 只 Upper / Lower Antelope、Antelope X；GC South / Bryce & Zion / VoF Full 两个无 Beef；GC West / VoF Half / Hoover 无选餐区）；GC South / Bryce / VoF Full 保留两选项 → Annie「A」照现在、不改后端。待答：Lunch Selection Incomplete 弹窗字要不要能在 Content Studio 改（A 后端加 tmpl__global__tc_guest_lunch_warn_* 推荐 / B 先不改），及 Q1 Q2 Q4。非动手。
 - Q4 旧表单：A 留「List view」切换（推荐）/ B 不留。
+  - 样稿 Version 5–6（11-13，96）：✅ Annie 选「+ Add line」B（客人页 5 块 pickup/fee/lunch/notes/submit、邮件 3 块 body/details/footer，每块最多 2 句，This tour only / All tours）；✅ Annie（原话）「Q5 A  Q2 A」⇒ Q5 A 邮件写死的字都放开（门票两句按团；午餐提示两句和 RECONFIRM MY SPOT 按钮所有团共用；默认值 = 现在原文）；Q2 A 客人页先上，邮件跟着做（同样整页就地改，含 + Add line）。非动手。
+  - Annie（原话）「edit的显示那里能不能加个背景色，现在的白色太不显眼了，我们网站的功能键颜色都有哪些」⇒ Q6 Edit 键颜色：A 琥珀 #d97706 白字 + ✎（推荐，同 Editing 标签 / 共用字琥珀虚线，全站没别的键用）/ B 白底深字 / C 灰蓝 #64748b，样稿可现场切换。全站键色：蓝 #3b82f6 提交 / 直接存的 Add / ↑↓ / Open in Main manifest；灰绿 #6b8e74 要再按 Save 的 Add；红 #A32D2D 危险；普通键透明底白字。
+  - 还没答：Q1 范围、Q4 List view、Q6 Edit 键色、Lunch Selection Incomplete 弹窗字放不放开，+「动手」。
+  - 需要后端（动手时转 25）加：add-line 字段 global tmpl__global__tc_guest_add_{slot}_{1,2} / tmpl__global__tc_email_add_{slot}_{1,2}，按团 tmpl__tc__{tour}__add_{slot}_{1,2} / __email_add_{slot}_{1,2}；guest.py、build_email 照画；Q5 A 新字段（门票两句按团、lunch note / review 午餐尾句 / 按钮字 global）。
 - 需要后端（Annie 定了再转 54）：GET / POST /api/content-studio/guest-preview（POST 用草稿画不写库），回包 {html, keys[], sample}，sandbox iframe 无脚本；data-tmpl-key / -kind=lines / -attr / -empty / -step / -state 标记；示例数据补电话、团期 +7 天、8:00 AM、notes。保存走现有接口。MTLV 块后端关着没画。
 
 ### 114d. Relay list ⚙ 设置弹窗说明还提「Aa Text size」（11-12，6b 发现，没改）
