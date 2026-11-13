@@ -53,6 +53,8 @@
 
 ## 2026-11-13 前端主窗口 `npe-ops-frontend-74`[fa6692]（公司电脑，接 4c；只分工和汇报）
 - 后端主窗口 25、后端 14；工作窗口 6b、96。
+- ✅ **134 Dispatch 登录 12:00 AM 上 main c98d2aad**（96，功能 d417d6c9，task/dispatch-login-midnight；Annie「134动手上线」）：LOGIN_TODAY_FROM 0、How to use「between 12:00 AM and 8:30 AM」。合最新 main 后 tsc / eslint / build 过；合前 da 606/606、users 80/80（合进来的没有 Dispatch 改动，da 没重跑）。验收：凌晨 12:00–8:30 登录 Dispatch 开当天，8:30 后开第二天。SHA 已发 25。
+- 128 样稿第 5 版（96，同链接 PnkpnXHaJbzrYTrUcfMYvX）：Annie 选「+ Add line」B，要求 Email 页也能这样改；等她答 Q5（邮件写死的字要不要放开）和 Q2 先后，没动手。
 - 135 后端上 main b645fe97（25 发）：relay-send（全部轮 + tour_car）、driver-notice/send、guide-notice/send；/send/morning-pickup 不改（A）。字段名和 400 detail 原文由 14 重发给 74。已告诉 6b：对齐契约，先出确认框 preview 给 Annie，看过再合；Send farm out notice 等 Annie。
 - 135 契约（14）：relay-send / driver-notice/send / guide-notice/send，body confirm_date 必须等于 date（LA 今天不用带）；不符 400 detail「This send is for {Weekday}, {Month} {day} ({YYYY-MM-DD}), not today. Confirm that date to send.」原样显示；先查「You can only send for today or tomorrow.」不变。后端说明 docs/interfaces/send-other-day-confirm-2026-11-13.md。
 - ✅ Farm out：Annie（原话，4c 转）「135不用，它是提前一天发的」⇒ Send farm out notice 不加确认框（B），从待问移走。
