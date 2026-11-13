@@ -63,6 +63,8 @@
 
 ## 2026-11-13 前端主窗口 `npe-ops-frontend-74`[fa6692]（公司电脑，接 4c；只分工和汇报）
 - 后端主窗口 25、后端 14；工作窗口 6b、96。
+- ✅ **135 上 main ae5c849a**（6b；Annie 在 6b 原话「动手」，前面「135  -1A 2B」）：四个入口（relay 各轮 + tour_car、driver、guide、farm out）非 LA 今天先弹红日期框，Yes 才发并带 confirm_date；Q2 B Step 2 How to use 第 8 条 farm out 那句（跟 Farm out 键一起显示）。tsc / eslint 0 错、build、da 620/620、fod 65/65。SHA 已发 25 / 14，farm out 后端 8974847e 可以合。验收：Dispatch 切到明天点任意发送 ⇒ 红日期框，Cancel 不发、Yes 才发；今天不弹（生产真发，只用 ZZ Test）。置顶 135 已移走。
+- 6b、96 对话太长已停（Annie「这两个窗口的对话都太长了，做完手头的就开新窗口吧」）；6b 收工记录见「2026-11-13 公司 6b 收工」，96 的 128 交接在置顶 128 节。等 Annie 开新窗口接 128 和其余排队（Working Record cutoff、114d 等）。
 - ✅ **134 Dispatch 登录 12:00 AM 上 main c98d2aad**（96，功能 d417d6c9，task/dispatch-login-midnight；Annie「134动手上线」）：LOGIN_TODAY_FROM 0、How to use「between 12:00 AM and 8:30 AM」。合最新 main 后 tsc / eslint / build 过；合前 da 606/606、users 80/80（合进来的没有 Dispatch 改动，da 没重跑）。验收：凌晨 12:00–8:30 登录 Dispatch 开当天，8:30 后开第二天。SHA 已发 25。
 - 128 样稿第 5 版（96，同链接 PnkpnXHaJbzrYTrUcfMYvX）：Annie 选「+ Add line」B，要求 Email 页也能这样改；等她答 Q5（邮件写死的字要不要放开）和 Q2 先后，没动手。
 - 135 后端上 main b645fe97（25 发）：relay-send（全部轮 + tour_car）、driver-notice/send、guide-notice/send；/send/morning-pickup 不改（A）。字段名和 400 detail 原文由 14 重发给 74。已告诉 6b：对齐契约，先出确认框 preview 给 Annie，看过再合；Send farm out notice 等 Annie。
@@ -1812,13 +1814,6 @@ D. 已完成、待从置顶移走：
 - 需要后端：user_prefs 白名单加 `manifest_cols_admin_fee`（这个标签的 Columns 才存得住；没有时页面写「Could not load your saved columns」并用默认列）。
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
-
-### 135. Dispatch 发送日子不是今天先弹框确认（11-13，6b 样稿 https://claude.ai/artifact/GT9KaTkKUWzA8Rnn4ESgUa ，分支 head 3cee5a51 能合、没合）
-- ⚠️ 急：后端 b645fe97 已生效，前端没上之前 Dispatch 发明天的都 400。
-- Q1 确认框：A 单独小框（推荐，已做，多点一下，样子完全不同不会顺手点过）/ B 并进原发送框（顶部红大日期 + 键改字，少点一下但容易看漏）。
-- Q2 Farm out How to use：A 这次不加（推荐，Farm out 现只 SA，开放时再写）/ B 加进 Step 2「How to use — Buses & drivers」。
-- 待答 +「动手」；合 main 后 SHA 发 25 / 14（14 才合 farm out 后端 8974847e）。
-- ✅ Annie（原话，96 转）「135  -1A 2B」⇒ Q1 A 单独小框；Q2 B Farm out 那句写进 Step 2「How to use — Buses & drivers」。非动手；6b 先在 preview 补上那句英文原文给 Annie 看。
 
 ### 125. Tour Tracking 没发过的行字也变灰（11-12，6b 样稿 https://claude.ai/artifact/7YqY8VAeGAkB35Nxbx9DwU ，没改代码）
 - Annie 原话（11-11）：「进到tracking页面的那些自动填充的订单的字体没有用灰色，还是正常的颜色，staff怎么看的出哪些发过哪些没发过」
