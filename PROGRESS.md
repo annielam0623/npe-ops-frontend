@@ -1833,6 +1833,7 @@ D. 已完成、待从置顶移走：
 - 文字：How to use 全文换（原文见 5b 消息 / 样稿）；页头小字改「A dashed box means nobody has clicked Completed on Dispatch for that day yet.」。
 - 待答 +「动手」，5b 做（task/wr-cutoff）。
 - 🆕 137（并在 136 下记）Annie（原话，5b 窗口）「我看到设计了，这里给每个tour都留一个接口，将来需要把daily report如有跟这个人有关的内容显示在这里」⇒ 每张工作卡（一天一段 tour）留位置，以后显示 Daily Operation Report 里跟这个人有关的内容。5b 核：DOR 跟人、tour 都没有硬关联（只有 order_number、subject_name、details.driver_name 这些手填字段，没有 hr_id、manifest），所以要后端来算 ⇒ 需要后端：field-calendar 每个 run 带 reports:[{id, report_type, headline, status}]，匹配规则等 Annie 定。5b 已直接问 Annie：① 卡上现在显示什么：A 只在代码里留位置、现在不显示（推荐）/ B 灰色「Daily report — Soon」；② 哪些算有关：A 只算直接点名的（投诉对象 / 事故司机是这个人，推荐）/ B 再加他那天跑的团里订单的所有报告。只记录，不动手；不影响 136 那三题。
+  - ✅ Annie（原话，5b）「2个问题都同意推荐，动手」（问过是指这件）⇒ ① A 现在卡上什么都不显示，只在代码里留位置，以后要显示先出 preview；② A 只算直接点名这个人的报告（投诉对象 / 事故司机）。5b 做 task/wr-dor-slot：types/hr-working-record.ts 的 FieldRun 加可选 reports，页面不变，过检查合 main。需要后端已交 25（field-calendar 每个 run 加 reports:[{id, report_type, headline, status}]，怎么对上人、字段名由后端定）。
 
 ### 125. Tour Tracking 没发过的行字也变灰（11-12，6b 样稿 https://claude.ai/artifact/7YqY8VAeGAkB35Nxbx9DwU ，没改代码）
 - Annie 原话（11-11）：「进到tracking页面的那些自动填充的订单的字体没有用灰色，还是正常的颜色，staff怎么看的出哪些发过哪些没发过」
