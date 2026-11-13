@@ -1613,7 +1613,8 @@ export function DispatchView() {
     const added: DispatchRow[] = [];
     for (const c of prefill.changes) {
       if (c.kind === "removed") {
-        drop.add(c.row_id);
+        // G300：有备注的车整台留着（司机、车、酒店都不动），要不要删由 staff 自己决定。
+        if (!c.kept_for_note) drop.add(c.row_id);
         continue;
       }
       const n = prefill.rows[c.ccl_row];
@@ -3299,6 +3300,11 @@ function HowToUse() {
         <li>
           A yellow bar means CCL posted a change: Apply changes puts it on the
           page.
+        </li>
+        <li>
+          Your private notes are never changed by CCL. If CCL drops a vehicle
+          that has a note, the bar shows it as Kept and Apply changes leaves it
+          on the page. Remove it yourself if it is not needed.
         </li>
         <li>
           Press Save next to Edit to save that tour &mdash; all its cars are

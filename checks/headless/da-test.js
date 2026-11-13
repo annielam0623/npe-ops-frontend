@@ -2633,6 +2633,31 @@ async function run() {
     await ctl({ marks: false, noticeMarks: {}, guideFail: false, driverAllOk: false });
   }
 
+  // G300（Annie：「dispatch 的 bus card 上面，所有的 internal notes 保存了之后除非手动删，一律不被 CCL 的数据覆盖」，第 4 点同意推荐）：
+  // CCL 去掉一台有备注的车 ⇒ 条上写 Kept、Apply 后整台留着（司机、车、酒店）；没备注的照删；Changed 的车备注不变。
+  {
+    await goto(`${APP}/dispatch?date=2026-11-03`);
+    await waitFor("document.querySelector('section[aria-label=CCL]')", 30000);
+    await helpers();
+    check("G300 条上：有备注的车写 Kept + 原因，没备注的写 Removed", await evaluate("const t = document.querySelector('section[aria-label=CCL]').textContent; return t.includes('Kept') && t.includes('(has a note, so it stays; remove it yourself if it is not needed)') && t.includes('Removed') && (t.match(/has a note/g) || []).length === 1;"), await evaluate("return document.querySelector('section[aria-label=CCL]').textContent;"));
+    check("G300 How to use 有 Kept 那一条", await evaluate("return [...document.querySelectorAll('details')].some(d => d.textContent.replace(/\\s+/g, ' ').includes('Your private notes are never changed by CCL. If CCL drops a vehicle that has a note, the bar shows it as Kept and Apply changes leaves it on the page. Remove it yourself if it is not needed.'));"));
+    await evaluate("$btn('Apply changes').click();");
+    await sleep(300);
+    const notes = () => evaluate("return [...document.querySelectorAll('.vrow [data-f=note]')].map(e => e.value);");
+    check("G300 Apply 以后：有备注的车还在（备注原样），Changed 的车备注不变", await evaluate("const v = [...document.querySelectorAll('.vrow [data-f=note]')].map(e => e.value); return v.includes('V please keep these hotels assigned to Bus A') && v.includes('ZZ note stays');"), JSON.stringify(await notes()));
+    const before300 = (await mockLog()).length;
+    await evaluate("document.querySelector('section[data-sec^=relay] [data-row-save]').click();");
+    await waitReq(before300, isSave);
+    await sleep(300);
+    const body300 = (await since(before300, isSave)).find((e) => e.body.unit === "relay")?.body;
+    const rows300 = body300?.rows ?? [];
+    const kept = rows300.find((r) => r.note === "V please keep these hotels assigned to Bus A");
+    const changed = rows300.find((r) => r.note === "ZZ note stays");
+    check("G300 存了以后：有备注的车整台留着（司机 1、车 10、酒店 100、备注）", !!kept && kept.driver_hr_id === 1 && kept.vehicle_id === 10 && JSON.stringify(kept.location_ids) === "[100]", JSON.stringify(rows300));
+    check("G300 存了以后：没备注的车（relay_2、车 11）照删", !rows300.some((r) => r.vehicle_id === 11), JSON.stringify(rows300));
+    check("G300 存了以后：Changed 的车换了司机（5），备注 ZZ note stays 不变", !!changed && changed.driver_hr_id === 5 && changed.vehicle_id === 12, JSON.stringify(rows300));
+  }
+
   // 401
   await ctl({ fail401: true });
   await goto(`${APP}/dispatch`);

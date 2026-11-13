@@ -43,6 +43,12 @@ const privateOrders = () => [
 ];
 // 每天存的排车
 const saved = {
+  // G300：存过的一天，CCL 改版去掉两台 Relay 车——951 有备注（kept_for_note，Apply 不删）、952 没备注（照删）；953 改了司机，备注不动。
+  "2026-11-03": [
+    row({ id: 951, shift: "relay", driver_hr_id: 1, vehicle_id: 10, note: "V please keep these hotels assigned to Bus A", location_ids: [100] }),
+    row({ id: 952, shift: "relay_2", driver_hr_id: 2, vehicle_id: 11, location_ids: [101] }),
+    row({ id: 953, shift: "relay", driver_hr_id: 4, vehicle_id: 12, note: "ZZ note stays", location_ids: [102] }),
+  ],
   "2026-10-05": [
     row({ id: 801, shift: "relay", driver_hr_id: 1, vehicle_id: 10, location_ids: [100, 101] }),
     row({ id: 802, shift: "bus_tour", manifest_id: 3, driver_hr_id: 2, guide_hr_id: 2, vehicle_id: 11, bus_label: "A", location_ids: [102] }),
@@ -268,6 +274,9 @@ const blockedCars = (round) => (round === "relay" && (ctl.relayBlocked || ctl.re
 const tourCarRound = () => (ctl.tourCar && !ctl.tourCarNoCar ? ["HD1", "HD2"] : []);
 const ccl = (o) => ({ line_id: 345, driver_text: "FREDDY", guide_text: null, vehicle_text: "768", is_driver_guide: false, route_label: null, ccl_note: null, driver_candidates: [], guide_candidates: [], ...o });
 const prefills = {
+  "2026-11-03": { import_id: 90, title: "NPE 11/3: Revision", status: "pending", is_revision: true, raw_content: "rev", applied: false,
+    rows: [row({ shift: "relay", driver_hr_id: 5, vehicle_id: 12, ccl: ccl({ line_id: 390, driver_text: "BRUCE W", vehicle_text: "1328" }) })],
+    unread: [], closures: [], changes: [{ kind: "removed", row_id: 951, kept_for_note: true }, { kind: "removed", row_id: 952 }, { kind: "changed", row_id: 953, ccl_row: 0, fields: ["driver"] }] },
   // 自动填充 + CCL 确认（Annie 2026-10-11）：没存过的一天，名单要两台、CCL 只给一台 ⇒ CCL 那台填进 A，B 留空（等 farm out）。
   "2026-10-12": { import_id: 79, title: "NPE 10/12:", status: "pending", is_revision: false, raw_content: "NPE 10/12: WEST RIM BRUCE O - 1328", applied: false,
     rows: [row({ shift: "bus_tour", manifest_id: 3, driver_hr_id: 4, vehicle_id: 12, bus_label: "A", location_ids: [101, 102], ccl: ccl({ line_id: 360, driver_text: "BRUCE O", vehicle_text: "1328", route_label: "WESTRIM" }) })],
