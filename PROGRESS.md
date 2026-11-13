@@ -51,6 +51,10 @@
 - **130 Bus Manifest「Text size changes」记录**（11-12，Annie 截图 HooverDam Nov 13，原话「这个记录怎么会在这里」）：components/dispatch-manifest/text-size.tsx:645 TextSizeHistory，每台车色条下列谁改过字号；原本默认收起，11-11 114（Annie「不要隐藏」）改成直接列最近 5 条。另有 bug：时间直接显示后端原始 UTC「2026-11-13T04:14:48.268198+00:00」，没换成当地时间。d8 问 Annie：A 只留一行「Text size last changed by Nadia · Nov 12, 8:14 PM」（推荐）/ B 整块挪到页面最下面 / C 不在页面显示（记录仍在 Action log）。时间格式不管选哪个都修。
 - 派 6b：**125 Tour Tracking 灰行字也灰**，只出 preview（A 底和字都灰（推荐）/ B 只字灰，电脑 + 手机 + night），链接回 d8 再问 Annie。
 
+## 2026-11-13 前端主窗口 `npe-ops-frontend-74`[fa6692]（公司电脑，接 4c；只分工和汇报）
+- 后端主窗口 25、后端 14；工作窗口 6b、96。
+- 135 后端上 main b645fe97（25 发）：relay-send（全部轮 + tour_car）、driver-notice/send、guide-notice/send；/send/morning-pickup 不改（A）。字段名和 400 detail 原文由 14 重发给 74。已告诉 6b：对齐契约，先出确认框 preview 给 Annie，看过再合；Send farm out notice 等 Annie。
+
 ## 2026-11-13 4c → 新主窗口 `npe-ops-frontend-74` 交接（公司电脑；Annie「我开了个新窗口做今天的前端主窗口，你跟它交接一下工作吧」）
 
 后端主窗口今天是 `npe-confirmation-service-25`（接 54）；135 的接口由 `npe-confirmation-service-14` 直接发。工作窗口 `6b`、`96` 还开着。
