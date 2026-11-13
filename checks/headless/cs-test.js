@@ -945,6 +945,211 @@ async function run() {
   check("停用后按钮写 · Off，没有删除按钮", await evaluate(`return ${tixPills}.includes('ZZ Test Horseshoe Bend · Off') && ![...document.querySelectorAll('button')].some(b => /delete/i.test(b.textContent));`));
   await ctl({ tixTypes: 403 });
 
+  // ── 128 / G299 Guest Page 整页就地编辑（Annie 2026-11-13「动手」；后端 d2 task/g299-guest-page-edit，mock）──
+  {
+    const GD = "document.querySelector('iframe[title=\"Guest page\"]').contentDocument";
+    const G3 = `
+window.$gd = () => ${GD};
+window.$gk = (k) => $gd().querySelector('[data-tmpl-key="' + k + '"]');
+window.$gp = () => document.querySelector('[data-guest-popup]');
+window.$gpBtn = (t) => [...$gp().querySelectorAll('button')].find(b => b.textContent.trim() === t);
+window.$gstatus = () => document.querySelector('[data-guest-status]').textContent.trim();
+window.$gbtn = (t) => [...document.querySelectorAll('[data-guest-toolbar] button')].find(b => b.textContent.trim() === t);
+window.$gtype = (v) => { const ta = $gp().querySelector('textarea'); Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(ta, v); ta.dispatchEvent(new Event('input', { bubbles: true })); };
+`;
+    const previews = async (before) => since(before, (e) => e.path === "/api/template-settings/preview" && e.body?.module === "tc");
+    const lastPreview = async (before) => { const p = await previews(before); return p[p.length - 1]?.body; };
+    const frameReady = (extra = "true") => waitFor(`(() => { const d = ${GD}; return !!d && !!d.querySelector('[data-tmpl-key]') && d.documentElement.hasAttribute('data-cs-mode') && (${extra}); })()`, 20000);
+    const G = (k) => `tmpl__global__tc_guest_${k}`;
+    const UA = "upper_antelope";
+
+    await goto(`${APP}/settings/content-studio`);
+    await waitFor("document.body.textContent.includes('Tour Confirmation') && document.body.textContent.includes('Broadcasting')", 30000);
+    await h();
+    await evaluate(G3);
+    await evaluate("$open('Tour Confirmation');");
+    await sleep(200);
+    let b4 = (await mockLog()).length;
+    await evaluate("$tab('Guest Page');");
+    check("128 打开 Guest Page：整页画出来", await frameReady());
+    let pv = await lastPreview(b4);
+    check("128 拉整页：POST preview {module tc, tab guest_page, tour_type upper_antelope, overrides {}}", pv && pv.tab === "guest_page" && pv.tour_type === UA && JSON.stringify(pv.overrides) === "{}", JSON.stringify(pv));
+    check("128 SA-1：iframe 只用 srcdoc + sandbox=\"allow-same-origin\"（没有 allow-scripts / popups / forms）", await evaluate("const f = document.querySelector('iframe[title=\"Guest page\"]'); return f.getAttribute('sandbox') === 'allow-same-origin' && !f.getAttribute('src') && f.srcdoc.length > 100;"));
+    check("128 SA-1：父页面里没有客人页的 HTML（没把 iframe 内容抄出来）", await evaluate("return !document.querySelector('main .gf-card, main [data-tmpl-key]');"));
+    check("128 整页编辑不分栏：右边的 Preview 面板不出", await evaluate("return ![...document.querySelectorAll('span')].some(s => s.textContent.trim() === 'Preview only — not actual rendering' && s.getBoundingClientRect().height > 0);"));
+    check("128 看的状态：Viewing — this is what guests see、只有 Edit（没有 Save / Discard）", await evaluate("return document.querySelector('[data-guest-mode]').textContent === 'Viewing — this is what guests see' && !!$gbtn('Edit') && !$gbtn('Save') && !$gbtn('Discard');"));
+    check("128 看的状态：没有虚线框、没有 + Add line / ↑↓", await evaluate("const d = $gd(); return d.documentElement.getAttribute('data-cs-mode') === 'view' && getComputedStyle($gk('" + G("pu_sms_head") + "')).outlineStyle === 'none' && !d.querySelector('.cs-add, .cs-mv');"));
+    check("128 看的状态：已回复提示 / 改期弹窗 / 上次留言不出；选餐区和 Lunch 弹窗出、带小标签", await evaluate("const d = $gd(); const vis = (n) => getComputedStyle(d.querySelector('[data-preview-state=' + n + ']')).display !== 'none'; const tag = (n) => getComputedStyle(d.querySelector('[data-preview-state=' + n + ']'), '::before').content; return !vis('already_submitted') && !vis('date_modal') && !vis('last_update') && vis('lunch') && vis('lunch_warn') && tag('lunch').includes('shown after the guest clicks YES') && tag('lunch_warn').includes('Popup — shown on Submit');"));
+    check("128 看的状态：点字没反应（不弹框）", await evaluate("$gk('" + G("pu_sms_head") + "').click(); await new Promise(r => setTimeout(r, 200)); return !$gp();"));
+    check("128 SA-1：存的字里的 <img onerror> 在沙箱里不跑（Bryce & Zion 稍后再查一次）", await evaluate("return window.__pwned === undefined;"));
+
+    // ── Edit ──
+    await evaluate("$gbtn('Edit').click();");
+    await frameReady(`${GD}.documentElement.getAttribute('data-cs-mode') === 'edit'`);
+    check("128 Edit：Editing + Discard + 蓝 Save（没改动时点不了）；Edit 键不是蓝的", await evaluate("const s = $gbtn('Save'); return document.querySelector('[data-guest-mode]').textContent === 'Editing' && !!$gbtn('Discard') && s.disabled && getComputedStyle(s).backgroundColor === 'rgb(59, 130, 246)';"));
+    check("128 Edit：图例（Editable / Shared by all tours / Changed）", await evaluate("const l = document.querySelector('[data-guest-legend]').textContent; return l.includes('Editable (this tour)') && l.includes('Shared by all tours') && l.includes('Changed, not saved yet');"));
+    check("128 Edit：共用字琥珀虚线、这个团的字蓝虚线", await evaluate("const gs = getComputedStyle($gk('" + G("pu_sms_head") + "')); const ts = getComputedStyle($gk('tmpl__tc__" + UA + "__reminders')); return gs.outlineStyle === 'dashed' && ts.outlineStyle === 'dashed' && gs.outlineColor.startsWith('rgba(245, 158, 11') && ts.outlineColor.startsWith('rgba(96, 165, 250');"), await evaluate("return getComputedStyle($gk('" + G("pu_sms_head") + "')).outlineColor + ' / ' + getComputedStyle($gk('tmpl__tc__" + UA + "__reminders')).outlineColor;"));
+    check("128 Edit：平时看不到的块画出来，标 Shown …", await evaluate("const d = $gd(); return ['already_submitted', 'date_modal', 'last_update'].every(n => getComputedStyle(d.querySelector('[data-preview-state=' + n + ']')).display !== 'none') && getComputedStyle(d.querySelector('[data-preview-state=date_modal]'), '::before').content.includes('Shown when the guest clicks Modify');"));
+    check("128 Edit：接客四步各有 ↑↓（第一步 ↑、最后一步 ↓ 灰的）", await evaluate("const m = [...$gd().querySelectorAll('[data-pickup-step] .cs-mv')]; return m.length === 4 && m[0].children[0].getAttribute('aria-disabled') === 'true' && m[3].children[1].getAttribute('aria-disabled') === 'true';"));
+    check("128 Edit：+ Add line 灰绿 #6b8e74 实心白字；含餐团有 pickup / lunch / notes / submit 四处，没有门票框", await evaluate("const a = [...$gd().querySelectorAll('.cs-add')]; const cs = getComputedStyle(a[0]); return a.map(x => x.getAttribute('data-cs-add-slot')).join(',') === 'pickup,lunch,notes,submit' && cs.backgroundColor === 'rgb(107, 142, 116)' && cs.color === 'rgb(255, 255, 255)' && a[0].textContent === '+ Add line';"), await evaluate("return [...$gd().querySelectorAll('.cs-add')].map(x => x.getAttribute('data-cs-add-slot')).join(',');"));
+
+    // 共用字：小框顶上有提醒
+    await evaluate("$gk('" + G("pu_sms_head") + "').click();");
+    await waitFor("$gp()");
+    check("128 点共用字：小框顶上 Shared by all tours — changing it here changes every tour's page.、框里是原文、Apply / Cancel", await evaluate("const p = $gp(); return p.querySelector('[data-shared-warn]').textContent === \"Shared by all tours — changing it here changes every tour's page.\" && p.querySelector('textarea').value === 'Morning of your tour — SMS reminder' && !!$gpBtn('Apply') && !!$gpBtn('Cancel') && !$gpBtn('Remove line') && p.textContent.includes('Nothing is saved until you click Save.');"));
+    check("128 SA-1：小框里的字是 textarea 的值（不是 HTML）", await evaluate("return $gp().querySelectorAll('strong, b').length === 0;"));
+    await evaluate("$gpBtn('Cancel').click();");
+    await sleep(100);
+    // 这个团的字（一行一条的 <ul>）：没有提醒，标 one per line
+    await evaluate("$gk('tmpl__tc__" + UA + "__reminders').querySelector('li').click();");
+    await waitFor("$gp()");
+    check("128 点只管这个团的字：没有共用提醒，标 — one per line", await evaluate("const p = $gp(); return !p.querySelector('[data-shared-warn]') && p.textContent.includes('— one per line') && p.querySelector('textarea').value === 'Bring a photo ID.\\nWear good shoes.';"));
+    await evaluate("$gtype('Bring a photo ID.\\nWear good shoes.\\nZZ Test no pets');");
+    b4 = (await mockLog()).length;
+    await evaluate("$gpBtn('Apply').click();");
+    check("128 Apply：小框关掉、红字 Not saved yet · 1 change", await waitFor("!$gp() && $gstatus() === 'Not saved yet · 1 change'"));
+    check("128 Apply：红字是红色、Save 能点", await evaluate("return getComputedStyle(document.querySelector('[data-guest-status] span')).color === 'rgb(248, 113, 113)' && !$gbtn('Save').disabled;"));
+    await frameReady(`(${GD}.body.textContent.includes('ZZ Test no pets'))`);
+    pv = await lastPreview(b4);
+    check("128 Apply 后带草稿重拉整页（overrides 只有改过的键）", pv && JSON.stringify(Object.keys(pv.overrides)) === JSON.stringify([`tmpl__tc__${UA}__reminders`]) && pv.overrides[`tmpl__tc__${UA}__reminders`].endsWith("ZZ Test no pets"), JSON.stringify(pv));
+    check("128 改过的地方淡黄底", await evaluate("return getComputedStyle($gk('tmpl__tc__" + UA + "__reminders')).backgroundColor === 'rgb(254, 243, 199)';"));
+
+    // ↑↓ 调接客顺序（mock 里存的是 sms,location,checkin,notsure —— 前面 Global 那段存过）
+    await evaluate("$gd().querySelectorAll('[data-pickup-step] .cs-mv')[1].children[0].click();");
+    check("128 ↑：第二步换到第一，2 changes", await waitFor("$gstatus() === 'Not saved yet · 2 changes'"));
+    await frameReady(`[...${GD}.querySelectorAll('[data-pickup-step]')][0].getAttribute('data-pickup-step') === 'location'`);
+    check("128 ↑ 之后整页按新顺序画（location 在前）", await evaluate("return [...$gd().querySelectorAll('[data-pickup-step]')].map(e => e.getAttribute('data-pickup-step')).join(',') === 'location,sms,checkin,notsure';"));
+
+    // + Add line：This tour only（默认）
+    await evaluate("$gd().querySelector('[data-cs-add-slot=pickup]').click();");
+    await waitFor("$gp()");
+    check("128 + Add line 小框：Add a line — Pickup box、默认 This tour only、没有共用提醒", await evaluate("const p = $gp(); return p.textContent.includes('Add a line — Pickup box') && p.querySelector('input[value=tour]').checked && !p.querySelector('[data-shared-warn]') && p.textContent.includes('Looks the same as the text around it.');"));
+    await evaluate("$gtype('ZZ Test tour line');");
+    await evaluate("$gpBtn('Apply').click();");
+    await frameReady(`!!${GD}.querySelector('[data-tmpl-key="tmpl__tc__${UA}__add_pickup_1"]:not([data-empty])')`);
+    check("128 加一句（只这个团）：存进 tmpl__tc__upper_antelope__add_pickup_1、蓝框、3 changes", await evaluate("const e = $gk('tmpl__tc__" + UA + "__add_pickup_1'); return e.textContent === 'ZZ Test tour line' && getComputedStyle(e).outlineColor.startsWith('rgba(96, 165, 250') && $gstatus() === 'Not saved yet · 3 changes';"));
+    // 第二句：All tours（出共用提醒）
+    await evaluate("$gd().querySelector('[data-cs-add-slot=pickup]').click();");
+    await waitFor("$gp()");
+    await evaluate("$gp().querySelector('input[value=global]').click();");
+    await sleep(100);
+    check("128 + Add line 选 All tours：出 Shared by all tours — this line shows on every tour's page.", await evaluate("return $gp().querySelector('[data-shared-warn]')?.textContent === \"Shared by all tours — this line shows on every tour's page.\";"));
+    await evaluate("$gtype('ZZ Test shared line');");
+    await evaluate("$gpBtn('Apply').click();");
+    await frameReady(`!!${GD}.querySelector('[data-tmpl-key="${G("add_pickup_1")}"]:not([data-empty])')`);
+    check("128 满 2 句：+ Add line 换成 2 lines added — the most for this part.；共用那句琥珀框", await evaluate("const a = $gd().querySelector('[data-add-slot=pickup]'); return !a.querySelector('.cs-add') && a.textContent.includes('2 lines added — the most for this part.') && getComputedStyle($gk('" + G("add_pickup_1") + "')).outlineColor.startsWith('rgba(245, 158, 11');"));
+    // 点加出来的句子：Remove line
+    await evaluate("$gk('" + G("add_pickup_1") + "').click();");
+    await waitFor("$gp()");
+    check("128 点加出来的句子：有 Remove line、有共用提醒", await evaluate("return !!$gpBtn('Remove line') && !!$gp().querySelector('[data-shared-warn]');"));
+    await evaluate("$gpBtn('Remove line').click();");
+    check("128 Remove line：回到 3 changes、又出 + Add line", await waitFor(`$gstatus() === 'Not saved yet · 3 changes' && !!${GD}.querySelector('[data-cs-add-slot=pickup]')`));
+
+    // 选餐区 / Lunch 弹窗的字能改
+    await evaluate("$gk('" + G("lunch_warn_title") + "').click();");
+    await waitFor("$gp()");
+    check("128 Lunch Selection Incomplete 弹窗标题能点开改（共用提醒、Can't be blank.）", await evaluate("const p = $gp(); return p.querySelector('textarea').value === '⚠ Lunch Selection Incomplete' && !!p.querySelector('[data-shared-warn]') && p.textContent.includes(\"Can't be blank.\");"));
+    await evaluate("$gpBtn('Cancel').click();");
+    await evaluate("$gk('" + G("lunch_hint") + "').click();");
+    await waitFor("$gp()");
+    check("128 选餐提示：框里是原文（{qty} 没被换掉）+ 说明", await evaluate("const p = $gp(); return p.querySelector('textarea').value.includes('<strong>{qty}</strong>') && p.textContent.includes('{qty} is replaced with the party size.');"));
+    await evaluate("$gpBtn('Cancel').click();");
+
+    // Save：只存改过的、逐个 POST，绿字 Saved，回到看的状态
+    b4 = (await mockLog()).length;
+    await evaluate("$gbtn('Save').click();");
+    let sv = await waitSaves(b4, 3);
+    const keys = sv.map((e) => e.body.key).sort();
+    check("128 Save：只 POST 改过的 3 个键（reminders、pickup_order、add_pickup_1）", JSON.stringify(keys) === JSON.stringify([G("pickup_order"), `tmpl__tc__${UA}__add_pickup_1`, `tmpl__tc__${UA}__reminders`].sort()), JSON.stringify(sv.map((e) => e.body)));
+    check("128 Save 成功：绿字 Saved、回到看的状态", await waitFor("$gstatus() === 'Saved' && document.querySelector('[data-guest-mode]').textContent === 'Viewing — this is what guests see'") && (await evaluate("return getComputedStyle(document.querySelector('[data-guest-status] span')).color === 'rgb(34, 197, 94)';")));
+    await frameReady(`${GD}.documentElement.getAttribute('data-cs-mode') === 'view'`);
+    check("128 存好后看的状态：加的那句客人能看到、没有框", await evaluate("const e = $gk('tmpl__tc__" + UA + "__add_pickup_1'); return e.textContent === 'ZZ Test tour line' && getComputedStyle(e).outlineStyle === 'none' && !$gd().querySelector('.cs-add');"));
+
+    // 存失败：Lunch 弹窗正文去掉 {count}、标题存空 ⇒ 后端 400，红字照原话
+    await evaluate("$gbtn('Edit').click();");
+    await frameReady(`${GD}.documentElement.getAttribute('data-cs-mode') === 'edit'`);
+    await evaluate("$gk('" + G("lunch_warn_body") + "').click();");
+    await waitFor("$gp()");
+    check("128 Lunch 弹窗正文：说明要留 {count}", await evaluate("return $gp().textContent.includes('Keep {count} in the text');"));
+    await evaluate("$gtype('Some guests have no lunch.');");
+    await evaluate("$gpBtn('Apply').click();");
+    await frameReady(`$gstatus() === 'Not saved yet · 1 change'`);
+    await evaluate("$gk('" + G("lunch_warn_title") + "').click();");
+    await waitFor("$gp()");
+    await evaluate("$gtype('');");
+    await evaluate("$gpBtn('Apply').click();");
+    await waitFor("$gstatus() === 'Not saved yet · 2 changes'");
+    await evaluate("$gbtn('Save').click();");
+    check("128 存失败：红框 Not saved: + 后端原话（{count}、不能空），留在编辑状态", await waitFor("!!document.querySelector('[data-guest-error]')") && (await evaluate("const t = document.querySelector('[data-guest-error]').textContent; return t.includes('Not saved:') && t.includes('Keep {count} in the text — it is replaced with the number of guests.') && t.includes(\"This text can't be blank — guests need it in the Lunch Selection Incomplete dialog.\") && document.querySelector('[data-guest-mode]').textContent === 'Editing' && $gstatus() === 'Not saved yet · 2 changes';")), await evaluate("return document.querySelector('[data-guest-error]')?.textContent;"));
+
+    // 换团被拦：Stay / Discard
+    const pill = (t) => `[...document.querySelectorAll('[data-tc-guest-editor] [aria-label=Tour] button')].find(b => b.textContent === ${JSON.stringify(t)})`;
+    await evaluate(`${pill("Hoover Dam")}.click();`);
+    check("128 有没存的改动时换团：拦下来（Save / Discard / Stay），还在 Upper Antelope", await waitFor("!!document.querySelector('[data-guest-guard]')") && (await evaluate(`const g = document.querySelector('[data-guest-guard]'); return g.textContent.includes('You have unsaved changes on this page.') && ['Save', 'Discard', 'Stay'].every(t => [...g.querySelectorAll('button')].some(b => b.textContent === t)) && ${pill("Upper Antelope")}.getAttribute('aria-pressed') === 'true';`)));
+    await evaluate("[...document.querySelectorAll('[data-guest-guard] button')].find(b => b.textContent === 'Stay').click();");
+    check("128 Stay：留下、改动还在", await waitFor("!document.querySelector('[data-guest-guard]') && $gstatus() === 'Not saved yet · 2 changes'"));
+    await evaluate(`${pill("Hoover Dam")}.click();`);
+    await waitFor("!!document.querySelector('[data-guest-guard]')");
+    b4 = (await mockLog()).length;
+    await evaluate("[...document.querySelectorAll('[data-guest-guard] button')].find(b => b.textContent === 'Discard').click();");
+    check("128 Discard：换到 Hoover Dam、改动丢掉、回到看的状态", await waitFor(`${pill("Hoover Dam")}.getAttribute('aria-pressed') === 'true' && $gstatus() === '' && document.querySelector('[data-guest-mode]').textContent === 'Viewing — this is what guests see'`));
+    await frameReady(`(${GD}.querySelector('[data-tour-badge]')?.textContent === 'hoover_dam')`);
+    pv = await lastPreview(b4);
+    check("128 Hoover Dam：重拉整页（tour_type hoover_dam、overrides 空）；没选餐区、没 Lunch 弹窗", pv?.tour_type === "hoover_dam" && JSON.stringify(pv.overrides) === "{}" && (await evaluate("return !$gd().querySelector('[data-preview-state=lunch], [data-preview-state=lunch_warn]');")), JSON.stringify(pv));
+
+    // GC South：门票框有 + Add line；Bryce & Zion：存的 <img onerror> 不跑
+    await evaluate(`${pill("GC South Rim")}.click();`);
+    await frameReady(`(${GD}.querySelector('[data-tour-badge]')?.textContent === 'grand_canyon_south')`);
+    await evaluate("$gbtn('Edit').click();");
+    await frameReady(`${GD}.documentElement.getAttribute('data-cs-mode') === 'edit'`);
+    check("128 GC South：门票框也有 + Add line（pickup,fee,lunch,notes,submit）", await evaluate("return [...$gd().querySelectorAll('.cs-add')].map(x => x.getAttribute('data-cs-add-slot')).join(',') === 'pickup,fee,lunch,notes,submit';"));
+    await evaluate("$gbtn('Discard').click();");
+    await evaluate(`${pill("Bryce & Zion")}.click();`);
+    await frameReady(`(${GD}.querySelector('[data-tour-badge]')?.textContent === 'bryce_zion')`);
+    await sleep(500);
+    check("128 SA-1：Bryce & Zion 存的提醒里有 <img onerror>，沙箱里没跑", await evaluate("return !!$gd().querySelector('[data-tmpl-key=\"tmpl__tc__bryce_zion__reminders\"] img') && window.__pwned === undefined;"));
+    await evaluate("$gbtn('Edit').click();");
+    await frameReady(`${GD}.documentElement.getAttribute('data-cs-mode') === 'edit'`);
+    check("128 空的按团字（Bryce 的 US residents 门票句）编辑状态出占位、能点开", await evaluate("const e = $gk('tmpl__tc__bryce_zion__park_fee_resident'); if (!e || getComputedStyle(e).display === 'none' || !getComputedStyle(e, '::before').content.includes('Empty — click to add text')) return false; e.click(); await new Promise(r => setTimeout(r, 200)); return !!$gp() && $gp().querySelector('textarea').value === '';"));
+    await evaluate("$gpBtn('Cancel').click();");
+    await evaluate("$gbtn('Discard').click();");
+
+    // List view（Q4 A）：同一份草稿、同一个 Edit / Save；不在编辑状态只读；只列有字的；邮件的键不列
+    await evaluate("$gbtn('List view').click();");
+    await waitFor("!!document.querySelector('[data-guest-list]')");
+    check("128 List view：只读、列这个团和共用的字，共用的标 Shared by all tours；空的、邮件的、接客顺序不列", await evaluate("const l = document.querySelector('[data-guest-list]'); const r = l.querySelector('[data-list-key=\"tmpl__tc__bryce_zion__reminders\"] textarea'); const s = l.querySelector('[data-list-key=\"" + G("submit_btn") + "\"]'); return !!r && r.readOnly && !!s && s.textContent.includes('Shared by all tours') && !l.querySelector('[data-list-key=\"tmpl__tc__bryce_zion__park_fee_resident\"]') && !l.querySelector('[data-list-key*=\"email_\"]') && !l.querySelector('[data-list-key=\"" + G("pickup_order") + "\"]') && !l.querySelector('[data-list-key*=\"upper_antelope\"]');"));
+    await evaluate("$gbtn('Edit').click();");
+    await sleep(100);
+    await evaluate("const t = document.querySelector('[data-list-key=\"" + G("submit_btn") + "\"] textarea'); $setValue(t, 'Confirm my tour');");
+    check("128 List view 编辑状态能打字，算进 Not saved yet、淡黄", await waitFor("$gstatus() === 'Not saved yet · 1 change'") && (await evaluate("const t = document.querySelector('[data-list-key=\"" + G("submit_btn") + "\"] textarea'); return !t.readOnly && getComputedStyle(t).backgroundColor === 'rgb(254, 243, 199)';")));
+    await evaluate("$gbtn('Page view').click();");
+    check("128 切回 Page view：同一份草稿（整页上 Submit 键已是新字、淡黄）", await frameReady(`(${GD}.querySelector('[data-tmpl-key="${G("submit_btn")}"]')?.textContent === 'Confirm my tour' && !!${GD}.querySelector('[data-tmpl-key="${G("submit_btn")}"][data-cs-chg]'))`));
+    await evaluate("$gbtn('Discard').click();");
+    await waitFor("$gstatus() === ''");
+
+    // 整页拉不到（例如后端还没上）：红字原话 + Retry
+    await ctl({ guestPreviewFail: "Unknown preview tab" });
+    await evaluate(`${pill("Antelope X")}.click();`);
+    check("128 整页拉不到：红字 Could not draw the guest page: + 原话、Retry", await waitFor("[...document.querySelectorAll('[data-guest-stage] [role=alert]')].some(a => a.textContent.includes('Could not draw the guest page: Unknown preview tab') && a.textContent.includes('Retry'))"));
+    await ctl({ guestPreviewFail: "" });
+    await evaluate("[...document.querySelectorAll('[data-guest-stage] [role=alert] button')].find(b => b.textContent === 'Retry').click();");
+    check("128 Retry：画出来", await frameReady(`(${GD}.querySelector('[data-tour-badge]')?.textContent === 'antelope_x')`));
+
+    // 手机宽度：整页不左右晃，Edit 照样能用
+    await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+    await sleep(800);
+    await evaluate("$gbtn('Edit').click();");
+    await frameReady(`${GD}.documentElement.getAttribute('data-cs-mode') === 'edit'`);
+    await evaluate("$gk('" + G("submit_btn") + "').click();");
+    await waitFor("$gp()");
+    check("128 手机：整页不左右晃、小框在屏幕里", await evaluate("const r = $gp().getBoundingClientRect(); return document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1 && r.left >= 0 && r.right <= innerWidth + 1;"), await evaluate("const r = $gp().getBoundingClientRect(); return document.documentElement.scrollWidth + ' ' + r.left + ' ' + r.right;"));
+    await evaluate("$gpBtn('Cancel').click();");
+    await evaluate("$gbtn('Discard').click();");
+    await cdp("Emulation.clearDeviceMetricsOverride");
+    await sleep(300);
+    check("128 How to use 写了 Guest Page 的用法", await evaluate("return document.body.textContent.includes('Tour Confirmation → Guest Page: the page is drawn exactly as guests see it.');"));
+  }
+
   // ── 权限 / 未登录 ──
   await ctl({ staff: true });
   await goto(`${APP}/settings/content-studio`);

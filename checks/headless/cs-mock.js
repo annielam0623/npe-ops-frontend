@@ -181,6 +181,108 @@ function teamProblem(key, value) {
   }
   return null;
 }
+// ── 128 / G299 Guest Page 整页就地编辑（后端 d2 task/g299-guest-page-edit，docs/interfaces/tc-guest-page-edit-2026-11-13.md）──
+// 9 个巴士团；含餐 6 个（Beef 只 Antelope 三个）；门票框 has_park_fee 只 GC South、Bryce & Zion。
+const GP_TOURS = ["upper_antelope", "lower_antelope", "antelope_x", "grand_canyon_south", "grand_canyon_west", "bryce_zion", "valley_of_fire_full", "valley_of_fire_half", "hoover_dam"];
+const GP_LUNCH = new Set(["upper_antelope", "lower_antelope", "antelope_x", "grand_canyon_south", "bryce_zion", "valley_of_fire_full"]);
+const GP_BEEF = new Set(["upper_antelope", "lower_antelope", "antelope_x"]);
+const GP_FEE = new Set(["grand_canyon_south", "bryce_zion"]);
+const GP_SLOTS = ["pickup", "fee", "lunch", "notes", "submit"];
+const GG = (k) => `tmpl__global__tc_guest_${k}`;
+const GUEST_SEEDS = {
+  pickup_box_title: "🚌 Your Pick-up Process",
+  pu_sms_head: "Morning of your tour — SMS reminder",
+  pu_sms_text: "We'll send you an SMS with your <strong>check-in link</strong> and <strong>live vehicle tracking</strong> before departure.",
+  pu_wrong_number: "Wrong number? Let us know in the Notes section below.",
+  pu_head_head: "Head to your pickup location",
+  pu_depart_warn: "⚠ We depart promptly — the vehicle cannot wait for late arrivals.",
+  pu_checkin_head: "Check in when you arrive",
+  pu_checkin_text: "Use the link in your SMS to check in on the spot. Your guide will be looking out for you!",
+  already_submitted: "Response already submitted. You can update it below.",
+  lunch_title: "🥪 Lunch Selection",
+  lunch_hint: "Select for all <strong>{qty}</strong> guest(s). Total must equal your party size.",
+  lunch_default: "Default is Turkey Sandwich if no selection received.",
+  notes_title: "📝 Notes",
+  notes_placeholder: "Special requests, dietary notes...",
+  last_update_label: "📝 Your last update",
+  submit_btn: "Submit Confirmation",
+  footer_thanks: "Thank you for choosing National Park Express — we look forward to your adventure! 🏞️",
+  date_modal_title: "📅 Select New Tour Date",
+  date_modal_desc: "Please select your requested new date below.",
+  lunch_warn_title: "⚠ Lunch Selection Incomplete",
+  lunch_warn_body: "You have {count} guest(s) without a lunch selection. Unselected guests will be noted for your guide to arrange on the day.",
+  lunch_warn_back: "← Go Back",
+  lunch_warn_continue: "Continue",
+};
+for (const [k, v] of Object.entries(GUEST_SEEDS)) settings.push({ ...s(GG(k), v), label: `[TC Guest Page] ${k.replace(/_/g, " ")}` });
+for (const slot of GP_SLOTS) for (const i of [1, 2]) settings.push({ ...s(GG(`add_${slot}_${i}`), ""), label: `[TC Guest Page] Added line — ${slot} (${i})` });
+for (const t of GP_TOURS) {
+  const T = (f) => `tmpl__tc__${t}__${f}`;
+  // Bryce & Zion 的提醒里故意放一个会跑脚本的 <img onerror>：沙箱 iframe 里不许跑（SA-1）。
+  settings.push(s(T("reminders"), t === "bryce_zion" ? "Bring a photo ID.\nWear good shoes.<img src=x onerror=\"window.top.__pwned=1\">" : "Bring a photo ID.\nWear good shoes."));
+  settings.push(s(T("extra_reminders"), t === "hoover_dam" ? "Lunch is not included." : ""));
+  if (GP_FEE.has(t)) {
+    settings.push(s(T("park_fee_nonresident"), "Non-US residents pay a <strong>$100 per person</strong> park fee."));
+    settings.push(s(T("park_fee_resident"), t === "bryce_zion" ? "" : "US residents: the park entry fee is included."));
+  }
+  if (t === "grand_canyon_south") settings.push(s(T("lunch_extra_note"), "Lunch is at the Village picnic area."));
+  for (const slot of GP_SLOTS) for (const i of [1, 2]) settings.push({ ...s(T(`add_${slot}_${i}`), ""), label: `[TC Guest Page] Added line — ${slot} (${i}, this tour only)` });
+  // 邮件的键（下一步用）：不该出现在客人页的改动 / List view 里。
+  settings.push(s(T("email_add_body_1"), "Email only line"));
+}
+const GP_LUNCH_ERRORS = {
+  blank: "This text can't be blank — guests need it in the Lunch Selection Incomplete dialog.",
+  count: "Keep {count} in the text — it is replaced with the number of guests.",
+};
+function guestPageProblem(key, value) {
+  if (!key.startsWith(GG("lunch_warn_"))) return null;
+  if (!String(value).trim()) return GP_LUNCH_ERRORS.blank;
+  if (key === GG("lunch_warn_body") && !String(value).includes("{count}")) return GP_LUNCH_ERRORS.count;
+  return null;
+}
+/** 照后端 guest._render(preview=True) 的标记拼一份客人页（不是真样式，够前端测）。 */
+function guestPreviewHtml(t, overrides) {
+  const v = (k) => (k in overrides ? String(overrides[k]) : byKey[k]?.value ?? "");
+  const K = (k, html) => `<span data-tmpl-key="${k}">${html}</span>`;
+  const empty = (k) => `<span data-tmpl-key="${k}" data-empty="1"></span>`;
+  const state = (n, html) => `<div data-preview-state="${n}">${html}</div>`;
+  const g = (k) => K(GG(k), v(GG(k)) || GUEST_SEEDS[k] || "");
+  const T = (f) => `tmpl__tc__${t}__${f}`;
+  const adds = (slot, wrap) => {
+    const keys = [GG(`add_${slot}_1`), GG(`add_${slot}_2`), T(`add_${slot}_1`), T(`add_${slot}_2`)];
+    return keys.map((k) => (v(k).trim() ? wrap(K(k, v(k).replace(/\n/g, "<br>"))) : empty(k))).join("") + `<span data-add-slot="${slot}"></span>`;
+  };
+  const steps = {
+    sms: `<div class="gf-pu-step" data-pickup-step="sms"><div class="gf-pu-head">${g("pu_sms_head")}</div><div class="gf-pu-text">${g("pu_sms_text")}</div><div class="gf-pu-sub">${g("pu_wrong_number")}</div></div>`,
+    location: `<div class="gf-pu-step" data-pickup-step="location"><div class="gf-pu-head">${g("pu_head_head")}</div><div class="gf-pu-text">Please arrive at <strong>Excalibur</strong> by <strong>8:00 AM</strong>.</div><div class="gf-pu-warn">${g("pu_depart_warn")}</div></div>`,
+    checkin: `<div class="gf-pu-step" data-pickup-step="checkin"><div class="gf-pu-head">${g("pu_checkin_head")}</div><div class="gf-pu-text">${g("pu_checkin_text")}</div></div>`,
+    notsure: `<div class="gf-pu-step" data-pickup-step="notsure"><div class="gf-pu-head">${g("pu_notsure_head")}</div><div class="gf-pu-text"><a href="#" target="_blank">Excalibur Pickup Photos →</a></div></div>`,
+  };
+  const order = (v(GG("pickup_order")) || "sms,location,checkin,notsure").split(",").map((x) => x.trim()).filter((x) => steps[x]);
+  for (const x of ["sms", "location", "checkin", "notsure"]) if (!order.includes(x)) order.push(x);
+  const feeItem = (f) => (v(T(f)) ? `<li>${K(T(f), v(T(f)))}</li>` : empty(T(f)));
+  const fee = GP_FEE.has(t) ? `<div class="gf-fee-box"><div class="gf-box-title">ℹ️ National Park Entry Fee</div><ul>${feeItem("park_fee_nonresident")}${feeItem("park_fee_resident")}${adds("fee", (h) => `<li>${h}</li>`).replace(/<span data-add-slot="fee"><\/span>$/, "")}</ul><span data-add-slot="fee"></span></div>` : "";
+  const items = [["🦃", "Turkey Sandwich", 1], ["🥗", "Veggie Sandwich", 1], ...(GP_BEEF.has(t) ? [["🥩", "Beef Sandwich", 0]] : [])];
+  const lunch = GP_LUNCH.has(t)
+    ? state("lunch", `<div class="gf-section" id="lunch-section"><h2>${g("lunch_title")}</h2><p class="gf-hint">${K(GG("lunch_hint"), (v(GG("lunch_hint")) || GUEST_SEEDS.lunch_hint).replace("{qty}", "2"))}</p>${t === "grand_canyon_south" ? (v(T("lunch_extra_note")) ? `<p class="gf-hint">${K(T("lunch_extra_note"), v(T("lunch_extra_note")))}</p>` : empty(T("lunch_extra_note"))) : ""}<div class="gf-lunch-grid">${items.map(([i, n, q]) => `<div class="gf-lunch-item" data-lunch-item>${i} ${n} <b>${q}</b></div>`).join("")}</div><p class="gf-small">${g("lunch_default")}</p>${adds("lunch", (h) => `<p class="gf-hint">${h}</p>`)}</div>`) +
+      state("lunch_warn", `<div style="padding:16px 0"><div><h3>${g("lunch_warn_title")}</h3><p>${K(GG("lunch_warn_body"), v(GG("lunch_warn_body")).replace("{count} guest(s)", "<strong>1 guest(s)</strong>"))}</p><button type="button">${g("lunch_warn_back")}</button><button type="button">${g("lunch_warn_continue")}</button></div></div>`)
+    : "";
+  const rem = (f) => { const li = v(T(f)).split("\n").map((x) => x.trim()).filter(Boolean).map((x) => `<li>${x}</li>`).join(""); return li ? `<ul data-tmpl-key="${T(f)}">${li}</ul>` : empty(T(f)); };
+  const body = `<div class="gf-wrap"><div class="gf-card">
+<div class="gf-header"><h1>Tour Confirmation</h1><div class="gf-tour-badge" data-tour-badge>${t}</div><div class="gf-meta">Order #SAMPLE123 · John · Party of 2</div></div>
+<div class="gf-pickup-box"><div class="gf-box-title">${g("pickup_box_title")}</div>${order.map((x) => steps[x]).join("")}${adds("pickup", (h) => `<div class="gf-pu-text">${h}</div>`)}</div>
+${fee}
+${state("already_submitted", `<div class="gf-info">${g("already_submitted")}</div>`)}
+<form method="post"><div class="gf-section"><label class="gf-yn yes"><input type="radio" name="confirmation" value="yes"> YES</label></div>
+${lunch}
+<div class="gf-reminders"><div class="gf-box-title">📌 Important Reminders</div>${rem("reminders")}${rem("extra_reminders")}</div>
+<div class="gf-section">${state("last_update", `<div><div>${g("last_update_label")}</div><div>[2026-11-12 09:14] Guest note added.</div></div>`)}<h2>${g("notes_title")} <span class="gf-opt">(optional)</span></h2>${adds("notes", (h) => `<p class="gf-hint">${h}</p>`)}<textarea name="notes" data-tmpl-key="${GG("notes_placeholder")}" placeholder="${(v(GG("notes_placeholder")) || "").replace(/"/g, "&quot;")}"></textarea></div>
+<div class="gf-submit"><button type="submit" class="gf-btn">${g("submit_btn")}</button><p class="gf-small">${g("footer_thanks")}</p>${adds("submit", (h) => `<p class="gf-small">${h}</p>`)}</div>
+</form>
+${state("date_modal", `<div style="padding:16px 0"><h3>${g("date_modal_title")}</h3><p>${g("date_modal_desc")}</p></div>`)}
+</div></div>`;
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Tour Confirmation</title><style>*{box-sizing:border-box;margin:0;padding:0}body{background:#f0f4f8;font-family:Arial,sans-serif;color:#333;padding:16px}.gf-wrap{max-width:580px;margin:0 auto}.gf-card{background:#fff;border-radius:16px}.gf-header{background:#1a3a5c;color:#fff;padding:22px}.gf-pickup-box,.gf-fee-box,.gf-section,.gf-reminders,.gf-submit{padding:16px 22px}.gf-pu-step{padding:10px 0}.gf-reminders ul,.gf-fee-box ul{padding-left:18px}textarea{width:100%;min-height:60px}</style></head><body>${body}</body></html>`;
+}
 const byKey = Object.fromEntries(settings.map((r) => [r.key, r]));
 function send(res, status, body) {
   res.statusCode = status;
@@ -219,6 +321,8 @@ http.createServer(async (req, res) => {
     if (TEAM_RULES[body.key] && ctl.teamSaveFail) return send(res, 400, { detail: ctl.teamSaveFail });
     const teamErr = teamProblem(body.key, body.value);
     if (teamErr) return send(res, 400, { detail: teamErr });
+    const gpErr = guestPageProblem(body.key, body.value);
+    if (gpErr) return send(res, 400, { detail: gpErr });
     byKey[body.key].value = body.value;
     byKey[body.key].updated_by = "zztest";
     byKey[body.key].updated_at = "2026-10-30T20:00:00";
@@ -227,6 +331,11 @@ http.createServer(async (req, res) => {
   if (p === "/api/template-settings/preview") {
     const body = await readBody(req);
     entry.body = body;
+    if (body.module === "tc" && body.tab === "guest_page") {
+      if (ctl.guestPreviewFail) return send(res, 400, { detail: ctl.guestPreviewFail });
+      if (!GP_TOURS.includes(body.tour_type)) return send(res, 400, { detail: "Unknown tour_type" });
+      return send(res, 200, { html: guestPreviewHtml(body.tour_type, body.overrides || {}) });
+    }
     return send(res, 200, { html: `<div class="gf-prepare-box">${body.overrides[`tmpl__tix__${body.tour_type}__prep_1_label`] || ""}</div>` });
   }
   if (p === "/api/settings/shuttle-routes" && req.method === "GET") {
