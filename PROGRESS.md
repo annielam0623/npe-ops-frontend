@@ -1844,7 +1844,7 @@ D. 已完成、待从置顶移走：
   - ✅ **Annie（原话，74 窗口）「128 Add line小框底色ok，lunch 弹窗可以改，动手」** ⇒ Q6 先做 A 灰绿实心（「ok」没说哪个，74 问她确认）；Lunch Selection Incomplete 弹窗字放开（A，后端加 tmpl__global__tc_guest_lunch_warn_*）；动手。Q1 / Q4 没答，先照推荐（Q1 A 先 TC、Q4 A 留 List view），74 问她。派 96 task/128-guest-page-edit，96 把接口形状直接发 25（抄 74）；后端上了核字段再合。
   - 后端 25 收到 96 的完整规格，开新后端窗口做；要用迁移在生产写约 120 个 settings 键，跑之前要 Annie 当场同意 + 她做发布步骤，不会很快。上 main 后 25 发 commit 和实际键名 / 属性名；前端先用 mock。Annie 说 6b / 96 对话太长：128 交给新前端窗口（96 写交接后停）。
   - ⚠️ **给接 128 的新窗口（25 转，11-13）**：照后端分支 task/g299-guest-page-edit 的 docs/interfaces/tc-guest-page-edit-2026-11-13.md 做 mock（跟 96 规格有出入：锚点位置、提醒是两个 <ul data-tmpl-key>、预览里没有 <script>、门票块 = has_park_fee：South Rim、Bryce Zion）。安全要求 SA-1（§4）：预览 iframe 只能 srcdoc + sandbox="allow-same-origin"，不加 allow-scripts / allow-popups / allow-forms，绝不把 iframe 里的 HTML 复制到父页面。lunch_warn 的 title / body / back / continue 存空字会 400。后端没上 main，要先等 Annie 做 SQL 那一步。
-  - 还没答：Q1 范围、Q4 List view、Q6 + Add line 底色、Lunch Selection Incomplete 弹窗字放不放开，+「动手」。
+  - ✅ Annie（原话，96 窗口）「q1和q4都同意推荐，add line也同意。动手」⇒ Q1 A 先只做 Tour Confirmation 客人页；Q4 A 留 List view（和 Page view 同一份草稿、同一个 Edit / Save，不在编辑状态时只读）；+ Add line A 灰绿 #6b8e74 实心白字。128 各题全部答完，已转 a3（做法不变）。
   - 需要后端（动手时转 25）加：add-line 字段 global tmpl__global__tc_guest_add_{slot}_{1,2} / tmpl__global__tc_email_add_{slot}_{1,2}，按团 tmpl__tc__{tour}__add_{slot}_{1,2} / __email_add_{slot}_{1,2}；guest.py、build_email 照画；Q5 A 新字段（门票两句按团、lunch note / review 午餐尾句 / 按钮字 global）。
 - **96 → 新窗口交接（11-13，96 对话太长交出，74 派）**——还没写代码，没有分支（96 建过的 worktree 已删）；新窗口从 main 拉 `task/128-guest-page-edit`，用 worktree。
   - 样稿：第 7 版 https://claude.ai/artifact/PnkpnXHaJbzrYTrUcfMYvX （源文件 96 scratchpad g128/index.html，样稿的交互就是要做的样子；读不到就 Artifact read 这个链接）。
