@@ -38,7 +38,8 @@ export function useCheckOpen(): [boolean, () => void] {
 
 /**
  * Schedule check 浮窗：固定在屏幕右边，跟着屏幕走；可折成右下角的小胶囊（⚠ N issues / ✓ All good）。
- * 一件事都不拦（只有「没司机」真的拦保存，那条在这里也列出来）。
+ * 一件事都不拦（只有当天有显示不出来的车（orphans）时保存被拒，那条在这里也列出来）。
+ * G308：没做完的都算（没导游、没车、没酒店、Need a look 的单、有客人没车的团 / 轮），全做完才 ✓ All good。
  * 问题后面的「Fix ›」带你到出问题的那台车 / 那一块（框闪黄 2 秒），不会自己改什么。
  * 当天没客人的巴士团（也没排车）沉在最下面一块、默认折起：不用管。
  */
@@ -49,6 +50,7 @@ export function Rail({
   onToggle,
   onGoto,
   onGoSection,
+  onGoNeedLook,
 }: {
   analysis: Analysis;
   /** 巴士团这一天有几位客人（Step 1 卡片）：键 = 块的 key。没有 = 不是巴士团 / 卡片还没读到，照常显示。 */
@@ -57,10 +59,16 @@ export function Rail({
   onToggle: () => void;
   onGoto: (idx: number, field?: string) => void;
   onGoSection: (key: string) => void;
+  /** G308：去 Send 标签的 Need a look（不能发送的人没有 Send 标签 ⇒ 不给）。 */
+  onGoNeedLook?: () => void;
 }) {
   const [names, setNames] = useState<Record<string, boolean>>({});
   const [quietOpen, setQuietOpen] = useState(false);
-  const n = analysis.issues.length;
+  // 有客人、一台车都没有的巴士团（下面团列表里写 Needs a vehicle）也算一条（G308）。
+  const noVan = analysis.sections.filter(
+    (s) => (guests[s.key] ?? 0) > 0 && s.vans === 0,
+  ).length;
+  const n = analysis.issues.length + noVan;
 
   if (!open)
     return (
@@ -106,7 +114,7 @@ export function Rail({
       <p className="m-0 mb-3.5 text-[11.5px] text-[#64748b]">
         Nothing here stops you from saving.
       </p>
-      {n ? (
+      {analysis.issues.length ? (
         <ul aria-label="Issues" className={GRP}>
           {analysis.issues.map((it, i) => {
             const list = it.names ?? [];
@@ -117,7 +125,9 @@ export function Rail({
                 ? () => onGoto(it.idx!, it.field)
                 : it.sec
                   ? () => onGoSection(it.sec!)
-                  : null;
+                  : it.go === "need-a-look" && onGoNeedLook
+                    ? onGoNeedLook
+                    : null;
             return (
               <li key={i} className="flex items-start gap-2.5">
                 <Mark kind="warn" />

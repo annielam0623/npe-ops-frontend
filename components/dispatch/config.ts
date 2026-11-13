@@ -327,6 +327,8 @@ export interface RailIssue {
   /** 没排车的酒店名单（多于 4 家时收起）。 */
   names?: string[];
   namesKey?: string;
+  /** G308：点 Fix 去 Send 标签的 Need a look 那一块。 */
+  go?: "need-a-look";
 }
 
 export interface Analysis {
@@ -370,6 +372,8 @@ export function analyze(
   L: Lookup,
   shuttlePax?: Record<number, number>,
   relayNoCar?: RelayNoCar,
+  /** G308：relay-pull need_a_look 有几单（读不到 = undefined，不提醒）。 */
+  needLook?: number,
 ): Analysis {
   const day = L.day;
   const sectionKey = (s: { shift: string; manifest_id: number | null }) =>
@@ -427,7 +431,9 @@ export function analyze(
 
   const missingTitles: string[] = [];
   META.coverage_shifts.forEach((c, i) => {
-    if (i > 0 && !byKey.get(c)?.vans) return;
+    // 后面几轮没车：按所有酒店算会把整张酒店表列出来（这一轮可能本来就不用），跳过；
+    // 有后端那份清单（只含这一轮有客人的酒店）时照样列（G308：11-13 2nd Round 0 台车、13 位 West Rim 客人没提醒）。
+    if (i > 0 && !byKey.get(c)?.vans && !relayNoCar) return;
     // 置顶 94：用后端那份清单（这一轮有客人、没车停的酒店，带人数「MGM (4)」）；页面上这一轮加了那家酒店（没存）先拿掉。
     const names = relayNoCar
       ? (relayNoCar[c] ?? [])
@@ -477,6 +483,61 @@ export function analyze(
         ...(mine.length ? { idx: mine[0], field: "addstop" } : { sec: key }),
       });
     }
+  }
+
+  // G308（Annie「guide都没选，怎么all good？」「对，任何没有完成的都要标出来」）：车卡上「Needs …」的每一项都算一条，
+  // 一台车一条，Fix 光标放到第一个没填的框。只标不拦。缺司机上面已经合成一条，这里不重复。
+  rows.forEach((row, idx) => {
+    if (row.farm_out) {
+      if (row.partner_id == null)
+        issues.push({
+          title: `${blockName(row)}: a farmed-out bus has no partner`,
+          detail: "Pick the partner company on that bus.",
+          idx,
+        });
+      return;
+    }
+    const relay = isRelay(row.shift);
+    const miss: [string, string][] = [];
+    if (
+      !relay &&
+      !isDriverGuide(row) &&
+      !row.guide_hr_id &&
+      !row.guide_typed_name
+    )
+      miss.push(["guide", "guide"]);
+    if (!row.vehicle_id) miss.push(["vehicle", "vehicle"]);
+    if (!row.location_ids.length) miss.push(["hotel", "addstop"]);
+    if (!miss.length) return;
+    const v = L.vehicle(row.vehicle_id);
+    const drv = L.driverName(row.driver_hr_id);
+    const who = row.bus_label
+      ? `Bus ${row.bus_label}`
+      : v
+        ? `vehicle ${v.van_no}`
+        : drv
+          ? `${drv}’s vehicle`
+          : "a vehicle";
+    const what = miss.map((m) => m[0]);
+    const needs = what.map((w) => `a ${w}`);
+    issues.push({
+      title: `${blockName(row)}: ${who} has no ${what.length > 1 ? `${what.slice(0, -1).join(", ")} or ${what[what.length - 1]}` : what[0]}`,
+      detail:
+        needs.length > 1
+          ? `Needs ${needs.slice(0, -1).join(", ")} and ${needs[needs.length - 1]}.`
+          : `Needs ${needs[0]}.`,
+      idx,
+      field: miss[0][1],
+    });
+  });
+
+  if (needLook) {
+    issues.push({
+      title: `${needLook} order${needLook === 1 ? "" : "s"} in Need a look`,
+      detail:
+        "On the Send tab. These guests are not on any round yet - each one says why.",
+      go: "need-a-look",
+    });
   }
 
   const seen = new Set<string>();

@@ -423,6 +423,10 @@ export function DispatchView() {
     date: string;
     byRound: RelayNoCar;
   } | null>(null);
+  /** G308：Need a look 有几单（Schedule check 算一条）；同一次读。读不到 = null，不提醒。 */
+  const [needLook, setNeedLook] = useState<{ date: string; n: number } | null>(
+    null,
+  );
   const noCarDate = day?.run_date;
   useEffect(() => {
     if (!noCarDate) return;
@@ -431,6 +435,7 @@ export function DispatchView() {
       (pull) => {
         if (gone) return;
         const list = pull.need_a_look ?? [];
+        setNeedLook({ date: noCarDate, n: list.length });
         if (list.length && !list.some((g) => g.round)) {
           setRelayNoCar(null);
           return;
@@ -456,7 +461,9 @@ export function DispatchView() {
         setRelayNoCar({ date: noCarDate, byRound });
       },
       () => {
-        if (!gone) setRelayNoCar(null);
+        if (gone) return;
+        setRelayNoCar(null);
+        setNeedLook(null);
       },
     );
     return () => {
@@ -577,9 +584,10 @@ export function DispatchView() {
             relayNoCar?.date === L.day.run_date
               ? relayNoCar.byRound
               : undefined,
+            needLook?.date === L.day.run_date ? needLook.n : undefined,
           )
         : null,
-    [rows, L, shuttlePax, relayNoCar],
+    [rows, L, shuttlePax, relayNoCar, needLook],
   );
   // Step 1 团卡片（ManifestsPanel，另读 /api/dispatch/manifests，没有 color 字段）要和这里的团色条
   // 用同一个颜色：从 day.sections（有 color，G142）按 manifest_id 做一张表传过去。
@@ -1180,6 +1188,27 @@ export function DispatchView() {
       return;
     }
     scrollToRow(idx, field);
+  }
+
+  /** G308：Schedule check「N orders in Need a look」的 Fix：切到 Send，等那一块画出来再滚过去、闪黄 2 秒。 */
+  function goNeedLook() {
+    if (tab !== "send") switchTab("send");
+    let tries = 0;
+    const go = () => {
+      const el = document.querySelector<HTMLElement>(
+        '#panel-send [aria-label="Need a look"]',
+      );
+      if (!el || !el.offsetParent) {
+        if (++tries < 60) setTimeout(go, 150);
+        return;
+      }
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+      el.style.boxShadow = "0 0 0 3px #f5c518";
+      setTimeout(() => {
+        el.style.boxShadow = "";
+      }, 2000);
+    };
+    setTimeout(go, 0);
   }
 
   function scrollToRow(idx: number, field?: string) {
@@ -2891,6 +2920,7 @@ export function DispatchView() {
                   onToggle={toggleCheck}
                   onGoto={(i, f) => focusRow(i, f)}
                   onGoSection={(k) => goSection(k)}
+                  onGoNeedLook={canSend ? goNeedLook : undefined}
                 />
 
                 {!viewOnly &&
@@ -3284,6 +3314,13 @@ function HowToUse() {
           No tracking (red) under a vehicle means it has no live GPS. Guests on
           it still get the link and can check in; the text doesn&rsquo;t mention
           live tracking.
+        </li>
+        <li>
+          Schedule check (right side) lists everything not done yet: a vehicle
+          with no driver, guide, vehicle or hotel, a tour or round with guests
+          but no vehicle, orders in Need a look, and more. Fix › takes you
+          there. It shows &#10003; All good only when nothing is left. Nothing in
+          it stops you from saving.
         </li>
         <li>
           Morning Relay: pick each car&rsquo;s hotels in Add hotel. 2nd Round:

@@ -1527,6 +1527,55 @@ async function run() {
   await waitFor("document.querySelector('[data-schedule-pill]')", 15000);
   check("折起的状态记在这个浏览器里：刷新还是胶囊；点胶囊展开", await evaluate("document.querySelector('[data-schedule-pill]').click(); await new Promise(r => setTimeout(r, 150)); return !!document.getElementById('schedule-check') && localStorage.getItem('dispatch-schedule-check-open') === '1';"));
 
+  // ── G308（Annie「guide都没选，怎么all good？」「对，任何没有完成的都要标出来」）：没做完的都算进 Schedule check，只标不拦 ──
+  {
+    promptAnswer = ""; // 换天时「有没存的改动」一律放行
+    const LI = "#schedule-check [aria-label=Issues] > li";
+    const li = (t) => `[...document.querySelectorAll('${LI}')].find(l => l.textContent.includes(${JSON.stringify(t)}))`;
+    const openDay = async (d) => {
+      await openPage(`${APP}/dispatch?date=${d}`);
+      await waitFor("document.getElementById('schedule-check') || document.querySelector('[data-schedule-pill]')", 15000);
+      await evaluate("document.querySelector('[data-schedule-pill]')?.click();");
+      await waitFor(`!!${li("in Need a look")}`, 15000);
+      await helpers();
+    };
+    const fixOf = async (t) => {
+      await evaluate(`${li(t)}.querySelector('[data-issue-fix]').click();`);
+      await sleep(900);
+    };
+    await openDay("2026-10-05");
+    // 前面的检查存过这一天：没导游的车数跟 mock 原样不一定一样，按页面上的车数算。
+    const noGuide = () => evaluate(`return [...document.querySelectorAll('${LI}')].filter(l => l.textContent.includes('has no guide')).length;`);
+    const want = await evaluate("return [...document.querySelectorAll('section[aria-label=\"West Rim Bus Tour\"] .vrow')].filter(r => { const g = r.querySelector('[data-f=guide]'); return g && g.value === ''; }).length;");
+    const n0 = await noGuide();
+    check("G308 没导游的巴士：一台一条「West Rim Bus Tour: Bus A has no guide」+ Needs a guide.；Driver Guide 那台不算",
+      want > 0 && n0 === want && (await evaluate(`const l = ${li("West Rim Bus Tour: Bus A has no guide")}; return !!l && l.textContent.includes('Needs a guide.');`)),
+      JSON.stringify({ want, n0, t: await evaluate("return document.getElementById('schedule-check').textContent;") }));
+    await fixOf("Bus A has no guide");
+    check("G308 没导游 Fix ›：光标到那台车的 Guide 框（空的）", await evaluate("const a = document.activeElement; const ok = a?.dataset.f === 'guide' && a.value === '' && !!a.closest('.vrow'); if (ok) a.setAttribute('data-g308', '1'); return ok;"));
+    const gv = await evaluate("const s = document.querySelector('[data-g308]'); const o = s ? [...s.options].find(o => /^[0-9]+$/.test(o.value) && !o.disabled) : null; return o ? o.value : null;");
+    if (gv) await pick("document.querySelector('[data-g308]')", gv);
+    await sleep(300);
+    check("G308 选了导游（没存）⇒ 那一条马上没了（少一条）", !!gv && (await noGuide()) === n0 - 1, JSON.stringify({ gv, n0, now: await noGuide() }));
+    const nl = await evaluate(`return ${li("in Need a look")}.textContent;`);
+    check("G308 Need a look 有单：「1 order in Need a look」+ 说明在 Send 标签", nl.includes("1 order in Need a look") && nl.includes("On the Send tab. These guests are not on any round yet - each one says why."), nl);
+    await fixOf("in Need a look");
+    await waitFor("(() => { const p = document.getElementById('panel-send'); const b = p && p.querySelector('[aria-label=\"Need a look\"]'); if (!b || !b.offsetParent) return false; const r = b.getBoundingClientRect(); return r.top < innerHeight && r.bottom > 0; })()", 10000);
+    check("G308 Need a look Fix ›：切到 Send 标签、滚到 Need a look 那一块", await evaluate("const p = document.getElementById('panel-send'); const b = p && p.querySelector('[aria-label=\"Need a look\"]'); if (!b) return false; const r = b.getBoundingClientRect(); return !!b.offsetParent && r.top < innerHeight && r.bottom > 0 && new URL(location.href).searchParams.get('tab') === 'send';"));
+
+    await openDay("2026-10-06");
+    check("G308 Relay 车没酒店：「Morning Relay · 1st Round: vehicle 768 has no hotel」+ Needs a hotel.", await evaluate(`const l = ${li("vehicle 768 has no hotel")}; return !!l && l.textContent.includes('Morning Relay · 1st Round: vehicle 768 has no hotel') && l.textContent.includes('Needs a hotel.');`), await evaluate("return document.getElementById('schedule-check').textContent;"));
+    await fixOf("vehicle 768 has no hotel");
+    check("G308 没酒店 Fix ›：光标到那台车的 Add hotel", await evaluate("return document.activeElement?.dataset.f === 'addstop';"));
+
+    await openDay("2026-10-09");
+    check("G308 一台车缺几样合成一条：「Hoover Dam: Bus B has no guide, vehicle or hotel」+ Needs a guide, a vehicle and a hotel.", await evaluate(`const l = ${li("Hoover Dam: Bus B has no")}; return !!l && l.textContent.includes('Hoover Dam: Bus B has no guide, vehicle or hotel') && l.textContent.includes('Needs a guide, a vehicle and a hotel.');`), await evaluate("return document.getElementById('schedule-check').textContent;"));
+    check("G308 How to use 写 Schedule check：没做完的都列、全做完才 All good、不拦保存", await evaluate("const d = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Buses')); const t = d ? d.textContent.replace(/\\s+/g, ' ') : ''; return t.includes('Schedule check (right side) lists everything not done yet') && t.includes('It shows ✓ All good only when nothing is left. Nothing in it stops you from saving.');"));
+    await goto("about:blank");
+    await sleep(300);
+    promptAnswer = null;
+  }
+
   // ── G71 同一天同时只能一个人编辑（后端 docs/interfaces/dispatch-edit-lock-2026-10-15.md，Annie 2026-10-15 看过预览）──
   // 用 10-20（两轮各一台）、10-21（空、照抄 10-20）、10-22（只有 1st Round）。离开页面时一律答应（有改动也走）。
   {
@@ -2318,7 +2367,10 @@ async function run() {
       const names = (x) => String(x).split("Fix ›").pop();
       check("94：没时间的 Excalibur（别的原因）、2nd Round 的、Hoover tour_car 的、Treasure Island 都不进 1st Round 名单", !!t && names(t) === "aria (4) · MGM (5)", String(t));
       check("94：说明小字换成新句", !!t && t.includes("Only hotels with guests on this round's tours. Treasure Island is left out because the tours start there.") && !t.includes("each round is counted on its own"), String(t));
-      check("94：2nd Round 没排车（没有车）照旧不列", !(await evaluate("return [...document.querySelectorAll('[aria-label=\"Schedule check\"] [aria-label=Issues] > li')].some(l => l.textContent.includes('2nd Round vehicle'));")));
+      // G308：后面几轮没车、但后端清单里这一轮有客人的酒店 ⇒ 照样列（11-13 2nd Round 0 台车、13 位 West Rim 客人没提醒）。
+      const r2 = await evaluate("return [...document.querySelectorAll('[aria-label=\"Schedule check\"] [aria-label=Issues] > li')].find(l => l.textContent.includes('2nd Round vehicle'))?.textContent ?? null;");
+      check("G308：2nd Round 没排车、但这一轮有客人 ⇒ 列出「1 hotel with no Morning Relay · 2nd Round vehicle」、Excalibur (1)", !!r2 && r2.includes("1 hotel with no Morning Relay · 2nd Round vehicle") && r2.includes("Excalibur (1)"), String(r2));
+      check("G308：Need a look 6 单 ⇒「6 orders in Need a look」", await evaluate("return [...document.querySelectorAll('[aria-label=\"Schedule check\"] [aria-label=Issues] > li')].some(l => l.textContent.includes('6 orders in Need a look'));"));
       // 边改边减：在 1st Round 加一台车、加 MGM（没存）
       await evaluate(`$btn('+ Add vehicle', ${sec("Morning Relay · 1st Round")}).click();`);
       await sleep(200);
