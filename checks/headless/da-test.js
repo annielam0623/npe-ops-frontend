@@ -815,6 +815,29 @@ async function run() {
   await evaluate(`$btn('↻ Refresh', ${rp}).click();`);
   await waitFor(`${tcBox}.textContent.includes('2205')`);
   check("B2 一个团两台车：车头 Hoover Dam · Bus A · 1841 · ROBERT L 和 Hoover Dam · Bus B · 2205 · ZZ DRIVER（空车的团名也靠 tour_name）", await evaluate(`const h = [...${tcBox}.querySelectorAll('[data-car-blocked], tbody tr')].map(r => r.textContent.trim()); return h.some(t => t.startsWith('Hoover Dam · Bus A · 1841 · ROBERT L')) && h.some(t => t.startsWith('Hoover Dam · Bus B · 2205 · ZZ DRIVER'));`), await evaluate(`return [...${tcBox}.querySelectorAll('tbody tr')].map(r => r.textContent.trim().slice(0, 60)).join(' || ');`));
+  // 2026-11-12 TI（后端 relay-ti-2026-11-12，Annie「TI客人可以像HooverDam的一样……放在own bus tour那里一起发送」「西峡排在倒数第二，HooverDam排最后」）：
+  // TI 客人进自己团的车；两个没排车的团是占位块（car.id null、带 manifest_id），不能互相撞；departure 0 不写那句。
+  await ctl({ tourCarTI: true, tourCarB2: false, tourCarNoCar: false });
+  await evaluate(`$btn('↻ Refresh', ${rp}).click();`);
+  await waitFor(`${tcBox}?.textContent.includes('ZZ West TI')`);
+  check("TI：三块都出来（两个占位块 + 西峡），三位 TI 客人各在自己团下面", await evaluate(`const b = ${tcBox}; return b.querySelectorAll('[data-car-blocked]').length === 2 && ['TS1', 'TI1', 'HD3'].every(o => !!b.querySelector('tr[data-order="' + o + '"]'));`), await evaluate(`return ${tcBox}.textContent;`));
+  check("TI：顺序照后端（Grand Canyon South → West Rim → Hoover Dam 最后），车头写团名", await evaluate(`const t = ${tcBox}.textContent; const a = t.indexOf('Grand Canyon South · No vehicle · No driver'), w = t.indexOf('West Rim Bus Tour · 1328 · BRUCE O'), h = t.indexOf('Hoover Dam · No vehicle · No driver'); return a >= 0 && a < w && w < h;`), await evaluate(`return [...${tcBox}.querySelectorAll('tbody tr td[colspan="9"]')].map(td => td.textContent.trim().slice(0, 40)).join(' | ');`));
+  check("TI：被挡的说明写两个团名（不是两个 This tour）", await evaluate(`const n = ${tcBox}.querySelector('[data-relay-blocked-note]'); return !!n && n.textContent.includes('Grand Canyon South, Hoover Dam');`), await evaluate(`return ${tcBox}.querySelector('[data-relay-blocked-note]')?.textContent;`));
+  check("TI：departure 是 0 ⇒ 不写「board at the tour bus departure point」那句", await evaluate(`return !${rp}.textContent.includes('board at the tour bus departure point');`));
+  await evaluate(`$btn('Preview & send', ${tcBox}).click();`);
+  await waitFor(`${dialog}?.querySelector('[data-will-not-send]')`);
+  check("TI 确认框：两个占位块各自一段，各有自己的 Send anyway（TS1、HD3）", await evaluate(`const n = ${dialog}.querySelector('[data-will-not-send]'); return n.textContent.includes('Grand Canyon South: No bus assigned to this tour') && n.textContent.includes('Hoover Dam: No bus assigned to this tour') && !!n.querySelector('input[data-send-anyway=TS1]') && !!n.querySelector('input[data-send-anyway=HD3]') && n.querySelectorAll('input[data-send-anyway-all]').length === 2;`), await evaluate(`return ${dialog}.querySelector('[data-will-not-send]')?.textContent;`));
+  await evaluate(`${dialog}.querySelector('input[data-send-anyway=TS1]').click();`);
+  await sleep(200);
+  check("TI：只勾 Grand Canyon South 的 Send anyway，Hoover Dam 那块不跟着勾", await evaluate(`const n = ${dialog}.querySelector('[data-will-not-send]'); return n.querySelector('input[data-send-anyway=TS1]').checked && !n.querySelector('input[data-send-anyway=HD3]').checked && !!$btn('Send to 2 guests', ${dialog});`), await evaluate(`return ${dialog}.textContent;`));
+  b0 = (await mockLog()).length;
+  await evaluate(`$btn('Send to 2 guests', ${dialog}).click();`);
+  await waitFor(`${tcBox}.textContent.includes('Send Results')`);
+  const tiSend = (await since(b0, (e) => e.path === "/api/dispatch/relay-send"))[0]?.body;
+  check("TI 发送请求：round=tour_car，发 TI1 + TS1，send_anyway 只有 TS1", tiSend?.round === "tour_car" && JSON.stringify(tiSend?.send_anyway) === '["TS1"]' && (tiSend?.order_numbers ?? []).includes("TI1") && (tiSend?.order_numbers ?? []).includes("TS1") && !(tiSend?.order_numbers ?? []).includes("HD3"), JSON.stringify(tiSend));
+  check("TI 发完：结果红框写 Hoover Dam 没发（占位块 car_id null 也照常列出）", await evaluate(`const r = ${tcBox}.querySelector('[data-relay-blocked]'); return !!r && r.textContent.includes('Hoover Dam: No bus assigned to this tour');`), await evaluate(`return ${tcBox}.querySelector('[data-relay-blocked]')?.textContent;`));
+  await evaluate(`$btn('✕ Close', ${tcBox}).click();`);
+  await ctl({ tourCarTI: false });
   await ctl({ tourCar: false, tourCarNoCar: false, tourCarBlocked: false, tourCarB2: false });
 
   // ── 分步（后端 G29 第一批）；10-07 起 Step 1 / 2 在 Assign 标签 ──

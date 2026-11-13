@@ -297,7 +297,8 @@ export interface RelayBus {
 
 /** 整车不发的 relay 车（缺司机 / 没排接客站点）：`orders` 是这一轮被挡下的订单号，没客人的坏车是 []。 */
 export interface RelayBlockedCar {
-  car_id: number;
+  /** 没排车的团的占位块（tour_car 轮，2026-11-12 TI）是 null。 */
+  car_id: number | null;
   car: string;
   problems: string[];
   orders: string[];
@@ -312,7 +313,10 @@ export interface RelayPull {
     string,
     {
       car: {
-        id: number;
+        /** tour_car 轮里没排车的团给的占位块是 null（后端 2026-11-12 TI，问题写 No bus assigned to this tour）。 */
+        id: number | null;
+        /** 这一块是哪个团（tour_car 轮；占位块靠它区分）。 */
+        manifest_id?: number | null;
         van: string | null;
         driver: string | null;
         /**
