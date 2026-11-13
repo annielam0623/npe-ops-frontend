@@ -40,7 +40,7 @@
   - 6b 样稿 v3（同链接）：第 5 节 D 蓝排第一、四处都画；深色 search bar 卡上蓝键清楚、不加边。Q4 D 列首，注明选 D = 蓝色规则加例外并写进规矩。d8 回 Annie 推荐 A（Tracking 对话框还有 Mark as actioned / Send，蓝色会混），由她看样稿定。
   - ✅ Annie 原话「D动手」⇒ Q4 = D 蓝色实心键（对话框 + search bar 一起），CLAUDE.md 蓝色规则加了这条例外。Q1–Q3 她没答，派 6b 先照推荐做（Q1 B 所有对话框 / Q2 A 标题下 / Q3 B 新标签页），**不合 main**，等 Annie 确认 Q1–Q3 再合；6b 先交 133 样稿再做 132。
   - Annie 在 6b 问（原话）「然后留言在notes里我说过要红色做好了没有，昨天就要求的了」⇒ 6b 答：124 已上 main 0a08faad（11-11 17:57），vehicle-row.tsx NoteInput 打字 #b91c1c，Bus Tour 车卡 + Morning Relay 行。
-- **G308 Dispatch Schedule check 漏算**（11-13 00:2x，5c 转，Annie「现在就改」）原话「guide都没选，怎么all good？」→「对，任何没有完成的都要标出来」：config.ts / rail.tsx 计数加 车没导游（每车一条，Fix › 导游框）、Need a look 还有客人（人数，Fix › 那块）、有客人的 relay 轮次没车，及卡片上所有未完成提示；只提示不拦 Save。验收 11-13：West Rim 1855 导游空、Need a look 16 单、第二轮没车都列出。派 6b，过检查可合 main，SHA 回 5c。
+- **G308 Dispatch Schedule check 漏算**（11-13 00:2x，5c 转，Annie「现在就改」）原话「guide都没选，怎么all good？」→「对，任何没有完成的都要标出来」：config.ts / rail.tsx 计数加 车没导游（每车一条，Fix › 导游框）、Need a look 还有客人（人数，Fix › 那块）、有客人的 relay 轮次没车，及卡片上所有未完成提示；只提示不拦 Save。验收 11-13：West Rim 1855 导游空、Need a look 16 单、第二轮没车都列出。派 6b，过检查可合 main，SHA 回 5c。5c 更正已转 6b：没司机本来就不拦 Save（config.ts:422），只有 orphans 拒存（:569），rail.tsx:41 注释过期顺手改；第 (3) 项从 config.ts:430 `i > 0 && !vans` 整轮跳过那里补。
 - **G307 Need a look 太靠下**（同上）「need a look放得太朝下了，没人会注意」：放哪、要不要顶部提示 / 计数 ⇒ 6b 出 preview 问 Annie（G308 上了再画），不先定；旧 confirm 页要不要跟着挪等 Annie 定后告诉 5c。
 - 6b 顺序：133 → G308 → G307 preview → 132。
 - **133 Morning Relay 行 Note 太短**（11-13，Annie 截图 2nd Round 红字 Note 被截断）「为什么这行这么短」：RelayRow 的 Note 放在司机那一栏里（vehicle-row.tsx:1025），一行、200 字，长了就截；Bus Tour 车卡是整行宽（:1476）。改版式 ⇒ 先 preview，已派 6b：A 挪到 relay 行最下面整行宽（同车卡，推荐）/ B 留在司机框下但自动换行变高。✅ Annie 原话「notes那个选择A，动手」⇒ 派 6b 做 A，检查过可直接合 main（先 133 后 132）。
