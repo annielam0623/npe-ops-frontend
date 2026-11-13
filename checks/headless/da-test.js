@@ -2672,7 +2672,8 @@ async function run() {
     await evaluate("document.querySelector('section[data-sec^=relay] [data-row-save]').click();");
     await waitReq(before300, isSave);
     await sleep(300);
-    const body300 = (await since(before300, isSave)).find((e) => e.body.unit === "relay")?.body;
+    // Apply 了 CCL 改版 ⇒ 整天存（POST /api/dispatch/day，带 ccl_import_id），不是按单元。
+    const body300 = (await since(before300, isSave)).find((e) => e.path === "/api/dispatch/day" || e.body.unit === "relay")?.body;
     const rows300 = body300?.rows ?? [];
     const kept = rows300.find((r) => r.note === "V please keep these hotels assigned to Bus A");
     const changed = rows300.find((r) => r.note === "ZZ note stays");
