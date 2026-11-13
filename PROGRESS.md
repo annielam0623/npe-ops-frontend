@@ -4,7 +4,7 @@
 
 > 6d 交接（下面「2026-10-27 交接：前端主窗口 6d」那节）的后端需求已于 10/27 晚由 ad 转给家里后端主窗口 17。
 
-> **下一个主窗口：先读下面「2026-11-13 4c → 74 交接」和「2026-11-12 家里开工 d8」，再看置顶。**
+> **下一个主窗口：先读下面「2026-11-13 收工交接：74」，再看置顶。**
 
 ## 2026-11-13 公司 6b 收工（135 上 main；这个对话太长，停接新活）
 - ✅ **135 Dispatch 发的不是今天先确认，上 main ae5c849a**（分支 task/dispatch-confirm-other-day）。Annie 原话：「135还是提醒一下吧，告诉staff他发的是这个日期，要他们确认」；preview https://claude.ai/artifact/GT9KaTkKUWzA8Rnn4ESgUa 两题「135  -1A 2B」，随后在 6b 说「动手」。
@@ -60,6 +60,29 @@
 - **132 电话 AI 留言 → 跳 Main manifest 那单并勾上**（11-12 22:3x，5c 转 Annie 原话）「我觉得没必要加这个新功能，直接给个跳转到订单的main manifest这条订单并勾选，就跟search bar的那个操作一样。」（否了 bf 快捷回复方案 https://claude.ai/artifact/42XkJoFLrKSUuAhDrfufd9 ）⇒ conversation-modal 加跳转键。现成可复用：components/order-lookup/manifest-links.tsx ManifestLinks / manifestHref（/manifests?date&tab&pill&row，On Hold tick=0；数据来自订单详情 manifest_links），后端估计不用改。新键 ⇒ 先 preview，问：放哪些入口（只电话 AI 留言 / 所有消息）、键文字。6b 在赶 131，d8 请 Annie 开新窗口或排 131 后。做完 SHA 回 5c。
 - **130 Bus Manifest「Text size changes」记录**（11-12，Annie 截图 HooverDam Nov 13，原话「这个记录怎么会在这里」）：components/dispatch-manifest/text-size.tsx:645 TextSizeHistory，每台车色条下列谁改过字号；原本默认收起，11-11 114（Annie「不要隐藏」）改成直接列最近 5 条。另有 bug：时间直接显示后端原始 UTC「2026-11-13T04:14:48.268198+00:00」，没换成当地时间。d8 问 Annie：A 只留一行「Text size last changed by Nadia · Nov 12, 8:14 PM」（推荐）/ B 整块挪到页面最下面 / C 不在页面显示（记录仍在 Action log）。时间格式不管选哪个都修。
 - 派 6b：**125 Tour Tracking 灰行字也灰**，只出 preview（A 底和字都灰（推荐）/ B 只字灰，电脑 + 手机 + night），链接回 d8 再问 Annie。
+
+## 2026-11-13 收工交接：前端主窗口 `npe-ops-frontend-74`[fa6692]（公司电脑，13:35 收工）
+
+74 只分工和汇报，没写功能代码。今天的工作窗口：a3、5b（新开的），6b、96（对话太长，已停）。后端主窗口 `后端主窗口-25`（14:15 收工，晚上家里后端接）。⚠️ 主目录 C:Code
+pe-ops-frontend 现在在 a3 的 task/128-guest-page-edit 分支上；74 的协调提交在 worktree C:Codeops-74（main）；5b 的 worktree 是 C:Code
+pe-ops-wt-wrdor（136 接着用）。
+
+### 今天上 main（等 Annie 线上验收）
+| 项 | SHA | 窗口 | 验收点 |
+|---|---|---|---|
+| 134 Dispatch 开当天登录 12:00 AM | c98d2aad | 96 | 凌晨 12:00–8:30 登录开当天，8:30 后开第二天 |
+| 135 Dispatch 发的日子不是今天先弹框确认 | ae5c849a（后端 b645fe97 + farm out 8ef4f14d） | 6b | Dispatch 切到明天点任意发送 ⇒ 红日期框，Cancel 不发、Yes 才发；今天不弹；farm out 同样 |
+| 137 Working Record 留 DOR 位置（只改类型，页面不变） | a8386d94（功能 2f021128） | 5b | 页面上看不到变化；后端 G314 没做 |
+
+### 在分支 / 等 Annie / 等后端
+1. **128 Content Studio 客人页整页编辑**：a3 task/128-guest-page-edit head 24da02d0，所有题已答 + 动手，检查过了。**等后端**（task/g299-guest-page-edit，要 Annie 当场同意并做 SQL + 发布）上 main ⇒ 25 发 commit 和实际键名 ⇒ a3 核对、合最新 main（PROGRESS 冲突两边都留）、重跑 tsc / eslint / build / cs / nav ⇒ 合 main。后端没上就合的话，Guest Page 会出红字。
+2. **136 Working Record 只显示到今天 + Not completed**：5b 样稿 LWH8e8T6tDUJKEXRmU5dA9，3 题 + How to use 全文等 Annie（置顶 136）。
+3. **138 导游工资 Payroll**：a3 样稿 Pkg8TAFuFGBtPmHho2Ftoh，3 题等 Annie（置顶 138）。后端 task/guide-payroll 4fb7f66d 今晚家里做完；Dispatch 不用改。
+4. **Private Tour 在 Dispatch 看不到（CHDAKCDKL 11/19）**：订单在 Step 2「Private Tour」块（后端一直会给这一块），Step 1 本来就没有私团卡（10-15「先收口」）。74 已告诉 Annie 往下滚到 Step 2 看；看不到就是前端 bug。最小改法（Step 1 加一行 Private Tour + Assign Bus 跳过去）等 Annie 要不要，要的话先出 preview。
+5. 其余置顶照旧：114d、125、G291 Joe（Annie 自己改 HR）等。新编号从 139 起。
+
+### 窗口小知识
+- 5b：worktree 不能用 junction 链 node_modules（Turbopack 报 Symlink invalid），要在 worktree 里 npm ci。
 
 ## 2026-11-13 前端主窗口 `npe-ops-frontend-74`[fa6692]（公司电脑，接 4c；只分工和汇报）
 - 后端主窗口 25、后端 14；工作窗口 6b、96。
