@@ -1816,6 +1816,14 @@ D. 已完成、待从置顶移走：
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 138. 导游 / 司机兼导游工资（Payroll）页（11-13，25 转 Annie 今天定的；前端没开始）
+- 后端 WIP：task/guide-payroll 4fb7f66d（没上 main，迁移和审核都没做完，家里今晚接着做）；接口 docs/interfaces/guide-payroll-2026-11-13.md（那个分支上）。前端先用 mock，等 25 发 main SHA。
+- Annie 定的：发薪周期 1–15 号、16 号–月底；美元；所有金额都能改。每团费用（导游 / 司机兼导游）：South Rim 230/250、Antelope 230/280、BZ 230/250、West Rim 200/260、Hoover 120/120、VOF half 120/120、VOF full 160/160、Death Valley 200/200。Private Tour：手填小费，付给导游（或司机兼导游）。「ANT relay」：每个 Antelope 团一个勾，+$66（能改）。一天两个团 = 两份费。页面放 Settings › Human Resource，Working Record 旁边。
+- 权限：Team 页新增「Payroll: View」(settings.payroll.view)、「Payroll: Edit」(settings.payroll.edit)；Annie「这个是admin以上的才是被勾选的对象」⇒ 只有 Admin / Super Admin 能勾，非 admin 账号这两个勾隐藏或灰掉（后端也回 400）。不加开关（Annie 没要）。
+- Dispatch：后端 private_tour 行已经能带导游（dispatch.py:977-991）；ops 如果 Private Tour 行藏了导游选择框，要放出来，否则付不了小费（状态会是 No guide）。
+- 要显示的状态：每段 run paid / no_rate / not_linked / no_guide，加 day_status not_completed。
+- 新页面 ⇒ 先 preview +「动手」。派 a3 出 preview（128 在等后端，a3 空着）。
+
 ### 136. Working Record 只显示到今天 + Not completed（11-13，5b 样稿 https://claude.ai/artifact/LWH8e8T6tDUJKEXRmU5dA9 ，没写代码）
 - 后端 G290 4e91cece：through 之后留空；每天 status completed / not_completed；点过 Completed 的日子也读 live（所以现有「live」橙虚线框会落到所有日子上）。
 - 题 1 虚线框：A 只标 Not completed，去掉「live」字（推荐）/ B live 照旧再加 Not completed。
