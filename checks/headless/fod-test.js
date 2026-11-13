@@ -248,6 +248,18 @@ async function run() {
   check("block 上写 Needs hotel for 1 order", await evaluate(`return document.querySelector('[data-need-hotel]')?.textContent.includes('Needs hotel for 1 order');`));
   await evaluate(`${guestsBtn}.click();`);
   await waitFor(farmOrder("CHDF003"));
+  // G308 补（Annie「任何没有完成的都要标出来」）：Farm out 车没选酒店的单也进 Schedule check，一台车一条；Fix › 打开名单、光标到没选的酒店
+  {
+    await evaluate("document.querySelector('[data-schedule-pill]')?.click();");
+    await waitFor("document.getElementById('schedule-check')");
+    const foLi = "[...document.querySelectorAll('#schedule-check [aria-label=Issues] > li')].find(l => l.textContent.includes('farm-out Bus B'))";
+    const t = await evaluate(`return ${foLi}?.textContent ?? null;`);
+    check("G308 Schedule check：「West Rim Bus Tour: farm-out Bus B is not finished」+ No pick-up hotel for 1 order.", !!t && t.includes("West Rim Bus Tour: farm-out Bus B is not finished") && t.includes("No pick-up hotel for 1 order.") && !t.includes("Payable"), String(t));
+    await evaluate("document.activeElement?.blur(); window.scrollTo(0, 0);");
+    await evaluate(`${foLi}.querySelector('[data-issue-fix]').click();`);
+    await sleep(1200);
+    check("G308 Farm out 那条的 Fix ›：名单开着，光标到 CHDF003 的 Pick-up hotel 下拉", await evaluate(`const a = document.activeElement; return a?.tagName === 'SELECT' && a.getAttribute('aria-label').startsWith('Pick-up hotel') && !!a.closest('[data-farm-order="CHDF003"]');`), await evaluate("return document.activeElement?.outerHTML.slice(0, 200);"));
+  }
   check("名单三行；OTA 确认号 / 成人儿童婴儿数", await evaluate(`const f = (n) => document.querySelector('[data-farm-order="' + n + '"]').textContent; return document.querySelectorAll('[data-farm-order]').length === 3 && f('CHDF001').includes('GYG-7731042') && f('CHDF001').includes('2 / 1 / 0') && f('CHDF002').includes('2 / 0 / 1');`));
   check("已发过的行淡黄 + Notice sent by Annie on …", await evaluate(`const r = ${farmOrder("CHDF001")}; return /fff8e1/.test(r.className) && /Notice sent by Annie on/.test(r.textContent);`));
   check("时间 / 应付显示：6:40 AM / 6:50 AM / $305.00；staff 改过的框蓝边", await evaluate(`const v = (n, l) => document.querySelector('[aria-label="' + l + ' ZZ Test ' + n + '"]'); return v('Sent', 'Check-in time for').value === '6:40 AM' && v('Sent', 'Departure time for').value === '6:50 AM' && v('Sent', 'Payable for').value === '$305.00' && /1d4ed8/.test(v('Two', 'Departure time for').className) && !/1d4ed8/.test(v('Sent', 'Departure time for').className);`));

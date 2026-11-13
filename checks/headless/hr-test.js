@@ -657,6 +657,21 @@ async function runWorkingRecord() {
   check("Working Record：角色颜色 Driver 蓝 / Guide 紫 / Driver & Guide 青", await evaluate(`
     const col = (id, d) => getComputedStyle(document.querySelector('[data-wr-cell="' + id + '|' + d + '"] [data-wr-job] b')).color;
     return col(101, '${d1}') === 'rgb(29, 78, 216)' && col(103, '${d1}') === 'rgb(124, 58, 237)' && col(102, '${d1}') === 'rgb(15, 118, 110)';`));
+  // 126（Annie 2026-11-12「全部选A，动手」）：卡片底色跟角色走，中间一档；live 卡也上底色、虚线框照旧；night 角色字换浅色。
+  check("Working Record：卡片底色 Driver #dbeafe / Guide #ede9fe / Driver & Guide #ccfbf1", await evaluate(`
+    const bg = (id, d) => getComputedStyle(document.querySelector('[data-wr-cell="' + id + '|' + d + '"] [data-wr-job]')).backgroundColor;
+    return bg(101, '${d1}') === 'rgb(219, 234, 254)' && bg(103, '${d1}') === 'rgb(237, 233, 254)' && bg(102, '${d1}') === 'rgb(204, 251, 241)';`));
+  check("Working Record：live 卡也上底色，橙色虚线框照旧", await evaluate(`
+    const j = document.querySelector('[data-wr-cell="101|${d3}"] [data-wr-job][data-wr-live]'); const cs = getComputedStyle(j);
+    return cs.backgroundColor === 'rgb(219, 234, 254)' && cs.borderTopStyle === 'dashed' && cs.borderTopColor === 'rgb(180, 83, 9)';`));
+  check("Working Record：night 角色字换浅色 #93c5fd / #c4b5fd / #5eead4、卡不是白底", await evaluate(`
+    const root = document.documentElement, prev = root.getAttribute('data-theme'); root.setAttribute('data-theme', 'night');
+    const q = (id, d) => document.querySelector('[data-wr-cell="' + id + '|' + d + '"] [data-wr-job]');
+    const col = (id, d) => getComputedStyle(q(id, d).querySelector('b')).color;
+    const ok = col(101, '${d1}') === 'rgb(147, 197, 253)' && col(103, '${d1}') === 'rgb(196, 181, 253)' && col(102, '${d1}') === 'rgb(94, 234, 212)'
+      && !['rgb(255, 255, 255)', 'rgb(219, 234, 254)'].includes(getComputedStyle(q(101, '${d1}')).backgroundColor);
+    if (prev === null) root.removeAttribute('data-theme'); else root.setAttribute('data-theme', prev);
+    return ok;`));
   check("Working Record：一天两段写两行；relay 写第几轮", await evaluate(`
     const jobs = [...${cell(101, d2)}.querySelectorAll('[data-wr-job]')].map((j) => j.textContent);
     return jobs.length === 2 && jobs[0].endsWith('Hotel pickups to Treasure Island · 1st round · Van 12') && jobs[1].endsWith('Bus tour Bryce & Zion · 2610');`));

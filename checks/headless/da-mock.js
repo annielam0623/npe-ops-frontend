@@ -43,6 +43,12 @@ const privateOrders = () => [
 ];
 // 每天存的排车
 const saved = {
+  // G300：存过的一天，CCL 改版去掉两台 Relay 车——951 有备注（kept_for_note，Apply 不删）、952 没备注（照删）；953 改了司机，备注不动。
+  "2026-11-03": [
+    row({ id: 951, shift: "relay", driver_hr_id: 1, vehicle_id: 10, note: "V please keep these hotels assigned to Bus A", location_ids: [100] }),
+    row({ id: 952, shift: "relay_2", driver_hr_id: 2, vehicle_id: 11, location_ids: [101] }),
+    row({ id: 953, shift: "relay", driver_hr_id: 4, vehicle_id: 12, note: "ZZ note stays", location_ids: [102] }),
+  ],
   "2026-10-05": [
     row({ id: 801, shift: "relay", driver_hr_id: 1, vehicle_id: 10, location_ids: [100, 101] }),
     row({ id: 802, shift: "bus_tour", manifest_id: 3, driver_hr_id: 2, guide_hr_id: 2, vehicle_id: 11, bus_label: "A", location_ids: [102] }),
@@ -263,11 +269,19 @@ const relayIsSent = (o) => ["R2", "R3"].includes(o) || (o === "R5" && ctl.relayE
 const relayRound1 = () => (ctl.relayOnlyBad ? ["R6"] : ["R1", "R2", "R3", ...(ctl.relayExtra ? ["R4", "R5"] : []), ...(ctl.relayHotels ? ["R7", "R8", "R10", "R11"] : []), ...(ctl.relayBlocked ? ["R6"] : [])]);
 const BAD_CAR_1 = { car_id: 803, car: "Relay car 2103", problems: ["Relay car 2103 has no pickup stop"] };
 const BAD_CAR_2 = { car_id: 802, car: "Relay car #802", problems: ["Relay car #802 has no driver"] };
-const blockedCars = (round) => (round === "relay" && (ctl.relayBlocked || ctl.relayOnlyBad) ? [{ ...BAD_CAR_1, orders: ["R6"] }] : []).concat(round === "relay_2" && ctl.relayBlocked ? [{ ...BAD_CAR_2, orders: [] }] : []).concat(round === "tour_car" && ctl.tourCarBlocked ? [{ car_id: 804, car: "Bus 1841", problems: ["Bus 1841 has no driver"], orders: ["HD1", "HD2"] }] : []);
+const blockedCars = (round) => (round === "relay" && (ctl.relayBlocked || ctl.relayOnlyBad) ? [{ ...BAD_CAR_1, orders: ["R6"] }] : []).concat(round === "relay_2" && ctl.relayBlocked ? [{ ...BAD_CAR_2, orders: [] }] : []).concat(round === "tour_car" && ctl.tourCarBlocked ? [{ car_id: 804, car: "Bus 1841", problems: ["Bus 1841 has no driver"], orders: ["HD1", "HD2"] }] : [])
+  // 2026-11-12 TI：两个没排车的团（占位块，car_id null）。
+  .concat(round === "tour_car" && ctl.tourCarTI ? [{ car_id: null, car: "Grand Canyon South", problems: ["No bus assigned to this tour"], orders: ["TS1"] }, { car_id: null, car: "Hoover Dam", problems: ["No bus assigned to this tour"], orders: ["HD3"] }] : []);
 // G118 tour_car 轮：tourCarNoCar ⇒ 这个团当天没排 bus_tour 车，整块挡住、没有订单号可发。
-const tourCarRound = () => (ctl.tourCar && !ctl.tourCarNoCar ? ["HD1", "HD2"] : []);
+// 131：按团发（tour = manifest_id）。TI 那天：TS1 = Grand Canyon South（7）、TI1 = West Rim（3）、HD3 = Hoover（4）。
+const TOUR_OF = { TS1: 7, TI1: 3, HD3: 4 };
+const inTour = (tour) => (o) => tour == null || TOUR_OF[o] === Number(tour);
+const tourCarRound = () => (ctl.tourCarTI ? ["TS1", "TI1", "HD3"] : ctl.tourCar && !ctl.tourCarNoCar ? ["HD1", "HD2"] : []);
 const ccl = (o) => ({ line_id: 345, driver_text: "FREDDY", guide_text: null, vehicle_text: "768", is_driver_guide: false, route_label: null, ccl_note: null, driver_candidates: [], guide_candidates: [], ...o });
 const prefills = {
+  "2026-11-03": { import_id: 90, title: "NPE 11/3: Revision", status: "pending", is_revision: true, raw_content: "rev", applied: false,
+    rows: [row({ shift: "relay", driver_hr_id: 5, vehicle_id: 12, ccl: ccl({ line_id: 390, driver_text: "BRUCE W", vehicle_text: "1328" }) })],
+    unread: [], closures: [], changes: [{ kind: "removed", row_id: 951, kept_for_note: true }, { kind: "removed", row_id: 952 }, { kind: "changed", row_id: 953, ccl_row: 0, fields: ["driver"] }] },
   // 自动填充 + CCL 确认（Annie 2026-10-11）：没存过的一天，名单要两台、CCL 只给一台 ⇒ CCL 那台填进 A，B 留空（等 farm out）。
   "2026-10-12": { import_id: 79, title: "NPE 10/12:", status: "pending", is_revision: false, raw_content: "NPE 10/12: WEST RIM BRUCE O - 1328", applied: false,
     rows: [row({ shift: "bus_tour", manifest_id: 3, driver_hr_id: 4, vehicle_id: 12, bus_label: "A", location_ids: [101, 102], ccl: ccl({ line_id: 360, driver_text: "BRUCE O", vehicle_text: "1328", route_label: "WESTRIM" }) })],
@@ -496,7 +510,13 @@ http.createServer(async (req, res) => {
         relay: [...(ctl.relayOnlyBad ? [] : [{ car: { id: 801, van: "768", driver: "FREDDY", ...(ctl.relayNoTracking ? { has_tracking: false } : {}) }, guests: [g({ id: 1, order_number: "R1", ...sentMeta("R1") }), g({ id: 2, order_number: "R2", ...sentMeta("R2"), changed: ["pickup time 4:45 AM → 5:00 AM"], ...(ctl.relayFollowed ? { driver_followed: { from: "BRUCE", to: "FREDDY", at: "2026-10-05T04:10:00-07:00", by: "annie" } } : {}) }), g({ id: 3, order_number: "R3", ...sentMeta("R3"), relay_status: "no_show" }), ...extra, ...hotelGuests] }]),
           ...(ctl.relayBlocked || ctl.relayOnlyBad ? [{ car: { id: 803, van: "2103", driver: "SAM", problems: BAD_CAR_1.problems }, guests: [g({ id: 6, order_number: "R6", name: "ZZ Park", pickup_location: "Best Western" })] }] : [])],
         relay_2: [{ car: { id: 802, van: null, driver: null, ...(ctl.relayNoTracking ? { has_tracking: false } : {}), ...(ctl.relayBlocked ? { problems: BAD_CAR_2.problems } : {}) }, guests: [] }],
-        tour_car: ctl.tourCar ? [{ car: tourCarCar, guests: tourCarGuests }, ...tourCarSecond] : [],
+        // 2026-11-12 TI（后端 relay-ti-2026-11-12）：Treasure Island 的客人进自己团的车；没排车的团是占位块（id null + manifest_id）。
+        // 后端顺序：1st Round 的团 → 2nd Round 的团 → tour_car 的团（Hoover）最后；西峡倒数第二。
+        tour_car: ctl.tourCarTI ? [
+          { car: { id: null, manifest_id: 7, tour_name: "Grand Canyon South", bus_label: null, van: "", driver: "", problems: ["No bus assigned to this tour"] }, guests: [g({ id: 50, order_number: "TS1", name: "ZZ South TI", tour: "Grand Canyon South", pickup_time: "6:00 AM", pickup_location: "Treasure Island", hotel: "Treasure Island", location_id: 102, ...sentMeta("TS1") })] },
+          { car: { id: 806, manifest_id: 3, tour_name: "West Rim Bus Tour", bus_label: "A", van: "1328", driver: "BRUCE O" }, guests: [g({ id: 51, order_number: "TI1", name: "ZZ West TI", tour: "West Rim Bus Tour", pickup_time: "6:30 AM", pickup_location: "Treasure Island", hotel: "Treasure Island", location_id: 102, ...sentMeta("TI1") })] },
+          { car: { id: null, manifest_id: 4, tour_name: "Hoover Dam", bus_label: null, van: "", driver: "", problems: ["No bus assigned to this tour"] }, guests: [g({ id: 52, order_number: "HD3", name: "ZZ Hoover TI", tour: "Hoover Dam", pickup_time: "9:00 AM", pickup_location: "Treasure Island", hotel: "Treasure Island", location_id: 102, ...sentMeta("HD3") })] },
+        ] : ctl.tourCar ? [{ car: tourCarCar, guests: tourCarGuests }, ...tourCarSecond] : [],
       },
       // needRound（置顶 94，后端 307d6895）：每条带 round；1st Round MGM 两单（2 + 3 人）、aria 4 人没车停，
       // relay_2 Excalibur 1 人，Hoover（tour_car）一条别的原因；1st Round 另有一条没时间的（不算没车）。
@@ -508,26 +528,29 @@ http.createServer(async (req, res) => {
         g({ id: 44, order_number: "N5", pickup_location: "Excalibur", location_id: 100, hotel: "Excalibur", pickup_time: "", reason: "Pickup time could not be worked out from the time in Rezdy", round: "relay" }),
         g({ id: 45, order_number: "N6", tour: "Hoover Dam", pickup_time: "", reason: "Pickup time could not be worked out from the time in Rezdy", round: "tour_car" }),
       ] : ctl.needRoundEmpty ? [] : [g({ id: 9, order_number: "R9", pickup_time: "7:30 AM", reason: "Pickup time could not be worked out from the time in Rezdy" })],
-      departure: 4 });
+      departure: ctl.tourCarTI ? 0 : 4 });
   }
   if (p === "/api/dispatch/relay-send/preview") {
     // relayBlockLate：preview 时还没挡、发送那一刻才挡（整轮只剩坏车 ⇒ sent 0、results 空）。
-    const bl = ctl.relayBlockLate ? [] : blockedCars(q.round);
+    if (q.tour != null && q.round !== "tour_car") return send(res, 400, { detail: "tour only works with round tour_car." });
+    const bl = (ctl.relayBlockLate ? [] : blockedCars(q.round)).filter((c) => q.tour == null || c.orders.some(inTour(q.tour)));
     const blockedOrders = bl.flatMap((c) => c.orders);
-    const orders = (q.round === "relay" ? relayRound1() : q.round === "tour_car" ? tourCarRound() : []).filter((o) => !blockedOrders.includes(o));
+    const orders = (q.round === "relay" ? relayRound1() : q.round === "tour_car" ? tourCarRound() : []).filter(inTour(q.tour)).filter((o) => !blockedOrders.includes(o));
     const already = orders.filter((o) => relayIsSent(o) || ctl.relayLater.includes(o));
-    return send(res, 200, { run_date: q.date, round: q.round, to_send: orders.length - already.length, already_sent: already.length, already_sent_orders: already, checked_at: "2026-10-05T11:58:00+00:00", blocked_cars: bl });
+    return send(res, 200, { run_date: q.date, round: q.round, ...(q.tour != null ? { tour: Number(q.tour) } : {}), to_send: orders.length - already.length, already_sent: already.length, already_sent_orders: already, checked_at: "2026-10-05T11:58:00+00:00", blocked_cars: bl });
   }
   if (p === "/api/dispatch/relay-send") {
     const b = JSON.parse(await readRaw(req)); entry.body = b;
     if (ctl.relay409) return send(res, 409, { detail: "Someone is already sending this round. Wait a minute and pull again." });
     if (ctl.relay502) return send(res, 502, { detail: "Bad gateway" });
     // 同后端：order_numbers 不传 = 这一轮全部；发过的跳过，除非在 send_anyway 里（带了 preview_at）。
-    const round = b.round === "relay" ? relayRound1() : b.round === "tour_car" ? tourCarRound() : [];
+    if (b.tour != null && b.round !== "tour_car") return send(res, 400, { detail: "tour only works with round tour_car." });
+    if (Array.isArray(b.order_numbers) && !b.order_numbers.length) return send(res, 400, { detail: "Pick at least one guest to send to." });
+    const round = (b.round === "relay" ? relayRound1() : b.round === "tour_car" ? tourCarRound() : []).filter(inTour(b.tour));
     const anyway = new Set(b.preview_at ? b.send_anyway ?? [] : []);
     // G129：被挡的车上的订单号在 send_anyway 里就照发（orders 只含仍被挡的，overridden_orders 是这次覆盖的）。
     const sa = new Set(b.send_anyway ?? []);
-    const bl = blockedCars(b.round).map((c) => ({ ...c, orders: c.orders.filter((o) => !sa.has(o)), overridden_orders: c.orders.filter((o) => sa.has(o) && (b.order_numbers ?? round).includes(o)) }));
+    const bl = blockedCars(b.round).filter((c) => b.tour == null || c.orders.some(inTour(b.tour))).map((c) => ({ ...c, orders: c.orders.filter((o) => !sa.has(o)), overridden_orders: c.orders.filter((o) => sa.has(o) && (b.order_numbers ?? round).includes(o)) }));
     const blockedOrders = bl.flatMap((c) => c.orders);
     const asked = (b.order_numbers ?? round).filter((o) => !blockedOrders.includes(o));
     const notOnRound = asked.filter((o) => !round.includes(o) || ctl.relayGone.includes(o));
@@ -541,7 +564,7 @@ http.createServer(async (req, res) => {
       if (!ctl.relaySent.includes(o)) ctl.relaySent.push(o);
     }
     // results 同后端 send_morning_row() 的每行形状（Morning Pickup 发送页同一个）。
-    return send(res, 200, { round: b.round, sent: sentNow.length, failed: 0, already_sent: skipped.length, already_sent_orders: skipped, resent, not_on_round: notOnRound, checked_at: "2026-10-05T12:01:00+00:00", blocked_cars: bl, overridden_orders: bl.flatMap((c) => c.overridden_orders).filter((o) => sentNow.includes(o)),
+    return send(res, 200, { round: b.round, ...(b.tour != null ? { tour: b.tour } : {}), sent: sentNow.length, failed: 0, already_sent: skipped.length, already_sent_orders: skipped, resent, not_on_round: notOnRound, checked_at: "2026-10-05T12:01:00+00:00", blocked_cars: bl, overridden_orders: bl.flatMap((c) => c.overridden_orders).filter((o) => sentNow.includes(o)),
       results: sentNow.map((o) => ({ order: `CHD${o}`, name: "ZZ Test Relay", phone: "+15550000009", pickup_time: "6:15 AM", sms_status: b.send_type === "email" ? "" : "sent:SM1", email_status: b.send_type === "combined" || b.send_type === "email" ? "sent" : "", skipped: false })) });
   }
   // G215（后端 49c400a）：ctl.driverPage = null（默认，旧后端不带字段）| true | false（司机页开关关着，带后端原文）；ctl.driver400 = 发送时后端拒发。
@@ -727,37 +750,42 @@ http.createServer(async (req, res) => {
     const sum = (a) => a.reduce((s, g) => s + g.pax, 0);
     return send(res, 200, { run_date: q.date, blocks: [{ sections: [{ kind: "tour", pax: 9, guests: gs("West Rim Bus Tour", 9, "Excalibur", 7, false) }, { kind: "outbound", pax: sum(out), guests: out }] }], unplaced: { sections: [{ kind: "inbound", pax: sum(inb), guests: inb }] } });
   }
+  // G290：能不能点 Completed（后端 can_complete = Super Admin 或这天的 Open shift）。ctl.canComplete 没设 ⇒ 跟 superAdmin 一样；
+  // ctl.noCanComplete = 旧后端（没有这个键）。ctl.complete403 = POST complete 回 403（后端原话）。
+  if (p === "/api/dispatch/manifests/complete" && req.method === "POST" && ctl.complete403)
+    return send(res, 403, { detail: "Only the Open shift on this day or a Super Admin can mark it Completed." });
   if (p === "/api/dispatch/manifests") {
+    const sendM = (body) => send(res, 200, ctl.noCanComplete ? body : { ...body, can_complete: ctl.canComplete ?? !!ctl.superAdmin });
     const card = (id, title) => ({ manifest_id: id, title, uploaded: false, guests: 0, pax: 0, buses: 0, not_on_bus: 0, lunch: null, uploaded_at: null, uploaded_by: null, mode: "single" });
     // 2026-10-09（Check the bus 改版 cb3887d）：3 车够但还有人没分到车 ⇒ Seat guests；4 要多开一台车 ⇒ Check the bus 实心。
     // guests_per_bus 5 / 3（不是 4 / 2）：2026-10-16 开车窗改按已选车的座位数算，这两台存着的车（11、12）没填 seats、
     // 退回 guests_per_bus 当容量——数要能让「2 台已经够坐」这件事仍然成立（9 ≤ 5+5、5 ≤ 3+3），不然会多冒出一台。
-    if (q.date === "2026-10-09") return send(res, 200, { run_date: q.date, cards: [
+    if (q.date === "2026-10-09") return sendM({ run_date: q.date, cards: [
       { ...card(3, "West Rim Bus Tour"), uploaded: true, pax: 9, guests: 4, buses: 2, mode: "lettered", not_on_bus: 2, buses_needed: 2, guests_per_bus: 5 },
       { ...card(4, "Hoover Dam"), uploaded: true, pax: 5, guests: 2, buses: 1, mode: "single", not_on_bus: 3, buses_needed: 2, guests_per_bus: 3 },
     ], guest_lists_done: ctl.completed ? { completed_by: "Annie", completed_at: "2026-10-09T22:40:00+00:00" } : null });
-    if (q.date === "2026-10-12") return send(res, 200, { run_date: q.date, cards: [
+    if (q.date === "2026-10-12") return sendM({ run_date: q.date, cards: [
       { ...card(3, "West Rim Bus Tour"), uploaded: true, pax: 70, guests: 30, buses: 0, mode: "none", not_on_bus: 70, buses_needed: 2, guests_per_bus: 54, bus_pax: {} },
     ] });
     // 2026-10-16 紧急：59 人，Bus A 已经选了 1960（59 座，见 vehicles）⇒ 一台够坐，不该冒出 Bus B（旧算法 ceil(59/54)=2 会冒出）。
-    if (q.date === "2026-10-17") return send(res, 200, { run_date: q.date, cards: [
+    if (q.date === "2026-10-17") return sendM({ run_date: q.date, cards: [
       { ...card(3, "West Rim Bus Tour"), uploaded: true, pax: 59, guests: 20, buses: 1, mode: "lettered", not_on_bus: 0, buses_needed: 2, guests_per_bus: 54, bus_pax: { A: 59 } },
       // Schedule check：当天没客人的团（Hoover Dam，没排车）沉到浮窗最下面一块。
       { ...card(4, "Hoover Dam"), uploaded: true, pax: 0, guests: 0, buses: 0, mode: "none", not_on_bus: 0, buses_needed: 0, guests_per_bus: 50, bus_pax: {} },
     ] });
-    if (q.date === "2026-10-18" || q.date === "2026-10-19") return send(res, 200, { run_date: q.date, cards: [
+    if (q.date === "2026-10-18" || q.date === "2026-10-19") return sendM({ run_date: q.date, cards: [
       { ...card(3, "West Rim Bus Tour"), uploaded: true, pax: 10, guests: 4, buses: 2, mode: "lettered", not_on_bus: 0, buses_needed: 2, guests_per_bus: 14, bus_pax: { A: 3, B: 7 } },
     ] });
     // revAuto：West Rim 9 位、一台车只坐 5 位 ⇒ 要两台（页面给存着的那台字母 A、补开 B）。
-    if (q.date === "2026-10-07" && ctl.revAuto) return send(res, 200, { run_date: q.date, cards: [
+    if (q.date === "2026-10-07" && ctl.revAuto) return sendM({ run_date: q.date, cards: [
       { ...card(3, "West Rim Bus Tour"), uploaded: true, pax: 9, guests: 4, buses: 1, mode: "single", not_on_bus: 4, buses_needed: 2, guests_per_bus: 5, bus_pax: {} },
     ] });
-    if (q.date === "2026-10-10") return send(res, 200, { run_date: q.date, cards: [
+    if (q.date === "2026-10-10") return sendM({ run_date: q.date, cards: [
       { ...card(3, "West Rim Bus Tour"), uploaded: true, pax: 7, guests: 3, buses: 3, mode: "lettered", not_on_bus: 0, buses_needed: 2, guests_per_bus: 4, bus_pax: { A: 4, B: 0, C: 3 } },
       { ...card(4, "Hoover Dam"), uploaded: true, pax: 3, guests: 1, buses: 0, mode: "none", not_on_bus: 3, buses_needed: 1, guests_per_bus: 50, bus_pax: {} },
     ] });
     // emptyHoover：Hoover Dam 也有卡片、没客人（没排车）⇒ Step 2 收起来（Annie 2026-10-15）。
-    return send(res, 200, { run_date: q.date, cards: [card(3, "West Rim Bus Tour"), card(9, "Ghost Tour"), ...(ctl.emptyHoover ? [card(4, "Hoover Dam")] : [])] });
+    return sendM({ run_date: q.date, cards: [card(3, "West Rim Bus Tour"), card(9, "Ghost Tour"), ...(ctl.emptyHoover ? [card(4, "Hoover Dam")] : [])] });
   }
   send(res, 404, { detail: "mock: not found" });
 }).listen(Number(process.env.MOCK_PORT) || 8799, () => console.log("da mock on", process.env.MOCK_PORT || 8799));

@@ -237,7 +237,12 @@ export interface DispatchClosure {
 export type DispatchChange =
   | { kind: "changed"; row_id: number; ccl_row: number; fields: string[] }
   | { kind: "added"; ccl_row: number }
-  | { kind: "removed"; row_id: number };
+  | {
+      kind: "removed";
+      row_id: number;
+      /** G300：CCL 去掉的这台车有 staff 写的备注 ⇒ Apply 不删（Annie：备注除非手动删，一律不被 CCL 覆盖）。 */
+      kept_for_note?: boolean;
+    };
 
 export interface DispatchPrefill {
   import_id: number;

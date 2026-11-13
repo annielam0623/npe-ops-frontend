@@ -70,7 +70,7 @@ import type {
 
 import { CclBanner } from "./ccl-banner";
 import { FarmOutBlock } from "./farm-out-block";
-import { FarmOutGuests, whenText } from "./farm-out-guests";
+import { FarmOutGuests, productState, whenText } from "./farm-out-guests";
 import { FarmOutNoticeDialog } from "./farm-out-notice-dialog";
 import { RosterDialog } from "./roster-dialog";
 import { usePartners } from "./use-farm-out";
@@ -81,6 +81,7 @@ import {
   cloneRows,
   countChanges,
   needsShuttlePickup,
+  type RailIssue,
   type RelayNoCar,
   fmtLong,
   fmtShort,
@@ -369,6 +370,8 @@ export function DispatchView() {
     byId: Record<number, { uploaded: boolean; pax: number }>;
     done: GuestListsDone | null;
     any: boolean;
+    /** G290：后端 can_complete；旧后端没有 ⇒ null（照旧只给 Super Admin）。 */
+    canComplete: boolean | null;
   } | null>(null);
   /**
    * 每个巴士团当天 Bus manifest 里要提醒选上车点的 Shuttle 客人数（Annie 2026-10-31 Shuttle 上车点提示）。
@@ -421,6 +424,10 @@ export function DispatchView() {
     date: string;
     byRound: RelayNoCar;
   } | null>(null);
+  /** G308：Need a look 有几单（Schedule check 算一条）；同一次读。读不到 = null，不提醒。 */
+  const [needLook, setNeedLook] = useState<{ date: string; n: number } | null>(
+    null,
+  );
   const noCarDate = day?.run_date;
   useEffect(() => {
     if (!noCarDate) return;
@@ -429,6 +436,7 @@ export function DispatchView() {
       (pull) => {
         if (gone) return;
         const list = pull.need_a_look ?? [];
+        setNeedLook({ date: noCarDate, n: list.length });
         if (list.length && !list.some((g) => g.round)) {
           setRelayNoCar(null);
           return;
@@ -454,7 +462,9 @@ export function DispatchView() {
         setRelayNoCar({ date: noCarDate, byRound });
       },
       () => {
-        if (!gone) setRelayNoCar(null);
+        if (gone) return;
+        setRelayNoCar(null);
+        setNeedLook(null);
       },
     );
     return () => {
@@ -565,6 +575,69 @@ export function DispatchView() {
   }
 
   const L = useMemo(() => (day ? makeLookup(day) : null), [day]);
+  /**
+   * G308 补（Annie「任何没有完成的都要标出来」）：Farm out 车客人名单底下的黄字 / 红字（没选上车酒店、没选产品、没填 Payable）
+   * 也算进 Schedule check，一台车一条。跟名单同一份座位表、同样的条件（看得到 Farm out、这台车存过、有字母）。
+   */
+  const seeMoney = perms.canSeeMoney;
+  const farmOutIssues = useMemo(() => {
+    if (!day || seating?.run_date !== day.run_date) return undefined;
+    const out: RailIssue[] = [];
+    // Arrange seats 里橙色的 Not on a bus（没车坐的单）：一个团一条，Fix 滚到那一栏。
+    for (const t of seating.tours) {
+      if (!t.uploaded || t.mode !== "lettered") continue;
+      const left = t.orders.filter((o) => o.bus_label == null);
+      if (!left.length) continue;
+      const pax = left.reduce((k, o) => k + o.pax, 0);
+      const sec = day.sections.find(
+        (x) => x.shift === META.bus_tour_shift && x.manifest_id === t.manifest_id,
+      );
+      out.push({
+        title: `${sec?.title || t.title || t.name}: ${left.length} order${left.length === 1 ? "" : "s"} not on a bus`,
+        detail: `${pax} guest${pax === 1 ? "" : "s"}. In Arrange seats, drag each order onto a bus or pick its bus.`,
+        target: `[data-unplaced="${t.manifest_id}"]`,
+      });
+    }
+    if (!farmOutVisible) return out;
+    for (const r of rows) {
+      if (!r.farm_out || r.id == null || r.shift !== META.bus_tour_shift)
+        continue;
+      const t = seating.tours.find((x) => x.manifest_id === r.manifest_id);
+      if (!t?.uploaded || t.mode !== "lettered") continue;
+      const label = base.find((b) => b.id === r.id)?.bus_label;
+      if (label == null || !t.buses.some((b) => b.label === label)) continue;
+      const orders = t.orders.filter((o) => o.bus_label === label && o.farm_out);
+      const noHotel = orders.filter(
+        (o) => o.farm_out!.partner_location_id == null,
+      ).length;
+      const noProduct = orders.filter(
+        (o) => productState(o) === "unpicked",
+      ).length;
+      const noPay = seeMoney
+        ? orders.filter(
+            (o) =>
+              o.farm_out!.payable_amount == null &&
+              !o.farm_out!.payable_set_by_staff,
+          ).length
+        : 0;
+      const n = (k: number) => `${k} order${k === 1 ? "" : "s"}`;
+      const parts = [
+        noHotel ? `No pick-up hotel for ${n(noHotel)}.` : null,
+        noProduct ? `Product is not picked for ${n(noProduct)}.` : null,
+        noPay ? `Payable is not set for ${n(noPay)}.` : null,
+      ].filter(Boolean) as string[];
+      if (!parts.length) continue;
+      const sec = day.sections.find(
+        (x) => x.shift === META.bus_tour_shift && x.manifest_id === t.manifest_id,
+      );
+      out.push({
+        title: `${sec?.title || t.title || t.name}: farm-out Bus ${label} is not finished`,
+        detail: parts.join(" "),
+        farm: { mid: t.manifest_id, label },
+      });
+    }
+    return out;
+  }, [day, farmOutVisible, seating, rows, base, seeMoney]);
   const analysis = useMemo(
     () =>
       L
@@ -575,9 +648,11 @@ export function DispatchView() {
             relayNoCar?.date === L.day.run_date
               ? relayNoCar.byRound
               : undefined,
+            needLook?.date === L.day.run_date ? needLook.n : undefined,
+            farmOutIssues,
           )
         : null,
-    [rows, L, shuttlePax, relayNoCar],
+    [rows, L, shuttlePax, relayNoCar, needLook, farmOutIssues],
   );
   // Step 1 团卡片（ManifestsPanel，另读 /api/dispatch/manifests，没有 color 字段）要和这里的团色条
   // 用同一个颜色：从 day.sections（有 color，G142）按 manifest_id 做一张表传过去。
@@ -1180,6 +1255,74 @@ export function DispatchView() {
     scrollToRow(idx, field);
   }
 
+  /** G308：Schedule check「N orders in Need a look」的 Fix：切到 Send，等那一块画出来再滚过去、闪黄 2 秒。 */
+  function goNeedLook() {
+    if (tab !== "send") switchTab("send");
+    let tries = 0;
+    const go = () => {
+      const el = document.querySelector<HTMLElement>(
+        '#panel-send [aria-label="Need a look"]',
+      );
+      if (!el || !el.offsetParent) {
+        if (++tries < 60) setTimeout(go, 150);
+        return;
+      }
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+      el.style.boxShadow = "0 0 0 3px #f5c518";
+      setTimeout(() => {
+        el.style.boxShadow = "";
+      }, 2000);
+    };
+    setTimeout(go, 0);
+  }
+
+  /** G308 补：Schedule check 里 Farm out 车那一条的 Fix：打开那个团的 Farm out 名单，滚过去、闪黄，光标到第一个没选的酒店。 */
+  function goFarm(f: { mid: number; label: string }) {
+    if (tab !== "assign") switchTab("assign");
+    setSeatOpen((o) => ({ mid: f.mid, n: (o?.n ?? 0) + 1 }));
+    let tries = 0;
+    const go = () => {
+      const box = document.querySelector<HTMLElement>(
+        `[data-farm-out-guests="${f.mid}:${CSS.escape(f.label)}"]`,
+      );
+      if (!box || !box.querySelector("table")) {
+        if (++tries < 60) setTimeout(go, 150);
+        return;
+      }
+      box.scrollIntoView({ behavior: "smooth", block: "center" });
+      box.style.boxShadow = "0 0 0 3px #f5c518";
+      setTimeout(() => {
+        box.style.boxShadow = "";
+      }, 2000);
+      const empty = [
+        ...box.querySelectorAll<HTMLSelectElement>(
+          'select[aria-label^="Pick-up hotel"]',
+        ),
+      ].find((x) => x.value === "");
+      empty?.focus({ preventScroll: true });
+    };
+    setTimeout(go, 0);
+  }
+
+  /** G308 补：Schedule check 的 Fix 滚到页面上某一块（Not on a bus），闪黄 2 秒。 */
+  function goTarget(selector: string) {
+    if (tab !== "assign") switchTab("assign");
+    let tries = 0;
+    const go = () => {
+      const el = document.querySelector<HTMLElement>(selector);
+      if (!el || !el.offsetParent) {
+        if (++tries < 40) setTimeout(go, 150);
+        return;
+      }
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.style.boxShadow = "0 0 0 3px #f5c518";
+      setTimeout(() => {
+        el.style.boxShadow = "";
+      }, 2000);
+    };
+    setTimeout(go, 0);
+  }
+
   function scrollToRow(idx: number, field?: string) {
     const el = document.querySelector<HTMLElement>(`.vrow[data-idx="${idx}"]`);
     if (!el) return;
@@ -1611,7 +1754,8 @@ export function DispatchView() {
     const added: DispatchRow[] = [];
     for (const c of prefill.changes) {
       if (c.kind === "removed") {
-        drop.add(c.row_id);
+        // G300：有备注的车整台留着（司机、车、酒店都不动），要不要删由 staff 自己决定。
+        if (!c.kept_for_note) drop.add(c.row_id);
         continue;
       }
       const n = prefill.rows[c.ccl_row];
@@ -2002,7 +2146,7 @@ export function DispatchView() {
                 onAssignBus={(mid) => assignBus(mid)}
                 showEmpty={showEmpty}
                 onToggleEmpty={() => setShowEmpty((v) => !v)}
-                onCards={(date, cards, done) => {
+                onCards={(date, cards, done, canComplete) => {
                   if (date !== stateRef.current.day?.run_date) return;
                   setTourCards({
                     date,
@@ -2014,6 +2158,7 @@ export function DispatchView() {
                     ),
                     done,
                     any: cards.length > 0,
+                    canComplete,
                   });
                   const m: Record<number, TourNeed> = {};
                   for (const c of cards)
@@ -2887,6 +3032,9 @@ export function DispatchView() {
                   onToggle={toggleCheck}
                   onGoto={(i, f) => focusRow(i, f)}
                   onGoSection={(k) => goSection(k)}
+                  onGoNeedLook={canSend ? goNeedLook : undefined}
+                  onGoFarm={goFarm}
+                  onGoTarget={goTarget}
                 />
 
                 {!viewOnly &&
@@ -2902,7 +3050,8 @@ export function DispatchView() {
                       unsaved ? saveRef.current() : Promise.resolve(true)
                     }
                     disabled={disabled}
-                    canComplete={isSuperAdmin}
+                    // G290：Super Admin 或这天的 Open shift（后端算好）；旧后端没有 can_complete 时照旧只给 Super Admin。
+                    canComplete={tourCards.canComplete ?? isSuperAdmin}
                   />
                 ) : null}
               </StepBox>
@@ -2951,6 +3100,8 @@ export function DispatchView() {
                   }
                   // Relay list 前有没存的改动：先存（只读的人不存，直接看已保存的）。
                   onSave={viewOnly ? undefined : () => saveRef.current()}
+                  // 131：Tour bus pick up 每个团的节头用团色（同 Assign 团卡片 / Bus Manifest）。
+                  tourColors={colorByManifestId}
                 />
               </div>
             ) : null}
@@ -3279,6 +3430,13 @@ function HowToUse() {
           live tracking.
         </li>
         <li>
+          Schedule check (right side) lists everything not done yet: a vehicle
+          with no driver, guide, vehicle or hotel, a tour or round with guests
+          but no vehicle, orders in Need a look, and more. Fix › takes you
+          there. It shows &#10003; All good only when nothing is left. Nothing in
+          it stops you from saving.
+        </li>
+        <li>
           Morning Relay: pick each car&rsquo;s hotels in Add hotel. 2nd Round:
           Copy 1st Round copies the cars, drivers and hotels.
         </li>
@@ -3295,6 +3453,11 @@ function HowToUse() {
         <li>
           A yellow bar means CCL posted a change: Apply changes puts it on the
           page.
+        </li>
+        <li>
+          Your private notes are never changed by CCL. If CCL drops a vehicle
+          that has a note, the bar shows it as Kept and Apply changes leaves it
+          on the page. Remove it yourself if it is not needed.
         </li>
         <li>
           Press Save next to Edit to save that tour &mdash; all its cars are

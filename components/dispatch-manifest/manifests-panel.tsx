@@ -45,6 +45,7 @@ type CardsState =
       kind: "ready";
       cards: ManifestCard[];
       guestListsDone: GuestListsDone | null;
+      canComplete: boolean | null;
     };
 
 const DONE_FORMAT = new Intl.DateTimeFormat("en-US", {
@@ -125,6 +126,8 @@ export function ManifestsPanel({
     date: string,
     cards: ManifestCard[],
     done: GuestListsDone | null,
+    /** G290：后端 can_complete；旧后端没有 ⇒ null。 */
+    canComplete: boolean | null,
   ) => void;
   /**
    * 这一天点没点过 Completed、Completed 之后新进来的单（G56）：排车页据此在车下面的名单里关掉 Auto、
@@ -160,7 +163,7 @@ export function ManifestsPanel({
     fetchManifestCards(date, controller.signal)
       .then((r) => {
         setState({ kind: "ready", ...r });
-        onCardsRef.current?.(date, r.cards, r.guestListsDone);
+        onCardsRef.current?.(date, r.cards, r.guestListsDone, r.canComplete);
       })
       .catch((e: unknown) => {
         if (controller.signal.aborted) return;
@@ -248,7 +251,11 @@ export function ManifestsPanel({
       phoneAlert={stepAlert}
       headExtra={
         // Annie 2026-10-17 夜：Dispatch 上拿掉手动 Sync Rezdy 键（打开 / 换天时照旧自动同步；Main Manifest 上的键不动）。
-        viewOnly ? null : <HowToUse />
+        viewOnly ? null : (
+          <HowToUse
+            canComplete={state.kind === "ready" ? state.canComplete : null}
+          />
+        )
       }
       desc={
         <p className="m-0">
@@ -414,7 +421,10 @@ export function CompletedBar({
 }: {
   date: string;
   done: GuestListsDone | null;
-  /** 能不能点 Completed：只有 Super Admin（Annie 2026-11-08 选 A）。false 且没点过 ⇒ 整条不出。 */
+  /**
+   * 能不能点 Completed：G290 起看后端 can_complete（Super Admin，或 Staff Schedule 里这天上 Open shift 的人）。
+   * false 且没点过 ⇒ 整条不出。
+   */
   canComplete: boolean;
   /** 标好了：排车页重读卡片、滚到 ② Send。 */
   onDone: () => void;
@@ -441,6 +451,8 @@ export function CompletedBar({
       onDone();
     } catch (e) {
       if (isStatus(e, 401)) onUnauthorized();
+      // G290：不是这天的 Open shift / Super Admin（例如开着页面时排班改了）⇒ 原样红字后端原话。
+      else if (isStatus(e, 403)) setError(describeError(e));
       else setError(`Could not mark this complete: ${describeError(e)}`);
     } finally {
       setCompleting(false);
@@ -472,14 +484,24 @@ export function CompletedBar({
           guests.
         </span>
       ) : (
-        <button
-          type="button"
-          disabled={completing || disabled}
-          onClick={() => void complete()}
-          className={BTN_BLUE}
-        >
-          Completed — this day&rsquo;s dispatch is done
-        </button>
+        <>
+          {/* G290（Annie「1. B 2 选推荐。动手」）：键上方一行提醒；按过以后不出。普通浅灰字，不用蓝。 */}
+          <p
+            data-completed-reminder
+            className="m-0 text-[12px] leading-relaxed text-[#cbd5e1]"
+          >
+            Before you click Completed, please double-check that every driver
+            and guide is correct for this day&rsquo;s dispatch.
+          </p>
+          <button
+            type="button"
+            disabled={completing || disabled}
+            onClick={() => void complete()}
+            className={BTN_BLUE}
+          >
+            Completed — this day&rsquo;s dispatch is done
+          </button>
+        </>
       )}
     </div>
   );
@@ -646,9 +668,10 @@ function DocIcon() {
   );
 }
 
-function HowToUse() {
-  // 「click Completed」那句只给 Super Admin（按钮只有 Super Admin 有，Annie 2026-11-08 选 A）。
+function HowToUse({ canComplete }: { canComplete: boolean | null }) {
+  // 「click Completed」那句只给能点 Completed 的人（同按钮）：G290 起看后端 can_complete；旧后端没有时照旧只给 Super Admin。
   const { isSuperAdmin } = usePageVisibility();
+  const showComplete = canComplete ?? isSuperAdmin;
   return (
     // 旧 `.tm-howto`：标题行最右边（Sync Rezdy 键在标题旁边），书本图标 + 浅蓝字链接；展开后占满一行，深底上浅色字。Annie 2026-10-15：精简成 5 条。
     <details className="ml-auto max-w-full text-[12.5px] leading-[1.85] text-[#cbd5e1] open:order-last open:ml-0 open:basis-full">
@@ -675,7 +698,7 @@ function HowToUse() {
           Click Open manifest to check the guests, print, or fill in the
           Antelope confirmation #.
         </li>
-        {isSuperAdmin ? (
+        {showComplete ? (
           <li>
             When the day is done, click Completed at the bottom of Step 2.
           </li>

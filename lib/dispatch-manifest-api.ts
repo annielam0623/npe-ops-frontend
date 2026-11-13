@@ -18,15 +18,23 @@ const API = "/api/dispatch";
 export async function fetchManifestCards(
   date: string,
   signal?: AbortSignal,
-): Promise<{ cards: ManifestCard[]; guestListsDone: GuestListsDone | null }> {
+): Promise<{
+  cards: ManifestCard[];
+  guestListsDone: GuestListsDone | null;
+  canComplete: boolean | null;
+}> {
   const result = await apiFetch<{
     run_date: string;
     cards: ManifestCard[];
     guest_lists_done?: GuestListsDone | null;
+    /** G290：这个人能不能点 Completed（Super Admin，或 Staff Schedule 里这天上 Open shift 的人）。旧后端没有。 */
+    can_complete?: boolean;
   }>(`${API}/manifests`, { cache: "no-store", signal, query: { date } });
   return {
     cards: result.cards,
     guestListsDone: result.guest_lists_done ?? null,
+    canComplete:
+      typeof result.can_complete === "boolean" ? result.can_complete : null,
   };
 }
 

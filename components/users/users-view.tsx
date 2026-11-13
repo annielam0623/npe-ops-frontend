@@ -97,6 +97,7 @@ import { InviteDialog, type InviteOutcome } from "./invite-dialog";
 import { ResetLinkDialog, type ResetOutcome } from "./reset-link-dialog";
 import { RoleLegend } from "./role-legend";
 import { TeamImportPanel } from "./team-import-panel";
+import { ReportingLinesPanel } from "./reporting-lines-panel";
 import { UsersTable, type RowExtras } from "./users-table";
 
 /** Super Admin 才读的 /api/team 那一份（权限、职责、首页、部门邮箱）。 */
@@ -950,6 +951,16 @@ export function TeamView() {
               />
             )}
             <RoleLegend withSupervisor={view.withSupervisor} />
+            {/* G282 Reporting lines + Team leads：Super Admin 改、admin 只读；读不到 leave-routing 就不出。 */}
+            {view.team ? (
+              <ReportingLinesPanel
+                teams={view.team.catalog.teams}
+                canEdit={view.isSuperAdmin}
+                refreshKey={logVersion}
+                onSaved={() => setLogVersion((v) => v + 1)}
+                onUnauthorized={redirectToLogin}
+              />
+            ) : null}
             {/* 改动记录（G203，/api/team/action-log；G212 Q6 起 admin 也能读：权限那一份读到了就出）。 */}
             {view.isSuperAdmin || view.team ? (
               <ActionLogPanel
@@ -980,6 +991,7 @@ export function TeamView() {
           members={lookups.memberUsers}
           summaries={lookups.summaries}
           ownItems={view.ownItems ?? undefined}
+          canSetManager={view.isSuperAdmin}
           onSaved={(result) => {
             if (dialog.mode.kind === "edit") {
               setDialog(null);
@@ -1341,6 +1353,14 @@ function TeamHowTo({ isSuperAdmin }: { isSuperAdmin: boolean }) {
           Teams: click the team names in a person&apos;s row (or + Add), tick
           the teams, then Save. Teams only group people for messages. They give
           no permissions.
+        </li>
+        <li>
+          Leave approvals: a person&apos;s leave requests go to their Manager.
+          Without a Manager they go to the team lead of each of their teams, and
+          with neither they go to Super Admin, who can always approve.{" "}
+          {isSuperAdmin
+            ? "Set the Manager in the person’s Edit form and click Save. Set team leads under Reporting lines at the bottom of this page, then click Save there."
+            : "Reporting lines at the bottom of this page shows who approves whose leave. Only Super Admin can change it."}
         </li>
         <li>
           Name: click ✏️ Name to change how a person&apos;s name shows. This

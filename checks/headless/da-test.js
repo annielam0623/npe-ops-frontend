@@ -779,42 +779,103 @@ async function run() {
   await ctl({ relayExtra: false, relaySent: ["R1"], relayLater: [], relayRace: [], relayGone: [] });
 
   // ── Morning Relay · Own bus（G118 tour_car 轮，Hoover Dam，2026-10-26）：早班短信照发，
-  // 接客是团自己的 bus_tour 车，不是 relay 车；后端早就支持，这里补的是 ops 之前漏接的第三块 UI。
+  // 接客是团自己的 bus_tour 车，不是 relay 车。131（Annie 2026-11-12「只要整节，也就是那个团的全部」「同意推荐，动手」）：
+  // 整轮的发送键拿掉，每个团一节（节头团色 + 自己的 Preview & send，只发这个团勾的）。
   await ctl({ tourCar: true });
   b0 = (await mockLog()).length;
   await evaluate(`$btn('↻ Refresh', ${rp}).click();`);
   // 面板打开以来早就拉过一次「Own bus」空框（round_labels 一直带这个 key），单看框存在不够，要等这次拉到的数据真的到了。
   const tcBox = `${rp}.querySelector('[aria-label="Own bus"]')`;
+  // 车头那一行（不是 131 的节头 / 已发 / 问题行）。
+  const carHead = `${tcBox}.querySelector('tbody tr:not([data-tour-section]):not([data-tour-sent]):not([data-tour-problem]) td')`;
+  const secOf = (name) => `${tcBox}.querySelector('tr[data-tour-section="${name}"]')`;
   await waitFor(`${tcBox}?.textContent.includes('1841')`);
   check("Own bus 轮一直显示在 1st/2nd Round 旁边（同它们一样不是按天有没有团才出现）；标题没有时间段（没有固定发车窗口）", await evaluate(`return !!${tcBox} && ${tcBox}.querySelector('b').textContent.trim() === 'Own bus';`));
   check("Own bus 轮：车号 1841 · 司机 ROBERT L，2 位 Hoover Dam 客人，各自的接客酒店照客人名单显示（不按车头站点筛）", await evaluate(`const t = ${tcBox}.textContent; return t.includes('1841 · ROBERT L') && t.includes('Excalibur Hotel') && t.includes('Horseshoe Hotel') && t.includes('ZZ Hoover') && t.includes('Hoover Dam');`), await evaluate(`return ${tcBox}.textContent.slice(0, 500);`));
   // Tour bus pick up 改名（Annie 2026-10-27「动手」）：车头用团名当车名，同 Assign 团卡片；后端还没给 car.tour_name 时取第一位客人的 Tour。
-  check("Tour bus pick up 车头：团名写在车号 / 司机前面（Hoover Dam · 1841 · ROBERT L），只有一台车不写字母；1st Round 的 relay 车头没有团名", await evaluate(`return ${tcBox}.querySelector('tbody tr td').textContent.trim().startsWith('Hoover Dam · 1841 · ROBERT L') && ${r1box}.querySelector('tbody tr td').textContent.trim().startsWith('768 · FREDDY');`), await evaluate(`return ${tcBox}.querySelector('tbody tr td').textContent.trim() + ' || ' + ${r1box}.querySelector('tbody tr td').textContent.trim();`));
-  await evaluate(`$btn('Preview & send', ${tcBox}).click();`);
+  check("Tour bus pick up 车头：团名写在车号 / 司机前面（Hoover Dam · 1841 · ROBERT L），只有一台车不写字母；1st Round 的 relay 车头没有团名", await evaluate(`return ${carHead}.textContent.trim().startsWith('Hoover Dam · 1841 · ROBERT L') && ${r1box}.querySelector('tbody tr td').textContent.trim().startsWith('768 · FREDDY');`), await evaluate(`return ${carHead}?.textContent.trim() + ' || ' + ${r1box}.querySelector('tbody tr td').textContent.trim();`));
+  check("131 旧后端（车没带 manifest_id）：按客人的团名分成一节 Hoover Dam，节头写 2 orders · 2 not sent yet", await evaluate(`const s = ${tcBox}.querySelectorAll('tr[data-tour-section]'); return s.length === 1 && s[0].getAttribute('data-tour-section') === 'Hoover Dam' && s[0].textContent.includes('2 orders') && s[0].textContent.includes('2 not sent yet');`), await evaluate(`return [...${tcBox}.querySelectorAll('tr[data-tour-section]')].map(r => r.textContent).join(' | ');`));
+  check("131：Tour bus pick up 没有整轮的 Preview & send，也没有整轮的全选框；1st Round 照旧有", await evaluate(`const b = ${tcBox}; return [...b.querySelectorAll('button')].filter(x => x.textContent.includes('Preview & send') && !x.hasAttribute('data-tour-send')).length === 0 && !b.querySelector('thead input') && !!b.querySelector('[data-tour-send]') && !!$btn('Preview & send', ${r1box}) && !!${r1box}.querySelector('thead input');`));
+  await evaluate(`${secOf("Hoover Dam")}.querySelector('[data-tour-send]').click();`);
   await waitFor(dialog);
-  check("确认框标题是 Preview & send · Own bus；预览请求 round=tour_car", await evaluate(`return ${dialog}.textContent.includes('Preview & send · Own bus');`) && (await since(b0, (e) => e.path === "/api/dispatch/relay-send/preview")).at(-1)?.q.round === "tour_car");
+  {
+    const pv = (await since(b0, (e) => e.path === "/api/dispatch/relay-send/preview")).at(-1)?.q;
+    check("131 确认框标题 Send Hoover Dam · 2 guests；预览 round=tour_car，旧后端没有 manifest_id ⇒ 不带 tour", await evaluate(`return ${dialog}.querySelector('h2').textContent.trim() === 'Send Hoover Dam · 2 guests';`) && pv?.round === "tour_car" && pv?.tour === undefined, `${await evaluate(`return ${dialog}.querySelector('h2').textContent;`)} ${JSON.stringify(pv)}`);
+  }
   b0 = (await mockLog()).length;
   await evaluate(`$btn('Send to 2 guests', ${dialog}).click();`);
   await waitFor(`${tcBox}.textContent.includes('Send Results')`);
-  check("发完：结果卡片 Sent 2（同全站发送页格式）", await evaluate(`const stats = [...${tcBox}.querySelectorAll('[data-stat]')].map(e => e.textContent); return stats[0] === '2';`), await evaluate(`return ${tcBox}.textContent;`));
+  check("发完：结果卡片 Sent 2（同全站发送页格式），在这一节里", await evaluate(`const stats = [...${tcBox}.querySelectorAll('[data-stat]')].map(e => e.textContent); return stats[0] === '2';`), await evaluate(`return ${tcBox}.textContent;`));
   const tcSend = (await since(b0, (e) => e.path === "/api/dispatch/relay-send"))[0]?.body;
-  check("发送请求：round=tour_car，order_numbers 含这个团的 2 单（HD1、HD2），也带 send_type=combined", tcSend?.round === "tour_car" && tcSend?.send_type === "combined" && JSON.stringify([...(tcSend?.order_numbers ?? [])].sort()) === '["HD1","HD2"]', JSON.stringify(tcSend));
+  check("发送请求：round=tour_car，order_numbers 含这个团的 2 单（HD1、HD2），也带 send_type=combined；没有 manifest_id 不带 tour", tcSend?.round === "tour_car" && tcSend?.send_type === "combined" && JSON.stringify([...(tcSend?.order_numbers ?? [])].sort()) === '["HD1","HD2"]' && tcSend?.tour === undefined, JSON.stringify(tcSend));
   await evaluate(`$btn('✕ Close', ${tcBox}).click();`);
   // 这个团当天一台 bus_tour 车都没排：整块挡住，红字原因是后端原话，发送键关着（没有客人可勾）。
   await ctl({ tourCarNoCar: true });
   await evaluate(`$btn('↻ Refresh', ${rp}).click();`);
   await waitFor(`${tcBox}.textContent.includes('No bus assigned to this tour')`);
-  check("没排 bus_tour 车：车头写 No vehicle · No driver，红字 No bus assigned to this tour；Preview & send 灰掉（没有客人可勾）", await evaluate(`return ${tcBox}.textContent.includes('No vehicle · No driver') && ${tcBox}.textContent.includes('No bus assigned to this tour') && $btn('Preview & send', ${tcBox}).disabled;`), await evaluate(`return ${tcBox}.textContent;`));
-  check("没排车的占位车没有客人、后端也没给团名：车头照旧从 No vehicle 开始，不写团名", await evaluate(`return ${tcBox}.querySelector('tbody tr td').textContent.trim().startsWith('No vehicle · No driver');`), await evaluate(`return ${tcBox}.querySelector('tbody tr td').textContent.trim();`));
+  check("没排 bus_tour 车：车头写 No vehicle · No driver，红字 No bus assigned to this tour；这一节的 Preview & send 灰掉（没有客人可勾）", await evaluate(`return ${tcBox}.textContent.includes('No vehicle · No driver') && ${tcBox}.textContent.includes('No bus assigned to this tour') && ${tcBox}.querySelector('[data-tour-send]').disabled;`), await evaluate(`return ${tcBox}.textContent;`));
+  check("没排车的占位车没有客人、后端也没给团名：车头照旧从 No vehicle 开始，不写团名", await evaluate(`return ${carHead}.textContent.trim().startsWith('No vehicle · No driver');`), await evaluate(`return ${carHead}?.textContent.trim();`));
   // 后端补了 car.tour_name / bus_label（B2）：占位车也写团名；一个团两台车加 Bus A / Bus B（同 Assign）。
   await ctl({ tourCarB2: true });
   await evaluate(`$btn('↻ Refresh', ${rp}).click();`);
-  await waitFor(`${tcBox}.querySelector('tbody tr td')?.textContent.trim().startsWith('Hoover Dam · No vehicle')`);
-  check("B2 占位车：车头 Hoover Dam · No vehicle · No driver（团名读后端 tour_name）", await evaluate(`return ${tcBox}.querySelector('tbody tr td').textContent.trim().startsWith('Hoover Dam · No vehicle · No driver');`), await evaluate(`return ${tcBox}.querySelector('tbody tr td').textContent.trim();`));
+  await waitFor(`${carHead}?.textContent.trim().startsWith('Hoover Dam · No vehicle')`);
+  check("B2 占位车：车头 Hoover Dam · No vehicle · No driver（团名读后端 tour_name）", await evaluate(`return ${carHead}.textContent.trim().startsWith('Hoover Dam · No vehicle · No driver');`), await evaluate(`return ${carHead}?.textContent.trim();`));
   await ctl({ tourCarNoCar: false });
   await evaluate(`$btn('↻ Refresh', ${rp}).click();`);
   await waitFor(`${tcBox}.textContent.includes('2205')`);
-  check("B2 一个团两台车：车头 Hoover Dam · Bus A · 1841 · ROBERT L 和 Hoover Dam · Bus B · 2205 · ZZ DRIVER（空车的团名也靠 tour_name）", await evaluate(`const h = [...${tcBox}.querySelectorAll('[data-car-blocked], tbody tr')].map(r => r.textContent.trim()); return h.some(t => t.startsWith('Hoover Dam · Bus A · 1841 · ROBERT L')) && h.some(t => t.startsWith('Hoover Dam · Bus B · 2205 · ZZ DRIVER'));`), await evaluate(`return [...${tcBox}.querySelectorAll('tbody tr')].map(r => r.textContent.trim().slice(0, 60)).join(' || ');`));
+  check("B2 一个团两台车：车头 Hoover Dam · Bus A · 1841 · ROBERT L 和 Hoover Dam · Bus B · 2205 · ZZ DRIVER（空车的团名也靠 tour_name）；两台车同一节", await evaluate(`const h = [...${tcBox}.querySelectorAll('tbody tr')].map(r => r.textContent.trim()); return h.some(t => t.startsWith('Hoover Dam · Bus A · 1841 · ROBERT L')) && h.some(t => t.startsWith('Hoover Dam · Bus B · 2205 · ZZ DRIVER')) && ${tcBox}.querySelectorAll('tr[data-tour-section]').length === 1;`), await evaluate(`return [...${tcBox}.querySelectorAll('tbody tr')].map(r => r.textContent.trim().slice(0, 60)).join(' || ');`));
+  // 2026-11-12 TI（后端 relay-ti-2026-11-12）：TI 客人进自己团的车；两个没排车的团是占位块（car.id null、带 manifest_id）。
+  // 131：每个团一节，节头团色（当天 Bus Manifest 的颜色：West Rim 设了 #2563eb；Hoover 没设 ⇒ 按团名的默认灰）。
+  await ctl({ tourCarTI: true, tourCarB2: false, tourCarNoCar: false });
+  await evaluate(`$btn('↻ Refresh', ${rp}).click();`);
+  await waitFor(`${tcBox}?.textContent.includes('ZZ West TI')`);
+  check("TI：三块都出来（两个占位块 + 西峡），三位 TI 客人各在自己团下面", await evaluate(`const b = ${tcBox}; return b.querySelectorAll('[data-car-blocked]').length === 2 && ['TS1', 'TI1', 'HD3'].every(o => !!b.querySelector('tr[data-order="' + o + '"]'));`), await evaluate(`return ${tcBox}.textContent;`));
+  check("131 TI：三节，顺序照后端（Grand Canyon South → West Rim Bus Tour → Hoover Dam 最后）", await evaluate(`return [...${tcBox}.querySelectorAll('tr[data-tour-section]')].map(r => r.getAttribute('data-tour-section')).join('|') === 'Grand Canyon South|West Rim Bus Tour|Hoover Dam';`), await evaluate(`return [...${tcBox}.querySelectorAll('tr[data-tour-section]')].map(r => r.getAttribute('data-tour-section')).join('|');`));
+  check("131 团色：West Rim 节头用当天 Bus Manifest 的 #2563eb、白字；Hoover 没设颜色 ⇒ 默认灰 #8f8c82", await evaluate(`const w = getComputedStyle(${secOf("West Rim Bus Tour")}.querySelector('td')), h = getComputedStyle(${secOf("Hoover Dam")}.querySelector('td')); return w.backgroundColor === 'rgb(37, 99, 235)' && w.color === 'rgb(255, 255, 255)' && h.backgroundColor === 'rgb(143, 140, 130)';`), await evaluate(`return [...${tcBox}.querySelectorAll('tr[data-tour-section] td')].map(td => getComputedStyle(td).backgroundColor + '/' + getComputedStyle(td).color).join(' | ');`));
+  check("131 没排车的团：节头下面一行红字写改哪里（On Assign, give the Grand Canyon South tour card a bus and a driver…），West Rim 没有这一行", await evaluate(`const p = [...${tcBox}.querySelectorAll('tr[data-tour-problem]')].map(r => r.textContent); return p.length === 2 && p[0].includes('No bus assigned to this tour.') && p[0].includes('On Assign, give the Grand Canyon South tour card a bus and a driver, then Save.') && p[0].includes('tick Send anyway') && p[1].includes('Hoover Dam tour card');`), await evaluate(`return [...${tcBox}.querySelectorAll('tr[data-tour-problem]')].map(r => r.textContent).join(' | ');`));
+  check("TI：被挡的说明写两个团名（不是两个 This tour）", await evaluate(`const n = ${tcBox}.querySelector('[data-relay-blocked-note]'); return !!n && n.textContent.includes('Grand Canyon South, Hoover Dam');`), await evaluate(`return ${tcBox}.querySelector('[data-relay-blocked-note]')?.textContent;`));
+  check("TI：departure 是 0 ⇒ 不写「board at the tour bus departure point」那句", await evaluate(`return !${rp}.textContent.includes('board at the tour bus departure point');`));
+  // 发 West Rim 一节：只带 tour=3 和这一节勾的 TI1。
+  b0 = (await mockLog()).length;
+  await evaluate(`${secOf("West Rim Bus Tour")}.querySelector('[data-tour-send]').click();`);
+  await waitFor(dialog);
+  {
+    const pv = (await since(b0, (e) => e.path === "/api/dispatch/relay-send/preview")).at(-1)?.q;
+    check("131 发 West Rim：确认框标题 Send West Rim Bus Tour · 1 guest，没有别的团的被挡车；预览带 tour=3", await evaluate(`return ${dialog}.querySelector('h2').textContent.trim() === 'Send West Rim Bus Tour · 1 guest' && !${dialog}.querySelector('[data-will-not-send]') && ${dialog}.textContent.includes('TI1') && !${dialog}.textContent.includes('TS1');`) && pv?.tour === "3", `${await evaluate(`return ${dialog}.textContent;`)} ${JSON.stringify(pv)}`);
+  }
+  b0 = (await mockLog()).length;
+  await evaluate(`$btn('Send to 1 guest', ${dialog}).click();`);
+  await waitFor(`${tcBox}.textContent.includes('Send Results')`);
+  {
+    const body = (await since(b0, (e) => e.path === "/api/dispatch/relay-send"))[0]?.body;
+    check("131 West Rim 发送请求：round=tour_car、tour=3、order_numbers 只有 TI1、没有 send_anyway", body?.round === "tour_car" && body?.tour === 3 && JSON.stringify(body?.order_numbers) === '["TI1"]' && body?.send_anyway === undefined, JSON.stringify(body));
+  }
+  await waitFor(`${secOf("West Rim Bus Tour")}?.nextElementSibling?.hasAttribute('data-tour-sent')`);
+  check("131 West Rim 发完：结果在 West Rim 这一节里（在 Hoover Dam 节头之前）；节头下面绿字 ✓ Sent 1 · by annie，键灰掉", await evaluate(`const rows = [...${tcBox}.querySelectorAll('tbody > tr')]; const w = rows.indexOf(${secOf("West Rim Bus Tour")}), h = rows.indexOf(${secOf("Hoover Dam")}), r = rows.findIndex(x => x.textContent.includes('Send Results')); const sent = ${secOf("West Rim Bus Tour")}.nextElementSibling; return w < r && r < h && sent.textContent.includes('✓ Sent 1 · by annie') && getComputedStyle(sent.querySelector('td')).color === 'rgb(21, 128, 61)' && ${secOf("West Rim Bus Tour")}.querySelector('[data-tour-send]').disabled;`), await evaluate(`return [...${tcBox}.querySelectorAll('tbody > tr')].map(r => r.textContent.trim().slice(0, 50)).join(' || ');`));
+  await evaluate(`$btn('✕ Close', ${tcBox}).click();`);
+  // 发 Grand Canyon South 一节：整节都在占位块上 ⇒ 照样弹框（131），只有 Will NOT be sent 和 Send anyway。
+  b0 = (await mockLog()).length;
+  await evaluate(`${secOf("Grand Canyon South")}.querySelector('[data-tour-send]').click();`);
+  await waitFor(`${dialog}?.querySelector('[data-will-not-send]')`);
+  {
+    const pv = (await since(b0, (e) => e.path === "/api/dispatch/relay-send/preview")).at(-1)?.q;
+    check("131 没排车的团也弹确认框：只有 Grand Canyon South 一段 Will NOT be sent + Send anyway（TS1），没有 Hoover、没有空的 Will be sent；预览带 tour=7", await evaluate(`const n = ${dialog}.querySelector('[data-will-not-send]'); return n.textContent.includes('Grand Canyon South: No bus assigned to this tour') && !n.textContent.includes('Hoover Dam') && !!n.querySelector('input[data-send-anyway=TS1]') && !${dialog}.querySelector('[data-will-send]');`) && pv?.tour === "7", `${await evaluate(`return ${dialog}.textContent;`)} ${JSON.stringify(pv)}`);
+  }
+  b0 = (await mockLog()).length;
+  await evaluate(`$btn('Send to 0 guests', ${dialog}).click();`);
+  await sleep(300);
+  check("131 一个 Send anyway 都没勾就点发送：框里红字说要勾，不发请求", await evaluate(`return ${dialog}.textContent.includes('Tick Send anyway for at least one guest');`) && !(await since(b0, (e) => e.path === "/api/dispatch/relay-send")).length, await evaluate(`return ${dialog}.textContent;`));
+  await evaluate(`${dialog}.querySelector('input[data-send-anyway=TS1]').click();`);
+  await sleep(200);
+  b0 = (await mockLog()).length;
+  await evaluate(`$btn('Send to 1 guest', ${dialog}).click();`);
+  await waitFor(`${tcBox}.textContent.includes('Send Results')`);
+  {
+    const body = (await since(b0, (e) => e.path === "/api/dispatch/relay-send"))[0]?.body;
+    check("131 Grand Canyon South 勾 Send anyway 发：tour=7、order_numbers [TS1]、send_anyway [TS1]", body?.round === "tour_car" && body?.tour === 7 && JSON.stringify(body?.order_numbers) === '["TS1"]' && JSON.stringify(body?.send_anyway) === '["TS1"]', JSON.stringify(body));
+  }
+  await evaluate(`$btn('✕ Close', ${tcBox}).click();`);
+  await ctl({ tourCarTI: false });
   await ctl({ tourCar: false, tourCarNoCar: false, tourCarBlocked: false, tourCarB2: false });
 
   // ── 分步（后端 G29 第一批）；10-07 起 Step 1 / 2 在 Assign 标签 ──
@@ -1159,6 +1220,19 @@ async function run() {
   check("板在这个团所有车的下面（最后一台车之后）", await evaluate(`const rows = [...document.querySelector('[data-sec="bus_tour:3"]').querySelectorAll('.vrow')]; const board = document.querySelector('[data-arrange-board="3"]'); return rows.length === 2 && (rows[1].compareDocumentPosition(board) & 4) && board.querySelectorAll('[data-arrange-col]').length === 3;`));
   check("一台车的团：写全部几位坐这台车、不列订单", (await evaluate(`return ${bg("4:single")}?.textContent || '';`)).includes("all 5 guests ride this bus"));
   check("没坐上车的：橙色 Not on a bus 一列，几单几位", (await evaluate("return document.querySelector('[data-unplaced=\"3\"]')?.textContent || '';")).includes("Not on a bus") && (await evaluate("return document.querySelector('[data-unplaced=\"3\"]').textContent;")).includes("1 order · 2 guests"));
+  // G308 补（Annie「任何没有完成的都要标出来」）：Not on a bus 的单也进 Schedule check，一个团一条；Fix › 滚到那一栏
+  {
+    await evaluate("document.querySelector('[data-schedule-pill]')?.click();");
+    await waitFor("document.getElementById('schedule-check')");
+    const nbLi = "[...document.querySelectorAll('#schedule-check [aria-label=Issues] > li')].find(l => l.textContent.includes('not on a bus'))";
+    const t = await evaluate(`return ${nbLi}?.textContent ?? null;`);
+    check("G308 Schedule check：「West Rim Bus Tour: 1 order not on a bus」+ 2 guests、去 Arrange seats", !!t && t.includes("West Rim Bus Tour: 1 order not on a bus") && t.includes("2 guests. In Arrange seats, drag each order onto a bus or pick its bus."), String(t));
+    await evaluate("window.scrollTo(0, 0);");
+    await sleep(200);
+    await evaluate(`${nbLi}.querySelector('[data-issue-fix]').click();`);
+    await sleep(1200);
+    check("G308 Not on a bus 那条的 Fix ›：滚到橙色 Not on a bus 那一栏", await evaluate("const r = document.querySelector('[data-unplaced=\"3\"]').getBoundingClientRect(); return window.scrollY > 100 && r.top >= 0 && r.bottom <= innerHeight;"));
+  }
   await sleep(100);
   check("点开：列订单（名字、单号、几位、接客时间地点、换车下拉）", await evaluate(`const t = ${bg("3:A")}.textContent; return ${bg("3:A")}.querySelectorAll('[data-seat-order]').length === 2 && t.includes('ZZ Test Alpha') && t.includes('SG1') && t.includes('6:30 AM · TI') && !!${bg("3:A")}.querySelector('select');`));
   // U / L / X 团类型筛选键（Annie 2026-10-18「C窗口可以动手」，后端 a307762）
@@ -1402,6 +1476,35 @@ async function run() {
   await helpers();
   await sleep(300);
   check("Super Admin：有 Completed 键，How to use 写 When the day is done, click Completed at the bottom of Step 2.", await evaluate("const d = [...document.querySelectorAll('details')].find(x => x.textContent.includes('How to use — Guest lists')); return !!$btn('Completed — this day’s dispatch is done', document.getElementById('dispatch-completed')) && d.textContent.replace(/\\s+/g, ' ').includes('When the day is done, click Completed at the bottom of Step 2.');"));
+  // G290（Annie「1. B 2 选推荐。动手」）：键上方一行提醒（浅灰 12px，不是蓝）；按过以后没有。能不能点看后端 can_complete；403 红字后端原话。
+  const REMIND = "Before you click Completed, please double-check that every driver and guide is correct for this day’s dispatch.";
+  check("G290 提醒：Completed 键上方一行，原文、#cbd5e1、12px、不是按钮", await evaluate(`const c = document.getElementById('dispatch-completed'); const r = c.querySelector('[data-completed-reminder]'); const b = $btn('Completed', c); const cs = r && getComputedStyle(r); return !!r && !!b && r.tagName === 'P' && r.textContent.replace(/\\s+/g, ' ').trim() === ${JSON.stringify(REMIND)} && cs.color === 'rgb(203, 213, 225)' && cs.fontSize === '12px' && (r.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) && r.getBoundingClientRect().bottom <= b.getBoundingClientRect().top;`), await evaluate(`const c = document.getElementById('dispatch-completed'); const r = c.querySelector('[data-completed-reminder]'); const b = $btn('Completed', c); const cs = getComputedStyle(r); return JSON.stringify({ text: r.textContent.replace(/\\s+/g, ' ').trim(), color: cs.color, size: cs.fontSize, btn: !!b, before: !!(r.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING), rb: r.getBoundingClientRect().bottom, bt: b.getBoundingClientRect().top });`));
+  await ctl({ complete403: true });
+  before = (await mockLog()).length;
+  await evaluate("$btn('Completed', document.getElementById('dispatch-completed')).click();");
+  check("G290 POST complete 回 403 ⇒ 红字原样是后端原话，键和提醒还在", await waitFor("document.querySelector('#dispatch-completed [role=alert]')?.textContent === 'Only the Open shift on this day or a Super Admin can mark it Completed.' && !!document.querySelector('[data-completed-reminder]') && !!$btn('Completed', document.getElementById('dispatch-completed'))"), await evaluate("return document.querySelector('#dispatch-completed [role=alert]')?.textContent;"));
+  check("G290 403 的红字是红色", await evaluate("const a = document.querySelector('#dispatch-completed [role=alert]'); const [r, g, bl] = getComputedStyle(a).color.match(/\\d+/g).map(Number); return r > 200 && g < 180 && bl < 180;"), await evaluate("return getComputedStyle(document.querySelector('#dispatch-completed [role=alert]')).color;"));
+  await ctl({ complete403: false, superAdmin: false, canComplete: true });
+  await goto(`${APP}/dispatch?date=2026-10-09`);
+  await waitFor("document.getElementById('dispatch-completed')");
+  await helpers();
+  await sleep(300);
+  check("G290 不是 Super Admin、但这天上 Open shift（can_complete true）：有 Completed 键和提醒；How to use 写 click Completed", await evaluate("const c = document.getElementById('dispatch-completed'); const d = [...document.querySelectorAll('details')].find(x => x.textContent.includes('How to use — Guest lists')); return !!$btn('Completed', c) && !!c.querySelector('[data-completed-reminder]') && !!d && d.textContent.includes('click Completed');"));
+  await ctl({ superAdmin: true, canComplete: false });
+  await goto(`${APP}/dispatch?date=2026-10-09`);
+  await waitFor(`${sec("West Rim Bus Tour")}`);
+  await sleep(800);
+  check("G290 can_complete false ⇒ 没有 Completed 键、没有提醒，How to use 不写 click Completed（以后端为准）", await evaluate("const d = [...document.querySelectorAll('details')].find(x => x.textContent.includes('How to use — Guest lists')); return !document.getElementById('dispatch-completed') && !document.querySelector('[data-completed-reminder]') && !!d && !d.textContent.includes('click Completed');"));
+  await ctl({ canComplete: null, noCanComplete: true });
+  await goto(`${APP}/dispatch?date=2026-10-09`);
+  await waitFor("document.getElementById('dispatch-completed')");
+  await helpers();
+  check("G290 旧后端（没有 can_complete）：照旧 Super Admin 有键", await evaluate("return !!$btn('Completed', document.getElementById('dispatch-completed'));"));
+  await ctl({ noCanComplete: false, completed: true });
+  await goto(`${APP}/dispatch?date=2026-10-09`);
+  await waitFor("document.getElementById('dispatch-completed')?.textContent.includes('Dispatch completed by Annie')");
+  check("G290 已经 Completed：没有提醒那句", await evaluate("return !document.querySelector('[data-completed-reminder]');"));
+  await ctl({ completed: false });
   await ctl({ superAdmin: false });
     await goto(`${APP}/dispatch?date=2026-10-09`);
   await waitFor(`${sec("West Rim Bus Tour")}`);
@@ -1436,6 +1539,55 @@ async function run() {
   await openPage(`${APP}/dispatch?date=2026-10-17`);
   await waitFor("document.querySelector('[data-schedule-pill]')", 15000);
   check("折起的状态记在这个浏览器里：刷新还是胶囊；点胶囊展开", await evaluate("document.querySelector('[data-schedule-pill]').click(); await new Promise(r => setTimeout(r, 150)); return !!document.getElementById('schedule-check') && localStorage.getItem('dispatch-schedule-check-open') === '1';"));
+
+  // ── G308（Annie「guide都没选，怎么all good？」「对，任何没有完成的都要标出来」）：没做完的都算进 Schedule check，只标不拦 ──
+  {
+    promptAnswer = ""; // 换天时「有没存的改动」一律放行
+    const LI = "#schedule-check [aria-label=Issues] > li";
+    const li = (t) => `[...document.querySelectorAll('${LI}')].find(l => l.textContent.includes(${JSON.stringify(t)}))`;
+    const openDay = async (d) => {
+      await openPage(`${APP}/dispatch?date=${d}`);
+      await waitFor("document.getElementById('schedule-check') || document.querySelector('[data-schedule-pill]')", 15000);
+      await evaluate("document.querySelector('[data-schedule-pill]')?.click();");
+      await waitFor(`!!${li("in Need a look")}`, 15000);
+      await helpers();
+    };
+    const fixOf = async (t) => {
+      await evaluate(`${li(t)}.querySelector('[data-issue-fix]').click();`);
+      await sleep(900);
+    };
+    await openDay("2026-10-05");
+    // 前面的检查存过这一天：没导游的车数跟 mock 原样不一定一样，按页面上的车数算。
+    const noGuide = () => evaluate(`return [...document.querySelectorAll('${LI}')].filter(l => l.textContent.includes('has no guide')).length;`);
+    const want = await evaluate("return [...document.querySelectorAll('section[aria-label=\"West Rim Bus Tour\"] .vrow')].filter(r => { const g = r.querySelector('[data-f=guide]'); return g && g.value === ''; }).length;");
+    const n0 = await noGuide();
+    check("G308 没导游的巴士：一台一条「West Rim Bus Tour: Bus A has no guide」+ Needs a guide.；Driver Guide 那台不算",
+      want > 0 && n0 === want && (await evaluate(`const l = ${li("West Rim Bus Tour: Bus A has no guide")}; return !!l && l.textContent.includes('Needs a guide.');`)),
+      JSON.stringify({ want, n0, t: await evaluate("return document.getElementById('schedule-check').textContent;") }));
+    await fixOf("Bus A has no guide");
+    check("G308 没导游 Fix ›：光标到那台车的 Guide 框（空的）", await evaluate("const a = document.activeElement; const ok = a?.dataset.f === 'guide' && a.value === '' && !!a.closest('.vrow'); if (ok) a.setAttribute('data-g308', '1'); return ok;"));
+    const gv = await evaluate("const s = document.querySelector('[data-g308]'); const o = s ? [...s.options].find(o => /^[0-9]+$/.test(o.value) && !o.disabled) : null; return o ? o.value : null;");
+    if (gv) await pick("document.querySelector('[data-g308]')", gv);
+    await sleep(300);
+    check("G308 选了导游（没存）⇒ 那一条马上没了（少一条）", !!gv && (await noGuide()) === n0 - 1, JSON.stringify({ gv, n0, now: await noGuide() }));
+    const nl = await evaluate(`return ${li("in Need a look")}.textContent;`);
+    check("G308 Need a look 有单：「1 order in Need a look」+ 说明在 Send 标签", nl.includes("1 order in Need a look") && nl.includes("On the Send tab. These guests are not on any round yet - each one says why."), nl);
+    await fixOf("in Need a look");
+    await waitFor("(() => { const p = document.getElementById('panel-send'); const b = p && p.querySelector('[aria-label=\"Need a look\"]'); if (!b || !b.offsetParent) return false; const r = b.getBoundingClientRect(); return r.top < innerHeight && r.bottom > 0; })()", 10000);
+    check("G308 Need a look Fix ›：切到 Send 标签、滚到 Need a look 那一块", await evaluate("const p = document.getElementById('panel-send'); const b = p && p.querySelector('[aria-label=\"Need a look\"]'); if (!b) return false; const r = b.getBoundingClientRect(); return !!b.offsetParent && r.top < innerHeight && r.bottom > 0 && new URL(location.href).searchParams.get('tab') === 'send';"));
+
+    await openDay("2026-10-06");
+    check("G308 Relay 车没酒店：「Morning Relay · 1st Round: vehicle 768 has no hotel」+ Needs a hotel.", await evaluate(`const l = ${li("vehicle 768 has no hotel")}; return !!l && l.textContent.includes('Morning Relay · 1st Round: vehicle 768 has no hotel') && l.textContent.includes('Needs a hotel.');`), await evaluate("return document.getElementById('schedule-check').textContent;"));
+    await fixOf("vehicle 768 has no hotel");
+    check("G308 没酒店 Fix ›：光标到那台车的 Add hotel", await evaluate("return document.activeElement?.dataset.f === 'addstop';"));
+
+    await openDay("2026-10-09");
+    check("G308 一台车缺几样合成一条：「Hoover Dam: Bus B has no guide, vehicle or hotel」+ Needs a guide, a vehicle and a hotel.", await evaluate(`const l = ${li("Hoover Dam: Bus B has no")}; return !!l && l.textContent.includes('Hoover Dam: Bus B has no guide, vehicle or hotel') && l.textContent.includes('Needs a guide, a vehicle and a hotel.');`), await evaluate("return document.getElementById('schedule-check').textContent;"));
+    check("G308 How to use 写 Schedule check：没做完的都列、全做完才 All good、不拦保存", await evaluate("const d = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Buses')); const t = d ? d.textContent.replace(/\\s+/g, ' ') : ''; return t.includes('Schedule check (right side) lists everything not done yet') && t.includes('It shows ✓ All good only when nothing is left. Nothing in it stops you from saving.');"));
+    await goto("about:blank");
+    await sleep(300);
+    promptAnswer = null;
+  }
 
   // ── G71 同一天同时只能一个人编辑（后端 docs/interfaces/dispatch-edit-lock-2026-10-15.md，Annie 2026-10-15 看过预览）──
   // 用 10-20（两轮各一台）、10-21（空、照抄 10-20）、10-22（只有 1st Round）。离开页面时一律答应（有改动也走）。
@@ -2086,6 +2238,7 @@ async function run() {
     check("Note：Morning Relay 行和 Bus Tour 车卡都是新 placeholder「Note to yourself or others (not sent to drivers or guides)」、读屏名 Note", info.every((i) => i.ph === PH && i.aria === "Note"), JSON.stringify(info));
     check("Note：输入的字是深红 #b91c1c（两处）", info.every((i) => i.color === "rgb(185, 28, 28)"), JSON.stringify(info));
     check("Note：placeholder 照旧浅灰（#94a3b8，不是红）", info.every((i) => i.phColor === "rgb(148, 163, 184)"), JSON.stringify(info));
+    check("133 Note：Morning Relay 的 Note 整行宽放在这一排最下面（不在司机那一栏，宽过司机栏、从司机栏左边到菜单右边）", await evaluate("const f = document.querySelector('section[data-sec=relay] .vrow'); const n = f.querySelector('[data-f=note]'); const w = n.closest('[data-relay-note]'); const d = f.firstElementChild; const nb = n.getBoundingClientRect(), fb = f.getBoundingClientRect(), db = d.getBoundingClientRect(); return !!w && w.parentElement === f && !d.contains(n) && nb.width > db.width * 1.8 && nb.top >= db.bottom - 2 && Math.abs(nb.right - fb.right) < 4;"), await evaluate("const f = document.querySelector('section[data-sec=relay] .vrow'); const n = f.querySelector('[data-f=note]'); return JSON.stringify([n.getBoundingClientRect(), f.getBoundingClientRect(), f.firstElementChild.getBoundingClientRect()]);"));
     check("Note：页面上没有旧原文 Note for yourself / Private note", await evaluate("return ![...document.querySelectorAll('[data-f=note]')].some((e) => e.placeholder.includes('Note for yourself') || e.getAttribute('aria-label') === 'Private note');"));
     await goto("about:blank");
     await sleep(800);
@@ -2227,7 +2380,10 @@ async function run() {
       const names = (x) => String(x).split("Fix ›").pop();
       check("94：没时间的 Excalibur（别的原因）、2nd Round 的、Hoover tour_car 的、Treasure Island 都不进 1st Round 名单", !!t && names(t) === "aria (4) · MGM (5)", String(t));
       check("94：说明小字换成新句", !!t && t.includes("Only hotels with guests on this round's tours. Treasure Island is left out because the tours start there.") && !t.includes("each round is counted on its own"), String(t));
-      check("94：2nd Round 没排车（没有车）照旧不列", !(await evaluate("return [...document.querySelectorAll('[aria-label=\"Schedule check\"] [aria-label=Issues] > li')].some(l => l.textContent.includes('2nd Round vehicle'));")));
+      // G308：后面几轮没车、但后端清单里这一轮有客人的酒店 ⇒ 照样列（11-13 2nd Round 0 台车、13 位 West Rim 客人没提醒）。
+      const r2 = await evaluate("return [...document.querySelectorAll('[aria-label=\"Schedule check\"] [aria-label=Issues] > li')].find(l => l.textContent.includes('2nd Round vehicle'))?.textContent ?? null;");
+      check("G308：2nd Round 没排车、但这一轮有客人 ⇒ 列出「1 hotel with no Morning Relay · 2nd Round vehicle」、Excalibur (1)", !!r2 && r2.includes("1 hotel with no Morning Relay · 2nd Round vehicle") && r2.includes("Excalibur (1)"), String(r2));
+      check("G308：Need a look 6 单 ⇒「6 orders in Need a look」", await evaluate("return [...document.querySelectorAll('[aria-label=\"Schedule check\"] [aria-label=Issues] > li')].some(l => l.textContent.includes('6 orders in Need a look'));"));
       // 边改边减：在 1st Round 加一台车、加 MGM（没存）
       await evaluate(`$btn('+ Add vehicle', ${sec("Morning Relay · 1st Round")}).click();`);
       await sleep(200);
@@ -2602,6 +2758,32 @@ async function run() {
     await openSend();
     check("G266：发过的人照旧默认勾（FREDDY 发过、重开还是勾着）", await evaluate(`return ${dp}.querySelector('tr[data-key="hr:1"] input').checked && ${mark('tr[data-key="hr:1"]')}.dataset.noticeMark === 'sent';`));
     await ctl({ marks: false, noticeMarks: {}, guideFail: false, driverAllOk: false });
+  }
+
+  // G300（Annie：「dispatch 的 bus card 上面，所有的 internal notes 保存了之后除非手动删，一律不被 CCL 的数据覆盖」，第 4 点同意推荐）：
+  // CCL 去掉一台有备注的车 ⇒ 条上写 Kept、Apply 后整台留着（司机、车、酒店）；没备注的照删；Changed 的车备注不变。
+  {
+    await goto(`${APP}/dispatch?date=2026-11-03`);
+    await waitFor("document.querySelector('section[aria-label=CCL]')", 30000);
+    await helpers();
+    check("G300 条上：有备注的车写 Kept + 原因，没备注的写 Removed", await evaluate("const t = document.querySelector('section[aria-label=CCL]').textContent; return t.includes('Kept') && t.includes('(has a note, so it stays; remove it yourself if it is not needed)') && t.includes('Removed') && (t.match(/has a note/g) || []).length === 1;"), await evaluate("return document.querySelector('section[aria-label=CCL]').textContent;"));
+    check("G300 How to use 有 Kept 那一条", await evaluate("return [...document.querySelectorAll('details')].some(d => d.textContent.replace(/\\s+/g, ' ').includes('Your private notes are never changed by CCL. If CCL drops a vehicle that has a note, the bar shows it as Kept and Apply changes leaves it on the page. Remove it yourself if it is not needed.'));"));
+    await evaluate("$btn('Apply changes').click();");
+    await sleep(300);
+    const notes = () => evaluate("return [...document.querySelectorAll('.vrow [data-f=note]')].map(e => e.value);");
+    check("G300 Apply 以后：有备注的车还在（备注原样），Changed 的车备注不变", await evaluate("const v = [...document.querySelectorAll('.vrow [data-f=note]')].map(e => e.value); return v.includes('V please keep these hotels assigned to Bus A') && v.includes('ZZ note stays');"), JSON.stringify(await notes()));
+    const before300 = (await mockLog()).length;
+    await evaluate("document.querySelector('section[data-sec^=relay] [data-row-save]').click();");
+    await waitReq(before300, isSave);
+    await sleep(300);
+    // Apply 了 CCL 改版 ⇒ 整天存（POST /api/dispatch/day，带 ccl_import_id），不是按单元。
+    const body300 = (await since(before300, isSave)).find((e) => e.path === "/api/dispatch/day" || e.body.unit === "relay")?.body;
+    const rows300 = body300?.rows ?? [];
+    const kept = rows300.find((r) => r.note === "V please keep these hotels assigned to Bus A");
+    const changed = rows300.find((r) => r.note === "ZZ note stays");
+    check("G300 存了以后：有备注的车整台留着（司机 1、车 10、酒店 100、备注）", !!kept && kept.driver_hr_id === 1 && kept.vehicle_id === 10 && JSON.stringify(kept.location_ids) === "[100]", JSON.stringify(rows300));
+    check("G300 存了以后：没备注的车（relay_2、车 11）照删", !rows300.some((r) => r.vehicle_id === 11), JSON.stringify(rows300));
+    check("G300 存了以后：Changed 的车换了司机（5），备注 ZZ note stays 不变", !!changed && changed.driver_hr_id === 5 && changed.vehicle_id === 12, JSON.stringify(rows300));
   }
 
   // 401

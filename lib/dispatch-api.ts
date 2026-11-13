@@ -297,7 +297,8 @@ export interface RelayBus {
 
 /** 整车不发的 relay 车（缺司机 / 没排接客站点）：`orders` 是这一轮被挡下的订单号，没客人的坏车是 []。 */
 export interface RelayBlockedCar {
-  car_id: number;
+  /** 没排车的团的占位块（tour_car 轮，2026-11-12 TI）是 null。 */
+  car_id: number | null;
   car: string;
   problems: string[];
   orders: string[];
@@ -312,7 +313,10 @@ export interface RelayPull {
     string,
     {
       car: {
-        id: number;
+        /** tour_car 轮里没排车的团给的占位块是 null（后端 2026-11-12 TI，问题写 No bus assigned to this tour）。 */
+        id: number | null;
+        /** 这一块是哪个团（tour_car 轮；占位块靠它区分）。 */
+        manifest_id?: number | null;
         van: string | null;
         driver: string | null;
         /**
@@ -411,6 +415,8 @@ export async function downloadRelayListExcel(
 export function fetchRelaySendPreview(
   date: string,
   round: string,
+  /** 131：tour_car 轮按团发，只看这个团（manifest_id）。relay / relay_2 不能带（后端 400）。 */
+  tour?: number | null,
 ): Promise<{
   to_send: number;
   already_sent: number;
@@ -421,7 +427,7 @@ export function fetchRelaySendPreview(
 }> {
   return apiFetch(`${API}/relay-send/preview`, {
     cache: "no-store",
-    query: { date, round },
+    query: { date, round, ...(typeof tour === "number" ? { tour } : {}) },
   });
 }
 
@@ -443,9 +449,13 @@ export function sendRelayRound(
     order_numbers: string[];
     send_anyway?: string[];
     preview_at?: string;
+    /** 131：tour_car 轮按团发（manifest_id），只发这个团的客人。relay / relay_2 不能带（后端 400）。 */
+    tour?: number;
   },
 ): Promise<{
   round: string;
+  /** 131：后端原样回这次发的团。 */
+  tour?: number | null;
   sent: number;
   failed: number;
   /** 以前发过、这次跳过的个数（不在 results 里）。 */

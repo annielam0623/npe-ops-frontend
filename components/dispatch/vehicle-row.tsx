@@ -976,7 +976,7 @@ function NoteInput({
 
 /**
  * Morning Relay：一排一行（司机 | 车 | 酒店 | 菜单）。不带团、导游、Bus 字母。
- * 照旧页面 `.vrow`（2026-10-06 晚样稿）：头像在左；右边一竖排 = 司机框、CCL / 提示、私人备注。
+ * 照旧页面 `.vrow`（2026-10-06 晚样稿）：头像在左；右边一竖排 = 司机框、CCL / 提示。Note 在这一排最下面整行宽（133）。
  */
 export function RelayRow({
   rows,
@@ -989,6 +989,7 @@ export function RelayRow({
   onRemove,
   save,
 }: RowProps) {
+  const viewOnly = useViewOnly();
   const row = rows[idx];
   const drv = L.driver(row.driver_hr_id);
   const veh = L.vehicle(row.vehicle_id);
@@ -1022,7 +1023,6 @@ export function RelayRow({
             {also.length ? (
               <Pill tone="warn">Also on vehicle {also.join(", ")}</Pill>
             ) : null}
-            <NoteInput row={row} onChange={onChange} />
           </div>
         </div>
       </div>
@@ -1063,6 +1063,12 @@ export function RelayRow({
         />
         {save ? <RowSave s={save} stack /> : null}
       </div>
+      {/* 133（Annie「notes那个选择A，动手」）：Note 不再挤在司机那一栏，整行宽放在这一排最下面（同 Bus Tour 车卡）。 */}
+      {viewOnly && !row.note ? null : (
+        <div data-relay-note className="col-span-full -mt-2 max-[860px]:mt-0">
+          <NoteInput row={row} onChange={onChange} />
+        </div>
+      )}
     </fieldset>
   );
 }

@@ -77,9 +77,17 @@ export function CclBanner({
         return n2
           ? [{ label: "Added", where: blockName(n2, L), what: vanText(n2, L) }]
           : [];
-      return o
-        ? [{ label: "Removed", where: blockName(o, L), what: vanText(o, L) }]
-        : [];
+      if (!o) return [];
+      // G300：有备注的车 Apply 不删，写 Kept（同旧页面）。
+      return c.kept_for_note
+        ? [
+            {
+              label: "Kept",
+              where: blockName(o, L),
+              what: `${vanText(o, L)} (has a note, so it stays; remove it yourself if it is not needed)`,
+            },
+          ]
+        : [{ label: "Removed", where: blockName(o, L), what: vanText(o, L) }];
     });
   }
 
