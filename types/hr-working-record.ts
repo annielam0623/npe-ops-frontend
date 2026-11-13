@@ -24,6 +24,20 @@ export interface FieldRun {
   as: "driver" | "guide";
   start_at: string | null;
   end_at: string | null;
+  /**
+   * 137 留位置（Annie 2026-11-13「2个问题都同意推荐，动手」）：这一段相关的 Daily Operation Report。
+   * 题 2 A：只算直接点名这个人的——投诉对象是这个司机 / 导游，或事故的司机是他；由后端算好，前端不拿名字去猜。
+   * 题 1 A：现在页面不显示；后端带上以后先出 preview，Annie 同意再显示。字段名以后端最终为准。没带 = 后端还没做。
+   */
+  reports?: FieldRunReport[];
+}
+
+/** 137：卡上要显示的一份 Daily Operation Report 摘要（暂定形状，等后端定）。 */
+export interface FieldRunReport {
+  id: number;
+  report_type: "complaint" | "accident" | "emergency";
+  headline: string;
+  status: "open" | "in_progress" | "resolved";
 }
 
 /**
