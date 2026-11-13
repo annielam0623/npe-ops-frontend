@@ -5,9 +5,26 @@ import { usePermissions } from "@/lib/staff-permissions";
 import { cn } from "@/lib/utils";
 import type { OrderDetail } from "@/types";
 
-/** 白键（只是跳页，不是提交，不用蓝色）。 */
-const WHITE_KEY =
-  "inline-flex h-[30px] items-center rounded-[8px] border border-black/25 bg-white px-3 text-[12.5px] font-bold whitespace-nowrap text-[#111] no-underline hover:bg-[#f4f4f5]";
+/**
+ * 蓝色实心键（132 Q4 选 D，Annie「你键设成白色谁知道它能按呢」「你不会用个蓝色么」「D动手」）：跟 Save 同一个蓝，
+ * 白色粗字、带 →，鼠标移上去稍深。只是跳页、不存东西——「蓝色按钮只用于提交」的一个例外（同右下角 ↑↓）。
+ */
+const KEY =
+  "inline-flex h-[30px] items-center rounded-[8px] border border-[#3b82f6] bg-[#3b82f6] px-3 text-[12.5px] font-bold whitespace-nowrap text-white no-underline hover:border-[#2563eb] hover:bg-[#2563eb]";
+
+/** 字的颜色：dark = 搜索栏订单卡片 / Morning 对话框（深色底），light = Tour / Tickets 对话框（白底）。 */
+const TONE = {
+  dark: {
+    label: "text-white/55",
+    hold: "text-[#fbbf24]",
+    none: "text-white/60",
+  },
+  light: {
+    label: "text-[#6b7280]",
+    hold: "text-[#8a5a00]",
+    none: "text-[#57534e]",
+  },
+} as const;
 
 const isCancelled = (status: string) => /cancel/i.test(status);
 const isOnHold = (status: string) => /hold/i.test(status);
@@ -33,9 +50,14 @@ export function manifestHref(
 export function ManifestLinks({
   order,
   className,
+  tone = "dark",
+  newTab = false,
 }: {
   order: OrderDetail;
   className?: string;
+  tone?: "dark" | "light";
+  /** 对话框里（132 Q3 选 B）：开新标签，Tracking 页和对话框留在原来的标签。搜索栏照旧本页跳。 */
+  newTab?: boolean;
 }) {
   const partner = usePermissions().partnerView;
   const links = order.manifest_links;
@@ -43,12 +65,14 @@ export function ManifestLinks({
   const hold = isOnHold(order.status);
   const orderList = `/orders?q=${encodeURIComponent(order.order_number)}`;
   const many = links.length > 1;
+  const c = TONE[tone];
+  const tab = newTab ? { target: "_blank", rel: "noopener" } : {};
   return (
     <div
       data-manifest-links
       className={cn("flex flex-wrap items-center gap-2", className)}
     >
-      <span className="mr-0.5 text-[12px] text-white/55">Main manifest:</span>
+      <span className={cn("mr-0.5 text-[12px]", c.label)}>Main manifest:</span>
       {links.length ? (
         <>
           {links.map((l) => (
@@ -56,7 +80,8 @@ export function ManifestLinks({
               key={`${l.date}|${l.tab}|${l.pill ?? ""}`}
               href={manifestHref(l, hold)}
               data-open-in-manifest={`${l.tab}|${l.pill ?? ""}`}
-              className={WHITE_KEY}
+              className={KEY}
+              {...tab}
             >
               {many
                 ? `${l.tab_label || l.tab}${l.pill_label ? ` · ${l.pill_label}` : ""} →`
@@ -64,7 +89,7 @@ export function ManifestLinks({
             </PageLink>
           ))}
           {hold ? (
-            <span data-manifest-hold className="text-[12.5px] text-[#fbbf24]">
+            <span data-manifest-hold className={cn("text-[12.5px]", c.hold)}>
               On Hold — it will not be pre-ticked. Check Order List before
               sending.
             </span>
@@ -72,12 +97,12 @@ export function ManifestLinks({
         </>
       ) : (
         <>
-          <span data-manifest-none className="text-[12.5px] text-white/60">
+          <span data-manifest-none className={cn("text-[12.5px]", c.none)}>
             {isCancelled(order.status)
               ? "Cancelled orders are not on Main manifest. Check Order List."
               : "This order is not on Main manifest for its tour date. Check its status in Order List."}
           </span>
-          <PageLink href={orderList} className={WHITE_KEY}>
+          <PageLink href={orderList} className={KEY} {...tab}>
             Open Order List →
           </PageLink>
         </>

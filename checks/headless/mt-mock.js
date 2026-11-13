@@ -296,6 +296,10 @@ http
     log.push(entry);
     if (ctl.fail401) return send(res, 401, { detail: "Authentication required" });
     if (staffPerm(ctl, p, res, send)) return; // 10c：模拟员工权限总开关开着的员工 / Super Admin（staff-perm-mock.js）
+    if (p.startsWith("/api/operations/orders/")) {
+      const o = orderDetail132(decodeURIComponent(p.split("/").pop()), ctl.mlinks ?? "one");
+      return o ? send(res, 200, o) : send(res, 404, { detail: "Not found" });
+    }
 
     // Dashboard 的 Reply 弹框（本批新功能，默认只 Super Admin）：这套检查当作已放给员工。
     if (p === "/api/settings/dashboard-widgets") return send(res, 200, { readable: true, widgets: [["dashboard_stats", "Today at a glance"], ["dashboard_today_team", "Today's team"], ["dashboard_reply", "Reply pop-up in Messages"]].map(([key, label]) => ({ key, label, visibility: "staff", default: "super_admin_only", visible_to_me: true })) });
@@ -554,3 +558,13 @@ http
     send(res, 404, { detail: "mock: not found" });
   })
   .listen(Number(process.env.MOCK_PORT) || 8799, () => console.log("mock on", process.env.MOCK_PORT || 8799, "today", today));
+
+// 132：对话框打开时读订单详情（/api/operations/orders/<单号>），用 manifest_links 画「Main manifest:」一行。
+// mode：one（一处）/ hold（On Hold，一处）/ cancel（已取消、不在上面）/ 其他 = 404（旧后端 / 读不到）。
+function orderDetail132(on, mode) {
+  const link = { date: "2026-10-10", tab: "tour", tab_label: "Tour confirmation", pill: "t:grand", pill_label: "Grand Canyon", row_keys: [`${on}|T1|2026-10-10`] };
+  if (mode === "one") return { order_number: on, status: "Confirmed", manifest_links: [link] };
+  if (mode === "hold") return { order_number: on, status: "On Hold", manifest_links: [link] };
+  if (mode === "cancel") return { order_number: on, status: "Cancelled", manifest_links: [] };
+  return null;
+}

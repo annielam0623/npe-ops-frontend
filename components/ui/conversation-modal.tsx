@@ -26,6 +26,9 @@ import { cn } from "@/lib/utils";
 import type { BookingNote, NoteCreate, NoteLine } from "@/types";
 
 import { ModalShell } from "@/components/tracking-ui/modal-shell";
+import { ManifestLinks } from "@/components/order-lookup/manifest-links";
+import { fetchOrder } from "@/lib/orders-api";
+import type { OrderDetail } from "@/types";
 import { setVisibleInterval } from "@/lib/visible-poll";
 
 /** 弹窗开着时每 20 秒重拉一次对话（与旧页面一致）。 */
@@ -337,6 +340,23 @@ function ConversationModalInner({
   sendBoth?: boolean;
 }) {
   const { orderNumber, bookingId, guestForm } = target;
+  /**
+   * 132（Annie「直接给个跳转到订单的main manifest这条订单并勾选，就跟search bar的那个操作一样」，「D动手」；
+   * Q1–Q3 按推荐：所有对话框、标题正下方、开新标签）：打开时读一次这单的订单详情（搜索栏同一个接口），
+   * 用它的 manifest_links 在标题下面画「Main manifest:」一行。读不到 / 旧后端没有 manifest_links ⇒ 这一行不出，对话框照旧。
+   */
+  const [orderInfo, setOrderInfo] = useState<OrderDetail | null>(null);
+  useEffect(() => {
+    const ac = new AbortController();
+    setOrderInfo(null);
+    fetchOrder(orderNumber, ac.signal).then(
+      (o) => {
+        if (!ac.signal.aborted) setOrderInfo(o);
+      },
+      () => {},
+    );
+    return () => ac.abort();
+  }, [orderNumber]);
   const sourceKind = source.kind;
   const line = source.kind === "order" ? source.line : undefined;
   const readLine =
@@ -722,6 +742,20 @@ function ConversationModalInner({
           ×
         </button>
       </div>
+
+      {orderInfo ? (
+        <ManifestLinks
+          order={orderInfo}
+          tone={dark ? "dark" : "light"}
+          newTab
+          className={cn(
+            "border-b px-[18px] py-2",
+            dark
+              ? "border-white/10 bg-white/[.04]"
+              : "border-[#eee] bg-[#fafaf9]",
+          )}
+        />
+      ) : null}
 
       {theme === "tickets" ? (
         // 门票页：Take Action 是标题下面一行勾选框（旧页面 #nmActionCb）。

@@ -296,6 +296,9 @@ async function run() {
     log.some((e) => e.path === "/booking-notes/by-order/A1001" && e.query === "?line=morning"), JSON.stringify(log));
   const dialogText = await evaluate("return document.querySelector('[role=dialog]').textContent;");
   check("标题 Order A1001 + 客人姓名", dialogText.includes("Order A1001") && dialogText.includes("ZZ Test One"));
+  // 132：Morning 对话框是深色：同一行「Main manifest:」，键蓝色实心、开新标签，标签字浅色
+  await waitFor("document.querySelector('[role=dialog] [data-manifest-links]')", 10000);
+  check("132 Morning 对话框：标题下面「Main manifest: Open in Main manifest →」蓝键、开新标签、深色底上标签字是浅色", await evaluate("const s = document.querySelector('[role=dialog] [data-manifest-links]'); const a = s.querySelector('[data-open-in-manifest]'); return document.getElementById('conversation-title').closest('div.flex').nextElementSibling === s && a.textContent.trim() === 'Open in Main manifest →' && a.target === '_blank' && getComputedStyle(a).backgroundColor === 'rgb(59, 130, 246)' && ((c) => c.startsWith('rgba(255, 255, 255') || c.startsWith('oklab(0.99'))(getComputedStyle(s.firstElementChild).color);"), await evaluate("const s = document.querySelector('[role=dialog] [data-manifest-links]'); const a = s.querySelector('[data-open-in-manifest]'); return JSON.stringify({ sib: document.getElementById('conversation-title').closest('div.flex').nextElementSibling === s, t: a.textContent, tg: a.target, bg: getComputedStyle(a).backgroundColor, lab: getComputedStyle(s.firstElementChild).color });"));
   check("电话 / 邮箱旁边的投递结果", dialogText.includes("✓ Delivered") && dialogText.includes("✓ Clicked"), dialogText.slice(0, 200));
   const bubbles = await evaluate("return [...document.querySelectorAll('[role=dialog] .whitespace-pre-wrap')].map(b => b.textContent);");
   check("对话按时间正序", bubbles.join("|") === "Good morning|Running late|Guest called: no confirmation yet", bubbles.join("|"));

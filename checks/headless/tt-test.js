@@ -356,6 +356,35 @@ async function run() {
   check("电话 AI 留言标签 Phone AI（后端 E188）", await evaluate(`return ${dialog}.textContent.includes('Phone AI') && ${dialog}.textContent.includes('Guest called: no confirmation yet');`));
   check("116 How to use：回复发出去就算处理过（原句，Annie「句子没问题」）", await evaluate("return document.body.textContent.includes('When your reply goes out to the guest (SMS or email sent), it counts as handled and the cell shows ✓ with your name. If no reply is needed, click Take action. If a new message or a new date-change request comes in afterward');"));
   check("How to use 写了 Phone AI 留言（后端 E188）", await evaluate("return document.body.textContent.includes('A Phone AI message means a guest called');"));
+  // ── 132（Annie「直接给个跳转到订单的main manifest这条订单并勾选，就跟search bar的那个操作一样」「D动手」；Q1–Q3 按推荐）──
+  {
+    const strip = `${dialog}.querySelector('[data-manifest-links]')`;
+    const reopen = async (mode) => {
+      await ctl({ mlinks: mode });
+      await evaluate(`${dialog}.querySelector('[aria-label=Close]').click();`);
+      await waitFor(`!${dialog}`);
+      const b0 = (await mockLog()).length;
+      await evaluate(`${cell(2, "notes")}.querySelector('[role=button]').click();`);
+      await waitFor(`${dialog} && ${dialog}.textContent.includes('Hi from guest')`);
+      for (let k = 0; k < 20 && !(await since(b0, (e) => e.path === "/api/operations/orders/T02")).length; k++) await sleep(150);
+      await sleep(400);
+      return b0;
+    };
+    check("132 读不到订单详情（旧后端 / 404）：对话框没有 Main manifest 那一行，照常能用", !(await evaluate(`return !!${strip};`)) && (await evaluate(`return !!${dialog}.querySelector('textarea');`)));
+    let b0 = await reopen("one");
+    check("132 打开对话框：读一次这单的订单详情（搜索栏同一个接口）", (await since(b0, (e) => e.path === "/api/operations/orders/T02")).length === 1);
+    await waitFor(strip, 10000);
+    check("132 标题正下方一行「Main manifest: Open in Main manifest →」", await evaluate(`const s = ${strip}; const head = document.getElementById('conversation-title').closest('div.flex'); return head.nextElementSibling === s && s.textContent.includes('Main manifest:') && s.querySelector('[data-open-in-manifest]').textContent.trim() === 'Open in Main manifest →';`));
+    check("132 键：网址同搜索栏（/manifests?date&tab&pill&row，不带 tick）、开新标签", await evaluate(`const a = ${strip}.querySelector('[data-open-in-manifest]'); const u = new URL(a.href); return u.pathname === '/manifests' && u.searchParams.get('date') === '2026-10-10' && u.searchParams.get('tab') === 'tour' && u.searchParams.get('pill') === 't:grand' && u.searchParams.get('row') === 'T02|T1|2026-10-10' && !u.searchParams.has('tick') && a.target === '_blank' && a.rel.includes('noopener');`));
+    check("132 键是蓝色实心（#3b82f6）、白色粗字；白底对话框里 Main manifest: 是灰字", await evaluate(`const a = ${strip}.querySelector('[data-open-in-manifest]'); const cs = getComputedStyle(a); const lab = getComputedStyle(${strip}.firstElementChild); return cs.backgroundColor === 'rgb(59, 130, 246)' && cs.color === 'rgb(255, 255, 255)' && cs.fontWeight === '700' && lab.color === 'rgb(107, 114, 128)';`));
+    b0 = await reopen("hold");
+    await waitFor(strip, 10000);
+    check("132 On Hold：照给键但网址带 tick=0，旁边深黄字", await evaluate(`const s = ${strip}; const a = s.querySelector('[data-open-in-manifest]'); const h = s.querySelector('[data-manifest-hold]'); return new URL(a.href).searchParams.get('tick') === '0' && h.textContent.includes('On Hold — it will not be pre-ticked. Check Order List before sending.') && getComputedStyle(h).color === 'rgb(138, 90, 0)';`));
+    b0 = await reopen("cancel");
+    await waitFor(strip, 10000);
+    check("132 已取消：灰字 + Open Order List →（带单号、开新标签、蓝键）", await evaluate(`const s = ${strip}; const a = [...s.querySelectorAll('a')].find(x => x.textContent.includes('Open Order List')); return s.querySelector('[data-manifest-none]').textContent === 'Cancelled orders are not on Main manifest. Check Order List.' && new URL(a.href).pathname === '/orders' && new URL(a.href).searchParams.get('q') === 'T02' && a.target === '_blank' && getComputedStyle(a).backgroundColor === 'rgb(59, 130, 246)';`));
+    await reopen(false);
+  }
   check("How to use 写了短信最多 300 字、只能普通字符、超了发 email（Annie 2026-10-15）", await evaluate("return document.body.textContent.includes('clicking it once does not clear later messages too. SMS can be at most 300 characters, plain characters only (no emoji, curly quotes or long dashes); if it is longer, send it by email.');"));
   await evaluate(`$setValue(${dialog}.querySelector('textarea'), 'See you at 7');`);
   await sleep(100);
