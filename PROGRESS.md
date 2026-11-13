@@ -1854,6 +1854,7 @@ D. 已完成、待从置顶移走：
 - 题 2 Not completed 放哪（橙棕加粗普通字，夜间浅黄）：A 每天一次，周表日期下、月历日子号旁（推荐）/ B 每张卡右上角。
 - 题 3 Export CSV：A Saved 列换成 Status（Completed / Not completed），合计行「N day(s) not completed」，月历合计「includes N days not completed」（推荐）/ B 保留 Saved 再加 Status，7 列。
 - 文字：How to use 全文换（原文见 5b 消息 / 样稿）；页头小字改「A dashed box means nobody has clicked Completed on Dispatch for that day yet.」。
+- ✅ Annie（原话，5b）「3个问题都是A」⇒ 题 1 A 虚线框只标 Not completed、去掉 live；题 2 A 每天写一次（周表日期下、月历号码旁）；题 3 A Saved 列换 Status、合计行「N day(s) not completed」。How to use / 页头新文字是否照样稿、是否动手，5b 已问，等答。
 - 待答 +「动手」，5b 做（task/wr-cutoff）。
 - 🆕 137（并在 136 下记）Annie（原话，5b 窗口）「我看到设计了，这里给每个tour都留一个接口，将来需要把daily report如有跟这个人有关的内容显示在这里」⇒ 每张工作卡（一天一段 tour）留位置，以后显示 Daily Operation Report 里跟这个人有关的内容。5b 核：DOR 跟人、tour 都没有硬关联（只有 order_number、subject_name、details.driver_name 这些手填字段，没有 hr_id、manifest），所以要后端来算 ⇒ 需要后端：field-calendar 每个 run 带 reports:[{id, report_type, headline, status}]，匹配规则等 Annie 定。5b 已直接问 Annie：① 卡上现在显示什么：A 只在代码里留位置、现在不显示（推荐）/ B 灰色「Daily report — Soon」；② 哪些算有关：A 只算直接点名的（投诉对象 / 事故司机是这个人，推荐）/ B 再加他那天跑的团里订单的所有报告。只记录，不动手；不影响 136 那三题。
   - ✅ Annie（原话，5b）「2个问题都同意推荐，动手」（问过是指这件）⇒ ① A 现在卡上什么都不显示，只在代码里留位置，以后要显示先出 preview；② A 只算直接点名这个人的报告（投诉对象 / 事故司机）。5b 做 task/wr-dor-slot：types/hr-working-record.ts 的 FieldRun 加可选 reports，页面不变，过检查合 main。需要后端已交 25（field-calendar 每个 run 加 reports:[{id, report_type, headline, status}]，怎么对上人、字段名由后端定）。
