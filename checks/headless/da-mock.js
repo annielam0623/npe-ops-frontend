@@ -6,6 +6,10 @@ const staffPerm = require("./staff-perm-mock");
 const DRIVER_PAGE_OFF = "Driver page is off. Turn it on in Page visibility before sending.";
 const GUIDE_PAGE_OFF = "Guide page is off. Turn it on in Page visibility before sending.";
 const GUIDE_EXTRA_MAX = 60;
+// 135（后端 14，暂定字段 confirm_date）：日子不是「今天」（ctl.mockToday，默认 2026-10-05）又没带对得上的 confirm_date ⇒ 400 字符串 detail。
+// detail 原文照后端 b645fe97（docs/interfaces/send-other-day-confirm-2026-11-13.md）。
+const NOT_TODAY = (d) => { const t = new Date(d + "T12:00:00Z"); return `This send is for ${t.toLocaleDateString("en-US", { timeZone: "UTC", weekday: "long", month: "long", day: "numeric" })} (${d}), not today. Confirm that date to send.`; };
+function notToday(b) { return b.date !== (ctl.mockToday || "2026-10-05") && b.confirm_date !== b.date; }
 const ctl = { marks: false, noticeMarks: {}, completed: false, saveErr: "", fail401: false, pullStatus: "nothing", dayDelay: 0, failDay: false, altMeta: false, noMeta: false, relaySent: [], relayExtra: false, relayHotels: false, relayLater: [], relayRace: [], relayGone: [], relay409: false, relay502: false, driverFail: false, saveDelay: 0, driverAlt: false, relayBlocked: false, relayOnlyBad: false, relayBlockLate: false, foDraft: false, driverAllOk: false, emptyHoover: false,
   // G118 tour_car 轮（Hoover Dam）：tourCar = 这个团当天排了 bus_tour 车、有客人；tourCarNoCar = 排了团但当天一台 bus_tour 车都没排（整块挡住）；
   // tourCarBlocked = 排了车但没司机（这台车挡住，客人进 blocked_cars）。
@@ -541,6 +545,7 @@ http.createServer(async (req, res) => {
   }
   if (p === "/api/dispatch/relay-send") {
     const b = JSON.parse(await readRaw(req)); entry.body = b;
+    if (notToday(b)) return send(res, 400, { detail: NOT_TODAY(b.date) });
     if (ctl.relay409) return send(res, 409, { detail: "Someone is already sending this round. Wait a minute and pull again." });
     if (ctl.relay502) return send(res, 502, { detail: "Bad gateway" });
     // 同后端：order_numbers 不传 = 这一轮全部；发过的跳过，除非在 send_anyway 里（带了 preview_at）。
@@ -577,7 +582,9 @@ http.createServer(async (req, res) => {
              // driverAlt：排车存过之后多了一位能发的司机（测 Send texts now 先重读名单）。
              ...(ctl.driverAlt ? [{ key: "typed:PAM", name: "PAM", phone: "+17025550102", can_send: true, why: "", cars: [{ shift: "relay_2", van: "1328", tour: null }] }] : [])] });
   if (p === "/api/dispatch/driver-notice/send") {
-    const b = JSON.parse(await readRaw(req)); entry.body = b; ctl.driverSentAt = true;
+    const b = JSON.parse(await readRaw(req)); entry.body = b;
+    if (notToday(b)) return send(res, 400, { detail: NOT_TODAY(b.date) });
+    ctl.driverSentAt = true;
     if (ctl.marks && !ctl.driver502 && !ctl.driver400) for (const k of b.recipients || []) ctl.noticeMarks[k] = { sent_at: "2026-10-05T04:53:00+00:00", sent_by: "Annie", failed_at: null };
     if (ctl.driver502) return send(res, 502, { detail: "Bad gateway" });
     if (ctl.driver400) return send(res, 400, { detail: DRIVER_PAGE_OFF });
@@ -606,6 +613,7 @@ http.createServer(async (req, res) => {
   }
   if (p === "/api/dispatch/guide-notice/send") {
     const b = JSON.parse(await readRaw(req)); entry.body = b;
+    if (notToday(b)) return send(res, 400, { detail: NOT_TODAY(b.date) });
     if (ctl.guide400) return send(res, 400, { detail: GUIDE_PAGE_OFF });
     // 后端 78 的三种 400 原话（纯字符串）：非 GSM 字符 / 超长 / 换行。
     // 原话照后端 76992dd3 guide_notice.py（1 character / N characters）。
@@ -664,6 +672,8 @@ http.createServer(async (req, res) => {
     }
     if (p === "/api/farm-out/notices/send") {
       const b = JSON.parse(await readRaw(req)); entry.body = b;
+      // 135（后端 14 task/farm-out-confirm-date 8974847e）：ctl.foToday 设了才查——日子不是 foToday 又没带对得上的 confirm_date ⇒ 400（同 Dispatch 三个接口的原文）。
+      if (ctl.foToday && b.date !== ctl.foToday && b.confirm_date !== b.date) return send(res, 400, { detail: NOT_TODAY(b.date) });
       if (ctl.foSendErr) return send(res, 500, { detail: "Farm out notice failed" });
       // G129：缺资料（没选酒店）默认不发，进 blocked（can_override: true）；订单号在 send_anyway 里就照发。
       const sa = new Set(b.send_anyway ?? []);

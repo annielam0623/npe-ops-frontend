@@ -110,6 +110,8 @@ async function main() {
   await cdp("Runtime.enable");
   // 自动保存（Annie 2026-10-15）：检查里默认等很久、不自己存；要存的地方用 saveNow() / trySave()。
   await cdp("Page.addScriptToEvaluateOnNewDocument", { source: AUTOSAVE_OFF });
+  // 135：检查里 Dispatch 的「今天」固定成 2026-10-05（同 mock 的 ctl.mockToday），原有的发送不弹 This is not today。
+  await cdp("Page.addScriptToEvaluateOnNewDocument", { source: "window.__laToday = '2026-10-05';" });
 
   try {
     await run();
@@ -2786,11 +2788,143 @@ async function run() {
     check("G300 存了以后：Changed 的车换了司机（5），备注 ZZ note stays 不变", !!changed && changed.driver_hr_id === 5 && changed.vehicle_id === 12, JSON.stringify(rows300));
   }
 
+  await otherDay();
+
   // 401
   await ctl({ fail401: true });
   await goto(`${APP}/dispatch`);
   await waitFor("location.pathname === '/auth/login'");
   check("未登录跳旧后台登录页", (await evaluate("return location.href;")).startsWith(`${APP}/auth/login?next=`));
   await ctl({ fail401: false });
+}
+
+// ── 135：Dispatch 发送的日子不是今天（洛杉矶）⇒ 先弹 This is not today（Annie 2026-11-13，后端 54 转，风险方案 B）──
+// 日期大号红字；确认键 "Yes, I need to send for Mon, Oct 5"（不能写 Send anyway）；Cancel 什么都不发；Yes 才发、带 confirm_date。
+// 今天 = 不弹框、不带 confirm_date。三个接口（relay-send 各轮 / 团车、driver-notice/send、guide-notice/send）都核。
+async function otherDay() {
+  const rp = "document.querySelector('section[aria-label=\"Morning Relay — send to guests\"]')";
+  const dp = "document.querySelector('section[aria-label=\"Send to drivers & guides\"]')";
+  const gbox = `${dp}.querySelector('[aria-label="Send to guide"]')`;
+  const dbox = `${dp}.querySelector('[aria-label="Send to driver"]')`;
+  const od = "document.querySelector('[data-other-day-confirm]')";
+  const sendTo = `[...${dialog}.querySelectorAll('button')].find((b) => b.textContent.startsWith('Send to '))`;
+  const shot = async (name) => {
+    if (!process.env.SHOT_DIR) return;
+    await sleep(250);
+    const r = await cdp("Page.captureScreenshot", { format: "png" });
+    require("fs").mkdirSync(process.env.SHOT_DIR, { recursive: true });
+    require("fs").writeFileSync(require("path").join(process.env.SHOT_DIR, `dispatch-other-day-${name}.png`), Buffer.from(r.data, "base64"));
+  };
+  const open = async (today) => {
+    await goto(`${APP}/dispatch?date=2026-10-05&tab=send`);
+    await waitFor("document.querySelector('.vrow')", 30000);
+    await helpers();
+    await evaluate(`window.__laToday = '${today}';`);
+    await waitFor(`${rp}.querySelector('[aria-label="Need a look"]')`, 30000);
+  };
+  await ctl({ relaySent: [], relayLater: [], relayRace: [], relayGone: [], relay409: false, relay502: false, driverFail: false, driver400: false, driver502: false, noticeNoContact: false, guide400: false, guideFail: false, guidePage: null, driverPage: null, mockToday: "2026-10-04" });
+
+  // ① 明天（今天 10-04，发 10-05）：relay 1st Round
+  await open("2026-10-04");
+  await waitFor(`!$btn('Preview & send', ${rp}).disabled`);
+  let b0 = (await mockLog()).length;
+  await evaluate(`$btn('Preview & send', ${rp}).click();`);
+  await waitFor(`${dialog} && !!(${sendTo})`);
+  await evaluate(`(${sendTo}).click();`);
+  await waitFor(od, 5000);
+  const box = await evaluate(`const o = ${od}; const d = o.querySelector('[data-other-day-date]'); const y = o.querySelector('[data-other-day-yes]'); const c = o.querySelector('[data-other-day-cancel]'); return { text: o.textContent.replace(/\\s+/g, ' '), date: d.textContent, color: getComputedStyle(d).color, size: getComputedStyle(d).fontSize, yes: y.textContent, yesBg: getComputedStyle(y).backgroundColor, cancel: c.textContent, focus: document.activeElement === c, anyway: o.textContent.includes('Send anyway') };`);
+  check("135 明天：点 Send to … 先弹「This is not today」，日期 Mon, Oct 5 大号红字（28px、#A32D2D），写今天是 Sun, Oct 4", box.date === "Mon, Oct 5" && box.color === "rgb(163, 45, 45)" && box.size === "28px" && box.text.includes("This is not today") && box.text.includes("You are about to send the 1st Round") && box.text.includes("Today is Sun, Oct 4 (Los Angeles time)."), JSON.stringify(box));
+  check("135 确认键原文「Yes, I need to send for Mon, Oct 5」、蓝色（提交键）；另有 Cancel、默认焦点在 Cancel；整框不出 Send anyway", box.yes === "Yes, I need to send for Mon, Oct 5" && box.yesBg === "rgb(59, 130, 246)" && box.cancel === "Cancel" && box.focus && !box.anyway, JSON.stringify(box));
+  check("135 弹框时还没发（没有 relay-send 请求）", (await since(b0, (e) => e.path === "/api/dispatch/relay-send")).length === 0);
+  await shot("desktop");
+  await evaluate(`${od}.querySelector('[data-other-day-cancel]').click();`);
+  await sleep(400);
+  check("135 Cancel：框关掉、什么都不发；原来的发送弹窗还在、Send to … 能再点", !(await evaluate(`return !!${od};`)) && (await since(b0, (e) => e.path === "/api/dispatch/relay-send")).length === 0 && (await evaluate(`return !!${dialog} && !(${sendTo}).disabled;`)));
+  await evaluate(`(${sendTo}).click();`);
+  await waitFor(od, 5000);
+  await evaluate(`${od}.querySelector('[data-other-day-yes]').click();`);
+  await waitFor(`!${dialog}`, 10000);
+  const rs = (await since(b0, (e) => e.path === "/api/dispatch/relay-send"))[0]?.body;
+  check("135 Yes：才发，请求带 date 2026-10-05 + confirm_date 2026-10-05（只发一次）", rs?.date === "2026-10-05" && rs?.confirm_date === "2026-10-05" && (await since(b0, (e) => e.path === "/api/dispatch/relay-send")).length === 1, JSON.stringify(rs));
+
+  // ② 明天：Send to driver
+  await waitFor(`!!${dbox} && !$btn('Send texts now', ${dbox}).disabled`, 15000);
+  b0 = (await mockLog()).length;
+  await evaluate(`$btn('Send texts now', ${dbox}).click();`);
+  await waitFor(`${dialog} && !!$btn('Text 1 driver', ${dialog})`);
+  await evaluate(`$btn('Text 1 driver', ${dialog}).click();`);
+  await waitFor(od, 5000);
+  check("135 Send to driver 也先弹框：写 the driver text to 1 driver、Yes, I need to send for Mon, Oct 5；还没发", (await evaluate(`const t = ${od}.textContent; return t.includes('the driver text to 1 driver') && t.includes('Yes, I need to send for Mon, Oct 5');`)) && (await since(b0, (e) => e.path === "/api/dispatch/driver-notice/send")).length === 0);
+  await evaluate(`${od}.querySelector('[data-other-day-yes]').click();`);
+  await waitFor(`!${dialog}`, 10000);
+  const ds = (await since(b0, (e) => e.path === "/api/dispatch/driver-notice/send"))[0]?.body;
+  check("135 Send to driver：Yes 后才发，带 confirm_date 2026-10-05", ds?.confirm_date === "2026-10-05" && ds?.date === "2026-10-05", JSON.stringify(ds));
+
+  // ③ 明天：Send to guide（Cancel 一次、再 Yes）
+  await waitFor(`!!${gbox} && !${gbox}.querySelector('[data-guide-send]').disabled`, 15000);
+  b0 = (await mockLog()).length;
+  await evaluate(`${gbox}.querySelector('[data-guide-send]').click();`);
+  await waitFor(`${dialog} && !!$btn('Text 2 guides', ${dialog})`);
+  await evaluate(`$btn('Text 2 guides', ${dialog}).click();`);
+  await waitFor(od, 5000);
+  check("135 Send to guide 也先弹框：写 the guide text to 2 guides", await evaluate(`return ${od}.textContent.includes('the guide text to 2 guides');`));
+  await evaluate(`${od}.querySelector('[data-other-day-cancel]').click();`);
+  await sleep(400);
+  check("135 Send to guide Cancel：不发", (await since(b0, (e) => e.path === "/api/dispatch/guide-notice/send")).length === 0 && !(await evaluate(`return !!${od};`)));
+  await evaluate(`$btn('Text 2 guides', ${dialog}).click();`);
+  await waitFor(od, 5000);
+  await evaluate(`${od}.querySelector('[data-other-day-yes]').click();`);
+  await waitFor(`!${dialog}`, 10000);
+  const gs = (await since(b0, (e) => e.path === "/api/dispatch/guide-notice/send"))[0]?.body;
+  check("135 Send to guide：Yes 后才发，带 confirm_date 2026-10-05", gs?.confirm_date === "2026-10-05", JSON.stringify(gs));
+
+  // ④ How to use：两块都有这一句
+  check("135 How to use：Morning Relay 和 Send to drivers & guides 两块都加了一句", await evaluate(`const h = [...document.querySelectorAll('[data-howto-other-day]')].map((l) => l.textContent.replace(/\\s+/g, ' ')); return h.length === 2 && h.every((t) => t.includes('is not today (Los Angeles time)') && t.includes('“Yes, I need to send for …”') && t.includes('Cancel sends nothing.'));`), await evaluate("return [...document.querySelectorAll('[data-howto-other-day]')].map((l) => l.textContent).join(' | ');"));
+
+  // ⑤ 页面以为是今天、后端认为不是（例如开着页面过了半夜）：不弹框、不带 confirm_date ⇒ 后端 400，弹窗里红字写原话
+  await evaluate("window.__laToday = '2026-10-05';");
+  await waitFor(`!$btn('Send texts now', ${dbox}).disabled`, 15000);
+  b0 = (await mockLog()).length;
+  await evaluate(`$btn('Send texts now', ${dbox}).click();`);
+  await waitFor(`${dialog} && !!$btn('Text 1 driver', ${dialog})`);
+  await evaluate(`$btn('Text 1 driver', ${dialog}).click();`);
+  await waitFor(`${dialog}.querySelector('[role=alert]')`, 8000);
+  check("135 后端拒（不是今天又没带 confirm_date）：弹窗里红字写后端原话", await evaluate(`const a = ${dialog}.querySelector('[role=alert]'); return a.textContent.includes('This send is for Monday, October 5 (2026-10-05), not today. Confirm that date to send.') && getComputedStyle(a).color === 'rgb(163, 45, 45)';`), await evaluate(`return ${dialog}.textContent;`));
+  await evaluate(`$btn('Cancel', ${dialog}).click();`);
+  await waitFor(`!${dialog}`);
+
+  // ⑥ 今天（10-05 发 10-05）：不弹框，跟现在一样；不带 confirm_date
+  await ctl({ mockToday: "2026-10-05" });
+  b0 = (await mockLog()).length;
+  await evaluate(`$btn('Send texts now', ${dbox}).click();`);
+  await waitFor(`${dialog} && !!$btn('Text 1 driver', ${dialog})`);
+  await evaluate(`$btn('Text 1 driver', ${dialog}).click();`);
+  await waitFor(`!${dialog}`, 10000);
+  const td = (await since(b0, (e) => e.path === "/api/dispatch/driver-notice/send"))[0]?.body;
+  check("135 今天：不弹框直接发，请求不带 confirm_date（同现在）", !!td && !("confirm_date" in td) && !(await evaluate(`return !!${od};`)), JSON.stringify(td));
+  if (process.env.SHOT_DIR) {
+    await evaluate(`$btn('Send texts now', ${dbox}).click();`);
+    await waitFor(`${dialog} && !!$btn('Text 1 driver', ${dialog})`);
+    await shot("today");
+    await evaluate(`$btn('Cancel', ${dialog}).click();`);
+    await waitFor(`!${dialog}`);
+  }
+
+  // ⑦ 手机宽度（390）：框不出屏、不能左右晃；截图
+  await ctl({ mockToday: "2026-10-04", relaySent: [] });
+  await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
+  await open("2026-10-04");
+  await waitFor(`!$btn('Preview & send', ${rp}).disabled`);
+  await evaluate(`$btn('Preview & send', ${rp}).click();`);
+  await waitFor(`${dialog} && !!(${sendTo})`);
+  await evaluate(`(${sendTo}).click();`);
+  await waitFor(od, 5000);
+  const ph = await evaluate(`const r = ${od}.closest('[role=dialog]').getBoundingClientRect(); const y = ${od}.querySelector('[data-other-day-yes]').getBoundingClientRect(); return { left: r.left, right: r.right, yr: y.right, w: innerWidth, sw: document.documentElement.scrollWidth };`);
+  check("135 手机宽度：确认框和 Yes 键都在屏幕里、页面不左右晃", ph.left >= 0 && ph.right <= ph.w && ph.yr <= ph.w && ph.sw <= ph.w, JSON.stringify(ph));
+  await shot("phone");
+  await evaluate(`${od}.querySelector('[data-other-day-cancel]').click();`);
+  await evaluate(`$btn('Cancel', ${dialog}).click();`);
+  await cdp("Emulation.clearDeviceMetricsOverride");
+  await ctl({ mockToday: "2026-10-05" });
 }
 main().catch((e) => { console.error(e); process.exit(2); });

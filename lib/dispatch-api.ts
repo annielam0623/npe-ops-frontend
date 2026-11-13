@@ -451,6 +451,8 @@ export function sendRelayRound(
     preview_at?: string;
     /** 131：tour_car 轮按团发（manifest_id），只发这个团的客人。relay / relay_2 不能带（后端 400）。 */
     tour?: number;
+    /** 135：日子不是洛杉矶今天时带（staff 在 This is not today 框点了 Yes），见 lib/other-day.ts。 */
+    confirm_date?: string;
   },
 ): Promise<{
   round: string;
@@ -544,10 +546,12 @@ export function fetchDriverNotice(date: string): Promise<DriverNotice> {
 export function sendDriverNotice(
   date: string,
   recipients: string[],
+  /** 135：日子不是洛杉矶今天时带（lib/other-day.ts confirmDateField）。 */
+  confirm?: { confirm_date?: string },
 ): Promise<NoticeSendResult> {
   return apiFetch(`${API}/driver-notice/send`, {
     method: "POST",
-    body: { date, recipients },
+    body: { date, recipients, ...confirm },
     cache: "no-store",
   });
 }
@@ -603,10 +607,12 @@ export function sendGuideNotice(
   date: string,
   recipients: string[],
   extra: string,
+  /** 135：日子不是洛杉矶今天时带（lib/other-day.ts confirmDateField）。 */
+  confirm?: { confirm_date?: string },
 ): Promise<NoticeSendResult> {
   return apiFetch(`${API}/guide-notice/send`, {
     method: "POST",
-    body: { date, recipients, ...(extra ? { extra } : {}) },
+    body: { date, recipients, ...(extra ? { extra } : {}), ...confirm },
     cache: "no-store",
   });
 }

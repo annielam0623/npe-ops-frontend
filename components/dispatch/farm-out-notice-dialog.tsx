@@ -3,6 +3,7 @@
 import { useEffect, useId, useMemo, useState } from "react";
 
 import { Modal } from "@/components/ui/modal";
+import { OtherDayConfirm } from "@/components/ui/other-day-confirm";
 import {
   DUP_BADGE,
   INLINE_ERROR,
@@ -29,6 +30,7 @@ import {
 import { describeError } from "@/lib/api-errors";
 import { previewFarmOutNotice, sendFarmOutNotice } from "@/lib/farm-out-api";
 import { formatTime } from "@/lib/farm-out-time";
+import { confirmDateField, otherDayOf } from "@/lib/other-day";
 import { chunk, SEND_BATCH_SIZE } from "@/lib/send-batches";
 import {
   channelCell,
@@ -184,7 +186,16 @@ export function FarmOutNoticeDialog({
   const first = willSend[0] ?? list[0];
   const preview = first ? previews[first.order_number as string] : undefined;
 
+  // 135：日子不是洛杉矶今天 ⇒ 先弹 This is not today（Annie 2026-11-13「135还是提醒一下吧，告诉staff他发的是这个日期，要他们确认」）。
+  const [askDay, setAskDay] = useState<string | null>(null);
+  function askSend() {
+    const d = otherDayOf(date);
+    if (d) setAskDay(d);
+    else void send();
+  }
+
   async function send() {
+    setAskDay(null);
     const nums = willSend.map((o) => o.order_number as string);
     if (!nums.length) return;
     setPhase("sending");
@@ -204,6 +215,7 @@ export function FarmOutNoticeDialog({
           batches[i].map((n) => ({ manifest_id: manifestId, order_number: n })),
           API_CHANNEL[channel],
           batches[i].filter((n) => again[n] || over[n]),
+          confirmDateField(date),
         );
         all.push(...r.results);
         allBlocked.push(...(r.blocked ?? []));
@@ -453,7 +465,7 @@ export function FarmOutNoticeDialog({
                   type="button"
                   data-farm-out-send-go
                   disabled={!willSend.length}
-                  onClick={() => void send()}
+                  onClick={askSend}
                   className={sendButtonClass("blue")}
                 >
                   Send {willSend.length}{" "}
@@ -464,6 +476,14 @@ export function FarmOutNoticeDialog({
                   <span className={INLINE_ERROR}>
                     Nothing to send: tick a guest first.
                   </span>
+                ) : null}
+                {askDay ? (
+                  <OtherDayConfirm
+                    date={askDay}
+                    what={`${willSend.length} farm out ${willSend.length === 1 ? "notice" : "notices"}`}
+                    onYes={() => void send()}
+                    onCancel={() => setAskDay(null)}
+                  />
                 ) : null}
               </div>
             </div>

@@ -215,6 +215,8 @@ export function sendFarmOutNotice(
   orders: FarmOutOrderRef[],
   channel: "sms" | "email" | "both",
   sendAnyway: string[],
+  /** 135：日子不是洛杉矶今天时带（lib/other-day.ts confirmDateField）；后端要不要也查由 74 问 25。 */
+  confirm?: { confirm_date?: string },
 ): Promise<FarmOutNoticeSendResponse> {
   return apiFetch<FarmOutNoticeSendResponse>(`${API}/notices/send`, {
     method: "POST",
@@ -223,6 +225,7 @@ export function sendFarmOutNotice(
       orders,
       channel,
       send_anyway: sendAnyway,
+      ...confirm,
     },
     cache: "no-store",
   });

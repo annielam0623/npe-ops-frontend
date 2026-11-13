@@ -9,6 +9,8 @@ import {
   SECONDARY_BUTTON_CLASS,
 } from "./buttons";
 import { Modal } from "./modal";
+import { OtherDayConfirm } from "./other-day-confirm";
+import { otherDayOf } from "@/lib/other-day";
 
 interface ConfirmDialogProps {
   title: string;
@@ -24,6 +26,11 @@ interface ConfirmDialogProps {
   confirmClassName?: string;
   onConfirm: () => Promise<ActionResult>;
   onClose: () => void;
+  /**
+   * 135：发送弹窗传要发的日子（YYYY-MM-DD）和发的是什么。点确认那一刻日子不是洛杉矶今天 ⇒ 先弹「This is not today」，
+   * Yes 才调 onConfirm，Cancel 什么都不发。不传 = 不检查（不是发送的弹窗）。
+   */
+  sendFor?: { date: string; what: string };
 }
 
 /** 代替 window.confirm：出错时留在弹窗里显示原因，可重试。 */
@@ -37,15 +44,23 @@ export function ConfirmDialog({
   confirmClassName,
   onConfirm,
   onClose,
+  sendFor,
 }: ConfirmDialogProps) {
   const titleId = useId();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [askDay, setAskDay] = useState<string | null>(null);
 
-  async function handleConfirm() {
+  async function handleConfirm(dayOk = false) {
     if (busy) {
       return;
     }
+    const other = sendFor && !dayOk ? otherDayOf(sendFor.date) : null;
+    if (other) {
+      setAskDay(other);
+      return;
+    }
+    setAskDay(null);
     setError(null);
     setBusy(true);
     const result = await onConfirm();
@@ -94,7 +109,7 @@ export function ConfirmDialog({
           </button>
           <button
             type="button"
-            onClick={handleConfirm}
+            onClick={() => handleConfirm()}
             disabled={busy}
             className={
               confirmClassName ??
@@ -105,6 +120,14 @@ export function ConfirmDialog({
           </button>
         </div>
       </div>
+      {askDay && sendFor ? (
+        <OtherDayConfirm
+          date={askDay}
+          what={sendFor.what}
+          onYes={() => void handleConfirm(true)}
+          onCancel={() => setAskDay(null)}
+        />
+      ) : null}
     </Modal>
   );
 }

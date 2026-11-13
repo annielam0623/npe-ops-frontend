@@ -110,6 +110,8 @@ async function main() {
   await cdp("Runtime.enable");
   // 自动保存（Annie 2026-10-15）：检查里默认等很久、不自己存；要存的地方用 saveNow() / trySave()。
   await cdp("Page.addScriptToEvaluateOnNewDocument", { source: AUTOSAVE_OFF });
+  // 135：检查里的「今天」固定成 D_FO（2026-10-18），原有的发送不弹 This is not today。
+  await cdp("Page.addScriptToEvaluateOnNewDocument", { source: "window.__laToday = '2026-10-18';" });
 
   try {
     await run();
@@ -190,6 +192,8 @@ async function run() {
     orig(ev);
   };
   await cdp("Page.addScriptToEvaluateOnNewDocument", { source: AUTOSAVE_OFF });
+  // 135：检查里的「今天」固定成 D_FO（2026-10-18），原有的发送不弹 This is not today。
+  await cdp("Page.addScriptToEvaluateOnNewDocument", { source: "window.__laToday = '2026-10-18';" });
   await ctl({ farmOut: false, resetFo: true });
 
   // ── 后端还没有 Farm out（接口 404）：页面和以前一样 ──
@@ -373,6 +377,30 @@ async function run() {
   check("发送窗：三行；已发过的行淡黄、默认不勾；缺酒店的行红、不能勾，写 Missing pick-up location", await evaluate(`const f = document.querySelector('[data-notice-row="CHDF001"]'), m = document.querySelector('[data-notice-row="CHDF003"]'), t = document.querySelector('[data-notice-row="CHDF002"]'); return /fff8e1/.test(f.className) && !f.querySelector('input[type=checkbox]').checked && f.querySelector('input[type=checkbox]').disabled && /Sent by Annie on/.test(f.textContent) && /fdecec/.test(m.className) && m.querySelector('input[type=checkbox]').disabled && m.textContent.includes('Missing pick-up location') && t.querySelector('input[type=checkbox]').checked;`));
   check("发送窗：标题条灰蓝（#475569）、有 Phone / Email 两列，显示后端给的号码 / 邮箱，没有写 —", await evaluate(`const d = document.querySelector('[role=dialog]'); const head = [...d.querySelectorAll('div')].find(x => x.textContent.startsWith('Guests on the farm out vehicle') && x.className.includes('bg-[#475569]')); const ths = [...d.querySelectorAll('thead th')].map(x => x.textContent.trim()); const r3 = d.querySelector('[data-notice-row="CHDF003"]'); const r1 = d.querySelector('[data-notice-row="CHDF001"]'); return !!head && ths.includes('Phone') && ths.includes('Email') && r1.querySelector('[data-notice-phone]').textContent === '+1 702 555 0142' && r1.querySelector('[data-notice-email]').textContent === 'zz.guest@example.com' && r3.querySelector('[data-notice-email]').textContent === '—';`));
   check("按钮：Send 1 notice (SMS + Email)；右边是通知原文", await evaluate(`return document.querySelector('[data-farm-out-send-go]').textContent.replace(/\\s+/g, ' ').trim() === 'Send 1 notice (SMS + Email)' && document.body.textContent.includes('Subject: Your West Rim pick-up');`), await evaluate(`return document.querySelector('[data-farm-out-send-go]').textContent;`));
+  // 135：发的日子不是今天（今天 10-17、发 10-18）⇒ 先弹 This is not today；Cancel 不发（Annie 2026-11-13「135还是提醒一下吧，告诉staff他发的是这个日期，要他们确认」）
+  await evaluate("window.__laToday = '2026-10-17';");
+  b = (await mockLog()).length;
+  await evaluate(`document.querySelector('[data-farm-out-send-go]').click();`);
+  await waitFor(`!!document.querySelector('[data-other-day-confirm]')`, 5000);
+  const foBox = await evaluate(`const o = document.querySelector('[data-other-day-confirm]'); const d = o.querySelector('[data-other-day-date]'); return { text: o.textContent.replace(/\\s+/g, ' '), date: d.textContent, color: getComputedStyle(d).color, yes: o.querySelector('[data-other-day-yes]').textContent };`);
+  check("135 Farm out：不是今天 ⇒ 先弹框，写 You are about to send 1 farm out notice for、日期 Sun, Oct 18 红字、确认键 Yes, I need to send for Sun, Oct 18；还没发", foBox.text.includes('You are about to send 1 farm out notice for') && foBox.date === 'Sun, Oct 18' && foBox.color === 'rgb(163, 45, 45)' && foBox.yes === 'Yes, I need to send for Sun, Oct 18' && (await since(b, foSend)).length === 0, JSON.stringify(foBox));
+  if (process.env.SHOT_DIR) { await sleep(250); const r = await cdp("Page.captureScreenshot", { format: "png" }); require("fs").mkdirSync(process.env.SHOT_DIR, { recursive: true }); require("fs").writeFileSync(require("path").join(process.env.SHOT_DIR, "dispatch-other-day-farm-out.png"), Buffer.from(r.data, "base64")); }
+  await evaluate(`document.querySelector('[data-other-day-confirm]').querySelector('[data-other-day-cancel]').click();`);
+  await sleep(400);
+  check("135 Farm out：Cancel 什么都不发、框关掉、发送窗还在", (await since(b, foSend)).length === 0 && (await evaluate(`return !document.querySelector('[data-other-day-confirm]') && !!document.querySelector('[data-farm-out-send-go]');`)));
+  // 135：页面以为是今天、后端认为不是（开着页面过了半夜）⇒ 不弹框、不带 confirm_date ⇒ 后端 400，红字照原文
+  await evaluate("window.__laToday = '2026-10-18';");
+  await ctl({ foToday: '2026-10-17' });
+  b = (await mockLog()).length;
+  await evaluate(`document.querySelector('[data-farm-out-send-go]').click();`);
+  await waitFor(`document.body.textContent.includes('Stopped:')`, 8000);
+  check("135 Farm out 后端拒（不是今天又没带 confirm_date）：没弹框、请求不带 confirm_date，红字照后端原文", !(await evaluate(`return !!document.querySelector('[data-other-day-confirm]');`)) && !('confirm_date' in ((await since(b, foSend))[0]?.body ?? {})) && (await evaluate(`return document.body.textContent.includes('This send is for Sunday, October 18 (2026-10-18), not today. Confirm that date to send.');`)), await evaluate(`return document.querySelector('[role=dialog]')?.textContent;`));
+  await ctl({ foToday: null });
+  await evaluate(`[...document.querySelectorAll('[role=dialog] button')].find(b => b.textContent.trim() === 'Close').click();`);
+  await waitFor(`!document.querySelector('[role=dialog]')`);
+  await evaluate(`document.querySelector('[data-farm-out-send]').click();`);
+  await waitFor(`document.querySelector('[role=dialog]') && document.querySelector('[data-notice-row="CHDF003"]')`);
+  await waitFor(`document.querySelector('[data-notice-preview]')?.textContent.includes('Thank you')`);
   b = (await mockLog()).length;
   await evaluate(`document.querySelector('[data-farm-out-send-go]').click();`);
   let sr = (await waitReq(b, foSend))[0];
@@ -394,9 +422,14 @@ async function run() {
   check("勾 Send anyway：这一行被选上、按钮变 Send 1 notice (SMS only)", await evaluate(`return document.querySelector('[data-farm-out-send-go]').textContent.replace(/\\s+/g, ' ').trim() === 'Send 1 notice (SMS only)';`), await evaluate(`return document.querySelector('[data-farm-out-send-go]').textContent;`));
   b = (await mockLog()).length;
   await ctl({ foSendErr: true });
+  // 135：这次当成不是今天 ⇒ 先弹框，点 Yes 才发、带 confirm_date
+  await evaluate("window.__laToday = '2026-10-17';");
   await evaluate(`document.querySelector('[data-farm-out-send-go]').click();`);
+  await waitFor(`!!document.querySelector('[data-other-day-confirm]')`, 5000);
+  await evaluate(`document.querySelector('[data-other-day-confirm]').querySelector('[data-other-day-yes]').click();`);
   sr = (await waitReq(b, foSend))[0];
-  check("重发：order_numbers CHDF001、channel sms、send_anyway 带上它", JSON.stringify(sr?.body) === JSON.stringify({ date: D_FO, orders: [{ manifest_id: 3, order_number: "CHDF001" }], channel: "sms", send_anyway: ["CHDF001"] }), JSON.stringify(sr?.body));
+  await evaluate("window.__laToday = '2026-10-18';");
+  check("重发：order_numbers CHDF001、channel sms、send_anyway 带上它；135 不是今天点了 Yes ⇒ 带 confirm_date", JSON.stringify(sr?.body) === JSON.stringify({ date: D_FO, orders: [{ manifest_id: 3, order_number: "CHDF001" }], channel: "sms", send_anyway: ["CHDF001"], confirm_date: D_FO }), JSON.stringify(sr?.body));
   await waitFor(`document.body.textContent.includes('Stopped:')`);
   check("某一批出错：停下，写明哪些可能已发、去 Send Log 核对", await evaluate(`const t = document.body.textContent; return t.includes('Stopped:') && t.includes('Send Log') && t.includes('CHDF001');`));
   await ctl({ foSendErr: false });
