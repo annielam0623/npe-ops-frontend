@@ -51,6 +51,14 @@
 - **130 Bus Manifest「Text size changes」记录**（11-12，Annie 截图 HooverDam Nov 13，原话「这个记录怎么会在这里」）：components/dispatch-manifest/text-size.tsx:645 TextSizeHistory，每台车色条下列谁改过字号；原本默认收起，11-11 114（Annie「不要隐藏」）改成直接列最近 5 条。另有 bug：时间直接显示后端原始 UTC「2026-11-13T04:14:48.268198+00:00」，没换成当地时间。d8 问 Annie：A 只留一行「Text size last changed by Nadia · Nov 12, 8:14 PM」（推荐）/ B 整块挪到页面最下面 / C 不在页面显示（记录仍在 Action log）。时间格式不管选哪个都修。
 - 派 6b：**125 Tour Tracking 灰行字也灰**，只出 preview（A 底和字都灰（推荐）/ B 只字灰，电脑 + 手机 + night），链接回 d8 再问 Annie。
 
+## 2026-11-13 前端主窗口 `npe-ops-frontend-74`[fa6692]（公司电脑，接 4c；只分工和汇报）
+- 后端主窗口 25、后端 14；工作窗口 6b、96。
+- 135 后端上 main b645fe97（25 发）：relay-send（全部轮 + tour_car）、driver-notice/send、guide-notice/send；/send/morning-pickup 不改（A）。字段名和 400 detail 原文由 14 重发给 74。已告诉 6b：对齐契约，先出确认框 preview 给 Annie，看过再合；Send farm out notice 等 Annie。
+- 135 契约（14）：relay-send / driver-notice/send / guide-notice/send，body confirm_date 必须等于 date（LA 今天不用带）；不符 400 detail「This send is for {Weekday}, {Month} {day} ({YYYY-MM-DD}), not today. Confirm that date to send.」原样显示；先查「You can only send for today or tomorrow.」不变。后端说明 docs/interfaces/send-other-day-confirm-2026-11-13.md。
+- ✅ Farm out：Annie（原话，4c 转）「135不用，它是提前一天发的」⇒ Send farm out notice 不加确认框（B），从待问移走。
+- ⚠️ Annie 紧接着说「算了」，意思不明（135 整件不做，还是只不问 farm out），4c 在问。6b 停在分支上不合。⚠️ 后端已经生效、前端没上 ⇒ 现在 Dispatch 发明天的都会 400。若 135 取消，要请 14 / 25 撤掉后端校验。
+- ✅ Annie 澄清（原话，4c 转）「135还是提醒一下吧，告诉staff他发的是这个日期，要他们确认」⇒ 135 照做；**Send farm out notice 也加确认框**（取代上面的 B）。后端 farm-out/notices/send 没有 confirm_date ⇒ 74 问 25 要不要加同样的校验（推荐加，统一发送规则）；6b 先在前端带上 confirm_date。preview 加 farm out 截图，Annie 看过 + 动手再合。
+
 ## 2026-11-13 4c → 新主窗口 `npe-ops-frontend-74` 交接（公司电脑；Annie「我开了个新窗口做今天的前端主窗口，你跟它交接一下工作吧」）
 
 后端主窗口今天是 `npe-confirmation-service-25`（接 54）；135 的接口由 `npe-confirmation-service-14` 直接发。工作窗口 `6b`、`96` 还开着。
@@ -59,7 +67,7 @@
 - G297 团确认酒店空着 a8d64c35（6b，Annie「297同意推荐，动手」，5 题全 A）。等 Annie 线上验收。
 
 ### 在手上
-1. **134 Dispatch 开当天登录 2:00 → 12:00 AM**（96，task/dispatch-login-midnight d417d6c9，全过）：**等 Annie「动手」**。她已经被问过两次，别再滚动问；她说动手就让 96 合 main，SHA 发 25。
+1. **134 Dispatch 开当天登录 2:00 → 12:00 AM**（96，task/dispatch-login-midnight d417d6c9，全过）：✅ Annie（原话）「134动手上线」⇒ 4c 已让 96 合最新 main 后上 main，SHA 发 74 和 25；74 记 SHA、告诉 Annie 验收点。
 2. **135 Dispatch 非今天发送确认框**（6b，task/dispatch-confirm-other-day，在做）：范围 relay 各轮 / 团车客人 / Send to driver / Send to guide；Morning 上传页不改（54 定）。等 14 发 detail 原文 + commit 才合；确认框先出 preview 给 Annie 看。6b 在核团车客人发送是否在 relay-send / driver-notice/send / guide-notice/send 三个接口里。**等 Annie**：Send farm out notice 要不要也加（A 推荐 / B）。
 3. **128 Content Studio 整页编辑**（96，样稿 v4 https://claude.ai/artifact/PnkpnXHaJbzrYTrUcfMYvX ）：已定 Q3 A、Edit / Save 状态、不做 Add section、选餐区显示可改、GC South / Bryce / VoF Full 两选项照旧。**等 Annie**：Q1 范围 / Q2 邮件 / Q4 List view / Lunch Selection Incomplete 弹窗字能否改（A 推荐）+ 动手。动手后把 96 的接口形状（置顶 128 节「需要后端」）转 25。
 4. **Working Record cutoff 前端**：后端 G290 已上 main 4e91cece（25 更正），前端可以排（接口 docs/interfaces/working-record-cutoff-2026-11-11.md）。
