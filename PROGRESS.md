@@ -78,7 +78,7 @@ pe-ops-wt-wrdor（136 接着用）。
 ### 在分支 / 等 Annie / 等后端
 1. **128 Content Studio 客人页整页编辑**：a3 task/128-guest-page-edit head 24da02d0，所有题已答 + 动手，检查过了。**等后端**（task/g299-guest-page-edit，要 Annie 当场同意并做 SQL + 发布）上 main ⇒ 25 发 commit 和实际键名 ⇒ a3 核对、合最新 main（PROGRESS 冲突两边都留）、重跑 tsc / eslint / build / cs / nav ⇒ 合 main。后端没上就合的话，Guest Page 会出红字。
 2. ~~136~~ ✅ 已上 main 6158c991（见上表；置顶 136 原文移到下面）。
-3. **138 导游工资 Payroll**：a3 样稿 Pkg8TAFuFGBtPmHho2Ftoh，3 题等 Annie（置顶 138）。后端 task/guide-payroll 4fb7f66d 今晚家里做完；Dispatch 不用改。
+3. **138 导游工资 Payroll**：a3 样稿第 2 版 Pkg8TAFuFGBtPmHho2Ftoh（照 Annie 的设计图排、用网站颜色；源文件在 a3 scratchpad，读不到就用 Artifact read 这个链接）。已定：按人排、Effective date 默认这一期第一天、Dispatch 不用改。等 Annie：题 1 Quote tips（A 不做，推荐）、题 2 Team 权限（A 合一行，推荐）、题 3 状态小标签（A 照规矩用普通字，推荐 / B 照图用小标签、算例外）+「动手」。动手后从 main 拉 task/138-payroll；后端 task/guide-payroll 要先上 main（今晚家里做）。
 4. **Private Tour 在 Dispatch 看不到（CHDAKCDKL 11/19）**：订单在 Step 2「Private Tour」块（后端一直会给这一块），Step 1 本来就没有私团卡（10-15「先收口」）。74 已告诉 Annie 往下滚到 Step 2 看；看不到就是前端 bug。最小改法（Step 1 加一行 Private Tour + Assign Bus 跳过去）等 Annie 要不要，要的话先出 preview。
 5. 其余置顶照旧：114d、125、G291 Joe（Annie 自己改 HR）等。新编号从 139 起。
 
