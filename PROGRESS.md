@@ -4,7 +4,7 @@
 
 > 6d 交接（下面「2026-10-27 交接：前端主窗口 6d」那节）的后端需求已于 10/27 晚由 ad 转给家里后端主窗口 17。
 
-> **下一个主窗口（家里）：先读下面「2026-11-12 收工交接：前端主窗口 4c」，再看置顶。11-11 及更早的是历史。**
+> **下一个主窗口：先读下面「2026-11-13 4c → 74 交接」和「2026-11-12 家里开工 d8」，再看置顶。**
 
 ## 2026-11-12 家里开工：前端主窗口 `前端主窗口-d8`[1148ff]（只分工和汇报，不写代码）
 - 接 4c 11-12 收工交接。在线：前端 `6b`[837f59]（家里，不是公司那个 6b），后端主窗口 `后端主窗口-5c`[c5436b]、后端 `npe-confirmation-service-0f`。内存 12 GB 空闲。
@@ -51,6 +51,34 @@
 - **130 Bus Manifest「Text size changes」记录**（11-12，Annie 截图 HooverDam Nov 13，原话「这个记录怎么会在这里」）：components/dispatch-manifest/text-size.tsx:645 TextSizeHistory，每台车色条下列谁改过字号；原本默认收起，11-11 114（Annie「不要隐藏」）改成直接列最近 5 条。另有 bug：时间直接显示后端原始 UTC「2026-11-13T04:14:48.268198+00:00」，没换成当地时间。d8 问 Annie：A 只留一行「Text size last changed by Nadia · Nov 12, 8:14 PM」（推荐）/ B 整块挪到页面最下面 / C 不在页面显示（记录仍在 Action log）。时间格式不管选哪个都修。
 - 派 6b：**125 Tour Tracking 灰行字也灰**，只出 preview（A 底和字都灰（推荐）/ B 只字灰，电脑 + 手机 + night），链接回 d8 再问 Annie。
 
+## 2026-11-13 前端主窗口 `npe-ops-frontend-74`[fa6692]（公司电脑，接 4c；只分工和汇报）
+- 后端主窗口 25、后端 14；工作窗口 6b、96。
+- ✅ **134 Dispatch 登录 12:00 AM 上 main c98d2aad**（96，功能 d417d6c9，task/dispatch-login-midnight；Annie「134动手上线」）：LOGIN_TODAY_FROM 0、How to use「between 12:00 AM and 8:30 AM」。合最新 main 后 tsc / eslint / build 过；合前 da 606/606、users 80/80（合进来的没有 Dispatch 改动，da 没重跑）。验收：凌晨 12:00–8:30 登录 Dispatch 开当天，8:30 后开第二天。SHA 已发 25。
+- 128 样稿第 5 版（96，同链接 PnkpnXHaJbzrYTrUcfMYvX）：Annie 选「+ Add line」B，要求 Email 页也能这样改；等她答 Q5（邮件写死的字要不要放开）和 Q2 先后，没动手。
+- 135 后端上 main b645fe97（25 发）：relay-send（全部轮 + tour_car）、driver-notice/send、guide-notice/send；/send/morning-pickup 不改（A）。字段名和 400 detail 原文由 14 重发给 74。已告诉 6b：对齐契约，先出确认框 preview 给 Annie，看过再合；Send farm out notice 等 Annie。
+- 135 契约（14）：relay-send / driver-notice/send / guide-notice/send，body confirm_date 必须等于 date（LA 今天不用带）；不符 400 detail「This send is for {Weekday}, {Month} {day} ({YYYY-MM-DD}), not today. Confirm that date to send.」原样显示；先查「You can only send for today or tomorrow.」不变。后端说明 docs/interfaces/send-other-day-confirm-2026-11-13.md。
+- ✅ Farm out：Annie（原话，4c 转）「135不用，它是提前一天发的」⇒ Send farm out notice 不加确认框（B），从待问移走。
+- ⚠️ Annie 紧接着说「算了」，意思不明（135 整件不做，还是只不问 farm out），4c 在问。6b 停在分支上不合。⚠️ 后端已经生效、前端没上 ⇒ 现在 Dispatch 发明天的都会 400。若 135 取消，要请 14 / 25 撤掉后端校验。
+- ✅ Annie 澄清（原话，4c 转）「135还是提醒一下吧，告诉staff他发的是这个日期，要他们确认」⇒ 135 照做；**Send farm out notice 也加确认框，改选 A**（三句原话顺序：「135不用，它是提前一天发的」→「算了」→「135还是提醒一下吧，告诉staff他发的是这个日期，要他们确认」）。后端 farm-out/notices/send 没有 confirm_date ⇒ 74 问 25 要不要加同样的校验（推荐加，统一发送规则）；6b 先在前端带上 confirm_date。preview 加 farm out 截图，Annie 看过 + 动手再合。
+- 25 答：farm-out/notices/send 会忽略不认识的字段（confirm_date 现在不起作用，前端可以先上）；后端会加同样的校验（14 做），**等 74 告诉 25「135 前端已上 main」+ SHA 后才推**，免得再出现今早那样前端没上、后端先拦的空档。
+- 14 farm out 后端分支 task/farm-out-confirm-date 8974847e（规则同 Dispatch，但不限今天 / 明天，昨天、下周也要 confirm_date），135 前端上 main 后才合。
+- 🟡 **135 preview https://claude.ai/artifact/GT9KaTkKUWzA8Rnn4ESgUa**（6b，分支 head 3cee5a51，能合、没合）：四个入口都有框；tsc / eslint 过、da 616/616（新 14）、fod 64/64（新 3）。待 Annie：Q1 A 单独小框（推荐，已做）/ B 并进原发送框；Q2 Farm out 的 How to use A 这次不加（推荐）/ B 加进 Step 2「How to use — Buses & drivers」；+「动手」。
+
+## 2026-11-13 4c → 新主窗口 `npe-ops-frontend-74` 交接（公司电脑；Annie「我开了个新窗口做今天的前端主窗口，你跟它交接一下工作吧」）
+
+后端主窗口今天是 `npe-confirmation-service-25`（接 54）；135 的接口由 `npe-confirmation-service-14` 直接发。工作窗口 `6b`、`96` 还开着。
+
+### 今天（11-13）已上 main
+- G297 团确认酒店空着 a8d64c35（6b，Annie「297同意推荐，动手」，5 题全 A）。等 Annie 线上验收。
+
+### 在手上
+1. **134 Dispatch 开当天登录 2:00 → 12:00 AM**（96，task/dispatch-login-midnight d417d6c9，全过）：✅ Annie（原话）「134动手上线」⇒ 4c 已让 96 合最新 main 后上 main，SHA 发 74 和 25；74 记 SHA、告诉 Annie 验收点。
+2. **135 Dispatch 非今天发送确认框**（6b，task/dispatch-confirm-other-day，在做）：范围 relay 各轮 / 团车客人 / Send to driver / Send to guide；Morning 上传页不改（54 定）。等 14 发 detail 原文 + commit 才合；确认框先出 preview 给 Annie 看。6b 在核团车客人发送是否在 relay-send / driver-notice/send / guide-notice/send 三个接口里。**等 Annie**：Send farm out notice 要不要也加（A 推荐 / B）。
+3. **128 Content Studio 整页编辑**（96，样稿 v4 https://claude.ai/artifact/PnkpnXHaJbzrYTrUcfMYvX ）：已定 Q3 A、Edit / Save 状态、不做 Add section、选餐区显示可改、GC South / Bryce / VoF Full 两选项照旧。**等 Annie**：Q1 范围 / Q2 邮件 / Q4 List view / Lunch Selection Incomplete 弹窗字能否改（A 推荐）+ 动手。动手后把 96 的接口形状（置顶 128 节「需要后端」）转 25。
+4. **Working Record cutoff 前端**：后端 G290 已上 main 4e91cece（25 更正），前端可以排（接口 docs/interfaces/working-record-cutoff-2026-11-11.md）。
+5. 置顶 114d（Relay 设置弹窗旧句）、122 Joe（Annie 自己改 HR）、125 Tour Tracking 灰字（没派 preview）及 11-12 交接里的其余项照旧。
+6. ⚠️ 编号：家里 d8 / 5c 11-12 晚用了 129–133（129 = Send 分步弹窗 G289），新号从 136 起，派号前先 grep PROGRESS 顶部。
+
 ## 2026-11-12 收工交接：前端主窗口 `新主窗口-4c`[f2a514]（公司电脑；Annie「收工回家做」）
 
 4c 只分工和汇报，没写功能代码。今天工作窗口 `6b`、`96`（公司电脑）；后端主窗口 `主窗口交接-54`。家里的窗口名不同，开工按 CLAUDE.md 第 0 条重报。逐条细节和 Annie 原话见下面 11-11 节「⏰ 明天开工第一件」里的 1a、2a–2h 和置顶。
@@ -66,7 +94,9 @@
 
 ### 在分支 / 等 Annie
 
-0. **🔴 129 Dispatch 开当天登录时间段 2:00 AM → 12:00 AM（11-13，54 转 Annie 原话「把这个时间改成12：00am」）**：起因 11-13 Veronica 1:53 AM 登录，Dispatch 开成 11-14，31 个 relay 客人和 11-14 司机提前一天发出。只改前端：lib/la-date.ts:93 LOGIN_TODAY_FROM 0、dispatch-view.tsx:3416 How to use、注释、边界检查（1:59 / 0:00 当天，8:31 第二天）、HR 登录记录说明（如线上有）。8:30 不变。派 96 task/dispatch-login-midnight，先做完检查，4c 问 Annie 是否现在动手合 main。
+> 11-13 起后端主窗口改为 `npe-confirmation-service-25`（54 通知）；134 / 135 commit 及其他给后端的消息都发 25。130 接口细节仍由 14 发来。 25 更正：G290（Working Record cutoff 后端）已于 11-12 晚上 main 4e91cece，不再挂着；前端 Working Record cutoff 可接着排。
+0. **🔴 134（原误记 129，与家里 d8 的 129 Send 分步弹窗撞号，11-13 改）Dispatch 开当天登录时间段 2:00 AM → 12:00 AM（11-13，54 转 Annie 原话「把这个时间改成12：00am」）**：起因 11-13 Veronica 1:53 AM 登录，Dispatch 开成 11-14，31 个 relay 客人和 11-14 司机提前一天发出。只改前端：lib/la-date.ts:93 LOGIN_TODAY_FROM 0、dispatch-view.tsx:3416 How to use、注释、边界检查（1:59 / 0:00 当天，8:31 第二天）、HR 登录记录说明（如线上有）。8:30 不变。96 task/dispatch-login-midnight d417d6c9 已推：tsc / eslint / build 过，da 606/606、users 80/80（新用例 01:53 / 00:00 / 01:59 当天，前一天 11:59 PM、08:31 照旧）。HR 登录记录那句前端没有（81 只出 preview，做 81 时写 12:00 AM）。等 Annie「动手」合 main。
+0a. **🔴 135（原误记 130，与家里 130 撞号）Dispatch 发送非今天日子要确认（11-13，54 转，Annie 选风险方案 B，确认即动手）**：非今天（LA）点任何当天发送键 → 确认框大号红日期，确认键 "Yes, I need to send for {date}"（明说不能 Send anyway），Cancel 不发；今天不弹。范围：relay 各轮 / 团车客人、Send to driver、Send to guide、Morning Pickup › Send 上传页（全入口一起改）；不含团确认 / Last Minute / 门票提醒。每页 How to use 更新。后端 14 加 confirm_date 校验，字段 / 报错形状等 14 发来再合。派 6b task/dispatch-confirm-other-day，先出 preview 截图给 Annie。 6b 发现：Morning Pickup › Send 上传页后端把日期写死成发送时的 LA 今天（send.py:1247 _tour_date），preview 无日期、文件无日期列 ⇒ 判断不了非今天；已问 14 定（① preview 回包加 tour_date 推荐 / ② 页面加日期框要 preview / ③ 不改违反统一）。6b 先做 Dispatch 四类。Dispatch 另有 Send farm out notice（Super Admin 可见、有开关）不在 Annie 列的范围，问 Annie 要不要一起加。 14 回（54 定选 A）：Morning 上传页不改不弹框（接口只发 LA 今天，confirm_date 忽略；明天文件当今天发的漏洞 54 另报 Annie 登记）。Dispatch 三接口 relay-send / driver-notice/send / guide-notice/send：body 带 confirm_date，非今天且不符 ⇒ 400 字符串 detail；detail 原文 + commit 等 14 上 main。
 1. ✅ **G297 上 main a8d64c35（11-13，6b 快进 task/g297-pickup-block）**：Annie 在 6b（原话）「297同意推荐，动手」⇒ 5 题全 A（Notice 红标签红边 + Open order → + Got it；Order 页红框 + Location 红字；键在 Refresh from Rezdy 左；点一下就发；固定 SMS + Email）。tsc / eslint 0 / build 过；tour 77、orders 104、tasks 151、man 429 全过。入口：Tour / Last Minute 发送页、Manifests 弹窗、Dashboard Notice + history、Order 页均已改；后端 fc0049ce 无需再改。（以下为原记录）**G297 团确认酒店空着**（后端 fc0049ce 已上 main：空酒店那单留下不发、其余照发、给当班发 pickup_missing Notice；新接口 send-tour-order）。前端 6b 分支 task/g297-pickup-block（已对齐后端第二版、判空 = trim 后为空、TBD 算有值），preview https://claude.ai/artifact/P2hYRXJkFeurqiHzkaMspF 第 3 版 5 题（分支 5aa8e9e3；worktree 在公司电脑 C:Codeops-6b-relay，家里从远端拉分支接着做）（Notice 样子 / 红字放哪 / 键位置 / 要不要确认 / 渠道）待 Annie 答 + 动手。⚠️ 后端已上、前端没上：Tour send 页空酒店单不发，但结果只显示后端原话不标红。
 2. **128 Content Studio › Guest Page 整页就地编辑**：样稿 https://claude.ai/artifact/PnkpnXHaJbzrYTrUcfMYvX 第 3 版。已定：Q3 A 小编辑框（共用字提醒「Shared by all tours…」，这团的字不提醒）；不做 + Add section（新段落由后端加文字项）；加 Edit / Save（默认看的状态 = 客人真样子）。待答：Q1 范围（A 先 TC 推荐）、Q2 邮件（A 下一步推荐）、Q4 List view（A 留推荐）。答 + 动手后把 96 写的接口形状（置顶 128 节）转后端。
 3. **114d Relay list ⚙ 设置弹窗旧句「Aa Text size」**：置顶，A 改成 text size card 那句 / B 不改，待答。
@@ -1773,6 +1803,13 @@ D. 已完成、待从置顶移走：
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 135. Dispatch 发送日子不是今天先弹框确认（11-13，6b 样稿 https://claude.ai/artifact/GT9KaTkKUWzA8Rnn4ESgUa ，分支 head 3cee5a51 能合、没合）
+- ⚠️ 急：后端 b645fe97 已生效，前端没上之前 Dispatch 发明天的都 400。
+- Q1 确认框：A 单独小框（推荐，已做，多点一下，样子完全不同不会顺手点过）/ B 并进原发送框（顶部红大日期 + 键改字，少点一下但容易看漏）。
+- Q2 Farm out How to use：A 这次不加（推荐，Farm out 现只 SA，开放时再写）/ B 加进 Step 2「How to use — Buses & drivers」。
+- 待答 +「动手」；合 main 后 SHA 发 25 / 14（14 才合 farm out 后端 8974847e）。
+- ✅ Annie（原话，96 转）「135  -1A 2B」⇒ Q1 A 单独小框；Q2 B Farm out 那句写进 Step 2「How to use — Buses & drivers」。非动手；6b 先在 preview 补上那句英文原文给 Annie 看。
+
 ### 125. Tour Tracking 没发过的行字也变灰（11-12，6b 样稿 https://claude.ai/artifact/7YqY8VAeGAkB35Nxbx9DwU ，没改代码）
 - Annie 原话（11-11）：「进到tracking页面的那些自动填充的订单的字体没有用灰色，还是正常的颜色，staff怎么看的出哪些发过哪些没发过」
 - Q1 没发过的行（Main manifest 带进来、还没发过确认 / Last Minute / Shuttle / Broadcast）怎么显示？现在只有灰底，字色同发过的行（单号绿、名字电话深色）。A（推荐）灰底 + 灰字 #6b7280，差两样最容易看出；B 白底 + 灰字，只差字色，不如 A 显眼。
@@ -1793,7 +1830,13 @@ D. 已完成、待从置顶移走：
   - 样稿 Version 2（同链接）：共用字琥珀虚线 + 图例「Shared by all tours」，这个团的字普通蓝虚线不加字样；编辑框共用字顶部琥珀提醒 "Shared by all tours — changing it here changes every tour's page."，这团的字只有原文 + Apply + "Nothing is saved until you click Save."；List view 同样只标共用。整页大部分琥珀框（27 条共用）。Q1 Q2 Q4 待答。
   - 4c 问「+ Add section」（staff 自己加新段落）：Annie（原话）「选A，但是我需要在页面再加两个键：一个是edit，然后这个页面就进入可以编辑的状态，所有改完之后，点击save，页面就显示成客人真正看到的样子」⇒ 不做 Add section（新段落由后端加文字项）；加 Edit / Save：默认看的状态 = 客人真样子无框，Edit 进编辑状态（框 + ✎ + 弹框），Save 存完回看的状态，另有 Discard。派 96 改样稿（排在 G282 合 main 之后）。非动手。
   - 样稿 Version 3（同链接）：看的状态无框无 ✎、隐藏块不出，工具条「Viewing — this is what guests see」；Edit（普通键）→「Editing」+ Discard + 蓝 Save，出框 / ✎ / ↑↓ / Shown after 块；Save 回看的状态绿「Saved」。演示键 7 个。Q4 A 建议 List view 共用同一 Edit / Save。Q1 Q2 Q4 待答。
+  - 样稿 Version 4（11-13，96）：选餐区 + 「Lunch Selection Incomplete」弹窗看的状态也一直显示、带小标签。Annie（原话）「把选餐的样板也显示出来」→「可以，就这样显示，然后可以直接在上面改」；「这三个餐的选项只是给antelope tour的」（96 核：Turkey/Veggie/Beef 只 Upper / Lower Antelope、Antelope X；GC South / Bryce & Zion / VoF Full 两个无 Beef；GC West / VoF Half / Hoover 无选餐区）；GC South / Bryce / VoF Full 保留两选项 → Annie「A」照现在、不改后端。待答：Lunch Selection Incomplete 弹窗字要不要能在 Content Studio 改（A 后端加 tmpl__global__tc_guest_lunch_warn_* 推荐 / B 先不改），及 Q1 Q2 Q4。非动手。
 - Q4 旧表单：A 留「List view」切换（推荐）/ B 不留。
+  - 样稿 Version 5–6（11-13，96）：✅ Annie 选「+ Add line」B（客人页 5 块 pickup/fee/lunch/notes/submit、邮件 3 块 body/details/footer，每块最多 2 句，This tour only / All tours）；✅ Annie（原话）「Q5 A  Q2 A」⇒ Q5 A 邮件写死的字都放开（门票两句按团；午餐提示两句和 RECONFIRM MY SPOT 按钮所有团共用；默认值 = 现在原文）；Q2 A 客人页先上，邮件跟着做（同样整页就地改，含 + Add line）。非动手。
+  - Annie（原话）「edit的显示那里能不能加个背景色，现在的白色太不显眼了，我们网站的功能键颜色都有哪些」⇒ Q6 Edit 键颜色：A 琥珀 #d97706 白字 + ✎（推荐，同 Editing 标签 / 共用字琥珀虚线，全站没别的键用）/ B 白底深字 / C 灰蓝 #64748b，样稿可现场切换。全站键色：蓝 #3b82f6 提交 / 直接存的 Add / ↑↓ / Open in Main manifest；灰绿 #6b8e74 要再按 Save 的 Add；红 #A32D2D 危险；普通键透明底白字。
+  - 🔄 Q6 更正（原话）「不好意思，我说的是+Add line那里，这个小框放背景色」⇒ 上面「Edit 键三色」作废，Edit 恢复普通键。样稿第 7 版 Q6 改成「+ Add line」小框底色：A 灰绿 #6b8e74 实心白字（推荐，照「先加、再 Save 的 Add 用灰绿」规矩）/ B 淡灰绿底 #e6efe8 + 灰绿虚线字，可现场切换。
+  - 还没答：Q1 范围、Q4 List view、Q6 + Add line 底色、Lunch Selection Incomplete 弹窗字放不放开，+「动手」。
+  - 需要后端（动手时转 25）加：add-line 字段 global tmpl__global__tc_guest_add_{slot}_{1,2} / tmpl__global__tc_email_add_{slot}_{1,2}，按团 tmpl__tc__{tour}__add_{slot}_{1,2} / __email_add_{slot}_{1,2}；guest.py、build_email 照画；Q5 A 新字段（门票两句按团、lunch note / review 午餐尾句 / 按钮字 global）。
 - 需要后端（Annie 定了再转 54）：GET / POST /api/content-studio/guest-preview（POST 用草稿画不写库），回包 {html, keys[], sample}，sandbox iframe 无脚本；data-tmpl-key / -kind=lines / -attr / -empty / -step / -state 标记；示例数据补电话、团期 +7 天、8:00 AM、notes。保存走现有接口。MTLV 块后端关着没画。
 
 ### 114d. Relay list ⚙ 设置弹窗说明还提「Aa Text size」（11-12，6b 发现，没改）

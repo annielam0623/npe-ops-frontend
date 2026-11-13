@@ -912,7 +912,7 @@ export function DispatchView() {
     const fromUrl = params.get("date");
     if (params.get("tab") === "send" && canSend) setTab("send");
     void (async () => {
-      // 置顶 83：网址没带日期时，凌晨 2:00–8:30（洛杉矶）登录的默认看今天（直到再次登录）；
+      // 置顶 83 / 134：网址没带日期时，12:00 AM–8:30 AM（洛杉矶）登录的默认看今天（直到再次登录）；
       // 其余照旧由后端默认明天。读不到登录时间不挡页面。staff 自己换了日期就写进网址，刷新照网址。
       let d = isYmd(fromUrl) ? fromUrl : null;
       if (!d) {
@@ -3413,7 +3413,7 @@ function HowToUse() {
       </summary>
       <ol className={HOWTO_OL}>
         <li>
-          Which day opens: if you signed in between 2:00 AM and 8:30 AM (Las
+          Which day opens: if you signed in between 12:00 AM and 8:30 AM (Las
           Vegas time), Dispatch opens on today until you sign in again;
           otherwise it opens on tomorrow. Change the day any time &mdash; the
           page stays on the day you picked.
