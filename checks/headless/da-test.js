@@ -2176,6 +2176,7 @@ async function run() {
     check("Note：Morning Relay 行和 Bus Tour 车卡都是新 placeholder「Note to yourself or others (not sent to drivers or guides)」、读屏名 Note", info.every((i) => i.ph === PH && i.aria === "Note"), JSON.stringify(info));
     check("Note：输入的字是深红 #b91c1c（两处）", info.every((i) => i.color === "rgb(185, 28, 28)"), JSON.stringify(info));
     check("Note：placeholder 照旧浅灰（#94a3b8，不是红）", info.every((i) => i.phColor === "rgb(148, 163, 184)"), JSON.stringify(info));
+    check("133 Note：Morning Relay 的 Note 整行宽放在这一排最下面（不在司机那一栏，宽过司机栏、从司机栏左边到菜单右边）", await evaluate("const f = document.querySelector('section[data-sec=relay] .vrow'); const n = f.querySelector('[data-f=note]'); const w = n.closest('[data-relay-note]'); const d = f.firstElementChild; const nb = n.getBoundingClientRect(), fb = f.getBoundingClientRect(), db = d.getBoundingClientRect(); return !!w && w.parentElement === f && !d.contains(n) && nb.width > db.width * 1.8 && nb.top >= db.bottom - 2 && Math.abs(nb.right - fb.right) < 4;"), await evaluate("const f = document.querySelector('section[data-sec=relay] .vrow'); const n = f.querySelector('[data-f=note]'); return JSON.stringify([n.getBoundingClientRect(), f.getBoundingClientRect(), f.firstElementChild.getBoundingClientRect()]);"));
     check("Note：页面上没有旧原文 Note for yourself / Private note", await evaluate("return ![...document.querySelectorAll('[data-f=note]')].some((e) => e.placeholder.includes('Note for yourself') || e.getAttribute('aria-label') === 'Private note');"));
     await goto("about:blank");
     await sleep(800);
