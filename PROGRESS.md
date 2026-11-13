@@ -1808,6 +1808,7 @@ D. 已完成、待从置顶移走：
 - Q1 确认框：A 单独小框（推荐，已做，多点一下，样子完全不同不会顺手点过）/ B 并进原发送框（顶部红大日期 + 键改字，少点一下但容易看漏）。
 - Q2 Farm out How to use：A 这次不加（推荐，Farm out 现只 SA，开放时再写）/ B 加进 Step 2「How to use — Buses & drivers」。
 - 待答 +「动手」；合 main 后 SHA 发 25 / 14（14 才合 farm out 后端 8974847e）。
+- ✅ Annie（原话，96 转）「135  -1A 2B」⇒ Q1 A 单独小框；Q2 B Farm out 那句写进 Step 2「How to use — Buses & drivers」。非动手；6b 先在 preview 补上那句英文原文给 Annie 看。
 
 ### 125. Tour Tracking 没发过的行字也变灰（11-12，6b 样稿 https://claude.ai/artifact/7YqY8VAeGAkB35Nxbx9DwU ，没改代码）
 - Annie 原话（11-11）：「进到tracking页面的那些自动填充的订单的字体没有用灰色，还是正常的颜色，staff怎么看的出哪些发过哪些没发过」
