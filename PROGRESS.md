@@ -1823,6 +1823,7 @@ D. 已完成、待从置顶移走：
 - Dispatch：后端 private_tour 行已经能带导游（dispatch.py:977-991）；ops 如果 Private Tour 行藏了导游选择框，要放出来，否则付不了小费（状态会是 No guide）。
 - 要显示的状态：每段 run paid / no_rate / not_linked / no_guide，加 day_status not_completed。
 - 新页面 ⇒ 先 preview +「动手」。派 a3 出 preview（128 在等后端，a3 空着）。
+- a3 样稿 https://claude.ai/artifact/Pkg8TAFuFGBtPmHho2Ftoh （HR 第 4 个标签 Payroll）。已核 Dispatch 不用改：Private Tour 车卡本来就有 Guide 下拉（vehicle-row.tsx:1424）；手填名字在 Payroll 会是 Not linked。题 1 排法：A 按人一行可展开 + Not counted 单列（推荐）/ B 按日期。题 2 改费率默认从哪天起：A 正在看的这一期第一天（推荐）/ B 下一期第一天。题 3 Team 权限勾：A 合成一行「Payroll」None / Read only / Read & edit，非 Admin 灰掉 +「Admin only」+ 一句（推荐）/ B 两行分开。VOF / Death Valley 后端还没加团。待答 +「动手」。
 
 ### 136. Working Record 只显示到今天 + Not completed（11-13，5b 样稿 https://claude.ai/artifact/LWH8e8T6tDUJKEXRmU5dA9 ，没写代码）
 - 后端 G290 4e91cece：through 之后留空；每天 status completed / not_completed；点过 Completed 的日子也读 live（所以现有「live」橙虚线框会落到所有日子上）。
