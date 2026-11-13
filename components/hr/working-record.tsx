@@ -38,6 +38,7 @@ import {
   monthTitle,
   ROLE_LABEL,
   runTitle,
+  isNotCompleted,
   totalsOf,
   weekDays,
   weekTitle,
@@ -225,8 +226,8 @@ export function WorkingRecord({
         )}
       >
         Click a name for that person&apos;s month and totals.
-        {canSnapshot ? " 📷 opens that day's snapshot." : ""} A dashed box
-        marked live is not saved yet and follows Dispatch as it is now.
+        {canSnapshot ? " 📷 opens that day's snapshot." : ""} A dashed box means
+        nobody has clicked Completed on Dispatch for that day yet.
       </div>
 
       <div
@@ -415,6 +416,13 @@ function AllPeople({
   loading: boolean;
   onOpen: (p: FieldCalendarPerson) => void;
 }) {
+  const notCompleted = useMemo(
+    () =>
+      new Set(
+        people.flatMap((p) => p.days.filter(isNotCompleted).map((d) => d.date)),
+      ),
+    [people],
+  );
   return (
     <>
       {WORK_SECTIONS.map((section) => {
@@ -445,6 +453,7 @@ function AllPeople({
               </p>
             ) : (
               <div className="overflow-x-auto">
+                {/* 136 题 2 A：Not completed 每天只写一次，写在日期下面（Completed 按天点，同一天所有人一样）。 */}
                 <table className="w-full min-w-[860px] table-fixed border-collapse text-[11.5px]">
                   <colgroup>
                     <col className="w-[130px]" />
@@ -469,6 +478,11 @@ function AllPeople({
                             )}
                           >
                             {dayHeader(d)}
+                            {d >= range.from &&
+                            d <= range.to &&
+                            notCompleted.has(d) ? (
+                              <NotCompletedLabel block />
+                            ) : null}
                           </th>
                         ))}
                       </tr>
@@ -581,6 +595,7 @@ function PersonMonth({
                     )}
                   >
                     {Number(d.slice(8))}
+                    {day && isNotCompleted(day) ? <NotCompletedLabel /> : null}
                   </div>
                   {day ? (
                     <DayJobs
@@ -604,10 +619,13 @@ function PersonMonth({
           <h3 className={HR_CARD_TITLE_CLASS}>
             {monthTitle(range.from).split(" ")[0]} totals
           </h3>
-          {totals.liveDays ? (
-            <span className="text-[11px] text-[#b45309] night:text-amber-300">
-              includes {totals.liveDays} live day
-              {totals.liveDays === 1 ? "" : "s"}
+          {totals.notCompletedDays ? (
+            <span
+              data-wr-totals-nc
+              className="text-[11px] text-[#b45309] night:text-amber-300"
+            >
+              includes {totals.notCompletedDays} day
+              {totals.notCompletedDays === 1 ? "" : "s"} not completed
             </span>
           ) : null}
         </div>
@@ -710,7 +728,8 @@ function DayJobs({
   canSnapshot: boolean;
   onSnapshot: (t: SnapshotTarget) => void;
 }) {
-  const live = day.source === "live";
+  // 136 题 1 A：虚线框只标 Dispatch 还没点 Completed 的天（看 status，不看 source），卡上不再写 live。
+  const notDone = isNotCompleted(day);
   const jobs = groupRuns(day.runs);
   const showCam = canSnapshot && day.snapshot;
   return (
@@ -722,23 +741,18 @@ function DayJobs({
           <span
             key={i}
             data-wr-job
-            data-wr-live={live ? "" : undefined}
+            data-wr-not-completed={notDone ? "" : undefined}
             data-wr-role={role}
             className={cn(
               "mb-[3px] block rounded-[5px] border-[0.5px] px-[5px] py-0.5 leading-[1.3] text-[#1a1a1a] night:text-white/90",
               ROLE_BG[role],
-              live
+              notDone
                 ? "border border-dashed border-[#b45309]"
                 : "border-black/15 night:border-white/15",
             )}
           >
             <b className={cn("block text-[10.5px]", ROLE_TEXT[role])}>
               {ROLE_LABEL[role]}
-              {live ? (
-                <span className="ml-[3px] inline-block rounded-[4px] bg-[#fef3c7] px-1 text-[9.5px] font-bold text-[#92400e]">
-                  live
-                </span>
-              ) : null}
               {showCam && i === 0 ? (
                 <button
                   type="button"
@@ -774,5 +788,20 @@ function DayJobs({
         );
       })}
     </>
+  );
+}
+
+/** 136 题 2 A：普通文字，橙棕加粗（night 浅黄），不做胶囊、不用蓝色。周表写在日期下一行（block），月历写在号码旁。 */
+function NotCompletedLabel({ block = false }: { block?: boolean }) {
+  return (
+    <span
+      data-wr-nc-label
+      className={cn(
+        "text-[10.5px] font-bold text-[#b45309] night:text-[#fcd34d]",
+        block ? "mt-px block" : "ml-1",
+      )}
+    >
+      Not completed
+    </span>
   );
 }

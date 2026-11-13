@@ -13,6 +13,9 @@ export type FieldRole = "driver" | "guide" | "both";
 export type FieldDaySource =
   "not_completed" | "completed" | "after_edit" | "live";
 
+/** 136：那天 Dispatch 有没有点 Completed。 */
+export type FieldDayStatus = "completed" | "not_completed";
+
 export interface FieldRun {
   shift: string;
   kind: string;
@@ -47,6 +50,12 @@ export interface FieldCalendarDay {
   date: string;
   role: FieldRole;
   source: FieldDaySource;
+  /**
+   * 136（后端 G290 4e91cece；Annie 2026-11-13「3个问题都是A」「动手」）：那天 Dispatch 有没有点 Completed。
+   * Not completed 标签、虚线框、Export 的 Status 都只看它，不看 source（点过 Completed 的日子也会回 source live）。
+   * 没带 = 旧后端，当作 completed。
+   */
+  status?: FieldDayStatus;
   /** 那天存了快照（📷）。 */
   snapshot: boolean;
   runs: FieldRun[];
@@ -64,6 +73,8 @@ export interface FieldCalendarPerson {
 export interface FieldCalendarAll {
   from: string;
   to: string;
+  /** 136：实际给到的最后一天 = min(to, 洛杉矶今天)；之后的日子不返回，格子留空。 */
+  through?: string;
   people: FieldCalendarPerson[];
 }
 
@@ -71,6 +82,7 @@ export interface FieldCalendarAll {
 export interface FieldCalendarOne extends FieldCalendarPerson {
   from: string;
   to: string;
+  through?: string;
 }
 
 export type FieldSnapshotTrigger =

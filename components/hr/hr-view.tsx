@@ -924,7 +924,8 @@ function BannerLine({
  * 置顶 86 Q7 A 的原文（preview v2）。Hours 那句已去掉（Annie 2026-11-05：上下班是打卡，不做 Hours）。
  */
 const WORKING_RECORD_HOW_TO = [
-  "Working Record: what each driver and guide did each day, for payroll. The week view shows everyone: role (Driver, Guide, or Driver & Guide), tour and van. Click a name to see that person's month and the month's totals (days as Driver, Guide and Driver & Guide, and how many times each tour). 📷 opens that day's snapshot. A dashed box marked live means that day is not saved yet and follows Dispatch as it is now; once saved, later changes in Dispatch do not change it. ⬇ Export for payroll downloads the month as a CSV.",
+  // 136（Annie 2026-11-13「3个问题都是A」「动手」，preview LWH8e8T6tDUJKEXRmU5dA9 的原文）。
+  "Working Record: what each driver and guide did each day, for payroll. It shows days up to today; later days stay blank. The week view shows everyone: role (Driver, Guide, or Driver & Guide), tour and van. Click a name to see that person's month and the month's totals (days as Driver, Guide and Driver & Guide, and how many times each tour). 📷 opens that day's snapshot. Not completed means nobody has clicked Completed on Dispatch for that day yet, so the record may still change. Those days have a dashed box. Days where Completed was clicked also show later changes made in Dispatch. ⬇ Export for payroll downloads the month as a CSV, with a Status column (Completed or Not completed).",
 ];
 
 /** Annie 2026-11-03 题 4 选 A 的原文。 */
