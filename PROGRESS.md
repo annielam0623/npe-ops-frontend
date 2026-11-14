@@ -65,6 +65,7 @@
 
 > ⏰ Annie 2026-11-13 临时加班：「临时加开工一个小时，6：30开始写交接」——今天 6:30 开始写交接（只今天，平时仍 14:30 下班，见 CLAUDE.md）。74 继续当主窗口到 6:30。
 > 加班时 25 回（11-13 晚）：128 后端 task/g299-guest-page-edit 8f716582 审查过，等 Annie 在 **d2 窗口**看 v165 SQL 当面同意并执行，之后 d2 release / 合 / 推 main，发 SHA + 键名给前端主窗口转 a3。138 后端 task/guide-payroll 4a48dde7（165 测试过，合约不变），今晚不一定上 main：v166 迁移排在 128 的 v165 后；Death Valley（PNY0TQ）/ VOF（PEUDRL）私团要不要挪成独立团等 Annie 答（后端已问）；之后还有 4 个审查 + SQL 给 Annie 看。
+> 25 更正 128：v165 已在生产跑完（Annie 约 17:55 TablePlus 执行，d2 只读核过）；代码还在 task/g299-guest-page-edit 8f716582，剩合并、主目录重跑审查 / 检查、Annie 跑 release.py、推 main，之后 d2 发 SHA + 键名给 74 和 a3。之前前端 128 不合（新键旧代码不读，现状安全）。
 
 74 只分工和汇报，没写功能代码。今天的工作窗口：a3、5b（新开的），6b、96（对话太长，已停）。后端主窗口 `后端主窗口-25`（14:15 收工，晚上家里后端接）。⚠️ 主目录 C:Code
 pe-ops-frontend 现在在 a3 的 task/128-guest-page-edit 分支上；74 的协调提交在 worktree C:Codeops-74（main）；5b 的 worktree 是 C:Code
