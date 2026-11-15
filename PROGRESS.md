@@ -64,6 +64,13 @@
 ## 2026-11-14（周六）前端主窗口 `前端主窗口-74`[63aa4a]
 
 - Annie「开工，今天周六」。开工核对：前端 main 0d4e978b；后端 origin/main 4934cc4c（只是 11-13 交接，128 g299 代码还没上 main、138 guide-payroll 也没上）。a3 / 5b 窗口已关，现在没有前端工作窗口。后端主窗口-25 在线。
+- 129 Send 分步弹窗：Annie 要再看样稿，74 打开 NpHvG8oKSDagBv7WFbHupL 并列出未答 A（页面块顺序跟弹窗）/ B（发送失败能否进下一步）/ C（弹窗能否关）/ D（Step 0 拦全部还是一轮），推荐都 1；提醒样稿早于 131（每团一节），动手前要更新 Tour bus pick up 那步；suggest_bus 等后端 G289。
+- 25 转 Annie 11-14 在后端窗口定的（前端编号）：
+  - **139 = G269 Tasks 编辑**：Annie「B, A, A, A 动手」+「照推荐」。题 1 B：员工只能改自己名下今天任务的标题、优先级；换人走现有 Pass over；Everyone on shift 只有 Supervisor / Admin 能改；Supervisor / Admin 三项都能改。题 2 A；题 3 A（Today's tasks 标题右边 Daily task list 键）；题 4 A（停用、灰色保留）。Daily task list 后端接口已有，前端可先做；编辑要等后端 PATCH /api/tasks/today/{id}，形状做好后 25 发。
+  - **140 = G311 Morning Send 上传页日期不是今天先弹框确认**：照 135 / b645fe97 confirm_date；旧 send_morning.html 后端改，ops Morning Send 页前端加确认框。⚠️ 顺序同 135：前端先上 main，后端才推。后端接口细节做好后发。
+  - **141 = G310 私人团每张单自动开自己的巴士卡**（Annie 选 A）：后端先出方案给 Annie，前端部分到时发。
+  - **142 = G298 排班发布后拖格子换班**：等 Annie 答 Jing 同意后是否还要 Tessa 批（后端推荐要），答了发。
+  - 后端在等 Annie 开 4 个后端新窗口。前端现在能开工的：139 的 Daily task list 部分、140 的确认框（照 135 现成框）。内存空闲约 42 GB。
 
 ## 2026-11-13 收工交接：前端主窗口 `npe-ops-frontend-74`[fa6692]（公司电脑，13:35 收工）
 
