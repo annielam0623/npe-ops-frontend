@@ -79,6 +79,8 @@
 - **132 样稿第 4 版（c9）** 同链接 6E9mJRykzxeaSX6kudvM5e：产品名来自已读的订单详情 product.name / item_count / items_detail，不用后端；读不到不出；partner 也显示。标题「Order T02」同一行后接产品名（浅白字，hover 全名）。Q5 一单多产品 A 最早那个 + 灰字「+1 more」（推荐）/ B 每个一行；Q6 太长 A 一行截「…」/ B 最多两行再截（推荐）。已转 Annie，等答 + 动手。
 - 143 题 1：Annie（原话）「143的题一，我们本来就有driver guide的选项啊，如果司机是D&G的话，在guide那里就选Drvier Guide就好了」⇒ 转 87 核下拉现状、改题 1。非动手。
 - 143 题 3：Annie（原话）「题3：司机和导游还是bus#是必填，空的不让过」⇒ 74 理解为 143 题 3（样稿原写「都不挡 Save、不挡发送」）；转 87 核现有空格拦法、各发送入口、例外团，改题 3。非动手。
+- 143 题 1 第 2 版（87，同链接 Version 2）：核过两个下拉没有要靠标签分的人；1a 下拉加不加标签 A 都不加（推荐）/ B 司机下拉兼职加「 · Driver + Guide」；1b 兼职留在导游下拉 A 留（推荐）/ B 去掉。已转 Annie。
+- 143 题 4 ③：Annie（原话）「题4的第三：CCL写的本来就很随意，staff自己会去换成正确的」⇒ 74 理解 ③ 不提醒（同 ④），只留 ①②；已告诉 Annie 这个理解，转 87。
 - **138 后端接口改了（25 转，14 分支 task/guide-payroll 86e2b2f2 替 4a48dde7，未审未上 main）**：Annie 在 14 原话「手打名字的导游也要算进去的」⇒ 删 not_linked，手打名字一律 paid；run 加 guide_in_hr；手打的人按名字归一人 hr_id null / in_hr false；页面名字后「Not in HR」，CSV「Name (not in HR)」；同 run 手打司机 = 导游名 ⇒ driver_guide；修 bug：巴士团手打导游以前没进工资，现在算（含归档日）。文档 docs/interfaces/guide-payroll-2026-11-13.md。⇒ 前端 138 样稿要跟：去掉 Not linked 状态、加「Not in HR」，题 3 状态列表少一个。前端还没开工（a3 已关）。
 - 25 再转 Annie 11-14：
   - **143 = G291 HR nickname 后缀不带进短信 / 邮件 + G296 导游格填的不是导游 / 司兼导时琥珀提醒**：Annie 对两件都说「做」（G296 跟 G291 B 方案一起做，前端为主，后端回包带 position）。25 要前端问 Q1–Q3。⚠️ 74 查：这 3 题 11-12 已答过（96 preview MZ5JjfriMFgJNUNXy7tGNG：「所有Question都选A」，随后 Q2「不需要，就把名字写成Joe Ri就可以了」⇒ 96 理解为标签整件不做），跟今天「做」冲突，74 问 Annie 以哪个为准。G296 琥珀提醒是新样子 ⇒ 要 preview。
