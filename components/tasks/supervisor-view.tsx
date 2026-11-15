@@ -6,10 +6,16 @@ import type { BlockGate } from "@/components/dashboard/widget-gates";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { toggleTaskDone, updateTaskDue } from "@/lib/tasks-api";
 import { cn } from "@/lib/utils";
-import type { DailyTask, TaskPassOverNotice, TasksToday } from "@/types";
+import type {
+  DailyTask,
+  StaffShiftToday,
+  TaskPassOverNotice,
+  TasksToday,
+} from "@/types";
 
 import { AddTaskRow } from "./add-task-row";
 import { DailyTaskListButton } from "./daily-task-list";
+import { EditTaskButton, TaskEditForm, useEditLeaveGuard } from "./task-edit";
 import {
   dayLabel,
   dueStatus,
@@ -38,6 +44,19 @@ export function SupervisorTasks({
 }) {
   const { tasks, shifts, now, date, pass_over_notices } = data;
   const [busyId, setBusyId] = useState<number | null>(null);
+  // 139：正在 Edit 的几条（可以同时开几条，开另一条不会丢这一条没存的改动）。
+  const [editingIds, setEditingIds] = useState<ReadonlySet<number>>(
+    () => new Set(),
+  );
+  const dirtyReporter = useEditLeaveGuard();
+  function setEditing(id: number, on: boolean) {
+    setEditingIds((prev) => {
+      const next = new Set(prev);
+      if (on) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }
   const [error, setError] = useState("");
 
   const { done, total } = summarizeDone(tasks);
@@ -132,6 +151,13 @@ export function SupervisorTasks({
               busy={busyId === task.id}
               onToggle={() => void toggle(task)}
               onChangeDue={(hhmm) => void changeDue(task, hhmm)}
+              editing={editingIds.has(task.id)}
+              onEdit={() => setEditing(task.id, true)}
+              onCloseEdit={() => setEditing(task.id, false)}
+              shifts={shifts}
+              onSaved={onChanged}
+              onUnauthorized={onUnauthorized}
+              onDirtyChange={dirtyReporter(task.id)}
             />
           )}
         />
@@ -237,12 +263,26 @@ function SupervisorTaskRow({
   busy,
   onToggle,
   onChangeDue,
+  editing,
+  onEdit,
+  onCloseEdit,
+  shifts,
+  onSaved,
+  onUnauthorized,
+  onDirtyChange,
 }: {
   task: DailyTask;
   now: string;
   busy: boolean;
   onToggle: () => void;
   onChangeDue: (hhmm: string) => void;
+  editing: boolean;
+  onEdit: () => void;
+  onCloseEdit: () => void;
+  shifts: StaffShiftToday[];
+  onSaved: (task: DailyTask) => void;
+  onUnauthorized: () => void;
+  onDirtyChange: (dirty: boolean) => void;
 }) {
   const pendingAccept = task.pass_over !== null && !task.pass_over.accepted_at;
   const { status } = dueStatus(task, now);
@@ -254,7 +294,9 @@ function SupervisorTaskRow({
       data-due-status={status}
       className={cn(
         "flex flex-col gap-0.5 rounded-lg border px-2.5 py-2",
-        task.done
+        editing
+          ? "border-[#3b82f6]/55 bg-[#3b82f6]/[.06]"
+          : task.done
           ? "border-white/5 bg-white/[.015] opacity-70"
           : status === "overdue"
             ? "border-[#f87171]/40 bg-[#f87171]/[.05]"
@@ -300,6 +342,7 @@ function SupervisorTaskRow({
           onChange={(event) => onChangeDue(event.target.value)}
           className="w-[108px] shrink-0 rounded-md border border-white/15 bg-white/[.04] px-1.5 py-0.5 text-[11.5px] text-white [color-scheme:dark] outline-none focus:border-[#185FA5] disabled:opacity-50"
         />
+        {editing ? null : <EditTaskButton task={task} onClick={onEdit} />}
       </div>
       {task.link_href && task.link_label ? (
         <div className="pl-[22px]">
@@ -310,6 +353,18 @@ function SupervisorTaskRow({
         <p className="pl-[22px] text-[11px] font-semibold text-[#fbbf24]">
           Passing to {task.pass_over?.to_display_name} — not accepted yet
         </p>
+      ) : null}
+      {editing ? (
+        <TaskEditForm
+          task={task}
+          shifts={shifts}
+          canAssign
+          onSaved={onSaved}
+          onClose={onCloseEdit}
+          onUnauthorized={onUnauthorized}
+          onDirtyChange={onDirtyChange}
+          className="mt-1.5 pl-[22px] max-sm:pl-0"
+        />
       ) : null}
     </li>
   );

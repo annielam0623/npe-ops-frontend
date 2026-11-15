@@ -443,6 +443,13 @@ http
         nextId = Math.max(...tasks.map((t) => t.id)) + 1;
         delete b.edge;
       }
+      // 139：mineTask ⇒ 把「Antelope Lunch putting on Excel」指定给 Lizzie（员工自己名下的，能 Edit）。
+      if (b.mineTask) {
+        const t = tasks.find((x) => x.title === "Antelope Lunch putting on Excel");
+        t.assigned_to_username = "lizzie";
+        t.assigned_to_display_name = "Lizzie";
+        delete b.mineTask;
+      }
       Object.assign(ctl, b);
       // G202：待 Lizzie 接受的那条带交出人设的 Finish by（4:00 PM 洛杉矶；原 due_at 11:00 AM 不动）。
       if (ctl.g202) {
@@ -610,6 +617,35 @@ http
       if (ctl.notReady) return send(res, 404, { detail: "mock: not found" });
       if (ctl.failGet) return send(res, 500, { detail: "Internal Server Error" });
       return send(res, 200, buildToday());
+    }
+
+    // 139 = G269：PATCH /api/tasks/today/{id}（后端 25 的草稿形状，后端文档出来再核）。
+    const editMatch = p.match(/^\/api\/tasks\/today\/(\d+)$/);
+    if (editMatch && req.method === "PATCH") {
+      const task = findTask(Number(editMatch[1]));
+      if (!task) return send(res, 404, { detail: "Task not found" });
+      const b = await readBody(req);
+      entry.body = b;
+      const me = meUser();
+      if (!ctl.supervisor) {
+        if (task.assigned_to_username !== me.username) return send(res, 403, { detail: "You can only edit tasks assigned to you." });
+        if ("assigned_admin_user_id" in b) return send(res, 403, { detail: "Only a Supervisor or Admin can change who a task is for." });
+      }
+      if ("title" in b && !(typeof b.title === "string" && b.title.trim())) return send(res, 400, { detail: "Title is required" });
+      if ("priority" in b && !["high", "moderate", "low"].includes(b.priority)) return send(res, 400, { detail: "priority must be one of ('high', 'moderate', 'low')" });
+      let assignee;
+      if ("assigned_admin_user_id" in b) {
+        if (task.pass_over && !task.pass_over.accepted_at) return send(res, 409, { detail: `Waiting for ${task.pass_over.to_display_name} to accept the pass-over` });
+        assignee = b.assigned_admin_user_id === null ? null : SHIFTS.find((s) => s.admin_user_id === b.assigned_admin_user_id);
+        if (assignee === undefined) return send(res, 400, { detail: "No active staff account with that id" });
+      }
+      if ("title" in b) task.title = b.title.trim();
+      if ("priority" in b) task.priority = b.priority;
+      if (assignee !== undefined) {
+        task.assigned_to_username = assignee ? assignee.username : null;
+        task.assigned_to_display_name = assignee ? assignee.display_name : null;
+      }
+      return send(res, 200, task);
     }
 
     const doneMatch = p.match(/^\/api\/tasks\/today\/(\d+)\/done$/);

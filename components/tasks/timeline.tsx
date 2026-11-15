@@ -67,6 +67,8 @@ export function TaskTimeline({
     if (!box || typeof ResizeObserver === "undefined") return;
     const observer = new ResizeObserver(() => void fit());
     observer.observe(box);
+    // 139：某一行展开 Edit 表单时内容变高、框高不变，也要重算，表单才不被框切掉。
+    for (const child of box.children) observer.observe(child);
     return () => observer.disconnect();
   }, [fit]);
 

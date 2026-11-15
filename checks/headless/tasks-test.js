@@ -734,6 +734,90 @@ async function runDailyTaskList() {
   check("139 · 没改动点 Close：不问，直接关", await evaluate("return window.__asked === 0 && !document.querySelector('[data-daily-task-list]');"));
 }
 
+// ── 139 = G269 今天任务的 Edit（preview ①；PATCH /api/tasks/today/{id} 按后端 25 草稿，mock）──
+async function runTodayEdit() {
+  const f = (id, k) => `document.querySelector('[data-task-edit-form="${id}"] [data-field="${k}"]')`;
+  const btnIn = (id, text) => `[...document.querySelector('[data-task-edit-form="${id}"]').querySelectorAll('button')].find(b => b.textContent === '${text}')`;
+  const idOf = (title) => evaluate(`return Number($row(${JSON.stringify(title)}).dataset.taskId);`);
+  const setSel = (sel, v) => evaluate(`const s = ${sel}; Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, ${JSON.stringify(v)}); s.dispatchEvent(new Event('change', { bubbles: true }));`);
+
+  // ── 主管：三项都能改 ──
+  await ctl({ reset: true, me: "annie", supervisor: true, admin: false, superadmin: false, notices: false, gates: "open" });
+  await openDashboard();
+  await waitFor("$row('BZ Lunch')");
+  check("139 编辑 · 主管：每一行都有 Edit（ghost，不是蓝色）", await evaluate("const rows = [...$tasksSection().querySelectorAll('li[data-task-id]')]; return rows.length > 5 && rows.every(li => li.querySelector('[data-task-edit]')) && getComputedStyle(rows[0].querySelector('[data-task-edit]')).backgroundColor === 'rgba(0, 0, 0, 0)';"));
+  const bz = await idOf("BZ Lunch");
+  await evaluate(`$row('BZ Lunch').querySelector('[data-task-edit]').click();`);
+  await waitFor(`document.querySelector('[data-task-edit-form="${bz}"]')`);
+  check("139 编辑 · 点 Edit：这一行里展开 Task / Priority / For，带原值（For = Everyone on shift today），Edit 键收起，行框变蓝", await evaluate(`const li = $row('BZ Lunch'); return li.contains(document.querySelector('[data-task-edit-form="${bz}"]')) && ${f(bz, "title")}.value === 'BZ Lunch' && ${f(bz, "priority")}.value === 'high' && ${f(bz, "for")}.value === '' && ${f(bz, "for")}.options[0].textContent === 'Everyone on shift today' && !li.querySelector('[data-task-edit]') && li.className.includes('border-[#3b82f6]');`));
+  check("139 编辑 · 表单下写 Changes this task for today only. Tomorrow’s comes from the Daily task list.；Save 蓝色", await evaluate(`const fm = document.querySelector('[data-task-edit-form="${bz}"]'); return fm.textContent.includes('Changes this task for today only. Tomorrow’s comes from the Daily task list.') && getComputedStyle(${btnIn(bz, "Save")}).backgroundColor === 'rgb(59, 130, 246)';`));
+  const lizzieVal = await evaluate(`return [...${f(bz, "for")}.options].find(o => o.textContent.startsWith('Lizzie')).value;`);
+  await evaluate(`$setValue(${f(bz, "title")}, 'ZZ Test BZ Lunch');`);
+  await setSel(f(bz, "for"), lizzieVal);
+  let from = (await mockLog()).length;
+  await sleep(200);
+  check("139 编辑 · 改了没按 Save：不发请求", (await since(from, (e) => e.method === "PATCH")).length === 0);
+  await evaluate(`${btnIn(bz, "Save")}.click();`);
+  await waitFor(`document.querySelector('[data-task-edit-form="${bz}"] [role=status]')`);
+  let reqs = await since(from, (e) => e.method === "PATCH");
+  check("139 编辑 · Save：PATCH /api/tasks/today/{id} 只带 title + assigned_admin_user_id（Lizzie 的 id）", reqs.length === 1 && reqs[0].path === `/api/tasks/today/${bz}` && JSON.stringify(Object.keys(reqs[0].body).sort()) === '["assigned_admin_user_id","title"]' && reqs[0].body.title === "ZZ Test BZ Lunch" && `u:${reqs[0].body.assigned_admin_user_id}` === lizzieVal, JSON.stringify(reqs));
+  await sleep(400);
+  check("139 编辑 · 存好：绿字 Saved，Cancel 变 Close；行里标题、负责人跟着变", await evaluate(`const s = document.querySelector('[data-task-edit-form="${bz}"] [role=status]'); const li = $row('ZZ Test BZ Lunch'); return s.textContent === 'Saved' && getComputedStyle(s).color === 'rgb(74, 222, 128)' && !!${btnIn(bz, "Close")} && !!li && li.querySelector('[data-task-who]').textContent === 'Lizzie';`));
+  await evaluate(`${btnIn(bz, "Close")}.click();`);
+  await sleep(150);
+  check("139 编辑 · Close：表单收起，Edit 键回来", await evaluate(`return !document.querySelector('[data-task-edit-form="${bz}"]') && !!$row('ZZ Test BZ Lunch').querySelector('[data-task-edit]');`));
+
+  // 交接没接受：换人 409，红字原话，表单留着
+  const sh = await idOf("Check Shuttle and remind Tour Guide for Shuttle Pickup");
+  await evaluate(`$row('Check Shuttle and remind Tour Guide for Shuttle Pickup').querySelector('[data-task-edit]').click();`);
+  await waitFor(`document.querySelector('[data-task-edit-form="${sh}"]')`);
+  await setSel(f(sh, "for"), "");
+  await evaluate(`${btnIn(sh, "Save")}.click();`);
+  await waitFor(`document.querySelector('[data-task-edit-form="${sh}"] [role=alert]')`);
+  check("139 编辑 · 交接还没 Accept 时换人：409 红字后端原话 Waiting for Lizzie to accept the pass-over，表单选择留着", await evaluate(`const a = document.querySelector('[data-task-edit-form="${sh}"] [role=alert]'); return a.textContent === 'Waiting for Lizzie to accept the pass-over' && getComputedStyle(a).color === 'rgb(248, 113, 113)' && ${f(sh, "for")}.value === '';`));
+
+  // 可以同时开几条；有没存的改动按 Cancel 先问
+  await evaluate(`$row('Manifest').querySelector('[data-task-edit]').click();`);
+  await sleep(200);
+  check("139 编辑 · 再开另一条：两条都开着，前一条没存的改动还在", await evaluate(`return document.querySelectorAll('[data-task-edit-form]').length === 2 && ${f(sh, "for")}.value === '';`));
+  await evaluate("window.__asked = 0; window.confirm = () => { window.__asked++; return false; };");
+  await evaluate(`${btnIn(sh, "Cancel")}.click();`);
+  await sleep(150);
+  check("139 编辑 · 有没存的改动按 Cancel：先问，选留下表单还在", await evaluate(`return window.__asked === 1 && !!document.querySelector('[data-task-edit-form="${sh}"]');`));
+  await evaluate("window.confirm = () => { window.__asked++; return true; };");
+  await evaluate(`${btnIn(sh, "Cancel")}.click();`);
+  await sleep(150);
+  check("139 编辑 · 选放弃：表单收起，没发请求改负责人", await evaluate(`return !document.querySelector('[data-task-edit-form="${sh}"]') && $row('Check Shuttle and remind Tour Guide for Shuttle Pickup').querySelector('[data-task-who]').textContent === 'Veronica';`));
+
+  // ── 员工：只改自己名下的标题、优先级 ──
+  await ctl({ reset: true, mineTask: true, me: "lizzie", supervisor: false, admin: false, superadmin: false, notices: false, gates: "open" });
+  await openDashboard();
+  await waitFor("$row('Antelope Lunch putting on Excel')");
+  check("139 编辑 · 员工：自己名下的（Antelope Lunch）有 Edit；Everyone on shift 的（Send Last mins Confirmation）没有", await evaluate("return !!$row('Antelope Lunch putting on Excel').querySelector('[data-task-edit]') && !$row('Send Last mins Confirmation').querySelector('[data-task-edit]');"));
+  const al = await idOf("Antelope Lunch putting on Excel");
+  await evaluate(`$row('Antelope Lunch putting on Excel').querySelector('[data-task-edit]').click();`);
+  await waitFor(`document.querySelector('[data-task-edit-form="${al}"]')`);
+  check("139 编辑 · 员工表单：只有 Task、Priority，没有 For；提示只写 Changes this task for today only.", await evaluate(`const fm = document.querySelector('[data-task-edit-form="${al}"]'); return !!${f(al, "title")} && !!${f(al, "priority")} && !${f(al, "for")} && fm.textContent.includes('Changes this task for today only.') && !fm.textContent.includes('Daily task list');`));
+  await setSel(f(al, "priority"), "low");
+  from = (await mockLog()).length;
+  await evaluate(`${btnIn(al, "Save")}.click();`);
+  await waitFor(`document.querySelector('[data-task-edit-form="${al}"] [role=status]')`);
+  reqs = await since(from, (e) => e.method === "PATCH");
+  check("139 编辑 · 员工 Save：PATCH 只带 priority（不带 assigned_admin_user_id），绿字 Saved", reqs.length === 1 && JSON.stringify(reqs[0].body) === '{"priority":"low"}', JSON.stringify(reqs));
+  // 空标题：前端先挡
+  await evaluate(`$setValue(${f(al, "title")}, '   ');`);
+  from = (await mockLog()).length;
+  await evaluate(`${btnIn(al, "Save")}.click();`);
+  await sleep(250);
+  check("139 编辑 · 标题清空：红字 Write the task first.，不发请求", (await since(from, (e) => e.method === "PATCH")).length === 0 && (await evaluate(`return document.querySelector('[data-task-edit-form="${al}"] [role=alert]')?.textContent === 'Write the task first.';`)));
+
+  // 手机宽：表单在框里、整页不左右晃
+  await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+  await sleep(500);
+  check("139 编辑 · 手机宽 390：整页不左右晃，表单不超出任务框", await evaluate(`const fm = document.querySelector('[data-task-edit-form="${al}"]').getBoundingClientRect(); const sec = $tasksSection().getBoundingClientRect(); return document.documentElement.scrollWidth <= innerWidth && fm.right <= sec.right + 1 && fm.left >= sec.left - 1;`), await evaluate(`return JSON.stringify([document.documentElement.scrollWidth, innerWidth]);`));
+  await cdp("Emulation.clearDeviceMetricsOverride");
+}
+
 async function main() {
   const chrome = spawn(CHROME, [
     "--headless=new",
@@ -769,6 +853,7 @@ async function main() {
     await run();
     await runMessaging();
     await runDailyTaskList();
+    await runTodayEdit();
   } finally {
     ws.close();
     chrome.kill();
