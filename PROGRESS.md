@@ -67,6 +67,9 @@
 - 129 Send 分步弹窗：Annie 要再看样稿，74 打开 NpHvG8oKSDagBv7WFbHupL 并列出未答 A（页面块顺序跟弹窗）/ B（发送失败能否进下一步）/ C（弹窗能否关）/ D（Step 0 拦全部还是一轮），推荐都 1；提醒样稿早于 131（每团一节），动手前要更新 Tour bus pick up 那步；suggest_bus 等后端 G289。
 - 25 转 Annie 11-14 在后端窗口定的（前端编号）：
   - **139 = G269 Tasks 编辑**：Annie「B, A, A, A 动手」+「照推荐」。题 1 B：员工只能改自己名下今天任务的标题、优先级；换人走现有 Pass over；Everyone on shift 只有 Supervisor / Admin 能改；Supervisor / Admin 三项都能改。题 2 A；题 3 A（Today's tasks 标题右边 Daily task list 键）；题 4 A（停用、灰色保留）。Daily task list 后端接口已有，前端可先做；编辑要等后端 PATCH /api/tasks/today/{id}，形状做好后 25 发。
+    - **139 第一部分 Daily task list（05 做，task/139-tasks-edit）**：照 preview ② https://claude.ai/artifact/3aVYWfWYk4RgntEaBjovTh 做，不另出样稿（25 确认 preview 画了键和窗口）。Today's tasks 标题行右边 ghost 键「Daily task list」（只主管视角 is_supervisor_view，员工没有），点开窗口列出 /api/tasks/templates：Task / Priority / Time / How often / Opens / Edit；停用的灰色标 OFF。Edit 在这一行下展开表单（Task、Priority、How often、Every … days、From、To、Time limit、Opens page、Note、Active），蓝色 Save 才存（PATCH 只带改了的字段），绿字「Saved — starts from tomorrow’s list」，红字前端先挡 / 后端原话、表单留着；+ Add task（ghost，只开表单）→ POST，排最后（sort_order = 最大 + 1），新的默认 Active。有没存的改动时 Close / Esc / 点背景 / 换一条 / 关标签页先问。How to use 5 条照 preview（手机排到最下面）。代码 components/tasks/daily-task-list.tsx、supervisor-view.tsx 标题行。
+      - 检查：tsc 0、eslint 0 error、build；tasks 173/173（139 新 22 项，mock 加 /api/tasks/templates）、dr 89/89、nav 39/39。验收：Dashboard 用 Supervisor / Admin 账号点 Daily task list，改一条 ZZ Test 开头的固定任务再停用，确认明天的列表才变。⚠️ 生产数据：别改真任务，测试只加 ZZ Test 开头的并停用。
+      - 第二部分（今天任务的 Edit）等后端 PATCH /api/tasks/today/{id}，先按 25 给的草稿用 mock 做，不合 main。
   - **140 = G311 Morning Send 上传页日期不是今天先弹框确认**：照 135 / b645fe97 confirm_date；旧 send_morning.html 后端改，ops Morning Send 页前端加确认框。⚠️ 顺序同 135：前端先上 main，后端才推。后端接口细节做好后发。
   - **141 = G310 私人团每张单自动开自己的巴士卡**（Annie 选 A）：后端先出方案给 Annie，前端部分到时发。
   - **142 = G298 排班发布后拖格子换班**：等 Annie 答 Jing 同意后是否还要 Tessa 批（后端推荐要），答了发。

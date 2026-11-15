@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import type { DailyTask, TaskPassOverNotice, TasksToday } from "@/types";
 
 import { AddTaskRow } from "./add-task-row";
+import { DailyTaskListButton } from "./daily-task-list";
 import {
   dayLabel,
   dueStatus,
@@ -91,9 +92,11 @@ export function SupervisorTasks({
             · {done} of {total} done
           </span>
         </h2>
-        {gate?.staffSwitch ? (
-          <span className="self-center">{gate.staffSwitch}</span>
-        ) : null}
+        <span className="flex flex-wrap items-center gap-2 self-center">
+          {gate?.staffSwitch ? <span>{gate.staffSwitch}</span> : null}
+          {/* 139 = G269 题 3 A：固定任务列表的入口，只在 Supervisor / Admin 视角（tasks.manage）。 */}
+          <DailyTaskListButton onUnauthorized={onUnauthorized} />
+        </span>
       </div>
       <p className="mt-1 text-[12.5px] text-white/55">
         Fixed, time-based tasks for the shift — not everyone&rsquo;s whole
