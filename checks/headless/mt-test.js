@@ -909,6 +909,89 @@ async function run() {
     check("Morning 400（改回旧页面 #2）：回到预览页，原因写在发送键旁，发送键恢复可点，没有「Sending stopped」", await evaluate("const send = [...document.querySelectorAll('button')].find(b => b.textContent.includes('Send to Selected')); return !!send && !send.disabled && document.body.textContent.includes('Guest count not found in Quantities: M02') && !document.body.textContent.includes('Sending stopped') && !document.body.textContent.includes('📬 Send Results');"));
     await ctl({ morning400: "" });
 
+    // ── 140（后端 G311，Annie 2026-11-14）：文件日期不是今天 ⇒ 点发送先弹 135 的红日期框；Cancel 不发；Yes 才发、带 confirm_date ──
+    {
+      const DLG = "document.querySelector('[data-other-day-confirm]')";
+      const DIALOG = "document.querySelector('[role=dialog]')";
+      const results = "[...document.querySelectorAll('h2')].some(h => h.textContent === '📬 Send Results')";
+      async function openFileDay(fileDate) {
+        await ctl({ fileDate });
+        await goto(`${APP}/morning-pickup/send`);
+        await evaluate("window.__laToday = '2026-10-05';");
+        await uploadMorning();
+      }
+      async function toRedBox() {
+        await evaluate("$btn('✉️ Send to Selected').click();");
+        await waitFor(`!!$btn('Send to 12 orders', ${DIALOG})`);
+        await evaluate(`$btn('Send to 12 orders', ${DIALOG}).click();`);
+        await waitFor(`!!${DLG}`);
+      }
+
+      // 文件是明天（洛杉矶今天固定成 2026-10-05）
+      await openFileDay("2026-10-06");
+      let b1 = (await mockLog()).length;
+      await evaluate("$btn('✉️ Send to Selected').click();");
+      await waitFor(`!!$btn('Send to 12 orders', ${DIALOG})`);
+      check("140：文件是明天，第一个确认框写「the pickup reminder for Tue, Oct 6」（不写 today's）",
+        await evaluate(`const t = ${DIALOG}.textContent; return t.includes('the pickup reminder for Tue, Oct 6') && !t.includes("today's pickup reminder");`),
+        await evaluate(`return ${DIALOG}.textContent;`));
+      await evaluate(`$btn('Send to 12 orders', ${DIALOG}).click();`);
+      await waitFor(`!!${DLG}`);
+      check("140：再点 Send to 12 orders ⇒ 红日期框：大号红字 Tue, Oct 6、Yes, I need to send for Tue, Oct 6、默认焦点 Cancel，还没发",
+        (await evaluate(`const d = ${DLG}; const date = d.querySelector('[data-other-day-date]'); return d.dataset.otherDayConfirm === '2026-10-06' && date.textContent === 'Tue, Oct 6' && getComputedStyle(date).color === 'rgb(163, 45, 45)' && !!$btn('Yes, I need to send for Tue, Oct 6', d) && document.activeElement === d.querySelector('[data-other-day-cancel]');`)) &&
+          (await sends(b1)).length === 0);
+      await evaluate(`${DLG}.querySelector('[data-other-day-cancel]').click();`);
+      await waitFor(`!${DLG}`);
+      await sleep(300);
+      check("140：Cancel ⇒ 红框关掉、一条都没发、还在预览页",
+        (await sends(b1)).length === 0 && (await evaluate(`return !!$btn('✉️ Send to Selected') && !(${results});`)));
+      if (await evaluate(`return !!${DIALOG};`)) await evaluate(`$btn('Cancel', ${DIALOG}).click();`);
+      await waitFor(`!${DIALOG}`);
+      // 再来一次，点 Yes
+      b1 = (await mockLog()).length;
+      await toRedBox();
+      await evaluate(`$btn('Yes, I need to send for Tue, Oct 6', ${DLG}).click();`);
+      await waitFor(results, 20000);
+      {
+        const all = await sends(b1);
+        check("140：Yes ⇒ 发了，每一批都带 confirm_date=2026-10-06",
+          all.length > 0 && all.every((e) => e.body.confirm_date === "2026-10-06"), JSON.stringify(all.map((e) => e.body.confirm_date)));
+      }
+
+      // 文件是今天 ⇒ 不弹红框、不带 confirm_date
+      await openFileDay("2026-10-05");
+      b1 = (await mockLog()).length;
+      await startSend();
+      await waitFor(results, 20000);
+      {
+        const all = await sends(b1);
+        check("140：文件是今天 ⇒ 没有红日期框，直接发，请求不带 confirm_date",
+          all.length > 0 && all.every((e) => e.body.confirm_date === undefined), JSON.stringify(all.map((e) => e.body.confirm_date)));
+      }
+
+      // 读不出日期（file_date: null）⇒ 同今天
+      await openFileDay(null);
+      b1 = (await mockLog()).length;
+      await startSend();
+      await waitFor(results, 20000);
+      {
+        const all = await sends(b1);
+        check("140：file_date 是 null（读不出）⇒ 不弹框、不带 confirm_date", all.length > 0 && all.every((e) => e.body.confirm_date === undefined));
+      }
+
+      // 后端 400 原话照显示
+      await ctl({ morning400: "This send is for Tuesday, October 6 (2026-10-06), not today. Confirm that date to send." });
+      await openFileDay("2026-10-06");
+      await toRedBox();
+      await evaluate(`$btn('Yes, I need to send for Tue, Oct 6', ${DLG}).click();`);
+      await waitFor("document.body.textContent.includes('not today. Confirm that date to send.')", 20000);
+      check("140：后端 400 原话照显示在发送键旁，发送键可再点",
+        await evaluate("return document.body.textContent.includes('This send is for Tuesday, October 6 (2026-10-06), not today. Confirm that date to send.') && !!$btn('✉️ Send to Selected') && !$btn('✉️ Send to Selected').disabled;"));
+      check("140：How to use 有一句文件不是今天时的说明",
+        await evaluate("return document.body.textContent.includes('If it is for another day, a box shows that date in red');"));
+      await ctl({ fileDate: "absent", morning400: "" });
+    }
+
     // 服务端查重（后端 2026-10-06 E141）：Send anyway 带 send_anyway + preview_at；跳过的写原因；一个渠道失败的红胶囊；人数算不出的拦住
     await ctl({ morningGuard: true, morningSentSince: ["M02"] });
     await goto(`${APP}/morning-pickup/send`);

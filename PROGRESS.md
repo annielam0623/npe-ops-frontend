@@ -67,7 +67,13 @@
 - 129 Send 分步弹窗：Annie 要再看样稿，74 打开 NpHvG8oKSDagBv7WFbHupL 并列出未答 A（页面块顺序跟弹窗）/ B（发送失败能否进下一步）/ C（弹窗能否关）/ D（Step 0 拦全部还是一轮），推荐都 1；提醒样稿早于 131（每团一节），动手前要更新 Tour bus pick up 那步；suggest_bus 等后端 G289。
 - 25 转 Annie 11-14 在后端窗口定的（前端编号）：
   - **139 = G269 Tasks 编辑**：Annie「B, A, A, A 动手」+「照推荐」。题 1 B：员工只能改自己名下今天任务的标题、优先级；换人走现有 Pass over；Everyone on shift 只有 Supervisor / Admin 能改；Supervisor / Admin 三项都能改。题 2 A；题 3 A（Today's tasks 标题右边 Daily task list 键）；题 4 A（停用、灰色保留）。Daily task list 后端接口已有，前端可先做；编辑要等后端 PATCH /api/tasks/today/{id}，形状做好后 25 发。
-  - **140 = G311 Morning Send 上传页日期不是今天先弹框确认**：照 135 / b645fe97 confirm_date；旧 send_morning.html 后端改，ops Morning Send 页前端加确认框。⚠️ 顺序同 135：前端先上 main，后端才推。后端接口细节做好后发。
+  - **140 = G311 Morning Send 上传页日期不是今天先弹框确认**：照 135 / b645fe97 confirm_date；旧 send_morning.html 后端改，ops Morning Send 页前端加确认框。⚠️ 顺序同 135：前端先上 main，后端才推。后端接口细节做好后发。
+    - 🟡 **a7 做完，分支 task/140-morning-send-other-day（worktree C:\Code\ops-wt-140），没合 main，等 74 核对后端顺序再合。** 74 派工（Annie 11-14 定，25 转）：文件日期不是今天 ⇒ 弹窗确认，确认后按文件日期发、记；不确认不发；今天照旧。样子同 135 ⇒ 没出 preview。
+      - 合约（25 草稿，最终以后端文档为准）：preview 顶层 `file_date: "YYYY-MM-DD" | null`（没这个键 = 旧后端，当 null）；POST /send/morning-pickup 是 multipart，加 form 字段 `confirm_date`，只在 file_date 不是洛杉矶今天时带；不是今天没带 / 不对 ⇒ 400 "This send is for {Weekday}, {Month} {day} (YYYY-MM-DD), not today. Confirm that date to send."，前端原样显示在发送键旁。一个文件两个日期、超出今天 / 明天的 400 也原样显示。
+      - 前端：lib/morning-send-api.ts sendMorningBatch guard.confirmDate → form confirm_date；types/morning-send.ts MorningPreview.file_date；components/morning-send/morning-send-view.tsx：Manifest.fileDate，ConfirmDialog 加 sendFor（同 135 的 OtherDayConfirm：大号红字日期、蓝键 "Yes, I need to send for {date}"、Cancel 不发），每批带 confirmDateField(fileDate)（点的那一刻算）；第一个确认框不是今天时写 "the pickup reminder for {date}"，今天照旧 "today's pickup reminder"；How to use 加一条："The file must be for today. If it is for another day, a box shows that date in red: click Yes, I need to send for that date only if you really mean to send for that day, or Cancel to send nothing."
+      - 没做：25 说的「不是今天也不是明天就禁用 Send 并显示 You can only send for today or tomorrow.」——是新样子 / 新行为，没做；现在靠后端 400 原话显示。要做的话先 preview。
+      - 同一发送的其他入口（11-09 规则）：Dispatch Morning Relay relay-send 135 已带 confirm_date（components/dispatch/relay-panel.tsx:601 confirmDateField(date)），不用改；旧 confirm send_morning.html 由后端 G311 改。
+      - 检查（合 origin/main f73e4281 后）：tsc 0、eslint 0 error（3 warning 是原有的）、build 过；mt 273/273（140 新 8 项：明天弹红框、Cancel 不发、Yes 每批带 confirm_date、今天 / null 不弹不带、400 原话、How to use）、nav 39/39、da 620/620。没连生产、没发。
   - **141 = G310 私人团每张单自动开自己的巴士卡**（Annie 选 A）：后端先出方案给 Annie，前端部分到时发。
   - **142 = G298 排班发布后拖格子换班**：等 Annie 答 Jing 同意后是否还要 Tessa 批（后端推荐要），答了发。
   - 后端在等 Annie 开 4 个后端新窗口。前端现在能开工的：139 的 Daily task list 部分、140 的确认框（照 135 现成框）。内存空闲约 42 GB。
