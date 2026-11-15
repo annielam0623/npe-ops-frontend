@@ -73,6 +73,7 @@
   - 后端在等 Annie 开 4 个后端新窗口。前端现在能开工的：139 的 Daily task list 部分、140 的确认框（照 135 现成框）。内存空闲约 42 GB。
 - 25 再转 Annie 11-14：
   - **143 = G291 HR nickname 后缀不带进短信 / 邮件 + G296 导游格填的不是导游 / 司兼导时琥珀提醒**：Annie 对两件都说「做」（G296 跟 G291 B 方案一起做，前端为主，后端回包带 position）。25 要前端问 Q1–Q3。⚠️ 74 查：这 3 题 11-12 已答过（96 preview MZ5JjfriMFgJNUNXy7tGNG：「所有Question都选A」，随后 Q2「不需要，就把名字写成Joe Ri就可以了」⇒ 96 理解为标签整件不做），跟今天「做」冲突，74 问 Annie 以哪个为准。G296 琥珀提醒是新样子 ⇒ 要 preview。
+  - ✅ Annie（原话，74）「A，做标签」⇒ 143 做标签：Q1 A 灰字（导游 Tour Guide、司机不标、兼职 Driver + Guide），Q2 按推荐（下拉 / Roster / 车卡显示，打印单 / HR 列表不显示），Q3 Juan (Beni) 保留；后端 guides[] / guide_candidates 带 position、所有发送去后缀。G296 琥珀提醒先出 preview，再等 Annie「动手」。已转 25。
   - G279 WhatsApp 键（司机 / 导游页，后端模板）：后端做，前端不用。G294 旧面板 Completed 键：不修，等 G295。
 
 ## 2026-11-13 收工交接：前端主窗口 `npe-ops-frontend-74`[fa6692]（公司电脑，13:35 收工）
