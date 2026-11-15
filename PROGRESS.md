@@ -97,6 +97,7 @@
 - 129 样稿第 2 版（8d，同链接 NpHvG8oKSDagBv7WFbHupL Version 2，源文件 8d scratchpad send-wizard/index.html）：照 131 每团一节改 Step 4（列各团 + Go to 团名 + Send the rest later）；Step 0 加「车卡空格」一行标等 143；不用 Completed。题 A 页面顺序（A1 改）、B 失败能否往下（B1）、C 能否关（C1）、D 拦全部（D1；D2 时按团）、E（新）Tour bus pick up 一步列各团（E1）/ 每团一步、F（新）没发完的团 Send the rest later（F1）/ 全发完才走。推荐都 1。已转 Annie。
 - ⏸️ **129 暂停**：Annie（原话）「129稍等两天再继续，你周一的时候提醒我」⇒ **2026-11-16（周一）开工时主窗口提醒 Annie 129**（样稿 v2 + 题 A–F 等她答）。之前不再推进。
 - 138：Annie（原话）「138我觉得排列得太乱了，把每一个人的明细做成带格子的表格」⇒ 8d 出第 4 版（每人明细带格线表格，其他部分能统一的一起）。非动手。
+- 138 样稿第 4 版（8d，Version 4）：每人明细 8 列格线表 + 合计行；Not in HR / 小费框 / ANT relay / Archived / Not completed 进格子；名单、Needs review（拆 8 列）、Pay rates 加格线。新题 4 手机：甲 表格卡片内横滑、首列钉住（推荐）/ 乙 卡片。题 1–3 照旧。已转 Annie。
 - ✅ **144 上 main ec2bc613**（8d，修复 4fde2b30）：已转 25。8d 接 138 样稿更新（去 Not linked、加 Not in HR），不写代码。
 - **138 后端接口改了（25 转，14 分支 task/guide-payroll 86e2b2f2 替 4a48dde7，未审未上 main）**：Annie 在 14 原话「手打名字的导游也要算进去的」⇒ 删 not_linked，手打名字一律 paid；run 加 guide_in_hr；手打的人按名字归一人 hr_id null / in_hr false；页面名字后「Not in HR」，CSV「Name (not in HR)」；同 run 手打司机 = 导游名 ⇒ driver_guide；修 bug：巴士团手打导游以前没进工资，现在算（含归档日）。文档 docs/interfaces/guide-payroll-2026-11-13.md。⇒ 前端 138 样稿要跟：去掉 Not linked 状态、加「Not in HR」，题 3 状态列表少一个。前端还没开工（a3 已关）。
 - 25 再转 Annie 11-14：
