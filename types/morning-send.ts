@@ -47,6 +47,8 @@ export interface MorningPreview {
   farm_out_excluded?: string[];
   /** 车号无效的行数（含已发过的）。 */
   van_invalid_count?: number;
+  /** 140（G311）：文件的团期 YYYY-MM-DD（后端从文件读）；没有 / null = 读不出或旧后端，按今天、不弹框。 */
+  file_date?: string | null;
 }
 
 /** POST /send/morning-pickup 结果里的一行；文件里每一行都有，没选中的 skipped=true。 */
