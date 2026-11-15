@@ -13,6 +13,9 @@ export type FieldRole = "driver" | "guide" | "both";
 export type FieldDaySource =
   "not_completed" | "completed" | "after_edit" | "live";
 
+/** 136：那天 Dispatch 有没有点 Completed。 */
+export type FieldDayStatus = "completed" | "not_completed";
+
 export interface FieldRun {
   shift: string;
   kind: string;
@@ -24,6 +27,20 @@ export interface FieldRun {
   as: "driver" | "guide";
   start_at: string | null;
   end_at: string | null;
+  /**
+   * 137 留位置（Annie 2026-11-13「2个问题都同意推荐，动手」）：这一段相关的 Daily Operation Report。
+   * 题 2 A：只算直接点名这个人的——投诉对象是这个司机 / 导游，或事故的司机是他；由后端算好，前端不拿名字去猜。
+   * 题 1 A：现在页面不显示；后端带上以后先出 preview，Annie 同意再显示。字段名以后端最终为准。没带 = 后端还没做。
+   */
+  reports?: FieldRunReport[];
+}
+
+/** 137：卡上要显示的一份 Daily Operation Report 摘要（暂定形状，等后端定）。 */
+export interface FieldRunReport {
+  id: number;
+  report_type: "complaint" | "accident" | "emergency";
+  headline: string;
+  status: "open" | "in_progress" | "resolved";
 }
 
 /**
@@ -33,6 +50,12 @@ export interface FieldCalendarDay {
   date: string;
   role: FieldRole;
   source: FieldDaySource;
+  /**
+   * 136（后端 G290 4e91cece；Annie 2026-11-13「3个问题都是A」「动手」）：那天 Dispatch 有没有点 Completed。
+   * Not completed 标签、虚线框、Export 的 Status 都只看它，不看 source（点过 Completed 的日子也会回 source live）。
+   * 没带 = 旧后端，当作 completed。
+   */
+  status?: FieldDayStatus;
   /** 那天存了快照（📷）。 */
   snapshot: boolean;
   runs: FieldRun[];
@@ -50,6 +73,8 @@ export interface FieldCalendarPerson {
 export interface FieldCalendarAll {
   from: string;
   to: string;
+  /** 136：实际给到的最后一天 = min(to, 洛杉矶今天)；之后的日子不返回，格子留空。 */
+  through?: string;
   people: FieldCalendarPerson[];
 }
 
@@ -57,6 +82,7 @@ export interface FieldCalendarAll {
 export interface FieldCalendarOne extends FieldCalendarPerson {
   from: string;
   to: string;
+  through?: string;
 }
 
 export type FieldSnapshotTrigger =

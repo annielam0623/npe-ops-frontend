@@ -624,6 +624,116 @@ async function run() {
   check("401 跳登录页，带 next", await evaluate("return location.href.includes('/auth/login') && location.href.includes('next=');"), await evaluate("return location.href;"));
 }
 
+// ── 139 = G269 Daily task list（Annie 2026-11-14「B, A, A, A 动手」，preview ②）──
+async function runDailyTaskList() {
+  // 员工：没有 Daily task list 键
+  await ctl({ reset: true, me: "lizzie", supervisor: false, admin: false, superadmin: false, notices: false, gates: "open" });
+  await openDashboard();
+  check("139 · 员工（My tasks）没有 Daily task list 键", await evaluate("return !!$tasksSection() && !document.querySelector('[data-daily-task-list-open]');"));
+
+  await ctl({ reset: true, me: "annie", supervisor: true, admin: false, superadmin: false, notices: false, gates: "open" });
+  await openDashboard();
+  await waitFor("document.querySelector('[data-daily-task-list-open]')");
+  check("139 · 主管：Today's tasks 标题行右边有 Daily task list 键，不是蓝色（ghost）", await evaluate("const b = document.querySelector('[data-daily-task-list-open]'); const h = $tasksSection().querySelector('h2').getBoundingClientRect(); const r = b.getBoundingClientRect(); return $tasksSection().contains(b) && b.textContent === 'Daily task list' && r.left > h.right && Math.abs(r.top - h.top) < 20 && getComputedStyle(b).backgroundColor === 'rgba(0, 0, 0, 0)';"));
+  let from = (await mockLog()).length;
+  await evaluate("document.querySelector('[data-daily-task-list-open]').click();");
+  await waitFor("document.querySelectorAll('[data-daily-task-list] tr[data-template-id]').length === 4");
+  let reqs = await since(from, (e) => e.method === "GET" && e.path === "/api/tasks/templates");
+  check("139 · 点键打开窗口：标题 Daily task list，GET /api/tasks/templates，列出 4 条", reqs.length === 1 && (await evaluate("const d = document.querySelector('[data-daily-task-list]'); return d.getAttribute('role') === 'dialog' && d.querySelector('h2').textContent === 'Daily task list' && d.textContent.includes('Changes start from tomorrow’s list.');")));
+  const row = (id) => `document.querySelector('[data-daily-task-list] tr[data-template-id="${id}"]')`;
+  check("139 · 列：Task / Priority / Time / How often / Opens；8:00 – 10:00 AM、Every day、Dispatch", await evaluate(`const h = [...document.querySelectorAll('[data-daily-task-list] th')].map(x => x.textContent.trim()); const c = [...${row(1)}.cells].map(x => x.textContent); return h.slice(0,5).join('|') === 'Task|Priority|Time|How often|Opens' && c[1] === 'High' && c[2] === '8:00 – 10:00 AM' && c[3] === 'Every day' && c[4] === 'Dispatch';`), await evaluate(`return [...${row(1)}.cells].map(x => x.textContent).join('|');`));
+  check("139 · 跨上下午写全（8:00 AM – 9:30 PM）、Every hour", await evaluate(`const c = [...${row(2)}.cells].map(x => x.textContent); return c[2] === '8:00 AM – 9:30 PM' && c[3] === 'Every hour';`), await evaluate(`return [...${row(2)}.cells].map(x => x.textContent).join('|');`));
+  check("139 · 停用的：灰色、标 OFF，All shift、Every 7 days", await evaluate(`const r = ${row(4)}; const c = [...r.cells].map(x => x.textContent); return r.dataset.templateOff === 'true' && c[0].endsWith('OFF') && c[2] === 'All shift' && c[3] === 'Every 7 days' && getComputedStyle(r).color !== 'rgb(255, 255, 255)';`));
+  check("139 · 窗口里有 How to use — Daily task list（5 条）", await evaluate("const d = document.querySelector('[data-daily-task-list] details'); return d.textContent.includes('How to use — Daily task list') && d.querySelectorAll('li').length === 5;"));
+
+  // 编辑：只发改了的字段
+  await evaluate(`${row(2)}.querySelector('button').click();`);
+  await waitFor("document.querySelector('[data-template-form]')");
+  const f = (k) => `document.querySelector('[data-template-form] [data-field="${k}"]')`;
+  const setSel = (k, v) => evaluate(`const s = ${f(k)}; Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, '${v}'); s.dispatchEvent(new Event('change', { bubbles: true }));`);
+  check("139 · Edit：表单在这一行下面展开，带原值（标题、Every hour、08:00–21:30、Tour Tracking、Note、Active 勾着）", await evaluate(`return ${row(2)}.nextElementSibling.contains(document.querySelector('[data-template-form]')) && ${f("title")}.value === 'Reply to guest messages in Tracking' && ${f("frequency")}.value === 'hourly' && ${f("from")}.value === '08:00' && ${f("to")}.value === '21:30' && ${f("link")}.value === '/tour-confirmation/tracking' && ${f("note")}.value.startsWith('Reply within') && ${f("active")}.checked;`));
+  const saveBtn = "[...document.querySelectorAll('[data-template-form] button')].find(b => b.textContent === 'Save')";
+  check("139 · Save 是蓝色 #3b82f6（提交键）", await evaluate(`return getComputedStyle(${saveBtn}).backgroundColor === 'rgb(59, 130, 246)';`));
+  await evaluate(`$setValue(${f("title")}, 'ZZ Test reply to guests');`);
+  await setSel("priority", "high");
+  from = (await mockLog()).length;
+  await sleep(200);
+  check("139 · 改了还没按 Save：不发请求（先暂存）", (await since(from, (e) => e.method === "PATCH")).length === 0);
+  await evaluate(`${saveBtn}.click();`);
+  await waitFor("document.querySelector('[data-template-form] [role=status]')");
+  reqs = await since(from, (e) => e.method === "PATCH");
+  check("139 · Save：PATCH /api/tasks/templates/2 只带改了的 title、priority", reqs.length === 1 && reqs[0].path === "/api/tasks/templates/2" && JSON.stringify(Object.keys(reqs[0].body).sort()) === '["priority","title"]' && reqs[0].body.title === "ZZ Test reply to guests" && reqs[0].body.priority === "high", JSON.stringify(reqs));
+  check("139 · 存好：绿字 Saved — starts from tomorrow’s list；表格这一行跟着变", await evaluate(`const s = document.querySelector('[data-template-form] [role=status]'); return s.textContent === 'Saved — starts from tomorrow’s list' && getComputedStyle(s).color === 'rgb(74, 222, 128)' && ${row(2)}.cells[0].textContent === 'ZZ Test reply to guests' && ${row(2)}.cells[1].textContent === 'High';`));
+
+  // 前端先挡：Every hour 没有 From
+  await evaluate(`$setValue(${f("from")}, '');`);
+  from = (await mockLog()).length;
+  await evaluate(`${saveBtn}.click();`);
+  await sleep(300);
+  check("139 · Every hour 清空 From：红字 Every hour needs a From and To.，不发请求", (await since(from, (e) => e.method === "PATCH")).length === 0 && (await evaluate("const a = document.querySelector('[data-template-form] [role=alert]'); return a?.textContent === 'Every hour needs a From and To.' && getComputedStyle(a).color === 'rgb(248, 113, 113)';")));
+
+  // 有没存的改动：Close 先问；选「留下」窗口还在
+  await evaluate("window.__asked = 0; window.confirm = () => { window.__asked++; return false; };");
+  await evaluate("[...document.querySelectorAll('[data-daily-task-list] button')].find(b => b.textContent === 'Close').click();");
+  await sleep(200);
+  check("139 · 没存的改动点 Close：先问，选留下窗口还在、改动还在", await evaluate(`return window.__asked === 1 && !!document.querySelector('[data-daily-task-list]') && ${f("from")}.value === '';`));
+  await evaluate("[...document.querySelectorAll('[data-template-form] button')].find(b => b.textContent === 'Cancel').click();");
+  await sleep(150);
+  check("139 · Cancel：表单收起，不存", await evaluate("return !document.querySelector('[data-template-form]');"));
+
+  // 停用：取消 Active ⇒ PATCH {is_active:false}，这一行变灰标 OFF
+  await evaluate(`${row(1)}.querySelector('button').click();`);
+  await waitFor("document.querySelector('[data-template-form]')");
+  await evaluate(`${f("active")}.click();`);
+  from = (await mockLog()).length;
+  await evaluate(`${saveBtn}.click();`);
+  await waitFor("document.querySelector('[data-template-form] [role=status]')");
+  reqs = await since(from, (e) => e.method === "PATCH");
+  check("139 · 取消 Active 再 Save：PATCH /api/tasks/templates/1 {is_active:false}，这一行灰色标 OFF", reqs.length === 1 && reqs[0].path === "/api/tasks/templates/1" && JSON.stringify(reqs[0].body) === '{"is_active":false}' && (await evaluate(`return ${row(1)}.dataset.templateOff === 'true' && ${row(1)}.cells[0].textContent.endsWith('OFF');`)), JSON.stringify(reqs));
+  await evaluate("[...document.querySelectorAll('[data-template-form] button')].find(b => b.textContent === 'Cancel').click();");
+
+  // 后端 400：原话红字，表单内容留着
+  await evaluate(`${row(3)}.querySelector('button').click();`);
+  await waitFor("document.querySelector('[data-template-form]')");
+  await evaluate(`$setValue(${f("title")}, 'ZZ Test too long');`);
+  await evaluate(`${saveBtn}.click();`);
+  await waitFor("document.querySelector('[data-template-form] [role=alert]')");
+  check("139 · 后端 400：红字后端原话，表单里的字留着", await evaluate(`return document.querySelector('[data-template-form] [role=alert]').textContent === 'title must be at most 200 characters' && ${f("title")}.value === 'ZZ Test too long' && ${row(3)}.cells[0].textContent === 'Print the Morning Relay list';`));
+  await evaluate("window.__asked = 0; window.confirm = () => { window.__asked++; return true; };");
+
+  // + Add task：只打开表单（ghost 键），Save 才 POST
+  from = (await mockLog()).length;
+  await evaluate("document.querySelector('[data-template-add]').click();");
+  await waitFor("document.querySelector('[data-template-form] strong')?.textContent === 'New task'");
+  check("139 · 有没存的改动点 + Add task：先问一句；表单 New task 在表格上面，键不是蓝色，没发请求", (await evaluate("const form = document.querySelector('[data-template-form]'); const t = document.querySelector('[data-daily-task-list] table'); return window.__asked === 1 && !!(form.compareDocumentPosition(t) & Node.DOCUMENT_POSITION_FOLLOWING) && getComputedStyle(document.querySelector('[data-template-add]')).backgroundColor === 'rgba(0, 0, 0, 0)';")) && (await since(from, (e) => e.method !== "GET")).length === 0);
+  await evaluate(`$setValue(${f("title")}, 'ZZ Test daily check');`);
+  await evaluate(`$setValue(${f("from")}, '09:00');`);
+  await evaluate(`$setValue(${f("to")}, '11:00');`);
+  await setSel("frequency", "every_n_days");
+  await sleep(100);
+  await evaluate(`$setValue(${f("every-n")}, '3');`);
+  await setSel("link", "/manifests");
+  await evaluate(`${saveBtn}.click();`);
+  await waitFor("document.querySelector('[data-template-form] [role=status]')");
+  reqs = await since(from, (e) => e.method === "POST" && e.path === "/api/tasks/templates");
+  const b = reqs[0]?.body ?? {};
+  check("139 · 新加 Save：POST 带 title、every_n_days 3、09:00–11:00、Manifests、排在最后（sort_order 5）", reqs.length === 1 && b.title === "ZZ Test daily check" && b.frequency === "every_n_days" && b.frequency_every_n_days === 3 && b.window_start_time === "09:00" && b.window_end_time === "11:00" && b.link_href === "/manifests" && b.link_label === "Manifests" && b.sort_order === 5, JSON.stringify(reqs));
+  check("139 · 新的一条出现在表格最后：9:00 – 11:00 AM、Every 3 days；绿字 Saved", await evaluate("const rows = [...document.querySelectorAll('[data-daily-task-list] tr[data-template-id]')]; const c = [...rows[rows.length - 1].cells].map(x => x.textContent); return rows.length === 5 && c[0] === 'ZZ Test daily check' && c[2] === '9:00 – 11:00 AM' && c[3] === 'Every 3 days' && c[4] === 'Manifests' && !!document.querySelector('[data-template-form] [role=status]');"), await evaluate("const rows = [...document.querySelectorAll('[data-daily-task-list] tr[data-template-id]')]; return [...rows[rows.length - 1].cells].map(x => x.textContent).join('|');"));
+
+  // 手机宽：窗口在屏幕内、整页不左右晃（表格自己横滚），How to use 排到最下面
+  await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+  await sleep(500);
+  check("139 · 手机宽 390：整页不左右晃，窗口在屏幕内；How to use 排在表格下面", await evaluate("const d = document.querySelector('[data-daily-task-list]'); const r = d.getBoundingClientRect(); const det = d.querySelector('details').parentElement; const tbl = d.querySelector('table').parentElement; return document.documentElement.scrollWidth <= innerWidth && r.left >= 0 && r.right <= innerWidth + 1 && det.getBoundingClientRect().top > tbl.getBoundingClientRect().top;"), await evaluate("const d = document.querySelector('[data-daily-task-list]').getBoundingClientRect(); return JSON.stringify([document.documentElement.scrollWidth, innerWidth, d.left, d.right]);"));
+  await cdp("Emulation.clearDeviceMetricsOverride");
+  await sleep(300);
+
+  // 没改动时 Close 不问
+  await evaluate("window.__asked = 0;");
+  await evaluate("[...document.querySelectorAll('[data-daily-task-list] button')].find(b => b.textContent === 'Close').click();");
+  await sleep(200);
+  check("139 · 没改动点 Close：不问，直接关", await evaluate("return window.__asked === 0 && !document.querySelector('[data-daily-task-list]');"));
+}
+
 async function main() {
   const chrome = spawn(CHROME, [
     "--headless=new",
@@ -658,6 +768,7 @@ async function main() {
   try {
     await run();
     await runMessaging();
+    await runDailyTaskList();
   } finally {
     ws.close();
     chrome.kill();

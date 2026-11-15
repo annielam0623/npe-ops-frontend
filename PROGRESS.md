@@ -4,7 +4,7 @@
 
 > 6d 交接（下面「2026-10-27 交接：前端主窗口 6d」那节）的后端需求已于 10/27 晚由 ad 转给家里后端主窗口 17。
 
-> **下一个主窗口：先读下面「2026-11-13 4c → 74 交接」和「2026-11-12 家里开工 d8」，再看置顶。**
+> **下一个主窗口：先读下面「2026-11-13 收工交接：74」，再看置顶。**
 
 ## 2026-11-13 公司 6b 收工（135 上 main；这个对话太长，停接新活）
 - ✅ **135 Dispatch 发的不是今天先确认，上 main ae5c849a**（分支 task/dispatch-confirm-other-day）。Annie 原话：「135还是提醒一下吧，告诉staff他发的是这个日期，要他们确认」；preview https://claude.ai/artifact/GT9KaTkKUWzA8Rnn4ESgUa 两题「135  -1A 2B」，随后在 6b 说「动手」。
@@ -61,9 +61,100 @@
 - **130 Bus Manifest「Text size changes」记录**（11-12，Annie 截图 HooverDam Nov 13，原话「这个记录怎么会在这里」）：components/dispatch-manifest/text-size.tsx:645 TextSizeHistory，每台车色条下列谁改过字号；原本默认收起，11-11 114（Annie「不要隐藏」）改成直接列最近 5 条。另有 bug：时间直接显示后端原始 UTC「2026-11-13T04:14:48.268198+00:00」，没换成当地时间。d8 问 Annie：A 只留一行「Text size last changed by Nadia · Nov 12, 8:14 PM」（推荐）/ B 整块挪到页面最下面 / C 不在页面显示（记录仍在 Action log）。时间格式不管选哪个都修。
 - 派 6b：**125 Tour Tracking 灰行字也灰**，只出 preview（A 底和字都灰（推荐）/ B 只字灰，电脑 + 手机 + night），链接回 d8 再问 Annie。
 
+## 2026-11-14（周六）前端主窗口 `前端主窗口-74`[63aa4a]
+
+- Annie「开工，今天周六」。开工核对：前端 main 0d4e978b；后端 origin/main 4934cc4c（只是 11-13 交接，128 g299 代码还没上 main、138 guide-payroll 也没上）。a3 / 5b 窗口已关，现在没有前端工作窗口。后端主窗口-25 在线。
+- 129 Send 分步弹窗：Annie 要再看样稿，74 打开 NpHvG8oKSDagBv7WFbHupL 并列出未答 A（页面块顺序跟弹窗）/ B（发送失败能否进下一步）/ C（弹窗能否关）/ D（Step 0 拦全部还是一轮），推荐都 1；提醒样稿早于 131（每团一节），动手前要更新 Tour bus pick up 那步；suggest_bus 等后端 G289。
+- 25 转 Annie 11-14 在后端窗口定的（前端编号）：
+  - **139 = G269 Tasks 编辑**：Annie「B, A, A, A 动手」+「照推荐」。题 1 B：员工只能改自己名下今天任务的标题、优先级；换人走现有 Pass over；Everyone on shift 只有 Supervisor / Admin 能改；Supervisor / Admin 三项都能改。题 2 A；题 3 A（Today's tasks 标题右边 Daily task list 键）；题 4 A（停用、灰色保留）。Daily task list 后端接口已有，前端可先做；编辑要等后端 PATCH /api/tasks/today/{id}，形状做好后 25 发。
+    - **139 第一部分 Daily task list（05 做，task/139-tasks-edit）**：照 preview ② https://claude.ai/artifact/3aVYWfWYk4RgntEaBjovTh 做，不另出样稿（25 确认 preview 画了键和窗口）。Today's tasks 标题行右边 ghost 键「Daily task list」（只主管视角 is_supervisor_view，员工没有），点开窗口列出 /api/tasks/templates：Task / Priority / Time / How often / Opens / Edit；停用的灰色标 OFF。Edit 在这一行下展开表单（Task、Priority、How often、Every … days、From、To、Time limit、Opens page、Note、Active），蓝色 Save 才存（PATCH 只带改了的字段），绿字「Saved — starts from tomorrow’s list」，红字前端先挡 / 后端原话、表单留着；+ Add task（ghost，只开表单）→ POST，排最后（sort_order = 最大 + 1），新的默认 Active。有没存的改动时 Close / Esc / 点背景 / 换一条 / 关标签页先问。How to use 5 条照 preview（手机排到最下面）。代码 components/tasks/daily-task-list.tsx、supervisor-view.tsx 标题行。
+      - 检查：tsc 0、eslint 0 error、build；tasks 173/173（139 新 22 项，mock 加 /api/tasks/templates）、dr 89/89、nav 39/39。验收：Dashboard 用 Supervisor / Admin 账号点 Daily task list，改一条 ZZ Test 开头的固定任务再停用，确认明天的列表才变。⚠️ 生产数据：别改真任务，测试只加 ZZ Test 开头的并停用。
+      - 第二部分（今天任务的 Edit）等后端 PATCH /api/tasks/today/{id}，先按 25 给的草稿用 mock 做，不合 main。
+  - **140 = G311 Morning Send 上传页日期不是今天先弹框确认**：照 135 / b645fe97 confirm_date；旧 send_morning.html 后端改，ops Morning Send 页前端加确认框。⚠️ 顺序同 135：前端先上 main，后端才推。后端接口细节做好后发。
+  - **141 = G310 私人团每张单自动开自己的巴士卡**（Annie 选 A）：后端先出方案给 Annie，前端部分到时发。
+  - **142 = G298 排班发布后拖格子换班**：等 Annie 答 Jing 同意后是否还要 Tessa 批（后端推荐要），答了发。
+  - 后端在等 Annie 开 4 个后端新窗口。前端现在能开工的：139 的 Daily task list 部分、140 的确认框（照 135 现成框）。内存空闲约 42 GB。
+- **132（= 后端 G306）**：25 问进度，74 回：分支 task/132-conversation-manifest-link b114f83d 做好未合，后端不用配合。✅ Annie（原话）「全部同意推荐。但是在对话窗口的订单旁边标出是哪个产品」⇒ Q1 B 所有对话框 / Q2 A 标题下 / Q3 B 新标签页定了；新加：对话框里订单号旁边标出产品名 ⇒ 样子有变，先更新 preview（6E9mJRykzxeaSX6kudvM5e），Annie 同意 +「动手」后才改、合。要开前端新窗口（6b 已停）。产品名来源：打开框时已读 /api/operations/orders/<no>，订单详情应有产品，新窗口核实；多产品订单怎么写 preview 里问。
+- Annie 问「前两天发过的截图：同事手机号下面一堆订单，让查怎么回事」：74 查了这台电脑 11-10 起所有前后端对话、前端 PROGRESS、后端待办，都没找到（可能在家里电脑的窗口）。已请 Annie 重发截图或给号码 / 页面，收到派窗口只读查。
+  - **144 找到了（25 转，Annie「立刻修」）**：Order lookup 搜同事电话 7029855633 出 12 张单，全标「Matched by agent reference」（ref 含 5633）。74 只读核：前端 bug。lib/order-lookup-api.ts:130-133 电话搜不到时退到后 4 位 q=5633；:147-151 过滤 `hit(r,q) || r.matched_agent_ref === true`，matched_agent_ref 没按完整输入核 ⇒ 全留下。修法（样子不变 = bug 修，不用 preview）：后 4 位那次不认 matched_agent_ref（agent ref 只认完整输入那次）。后端不改。要开前端窗口，优先。
+    - ✅ **144 上 main ec2bc613**（8d，分支 task/144-phone-agent-ref，修复提交 4fde2b30）：lib/order-lookup-api.ts searchOrders 只在原样输入那一次认 matched_agent_ref，退到纯数字 / 后 4 位那几次只认单号 / 姓名 / 电话（电话仍按完整数字核）。样子不变。os 套加回归项（ZZTEST4 agent ref 855633-01，搜 7029855633 ⇒ No order matches；去掉修复时此项 FAIL、加上 PASS）。检查：tsc 0、eslint 0 error、build 过；合最新 main 后 os 86/86、nav 39/39，orders 104/104。验收：顶栏搜 7029855633 ⇒ 不再出那 12 张单；搜完整 agent ref 照旧 Matched by agent reference；(702) 555-0100 / 7025550100 互搜照旧。
+- ✅ **139 第一部分 Daily task list 上 main a3bb51df**（05，功能 072218fe）：已转 25。第二部分（今天任务 Edit）05 用 mock 做，等后端 PATCH SHA。
+- 139b 今天任务 Edit（05）：mock 做完未合，task/139b-today-edit 88f1a0da（ops-wt-139）。主管照 preview ①；员工只有自己名下的 Edit（Task / Priority），preview 没画员工视角 ⇒ 05 出员工样稿给 Annie。等后端 PATCH /api/tasks/today/{id} SHA。tasks 189/189、tsc / eslint 0。
+- 139b 员工样稿（05）https://claude.ai/artifact/U4DPWTzYX1M6EuRUExwuC9 ，分支 f08a73b6：题 1 Edit 键 A Pass over 右边（推荐）/ B 左边；题 2 提示句「Changes this task for today only.」A 保留（推荐）/ B 不要。已转 Annie。a7 140 获准合 main（前端先上无影响）。
+- **128 后端 G299 上 main 44e17168**（f4，合并 35a0592d；v165 11-13 已在生产跑）。合约 docs/interfaces/tc-guest-page-edit-2026-11-13.md。派 8d 在主目录（分支就在那）核对、合最新 main、重跑 cs / nav / build、合 main。
+- 派工（11-14）：8d [89ea88] 144（worktree C:Codeops-wt-144，task/144-phone-agent-ref，修好直接合）；c9 [ea8ad5] 132（ops-wt-132 接 task/132-conversation-manifest-link，先改样稿加产品名）；05 [800cd4] 139（ops-wt-139，task/139-tasks-edit，先向 25 要 G269 原题 / preview）；a7 [7b65fa] 140（ops-wt-140，task/140-morning-send-other-day，照 135 框，合前先报后端顺序）；87 [1f8470] 143（ops-wt-143，task/143-guide-position，只出 preview）。
+- **143 preview（87）** https://claude.ai/artifact/6vSftUcphVWuTDVLHEiWVx （worktree ops-wt-143，未提交）。题：Q1 下拉标签（浏览器下拉做不出灰小字）A 名字后「 · Tour Guide」同色（推荐）/ B 按身份分组；Q2 Roster 现有绿框「Driver + Guide」A 改灰小字（推荐）/ B 保留；Q3 G296 提醒 A 三处（车卡顶行 Ready→琥珀「Check guide」、下拉琥珀边、下拉下琥珀整句）（推荐）/ B 只下拉下一句，都不挡 Save / 发送；Q4 触发 ①HR 是 Driver ②HR 无 Position ③选 Driver Guide 但司机不是兼职 触发，④手填 typed 不触发（推荐）；Q5 英文原文见 87 消息（已转 Annie）。需要后端（已转 25）：车上导游不在名单时每车回 guide_position 或按 id 查 HR position。等 Annie 答 + 动手 + 后端字段。
+- **132 样稿第 4 版（c9）** 同链接 6E9mJRykzxeaSX6kudvM5e：产品名来自已读的订单详情 product.name / item_count / items_detail，不用后端；读不到不出；partner 也显示。标题「Order T02」同一行后接产品名（浅白字，hover 全名）。Q5 一单多产品 A 最早那个 + 灰字「+1 more」（推荐）/ B 每个一行；Q6 太长 A 一行截「…」/ B 最多两行再截（推荐）。已转 Annie，等答 + 动手。
+- 143 题 1：Annie（原话）「143的题一，我们本来就有driver guide的选项啊，如果司机是D&G的话，在guide那里就选Drvier Guide就好了」⇒ 转 87 核下拉现状、改题 1。非动手。
+- 143 题 3：Annie（原话）「题3：司机和导游还是bus#是必填，空的不让过」⇒ 74 理解为 143 题 3（样稿原写「都不挡 Save、不挡发送」）；转 87 核现有空格拦法、各发送入口、例外团，改题 3。非动手。
+- 143 题 1 第 2 版（87，同链接 Version 2）：核过两个下拉没有要靠标签分的人；1a 下拉加不加标签 A 都不加（推荐）/ B 司机下拉兼职加「 · Driver + Guide」；1b 兼职留在导游下拉 A 留（推荐）/ B 去掉。已转 Annie。
+- 143 题 4 ③：Annie（原话）「题4的第三：CCL写的本来就很随意，staff自己会去换成正确的」⇒ 74 理解 ③ 不提醒（同 ④），只留 ①②；已告诉 Annie 这个理解，转 87。
+- 143 样稿 Version 4（87）：题 3 拆 3a 挡哪步（A Completed 推荐 / B 发送（所有入口一起改）/ C Save）、3b Bus # 指车号（A 推荐）还是 Bus 字母、3c 填的不是导游也挡（A 推荐）/ 只提醒、3d 哪些团不用导游（Annie 点名；已知 Relay 车、Farm out 不查）、3e 提醒放哪（原 Q3）。题 4 只剩 ①② 触发。现状：Save 不挡（10-18 保存可不完整）；relay / Tour bus pick up 缺司机挡可 Send anyway；Send to guide 不挡；Completed 不挡。已转 Annie。
+- ✅ 143：Annie（原话）「143这里你就不要纠结他们的身份了 ，反正可以选就是了。不是所有的staff都有权限去改HR的，你就不要在这里拦截他们了」⇒ G296 按身份提醒 / 拦整件不做（3c、3e、题 4、相关英文去掉）；留 G291 灰字标签（1a/1b、2）+ 必填空格（3a/3b/3d）。已转 87 出下一版、告诉 25 guide_position 可先不派。
+- ✅ 143 补：Annie（原话）「② 导游格的人在 HR 里没填 Position。--- 这个提醒就好，不用阻拦」⇒ G296 留 ② 只提醒不挡；①③④ 不提醒。后端 guide_position / guide_display_name 恢复（已告诉 25）；87 出下一版（提醒放哪 + 英文仍待选）。
+- 143 样稿 Version 6（87）：剩 Q1a 下拉加不加标签（A 不加）、Q1b 兼职留导游下拉（A 留）、Q2 Roster 绿框改灰字（A）、Q3a 必填挡哪步（A Completed，红字 "Can't mark Completed yet. Fill in the empty fields first:"）、Q3b Bus # = 车号（A）、Q3d 哪些团不用导游（Annie 点名）、Q4 没 Position 提醒放哪（A 顶行 Check guide + 下拉琥珀边 + 一句）。推荐都 A。已转 Annie。
+- ⛔ 143 Q3a A 否：Annie（原话）「我再说一次，Completed是给早班的人按的，不需要头天做dispatch的人来按」⇒ 必填不能挡在 Completed；**以后任何「头天 Dispatch 的关口」都不要用 Completed**。87 重做 Q3a（挡发送 / 挡 Save / 其他）。
+- 143 Q3a 第 3 版（87，Version 7）：A 挡发司机 / 导游通知（整批不发、无 Send anyway，前后端 driver-notice / guide-notice + 旧 relay 面板 Send to driver）（推荐）/ B A + 客人短信（relay 各轮、Tour bus pick up 缺导游或 Bus # 也挡，加 relay-send、旧面板）/ C 挡 Save。红框 "Can't send yet. Fill in every bus first, then Save:"。已转 Annie。
+- 138 样稿第 3 版（8d，同链接 Pkg8TAFuFGBtPmHho2Ftoh Version 3，源文件 8d scratchpad guide-payroll-preview.html）：去 Not linked、加 Not in HR（名字后 / 展开一句 / Needs review / 手机）、手打同名司机导游 = Driver + Guide、CSV 示例、How to use 两句。题 1 Quote tips A 不做（推荐）；题 2 Team 权限 A 合一行（推荐）；题 3 ① No rate / No guide / Not completed A 琥珀字（推荐）/ B 小标签，② Not in HR 甲 灰字（推荐）/ 乙 同 ①。已转 Annie。8d 接 129 样稿更新（照 131 每团一节改 Tour bus pick up 步）。
+- 129 样稿第 2 版（8d，同链接 NpHvG8oKSDagBv7WFbHupL Version 2，源文件 8d scratchpad send-wizard/index.html）：照 131 每团一节改 Step 4（列各团 + Go to 团名 + Send the rest later）；Step 0 加「车卡空格」一行标等 143；不用 Completed。题 A 页面顺序（A1 改）、B 失败能否往下（B1）、C 能否关（C1）、D 拦全部（D1；D2 时按团）、E（新）Tour bus pick up 一步列各团（E1）/ 每团一步、F（新）没发完的团 Send the rest later（F1）/ 全发完才走。推荐都 1。已转 Annie。
+- ⏸️ **129 暂停**：Annie（原话）「129稍等两天再继续，你周一的时候提醒我」⇒ **2026-11-16（周一）开工时主窗口提醒 Annie 129**（样稿 v2 + 题 A–F 等她答）。之前不再推进。
+- 138：Annie（原话）「138我觉得排列得太乱了，把每一个人的明细做成带格子的表格」⇒ 8d 出第 4 版（每人明细带格线表格，其他部分能统一的一起）。非动手。
+- 138 样稿第 4 版（8d，Version 4）：每人明细 8 列格线表 + 合计行；Not in HR / 小费框 / ANT relay / Archived / Not completed 进格子；名单、Needs review（拆 8 列）、Pay rates 加格线。新题 4 手机：甲 表格卡片内横滑、首列钉住（推荐）/ 乙 卡片。题 1–3 照旧。已转 Annie。
+- ✅ **144 上 main ec2bc613**（8d，修复 4fde2b30）：已转 25。8d 接 138 样稿更新（去 Not linked、加 Not in HR），不写代码。
+- **138 后端接口改了（25 转，14 分支 task/guide-payroll 86e2b2f2 替 4a48dde7，未审未上 main）**：Annie 在 14 原话「手打名字的导游也要算进去的」⇒ 删 not_linked，手打名字一律 paid；run 加 guide_in_hr；手打的人按名字归一人 hr_id null / in_hr false；页面名字后「Not in HR」，CSV「Name (not in HR)」；同 run 手打司机 = 导游名 ⇒ driver_guide；修 bug：巴士团手打导游以前没进工资，现在算（含归档日）。文档 docs/interfaces/guide-payroll-2026-11-13.md。⇒ 前端 138 样稿要跟：去掉 Not linked 状态、加「Not in HR」，题 3 状态列表少一个。前端还没开工（a3 已关）。
+- 25 再转 Annie 11-14：
+  - **143 = G291 HR nickname 后缀不带进短信 / 邮件 + G296 导游格填的不是导游 / 司兼导时琥珀提醒**：Annie 对两件都说「做」（G296 跟 G291 B 方案一起做，前端为主，后端回包带 position）。25 要前端问 Q1–Q3。⚠️ 74 查：这 3 题 11-12 已答过（96 preview MZ5JjfriMFgJNUNXy7tGNG：「所有Question都选A」，随后 Q2「不需要，就把名字写成Joe Ri就可以了」⇒ 96 理解为标签整件不做），跟今天「做」冲突，74 问 Annie 以哪个为准。G296 琥珀提醒是新样子 ⇒ 要 preview。
+  - ✅ Annie（原话，74）「A，做标签」⇒ 143 做标签：Q1 A 灰字（导游 Tour Guide、司机不标、兼职 Driver + Guide），Q2 按推荐（下拉 / Roster / 车卡显示，打印单 / HR 列表不显示），Q3 Juan (Beni) 保留；后端 guides[] / guide_candidates 带 position、所有发送去后缀。G296 琥珀提醒先出 preview，再等 Annie「动手」。已转 25。
+  - G279 WhatsApp 键（司机 / 导游页，后端模板）：后端做，前端不用。G294 旧面板 Completed 键：不修，等 G295。
+
+## 2026-11-13 收工交接：前端主窗口 `npe-ops-frontend-74`[fa6692]（公司电脑，13:35 收工）
+
+> ⏰ Annie 2026-11-13 临时加班：「临时加开工一个小时，6：30开始写交接」——今天 6:30 开始写交接（只今天，平时仍 14:30 下班，见 CLAUDE.md）。74 继续当主窗口到 6:30。
+> 加班时 25 回（11-13 晚）：128 后端 task/g299-guest-page-edit 8f716582 审查过，等 Annie 在 **d2 窗口**看 v165 SQL 当面同意并执行，之后 d2 release / 合 / 推 main，发 SHA + 键名给前端主窗口转 a3。138 后端 task/guide-payroll 4a48dde7（165 测试过，合约不变），今晚不一定上 main：v166 迁移排在 128 的 v165 后；Death Valley（PNY0TQ）/ VOF（PEUDRL）私团要不要挪成独立团等 Annie 答（后端已问）；之后还有 4 个审查 + SQL 给 Annie 看。
+> 25 更正 128：v165 已在生产跑完（Annie 约 17:55 TablePlus 执行，d2 只读核过）；代码还在 task/g299-guest-page-edit 8f716582，剩合并、主目录重跑审查 / 检查、Annie 跑 release.py、推 main，之后 d2 发 SHA + 键名给 74 和 a3。之前前端 128 不合（新键旧代码不读，现状安全）。
+> 🔚 加班收工（Annie「收工」）：明天接手的主窗口——① 128：等 d2 发后端 main SHA + 键名（会同时发 a3），转 a3 核对、合最新 main、重跑检查后合；② 138：Annie 还没答 3 题（Quote tips / Team 权限 / 状态小标签，全文见置顶 138 和 a3 样稿 Pkg8TAFuFGBtPmHho2Ftoh）+ 动手；后端还等她答 Death Valley / VOF 私团要不要挪独立团，v166 排在 v165 后。a3 [958c08] 还在，可接 128 收尾和 138。
+
+74 只分工和汇报，没写功能代码。今天的工作窗口：a3、5b（新开的），6b、96（对话太长，已停）。后端主窗口 `后端主窗口-25`（14:15 收工，晚上家里后端接）。⚠️ 主目录 C:Code
+pe-ops-frontend 现在在 a3 的 task/128-guest-page-edit 分支上；74 的协调提交在 worktree C:Codeops-74（main）；5b 的 worktree 是 C:Code
+pe-ops-wt-wrdor（136 接着用）。
+
+### 今天上 main（等 Annie 线上验收）
+| 项 | SHA | 窗口 | 验收点 |
+|---|---|---|---|
+| 134 Dispatch 开当天登录 12:00 AM | c98d2aad | 96 | 凌晨 12:00–8:30 登录开当天，8:30 后开第二天 |
+| 135 Dispatch 发的日子不是今天先弹框确认 | ae5c849a（后端 b645fe97 + farm out 8ef4f14d） | 6b | Dispatch 切到明天点任意发送 ⇒ 红日期框，Cancel 不发、Yes 才发；今天不弹；farm out 同样 |
+| 137 Working Record 留 DOR 位置（只改类型，页面不变） | a8386d94（功能 2f021128） | 5b | 页面上看不到变化；后端 G314 没做 |
+| 136 Working Record 只显示到今天 + Not completed（Annie「3个问题都是A」→「动手」） | 6158c991（功能 b3ccbea9） | 5b | HR › Working Record：今天那列日期下「Not completed」、卡橙色虚线框；点过 Completed 的日子实线框、没有 live；明天起格子空；Export 最后一列 Status。tsc / eslint / build、hr 135/135、nav 39/39 |
+
+### 在分支 / 等 Annie / 等后端
+1. **128 Content Studio 客人页整页编辑**：a3 task/128-guest-page-edit head 24da02d0，所有题已答 + 动手，检查过了。**等后端**（task/g299-guest-page-edit，要 Annie 当场同意并做 SQL + 发布）上 main ⇒ 25 发 commit 和实际键名 ⇒ a3 核对、合最新 main（PROGRESS 冲突两边都留）、重跑 tsc / eslint / build / cs / nav ⇒ 合 main。后端没上就合的话，Guest Page 会出红字。
+2. ~~136~~ ✅ 已上 main 6158c991（见上表；置顶 136 原文移到下面）。
+3. **138 导游工资 Payroll**：a3 样稿第 2 版 Pkg8TAFuFGBtPmHho2Ftoh（照 Annie 的设计图排、用网站颜色；源文件在 a3 scratchpad，读不到就用 Artifact read 这个链接）。已定：按人排、Effective date 默认这一期第一天、Dispatch 不用改。等 Annie：题 1 Quote tips（A 不做，推荐）、题 2 Team 权限（A 合一行，推荐）、题 3 状态小标签（A 照规矩用普通字，推荐 / B 照图用小标签、算例外）+「动手」。动手后从 main 拉 task/138-payroll；后端 task/guide-payroll 要先上 main（今晚家里做）。
+4. **Private Tour 在 Dispatch 看不到（CHDAKCDKL 11/19）**：订单在 Step 2「Private Tour」块（后端一直会给这一块），Step 1 本来就没有私团卡（10-15「先收口」）。74 已告诉 Annie 往下滚到 Step 2 看；看不到就是前端 bug。最小改法（Step 1 加一行 Private Tour + Assign Bus 跳过去）等 Annie 要不要，要的话先出 preview。
+5. 其余置顶照旧：114d、125、G291 Joe（Annie 自己改 HR）等。新编号从 139 起。
+
+### 136 置顶原文（已答已上，移自置顶）
+### 136. Working Record 只显示到今天 + Not completed（11-13，5b 样稿 https://claude.ai/artifact/LWH8e8T6tDUJKEXRmU5dA9 ，没写代码）
+- 后端 G290 4e91cece：through 之后留空；每天 status completed / not_completed；点过 Completed 的日子也读 live（所以现有「live」橙虚线框会落到所有日子上）。
+- 题 1 虚线框：A 只标 Not completed，去掉「live」字（推荐）/ B live 照旧再加 Not completed。
+- 题 2 Not completed 放哪（橙棕加粗普通字，夜间浅黄）：A 每天一次，周表日期下、月历日子号旁（推荐）/ B 每张卡右上角。
+- 题 3 Export CSV：A Saved 列换成 Status（Completed / Not completed），合计行「N day(s) not completed」，月历合计「includes N days not completed」（推荐）/ B 保留 Saved 再加 Status，7 列。
+- 文字：How to use 全文换（原文见 5b 消息 / 样稿）；页头小字改「A dashed box means nobody has clicked Completed on Dispatch for that day yet.」。
+- ✅ Annie（原话，5b）「3个问题都是A」⇒ 题 1 A 虚线框只标 Not completed、去掉 live；题 2 A 每天写一次（周表日期下、月历号码旁）；题 3 A Saved 列换 Status、合计行「N day(s) not completed」。How to use / 页头新文字是否照样稿、是否动手，5b 已问，等答。
+- ✅ Annie（原话，5b）「动手」⇒ How to use / 页头用样稿那版；5b 在 C:Code
+pe-ops-wt-wrdor 做 task/wr-cutoff，过检查合 main。
+- 待答 +「动手」，5b 做（task/wr-cutoff）。
+- 🆕 137（并在 136 下记）Annie（原话，5b 窗口）「我看到设计了，这里给每个tour都留一个接口，将来需要把daily report如有跟这个人有关的内容显示在这里」⇒ 每张工作卡（一天一段 tour）留位置，以后显示 Daily Operation Report 里跟这个人有关的内容。5b 核：DOR 跟人、tour 都没有硬关联（只有 order_number、subject_name、details.driver_name 这些手填字段，没有 hr_id、manifest），所以要后端来算 ⇒ 需要后端：field-calendar 每个 run 带 reports:[{id, report_type, headline, status}]，匹配规则等 Annie 定。5b 已直接问 Annie：① 卡上现在显示什么：A 只在代码里留位置、现在不显示（推荐）/ B 灰色「Daily report — Soon」；② 哪些算有关：A 只算直接点名的（投诉对象 / 事故司机是这个人，推荐）/ B 再加他那天跑的团里订单的所有报告。只记录，不动手；不影响 136 那三题。
+  - ✅ Annie（原话，5b）「2个问题都同意推荐，动手」（问过是指这件）⇒ ① A 现在卡上什么都不显示，只在代码里留位置，以后要显示先出 preview；② A 只算直接点名这个人的报告（投诉对象 / 事故司机）。5b 做 task/wr-dor-slot：types/hr-working-record.ts 的 FieldRun 加可选 reports，页面不变，过检查合 main。需要后端已交 25（field-calendar 每个 run 加 reports:[{id, report_type, headline, status}]，怎么对上人、字段名由后端定）。
+  - 后端登记为 G314（25），还没开始，家里后端主窗口接；之前前端当 reports 不存在。
+
+### 窗口小知识
+- 5b：worktree 不能用 junction 链 node_modules（Turbopack 报 Symlink invalid），要在 worktree 里 npm ci。
+
 ## 2026-11-13 前端主窗口 `npe-ops-frontend-74`[fa6692]（公司电脑，接 4c；只分工和汇报）
 - 后端主窗口 25、后端 14；工作窗口 6b、96。
 - ✅ **135 上 main ae5c849a**（6b；Annie 在 6b 原话「动手」，前面「135  -1A 2B」）：四个入口（relay 各轮 + tour_car、driver、guide、farm out）非 LA 今天先弹红日期框，Yes 才发并带 confirm_date；Q2 B Step 2 How to use 第 8 条 farm out 那句（跟 Farm out 键一起显示）。tsc / eslint 0 错、build、da 620/620、fod 65/65。SHA 已发 25 / 14，farm out 后端 8974847e 可以合。✅ farm out 后端校验上 main 8ef4f14d（14），ae5c849a 已带 confirm_date，135 前后端全部上齐。验收：Dispatch 切到明天点任意发送 ⇒ 红日期框，Cancel 不发、Yes 才发；今天不弹（生产真发，只用 ZZ Test）。置顶 135 已移走。
+- 新工作窗口：`npe-ops-frontend-a3`[958c08] 接 128（task/128-guest-page-edit，在主目录做，先 mock，推分支不合，等后端 g299 上 main 核字段）；`npe-ops-frontend-5b`[11368b] 接 Working Record cutoff，先出 preview（Not completed 标签 / through 后留空 / Export Status 列 / How to use 一句），还没有动手，worktree task/wr-cutoff。74 的协调提交在 worktree C:Codeops-74（main）。
 - 6b、96 对话太长已停（Annie「这两个窗口的对话都太长了，做完手头的就开新窗口吧」）；6b 收工记录见「2026-11-13 公司 6b 收工」，96 的 128 交接在置顶 128 节。等 Annie 开新窗口接 128 和其余排队（Working Record cutoff、114d 等）。
 - ✅ **134 Dispatch 登录 12:00 AM 上 main c98d2aad**（96，功能 d417d6c9，task/dispatch-login-midnight；Annie「134动手上线」）：LOGIN_TODAY_FROM 0、How to use「between 12:00 AM and 8:30 AM」。合最新 main 后 tsc / eslint / build 过；合前 da 606/606、users 80/80（合进来的没有 Dispatch 改动，da 没重跑）。验收：凌晨 12:00–8:30 登录 Dispatch 开当天，8:30 后开第二天。SHA 已发 25。
 - 128 样稿第 5 版（96，同链接 PnkpnXHaJbzrYTrUcfMYvX）：Annie 选「+ Add line」B，要求 Email 页也能这样改；等她答 Q5（邮件写死的字要不要放开）和 Q2 先后，没动手。
@@ -1815,6 +1906,16 @@ D. 已完成、待从置顶移走：
 
 ## 📌 等 Annie 确认（置顶；答了才移走，移到当天记录里并写上原话）
 
+### 138. 导游 / 司机兼导游工资（Payroll）页（11-13，25 转 Annie 今天定的；前端没开始）
+- 后端 WIP：task/guide-payroll 4fb7f66d（没上 main，迁移和审核都没做完，家里今晚接着做）；接口 docs/interfaces/guide-payroll-2026-11-13.md（那个分支上）。前端先用 mock，等 25 发 main SHA。
+- Annie 定的：发薪周期 1–15 号、16 号–月底；美元；所有金额都能改。每团费用（导游 / 司机兼导游）：South Rim 230/250、Antelope 230/280、BZ 230/250、West Rim 200/260、Hoover 120/120、VOF half 120/120、VOF full 160/160、Death Valley 200/200。Private Tour：手填小费，付给导游（或司机兼导游）。「ANT relay」：每个 Antelope 团一个勾，+$66（能改）。一天两个团 = 两份费。页面放 Settings › Human Resource，Working Record 旁边。
+- 权限：Team 页新增「Payroll: View」(settings.payroll.view)、「Payroll: Edit」(settings.payroll.edit)；Annie「这个是admin以上的才是被勾选的对象」⇒ 只有 Admin / Super Admin 能勾，非 admin 账号这两个勾隐藏或灰掉（后端也回 400）。不加开关（Annie 没要）。
+- Dispatch：后端 private_tour 行已经能带导游（dispatch.py:977-991）；ops 如果 Private Tour 行藏了导游选择框，要放出来，否则付不了小费（状态会是 No guide）。
+- 要显示的状态：每段 run paid / no_rate / not_linked / no_guide，加 day_status not_completed。
+- 新页面 ⇒ 先 preview +「动手」。派 a3 出 preview（128 在等后端，a3 空着）。
+- a3 样稿 https://claude.ai/artifact/Pkg8TAFuFGBtPmHho2Ftoh （HR 第 4 个标签 Payroll）。已核 Dispatch 不用改：Private Tour 车卡本来就有 Guide 下拉（vehicle-row.tsx:1424）；手填名字在 Payroll 会是 Not linked。题 1 排法：A 按人一行可展开 + Not counted 单列（推荐）/ B 按日期。题 2 改费率默认从哪天起：A 正在看的这一期第一天（推荐）/ B 下一期第一天。题 3 Team 权限勾：A 合成一行「Payroll」None / Read only / Read & edit，非 Admin 灰掉 +「Admin only」+ 一句（推荐）/ B 两行分开。VOF / Death Valley 后端还没加团。待答 +「动手」。
+- 样稿第 2 版（同链接，a3）：Annie 在 a3 给了两张设计图（原话）「你按照这个设计吧，不要用它的颜色，用我们网站自己的」⇒ 照图排（Payroll 标题 + 期间 ‹ › + Export CSV；四格 Period total / People / Counted runs / Needs review；Payroll by person 可展开 + Save payroll changes；Needs review 表；可折叠 Pay rates + Effective date + Save rates），深色外框 + 白卡片。第 1 版题 1（按人排）、题 2（默认这一期第一天）按图定了。新题 1 Private 小费下的「Quote tips」：A 先不做（推荐）/ B 做，需要后端每个 Private run 带报价小费。新题 2 = 第 1 版题 3 Team 权限：A 合成一行（推荐）/ B 两行。跟图不同：页签用 HR 现有按钮、无衬线标题、「3 runs」普通琥珀字；No rate / Not linked / No guide / Not completed 照图做成琥珀小标签——跟「状态不做胶囊」（10-11）冲突，74 问 Annie。待答 +「动手」。
+
 ### 125. Tour Tracking 没发过的行字也变灰（11-12，6b 样稿 https://claude.ai/artifact/7YqY8VAeGAkB35Nxbx9DwU ，没改代码）
 - Annie 原话（11-11）：「进到tracking页面的那些自动填充的订单的字体没有用灰色，还是正常的颜色，staff怎么看的出哪些发过哪些没发过」
 - Q1 没发过的行（Main manifest 带进来、还没发过确认 / Last Minute / Shuttle / Broadcast）怎么显示？现在只有灰底，字色同发过的行（单号绿、名字电话深色）。A（推荐）灰底 + 灰字 #6b7280，差两样最容易看出；B 白底 + 灰字，只差字色，不如 A 显眼。
@@ -1843,7 +1944,8 @@ D. 已完成、待从置顶移走：
   - ✅ **Annie（原话，74 窗口）「128 Add line小框底色ok，lunch 弹窗可以改，动手」** ⇒ Q6 先做 A 灰绿实心（「ok」没说哪个，74 问她确认）；Lunch Selection Incomplete 弹窗字放开（A，后端加 tmpl__global__tc_guest_lunch_warn_*）；动手。Q1 / Q4 没答，先照推荐（Q1 A 先 TC、Q4 A 留 List view），74 问她。派 96 task/128-guest-page-edit，96 把接口形状直接发 25（抄 74）；后端上了核字段再合。
   - 后端 25 收到 96 的完整规格，开新后端窗口做；要用迁移在生产写约 120 个 settings 键，跑之前要 Annie 当场同意 + 她做发布步骤，不会很快。上 main 后 25 发 commit 和实际键名 / 属性名；前端先用 mock。Annie 说 6b / 96 对话太长：128 交给新前端窗口（96 写交接后停）。
   - ⚠️ **给接 128 的新窗口（25 转，11-13）**：照后端分支 task/g299-guest-page-edit 的 docs/interfaces/tc-guest-page-edit-2026-11-13.md 做 mock（跟 96 规格有出入：锚点位置、提醒是两个 <ul data-tmpl-key>、预览里没有 <script>、门票块 = has_park_fee：South Rim、Bryce Zion）。安全要求 SA-1（§4）：预览 iframe 只能 srcdoc + sandbox="allow-same-origin"，不加 allow-scripts / allow-popups / allow-forms，绝不把 iframe 里的 HTML 复制到父页面。lunch_warn 的 title / body / back / continue 存空字会 400。后端没上 main，要先等 Annie 做 SQL 那一步。
-  - 还没答：Q1 范围、Q4 List view、Q6 + Add line 底色、Lunch Selection Incomplete 弹窗字放不放开，+「动手」。
+  - ✅ Annie（原话，96 窗口）「q1和q4都同意推荐，add line也同意。动手」⇒ Q1 A 先只做 Tour Confirmation 客人页；Q4 A 留 List view（和 Page view 同一份草稿、同一个 Edit / Save，不在编辑状态时只读）；+ Add line A 灰绿 #6b8e74 实心白字。128 各题全部答完，已转 a3（做法不变）。
+  - a3 分支 task/128-guest-page-edit head 24da02d0（没合）：整页 iframe 只有 srcdoc + sandbox="allow-same-origin"；看的状态 = 客人真样子；Edit / Apply / Save / Discard、换团拦截、↑↓、+ Add line 灰绿、空的按团字可补、List view 同草稿。选餐区 / Lunch 弹窗也是先点 Edit 才能改（74 判断：「直接在上面改」是相对旁边表单说的，跟整页 Edit/Save 一致，不再问）。tsc 0、eslint 0 错、build、cs 242/242（新 52 含 SA-1）、nav 39/39。⚠️ 后端没上就合 main 的话，Guest Page 会出红字，所以等 25 发 commit 和字段名，a3 核对后再合。
   - 需要后端（动手时转 25）加：add-line 字段 global tmpl__global__tc_guest_add_{slot}_{1,2} / tmpl__global__tc_email_add_{slot}_{1,2}，按团 tmpl__tc__{tour}__add_{slot}_{1,2} / __email_add_{slot}_{1,2}；guest.py、build_email 照画；Q5 A 新字段（门票两句按团、lunch note / review 午餐尾句 / 按钮字 global）。
 - **96 → 新窗口交接（11-13，96 对话太长交出，74 派）**——还没写代码，没有分支（96 建过的 worktree 已删）；新窗口从 main 拉 `task/128-guest-page-edit`，用 worktree。
   - 样稿：第 7 版 https://claude.ai/artifact/PnkpnXHaJbzrYTrUcfMYvX （源文件 96 scratchpad g128/index.html，样稿的交互就是要做的样子；读不到就 Artifact read 这个链接）。

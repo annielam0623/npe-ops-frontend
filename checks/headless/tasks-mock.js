@@ -219,6 +219,28 @@ function freshTasks() {
 }
 
 let tasks = freshTasks();
+// 139 = G269 Daily task list：/api/tasks/templates（只有主管，tasks.manage）。校验同后端 daily_tasks.py 的原话。
+function freshTemplates() {
+  const t = (id, title, priority, ws, we, frequency, extra = {}) => ({ id, title, priority, window_start_time: ws, window_end_time: we, time_limit_minutes: null, frequency, frequency_every_n_days: null, link_href: null, link_label: null, duty_note: null, is_active: true, sort_order: id, ...extra });
+  return [
+    t(1, "Check tomorrow’s Dispatch is complete", "high", "08:00", "10:00", "daily", { link_href: "/dispatch", link_label: "Dispatch" }),
+    t(2, "Reply to guest messages in Tracking", "moderate", "08:00", "21:30", "hourly", { link_href: "/tour-confirmation/tracking", link_label: "Tour Tracking", duty_note: "Reply within 15 minutes during the day." }),
+    t(3, "Print the Morning Relay list", "low", "17:00", "19:00", "daily", { link_href: "/dispatch", link_label: "Dispatch" }),
+    t(4, "Update the weekly forecast", "moderate", null, null, "every_n_days", { frequency_every_n_days: 7, link_href: "/forecast", link_label: "7 Days Forecast", is_active: false }),
+  ];
+}
+let templates = freshTemplates();
+function templateError(t) {
+  if (!t.title || !String(t.title).trim()) return "Title is required";
+  if (!["high", "moderate", "low"].includes(t.priority)) return "priority must be one of ('high', 'moderate', 'low')";
+  if (!["daily", "hourly", "every_n_days", "when_free"].includes(t.frequency)) return "frequency must be one of ('daily', 'hourly', 'every_n_days', 'when_free')";
+  if (t.frequency === "every_n_days" && !(Number.isInteger(t.frequency_every_n_days) && t.frequency_every_n_days > 0)) return "frequency_every_n_days must be a positive integer when frequency is every_n_days";
+  if (t.frequency === "hourly" && (!t.window_start_time || !t.window_end_time)) return "window_start_time and window_end_time are required when frequency is hourly";
+  if (t.window_start_time && t.window_end_time && t.window_end_time < t.window_start_time) return "window_end_time cannot be before window_start_time";
+  if (t.title === "ZZ Test too long") return "title must be at most 200 characters";
+  return null;
+}
+
 let nextId = Math.max(...tasks.map((t) => t.id)) + 1;
 
 const NOTICES = [
@@ -403,6 +425,7 @@ http
       const b = (await readBody(req)) || {};
       if (b.reset) {
         tasks = freshTasks();
+        templates = freshTemplates();
         schedNotices = freshSchedNotices();
         nextId = Math.max(...tasks.map((t) => t.id)) + 1;
         ctl.g202 = false; // 每次 reset 回到「后端 G202 没上线」，要测的套自己带 g202: true
@@ -553,6 +576,33 @@ http
     if (p === "/api/notices/read-all" && req.method === "POST") {
       schedNotices.forEach((n) => { n.is_read = true; });
       return send(res, 200, { ok: true, unread_count: 0 });
+    }
+
+    if (p === "/api/tasks/templates" || p.startsWith("/api/tasks/templates/")) {
+      if (!ctl.supervisor) return send(res, 403, { detail: "Supervisor access required" });
+      if (p === "/api/tasks/templates" && req.method === "GET") return send(res, 200, templates);
+      if (p === "/api/tasks/templates" && req.method === "POST") {
+        const b = await readBody(req);
+        entry.body = b;
+        const t = { id: Math.max(0, ...templates.map((x) => x.id)) + 1, title: (b.title || "").trim(), priority: b.priority ?? "moderate", window_start_time: b.window_start_time ?? null, window_end_time: b.window_end_time ?? null, time_limit_minutes: b.time_limit_minutes ?? null, frequency: b.frequency, frequency_every_n_days: b.frequency_every_n_days ?? null, link_href: b.link_href ?? null, link_label: b.link_label ?? null, duty_note: b.duty_note ?? null, is_active: true, sort_order: b.sort_order ?? 0 };
+        const err = templateError(t);
+        if (err) return send(res, 400, { detail: err });
+        templates.push(t);
+        return send(res, 200, t);
+      }
+      if (req.method === "PATCH") {
+        const id = Number(p.split("/").pop());
+        const cur = templates.find((x) => x.id === id);
+        if (!cur) return send(res, 404, { detail: "Template not found" });
+        const b = await readBody(req);
+        entry.body = b;
+        const next = { ...cur };
+        for (const k of ["title", "priority", "window_start_time", "window_end_time", "time_limit_minutes", "frequency", "frequency_every_n_days", "link_href", "link_label", "duty_note", "is_active", "sort_order"]) if (k in b) next[k] = b[k];
+        const err = templateError(next);
+        if (err) return send(res, 400, { detail: err });
+        Object.assign(cur, next);
+        return send(res, 200, cur);
+      }
     }
 
     if (p === "/api/tasks/today" && req.method === "GET") {
