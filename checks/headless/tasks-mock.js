@@ -444,10 +444,12 @@ http
         delete b.edge;
       }
       // 139：mineTask ⇒ 把「Antelope Lunch putting on Excel」指定给 Lizzie（员工自己名下的，能 Edit）。
+      // 再加「BZ Lunch」（没做完的，样稿截图用）。
       if (b.mineTask) {
-        const t = tasks.find((x) => x.title === "Antelope Lunch putting on Excel");
-        t.assigned_to_username = "lizzie";
-        t.assigned_to_display_name = "Lizzie";
+        for (const t of tasks.filter((x) => x.title === "Antelope Lunch putting on Excel" || x.title === "BZ Lunch")) {
+          t.assigned_to_username = "lizzie";
+          t.assigned_to_display_name = "Lizzie";
+        }
         delete b.mineTask;
       }
       Object.assign(ctl, b);

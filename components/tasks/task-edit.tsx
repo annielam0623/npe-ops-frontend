@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { describeError, isStatus } from "@/lib/api-errors";
 import { updateTodayTask, type UpdateTodayTaskInput } from "@/lib/tasks-api";
@@ -140,6 +140,19 @@ export function TaskEditForm({
     draft.priority !== base.priority ||
     draft.assignee !== base.assignee;
 
+  // 打开时把这一行滚进时间线框里（框一次只露 3 条）。
+  const rootRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const li = rootRef.current?.closest("li");
+    const box = li?.closest<HTMLElement>("[data-timeline-scroll]");
+    if (li && box) {
+      requestAnimationFrame(() => {
+        if (li.offsetTop < box.scrollTop || li.offsetTop + li.offsetHeight > box.scrollTop + box.clientHeight)
+          box.scrollTop = li.offsetTop;
+      });
+    }
+  }, []);
+
   // 离开页面的提醒由外层统一挂（useLeaveGuard 同一时刻只能有一个），这里只报有没有没存的改动。
   useEffect(() => {
     onDirtyChange?.(dirty);
@@ -202,6 +215,7 @@ export function TaskEditForm({
 
   return (
     <div
+      ref={rootRef}
       data-task-edit-form={task.id}
       className={cn("flex flex-col gap-2.5", className)}
     >

@@ -260,7 +260,9 @@ function TaskRow({
       data-due-status={status}
       className={cn(
         "db-emboss flex flex-wrap items-start gap-x-3 gap-y-1.5 rounded-lg border px-3.5 py-2.5",
-        task.done
+        edit?.open
+          ? "border-[#3b82f6]/55 bg-[#3b82f6]/[.06]"
+          : task.done
           ? "border-white/[.08] opacity-70"
           : status === "overdue"
             ? "border-[#f87171]/40 bg-[#f87171]/[.05]"
