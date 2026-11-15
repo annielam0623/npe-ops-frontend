@@ -61,6 +61,10 @@
 - **130 Bus Manifest「Text size changes」记录**（11-12，Annie 截图 HooverDam Nov 13，原话「这个记录怎么会在这里」）：components/dispatch-manifest/text-size.tsx:645 TextSizeHistory，每台车色条下列谁改过字号；原本默认收起，11-11 114（Annie「不要隐藏」）改成直接列最近 5 条。另有 bug：时间直接显示后端原始 UTC「2026-11-13T04:14:48.268198+00:00」，没换成当地时间。d8 问 Annie：A 只留一行「Text size last changed by Nadia · Nov 12, 8:14 PM」（推荐）/ B 整块挪到页面最下面 / C 不在页面显示（记录仍在 Action log）。时间格式不管选哪个都修。
 - 派 6b：**125 Tour Tracking 灰行字也灰**，只出 preview（A 底和字都灰（推荐）/ B 只字灰，电脑 + 手机 + night），链接回 d8 再问 Annie。
 
+## 2026-11-14（周六）前端主窗口 `前端主窗口-74`[63aa4a]
+
+- Annie「开工，今天周六」。开工核对：前端 main 0d4e978b；后端 origin/main 4934cc4c（只是 11-13 交接，128 g299 代码还没上 main、138 guide-payroll 也没上）。a3 / 5b 窗口已关，现在没有前端工作窗口。后端主窗口-25 在线。
+
 ## 2026-11-13 收工交接：前端主窗口 `npe-ops-frontend-74`[fa6692]（公司电脑，13:35 收工）
 
 > ⏰ Annie 2026-11-13 临时加班：「临时加开工一个小时，6：30开始写交接」——今天 6:30 开始写交接（只今天，平时仍 14:30 下班，见 CLAUDE.md）。74 继续当主窗口到 6:30。
