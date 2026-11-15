@@ -96,6 +96,8 @@
 - 25 再转 Annie 11-14：
   - **143 = G291 HR nickname 后缀不带进短信 / 邮件 + G296 导游格填的不是导游 / 司兼导时琥珀提醒**：Annie 对两件都说「做」（G296 跟 G291 B 方案一起做，前端为主，后端回包带 position）。25 要前端问 Q1–Q3。⚠️ 74 查：这 3 题 11-12 已答过（96 preview MZ5JjfriMFgJNUNXy7tGNG：「所有Question都选A」，随后 Q2「不需要，就把名字写成Joe Ri就可以了」⇒ 96 理解为标签整件不做），跟今天「做」冲突，74 问 Annie 以哪个为准。G296 琥珀提醒是新样子 ⇒ 要 preview。
   - ✅ Annie（原话，74）「A，做标签」⇒ 143 做标签：Q1 A 灰字（导游 Tour Guide、司机不标、兼职 Driver + Guide），Q2 按推荐（下拉 / Roster / 车卡显示，打印单 / HR 列表不显示），Q3 Juan (Beni) 保留；后端 guides[] / guide_candidates 带 position、所有发送去后缀。G296 琥珀提醒先出 preview，再等 Annie「动手」。已转 25。
+  - 87 样稿 https://claude.ai/artifact/6vSftUcphVWuTDVLHEiWVx （第 7 版）。之后 Annie 陆续答（原话）：题 1「我们本来就有driver guide的选项啊，如果司机是D&G的话，在guide那里就选Drvier Guide就好了」；题 4 ③「CCL写的本来就很随意，staff自己会去换成正确的」；「143这里你就不要纠结他们的身份了 ，反正可以选就是了。不是所有的staff都有权限去改HR的，你就不要在这里拦截他们了」；「② 导游格的人在 HR 里没填 Position。--- 这个提醒就好，不用阻拦」；题 3「司机和导游还是bus#是必填，空的不让过」。
+  - ⛔ **Completed 是第二天早班按的，不是头天做 Dispatch 的人按**（Annie 原话：「我再说一次，Completed是给早班的人按的，不需要头天做dispatch的人来按」）⇒ 以后不拿 Completed 当头天排车的关口。143 必填改问挡发司机 / 导游通知（推荐）/ 再加客人短信 / 挡 Save。非动手。
   - G279 WhatsApp 键（司机 / 导游页，后端模板）：后端做，前端不用。G294 旧面板 Completed 键：不修，等 G295。
 
 ## 2026-11-13 收工交接：前端主窗口 `npe-ops-frontend-74`[fa6692]（公司电脑，13:35 收工）
