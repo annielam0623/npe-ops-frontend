@@ -144,11 +144,9 @@ export async function searchOrders(
     const seen = new Set<string>();
     const orders = page.records.filter((r) => {
       // 置顶 75：后端标了 matched_agent_ref 的（按 agent reference 对上）也留下。
-      if (
-        !(hit(r, q) || r.matched_agent_ref === true) ||
-        seen.has(r.order_number)
-      )
-        return false;
+      // 144：只认原样输入那一次；退到纯数字 / 后 4 位的那几次，agent ref 只是含那一段，不算。
+      const byAgentRef = term === q && r.matched_agent_ref === true;
+      if (!(hit(r, q) || byAgentRef) || seen.has(r.order_number)) return false;
       seen.add(r.order_number);
       return true;
     });
