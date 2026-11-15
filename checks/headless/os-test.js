@@ -324,6 +324,10 @@ async function run() {
   check("电话格式不同：只有一张单就直接打开", await evaluate("return document.querySelector('[data-lookup-order]').textContent === 'ZZTEST2' && !document.querySelector('[data-back-to-list]');"));
   check("电话：原样 → 纯数字 → 最后 4 位", ["q=702%20555%200199", "q=7025550199", "q=0199"].every((q) => phoneLog.some((l) => l.query.includes(q))), JSON.stringify(phoneLog.map((l) => l.query)));
   await ctl({});
+  await search("7029855633", "document.querySelector('[data-lookup-note]')?.textContent.includes('No order matches')");
+  const p144 = await mockLog();
+  check("144：电话退到后 4 位时，只是 agent ref 含那 4 位的单不算（No order matches）", p144.some((l) => l.query.includes("q=5633")) && await evaluate("return $txt().includes('No order matches “7029855633”') && !document.querySelector('[data-matched-agent-ref]');"), JSON.stringify(p144.map((l) => l.query)));
+  await ctl({});
   await search("Antelope", "document.querySelector('[data-lookup-note]')?.textContent.includes('No order matches')");
   check("只有产品名对得上的不算（只认单号 / 姓名 / 电话）", await evaluate("return $txt().includes('No order matches “Antelope”');"));
   await search("ZZFAIL", "document.querySelector('[data-lookup-note]')?.textContent.includes('Lookup failed')");

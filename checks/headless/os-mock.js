@@ -13,7 +13,8 @@ const MLINKS = {
   ],
   ZZTEST2: [{ date: "2026-10-21", tab: "tickets", tab_label: "Tickets - SelfDrive", pill: "t:antelope", pill_label: "Upper Antelope", row_keys: ["ZZTEST2|TIX1|2026-10-21"] }],
 };
-const AGENT_REF = { ZZTEST3: "TA-77812", ZZTEST5: "TA-77899" };
+// 144：ZZTEST4 的 ref 含 5633（同事电话 7029855633 的后 4 位），电话搜不能因此对上。
+const AGENT_REF = { ZZTEST3: "TA-77812", ZZTEST4: "855633-01", ZZTEST5: "TA-77899" };
 const log = [];
 
 function send(res, status, body) {
