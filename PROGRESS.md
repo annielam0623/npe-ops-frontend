@@ -91,6 +91,7 @@
 - ✅ 143 补：Annie（原话）「② 导游格的人在 HR 里没填 Position。--- 这个提醒就好，不用阻拦」⇒ G296 留 ② 只提醒不挡；①③④ 不提醒。后端 guide_position / guide_display_name 恢复（已告诉 25）；87 出下一版（提醒放哪 + 英文仍待选）。
 - 143 样稿 Version 6（87）：剩 Q1a 下拉加不加标签（A 不加）、Q1b 兼职留导游下拉（A 留）、Q2 Roster 绿框改灰字（A）、Q3a 必填挡哪步（A Completed，红字 "Can't mark Completed yet. Fill in the empty fields first:"）、Q3b Bus # = 车号（A）、Q3d 哪些团不用导游（Annie 点名）、Q4 没 Position 提醒放哪（A 顶行 Check guide + 下拉琥珀边 + 一句）。推荐都 A。已转 Annie。
 - ⛔ 143 Q3a A 否：Annie（原话）「我再说一次，Completed是给早班的人按的，不需要头天做dispatch的人来按」⇒ 必填不能挡在 Completed；**以后任何「头天 Dispatch 的关口」都不要用 Completed**。87 重做 Q3a（挡发送 / 挡 Save / 其他）。
+- 143 Q3a 第 3 版（87，Version 7）：A 挡发司机 / 导游通知（整批不发、无 Send anyway，前后端 driver-notice / guide-notice + 旧 relay 面板 Send to driver）（推荐）/ B A + 客人短信（relay 各轮、Tour bus pick up 缺导游或 Bus # 也挡，加 relay-send、旧面板）/ C 挡 Save。红框 "Can't send yet. Fill in every bus first, then Save:"。已转 Annie。
 - ✅ **144 上 main ec2bc613**（8d，修复 4fde2b30）：已转 25。8d 接 138 样稿更新（去 Not linked、加 Not in HR），不写代码。
 - **138 后端接口改了（25 转，14 分支 task/guide-payroll 86e2b2f2 替 4a48dde7，未审未上 main）**：Annie 在 14 原话「手打名字的导游也要算进去的」⇒ 删 not_linked，手打名字一律 paid；run 加 guide_in_hr；手打的人按名字归一人 hr_id null / in_hr false；页面名字后「Not in HR」，CSV「Name (not in HR)」；同 run 手打司机 = 导游名 ⇒ driver_guide；修 bug：巴士团手打导游以前没进工资，现在算（含归档日）。文档 docs/interfaces/guide-payroll-2026-11-13.md。⇒ 前端 138 样稿要跟：去掉 Not linked 状态、加「Not in HR」，题 3 状态列表少一个。前端还没开工（a3 已关）。
 - 25 再转 Annie 11-14：
