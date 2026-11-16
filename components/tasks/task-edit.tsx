@@ -64,14 +64,6 @@ export function useEditLeaveGuard(): (id: number) => (dirty: boolean) => void {
   );
 }
 
-/**
- * 从前几天带过来的（carry-over，work_date 不是今天）：PATCH 只认今天的任务，会回 404，这类行不显示 Edit
- * （前端主窗口 2026-11-16；要不要也能改等 Annie 定，要的话后端得改）。
- */
-export function isCarryOver(task: DailyTask, date: string): boolean {
-  return !!task.work_date && task.work_date !== date;
-}
-
 /** 员工能不能改这一条：自己名下的才行（Everyone on shift 的不行）。 */
 export function canStaffEdit(task: DailyTask, me: string): boolean {
   return task.assigned_to_username !== null && task.assigned_to_username === me;

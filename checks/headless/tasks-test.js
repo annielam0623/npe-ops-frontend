@@ -817,15 +817,25 @@ async function runTodayEdit() {
   check("139 编辑 · 手机宽 390：整页不左右晃，表单不超出任务框", await evaluate(`const fm = document.querySelector('[data-task-edit-form="${al}"]').getBoundingClientRect(); const sec = $tasksSection().getBoundingClientRect(); return document.documentElement.scrollWidth <= innerWidth && fm.right <= sec.right + 1 && fm.left >= sec.left - 1;`), await evaluate(`return JSON.stringify([document.documentElement.scrollWidth, innerWidth]);`));
   await cdp("Emulation.clearDeviceMetricsOverride");
 
-  // carry-over（前几天带过来的，work_date 不是今天）：PATCH 会 404，员工、主管两边都不给 Edit（前端主窗口 2026-11-16）。
+  // carry-over（前几天带过来的，work_date 不是今天）：Annie 2026-11-16 定也能改，规则同今天的任务（后端 37a796b9）。
+  // 注：主管把 carry-over 改给别人或改成整班后，这一行会从今天的列表消失（后端现象，已报 63，等 Annie 定）；前端照后端返回显示，这里不测。
   await ctl({ reset: true, mineTask: true, carryOver: true, me: "lizzie", supervisor: false, admin: false, superadmin: false, notices: false, gates: "open" });
   await openDashboard();
   await waitFor("$row('ZZ Test Carry over task')");
-  check("139 编辑 · 员工：前几天带过来的（ZZ Test Carry over task）没有 Edit，自己今天的 Antelope Lunch 照样有", await evaluate("return !$row('ZZ Test Carry over task').querySelector('[data-task-edit]') && !!$row('Antelope Lunch putting on Excel').querySelector('[data-task-edit]');"));
+  check("139 编辑 · 员工：前几天带过来的（ZZ Test Carry over task）也有 Edit", await evaluate("return !!$row('ZZ Test Carry over task').querySelector('[data-task-edit]') && !!$row('Antelope Lunch putting on Excel').querySelector('[data-task-edit]');"));
+  await evaluate("$row('ZZ Test Carry over task').querySelector('[data-task-edit]').click();");
+  await waitFor(`document.querySelector('[data-task-edit-form="900"]')`);
+  await setSel(f(900, "priority"), "low");
+  from = (await mockLog()).length;
+  await evaluate(`${btnIn(900, "Save")}.click();`);
+  await waitFor(`document.querySelector('[data-task-edit-form="900"] [role=status]')`);
+  reqs = await since(from, (e) => e.method === "PATCH");
+  const after = await evaluate("const r = await fetch('/api/tasks/today'); const d = await r.json(); const t = d.tasks.find(x => x.id === 900); return t ? [t.work_date, t.priority] : null;");
+  check("139 编辑 · 员工改 carry-over：PATCH /api/tasks/today/900 只带 priority，绿字 Saved，存后 work_date 还是 2026-10-15、行还在", reqs.length === 1 && reqs[0].path === "/api/tasks/today/900" && JSON.stringify(reqs[0].body) === '{"priority":"low"}' && JSON.stringify(after) === '["2026-10-15","low"]' && (await evaluate("return !!$row('ZZ Test Carry over task');")), JSON.stringify([reqs, after]));
   await ctl({ me: "annie", supervisor: true });
   await openDashboard();
   await waitFor("$row('ZZ Test Carry over task')");
-  check("139 编辑 · 主管：carry-over 那一行没有 Edit，别的行照样有", await evaluate("return !$row('ZZ Test Carry over task').querySelector('[data-task-edit]') && !!$row('BZ Lunch').querySelector('[data-task-edit]');"));
+  check("139 编辑 · 主管：carry-over 那一行也有 Edit，表单有 For", await evaluate("return !!$row('ZZ Test Carry over task').querySelector('[data-task-edit]');") && (await evaluate("$row('ZZ Test Carry over task').querySelector('[data-task-edit]').click(); await new Promise(r => setTimeout(r, 300)); return !!document.querySelector('[data-task-edit-form=\"900\"] [data-field=\"for\"]');")));
 }
 
 async function main() {

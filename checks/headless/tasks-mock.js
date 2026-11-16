@@ -453,7 +453,7 @@ http
         }
         delete b.mineTask;
       }
-      // 139：carryOver ⇒ 加一条前一天交给 Lizzie、已接受没做完的（work_date 不是今天，PATCH 会 404，不给 Edit）。
+      // 139：carryOver ⇒ 加一条前一天交给 Lizzie、已接受没做完的（work_date 不是今天；后端 37a796b9 起也能 PATCH）。
       if (b.carryOver) {
         tasks.push({
           ...tasks[0],
@@ -638,13 +638,13 @@ http
       return send(res, 200, buildToday());
     }
 
-    // 139 = G269：PATCH /api/tasks/today/{id}（后端 02935894，报错原文照后端合同）。
+    // 139 = G269：PATCH /api/tasks/today/{id}（后端 02935894，报错原文照后端合同；37a796b9 起 carry-over 也能改，work_date 不变）。
     const editMatch = p.match(/^\/api\/tasks\/today\/(\d+)$/);
     if (editMatch && req.method === "PATCH") {
       const task = findTask(Number(editMatch[1]));
       const b = await readBody(req);
       entry.body = b;
-      if (!task || task.work_date !== DATE) return send(res, 404, { detail: "Task not found. It may not be one of today's tasks." });
+      if (!task) return send(res, 404, { detail: "Task not found. It may not be one of today's tasks." });
       const keys = Object.keys(b);
       if (keys.length === 0) return send(res, 400, { detail: "Nothing to change. Send title, priority or assigned_admin_user_id." });
       const unknown = keys.find((k) => !["title", "priority", "assigned_admin_user_id"].includes(k));

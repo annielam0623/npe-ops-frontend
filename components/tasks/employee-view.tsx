@@ -24,7 +24,6 @@ import {
 } from "./shared";
 import {
   canStaffEdit,
-  isCarryOver,
   EditTaskButton,
   TaskEditForm,
   useEditLeaveGuard,
@@ -188,7 +187,7 @@ export function EmployeeTasks({
                 onToggle={() => void toggle(task)}
                 onPassOver={() => setPassOverTarget(task)}
                 edit={
-                  canStaffEdit(task, me.username) && !isCarryOver(task, date)
+                  canStaffEdit(task, me.username)
                     ? {
                         open: editingIds.has(task.id),
                         onOpen: () => setEditing(task.id, true),

@@ -82,7 +82,7 @@ export interface DailyTask {
   pass_over: TaskPassOver | null;
   /**
    * 这条任务原来是哪天的（YYYY-MM-DD）。接受了别的日子交过来、还没做完的（carry-over）也列在今天的清单里，
-   * 但 PATCH /api/tasks/today/{id} 对它回 404，所以这类行不给 Edit（后端 G269 02935894）。
+   * 和今天的任务一样能 Edit（Annie 2026-11-16；后端 37a796b9），改完 work_date 还是原来那天。
    */
   work_date?: string;
 }
