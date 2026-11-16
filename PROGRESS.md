@@ -15,9 +15,13 @@
   - 后端草稿（以 63 最终名为准）：GET /api/users/me 加 dispatch_open_today；GET/PUT /api/settings/dispatch-open-today {start:"00:00",end:"10:00"}（PUT 只给 superadmin）。前端：Dispatch 默认日期顺序 网址 date → dispatch_open_today → 登录规则 → 明天；Super Admin 设置两个时间框（新 UI ⇒ 先 preview）；How to use 第 1 条更新。先 mock，等 SHA + 63 PASS 才合。要开前端窗口。
 - 已提醒 Annie 129（11-16），memory remind-129-monday 已删。
 - 窗口重连（11-16）：a7 → 146、8d → 147；c9（132）/ 05（139b）/ 87（143）待命。73、5b 是后端窗口（5b 做 G318 后端；/me 实际路径 GET /api/me，已转 8d）。
+- 139b：Annie 在 05（原话）「2题都按推荐。动手」⇒ 员工 Edit 在 Pass over 右边、保留「Changes this task for today only.」。05 分支 10fda69a。后端 PATCH /api/tasks/today/{id} 上 main 02935894（5b），跟草稿一致。carry-over（work_date 不是今天）PATCH 会回 404 ⇒ 先隐藏这类行的 Edit，问 Annie 要不要能改。05 核对后交 63 PASS 才合。
+- 今天（11-16）Annie 5:00 PM 下班：4:45 开始收尾，4:55 前推完（63 通知）。
 - 📌 **146 preview（a7）** https://claude.ai/artifact/9eCQCXvHoEDaEDgsU3uYks （ops-wt-146，task/146-farmout-partner-layout，未提交）。改法：合作公司行 → 有产品的团 → Pick-up locations（点 Locations 才出）→ 灰色折叠行「▸ N tours with no products yet」。How to use 第 1、10 条改。题：Q1 折叠行写团名（A，手机只写数目）/ 只写数目；Q2 编辑中 Hide 变灰（A）/ 照样能收；Q3 存好马上移位（A）/ 重载才移；Q4 每次收着（A）/ 记住；Q5 保留 Locations 键（A）/ 一直显示；Q6 Timetable 不动（A，本页没有时刻表，只是一个跳页键）/ 加链接。推荐都 A。已转 Annie。
   - 146：Annie（原话）「Farm out 1-4，6都同意推荐，Q5 我需要每个partner一页，而不是几个partner挤在一页」⇒ Q1–Q4、Q6 定 A；Q5 改成每个合作公司单独一页。非动手。a7 更新 preview（怎么选合作公司、单页顺序、每家一个网址、新增 / 总览放哪、手机、How to use）。
+  - 📌 146 preview 第 2 版（a7，同链接 Version 2）：现状无单家页（只有 /settings/farm-out-partners/<id>/timetable）；改成列表页 + 单家页 /settings/farm-out-partners/<id>（页头 Partner 下拉、信息行、有产品的团、Pick-up locations、折叠行）。不要后端。新题：Q7 列表 + 单家页下拉（A）/ 只回列表换 / 无列表；Q8 Pick-up locations 一直显示去掉 Locations 键（A）/ 保留键；Q9 Add / Import rates / 改动记录留列表页（A）/ 每家也加 Import；Q10 列表列 Partner | Tours with products | Status | Open ›（A）/ 只名字状态 / 键也留列表；Q11 Timetable 返回「‹ C Tour」（A）/「‹ Partners」。How to use 两页全文、离开弹窗、找不到的提示见 a7 消息。已转 Annie。
 - 📌 **147 设置框 preview（8d）** https://claude.ai/artifact/4r34eUEnzLb23iE1EF9zmf （ops-wt-147，task/147-dispatch-open-today，日期规则已用 mock 做完未提交，/api/me 每次打开 Dispatch 现读）。题 1 放哪 A Dispatch 页头 Super Admin 链接「Morning shift opens today ⚙」+ 弹窗（推荐）/ B Settings › Auto Send；题 2 英文原文照 preview（推荐照用）；题 3 A 时间框任意分钟（推荐）/ B 30 分钟一档，都不跨半夜。已问 63：GET 权限、PUT 坏值是否 400 detail。已转 Annie。
+  - 147：后端 9926ce5e 已上 main（5b）。第一部分 8524fdf5 经 63 核 7 项 PASS，但换行被改成 CRLF（BLOCKING），8d 改回 LF 后直接合。Annie（原话）「147完全没必要，这个设置是给Opening 用的，不是morning班」⇒ 只按 Open 班，不加 morning 班（8:00 AM–4:00 PM），How to use 不变；已告诉 63。题 2 第 2 版：框改 Start / End，红字统一用后端 "Start time must be earlier than end time."。
 
 ## 2026-11-15（周日）前端主窗口 `npe-ops-frontend-b0`[da0e7b]（公司电脑，接 74；只分工和汇报）
 - 接 74 交接（74 记 41261fa5）。后端主窗口换成 `npe-confirmation-service-6e`（25 停接新活）⇒ 后端的事、合 main 前的 PASS 核对一律找 6e。
