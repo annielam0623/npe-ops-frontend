@@ -52,7 +52,7 @@ export function acceptPassOver(id: number): Promise<DailyTask> {
 /**
  * 改今天的一条任务（前端 139 = 后端 G269 题 1 B / 题 2 A，Annie 2026-11-14）。部分更新，只传改了的字段。
  * assigned_admin_user_id：null = Everyone on shift；员工不能传（403），只能改自己名下的标题、优先级。
- * 有没接受的交接时改 assignee → 409，detail 原话照显示。⚠️ 形状按后端 25 的草稿，后端文档出来再核。
+ * 有没接受的交接时改 assignee → 409，detail 原话照显示。已按后端 02935894 核对。
  */
 export interface UpdateTodayTaskInput {
   title?: string;
