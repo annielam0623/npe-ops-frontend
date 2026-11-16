@@ -219,7 +219,7 @@ export function TaskEditForm({
 
   const label = "flex min-w-0 flex-col gap-1 text-[12px] font-semibold text-white/70";
   const input =
-    "w-full min-w-0 rounded-[7px] border border-white/15 bg-white/[.04] px-[9px] py-1.5 text-[13px] font-normal text-white [color-scheme:dark] outline-none focus:border-[#185FA5] disabled:opacity-60";
+    "w-full min-w-0 rounded-[7px] border border-white/15 bg-white/[.04] px-[9px] py-1.5 text-[13px] font-normal text-white [color-scheme:dark] [&>option]:bg-[#0f1b2d] [&>option]:text-white outline-none focus:border-[#185FA5] disabled:opacity-60";
 
   return (
     <div

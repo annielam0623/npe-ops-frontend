@@ -94,7 +94,7 @@ export function AddTaskRow({
             value={assignee}
             onChange={(event) => setAssignee(event.target.value)}
             disabled={busy || shifts.length === 0}
-            className="max-w-full min-w-0 rounded-md border border-white/15 bg-white/[.04] px-2 py-1 text-[12.5px] text-white [color-scheme:dark] outline-none focus:border-[#185FA5] disabled:opacity-50"
+            className="max-w-full min-w-0 rounded-md border border-white/15 bg-white/[.04] px-2 py-1 text-[12.5px] text-white [color-scheme:dark] [&>option]:bg-[#0f1b2d] [&>option]:text-white outline-none focus:border-[#185FA5] disabled:opacity-50"
           >
             <option value={EVERYONE}>Everyone on shift today</option>
             {shifts.map((shift) => (
