@@ -27,6 +27,7 @@
 - 139b carry-over：后端 37a796b9 上 main（5b），05 打开 carry-over 行的 Edit，交 63 PASS 后合。⚠️ 主管把 carry-over 改给别人或改成整班后，这一行会从今天的列表里消失，已报 63，等 Annie 定。
 - ✅ 139b carry-over 能改上 main 2787026c（05；后端 37a796b9 + 1d064c1f；63 PASS）。05 空。
 - ✅ **148 Send tour confirmation 弹窗 Shuttle 框改绿上 main e263522d**（87，提交 26387a4c）：Annie（原话）「用A但是用绿色标注」「动手」。ShuttleTemplateNote 换成跟其他 tour 下拉一样大的实线绿框（浅绿底 #f0fdf4、绿边 #86efac、绿粗字 #15803d）「Shuttle · 产品名」+ 下面绿字「From Content Studio」；Last Minute 灰提示不变；发送逻辑不动。tsc / eslint / build 过；man 424/429（Shuttle 3 项过；另 4 项 + 拖列不稳，87 核是不是原本就挂）。
+  - 87 核（man 套不稳，留给以后修检查套的人）：同一 mock、全新 Chrome 配置，在合 148 前的 main f58084c5 上跑：第一遍在 man-test.js:562 崩（reading 'click'），第二遍跑到 waiverChecks（:2215）崩，其中「Super Admin（一项都没勾）」挂；148（e263522d）再跑一遍：那 4 项（司机 / 导游 Staff access required、回到 Bus Tour 说明条、取消勾选灰胶囊、Super Admin 无勾项）全过，Shuttle 5 项全过。⇒ 这 4 项是检查套本身时过时挂，不是 148 弄出来的。另外拖表头那几项（往左拖 Booked at 到 Pax、往右拖回 Tour confirmation sent、71 有自己设置的页拖表头）两边都会挂，并且常常整套中途崩掉；同一 mock 不重启连跑两遍会带着上一遍的列顺序，结果更乱，每次要重启 mock、换新 Chrome 配置。
 - ⏸️ **138 暂停**（63 通知）：Annie 跟 73 改方向，preview v5 的 Mark as paid 作废，ae7518c5 / 361333f8 合同不用。新方向：① 费率分有效期（默认无结束日；任意日期范围单独费率，对所有人或选定的一 / 几个人）② Admin 选日期范围锁 / 解锁（不按工资期）③ 自定义费率（新团、custom 团、加购项）④ 每趟工资可手改。要 v169，73 明天做，新合同出来再出 preview。题 6 作废。后端 G309 不在 main。
 - 148：Annie（原话）「用A但是用绿色标注」⇒ 87 preview v2「A · green」（浅绿底 #f0fdf4、绿边 #86efac、绿粗字 #15803d，「Shuttle · Antelope」+ 绿字「From Content Studio」）。待 Annie 确认 +「动手」。
 - 今天（11-16）Annie 5:00 PM 下班：4:45 开始收尾，4:55 前推完（63 通知）。
