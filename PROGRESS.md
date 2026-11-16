@@ -14,6 +14,8 @@
 - **147 = G318 早班进 Dispatch 默认今天**（63 转；Annie 原话「当天早班的人从12:00am到10:00am进dispatch总是进到today」，对 63 四题答「同意全部推荐。动手」）。定了的：① 早班 = 已发布 Staff Schedule 里今天 Open 班的人；② 其他人照旧（12:00–8:30 AM 登录 = 今天，直到下次登录，否则明天）；③ 按每次打开 Dispatch 的时刻算，staff 自己换了日子就留在那天、不跳回；④ 时间窗是 Super Admin 才能改的设置，默认 12:00–10:00 AM（LA），改动记 action_log。
   - 后端草稿（以 63 最终名为准）：GET /api/users/me 加 dispatch_open_today；GET/PUT /api/settings/dispatch-open-today {start:"00:00",end:"10:00"}（PUT 只给 superadmin）。前端：Dispatch 默认日期顺序 网址 date → dispatch_open_today → 登录规则 → 明天；Super Admin 设置两个时间框（新 UI ⇒ 先 preview）；How to use 第 1 条更新。先 mock，等 SHA + 63 PASS 才合。要开前端窗口。
 - 已提醒 Annie 129（11-16），memory remind-129-monday 已删。
+- 窗口重连（11-16）：a7 → 146、8d → 147；c9（132）/ 05（139b）/ 87（143）待命。73、5b 是后端窗口（5b 做 G318 后端；/me 实际路径 GET /api/me，已转 8d）。
+- 📌 **146 preview（a7）** https://claude.ai/artifact/9eCQCXvHoEDaEDgsU3uYks （ops-wt-146，task/146-farmout-partner-layout，未提交）。改法：合作公司行 → 有产品的团 → Pick-up locations（点 Locations 才出）→ 灰色折叠行「▸ N tours with no products yet」。How to use 第 1、10 条改。题：Q1 折叠行写团名（A，手机只写数目）/ 只写数目；Q2 编辑中 Hide 变灰（A）/ 照样能收；Q3 存好马上移位（A）/ 重载才移；Q4 每次收着（A）/ 记住；Q5 保留 Locations 键（A）/ 一直显示；Q6 Timetable 不动（A，本页没有时刻表，只是一个跳页键）/ 加链接。推荐都 A。已转 Annie。
 
 ## 2026-11-15（周日）前端主窗口 `npe-ops-frontend-b0`[da0e7b]（公司电脑，接 74；只分工和汇报）
 - 接 74 交接（74 记 41261fa5）。后端主窗口换成 `npe-confirmation-service-6e`（25 停接新活）⇒ 后端的事、合 main 前的 PASS 核对一律找 6e。
