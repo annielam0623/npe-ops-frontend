@@ -16,6 +16,7 @@
 - 已提醒 Annie 129（11-16），memory remind-129-monday 已删。
 - 窗口重连（11-16）：a7 → 146、8d → 147；c9（132）/ 05（139b）/ 87（143）待命。73、5b 是后端窗口（5b 做 G318 后端；/me 实际路径 GET /api/me，已转 8d）。
 - 📌 **146 preview（a7）** https://claude.ai/artifact/9eCQCXvHoEDaEDgsU3uYks （ops-wt-146，task/146-farmout-partner-layout，未提交）。改法：合作公司行 → 有产品的团 → Pick-up locations（点 Locations 才出）→ 灰色折叠行「▸ N tours with no products yet」。How to use 第 1、10 条改。题：Q1 折叠行写团名（A，手机只写数目）/ 只写数目；Q2 编辑中 Hide 变灰（A）/ 照样能收；Q3 存好马上移位（A）/ 重载才移；Q4 每次收着（A）/ 记住；Q5 保留 Locations 键（A）/ 一直显示；Q6 Timetable 不动（A，本页没有时刻表，只是一个跳页键）/ 加链接。推荐都 A。已转 Annie。
+  - 146：Annie（原话）「Farm out 1-4，6都同意推荐，Q5 我需要每个partner一页，而不是几个partner挤在一页」⇒ Q1–Q4、Q6 定 A；Q5 改成每个合作公司单独一页。非动手。a7 更新 preview（怎么选合作公司、单页顺序、每家一个网址、新增 / 总览放哪、手机、How to use）。
 - 📌 **147 设置框 preview（8d）** https://claude.ai/artifact/4r34eUEnzLb23iE1EF9zmf （ops-wt-147，task/147-dispatch-open-today，日期规则已用 mock 做完未提交，/api/me 每次打开 Dispatch 现读）。题 1 放哪 A Dispatch 页头 Super Admin 链接「Morning shift opens today ⚙」+ 弹窗（推荐）/ B Settings › Auto Send；题 2 英文原文照 preview（推荐照用）；题 3 A 时间框任意分钟（推荐）/ B 30 分钟一档，都不跨半夜。已问 63：GET 权限、PUT 坏值是否 400 detail。已转 Annie。
 
 ## 2026-11-15（周日）前端主窗口 `npe-ops-frontend-b0`[da0e7b]（公司电脑，接 74；只分工和汇报）
