@@ -6,6 +6,13 @@
 
 > **下一个主窗口：先读下面「2026-11-13 收工交接：74」，再看置顶。**
 
+## 2026-11-16（周一）前端主窗口（本对话，ListAgents 现名 `前端主窗口6e`[690ed2]，昨天叫 b0 [da0e7b]）
+- ✅ 145 已在 11-15 上 main 23d0ec58（a7；后端 6e 回 PASS，两处小改 7f9a1815：How to use 第 9 条 400/422 句、DG-8 号码空行显示「—」）。SHA 已报后端 G317。
+- 后端主窗口今天是 `npe-confirmation-service-63`[f18628]（同昨天的 6e）。昨天的前端工作窗口 a7 / c9 / 8d / 05 / 87 都已关，现在没有工作窗口。
+- **146 = Farm out Partners 页版面**（63 转，只改前端）：Annie（原话，11-16）「为什么location跑到这么下面，根本没法注意到」「把没有价格的产品折叠起来就可以腾出位置了。然后把pick up location直接放在有价格的产品下面」⇒ 没价格（No products yet.）的团收进一个可展开的折叠块；Pick-up locations（以及同页的 timetable）移到有价格的团正下方、折叠块上面；折叠的团展开后仍能 Edit；更新 How to use。样子有变 ⇒ 先 preview，Annie「动手」才写代码；合前 commit + 对照表交 63 PASS。要开一个前端工作窗口。
+  - 另外（还不算 146）：上传要能收图片、按 partner 自己的表格格式而不是 Dispatch 列。63 在问 Annie 怎么做，等她答了再转。
+- 今天开工要提醒 Annie 129（样稿 v2 + 题 A–F）。
+
 ## 2026-11-15（周日）前端主窗口 `npe-ops-frontend-b0`[da0e7b]（公司电脑，接 74；只分工和汇报）
 - 接 74 交接（74 记 41261fa5）。后端主窗口换成 `npe-confirmation-service-6e`（25 停接新活）⇒ 后端的事、合 main 前的 PASS 核对一律找 6e。
 - 145（a7，task/145-voice-call-log head 99e2498b，在 6e3bdd32 上只改了记录开始时间）：**先别合**。后端 f141ea19（merge a6ffa967，含 e72aa5e6；v167 已执行）只在 6e 本地 main 上，等 Annie 跑 release.py 再 push 到 origin。origin/main 有 f141ea19 后：a7 核字段、合最新 main、重跑检查 ⇒ 对照表交 6e ⇒ PASS 才合。已告诉 a7。
