@@ -6,6 +6,13 @@
 
 > **下一个主窗口：先读下面「2026-11-13 收工交接：74」，再看置顶。**
 
+## 2026-11-15（周日）前端主窗口 `npe-ops-frontend-b0`[da0e7b]（公司电脑，接 74；只分工和汇报）
+- 接 74 交接（74 记 41261fa5）。后端主窗口换成 `npe-confirmation-service-6e`（25 停接新活）⇒ 后端的事、合 main 前的 PASS 核对一律找 6e。
+- 145（a7，task/145-voice-call-log head 99e2498b，在 6e3bdd32 上只改了记录开始时间）：**先别合**。后端 f141ea19（merge a6ffa967，含 e72aa5e6；v167 已执行）只在 6e 本地 main 上，等 Annie 跑 release.py 再 push 到 origin。origin/main 有 f141ea19 后：a7 核字段、合最新 main、重跑检查 ⇒ 对照表交 6e ⇒ PASS 才合。已告诉 a7。
+- 25 报的后端状态：140 G311 还没派；138 guide-payroll 86e2b2f2 没上 main（要 v168 迁移，还没开工）；139b PATCH /api/tasks/today/{id} 还没派（05 照草稿用 mock 做）；141 / 142 的编号要跟 6e 核对。
+- 等 Annie 的照 74 交接不变：132 / 138 / 143 / 139b 等她答 +「动手」；「直接动手」那句没答之前只当 145 用；**明天 11-16 开工提醒 129**。
+- 窗口：a7 等后端；c9 / 87 / 05 等 Annie；8d 空。都先别关。主目录 C:\Code\npe-ops-frontend 留在 task/128（main 被 ops-74 worktree 占着）；b0 在 C:\Code\ops-b0 改 PROGRESS。
+
 ## 2026-11-13 公司 6b 收工（135 上 main；这个对话太长，停接新活）
 - ✅ **135 Dispatch 发的不是今天先确认，上 main ae5c849a**（分支 task/dispatch-confirm-other-day）。Annie 原话：「135还是提醒一下吧，告诉staff他发的是这个日期，要他们确认」；preview https://claude.ai/artifact/GT9KaTkKUWzA8Rnn4ESgUa 两题「135  -1A 2B」，随后在 6b 说「动手」。
   - 入口（4 个都弹「This is not today」：大号红字日期 + 蓝色 "Yes, I need to send for {date}" + Cancel 不发；是今天不弹）：① Morning Relay 各轮 + 团车客人（relay-send，tour_car 按团发）② Send to driver（driver-notice/send）③ Send to guide（guide-notice/send）④ Send farm out notice（farm-out/notices/send）。Yes 后请求带 confirm_date = date。Morning Pickup › Send 上传页不改（后端定：只按今天发）。
