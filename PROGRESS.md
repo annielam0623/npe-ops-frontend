@@ -6,6 +6,13 @@
 
 > **下一个主窗口：先读下面「2026-11-13 收工交接：74」，再看置顶。**
 
+## 2026-11-15（周日）前端主窗口 `npe-ops-frontend-b0`[da0e7b]（公司电脑，接 74；只分工和汇报）
+- 接 74 交接（74 记 41261fa5）。后端主窗口换成 `npe-confirmation-service-6e`（25 停接新活）⇒ 后端的事、合 main 前的 PASS 核对一律找 6e。
+- 145（a7，task/145-voice-call-log head 99e2498b，在 6e3bdd32 上只改了记录开始时间）：**先别合**。后端 f141ea19（merge a6ffa967，含 e72aa5e6；v167 已执行）只在 6e 本地 main 上，等 Annie 跑 release.py 再 push 到 origin。origin/main 有 f141ea19 后：a7 核字段、合最新 main、重跑检查 ⇒ 对照表交 6e ⇒ PASS 才合。已告诉 a7。
+- 25 报的后端状态：140 G311 还没派；138 guide-payroll 86e2b2f2 没上 main（要 v168 迁移，还没开工）；139b PATCH /api/tasks/today/{id} 还没派（05 照草稿用 mock 做）；141 / 142 的编号要跟 6e 核对。
+- 等 Annie 的照 74 交接不变：132 / 138 / 143 / 139b 等她答 +「动手」；「直接动手」那句没答之前只当 145 用；**明天 11-16 开工提醒 129**。
+- 窗口：a7 等后端；c9 / 87 / 05 等 Annie；8d 空。都先别关。主目录 C:\Code\npe-ops-frontend 留在 task/128（main 被 ops-74 worktree 占着）；b0 在 C:\Code\ops-b0 改 PROGRESS。
+
 ## 2026-11-13 公司 6b 收工（135 上 main；这个对话太长，停接新活）
 - ✅ **135 Dispatch 发的不是今天先确认，上 main ae5c849a**（分支 task/dispatch-confirm-other-day）。Annie 原话：「135还是提醒一下吧，告诉staff他发的是这个日期，要他们确认」；preview https://claude.ai/artifact/GT9KaTkKUWzA8Rnn4ESgUa 两题「135  -1A 2B」，随后在 6b 说「动手」。
   - 入口（4 个都弹「This is not today」：大号红字日期 + 蓝色 "Yes, I need to send for {date}" + Cancel 不发；是今天不弹）：① Morning Relay 各轮 + 团车客人（relay-send，tour_car 按团发）② Send to driver（driver-notice/send）③ Send to guide（guide-notice/send）④ Send farm out notice（farm-out/notices/send）。Yes 后请求带 confirm_date = date。Morning Pickup › Send 上传页不改（后端定：只按今天发）。
@@ -103,12 +110,11 @@
   - 145 v3 经 25 核：缺 ① How to use 加「没列出来 = AI 没问我们」；② 第 6 条改「the AI did not repeat what our system gave it」；③ 按号码搜不绑一天（新题，25 推荐输号码就搜 30 天）；小：v167 前旧记录 pickup / Took 显示「—」。已转 a7 出第 4 版。
   - 📌 145 preview 第 4 版（a7，同链接）：25 四处已改 + f4 最终形状。待 Annie：Q1 入口 Settings 组最后（A）、Q2 7 列 + Details（A）、Q3 Details 合一列（A）、Q4 1000 条（A）、Q5 Request 英文名（A）、Q6 文字 + How to use 10 条（A）、Q7 手机（A）、Q8 旧记录「•••• 3048」（A）、Q9 号码照原文（A）、Q10 ≥1 s 红（A）、Q11 输号码搜 30 天（A）+「动手」。整份已转 Annie、发 25。
   - 145 v4 经 25 核 PASS；合前改 How to use 第 6 条："If a call after Nov 14, 2026 is not listed here, the phone AI did not ask our system anything during that call. Calls before then were not recorded."（日期以 v166 执行日为准，11-14 晚）。⚠️ 记录表 11-14 晚才建，11-14 3:11 PM 那通查不到。已转 a7、告诉 Annie。
-  - ✅ **145 动手**：Annie（原话）「你就按照要求，推荐的结果完全符合后端的要求就可以了，直接动手不需要我同意了」⇒ Q1–Q11 全按推荐 A。a7 用 mock 做，后端上 main 后核字段、25 PASS 才合。（74 问 Annie：这句是只管 145，还是以后都这样。）
-  - 🟡 **145 代码做完（a7），分支 task/145-voice-call-log（worktree C:\Code\ops-wt-145），没合 main**：等后端 f4 上 main 发 SHA → 核字段、合最新 main、重跑 → 简表给 25 核 PASS 才合。
-    - 页面 /settings/phone-ai-calls（侧栏 Settings 组最后「Phone AI Calls」，superadminOnly）；代码 components/voice-calls/voice-calls-view.tsx、lib/voice-calls-api.ts、types/voice-calls.ts、app/settings/phone-ai-calls/page.tsx、nav-config / page-titles 各一行。
-    - 按日期 GET /api/voice/call-log?date&endpoint&limit=1000；Phone 输满 3 位数字（停 400ms）走 POST /api/voice/call-log/search {phone(只数字), endpoint?, limit:1000}，不带 date = 30 天，日期框换灰色「Any day (last 30 days)」、Time 带日期；号码不进网址、不存浏览器。超过 30 天的日期不查、写原文；count = 1000 写 Showing the latest 1,000 calls…。
-    - ⚠️ How to use 第 6 条：f4 说记录开始时间还没法定（表里 0 行，要等第一通测试电话），句子照 f4 建议改软："Calls after {date} are recorded here. If a call is not listed, the phone AI most likely did not ask our system anything during that call. Calls before {date} were not recorded."，{date} 先占位常量 RECORDING_FROM = "Nov 14, 2026"（voice-calls-view.tsx 顶上），f4 发来第一行时间再改。这句跟 25 PASS 的原句不同，合前给 25 核。
-    - 检查（合 origin/main c33e985e 后）：tsc 0、eslint 0 error（3 warning 原有）、build 过；新套件 vc 45/45（checks/headless/vc-mock.js / vc-test.js）、nav 39/39。没连生产。
+  - ✅ **145 动手**：Annie（原话）「你就按照要求，推荐的结果完全符合后端的要求就可以了，直接动手不需要我同意了」⇒ Q1–Q11 全按推荐 A。a7 用 mock 做，后端上 main 后核字段、25 PASS 才合。（74 问 Annie：这句是只管 145，还是以后都这样。）
+  - 145 代码做完未合：task/145-voice-call-log 6e3bdd32（a7），/settings/phone-ai-calls，vc 45/45、nav 39/39。How to use 第 6 条照 f4 写软（"Calls after {date} are recorded here. If a call is not listed, the phone AI most likely did not ask…"），{date} 等第一行记录时间；已请 25 核。⚠️ f4：调用记录表到现在 0 行，要 Annie 打一通测试电话确认在记。
+  - 145：25 同意第 6 条软写法。f4：调用记录最早一条 2026-11-15 4:07:23 AM PT，到 9:37 AM 共 11 条，记录正常 ⇒ {date} = "Nov 15, 2026, 4:07 AM PT"。v167 Annie 已执行；后端 task/voice-call-log-full e72aa5e6 合 main 中。已转 a7。
+  - 145：a7 已改 RECORDING_FROM，分支 task/145-voice-call-log 99e2498b（vc 45/45、nav 39/39），等后端 e72aa5e6 上 main 的 SHA → a7 核字段、合最新 main、重跑检查 → 对照表给 25 → PASS 才合。
+  - 主窗口交接：74 → npe-ops-frontend-b0（Annie 11-15 开新窗口），以下事项全部转交。
 - 派工（11-14）：8d [89ea88] 144（worktree C:Codeops-wt-144，task/144-phone-agent-ref，修好直接合）；c9 [ea8ad5] 132（ops-wt-132 接 task/132-conversation-manifest-link，先改样稿加产品名）；05 [800cd4] 139（ops-wt-139，task/139-tasks-edit，先向 25 要 G269 原题 / preview）；a7 [7b65fa] 140（ops-wt-140，task/140-morning-send-other-day，照 135 框，合前先报后端顺序）；87 [1f8470] 143（ops-wt-143，task/143-guide-position，只出 preview）。
 - **143 preview（87）** https://claude.ai/artifact/6vSftUcphVWuTDVLHEiWVx （worktree ops-wt-143，未提交）。题：Q1 下拉标签（浏览器下拉做不出灰小字）A 名字后「 · Tour Guide」同色（推荐）/ B 按身份分组；Q2 Roster 现有绿框「Driver + Guide」A 改灰小字（推荐）/ B 保留；Q3 G296 提醒 A 三处（车卡顶行 Ready→琥珀「Check guide」、下拉琥珀边、下拉下琥珀整句）（推荐）/ B 只下拉下一句，都不挡 Save / 发送；Q4 触发 ①HR 是 Driver ②HR 无 Position ③选 Driver Guide 但司机不是兼职 触发，④手填 typed 不触发（推荐）；Q5 英文原文见 87 消息（已转 Annie）。需要后端（已转 25）：车上导游不在名单时每车回 guide_position 或按 id 查 HR position。等 Annie 答 + 动手 + 后端字段。
 - **132 样稿第 4 版（c9）** 同链接 6E9mJRykzxeaSX6kudvM5e：产品名来自已读的订单详情 product.name / item_count / items_detail，不用后端；读不到不出；partner 也显示。标题「Order T02」同一行后接产品名（浅白字，hover 全名）。Q5 一单多产品 A 最早那个 + 灰字「+1 more」（推荐）/ B 每个一行；Q6 太长 A 一行截「…」/ B 最多两行再截（推荐）。已转 Annie，等答 + 动手。
