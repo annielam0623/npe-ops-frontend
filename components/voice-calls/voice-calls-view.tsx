@@ -129,7 +129,7 @@ function Took({ ms }: { ms: number | null | undefined }) {
 
 function CallRow({ call, withDay }: { call: VoiceCall; withDay: boolean }) {
   const ok = call.status_code >= 200 && call.status_code < 300;
-  // 400 / 422：请求读不出来，根本没查 ⇒ Found 写 —。
+  // 400 / 422：平台传来的东西用不了（号码不足 10 位、投诉校验不过等），根本没查 ⇒ Found 写 —。
   const notLooked = call.status_code === 400 || call.status_code === 422;
   const details = [
     call.request_order ? `Asked for ${call.request_order}` : "",
@@ -473,7 +473,7 @@ export function VoiceCallsView() {
           `Calls after ${RECORDING_FROM} are recorded here. If a call is not listed, the phone AI most likely did not ask our system anything during that call. Calls before ${RECORDING_FROM} were not recorded.`,
           "If the AI told a guest something different from what is shown here, the AI did not repeat what our system gave it.",
           "Took shows how long our system took to answer. Answers that took 1 second or more are in red.",
-          "A red Status means nothing was looked up: 400 or 422 = the phone platform sent a request we could not read; 503 = our system could not answer at that moment.",
+          "A red Status means nothing was looked up: 400 or 422 = the phone platform sent something we could not use (for example a phone number that is too short); 503 = our system could not answer at that moment.",
           `Calls are kept for ${KEEP_DAYS} days.`,
         ]}
       />

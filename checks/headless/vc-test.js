@@ -134,6 +134,7 @@ async function run() {
   check("Took：2350 ms ⇒ 红字 2.4 s；12400 ms ⇒ 红字 12 s", await evaluate("const a = $row('2:58:31 PM').children[4], b = $row('9:31:57 AM').children[4]; return a.textContent.trim() === '2.4 s' && $red(a.firstElementChild) && b.textContent.trim() === '12 s' && $red(b.firstElementChild);"));
   check("Status 200 普通字（不是胶囊、不红）", await evaluate("const td = $row('3:30:51 PM').children[3]; return td.textContent.trim() === '200' && !td.querySelector('span') && !$red(td);"));
   check("422：Status 红字 422、Found 灰 —、Phone —、Orders —", await evaluate("const tr = $row('10:02:13 AM'); return tr.children[3].textContent.trim() === '422' && $red(tr.children[3].firstElementChild) && tr.children[5].textContent.trim() === '—' && $grey(tr.children[5].firstElementChild) && tr.children[2].textContent.trim() === '—' && tr.children[6].textContent.trim() === '—';"));
+  check("DG-8：422 行 phone、phone_last4 都是 null ⇒ Phone 格只有 —，没有 •••• / null", await evaluate("const c = $row('10:02:13 AM').querySelector('[data-phone-cell]'); return c.textContent.trim() === '—' && !/•|null/.test(c.textContent) && !c.querySelector('[title]');"));
   check("503：Status 红字 503，Found 照写 0（灰）", await evaluate("const tr = $row('8:40:26 AM'); return tr.children[3].textContent.trim() === '503' && $red(tr.children[3].firstElementChild) && tr.children[5].textContent.trim() === '0' && $grey(tr.children[5].firstElementChild);"));
   check("Found 0 灰字", await evaluate("const td = $row('4:02:18 PM').children[5]; return td.textContent.trim() === '0' && $grey(td.firstElementChild);"));
   check("Details：Asked for CHD7Q2PLM；Note added to order；没有就空", await evaluate("return $row('4:02:18 PM').children[7].textContent.trim() === 'Asked for CHD7Q2PLM' && $row('3:47:05 PM').children[7].textContent.trim() === 'Note added to order' && $row('3:30:51 PM').children[7].textContent.trim() === '';"));
@@ -145,7 +146,7 @@ async function run() {
       items.length === 10 &&
         items[5].includes("If a call is not listed, the phone AI most likely did not ask our system anything during that call.") &&
         items[6] === "If the AI told a guest something different from what is shown here, the AI did not repeat what our system gave it." &&
-        items[8].startsWith("A red Status means nothing was looked up: 400 or 422"),
+        items[8] === "A red Status means nothing was looked up: 400 or 422 = the phone platform sent something we could not use (for example a phone number that is too short); 503 = our system could not answer at that moment.",
       JSON.stringify(items));
   }
   check("页面没有蓝色键（蓝色只给提交）", await evaluate("return ![...document.querySelectorAll('main button')].some(b => getComputedStyle(b).backgroundColor === 'rgb(59, 130, 246)');"));
