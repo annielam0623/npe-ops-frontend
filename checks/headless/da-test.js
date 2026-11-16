@@ -2722,6 +2722,50 @@ async function run() {
     await ctl({ loggedInAt: false });
   }
 
+  // ── 147 / G318：今天 Open 班的人在时间窗内进 Dispatch 默认今天（后端 /api/me dispatch_open_today）；Annie「同意全部推荐。动手」──
+  {
+    const laToday = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Los_Angeles", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+    const nextDay = (() => { const [y, m, d] = laToday.split("-").map(Number); return new Date(Date.UTC(y, m - 1, d + 1)).toISOString().slice(0, 10); })();
+    const dayGets = async (from) => (await mockLog()).slice(from).filter((e) => e.path === "/api/dispatch/day" && e.method === "GET");
+    const openWith = async (c, url = `${APP}/dispatch`) => {
+      await ctl(c);
+      const from = (await mockLog()).length;
+      await openPage(url);
+      await waitFor("document.querySelector('.vrow')");
+      await sleep(300);
+      const gets = await dayGets(from);
+      return { first: gets[0], url: await evaluate("return location.search;") };
+    };
+    // 08:31 登录（登录规则下 = 明天），但今天 Open 班在窗内 ⇒ 今天
+    let r = await openWith({ openToday: true, loggedInAt: "2026-10-04T15:31:00Z" });
+    check("147 早班在时间窗内（登录在 8:30 之后）⇒ 今天", r.first && r.first.q.date === laToday, JSON.stringify(r) + " want " + laToday);
+    check("147 打开后网址写上今天", r.url.includes(`date=${laToday}`), r.url);
+    r = await openWith({ openToday: true, loggedInAt: null });
+    check("147 早班在窗内、没有登录时间 ⇒ 今天", r.first && r.first.q.date === laToday, JSON.stringify(r));
+    r = await openWith({ openToday: true, loggedInAt: null }, `${APP}/dispatch?date=2026-10-07`);
+    check("147 网址带 ?date= ⇒ 照网址（早班也一样）", r.first && r.first.q.date === "2026-10-07", JSON.stringify(r));
+    {
+      await openWith({ openToday: true, loggedInAt: null });
+      await evaluate("document.querySelector('[aria-label=\"Next day\"]').click(); return 1;");
+      await waitFor(`location.search.includes('date=${nextDay}')`);
+      const from = (await mockLog()).length;
+      await openPage(`${APP}${await evaluate("return location.pathname + location.search;")}`);
+      await waitFor("document.querySelector('.vrow')");
+      const g = (await dayGets(from))[0];
+      check("147 早班自己换到明天后刷新 ⇒ 还是明天，不跳回今天", g && g.q.date === nextDay, JSON.stringify(g));
+    }
+    r = await openWith({ openToday: false, loggedInAt: "2026-10-04T15:31:00Z" });
+    check("147 dispatch_open_today = false、8:31 登录 ⇒ 走登录规则（后端默认明天，不带 date）", r.first && !r.first.q.date, JSON.stringify(r));
+    r = await openWith({ openToday: false, loggedInAt: "2026-10-04T09:00:00Z" });
+    check("147 dispatch_open_today = false、2:00 登录 ⇒ 登录那天", r.first && r.first.q.date === "2026-10-04", JSON.stringify(r));
+    r = await openWith({ openToday: "unset", loggedInAt: "2026-10-04T15:31:00Z" });
+    check("147 旧后端（没有 dispatch_open_today）、8:31 登录 ⇒ 走登录规则", r.first && !r.first.q.date, JSON.stringify(r));
+    r = await openWith({ openToday: "unset", loggedInAt: "2026-10-04T09:00:00Z" });
+    check("147 旧后端、2:00 登录 ⇒ 登录那天", r.first && r.first.q.date === "2026-10-04", JSON.stringify(r));
+    check("147 How to use 第 1 条写了早班规则", await evaluate("return document.body.textContent.replace(/\\s+/g, ' ').includes('If you are on today\\u2019s Open shift in the published Staff Schedule, Dispatch opens on today each time you open it between 12:00 AM and 10:00 AM (Las Vegas time; Super Admin can change these times).');"));
+    await ctl({ loggedInAt: false, openToday: "unset" });
+  }
+
   // ── G266 每人发过没（Annie「G266 Dispatch同意推荐，动手」，preview X7ptbfdS5zbqgqUNb8fSmg 全 A；后端 60963f35）──
   {
     const dp = "document.querySelector('section[aria-label=\"Send to drivers & guides\"]')";

@@ -18,4 +18,9 @@ export interface CurrentUser {
    * 旧后端没有这个字段 ⇒ 照旧。
    */
   logged_in_at?: string | null;
+  /**
+   * 147 / G318：这个人今天在已发布的 Staff Schedule 里是 Open 班，并且现在（洛杉矶）在 Super Admin 设的时间窗内
+   *（默认 12:00 AM–10:00 AM）⇒ true，Dispatch 打开时默认看今天。后端每次请求现算；false 或旧后端没有 ⇒ 走登录时间规则。
+   */
+  dispatch_open_today?: boolean;
 }
