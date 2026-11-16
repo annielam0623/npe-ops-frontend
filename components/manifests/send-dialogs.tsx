@@ -2004,7 +2004,12 @@ export function TourConfirmDialog({
   );
 }
 
-/** shuttle 节代替 tour type 下拉的只读一格（G189）。 */
+/**
+ * shuttle 节代替 tour type 下拉的只读一格（G189）。
+ * 148（Annie 2026-11-16「用A但是用绿色标注」「动手」，preview https://claude.ai/artifact/2PEn6nVhe1nbjAqWYanut2 v2）：
+ * 照其他团节的下拉框一样大小、位置，整框绿色（原来的琥珀像标错了），下面绿字 From Content Studio（对应 From Products）。
+ * Last Minute 弹窗的灰色提示不变。
+ */
 function ShuttleTemplateNote({
   title,
   products,
@@ -2014,32 +2019,29 @@ function ShuttleTemplateNote({
   products: string[];
   lastMinute: boolean;
 }) {
+  if (lastMinute) {
+    return (
+      <div
+        role="note"
+        data-shuttle-template={title}
+        className="rounded-md border border-dashed border-stone-300 bg-[#f3f4f6] px-2 py-1.5 text-[12px] text-[#4b5563]"
+      >
+        Not sent as Last Minute. Use <b>Send tour confirmation</b> for shuttle
+        guests.
+      </div>
+    );
+  }
   return (
-    <div
-      role="note"
-      data-shuttle-template={title}
-      className={cn(
-        "rounded-md border border-dashed px-2 py-1.5 text-[12px]",
-        !lastMinute
-          ? "border-[#fdba74] bg-[#fff7ed] text-[#9a3412]"
-          : "border-stone-300 bg-[#f3f4f6] text-[#4b5563]",
-      )}
-    >
-      {lastMinute ? (
-        <>
-          Not sent as Last Minute. Use <b>Send tour confirmation</b> for shuttle
-          guests.
-        </>
-      ) : (
-        <>
-          <b className="block">Shuttle template (from Content Studio)</b>
-          {products.map((p) => (
-            <span key={p} className="block">
-              {p}
-            </span>
-          ))}
-        </>
-      )}
+    <div role="note" data-shuttle-template={title}>
+      <div className="w-full rounded-md border border-[#86efac] bg-[#f0fdf4] px-2 py-1.5 text-[13px] font-semibold text-[#15803d]">
+        Shuttle · {products.join(", ")}
+      </div>
+      <small
+        data-shuttle-source
+        className="mt-0.5 block text-[11px] text-[#15803d]"
+      >
+        From Content Studio
+      </small>
     </div>
   );
 }
