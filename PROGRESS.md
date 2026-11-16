@@ -19,6 +19,8 @@
 - ✅ 139b 上 main ae1259bd（05；63 PASS）。✅ 147 第一部分上 main b32593c3（8d，fc68aac1 LF 重提）。
 - 147 设置框 preview Version 3（8d）：标题改「Open shift opens today」，框 Start / End。待 Annie 3 题 +「动手」。
 - Annie 在 63 定：① carry-over 任务 A 可以改，规则同今天的任务；后端 5b 排在 G311 后，SHA 到了 05 去掉 isCarryOver 隐藏、交 63 PASS。② G309 工资 A：Admin 点「Mark as paid」才锁这一期（不是期满自动锁），可撤销；改费率回溯到已付的期回 400。后端 73 做 PUT /api/payroll/periods/{from}/paid。前端 Payroll 页（138）要加 Mark as paid 键 + 撤销（新 UI ⇒ 先 preview），等 63 发合约。
+- ✅ 140 后端 G311 上 main abf904d4（5b）：字段同草稿（preview 顶层 file_date；POST /send/morning-pickup form confirm_date），前端 140（f584c065）不用改。400 原句：不是今天 "This send is for …, not today. Confirm that date to send."；超出今天 / 明天 "You can only send for today or tomorrow."；一个文件多个日期 "This file has more than one tour date (…). Upload a file for one day only."（预览就回）。跳过原因 "Already sent today" 没改（明天的文件也用这句）。
+- 138 + G309 Mark as paid：后端 ae7518c5（task/guide-payroll，未上 main，等 Annie 执行 v168 + release.py）；合同 docs/interfaces/guide-payroll-2026-11-13.md。8d 出 138 preview Version 5（Mark as paid / 撤销最后一期 / 已付期显示 / 生效日期最早 paid_through+1 / How to use）。
 - 今天（11-16）Annie 5:00 PM 下班：4:45 开始收尾，4:55 前推完（63 通知）。
 - 📌 **146 preview（a7）** https://claude.ai/artifact/9eCQCXvHoEDaEDgsU3uYks （ops-wt-146，task/146-farmout-partner-layout，未提交）。改法：合作公司行 → 有产品的团 → Pick-up locations（点 Locations 才出）→ 灰色折叠行「▸ N tours with no products yet」。How to use 第 1、10 条改。题：Q1 折叠行写团名（A，手机只写数目）/ 只写数目；Q2 编辑中 Hide 变灰（A）/ 照样能收；Q3 存好马上移位（A）/ 重载才移；Q4 每次收着（A）/ 记住；Q5 保留 Locations 键（A）/ 一直显示；Q6 Timetable 不动（A，本页没有时刻表，只是一个跳页键）/ 加链接。推荐都 A。已转 Annie。
   - 146：Annie（原话）「Farm out 1-4，6都同意推荐，Q5 我需要每个partner一页，而不是几个partner挤在一页」⇒ Q1–Q4、Q6 定 A；Q5 改成每个合作公司单独一页。非动手。a7 更新 preview（怎么选合作公司、单页顺序、每家一个网址、新增 / 总览放哪、手机、How to use）。
