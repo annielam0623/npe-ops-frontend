@@ -351,7 +351,8 @@ http.createServer(async (req, res) => {
     if (p === "/api/me/permissions") return send(res, 200, { is_superadmin: false, permissions: (ctl.partnerPerms || ["dispatch.view", "dispatch.edit", "dispatch.send", "manifests.view"]).map((code) => ({ code, module: code.split(".")[0], wired: true })), default_home: "/dispatch" });
   }
   // 置顶 83：ctl.loggedInAt = 这次会话的登录时间（ISO UTC，后端 94 拟的 logged_in_at）；不设或 false = 旧后端没有这个字段。
-  if (p === "/api/me") return send(res, 200, { id: 1, username: "annie", display_name: "Annie", initials: "AZ", role: "admin", is_admin: true, is_superadmin: !!ctl.superAdmin, ...(ctl.loggedInAt !== undefined && ctl.loggedInAt !== false ? { logged_in_at: ctl.loggedInAt } : {}) });
+  if (p === "/api/me") return send(res, 200, { id: 1, username: "annie", display_name: "Annie", initials: "AZ", role: "admin", is_admin: true, is_superadmin: !!ctl.superAdmin, ...(ctl.loggedInAt !== undefined && ctl.loggedInAt !== false ? { logged_in_at: ctl.loggedInAt } : {}), ...(typeof ctl.openToday === "boolean" ? { dispatch_open_today: ctl.openToday } : {}) });
+  // 147：ctl.openToday = 后端 dispatch_open_today（今天 Open 班并在时间窗内）；不是 true / false = 旧后端没有这个键。
   if (p === "/api/settings/dashboard-widgets") {
     if (!ctl.foVis && !ctl.rosterVis) return send(res, 404, { detail: "Not Found" });
     return send(res, 200, { readable: true, widgets: [

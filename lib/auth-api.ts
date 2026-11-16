@@ -16,3 +16,13 @@ export function fetchCurrentUser(signal?: AbortSignal): Promise<CurrentUser> {
     signal,
   );
 }
+
+/**
+ * 147：不走共用那一份，每次现问后端。Dispatch 打开时用——dispatch_open_today 按「现在」算，
+ * 站内换页留下的旧 /api/me 可能是时间窗外读的。
+ */
+export function fetchCurrentUserFresh(
+  signal?: AbortSignal,
+): Promise<CurrentUser> {
+  return apiFetch<CurrentUser>("/api/me", { cache: "no-store", signal });
+}

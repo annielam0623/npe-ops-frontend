@@ -41,8 +41,8 @@ import {
   followUpdatedText,
   hasFollowNews,
 } from "@/lib/driver-follow";
-import { fetchCurrentUser } from "@/lib/auth-api";
-import { isYmd, loginDefaultDate, shiftYmd } from "@/lib/la-date";
+import { fetchCurrentUserFresh } from "@/lib/auth-api";
+import { isYmd, laToday, loginDefaultDate, shiftYmd } from "@/lib/la-date";
 import { resolveTourColor } from "@/lib/tour-colors";
 import { usePageVisibility } from "@/lib/page-visibility";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
@@ -916,12 +916,17 @@ export function DispatchView() {
     const fromUrl = params.get("date");
     if (params.get("tab") === "send" && canSend) setTab("send");
     void (async () => {
-      // 置顶 83 / 134：网址没带日期时，12:00 AM–8:30 AM（洛杉矶）登录的默认看今天（直到再次登录）；
-      // 其余照旧由后端默认明天。读不到登录时间不挡页面。staff 自己换了日期就写进网址，刷新照网址。
+      // 默认看哪天，依次：网址里的 date → 147 今天 Open 班并在时间窗内（后端 dispatch_open_today，每次打开现问）⇒ 今天
+      // → 置顶 83 / 134：12:00 AM–8:30 AM（洛杉矶）登录的看今天（直到再次登录）→ 照旧由后端默认明天。
+      // 读不到 /api/me 不挡页面。staff 自己换了日期就写进网址，刷新照网址，不跳回。
       let d = isYmd(fromUrl) ? fromUrl : null;
       if (!d) {
         try {
-          d = loginDefaultDate((await fetchCurrentUser()).logged_in_at);
+          const me = await fetchCurrentUserFresh();
+          d =
+            me.dispatch_open_today === true
+              ? laToday()
+              : loginDefaultDate(me.logged_in_at);
         } catch {
           d = null;
         }
@@ -3420,10 +3425,13 @@ function HowToUse({ farmOut }: { farmOut: boolean }) {
       </summary>
       <ol className={HOWTO_OL}>
         <li>
-          Which day opens: if you signed in between 12:00 AM and 8:30 AM (Las
-          Vegas time), Dispatch opens on today until you sign in again;
-          otherwise it opens on tomorrow. Change the day any time &mdash; the
-          page stays on the day you picked.
+          Which day opens: If you are on today&rsquo;s Open shift in the
+          published Staff Schedule, Dispatch opens on today each time you open
+          it between 12:00 AM and 10:00 AM (Las Vegas time; Super Admin can
+          change these times). Everyone else: if you signed in between 12:00 AM
+          and 8:30 AM (Las Vegas time), Dispatch opens on today until you sign
+          in again; otherwise it opens on tomorrow. Change the day any time
+          &mdash; the page stays on the day you picked.
         </li>
         <li>
           CCL&rsquo;s schedule fills in the buses and drivers. Orange text means
