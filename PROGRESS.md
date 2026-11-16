@@ -11,7 +11,9 @@
 - 后端主窗口今天是 `npe-confirmation-service-63`[f18628]（同昨天的 6e）。昨天的前端工作窗口 a7 / c9 / 8d / 05 / 87 都已关，现在没有工作窗口。
 - **146 = Farm out Partners 页版面**（63 转，只改前端）：Annie（原话，11-16）「为什么location跑到这么下面，根本没法注意到」「把没有价格的产品折叠起来就可以腾出位置了。然后把pick up location直接放在有价格的产品下面」⇒ 没价格（No products yet.）的团收进一个可展开的折叠块；Pick-up locations（以及同页的 timetable）移到有价格的团正下方、折叠块上面；折叠的团展开后仍能 Edit；更新 How to use。样子有变 ⇒ 先 preview，Annie「动手」才写代码；合前 commit + 对照表交 63 PASS。要开一个前端工作窗口。
   - 另外（还不算 146）：上传要能收图片、按 partner 自己的表格格式而不是 Dispatch 列。63 在问 Annie 怎么做，等她答了再转。
-- 今天开工要提醒 Annie 129（样稿 v2 + 题 A–F）。
+- **147 = G318 早班进 Dispatch 默认今天**（63 转；Annie 原话「当天早班的人从12:00am到10:00am进dispatch总是进到today」，对 63 四题答「同意全部推荐。动手」）。定了的：① 早班 = 已发布 Staff Schedule 里今天 Open 班的人；② 其他人照旧（12:00–8:30 AM 登录 = 今天，直到下次登录，否则明天）；③ 按每次打开 Dispatch 的时刻算，staff 自己换了日子就留在那天、不跳回；④ 时间窗是 Super Admin 才能改的设置，默认 12:00–10:00 AM（LA），改动记 action_log。
+  - 后端草稿（以 63 最终名为准）：GET /api/users/me 加 dispatch_open_today；GET/PUT /api/settings/dispatch-open-today {start:"00:00",end:"10:00"}（PUT 只给 superadmin）。前端：Dispatch 默认日期顺序 网址 date → dispatch_open_today → 登录规则 → 明天；Super Admin 设置两个时间框（新 UI ⇒ 先 preview）；How to use 第 1 条更新。先 mock，等 SHA + 63 PASS 才合。要开前端窗口。
+- 已提醒 Annie 129（11-16），memory remind-129-monday 已删。
 
 ## 2026-11-15（周日）前端主窗口 `npe-ops-frontend-b0`[da0e7b]（公司电脑，接 74；只分工和汇报）
 - 接 74 交接（74 记 41261fa5）。后端主窗口换成 `npe-confirmation-service-6e`（25 停接新活）⇒ 后端的事、合 main 前的 PASS 核对一律找 6e。
