@@ -25,6 +25,8 @@
 - ✅ **139c 下拉白底白字修好上 main c1ea4040**（87，task/139c-select-dark 660369b5；只修 bug）：Today's tasks Edit 的 Priority / For、加临时任务的 For、Daily task list 弹窗的下拉，option 改深底 #0f1b2d 白字（同 Schedule 页）。tsc / eslint / build、tasks 191/191。
 - 139d（记录，非动手）：Annie 在 87（原话）「我这个功能还没有发布给anyone，现在要把一些list删掉」⇒ 要删 Daily task list 的一些固定任务。后端 /api/tasks/templates 没有 DELETE，前端现在只能停用（OFF，灰色留着）。87 问 Annie 删哪些、OFF 够不够；要真删的话后端加接口、前端加 Delete 键要先 preview。
 - 139b carry-over：后端 37a796b9 上 main（5b），05 打开 carry-over 行的 Edit，交 63 PASS 后合。⚠️ 主管把 carry-over 改给别人或改成整班后，这一行会从今天的列表里消失，已报 63，等 Annie 定。
+- ✅ 139b carry-over 能改上 main 2787026c（05；后端 37a796b9 + 1d064c1f；63 PASS）。05 空。
+- 📌 **148 Send tour confirmation 弹窗 Shuttle 那节琥珀框改绿**（87，只出了 preview）：Annie（原话）「shuttle的reminder发送页面我希望关于route的展示跟其他tour一样，这个琥珀色通常是标注有问题的内容给人感觉是选错了，你可以用绿色来代替」。代码 components/manifests/send-dialogs.tsx ShuttleTemplateNote。preview https://claude.ai/artifact/2PEn6nVhe1nbjAqWYanut2 ：A 跟其他 tour 同大小同位置的灰底框「Shuttle · Antelope」（无 ▾）+ 下面绿字「From Content Studio」（推荐）/ B 保留虚线框和原字，琥珀改绿。只改样子，不涉及后端。待 Annie 选 +「动手」。
 - 今天（11-16）Annie 5:00 PM 下班：4:45 开始收尾，4:55 前推完（63 通知）。
 - 📌 **146 preview（a7）** https://claude.ai/artifact/9eCQCXvHoEDaEDgsU3uYks （ops-wt-146，task/146-farmout-partner-layout，未提交）。改法：合作公司行 → 有产品的团 → Pick-up locations（点 Locations 才出）→ 灰色折叠行「▸ N tours with no products yet」。How to use 第 1、10 条改。题：Q1 折叠行写团名（A，手机只写数目）/ 只写数目；Q2 编辑中 Hide 变灰（A）/ 照样能收；Q3 存好马上移位（A）/ 重载才移；Q4 每次收着（A）/ 记住；Q5 保留 Locations 键（A）/ 一直显示；Q6 Timetable 不动（A，本页没有时刻表，只是一个跳页键）/ 加链接。推荐都 A。已转 Annie。
   - 146：Annie（原话）「Farm out 1-4，6都同意推荐，Q5 我需要每个partner一页，而不是几个partner挤在一页」⇒ Q1–Q4、Q6 定 A；Q5 改成每个合作公司单独一页。非动手。a7 更新 preview（怎么选合作公司、单页顺序、每家一个网址、新增 / 总览放哪、手机、How to use）。
