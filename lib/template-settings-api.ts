@@ -59,3 +59,31 @@ export async function previewTixPrepare(input: {
   );
   return result.html;
 }
+
+/**
+ * G299 / 128：Tour Confirmation 客人页整页（真 _render + GUEST_CSS，示例客人 John / 2 人 / SAMPLE123）。只读，不写库。
+ * overrides 是还没保存的草稿（只带改过的键）。回来的 html 带编辑标记（data-tmpl-key / data-empty / data-preview-state /
+ * data-pickup-step / data-add-slot），没有 <script>。
+ * ⚠️ 安全要求 SA-1：只能放进 sandbox="allow-same-origin" 的 iframe（srcdoc），不加 allow-scripts / allow-popups / allow-forms；
+ *    绝不把 html 或任何 tmpl__ 值当 HTML 放进父页面（编辑框用 textContent / value）。
+ */
+export async function previewTcGuestPage(input: {
+  tourType: string;
+  overrides: Record<string, string>;
+  signal?: AbortSignal;
+}): Promise<string> {
+  const result = await apiFetch<{ html: string }>(
+    "/api/template-settings/preview",
+    {
+      method: "POST",
+      signal: input.signal,
+      body: {
+        module: "tc",
+        tab: "guest_page",
+        tour_type: input.tourType,
+        overrides: input.overrides,
+      },
+    },
+  );
+  return result.html;
+}

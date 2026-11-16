@@ -419,6 +419,12 @@ export const NAV_SETTINGS: { label: string; items: NavItem[] } = {
     { label: "My Workspace", href: "/settings/workspace" },
     { label: "Transfer & Charter", href: "/settings/transfer-charter" },
     { label: "Navigation", href: "/settings/navigation", superadminOnly: true },
+    // 145 电话 AI 调用记录（后端 G178 ③，Annie 2026-11-15「直接动手」，Q1 A）：接口只给 superadmin，入口也只有 Super Admin 看得到。
+    {
+      label: "Phone AI Calls",
+      href: "/settings/phone-ai-calls",
+      superadminOnly: true,
+    },
   ],
 };
 

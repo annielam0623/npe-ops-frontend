@@ -490,14 +490,15 @@ http
       if (ctl.morningVan)
         return send(res, 200, { total: vanRows.length, rows: vanRows, preview_at: GUARD_PREVIEW_AT, van_invalid_count: vanRows.filter((r) => r.van_invalid).length });
       if (ctl.morningGuard) return send(res, 200, { total: guardRows.length, rows: guardRows, preview_at: GUARD_PREVIEW_AT });
-      return send(res, 200, { total: morningRows.length, rows: morningRows });
+      // 140（G311）：ctl.fileDate = 预览带 file_date（文件团期）；没设 = 旧后端，没有这个键。
+      return send(res, 200, { total: morningRows.length, rows: morningRows, ...(ctl.fileDate !== undefined && ctl.fileDate !== "absent" ? { file_date: ctl.fileDate } : {}) });
     }
     if (p === "/send/morning-pickup" && req.method === "POST") {
       const raw = await readRaw(req);
       const field = (n) => (raw.match(new RegExp(`name="${n}"\\r\\n\\r\\n([^\\r]*)`)) || [])[1];
       const orders = JSON.parse(field("selected_orders") || "[]");
       const sendType = field("send_type");
-      entry.body = { orders, send_type: sendType, send_anyway: field("send_anyway"), van_anyway: field("van_anyway"), preview_at: field("preview_at") };
+      entry.body = { orders, send_type: sendType, send_anyway: field("send_anyway"), van_anyway: field("van_anyway"), preview_at: field("preview_at"), confirm_date: field("confirm_date") };
       if (ctl.morning400) return send(res, 400, { detail: ctl.morning400 });
       if (ctl.morningDelay) await new Promise((ok) => setTimeout(ok, ctl.morningDelay));
       if (ctl.morningVan) {
