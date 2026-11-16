@@ -818,24 +818,36 @@ async function runTodayEdit() {
   await cdp("Emulation.clearDeviceMetricsOverride");
 
   // carry-over（前几天带过来的，work_date 不是今天）：Annie 2026-11-16 定也能改，规则同今天的任务（后端 37a796b9）。
-  // 注：主管把 carry-over 改给别人或改成整班后，这一行会从今天的列表消失（后端现象，已报 63，等 Annie 定）；前端照后端返回显示，这里不测。
+  // 后端 1d064c1f：主管给 carry-over 换负责人（别人或整班）时挪到今天（work_date 变今天）；只改标题 / 优先级不挪。前端存好后重读列表。
   await ctl({ reset: true, mineTask: true, carryOver: true, me: "lizzie", supervisor: false, admin: false, superadmin: false, notices: false, gates: "open" });
   await openDashboard();
   await waitFor("$row('ZZ Test Carry over task')");
   check("139 编辑 · 员工：前几天带过来的（ZZ Test Carry over task）也有 Edit", await evaluate("return !!$row('ZZ Test Carry over task').querySelector('[data-task-edit]') && !!$row('Antelope Lunch putting on Excel').querySelector('[data-task-edit]');"));
   await evaluate("$row('ZZ Test Carry over task').querySelector('[data-task-edit]').click();");
   await waitFor(`document.querySelector('[data-task-edit-form="900"]')`);
-  await setSel(f(900, "priority"), "low");
+  await evaluate(`$setValue(${f(900, "title")}, 'ZZ Test Carry over task edited');`);
   from = (await mockLog()).length;
   await evaluate(`${btnIn(900, "Save")}.click();`);
   await waitFor(`document.querySelector('[data-task-edit-form="900"] [role=status]')`);
+  await sleep(400);
   reqs = await since(from, (e) => e.method === "PATCH");
-  const after = await evaluate("const r = await fetch('/api/tasks/today'); const d = await r.json(); const t = d.tasks.find(x => x.id === 900); return t ? [t.work_date, t.priority] : null;");
-  check("139 编辑 · 员工改 carry-over：PATCH /api/tasks/today/900 只带 priority，绿字 Saved，存后 work_date 还是 2026-10-15、行还在", reqs.length === 1 && reqs[0].path === "/api/tasks/today/900" && JSON.stringify(reqs[0].body) === '{"priority":"low"}' && JSON.stringify(after) === '["2026-10-15","low"]' && (await evaluate("return !!$row('ZZ Test Carry over task');")), JSON.stringify([reqs, after]));
+  let after = await evaluate("const r = await fetch('/api/tasks/today'); const d = await r.json(); const t = d.tasks.find(x => x.id === 900); return t ? [t.work_date, t.title] : null;");
+  check("139 编辑 · 员工只改 carry-over 的标题：PATCH /api/tasks/today/900 只带 title，绿字 Saved，存后 work_date 还是 2026-10-15、行还在", reqs.length === 1 && reqs[0].path === "/api/tasks/today/900" && JSON.stringify(reqs[0].body) === '{"title":"ZZ Test Carry over task edited"}' && JSON.stringify(after) === '["2026-10-15","ZZ Test Carry over task edited"]' && (await evaluate("return !!$row('ZZ Test Carry over task edited');")), JSON.stringify([reqs, after]));
   await ctl({ me: "annie", supervisor: true });
   await openDashboard();
-  await waitFor("$row('ZZ Test Carry over task')");
-  check("139 编辑 · 主管：carry-over 那一行也有 Edit，表单有 For", await evaluate("return !!$row('ZZ Test Carry over task').querySelector('[data-task-edit]');") && (await evaluate("$row('ZZ Test Carry over task').querySelector('[data-task-edit]').click(); await new Promise(r => setTimeout(r, 300)); return !!document.querySelector('[data-task-edit-form=\"900\"] [data-field=\"for\"]');")));
+  await waitFor("$row('ZZ Test Carry over task edited')");
+  await evaluate("$row('ZZ Test Carry over task edited').querySelector('[data-task-edit]').click();");
+  await waitFor(`document.querySelector('[data-task-edit-form="900"]')`);
+  check("139 编辑 · 主管：carry-over 那一行也有 Edit，表单有 For（现在是 Lizzie）", await evaluate(`return !!${f(900, "for")} && ${f(900, "for")}.selectedOptions[0].textContent.startsWith('Lizzie');`));
+  await setSel(f(900, "for"), "");
+  from = (await mockLog()).length;
+  await evaluate(`${btnIn(900, "Save")}.click();`);
+  await waitFor(`document.querySelector('[data-task-edit-form="900"] [role=status]')`);
+  await sleep(400);
+  const log = await since(from, () => true);
+  const pi = log.findIndex((e) => e.method === "PATCH");
+  after = await evaluate("const r = await fetch('/api/tasks/today'); const d = await r.json(); const t = d.tasks.find(x => x.id === 900); return t ? [t.work_date, t.assigned_to_username] : null;");
+  check("139 编辑 · 主管把 carry-over 改成整班：PATCH 只带 assigned_admin_user_id: null，存后重读 GET /api/tasks/today，这条 work_date 变成今天 2026-10-16", pi >= 0 && JSON.stringify(log[pi].body) === '{"assigned_admin_user_id":null}' && log.slice(pi + 1).some((e) => e.method === "GET" && e.path === "/api/tasks/today") && JSON.stringify(after) === '["2026-10-16",null]', JSON.stringify([log.map((e) => e.method + " " + e.path), after]));
 }
 
 async function main() {

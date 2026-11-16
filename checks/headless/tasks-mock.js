@@ -638,7 +638,7 @@ http
       return send(res, 200, buildToday());
     }
 
-    // 139 = G269：PATCH /api/tasks/today/{id}（后端 02935894，报错原文照后端合同；37a796b9 起 carry-over 也能改，work_date 不变）。
+    // 139 = G269：PATCH /api/tasks/today/{id}（后端 02935894，报错原文照后端合同；37a796b9 起 carry-over 也能改；1d064c1f 起 carry-over 换负责人时挪到今天，只改标题 / 优先级不挪）。
     const editMatch = p.match(/^\/api\/tasks\/today\/(\d+)$/);
     if (editMatch && req.method === "PATCH") {
       const task = findTask(Number(editMatch[1]));
@@ -668,8 +668,10 @@ http
       if ("title" in b) task.title = b.title.trim();
       if ("priority" in b) task.priority = b.priority;
       if (assignee !== undefined) {
+        const changed = (assignee ? assignee.username : null) !== task.assigned_to_username;
         task.assigned_to_username = assignee ? assignee.username : null;
         task.assigned_to_display_name = assignee ? assignee.display_name : null;
+        if (changed && task.work_date !== DATE) task.work_date = DATE;
       }
       return send(res, 200, task);
     }
