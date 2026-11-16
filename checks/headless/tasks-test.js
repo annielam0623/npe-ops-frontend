@@ -774,7 +774,7 @@ async function runTodayEdit() {
   await setSel(f(sh, "for"), "");
   await evaluate(`${btnIn(sh, "Save")}.click();`);
   await waitFor(`document.querySelector('[data-task-edit-form="${sh}"] [role=alert]')`);
-  check("139 编辑 · 交接还没 Accept 时换人：409 红字后端原话 Waiting for Lizzie to accept the pass-over，表单选择留着", await evaluate(`const a = document.querySelector('[data-task-edit-form="${sh}"] [role=alert]'); return a.textContent === 'Waiting for Lizzie to accept the pass-over' && getComputedStyle(a).color === 'rgb(248, 113, 113)' && ${f(sh, "for")}.value === '';`));
+  check("139 编辑 · 交接还没 Accept 时换人：409 红字后端原话 This task has a pass over waiting to be accepted…，表单选择留着", await evaluate(`const a = document.querySelector('[data-task-edit-form="${sh}"] [role=alert]'); return a.textContent === 'This task has a pass over waiting to be accepted. Change who it is assigned to after it is accepted.' && getComputedStyle(a).color === 'rgb(248, 113, 113)' && ${f(sh, "for")}.value === '';`));
 
   // 可以同时开几条；有没存的改动按 Cancel 先问
   await evaluate(`$row('Manifest').querySelector('[data-task-edit]').click();`);
@@ -816,6 +816,16 @@ async function runTodayEdit() {
   await sleep(500);
   check("139 编辑 · 手机宽 390：整页不左右晃，表单不超出任务框", await evaluate(`const fm = document.querySelector('[data-task-edit-form="${al}"]').getBoundingClientRect(); const sec = $tasksSection().getBoundingClientRect(); return document.documentElement.scrollWidth <= innerWidth && fm.right <= sec.right + 1 && fm.left >= sec.left - 1;`), await evaluate(`return JSON.stringify([document.documentElement.scrollWidth, innerWidth]);`));
   await cdp("Emulation.clearDeviceMetricsOverride");
+
+  // carry-over（前几天带过来的，work_date 不是今天）：PATCH 会 404，员工、主管两边都不给 Edit（前端主窗口 2026-11-16）。
+  await ctl({ reset: true, mineTask: true, carryOver: true, me: "lizzie", supervisor: false, admin: false, superadmin: false, notices: false, gates: "open" });
+  await openDashboard();
+  await waitFor("$row('ZZ Test Carry over task')");
+  check("139 编辑 · 员工：前几天带过来的（ZZ Test Carry over task）没有 Edit，自己今天的 Antelope Lunch 照样有", await evaluate("return !$row('ZZ Test Carry over task').querySelector('[data-task-edit]') && !!$row('Antelope Lunch putting on Excel').querySelector('[data-task-edit]');"));
+  await ctl({ me: "annie", supervisor: true });
+  await openDashboard();
+  await waitFor("$row('ZZ Test Carry over task')");
+  check("139 编辑 · 主管：carry-over 那一行没有 Edit，别的行照样有", await evaluate("return !$row('ZZ Test Carry over task').querySelector('[data-task-edit]') && !!$row('BZ Lunch').querySelector('[data-task-edit]');"));
 }
 
 async function main() {

@@ -161,6 +161,7 @@ function freshTasks() {
     link_href: tpl.link_href ?? null,
     link_label: tpl.link_label ?? null,
     pass_over: null,
+    work_date: DATE,
     ...overrides,
   });
 
@@ -452,6 +453,22 @@ http
         }
         delete b.mineTask;
       }
+      // 139：carryOver ⇒ 加一条前一天交给 Lizzie、已接受没做完的（work_date 不是今天，PATCH 会 404，不给 Edit）。
+      if (b.carryOver) {
+        tasks.push({
+          ...tasks[0],
+          id: 900,
+          template_id: null,
+          title: "ZZ Test Carry over task",
+          work_date: "2026-10-15",
+          assigned_to_username: "lizzie",
+          assigned_to_display_name: "Lizzie",
+          done: false, done_by_username: null, done_by_display_name: null, done_at: null,
+          due_at: null, due_note: "All shift",
+          pass_over: { from_username: "jing", from_display_name: "Jing", from_role: null, to_username: "lizzie", to_display_name: "Lizzie", note: "", at: "2026-10-16T04:55:00.000Z", accepted_at: "2026-10-16T05:10:00.000Z", accepted_by_username: "lizzie", accepted_by_display_name: "Lizzie" },
+        });
+        delete b.carryOver;
+      }
       Object.assign(ctl, b);
       // G202：待 Lizzie 接受的那条带交出人设的 Finish by（4:00 PM 洛杉矶；原 due_at 11:00 AM 不动）。
       if (ctl.g202) {
@@ -621,25 +638,32 @@ http
       return send(res, 200, buildToday());
     }
 
-    // 139 = G269：PATCH /api/tasks/today/{id}（后端 25 的草稿形状，后端文档出来再核）。
+    // 139 = G269：PATCH /api/tasks/today/{id}（后端 02935894，报错原文照后端合同）。
     const editMatch = p.match(/^\/api\/tasks\/today\/(\d+)$/);
     if (editMatch && req.method === "PATCH") {
       const task = findTask(Number(editMatch[1]));
-      if (!task) return send(res, 404, { detail: "Task not found" });
       const b = await readBody(req);
       entry.body = b;
+      if (!task || task.work_date !== DATE) return send(res, 404, { detail: "Task not found. It may not be one of today's tasks." });
+      const keys = Object.keys(b);
+      if (keys.length === 0) return send(res, 400, { detail: "Nothing to change. Send title, priority or assigned_admin_user_id." });
+      const unknown = keys.find((k) => !["title", "priority", "assigned_admin_user_id"].includes(k));
+      if (unknown) return send(res, 400, { detail: `Unknown field: ${unknown}. Only title, priority and assigned_admin_user_id can be changed.` });
       const me = meUser();
       if (!ctl.supervisor) {
-        if (task.assigned_to_username !== me.username) return send(res, 403, { detail: "You can only edit tasks assigned to you." });
-        if ("assigned_admin_user_id" in b) return send(res, 403, { detail: "Only a Supervisor or Admin can change who a task is for." });
+        if ("assigned_admin_user_id" in b) return send(res, 403, { detail: "Only a supervisor or admin can change who a task is assigned to. Use Pass over instead." });
+        if (task.assigned_to_username === null) return send(res, 403, { detail: "Only a supervisor or admin can edit an all-shift task." });
+        if (task.assigned_to_username !== me.username) return send(res, 403, { detail: "You can only edit your own tasks." });
       }
-      if ("title" in b && !(typeof b.title === "string" && b.title.trim())) return send(res, 400, { detail: "Title is required" });
-      if ("priority" in b && !["high", "moderate", "low"].includes(b.priority)) return send(res, 400, { detail: "priority must be one of ('high', 'moderate', 'low')" });
+      if ("title" in b && !(typeof b.title === "string" && b.title.trim())) return send(res, 400, { detail: "Title is required." });
+      if ("title" in b && b.title.trim().length > 200) return send(res, 400, { detail: "Title must be at most 200 characters." });
+      if ("priority" in b && !["high", "moderate", "low"].includes(b.priority)) return send(res, 400, { detail: "Priority must be high, moderate or low." });
       let assignee;
       if ("assigned_admin_user_id" in b) {
-        if (task.pass_over && !task.pass_over.accepted_at) return send(res, 409, { detail: `Waiting for ${task.pass_over.to_display_name} to accept the pass-over` });
         assignee = b.assigned_admin_user_id === null ? null : SHIFTS.find((s) => s.admin_user_id === b.assigned_admin_user_id);
-        if (assignee === undefined) return send(res, 400, { detail: "No active staff account with that id" });
+        if (assignee === undefined) return send(res, 400, { detail: "That person is not an active staff account." });
+        const changing = (assignee ? assignee.username : null) !== task.assigned_to_username;
+        if (changing && task.pass_over && !task.pass_over.accepted_at) return send(res, 409, { detail: "This task has a pass over waiting to be accepted. Change who it is assigned to after it is accepted." });
       }
       if ("title" in b) task.title = b.title.trim();
       if ("priority" in b) task.priority = b.priority;
@@ -745,6 +769,7 @@ http
       const task = {
         id: nextId++,
         template_id: null,
+        work_date: DATE,
         title: b.title.trim(),
         role: "team",
         assigned_to_username: assignee ? assignee.username : null,

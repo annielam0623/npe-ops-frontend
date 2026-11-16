@@ -15,7 +15,12 @@ import type {
 
 import { AddTaskRow } from "./add-task-row";
 import { DailyTaskListButton } from "./daily-task-list";
-import { EditTaskButton, TaskEditForm, useEditLeaveGuard } from "./task-edit";
+import {
+  EditTaskButton,
+  isCarryOver,
+  TaskEditForm,
+  useEditLeaveGuard,
+} from "./task-edit";
 import {
   dayLabel,
   dueStatus,
@@ -151,6 +156,7 @@ export function SupervisorTasks({
               busy={busyId === task.id}
               onToggle={() => void toggle(task)}
               onChangeDue={(hhmm) => void changeDue(task, hhmm)}
+              canEdit={!isCarryOver(task, date)}
               editing={editingIds.has(task.id)}
               onEdit={() => setEditing(task.id, true)}
               onCloseEdit={() => setEditing(task.id, false)}
@@ -263,6 +269,7 @@ function SupervisorTaskRow({
   busy,
   onToggle,
   onChangeDue,
+  canEdit,
   editing,
   onEdit,
   onCloseEdit,
@@ -276,6 +283,8 @@ function SupervisorTaskRow({
   busy: boolean;
   onToggle: () => void;
   onChangeDue: (hhmm: string) => void;
+  /** carry-over（别的日子的）不能改：PATCH 会 404。 */
+  canEdit: boolean;
   editing: boolean;
   onEdit: () => void;
   onCloseEdit: () => void;
@@ -342,7 +351,9 @@ function SupervisorTaskRow({
           onChange={(event) => onChangeDue(event.target.value)}
           className="w-[108px] shrink-0 rounded-md border border-white/15 bg-white/[.04] px-1.5 py-0.5 text-[11.5px] text-white [color-scheme:dark] outline-none focus:border-[#185FA5] disabled:opacity-50"
         />
-        {editing ? null : <EditTaskButton task={task} onClick={onEdit} />}
+        {editing || !canEdit ? null : (
+          <EditTaskButton task={task} onClick={onEdit} />
+        )}
       </div>
       {task.link_href && task.link_label ? (
         <div className="pl-[22px]">

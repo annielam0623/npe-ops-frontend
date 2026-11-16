@@ -80,6 +80,11 @@ export interface DailyTask {
   link_label: string | null;
   /** 交接中或交接记录（接受后仍保留在当天清单里，见任务包第 21 条）。 */
   pass_over: TaskPassOver | null;
+  /**
+   * 这条任务原来是哪天的（YYYY-MM-DD）。接受了别的日子交过来、还没做完的（carry-over）也列在今天的清单里，
+   * 但 PATCH /api/tasks/today/{id} 对它回 404，所以这类行不给 Edit（后端 G269 02935894）。
+   */
+  work_date?: string;
 }
 
 /** 今天在岗的一个人（排班推出来的岗位，没有固定岗位的人 role 为 null，见第 16 条「没有固定清单的人」）。 */
