@@ -63,9 +63,80 @@ export function requestFields(
   tab: ManifestTabKey,
 ): string[] | null {
   if (!saved) return null;
-  // 「-键」只是前端记的「这一列我关掉了」，不发给后端。
-  const keys = saved.filter((k) => !k.startsWith("-"));
+  // 「-键」只是前端记的「这一列我关掉了」，不发给后端；Notes 是前端自己的列（值在行上，不在 catalog），也不发。
+  const keys = saved.filter((k) => !k.startsWith("-") && k !== NOTE_KEY);
   return [...keys, ...HELPER_FIELDS[tab].filter((k) => !keys.includes(k))];
+}
+
+/**
+ * 150 Notes（G321 v171，Annie「notes可以先上」）：后端把备注放在每行的 `note` 上，不在 catalog / fields 里。
+ * 前端把它当成一列（键 NOTE_KEY），Bus、Tickets 两个标签有（题 9 A）：默认放最后（题 4 A）；
+ * ☰ Columns 里能关（关掉记 NOTE_OFF，同 Waiver link 的 WAIVER_OFF）、能拖位置；Export CSV 照屏幕上的列带出。
+ */
+export const NOTE_KEY = "_note";
+export const NOTE_OFF = "-_note";
+export const NOTE_FIELD: ManifestField = {
+  key: NOTE_KEY,
+  label: "Notes",
+  group: "ours",
+  type: "text",
+};
+
+/** 这一页出不出 Notes 列：Bus、Tickets 标签，而且后端给了 note（旧后端没有 ⇒ 不出）。 */
+export function notesOn(page: ManifestPage): boolean {
+  return (
+    (page.tab === "bus" || page.tab === "tickets") &&
+    page.rows.some((r) => typeof r.note === "string")
+  );
+}
+
+/** 把 Notes 放进这一页：catalog 多一项（表头、☰ Columns、CSV 都用它的名字），每行 values 多一格（CSV 照常导）。 */
+export function withNotes(page: ManifestPage): ManifestPage {
+  if (!notesOn(page)) return page;
+  return {
+    ...page,
+    catalog: page.catalog.some((f) => f.key === NOTE_KEY)
+      ? page.catalog
+      : [...page.catalog, NOTE_FIELD],
+    rows: page.rows.map((r) => ({
+      ...r,
+      values: { ...r.values, [NOTE_KEY]: r.note ?? "" },
+    })),
+  };
+}
+
+/**
+ * 显示 / ☰ Columns 用的列加上 Notes：这页没有 ⇒ 去掉；staff 关掉过（NOTE_OFF）⇒ 不加；已经在 ⇒ 不动；
+ * 存的列里有它（拖过位置）⇒ 插回存的位置；都没有 ⇒ 放最后。
+ */
+export function withNoteColumn(
+  fields: string[],
+  page: ManifestPage,
+  saved: readonly string[] | null | undefined,
+): string[] {
+  const keys = fields.filter((k) => k !== NOTE_OFF);
+  if (!notesOn(page) || saved?.includes(NOTE_OFF))
+    return keys.filter((k) => k !== NOTE_KEY);
+  if (keys.includes(NOTE_KEY)) return keys;
+  const at = saved ? saved.indexOf(NOTE_KEY) : -1;
+  if (at < 0) return [...keys, NOTE_KEY];
+  // 存的顺序里 Notes 前面最近一个还在显示的列，插在它后面；前面没有就放第一个。
+  const before = saved!
+    .slice(0, at)
+    .reverse()
+    .find((k) => keys.includes(k));
+  const pos = before === undefined ? 0 : keys.indexOf(before) + 1;
+  return [...keys.slice(0, pos), NOTE_KEY, ...keys.slice(pos)];
+}
+
+/** ☰ Columns / 拖表头存之前：这页有 Notes、staff 没勾 ⇒ 记 NOTE_OFF；勾了 ⇒ 去掉以前记的 NOTE_OFF。 */
+export function rememberNoteChoice(
+  fields: string[],
+  page: ManifestPage,
+): string[] {
+  const keys = fields.filter((k) => k !== NOTE_OFF);
+  if (!notesOn(page) || keys.includes(NOTE_KEY)) return keys;
+  return [...keys, NOTE_OFF];
 }
 
 /** 这一页有没有要 waiver link 的单（列和上传键都看它）。 */

@@ -2037,6 +2037,7 @@ async function run() {
   }
   await waiverChecks();
   await orderLinkChecks();
+  await notesChecks();
 
   // ── 未登录：跳 ops 自己的登录页带 next ──
   await ctl({ fail401: true });
@@ -2089,6 +2090,128 @@ async function main() {
 }
 
 // ── 置顶 74：Upper Antelope (Brenda) 每单 waiver link（Annie「那4提全部按推荐走，动手」；preview 5niqePBqxUsCBqKpLLKCnm）──
+// ── 150 Notes（G321 v171；Annie「notes可以先上」「动手」；样子先按推荐：单行、Bus + Tickets、CSV 带）──
+async function notesChecks() {
+  const note = (o, leg = "") => `document.querySelector('tr[data-row^="${o}|"]${leg ? `[data-row$="|return"]` : `:not([data-row$="|return"])`} input[data-note]')`;
+  const noteRow = (o) => `document.querySelector('tr[data-row^="${o}|"]:not([data-row$="|return"])')`;
+  const saveBtn = (o) => `${noteRow(o)}.querySelector('[data-note-save]')`;
+  await ctl({ sections: false, notes: false, prefs: { bus: null, tickets: null } });
+
+  // 旧后端（行上没有 note）：没有 Notes 列。
+  await openPage(`${APP}/manifests?date=${today}&tab=bus`);
+  await waitFor("$box('CHD1001')", 20000);
+  check("Notes：旧后端（行上没有 note）⇒ 没有 Notes 列", await evaluate("return !$heads().includes('Notes') && !document.querySelector('input[data-note]');"));
+
+  await ctl({ notes: true, noteTwin: true });
+  await openPage(`${APP}/manifests?date=${today}&tab=bus`);
+  await waitFor(`${note("CHD1001")}`, 20000);
+  check("Notes：Bus 标签有 Notes 列，放最后（题 4 A）", await evaluate("const h = $heads(); return h[h.length - 1] === 'Notes';"), await evaluate("return $heads().join('|');"));
+  check("Notes：单行输入框（题 7 A），灰字 Add note，没改时没有 Save", await evaluate(`const i = ${note("CHD1001")}; return i.type === 'text' && i.placeholder === 'Add note' && i.maxLength === 1000 && !${saveBtn("CHD1001")};`));
+  let from = (await mockLog()).length;
+  check("Notes：fields= 请求里不带前端自己的 _note 列", (await since(0, (e) => e.path === "/api/manifests")).every((e) => !e.query.includes("_note")));
+
+  // 改了 → Save（蓝）→ PUT → 绿字 Saved；往返两段一起变。
+  await evaluate(`$setValue(${note("CHD1002")}, '  Took a cab to TI  ');`);
+  await waitFor(`${saveBtn("CHD1002")}`);
+  check("Notes：改了旁边出蓝色 Save（提交键 #3b82f6）、还没发请求", (await evaluate(`return getComputedStyle(${saveBtn("CHD1002")}).backgroundColor;`)) === "rgb(59, 130, 246)" && !(await since(from, (e) => e.path === "/api/manifests/notes")).length);
+  await evaluate(`${saveBtn("CHD1002")}.click();`);
+  await waitFor(`${noteRow("CHD1002")}.querySelector('[data-note-saved]')`, 10000);
+  const put = (await since(from, (e) => e.path === "/api/manifests/notes"))[0];
+  check("Notes：按 Save ⇒ PUT /api/manifests/notes {order_number, product_code, tour_date, note}（去掉首尾空格）", put?.method === "PUT" && put.body.order_number === "CHD1002" && !!put.body.product_code && put.body.tour_date === today && put.body.note === "Took a cab to TI" && Object.keys(put.body).length === 4, JSON.stringify(put?.body));
+  check("Notes：存好绿字 Saved（#047857）", (await evaluate(`return getComputedStyle(${noteRow("CHD1002")}.querySelector('[data-note-saved]')).color;`)) === "rgb(4, 120, 87)");
+  check("Notes：往返 shuttle 回程那一行同一条，跟着一起变", await evaluate(`return ${note("CHD1002", "return")}?.value === 'Took a cab to TI';`), await evaluate(`return ${note("CHD1002", "return")}?.value;`));
+  check("Notes：鼠标移上去写全文 + 谁、几点改的", await evaluate(`const t = ${note("CHD1002")}.title; return t.startsWith('Took a cab to TI') && t.includes('ZZ Test Staff');`), await evaluate(`return ${note("CHD1002")}.title;`));
+
+  // Enter 存、Esc 还原。
+  from = (await mockLog()).length;
+  await evaluate(`$setValue(${note("CHD1001")}, 'Sits front row');`);
+  await evaluate(`${note("CHD1001")}.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));`);
+  await waitFor(`${noteRow("CHD1001")}.querySelector('[data-note-saved]')`, 10000);
+  check("Notes：Enter 也存", (await since(from, (e) => e.path === "/api/manifests/notes")).some((e) => e.body.note === "Sits front row"));
+  await evaluate(`$setValue(${note("CHD1001")}, 'typo');`);
+  await evaluate(`${note("CHD1001")}.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));`);
+  await sleep(200);
+  check("Notes：Esc 还原成存着的、Save 收起", await evaluate(`return ${note("CHD1001")}.value === 'Sits front row' && !${saveBtn("CHD1001")};`));
+
+  // 重新打开还在（后端存了）。
+  await openPage(`${APP}/manifests?date=${today}&tab=bus`);
+  await waitFor(`${note("CHD1001")}?.value === 'Sits front row'`, 20000);
+  check("Notes：重新打开页面还在", true);
+
+  // 存失败：红字照后端原话，输入保留。
+  await ctl({ note404: true });
+  await evaluate(`$setValue(${note("CHD1001")}, 'Paid balance at desk');`);
+  await evaluate(`${saveBtn("CHD1001")}.click();`);
+  await waitFor(`${noteRow("CHD1001")}.querySelector('[role=alert]')`, 10000);
+  check("Notes：存不上 ⇒ 红字「Not saved: 后端原话」、输入保留", await evaluate(`const a = ${noteRow("CHD1001")}.querySelector('[role=alert]'); return a.textContent.trim() === 'Not saved: That booking is no longer on this date. Reload the page.' && getComputedStyle(a).color === 'rgb(163, 45, 45)' && ${note("CHD1001")}.value === 'Paid balance at desk';`), await evaluate(`return ${noteRow("CHD1001")}.querySelector('[role=alert]')?.textContent;`));
+  await ctl({ note404: false });
+
+  // 没存的备注：点站内链接先问（同 Cfm #）。
+  await evaluate("window.__confirmMsg = null; window.confirm = (m) => { window.__confirmMsg = m; return false; };");
+  await evaluate("const a = [...document.querySelectorAll('a[href^=\"/\"]')].find((x) => !x.target && !x.closest('table')); a.click();");
+  await sleep(300);
+  check("Notes：有没存的备注时跳页先问「A note you typed is not saved yet. Leave without saving?」", (await evaluate("return window.__confirmMsg;")) === "A note you typed is not saved yet. Leave without saving?" && (await evaluate("return location.pathname;")) === "/manifests", await evaluate("return window.__confirmMsg;"));
+  await evaluate(`${note("CHD1001")}.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));`);
+
+  // Export CSV 带 Notes（照屏幕上的列）。
+  await evaluate("window.__blob = null; const orig = URL.createObjectURL; URL.createObjectURL = (b) => { window.__blob = b; return orig(b); }; HTMLAnchorElement.prototype.click = function () {};");
+  const exp = await evaluate("return !!$btn('↓ Export CSV');");
+  if (exp) {
+    await evaluate("$btn('↓ Export CSV').click();");
+    await waitFor("window.__blob");
+    const lines = (await evaluate("return await window.__blob.text();")).replace(/^﻿/, "").split("\r\n");
+    const head = lines[0].split(",");
+    const col = head.indexOf("Notes");
+    const r1 = lines.find((l) => l.includes("CHD1001"));
+    check("Notes：Export CSV 带 Notes 列（题 6 推荐），值对", col === head.length - 2 && !!r1 && r1.includes("Sits front row"), `${lines[0]} / ${r1}`);
+  }
+
+  // ☰ Columns：Notes 在 Our fields 里、默认勾着；关掉 ⇒ 列没了、记 -_note。
+  await openPage(`${APP}/manifests?date=${today}&tab=bus`);
+  await waitFor(`${note("CHD1001")}`, 20000);
+  await evaluate("$btn('☰ Columns').click();");
+  await waitFor("$dialog()");
+  check("Notes：☰ Columns 里有 Notes、默认勾着", await evaluate("const l = [...$dialog().querySelectorAll('label')].find((x) => x.textContent.trim() === 'Notes'); return !!l && l.querySelector('input').checked;"));
+  await evaluate("$tick('Notes', false);");
+  from = (await mockLog()).length;
+  await evaluate("$btn('Apply for all', $dialog()).click();");
+  await waitFor("!$dialog()");
+  await waitFor("!$heads().includes('Notes')", 10000);
+  const pput = (await since(from, (e) => e.path === "/api/user-prefs/manifest_cols_bus" && e.method === "PUT"))[0];
+  const sharedCols = pput ? JSON.parse(pput.body.value).shared : [];
+  check("Notes：关掉 ⇒ 列没了，存的列里记 -_note（以后不再自动加）", sharedCols.includes("-_note") && !sharedCols.includes("_note"), JSON.stringify(sharedCols));
+  const reqs = await since(from, (e) => e.path === "/api/manifests");
+  check("Notes：存过的列请求里也不带 _note / -_note", reqs.every((e) => !e.query.includes("_note")), JSON.stringify(reqs.map((e) => e.query)));
+  await ctl({ prefs: { bus: null, tickets: null } });
+
+  // Tickets 有；Admin fee、Show hidden rows 没有（题 9 推荐）。
+  await openPage(`${APP}/manifests?date=${today}&tab=tickets&pill=t%3Aantelope`);
+  await waitFor(`${note("CHD2001")}`, 20000);
+  check("Notes：Tickets 标签也有 Notes 列", await evaluate("return $heads().includes('Notes');"));
+  await openPage(`${APP}/manifests?date=${today}&tab=bus`);
+  await waitFor("$box('CHD1001')", 20000);
+  await evaluate("document.querySelector('input[aria-label=\"Show hidden rows\"]').click();");
+  await waitFor("document.querySelector('[data-hidden-pill]')");
+  await evaluate("document.querySelector('[data-hidden-pill]').click();");
+  await waitFor("document.querySelector('[data-hidden-section]')");
+  check("Notes：Show hidden rows 的表里没有 Notes", await evaluate("const t = document.querySelector('[data-hidden-section]'); return ![...t.querySelectorAll('th')].some((th) => th.textContent.trim() === 'Notes') && !t.querySelector('input[data-note]');"));
+  await ctl({ adminFee: true, superAdmin: true });
+  await openPage(`${APP}/manifests?tab=admin_fee&pill=p%3APLU3N8`);
+  await waitFor("document.querySelector('tr[data-row^=\"CHD-88057\"]')", 20000);
+  check("Notes：Admin fee 标签没有 Notes", await evaluate("return !$heads().includes('Notes') && !document.querySelector('input[data-note]');"));
+  await ctl({ adminFee: false, superAdmin: false });
+
+  // 只读（没勾 manifests.edit）：看得到，不能改。
+  await ctl({ staffPerms: ["manifests.view", "manifests.send"] });
+  await openPage(`${APP}/manifests?date=${today}&tab=bus`);
+  await waitFor(`${note("CHD1001")}`, 20000);
+  check("Notes：没有 manifests.edit ⇒ 只读、看得到内容、没有 Add note", await evaluate(`const i = ${note("CHD1001")}; return i.readOnly && i.value === 'Sits front row' && i.placeholder === '';`));
+  await ctl({ staffPerms: null });
+
+  check("Notes：How to use 加了 Notes 那一句（原文）", await evaluate("const d = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Manifests')); return [...d.querySelectorAll('li')].some(l => l.textContent.replace(/\\s+/g, ' ').trim() === 'Notes (Bus Tour and Tickets): a note for staff, one per row. It isn’t printed and isn’t sent to guests. Type the note, then click Save next to it (or press Enter). Press Esc to undo before saving.');"));
+  await ctl({ notes: false, noteTwin: false });
+}
+
 // ── 152（Annie「152 同意推荐，动手」）：点订单号在新标签页打开 Order details ──
 async function orderLinkChecks() {
   const link = (o) => `document.querySelector('tr[data-row^="${o}|"] a[data-order-link], tr[data-hidden-row^="${o}|"] a[data-order-link]')`;

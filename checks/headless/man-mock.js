@@ -49,6 +49,13 @@ const sentTickets = new Map();
 const prefs = { manifest_cols_bus: null, manifest_cols_tickets: null, manifest_cols_admin_fee: null };
 const log = [];
 const cfm = new Map(); // row_key → {confirmation_no, updated_by, updated_at}
+// 150 Notes（G321 v171）：ctl.notes 开着 = 新后端，每行（所有标签、hidden 行）带 note / note_updated_by / note_updated_at。
+// 键 = 订单号|产品码|团期（往返 shuttle 两段同一条）。ctl.noteTwin：Bus 的 CHD1002 多一行回程（同单同产品同团期）。
+const notes = new Map(); // "order|code|date" → {note, updated_by, updated_at}
+const noteOf = (o, code, date) => {
+  const n = notes.get(`${o}|${code}|${date}`);
+  return ctl.notes ? { note: n?.note ?? "", note_updated_by: n?.updated_by ?? "", note_updated_at: n?.updated_at ?? null } : {};
+};
 // G245（置顶 82）：ctl.mismatch = 这几单 Rezdy 的 Cfm # 跟产品不符（staff 填了 Cfm # 就不算）；ctl.mismatchLate = 页面上没标、发的那一刻后端才挡。
 const MISMATCH = { other_label: "Antelope Canyon X Confirmation #", other_value: "387826855" };
 const mismatchOf = (order, key) => ((ctl.mismatch ?? []).includes(order) && !cfm.get(key)?.confirmation_no ? MISMATCH : null);
@@ -316,7 +323,7 @@ function adminFeePage(url, date) {
     const values = {};
     for (const k of fields) values[k] = all[k] ?? null;
     return { row_key: `${r.o}|${r.code}|${date}`, order_number: r.o, product_code: r.code, tour_date: date, lane_source: "rezdy_bookings", leg: null, section: null,
-      sendable: false, reason: "unmapped_group", reason_label: r.reason_label, shown_on: r.shown_on, values };
+      sendable: false, reason: "unmapped_group", reason_label: r.reason_label, shown_on: r.shown_on, values, ...noteOf(r.o, r.code, date) };
   });
   const tabs = ["bus", "tickets"].map((k) => ({ key: k, label: k === "bus" ? "Bus Tour" : "Tickets - SelfDrive", sendable: true, ...counts(allRows().filter((r) => r.tab === k)) }));
   if (date === today) tabs.push(adminFeeTab());
@@ -370,7 +377,7 @@ function page(url) {
       if (ctl.msgNames?.[r.order_number] && "guest_name" in values) values.guest_name = ctl.msgNames[r.order_number];
       if (ctl.msgEmails && r.order_number in ctl.msgEmails) values.email = ctl.msgEmails[r.order_number];
       return { row_key: key, order_number: r.order_number, product_code: r.product_code, tour_date: date, lane_source: r.lane_source,
-        section: sectionsOn ? SECTION_OF[r.order_number] : null, values,
+        section: sectionsOn ? SECTION_OF[r.order_number] : null, values, ...noteOf(r.order_number, r.product_code, date),
         ...(ctl.waiver ? { waiver_link_required: !!r.waiver } : {}),
         ...(ctl.mismatch ? { cfm_mismatch: mismatchOf(r.order_number, key) } : {}),
         ...(ctl.cfmRule && r.tab === "tickets"
@@ -390,6 +397,10 @@ function page(url) {
             : { sendable: true }
           : {}) };
     });
+  if (ctl.noteTwin) {
+    const i = rows.findIndex((r) => r.order_number === "CHD1002");
+    if (i >= 0) rows.splice(i + 1, 0, { ...rows[i], row_key: rows[i].row_key + "|return", leg: "return" });
+  }
   const tabs = ["bus", "tickets"].map((k) => ({ key: k, label: k === "bus" ? "Bus Tour" : "Tickets - SelfDrive", ...(ctl.adminFee ? { sendable: true } : {}), ...counts(dayRows.filter((r) => r.tab === k)) }));
   if (ctl.adminFee && date === today) tabs.push(adminFeeTab());
   // 分节：只有 Antelope（g:3）、只在 sections 开着时；后端规则是行已经按节排好。
@@ -414,7 +425,7 @@ function page(url) {
       const values = {};
       for (const k of fields) values[k] = all[k] ?? null;
       return { row_key: `${o}|${code}|${date}`, order_number: o, product_code: code, tour_date: date, lane_source: "rezdy_bookings", leg: null,
-        group_name: grp, group_type: gtype, category_code: cat, reason, reason_label: label, values };
+        group_name: grp, group_type: gtype, category_code: cat, reason, reason_label: label, values, ...noteOf(o, code, date) };
     });
     out.hidden = { pill: { key: "hidden", label: "Hidden rows", color: null, sendable: false, rows: hrows.length, orders: new Set(hrows.map((r) => r.order_number)).size, pax: H.reduce((n, h) => n + h[7], 0) }, rows: hrows };
   }
@@ -688,6 +699,27 @@ http
           ...(ctl.cfmRule ? { current_too_short: shortCfm(current) } : {}) };
       });
       return send(res, 200, { tour_date: body.tour_date, items });
+    }
+    // 150 Notes：PUT /api/manifests/notes（同后端合同的原话）。ctl.note404：404。
+    if (p === "/api/manifests/notes" && req.method === "PUT") {
+      const body = await readBody(req);
+      entry.body = body;
+      if (typeof body.note !== "string") return send(res, 400, { detail: "note must be a string." });
+      if (body.note.length > 1000) return send(res, 400, { detail: `The note is ${body.note.length} characters - the limit is 1000.` });
+      if (/[ --]/.test(body.note))
+        return send(res, 400, { detail: "The note contains a hidden control character (often from copy and paste). Retype it and try again." });
+      if (ctl.note404) return send(res, 404, { detail: "That booking is no longer on this date. Reload the page." });
+      const k = `${body.order_number}|${body.product_code}|${body.tour_date}`;
+      const was = notes.get(k)?.note ?? "";
+      const note = body.note;
+      const changed = note !== was;
+      const at = "2026-11-17T18:05:00+00:00";
+      if (changed) {
+        if (note) notes.set(k, { note, updated_by: "ZZ Test Staff", updated_at: at });
+        else notes.delete(k);
+      }
+      const cur = notes.get(k);
+      return send(res, 200, { order_number: body.order_number, product_code: body.product_code, tour_date: body.tour_date, note, updated_by: cur?.updated_by ?? null, updated_at: cur?.updated_at ?? null, changed });
     }
     if (p === "/api/manifests/cfm" && req.method === "PUT") {
       const body = await readBody(req);

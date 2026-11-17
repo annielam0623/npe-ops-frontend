@@ -110,6 +110,13 @@ export interface ManifestRow {
    * 放在订单的 LA 下单日（Annie 2026-11-02 定），行上写 reason_label。普通行 null。
    */
   shown_on?: string | null;
+  /**
+   * G321 Notes（v171）：给 staff 的一条备注，键同 Cfm #（订单号 + 产品码 + 团期，往返 shuttle 两段显示同一条）。
+   * 没写 ⇒ ""；旧后端没有这几个键 ⇒ 不出 Notes 列。
+   */
+  note?: string;
+  note_updated_by?: string;
+  note_updated_at?: string | null;
   /** 只含 `fields` 里的键。 */
   values: Record<string, ManifestValue>;
 }

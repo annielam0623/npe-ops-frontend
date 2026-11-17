@@ -81,6 +81,33 @@ export function saveManifestCfm(input: {
   });
 }
 
+/** 150 Notes（G321 v171）存好后的值。值没变 ⇒ changed:false（后端不写、不记）。 */
+export interface ManifestNoteResult {
+  order_number: string;
+  product_code: string;
+  tour_date: string;
+  note: string;
+  updated_by: string | null;
+  updated_at: string | null;
+  changed: boolean;
+}
+
+/**
+ * 150 Notes：一行一条给 staff 的备注（manifests.edit，同 Cfm #）。`note` 送 "" = 清空，最长 1000 字。
+ * 键 = 订单号 + 产品码 + 团期 ⇒ 往返 shuttle 两段是同一条。400 / 404 的 detail 是英文整句，原样显示。
+ */
+export function saveManifestNote(input: {
+  order_number: string;
+  product_code: string;
+  tour_date: string;
+  note: string;
+}): Promise<ManifestNoteResult> {
+  return apiFetch<ManifestNoteResult>("/api/manifests/notes", {
+    method: "PUT",
+    body: input,
+  });
+}
+
 /** 一格 waiver link 存好后的值（后端 brenda-waiver-link）。值没变时 updated_by / updated_at 是 null。 */
 export interface ManifestWaiverResult {
   order_number: string;

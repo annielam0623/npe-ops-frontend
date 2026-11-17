@@ -81,7 +81,12 @@ import {
   WAIVER_KEY,
   WAIVER_OFF,
   withWaiverColumn,
+  NOTE_KEY,
+  rememberNoteChoice,
+  withNoteColumn,
+  withNotes,
 } from "./config";
+import { NoteInput } from "./note-cell";
 import { FieldPicker } from "./field-picker";
 import { ManifestSearch } from "./manifest-search";
 import { SectionCfm } from "./section-cfm";
@@ -442,7 +447,9 @@ export function ManifestsView() {
    */
   async function reorderFields(moved: string[]) {
     const before = colsHere ?? EMPTY_COLS;
-    const next = shown ? rememberWaiverChoice(moved, shown.rows) : moved;
+    const next = shown
+      ? rememberNoteChoice(rememberWaiverChoice(moved, shown.rows), shown)
+      : moved;
     const after: SavedCols = ownHere
       ? { ...before, pages: { ...before.pages, [pill]: next } }
       : { ...before, shared: next };
@@ -476,12 +483,45 @@ export function ManifestsView() {
     (rowKey: string, dirty: boolean) => onCfmDirty(`w:${rowKey}`, dirty),
     [onCfmDirty],
   );
+  /** 150 Notes：备注格改了没存（同一份记录，键前面加 n:）。 */
+  const onNoteDirty = useCallback(
+    (rowKey: string, dirty: boolean) => onCfmDirty(`n:${rowKey}`, dirty),
+    [onCfmDirty],
+  );
   useLeaveGuard(
     dirtyCfm.size > 0,
     [...dirtyCfm].some((k) => k.startsWith("w:"))
       ? "A waiver link you typed is not saved yet. Leave without saving?"
-      : "A Cfm # you typed is not saved yet. Leave without saving?",
+      : [...dirtyCfm].some((k) => k.startsWith("n:"))
+        ? "A note you typed is not saved yet. Leave without saving?"
+        : "A Cfm # you typed is not saved yet. Leave without saving?",
   );
+
+  /** 备注存好：同一单、同一产品、同一团期的行一起换（往返 shuttle 两段是同一条）。 */
+  function onNoteSaved(
+    key: { order_number: string; product_code: string; tour_date: string },
+    note: { note: string; by: string; at: string | null },
+  ) {
+    setData((d) =>
+      d
+        ? {
+            ...d,
+            rows: d.rows.map((r) =>
+              r.order_number === key.order_number &&
+              r.product_code === key.product_code &&
+              r.tour_date === key.tour_date
+                ? {
+                    ...r,
+                    note: note.note,
+                    note_updated_by: note.by,
+                    note_updated_at: note.at,
+                  }
+                : r,
+            ),
+          }
+        : d,
+    );
+  }
 
   function onCfmSaved(rowKey: string, values: ManifestRow["values"]) {
     setData((d) =>
@@ -503,11 +543,10 @@ export function ManifestsView() {
   // 换了标签还没回来时，旧标签的数据不当成这个标签的。
   // 没勾 See prices, agent & commission（orders.money_view，题 8）：金额 / 代理商列整列不出，Columns 里也没有
   // （后端这时本来就不给，这里再挡一道：存着的列、旧后端都不出空栏，也不算进「need admin access」那句）。
+  // 150 Notes：Bus、Tickets 标签多一列备注（后端给了 note 才有），见 config.withNotes。
   const shown =
     data && data.tab === tab
-      ? perms.canSeeMoney
-        ? data
-        : withoutManifestMoney(data)
+      ? withNotes(perms.canSeeMoney ? data : withoutManifestMoney(data))
       : null;
   // 搜索跳过来的行到了：滚到屏幕中间（每次跳转只滚一次，后面重拉不再拽视线）。
   const highlightShown =
@@ -549,14 +588,19 @@ export function ManifestsView() {
   }, [shown, noSend, tabSendable]);
   const currentPill = shown?.pills.find((p) => p.key === shown.pill);
   // 置顶 74：Waiver link 列这一页有要 waiver 的单才自动出（题 1 A），☰ Columns 里关掉就不加。
+  // 150 Notes：默认放最后，☰ Columns 里关掉就不加（withNoteColumn）。
   const fields = shown
-    ? tab === "tickets"
-      ? withWaiverColumn(
-          shownFields(shown, savedHere ?? ticketDefaults),
-          shown.rows,
-          savedHere,
-        )
-      : shownFields(shown, savedHere)
+    ? withNoteColumn(
+        tab === "tickets"
+          ? withWaiverColumn(
+              shownFields(shown, savedHere ?? ticketDefaults),
+              shown.rows,
+              savedHere,
+            )
+          : shownFields(shown, savedHere),
+        shown,
+        savedHere,
+      )
     : [];
   const needsWaiver =
     tab === "tickets" && !!shown && pageNeedsWaiver(shown.rows);
@@ -700,7 +744,11 @@ export function ManifestsView() {
                   onClick={() => {
                     if (!shown) return;
                     if (seeingHidden && hidden) {
-                      const csv = buildHiddenCsv(shown, hidden, fields);
+                      const csv = buildHiddenCsv(
+                        shown,
+                        hidden,
+                        fields.filter((k) => k !== NOTE_KEY),
+                      );
                       downloadCsv(
                         `manifest_${shown.date}_hidden-rows.csv`,
                         csv.headers,
@@ -1138,7 +1186,7 @@ export function ManifestsView() {
                 data={shown}
                 hidden={hidden}
                 rows={hiddenRows}
-                fields={fields}
+                fields={fields.filter((k) => k !== NOTE_KEY)}
                 loading={loading}
               />
             ) : null}
@@ -1191,6 +1239,8 @@ export function ManifestsView() {
                   onCfmSaved={onCfmSaved}
                   onCfmDirty={onCfmDirty}
                   onWaiverDirty={onWaiverDirty}
+                  onNoteSaved={onNoteSaved}
+                  onNoteDirty={onNoteDirty}
                   onUnauthorized={redirectToLogin}
                 />
               </section>
@@ -1227,7 +1277,7 @@ export function ManifestsView() {
             onUseShared={ownHere ? useSharedCols : undefined}
             catalog={shown.catalog}
             groups={shown.groups}
-            selected={
+            selected={withNoteColumn(
               tab === "tickets"
                 ? withWaiverColumn(
                     (savedHere ?? shown.default_fields).filter(
@@ -1236,13 +1286,20 @@ export function ManifestsView() {
                     shown.rows,
                     savedHere,
                   )
-                : (savedHere ?? shown.default_fields)
-            }
+                : (savedHere ?? shown.default_fields),
+              shown,
+              savedHere,
+            )}
             defaults={shown.default_fields}
             onApply={(next, scope) =>
               applyFields(
-                next && tab === "tickets"
-                  ? rememberWaiverChoice(next, shown.rows)
+                next
+                  ? rememberNoteChoice(
+                      tab === "tickets"
+                        ? rememberWaiverChoice(next, shown.rows)
+                        : next,
+                      shown,
+                    )
                   : next,
                 scope,
               )
@@ -1463,6 +1520,8 @@ function ManifestTable({
   onCfmSaved,
   onCfmDirty,
   onWaiverDirty,
+  onNoteSaved,
+  onNoteDirty,
   onUnauthorized,
 }: {
   data: ManifestPage;
@@ -1483,6 +1542,9 @@ function ManifestTable({
   onCfmDirty: (rowKey: string, dirty: boolean) => void;
   /** 某一行的 Waiver link 改了没存 / 存好了（置顶 74）。 */
   onWaiverDirty: (rowKey: string, dirty: boolean) => void;
+  /** 150 Notes：存好了（同单同产品同团期的行一起换）/ 改了没存。 */
+  onNoteSaved: Parameters<typeof NoteInput>[0]["onSaved"];
+  onNoteDirty: (rowKey: string, dirty: boolean) => void;
   onUnauthorized: () => void;
 }) {
   // partner 不能发时没有勾选；Cfm # 能不能改由格子自己看 ViewOnly（manifests.edit）。
@@ -1605,6 +1667,13 @@ function ManifestTable({
               />
             ) : k === REZDY_CFM_KEY && cfmMismatch(r, tab) ? (
               <CfmMismatchCell row={r} />
+            ) : k === NOTE_KEY ? (
+              <NoteInput
+                row={r}
+                onSaved={onNoteSaved}
+                onDirty={onNoteDirty}
+                onUnauthorized={onUnauthorized}
+              />
             ) : k === "order_number" && r.order_number ? (
               <OrderLink orderNumber={r.order_number} />
             ) : (
@@ -2201,6 +2270,12 @@ function ManifestsHowToUse() {
           the reminder. Tick the order, then tick Send anyway in the send window
           to send the reminder again, so the guest gets the new link on their
           ticket page. The tag goes away once it is sent.
+        </>,
+        <>
+          <b>Notes</b> (Bus Tour and Tickets): a note for staff, one per row.
+          It isn’t printed and isn’t sent to guests. Type the note, then click{" "}
+          <b>Save</b> next to it (or press Enter). Press Esc to undo before
+          saving.
         </>,
       ]}
     />
