@@ -11,6 +11,8 @@
 - 138（task/138-guide-payroll 4f3a8fa6，8d 的逐步说明在分支 PROGRESS）：要 Annie 开工作窗口接着做；建议拆两个窗口——甲：期间页的编辑（Fee 点格子改、Extras 勾、Tips、Needs review、Save payroll changes、离开拦截、手机、检查套）；乙：Pay rates / Extras 价格卡、Locked dates 卡、Change history 卡（各放单独文件，甲接进 payroll.tsx）+ Team 页 Payroll 一行。
 - 已派：甲 = `79`[9816cf]（task/138-guide-payroll，worktree D:/ops-wt-138，负责整合 + 检查套 + 交核）；乙 = `5a`[71ed90]（task/138b-payroll-cards，新文件 payroll-rates / payroll-locks / payroll-history.tsx + Team 行，交给 79 合）。
 - Annie（原话）「今晚工资必须做完」⇒ 138 今晚做到上 main 为止，9:30 不停。已告诉 79 / 5a / b8。b8：v3 / v170 今晚目标上后端 main（要四审、Annie 执行 SQL、签 release.py），时间未定；前端先按 v2 做，Extras 选人最后补；v3 今晚上不了就先不带选人上。b8 过 9:30 留着核 PASS。
+- 138 进度：79 期间页编辑推 82d49117（tsc / eslint 0），在写检查套；5a Pay rates 卡（含 v3 Extras 选人）推 task/138b-payroll-cards 85fce141，接着做 Locked dates → Change history → Team 行。后端 v3 在分支 task/guide-payroll-extra-people 61897da5（四审中），上 main 前前端带选人的不能合。
+- **150 后端接口草稿（b8 转，留给接 150 的窗口，今晚不做）**：后端 WIP 分支 task/g321-manifest-noshow-notes，全文 docs/interfaces/g321-manifest-relay-bus-2026-11-16.md（57 做，未上 main，四审跟 Notes v171 一起，字段可能小改）。要点：GET /api/manifests tab=bus 的 rows[] 加 on_bus_manifest（false 两列都不能改）、relay_mark、bus_mark（{value, label, by, role relay|guide|staff, vehicle, at} 或 null，两列不合并；短信进来的 by = ""）；PUT /api/manifests/no-show（manifests.edit）{tour_date, row_key, column relay|bus, status}，bus 只 boarded / no_show 不能清空，relay picked_up / no_show / null；回 {row_key, column, changed, on_bus_manifest, relay_mark, bus_mark}；400 / 404 原文见接口文件；action_log entity manifest_noshow。Relay 能不能改 / 清空等 Annie 在 05 的 preview 里答，答了告诉后端。
 
 ## 2026-11-16 收工交接：前端主窗口（公司电脑，ListAgents 名 `前端主窗口6e`[690ed2]；今天 Annie 6:00 PM 下班）
 > 今晚家里电脑接着做（9:30 PM 截止）。下一个主窗口先读本节，再看下面「2026-11-16（周一）前端主窗口」那节和置顶 📌。
