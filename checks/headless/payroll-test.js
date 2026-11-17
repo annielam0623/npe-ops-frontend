@@ -457,6 +457,31 @@ async function run() {
     check("How to use：Pay rates 那条写 Choose people… / Search name / Edit", await evaluate(`return document.body.textContent.includes('pick Only these people, click Choose people…, tick them and click Done; type in Search name to find someone.') && document.body.textContent.includes('Click Edit on a price or an extra to change its dates, amount or who it applies to.');`));
   }
 
+  // ⑬f Locked dates 每行 Edit（Annie 2026-11-17「改锁的日期和备注」动手；小题 1 A 直接存）
+  {
+    await openPayroll();
+    await waitFor(`document.querySelector('[data-lock-edit="1"]')`, 5000);
+    await evaluate(`document.querySelector('[data-lock-edit="1"]').click();`);
+    check("锁 Edit：这一行就地变成 From / To / Note + 蓝 Save + Cancel", await waitFor(`(() => { const r = document.querySelector('tr[data-lock-editing]'); return !!r && r.querySelector('[data-le="from"]').value === '2026-11-01' && r.querySelector('[data-le="to"]').value === '2026-11-02' && !!r.querySelector('[data-lock-edit-save="1"]'); })()`, 3000));
+    await evaluate(`$setValue(document.querySelector('[data-le="to"]'), '2026-11-07');`);
+    await evaluate(`document.querySelector('[data-lock-edit-save="1"]').click();`);
+    await sleep(150);
+    const e1 = await text(q("[data-lock-err]"));
+    check("锁 Edit：改到跟别的锁重叠 ⇒ 红字，不出确认", (e1 ?? "").includes("is already locked. Pick dates that don't overlap.") || !(await evaluate(`return !!document.querySelector('[data-lock-confirm]');`)), e1);
+    await evaluate(`$setValue(document.querySelector('[data-le="to"]'), '2026-11-03'); $setValue(document.querySelector('[data-le="note"]'), 'Paid Nov 4');`);
+    await evaluate(`document.querySelector('[data-lock-edit-save="1"]').click();`);
+    const conf = await waitFor(`document.querySelector('[data-lock-confirm="edit"]')`, 3000) && (await text(q('[data-lock-confirm="edit"]')));
+    check("锁 Edit：Save 先出黄框「Change the lock Nov 1–2, 2026 to Nov 1–3, 2026? …」", (conf || "").startsWith("Change the lock Nov 1–2, 2026 to Nov 1–3, 2026?"), conf);
+    const before = (await mockLog()).length;
+    await evaluate(`document.querySelector('[data-lock-yes]').click();`);
+    await waitFor(`${q("[data-lock-saved]")}?.textContent === 'Saved'`, 5000);
+    const lp = await since(before, (e) => e.method === "PUT" && e.path === "/api/payroll/locks/1");
+    check("锁 Edit：确认 ⇒ 直接存 PUT /api/payroll/locks/1 {from 11-01, to 11-03, note Paid Nov 4}，绿字 Saved", lp.length === 1 && lp[0].body.from === "2026-11-01" && lp[0].body.to === "2026-11-03" && lp[0].body.note === "Paid Nov 4", JSON.stringify(lp[0]?.body));
+    check("How to use：Locked dates 那条写 Edit", await evaluate(`return document.body.textContent.includes('Click Edit on a lock to change its dates or note, or Unlock to change pay on those days again. Locking, editing a lock and unlocking are saved right away.');`));
+    // 还原，不影响后面的检查
+    await fetch(`${MOCK}/api/payroll/locks/1`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ from: "2026-11-01", to: "2026-11-02", note: "Paid Nov 1–2" }) });
+  }
+
   // ⑭ Payroll: View only：不能改
   await ctl({ superadmin: false, codes: ["settings.payroll.view"] });
   check("Payroll: View：有页签、能打开", await openPayroll());
