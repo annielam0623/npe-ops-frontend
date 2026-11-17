@@ -144,6 +144,14 @@ async function run() {
   await expand("Kevin Tran");
   check("锁住的 811：没有点格子改、写 🔒 Locked", await evaluate(`const r = ${run_(811)}; return !!r && !r.querySelector('[data-payroll-fee-cell]') && r.textContent.includes('🔒 Locked') && !r.querySelector('input');`));
   check("812：ANT relay 勾着、Long day 没勾", await evaluate(`return document.querySelector('[data-payroll-extra="812|ant_relay"]').checked && !document.querySelector('[data-payroll-extra="812|long_day"]').checked;`));
+  // 状态格（Annie 2026-11-17「选A」「留空，动手」）：paid 没锁 ⇒ 留空；锁住的日子 ⇒ 灰字 Paid · locked；No rate / Not completed 照旧琥珀字
+  {
+    const st = (id) => evaluate(`return ${run_(id)}.querySelector('[data-payroll-status]').textContent;`);
+    check("状态：锁住的 811 写 Paid · locked（灰字）", (await st(811)) === "Paid · locked" && (await evaluate(`return getComputedStyle(${run_(811)}.querySelector('[data-payroll-status] span')).color === 'rgb(136, 136, 136)';`)), await st(811));
+    check("状态：没锁的 812 留空（不写 Paid）", (await st(812)) === "", await st(812));
+    check("状态：没锁、没 Completed 的 813 只写 Not completed（前面不空一行）", (await st(813)) === "Not completed" && !(await evaluate(`return !!${run_(813)}.querySelector('[data-payroll-status] br');`)), await st(813));
+    check("状态：Needs review 里 816 照旧 No rate", (await st(816)) === "No rate", await st(816));
+  }
   check("813：Not completed 琥珀字", (await text(run_(813))).includes("Not completed"));
   check("非私人团没有 Tips 框；私人团 814 有框 150.00", await evaluate(`return !${run_(813)}.querySelector('[data-payroll-tips]') && ${run_(814)}.querySelector('[data-payroll-tips]').value === '150.00';`));
 
@@ -299,7 +307,7 @@ async function run() {
   await evaluate(`${q("[data-payroll-prev]")}.click();`);
   await waitFor(`${q("[data-payroll-period]")}?.textContent === 'Nov 1–15, 2026'`, 5000);
   check("Pay rates / Locked dates / Change history 依次在名单下面", await waitFor(`(() => { const a = ['[data-payroll-by-person]','[data-payroll-rates]','[data-payroll-locks]','[data-payroll-history]'].map(s => document.querySelector(s)); return a.every(Boolean) && a.every((e, i) => i === 0 || (a[i-1].compareDocumentPosition(e) & Node.DOCUMENT_POSITION_FOLLOWING)); })()`, 5000));
-  check("How to use — Payroll：14 条、照 V9", await evaluate(`const d = [...document.querySelectorAll('details')].find(x => x.textContent.includes('How to use — Payroll')); const li = d ? d.querySelectorAll('li') : []; return li.length === 14 && li[4].textContent.startsWith('Click a name to see that person') && li[13].textContent.startsWith('Only Admin accounts given Payroll');`));
+  check("How to use — Payroll：15 条、照 V9（第 8 条是状态格那句）", await evaluate(`const d = [...document.querySelectorAll('details')].find(x => x.textContent.includes('How to use — Payroll')); const li = d ? d.querySelectorAll('li') : []; return li.length === 15 && li[4].textContent.startsWith('Click a name to see that person') && li[7].textContent === 'The Status column is blank for runs that are counted in the total. Runs on locked days show Paid · locked. No rate, No guide and Not completed need a look.' && li[14].textContent.startsWith('Only Admin accounts given Payroll');`));
 
   // ⑫ Locked dates 卡（5a）：有改动时 Lock 先挡；锁 / 解锁黄框
   check("Locked dates：Nov 1–2, 2026 一行、Note、Locked by", (await text(`document.querySelector('[data-lock-row="1"]')`))?.includes("Nov 1–2, 2026Paid Nov 1–2Annie"), await text(`document.querySelector('[data-lock-row="1"]')`));

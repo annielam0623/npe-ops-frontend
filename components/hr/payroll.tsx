@@ -16,6 +16,7 @@ import { usePermissions } from "@/lib/staff-permissions";
 import { useLeaveGuard } from "@/lib/use-leave-guard";
 import { cn } from "@/lib/utils";
 import type {
+  PayrollLock,
   PayrollPeriod,
   PayrollPerson,
   PayrollRun,
@@ -418,7 +419,14 @@ type RowApi = {
   editingId: number | null;
   setEditingId: (id: number | null) => void;
   patch: (run: PayrollRun, p: RunDraft) => void;
+  /** 这一期碰到的锁：状态格判断「Paid · locked」用（后端的 run.locked 之外再按日期对一次）。 */
+  locks: PayrollLock[];
 };
+
+/** 这一趟的日子锁住了：后端标了 locked，或落在某个锁的日期里。 */
+function isLockedDay(run: PayrollRun, locks: PayrollLock[]): boolean {
+  return run.locked || locks.some((l) => l.from <= run.date && run.date <= l.to);
+}
 
 function RunRows({
   runs,
@@ -515,15 +523,21 @@ function RunRows({
             {needs ? null : (
               <td className={cn(TD, NUM, "font-bold")}>{money(s.total)}</td>
             )}
-            <td className={cn(TD, "whitespace-nowrap")}>
+            <td className={cn(TD, "whitespace-nowrap")} data-payroll-status>
+              {/* Annie 2026-11-17「选A」「留空，动手」：paid 只表示算进合计，不是「已付」——没锁的留空，
+                  锁住的日子写 Paid · locked（灰字）；No rate / No guide / Not completed 照旧琥珀字。 */}
               {run.status === "paid" ? (
-                <span className="text-[#888]">Paid</span>
+                isLockedDay(run, api.locks) ? (
+                  <span className="text-[#888]">Paid · locked</span>
+                ) : null
               ) : (
                 <span className={FLAG}>{STATUS[run.status]?.[0]}</span>
               )}
               {run.day_status === "not_completed" ? (
                 <>
-                  <br />
+                  {run.status === "paid" && !isLockedDay(run, api.locks) ? null : (
+                    <br />
+                  )}
                   <span className={FLAG}>Not completed</span>
                 </>
               ) : null}
@@ -573,6 +587,7 @@ export const PAYROLL_HOW_TO = [
   "Click a name to see that person's runs. Click a run’s fee to type a different fee for that run only, then click Done; it shows edited, with the price under it. Use the price puts the price back. Extras and tips are still added on top.",
   "Extras are paid per ticked run. ANT relay can be ticked only on tours whose price has ANT relay; other extras, like Long day, can be ticked on any run. On Private Tour runs, type the tips; they are paid to that run's guide.",
   "Changes stay on the page until you click Save payroll changes. If you leave the page or change the period first, you are asked whether to save.",
+  "The Status column is blank for runs that are counted in the total. Runs on locked days show Paid · locked. No rate, No guide and Not completed need a look.",
   "Needs review lists runs that are left out of the period total: No rate (no price covers that run — add a price under Pay rates, or type a fee for the run) and No guide (nobody is picked as guide on Dispatch).",
   "A guide whose name was typed by hand on Dispatch is paid under that name and shows Not in HR. Add the person in Human Resource so their details are on file, and pick them from the list on Dispatch next time. The same person typed with two spellings shows as two people.",
   "Pay rates: click + Add price to add a price for a tour from a start date, with or without an end date, for everyone or only for the people you tick. For a tour name typed on Dispatch, pick Type a tour name… and type it the same way. Click + Add extra for a new extra or a new amount for an existing one; like prices, an extra amount can be for everyone or only for the people you tick. Nothing is kept until you click Save rates.",
@@ -777,7 +792,14 @@ export function Payroll({
   const keyOf = (p: PayrollPerson) =>
     p.in_hr ? `hr:${p.hr_id}` : `typed:${p.name.trim().toLowerCase()}`;
   const hitLocks = P.locks.filter((l) => l.to >= P.from && l.from <= P.to);
-  const api: RowApi = { canEdit, drafts, editingId, setEditingId, patch };
+  const api: RowApi = {
+    canEdit,
+    drafts,
+    editingId,
+    setEditingId,
+    patch,
+    locks: P.locks,
+  };
   const nDirty = dirtyRuns.length;
   const saving = saveState === "saving";
 
