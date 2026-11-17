@@ -4,7 +4,25 @@
 
 > 6d 交接（下面「2026-10-27 交接：前端主窗口 6d」那节）的后端需求已于 10/27 晚由 ad 转给家里后端主窗口 17。
 
-> **下一个主窗口：先读下面「2026-11-16 收工交接」，再看置顶。**
+> **下一个主窗口：先读下面「2026-11-17 收工交接」，再看那天的主窗口记录。**
+
+## 2026-11-17 收工交接：前端主窗口 `前端主窗口-b0 (fork)`[696851]（公司电脑，14:30 下班）
+> 今天 Annie 不小心开了两个前端主窗口（原 b0 [1c50f1] 和本 fork），下午她选「留 fork」，原 b0 已停。下面一节「2026-11-17（周二）」是两个窗口共用的当天记录。
+- **今天上 main**：151 Bus Manifest View only（f3a94174）、152 点订单号开订单详情（70b18ea7）+ 订单号能复制（4e490c01）、150 Notes 列（8414b1be，后端 4d132f60）、153 Tickets 按场次分组（a6f884e6 + 92fd09f6）、Payroll：ANT Relay 重名挡下（0e13c7a7）、ANT relay 下拉钉住（ece7b98d）、套日期修复（36772ac7）、期间箭头（7303161f）、加购项名单（82b21010，后端 558e1176）、状态栏留空 / Paid · locked（7aa57582，后端 CSV cac8c066）。
+- **在分支上、等后端**：
+  - 00：task/noshow-tracking **ed0cf996**（Morning Tracking Relay / Bus 可改、订单详情 Day of tour、/dispatch/manifest ✓ 列），已按 G321 合同（后端 f9 worktree docs/interfaces/g321-relay-bus-tracking-2026-11-17.md）核过。等后端 G321 返工上 main + 6f PASS ⇒ 合最新 main 重跑 mt / orders / mf / nav ⇒ 真后端 ZZ Test 走一遍 ⇒ 合 main。
+  - 68：task/150-relay-tour（Main manifest 只读 Relay / Tour 两列，N6），同样等 G321。（68 收工 SHA 见下面补记。）
+- 📌 **等 Annie 确认 / 动手**（原文都在下面当天记录）：
+  1. **Payroll（Annie 14:00 在 00 窗口原话，非动手）**：「applies to已经有导游的名单了，可以还把drvier Guide的加进去就号了。extra要加edit。所有设置的项目都可以edit」。00 已问她 3 题：① Applies to 名单 = HR 里职位 Guide + Driver + Guide 所有人 + 本期手打名字的导游（Not in HR）+ 已存个人价的人（推荐；要后端 91 在 GET /api/payroll/rates 加 guides，只加不改）；②「所有设置的项目」= Prices（已有 Edit）、Extras（加 Edit）、Locked dates（现只有 Unlock，改日期 / 备注要后端加接口），推荐三样都能改；③ Extras Edit 照 Prices 行：行尾 Edit / Remove，表单预填，加购项不能换，日期 / 金额 / Applies to 能改，Update 后淡黄、Save rates 才存。**明天 00 开工先出 preview 链接**。
+  2. **Tickets 视图切换**（Annie 原话「另外，我需要在ticket这边做两个视觉选择，一个是按照session，一个是按照订单先后的时间--就是不分小节，全部摊开的显示」）：推荐 表格上方「By session | By order time」、默认 By session、记在账号里、切换时勾选保留。待她答 + 动手，派 68（前端，By order time 用 date_created 排）。
+  3. **Main manifest 排序**：Annie 问是否按下单时间排、小节里也要。现状：Tickets 发过的沉底 → 下单时间；Bus / Admin fee 按接客时间（A1 第 7 条）。题 1 Bus / Admin fee 全按下单时间 A / 先接客时间再下单时间 B；题 2 Tickets 发过沉底保留 A（推荐）/ 不要 B。定了交后端（manifest_list.py:257 sort_key）。
+  4. **N6 列名**：Main manifest 只读两列叫「Relay」「Tour」是否对。
+  5. **TI 不在 Morning Tracking（11/17）**：后端 8 行都回，前端用真数据复现不出；请 Annie 在 Tracking 页（All、搜索空）搜 CHD0SNQKE，不出来就截图。
+  6. 订单号复制：双击第一下仍会开一次标签（拖选不会）；嫌烦就加小复制键（样子变，要她同意）。
+  7. 旧的仍未答：Notes 样子题（150 题 6 / 7 / 9，已按推荐上线）、77 司机快捷回复选句 + 号码统一、146 / 147 / 149 / 132 / 143 / 139d（见 11-16 交接）。
+- 挂起：da（Dispatch）检查套卡在 147 段（main 上也卡），Annie「dispatch检查程序现在先挂起来」。
+- 后端：主窗口 `后端主窗口-6f`[0e63fc]；f9 做 G321 返工（今天不上 main）；91 今天专管 payroll。
+- 窗口：00 [43dedc]、68 [d5537e] 是前端工作窗口。主窗口改 PROGRESS 用 worktree C:\Code\ops-b0（detached，每次 checkout origin/main 再改、推 HEAD:main；stash pop 后要查冲突标记——今天推上去过一次冲突标记，已修）。
 
 ## 2026-11-17（周二）前端主窗口 `npe-ops-frontend-b0`[1c50f1]（公司电脑；只分工和汇报，不写代码；14:30 下班）
 - ⏹ 今天误开了两个前端主窗口（原 b0 [1c50f1] 和 fork [696851]），Annie（原话）「留 fork」⇒ b0 [1c50f1] 13:10 左右停止接活，已把派工 / 未答问题交给 fork；下面这节是 b0 [1c50f1] 停下前的记录，之后以 fork 为准。G321 Relay / Bus 合同（docs/interfaces/g321-relay-bus-tracking-2026-11-17.md，后端今天不上 main）已转 00（task/noshow-tracking）和 68（task/150-relay-tour），都不合 main。
