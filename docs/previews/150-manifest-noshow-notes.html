@@ -1,0 +1,163 @@
+<title>Main Manifest No Show</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: one column. Each step = Chinese note for Annie + a static mock of the Main manifest table (white card on the dark ops frame, same as the live page). Single fixed look on purpose. */
+:root{
+  --frame:#06101c; --card:#ffffff; --ink:#1a1a1a; --mute:#6b7280; --line:rgba(0,0,0,.08);
+  --link:#378ADD; --blue:#3b82f6; --green:#047857; --green-bg:#e7f6ee; --red:#a32d2d; --red-bg:#fdeceb;
+  --note:#fff8e1; --note-ink:#5b4a14; --amber:#fbbf24; --q:#0b1724; --qline:rgba(255,255,255,.14);
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,Arial,sans-serif;
+  color-scheme:dark;
+}
+body{background:var(--frame);color:#f8fafc;font-family:var(--sans);font-size:14px;line-height:1.55;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:24px 48px}
+.wrap{max-width:1120px;margin:0 auto;display:flex;flex-direction:column;gap:28px}
+h1{font-size:22px;margin:0;text-wrap:balance}
+.lead{color:rgba(255,255,255,.7);margin:6px 0 0;max-width:78ch}
+section{display:flex;flex-direction:column;gap:12px;min-width:0}
+h2{font-size:15px;margin:0;display:flex;gap:10px;align-items:baseline}
+h2 .n{color:var(--amber)}
+.cn{background:var(--note);color:var(--note-ink);border-radius:10px;padding:10px 14px;font-size:13px;max-width:86ch}
+.cn ul{margin:4px 0 0;padding-left:18px}
+.cn b{color:#3d300a}
+.card{background:var(--card);color:var(--ink);border-radius:14px;padding:14px 0 6px;min-width:0}
+.card h3{margin:0 16px 10px;font-size:14px;font-weight:600}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:980px;font-size:12px}
+th{font-size:11px;font-weight:500;text-align:left;padding:7px 10px;border-bottom:.5px solid var(--line);white-space:nowrap}
+th.new{background:#eef4ff}
+td{padding:8px 10px;border-bottom:.5px solid rgba(0,0,0,.06);vertical-align:middle;white-space:nowrap}
+td.new{background:#f7faff}
+td.ord{color:var(--link)}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+.sec td{background:#f3f4f6;font-weight:600;font-size:12px}
+input.inl,select.inl{font:inherit;font-size:12px;color:var(--ink);background:transparent;border:0;border-bottom:1px dashed rgba(0,0,0,.25);padding:1px 2px}
+input.inl{width:170px}
+select.inl{padding-right:0}
+select.ns-b{color:var(--green);font-weight:600}
+select.ns-n{color:var(--red);font-weight:600}
+.save{border:1px solid var(--blue);background:var(--blue);color:#fff;border-radius:6px;font-size:11px;font-weight:700;padding:1px 8px;margin-left:4px}
+.saved{color:var(--green);font-size:11px;font-weight:600;margin-left:4px}
+.err{display:block;color:var(--red);font-size:11px;white-space:normal;max-width:240px;margin-top:2px}
+.tip{position:relative;display:inline-block}
+.bubble{position:absolute;left:0;top:calc(100% + 6px);z-index:2;background:#111827;color:#f9fafb;border-radius:8px;padding:7px 10px;font-size:11.5px;line-height:1.5;white-space:nowrap;box-shadow:0 4px 14px rgba(0,0,0,.25)}
+.dirty{border-bottom:1px solid var(--blue)!important}
+.qs{display:flex;flex-direction:column;gap:12px}
+.q{background:var(--q);border:1px solid var(--qline);border-radius:12px;padding:14px 16px}
+.q h3{margin:0 0 6px;font-size:14px}
+.q p{margin:4px 0;color:rgba(255,255,255,.86);font-size:13px}
+.rec{color:#4ade80;font-weight:700}
+.howto{background:var(--card);color:var(--ink);border-radius:14px;padding:14px 18px;font-size:13px;max-width:86ch}
+.howto h3{margin:0 0 6px;font-size:14px}
+.howto li{margin:4px 0}
+.howto .add{background:#eef4ff;border-radius:6px;padding:2px 6px}
+.phone{width:360px;max-width:100%;border:1px solid var(--qline);border-radius:22px;padding:10px;background:#0b1320}
+.phone .card{padding-top:10px}
+.phone table{min-width:760px}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>150 · Main manifest 加 No show、Notes 两列 · 样稿（模拟数据）</h1>
+    <p class="lead">Annie 已对后端方案说「同意你的建议，动手」。这是前端的样子，看过、答了题、说「动手」才写代码。下面的表是照 Main manifest 现在的白卡片画的静态样稿，订单号、人名都是假的。<b>新加的两列表头是淡蓝底，只为样稿里好认，真页面不加底色。</b></p>
+  </header>
+
+  <section>
+    <h2><span class="n">①</span>电脑版：两列放在表的最右边（No show 在前，Notes 最后）</h2>
+    <div class="cn"><ul>
+      <li><b>No show</b>：显示合并后的结果（导游的 Boarded / No show 优先，没有再看 relay 司机，取最新的）。绿字 ✓ Boarded，红字 ✗ No show，没人标是 —。</li>
+      <li>有 manifests.edit 权限的人：这一格是下拉（— / Boarded / No show），改了旁边出蓝色 <b>Save</b>，按 Save 或 Enter 才存，同 Cfm #。没权限的人只看到字。</li>
+      <li>鼠标移到 No show 格上：小黑框写谁标的、什么时候标的（见题 3）。</li>
+      <li><b>Notes</b>：同 Cfm # 的输入框（无框、底下一条虚线），改了出蓝色 Save；存好绿字 Saved，失败红字「Not saved: 后端原话」。</li>
+      <li>还没进任何 Bus Manifest 的单，改 No show 时后端回 400，红字原样显示（图中第 3 行；那句英文以后端为准）。</li>
+    </ul></div>
+    <div class="card">
+      <h3>Main manifest · Mon, Nov 16</h3>
+      <div class="scroll">
+      <table>
+        <thead><tr>
+          <th>Select all</th><th></th><th>Order #</th><th>Guest name</th><th class="num">Pax</th><th>Pickup</th><th>Hotel</th><th>Cfm #</th>
+          <th class="new">No show</th><th class="new">Notes</th>
+        </tr></thead>
+        <tbody>
+          <tr class="sec"><td colspan="10">Grand Canyon West Rim - 14 PAX</td></tr>
+          <tr>
+            <td><input type="checkbox" aria-label="Select"></td><td class="num">1</td><td class="ord">RTEST01</td><td>ZZ Test Garcia</td><td class="num">4</td><td>6:45 AM</td><td>Bellagio</td>
+            <td><input class="inl" style="width:90px" value="4821937" aria-label="Cfm #"></td>
+            <td class="new"><span class="tip"><select class="inl ns-b" aria-label="No show"><option>—</option><option selected>✓ Boarded</option><option>✗ No show</option></select></span></td>
+            <td class="new"><input class="inl" value="Wheelchair, sits front row" aria-label="Notes"></td>
+          </tr>
+          <tr>
+            <td><input type="checkbox" aria-label="Select"></td><td class="num">2</td><td class="ord">RTEST02</td><td>ZZ Test Nguyen</td><td class="num">2</td><td>6:55 AM</td><td>MGM Grand</td>
+            <td><input class="inl" style="width:90px" value="4821940" aria-label="Cfm #"></td>
+            <td class="new"><span class="tip"><select class="inl ns-n" aria-label="No show"><option>—</option><option>✓ Boarded</option><option selected>✗ No show</option></select>
+              <span class="bubble">✗ No show · marked by guide Joe (Bus 12) at 7:42 AM<br>Relay driver: ✓ Boarded · Mike (Van 3) at 6:58 AM</span></span></td>
+            <td class="new"><input class="inl dirty" value="Called 7:50, no answer" aria-label="Notes"><button class="save" type="button">Save</button></td>
+          </tr>
+          <tr>
+            <td><input type="checkbox" aria-label="Select"></td><td class="num">3</td><td class="ord">RTEST03</td><td>ZZ Test Patel</td><td class="num">3</td><td>7:05 AM</td><td>Luxor</td>
+            <td><input class="inl" style="width:90px" placeholder="Add #" aria-label="Cfm #"></td>
+            <td class="new"><select class="inl ns-n dirty" aria-label="No show"><option>—</option><option>✓ Boarded</option><option selected>✗ No show</option></select><button class="save" type="button">Save</button>
+              <span class="err">Not saved: This order is not on a Bus Manifest yet.</span></td>
+            <td class="new"><input class="inl" placeholder="Add note" aria-label="Notes"></td>
+          </tr>
+          <tr>
+            <td><input type="checkbox" aria-label="Select"></td><td class="num">4</td><td class="ord">RTEST04</td><td>ZZ Test Kim</td><td class="num">5</td><td>7:10 AM</td><td>Venetian</td>
+            <td><input class="inl" style="width:90px" value="4821952" aria-label="Cfm #"></td>
+            <td class="new"><select class="inl" aria-label="No show"><option selected>—</option><option>✓ Boarded</option><option>✗ No show</option></select></td>
+            <td class="new"><input class="inl" value="Paid balance at desk" aria-label="Notes"><span class="saved">Saved</span></td>
+          </tr>
+        </tbody>
+      </table>
+      </div>
+    </div>
+    <div class="cn">图里第 2 行把 hover 小黑框直接画出来了（真页面要鼠标移上去才出）；第 2 行 Notes 改了没存、旁边是蓝色 Save；第 4 行刚存好，绿字 Saved。</div>
+  </section>
+
+  <section>
+    <h2><span class="n">②</span>手机版（屏宽 390）</h2>
+    <div class="cn">手机上表格照现在一样在卡片里左右滑，整页不晃；两列在最右边，滑过去就是。下拉、输入框、Save 在手机上自动变小（全站手机规则）。</div>
+    <div class="phone"><div class="card"><h3>Main manifest</h3><div class="scroll">
+      <table>
+        <thead><tr><th>Order #</th><th>Guest name</th><th class="num">Pax</th><th>Pickup</th><th>Cfm #</th><th class="new">No show</th><th class="new">Notes</th></tr></thead>
+        <tbody>
+          <tr><td class="ord">RTEST01</td><td>ZZ Test Garcia</td><td class="num">4</td><td>6:45 AM</td><td>4821937</td><td class="new"><select class="inl ns-b" aria-label="No show"><option>—</option><option selected>✓ Boarded</option><option>✗ No show</option></select></td><td class="new"><input class="inl" value="Wheelchair, sits front row" aria-label="Notes"></td></tr>
+          <tr><td class="ord">RTEST02</td><td>ZZ Test Nguyen</td><td class="num">2</td><td>6:55 AM</td><td>4821940</td><td class="new"><select class="inl ns-n" aria-label="No show"><option>—</option><option>✓ Boarded</option><option selected>✗ No show</option></select></td><td class="new"><input class="inl" value="Called 7:50, no answer" aria-label="Notes"></td></tr>
+        </tbody>
+      </table>
+    </div></div></div>
+  </section>
+
+  <section>
+    <h2><span class="n">③</span>How to use 新加的两条（英文原文，加在 Manifests 的 How to use 里）</h2>
+    <div class="howto">
+      <h3>How to use — Manifests</h3>
+      <ul>
+        <li class="add"><b>No show</b>: shows Boarded or No show from the guide’s page, or from the relay driver if the guide hasn’t marked the order. Hover over it to see who marked it and when. If the guide didn’t report, pick Boarded or No show (or — to clear it) and click <b>Save</b> next to it. This changes the same mark the guide uses, so Morning Tracking, Bus Manifest and the guide’s page change too. An order that isn’t on a Bus Manifest yet can’t be marked.</li>
+        <li class="add"><b>Notes</b>: a note for staff, one per row. It isn’t printed and isn’t sent to guests. Type the note, then click <b>Save</b> next to it (or press Enter). Press Esc to undo before saving.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="n">④</span>请 Annie 确认（4 题）</h2>
+    <div class="qs">
+      <div class="q"><h3>题 1 · 两列放在哪</h3>
+        <p>页面：Manifests › Main manifest 列表。现在没有这两列。</p>
+        <p>A. 放表的最右边，No show 在前、Notes 最后（图 ① 的样子）。<span class="rec">推荐</span>：现有的列一列都不挪，staff 不用重新找；两列都能在 ☰ Columns 里关掉，同其他列。</p>
+        <p>B. No show 紧跟在 Guest name 后面，Notes 放最后：No show 更显眼，但 Pax、Pickup 等列会往右挪。</p></div>
+      <div class="q"><h3>题 2 · No show 格怎么改</h3>
+        <p>现在（图 ①）：一个下拉，三个选项 — / ✓ Boarded / ✗ No show；改了旁边出蓝色 Save，按 Save 或 Enter 才存。</p>
+        <p>A. 下拉（图 ① 的样子）。<span class="rec">推荐</span>：一格放得下，和 Cfm # 一样「改了出 Save」；看的时候就是绿字 / 红字。</p>
+        <p>B. 两个点选小键「Boarded」「No show」并排，点中的变绿 / 变红，再点一次清空，也要按 Save：一眼看到两种选法，但每行多占约 140px 宽。</p></div>
+      <div class="q"><h3>题 3 · 鼠标移到 No show 上显示什么</h3>
+        <p>A. 只写现在这个结果是谁、什么时候标的，例如「✗ No show · marked by guide Joe (Bus 12) at 7:42 AM」；staff 改过的写「changed by Lizzie (staff) at 9:15 AM」。</p>
+        <p>B. 在 A 下面再写另一方标的（图 ① 第 2 行的样子），例如再加一行「Relay driver: ✓ Boarded · Mike (Van 3) at 6:58 AM」。<span class="rec">推荐</span>：导游和 relay 司机说法不一样时，opening shift 能看出来再决定要不要改。后端要把两方都带上，我们会跟后端核对。</p></div>
+      <div class="q"><h3>题 4 · Notes 格的样子</h3>
+        <p>现在（图 ①）：同 Cfm # 的单行输入框，宽约 170px，太长的字在框里横向滚动，鼠标移上去显示全文。</p>
+        <p>A. 单行输入框（图 ① 的样子）。<span class="rec">推荐</span>：存法同 Cfm #，一行高度不变，表不会被撑高。</p>
+        <p>B. 点了弹出一个多行小框写，写完按 Save：能写长一点，但多点一下才能改。</p></div>
+    </div>
+    <div class="cn">都按推荐的话回「同意推荐」就行；你说「动手」以后才写代码。No show 先做（后端不用迁移）；Notes 要等后端迁移、你执行以后才能上线。</div>
+  </section>
+</div>
