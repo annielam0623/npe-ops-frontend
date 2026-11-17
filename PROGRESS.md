@@ -60,6 +60,7 @@
   - 📌 153 样稿第 1 版（68）https://claude.ai/artifact/Az4hr5CtC7iY9ViWL5Gvpd ：题 1 当天实际场次多选胶囊 + No time A（推荐）/ 预设时段 / From–To；题 2 表头正上方 A / 页头工具条；题 3 筛掉的自动取消勾选、Select all 和 CSV 只管看得见的 A / 保留勾选并提示；题 4 只写人数 A / 单数 + 人数 / 不写；题 5 不记 A / 记网址 / 记账号；题 6 手机一行左右滑 A / 不出；题 7 How to use 原文见当天回复。前端自己取 HH:MM，不用后端。
 - ✅ **150 Notes 上 main 8414b1be**（68；6f PASS 0fe69137）：tsc 0、eslint 0 error、man 467/467、nav 39/39、mf 338/338。样子按推荐（题 6 / 7 / 9 Annie 未答）。
   - Annie 发 Rezdy Manifest 截图当参考（非动手）：按场次分组，可折叠组头「9:00 AM — Lower Antelope Canyon Admission Ticket (KT) · 4 Orders · 8 Participants (8 Adult)」。派 68 出 153 第 2 版：题 1 加「按开始时间分组」A / 胶囊 B / 都要 C，题 3–7 跟着改。
+    - Annie 定方向（原话，非动手）：「我要这样的，类似antelope bus的分支，然后可以折叠，可以全选可以选session，也可以单独选订单」⇒ 第 2 版照 Antelope bus 分组样式按场次分组、可折叠、三层勾选（全部 / 整场 / 单单）；胶囊作废。剩小题：收起组里的勾选发不发、折叠记不记、默认展开、手机、How to use。
 - （Payroll 套）payroll 套 3 项在 main 上就失败（11/16–30 写死成「未开始的期」，今天已开始），派 00 改成相对日期（task/payroll-suite-dates）。✅ 上 main 36772ac7（修复 6c9f3d57，只改 payroll-mock.js / payroll-test.js）：原因是 mock 把真实今天一律当 11-05，点下一期传 11/17 = 真实今天又变 11/05；改法是在套里把浏览器时钟固定在 2026-11-05 LA 中午，mock 不再拿真实今天比。payroll 73/73、hr 135/135。
   - 📌 补题问 Annie：题 9 Notes 出在哪些标签（推荐 Bus、Tickets 能改；Admin fee、隐藏行不出）；题 10 小黑框车号要不要加「Van 」（推荐不加，照后端原样写车号，后端没有车型字段）。
 
