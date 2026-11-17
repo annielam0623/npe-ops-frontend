@@ -149,9 +149,7 @@ export function PayrollHistory({
                     const after = show(h.to);
                     return (
                       <tr key={h.id} className="bg-white" data-history-row>
-                        <td
-                          className={cn(C_TD, C_STICKY, "whitespace-nowrap")}
-                        >
+                        <td className={cn(C_TD, C_STICKY, "whitespace-nowrap")}>
                           {h.at ? formatLogTime(h.at) : "—"}
                         </td>
                         <td className={C_TD}>{h.by ?? "—"}</td>

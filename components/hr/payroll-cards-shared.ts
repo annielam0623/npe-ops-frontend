@@ -109,7 +109,8 @@ export const C_FLABEL =
   "flex flex-col gap-[3px] text-[11.5px] font-semibold text-[#4b5563]";
 export const C_INPUT =
   "rounded-[6px] border border-[#cbd2dc] bg-white px-2 py-[5px] text-[13px] text-[#1a1a1a]";
-export const C_CK = "inline-flex items-center gap-1.5 text-[12.5px] font-normal text-[#1a1a1a]";
+export const C_CK =
+  "inline-flex items-center gap-1.5 text-[12.5px] font-normal text-[#1a1a1a]";
 export const C_SAVEBAR =
   "flex flex-wrap items-center gap-2.5 border-t-[0.5px] border-black/[.08] px-4 py-3 max-sm:px-3";
 const BTN =
