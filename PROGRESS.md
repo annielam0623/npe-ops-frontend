@@ -4,7 +4,16 @@
 
 > 6d 交接（下面「2026-10-27 交接：前端主窗口 6d」那节）的后端需求已于 10/27 晚由 ad 转给家里后端主窗口 17。
 
-> **下一个主窗口：先读下面「2026-11-13 收工交接：74」，再看置顶。**
+> **下一个主窗口：先读下面「2026-11-16 收工交接」，再看置顶。**
+
+## 2026-11-16 收工交接：前端主窗口（公司电脑，ListAgents 名 `前端主窗口6e`[690ed2]；今天 Annie 6:00 PM 下班）
+> 今晚家里电脑接着做（9:30 PM 截止）。下一个主窗口先读本节，再看下面「2026-11-16（周一）前端主窗口」那节和置顶 📌。
+- 今天上 main：145 电话 AI 调用记录（23d0ec58，11-15）、147 第一部分 Open 班进 Dispatch 默认今天（b32593c3）、139b 改今天的任务（ae1259bd）+ carry-over 能改（2787026c）、139c 下拉深底（c1ea4040）、148 Shuttle 框改绿（e263522d）。140 后端 abf904d4 上了，前端不用改。
+- **今晚要接着做（Annie 要今天做完）**：**138 导游工资**（8d，task/138-guide-payroll，worktree C:\Code\ops-wt-138，WIP 28275ef8：preview V9 源文件 docs/previews/138-guide-payroll-v9.html、types、api 已写，页面还没写；PROGRESS 有 10 步）。Annie「138 全部按推荐，动手」。后端 main 85152f75（合同 v2）；Extras 选人等后端 v3 / v170（63 发）。做完交 commit + 对照表 → 63 PASS → 合 main。
+- **等 Annie 答 +「动手」**：146 Farm out 每家一页（a7，Q7–Q11）；147 设置框（8d，V3 三题）；150 Main manifest No show / Notes（05，题 1–4 + 新题 5 Export CSV 里的 hover 内容，05 在加）；149 = G320 Content Studio 样例标变量（87，题 1/2 + 下拉做法）；132（c9 Q5/Q6）；143（87）；139d 删固定任务（87 问她删哪些）。129 已在 11-16 提醒过。
+- 后端：主窗口 `主窗口63`（npe-confirmation-service-63）；后端工作窗口 5b（G318 / G269 / G321）、73（G309）。所有 63 转来的前端活合前都要 63 PASS。
+- 今天的教训：8d 用 `git -c core.autocrlf=false add` 提交代码文件 ⇒ 整份变 CRLF，被 63 卡（BLOCKING）。代码文件用普通 git add；只有 PROGRESS.md 用 autocrlf=false。提交前 `git diff --cached | grep -c $'\r'` 应为 0。
+- 主窗口改 PROGRESS 用 worktree C:\Code\ops-b0（detached，每次 checkout origin/main 后改、推 HEAD:main）。主目录 C:\Code\npe-ops-frontend 停在 task/128（main 被 ops-74 占）。
 
 ## 2026-11-16（周一）前端主窗口（本对话，ListAgents 现名 `前端主窗口6e`[690ed2]，昨天叫 b0 [da0e7b]）
 - ✅ 145 已在 11-15 上 main 23d0ec58（a7；后端 6e 回 PASS，两处小改 7f9a1815：How to use 第 9 条 400/422 句、DG-8 号码空行显示「—」）。SHA 已报后端 G317。
