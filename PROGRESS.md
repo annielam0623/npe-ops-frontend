@@ -40,6 +40,7 @@
     - 63 回（11-16 晚）：后端明天 5b 做，两边分开带回（relay：value / who / van / time / role；bus：value / who / bus / time / role），没有合并值；接口按两列都能改设计，各写各的字段，都记 action_log。题②推荐 A 两列都能改（63：哪一边没汇报，Opening shift 就补哪一边），B 只能改 Bus。
     - Annie 补（11-16 晚，原话）：「relay叫picked」⇒ Relay 那列的状态写 Picked / No show / 空；Bus 那列照旧 Boarded / No show / 空。preview 照这个画；列标题要不要也叫 Picked（而不是 Relay）做成一个小题问。
     - 更正（11-16 晚，Annie 在 63 那边原话）：「那就跟系统一致，都叫picked up吧」⇒ Relay 列接到了写 **Picked up**（同 relay 司机页），不是 Picked；Bus 列照旧 Boarded（导游页说法）。「都」= relay 出现的所有地方，不含 Bus（Annie 要 Bus 也改会再说）。preview、hover、CSV 都用 Picked up；列标题叫 Relay 还是别的，照样做成小题。
+    - Annie 补（11-16 晚，原话）：「bus列只需要Boarded和no show」⇒ Bus 列能选的只有 Boarded、No show，下拉里不放「—（清空）」；导游还没标的单照样显示空。Relay 列（Picked up / No show）要不要留清空，明天 preview 里顺便问。
 - 今天下班改 6:00 PM（Annie 在 87 原话「今天下班的时间改成6点」）：5:45 收尾，5:55 推完。
 - 今天（11-16）Annie 5:00 PM 下班：4:45 开始收尾，4:55 前推完（63 通知）。
 - 📌 **146 preview（a7）** https://claude.ai/artifact/9eCQCXvHoEDaEDgsU3uYks （ops-wt-146，task/146-farmout-partner-layout，未提交）。改法：合作公司行 → 有产品的团 → Pick-up locations（点 Locations 才出）→ 灰色折叠行「▸ N tours with no products yet」。How to use 第 1、10 条改。题：Q1 折叠行写团名（A，手机只写数目）/ 只写数目；Q2 编辑中 Hide 变灰（A）/ 照样能收；Q3 存好马上移位（A）/ 重载才移；Q4 每次收着（A）/ 记住；Q5 保留 Locations 键（A）/ 一直显示；Q6 Timetable 不动（A，本页没有时刻表，只是一个跳页键）/ 加链接。推荐都 A。已转 Annie。
