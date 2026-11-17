@@ -20,6 +20,7 @@
   5. **TI 不在 Morning Tracking（11/17）**：后端 8 行都回，前端用真数据复现不出；请 Annie 在 Tracking 页（All、搜索空）搜 CHD0SNQKE，不出来就截图。
   6. 订单号复制：双击第一下仍会开一次标签（拖选不会）；嫌烦就加小复制键（样子变，要她同意）。
   7. 旧的仍未答：Notes 样子题（150 题 6 / 7 / 9，已按推荐上线）、77 司机快捷回复选句 + 号码统一、146 / 147 / 149 / 132 / 143 / 139d（见 11-16 交接）。
+- **新：G281 Ticket Tracking 从 Main Manifest 自动填**（6f 14:06 转）：后端 main 92db5ca4，v173 已执行，合同 docs/interfaces/tickets-sync-2026-11-17.md：GET/PUT /api/settings/tickets-sync（开关，默认关，Annie 自己开）；行新键 send_state / order_state / contact_changed，只在 shown_to 为 true 时有。前端还没接（之前 PROGRESS 没有这条的前端任务）。明天：读合同、问后端 6a 细节，前端要加开关 + 新键显示 ⇒ 新样子先 preview 给 Annie。
 - 挂起：da（Dispatch）检查套卡在 147 段（main 上也卡），Annie「dispatch检查程序现在先挂起来」。
 - 后端：主窗口 `后端主窗口-6f`[0e63fc]；f9 做 G321 返工（今天不上 main）；91 今天专管 payroll。
 - 窗口：00 [43dedc]、68 [d5537e] 是前端工作窗口。主窗口改 PROGRESS 用 worktree C:\Code\ops-b0（detached，每次 checkout origin/main 再改、推 HEAD:main；stash pop 后要查冲突标记——今天推上去过一次冲突标记，已修）。
