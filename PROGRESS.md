@@ -64,7 +64,7 @@
     - 153 样稿第 3 版（68，同链接）。Annie（原话）「我不是给你Rezdy的样本了么」⇒ 不再出新样稿；「页面打开的时候默认折叠」⇒ 题 2 = 默认全部收起；随后改回（原话）「算了，默认页面打开的时候还是全部展开吧，staff可以自己手动去折叠」⇒ **题 2 = 默认全部展开**，How to use 去掉「Groups start folded.」。
     - ✅ Annie 动手原话：「动手」⇒ 68 做 task/153-tickets-sessions，只改前端，过检查直接合 main。
     - ✅ **153 上 main a6f884e6**（68，feat e818f38b）：Tickets 标签按「开始时间 + 产品」分组（前端分，config.withTicketSessions，套进现成分节显示：节标题淡色轮流、勾整组、每组 # 从 1），从早到晚，No time 最后（灰）；组头「9:00 AM — 产品 · N orders · N pax (各单 Pax breakdown 加起来)」；▸ / ▾ 折叠 + Expand all / Collapse all（「N start times」）；打开全部展开（Annie 改回题 2 A），不记；三层勾选（Select all / 组头带半选 / 单行）；收起的组里勾了照发：组头「· N ticked」、发送条「(N in a collapsed group)」；搜索 / Open in Main manifest 跳到收起组里的行会自动展开；手机组头短写「9:00 AM · N orders · N pax」、钉左；CSV 多 Section 列；Start time / Product / Pax breakdown 列被关掉也照样分（HELPER_FIELDS 多要）。Bus 节标题不变。How to use 末尾加第 3 版那句（不含 Groups start folded）。tsc 0、eslint 0 error（3 个旧 warning；注意：本地 build 到 .next-build 后 `eslint .` 会把它也查进去报 2000+ 错，eslint.config 只 ignore 了 .next / .next-checks，不是代码问题）、build；man 490/490（加 23 项 153）、mf 338/338、nav 39/39。
-      - 68 顺手把 .next-build 加进 eslint ignores（b0 派）。
+      - 68 顺手把 .next-build 加进 eslint ignores（b0 派）：✅ 上 main 92fd09f6（只改 eslint.config.mjs），`npx eslint .` 0 error。
 - （Payroll 套）payroll 套 3 项在 main 上就失败（11/16–30 写死成「未开始的期」，今天已开始），派 00 改成相对日期（task/payroll-suite-dates）。✅ 上 main 36772ac7（修复 6c9f3d57，只改 payroll-mock.js / payroll-test.js）：原因是 mock 把真实今天一律当 11-05，点下一期传 11/17 = 真实今天又变 11/05；改法是在套里把浏览器时钟固定在 2026-11-05 LA 中午，mock 不再拿真实今天比。payroll 73/73、hr 135/135。
   - 📌 补题问 Annie：题 9 Notes 出在哪些标签（推荐 Bus、Tickets 能改；Admin fee、隐藏行不出）；题 10 小黑框车号要不要加「Van 」（推荐不加，照后端原样写车号，后端没有车型字段）。
 
