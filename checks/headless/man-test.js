@@ -1734,8 +1734,9 @@ async function run() {
     const B = 'A Cfm # with fewer than 6 digits (for example "1" or "TBA") counts as no Cfm #. The scheduled send skips these orders and the daily report lists them as "Cfm # is too short (under 6 digits)". When you send by hand you can still Send anyway; the number goes out as it is. Tour types ticked No Cfm # needed in Settings → Content Studio (such as the two Hogan Upper Antelope tours) are sent without a Cfm #.';
     const C = "If the saved Cfm # has fewer than 6 digits, Overwrite is ticked for you; untick it to keep the saved number.";
     const i = items.indexOf(A);
-    check("How to use 第 15 条（Cfm # 号短 + Send anyway）原句", i === 14, JSON.stringify(items[14]));
-    check("How to use 新第 16 条（号短算没号 / No Cfm # needed）原句", items[15] === B, JSON.stringify(items[15]));
+    // 152 在前面（Order lookup 那条后面）加了一条「Click an order number…」⇒ 这两条各往后挪一位（第 16、17 条）。
+    check("How to use 第 16 条（Cfm # 号短 + Send anyway）原句", i === 15, JSON.stringify(items[15]));
+    check("How to use 第 17 条（号短算没号 / No Cfm # needed）原句", items[16] === B, JSON.stringify(items[16]));
     const up = items.find((x) => x.startsWith("↑ Upload confirmation #s")) || "";
     check("How to use 原第 21 条（↑ Upload confirmation #s，现第 22 条）末加 Overwrite 默认勾那句", up.endsWith(C), JSON.stringify(up));
   }
@@ -2035,6 +2036,7 @@ async function run() {
     check("tick=0（On Hold）：只标黄、不勾", await evaluate("return !$box('CHD2001').checked && !new URL(location.href).searchParams.has('tick');"));
   }
   await waiverChecks();
+  await orderLinkChecks();
 
   // ── 未登录：跳 ops 自己的登录页带 next ──
   await ctl({ fail401: true });
@@ -2087,6 +2089,72 @@ async function main() {
 }
 
 // ── 置顶 74：Upper Antelope (Brenda) 每单 waiver link（Annie「那4提全部按推荐走，动手」；preview 5niqePBqxUsCBqKpLLKCnm）──
+// ── 152（Annie「152 同意推荐，动手」）：点订单号在新标签页打开 Order details ──
+async function orderLinkChecks() {
+  const link = (o) => `document.querySelector('tr[data-row^="${o}|"] a[data-order-link], tr[data-hidden-row^="${o}|"] a[data-order-link]')`;
+  const linkOk = (o) =>
+    evaluate(`const a = ${link(o)}; return !!a && a.getAttribute('href') === '/orders/' + encodeURIComponent('${o}') && a.target === '_blank' && (a.rel || '').includes('noopener') && a.title === 'Open order details in a new tab' && a.textContent.trim() === '${o}';`);
+  // 整个格子都能点：格子的两个角都落在链接上（::after 铺满 td）。
+  const fillsCell = (o) =>
+    evaluate(`const a = ${link(o)}; const td = a.closest('td'); const r = td.getBoundingClientRect(); const pts = [[r.left + 3, r.top + 3], [r.right - 3, r.bottom - 3]]; return pts.every(([x, y]) => { const e = document.elementFromPoint(x, y); return e === a || a.contains(e); });`);
+  await ctl({ sections: false, hiddenMode: "today" });
+
+  // Bus
+  await openPage(`${APP}/manifests?date=${today}&tab=bus`);
+  await waitFor(`${link("CHD1001")}`, 20000);
+  check("152 Bus：订单号是链接 /orders/<encodeURIComponent>、新标签页、noopener、提示 Open order details in a new tab", await linkOk("CHD1001"));
+  check("152 Bus：样子照 Order List——蓝字不变、平时没下划线、不是按钮（没有底色）", await evaluate(`const a = ${link("CHD1001")}; const s = getComputedStyle(a); const td = getComputedStyle(a.closest('td')); return s.textDecorationLine === 'none' && s.color === td.color && (td.color === 'rgb(55, 138, 221)' || td.color === 'rgb(125, 211, 252)') && s.backgroundColor === 'rgba(0, 0, 0, 0)' && a.tagName === 'A';`), await evaluate(`return getComputedStyle(${link("CHD1001")}).color;`));
+  check("152 Bus：整个订单号格子都能点", await fillsCell("CHD1001"));
+  check("152 勾选框还是单独一格：订单号格子里没有勾选框", await evaluate(`return !${link("CHD1001")}.closest('td').querySelector('input');`));
+
+  // 勾选、没存的改动不受影响：勾上一行、改 Cfm # 不存，再点订单号——页面不跳、不拦、都还在。
+  await evaluate("$box('CHD1001').click();");
+  await waitFor("$box('CHD1001').checked");
+  const cfmBox = await evaluate("return !!$cfm('CHD1001');");
+  if (cfmBox) await evaluate("$setValue($cfm('CHD1001'), 'ZZ-152');");
+  const before = await evaluate("return location.href;");
+  // 点一下订单号（JS 点击：浏览器把新标签页当弹窗挡掉，正好不会真开；真鼠标点在 headless 里开新标签页后会卡住后面的检查）。
+  // 看两件事：页面自己没有拦这次点击（离开拦截放过 target=_blank，defaultPrevented 为 false），而且这一页没跳。
+  const clickRes = await evaluate(`const a = ${link("CHD1001")}; let prevented = null; const spy = (e) => { if (e.target.closest && e.target.closest('a[data-order-link]')) prevented = e.defaultPrevented; }; window.addEventListener('click', spy); a.click(); window.removeEventListener('click', spy); await new Promise((r) => setTimeout(r, 800)); return { prevented, href: location.href };`);
+  check("152 点订单号：页面不拦这次点击（交给浏览器开新标签页）", clickRes.prevented === false, JSON.stringify(clickRes));
+  check(`152 点订单号：这一页没跳、没有离开拦截框，勾选还在${cfmBox ? "、没存的 Cfm # 还在" : ""}`, (await evaluate("return location.href;")) === before && (await evaluate(`return $box('CHD1001').checked && !document.querySelector('[role=alertdialog]')${cfmBox ? " && $cfm('CHD1001').value === 'ZZ-152'" : ""};`)));
+
+  // Tickets
+  await openPage(`${APP}/manifests?date=${today}&tab=tickets&pill=t%3Aantelope`);
+  await waitFor(`${link("CHD2001")}`, 20000);
+  check("152 Tickets：订单号是链接（同 Bus）", await linkOk("CHD2001"));
+
+  // Show hidden rows
+  await openPage(`${APP}/manifests?date=${today}&tab=bus`);
+  await waitFor("$box('CHD1001')", 20000);
+  await evaluate("document.querySelector('input[aria-label=\"Show hidden rows\"]').click();");
+  await waitFor("document.querySelector('[data-hidden-pill]')");
+  await evaluate("document.querySelector('[data-hidden-pill]').click();");
+  await waitFor("document.querySelector('[data-hidden-section]')");
+  check("152 Hidden rows：订单号也是链接（同 Bus）", await linkOk("CHD-88057"));
+  check("152 Hidden rows：整个订单号格子都能点", await fillsCell("CHD-88057"));
+
+  // Admin fee
+  await ctl({ adminFee: true, superAdmin: true });
+  await openPage(`${APP}/manifests?tab=admin_fee&pill=p%3APLU3N8`);
+  await waitFor(`${link("CHD-88057")}`, 20000);
+  check("152 Admin fee：订单号也是链接，单号里的 - 照原样（encodeURIComponent）", await linkOk("CHD-88057"));
+  await ctl({ adminFee: false, superAdmin: false });
+
+  // How to use
+  check("152 How to use 加了那一句（原文）", await evaluate("const d = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Manifests')); return [...d.querySelectorAll('li')].some(l => l.textContent.replace(/\\s+/g, ' ').trim() === 'Click an order number to open that order’s Order details in a new tab. This page stays as it is, with your ticked rows and unsaved changes. On Order details, Open in Main manifest → brings you back to that order’s rows here.');"));
+
+  // 手机 390px：点得到
+  await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+  await openPage(`${APP}/manifests?date=${today}&tab=bus`);
+  await waitFor(`${link("CHD1001")}`, 20000);
+  await evaluate(`${link("CHD1001")}.scrollIntoView({ block: 'center', inline: 'center' });`);
+  await sleep(300);
+  check("152 手机 390px：订单号是链接、整个格子都能点", (await linkOk("CHD1001")) && (await fillsCell("CHD1001")));
+  check("152 手机 390px：整页不左右晃", await evaluate("return document.documentElement.scrollWidth <= window.innerWidth + 1;"));
+  await cdp("Emulation.clearDeviceMetricsOverride");
+}
+
 async function waiverChecks() {
   const BRENDA = `${APP}/manifests?date=${today}&tab=tickets&pill=t%3Abrenda`;
   const ANT = `${APP}/manifests?date=${today}&tab=tickets&pill=t%3Aantelope`;

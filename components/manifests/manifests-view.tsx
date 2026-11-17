@@ -1394,8 +1394,8 @@ function HiddenRowsSection({
                   data-hidden-row={r.row_key}
                   className="border-b-[0.5px] border-black/[.06] align-middle last:border-b-0 night:border-white/[.06]"
                 >
-                  <td className="px-2.5 py-2 text-[#378ADD] night:text-sky-300">
-                    {r.order_number}
+                  <td className="relative px-2.5 py-2 text-[#378ADD] night:text-sky-300">
+                    <OrderLink orderNumber={r.order_number} />
                   </td>
                   <td className="px-2.5 py-2 whitespace-nowrap text-[#1a1a1a] night:text-white/85">
                     {r.product_code}
@@ -1582,7 +1582,7 @@ function ManifestTable({
             className={cn(
               "px-2.5 py-2",
               k === "order_number"
-                ? "text-[#378ADD] night:text-sky-300"
+                ? "relative text-[#378ADD] night:text-sky-300"
                 : "text-[#1a1a1a] night:text-white/85",
               (byKey.get(k)?.type === "number" ||
                 byKey.get(k)?.type === "money") &&
@@ -1605,6 +1605,8 @@ function ManifestTable({
               />
             ) : k === REZDY_CFM_KEY && cfmMismatch(r, tab) ? (
               <CfmMismatchCell row={r} />
+            ) : k === "order_number" && r.order_number ? (
+              <OrderLink orderNumber={r.order_number} />
             ) : (
               <Cell field={byKey.get(k)} row={r} fieldKey={k} />
             )}
@@ -1622,7 +1624,7 @@ function ManifestTable({
             {i === 0 && isLegacy(r) ? (
               <span
                 title="From data frozen before Aug 16, 2026 — booking questions and most Trip / Booking fields are empty"
-                className="ml-1.5 inline-block rounded-[10px] bg-[#faeeda] px-2 py-0.5 text-[11px] text-[#ba7517] night:bg-amber-400/15 night:text-amber-300"
+                className="relative z-[1] ml-1.5 inline-block rounded-[10px] bg-[#faeeda] px-2 py-0.5 text-[11px] text-[#ba7517] night:bg-amber-400/15 night:text-amber-300"
               >
                 Legacy
               </span>
@@ -1779,6 +1781,26 @@ function ManifestTable({
         </tbody>
       </table>
     </div>
+  );
+}
+
+/**
+ * 152（Annie「152 同意推荐，动手」）：订单号点了在新标签页打开 Order details（题 1 A）。样子照 Order List：
+ * 蓝字不变、移上去下划线 + 提示（题 2 A）；整个格子都能点（题 3 A，td 要 relative）；每行都能点（题 4 A）。
+ * 新标签页 ⇒ 离开拦截（useLeaveGuard 放过 target=_blank）不拦，勾选和没存的改动都留在这一页。
+ */
+function OrderLink({ orderNumber }: { orderNumber: string }) {
+  return (
+    <a
+      href={`/orders/${encodeURIComponent(orderNumber)}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      data-order-link
+      title="Open order details in a new tab"
+      className="cursor-pointer whitespace-nowrap after:absolute after:inset-0 after:content-[''] hover:underline focus-visible:underline focus-visible:outline-none"
+    >
+      {orderNumber}
+    </a>
   );
 }
 
@@ -2011,6 +2033,12 @@ function ManifestsHowToUse() {
           order on Main manifest, highlighted and ticked, so you can resend the
           confirmation or reminder. Nothing is sent until you press Send. If the
           order is not on Main manifest, check its status in Order List.
+        </>,
+        <>
+          Click an order number to open that order’s <b>Order details</b> in a
+          new tab. This page stays as it is, with your ticked rows and unsaved
+          changes. On Order details, <b>Open in Main manifest →</b> brings you
+          back to that order’s rows here.
         </>,
         <>
           <b>Bus Tour</b> shows one group at a time (the groups from Settings →
