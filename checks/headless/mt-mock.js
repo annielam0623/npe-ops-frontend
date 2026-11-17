@@ -414,7 +414,7 @@ http
     if (p === "/api/notifications/morning-pickup/tracking/mark" && req.method === "PUT") {
       const body = (await readBody(req)) || {};
       entry.body = body;
-      if (ctl.markFail) return send(res, 409, { detail: "That booking is no longer on this date. Reload the page." });
+      if (ctl.markFail) return send(res, 400, { detail: "This row changed since the page loaded. Refresh and try again." });
       const r = rows.find((x) => x.id === body.booking_id);
       if (!r || r.order_number !== body.order_number) return send(res, 404, { detail: "Booking not found" });
       if (body.col !== "relay" && body.col !== "bus") return send(res, 422, { detail: "col must be relay or bus" });

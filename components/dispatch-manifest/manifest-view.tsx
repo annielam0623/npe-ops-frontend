@@ -130,7 +130,7 @@ import type {
 } from "@/types";
 import {
   isStaffMark,
-  markText,
+  markLabel,
   markWho,
 } from "@/components/morning-tracking/config";
 
@@ -143,10 +143,10 @@ function boardingStaffChanged(g: ManifestGuest): boolean {
 function boardingHover(g: ManifestGuest): string {
   const mark = g.boarding_mark;
   if (!mark) return "";
-  const first = `${markText(mark.value)} · ${markWho(mark, "bus")}`;
+  const first = `${markLabel(mark)} · ${markWho(mark, "bus")}`;
   if (!boardingStaffChanged(g)) return first;
   const o = g.boarding_original;
-  return `${first}\nOriginal: ${o ? `${markText(o.value)} · ${markWho(o, "bus")}` : "not marked"}`;
+  return `${first}\nOriginal: ${o ? `${markLabel(o)} · ${markWho(o, "bus")}` : "not marked"}`;
 }
 
 type ViewState =

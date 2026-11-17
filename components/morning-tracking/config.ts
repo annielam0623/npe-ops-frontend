@@ -287,8 +287,13 @@ const MARK_TEXT: Record<TrackingMarkValue, string> = {
 };
 
 /** 「Picked up」「Boarded」「No show」。 */
-export function markText(value: TrackingMarkValue): string {
-  return MARK_TEXT[value] ?? value;
+export function markText(value: string): string {
+  return MARK_TEXT[value as TrackingMarkValue] ?? value;
+}
+
+/** 一个标记显示的字：后端给的 label（G321 合同「label is always given, show it as is」），没有才按 value 翻。 */
+export function markLabel(mark: TrackingMark): string {
+  return mark.label?.trim() || markText(mark.value);
 }
 
 /** 每列能选的结果（Relay：Picked up / No show；Bus：Boarded / No show）。 */
@@ -327,10 +332,10 @@ export function markHover(
   col: TrackingMarkCol,
 ): string {
   if (!mark) return "";
-  const first = `${markText(mark.value)} · ${markWho(mark, col)}`;
+  const first = `${markLabel(mark)} · ${markWho(mark, col)}`;
   if (!isStaffMark(mark)) return first;
   const second = original
-    ? `Original: ${markText(original.value)} · ${markWho(original, col)}`
+    ? `Original: ${markLabel(original)} · ${markWho(original, col)}`
     : "Original: not marked";
   return `${first}\n${second}`;
 }

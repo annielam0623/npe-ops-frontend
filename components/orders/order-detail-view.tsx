@@ -34,7 +34,7 @@ import type {
 } from "@/types";
 import {
   isStaffMark,
-  markText,
+  markLabel,
   markWho,
 } from "@/components/morning-tracking/config";
 
@@ -1332,7 +1332,7 @@ function MarkRow({
               mark.value === "no_show" ? "text-[#a32d2d]" : "text-[#047857]",
             )}
           >
-            {markText(mark.value)}
+            {markLabel(mark)}
           </span>
           <span className="block text-[11px] text-[#6b7280] night:text-white/45">
             {markWho(mark, col)}
@@ -1343,7 +1343,7 @@ function MarkRow({
               className="block text-[11px] text-[#6b7280] night:text-white/45"
             >
               {original
-                ? `Original: ${markText(original.value)} · ${markWho(original, col)}`
+                ? `Original: ${markLabel(original)} · ${markWho(original, col)}`
                 : "Original: not marked"}
             </span>
           ) : null}

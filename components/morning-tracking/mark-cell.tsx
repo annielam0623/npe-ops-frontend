@@ -15,6 +15,7 @@ import {
   isStaffMark,
   MARK_CHOICES,
   markHover,
+  markLabel,
   markText,
 } from "./config";
 
@@ -140,6 +141,12 @@ export function MarkCell({
               {empty}
             </option>
           ) : null}
+          {/* 导游页别的 boarding 状态（G321 合同：Bus 列可能有 boarded / no_show 以外的值）：照 label 列出，不能选回去。 */}
+          {mark && !MARK_CHOICES[col].includes(mark.value as TrackingMarkValue) ? (
+            <option value={mark.value} disabled>
+              {markLabel(mark)}
+            </option>
+          ) : null}
           {MARK_CHOICES[col].map((v) => (
             <option key={v} value={v}>
               {markText(v)}
@@ -178,7 +185,7 @@ export function MarkCell({
             : "bg-[rgba(46,204,113,.15)] text-[#2ecc71]",
         )}
       >
-        {ns ? "✗" : "✓"} {markText(mark.value)}
+        {ns ? "✗" : "✓"} {markLabel(mark)}
         {at ? ` ${at}` : ""}
         {isNew && nsHere ? (
           <span className="ml-1 rounded-[4px] bg-[#ef4444] px-1 text-[9.5px] font-extrabold text-white">

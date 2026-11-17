@@ -1410,7 +1410,7 @@ async function run() {
     await evaluate("$pick('[data-mark-select=bus]', 'no_show');");
     await waitFor("!!$cell('A1003', 'bus').querySelector('[data-mark-save]')");
     await evaluate("$cell('A1003', 'bus').querySelector('[data-mark-save]').click();");
-    check("存失败：红字「Not saved: That booking is no longer on this date. Reload the page.」，下拉和 Save 还在", (await waitFor("!!$cell('A1003', 'bus').querySelector('[data-mark-error]')")) && (await evaluate("const e = $cell('A1003', 'bus').querySelector('[data-mark-error]'); return e.textContent === 'Not saved: That booking is no longer on this date. Reload the page.' && getComputedStyle(e).color === 'rgb(248, 113, 113)' && !!$cell('A1003', 'bus').querySelector('[data-mark-save]');")), await evaluate("return $cell('A1003', 'bus').textContent;"));
+    check("存失败：红字「Not saved: This row changed since the page loaded. Refresh and try again.」，下拉和 Save 还在", (await waitFor("!!$cell('A1003', 'bus').querySelector('[data-mark-error]')")) && (await evaluate("const e = $cell('A1003', 'bus').querySelector('[data-mark-error]'); return e.textContent === 'Not saved: This row changed since the page loaded. Refresh and try again.' && getComputedStyle(e).color === 'rgb(248, 113, 113)' && !!$cell('A1003', 'bus').querySelector('[data-mark-save]');")), await evaluate("return $cell('A1003', 'bus').textContent;"));
     await evaluate("$cell('A1003', 'bus').querySelector('select').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));");
     check("Esc：撤掉没存的改动，回到「✓ Boarded 7:02 AM」", await waitFor("!$cell('A1003', 'bus').querySelector('select') && $cell('A1003', 'bus').textContent.includes('✓ Boarded 7:02 AM')"));
     await ctl({ markFail: false });

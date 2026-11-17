@@ -106,7 +106,9 @@ export type TrackingMarkCol = "relay" | "bus";
 
 /** 一个标记：结果、谁、身份（relay / guide / staff）、车号、时间（ISO）。by 为空 = 短信链接进来、没连账号。 */
 export interface TrackingMark {
-  value: TrackingMarkValue;
+  /** G321 合同：Relay picked_up | no_show；Bus boarded | no_show，外加导游页已有的其他 boarding 状态。 */
+  value: TrackingMarkValue | (string & {});
+  /** 显示用的字，后端一定给，照写（合同 g321-relay-bus-tracking-2026-11-17）。 */
   label?: string;
   by?: string | null;
   role?: string | null;
