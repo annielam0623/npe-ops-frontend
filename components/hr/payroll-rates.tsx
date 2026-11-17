@@ -476,13 +476,14 @@ export function PayrollRates({
   // ── 加购项表单 ────────────────────────────────────────
   const extraCodes = useMemo(() => {
     const m = new Map<string, string>();
+    // 后端的加购项名单（含行全删了的）：给已有加购项加金额要带 code，不然同名会生成 long_day_2（Annie 2026-11-17）。
+    for (const x of data?.extras ?? []) if (!m.has(x.code)) m.set(x.code, x.name);
     for (const x of savedExtras) if (!m.has(x.code)) m.set(x.code, x.name);
-    // ANT relay 是系统自带的加购项（后端 v168 种的 code ant_relay，算钱时按这个 code 认）：它的金额行全被 Remove 以后，
-    // GET rates 不再回它（只回启用的行），下拉里就没了，再用 New extra 打「ANT Relay」会变成另一个加购项 ant_relay_2
-    // （Annie 2026-11-17）。所以下拉里永远有它；PUT 带 code ant_relay 后端会照旧加一段新金额。
+    // 旧后端（没有 extras 名单）兜底：ANT relay 是系统自带的加购项（v168 种的 code ant_relay，算钱按这个 code 认），
+    // 行全被 Remove 以后 GET rates 不再回它，下拉里也要有；PUT 带 code ant_relay 后端会照旧加一段新金额。
     if (!m.has(ANT_RELAY_CODE)) m.set(ANT_RELAY_CODE, "ANT relay");
     return [...m.entries()];
-  }, [savedExtras]);
+  }, [data, savedExtras]);
 
   function addExtra() {
     if (!xf) return;

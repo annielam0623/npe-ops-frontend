@@ -349,7 +349,8 @@ async function run() {
   // ⑬c ANT relay 的金额行全被 Remove + Save 以后（后端 GET rates 不再回它）：下拉里照样有「ANT relay — new amount」，
   // New extra 打「ANT Relay」照样挡下；选它加一段新金额 ⇒ PUT 带 code ant_relay（不会变成 ant_relay_2）。Annie 2026-11-17「你只给了那一个选项啊」
   {
-    await ctl({ antRemoved: true });
+    // 旧后端（没有 extras 名单）才靠前端钉住 ANT relay。
+    await ctl({ antRemoved: true, noCatalog: true });
     await openPayroll();
     await waitFor(q("[data-payroll-extras]"), 5000);
     check("ANT relay 全删了：Extras 表里没有 ANT relay 行", await evaluate(`return ![...document.querySelectorAll('[data-payroll-extras] tr[data-extra-row]')].some((tr) => tr.textContent.includes('ANT relay'));`));
@@ -375,7 +376,38 @@ async function run() {
     await waitFor(`${q("[data-rates-saved]")}?.textContent === 'Saved'`, 5000);
     const xp = await since(before, (e) => e.method === "PUT" && e.path === "/api/payroll/extra-rates");
     check("Save rates：PUT /api/payroll/extra-rates 带 code ant_relay、不带 name", xp.length === 1 && xp[0].body.code === "ant_relay" && !("name" in xp[0].body) && xp[0].body.amount === "66.00", JSON.stringify(xp[0]?.body));
-    await ctl({ antRemoved: false });
+    await ctl({ antRemoved: false, noCatalog: false });
+  }
+
+  // ⑬d 加购项名单（后端 558e1176 extras，含全删了的）：Long day 的行全删了也在下拉里；选它加金额 PUT 带 code、不带 name；New extra 打同名被挡
+  {
+    await ctl({ longDayRemoved: true, noCatalog: false });
+    await openPayroll();
+    await waitFor(q("[data-payroll-extras]"), 5000);
+    check("名单：Long day 全删了 ⇒ Extras 表里没有 Long day 行", await evaluate(`return ![...document.querySelectorAll('[data-payroll-extras] tr[data-extra-row]')].some((tr) => tr.textContent.includes('Long day'));`));
+    await evaluate(`document.querySelector('[data-add-extra]').click();`);
+    await waitFor(q("[data-extra-form]"), 3000);
+    const opts = await evaluate(`return [...document.querySelectorAll('[data-xf="code"] option')].map((o) => o.value + '=' + o.textContent).join('|');`);
+    check("名单：下拉 = New extra… / ANT relay / Long day（停用的也列，按名单顺序）", opts === "__new=New extra…|ant_relay=ANT relay — new amount|long_day=Long day — new amount", opts);
+    const pick = (v) => `const s = document.querySelector('[data-xf="code"]'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, '${v}'); s.dispatchEvent(new Event('change', { bubbles: true }));`;
+    await evaluate(pick("__new"));
+    await evaluate(`$setValue(document.querySelector('[data-xf="name"]'), 'LONG DAY'); $setValue(document.querySelector('[data-xf="from"]'), '2026-11-20'); $setValue(document.querySelector('[data-xf="amount"]'), '40');`);
+    await evaluate(`document.querySelector('[data-xf="add"]').click();`);
+    await sleep(150);
+    const e1 = await text(q("[data-xf-err]"));
+    check("名单：New extra 打「LONG DAY」（Long day 已全删）⇒ 挡下，叫人选 Long day — new amount", e1 === 'Long day already exists. Pick "Long day — new amount" under Extra instead.', e1);
+    await evaluate(pick("long_day"));
+    await sleep(100);
+    await evaluate(`$setValue(document.querySelector('[data-xf="from"]'), '2026-11-20'); $setValue(document.querySelector('[data-xf="amount"]'), '40');`);
+    await evaluate(`document.querySelector('[data-xf="add"]').click();`);
+    await sleep(150);
+    check("名单：选 Long day — new amount 加 ⇒ 淡黄行 Long day、Any run", await evaluate(`const r = document.querySelector('[data-payroll-extras] tr[data-extra-row="new"][data-pending]'); return !!r && r.children[0].textContent === 'Long day' && r.textContent.includes('Any run');`));
+    const before = (await mockLog()).length;
+    await evaluate(`document.querySelector('[data-rates-save]').click();`);
+    await waitFor(`${q("[data-rates-saved]")}?.textContent === 'Saved'`, 5000);
+    const xp = await since(before, (e) => e.method === "PUT" && e.path === "/api/payroll/extra-rates");
+    check("名单：Save rates ⇒ PUT /api/payroll/extra-rates 带 code long_day、不带 name（不会变成 long_day_2）", xp.length === 1 && xp[0].body.code === "long_day" && !("name" in xp[0].body), JSON.stringify(xp[0]?.body));
+    await ctl({ longDayRemoved: false });
   }
 
   // ⑭ Payroll: View only：不能改

@@ -110,6 +110,11 @@ export interface PayrollExtraRate {
 export interface PayrollRates {
   rates: PayrollPrice[];
   extra_rates: PayrollExtraRate[];
+  /**
+   * 加购项名单（后端 558e1176，2026-11-17 只加不改）：每个 code 一条，含行全删了的（active=false），
+   * name = 该 code 最新一行的名字，按 code A→Z。+ Add extra 下拉用它；旧后端没有这个键。
+   */
+  extras?: { code: string; name: string; active: boolean }[];
   locks: PayrollLock[];
 }
 
