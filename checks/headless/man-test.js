@@ -2138,6 +2138,34 @@ async function notesChecks() {
   await waitFor(`${note("CHD1001")}?.value === 'Sits front row'`, 20000);
   check("Notes：重新打开页面还在", true);
 
+  // SA-4：备注是 staff 自由文本，只当纯文字——HTML 不执行、不变成元素；title 也是原样字符串。
+  const XSS = `<img src=x onerror="window.__xss=1"><b>bold</b>`;
+  await evaluate(`window.__xss = undefined; $setValue(${note("CHD1003")} || ${note("CHD1001")}, ${JSON.stringify(XSS)});`);
+  const xssOrder = (await evaluate(`return !!${note("CHD1003")};`)) ? "CHD1003" : "CHD1001";
+  await evaluate(`${saveBtn(xssOrder)}.click();`);
+  await waitFor(`${noteRow(xssOrder)}.querySelector('[data-note-saved]')`, 10000);
+  await openPage(`${APP}/manifests?date=${today}&tab=bus`);
+  await waitFor(`${note(xssOrder)}?.value === ${JSON.stringify(XSS)}`, 20000);
+  await sleep(500);
+  check("SA-4：HTML 样的备注原样当文字显示（输入框值、title 都是原字符串），页面上没有多出 img / b，onerror 没执行", await evaluate(`const r = ${noteRow(xssOrder)}; const i = ${note(xssOrder)}; return i.value === ${JSON.stringify(XSS)} && i.title.startsWith(${JSON.stringify(XSS)}) && !r.querySelector('img') && !r.querySelector('b') && window.__xss === undefined;`));
+  // 以公式字符开头的备注导出 CSV 前面加 '（lib/csv.ts 的防公式注入，同其他文字列）。
+  await evaluate(`$setValue(${note(xssOrder)}, '=HYPERLINK("x")');`);
+  await evaluate(`${saveBtn(xssOrder)}.click();`);
+  await waitFor(`${noteRow(xssOrder)}.querySelector('[data-note-saved]')`, 10000);
+  await evaluate("window.__blob = null; const o = URL.createObjectURL; URL.createObjectURL = (b) => { window.__blob = b; return o(b); }; HTMLAnchorElement.prototype.click = function () {};");
+  if (await evaluate("return !!$btn('↓ Export CSV');")) {
+    await evaluate("$btn('↓ Export CSV').click();");
+    await waitFor("window.__blob");
+    const csvText = await evaluate("return await window.__blob.text();");
+    check("SA-4：= 开头的备注导出 CSV 时前面加 '（不会被 Excel 当公式）", csvText.includes(`"'=HYPERLINK(""x"")"`), csvText.split("\r\n").find((l) => l.includes(xssOrder)));
+  }
+  // 还原（CHD1001 后面的检查要它是 Sits front row）。
+  await evaluate(`$setValue(${note(xssOrder)}, ${JSON.stringify(xssOrder === "CHD1001" ? "Sits front row" : "")});`);
+  await evaluate(`${saveBtn(xssOrder)}.click();`);
+  await waitFor(`${noteRow(xssOrder)}.querySelector('[data-note-saved]')`, 10000);
+  await openPage(`${APP}/manifests?date=${today}&tab=bus`);
+  await waitFor(`${note("CHD1001")}?.value === 'Sits front row'`, 20000);
+
   // 存失败：红字照后端原话，输入保留。
   await ctl({ note404: true });
   await evaluate(`$setValue(${note("CHD1001")}, 'Paid balance at desk');`);
