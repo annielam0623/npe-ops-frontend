@@ -102,7 +102,7 @@ export interface PayrollExtraRate {
   to: string | null;
   amount: string;
   active: boolean;
-  /** 合同 v3（v170）才有；没有 = 对所有人。 */
+  /** 合同 v3（v170），同价格。旧后端没带这两个键 = 对所有人（读的地方按 ?? "all" 处理）。 */
   applies_to?: "all" | "people";
   people?: PayrollPersonRef[];
 }
@@ -135,6 +135,7 @@ export interface PayrollExtraRateInput {
   from: string;
   to: string | null;
   amount: string;
+  /** 合同 v3：不带 = all；改一行时要原样再发，不然变回 all。 */
   applies_to?: "all" | "people";
   people?: ({ hr_id: number } | { name: string })[];
 }
