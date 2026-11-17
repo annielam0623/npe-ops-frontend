@@ -25,6 +25,7 @@
   - 6f：G321 已停，f9 没推；v172 已执行但空表未用，无害。📌 问 Annie 的题（N1–N6，原文见当天回复）：N1 Bus 标记在哪编（Morning Tracking 现只列早班 relay 单；推荐加 Bus 区块列当天所有团客）；N2 staff 改的和原始标记都留 A（推荐）/ 覆盖；N3「不受同步影响」= 按订单号存、Rezdy 同步 / 改期 / 取消 / 重建 manifest 都不删不改，只 staff 能改；改期后旧日期的仍显示并标团期（推荐）；N4 Notes 先单独上（推荐）；N5 Bus Manifest 显示在哪（编辑页 + 打印纸样 / View only，推荐只编辑页）；N6 Main manifest 只读两列 Relay / Bus + hover（推荐，150 题 1 作废、题 3、5、6、10 照旧）。
   - 68 只读查三页：Morning Tracking 全只读（Driver mark 列、No show 淡红顶上、Take action 只算处理过；Live drivers 照搬司机页灰掉），没写接口；/dispatch/manifest 编辑页已有导游 boarding 列（✓ / No show，只读，无 Relay），打印纸样 boarding 列是空格给导游手写；订单详情是卡片网格（Guest / Product / Price / Ops / … / Notes / Activity），Refresh from Rezdy 重读整单，新卡要后端单独存。📌 加问 N7 Morning Tracking 在 Tracking 表 Driver mark 格改（推荐）/ Live drivers；staff 改了算「处理过」（推荐）；N8 订单详情卡只看（推荐，改都在 Morning Tracking）/ 也能改；放 Ops 卡后面，按团期 + 去 / 回程分行。
 - **152 Main manifest 点订单号去订单详情**（6f 转，只改前端）：Annie 原话「我要在main manifest里加个功能：点击订单号可以去到order detail页面」。新功能 ⇒ 先 preview。派 68（同页 manifests-view.tsx）：只读查各类行的订单号 + 出样稿（开法、样子、手机、没单号的行、How to use）；跟 G306（反方向）对齐。后端不用改，没单号的行类型报 6f。
+  - 📌 152 样稿第 1 版（68）https://claude.ai/artifact/DCW6pafZe1u6cqcBwovqt1 ：订单号现已是蓝字 #378ADD 但点了没反应。题 1 新标签页 A（推荐）/ 同页 + 拦保存；题 2 照 Order List 蓝字 + 悬停下划线 A（推荐）/ 黑字虚线；题 3 手机点了直接开 A（推荐）/ 弹小菜单含 Copy；题 4 都能点、打不开的详情页自己写 Order not found A（推荐）/ 后端加字段 B。How to use 一句英文原文在当天回复。已问 6f：legacy 老单能否打开、有无手工 / Excel 行、单号特殊字符。
   - 📌 补题问 Annie：题 9 Notes 出在哪些标签（推荐 Bus、Tickets 能改；Admin fee、隐藏行不出）；题 10 小黑框车号要不要加「Van 」（推荐不加，照后端原样写车号，后端没有车型字段）。
 
 ## 2026-11-16 晚 家里开工：前端主窗口 `npe-ops-frontend-52`[914bb9]（只分工和汇报，不写代码；9:30 PM 截止）
