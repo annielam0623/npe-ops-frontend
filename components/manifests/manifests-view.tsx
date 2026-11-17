@@ -147,6 +147,8 @@ const TAB_FALLBACK_LABEL: Record<ManifestTabKey, string> = {
 };
 
 export function ManifestsView() {
+  // 152 回退修：复制订单号只给纯单号。
+  useOrderNumberCopy();
   /** 置顶 115 题 8 A：Legacy 黄框手机上收进 i。 */
   const legacyInfo = usePhoneInfo("About legacy rows");
   // partner 只能看（Annie 2026-10-27「合作方只能看manifest和订单，不能改或者选任何功能，比如加colum之类的」）：
@@ -2020,7 +2022,36 @@ function SessionTools({
  * 152（Annie「152 同意推荐，动手」）：订单号点了在新标签页打开 Order details（题 1 A）。样子照 Order List：
  * 蓝字不变、移上去下划线 + 提示（题 2 A）；整个格子都能点（题 3 A，td 要 relative）；每行都能点（题 4 A）。
  * 新标签页 ⇒ 离开拦截（useLeaveGuard 放过 target=_blank）不拦，勾选和没存的改动都留在这一页。
+ *
+ * 152 回退修（Annie「…现在变得在main manifest上没有办法复制这个number，帮我调整一下，弄成还是可以复制，而不是复制链接」）：
+ * - 电脑上不再用 ::after 铺满整格（它盖住了字，拖不出选区）；整格可点只留在手机（max-sm，题 3 A）。
+ * - 链接不能拖（draggable=false / -webkit-user-drag:none），字可以拖选；拖选、双击选中以后松开的那一下不开新标签页。
+ * - 复制只给纯单号（text/plain），不带链接（不写 text/html）。
  */
+/**
+ * 选中的字落在订单号链接里时，复制只给纯文字（text/plain），不带链接的 HTML——贴到 Excel / 邮件里是单号，不是超链接。
+ * 挂在 document 上一次（复制事件不一定派到链接本身），页面上其他地方的复制照旧。
+ */
+function useOrderNumberCopy() {
+  useEffect(() => {
+    function onCopy(e: ClipboardEvent) {
+      const sel = window.getSelection();
+      if (!sel || sel.isCollapsed || !e.clipboardData) return;
+      const inLink = (n: Node | null) =>
+        !!(n instanceof Element ? n : n?.parentElement)?.closest(
+          "a[data-order-link]",
+        );
+      if (!inLink(sel.anchorNode) && !inLink(sel.focusNode)) return;
+      const text = sel.toString().trim();
+      if (!text) return;
+      e.preventDefault();
+      e.clipboardData.setData("text/plain", text);
+    }
+    document.addEventListener("copy", onCopy);
+    return () => document.removeEventListener("copy", onCopy);
+  }, []);
+}
+
 function OrderLink({ orderNumber }: { orderNumber: string }) {
   return (
     <a
@@ -2028,8 +2059,19 @@ function OrderLink({ orderNumber }: { orderNumber: string }) {
       target="_blank"
       rel="noopener noreferrer"
       data-order-link
+      draggable={false}
       title="Open order details in a new tab"
-      className="cursor-pointer whitespace-nowrap after:absolute after:inset-0 after:content-[''] hover:underline focus-visible:underline focus-visible:outline-none"
+      onClick={(e) => {
+        // 双击（第二下）、或这一格里已经选中了字（刚拖选完）⇒ 是在选字，不开新标签页。
+        const sel = window.getSelection();
+        const selecting =
+          !!sel &&
+          !sel.isCollapsed &&
+          sel.toString().trim() !== "" &&
+          e.currentTarget.contains(sel.anchorNode);
+        if (e.detail > 1 || selecting) e.preventDefault();
+      }}
+      className="cursor-pointer whitespace-nowrap select-text [-webkit-user-drag:none] hover:underline focus-visible:underline focus-visible:outline-none max-sm:after:absolute max-sm:after:inset-0 max-sm:after:content-['']"
     >
       {orderNumber}
     </a>

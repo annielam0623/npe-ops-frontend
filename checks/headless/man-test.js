@@ -2356,8 +2356,18 @@ async function orderLinkChecks() {
   await waitFor(`${link("CHD1001")}`, 20000);
   check("152 Bus：订单号是链接 /orders/<encodeURIComponent>、新标签页、noopener、提示 Open order details in a new tab", await linkOk("CHD1001"));
   check("152 Bus：样子照 Order List——蓝字不变、平时没下划线、不是按钮（没有底色）", await evaluate(`const a = ${link("CHD1001")}; const s = getComputedStyle(a); const td = getComputedStyle(a.closest('td')); return s.textDecorationLine === 'none' && s.color === td.color && (td.color === 'rgb(55, 138, 221)' || td.color === 'rgb(125, 211, 252)') && s.backgroundColor === 'rgba(0, 0, 0, 0)' && a.tagName === 'A';`), await evaluate(`return getComputedStyle(${link("CHD1001")}).color;`));
-  check("152 Bus：整个订单号格子都能点", await fillsCell("CHD1001"));
   check("152 勾选框还是单独一格：订单号格子里没有勾选框", await evaluate(`return !${link("CHD1001")}.closest('td').querySelector('input');`));
+
+  // 152 回退修（Annie「…弄成还是可以复制，而不是复制链接」）：电脑上字能拖选 / 双击选中，复制到的是纯单号。
+  check("152 复制：电脑上不再铺满整格（::after 没了），链接不能拖、字可以选", await evaluate(`const a = ${link("CHD1001")}; const after = getComputedStyle(a, '::after'); return (after.content === 'none' || after.content === 'normal' || after.position !== 'absolute') && a.draggable === false && getComputedStyle(a).userSelect !== 'none';`), await evaluate(`const a = ${link("CHD1001")}; const s = getComputedStyle(a, '::after'); return JSON.stringify({ content: s.content, position: s.position, draggable: a.draggable, userSelect: getComputedStyle(a).userSelect });`));
+  const copied = await evaluate(`const a = ${link("CHD1001")}; const r = document.createRange(); r.selectNodeContents(a); const s = getSelection(); s.removeAllRanges(); s.addRange(r); let out = null; const spy = (e) => { out = { text: e.clipboardData.getData('text/plain'), html: e.clipboardData.getData('text/html'), prevented: e.defaultPrevented }; }; window.addEventListener('copy', spy); const ev = new ClipboardEvent('copy', { bubbles: true, cancelable: true, clipboardData: new DataTransfer() }); a.dispatchEvent(ev); window.removeEventListener('copy', spy); s.removeAllRanges(); return out;`);
+  check("152 复制：选中订单号 Ctrl+C ⇒ 剪贴板只有纯单号 CHD1001（没有链接 / HTML）", !!copied && copied.text === "CHD1001" && copied.html === "" && copied.prevented === true, JSON.stringify(copied));
+  const selClick = await evaluate(`const a = ${link("CHD1001")}; const r = document.createRange(); r.selectNodeContents(a); getSelection().removeAllRanges(); getSelection().addRange(r); let prevented = null; const spy = (e) => { if (e.target.closest && e.target.closest('a[data-order-link]')) prevented = e.defaultPrevented; }; window.addEventListener('click', spy); a.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, detail: 1 })); window.removeEventListener('click', spy); getSelection().removeAllRanges(); return prevented;`);
+  check("152 复制：已经选中了单号时松开 / 点一下 ⇒ 不开新标签页", selClick === true, String(selClick));
+  const dbl = await evaluate(`const a = ${link("CHD1001")}; let prevented = null; const spy = (e) => { if (e.target.closest && e.target.closest('a[data-order-link]')) prevented = e.defaultPrevented; }; window.addEventListener('click', spy); a.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, detail: 2 })); window.removeEventListener('click', spy); return prevented;`);
+  check("152 复制：双击的第二下 ⇒ 不再开一个标签页", dbl === true, String(dbl));
+  const single = await evaluate(`const a = ${link("CHD1001")}; getSelection().removeAllRanges(); let prevented = null; const spy = (e) => { if (e.target.closest && e.target.closest('a[data-order-link]')) { prevented = e.defaultPrevented; e.preventDefault(); } }; window.addEventListener('click', spy); a.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, detail: 1 })); window.removeEventListener('click', spy); return prevented;`);
+  check("152 复制：没选字时单击照旧（页面不拦，交给浏览器开新标签页）", single === false, String(single));
 
   // 勾选、没存的改动不受影响：勾上一行、改 Cfm # 不存，再点订单号——页面不跳、不拦、都还在。
   await evaluate("$box('CHD1001').click();");
@@ -2384,7 +2394,6 @@ async function orderLinkChecks() {
   await evaluate("document.querySelector('[data-hidden-pill]').click();");
   await waitFor("document.querySelector('[data-hidden-section]')");
   check("152 Hidden rows：订单号也是链接（同 Bus）", await linkOk("CHD-88057"));
-  check("152 Hidden rows：整个订单号格子都能点", await fillsCell("CHD-88057"));
 
   // Admin fee
   await ctl({ adminFee: true, superAdmin: true });
