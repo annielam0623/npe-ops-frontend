@@ -43,6 +43,7 @@
 - Payroll › Pay rates：Annie（截图，原话）「applies to这里应该可以修改啊，怎么会写死呢」⇒ 派 00 复现（人名列表空 / Update 不生效 / 点不动 / Extras 没 Edit），先回原因，样子不变直接修，样子变先问 Annie。
   - 00 查明：Update 能存 applies_to / people（后端 v3 支持），单选也点得动；原因是「Only these people」的人名只取这一期已算钱的导游 + 已存个人价的人，期初（11/16–30 才两天）列表空。📌 问 Annie：A 列 HR 所有导游 + 本期手打名字 + 已存个人价的人（推荐，可能要后端给导游名单接口）/ B 加本期未算钱的趟 + 空时灰字 / C 只加灰字。
     - 00 查名单来源：GET /api/hr/profiles 要 settings.hr.view 且回整份档案，不合适；Dispatch 导游下拉 GET /api/dispatch/day 的 guides（list_guides，{id,name}，id = hr_id）要 dispatch.view、包很重。建议选 A 时请后端在 GET /api/payroll/rates 加 guides: [{hr_id, name}]（调 list_guides，权限跟 settings.payroll.view）；后端没上前前端先读 dispatch/day，403 就退回现名单 + 灰字。
+  - Annie（截图，原话）「然后extra为什么不能编辑，而且还给我显示个any 润」：Extras 一行没存的「ANT Relay」（大写 R）Jul 16 / Lankun W / $66 / Can be ticked on「Any run」。疑似按名字区分大小写认 ANT relay。派 00 查；Extras 加 Edit 要问 Annie。
   - 📌 补题问 Annie：题 9 Notes 出在哪些标签（推荐 Bus、Tickets 能改；Admin fee、隐藏行不出）；题 10 小黑框车号要不要加「Van 」（推荐不加，照后端原样写车号，后端没有车型字段）。
 
 ## 2026-11-16 晚 家里开工：前端主窗口 `npe-ops-frontend-52`[914bb9]（只分工和汇报，不写代码；9:30 PM 截止）
