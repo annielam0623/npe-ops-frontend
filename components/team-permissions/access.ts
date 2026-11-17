@@ -61,6 +61,9 @@ export const ACCESS_NOTES: Readonly<Record<string, string>> = {
 
 /** 导游工资两项合成一行 Payroll（None / Read only / Read & edit），只有 Admin 能给。 */
 const PAYROLL_PREFIX = "settings.payroll.";
+/** 只有 Admin / Super Admin 账号能给的项（Payroll 两项）。 */
+export const isAdminOnlyCode = (code: string) =>
+  code.startsWith(PAYROLL_PREFIX);
 
 const isView = (code: string) => /\.view(_own|_all)?$/.test(code);
 

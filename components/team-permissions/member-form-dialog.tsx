@@ -54,6 +54,7 @@ import {
   ACCESS_NOTES,
   buildAccessGroups,
   editLockedFor,
+  isAdminOnlyCode,
   LEVEL_OPTIONS,
   levelOf,
   staffOnlyCodes,
@@ -201,12 +202,23 @@ export function MemberFormDialog({
    * Super Admin（ownItems 不传）原样。
    */
   const limitToOwn = (next: Set<string>, current: ReadonlySet<string>) =>
-    ownItems
-      ? new Set([
-          ...[...next].filter((c) => ownItems.has(c)),
-          ...[...current].filter((c) => !ownItems.has(c)),
-        ])
-      : next;
+    dropAdminOnly(
+      ownItems
+        ? new Set([
+            ...[...next].filter((c) => ownItems.has(c)),
+            ...[...current].filter((c) => !ownItems.has(c)),
+          ])
+        : next,
+      current,
+    );
+  /**
+   * 138：整组换（默认组、Copy access from）给不是 Admin 的账号时，不带只有 Admin 能给的项（Payroll）；
+   * 这个人原来就勾着的照留（同那一行「已经勾着的那一档不灰」）。不然 Save 会被后端 400。
+   */
+  const dropAdminOnly = (next: Set<string>, current: ReadonlySet<string>) =>
+    adminOnlyOk
+      ? next
+      : new Set([...next].filter((c) => !isAdminOnlyCode(c) || current.has(c)));
   const isAdd = mode.kind === "add";
   const editId = mode.kind === "edit" ? mode.member.id : null;
   const defaultItems = catalog.default_items ?? null;

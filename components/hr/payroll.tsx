@@ -634,12 +634,18 @@ export function Payroll({
   const allRuns = data
     ? [...data.people.flatMap((p) => p.runs), ...data.unpaid]
     : [];
-  const dirtyRuns = allRuns.filter(
-    (r) =>
-      r.assignment_id !== null &&
-      drafts[r.assignment_id] &&
-      isDirty(shownOf(r, drafts[r.assignment_id])),
-  );
+  // 按日期存（同一天按趟号）：存不上的那趟留着、标红字，后面的照样存。
+  const dirtyRuns = allRuns
+    .filter(
+      (r) =>
+        r.assignment_id !== null &&
+        drafts[r.assignment_id] &&
+        isDirty(shownOf(r, drafts[r.assignment_id])),
+    )
+    .sort(
+      (a, b) =>
+        a.date.localeCompare(b.date) || a.assignment_id! - b.assignment_id!,
+    );
   const runsDirty = dirtyRuns.length > 0;
   const anyDirty = runsDirty || ratesDirty;
 
@@ -659,7 +665,7 @@ export function Payroll({
     setDrafts((all) => ({ ...all, [id]: { ...all[id], ...p } }));
   }, []);
 
-  /** 依次存每一趟改了的；存不上的停下、留着。返回是否全部存好。 */
+  /** 依次存每一趟改了的；存不上的留着（红字第一个后端原句），其余照样存。返回是否全部存好。 */
   const saveRuns = useCallback(async (): Promise<boolean> => {
     if (!data) return true;
     for (const run of dirtyRuns) {
@@ -689,8 +695,8 @@ export function Payroll({
           onUnauthorized();
           return false;
         }
-        failed = describeError(e);
-        break;
+        // 第一个后端原句标红；这趟留着，后面的照样存。
+        failed ??= describeError(e);
       }
     }
     setDrafts(left);
