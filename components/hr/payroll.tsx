@@ -29,6 +29,8 @@ import {
   HR_CARD_TITLE_CLASS,
   HR_EMPTY_CLASS,
 } from "./legacy-ui";
+import { PayrollHistory } from "./payroll-history";
+import { PayrollLocks } from "./payroll-locks";
 import { PayrollRates } from "./payroll-rates";
 import {
   amountError,
@@ -1226,7 +1228,18 @@ export function Payroll({
         runs={[...P.runs, ...P.unpaid]}
         defaultFrom={P.from}
       />
-      {/* LOCKS / HISTORY: 5a 推了再挂（onLocksChanged / version）。 */}
+      <PayrollLocks
+        canEdit={canEdit}
+        onUnauthorized={onUnauthorized}
+        locks={P.locks}
+        runsDirty={runsDirty || ratesDirty}
+        onChanged={onLocksChanged}
+      />
+      <PayrollHistory
+        canEdit={canEdit}
+        onUnauthorized={onUnauthorized}
+        version={version}
+      />
 
       <HowToUse title="How to use — Payroll" items={PAYROLL_HOW_TO} />
     </div>
