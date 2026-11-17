@@ -22,6 +22,7 @@
   - ✅ 6f 回 PASS（tour_manifest.py:178 只认 view=1、:215 只这时不记 Printed、:251 no-store、app/ 里没有 X-Frame-Options / frame-ancestors；91 另推的 G323 小修只改测试，不挡）⇒ 68 合最新 main 推上线（151 上 main）。待上线后开一次 View only，确认 iframe 真能显示（Cloudflare 头）。
   - 150 preview 第 6 版（68）：hover 表加「staff 改后导游再标」：格子仍显示 staff 值，Original 行跟着最新标记变。
 - 📌 **No show 改方向**（Annie 原话，非动手）：「对于no show的report，我想调整一下，干脆让staff在morning tracking页面shang编辑好了，然后这个no show报告去到几个地方：1. main manifest - 仅展示 2. bus manifest 3. order detail --这里需要加一个section在order detail页面，不受其他任何数据同步影响」⇒ 编辑从 Main manifest 挪到 Morning Tracking（/morning-pickup/tracking）；Main manifest 只显示；Bus Manifest 显示；订单详情（/orders/[orderNumber]）加一个区块，不受数据同步影响。已告诉 6f 先停 G321 的 Relay / Bus 编辑部分（含迁移 v172），Notes 可单独上；68 停 150 Relay / Bus，只读查三页现状。细节问 Annie 中。
+  - 6f：G321 已停，f9 没推；v172 已执行但空表未用，无害。📌 问 Annie 的题（N1–N6，原文见当天回复）：N1 Bus 标记在哪编（Morning Tracking 现只列早班 relay 单；推荐加 Bus 区块列当天所有团客）；N2 staff 改的和原始标记都留 A（推荐）/ 覆盖；N3「不受同步影响」= 按订单号存、Rezdy 同步 / 改期 / 取消 / 重建 manifest 都不删不改，只 staff 能改；改期后旧日期的仍显示并标团期（推荐）；N4 Notes 先单独上（推荐）；N5 Bus Manifest 显示在哪（编辑页 + 打印纸样 / View only，推荐只编辑页）；N6 Main manifest 只读两列 Relay / Bus + hover（推荐，150 题 1 作废、题 3、5、6、10 照旧）。
   - 📌 补题问 Annie：题 9 Notes 出在哪些标签（推荐 Bus、Tickets 能改；Admin fee、隐藏行不出）；题 10 小黑框车号要不要加「Van 」（推荐不加，照后端原样写车号，后端没有车型字段）。
 
 ## 2026-11-16 晚 家里开工：前端主窗口 `npe-ops-frontend-52`[914bb9]（只分工和汇报，不写代码；9:30 PM 截止）
