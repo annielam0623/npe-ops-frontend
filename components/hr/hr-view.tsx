@@ -110,7 +110,24 @@ export function HRView() {
   const [view, setView] = useState<ViewState>({ kind: "loading" });
   /** 主管只读（Annie 2026-10-17）：增删改 / 批量 / 导入 / 导出只有 admin，主管看不到这些键。 */
   const [canEdit, setCanEdit] = useState(false);
-  const [tab, setTab] = useState<"people" | "schedule" | "record" | "payroll">("people");
+  const [tab, setTabRaw] = useState<
+    "people" | "schedule" | "record" | "payroll"
+  >("people");
+  /** 138：Payroll 页签有没存的改动（换页签先问，同离开页面）。 */
+  const payrollDirty = useRef(false);
+  const setTab = (next: "people" | "schedule" | "record" | "payroll") => {
+    if (
+      tab === "payroll" &&
+      next !== "payroll" &&
+      payrollDirty.current &&
+      !window.confirm(
+        "You have changes that are not saved. Leave without saving?",
+      )
+    )
+      return;
+    if (next !== "payroll") payrollDirty.current = false;
+    setTabRaw(next);
+  };
   /** Working Record 的 📷：morning.view（同 Live drivers），Super Admin 一律有。 */
   const [canMorning, setCanMorning] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
@@ -666,7 +683,12 @@ export function HRView() {
           </div>
           {tab === "schedule" ? <ScheduleExample /> : null}
           {tab === "payroll" && showPayroll ? (
-            <Payroll onUnauthorized={redirectToLogin} />
+            <Payroll
+              onUnauthorized={redirectToLogin}
+              onDirtyChange={(d) => {
+                payrollDirty.current = d;
+              }}
+            />
           ) : null}
           {tab === "record" && showRecord ? (
             <>
