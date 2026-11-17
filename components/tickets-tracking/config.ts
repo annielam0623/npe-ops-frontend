@@ -382,12 +382,47 @@ export function computeStats(rows: TicketsTrackingRow[]): TicketsStats {
 
 // ── 排序 / 搜索 / 时间 ──────────────────────────────────────────────────────
 
-/** 后端已排好序；客人发来 WhatsApp 还没人处理的单顶到最上面（最新的在前）。 */
+/**
+ * 后端已排好序；客人发来 WhatsApp 还没人处理的单顶到最上面（最新的在前）。
+ * G281 题 4 A（6a：后端不排，前端排，同 Tour）：还没发提醒的灰行放最后，各自先后不变。
+ */
 export function orderRows(rows: TicketsTrackingRow[]): TicketsTrackingRow[] {
-  const floated = rows
+  const sent = rows.filter((r) => !isUnsent(r));
+  const floated = sent
     .filter((r) => r.wa_unhandled)
     .sort((a, b) => (b.latest_wa_ts || "").localeCompare(a.latest_wa_ts || ""));
-  return [...floated, ...rows.filter((r) => !r.wa_unhandled)];
+  return [
+    ...floated,
+    ...sent.filter((r) => !r.wa_unhandled),
+    ...rows.filter(isUnsent),
+  ];
+}
+
+// ── G281 Main manifest 同步（Annie「G281 同意推荐，动手」）────────────────────
+
+/** 灰行：Main manifest 同步建的、还没发门票提醒（旧后端 / 看不到的人没有 send_state ⇒ 都算发过）。 */
+export function isUnsent(row: TicketsTrackingRow): boolean {
+  return (row.send_state || "sent") === "unsent";
+}
+
+/** 这一页有没有同步的字段（开关让这个人看得到）：有才出 Order Status 列、灰行说明、「· N to notify」。 */
+export function hasSyncFields(rows: readonly TicketsTrackingRow[]): boolean {
+  return rows.some((r) => r.send_state !== undefined);
+}
+
+export const ORDER_STATE_LABEL = {
+  confirmed: "Confirmed",
+  on_hold: "On hold",
+  cancelled: "Cancelled",
+} as const;
+
+/** Broadcast 名单：灰行也在，On hold / Cancelled 不在（同 Tour Tracking 的 G180）。 */
+export function broadcastableRows(
+  rows: readonly TicketsTrackingRow[],
+): TicketsTrackingRow[] {
+  return rows.filter(
+    (r) => r.order_state !== "on_hold" && r.order_state !== "cancelled",
+  );
 }
 
 export function matchesSearch(

@@ -15,6 +15,8 @@ import {
 } from "@/components/tracking-ui/banners";
 import { trackingFont } from "@/components/tracking-ui/font";
 import { BroadcastDialog } from "@/components/ui/broadcast-dialog";
+import { useTrackingSyncSwitch } from "@/components/tour-tracking/sync-switch";
+import { TICKETS_SYNC_API } from "@/lib/tracking-sync-api";
 import { ColumnPicker } from "@/components/ui/column-picker";
 import { ConversationModal } from "@/components/ui/conversation-modal";
 import { HowToUse } from "@/components/ui/how-to-use";
@@ -45,6 +47,9 @@ import {
   COLUMN_PREFS_KEY,
   type ColumnPrefs,
   computeStats,
+  broadcastableRows,
+  hasSyncFields,
+  isUnsent,
   defaultColumnPrefs,
   emailBadgeOf,
   matchesSearch,
@@ -108,6 +113,12 @@ const messageCount = (r: TicketsTrackingRow) => r.notes_count + r.wa_count;
 export function TicketsTrackingView() {
   // date 为空表示还没在浏览器里算出要看哪天（避免服务端 / 浏览器不一致）。
   const [date, setDate] = useState("");
+  // G281：开关改了就重读这一天。
+  const reloadRef = useRef<() => void>(() => {});
+  const syncSwitch = useTrackingSyncSwitch(
+    () => reloadRef.current(),
+    TICKETS_SYNC_API,
+  );
   const [state, setState] = useState<LoadState>({ kind: "loading" });
   const [broadcasts, setBroadcasts] = useState<BroadcastLogEntry[]>([]);
   // 自动刷新 / 静默重拉失败时不清空表格，只提示。
@@ -400,7 +411,13 @@ export function TicketsTrackingView() {
       ),
     [allRows, product, search],
   );
-  const stats = data ? computeStats(filtered) : null;
+  // G281 题 4 A：灰行（还没发提醒）不算进上面的数字和回复率。
+  const stats = data ? computeStats(filtered.filter((r) => !isUnsent(r))) : null;
+  const sync = useMemo(() => hasSyncFields(allRows), [allRows]);
+  reloadRef.current = () => {
+    if (date) void load(date, false);
+  };
+  const unsentCount = filtered.filter(isUnsent).length;
   const today = date ? laToday(new Date(now)) : "";
   const tomorrow = today ? shiftYmd(today, 1) : "";
 
@@ -489,7 +506,19 @@ export function TicketsTrackingView() {
                 ›
               </button>
             </div>
+            {/* G281 题 1 A：同 Tour Tracking 的「Main manifest sync」，只给 Super Admin，跟 Tour 的是两个开关。 */}
+            {syncSwitch.control}
+            {sync ? (
+              <span
+                data-to-notify
+                className="text-[12.5px] whitespace-nowrap text-[#5b6470]"
+                title="Grey rows: ticket orders in the Main manifest whose reminder hasn't been sent yet"
+              >
+                · <b className="tabular-nums">{unsentCount}</b> to notify
+              </span>
+            ) : null}
           </div>
+          {syncSwitch.below}
 
           {state.kind === "error" || refreshError || actionError ? (
             <div className="px-5 pt-3">
@@ -751,7 +780,7 @@ export function TicketsTrackingView() {
           templateSet="tix"
           tourDate={date}
           tours={toursOnDate(allRows)}
-          candidates={broadcastCandidates(allRows)}
+          candidates={broadcastCandidates(broadcastableRows(allRows))}
           onClose={() => setBroadcastOpen(false)}
           onSent={() => void load(dateRef.current, true)}
           onUnauthorized={redirectToLogin}
