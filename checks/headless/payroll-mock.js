@@ -138,7 +138,13 @@ http.createServer(async (req, res) => {
     return res.end("Person,Date,Tour,Role,Fee,Fee changed by hand,Extras,Extras total,Tips,Total,Status,Day\n");
   }
   // ctl.antRemoved：ANT relay 的金额行都被 Remove 了——同后端 GET rates 只回启用的行，整个加购项不出现（Annie 2026-11-17）。
-  if (p === "/api/payroll/rates" && req.method === "GET") return send(res, 200, { rates, extra_rates: ctl.antRemoved ? extraRates.filter((x) => x.code !== "ant_relay") : extraRates, locks });
+  // ctl.longDayRemoved 同理。extras = 加购项名单（后端 558e1176）：每个 code 一条、含全删了的（active false）；ctl.noCatalog = 旧后端没有这个键。
+  if (p === "/api/payroll/rates" && req.method === "GET") {
+    const gone = new Set([...(ctl.antRemoved ? ["ant_relay"] : []), ...(ctl.longDayRemoved ? ["long_day"] : [])]);
+    const codes = [...new Map(extraRates.map((x) => [x.code, x.name])).entries()].sort((x, y) => x[0].localeCompare(y[0]));
+    return send(res, 200, { rates, extra_rates: extraRates.filter((x) => !gone.has(x.code)), locks,
+      ...(ctl.noCatalog ? {} : { extras: codes.map(([code, name]) => ({ code, name, active: !gone.has(code) })) }) });
+  }
   if (p === "/api/payroll/rates" && req.method === "PUT") { entry.body = await readBody(req); return send(res, 200, { changed: true, rate: { ...rates[0], ...entry.body } }); }
   if (p === "/api/payroll/extra-rates" && req.method === "PUT") { entry.body = await readBody(req); return send(res, 200, { changed: true, extra_rate: { ...extraRates[0], ...entry.body } }); }
   if (/^\/api\/payroll\/(rates|extra-rates)\/\d+$/.test(p) && req.method === "DELETE") return send(res, 200, { changed: true });

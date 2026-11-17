@@ -86,6 +86,10 @@ const STATUS: Record<string, [string, string]> = {
 const LEAVE_MESSAGE =
   "You have changes that are not saved. Leave without saving?";
 
+/** 期间的 ‹ ›：同 Staff Schedule 周切换的 HEAD_ICON（components/schedule/schedule-view.tsx）。 */
+const PERIOD_ARROW =
+  "inline-flex h-[28px] w-[28px] cursor-pointer items-center justify-center rounded-[8px] border border-white/10 bg-white/[.04] text-white/80 transition hover:bg-white/[.08] max-sm:h-[26px]! max-sm:w-[26px]! max-sm:p-0!";
+
 /** 这一期的第一天（1 号或 16 号），前一期 / 后一期的任何一天都行，后端按这天找期。 */
 function shiftPeriod(from: string, dir: -1 | 1): string {
   return dir < 0 ? shiftYmd(from, -1) : shiftYmd(from, 16);
@@ -562,7 +566,7 @@ function sumRuns(runs: PayrollRun[], drafts: Drafts): PersonSum {
 const STICKY = "max-sm:sticky max-sm:left-0 max-sm:z-[1]";
 
 export const PAYROLL_HOW_TO = [
-  "Payroll adds up what each guide and driver-guide earned in one pay period: the 1st–15th, or the 16th to the last day of the month. Use ‹ › next to the dates to move between periods.",
+  "Payroll adds up what each guide and driver-guide earned in one pay period: the 1st–15th, or the 16th to the last day of the month. Use ‹ and › on either side of the dates to move between periods.",
   "Each tour run pays one fee. A guide gets the Guide fee; a driver who also guides the run gets the Driver + Guide fee. Two tours on one day pay two fees. Relay runs and bus tours without a guide are not on this page.",
   "Days are counted up to today. A day marked Not completed has not been marked Completed on Dispatch yet; it is still counted, so check it before paying.",
   "Which price a run gets: the newest price for that guide that covers the day; if there is none, the newest price for everyone that covers it. A price with no end date keeps going, so a price for November 1–30 wins only in November. The line under the fee says when a date-range price or a price for that guide was used.",
@@ -785,29 +789,33 @@ export function Payroll({
             Payroll
           </h2>
           <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-white/55">
-            <span className="inline-flex gap-1">
+            {/* 日期在两个箭头中间（Annie 2026-11-16「一般不是日期在中间，箭头在两边么」，11-17 当动手）；键和间距照 Staff Schedule 的周切换。 */}
+            <span className="inline-flex items-center gap-1.5">
               <button
                 type="button"
                 aria-label="Previous period"
                 data-payroll-prev
-                className={cn(HR_BTN_CLASS, "px-[9px] py-0.5")}
+                className={PERIOD_ARROW}
                 onClick={() => goPeriod(-1)}
               >
                 ‹
               </button>
+              <b
+                className="px-1 text-center text-[13.5px] font-semibold whitespace-nowrap text-white max-sm:text-[13px]"
+                data-payroll-period
+              >
+                {periodName(P.from, P.to)}
+              </b>
               <button
                 type="button"
                 aria-label="Next period"
                 data-payroll-next
-                className={cn(HR_BTN_CLASS, "px-[9px] py-0.5")}
+                className={PERIOD_ARROW}
                 onClick={() => goPeriod(1)}
               >
                 ›
               </button>
             </span>
-            <b className="text-white/90" data-payroll-period>
-              {periodName(P.from, P.to)}
-            </b>
             <span>
               ·{" "}
               {!P.through
