@@ -11,6 +11,8 @@
 - G323（打印页 view=1 不记 Printed）原样转给后端 6f。151（task/151-bus-manifest-phone 064a50cf）等 Annie 选「先上（暂时每次 View only 记一条 Printed）/ 等 G323」。
 - da 检查套卡在 147 段（main 上也一样，非 151 引起），要派一个工作窗口修。
   - ⏸️ Annie（原话）「dispatch检查程序现在先挂起来，把我昨天还没有完成的先做完」⇒ da 套修复挂起，先清 11-16 没完成的：151（等后端 G323，6f 已收合约）、150（等 Annie 答第 4 版 8 题 +「动手」，后端 G321 今天做）、Payroll 期间箭头（等「动手」）、77 司机快捷回复（等 Annie 选句 + 号码统一）。
+- 150 派 `68`[d5537e]（worktree C:\Code\npe-ops-frontend-150，task/150-manifest-relay-bus-notes，从 0750dfc4 拉），只读准备、待「动手」。68 计划：Main manifest 检查套是 **man 套**（不是 mf）；Relay / Bus / Notes 不在后端 catalog ⇒ 前端造假列键（_relay / _bus / _note），fields= 前过滤；新文件 components/manifests/mark-cells.tsx；往返两行 note 同步；拆两步——题 8 手机收键只改前端先合，Relay / Bus / Notes 等 G321 上 main + 6f PASS。已问 6f：未知 fields 键怎么处理、题 2 选 B 时后端去掉 relay null、分支 80566934 写的「b8 hold on Annie's pickup-status data path」是什么。
+  - 📌 补题问 Annie：题 9 Notes 出在哪些标签（推荐 Bus、Tickets 能改；Admin fee、隐藏行不出）；题 10 小黑框车号要不要加「Van 」（推荐不加，照后端原样写车号，后端没有车型字段）。
 
 ## 2026-11-16 晚 家里开工：前端主窗口 `npe-ops-frontend-52`[914bb9]（只分工和汇报，不写代码；9:30 PM 截止）
 - ✅ **138 导游工资上 main 4ac34642**（79 整合 + 5a 卡片，b8 PASS）。验收点见 79 在本节下方 / 对话。
