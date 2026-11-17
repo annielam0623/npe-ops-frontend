@@ -137,7 +137,8 @@ http.createServer(async (req, res) => {
     res.setHeader("Content-Type", "text/csv");
     return res.end("Person,Date,Tour,Role,Fee,Fee changed by hand,Extras,Extras total,Tips,Total,Status,Day\n");
   }
-  if (p === "/api/payroll/rates" && req.method === "GET") return send(res, 200, { rates, extra_rates: extraRates, locks });
+  // ctl.antRemoved：ANT relay 的金额行都被 Remove 了——同后端 GET rates 只回启用的行，整个加购项不出现（Annie 2026-11-17）。
+  if (p === "/api/payroll/rates" && req.method === "GET") return send(res, 200, { rates, extra_rates: ctl.antRemoved ? extraRates.filter((x) => x.code !== "ant_relay") : extraRates, locks });
   if (p === "/api/payroll/rates" && req.method === "PUT") { entry.body = await readBody(req); return send(res, 200, { changed: true, rate: { ...rates[0], ...entry.body } }); }
   if (p === "/api/payroll/extra-rates" && req.method === "PUT") { entry.body = await readBody(req); return send(res, 200, { changed: true, extra_rate: { ...extraRates[0], ...entry.body } }); }
   if (/^\/api\/payroll\/(rates|extra-rates)\/\d+$/.test(p) && req.method === "DELETE") return send(res, 200, { changed: true });

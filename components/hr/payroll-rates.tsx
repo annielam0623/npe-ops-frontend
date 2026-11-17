@@ -136,6 +136,8 @@ interface ExtraForm {
 
 const TYPED = "__typed";
 const NEW_EXTRA = "__new";
+/** 系统自带的 ANT relay（后端按这个 code 判断「只能在价格 ANT relay = Yes 的团上勾」）。 */
+const ANT_RELAY_CODE = "ant_relay";
 
 /** 同后端 save_extra_rate 由名字生成 code 的写法（小写、非字母数字换成 _、去头尾 _）：比名字是不是同一个加购项。 */
 function extraSlug(name: string): string {
@@ -475,6 +477,10 @@ export function PayrollRates({
   const extraCodes = useMemo(() => {
     const m = new Map<string, string>();
     for (const x of savedExtras) if (!m.has(x.code)) m.set(x.code, x.name);
+    // ANT relay 是系统自带的加购项（后端 v168 种的 code ant_relay，算钱时按这个 code 认）：它的金额行全被 Remove 以后，
+    // GET rates 不再回它（只回启用的行），下拉里就没了，再用 New extra 打「ANT Relay」会变成另一个加购项 ant_relay_2
+    // （Annie 2026-11-17）。所以下拉里永远有它；PUT 带 code ant_relay 后端会照旧加一段新金额。
+    if (!m.has(ANT_RELAY_CODE)) m.set(ANT_RELAY_CODE, "ANT relay");
     return [...m.entries()];
   }, [savedExtras]);
 
