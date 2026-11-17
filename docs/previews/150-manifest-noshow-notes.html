@@ -140,7 +140,41 @@ select.ns-n{color:var(--red);font-weight:600}
   </section>
 
   <section>
-    <h2><span class="n">④</span>请 Annie 确认（4 题）</h2>
+    <h2><span class="n">④</span>Export CSV 里的样子（题 5 的三种放法）</h2>
+    <div class="cn"><ul>
+      <li>「↓ Export CSV」导出的是现在看到的行和列，所以 No show、Notes 列开着就会跟着导出。Notes 照原样导一列。</li>
+      <li>在 ☰ Columns 里把 No show 列关掉，「谁标的」这些列也一起不导；Notes 关掉就不导 Notes。</li>
+      <li>Show hidden rows 的导出（隐藏的行，例如 fee、Unmapped 组）照同一个规矩：列跟着屏幕走。这些行一般没进 Bus Manifest，No show 那几格多半是空的。</li>
+      <li>下面的样例都按题 3 选 B（带另一方的标记）画；题 3 选 A 的话去掉「Other mark」那一列（B 去掉 relay 那一组）。</li>
+    </ul></div>
+    <div class="card"><h3>A. No show + 「No show marked by」+ 「Other mark」（推荐）</h3><div class="scroll"><table>
+      <thead><tr><th>Section</th><th>Order #</th><th>Guest name</th><th>Cfm #</th><th class="new">No show</th><th class="new">No show marked by</th><th class="new">Other mark</th><th class="new">Notes</th><th>Legacy data</th></tr></thead>
+      <tbody>
+        <tr><td>Grand Canyon West Rim</td><td>RTEST01</td><td>ZZ Test Garcia</td><td>4821937</td><td class="new">Boarded</td><td class="new">guide Joe (Bus 12) at 7:05 AM</td><td class="new">Relay driver: Boarded · Mike (Van 3) at 6:48 AM</td><td class="new">Wheelchair, sits front row</td><td></td></tr>
+        <tr><td>Grand Canyon West Rim</td><td>RTEST02</td><td>ZZ Test Nguyen</td><td>4821940</td><td class="new">No show</td><td class="new">guide Joe (Bus 12) at 7:42 AM</td><td class="new">Relay driver: Boarded · Mike (Van 3) at 6:58 AM</td><td class="new">Called 7:50, no answer</td><td></td></tr>
+        <tr><td>Grand Canyon West Rim</td><td>RTEST05</td><td>ZZ Test Lopez</td><td>4821961</td><td class="new">Boarded</td><td class="new">changed by Lizzie (staff) at 9:15 AM</td><td class="new">Guide: No show · Joe (Bus 12) at 7:40 AM</td><td class="new"></td><td></td></tr>
+      </tbody></table></div></div>
+    <div class="card"><h3>B. 拆成几列</h3><div class="scroll"><table>
+      <thead><tr><th>Order #</th><th>Guest name</th><th class="new">No show</th><th class="new">Marked by</th><th class="new">Marked at</th><th class="new">Bus or van</th><th class="new">Relay mark</th><th class="new">Relay marked by</th><th class="new">Relay marked at</th><th class="new">Relay van</th><th class="new">Notes</th></tr></thead>
+      <tbody>
+        <tr><td>RTEST01</td><td>ZZ Test Garcia</td><td class="new">Boarded</td><td class="new">Joe (guide)</td><td class="new">7:05 AM</td><td class="new">Bus 12</td><td class="new">Boarded</td><td class="new">Mike</td><td class="new">6:48 AM</td><td class="new">Van 3</td><td class="new">Wheelchair, sits front row</td></tr>
+        <tr><td>RTEST02</td><td>ZZ Test Nguyen</td><td class="new">No show</td><td class="new">Joe (guide)</td><td class="new">7:42 AM</td><td class="new">Bus 12</td><td class="new">Boarded</td><td class="new">Mike</td><td class="new">6:58 AM</td><td class="new">Van 3</td><td class="new">Called 7:50, no answer</td></tr>
+        <tr><td>RTEST05</td><td>ZZ Test Lopez</td><td class="new">Boarded</td><td class="new">Lizzie (staff)</td><td class="new">9:15 AM</td><td class="new"></td><td class="new"></td><td class="new"></td><td class="new"></td><td class="new"></td><td class="new"></td></tr>
+      </tbody></table></div></div>
+    <div class="card"><h3>C. 只导 No show 结果</h3><div class="scroll"><table>
+      <thead><tr><th>Order #</th><th>Guest name</th><th>Cfm #</th><th class="new">No show</th><th class="new">Notes</th></tr></thead>
+      <tbody>
+        <tr><td>RTEST01</td><td>ZZ Test Garcia</td><td>4821937</td><td class="new">Boarded</td><td class="new">Wheelchair, sits front row</td></tr>
+        <tr><td>RTEST02</td><td>ZZ Test Nguyen</td><td>4821940</td><td class="new">No show</td><td class="new">Called 7:50, no answer</td></tr>
+      </tbody></table></div></div>
+    <div class="howto">
+      <h3>How to use — Manifests（Export CSV 那条改成）</h3>
+      <ul><li class="add"><b>↓ Export CSV</b> downloads the rows and columns you see right now (this tab and pill only). When the No show column is on, the file also shows who marked each order and when.</li></ul>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="n">⑤</span>请 Annie 确认（5 题）</h2>
     <div class="qs">
       <div class="q"><h3>题 1 · 两列放在哪</h3>
         <p>页面：Manifests › Main manifest 列表。现在没有这两列。</p>
@@ -157,7 +191,12 @@ select.ns-n{color:var(--red);font-weight:600}
         <p>现在（图 ①）：同 Cfm # 的单行输入框，宽约 170px，太长的字在框里横向滚动，鼠标移上去显示全文。</p>
         <p>A. 单行输入框（图 ① 的样子）。<span class="rec">推荐</span>：存法同 Cfm #，一行高度不变，表不会被撑高。</p>
         <p>B. 点了弹出一个多行小框写，写完按 Save：能写长一点，但多点一下才能改。</p></div>
+      <div class="q"><h3>题 5 · Export CSV 里怎么放 No show 的 hover 内容</h3>
+        <p>你问「鼠标上的内容如果导出表格可以显示么」：可以。Notes 照原样导一列；hover 的内容有三种放法（样例见 ④）。No show 列在 ☰ Columns 里关掉，这几列也一起不导；Show hidden rows 的导出照同一个规矩。</p>
+        <p>A. No show 一列 + 「No show marked by」一列（例如 guide Joe (Bus 12) at 7:42 AM）；题 3 选 B 的话再加「Other mark」一列（例如 Relay driver: Boarded · Mike (Van 3) at 6:58 AM）。<span class="rec">推荐</span>：和鼠标移上去看到的字一模一样，只多一两列。</p>
+        <p>B. 拆成 No show / Marked by / Marked at / Bus or van 几列（题 3 选 B 再加 relay 那一组 4 列）：在 Excel 里能按人、按时间筛选、排序，但多 4 到 8 列。</p>
+        <p>C. 只导 No show 结果，不导 hover 内容。</p></div>
     </div>
-    <div class="cn">都按推荐的话回「同意推荐」就行；你说「动手」以后才写代码。No show 先做（后端不用迁移）；Notes 要等后端迁移、你执行以后才能上线。</div>
+    <div class="cn">5 题都按推荐的话回「同意推荐」就行；你说「动手」以后才写代码。No show 先做（后端不用迁移）；Notes 要等后端迁移、你执行以后才能上线。</div>
   </section>
 </div>
