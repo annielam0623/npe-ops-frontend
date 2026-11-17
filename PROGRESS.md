@@ -52,14 +52,15 @@
     - （150 Notes）68 做完 task/150-notes **b958bfa0**，未合 main：Bus + Tickets 加 Notes 列（单行 170px、Save / Enter 存、Esc 还原、往返两行同步、hover 全文 + 谁几点、无 edit 只读、Columns 可关、CSV 带、离开拦）；How to use 末尾加一句。tsc 0、eslint 0 error、build、man 465/465（+23）、mf 338/338、nav 39/39。等后端 Notes 上 main（要 Annie 签 release.py）→ 6f PASS → 合。Notes 样子题 6 / 7 / 9 按推荐做，Annie 未答。
       - ✅ 后端 Notes 上 main 并部署 4d132f60（代码 057a327c）；SA-4：note 只当纯文本渲染。已让 68 合 main、重跑、交 6f PASS 后上线。
 - Payroll 期间箭头：Annie（原话）「这个问题怎么还没改，日期在中间两个箭头在两边，我不是答复过了么」⇒ 当动手，派 00（task/payroll-period-arrows）：照 Staff Schedule 改成「‹ Nov 16–30, 2026 › · …」。教训：Annie 提的改法本身已清楚时，主窗口当天就要问「是否现在动手」并跟进，不能放着等。
-- 后端 payroll 加购项名单上 main 558e1176（GET /api/payroll/rates 加 extras [{code,name,active}] 含停用；加金额 PUT 带 code）。派 00 箭头后接上（task/payroll-extras-catalog）。
+- 后端 payroll 加购项名单上 main 558e1176（GET /api/payroll/rates 加 extras [{code,name,active}] 含停用；加金额 PUT 带 code）。派 00 箭头后接上（task/payroll-extras-catalog）。后端今天 payroll 归 91（直接找 91，抄 6f）。
 - ✅ Payroll 加购项名单前端上 main 82b21010（00，7b42ede9）：下拉 = New extra… + extras 名单每个 code（含停用）；重名比整个名单；ANT relay 钉住只在旧后端时起作用。payroll 87/87、hr 135/135。
 - ✅ Payroll 期间箭头上 main 7303161f（00，34ce98ba）：「‹ Nov 16–30, 2026 › · …」照 Staff Schedule；How to use 改「Use ‹ and › on either side of the dates to move between periods.」；payroll 82/82、hr 135/135。
 - 📌 Payroll 状态「Paid」：Annie（截图，原话）「这个paid的状态难道不是应该手工设置么，日期过了你就定成paid了？」。后端 status paid = 有价钱、算进合计（合同 guide-payroll-2026-11-13.md:53），V9 已去掉 Mark as paid、改用 Locked dates 记已付。问 Annie：A 只改文字（有价钱的不写 Paid，留空或灰「Counted」；锁住的日子写「Paid · locked」）推荐 / B 加回手工 Mark as paid（要后端）。
 - **153 Main manifest Tickets 按 start time 筛选**（6f 转，只改前端）：Annie 原话「我要在ticket的main manifest上加一个ticket start time可以按照时间段来筛选的功能」。start_time 已是 Tickets 默认列（「YYYY-MM-DD HH:MM:SS」或 ""），前端筛。新功能 ⇒ 派 68 出 preview（Notes 上线后）：形式 / 位置 / 跟勾选 Send 的关系 / 空时间行 / 记不记住 / 手机 / How to use。
   - 📌 153 样稿第 1 版（68）https://claude.ai/artifact/Az4hr5CtC7iY9ViWL5Gvpd ：题 1 当天实际场次多选胶囊 + No time A（推荐）/ 预设时段 / From–To；题 2 表头正上方 A / 页头工具条；题 3 筛掉的自动取消勾选、Select all 和 CSV 只管看得见的 A / 保留勾选并提示；题 4 只写人数 A / 单数 + 人数 / 不写；题 5 不记 A / 记网址 / 记账号；题 6 手机一行左右滑 A / 不出；题 7 How to use 原文见当天回复。前端自己取 HH:MM，不用后端。
-- ✅ **150 Notes 上 main 8414b1be**（68；6f PASS 0fe69137）：tsc 0、eslint 0 error、man 467/467、nav 39/39、mf 338/338。样子按推荐（题 6 / 7 / 9 Annie 未答）。后端今天 payroll 归 91（直接找 91，抄 6f）。
-    - payroll 套 3 项在 main 上就失败（11/16–30 写死成「未开始的期」，今天已开始），派 00 改成相对日期（task/payroll-suite-dates）。✅ 上 main 36772ac7（修复 6c9f3d57，只改 payroll-mock.js / payroll-test.js）：原因是 mock 把真实今天一律当 11-05，点下一期传 11/17 = 真实今天又变 11/05；改法是在套里把浏览器时钟固定在 2026-11-05 LA 中午，mock 不再拿真实今天比。payroll 73/73、hr 135/135。
+- ✅ **150 Notes 上 main 8414b1be**（68；6f PASS 0fe69137）：tsc 0、eslint 0 error、man 467/467、nav 39/39、mf 338/338。样子按推荐（题 6 / 7 / 9 Annie 未答）。
+  - Annie 发 Rezdy Manifest 截图当参考（非动手）：按场次分组，可折叠组头「9:00 AM — Lower Antelope Canyon Admission Ticket (KT) · 4 Orders · 8 Participants (8 Adult)」。派 68 出 153 第 2 版：题 1 加「按开始时间分组」A / 胶囊 B / 都要 C，题 3–7 跟着改。
+- （Payroll 套）payroll 套 3 项在 main 上就失败（11/16–30 写死成「未开始的期」，今天已开始），派 00 改成相对日期（task/payroll-suite-dates）。✅ 上 main 36772ac7（修复 6c9f3d57，只改 payroll-mock.js / payroll-test.js）：原因是 mock 把真实今天一律当 11-05，点下一期传 11/17 = 真实今天又变 11/05；改法是在套里把浏览器时钟固定在 2026-11-05 LA 中午，mock 不再拿真实今天比。payroll 73/73、hr 135/135。
   - 📌 补题问 Annie：题 9 Notes 出在哪些标签（推荐 Bus、Tickets 能改；Admin fee、隐藏行不出）；题 10 小黑框车号要不要加「Van 」（推荐不加，照后端原样写车号，后端没有车型字段）。
 
 ## 2026-11-16 晚 家里开工：前端主窗口 `npe-ops-frontend-52`[914bb9]（只分工和汇报，不写代码；9:30 PM 截止）
