@@ -9,6 +9,8 @@
 ## 2026-11-16 晚 家里开工：前端主窗口 `npe-ops-frontend-52`[914bb9]（只分工和汇报，不写代码；9:30 PM 截止）
 - 接 6e 收工交接。后端主窗口今晚是 `后端主窗口-b8`[ca25ce]（另有后端 ac / 57）；已告诉 b8，问 138 合同 v3 / v170 状态。空闲内存 10.8 GB。
 - 138（task/138-guide-payroll 4f3a8fa6，8d 的逐步说明在分支 PROGRESS）：要 Annie 开工作窗口接着做；建议拆两个窗口——甲：期间页的编辑（Fee 点格子改、Extras 勾、Tips、Needs review、Save payroll changes、离开拦截、手机、检查套）；乙：Pay rates / Extras 价格卡、Locked dates 卡、Change history 卡（各放单独文件，甲接进 payroll.tsx）+ Team 页 Payroll 一行。
+- 已派：甲 = `79`[9816cf]（task/138-guide-payroll，worktree D:/ops-wt-138，负责整合 + 检查套 + 交核）；乙 = `5a`[71ed90]（task/138b-payroll-cards，新文件 payroll-rates / payroll-locks / payroll-history.tsx + Team 行，交给 79 合）。
+- Annie（原话）「今晚工资必须做完」⇒ 138 今晚做到上 main 为止，9:30 不停。已告诉 79 / 5a / b8。b8：v3 / v170 今晚目标上后端 main（要四审、Annie 执行 SQL、签 release.py），时间未定；前端先按 v2 做，Extras 选人最后补；v3 今晚上不了就先不带选人上。b8 过 9:30 留着核 PASS。
 
 ## 2026-11-16 收工交接：前端主窗口（公司电脑，ListAgents 名 `前端主窗口6e`[690ed2]；今天 Annie 6:00 PM 下班）
 > 今晚家里电脑接着做（9:30 PM 截止）。下一个主窗口先读本节，再看下面「2026-11-16（周一）前端主窗口」那节和置顶 📌。
