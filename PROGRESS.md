@@ -39,7 +39,11 @@
   - 📌 152 样稿第 1 版（68）https://claude.ai/artifact/DCW6pafZe1u6cqcBwovqt1 ：订单号现已是蓝字 #378ADD 但点了没反应。题 1 新标签页 A（推荐）/ 同页 + 拦保存；题 2 照 Order List 蓝字 + 悬停下划线 A（推荐）/ 黑字虚线；题 3 手机点了直接开 A（推荐）/ 弹小菜单含 Copy；题 4 都能点、打不开的详情页自己写 Order not found A（推荐）/ 后端加字段 B。How to use 一句英文原文在当天回复。已问 6f：legacy 老单能否打开、有无手工 / Excel 行、单号特殊字符。
   - 后端 91 回（只读）：详情接口 GET /api/operations/orders/{order_number}（orders.view），查 rezdy_bookings → TripGuru → 老表，都没有才 404。近 60 天 + 未来 30 天 legacy 883 / rezdy 22,403 / TripGuru 10 单，0 个 404；没有手工 / Excel 行；单号都是 [A-Za-z0-9-]，仍 encodeURIComponent。⇒ 题 4 A 成立。
   - ✅ Annie 动手原话：「152 同意推荐，动手」⇒ 1 A 新标签页 / 2 A 蓝字 + 悬停下划线 / 3 A 手机直接开 / 4 A 全能点。派 68：先查完 TI 不显示，再做 152（task/152-manifest-order-link）。
+<<<<<<< Updated upstream
   - ✅ **152 上 main**（68）：Annie 在 68 窗口也说「152同意全部推荐。动手」。Bus / Tickets / Admin fee / Show hidden rows 的订单号 = 链接 /orders/<encodeURIComponent>，新标签页、noopener，蓝字照旧、悬停下划线、提示 Open order details in a new tab，整格能点（::after 铺满，Legacy 小标在上层）；勾选、没存的改动不受影响（useLeaveGuard 放过 target=_blank）。How to use 加一句（样稿原文）。tsc 0、eslint 0 error、build；man 442/442（加 13 项；How to use 第 15/16 条的位置检查改成 16/17）、mf 338/338、nav 39/39。commit + 对照表抄 6f。
+=======
+  - ✅ **152 上 main 70b18ea7**（68）：tsc 0、eslint 0 error、build、man 442/442（+13）、mf 338/338、nav 39/39。已告诉 6f。68 接着做 Notes（task/150-notes，mock）。
+>>>>>>> Stashed changes
   - 📌 补题问 Annie：题 9 Notes 出在哪些标签（推荐 Bus、Tickets 能改；Admin fee、隐藏行不出）；题 10 小黑框车号要不要加「Van 」（推荐不加，照后端原样写车号，后端没有车型字段）。
 
 ## 2026-11-16 晚 家里开工：前端主窗口 `npe-ops-frontend-52`[914bb9]（只分工和汇报，不写代码；9:30 PM 截止）
