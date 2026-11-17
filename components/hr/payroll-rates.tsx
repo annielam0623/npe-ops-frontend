@@ -136,6 +136,17 @@ interface ExtraForm {
 
 const TYPED = "__typed";
 const NEW_EXTRA = "__new";
+/** 系统自带的 ANT relay（后端按这个 code 判断「只能在价格 ANT relay = Yes 的团上勾」）。 */
+const ANT_RELAY_CODE = "ant_relay";
+
+/** 同后端 save_extra_rate 由名字生成 code 的写法（小写、非字母数字换成 _、去头尾 _）：比名字是不是同一个加购项。 */
+function extraSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 24);
+}
 
 const norm = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
 const tourKeyOf = (manifestId: number | null, name: string) =>
@@ -466,6 +477,10 @@ export function PayrollRates({
   const extraCodes = useMemo(() => {
     const m = new Map<string, string>();
     for (const x of savedExtras) if (!m.has(x.code)) m.set(x.code, x.name);
+    // ANT relay 是系统自带的加购项（后端 v168 种的 code ant_relay，算钱时按这个 code 认）：它的金额行全被 Remove 以后，
+    // GET rates 不再回它（只回启用的行），下拉里就没了，再用 New extra 打「ANT Relay」会变成另一个加购项 ant_relay_2
+    // （Annie 2026-11-17）。所以下拉里永远有它；PUT 带 code ant_relay 后端会照旧加一段新金额。
+    if (!m.has(ANT_RELAY_CODE)) m.set(ANT_RELAY_CODE, "ANT relay");
     return [...m.entries()];
   }, [savedExtras]);
 
@@ -477,6 +492,20 @@ export function PayrollRates({
       : (extraCodes.find(([c]) => c === xf.code)?.[1] ?? xf.code);
     const err = (() => {
       if (isNew && !name) return "Type a name for the extra, like Long day.";
+      if (isNew) {
+        // 后端按名字生成 code（小写、非字母数字换成 _）：「ANT Relay」会变成另一个加购项 ant_relay_2，
+        // 任何趟都能勾、钱会算重（Annie 2026-11-17「还给我显示个any 润」）。跟已有的只差大小写 / 符号 ⇒ 挡下，叫人选已有的。
+        const slug = extraSlug(name);
+        const same =
+          extraCodes.find(([c, n]) => c === slug || extraSlug(n) === slug) ??
+          extraDraft
+            .filter((d) => d.isNew && extraSlug(d.name) === slug)
+            .map((d) => [d.code, d.name] as [string, string])[0];
+        if (same)
+          return extraCodes.some(([c]) => c === same[0])
+            ? `${same[1]} already exists. Pick "${same[1]} — new amount" under Extra instead.`
+            : `${same[1]} is already in the list, not saved yet.`;
+      }
       const de = dateError(xf.from, "from");
       if (de) return de;
       if (xf.to) {

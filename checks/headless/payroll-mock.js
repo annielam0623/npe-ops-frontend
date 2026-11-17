@@ -1,6 +1,6 @@
 // 模拟后端：Settings → Human Resource › Payroll（138 / G309，合同 v2 + Extras 选人 v3）。控制：POST /__ctl；GET /__log。
 // 只连 localhost，绝不连真实后端。
-// 期间：页面第一次按「洛杉矶今天」请求；这里把今天当成 2026-11-05（固定数据，不随真实日期变）。
+// 期间：页面第一次不带 date（= 今天）；这里把今天当成 2026-11-05（固定数据，不随真实日期变）。
 const http = require("http");
 const { STANDARD, permsBody } = require("./role-standard");
 
@@ -14,9 +14,6 @@ const ctl = {
 };
 const log = [];
 
-function laToday() {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Los_Angeles", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
-}
 function send(res, status, body, headers = {}) {
   res.statusCode = status;
   res.setHeader("Content-Type", "application/json");
@@ -70,7 +67,9 @@ const runsNov = [
 const runsOct = [mk({ ...KEVIN, date: "2026-10-20", assignment_id: 701, rate_id: 1, rate_fee: "230.00" })];
 
 function periodOf(date) {
-  const d = date === laToday() ? "2026-11-05" : date;
+  // 页面第一次不带 date（= 今天）：固定当成 2026-11-05。带了 date 就照用——不能拿「真实的今天」比，
+  // 不然真实今天正好是翻期算出来的那一天（例：11/1 + 16 = 11/17）时会被当成 11/05、翻不过去。
+  const d = date || "2026-11-05";
   const [y, m, dd] = d.split("-").map(Number);
   const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
   const pad = (n) => String(n).padStart(2, "0");
@@ -132,13 +131,14 @@ http.createServer(async (req, res) => {
 
   if (p === "/api/payroll/period") {
     if (ctl.periodFail) return send(res, 500, { detail: "Could not reach the database. Try again." });
-    return send(res, 200, period(url.searchParams.get("date") || laToday()));
+    return send(res, 200, period(url.searchParams.get("date") || null));
   }
   if (p === "/api/payroll/period.csv") {
     res.setHeader("Content-Type", "text/csv");
     return res.end("Person,Date,Tour,Role,Fee,Fee changed by hand,Extras,Extras total,Tips,Total,Status,Day\n");
   }
-  if (p === "/api/payroll/rates" && req.method === "GET") return send(res, 200, { rates, extra_rates: extraRates, locks });
+  // ctl.antRemoved：ANT relay 的金额行都被 Remove 了——同后端 GET rates 只回启用的行，整个加购项不出现（Annie 2026-11-17）。
+  if (p === "/api/payroll/rates" && req.method === "GET") return send(res, 200, { rates, extra_rates: ctl.antRemoved ? extraRates.filter((x) => x.code !== "ant_relay") : extraRates, locks });
   if (p === "/api/payroll/rates" && req.method === "PUT") { entry.body = await readBody(req); return send(res, 200, { changed: true, rate: { ...rates[0], ...entry.body } }); }
   if (p === "/api/payroll/extra-rates" && req.method === "PUT") { entry.body = await readBody(req); return send(res, 200, { changed: true, extra_rate: { ...extraRates[0], ...entry.body } }); }
   if (/^\/api\/payroll\/(rates|extra-rates)\/\d+$/.test(p) && req.method === "DELETE") return send(res, 200, { changed: true });

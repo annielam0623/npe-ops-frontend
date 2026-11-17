@@ -106,6 +106,16 @@ async function clickFee(id) {
   return waitFor(`${run_(id)}.querySelector('[data-payroll-fee-editor] input')`, 3000);
 }
 
+const FAKE_NOW = `(() => {
+  const Real = Date;
+  const off = Real.parse("2026-11-05T20:00:00Z") - Real.now();
+  class FakeDate extends Real {
+    constructor(...a) { if (a.length) super(...a); else super(Real.now() + off); }
+    static now() { return Real.now() + off; }
+  }
+  globalThis.Date = FakeDate;
+})();`;
+
 async function run() {
   // ① Admin 没勾 Payroll：没有页签
   await ctl({ superadmin: false, codes: [], runFail: null, periodFail: false });
@@ -225,6 +235,51 @@ async function run() {
   check("存好重拉：816 手改后挪出 Needs review（Needs review 1）", await waitFor(`${tile("Needs review")}.textContent.endsWith('1')`, 5000));
   check("没改动时 Save 灰掉", await evaluate(`return ${q("[data-payroll-save]")}.disabled;`));
 
+  // ⑨a + Add extra 的 Extra 下拉：已有的加购项都要在里面（Annie 2026-11-17「你只给了那一个选项啊」）
+  {
+    await evaluate(`document.querySelector('[data-add-extra]').click();`);
+    await waitFor(q("[data-extra-form]"), 3000);
+    const opts = await evaluate(`return [...document.querySelectorAll('[data-xf="code"] option')].map((o) => o.value + '=' + o.textContent).join('|');`);
+    const rowsNow = await evaluate(`return [...document.querySelectorAll('[data-payroll-extras] tr[data-extra-row]')].map((tr) => tr.children[0].textContent).join('|');`);
+    check("+ Add extra：Extra 下拉 = New extra… + 表里每个已有加购项的「— new amount」", opts.includes("ant_relay=ANT relay — new amount") && opts.includes("long_day=Long day — new amount"), `options: ${opts} · table: ${rowsNow}`);
+    await evaluate(`[...document.querySelectorAll('[data-extra-form] button')].find((b) => b.textContent.trim() === 'Cancel').click();`);
+    await sleep(100);
+  }
+  // ⑨b Extras 新加项名字跟已有的只差大小写 / 符号（Annie 2026-11-17「还给我显示个any 润」）：后端会当成另一个加购项（ant_relay_2）、任何趟都能勾 ⇒ 页面先挡
+  {
+    const pickNew = `const s = document.querySelector('[data-xf="code"]'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, '__new'); s.dispatchEvent(new Event('change', { bubbles: true }));`;
+    const rowsBefore = await evaluate(`return document.querySelectorAll('[data-payroll-extras] tr[data-extra-row]').length;`);
+    await evaluate(`document.querySelector('[data-add-extra]').click();`);
+    await waitFor(q("[data-extra-form]"), 3000);
+    await evaluate(pickNew);
+    await evaluate(`$setValue(document.querySelector('[data-xf="name"]'), 'ANT Relay'); $setValue(document.querySelector('[data-xf="from"]'), '2026-07-16'); $setValue(document.querySelector('[data-xf="amount"]'), '66');`);
+    await evaluate(`document.querySelector('[data-xf="add"]').click();`);
+    await sleep(150);
+    const e1 = await text(q("[data-xf-err]"));
+    check("Extras：New extra 打「ANT Relay」（已有 ANT relay）⇒ 红字叫人选已有的，不加行", e1 === 'ANT relay already exists. Pick "ANT relay — new amount" under Extra instead.' && (await evaluate(`return document.querySelectorAll('[data-payroll-extras] tr[data-extra-row]').length;`)) === rowsBefore, e1);
+    await evaluate(`$setValue(document.querySelector('[data-xf="name"]'), ' long-day ');`);
+    await evaluate(`document.querySelector('[data-xf="add"]').click();`);
+    await sleep(150);
+    const e2 = await text(q("[data-xf-err]"));
+    check("Extras：打「 long-day 」（已有 Long day，只差大小写 / 符号）⇒ 同样挡下", e2 === 'Long day already exists. Pick "Long day — new amount" under Extra instead.', e2);
+    // 7/16 起没有结束日会碰到锁住的 11/1–2：换成锁之后的日子。
+    await evaluate(`$setValue(document.querySelector('[data-xf="name"]'), 'ZZ Test Night'); $setValue(document.querySelector('[data-xf="from"]'), '2026-11-20');`);
+    await evaluate(`document.querySelector('[data-xf="add"]').click();`);
+    await sleep(150);
+    check("Extras：真正的新名字照旧能加（淡黄、Can be ticked on Any run）", await evaluate(`const r = [...document.querySelectorAll('[data-payroll-extras] tr[data-extra-row="new"][data-pending]')].find((tr) => tr.textContent.includes('ZZ Test Night')); return !!r && r.textContent.includes('Any run');`));
+    await evaluate(`document.querySelector('[data-add-extra]').click();`);
+    await waitFor(q("[data-extra-form]"), 3000);
+    await evaluate(pickNew);
+    await evaluate(`$setValue(document.querySelector('[data-xf="name"]'), 'zz test NIGHT'); $setValue(document.querySelector('[data-xf="from"]'), '2026-11-20'); $setValue(document.querySelector('[data-xf="amount"]'), '10');`);
+    await evaluate(`document.querySelector('[data-xf="add"]').click();`);
+    await sleep(150);
+    const e3 = await text(q("[data-xf-err]"));
+    check("Extras：跟页面上还没存的新加项只差大小写 ⇒ 红字 already in the list, not saved yet.", e3 === "ZZ Test Night is already in the list, not saved yet.", e3);
+    // 收掉，不影响后面的 Save rates
+    await evaluate(`[...document.querySelectorAll('[data-extra-form] button')].find((b) => b.textContent.trim() === 'Cancel').click();`);
+    await evaluate(`const b = [...document.querySelectorAll('[data-payroll-extras] tr[data-extra-row="new"] button')][0]; b && b.click();`);
+    await sleep(150);
+  }
   // ⑩ 换期：有改动 Discard；将来的期
   await evaluate(`document.querySelector('[data-payroll-extra="813|long_day"]').click();`);
   await evaluate(`${q("[data-payroll-prev]")}.click();`);
@@ -287,6 +342,38 @@ async function run() {
   check("Pay rates：PUT /api/payroll/rates 带 custom_tour、from、to null、两种费用", rp.length === 1 && rp[0].body.custom_tour === "ZZ Test Tour" && rp[0].body.from === "2026-11-20" && rp[0].body.to === null && rp[0].body.guide_fee === "200.00" && rp[0].body.driver_guide_fee === "250.00" && rp[0].body.applies_to === "all", JSON.stringify(rp[0]?.body));
   check("Pay rates：存好后期间页重拉", (await since(before, (e) => e.path === "/api/payroll/period")).length >= 1);
 
+  // ⑬c ANT relay 的金额行全被 Remove + Save 以后（后端 GET rates 不再回它）：下拉里照样有「ANT relay — new amount」，
+  // New extra 打「ANT Relay」照样挡下；选它加一段新金额 ⇒ PUT 带 code ant_relay（不会变成 ant_relay_2）。Annie 2026-11-17「你只给了那一个选项啊」
+  {
+    await ctl({ antRemoved: true });
+    await openPayroll();
+    await waitFor(q("[data-payroll-extras]"), 5000);
+    check("ANT relay 全删了：Extras 表里没有 ANT relay 行", await evaluate(`return ![...document.querySelectorAll('[data-payroll-extras] tr[data-extra-row]')].some((tr) => tr.textContent.includes('ANT relay'));`));
+    await evaluate(`document.querySelector('[data-add-extra]').click();`);
+    await waitFor(q("[data-extra-form]"), 3000);
+    const opts = await evaluate(`return [...document.querySelectorAll('[data-xf="code"] option')].map((o) => o.value + '=' + o.textContent).join('|');`);
+    check("ANT relay 全删了：下拉里照样有 ant_relay「ANT relay — new amount」", opts.includes("ant_relay=ANT relay — new amount"), opts);
+    const pickNew = `const s = document.querySelector('[data-xf="code"]'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, '__new'); s.dispatchEvent(new Event('change', { bubbles: true }));`;
+    await evaluate(pickNew);
+    await evaluate(`$setValue(document.querySelector('[data-xf="name"]'), 'ANT Relay'); $setValue(document.querySelector('[data-xf="from"]'), '2026-11-20'); $setValue(document.querySelector('[data-xf="amount"]'), '66');`);
+    await evaluate(`document.querySelector('[data-xf="add"]').click();`);
+    await sleep(150);
+    const e1 = await text(q("[data-xf-err]"));
+    check("ANT relay 全删了：New extra 打「ANT Relay」照样挡下", e1 === 'ANT relay already exists. Pick "ANT relay — new amount" under Extra instead.', e1);
+    await evaluate(`const s = document.querySelector('[data-xf="code"]'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, 'ant_relay'); s.dispatchEvent(new Event('change', { bubbles: true }));`);
+    await sleep(100);
+    await evaluate(`$setValue(document.querySelector('[data-xf="from"]'), '2026-11-20'); $setValue(document.querySelector('[data-xf="amount"]'), '66');`);
+    await evaluate(`document.querySelector('[data-xf="add"]').click();`);
+    await sleep(150);
+    check("选 ANT relay — new amount 加：淡黄行 ANT relay、Can be ticked on「Tours whose price has ANT relay = Yes」", await evaluate(`const r = document.querySelector('[data-payroll-extras] tr[data-extra-row="new"][data-pending]'); return !!r && r.children[0].textContent === 'ANT relay' && r.textContent.includes('Tours whose price has ANT relay = Yes');`));
+    const before = (await mockLog()).length;
+    await evaluate(`document.querySelector('[data-rates-save]').click();`);
+    await waitFor(`${q("[data-rates-saved]")}?.textContent === 'Saved'`, 5000);
+    const xp = await since(before, (e) => e.method === "PUT" && e.path === "/api/payroll/extra-rates");
+    check("Save rates：PUT /api/payroll/extra-rates 带 code ant_relay、不带 name", xp.length === 1 && xp[0].body.code === "ant_relay" && !("name" in xp[0].body) && xp[0].body.amount === "66.00", JSON.stringify(xp[0]?.body));
+    await ctl({ antRemoved: false });
+  }
+
   // ⑭ Payroll: View only：不能改
   await ctl({ superadmin: false, codes: ["settings.payroll.view"] });
   check("Payroll: View：有页签、能打开", await openPayroll());
@@ -347,6 +434,9 @@ async function main() {
   };
   await cdp("Page.enable");
   await cdp("Runtime.enable");
+  // 浏览器的「今天」固定在 2026-11-05（洛杉矶中午，秒针照走）：模拟数据按这一天写的（Nov 1–15 这一期、11/16 起是将来的期）。
+  // 以前模拟后端把「真实的今天」当成 11/05，真实日期一过 11/16，翻期算出来的日子正好撞上真实今天就翻不过去（2026-11-17 起 3 项失败）。
+  await cdp("Page.addScriptToEvaluateOnNewDocument", { source: FAKE_NOW });
   try {
     await run();
   } catch (e) {

@@ -39,11 +39,17 @@
   - 📌 152 样稿第 1 版（68）https://claude.ai/artifact/DCW6pafZe1u6cqcBwovqt1 ：订单号现已是蓝字 #378ADD 但点了没反应。题 1 新标签页 A（推荐）/ 同页 + 拦保存；题 2 照 Order List 蓝字 + 悬停下划线 A（推荐）/ 黑字虚线；题 3 手机点了直接开 A（推荐）/ 弹小菜单含 Copy；题 4 都能点、打不开的详情页自己写 Order not found A（推荐）/ 后端加字段 B。How to use 一句英文原文在当天回复。已问 6f：legacy 老单能否打开、有无手工 / Excel 行、单号特殊字符。
   - 后端 91 回（只读）：详情接口 GET /api/operations/orders/{order_number}（orders.view），查 rezdy_bookings → TripGuru → 老表，都没有才 404。近 60 天 + 未来 30 天 legacy 883 / rezdy 22,403 / TripGuru 10 单，0 个 404；没有手工 / Excel 行；单号都是 [A-Za-z0-9-]，仍 encodeURIComponent。⇒ 题 4 A 成立。
   - ✅ Annie 动手原话：「152 同意推荐，动手」⇒ 1 A 新标签页 / 2 A 蓝字 + 悬停下划线 / 3 A 手机直接开 / 4 A 全能点。派 68：先查完 TI 不显示，再做 152（task/152-manifest-order-link）。
-<<<<<<< Updated upstream
-  - ✅ **152 上 main**（68）：Annie 在 68 窗口也说「152同意全部推荐。动手」。Bus / Tickets / Admin fee / Show hidden rows 的订单号 = 链接 /orders/<encodeURIComponent>，新标签页、noopener，蓝字照旧、悬停下划线、提示 Open order details in a new tab，整格能点（::after 铺满，Legacy 小标在上层）；勾选、没存的改动不受影响（useLeaveGuard 放过 target=_blank）。How to use 加一句（样稿原文）。tsc 0、eslint 0 error、build；man 442/442（加 13 项；How to use 第 15/16 条的位置检查改成 16/17）、mf 338/338、nav 39/39。commit + 对照表抄 6f。
-=======
-  - ✅ **152 上 main 70b18ea7**（68）：tsc 0、eslint 0 error、build、man 442/442（+13）、mf 338/338、nav 39/39。已告诉 6f。68 接着做 Notes（task/150-notes，mock）。
->>>>>>> Stashed changes
+  - ✅ **152 上 main 70b18ea7**（68）：Annie 在 68 窗口也说「152同意全部推荐。动手」。Bus / Tickets / Admin fee / Show hidden rows 的订单号 = 链接 /orders/<encodeURIComponent>，新标签页、noopener，蓝字照旧、悬停下划线、提示 Open order details in a new tab，整格能点（::after 铺满，Legacy 小标在上层）；勾选、没存的改动不受影响（useLeaveGuard 放过 target=_blank）。How to use 加一句（样稿原文）。tsc 0、eslint 0 error、build；man 442/442（加 13 项；How to use 第 15/16 条的位置检查改成 16/17）、mf 338/338、nav 39/39。commit + 对照表抄 6f（b0 已告诉 6f）。68 接着做 Notes（task/150-notes，mock）。
+- Payroll › Pay rates：Annie（截图，原话）「applies to这里应该可以修改啊，怎么会写死呢」⇒ 派 00 复现（人名列表空 / Update 不生效 / 点不动 / Extras 没 Edit），先回原因，样子不变直接修，样子变先问 Annie。
+  - 00 查明：Update 能存 applies_to / people（后端 v3 支持），单选也点得动；原因是「Only these people」的人名只取这一期已算钱的导游 + 已存个人价的人，期初（11/16–30 才两天）列表空。📌 问 Annie：A 列 HR 所有导游 + 本期手打名字 + 已存个人价的人（推荐，可能要后端给导游名单接口）/ B 加本期未算钱的趟 + 空时灰字 / C 只加灰字。
+    - 00 查名单来源：GET /api/hr/profiles 要 settings.hr.view 且回整份档案，不合适；Dispatch 导游下拉 GET /api/dispatch/day 的 guides（list_guides，{id,name}，id = hr_id）要 dispatch.view、包很重。建议选 A 时请后端在 GET /api/payroll/rates 加 guides: [{hr_id, name}]（调 list_guides，权限跟 settings.payroll.view）；后端没上前前端先读 dispatch/day，403 就退回现名单 + 灰字。
+  - Annie（截图，原话）「然后extra为什么不能编辑，而且还给我显示个any 润」：Extras 一行没存的「ANT Relay」（大写 R）Jul 16 / Lankun W / $66 / Can be ticked on「Any run」。疑似按名字区分大小写认 ANT relay。派 00 查；Extras 加 Edit 要问 Annie。
+    - ✅ **上 main 0e13c7a7**（00，修复 0269bab5）：她是在「New extra…」打了「ANT Relay」；后端按 code 认 ANT relay，新名字生成 code ant_relay 已占 ⇒ 会存成 ant_relay_2、任何趟能勾、叠加算错钱。修：新名字按后端生成 code 的方式比，只差大小写 / 空格 / 符号就红字挡下「ANT relay already exists. Pick "ANT relay — new amount" under Extra instead.」；跟没存的草稿重名「<Name> is already in the list, not saved yet.」。tsc / eslint 0、build、payroll 新 4 项过、hr 135/135。Extras Edit：后端 PUT /api/payroll/extra-rates 已支持带 id 改，前端加 Edit 不用后端，等 Annie。
+    - Annie 纠正（原话）「原因：你在 + Add extra 里选的是「New extra…」因为你只给了那一个选项啊」⇒ 下拉里只有 New extra…，没有「ANT relay — new amount」，是 bug。派 00 查修（task/payroll-extra-options）。
+    - ✅ **上 main ece7b98d**（00，修复 7b6662b1，样子不变）：原因 = 后端 GET rates 只回启用行，ANT relay 的行 Remove + Save 后整个加购项从表和下拉消失。修：「ANT relay — new amount」永远在下拉（PUT 带 code ant_relay 复活），重名检查也认它。payroll 79/79、hr 135/135。没覆盖：自建加购项全删后同样消失 ⇒ 需要后端在 GET /api/payroll/rates 加 extras 名单（含停用的 code + name），已发 6f（低优先）。⚠️ 生产上 ANT relay 可能已全删，请 Annie 用「ANT relay — new amount」重加（Sep 1、$66、Everyone）。
+    - （150 Notes）68 做完 task/150-notes **b958bfa0**，未合 main：Bus + Tickets 加 Notes 列（单行 170px、Save / Enter 存、Esc 还原、往返两行同步、hover 全文 + 谁几点、无 edit 只读、Columns 可关、CSV 带、离开拦）；How to use 末尾加一句。tsc 0、eslint 0 error、build、man 465/465（+23）、mf 338/338、nav 39/39。等后端 Notes 上 main（要 Annie 签 release.py）→ 6f PASS → 合。Notes 样子题 6 / 7 / 9 按推荐做，Annie 未答。
+      - ✅ 后端 Notes 上 main 并部署 4d132f60（代码 057a327c）；SA-4：note 只当纯文本渲染。已让 68 合 main、重跑、交 6f PASS 后上线。
+    - payroll 套 3 项在 main 上就失败（11/16–30 写死成「未开始的期」，今天已开始），派 00 改成相对日期（task/payroll-suite-dates）。✅ 上 main 36772ac7（修复 6c9f3d57，只改 payroll-mock.js / payroll-test.js）：原因是 mock 把真实今天一律当 11-05，点下一期传 11/17 = 真实今天又变 11/05；改法是在套里把浏览器时钟固定在 2026-11-05 LA 中午，mock 不再拿真实今天比。payroll 73/73、hr 135/135。
   - 📌 补题问 Annie：题 9 Notes 出在哪些标签（推荐 Bus、Tickets 能改；Admin fee、隐藏行不出）；题 10 小黑框车号要不要加「Van 」（推荐不加，照后端原样写车号，后端没有车型字段）。
 
 ## 2026-11-16 晚 家里开工：前端主窗口 `npe-ops-frontend-52`[914bb9]（只分工和汇报，不写代码；9:30 PM 截止）
