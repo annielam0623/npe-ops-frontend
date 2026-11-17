@@ -29,6 +29,7 @@ import {
   HR_CARD_TITLE_CLASS,
   HR_EMPTY_CLASS,
 } from "./legacy-ui";
+import { PayrollRates } from "./payroll-rates";
 import {
   amountError,
   CHG,
@@ -722,6 +723,12 @@ export function Payroll({
     setVersion((v) => v + 1);
     void load(date, { silent: true });
   }, [date, load]);
+  /** 锁 / 解锁以后：Pay rates 卡重新挂载（它自己拉 locks 判断 🔒 Locked）。 */
+  const [locksVersion, setLocksVersion] = useState(0);
+  const onLocksChanged = useCallback(() => {
+    setLocksVersion((v) => v + 1);
+    reloadQuiet();
+  }, [reloadQuiet]);
 
   if (state.kind === "forbidden") {
     return (
@@ -1208,7 +1215,18 @@ export function Payroll({
         </>
       )}
 
-      {/* CARDS: Pay rates / Locked dates / Change history（5a，合 task/138b-payroll-cards 时挂上）。 */}
+      {/* Pay rates / Locked dates / Change history（5a 写的卡，照 V9 放在期间页下面）。 */}
+      <PayrollRates
+        key={locksVersion}
+        canEdit={canEdit}
+        onUnauthorized={onUnauthorized}
+        onDirtyChange={setRatesDirty}
+        onSaved={reloadQuiet}
+        people={P.people}
+        runs={[...P.runs, ...P.unpaid]}
+        defaultFrom={P.from}
+      />
+      {/* LOCKS / HISTORY: 5a 推了再挂（onLocksChanged / version）。 */}
 
       <HowToUse title="How to use — Payroll" items={PAYROLL_HOW_TO} />
     </div>
