@@ -64,6 +64,7 @@
     - 153 样稿第 3 版（68，同链接）。Annie（原话）「我不是给你Rezdy的样本了么」⇒ 不再出新样稿；「页面打开的时候默认折叠」⇒ 题 2 = 默认全部收起；随后改回（原话）「算了，默认页面打开的时候还是全部展开吧，staff可以自己手动去折叠」⇒ **题 2 = 默认全部展开**，How to use 去掉「Groups start folded.」。
     - ✅ Annie 动手原话：「动手」⇒ 68 做 task/153-tickets-sessions，只改前端，过检查直接合 main。
     - Annie 加需求（原话，非动手）：「另外，我需要在ticket这边做两个视觉选择，一个是按照session，一个是按照订单先后的时间--就是不分小节，全部摊开的显示」⇒ Tickets 视图切换 By session / By order time。已叫 68 先别合 main（晚了：✅ **153 已上 main a6f884e6** + eslint 小修 92fd09f6，线上 Tickets 已按场次分组；不撤，切换在上面加）。📌 问 Annie：位置（推荐表上那行）、默认（推荐 By session）、记不记（推荐记账号）。By order time 用 catalog 的 date_created 排，不用后端。
+- 152 回退问题：Annie（原话）「然后由于订单号可以直接点击进去订单页面，现在变得在main manifest上没有办法复制这个number，帮我调整一下，弄成还是可以复制，而不是复制链接」⇒ 当 bug，派 68：能拖选 / 双击选中、复制纯单号，选中时点击不开标签，单击照旧开；做不稳再问 Annie 加复制键。
 - 📌 **Main manifest 排序**：Annie（原话）「我想确认一下，我们在main manifest上的订单排序是否按照订单生成的时间来排列的，如果不是，请帮忙改成这样，如果产品里有分小节，各小节里的订单也是要这样排列。」现状（后端 manifest_list.py:257 sort_key）：Tickets = 发过的沉底（Annie 10-09）→ 下单时间 dateCreated；Bus / Admin fee = 接客时间 → 产品 → 姓 → 订单号（A1 第 7 条）。问 Annie：1 Bus / Admin fee 全按下单时间 A / 先接客时间再下单时间 B；2 Tickets 发过沉底保留 A（推荐）/ 不要 B。确认后交后端。其余按第 3 版推荐（收起的勾选照发 + 组头「· 3 ticked」、折叠不记、手机组头短写、How to use）。等「动手」。
 - （Payroll 套）payroll 套 3 项在 main 上就失败（11/16–30 写死成「未开始的期」，今天已开始），派 00 改成相对日期（task/payroll-suite-dates）。✅ 上 main 36772ac7（修复 6c9f3d57，只改 payroll-mock.js / payroll-test.js）：原因是 mock 把真实今天一律当 11-05，点下一期传 11/17 = 真实今天又变 11/05；改法是在套里把浏览器时钟固定在 2026-11-05 LA 中午，mock 不再拿真实今天比。payroll 73/73、hr 135/135。
   - 📌 补题问 Annie：题 9 Notes 出在哪些标签（推荐 Bus、Tickets 能改；Admin fee、隐藏行不出）；题 10 小黑框车号要不要加「Van 」（推荐不加，照后端原样写车号，后端没有车型字段）。
