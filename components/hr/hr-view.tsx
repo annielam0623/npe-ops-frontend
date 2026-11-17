@@ -39,6 +39,7 @@ import {
   SPELLINGS_COLUMN,
   parseLayout,
 } from "./fields";
+import { Payroll } from "./payroll";
 import { HRLog } from "./hr-log";
 import { ScheduleExample } from "./schedule-example";
 import { ImportPanel } from "./import-panel";
@@ -109,7 +110,7 @@ export function HRView() {
   const [view, setView] = useState<ViewState>({ kind: "loading" });
   /** 主管只读（Annie 2026-10-17）：增删改 / 批量 / 导入 / 导出只有 admin，主管看不到这些键。 */
   const [canEdit, setCanEdit] = useState(false);
-  const [tab, setTab] = useState<"people" | "schedule" | "record">("people");
+  const [tab, setTab] = useState<"people" | "schedule" | "record" | "payroll">("people");
   /** Working Record 的 📷：morning.view（同 Live drivers），Super Admin 一律有。 */
   const [canMorning, setCanMorning] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
@@ -169,6 +170,11 @@ export function HRView() {
 
   // 全部按照勾选（Annie 2026-10-30 置顶 10c）：改 HR 开关开着按勾（settings.hr.edit，同后端 settings_hr.py），关着照旧按角色。
   const tickPerms = usePermissions();
+  // 138 Payroll 页签：只有给了 Payroll（settings.payroll.view）的 Admin 和 Super Admin；没有页面开关（合同 v2）。
+  const showPayroll =
+    tickPerms.ready &&
+    tickPerms.can("settings.payroll.view") &&
+    (pageVisibility.isSuperAdmin || pageVisibility.me?.is_admin === true);
   const tickPermsRef = useRef(tickPerms);
   tickPermsRef.current = tickPerms;
   useEffect(() => {
@@ -643,8 +649,25 @@ export function HRView() {
                 ) : null}
               </button>
             ) : null}
+            {showPayroll ? (
+              <button
+                type="button"
+                role="tab"
+                aria-selected={tab === "payroll"}
+                data-hr-tab="payroll"
+                onClick={() => setTab("payroll")}
+                className={
+                  tab === "payroll" ? HR_BTN_PRIMARY_CLASS : HR_BTN_CLASS
+                }
+              >
+                Payroll
+              </button>
+            ) : null}
           </div>
           {tab === "schedule" ? <ScheduleExample /> : null}
+          {tab === "payroll" && showPayroll ? (
+            <Payroll onUnauthorized={redirectToLogin} />
+          ) : null}
           {tab === "record" && showRecord ? (
             <>
               <WorkingRecord
