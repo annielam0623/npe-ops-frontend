@@ -7,6 +7,7 @@
 > **下一个主窗口：先读下面「2026-11-16 收工交接」，再看置顶。**
 
 ## 2026-11-17（周二）前端主窗口 `npe-ops-frontend-b0`[1c50f1]（公司电脑；只分工和汇报，不写代码；14:30 下班）
+- ⏹ 今天误开了两个前端主窗口（原 b0 [1c50f1] 和 fork [696851]），Annie（原话）「留 fork」⇒ b0 [1c50f1] 13:10 左右停止接活，已把派工 / 未答问题交给 fork；下面这节是 b0 [1c50f1] 停下前的记录，之后以 fork 为准。G321 Relay / Bus 合同（docs/interfaces/g321-relay-bus-tracking-2026-11-17.md，后端今天不上 main）已转 00（task/noshow-tracking）和 68（task/150-relay-tour），都不合 main。
 - 开工：接 52 家里交接。现在没有前端工作窗口；后端在线 `npe-confirmation-service-6f`[0e63fc]。空闲内存 41.8 / 61.8 GB，node 0、chrome 39。
 - G323（打印页 view=1 不记 Printed）原样转给后端 6f。151（task/151-bus-manifest-phone 064a50cf）等 Annie 选「先上（暂时每次 View only 记一条 Printed）/ 等 G323」。
 - da 检查套卡在 147 段（main 上也一样，非 151 引起），要派一个工作窗口修。
