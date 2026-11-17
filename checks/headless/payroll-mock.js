@@ -142,7 +142,9 @@ http.createServer(async (req, res) => {
   if (p === "/api/payroll/rates" && req.method === "GET") {
     const gone = new Set([...(ctl.antRemoved ? ["ant_relay"] : []), ...(ctl.longDayRemoved ? ["long_day"] : [])]);
     const codes = [...new Map(extraRates.map((x) => [x.code, x.name])).entries()].sort((x, y) => x[0].localeCompare(y[0]));
-    return send(res, 200, { rates, extra_rates: extraRates.filter((x) => !gone.has(x.code)), locks,
+    // ctl.extraEditable：多一行锁之后的 Long day（id 3，Dec 1 起），给 Extras 的 Edit 检查用（另外两行都碰到锁住的 11/1–2）。
+    const extra3 = ctl.extraEditable ? [{ id: 3, code: "long_day", name: "Long day", from: "2026-12-01", to: null, amount: "40.00", active: true, applies_to: "all", people: [] }] : [];
+    return send(res, 200, { rates, extra_rates: [...extraRates, ...extra3].filter((x) => !gone.has(x.code)), locks,
       ...(ctl.noCatalog ? {} : { extras: codes.map(([code, name]) => ({ code, name, active: !gone.has(code) })) }) });
   }
   if (p === "/api/payroll/rates" && req.method === "PUT") { entry.body = await readBody(req); return send(res, 200, { changed: true, rate: { ...rates[0], ...entry.body } }); }

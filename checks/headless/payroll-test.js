@@ -418,6 +418,45 @@ async function run() {
     await ctl({ longDayRemoved: false });
   }
 
+  // ⑬e Extras 的 Edit + 选人弹窗（Annie 2026-11-17「Extras 的 Edit、选人弹窗…一起动手」，样稿 LtGwyr8qAUxYhXfSVnL1VL 第 2 版）
+  {
+    await ctl({ extraEditable: true });
+    await openPayroll();
+    await waitFor(`document.querySelector('[data-extra-edit="3"]')`, 5000);
+    await evaluate(`document.querySelector('[data-extra-edit="3"]').click();`);
+    await waitFor(q("[data-extra-form]"), 3000);
+    check("Extras Edit：表单带出 Long day 这一行（Extra 下拉灰掉、Amount 40.00、键写 Update）", await evaluate(`const s = document.querySelector('[data-xf="code"]'); return s.disabled && s.value === 'long_day' && document.querySelector('[data-xf="amount"]').value === '40.00' && document.querySelector('[data-xf="add"]').textContent.trim() === 'Update';`));
+    await evaluate(`$setValue(document.querySelector('[data-xf="amount"]'), '45'); $setValue(document.querySelector('[data-xf="from"]'), '2026-11-20');`);
+    await evaluate(`document.querySelector('[data-extra-form] [data-applies="people"]').click();`);
+    check("选 Only these people：出白键 Choose people… (0)，表单上不再直接排勾选框", await waitFor(`document.querySelector('[data-extra-form] [data-who-open]')?.textContent.trim() === 'Choose people… (0)' && !document.querySelector('[data-extra-form] [data-who-picker] > span input[type=checkbox]')`, 3000));
+    await evaluate(`document.querySelector('[data-extra-form] [data-who-open]').click();`);
+    await waitFor(q("[data-who-dialog]"), 3000);
+    check("弹窗：Choose people、Search name 框、名单、0 selected、Done / Cancel", await evaluate(`const d = document.querySelector('[data-who-dialog]'); return d.textContent.includes('Choose people') && !!d.querySelector('[data-who-search]') && d.querySelectorAll('[data-who-row]').length >= 2 && d.querySelector('[data-who-count]').textContent === '0 selected' && !!d.querySelector('[data-who-done]') && !!d.querySelector('[data-who-cancel]');`), await evaluate(`return [...document.querySelectorAll('[data-who-row]')].map((r) => r.textContent).join('|');`));
+    await evaluate(`$setValue(document.querySelector('[data-who-search]'), 'zzz');`);
+    check("弹窗：搜不到 ⇒ No one matches.", await waitFor(`document.querySelector('[data-who-none]')?.textContent === 'No one matches.'`, 2000));
+    await evaluate(`$setValue(document.querySelector('[data-who-search]'), 'KEV');`);
+    check("弹窗：搜「KEV」（不分大小写）只留 Kevin Tran", await waitFor(`(() => { const r = [...document.querySelectorAll('[data-who-row]')]; return r.length === 1 && r[0].textContent.startsWith('Kevin Tran'); })()`, 2000));
+    await evaluate(`document.querySelector('[data-who-row="Kevin Tran"] input').click();`);
+    check("弹窗：勾了 ⇒ 1 selected", await waitFor(`document.querySelector('[data-who-count]').textContent === '1 selected'`, 2000));
+    await evaluate(`document.querySelector('[data-who-cancel]').click();`);
+    check("弹窗 Cancel：不改（还是 Choose people… (0)）", await waitFor(`!document.querySelector('[data-who-dialog]') && document.querySelector('[data-extra-form] [data-who-open]').textContent.trim() === 'Choose people… (0)'`, 2000));
+    await evaluate(`document.querySelector('[data-extra-form] [data-who-open]').click();`);
+    await waitFor(q("[data-who-dialog]"), 3000);
+    await evaluate(`document.querySelector('[data-who-row="Kevin Tran"] input').click(); document.querySelector('[data-who-done]').click();`);
+    check("弹窗 Done：回表单，键写 (1)，下面灰字 Kevin Tran", await waitFor(`!document.querySelector('[data-who-dialog]') && document.querySelector('[data-extra-form] [data-who-open]').textContent.trim() === 'Choose people… (1)' && document.querySelector('[data-extra-form] [data-who-names]').textContent === 'Kevin Tran'`, 2000));
+    await evaluate(`document.querySelector('[data-xf="add"]').click();`);
+    await sleep(150);
+    check("Update：Long day 那一行变淡黄、$45.00、Kevin Tran，底下 Not saved yet · 1 change", await evaluate(`const r = document.querySelector('[data-payroll-extras] tr[data-extra-row="3"]'); return r.className.includes('fef3c7') && r.textContent.includes('$45.00') && r.textContent.includes('Kevin Tran');`) && (await text(q("[data-rates-unsaved]")))?.startsWith("Not saved yet · 1 change"), await text(`document.querySelector('[data-payroll-extras] tr[data-extra-row="3"]')`));
+    const before = (await mockLog()).length;
+    await evaluate(`document.querySelector('[data-rates-save]').click();`);
+    await waitFor(`${q("[data-rates-saved]")}?.textContent === 'Saved'`, 5000);
+    const xp = await since(before, (e) => e.method === "PUT" && e.path === "/api/payroll/extra-rates");
+    check("Save rates：PUT extra-rates 带 id 3、amount 45.00、applies_to people、people [{hr_id 201}]，不带 code / name", xp.length === 1 && xp[0].body.id === 3 && xp[0].body.amount === "45.00" && xp[0].body.applies_to === "people" && JSON.stringify(xp[0].body.people) === '[{"hr_id":201}]' && !("code" in xp[0].body) && !("name" in xp[0].body), JSON.stringify(xp[0]?.body));
+    await ctl({ extraEditable: false });
+    check("Extras：碰到锁住日子的行没有 Edit（照旧 🔒 Locked）", await evaluate(`return !document.querySelector('[data-extra-edit="2"]') && document.querySelector('[data-payroll-extras] tr[data-extra-row="2"]').textContent.includes('🔒 Locked');`));
+    check("How to use：Pay rates 那条写 Choose people… / Search name / Edit", await evaluate(`return document.body.textContent.includes('pick Only these people, click Choose people…, tick them and click Done; type in Search name to find someone.') && document.body.textContent.includes('Click Edit on a price or an extra to change its dates, amount or who it applies to.');`));
+  }
+
   // ⑭ Payroll: View only：不能改
   await ctl({ superadmin: false, codes: ["settings.payroll.view"] });
   check("Payroll: View：有页签、能打开", await openPayroll());
