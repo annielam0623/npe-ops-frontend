@@ -225,6 +225,41 @@ async function run() {
   check("存好重拉：816 手改后挪出 Needs review（Needs review 1）", await waitFor(`${tile("Needs review")}.textContent.endsWith('1')`, 5000));
   check("没改动时 Save 灰掉", await evaluate(`return ${q("[data-payroll-save]")}.disabled;`));
 
+  // ⑨b Extras 新加项名字跟已有的只差大小写 / 符号（Annie 2026-11-17「还给我显示个any 润」）：后端会当成另一个加购项（ant_relay_2）、任何趟都能勾 ⇒ 页面先挡
+  {
+    const pickNew = `const s = document.querySelector('[data-xf="code"]'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, '__new'); s.dispatchEvent(new Event('change', { bubbles: true }));`;
+    const rowsBefore = await evaluate(`return document.querySelectorAll('[data-payroll-extras] tr[data-extra-row]').length;`);
+    await evaluate(`document.querySelector('[data-add-extra]').click();`);
+    await waitFor(q("[data-extra-form]"), 3000);
+    await evaluate(pickNew);
+    await evaluate(`$setValue(document.querySelector('[data-xf="name"]'), 'ANT Relay'); $setValue(document.querySelector('[data-xf="from"]'), '2026-07-16'); $setValue(document.querySelector('[data-xf="amount"]'), '66');`);
+    await evaluate(`document.querySelector('[data-xf="add"]').click();`);
+    await sleep(150);
+    const e1 = await text(q("[data-xf-err]"));
+    check("Extras：New extra 打「ANT Relay」（已有 ANT relay）⇒ 红字叫人选已有的，不加行", e1 === 'ANT relay already exists. Pick "ANT relay — new amount" under Extra instead.' && (await evaluate(`return document.querySelectorAll('[data-payroll-extras] tr[data-extra-row]').length;`)) === rowsBefore, e1);
+    await evaluate(`$setValue(document.querySelector('[data-xf="name"]'), ' long-day ');`);
+    await evaluate(`document.querySelector('[data-xf="add"]').click();`);
+    await sleep(150);
+    const e2 = await text(q("[data-xf-err]"));
+    check("Extras：打「 long-day 」（已有 Long day，只差大小写 / 符号）⇒ 同样挡下", e2 === 'Long day already exists. Pick "Long day — new amount" under Extra instead.', e2);
+    // 7/16 起没有结束日会碰到锁住的 11/1–2：换成锁之后的日子。
+    await evaluate(`$setValue(document.querySelector('[data-xf="name"]'), 'ZZ Test Night'); $setValue(document.querySelector('[data-xf="from"]'), '2026-11-20');`);
+    await evaluate(`document.querySelector('[data-xf="add"]').click();`);
+    await sleep(150);
+    check("Extras：真正的新名字照旧能加（淡黄、Can be ticked on Any run）", await evaluate(`const r = [...document.querySelectorAll('[data-payroll-extras] tr[data-extra-row="new"][data-pending]')].find((tr) => tr.textContent.includes('ZZ Test Night')); return !!r && r.textContent.includes('Any run');`));
+    await evaluate(`document.querySelector('[data-add-extra]').click();`);
+    await waitFor(q("[data-extra-form]"), 3000);
+    await evaluate(pickNew);
+    await evaluate(`$setValue(document.querySelector('[data-xf="name"]'), 'zz test NIGHT'); $setValue(document.querySelector('[data-xf="from"]'), '2026-11-20'); $setValue(document.querySelector('[data-xf="amount"]'), '10');`);
+    await evaluate(`document.querySelector('[data-xf="add"]').click();`);
+    await sleep(150);
+    const e3 = await text(q("[data-xf-err]"));
+    check("Extras：跟页面上还没存的新加项只差大小写 ⇒ 红字 already in the list, not saved yet.", e3 === "ZZ Test Night is already in the list, not saved yet.", e3);
+    // 收掉，不影响后面的 Save rates
+    await evaluate(`[...document.querySelectorAll('[data-extra-form] button')].find((b) => b.textContent.trim() === 'Cancel').click();`);
+    await evaluate(`const b = [...document.querySelectorAll('[data-payroll-extras] tr[data-extra-row="new"] button')][0]; b && b.click();`);
+    await sleep(150);
+  }
   // ⑩ 换期：有改动 Discard；将来的期
   await evaluate(`document.querySelector('[data-payroll-extra="813|long_day"]').click();`);
   await evaluate(`${q("[data-payroll-prev]")}.click();`);

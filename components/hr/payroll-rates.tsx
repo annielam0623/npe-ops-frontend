@@ -137,6 +137,15 @@ interface ExtraForm {
 const TYPED = "__typed";
 const NEW_EXTRA = "__new";
 
+/** 同后端 save_extra_rate 由名字生成 code 的写法（小写、非字母数字换成 _、去头尾 _）：比名字是不是同一个加购项。 */
+function extraSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 24);
+}
+
 const norm = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
 const tourKeyOf = (manifestId: number | null, name: string) =>
   manifestId !== null ? `m:${manifestId}` : `c:${norm(name)}`;
@@ -477,6 +486,20 @@ export function PayrollRates({
       : (extraCodes.find(([c]) => c === xf.code)?.[1] ?? xf.code);
     const err = (() => {
       if (isNew && !name) return "Type a name for the extra, like Long day.";
+      if (isNew) {
+        // 后端按名字生成 code（小写、非字母数字换成 _）：「ANT Relay」会变成另一个加购项 ant_relay_2，
+        // 任何趟都能勾、钱会算重（Annie 2026-11-17「还给我显示个any 润」）。跟已有的只差大小写 / 符号 ⇒ 挡下，叫人选已有的。
+        const slug = extraSlug(name);
+        const same =
+          extraCodes.find(([c, n]) => c === slug || extraSlug(n) === slug) ??
+          extraDraft
+            .filter((d) => d.isNew && extraSlug(d.name) === slug)
+            .map((d) => [d.code, d.name] as [string, string])[0];
+        if (same)
+          return extraCodes.some(([c]) => c === same[0])
+            ? `${same[1]} already exists. Pick "${same[1]} — new amount" under Extra instead.`
+            : `${same[1]} is already in the list, not saved yet.`;
+      }
       const de = dateError(xf.from, "from");
       if (de) return de;
       if (xf.to) {
