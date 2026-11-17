@@ -15,6 +15,9 @@
   - 6f 回：① 未知 fields 键只进 unknown、不报错，假列键可行；② **题 2 撤掉**——Annie 11-16 已定（原话）「no show 可以改，万一导游没汇报，由 opening shift 去改」，staff 可改可清、后写为准，Relay / Bus 都一样；新设计里「清空」= 去掉 staff 改的值、回到司机 / 导游原始标记；③ hold 已解：Annie（原话）「可以在main manifest上改，morning就保持原始记录」⇒ 后端 f9[9d2da2] 返工：staff 改的单独存（新迁移），Morning Tracking 保持原始，列表回 staff 值或原始值 + 原始标记字段（hover 用）；Notes 跟 Relay / Bus 一起上 main。题 8 先合 6f 同意。已转 68。
   - 68 改计划（下拉加「回到原始标记」发 status:null，hover 加原始标记行），并接手 preview 第 5 版（5a 不在）：去掉「不能清空」、题 2 标已定、加题 9 / 10。
 - ✅ **G323 上后端 main 8800d6c9**（6f）：参数名仍是 view（PRINT_VIEW_FLAG = "view"），只有 view=1 不记 Printed 并藏黑栏；其他值 / 不带照旧记一条；&p 等忽略；无 X-Frame-Options；权限不变；view 超 20 字 422。已知取舍（Annie ⑪ A 接受）：view=1 下用浏览器 Ctrl+P 不记 Printed。⇒ 151（064a50cf）可以交 6f 核对：要一个窗口合最新 main、重跑检查、交 commit + 对照表。已问 91 / 6a 是不是前端窗口。
+  - G321 合同草稿（f9，未上 main，**等 Annie 执行迁移 v172**）：Bus 行加 relay_mark / relay_original / bus_mark / bus_original（*_mark = 显示值，staff 改过即 staff 值；*_original 给 hover）；PUT no-show null 或 "" = 清空 staff 值；新 400 "The Relay column can only be set to Picked up or No show, or cleared." / "The Bus column can only be set to Boarded or No show, or cleared."；司机再标只更新 *_original。已转 68。
+  - 📌 **150 preview 第 5 版**（68，同链接）：题 2 标已定；How to use 第 2 条改写（Reset to driver/guide mark）；hover 两行（staff 值 + Original 灰字）；加题 9、10。待 Annie 答 1、3–10 +「动手」。
+- 151 交核派给 68（另开 worktree，合最新 main、重跑检查、commit + 对照表交 6f PASS 后合 main）。91 / 6a 没回。
   - 📌 补题问 Annie：题 9 Notes 出在哪些标签（推荐 Bus、Tickets 能改；Admin fee、隐藏行不出）；题 10 小黑框车号要不要加「Van 」（推荐不加，照后端原样写车号，后端没有车型字段）。
 
 ## 2026-11-16 晚 家里开工：前端主窗口 `npe-ops-frontend-52`[914bb9]（只分工和汇报，不写代码；9:30 PM 截止）
