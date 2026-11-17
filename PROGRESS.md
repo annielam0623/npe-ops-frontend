@@ -19,6 +19,7 @@
   - 📌 **150 preview 第 5 版**（68，同链接）：题 2 标已定；How to use 第 2 条改写（Reset to driver/guide mark）；hover 两行（staff 值 + Original 灰字）；加题 9、10。待 Annie 答 1、3–10 +「动手」。
 - 151 交核派给 68（另开 worktree，合最新 main、重跑检查、commit + 对照表交 6f PASS 后合 main）。91 / 6a 没回。
   - 68 已交 6f：task/151-bus-manifest-phone **346c9e23**（合 main 339f4d3f）；tsc 0、eslint 0 error、build、mf 338/338、nav 39/39、dr 89/89、tb 28/28；da 未跑（已知卡 147 段，挂起）。PRINT_VIEW_FLAG="view"，只看 view=1，Print 不带 view、带 &p=N。等 6f PASS 后合 main。
+  - ✅ 6f 回 PASS（tour_manifest.py:178 只认 view=1、:215 只这时不记 Printed、:251 no-store、app/ 里没有 X-Frame-Options / frame-ancestors；91 另推的 G323 小修只改测试，不挡）⇒ 68 合最新 main 推上线（151 上 main）。待上线后开一次 View only，确认 iframe 真能显示（Cloudflare 头）。
   - 150 preview 第 6 版（68）：hover 表加「staff 改后导游再标」：格子仍显示 staff 值，Original 行跟着最新标记变。
   - 📌 补题问 Annie：题 9 Notes 出在哪些标签（推荐 Bus、Tickets 能改；Admin fee、隐藏行不出）；题 10 小黑框车号要不要加「Van 」（推荐不加，照后端原样写车号，后端没有车型字段）。
 
