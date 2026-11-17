@@ -53,6 +53,8 @@ const ROUTE_PERMISSIONS: readonly (readonly [
   ["/manifests", ["manifests.view"]],
   ["/orders", ["orders.view"]],
   ["/dispatch", ["dispatch.view"]],
+  // 151 题 ⑧：Bus Manifests 入口页，同 Dispatch 的 View。
+  ["/bus-manifests", ["dispatch.view"]],
   ["/forms", ["forms.view"]],
   ["/schedule", ["schedule.view"]],
   // 周三确认排班的邮件链接页：不用登录，不拦。

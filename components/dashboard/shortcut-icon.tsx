@@ -1,6 +1,7 @@
 import {
   Bus,
   CalendarDays,
+  ClipboardList,
   ChartLine,
   List,
   Tag,
@@ -120,6 +121,7 @@ const ICONS: Partial<Record<NavModuleId, ReactNode>> = {
  */
 const LUCIDE: Partial<Record<NavModuleId, LucideIcon>> = {
   dispatch: Bus,
+  bus_manifests: ClipboardList,
   quotation: Tag,
   forecast: CalendarDays,
   manifests: List,

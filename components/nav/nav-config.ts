@@ -49,6 +49,7 @@ export const NAV_MODULE_IDS = [
   "orders",
   "quotation",
   "dispatch",
+  "bus_manifests",
   "forms",
   "schedule",
   "daily_report",
@@ -143,6 +144,13 @@ const MODULES: readonly NavModule[] = [
     // Dispatch Imports 合进 Dispatch（Annie 2026-10-11），从 Step 2 的按钮进。
     match: ["/dispatch/manifest", "/dispatch/imports"],
     dot: "#22d3ee",
+  },
+  {
+    // 151 题 ⑧ A（Annie 2026-11-16「全部同意推荐」）：当天各团各车的 Bus Manifest，点车进 View only（全屏打印纸样）。
+    id: "bus_manifests",
+    group: "Operations",
+    label: "Bus Manifests",
+    href: "/bus-manifests",
   },
   {
     id: "forms",

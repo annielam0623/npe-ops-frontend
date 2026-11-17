@@ -407,14 +407,15 @@ export function SaveFirstDialog({
   onConfirm,
   onCancel,
 }: {
-  action: "print" | "download";
+  /** view = 151 View only。 */
+  action: "print" | "download" | "view";
   items: string[];
   onConfirm: () => Promise<string | null>;
   onCancel: () => void;
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const verb = action === "print" ? "print" : "download";
+  const verb = action;
   return (
     <Modal
       titleId="bm-save-first-title"
@@ -426,13 +427,20 @@ export function SaveFirstDialog({
           id="bm-save-first-title"
           className="mb-3 text-[15px] font-semibold text-[#1a1a1a]"
         >
-          Save before {action === "print" ? "printing" : "downloading"}?
+          Save before{" "}
+          {action === "print"
+            ? "printing"
+            : action === "download"
+              ? "downloading"
+              : "viewing"}
+          ?
         </h2>
         <div className={YELLOW_BOX}>
           <b>Not saved yet:</b> {items.join(" · ")}.
           <br />
-          The {action === "print" ? "printout" : "Excel file"} uses what is
-          saved, so save first.
+          {action === "view"
+            ? "View only shows what is saved, so save first."
+            : `The ${action === "print" ? "printout" : "Excel file"} uses what is saved, so save first.`}
         </div>
         {error ? (
           <p

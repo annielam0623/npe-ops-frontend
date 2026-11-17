@@ -6,6 +6,7 @@
 const PAGE_TITLES: readonly [prefix: string, title: string][] = [
   ["/manifests", "Manifests"],
   ["/orders", "Orders"],
+  ["/bus-manifests", "Bus Manifests"],
   ["/dispatch/imports", "Dispatch Imports"],
   ["/dispatch/work-sheet", "Dispatch — Work Sheet"],
   ["/dispatch/guide-sheet", "Dispatch — Guide Sheet"],

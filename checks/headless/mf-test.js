@@ -115,6 +115,7 @@ async function main() {
     await runHotelColour();
     await runLayoutText();
     await runColumns();
+    await runViewOnly();
   } finally {
     ws.close();
     chrome.kill();
@@ -1190,7 +1191,7 @@ async function run() {
   await sleep(600);
   check("手机：Bus Manifest 整页不左右晃", await evaluate(`const vis = (el) => !!el && el.getBoundingClientRect().height > 0 && el.getBoundingClientRect().width > 0; const noSway = document.documentElement.scrollWidth <= innerWidth + 1; const btn = (t, root = document) => [...root.querySelectorAll('button, a')].find((b) => b.textContent.trim().startsWith(t)); return noSway;`));
   // 置顶 114（Annie「不要二级菜单，不要隐藏」）：手机上不再收进 ⋯，Print all / Download / Settings 一排三格、28px。
-  check('置顶 114 手机：页头没有 ⋯；Print all｜Download（｜Settings）一排、28px；Save 看得见', await evaluate(`const vis = (el) => !!el && el.getBoundingClientRect().height > 0 && el.getBoundingClientRect().width > 0; const k = document.querySelector('[data-mf-output-keys]'); const keys = k ? [...k.querySelectorAll('a, button')].filter(vis) : []; const R = (e) => e.getBoundingClientRect(); return !document.querySelector('[data-mf-header-actions] [data-phone-more]') && keys.length >= 2 && keys[0].innerText.trim() === 'Print all' && keys[1].innerText.trim() === 'Download' && keys.every((b) => Math.abs(R(b).top - R(keys[0]).top) <= 2 && Math.round(R(b).height) === 28) && vis(document.querySelector('[data-page-save]'));`), await evaluate(`const k = document.querySelector('[data-mf-output-keys]'); return k ? [...k.querySelectorAll('a, button')].map((b) => b.textContent.trim() + ':' + Math.round(b.getBoundingClientRect().height)).join(' ') : 'none';`));
+  check('置顶 114 手机：页头没有 ⋯；View only｜Print all｜Download（｜Settings）一排、28px；Save 看得见（151 加了 View only，题 ⑤ 手机写字不收进 ⋯）', await evaluate(`const vis = (el) => !!el && el.getBoundingClientRect().height > 0 && el.getBoundingClientRect().width > 0; const k = document.querySelector('[data-mf-output-keys]'); const keys = k ? [...k.querySelectorAll('a, button')].filter(vis) : []; const R = (e) => e.getBoundingClientRect(); return !document.querySelector('[data-mf-header-actions] [data-phone-more]') && keys.length >= 3 && keys[0].innerText.trim() === 'View only' && keys[1].innerText.trim() === 'Print all' && keys[2].innerText.trim() === 'Download' && keys.slice(0, 3).every((b) => Math.abs(R(b).top - R(keys[0]).top) <= 2 && Math.round(R(b).height) === 28) && vis(document.querySelector('[data-page-save]'));`), await evaluate(`const k = document.querySelector('[data-mf-output-keys]'); return k ? [...k.querySelectorAll('a, button')].map((b) => b.textContent.trim() + ':' + Math.round(b.getBoundingClientRect().height)).join(' ') : 'none';`));
   check("手机：How to use 在 Action Log 下面（页面最底）", await evaluate(`const h = [...document.querySelectorAll('details')].find((d) => d.textContent.includes('How to use — Tour manifest')); const l = document.querySelector('[data-manifest-log]'); return !!h && !!l && h.getBoundingClientRect().top > l.getBoundingClientRect().top;`));
   await cdp("Emulation.clearDeviceMetricsOverride");
   await goto(`${APP}/dispatch/manifest?date=2026-10-05&tour=3`);
@@ -1512,4 +1513,118 @@ async function runLayout() {
   await waitFor(DLG);
   check("版式设置：没勾 dispatch.edit ⇒ 弹窗只读（View only、没有 Save、开关灰）", await evaluate(`const d = ${DLG}; return d.textContent.includes('View only. Ask someone who can edit Dispatch to change these.') && !d.querySelector('[data-layout-save]') && d.querySelector('[data-layout-toggle]').disabled;`));
   await ctl({ staffPerms: null, layout: false, layoutReset: true, paper: false });
+}
+
+// ── 151 View only（Annie 2026-11-16「全部同意推荐」「动手」，preview 第 4 版）：打印纸样整页全屏 + Bus Manifests 入口页 ──
+async function runViewOnly() {
+  const URL0 = `${APP}/dispatch/manifest?date=2026-10-05&tour=3`;
+  const PV = "document.querySelector('[data-paper-view]')";
+  const FRAME = "document.querySelector('[data-paper-frame]')";
+  const frameSrc = async () => evaluate(`return ${FRAME}?.getAttribute('src') ?? null;`);
+  const frameReady = `${FRAME} && ${FRAME}.contentDocument && ${FRAME}.contentDocument.querySelector('.page') && ${FRAME}.style.opacity !== '0'`;
+  await ctl({ bmv: true, version: "general", busCols: false, partner: false, staffPerms: null, superAdmin: false, layout: false, canyon: false, canyonHoover: false, g198: false, textSize: false });
+  await goto(URL0);
+  await waitFor("document.querySelector('[data-view-only=all]')", 60000);
+  await helpers();
+  await evaluate("window.__submitted = 0; HTMLFormElement.prototype.submit = function () { window.__submitted++; window.__lastForm = Object.fromEntries(new FormData(this)); }; return 1;");
+
+  check("View only：页头白键在 Print all buses 前面，不是蓝色",
+    await evaluate("const v = document.querySelector('[data-view-only=all]'); const p = [...document.querySelectorAll('main a')].find(a => a.textContent.trim().startsWith('Print all buses')); return v.textContent.trim() === 'View only' && !!p && !!(v.compareDocumentPosition(p) & Node.DOCUMENT_POSITION_FOLLOWING) && getComputedStyle(v).backgroundColor !== 'rgb(59, 130, 246)';"));
+  check("View only：每台车的车抬头也有一个（A、B），在这台车的 Print 前面",
+    await evaluate("return ['A','B'].every(k => { const b = document.querySelector(`[data-view-only=${k}]`); if (!b) return false; const p = [...b.parentElement.querySelectorAll('a')].find(a => a.textContent.trim() === 'Print'); return !p || !!(b.compareDocumentPosition(p) & Node.DOCUMENT_POSITION_FOLLOWING); });"));
+
+  let before = (await mockLog()).length;
+  await evaluate("document.querySelector('[data-view-only=all]').click(); return 1;");
+  check("点页头 View only：出全屏层，盖住顶栏 / 侧栏", (await waitFor(PV, 5000)) && (await evaluate(`const r = ${PV}.getBoundingClientRect(); return r.top === 0 && r.left === 0 && r.width === innerWidth && r.height === innerHeight && Number(getComputedStyle(${PV}).zIndex) > 100;`)));
+  check("纸样直接用后端打印页、带只看开关 view=1、不带 bus", (await frameSrc()) === "/admin/dispatch/manifest/print?date=2026-10-05&tour=3&view=1", await frameSrc());
+  check("网址同步 ?view=all", await evaluate("return new URL(location.href).searchParams.get('view') === 'all';"));
+  check("纸样载入：打印页自己那条黑栏藏掉、纸照原大小（电脑不缩）", (await waitFor(frameReady, 8000)) && (await evaluate(`const d = ${FRAME}.contentDocument; return getComputedStyle(d.querySelector('.bar')).display === 'none' && ${FRAME}.style.transform === 'scale(1)' && d.querySelectorAll('.page').length === 2;`)));
+  const printReqs = (await mockLog()).slice(before).filter((e) => e.path === "/admin/dispatch/manifest/print");
+  check("只看：请求带 view=1（后端不记 Printed）", printReqs.length >= 1 && printReqs.every((e) => e.q.view === "1"), JSON.stringify(printReqs.map((e) => e.q)));
+  check("细栏：团名 · 日期、All / A / B、Print、Download、✕",
+    await evaluate("const b = document.querySelector('[data-paper-bar]'); return b.querySelector('[data-paper-title]').textContent === 'Antelope Canyon · Mon, Oct 5, 2026' && JSON.stringify([...b.querySelectorAll('[data-paper-bus]')].map(x => x.textContent)) === '[\"All\",\"A\",\"B\"]' && !!b.querySelector('[data-paper-print]') && !!b.querySelector('[data-paper-download]') && !!b.querySelector('[data-paper-close]');"),
+    await evaluate("return document.querySelector('[data-paper-bar]')?.textContent;"));
+  check("全屏层里没有能改的东西", await evaluate(`return !${PV}.querySelector('[data-page-save], [data-version-select], select, textarea, input:not([type=hidden])');`));
+
+  await evaluate("document.querySelector('[data-paper-bus=A]').click(); return 1;");
+  await sleep(300);
+  const srcA = await frameSrc();
+  check("换到 A 车：只看这一台（bus=<排车 id>、view=1），网址 ?view=A", /\/admin\/dispatch\/manifest\/print\?date=2026-10-05&tour=3&bus=\d+&view=1$/.test(srcA || "") && (await evaluate("return new URL(location.href).searchParams.get('view') === 'A';")), srcA);
+  await waitFor(frameReady, 8000);
+
+  // 前面几套把客人换过车，A 车现在可能没有餐不符；换回 All（整团还有）再按 Print。
+  await evaluate("document.querySelector('[data-paper-bus=all]').click(); return 1;");
+  await sleep(300);
+  await waitFor(frameReady, 8000);
+  await evaluate("document.querySelector('[data-paper-print]').click(); return 1;");
+  check("Print：有餐不符 ⇒ 提醒框弹在全屏层里（盖得住）", await waitFor(`${PV}.querySelector('[data-lunch-mismatch-dialog]')`, 3000));
+  before = (await mockLog()).length;
+  await evaluate("document.querySelector('[data-mismatch-go]').click(); return 1;");
+  await sleep(1000);
+  const srcP = await frameSrc();
+  check("Print anyway：载入不带 view=1 的打印页（后端照旧记 Printed），整团", !!srcP && !srcP.includes("view=1") && !srcP.includes("bus=") && srcP.includes("&p=1"), srcP);
+  const pr = (await mockLog()).slice(before).filter((e) => e.path === "/admin/dispatch/manifest/print");
+  check("Print：打印请求不带 view", pr.length >= 1 && pr.every((e) => !e.q.view), JSON.stringify(pr.map((e) => e.q)));
+
+  await evaluate("document.querySelector('[data-paper-download]').click(); return 1;");
+  await waitFor(`${PV}.querySelector('[data-lunch-mismatch-dialog]')`, 3000);
+  await evaluate("document.querySelector('[data-mismatch-go]').click(); return 1;");
+  await sleep(200);
+  check("Download：餐不符提醒后交表单（date / tour）到后端 Download", await evaluate("return window.__submitted === 1 && window.__lastForm.date === '2026-10-05' && window.__lastForm.tour === '3';"), await evaluate("return JSON.stringify([window.__submitted, window.__lastForm]);"));
+
+  await evaluate("document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); return 1;");
+  await sleep(200);
+  check("Esc：关掉全屏层、网址去掉 ?view、回到 Bus Manifest", !(await evaluate(`return !!${PV};`)) && (await evaluate("return !new URL(location.href).searchParams.has('view') && !!document.querySelector('[data-view-only=all]');")));
+  await evaluate("document.querySelector('[data-view-only=B]').click(); return 1;");
+  await waitFor(PV, 3000);
+  check("车抬头的 View only：直接开那一台（B）", await evaluate("return document.querySelector('[data-paper-bus=B]').getAttribute('aria-pressed') === 'true';"));
+  await evaluate("document.querySelector('[data-paper-close]').click(); return 1;");
+  await sleep(200);
+  check("✕：关掉", !(await evaluate(`return !!${PV};`)));
+
+  await evaluate("const s = document.querySelector('[data-version-select]'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, 'marcello'); s.dispatchEvent(new Event('change', { bubbles: true })); return 1;");
+  await sleep(200);
+  await evaluate("document.querySelector('[data-view-only=all]').click(); return 1;");
+  check("有没存的改动点 View only：先问 Save before viewing?（Save and view），不开全屏层",
+    (await waitFor("document.querySelector('[data-save-first-dialog]')", 3000)) && (await evaluate(`const d = document.querySelector('[data-save-first-dialog]'); return d.querySelector('h2').textContent.replace(/\\s+/g, ' ').trim() === 'Save before viewing?' && d.textContent.includes('View only shows what is saved, so save first.') && document.querySelector('[data-save-first-go]').textContent === 'Save and view' && !${PV};`)),
+    await evaluate("return document.querySelector('[data-save-first-dialog]')?.textContent;"));
+  await evaluate("$btn('Cancel', document.querySelector('[data-save-first-dialog]')).click(); return 1;");
+  await sleep(200);
+  check("Cancel：不开、改动还在", !(await evaluate(`return !!${PV};`)) && (await evaluate("return document.querySelector('[data-version-select]').value === 'marcello';")));
+
+  await ctl({ staffPerms: ["dispatch.view", "manifests.view"], superAdmin: false });
+  await goto(`${URL0}&view=all`);
+  check("只读账号：网址带 ?view=all ⇒ 直接开全屏层", await waitFor(PV, 60000));
+  check("只读账号：全屏层里 Print、Download 都有（题 ⑥）", await evaluate("return !!document.querySelector('[data-paper-print]') && !!document.querySelector('[data-paper-download]');"));
+  await evaluate("document.querySelector('[data-paper-close]').click(); return 1;");
+  await sleep(200);
+  check("只读账号：页面上照旧没有 Save、有 View only", await evaluate("return !document.querySelector('[data-page-save]') && !!document.querySelector('[data-view-only=all]');"));
+  await ctl({ staffPerms: null });
+
+  await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
+  await goto(`${URL0}&view=A`);
+  await waitFor(PV, 60000);
+  await waitFor(frameReady, 8000);
+  await sleep(400);
+  const ph = await evaluate(`const f = ${FRAME}; const m = /scale\\(([\\d.]+)\\)/.exec(f.style.transform); const s = m ? Number(m[1]) : 0; const r = f.getBoundingClientRect(); return { s, w: Math.round(r.width), vw: innerWidth, sw: document.documentElement.scrollWidth, label: getComputedStyle(document.querySelector('[data-paper-print] span')).display };`);
+  check("手机：整张纸缩到屏宽（scale < 1、纸宽 ≤ 屏宽）、整页不左右晃、细栏只放图标", ph.s > 0.25 && ph.s < 0.4 && ph.w <= ph.vw && ph.sw <= ph.vw + 1 && ph.label === "none", JSON.stringify(ph));
+  await cdp("Emulation.clearDeviceMetricsOverride");
+
+  await goto(`${APP}/bus-manifests?date=2026-10-05`);
+  check("入口页：日期、当天每个团一行", (await waitFor("document.querySelector('[data-bm-tour=\"3\"]')", 60000)) && (await evaluate("return document.querySelector('[data-bm-date]').textContent === 'Mon, Oct 5, 2026' && document.querySelectorAll('[data-bm-tour]').length === 3;")));
+  check("入口页：两台车的团 ⇒ All buses、Bus A、Bus B；一台车的团只有 Bus A；没名单的写 No guests yet.",
+    await evaluate("const k = (id) => [...document.querySelectorAll(`[data-bm-tour=\"${id}\"] [data-bm-open]`)].map(b => b.textContent.trim()); return JSON.stringify(k(3)) === '[\"All buses\",\"Bus A\",\"Bus B\"]' && JSON.stringify(k(7)) === '[\"Bus A\"]' && document.querySelector('[data-bm-tour=\"5\"] [data-bm-not-ready]').textContent === 'No guests yet.';"),
+    await evaluate("return document.querySelector('[data-bus-manifests]')?.textContent;"));
+  check("入口页：How to use 有 Bus Manifests 和 View only 的句子", await evaluate("const t = [...document.querySelectorAll('details')].map(d => d.textContent).join(' '); return t.includes(\"Bus Manifests in the side menu lists each day's tours and buses. Pick a bus to open it in View only.\") && t.includes('Click View only to see the Bus Manifest exactly as it prints');"));
+  await evaluate("document.querySelector('button[aria-label=\"Open menu\"]').click(); return 1;");
+  check("侧栏有 Bus Manifests（Operations，Dispatch 下面）", await waitFor("[...document.querySelectorAll('a[href=\"/bus-manifests\"]')].some(a => a.textContent.includes('Bus Manifests'))", 5000));
+  await evaluate("document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); return 1;");
+  await evaluate("document.querySelector('[data-bm-open=\"3|B\"]').click(); return 1;");
+  check("入口页点 Bus B ⇒ 进 Bus Manifest 并直接开 B 车的 View only", (await waitFor(PV, 60000)) && (await evaluate("return location.pathname === '/dispatch/manifest' && new URL(location.href).searchParams.get('view') === 'B' && document.querySelector('[data-paper-bus=B]').getAttribute('aria-pressed') === 'true';")));
+  await evaluate("document.querySelector('[data-paper-close]').click(); return 1;");
+  await goto(`${APP}/bus-manifests?date=2026-10-05`);
+  await waitFor("document.querySelector('[data-bm-next]')", 60000);
+  await evaluate("document.querySelector('[data-bm-next]').click(); return 1;");
+  await sleep(300);
+  check("入口页 › 换到下一天、网址跟着变", await evaluate("return document.querySelector('[data-bm-date]').textContent === 'Tue, Oct 6, 2026' && new URL(location.href).searchParams.get('date') === '2026-10-06';"));
 }

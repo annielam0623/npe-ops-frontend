@@ -33,7 +33,7 @@ import {
   setGuestBus,
 } from "@/lib/dispatch-manifest-api";
 import { isYmd } from "@/lib/la-date";
-import { useLeaveGuard } from "@/lib/use-leave-guard";
+import { replaceUrl, useLeaveGuard } from "@/lib/use-leave-guard";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
 import { tourColorFor } from "@/lib/tour-colors";
 import { cn } from "@/lib/utils";
@@ -70,6 +70,12 @@ import {
   useManifestLook,
 } from "./apply-layout";
 import { ManifestLayoutDialog, relayHeaderColor } from "./layout-dialog";
+import {
+  enterFullscreen,
+  PaperView,
+  VIEW_ONLY_HOW_TO,
+  VIEW_PARAM,
+} from "./paper-view";
 import {
   applyCanyonOrder,
   applyMoves,
@@ -279,9 +285,12 @@ export function ManifestView() {
     | { kind: "saved"; at: string }
     | { kind: "error"; message: string }
   >({ kind: "idle" });
-  /** 有没存的改动时按 Print / Download：先问「Save before printing?」（Q3）。 */
+  /** 151 View only：开着时 = "all" 或车字母（网址上 ?view= 同步）。 */
+  const [paper, setPaper] = useState<string | null>(null);
+  /** 有没存的改动时按 Print / Download / View only：先问「Save before printing?」（Q3）。 */
   const [saveFirst, setSaveFirst] = useState<{
-    action: MismatchAction;
+    /** view = 151 的 View only（看的是库里存好的，先存）。 */
+    action: MismatchAction | "view";
     ordersOf: (d: ManifestData) => ManifestLunchMismatch[];
     go: () => void;
   } | null>(null);
@@ -340,6 +349,9 @@ export function ManifestView() {
       return;
     }
     setParams({ date, tour });
+    // 151：网址带 view=all / view=<车字母>（入口页 Bus Manifests 点车进来）⇒ 直接打开 View only。
+    const v = q.get(VIEW_PARAM);
+    if (v) setPaper(v);
   }, []);
 
   const load = useCallback(
@@ -698,6 +710,42 @@ export function ManifestView() {
   const busOrders = (busKey: string) => (d: ManifestData) =>
     d.blocks.find((b) => b.bus_key === busKey)?.lunch_mismatch_orders ?? [];
 
+  /** 网址上的 ?view=（只改地址，保留离开提醒的记号）。 */
+  function setViewParam(key: string | null) {
+    const url = new URL(window.location.href);
+    if (key) url.searchParams.set(VIEW_PARAM, key);
+    else url.searchParams.delete(VIEW_PARAM);
+    replaceUrl(url);
+  }
+  function showPaper(key: string) {
+    setPaper(key);
+    setViewParam(key);
+  }
+  /**
+   * 151 View only（Annie「点击view only之后就出现，可以打印可以下载，就是不需要编辑」「然后是全屏显示」）：
+   * 有没存的改动先问要不要存（纸样是库里存好的）；没有就在这一下点击里请求真全屏，再打开。
+   */
+  function openPaper(key: string) {
+    if (dirty) {
+      setSaveFirst({
+        action: "view",
+        ordersOf: () => [],
+        // 存完再开：刚点过「Save and view」，浏览器多半还让请求真全屏；不让就是页面内全屏。
+        go: () => {
+          enterFullscreen();
+          showPaper(key);
+        },
+      });
+      return;
+    }
+    enterFullscreen();
+    showPaper(key);
+  }
+  function closePaper() {
+    setPaper(null);
+    setViewParam(null);
+  }
+
   /** 页面上画的样子 = 库里的 + 没存的版式 / Canyon order / 换车 + 版式设置的颜色（置顶 92）。 */
   const shownRaw = data
     ? (() => {
@@ -953,6 +1001,18 @@ export function ManifestView() {
                       data-mf-output-keys
                       className="contents max-sm:grid max-sm:basis-full max-sm:grid-cols-3 max-sm:gap-2"
                     >
+                      {/* 151 题 ⑤：白键「View only」在 Print all buses 前面（白色：蓝色只给提交键），能开这一页的人都有（题 ⑦）。 */}
+                      {data.manifest && data.blocks.length > 0 ? (
+                        <button
+                          type="button"
+                          data-view-only="all"
+                          data-phone-keep
+                          onClick={() => openPaper("all")}
+                          className={MF_WHITE_KEY}
+                        >
+                          View only
+                        </button>
+                      ) : null}
                       {canPrint && data.manifest && data.blocks.length > 0 ? (
                         <a
                           href={manifestPrintUrl(
@@ -1163,6 +1223,7 @@ export function ManifestView() {
                       onPrintGuard={(go) =>
                         guardOutput("print", busOrders(block.bus_key), go)
                       }
+                      onViewOnly={() => openPaper(block.bus_key || "all")}
                     />
                   ))}
 
@@ -1242,8 +1303,11 @@ export function ManifestView() {
                       if (r.error) return r.error;
                       const { action, ordersOf, go } = saveFirst;
                       setSaveFirst(null);
-                      // 存好了：照新的数据看餐不符，没有就直接打开 / 下载。
-                      if (!guardMismatch(action, ordersOf(r.data ?? data), go))
+                      // 存好了：照新的数据看餐不符，没有就直接打开 / 下载；View only 直接打开（打印时再看餐不符）。
+                      if (action === "view") go();
+                      else if (
+                        !guardMismatch(action, ordersOf(r.data ?? data), go)
+                      )
                         go();
                       return null;
                     }}
@@ -1269,7 +1333,7 @@ export function ManifestView() {
                     }}
                   />
                 ) : null}
-                {mismatch ? (
+                {mismatch && !paper ? (
                   <LunchMismatchDialog
                     action={mismatch.action}
                     dateLabel={data.date_label}
@@ -1286,6 +1350,45 @@ export function ManifestView() {
             )}
           </div>
         </main>
+        {paper && data && params && data.manifest ? (
+          <PaperView
+            date={params.date}
+            tour={params.tour}
+            title={data.tour.name}
+            dateLabel={data.date_label}
+            buses={data.blocks
+              .filter((b) => b.bus_key)
+              .map((b) => ({ key: b.bus_key, id: b.bus.id }))}
+            selected={
+              data.blocks.some((b) => b.bus_key === paper) ? paper : "all"
+            }
+            canyonPages={canyonPages}
+            canPrint={canPrint}
+            // 题 ⑥（Annie「可以打印可以下载」）：只读的 staff 账号在 View only 里也能下载；partner 后端不给，照旧没有。
+            canDownload={canDownload}
+            guardPrint={(key, go) =>
+              guardOutput("print", key ? busOrders(key) : allOrders, go)
+            }
+            guardDownload={(go) => guardOutput("download", allOrders, go)}
+            onSelect={showPaper}
+            onClose={closePaper}
+            notOnBus={data.unplaced?.totals ?? null}
+          >
+            {mismatch ? (
+              <LunchMismatchDialog
+                action={mismatch.action}
+                dateLabel={data.date_label}
+                orders={mismatch.orders}
+                onCancel={() => setMismatch(null)}
+                onConfirm={() => {
+                  const { go } = mismatch;
+                  setMismatch(null);
+                  go();
+                }}
+              />
+            ) : null}
+          </PaperView>
+        ) : null}
         {layoutOpen && layout && data ? (
           <ManifestLayoutDialog
             tour={{ id: data.tour.id, name: data.tour.name }}
@@ -1415,6 +1518,7 @@ function BusCard({
   stagedTextSize,
   onStageTextSize,
   onPrintGuard,
+  onViewOnly,
 }: {
   data: ManifestData;
   params: { date: string; tour: number };
@@ -1432,6 +1536,8 @@ function BusCard({
   onStageTextSize: (textSize: ManifestTextSize) => void;
   /** 有没存的改动先问要不要存，再看这一车的餐不符；返回 true = 拦下了。 */
   onPrintGuard: (go: () => void) => boolean;
+  /** 151：这一台车的 View only。 */
+  onViewOnly: () => void;
 }) {
   const phone = usePhoneWidth();
   const version = versionOf(data);
@@ -1487,6 +1593,16 @@ function BusCard({
           <span className="text-[19px] font-extrabold">
             BUS #: {block.bus_number}
           </span>
+          {data.manifest ? (
+            <button
+              type="button"
+              data-view-only={block.bus_key}
+              onClick={onViewOnly}
+              className={cn(BAND_LINK, "cursor-pointer")}
+            >
+              View only
+            </button>
+          ) : null}
           {data.manifest && canPrint ? (
             <a
               href={manifestPrintUrl(
@@ -2896,6 +3012,8 @@ function HowToUse({ layout, columns }: { layout: boolean; columns: boolean }) {
           This page shows one tour for one day, laid out like the paper
           manifest. Each bus on the Dispatch schedule gets its own block.
         </li>
+        <li>{VIEW_ONLY_HOW_TO[0]}</li>
+        <li>{VIEW_ONLY_HOW_TO[1]}</li>
         {layout ? <li>{LAYOUT_HOW_TO}</li> : null}
         {columns ? <li>{COLUMNS_HOW_TO}</li> : null}
         <li>

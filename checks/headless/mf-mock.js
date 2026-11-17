@@ -322,7 +322,8 @@ http.createServer(async (req, res) => {
       tours: [{ manifest_id: 3, name: "Antelope Canyon", color: tc.all || "#8db76f", default_color: "#8db76f", header_color: tc.all || "#8db76f", header_default_color: "#8db76f", color_set: !!tc.all, buses: [bus("A", "#8db76f"), bus("B", "#8db76f")] }] });
   }
   if (p === "/admin/dispatch/manifest/guide") { res.setHeader("Content-Type", "text/html"); return res.end(`<html><title>GUIDE ${q.bus}</title><body>GUIDE</body></html>`); }
-  if (p === "/admin/dispatch/manifest/print") { res.setHeader("Content-Type", "text/html"); return res.end(`<html><title>PRINT ${q.date} ${q.tour} ${q.bus ?? "all"}</title><body>PRINT</body></html>`); }
+  // 151 View only：打印页的样子（同后端 admin/tour_manifest_print.html：顶上 .bar + 灰底上一张张 A4 横向 .page）；view=1 = 只看。
+  if (p === "/admin/dispatch/manifest/print") { res.setHeader("Content-Type", "text/html"); const n = q.bus ? 1 : 2; return res.end(`<!DOCTYPE html><html><head><title>PRINT ${q.date} ${q.tour} ${q.bus ?? "all"}</title><style>body{margin:0;background:#e9ecef}.bar{height:52px;background:#0b1724;color:#fff}.pages{display:flex;flex-direction:column;align-items:center;gap:16px;padding:16px}.page{width:1123px;height:794px;background:#fff}</style></head><body><div class="bar">PRINT BAR <button onclick="window.print()">Print</button></div><div class="pages">${Array.from({ length: n }, (_, i) => `<div class="page" data-sheet="${i + 1}">PRINT ${q.bus ?? "all"} sheet ${i + 1}</div>`).join("")}</div></body></html>`); }
   if (p === "/admin/dispatch/manifest/download") {
     entry.body = await readRaw(req);
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
