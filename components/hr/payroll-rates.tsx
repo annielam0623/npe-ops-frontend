@@ -182,11 +182,7 @@ function fromExtra(x: PayrollExtraRate): ExtraRow {
 }
 
 const kindOf = (p: PriceRow) =>
-  p.applies_to === "people"
-    ? "Picked people"
-    : p.to
-      ? "Date range"
-      : "Default";
+  p.applies_to === "people" ? "Picked people" : p.to ? "Date range" : "Default";
 const KIND_ORDER: Record<string, number> = {
   Default: 0,
   "Date range": 1,
@@ -637,9 +633,7 @@ export function PayrollRates({
           type="button"
           className={C_LINK}
           data-price-undo
-          onClick={() =>
-            setPriceDraft((d) => d.filter((x) => x.key !== p.key))
-          }
+          onClick={() => setPriceDraft((d) => d.filter((x) => x.key !== p.key))}
         >
           Remove
         </button>
@@ -918,9 +912,7 @@ export function PayrollRates({
           type="button"
           className={C_LINK}
           data-extra-undo
-          onClick={() =>
-            setExtraDraft((d) => d.filter((y) => y.key !== x.key))
-          }
+          onClick={() => setExtraDraft((d) => d.filter((y) => y.key !== x.key))}
         >
           Remove
         </button>
@@ -1155,9 +1147,8 @@ export function PayrollRates({
               {pricesInfo.button}
             </span>
             <span className={cn(C_HINT, "font-normal", pricesInfo.hide)}>
-              A run uses the newest price for that guide that covers the day;
-              if none, the newest price for everyone. No end date = keeps
-              going.
+              A run uses the newest price for that guide that covers the day; if
+              none, the newest price for everyone. No end date = keeps going.
             </span>
           </div>
           <div className={C_WRAP}>{pricesTable}</div>
@@ -1168,9 +1159,9 @@ export function PayrollRates({
               {extrasInfo.button}
             </span>
             <span className={cn(C_HINT, "font-normal", extrasInfo.hide)}>
-              Paid per ticked run. ANT relay only on tours whose price says
-              ANT relay; other extras on any run. Like prices, an amount for
-              that guide beats an amount for everyone.
+              Paid per ticked run. ANT relay only on tours whose price says ANT
+              relay; other extras on any run. Like prices, an amount for that
+              guide beats an amount for everyone.
             </span>
           </div>
           <div className={C_WRAP}>{extrasTable}</div>

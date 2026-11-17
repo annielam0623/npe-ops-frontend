@@ -218,6 +218,13 @@ export function MemberFormDialog({
     mode.kind === "edit" ? (mode.member.account_type ?? "staff") : "staff",
   );
   const partner = accountType === "partner";
+  const adminOnlyOk =
+    !partner &&
+    mode.kind === "edit" &&
+    (mode.member.is_superadmin ||
+      mode.member.role === undefined ||
+      mode.member.role === "admin" ||
+      mode.member.role === "superadmin");
   /** partner 时传给档位计算的发送项；员工为 undefined（照旧）。 */
   const partnerStaffOnly = partner ? staffOnly : undefined;
   const [typeConfirm, setTypeConfirm] = useState(false);
@@ -652,21 +659,23 @@ export function MemberFormDialog({
                   </div>
 
                   <ItemNamesContext.Provider value={itemNames}>
-                    <AccessSection
-                      groups={groups}
-                      wiredModules={wiredModules}
-                      items={form.items}
-                      staffOnly={partnerStaffOnly}
-                      ownItems={ownItems}
-                      open={open}
-                      onOpen={setOpen}
-                      onItems={(items) => setForm({ ...form, items })}
-                      note={
-                        isAdd && defaultItems === null
-                          ? "The default staff set is not available yet. Pick someone in Copy access from, or choose by hand."
-                          : null
-                      }
-                    />
+                    <AdminOnlyOkContext.Provider value={adminOnlyOk}>
+                      <AccessSection
+                        groups={groups}
+                        wiredModules={wiredModules}
+                        items={form.items}
+                        staffOnly={partnerStaffOnly}
+                        ownItems={ownItems}
+                        open={open}
+                        onOpen={setOpen}
+                        onItems={(items) => setForm({ ...form, items })}
+                        note={
+                          isAdd && defaultItems === null
+                            ? "The default staff set is not available yet. Pick someone in Copy access from, or choose by hand."
+                            : null
+                        }
+                      />
+                    </AdminOnlyOkContext.Provider>
                   </ItemNamesContext.Provider>
 
                   <Section
@@ -1312,6 +1321,11 @@ function SignInSection({
 
 /** 项的显示名（「what's included」里用），由 MemberFormDialog 按 catalog 提供。 */
 const ItemNamesContext = createContext<ReadonlyMap<string, string>>(new Map());
+/**
+ * 这个账号能不能给「只有 Admin 能给」的行（138 Payroll，V4 题 2 A）：Admin / Super Admin 能；
+ * 名单没带 role（后端旧）时不挡，后端 400 兜底；新建、partner、staff、supervisor 不能。
+ */
+const AdminOnlyOkContext = createContext<boolean>(true);
 
 function useItemNames() {
   const map = useContext(ItemNamesContext);
@@ -1531,6 +1545,8 @@ function AccessRowView({
   const send = staffOnlyIn(row, staffOnly);
   const sendTicked = send.filter((c) => items.has(c));
   const editLocked = editLockedFor(row, staffOnly);
+  const adminOnlyOk = useContext(AdminOnlyOkContext);
+  const adminOnlyLocked = !!row.adminOnly && !adminOnlyOk;
   const extra = row.all.filter(
     (c) => !row.read.includes(c) && !send.includes(c),
   );
@@ -1540,6 +1556,14 @@ function AccessRowView({
       <div className="flex min-w-0 flex-wrap items-center gap-2 text-[13.5px] font-semibold">
         {row.label}
         {notActive ? NOT_ACTIVE_TAG : null}
+        {adminOnlyLocked ? (
+          <span
+            data-admin-only={row.key}
+            className="rounded-[6px] border border-dashed border-[#cbd5e1] bg-[#f3f4f6] px-[7px] py-px text-[11px] font-semibold text-[#6b7280]"
+          >
+            Admin only
+          </span>
+        ) : null}
         <button
           type="button"
           onClick={onToggle}
@@ -1566,7 +1590,9 @@ function AccessRowView({
           {LEVEL_OPTIONS[row.kind].map((option) => {
             const on = level === option.level;
             // partner：只剩「看」的行没有 Read & edit / Full access（Q1 A）。
-            const locked = editLocked && option.level === "edit";
+            const locked =
+              (editLocked && option.level === "edit") ||
+              (adminOnlyLocked && option.level !== "none" && !on);
             // Qd：选它会加上或拿掉 admin 自己没有的项 ⇒ 灰掉（后端也 400）。
             const beyondOwn =
               !on &&
@@ -1585,11 +1611,13 @@ function AccessRowView({
                 disabled={locked || beyondOwn}
                 data-beyond-own={beyondOwn || undefined}
                 title={
-                  locked
-                    ? "Internal staff only"
-                    : beyondOwn
-                      ? "You don't have all of these permissions yourself. Only a Super Admin can change this."
-                      : undefined
+                  locked && adminOnlyLocked
+                    ? "Only Admin accounts can be given Payroll."
+                    : locked
+                      ? "Internal staff only"
+                      : beyondOwn
+                        ? "You don't have all of these permissions yourself. Only a Super Admin can change this."
+                        : undefined
                 }
                 onClick={() =>
                   onItems(withLevel(row, option.level, items, staffOnly))
@@ -1609,6 +1637,11 @@ function AccessRowView({
           })}
         </div>
       </div>
+      {adminOnlyLocked ? (
+        <p className="col-span-full m-0 text-[12px] text-[#4b5563]">
+          Only Admin accounts can be given Payroll.
+        </p>
+      ) : null}
       {send.length ? (
         <p
           data-staff-only={row.key}
