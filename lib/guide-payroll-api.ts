@@ -101,3 +101,23 @@ export function fetchPayrollLog(
     query: before ? { before, limit: String(limit) } : { limit: String(limit) },
   });
 }
+
+/**
+ * 自动锁开关（Annie 2026-11-17「问题2是5号发，其他同意推荐，动手」）：开了以后系统每月 20 号 23:59（洛杉矶）锁本月 1–15，
+ * 5 号 23:59 锁上个月 16–月底，在 Locked dates 里是一条普通锁。新功能开关默认关、只有 Super Admin 能看能改。
+ * ⚠️ 地址 / 字段先按前端 mock 拟的，后端 91 合同到了按合同改。不是 Super Admin / 旧后端 ⇒ 403 / 404，页面不出开关。
+ */
+export function fetchPayrollAutoLock(
+  signal?: AbortSignal,
+): Promise<{ enabled: boolean }> {
+  return apiFetch("/api/payroll/auto-lock", { cache: "no-store", signal });
+}
+
+export function savePayrollAutoLock(
+  enabled: boolean,
+): Promise<{ enabled: boolean }> {
+  return apiFetch("/api/payroll/auto-lock", {
+    method: "PUT",
+    body: { enabled },
+  });
+}

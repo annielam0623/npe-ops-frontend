@@ -8,6 +8,8 @@ import { lockPayrollDates, unlockPayrollDates } from "@/lib/guide-payroll-api";
 import { cn } from "@/lib/utils";
 import type { PayrollLock } from "@/types/guide-payroll";
 
+import { isAutoLock, PayrollAutoLock } from "./payroll-auto-lock";
+
 import {
   HR_CARD_CLASS,
   HR_CARD_HEADER_CLASS,
@@ -136,6 +138,7 @@ export function PayrollLocks({
           right away.
         </span>
       </div>
+      <PayrollAutoLock onUnauthorized={onUnauthorized} />
       {sorted.length ? (
         <div className={cn(C_WRAP, "pt-3")}>
           <table className={cn(C_TABLE, "min-w-[480px]")}>
@@ -157,7 +160,14 @@ export function PayrollLocks({
                     {l.note ? l.note : <span className={C_DIM}>—</span>}
                   </td>
                   <td className={C_TD}>
-                    {l.created_by ?? <span className={C_DIM}>—</span>}
+                    {/* 系统自动锁的行（Annie 2026-11-17 自动锁动手）：写灰字 Auto，不写后端的账号名。 */}
+                    {isAutoLock(l.created_by) ? (
+                      <span className={C_DIM} data-lock-auto>
+                        Auto
+                      </span>
+                    ) : (
+                      (l.created_by ?? <span className={C_DIM}>—</span>)
+                    )}
                   </td>
                   <td className={C_TD}>
                     {canEdit ? (
