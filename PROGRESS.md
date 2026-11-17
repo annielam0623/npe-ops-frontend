@@ -24,6 +24,7 @@
 - **旧 confirm 发送页停用**（Annie 在 68 窗口，原话，动手）：「你把旧前端的发送页面先deactive吧，不然员工老在用它」。只能后端改（staff 直接开 confirm 域名；ops 早已跳转）。已转 6f：三个 GET（admin.py:224 / :260 / :300）推荐 302 到 ops 新页面（或换提示页），不动 POST 接口，旧侧栏三项指向 ops / 隐藏，注意登录 cookie 不能循环。📌 问 Annie：旧 confirm Dispatch relay 面板也能发早班提醒，要不要一起停（建议先只停三个发送页）。后端上了以后 68 去验旧地址跳转。6f 登记为 **G331**，还没开工（后端公司已收尾），今晚家里或明天后端主窗口派；SHA 发给明天前端主窗口。
 - ⏰ Annie 把今天延到 15:30（6f 转原话「今天可以到3：30pm 通知大家继续工作」）。G331 交后端 91，今天可能上；6a 做 G329 + G279、0e 做 G328。前端：00 提前出 Payroll preview；68 出 G281 前端 preview。
   - 📌 Payroll 样稿第 1 版（00）https://claude.ai/artifact/LtGwyr8qAUxYhXfSVnL1VL ：名单 = HR 所有 Guide / Driver + Guide + 本期手打；Extras 每行 Edit · Remove（下拉灰掉，Update 后淡黄、Save rates 存）；Locked dates 每行 Edit · Unlock（就地改、直接存）；How to use 第 11、12 条改（原文在当天回复）。小题：1 改锁直接存 A（推荐）/ 跟 Save rates 一起；2 名单不加搜索、勾了的排前 A（推荐）/ 加搜索框；3 Extras Edit 不能改名 A（推荐）/ 能改。
+  - 📌 G281 前端样稿第 1 版（68）https://claude.ai/artifact/XE73jtwD5dMNBbCH1PTUTn ，照 Tour Tracking G180：题 1 开关在日期行右边三档 Off / Super Admin only / Staff，仅 Super Admin A（推荐）/ 放 Settings；题 2 单独「Order Status」列 A（推荐）/ 单号旁标签；题 3 CHD# 旁淡黄「Contact changed」A（推荐）/ 并进 Order Status；题 4 灰行不算数字 + 「· N to notify」A（推荐）/ 算进；题 5 How to use 两条（原文当天回复）。灰行排序问 6a。
 - 挂起：da（Dispatch）检查套卡在 147 段（main 上也卡），Annie「dispatch检查程序现在先挂起来」。
 - 后端：主窗口 `后端主窗口-6f`[0e63fc]；f9 做 G321 返工（今天不上 main）；91 今天专管 payroll。
 - 窗口：00 [43dedc]、68 [d5537e] 是前端工作窗口。主窗口改 PROGRESS 用 worktree C:\Code\ops-b0（detached，每次 checkout origin/main 再改、推 HEAD:main；stash pop 后要查冲突标记——今天推上去过一次冲突标记，已修）。
