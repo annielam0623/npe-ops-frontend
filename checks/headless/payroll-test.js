@@ -128,6 +128,10 @@ async function run() {
   await ctl({ superadmin: true });
   check("Super Admin：Payroll 页签、打开是 Nov 1–15, 2026", await openPayroll());
   check("页头：Counted through Tue, Nov 10", (await text(q("[data-payroll]"))).includes("Counted through Tue, Nov 10"));
+  // 期间箭头在日期两边（Annie 2026-11-16「一般不是日期在中间，箭头在两边么」）：‹ 日期 ›，键照 Staff Schedule 的周切换
+  check("页头：‹ Nov 1–15, 2026 ›——日期在两个箭头中间，后面才是 · Counted through", await evaluate(`const p = ${q("[data-payroll-prev]")}, d = ${q("[data-payroll-period]")}, n = ${q("[data-payroll-next]")}; const F = Node.DOCUMENT_POSITION_FOLLOWING; return p.nextElementSibling === d && d.nextElementSibling === n && p.getBoundingClientRect().right <= d.getBoundingClientRect().left && d.getBoundingClientRect().right <= n.getBoundingClientRect().left && !!(n.compareDocumentPosition([...document.querySelectorAll('[data-payroll] span')].find((s) => s.textContent.includes('Counted through'))) & F);`));
+  check("页头：箭头 28×28、圆角 8px（同 Staff Schedule）", await evaluate(`const r = ${q("[data-payroll-prev]")}.getBoundingClientRect(); const cs = getComputedStyle(${q("[data-payroll-next]")}); return Math.round(r.width) === 28 && Math.round(r.height) === 28 && cs.borderTopLeftRadius === '8px';`));
+  check("How to use：Use ‹ and › on either side of the dates to move between periods.", await evaluate(`return document.body.textContent.includes('Use ‹ and › on either side of the dates to move between periods.') && !document.body.textContent.includes('next to the dates');`));
   const csv = await evaluate(`return ${q("[data-payroll-export]")}?.getAttribute('href');`);
   check("Export CSV 链到 period.csv?date=2026-11-01", csv === "/api/payroll/period.csv?date=2026-11-01", csv);
   const lockline = await text(q("[data-payroll-lockline]"));
