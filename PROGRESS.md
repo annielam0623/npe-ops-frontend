@@ -56,7 +56,9 @@
 - ✅ Payroll 加购项名单前端上 main 82b21010（00，7b42ede9）：下拉 = New extra… + extras 名单每个 code（含停用）；重名比整个名单；ANT relay 钉住只在旧后端时起作用。payroll 87/87、hr 135/135。
 - ✅ Payroll 期间箭头上 main 7303161f（00，34ce98ba）：「‹ Nov 16–30, 2026 › · …」照 Staff Schedule；How to use 改「Use ‹ and › on either side of the dates to move between periods.」；payroll 82/82、hr 135/135。
 - 📌 Payroll 状态「Paid」：Annie（截图，原话）「这个paid的状态难道不是应该手工设置么，日期过了你就定成paid了？」。后端 status paid = 有价钱、算进合计（合同 guide-payroll-2026-11-13.md:53），V9 已去掉 Mark as paid、改用 Locked dates 记已付。问 Annie：A 只改文字（有价钱的不写 Paid，留空或灰「Counted」；锁住的日子写「Paid · locked」）推荐 / B 加回手工 Mark as paid（要后端）。
-- **153 Main manifest Tickets 按 start time 筛选**（6f 转，只改前端）：Annie 原话「我要在ticket的main manifest上加一个ticket start time可以按照时间段来筛选的功能」。start_time 已是 Tickets 默认列（「YYYY-MM-DD HH:MM:SS」或 ""），前端筛。新功能 ⇒ 派 68 出 preview（Notes 上线后）：形式 / 位置 / 跟勾选 Send 的关系 / 空时间行 / 记不记住 / 手机 / How to use。后端今天 payroll 归 91（直接找 91，抄 6f）。
+- **153 Main manifest Tickets 按 start time 筛选**（6f 转，只改前端）：Annie 原话「我要在ticket的main manifest上加一个ticket start time可以按照时间段来筛选的功能」。start_time 已是 Tickets 默认列（「YYYY-MM-DD HH:MM:SS」或 ""），前端筛。新功能 ⇒ 派 68 出 preview（Notes 上线后）：形式 / 位置 / 跟勾选 Send 的关系 / 空时间行 / 记不记住 / 手机 / How to use。
+  - 📌 153 样稿第 1 版（68）https://claude.ai/artifact/Az4hr5CtC7iY9ViWL5Gvpd ：题 1 当天实际场次多选胶囊 + No time A（推荐）/ 预设时段 / From–To；题 2 表头正上方 A / 页头工具条；题 3 筛掉的自动取消勾选、Select all 和 CSV 只管看得见的 A / 保留勾选并提示；题 4 只写人数 A / 单数 + 人数 / 不写；题 5 不记 A / 记网址 / 记账号；题 6 手机一行左右滑 A / 不出；题 7 How to use 原文见当天回复。前端自己取 HH:MM，不用后端。
+- ✅ **150 Notes 上 main 8414b1be**（68；6f PASS 0fe69137）：tsc 0、eslint 0 error、man 467/467、nav 39/39、mf 338/338。样子按推荐（题 6 / 7 / 9 Annie 未答）。后端今天 payroll 归 91（直接找 91，抄 6f）。
     - payroll 套 3 项在 main 上就失败（11/16–30 写死成「未开始的期」，今天已开始），派 00 改成相对日期（task/payroll-suite-dates）。✅ 上 main 36772ac7（修复 6c9f3d57，只改 payroll-mock.js / payroll-test.js）：原因是 mock 把真实今天一律当 11-05，点下一期传 11/17 = 真实今天又变 11/05；改法是在套里把浏览器时钟固定在 2026-11-05 LA 中午，mock 不再拿真实今天比。payroll 73/73、hr 135/135。
   - 📌 补题问 Annie：题 9 Notes 出在哪些标签（推荐 Bus、Tickets 能改；Admin fee、隐藏行不出）；题 10 小黑框车号要不要加「Van 」（推荐不加，照后端原样写车号，后端没有车型字段）。
 
