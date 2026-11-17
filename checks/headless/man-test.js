@@ -2039,6 +2039,7 @@ async function run() {
   await orderLinkChecks();
   await notesChecks();
   await sessionChecks();
+  await relayTourChecks();
 
   // ── 未登录：跳 ops 自己的登录页带 next ──
   await ctl({ fail401: true });
@@ -2091,6 +2092,54 @@ async function main() {
 }
 
 // ── 置顶 74：Upper Antelope (Brenda) 每单 waiver link（Annie「那4提全部按推荐走，动手」；preview 5niqePBqxUsCBqKpLLKCnm）──
+// ── 150 Relay / Tour 只读两列（G321；Annie N6「就显示简单一点，直接是relay和tour的结果就好了」）──
+async function relayTourChecks() {
+  const cell = (o, col) => `(() => { const h = $heads(); const i = h.indexOf('${col}'); const tr = document.querySelector('tr[data-row^="${o}|"]'); return i < 0 || !tr ? null : tr.children[i + 2]; })()`;
+  const txt = (o, col) => evaluate(`const c = ${cell(o, col)}; return c ? c.textContent.trim() : null;`);
+  await ctl({ marks: false, sections: false, notes: false, prefs: { bus: null, tickets: null } });
+  await openPage(`${APP}/manifests?date=${today}&tab=bus&pill=g%3A3`);
+  await waitFor("$box('CHD1001')", 20000);
+  check("Relay / Tour：旧后端（行上没有 relay_mark）⇒ 不出这两列", await evaluate("const h = $heads(); return !h.includes('Relay') && !h.includes('Tour');"));
+
+  await ctl({ marks: true });
+  await openPage(`${APP}/manifests?date=${today}&tab=bus&pill=g%3A3`);
+  await waitFor("$heads().includes('Relay')", 20000);
+  const h = await evaluate("return $heads();");
+  const sent = h.includes("Morning pickup sent") ? "Morning pickup sent" : "Tour confirmation sent";
+  check("Relay / Tour：Bus 标签有这两列，紧跟 Morning pickup sent（没有就跟 Tour confirmation sent）", h.indexOf("Relay") === h.indexOf(sent) + 1 && h.indexOf("Tour") === h.indexOf("Relay") + 1, JSON.stringify(h));
+  check("Relay / Tour：只写后端的 label（Picked up / Boarded / No show）", (await txt("CHD1001", "Relay")) === "Picked up" && (await txt("CHD1001", "Tour")) === "Boarded" && (await txt("CHD1002", "Relay")) === "No show" && (await txt("CHD1002", "Tour")) === "Boarded", JSON.stringify([await txt("CHD1001", "Relay"), await txt("CHD1001", "Tour"), await txt("CHD1002", "Relay"), await txt("CHD1002", "Tour")]));
+  check("Relay / Tour：只读——格子里没有下拉 / 输入框 / 按钮，也没有 hover 提示", await evaluate(`return ['CHD1001', 'CHD1002'].every((o) => ['Relay', 'Tour'].every((c) => { const el = (() => { const h = $heads(); const i = h.indexOf(c); return document.querySelector('tr[data-row^="' + o + '|"]').children[i + 2]; })(); return !el.querySelector('select, input, button') && !el.querySelector('[title]') && !el.title; }));`));
+  check("Relay / Tour：fields= 请求里不带 _relay / _tour", (await since(0, (e) => e.path === "/api/manifests")).every((e) => { const f = (q(e).get("fields") || "").split(","); return !f.some((k) => k.startsWith("_") || k.startsWith("-")); }));
+
+  await openPage(`${APP}/manifests?date=${today}&tab=bus&pill=g%3A7`);
+  await waitFor("$heads().includes('Relay')", 20000);
+  check("Relay / Tour：没标（null）⇒ 两格都是「—」", (await txt("CHD1003", "Relay")) === "—" && (await txt("CHD1003", "Tour")) === "—");
+  await openPage(`${APP}/manifests?date=${today}&tab=bus&pill=g%3Anone`);
+  await waitFor("$heads().includes('Relay')", 20000);
+  check("Relay / Tour：relay_applicable=false ⇒ Relay 格「—」（就算有标记），Tour 照写", (await txt("CHD1004", "Relay")) === "—" && (await txt("CHD1004", "Tour")) === "No show");
+
+  // Tickets 标签没有
+  await openPage(`${APP}/manifests?date=${today}&tab=tickets&pill=t%3Aantelope`);
+  await waitFor("$box('CHD2001')", 20000);
+  check("Relay / Tour：Tickets 标签没有这两列", await evaluate("const h = $heads(); return !h.includes('Relay') && !h.includes('Tour');"));
+
+  // ☰ Columns 关掉
+  await openPage(`${APP}/manifests?date=${today}&tab=bus&pill=g%3A3`);
+  await waitFor("$heads().includes('Relay')", 20000);
+  await evaluate("$btn('☰ Columns').click();");
+  await waitFor("$dialog()");
+  check("Relay / Tour：☰ Columns 里有、默认勾着", await evaluate("return ['Relay', 'Tour'].every((t) => { const l = [...$dialog().querySelectorAll('label')].find((x) => x.textContent.trim() === t); return !!l && l.querySelector('input').checked; });"));
+  await evaluate("$tick('Relay', false);");
+  const from = (await mockLog()).length;
+  await evaluate("$btn('Apply for all', $dialog()).click();");
+  await waitFor("!$dialog()");
+  await waitFor("!$heads().includes('Relay')", 10000);
+  const put = (await since(from, (e) => e.path === "/api/user-prefs/manifest_cols_bus" && e.method === "PUT"))[0];
+  const shared = put ? JSON.parse(put.body.value).shared : [];
+  check("Relay / Tour：关掉 Relay ⇒ 列没了、存 -_relay，Tour 还在", shared.includes("-_relay") && !shared.includes("-_tour") && (await evaluate("return $heads().includes('Tour');")), JSON.stringify(shared));
+  await ctl({ marks: false, prefs: { bus: null, tickets: null } });
+}
+
 // ── 153 Tickets 按场次分组（Annie「我要这样的，类似antelope bus的分支，然后可以折叠，可以全选可以选session，也可以单独选订单」「动手」）──
 async function sessionChecks() {
   const ANT = `${APP}/manifests?date=${today}&tab=tickets&pill=t%3Aantelope`;

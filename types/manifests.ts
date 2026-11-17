@@ -117,6 +117,13 @@ export interface ManifestRow {
   note?: string;
   note_updated_by?: string;
   note_updated_at?: string | null;
+  /**
+   * G321 Relay / Tour（只 Bus 标签）：relay 司机 / 导游标的结果，没标 = null；旧后端没有这几个键 ⇒ 不出这两列。
+   * relay_applicable=false = 这单不走 relay（Relay 格画「—」）。
+   */
+  relay_mark?: ManifestMark | null;
+  bus_mark?: ManifestMark | null;
+  relay_applicable?: boolean;
   /** 只含 `fields` 里的键。 */
   values: Record<string, ManifestValue>;
 }
@@ -125,6 +132,16 @@ export interface ManifestRow {
  * Bus Tour 胶囊里的一节（Settings → Products → Manifest setup 的 section，同 Bus Manifest 的规则）。
  * 只有一节 / Tickets 标签时 `sections` 是 []，照一张表显示。
  */
+/** G321：一个 Relay / Tour 标记。前端只显示 label。 */
+export interface ManifestMark {
+  value: string;
+  label: string;
+  by: string;
+  role: string;
+  vehicle: string;
+  at: string | null;
+}
+
 export interface ManifestListSection {
   key: string;
   title: string;
