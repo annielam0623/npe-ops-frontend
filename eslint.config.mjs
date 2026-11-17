@@ -12,7 +12,8 @@ const compat = new FlatCompat({
 const eslintConfig = [
   ...compat.extends("next/core-web-vitals", "next/typescript"),
   {
-    ignores: [".next/**", ".next-checks/**","out/**", "build/**", "next-env.d.ts", "checks/**"],
+    // .next-build：本地 `NEXT_DIST_DIR=.next-build next build`（checks/headless/README 的缓存头检查）的产物，不查。
+    ignores: [".next/**", ".next-checks/**", ".next-build/**", "out/**", "build/**", "next-env.d.ts", "checks/**"],
   },
 ];
 
