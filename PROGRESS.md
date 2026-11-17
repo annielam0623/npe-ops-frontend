@@ -48,6 +48,7 @@
     - Annie 纠正（原话）「原因：你在 + Add extra 里选的是「New extra…」因为你只给了那一个选项啊」⇒ 下拉里只有 New extra…，没有「ANT relay — new amount」，是 bug。派 00 查修（task/payroll-extra-options）。
     - ✅ **上 main ece7b98d**（00，修复 7b6662b1，样子不变）：原因 = 后端 GET rates 只回启用行，ANT relay 的行 Remove + Save 后整个加购项从表和下拉消失。修：「ANT relay — new amount」永远在下拉（PUT 带 code ant_relay 复活），重名检查也认它。payroll 79/79、hr 135/135。没覆盖：自建加购项全删后同样消失 ⇒ 需要后端在 GET /api/payroll/rates 加 extras 名单（含停用的 code + name），已发 6f（低优先）。⚠️ 生产上 ANT relay 可能已全删，请 Annie 用「ANT relay — new amount」重加（Sep 1、$66、Everyone）。
     - （150 Notes）68 做完 task/150-notes **b958bfa0**，未合 main：Bus + Tickets 加 Notes 列（单行 170px、Save / Enter 存、Esc 还原、往返两行同步、hover 全文 + 谁几点、无 edit 只读、Columns 可关、CSV 带、离开拦）；How to use 末尾加一句。tsc 0、eslint 0 error、build、man 465/465（+23）、mf 338/338、nav 39/39。等后端 Notes 上 main（要 Annie 签 release.py）→ 6f PASS → 合。Notes 样子题 6 / 7 / 9 按推荐做，Annie 未答。
+      - ✅ 后端 Notes 上 main 并部署 4d132f60（代码 057a327c）；SA-4：note 只当纯文本渲染。已让 68 合 main、重跑、交 6f PASS 后上线。
     - payroll 套 3 项在 main 上就失败（11/16–30 写死成「未开始的期」，今天已开始），派 00 改成相对日期（task/payroll-suite-dates）。✅ 上 main 36772ac7（修复 6c9f3d57，只改 payroll-mock.js / payroll-test.js）：原因是 mock 把真实今天一律当 11-05，点下一期传 11/17 = 真实今天又变 11/05；改法是在套里把浏览器时钟固定在 2026-11-05 LA 中午，mock 不再拿真实今天比。payroll 73/73、hr 135/135。
   - 📌 补题问 Annie：题 9 Notes 出在哪些标签（推荐 Bus、Tickets 能改；Admin fee、隐藏行不出）；题 10 小黑框车号要不要加「Van 」（推荐不加，照后端原样写车号，后端没有车型字段）。
 
