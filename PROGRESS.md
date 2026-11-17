@@ -45,6 +45,7 @@
     - 00 查名单来源：GET /api/hr/profiles 要 settings.hr.view 且回整份档案，不合适；Dispatch 导游下拉 GET /api/dispatch/day 的 guides（list_guides，{id,name}，id = hr_id）要 dispatch.view、包很重。建议选 A 时请后端在 GET /api/payroll/rates 加 guides: [{hr_id, name}]（调 list_guides，权限跟 settings.payroll.view）；后端没上前前端先读 dispatch/day，403 就退回现名单 + 灰字。
   - Annie（截图，原话）「然后extra为什么不能编辑，而且还给我显示个any 润」：Extras 一行没存的「ANT Relay」（大写 R）Jul 16 / Lankun W / $66 / Can be ticked on「Any run」。疑似按名字区分大小写认 ANT relay。派 00 查；Extras 加 Edit 要问 Annie。
     - ✅ **上 main 0e13c7a7**（00，修复 0269bab5）：她是在「New extra…」打了「ANT Relay」；后端按 code 认 ANT relay，新名字生成 code ant_relay 已占 ⇒ 会存成 ant_relay_2、任何趟能勾、叠加算错钱。修：新名字按后端生成 code 的方式比，只差大小写 / 空格 / 符号就红字挡下「ANT relay already exists. Pick "ANT relay — new amount" under Extra instead.」；跟没存的草稿重名「<Name> is already in the list, not saved yet.」。tsc / eslint 0、build、payroll 新 4 项过、hr 135/135。Extras Edit：后端 PUT /api/payroll/extra-rates 已支持带 id 改，前端加 Edit 不用后端，等 Annie。
+    - （150 Notes）68 做完 task/150-notes **b958bfa0**，未合 main：Bus + Tickets 加 Notes 列（单行 170px、Save / Enter 存、Esc 还原、往返两行同步、hover 全文 + 谁几点、无 edit 只读、Columns 可关、CSV 带、离开拦）；How to use 末尾加一句。tsc 0、eslint 0 error、build、man 465/465（+23）、mf 338/338、nav 39/39。等后端 Notes 上 main（要 Annie 签 release.py）→ 6f PASS → 合。Notes 样子题 6 / 7 / 9 按推荐做，Annie 未答。
     - payroll 套 3 项在 main 上就失败（11/16–30 写死成「未开始的期」，今天已开始），派 00 改成相对日期（task/payroll-suite-dates）。
   - 📌 补题问 Annie：题 9 Notes 出在哪些标签（推荐 Bus、Tickets 能改；Admin fee、隐藏行不出）；题 10 小黑框车号要不要加「Van 」（推荐不加，照后端原样写车号，后端没有车型字段）。
 
