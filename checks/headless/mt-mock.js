@@ -34,6 +34,8 @@ const LIVE_MARKS = {
   A1002: { status: "no_show", at: laIso("06:03"), driver: "Mike", van: "Van 12" },
   A1003: { status: "boarded", at: laIso("07:02"), driver: "Ana", van: "Bus A" },
 };
+/** staff 改的标记（No show 改方向）：「订单:relay|bus」→ 标记。 */
+const OVERRIDES = {};
 const relayGuest = (id, first, last, pax, order) => {
   const mk = LIVE_MARKS[order];
   const st = mk && mk.driver === "Mike" ? mk : null;
@@ -282,6 +284,10 @@ http
         LIVE_MARKS[ctl.addNoShow] = { status: "no_show", at: laIso("07:05"), driver: "Ana", van: "Bus A" };
         delete ctl.addNoShow;
       }
+      if (ctl.resetSplit) {
+        for (const k of Object.keys(OVERRIDES)) delete OVERRIDES[k];
+        delete ctl.resetSplit;
+      }
       if (ctl.clearMark) {
         delete LIVE_MARKS[ctl.clearMark];
         delete ctl.clearMark;
@@ -369,11 +375,23 @@ http
         if (!mk) return { ...r, live_status: null, live_status_at: null, live_driver: "", live_van: "", ns_unhandled: false };
         return { ...r, live_status: mk.status, live_status_at: mk.at, live_driver: mk.driver, live_van: mk.van, ns_unhandled: mk.status === "no_show" && !r.action_taken_by };
       };
+      // No show 改方向（ctl.split，后端 G321 返工的形状，6f 给）：Relay / Bus 各两份 + relay_applicable；A1004 是 TI 客人（不走 relay）。
+      const withSplit = (r0) => {
+        const r = withLive(r0);
+        if (!ctl.split) return r;
+        const mk = LIVE_MARKS[r.order_number];
+        const relayOrig = mk && mk.driver === "Mike" ? { value: mk.status, label: "", by: "Mike", role: "relay", vehicle: "Van 12", at: mk.at } : null;
+        const busOrig = mk && mk.driver === "Ana" ? { value: mk.status, label: "", by: "Ana", role: "guide", vehicle: "Bus A", at: mk.at } : null;
+        const relayMark = OVERRIDES[r.order_number + ":relay"] || relayOrig;
+        const busMark = OVERRIDES[r.order_number + ":bus"] || busOrig;
+        const ns = (relayMark && relayMark.value === "no_show") || (busMark && busMark.value === "no_show");
+        return { ...r, relay_mark: relayMark, relay_original: relayOrig, bus_mark: busMark, bus_original: busOrig, relay_applicable: r.order_number !== "A1004", ns_unhandled: !!ns && !r.action_taken_by };
+      };
       return send(res, 200, {
         date,
         tracking_window: { end_minute: ctl.endMinute, end_label: ctl.endMinute === 0 ? "12:00 AM" : "11:59 PM" },
         rows: date !== today ? [] : [
-          ...(ctl.staleAction ? rows.map((r) => (r.id === 5 ? { ...r, notes_unhandled: true } : r)) : rows).map(withLive),
+          ...(ctl.staleAction ? rows.map((r) => (r.id === 5 ? { ...r, notes_unhandled: true } : r)) : rows).map(withSplit),
           // 有电话、没邮箱：测对话框「短信最多两段」没邮箱时的提示（Annie 2026-10-15）。
           ...(ctl.noEmailRow ? [noEmailRow] : []),
         ],
@@ -391,6 +409,20 @@ http
             shuttles: [{ label: "Shuttle outbound", kind: "outbound", time: "6:30 AM", hotel: "ZZ Test Shuttle Stop", product: "ZZ Test Shuttle", pax: 5, bookings: 2 }] } }],
       };
       return send(res, 200, { date, people: date === today ? [...livePeople(), ...(ctl.liveCompact ? [compact] : [])] : [] });
+    }
+    // No show 改方向：staff 改 Relay / Bus（PUT，value null = 回原始）；同一次写入记成已处理（action_taken）。
+    if (p === "/api/notifications/morning-pickup/tracking/mark" && req.method === "PUT") {
+      const body = (await readBody(req)) || {};
+      entry.body = body;
+      if (ctl.markFail) return send(res, 409, { detail: "That booking is no longer on this date. Reload the page." });
+      const r = rows.find((x) => x.id === body.booking_id);
+      if (!r || r.order_number !== body.order_number) return send(res, 404, { detail: "Booking not found" });
+      if (body.col !== "relay" && body.col !== "bus") return send(res, 422, { detail: "col must be relay or bus" });
+      const k = body.order_number + ":" + body.col;
+      if (body.value === null) delete OVERRIDES[k];
+      else OVERRIDES[k] = { value: body.value, label: "", by: "ZZ Staff", role: "staff", vehicle: null, at: laIso("09:15") };
+      r.action_taken_by = "ZZ Staff";
+      return send(res, 200, { ok: true });
     }
     let m = p.match(/^\/api\/bookings\/(\d+)\/take-action$/);
     if (m && req.method === "PUT") {

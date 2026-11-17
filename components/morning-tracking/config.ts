@@ -1,7 +1,12 @@
 import { noAddressLabel } from "@/lib/send-outcome";
 import type { ContactBadge } from "@/components/ui/conversation-modal";
 import { LA_TIME_ZONE } from "@/lib/la-date";
-import type { MorningTrackingRow } from "@/types";
+import type {
+  MorningTrackingRow,
+  TrackingMark,
+  TrackingMarkCol,
+  TrackingMarkValue,
+} from "@/types";
 
 /** 与旧页面同频：60 秒一轮，只在看今天、且没过追踪窗口时自动刷新。 */
 export const POLL_INTERVAL_MS = 60_000;
@@ -14,6 +19,8 @@ export type ColumnKey =
   | "checkin_status"
   | "checkin_time"
   | "driver_mark"
+  | "relay_mark"
+  | "bus_mark"
   | "notes"
   | "whatsapp"
   | "phone"
@@ -38,6 +45,10 @@ export const COLUMNS: readonly { key: ColumnKey; label: string }[] = [
   // 司机 / 导游在手机上标的 Picked up / Boarded / No show（司机实时页 ⑥ A，Annie 2026-11-02「动手」）。
   // 旧后台不认这个键，会自己丢掉（tracking_morning.html loadColOrder 只留认识的）。
   { key: "driver_mark", label: "Driver mark" },
+  // No show 改方向（Annie 2026-11-17「动手」，N9 A）：Driver mark 拆成 Relay、Bus 两列，后端带了新键时
+  // 替换 Driver mark 出在同一个位置（Driver mark 只给旧后端用）。
+  { key: "relay_mark", label: "Relay" },
+  { key: "bus_mark", label: "Bus" },
   { key: "notes", label: "Notes" },
   { key: "whatsapp", label: "WhatsApp" },
   { key: "phone", label: "Phone" },
@@ -66,6 +77,9 @@ const KNOWN_KEYS = new Set<string>(DEFAULT_COLUMN_ORDER);
 /** 存档里没有这一列时插在哪一列后面。 */
 const NEW_COLUMN_AFTER: Partial<Record<ColumnKey, ColumnKey>> = {
   driver_mark: "checkin_time",
+  // Relay / Bus 紧跟 Driver mark（拖过列的人：Driver mark 在哪，两列就出在哪，N9 A「替换」）。
+  relay_mark: "driver_mark",
+  bus_mark: "relay_mark",
   arrived_at: "pickup_location",
   left_at: "arrived_at",
 };
@@ -261,6 +275,66 @@ export function hasLiveMarks(rows: MorningTrackingRow[]): boolean {
   return rows.some((r) => r.live_status !== undefined);
 }
 
+/** 后端带了 Relay / Bus 分开的标记（No show 改方向，G321 返工后）：出 Relay、Bus 两列，不出 Driver mark。 */
+export function hasSplitMarks(rows: MorningTrackingRow[]): boolean {
+  return rows.some((r) => "bus_mark" in r || "relay_mark" in r);
+}
+
+const MARK_TEXT: Record<TrackingMarkValue, string> = {
+  picked_up: "Picked up",
+  boarded: "Boarded",
+  no_show: "No show",
+};
+
+/** 「Picked up」「Boarded」「No show」。 */
+export function markText(value: TrackingMarkValue): string {
+  return MARK_TEXT[value] ?? value;
+}
+
+/** 每列能选的结果（Relay：Picked up / No show；Bus：Boarded / No show）。 */
+export const MARK_CHOICES: Record<TrackingMarkCol, TrackingMarkValue[]> = {
+  relay: ["picked_up", "no_show"],
+  bus: ["boarded", "no_show"],
+};
+
+/** staff 改过（显示的那份是 staff 写的）。 */
+export function isStaffMark(mark: TrackingMark | null | undefined): boolean {
+  return mark?.role === "staff";
+}
+
+/**
+ * 一个标记的一行说明（鼠标移上去 / 订单页）：「by Joe (guide) · Bus A (3001) · 7:05 AM」；
+ * staff 改的「changed by Lizzie (staff) · 9:15 AM」；短信链接进来、没连账号「by the guide (text link)」。
+ */
+export function markWho(mark: TrackingMark, col: TrackingMarkCol): string {
+  const role = mark.role || (col === "relay" ? "relay" : "guide");
+  const at = formatMarkTime(mark.at);
+  if (role === "staff") {
+    return [`changed by ${mark.by || "staff"} (staff)`, at]
+      .filter(Boolean)
+      .join(" · ");
+  }
+  const who = mark.by
+    ? `by ${mark.by} (${role})`
+    : `by the ${role === "relay" ? "relay driver" : role} (text link)`;
+  return [who, mark.vehicle || "", at].filter(Boolean).join(" · ");
+}
+
+/** 鼠标移上去的两行：第一行显示的那份；staff 改过时第二行写原来的（N2 A）。 */
+export function markHover(
+  mark: TrackingMark | null | undefined,
+  original: TrackingMark | null | undefined,
+  col: TrackingMarkCol,
+): string {
+  if (!mark) return "";
+  const first = `${markText(mark.value)} · ${markWho(mark, col)}`;
+  if (!isStaffMark(mark)) return first;
+  const second = original
+    ? `Original: ${markText(original.value)} · ${markWho(original, col)}`
+    : "Original: not marked";
+  return `${first}\n${second}`;
+}
+
 const MARK_TIME_FORMAT = new Intl.DateTimeFormat("en-US", {
   timeZone: LA_TIME_ZONE,
   hour: "numeric",
@@ -281,7 +355,12 @@ export function noShowBadge(rows: MorningTrackingRow[]): {
 } {
   return {
     unhandled: rows.filter((r) => r.ns_unhandled).length,
-    any: rows.some((r) => r.live_status === "no_show"),
+    any: rows.some(
+      (r) =>
+        r.live_status === "no_show" ||
+        r.relay_mark?.value === "no_show" ||
+        r.bus_mark?.value === "no_show",
+    ),
   };
 }
 

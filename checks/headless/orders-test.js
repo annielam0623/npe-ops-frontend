@@ -333,6 +333,30 @@ async function run() {
   await sleep(500);
   check("旧后端：整页没有 Main manifest 那一行", await evaluate("return !document.querySelector('[data-manifest-links]');"));
 
+  // ── No show 改方向（Annie 2026-11-17「动手」，N3 A / N8 A）：订单页 Day of tour 卡，只看，放 Operations 后面 ──
+  await ctl({ dayOfTour: "legs", partner: null, staffPerms: null });
+  await goto(`${APP}/orders/CHDTESTORDER1`);
+  await waitFor("document.querySelector('[data-day-of-tour]')", 60000);
+  check("Day of tour 卡紧跟 Operations 卡", await evaluate("const t = [...document.querySelectorAll('section[aria-label]')].map((s) => s.getAttribute('aria-label')); return t.indexOf('Day of tour') === t.indexOf('Operations') + 1;"), await evaluate("return [...document.querySelectorAll('section[aria-label]')].map((s) => s.getAttribute('aria-label')).join(',');"));
+  check("按团期 + leg 分段，新的在前：Mon, Oct 5, 2026 · Outbound / · Return / Sat, Oct 3, 2026 · Outbound + Old tour date", await evaluate("const l = [...document.querySelectorAll('[data-day-of-tour-leg]')]; return l.map((x) => x.dataset.dayOfTourLeg).join(',') === '2026-10-05|,2026-10-05|return,2026-10-03|' && l[0].textContent.includes('Mon, Oct 5, 2026 · Outbound') && !l[0].querySelector('[data-old-tour-date]') && l[1].textContent.includes('· Return') && l[2].querySelector('[data-old-tour-date]')?.textContent === 'Old tour date';"), await evaluate("return [...document.querySelectorAll('[data-day-of-tour-leg]')].map((x) => x.textContent).join(' | ');"));
+  check("第一段：Relay Picked up · by Mike (relay) · 2101 · 6:58 AM；Bus Boarded（绿）· changed by Lizzie (staff) · 9:15 AM + 灰字 Original: No show · by Joe (guide) · Bus A (3001) · 7:12 AM", await evaluate("const t = document.querySelector('[data-day-of-tour-leg=\"2026-10-05|\"]').textContent; return t.includes('Picked upby Mike (relay) · 2101 · 6:58 AM') && t.includes('Boardedchanged by Lizzie (staff) · 9:15 AM') && t.includes('Original: No show · by Joe (guide) · Bus A (3001) · 7:12 AM');"), await evaluate("return document.querySelector('[data-day-of-tour-leg=\"2026-10-05|\"]').textContent;"));
+  check("回程没标：Relay「—」、Bus「Not marked」；旧团期短信链接进来：by the relay driver (text link)", await evaluate("const r = document.querySelector('[data-day-of-tour-leg=\"2026-10-05|return\"]').textContent; const o = document.querySelector('[data-day-of-tour-leg=\"2026-10-03|\"]').textContent; return r.includes('Relay—') && r.includes('BusNot marked') && o.includes('by the relay driver (text link) · 2104 · 6:50 AM');"));
+  check("只看：卡里没有输入框 / 下拉 / 按钮；右上「Open in Morning Tracking →」链到 /morning-pickup/tracking?date=2026-10-05&q=单号", await evaluate("const c = document.querySelector('section[aria-label=\"Day of tour\"]'); const a = c.querySelector('[data-day-of-tour-open]'); const u = new URL(a.href); return !c.querySelector('input,select,button') && a.textContent.trim() === 'Open in Morning Tracking →' && u.pathname === '/morning-pickup/tracking' && u.searchParams.get('date') === '2026-10-05' && u.searchParams.get('q') === 'CHDTESTORDER1';"));
+  await ctl({ dayOfTour: "empty" });
+  await goto(`${APP}/orders/CHDTESTORDER1`);
+  await waitFor("document.querySelector('[data-day-of-tour]')", 60000);
+  check("带了 day_of_tour 但没有标记：卡照样在，写 No relay or bus marks yet.", await evaluate("return document.querySelector('[data-day-of-tour]').textContent.trim() === 'No relay or bus marks yet.';"));
+  await ctl({ dayOfTour: "legs", partner: ["orders.view"] });
+  await goto(`${APP}/orders/CHDTESTORDER1`);
+  await waitFor("!!document.querySelector('main h1')", 60000);
+  await sleep(500);
+  check("partner：不出 Day of tour 卡", await evaluate("return !document.querySelector('[data-day-of-tour]');"));
+  await ctl({ dayOfTour: null, partner: null });
+  await goto(`${APP}/orders/CHDTESTORDER1`);
+  await waitFor("!!document.querySelector('main h1')", 60000);
+  await sleep(500);
+  check("旧后端（没有 day_of_tour）：不出 Day of tour 卡", await evaluate("return !document.querySelector('[data-day-of-tour]');"));
+
   await ctl({ fail401: true });
   await goto(`${APP}/orders`);
   await waitFor("location.pathname === '/auth/login'");

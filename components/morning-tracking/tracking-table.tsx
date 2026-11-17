@@ -22,6 +22,7 @@ import {
   notesHeaderCount,
   smsStatusOf,
 } from "./config";
+import { MarkCell, type MarkEditing } from "./mark-cell";
 
 const LABEL: Record<ColumnKey, string> = Object.fromEntries(
   COLUMNS.map((c) => [c.key, c.label]),
@@ -47,6 +48,8 @@ export interface TrackingTableProps {
   placeholder: string | null;
   /** 这次刷新新冒出来的 No show（bookings.id）：那一行闪三下、带 NEW（司机实时页 ⑥ A）。 */
   newNoShow?: ReadonlySet<number>;
+  /** Relay / Bus 两列的编辑（No show 改方向）；没有 = 只看。 */
+  marks?: MarkEditing;
 }
 
 export function TrackingTable({
@@ -59,6 +62,7 @@ export function TrackingTable({
   now,
   placeholder,
   newNoShow,
+  marks,
 }: TrackingTableProps) {
   const canTake = usePermissions().canRowTakeAction("morning");
   const [dragging, setDragging] = useState<ColumnKey | null>(null);
@@ -189,6 +193,7 @@ export function TrackingTable({
                     toggling={togglingId === row.id}
                     onOpenConversation={onOpenConversation}
                     onToggleAction={onToggleAction}
+                    marks={marks}
                   />
                 ))}
               </tr>
@@ -258,6 +263,7 @@ function Cell({
   toggling,
   onOpenConversation,
   onToggleAction,
+  marks,
 }: {
   columnKey: ColumnKey;
   row: MorningTrackingRow;
@@ -268,6 +274,7 @@ function Cell({
   toggling: boolean;
   onOpenConversation: (row: MorningTrackingRow) => void;
   onToggleAction: (row: MorningTrackingRow, want: "on" | "off") => void;
+  marks?: MarkEditing;
 }) {
   const style = floated
     ? {
@@ -327,6 +334,20 @@ function Cell({
       content = (
         <DriverMark
           row={row}
+          isNew={isNew}
+          canTake={canTake}
+          toggling={toggling}
+          onToggleAction={onToggleAction}
+        />
+      );
+      break;
+    case "relay_mark":
+    case "bus_mark":
+      content = (
+        <MarkCell
+          row={row}
+          col={columnKey === "relay_mark" ? "relay" : "bus"}
+          edit={marks}
           isNew={isNew}
           canTake={canTake}
           toggling={toggling}
