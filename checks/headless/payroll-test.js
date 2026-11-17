@@ -106,6 +106,16 @@ async function clickFee(id) {
   return waitFor(`${run_(id)}.querySelector('[data-payroll-fee-editor] input')`, 3000);
 }
 
+const FAKE_NOW = `(() => {
+  const Real = Date;
+  const off = Real.parse("2026-11-05T20:00:00Z") - Real.now();
+  class FakeDate extends Real {
+    constructor(...a) { if (a.length) super(...a); else super(Real.now() + off); }
+    static now() { return Real.now() + off; }
+  }
+  globalThis.Date = FakeDate;
+})();`;
+
 async function run() {
   // ① Admin 没勾 Payroll：没有页签
   await ctl({ superadmin: false, codes: [], runFail: null, periodFail: false });
@@ -382,6 +392,9 @@ async function main() {
   };
   await cdp("Page.enable");
   await cdp("Runtime.enable");
+  // 浏览器的「今天」固定在 2026-11-05（洛杉矶中午，秒针照走）：模拟数据按这一天写的（Nov 1–15 这一期、11/16 起是将来的期）。
+  // 以前模拟后端把「真实的今天」当成 11/05，真实日期一过 11/16，翻期算出来的日子正好撞上真实今天就翻不过去（2026-11-17 起 3 项失败）。
+  await cdp("Page.addScriptToEvaluateOnNewDocument", { source: FAKE_NOW });
   try {
     await run();
   } catch (e) {
