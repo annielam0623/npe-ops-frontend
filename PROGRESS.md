@@ -7,6 +7,8 @@
 > **下一个主窗口：先读下面「2026-11-16 收工交接」，再看置顶。**
 
 ## 2026-11-16 晚 家里开工：前端主窗口 `npe-ops-frontend-52`[914bb9]（只分工和汇报，不写代码；9:30 PM 截止）
+- ✅ **138 导游工资上 main 4ac34642**（79 整合 + 5a 卡片，b8 PASS）。验收点见 79 在本节下方 / 对话。
+- 150 + 151：Annie（原话）「今天做吧」⇒ 今晚派 5a 出 preview（150 Relay / Bus 两列 + Notes，151 手机一屏 / Full screen），只出样稿不写代码，等 Annie 答题 +「动手」。
 - 接 6e 收工交接。后端主窗口今晚是 `后端主窗口-b8`[ca25ce]（另有后端 ac / 57）；已告诉 b8，问 138 合同 v3 / v170 状态。空闲内存 10.8 GB。
 - 138（task/138-guide-payroll 4f3a8fa6，8d 的逐步说明在分支 PROGRESS）：要 Annie 开工作窗口接着做；建议拆两个窗口——甲：期间页的编辑（Fee 点格子改、Extras 勾、Tips、Needs review、Save payroll changes、离开拦截、手机、检查套）；乙：Pay rates / Extras 价格卡、Locked dates 卡、Change history 卡（各放单独文件，甲接进 payroll.tsx）+ Team 页 Payroll 一行。
 - 已派：甲 = `79`[9816cf]（task/138-guide-payroll，worktree D:/ops-wt-138，负责整合 + 检查套 + 交核）；乙 = `5a`[71ed90]（task/138b-payroll-cards，新文件 payroll-rates / payroll-locks / payroll-history.tsx + Team 行，交给 79 合）。
