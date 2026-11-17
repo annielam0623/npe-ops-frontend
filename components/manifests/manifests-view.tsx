@@ -81,6 +81,7 @@ import {
   WAIVER_KEY,
   WAIVER_OFF,
   withWaiverColumn,
+  withTicketSessions,
   NOTE_KEY,
   rememberNoteChoice,
   withNoteColumn,
@@ -97,6 +98,8 @@ import {
   ReminderDialog,
   TourConfirmDialog,
 } from "./send-dialogs";
+
+const NO_KEYS: ReadonlySet<string> = new Set();
 
 type LoadState =
   | { kind: "loading" }
@@ -467,6 +470,12 @@ export function ManifestsView() {
     }
   }
 
+  /** 153：Tickets 场次组哪些收起了（只记这一页：日期 + 标签 + 团胶囊）。 */
+  const [fold, setFold] = useState<{
+    page: string;
+    keys: ReadonlySet<string>;
+  }>({ page: "", keys: NO_KEYS });
+
   /** 改了还没存的 Cfm # 格（按行）：离开页面先问（全站规矩，A2）。 */
   const [dirtyCfm, setDirtyCfm] = useState<ReadonlySet<string>>(new Set());
   const onCfmDirty = useCallback((rowKey: string, dirty: boolean) => {
@@ -546,7 +555,9 @@ export function ManifestsView() {
   // 150 Notes：Bus、Tickets 标签多一列备注（后端给了 note 才有），见 config.withNotes。
   const shown =
     data && data.tab === tab
-      ? withNotes(perms.canSeeMoney ? data : withoutManifestMoney(data))
+      ? withTicketSessions(
+          withNotes(perms.canSeeMoney ? data : withoutManifestMoney(data)),
+        )
       : null;
   // 搜索跳过来的行到了：滚到屏幕中间（每次跳转只滚一次，后面重拉不再拽视线）。
   const highlightShown =
@@ -624,6 +635,41 @@ export function ManifestsView() {
     : [];
   const pickedPax = pickedRows.reduce((n, r) => n + paxOf(r), 0);
   const pickedOrders = new Set(pickedRows.map((r) => r.order_number)).size;
+  // 153：收起的场次组（题 3 A 不记：换日期 / 标签 / 团胶囊就回到全部展开，题 2 A）。
+  const foldPage = shown ? `${shown.date}|${shown.tab}|${shown.pill ?? ""}` : "";
+  const folded = fold.page === foldPage ? fold.keys : NO_KEYS;
+  const setFolded = (keys: readonly string[], on: boolean) =>
+    setFold((cur) => {
+      const next = new Set(cur.page === foldPage ? cur.keys : NO_KEYS);
+      for (const k of keys) {
+        if (on) next.add(k);
+        else next.delete(k);
+      }
+      return { page: foldPage, keys: next };
+    });
+  // 搜索 / Open in Main manifest 跳到的行在收起的组里 ⇒ 把那组打开（不然标黄的行看不见）。
+  const highlightSection = highlight
+    ? shown?.rows.find((r) => r.row_key === highlight)?.section
+    : undefined;
+  const highlightFolded = !!highlightSection && folded.has(highlightSection);
+  useEffect(() => {
+    if (highlightFolded && highlightSection)
+      setFold((cur) => {
+        const keys = new Set(cur.keys);
+        keys.delete(highlightSection);
+        return { ...cur, keys };
+      });
+  }, [highlightFolded, highlightSection]);
+  // 勾了、在收起的组里的（题 1 A：照样发，发送条上写明）。
+  const foldedRows = shown
+    ? shown.rows.filter(
+        (r) => selected.has(r.row_key) && !!r.section && folded.has(r.section),
+      )
+    : [];
+  const foldedPicked = {
+    orders: new Set(foldedRows.map((r) => r.order_number)).size,
+    groups: new Set(foldedRows.map((r) => r.section)).size,
+  };
   // 勾了、但门票还没填 Cfm # 的行：点发送时先拦一道，不悄悄漏发。
   const missingPicked = shown
     ? shown.rows.filter(
@@ -1036,6 +1082,9 @@ export function ManifestsView() {
               >
                 <span className="mr-auto text-[#cbd5e1] tabular-nums max-sm:shrink-0 max-sm:whitespace-nowrap">
                   {plural(pickedOrders, "order")} selected · {pickedPax} pax
+                  {foldedPicked.orders
+                    ? ` (${foldedPicked.orders} in ${foldedPicked.groups === 1 ? "a collapsed group" : "collapsed groups"})`
+                    : ""}
                 </span>
                 {noConfirm ? null : (
                   <button
@@ -1241,6 +1290,8 @@ export function ManifestsView() {
                   onWaiverDirty={onWaiverDirty}
                   onNoteSaved={onNoteSaved}
                   onNoteDirty={onNoteDirty}
+                  folded={folded}
+                  onFold={setFolded}
                   onUnauthorized={redirectToLogin}
                 />
               </section>
@@ -1522,6 +1573,8 @@ function ManifestTable({
   onWaiverDirty,
   onNoteSaved,
   onNoteDirty,
+  folded,
+  onFold,
   onUnauthorized,
 }: {
   data: ManifestPage;
@@ -1545,6 +1598,9 @@ function ManifestTable({
   /** 150 Notes：存好了（同单同产品同团期的行一起换）/ 改了没存。 */
   onNoteSaved: Parameters<typeof NoteInput>[0]["onSaved"];
   onNoteDirty: (rowKey: string, dirty: boolean) => void;
+  /** 153：收起的 Tickets 场次组（节键）；收 / 展开几个组。 */
+  folded: ReadonlySet<string>;
+  onFold: (keys: readonly string[], on: boolean) => void;
   onUnauthorized: () => void;
 }) {
   // partner 不能发时没有勾选；Cfm # 能不能改由格子自己看 ViewOnly（manifests.edit）。
@@ -1706,6 +1762,8 @@ function ManifestTable({
 
   let tourIndex = 0;
   return (
+    <>
+    <SessionTools sections={sections} folded={folded} onFold={onFold} />
     <div className="overflow-x-auto">
       <table className="w-full min-w-[800px] border-collapse text-[12px]">
         <thead className="border-b-[0.5px] border-black/[.08] text-left text-[11px] font-medium text-[#1a1a1a] night:border-white/10 night:text-white/45">
@@ -1805,32 +1863,92 @@ function ManifestTable({
                   keys.length > 0 && keys.every((k) => selected.has(k));
                 const bg = sectionBg(
                   sec.kind,
-                  sec.kind === "tour" ? tourIndex++ : 0,
+                  sec.kind === "tour" || sec.kind === "session"
+                    ? tourIndex++
+                    : 0,
                 );
+                // 153：Tickets 场次组（前端分的）能折叠，组头的框有半选；Bus 的节照旧。
+                const session = isSessionGroup(sec);
+                const isFolded = session && folded.has(sec.key);
+                const some = keys.some((k) => selected.has(k));
+                const tickedOrders = new Set(
+                  rows
+                    .filter((r) => selected.has(r.row_key))
+                    .map((r) => r.order_number),
+                ).size;
                 return [
-                  <tr key={`sec:${sec.key}`} data-section={sec.key}>
+                  <tr
+                    key={`sec:${sec.key}`}
+                    data-section={sec.key}
+                    data-session={session ? "" : undefined}
+                    data-folded={isFolded ? "" : undefined}
+                  >
                     <td
                       colSpan={colSpan}
                       style={{ background: bg }}
                       className="px-2.5 py-1.5 text-[12px] font-semibold tracking-[.02em] text-[#1a1a1a] night:text-white/90"
                     >
-                      <label className="inline-flex cursor-pointer items-center gap-2">
-                        <input
-                          type="checkbox"
-                          hidden={viewOnly}
-                          className={CHECK_BIG}
-                          aria-label={`Select all in ${sec.title}`}
-                          checked={on}
-                          disabled={!keys.length}
-                          onChange={(e) => onToggle(keys, e.target.checked)}
-                        />
-                        {sec.title}
-                      </label>
-                      <span className="ml-2 font-normal text-[#1a1a1a]">
-                        {plural(sec.orders, "order")} · {sec.pax} pax
-                        {sec.show_cfm && sec.tour_time
-                          ? ` · Tour time ${sec.tour_time}`
-                          : ""}
+                      {/* 手机上组头钉在左边，表格左右滑时不跟着跑（题 4 A）。 */}
+                      <span
+                        className={cn(
+                          "inline-flex items-center",
+                          session && "max-sm:sticky max-sm:left-2",
+                        )}
+                      >
+                        {session ? (
+                          <button
+                            type="button"
+                            data-fold
+                            aria-expanded={!isFolded}
+                            aria-label={`${isFolded ? "Open" : "Fold"} ${sec.title}`}
+                            onClick={() => onFold([sec.key], !isFolded)}
+                            className="mr-1.5 inline-flex h-5 w-5 cursor-pointer items-center justify-center rounded text-[12px] text-[#1a1a1a] hover:bg-black/[.06] night:text-white/80"
+                          >
+                            {isFolded ? "▸" : "▾"}
+                          </button>
+                        ) : null}
+                        <label className="inline-flex cursor-pointer items-center gap-2">
+                          <input
+                            type="checkbox"
+                            hidden={viewOnly}
+                            className={CHECK_BIG}
+                            aria-label={`Select all in ${sec.title}`}
+                            checked={on}
+                            ref={(el) => {
+                              // 一场里只勾了几单 ⇒ 半选（Annie：可以全选、可以选 session、也可以单独选订单）。
+                              if (el) el.indeterminate = session && some && !on;
+                            }}
+                            disabled={!keys.length}
+                            onChange={(e) => onToggle(keys, e.target.checked)}
+                          />
+                          {session && sec.short_title ? (
+                            <>
+                              <span className="max-sm:hidden">{sec.title}</span>
+                              <span className="sm:hidden">{sec.short_title}</span>
+                            </>
+                          ) : (
+                            sec.title
+                          )}
+                        </label>
+                        <span className="ml-2 font-normal whitespace-nowrap text-[#1a1a1a]">
+                          {plural(sec.orders, "order")} · {sec.pax} pax
+                          {session && sec.breakdown ? (
+                            <span className="max-sm:hidden">
+                              {` (${sec.breakdown})`}
+                            </span>
+                          ) : null}
+                          {sec.show_cfm && sec.tour_time
+                            ? ` · Tour time ${sec.tour_time}`
+                            : ""}
+                        </span>
+                        {isFolded && tickedOrders ? (
+                          <span
+                            data-folded-ticked
+                            className="ml-2 font-semibold whitespace-nowrap text-[#1a1a1a]"
+                          >
+                            · {tickedOrders} ticked
+                          </span>
+                        ) : null}
                       </span>
                       {/* G198 preview ③：开了格的节，Cfm # 靠左紧跟在后面。 */}
                       {sec.show_cfm && pillGroupId ? (
@@ -1843,12 +1961,57 @@ function ManifestTable({
                       ) : null}
                     </td>
                   </tr>,
-                  ...numberRows(rows),
+                  ...(isFolded ? [] : numberRows(rows)),
                 ];
               })
             : numberRows(data.rows)}
         </tbody>
       </table>
+    </div>
+    </>
+  );
+}
+
+/** 153：前端给 Tickets 分的场次组（能折叠、组头半选）；后端给的 Bus 节不是。 */
+function isSessionGroup(sec: { kind: string }): boolean {
+  return sec.kind === "session" || sec.kind === "no_time";
+}
+
+/** 153：Tickets 表上面一行「6 start times · Expand all · Collapse all」（只在有场次组时出）。 */
+function SessionTools({
+  sections,
+  folded,
+  onFold,
+}: {
+  sections: readonly { key: string; kind: string }[];
+  folded: ReadonlySet<string>;
+  onFold: (keys: readonly string[], on: boolean) => void;
+}) {
+  const keys = sections.filter(isSessionGroup).map((s) => s.key);
+  if (!keys.length) return null;
+  const times = sections.filter((s) => s.kind === "session").length;
+  return (
+    <div
+      data-session-tools
+      className="mb-2 flex flex-wrap items-center gap-3 px-1 text-[12px] text-[#1a1a1a] night:text-white/70"
+    >
+      <span>{plural(times, "start time")}</span>
+      <button
+        type="button"
+        disabled={!keys.some((k) => folded.has(k))}
+        onClick={() => onFold(keys, false)}
+        className="cursor-pointer underline underline-offset-2 disabled:cursor-default disabled:no-underline disabled:opacity-50"
+      >
+        Expand all
+      </button>
+      <button
+        type="button"
+        disabled={keys.every((k) => folded.has(k))}
+        onClick={() => onFold(keys, true)}
+        className="cursor-pointer underline underline-offset-2 disabled:cursor-default disabled:no-underline disabled:opacity-50"
+      >
+        Collapse all
+      </button>
     </div>
   );
 }
@@ -2276,6 +2439,17 @@ function ManifestsHowToUse() {
           It isn’t printed and isn’t sent to guests. Type the note, then click{" "}
           <b>Save</b> next to it (or press Enter). Press Esc to undo before
           saving.
+        </>,
+        <>
+          <b>Tickets</b> are grouped by session (start time). Each group shows
+          the start time, the product, and how many orders and pax (with the
+          Adult / Child / Infant split). Click ▸ / ▾ on a group to fold or open
+          it, or use <b>Expand all</b> / <b>Collapse all</b>. Tick{" "}
+          <b>Select all</b> for every order, the box on a group for the whole
+          session, or the box on a row for one order. Folding only hides the
+          rows: ticked orders in a folded group stay ticked and are sent, and
+          the group shows how many are ticked. Orders without a start time are
+          in the last group, <b>No time</b>.
         </>,
       ]}
     />

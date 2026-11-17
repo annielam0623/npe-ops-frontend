@@ -128,7 +128,14 @@ export interface ManifestRow {
 export interface ManifestListSection {
   key: string;
   title: string;
-  kind: "tour" | "outbound" | "inbound";
+  /**
+   * session / no_time 是前端自己给 Tickets 标签分的场次组（153，config.withTicketSessions），后端不会给。
+   */
+  kind: "tour" | "outbound" | "inbound" | "session" | "no_time";
+  /** 153：场次组的人数细分「13 Adult / 1 Infant」（各单 Pax breakdown 加起来；读不出 = ""）。 */
+  breakdown?: string;
+  /** 153：手机上组头的短写「9:00 AM」（产品名、细分收掉，题 4 A）。 */
+  short_title?: string;
   rows: number;
   orders: number;
   pax: number;

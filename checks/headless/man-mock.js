@@ -100,6 +100,7 @@ const BASE_CATALOG = [
   { key: "pax", label: "Pax", group: "guest", type: "number" },
   { key: "product", label: "Product", group: "trip", type: "text" },
   { key: "start_time", label: "Start time", group: "trip", type: "text" },
+  { key: "pax_breakdown", label: "Pax breakdown", group: "guest", type: "text" },
   { key: "pickup_time", label: "Pickup time", group: "trip", type: "text" },
   { key: "pickup_location", label: "Pickup location", group: "trip", type: "text" },
   { key: "order_number", label: "Order #", group: "booking", type: "text" },
@@ -145,7 +146,7 @@ const ROWS = [
   { tab: "bus", pill: "g:none", order_number: "CHD1004", product_code: "ZZNEW", lane_source: "rezdy_bookings",
     v: { guest_name: "ZZ Test Four", pax: 3, product: "ZZ New Product", pickup_time: "8:00 AM", order_total: 10, currency: "USD" } },
   { tab: "tickets", pill: "t:antelope", order_number: "CHD2001", product_code: "TIX01", lane_source: "rezdy_bookings",
-    v: { guest_name: "ZZ Ticket One", pax: 2, product: "Antelope Tickets", start_time: "2026-10-07 07:00:00", order_total: 120, currency: "USD", "pq:abcdef0123": "ZZ T1" } },
+    v: { guest_name: "ZZ Ticket One", pax: 2, product: "Antelope Tickets", start_time: "2026-10-07 07:00:00", pax_breakdown: "1 Adult, 1 Infant", order_total: 120, currency: "USD", "pq:abcdef0123": "ZZ T1" } },
   { tab: "tickets", pill: "t:none", order_number: "CHD2002", product_code: "TIX99", lane_source: "rezdy_bookings",
     v: { guest_name: "ZZ Ticket Two", pax: 1, product: "ZZ Ticket NoType", start_time: "2026-10-07 09:30:00" } },
 ];
@@ -202,7 +203,14 @@ const WAIVER_FIELDS = [
   { key: "waiver_link_at", label: "Waiver link at", group: "ours", type: "datetime" },
 ];
 const goodLink = (v) => /^https?:\/\/[^\s/]+\.[^\s]+$/i.test(v);
-const allRows = () => (ctl.bulk ? [...ROWS, ...BULK] : ROWS).concat(ctl.cfmMix ? MIXED : []).concat(ctl.rezdyTix ? REZDY_ONLY : []).concat(ctl.waiver ? WAIVER_ROWS : []);
+// 153：ctl.sessions = Antelope 门票多几单，分场次用（同一场两单、人数细分、没有开始时间的一单）。
+const SESSION_ROWS = [
+  { tab: "tickets", pill: "t:antelope", order_number: "CHD2006", product_code: "TIX01", lane_source: "rezdy_bookings",
+    v: { guest_name: "ZZ Ticket Six", pax: 3, product: "Antelope Tickets", start_time: "2026-10-07 07:00:00", pax_breakdown: "2 Adult, 1 Child" } },
+  { tab: "tickets", pill: "t:antelope", order_number: "CHD2007", product_code: "TIX01", lane_source: "rezdy_bookings",
+    v: { guest_name: "ZZ Ticket NoTime", pax: 2, product: "Antelope Tickets", start_time: "", pax_breakdown: "2 Adult" } },
+];
+const allRows = () => (ctl.bulk ? [...ROWS, ...BULK] : ROWS).concat(ctl.sessions ? SESSION_ROWS : []).concat(ctl.cfmMix ? MIXED : []).concat(ctl.rezdyTix ? REZDY_ONLY : []).concat(ctl.waiver ? WAIVER_ROWS : []);
 let sendCalls = 0;
 const PILL_LABEL = {
   "g:3": "Antelope Bus Tour",

@@ -2038,6 +2038,7 @@ async function run() {
   await waiverChecks();
   await orderLinkChecks();
   await notesChecks();
+  await sessionChecks();
 
   // ── 未登录：跳 ops 自己的登录页带 next ──
   await ctl({ fail401: true });
@@ -2090,6 +2091,106 @@ async function main() {
 }
 
 // ── 置顶 74：Upper Antelope (Brenda) 每单 waiver link（Annie「那4提全部按推荐走，动手」；preview 5niqePBqxUsCBqKpLLKCnm）──
+// ── 153 Tickets 按场次分组（Annie「我要这样的，类似antelope bus的分支，然后可以折叠，可以全选可以选session，也可以单独选订单」「动手」）──
+async function sessionChecks() {
+  const ANT = `${APP}/manifests?date=${today}&tab=tickets&pill=t%3Aantelope`;
+  const heads = "[...document.querySelectorAll('tr[data-session]')]";
+  const head = (t) => `${heads}.find((tr) => tr.textContent.includes('${t}'))`;
+  const box = (t) => `${head(t)}.querySelector('input[type=checkbox]')`;
+  const fold = (t) => `${head(t)}.querySelector('[data-fold]')`;
+  const tools = "document.querySelector('[data-session-tools]')";
+  // 存的列里没有 Start time / Product / Pax breakdown ⇒ 也照样分组（前端多要这几列，只用来分组）。
+  await ctl({ sessions: true, rezdyTix: true, cfmMix: true, notes: false, prefs: { bus: null, tickets: JSON.stringify(["order_number", "guest_name", "pax"]) } });
+  await openPage(ANT);
+  await waitFor(`${heads}.length >= 3`, 20000);
+
+  // 电脑上显示的组标题（label 里第一个 span；手机短写的那个藏着）。
+  const titles = await evaluate(`return ${heads}.map((tr) => (tr.querySelector('label span') || tr.querySelector('label')).textContent.replace(/\\s+/g, ' ').trim());`);
+  check("153 Tickets 按开始时间 + 产品分组，从早到晚，没有时间的放最后一组 No time", JSON.stringify(titles) === JSON.stringify(["7:00 AM — Antelope Tickets", "8:00 AM — Antelope Tickets", "8:30 AM — Antelope Tickets", "No time"]), JSON.stringify(titles));
+  check("153 Start time 列没显示（存的列里没有）也照样分组；fields= 多要 start_time / product / pax_breakdown", (await evaluate("return !$heads().includes('Start time');")) && (await since(0, (e) => e.path === "/api/manifests" && e.query.includes("tab=tickets") && e.query.includes("fields="))).some((e) => ["start_time", "product", "pax_breakdown"].every((k) => q(e).get("fields").split(",").includes(k))));
+  check("153 组头：「7:00 AM — 产品 · 2 orders · 5 pax (3 Adult / 1 Infant / 1 Child)」", await evaluate(`return ${head("7:00 AM")}.textContent.replace(/\\s+/g, ' ').includes('2 orders · 5 pax (3 Adult / 1 Infant / 1 Child)');`), await evaluate(`return ${head("7:00 AM")}.textContent;`));
+  check("153 组头底色照 Antelope bus 节标题轮流（第一组淡紫）；No time 灰", await evaluate(`const bg = (t) => ${head("__")}.querySelector('td').style.background.replace(/\\s/g, ''); return true;`.replace(`${head("__")}`, "x")) && (await evaluate(`return ${head("7:00 AM")}.querySelector('td').style.background.replace(/\\s/g, '') === 'rgb(239,227,247)' && ${head("No time")}.querySelector('td').style.background.replace(/\\s/g, '') === 'rgb(236,239,243)';`)), await evaluate(`return ${heads}.map((tr) => tr.querySelector('td').style.background).join(' | ');`));
+  check("153 每组的 # 从 1 排", await evaluate(`const h = ${head("8:00 AM")}; return h.nextElementSibling.querySelector('[data-count]').textContent.trim() === '1';`));
+  check("153 默认全部展开（题 2 A）：没有收起的组，Expand all 灰着、Collapse all 能按", await evaluate(`return !document.querySelector('tr[data-folded]') && ${tools}.textContent.includes('3 start times') && [...${tools}.querySelectorAll('button')].find((b) => b.textContent === 'Expand all').disabled && ![...${tools}.querySelectorAll('button')].find((b) => b.textContent === 'Collapse all').disabled;`));
+
+  // 折叠 / 展开
+  await evaluate(`${fold("7:00 AM")}.click();`);
+  await sleep(150);
+  check("153 点 ▾ 收起这一组：那组的单不显示，别的组照旧", await evaluate(`return ${fold("7:00 AM")}.getAttribute('aria-expanded') === 'false' && ${fold("7:00 AM")}.textContent === '▸' && !$box('CHD2001') && !$box('CHD2006') && !!$box('CHD2004');`));
+  await evaluate(`[...${tools}.querySelectorAll('button')].find((b) => b.textContent === 'Collapse all').click();`);
+  await sleep(150);
+  check("153 Collapse all：全部收起，只剩组头", await evaluate(`return document.querySelectorAll('tr[data-folded]').length === ${heads}.length && !document.querySelector('tbody tr[data-row]');`));
+  await evaluate(`[...${tools}.querySelectorAll('button')].find((b) => b.textContent === 'Expand all').click();`);
+  await sleep(150);
+  check("153 Expand all：全部展开", await evaluate("return !document.querySelector('tr[data-folded]') && ['CHD2001', 'CHD2006', 'CHD2004', 'CHD2005', 'CHD2007'].every((o) => !!$box(o));"));
+
+  // 三层勾选：组头整场、单行、半选、Select all
+  await evaluate(`${box("7:00 AM")}.click();`);
+  await sleep(100);
+  check("153 勾组头 = 勾整场（两单都勾上），组头 ☑", await evaluate(`return $box('CHD2001').checked && $box('CHD2006').checked && ${box("7:00 AM")}.checked && !${box("7:00 AM")}.indeterminate && !$box('CHD2004').checked;`));
+  await evaluate("$box('CHD2006').click();");
+  await sleep(100);
+  check("153 只剩一单勾着 ⇒ 组头半选", await evaluate(`return ${box("7:00 AM")}.indeterminate && !${box("7:00 AM")}.checked;`));
+  await evaluate(`${box("7:00 AM")}.click();`);
+  await sleep(100);
+  check("153 半选时点组头 ⇒ 整场勾上", await evaluate(`return $box('CHD2001').checked && $box('CHD2006').checked && !${box("7:00 AM")}.indeterminate;`));
+  await evaluate("$btn('Clear', $bar()).click();");
+  await sleep(100);
+  await evaluate("const l = [...document.querySelectorAll('thead label')].find((x) => x.textContent.includes('Select all')); l.querySelector('input').click();");
+  await sleep(100);
+  check("153 表头 Select all：每一组每一单都勾上，组头都 ☑", await evaluate(`return ['CHD2001', 'CHD2006', 'CHD2004', 'CHD2005', 'CHD2007'].every((o) => $box(o).checked) && ${heads}.every((tr) => tr.querySelector('input').checked);`));
+  await evaluate("$btn('Clear', $bar()).click();");
+  await sleep(100);
+
+  // 收起的组里勾了的照样发（题 1 A）
+  await evaluate("$box('CHD2005').click();");
+  await evaluate(`${fold("8:30 AM")}.click();`);
+  await sleep(150);
+  check("153 收起的组里勾了的：组头写「· 1 ticked」", await evaluate(`return ${head("8:30 AM")}.querySelector('[data-folded-ticked]')?.textContent.trim() === '· 1 ticked';`), await evaluate(`return ${head("8:30 AM")}.textContent;`));
+  check("153 发送条写「1 order selected · 1 pax (1 in a collapsed group)」", await evaluate("return $bar().textContent.includes('1 order selected · 1 pax (1 in a collapsed group)');"), await evaluate("return $bar().textContent;"));
+  await evaluate("$btn('Send reminder', $bar()).click();");
+  await waitFor("$dialog()");
+  check("153 收起的组里勾了的照样发：发送弹窗里有 CHD2005", await evaluate("return $dialog().textContent.includes('CHD2005');"));
+  await evaluate("$btn('Cancel', $dialog().lastElementChild).click();");
+  await waitFor("!$dialog()");
+  await evaluate("$btn('Clear', $bar()).click();");
+
+  // 不记（题 3 A）：换团胶囊再回来 ⇒ 全部展开
+  await evaluate(`${fold("7:00 AM")}.click();`);
+  await openPage(`${APP}/manifests?date=${today}&tab=tickets&pill=t%3Anone`);
+  await waitFor("$box('CHD2002')", 20000);
+  await openPage(ANT);
+  await waitFor(`${heads}.length >= 3`, 20000);
+  check("153 折叠不记：换胶囊 / 重开回到全部展开", await evaluate("return !document.querySelector('tr[data-folded]') && !!$box('CHD2001');"));
+
+  // CSV 多一列 Section
+  await evaluate("window.__blob = null; const o = URL.createObjectURL; URL.createObjectURL = (b) => { window.__blob = b; return o(b); }; HTMLAnchorElement.prototype.click = function () {};");
+  await evaluate("$btn('↓ Export CSV').click();");
+  await waitFor("window.__blob");
+  const lines = (await evaluate("return await window.__blob.text();")).replace(/^﻿/, "").split("\r\n");
+  check("153 Export CSV：第一列 Section 写组标题，行按组排", lines[0].startsWith("Section,") && lines[1].startsWith("7:00 AM — Antelope Tickets,") && lines.some((l) => l.startsWith("No time,CHD2007")), JSON.stringify(lines.slice(0, 7)));
+
+  // How to use
+  check("153 How to use 加了那一句（原文，不含 Groups start folded）", await evaluate("const d = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Manifests')); return [...d.querySelectorAll('li')].some(l => l.textContent.replace(/\\s+/g, ' ').trim() === 'Tickets are grouped by session (start time). Each group shows the start time, the product, and how many orders and pax (with the Adult / Child / Infant split). Click ▸ / ▾ on a group to fold or open it, or use Expand all / Collapse all. Tick Select all for every order, the box on a group for the whole session, or the box on a row for one order. Folding only hides the rows: ticked orders in a folded group stay ticked and are sent, and the group shows how many are ticked. Orders without a start time are in the last group, No time.');"));
+
+  // 手机 390px：组头短写、钉左、整页不晃
+  await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+  await openPage(ANT);
+  await waitFor(`${heads}.length >= 3`, 20000);
+  await sleep(300);
+  check("153 手机：组头只写「7:00 AM」+ 几单几人（产品名、细分收掉）", await evaluate(`const h = ${head("7:00 AM")}; const vis = (e) => e.getBoundingClientRect().width > 0; const spans = [...h.querySelectorAll('label span')]; const shown = spans.filter(vis).map((s) => s.textContent.trim()); return shown.includes('7:00 AM') && !shown.some((t) => t.includes('Antelope Tickets')) && !h.innerText.includes('Adult');`), await evaluate(`return ${head("7:00 AM")}.innerText;`));
+  check("153 手机：组头钉在左边（sticky）", await evaluate(`return getComputedStyle(${head("7:00 AM")}.querySelector('td > span')).position === 'sticky';`));
+  check("153 手机 390px：整页不左右晃", await evaluate("return document.documentElement.scrollWidth <= window.innerWidth + 1;"));
+  await cdp("Emulation.clearDeviceMetricsOverride");
+
+  // Bus 节标题照旧（没有折叠、没有 data-session）
+  await ctl({ sessions: false, rezdyTix: false, cfmMix: false, sections: true, prefs: { bus: null, tickets: null } });
+  await openPage(`${APP}/manifests?date=${today}&tab=bus&pill=g%3A3`);
+  await waitFor("document.querySelector('tr[data-section]')", 20000);
+  check("153 Bus 节标题照旧：没有 ▸ / ▾、没有 Expand all", await evaluate("return !document.querySelector('[data-fold]') && !document.querySelector('[data-session-tools]') && !document.querySelector('tr[data-session]');"));
+  await ctl({ sections: false });
+}
+
 // ── 150 Notes（G321 v171；Annie「notes可以先上」「动手」；样子先按推荐：单行、Bus + Tickets、CSV 带）──
 async function notesChecks() {
   const note = (o, leg = "") => `document.querySelector('tr[data-row^="${o}|"]${leg ? `[data-row$="|return"]` : `:not([data-row$="|return"])`} input[data-note]')`;

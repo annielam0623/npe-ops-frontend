@@ -2,6 +2,7 @@ import { LA_TIME_ZONE } from "@/lib/la-date";
 import type {
   ManifestField,
   ManifestHidden,
+  ManifestListSection,
   ManifestPage,
   ManifestRow,
   ManifestTabKey,
@@ -53,6 +54,10 @@ const HELPER_FIELDS: Record<ManifestTabKey, readonly string[]> = {
     WAIVER_STATUS_KEY,
     "waiver_link_by",
     "waiver_link_at",
+    // 153：场次分组要用（开始时间、产品、人数细分），staff 在 ☰ Columns 关掉了也照样分组。
+    "start_time",
+    "product",
+    "pax_breakdown",
   ],
   admin_fee: ["pax"],
 };
@@ -331,12 +336,87 @@ export function paxOf(row: ManifestRow): number {
   return typeof v === "number" ? v : Number(v) || 0;
 }
 
+// ── 153 Tickets 按场次分组（Annie「我要这样的，类似antelope bus的分支，然后可以折叠，可以全选可以选session，也可以单独选订单」「动手」）──
+
+/** 后端 start_time 是 Rezdy 的当地时间原文「2026-11-17 09:00:00」；取出时分写成「9:00 AM」。读不出 ⇒ ""。 */
+export function sessionTime(value: ManifestValue | undefined): string {
+  const m = /(\d{1,2}):(\d{2})/.exec(String(value ?? ""));
+  if (!m) return "";
+  const h = Number(m[1]);
+  if (h > 23) return "";
+  return `${h % 12 || 12}:${m[2]} ${h < 12 ? "AM" : "PM"}`;
+}
+
+/** 后端 pax_breakdown「2 Adult, 1 Child」：一组里各单加起来「13 Adult / 1 Infant」（按第一次出现的顺序）；一单都读不出 ⇒ ""。 */
+function sumBreakdown(rows: readonly ManifestRow[]): string {
+  const total = new Map<string, number>();
+  for (const r of rows) {
+    for (const part of String(r.values.pax_breakdown ?? "").split(",")) {
+      const m = /^\s*(\d+)\s+(.+?)\s*$/.exec(part);
+      if (m) total.set(m[2], (total.get(m[2]) ?? 0) + Number(m[1]));
+    }
+  }
+  return [...total].map(([label, n]) => `${n} ${label}`).join(" / ");
+}
+
+/** 这一行的场次组键：开始时间原文 + 产品；没有开始时间 ⇒ No time 组。 */
+export const NO_TIME_KEY = "no_time";
+function sessionKeyOf(row: ManifestRow): string {
+  const t = String(row.values.start_time ?? "").trim();
+  if (!sessionTime(t)) return NO_TIME_KEY;
+  return `session:${t}|${String(row.values.product ?? row.product_code)}`;
+}
+
+/**
+ * Tickets 标签：后端不分节 ⇒ 前端按「开始时间 + 产品」分成场次组，套进现成的分节显示（同 Antelope bus 节标题：
+ * 淡色底、勾整节的框、每节 # 从 1 排、CSV 多一列 Section）。从早到晚排，没有时间的放最后一组 No time。
+ * 组里的行照后端原来的先后（发过的在后）。别的标签、后端已经给了 sections 的，原样返回。
+ */
+export function withTicketSessions(page: ManifestPage): ManifestPage {
+  if (page.tab !== "tickets" || page.sections?.length || !page.rows.length)
+    return page;
+  const groups = new Map<string, ManifestRow[]>();
+  for (const r of page.rows) {
+    const k = sessionKeyOf(r);
+    groups.set(k, [...(groups.get(k) ?? []), r]);
+  }
+  const keys = [...groups.keys()].sort((a, b) =>
+    a === NO_TIME_KEY ? 1 : b === NO_TIME_KEY ? -1 : a.localeCompare(b),
+  );
+  const sections: ManifestListSection[] = keys.map((k) => {
+    const rows = groups.get(k)!;
+    const first = rows[0];
+    const time = k === NO_TIME_KEY ? "" : sessionTime(first.values.start_time);
+    const product = String(first.values.product ?? first.product_code ?? "");
+    return {
+      key: k,
+      title: k === NO_TIME_KEY ? "No time" : `${time} — ${product}`,
+      short_title: k === NO_TIME_KEY ? "No time" : time,
+      kind: k === NO_TIME_KEY ? "no_time" : "session",
+      rows: rows.length,
+      orders: new Set(rows.map((r) => r.order_number)).size,
+      pax: rows.reduce((n, r) => n + paxOf(r), 0),
+      breakdown: sumBreakdown(rows),
+    };
+  });
+  return {
+    ...page,
+    sections,
+    rows: keys.flatMap((k) =>
+      groups.get(k)!.map((r) => ({ ...r, section: k })),
+    ),
+  };
+}
+
 /**
  * 节标题行的底色（后端说颜色前端自定）：去程 / 回程的 shuttle 一个颜色；团按节的先后轮流
  * （同 Annie 看过的样稿：紫 / 绿 / 粉）。
  */
 const TOUR_SECTION_BG = ["#efe3f7", "#e2f2da", "#fbe3eb", "#e3eef6"];
 export function sectionBg(kind: string, tourIndex: number): string {
+  // 153：门票场次组跟团节一样轮流上色；No time 组灰。
+  if (kind === "session") return TOUR_SECTION_BG[tourIndex % TOUR_SECTION_BG.length];
+  if (kind === "no_time") return "#eceff3";
   return kind === "tour"
     ? TOUR_SECTION_BG[tourIndex % TOUR_SECTION_BG.length]
     : "#fdebd9";
