@@ -6,6 +6,10 @@
 
 > **下一个主窗口：先读下面「2026-11-16 收工交接」，再看置顶。**
 
+## 2026-11-16 晚 家里开工：前端主窗口 `npe-ops-frontend-52`[914bb9]（只分工和汇报，不写代码；9:30 PM 截止）
+- 接 6e 收工交接。后端主窗口今晚是 `后端主窗口-b8`[ca25ce]（另有后端 ac / 57）；已告诉 b8，问 138 合同 v3 / v170 状态。空闲内存 10.8 GB。
+- 138（task/138-guide-payroll 4f3a8fa6，8d 的逐步说明在分支 PROGRESS）：要 Annie 开工作窗口接着做；建议拆两个窗口——甲：期间页的编辑（Fee 点格子改、Extras 勾、Tips、Needs review、Save payroll changes、离开拦截、手机、检查套）；乙：Pay rates / Extras 价格卡、Locked dates 卡、Change history 卡（各放单独文件，甲接进 payroll.tsx）+ Team 页 Payroll 一行。
+
 ## 2026-11-16 收工交接：前端主窗口（公司电脑，ListAgents 名 `前端主窗口6e`[690ed2]；今天 Annie 6:00 PM 下班）
 > 今晚家里电脑接着做（9:30 PM 截止）。下一个主窗口先读本节，再看下面「2026-11-16（周一）前端主窗口」那节和置顶 📌。
 - 今天上 main：145 电话 AI 调用记录（23d0ec58，11-15）、147 第一部分 Open 班进 Dispatch 默认今天（b32593c3）、139b 改今天的任务（ae1259bd）+ carry-over 能改（2787026c）、139c 下拉深底（c1ea4040）、148 Shuttle 框改绿（e263522d）。140 后端 abf904d4 上了，前端不用改。
@@ -133,7 +137,7 @@
       - ✅ 63 回 PASS（254b2a2e，换行也核过），11-16 合 main 上线。carry-over 行照旧不给 Edit，等 Annie 答要不要能改。验收：Dashboard 用员工账号点自己名下任务的 Edit 改优先级；主管改一条 ZZ Test 开头任务的标题 / 给谁。⚠️ 生产数据，别改真任务。
       - carry-over 也能改（Annie 11-16 在 63 那边定，规则同今天的任务；后端 37a796b9 + 1d064c1f）：分支 task/139b-carry-over-edit 去掉 isCarryOver 隐藏。主管给 carry-over 换负责人（别人 / 整班）时后端挪到今天（work_date 变今天），只改标题 / 优先级不挪；前端存好后本来就重读 GET /api/tasks/today（tasks-section handleChanged），不另改。检查：tsc 0、eslint 0 error、build；tasks 193/193（carry-over 3 项：员工有 Edit、只改标题 work_date 不变；主管有 Edit；改整班后重读、work_date 变今天）、dr 89/89、nav 39/39。等主窗口转 63 PASS 才合。
         - ✅ 63 回 PASS（1ffcb504），11-16 合 main 上线。验收：员工账号在前几天交接过来的任务上点 Edit 改标题，确认还在列表里；主管把一条 ZZ Test 开头的 carry-over 改成整班，确认挪到今天。⚠️ 生产数据，别改真任务。
-  - **140 = G311 Morning Send 上传页日期不是今天先弹框确认**：照 135 / b645fe97 confirm_date；旧 send_morning.html 后端改，ops Morning Send 页前端加确认框。⚠️ 顺序同 135：前端先上 main，后端才推。后端接口细节做好后发。
+  - **140 = G311 Morning Send 上传页日期不是今天先弹框确认**：照 135 / b645fe97 confirm_date；旧 send_morning.html 后端改，ops Morning Send 页前端加确认框。⚠️ 顺序同 135：前端先上 main，后端才推。后端接口细节做好后发。
     - ✅ **a7 做完，74 核对后端顺序后上 main（分支 task/140-morning-send-other-day）。** 74 派工（Annie 11-14 定，25 转）：文件日期不是今天 ⇒ 弹窗确认，确认后按文件日期发、记；不确认不发；今天照旧。样子同 135 ⇒ 没出 preview。
       - 合约（25 草稿，最终以后端文档为准）：preview 顶层 `file_date: "YYYY-MM-DD" | null`（没这个键 = 旧后端，当 null）；POST /send/morning-pickup 是 multipart，加 form 字段 `confirm_date`，只在 file_date 不是洛杉矶今天时带；不是今天没带 / 不对 ⇒ 400 "This send is for {Weekday}, {Month} {day} (YYYY-MM-DD), not today. Confirm that date to send."，前端原样显示在发送键旁。一个文件两个日期、超出今天 / 明天的 400 也原样显示。
       - 前端：lib/morning-send-api.ts sendMorningBatch guard.confirmDate → form confirm_date；types/morning-send.ts MorningPreview.file_date；components/morning-send/morning-send-view.tsx：Manifest.fileDate，ConfirmDialog 加 sendFor（同 135 的 OtherDayConfirm：大号红字日期、蓝键 "Yes, I need to send for {date}"、Cancel 不发），每批带 confirmDateField(fileDate)（点的那一刻算）；第一个确认框不是今天时写 "the pickup reminder for {date}"，今天照旧 "today's pickup reminder"；How to use 加一条："The file must be for today. If it is for another day, a box shows that date in red: click Yes, I need to send for that date only if you really mean to send for that day, or Cancel to send nothing."
