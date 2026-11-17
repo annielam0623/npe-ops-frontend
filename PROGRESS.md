@@ -6,6 +6,11 @@
 
 > **下一个主窗口：先读下面「2026-11-16 收工交接」，再看置顶。**
 
+## 2026-11-17（周二）前端主窗口 `npe-ops-frontend-b0`[1c50f1]（公司电脑；只分工和汇报，不写代码；14:30 下班）
+- 开工：接 52 家里交接。现在没有前端工作窗口；后端在线 `npe-confirmation-service-6f`[0e63fc]。空闲内存 41.8 / 61.8 GB，node 0、chrome 39。
+- G323（打印页 view=1 不记 Printed）原样转给后端 6f。151（task/151-bus-manifest-phone 064a50cf）等 Annie 选「先上（暂时每次 View only 记一条 Printed）/ 等 G323」。
+- da 检查套卡在 147 段（main 上也一样，非 151 引起），要派一个工作窗口修。
+
 ## 2026-11-16 晚 家里开工：前端主窗口 `npe-ops-frontend-52`[914bb9]（只分工和汇报，不写代码；9:30 PM 截止）
 - ✅ **138 导游工资上 main 4ac34642**（79 整合 + 5a 卡片，b8 PASS）。验收点见 79 在本节下方 / 对话。
 - 150 + 151：Annie（原话）「今天做吧」⇒ 今晚派 5a 出 preview（150 Relay / Bus 两列 + Notes，151 手机一屏 / Full screen），只出样稿不写代码，等 Annie 答题 +「动手」。
