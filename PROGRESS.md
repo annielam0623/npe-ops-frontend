@@ -11,6 +11,7 @@
 - 今天上 main：145 电话 AI 调用记录（23d0ec58，11-15）、147 第一部分 Open 班进 Dispatch 默认今天（b32593c3）、139b 改今天的任务（ae1259bd）+ carry-over 能改（2787026c）、139c 下拉深底（c1ea4040）、148 Shuttle 框改绿（e263522d）。140 后端 abf904d4 上了，前端不用改。
 - **今晚要接着做（Annie 要今天做完）**：**138 导游工资**（8d，task/138-guide-payroll，worktree C:\Code\ops-wt-138，公司收尾 4f3a8fa6：V9 源文件、types、api、只读期间页 + HR 页签已写；所有「改」的部分 / How to use / 离开拦截 / Team 页 / 手机 / 检查套没做，8d 在 PROGRESS 有逐步说明）。Annie「138 全部按推荐，动手」。后端 main 85152f75（合同 v2）；Extras 选人等后端 v3 / v170（63 发）。做完交 commit + 对照表 → 63 PASS → 合 main。
 - **等 Annie 答 +「动手」**：146 Farm out 每家一页（a7，Q7–Q11）；147 设置框（8d，V3 三题）；150 Main manifest No show / Notes（05，题 1–5，题 5 = Export CSV 里放 hover 内容，已转 Annie；已请 63 让后端分开带导游 / relay 两方标记）；149 = G320 Content Studio 样例标变量（87，题 1/2 + 下拉做法）；132（c9 Q5/Q6）；143（87）；139d 删固定任务（87 问她删哪些）。129 已在 11-16 提醒过。
+- 150 改方向：Annie（原话）「准确来说其实我们应该分两列，一个是relay，一个是bus，分别显示在各自的状态，两个都接上了，或者relay没有但是在TI出现上了bus了」⇒ 不要合并的 No show，改 Relay、Bus 两列各显示各自的标记。非动手。05 改 preview（谁能改哪列、没走 relay 的单 Relay 格显示什么、CSV、How to use），已告诉 63 让后端分开带两方标记。
 - 📌 **151 Main manifest 手机版一屏显示**（63 转，只改前端，明天做）：Annie（原话）「可以把main manifest的手机版本调成手机一页显示么，该横屏就横屏，该竖屏就竖屏，或者是多一个full screen的键」。新样子 ⇒ 先 preview。跟 150 同一页（components/manifests/manifests-view.tsx），派给 05 一起做，避免两个窗口同时改一个文件。
 - 后端：主窗口 `主窗口63`（npe-confirmation-service-63）；后端工作窗口 5b（G318 / G269 / G321）、73（G309）。所有 63 转来的前端活合前都要 63 PASS。
 - 今天的教训：8d 用 `git -c core.autocrlf=false add` 提交代码文件 ⇒ 整份变 CRLF，被 63 卡（BLOCKING）。代码文件用普通 git add；只有 PROGRESS.md 用 autocrlf=false。提交前 `git diff --cached | grep -c $'\r'` 应为 0。
