@@ -755,14 +755,17 @@ http.createServer(async (req, res) => {
       g("CHDPM2", "ZZ Test Bellagio", 3, "Bellagio"),
       g("CHDPM3", "ZZ Test Aria", 2, "ARIA Resort"),
       g("CHDPM4", "ZZ Test MGM", 4, "MGM Grand"),
-      g("CHDPM5", "ZZ Test Private", 15, "Private group - 8:30 Aria Tour Bus Lobby", { pickup_location_id: null, pickup_is_vegas: null }),
+      g("CHDPM5", "ZZ Test Private", 15, "8:30 Aria Tour Bus Lobby", { hotel_short: "Aria" }),
+      g("CHDPM10", "ZZ Test ParkMGM", 2, "Park MGM", { hotel_short: "Park MGM" }),
+      g("CHDPM11", "ZZ Test IMAX", 2, "Grand Canyon IMAX", { pickup_location_id: null, pickup_is_vegas: null }),
     ] }, { kind: "outbound", pax: 1, guests: [g("CHDPM6", "ZZ Test StG", 1, "St George – Main St", { pickup_is_vegas: false })] }] }],
       unplaced: { sections: [{ kind: "tour", pax: 3, guests: [g("CHDPM7", "ZZ Test Empty", 1, "", { pickup_location_id: null, pickup_is_vegas: null }), g("CHDPM8", "ZZ Test Venetian", 2, "The Venetian"), g("CHDPM2", "ZZ Test Bellagio", 3, "Bellagio")] }] } });
   }
   const pmRefresh = p.match(/^\/api\/operations\/orders\/([^/]+)\/refresh-from-rezdy$/);
   if (pmRefresh && req.method === "POST") {
     const n = decodeURIComponent(pmRefresh[1]);
-    if (n === "CHDPM4") return send(res, 502, { detail: "Rezdy did not answer. Try again in a minute." });
+    if (ctl.pmBusy && n === "CHDPM3") return send(res, 503, { detail: "Rezdy is busy right now. Try again in a minute." });
+    if (n === "CHDPM4") return send(res, 404, { detail: "Order CHDPM4 was not found in Rezdy." });
     const changed = n === "CHDPM2" ? [{ field: "Pickup location (P0WR)", before: "Bellagio", after: "Treasure Island" }] : [];
     return send(res, 200, { order_number: n, result: "updated", rezdy_status: "CONFIRMED", message: changed.length ? "Updated from Rezdy." : "Already up to date.", changed, kept: [] });
   }

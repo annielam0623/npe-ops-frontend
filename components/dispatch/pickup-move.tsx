@@ -21,6 +21,10 @@ import { fmtShort } from "./config";
  * - 在 Rezdy 改，回来按一次「Refresh from Rezdy」（Annie「改了的这一批就按一次就行了」）：逐张走现成的单张重拉
  *   POST /api/operations/orders/{单号}/refresh-from-rezdy（挂 orders.edit），完了让 Dispatch 重新同步名单。
  */
+/**
+ * ⏰ TODO 删除：这是 11-18…11-22 的一次性功能（关键字表 MOVES / TARGETS 写死）。11-22 过后整页不出，
+ * 之后找个时间把本文件、dispatch-view.tsx 里 <PickupMoveBox> 那段、checks/headless/pm-*.js 和 da-mock.js 里 2026-11-18 那段一起删掉。
+ */
 export const PICKUP_MOVE_FROM = "2026-11-18";
 export const PICKUP_MOVE_TO = "2026-11-22";
 
@@ -71,14 +75,20 @@ export type PickupClass =
 export function classifyPickup(text: string): PickupClass {
   const t = text.trim();
   if (!t) return { kind: "check" };
-  if (/private/i.test(t)) return { kind: "skip" };
+  // 包团（「Private group - 8:30 Aria Tour Bus Lobby」「8:30 Aria Tour Bus Lobby」：以时间开头）、Tusayan / IMAX 接驳不归这次管。
+  // 不用「Tour Bus Lobby」当判据：真酒店的接客点也可能这么写（例 Bellagio Tour Bus Lobby）。
+  if (/private|^\d{1,2}:\d{2}\b|imax|tusayan/i.test(t)) return { kind: "skip" };
   for (const [, re] of TARGETS) if (re.test(t)) return { kind: "ok" };
   for (const [re, to] of MOVES) if (re.test(t)) return { kind: "move", to };
   return { kind: "check" };
 }
 
 function classifyGuest(g: ManifestGuest, tourName: string): PickupClass {
-  if (/hoover/i.test(`${tourName} ${g.product}`)) return { kind: "skip" };
+  if (/hoover|private/i.test(`${tourName} ${g.product}`))
+    return { kind: "skip" };
+  // 先只看订单原文：包团那行可能被对到 Aria（hotel_short「Aria」放前面就认不出「8:30」开头了）。
+  if (classifyPickup(g.pickup_location ?? "").kind === "skip")
+    return { kind: "skip" };
   const text = `${g.hotel_short ?? ""} ${g.pickup_location ?? ""}`;
   const c = classifyPickup(text);
   if (c.kind !== "check" || !g.pickup_location?.trim()) return c;
@@ -130,7 +140,16 @@ export function pickupMoveRows(views: ManifestView[]): PickupMoveRow[] {
 type RowResult =
   | { kind: "ok"; text: string }
   | { kind: "same"; text: string }
-  | { kind: "error"; text: string };
+  | { kind: "error"; text: string }
+  | { kind: "pending"; text: string };
+
+/** 每张之间隔多久（后端 6f：≥ 2 秒）。检查里可用 window.__pickupMoveGapMs 调小。 */
+const REFRESH_GAP_MS_DEFAULT = 2000;
+
+const gapMs = () =>
+  (typeof window !== "undefined" &&
+    (window as unknown as { __pickupMoveGapMs?: number }).__pickupMoveGapMs) ||
+  REFRESH_GAP_MS_DEFAULT;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -161,9 +180,11 @@ export function PickupMoveBox({
   const [results, setResults] = useState<Record<string, RowResult>>({});
   /** 按过 Refresh 的行：名单重读后不在了也留着显示结果，换天清掉。 */
   const [kept, setKept] = useState<PickupMoveRow[]>([]);
-  const [running, setRunning] = useState<{ done: number; total: number } | null>(
-    null,
-  );
+  const [running, setRunning] = useState<{
+    done: number;
+    total: number;
+  } | null>(null);
+  const [stopped, setStopped] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
   const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dateRef = useRef(date);
@@ -175,6 +196,7 @@ export function PickupMoveBox({
     setResults({});
     setKept([]);
     setRows(null);
+    setStopped(null);
   }, [date]);
 
   useEffect(() => {
@@ -211,12 +233,23 @@ export function PickupMoveBox({
     copiedTimer.current = setTimeout(() => setCopied(null), 1500);
   }
 
+  /**
+   * 后端 6f 审（11-17）：Rezdy 一个 key 每分钟 100 次（和后台轮询、对账共用），超了回 406、后端重试一次后给 502 / 503。
+   * ⇒ 每张隔 ≥ 2 秒；碰到 502 / 503 就停，没拉的标「Not refreshed」，staff 过一会儿再按（再按只拉还没变绿的）。
+   * 404 / 409 / not_applied 照原话写在那一行，不算成功。
+   */
   async function refreshAll() {
-    const list = shown;
+    const prev = results;
+    const list = shown.filter((r) => prev[r.order_number]?.kind !== "ok");
     if (!list.length) return;
     const forDate = date;
-    setKept(list);
-    setResults({});
+    setKept(shown);
+    setResults(
+      Object.fromEntries(
+        Object.entries(prev).filter(([, v]) => v.kind === "ok"),
+      ),
+    );
+    setStopped(null);
     setRunning({ done: 0, total: list.length });
     for (let i = 0; i < list.length; i++) {
       if (dateRef.current !== forDate) return;
@@ -231,8 +264,7 @@ export function PickupMoveBox({
         const c = classifyPickup(now);
         if (out.result === "not_applied")
           res = { kind: "same", text: out.message };
-        else if (c.kind === "ok")
-          res = { kind: "ok", text: `Now ${now} ✓` };
+        else if (c.kind === "ok") res = { kind: "ok", text: `Now ${now} ✓` };
         else
           res = {
             kind: "same",
@@ -246,11 +278,29 @@ export function PickupMoveBox({
           return;
         }
         res = { kind: "error", text: describeError(e) };
+        if (isStatus(e, 502) || isStatus(e, 503)) {
+          if (dateRef.current !== forDate) return;
+          const rest = list.slice(i + 1);
+          setResults((m) => ({
+            ...m,
+            [r.order_number]: res,
+            ...Object.fromEntries(
+              rest.map((x) => [
+                x.order_number,
+                { kind: "pending", text: "Not refreshed" } as RowResult,
+              ]),
+            ),
+          }));
+          setStopped(
+            `Stopped after ${i + 1} of ${list.length}: Rezdy is busy. Wait a minute, then click Refresh from Rezdy again. Orders already refreshed are not pulled again.`,
+          );
+          break;
+        }
       }
       if (dateRef.current !== forDate) return;
       setResults((m) => ({ ...m, [r.order_number]: res }));
       setRunning({ done: i + 1, total: list.length });
-      if (i < list.length - 1) await sleep(800);
+      if (i < list.length - 1) await sleep(gapMs());
     }
     setRunning(null);
     onRefreshed();
@@ -262,6 +312,7 @@ export function PickupMoveBox({
   const nOk = vals.filter((v) => v.kind === "ok").length;
   const nSame = vals.filter((v) => v.kind === "same").length;
   const nErr = vals.filter((v) => v.kind === "error").length;
+  const nPending = vals.filter((v) => v.kind === "pending").length;
 
   return (
     <section
@@ -294,6 +345,9 @@ export function PickupMoveBox({
         <span>
           Hoover Dam tours are not affected — keep their pickups as they are.
           Check bus assignments after the pickups change.
+        </span>
+        <span data-move-scope className="text-[12.5px] text-[#55645a]">
+          Only guests already on a Bus Manifest for this day are listed.
         </span>
         <div className="flex flex-wrap items-center gap-2.5">
           {loadError ? (
@@ -443,6 +497,7 @@ export function PickupMoveBox({
                           res?.kind === "ok" && "font-bold text-[#15803d]",
                           res?.kind === "same" &&
                             "font-semibold text-[#b45309]",
+                          res?.kind === "pending" && "text-[#55645a]",
                           res?.kind === "error" &&
                             "font-semibold text-[#b91c1c]",
                         )}
@@ -455,6 +510,15 @@ export function PickupMoveBox({
               </tbody>
             </table>
           </div>
+          {stopped && !running ? (
+            <p
+              role="alert"
+              data-move-stopped
+              className="m-0 text-[12.5px] font-semibold text-[#b91c1c]"
+            >
+              {stopped}
+            </p>
+          ) : null}
           {vals.length && !running ? (
             <p data-move-summary className="m-0 text-[12.5px]">
               <span className="font-bold text-[#15803d]">
@@ -468,6 +532,14 @@ export function PickupMoveBox({
               <span className="font-semibold text-[#b91c1c]">
                 {nErr} failed
               </span>
+              {nPending ? (
+                <>
+                  {" · "}
+                  <span className="text-[#55645a]">
+                    {nPending} not refreshed
+                  </span>
+                </>
+              ) : null}
             </p>
           ) : null}
         </div>
