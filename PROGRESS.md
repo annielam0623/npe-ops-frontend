@@ -4,7 +4,14 @@
 
 > 6d 交接（下面「2026-10-27 交接：前端主窗口 6d」那节）的后端需求已于 10/27 晚由 ad 转给家里后端主窗口 17。
 
-> **下一个主窗口：先读下面「2026-11-17 深夜 收工交接：fc」，再读 fc 当晚记录和「2026-11-17 晚 收工交接（续）」。**
+> **下一个主窗口：先读下面「2026-11-18 4d」节，再读「2026-11-17 深夜 收工交接：fc」、fc 当晚记录和「2026-11-17 晚 收工交接（续）」。**
+
+## 2026-11-18（周三）前端主窗口 `npe-ops-frontend-4d`[9f187b]（公司电脑；只分工和汇报，不写代码；14:30 下班）
+- 开工：origin/main 4980603b。主窗口改 PROGRESS 用 worktree C:\Code\ops-wt-4d（detached）。资源：空闲内存 36 / 62 GB，node 0、chrome 80。
+- b0 (fork)[696851] 已交接：以 fc 深夜收工节为准。b0 当天的窗口 00、68 昨晚都已停，没有在做的活。b0 名下开着的分支：00 noshow-tracking ed0cf996（等 G321）、payroll-lock-edit 6d2de212 / payroll-auto-lock df0128c8（已被 81 task/payroll-wire c29b45f6 合一）、tt-compact-toolbar（只有 preview）；68 150-relay-tour a822df5f（等 G321）、G281 tickets-sync WIP a271aff5（后端 92db5ca4 已上线）。
+- 已核：33de2609 / efc85d77（mt）、67a681da（SMS）、c29b45f6（payroll）、ed0cf996、a822df5f、a271aff5 都**还没上 main**（b0 说 mt-console 已上线不对，以 fc 节为准：等后端核对两条后一起合）。
+- 后端：昨天公司后端主窗口 6f[0e63fc] 昨晚已停（交接 b032d420），今天谁是后端主窗口要问 Annie。
+- 今天要请 Annie 看：Dispatch 11/18 换上车点框（b745ce67）分组；Rezdy 推送测试（在 Rezdy 改一单上车点，等一分钟不按蓝键，看 Order List 有没有变）。
 
 ## 2026-11-17 深夜 收工交接：前端主窗口 `npe-ops-frontend-fc`[450807]（家里电脑，23:00 下班）
 **一、今晚上 main**：Main Manifest 产品名标红 **40bbb306**（81；后端 a9 e27f4c12，32 PASS）。📌 请 Annie 线上验 11-26 Main manifest › Bus Tours › Antelope 的 PYZF0H（深红字、悬停提示、How to use 一句）。
