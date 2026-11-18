@@ -4,9 +4,15 @@ import { useState } from "react";
 
 import { usePhoneInfo } from "@/components/ui/phone";
 import { describeError, isStatus } from "@/lib/api-errors";
-import { lockPayrollDates, unlockPayrollDates } from "@/lib/guide-payroll-api";
+import {
+  editPayrollLock,
+  lockPayrollDates,
+  unlockPayrollDates,
+} from "@/lib/guide-payroll-api";
 import { cn } from "@/lib/utils";
 import type { PayrollLock } from "@/types/guide-payroll";
+
+import { isAutoLock, PayrollAutoLock } from "./payroll-auto-lock";
 
 import {
   HR_CARD_CLASS,
@@ -41,7 +47,8 @@ import {
 
 type Confirm =
   | { kind: "lock"; from: string; to: string; note: string }
-  | { kind: "unlock"; lock: PayrollLock };
+  | { kind: "unlock"; lock: PayrollLock }
+  | { kind: "edit"; lock: PayrollLock; from: string; to: string; note: string };
 
 export interface PayrollLocksProps {
   canEdit: boolean;
@@ -68,6 +75,13 @@ export function PayrollLocks({
   const [err, setErr] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const info = usePhoneInfo("About locked dates");
+  /** 正在就地改的锁（Edit，Annie 2026-11-17 样稿第 2 版「改锁的日期和备注」动手；小题 1 A 直接存）。 */
+  const [edit, setEdit] = useState<{
+    id: number;
+    from: string;
+    to: string;
+    note: string;
+  } | null>(null);
 
   const sorted = [...locks].sort((a, b) => a.from.localeCompare(b.from));
 
@@ -93,6 +107,37 @@ export function PayrollLocks({
     setConfirm({ kind: "lock", from, to, note: note.trim() });
   }
 
+  function askEdit(lock: PayrollLock) {
+    if (!edit) return;
+    setMsg(null);
+    const e =
+      dateError(edit.from, "from") ??
+      dateError(edit.to, "to") ??
+      (edit.to < edit.from ? "'To' can't be before 'from'." : null) ??
+      (() => {
+        const ov = locks.find(
+          (l) => l.id !== lock.id && edit.from <= l.to && edit.to >= l.from,
+        );
+        return ov
+          ? `${ov.from} to ${ov.to} is already locked. Pick dates that don't overlap.`
+          : null;
+      })() ??
+      (runsDirty ? "Save or discard your changes first." : null);
+    if (e) {
+      setErr(e);
+      setConfirm(null);
+      return;
+    }
+    setErr(null);
+    setConfirm({
+      kind: "edit",
+      lock,
+      from: edit.from,
+      to: edit.to,
+      note: edit.note.trim(),
+    });
+  }
+
   async function go() {
     if (!confirm || busy) return;
     setBusy(true);
@@ -107,6 +152,13 @@ export function PayrollLocks({
         setFrom("");
         setTo("");
         setNote("");
+      } else if (confirm.kind === "edit") {
+        await editPayrollLock(confirm.lock.id, {
+          from: confirm.from,
+          to: confirm.to,
+          note: confirm.note || null,
+        });
+        setEdit(null);
       } else {
         await unlockPayrollDates(confirm.lock.id);
       }
@@ -136,6 +188,7 @@ export function PayrollLocks({
           right away.
         </span>
       </div>
+      <PayrollAutoLock onUnauthorized={onUnauthorized} />
       {sorted.length ? (
         <div className={cn(C_WRAP, "pt-3")}>
           <table className={cn(C_TABLE, "min-w-[480px]")}>
@@ -148,36 +201,131 @@ export function PayrollLocks({
               </tr>
             </thead>
             <tbody>
-              {sorted.map((l) => (
-                <tr key={l.id} className="bg-white" data-lock-row={l.id}>
-                  <td className={cn(C_TD, C_STICKY, "whitespace-nowrap")}>
-                    {cardRangeName(l.from, l.to)}
-                  </td>
-                  <td className={C_TD}>
-                    {l.note ? l.note : <span className={C_DIM}>—</span>}
-                  </td>
-                  <td className={C_TD}>
-                    {l.created_by ?? <span className={C_DIM}>—</span>}
-                  </td>
-                  <td className={C_TD}>
-                    {canEdit ? (
-                      <button
-                        type="button"
-                        className={C_LINK}
-                        data-unlock={l.id}
-                        disabled={busy}
-                        onClick={() => {
-                          setErr(null);
-                          setMsg(null);
-                          setConfirm({ kind: "unlock", lock: l });
-                        }}
-                      >
-                        Unlock
-                      </button>
-                    ) : null}
-                  </td>
-                </tr>
-              ))}
+              {sorted.map((l) =>
+                edit?.id === l.id ? (
+                  <tr
+                    key={l.id}
+                    className="bg-white"
+                    data-lock-row={l.id}
+                    data-lock-editing
+                  >
+                    <td className={cn(C_TD, C_STICKY)}>
+                      <span className="flex flex-wrap gap-1.5">
+                        <input
+                          type="date"
+                          aria-label="From"
+                          className={C_INPUT}
+                          value={edit.from}
+                          data-le="from"
+                          onChange={(e) =>
+                            setEdit({ ...edit, from: e.target.value })
+                          }
+                        />
+                        <input
+                          type="date"
+                          aria-label="To"
+                          className={C_INPUT}
+                          value={edit.to}
+                          data-le="to"
+                          onChange={(e) =>
+                            setEdit({ ...edit, to: e.target.value })
+                          }
+                        />
+                      </span>
+                    </td>
+                    <td className={C_TD}>
+                      <input
+                        aria-label="Note"
+                        className={C_INPUT}
+                        value={edit.note}
+                        placeholder="Optional, like Paid Nov 9"
+                        data-le="note"
+                        onChange={(e) =>
+                          setEdit({ ...edit, note: e.target.value })
+                        }
+                      />
+                    </td>
+                    <td className={C_TD}>
+                      <LockedBy by={l.created_by} />
+                    </td>
+                    <td className={C_TD}>
+                      <span className="inline-flex gap-2">
+                        <button
+                          type="button"
+                          className={C_BTN_SAVE}
+                          disabled={busy}
+                          data-lock-edit-save={l.id}
+                          onClick={() => askEdit(l)}
+                        >
+                          Save
+                        </button>
+                        <button
+                          type="button"
+                          className={C_BTN}
+                          disabled={busy}
+                          onClick={() => {
+                            setEdit(null);
+                            setConfirm(null);
+                            setErr(null);
+                          }}
+                        >
+                          Cancel
+                        </button>
+                      </span>
+                    </td>
+                  </tr>
+                ) : (
+                  <tr key={l.id} className="bg-white" data-lock-row={l.id}>
+                    <td className={cn(C_TD, C_STICKY, "whitespace-nowrap")}>
+                      {cardRangeName(l.from, l.to)}
+                    </td>
+                    <td className={C_TD}>
+                      {l.note ? l.note : <span className={C_DIM}>—</span>}
+                    </td>
+                    <td className={C_TD}>
+                      <LockedBy by={l.created_by} />
+                    </td>
+                    <td className={C_TD}>
+                      {canEdit ? (
+                        <span className="inline-flex gap-2.5 whitespace-nowrap">
+                          <button
+                            type="button"
+                            className={C_LINK}
+                            data-lock-edit={l.id}
+                            disabled={busy}
+                            onClick={() => {
+                              setErr(null);
+                              setMsg(null);
+                              setConfirm(null);
+                              setEdit({
+                                id: l.id,
+                                from: l.from,
+                                to: l.to,
+                                note: l.note ?? "",
+                              });
+                            }}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            className={C_LINK}
+                            data-unlock={l.id}
+                            disabled={busy}
+                            onClick={() => {
+                              setErr(null);
+                              setMsg(null);
+                              setConfirm({ kind: "unlock", lock: l });
+                            }}
+                          >
+                            Unlock
+                          </button>
+                        </span>
+                      ) : null}
+                    </td>
+                  </tr>
+                ),
+              )}
             </tbody>
           </table>
         </div>
@@ -194,7 +342,9 @@ export function PayrollLocks({
           <span className="flex-[1_1_260px]">
             {confirm.kind === "lock"
               ? `Lock ${cardRangeName(confirm.from, confirm.to)}? Fees, extras and tips on these days, and prices or extra amounts that cover them, can’t be changed until you unlock.`
-              : `Unlock ${cardRangeName(confirm.lock.from, confirm.lock.to)}? Pay on these days can be changed again.`}
+              : confirm.kind === "edit"
+                ? `Change the lock ${cardRangeName(confirm.lock.from, confirm.lock.to)} to ${cardRangeName(confirm.from, confirm.to)}? Fees, extras and tips on these days can’t be changed while locked.`
+                : `Unlock ${cardRangeName(confirm.lock.from, confirm.lock.to)}? Pay on these days can be changed again.`}
           </span>
           <button
             type="button"
@@ -203,7 +353,13 @@ export function PayrollLocks({
             data-lock-yes
             onClick={() => void go()}
           >
-            {busy ? "Saving…" : confirm.kind === "lock" ? "Lock" : "Unlock"}
+            {busy
+              ? "Saving…"
+              : confirm.kind === "lock"
+                ? "Lock"
+                : confirm.kind === "edit"
+                  ? "Save"
+                  : "Unlock"}
           </button>
           <button
             type="button"
@@ -277,4 +433,15 @@ export function PayrollLocks({
       )}
     </div>
   );
+}
+
+/** Locked by：系统自动锁（created_by "system"）写灰字 Auto（Annie 2026-11-17 自动锁动手），其余写账号名。 */
+function LockedBy({ by }: { by: string | null | undefined }) {
+  if (isAutoLock(by))
+    return (
+      <span className={C_DIM} data-lock-auto>
+        Auto
+      </span>
+    );
+  return <>{by ?? <span className={C_DIM}>—</span>}</>;
 }
