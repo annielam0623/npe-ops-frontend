@@ -6,6 +6,31 @@
 
 > **下一个主窗口：先读下面「2026-11-17 收工交接」，再看那天的主窗口记录。**
 
+## 2026-11-17 晚 收工交接（续）：前端主窗口 `前端主窗口-b0 (fork)`[696851]
+> Annie 下午延到 15:30，之后又继续派活到傍晚；后端 6f 已收工（后端交接 b032d420）。Annie「我回家继续，你详细地写进交接」。家里的前端主窗口先读本节，再读下面「2026-11-17 收工交接」和置顶 📌。
+
+**一、今天下午 / 傍晚上 main 的（都有 6f PASS）**
+1. Tracking 胶囊三个圆圈 → 小方块图标 **58611ba4**（00）。
+2. Tour Tracking Broadcast 选人名单带接客点 / tour 名 **05b6af85**（00，功能 f61729a0）：By tour 每行「接客点 · 时间」、空写「No pickup on file」；By pickup 每行 tour 全名 · 时间、shuttle 写产品名、空写「No tour set」；手机第二行。tt 187/187、tk 136/136。
+3. Tour Tracking 两个一样的「Main manifest sync」框（bug）**a6205b76**（00）：sync-switch.tsx 外面多包一份电脑版。tt 188/188。
+4. Dispatch 11/18–11/22 北边酒店改接客点 **1ad86f80** + 6f 事后审 3 条修好 **b745ce67**（68）。详见下面「新：Dispatch 11/18–11/22」条。
+5. Dispatch 147 第二部分：Super Admin「Open shift opens today ⚙」时间段设置框 **3bd92183**（68）。Annie 问「这是什么意思」已解释（第一部分写死 12:00–10:00 AM，这次做成 Super Admin 能改；平时不用动）。链接字照 preview V3「Open shift opens today」，Annie 没说要换。
+6. 后端（6f / 91）：旧 confirm Dispatch 页停用 **29139573**（提示页 + 跳 ops /dispatch，旧 Morning Relay 面板随之没了）；G331 旧发送页停用 2043e2b4（上午）。
+
+**二、在做、没合 main**
+- **Morning Pickup Tracking 顶部整合（00）**：Annie 动手（原话「tracking和live driver的显示不要变。其他都同意推荐。动手」）⇒ ①②③⑤ A、④ 两个标签原样。样稿 https://claude.ai/artifact/YLmDAX7TGbJ5sa7WCwY58o 。Annie 又要「preview一个改完之后的手机版给我看」⇒ 已叫 00 出最终手机版（约 390px，Super Admin / staff，往下滑看表格）。Annie 说收工后已叫 00：手机 preview 能出就发链接、WIP 提交推自己分支（不合 main）、关 dev server。**00 的回报（分支 / SHA / 做到哪）见下面补记；没有补记就去问 00 或看 origin 上 00 的分支**。下一步：做完 → mt + nav + tsc / eslint / build → 6f PASS → 合。
+- 其余等后端 / 等 Annie 的分支照旧：00 noshow ed0cf996、68 150-relay-tour a822df5f（等 G321）；00 payroll-lock-edit 6d2de212、payroll-auto-lock df0128c8（等后端 payroll 合同）；68 G281 WIP a271aff5。
+
+**三、📌 等 Annie（新的，旧的见下面一节置顶）**
+1. **Tour Tracking 顶部压缩**样稿 v5 https://claude.ai/artifact/XkJzYXepzr6Yog9ciiFszr ：已定——③ 改为 Broadcast 键上标当天已发条数、两行（团按钮 + 工具）并一行窄屏折行、团按钮小长方形 5px、⑦ Upload 所有人都藏（How to use 删那句）。**仍待 ①②③'④⑤⑥ + 动手**（题目原文见第 30 行附近那条）。分支 task/tt-compact-toolbar 未写代码。
+2. **Dispatch 改接客点**：明早 opening 第一次用时请 Annie 看 11-18 Dispatch 线上样子，酒店有没有归错组（关键词在 pickup-move.tsx 的 MOVES / TARGETS）；6f 请她顺便验：Rezdy 改一张接客点、等一分钟不按蓝键，看 Order List 会不会自己变（验 Rezdy 改接客点推不推）。谁能按 Refresh：Team 页勾「Edit Orders」的人 + Super Admin，CCL partner 不能（68 已直接答 Annie）。模拟真实页面（Antelope / South / BZ 三团，v2）https://claude.ai/artifact/7PpuDnUVMc1mjwSCK6jCWo 。
+3. **旧 confirm Dispatch 页**：请 Annie 在 confirm 登录后开 /admin/dispatch/assignments?date=2026-11-18，看提示、键跳到 ops /dispatch?date=2026-11-18、没有 relay 面板；ops Dispatch 里 View only / Print 点一下。
+4. **147 设置框**：请 Annie 用 Super Admin 在 Dispatch 点一下「Open shift opens today ⚙」看弹窗。
+5. **gray-line-logo.svg**：Annie 收工时贴了一个 Gray Line 的 SVG 标志（深蓝菱形 #24407B + 白字「GrayLine」），**没说要做什么**。家里主窗口问她一句用途（放哪个页面 / 邮件 / 换哪个标志），先别动。
+
+**四、明天派（已登记在下面）**：SMS 超字数灰掉（三个入口，先 preview）；G281 前端接；No show / 150 等 G321；Payroll 等合同；da 检查套卡住（挂起）。
+**窗口**：68 已收工（worktree -150 干净、没留进程）；00 收尾中；6f 收工。
+
 ## 2026-11-17 收工交接：前端主窗口 `前端主窗口-b0 (fork)`[696851]（公司电脑，14:30 下班）
 > 今天 Annie 不小心开了两个前端主窗口（原 b0 [1c50f1] 和本 fork），下午她选「留 fork」，原 b0 已停。下面一节「2026-11-17（周二）」是两个窗口共用的当天记录。
 - **今天上 main**：151 Bus Manifest View only（f3a94174）、152 点订单号开订单详情（70b18ea7）+ 订单号能复制（4e490c01）、150 Notes 列（8414b1be，后端 4d132f60）、153 Tickets 按场次分组（a6f884e6 + 92fd09f6）、Payroll：ANT Relay 重名挡下（0e13c7a7）、ANT relay 下拉钉住（ece7b98d）、套日期修复（36772ac7）、期间箭头（7303161f）、加购项名单（82b21010，后端 558e1176）、状态栏留空 / Paid · locked（7aa57582，后端 CSV cac8c066）。
