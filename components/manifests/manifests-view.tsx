@@ -2435,7 +2435,9 @@ function ManifestsHowToUse() {
           this tour date (from here or from Tracking) are skipped unless you
           tick Send anyway. A changed message goes to everyone. SMS can be at
           most 300 characters, plain characters only (no emoji, curly quotes or
-          long dashes). If it is longer, send it by Email.
+          long dashes). If the message is longer or uses other characters, SMS
+          is greyed out and it goes by Email only. Shorten it to use SMS again,
+          then tick SMS again.
         </>,
         <>
           If an order fails, the result lists the order number and the reason.

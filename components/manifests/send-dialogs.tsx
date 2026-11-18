@@ -38,7 +38,13 @@ import {
 } from "@/lib/manifests-api";
 import { chunk, SEND_BATCH_SIZE } from "@/lib/send-batches";
 import { sendBatchHref } from "@/lib/send-log-api";
-import { expandForCount, smsCheck, smsProblem } from "@/lib/sms-limit";
+import { SmsProblem } from "@/components/ui/sms-problem";
+import {
+  expandForCount,
+  SMS_CHAR_LIMIT,
+  smsCheck,
+  toPlainSms,
+} from "@/lib/sms-limit";
 import { fetchTourTypes } from "@/lib/tour-send-api";
 import {
   backendChannel,
@@ -256,8 +262,6 @@ const FRAME_SECONDARY_BUTTON_CLASS = SECONDARY_BUTTON_CLASS.replace(
 type MessagePhase =
   | { kind: "edit"; error: string | null }
   | { kind: "checking" }
-  /** 勾着 SMS 又超过两段：问要不要改发 Email（Annie 2026-10-15「最多两段，否则发邮件」）。 */
-  | { kind: "tooLong" }
   /** check = 谁这个团期已经收过一模一样的消息（G62）。 */
   | { kind: "review"; check: ManifestBroadcastCheck }
   | { kind: "sending"; check: ManifestBroadcastCheck }
@@ -305,6 +309,13 @@ export function MessageDialog({
   const smsText = expandForCount(text.trim(), firstNames, date);
   // 300 个字符、不能有特殊字符（Annie 2026-10-15）；特殊字符只查 staff 写的原文。
   const length = smsCheck(smsText, "Email", text.trim());
+  // 超了 / 有坏字 ⇒ SMS 灰掉、取消勾选、改勾 Email；改回限内不自动勾回
+  // （Annie 2026-11-17「同意全部推荐，动手」，样稿 KnNXFz77T9jQerCUYBMrNz 题 2 A）。
+  const smsBlocked = text.trim() !== "" && length.over;
+  if (smsBlocked && (sms || !email)) {
+    setSms(false);
+    setEmail(true);
+  }
   /** 名单里有邮箱列、但邮箱是空的订单数（没有邮箱列就不说）。 */
   const noEmail = distinctOrders(
     rows.filter(
@@ -312,25 +323,16 @@ export function MessageDialog({
     ),
   ).length;
 
-  /**
-   * 校验 → 问后端谁已经收过这条一模一样的消息（同一团期，Tracking 发的也算）→ 确认页。
-   * emailOnly：刚在「太长」那一步选了只发 Email（勾选的 state 还没更新）。
-   */
-  async function review(opts: { emailOnly?: boolean } = {}) {
+  /** 校验 → 问后端谁已经收过这条一模一样的消息（同一团期，Tracking 发的也算）→ 确认页。 */
+  async function review() {
     const body = text.trim();
-    const useSms = opts.emailOnly ? false : sms;
-    const useEmail = opts.emailOnly ? true : email;
     let error: string | null = null;
     if (!body) error = "Please enter a message.";
-    else if (!useSms && !useEmail) error = "Choose SMS, Email or both.";
+    else if (!sms && !email) error = "Choose SMS, Email or both.";
     else if (body.length > MESSAGE_MAX)
       error = `The message is too long (${body.length.toLocaleString("en-US")} / ${MESSAGE_MAX.toLocaleString("en-US")} characters).`;
     if (error) {
       setPhase({ kind: "edit", error });
-      return;
-    }
-    if (useSms && length.over) {
-      setPhase({ kind: "tooLong" });
       return;
     }
     setPhase({ kind: "checking" });
@@ -462,55 +464,6 @@ export function MessageDialog({
             )}
           </div>
         )}
-      </DialogFrame>
-    );
-  }
-
-  if (phase.kind === "tooLong") {
-    return (
-      <DialogFrame
-        titleId={titleId}
-        title="Send message"
-        busy={false}
-        onClose={onClose}
-        footer={
-          <>
-            <button
-              type="button"
-              onClick={() => setPhase({ kind: "edit", error: null })}
-              className={FRAME_SECONDARY_BUTTON_CLASS}
-            >
-              No, edit the message
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setSms(false);
-                setEmail(true);
-                void review({ emailOnly: true });
-              }}
-              className={SEND_BLUE}
-            >
-              Yes, use Email only
-            </button>
-          </>
-        }
-      >
-        <div data-too-long role="alert" className={ERR_BOX}>
-          <p className="font-semibold">
-            {smsProblem(
-              length,
-              ", counting the longest guest name and the date",
-            )}
-          </p>
-          <p>Send it by Email only instead?</p>
-          {noEmail ? (
-            <p>
-              {noEmail} selected {noEmail === 1 ? "order has" : "orders have"}{" "}
-              no email and will not receive it.
-            </p>
-          ) : null}
-        </div>
       </DialogFrame>
     );
   }
@@ -674,7 +627,7 @@ export function MessageDialog({
         onChange={(e) => setText(e.target.value)}
         className="min-h-[110px] w-full resize-y rounded-md border border-stone-300 px-2 py-1.5 font-[inherit] text-[13px] text-stone-900 night:border-white/15 night:bg-white/[.06] night:text-white night:[color-scheme:dark]"
       />
-      {sms && text.trim() ? (
+      {text.trim() ? (
         <p
           data-sms-count
           className={cn(
@@ -682,15 +635,21 @@ export function MessageDialog({
             length.over ? "font-semibold text-red-700" : "text-[#1a1a1a]",
           )}
         >
-          {length.text}
+          {length.length.toLocaleString("en-US")} / {SMS_CHAR_LIMIT} chars
         </p>
       ) : null}
       <div className="flex flex-wrap gap-3.5">
-        <label className="inline-flex items-center gap-1.5">
+        <label
+          className={cn(
+            "inline-flex items-center gap-1.5",
+            smsBlocked && "cursor-not-allowed opacity-40",
+          )}
+        >
           <input
             type="checkbox"
             className={CHECK_BIG}
             checked={sms}
+            disabled={smsBlocked}
             onChange={(e) => setSms(e.target.checked)}
           />{" "}
           SMS
@@ -705,6 +664,20 @@ export function MessageDialog({
           Email
         </label>
       </div>
+      {smsBlocked ? (
+        <SmsProblem
+          typed={text.trim()}
+          length={length.length}
+          bad={length.bad}
+          counted="counting the longest guest name and the date"
+          tail={
+            noEmail
+              ? `${noEmail} selected ${noEmail === 1 ? "order has" : "orders have"} no email and will not get it.`
+              : null
+          }
+          onReplace={() => setText((t) => toPlainSms(t))}
+        />
+      ) : null}
       {phase.kind === "edit" && phase.error ? (
         <p role="alert" className={ERR_BOX}>
           {phase.error}

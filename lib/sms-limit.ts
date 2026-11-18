@@ -1,7 +1,7 @@
 /**
  * 短信的规矩（Annie 2026-10-15 深夜）：「全部短信都限制在 300 以内」，而且不能有 emoji / 特殊字符。
  * staff 能写短信的地方（两处群发、对话弹窗回复、Content Studio 短信模板）都用这里的 smsCheck()；
- * 超了或有特殊字符 ⇒ 群发和回复问要不要改发 Email，模板不让存。后端（-ec）会照同一条规矩拒收。
+ * 超了或有特殊字符 ⇒ 群发、Main manifest Send message、对话框回复的 SMS 灰掉只发 Email（2026-11-17），模板不让存。后端（-ec）会照同一条规矩拒收。
  */
 export const SMS_CHAR_LIMIT = 300;
 
@@ -59,16 +59,6 @@ export function smsCheck(
       ? ` - too long for SMS. Shorten it or send it by ${emailWord} only.`
       : "";
   return { text: head + tail, over: long || bad.length > 0, length, bad };
-}
-
-/** 提问框里那句「为什么不能按短信发」。 */
-export function smsProblem(
-  check: { length: number; bad: string[] },
-  counted = "",
-): string {
-  if (check.bad.length)
-    return `SMS can't use these characters: ${check.bad.join(" ")}. Only plain letters, numbers and simple punctuation can go by SMS.`;
-  return `This message is too long for SMS: ${check.length.toLocaleString("en-US")} characters${counted}. SMS allows up to ${SMS_CHAR_LIMIT}.`;
 }
 
 const MONTHS = [
