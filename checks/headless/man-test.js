@@ -942,6 +942,7 @@ async function run() {
   await evaluate("if (!document.querySelector('thead th input').checked) document.querySelector('thead th input').click();");
   await evaluate("$btn('Send message', $bar()).click();");
   await waitFor("$dialog()");
+  check("问候只留后端那一个（ae 2026-11-18）：默认正文不再以 Hi {first_name}, 开头", (await evaluate("return $dialog().querySelector('textarea').value;")) === "This is National Park Express about your tour on {tour_date}. ", await evaluate("return $dialog().querySelector('textarea').value;"));
   check("自定义消息：写几位（一单一条）、占位符说明、记进 Broadcasting Log", await evaluate("const t = $dialog().textContent; return t.includes('2 orders (one message per order)') && t.includes('{first_name}') && t.includes('Broadcasting Log');"));
   await evaluate("[...$dialog().querySelectorAll('input[type=checkbox]')].forEach(c => c.click());");
   from = (await mockLog()).length;

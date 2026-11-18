@@ -91,8 +91,9 @@ import {
 
 /** 消息正文上限（Annie 2026-10-25「设为5000字」，邮件也管）；后端 BROADCAST_MAX_CHARS 是 20,000，比这宽。SMS 另有 300 字的限制。 */
 const MESSAGE_MAX = 5000;
+// 不写 "Hi {first_name}, "：后端 broadcast_send.sms_message 每条短信自动加（G151），写了客人收到两遍（ae 2026-11-18）。
 const DEFAULT_MESSAGE =
-  "Hi {first_name}, this is National Park Express about your tour on {tour_date}. ";
+  "This is National Park Express about your tour on {tour_date}. ";
 
 // 格式和发送页统一（Annie 2026-10-12：整个系统的发送页面格式必须一样）：框、名单表、标签、结果数字
 // 都用发送页的 components/tickets-send/legacy-ui（照旧 send_tour.html），不在这里另写一套。
