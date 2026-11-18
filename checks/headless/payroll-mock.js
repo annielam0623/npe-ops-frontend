@@ -176,6 +176,13 @@ http.createServer(async (req, res) => {
     return send(res, 200, { lock });
   }
   const lm = /^\/api\/payroll\/locks\/(\d+)$/.exec(p);
+  if (lm && req.method === "PUT") {
+    entry.body = await readBody(req);
+    const l = locks.find((x) => x.id === Number(lm[1]));
+    if (!l) return send(res, 404, { detail: "Lock not found." });
+    Object.assign(l, { from: entry.body.from, to: entry.body.to, note: entry.body.note ?? null });
+    return send(res, 200, { lock: l });
+  }
   if (lm && req.method === "DELETE") {
     const i = locks.findIndex((l) => l.id === Number(lm[1]));
     const [gone] = i >= 0 ? locks.splice(i, 1) : [null];

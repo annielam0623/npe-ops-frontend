@@ -101,3 +101,14 @@ export function fetchPayrollLog(
     query: before ? { before, limit: String(limit) } : { limit: String(limit) },
   });
 }
+
+/**
+ * 改一个锁的日期 / 备注（Annie 2026-11-17 样稿第 2 版动手；小题 1 A：直接存）。规则同加锁：不能跟别的锁重叠。
+ * ⚠️ 地址 / body 先按前端 mock 拟的（PUT /api/payroll/locks/{id} {from, to, note}），后端 91 合同到了按合同改。
+ */
+export function editPayrollLock(
+  id: number,
+  body: { from: string; to: string; note: string | null },
+): Promise<{ lock: PayrollLock }> {
+  return apiFetch(`/api/payroll/locks/${id}`, { method: "PUT", body });
+}
