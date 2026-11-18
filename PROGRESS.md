@@ -17,6 +17,7 @@
   - 32 回：后端由 a9 做（G279 已上后端 main efeae017，只改后端模板，前端不用接）。倾向：① 显示产品名的行都带字段，只在 bus_tour 组的节里比，其余 false；② 按产品比，往返两段结果一样；③ 没有严格多数就不标；④ 另给一个字符串字段（这一节大多数产品的主要文字）给悬停提示，没标的行 null。字段名合同定了再发；preview 先用假字段名。
 - 派工：`81`[3d86a5] = Main Manifest 产品名标红（先 preview 发我转 Annie；动手 + 字段定了再写，分支 task/manifest-red-product，合前交 32 PASS + 后端上 main）。`36`[869f3d] = Morning Tracking：① task/mt-console 299d9854 收尾（合最新 main、build、mt / nav、交 SHA 给 32；等 Annie 看过手机截图再合）；② task/noshow-tracking ed0cf996 照 G321 合同 5 处差异改，等 G321 上后端 main + PASS。SMS 超字数、G281、工资两个分支排后面，谁先空谁做。
 - 📌 **产品名标红样稿（81）** https://claude.ai/artifact/Ksg4SKsz4RxtriyNK37xri ，等 Annie 答 4 题 + 动手：题 1 红色 A 深红 #a32d2d 不加粗（同页报错红，推荐）/ B 亮红 #e02424 加粗；题 2 悬停提示 A 电脑悬停 "Different from most products in this section: <大多数产品名>"、手机只红字（推荐）/ B 不提示 / C 手机红字下多一行 "Most: …"；题 3 CSV A 不变（推荐）/ B 加 "Product check" 列；题 4 How to use A 加："A product name in red is different from most products in its section (the agent name in brackets and the pickup part don't count), for example missing "with Lunch". Hover over it to see what most of the section booked. Check the order in Order List before you count meals or tickets."（推荐）/ B 不加。已定不问：不加开关、只字变红底色不变、打印也红、后端没字段时照旧不报错、没有严格多数不标。
+  - ✅ Annie（81 窗口，原话）「产品标红同意全部推荐。动手」⇒ 1 A / 2 A / 3 A / 4 A。81 开 task/manifest-red-product（D:\ops-wt-81-red）写，暂用 row 顶层 product_differs（bool）/ product_majority（string|null），等 32 定真名再改。
 
 ## 2026-11-17 晚 收工交接（续）：前端主窗口 `前端主窗口-b0 (fork)`[696851]
 > Annie 下午延到 15:30，之后又继续派活到傍晚；后端 6f 已收工（后端交接 b032d420）。Annie「我回家继续，你详细地写进交接」。家里的前端主窗口先读本节，再读下面「2026-11-17 收工交接」和置顶 📌。
