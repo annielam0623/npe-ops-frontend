@@ -20,7 +20,7 @@
   - ✅ Annie（81 窗口，原话）「产品标红同意全部推荐。动手」⇒ 1 A / 2 A / 3 A / 4 A。81 开 task/manifest-red-product（D:\ops-wt-81-red）写，暂用 row 顶层 product_differs（bool）/ product_majority（string|null），等 32 定真名再改。 32 回：a9 直接用这两个名字。
 - 32：**G321 第二段今晚不上 main**（6 个合并冲突，明天先解）⇒ 36 的任务 2（noshow-tracking）和 68 的 150-relay-tour 今晚不等；36 做完 mt-console 改做 SMS 超字数 preview（分支 task/sms-over-limit-email-only，动手后写）。工资三件 35 在落地，SHA 后发。
 - **新：Morning Tracking 手机版简化**（Annie 在 81 窗口，原话，非动手）：「手机版的moring tracking最大问题就是无关的区域占的面积太大了，比如说check-in log这个标题，完全就不需要，电脑版可以放很多东西但手机版就需要简化，然后每行的行距也很大，客人的信息做成点击才展开，平时就显示红色和绿色就好了」⇒ 只手机版：去掉 Check-in log 等无关标题、行距压小、客人信息默认收起只露红 / 绿、点开展开。先 preview。派 36（同文件，接在 mt-console 上）。⇒ SMS 超字数 preview 改派 81（标红做完后接）。
-- 36 交 task/mt-console @ **efc85d77**（299d9854 + 合 main，没冲突）：tsc 0、eslint 0 错、build 过、mt 282/282、nav 39/39。已交 32 核对。📌 等 32 PASS + 问 Annie 能不能先上（手机版简化另出 preview 后续再改）。36 SMS 没开始，已全交 81。
+- 36 交 task/mt-console @ **efc85d77**（299d9854 + 合 main，没冲突）：tsc 0、eslint 0 错、build 过、mt 282/282、nav 39/39。已交 32 核对。📌 等 32 PASS + 问 Annie 能不能先上（手机版简化另出 preview 后续再改）。36 SMS 没开始，已全交 81。 ✅ 32 PASS（后端侧：只动 4 个文件，没新增 / 改 /api 调用；视觉以 headless 和 Annie 为准）。等 Annie 选先上 A / 跟手机版一起 B。
 
 ## 2026-11-17 晚 收工交接（续）：前端主窗口 `前端主窗口-b0 (fork)`[696851]
 > Annie 下午延到 15:30，之后又继续派活到傍晚；后端 6f 已收工（后端交接 b032d420）。Annie「我回家继续，你详细地写进交接」。家里的前端主窗口先读本节，再读下面「2026-11-17 收工交接」和置顶 📌。
