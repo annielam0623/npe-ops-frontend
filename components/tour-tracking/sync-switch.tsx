@@ -108,7 +108,7 @@ export function useTrackingSyncSwitch(onChanged: () => void): {
   const inner = (
     <span
       data-sync-switch
-      className="inline-flex flex-wrap items-center gap-2 rounded-[10px] border border-dashed border-[#b9c9bd] bg-paper px-2.5 py-1"
+      className="inline-flex flex-wrap items-center gap-2 rounded-[10px] border border-dashed sm:ml-auto border-[#b9c9bd] bg-paper px-2.5 py-1"
     >
       <span className="text-[12.5px] font-bold text-[#2f5e46]">
         Main manifest sync
@@ -136,8 +136,9 @@ export function useTrackingSyncSwitch(onChanged: () => void): {
   return {
     control: (
       <>
-        <span className="ml-auto max-sm:hidden">{inner}</span>
-        <PhoneMore className="ml-auto sm:hidden" label="Main manifest sync">
+        {/* PhoneMore 自己在电脑上就原样显示 children（手机上才收进「⋯」），外面不能再放一份电脑版，
+            否则电脑上出两个一样的框（Annie 2026-11-17 截图）。 */}
+        <PhoneMore className="ml-auto" label="Main manifest sync">
           {inner}
         </PhoneMore>
       </>
