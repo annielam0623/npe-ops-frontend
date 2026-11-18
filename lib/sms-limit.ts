@@ -82,23 +82,6 @@ export function tourDateText(ymd: string): string {
   return m ? `${MONTHS[Number(m[2]) - 1]} ${m[3]}, ${m[1]}` : "";
 }
 
-/** 按最坏情况展开 {first_name} / {tour_date}：名字用最长的那个（没有用 Guest）。 */
-export function expandForCount(
-  body: string,
-  firstNames: readonly string[],
-  tourDate: string,
-): string {
-  const longest = firstNames.reduce(
-    (a, n) => ((n || "Guest").length > a.length ? n || "Guest" : a),
-    "Guest",
-  );
-  return body
-    .split("{first_name}")
-    .join(longest)
-    .split("{tour_date}")
-    .join(tourDateText(tourDate));
-}
-
 // ── SMS 超字数 / 坏字 ⇒ SMS 灰掉、只能发 Email（Annie 2026-11-17「同意全部推荐，动手」，样稿 KnNXFz77T9jQerCUYBMrNz v2）──
 // 三个入口（群发 broadcast-dialog、Main manifest Send message、对话框回复 conversation-modal）共用这里的判断和原文。
 
@@ -160,14 +143,170 @@ const ACCENT_TO_PLAIN: Readonly<Record<string, string>> = {
 
 const EMOJI = /\p{Extended_Pictographic}/u;
 
-/** 这个字 SMS 能不能发（GSM-7 基本表 + 扩展表）。 */
+// ── 规则一律照后端 app/services/sms.py（唯一标准，ae 2026-11-18 核对 9eb7396c 时指出）──
+// ① 先把弯引号 / 长破折号 / 省略号换成普通字符（normalize_sms_punctuation，后端发出去的就是换过的），这几个不算坏字；
+// ② 坏字 = 换完之后不在 GSM 基本表里的字（_GSM_BASIC_CHARS；扩展表 ^ { } \ [ ~ ] | € 也算坏字）；
+//    群发 / Main manifest 先挖掉一模一样的 {first_name} {tour_date}（SMS_PLACEHOLDERS），对话框回复不挖；
+// ③ 限制是段数（SMS_MAX_SEGMENTS = 2），按每位客人实际收到的文字（含 "Hi 名字, " 开头、展开名字和日期、换过排版符号）算：
+//    有任何一个字 > U+00FF（含 Δ Φ 这类 GSM 希腊字母、名字里的 Ł / 中文）⇒ 每段 70 / 67，否则 160 / 153（sms_segments）。
+
+export const SMS_MAX_SEGMENTS = 2;
+
+/** 后端 _SMS_PUNCTUATION_NORMALIZE，一字不差。 */
+const PUNCT_NORMALIZE: readonly [string, string][] = [
+  ["‘", "'"],
+  ["’", "'"],
+  ["“", '"'],
+  ["”", '"'],
+  ["–", "-"],
+  ["—", "-"],
+  ["…", "..."],
+];
+const PUNCT_CHARS = new Set(PUNCT_NORMALIZE.map(([c]) => c));
+
+/** 后端 SMS_PLACEHOLDERS。 */
+const SMS_PLACEHOLDERS = ["{first_name}", "{tour_date}"] as const;
+
+/** normalize_sms_punctuation：发出去之前后端会这样换。 */
+export function normalizeSmsPunctuation(text: string): string {
+  let s = text;
+  for (const [c, to] of PUNCT_NORMALIZE) s = s.split(c).join(to);
+  return s;
+}
+
+/** 这个字 SMS 能不能发：GSM 基本表，或后端会自动换掉的排版符号。 */
 export function isSmsChar(ch: string): boolean {
-  return GSM_BASIC.has(ch) || GSM_EXTENDED.has(ch);
+  return GSM_BASIC.has(ch) || PUNCT_CHARS.has(ch);
+}
+
+/**
+ * 逐字（按码位）标出哪些是坏字。placeholders = 群发 / Main manifest：一模一样的 {first_name} {tour_date} 不算。
+ * 返回和 Array.from(text) 一样长的数组。
+ */
+export function smsBadMask(text: string, placeholders: boolean): boolean[] {
+  const chars = Array.from(text);
+  const out = chars.map(() => false);
+  for (let i = 0; i < chars.length; i++) {
+    if (placeholders) {
+      const tok = SMS_PLACEHOLDERS.find(
+        (t) => chars.slice(i, i + t.length).join("") === t,
+      );
+      if (tok) {
+        i += tok.length - 1;
+        continue;
+      }
+    }
+    out[i] = !isSmsChar(chars[i]);
+  }
+  return out;
+}
+
+/** 坏字去重、按出现顺序。 */
+export function smsBadChars(text: string, placeholders: boolean): string[] {
+  const chars = Array.from(text);
+  const mask = smsBadMask(text, placeholders);
+  const out: string[] = [];
+  chars.forEach((c, i) => {
+    if (mask[i] && !out.includes(c)) out.push(c);
+  });
+  return out;
 }
 
 /** 消息里有几个 SMS 发不了的字（算重复的，给「SMS can't send N characters」用）。 */
-export function badCharCount(text: string): number {
-  return Array.from(text).filter((ch) => !isSmsChar(ch)).length;
+export function badCharCount(text: string, placeholders: boolean): number {
+  return smsBadMask(text, placeholders).filter(Boolean).length;
+}
+
+/** 两段最多几个字：纯 GSM 306（153 × 2），有 > U+00FF 的字 134（67 × 2）。 */
+export function smsMaxChars(ucs2: boolean): number {
+  return SMS_MAX_SEGMENTS * (ucs2 ? 67 : 153);
+}
+
+/** 一条实际发出去的短信：几个字（按码位，同后端 len()）、是不是 UCS-2、让它变 UCS-2 的第一个字。 */
+function measure(final: string): {
+  length: number;
+  ucs2: boolean;
+  wideChar: string | null;
+} {
+  const chars = Array.from(normalizeSmsPunctuation(final));
+  const wide = chars.find((c) => (c.codePointAt(0) ?? 0) > 0xff) ?? null;
+  return { length: chars.length, ucs2: wide !== null, wideChar: wide };
+}
+
+export interface SmsVerdict {
+  /** staff 写的字里的坏字（去重）。 */
+  bad: string[];
+  /** 最紧的那位客人实际收到的字数 / 两段上限。 */
+  length: number;
+  limit: number;
+  /** 让这条变成 70 / 67 一段的字（没有 ⇒ null），以及它是不是 staff 自己写的。 */
+  wideChar: string | null;
+  wideInTyped: boolean;
+  long: boolean;
+  /** 不能按短信发（坏字或超两段）。 */
+  over: boolean;
+}
+
+/**
+ * typed = staff 写的原文（群发含签名）；finals = 每位有手机号的客人实际收到的短信（展开、加开头之后，换排版符号之前）。
+ * finals 为空（没人有手机号，后端不查段数）⇒ 只按 display 显示字数，不算超。
+ */
+export function smsVerdict({
+  typed,
+  finals,
+  placeholders,
+  display = typed,
+}: {
+  typed: string;
+  finals: readonly string[];
+  placeholders: boolean;
+  display?: string;
+}): SmsVerdict {
+  const bad = smsBadChars(typed, placeholders);
+  const pool = finals.length ? finals : [display];
+  let worst = measure(pool[0] ?? "");
+  for (const f of pool.slice(1)) {
+    const m = measure(f);
+    if (
+      m.length - smsMaxChars(m.ucs2) >
+      worst.length - smsMaxChars(worst.ucs2)
+    )
+      worst = m;
+  }
+  const limit = smsMaxChars(worst.ucs2);
+  const long = finals.length > 0 && worst.length > limit;
+  return {
+    bad,
+    length: worst.length,
+    limit,
+    wideChar: worst.wideChar,
+    wideInTyped:
+      worst.wideChar !== null &&
+      normalizeSmsPunctuation(typed).includes(worst.wideChar),
+    long,
+    over: long || bad.length > 0,
+  };
+}
+
+/** 后端 broadcast_send.personalise 的 first_name：first_name，没有用 customer_name 第一个词，再没有用 Guest。 */
+export function smsFirstName(firstName: string, customerName: string): string {
+  if (firstName) return firstName;
+  const parts = (customerName || "Guest").trim().split(/\s+/).filter(Boolean);
+  return parts[0] ?? "Guest";
+}
+
+/** 后端 broadcast_send.sms_message：一位客人实际收到的短信（"Hi 名字, " + 展开后的正文）。 */
+export function broadcastSmsText(
+  body: string,
+  firstName: string,
+  tourDate: string,
+): string {
+  const msg = body
+    .split("{first_name}")
+    .join(firstName)
+    .split("{tour_date}")
+    .join(tourDateText(tourDate));
+  return `Hi ${firstName}, ${msg}`;
 }
 
 /** 坏字在页面上怎么显示：不换行空格看不见，写成 (space)。 */
@@ -209,6 +348,12 @@ export function explainSmsChars(
         chars: [c],
         text: "is an emoji. SMS can't send emoji. Remove it.",
       });
+    else if (GSM_EXTENDED.has(c))
+      // ^ { } \ [ ~ ] | €：后端不收（只认 GSM 基本表）。
+      out.push({
+        chars: [c],
+        text: "is a character SMS can't send. Remove it.",
+      });
     else
       out.push({
         chars: [c],
@@ -247,11 +392,16 @@ export function badCharsHead(count: number, noEmail = false): string {
  * Main manifest "counting the longest guest name and the date"、对话框不写）。
  */
 export function tooLongText(
-  length: number,
+  v: Pick<SmsVerdict, "length" | "limit" | "wideChar" | "wideInTyped">,
   counted = "",
   noEmail = false,
 ): string {
-  return `Too long for SMS: ${length.toLocaleString("en-US")} / ${SMS_CHAR_LIMIT} characters (${(length - SMS_CHAR_LIMIT).toLocaleString("en-US")} over${counted ? `, ${counted}` : ""}). An SMS can be at most ${SMS_CHAR_LIMIT} characters (2 text messages); longer ones are cut off or not delivered. ${
+  const { length, limit } = v;
+  // 有 > U+00FF 的字（Δ、Ł、中文…）⇒ 上限 134，要写清是哪个字、在哪（staff 写的 / 客人名字里）。
+  const why = v.wideChar
+    ? `${v.wideInTyped ? "This message has" : "A guest name has"} ${v.wideChar}, so an SMS can be at most ${limit} characters (2 text messages)`
+    : `An SMS can be at most ${limit} characters (2 text messages)`;
+  return `Too long for SMS: ${length.toLocaleString("en-US")} / ${limit} characters (${(length - limit).toLocaleString("en-US")} over${counted ? `, ${counted}` : ""}). ${why}; longer ones are cut off or not delivered. ${
     noEmail
       ? "This guest has no email: shorten the message to send it."
       : "Shorten it to send by SMS, or it goes by Email only."

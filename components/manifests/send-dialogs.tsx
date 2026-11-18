@@ -40,9 +40,9 @@ import { chunk, SEND_BATCH_SIZE } from "@/lib/send-batches";
 import { sendBatchHref } from "@/lib/send-log-api";
 import { SmsProblem } from "@/components/ui/sms-problem";
 import {
-  expandForCount,
-  SMS_CHAR_LIMIT,
-  smsCheck,
+  broadcastSmsText,
+  smsFirstName,
+  smsVerdict,
   toPlainSms,
 } from "@/lib/sms-limit";
 import { fetchTourTypes } from "@/lib/tour-send-api";
@@ -299,16 +299,29 @@ export function MessageDialog({
   const channelText = [sms ? "SMS" : "", email ? "Email" : ""]
     .filter(Boolean)
     .join(" + ");
-  // 字数按最坏情况算：{first_name} 换成名单里最长的名字、{tour_date} 换成日期（同 Tracking 群发）。
-  const firstNames = rows.map(
-    (r) =>
-      String(r.values.guest_name ?? "")
-        .trim()
-        .split(/\s+/)[0] ?? "",
-  );
-  const smsText = expandForCount(text.trim(), firstNames, date);
-  // 300 个字符、不能有特殊字符（Annie 2026-10-15）；特殊字符只查 staff 写的原文。
-  const length = smsCheck(smsText, "Email", text.trim());
+  // 照后端 manifest_list.broadcast → broadcast_send.sms_overflow 算：每单（先出现的那一行）有手机号的客人实际收到的短信
+  // （"Hi 名字, " + 展开 {first_name} / {tour_date}）取最紧的那条；坏字只查 staff 写的（挖掉两个占位符）。
+  // 名字：后端用订单的 first_name；行上只有 Guest（first + last），取第一个词（名是两个词时会少算，后端 400 兜底）。
+  // 名单没有 Phone 列 ⇒ 每单都算。
+  const smsRows = distinctOrders(rows)
+    .map((o) => rows.find((r) => r.order_number === o))
+    .filter(
+      (r): r is ManifestRow =>
+        !!r && (!("phone" in r.values) || !!String(r.values.phone ?? "").trim()),
+    );
+  const length = smsVerdict({
+    typed: text.trim(),
+    finals: smsRows.map((r) => {
+      const guest = String(r.values.guest_name ?? "").trim();
+      return broadcastSmsText(
+        text.trim(),
+        smsFirstName(guest.split(/\s+/)[0] ?? "", guest),
+        date,
+      );
+    }),
+    placeholders: true,
+    display: broadcastSmsText(text.trim(), "Guest", date),
+  });
   // 超了 / 有坏字 ⇒ SMS 灰掉、取消勾选、改勾 Email；改回限内不自动勾回
   // （Annie 2026-11-17「同意全部推荐，动手」，样稿 KnNXFz77T9jQerCUYBMrNz 题 2 A）。
   const smsBlocked = text.trim() !== "" && length.over;
@@ -635,7 +648,7 @@ export function MessageDialog({
             length.over ? "font-semibold text-red-700" : "text-[#1a1a1a]",
           )}
         >
-          {length.length.toLocaleString("en-US")} / {SMS_CHAR_LIMIT} chars
+          {length.length.toLocaleString("en-US")} / {length.limit} chars
         </p>
       ) : null}
       <div className="flex flex-wrap gap-3.5">
@@ -667,9 +680,9 @@ export function MessageDialog({
       {smsBlocked ? (
         <SmsProblem
           typed={text.trim()}
-          length={length.length}
-          bad={length.bad}
-          counted="counting the longest guest name and the date"
+          verdict={length}
+          placeholders
+          counted={'counting the "Hi (name)," greeting, the longest guest name and the date'}
           tail={
             noEmail
               ? `${noEmail} selected ${noEmail === 1 ? "order has" : "orders have"} no email and will not get it.`

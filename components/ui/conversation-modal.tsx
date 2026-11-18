@@ -20,7 +20,7 @@ import {
 import { isInbound } from "@/lib/channels";
 import { backendChannel, type ChannelOutcome } from "@/lib/send-outcome";
 import { SmsProblem } from "@/components/ui/sms-problem";
-import { SMS_CHAR_LIMIT, smsCheck, toPlainSms } from "@/lib/sms-limit";
+import { smsVerdict, toPlainSms } from "@/lib/sms-limit";
 import { LA_TIME_ZONE } from "@/lib/la-date";
 import { usePermissions } from "@/lib/staff-permissions";
 import { cn } from "@/lib/utils";
@@ -401,7 +401,12 @@ function ConversationModalInner({
   const sendEmail = emailChecked && hasEmail;
   // 超了 / 有坏字 ⇒ SMS to guest 灰掉、取消勾选、改勾 Email；改回限内不自动勾回；没邮箱 ⇒ Send 灰掉、红字写怎么改，
   // Save note 照常（Annie 2026-11-17「同意全部推荐，动手」，样稿 KnNXFz77T9jQerCUYBMrNz 题 2 A / 3 A）。
-  const smsLength = smsCheck(text.trim(), "email");
+  // 照后端 booking_notes.py 单条回复：原文换排版符号后算段数；没有模板替换，{first_name} 的花括号也算坏字。
+  const smsLength = smsVerdict({
+    typed: text.trim(),
+    finals: [text.trim()],
+    placeholders: false,
+  });
   const smsBlocked = !noReply && hasPhone && !!text.trim() && smsLength.over;
   if (smsBlocked && (smsChecked || (hasEmail && !emailChecked))) {
     setSmsChecked(false);
@@ -835,15 +840,15 @@ function ConversationModalInner({
                       : "text-[#1a1a1a]",
                 )}
               >
-                {smsLength.length.toLocaleString("en-US")} / {SMS_CHAR_LIMIT}{" "}
+                {smsLength.length.toLocaleString("en-US")} / {smsLength.limit}{" "}
                 chars
               </p>
             ) : null}
             {smsBlocked ? (
               <SmsProblem
                 typed={text.trim()}
-                length={smsLength.length}
-                bad={smsLength.bad}
+                verdict={smsLength}
+                placeholders={false}
                 noEmail={!hasEmail}
                 onReplace={submitting ? undefined : () => setText((t) => toPlainSms(t))}
                 dark={dark}

@@ -2434,8 +2434,12 @@ function ManifestsHowToUse() {
           Broadcasting Log. Orders that already got the exact same message for
           this tour date (from here or from Tracking) are skipped unless you
           tick Send anyway. A changed message goes to everyone. SMS can be at
-          most 300 characters, plain characters only (no emoji, curly quotes or
-          long dashes). If the message is longer or uses other characters, SMS
+          most 306 characters (134 if the message or a guest name has a
+          character such as Δ or Ł), counting the &quot;Hi (name),&quot; added
+          at the start. Plain characters only (no emoji, accents such as á, or
+          symbols such as € and {"{ }"}); curly quotes and long dashes are
+          changed to plain ones automatically. If the message is longer or uses
+          other characters, SMS
           is greyed out and it goes by Email only. Shorten it to use SMS again,
           then tick SMS again.
         </>,

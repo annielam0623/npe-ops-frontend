@@ -14,10 +14,10 @@ import {
 import { LA_TIME_ZONE } from "@/lib/la-date";
 import { SmsProblem } from "@/components/ui/sms-problem";
 import {
-  SMS_CHAR_LIMIT,
-  smsCheck,
+  broadcastSmsText,
+  smsFirstName,
+  smsVerdict,
   toPlainSms,
-  tourDateText,
 } from "@/lib/sms-limit";
 import {
   type ChannelOutcome,
@@ -319,26 +319,27 @@ export function BroadcastDialog({
 
   const trimmed = body.trim();
   const finalBody = signature ? `${trimmed}\n${signature}` : trimmed;
-  // 按最坏情况算短信字数：签名 + 选中收件人里最长的名字 + 展开后的日期。
-  const longestFirst = picked.reduce(
-    (longest, c) =>
-      (c.firstName || "Guest").length > longest.length
-        ? c.firstName || "Guest"
-        : longest,
-    "Guest",
-  );
-  const smsText = finalBody
-    .split("{first_name}")
-    .join(longestFirst)
-    .split("{tour_date}")
-    .join(tourDateText(tourDate));
-  // 短信最多 300 个字符、不能有特殊字符（Annie 2026-10-15）。特殊字符只查 staff 写的（含签名）。
-  const sms = smsCheck(smsText, "Email", finalBody);
+  // 照后端 broadcast_send.sms_overflow 算：每位有手机号的客人实际收到的短信（"Hi 名字, " + 展开 + 签名）取最紧的那条，
+  // 坏字只查 staff 写的（含签名，挖掉 {first_name} {tour_date}）。
+  const sms = smsVerdict({
+    typed: finalBody,
+    finals: picked
+      .filter((c) => c.phone)
+      .map((c) =>
+        broadcastSmsText(
+          finalBody,
+          smsFirstName(c.firstName, c.name),
+          tourDate,
+        ),
+      ),
+    placeholders: true,
+    display: broadcastSmsText(finalBody, "Guest", tourDate),
+  });
   // 超了 / 有坏字 ⇒ Both、SMS only 灰掉，自动改选 Email only；改回限内不自动选回去
   // （Annie 2026-11-17「同意全部推荐，动手」，样稿 KnNXFz77T9jQerCUYBMrNz 题 2 A）。
   const smsBlocked = trimmed !== "" && sms.over;
   if (smsBlocked && channel !== "email") setChannel("email");
-  const smsCounterText = `${sms.length.toLocaleString("en-US")} / ${SMS_CHAR_LIMIT} chars`;
+  const smsCounterText = `${sms.length.toLocaleString("en-US")} / ${sms.limit} chars`;
 
   function productLabel(): string {
     // By pickup location：存勾选的站点 / 原始写法，不是产品名（同旧页面，Annie 定）。
@@ -804,9 +805,9 @@ export function BroadcastDialog({
               {smsBlocked ? (
                 <SmsProblem
                   typed={finalBody}
-                  length={sms.length}
-                  bad={sms.bad}
-                  counted="counting the signature and the longest guest name"
+                  verdict={sms}
+                  placeholders
+                  counted={'counting the "Hi (name)," greeting, the signature and the longest guest name'}
                   tail={
                     picked.length - emailReach
                       ? `${picked.length - emailReach} selected guest(s) have no email and will not get it.`

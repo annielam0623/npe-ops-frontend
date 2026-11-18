@@ -189,7 +189,7 @@ async function run() {
     check("G234：How to use 写了 Bus changed（请客人重新打开）、Driver changed after send、换司机只要在 Dispatch 改好 Save", await evaluate(`const t = document.body.textContent; return t.includes("means the driver is on a different bus from the one the guest last opened: ask the guest to open the link in their text again and tap Track. You don't need to send a new link.") && t.includes("the driver was changed in Dispatch after the text went out. The guest's link already follows the new driver. You don't need to send anything.") && t.includes("Driver changed (with or without a bus change): change the driver on Dispatch → Assign and Save. The guest's tracking link then follows the new driver to the bus they are on. You don't need to text the guest again.");`));
   }
   check("How to use 写了 Driver 和 Guest Viewed", await evaluate("return document.body.textContent.includes('Click a Driver name to see where that driver is right now') && document.body.textContent.includes('Guest Viewed only works while live tracking links are turned on');"));
-  check("How to use 写了短信最多 300 字、只能普通字符、超了发 email（Annie 2026-10-15）", await evaluate("return document.body.textContent.includes('click Send →. SMS can be at most 300 characters, plain characters only (no emoji, curly quotes or long dashes); if your reply is longer, SMS to guest is greyed out and it goes by email only. Shorten it to use SMS again, then tick SMS to guest again.');"));
+  check("How to use 写了短信最多 300 字、只能普通字符、超了发 email（Annie 2026-10-15）", await evaluate("return document.body.textContent.includes('click Send →. SMS can be at most 306 characters (134 if it has a character such as Δ), plain characters only (no emoji, accents such as á, or symbols such as € and { }; curly quotes and long dashes are changed to plain ones automatically); if your reply is longer, SMS to guest is greyed out and it goes by email only. Shorten it to use SMS again, then tick SMS to guest again.');"));
   check("How to use 写了 Phone AI 留言（后端 E188）",await evaluate("return document.body.textContent.includes('A Phone AI message means a guest called');"));
   check("116 How to use：回复发出去就算处理过（原句，Annie「句子没问题」）", await evaluate("return document.body.textContent.includes('When your reply goes out to the guest (SMS or email sent), the message counts as handled and shows ✓ with your name. If no reply is needed, click ✓ Mark as actioned (or Take action in the table).');"));
   check("表格上方提示点 Bus # 看实时位置", await evaluate("return document.body.textContent.includes('Click a Bus # to see live tracking (opens Samsara in a new tab)');"));
@@ -327,38 +327,45 @@ async function run() {
   const cbs = () => evaluate("return [...document.querySelectorAll('[role=dialog] input[type=checkbox]')].slice(0, 2).map(c => (c.checked ? 'on' : 'off') + (c.disabled ? ',disabled' : ''));");
   const tickSms = async () => { if ((await cbs())[0] === "off") { await evaluate("document.querySelectorAll('[role=dialog] input[type=checkbox]')[0].click();"); await sleep(100); } };
   let cnt = await smsCount();
-  check("字数提示 11 / 300 chars（不再写 X of 2 SMS）", cnt && cnt.text === "11 / 300 chars" && !cnt.red, JSON.stringify(cnt));
-  await setText("x".repeat(300));
+  check("字数提示 11 / 306 chars（不再写 X of 2 SMS）", cnt && cnt.text === "11 / 306 chars" && !cnt.red, JSON.stringify(cnt));
+  await setText("x".repeat(306));
   cnt = await smsCount();
-  check("300 个字 = 300 / 300 chars，不红、没有原因块、SMS 照勾", cnt && cnt.text === "300 / 300 chars" && !cnt.red && !(await hasTooLong()) && JSON.stringify(await cbs()) === JSON.stringify(["on", "on"]), JSON.stringify(cnt));
-  await setText("x".repeat(301));
+  check("规则照后端（ae 11-18）：纯 GSM 306 个字 = 306 / 306 chars（两段），不红、没有原因块、SMS 照勾", cnt && cnt.text === "306 / 306 chars" && !cnt.red && !(await hasTooLong()) && JSON.stringify(await cbs()) === JSON.stringify(["on", "on"]), JSON.stringify(cnt));
+  await setText("x".repeat(307));
   cnt = await smsCount();
   let pb = await prob();
-  check("SMS 超字数（动手 11-17）301 个字：计数红 301 / 300 chars；SMS to guest 灰掉取消、Email 勾着",
-    cnt && cnt.text === "301 / 300 chars" && cnt.red && JSON.stringify(await cbs()) === JSON.stringify(["off,disabled", "on"]), JSON.stringify({ cnt, cb: await cbs() }));
-  check("301 个字：原因块（深色红字）Too long for SMS: 301 / 300 characters (1 over). An SMS can be at most 300 characters (2 text messages)…（对话框不写 counting 半句）",
-    pb && pb.cls.includes("text-red-300") && pb.text.includes("Too long for SMS: 301 / 300 characters (1 over). An SMS can be at most 300 characters (2 text messages); longer ones are cut off or not delivered. Shorten it to send by SMS, or it goes by Email only.") && pb.marks.length === 0, JSON.stringify(pb));
+  check("SMS 超两段 307 个字：计数红 307 / 306 chars；SMS to guest 灰掉取消、Email 勾着",
+    cnt && cnt.text === "307 / 306 chars" && cnt.red && JSON.stringify(await cbs()) === JSON.stringify(["off,disabled", "on"]), JSON.stringify({ cnt, cb: await cbs() }));
+  check("307 个字：原因块（深色红字）Too long for SMS: 307 / 306 characters (1 over). An SMS can be at most 306 characters (2 text messages)…（对话框不写 counting 半句）",
+    pb && pb.cls.includes("text-red-300") && pb.text.includes("Too long for SMS: 307 / 306 characters (1 over). An SMS can be at most 306 characters (2 text messages); longer ones are cut off or not delivered. Shorten it to send by SMS, or it goes by Email only.") && pb.marks.length === 0, JSON.stringify(pb));
   check("有邮箱：超长不问 Yes / No、Send 可点", !(await hasOldAsk()) && (await evaluate("return !$btn('Send', document.querySelector('[role=dialog]')).disabled;")));
-  await setText("x".repeat(298) + "€");
+  await setText("Δ" + "x".repeat(133));
   cnt = await smsCount();
-  check("扩展字符 € 算 2 个：298 + € = 300 / 300，不红", cnt && cnt.text === "300 / 300 chars" && !cnt.red, JSON.stringify(cnt));
+  check("Δ（GSM 希腊字母、> U+00FF）不算坏字，但上限变 134：134 / 134 不红", cnt && cnt.text === "134 / 134 chars" && !cnt.red, JSON.stringify(cnt));
   check("回到限内（题 2 A）：SMS to guest 能勾了、不自动勾回", JSON.stringify(await cbs()) === JSON.stringify(["off", "on"]) && !(await hasTooLong()), JSON.stringify(await cbs()));
   await tickSms();
-  await setText("x".repeat(299) + "€");
+  await setText("Δ" + "x".repeat(134));
   cnt = await smsCount();
-  check("299 + € = 301：计数红、SMS 灰掉", cnt && cnt.text === "301 / 300 chars" && cnt.red && (await cbs())[0] === "off,disabled", JSON.stringify(cnt));
-  await setText("Café señor über Ç É Å ß {}[]~|^\\ x");
+  pb = await prob();
+  check("Δ + 134 = 135：计数红 135 / 134、SMS 灰掉，原因 This message has Δ, so an SMS can be at most 134 characters",
+    cnt && cnt.text === "135 / 134 chars" && cnt.red && (await cbs())[0] === "off,disabled" && pb && pb.text.includes("Too long for SMS: 135 / 134 characters (1 over). This message has Δ, so an SMS can be at most 134 characters (2 text messages)"), JSON.stringify({ cnt, pb }));
+  await setText("Café señor über Ç É Å ß x");
   cnt = await smsCount();
-  check("允许的重音字母（é ñ ü Ç É Å ß）和扩展表字符不算特殊字符、不红；扩展表 8 个字各算 2（25 + 16 + 2 = 43）", cnt && cnt.text === "42 / 300 chars" && !cnt.red && !(await hasTooLong()), JSON.stringify(cnt));
+  check("允许的重音字母（é ñ ü Ç É Å ß）不算坏字、不红、上限 306", cnt && cnt.text === "25 / 306 chars" && !cnt.red && !(await hasTooLong()), JSON.stringify(cnt));
+  await tickSms();
+  await setText("“Hi” — see you… ‘ok’ –");
+  cnt = await smsCount();
+  check("弯引号 / 长短破折号 / 省略号：后端自动换，不算坏字、不红、SMS 照勾；… 按 ... 算（换完 24 字）", cnt && cnt.text === "24 / 306 chars" && !cnt.red && !(await hasTooLong()) && (await cbs())[0] === "on", JSON.stringify({ cnt, cb: await cbs() }));
   const WHY = {
-    "“": "“ is curly quotes. Use straight quotes \" instead.",
-    "–": "– is a long dash. Use a short dash - instead.",
+    "„": "„ is curly quotes. Use straight quotes \" instead.",
+    "~": "~ is a character SMS can't send. Remove it.",
+    "€": "€ is a character SMS can't send. Remove it.",
     "😀": "😀 is an emoji. SMS can't send emoji. Remove it.",
     "中": "中 (U+4E2D) is a character SMS can't send. Remove it.",
     "á": "á is a letter with an accent SMS can't send. Use a instead.",
     "ç": "ç is a letter with an accent SMS can't send. Use c instead.",
   };
-  for (const [ch, label] of [["“", "弯引号"], ["–", "短破折号"], ["😀", "emoji"], ["中", "中文"], ["á", "á"], ["ç", "小写 ç"]]) {
+  for (const [ch, label] of [["„", "低位弯引号"], ["~", "扩展表 ~"], ["€", "扩展表 €"], ["😀", "emoji"], ["中", "中文"], ["á", "á"], ["ç", "小写 ç"]]) {
     await setText(`Hi ${ch} there`);
     cnt = await smsCount();
     pb = await prob();
@@ -366,16 +373,19 @@ async function run() {
       cnt && cnt.red && pb && JSON.stringify(pb.marks) === JSON.stringify([ch]) && JSON.stringify(pb.why) === JSON.stringify([WHY[ch]]) &&
       pb.text.includes("SMS can't send 1 character in this message (marked in red below). Fix them to send by SMS, or it goes by Email only.") && (await cbs())[0] === "off,disabled", JSON.stringify({ cnt, pb }));
   }
-  await setText("“Hi” — 你好 “again”");
+  await setText("Hi {first_name}");
   pb = await prob();
-  check("多个坏字：SMS can't send 7 characters、每个都标红、原因按种类去重（curly quotes / long dash / 你 / 好）、有 Replace",
-    pb && pb.text.includes("SMS can't send 7 characters in this message") && JSON.stringify(pb.marks) === JSON.stringify(["“", "”", "—", "你", "好", "“", "”"]) &&
-    JSON.stringify(pb.why) === JSON.stringify(["“ ” are curly quotes. Use straight quotes \" instead.", "— is a long dash. Use a short dash - instead.", "你 (U+4F60) is a character SMS can't send. Remove it.", "好 (U+597D) is a character SMS can't send. Remove it."]) && pb.replace, JSON.stringify(pb));
+  check("对话框回复没有模板替换（后端 allow_placeholders=False）：{first_name} 的 { } 算坏字、标红", pb && JSON.stringify(pb.marks) === JSON.stringify(["{", "}"]) && (await cbs())[0] === "off,disabled", JSON.stringify(pb));
+  await setText("“Hi” — 你好 „again‚ é");
+  pb = await prob();
+  check("多个字：“ ” — 不标红；标 你 好 „ ‚：SMS can't send 4 characters、原因按种类（„ curly quotes / ‚ curly apostrophes / 你 / 好）、有 Replace",
+    pb && pb.text.includes("SMS can't send 4 characters in this message") && JSON.stringify(pb.marks) === JSON.stringify(["你", "好", "„", "‚"]) &&
+    JSON.stringify(pb.why) === JSON.stringify(["„ is curly quotes. Use straight quotes \" instead.", "‚ is curly apostrophes. Use a straight apostrophe ' instead.", "你 (U+4F60) is a character SMS can't send. Remove it.", "好 (U+597D) is a character SMS can't send. Remove it."]) && pb.replace, JSON.stringify(pb));
   await evaluate("document.querySelector('[role=dialog] [data-sms-replace]').click();");
   await sleep(150);
   pb = await prob();
-  check("Replace with plain characters：只换能换的（“ ” → \"、— → -），你好 留着标红、Replace 键收起",
-    (await evaluate("return document.querySelector('[role=dialog] textarea').value;")) === "\"Hi\" - 你好 \"again\"" &&
+  check("Replace with plain characters：只换能换的（„ “ ” → \"、‚ → '、— → -），你好 留着标红、Replace 键收起",
+    (await evaluate("return document.querySelector('[role=dialog] textarea').value;")) === "\"Hi\" - 你好 \"again' é" &&
     pb && JSON.stringify(pb.marks) === JSON.stringify(["你", "好"]) && !pb.replace, JSON.stringify(pb));
   await setText("Hello there");
   await tickSms();
@@ -436,9 +446,9 @@ async function run() {
   check("é ñ ü Ç：不弹提示，照常 send_sms=true",
     post && post.body.send_sms === true && post.body.body === "Hola señor, café über Ç at 7" && !(await hasTooLong()), JSON.stringify(post && post.body));
 
-  // 超过 300 字（有邮箱）：SMS 自动灰掉、改勾 Email，点 Send 直接只发 email，不再问（动手 11-17）
+  // 超过两段（有邮箱）：SMS 自动灰掉、改勾 Email，点 Send 直接只发 email，不再问（动手 11-17）
   before = (await mockLog()).length;
-  await evaluate("$setValue(document.querySelector('[role=dialog] textarea'), 'x'.repeat(301));");
+  await evaluate("$setValue(document.querySelector('[role=dialog] textarea'), 'x'.repeat(307));");
   await sleep(100);
   check("超长：SMS to guest 灰掉取消、Email 勾着、Send 可点", JSON.stringify(await cbs()) === JSON.stringify(["off,disabled", "on"]) &&
     !(await evaluate("return $btn('Send', document.querySelector('[role=dialog]')).disabled;")), JSON.stringify(await cbs()));
@@ -446,9 +456,9 @@ async function run() {
   await waitFor("document.querySelector('[role=dialog] textarea').value === ''");
   log = (await mockLog()).slice(before);
   post = log.filter((e) => e.method === "POST");
-  check("超长点 Send：不问 Yes / No、一次 POST，sms_out、send_sms=false、send_email=true、301 字原文",
+  check("超长点 Send：不问 Yes / No、一次 POST，sms_out、send_sms=false、send_email=true、307 字原文",
     !(await hasOldAsk()) && post.length === 1 && post[0].body.direction === "sms_out" && post[0].body.send_sms === false && post[0].body.send_email === true &&
-    post[0].body.body.length === 301, JSON.stringify(post.map((p) => ({ ...p.body, body: p.body.body.length }))));
+    post[0].body.body.length === 307, JSON.stringify(post.map((p) => ({ ...p.body, body: p.body.body.length }))));
   check("发完清空：SMS to guest 能勾了但不自动勾回（题 2 A）", JSON.stringify(await cbs()) === JSON.stringify(["off", "on"]), JSON.stringify(await cbs()));
 
   // 坏字 → 直接只发 email
@@ -520,11 +530,11 @@ async function run() {
   check("没邮箱的单：SMS 勾着、Email 不可用",
     await evaluate("const c=[...document.querySelectorAll('[role=dialog] input[type=checkbox]')]; return c[0].checked && !c[0].disabled && c[1].disabled && !c[1].checked;"));
   before = (await mockLog()).length;
-  await evaluate("$setValue(document.querySelector('[role=dialog] textarea'), 'y'.repeat(301));");
+  await evaluate("$setValue(document.querySelector('[role=dialog] textarea'), 'y'.repeat(307));");
   await sleep(150);
   let nb = await prob();
-  check("SMS 超字数（动手 11-17）没邮箱 + 超 300 字（题 3 A）：SMS to guest 灰掉取消、Send → 灰掉、原因 …This guest has no email: shorten the message to send it.",
-    nb && nb.text.includes("Too long for SMS: 301 / 300 characters (1 over). An SMS can be at most 300 characters (2 text messages); longer ones are cut off or not delivered. This guest has no email: shorten the message to send it.") &&
+  check("SMS 超字数（动手 11-17）没邮箱 + 超两段（题 3 A）：SMS to guest 灰掉取消、Send → 灰掉、原因 …This guest has no email: shorten the message to send it.",
+    nb && nb.text.includes("Too long for SMS: 307 / 306 characters (1 over). An SMS can be at most 306 characters (2 text messages); longer ones are cut off or not delivered. This guest has no email: shorten the message to send it.") &&
     nb.role === "alert" && JSON.stringify(await cbs()) === JSON.stringify(["off,disabled", "off,disabled"]) &&
     (await evaluate("return $btn('Send', document.querySelector('[role=dialog]')).disabled;")) && !(await hasOldAsk()), JSON.stringify({ nb, cb: await cbs() }));
   await evaluate("$btn('Save note', document.querySelector('[role=dialog]')).click();");
@@ -532,7 +542,7 @@ async function run() {
   log = (await mockLog()).slice(before);
   post = log.filter((e) => e.method === "POST");
   check("没邮箱 + 超 300 字：Save note 照样存（staff_note，不发短信 / 邮件）",
-    post.length === 1 && post[0].body.direction === "staff_note" && post[0].body.send_sms === false && post[0].body.send_email === false && post[0].body.body.length === 301,
+    post.length === 1 && post[0].body.direction === "staff_note" && post[0].body.send_sms === false && post[0].body.send_email === false && post[0].body.body.length === 307,
     JSON.stringify(post.map((p) => ({ ...p.body, body: p.body.body.length }))));
   await evaluate("$setValue(document.querySelector('[role=dialog] textarea'), 'y'.repeat(300));");
   await sleep(150);
@@ -541,16 +551,16 @@ async function run() {
     !(await evaluate("return $btn('Send', document.querySelector('[role=dialog]')).disabled;")), JSON.stringify(await cbs()));
   await evaluate("document.querySelectorAll('[role=dialog] input[type=checkbox]')[0].click();");
   await sleep(100);
-  await setText("See you at 7 – thanks “Bob”");
+  await setText("See you at 7 – thanks „Bob“ and adiós");
   nb = await prob();
-  check("没邮箱 + 坏字：SMS can't send 3 characters… This guest has no email, so it can't be sent until you fix it.、标红 – “ ”、Send 灰掉",
-    nb && nb.text.includes("SMS can't send 3 characters in this message (marked in red below). This guest has no email, so it can't be sent until you fix it.") &&
-    JSON.stringify(nb.marks) === JSON.stringify(["–", "“", "”"]) && !nb.text.includes("Too long") && nb.replace &&
+  check("没邮箱 + 坏字：SMS can't send 2 characters… This guest has no email, so it can't be sent until you fix it.、只标 „ ó（– “ 不标）、Send 灰掉",
+    nb && nb.text.includes("SMS can't send 2 characters in this message (marked in red below). This guest has no email, so it can't be sent until you fix it.") &&
+    JSON.stringify(nb.marks) === JSON.stringify(["„", "ó"]) && !nb.text.includes("Too long") && nb.replace &&
     (await evaluate("return $btn('Send', document.querySelector('[role=dialog]')).disabled;")), JSON.stringify(nb));
   await evaluate("document.querySelector('[role=dialog] [data-sms-replace]').click();");
   await sleep(150);
-  check("没邮箱：Replace with plain characters → See you at 7 - thanks \"Bob\"、原因块消失、Send 可点、SMS 不自动勾回",
-    (await evaluate("return document.querySelector('[role=dialog] textarea').value;")) === "See you at 7 - thanks \"Bob\"" && !(await prob()) &&
+  check("没邮箱：Replace with plain characters → See you at 7 - thanks \"Bob\" and adios、原因块消失、Send 可点、SMS 不自动勾回",
+    (await evaluate("return document.querySelector('[role=dialog] textarea').value;")) === "See you at 7 - thanks \"Bob\" and adios" && !(await prob()) &&
     !(await evaluate("return $btn('Send', document.querySelector('[role=dialog]')).disabled;")) && (await cbs())[0] === "off", JSON.stringify(await cbs()));
   await evaluate("$btn('×', document.querySelector('[role=dialog]')).click();");
   await sleep(200);
