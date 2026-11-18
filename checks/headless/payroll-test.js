@@ -482,6 +482,31 @@ async function run() {
     await fetch(`${MOCK}/api/payroll/locks/1`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ from: "2026-11-01", to: "2026-11-02", note: "Paid Nov 1–2" }) });
   }
 
+  // ⑬g Auto-lock 开关（Annie 2026-11-17「问题2是5号发，其他同意推荐，动手」；合同 d8a4f4b5）：默认关、只有 Super Admin 看得到
+  {
+    await ctl({ autoRow: true, autoLockReset: true });
+    await openPayroll();
+    await waitFor(`document.querySelector('[data-auto-lock-select]')`, 5000);
+    check("Auto-lock：Super Admin 看得到，默认 Off，写 Only Super Admins see this setting.", await evaluate(`const b = document.querySelector('[data-auto-lock]'); return document.querySelector('[data-auto-lock-select]').value === 'off' && b.textContent.includes('Only Super Admins see this setting.') && b.textContent.includes('Off: nothing locks by itself.');`));
+    check("Auto-lock：系统自动锁的行 Locked by 写灰字 Auto（不写 system）", await evaluate(`const r = document.querySelector('tr[data-lock-row="50"]'); return !!r && !!r.querySelector('[data-lock-auto]') && !r.textContent.includes('system') && r.textContent.includes('Auto lock');`), await evaluate(`return [...document.querySelectorAll('tr[data-lock-row]')].map(r => r.getAttribute('data-lock-row') + ':' + r.textContent).join(' | ');`));
+    await evaluate(`{ const el = document.querySelector('[data-auto-lock-select]'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(el, 'on'); el.dispatchEvent(new Event('change', { bubbles: true })); }`);
+    check("Auto-lock：选 On 先出黄框确认，不直接存", await waitFor(`document.querySelector('[data-auto-lock-confirm]')?.textContent.includes('Turn on auto-lock?')`, 3000) && !(await since(0, (e) => e.method === "PUT" && e.path === "/api/payroll/auto-lock")).length);
+    const b0 = (await mockLog()).length;
+    await evaluate(`[...document.querySelectorAll('[data-auto-lock-confirm] button')].find(b => b.textContent.trim() === 'Turn on').click();`);
+    await waitFor(`document.querySelector('[data-auto-lock-result]')?.textContent === 'Saved'`, 5000);
+    const put = await since(b0, (e) => e.method === "PUT" && e.path === "/api/payroll/auto-lock");
+    check("Auto-lock：Turn on ⇒ PUT {enabled: true}，绿字 Saved，说明换成 On 那句", put.length === 1 && put[0].body.enabled === true && (await evaluate(`return document.querySelector('[data-auto-lock-help]').textContent.startsWith('On: the 1st–15th lock on the 20th at 11:59 PM');`)), JSON.stringify(put[0]?.body));
+    await ctl({ autoLockFail: true });
+    await evaluate(`{ const el = document.querySelector('[data-auto-lock-select]'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(el, 'off'); el.dispatchEvent(new Event('change', { bubbles: true })); }`);
+    check("Auto-lock：存不了 ⇒ 红字照后端原句", await waitFor(`document.querySelector('[data-auto-lock-result]')?.textContent === 'Could not save. Try again.'`, 5000));
+    await ctl({ autoLockFail: false, superadmin: false, codes: ["settings.payroll.view", "settings.payroll.edit"] });
+    await openPayroll();
+    await sleep(800);
+    check("Auto-lock：不是 Super Admin（can_edit false）⇒ 不出开关", await evaluate(`return !document.querySelector('[data-auto-lock]');`));
+    check("How to use：Locked dates 那条有 Edit 和 Auto-lock 两句", await evaluate(`return document.body.textContent.includes('Click Edit on a lock to change its dates or note') && document.body.textContent.includes('When Auto-lock is on, the 1st–15th lock by themselves on the 20th at 11:59 PM');`));
+    await ctl({ superadmin: true, codes: [], autoRow: false, autoLockReset: true });
+  }
+
   // ⑭ Payroll: View only：不能改
   await ctl({ superadmin: false, codes: ["settings.payroll.view"] });
   check("Payroll: View：有页签、能打开", await openPayroll());

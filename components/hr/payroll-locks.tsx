@@ -12,6 +12,8 @@ import {
 import { cn } from "@/lib/utils";
 import type { PayrollLock } from "@/types/guide-payroll";
 
+import { isAutoLock, PayrollAutoLock } from "./payroll-auto-lock";
+
 import {
   HR_CARD_CLASS,
   HR_CARD_HEADER_CLASS,
@@ -186,6 +188,7 @@ export function PayrollLocks({
           right away.
         </span>
       </div>
+      <PayrollAutoLock onUnauthorized={onUnauthorized} />
       {sorted.length ? (
         <div className={cn(C_WRAP, "pt-3")}>
           <table className={cn(C_TABLE, "min-w-[480px]")}>
@@ -243,7 +246,7 @@ export function PayrollLocks({
                       />
                     </td>
                     <td className={C_TD}>
-                      {l.created_by ?? <span className={C_DIM}>—</span>}
+                      <LockedBy by={l.created_by} />
                     </td>
                     <td className={C_TD}>
                       <span className="inline-flex gap-2">
@@ -280,7 +283,7 @@ export function PayrollLocks({
                       {l.note ? l.note : <span className={C_DIM}>—</span>}
                     </td>
                     <td className={C_TD}>
-                      {l.created_by ?? <span className={C_DIM}>—</span>}
+                      <LockedBy by={l.created_by} />
                     </td>
                     <td className={C_TD}>
                       {canEdit ? (
@@ -430,4 +433,15 @@ export function PayrollLocks({
       )}
     </div>
   );
+}
+
+/** Locked by：系统自动锁（created_by "system"）写灰字 Auto（Annie 2026-11-17 自动锁动手），其余写账号名。 */
+function LockedBy({ by }: { by: string | null | undefined }) {
+  if (isAutoLock(by))
+    return (
+      <span className={C_DIM} data-lock-auto>
+        Auto
+      </span>
+    );
+  return <>{by ?? <span className={C_DIM}>—</span>}</>;
 }

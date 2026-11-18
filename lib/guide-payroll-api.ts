@@ -103,12 +103,40 @@ export function fetchPayrollLog(
 }
 
 /**
- * 改一个锁的日期 / 备注（Annie 2026-11-17 样稿第 2 版动手；小题 1 A：直接存）。规则同加锁：不能跟别的锁重叠。
- * ⚠️ 地址 / body 先按前端 mock 拟的（PUT /api/payroll/locks/{id} {from, to, note}），后端 91 合同到了按合同改。
+ * 改一个锁的日期 / 备注（Annie 2026-11-17 样稿第 2 版动手；小题 1 A：直接存）。规则同加锁：不能跟**别的**锁重叠。
+ * 后端合同 guide-payroll-2026-11-13.md（d8a4f4b5）：只带要改的键；回 {changed, lock}；空 body 400、找不到 404。
  */
 export function editPayrollLock(
   id: number,
   body: { from: string; to: string; note: string | null },
-): Promise<{ lock: PayrollLock }> {
+): Promise<{ changed: boolean; lock: PayrollLock }> {
   return apiFetch(`/api/payroll/locks/${id}`, { method: "PUT", body });
+}
+
+/**
+ * 自动锁开关（Annie 2026-11-17「问题2是5号发，其他同意推荐，动手」）：开了以后系统每月 20 号 23:59（洛杉矶）锁本月 1–15，
+ * 5 号 23:59 锁上个月 16–月底，在 Locked dates 里是一条普通锁（created_by "system"，note "Auto lock"）。默认关。
+ * 合同（d8a4f4b5）：GET（view）回 {enabled, enabled_at, can_edit}，can_edit 只有 Super Admin 是 true；
+ * PUT 只有 Super Admin（别人 403），回 {enabled, enabled_at, changed, can_edit}。同一个值也在统一开关页（payroll_auto_lock）。
+ */
+export interface PayrollAutoLockState {
+  enabled: boolean;
+  enabled_at: string | null;
+  can_edit: boolean;
+  changed?: boolean;
+}
+
+export function fetchPayrollAutoLock(
+  signal?: AbortSignal,
+): Promise<PayrollAutoLockState> {
+  return apiFetch("/api/payroll/auto-lock", { cache: "no-store", signal });
+}
+
+export function savePayrollAutoLock(
+  enabled: boolean,
+): Promise<PayrollAutoLockState> {
+  return apiFetch("/api/payroll/auto-lock", {
+    method: "PUT",
+    body: { enabled },
+  });
 }

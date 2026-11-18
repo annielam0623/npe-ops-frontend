@@ -4,6 +4,7 @@
 const http = require("http");
 const { STANDARD, permsBody } = require("./role-standard");
 
+const autoLock = { enabled: false, enabled_at: null };
 const ctl = {
   superadmin: true,
   /** 不是 Super Admin 时，在 Admin 标准权限上加的勾（例如 ["settings.payroll.view"]）。 */
@@ -119,7 +120,15 @@ http.createServer(async (req, res) => {
   const url = new URL(req.url, "http://x");
   const p = url.pathname;
   if (p === "/__log") return send(res, 200, log);
-  if (p === "/__ctl") { Object.assign(ctl, await readBody(req)); return send(res, 200, ctl); }
+  if (p === "/__ctl") {
+    const b = await readBody(req);
+    // autoRow: true ⇒ 多一条系统自动锁（created_by "system"、note "Auto lock"）；false ⇒ 拿掉。autoLockReset ⇒ 开关回到关。
+    if (b.autoRow === true && !locks.some((l) => l.id === 50)) locks.push({ id: 50, from: "2026-11-10", to: "2026-11-12", note: "Auto lock", created_by: "system" });
+    if (b.autoRow === false) { const i = locks.findIndex((l) => l.id === 50); if (i >= 0) locks.splice(i, 1); }
+    if (b.autoLockReset) Object.assign(autoLock, { enabled: false, enabled_at: null });
+    Object.assign(ctl, b);
+    return send(res, 200, ctl);
+  }
   if (p === "/auth/login") { res.setHeader("Content-Type", "text/html"); return res.end("LOGIN"); }
   const entry = { method: req.method, path: p, query: url.search };
   log.push(entry);
@@ -181,12 +190,25 @@ http.createServer(async (req, res) => {
     const l = locks.find((x) => x.id === Number(lm[1]));
     if (!l) return send(res, 404, { detail: "Lock not found." });
     Object.assign(l, { from: entry.body.from, to: entry.body.to, note: entry.body.note ?? null });
-    return send(res, 200, { lock: l });
+    return send(res, 200, { changed: true, lock: l });
   }
   if (lm && req.method === "DELETE") {
     const i = locks.findIndex((l) => l.id === Number(lm[1]));
     const [gone] = i >= 0 ? locks.splice(i, 1) : [null];
     return gone ? send(res, 200, { unlocked: gone }) : send(res, 404, { detail: "Lock not found." });
+  }
+  // 自动锁开关（合同 d8a4f4b5）：GET（view）回 {enabled, enabled_at, can_edit}，can_edit 只有 Super Admin；PUT 只有 Super Admin，别人 403。
+  if (p === "/api/payroll/auto-lock" && req.method === "GET") return send(res, 200, { enabled: autoLock.enabled, enabled_at: autoLock.enabled_at, can_edit: !!ctl.superadmin });
+  if (p === "/api/payroll/auto-lock" && req.method === "PUT") {
+    const b = await readBody(req);
+    entry.body = b;
+    if (!ctl.superadmin) return send(res, 403, { detail: "Only Super Admins can change this." });
+    if (typeof b.enabled !== "boolean") return send(res, 400, { detail: "Send enabled: true or false." });
+    if (ctl.autoLockFail) return send(res, 500, { detail: "Could not save. Try again." });
+    const changed = b.enabled !== autoLock.enabled;
+    autoLock.enabled = b.enabled;
+    autoLock.enabled_at = b.enabled ? "2026-11-17T22:30:00-08:00" : null;
+    return send(res, 200, { ...autoLock, changed, can_edit: true });
   }
   if (p === "/api/payroll/action-log") return send(res, 200, { entries: history, next_cursor: null });
   send(res, 404, { detail: "mock: not found" });
