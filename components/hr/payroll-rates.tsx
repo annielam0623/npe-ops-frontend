@@ -335,6 +335,14 @@ export function PayrollRates({
 
   const personOpts: PersonOpt[] = useMemo(() => {
     const m = new Map<string, PersonOpt>();
+    // 名单 = HR 所有 Guide / Driver + Guide（后端 rates.guides）+ 本期手打名字的导游 + 已存个人价的人
+    // （Annie 样稿第 1 版「3题都全部同意推荐」）。同一 hr_id 只出一次。
+    for (const g of data?.guides ?? []) {
+      if (!g.name?.trim()) continue;
+      const key = personKey(g.hr_id, g.name);
+      if (!m.has(key))
+        m.set(key, { key, hr_id: g.hr_id, name: g.name.trim(), in_hr: true });
+    }
     for (const p of people ?? []) {
       if (!p.name?.trim()) continue;
       const key = personKey(p.hr_id, p.name);
@@ -350,7 +358,7 @@ export function PayrollRates({
       for (const p of r.people) if (!m.has(p.key)) m.set(p.key, p);
     }
     return [...m.values()].sort((a, b) => a.name.localeCompare(b.name));
-  }, [people, savedPrices, savedExtras]);
+  }, [data?.guides, people, savedPrices, savedExtras]);
 
   const priceRows: (PriceRow & { saved: boolean; edited: boolean })[] = [
     ...savedPrices.map((p) => ({

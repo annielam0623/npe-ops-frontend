@@ -432,6 +432,7 @@ async function run() {
     await evaluate(`document.querySelector('[data-extra-form] [data-who-open]').click();`);
     await waitFor(q("[data-who-dialog]"), 3000);
     check("弹窗：Choose people、Search name 框、名单、0 selected、Done / Cancel", await evaluate(`const d = document.querySelector('[data-who-dialog]'); return d.textContent.includes('Choose people') && !!d.querySelector('[data-who-search]') && d.querySelectorAll('[data-who-row]').length >= 2 && d.querySelector('[data-who-count]').textContent === '0 selected' && !!d.querySelector('[data-who-done]') && !!d.querySelector('[data-who-cancel]');`), await evaluate(`return [...document.querySelectorAll('[data-who-row]')].map((r) => r.textContent).join('|');`));
+    check("弹窗名单读后端 rates.guides：本期没出车的 ZZ Test Lan 也在，Kevin Tran 只出一次", await evaluate(`const n = [...document.querySelectorAll('[data-who-row]')].map((r) => r.getAttribute('data-who-row')); return n.includes('ZZ Test Lan') && n.filter((x) => x === 'Kevin Tran').length === 1;`), await evaluate(`return [...document.querySelectorAll('[data-who-row]')].map((r) => r.getAttribute('data-who-row')).join('|');`));
     await evaluate(`$setValue(document.querySelector('[data-who-search]'), 'zzz');`);
     check("弹窗：搜不到 ⇒ No one matches.", await waitFor(`document.querySelector('[data-who-none]')?.textContent === 'No one matches.'`, 2000));
     await evaluate(`$setValue(document.querySelector('[data-who-search]'), 'KEV');`);
@@ -477,6 +478,23 @@ async function run() {
     await waitFor(`${q("[data-lock-saved]")}?.textContent === 'Saved'`, 5000);
     const lp = await since(before, (e) => e.method === "PUT" && e.path === "/api/payroll/locks/1");
     check("锁 Edit：确认 ⇒ 直接存 PUT /api/payroll/locks/1 {from 11-01, to 11-03, note Paid Nov 4}，绿字 Saved", lp.length === 1 && lp[0].body.from === "2026-11-01" && lp[0].body.to === "2026-11-03" && lp[0].body.note === "Paid Nov 4", JSON.stringify(lp[0]?.body));
+    // 后端拒（别处刚加了重叠的锁、页面没刷新）⇒ 红字照后端原句，不出 Saved
+    await ctl({ lockPutErr: { status: 400, detail: "2026-11-05 to 2026-11-06 is already locked. Pick dates that don't overlap." } });
+    await waitFor(`document.querySelector('[data-lock-edit="1"]')`, 5000);
+    await evaluate(`document.querySelector('[data-lock-edit="1"]').click();`);
+    await waitFor(`document.querySelector('tr[data-lock-editing] [data-le="note"]')`, 3000);
+    await evaluate(`$setValue(document.querySelector('[data-le="note"]'), 'Paid Nov 5');`);
+    await evaluate(`document.querySelector('[data-lock-edit-save="1"]').click();`);
+    await waitFor(`document.querySelector('[data-lock-confirm="edit"]')`, 3000);
+    await evaluate(`document.querySelector('[data-lock-yes]').click();`);
+    const e2 = await waitFor(`${q("[data-lock-err]")}?.textContent === "2026-11-05 to 2026-11-06 is already locked. Pick dates that don't overlap."`, 5000);
+    check("锁 Edit：后端 400 重叠 ⇒ 红字照后端原句", e2, await text(q("[data-lock-err]")));
+    await ctl({ lockPutErr: { status: 400, detail: "Send from, to or note." } });
+    await evaluate(`document.querySelector('[data-lock-edit-save="1"]')?.click();`);
+    await waitFor(`document.querySelector('[data-lock-confirm="edit"]')`, 3000);
+    await evaluate(`document.querySelector('[data-lock-yes]')?.click();`);
+    check("锁 Edit：后端 400「Send from, to or note.」⇒ 红字原句", await waitFor(`${q("[data-lock-err]")}?.textContent === 'Send from, to or note.'`, 5000), await text(q("[data-lock-err]")));
+    await ctl({ lockPutErr: null });
     check("How to use：Locked dates 那条写 Edit", await evaluate(`return document.body.textContent.includes('Click Edit on a lock to change its dates or note, or Unlock to change pay on those days again. Locking, editing a lock and unlocking are saved right away.');`));
     // 还原，不影响后面的检查
     await fetch(`${MOCK}/api/payroll/locks/1`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ from: "2026-11-01", to: "2026-11-02", note: "Paid Nov 1–2" }) });
@@ -499,10 +517,20 @@ async function run() {
     await ctl({ autoLockFail: true });
     await evaluate(`{ const el = document.querySelector('[data-auto-lock-select]'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(el, 'off'); el.dispatchEvent(new Event('change', { bubbles: true })); }`);
     check("Auto-lock：存不了 ⇒ 红字照后端原句", await waitFor(`document.querySelector('[data-auto-lock-result]')?.textContent === 'Could not save. Try again.'`, 5000));
-    await ctl({ autoLockFail: false, superadmin: false, codes: ["settings.payroll.view", "settings.payroll.edit"] });
+    const offAgain = `{ const el = document.querySelector('[data-auto-lock-select]'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(el, 'off'); el.dispatchEvent(new Event('change', { bubbles: true })); }`;
+    await ctl({ autoLockFail: false, autoLock403: true });
+    await evaluate(offAgain);
+    check("Auto-lock：后端 403（页面没刷新就不是 Super Admin 了）⇒ 红字照后端原句", await waitFor(`document.querySelector('[data-auto-lock-result]')?.textContent === 'Superadmin access required'`, 5000), await text(q("[data-auto-lock-result]")));
+    check("Auto-lock：失败后开关仍显示原来的 On", await evaluate(`return document.querySelector('[data-auto-lock-select]').value === 'on';`));
+    await ctl({ autoLock403: false, autoLock400: true });
+    await evaluate(offAgain);
+    check("Auto-lock：后端 400 ⇒ 红字「Send enabled: true or false.」", await waitFor(`document.querySelector('[data-auto-lock-result]')?.textContent === 'Send enabled: true or false.'`, 5000), await text(q("[data-auto-lock-result]")));
+    await ctl({ autoLock400: false, superadmin: false, codes: ["settings.payroll.view", "settings.payroll.edit"] });
+    const b1 = (await mockLog()).length;
     await openPayroll();
     await sleep(800);
     check("Auto-lock：不是 Super Admin（can_edit false）⇒ 不出开关", await evaluate(`return !document.querySelector('[data-auto-lock]');`));
+    check("Auto-lock：不是 Super Admin 也看得到自动锁的行（灰字 Auto），不会发 PUT auto-lock", await evaluate(`const r = document.querySelector('tr[data-lock-row="50"]'); return !!r && !!r.querySelector('[data-lock-auto]');`) && !(await since(b1, (e) => e.method === "PUT" && e.path === "/api/payroll/auto-lock")).length);
     check("How to use：Locked dates 那条有 Edit 和 Auto-lock 两句", await evaluate(`return document.body.textContent.includes('Click Edit on a lock to change its dates or note') && document.body.textContent.includes('When Auto-lock is on, the 1st–15th lock by themselves on the 20th at 11:59 PM');`));
     await ctl({ superadmin: true, codes: [], autoRow: false, autoLockReset: true });
   }
