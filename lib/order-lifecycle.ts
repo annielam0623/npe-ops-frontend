@@ -161,8 +161,12 @@ export const CHANGES_SHOWN = 3;
 export type SendModule =
   "tour_confirmation" | "last_minute" | "tickets_reminder" | "morning_pickup";
 
+/** Annie 2026-11-18「从发送记录最多10条就够了」：只取最近 10 条（后端按 sent_at 新 → 旧）。 */
+export const ORDER_SENDS_LIMIT = 10;
+
 /**
- * 这单的全部发送记录：send-log 按单号是「包含」匹配，这里再按单号精确过滤（大小写不分）。不带日期 = 全部日期。
+ * 这单最近的发送记录：send-log 按单号是「包含」匹配，这里再按单号精确过滤（大小写不分）。不带日期 = 全部日期。
+ * ⚠️ 后端精确匹配之前，一个单号是另一个单号的一段时（例 ZZTEST1 / ZZTEST10），10 条里可能混进别的单。
  */
 export async function fetchOrderSends(
   orderNumber: string,
@@ -171,7 +175,7 @@ export async function fetchOrderSends(
   const page = await apiFetch<SendLogPage>("/api/notifications/send-log", {
     cache: "no-store",
     signal,
-    query: { order_number: orderNumber, page: 1, page_size: 200 },
+    query: { order_number: orderNumber, page: 1, page_size: ORDER_SENDS_LIMIT },
   });
   const want = orderNumber.trim().toUpperCase();
   return page.rows.filter(

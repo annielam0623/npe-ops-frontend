@@ -456,7 +456,7 @@ async function run() {
     await search("ZZTEST1", `document.querySelector('[data-fact="Reminder sent"] dd') && !document.querySelector('[data-fact="Reminder sent"] dd').textContent.includes('…')`);
     const sl = (await mockLog()).slice(before).filter((l) => l.path === "/api/notifications/send-log");
     const slq = new URLSearchParams((sl[0] && sl[0].query) || "");
-    check("生命周期 · SA：send-log 按单号拉一次（order_number=ZZTEST1，不带日期）", sl.length === 1 && slq.get("order_number") === "ZZTEST1" && !slq.get("date_from"), JSON.stringify(sl));
+    check("生命周期 · SA：send-log 按单号拉一次（order_number=ZZTEST1，不带日期，最近 10 条 page_size=10）", sl.length === 1 && slq.get("order_number") === "ZZTEST1" && !slq.get("date_from") && slq.get("page_size") === "10", JSON.stringify(sl));
     check("生命周期 · Booked = order_detail.dateCreated（洛杉矶时间）+ In Rezdy", /^10\/1\/2026 9:57 AM ?In Rezdy$/.test(await ev(fieldOf("Booked"))), await ev(fieldOf("Booked")));
     check("生命周期 · Received = 最早一条 booking_created + In Order List", /^10\/1\/2026 9:58 AM ?In Order List$/.test(await ev(fieldOf("Received"))), await ev(fieldOf("Received")));
     check("生命周期 · Changes 格子：4 条有意义的改动（系统记录不算）", (await ev(fieldOf("Changes"))) === "4 — see below", await ev(fieldOf("Changes")));

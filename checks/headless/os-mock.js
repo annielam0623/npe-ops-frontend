@@ -177,8 +177,10 @@ http
         { sent_at: "2026-10-20T01:00:00Z", module: "morning_pickup", order_number: "ZZTEST1", tour_date: "2026-10-20", sent_by: "scheduler", sms_status: "delivered", email_status: "sent" },
         { sent_at: "2026-10-19T16:00:00Z", module: "tickets_reminder", order_number: "ZZTEST2", tour_date: "2026-10-21", sent_by: "scheduler", sms_status: "delivered", email_status: "sent" },
       ].map((r) => ({ first_name: "ZZ", last_name: "Test", email: "", phone: "", tour_type: "", error_msg: null, mtlv_eligible: false, ...r }));
-      const rows = all.filter((r) => r.order_number.toUpperCase().includes(q));
-      return send(res, 200, { total: rows.length, page: 1, stats: {}, rows });
+      // 同后端：sent_at 新 → 旧，按 page_size 截。
+      const matched = all.filter((r) => r.order_number.toUpperCase().includes(q)).sort((a, b) => b.sent_at.localeCompare(a.sent_at));
+      const rows = matched.slice(0, Number(url.searchParams.get("page_size")) || 100);
+      return send(res, 200, { total: matched.length, page: 1, stats: {}, rows });
     }
     if (p === "/api/me/permissions" && ctl.noMoney) return send(res, 200, { is_superadmin: false, permissions: [{ code: "orders.view", module: "orders", wired: true }], default_home: null });
     if (p.startsWith("/api/user-prefs/")) return send(res, 200, { key: p.split("/").pop(), value: null });
