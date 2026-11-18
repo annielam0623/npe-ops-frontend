@@ -132,7 +132,9 @@ import {
 import { StepBox, useStepInfoHide } from "./step-box";
 import { PhoneMore, usePhoneInfo } from "@/components/ui/phone";
 import { lockedByText, useEditLock } from "./use-edit-lock";
+import { OpenWindowLink, useOpenTodayWindow } from "./open-window-setting";
 import { PickupMoveBox } from "./pickup-move";
+import { fmtHhmm, type OpenTodayWindow } from "@/lib/dispatch-open-today-api";
 import { PrivateOrderCards } from "./private-orders";
 import { RelayRow, VanBlock } from "./vehicle-row";
 
@@ -313,6 +315,8 @@ export function DispatchView() {
   // 员工也按勾（Annie 2026-10-30 置顶 10c「全部按照勾选」「动手」）：总开关对他开着时，没勾 dispatch.edit 就是只看、
   // 没勾 dispatch.send 就没有 Send 标签；关着照旧全给（legacy）。Super Admin 全给。partner 照旧只看、不发。
   const isSuperAdmin = usePageVisibility().isSuperAdmin;
+  /** 147 第二部分：Open 班进 Dispatch 是 today 的时间段（只 Super Admin 读得到；读不到 = null，不出链接）。 */
+  const openWin = useOpenTodayWindow(isSuperAdmin);
   const tick = (code: string) =>
     byTick(perms, code, { superAdmin: isSuperAdmin });
   const viewOnly =
@@ -1987,6 +1991,13 @@ export function DispatchView() {
                 >
                   Guide page preview ↗
                 </a>
+                {openWin.window ? (
+                  <OpenWindowLink
+                    value={openWin.window}
+                    onSaved={openWin.setWindow}
+                    onUnauthorized={redirectToLogin}
+                  />
+                ) : null}
               </span>
             ) : null}
           </div>
@@ -2318,7 +2329,12 @@ export function DispatchView() {
                   </div>
                 )}
 
-                {viewOnly ? null : <HowToUse farmOut={farmOutVisible} />}
+                {viewOnly ? null : (
+                  <HowToUse
+                    farmOut={farmOutVisible}
+                    openWindow={openWin.window}
+                  />
+                )}
 
                 {banner !== "none" && prefill ? (
                   <div
@@ -3434,9 +3450,18 @@ function DiscordIcon() {
   );
 }
 
-function HowToUse({ farmOut }: { farmOut: boolean }) {
+function HowToUse({
+  farmOut,
+  openWindow,
+}: {
+  farmOut: boolean;
+  /** 147：Super Admin 读得到时写存着的时间段；别人读不到 ⇒ 写默认 12:00 AM–10:00 AM（同 preview ④ 原文）。 */
+  openWindow: OpenTodayWindow | null;
+}) {
   // 手机上跟着 Step 2 标题后的「i」显示 / 收起。
   const stepHide = useStepInfoHide();
+  const winStart = openWindow ? fmtHhmm(openWindow.start) : "12:00 AM";
+  const winEnd = openWindow ? fmtHhmm(openWindow.end) : "10:00 AM";
   return (
     <details className={cn(HOWTO, stepHide)}>
       <summary className={HOWTO_SUMMARY}>
@@ -3446,8 +3471,9 @@ function HowToUse({ farmOut }: { farmOut: boolean }) {
         <li>
           Which day opens: If you are on today&rsquo;s Open shift in the
           published Staff Schedule, Dispatch opens on today each time you open
-          it between 12:00 AM and 10:00 AM (Las Vegas time; Super Admin can
-          change these times). Everyone else: if you signed in between 12:00 AM
+          it between <span data-howto-window>{winStart}</span> and{" "}
+          <span data-howto-window-end>{winEnd}</span> (Las Vegas time; Super
+          Admin can change these times). Everyone else: if you signed in between 12:00 AM
           and 8:30 AM (Las Vegas time), Dispatch opens on today until you sign
           in again; otherwise it opens on tomorrow. Change the day any time
           &mdash; the page stays on the day you picked.
