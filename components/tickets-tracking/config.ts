@@ -116,6 +116,7 @@ export type SystemColumnKey =
   | "tour"
   | "tour_date"
   | "order_number"
+  | "order_status"
   | "quantities"
   | "checkin_time"
   | "tour_time"
@@ -136,6 +137,8 @@ export const SYSTEM_COLUMNS: readonly {
   { key: "tour", label: "Tour" },
   { key: "tour_date", label: "Service Date" },
   { key: "order_number", label: "CHD#" },
+  // G281 题 2 A：Order List 的订单状态，紧跟 CHD#；只在有同步字段时出（view 里滤掉）。
+  { key: "order_status", label: "Order Status" },
   { key: "quantities", label: "Pax" },
   { key: "checkin_time", label: "Check-in Time" },
   { key: "tour_time", label: "Tour Time" },
@@ -222,7 +225,10 @@ export function parseColumnPrefs(raw: string | null): ColumnPrefs {
   const order = asKeys(value.order);
   for (const key of prefs.order) {
     if (!order.includes(key)) {
-      order.push(key);
+      // G281：以前存的设置没有 Order Status ⇒ 插在 CHD# 后面（其余新列照旧补在最后）。
+      const at = key === "order_status" ? order.indexOf("order_number") : -1;
+      if (at >= 0) order.splice(at + 1, 0, key);
+      else order.push(key);
     }
   }
   return {
@@ -382,12 +388,76 @@ export function computeStats(rows: TicketsTrackingRow[]): TicketsStats {
 
 // ── 排序 / 搜索 / 时间 ──────────────────────────────────────────────────────
 
-/** 后端已排好序；客人发来 WhatsApp 还没人处理的单顶到最上面（最新的在前）。 */
+/**
+ * 后端已排好序；客人发来 WhatsApp 还没人处理的单顶到最上面（最新的在前）。
+ * G281 题 4 A（6a：后端不排，前端排，同 Tour）：还没发提醒的灰行放最后，各自先后不变。
+ */
 export function orderRows(rows: TicketsTrackingRow[]): TicketsTrackingRow[] {
-  const floated = rows
+  const sent = rows.filter((r) => !isUnsent(r));
+  const floated = sent
     .filter((r) => r.wa_unhandled)
     .sort((a, b) => (b.latest_wa_ts || "").localeCompare(a.latest_wa_ts || ""));
-  return [...floated, ...rows.filter((r) => !r.wa_unhandled)];
+  return [
+    ...floated,
+    ...sent.filter((r) => !r.wa_unhandled),
+    ...rows.filter(isUnsent),
+  ];
+}
+
+// ── G281 Main manifest 同步（Annie「G281 同意推荐，动手」）────────────────────
+
+/** 灰行：Main manifest 同步建的、还没发门票提醒（旧后端 / 看不到的人没有 send_state ⇒ 都算发过）。 */
+export function isUnsent(row: TicketsTrackingRow): boolean {
+  return (row.send_state || "sent") === "unsent";
+}
+
+/** 这一页有没有同步的字段（开关让这个人看得到）：有才出 Order Status 列、灰行说明、「· N to notify」。 */
+export function hasSyncFields(rows: readonly TicketsTrackingRow[]): boolean {
+  return rows.some((r) => r.send_state !== undefined);
+}
+
+export const ORDER_STATE_LABEL: Record<
+  NonNullable<TicketsTrackingRow["order_state"]>,
+  string
+> = {
+  confirmed: "Confirmed",
+  on_hold: "On hold",
+  cancelled: "Cancelled",
+};
+
+/** 没有 / 认不出 ⇒ Confirmed（同 Tour Tracking）。 */
+export function orderStateOf(
+  r: TicketsTrackingRow,
+): NonNullable<TicketsTrackingRow["order_state"]> {
+  return r.order_state && r.order_state in ORDER_STATE_LABEL
+    ? r.order_state
+    : "confirmed";
+}
+
+/** 灰行底色（同 Tour Tracking 的 UNSENT_ROW_BG）。 */
+export const UNSENT_ROW_BG = "#e1e4e8";
+
+/** 表格上方灰色小方块那句（样稿原文）。 */
+export const UNSENT_NOTE =
+  "Grey rows: ticket orders in the Main manifest whose reminder hasn't been sent yet.";
+
+/** 题 3 A：CHD# 旁淡黄标签的 title（样稿原文）。 */
+export const CONTACT_CHANGED_TITLE =
+  "The guest's phone or email changed after the reminder was sent. Send the reminder again from Main manifest.";
+
+/** 题 5 A：How to use 第一条（加在最前面，样稿原文）。 */
+export const SYNC_HOW_TO =
+  "When Main manifest sync is on, every ticket order in the Main manifest for the day shows here, one row per ticket type. A grey row means the ticket reminder has not been sent yet. Grey rows are listed below the others, are not counted in the numbers at the top and show — in Status. Once the reminder is sent, the row is no longer grey. Order Status comes from the Order List: if it says On hold or Cancelled, check the order there before you contact the guest. Contact changed means the guest's phone or email changed after the reminder was sent; send the reminder again from Main manifest.";
+
+/** 题 5 A：How to use 第二条（Broadcast，样稿原文）。 */
+export const SYNC_BROADCAST_HOW_TO =
+  "Broadcast: the list includes guests in grey rows too. On hold and Cancelled orders are left out. Once it is sent, those rows are no longer grey.";
+
+/** Broadcast 名单：灰行也在，On hold / Cancelled 不在（同 Tour Tracking 的 G180）。 */
+export function broadcastableRows(
+  rows: readonly TicketsTrackingRow[],
+): TicketsTrackingRow[] {
+  return rows.filter((r) => orderStateOf(r) === "confirmed");
 }
 
 export function matchesSearch(
