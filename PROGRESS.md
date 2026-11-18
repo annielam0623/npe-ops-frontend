@@ -9,6 +9,9 @@
 ## 2026-11-17 晚 家里开工：前端主窗口 `npe-ops-frontend-fc`[450807]（只分工和汇报，不写代码；23:00 下班）
 - 开工：main 12ada5a3。后端在线 `后端主窗口32`[9e868a]（已报名字和挂着等后端的 4 个分支）；另有 f9 / a9 / 35 三个窗口，已问 32 哪些是后端的。现在没有前端工作窗口。
 - 资源：空闲内存 10.5 / 31.7 GB，node 1、chrome 44 ⇒ 今晚最多开 2 个前端工作窗口。主窗口改 PROGRESS 用 worktree D:\ops-wt-fc（detached）。
+- 32 回：f9 / a9 / 35 都是后端子窗口（f9 = G321 第二段，a9 = G279 WhatsApp + G329 号码，35 = 工资三件）。
+  - G321（f9）分支 task/g321-manifest-noshow-notes @ d1f1afa6，未上 main（三审 + 全量在跑，排在 a9 后）；合同看分支上 docs/interfaces/g321-relay-bus-tracking-2026-11-17.md。PUT 路径 / body 同 00 mock。跟 mock 的差异：① PUT 回 {relay_mark, relay_original, bus_mark, bus_original, relay_applicable, changed, action_taken_by?, action_taken_at?}（后两个只在 changed=true 时有）；② 不坐 relay 车的客人改 Relay ⇒ 400 "This guest is not on a relay van that day, so there is no Relay mark to change."；③ 订单详情 day_of_tour 每项多 product_name，product_code 可能 ""（这时显示 product_name），bus 的 vehicle 只有 "Bus A"（没车号）；④ Main manifest 行只给 relay_mark / bus_mark / relay_applicable（没有 on_bus_manifest / *_original），PUT /api/manifests/no-show 已删；⑤ Bus Manifest 编辑器加 boarding_mark / boarding_staff_changed / boarding_original，底部合计按原始还是 staff 值 32 在问 Annie。上 main 后 32 发 SHA。⇒ 00 的 noshow-tracking、68 的 150-relay-tour 要照这 5 条改。
+  - 工资（35）：路径照前端列的三个在做，合同 + SHA 出来 32 转来。
 
 ## 2026-11-17 晚 收工交接（续）：前端主窗口 `前端主窗口-b0 (fork)`[696851]
 > Annie 下午延到 15:30，之后又继续派活到傍晚；后端 6f 已收工（后端交接 b032d420）。Annie「我回家继续，你详细地写进交接」。家里的前端主窗口先读本节，再读下面「2026-11-17 收工交接」和置顶 📌。
