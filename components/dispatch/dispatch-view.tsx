@@ -132,6 +132,7 @@ import {
 import { StepBox, useStepInfoHide } from "./step-box";
 import { PhoneMore, usePhoneInfo } from "@/components/ui/phone";
 import { lockedByText, useEditLock } from "./use-edit-lock";
+import { PickupMoveBox } from "./pickup-move";
 import { PrivateOrderCards } from "./private-orders";
 import { RelayRow, VanBlock } from "./vehicle-row";
 
@@ -2078,6 +2079,24 @@ export function DispatchView() {
                   );
                 })}
               </div>
+            ) : null}
+
+            {/* Nov 18–22 临时：只在 3 家酒店接客（Annie 2026-11-17「动手」）。过了这几天自动不出；partner 不出。 */}
+            {!perms.isPartner ? (
+              <PickupMoveBox
+                date={day.run_date}
+                tourIds={
+                  tourCards?.date === day.run_date
+                    ? Object.entries(tourCards.byId)
+                        .filter(([, c]) => c.uploaded && c.pax > 0)
+                        .map(([id]) => Number(id))
+                    : null
+                }
+                onRefreshed={() => {
+                  if (!viewOnly) void runSync(day.run_date);
+                }}
+                onUnauthorized={redirectToLogin}
+              />
             ) : null}
 
             {(banner === "revision" || revisionLater) &&
