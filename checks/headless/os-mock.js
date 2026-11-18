@@ -72,6 +72,10 @@ const ORDERS = {
         relay_mark: null, relay_original: null,
         bus_mark: { value: "boarded", label: "Boarded", by: "WRONG", role: "guide", vehicle: "9999", at: "2026-10-21T02:00:00Z" }, bus_original: null },
     ],
+    // bf 合同草稿：按单的答复 / 餐 + 餐厅 / 到站（ctl.noLifeKeys 模拟旧后端没有这三个键）。
+    confirmations: [{ module: "tour_confirmation", tour_date: "2026-10-20", status: "yes", submitted_at: "2026-10-18T22:31:00Z" }],
+    lunch_by_day: [{ tour_date: "2026-10-20", product: "PBZ", bus_label: "A", has_lunch: true, turkey: 1, veggie: 1, beef: 0, defaulted: false, check: false, changed: false, text: "1 Turkey, 1 Veggie", restaurant: "ZZ Test Diner" }],
+    live_by_day: [{ tour_date: "2026-10-20", live_status: "picked_up", live_status_at: "2026-10-20T12:50:00Z", live_driver: "Jane D.", live_van: "2101", arrived_at: "2026-10-20T12:44:00Z", left_at: "2026-10-20T12:53:00Z" }],
   }),
   ZZTEST2: (() => {
     const o = order("ZZTEST2", { booking_type: "ticket" });
@@ -170,7 +174,7 @@ http
       const q = (url.searchParams.get("order_number") || "").toUpperCase();
       const all = [
         { sent_at: "2026-10-17T20:00:00Z", module: "tour_confirmation", order_number: "ZZTEST1", tour_date: "2026-10-20", sent_by: "kevin", sms_status: "delivered", email_status: "sent" },
-        { sent_at: "2026-10-18T21:05:00Z", module: "tour_confirmation", order_number: "ZZTEST1", tour_date: "2026-10-20", sent_by: "veronica", sms_status: "delivered", email_status: "opened" },
+        { sent_at: "2026-10-18T21:05:00Z", module: "tour_confirmation", order_number: "ZZTEST1", tour_date: "2026-10-20", sent_by: "veronica", sms_status: "delivered", email_status: "opened", sms_channel: "sms", delivered_at: "2026-10-18T21:05:30Z", opened_at: "2026-10-18T22:00:00Z" },
         { sent_at: "2026-10-19T00:00:00Z", module: "tour_confirmation", order_number: "ZZTEST1", tour_date: "2026-10-15", sent_by: "OLDDATE", sms_status: "delivered", email_status: "sent" },
         { sent_at: "2026-10-19T23:00:00Z", module: "tour_confirmation", order_number: "ZZTEST10", tour_date: "2026-10-20", sent_by: "WRONGORDER", sms_status: "delivered", email_status: "sent" },
         { sent_at: "2026-10-19T02:30:00Z", module: "last_minute", order_number: "ZZTEST1", tour_date: "2026-10-20", sent_by: "kevin", sms_status: "delivered", email_status: "" },
@@ -178,7 +182,9 @@ http
         { sent_at: "2026-10-19T16:00:00Z", module: "tickets_reminder", order_number: "ZZTEST2", tour_date: "2026-10-21", sent_by: "scheduler", sms_status: "delivered", email_status: "sent" },
       ].map((r) => ({ first_name: "ZZ", last_name: "Test", email: "", phone: "", tour_type: "", error_msg: null, mtlv_eligible: false, ...r }));
       // 同后端：sent_at 新 → 旧，按 page_size 截。
-      const matched = all.filter((r) => r.order_number.toUpperCase().includes(q)).sort((a, b) => b.sent_at.localeCompare(a.sent_at));
+      // order_exact=true（bf 合同草稿）⇒ 精确匹配；ctl.containsOnly 模拟还没上的后端（照旧「包含」）。
+      const exact = url.searchParams.get("order_exact") === "true" && !ctl.containsOnly;
+      const matched = all.filter((r) => (exact ? r.order_number.toUpperCase() === q : r.order_number.toUpperCase().includes(q))).sort((a, b) => b.sent_at.localeCompare(a.sent_at));
       const rows = matched.slice(0, Number(url.searchParams.get("page_size")) || 100);
       return send(res, 200, { total: matched.length, page: 1, stats: {}, rows });
     }

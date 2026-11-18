@@ -38,12 +38,14 @@ import {
   LIFECYCLE_FRAME,
   LIFECYCLE_HOW_TO,
   latestSend,
+  liveFor,
+  lunchFor,
   markText,
   markTone,
   meaningfulChanges,
   receivedAt,
   type SendModule,
-  sentByLabel,
+  sentSub,
   vanAtHotel,
 } from "@/lib/order-lifecycle";
 import {
@@ -370,7 +372,7 @@ function LookupResultView({ result }: { result: LookupResult }) {
       <Fact
         label={label}
         tone={s ? "plain" : "muted"}
-        sub={s ? sentByLabel(s.by) : undefined}
+        sub={s ? sentSub(s) || undefined : undefined}
       >
         {s ? s.at : sendsLoading ? "…" : "Not sent"}
       </Fact>
@@ -527,9 +529,12 @@ function LookupResultView({ result }: { result: LookupResult }) {
                     life ? (
                       <>
                         {sentFact("last_minute", "Last Minute")}
-                        {/* 后端还没有按单的餐厅（需要后端）：先写「—」。 */}
-                        <Fact label="Restaurant" tone="muted">
-                          —
+                        {/* bf 合同草稿：lunch_by_day.restaurant；没有 ⇒「—」。 */}
+                        <Fact
+                          label="Restaurant"
+                          tone={lunchFor(order, date)?.restaurant ? "plain" : "muted"}
+                        >
+                          {lunchFor(order, date)?.restaurant || "—"}
                         </Fact>
                       </>
                     ) : null
@@ -578,12 +583,21 @@ function LookupResultView({ result }: { result: LookupResult }) {
                   tail={
                     life ? (
                       <>
-                        <Fact
-                          label="Van at hotel"
-                          tone={vanAtHotel(r.arrived_at, r.left_at) ? "plain" : "muted"}
-                        >
-                          {vanAtHotel(r.arrived_at, r.left_at) ?? "—"}
-                        </Fact>
+                        {/* 按单的 live_by_day 优先（bf 合同草稿），没有就用当天 Morning Tracking 行（Annie b 同意）。 */}
+                        {(() => {
+                          const live = liveFor(order, date);
+                          const van = live
+                            ? vanAtHotel(live.arrived_at, live.left_at)
+                            : vanAtHotel(r.arrived_at, r.left_at);
+                          return (
+                            <Fact
+                              label="Van at hotel"
+                              tone={van ? "plain" : "muted"}
+                            >
+                              {van ?? "—"}
+                            </Fact>
+                          );
+                        })()}
                         {markFact("Relay", day?.relay_mark ?? null)}
                         {markFact("Bus", day?.bus_mark ?? null)}
                         {/* 题 4 B：后端还没有回程到站，先写「—」。 */}

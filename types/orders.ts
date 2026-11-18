@@ -129,6 +129,32 @@ export interface OrderDetail {
    * 没有标记 = []；旧后端没有这个键。订单生命周期的 Relay / Bus 格子用。
    */
   day_of_tour?: DayOfTourEntry[];
+  /** 订单生命周期（bf 合同草稿 2026-11-18，旧后端没有这三个键）：按单的客人答复。 */
+  confirmations?: {
+    module: string;
+    tour_date: string;
+    status: string;
+    submitted_at: string | null;
+  }[];
+  /** 按单的餐（text 例 "2 Turkey, 1 Veggie"）和餐厅。 */
+  lunch_by_day?: {
+    tour_date: string;
+    product: string;
+    bus_label: string;
+    has_lunch: boolean;
+    text: string;
+    restaurant: string | null;
+  }[];
+  /** 按单的接客到站（只 relay 接客才有）。 */
+  live_by_day?: {
+    tour_date: string;
+    live_status: string;
+    live_status_at: string | null;
+    live_driver: string;
+    live_van: string;
+    arrived_at: string | null;
+    left_at: string | null;
+  }[];
 }
 
 /** 一个标记（staff 改过的或现场的人原始的）。at = 带时区 ISO。 */

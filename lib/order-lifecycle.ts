@@ -28,9 +28,7 @@ const LA_TIME = new Intl.DateTimeFormat("en-US", {
 export function formatLaDateTime(iso: string | null | undefined): string {
   if (!iso) return "—";
   const t = new Date(iso).getTime();
-  return Number.isNaN(t)
-    ? "—"
-    : plainSpaces(LA_DT.format(t).replace(",", ""));
+  return Number.isNaN(t) ? "—" : plainSpaces(LA_DT.format(t).replace(",", ""));
 }
 
 /** 新版 ICU 在 AM / PM 前用窄空格（U+202F），换成普通空格，跟接口的字串一样。 */
@@ -117,11 +115,32 @@ function sourceOf(a: Activity): { source: ChangeSource; who: string } {
   return { source: "system", who: actor || "System" };
 }
 
+/** 事件名的标签，照后端 Order Log（app/routers/order_log.py EVENT_LABELS）的写法。 */
+const EVENT_LABELS: Record<string, string> = {
+  booking_created: "Booking Created",
+  booking_updated: "Booking Updated",
+  booking_handled: "Marked as Handled",
+  status_changed: "Status Changed",
+  guest_confirmed: "Guest Confirmed",
+  guest_modify_requested: "Modify Requested",
+  lunch_selected: "Lunch Updated",
+  mtlv_qty_selected: "MTLV Qty Selected",
+  mtlv_ticket_sent: "MTLV Ticket Sent",
+  mtlv_cleared: "MTLV Cleared",
+  action_taken: "Action Taken",
+};
+
 export function toChange(a: Activity): ChangeEntry {
   const { source, who } = sourceOf(a);
   const detail = a.detail || "";
   let items: ChangeEntry["items"] = [];
-  let text = detail || a.event_type;
+  // 其余事件（Show all 里）：「标签 — 原文」，没标签的写原文 / 事件名。
+  const label = EVENT_LABELS[a.event_type];
+  let text = label
+    ? detail && detail !== label
+      ? `${label} — ${detail}`
+      : label
+    : detail || a.event_type;
   if (a.event_type === "field_updated") {
     const d = parseDiff(detail);
     if (d) items = [d];
@@ -175,7 +194,13 @@ export async function fetchOrderSends(
   const page = await apiFetch<SendLogPage>("/api/notifications/send-log", {
     cache: "no-store",
     signal,
-    query: { order_number: orderNumber, page: 1, page_size: ORDER_SENDS_LIMIT },
+    // order_exact：bf 合同草稿（后端精确匹配）；旧后端不认这个参数，下面照样精确过滤当保险。
+    query: {
+      order_number: orderNumber,
+      order_exact: true,
+      page: 1,
+      page_size: ORDER_SENDS_LIMIT,
+    },
   });
   const want = orderNumber.trim().toUpperCase();
   return page.rows.filter(
@@ -188,6 +213,62 @@ export interface SentSummary {
   by: string;
   sms: string;
   email: string;
+  /** 「Delivered · Opened」（后端给了送达 / 打开时间才有；WhatsApp 发的带 WhatsApp）。 */
+  delivery: string;
+}
+
+function deliveryOf(r: SendLogRow): string {
+  return [
+    r.sms_channel === "whatsapp" ? "WhatsApp" : "",
+    r.delivered_at || r.email_delivered_at ? "Delivered" : "",
+    r.opened_at ? "Opened" : "",
+    r.clicked_at ? "Clicked" : "",
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
+
+/** 「by veronica · Delivered · Opened」。 */
+export function sentSub(s: SentSummary): string {
+  return [sentByLabel(s.by), s.delivery].filter(Boolean).join(" · ");
+}
+
+// ── 按单的答复 / 餐 / 到站（bf 合同草稿；旧后端没有 ⇒ null）──────────────────
+
+const REPLY_LABEL: Record<string, string> = {
+  yes: "YES",
+  pending: "Pending (no reply yet)",
+  modify_req: "Modify requested",
+  modified: "Modified",
+  cancel: "Cancel",
+};
+
+export function replyFor(
+  order: OrderDetail,
+  date: string | null,
+): { label: string; status: string; submitted: string | null } | null {
+  const c = (order.confirmations ?? []).find(
+    (x) => !date || x.tour_date === date,
+  );
+  if (!c) return null;
+  return {
+    status: c.status,
+    label: REPLY_LABEL[c.status] ?? c.status,
+    submitted: c.submitted_at ? formatLaDateTime(c.submitted_at) : null,
+  };
+}
+
+export function lunchFor(order: OrderDetail, date: string | null) {
+  return (
+    (order.lunch_by_day ?? []).find((x) => !date || x.tour_date === date) ??
+    null
+  );
+}
+
+export function liveFor(order: OrderDetail, date: string | null) {
+  return (
+    (order.live_by_day ?? []).find((x) => !date || x.tour_date === date) ?? null
+  );
 }
 
 /** 这个模块最近一次发送；date 给了就只看那天的团（改期以前的发送不算这一天的）。 */
@@ -211,6 +292,7 @@ export function latestSend(
     by: r.sent_by?.trim() || "—",
     sms: r.sms_status || "",
     email: r.email_status || "",
+    delivery: deliveryOf(r),
   };
 }
 

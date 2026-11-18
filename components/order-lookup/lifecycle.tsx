@@ -12,12 +12,16 @@ import {
   fetchOrderSends,
   LIFECYCLE_FRAME,
   latestSend,
+  liveFor,
+  lunchFor,
   markText,
   markTone,
   meaningfulChanges,
   receivedAt,
+  replyFor,
   type SendModule,
-  sentByLabel,
+  sentSub,
+  vanAtHotel,
 } from "@/lib/order-lifecycle";
 import { orderDateToYmd } from "@/lib/order-lookup-api";
 import { usePageVisibility } from "@/lib/page-visibility";
@@ -117,6 +121,10 @@ export function LifecycleCard({ order }: { order: OrderDetail }) {
   const day = dayOfTourFor(order, date);
   const relay = day?.relay_mark ?? null;
   const bus = day?.bus_mark ?? null;
+  const reply = replyFor(order, date);
+  const lunch = lunchFor(order, date);
+  const live = liveFor(order, date);
+  const van = live ? vanAtHotel(live.arrived_at, live.left_at) : null;
   return (
     <section
       aria-label="Order lifecycle"
@@ -149,12 +157,42 @@ export function LifecycleCard({ order }: { order: OrderDetail }) {
               key={module}
               label={label}
               tone={s ? undefined : "muted"}
-              sub={s ? sentByLabel(s.by) : undefined}
+              sub={s ? sentSub(s) || undefined : undefined}
             >
               {s ? s.at : sends === null ? "…" : "Not sent"}
             </DField>
           );
         })}
+        {/* Annie (a) A：后端按单接口到了再补——bf 合同草稿 confirmations / lunch_by_day / live_by_day；旧后端没有 ⇒「—」。 */}
+        <DField
+          label="Guest reply"
+          tone={
+            !reply
+              ? "muted"
+              : reply.status === "yes"
+                ? "good"
+                : reply.status === "cancel"
+                  ? "bad"
+                  : reply.status === "pending"
+                    ? "muted"
+                    : "warn"
+          }
+          sub={reply?.submitted ?? undefined}
+        >
+          {reply ? reply.label : "—"}
+        </DField>
+        <DField label="Lunch" tone={lunch?.text ? undefined : "muted"}>
+          {lunch?.text || "—"}
+        </DField>
+        <DField
+          label="Restaurant"
+          tone={lunch?.restaurant ? undefined : "muted"}
+        >
+          {lunch?.restaurant || "—"}
+        </DField>
+        <DField label="Van at hotel" tone={van ? undefined : "muted"}>
+          {van ?? "—"}
+        </DField>
         <DField
           label="Relay"
           tone={
