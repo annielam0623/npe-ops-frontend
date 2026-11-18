@@ -11,6 +11,10 @@
 - b0 (fork)[696851] 已交接：以 fc 深夜收工节为准。b0 当天的窗口 00、68 昨晚都已停，没有在做的活。b0 名下开着的分支：00 noshow-tracking ed0cf996（等 G321）、payroll-lock-edit 6d2de212 / payroll-auto-lock df0128c8（已被 81 task/payroll-wire c29b45f6 合一）、tt-compact-toolbar（只有 preview）；68 150-relay-tour a822df5f（等 G321）、G281 tickets-sync WIP a271aff5（后端 92db5ca4 已上线）。
 - 已核：33de2609 / efc85d77（mt）、67a681da（SMS）、c29b45f6（payroll）、ed0cf996、a822df5f、a271aff5 都**还没上 main**（b0 说 mt-console 已上线不对，以 fc 节为准：等后端核对两条后一起合）。
 - 后端：今天后端主窗口 `npe-confirmation-service-ae`[a75dc3]（ae 自报，说 Annie 让它前后端主窗口都当；✅ Annie 答分工（原话）「A」＝前端归 4d（派工、进度、合 main 前检查），后端 + 前后端字段核对归 ae；已转 ae，请它核 33de2609）。ae 问 7 项进度，4d 已回：SMS 超字数 WIP 67a681da；Tour Tracking Broadcast 标签 main 05b6af85；152 main 70b18ea7；产品名标红 main 40bbb306；mt 要合 33de2609（叠 efc85d77），已请 ae 核对 33de2609；工资合一 task/payroll-wire c29b45f6 WIP；noshow / 150-relay-tour 等 G321 第二段。等后端的字段只有 G321。
+- ✅ **Morning Tracking 顶部整合 + 手机版简化上 main 296561bc**（36 的 task/mt-phone-compact 33de2609，叠 efc85d77；Annie「一起上」；ae 后端合同 PASS：只改手机显示、不加新请求，字段都在 notifications.py 三处行、写只有原来的 take-action）。4d 合最新 main 后跑：tsc 0、eslint 0 error（3 旧 warning）、build、mt 297/297、nav 39/39。📌 请 Annie 线上验：手机打开 Morning Tracking，顶部合成一条、每位客人一行、点开看详情。
+- 派工：`npe-ops-frontend-4a`[17d9e8] = SMS 超字数（task/sms-over-limit-email-only 67a681da 收尾）；`npe-ops-frontend-8d`[44b0cd] = 工资 task/payroll-wire c29b45f6 收尾；`npe-ops-frontend-23`[c39da7] = G281 task/g281-tickets-sync a271aff5 收尾。都做完交 SHA + 对照表 ⇒ 4d 转 ae PASS ⇒ 合 main。
+- 8d 交 **task/payroll-wire 8a162e26**（payroll 122/122、nav 39/39、hr 135/135、tsc / eslint / build；Applies to 改读后端 guides；样子不变）⇒ 已转 ae 核对，另请 ae 确认 note: null = 清空备注、非 SA 能改 / 解锁自动锁行。等 PASS 合 main。
+- G338（ae，后端 task/g338-relay-no-ti 4b25a79e，接口不变）：TI 客人只在接客时间（减 15 后）早于 5:00 AM 且自己那轮有停 TI 的车时坐 relay，其余去 departure。ae 请前端核 How to use 旧句「a 2nd Round car with the TI stop takes the guests」⇒ 4d 查 ops main 没有这句（relay-panel desc、Dispatch How to use、Live drivers 标签都不冲突），不派活；已回 ae。
 - 今天要请 Annie 看：Dispatch 11/18 换上车点框（b745ce67）分组；Rezdy 推送测试（在 Rezdy 改一单上车点，等一分钟不按蓝键，看 Order List 有没有变）。
 
 ## 2026-11-17 深夜 收工交接：前端主窗口 `npe-ops-frontend-fc`[450807]（家里电脑，23:00 下班）
