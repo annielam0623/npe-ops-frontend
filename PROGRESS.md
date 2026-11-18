@@ -10,7 +10,7 @@
 - 开工：origin/main 4980603b。主窗口改 PROGRESS 用 worktree C:\Code\ops-wt-4d（detached）。资源：空闲内存 36 / 62 GB，node 0、chrome 80。
 - b0 (fork)[696851] 已交接：以 fc 深夜收工节为准。b0 当天的窗口 00、68 昨晚都已停，没有在做的活。b0 名下开着的分支：00 noshow-tracking ed0cf996（等 G321）、payroll-lock-edit 6d2de212 / payroll-auto-lock df0128c8（已被 81 task/payroll-wire c29b45f6 合一）、tt-compact-toolbar（只有 preview）；68 150-relay-tour a822df5f（等 G321）、G281 tickets-sync WIP a271aff5（后端 92db5ca4 已上线）。
 - 已核：33de2609 / efc85d77（mt）、67a681da（SMS）、c29b45f6（payroll）、ed0cf996、a822df5f、a271aff5 都**还没上 main**（b0 说 mt-console 已上线不对，以 fc 节为准：等后端核对两条后一起合）。
-- 后端：今天后端主窗口 `npe-confirmation-service-ae`[a75dc3]（ae 自报，说 Annie 让它前后端主窗口都当，已问 Annie 分工）。ae 问 7 项进度，4d 已回：SMS 超字数 WIP 67a681da；Tour Tracking Broadcast 标签 main 05b6af85；152 main 70b18ea7；产品名标红 main 40bbb306；mt 要合 33de2609（叠 efc85d77），已请 ae 核对 33de2609；工资合一 task/payroll-wire c29b45f6 WIP；noshow / 150-relay-tour 等 G321 第二段。等后端的字段只有 G321。
+- 后端：今天后端主窗口 `npe-confirmation-service-ae`[a75dc3]（ae 自报，说 Annie 让它前后端主窗口都当；✅ Annie 答分工（原话）「A」＝前端归 4d（派工、进度、合 main 前检查），后端 + 前后端字段核对归 ae；已转 ae，请它核 33de2609）。ae 问 7 项进度，4d 已回：SMS 超字数 WIP 67a681da；Tour Tracking Broadcast 标签 main 05b6af85；152 main 70b18ea7；产品名标红 main 40bbb306；mt 要合 33de2609（叠 efc85d77），已请 ae 核对 33de2609；工资合一 task/payroll-wire c29b45f6 WIP；noshow / 150-relay-tour 等 G321 第二段。等后端的字段只有 G321。
 - 今天要请 Annie 看：Dispatch 11/18 换上车点框（b745ce67）分组；Rezdy 推送测试（在 Rezdy 改一单上车点，等一分钟不按蓝键，看 Order List 有没有变）。
 
 ## 2026-11-17 深夜 收工交接：前端主窗口 `npe-ops-frontend-fc`[450807]（家里电脑，23:00 下班）
