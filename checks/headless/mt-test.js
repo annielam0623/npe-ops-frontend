@@ -238,19 +238,27 @@ async function run() {
   await resizeChecks({ evaluate, check, sleep, page: "mt", refresh: async () => { await evaluate("$btn('↻ Refresh').click();"); await sleep(1200); } });
 
   // ── 统计、司机、搜索 ──
-  let stats = await evaluate("return $t('section[aria-label=Summary] > div');");
+  let stats = await evaluate("return $t('section[aria-label=Summary] [data-stat]');");
   // regress fix 2：签到率分子只算短信发出去的单里签到的（同旧页面）。短信发出 3 单（A1001 delivered、
   // A1002 sent、A1003 undelivered），其中签到的只有 A1001；A1005 没短信也签到了，不算 → 1/3 = 33%（以前是 2/3 = 67%）。
   check("统计：Total 5 / Checked In 2 / Pending 3 / Rate 33%（分子只算短信发出且签到的）",
-    stats.join("|") === "5Total|2Checked In|3Pending|33%Check-in Rate", stats.join("|"));
+    stats.join("|") === "Total5|Checked in2|Pending3|Check-in rate33%", stats.join("|"));
+  // ── 整合（Annie 2026-11-17「这个页面也要整合一下，空白的地方太多了，搞得有高科技感一些」，样稿 1/2/3/5 A，页签不动）──
+  check("整合：数字条在日期那一行（同一行、在日期后面），等宽字；原来的 4 张大卡没了",
+    await evaluate("const s = document.querySelector('[data-mt-stats]'); const d = document.querySelector('input[aria-label=\"Date\"]').getBoundingClientRect(); const r = s.getBoundingClientRect(); return Math.abs((r.top + r.bottom) / 2 - (d.top + d.bottom) / 2) < 14 && r.left > d.right && /mono|consolas|courier/i.test(getComputedStyle(s).fontFamily) && !document.querySelector('section[aria-label=Summary] > div');"),
+    await evaluate("return getComputedStyle(document.querySelector('[data-mt-stats]')).fontFamily;"));
+  check("整合：签到率进度条 = 33%", await evaluate("return document.querySelector('[data-rate-bar] > span').style.width === '33%';"));
+  check("整合：司机按钮是 5px 小长方形、下面细绿线 = 签到比例（Mike 1/2 = 50%、Ana 0/2 = 0%，All 没有线）",
+    await evaluate("const b = [...document.querySelectorAll('[aria-label=\"Filter by driver\"] button')]; const w = (t) => b.find((x) => x.textContent.startsWith(t)).querySelector('[data-driver-bar]')?.style.width; return getComputedStyle(b[0]).borderRadius === '5px' && w('Mike') === '50%' && w('Ana') === '0%' && !b[0].querySelector('[data-driver-bar]');"));
+  check("整合：司机按钮、搜索框、记录数同一行（电脑）", await evaluate("const g = document.querySelector('[aria-label=\"Filter by driver\"]').getBoundingClientRect(); const i = [...document.querySelectorAll('input[aria-label=Search]')].find((x) => x.getBoundingClientRect().height > 0).getBoundingClientRect(); return Math.abs(g.top - i.top) < 10;"));
   let pills = await evaluate("return $t('[aria-label=\"Filter by driver\"] button');");
-  check("司机按钮：All 5、Mike 1/2、Ana 0/2", pills.join("|") === "All 5|Mike: 1/2|Ana: 0/2", pills.join("|"));
-  await evaluate("$btn('Ana:').click();");
+  check("司机按钮：All 5、Mike 1/2、Ana 0/2", pills.join("|") === "All 5|Mike 1/2|Ana 0/2", pills.join("|"));
+  await evaluate("$btn('Ana ').click();");
   await sleep(200);
   rows = await evaluate("return $rows();");
-  stats = await evaluate("return $t('section[aria-label=Summary] > div');");
+  stats = await evaluate("return $t('section[aria-label=Summary] [data-stat]');");
   check("按司机 Ana 筛选：2 行，统计跟着变（Rate 0%）",
-    rows.length === 2 && stats.join("|") === "2Total|0Checked In|2Pending|0%Check-in Rate", `${rows.length} ${stats.join("|")}`);
+    rows.length === 2 && stats.join("|") === "Total2|Checked in0|Pending2|Check-in rate0%", `${rows.length} ${stats.join("|")}`);
   await evaluate("$btn('All').click();");
   await evaluate("$setValue(document.querySelector('input[type=search],input[inputmode=search]'), '1003');");
   await sleep(200);
@@ -594,11 +602,13 @@ async function run() {
     log.some((e) => e.path === "/api/notifications/morning-pickup/tracking" && e.query === `?date=${yesterday}`), JSON.stringify(log.map((e) => e.query)));
   check("非今天：提示 Auto-refresh is off for other dates.", (await evaluate("return document.body.textContent;")).includes("Auto-refresh is off for other dates."));
   check("非今天：只剩 All（同旧页面永远有 All）、没有司机按钮、统计为 0", (await evaluate("const g = document.querySelector('[aria-label=\"Filter by driver\"]'); return !!g && g.querySelectorAll('button').length === 1 && g.textContent.trim().startsWith('All');")) &&
-    (await evaluate("return $t('section[aria-label=Summary] > div').join('|');")) === "0Total|0Checked In|0Pending|—Check-in Rate");
+    (await evaluate("return $t('section[aria-label=Summary] [data-stat]').join('|');")) === "Total0|Checked in0|Pending0|Check-in rate—");
+  check("整合：别的日子 ⇒ 顶栏灰点 AUTO-REFRESH OFF（整句在 title）", await evaluate("const l = document.querySelector('[data-refresh-light]'); return l?.dataset.refreshLight === 'off' && l.innerText.includes('AUTO-REFRESH OFF') && l.title === 'Auto-refresh is off for other dates.';"), await evaluate("return document.querySelector('[data-refresh-light]')?.outerHTML;"));
   await evaluate("$btn('Today').click();");
   await waitFor("document.querySelectorAll('tbody tr').length === 5");
   check("Today 回到今天", (await evaluate("return location.search;")) === `?date=${today}`);
   check("今天（截止前）：同旧页面不写自动刷新提示", !(await evaluate("return document.body.textContent;")).includes("Auto-refresh"));
+  check("整合：今天截止前 ⇒ 顶栏绿点闪 LIVE · EVERY 1 MIN", await evaluate("const l = document.querySelector('[data-refresh-light]'); const dot = l?.querySelector('span'); return l?.dataset.refreshLight === 'live' && l.innerText.includes('LIVE · EVERY 1 MIN') && getComputedStyle(dot).animationName === 'mt-pulse';"), await evaluate("return document.querySelector('[data-refresh-light]')?.outerHTML;"));
 
   // ── regress fix 3：Take action 还没写完就换了日期 → 写完重拉的是新日期，今天的行不会跑到昨天下面 ──
   {
@@ -642,6 +652,7 @@ async function run() {
   await openPage(`${APP}/morning-pickup/tracking`);
   await waitFor("document.querySelectorAll('tbody tr').length === 5");
   check("过了窗口：提示 Auto-refresh stopped at …", (await evaluate("return document.body.textContent;")).includes("Auto-refresh stopped at 12:00 AM — new replies show on the dashboard."));
+  check("整合：过了截止 ⇒ 顶栏灰点 STOPPED 12:00 AM（不闪）", await evaluate("const l = document.querySelector('[data-refresh-light]'); return l?.dataset.refreshLight === 'stopped' && l.innerText.includes('STOPPED 12:00 AM') && getComputedStyle(l.querySelector('span')).animationName === 'none';"), await evaluate("return document.querySelector('[data-refresh-light]')?.outerHTML;"));
   if (!SKIP_POLL) {
     before = (await mockLog()).filter((e) => e.path === "/api/notifications/morning-pickup/tracking").length;
     await sleep(65_000);
@@ -652,7 +663,7 @@ async function run() {
     await openPage(`${APP}/morning-pickup/tracking`);
     await waitFor("document.querySelectorAll('tbody tr').length === 5");
     await helpers();
-    await evaluate("$btn('Mike:').click();");
+    await evaluate("$btn('Mike ').click();");
     before = (await mockLog()).filter((e) => e.path === "/api/notifications/morning-pickup/tracking").length;
     await sleep(65_000);
     const polled = (await mockLog()).filter((e) => e.path === "/api/notifications/morning-pickup/tracking").length;
@@ -1220,7 +1231,8 @@ async function run() {
     const log = (await mockLog()).slice(from);
     check("手机：带 ?date=昨天打开也只看今天（最后一次读的是今天）", log.filter((e) => e.path === "/api/notifications/morning-pickup/tracking").pop()?.query === `?date=${todayYmd}`, JSON.stringify(log.map((e) => e.query)));
     check("手机：不出 ‹ 日期 › Today，写「Today · …」", await evaluate("return document.querySelector('input[aria-label=\"Date\"]').getBoundingClientRect().height === 0 && document.querySelector('[data-phone-today]').textContent.startsWith('Today · ');"));
-    check("手机：4 张统计卡排一行", await evaluate("const c = [...document.querySelector('section[aria-label=\"Summary\"]').children]; return c.length === 4 && new Set(c.map(x => Math.round(x.getBoundingClientRect().top))).size === 1;"));
+    check("手机：数字一行、签到率进度条单独一行占满", await evaluate("const s = document.querySelector('[data-mt-stats]'); const c = [...s.querySelectorAll('[data-stat]')]; const bar = s.querySelector('[data-rate-bar]').getBoundingClientRect(); return c.length === 4 && new Set(c.map(x => Math.round(x.getBoundingClientRect().top))).size === 1 && bar.top > c[0].getBoundingClientRect().bottom - 1 && Math.abs(bar.width - s.getBoundingClientRect().width) < 2;"));
+    check("手机：Export 收进 ⋯，顶栏是小灯 + ⋯ + Refresh；司机按钮一行横着滑；搜索框单独一行", await evaluate("const ex = [...document.querySelectorAll('a')].find(a => a.textContent.includes('Export')); const g = document.querySelector('[aria-label=\"Filter by driver\"]'); const vis = [...document.querySelectorAll('input[aria-label=Search]')].filter((x) => x.getBoundingClientRect().height > 0); return ex.getBoundingClientRect().height === 0 && document.querySelector('[data-phone-more]').getBoundingClientRect().width > 0 && getComputedStyle(g).flexWrap === 'nowrap' && getComputedStyle(g).overflowX === 'auto' && vis.length === 1 && document.documentElement.scrollWidth <= innerWidth + 1;"));
     check("手机：「Drag columns」操作提示不显示", await evaluate("const e = [...document.querySelectorAll('span')].find(s => s.textContent.includes('Drag columns to reorder')); return !e || e.getBoundingClientRect().height === 0;"));
     check("手机：标题栏有 ★，shortcut 条收起", await evaluate("const s = document.querySelector('[data-phone-shortcuts]'); return document.querySelector('[data-phone-star]').getBoundingClientRect().width > 0 && s.getBoundingClientRect().height === 0;"));
     await cdp("Emulation.clearDeviceMetricsOverride");
@@ -1250,6 +1262,7 @@ async function run() {
     await ctl({ live: true, staffPerms: null, superAdmin: true, extraWidgets: LIVE_ON });
     await openTracking();
     check("Super Admin：两个页签 Tracking / Live drivers，Live drivers 旁边写 Super Admin only，默认在 Tracking", await waitFor("document.querySelectorAll('[data-mt-tab]').length === 2 && document.querySelector('[data-mt-tab=\"live\"]').textContent.includes('Super Admin only') && document.querySelector('[data-mt-tab=\"tracking\"]').getAttribute('aria-selected') === 'true'"));
+    check("整合：页签照旧（Annie「tracking和live driver的显示不要变」）——单独一行（日期行和司机行之间）、选中的照旧实心蓝 #3b82f6、大小照旧 text-sm px-4", await evaluate("const t = document.querySelector('[role=tablist]').getBoundingClientRect(); const d = document.querySelector('[data-mt-stats]').getBoundingClientRect(); const g = document.querySelector('[aria-label=\"Filter by driver\"]').getBoundingClientRect(); const on = document.querySelector('[data-mt-tab=\"tracking\"]'); const cs = getComputedStyle(on); return t.top >= d.bottom - 1 && t.bottom <= g.top + 1 && cs.backgroundColor === 'rgb(59, 130, 246)' && cs.fontSize === '14px' && cs.paddingLeft === '16px';"));
     const cols = await orderCol();
     check("Tracking 表多一列 Driver mark，紧跟 Check-in Time", cols.indexOf("Driver mark") === cols.indexOf("Check-in Time") + 1, cols.join(","));
     check("司机标了 No show、没人处理的 A1002 顶到最上面，淡红底，Driver mark 写「✗ No show 6:03 AM」+「Van 12 Mike」+ ⚠️ Take action", await evaluate("const tr = document.querySelector('main tbody tr'); const m = tr.querySelector('[data-driver-mark]'); return tr.dataset.nsRow === 'A1002' && tr.className.includes('rgba(239,68,68') && m.dataset.driverMark === 'no_show' && m.textContent.includes('✗ No show 6:03 AM') && m.textContent.includes('Van 12 Mike') && !!m.querySelector('[data-ns-take-action]');"), await evaluate("return document.querySelector('main tbody tr')?.textContent;"));
