@@ -50,6 +50,10 @@ import {
   broadcastableRows,
   hasSyncFields,
   isUnsent,
+  SYNC_BROADCAST_HOW_TO,
+  SYNC_HOW_TO,
+  UNSENT_NOTE,
+  UNSENT_ROW_BG,
   defaultColumnPrefs,
   emailBadgeOf,
   matchesSearch,
@@ -67,7 +71,11 @@ import {
 } from "./config";
 import { TicketsTable } from "./tickets-table";
 import { PageShortcutBar } from "@/components/nav/page-shortcut-bar";
-import { PhoneMore, PhoneShortcutStar } from "@/components/ui/phone";
+import {
+  PhoneMore,
+  PhoneOneLine,
+  PhoneShortcutStar,
+} from "@/components/ui/phone";
 import { UploadDialog } from "./upload-dialog";
 import { setVisibleInterval } from "@/lib/visible-poll";
 
@@ -394,13 +402,25 @@ export function TicketsTrackingView() {
 
   const data = state.kind === "ready" ? state.data : null;
   const allRows = useMemo(() => data?.rows ?? [], [data]);
-  const pills = useMemo(() => productPills(allRows), [allRows]);
+  // G281：旧后端 / 看不到同步的人没有 send_state ⇒ 页面跟现在一样（没有 Order Status 列、灰行说明、To notify）。
+  const sync = useMemo(() => hasSyncFields(allRows), [allRows]);
+  // 产品按钮上的 YES / 总人数也只算发过的（题 4 A，同 Tour Tracking 的团胶囊）。
+  const sentRows = useMemo(
+    () => allRows.filter((r) => !isUnsent(r)),
+    [allRows],
+  );
+  const pills = useMemo(() => productPills(sentRows), [sentRows]);
   // 没勾 orders.money_view（题 8）：上传名单里算钱 / 代理商的表头不出，Columns 里也勾不上。
   const headers = useMemo(
     () => withoutMoneyHeaders(uploadedHeaders(allRows), perms.canSeeMoney),
     [allRows, perms.canSeeMoney],
   );
-  const columns = visibleColumns(prefs, headers);
+  const columns = visibleColumns(prefs, headers).filter(
+    (k) => sync || k !== "order_status",
+  );
+  const pickerColumns = sync
+    ? SYSTEM_COLUMNS
+    : SYSTEM_COLUMNS.filter((c) => c.key !== "order_status");
   const filtered = useMemo(
     () =>
       orderRows(
@@ -413,7 +433,6 @@ export function TicketsTrackingView() {
   );
   // G281 题 4 A：灰行（还没发提醒）不算进上面的数字和回复率。
   const stats = data ? computeStats(filtered.filter((r) => !isUnsent(r))) : null;
-  const sync = useMemo(() => hasSyncFields(allRows), [allRows]);
   reloadRef.current = () => {
     if (date) void load(date, false);
   };
@@ -560,9 +579,9 @@ export function TicketsTrackingView() {
                 active={!product}
                 label="Total Guests"
                 yesPax={sumPax(
-                  allRows.filter((r) => r.confirmation_status === "yes"),
+                  sentRows.filter((r) => r.confirmation_status === "yes"),
                 )}
-                totalPax={sumPax(allRows)}
+                totalPax={sumPax(sentRows)}
                 onClick={() => setProduct("")}
               />
               {pills.map((p) => (
@@ -632,7 +651,7 @@ export function TicketsTrackingView() {
               className="[&_[data-phone-more]]:border-[#cbd5e1] [&_[data-phone-more]]:bg-paper [&_[data-phone-more]]:text-[#1a3a5c]"
             >
               <ColumnPicker
-                columns={SYSTEM_COLUMNS}
+                columns={pickerColumns}
                 prefs={prefs}
                 headers={headers}
                 onChange={updatePrefs}
@@ -688,6 +707,20 @@ export function TicketsTrackingView() {
             <div className="px-5 pb-2">
               <BroadcastPanel items={broadcasts} />
             </div>
+          ) : null}
+
+          {sync ? (
+            <p
+              data-unsent-note
+              className="mx-5 mb-2 flex items-center gap-1.5 text-[12.5px] text-[#1a1a1a] max-sm:mx-3"
+            >
+              <span
+                aria-hidden
+                className="inline-block h-3.5 w-3.5 shrink-0 rounded-[3px] border border-[#c7cad1]"
+                style={{ background: UNSENT_ROW_BG }}
+              />
+              <PhoneOneLine className="min-w-0 flex-1">{UNSENT_NOTE}</PhoneOneLine>
+            </p>
           ) : null}
 
           <div className="px-5 pb-1.5">
@@ -759,6 +792,8 @@ export function TicketsTrackingView() {
             <HowToUse
               title="How to use — Tickets Reminder Tracking"
               items={[
+                // G281 题 5 A：开着同步（看得到灰行）才出这两条；第一条在最前。
+                ...(sync ? [SYNC_HOW_TO] : []),
                 "Pick the service date. Click a tour button to see one product only. The search box finds an order #, name or phone.",
                 "To change a guest’s status, pick it in the Status column, then click ✓ next to it to save (✕ puts it back). Saved shows in green; if it can’t be saved, the reason shows in red at the top.",
                 "Click a Notes or WhatsApp cell to read the guest’s messages and reply. When your reply goes out to the guest (SMS or email sent), it counts as handled and the cell shows ✓ with your name. If no reply is needed, click Take action. SMS can be at most 300 characters, plain characters only (no emoji, curly quotes or long dashes); if it is longer, send it by email.",
@@ -766,6 +801,8 @@ export function TicketsTrackingView() {
                 "Drag a column header to move it. Drag its right edge to make it wider.",
                 "⬇ Download CSV saves everything for this date, whatever columns are showing: every column of the uploaded manifest, then the status columns. Older orders have no manifest columns, so those cells are blank.",
                 "⬆ Upload adds orders that were not sent from this system. Choose the product, then the CSV or .xlsx file. Orders already in the list are skipped unless you tick Insert anyway.",
+                // 这页 How to use 没有 Broadcast 那一条 ⇒ 放最后。
+                ...(sync && !noBroadcast ? [SYNC_BROADCAST_HOW_TO] : []),
               ]}
               warning="If the list does not load, click ↻ Refresh or reload the page. If it still fails, take a screenshot and tell Annie."
             />
