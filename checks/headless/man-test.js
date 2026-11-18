@@ -1734,9 +1734,10 @@ async function run() {
     const B = 'A Cfm # with fewer than 6 digits (for example "1" or "TBA") counts as no Cfm #. The scheduled send skips these orders and the daily report lists them as "Cfm # is too short (under 6 digits)". When you send by hand you can still Send anyway; the number goes out as it is. Tour types ticked No Cfm # needed in Settings → Content Studio (such as the two Hogan Upper Antelope tours) are sent without a Cfm #.';
     const C = "If the saved Cfm # has fewer than 6 digits, Overwrite is ticked for you; untick it to keep the saved number.";
     const i = items.indexOf(A);
-    // 152 在前面（Order lookup 那条后面）加了一条「Click an order number…」⇒ 这两条各往后挪一位（第 16、17 条）。
-    check("How to use 第 16 条（Cfm # 号短 + Send anyway）原句", i === 15, JSON.stringify(items[15]));
-    check("How to use 第 17 条（号短算没号 / No Cfm # needed）原句", items[16] === B, JSON.stringify(items[16]));
+    // 152 在前面（Order lookup 那条后面）加了一条「Click an order number…」⇒ 这两条各往后挪一位（第 16、17 条）；
+    // 产品名标红（2026-11-17）在 sections 那条后面又加一条 ⇒ 再挪一位（第 17、18 条）。
+    check("How to use 第 17 条（Cfm # 号短 + Send anyway）原句", i === 16, JSON.stringify(items[16]));
+    check("How to use 第 18 条（号短算没号 / No Cfm # needed）原句", items[17] === B, JSON.stringify(items[17]));
     const up = items.find((x) => x.startsWith("↑ Upload confirmation #s")) || "";
     check("How to use 原第 21 条（↑ Upload confirmation #s，现第 22 条）末加 Overwrite 默认勾那句", up.endsWith(C), JSON.stringify(up));
   }
@@ -2039,6 +2040,7 @@ async function run() {
   await orderLinkChecks();
   await notesChecks();
   await sessionChecks();
+  await redProductChecks();
 
   // ── 未登录：跳 ops 自己的登录页带 next ──
   await ctl({ fail401: true });
@@ -2088,6 +2090,28 @@ async function main() {
   const failed = results.filter((r) => !r.ok);
   console.log(`\n${results.length - failed.length}/${results.length} passed`);
   process.exit(failed.length ? 1 : 0);
+}
+
+// ── 产品名标红（Annie 2026-11-17「产品标红同意全部推荐。动手」；preview Ksg4SKsz4RxtriyNK37xri）：
+//    后端 product_differs = true ⇒ Product 格整个深红字 #a32d2d，title 写这一节大多数产品；前端不自己比。──
+async function redProductChecks() {
+  const BUS = `${APP}/manifests?date=${today}&tab=bus&pill=g%3A3`;
+  const cell = (o) => `(() => { const tr = $box('${o}')?.closest('tr'); const i = $heads().indexOf('Product'); return tr && i >= 0 ? tr.querySelectorAll('td')[i + 2] : null; })()`;
+  const MOST = "Upper Antelope Canyon Tour with Lunch";
+  await ctl({ role: "staff", sessions: false, rezdyTix: false, cfmMix: false, sections: true, productDiffers: { CHD1001: MOST }, prefs: { bus: JSON.stringify(["order_number", "product", "guest_name", "pax"]), tickets: null } });
+  await openPage(BUS);
+  await waitFor(`${cell("CHD1001")}?.hasAttribute('data-product-differs')`, 20000);
+  check("产品标红：product_differs = true 的行，Product 格深红字 #a32d2d（字重不变）", await evaluate(`const c = ${cell("CHD1001")}; const st = getComputedStyle(c); return st.color === 'rgb(163, 45, 45)' && Number(st.fontWeight) < 600;`), await evaluate(`return ${cell("CHD1001")}?.outerHTML;`));
+  check("产品标红：鼠标停上去的提示照 Annie 定的原文", await evaluate(`return ${cell("CHD1001")}.title === ${JSON.stringify(`Different from most products in this section: ${MOST}`)};`), await evaluate(`return ${cell("CHD1001")}?.title;`));
+  check("产品标红：只红产品名，行底色不变、其他格照旧黑字", await evaluate(`const tr = $box('CHD1001').closest('tr'); return !tr.className.includes('bg-[#fdeceb]') && getComputedStyle(tr.querySelectorAll('td')[$heads().indexOf('Pax') + 2]).color !== 'rgb(163, 45, 45)';`));
+  check("产品标红：product_differs = false 的行（CHD1002）不红、没有提示", await evaluate(`const c = ${cell("CHD1002")}; return !!c && !c.hasAttribute('data-product-differs') && !c.title && getComputedStyle(c).color !== 'rgb(163, 45, 45)';`), await evaluate(`return ${cell("CHD1002")}?.outerHTML;`));
+  check("产品标红：How to use 写了红色产品名那句", await evaluate("const d = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Manifests')); return !!d && d.textContent.includes('A product name in red is different from most products in its section') && d.textContent.includes('Check the order in Order List before you count meals or tickets.');"));
+  // 旧后端（行上没有这两个键）⇒ 照旧，不报错
+  await ctl({ productDiffers: null });
+  await openPage(BUS);
+  await waitFor(`${cell("CHD1001")}`, 20000);
+  check("产品标红：旧后端没有 product_differs ⇒ 都不红、页面照常", await evaluate(`return !document.querySelector('[data-product-differs]') && getComputedStyle(${cell("CHD1001")}).color !== 'rgb(163, 45, 45)' && !document.body.textContent.includes('Something went wrong');`));
+  await ctl({ sections: false, prefs: { bus: null, tickets: null } });
 }
 
 // ── 置顶 74：Upper Antelope (Brenda) 每单 waiver link（Annie「那4提全部按推荐走，动手」；preview 5niqePBqxUsCBqKpLLKCnm）──

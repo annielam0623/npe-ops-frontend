@@ -81,6 +81,19 @@ html::-webkit-scrollbar-thumb:hover {
   }
 }
 
+/* Morning Pickup Tracking 顶栏状态灯：自动刷新中绿点一圈圈往外扩（Annie 2026-11-17 整合样稿第 2 / 5 题 A）。 */
+@keyframes mt-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.6);
+  }
+  70% {
+    box-shadow: 0 0 0 7px rgba(46, 204, 113, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(46, 204, 113, 0);
+  }
+}
+
 /* Daily Tasks 到点提醒弹窗刚出现时闪 3 下再定格（components/tasks/reminder-popup.tsx，
    Annie 2026-10-19：「选B，然后可以制造一点声响或者震动一下么」「或者bling-bling闪几下」）。
    起止值和弹窗稳定态的边框 / 发光一致，闪完不会跳一下。 */
