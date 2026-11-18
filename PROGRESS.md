@@ -18,7 +18,7 @@
 6. 后端（6f / 91）：旧 confirm Dispatch 页停用 **29139573**（提示页 + 跳 ops /dispatch，旧 Morning Relay 面板随之没了）；G331 旧发送页停用 2043e2b4（上午）。
 
 **二、在做、没合 main**
-- **Morning Pickup Tracking 顶部整合（00）**：Annie 动手（原话「tracking和live driver的显示不要变。其他都同意推荐。动手」）⇒ ①②③⑤ A、④ 两个标签原样。样稿 https://claude.ai/artifact/YLmDAX7TGbJ5sa7WCwY58o 。Annie 又要「preview一个改完之后的手机版给我看」⇒ 已叫 00 出最终手机版（约 390px，Super Admin / staff，往下滑看表格）。Annie 说收工后已叫 00：手机 preview 能出就发链接、WIP 提交推自己分支（不合 main）、关 dev server。**00 的回报（分支 / SHA / 做到哪）见下面补记；没有补记就去问 00 或看 origin 上 00 的分支**。下一步：做完 → mt + nav + tsc / eslint / build → 6f PASS → 合。
+- **Morning Pickup Tracking 顶部整合（00）**：Annie 动手（原话「tracking和live driver的显示不要变。其他都同意推荐。动手」）⇒ ①②③⑤ A、④ 两个标签原样。样稿 https://claude.ai/artifact/YLmDAX7TGbJ5sa7WCwY58o 。Annie 又要「preview一个改完之后的手机版给我看」⇒ 已叫 00 出最终手机版（约 390px，Super Admin / staff，往下滑看表格）。Annie 说收工后已叫 00：手机 preview 能出就发链接、WIP 提交推自己分支（不合 main）、关 dev server。**00 收工补记**：代码写完，分支 **task/mt-console @ 299d9854**（从 main 44001088 拉，已推，没合）。手机版截图（按定稿代码 + 模拟数据，390×844，Super Admin / staff + 电脑版）https://claude.ai/artifact/FXoN8vxd3bcdxWdxKi2cwm 已转 Annie，待她看。做了：日期行等宽数字条 + 签到率进度条；顶栏状态灯 LIVE 绿点闪 / STOPPED 灰点 / AUTO-REFRESH OFF（整句在 title + 读屏字）；司机按钮 5px 小长方形 + 细绿线（文字「Mike: 1/2」→「Mike 1/2」照样稿）、搜索框和记录数同一行；页签完全没动；手机 Export 进 ⋯、司机横滑、进度条一整行、搜索单独一行；How to use 改两条。文件：components/morning-tracking/morning-tracking-view.tsx、app/globals.css（mt-pulse）、checks/headless/mt-test.js。已过：tsc、eslint、mt 282/282。**还没做：nav、next build、合最新 main 后重跑 mt + nav、交 6f SHA + 对照表 → PASS → 合 main**。Annie 看了手机版要改的话先改再交。
 - 其余等后端 / 等 Annie 的分支照旧：00 noshow ed0cf996、68 150-relay-tour a822df5f（等 G321）；00 payroll-lock-edit 6d2de212、payroll-auto-lock df0128c8（等后端 payroll 合同）；68 G281 WIP a271aff5。
 
 **三、📌 等 Annie（新的，旧的见下面一节置顶）**
