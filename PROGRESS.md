@@ -19,6 +19,7 @@
 - 📌 **产品名标红样稿（81）** https://claude.ai/artifact/Ksg4SKsz4RxtriyNK37xri ，等 Annie 答 4 题 + 动手：题 1 红色 A 深红 #a32d2d 不加粗（同页报错红，推荐）/ B 亮红 #e02424 加粗；题 2 悬停提示 A 电脑悬停 "Different from most products in this section: <大多数产品名>"、手机只红字（推荐）/ B 不提示 / C 手机红字下多一行 "Most: …"；题 3 CSV A 不变（推荐）/ B 加 "Product check" 列；题 4 How to use A 加："A product name in red is different from most products in its section (the agent name in brackets and the pickup part don't count), for example missing "with Lunch". Hover over it to see what most of the section booked. Check the order in Order List before you count meals or tickets."（推荐）/ B 不加。已定不问：不加开关、只字变红底色不变、打印也红、后端没字段时照旧不报错、没有严格多数不标。
   - ✅ Annie（81 窗口，原话）「产品标红同意全部推荐。动手」⇒ 1 A / 2 A / 3 A / 4 A。81 开 task/manifest-red-product（D:\ops-wt-81-red）写，暂用 row 顶层 product_differs（bool）/ product_majority（string|null），等 32 定真名再改。 32 回：a9 直接用这两个名字。
 - 32：**G321 第二段今晚不上 main**（6 个合并冲突，明天先解）⇒ 36 的任务 2（noshow-tracking）和 68 的 150-relay-tour 今晚不等；36 做完 mt-console 改做 SMS 超字数 preview（分支 task/sms-over-limit-email-only，动手后写）。工资三件 35 在落地，SHA 后发。
+- **新：Morning Tracking 手机版简化**（Annie 在 81 窗口，原话，非动手）：「手机版的moring tracking最大问题就是无关的区域占的面积太大了，比如说check-in log这个标题，完全就不需要，电脑版可以放很多东西但手机版就需要简化，然后每行的行距也很大，客人的信息做成点击才展开，平时就显示红色和绿色就好了」⇒ 只手机版：去掉 Check-in log 等无关标题、行距压小、客人信息默认收起只露红 / 绿、点开展开。先 preview。派 36（同文件，接在 mt-console 上）。⇒ SMS 超字数 preview 改派 81（标红做完后接）。
 
 ## 2026-11-17 晚 收工交接（续）：前端主窗口 `前端主窗口-b0 (fork)`[696851]
 > Annie 下午延到 15:30，之后又继续派活到傍晚；后端 6f 已收工（后端交接 b032d420）。Annie「我回家继续，你详细地写进交接」。家里的前端主窗口先读本节，再读下面「2026-11-17 收工交接」和置顶 📌。
