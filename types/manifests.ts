@@ -117,6 +117,14 @@ export interface ManifestRow {
   note?: string;
   note_updated_by?: string;
   note_updated_at?: string | null;
+  /**
+   * 产品名标红（Annie 2026-11-17「产品标红同意全部推荐。动手」）：后端在同一节里比产品名的主要文字
+   * （去掉括号里的代理商、SB:DP、逗号后的上车点），跟这一节大多数不一样 ⇒ true，Product 格整个红字。
+   * 前端只认这个布尔，不自己比。旧后端没有 ⇒ 当 false。
+   */
+  product_differs?: boolean;
+  /** 这一节大多数产品的主要文字，给悬停提示用；没标的行 null。 */
+  product_majority?: string | null;
   /** 只含 `fields` 里的键。 */
   values: Record<string, ManifestValue>;
 }
