@@ -14,6 +14,7 @@
   - 工资（35）：路径照前端列的三个在做，合同 + SHA 出来 32 转来。
   - 工资合同（35，未上 main，全量 + 复审在跑，SHA 后发；合同在后端分支 docs/interfaces/guide-payroll-2026-11-13.md）：GET /api/payroll/rates 加 guides [{hr_id, name}]；PUT /api/payroll/locks/{id} body 只带要改的 from / to / note，回 {changed, lock}，不重叠规则同加锁；GET /api/payroll/auto-lock（view 权限）回 {enabled, enabled_at, can_edit}，can_edit 只 Super Admin 为 true；PUT /api/payroll/auto-lock（只 Super Admin）body {enabled}，回 {enabled, enabled_at, changed, can_edit}；开关只存一份 = 统一开关页 notification_switches 的 payroll_auto_lock 键（两处改同一个值），默认关；自动锁每月 5 / 20 号 23:59 LA，已锁的日子不动、只补没锁的段。⇒ 00 的 payroll-lock-edit 6d2de212、payroll-auto-lock df0128c8 照此改名（auto-lock 要补检查套），SHA 到了派窗口。
 - **新（32 预告，Annie 21:4x「今晚就做」，前后端各一份）：Main Manifest 产品名标红**。规则（Annie 定）：同一节里比产品名的主要文字（去掉代理商部分：括号里的 Canyontours / Viator / Groupon / CHD、SB:DP、逗号后的 Treasure Island Pickup (Musement) 之类），跟这一节大多数不一样的，那一行整个产品名红字。起因：PYZF0H「Lower Antelope Canyon & Horseshoe Bend Tour from Las Vegas」少了 with Lunch，午餐少算 2 份。不加开关。后端每行加一个布尔字段（名字 32 定后发），前端只按它标红、不自己比。样子变 ⇒ 先 preview 给 Annie。已问 32：哪几种行带字段、往返两段怎么算、一半一半怎么算、有没有「这一节大多数是什么」的字段给悬停提示。等前端工作窗口开好再派。
+  - 32 回：后端由 a9 做（G279 已上后端 main efeae017，只改后端模板，前端不用接）。倾向：① 显示产品名的行都带字段，只在 bus_tour 组的节里比，其余 false；② 按产品比，往返两段结果一样；③ 没有严格多数就不标；④ 另给一个字符串字段（这一节大多数产品的主要文字）给悬停提示，没标的行 null。字段名合同定了再发；preview 先用假字段名。
 
 ## 2026-11-17 晚 收工交接（续）：前端主窗口 `前端主窗口-b0 (fork)`[696851]
 > Annie 下午延到 15:30，之后又继续派活到傍晚；后端 6f 已收工（后端交接 b032d420）。Annie「我回家继续，你详细地写进交接」。家里的前端主窗口先读本节，再读下面「2026-11-17 收工交接」和置顶 📌。
