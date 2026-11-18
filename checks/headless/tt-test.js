@@ -981,6 +981,7 @@ async function run() {
     await ctl({ syncMode: "off" });
     await open();
     await waitFor(sw);
+    check("置顶 95：电脑上只有一个 Main manifest sync 框（不再两个一样的），靠右", await evaluate(`const all = document.querySelectorAll('[data-sync-switch]'); const r = all[0].getBoundingClientRect(); const row = all[0].parentElement.closest('div').getBoundingClientRect(); return all.length === 1 && document.querySelectorAll('select[aria-label="Main manifest sync"]').length === 1 && row.right - r.right < 40;`), await evaluate(`return document.querySelectorAll('[data-sync-switch]').length;`));
     check("置顶 95：Super Admin ⇒ 日期那一行最右边「Main manifest sync」下拉 Off / Super Admin only / Staff，当前 Off，旁边小字", await evaluate(`const s = ${sel}; return [...s.options].map((o) => o.textContent).join('|') === 'Off|Super Admin only|Staff' && s.value === 'off' && ${sw}.textContent.includes('Only Super Admins see this setting.') && !!${sw}.closest('.mb-4');`));
     check("置顶 95：Off 的说明原文", (await evaluate(`return ${help};`)) === "Off: orders that have not been sent yet don't show here, and there is no Order Status column. The page works as before.");
     let b = (await mockLog()).length;
