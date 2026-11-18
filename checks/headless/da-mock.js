@@ -745,6 +745,18 @@ http.createServer(async (req, res) => {
   //   ctl.shuttleFalse = outbound、外地 shuttle 站（St George，false）；ctl.shuttleIn = inbound、外地站（Page，false）；
   //   ctl.shuttleNull = outbound、上车点空 / OFFICE 对不上（null）；ctl.shuttleLegacy = outbound、旧后端没有这个键。
   // 团客（tour 节）一律 TI true 以外的随便写，不算。都没给 = 404，排车页不出 Shuttle 提示。
+  // 147 第二部分：Open 班时间段（后端 dispatch_open_today.py）。只 Super Admin（别人 403）；坏值 400 字符串 detail；ctl.owBad = PUT 一律 400。
+  if (p === "/api/settings/dispatch-open-today") {
+    if (!ctl.superAdmin) return send(res, 403, { detail: "Super Admin only." });
+    if (req.method === "GET") return send(res, 200, ctl.openWin || { start: "00:00", end: "10:00" });
+    if (req.method === "PUT") {
+      const b = JSON.parse(await readRaw(req)); entry.body = b;
+      if (ctl.owBad) return send(res, 400, { detail: "Time must be HH:MM (24-hour), like 07:30." });
+      if (!(b.start < b.end)) return send(res, 400, { detail: "Start time must be earlier than end time." });
+      ctl.openWin = { start: b.start, end: b.end };
+      return send(res, 200, ctl.openWin);
+    }
+  }
   // Nov 18–22 改接客点（pickup-move）：2026-11-18 两个团（West Rim 3、Hoover Dam 4）的名单；Refresh 走单张重拉。
   if (p === "/api/dispatch/manifest" && q.date === "2026-11-18") {
     const g = (order_number, name, pax, pickup_location, extra = {}) => ({ id: pmId++, order_number, name, first_name: name, last_name: "", pax, product: "x", pickup_location, hotel_short: "", pickup_location_id: 1, pickup_is_vegas: true, ...extra });
