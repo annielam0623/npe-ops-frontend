@@ -4,7 +4,18 @@
 
 > 6d 交接（下面「2026-10-27 交接：前端主窗口 6d」那节）的后端需求已于 10/27 晚由 ad 转给家里后端主窗口 17。
 
-> **下一个主窗口：先读下面「2026-11-17 收工交接」，再看那天的主窗口记录。**
+> **下一个主窗口：先读下面「2026-11-17 深夜 收工交接：fc」，再读 fc 当晚记录和「2026-11-17 晚 收工交接（续）」。**
+
+## 2026-11-17 深夜 收工交接：前端主窗口 `npe-ops-frontend-fc`[450807]（家里电脑，23:00 下班）
+**一、今晚上 main**：Main Manifest 产品名标红 **40bbb306**（81；后端 a9 e27f4c12，32 PASS）。📌 请 Annie 线上验 11-26 Main manifest › Bus Tours › Antelope 的 PYZF0H（深红字、悬停提示、How to use 一句）。
+**二、在分支、没合 main（明天先做）**
+1. 36：**task/mt-phone-compact @ 33de2609**（叠在 task/mt-console efc85d77 上）= Morning Tracking 顶部整合 + 手机版简化，Annie 两件都已动手。mt-console 后端 32 已 PASS；phone-compact 还没人核对。明天交后端主窗口核对两条，过了合 33de2609（两条一起上）。Annie 没答「顶部整合先上 / 一起上」，现在默认一起上。worktree D:\ops-wt-36-mt。
+2. 81：**task/sms-over-limit-email-only @ 67a681da**（WIP，Annie 动手「同意全部推荐，动手」）：只做了 lib/sms-limit.ts 共用函数 + components/ui/sms-problem.tsx；三个入口（broadcast-dialog / send-dialogs / conversation-modal）没接、How to use 和检查套没改。步骤在 SMS 那条下面（81 写的）。worktree D:\ops-wt-81-sms。
+3. 81：**task/payroll-wire @ c29b45f6**（WIP，00 两条 lock-edit + auto-lock 合一，按后端 d8a4f4b5 合同接好）：payroll 115/115、nav 39/39、tsc 0；差 build、核对 Applies to 名单是否已换后端 guides、交后端核对后合。worktree D:\ops-wt-81-pay。
+4. 等后端 G321 第二段（明天落地，合同差异 5 条在 fc 开工节）：00 task/noshow-tracking ed0cf996、68 task/150-relay-tour a822df5f。
+**三、📌 等 Annie（原文都在 fc 当晚记录，不滚动重问）**：① 产品名红字显示内部简称「Antelope」，悬停看不到这单实际名 ⇒ A 明天后端加字段、悬停改两行（推荐）/ B 不改 / C（已上线，作废）；② Morning Tracking 顶部整合先上 / 跟手机版一起上（没答默认一起）；③ Gray Line SVG 标志用途（A 放 ops 页面 / B 邮件短信模板 / C 先存着）；④ 「2026-11-17 晚 收工交接（续）」里的旧题照旧。
+**四、后端**：32 收工（交接 c57c4162）。今晚上后端 main：G279 efeae017、工资三件 d8a4f4b5、产品名标红 e27f4c12。
+**五、窗口**：81、36 都已关 dev server / Chrome。主窗口 worktree D:\ops-wt-fc（detached，可删可留）。
 
 ## 2026-11-17 晚 家里开工：前端主窗口 `npe-ops-frontend-fc`[450807]（只分工和汇报，不写代码；23:00 下班）
 - 开工：main 12ada5a3。后端在线 `后端主窗口32`[9e868a]（已报名字和挂着等后端的 4 个分支）；另有 f9 / a9 / 35 三个窗口，已问 32 哪些是后端的。现在没有前端工作窗口。
