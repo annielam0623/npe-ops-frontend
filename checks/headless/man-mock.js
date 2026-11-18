@@ -388,6 +388,10 @@ function page(url) {
         section: sectionsOn ? SECTION_OF[r.order_number] : null, values, ...noteOf(r.order_number, r.product_code, date),
         ...(ctl.waiver ? { waiver_link_required: !!r.waiver } : {}),
         ...(ctl.mismatch ? { cfm_mismatch: mismatchOf(r.order_number, key) } : {}),
+        // 产品名标红：ctl.productDiffers = { 订单号: 大多数产品的主要文字 }；开着时每行都带两个键，不在里面的 false / null；没设 = 旧后端，不带。
+        ...(ctl.productDiffers
+          ? { product_differs: r.order_number in ctl.productDiffers, product_majority: ctl.productDiffers[r.order_number] ?? null }
+          : {}),
         ...(ctl.cfmRule && r.tab === "tickets"
           ? (() => {
               const nn = (ctl.cfmRule.notNeeded ?? []).includes(r.order_number);
