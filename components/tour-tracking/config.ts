@@ -626,6 +626,7 @@ export function toursOnDate(
 /** 群发候选人：所选团的全部客人（General）/ 有 MTLV 资格的（MTLV），不按状态筛（同旧页面）。 */
 export function broadcastCandidates(
   rows: TourTrackingRow[],
+  meta: TourMeta,
 ): BroadcastCandidate[] {
   return rows.map((r) => ({
     key: String(r.id),
@@ -640,5 +641,11 @@ export function broadcastCandidates(
     pickupLocation: r.pickup_location || "",
     pickupHotelName: r.pickup_hotel_name || "",
     pickupTime: r.pickup_time || "",
+    // 名单每行写团的全名（Annie 2026-11-17 Broadcast 订单行标签 2A）：shuttle 写产品名；没设团 = ""。
+    tourName: !r.tour_type
+      ? ""
+      : isShuttleTourType(r.tour_type)
+        ? shuttleProductLabel(r)
+        : meta.label(r.tour_type),
   }));
 }
