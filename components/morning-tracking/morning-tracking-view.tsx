@@ -58,6 +58,7 @@ import { PageShortcutBar } from "@/components/nav/page-shortcut-bar";
 import { PhoneMore, PhoneShortcutStar } from "@/components/ui/phone";
 import { useIsPhone } from "@/lib/phone";
 import { LiveDriversBoard } from "./live-drivers";
+import { PhoneTrackingList } from "./phone-tracking-list";
 import { TrackingTable } from "./tracking-table";
 import { setVisibleInterval } from "@/lib/visible-poll";
 
@@ -390,6 +391,14 @@ export function MorningTrackingView() {
   const showMarks = hasLiveMarks(allRows);
   // 置顶 58：后端带了到 / 离时间才出 Arrived at / Left at 两列（旧后端没有这两个键）。
   const showArrivals = allRows.some((r) => "arrived_at" in r);
+  const visibleColumns = columnOrder.filter(
+    (k) =>
+      // 没勾 See prices, agent & commission（orders.money_view，题 8）：Agent 列整列不出（后端给的是空字符串）。
+      (canSeeMoney || k !== "agent_name") &&
+      // 后端还没带司机标记（旧版）：Driver mark 列不出。
+      (showMarks || k !== "driver_mark") &&
+      (showArrivals || (k !== "arrived_at" && k !== "left_at")),
+  );
   const livePeople = useMemo(() => {
     const people = live.kind === "ready" ? live.data.people : [];
     if (!activeDriver) return people;
@@ -519,13 +528,6 @@ export function MorningTrackingView() {
           </TrackingNotice>
         ) : (
           <>
-            {/* 手机上不出日期切换，只写今天。 */}
-            <p
-              data-phone-today
-              className="mb-2 text-[14px] font-semibold text-[#7ab3e0] sm:hidden"
-            >
-              Today · {phoneDay(today)}
-            </p>
             {/* Annie 2026-11-17「这个页面也要整合一下，空白的地方太多了，搞得有高科技感一些」，样稿 1/2/3/5 A、页签不动：
                 日期 + 一行数字（原来 4 张大卡）；司机按钮 + 搜索并成一行，窗口窄了才折行。 */}
             <div className="mb-3 flex flex-wrap items-center gap-x-2 gap-y-2 max-sm:mb-2">
@@ -571,7 +573,11 @@ export function MorningTrackingView() {
                 aria-hidden
                 className="mx-1.5 h-[18px] w-px bg-white/[.12] max-sm:hidden"
               />
-              <SummaryStrip stats={stats} />
+              {/* 手机上不出日期切换，只写今天；「Today · …」并进数字那一行（手机简化题 5 A）。 */}
+              <SummaryStrip
+                stats={stats}
+                phoneToday={isPhone ? phoneDay(today) : null}
+              />
             </div>
 
             {canLive ? (
@@ -734,6 +740,19 @@ export function MorningTrackingView() {
               ) : (
                 <p className="p-7 text-center text-[#4a6a8a]">Loading…</p>
               )
+            ) : // 手机（< 640px）：不要 Check-in Log 标题和表头，每位客人一行、点开看详情（Annie 2026-11-17「全部按推荐，动手」，
+            // 样稿 2Tt9qzDzCYENfiAeEpdjn7）。电脑版照旧是整张表。
+            isPhone ? (
+              <PhoneTrackingList
+                rows={filtered}
+                columns={visibleColumns}
+                onOpenConversation={(row) => openConversation(row, false)}
+                newNoShow={newNoShow}
+                onToggleAction={(row, want) => void toggleAction(row, want)}
+                togglingId={togglingId}
+                now={now}
+                placeholder={placeholder}
+              />
             ) : (
               <section className="overflow-hidden rounded-[12px] border border-white/[.08] bg-[#1a2f4a]">
                 <div className="flex items-center justify-between border-b border-white/[.08] bg-[#0f2035] px-4 py-3">
@@ -754,15 +773,7 @@ export function MorningTrackingView() {
                   </div>
                   <TrackingTable
                     rows={filtered}
-                    columnOrder={columnOrder.filter(
-                      (k) =>
-                        // 没勾 See prices, agent & commission（orders.money_view，题 8）：Agent 列整列不出（后端给的是空字符串）。
-                        (canSeeMoney || k !== "agent_name") &&
-                        // 后端还没带司机标记（旧版）：Driver mark 列不出。
-                        (showMarks || k !== "driver_mark") &&
-                        (showArrivals ||
-                          (k !== "arrived_at" && k !== "left_at")),
-                    )}
+                    columnOrder={visibleColumns}
                     onReorder={reorderColumns}
                     onOpenConversation={(row) => openConversation(row, false)}
                     newNoShow={newNoShow}
@@ -781,6 +792,7 @@ export function MorningTrackingView() {
           title="How to use — Morning Pickup Tracking"
           items={[
             "Pick the date (‹ ›, the date box or Today). The numbers next to the date are for the guests you are looking at; the bar shows the check-in rate. Click a driver to see only their guests; the thin green line under each driver shows how many of their guests have checked in. The search box finds an order #, name or phone.",
+            "On a phone, each guest is one line: a green dot means checked in, a red dot means not checked in yet. ⚠️ means something needs you (a No show or a message). Tap the line to see the guest's details, Chat and Take action; tap it again to close.",
             "Check-in shows ✓ Checked In or ⏳ Pending.",
             "Click a number in Bus # to see where that bus is now. Samsara opens in a new tab. A number you cannot click has no live map: it is not in Settings → Vehicles, or that vehicle has no Samsara link.",
             "Click a Driver name to see where that driver is right now, even if they switched buses after dispatch. A name you cannot click means we could not match that driver to a live vehicle.",
@@ -893,7 +905,14 @@ function DriverPill({
  * 原来 4 张大卡换成一行控制台数字（Annie 2026-11-17 整合样稿第 1、5 题 A）：等宽字、淡光，签到率后面一根细进度条；
  * 手机上进度条单独占一行。数字不能点（同原来的卡）。
  */
-function SummaryStrip({ stats }: { stats: TrackingStats | null }) {
+function SummaryStrip({
+  stats,
+  phoneToday,
+}: {
+  stats: TrackingStats | null;
+  /** 手机上「Today · Tue, Nov 17」放在这一行最前面，标签缩短成 In / Rate（手机简化题 5 A）；电脑 null。 */
+  phoneToday: string | null;
+}) {
   const item = (
     key: string,
     label: string,
@@ -919,10 +938,18 @@ function SummaryStrip({ stats }: { stats: TrackingStats | null }) {
       data-mt-stats
       className="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[11px] tracking-[.06em] text-[#5a7a9a] uppercase tabular-nums max-sm:w-full max-sm:gap-x-3 max-sm:text-[10px]"
     >
+      {phoneToday ? (
+        <span
+          data-phone-today
+          className="font-sans text-[13px] font-semibold tracking-normal whitespace-nowrap text-[#7ab3e0] normal-case"
+        >
+          Today · {phoneToday}
+        </span>
+      ) : null}
       {item("total", "Total", stats ? stats.total : "—")}
       {item(
         "in",
-        "Checked in",
+        phoneToday ? "In" : "Checked in",
         stats ? stats.checkedIn : "—",
         "text-[#2ecc71] [text-shadow:0_0_10px_rgba(46,204,113,.35)]",
       )}
@@ -935,7 +962,7 @@ function SummaryStrip({ stats }: { stats: TrackingStats | null }) {
       <span title="Checked in / successfully sent SMS" className="contents">
         {item(
           "rate",
-          "Check-in rate",
+          phoneToday ? "Rate" : "Check-in rate",
           stats ? (rate === null ? "—" : `${rate}%`) : "—",
         )}
       </span>

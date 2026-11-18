@@ -1226,7 +1226,7 @@ async function run() {
     await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
     const from = (await mockLog()).length;
     await goto(`${APP}/morning-pickup/tracking?date=${yesterdayYmd}`);
-    await waitFor("document.querySelector('[data-phone-today]') && document.querySelectorAll('tbody tr').length > 0", 30000);
+    await waitFor("document.querySelector('[data-phone-today]') && document.querySelectorAll('[data-mt-phone-row]').length > 0", 30000);
     await sleep(800);
     const log = (await mockLog()).slice(from);
     check("手机：带 ?date=昨天打开也只看今天（最后一次读的是今天）", log.filter((e) => e.path === "/api/notifications/morning-pickup/tracking").pop()?.query === `?date=${todayYmd}`, JSON.stringify(log.map((e) => e.query)));
@@ -1235,6 +1235,49 @@ async function run() {
     check("手机：Export 收进 ⋯，顶栏是小灯 + ⋯ + Refresh；司机按钮一行横着滑；搜索框单独一行", await evaluate("const ex = [...document.querySelectorAll('a')].find(a => a.textContent.includes('Export')); const g = document.querySelector('[aria-label=\"Filter by driver\"]'); const vis = [...document.querySelectorAll('input[aria-label=Search]')].filter((x) => x.getBoundingClientRect().height > 0); return ex.getBoundingClientRect().height === 0 && document.querySelector('[data-phone-more]').getBoundingClientRect().width > 0 && getComputedStyle(g).flexWrap === 'nowrap' && getComputedStyle(g).overflowX === 'auto' && vis.length === 1 && document.documentElement.scrollWidth <= innerWidth + 1;"));
     check("手机：「Drag columns」操作提示不显示", await evaluate("const e = [...document.querySelectorAll('span')].find(s => s.textContent.includes('Drag columns to reorder')); return !e || e.getBoundingClientRect().height === 0;"));
     check("手机：标题栏有 ★，shortcut 条收起", await evaluate("const s = document.querySelector('[data-phone-shortcuts]'); return document.querySelector('[data-phone-star]').getBoundingClientRect().width > 0 && s.getBoundingClientRect().height === 0;"));
+
+    await helpers();
+    // ── 手机简化（Annie 2026-11-17「全部按推荐，动手」，样稿 2Tt9qzDzCYENfiAeEpdjn7 题 1–5 A）──
+    check("手机简化 题5：「Today · …」在数字那一行（同一行），标签 In / Rate", await evaluate("const s = document.querySelector('[data-mt-stats]'); const d = s.querySelector('[data-phone-today]'); const c = [...s.querySelectorAll('[data-stat]')]; return !!d && Math.abs(d.getBoundingClientRect().top - c[0].getBoundingClientRect().top) < 6 && $t('[data-mt-stats] [data-stat]').join('|') === 'Total5|In2|Pending3|Rate33%';"), await evaluate("return $t('[data-mt-stats] [data-stat]').join('|');"));
+    check("手机简化：没有 Check-in Log 标题、没有表格 / 表头，是一行一位的列表", await evaluate("return !/Check-in Log/.test(document.querySelector('main').innerText) && !document.querySelector('main table') && document.querySelectorAll('[data-mt-phone-row]').length === 5;"));
+    check("手机简化：每行 ≤ 40px 高，收起时不出详情", await evaluate("return [...document.querySelectorAll('[data-mt-phone-row] > button')].every((b) => b.getBoundingClientRect().height <= 40) && !document.querySelector('[data-mt-phone-detail]');"), await evaluate("return [...document.querySelectorAll('[data-mt-phone-row] > button')].map((b) => Math.round(b.getBoundingClientRect().height)).join(',');"));
+    check("手机简化 题1：一行 = 名字 + 人数 · 接客时间（A1001「ZZ Test One」「2 · 7:00 AM」；A1004 人数 0 写 —）", await evaluate("const r = (o) => document.querySelector('[data-mt-phone-row=\"' + o + '\"] > button').innerText.replace(/\\s+/g, ' '); return r('A1001').includes('ZZ Test One') && r('A1001').includes('2 · 7:00 AM') && !r('A1001').includes('A1001') && r('A1004').includes('— · 7:00 AM');"), await evaluate("return [...document.querySelectorAll('[data-mt-phone-row] > button')].map((b) => b.innerText.replace(/\\s+/g, ' ')).join(' | ');"));
+    check("手机简化 题2：圆点 = 签到（A1001、A1005 绿，其余红）", await evaluate("const dot = (o) => getComputedStyle(document.querySelector('[data-mt-phone-row=\"' + o + '\"] [data-checkin-dot]')).backgroundColor; return dot('A1001') === 'rgb(34, 197, 94)' && dot('A1005') === 'rgb(34, 197, 94)' && ['A1002', 'A1003', 'A1004'].every((o) => dot(o) === 'rgb(239, 68, 68)');"));
+    check("手机简化 题2：有没处理的消息的行名字后面 ⚠️，处理过 / 没消息的没有", await evaluate("const f = (o) => !!document.querySelector('[data-mt-phone-row=\"' + o + '\"] [data-needs-action]'); return f('A1002') && f('A1004') && f('A1001') && !f('A1005') && !f('A1003');"), await evaluate("return [...document.querySelectorAll('[data-mt-phone-row]')].map((r) => r.dataset.mtPhoneRow + ':' + !!r.querySelector('[data-needs-action]')).join(',');"));
+    await evaluate("document.querySelector('[data-mt-phone-row=\"A1004\"] > button').click();");
+    check("手机简化：点一行展开详情（Order #、Check-in、Phone、Bus # · Driver、Pickup、WhatsApp、SMS · Email）+ 💬 Chat、⚠️ Take action", await waitFor("(() => { const d = document.querySelector('[data-mt-phone-row=\"A1004\"] [data-mt-phone-detail]'); if (!d) return false; const t = d.innerText; return ['Order #', 'A1004', 'Check-in', 'Pending', 'Phone', 'Bus # · Driver', 'Pickup', 'WhatsApp', 'SMS · Email'].every((x) => t.includes(x)) && !!d.querySelector('[data-phone-chat]') && !!d.querySelector('[data-phone-take-action]'); })()"), await evaluate("return document.querySelector('[data-mt-phone-detail]')?.innerText;"));
+    await evaluate("document.querySelector('[data-mt-phone-row=\"A1001\"] > button').click();");
+    check("手机简化 题4：点另一行，前一行自动收起（一次只开一位）", await waitFor("document.querySelectorAll('[data-mt-phone-detail]').length === 1 && !!document.querySelector('[data-mt-phone-row=\"A1001\"] [data-mt-phone-detail]')"));
+    check("手机简化：页面不左右晃", await evaluate("return document.documentElement.scrollWidth <= innerWidth + 1;"));
+    {
+      const f = (await mockLog()).length;
+      await evaluate("document.querySelector('[data-mt-phone-row=\"A1001\"] [data-phone-take-action]').click();");
+      let put = false;
+      for (let i = 0; i < 30 && !put; i++) {
+        put = (await mockLog()).slice(f).some((e) => e.method === "PUT" && /\/take-action/.test(e.path) && String(e.query).includes("want=on"));
+        if (!put) await sleep(200);
+      }
+      check("手机简化 题3：详情里 ⚠️ Take action ⇒ PUT take-action want=on", put);
+      check("手机简化：刷新后开着的那一行照旧开着", await waitFor("!!document.querySelector('[data-mt-phone-row=\"A1001\"] [data-mt-phone-detail]')"));
+      await sleep(600);
+      await evaluate("document.querySelector('[data-mt-phone-row=\"A1001\"] [data-phone-chat]').click();");
+      check("手机简化：💬 Chat 打开对话弹窗", await waitFor("!!document.querySelector('[role=dialog]')"));
+    }
+    // Super Admin + 司机标记：No show 置顶、整行淡红、「NO SHOW ⚠️」；详情里有 Driver mark，Take action 在底下一排
+    await ctl({ live: true, staffPerms: null, superAdmin: true, extraWidgets: [{ key: "morning_live_drivers", label: "Live drivers", visibility: "super_admin_only", default: "super_admin_only", visible_to_me: true }] });
+    await goto(`${APP}/morning-pickup/tracking`);
+    await waitFor("document.querySelectorAll('[data-mt-phone-row]').length >= 4", 30000);
+    await helpers();
+    check("手机简化 Super Admin：没处理的 No show A1002 在最上面、淡红底、写 NO SHOW ⚠️", await waitFor("(() => { const li = document.querySelector('[data-mt-phone-row]'); return li.dataset.mtPhoneRow === 'A1002' && li.dataset.nsRow === 'A1002' && getComputedStyle(li).backgroundColor !== 'rgba(0, 0, 0, 0)' && li.querySelector('[data-needs-action]').textContent.startsWith('NO SHOW ⚠️'); })()"), await evaluate("return document.querySelector('[data-mt-phone-row]')?.outerHTML.slice(0, 300);"));
+    await evaluate("document.querySelector('[data-mt-phone-row=\"A1002\"] > button').click();");
+    check("手机简化 Super Admin：展开 No show 行，Driver mark「✗ No show 6:03 AM」（不带自己的 Take action），底下 ⚠️ Take action", await waitFor("(() => { const d = document.querySelector('[data-mt-phone-row=\"A1002\"] [data-mt-phone-detail]'); return !!d && d.innerText.includes('Driver mark') && d.innerText.includes('✗ No show 6:03 AM') && !d.querySelector('[data-ns-take-action]') && !!d.querySelector('[data-phone-take-action]'); })()"), await evaluate("return document.querySelector('[data-mt-phone-detail]')?.innerText;"));
+    {
+      const f = (await mockLog()).length;
+      await evaluate("document.querySelector('[data-mt-phone-row=\"A1002\"] [data-phone-take-action]').click();");
+      check("手机简化 Super Admin：点 ⚠️ Take action ⇒ PUT bookings/2 want=on；不再红、没有 ⚠️，底下写 ✓ 谁 (tap to undo)", (await waitFor("(() => { const li = document.querySelector('[data-mt-phone-row=\"A1002\"]'); return !li.dataset.nsRow && !li.querySelector('[data-needs-action]') && !!li.querySelector('[data-phone-handled]'); })()")) && (await mockLog()).slice(f).some((e) => e.method === "PUT" && /\/api\/bookings\/2\/take-action/.test(e.path) && String(e.query).includes("want=on")));
+      await fetch(`${MOCK}/api/bookings/2/take-action?want=off`, { method: "PUT" });
+    }
+    await ctl({ live: false, staffPerms: null, superAdmin: false, extraWidgets: null });
     await cdp("Emulation.clearDeviceMetricsOverride");
     await goto(`${APP}/morning-pickup/tracking?date=${yesterdayYmd}`);
     await waitFor("document.querySelector('input[aria-label=\"Date\"]')", 30000);
