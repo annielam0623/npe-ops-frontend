@@ -1,0 +1,277 @@
+import { apiFetch } from "@/lib/api-client";
+import { LA_TIME_ZONE } from "@/lib/la-date";
+import type { DayOfTourEntry, DayOfTourMark, OrderDetail } from "@/types";
+import type { SendLogPage, SendLogRow } from "@/types";
+
+/**
+ * 订单生命周期（Annie 2026-11-18「我想要排法A」「框 1，其余照推荐，动手」，样稿 AXpG4ERRdNoQexGtJcnBUa 第 5 版）：
+ * Order lookup 和订单详情页上多出来的格子（Booked / Received / Changes / Sent / Last Minute / Reminder sent / Relay / Bus / Tour ended）。
+ * 第一批（题 8 A）只用今天就有的数据：订单详情接口（order_detail、activity_log、day_of_tour）+ send-log 按单号。
+ * 订单状态只从 Order List / Main manifest 来，不去 Rezdy 拉。
+ */
+
+/** 洛杉矶时间「11/18/2026 2:05 PM」（同订单详情接口 fmt_dt 的写法）。 */
+const LA_DT = new Intl.DateTimeFormat("en-US", {
+  timeZone: LA_TIME_ZONE,
+  month: "numeric",
+  day: "numeric",
+  year: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+});
+const LA_TIME = new Intl.DateTimeFormat("en-US", {
+  timeZone: LA_TIME_ZONE,
+  hour: "numeric",
+  minute: "2-digit",
+});
+
+export function formatLaDateTime(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  const t = new Date(iso).getTime();
+  return Number.isNaN(t)
+    ? "—"
+    : plainSpaces(LA_DT.format(t).replace(",", ""));
+}
+
+/** 新版 ICU 在 AM / PM 前用窄空格（U+202F），换成普通空格，跟接口的字串一样。 */
+const plainSpaces = (s: string) => s.replace(/[  ]/g, " ");
+
+export function formatLaTime(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  const t = new Date(iso).getTime();
+  return Number.isNaN(t) ? "—" : plainSpaces(LA_TIME.format(t));
+}
+
+// ── Booked / Received ────────────────────────────────────────────────────────
+
+/**
+ * Booked：Rezdy 下单时间 = order_detail.dateCreated（UTC ISO）；TripGuru 单看 tg_created_at。
+ * 旧通道很多单没有 ⇒ null（显示「—」）。
+ */
+export function bookedAt(order: OrderDetail): string | null {
+  const d = order.order_detail;
+  if (!d || typeof d !== "object") return null;
+  const rec = d as Record<string, unknown>;
+  for (const key of ["dateCreated", "tg_created_at"]) {
+    const v = rec[key];
+    if (typeof v === "string" && v.trim()) return formatLaDateTime(v);
+  }
+  return null;
+}
+
+/**
+ * Received：第一次收到 = activity_log 里最早一条 booking_created（Rezdy 推的，actor_type system）。
+ * 不用 created_at / updated_at：每次推送整单重写，存的是最后一次同步。接口已经是「M/D/YYYY h:mm AM」。
+ */
+export function receivedAt(order: OrderDetail): string | null {
+  const created = order.activity_log.filter(
+    (a) => a.event_type === "booking_created",
+  );
+  // 接口按时间新 → 旧排，最早的在最后。
+  return created.length ? created[created.length - 1].created_at : null;
+}
+
+// ── Changes ──────────────────────────────────────────────────────────────────
+
+export type ChangeSource = "rezdy" | "guest" | "staff" | "system";
+
+export interface ChangeEntry {
+  id: number;
+  at: string;
+  source: ChangeSource;
+  /** 来源那一格写的字：Rezdy / Guest / 员工名 / System。 */
+  who: string;
+  /** 一条记录可能改了几项（Refresh from Rezdy 一次改几项）。 */
+  items: { field: string; before: string; after: string }[];
+  /** 没有前后值时写的话。 */
+  text: string;
+}
+
+/** 有意义的改动（题 2 A）：Rezdy 改了、员工改了、客人要求改；其余是系统记录，收在 Show all 里。 */
+const MEANINGFUL = new Set([
+  "booking_updated",
+  "booking_cancelled",
+  "field_updated",
+  "refreshed_from_rezdy",
+  "status_changed",
+  "guest_modify_requested",
+  "confirmation_no_changed",
+]);
+
+/** "phone: 'a' → 'b'" 一段 ⇒ 前后值；对不上返回 null。 */
+function parseDiff(s: string): ChangeEntry["items"][number] | null {
+  const m = /^\s*(.+?):\s*'([\s\S]*?)'\s*→\s*'([\s\S]*?)'\s*$/.exec(s);
+  return m ? { field: m[1], before: m[2], after: m[3] } : null;
+}
+
+type Activity = OrderDetail["activity_log"][number];
+
+function sourceOf(a: Activity): { source: ChangeSource; who: string } {
+  const actor = (a.actor || "").trim();
+  if (a.actor_type === "system" && /^rezdy$/i.test(actor))
+    return { source: "rezdy", who: "Rezdy" };
+  if (a.actor_type === "guest" || /^guest$/i.test(actor))
+    return { source: "guest", who: "Guest" };
+  if (a.actor_type === "staff")
+    return { source: "staff", who: actor || "Staff" };
+  return { source: "system", who: actor || "System" };
+}
+
+export function toChange(a: Activity): ChangeEntry {
+  const { source, who } = sourceOf(a);
+  const detail = a.detail || "";
+  let items: ChangeEntry["items"] = [];
+  let text = detail || a.event_type;
+  if (a.event_type === "field_updated") {
+    const d = parseDiff(detail);
+    if (d) items = [d];
+  } else if (a.event_type === "refreshed_from_rezdy") {
+    const body = detail.replace(/^Refreshed from Rezdy\s*[—-]\s*/, "");
+    items = body
+      .split(/;\s*(?=[^;]+:\s*')/)
+      .map(parseDiff)
+      .filter((d): d is NonNullable<typeof d> => d !== null);
+    text = "Refreshed from Rezdy";
+  } else if (a.event_type === "booking_updated" && source === "rezdy") {
+    // 第一批：Rezdy 推送没存前后值（题 3 A 后端做了再接）。
+    text = "Updated by Rezdy";
+  } else if (a.event_type === "booking_cancelled" && source === "rezdy") {
+    text = "Cancelled in Rezdy";
+  }
+  return { id: a.id, at: a.created_at, source, who, items, text };
+}
+
+/** 新 → 旧（同接口），只留有意义的改动。 */
+export function meaningfulChanges(order: OrderDetail): ChangeEntry[] {
+  return order.activity_log
+    .filter((a) => MEANINGFUL.has(a.event_type))
+    .map(toChange);
+}
+
+/** Show all：全部记录（含系统记录），新 → 旧。 */
+export function allChanges(order: OrderDetail): ChangeEntry[] {
+  return order.activity_log.map(toChange);
+}
+
+/** Changes 块默认列几条（题 2 A：超过 3 条右上 Show all N）。 */
+export const CHANGES_SHOWN = 3;
+
+// ── Sent（send-log 按单号）───────────────────────────────────────────────────
+
+export type SendModule =
+  "tour_confirmation" | "last_minute" | "tickets_reminder" | "morning_pickup";
+
+/**
+ * 这单的全部发送记录：send-log 按单号是「包含」匹配，这里再按单号精确过滤（大小写不分）。不带日期 = 全部日期。
+ */
+export async function fetchOrderSends(
+  orderNumber: string,
+  signal?: AbortSignal,
+): Promise<SendLogRow[]> {
+  const page = await apiFetch<SendLogPage>("/api/notifications/send-log", {
+    cache: "no-store",
+    signal,
+    query: { order_number: orderNumber, page: 1, page_size: 200 },
+  });
+  const want = orderNumber.trim().toUpperCase();
+  return page.rows.filter(
+    (r) => (r.order_number || "").trim().toUpperCase() === want,
+  );
+}
+
+export interface SentSummary {
+  at: string;
+  by: string;
+  sms: string;
+  email: string;
+}
+
+/** 这个模块最近一次发送；date 给了就只看那天的团（改期以前的发送不算这一天的）。 */
+export function latestSend(
+  rows: readonly SendLogRow[],
+  module: SendModule,
+  date: string | null,
+): SentSummary | null {
+  const mine = rows
+    .filter(
+      (r) =>
+        r.module === module &&
+        r.sent_at &&
+        (!date || !r.tour_date || r.tour_date === date),
+    )
+    .sort((a, b) => (b.sent_at || "").localeCompare(a.sent_at || ""));
+  const r = mine[0];
+  if (!r) return null;
+  return {
+    at: formatLaDateTime(r.sent_at),
+    by: r.sent_by?.trim() || "—",
+    sms: r.sms_status || "",
+    email: r.email_status || "",
+  };
+}
+
+/** 「by veronica」：scheduler 写成 Auto send。 */
+export function sentByLabel(by: string): string {
+  if (!by || by === "—") return "";
+  return /^scheduler$/i.test(by) ? "by Auto send" : `by ${by}`;
+}
+
+// ── Relay / Bus（day_of_tour）────────────────────────────────────────────────
+
+/** 去程（leg ""）、这一天的那一条；没有 = null。 */
+export function dayOfTourFor(
+  order: OrderDetail,
+  date: string | null,
+): DayOfTourEntry | null {
+  const list = Array.isArray(order.day_of_tour) ? order.day_of_tour : [];
+  return (
+    list.find((e) => (!date || e.tour_date === date) && (e.leg || "") === "") ??
+    null
+  );
+}
+
+export type MarkTone = "good" | "bad" | "plain";
+
+export function markTone(mark: DayOfTourMark | null | undefined): MarkTone {
+  if (!mark) return "plain";
+  if (mark.value === "no_show") return "bad";
+  if (mark.value === "picked_up" || mark.value === "boarded") return "good";
+  return "plain";
+}
+
+/** 「Picked up 6:15 AM」；副行「Jane D.」/「Bus 3001」。 */
+export function markText(mark: DayOfTourMark): { main: string; sub: string } {
+  const time = formatLaTime(mark.at);
+  return {
+    main: [mark.label || mark.value, time !== "—" ? time : ""]
+      .filter(Boolean)
+      .join(" "),
+    sub: [mark.by, mark.vehicle && `Bus ${mark.vehicle}`]
+      .filter(Boolean)
+      .join(" · "),
+  };
+}
+
+/** Van at hotel：Morning Tracking 行的 arrived_at / left_at（ISO）。 */
+export function vanAtHotel(
+  arrived: string | null | undefined,
+  left: string | null | undefined,
+): string | null {
+  if (!arrived) return null;
+  const a = formatLaTime(arrived);
+  return left ? `${a} – ${formatLaTime(left)}` : a;
+}
+
+// ── How to use（题 6 A：第 3 版那 6 条原文）──────────────────────────────────
+
+export const LIFECYCLE_HOW_TO: readonly string[] = [
+  "The result shows the whole life of the order: when it was booked and received, any changes, the messages sent to the guest and the reply, lunch, morning pickup and when the tour ended.",
+  "Booked is when the order was made in Rezdy. Received is when it first came into our Order List.",
+  "Changes lists updates from Rezdy, edits by staff and requests from the guest, with the old value crossed out. Click Show all to see every entry.",
+  "Sent shows when each message went out and who sent it. Relay and Bus show Picked up, Boarded or No show as marked in Dispatch.",
+  "Tour ended is the time the bus reached its first hotel stop back in Las Vegas. A — means there is no record yet.",
+  "Order status comes from the Order List. To fix something, open the order in Main manifest or the Order List.",
+];
+
+/** 框 1：各块外框实线蓝（底色 / 格子 / 字不变），跟开关走。 */
+export const LIFECYCLE_FRAME = "border-[rgba(96,165,250,.55)]";

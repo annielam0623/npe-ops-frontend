@@ -10,6 +10,9 @@ import {
 } from "react";
 import { useSearchParams } from "next/navigation";
 import { ManifestLinks } from "@/components/order-lookup/manifest-links";
+import { LifecycleCard } from "@/components/order-lookup/lifecycle";
+import { LIFECYCLE_HOW_TO } from "@/lib/order-lifecycle";
+import { usePageVisibility } from "@/lib/page-visibility";
 
 import { FarmOutViewCard } from "@/components/farm-out/farm-out-view-card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -139,6 +142,9 @@ export function OrderDetailView({ orderNumber }: { orderNumber: string }) {
   // G280：TripGuru 的单不出（这个键是去 Rezdy 重拉）。
   // G297：「Send tour confirmation」——有 manifests.send 的员工；partner 不出。日期优先网址的 tour_date（Notice 链接带的）。
   const canSendTour = useTick("manifests.send") && !partner;
+  // 订单生命周期开关（order_lifecycle，默认只 Super Admin）：How to use 多 6 条。
+  const vis = usePageVisibility();
+  const lifecycleOn = vis.loaded && vis.visible("order_lifecycle") && !partner;
   const urlDate = useSearchParams().get("tour_date");
   const sendTour = useSendTourOrder(orderNumber, redirectToLogin);
   const canRefresh =
@@ -161,6 +167,7 @@ export function OrderDetailView({ orderNumber }: { orderNumber: string }) {
           money={perms.canSeeMoney}
           refresh={canRefresh}
           sendTour={canSendTour}
+          lifecycle={lifecycleOn}
         />
       )}
       {state.kind === "loading" ? (
@@ -412,6 +419,8 @@ function OrderBody({
             <div className={OD_LOADING_IN_CARD}>No notes.</div>
           )}
         </Card>
+        {/* 订单生命周期（Annie 2026-11-18 题 1 A：Activity 卡上面；开关 order_lifecycle，partner 不出）。 */}
+        {partner ? null : <LifecycleCard order={o} />}
         <Card title="Activity">
           {o.activity_log.length ? (
             <ul>
@@ -1214,10 +1223,13 @@ function HowToUse({
   money,
   refresh,
   sendTour,
+  lifecycle,
 }: {
   money: boolean;
   refresh: boolean;
   sendTour: boolean;
+  /** 订单生命周期开关看得到：多那 6 条（题 6 A 原文）。 */
+  lifecycle: boolean;
 }) {
   return (
     // 旧页这里是一直展开的蓝框（不是可折叠的 details），样式照 send_morning.html。
@@ -1284,6 +1296,9 @@ function HowToUse({
             ? " Raw Rezdy items and Raw Rezdy order at the bottom open the original data Rezdy sent."
             : ""}
         </li>
+        {lifecycle
+          ? LIFECYCLE_HOW_TO.map((t) => <li key={t}>{t}</li>)
+          : null}
       </ol>
       <div className="mt-2 border-t border-[#b5d4f4] pt-2 night:border-sky-400/20">
         Some orders are read-only: a red note under the order number says so and

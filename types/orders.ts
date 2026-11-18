@@ -124,6 +124,34 @@ export interface OrderDetail {
   }[];
   /** 转给合作公司的订单才有：两套上车资料 + 谁放前面（后端算）。 */
   farm_out_view?: FarmOutView;
+  /**
+   * G321（后端 manifest_noshow.day_of_tour，读 manifest_mark_history）：这单每个团期 / 段的 Relay / Bus 标记；
+   * 没有标记 = []；旧后端没有这个键。订单生命周期的 Relay / Bus 格子用。
+   */
+  day_of_tour?: DayOfTourEntry[];
+}
+
+/** 一个标记（staff 改过的或现场的人原始的）。at = 带时区 ISO。 */
+export interface DayOfTourMark {
+  value: string;
+  label: string;
+  by: string;
+  role: string;
+  vehicle: string;
+  at: string;
+}
+
+export interface DayOfTourEntry {
+  /** YYYY-MM-DD */
+  tour_date: string;
+  /** "" = 去程；"return" = 回程。 */
+  leg: string;
+  product_code: string;
+  product_name: string;
+  relay_mark: DayOfTourMark | null;
+  relay_original: DayOfTourMark | null;
+  bus_mark: DayOfTourMark | null;
+  bus_original: DayOfTourMark | null;
 }
 
 /** PATCH 的字段：只传要改的；null = 清空。 */

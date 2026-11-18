@@ -428,6 +428,105 @@ async function run() {
   check("没权限：按 agent ref 搜不到，提示句不提 agent reference", await evaluate("return $txt().includes('the guest’s name or phone number') && !$txt().includes('agent reference');"));
   await ctl({ noMoney: false });
 
+  // ── 订单生命周期（Annie 2026-11-18「排法A」「框 1，其余照推荐，动手」）──
+  {
+    const fieldOf = (label) => `(() => { const el = document.querySelector('[data-lookup-block="order"] [data-field="${label}"] dd'); return el ? el.textContent.replace(/\\s+/g, ' ').trim() : null; })()`;
+    const factOf = (laneName, label) => `(() => { const el = document.querySelector('[data-lane="${laneName}"] [data-fact="${label}"] dd'); return el ? { text: el.textContent.replace(/\\s+/g, ' ').trim(), color: getComputedStyle(el).color } : null; })()`;
+    const ev = (expr) => evaluate(`return ${expr};`);
+    // 员工、开关没登记（默认 super_admin_only）：一点不变。
+    await ctl({ sa: false, lifeVis: null, lifeVisible: false });
+    await openDashboard();
+    let before = (await mockLog()).length;
+    await search("ZZTEST1", lane("Morning Pickup"));
+    await sleep(600);
+    check("生命周期 · 员工（默认只 SA）：没有 Booked / Received / Changes、没有 Changes 块、没有 Sent 格子、框照旧",
+      await evaluate(`return !document.querySelector('[data-field="Booked"]') && !document.querySelector('[data-lookup-block="changes"]') && !document.querySelector('[data-fact="Sent"]') && !document.querySelector('[data-fact="Tour ended"]') && document.querySelector('[data-lookup-block="order"]').classList.contains('border-white/10') && getComputedStyle(document.querySelector('[data-lookup-block="order"]')).borderTopColor !== 'rgba(96, 165, 250, 0.55)';`));
+    check("生命周期 · 员工：不拉 send-log", (await mockLog()).slice(before).every((l) => l.path !== "/api/notifications/send-log"));
+    // 后端登记了、对员工关着（visible_to_me false）：也不出。
+    await ctl({ sa: false, lifeVis: "super_admin_only", lifeVisible: false });
+    await openDashboard();
+    await search("ZZTEST1", lane("Morning Pickup"));
+    await sleep(600);
+    check("生命周期 · 开关登记为 super_admin_only、员工 visible_to_me=false：不出", await evaluate(`return !document.querySelector('[data-field="Booked"]');`));
+
+    // Super Admin（开关没登记 ⇒ 默认 super_admin_only 看得到）。
+    await ctl({ sa: true, lifeVis: null, lifeVisible: false });
+    await openDashboard();
+    before = (await mockLog()).length;
+    await search("ZZTEST1", `document.querySelector('[data-fact="Reminder sent"] dd') && !document.querySelector('[data-fact="Reminder sent"] dd').textContent.includes('…')`);
+    const sl = (await mockLog()).slice(before).filter((l) => l.path === "/api/notifications/send-log");
+    const slq = new URLSearchParams((sl[0] && sl[0].query) || "");
+    check("生命周期 · SA：send-log 按单号拉一次（order_number=ZZTEST1，不带日期）", sl.length === 1 && slq.get("order_number") === "ZZTEST1" && !slq.get("date_from"), JSON.stringify(sl));
+    check("生命周期 · Booked = order_detail.dateCreated（洛杉矶时间）+ In Rezdy", /^10\/1\/2026 9:57 AM ?In Rezdy$/.test(await ev(fieldOf("Booked"))), await ev(fieldOf("Booked")));
+    check("生命周期 · Received = 最早一条 booking_created + In Order List", /^10\/1\/2026 9:58 AM ?In Order List$/.test(await ev(fieldOf("Received"))), await ev(fieldOf("Received")));
+    check("生命周期 · Changes 格子：4 条有意义的改动（系统记录不算）", (await ev(fieldOf("Changes"))) === "4 — see below", await ev(fieldOf("Changes")));
+    let lines = await evaluate(`return [...document.querySelectorAll('[data-lookup-block="changes"] li')].map(li => li.textContent.replace(/\\s+/g, ' ').trim());`);
+    check("生命周期 · Changes 块紧跟订单块、默认列 3 条（新 → 旧）",
+      lines.length === 3 && lines[0].includes("Guest asked to change pickup") && lines[1].includes("lunch_turkey 0 → 1") && lines[2].includes("Phone +1 555 0000 → +1 555 0100") && lines[2].includes("Email (empty) → zz@example.com") &&
+      (await evaluate(`const b = document.querySelector('[data-lookup-block="changes"]'); return b.previousElementSibling === document.querySelector('[data-lookup-block="order"]');`)), lines.join(" | "));
+    check("生命周期 · 旧值划线", await evaluate(`const o = document.querySelector('[data-lookup-block="changes"] [data-change-old]'); return !!o && getComputedStyle(o).textDecorationLine.includes('line-through');`));
+    check("生命周期 · 右上 Show all 6（全部记录含系统记录）", (await evaluate(`return document.querySelector('[data-lookup-block="changes"] [data-changes-all]')?.textContent.trim();`)) === "Show all 6 ▾");
+    await evaluate(`document.querySelector('[data-lookup-block="changes"] [data-changes-all]').click(); return 1;`);
+    await sleep(200);
+    lines = await evaluate(`return [...document.querySelectorAll('[data-lookup-block="changes"] li')].map(li => li.textContent.replace(/\\s+/g, ' ').trim());`);
+    check("生命周期 · 点 Show all：6 条，Rezdy 推送写 Updated by Rezdy、系统记录也在，Show all 收起",
+      lines.length === 6 && lines.some((t) => t.includes("Updated by Rezdy")) && lines.some((t) => t.includes("Marked handled")) && !(await evaluate(`return !!document.querySelector('[data-lookup-block="changes"] [data-changes-all]');`)), lines.join(" | "));
+    const sent = await ev(factOf("Tour Confirmation", "Sent"));
+    check("生命周期 · Tour Confirmation Sent：最近一次、精确单号、这天的团（不是 ZZTEST10 / 改期前）+ by veronica", sent && /^10\/18\/2026 2:05 PM ?by veronica$/.test(sent.text), JSON.stringify(sent));
+    const lm = await ev(factOf("Tour Confirmation", "Last Minute"));
+    check("生命周期 · Last Minute：10/18/2026 7:30 PM by kevin", lm && /^10\/18\/2026 7:30 PM ?by kevin$/.test(lm.text), JSON.stringify(lm));
+    check("生命周期 · Restaurant 先写「—」（要后端）", (await ev(factOf("Tour Confirmation", "Restaurant")))?.text === "—");
+    const rs = await ev(factOf("Morning Pickup", "Reminder sent"));
+    check("生命周期 · Morning Reminder sent：scheduler 写 Auto send", rs && /^10\/19\/2026 6:00 PM ?by Auto send$/.test(rs.text), JSON.stringify(rs));
+    const van = await ev(factOf("Morning Pickup", "Van at hotel"));
+    check("生命周期 · Van at hotel：Morning Tracking 的 arrived_at – left_at", van?.text === "5:45 AM – 5:52 AM", JSON.stringify(van));
+    const relay = await ev(factOf("Morning Pickup", "Relay"));
+    const bus = await ev(factOf("Morning Pickup", "Bus"));
+    check("生命周期 · Relay：day_of_tour 去程 Picked up 5:50 AM（绿）· Jane D. · Bus 2101", relay && /^Picked up 5:50 AM ?Jane D\. · Bus 2101$/.test(relay.text) && relay.color === "rgb(74, 222, 128)", JSON.stringify(relay));
+    check("生命周期 · Bus：No show 6:30 AM（红）· Mike R. · Bus 3001，不用回程那条", bus && /^No show 6:30 AM ?Mike R\. · Bus 3001$/.test(bus.text) && bus.color === "rgb(248, 113, 113)", JSON.stringify(bus));
+    check("生命周期 · Tour ended 先写「—」", (await ev(factOf("Morning Pickup", "Tour ended")))?.text === "—");
+    check("生命周期 · 框 1：订单块、Changes、各 Tracking 块外框实线 rgba(96,165,250,.55)",
+      await evaluate(`const els = [...document.querySelectorAll('[data-lookup-block], div[data-lane]')]; return els.length >= 4 && els.every(e => getComputedStyle(e).borderTopColor === 'rgba(96, 165, 250, 0.55)' && getComputedStyle(e).borderTopStyle === 'solid');`));
+    check("生命周期 · 原来的格子照旧（Guest reply / SMS / Email / Messages 还在）", await evaluate(`return ['Guest reply','SMS','Email','Messages'].every(l => !!document.querySelector('[data-lane="Tour Confirmation"] [data-fact="' + l + '"]'));`));
+    const how = await evaluate(`const d = [...document.querySelectorAll('[data-lookup-result] details')].find(x => x.textContent.includes('How to use — Order lookup')); return d ? [...d.querySelectorAll('li')].map(l => l.textContent.trim()) : null;`);
+    check("生命周期 · How to use 6 条原文在最底", how && how.length === 6 && how[0].startsWith("The result shows the whole life of the order") && how[5] === "Order status comes from the Order List. To fix something, open the order in Main manifest or the Order List." && (await evaluate(`return document.querySelector('[data-lookup-result]').lastElementChild.tagName === 'DETAILS';`)), JSON.stringify(how));
+    // 门票单：Sent + Contact changed。
+    await search("ZZTEST2", `document.querySelector('[data-fact="Contact changed"]') && document.querySelector('[data-lane="Ticket Reminder"] [data-fact="Sent"] dd') && !document.querySelector('[data-lane="Ticket Reminder"] [data-fact="Sent"] dd').textContent.includes('…')`);
+    const ts = await ev(factOf("Ticket Reminder", "Sent"));
+    check("生命周期 · 门票 Sent：10/19/2026 9:00 AM by Auto send", ts && /^10\/19\/2026 9:00 AM ?by Auto send$/.test(ts.text), JSON.stringify(ts));
+    const cc = await ev(factOf("Ticket Reminder", "Contact changed"));
+    check("生命周期 · 门票 Contact changed：Yes（黄）+ 说明", cc && /^Yes ?After the reminder was sent\. Send it again from Main manifest\.$/.test(cc.text) && cc.color === "rgb(251, 191, 36)", JSON.stringify(cc));
+    check("生命周期 · 没改动的单：没有 Changes 块、Changes 写 None", (await ev(fieldOf("Changes"))) === "None" && !(await evaluate(`return !!document.querySelector('[data-lookup-block="changes"]');`)));
+    // 开关开给员工（visible_to_me true）：员工也看得到。
+    await ctl({ sa: false, lifeVis: "staff", lifeVisible: true });
+    await openDashboard();
+    await search("ZZTEST1", `document.querySelector('[data-field="Booked"]')`);
+    check("生命周期 · 开关打开给 Staff：员工也有新格子和 Changes 块", await evaluate(`return !!document.querySelector('[data-lookup-block="changes"]');`));
+    // 手机：不左右晃、Changes 默认收起。
+    await ctl({ sa: true, lifeVis: null, lifeVisible: false });
+    await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+    await openDashboard();
+    await search("ZZTEST1", `document.querySelector('[data-lookup-block="changes"]')`);
+    await sleep(400);
+    check("生命周期 · 手机：整页不左右晃", await evaluate("return document.documentElement.scrollWidth <= innerWidth + 1;"), await evaluate("return document.documentElement.scrollWidth + ' > ' + innerWidth;"));
+    check("生命周期 · 手机：Changes 默认收起，点标题展开",
+      (await evaluate(`return getComputedStyle(document.querySelector('[data-lookup-block="changes"] ul')).display === 'none';`)) &&
+      (await evaluate(`document.querySelector('[data-lookup-block="changes"] button').click(); await new Promise(r => setTimeout(r, 200)); return getComputedStyle(document.querySelector('[data-lookup-block="changes"] ul')).display !== 'none';`)));
+    await cdp("Emulation.clearDeviceMetricsOverride");
+    // 订单详情页：Activity 卡上面一块。
+    await goto(`${APP}/orders/ZZTEST1`);
+    await waitFor(`document.querySelector('[data-lifecycle-card] [data-lifecycle-field="Relay"]') && !document.querySelector('[data-lifecycle-card]').textContent.includes('…')`, 60000);
+    const card = await evaluate(`const c = document.querySelector('[data-lifecycle-card]'); if (!c) return null; const f = (l) => c.querySelector('[data-lifecycle-field="' + l + '"] dd')?.textContent.replace(/\\s+/g, ' ').trim(); return { next: c.nextElementSibling?.getAttribute('aria-label'), booked: f('Booked'), sent: f('Confirmation sent'), lm: f('Last Minute'), tix: f('Ticket reminder sent'), relay: f('Relay'), ended: f('Tour ended'), border: getComputedStyle(c).borderTopColor, lines: c.querySelectorAll('[data-lifecycle-changes] li').length };`);
+    check("生命周期 · 订单详情页：Activity 卡上面一块，Booked / Confirmation sent / Last Minute / Relay / Tour ended、蓝框、Changes 3 条",
+      card && card.next === "Activity" && /^10\/1\/2026 9:57 AM ?In Rezdy$/.test(card.booked) && /^10\/18\/2026 2:05 PM ?by veronica$/.test(card.sent) && /^10\/18\/2026 7:30 PM ?by kevin$/.test(card.lm) && card.tix === "Not sent" && /^Picked up 5:50 AM ?Jane D\. · Bus 2101$/.test(card.relay) && card.ended === "—" && card.border === "rgba(96, 165, 250, 0.55)" && card.lines === 3, JSON.stringify(card));
+    check("生命周期 · 订单详情页 How to use 多 6 条", await evaluate("return document.body.textContent.includes('Booked is when the order was made in Rezdy. Received is when it first came into our Order List.');"));
+    await ctl({ sa: false, lifeVis: null, lifeVisible: false });
+    await goto(`${APP}/orders/ZZTEST1`);
+    await waitFor(`document.querySelector('section[aria-label="Activity"]')`, 60000);
+    await sleep(500);
+    check("生命周期 · 订单详情页 · 员工：没有这一块、How to use 不多", await evaluate("return !document.querySelector('[data-lifecycle-card]') && !document.body.textContent.includes('Booked is when the order was made in Rezdy');"));
+  }
+
   // ── 401 跳登录 ──
   await openDashboard();
   await ctl({ unauth: true });

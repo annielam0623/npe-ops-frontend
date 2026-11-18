@@ -96,6 +96,8 @@ export type {
 } from "./hr";
 export type { OrderLogPage, OrderLogQuery, OrderLogRecord } from "./order-log";
 export type {
+  DayOfTourEntry,
+  DayOfTourMark,
   OrderDetail,
   OrderListPage,
   OrderListQuery,
