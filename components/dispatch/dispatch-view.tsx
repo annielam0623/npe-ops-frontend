@@ -31,6 +31,7 @@ import {
   moveSeating,
   pullFromDiscord,
   RELAY_REASON_NO_CAR,
+  type RelayPull,
   saveDispatchDay,
   saveDispatchSection,
 } from "@/lib/dispatch-api";
@@ -123,6 +124,7 @@ import {
 import { UnitError, UnitStatus } from "./unit-save";
 import {
   ArrangeBoard,
+  plural,
   seatNotes,
   type SeatDayState,
   type SeatMove,
@@ -434,37 +436,42 @@ export function DispatchView() {
     null,
   );
   const noCarDate = day?.run_date;
+  /** 一份 relay-pull ⇒ Need a look 数（Schedule check、G307 Send 顶上提醒）+ 每轮没车停的酒店。 */
+  const applyRelayPull = useCallback((date: string, pull: RelayPull) => {
+    const list = pull.need_a_look ?? [];
+    setNeedLook({ date, n: list.length });
+    if (list.length && !list.some((g) => g.round)) {
+      setRelayNoCar(null);
+      return;
+    }
+    const byRound: RelayNoCar = {};
+    for (const g of list) {
+      if (g.reason !== RELAY_REASON_NO_CAR || !g.round) continue;
+      if (g.location_id == null) continue;
+      const hs = (byRound[g.round] ??= []);
+      const h = hs.find((x) => x.location_id === g.location_id);
+      if (h) h.pax += g.pax ?? 0;
+      else
+        hs.push({
+          location_id: g.location_id,
+          name: g.hotel || g.pickup_location,
+          pax: g.pax ?? 0,
+        });
+    }
+    for (const hs of Object.values(byRound))
+      hs.sort((a, b) =>
+        a.name.localeCompare(b.name, "en", { sensitivity: "base" }),
+      );
+    setRelayNoCar({ date, byRound });
+  }, []);
+  // G307（后端 PASS 时提）：跟 Send 标签的面板同一个触发（manifestVersion：换天 / 存好 / 复制以后重读）；
+  // 面板自己再拉（自动 / ↻ Refresh）时由 onPulled 同步，两个数跟 Need a look 那一块一样。
   useEffect(() => {
     if (!noCarDate) return;
     let gone = false;
     fetchRelayPull(noCarDate).then(
       (pull) => {
-        if (gone) return;
-        const list = pull.need_a_look ?? [];
-        setNeedLook({ date: noCarDate, n: list.length });
-        if (list.length && !list.some((g) => g.round)) {
-          setRelayNoCar(null);
-          return;
-        }
-        const byRound: RelayNoCar = {};
-        for (const g of list) {
-          if (g.reason !== RELAY_REASON_NO_CAR || !g.round) continue;
-          if (g.location_id == null) continue;
-          const hs = (byRound[g.round] ??= []);
-          const h = hs.find((x) => x.location_id === g.location_id);
-          if (h) h.pax += g.pax ?? 0;
-          else
-            hs.push({
-              location_id: g.location_id,
-              name: g.hotel || g.pickup_location,
-              pax: g.pax ?? 0,
-            });
-        }
-        for (const hs of Object.values(byRound))
-          hs.sort((a, b) =>
-            a.name.localeCompare(b.name, "en", { sensitivity: "base" }),
-          );
-        setRelayNoCar({ date: noCarDate, byRound });
+        if (!gone) applyRelayPull(noCarDate, pull);
       },
       () => {
         if (gone) return;
@@ -475,7 +482,7 @@ export function DispatchView() {
     return () => {
       gone = true;
     };
-  }, [noCarDate, base]);
+  }, [noCarDate, base, manifestVersion, applyRelayPull]);
   /** 没客人的团展开没有：Step 1、Step 2 同一个开关。 */
   const [showEmpty, setShowEmpty] = useState(false);
   /** G82：点 Re-match 加 1，重新给 Private 车配订单。 */
@@ -1988,10 +1995,13 @@ export function DispatchView() {
             >
               Today
             </button>
-            {/* 置顶 21（Annie 2026-10-30「让前端加入口」）：只给 Super Admin。后端 /driver/preview 只读、只认 Super Admin；
+            {/* 置顶 21（Annie 2026-10-30「让前端加入口」）：Driver / Guide page preview 两个链接。
+                Annie 2026-11-19「把这两个preview链接改成所有人可见」「司机基本都是CCL派的，他们可以看关于车和司机的所有信息」：
+                能开 Dispatch 的人都出（staff、只看账号、CCL partner），后端 /driver/preview、/guide/preview 改成 require_perm("dispatch.view")。
                 ops 自己没有 /driver，经 next.config 的 fallback 原样转给后端（同 Bus Manifest 打印，用的是 ops 这一个登录）。
-                导游页同理：后端 /guide/preview（be1f4447）不带 hr_id 是选人页，写法和司机那个一样。 */}
-            {isSuperAdmin && day ? (
+                导游页同理：后端 /guide/preview（be1f4447）不带 hr_id 是选人页，写法和司机那个一样。
+                「Open shift opens today ⚙」照旧只 Super Admin（openWin 只给 Super Admin 读），留在同一个 span 里紧跟 Guide 链接。 */}
+            {day ? (
               <span className="contents max-sm:order-3 max-sm:flex max-sm:basis-full max-sm:gap-3">
                 <a
                   href={`/driver/preview?date=${day.run_date}`}
@@ -2011,7 +2021,7 @@ export function DispatchView() {
                 >
                   Guide page preview ↗
                 </a>
-                {openWin.window ? (
+                {isSuperAdmin && openWin.window ? (
                   <OpenWindowLink
                     value={openWin.window}
                     onSaved={openWin.setWindow}
@@ -3149,6 +3159,30 @@ export function DispatchView() {
                     </button>
                   </div>
                 ) : null}
+                {/* G307（Annie 2026-11-13「need a look放得太朝下了，没人会注意」，11-19 选 B「0单时就不出现」+「动手」）：
+                    Need a look 那一块位置不动（Step 2 最下面），Send 标签最上面加一条橙色提醒，View › 滚过去（同 Schedule check 的 Fix ›）。
+                    数字同 Schedule check（同一次 relay-pull 读）；0 单 / 读不到不出。不能发送的人没有 Send 标签，自然看不到。 */}
+                {needLook?.date === day.run_date && needLook.n > 0 ? (
+                  <div
+                    role="status"
+                    data-need-look-alert
+                    className={cn(BANNER, "flex flex-wrap items-center gap-3")}
+                  >
+                    <span className="mr-auto">
+                      ⚠ {plural(needLook.n, "order")} in Need a look — these
+                      guests will not get the morning reminder until each one
+                      is sorted out.
+                    </span>
+                    <button
+                      type="button"
+                      data-need-look-view
+                      onClick={goNeedLook}
+                      className="cursor-pointer border-0 bg-transparent p-0 text-[13px] font-semibold text-[#1d4ed8] underline underline-offset-2 hover:text-[#1e40af]"
+                    >
+                      View ›
+                    </button>
+                  </div>
+                ) : null}
                 <RelayPanel
                   // manifestVersion 每次读好这一天（换天 / 存好 / 复制）都加一：面板跟着重建，
                   // 不留存之前读的司机名单（服务端按存好的排车发）。
@@ -3167,6 +3201,7 @@ export function DispatchView() {
                   onSave={viewOnly ? undefined : () => saveRef.current()}
                   // 131：Tour bus pick up 每个团的节头用团色（同 Assign 团卡片 / Bus Manifest）。
                   tourColors={colorByManifestId}
+                  onPulled={(pull) => applyRelayPull(day.run_date, pull)}
                 />
               </div>
             ) : null}

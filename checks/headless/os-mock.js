@@ -4,6 +4,15 @@
 // noMoney：这个员工没勾 orders.money_view（后端不按 agent ref 搜、不给号码；/api/me/permissions 只给 orders.view）。
 const http = require("http");
 
+// ⑦ G360 Tour ended：ctl.tourEnd = two（两站）/ one（只有一站，last_stop 同第一站）/ firstOnly（last_stop 是 null）/ none（都是 null）/ 没设 = 旧后端没这几个键。
+function tourEnd(mode) {
+  const ti = { tour_ended_at: "2026-10-21T01:36:00Z", tour_ended_where: "Treasure Island" };
+  if (mode === "two") return { ...ti, last_stop_at: "2026-10-21T01:57:00Z", last_stop_where: "Excalibur" };
+  if (mode === "one") return { ...ti, last_stop_at: ti.tour_ended_at, last_stop_where: ti.tour_ended_where };
+  if (mode === "firstOnly") return { ...ti, last_stop_at: null, last_stop_where: "" };
+  if (mode === "none") return { tour_ended_at: null, tour_ended_where: "", last_stop_at: null, last_stop_where: "" };
+  return {};
+}
 const ctl = { unauth: false, mlinks: false, hold: false, noMoney: false, sa: false, lifeVis: null, lifeVisible: false };
 // 订单生命周期（Annie 2026-11-18 排法 A + 框 1）：sa = 这个人是 Super Admin（没登记开关 ⇒ 默认 super_admin_only 看得到）；
 // lifeVis / lifeVisible = 后端登记了 order_lifecycle（visibility + visible_to_me）。都没设 ⇒ 普通员工、开关没登记 ⇒ 看不到（页面同以前）。
@@ -280,6 +289,25 @@ http
           ];
         }
       }
+      // ⑦ G360：每次请求按 ctl.tourEnd 给 live_by_day 加回程到站（ORDERS 是启动时建好的）。
+      if (o.live_by_day) o.live_by_day = o.live_by_day.map((x) => ({ ...x, ...tourEnd(ctl.tourEnd) }));
+      // multiDay：2 日团第 1 天大巴不回 LV（null），第 2 天回程才有；sameDay：同一天两行，一行空、一行有（空的在前）。
+      if (o.live_by_day && (ctl.tourEnd === "multiDay" || ctl.tourEnd === "sameDay")) {
+        const d1 = { ...o.live_by_day[0], ...tourEnd("none") };
+        const back = { ...o.live_by_day[0], ...tourEnd("two") };
+        o.live_by_day = ctl.tourEnd === "multiDay"
+          ? [{ ...back, tour_date: "2026-10-21", tour_ended_at: "2026-10-22T01:10:00Z", tour_ended_where: "Excalibur Hotel", last_stop_at: null, last_stop_where: "" }, d1]
+          : [d1, back];
+      }
+      // G351（后端 4aea93a5）：Refresh 的 activity_log 对 partner 不能看的字段只写「Internal notes (Rezdy): changed」。
+      // 这两条没配上 rezdy_changes（partner 那份去掉了），照 activity_log 文字解析：changed 在最后 / 在前面两种。
+      // 后端（PASS 时建议）：按「: changed」后缀认、不按字段名 ⇒ 另放一条假字段 Foo。
+      if (ctl.g351 && on === "ZZTEST1") o.activity_log = [
+        { id: 13, event_type: "refreshed_from_rezdy", detail: "Refreshed from Rezdy — Email: 'a@example.com' → 'b@example.com'; Foo: changed", actor: "Annie Z", actor_type: "staff", created_at: "10/19/2026 10:00 AM" },
+        { id: 12, event_type: "refreshed_from_rezdy", detail: "Refreshed from Rezdy — Internal notes (Rezdy): changed; Phone: '+1 555 0100' → '+1 555 0200'", actor: "Annie Z", actor_type: "staff", created_at: "10/19/2026 9:00 AM" },
+        { id: 11, event_type: "refreshed_from_rezdy", detail: "Refreshed from Rezdy — Status: 'CONFIRMED' → 'ON_HOLD'; Internal notes (Rezdy): changed", actor: "Annie Z", actor_type: "staff", created_at: "10/19/2026 8:00 AM" },
+        ...o.activity_log,
+      ];
       return send(res, 200, ctl.mlinks ? { ...o, manifest_links: MLINKS[on] ?? [] } : o);
     }
     const date = url.searchParams.get("date");

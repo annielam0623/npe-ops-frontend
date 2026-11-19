@@ -1223,7 +1223,8 @@ export function ScheduleView() {
               />
             ) : null}
 
-            {readyWeek?.copied_from ? (
+            {/* G298（2026-11-19）：只读的员工拖不动这张表，这句只给能改排班的人看。 */}
+            {canEdit && readyWeek?.copied_from ? (
               <div className="-mt-3 text-[11.5px] text-sky-300 max-sm:-mt-1.5 max-sm:text-[11px]">
                 Started from last week&apos;s schedule — drag people to change
                 it.

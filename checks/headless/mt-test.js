@@ -189,7 +189,7 @@ async function run() {
     check("G234：How to use 写了 Bus changed（请客人重新打开）、Driver changed after send、换司机只要在 Dispatch 改好 Save", await evaluate(`const t = document.body.textContent; return t.includes("means the driver is on a different bus from the one the guest last opened: ask the guest to open the link in their text again and tap Track. You don't need to send a new link.") && t.includes("the driver was changed in Dispatch after the text went out. The guest's link already follows the new driver. You don't need to send anything.") && t.includes("Driver changed (with or without a bus change): change the driver on Dispatch → Assign and Save. The guest's tracking link then follows the new driver to the bus they are on. You don't need to text the guest again.");`));
   }
   check("How to use 写了 Driver 和 Guest Viewed", await evaluate("return document.body.textContent.includes('Click a Driver name to see where that driver is right now') && document.body.textContent.includes('Guest Viewed only works while live tracking links are turned on');"));
-  check("How to use 写了短信最多 300 字、只能普通字符、超了发 email（Annie 2026-10-15）", await evaluate("return document.body.textContent.includes('click Send →. SMS can be at most 300 characters, plain characters only (no emoji, curly quotes or long dashes); if it is longer, send it by email.');"));
+  check("How to use 写了短信最多 300 字、只能普通字符、超了发 email（Annie 2026-10-15）", await evaluate("return document.body.textContent.includes('click Send →. SMS can be at most 306 characters (134 if it has a character such as Δ), plain characters only (no emoji, accents such as á, or symbols such as € and { }; curly quotes and long dashes are changed to plain ones automatically); if your reply is longer, SMS to guest is greyed out and it goes by email only. Shorten it to use SMS again, then tick SMS to guest again.');"));
   check("How to use 写了 Phone AI 留言（后端 E188）",await evaluate("return document.body.textContent.includes('A Phone AI message means a guest called');"));
   check("116 How to use：回复发出去就算处理过（原句，Annie「句子没问题」）", await evaluate("return document.body.textContent.includes('When your reply goes out to the guest (SMS or email sent), the message counts as handled and shows ✓ with your name. If no reply is needed, click ✓ Mark as actioned (or Take action in the table).');"));
   check("表格上方提示点 Bus # 看实时位置", await evaluate("return document.body.textContent.includes('Click a Bus # to see live tracking (opens Samsara in a new tab)');"));
@@ -304,6 +304,9 @@ async function run() {
     log.some((e) => e.path === "/booking-notes/by-order/A1001" && e.query === "?line=morning"), JSON.stringify(log));
   const dialogText = await evaluate("return document.querySelector('[role=dialog]').textContent;");
   check("标题 Order A1001 + 客人姓名", dialogText.includes("Order A1001") && dialogText.includes("ZZ Test One"));
+  // 132：Morning 对话框是深色：同一行「Main manifest:」，键蓝色实心、开新标签，标签字浅色
+  await waitFor("document.querySelector('[role=dialog] [data-manifest-links]')", 10000);
+  check("132 Morning 对话框：标题下面「Main manifest: Open in Main manifest →」蓝键、开新标签、深色底上标签字是浅色", await evaluate("const s = document.querySelector('[role=dialog] [data-manifest-links]'); const a = s.querySelector('[data-open-in-manifest]'); return document.getElementById('conversation-title').closest('div.flex').nextElementSibling === s && a.textContent.trim() === 'Open in Main manifest →' && a.target === '_blank' && getComputedStyle(a).backgroundColor === 'rgb(59, 130, 246)' && ((c) => c.startsWith('rgba(255, 255, 255') || c.startsWith('oklab(0.99'))(getComputedStyle(s.firstElementChild).color);"), await evaluate("const s = document.querySelector('[role=dialog] [data-manifest-links]'); const a = s.querySelector('[data-open-in-manifest]'); return JSON.stringify({ sib: document.getElementById('conversation-title').closest('div.flex').nextElementSibling === s, t: a.textContent, tg: a.target, bg: getComputedStyle(a).backgroundColor, lab: getComputedStyle(s.firstElementChild).color });"));
   check("电话 / 邮箱旁边的投递结果", dialogText.includes("✓ Delivered") && dialogText.includes("✓ Clicked"), dialogText.slice(0, 200));
   const bubbles = await evaluate("return [...document.querySelectorAll('[role=dialog] .whitespace-pre-wrap')].map(b => b.textContent);");
   check("对话按时间正序", bubbles.join("|") === "Good morning|Running late|Guest called: no confirmation yet", bubbles.join("|"));
@@ -317,39 +320,79 @@ async function run() {
   // 字数提示
   await evaluate("$setValue(document.querySelector('[role=dialog] textarea'), 'Hello there');");
   await sleep(100);
-  // 短信最多 300 个字符、只能用普通字符（Annie 2026-10-15）：字数提示「N / 300 chars」，超了 / 有特殊字符变红、建议改发 email。
+  // 短信最多 300 个字符、只能用普通字符（Annie 2026-10-15）：字数提示「N / 300 chars」一直显示。
+  // 超了 / 有坏字 ⇒ SMS to guest 灰掉、改勾 Email，框下标红 + 原因（Annie 2026-11-17「同意全部推荐，动手」）。
   const smsCount = () => evaluate("const p = document.querySelector('[role=dialog] [data-sms-count]'); return p ? { text: p.textContent.trim(), red: p.className.includes('c0392b') } : null;");
   const setText = async (v) => { await evaluate(`$setValue(document.querySelector('[role=dialog] textarea'), ${JSON.stringify(v)});`); await sleep(100); };
-  const hasTooLong = () => evaluate("return !!document.querySelector('[role=dialog] [data-too-long]');");
+  const prob = () => evaluate("const b = document.querySelector('[role=dialog] [data-sms-problem]'); return b ? { text: b.textContent, role: b.getAttribute('role'), cls: b.className, marks: [...b.querySelectorAll('[data-sms-bad-char]')].map(m => m.textContent), why: [...b.querySelectorAll('[data-sms-why-line]')].map(l => l.textContent.trim()), replace: !!b.querySelector('[data-sms-replace]') } : null;");
+  const hasTooLong = async () => !!(await prob());
+  const hasOldAsk = () => evaluate("const d = document.querySelector('[role=dialog]'); return !!d.querySelector('[data-too-long]') || !!$btn('No, edit the message', d) || !!$btn('Yes, send by email only', d);");
+  const cbs = () => evaluate("return [...document.querySelectorAll('[role=dialog] input[type=checkbox]')].slice(0, 2).map(c => (c.checked ? 'on' : 'off') + (c.disabled ? ',disabled' : ''));");
+  const tickSms = async () => { if ((await cbs())[0] === "off") { await evaluate("document.querySelectorAll('[role=dialog] input[type=checkbox]')[0].click();"); await sleep(100); } };
   let cnt = await smsCount();
-  check("字数提示 11 / 300 chars（不再写 X of 2 SMS）", cnt && cnt.text === "11 / 300 chars" && !cnt.red, JSON.stringify(cnt));
-  await setText("x".repeat(300));
+  check("字数提示 11 / 306 chars（不再写 X of 2 SMS）", cnt && cnt.text === "11 / 306 chars" && !cnt.red, JSON.stringify(cnt));
+  await setText("x".repeat(306));
   cnt = await smsCount();
-  check("300 个字 = 300 / 300 chars，不红、不提示太长", cnt && cnt.text === "300 / 300 chars" && !cnt.red && !(await hasTooLong()), JSON.stringify(cnt));
-  await setText("x".repeat(301));
+  check("规则照后端（ae 11-18）：纯 GSM 306 个字 = 306 / 306 chars（两段），不红、没有原因块、SMS 照勾", cnt && cnt.text === "306 / 306 chars" && !cnt.red && !(await hasTooLong()) && JSON.stringify(await cbs()) === JSON.stringify(["on", "on"]), JSON.stringify(cnt));
+  await setText("x".repeat(307));
   cnt = await smsCount();
-  check("301 个字：变红、提示改发 email",
-    cnt && cnt.text === "301 / 300 chars - too long for SMS. Shorten it or send it by email only." && cnt.red, JSON.stringify(cnt));
-  check("有邮箱：超长时没点 Send 不先弹提示、Send 可点",
-    !(await hasTooLong()) && (await evaluate("return !$btn('Send', document.querySelector('[role=dialog]')).disabled;")));
-  await setText("x".repeat(298) + "€");
+  let pb = await prob();
+  check("SMS 超两段 307 个字：计数红 307 / 306 chars；SMS to guest 灰掉取消、Email 勾着",
+    cnt && cnt.text === "307 / 306 chars" && cnt.red && JSON.stringify(await cbs()) === JSON.stringify(["off,disabled", "on"]), JSON.stringify({ cnt, cb: await cbs() }));
+  check("307 个字：原因块（深色红字）Too long for SMS: 307 / 306 characters (1 over). An SMS can be at most 306 characters (2 text messages)…（对话框不写 counting 半句）",
+    pb && pb.cls.includes("text-red-300") && pb.text.includes("Too long for SMS: 307 / 306 characters (1 over). An SMS can be at most 306 characters (2 text messages); longer ones are cut off or not delivered. Shorten it to send by SMS, or it goes by Email only.") && pb.marks.length === 0, JSON.stringify(pb));
+  check("有邮箱：超长不问 Yes / No、Send 可点", !(await hasOldAsk()) && (await evaluate("return !$btn('Send', document.querySelector('[role=dialog]')).disabled;")));
+  await setText("Δ" + "x".repeat(133));
   cnt = await smsCount();
-  check("扩展字符 € 算 2 个：298 + € = 300 / 300，不红", cnt && cnt.text === "300 / 300 chars" && !cnt.red, JSON.stringify(cnt));
-  await setText("x".repeat(299) + "€");
+  check("Δ（GSM 希腊字母、> U+00FF）不算坏字，但上限变 134：134 / 134 不红", cnt && cnt.text === "134 / 134 chars" && !cnt.red, JSON.stringify(cnt));
+  check("回到限内（题 2 A）：SMS to guest 能勾了、不自动勾回", JSON.stringify(await cbs()) === JSON.stringify(["off", "on"]) && !(await hasTooLong()), JSON.stringify(await cbs()));
+  await tickSms();
+  await setText("Δ" + "x".repeat(134));
   cnt = await smsCount();
-  check("299 + € = 301：变红、too long", cnt && cnt.text === "301 / 300 chars - too long for SMS. Shorten it or send it by email only." && cnt.red, JSON.stringify(cnt));
-  await setText("Café señor über Ç É Å ß {}[]~|^\\ x");
+  pb = await prob();
+  check("Δ + 134 = 135：计数红 135 / 134、SMS 灰掉，原因 This message has Δ, so an SMS can be at most 134 characters",
+    cnt && cnt.text === "135 / 134 chars" && cnt.red && (await cbs())[0] === "off,disabled" && pb && pb.text.includes("Too long for SMS: 135 / 134 characters (1 over). This message has Δ, so an SMS can be at most 134 characters (2 text messages)"), JSON.stringify({ cnt, pb }));
+  await setText("Café señor über Ç É Å ß x");
   cnt = await smsCount();
-  check("允许的重音字母（é ñ ü Ç É Å ß）和扩展表字符不算特殊字符、不红；扩展表 8 个字各算 2（25 + 16 + 2 = 43）", cnt && cnt.text === "42 / 300 chars" && !cnt.red, JSON.stringify(cnt));
-  for (const [ch, label] of [["“", "弯引号"], ["–", "短破折号"], ["😀", "emoji"], ["中", "中文"], ["á", "á"], ["ç", "小写 ç"]]) {
+  check("允许的重音字母（é ñ ü Ç É Å ß）不算坏字、不红、上限 306", cnt && cnt.text === "25 / 306 chars" && !cnt.red && !(await hasTooLong()), JSON.stringify(cnt));
+  await tickSms();
+  await setText("“Hi” — see you… ‘ok’ –");
+  cnt = await smsCount();
+  check("弯引号 / 长短破折号 / 省略号：后端自动换，不算坏字、不红、SMS 照勾；… 按 ... 算（换完 24 字）", cnt && cnt.text === "24 / 306 chars" && !cnt.red && !(await hasTooLong()) && (await cbs())[0] === "on", JSON.stringify({ cnt, cb: await cbs() }));
+  const WHY = {
+    "„": "„ is curly quotes. Use straight quotes \" instead.",
+    "~": "~ is a character SMS can't send. Remove it.",
+    "€": "€ is a character SMS can't send. Remove it.",
+    "😀": "😀 is an emoji. SMS can't send emoji. Remove it.",
+    "中": "中 (U+4E2D) is a character SMS can't send. Remove it.",
+    "á": "á is a letter with an accent SMS can't send. Use a instead.",
+    "ç": "ç is a letter with an accent SMS can't send. Use c instead.",
+  };
+  for (const [ch, label] of [["„", "低位弯引号"], ["~", "扩展表 ~"], ["€", "扩展表 €"], ["😀", "emoji"], ["中", "中文"], ["á", "á"], ["ç", "小写 ç"]]) {
     await setText(`Hi ${ch} there`);
     cnt = await smsCount();
-    check(`特殊字符 ${label}（${ch}）：字数提示点名、变红`,
-      cnt && cnt.text.endsWith(` - SMS can't use these characters: ${ch}. Remove them or send it by email only.`) && cnt.red, JSON.stringify(cnt));
+    pb = await prob();
+    check(`坏字 ${label}（${ch}）：计数红、照抄里标红 ${ch}、一句原因、SMS 灰掉`,
+      cnt && cnt.red && pb && JSON.stringify(pb.marks) === JSON.stringify([ch]) && JSON.stringify(pb.why) === JSON.stringify([WHY[ch]]) &&
+      pb.text.includes("SMS can't send 1 character in this message (marked in red below). Fix them to send by SMS, or it goes by Email only.") && (await cbs())[0] === "off,disabled", JSON.stringify({ cnt, pb }));
   }
-  await setText("“Hi” — 你好 “again”");
-  cnt = await smsCount();
-  check("多个特殊字符：去重、按出现顺序、空格隔开", cnt && cnt.text.endsWith(" - SMS can't use these characters: “ ” — 你 好. Remove them or send it by email only.") && cnt.red, JSON.stringify(cnt));
+  await setText("Hi {first_name}");
+  pb = await prob();
+  check("对话框回复没有模板替换（后端 allow_placeholders=False）：{first_name} 的 { } 算坏字、标红", pb && JSON.stringify(pb.marks) === JSON.stringify(["{", "}"]) && (await cbs())[0] === "off,disabled", JSON.stringify(pb));
+  await setText("“Hi” — 你好 „again‚ é");
+  pb = await prob();
+  check("多个字：“ ” — 不标红；标 你 好 „ ‚：SMS can't send 4 characters、原因按种类（„ curly quotes / ‚ curly apostrophes / 你 / 好）、有 Replace",
+    pb && pb.text.includes("SMS can't send 4 characters in this message") && JSON.stringify(pb.marks) === JSON.stringify(["你", "好", "„", "‚"]) &&
+    JSON.stringify(pb.why) === JSON.stringify(["„ is curly quotes. Use straight quotes \" instead.", "‚ is curly apostrophes. Use a straight apostrophe ' instead.", "你 (U+4F60) is a character SMS can't send. Remove it.", "好 (U+597D) is a character SMS can't send. Remove it."]) && pb.replace, JSON.stringify(pb));
+  await evaluate("document.querySelector('[role=dialog] [data-sms-replace]').click();");
+  await sleep(150);
+  pb = await prob();
+  check("Replace with plain characters：只换能换的（„ “ ” → \"、‚ → '、— → -），你好 留着标红、Replace 键收起",
+    (await evaluate("return document.querySelector('[role=dialog] textarea').value;")) === "\"Hi\" - 你好 \"again' é" &&
+    pb && JSON.stringify(pb.marks) === JSON.stringify(["你", "好"]) && !pb.replace, JSON.stringify(pb));
+  await setText("Hello there");
+  await tickSms();
+  check("改回普通字、自己勾回 SMS：两个都勾", JSON.stringify(await cbs()) === JSON.stringify(["on", "on"]), JSON.stringify(await cbs()));
 
   // 内部备注
   before = (await mockLog()).length;
@@ -406,78 +449,35 @@ async function run() {
   check("é ñ ü Ç：不弹提示，照常 send_sms=true",
     post && post.body.send_sms === true && post.body.body === "Hola señor, café über Ç at 7" && !(await hasTooLong()), JSON.stringify(post && post.body));
 
-  // 超过 300 字（有邮箱）：点 Send 不发，问要不要只发 email
-  const tooLongText = () => evaluate("const b = document.querySelector('[role=dialog] [data-too-long]'); return b ? b.textContent : null;");
+  // 超过两段（有邮箱）：SMS 自动灰掉、改勾 Email，点 Send 直接只发 email，不再问（动手 11-17）
   before = (await mockLog()).length;
-  await evaluate("$setValue(document.querySelector('[role=dialog] textarea'), 'x'.repeat(301));");
+  await evaluate("$setValue(document.querySelector('[role=dialog] textarea'), 'x'.repeat(307));");
   await sleep(100);
+  check("超长：SMS to guest 灰掉取消、Email 勾着、Send 可点", JSON.stringify(await cbs()) === JSON.stringify(["off,disabled", "on"]) &&
+    !(await evaluate("return $btn('Send', document.querySelector('[role=dialog]')).disabled;")), JSON.stringify(await cbs()));
   await evaluate("$btn('Send', document.querySelector('[role=dialog]')).click();");
-  await waitFor("document.querySelector('[role=dialog] [data-too-long]')");
-  let tl = await tooLongText();
-  log = (await mockLog()).slice(before);
-  check("超长点 Send：不发请求、保留原文、出 [data-too-long] role=alert 提示",
-    tl !== null && !log.some((e) => e.method === "POST") &&
-    (await evaluate("return document.querySelector('[role=dialog] [data-too-long]').getAttribute('role');")) === "alert" &&
-    (await evaluate("return document.querySelector('[role=dialog] textarea').value.length;")) === 301, String(tl));
-  check("太长提示文字：301 characters、SMS allows up to 300、Send it by email only?",
-    tl && tl.includes("This message is too long for SMS: 301 characters. SMS allows up to 300.") &&
-    tl.includes("Send it by email only?") && tl.includes("No, edit the message") && tl.includes("Yes, send by email only"), String(tl));
-  await evaluate("$btn('No, edit the message', document.querySelector('[role=dialog] [data-too-long]')).click();");
-  await sleep(150);
-  log = (await mockLog()).slice(before);
-  check("No, edit the message：提示收起、原文留着、光标回输入框、不发请求",
-    (await tooLongText()) === null &&
-    (await evaluate("return document.querySelector('[role=dialog] textarea').value.length;")) === 301 &&
-    (await evaluate("return document.activeElement === document.querySelector('[role=dialog] textarea');")) &&
-    !log.some((e) => e.method === "POST"));
-  await evaluate("$btn('Send', document.querySelector('[role=dialog]')).click();");
-  await waitFor("document.querySelector('[role=dialog] [data-too-long]')");
-  await evaluate("$setValue(document.querySelector('[role=dialog] textarea'), 'x'.repeat(300));");
-  await sleep(150);
-  check("改回 300 字以内：太长提示自动收起", (await tooLongText()) === null);
-
-  // 扩展字符把字数推过 300：一样先问
-  await setText("x".repeat(299) + "€");
-  await evaluate("$btn('Send', document.querySelector('[role=dialog]')).click();");
-  await waitFor("document.querySelector('[role=dialog] [data-too-long]')");
-  tl = await tooLongText();
-  check("299 + €：提示 301 characters", tl && tl.includes("This message is too long for SMS: 301 characters. SMS allows up to 300."), String(tl));
-  await evaluate("$btn('No, edit the message', document.querySelector('[role=dialog] [data-too-long]')).click();");
-  await sleep(150);
-
-  // 每种特殊字符：点 Send 先问，提示点名
-  for (const ch of ["“", "–", "😀", "中", "á", "ç"]) {
-    before = (await mockLog()).length;
-    await setText(`Hi ${ch} there`);
-    await evaluate("$btn('Send', document.querySelector('[role=dialog]')).click();");
-    await waitFor("document.querySelector('[role=dialog] [data-too-long]')");
-    tl = await tooLongText();
-    check(`特殊字符 ${ch}：点 Send 不发、提示 SMS can't use these characters: ${ch}`,
-      tl && tl.includes(`SMS can't use these characters: ${ch}. Only plain letters, numbers and simple punctuation can go by SMS.`) &&
-      tl.includes("Send it by email only?") && !tl.includes("too long") && !(await mockLog()).slice(before).some((e) => e.method === "POST"), String(tl));
-    await evaluate("$btn('No, edit the message', document.querySelector('[role=dialog] [data-too-long]')).click();");
-    await sleep(150);
-  }
-
-  // 特殊字符 → Yes, send by email only
-  const SPECIAL = "Hi “there” — see you 😀 你好";
-  before = (await mockLog()).length;
-  await setText(SPECIAL);
-  await evaluate("$btn('Send', document.querySelector('[role=dialog]')).click();");
-  await waitFor("document.querySelector('[role=dialog] [data-too-long]')");
-  tl = await tooLongText();
-  check("多个特殊字符：提示里全列出", tl && tl.includes("SMS can't use these characters: “ ” — 😀 你 好."), String(tl));
-  check("选之前不发请求", !(await mockLog()).slice(before).some((e) => e.method === "POST"));
-  await evaluate("$btn('Yes, send by email only', document.querySelector('[role=dialog] [data-too-long]')).click();");
   await waitFor("document.querySelector('[role=dialog] textarea').value === ''");
   log = (await mockLog()).slice(before);
   post = log.filter((e) => e.method === "POST");
-  check("Yes, send by email only：一次 POST，sms_out、send_sms=false、send_email=true、原文",
+  check("超长点 Send：不问 Yes / No、一次 POST，sms_out、send_sms=false、send_email=true、307 字原文",
+    !(await hasOldAsk()) && post.length === 1 && post[0].body.direction === "sms_out" && post[0].body.send_sms === false && post[0].body.send_email === true &&
+    post[0].body.body.length === 307, JSON.stringify(post.map((p) => ({ ...p.body, body: p.body.body.length }))));
+  check("发完清空：SMS to guest 能勾了但不自动勾回（题 2 A）", JSON.stringify(await cbs()) === JSON.stringify(["off", "on"]), JSON.stringify(await cbs()));
+
+  // 坏字 → 直接只发 email
+  const SPECIAL = "Hi “there” — see you 😀 你好";
+  before = (await mockLog()).length;
+  await evaluate("document.querySelectorAll('[role=dialog] input[type=checkbox]')[0].click();");
+  await sleep(100);
+  await setText(SPECIAL);
+  check("坏字：SMS to guest 又灰掉取消", (await cbs())[0] === "off,disabled", JSON.stringify(await cbs()));
+  await evaluate("$btn('Send', document.querySelector('[role=dialog]')).click();");
+  await waitFor("document.querySelector('[role=dialog] textarea').value === ''");
+  log = (await mockLog()).slice(before);
+  post = log.filter((e) => e.method === "POST");
+  check("坏字点 Send：一次 POST，sms_out、send_sms=false、send_email=true、原文",
     post.length === 1 && post[0].body.direction === "sms_out" && post[0].body.send_sms === false && post[0].body.send_email === true &&
     post[0].body.body === SPECIAL, JSON.stringify(post.map((p) => p.body)));
-  check("只发 email 后：SMS 不勾、Email 勾上，提示收起",
-    (await evaluate("const c=[...document.querySelectorAll('[role=dialog] input[type=checkbox]')]; return !c[0].checked && c[1].checked;")) &&
-    (await tooLongText()) === null);
 
   // 对话框里的 Mark as actioned
   before = (await mockLog()).length;
@@ -533,37 +533,38 @@ async function run() {
   check("没邮箱的单：SMS 勾着、Email 不可用",
     await evaluate("const c=[...document.querySelectorAll('[role=dialog] input[type=checkbox]')]; return c[0].checked && !c[0].disabled && c[1].disabled && !c[1].checked;"));
   before = (await mockLog()).length;
-  await evaluate("$setValue(document.querySelector('[role=dialog] textarea'), 'y'.repeat(301));");
+  await evaluate("$setValue(document.querySelector('[role=dialog] textarea'), 'y'.repeat(307));");
   await sleep(150);
-  let noEmailBox = await evaluate("const b = document.querySelector('[role=dialog] [data-too-long]'); return b ? b.textContent : null;");
-  check("没邮箱 + 超 300 字：不用点就提示 This guest has no email. Shorten the message to 300 characters.",
-    noEmailBox && noEmailBox.includes("This message is too long for SMS: 301 characters. SMS allows up to 300.") &&
-    noEmailBox.includes("This guest has no email. Shorten the message to 300 characters.") && !noEmailBox.includes("Yes, send by email only") &&
-    (await evaluate("return document.querySelector('[role=dialog] [data-too-long]').getAttribute('role');")) === "alert", String(noEmailBox));
-  check("没邮箱 + 超 300 字：Send → 灰掉", await evaluate("return $btn('Send', document.querySelector('[role=dialog]')).disabled;"));
+  let nb = await prob();
+  check("SMS 超字数（动手 11-17）没邮箱 + 超两段（题 3 A）：SMS to guest 灰掉取消、Send → 灰掉、原因 …This guest has no email: shorten the message to send it.",
+    nb && nb.text.includes("Too long for SMS: 307 / 306 characters (1 over). An SMS can be at most 306 characters (2 text messages); longer ones are cut off or not delivered. This guest has no email: shorten the message to send it.") &&
+    nb.role === "alert" && JSON.stringify(await cbs()) === JSON.stringify(["off,disabled", "off,disabled"]) &&
+    (await evaluate("return $btn('Send', document.querySelector('[role=dialog]')).disabled;")) && !(await hasOldAsk()), JSON.stringify({ nb, cb: await cbs() }));
   await evaluate("$btn('Save note', document.querySelector('[role=dialog]')).click();");
   await waitFor("document.querySelector('[role=dialog] textarea').value === ''");
   log = (await mockLog()).slice(before);
   post = log.filter((e) => e.method === "POST");
   check("没邮箱 + 超 300 字：Save note 照样存（staff_note，不发短信 / 邮件）",
-    post.length === 1 && post[0].body.direction === "staff_note" && post[0].body.send_sms === false && post[0].body.send_email === false && post[0].body.body.length === 301,
+    post.length === 1 && post[0].body.direction === "staff_note" && post[0].body.send_sms === false && post[0].body.send_email === false && post[0].body.body.length === 307,
     JSON.stringify(post.map((p) => ({ ...p.body, body: p.body.body.length }))));
   await evaluate("$setValue(document.querySelector('[role=dialog] textarea'), 'y'.repeat(300));");
   await sleep(150);
-  check("没邮箱：缩到 300 字以内提示消失、Send 可点",
-    !(await evaluate("return !!document.querySelector('[role=dialog] [data-too-long]');")) &&
-    !(await evaluate("return $btn('Send', document.querySelector('[role=dialog]')).disabled;")));
-  await setText("See you at 7 – thanks “Bob”");
-  noEmailBox = await evaluate("const b = document.querySelector('[role=dialog] [data-too-long]'); return b ? b.textContent : null;");
-  check("没邮箱 + 特殊字符：不用点就提示 Remove those characters to send it by SMS.、Send 灰掉",
-    noEmailBox && noEmailBox.includes("SMS can't use these characters: – “ ”.") &&
-    noEmailBox.includes("This guest has no email. Remove those characters to send it by SMS.") && !noEmailBox.includes("Shorten the message") &&
-    !noEmailBox.includes("Yes, send by email only") &&
-    (await evaluate("return $btn('Send', document.querySelector('[role=dialog]')).disabled;")), String(noEmailBox));
-  await setText("See you at 7 - thanks \"Bob\"");
-  check("没邮箱：换成普通字符后提示消失、Send 可点",
-    !(await evaluate("return !!document.querySelector('[role=dialog] [data-too-long]');")) &&
-    !(await evaluate("return $btn('Send', document.querySelector('[role=dialog]')).disabled;")));
+  check("没邮箱：缩到 300 字以内原因块消失、SMS to guest 能勾了但不自动勾回（题 2 A）、Send 可点",
+    !(await prob()) && JSON.stringify(await cbs()) === JSON.stringify(["off", "off,disabled"]) &&
+    !(await evaluate("return $btn('Send', document.querySelector('[role=dialog]')).disabled;")), JSON.stringify(await cbs()));
+  await evaluate("document.querySelectorAll('[role=dialog] input[type=checkbox]')[0].click();");
+  await sleep(100);
+  await setText("See you at 7 – thanks „Bob“ and adiós");
+  nb = await prob();
+  check("没邮箱 + 坏字：SMS can't send 2 characters… This guest has no email, so it can't be sent until you fix it.、只标 „ ó（– “ 不标）、Send 灰掉",
+    nb && nb.text.includes("SMS can't send 2 characters in this message (marked in red below). This guest has no email, so it can't be sent until you fix it.") &&
+    JSON.stringify(nb.marks) === JSON.stringify(["„", "ó"]) && !nb.text.includes("Too long") && nb.replace &&
+    (await evaluate("return $btn('Send', document.querySelector('[role=dialog]')).disabled;")), JSON.stringify(nb));
+  await evaluate("document.querySelector('[role=dialog] [data-sms-replace]').click();");
+  await sleep(150);
+  check("没邮箱：Replace with plain characters → See you at 7 - thanks \"Bob\" and adios、原因块消失、Send 可点、SMS 不自动勾回",
+    (await evaluate("return document.querySelector('[role=dialog] textarea').value;")) === "See you at 7 - thanks \"Bob\" and adios" && !(await prob()) &&
+    !(await evaluate("return $btn('Send', document.querySelector('[role=dialog]')).disabled;")) && (await cbs())[0] === "off", JSON.stringify(await cbs()));
   await evaluate("$btn('×', document.querySelector('[role=dialog]')).click();");
   await sleep(200);
   await ctl({ noEmailRow: false });
@@ -754,7 +755,12 @@ async function run() {
   log = await mockLog();
   const replyReq = log.filter((e) => e.path === "/booking-notes/multi/reply").pop();
   check("Send 请求体带 address / body", replyReq && replyReq.body.address === MULTI_ONE && replyReq.body.body === "When can you refund me?", JSON.stringify(replyReq));
-  const afterReply = log.filter((e) => e.path === "/api/notifications/unhandled").length;
+  // 重拉在面板收起之后异步发出；最多等 3 秒（以前直接读偶尔抢在请求前面）。
+  let afterReply = log.filter((e) => e.path === "/api/notifications/unhandled").length;
+  for (let i = 0; i < 30 && afterReply <= before; i++) {
+    await sleep(100);
+    afterReply = (await mockLog()).filter((e) => e.path === "/api/notifications/unhandled").length;
+  }
   check("发送成功后立即重拉 /unhandled（不等 60 秒）", afterReply > before, `${before} → ${afterReply}`);
 
   // 发送失败（服务端返回 status !== sent）：卡片留着、字也留着。
@@ -1426,7 +1432,7 @@ async function run() {
   }
 
   // ── No show 改方向（Annie 2026-11-17「N3理解正确…其他N的问题都全部同意推荐。动手」，样稿 Jvt41fQWdpEYPq8k3qhTdU 第 2 版）──
-  // N9 A Driver mark 拆成 Relay / Bus；N7 A 在 Tracking 表改（点标记 → 下拉 → Save），存了算处理过；N2 A Reset 回原始、hover 两行。
+  // N9 A Driver mark 拆成 Relay / Bus；存了算处理过；hover 两行。第 3 版（11-19）起只在 Bus 列点 No show（见下）。
   {
     const LIVE_ON = [{ key: "morning_live_drivers", label: "Live drivers", visibility: "super_admin_only", default: "super_admin_only", visible_to_me: true }];
     const SEL = `window.$pick = (sel, v) => { const el = document.querySelector(sel); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(el, v); el.dispatchEvent(new Event('change', { bubbles: true })); };
@@ -1443,60 +1449,84 @@ async function run() {
     await open();
     const cols = await evaluate("return [...document.querySelectorAll('main thead th')].map((th) => th.textContent.replace('⠿','').trim().replace(/\\s*\\d+$/, ''));");
     check("N9 A：后端带了 Relay / Bus 分开的标记 ⇒ 表头 Relay、Bus 紧跟 Check-in Time，没有 Driver mark", cols.indexOf("Relay") === cols.indexOf("Check-in Time") + 1 && cols.indexOf("Bus") === cols.indexOf("Relay") + 1 && !cols.includes("Driver mark"), cols.join(","));
-    check("A1002：relay 标了 No show、没人处理 ⇒ 顶到最上面淡红；Relay 格「✗ No show 6:03 AM」+「Van 12 Mike」+ ⚠️ Take action；Bus 格「Not marked」", await evaluate("const tr = document.querySelector('main tbody tr'); const c = $cell('A1002', 'relay'); return tr.dataset.nsRow === 'A1002' && c.textContent.includes('✗ No show 6:03 AM') && c.textContent.includes('Van 12 Mike') && !!c.querySelector('[data-ns-take-action]') && $cell('A1002', 'bus').textContent.includes('Not marked');"), await evaluate("return $row('A1002')?.textContent;"));
+    check("A1002：relay 标了 No show、没人处理 ⇒ 顶到最上面淡红；Relay 格「✗ No show 6:03 AM」+「Van 12 Mike」+ ⚠️ Take action；Bus 格没标", await evaluate("const tr = document.querySelector('main tbody tr'); const c = $cell('A1002', 'relay'); return tr.dataset.nsRow === 'A1002' && c.textContent.includes('✗ No show 6:03 AM') && c.textContent.includes('Van 12 Mike') && !!c.querySelector('[data-ns-take-action]') && $cell('A1002', 'bus').dataset.markValue === '';"), await evaluate("return $row('A1002')?.textContent;"));
     check("A1004 是 TI 客人（relay_applicable:false）：Relay 格只写「—」、不能点", await evaluate("const c = $row('A1004').querySelector('[data-mark-na]'); return !!c && c.textContent === '—' && !$row('A1004').querySelector('[data-mark-pill=relay]');"));
     check("A1003 Bus「✓ Boarded 7:02 AM」，鼠标移上去：Boarded · by Ana (guide) · Bus A · 7:02 AM", await evaluate("return $cell('A1003', 'bus').querySelector('[data-mark-pill]').title === 'Boarded · by Ana (guide) · Bus A · 7:02 AM' && $cell('A1003', 'bus').textContent.includes('✓ Boarded 7:02 AM');"), await evaluate("return $cell('A1003', 'bus').querySelector('[data-mark-pill]').title;"));
-    // 点标记 → 下拉；选了只暂存
+    // No show 第 3 版（Annie 2026-11-19「no show那个同意推荐，动手」，样稿 SvK1sLi1jFefZN2naHa6y5）：N1 A 只在 Bus 列点 No show、Relay 只看；
+    // 淡灰虚线「No show」→ 点了红字 + Save → 存好红字带时间 + Edited；点红字 + Save 取消（staff 标的回导游原标记、导游标的 No show 存 Boarded）。
+    const FAINT = "rgb(90, 122, 154)", RED = "rgb(231, 76, 60)";
+    check("N1 ①：Relay 列只看——Relay 格里没有按钮（只有 ⚠️ Take action）、A1002 的 Relay 胶囊不是按钮", await evaluate("return ![...document.querySelectorAll('[data-mark-cell=relay] button')].some((b) => !b.hasAttribute('data-ns-take-action')) && $cell('A1002', 'relay').querySelector('[data-mark-pill]').tagName === 'SPAN';"));
+    check("没标的 Bus（A1002）：只有一个淡灰虚线「No show」（同原来 Not marked 的颜色），没有下拉", await evaluate(`const b = $cell('A1002', 'bus').querySelector('[data-ns-button=off]'); const cs = b && getComputedStyle(b); return !!b && b.textContent === 'No show' && cs.color === '${FAINT}' && cs.textDecorationStyle === 'dotted' && !document.querySelector('main tbody select');`), await evaluate("return $cell('A1002', 'bus')?.outerHTML;"));
+    check("N1 ②：导游标了 Boarded（A1003）⇒ 绿胶囊照旧，旁边仍有淡灰 No show", await evaluate("const c = $cell('A1003', 'bus'); return c.querySelector('[data-mark-pill]').textContent.includes('✓ Boarded 7:02 AM') && !!c.querySelector('[data-ns-button=off]');"));
+    // 点一下 ⇒ 红字（只暂存）
     let from = (await mockLog()).length;
-    await evaluate("$cell('A1002', 'relay').querySelector('[data-mark-pill]').click();");
-    check("点 Relay 标记：变成下拉（Picked up / No show，没改过的没有 Reset）", await waitFor("!!$cell('A1002', 'relay').querySelector('select') && [...$cell('A1002', 'relay').querySelectorAll('option')].map((o) => o.textContent).join('|') === 'Picked up|No show'"));
-    await evaluate("$pick('[data-mark-select=relay]', 'picked_up');");
-    check("选 Picked up：只暂存（没有 PUT），旁边出蓝色 Save", (await waitFor("!!$cell('A1002', 'relay').querySelector('[data-mark-save]')")) && (await evaluate("const s = $cell('A1002', 'relay').querySelector('[data-mark-save]'); return getComputedStyle(s).backgroundColor === 'rgb(59, 130, 246)';")) && !(await mockLog()).slice(from).some((e) => e.method === "PUT"));
+    await evaluate("$cell('A1002', 'bus').querySelector('[data-ns-button=off]').click();");
+    check("点淡灰 No show：变红字「✗ No show」（#e74c3c、11px 半粗、没有底色）+ 蓝 Save + 灰字「Not saved yet」；没有 PUT",
+      (await waitFor("!!$cell('A1002', 'bus').querySelector('[data-ns-button=on]')")) && (await evaluate(`const c = $cell('A1002', 'bus'); const r = c.querySelector('[data-ns-button=on]'); const cs = getComputedStyle(r); const s = c.querySelector('[data-mark-save]'); return r.textContent === '✗ No show' && cs.color === '${RED}' && cs.fontSize === '11px' && cs.fontWeight === '600' && cs.backgroundColor === 'rgba(0, 0, 0, 0)' && getComputedStyle(s).backgroundColor === 'rgb(59, 130, 246)' && c.querySelector('[data-mark-unsaved]').textContent === 'Not saved yet';`)) && !(await mockLog()).slice(from).some((e) => e.method === "PUT"),
+      await evaluate("return $cell('A1002', 'bus')?.outerHTML;"));
+    await evaluate("$cell('A1002', 'bus').querySelector('[data-ns-button=on]').click();");
+    check("没存前再点红字：变回淡灰、Save 没了（撤掉暂存）", await waitFor("!!$cell('A1002', 'bus').querySelector('[data-ns-button=off]') && !$cell('A1002', 'bus').querySelector('[data-mark-save]')"));
+    await evaluate("$cell('A1002', 'bus').querySelector('[data-ns-button=off]').click();");
+    await waitFor("!!$cell('A1002', 'bus').querySelector('[data-mark-save]')");
     // 有没存的：换日期 / 换页签先问
-    await evaluate("window.__asked = 0; window.confirm = () => { window.__asked++; return false; };");
+    await evaluate("window.__asked = 0; window.__askMsg = ''; window.confirm = (m) => { window.__asked++; window.__askMsg = m; return false; };");
     const before = await evaluate("return document.querySelector('input[aria-label=\"Date\"]').value;");
     await evaluate("document.querySelector('button[aria-label=\"Previous day\"]').click();");
     await sleep(300);
-    check("有没存的改动点前一天：先问，选留下 ⇒ 日期不变、暂存还在", (await evaluate("return window.__asked;")) === 1 && (await evaluate("return document.querySelector('input[aria-label=\"Date\"]').value;")) === before && (await evaluate("return !!$cell('A1002', 'relay').querySelector('[data-mark-save]');")));
+    check("有没存的 No show 点前一天：先问「You have No show marks you haven't saved. Leave without saving them?」，选留下 ⇒ 日期不变、暂存还在", (await evaluate("return window.__asked;")) === 1 && (await evaluate("return window.__askMsg;")) === "You have No show marks you haven't saved. Leave without saving them?" && (await evaluate("return document.querySelector('input[aria-label=\"Date\"]').value;")) === before && (await evaluate("return !!$cell('A1002', 'bus').querySelector('[data-mark-save]');")), await evaluate("return window.__askMsg;"));
     await evaluate("document.querySelector('[data-mt-tab=\"live\"]').click();");
     await sleep(300);
-    check("有没存的改动点 Live drivers：先问，选留下 ⇒ 还在 Tracking", (await evaluate("return window.__asked;")) === 2 && (await evaluate("return document.querySelector('[data-mt-tab=\"tracking\"]').getAttribute('aria-selected') === 'true';")));
+    check("有没存的 No show 点 Live drivers：先问，选留下 ⇒ 还在 Tracking", (await evaluate("return window.__asked;")) === 2 && (await evaluate("return document.querySelector('[data-mt-tab=\"tracking\"]').getAttribute('aria-selected') === 'true';")));
     await evaluate("$btn('↻ Refresh').click();");
     await sleep(1200);
-    check("↻ Refresh 不冲掉没存的改动", await evaluate("return $cell('A1002', 'relay').querySelector('select')?.value === 'picked_up' && !!$cell('A1002', 'relay').querySelector('[data-mark-save]');"));
+    check("↻ Refresh 不冲掉没存的 No show", await evaluate("return !!$cell('A1002', 'bus').querySelector('[data-ns-button=on]') && !!$cell('A1002', 'bus').querySelector('[data-mark-save]');"));
     // Save
     from = (await mockLog()).length;
-    await evaluate("$cell('A1002', 'relay').querySelector('[data-mark-save]').click();");
-    const saved = await waitFor("!!$cell('A1002', 'relay')?.querySelector('[data-mark-saved]')");
+    await evaluate("$cell('A1002', 'bus').querySelector('[data-mark-save]').click();");
+    const saved = await waitFor("!!$cell('A1002', 'bus')?.querySelector('[data-mark-saved]')");
     const puts = (await mockLog()).slice(from).filter((e) => e.method === "PUT");
-    check("按 Save：PUT /tracking/mark {booking_id 2, order_number A1002, leg '', col relay, value picked_up}", saved && puts.some((e) => e.path === "/api/notifications/morning-pickup/tracking/mark" && e.body && e.body.booking_id === 2 && e.body.order_number === "A1002" && e.body.leg === "" && e.body.col === "relay" && e.body.value === "picked_up"), JSON.stringify(puts));
-    check("存好：Relay「✓ Picked up 9:15 AM」+ 黄字「✎ Edited by ZZ Staff 9:15 AM」+ 绿字 Saved；不再置顶（后端同一次写入记成已处理）", await evaluate("const c = $cell('A1002', 'relay'); return c.textContent.includes('✓ Picked up 9:15 AM') && c.querySelector('[data-mark-edited]').textContent === '✎ Edited by ZZ Staff 9:15 AM' && getComputedStyle(c.querySelector('[data-mark-saved]')).color === 'rgb(46, 204, 113)' && !document.querySelector('[data-ns-row]');"), await evaluate("return $cell('A1002', 'relay').textContent;"));
-    const hover = await evaluate("return $cell('A1002', 'relay').querySelector('[data-mark-pill]').title;");
-    check("存好后鼠标移上去两行：Picked up · changed by ZZ Staff (staff) · 9:15 AM / Original: No show · by Mike (relay) · Van 12 · 6:03 AM", hover === "Picked up · changed by ZZ Staff (staff) · 9:15 AM\nOriginal: No show · by Mike (relay) · Van 12 · 6:03 AM", hover);
-    // Reset
-    await evaluate("$cell('A1002', 'relay').querySelector('[data-mark-pill]').click();");
-    check("staff 改过的格子，下拉多一项 Reset to driver/guide mark", await waitFor("[...($cell('A1002', 'relay').querySelectorAll('option'))].map((o) => o.textContent).join('|') === 'Picked up|No show|Reset to driver/guide mark'"));
+    check("按 Save：PUT /tracking/mark {booking_id 2, order_number A1002, leg '', col bus, value no_show}", saved && puts.some((e) => e.path === "/api/notifications/morning-pickup/tracking/mark" && e.body && e.body.booking_id === 2 && e.body.order_number === "A1002" && e.body.leg === "" && e.body.col === "bus" && e.body.value === "no_show"), JSON.stringify(puts));
+    check("存好：红字「✗ No show 9:15 AM」+ 黄字「✎ Edited by ZZ Staff 9:15 AM」+ 绿字 Saved；这行记成已处理、不再置顶",
+      await evaluate(`const c = $cell('A1002', 'bus'); const r = c.querySelector('[data-ns-button=on]'); return r.textContent === '✗ No show 9:15 AM' && getComputedStyle(r).color === '${RED}' && getComputedStyle(r).backgroundColor === 'rgba(0, 0, 0, 0)' && c.querySelector('[data-mark-edited]').textContent === '✎ Edited by ZZ Staff 9:15 AM' && getComputedStyle(c.querySelector('[data-mark-saved]')).color === 'rgb(46, 204, 113)' && !document.querySelector('[data-ns-row]');`),
+      await evaluate("return $cell('A1002', 'bus').textContent;"));
+    const hover = await evaluate("return $cell('A1002', 'bus').querySelector('[data-ns-button=on]').title;");
+    check("存好后鼠标移上去两行：No show · changed by ZZ Staff (staff) · 9:15 AM / Original: not marked", hover === "No show · changed by ZZ Staff (staff) · 9:15 AM\nOriginal: not marked", hover);
+    // N1 ③：取消 staff 自己标的 ⇒ 存 null，回到导游原来的（没标）
+    await evaluate("$cell('A1002', 'bus').querySelector('[data-ns-button=on]').click();");
+    check("点存好的红字：变回淡灰 + Save + Not saved yet（还没存，Edited 不显示）", await waitFor("!!$cell('A1002', 'bus').querySelector('[data-ns-button=off]') && !!$cell('A1002', 'bus').querySelector('[data-mark-save]') && !!$cell('A1002', 'bus').querySelector('[data-mark-unsaved]') && !$cell('A1002', 'bus').querySelector('[data-mark-edited]')"));
     from = (await mockLog()).length;
-    await evaluate("$pick('[data-mark-select=relay]', '__reset');");
-    await waitFor("!!$cell('A1002', 'relay').querySelector('[data-mark-save]')");
-    await evaluate("$cell('A1002', 'relay').querySelector('[data-mark-save]').click();");
-    check("选 Reset 按 Save：PUT value null；回到 relay 原来的「✗ No show 6:03 AM」，没有 Edited；已处理写「✓ ZZ Staff」", (await waitFor("$cell('A1002', 'relay')?.textContent.includes('✗ No show 6:03 AM') && !$cell('A1002', 'relay').querySelector('[data-mark-edited]')")) && (await mockLog()).slice(from).some((e) => e.method === "PUT" && e.body && e.body.value === null && e.body.col === "relay") && (await evaluate("return $cell('A1002', 'relay').querySelector('[data-ns-handled]')?.textContent === '✓ ZZ Staff';")));
-    // 失败：红字照后端原话，暂存留着
+    await evaluate("$cell('A1002', 'bus').querySelector('[data-mark-save]').click();");
+    check("取消 staff 标的 No show 按 Save：PUT value null；回到淡灰 No show，没有 Edited", (await waitFor("!!$cell('A1002', 'bus')?.querySelector('[data-mark-saved]') && !!$cell('A1002', 'bus').querySelector('[data-ns-button=off]') && !$cell('A1002', 'bus').querySelector('[data-mark-edited]')")) && (await mockLog()).slice(from).some((e) => e.method === "PUT" && e.body && e.body.value === null && e.body.col === "bus" && e.body.order_number === "A1002"));
+    // 失败：红字照后端原话，暂存留着（A1003 导游 Boarded 旁点 No show）
     await ctl({ markFail: true });
-    await evaluate("$cell('A1003', 'bus').querySelector('[data-mark-pill]').click();");
-    await waitFor("!!$cell('A1003', 'bus').querySelector('select')");
-    await evaluate("$pick('[data-mark-select=bus]', 'no_show');");
-    await waitFor("!!$cell('A1003', 'bus').querySelector('[data-mark-save]')");
+    await evaluate("$cell('A1003', 'bus').querySelector('[data-ns-button=off]').click();");
+    check("N1 ②：A1003 Boarded 旁点 No show ⇒ Boarded 胶囊还在、后面红字 + Save", await waitFor("$cell('A1003', 'bus').querySelector('[data-mark-pill]')?.textContent.includes('✓ Boarded 7:02 AM') && !!$cell('A1003', 'bus').querySelector('[data-ns-button=on]') && !!$cell('A1003', 'bus').querySelector('[data-mark-save]')"));
     await evaluate("$cell('A1003', 'bus').querySelector('[data-mark-save]').click();");
-    check("存失败：红字「Not saved: This row changed since the page loaded. Refresh and try again.」，下拉和 Save 还在", (await waitFor("!!$cell('A1003', 'bus').querySelector('[data-mark-error]')")) && (await evaluate("const e = $cell('A1003', 'bus').querySelector('[data-mark-error]'); return e.textContent === 'Not saved: This row changed since the page loaded. Refresh and try again.' && getComputedStyle(e).color === 'rgb(248, 113, 113)' && !!$cell('A1003', 'bus').querySelector('[data-mark-save]');")), await evaluate("return $cell('A1003', 'bus').textContent;"));
-    await evaluate("$cell('A1003', 'bus').querySelector('select').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));");
-    check("Esc：撤掉没存的改动，回到「✓ Boarded 7:02 AM」", await waitFor("!$cell('A1003', 'bus').querySelector('select') && $cell('A1003', 'bus').textContent.includes('✓ Boarded 7:02 AM')"));
+    check("存失败：红字「Not saved: This row changed since the page loaded. Refresh and try again.」，红 No show 和 Save 还在", (await waitFor("!!$cell('A1003', 'bus').querySelector('[data-mark-error]')")) && (await evaluate("const e = $cell('A1003', 'bus').querySelector('[data-mark-error]'); return e.textContent === 'Not saved: This row changed since the page loaded. Refresh and try again.' && getComputedStyle(e).color === 'rgb(248, 113, 113)' && !!$cell('A1003', 'bus').querySelector('[data-mark-save]') && !!$cell('A1003', 'bus').querySelector('[data-ns-button=on]');")), await evaluate("return $cell('A1003', 'bus').textContent;"));
+    await evaluate("$cell('A1003', 'bus').querySelector('[data-ns-button=on]').click();");
+    check("再点红字撤掉：回到「✓ Boarded 7:02 AM」+ 淡灰 No show，没有 Save", await waitFor("!$cell('A1003', 'bus').querySelector('[data-mark-save]') && !!$cell('A1003', 'bus').querySelector('[data-ns-button=off]') && $cell('A1003', 'bus').textContent.includes('✓ Boarded 7:02 AM')"));
     await ctl({ markFail: false });
-    check("How to use 写了 Relay / Bus、改法和 Reset、只有发过早班短信的客人才有行", await evaluate("const t = document.body.textContent; return t.includes('The Bus mark is the final word on a No show.') && t.includes('pick Reset to driver/guide mark and click Save') && t.includes('Their own phone pages and Live drivers still show their original mark.') && t.includes('Only guests who were sent the morning pickup text are listed here.') && t.includes('also counts as dealt with') && !t.includes('Take action under Driver mark');"));
-    // 没有 morning.send / tour.send（不能 Take action）的员工：只看，标记不是按钮
+    check("How to use：第 3 版原文（Bus 列点 No show、点红字取消），没有旧的下拉 / Reset 说法", await evaluate("const t = document.body.textContent; return t.includes('The Bus mark is the final word on a No show.') && t.includes(\"If a guest did not show up, click No show in the Bus column so it turns red, then click Save next to it. To take it back, click the red No show and click Save. Your change shows on Main manifest, the Bus Manifest page and the order page. The guide's own mark is kept: hover over the mark to see it.\") && !t.includes('Reset to driver/guide mark') && t.includes('Only guests who were sent the morning pickup text are listed here.') && t.includes('Marking No show in the Bus column and saving also counts as dealt with.') && !t.includes(\"Changing that row's Relay or Bus mark\") && !t.includes('Take action under Driver mark');"));
+    // N1 ③：导游自己标的 No show（A1004，N2 A 红胶囊）⇒ 点了 + Save 存成 staff 标的 Boarded
+    await fetch(`${MOCK}/api/bookings/4/take-action?want=off`, { method: "PUT" });
+    await ctl({ addNoShow: "A1004" });
+    await open();
+    check("N2 A：导游标的 No show（A1004）照旧红胶囊「✗ No show 7:05 AM」+「Bus A Ana」，能点", await evaluate("const c = $cell('A1004', 'bus'); const p = c.querySelector('button[data-mark-pill]'); return !!p && p.textContent.includes('✗ No show 7:05 AM') && getComputedStyle(p.firstElementChild).backgroundColor === 'rgba(239, 68, 68, 0.18)' && c.textContent.includes('Bus A Ana');"), await evaluate("return $cell('A1004', 'bus')?.outerHTML;"));
+    await evaluate("$cell('A1004', 'bus').querySelector('button[data-mark-pill]').click();");
+    check("点导游的红胶囊：变淡灰 + Save + Not saved yet", await waitFor("!!$cell('A1004', 'bus').querySelector('[data-ns-button=off]') && !!$cell('A1004', 'bus').querySelector('[data-mark-save]') && !!$cell('A1004', 'bus').querySelector('[data-mark-unsaved]')"));
+    from = (await mockLog()).length;
+    await evaluate("$cell('A1004', 'bus').querySelector('[data-mark-save]').click();");
+    check("取消导游标的 No show 按 Save：PUT value boarded；格子「✓ Boarded 9:15 AM」+「✎ Edited by ZZ Staff 9:15 AM」+ 淡灰 No show", (await waitFor("!!$cell('A1004', 'bus')?.querySelector('[data-mark-saved]') && $cell('A1004', 'bus').textContent.includes('✓ Boarded 9:15 AM')")) && (await mockLog()).slice(from).some((e) => e.method === "PUT" && e.body && e.body.value === "boarded" && e.body.col === "bus" && e.body.order_number === "A1004") && (await evaluate("const c = $cell('A1004', 'bus'); return c.querySelector('[data-mark-edited]')?.textContent === '✎ Edited by ZZ Staff 9:15 AM' && !!c.querySelector('[data-ns-button=off]');")), await evaluate("return $cell('A1004', 'bus')?.textContent;"));
+    // 手机：照旧只看，不出 No show 键
+    await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+    await sleep(600);
+    check("手机：只看不改——看得见的地方没有 No show 键、没有 Save", await evaluate("const vis = (el) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; }; return ![...document.querySelectorAll('[data-ns-button], [data-mark-save]')].some(vis);"));
+    await cdp("Emulation.clearDeviceMetricsOverride");
+    await ctl({ clearMark: "A1004", resetSplit: true });
+    // 没有 morning.send / tour.send（不能 Take action）的员工：只看，没有 No show 键
     await ctl({ staffPerms: ["morning.view", "messages.view"], superAdmin: false, extraWidgets: LIVE_ON });
     await open();
-    check("没有发送权限的员工：Relay / Bus 只看（标记不是按钮、没有下拉），How to use 不写改法", await evaluate("return !!document.querySelector('[data-mark-cell=bus] span[data-mark-pill]') && !document.querySelector('button[data-mark-pill]') && !document.body.textContent.includes('pick Reset to driver/guide mark');"));
+    check("没有发送权限的员工：只看结果（没有淡灰 / 红 No show 键、标记不是按钮），How to use 不写改法", await evaluate("return !!document.querySelector('[data-mark-cell=bus] span[data-mark-pill]') && !document.querySelector('[data-ns-button]') && !document.querySelector('button[data-mark-pill]') && !document.body.textContent.includes('click No show in the Bus column');"));
     await ctl({ split: false, live: false, resetSplit: true, staffPerms: null, superAdmin: false, extraWidgets: null });
   }
 

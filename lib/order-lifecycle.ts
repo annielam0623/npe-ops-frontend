@@ -80,7 +80,13 @@ export interface ChangeEntry {
   /** 来源那一格写的字：Rezdy / Guest / 员工名 / System。 */
   who: string;
   /** 一条记录可能改了几项（Refresh from Rezdy 一次改几项）。null = 没有这一项（加 / 删项目，显示「—」）。 */
-  items: { field: string; before: string | null; after: string | null }[];
+  /** changedOnly：只知道改了、没有前后值（G351：partner 看到的 Internal notes (Rezdy)）。 */
+  items: {
+    field: string;
+    before: string | null;
+    after: string | null;
+    changedOnly?: boolean;
+  }[];
   /** 没有前后值时写的话。 */
   text: string;
   /** 排序用（毫秒；读不出 = 0）。 */
@@ -110,10 +116,16 @@ const MEANINGFUL = new Set([
   "confirmation_no_changed",
 ]);
 
-/** "phone: 'a' → 'b'" 一段 ⇒ 前后值；对不上返回 null。 */
+/**
+ * "phone: 'a' → 'b'" 一段 ⇒ 前后值；对不上返回 null。
+ * G351（后端 4aea93a5）：Refresh 的 activity_log 对 partner 不能看的字段只写「Internal notes (Rezdy): changed」，
+ * 没有前后值 ⇒ 认成一项、changedOnly（显示「字段: changed」一行）。
+ */
 function parseDiff(s: string): ChangeEntry["items"][number] | null {
   const m = /^\s*(.+?):\s*'([\s\S]*?)'\s*→\s*'([\s\S]*?)'\s*$/.exec(s);
-  return m ? { field: m[1], before: m[2], after: m[3] } : null;
+  if (m) return { field: m[1], before: m[2], after: m[3] };
+  const c = /^\s*(.+?):\s*changed\s*$/.exec(s);
+  return c ? { field: c[1], before: null, after: null, changedOnly: true } : null;
 }
 
 type Activity = OrderDetail["activity_log"][number];
@@ -196,7 +208,8 @@ export function toChange(a: Activity): ChangeEntry {
   } else if (a.event_type === "refreshed_from_rezdy") {
     const body = detail.replace(/^Refreshed from Rezdy\s*[—-]\s*/, "");
     items = body
-      .split(/;\s*(?=[^;]+:\s*')/)
+      // 「; 字段: '」或「; 字段: changed」（G351）都是下一项的开头。
+      .split(/;\s*(?=[^;]+:\s*(?:'|changed\s*(?:;|$)))/)
       .map(parseDiff)
       .filter((d): d is NonNullable<typeof d> => d !== null);
     text = "Refreshed from Rezdy";
@@ -637,6 +650,47 @@ export function vanAtHotel(
   if (!arrived) return null;
   const a = formatLaTime(arrived);
   return left ? `${a} – ${formatLaTime(left)}` : a;
+}
+
+/**
+ * ⑦ Tour ended（G360，Annie「可以，团结束时间就这样做」）：回程第一个 Las Vegas 下客站，例「6:36 PM Treasure Island · last stop 6:57 PM Excalibur」。
+ * 最后一站跟第一站一样（只有一站）或没有 ⇒ 只写第一站；tour_ended_at 是 null / 旧后端没键 ⇒ null（格子写「—」）。
+ */
+export function tourEnded(
+  live:
+    | {
+        tour_ended_at?: string | null;
+        tour_ended_where?: string;
+        last_stop_at?: string | null;
+        last_stop_where?: string;
+      }
+    | null
+    | undefined,
+): string | null {
+  if (!live?.tour_ended_at) return null;
+  const stop = (at: string, where: string | undefined) =>
+    [formatLaTime(at), (where ?? "").trim()].filter(Boolean).join(" ");
+  const first = stop(live.tour_ended_at, live.tour_ended_where);
+  if (!live.last_stop_at) return first;
+  const last = stop(live.last_stop_at, live.last_stop_where);
+  return last === first ? first : `${first} · last stop ${last}`;
+}
+
+/**
+ * 这单的 Tour ended：不按团期取行（多日团第 1 天大巴不回 LV、那天是 null，回程那天才有；后端 G360 每个运行日一行），
+ * 取 live_by_day 里 tour_ended_at 不是 null 的最晚一行（按 tour_date，同一天几行取有值那行）；都没有 ⇒ null（「—」）。
+ */
+export function tourEndedFor(order: OrderDetail): string | null {
+  const done = (order.live_by_day ?? []).filter((x) => x.tour_ended_at);
+  if (!done.length) return null;
+  const latest = done.reduce((a, b) =>
+    b.tour_date > a.tour_date ||
+    (b.tour_date === a.tour_date &&
+      (b.tour_ended_at ?? "") > (a.tour_ended_at ?? ""))
+      ? b
+      : a,
+  );
+  return tourEnded(latest);
 }
 
 // ── How to use（题 6 A：第 3 版那 6 条原文）──────────────────────────────────

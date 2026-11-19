@@ -403,7 +403,7 @@ async function run() {
   check("旧后端（没有 manifest_links）：没有 Main manifest 那一行", await evaluate("return !document.querySelector('[data-manifest-links]');"));
   await ctl({ mlinks: true });
   await search("ZZTEST2", "document.querySelector('[data-manifest-links]')");
-  check("一处：白键「Open in Main manifest →」，网址带 date / tab / pill / row", await evaluate("const a = document.querySelector('[data-open-in-manifest]'); const u = new URL(a.href); return document.querySelectorAll('[data-open-in-manifest]').length === 1 && a.textContent.trim() === 'Open in Main manifest →' && u.pathname === '/manifests' && u.searchParams.get('date') === '2026-10-21' && u.searchParams.get('tab') === 'tickets' && u.searchParams.get('pill') === 't:antelope' && u.searchParams.get('row') === 'ZZTEST2|TIX1|2026-10-21' && !u.searchParams.has('tick') && getComputedStyle(a).backgroundColor === 'rgb(255, 255, 255)';"), await evaluate("return document.querySelector('[data-manifest-links]')?.outerHTML;"))
+  check("一处：蓝键「Open in Main manifest →」（132 Q4 选 D），网址带 date / tab / pill / row，搜索栏照旧本页跳", await evaluate("const a = document.querySelector('[data-open-in-manifest]'); const u = new URL(a.href); return document.querySelectorAll('[data-open-in-manifest]').length === 1 && a.textContent.trim() === 'Open in Main manifest →' && u.pathname === '/manifests' && u.searchParams.get('date') === '2026-10-21' && u.searchParams.get('tab') === 'tickets' && u.searchParams.get('pill') === 't:antelope' && u.searchParams.get('row') === 'ZZTEST2|TIX1|2026-10-21' && !u.searchParams.has('tick') && getComputedStyle(a).backgroundColor === 'rgb(59, 130, 246)' && getComputedStyle(a).color === 'rgb(255, 255, 255)' && !a.target;"), await evaluate("return document.querySelector('[data-manifest-links]')?.outerHTML;"))
   await ctl({ mlinks: true });
   await search("ZZTEST1", "document.querySelectorAll('[data-open-in-manifest]').length === 2");
   check("分在两处：每处一个键「标签 · 胶囊 →」", await evaluate("return [...document.querySelectorAll('[data-open-in-manifest]')].map(a => a.textContent.trim()).join('|') === 'Bus Tour · Bryce & Zion →|Tickets - SelfDrive · Upper Antelope →';"))
@@ -630,6 +630,53 @@ async function run() {
       oc && oc.after === 0 && oc.lines.length === 3 && oc.lines[0].includes("annie · Email") && oc.lines[1].includes("Guest · WhatsApp") && oc.toggle === "Show all 4 ▾" && !oc.notesHasChat, JSON.stringify(oc));
     check("Chat history · 订单详情页：这天有三条线 ⇒ Open chat · Tour / Tickets / Morning →，带 date + q + chat",
       oc && JSON.stringify(oc.links.map((l) => l[0])) === JSON.stringify(["Open chat · Tour →", "Open chat · Tickets →", "Open chat · Morning →"]) && oc.links[0][1] === "/tour-confirmation/tracking?date=2026-10-20&q=ZZTEST1&chat=ZZTEST1" && oc.links[2][1] === "/morning-pickup/tracking?date=2026-10-20&q=ZZTEST1&chat=ZZTEST1", JSON.stringify(oc && oc.links));
+    // G351：Refresh 的 activity_log「Internal notes (Rezdy): changed」（没有前后值）不吞掉前后那一项，自己写一行「字段: changed」。
+    await ctl({ sa: true, lifeVis: null, lifeVisible: false, g351: true });
+    await openDashboard();
+    await search("ZZTEST1", `document.querySelector('[data-lookup-block="changes"] li')`);
+    await sleep(400);
+    {
+      const ls = await evaluate(`return [...document.querySelectorAll('[data-lookup-block="changes"] li')].map(li => li.textContent.replace(/\\s+/g, ' ').trim());`);
+      const late = ls.find((t) => t.startsWith("10/19/2026 9:00 AM")) || "";
+      const early = ls.find((t) => t.startsWith("10/19/2026 8:00 AM")) || "";
+      check("G351「Status: 'A' → 'B'; Internal notes (Rezdy): changed」：两项都出（Status 不被吞掉）", early.includes("Status CONFIRMED → ON_HOLD") && early.includes("Internal notes (Rezdy): changed"), ls.join(" | "));
+      check("G351「Internal notes (Rezdy): changed; Phone: 'a' → 'b'」：两项都出", late.includes("Internal notes (Rezdy): changed") && late.includes("Phone +1 555 0100 → +1 555 0200"), ls.join(" | "));
+      const foo = ls.find((t) => t.startsWith("10/19/2026 10:00 AM")) || "";
+      check("G351 按「: changed」后缀认、不按字段名：假字段「Foo: changed」也解析，前一项 Email 照出", foo.includes("Email a@example.com → b@example.com") && foo.includes("Foo: changed"), ls.join(" | "));
+      check("G351 changed 那一项一行、不画划线旧值、不写 —", await evaluate(`const s = [...document.querySelectorAll('[data-lookup-block="changes"] [data-change-only]')]; return s.length === 3 && s.every(e => !e.querySelector('[data-change-old]') && !e.textContent.includes('—'));`));
+    }
+    await ctl({ g351: false });
+    // ⑦ G360 Tour ended（Annie「可以，团结束时间就这样做」）：回程第一个 Las Vegas 下客站 + 最后一站，洛杉矶时间。
+    for (const [mode, want, name] of [
+      ["two", "6:36 PM Treasure Island · last stop 6:57 PM Excalibur", "两站：第一站 · last stop 最后一站"],
+      ["one", "6:36 PM Treasure Island", "只有一站（最后一站同第一站）：只写那一站"],
+      ["firstOnly", "6:36 PM Treasure Island", "last_stop 是 null：只写第一站"],
+      ["none", "—", "都是 null：写「—」"],
+      ["multiDay", "6:10 PM Excalibur Hotel", "2 日团第 1 天空、第 2 天有：显示第 2 天（最晚有值的那天），地名照原样"],
+      ["sameDay", "6:36 PM Treasure Island · last stop 6:57 PM Excalibur", "同一天两行一空一有：取有值那行"],
+    ]) {
+      await ctl({ sa: true, lifeVis: null, lifeVisible: false, tourEnd: mode });
+      await openDashboard();
+      await search("ZZTEST1", factOf("Morning Pickup", "Tour ended"));
+      await sleep(300);
+      const te = await ev(factOf("Morning Pickup", "Tour ended"));
+      check(`生命周期 · Tour ended 搜索栏 · ${name}`, te?.text === want, JSON.stringify(te));
+      await goto(`${APP}/orders/ZZTEST1`);
+      await waitFor(`document.querySelector('[data-lifecycle-card] [data-lifecycle-field="Tour ended"]') && !document.querySelector('[data-lifecycle-card]').textContent.includes('…')`, 60000);
+      const de = await evaluate(`return document.querySelector('[data-lifecycle-card] [data-lifecycle-field="Tour ended"] dd')?.textContent.replace(/\\s+/g, ' ').trim();`);
+      check(`生命周期 · Tour ended 订单详情页 · ${name}`, de === want, de);
+    }
+    {
+      // 有值时字色同 Van at hotel；「—」是灰的（同其他空格子）。
+      await ctl({ sa: true, lifeVis: null, lifeVisible: false, tourEnd: "two" });
+      await openDashboard();
+      await search("ZZTEST1", factOf("Morning Pickup", "Tour ended"));
+      await sleep(300);
+      const te = await ev(factOf("Morning Pickup", "Tour ended"));
+      const van = await ev(factOf("Morning Pickup", "Van at hotel"));
+      check("生命周期 · Tour ended 有值：字色同 Van at hotel（不是灰的「—」）", te && van && te.color === van.color, JSON.stringify([te, van]));
+    }
+    await ctl({ tourEnd: null });
     await ctl({ sa: false, lifeVis: null, lifeVisible: false });
     await goto(`${APP}/orders/ZZTEST1`);
     await waitFor(`document.querySelector('section[aria-label="Activity"]')`, 60000);

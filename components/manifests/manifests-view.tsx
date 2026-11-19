@@ -1040,7 +1040,7 @@ export function ManifestsView() {
             {denied.length || unknown.length ? (
               <p className="mb-3 text-[12px] text-[#94a3b8] night:text-white/45">
                 {denied.length
-                  ? `${plural(denied.length, "saved column")} need admin access and ${denied.length === 1 ? "is" : "are"} hidden. `
+                  ? `${plural(denied.length, "saved column")} ${denied.length === 1 ? "needs" : "need"} admin access and ${denied.length === 1 ? "is" : "are"} hidden. `
                   : ""}
                 {unknown.length
                   ? `${plural(unknown.length, "saved column")} ${unknown.length === 1 ? "doesn't" : "don't"} appear on this day and ${unknown.length === 1 ? "is" : "are"} hidden. `
@@ -2453,8 +2453,14 @@ function ManifestsHowToUse() {
           Broadcasting Log. Orders that already got the exact same message for
           this tour date (from here or from Tracking) are skipped unless you
           tick Send anyway. A changed message goes to everyone. SMS can be at
-          most 300 characters, plain characters only (no emoji, curly quotes or
-          long dashes). If it is longer, send it by Email.
+          most 306 characters (134 if the message or a guest name has a
+          character such as Δ or Ł), counting the &quot;Hi (name),&quot; added
+          at the start. Plain characters only (no emoji, accents such as á, or
+          symbols such as € and {"{ }"}); curly quotes and long dashes are
+          changed to plain ones automatically. If the message is longer or uses
+          other characters, SMS
+          is greyed out and it goes by Email only. Shorten it to use SMS again,
+          then tick SMS again.
         </>,
         <>
           If an order fails, the result lists the order number and the reason.

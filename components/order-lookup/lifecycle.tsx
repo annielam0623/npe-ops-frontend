@@ -20,6 +20,7 @@ import {
   replyFor,
   type SendModule,
   sentSub,
+  tourEndedFor,
   vanAtHotel,
 } from "@/lib/order-lifecycle";
 import { orderDateToYmd } from "@/lib/order-lookup-api";
@@ -132,6 +133,7 @@ export function LifecycleCard({ order }: { order: OrderDetail }) {
   const pick = lunchPick(order, date);
   const live = liveFor(order, date);
   const van = live ? vanAtHotel(live.arrived_at, live.left_at) : null;
+  const ended = tourEndedFor(order);
   return (
     <section
       aria-label="Order lifecycle"
@@ -225,9 +227,9 @@ export function LifecycleCard({ order }: { order: OrderDetail }) {
           {van ?? "—"}
         </DField>
         {/* Relay / Bus 不在这里写（Annie 2026-11-18「全部同意推荐」）：订单详情页已有「Day of tour」卡，同一份 day_of_tour。 */}
-        {/* 题 4 B：后端还没有回程到站，先写「—」。 */}
-        <DField label="Tour ended" tone="muted">
-          —
+        {/* ⑦ G360：回程第一个 Las Vegas 下客站 + 最后一站；没有 / 旧后端 ⇒「—」。 */}
+        <DField label="Tour ended" tone={ended ? undefined : "muted"}>
+          {ended ?? "—"}
         </DField>
       </dl>
       {changes.length || everything.length ? (
@@ -353,7 +355,13 @@ export function ChangeLine({
   // Annie「rezdy的内容也需要可以展开和收起」：rezdy_changes 那几条默认收成一行「Changed: 字段名 ▸」，点开看旧 → 新，再点 ▴ 收回。
   const [open, setOpen] = useState(false);
   const foldable = !!c.fromRezdy && c.items.length > 0;
-  const diffs = c.items.map((it, i) => (
+  const diffs = c.items.map((it, i) =>
+    it.changedOnly ? (
+      // G351：只知道改了、没有前后值（partner 看到的 Internal notes (Rezdy)），照后端原文一行。
+      <span key={i} className="block" data-change-only>
+        {it.field}: changed
+      </span>
+    ) : (
     <span key={i} className="block">
       {it.field}{" "}
       <span
@@ -367,7 +375,8 @@ export function ChangeLine({
       </span>{" "}
       → {it.after === null ? "—" : it.after || "(empty)"}
     </span>
-  ));
+    ),
+  );
   return (
     <li
       data-change={c.source}

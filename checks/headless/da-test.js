@@ -1617,6 +1617,77 @@ async function run() {
     await waitFor("(() => { const p = document.getElementById('panel-send'); const b = p && p.querySelector('[aria-label=\"Need a look\"]'); if (!b || !b.offsetParent) return false; const r = b.getBoundingClientRect(); return r.top < innerHeight && r.bottom > 0; })()", 10000);
     check("G308 Need a look Fix ›：切到 Send 标签、滚到 Need a look 那一块", await evaluate("const p = document.getElementById('panel-send'); const b = p && p.querySelector('[aria-label=\"Need a look\"]'); if (!b) return false; const r = b.getBoundingClientRect(); return !!b.offsetParent && r.top < innerHeight && r.bottom > 0 && new URL(location.href).searchParams.get('tab') === 'send';"));
 
+    // ── G307（Annie 11-13「need a look放得太朝下了，没人会注意」，11-19 选 B「0单时就不出现」+「动手」）：
+    // Send 标签最上面橙色提醒 + View ›；Need a look 那一块原位不动；0 单不出。
+    {
+      const al = "document.querySelector('#panel-send [data-need-look-alert]')";
+      const nlBox = "document.querySelector('#panel-send [aria-label=\"Need a look\"]')";
+      const inView = (sel) => `(() => { const b = ${sel}; if (!b || !b.offsetParent) return false; const r = b.getBoundingClientRect(); return r.top < innerHeight && r.bottom > 0; })()`;
+      check("G307 有 1 单：Send 标签有橙色提醒，原文「⚠ 1 order in Need a look — these guests will not get the morning reminder until each one is sorted out.」+ View ›",
+        await evaluate(`const a = ${al}; return !!a && a.querySelector('span').textContent.replace(/\\s+/g, ' ').trim() === '⚠ 1 order in Need a look — these guests will not get the morning reminder until each one is sorted out.' && a.querySelector('[data-need-look-view]').textContent === 'View ›';`),
+        await evaluate(`return ${al}?.textContent;`));
+      check("G307 提醒在 Send 标签最上面（Step 1 前面），Need a look 那一块还在下面原位",
+        await evaluate(`const a = ${al}, b = ${nlBox}, p = document.getElementById('panel-send'); const s = [...p.children], i = s.indexOf(a), nx = s[i + 1]; return i >= 0 && !!nx && nx.textContent.includes('Send to drivers') && a.getBoundingClientRect().bottom <= nx.getBoundingClientRect().top + 1 && s.slice(0, i).every(e => !e.contains(b)) && s.slice(i + 2).some(e => e.contains(b));`),
+        await evaluate(`const p = document.getElementById('panel-send'); return [...p.children].map(e => e.tagName + ':' + e.textContent.slice(0, 30)).join(' | ');`));
+      check("G307 提醒是橙黄底（同 Assign not saved 黄条），View › 是蓝字链接不是蓝底按钮",
+        await evaluate(`const a = ${al}, v = a.querySelector('[data-need-look-view]'); const cs = getComputedStyle(v); return getComputedStyle(a).backgroundColor === 'rgb(253, 241, 221)' && cs.backgroundColor === 'rgba(0, 0, 0, 0)' && cs.textDecorationLine.includes('underline');`));
+      await evaluate("window.scrollTo(0, 0);");
+      await sleep(300);
+      check("G307 滚回顶上：电脑第一屏看得到提醒、看不到 Need a look 那一块", await evaluate(`return ${inView(al)} && !${inView(nlBox)};`));
+      await evaluate(`${al}.querySelector('[data-need-look-view]').click();`);
+      check("G307 点 View ›：滚到 Need a look 那一块", await waitFor(inView(nlBox), 10000));
+      // 手机第一屏
+      await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+      await sleep(600);
+      await evaluate("window.scrollTo(0, 0);");
+      await sleep(300);
+      const phoneTop = await evaluate(`return Math.round(${al}.getBoundingClientRect().top);`);
+      check("G307 手机：页面最上面往下一屏之内就是提醒（top < 844）、没有左右晃", phoneTop >= 0 && phoneTop < 844 && (await evaluate("return document.documentElement.scrollWidth <= innerWidth + 1;")), String(phoneTop));
+      await cdp("Emulation.clearDeviceMetricsOverride");
+      await sleep(300);
+      // 0 单：不出
+      await ctl({ needRoundEmpty: true, needRound: false });
+      await openPage(`${APP}/dispatch?date=2026-10-05&tab=send`);
+      await waitFor(nlBox, 20000);
+      await sleep(1200);
+      check("G307 0 单：没有提醒；Need a look 那一块照旧在", await evaluate(`return !${al} && !!${nlBox};`));
+      // 后端 PASS 时提：处理完单、面板重拉（↻ Refresh）以后，提醒和 Schedule check 的数跟着变，减到 0 不出。
+      const alText = `${al}?.querySelector('span').textContent.replace(/\\s+/g, ' ').trim() || ''`;
+      const scText = "document.getElementById('schedule-check')?.textContent || ''";
+      // Schedule check 在 Assign 标签（窄屏收成右下角胶囊）：切过去、打开，读完再回 Send。
+      const readSC = async () => {
+        await evaluate("document.getElementById('tab-assign').click();");
+        await sleep(300);
+        await evaluate("document.querySelector('[data-schedule-pill]')?.click();");
+        await sleep(300);
+        const t = await evaluate(`return ${scText};`);
+        await evaluate("document.getElementById('tab-send').click();");
+        await waitFor("!document.getElementById('panel-send').hidden", 5000);
+        return t;
+      };
+      const refresh = async () => {
+        await evaluate("document.querySelector('#panel-send [data-refresh-guests]').click();");
+        await waitFor("document.querySelector('#panel-send [data-refresh-guests]').textContent.trim() === '↻ Refresh'", 15000);
+        await sleep(400);
+      };
+      await ctl({ needRoundEmpty: false, needRound: true });
+      await openPage(`${APP}/dispatch?date=2026-10-05&tab=send`);
+      check("G307 重拉前：6 单 ⇒ 提醒写 6 orders", await waitFor(`${alText}.startsWith('⚠ 6 orders in Need a look')`, 20000), await evaluate(`return ${alText};`));
+      await ctl({ needRound: false });
+      await refresh();
+      const a1 = await evaluate(`return ${alText};`);
+      const s1 = await readSC();
+      check("G307 处理掉 5 单、点 ↻ Refresh：提醒跟着变 1 order，Schedule check 也是 1 order in Need a look",
+        a1.startsWith("⚠ 1 order in Need a look") && s1.includes("1 order in Need a look"), `${a1} | ${s1.slice(0, 300)}`);
+      await ctl({ needRoundEmpty: true });
+      await refresh();
+      const gone = await evaluate(`return !${al};`);
+      const s0 = await readSC();
+      check("G307 减到 0、点 ↻ Refresh：提醒没了，Schedule check 也没有 Need a look 那条",
+        gone && !!s0 && !s0.includes("in Need a look"), s0.slice(0, 300));
+      await ctl({ needRoundEmpty: false });
+    }
+
     await openDay("2026-10-06");
     check("G308 Relay 车没酒店：「Morning Relay · 1st Round: vehicle 768 has no hotel」+ Needs a hotel.", await evaluate(`const l = ${li("vehicle 768 has no hotel")}; return !!l && l.textContent.includes('Morning Relay · 1st Round: vehicle 768 has no hotel') && l.textContent.includes('Needs a hotel.');`), await evaluate("return document.getElementById('schedule-check').textContent;"));
     await fixOf("vehicle 768 has no hotel");
@@ -2527,15 +2598,31 @@ async function run() {
     await sleep(300);
   }
 
-  // ── 置顶 21：司机页预览入口（Annie 2026-10-30「让前端加入口」）：只给 Super Admin，带当前日期，新标签页 ──
+  // ── 置顶 21：司机页预览入口（Annie 2026-10-30「让前端加入口」），带当前日期，新标签页 ──
+  // Annie 2026-11-19「把这两个preview链接改成所有人可见」：能开 Dispatch 的都有（admin、只看的员工、CCL partner）；
+  // 旁边的「Open shift opens today ⚙」照旧只 Super Admin。
   {
     const link = "document.querySelector('[data-driver-preview]')";
     const glink = "document.querySelector('[data-guide-preview]')";
-    await goto(`${APP}/dispatch?date=2026-10-18`);
-    await waitFor("document.querySelector('.vrow')", 60000);
-    await sleep(1500);
-    check("不是 Super Admin（admin）：没有 Driver page preview", !(await evaluate(`return !!${link};`)));
-    check("不是 Super Admin（admin）：没有 Guide page preview", !(await evaluate(`return !!${glink};`)));
+    const ow = "document.querySelector('[data-open-window-link]')";
+    const both = (d) => evaluate(`const a = ${link}, g = ${glink}; return !!a && !!g && a.getAttribute('href') === '/driver/preview?date=${d}' && g.getAttribute('href') === '/guide/preview?date=${d}' && a.target === '_blank' && g.target === '_blank' && !!a.closest('header');`);
+    for (const [who, opts] of [
+      ["不是 Super Admin（admin）", {}],
+      ["员工只勾 dispatch.view（只看）", { staffPerms: ["dispatch.view", "manifests.view"] }],
+      ["CCL partner（只勾 dispatch.view）", { partner: true, partnerPerms: ["dispatch.view", "manifests.view"] }],
+      ["CCL partner（勾了 dispatch.edit）", { partner: true, partnerPerms: ["dispatch.view", "dispatch.edit", "manifests.view"] }],
+    ]) {
+      await goto("about:blank");
+      await ctl({ superAdmin: false, staffPerms: null, partner: false, partnerPerms: null, ...opts });
+      await goto(`${APP}/dispatch?date=2026-10-18`);
+      await waitFor("document.querySelector('.vrow')", 60000);
+      const got = await waitFor(`${link} && ${glink}`, 15000);
+      check(`${who}：有 Driver page preview ↗ 和 Guide page preview ↗，带当前日期、新标签页`, got && (await both("2026-10-18")), await evaluate(`return ${link}?.outerHTML + ' | ' + ${glink}?.outerHTML;`));
+      await sleep(800);
+      check(`${who}：没有 Open shift opens today ⚙`, !(await evaluate(`return !!${ow};`)));
+    }
+    await goto("about:blank");
+    await ctl({ staffPerms: null, partner: false, partnerPerms: null });
     await ctl({ superAdmin: true });
     await goto(`${APP}/dispatch?date=2026-10-18`);
     await waitFor(link, 20000);

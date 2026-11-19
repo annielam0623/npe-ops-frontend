@@ -19,13 +19,17 @@ import {
 } from "@/lib/booking-notes-api";
 import { isInbound } from "@/lib/channels";
 import { backendChannel, type ChannelOutcome } from "@/lib/send-outcome";
-import { SMS_CHAR_LIMIT, smsCheck, smsProblem } from "@/lib/sms-limit";
+import { SmsProblem } from "@/components/ui/sms-problem";
+import { smsVerdict, toPlainSms } from "@/lib/sms-limit";
 import { LA_TIME_ZONE } from "@/lib/la-date";
 import { usePermissions } from "@/lib/staff-permissions";
 import { cn } from "@/lib/utils";
 import type { BookingNote, NoteCreate, NoteLine } from "@/types";
 
 import { ModalShell } from "@/components/tracking-ui/modal-shell";
+import { ManifestLinks } from "@/components/order-lookup/manifest-links";
+import { fetchOrder } from "@/lib/orders-api";
+import type { OrderDetail } from "@/types";
 import { setVisibleInterval } from "@/lib/visible-poll";
 
 /** 弹窗开着时每 20 秒重拉一次对话（与旧页面一致）。 */
@@ -337,6 +341,24 @@ function ConversationModalInner({
   sendBoth?: boolean;
 }) {
   const { orderNumber, bookingId, guestForm } = target;
+  /**
+   * 132（Annie「直接给个跳转到订单的main manifest这条订单并勾选，就跟search bar的那个操作一样」，「D动手」；
+   * Q1–Q3 按推荐：所有对话框、标题正下方、开新标签）：打开时读一次这单的订单详情（搜索栏同一个接口），
+   * 用它的 manifest_links 在标题下面画「Main manifest:」一行。读不到 / 旧后端没有 manifest_links ⇒ 这一行不出，对话框照旧。
+   */
+  const [orderInfo, setOrderInfo] = useState<OrderDetail | null>(null);
+  useEffect(() => {
+    const ac = new AbortController();
+    setOrderInfo(null);
+    fetchOrder(orderNumber, ac.signal).then(
+      (o) => {
+        if (!ac.signal.aborted) setOrderInfo(o);
+      },
+      () => {},
+    );
+    return () => ac.abort();
+  }, [orderNumber]);
+  const product = orderInfo ? productLabel(orderInfo) : null;
   const sourceKind = source.kind;
   const line = source.kind === "order" ? source.line : undefined;
   const readLine =
@@ -382,8 +404,6 @@ function ConversationModalInner({
   const [submitting, setSubmitting] = useState(false);
   const [toggling, setToggling] = useState(false);
   const [notice, setNotice] = useState<Notice>(null);
-  /** 点了 Send 但短信超过两段：在输入框上面问要不要只发 email。 */
-  const [tooLong, setTooLong] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
   // 输入框随内容自动长高，最矮 70px（同旧页面 `_noteAutoGrow`）；清空后缩回去。
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -400,6 +420,19 @@ function ConversationModalInner({
   const hasEmail = !!target.email.trim();
   const sendSms = smsChecked && hasPhone;
   const sendEmail = emailChecked && hasEmail;
+  // 超了 / 有坏字 ⇒ SMS to guest 灰掉、取消勾选、改勾 Email；改回限内不自动勾回；没邮箱 ⇒ Send 灰掉、红字写怎么改，
+  // Save note 照常（Annie 2026-11-17「同意全部推荐，动手」，样稿 KnNXFz77T9jQerCUYBMrNz 题 2 A / 3 A）。
+  // 照后端 booking_notes.py 单条回复：原文换排版符号后算段数；没有模板替换，{first_name} 的花括号也算坏字。
+  const smsLength = smsVerdict({
+    typed: text.trim(),
+    finals: [text.trim()],
+    placeholders: false,
+  });
+  const smsBlocked = !noReply && hasPhone && !!text.trim() && smsLength.over;
+  if (smsBlocked && (smsChecked || (hasEmail && !emailChecked))) {
+    setSmsChecked(false);
+    if (hasEmail) setEmailChecked(true);
+  }
 
   const loadNotes = useCallback(
     async (signal?: AbortSignal) => {
@@ -468,11 +501,7 @@ function ConversationModalInner({
     }
   }, [noteCount]);
 
-  /** emailOnly：刚在「太长」提示里选了只发 email（勾选的 state 还没更新）。 */
-  async function submit(
-    kind: "staff_note" | "sms_out",
-    opts: { emailOnly?: boolean } = {},
-  ) {
+  async function submit(kind: "staff_note" | "sms_out") {
     const body = text.trim();
     if (!body || submitting) {
       return;
@@ -481,8 +510,8 @@ function ConversationModalInner({
       return;
     }
     const toGuest = kind === "sms_out";
-    const useSms = opts.emailOnly ? false : sendSms;
-    const useEmail = opts.emailOnly ? hasEmail : sendEmail;
+    const useSms = sendSms;
+    const useEmail = sendEmail;
     if (toGuest && !useSms && !useEmail) {
       setNotice({
         tone: "error",
@@ -490,12 +519,6 @@ function ConversationModalInner({
       });
       return;
     }
-    // 短信最多 300 个字符、不能有特殊字符（Annie 2026-10-15）：超了先问要不要只发 email，不直接发。
-    if (toGuest && useSms && smsCheck(body).over) {
-      setTooLong(true);
-      return;
-    }
-    setTooLong(false);
     setSubmitting(true);
     setNotice(null);
     setResults(null);
@@ -675,10 +698,6 @@ function ConversationModalInner({
   }
 
   const titleId = "conversation-title";
-  const smsLength = smsCheck(text.trim(), "email");
-  /** 勾着 SMS、太长或有特殊字符：有邮箱的点了 Send 才问；没邮箱的一直提示、Send 灰掉（只能改字）。 */
-  const smsOver = sendSms && smsLength.over;
-  const showTooLong = !noReply && smsOver && (tooLong || !hasEmail);
   const skin = skinOf(theme);
   const dark = theme === "morning";
 
@@ -693,8 +712,35 @@ function ConversationModalInner({
         className={cn("flex items-center gap-2.5 px-[18px] py-3.5", skin.head)}
       >
         <div className="min-w-0 flex-1">
-          <h2 id={titleId} className="text-[14px] font-semibold text-white">
-            Order {orderNumber}
+          <h2
+            id={titleId}
+            className="flex min-w-0 items-baseline gap-2 text-[14px] font-semibold text-white"
+          >
+            <span className="shrink-0">Order {orderNumber}</span>
+            {product ? (
+              // 132 产品名（Annie 2026-11-14「在对话窗口的订单旁边标出是哪个产品」；Q5 A、Q6 B）：
+              // 同一行、浅白普通字，最多两行再「…」；一单几个产品写最早那个 + 灰字「+N more」；鼠标移上去看全部产品名。
+              <span
+                data-conversation-product
+                title={product.title}
+                className={cn(
+                  "flex min-w-0 items-baseline gap-1.5 text-[13px] font-normal",
+                  skin.sub,
+                )}
+              >
+                <span className="line-clamp-2 min-w-0 break-words">
+                  {product.name}
+                </span>
+                {product.more > 0 ? (
+                  <span
+                    data-conversation-product-more
+                    className="shrink-0 text-[12px] whitespace-nowrap text-white/55"
+                  >
+                    +{product.more} more
+                  </span>
+                ) : null}
+              </span>
+            ) : null}
           </h2>
           <p className={cn("truncate text-[12px]", skin.sub)}>
             {target.guestName}
@@ -722,6 +768,20 @@ function ConversationModalInner({
           ×
         </button>
       </div>
+
+      {orderInfo ? (
+        <ManifestLinks
+          order={orderInfo}
+          tone={dark ? "dark" : "light"}
+          newTab
+          className={cn(
+            "border-b px-[18px] py-2",
+            dark
+              ? "border-white/10 bg-white/[.04]"
+              : "border-[#eee] bg-[#fafaf9]",
+          )}
+        />
+      ) : null}
 
       {theme === "tickets" ? (
         // 门票页：Take Action 是标题下面一行勾选框（旧页面 #nmActionCb）。
@@ -809,69 +869,13 @@ function ConversationModalInner({
             {notice.text}
           </p>
         ) : null}
-        {showTooLong ? (
-          <div
-            role="alert"
-            data-too-long
-            className={cn("mb-2 rounded-md px-3 py-2 text-[12px]", skin.error)}
-          >
-            <p className="font-semibold">{smsProblem(smsLength)}</p>
-            {hasEmail ? (
-              <>
-                <p>Send it by email only?</p>
-                <div className="mt-1.5 flex flex-wrap justify-end gap-2">
-                  <button
-                    type="button"
-                    disabled={submitting}
-                    onClick={() => {
-                      setTooLong(false);
-                      inputRef.current?.focus();
-                    }}
-                    className={cn(
-                      "cursor-pointer rounded-md px-3 py-1 text-[12px] disabled:opacity-50",
-                      skin.save,
-                    )}
-                  >
-                    No, edit the message
-                  </button>
-                  <button
-                    type="button"
-                    disabled={submitting}
-                    onClick={() => {
-                      setSmsChecked(false);
-                      setEmailChecked(true);
-                      void submit("sms_out", { emailOnly: true });
-                    }}
-                    className={cn(
-                      "cursor-pointer rounded-md px-3 py-1 text-[12px] disabled:opacity-50",
-                      skin.send,
-                    )}
-                  >
-                    Yes, send by email only
-                  </button>
-                </div>
-              </>
-            ) : (
-              <p>
-                This guest has no email.{" "}
-                {smsLength.bad.length
-                  ? "Remove those characters to send it by SMS."
-                  : `Shorten the message to ${SMS_CHAR_LIMIT} characters.`}
-              </p>
-            )}
-          </div>
-        ) : null}
         {/* 没有 messages.reply（partner 永远没有）：不能写备注、也不能发给客人，只看往来。 */}
         {noReply ? null : (
           <>
             <textarea
               ref={inputRef}
               value={text}
-              onChange={(event) => {
-                setText(event.target.value);
-                // 改了字就收起「太长」的提问，下次点 Send 再按新字数判断。
-                setTooLong(false);
-              }}
+              onChange={(event) => setText(event.target.value)}
               placeholder={
                 theme === "tickets"
                   ? "Write a note or reply to guest..."
@@ -886,7 +890,7 @@ function ConversationModalInner({
                 skin.textarea,
               )}
             />
-            {sendSms ? (
+            {hasPhone ? (
               <p
                 data-sms-count
                 className={cn(
@@ -898,8 +902,19 @@ function ConversationModalInner({
                       : "text-[#1a1a1a]",
                 )}
               >
-                {smsLength.text}
+                {smsLength.length.toLocaleString("en-US")} / {smsLength.limit}{" "}
+                chars
               </p>
+            ) : null}
+            {smsBlocked ? (
+              <SmsProblem
+                typed={text.trim()}
+                verdict={smsLength}
+                placeholders={false}
+                noEmail={!hasEmail}
+                onReplace={submitting ? undefined : () => setText((t) => toPlainSms(t))}
+                dark={dark}
+              />
             ) : null}
             <div
               className={cn(
@@ -912,7 +927,7 @@ function ConversationModalInner({
                 dot="#f97316"
                 className={skin.check}
                 checked={smsChecked}
-                disabled={!hasPhone}
+                disabled={!hasPhone || smsBlocked}
                 onChange={setSmsChecked}
               />
               <ChannelCheckbox
@@ -945,7 +960,7 @@ function ConversationModalInner({
                   }
                   onClick={() => void submit("sms_out")}
                   disabled={
-                    submitting || !text.trim() || (smsOver && !hasEmail)
+                    submitting || !text.trim() || (smsBlocked && !hasEmail)
                   }
                   className={cn(
                     "cursor-pointer rounded-md px-3.5 py-1.5 text-[12px] disabled:cursor-default disabled:opacity-50",
@@ -1178,4 +1193,29 @@ function ChannelCheckbox({
       {label}
     </label>
   );
+}
+
+/**
+ * 132 标题旁的产品名：订单详情的 product.name（后端给的是出发最早的那个产品），
+ * item_count > 1 时后面「+N more」，鼠标提示列出 items_detail 里的全部产品名（Rezdy 是 productName，TripGuru 是 product.name）。
+ * 没有产品名 ⇒ null，标题照旧只写单号。
+ */
+function productLabel(
+  o: OrderDetail,
+): { name: string; more: number; title: string } | null {
+  const name = (o.product?.name ?? "").trim();
+  if (!name || name === "—") return null;
+  const more = Math.max(0, (o.product.item_count ?? 1) - 1);
+  const names = Array.isArray(o.items_detail)
+    ? (
+        o.items_detail as {
+          productName?: unknown;
+          product?: { name?: unknown };
+        }[]
+      )
+        .map((it) => String(it?.productName ?? it?.product?.name ?? "").trim())
+        .filter(Boolean)
+    : [];
+  const title = more > 0 && names.length > 1 ? names.join("\n") : name;
+  return { name, more, title };
 }
