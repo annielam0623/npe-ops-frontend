@@ -10,7 +10,12 @@
 - 开工：origin/main 1ce0faa2。主窗口改 PROGRESS 用 worktree C:\Code\ops-wt-4d（detached，4d 让出）。资源：空闲内存 46.5 / 62 GB，node 0、chrome 39。
 - 4d [01fca7] 已交接：以「11-18 深夜收工交接」为准；11-19 早上 4d 没做事、没派工、没有新的 Annie 原话。23 / 4a / 8d 昨晚都已收工，现在没有工作窗口。唯一没合：4a task/sms-over-limit-email-only 4ac12912（ae PASS，等 Annie 看显示文字；合前先查 tk 157/158 计数）。C:\Code\ops-wt-4d-mt 可删。4d 起不再派工。
 - 后端：今天后端主窗口 `npe-confirmation-service-f4`[e47e8b]（自报，接 ae）。f4 要前端的「7 天没做完」清单 + 等后端的事；之后会发 G349 bus-map-link 接口文档、G351 SHA 给 08。已回 f4：等后端 = bf rezdy-internal-notes SHA、生命周期 ② Rezdy 前后值、⑦ TOUR ENDED。
-- 开工必做第 4 条：正在核 11-12～11-18 Annie 提过没做完的，核完列给 Annie + 发 f4。
+- f4 更正：生命周期 ② Rezdy 前后值后端已上 main（7b69d58b / bde07c1a），前端 002f268f 已接 rezdy_changes ⇒ 已完成；后端只剩 ⑦ TOUR ENDED。
+- 开工必做第 4 条：11-12～11-18 Annie 提过没做完的 29 条（只读子任务核 + 08 复核），已发 f4、列给 Annie 问今天做哪几件：
+  - 等 Annie：1 Morning Tracking No show 第 3 版（11-18）；2 DOR 加 No show 6 题（11-18，要后端）；3 Rezdy Recent actions B / C（11-18）；4 生命周期客人选餐 B1 / B2（11-18）；5 SMS 超字数显示文字（11-17，4ac12912）；6 Tickets 组头改灰 6 题（11-18）；7 132 产品名 + 蓝键 Q5 / Q6、蓝键 A / B（11-13 / 14）；8 Tour Tracking 顶部压缩 ①–⑥（11-17）；9 Tickets By session / By order time（11-17）；10 Main manifest 按下单时间排（11-17）；11 TI 不在 Morning Tracking CHD0SNQKE（11-17）；12 Gray Line SVG 用途（11-17）；13 77 司机快捷回复 + 号码（11-16）；14 146 Farm out 每家一页 Q7–Q11（11-16）；15 149 / G320 样例标变量（11-16）；16 139d 删固定任务（11-16）；17 143 导游标签 Q3a / Q3d（11-14）；18 129 Dispatch Send 向导 A–F（11-12）；19 G307 Need a look A / B / C（11-13）；20 130 Text size changes 位置 + UTC bug（11-12）；21 Private Tour 不在 Dispatch Step 1 CHDAKCDKL（11-13）。
+  - 等后端：22 TOUR ENDED；23 Rezdy internal notes（bf）；24 页面慢（b9）；25 137 Working Record 带 DOR（G314）；26 141 / G310 私人团自动开巴士卡。
+  - 没人接：27 151 Bus Manifest 编辑页手机一屏 ①–④；28 151 David H 没账号 A / B；29 146 上传收图片 + partner 表格格式（11-16）。
+  - 拿不准：150 第 4 版题 8 Main manifest 手机收键没见上 main；125 Tour Tracking 灰行字也灰 preview 没回；F1 黄框 4 题（ae 转）。
 
 ## 2026-11-18 深夜 收工交接：前端主窗口 `前端主窗口4d`[b0c20a]（Annie 收工）
 **一、今晚上 main**：No show 改方向 c4ab4018；Main manifest Relay / Tour 两列 6a90bc27；Test send b1d5a79f；Dispatch 关团 23c2c5d6；订单生命周期第一批 e8878386；Show less 51b86305；Rezdy 改了什么 + 固定状态 002f268f；Chat history + 字段名 98588b9b；DOR 去 Soon 19d73c80；G298 发布后换班 9f531e9a（后端 91253a06，v177 已跑）。规则：CLAUDE.md 开工必做第 4 条 c3b0bd4c。Annie 已把 daily_operation_report 开给 staff。
