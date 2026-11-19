@@ -561,11 +561,12 @@ export function ManifestsView() {
   // 没勾 See prices, agent & commission（orders.money_view，题 8）：金额 / 代理商列整列不出，Columns 里也没有
   // （后端这时本来就不给，这里再挡一道：存着的列、旧后端都不出空栏，也不算进「need admin access」那句）。
   // 150 Notes：Bus、Tickets 标签多一列备注（后端给了 note 才有），见 config.withNotes。
-  // 默认 By session；记在这台电脑这个浏览器（P3 A，localStorage 读写失败就照默认）。
-  const [ticketView, setTicketView] = useState<TicketView>("session");
+  // 默认 By order time；记在这台电脑这个浏览器（P3 A，localStorage 读写失败就照默认）。
+  const [ticketView, setTicketView] = useState<TicketView>("time");
   useEffect(() => {
     try {
-      if (localStorage.getItem(TICKET_VIEW_KEY) === "time") setTicketView("time");
+      if (localStorage.getItem(TICKET_VIEW_KEY) === "session")
+        setTicketView("session");
     } catch {
       // 隐私模式 / 被挡：照默认。
     }
@@ -2038,7 +2039,9 @@ function ManifestTable({
 }
 
 type TicketView = "session" | "time";
-const TICKET_VIEW_KEY = "ops.manifests.ticketsView";
+// 默认改 By order time（Annie 2026-11-19「默认order time」「B」「order time在前。动手」）：换新键 v2，
+// 今天之前存的选择不再读，所有人先回到 By order time。
+const TICKET_VIEW_KEY = "ops.manifests.ticketsView.v2";
 
 /**
  * Tickets 的「By session | By order time」切换（Annie 2026-11-19「同意推荐，动手」，P3 A 记在这台电脑这个浏览器）。
@@ -2052,8 +2055,8 @@ function TicketViewSwitch({
   onChange: (next: TicketView) => void;
 }) {
   const options: [TicketView, string][] = [
-    ["session", "By session"],
     ["time", "By order time"],
+    ["session", "By session"],
   ];
   return (
     <div
@@ -2617,11 +2620,11 @@ function ManifestsHowToUse() {
           in the last group, <b>No time</b>.
         </>,
         <>
-          On <b>Tickets</b>, switch between <b>By session</b> (grouped by
-          start time) and <b>By order time</b> (one list, no groups, in the
-          order the bookings came in; orders already sent go to the bottom).
-          Ticked orders stay ticked when you switch. This computer remembers
-          your choice.
+          On <b>Tickets</b>, switch between <b>By order time</b> (the
+          default: one list, no groups, in the order the bookings came in;
+          orders already sent go to the bottom) and <b>By session</b> (grouped
+          by start time). Ticked orders stay ticked when you switch. This
+          computer remembers your choice.
         </>,
       ]}
     />
