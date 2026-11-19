@@ -2362,6 +2362,49 @@ async function run() {
   await waitFor("!document.querySelector('[data-split=\"903\"]')");
   check("Approve 换班：POST …/903/approve；那格不再一分为二，表里写 Approved", (await since(from, (e) => e.path === "/api/schedule/confirmation-requests/903/approve")).length === 1 && (await evaluate("return document.querySelector('[data-response=\"3\"]').textContent.includes('Approved');")));
   await ctl({ confirmSwaps: false });
+  // ── G298 / 142 发布后换班（已发布的 9/27 周）：Swap requests 表，Approve / Decline 先记、按 Save 才发；批准前挡晚接早 ──
+  await ctl({ pubSwaps: true });
+  await openPage(`${APP}/schedule?week=2026-09-27`);
+  await waitFor("document.querySelector('[data-swap-requests]')");
+  const swapRow = (id) => `document.querySelector('[data-swap-id="${id}"]')`;
+  check(
+    "发布周：Swap requests 表 5 条，写 Nadia's Sun 9/27 Close ⇄ Veronica's Thu 10/1 Close · Veronica agreed — waiting for you",
+    await evaluate(`return document.querySelectorAll('[data-swap-requests] tr[data-swap-id]').length === 5 && ${swapRow(951)}.textContent.includes("Nadia's Sun 9/27 Close ⇄ Veronica's Thu 10/1 Close") && ${swapRow(951)}.textContent.includes('Veronica agreed — waiting for you');`),
+    await evaluate("return document.querySelector('[data-swap-requests]')?.innerText ?? 'none';"),
+  );
+  check(
+    "晚接早：951 批了 Veronica 周日 Close、周一 Open ⇒ 红字写规则，Approve 灰掉，Decline 能点",
+    await evaluate(`const t = ${swapRow(951)}.querySelector('[data-rest-blocked]')?.textContent ?? ''; return t === "Veronica can't work Open on Mon 9/28 after a Close on Sun 9/27. A Close shift can't be followed by an Open or Morning shift the next day. Decline it, or change the schedule first." && ${swapRow(951)}.querySelector('[data-approve]').disabled && !${swapRow(951)}.querySelector('[data-decline]').disabled;`),
+    await evaluate(`return ${swapRow(951)}?.textContent ?? 'none';`),
+  );
+  check(
+    "等对方的写 Not yours to approve yet（没有键）；撤回的写 Nadia withdrew it；到期的写 Closed: the week started（灰）",
+    await evaluate(`return ${swapRow(953)}.textContent.includes('Waiting for Jing') && ${swapRow(953)}.textContent.includes('Not yours to approve yet') && !${swapRow(953)}.querySelector('button') && ${swapRow(954)}.textContent.includes('Nadia withdrew it') && ${swapRow(955)}.textContent.includes('Closed: the week started');`),
+  );
+  check("Save 是蓝色、没改动时灰着；Approve 不是蓝的（只是先记）", await evaluate(`const b = document.querySelector('[data-swap-save]'); return b.disabled && getComputedStyle(b).backgroundColor === 'rgb(59, 130, 246)' && !${swapRow(952)}.querySelector('[data-approve]').className.includes('3b82f6');`));
+  from = (await mockLog()).length;
+  await evaluate(`${swapRow(952)}.querySelector('[data-approve]').click();`);
+  await evaluate(`${swapRow(951)}.querySelector('[data-decline]').click();`);
+  await sleep(300);
+  check(
+    "点 Approve / Decline 只记在页面上：变成 ✓ Approve（绿）/ ✕ Decline（红），写 2 changes, not saved yet，没有发请求",
+    (await evaluate(`return ${swapRow(952)}.querySelector('[data-approve]').textContent === '✓ Approve' && ${swapRow(951)}.querySelector('[data-decline]').textContent === '✕ Decline' && document.querySelector('[data-swap-unsaved]')?.textContent.replace(/\\s+/g, ' ') === '2 changes, not saved yet';`)) && (await since(from, (e) => e.path.startsWith("/api/schedule/confirmation-requests/"))).length === 0,
+    await evaluate("return document.querySelector('[data-swap-requests]')?.innerText ?? 'none';"),
+  );
+  await evaluate(`${swapRow(951)}.querySelector('[data-decline]').click();`);
+  check("再点一次取消：1 change, not saved yet", await evaluate("return document.querySelector('[data-swap-unsaved]')?.textContent.replace(/\\s+/g, ' ') === '1 change, not saved yet';"));
+  await evaluate(`${swapRow(951)}.querySelector('[data-decline]').click();`);
+  await evaluate("document.querySelector('[data-swap-save]').click();");
+  await waitFor("document.querySelector('[data-swap-saved]')");
+  check(
+    "Save：POST …/952/approve 和 …/951/decline；绿字 ✓ Saved；952 写 Approved、951 写 Declined",
+    (await since(from, (e) => e.path === "/api/schedule/confirmation-requests/952/approve")).length === 1 &&
+      (await since(from, (e) => e.path === "/api/schedule/confirmation-requests/951/decline")).length === 1 &&
+      (await evaluate(`return document.querySelector('[data-swap-saved]').className.includes('text-emerald-300') && ${swapRow(952)}.textContent.includes('Approved') && ${swapRow(951)}.textContent.includes('Declined') && !document.querySelector('[data-swap-unsaved]');`)),
+    await evaluate("return document.querySelector('[data-swap-requests]')?.innerText ?? 'none';"),
+  );
+  check("How to use — Swap requests 写了 Save 才生效、不用 Publish again、晚接早", await evaluate("const t = [...document.querySelectorAll('details')].find((d) => d.textContent.includes('How to use — Swap requests'))?.textContent ?? ''; return t.includes('Nothing changes until you save') && t.includes('no Publish again') && t.includes(\"A Close shift can't be followed by an Open or Morning shift the next day.\");"));
+  await ctl({ pubSwaps: false });
   // 员工（只读）不显示 Responses。
   await ctl({ role: "staff", meName: "Jing" });
   await openPage(`${APP}/schedule?week=2026-10-04`);

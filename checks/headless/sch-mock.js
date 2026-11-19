@@ -64,6 +64,32 @@ const SWAPS = [
   { id: 903, from: [3, "Nadia", "2026-10-04"], peer: [1, "Veronica", "2026-10-08"] },
   { id: 904, from: [2, "Lizzie", "2026-10-06"], peer: [4, "Jing", "2026-10-09"] },
 ];
+// G298 / 前端 142（ctl.pubSwaps）：已发布的 9/27 那周，发布后的换班（after_publish）。
+// 951 Nadia 的 Sun Close ⇄ Veronica 的 Thu Close（Veronica 已同意）——批了 Veronica 周日 Close、周一 Open ⇒ 晚接早，挡；
+// 952 Jing 的 Tue Close ⇄ Lizzie 的 Fri Close（Lizzie 已同意，能批）；953 Lizzie 的 Mon Close ⇄ Jing 的 Fri Open（等 Jing）；
+// 954 撤回了；955 那周开始关掉了。
+const pubState = { 951: "pending", 952: "pending", 953: "awaiting_peer", 954: "withdrawn", 955: "closed" };
+const PUB_SWAPS = [
+  { id: 951, from: [3, "Nadia", "2026-09-27", "close"], peer: [1, "Veronica", "2026-10-01", "close"] },
+  { id: 952, from: [4, "Jing", "2026-09-29", "close"], peer: [2, "Lizzie", "2026-10-02", "close"] },
+  { id: 953, from: [2, "Lizzie", "2026-09-28", "close"], peer: [4, "Jing", "2026-10-02", "open"] },
+  { id: 954, from: [3, "Nadia", "2026-09-27", "close"], peer: [2, "Lizzie", "2026-09-30", "close"] },
+  { id: 955, from: [1, "Veronica", "2026-09-30", "open"], peer: [3, "Nadia", "2026-10-01", "open"], closed_reason: "week_started" },
+];
+function pubSwaps(ws) {
+  if (!ctl.pubSwaps || ws !== "2026-09-27") return [];
+  const wk = weeks.get(ws);
+  const find = (emp, date, type) => wk?.slots.find((x) => x.employee_id === emp && x.date === date && x.shift_type === type);
+  const rs = (x) => ({ id: x.id, date: x.date, shift_type: x.shift_type, start_time: x.start_time, end_time: x.end_time });
+  return PUB_SWAPS.flatMap((w) => {
+    const a = find(w.from[0], w.from[2], w.from[3]);
+    const b = find(w.peer[0], w.peer[2], w.peer[3]);
+    if (!a || !b) return [];
+    return [{ id: w.id, kind: "swap", status: pubState[w.id], after_publish: true, closed_reason: pubState[w.id] === "closed" ? w.closed_reason : null,
+      from: { employee_id: w.from[0], name: w.from[1] }, my_slot: rs(a), their_slot: rs(b), peer: { employee_id: w.peer[0], name: w.peer[1] },
+      date: null, shift_type: null, peer_timed_out: false, created_at: "2026-09-25T19:10:00+00:00", decided_at: null }];
+  });
+}
 function confirmSwaps(ws) {
   if (!ctl.confirmSwaps || ws !== "2026-10-04") return [];
   const wk = weeks.get(ws);
@@ -509,7 +535,7 @@ http
           { employee_id: 3, name: "Nadia", answer: "counted_accepted", answered_at: null },
           ...(jingAnswer ? [{ employee_id: 4, name: "Jing", answer: jingAnswer, answered_at: jingAnswer === "no_answer" ? null : "2026-10-07T17:00:00+00:00" }] : []),
         ].map(withCount),
-        requests: [...confirmSwaps(cm[1]), ...confirmReqs.map((r) => ({
+        requests: [...pubSwaps(cm[1]), ...confirmSwaps(cm[1]), ...confirmReqs.map((r) => ({
           id: r.id, kind: "add", status: r.status, from: { employee_id: 2, name: "Lizzie" }, my_slot: null, their_slot: null, peer: null,
           date: days[r.dayIdx], shift_type: r.shift_type, peer_timed_out: false, created_at: "2026-10-07T18:02:00+00:00", decided_at: null,
         }))],
@@ -518,6 +544,12 @@ http
     const am = /^\/api\/schedule\/confirmation-requests\/(\d+)\/(approve|decline)$/.exec(p);
     if (am && req.method === "POST") {
       if (!ctl.confirm) return send(res, 404, { detail: "Not Found" });
+      if (pubState[am[1]]) {
+        if (pubState[am[1]] !== "pending") return send(res, 409, { detail: "This request has already been decided." });
+        if (am[2] === "approve" && am[1] === "951") return send(res, 409, { detail: "Veronica can't work Open on Mon 9/28 after a Close on Sun 9/27. A Close shift can't be followed by an Open shift the next day. Pick another day." });
+        pubState[am[1]] = am[2] === "approve" ? "approved" : "declined";
+        return send(res, 200, { ok: true });
+      }
       if (swapState[am[1]]) {
         if (swapState[am[1]] === "awaiting_peer") return send(res, 409, { detail: "Jing hasn't answered yet." });
         swapState[am[1]] = am[2] === "approve" ? "approved" : "declined";

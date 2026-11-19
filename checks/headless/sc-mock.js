@@ -2,9 +2,12 @@
 // 「G138 后端最终接口」（lib/schedule-confirm-api.ts）：整周所有人的班、deadline、my_requests / requests_for_me。
 // ctl：unavail = 当没有这个功能（404）；fail401 = 没登录；past = 过了周四 12 点；published = 已发布；
 //      peerAsk = Nadia 找我换班；reset = 回到还没回应的样子。
+// G298 / 142：swapWeek = 已发布、还没开始的周（只能换班）；swapAsks = 别人找我换（Veronica 那条会让我晚接早、Nadia 那条没事）；
+//      swapSamples = 我已有几条各种状态的换班（看字）。
 const http = require("http");
 
-const ctl = { unavail: false, fail401: false, past: false, published: false, peerAsk: false };
+const ctl = { unavail: false, fail401: false, past: false, published: false, peerAsk: false, swapWeek: false, swapAsks: false, swapSamples: false };
+const swapAnswers = {};
 const log = [];
 const WEEK = "2026-11-01";
 let nextReqId = 1;
@@ -40,7 +43,20 @@ const rs = (s) => (s ? { id: s.id, date: s.date, shift_type: s.shift_type, start
 const slot = (id) => SLOTS.find((s) => s.id === id);
 const nameOf = (id) => EMPLOYEES.find((e) => e.employee_id === id)?.name;
 
+function swapReq(id, status, from, mySlot, theirSlot, peer, extra = {}) {
+  return { id, kind: "swap", status, after_publish: true, closed_reason: null, from, my_slot: rs(slot(mySlot)), their_slot: rs(slot(theirSlot)), peer,
+    date: null, shift_type: null, peer_timed_out: false, created_at: "2026-10-28T20:00:00Z", decided_at: null, ...extra };
+}
+const JING = { employee_id: ME, name: "Jing" };
 function forMe() {
+  if (ctl.swapWeek) {
+    if (!ctl.swapAsks) return [];
+    // 960 Veronica 拿 Fri Open 换我 Sat Close ⇒ 我 Thu Close、Fri Open = 晚接早；961 Nadia 拿 Mon Mid 换我 Tue Mid（没事）。
+    return [
+      swapReq(960, swapAnswers[960] ?? "awaiting_peer", { employee_id: 4, name: "Veronica" }, 118, 103, JING),
+      swapReq(961, swapAnswers[961] ?? "awaiting_peer", { employee_id: 3, name: "Nadia" }, 109, 101, JING),
+    ];
+  }
   if (!ctl.peerAsk || peerAnswered) return [];
   // Nadia 拿她 Wed Close 换我 Tue Mid
   return [{
@@ -51,10 +67,10 @@ function forMe() {
 }
 
 function data() {
-  const closed = ctl.published ? "published" : ctl.past ? "past_deadline" : null;
+  const closed = ctl.swapWeek ? null : ctl.published ? "published" : ctl.past ? "past_deadline" : null;
   return {
     week_start: WEEK,
-    week_status: ctl.published ? "published" : "draft",
+    week_status: ctl.published || ctl.swapWeek ? "published" : "draft",
     person: { employee_id: ME, name: "Jing" },
     deadline: "2026-10-29T12:00:00-07:00",
     open: !closed,
@@ -68,9 +84,21 @@ function data() {
     slots: SLOTS,
     time_off: [{ employee_id: 4, date: day(6), kind: null }],
     my_response: response,
-    my_requests: myRequests,
+    my_requests: [...myRequests, ...(ctl.swapWeek && ctl.swapSamples ? samples() : [])],
     requests_for_me: forMe(),
   };
+}
+function samples() {
+  const LIZ = { employee_id: 2, name: "Lizzie" };
+  const NADIA = { employee_id: 3, name: "Nadia" };
+  return [
+    swapReq(970, "pending", JING, 100, 104, LIZ),
+    swapReq(971, "approved", JING, 101, 109, NADIA),
+    swapReq(972, "declined", JING, 102, 107, LIZ),
+    swapReq(973, "peer_declined", JING, 103, 113, NADIA),
+    swapReq(974, "closed", JING, 100, 108, NADIA, { closed_reason: "week_started" }),
+    swapReq(975, "closed", JING, 101, 105, LIZ, { closed_reason: "other_swap" }),
+  ];
 }
 
 // 整段确认（Period，11-08）：别的周 = 同一份班往后挪，回应按周记（WEEK 那周照旧用 response）。
@@ -101,7 +129,7 @@ function toRequest(b) {
   const base = { id: nextReqId++, from: { employee_id: ME, name: "Jing" }, my_slot: null, their_slot: null, peer: null, date: null, shift_type: null, peer_timed_out: false, created_at: "2026-10-28T21:00:00Z", decided_at: null };
   if (b.kind === "swap") {
     const t = slot(b.their_slot_id);
-    return { ...base, kind: "swap", status: "awaiting_peer", my_slot: rs(slot(b.my_slot_id)), their_slot: rs(t), peer: { employee_id: t.employee_id, name: nameOf(t.employee_id) } };
+    return { ...base, kind: "swap", status: "awaiting_peer", after_publish: !!ctl.swapWeek, closed_reason: null, my_slot: rs(slot(b.my_slot_id)), their_slot: rs(t), peer: { employee_id: t.employee_id, name: nameOf(t.employee_id) } };
   }
   if (b.kind === "move") return { ...base, kind: "move", status: "pending", my_slot: rs(slot(b.my_slot_id)), date: b.date };
   return { ...base, kind: "add", status: "pending", date: b.date, shift_type: b.shift_type };
@@ -133,6 +161,7 @@ http
         response = null;
         myRequests = [];
         peerAnswered = false;
+        for (const k of Object.keys(swapAnswers)) delete swapAnswers[k];
       }
       delete b.reset;
       Object.assign(ctl, b);
@@ -148,7 +177,7 @@ http
     if (ctl.fail401) return send(res, 401, { detail: "Authentication required" });
     if (p === "/api/me")
       return send(res, 200, { id: 9, username: "jing", display_name: "Jing", initials: "JI", role: "staff", is_admin: false, is_superadmin: false });
-    const m = /^\/api\/schedule\/confirmation(?:\/link\/([^/]+))?(\/accept|\/changes|\/requests\/(\d+)\/answer)?$/.exec(p);
+    const m = /^\/api\/schedule\/confirmation(?:\/link\/([^/]+))?(\/accept|\/changes|\/requests\/(\d+)\/answer|\/requests\/(\d+)\/withdraw)?$/.exec(p);
     if (m) {
       if (ctl.unavail) return send(res, 404, { detail: "Not Found" });
       if (m[1] === "expired") return send(res, 410, { detail: "This link has expired." });
@@ -168,9 +197,28 @@ http
         response = { answer: "accepted", answered_at: "2026-10-28T16:20:00+00:00" };
         return send(res, 200, data());
       }
+      if (m[4] && req.method === "POST") {
+        const r = myRequests.find((x) => x.id === Number(m[4]));
+        if (!r) return send(res, 403, { detail: "This request isn't yours." });
+        if (r.status !== "awaiting_peer" && r.status !== "pending") return send(res, 409, { detail: "This request has already been decided." });
+        r.status = "withdrawn";
+        return send(res, 200, data());
+      }
+      if (m[2] === "/changes" && req.method === "POST" && ctl.swapWeek) {
+        const b = entry.body?.requests?.[0];
+        if (!b || b.kind !== "swap") return send(res, 400, { detail: "After the schedule is published, you can only swap a shift with a coworker." });
+        // 后端同一天两个班的 400（照 8e 合同原话）：拿我 Sun Open 换 Lizzie 的 Mon Open ⇒ Lizzie 周日已有班。
+        if (b.my_slot_id === 100 && b.their_slot_id === 105) return send(res, 400, { detail: "Lizzie already works Sun 11/1, so she can't take your shift that day." });
+        myRequests = [...myRequests, toRequest(b)];
+        return send(res, 200, data());
+      }
       if (m[2] === "/changes" && req.method === "POST") {
         response = { answer: "wants_changes", answered_at: "2026-10-28T16:25:00+00:00" };
         myRequests = [...myRequests, ...(entry.body?.requests ?? []).map(toRequest)];
+        return send(res, 200, data());
+      }
+      if (m[3] && req.method === "POST" && ctl.swapWeek) {
+        swapAnswers[m[3]] = entry.body?.answer === "accept" ? "pending" : "peer_declined";
         return send(res, 200, data());
       }
       if (m[3] && req.method === "POST") {
