@@ -1040,7 +1040,7 @@ export function ManifestsView() {
             {denied.length || unknown.length ? (
               <p className="mb-3 text-[12px] text-[#94a3b8] night:text-white/45">
                 {denied.length
-                  ? `${plural(denied.length, "saved column")} need admin access and ${denied.length === 1 ? "is" : "are"} hidden. `
+                  ? `${plural(denied.length, "saved column")} ${denied.length === 1 ? "needs" : "need"} admin access and ${denied.length === 1 ? "is" : "are"} hidden. `
                   : ""}
                 {unknown.length
                   ? `${plural(unknown.length, "saved column")} ${unknown.length === 1 ? "doesn't" : "don't"} appear on this day and ${unknown.length === 1 ? "is" : "are"} hidden. `
