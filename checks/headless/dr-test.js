@@ -213,7 +213,7 @@ async function run() {
     // Quotation 没有被固定，按真实默认值 super_admin_only 算，staff 的侧栏里不再有它。
     "Operations 的条目和顺序（含 My Workspace、Forms、Staff Schedule、Daily Operation Report）",
     (await evaluate(`return [...${nav}.querySelector('section[aria-label=Operations]').querySelectorAll('[data-module]')].map(r => r.dataset.module).join(',');`)) ===
-      "dashboard,workspace,forecast,manifests,orders,dispatch,bus_manifests,forms,schedule,daily_report,farm_out_report",
+      "dashboard,workspace,forecast,manifests,orders,dispatch,bus_manifests,forms,schedule,my_schedule,daily_report,farm_out_report",
     await evaluate(`return [...${nav}.querySelectorAll('[data-module]')].map(r => r.dataset.module).join(',');`),
   );
   check("拿掉了 Dispatch Imports / Work Sheet / Guide Sheet", !/Dispatch Imports|Work Sheet|Guide Sheet/.test(t1));
@@ -224,7 +224,7 @@ async function run() {
   check(
     "没勾 orders.money_view 的员工：Operations 里没有 Farm out Report，其余条目照旧",
     (await evaluate(`return [...${nav}.querySelector('section[aria-label=Operations]').querySelectorAll('[data-module]')].map(r => r.dataset.module).join(',');`)) ===
-      "dashboard,workspace,forecast,manifests,orders,dispatch,bus_manifests,forms,schedule,daily_report",
+      "dashboard,workspace,forecast,manifests,orders,dispatch,bus_manifests,forms,schedule,my_schedule,daily_report",
     await evaluate(`return [...${nav}.querySelectorAll('[data-module]')].map(r => r.dataset.module).join(',');`),
   );
   await ctl({ noMoney: false });
@@ -573,7 +573,7 @@ async function run() {
   await helpers();
   await evaluate(DRAG);
   check("superadmin：读不到配置时写明用的是内置默认值", (await evaluate("return document.querySelector('main').textContent;")).includes("The server doesn’t have navigation settings yet"));
-  check("每个条目恰好一次（24 项，含 My Workspace、Farm out Report、Broadcast、Bus Manifests）", (await evaluate("return document.querySelectorAll('[data-nav-item]').length;")) === 24, await evaluate("return document.querySelectorAll('[data-nav-item]').length + ' ' + [...document.querySelectorAll('[data-nav-item]')].map(e => e.dataset.navItem).join();"));
+  check("每个条目恰好一次（25 项，含 My Workspace、My schedule、Farm out Report、Broadcast、Bus Manifests）", (await evaluate("return document.querySelectorAll('[data-nav-item]').length;")) === 25, await evaluate("return document.querySelectorAll('[data-nav-item]').length + ' ' + [...document.querySelectorAll('[data-nav-item]')].map(e => e.dataset.navItem).join();"));
   await evaluate("$setValue(document.querySelector('[data-nav-item=orders] input'), 'Order list'); document.querySelector('[data-nav-item=task_board] input[type=checkbox]').click(); return 1;");
   await sleep(100);
   await evaluate("$btn('', document.querySelector('[data-nav-item=forms]')); [...document.querySelectorAll('button')].find(b => b.getAttribute('aria-label') === 'Move Forms up').click(); return 1;");
@@ -593,7 +593,7 @@ async function run() {
     !!put &&
       put.body.groups.find((g) => g.label === "Operations").items.find((i) => i.id === "orders").label === "Order list" &&
       put.body.groups.find((g) => g.label === "Reports").items.find((i) => i.id === "task_board").visible === false &&
-      opsIds === "dashboard,workspace,forecast,manifests,orders,quotation,dispatch,forms,bus_manifests,schedule,daily_report,farm_out_report" &&
+      opsIds === "dashboard,workspace,forecast,manifests,orders,quotation,dispatch,forms,bus_manifests,schedule,my_schedule,daily_report,farm_out_report" &&
       put.body.default_shortcuts.join(",") === "dashboard,manifests,dispatch,forecast,workspace,schedule,orders",
     JSON.stringify(put?.body),
   );

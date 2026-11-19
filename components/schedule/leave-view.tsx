@@ -7,7 +7,8 @@ import {
   DARK_SECONDARY_BUTTON_CLASS,
 } from "@/components/ui/buttons";
 import { HowToUse } from "@/components/ui/how-to-use";
-import { usePhoneCollapse, usePhoneInfo } from "@/components/ui/phone";
+import { PageLink } from "@/components/ui/page-link";
+import { usePhoneInfo } from "@/components/ui/phone";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { laToday } from "@/lib/la-date";
 import {
@@ -184,13 +185,81 @@ function Td({
 
 /* ───────────── Request leave ───────────── */
 
-function RequestForm({
-  onSent,
-  notOnSchedule,
+/** My schedule › My leave 的 How to use（原 Leave 标签员工那几条）。 */
+export const MY_LEAVE_HOW_TO: readonly string[] = [
+  "My leave: click + Request leave, pick the first and last day, the type and an optional note, then click Send request. You can only request leave for yourself.",
+  "Your request goes to your manager. If you don't have one, it goes to the team lead of each of your teams, and the first one to decide wins. If there is neither, it goes to Super Admin. They get a notice on the Dashboard and an email.",
+  "Each request shows Pending, Approved or Rejected, who decided and when. You get an email when it is decided.",
+  "While a request is still Pending you can click Withdraw. If it is already approved and plans change, ask your approver to remove the leave.",
+  "Approved leave shows on the schedule as Leave.",
+];
+
+/**
+ * My schedule 页的「My leave」（Annie 2026-11-19「全部同意推荐，动手」1A）：原 Leave 标签员工那两块（Request leave + My leave requests）
+ * 合成一块；表单默认收起，点「+ Request leave」才出。接口同一套（/api/schedule/leave-requests/mine、POST、withdraw）。
+ */
+export function MyLeavePanel({
+  onUnauthorized,
 }: {
-  onSent: () => void;
-  notOnSchedule: boolean;
+  onUnauthorized: () => void;
 }) {
+  const [mine, setMine] = useState<Load<MyLeave>>({ kind: "loading" });
+  const [reloadKey, setReloadKey] = useState(0);
+  const [open, setOpen] = useState(false);
+  const reload = useCallback(() => setReloadKey((k) => k + 1), []);
+
+  useEffect(() => {
+    const ctl = new AbortController();
+    fetchMyLeaveRequests(ctl.signal).then(
+      (data) => {
+        if (!ctl.signal.aborted) setMine({ kind: "ready", data });
+      },
+      (e: unknown) => {
+        if (ctl.signal.aborted) return;
+        if (isStatus(e, 401)) onUnauthorized();
+        else if (isStatus(e, 404) || isStatus(e, 403))
+          setMine({ kind: "missing" });
+        else setMine({ kind: "error", message: describeError(e) });
+      },
+    );
+    return () => ctl.abort();
+  }, [reloadKey, onUnauthorized]);
+
+  if (mine.kind === "missing") return null;
+  const notOnSchedule = mine.kind === "ready" && mine.data.employee === null;
+  return (
+    <Section
+      testId="my-leave"
+      title="My leave"
+      hint="Ask for days off. Your approver decides, and you get an email either way."
+      extra={
+        notOnSchedule ? null : (
+          <button
+            type="button"
+            data-leave-form-toggle
+            aria-expanded={open}
+            onClick={() => setOpen((o) => !o)}
+            className={SMALL_SECONDARY}
+          >
+            {open ? "Hide form" : "+ Request leave"}
+          </button>
+        )
+      }
+    >
+      {notOnSchedule ? (
+        <p data-leave-not-on-schedule className={cn("m-0 text-[13px]", MUTED)}>
+          You are not on the staff schedule, so you can&apos;t request leave
+          here. Ask whoever makes the schedule to add you.
+        </p>
+      ) : open ? (
+        <RequestForm onSent={reload} />
+      ) : null}
+      <MyRequests load={mine} onChanged={reload} />
+    </Section>
+  );
+}
+
+function RequestForm({ onSent }: { onSent: () => void }) {
   const today = laToday();
   const [from, setFrom] = useState(today);
   const [to, setTo] = useState(today);
@@ -202,7 +271,6 @@ function RequestForm({
     | { kind: "sent" }
     | { kind: "error"; message: string }
   >({ kind: "idle" });
-  const collapse = usePhoneCollapse();
 
   const days = leaveDayCount(from, to);
   const problem =
@@ -237,141 +305,111 @@ function RequestForm({
   };
 
   return (
-    <Section
-      testId="request"
-      title="Request leave"
-      hint="Ask for days off. Your approver decides, and you get an email either way."
-      bodyClassName={notOnSchedule ? undefined : collapse.hide}
-      extra={
-        notOnSchedule ? null : (
-          <button
-            type="button"
-            data-leave-form-toggle
-            aria-expanded={collapse.open}
-            onClick={collapse.toggle}
-            className={cn(SMALL_SECONDARY, "sm:hidden")}
-          >
-            {collapse.open ? "Hide form" : "+ Request leave"}
-          </button>
-        )
-      }
-    >
-      {notOnSchedule ? (
-        <p data-leave-not-on-schedule className={cn("m-0 text-[13px]", MUTED)}>
-          You are not on the staff schedule, so you can&apos;t request leave
-          here. Ask whoever makes the schedule to add you.
-        </p>
-      ) : (
-        <form
-          data-leave-form
-          className={cn(
-            "grid grid-cols-[repeat(3,minmax(0,max-content))_1fr] items-end gap-3 max-sm:grid-cols-2",
-          )}
-          onSubmit={(e) => {
-            e.preventDefault();
-            void submit();
-          }}
-        >
-          <label className="flex min-w-0 flex-col gap-1 text-[12px] text-white/60">
-            First day
-            <input
-              id="leave-from"
-              type="date"
-              value={from}
-              onChange={(e) => {
-                setFrom(e.target.value);
-                if (e.target.value && (!to || to < e.target.value))
-                  setTo(e.target.value);
-                touch();
-              }}
-              className={INPUT}
-            />
-          </label>
-          <label className="flex min-w-0 flex-col gap-1 text-[12px] text-white/60">
-            Last day
-            <input
-              id="leave-to"
-              type="date"
-              value={to}
-              min={from || undefined}
-              onChange={(e) => {
-                setTo(e.target.value);
-                touch();
-              }}
-              className={INPUT}
-            />
-          </label>
-          <label className="flex min-w-0 flex-col gap-1 text-[12px] text-white/60">
-            Type
-            <select
-              id="leave-kind"
-              value={kind}
-              onChange={(e) => {
-                setKind(e.target.value as LeaveKind);
-                touch();
-              }}
-              className={INPUT}
-            >
-              {LEAVE_KINDS.map((k) => (
-                <option key={k.value} value={k.value}>
-                  {k.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <span
-            data-leave-days
-            className={cn("self-center pb-1 text-[12.5px]", MUTED)}
-          >
-            {days > 0 ? `${days} day${days === 1 ? "" : "s"}` : ""}
-          </span>
-          <label className="col-span-full flex min-w-0 flex-col gap-1 text-[12px] text-white/60">
-            Note (optional, up to {LEAVE_NOTE_MAX} characters)
-            <input
-              id="leave-note"
-              value={note}
-              maxLength={LEAVE_NOTE_MAX}
-              placeholder="e.g. Doctor appointment"
-              onChange={(e) => {
-                setNote(e.target.value);
-                touch();
-              }}
-              className={cn(INPUT, "w-full")}
-            />
-          </label>
-          <div className="col-span-full flex flex-wrap items-center gap-3">
-            <button
-              type="submit"
-              data-leave-send
-              disabled={!!problem || state.kind === "sending"}
-              className={DARK_PRIMARY_BUTTON_CLASS}
-            >
-              {state.kind === "sending" ? "Sending…" : "Send request"}
-            </button>
-            {problem ? (
-              <span data-leave-form-msg className="text-[13px] text-red-400">
-                {problem}
-              </span>
-            ) : state.kind === "sent" ? (
-              <span
-                data-leave-form-msg
-                className="text-[13px] text-emerald-400"
-              >
-                Sent. Your approver has been told.
-              </span>
-            ) : state.kind === "error" ? (
-              <span
-                data-leave-form-msg
-                role="alert"
-                className="text-[13px] text-red-400"
-              >
-                {state.message}
-              </span>
-            ) : null}
-          </div>
-        </form>
+    <form
+      data-leave-form
+      className={cn(
+        "grid grid-cols-[repeat(3,minmax(0,max-content))_1fr] items-end gap-3 max-sm:grid-cols-2",
       )}
-    </Section>
+      onSubmit={(e) => {
+        e.preventDefault();
+        void submit();
+      }}
+    >
+      <label className="flex min-w-0 flex-col gap-1 text-[12px] text-white/60">
+        First day
+        <input
+          id="leave-from"
+          type="date"
+          value={from}
+          onChange={(e) => {
+            setFrom(e.target.value);
+            if (e.target.value && (!to || to < e.target.value))
+              setTo(e.target.value);
+            touch();
+          }}
+          className={INPUT}
+        />
+      </label>
+      <label className="flex min-w-0 flex-col gap-1 text-[12px] text-white/60">
+        Last day
+        <input
+          id="leave-to"
+          type="date"
+          value={to}
+          min={from || undefined}
+          onChange={(e) => {
+            setTo(e.target.value);
+            touch();
+          }}
+          className={INPUT}
+        />
+      </label>
+      <label className="flex min-w-0 flex-col gap-1 text-[12px] text-white/60">
+        Type
+        <select
+          id="leave-kind"
+          value={kind}
+          onChange={(e) => {
+            setKind(e.target.value as LeaveKind);
+            touch();
+          }}
+          className={INPUT}
+        >
+          {LEAVE_KINDS.map((k) => (
+            <option key={k.value} value={k.value}>
+              {k.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <span
+        data-leave-days
+        className={cn("self-center pb-1 text-[12.5px]", MUTED)}
+      >
+        {days > 0 ? `${days} day${days === 1 ? "" : "s"}` : ""}
+      </span>
+      <label className="col-span-full flex min-w-0 flex-col gap-1 text-[12px] text-white/60">
+        Note (optional, up to {LEAVE_NOTE_MAX} characters)
+        <input
+          id="leave-note"
+          value={note}
+          maxLength={LEAVE_NOTE_MAX}
+          placeholder="e.g. Doctor appointment"
+          onChange={(e) => {
+            setNote(e.target.value);
+            touch();
+          }}
+          className={cn(INPUT, "w-full")}
+        />
+      </label>
+      <div className="col-span-full flex flex-wrap items-center gap-3">
+        <button
+          type="submit"
+          data-leave-send
+          disabled={!!problem || state.kind === "sending"}
+          className={DARK_PRIMARY_BUTTON_CLASS}
+        >
+          {state.kind === "sending" ? "Sending…" : "Send request"}
+        </button>
+        {problem ? (
+          <span data-leave-form-msg className="text-[13px] text-red-400">
+            {problem}
+          </span>
+        ) : state.kind === "sent" ? (
+          <span data-leave-form-msg className="text-[13px] text-emerald-400">
+            Sent. Your approver has been told.
+          </span>
+        ) : state.kind === "error" ? (
+          <span
+            data-leave-form-msg
+            role="alert"
+            className="text-[13px] text-red-400"
+          >
+            {state.message}
+          </span>
+        ) : null}
+      </div>
+    </form>
   );
 }
 
@@ -468,7 +506,7 @@ function MyRequests({
 
   const list = load.kind === "ready" ? load.data.requests : [];
   return (
-    <Section testId="mine" title="My leave requests">
+    <div data-leave-section="mine" className="flex min-w-0 flex-col gap-2">
       {load.kind === "loading" ? (
         <p className={cn("m-0 text-[13px]", MUTED)}>Loading…</p>
       ) : load.kind === "error" ? (
@@ -551,7 +589,7 @@ function MyRequests({
           </div>
         </>
       )}
-    </Section>
+    </div>
   );
 }
 
@@ -862,7 +900,6 @@ export function LeaveView({
   /** 待我批的条数变了（标签上写「Leave · N waiting」）。 */
   onPendingCount?: (n: number) => void;
 }) {
-  const [mine, setMine] = useState<Load<MyLeave>>({ kind: "loading" });
   const [pending, setPending] = useState<Load<LeaveQueue>>({
     kind: "loading",
   });
@@ -891,7 +928,6 @@ export function LeaveView({
         },
       );
     }
-    wrap(fetchMyLeaveRequests(ctl.signal), setMine);
     wrap(fetchLeaveQueue("pending", ctl.signal), setPending);
     wrap(fetchLeaveQueue("decided", ctl.signal), setDecided);
     return () => ctl.abort();
@@ -965,22 +1001,24 @@ export function LeaveView({
         </>
       ) : null}
 
-      <RequestForm
-        onSent={reload}
-        notOnSchedule={mine.kind === "ready" && mine.data.employee === null}
-      />
-      <MyRequests load={mine} onChanged={reload} />
+      {/* My schedule 2A（Annie 2026-11-19）：自己的请假只在 My schedule；这个标签只给批假的人。 */}
+      <p data-leave-own className={cn("m-0 px-1 text-[13px]", MUTED)}>
+        Your own leave requests are on{" "}
+        <PageLink
+          href="/my-schedule"
+          className="font-semibold text-sky-300 underline underline-offset-2"
+        >
+          My schedule
+        </PageLink>
+        .
+      </p>
 
       <div className="px-1">
         <HowToUse
           dark
           title="How to use — Leave"
           items={[
-            "Pick the first and last day, the type and an optional note, then click Send request. You can only request leave for yourself.",
-            "Your request goes to your manager. If you don't have one, it goes to the team lead of each of your teams, and the first one to decide wins. If there is neither, it goes to Super Admin. They get a notice on the Dashboard and an email.",
-            "My leave requests shows each request: Pending, Approved or Rejected, who decided and when. You get an email when it is decided.",
-            "While a request is still Pending you can click Withdraw. If it is already approved and plans change, ask your approver to remove the leave on the Schedule tab.",
-            "Approved leave shows on the Schedule as Leave.",
+            "This tab is for people who approve leave. To ask for your own leave, go to My schedule.",
             ...(isApprover
               ? [
                   "Waiting for approval lists the requests sent to you. Click Approve, or click Reject, type a reason if you want, and click Reject again. The person gets an email either way.",

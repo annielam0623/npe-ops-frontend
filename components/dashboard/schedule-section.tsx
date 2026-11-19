@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import { MY_SCHEDULE_KEY } from "@/components/schedule/config";
 import { OffCard } from "@/components/schedule/week-grid";
+import { PageLink } from "@/components/ui/page-link";
 import {
   DAY_LABELS,
   personDotColor,
@@ -11,6 +13,7 @@ import {
 import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchCurrentUser } from "@/lib/auth-api";
 import { laToday, shiftYmd, weekStartYmd } from "@/lib/la-date";
+import { usePageVisibility } from "@/lib/page-visibility";
 import {
   dashboardScheduleEmployees,
   dashboardScheduleSettings,
@@ -72,6 +75,10 @@ export function ScheduleSection({
   const [weekStart, setWeekStart] = useState(thisWeek);
   const [week, setWeek] = useState<WeekState>({ kind: "loading" });
   const [reloadKey, setReloadKey] = useState(0);
+  // My schedule 6A：按键跟 Confirm your schedule 同一个开关。
+  const myScheduleOn = usePageVisibility(onUnauthorized).visible(
+    "schedule_confirm_page",
+  );
 
   // 设置 + 名单 + 自己是谁：和具体哪一周无关，加载一次。
   useEffect(() => {
@@ -165,6 +172,16 @@ export function ScheduleSection({
           >
             Next week
           </WeekPill>
+          {/* My schedule 3A（Annie 2026-11-19「我不要链接，就要一个按键」）：跟排班总表页头同一个白底醒目键，打开这一周。 */}
+          {myScheduleOn ? (
+            <PageLink
+              href={`/my-schedule?week=${weekStart}`}
+              data-my-schedule-key
+              className={cn(MY_SCHEDULE_KEY, "ml-1.5")}
+            >
+              My schedule →
+            </PageLink>
+          ) : null}
           <a
             href={`/schedule?week=${weekStart}`}
             className="ml-1.5 text-[12.5px] font-semibold text-[#38bdf8] hover:text-[#7dd3fc]"

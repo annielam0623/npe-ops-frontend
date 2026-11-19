@@ -156,6 +156,9 @@ async function run() {
   // ── 员工（Jing）打开确认页：就是那张周表 ──
   await ctl({ reset: true, unavail: false, fail401: false, past: false, published: false, peerAsk: false });
   await open();
+  // My schedule 4A（Annie 2026-11-19）：旧网址 /schedule/confirm?week=… 跳到 /my-schedule?week=…；标题 My schedule；换周键。
+  check("My schedule 4A · /schedule/confirm?week=2026-11-01 ⇒ /my-schedule?week=2026-11-01，标题 My schedule", await evaluate("return location.pathname === '/my-schedule' && location.search === '?week=2026-11-01' && document.querySelector('main h1').textContent === 'My schedule';"), await evaluate("return location.href + ' | ' + (document.querySelector('main h1')?.textContent ?? '');"));
+  check("My schedule · 换周：‹ 10/25 那周、› 11/8 那周、This week / Next week 都链到 /my-schedule?week=…", await evaluate("const n = document.querySelector('[data-my-week-nav]'); const h = (l) => n.querySelector('[aria-label=\"' + l + '\"]').getAttribute('href'); const all = [...n.querySelectorAll('a')].map((a) => a.getAttribute('href')); return h('Previous week') === '/my-schedule?week=2026-10-25' && h('Next week') === '/my-schedule?week=2026-11-08' && n.textContent.includes('11/1 – 11/7') && all.length === 4 && all.every((x) => x.startsWith('/my-schedule?week=') && x.length === '/my-schedule?week=2026-11-01'.length);"), await evaluate("return document.querySelector('[data-my-week-nav]')?.outerHTML ?? 'none';"));
   const q = (await since(0, (e) => e.path === "/api/schedule/confirmation"))[0]?.q;
   check("登录进来：GET /api/schedule/confirmation?week=2026-11-01", q?.week === "2026-11-01", JSON.stringify(q));
   check(
@@ -426,8 +429,8 @@ async function run() {
     await evaluate("return document.querySelector('[data-swap-list]')?.innerText ?? 'none';"),
   );
   check(
-    "How to use — Your schedule：有换班做法、Withdraw、晚接早规则",
-    await evaluate("const t = [...document.querySelectorAll('details')].find((d) => d.textContent.includes('How to use — Your schedule'))?.textContent ?? ''; return t.includes(\"drag your shift onto a coworker's shift\") && t.includes('Press Withdraw') && t.includes(\"A Close shift can't be followed by an Open or Morning shift the next day.\") && t.includes('Requests that aren\\'t finished when the week starts are closed');"),
+    "How to use — My schedule：有换班做法、Withdraw、晚接早规则",
+    await evaluate("const t = [...document.querySelectorAll('details')].find((d) => d.textContent.includes('How to use — My schedule'))?.textContent ?? ''; return t.includes(\"drag your shift onto a coworker's shift\") && t.includes('Press Withdraw') && t.includes(\"A Close shift can't be followed by an Open or Morning shift the next day.\") && t.includes('Requests that aren\\'t finished when the week starts are closed');"),
   );
   await ctl({ reset: true, swapWeek: false, swapSamples: false });
 

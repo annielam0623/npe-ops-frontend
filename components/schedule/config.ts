@@ -5,6 +5,13 @@ export const CARD = "rounded-[14px] border border-white/10 bg-white/[.04]";
 export const CARD_HEADER =
   "flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-4 py-3";
 export const MUTED = "text-white/55";
+
+/**
+ * 所有「My schedule →」按键同一个样子（Annie 2026-11-19 5A 白底醒目 +「My schedule统一用一个配色」）：
+ * 排班总表页头、Dashboard Schedule 块。侧栏那项是普通菜单项，不用这个。
+ */
+export const MY_SCHEDULE_KEY =
+  "inline-flex h-[28px] items-center whitespace-nowrap rounded-[8px] border border-white bg-white px-3 text-[12.5px] font-bold text-[#0b1727] shadow-[0_0_0_3px_rgba(255,255,255,.12)] transition hover:bg-white/90 max-sm:h-[26px] max-sm:px-2.5 max-sm:text-[12px]";
 export const DIM = "text-white/35";
 
 export const ICON_BTN =
