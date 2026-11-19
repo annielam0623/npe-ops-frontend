@@ -114,7 +114,7 @@ async function run() {
     const pv = await since(from, isPost("/api/test-send/preview"));
     check("Preview ⇒ POST /api/test-send/preview {module, choice, date}（不带收件人）", pv.length === 1 && JSON.stringify(pv[0].body) === JSON.stringify({ module: "tour_confirmation", choice: "GCW", date: laDay(1) }), JSON.stringify(pv.map((x) => x.body)));
   }
-  check("预览卡：SMS 原文 + 字数", await evaluate(`return $t('[data-ts-sms]').startsWith('NPE: Hi ZZ, Tour Confirmation for Grand Canyon West Rim Day Tour') && $t('[data-ts-preview-card]').includes(' characters');`));
+  check("预览卡：SMS 原文，不显示字数", await evaluate(`return $t('[data-ts-sms]').startsWith('NPE: Hi ZZ, Tour Confirmation for Grand Canyon West Rim Day Tour') && !$t('[data-ts-preview-card]').includes('characters');`));
   check("预览卡：Subject + 邮件放在 sandbox iframe（srcdoc）", await evaluate(`const f = $q('[data-ts-email]'); return $t('[data-ts-subject]') === '· Subject: Tour Confirmation: Grand Canyon West Rim Day Tour on ${laDay(1)}' && f.getAttribute('sandbox') === '' && f.srcdoc.includes('this is the Tour Confirmation email');`), await evaluate(`return $t('[data-ts-subject]');`));
   check("预览卡：sample_note 照后端原文", await evaluate(`return $t('[data-ts-note]') === 'Sample guest: ZZ Test, 2 guests, order TEST-0001. Links open a sample guest page.';`));
 

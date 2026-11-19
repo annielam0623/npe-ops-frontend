@@ -448,17 +448,13 @@ function PreviewCard({
               SMS
             </p>
             {preview.sms !== null ? (
-              <>
-                <p
-                  data-ts-sms
-                  className="rounded-[14px] bg-[#f2f3f5] px-3 py-2.5 text-[12.5px] leading-[1.5] break-words whitespace-pre-wrap"
-                >
-                  {preview.sms}
-                </p>
-                <p className="mt-1 text-[11.5px] text-[#555] tabular-nums">
-                  {preview.sms.length} characters
-                </p>
-              </>
+              // 不显示字数：后端 preview 不回字数，前端的算法跟后端 sms.py 还没对齐（ae 2026-11-18）。
+              <p
+                data-ts-sms
+                className="rounded-[14px] bg-[#f2f3f5] px-3 py-2.5 text-[12.5px] leading-[1.5] break-words whitespace-pre-wrap"
+              >
+                {preview.sms}
+              </p>
             ) : (
               <p data-ts-sms-none className="text-[12px] text-[#555]">
                 This module has no text message.
