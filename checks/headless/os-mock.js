@@ -251,7 +251,9 @@ http
       const o = { ...ORDERS[on], ...(ctl.hold && on === "ZZTEST2" ? { status: "On Hold" } : {}) };
       // G351（后端 4aea93a5）：Refresh 的 activity_log 对 partner 不能看的字段只写「Internal notes (Rezdy): changed」。
       // 这两条没配上 rezdy_changes（partner 那份去掉了），照 activity_log 文字解析：changed 在最后 / 在前面两种。
+      // 后端（PASS 时建议）：按「: changed」后缀认、不按字段名 ⇒ 另放一条假字段 Foo。
       if (ctl.g351 && on === "ZZTEST1") o.activity_log = [
+        { id: 13, event_type: "refreshed_from_rezdy", detail: "Refreshed from Rezdy — Email: 'a@example.com' → 'b@example.com'; Foo: changed", actor: "Annie Z", actor_type: "staff", created_at: "10/19/2026 10:00 AM" },
         { id: 12, event_type: "refreshed_from_rezdy", detail: "Refreshed from Rezdy — Internal notes (Rezdy): changed; Phone: '+1 555 0100' → '+1 555 0200'", actor: "Annie Z", actor_type: "staff", created_at: "10/19/2026 9:00 AM" },
         { id: 11, event_type: "refreshed_from_rezdy", detail: "Refreshed from Rezdy — Status: 'CONFIRMED' → 'ON_HOLD'; Internal notes (Rezdy): changed", actor: "Annie Z", actor_type: "staff", created_at: "10/19/2026 8:00 AM" },
         ...o.activity_log,

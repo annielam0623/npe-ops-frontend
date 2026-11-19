@@ -593,7 +593,9 @@ async function run() {
       const early = ls.find((t) => t.startsWith("10/19/2026 8:00 AM")) || "";
       check("G351「Status: 'A' → 'B'; Internal notes (Rezdy): changed」：两项都出（Status 不被吞掉）", early.includes("Status CONFIRMED → ON_HOLD") && early.includes("Internal notes (Rezdy): changed"), ls.join(" | "));
       check("G351「Internal notes (Rezdy): changed; Phone: 'a' → 'b'」：两项都出", late.includes("Internal notes (Rezdy): changed") && late.includes("Phone +1 555 0100 → +1 555 0200"), ls.join(" | "));
-      check("G351 changed 那一项一行、不画划线旧值、不写 —", await evaluate(`const s = [...document.querySelectorAll('[data-lookup-block="changes"] [data-change-only]')]; return s.length === 2 && s.every(e => !e.querySelector('[data-change-old]') && !e.textContent.includes('—'));`));
+      const foo = ls.find((t) => t.startsWith("10/19/2026 10:00 AM")) || "";
+      check("G351 按「: changed」后缀认、不按字段名：假字段「Foo: changed」也解析，前一项 Email 照出", foo.includes("Email a@example.com → b@example.com") && foo.includes("Foo: changed"), ls.join(" | "));
+      check("G351 changed 那一项一行、不画划线旧值、不写 —", await evaluate(`const s = [...document.querySelectorAll('[data-lookup-block="changes"] [data-change-only]')]; return s.length === 3 && s.every(e => !e.querySelector('[data-change-old]') && !e.textContent.includes('—'));`));
     }
     await ctl({ g351: false });
     await ctl({ sa: false, lifeVis: null, lifeVisible: false });
