@@ -2002,6 +2002,8 @@ export function DispatchView() {
                 导游页同理：后端 /guide/preview（be1f4447）不带 hr_id 是选人页，写法和司机那个一样。
                 Annie 2026-11-19（样稿 8JrSpmyzU3YmnsAiGKRhvG，「只改driver和guide那个链接吧，把preview这个字拿掉就好」「全部同意推荐，动手」）：
                 这两个改成按键「Driver page ↗」「Guide page ↗」，样子同 Today（BTN_GHOST）；手机上收进 Today 旁边的 ⋯（PhoneMore）。
+                Annie 2026-11-19（样稿 Aot6cngarzBxtDyGzQZKcc 选 B，「用B」「动手」）：边框照顶上 Tracking 三个图标（tracking-widget.tsx）——
+                Driver 用 Morning 的蓝 #3b82f6、Guide 用 Tour 的绿 #22c55e：同色淡边 + 淡色底，鼠标移上去外面一圈同色光；字色、去哪里都不变（PAGE_BTN）。
                 「Open shift opens today ⚙」照旧只 Super Admin（openWin 只给 Super Admin 读），样子、位置都不动（手机上照旧在日期下面单独一行）。 */}
             {day ? (
               <PhoneMore label="Driver and guide pages">
@@ -2010,10 +2012,8 @@ export function DispatchView() {
                   target="_blank"
                   rel="noopener noreferrer"
                   data-driver-preview
-                  className={cn(
-                    BTN_GHOST,
-                    "inline-flex items-center no-underline",
-                  )}
+                  style={{ "--ac": "#3b82f6" } as CSSProperties}
+                  className={PAGE_BTN}
                 >
                   Driver page ↗
                 </a>
@@ -2022,10 +2022,8 @@ export function DispatchView() {
                   target="_blank"
                   rel="noopener noreferrer"
                   data-guide-preview
-                  className={cn(
-                    BTN_GHOST,
-                    "inline-flex items-center no-underline",
-                  )}
+                  style={{ "--ac": "#22c55e" } as CSSProperties}
+                  className={PAGE_BTN}
                 >
                   Guide page ↗
                 </a>
@@ -3388,6 +3386,13 @@ function Shell({
     </main>
   );
 }
+
+/**
+ * Dispatch 顶上的 Driver page ↗ / Guide page ↗（Annie 2026-11-19 选 B）：尺寸、字色同 BTN_GHOST（Today），
+ * 边框和底色照 Tracking 图标（tracking-widget.tsx）：--ac 的 38% 细边、12% 淡底，鼠标移上去 14px 同色光。
+ */
+const PAGE_BTN =
+  "inline-flex h-8 items-center rounded-[9px] border border-[color-mix(in_srgb,var(--ac)_38%,transparent)] bg-[color-mix(in_srgb,var(--ac)_12%,transparent)] px-[13px] text-[12.5px] whitespace-nowrap text-[#cbd5e1] no-underline transition hover:shadow-[0_0_14px_color-mix(in_srgb,var(--ac)_35%,transparent)] focus-visible:shadow-[0_0_14px_color-mix(in_srgb,var(--ac)_35%,transparent)] focus-visible:outline-none";
 
 /** 旧 `.sitem`：图标块 + 大数字 + 小字；第二格起左边一条竖线。 */
 function Stat({
