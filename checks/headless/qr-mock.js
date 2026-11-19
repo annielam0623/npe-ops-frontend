@@ -92,6 +92,8 @@ http.createServer(async (req, res) => {
       if ("body" in b) { const why = problem(b.body, r.id); if (why) return send(res, 400, { detail: why }); }
       const before = { body: r.body, active: r.active, sort_order: r.sort_order, add_bus_map: r.add_bus_map };
       if ("add_bus_map" in b) r.add_bus_map = b.add_bus_map;
+      // ctl.busMapForce：模拟另一个标签页同时改过，后端回的值跟页面点的不一样。
+      if ("add_bus_map" in b && typeof ctl.busMapForce === "boolean") r.add_bus_map = ctl.busMapForce;
       if ("body" in b) r.body = b.body.trim();
       if ("active" in b) r.active = !!b.active;
       r.updated_at = new Date().toISOString();

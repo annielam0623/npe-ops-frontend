@@ -239,6 +239,14 @@ async function run() {
   check("G349 再点：PATCH {add_bus_map:false}、不勾了、红字清掉", JSON.stringify((await since(before, (e) => e.method === "PATCH"))[0]?.body) === JSON.stringify({ add_bus_map: false }) && !(await evaluate(`return ${alertText()};`)).includes("Bus map"));
   await evaluate(`${rowOf(3)}.querySelector('[data-bus-map] input').click();`);
   await waitFor(`${rowOf(3)}.querySelector('[data-bus-map] input').checked`);
+  // 后端回的值为准（不是页面猜的）：点了去勾，后端回 true（另一个标签页又勾上了）⇒ 照后端，勾着。
+  await ctl({ busMapForce: true });
+  before = (await mockLog()).length;
+  await evaluate(`${rowOf(3)}.querySelector('[data-bus-map] input').click();`);
+  await waitReq(before, (e) => e.method === "PATCH");
+  await waitFor(`!!${rowOf(3)}.querySelector('[data-bus-map-saved]')`);
+  check("G349 存完照后端回的 add_bus_map 显示：点了去勾、后端回 true ⇒ 仍勾着", await evaluate(`return ${rowOf(3)}.querySelector('[data-bus-map] input').checked;`));
+  await ctl({ busMapForce: null });
   check("G349 How to use：标题「📖 How to use — Driver quick replies」，原来 4 条 + 新 3 条（原文）共 7 条", await evaluate(`const d = [...document.querySelectorAll('details')].find((x) => x.textContent.includes('How to use')); const items = [...d.querySelectorAll('li')].map((li) => li.textContent.replace(/\\s+/g, ' ').trim()); return d.querySelector('summary').textContent.trim() === '📖 How to use — Driver quick replies' && items.length === 7 && JSON.stringify(items.slice(4)) === ${JSON.stringify(JSON.stringify([
     'Tick "Bus map" on a reply to add a link to the bus\'s location at the end of that text.',
     "The guest can open the link for 90 minutes after the driver sends it.",
