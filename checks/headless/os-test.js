@@ -433,6 +433,10 @@ async function run() {
     const fieldOf = (label) => `(() => { const el = document.querySelector('[data-lookup-block="order"] [data-field="${label}"] dd'); return el ? el.textContent.replace(/\\s+/g, ' ').trim() : null; })()`;
     const factOf = (laneName, label) => `(() => { const el = document.querySelector('[data-lane="${laneName}"] [data-fact="${label}"] dd'); return el ? { text: el.textContent.replace(/\\s+/g, ' ').trim(), color: getComputedStyle(el).color } : null; })()`;
     const ev = (expr) => evaluate(`return ${expr};`);
+    // textContent 里格子值和灰字之间没有空格：比较时去掉所有空格。
+    const nosp = (s) => String(s ?? "").replace(/\s+/g, "");
+    // factOf 把标签放进单引号字串里：撇号要转义。
+    const GLP = "Guest\\'s lunch pick";
     // 员工、开关没登记（默认 super_admin_only）：一点不变。
     await ctl({ sa: false, lifeVis: null, lifeVisible: false });
     await openDashboard();
@@ -441,7 +445,9 @@ async function run() {
     await sleep(600);
     check("生命周期 · 员工（默认只 SA）：没有 Booked / Received / Changes、没有 Changes 块、没有 Sent 格子、框照旧",
       await evaluate(`return !document.querySelector('[data-field="Booked"]') && !document.querySelector('[data-lookup-block="changes"]') && !document.querySelector('[data-fact="Sent"]') && !document.querySelector('[data-fact="Tour ended"]') && !document.querySelector('[data-lookup-block="chat"]') && document.querySelector('[data-lookup-block="order"]').classList.contains('border-white/10') && getComputedStyle(document.querySelector('[data-lookup-block="order"]')).borderTopColor !== 'rgba(96, 165, 250, 0.55)';`));
-    check("生命周期 · 员工：不拉 send-log", (await mockLog()).slice(before).every((l) => l.path !== "/api/notifications/send-log"));
+    check("第 4 件 · 员工：Tour Confirmation 照旧一格 Lunch（Tour Tracking 的数），没有 Guest's lunch pick / Bus manifest lunch",
+      (await ev(factOf("Tour Confirmation", "Lunch")))?.text.includes("🦃 1") && !(await ev(factOf("Tour Confirmation", GLP))) && !(await ev(factOf("Tour Confirmation", "Bus manifest lunch"))));
+    check("生命周期 · 员工：不拉 send-log",(await mockLog()).slice(before).every((l) => l.path !== "/api/notifications/send-log"));
     // 后端登记了、对员工关着（visible_to_me false）：也不出。
     await ctl({ sa: false, lifeVis: "super_admin_only", lifeVisible: false });
     await openDashboard();
@@ -503,7 +509,14 @@ async function run() {
     check("生命周期 · Tour Confirmation Sent：最近一次、精确单号、这天的团（不是 ZZTEST10 / 改期前）+ by veronica · Opened（send-log 阶梯：opened 胜过 delivered）", sent && /^10\/18\/2026 2:05 PM ?by veronica · Opened$/.test(sent.text), JSON.stringify(sent));
     const lm = await ev(factOf("Tour Confirmation", "Last Minute"));
     check("生命周期 · Last Minute：10/18/2026 7:30 PM by kevin · Delivered", lm && /^10\/18\/2026 7:30 PM ?by kevin · Delivered$/.test(lm.text), JSON.stringify(lm));
-    check("生命周期 · Restaurant ← lunch_by_day.restaurant", (await ev(factOf("Tour Confirmation", "Restaurant")))?.text === "ZZ Test Diner");
+    // 第 4 件（B1 A + B2 B）：Guest's lunch pick 取代原来那格 Lunch、Bus manifest lunch 取代 Restaurant（餐厅进灰字）。
+    const gp = await ev(factOf("Tour Confirmation", GLP));
+    const bm = await ev(factOf("Tour Confirmation", "Bus manifest lunch"));
+    check("第 4 件 · SA：Guest's lunch pick = confirmations lunch「2 Turkey」+ 灰字时间（不写来源）+ 橙字原文",
+      gp && nosp(gp.text) === nosp("2 Turkey 10/18/2026 3:31 PM Not in the bus manifest yet. Copy the guest's pick to the Rezdy order (special requirements)."), JSON.stringify(gp));
+    check("第 4 件 · SA：橙字是橙色 #fb923c", (await evaluate(`return getComputedStyle(document.querySelector('[data-lane="Tour Confirmation"] [data-lunch-mismatch]')).color;`)) === "rgb(251, 146, 60)");
+    check("第 4 件 · SA：Bus manifest lunch = lunch_by_day.text + 灰字 Restaurant: ZZ Test Diner", bm && nosp(bm.text) === nosp("1 Turkey, 1 Veggie Restaurant: ZZ Test Diner"), JSON.stringify(bm));
+    check("第 4 件 · SA：原来那格 Lunch、Restaurant 都不出（免得一块里三份餐）", !(await ev(factOf("Tour Confirmation", "Lunch"))) && !(await ev(factOf("Tour Confirmation", "Restaurant"))));
     const rs = await ev(factOf("Morning Pickup", "Reminder sent"));
     check("生命周期 · Morning Reminder sent：照固定状态（confirmations morning_pickup 行 sent_at / sent_by / sms_status），不是 send-log 的 6:00 Auto send", rs && /^10\/19\/2026 6:30 PM ?by kim · Delivered$/.test(rs.text), JSON.stringify(rs));
     const van = await ev(factOf("Morning Pickup", "Van at hotel"));
@@ -566,7 +579,42 @@ async function run() {
     const card = await evaluate(`const c = document.querySelector('[data-lifecycle-card]'); if (!c) return null; const f = (l) => c.querySelector('[data-lifecycle-field="' + l + '"] dd')?.textContent.replace(/\\s+/g, ' ').trim(); return { next: c.nextElementSibling?.getAttribute('aria-label'), booked: f('Booked'), sent: f('Confirmation sent'), lm: f('Last Minute'), tix: f('Ticket reminder sent'), relay: f('Relay'), ended: f('Tour ended'), reply: f('Guest reply'), tixReply: f('Ticket reply'), lunch: f('Lunch'), rest: f('Restaurant'), van: f('Van at hotel'), border: getComputedStyle(c).borderTopColor, lines: c.querySelectorAll('[data-lifecycle-changes] li').length };`);
     check("生命周期 · 订单详情页：Activity 卡上面一块，Booked / Confirmation sent / Last Minute / Tour ended、蓝框、Changes 3 条；没有 Relay / Bus（Day of tour 卡有，Annie「全部同意推荐」）",
       card && card.next === "Activity" && /^10\/1\/2026 9:57 AM ?In Rezdy$/.test(card.booked) && /^10\/18\/2026 2:05 PM ?by veronica · Opened$/.test(card.sent) && /^10\/18\/2026 7:30 PM ?by kevin · Delivered$/.test(card.lm) && card.tix === "Not sent" && card.relay === undefined && card.ended === "—" &&
-      /^YES ?10\/18\/2026 3:31 PM$/.test(card.reply) && /^Reschedule requested ?10\/19\/2026 10:00 AM$/.test(card.tixReply) && card.lunch === "1 Turkey, 1 Veggie" && card.rest === "ZZ Test Diner" && card.van === "5:44 AM – 5:53 AM" && card.border === "rgba(96, 165, 250, 0.55)" && card.lines === 3, JSON.stringify(card));
+      /^YES ?10\/18\/2026 3:31 PM$/.test(card.reply) && /^Reschedule requested ?10\/19\/2026 10:00 AM$/.test(card.tixReply) && card.lunch === undefined && card.rest === undefined && card.van === "5:44 AM – 5:53 AM" && card.border === "rgba(96, 165, 250, 0.55)" && card.lines === 3, JSON.stringify(card));
+    // 第 4 件 · 订单详情页：两格放 Guest reply 后面；各种情况出不出橙字。
+    const lunchCard = () => evaluate(`const c = document.querySelector('[data-lifecycle-card]'); const f = (l) => c.querySelector('[data-lifecycle-field="' + l + '"] dd')?.textContent.replace(/\\s+/g, ' ').trim(); const keys = [...c.querySelectorAll('[data-lifecycle-field]')].map(x => x.getAttribute('data-lifecycle-field')); return { pick: f("Guest's lunch pick"), bus: f('Bus manifest lunch'), orange: !!c.querySelector('[data-lunch-mismatch]'), afterReply: keys.indexOf("Guest's lunch pick") > keys.indexOf('Guest reply') && keys.indexOf('Bus manifest lunch') === keys.indexOf("Guest's lunch pick") + 1 };`);
+    const NOT_IN = "Not in the bus manifest yet. Copy the guest's pick to the Rezdy order (special requirements).";
+    let lc = await lunchCard();
+    check("第 4 件 · 订单详情页：Guest reply 后面两格并排，不一样 ⇒ 橙字", lc.afterReply && nosp(lc.pick) === nosp(`2 Turkey 10/18/2026 3:31 PM ${NOT_IN}`) && nosp(lc.bus) === nosp("1 Turkey, 1 Veggie Restaurant: ZZ Test Diner") && lc.orange, JSON.stringify(lc));
+    const lunchCaseAt = async (c) => {
+      await ctl({ lunchCase: c });
+      await goto(`${APP}/orders/ZZTEST1`);
+      await waitFor(`document.querySelector('[data-lifecycle-card] [data-lifecycle-field="Bus manifest lunch"]')`, 60000);
+      return lunchCard();
+    };
+    lc = await lunchCaseAt("same");
+    check("第 4 件 · 两份一样 ⇒ 不出橙字", !lc.orange && nosp(lc.pick) === nosp("1 Turkey, 1 Veggie 10/18/2026 3:31 PM"), JSON.stringify(lc));
+    lc = await lunchCaseAt("changed");
+    check("第 4 件 · 导游改过（changed=true）⇒ 不出橙字", !lc.orange && nosp(lc.pick) === nosp("2 Turkey 10/18/2026 3:31 PM"), JSON.stringify(lc));
+    lc = await lunchCaseAt("nolunch");
+    check("第 4 件 · 这个团没午餐（has_lunch=false）⇒ 不出橙字、Bus 那格写 No lunch", !lc.orange && nosp(lc.bus) === nosp("No lunch Restaurant: ZZ Test Diner"), JSON.stringify(lc));
+    lc = await lunchCaseAt("nullguest");
+    check("第 4 件 · 客人那份 null ⇒「—」、不出橙字", !lc.orange && lc.pick === "—", JSON.stringify(lc));
+    lc = await lunchCaseAt("oldkeys");
+    check("第 4 件 · 后端没给 Bus 三个数（旧键）⇒ 照写 text、不出橙字", !lc.orange && nosp(lc.bus) === nosp("1 Turkey, 1 Veggie Restaurant: ZZ Test Diner"), JSON.stringify(lc));
+    // 同一天两个 manifest（lunch_by_day 同日 2 条）：Bus 那格写合计、餐厅都列；橙字用合计比；别的日子那条不算。
+    lc = await lunchCaseAt("twobus");
+    check("第 4 件 · 同日两条：Bus 写合计「2 Turkey, 1 Veggie」+ 两家餐厅，客人 2 Turkey ≠ 合计 ⇒ 橙字（10/21 那条不算）", lc.orange && nosp(lc.bus) === nosp("2 Turkey, 1 Veggie Restaurant: ZZ Test Diner · ZZ Test Cafe"), JSON.stringify(lc));
+    lc = await lunchCaseAt("twobus_same");
+    check("第 4 件 · 同日两条：客人 2 Turkey 1 Veggie = 合计 ⇒ 不出橙字", !lc.orange && nosp(lc.bus) === nosp("2 Turkey, 1 Veggie Restaurant: ZZ Test Diner · ZZ Test Cafe"), JSON.stringify(lc));
+    lc = await lunchCaseAt("twobus_changed");
+    check("第 4 件 · 同日两条、其中一条导游改过 ⇒ 不出橙字", !lc.orange, JSON.stringify(lc));
+    lc = await lunchCaseAt("twobus_onelunch");
+    check("第 4 件 · 同日两条、只一条有午餐 ⇒ 不写 No lunch，合计只算有午餐那条（1 Turkey, 1 Veggie ≠ 客人 2 Turkey ⇒ 橙字）", lc.orange && nosp(lc.bus) === nosp("1 Turkey, 1 Veggie Restaurant: ZZ Test Diner"), JSON.stringify(lc));
+    lc = await lunchCaseAt("multiday");
+    check("第 4 件 · 多日团：这天没有 bookings 行（只在开始那天）⇒ 客人格「—」、不出橙字", !lc.orange && lc.pick === "—", JSON.stringify(lc));
+    await ctl({ lunchCase: null });
+    await goto(`${APP}/orders/ZZTEST1`);
+    await waitFor(`document.querySelector('[data-lifecycle-changes] [data-changes-all]')`, 60000);
     await evaluate(`document.querySelector('[data-lifecycle-changes] [data-changes-all]').click(); return 1;`);
     await sleep(200);
     const dOpen = await evaluate(`return { n: document.querySelectorAll('[data-lifecycle-changes] li').length, less: document.querySelector('[data-lifecycle-changes] [data-changes-less]')?.textContent.trim() };`);
