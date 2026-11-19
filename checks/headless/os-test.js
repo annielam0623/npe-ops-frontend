@@ -459,23 +459,23 @@ async function run() {
     check("生命周期 · SA：send-log 按单号拉一次（order_number=ZZTEST1，不带日期，最近 10 条 page_size=10）", sl.length === 1 && slq.get("order_number") === "ZZTEST1" && !slq.get("date_from") && slq.get("page_size") === "10" && slq.get("order_exact") === "true", JSON.stringify(sl));
     check("生命周期 · Booked = order_detail.dateCreated（洛杉矶时间）+ In Rezdy", /^10\/1\/2026 9:57 AM ?In Rezdy$/.test(await ev(fieldOf("Booked"))), await ev(fieldOf("Booked")));
     check("生命周期 · Received = 最早一条 booking_created + In Order List", /^10\/1\/2026 9:58 AM ?In Order List$/.test(await ev(fieldOf("Received"))), await ev(fieldOf("Received")));
-    check("生命周期 · Changes 格子：4 条有意义的改动（系统记录不算）", (await ev(fieldOf("Changes"))) === "4 — see below", await ev(fieldOf("Changes")));
+    check("生命周期 · Changes 格子：5 条有意义的改动（系统记录不算）", (await ev(fieldOf("Changes"))) === "5 — see below", await ev(fieldOf("Changes")));
     let lines = await evaluate(`return [...document.querySelectorAll('[data-lookup-block="changes"] li')].map(li => li.textContent.replace(/\\s+/g, ' ').trim());`);
     check("生命周期 · Changes 块紧跟订单块、默认列 3 条（新 → 旧）",
       lines.length === 3 && lines[0].includes("Guest asked to change pickup") && lines[1].includes("lunch_turkey 0 → 1") && lines[2].includes("Phone +1 555 0000 → +1 555 0100") && lines[2].includes("Email (empty) → zz@example.com") &&
       (await evaluate(`const b = document.querySelector('[data-lookup-block="changes"]'); return b.previousElementSibling === document.querySelector('[data-lookup-block="order"]');`)), lines.join(" | "));
     check("生命周期 · 旧值划线", await evaluate(`const o = document.querySelector('[data-lookup-block="changes"] [data-change-old]'); return !!o && getComputedStyle(o).textDecorationLine.includes('line-through');`));
-    check("生命周期 · 右上 Show all 6（全部记录含系统记录）", (await evaluate(`return document.querySelector('[data-lookup-block="changes"] [data-changes-all]')?.textContent.trim();`)) === "Show all 6 ▾");
+    check("生命周期 · 右上 Show all 7（全部记录含系统记录）", (await evaluate(`return document.querySelector('[data-lookup-block="changes"] [data-changes-all]')?.textContent.trim();`)) === "Show all 7 ▾");
     await evaluate(`document.querySelector('[data-lookup-block="changes"] [data-changes-all]').click(); return 1;`);
     await sleep(200);
     lines = await evaluate(`return [...document.querySelectorAll('[data-lookup-block="changes"] li')].map(li => li.textContent.replace(/\\s+/g, ' ').trim());`);
-    check("生命周期 · 点 Show all：6 条（activity_log 6 条去掉跟 rezdy_changes 重复的 2 条 + rezdy_changes 2 条）、系统记录也在，Show all 收起",
-      lines.length === 6 && lines.some((t) => t.includes("Marked handled")) && !lines.some((t) => t.includes("Updated by Rezdy")) && lines.filter((t) => t.startsWith("10/10/2026 11:02 AM")).length === 1 && !(await evaluate(`return !!document.querySelector('[data-lookup-block="changes"] [data-changes-all]');`)), lines.join(" | "));
+    check("生命周期 · 点 Show all：7 条（activity_log 7 条去掉配上的 2 条 + rezdy_changes 2 条；11:04 那次推送没配上、照旧 Updated by Rezdy）、系统记录也在，Show all 收起",
+      lines.length === 7 && lines.some((t) => t.includes("Marked handled")) && lines.filter((t) => t.includes("Updated by Rezdy")).length === 1 && lines.some((t) => t.startsWith("10/10/2026 11:04 AM") && t.includes("Updated by Rezdy")) && lines.filter((t) => t.startsWith("10/10/2026 11:02 AM")).length === 1 && !(await evaluate(`return !!document.querySelector('[data-lookup-block="changes"] [data-changes-all]');`)), lines.join(" | "));
     check("生命周期 · rezdy_changes：Rezdy 推送一行，来源 Rezdy、每项旧值（划线）→ 新值，null 写「—」",
       lines.some((t) => t.startsWith("10/10/2026 11:02 AM") && t.includes("Rezdy") && t.includes("Tour date (PBZ) 10/19/2026 → 10/20/2026") && t.includes("Item PXTRA — → PXTRA")), lines.join(" | "));
-    check("生命周期 · rezdy_changes：Refresh 那次来源写员工名、只出一次（activity_log 那条去重）",
-      lines.filter((t) => t.includes("Phone +1 555 0000 → +1 555 0100")).length === 1 && lines.some((t) => t.startsWith("10/11/2026 9:00 AM") && t.includes("Annie Z")), lines.join(" | "));
-    check("生命周期 · 按时间混排（新 → 旧）", JSON.stringify(lines.map((t) => t.slice(0, 10).trim())) === JSON.stringify(["10/18/2026", "10/12/2026", "10/11/2026", "10/10/2026", "10/2/2026", "10/1/2026"]), lines.map((t) => t.slice(0, 12)).join(" | "));
+    check("生命周期 · rezdy_changes：Refresh 那次来源写员工名、只出一次（跨分钟 9:01:30 ↔ 9:00 也配上去重）",
+      lines.filter((t) => t.includes("Phone +1 555 0000 → +1 555 0100")).length === 1 && lines.some((t) => t.startsWith("10/11/2026 9:01 AM") && t.includes("Annie Z")), lines.join(" | "));
+    check("生命周期 · 按时间混排（新 → 旧）", JSON.stringify(lines.map((t) => t.slice(0, 10).trim())) === JSON.stringify(["10/18/2026", "10/12/2026", "10/11/2026", "10/10/2026", "10/10/2026", "10/2/2026", "10/1/2026"]), lines.map((t) => t.slice(0, 12)).join(" | "));
     const sent = await ev(factOf("Tour Confirmation", "Sent"));
     check("生命周期 · Tour Confirmation Sent：最近一次、精确单号、这天的团（不是 ZZTEST10 / 改期前）+ by veronica · Delivered · Opened（delivered_at / opened_at）", sent && /^10\/18\/2026 2:05 PM ?by veronica · Delivered · Opened$/.test(sent.text), JSON.stringify(sent));
     const lm = await ev(factOf("Tour Confirmation", "Last Minute"));
@@ -521,10 +521,10 @@ async function run() {
     // 订单详情页：Activity 卡上面一块。
     await goto(`${APP}/orders/ZZTEST1`);
     await waitFor(`document.querySelector('[data-lifecycle-card] [data-lifecycle-field="Relay"]') && !document.querySelector('[data-lifecycle-card]').textContent.includes('…')`, 60000);
-    const card = await evaluate(`const c = document.querySelector('[data-lifecycle-card]'); if (!c) return null; const f = (l) => c.querySelector('[data-lifecycle-field="' + l + '"] dd')?.textContent.replace(/\\s+/g, ' ').trim(); return { next: c.nextElementSibling?.getAttribute('aria-label'), booked: f('Booked'), sent: f('Confirmation sent'), lm: f('Last Minute'), tix: f('Ticket reminder sent'), relay: f('Relay'), ended: f('Tour ended'), reply: f('Guest reply'), lunch: f('Lunch'), rest: f('Restaurant'), van: f('Van at hotel'), border: getComputedStyle(c).borderTopColor, lines: c.querySelectorAll('[data-lifecycle-changes] li').length };`);
+    const card = await evaluate(`const c = document.querySelector('[data-lifecycle-card]'); if (!c) return null; const f = (l) => c.querySelector('[data-lifecycle-field="' + l + '"] dd')?.textContent.replace(/\\s+/g, ' ').trim(); return { next: c.nextElementSibling?.getAttribute('aria-label'), booked: f('Booked'), sent: f('Confirmation sent'), lm: f('Last Minute'), tix: f('Ticket reminder sent'), relay: f('Relay'), ended: f('Tour ended'), reply: f('Guest reply'), tixReply: f('Ticket reply'), lunch: f('Lunch'), rest: f('Restaurant'), van: f('Van at hotel'), border: getComputedStyle(c).borderTopColor, lines: c.querySelectorAll('[data-lifecycle-changes] li').length };`);
     check("生命周期 · 订单详情页：Activity 卡上面一块，Booked / Confirmation sent / Last Minute / Relay / Tour ended、蓝框、Changes 3 条",
       card && card.next === "Activity" && /^10\/1\/2026 9:57 AM ?In Rezdy$/.test(card.booked) && /^10\/18\/2026 2:05 PM ?by veronica · Delivered · Opened$/.test(card.sent) && /^10\/18\/2026 7:30 PM ?by kevin$/.test(card.lm) && card.tix === "Not sent" && /^Picked up 5:50 AM ?Jane D\. · Bus 2101$/.test(card.relay) && card.ended === "—" &&
-      /^YES ?10\/18\/2026 3:31 PM$/.test(card.reply) && card.lunch === "1 Turkey, 1 Veggie" && card.rest === "ZZ Test Diner" && card.van === "5:44 AM – 5:53 AM" && card.border === "rgba(96, 165, 250, 0.55)" && card.lines === 3, JSON.stringify(card));
+      /^YES ?10\/18\/2026 3:31 PM$/.test(card.reply) && /^Reschedule requested ?10\/19\/2026 10:00 AM$/.test(card.tixReply) && card.lunch === "1 Turkey, 1 Veggie" && card.rest === "ZZ Test Diner" && card.van === "5:44 AM – 5:53 AM" && card.border === "rgba(96, 165, 250, 0.55)" && card.lines === 3, JSON.stringify(card));
     check("生命周期 · 订单详情页 How to use 多 6 条", await evaluate("return document.body.textContent.includes('Booked is when the order was made in Rezdy. Received is when it first came into our Order List.');"));
     await ctl({ sa: false, lifeVis: null, lifeVisible: false });
     await goto(`${APP}/orders/ZZTEST1`);

@@ -110,6 +110,16 @@ function DField({
   );
 }
 
+function replyTone(status: string): "good" | "bad" | "warn" | "muted" {
+  return status === "yes"
+    ? "good"
+    : status === "cancel"
+      ? "bad"
+      : status === "pending"
+        ? "muted"
+        : "warn";
+}
+
 export function LifecycleCard({ order }: { order: OrderDetail }) {
   const { on, sends } = useOrderLifecycle(order.order_number);
   const [all, setAll] = useState(false);
@@ -122,6 +132,7 @@ export function LifecycleCard({ order }: { order: OrderDetail }) {
   const relay = day?.relay_mark ?? null;
   const bus = day?.bus_mark ?? null;
   const reply = replyFor(order, date);
+  const ticketReply = replyFor(order, date, "tickets_reminder");
   const lunch = lunchFor(order, date);
   const live = liveFor(order, date);
   const van = live ? vanAtHotel(live.arrived_at, live.left_at) : null;
@@ -166,21 +177,21 @@ export function LifecycleCard({ order }: { order: OrderDetail }) {
         {/* Annie (a) A：后端按单接口到了再补——bf 合同草稿 confirmations / lunch_by_day / live_by_day；旧后端没有 ⇒「—」。 */}
         <DField
           label="Guest reply"
-          tone={
-            !reply
-              ? "muted"
-              : reply.status === "yes"
-                ? "good"
-                : reply.status === "cancel"
-                  ? "bad"
-                  : reply.status === "pending"
-                    ? "muted"
-                    : "warn"
-          }
+          tone={reply ? replyTone(reply.status) : "muted"}
           sub={reply?.submitted ?? undefined}
         >
           {reply ? reply.label : "—"}
         </DField>
+        {/* 门票的答复（bf 第 2 项：confirmations 带 tickets_reminder 行）：有才出。 */}
+        {ticketReply ? (
+          <DField
+            label="Ticket reply"
+            tone={replyTone(ticketReply.status)}
+            sub={ticketReply.submitted ?? undefined}
+          >
+            {ticketReply.label}
+          </DField>
+        ) : null}
         <DField label="Lunch" tone={lunch?.text ? undefined : "muted"}>
           {lunch?.text || "—"}
         </DField>

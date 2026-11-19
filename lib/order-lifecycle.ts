@@ -208,21 +208,42 @@ function rezdyEntries(order: OrderDetail): ChangeEntry[] {
  * activity_log 里跟 rezdy_changes 重复的那条（以 rezdy_changes 为准）：
  * 同一分钟的 refreshed_from_rezdy（对 refresh_from_rezdy）/ Rezdy 的 booking_updated（对 rezdy_push）。
  */
-function duplicatedByRezdy(
-  a: Activity,
-  rezdy: readonly ChangeEntry[],
-): boolean {
-  if (a.event_type === "refreshed_from_rezdy")
-    return rezdy.some((r) => r.source === "staff" && r.at === a.created_at);
+/** 两边配对的最大时间差（bf：两处分开写，通常差不到 1 秒，但可能跨分钟）。 */
+const PAIR_WINDOW_MS = 120_000;
+
+/** activity_log 这条跟 rezdy_changes 的哪一类是同一件事；不是这两类 = null。 */
+function pairKind(a: Activity): ChangeSource | null {
+  if (a.event_type === "refreshed_from_rezdy") return "staff";
   if (a.event_type === "booking_updated" && sourceOf(a).source === "rezdy")
-    return rezdy.some((r) => r.source === "rezdy" && r.at === a.created_at);
-  return false;
+    return "rezdy";
+  return null;
+}
+
+/**
+ * 跟 rezdy_changes 重复的 activity_log（以 rezdy_changes 为准）：同一类（Rezdy 推送 ↔ actor rezdy 的 booking_updated；
+ * Refresh ↔ refreshed_from_rezdy）、时间差 ≤ 120 秒，每条 rezdy_changes 只配最近的一条（bf 2026-11-18）。
+ * 时间都按「M/D/YYYY h:mm AM」到分钟比。
+ */
+function pairedLogIds(order: OrderDetail, rezdy: readonly ChangeEntry[]) {
+  const used = new Set<number>();
+  for (const r of rezdy) {
+    let best: { id: number; diff: number } | null = null;
+    for (const a of order.activity_log) {
+      if (used.has(a.id) || pairKind(a) !== r.source) continue;
+      const diff = Math.abs(wallClockKey(a.created_at) - r.sortKey);
+      if (diff <= PAIR_WINDOW_MS && (!best || diff < best.diff))
+        best = { id: a.id, diff };
+    }
+    if (best) used.add(best.id);
+  }
+  return used;
 }
 
 function merged(order: OrderDetail, only: (a: Activity) => boolean) {
   const rezdy = rezdyEntries(order);
+  const paired = pairedLogIds(order, rezdy);
   const fromLog = order.activity_log
-    .filter((a) => only(a) && !duplicatedByRezdy(a, rezdy))
+    .filter((a) => only(a) && !paired.has(a.id))
     .map(toChange);
   // 新 → 旧；同一分钟的照接口原来的先后（stable sort）。
   return [...rezdy, ...fromLog].sort((x, y) => y.sortKey - x.sortKey);
@@ -310,12 +331,14 @@ const REPLY_LABEL: Record<string, string> = {
   cancel: "Cancel",
 };
 
+/** module：tour_confirmation（Tour 确认）/ tickets_reminder（门票，bf 第 2 项起 confirmations 也带门票行）。 */
 export function replyFor(
   order: OrderDetail,
   date: string | null,
+  module: "tour_confirmation" | "tickets_reminder" = "tour_confirmation",
 ): { label: string; status: string; submitted: string | null } | null {
   const c = (order.confirmations ?? []).find(
-    (x) => !date || x.tour_date === date,
+    (x) => x.module === module && (!date || x.tour_date === date),
   );
   if (!c) return null;
   return {
