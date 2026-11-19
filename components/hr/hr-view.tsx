@@ -978,7 +978,7 @@ const SPELLINGS_HOW_TO =
   "Other spellings: other ways this person's name is written in the morning Excel or CCL (for example JOSEPH for Joe R). One per line. A spelling can belong to only one person. Removing a spelling means CCL imports stop matching it to this person.";
 
 const HOW_TO_ITEMS = [
-  "Profile lists drivers (Driver and Driver + Guide) on top and guides below. People without a position are listed last until you pick one. Expired licenses are shaded red.",
+  "Profile lists drivers (Driver and Driver + Guide) on top and guides below. People without a position are listed last until you pick one. Expired licenses are shaded red. Other expiry dates (medical card, first aid, CPR, business license) turn amber 30 days before they expire and red once expired; they don't block anything.",
   "Click Add person, fill in the form (Legal Name is required), then Save.",
   "Click Edit on a row to change one person, or Edit list to change many, then Save changes and Done.",
   "To remove someone: Edit → Delete. This cannot be undone.",

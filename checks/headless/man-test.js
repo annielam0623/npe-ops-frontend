@@ -2199,9 +2199,17 @@ async function sessionChecks() {
   const box = (t) => `${head(t)}.querySelector('input[type=checkbox]')`;
   const fold = (t) => `${head(t)}.querySelector('[data-fold]')`;
   const tools = "document.querySelector('[data-session-tools]')";
+  const sw = "document.querySelector('[data-ticket-view]')";
+  const swBtn = (t) => `[...${sw}.querySelectorAll('button')].find((b) => b.textContent === '${t}')`;
   // 存的列里没有 Start time / Product / Pax breakdown ⇒ 也照样分组（前端多要这几列，只用来分组）。
   await ctl({ sessions: true, rezdyTix: true, cfmMix: true, notes: false, prefs: { bus: null, tickets: JSON.stringify(["order_number", "guest_name", "pax"]) } });
   await openPage(ANT);
+  // 默认 By order time（Annie 2026-11-19「默认order time」「B」「order time在前。动手」）：今天之前存在旧键里的 By session 不再读。
+  await evaluate("localStorage.removeItem('ops.manifests.ticketsView.v2'); localStorage.setItem('ops.manifests.ticketsView', 'session'); return true;");
+  await openPage(ANT);
+  await waitFor(`!!${sw}`, 20000);
+  check("默认 By order time：没选过（旧键存的 By session 不算）⇒ By order time 选中、不分组；按钮顺序 By order time | By session", await evaluate(`return ${sw}.dataset.ticketView === 'time' && !document.querySelector('tr[data-session]') && [...${sw}.querySelectorAll('button')].map((b) => b.textContent).join('|') === 'By order time|By session' && ${swBtn("By order time")}.getAttribute('aria-checked') === 'true';`), await evaluate(`return ${sw}?.dataset.ticketView + ' ' + [...${sw}.querySelectorAll('button')].map((b) => b.textContent).join('|');`));
+  await evaluate(`${swBtn("By session")}.click();`);
   await waitFor(`${heads}.length >= 3`, 20000);
 
   // 电脑上显示的组标题（label 里第一个 span；手机短写的那个藏着）。
@@ -2274,10 +2282,8 @@ async function sessionChecks() {
   check("153 How to use 加了那一句（原文，不含 Groups start folded）", await evaluate("const d = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Manifests')); return [...d.querySelectorAll('li')].some(l => l.textContent.replace(/\\s+/g, ' ').trim() === 'Tickets are grouped by session (start time). Each group shows the start time, the product, and how many orders and pax (with the Adult / Child / Infant split). Click ▸ / ▾ on a group to fold or open it, or use Expand all / Collapse all. Tick Select all for every order, the box on a group for the whole session, or the box on a row for one order. Folding only hides the rows: ticked orders in a folded group stay ticked and are sent, and the group shows how many are ticked. Orders without a start time are in the last group, No time.');"));
 
   // ── Tickets 两种看法（Annie 2026-11-19「同意推荐，动手」：By session | By order time，默认 By session，P1 A 后端原顺序，P3 A localStorage）──
-  const sw = "document.querySelector('[data-ticket-view]')";
-  const swBtn = (t) => `[...${sw}.querySelectorAll('button')].find((b) => b.textContent === '${t}')`;
   const orderSeq = "[...document.querySelectorAll('tbody input[aria-label^=\"Select CHD\"]')].map((i) => i.getAttribute('aria-label').slice(7))";
-  check("视图切换：表格上方「By session | By order time」，默认 By session 选中（深底白字，不是蓝色）", await evaluate(`const s = ${sw}; const on = ${swBtn("By session")}; return !!s && s.dataset.ticketView === 'session' && on.getAttribute('aria-checked') === 'true' && ${swBtn("By order time")}.getAttribute('aria-checked') === 'false' && getComputedStyle(on).backgroundColor === 'rgb(26, 26, 26)';`));
+  check("视图切换：点了 By session ⇒ By session 选中（深底白字，不是蓝色）", await evaluate(`const s = ${sw}; const on = ${swBtn("By session")}; return !!s && s.dataset.ticketView === 'session' && on.getAttribute('aria-checked') === 'true' && ${swBtn("By order time")}.getAttribute('aria-checked') === 'false' && getComputedStyle(on).backgroundColor === 'rgb(26, 26, 26)';`));
   const sessionOrder = await evaluate(`return ${orderSeq};`);
   await evaluate(`${box("7:00 AM")}.click();`);
   await waitFor("$box('CHD2001').checked && $box('CHD2006').checked");
@@ -2298,7 +2304,7 @@ async function sessionChecks() {
   await evaluate(`${swBtn("By session")}.click();`);
   await waitFor(`${heads}.length >= 3`);
   check("切回 By session：组头回来", await evaluate(`return ${sw}.dataset.ticketView === 'session' && ${heads}.length >= 3;`));
-  check("How to use 加了切换那一句（原文）", await evaluate("const d = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Manifests')); return [...d.querySelectorAll('li')].some(l => l.textContent.replace(/\\s+/g, ' ').trim() === 'On Tickets, switch between By session (grouped by start time) and By order time (one list, no groups, in the order the bookings came in; orders already sent go to the bottom). Ticked orders stay ticked when you switch. This computer remembers your choice.');"));
+  check("How to use 加了切换那一句（原文）", await evaluate("const d = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Manifests')); return [...d.querySelectorAll('li')].some(l => l.textContent.replace(/\\s+/g, ' ').trim() === 'On Tickets, switch between By order time (the default: one list, no groups, in the order the bookings came in; orders already sent go to the bottom) and By session (grouped by start time). Ticked orders stay ticked when you switch. This computer remembers your choice.');"));
   // night：组头深灰（不是浅色）
   await evaluate("document.documentElement.setAttribute('data-theme', 'night');");
   await sleep(200);

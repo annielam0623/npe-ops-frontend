@@ -6,6 +6,8 @@ const log = [];
 const blank = {
   legal_name: "", nickname: "", phone: "", personal_email: "", date_of_birth: "",
   license_number: "", license_state: "", license_class: "", license_expires: "", medical_card_expires: "",
+  // G362：急救证 / CPR / 营业执照到期日（后端 v179）。
+  first_aid_expires: "", cpr_expires: "", business_license_expires: "",
   company: "", employment_status: "", job_class: "", position: "", badge_no: "", hired_on: "", separated_on: "",
   next_due: "", assignments: [], limited: [], languages: [], samsara_driver_id: "", emergency_name: "", emergency_phone: "", notes: "",
 };
@@ -14,12 +16,15 @@ const profiles = [
   { ...blank, id: 1, user_id: 5, legal_name: "Alice Driver", nickname: "AL", phone: "+1 702 555 0101", position: "driver",
     license_number: "D123", license_expires: "2026-09-01", medical_card_expires: "2027-05-01",
     assignments: ["morning_relay"], limited: ["in_town_only"], languages: ["english"], samsara_driver_id: "281474977",
-    license_expiry_state: "expired", medical_expiry_state: "ok" },
+    license_expiry_state: "expired", medical_expiry_state: "ok", first_aid_expiry_state: "none", cpr_expiry_state: "none", business_license_expiry_state: "none" },
   { ...blank, id: 2, user_id: null, legal_name: "Bob Guide", nickname: "", position: "guide",
     license_expires: "2026-10-20", license_expiry_state: "soon", medical_expiry_state: "none",
+    // G362：三种颜色各一个（state 是后端算的）。
+    first_aid_expires: "2026-12-05", first_aid_expiry_state: "soon", cpr_expires: "2026-09-30", cpr_expiry_state: "expired",
+    business_license_expires: "2027-03-01", business_license_expiry_state: "ok",
     languages: ["english", "mandarin"] },
   { ...blank, id: 3, user_id: null, legal_name: "Carl Unknown", position: "trainer", employment_status: "full_time",
-    license_expiry_state: "none", medical_expiry_state: "none" },
+    license_expiry_state: "none", medical_expiry_state: "none", first_aid_expiry_state: "none", cpr_expiry_state: "none", business_license_expiry_state: "none" },
 ];
 let pref = null;
 // 「Other spellings」（后端 G234 续）：ctl.spellings = true 时列表带 other_spellings、有 PUT …/spellings；关着 = 后端没上线。
@@ -116,7 +121,8 @@ async function readBody(req) {
   return d ? JSON.parse(d) : null;
 }
 function stateOf(p) {
-  return { license_expiry_state: p.license_expires ? "ok" : "none", medical_expiry_state: p.medical_card_expires ? "ok" : "none" };
+  return { license_expiry_state: p.license_expires ? "ok" : "none", medical_expiry_state: p.medical_card_expires ? "ok" : "none",
+    first_aid_expiry_state: p.first_aid_expires ? "ok" : "none", cpr_expiry_state: p.cpr_expires ? "ok" : "none", business_license_expiry_state: p.business_license_expires ? "ok" : "none" };
 }
 function previewRow(name, status, extra = {}) {
   return { ...Object.fromEntries(Object.keys(blank).map((k) => [k, ""])), legal_name: name, status, errors: [], before: {}, changed: [], blanked: [], ...extra };

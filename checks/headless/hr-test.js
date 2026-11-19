@@ -172,15 +172,19 @@ async function run() {
   check("86 Reset columns 只在第一节、说明写 Driver and Driver + Guide / Guide only", await evaluate("const ss = [...document.querySelectorAll('[data-hr-section]')]; return ss[0].textContent.includes('Reset columns') && !ss[1].textContent.includes('Reset columns') && ss[0].textContent.includes('Driver and Driver + Guide') && ss[1].textContent.includes('Guide only');"));
   check("86 How to use 写了 Profile 分节", await evaluate("return document.body.textContent.includes('Profile lists drivers (Driver and Driver + Guide) on top and guides below.');"));
   const heads = await evaluate("return $heads();");
-  check("默认列顺序（Annie 9/30 定的）", heads.slice(0, 12).join("|") === "Legal Name|Nickname|Position|Mobile|Assignment|Limited|Language|License #|License Expires|Medical Card Expires|Samsara Driver ID|Login Account", heads.join("|"));
+  check("默认列顺序（Annie 9/30 定的）", heads.slice(0, 15).join("|") === "Legal Name|Nickname|Position|Mobile|Assignment|Limited|Language|License #|License Expires|Medical Card Expires|First Aid Certificate Expiry Date|CPR Certificate Expiry Date|Business License Expiry Date|Samsara Driver ID|Login Account", heads.join("|"));
   check("驾照过期整行红底、pill 写 expired", await evaluate(`return ${rowOf("Alice Driver")}.className.includes('fdeceb') && ${rowOf("Alice Driver")}.textContent.includes('2026-09-01 · expired');`));
   check("30 天内 due soon；医疗卡没填 —", await evaluate(`return ${rowOf("Bob Guide")}.textContent.includes('2026-10-20 · due soon') && !${rowOf("Bob Guide")}.className.includes('fdeceb');`));
+  // G362（Annie 2026-11-19「全部同意推荐，动手」）：三个到期日紧跟 Medical Card Expires，照驾照 / 医疗卡上色；过期只标那一格、不标整行。
+  check("G362 Bob：First Aid「2026-12-05 · due soon」琥珀、CPR「2026-09-30 · expired」红、Business License「2027-03-01」绿；CPR 过期不标整行", await evaluate(`const h = $heads(); const tr = ${rowOf("Bob Guide")}; const cell = (l) => tr.children[h.indexOf(l)]; const pill = (l) => cell(l).querySelector('span'); return cell('First Aid Certificate Expiry Date').textContent.trim() === '2026-12-05 · due soon' && pill('First Aid Certificate Expiry Date').className.includes('fdf1dd') && cell('CPR Certificate Expiry Date').textContent.trim() === '2026-09-30 · expired' && pill('CPR Certificate Expiry Date').className.includes('fdeceb') && cell('Business License Expiry Date').textContent.trim() === '2027-03-01' && pill('Business License Expiry Date').className.includes('e6f4ec') && !tr.className.includes('fdeceb');`), await evaluate(`const h = $heads(); const tr = ${rowOf("Bob Guide")}; return ['First Aid Certificate Expiry Date', 'CPR Certificate Expiry Date', 'Business License Expiry Date'].map((l) => tr.children[h.indexOf(l)]?.innerHTML).join(' | ');`));
+  check("G362 How to use 补了一句（原文）", await evaluate("return document.body.textContent.includes(\"Expired licenses are shaded red. Other expiry dates (medical card, first aid, CPR, business license) turn amber 30 days before they expire and red once expired; they don't block anything.\");"));
   check("多选显示标签、关联账号 pill", await evaluate(`return ${rowOf("Alice Driver")}.textContent.includes('Morning Relay') && ${rowOf("Alice Driver")}.textContent.includes('In Town Only') && ${rowOf("Alice Driver")}.textContent.includes('linked') && ${rowOf("Bob Guide")}.textContent.includes('English, Mandarin') && ${rowOf("Bob Guide")}.textContent.includes('no account');`));
   check("不认识的职位原样显示", await evaluate(`return ${rowOf("Carl Unknown")}.textContent.includes('trainer');`));
 
   // ── Add person ──
   await evaluate("$btn('Add person').click();");
   await waitFor(`${dialog} && ${dialog}.textContent.includes('Dan D (driver)')`);
+  check("G362 表单：Certificates 组紧跟 Driver License，里面三个日期格（First Aid / CPR / Business License）", await evaluate(`const fs = [...${dialog}.querySelectorAll('fieldset')]; const names = fs.map((f) => f.querySelector('legend')?.textContent.trim()); const c = fs[names.indexOf('Certificates')]; return names.indexOf('Certificates') === names.indexOf('Driver License') + 1 && !!c && ['First Aid Certificate Expiry Date', 'CPR Certificate Expiry Date', 'Business License Expiry Date'].every((l) => [...c.querySelectorAll('label')].some((x) => x.textContent.includes(l))) && c.querySelectorAll('input[type=date]').length === 3;`), await evaluate(`return [...${dialog}.querySelectorAll('fieldset')].map((f) => f.querySelector('legend')?.textContent.trim()).join(' | ');`));
   check("Add：可关联账号列出、分组标题", await evaluate(`return ['Identity','Driver License','Employment','Dispatch','Emergency Contact','Notes'].every(g => ${dialog}.textContent.includes(g));`));
   let before = (await mockLog()).length;
   await evaluate(`$btn('Save', ${dialog}).click();`);
@@ -194,7 +198,7 @@ async function run() {
   await evaluate(`$btn('Save', ${dialog}).click();`);
   let reqs = await waitReq(before, (e) => e.path === "/api/hr/profiles" && e.method === "POST");
   const body = reqs[0]?.body ?? {};
-  check("Add：整行 25 个字段（含 v74 的 Samsara Driver ID）+ user_id，多选是数组", Object.keys(body).length === 26 && body.samsara_driver_id === "" && body.user_id === 7 && JSON.stringify(body.assignments) === '["bus_tour"]' && JSON.stringify(body.languages) === '["japanese"]' && body.notes === "", JSON.stringify(body));
+  check("Add：整行 28 个字段（含 v74 的 Samsara Driver ID、G362 三个到期日）+ user_id，多选是数组", Object.keys(body).length === 29 && body.samsara_driver_id === "" && body.first_aid_expires === "" && body.cpr_expires === "" && body.business_license_expires === "" && body.user_id === 7 && JSON.stringify(body.assignments) === '["bus_tour"]' && JSON.stringify(body.languages) === '["japanese"]' && body.notes === "", JSON.stringify(body));
   await waitFor("!document.querySelector('[role=dialog]') && document.body.textContent.includes('ZZ Test Person')");
   check("Add 后弹窗关、列表刷新", true);
 

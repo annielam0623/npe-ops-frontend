@@ -7,7 +7,13 @@ import type { ExpiryState, HRProfile } from "@/types";
 export type FieldKind =
   "text" | "date" | "phone" | "email" | "choice" | "multi";
 export type FieldGroup =
-  "identity" | "license" | "employment" | "dispatch" | "emergency" | "notes";
+  | "identity"
+  | "license"
+  | "certificates"
+  | "employment"
+  | "dispatch"
+  | "emergency"
+  | "notes";
 
 export interface HRField {
   key: string;
@@ -126,6 +132,25 @@ export const FIELDS: readonly HRField[] = [
     kind: "date",
     group: "license",
   },
+  // G362（Annie 2026-11-19「全部同意推荐，动手」1A）：新开 Certificates 组，在 Driver License 后面；标签照后端表头。
+  {
+    key: "first_aid_expires",
+    label: "First Aid Certificate Expiry Date",
+    kind: "date",
+    group: "certificates",
+  },
+  {
+    key: "cpr_expires",
+    label: "CPR Certificate Expiry Date",
+    kind: "date",
+    group: "certificates",
+  },
+  {
+    key: "business_license_expires",
+    label: "Business License Expiry Date",
+    kind: "date",
+    group: "certificates",
+  },
   {
     key: "company",
     label: "Company",
@@ -224,6 +249,7 @@ export const FIELD_BY_KEY: Record<string, HRField> = Object.fromEntries(
 export const GROUPS: ReadonlyArray<readonly [FieldGroup, string]> = [
   ["identity", "Identity"],
   ["license", "Driver License"],
+  ["certificates", "Certificates"],
   ["employment", "Employment"],
   ["dispatch", "Dispatch"],
   ["emergency", "Emergency Contact"],
@@ -246,6 +272,10 @@ export const LIST_FIELD_KEYS = [
   "license_number",
   "license_expires",
   "medical_card_expires",
+  // G362 2A：紧跟 Medical Card Expires（后端 LIST_COLUMNS 同样）。
+  "first_aid_expires",
+  "cpr_expires",
+  "business_license_expires",
   // v74：司机逐个填，列表上能直接改（后端 LIST_COLUMNS 同样加在最后）。
   "samsara_driver_id",
 ] as const;
@@ -326,10 +356,17 @@ export function displayValue(profile: HRProfile, key: string): string {
 
 export const EXPIRY_KEY: Record<
   string,
-  "license_expiry_state" | "medical_expiry_state"
+  | "license_expiry_state"
+  | "medical_expiry_state"
+  | "first_aid_expiry_state"
+  | "cpr_expiry_state"
+  | "business_license_expiry_state"
 > = {
   license_expires: "license_expiry_state",
   medical_card_expires: "medical_expiry_state",
+  first_aid_expires: "first_aid_expiry_state",
+  cpr_expires: "cpr_expiry_state",
+  business_license_expires: "business_license_expiry_state",
 };
 
 export const EXPIRY_STYLE: Record<ExpiryState, string> = {
