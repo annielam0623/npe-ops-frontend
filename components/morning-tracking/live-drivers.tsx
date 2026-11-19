@@ -403,12 +403,15 @@ function Buttons({
   onText,
   dot,
   call = true,
+  waUrl,
 }: {
   state: string | null | undefined;
   onWord: string;
   onText?: () => void;
   dot?: boolean;
   call?: boolean;
+  /** G357：有值才出 WhatsApp 键（后端定号码能不能用；前端不判）。 */
+  waUrl?: string | null;
 }) {
   const on = state === "picked_up" || state === "boarded";
   const ns = state === "no_show";
@@ -420,6 +423,19 @@ function Buttons({
         <span className={cn(grey, "flex-none basis-[52px] text-[#7ab3e0]")}>
           Call
         </span>
+      ) : null}
+      {/* G357：WhatsApp 键照司机页 driver_home.html 的 .b-wa（Call 旁边、绿字绿边），能点：开点键那个人自己的 WhatsApp。 */}
+      {waUrl ? (
+        <a
+          data-live-wa
+          href={waUrl}
+          target="_blank"
+          rel="noopener"
+          title="Open a chat with this guest in your own WhatsApp"
+          className="flex min-h-[40px] flex-none items-center justify-center rounded-[10px] border border-[rgba(37,211,102,.55)] px-2.5 text-[13.5px] font-semibold text-[#4ade80] no-underline"
+        >
+          WhatsApp
+        </a>
       ) : null}
       {onText ? (
         <button
@@ -597,6 +613,7 @@ function RelayList({
                 <Buttons
                   state={g.relay_status}
                   onWord="Picked up"
+                  waUrl={g.wa_url}
                   onText={() => onOpenGuest(g.order_number, name)}
                   dot={!!msg?.unread}
                 />
@@ -871,6 +888,7 @@ function TourList({
                 <Buttons
                   state={g.boarding}
                   onWord="Boarded"
+                  waUrl={g.wa_url}
                   onText={
                     withText || guide
                       ? () => onOpenGuest(g.order_number, name)
