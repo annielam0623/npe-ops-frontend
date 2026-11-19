@@ -86,6 +86,7 @@
   - 例外：My shortcuts 的拖拽排序照旧马上存。开关（Active、页面可见性等）、打勾「做完 / 已处理」这类点一下就是结果的，照 2026-10-29 自动保存盘点（https://claude.ai/artifact/3GQ3waCB2X4jnEdxTRfefe）保留。
   - 「10 分钟没活动自动存一次」只用在 Dispatch 和 Products › Bus Manifest setup（A6），别的页面不做。
   - 新页面、新功能一律照这条做。
+  - **新功能里的开关 / 勾选也先选后存**（Annie 2026-11-19，Bus map 勾选时原话：「是的，我们现在的网站上全都都用先选后存的模式来设计了」；问范围后答「先选后存选A」）：以后新加的开关、勾选一律先暂存、按 Save 才存，preview 不再推荐「点一下马上存」；上面那条例外只保留给已有的老开关（不改）。
 - **订单流固定：Order List → Main manifest → Dispatch / Tracking，不许跳过前面的环节直接去 Rezdy 拉单**（Annie 2026-10-29，原话：
   「不要直接去rezdy拉订单。写到工作里头。订单流是order list  - main manifest - dispatch / tracking --我马上要开通。不要跳跃过前面的程序直接去rezdy拉单。前端后端都要写到工作规范里去」；
   同日另一句：「dispatch是从main manifest里取单的，如果main manifest里没有就是没有。而且这类订单应该是查order list，里头所有状态都标注了」）。
