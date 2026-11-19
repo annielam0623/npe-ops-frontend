@@ -12,7 +12,7 @@
   - 第 11 件 TI 单 CHD0SNQKE：等 Annie 在主页 search bar 点「Open tracking →」看 11/17 那行在不在；不在就要截图、派窗口。
   - My schedule（d6，task/my-schedule）：6 题 A + Dashboard 按键 + 统一配色，已「动手」；SHA / 进度见 d6 回报（下面补）。
   - 全站 Save 类按钮统一蓝（f4 转，Annie 截图 HR Edit list「Save changes」黑色）：63 只做了第一轮 grep，推 **task/blue-save-sweep 5fbc4c4a**（worktree C:\Code\ops-wt-63d），交接在 notes/blue-save-sweep.md。新发现：components/ui/buttons.ts:3 共用主按钮 bg-stone-800（老页面 teams / users 等多半在用）；待核 tickets-send/legacy-ui.tsx:135、farm-out-button.tsx:39、hr/payroll-cards-shared.ts:118 C_BTN、send-log/legacy.tsx:15/19/39 + f4 那几条。下一步：按按钮文字再查一遍 → 逐条清单 → preview → 给 Annie → 「动手」后改。
-- **📌 等 Annie**：Dispatch Driver / Guide 键只改边框（Driver 蓝 #3b82f6 38%、Guide 绿 #22c55e 38%，样稿 v2 https://claude.ai/artifact/Aot6cngarzBxtDyGzQZKcc ，c1 没写代码）等「动手」。F1 Keep it 已撤销。
+- **📌 等 Annie**：Dispatch Driver / Guide 键样稿已到 v4（同链接 https://claude.ai/artifact/Aot6cngarzBxtDyGzQZKcc ）。Annie 原话「它为什么不是发光的」「现在这个太不明显了」。4 选项：A 只有边框；B 跟 Tracking 图标一样（边框 + 淡底色，悬停才发光）；C 边框 + 淡底色 + 一直发光；D 最明显（实色边框 + 较深底色 + 一直发光 + 白字，c1 推荐）。等 Annie 选 +「动手」，c1 没写代码。F1 Keep it 已撤销。c1 两个 worktree 干净已推、无 dev server。
 - **等后端**：G361 DOR No show + case 管理（后端 3f 给 Annie 一份合并的开工确认，前端等）；G363 按车型算工资（前端等合同，Vehicles How to use 可能加一句）。
 - 今天新写进 CLAUDE.md 的规矩：3 个关键输入 + 数据从哪来到哪去；讲「现在」先查代码；新功能开关 / 勾选也先选后存。
 
