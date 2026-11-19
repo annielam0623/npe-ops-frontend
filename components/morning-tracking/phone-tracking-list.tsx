@@ -15,6 +15,7 @@ import {
   formatCheckinTime,
   smsStatusOf,
 } from "./config";
+import { noShowCol } from "./mark-cell";
 import { cellBody } from "./tracking-table";
 
 /**
@@ -67,7 +68,10 @@ export function PhoneTrackingList({
     >
       {rows.map((row) => {
         const open = openId === row.id;
-        const noShow = has("driver_mark") && row.live_status === "no_show";
+        // G321：Relay / Bus 分开的新列出来时，按这两列的最终值算 No show（同电脑版 noShowCol）。
+        const noShow =
+          (has("driver_mark") && row.live_status === "no_show") ||
+          ((has("relay_mark") || has("bus_mark")) && noShowCol(row) !== null);
         const msgUnhandled =
           canView &&
           (row.wa_is_newer
@@ -226,6 +230,9 @@ function PhoneDetail({
     );
   }
   if (has("driver_mark")) add("Driver mark", body("driver_mark"));
+  // G321：手机上只看不改（改 Relay / Bus 用电脑版表格）。
+  if (has("relay_mark")) add("Relay", body("relay_mark"));
+  if (has("bus_mark")) add("Bus", body("bus_mark"));
   if (has("phone")) add("Phone", row.phone || "—");
   if (has("vehicle_no") || has("driver")) {
     add(

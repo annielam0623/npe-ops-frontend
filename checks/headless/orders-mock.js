@@ -129,6 +129,24 @@ http.createServer(async (req, res) => {
     const d = detail[id];
     // 置顶 51 B：ctl.mlinks = 新后端，详情带 manifest_links（一处）。
     const ml = ctl.mlinks ? { manifest_links: [{ date: "2026-10-03", tab: "bus", tab_label: "Bus Tour", pill: "g:3", pill_label: "Bryce & Zion", row_keys: [`${id}|PBZ|2026-10-03`] }] } : {};
+    // No show 改方向（Annie 2026-11-17「动手」，N3 A / N8 A）：ctl.dayOfTour = "legs" 新后端带 day_of_tour（今天团期去 / 回程 + 改期前的旧团期）；"empty" = 带了但没有标记。
+    const DOT = {
+      legs: [
+        { tour_date: "2026-10-05", leg: "", product_code: "UAC01",
+          relay_mark: { value: "picked_up", label: "", by: "Mike", role: "relay", vehicle: "2101", at: "2026-10-05T06:58:00-07:00" },
+          relay_original: { value: "picked_up", label: "", by: "Mike", role: "relay", vehicle: "2101", at: "2026-10-05T06:58:00-07:00" },
+          bus_mark: { value: "boarded", label: "", by: "Lizzie", role: "staff", vehicle: null, at: "2026-10-05T09:15:00-07:00" },
+          bus_original: { value: "no_show", label: "", by: "Joe", role: "guide", vehicle: "Bus A (3001)", at: "2026-10-05T07:12:00-07:00" } },
+        { tour_date: "2026-10-05", leg: "return", product_code: "UAC01", relay_mark: null, relay_original: null, bus_mark: null, bus_original: null },
+        { tour_date: "2026-10-03", leg: "", product_code: "UAC01",
+          relay_mark: { value: "no_show", label: "", by: null, role: "relay", vehicle: "2104", at: "2026-10-03T06:50:00-07:00" },
+          relay_original: { value: "no_show", label: "", by: null, role: "relay", vehicle: "2104", at: "2026-10-03T06:50:00-07:00" },
+          bus_mark: { value: "no_show", label: "", by: "Joe", role: "guide", vehicle: "Bus B (3002)", at: "2026-10-03T07:15:00-07:00" },
+          bus_original: { value: "no_show", label: "", by: "Joe", role: "guide", vehicle: "Bus B (3002)", at: "2026-10-03T07:15:00-07:00" } },
+      ],
+      empty: [],
+    };
+    if (ctl.dayOfTour) ml.day_of_tour = DOT[ctl.dayOfTour];
     if (req.method === "GET") return d ? send(res, 200, { ...(lacksMoney() ? { ...forPartner(d), price: null } : ctl.partner ? forPartner(d) : d), ...ml }) : send(res, 404, { detail: "Order not found" });
     const body = await readBody(req);
     entry.body = body;

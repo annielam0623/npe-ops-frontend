@@ -87,6 +87,33 @@ export interface MorningTrackingRow {
   live_van?: string;
   /** No show 而且标在最后一次 Take action 之后 ⇒ 没处理（置顶、红底，Take action 清）。 */
   ns_unhandled?: boolean;
+
+  /**
+   * No show 改方向（Annie 2026-11-17「动手」，N2 A / N7 A / N9 A；后端 G321 返工）：Relay、Bus 两种标记分开，
+   * 各两份——*_mark 显示用的（staff 改过就是 staff 的）、*_original 司机 / 导游原来标的。没标为 null。
+   * 旧后端没有这几个键（Relay / Bus 两列不出，照旧出 Driver mark）。⚠️ 字段名以后端合同为准。
+   */
+  relay_mark?: TrackingMark | null;
+  relay_original?: TrackingMark | null;
+  bus_mark?: TrackingMark | null;
+  bus_original?: TrackingMark | null;
+  /** false = TI 上车 / 不在任何 relay round：Relay 格「—」、不能改（不靠 null 猜）。 */
+  relay_applicable?: boolean;
+}
+
+export type TrackingMarkValue = "picked_up" | "boarded" | "no_show";
+export type TrackingMarkCol = "relay" | "bus";
+
+/** 一个标记：结果、谁、身份（relay / guide / staff）、车号、时间（ISO）。by 为空 = 短信链接进来、没连账号。 */
+export interface TrackingMark {
+  /** G321 合同：Relay picked_up | no_show；Bus boarded | no_show，外加导游页已有的其他 boarding 状态。 */
+  value: TrackingMarkValue | (string & {});
+  /** 显示用的字，后端一定给，照写（合同 g321-relay-bus-tracking-2026-11-17）。 */
+  label?: string;
+  by?: string | null;
+  role?: string | null;
+  vehicle?: string | null;
+  at?: string | null;
 }
 
 export interface MorningTracking {

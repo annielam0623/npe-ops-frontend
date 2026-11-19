@@ -58,7 +58,7 @@ import {
 import { usePermissions } from "@/lib/staff-permissions";
 import { cn } from "@/lib/utils";
 import type {
-  DayOfTourMark,
+  TrackingMark,
   MorningTrackingRow,
   OrderDetail,
   OrderRow,
@@ -378,7 +378,7 @@ function LookupResultView({ result }: { result: LookupResult }) {
       </Fact>
     );
   };
-  const markFact = (label: string, mark: DayOfTourMark | null) => {
+  const markFact = (label: string, mark: TrackingMark | null) => {
     if (!mark)
       return (
         <Fact label={label} tone="muted">

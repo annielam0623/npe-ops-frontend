@@ -1,6 +1,6 @@
 import { apiFetch } from "@/lib/api-client";
 import { LA_TIME_ZONE } from "@/lib/la-date";
-import type { DayOfTourEntry, DayOfTourMark, OrderDetail } from "@/types";
+import type { DayOfTourLeg, OrderDetail, TrackingMark } from "@/types";
 import type { SendLogPage, SendLogRow } from "@/types";
 
 /**
@@ -239,6 +239,7 @@ const REPLY_LABEL: Record<string, string> = {
   yes: "YES",
   pending: "Pending (no reply yet)",
   modify_req: "Modify requested",
+  reschedule_req: "Reschedule requested",
   modified: "Modified",
   cancel: "Cancel",
 };
@@ -308,7 +309,7 @@ export function sentByLabel(by: string): string {
 export function dayOfTourFor(
   order: OrderDetail,
   date: string | null,
-): DayOfTourEntry | null {
+): DayOfTourLeg | null {
   const list = Array.isArray(order.day_of_tour) ? order.day_of_tour : [];
   return (
     list.find((e) => (!date || e.tour_date === date) && (e.leg || "") === "") ??
@@ -318,7 +319,7 @@ export function dayOfTourFor(
 
 export type MarkTone = "good" | "bad" | "plain";
 
-export function markTone(mark: DayOfTourMark | null | undefined): MarkTone {
+export function markTone(mark: TrackingMark | null | undefined): MarkTone {
   if (!mark) return "plain";
   if (mark.value === "no_show") return "bad";
   if (mark.value === "picked_up" || mark.value === "boarded") return "good";
@@ -326,7 +327,7 @@ export function markTone(mark: DayOfTourMark | null | undefined): MarkTone {
 }
 
 /** 「Picked up 6:15 AM」；副行「Jane D.」/「Bus 3001」。 */
-export function markText(mark: DayOfTourMark): { main: string; sub: string } {
+export function markText(mark: TrackingMark): { main: string; sub: string } {
   const time = formatLaTime(mark.at);
   return {
     main: [mark.label || mark.value, time !== "—" ? time : ""]
