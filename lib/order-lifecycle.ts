@@ -80,7 +80,13 @@ export interface ChangeEntry {
   /** 来源那一格写的字：Rezdy / Guest / 员工名 / System。 */
   who: string;
   /** 一条记录可能改了几项（Refresh from Rezdy 一次改几项）。null = 没有这一项（加 / 删项目，显示「—」）。 */
-  items: { field: string; before: string | null; after: string | null }[];
+  /** changedOnly：只知道改了、没有前后值（G351：partner 看到的 Internal notes (Rezdy)）。 */
+  items: {
+    field: string;
+    before: string | null;
+    after: string | null;
+    changedOnly?: boolean;
+  }[];
   /** 没有前后值时写的话。 */
   text: string;
   /** 排序用（毫秒；读不出 = 0）。 */
@@ -110,10 +116,16 @@ const MEANINGFUL = new Set([
   "confirmation_no_changed",
 ]);
 
-/** "phone: 'a' → 'b'" 一段 ⇒ 前后值；对不上返回 null。 */
+/**
+ * "phone: 'a' → 'b'" 一段 ⇒ 前后值；对不上返回 null。
+ * G351（后端 4aea93a5）：Refresh 的 activity_log 对 partner 不能看的字段只写「Internal notes (Rezdy): changed」，
+ * 没有前后值 ⇒ 认成一项、changedOnly（显示「字段: changed」一行）。
+ */
 function parseDiff(s: string): ChangeEntry["items"][number] | null {
   const m = /^\s*(.+?):\s*'([\s\S]*?)'\s*→\s*'([\s\S]*?)'\s*$/.exec(s);
-  return m ? { field: m[1], before: m[2], after: m[3] } : null;
+  if (m) return { field: m[1], before: m[2], after: m[3] };
+  const c = /^\s*(.+?):\s*changed\s*$/.exec(s);
+  return c ? { field: c[1], before: null, after: null, changedOnly: true } : null;
 }
 
 type Activity = OrderDetail["activity_log"][number];
@@ -196,7 +208,8 @@ export function toChange(a: Activity): ChangeEntry {
   } else if (a.event_type === "refreshed_from_rezdy") {
     const body = detail.replace(/^Refreshed from Rezdy\s*[—-]\s*/, "");
     items = body
-      .split(/;\s*(?=[^;]+:\s*')/)
+      // 「; 字段: '」或「; 字段: changed」（G351）都是下一项的开头。
+      .split(/;\s*(?=[^;]+:\s*(?:'|changed\s*(?:;|$)))/)
       .map(parseDiff)
       .filter((d): d is NonNullable<typeof d> => d !== null);
     text = "Refreshed from Rezdy";
