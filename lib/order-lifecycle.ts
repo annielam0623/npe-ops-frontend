@@ -85,6 +85,8 @@ export interface ChangeEntry {
   text: string;
   /** 排序用（毫秒；读不出 = 0）。 */
   sortKey: number;
+  /** 来自 rezdy_changes（Annie：这几条默认收成一行，点开看旧 → 新）。 */
+  fromRezdy?: boolean;
 }
 
 /** 「11/18/2026 7:05 AM」（订单详情接口 fmt_dt，洛杉矶）→ 毫秒，只用来排先后（不换算时区，两边都按洛杉矶墙上时间比）。 */
@@ -200,6 +202,7 @@ function rezdyEntries(order: OrderDetail): ChangeEntry[] {
       })),
       text: push ? "Updated by Rezdy" : "Refreshed from Rezdy",
       sortKey: wallClockKey(at),
+      fromRezdy: true,
     };
   });
 }

@@ -462,11 +462,27 @@ async function run() {
     check("生命周期 · Changes 格子：5 条有意义的改动（系统记录不算）", (await ev(fieldOf("Changes"))) === "5 — see below", await ev(fieldOf("Changes")));
     let lines = await evaluate(`return [...document.querySelectorAll('[data-lookup-block="changes"] li')].map(li => li.textContent.replace(/\\s+/g, ' ').trim());`);
     check("生命周期 · Changes 块紧跟订单块、默认列 3 条（新 → 旧）",
-      lines.length === 3 && lines[0].includes("Guest asked to change pickup") && lines[1].includes("lunch_turkey 0 → 1") && lines[2].includes("Phone +1 555 0000 → +1 555 0100") && lines[2].includes("Email (empty) → zz@example.com") &&
+      lines.length === 3 && lines[0].includes("Guest asked to change pickup") && lines[1].includes("lunch_turkey 0 → 1") && lines[2].includes("Annie Z") && lines[2].endsWith("Changed: Phone, Email ▸") && !lines[2].includes("+1 555 0000") &&
       (await evaluate(`const b = document.querySelector('[data-lookup-block="changes"]'); return b.previousElementSibling === document.querySelector('[data-lookup-block="order"]');`)), lines.join(" | "));
     check("生命周期 · 旧值划线", await evaluate(`const o = document.querySelector('[data-lookup-block="changes"] [data-change-old]'); return !!o && getComputedStyle(o).textDecorationLine.includes('line-through');`));
+    // Annie「rezdy的内容也需要可以展开和收起」：rezdy_changes 那条默认一行「Changed: 字段 ▸」，点开看旧 → 新，再点 ▴ 收回。
+    const rzLine = `[...document.querySelectorAll('[data-lookup-block="changes"] li')][2]`;
+    await evaluate(`${rzLine}.querySelector('[data-change-toggle]').click(); return 1;`);
+    await sleep(150);
+    const rzOpen = await evaluate(`return ${rzLine}.textContent.replace(/\\s+/g, ' ').trim();`);
+    check("生命周期 · Rezdy 改动点开：Changed: Phone, Email ▴ + 每项旧值 → 新值",
+      rzOpen.includes("Changed: Phone, Email ▴") && rzOpen.includes("Phone +1 555 0000 → +1 555 0100") && rzOpen.includes("Email (empty) → zz@example.com"), rzOpen);
+    await evaluate(`${rzLine}.querySelector('[data-change-toggle]').click(); return 1;`);
+    await sleep(150);
+    const rzShut = await evaluate(`return ${rzLine}.textContent.replace(/\\s+/g, ' ').trim();`);
+    check("生命周期 · Rezdy 改动再点 ▴：收回一行", rzShut.endsWith("Changed: Phone, Email ▸") && !rzShut.includes("+1 555 0000"), rzShut);
     check("生命周期 · 右上 Show all 7（全部记录含系统记录）", (await evaluate(`return document.querySelector('[data-lookup-block="changes"] [data-changes-all]')?.textContent.trim();`)) === "Show all 7 ▾");
     await evaluate(`document.querySelector('[data-lookup-block="changes"] [data-changes-all]').click(); return 1;`);
+    await sleep(200);
+    const pushShut = await evaluate(`return [...document.querySelectorAll('[data-lookup-block="changes"] li')].map(li => li.textContent.replace(/\\s+/g, ' ').trim()).find(t => t.startsWith('10/10/2026 11:02 AM'));`);
+    check("生命周期 · Rezdy 推送那条默认一行：Changed: Tour date, Item PXTRA ▸（字段名去掉产品码）", pushShut && pushShut.endsWith("Changed: Tour date, Item PXTRA ▸"), pushShut);
+    // 下面几项看内容：把 Rezdy 那几条都点开。
+    await evaluate(`document.querySelectorAll('[data-lookup-block="changes"] [data-change-toggle]').forEach(b => b.click()); return 1;`);
     await sleep(200);
     lines = await evaluate(`return [...document.querySelectorAll('[data-lookup-block="changes"] li')].map(li => li.textContent.replace(/\\s+/g, ' ').trim());`);
     check("生命周期 · 点 Show all：7 条（activity_log 7 条去掉配上的 2 条 + rezdy_changes 2 条；11:04 那次推送没配上、照旧 Updated by Rezdy）、系统记录也在，Show all 收起",
