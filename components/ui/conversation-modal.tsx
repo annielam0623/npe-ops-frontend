@@ -27,6 +27,9 @@ import { cn } from "@/lib/utils";
 import type { BookingNote, NoteCreate, NoteLine } from "@/types";
 
 import { ModalShell } from "@/components/tracking-ui/modal-shell";
+import { ManifestLinks } from "@/components/order-lookup/manifest-links";
+import { fetchOrder } from "@/lib/orders-api";
+import type { OrderDetail } from "@/types";
 import { setVisibleInterval } from "@/lib/visible-poll";
 
 /** 弹窗开着时每 20 秒重拉一次对话（与旧页面一致）。 */
@@ -338,6 +341,24 @@ function ConversationModalInner({
   sendBoth?: boolean;
 }) {
   const { orderNumber, bookingId, guestForm } = target;
+  /**
+   * 132（Annie「直接给个跳转到订单的main manifest这条订单并勾选，就跟search bar的那个操作一样」，「D动手」；
+   * Q1–Q3 按推荐：所有对话框、标题正下方、开新标签）：打开时读一次这单的订单详情（搜索栏同一个接口），
+   * 用它的 manifest_links 在标题下面画「Main manifest:」一行。读不到 / 旧后端没有 manifest_links ⇒ 这一行不出，对话框照旧。
+   */
+  const [orderInfo, setOrderInfo] = useState<OrderDetail | null>(null);
+  useEffect(() => {
+    const ac = new AbortController();
+    setOrderInfo(null);
+    fetchOrder(orderNumber, ac.signal).then(
+      (o) => {
+        if (!ac.signal.aborted) setOrderInfo(o);
+      },
+      () => {},
+    );
+    return () => ac.abort();
+  }, [orderNumber]);
+  const product = orderInfo ? productLabel(orderInfo) : null;
   const sourceKind = source.kind;
   const line = source.kind === "order" ? source.line : undefined;
   const readLine =
@@ -691,8 +712,35 @@ function ConversationModalInner({
         className={cn("flex items-center gap-2.5 px-[18px] py-3.5", skin.head)}
       >
         <div className="min-w-0 flex-1">
-          <h2 id={titleId} className="text-[14px] font-semibold text-white">
-            Order {orderNumber}
+          <h2
+            id={titleId}
+            className="flex min-w-0 items-baseline gap-2 text-[14px] font-semibold text-white"
+          >
+            <span className="shrink-0">Order {orderNumber}</span>
+            {product ? (
+              // 132 产品名（Annie 2026-11-14「在对话窗口的订单旁边标出是哪个产品」；Q5 A、Q6 B）：
+              // 同一行、浅白普通字，最多两行再「…」；一单几个产品写最早那个 + 灰字「+N more」；鼠标移上去看全部产品名。
+              <span
+                data-conversation-product
+                title={product.title}
+                className={cn(
+                  "flex min-w-0 items-baseline gap-1.5 text-[13px] font-normal",
+                  skin.sub,
+                )}
+              >
+                <span className="line-clamp-2 min-w-0 break-words">
+                  {product.name}
+                </span>
+                {product.more > 0 ? (
+                  <span
+                    data-conversation-product-more
+                    className="shrink-0 text-[12px] whitespace-nowrap text-white/55"
+                  >
+                    +{product.more} more
+                  </span>
+                ) : null}
+              </span>
+            ) : null}
           </h2>
           <p className={cn("truncate text-[12px]", skin.sub)}>
             {target.guestName}
@@ -720,6 +768,20 @@ function ConversationModalInner({
           ×
         </button>
       </div>
+
+      {orderInfo ? (
+        <ManifestLinks
+          order={orderInfo}
+          tone={dark ? "dark" : "light"}
+          newTab
+          className={cn(
+            "border-b px-[18px] py-2",
+            dark
+              ? "border-white/10 bg-white/[.04]"
+              : "border-[#eee] bg-[#fafaf9]",
+          )}
+        />
+      ) : null}
 
       {theme === "tickets" ? (
         // 门票页：Take Action 是标题下面一行勾选框（旧页面 #nmActionCb）。
@@ -1131,4 +1193,29 @@ function ChannelCheckbox({
       {label}
     </label>
   );
+}
+
+/**
+ * 132 标题旁的产品名：订单详情的 product.name（后端给的是出发最早的那个产品），
+ * item_count > 1 时后面「+N more」，鼠标提示列出 items_detail 里的全部产品名（Rezdy 是 productName，TripGuru 是 product.name）。
+ * 没有产品名 ⇒ null，标题照旧只写单号。
+ */
+function productLabel(
+  o: OrderDetail,
+): { name: string; more: number; title: string } | null {
+  const name = (o.product?.name ?? "").trim();
+  if (!name || name === "—") return null;
+  const more = Math.max(0, (o.product.item_count ?? 1) - 1);
+  const names = Array.isArray(o.items_detail)
+    ? (
+        o.items_detail as {
+          productName?: unknown;
+          product?: { name?: unknown };
+        }[]
+      )
+        .map((it) => String(it?.productName ?? it?.product?.name ?? "").trim())
+        .filter(Boolean)
+    : [];
+  const title = more > 0 && names.length > 1 ? names.join("\n") : name;
+  return { name, more, title };
 }

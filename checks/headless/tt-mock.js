@@ -56,6 +56,10 @@ http.createServer(async (req, res) => {
   log.push(entry);
   if (ctl.fail401) return send(res, 401, { detail: "Authentication required" });
   if (staffPerm(ctl, p, res, send)) return; // 10c：模拟员工权限总开关开着的员工 / Super Admin（staff-perm-mock.js）
+  if (p.startsWith("/api/operations/orders/")) {
+    const o = orderDetail132(decodeURIComponent(p.split("/").pop()), ctl.mlinks);
+    return o ? send(res, 200, o) : send(res, 404, { detail: "Not found" });
+  }
   // partner（CCL）：默认勾了 tour.view / tour.send / broadcast.send / messages.view / messages.reply（partnerCodes 可换）；发送类勾了也不给（Annie「发送只能是我们内部员工发送」）。
   if (ctl.partner) {
     if (p === "/api/me") return send(res, 200, { id: 90, username: "ccl_ops", display_name: "CCL", initials: "CC", role: "partner", is_admin: false, is_superadmin: false, is_supervisor: false });
@@ -205,3 +209,16 @@ http.createServer(async (req, res) => {
   }
   send(res, 404, { detail: "mock: not found" });
 }).listen(Number(process.env.MOCK_PORT) || 8799, () => console.log("tt mock on", process.env.MOCK_PORT || 8799));
+
+// 132：对话框打开时读订单详情（/api/operations/orders/<单号>），用 manifest_links 画「Main manifest:」一行。
+// mode：one（一处）/ hold（On Hold，一处）/ cancel（已取消、不在上面）/ 其他 = 404（旧后端 / 读不到）。
+function orderDetail132(on, mode) {
+  const link = { date: "2026-10-10", tab: "tour", tab_label: "Tour confirmation", pill: "t:grand", pill_label: "Grand Canyon", row_keys: [`${on}|T1|2026-10-10`] };
+  // 132 产品名：one = 一个产品；hold = 往返两个产品（+1 more）；long = 很长的名字（最多两行）；cancel = 没有产品名（标题只写单号）。
+  const one = { product: { code: "GCW", name: "Grand Canyon West Rim", item_count: 1 }, items_detail: [{ productName: "Grand Canyon West Rim" }] };
+  if (mode === "one") return { order_number: on, status: "Confirmed", manifest_links: [link], ...one };
+  if (mode === "hold") return { order_number: on, status: "On Hold", manifest_links: [link], product: { code: "SHL", name: "Zion Shuttle Outbound", item_count: 2 }, items_detail: [{ productName: "Zion Shuttle Outbound" }, { productName: "Zion Shuttle Return" }] };
+  if (mode === "long") return { order_number: on, status: "Confirmed", manifest_links: [link], product: { code: "LNG", name: "Las Vegas to Grand Canyon South Rim and Hoover Dam Deluxe Day Tour with Lunch and Hotel Pickup Included for All Guests", item_count: 1 }, items_detail: [] };
+  if (mode === "cancel") return { order_number: on, status: "Cancelled", manifest_links: [], product: { code: "", name: "", item_count: 0 } };
+  return null;
+}
