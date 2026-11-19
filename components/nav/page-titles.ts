@@ -26,6 +26,7 @@ const PAGE_TITLES: readonly [prefix: string, title: string][] = [
   ["/task-board", "Task Board"],
   ["/settings/products", "Products"],
   ["/settings/content-studio", "Content Studio"],
+  ["/settings/test-send", "Test send"],
   ["/settings/pickup-locations", "Pickup Locations"],
   ["/settings/vehicles", "Vehicles"],
   ["/settings/quick-replies", "Driver Quick Replies"],
