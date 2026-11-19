@@ -36,15 +36,19 @@ const LIVE_MARKS = {
 };
 /** staff 改的标记（No show 改方向）：「订单:relay|bus」→ 标记。 */
 const OVERRIDES = {};
+
+/** G357：ctl.wa = 新后端，每位客人带 wa_url（A1001 / A1003 有链接、A1002 / A1004 "" 不出键）；没设 = 旧后端，没有这个键。 */
+const WA_URL = { A1001: "https://wa.me/15550000000", A1002: "", A1003: "https://wa.me/447700900123", A1004: "" };
+const waKey = (order) => (ctl.wa ? { wa_url: WA_URL[order] ?? "" } : {});
 const relayGuest = (id, first, last, pax, order) => {
   const mk = LIVE_MARKS[order];
   const st = mk && mk.driver === "Mike" ? mk : null;
-  return { id, first_name: first, last_name: last, pax, order_number: order, short_tag: order === "A1001" ? "GC" : "", phone: "+15550000000", relay_status: st ? st.status : null, relay_status_at: st ? st.at : null, checked_in_at: order === "A1001" ? "5:31 AM" : "" };
+  return { id, first_name: first, last_name: last, pax, order_number: order, short_tag: order === "A1001" ? "GC" : "", phone: "+15550000000", ...waKey(order), relay_status: st ? st.status : null, relay_status_at: st ? st.at : null, checked_in_at: order === "A1001" ? "5:31 AM" : "" };
 };
 const tourGuest = (id, name, pax, order) => {
   const mk = LIVE_MARKS[order];
   const st = mk && mk.driver === "Ana" ? mk : null;
-  return { id, name, guide_name: name, pax, order_number: order, ...(order === "A1003" ? { short_tag: "ZN" } : {}), lunch_text: "1 B 1 T", guide_lunch: { text: "1 B 1 T", bad: false }, boarding: st ? st.status : null, boarding_at: st ? st.at : null, relay_status: null };
+  return { id, name, guide_name: name, pax, order_number: order, ...(order === "A1003" ? { short_tag: "ZN" } : {}), ...waKey(order), lunch_text: "1 B 1 T", guide_lunch: { text: "1 B 1 T", bad: false }, boarding: st ? st.status : null, boarding_at: st ? st.at : null, relay_status: null };
 };
 function livePeople() {
   const g1 = relayGuest(1, "ZZ Test", "One", 2, "A1001");

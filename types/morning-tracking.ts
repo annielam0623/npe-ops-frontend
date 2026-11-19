@@ -175,6 +175,11 @@ export interface LiveRelayGuest {
   /** 团简写（同司机手机页 `{{ order_number }} · {{ short_tag }}`，置顶 78）；空 / 没有这个键 = 不显示。 */
   short_tag?: string | null;
   phone?: string | null;
+  /**
+   * G357：WhatsApp 链接（后端 whatsapp_link.wa_me_url()，"https://wa.me/<digits>"，同司机页 driver_home 的 WhatsApp 键）。
+   * "" = 不出键（号码不可信 / Farm out）；没有这个键 = 旧后端，也不出。
+   */
+  wa_url?: string;
   relay_status: "picked_up" | "no_show" | null;
   relay_status_at?: string | null;
   checked_in_at?: string;
@@ -209,6 +214,8 @@ export interface LiveTourGuest {
   /** 团简写（同司机手机页 `{{ order_number }} · {{ short_tag }}`，置顶 78）；空 / 没有这个键 = 不显示。 */
   short_tag?: string | null;
   phone?: string | null;
+  /** G357：同 LiveRelayGuest.wa_url。 */
+  wa_url?: string;
   lunch_text?: string;
   guide_lunch?: { text: string; bad?: boolean } | null;
   boarding: "boarded" | "no_show" | null;
