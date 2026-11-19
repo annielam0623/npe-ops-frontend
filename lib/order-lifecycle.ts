@@ -186,6 +186,36 @@ export function toChange(a: Activity): ChangeEntry {
  * 生命周期第 2 项（bf 合同：rezdy_changes，从上线起记）：Rezdy 推送 / Refresh from Rezdy 改了什么。
  * source rezdy_push ⇒ 来源 Rezdy；refresh_from_rezdy ⇒ 来源是按键的员工名。
  */
+/** Rezdy 改动里字段的固定顺序（bf 2026-11-18 建议）；不认识的排最后，同名按原来先后。 */
+const FIELD_ORDER = [
+  "First name",
+  "Last name",
+  "Phone",
+  "Email",
+  "Status",
+  "Product",
+  "Tour date",
+  "Pickup time",
+  "Pickup location",
+  "Pax",
+  "Special requirements",
+  "Item",
+];
+
+function fieldRank(field: string): number {
+  // 「Tour date (PRTSET)」「Pax (PRTSET) #2」「Item PRTSET」⇒ 取开头的标签。
+  const base = field
+    .replace(/\s*#\d+\s*$/, "")
+    .replace(/\s*\([^)]*\)\s*$/, "")
+    .trim();
+  const i = FIELD_ORDER.findIndex((f) => base === f || base.startsWith(`${f} `));
+  return i < 0 ? FIELD_ORDER.length : i;
+}
+
+function byFieldOrder(a: { field: string }, b: { field: string }): number {
+  return fieldRank(a.field) - fieldRank(b.field);
+}
+
 function rezdyEntries(order: OrderDetail): ChangeEntry[] {
   return (order.rezdy_changes ?? []).map((r, i) => {
     const at = formatLaDateTime(r.at);
@@ -195,7 +225,8 @@ function rezdyEntries(order: OrderDetail): ChangeEntry[] {
       at,
       source: push ? "rezdy" : "staff",
       who: push ? "Rezdy" : r.by || "Staff",
-      items: (r.changes ?? []).map((c) => ({
+      // 后端按标签字母序存 ⇒ 前端排成固定顺序（bf 建议的顺序）。
+      items: [...(r.changes ?? [])].sort(byFieldOrder).map((c) => ({
         field: c.field,
         before: c.before,
         after: c.after,
@@ -410,7 +441,8 @@ export function sentFor(
   const row = (order.confirmations ?? []).find(
     (x) => x.module === module && (!date || x.tour_date === date),
   );
-  if (!row || row.send_state === undefined) return fromLog;
+  // 后端 COALESCE(send_state, '')：空 = 这行没有固定状态（旧行），跟旧后端一样照 send-log。
+  if (!row || !row.send_state) return fromLog;
   if (row.send_state !== "sent") return null;
   const extra = fromLog
     ? fromLog.delivery

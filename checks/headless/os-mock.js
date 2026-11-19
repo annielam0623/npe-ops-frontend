@@ -86,8 +86,9 @@ const ORDERS = {
     live_by_day: [{ tour_date: "2026-10-20", live_status: "picked_up", live_status_at: "2026-10-20T12:50:00Z", live_driver: "Jane D.", live_van: "2101", arrived_at: "2026-10-20T12:44:00Z", left_at: "2026-10-20T12:53:00Z" }],
     // 生命周期第 2 项（bf 合同 rezdy_changes）：跨分钟也配（refresh 9:01:30 ↔ activity 9:00）。同一件事的 activity_log 那两条（id 4 refreshed_from_rezdy、id 3 booking_updated）是重复的，前端以这里为准。
     rezdy_changes: [
-      { at: "2026-10-11T16:01:30Z", source: "refresh_from_rezdy", by: "Annie Z", changes: [{ field: "Phone", before: "+1 555 0000", after: "+1 555 0100" }, { field: "Email", before: "", after: "zz@example.com" }] },
-      { at: "2026-10-10T18:02:40Z", source: "rezdy_push", by: "", changes: [{ field: "Tour date (PBZ)", before: "10/19/2026", after: "10/20/2026" }, { field: "Item PXTRA", before: null, after: "PXTRA" }] },
+      { at: "2026-10-11T16:01:30Z", source: "refresh_from_rezdy", by: "Annie Z", changes: [{ field: "Email", before: "", after: "zz@example.com" }, { field: "Phone", before: "+1 555 0000", after: "+1 555 0100" }] },
+      // 后端一条里按标签字母序存（Email < Phone、Item < Tour date）；前端排成固定顺序（Phone, Email / Tour date, Item）。
+      { at: "2026-10-10T18:02:40Z", source: "rezdy_push", by: "", changes: [{ field: "Item PXTRA", before: null, after: "PXTRA" }, { field: "Tour date (PBZ)", before: "10/19/2026", after: "10/20/2026" }] },
     ],
   }),
   ZZTEST2: (() => {

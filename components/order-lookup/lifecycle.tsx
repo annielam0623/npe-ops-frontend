@@ -334,7 +334,14 @@ const SOURCE_CLASS_LIGHT = {
 /** 「Tour date, Phone, Email」；多于 3 个写前两个 +N（照 4d 转的例子「Tour date, Phone +2 more」）。「Tour date (PBZ)」去掉产品码，同名只写一次。 */
 function changedSummary(fields: string[]): string {
   const names = [
-    ...new Set(fields.map((f) => f.replace(/\s*\([^)]*\)\s*$/, "").trim())),
+    ...new Set(
+      fields.map((f) =>
+        f
+          .replace(/\s*#\d+\s*$/, "")
+          .replace(/\s*\([^)]*\)\s*$/, "")
+          .trim(),
+      ),
+    ),
   ];
   return names.length > 3
     ? `${names.slice(0, 2).join(", ")} +${names.length - 2} more`
