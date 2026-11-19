@@ -22,10 +22,38 @@ import {
   mtlvCells,
   smsLabel as tourSms,
 } from "@/components/tour-tracking/config";
+import { HowToUse } from "@/components/ui/how-to-use";
 import { PageLink } from "@/components/ui/page-link";
+import { usePhoneCollapse } from "@/components/ui/phone";
 import { ManifestLinks } from "./manifest-links";
+import {
+  ChangeLine,
+  ChatHistoryBlock,
+  sendsOf,
+  useOrderLifecycle,
+} from "./lifecycle";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { isInbound } from "@/lib/channels";
+import {
+  allChanges,
+  bookedAt,
+  type ChangeEntry,
+  CHANGES_SHOWN,
+  dayOfTourFor,
+  LIFECYCLE_FRAME,
+  CHAT_HOW_TO,
+  LIFECYCLE_HOW_TO,
+  sentFor,
+  liveFor,
+  lunchFor,
+  markText,
+  markTone,
+  meaningfulChanges,
+  receivedAt,
+  type SendModule,
+  sentSub,
+  vanAtHotel,
+} from "@/lib/order-lifecycle";
 import {
   isSameOrder,
   type LaneResult,
@@ -36,7 +64,9 @@ import {
 import { usePermissions } from "@/lib/staff-permissions";
 import { cn } from "@/lib/utils";
 import type {
+  TrackingMark,
   MorningTrackingRow,
+  OrderDetail,
   OrderRow,
   TicketsTrackingRow,
   TourTrackingRow,
@@ -334,6 +364,42 @@ function LookupResultView({ result }: { result: LookupResult }) {
   const perms = usePermissions();
   const partner = perms.partnerView;
   const on = order.order_number;
+  // 订单生命周期（Annie 2026-11-18 排法 A + 框 1）：开关 order_lifecycle 看得到才有新格子和蓝框；partner 一律不出。
+  const lifecycle = useOrderLifecycle(on);
+  const life = lifecycle.on && !partner;
+  const canChat = life && perms.canMessages("messages.view");
+  const sends = sendsOf(lifecycle.sends);
+  const sendsLoading = lifecycle.sends === null;
+  const changes = life ? meaningfulChanges(order) : [];
+  const frame = life ? LIFECYCLE_FRAME : "border-white/10";
+  const day = life ? dayOfTourFor(order, date) : null;
+  const sentFact = (module: SendModule, label: string) => {
+    const s = sentFor(order, sends, module, date);
+    return (
+      <Fact
+        label={label}
+        tone={s ? "plain" : "muted"}
+        sub={s ? sentSub(s) || undefined : undefined}
+      >
+        {s ? s.at : sendsLoading ? "…" : "Not sent"}
+      </Fact>
+    );
+  };
+  const markFact = (label: string, mark: TrackingMark | null) => {
+    if (!mark)
+      return (
+        <Fact label={label} tone="muted">
+          —
+        </Fact>
+      );
+    const t = markText(mark);
+    const tone = markTone(mark);
+    return (
+      <Fact label={label} tone={tone} sub={t.sub || undefined}>
+        {t.main}
+      </Fact>
+    );
+  };
   const driver = [
     order.ops.driver,
     order.ops.vehicle_no && `Bus ${order.ops.vehicle_no}`,
@@ -351,7 +417,10 @@ function LookupResultView({ result }: { result: LookupResult }) {
   return (
     <div className="grid gap-3.5" data-lookup-result>
       {/* 订单 */}
-      <div className="rounded-[12px] border border-white/10 bg-white/[.025] px-4 py-3">
+      <div
+        className={cn("rounded-[12px] border bg-white/[.025] px-4 py-3", frame)}
+        data-lookup-block="order"
+      >
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
           <span
             className="text-[16px] font-bold tracking-[.01em]"
@@ -399,6 +468,25 @@ function LookupResultView({ result }: { result: LookupResult }) {
           {partner || !perms.canSeeMoney ? null : (
             <Field label="Agent">{order.ops.agent_name || "—"}</Field>
           )}
+          {life ? (
+            <>
+              <Field
+                label="Booked"
+                sub={bookedAt(order) ? "In Rezdy" : undefined}
+              >
+                {bookedAt(order) ?? "—"}
+              </Field>
+              <Field
+                label="Received"
+                sub={receivedAt(order) ? "In Order List" : undefined}
+              >
+                {receivedAt(order) ?? "—"}
+              </Field>
+              <Field label="Changes" tone={changes.length ? "warn" : "muted"}>
+                {changes.length ? `${changes.length} — see below` : "None"}
+              </Field>
+            </>
+          ) : null}
         </dl>
         <ManifestLinks
           order={order}
@@ -420,6 +508,10 @@ function LookupResultView({ result }: { result: LookupResult }) {
         )}
       </div>
 
+      {life && changes.length ? (
+        <ChangesBlock order={order} changes={changes} frame={frame} />
+      ) : null}
+
       {/* 运营状态 */}
       {!date ? (
         <Note tone="warn">
@@ -432,24 +524,115 @@ function LookupResultView({ result }: { result: LookupResult }) {
             <LaneBlock
               title="Tour Confirmation"
               href={trackHref("/tour-confirmation/tracking", date, on)}
+              chatHref={
+                canChat
+                  ? chatHref("/tour-confirmation/tracking", date, on)
+                  : undefined
+              }
               lane={result.tour}
-              render={(r) => <TourStatus row={r} />}
+              frame={frame}
+              render={(r) => (
+                <TourStatus
+                  row={r}
+                  lead={life ? sentFact("tour_confirmation", "Sent") : null}
+                  tail={
+                    life ? (
+                      <>
+                        {sentFact("last_minute", "Last Minute")}
+                        {/* bf 合同草稿：lunch_by_day.restaurant；没有 ⇒「—」。 */}
+                        <Fact
+                          label="Restaurant"
+                          tone={
+                            lunchFor(order, date)?.restaurant
+                              ? "plain"
+                              : "muted"
+                          }
+                        >
+                          {lunchFor(order, date)?.restaurant || "—"}
+                        </Fact>
+                      </>
+                    ) : null
+                  }
+                />
+              )}
             />
           )}
           {result.tickets && (
             <LaneBlock
               title="Ticket Reminder"
               href={trackHref("/tickets-reminder/tracking", date, on)}
+              chatHref={
+                canChat
+                  ? chatHref("/tickets-reminder/tracking", date, on)
+                  : undefined
+              }
               lane={result.tickets}
-              render={(r) => <TicketsStatus row={r} />}
+              frame={frame}
+              render={(r) => (
+                <TicketsStatus
+                  row={r}
+                  lead={life ? sentFact("tickets_reminder", "Sent") : null}
+                  tail={
+                    life && r.contact_changed ? (
+                      <Fact
+                        label="Contact changed"
+                        tone="warn"
+                        sub="After the reminder was sent. Send it again from Main manifest."
+                      >
+                        Yes
+                      </Fact>
+                    ) : null
+                  }
+                />
+              )}
             />
           )}
           {result.morning && (
             <LaneBlock
               title="Morning Pickup"
               href={trackHref("/morning-pickup/tracking", date, on)}
+              chatHref={
+                canChat
+                  ? chatHref("/morning-pickup/tracking", date, on)
+                  : undefined
+              }
               lane={result.morning}
-              render={(r) => <MorningStatus row={r} />}
+              frame={frame}
+              render={(r) => (
+                <MorningStatus
+                  row={r}
+                  lead={
+                    life ? sentFact("morning_pickup", "Reminder sent") : null
+                  }
+                  tail={
+                    life ? (
+                      <>
+                        {/* 按单的 live_by_day 优先（bf 合同草稿），没有就用当天 Morning Tracking 行（Annie b 同意）。 */}
+                        {(() => {
+                          const live = liveFor(order, date);
+                          const van = live
+                            ? vanAtHotel(live.arrived_at, live.left_at)
+                            : vanAtHotel(r.arrived_at, r.left_at);
+                          return (
+                            <Fact
+                              label="Van at hotel"
+                              tone={van ? "plain" : "muted"}
+                            >
+                              {van ?? "—"}
+                            </Fact>
+                          );
+                        })()}
+                        {markFact("Relay", day?.relay_mark ?? null)}
+                        {markFact("Bus", day?.bus_mark ?? null)}
+                        {/* 题 4 B：后端还没有回程到站，先写「—」。 */}
+                        <Fact label="Tour ended" tone="muted">
+                          —
+                        </Fact>
+                      </>
+                    ) : null
+                  }
+                />
+              )}
             />
           )}
           {!found && !anyError && (
@@ -460,6 +643,18 @@ function LookupResultView({ result }: { result: LookupResult }) {
           )}
         </>
       )}
+      {/* Chat history（C1 C / C4 A）：最下面、How to use 上面；跟生命周期开关走 + 要有 messages.view。 */}
+      {canChat ? (
+        <ChatHistoryBlock notes={order.booking_notes ?? []} frame={frame} />
+      ) : null}
+      {/* 题 6 A：How to use 6 条原文，放最底（手机版规则同）。 */}
+      {life ? (
+        <HowToUse
+          dark
+          title="How to use — Order lookup"
+          items={[...LIFECYCLE_HOW_TO, ...(canChat ? [CHAT_HOW_TO] : [])]}
+        />
+      ) : null}
     </div>
   );
 }
@@ -474,6 +669,11 @@ function trackHref(path: string, date: string, orderNumber: string): string {
   return `${path}?date=${date}&q=${encodeURIComponent(orderNumber)}`;
 }
 
+/** 「Open chat →」：同一个 Tracking 页，多带 chat=单号 ⇒ 页面直接打开这单的对话框（lib/open-chat-param）。 */
+function chatHref(path: string, date: string, orderNumber: string): string {
+  return `${trackHref(path, date, orderNumber)}&chat=${encodeURIComponent(orderNumber)}`;
+}
+
 function orderStatusTone(status: string): string {
   const s = status.toLowerCase();
   if (s.startsWith("cancel")) return TONE_CLASS.bad;
@@ -481,13 +681,109 @@ function orderStatusTone(status: string): string {
   return TONE_CLASS.warn;
 }
 
-function Field({ label, children }: { label: string; children: ReactNode }) {
+function Field({
+  label,
+  tone,
+  sub,
+  children,
+}: {
+  label: string;
+  tone?: Tone;
+  /** 第二行灰字（生命周期：In Rezdy / by veronica 等）。 */
+  sub?: string;
+  children: ReactNode;
+}) {
   return (
-    <div className="min-w-0">
+    <div className="min-w-0" data-field={label}>
       <dt className="text-[10.5px] font-semibold tracking-[.05em] text-white/40 uppercase">
         {label}
       </dt>
-      <dd className="[overflow-wrap:anywhere] text-white/85">{children}</dd>
+      <dd
+        className={cn(
+          "[overflow-wrap:anywhere] text-white/85",
+          tone && TONE_CLASS[tone],
+        )}
+      >
+        {children}
+        {sub ? <SubLine>{sub}</SubLine> : null}
+      </dd>
+    </div>
+  );
+}
+
+function SubLine({ children }: { children: ReactNode }) {
+  return (
+    <span className="block text-[11.5px] font-normal text-white/45">
+      {children}
+    </span>
+  );
+}
+
+/** 生命周期的 Changes 块（题 2 A）：有意义的改动列 3 条，右上 Show all N（全部记录，含系统记录）。 */
+function ChangesBlock({
+  order,
+  changes,
+  frame,
+}: {
+  order: OrderDetail;
+  changes: ChangeEntry[];
+  frame: string;
+}) {
+  const [all, setAll] = useState(false);
+  const collapse = usePhoneCollapse();
+  const everything = allChanges(order);
+  const shown = all ? everything : changes.slice(0, CHANGES_SHOWN);
+  const canMore = !all && everything.length > shown.length;
+  // Annie 2026-11-18「但凡可以展开的页面一定要能折叠」：展开后键变 Show less，点了回到最近 3 条。
+  const canLess =
+    all && everything.length > Math.min(changes.length, CHANGES_SHOWN);
+  return (
+    <div
+      className={cn("rounded-[12px] border bg-white/[.025] px-4 py-3", frame)}
+      data-lookup-block="changes"
+    >
+      <div className="flex items-baseline gap-3">
+        <button
+          type="button"
+          onClick={collapse.toggle}
+          className="flex items-baseline gap-2 text-left text-[13.5px] font-semibold"
+        >
+          Changes
+          <span className="text-[12.5px] font-semibold text-[#fbbf24] sm:hidden">
+            {changes.length}
+          </span>
+        </button>
+        {canMore ? (
+          <button
+            type="button"
+            data-changes-all
+            onClick={() => {
+              setAll(true);
+              collapse.setOpen(true);
+            }}
+            className="ml-auto cursor-pointer text-[12.5px] font-semibold text-white/60 hover:text-white"
+          >
+            Show all {everything.length} ▾
+          </button>
+        ) : canLess ? (
+          <button
+            type="button"
+            data-changes-less
+            onClick={() => setAll(false)}
+            className="ml-auto cursor-pointer text-[12.5px] font-semibold text-white/60 hover:text-white"
+          >
+            Show less ▴
+          </button>
+        ) : (
+          <span className="ml-auto" />
+        )}
+        {collapse.caret}
+      </div>
+      <ul className={cn("mt-2 grid gap-1.5", collapse.hide)}>
+        {shown.map((c) => (
+          <ChangeLine key={c.id} c={c} />
+        ))}
+      </ul>
     </div>
   );
 }
@@ -497,11 +793,17 @@ function LaneBlock<Row extends { id: number }>({
   title,
   href,
   lane,
+  frame,
+  chatHref: chatLink,
   render,
 }: {
   title: string;
   href: string;
   lane: LaneResult<Row>;
+  /** 外框颜色（框 1：生命周期开着时蓝框）。 */
+  frame: string;
+  /** Chat history 的「Open chat →」（C1 C）；没有 = 不出。 */
+  chatHref?: string;
   render: (row: Row) => ReactNode;
 }) {
   if (lane.kind === "ok" && lane.rows.length === 0) {
@@ -513,14 +815,26 @@ function LaneBlock<Row extends { id: number }>({
   }
   return (
     <div
-      className="rounded-[12px] border border-white/10 bg-white/[.025] px-4 py-3"
+      className={cn("rounded-[12px] border bg-white/[.025] px-4 py-3", frame)}
       data-lane={title}
     >
       <div className="mb-2 flex items-baseline gap-3">
         <h3 className="text-[13.5px] font-semibold">{title}</h3>
+        {chatLink && lane.kind === "ok" ? (
+          <PageLink
+            href={chatLink}
+            data-open-chat
+            className="ml-auto text-[12.5px] font-semibold text-white/60 hover:text-white"
+          >
+            Open chat →
+          </PageLink>
+        ) : null}
         <PageLink
           href={href}
-          className="ml-auto text-[12.5px] font-semibold text-white/60 hover:text-white"
+          className={cn(
+            "text-[12.5px] font-semibold text-white/60 hover:text-white",
+            !(chatLink && lane.kind === "ok") && "ml-auto",
+          )}
         >
           Open tracking →
         </PageLink>
@@ -552,12 +866,15 @@ function Fact({
   label,
   tone = "plain",
   wide = false,
+  sub,
   children,
 }: {
   label: string;
   tone?: Tone;
   /** 占满一整行（长地址）。 */
   wide?: boolean;
+  /** 第二行灰字（生命周期：by veronica / Jane D. · Bus 3001 等）。 */
+  sub?: string;
   children: ReactNode;
 }) {
   return (
@@ -569,6 +886,7 @@ function Fact({
         className={cn("font-medium [overflow-wrap:anywhere]", TONE_CLASS[tone])}
       >
         {children}
+        {sub ? <SubLine>{sub}</SubLine> : null}
       </dd>
     </div>
   );
@@ -593,7 +911,17 @@ const TOUR_STATUS: Record<string, { label: string; tone: Tone }> = {
   cancel: { label: "Cancel", tone: "bad" },
 };
 
-function TourStatus({ row }: { row: TourTrackingRow }) {
+function TourStatus({
+  row,
+  lead = null,
+  tail = null,
+}: {
+  row: TourTrackingRow;
+  /** 生命周期加在最前面的格子（Sent / Reminder sent）。 */
+  lead?: ReactNode;
+  /** 生命周期加在最后的格子。 */
+  tail?: ReactNode;
+}) {
   const status = row.confirmation_status || "pending";
   const s = TOUR_STATUS[status] ?? { label: status, tone: "plain" as Tone };
   const sms = tourSms(row.sms_status);
@@ -603,6 +931,7 @@ function TourStatus({ row }: { row: TourTrackingRow }) {
   return (
     <>
       <Facts>
+        {lead}
         <Fact label="Guest reply" tone={s.tone}>
           {s.label}
         </Fact>
@@ -647,6 +976,7 @@ function TourStatus({ row }: { row: TourTrackingRow }) {
           needsAction={row.notes_unhandled || row.wa_unhandled}
           handledBy={row.action_taken_by}
         />
+        {tail}
       </Facts>
       <LatestMessage row={row} guestNote={row.notes} />
     </>
@@ -662,7 +992,17 @@ const TICKET_STATUS: Record<string, { label: string; tone: Tone }> = {
   cancel: { label: "Cancel", tone: "bad" },
 };
 
-function TicketsStatus({ row }: { row: TicketsTrackingRow }) {
+function TicketsStatus({
+  row,
+  lead = null,
+  tail = null,
+}: {
+  row: TicketsTrackingRow;
+  /** 生命周期加在最前面的格子（Sent / Reminder sent）。 */
+  lead?: ReactNode;
+  /** 生命周期加在最后的格子。 */
+  tail?: ReactNode;
+}) {
   const status = row.confirmation_status || "pending";
   const s = TICKET_STATUS[status] ?? { label: status, tone: "plain" as Tone };
   const sms = ticketsSms(row.sms_status);
@@ -677,6 +1017,7 @@ function TicketsStatus({ row }: { row: TicketsTrackingRow }) {
   return (
     <>
       <Facts>
+        {lead}
         <Fact label="Guest reply" tone={s.tone}>
           {s.label}
         </Fact>
@@ -707,6 +1048,7 @@ function TicketsStatus({ row }: { row: TicketsTrackingRow }) {
             {row.checkin_location}
           </Fact>
         ) : null}
+        {tail}
       </Facts>
       <LatestMessage row={row} guestNote={row.guest_notes} />
     </>
@@ -715,13 +1057,24 @@ function TicketsStatus({ row }: { row: TicketsTrackingRow }) {
 
 // ── Morning Pickup ──
 
-function MorningStatus({ row }: { row: MorningTrackingRow }) {
+function MorningStatus({
+  row,
+  lead = null,
+  tail = null,
+}: {
+  row: MorningTrackingRow;
+  /** 生命周期加在最前面的格子（Sent / Reminder sent）。 */
+  lead?: ReactNode;
+  /** 生命周期加在最后的格子。 */
+  tail?: ReactNode;
+}) {
   const sms = smsStatusOf(row.sms_status);
   const email = emailStatusOf(row.email_state);
   const checkedIn = row.checkin_status === "checked_in";
   return (
     <>
       <Facts>
+        {lead}
         <Fact label="Check-in" tone={checkedIn ? "good" : "warn"}>
           {checkedIn
             ? `Checked in ${formatCheckinTime(row.checkin_time)}`
@@ -753,6 +1106,7 @@ function MorningStatus({ row }: { row: MorningTrackingRow }) {
           needsAction={row.notes_unhandled || row.wa_unhandled}
           handledBy={row.action_taken_by}
         />
+        {tail}
       </Facts>
       <LatestMessage row={row} guestNote="" />
     </>

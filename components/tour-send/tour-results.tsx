@@ -209,10 +209,29 @@ export function TourResults({
                   );
                 })}
                 {skipped.map((s, i) => (
-                  <tr key={`s${i}`} data-skipped className={TR}>
+                  <tr
+                    key={`s${i}`}
+                    data-skipped
+                    // G297：酒店空着被后端留下的单标红（同预览里那一行）。
+                    data-no-hotel={
+                      s.reason === "no_pickup_location" || undefined
+                    }
+                    className={cn(
+                      TR,
+                      s.reason === "no_pickup_location" && "bg-[#fdecec]",
+                    )}
+                  >
                     <td className={TD}>{s.order || s.order_number || "—"}</td>
                     <td className={TD}>{s.name}</td>
-                    <td colSpan={2} className={cn(TD, "text-[#BA7517]")}>
+                    <td
+                      colSpan={2}
+                      className={cn(
+                        TD,
+                        s.reason === "no_pickup_location"
+                          ? "text-[#A32D2D]"
+                          : "text-[#BA7517]",
+                      )}
+                    >
                       Skipped: {s.message || s.reason}
                     </td>
                   </tr>

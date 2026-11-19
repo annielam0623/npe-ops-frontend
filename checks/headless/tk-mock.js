@@ -88,9 +88,24 @@ http.createServer(async (req, res) => {
     return send(res, 200, { key: "tickets_col_order", value: ctl.pref ?? null });
   }
 
+  // G281：Ticket Tracking 的 Main manifest 同步开关（PUT 记在 ctl.syncMode）。
+  if (p === "/api/settings/tickets-sync") {
+    if (req.method === "PUT") { const b = JSON.parse(await readRaw(req)); entry.body = b; ctl.syncMode = b.mode; }
+    const mode = ctl.syncMode || "off";
+    return send(res, 200, { mode, enabled: mode !== "off" });
+  }
   if (p === "/api/notifications/tickets-reminder/tracking") {
     // extraRow：多一行 CHDZZ6（测群发弹窗开着时表格重拉）。
-    const out = ctl.extraRow ? [...rows, row({ id: 16, order_number: "CHDZZ6", guest_name: "ZZ Test Foxtrot", sms_status: "sent" })] : rows;
+    let out = ctl.extraRow ? [...rows, row({ id: 16, order_number: "CHDZZ6", guest_name: "ZZ Test Foxtrot", sms_status: "sent" })] : rows;
+    // sync：G281 三个新键（CHDZZ1 On hold、CHDZZ2 Contact changed）+ 两行灰行（CHDZZ7 Confirmed、CHDZZ8 Cancelled），灰行放在中间测前端排到最后。
+    if (ctl.sync) {
+      const unsent = [
+        row({ id: 21, order_number: "CHDZZ7", guest_name: "ZZ Test Golf", quantities: 2, send_state: "unsent", order_state: "confirmed", contact_changed: false }),
+        row({ id: 22, order_number: "CHDZZ8", guest_name: "ZZ Test Hotel", quantities: 2, tour_type: "lower_antelope_kens", send_state: "unsent", order_state: "cancelled", contact_changed: false }),
+      ];
+      const sent = out.map((r) => ({ ...r, send_state: "sent", order_state: r.id === 11 ? "on_hold" : "confirmed", contact_changed: r.id === 12 }));
+      out = [...sent.slice(0, 2), ...unsent, ...sent.slice(2)];
+    }
     return send(res, 200, { date: url.searchParams.get("date"), rows: url.searchParams.get("date") === today ? out : [] });
   }
   if (p === "/api/broadcasting-log")

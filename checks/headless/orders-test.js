@@ -333,6 +333,31 @@ async function run() {
   await sleep(500);
   check("旧后端：整页没有 Main manifest 那一行", await evaluate("return !document.querySelector('[data-manifest-links]');"));
 
+  // ── No show 改方向（Annie 2026-11-17「动手」，N3 A / N8 A）：订单页 Day of tour 卡，只看，放 Operations 后面 ──
+  await ctl({ dayOfTour: "legs", partner: null, staffPerms: null });
+  await goto(`${APP}/orders/CHDTESTORDER1`);
+  await waitFor("document.querySelector('[data-day-of-tour]')", 60000);
+  check("Day of tour 卡紧跟 Operations 卡", await evaluate("const t = [...document.querySelectorAll('section[aria-label]')].map((s) => s.getAttribute('aria-label')); return t.indexOf('Day of tour') === t.indexOf('Operations') + 1;"), await evaluate("return [...document.querySelectorAll('section[aria-label]')].map((s) => s.getAttribute('aria-label')).join(',');"));
+  check("按团期 + leg 分段，新的在前：Mon, Oct 5, 2026 · Outbound / · Return / Sat, Oct 3, 2026 · Outbound + Old tour date", await evaluate("const l = [...document.querySelectorAll('[data-day-of-tour-leg]')]; return l.map((x) => x.dataset.dayOfTourLeg).join(',') === '2026-10-05|,2026-10-05|return,2026-10-03|' && l[0].textContent.includes('Mon, Oct 5, 2026 · Outbound') && !l[0].querySelector('[data-old-tour-date]') && l[2].querySelector('[data-old-tour-date]')?.textContent === 'Old tour date';"), await evaluate("return [...document.querySelectorAll('[data-day-of-tour-leg]')].map((x) => x.textContent).join(' | ');"));
+  check("回程那条：小标签「Return」（同 Old tour date 的写法），去程没有", await evaluate("const l = [...document.querySelectorAll('[data-day-of-tour-leg]')]; const t = l[1].querySelector('[data-return-leg]'); return !!t && t.textContent === 'Return' && getComputedStyle(t).borderTopLeftRadius === '4px' && !l[0].querySelector('[data-return-leg]') && !l[2].querySelector('[data-return-leg]') && !l[1].textContent.includes('Outbound');"));
+  check("第一段：Relay Picked up · by Mike (relay) · 2101 · 6:58 AM；Bus Boarded（绿）· changed by Lizzie (staff) · 9:15 AM + 灰字 Original: No show · by Joe (guide) · Bus A (3001) · 7:12 AM", await evaluate("const t = document.querySelector('[data-day-of-tour-leg=\"2026-10-05|\"]').textContent; return t.includes('Picked upby Mike (relay) · 2101 · 6:58 AM') && t.includes('Boardedchanged by Lizzie (staff) · 9:15 AM') && t.includes('Original: No show · by Joe (guide) · Bus A (3001) · 7:12 AM');"), await evaluate("return document.querySelector('[data-day-of-tour-leg=\"2026-10-05|\"]').textContent;"));
+  check("回程没标：Relay「—」、Bus「Not marked」；旧团期短信链接进来：by the relay driver (text link)", await evaluate("const r = document.querySelector('[data-day-of-tour-leg=\"2026-10-05|return\"]').textContent; const o = document.querySelector('[data-day-of-tour-leg=\"2026-10-03|\"]').textContent; return r.includes('Relay—') && r.includes('BusNot marked') && o.includes('by the relay driver (text link) · 2104 · 6:50 AM');"));
+  check("只看：卡里没有输入框 / 下拉 / 按钮；右上「Open in Morning Tracking →」链到 /morning-pickup/tracking?date=2026-10-05&q=单号", await evaluate("const c = document.querySelector('section[aria-label=\"Day of tour\"]'); const a = c.querySelector('[data-day-of-tour-open]'); const u = new URL(a.href); return !c.querySelector('input,select,button') && a.textContent.trim() === 'Open in Morning Tracking →' && u.pathname === '/morning-pickup/tracking' && u.searchParams.get('date') === '2026-10-05' && u.searchParams.get('q') === 'CHDTESTORDER1';"));
+  await ctl({ dayOfTour: "empty" });
+  await goto(`${APP}/orders/CHDTESTORDER1`);
+  await waitFor("document.querySelector('[data-day-of-tour]')", 60000);
+  check("带了 day_of_tour 但没有标记：卡照样在，写 No relay or bus marks yet.", await evaluate("return document.querySelector('[data-day-of-tour]').textContent.trim() === 'No relay or bus marks yet.';"));
+  await ctl({ dayOfTour: "legs", partner: ["orders.view"] });
+  await goto(`${APP}/orders/CHDTESTORDER1`);
+  await waitFor("!!document.querySelector('main h1')", 60000);
+  await sleep(500);
+  check("partner：不出 Day of tour 卡", await evaluate("return !document.querySelector('[data-day-of-tour]');"));
+  await ctl({ dayOfTour: null, partner: null });
+  await goto(`${APP}/orders/CHDTESTORDER1`);
+  await waitFor("!!document.querySelector('main h1')", 60000);
+  await sleep(500);
+  check("旧后端（没有 day_of_tour）：不出 Day of tour 卡", await evaluate("return !document.querySelector('[data-day-of-tour]');"));
+
   await ctl({ fail401: true });
   await goto(`${APP}/orders`);
   await waitFor("location.pathname === '/auth/login'");
@@ -358,7 +383,7 @@ async function refreshChecks() {
 
   // 新 Rezdy 表的单出键（权限总开关关着 = 照旧都有）
   await openDetail("CHDNEW");
-  const b = await evaluate(`const b = ${btn}; const h = b?.closest('header'); return b ? { text: b.textContent, bg: getComputedStyle(b).backgroundColor, inHead: !!h && h.querySelector('h1').textContent === 'CHDNEW', last: h?.lastElementChild === b } : null;`);
+  const b = await evaluate(`const b = ${btn}; const h = b?.closest('header'); return b ? { text: b.textContent, bg: getComputedStyle(b).backgroundColor, inHead: !!h && h.querySelector('h1').textContent === 'CHDNEW', last: h?.lastElementChild === b || h?.lastElementChild === b.parentElement && b.parentElement.lastElementChild === b } : null;`);
   check("Refresh：新 Rezdy 表的单 ⇒ 订单号那一行最右边蓝色「Refresh from Rezdy」", b && b.text === "Refresh from Rezdy" && b.bg === "rgb(59, 130, 246)" && b.inHead && b.last, JSON.stringify(b));
   check("Refresh：How to use 多一句（原文）", await evaluate("return document.body.textContent.includes(\"Refresh from Rezdy (next to the order number): gets this order from Rezdy again and updates Order List right away.\");"));
   check("Refresh：按之前没有结果卡", !(await evaluate(`return !!${card};`)));
@@ -460,6 +485,112 @@ async function refreshChecks() {
   await waitFor("document.querySelector('[data-tripguru-items]')", 30000);
   check("G280 partner：不出 Internal note（只给员工）", await evaluate("return !document.querySelector('[data-tripguru-internal-note]');"));
   await ctl({ partner: null, staffPerms: null, tripguru: false });
+  await g297();
+}
+
+// ── G297：Order 页「Send tour confirmation」──
+async function g297() {
+  const SHOT = process.env.SHOT_DIR;
+  const fsx = require("fs"), px = require("path");
+  const shot = async (name, sel) => { if (!SHOT) return; fsx.mkdirSync(SHOT, { recursive: true }); if (sel) { await evaluate(`document.querySelector('${sel}')?.scrollIntoView({ block: 'center' });`); await sleep(200); } const r = await cdp("Page.captureScreenshot", { format: "png" }); fsx.writeFileSync(px.join(SHOT, name + ".png"), Buffer.from(r.data, "base64")); };
+  await ctl({ staffPerms: null, partner: null, superAdmin: false, sendTour: "sent", sendDelay: 0, resetHotel: true });
+  await goto(`${APP}/orders/CHDZZ8J8VYD?tour_date=2026-11-13`);
+  await waitFor("document.querySelector('[data-order-send-tour]')", 30000);
+  // Annie 2026-11-12「他点进订单后应该看到提醒这单缺少的信息是什么然后怎样解决…看到红字消失了才可以发」
+  const miss = await evaluate("const b = document.querySelector('[data-order-send-tour]'); const a = document.querySelector('[data-order-pickup-missing]'); const loc = document.querySelector('[data-order-location-missing]'); return { disabled: b.disabled, why: document.querySelector('[data-order-send-no-hotel]')?.textContent, alert: a?.textContent, alertColor: a && getComputedStyle(a).color, loc: loc?.textContent, under: !!a && a.getBoundingClientRect().top > document.querySelector('main header').getBoundingClientRect().bottom };");
+  check("G297 Order 页酒店空着：订单号下面红字写缺什么、怎么改；Location 那一行红字 Missing — add it in Rezdy；Send 灰掉、旁边写 Add the pickup location first.", miss.disabled && miss.why === "Add the pickup location first." && miss.alert === "⚠️ Pickup location is missing. Add the pickup location to this order in Rezdy, then click Refresh from Rezdy. You can send the tour confirmation once this message is gone." && miss.alertColor === "rgb(163, 45, 45)" && miss.loc === "Missing — add it in Rezdy" && miss.under, JSON.stringify(miss));
+  await shot("order-missing");
+  let before = (await mockLog()).length;
+  await evaluate("document.querySelector('[data-order-send-tour]').click();");
+  await sleep(300);
+  check("G297 酒店空着：点灰着的 Send 不发请求", (await mockLog()).slice(before).every((e) => e.path !== "/api/manifests/send-tour-order"));
+  await evaluate("document.querySelector('[data-order-refresh]').click();");
+  await waitFor("!document.querySelector('[data-order-pickup-missing]')", 8000);
+  const b = await evaluate("const b = document.querySelector('[data-order-send-tour]'); const r = document.querySelector('[data-order-refresh]'); return { text: b.textContent, bg: getComputedStyle(b).backgroundColor, disabled: b.disabled, sameRow: !!r && Math.abs(b.getBoundingClientRect().top - r.getBoundingClientRect().top) < 4, header: !!b.closest('header'), howto: document.querySelector('main').textContent.includes('If the pickup location is missing, a red message says what to fix and the button stays grey'), loc: !document.querySelector('[data-order-location-missing]') && document.querySelector('main').textContent.includes('Excalibur'), why: !document.querySelector('[data-order-send-no-hotel]') };");
+  check("G297 Refresh from Rezdy 补上酒店后：红字消失、Location 写 Excalibur、蓝色 Send tour confirmation 能按（跟 Refresh 同一行）；How to use 有一句", b.text === "Send tour confirmation" && b.bg === "rgb(59, 130, 246)" && !b.disabled && b.sameRow && b.header && b.howto && b.loc && b.why, JSON.stringify(b));
+  await shot("order-refreshed");
+  before = (await mockLog()).length;
+  await evaluate("document.querySelector('[data-order-send-tour]').click();");
+  await waitFor("document.querySelector('[data-order-send-result]')", 8000);
+  const req = (await mockLog()).slice(before).find((e) => e.path === "/api/manifests/send-tour-order");
+  check("G297 Order 页：POST /api/manifests/send-tour-order {date: 网址 tour_date, order_number}", req?.body?.date === "2026-11-13" && req?.body?.order_number === "CHDZZ8J8VYD", JSON.stringify(req?.body));
+  check("G297 发成功：绿字「✓ Tour confirmation sent.」，Email / SMS 两格绿字 Sent", await evaluate("const c = document.querySelector('[data-order-send-result]'); const h = c.querySelector('[data-order-send-headline]'); const tds = [...c.querySelectorAll('tr[data-outcome] td')]; return h.textContent === '✓ Tour confirmation sent.' && getComputedStyle(h).color === 'rgb(21, 128, 61)' && tds[2].textContent === 'Sent' && tds[3].textContent === 'Sent';"));
+  await shot("order-sent", "[data-order-send-result]");
+  await ctl({ sendTour: "nohotel" });
+  await evaluate("document.querySelector('[data-order-send-tour]').click();");
+  await waitFor("document.querySelector('[data-order-send-result] [data-skipped]')", 8000);
+  check("G297 酒店还空着（后端留下）：红字「Not sent.」+ 红行「Not sent: Pickup location is empty in Rezdy」", await evaluate("const c = document.querySelector('[data-order-send-result]'); const tr = c.querySelector('tr[data-skipped]'); return c.querySelector('[data-order-send-headline]').textContent === 'Not sent.' && tr.dataset.skipped === 'no_pickup_location' && tr.textContent.includes('Not sent: Pickup location is empty in Rezdy') && getComputedStyle(tr).backgroundColor === 'rgb(253, 236, 236)';"));
+  await shot("order-nohotel", "[data-order-send-result]");
+  await ctl({ sendTour: "failed" });
+  await evaluate("document.querySelector('[data-order-send-tour]').click();");
+  await waitFor("document.querySelector('[data-order-send-result] tr[data-outcome=failed]')", 8000);
+  check("G297 发送失败：红字 Not sent.，两格红字 Failed: 原因", await evaluate("const c = document.querySelector('[data-order-send-result]'); const tds = [...c.querySelectorAll('tr[data-outcome] td')]; return c.querySelector('[data-order-send-headline]').textContent === 'Not sent.' && tds[2].textContent.startsWith('Failed: SendGrid 550') && tds[3].textContent.startsWith('Failed: Twilio 21211');"));
+  await ctl({ sendTour: "400" });
+  await evaluate("document.querySelector('[data-order-send-tour]').click();");
+  await waitFor("document.querySelector('[data-order-send-error]')", 8000);
+  check("G297 被拒（400）：红字后端原话", await evaluate("return document.querySelector('[data-order-send-error]').textContent === 'Order CHDZZ8J8VYD is not on the Main manifest for 2026-11-13. Nothing was sent.';"));
+  await ctl({ sendTour: "sent", sendDelay: 1500 });
+  await evaluate("document.querySelector('[data-order-send-tour]').click();");
+  await sleep(200);
+  check("G297 发送中：键写 Sending… 并灰掉", await evaluate("const b = document.querySelector('[data-order-send-tour]'); return b.textContent === 'Sending…' && b.disabled;"));
+  await waitFor("document.querySelector('[data-order-send-tour]').textContent === 'Send tour confirmation'", 8000);
+  await ctl({ sendDelay: 0 });
+  // 网址没有 tour_date ⇒ 用订单的 Tour date（11/13/2026）
+  await goto(`${APP}/orders/CHDZZ8J8VYD`);
+  await waitFor("document.querySelector('[data-order-send-tour]')", 30000);
+  before = (await mockLog()).length;
+  await evaluate("document.querySelector('[data-order-send-tour]').click();");
+  await waitFor("document.querySelector('[data-order-send-result]')", 8000);
+  const req2 = (await mockLog()).slice(before).find((e) => e.path === "/api/manifests/send-tour-order");
+  check("G297 网址没有 tour_date ⇒ 用订单的 Tour date（11/13/2026 → 2026-11-13）", req2?.body?.date === "2026-11-13", JSON.stringify(req2?.body));
+  // 都没有日期 ⇒ 灰掉 + 一行小字
+  await goto(`${APP}/orders/CHDNODATE`);
+  await waitFor("document.querySelector('[data-order-send-tour]')", 30000);
+  check("G297 没有日期：键灰掉、旁边写 No tour date for this order, so it cannot be sent from here.", await evaluate("return document.querySelector('[data-order-send-tour]').disabled && document.querySelector('[data-order-send-no-date]')?.textContent === 'No tour date for this order, so it cannot be sent from here.';"));
+  await shot("order-nodate");
+  // 判空照后端：去掉空格后为空才算；「TBD」当有值
+  await goto(`${APP}/orders/CHDTBD?tour_date=2026-10-05`);
+  await waitFor("document.querySelector('[data-order-send-tour]')", 30000);
+  check("G297 判空照后端：Location 是 TBD ⇒ 不算缺（没有红字、键能按）", await evaluate("return !document.querySelector('[data-order-pickup-missing]') && !document.querySelector('[data-order-location-missing]') && !document.querySelector('[data-order-send-tour]').disabled;"));
+  await goto(`${APP}/orders/CHDSPACES?tour_date=2026-10-05`);
+  await waitFor("document.querySelector('[data-order-send-tour]')", 30000);
+  check("G297 判空照后端：Location 只有空格 ⇒ 算缺（红字、键灰）", await evaluate("return !!document.querySelector('[data-order-pickup-missing]') && document.querySelector('[data-order-send-tour]').disabled;"));
+  // 没勾 manifests.send ⇒ 不出键；partner 不出
+  await ctl({ staffPerms: ["orders.view", "orders.edit"] });
+  await goto(`${APP}/orders/CHDZZ8J8VYD?tour_date=2026-11-13`);
+  await waitFor("document.querySelector('main h1')", 30000);
+  await sleep(500);
+  check("G297 没勾 manifests.send：不出 Send tour confirmation 键", await evaluate("return !document.querySelector('[data-order-send-tour]');"));
+  await ctl({ staffPerms: null, partner: ["orders.view"] });
+  await goto(`${APP}/orders/CHDZZ8J8VYD?tour_date=2026-11-13`);
+  await waitFor("document.querySelector('main h1')", 30000);
+  await sleep(500);
+  check("G297 partner：不出 Send tour confirmation 键", await evaluate("return !document.querySelector('[data-order-send-tour]');"));
+  await ctl({ partner: null, staffPerms: null });
+  if (SHOT) {
+    await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
+    await ctl({ resetHotel: true });
+    await goto(`${APP}/orders/CHDZZ8J8VYD?tour_date=2026-11-13`);
+    await waitFor("document.querySelector('[data-order-send-tour]')", 30000);
+    await sleep(600);
+    await evaluate("document.querySelector('main h1').scrollIntoView({ block: 'start' }); window.scrollBy(0, -60);");
+    await sleep(200);
+    await shot("order-phone");
+    check("G297 手机：整页不左右晃", await evaluate("return document.documentElement.scrollWidth <= window.innerWidth + 1;"));
+    await cdp("Emulation.setDeviceMetricsOverride", { width: 1440, height: 900, deviceScaleFactor: 2, mobile: false });
+    await goto(`${APP}/orders/CHDZZ8J8VYD?tour_date=2026-11-13&theme=night`);
+    await waitFor("document.querySelector('[data-order-pickup-missing]')", 30000);
+    await sleep(300);
+    await shot("order-night-missing");
+    await evaluate("document.querySelector('[data-order-refresh]').click();");
+    await waitFor("!document.querySelector('[data-order-pickup-missing]')", 8000);
+    await evaluate("document.querySelector('[data-order-send-tour]').click();");
+    await waitFor("document.querySelector('[data-order-send-result]')", 8000);
+    await sleep(300);
+    await shot("order-night");
+    await goto(`${APP}/orders/CHDZZ8J8VYD?theme=day`);
+    await cdp("Emulation.clearDeviceMetricsOverride");
+  }
 }
 
 main().catch((e) => {

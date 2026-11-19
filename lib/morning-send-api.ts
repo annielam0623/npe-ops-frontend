@@ -35,7 +35,7 @@ export function previewMorningManifest(file: File): Promise<MorningPreview> {
 
 /**
  * ⚠️ 真实发送：后端重新解析同一个文件，只给 orders 里的订单发，其余行返回 skipped。
- * 团期一律是今天（洛杉矶），由后端决定。
+ * 团期 = 文件日期（140 / 后端 G311，Annie 2026-11-14）：预览给 file_date；不是今天要带 confirm_date，否则后端 400 不发。
  *
  * 🔴 orders 不能为空，而且必须是合法 JSON 数组：后端 `selected_orders` 缺失或解析失败时
  *    会**发给文件里的所有人**（send.py 的向后兼容分支）。
@@ -49,7 +49,13 @@ export function previewMorningManifest(file: File): Promise<MorningPreview> {
 export function sendMorningBatch(
   file: File,
   orders: string[],
-  guard: { sendAnyway: string[]; vanAnyway: string[]; previewAt: string },
+  guard: {
+    sendAnyway: string[];
+    vanAnyway: string[];
+    previewAt: string;
+    /** 140（G311）：文件日期不是洛杉矶今天时带（lib/other-day.ts confirmDateField），staff 在红日期框点了 Yes 才有。 */
+    confirmDate?: string;
+  },
 ): Promise<MorningSendResponse> {
   if (orders.length === 0) {
     throw new Error("No orders selected.");
@@ -62,6 +68,7 @@ export function sendMorningBatch(
   // 车号无效的单：不在这个数组里就被后端跳过（invalid_van），重复单的 send_anyway 代替不了它。旧后端会忽略这个字段。
   form.append("van_anyway", JSON.stringify(guard.vanAnyway));
   form.append("preview_at", guard.previewAt);
+  if (guard.confirmDate) form.append("confirm_date", guard.confirmDate);
   return apiFetch<MorningSendResponse>("/send/morning-pickup", {
     method: "POST",
     body: form,

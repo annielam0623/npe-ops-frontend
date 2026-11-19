@@ -122,8 +122,13 @@ export interface PersonTotals {
   days: Record<FieldRole, number>;
   /** 各段几次（一天两段各记 1 次），按次数多到少、再按名字。 */
   byTour: Array<{ title: string; count: number }>;
-  /** 还没存档（live）的天。 */
-  liveDays: number;
+  /** 136：Dispatch 还没点 Completed 的天。 */
+  notCompletedDays: number;
+}
+
+/** 136：那天 Dispatch 还没点 Completed（只看 status；没带 status 的旧后端当作 completed）。 */
+export function isNotCompleted(day: Pick<FieldCalendarDay, "status">): boolean {
+  return day.status === "not_completed";
 }
 
 /** 合计：只算 [from, to] 里的天（月历前后补的格子不算）。 */
@@ -135,13 +140,13 @@ export function totalsOf(
   const out: PersonTotals = {
     days: { driver: 0, guide: 0, both: 0 },
     byTour: [],
-    liveDays: 0,
+    notCompletedDays: 0,
   };
   const tours = new Map<string, number>();
   for (const d of days) {
     if (d.date < from || d.date > to) continue;
     out.days[d.role] += 1;
-    if (d.source === "live") out.liveDays += 1;
+    if (isNotCompleted(d)) out.notCompletedDays += 1;
     for (const r of d.runs) {
       const t = runTitle(r) || "No tour name";
       tours.set(t, (tours.get(t) ?? 0) + 1);
@@ -174,7 +179,7 @@ export const EXPORT_HEADERS = [
   "Role",
   "Tours",
   "Vans",
-  "Saved",
+  "Status",
 ] as const;
 
 /** ⬇ Export for payroll：每人每天一行 + 每人一行合计（[from, to] 里的天）。 */
@@ -196,7 +201,7 @@ export function exportRows(
         ROLE_LABEL[d.role],
         d.runs.map((r) => runTitle(r) || "No tour name").join(" / "),
         d.runs.map((r) => (hasText(r.van) ? r.van : "No van")).join(" / "),
-        d.source === "live" ? "Not saved yet (live)" : "Saved",
+        isNotCompleted(d) ? "Not completed" : "Completed",
       ]);
     }
     const t = totalsOf(days, from, to);
@@ -206,7 +211,7 @@ export function exportRows(
       `Driver ${t.days.driver} · Guide ${t.days.guide} · Driver & Guide ${t.days.both}`,
       t.byTour.map((x) => `${x.title} ×${x.count}`).join(" / "),
       "",
-      t.liveDays ? `${t.liveDays} live day(s)` : "",
+      t.notCompletedDays ? `${t.notCompletedDays} day(s) not completed` : "",
     ]);
   }
   return rows;

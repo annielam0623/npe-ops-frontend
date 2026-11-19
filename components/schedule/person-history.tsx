@@ -247,6 +247,31 @@ function Body({
           {swapPair ? `: swap ${swapPair}` : decided ? `: ${decided}` : ""}.
         </span>
       );
+    // G298 发布后换班（8e 2026-11-18）：撤回只带 peer（by 是发起人），两种系统 / 主管关掉的带 requester。
+    case "swap_withdrawn": {
+      const pair =
+        swapPair ??
+        (e.from_slot && e.request
+          ? `${slotText(e.from_slot)} ↔ ${e.peer ?? ""}’s ${req}`
+          : "");
+      return (
+        <span>
+          <span className={SUB}>Withdrew the swap</span>
+          {pair ? ` ${pair}` : ""}
+          {via ? <span className={SUB}> · {via}</span> : null}
+        </span>
+      );
+    }
+    case "request_closed_week_started":
+    case "request_closed_other_swap":
+      return (
+        <span className={SUB}>
+          {e.kind === "request_closed_week_started"
+            ? "Swap closed — the week started"
+            : "Swap closed — one of the shifts was swapped with someone else"}
+          {swapPair ? `: ${swapPair}` : ""}.
+        </span>
+      );
     default:
       return <Lines lines={e.lines} />;
   }

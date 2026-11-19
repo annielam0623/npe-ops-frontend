@@ -144,7 +144,8 @@ http.createServer(async (req, res) => {
   const p = url.pathname;
   const q = Object.fromEntries(url.searchParams);
   if (p === "/__log") return send(res, 200, log);
-  if (p === "/__ctl") { const b = JSON.parse(await readRaw(req)); if (b.layoutReset) { layoutMock.reset(); relayStore.tour_colors = {}; delete b.layoutReset; } if (b.version) { state.version = b.version; delete b.version; } if (b.hiddenCols) { state.hiddenCols = b.hiddenCols; delete b.hiddenCols; } Object.assign(ctl, b); return send(res, 200, ctl); }
+  if (p === "/__ctl") { const b = JSON.parse(await readRaw(req)); if (b.layoutReset) { layoutMock.reset(); relayStore.tour_colors = {}; delete b.layoutReset; } if (b.version) { state.version = b.version; delete b.version; } if (b.hiddenCols) { state.hiddenCols = b.hiddenCols; delete b.hiddenCols; }    if ("staffBoard" in b) { const g = state.guests.find((x) => x.order_number === "CHD3"); if (b.staffBoard) Object.assign(g, { boarding: "no_show", boarding_mark: { value: "no_show", label: "", by: "Lizzie", role: "staff", vehicle: null, at: "2026-10-05T09:15:00-07:00" }, boarding_staff_changed: true, boarding_original: { value: "boarded", label: "", by: "Ana", role: "guide", vehicle: "Bus A (2041)", at: "2026-10-05T07:02:00-07:00" } }); else { g.boarding = "boarded"; delete g.boarding_mark; delete g.boarding_staff_changed; delete g.boarding_original; } delete b.staffBoard; }
+ Object.assign(ctl, b); return send(res, 200, ctl); }
   if (p === "/auth/login") { res.setHeader("Content-Type", "text/html"); return res.end("LOGIN"); }
   const entry = { method: req.method, path: p, q };
   log.push(entry);
@@ -322,7 +323,8 @@ http.createServer(async (req, res) => {
       tours: [{ manifest_id: 3, name: "Antelope Canyon", color: tc.all || "#8db76f", default_color: "#8db76f", header_color: tc.all || "#8db76f", header_default_color: "#8db76f", color_set: !!tc.all, buses: [bus("A", "#8db76f"), bus("B", "#8db76f")] }] });
   }
   if (p === "/admin/dispatch/manifest/guide") { res.setHeader("Content-Type", "text/html"); return res.end(`<html><title>GUIDE ${q.bus}</title><body>GUIDE</body></html>`); }
-  if (p === "/admin/dispatch/manifest/print") { res.setHeader("Content-Type", "text/html"); return res.end(`<html><title>PRINT ${q.date} ${q.tour} ${q.bus ?? "all"}</title><body>PRINT</body></html>`); }
+  // 151 View only：打印页的样子（同后端 admin/tour_manifest_print.html：顶上 .bar + 灰底上一张张 A4 横向 .page）；view=1 = 只看。
+  if (p === "/admin/dispatch/manifest/print") { res.setHeader("Content-Type", "text/html"); const n = q.bus ? 1 : 2; return res.end(`<!DOCTYPE html><html><head><title>PRINT ${q.date} ${q.tour} ${q.bus ?? "all"}</title><style>body{margin:0;background:#e9ecef}.bar{height:52px;background:#0b1724;color:#fff}.pages{display:flex;flex-direction:column;align-items:center;gap:16px;padding:16px}.page{width:1123px;height:794px;background:#fff}</style></head><body><div class="bar">PRINT BAR <button onclick="window.print()">Print</button></div><div class="pages">${Array.from({ length: n }, (_, i) => `<div class="page" data-sheet="${i + 1}">PRINT ${q.bus ?? "all"} sheet ${i + 1}</div>`).join("")}</div></body></html>`); }
   if (p === "/admin/dispatch/manifest/download") {
     entry.body = await readRaw(req);
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");

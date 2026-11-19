@@ -34,6 +34,7 @@ import {
   sendRelayRound,
   RELAY_SEND_TYPE,
 } from "@/lib/dispatch-api";
+import { confirmDateField } from "@/lib/other-day";
 import { LA_TIME_ZONE } from "@/lib/la-date";
 import { inkOnSolid } from "@/lib/shuttle-colors";
 import { resolveTourColor } from "@/lib/tour-colors";
@@ -597,6 +598,7 @@ export function RelayPanel({
       const sendAnyway = uniq([...resend, ...overridden]);
       const res = await sendRelayRound(date, code, {
         order_numbers: orders,
+        ...confirmDateField(date),
         // 131：tour_car 按团发只带这个团（勾的单 + tour）；orders 永远不空（askRound 先挡了）。
         ...(tour !== null ? { tour } : {}),
         ...(sendAnyway.length
@@ -705,7 +707,7 @@ export function RelayPanel({
 
   async function sendDrivers(keys: string[]): Promise<ActionResult> {
     try {
-      const res = await sendDriverNotice(date, keys);
+      const res = await sendDriverNotice(date, keys, confirmDateField(date));
       setConfirm(null);
       setDriverNoContact(noContactLine(res));
       if (res.failed.length) {
@@ -917,6 +919,12 @@ export function RelayPanel({
               one text message and use plain English letters.
             </li>
             <li>You can only send for today or tomorrow.</li>
+            <li data-howto-other-day>
+              If the day you are sending for is not today (Los Angeles time), a
+              box shows that day in large red letters. Click &ldquo;Yes, I need
+              to send for …&rdquo; only if you really mean to send for that day;
+              Cancel sends nothing.
+            </li>
             {/* G266 preview 题 5 A（第 9 条 Notes 等 ② 上了再加）。 */}
             {driverMarks ? (
               <>
@@ -1107,6 +1115,12 @@ export function RelayPanel({
               section in its Bus Manifest colour and its own Preview &amp; send,
               which sends only the ticked guests of that tour. Send each tour
               when it is due.
+            </li>
+            <li data-howto-other-day>
+              If the day you are sending for is not today (Los Angeles time),
+              Preview &amp; send shows a box with that day in large red letters.
+              Click &ldquo;Yes, I need to send for …&rdquo; only if you really
+              mean to send for that day; Cancel sends nothing.
             </li>
             <li>
               Guests who already got the reminder are skipped. Tick Send anyway
@@ -1354,6 +1368,10 @@ export function RelayPanel({
           confirmLabel={`Send to ${plural(confirm.orders.length + anyRows.length, "guest")}`}
           busyLabel="Sending…"
           wide
+          sendFor={{
+            date,
+            what: `the ${confirm.title} reminder to ${plural(confirm.orders.length + anyRows.length, "guest")}`,
+          }}
           onClose={() => setConfirm(null)}
           onConfirm={() =>
             sendRound(
@@ -1462,6 +1480,10 @@ export function RelayPanel({
           title="Text the drivers?"
           confirmLabel={`Text ${plural(confirm.names.length, "driver")}`}
           busyLabel="Sending…"
+          sendFor={{
+            date,
+            what: `the driver text to ${plural(confirm.names.length, "driver")}`,
+          }}
           onClose={() => setConfirm(null)}
           onConfirm={() => sendDrivers(confirm.keys)}
         >
@@ -1644,7 +1666,12 @@ function GuideBox({
 
   async function send(keys: string[]): Promise<ActionResult> {
     try {
-      const res = await sendGuideNotice(date, keys, extraText);
+      const res = await sendGuideNotice(
+        date,
+        keys,
+        extraText,
+        confirmDateField(date),
+      );
       setConfirm(null);
       setNoContactText(noContactLine(res));
       setOkText(
@@ -1850,6 +1877,10 @@ function GuideBox({
           title="Text the guides?"
           confirmLabel={`Text ${plural(confirm.names.length, "guide")}`}
           busyLabel="Sending…"
+          sendFor={{
+            date,
+            what: `the guide text to ${plural(confirm.names.length, "guide")}`,
+          }}
           onClose={() => setConfirm(null)}
           onConfirm={() => send(confirm.keys)}
         >

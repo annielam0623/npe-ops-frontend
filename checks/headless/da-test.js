@@ -110,6 +110,8 @@ async function main() {
   await cdp("Runtime.enable");
   // 自动保存（Annie 2026-10-15）：检查里默认等很久、不自己存；要存的地方用 saveNow() / trySave()。
   await cdp("Page.addScriptToEvaluateOnNewDocument", { source: AUTOSAVE_OFF });
+  // 135：检查里 Dispatch 的「今天」固定成 2026-10-05（同 mock 的 ctl.mockToday），原有的发送不弹 This is not today。
+  await cdp("Page.addScriptToEvaluateOnNewDocument", { source: "window.__laToday = '2026-10-05';" });
 
   try {
     await run();
@@ -1426,6 +1428,45 @@ async function run() {
   check("自动存：整天送，多了一行 relay_2（新行、司机 / 车 / 酒店照 1st Round）", c2.length === 1 && c2[0].id == null && c2[0].driver_hr_id === 1 && c2[0].vehicle_id === 10 && JSON.stringify(c2[0].location_ids) === "[100]", JSON.stringify(cs?.rows));
   check("How to use 写了 Copy 1st Round", await evaluate("return document.body.textContent.replace(/\\s+/g, ' ').includes('2nd Round: Copy 1st Round copies the cars, drivers and hotels.');"));
 
+  // ── CCL 关掉的团：Step 1 卡不再要求保存（Annie 2026-11-18「south bus的那个close同意推荐，动手」，样稿 4DBfnaUmsSMFaGd9FZhqac 4 题全 A）──
+  {
+    const hc = `document.querySelector('[data-card="4"]')`;
+    const cardsOrder = `[...document.querySelector('section[aria-label="Guest lists"]').querySelectorAll('[data-card]')].map(c => c.dataset.card).join(',')`;
+    const openClosedDay = async () => {
+      await goto(`${APP}/dispatch?date=2026-10-06`);
+      await waitFor(`${hc} && ${hc}.hasAttribute('data-card-closed')`, 30000);
+      await helpers();
+    };
+    // 能编辑的人，名单上 0 人（只有 1 张取消 / 改期）。
+    await ctl({ closedHoover: 0, superAdmin: true, staffPerms: null });
+    await openClosedDay();
+    const t0 = await evaluate(`return ${hc}.textContent.replace(/\\s+/g, ' ');`);
+    check("关团 · 编辑：Step 1 Hoover Dam 卡写 Closed（用 CCL 说明「Closed due to weather」）、车行「Closed by CCL · 0 guests loaded」、取消灰字照旧",
+      t0.includes("Closed due to weather") && t0.includes("Closed by CCL · 0 guests loaded") && t0.includes("1 cancelled / moved") && !t0.includes("No bus assigned"), t0);
+    check("关团 · 编辑：没有 Needs saving、没有 Assign Bus，只有白色 Check the bus", !t0.includes("Needs saving") && !(await evaluate(`return !!$btn('Assign Bus', ${hc});`)) && (await evaluate(`const b = $btn('Check the bus', ${hc}); return !!b && getComputedStyle(b).backgroundColor !== 'rgb(59, 130, 246)';`)), t0);
+    check("关团 · 编辑：卡底色灰 #f3f3f1、排在最后（West Rim 在前）", (await evaluate(`return getComputedStyle(${hc}).backgroundColor;`)) === "rgb(243, 243, 241)" && (await evaluate(`return ${cardsOrder};`)).endsWith(",4"), await evaluate(`return ${cardsOrder};`));
+    check("关团 · 编辑：Step 2 照旧写 CCL closed this tour", await evaluate(`return ${sec("Hoover Dam")}.textContent.includes('CCL closed this tour for the day');`));
+    check("关团 · How to use — Guest lists 加一条", await evaluate(`return document.body.textContent.includes('A tour that CCL closed for the day shows Closed. It does not need saving and has no bus.');`));
+    await evaluate("window.__scrolled = []; const orig = Element.prototype.scrollIntoView; Element.prototype.scrollIntoView = function (o) { window.__scrolled.push(this.id || this.getAttribute('data-sec') || this.tagName); return orig.call(this, o); }; return 1;");
+    await evaluate(`$btn('Check the bus', ${hc}).click();`);
+    await sleep(400);
+    check("关团 · 点 Check the bus：滚到 Step 2 这个团", await evaluate("return window.__scrolled.includes('bus_tour:4');"), await evaluate("return JSON.stringify(window.__scrolled);"));
+    // 名单上还有客人（题 4 A）：橙字 + 排前。
+    await ctl({ closedHoover: 3 });
+    await openClosedDay();
+    const t3 = await evaluate(`return ${hc}.textContent.replace(/\\s+/g, ' ');`);
+    check("关团 · 还有 3 位客人：橙字「Closed by CCL, but 3 guests are still on the list. Check them in Order List.」、仍写 Closed、没有 Needs saving",
+      t3.includes("Closed by CCL, but 3 guests are still on the list. Check them in Order List.") && t3.includes("Closed due to weather") && !t3.includes("Needs saving") && !(await evaluate(`return !!$btn('Assign Bus', ${hc});`)), t3);
+    check("关团 · 还有客人：这张卡排到前面", (await evaluate(`return ${cardsOrder};`)).startsWith("4,"), await evaluate(`return ${cardsOrder};`));
+    // 只能看的人（题 2 A）：也读 CCL 关团，两处都写 Closed。
+    await ctl({ closedHoover: 0, superAdmin: false, staffPerms: ["dispatch.view", "manifests.view"] });
+    await openClosedDay();
+    const tv = await evaluate(`return ${hc}.textContent.replace(/\\s+/g, ' ');`);
+    check("关团 · 只看的人：Step 1 也写 Closed、Closed by CCL，没有 Needs saving", tv.includes("Closed due to weather") && tv.includes("Closed by CCL · 0 guests loaded") && !tv.includes("Needs saving"), tv);
+    check("关团 · 只看的人：Step 2 也写 CCL closed this tour；页面没有 CCL 预填蓝条", (await evaluate(`return ${sec("Hoover Dam")}.textContent.includes('CCL closed this tour for the day');`)) && !(await evaluate("return !!document.querySelector('section[aria-label=CCL]');")));
+    await ctl({ closedHoover: null, superAdmin: false, staffPerms: null });
+  }
+
   // ── 没客人的团收起来、有客人的写人数、Save 后滚到 Completed（Annie 2026-10-15）──
   // Completed 键只给 Super Admin（Annie 2026-11-08 选 A），这一段按 Super Admin 跑。
   await ctl({ emptyHoover: true, superAdmin: true });
@@ -2663,9 +2704,9 @@ async function run() {
     await ctl({ pillDemo: false });
   }
 
-  // ── 置顶 83：凌晨 2:00–8:30（洛杉矶）登录的，Dispatch 默认看今天（登录那天）；Annie「1 登录时间选A   动手」──
+  // ── 置顶 83 / 134：12:00 AM–8:30 AM（洛杉矶）登录的，Dispatch 默认看今天（登录那天）；Annie「1 登录时间选A   动手」──
   {
-    // 2026-10-04 是夏令时（PDT，UTC-7）：LA 02:00 = 09:00Z。mock 不带 date 时回 2026-10-05（= 后端默认明天）。
+    // 2026-10-04 是夏令时（PDT，UTC-7）：LA 00:00 = 07:00Z，02:00 = 09:00Z。mock 不带 date 时回 2026-10-05（= 后端默认明天）。
     const dayGets = async (from) => (await mockLog()).slice(from).filter((e) => e.path === "/api/dispatch/day" && e.method === "GET");
     const openAt = async (loggedInAt, url = `${APP}/dispatch`) => {
       await ctl({ loggedInAt });
@@ -2680,7 +2721,11 @@ async function run() {
       ["2026-10-04T09:00:00Z", "2026-10-04", "02:00 登录 ⇒ 今天"],
       ["2026-10-04T15:30:59Z", "2026-10-04", "08:30:59 登录 ⇒ 今天"],
       ["2026-10-04T15:31:00Z", null, "08:31 登录 ⇒ 照旧（后端默认明天，不带 date）"],
-      ["2026-10-04T08:59:00Z", null, "01:59 登录 ⇒ 照旧"],
+      ["2026-10-04T08:59:00Z", "2026-10-04", "134 01:59 登录 ⇒ 今天（起点改 12:00 AM）"],
+      ["2026-10-04T08:53:00Z", "2026-10-04", "134 01:53 登录（11-13 Veronica 那次）⇒ 今天"],
+      ["2026-10-04T07:00:00Z", "2026-10-04", "134 00:00 登录 ⇒ 今天"],
+      ["2026-10-04T06:59:00Z", null, "134 前一天 11:59 PM 登录 ⇒ 照旧（后端默认明天）"],
+      ["2026-11-04T08:30:00Z", "2026-11-04", "134 冬令时（PST）00:30 登录 ⇒ 今天"],
       ["2026-11-04T10:15:00Z", "2026-11-04", "冬令时（PST）02:15 登录 ⇒ 今天"],
       [null, null, "logged_in_at = null ⇒ 照旧"],
     ];
@@ -2712,8 +2757,52 @@ async function run() {
     }
     r = await openAt("2026-10-04T10:00:00Z");
     check("83 从侧栏重新进 Dispatch（网址没日期）⇒ 仍按登录时间看今天", r.first && r.first.q.date === "2026-10-04", JSON.stringify(r));
-    check("83 How to use 写了凌晨登录看今天", await evaluate("return document.body.textContent.replace(/\\s+/g, ' ').includes('if you signed in between 2:00 AM and 8:30 AM (Las Vegas time), Dispatch opens on today until you sign in again');"));
+    check("83 How to use 写了凌晨登录看今天", await evaluate("return document.body.textContent.replace(/\\s+/g, ' ').includes('if you signed in between 12:00 AM and 8:30 AM (Las Vegas time), Dispatch opens on today until you sign in again');"));
     await ctl({ loggedInAt: false });
+  }
+
+  // ── 147 / G318：今天 Open 班的人在时间窗内进 Dispatch 默认今天（后端 /api/me dispatch_open_today）；Annie「同意全部推荐。动手」──
+  {
+    const laToday = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Los_Angeles", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+    const nextDay = (() => { const [y, m, d] = laToday.split("-").map(Number); return new Date(Date.UTC(y, m - 1, d + 1)).toISOString().slice(0, 10); })();
+    const dayGets = async (from) => (await mockLog()).slice(from).filter((e) => e.path === "/api/dispatch/day" && e.method === "GET");
+    const openWith = async (c, url = `${APP}/dispatch`) => {
+      await ctl(c);
+      const from = (await mockLog()).length;
+      await openPage(url);
+      await waitFor("document.querySelector('.vrow')");
+      await sleep(300);
+      const gets = await dayGets(from);
+      return { first: gets[0], url: await evaluate("return location.search;") };
+    };
+    // 08:31 登录（登录规则下 = 明天），但今天 Open 班在窗内 ⇒ 今天
+    let r = await openWith({ openToday: true, loggedInAt: "2026-10-04T15:31:00Z" });
+    check("147 早班在时间窗内（登录在 8:30 之后）⇒ 今天", r.first && r.first.q.date === laToday, JSON.stringify(r) + " want " + laToday);
+    check("147 打开后网址写上今天", r.url.includes(`date=${laToday}`), r.url);
+    r = await openWith({ openToday: true, loggedInAt: null });
+    check("147 早班在窗内、没有登录时间 ⇒ 今天", r.first && r.first.q.date === laToday, JSON.stringify(r));
+    r = await openWith({ openToday: true, loggedInAt: null }, `${APP}/dispatch?date=2026-10-07`);
+    check("147 网址带 ?date= ⇒ 照网址（早班也一样）", r.first && r.first.q.date === "2026-10-07", JSON.stringify(r));
+    {
+      await openWith({ openToday: true, loggedInAt: null });
+      await evaluate("document.querySelector('[aria-label=\"Next day\"]').click(); return 1;");
+      await waitFor(`location.search.includes('date=${nextDay}')`);
+      const from = (await mockLog()).length;
+      await openPage(`${APP}${await evaluate("return location.pathname + location.search;")}`);
+      await waitFor("document.querySelector('.vrow')");
+      const g = (await dayGets(from))[0];
+      check("147 早班自己换到明天后刷新 ⇒ 还是明天，不跳回今天", g && g.q.date === nextDay, JSON.stringify(g));
+    }
+    r = await openWith({ openToday: false, loggedInAt: "2026-10-04T15:31:00Z" });
+    check("147 dispatch_open_today = false、8:31 登录 ⇒ 走登录规则（后端默认明天，不带 date）", r.first && !r.first.q.date, JSON.stringify(r));
+    r = await openWith({ openToday: false, loggedInAt: "2026-10-04T09:00:00Z" });
+    check("147 dispatch_open_today = false、2:00 登录 ⇒ 登录那天", r.first && r.first.q.date === "2026-10-04", JSON.stringify(r));
+    r = await openWith({ openToday: "unset", loggedInAt: "2026-10-04T15:31:00Z" });
+    check("147 旧后端（没有 dispatch_open_today）、8:31 登录 ⇒ 走登录规则", r.first && !r.first.q.date, JSON.stringify(r));
+    r = await openWith({ openToday: "unset", loggedInAt: "2026-10-04T09:00:00Z" });
+    check("147 旧后端、2:00 登录 ⇒ 登录那天", r.first && r.first.q.date === "2026-10-04", JSON.stringify(r));
+    check("147 How to use 第 1 条写了早班规则", await evaluate("return document.body.textContent.replace(/\\s+/g, ' ').includes('If you are on today\\u2019s Open shift in the published Staff Schedule, Dispatch opens on today each time you open it between 12:00 AM and 10:00 AM (Las Vegas time; Super Admin can change these times).');"));
+    await ctl({ loggedInAt: false, openToday: "unset" });
   }
 
   // ── G266 每人发过没（Annie「G266 Dispatch同意推荐，动手」，preview X7ptbfdS5zbqgqUNb8fSmg 全 A；后端 60963f35）──
@@ -2786,11 +2875,143 @@ async function run() {
     check("G300 存了以后：Changed 的车换了司机（5），备注 ZZ note stays 不变", !!changed && changed.driver_hr_id === 5 && changed.vehicle_id === 12, JSON.stringify(rows300));
   }
 
+  await otherDay();
+
   // 401
   await ctl({ fail401: true });
   await goto(`${APP}/dispatch`);
   await waitFor("location.pathname === '/auth/login'");
   check("未登录跳旧后台登录页", (await evaluate("return location.href;")).startsWith(`${APP}/auth/login?next=`));
   await ctl({ fail401: false });
+}
+
+// ── 135：Dispatch 发送的日子不是今天（洛杉矶）⇒ 先弹 This is not today（Annie 2026-11-13，后端 54 转，风险方案 B）──
+// 日期大号红字；确认键 "Yes, I need to send for Mon, Oct 5"（不能写 Send anyway）；Cancel 什么都不发；Yes 才发、带 confirm_date。
+// 今天 = 不弹框、不带 confirm_date。三个接口（relay-send 各轮 / 团车、driver-notice/send、guide-notice/send）都核。
+async function otherDay() {
+  const rp = "document.querySelector('section[aria-label=\"Morning Relay — send to guests\"]')";
+  const dp = "document.querySelector('section[aria-label=\"Send to drivers & guides\"]')";
+  const gbox = `${dp}.querySelector('[aria-label="Send to guide"]')`;
+  const dbox = `${dp}.querySelector('[aria-label="Send to driver"]')`;
+  const od = "document.querySelector('[data-other-day-confirm]')";
+  const sendTo = `[...${dialog}.querySelectorAll('button')].find((b) => b.textContent.startsWith('Send to '))`;
+  const shot = async (name) => {
+    if (!process.env.SHOT_DIR) return;
+    await sleep(250);
+    const r = await cdp("Page.captureScreenshot", { format: "png" });
+    require("fs").mkdirSync(process.env.SHOT_DIR, { recursive: true });
+    require("fs").writeFileSync(require("path").join(process.env.SHOT_DIR, `dispatch-other-day-${name}.png`), Buffer.from(r.data, "base64"));
+  };
+  const open = async (today) => {
+    await goto(`${APP}/dispatch?date=2026-10-05&tab=send`);
+    await waitFor("document.querySelector('.vrow')", 30000);
+    await helpers();
+    await evaluate(`window.__laToday = '${today}';`);
+    await waitFor(`${rp}.querySelector('[aria-label="Need a look"]')`, 30000);
+  };
+  await ctl({ relaySent: [], relayLater: [], relayRace: [], relayGone: [], relay409: false, relay502: false, driverFail: false, driver400: false, driver502: false, noticeNoContact: false, guide400: false, guideFail: false, guidePage: null, driverPage: null, mockToday: "2026-10-04" });
+
+  // ① 明天（今天 10-04，发 10-05）：relay 1st Round
+  await open("2026-10-04");
+  await waitFor(`!$btn('Preview & send', ${rp}).disabled`);
+  let b0 = (await mockLog()).length;
+  await evaluate(`$btn('Preview & send', ${rp}).click();`);
+  await waitFor(`${dialog} && !!(${sendTo})`);
+  await evaluate(`(${sendTo}).click();`);
+  await waitFor(od, 5000);
+  const box = await evaluate(`const o = ${od}; const d = o.querySelector('[data-other-day-date]'); const y = o.querySelector('[data-other-day-yes]'); const c = o.querySelector('[data-other-day-cancel]'); return { text: o.textContent.replace(/\\s+/g, ' '), date: d.textContent, color: getComputedStyle(d).color, size: getComputedStyle(d).fontSize, yes: y.textContent, yesBg: getComputedStyle(y).backgroundColor, cancel: c.textContent, focus: document.activeElement === c, anyway: o.textContent.includes('Send anyway') };`);
+  check("135 明天：点 Send to … 先弹「This is not today」，日期 Mon, Oct 5 大号红字（28px、#A32D2D），写今天是 Sun, Oct 4", box.date === "Mon, Oct 5" && box.color === "rgb(163, 45, 45)" && box.size === "28px" && box.text.includes("This is not today") && box.text.includes("You are about to send the 1st Round") && box.text.includes("Today is Sun, Oct 4 (Los Angeles time)."), JSON.stringify(box));
+  check("135 确认键原文「Yes, I need to send for Mon, Oct 5」、蓝色（提交键）；另有 Cancel、默认焦点在 Cancel；整框不出 Send anyway", box.yes === "Yes, I need to send for Mon, Oct 5" && box.yesBg === "rgb(59, 130, 246)" && box.cancel === "Cancel" && box.focus && !box.anyway, JSON.stringify(box));
+  check("135 弹框时还没发（没有 relay-send 请求）", (await since(b0, (e) => e.path === "/api/dispatch/relay-send")).length === 0);
+  await shot("desktop");
+  await evaluate(`${od}.querySelector('[data-other-day-cancel]').click();`);
+  await sleep(400);
+  check("135 Cancel：框关掉、什么都不发；原来的发送弹窗还在、Send to … 能再点", !(await evaluate(`return !!${od};`)) && (await since(b0, (e) => e.path === "/api/dispatch/relay-send")).length === 0 && (await evaluate(`return !!${dialog} && !(${sendTo}).disabled;`)));
+  await evaluate(`(${sendTo}).click();`);
+  await waitFor(od, 5000);
+  await evaluate(`${od}.querySelector('[data-other-day-yes]').click();`);
+  await waitFor(`!${dialog}`, 10000);
+  const rs = (await since(b0, (e) => e.path === "/api/dispatch/relay-send"))[0]?.body;
+  check("135 Yes：才发，请求带 date 2026-10-05 + confirm_date 2026-10-05（只发一次）", rs?.date === "2026-10-05" && rs?.confirm_date === "2026-10-05" && (await since(b0, (e) => e.path === "/api/dispatch/relay-send")).length === 1, JSON.stringify(rs));
+
+  // ② 明天：Send to driver
+  await waitFor(`!!${dbox} && !$btn('Send texts now', ${dbox}).disabled`, 15000);
+  b0 = (await mockLog()).length;
+  await evaluate(`$btn('Send texts now', ${dbox}).click();`);
+  await waitFor(`${dialog} && !!$btn('Text 1 driver', ${dialog})`);
+  await evaluate(`$btn('Text 1 driver', ${dialog}).click();`);
+  await waitFor(od, 5000);
+  check("135 Send to driver 也先弹框：写 the driver text to 1 driver、Yes, I need to send for Mon, Oct 5；还没发", (await evaluate(`const t = ${od}.textContent; return t.includes('the driver text to 1 driver') && t.includes('Yes, I need to send for Mon, Oct 5');`)) && (await since(b0, (e) => e.path === "/api/dispatch/driver-notice/send")).length === 0);
+  await evaluate(`${od}.querySelector('[data-other-day-yes]').click();`);
+  await waitFor(`!${dialog}`, 10000);
+  const ds = (await since(b0, (e) => e.path === "/api/dispatch/driver-notice/send"))[0]?.body;
+  check("135 Send to driver：Yes 后才发，带 confirm_date 2026-10-05", ds?.confirm_date === "2026-10-05" && ds?.date === "2026-10-05", JSON.stringify(ds));
+
+  // ③ 明天：Send to guide（Cancel 一次、再 Yes）
+  await waitFor(`!!${gbox} && !${gbox}.querySelector('[data-guide-send]').disabled`, 15000);
+  b0 = (await mockLog()).length;
+  await evaluate(`${gbox}.querySelector('[data-guide-send]').click();`);
+  await waitFor(`${dialog} && !!$btn('Text 2 guides', ${dialog})`);
+  await evaluate(`$btn('Text 2 guides', ${dialog}).click();`);
+  await waitFor(od, 5000);
+  check("135 Send to guide 也先弹框：写 the guide text to 2 guides", await evaluate(`return ${od}.textContent.includes('the guide text to 2 guides');`));
+  await evaluate(`${od}.querySelector('[data-other-day-cancel]').click();`);
+  await sleep(400);
+  check("135 Send to guide Cancel：不发", (await since(b0, (e) => e.path === "/api/dispatch/guide-notice/send")).length === 0 && !(await evaluate(`return !!${od};`)));
+  await evaluate(`$btn('Text 2 guides', ${dialog}).click();`);
+  await waitFor(od, 5000);
+  await evaluate(`${od}.querySelector('[data-other-day-yes]').click();`);
+  await waitFor(`!${dialog}`, 10000);
+  const gs = (await since(b0, (e) => e.path === "/api/dispatch/guide-notice/send"))[0]?.body;
+  check("135 Send to guide：Yes 后才发，带 confirm_date 2026-10-05", gs?.confirm_date === "2026-10-05", JSON.stringify(gs));
+
+  // ④ How to use：两块都有这一句
+  check("135 How to use：Morning Relay 和 Send to drivers & guides 两块都加了一句", await evaluate(`const h = [...document.querySelectorAll('[data-howto-other-day]')].map((l) => l.textContent.replace(/\\s+/g, ' ')); return h.length === 2 && h.every((t) => t.includes('is not today (Los Angeles time)') && t.includes('“Yes, I need to send for …”') && t.includes('Cancel sends nothing.'));`), await evaluate("return [...document.querySelectorAll('[data-howto-other-day]')].map((l) => l.textContent).join(' | ');"));
+
+  // ⑤ 页面以为是今天、后端认为不是（例如开着页面过了半夜）：不弹框、不带 confirm_date ⇒ 后端 400，弹窗里红字写原话
+  await evaluate("window.__laToday = '2026-10-05';");
+  await waitFor(`!$btn('Send texts now', ${dbox}).disabled`, 15000);
+  b0 = (await mockLog()).length;
+  await evaluate(`$btn('Send texts now', ${dbox}).click();`);
+  await waitFor(`${dialog} && !!$btn('Text 1 driver', ${dialog})`);
+  await evaluate(`$btn('Text 1 driver', ${dialog}).click();`);
+  await waitFor(`${dialog}.querySelector('[role=alert]')`, 8000);
+  check("135 后端拒（不是今天又没带 confirm_date）：弹窗里红字写后端原话", await evaluate(`const a = ${dialog}.querySelector('[role=alert]'); return a.textContent.includes('This send is for Monday, October 5 (2026-10-05), not today. Confirm that date to send.') && getComputedStyle(a).color === 'rgb(163, 45, 45)';`), await evaluate(`return ${dialog}.textContent;`));
+  await evaluate(`$btn('Cancel', ${dialog}).click();`);
+  await waitFor(`!${dialog}`);
+
+  // ⑥ 今天（10-05 发 10-05）：不弹框，跟现在一样；不带 confirm_date
+  await ctl({ mockToday: "2026-10-05" });
+  b0 = (await mockLog()).length;
+  await evaluate(`$btn('Send texts now', ${dbox}).click();`);
+  await waitFor(`${dialog} && !!$btn('Text 1 driver', ${dialog})`);
+  await evaluate(`$btn('Text 1 driver', ${dialog}).click();`);
+  await waitFor(`!${dialog}`, 10000);
+  const td = (await since(b0, (e) => e.path === "/api/dispatch/driver-notice/send"))[0]?.body;
+  check("135 今天：不弹框直接发，请求不带 confirm_date（同现在）", !!td && !("confirm_date" in td) && !(await evaluate(`return !!${od};`)), JSON.stringify(td));
+  if (process.env.SHOT_DIR) {
+    await evaluate(`$btn('Send texts now', ${dbox}).click();`);
+    await waitFor(`${dialog} && !!$btn('Text 1 driver', ${dialog})`);
+    await shot("today");
+    await evaluate(`$btn('Cancel', ${dialog}).click();`);
+    await waitFor(`!${dialog}`);
+  }
+
+  // ⑦ 手机宽度（390）：框不出屏、不能左右晃；截图
+  await ctl({ mockToday: "2026-10-04", relaySent: [] });
+  await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
+  await open("2026-10-04");
+  await waitFor(`!$btn('Preview & send', ${rp}).disabled`);
+  await evaluate(`$btn('Preview & send', ${rp}).click();`);
+  await waitFor(`${dialog} && !!(${sendTo})`);
+  await evaluate(`(${sendTo}).click();`);
+  await waitFor(od, 5000);
+  const ph = await evaluate(`const r = ${od}.closest('[role=dialog]').getBoundingClientRect(); const y = ${od}.querySelector('[data-other-day-yes]').getBoundingClientRect(); return { left: r.left, right: r.right, yr: y.right, w: innerWidth, sw: document.documentElement.scrollWidth };`);
+  check("135 手机宽度：确认框和 Yes 键都在屏幕里、页面不左右晃", ph.left >= 0 && ph.right <= ph.w && ph.yr <= ph.w && ph.sw <= ph.w, JSON.stringify(ph));
+  await shot("phone");
+  await evaluate(`${od}.querySelector('[data-other-day-cancel]').click();`);
+  await evaluate(`$btn('Cancel', ${dialog}).click();`);
+  await cdp("Emulation.clearDeviceMetricsOverride");
+  await ctl({ mockToday: "2026-10-05" });
 }
 main().catch((e) => { console.error(e); process.exit(2); });

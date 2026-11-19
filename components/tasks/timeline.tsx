@@ -49,7 +49,14 @@ export function TaskTimeline({
     const start = Math.max(0, Math.min(nextIndex, items.length - VISIBLE_ROWS));
     const first = items[start];
     const last = items[Math.min(start + VISIBLE_ROWS, items.length) - 1];
-    box.style.maxHeight = `${last.offsetTop + last.offsetHeight - first.offsetTop + 2}px`;
+    // 139：开着 Edit 表单的行比平常高，框至少放得下这一整行，表单不被切掉。
+    const editingHeight = Math.max(
+      0,
+      ...items
+        .filter((li) => li.querySelector("[data-task-edit-form]"))
+        .map((li) => li.offsetHeight + 2),
+    );
+    box.style.maxHeight = `${Math.max(last.offsetTop + last.offsetHeight - first.offsetTop + 2, editingHeight)}px`;
     return { target: items[nextIndex], top: items[0] };
   }, [nextId]);
 
@@ -67,6 +74,8 @@ export function TaskTimeline({
     if (!box || typeof ResizeObserver === "undefined") return;
     const observer = new ResizeObserver(() => void fit());
     observer.observe(box);
+    // 139：某一行展开 Edit 表单时内容变高、框高不变，也要重算，表单才不被框切掉。
+    for (const child of box.children) observer.observe(child);
     return () => observer.disconnect();
   }, [fit]);
 

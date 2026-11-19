@@ -161,6 +161,7 @@ function freshTasks() {
     link_href: tpl.link_href ?? null,
     link_label: tpl.link_label ?? null,
     pass_over: null,
+    work_date: DATE,
     ...overrides,
   });
 
@@ -219,6 +220,28 @@ function freshTasks() {
 }
 
 let tasks = freshTasks();
+// 139 = G269 Daily task list：/api/tasks/templates（只有主管，tasks.manage）。校验同后端 daily_tasks.py 的原话。
+function freshTemplates() {
+  const t = (id, title, priority, ws, we, frequency, extra = {}) => ({ id, title, priority, window_start_time: ws, window_end_time: we, time_limit_minutes: null, frequency, frequency_every_n_days: null, link_href: null, link_label: null, duty_note: null, is_active: true, sort_order: id, ...extra });
+  return [
+    t(1, "Check tomorrow’s Dispatch is complete", "high", "08:00", "10:00", "daily", { link_href: "/dispatch", link_label: "Dispatch" }),
+    t(2, "Reply to guest messages in Tracking", "moderate", "08:00", "21:30", "hourly", { link_href: "/tour-confirmation/tracking", link_label: "Tour Tracking", duty_note: "Reply within 15 minutes during the day." }),
+    t(3, "Print the Morning Relay list", "low", "17:00", "19:00", "daily", { link_href: "/dispatch", link_label: "Dispatch" }),
+    t(4, "Update the weekly forecast", "moderate", null, null, "every_n_days", { frequency_every_n_days: 7, link_href: "/forecast", link_label: "7 Days Forecast", is_active: false }),
+  ];
+}
+let templates = freshTemplates();
+function templateError(t) {
+  if (!t.title || !String(t.title).trim()) return "Title is required";
+  if (!["high", "moderate", "low"].includes(t.priority)) return "priority must be one of ('high', 'moderate', 'low')";
+  if (!["daily", "hourly", "every_n_days", "when_free"].includes(t.frequency)) return "frequency must be one of ('daily', 'hourly', 'every_n_days', 'when_free')";
+  if (t.frequency === "every_n_days" && !(Number.isInteger(t.frequency_every_n_days) && t.frequency_every_n_days > 0)) return "frequency_every_n_days must be a positive integer when frequency is every_n_days";
+  if (t.frequency === "hourly" && (!t.window_start_time || !t.window_end_time)) return "window_start_time and window_end_time are required when frequency is hourly";
+  if (t.window_start_time && t.window_end_time && t.window_end_time < t.window_start_time) return "window_end_time cannot be before window_start_time";
+  if (t.title === "ZZ Test too long") return "title must be at most 200 characters";
+  return null;
+}
+
 let nextId = Math.max(...tasks.map((t) => t.id)) + 1;
 
 const NOTICES = [
@@ -403,6 +426,7 @@ http
       const b = (await readBody(req)) || {};
       if (b.reset) {
         tasks = freshTasks();
+        templates = freshTemplates();
         schedNotices = freshSchedNotices();
         nextId = Math.max(...tasks.map((t) => t.id)) + 1;
         ctl.g202 = false; // 每次 reset 回到「后端 G202 没上线」，要测的套自己带 g202: true
@@ -419,6 +443,31 @@ http
         );
         nextId = Math.max(...tasks.map((t) => t.id)) + 1;
         delete b.edge;
+      }
+      // 139：mineTask ⇒ 把「Antelope Lunch putting on Excel」指定给 Lizzie（员工自己名下的，能 Edit）。
+      // 再加「BZ Lunch」（没做完的，样稿截图用）。
+      if (b.mineTask) {
+        for (const t of tasks.filter((x) => x.title === "Antelope Lunch putting on Excel" || x.title === "BZ Lunch")) {
+          t.assigned_to_username = "lizzie";
+          t.assigned_to_display_name = "Lizzie";
+        }
+        delete b.mineTask;
+      }
+      // 139：carryOver ⇒ 加一条前一天交给 Lizzie、已接受没做完的（work_date 不是今天；后端 37a796b9 起也能 PATCH）。
+      if (b.carryOver) {
+        tasks.push({
+          ...tasks[0],
+          id: 900,
+          template_id: null,
+          title: "ZZ Test Carry over task",
+          work_date: "2026-10-15",
+          assigned_to_username: "lizzie",
+          assigned_to_display_name: "Lizzie",
+          done: false, done_by_username: null, done_by_display_name: null, done_at: null,
+          due_at: null, due_note: "All shift",
+          pass_over: { from_username: "jing", from_display_name: "Jing", from_role: null, to_username: "lizzie", to_display_name: "Lizzie", note: "", at: "2026-10-16T04:55:00.000Z", accepted_at: "2026-10-16T05:10:00.000Z", accepted_by_username: "lizzie", accepted_by_display_name: "Lizzie" },
+        });
+        delete b.carryOver;
       }
       Object.assign(ctl, b);
       // G202：待 Lizzie 接受的那条带交出人设的 Finish by（4:00 PM 洛杉矶；原 due_at 11:00 AM 不动）。
@@ -539,7 +588,9 @@ http
       // confirmNotices：再带上后端 G138 实际发的两类（schedule_confirm_request / schedule_confirm_declined）。
       const base = ctl.confirmNotices ? [...schedNotices, ...confirmNotices()] : schedNotices;
       // directMsg：同事昨天发来的站内消息（type message，没读就一直在 Notice，不只今天的）。
-      const items = ctl.directMsg ? [...base, ...directMsgNotices.filter((n) => !n.is_read)] : base;
+      let items = ctl.directMsg ? [...base, ...directMsgNotices.filter((n) => !n.is_read)] : base;
+      // G297：ctl.pickupNotice ⇒ 最前面一条「酒店空着、团确认没发」（category pickup_missing，href 到订单页带 tour_date）。
+      if (ctl.pickupNotice) items = [{ id: 97, type: "pickup_missing", title: "Pickup location missing: CHDZZ8J8VYD", body: "The tour confirmation for CHDZZ8J8VYD (Fri Nov 13, 2026) was not sent: the pickup location is empty in Rezdy. Add the pickup location to the order in Rezdy, click Refresh from Rezdy on the order, then click Send tour confirmation.<b>x</b>", created_at: new Date(Date.now() - 120 * 1000).toISOString(), is_read: false, read_at: null, ref: null, link: "/orders/CHDZZ8J8VYD?tour_date=2026-11-13" }, ...items];
       return send(res, 200, noticesWire(items, url));
     }
     const readMatch = p.match(/^\/api\/notices\/(\d+)\/read$/);
@@ -553,11 +604,76 @@ http
       return send(res, 200, { ok: true, unread_count: 0 });
     }
 
+    if (p === "/api/tasks/templates" || p.startsWith("/api/tasks/templates/")) {
+      if (!ctl.supervisor) return send(res, 403, { detail: "Supervisor access required" });
+      if (p === "/api/tasks/templates" && req.method === "GET") return send(res, 200, templates);
+      if (p === "/api/tasks/templates" && req.method === "POST") {
+        const b = await readBody(req);
+        entry.body = b;
+        const t = { id: Math.max(0, ...templates.map((x) => x.id)) + 1, title: (b.title || "").trim(), priority: b.priority ?? "moderate", window_start_time: b.window_start_time ?? null, window_end_time: b.window_end_time ?? null, time_limit_minutes: b.time_limit_minutes ?? null, frequency: b.frequency, frequency_every_n_days: b.frequency_every_n_days ?? null, link_href: b.link_href ?? null, link_label: b.link_label ?? null, duty_note: b.duty_note ?? null, is_active: true, sort_order: b.sort_order ?? 0 };
+        const err = templateError(t);
+        if (err) return send(res, 400, { detail: err });
+        templates.push(t);
+        return send(res, 200, t);
+      }
+      if (req.method === "PATCH") {
+        const id = Number(p.split("/").pop());
+        const cur = templates.find((x) => x.id === id);
+        if (!cur) return send(res, 404, { detail: "Template not found" });
+        const b = await readBody(req);
+        entry.body = b;
+        const next = { ...cur };
+        for (const k of ["title", "priority", "window_start_time", "window_end_time", "time_limit_minutes", "frequency", "frequency_every_n_days", "link_href", "link_label", "duty_note", "is_active", "sort_order"]) if (k in b) next[k] = b[k];
+        const err = templateError(next);
+        if (err) return send(res, 400, { detail: err });
+        Object.assign(cur, next);
+        return send(res, 200, cur);
+      }
+    }
+
     if (p === "/api/tasks/today" && req.method === "GET") {
       // notReady：模拟现在真实的情况——后端还没有这个接口，页面要安静收起这一块，不挡其余 Dashboard。
       if (ctl.notReady) return send(res, 404, { detail: "mock: not found" });
       if (ctl.failGet) return send(res, 500, { detail: "Internal Server Error" });
       return send(res, 200, buildToday());
+    }
+
+    // 139 = G269：PATCH /api/tasks/today/{id}（后端 02935894，报错原文照后端合同；37a796b9 起 carry-over 也能改；1d064c1f 起 carry-over 换负责人时挪到今天，只改标题 / 优先级不挪）。
+    const editMatch = p.match(/^\/api\/tasks\/today\/(\d+)$/);
+    if (editMatch && req.method === "PATCH") {
+      const task = findTask(Number(editMatch[1]));
+      const b = await readBody(req);
+      entry.body = b;
+      if (!task) return send(res, 404, { detail: "Task not found. It may not be one of today's tasks." });
+      const keys = Object.keys(b);
+      if (keys.length === 0) return send(res, 400, { detail: "Nothing to change. Send title, priority or assigned_admin_user_id." });
+      const unknown = keys.find((k) => !["title", "priority", "assigned_admin_user_id"].includes(k));
+      if (unknown) return send(res, 400, { detail: `Unknown field: ${unknown}. Only title, priority and assigned_admin_user_id can be changed.` });
+      const me = meUser();
+      if (!ctl.supervisor) {
+        if ("assigned_admin_user_id" in b) return send(res, 403, { detail: "Only a supervisor or admin can change who a task is assigned to. Use Pass over instead." });
+        if (task.assigned_to_username === null) return send(res, 403, { detail: "Only a supervisor or admin can edit an all-shift task." });
+        if (task.assigned_to_username !== me.username) return send(res, 403, { detail: "You can only edit your own tasks." });
+      }
+      if ("title" in b && !(typeof b.title === "string" && b.title.trim())) return send(res, 400, { detail: "Title is required." });
+      if ("title" in b && b.title.trim().length > 200) return send(res, 400, { detail: "Title must be at most 200 characters." });
+      if ("priority" in b && !["high", "moderate", "low"].includes(b.priority)) return send(res, 400, { detail: "Priority must be high, moderate or low." });
+      let assignee;
+      if ("assigned_admin_user_id" in b) {
+        assignee = b.assigned_admin_user_id === null ? null : SHIFTS.find((s) => s.admin_user_id === b.assigned_admin_user_id);
+        if (assignee === undefined) return send(res, 400, { detail: "That person is not an active staff account." });
+        const changing = (assignee ? assignee.username : null) !== task.assigned_to_username;
+        if (changing && task.pass_over && !task.pass_over.accepted_at) return send(res, 409, { detail: "This task has a pass over waiting to be accepted. Change who it is assigned to after it is accepted." });
+      }
+      if ("title" in b) task.title = b.title.trim();
+      if ("priority" in b) task.priority = b.priority;
+      if (assignee !== undefined) {
+        const changed = (assignee ? assignee.username : null) !== task.assigned_to_username;
+        task.assigned_to_username = assignee ? assignee.username : null;
+        task.assigned_to_display_name = assignee ? assignee.display_name : null;
+        if (changed && task.work_date !== DATE) task.work_date = DATE;
+      }
+      return send(res, 200, task);
     }
 
     const doneMatch = p.match(/^\/api\/tasks\/today\/(\d+)\/done$/);
@@ -655,6 +771,7 @@ http
       const task = {
         id: nextId++,
         template_id: null,
+        work_date: DATE,
         title: b.title.trim(),
         role: "team",
         assigned_to_username: assignee ? assignee.username : null,

@@ -81,7 +81,16 @@ import {
   WAIVER_KEY,
   WAIVER_OFF,
   withWaiverColumn,
+  withTicketSessions,
+  rememberMarkChoice,
+  withMarkColumns,
+  withMarks,
+  NOTE_KEY,
+  rememberNoteChoice,
+  withNoteColumn,
+  withNotes,
 } from "./config";
+import { NoteInput } from "./note-cell";
 import { FieldPicker } from "./field-picker";
 import { ManifestSearch } from "./manifest-search";
 import { SectionCfm } from "./section-cfm";
@@ -92,6 +101,8 @@ import {
   ReminderDialog,
   TourConfirmDialog,
 } from "./send-dialogs";
+
+const NO_KEYS: ReadonlySet<string> = new Set();
 
 type LoadState =
   | { kind: "loading" }
@@ -139,6 +150,8 @@ const TAB_FALLBACK_LABEL: Record<ManifestTabKey, string> = {
 };
 
 export function ManifestsView() {
+  // 152 回退修：复制订单号只给纯单号。
+  useOrderNumberCopy();
   /** 置顶 115 题 8 A：Legacy 黄框手机上收进 i。 */
   const legacyInfo = usePhoneInfo("About legacy rows");
   // partner 只能看（Annie 2026-10-27「合作方只能看manifest和订单，不能改或者选任何功能，比如加colum之类的」）：
@@ -442,7 +455,12 @@ export function ManifestsView() {
    */
   async function reorderFields(moved: string[]) {
     const before = colsHere ?? EMPTY_COLS;
-    const next = shown ? rememberWaiverChoice(moved, shown.rows) : moved;
+    const next = shown
+      ? rememberMarkChoice(
+          rememberNoteChoice(rememberWaiverChoice(moved, shown.rows), shown),
+          shown,
+        )
+      : moved;
     const after: SavedCols = ownHere
       ? { ...before, pages: { ...before.pages, [pill]: next } }
       : { ...before, shared: next };
@@ -460,6 +478,12 @@ export function ManifestsView() {
     }
   }
 
+  /** 153：Tickets 场次组哪些收起了（只记这一页：日期 + 标签 + 团胶囊）。 */
+  const [fold, setFold] = useState<{
+    page: string;
+    keys: ReadonlySet<string>;
+  }>({ page: "", keys: NO_KEYS });
+
   /** 改了还没存的 Cfm # 格（按行）：离开页面先问（全站规矩，A2）。 */
   const [dirtyCfm, setDirtyCfm] = useState<ReadonlySet<string>>(new Set());
   const onCfmDirty = useCallback((rowKey: string, dirty: boolean) => {
@@ -476,12 +500,45 @@ export function ManifestsView() {
     (rowKey: string, dirty: boolean) => onCfmDirty(`w:${rowKey}`, dirty),
     [onCfmDirty],
   );
+  /** 150 Notes：备注格改了没存（同一份记录，键前面加 n:）。 */
+  const onNoteDirty = useCallback(
+    (rowKey: string, dirty: boolean) => onCfmDirty(`n:${rowKey}`, dirty),
+    [onCfmDirty],
+  );
   useLeaveGuard(
     dirtyCfm.size > 0,
     [...dirtyCfm].some((k) => k.startsWith("w:"))
       ? "A waiver link you typed is not saved yet. Leave without saving?"
-      : "A Cfm # you typed is not saved yet. Leave without saving?",
+      : [...dirtyCfm].some((k) => k.startsWith("n:"))
+        ? "A note you typed is not saved yet. Leave without saving?"
+        : "A Cfm # you typed is not saved yet. Leave without saving?",
   );
+
+  /** 备注存好：同一单、同一产品、同一团期的行一起换（往返 shuttle 两段是同一条）。 */
+  function onNoteSaved(
+    key: { order_number: string; product_code: string; tour_date: string },
+    note: { note: string; by: string; at: string | null },
+  ) {
+    setData((d) =>
+      d
+        ? {
+            ...d,
+            rows: d.rows.map((r) =>
+              r.order_number === key.order_number &&
+              r.product_code === key.product_code &&
+              r.tour_date === key.tour_date
+                ? {
+                    ...r,
+                    note: note.note,
+                    note_updated_by: note.by,
+                    note_updated_at: note.at,
+                  }
+                : r,
+            ),
+          }
+        : d,
+    );
+  }
 
   function onCfmSaved(rowKey: string, values: ManifestRow["values"]) {
     setData((d) =>
@@ -503,11 +560,14 @@ export function ManifestsView() {
   // 换了标签还没回来时，旧标签的数据不当成这个标签的。
   // 没勾 See prices, agent & commission（orders.money_view，题 8）：金额 / 代理商列整列不出，Columns 里也没有
   // （后端这时本来就不给，这里再挡一道：存着的列、旧后端都不出空栏，也不算进「need admin access」那句）。
+  // 150 Notes：Bus、Tickets 标签多一列备注（后端给了 note 才有），见 config.withNotes。
   const shown =
     data && data.tab === tab
-      ? perms.canSeeMoney
-        ? data
-        : withoutManifestMoney(data)
+      ? withTicketSessions(
+          withMarks(
+            withNotes(perms.canSeeMoney ? data : withoutManifestMoney(data)),
+          ),
+        )
       : null;
   // 搜索跳过来的行到了：滚到屏幕中间（每次跳转只滚一次，后面重拉不再拽视线）。
   const highlightShown =
@@ -549,14 +609,23 @@ export function ManifestsView() {
   }, [shown, noSend, tabSendable]);
   const currentPill = shown?.pills.find((p) => p.key === shown.pill);
   // 置顶 74：Waiver link 列这一页有要 waiver 的单才自动出（题 1 A），☰ Columns 里关掉就不加。
+  // 150 Notes：默认放最后，☰ Columns 里关掉就不加（withNoteColumn）。
   const fields = shown
-    ? tab === "tickets"
-      ? withWaiverColumn(
-          shownFields(shown, savedHere ?? ticketDefaults),
-          shown.rows,
-          savedHere,
-        )
-      : shownFields(shown, savedHere)
+    ? withMarkColumns(
+        withNoteColumn(
+        tab === "tickets"
+          ? withWaiverColumn(
+              shownFields(shown, savedHere ?? ticketDefaults),
+              shown.rows,
+              savedHere,
+            )
+          : shownFields(shown, savedHere),
+        shown,
+        savedHere,
+        ),
+        shown,
+        savedHere,
+      )
     : [];
   const needsWaiver =
     tab === "tickets" && !!shown && pageNeedsWaiver(shown.rows);
@@ -580,6 +649,41 @@ export function ManifestsView() {
     : [];
   const pickedPax = pickedRows.reduce((n, r) => n + paxOf(r), 0);
   const pickedOrders = new Set(pickedRows.map((r) => r.order_number)).size;
+  // 153：收起的场次组（题 3 A 不记：换日期 / 标签 / 团胶囊就回到全部展开，题 2 A）。
+  const foldPage = shown ? `${shown.date}|${shown.tab}|${shown.pill ?? ""}` : "";
+  const folded = fold.page === foldPage ? fold.keys : NO_KEYS;
+  const setFolded = (keys: readonly string[], on: boolean) =>
+    setFold((cur) => {
+      const next = new Set(cur.page === foldPage ? cur.keys : NO_KEYS);
+      for (const k of keys) {
+        if (on) next.add(k);
+        else next.delete(k);
+      }
+      return { page: foldPage, keys: next };
+    });
+  // 搜索 / Open in Main manifest 跳到的行在收起的组里 ⇒ 把那组打开（不然标黄的行看不见）。
+  const highlightSection = highlight
+    ? shown?.rows.find((r) => r.row_key === highlight)?.section
+    : undefined;
+  const highlightFolded = !!highlightSection && folded.has(highlightSection);
+  useEffect(() => {
+    if (highlightFolded && highlightSection)
+      setFold((cur) => {
+        const keys = new Set(cur.keys);
+        keys.delete(highlightSection);
+        return { ...cur, keys };
+      });
+  }, [highlightFolded, highlightSection]);
+  // 勾了、在收起的组里的（题 1 A：照样发，发送条上写明）。
+  const foldedRows = shown
+    ? shown.rows.filter(
+        (r) => selected.has(r.row_key) && !!r.section && folded.has(r.section),
+      )
+    : [];
+  const foldedPicked = {
+    orders: new Set(foldedRows.map((r) => r.order_number)).size,
+    groups: new Set(foldedRows.map((r) => r.section)).size,
+  };
   // 勾了、但门票还没填 Cfm # 的行：点发送时先拦一道，不悄悄漏发。
   const missingPicked = shown
     ? shown.rows.filter(
@@ -700,7 +804,11 @@ export function ManifestsView() {
                   onClick={() => {
                     if (!shown) return;
                     if (seeingHidden && hidden) {
-                      const csv = buildHiddenCsv(shown, hidden, fields);
+                      const csv = buildHiddenCsv(
+                        shown,
+                        hidden,
+                        fields.filter((k) => !k.startsWith("_")),
+                      );
                       downloadCsv(
                         `manifest_${shown.date}_hidden-rows.csv`,
                         csv.headers,
@@ -988,6 +1096,9 @@ export function ManifestsView() {
               >
                 <span className="mr-auto text-[#cbd5e1] tabular-nums max-sm:shrink-0 max-sm:whitespace-nowrap">
                   {plural(pickedOrders, "order")} selected · {pickedPax} pax
+                  {foldedPicked.orders
+                    ? ` (${foldedPicked.orders} in ${foldedPicked.groups === 1 ? "a collapsed group" : "collapsed groups"})`
+                    : ""}
                 </span>
                 {noConfirm ? null : (
                   <button
@@ -1138,7 +1249,7 @@ export function ManifestsView() {
                 data={shown}
                 hidden={hidden}
                 rows={hiddenRows}
-                fields={fields}
+                fields={fields.filter((k) => !k.startsWith("_"))}
                 loading={loading}
               />
             ) : null}
@@ -1191,6 +1302,10 @@ export function ManifestsView() {
                   onCfmSaved={onCfmSaved}
                   onCfmDirty={onCfmDirty}
                   onWaiverDirty={onWaiverDirty}
+                  onNoteSaved={onNoteSaved}
+                  onNoteDirty={onNoteDirty}
+                  folded={folded}
+                  onFold={setFolded}
                   onUnauthorized={redirectToLogin}
                 />
               </section>
@@ -1227,7 +1342,8 @@ export function ManifestsView() {
             onUseShared={ownHere ? useSharedCols : undefined}
             catalog={shown.catalog}
             groups={shown.groups}
-            selected={
+            selected={withMarkColumns(
+              withNoteColumn(
               tab === "tickets"
                 ? withWaiverColumn(
                     (savedHere ?? shown.default_fields).filter(
@@ -1236,13 +1352,26 @@ export function ManifestsView() {
                     shown.rows,
                     savedHere,
                   )
-                : (savedHere ?? shown.default_fields)
-            }
+                : (savedHere ?? shown.default_fields),
+              shown,
+              savedHere,
+              ),
+              shown,
+              savedHere,
+            )}
             defaults={shown.default_fields}
             onApply={(next, scope) =>
               applyFields(
-                next && tab === "tickets"
-                  ? rememberWaiverChoice(next, shown.rows)
+                next
+                  ? rememberMarkChoice(
+                      rememberNoteChoice(
+                        tab === "tickets"
+                          ? rememberWaiverChoice(next, shown.rows)
+                          : next,
+                        shown,
+                      ),
+                      shown,
+                    )
                   : next,
                 scope,
               )
@@ -1394,8 +1523,8 @@ function HiddenRowsSection({
                   data-hidden-row={r.row_key}
                   className="border-b-[0.5px] border-black/[.06] align-middle last:border-b-0 night:border-white/[.06]"
                 >
-                  <td className="px-2.5 py-2 text-[#378ADD] night:text-sky-300">
-                    {r.order_number}
+                  <td className="relative px-2.5 py-2 text-[#378ADD] night:text-sky-300">
+                    <OrderLink orderNumber={r.order_number} />
                   </td>
                   <td className="px-2.5 py-2 whitespace-nowrap text-[#1a1a1a] night:text-white/85">
                     {r.product_code}
@@ -1463,6 +1592,10 @@ function ManifestTable({
   onCfmSaved,
   onCfmDirty,
   onWaiverDirty,
+  onNoteSaved,
+  onNoteDirty,
+  folded,
+  onFold,
   onUnauthorized,
 }: {
   data: ManifestPage;
@@ -1483,6 +1616,12 @@ function ManifestTable({
   onCfmDirty: (rowKey: string, dirty: boolean) => void;
   /** 某一行的 Waiver link 改了没存 / 存好了（置顶 74）。 */
   onWaiverDirty: (rowKey: string, dirty: boolean) => void;
+  /** 150 Notes：存好了（同单同产品同团期的行一起换）/ 改了没存。 */
+  onNoteSaved: Parameters<typeof NoteInput>[0]["onSaved"];
+  onNoteDirty: (rowKey: string, dirty: boolean) => void;
+  /** 153：收起的 Tickets 场次组（节键）；收 / 展开几个组。 */
+  folded: ReadonlySet<string>;
+  onFold: (keys: readonly string[], on: boolean) => void;
   onUnauthorized: () => void;
 }) {
   // partner 不能发时没有勾选；Cfm # 能不能改由格子自己看 ViewOnly（manifests.edit）。
@@ -1579,11 +1718,23 @@ function ManifestTable({
         {fields.map((k, i) => (
           <td
             key={k}
+            // 产品名和同节大多数不一样 ⇒ 整个产品名红字（后端比，前端只认 product_differs）；
+            // 电脑上停鼠标看这一节大多数产品叫什么（Annie 2026-11-17 题 2 A，手机上只有红字）。
+            data-product-differs={
+              k === "product" && r.product_differs ? "" : undefined
+            }
+            title={
+              k === "product" && r.product_differs && r.product_majority
+                ? `Different from most products in this section: ${r.product_majority}`
+                : undefined
+            }
             className={cn(
               "px-2.5 py-2",
               k === "order_number"
-                ? "text-[#378ADD] night:text-sky-300"
-                : "text-[#1a1a1a] night:text-white/85",
+                ? "relative text-[#378ADD] night:text-sky-300"
+                : k === "product" && r.product_differs
+                  ? "text-[#a32d2d] night:text-red-300"
+                  : "text-[#1a1a1a] night:text-white/85",
               (byKey.get(k)?.type === "number" ||
                 byKey.get(k)?.type === "money") &&
                 "text-right tabular-nums",
@@ -1605,6 +1756,15 @@ function ManifestTable({
               />
             ) : k === REZDY_CFM_KEY && cfmMismatch(r, tab) ? (
               <CfmMismatchCell row={r} />
+            ) : k === NOTE_KEY ? (
+              <NoteInput
+                row={r}
+                onSaved={onNoteSaved}
+                onDirty={onNoteDirty}
+                onUnauthorized={onUnauthorized}
+              />
+            ) : k === "order_number" && r.order_number ? (
+              <OrderLink orderNumber={r.order_number} />
             ) : (
               <Cell field={byKey.get(k)} row={r} fieldKey={k} />
             )}
@@ -1622,7 +1782,7 @@ function ManifestTable({
             {i === 0 && isLegacy(r) ? (
               <span
                 title="From data frozen before Aug 16, 2026 — booking questions and most Trip / Booking fields are empty"
-                className="ml-1.5 inline-block rounded-[10px] bg-[#faeeda] px-2 py-0.5 text-[11px] text-[#ba7517] night:bg-amber-400/15 night:text-amber-300"
+                className="relative z-[1] ml-1.5 inline-block rounded-[10px] bg-[#faeeda] px-2 py-0.5 text-[11px] text-[#ba7517] night:bg-amber-400/15 night:text-amber-300"
               >
                 Legacy
               </span>
@@ -1635,6 +1795,8 @@ function ManifestTable({
 
   let tourIndex = 0;
   return (
+    <>
+    <SessionTools sections={sections} folded={folded} onFold={onFold} />
     <div className="overflow-x-auto">
       <table className="w-full min-w-[800px] border-collapse text-[12px]">
         <thead className="border-b-[0.5px] border-black/[.08] text-left text-[11px] font-medium text-[#1a1a1a] night:border-white/10 night:text-white/45">
@@ -1734,32 +1896,92 @@ function ManifestTable({
                   keys.length > 0 && keys.every((k) => selected.has(k));
                 const bg = sectionBg(
                   sec.kind,
-                  sec.kind === "tour" ? tourIndex++ : 0,
+                  sec.kind === "tour" || sec.kind === "session"
+                    ? tourIndex++
+                    : 0,
                 );
+                // 153：Tickets 场次组（前端分的）能折叠，组头的框有半选；Bus 的节照旧。
+                const session = isSessionGroup(sec);
+                const isFolded = session && folded.has(sec.key);
+                const some = keys.some((k) => selected.has(k));
+                const tickedOrders = new Set(
+                  rows
+                    .filter((r) => selected.has(r.row_key))
+                    .map((r) => r.order_number),
+                ).size;
                 return [
-                  <tr key={`sec:${sec.key}`} data-section={sec.key}>
+                  <tr
+                    key={`sec:${sec.key}`}
+                    data-section={sec.key}
+                    data-session={session ? "" : undefined}
+                    data-folded={isFolded ? "" : undefined}
+                  >
                     <td
                       colSpan={colSpan}
                       style={{ background: bg }}
                       className="px-2.5 py-1.5 text-[12px] font-semibold tracking-[.02em] text-[#1a1a1a] night:text-white/90"
                     >
-                      <label className="inline-flex cursor-pointer items-center gap-2">
-                        <input
-                          type="checkbox"
-                          hidden={viewOnly}
-                          className={CHECK_BIG}
-                          aria-label={`Select all in ${sec.title}`}
-                          checked={on}
-                          disabled={!keys.length}
-                          onChange={(e) => onToggle(keys, e.target.checked)}
-                        />
-                        {sec.title}
-                      </label>
-                      <span className="ml-2 font-normal text-[#1a1a1a]">
-                        {plural(sec.orders, "order")} · {sec.pax} pax
-                        {sec.show_cfm && sec.tour_time
-                          ? ` · Tour time ${sec.tour_time}`
-                          : ""}
+                      {/* 手机上组头钉在左边，表格左右滑时不跟着跑（题 4 A）。 */}
+                      <span
+                        className={cn(
+                          "inline-flex items-center",
+                          session && "max-sm:sticky max-sm:left-2",
+                        )}
+                      >
+                        {session ? (
+                          <button
+                            type="button"
+                            data-fold
+                            aria-expanded={!isFolded}
+                            aria-label={`${isFolded ? "Open" : "Fold"} ${sec.title}`}
+                            onClick={() => onFold([sec.key], !isFolded)}
+                            className="mr-1.5 inline-flex h-5 w-5 cursor-pointer items-center justify-center rounded text-[12px] text-[#1a1a1a] hover:bg-black/[.06] night:text-white/80"
+                          >
+                            {isFolded ? "▸" : "▾"}
+                          </button>
+                        ) : null}
+                        <label className="inline-flex cursor-pointer items-center gap-2">
+                          <input
+                            type="checkbox"
+                            hidden={viewOnly}
+                            className={CHECK_BIG}
+                            aria-label={`Select all in ${sec.title}`}
+                            checked={on}
+                            ref={(el) => {
+                              // 一场里只勾了几单 ⇒ 半选（Annie：可以全选、可以选 session、也可以单独选订单）。
+                              if (el) el.indeterminate = session && some && !on;
+                            }}
+                            disabled={!keys.length}
+                            onChange={(e) => onToggle(keys, e.target.checked)}
+                          />
+                          {session && sec.short_title ? (
+                            <>
+                              <span className="max-sm:hidden">{sec.title}</span>
+                              <span className="sm:hidden">{sec.short_title}</span>
+                            </>
+                          ) : (
+                            sec.title
+                          )}
+                        </label>
+                        <span className="ml-2 font-normal whitespace-nowrap text-[#1a1a1a]">
+                          {plural(sec.orders, "order")} · {sec.pax} pax
+                          {session && sec.breakdown ? (
+                            <span className="max-sm:hidden">
+                              {` (${sec.breakdown})`}
+                            </span>
+                          ) : null}
+                          {sec.show_cfm && sec.tour_time
+                            ? ` · Tour time ${sec.tour_time}`
+                            : ""}
+                        </span>
+                        {isFolded && tickedOrders ? (
+                          <span
+                            data-folded-ticked
+                            className="ml-2 font-semibold whitespace-nowrap text-[#1a1a1a]"
+                          >
+                            · {tickedOrders} ticked
+                          </span>
+                        ) : null}
                       </span>
                       {/* G198 preview ③：开了格的节，Cfm # 靠左紧跟在后面。 */}
                       {sec.show_cfm && pillGroupId ? (
@@ -1772,13 +1994,118 @@ function ManifestTable({
                       ) : null}
                     </td>
                   </tr>,
-                  ...numberRows(rows),
+                  ...(isFolded ? [] : numberRows(rows)),
                 ];
               })
             : numberRows(data.rows)}
         </tbody>
       </table>
     </div>
+    </>
+  );
+}
+
+/** 153：前端给 Tickets 分的场次组（能折叠、组头半选）；后端给的 Bus 节不是。 */
+function isSessionGroup(sec: { kind: string }): boolean {
+  return sec.kind === "session" || sec.kind === "no_time";
+}
+
+/** 153：Tickets 表上面一行「6 start times · Expand all · Collapse all」（只在有场次组时出）。 */
+function SessionTools({
+  sections,
+  folded,
+  onFold,
+}: {
+  sections: readonly { key: string; kind: string }[];
+  folded: ReadonlySet<string>;
+  onFold: (keys: readonly string[], on: boolean) => void;
+}) {
+  const keys = sections.filter(isSessionGroup).map((s) => s.key);
+  if (!keys.length) return null;
+  const times = sections.filter((s) => s.kind === "session").length;
+  return (
+    <div
+      data-session-tools
+      className="mb-2 flex flex-wrap items-center gap-3 px-1 text-[12px] text-[#1a1a1a] night:text-white/70"
+    >
+      <span>{plural(times, "start time")}</span>
+      <button
+        type="button"
+        disabled={!keys.some((k) => folded.has(k))}
+        onClick={() => onFold(keys, false)}
+        className="cursor-pointer underline underline-offset-2 disabled:cursor-default disabled:no-underline disabled:opacity-50"
+      >
+        Expand all
+      </button>
+      <button
+        type="button"
+        disabled={keys.every((k) => folded.has(k))}
+        onClick={() => onFold(keys, true)}
+        className="cursor-pointer underline underline-offset-2 disabled:cursor-default disabled:no-underline disabled:opacity-50"
+      >
+        Collapse all
+      </button>
+    </div>
+  );
+}
+
+/**
+ * 152（Annie「152 同意推荐，动手」）：订单号点了在新标签页打开 Order details（题 1 A）。样子照 Order List：
+ * 蓝字不变、移上去下划线 + 提示（题 2 A）；整个格子都能点（题 3 A，td 要 relative）；每行都能点（题 4 A）。
+ * 新标签页 ⇒ 离开拦截（useLeaveGuard 放过 target=_blank）不拦，勾选和没存的改动都留在这一页。
+ *
+ * 152 回退修（Annie「…现在变得在main manifest上没有办法复制这个number，帮我调整一下，弄成还是可以复制，而不是复制链接」）：
+ * - 电脑上不再用 ::after 铺满整格（它盖住了字，拖不出选区）；整格可点只留在手机（max-sm，题 3 A）。
+ * - 链接不能拖（draggable=false / -webkit-user-drag:none），字可以拖选；拖选、双击选中以后松开的那一下不开新标签页。
+ * - 复制只给纯单号（text/plain），不带链接（不写 text/html）。
+ */
+/**
+ * 选中的字落在订单号链接里时，复制只给纯文字（text/plain），不带链接的 HTML——贴到 Excel / 邮件里是单号，不是超链接。
+ * 挂在 document 上一次（复制事件不一定派到链接本身），页面上其他地方的复制照旧。
+ */
+function useOrderNumberCopy() {
+  useEffect(() => {
+    function onCopy(e: ClipboardEvent) {
+      const sel = window.getSelection();
+      if (!sel || sel.isCollapsed || !e.clipboardData) return;
+      const inLink = (n: Node | null) =>
+        !!(n instanceof Element ? n : n?.parentElement)?.closest(
+          "a[data-order-link]",
+        );
+      if (!inLink(sel.anchorNode) && !inLink(sel.focusNode)) return;
+      const text = sel.toString().trim();
+      if (!text) return;
+      e.preventDefault();
+      e.clipboardData.setData("text/plain", text);
+    }
+    document.addEventListener("copy", onCopy);
+    return () => document.removeEventListener("copy", onCopy);
+  }, []);
+}
+
+function OrderLink({ orderNumber }: { orderNumber: string }) {
+  return (
+    <a
+      href={`/orders/${encodeURIComponent(orderNumber)}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      data-order-link
+      draggable={false}
+      title="Open order details in a new tab"
+      onClick={(e) => {
+        // 双击（第二下）、或这一格里已经选中了字（刚拖选完）⇒ 是在选字，不开新标签页。
+        const sel = window.getSelection();
+        const selecting =
+          !!sel &&
+          !sel.isCollapsed &&
+          sel.toString().trim() !== "" &&
+          e.currentTarget.contains(sel.anchorNode);
+        if (e.detail > 1 || selecting) e.preventDefault();
+      }}
+      className="cursor-pointer whitespace-nowrap select-text [-webkit-user-drag:none] hover:underline focus-visible:underline focus-visible:outline-none max-sm:after:absolute max-sm:after:inset-0 max-sm:after:content-['']"
+    >
+      {orderNumber}
+    </a>
   );
 }
 
@@ -2013,6 +2340,12 @@ function ManifestsHowToUse() {
           order is not on Main manifest, check its status in Order List.
         </>,
         <>
+          Click an order number to open that order’s <b>Order details</b> in a
+          new tab. This page stays as it is, with your ticked rows and unsaved
+          changes. On Order details, <b>Open in Main manifest →</b> brings you
+          back to that order’s rows here.
+        </>,
+        <>
           <b>Bus Tour</b> shows one group at a time (the groups from Settings →
           Products). <b>Tickets - SelfDrive</b> shows one tour type at a time
           (the Tour type column in Settings → Products). Click a pill to switch;
@@ -2054,6 +2387,14 @@ function ManifestsHowToUse() {
           <b>Select all</b> at the top left of the table to select everyone. A
           group with sections set in Settings → Products → Manifest setup (for
           example UPPER / LOWER / X for Antelope) is split into those sections.
+        </>,
+        // 产品名标红（Annie 2026-11-17「产品标红同意全部推荐。动手」，题 4 A 原文）。
+        <>
+          A product name in red is different from most products in its section
+          (the agent name in brackets and the pickup part don&apos;t count), for
+          example missing &quot;with Lunch&quot;. Hover over it to see what most
+          of the section booked. Check the order in Order List before you count
+          meals or tickets.
         </>,
         <>
           <b>Bus Tour</b>: <b>Send tour confirmation</b>. Pick the tour type for
@@ -2173,6 +2514,23 @@ function ManifestsHowToUse() {
           the reminder. Tick the order, then tick Send anyway in the send window
           to send the reminder again, so the guest gets the new link on their
           ticket page. The tag goes away once it is sent.
+        </>,
+        <>
+          <b>Notes</b> (Bus Tour and Tickets): a note for staff, one per row.
+          It isn’t printed and isn’t sent to guests. Type the note, then click{" "}
+          <b>Save</b> next to it (or press Enter). Press Esc to undo before
+          saving.
+        </>,
+        <>
+          <b>Tickets</b> are grouped by session (start time). Each group shows
+          the start time, the product, and how many orders and pax (with the
+          Adult / Child / Infant split). Click ▸ / ▾ on a group to fold or open
+          it, or use <b>Expand all</b> / <b>Collapse all</b>. Tick{" "}
+          <b>Select all</b> for every order, the box on a group for the whole
+          session, or the box on a row for one order. Folding only hides the
+          rows: ticked orders in a folded group stay ticked and are sent, and
+          the group shows how many are ticked. Orders without a start time are
+          in the last group, <b>No time</b>.
         </>,
       ]}
     />

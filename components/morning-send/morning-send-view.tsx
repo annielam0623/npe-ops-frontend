@@ -41,6 +41,7 @@ import {
 import { MorningPreviewStep } from "./morning-preview";
 import { MorningResults, type MorningSendStop } from "./morning-results";
 import { usePhoneInfo } from "@/components/ui/phone";
+import { confirmDateField, otherDayLabel, otherDayOf } from "@/lib/other-day";
 import { cn } from "@/lib/utils";
 
 interface Manifest {
@@ -51,6 +52,8 @@ interface Manifest {
   previewAt: string;
   /** 转单客人不在名单里：被排除几位（G40）。 */
   farmOutLeftOut: number;
+  /** 140（G311）：文件的团期（预览接口 file_date）；不是今天时点发送先弹红日期框。null = 读不出 / 旧后端，不弹。 */
+  fileDate: string | null;
 }
 
 type Step =
@@ -166,6 +169,7 @@ export function MorningSendView() {
           rows: data.rows,
           previewAt: data.preview_at ?? "",
           farmOutLeftOut: data.farm_out_excluded_count ?? 0,
+          fileDate: data.file_date ?? null,
         },
       });
     } catch (error) {
@@ -177,7 +181,11 @@ export function MorningSendView() {
   }
 
   /** 分小批依次发送；任何一批出错就停，不自动重试（那一批可能已经发出去了）。 */
-  async function runSend(manifest: Manifest, orders: string[]) {
+  async function runSend(
+    manifest: Manifest,
+    orders: string[],
+    confirm: { confirm_date?: string } = {},
+  ) {
     const type = MORNING_SEND_TYPE;
     setSendError("");
     const results: MorningSendResult[] = [];
@@ -199,6 +207,7 @@ export function MorningSendView() {
           sendAnyway: group.filter((o) => alreadySent.has(o)),
           vanAnyway: group.filter((o) => vanInvalid.has(o)),
           previewAt: manifest.previewAt,
+          confirmDate: confirm.confirm_date,
         });
         // 后端对文件里每一行都返回一条：没选中的是 skipped、没有 reason，不列；
         // 服务端查重跳过的（Already sent today / Listed twice in this file）带 reason，列出来。
@@ -262,6 +271,9 @@ export function MorningSendView() {
             .map((r) => r.order_number),
         ).size
       : 0;
+  // 140：确认框里写哪天的提醒（文件日期不是今天时写那一天）。只在弹框开着时用，点发送那一刻再按 confirmDateField 算一次。
+  const otherDay =
+    step.kind === "preview" ? otherDayOf(step.manifest.fileDate) : null;
 
   return (
     <main data-phone-compact className="text-stone-800">
@@ -365,17 +377,37 @@ export function MorningSendView() {
           confirmLabel={`Send to ${pendingOrders.length} order${pendingOrders.length === 1 ? "" : "s"}`}
           busyLabel="Starting…"
           onClose={closeConfirm}
+          sendFor={
+            step.manifest.fileDate
+              ? {
+                  date: step.manifest.fileDate,
+                  what: `the morning pickup reminder to ${pendingOrders.length} order${pendingOrders.length === 1 ? "" : "s"}`,
+                }
+              : undefined
+          }
           onConfirm={async (): Promise<ActionResult> => {
             const manifest = step.manifest;
             setConfirming(false);
-            void runSend(manifest, pendingOrders);
+            // 140：不是今天才带 confirm_date（staff 在红日期框点了 Yes 才走到这里）；点的那一刻算。
+            void runSend(
+              manifest,
+              pendingOrders,
+              manifest.fileDate ? confirmDateField(manifest.fileDate) : {},
+            );
             return { status: "ok" };
           }}
         >
           <p>
             <b>{pendingOrders.length}</b> order
-            {pendingOrders.length === 1 ? "" : "s"} will get today&apos;s pickup
-            reminder by <b>{sendTypeShort(MORNING_SEND_TYPE)}</b>.
+            {pendingOrders.length === 1 ? "" : "s"} will get{" "}
+            {otherDay ? (
+              <>
+                the pickup reminder for <b>{otherDayLabel(otherDay)}</b>
+              </>
+            ) : (
+              <>today&apos;s pickup reminder</>
+            )}{" "}
+            by <b>{sendTypeShort(MORNING_SEND_TYPE)}</b>.
           </p>
           {resendCount > 0 ? (
             <p className="font-medium text-[#A32D2D]">
@@ -476,8 +508,12 @@ function MorningHowToUse() {
       </li>
       <li>
         Every reminder goes out by SMS and email. A guest with no email address
-        gets the SMS only, and a guest with no phone number gets the email
-        only.
+        gets the SMS only, and a guest with no phone number gets the email only.
+      </li>
+      <li>
+        The file must be for today. If it is for another day, a box shows that
+        date in red: click Yes, I need to send for that date only if you really
+        mean to send for that day, or Cancel to send nothing.
       </li>
       <li>
         Click Send to Selected to send reminders only to checked guests. Guests

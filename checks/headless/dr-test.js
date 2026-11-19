@@ -213,7 +213,7 @@ async function run() {
     // Quotation 没有被固定，按真实默认值 super_admin_only 算，staff 的侧栏里不再有它。
     "Operations 的条目和顺序（含 My Workspace、Forms、Staff Schedule、Daily Operation Report）",
     (await evaluate(`return [...${nav}.querySelector('section[aria-label=Operations]').querySelectorAll('[data-module]')].map(r => r.dataset.module).join(',');`)) ===
-      "dashboard,workspace,forecast,manifests,orders,dispatch,forms,schedule,daily_report,farm_out_report",
+      "dashboard,workspace,forecast,manifests,orders,dispatch,bus_manifests,forms,schedule,daily_report,farm_out_report",
     await evaluate(`return [...${nav}.querySelectorAll('[data-module]')].map(r => r.dataset.module).join(',');`),
   );
   check("拿掉了 Dispatch Imports / Work Sheet / Guide Sheet", !/Dispatch Imports|Work Sheet|Guide Sheet/.test(t1));
@@ -224,16 +224,16 @@ async function run() {
   check(
     "没勾 orders.money_view 的员工：Operations 里没有 Farm out Report，其余条目照旧",
     (await evaluate(`return [...${nav}.querySelector('section[aria-label=Operations]').querySelectorAll('[data-module]')].map(r => r.dataset.module).join(',');`)) ===
-      "dashboard,workspace,forecast,manifests,orders,dispatch,forms,schedule,daily_report",
+      "dashboard,workspace,forecast,manifests,orders,dispatch,bus_manifests,forms,schedule,daily_report",
     await evaluate(`return [...${nav}.querySelectorAll('[data-module]')].map(r => r.dataset.module).join(',');`),
   );
   await ctl({ noMoney: false });
   await openDashboard();
   await openNav();
   check(
-    // Quotation 现在仅 Super Admin 可见，staff 的侧栏里没有这一项了，这里只还看 Daily Operation Report。
-    "Daily Operation Report 标 SOON，照样是链接（Staff Schedule 已上线，不再标）",
-    await evaluate(`return ['daily_report'].every(id => { const r = ${nav}.querySelector('[data-module=' + id + ']'); return r && r.textContent.includes('SOON') && r.querySelector('a[href]'); }) && !${row("orders")}.textContent.includes('SOON') && !${nav}.querySelector('[data-module=quotation]');`),
+    // Quotation 现在仅 Super Admin 可见，staff 的侧栏里没有这一项。Daily Operation Report Annie 2026-11-18 验收过，去掉 SOON。
+    "Daily Operation Report 不再标 SOON，是链接（Staff Schedule 也不标）",
+    await evaluate(`return ['daily_report'].every(id => { const r = ${nav}.querySelector('[data-module=' + id + ']'); return r && !r.textContent.includes('SOON') && r.querySelector('a[href]'); }) && !${row("orders")}.textContent.includes('SOON') && !${nav}.querySelector('[data-module=quotation]');`),
   );
   check(
     "每个条目都能拖（draggable）、有钉子（Morning / Tour / Tickets 除外）",
@@ -288,7 +288,7 @@ async function run() {
   );
   check(
     "Tracking 小部件：My shortcuts 里一直在，三个圆标 蓝 / 绿 / 紫，各自链到 Tracking 页，只有 Track 没有 Send",
-    await evaluate("const w = document.querySelector('main section[aria-label=\"My shortcuts\"] [data-shortcut=tracking_widget]'); if (!w) return false; const c = [...w.querySelectorAll('[data-tracking-circle]')]; const col = (e) => e.style.getPropertyValue('--ac').trim(); return c.map(e => e.dataset.trackingCircle).join() === 'morning,tour,tickets' && c.map(e => e.getAttribute('href')).join() === '/morning-pickup/tracking,/tour-confirmation/tracking,/tickets-reminder/tracking' && col(c[0]) === '#3b82f6' && col(c[1]) === '#22c55e' && col(c[2]) === '#6d5bd0' && !/Send/.test(w.textContent) && w.textContent.includes('Tracking');"),
+    await evaluate("const w = document.querySelector('main section[aria-label=\"My shortcuts\"] [data-shortcut=tracking_widget]'); if (!w) return false; const c = [...w.querySelectorAll('[data-tracking-circle]')]; const col = (e) => e.style.getPropertyValue('--ac').trim(); return c.map(e => e.dataset.trackingCircle).join() === 'morning,tour,tickets' && c.map(e => e.getAttribute('href')).join() === '/morning-pickup/tracking,/tour-confirmation/tracking,/tickets-reminder/tracking' && col(c[0]) === '#3b82f6' && col(c[1]) === '#22c55e' && col(c[2]) === '#a855f7' && !/Send/.test(w.textContent) && w.textContent.includes('Tracking');"),
     await evaluate("const w = document.querySelector('[data-shortcut=tracking_widget]'); return w ? w.outerHTML.slice(0, 400) : 'none';"),
   );
   // Annie 2026-10-14：问候语不需要那么多位置 ⇒ 挪到顶栏和搜索框一行，页面上的大标题和说明拿掉。
@@ -367,7 +367,7 @@ async function run() {
     (await evaluate(`return ${tiles};`)) === "manifests,forms,dispatch,forecast,workspace,schedule,orders,daily_report",
     await evaluate(`return ${tiles};`),
   );
-  check("SOON 的条目也能拖进来、显示 SOON", await evaluate(`return ${sc}.querySelector('[data-shortcut=daily_report]').textContent.includes('SOON');`));
+  check("Daily Operation Report 拖进来后不显示 SOON（2026-11-18 已去掉）", await evaluate(`return !${sc}.querySelector('[data-shortcut=daily_report]').textContent.includes('SOON');`));
   await evaluate(`$drag(${sc}.querySelector('[data-shortcut=orders]'), ${sc}.querySelector('[data-shortcut=manifests]'));`);
   await waitSaved();
   check(
@@ -573,7 +573,7 @@ async function run() {
   await helpers();
   await evaluate(DRAG);
   check("superadmin：读不到配置时写明用的是内置默认值", (await evaluate("return document.querySelector('main').textContent;")).includes("The server doesn’t have navigation settings yet"));
-  check("每个条目恰好一次（23 项，含 My Workspace、Farm out Report、Broadcast）", (await evaluate("return document.querySelectorAll('[data-nav-item]').length;")) === 23, await evaluate("return document.querySelectorAll('[data-nav-item]').length + ' ' + [...document.querySelectorAll('[data-nav-item]')].map(e => e.dataset.navItem).join();"));
+  check("每个条目恰好一次（24 项，含 My Workspace、Farm out Report、Broadcast、Bus Manifests）", (await evaluate("return document.querySelectorAll('[data-nav-item]').length;")) === 24, await evaluate("return document.querySelectorAll('[data-nav-item]').length + ' ' + [...document.querySelectorAll('[data-nav-item]')].map(e => e.dataset.navItem).join();"));
   await evaluate("$setValue(document.querySelector('[data-nav-item=orders] input'), 'Order list'); document.querySelector('[data-nav-item=task_board] input[type=checkbox]').click(); return 1;");
   await sleep(100);
   await evaluate("$btn('', document.querySelector('[data-nav-item=forms]')); [...document.querySelectorAll('button')].find(b => b.getAttribute('aria-label') === 'Move Forms up').click(); return 1;");
@@ -593,7 +593,7 @@ async function run() {
     !!put &&
       put.body.groups.find((g) => g.label === "Operations").items.find((i) => i.id === "orders").label === "Order list" &&
       put.body.groups.find((g) => g.label === "Reports").items.find((i) => i.id === "task_board").visible === false &&
-      opsIds === "dashboard,workspace,forecast,manifests,orders,quotation,forms,dispatch,schedule,daily_report,farm_out_report" &&
+      opsIds === "dashboard,workspace,forecast,manifests,orders,quotation,dispatch,forms,bus_manifests,schedule,daily_report,farm_out_report" &&
       put.body.default_shortcuts.join(",") === "dashboard,manifests,dispatch,forecast,workspace,schedule,orders",
     JSON.stringify(put?.body),
   );

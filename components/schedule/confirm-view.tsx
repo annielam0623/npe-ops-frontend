@@ -13,6 +13,7 @@ import {
   DARK_SECONDARY_BUTTON_CLASS,
 } from "@/components/ui/buttons";
 import { CenteredPage } from "@/components/ui/centered-page";
+import { HowToUse } from "@/components/ui/how-to-use";
 import { Panel } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { shiftYmd } from "@/lib/la-date";
@@ -23,11 +24,15 @@ import {
   type ConfirmRequest,
   type ConfirmSlot,
   fetchMyConfirmation,
+  isSwapWeek,
   isUnavailable,
   type MyConfirmation,
   type RequestSlot,
   submitMyChanges,
+  SWAP_APPROVER,
+  withdrawRequest,
 } from "@/lib/schedule-confirm-api";
+import { REST_RULE_TEXT, swapRestProblem } from "@/lib/schedule-swap-rest";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
 import { formatRange } from "@/lib/schedule-time";
 import { useLeaveGuard } from "@/lib/use-leave-guard";
@@ -80,6 +85,8 @@ interface View {
   extras: Map<string, CellCard[]>;
   busySlots: Set<number>;
   rows: { employee_id: number; name: string }[];
+  /** 两个班对调以后违反「晚接早」⇒ 英文红字（lib/schedule-swap-rest.ts）。 */
+  rest: (aSlotId: number, bSlotId: number) => string | null;
 }
 
 /** 同线上排班页周表（week-grid.tsx）：130px 人名列 + 7 天。 */
@@ -123,6 +130,13 @@ function md(ymd: string): string {
  * 点一下自己的卡片再点目标格子也行（手机上拖不动）。周四中午 12 点（deadline）以后只读。
  * 成对的键同意在前（Annie：「一般是accept之前，decline在后」）。
  * 两种进法：登录后（站内提醒里的链接）、邮件里的一人一条链接（token，不用登录）。
+ *
+ * G298 / 前端 142 发布后换班（Annie 2026-11-18「1A 2A 3B 4A 5A 6A，动手」，preview
+ * https://claude.ai/artifact/3dabwR79G7mAZgRp8u41hh ）：已发布、还没开始的周（isSwapWeek）只能换班——
+ * 拖自己的班到同事的班上（手机点自己的班再点同事的）⇒ 确认框按 Send request 就发（题 2 A，一次一条）；
+ * 同事 Agree / Decline；同意后两边写「Sent to Tessa, waiting for approval」；批准前能 Withdraw（题 5 A）。
+ * 同一个班可以同时在几条请求里（题 3 B，谁先批准用谁的）。晚接早（前一天 Close、第二天 Open / Morning）拖的时候、
+ * 确认框、Agree 时都挡，红字写规则让她换一天。草稿周的流程不变。
  */
 export function ConfirmView({ token }: { token?: string }) {
   const [state, setState] = useState<State>({ kind: "loading" });
@@ -132,6 +146,20 @@ export function ConfirmView({ token }: { token?: string }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sentAt, setSentAt] = useState<string | null>(null);
+  /** G298：松手以后弹的「Ask Lizzie to swap?」框。 */
+  const [ask, setAsk] = useState<{
+    mySlotId: number;
+    theirSlotId: number;
+  } | null>(null);
+  /** G298：点了 Withdraw、等她再确认一次的那条。 */
+  const [withdrawing, setWithdrawing] = useState<number | null>(null);
+  /** G298：放不上去时的红字（晚接早等），6 秒后消失。 */
+  const [dropError, setDropError] = useState<string | null>(null);
+  useEffect(() => {
+    if (!dropError) return;
+    const t = window.setTimeout(() => setDropError(null), 6000);
+    return () => window.clearTimeout(t);
+  }, [dropError]);
 
   const load = useCallback(async () => {
     try {
@@ -161,6 +189,7 @@ export function ConfirmView({ token }: { token?: string }) {
   const data = state.kind === "ready" ? state.data : null;
   const me = data?.person.employee_id ?? -1;
   const editable = !!data?.open && !busy;
+  const swapWeek = !!data && isSwapWeek(data);
 
   const run = useCallback(
     async (action: () => Promise<MyConfirmation>, sent?: boolean) => {
@@ -171,6 +200,8 @@ export function ConfirmView({ token }: { token?: string }) {
         setDrafts([]);
         setPicking(null);
         setArmed(null);
+        setAsk(null);
+        setWithdrawing(null);
         if (fresh && typeof fresh === "object" && "week_start" in fresh)
           setState({ kind: "ready", data: fresh });
         else await load();
@@ -211,6 +242,17 @@ export function ConfirmView({ token }: { token?: string }) {
     const marks = new Map<number, SlotMark>();
     const extras = new Map<string, CellCard[]>();
     const busySlots = new Set<number>();
+    // G298 题 3 B：发布后同一个班可以同时在几条请求里 ⇒ 不占住（照样能拖、能当目标）。
+    const swap = isSwapWeek(data);
+    const occupy = (...ids: number[]) => {
+      if (!swap) for (const id of ids) busySlots.add(id);
+    };
+    const rest = (aId: number, bId: number) =>
+      swapRestProblem(data.slots, aId, bId, {
+        typeLabel,
+        dayText: (ymd) => `${dayOf(ymd)} ${md(ymd)}`,
+        nameOf: (id) => (id === me ? null : nameOf(id)),
+      });
     const pushCard = (emp: number, date: string, c: CellCard) => {
       const k = `${emp}|${date}`;
       extras.set(k, [...(extras.get(k) ?? []), c]);
@@ -243,7 +285,12 @@ export function ConfirmView({ token }: { token?: string }) {
         theirEmp: r.peer?.employee_id ?? null,
         date: r.date,
         shiftType: r.shift_type,
-        tag: r.status === "awaiting_peer" ? "asked" : "waiting for approval",
+        tag:
+          r.status === "awaiting_peer"
+            ? "asked"
+            : swap
+              ? `sent to ${SWAP_APPROVER}`
+              : "waiting for approval",
       });
     }
     drafts.forEach((d, i) => {
@@ -264,7 +311,7 @@ export function ConfirmView({ token }: { token?: string }) {
     for (const it of items) {
       if (it.kind === "swap" && it.mySlot && it.theirSlot && it.theirEmp) {
         const peer = nameOf(it.theirEmp);
-        busySlots.add(it.mySlot.id).add(it.theirSlot.id);
+        occupy(it.mySlot.id, it.theirSlot.id);
         marks.set(it.mySlot.id, { ghost: `↔ to ${peer} if they agree` });
         marks.set(it.theirSlot.id, {
           split: {
@@ -302,30 +349,43 @@ export function ConfirmView({ token }: { token?: string }) {
       }
     }
 
-    // 别人找我换班（awaiting_peer）：我的那格一分为二，格子上 Accept / Decline
+    // 别人找我换班（awaiting_peer）：我的那格一分为二，格子上 Accept / Decline。
+    // G298：我同意了、等 Tessa 的（pending）也照样一分为二，没有键。
     for (const r of data.requests_for_me) {
-      if (r.status !== "awaiting_peer" || !r.my_slot || !r.their_slot) continue;
+      const asking = r.status === "awaiting_peer";
+      if (!asking && !(swap && r.status === "pending")) continue;
+      if (!r.my_slot || !r.their_slot) continue;
       const from = r.from.name;
-      busySlots.add(r.my_slot.id).add(r.their_slot.id);
+      const blocked =
+        swap && asking ? rest(r.my_slot.id, r.their_slot.id) : null;
+      const ifYou = swap ? "if you agree" : "if you accept";
+      occupy(r.my_slot.id, r.their_slot.id);
       marks.set(r.their_slot.id, {
         split: {
           left: `${from} request`,
           right: `${data.person.name} original`,
-          actions: (
-            <PeerButtons requestId={r.id} busy={busy} onAnswer={answer} />
-          ),
+          actions: asking ? (
+            <PeerButtons
+              requestId={r.id}
+              busy={busy}
+              onAnswer={answer}
+              agreeLabel={swap ? "Agree" : "Accept"}
+              agreeBlocked={!!blocked}
+            />
+          ) : undefined,
         },
       });
-      marks.set(r.my_slot.id, { ghost: "↔ to you if you accept" });
+      const tag = asking ? ifYou : `sent to ${SWAP_APPROVER}`;
+      marks.set(r.my_slot.id, { ghost: `↔ to you ${tag}` });
       pushCard(me, r.my_slot.date, {
         key: `p${r.id}`,
         ...fromSlot(r.my_slot),
-        note: `↔ from ${from} · if you accept`,
+        note: `↔ from ${from} · ${tag}`,
       });
       pushCard(r.from.employee_id, r.their_slot.date, {
         key: `p${r.id}`,
         ...fromSlot(r.their_slot),
-        note: `↔ from ${data.person.name} · if you accept`,
+        note: `↔ from ${data.person.name} · ${tag}`,
       });
     }
 
@@ -342,6 +402,7 @@ export function ConfirmView({ token }: { token?: string }) {
       extras,
       busySlots,
       rows,
+      rest,
     };
   }, [data, drafts, busy, me, answer]);
 
@@ -360,6 +421,21 @@ export function ConfirmView({ token }: { token?: string }) {
     setArmed(null);
     setError(null);
     const t = target.slot;
+    if (swapWeek) {
+      // G298：只能放到同事有班的格子上；放上去先检查晚接早，过了才弹确认框。
+      setDropError(null);
+      if (!t || t.employee_id === null || t.employee_id === me) {
+        setDropError("You can only swap with a coworker's shift.");
+        return;
+      }
+      const problem = view.rest(slotId, t.id);
+      if (problem) {
+        setDropError(problem);
+        return;
+      }
+      setAsk({ mySlotId: slotId, theirSlotId: t.id });
+      return;
+    }
     if (t) {
       if (t.employee_id === null || t.employee_id === me) return;
       if (view.busySlots.has(t.id)) return;
@@ -438,13 +514,28 @@ export function ConfirmView({ token }: { token?: string }) {
             {md(shiftYmd(data.week_start, 6))}
             {data.week_status === "draft" ? " (draft)" : ""}
           </h2>
-          {data.open ? (
+          {swapWeek ? (
+            <span className={cn("text-[12.5px]", MUTED)}>
+              Drag your shift onto a coworker&apos;s shift to ask for a swap.
+            </span>
+          ) : data.open ? (
             <span className={cn("text-[12.5px]", MUTED)}>
               Drag your own shift to the day you want. Other people&apos;s
               shifts can&apos;t be moved.
             </span>
           ) : null}
         </div>
+
+        {swapWeek ? (
+          <p
+            data-swap-week
+            className="mx-4 mt-3 rounded-[8px] border border-sky-400/35 bg-sky-400/10 px-3 py-2 text-[13px] text-sky-100"
+          >
+            This week is published. You can still swap a shift with a coworker:
+            drag your shift onto theirs. Your coworker agrees first, then{" "}
+            {SWAP_APPROVER} approves it.
+          </p>
+        ) : null}
 
         {closedText ? (
           <p
@@ -455,22 +546,74 @@ export function ConfirmView({ token }: { token?: string }) {
           </p>
         ) : null}
 
-        {peerAsks.map((r) => (
+        {peerAsks.map((r) => {
+          // G298：同意前再挡一次晚接早（中间排班可能变了）。
+          const blocked =
+            swapWeek && r.my_slot && r.their_slot
+              ? view.rest(r.my_slot.id, r.their_slot.id)
+              : null;
+          return (
+            <div
+              key={r.id}
+              data-peer-ask
+              className="mx-4 mt-3 flex flex-wrap items-center gap-2 rounded-[8px] border border-amber-300/40 bg-amber-300/10 px-3 py-2 text-[13px] text-amber-100"
+            >
+              <span>
+                {r.from.name} asked to swap with you: you take {r.from.name}
+                &apos;s <b>{slotText(r.my_slot, view)}</b>, {r.from.name} takes
+                your <b>{slotText(r.their_slot, view)}</b>.
+              </span>
+              <PeerButtons
+                requestId={r.id}
+                busy={busy}
+                onAnswer={answer}
+                agreeLabel={swapWeek ? "Agree" : "Accept"}
+                agreeBlocked={!!blocked}
+              />
+              {blocked ? (
+                <span
+                  role="alert"
+                  data-rest-blocked
+                  className="basis-full text-[12.5px] font-semibold text-red-300"
+                >
+                  {blocked} You can still decline.
+                </span>
+              ) : null}
+            </div>
+          );
+        })}
+
+        {swapWeek && armed !== null ? (
           <div
-            key={r.id}
-            data-peer-ask
+            data-swap-pick
             className="mx-4 mt-3 flex flex-wrap items-center gap-2 rounded-[8px] border border-amber-300/40 bg-amber-300/10 px-3 py-2 text-[13px] text-amber-100"
           >
-            <span>
-              {r.from.name} asked to swap with you: you take {r.from.name}
-              &apos;s <b>{slotText(r.my_slot, view)}</b>, {r.from.name} takes
-              your <b>{slotText(r.their_slot, view)}</b>.
-            </span>
-            <PeerButtons requestId={r.id} busy={busy} onAnswer={answer} />
+            <span>Now tap the coworker&apos;s shift you want.</span>
+            <button
+              type="button"
+              onClick={() => setArmed(null)}
+              className={DECLINE_BTN}
+            >
+              Cancel
+            </button>
           </div>
-        ))}
+        ) : null}
+        {dropError ? (
+          <p
+            role="alert"
+            data-drop-error
+            className="px-4 pt-2 text-[13px] font-semibold text-red-300"
+          >
+            {dropError}
+          </p>
+        ) : null}
 
-        <div className="flex flex-wrap items-center gap-2.5 px-4 pt-3">
+        <div
+          className={cn(
+            "flex flex-wrap items-center gap-2.5 px-4 pt-3",
+            swapWeek && "hidden",
+          )}
+        >
           {data.open ? (
             <span
               data-confirm-deadline
@@ -529,7 +672,7 @@ export function ConfirmView({ token }: { token?: string }) {
             </>
           ) : null}
         </div>
-        {error ? (
+        {error && !ask ? (
           <p role="alert" className="px-4 pt-2 text-[13px] text-red-300">
             {error}
           </p>
@@ -561,6 +704,7 @@ export function ConfirmView({ token }: { token?: string }) {
                 armed={armed}
                 picking={picking}
                 editable={editable}
+                moveOk={editable && !swapWeek}
                 canDrag={canDrag}
                 onArm={(id) => setArmed((a) => (a === id ? null : id))}
                 onDrop={dropOn}
@@ -577,7 +721,51 @@ export function ConfirmView({ token }: { token?: string }) {
           </div>
         </div>
 
-        {drafts.length || data.my_requests.length ? (
+        {swapWeek ? (
+          <SwapList
+            data={data}
+            view={view}
+            busy={busy}
+            withdrawing={withdrawing}
+            onWithdraw={setWithdrawing}
+            onConfirmWithdraw={(id) =>
+              void run(() => withdrawRequest({ id, token }))
+            }
+          />
+        ) : null}
+
+        {ask ? (
+          <AskSwap
+            view={view}
+            mySlotId={ask.mySlotId}
+            theirSlotId={ask.theirSlotId}
+            busy={busy}
+            error={error}
+            onCancel={() => {
+              setAsk(null);
+              setError(null);
+            }}
+            onSend={() =>
+              void run(
+                () =>
+                  submitMyChanges({
+                    week: data.week_start,
+                    token,
+                    requests: [
+                      {
+                        kind: "swap",
+                        my_slot_id: ask.mySlotId,
+                        their_slot_id: ask.theirSlotId,
+                      },
+                    ],
+                  }),
+                true,
+              )
+            }
+          />
+        ) : null}
+
+        {!swapWeek && (drafts.length || data.my_requests.length) ? (
           <div
             className="grid gap-1 px-4 pb-3 text-[13px]"
             data-confirm-changes
@@ -615,10 +803,32 @@ export function ConfirmView({ token }: { token?: string }) {
     );
   })();
 
+  // How to use（标准第 5 条：折叠、英文；手机放页面最底 = 本来就在最底）。G298 加发布后换班 + 晚接早规则。
+  const howTo =
+    state.kind === "ready" ? (
+      <HowToUse
+        dark
+        title="How to use — Your schedule"
+        items={[
+          "Draft weeks: press Looks good, or drag your shifts and press Send my changes before the deadline.",
+          "Weeks that are published but haven't started yet can still be swapped. This week can't.",
+          "To ask for a swap, drag your shift onto a coworker's shift. On a phone, tap your shift, then tap theirs. Check the box that opens and press Send request.",
+          `Your coworker gets a notice and an email and answers Agree or Decline. If they agree, the swap is sent to ${SWAP_APPROVER} for approval. Your schedule doesn't change until it's approved.`,
+          "You both get a notice and an email with the result.",
+          "Changed your mind? Press Withdraw next to the request before it's approved.",
+          `${REST_RULE_TEXT} A swap that would do that is blocked, so pick another day.`,
+          "Requests that aren't finished when the week starts are closed, and nothing changes.",
+        ]}
+      />
+    ) : null;
+
   if (token)
     return (
       <main className="min-h-screen bg-[#06101c] p-4 text-white/90 sm:p-7">
-        <div className="mx-auto max-w-[1180px]">{body}</div>
+        <div className="mx-auto flex max-w-[1180px] flex-col gap-5">
+          {body}
+          {howTo}
+        </div>
       </main>
     );
   return (
@@ -628,8 +838,258 @@ export function ConfirmView({ token }: { token?: string }) {
           Staff Schedule
         </h1>
         {body}
+        {howTo}
       </CenteredPage>
     </main>
+  );
+}
+
+/** G298：两个班里一个人的说法「Sat 11/28 Close」。 */
+function shortSlot(s: RequestSlot | null, view: View): string {
+  return s
+    ? `${view.dayOf(s.date)} ${md(s.date)} ${view.typeLabel(s.shift_type)}`
+    : "";
+}
+
+/** G298 发布后换班：请求的状态（mine = 我提的；否则是别人找我换的）。 */
+function swapStatus(r: ConfirmRequest, mine: boolean): string {
+  const peer = r.peer?.name ?? "";
+  const from = r.from.name;
+  switch (r.status) {
+    case "awaiting_peer":
+      return mine ? `Waiting for ${peer}` : "Waiting for your answer";
+    case "pending":
+      return mine
+        ? `${peer} agreed. Sent to ${SWAP_APPROVER}, waiting for approval`
+        : `Sent to ${SWAP_APPROVER}, waiting for approval`;
+    case "approved":
+      return "Approved";
+    case "declined":
+      return "Not approved";
+    case "peer_declined":
+      return mine ? `${peer} declined` : "You declined";
+    case "withdrawn":
+      return mine ? "Withdrawn" : `${from} withdrew it`;
+    case "closed":
+      return r.closed_reason === "week_started"
+        ? "Closed: the week started"
+        : r.closed_reason === "other_swap"
+          ? "Closed: one of the shifts was swapped with someone else"
+          : "Closed when published";
+  }
+}
+
+function swapStatusClass(r: ConfirmRequest): string {
+  if (r.status === "approved") return "font-semibold text-emerald-300";
+  if (r.status === "declined" || r.status === "peer_declined")
+    return "font-semibold text-red-300";
+  if (r.status === "closed" || r.status === "withdrawn") return "text-white/50";
+  return "text-amber-200";
+}
+
+/**
+ * G298「Your swaps」：我提的 + 别人找我换、已经答过的（等我答的在上面黄框里）。
+ * 我提的、还没批的有 Withdraw（先问一次，题 5 A）。一条都没有整块不出。
+ */
+function SwapList({
+  data,
+  view,
+  busy,
+  withdrawing,
+  onWithdraw,
+  onConfirmWithdraw,
+}: {
+  data: MyConfirmation;
+  view: View;
+  busy: boolean;
+  withdrawing: number | null;
+  onWithdraw: (id: number | null) => void;
+  onConfirmWithdraw: (id: number) => void;
+}) {
+  const mine = data.my_requests.filter((r) => r.kind === "swap");
+  const forMe = data.requests_for_me.filter(
+    (r) => r.kind === "swap" && r.status !== "awaiting_peer",
+  );
+  if (!mine.length && !forMe.length) return null;
+  return (
+    <div className="grid gap-1 px-4 pb-3 text-[13px]" data-swap-list>
+      <b className="text-white">Your swaps</b>
+      {mine.map((r) => {
+        const open = r.status === "awaiting_peer" || r.status === "pending";
+        return (
+          <div
+            key={r.id}
+            className="flex flex-wrap items-center gap-x-2 gap-y-1"
+            data-swap-mine={r.status}
+          >
+            <span>
+              ⇄ Your {shortSlot(r.my_slot, view)} ↔ {r.peer?.name ?? ""}&apos;s{" "}
+              {shortSlot(r.their_slot, view)}
+            </span>
+            <span className={swapStatusClass(r)}>{swapStatus(r, true)}</span>
+            {open ? (
+              withdrawing === r.id ? (
+                <span
+                  className="ml-auto inline-flex flex-wrap items-center gap-1.5"
+                  data-withdraw-confirm
+                >
+                  <span className="text-white/80">
+                    Withdraw this swap request? {r.peer?.name ?? ""} and{" "}
+                    {SWAP_APPROVER} will be told.
+                  </span>
+                  <button
+                    type="button"
+                    data-withdraw-yes
+                    disabled={busy}
+                    onClick={() => onConfirmWithdraw(r.id)}
+                    className={ACCEPT_BTN}
+                  >
+                    Withdraw
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => onWithdraw(null)}
+                    className={DECLINE_BTN}
+                  >
+                    Keep it
+                  </button>
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  data-withdraw={r.id}
+                  disabled={busy}
+                  onClick={() => onWithdraw(r.id)}
+                  className={cn(DECLINE_BTN, "ml-auto")}
+                >
+                  Withdraw
+                </button>
+              )
+            ) : null}
+          </div>
+        );
+      })}
+      {forMe.map((r) => (
+        <div
+          key={r.id}
+          className="flex flex-wrap items-center gap-x-2 gap-y-1"
+          data-swap-for-me={r.status}
+        >
+          <span>
+            ⇄ Your {shortSlot(r.their_slot, view)} ↔ {r.from.name}&apos;s{" "}
+            {shortSlot(r.my_slot, view)}
+          </span>
+          <span className={swapStatusClass(r)}>{swapStatus(r, false)}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** G298 松手以后的确认框「Ask Lizzie to swap?」（题 2 A：按 Send request 就发）。确认框里也挡晚接早。 */
+function AskSwap({
+  view,
+  mySlotId,
+  theirSlotId,
+  busy,
+  error,
+  onCancel,
+  onSend,
+}: {
+  view: View;
+  mySlotId: number;
+  theirSlotId: number;
+  busy: boolean;
+  error: string | null;
+  onCancel: () => void;
+  onSend: () => void;
+}) {
+  const mine = view.slotById.get(mySlotId);
+  const theirs = view.slotById.get(theirSlotId);
+  if (!mine || !theirs) return null;
+  const peer = view.nameOf(theirs.employee_id);
+  const blocked = view.rest(mySlotId, theirSlotId);
+  const card = (s: ConfirmSlot, tag: string) => (
+    <div
+      className={cn(
+        "flex min-w-0 flex-col gap-px rounded-[6px] border px-2 py-1",
+        shiftCardClass(s.shift_type),
+      )}
+    >
+      <small className="text-[10px] font-bold">{tag}</small>
+      <b className="text-[12.5px]">
+        {view.dayOf(s.date)} {md(s.date)} {view.typeLabel(s.shift_type)}
+      </b>
+      <span className="font-mono text-[10.5px]">
+        {formatRange(s.start_time, s.end_time)}
+      </span>
+    </div>
+  );
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Ask ${peer} to swap?`}
+      data-ask-swap
+    >
+      <div className="w-full max-w-[460px] rounded-[14px] border border-white/20 bg-[#0f1f33] text-white/90 shadow-[0_18px_50px_rgba(0,0,0,.6)]">
+        <div className="border-b border-white/10 px-4 py-3">
+          <h3 className="text-[15px] font-semibold text-white">
+            Ask {peer} to swap?
+          </h3>
+        </div>
+        <div className="grid gap-3 px-4 py-3 text-[13px]">
+          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 max-sm:grid-cols-1">
+            {card(mine, "You give")}
+            <span className="text-center text-[18px] text-amber-300">⇄</span>
+            {card(theirs, "You take")}
+          </div>
+          <p>
+            {peer} will work your {view.dayOf(mine.date)} {md(mine.date)}{" "}
+            {view.typeLabel(mine.shift_type)}. You will work {peer}&apos;s{" "}
+            {view.dayOf(theirs.date)} {md(theirs.date)}{" "}
+            {view.typeLabel(theirs.shift_type)}. {peer} gets a notice and an
+            email to agree or decline. Nothing changes until {SWAP_APPROVER}{" "}
+            approves it.
+          </p>
+          {blocked ? (
+            <p
+              role="alert"
+              data-ask-blocked
+              className="font-semibold text-red-300"
+            >
+              {blocked}
+            </p>
+          ) : null}
+          {error ? (
+            <p role="alert" data-ask-error className="text-red-300">
+              {error}
+            </p>
+          ) : null}
+          <div className="flex flex-wrap justify-end gap-2">
+            <button
+              type="button"
+              onClick={onCancel}
+              disabled={busy}
+              className={DARK_SECONDARY_BUTTON_CLASS}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              data-ask-send
+              onClick={onSend}
+              disabled={busy || !!blocked}
+              className={DARK_PRIMARY_BUTTON_CLASS}
+            >
+              {busy ? "Sending…" : "Send request"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -637,21 +1097,27 @@ function PeerButtons({
   requestId,
   busy,
   onAnswer,
+  agreeLabel = "Accept",
+  agreeBlocked = false,
 }: {
   requestId: number;
   busy: boolean;
   onAnswer: (id: number, a: "accept" | "decline") => void;
+  /** G298 发布后换班叫 Agree（Annie 原话），草稿周照旧 Accept。 */
+  agreeLabel?: string;
+  /** G298：同意了会违反晚接早 ⇒ 灰掉（红字在黄框里）。 */
+  agreeBlocked?: boolean;
 }) {
   return (
     <span className="inline-flex gap-1">
       <button
         type="button"
         data-peer-accept
-        disabled={busy}
+        disabled={busy || agreeBlocked}
         onClick={() => onAnswer(requestId, "accept")}
         className={ACCEPT_BTN}
       >
-        Accept
+        {agreeLabel}
       </button>
       <button
         type="button"
@@ -674,6 +1140,7 @@ function Row({
   armed,
   picking,
   editable,
+  moveOk,
   canDrag,
   onArm,
   onDrop,
@@ -687,6 +1154,8 @@ function Row({
   armed: number | null;
   picking: string | null;
   editable: boolean;
+  /** 能改天 / 加班（草稿周）；G298 发布后只能换班 ⇒ false。 */
+  moveOk: boolean;
   canDrag: (s: ConfirmSlot) => boolean;
   onArm: (id: number) => void;
   onDrop: (
@@ -726,8 +1195,9 @@ function Row({
           (t) => t.employee_id === emp && t.date === date,
         );
         const extra = view.extras.get(`${emp}|${date}`) ?? [];
-        const openDay = isMe && !off && slots.length === 0 && extra.length === 0;
-        const moveTarget = openDay && armed !== null;
+        const openDay =
+          isMe && !off && slots.length === 0 && extra.length === 0;
+        const moveTarget = openDay && moveOk && armed !== null;
         return (
           <div
             key={date}
@@ -781,7 +1251,7 @@ function Row({
                 <small className="text-[10px] font-bold">{c.note}</small>
               </div>
             ))}
-            {openDay && editable && armed === null ? (
+            {openDay && moveOk && armed === null ? (
               picking === date ? (
                 <div className="flex flex-col gap-[3px]" data-add-picker>
                   {data.shift_types.map((t) => (
@@ -982,6 +1452,8 @@ function statusText(r: ConfirmRequest): string {
       return `${peer} declined`;
     case "closed":
       return "Closed when published";
+    case "withdrawn":
+      return "Withdrawn";
   }
 }
 
@@ -989,6 +1461,6 @@ function statusClass(r: ConfirmRequest): string {
   if (r.status === "approved") return "font-semibold text-emerald-300";
   if (r.status === "declined" || r.status === "peer_declined")
     return "font-semibold text-red-300";
-  if (r.status === "closed") return "text-white/50";
+  if (r.status === "closed" || r.status === "withdrawn") return "text-white/50";
   return "text-amber-200";
 }

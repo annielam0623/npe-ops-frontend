@@ -62,17 +62,37 @@ const DONE_FORMAT = new Intl.DateTimeFormat("en-US", {
 function displayOrder(
   cards: ManifestCard[],
   pendingByTour: ReadonlyMap<number, number>,
+  closedTours?: Readonly<Record<number, string | null>>,
 ): ManifestCard[] {
   // Completed 之后有变化的团（G56）也算「还要处理」。
-  const rank = (c: ManifestCard) =>
-    pendingByTour.get(c.manifest_id)
+  // CCL 关掉的团（Annie 2026-11-18 关团题 3 A）：不用处理 ⇒ 排最后（跟没客人的一组）；还有客人（题 4 A）照「要处理」排前。
+  const rank = (c: ManifestCard) => {
+    const closed = closedOf(c, closedTours);
+    return pendingByTour.get(c.manifest_id)
       ? 0
-      : !c.uploaded
-        ? 2
-        : warnState(c)
+      : closed
+        ? warnState(c, closed)
           ? 0
-          : 1;
+          : 2
+        : !c.uploaded
+          ? 2
+          : warnState(c)
+            ? 0
+            : 1;
+  };
   return cards.slice().sort((a, b) => rank(a) - rank(b));
+}
+
+/** CCL 当天关掉的团：note = CCL 的说明（没有 = null）。没关 = undefined。 */
+type Closed = { note: string | null } | undefined;
+
+function closedOf(
+  c: ManifestCard,
+  closedTours?: Readonly<Record<number, string | null>>,
+): Closed {
+  return closedTours && c.manifest_id in closedTours
+    ? { note: closedTours[c.manifest_id] }
+    : undefined;
 }
 
 // 卡上只放车数和人数，照旧版 _tour_manifests_panel.html（Annie 2026-10-08 再确认：「不需要放餐之类的详情」）：
@@ -94,6 +114,7 @@ export function ManifestsPanel({
   version = 0,
   sync,
   colorByManifestId,
+  closedTours,
   onUnauthorized,
   onAssignBus,
   onSeatGuests,
@@ -113,6 +134,11 @@ export function ManifestsPanel({
    * 卡片回落到按团名猜色（同 Main manifest 没配颜色时的兜底）。
    */
   colorByManifestId?: Record<number, string | null>;
+  /**
+   * CCL 当天关掉的巴士团（manifest_id → CCL 的说明或 null，排车页从 prefill.closures 取；只看的人也有）。
+   * 这张卡写 Closed，不要求保存（Annie 2026-11-18「south bus的那个close同意推荐，动手」）。
+   */
+  closedTours?: Record<number, string | null>;
   onUnauthorized: () => void;
   /** 卡片上的 Check the bus（原 Assign Bus）：滚到 Step 2 里这个团的车（卡片是排车页画的，由它滚）。 */
   onAssignBus: (manifestId: number) => void;
@@ -239,7 +265,11 @@ export function ManifestsPanel({
     (!viewOnly && pending.length > 0) ||
     state.kind === "error" ||
     (state.kind === "ready" &&
-      state.cards.some((c) => !c.uploaded || !!warnState(c)));
+      state.cards.some(
+        (c) =>
+          (!c.uploaded && !closedOf(c, closedTours)) ||
+          !!warnState(c, closedOf(c, closedTours)),
+      ));
 
   return (
     // 样子照旧页面 _tour_manifests_panel.html：How to use 在标题行右边（`.tm-howto`），
@@ -294,7 +324,7 @@ export function ManifestsPanel({
         </p>
       ) : (
         (() => {
-          const ordered = displayOrder(state.cards, pendingByTour);
+          const ordered = displayOrder(state.cards, pendingByTour, closedTours);
           // 没客人的团（No guests yet，多半这天没单）收进最下面一行，点开才显示（Annie 2026-10-15）。
           // 收起时卡片照样画（hidden），Step 1 的 Check the bus 照常能用。
           const card = (c: ManifestCard) => (
@@ -302,6 +332,7 @@ export function ManifestsPanel({
               key={c.manifest_id}
               card={c}
               color={colorByManifestId?.[c.manifest_id]}
+              closed={closedOf(c, closedTours)}
               pendingCount={pendingByTour.get(c.manifest_id) ?? 0}
               date={date}
               onAssignBus={() => onAssignBus(c.manifest_id)}
@@ -513,7 +544,16 @@ export function CompletedBar({
  */
 function warnState(
   c: ManifestCard,
-): { text: string; solve: "check" | "seat" } | null {
+  closed?: Closed,
+): { text: string; solve: "check" | "seat" | "none" } | null {
+  // CCL 关掉的团：不要保存、不要排车；名单上还有客人才提醒（题 4 A），订单状态照规矩查 Order List。
+  if (closed)
+    return c.uploaded && (c.pax ?? 0) > 0
+      ? {
+          text: `Closed by CCL, but ${c.pax} guest${c.pax === 1 ? " is" : "s are"} still on the list. Check them in Order List.`,
+          solve: "none",
+        }
+      : null;
   if (!c.uploaded) return null;
   if (!c.buses) return { text: "Needs saving", solve: "check" };
   if (c.mode === "unlettered")
@@ -535,6 +575,7 @@ function warnState(
 function Card({
   card: c,
   color,
+  closed,
   pendingCount,
   date,
   onAssignBus,
@@ -544,6 +585,8 @@ function Card({
   card: ManifestCard;
   /** 这个团的颜色（G142，从排车页 `day.sections` 按 manifest_id 拼出来；没有就按团名猜）。 */
   color?: string | null;
+  /** CCL 当天关掉了这个团（Annie 2026-11-18「动手」）。 */
+  closed?: Closed;
   /** Completed 之后这个团有几条没处理的变化（G56）。 */
   pendingCount: number;
   date: string;
@@ -552,9 +595,15 @@ function Card({
   /** 只看：Assign Bus 一律写 Check the bus（只是跳到 Step 2 看），没有 Arrange seats。 */
   viewOnly?: boolean;
 }) {
-  const warn = warnState(c);
+  const warn = warnState(c, closed);
   // 右上角小标签只在没问题时用：有问题时团名下面的橙字已经说了（同旧页面 cb3887d，Annie 否掉了重复的标签）。
-  const pill = !c.uploaded
+  // 关掉的团：一律灰色胶囊 Closed（有 CCL 说明写说明，同 Step 2 卡头）。
+  const pill = closed
+    ? {
+        text: closed.note || "Closed",
+        cls: "rounded-full bg-[#e9e9e6] font-bold text-[#1a1a1a] whitespace-normal",
+      }
+    : !c.uploaded
     ? { text: "No guests yet", cls: "bg-[#eef0f3] text-[#1a1a1a]" }
     : warn || pendingCount
       ? null
@@ -562,13 +611,17 @@ function Card({
   return (
     <div
       data-card={c.manifest_id}
+      data-card-closed={closed ? "" : undefined}
       // 团色条（同 Main manifest / Bus manifest，Annie 2026-10-14；G142 起认接口给的颜色，没配时按团名猜）。
       style={
         {
           "--c": resolveTourColor(color, c.name || c.title),
         } as CSSProperties
       }
-      className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-4 gap-y-3.5 rounded-[10px] border-l-[5px] border-l-[var(--c)] bg-paper px-[18px] py-4 text-[#111827] max-[620px]:grid-cols-[auto_minmax(0,1fr)]"
+      className={cn(
+        "grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-4 gap-y-3.5 rounded-[10px] border-l-[5px] border-l-[var(--c)] px-[18px] py-4 text-[#111827] max-[620px]:grid-cols-[auto_minmax(0,1fr)]",
+        closed ? "bg-[#f3f3f1]" : "bg-paper",
+      )}
     >
       {/* 图标块颜色跟着团的名字走（lib/tour-colors.ts，和 Manifests 的组按钮同一套；Annie 2026-10-14）。原来按卡片序号轮流（旧 `.tm-tile.c0`–`c3`）。 */}
       <span
@@ -595,7 +648,7 @@ function Card({
           </div>
         ) : null}
         <div className="mt-[3px] text-[13.5px] leading-[1.45] text-[#1a1a1a]">
-          {busText(c.buses)} ·{" "}
+          {closed ? "Closed by CCL" : busText(c.buses)} ·{" "}
           {c.uploaded ? `${c.pax} guests loaded` : "No guests loaded"}
         </div>
         {/* G65：取消 / 改期留在名单上的单灰字（0 人）。主 Manifest 里找不到的单不再另提醒「check Rezdy」
@@ -634,12 +687,13 @@ function Card({
           type="button"
           onClick={onAssignBus}
           className={
-            !viewOnly && (c.buses === 0 || warn?.solve === "check")
+            !viewOnly && !closed && (c.buses === 0 || warn?.solve === "check")
               ? TM_BTN_BLUE
               : TM_BTN
           }
         >
-          {c.buses === 0 && !viewOnly ? "Assign Bus" : "Check the bus"}
+          {/* 关掉的团（题 1 A）：白色 Check the bus，跳到 Step 2 看 CCL 的关团说明。 */}
+          {c.buses === 0 && !viewOnly && !closed ? "Assign Bus" : "Check the bus"}
         </button>
         {/* Seat guests：车位够、还有客人没分到车时才有；跳到 Step 2 这个团的车、展开名单。 */}
         {warn?.solve === "seat" && !viewOnly ? (
@@ -697,6 +751,10 @@ function HowToUse({ canComplete }: { canComplete: boolean | null }) {
         <li>
           Click Open manifest to check the guests, print, or fill in the
           Antelope confirmation #.
+        </li>
+        <li>
+          A tour that CCL closed for the day shows Closed. It does not need
+          saving and has no bus.
         </li>
         {showComplete ? (
           <li>

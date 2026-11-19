@@ -275,6 +275,129 @@ async function run() {
   check("已发布：This week is published, so requests are closed. Ask your supervisor.；标题没有 (draft)", await evaluate("return document.querySelector('[data-confirm-closed]').textContent === 'This week is published, so requests are closed. Ask your supervisor.' && !document.querySelector('[data-confirm] h2').textContent.includes('draft');"));
   await ctl({ published: false });
 
+  // ── G298 / 142 发布后换班（已发布、还没开始的周）：只能换班，拖完确认框按 Send request 就发；晚接早挡下来 ──
+  await ctl({ reset: true, published: false, past: false, peerAsk: false, swapWeek: true, swapAsks: false, swapSamples: false });
+  await open();
+  check(
+    "发布后换班周：蓝条写 This week is published. You can still swap…，Tessa approves it；标题没有 (draft)",
+    await evaluate("return document.querySelector('[data-swap-week]')?.textContent.replace(/\\s+/g, ' ').trim() === 'This week is published. You can still swap a shift with a coworker: drag your shift onto theirs. Your coworker agrees first, then Tessa approves it.' && !document.querySelector('[data-confirm] h2').textContent.includes('draft') && !document.querySelector('[data-confirm-closed]');"),
+    await evaluate("return document.querySelector('[data-swap-week]')?.textContent ?? 'none';"),
+  );
+  check(
+    "只能换班：没有 Looks good / Send my changes / 期限，没有 + Work this day；自己的卡片能拖",
+    await evaluate("const vis = (s) => { const e = document.querySelector(s); return !!e && e.offsetParent !== null; }; return !vis('[data-confirm-accept]') && !vis('[data-confirm-send]') && !vis('[data-confirm-deadline]') && !document.querySelector('[data-add-day]') && $slot(101).draggable;"),
+  );
+  let sfrom = (await mockLog()).length;
+  await evaluate("window.$drop(101, $slot(105));");
+  await waitFor("document.querySelector('[data-ask-swap]')");
+  check(
+    "拖 Tue Mid 到 Lizzie 的 Mon Open：弹 Ask Lizzie to swap?，写清谁上哪个班；Send request 蓝色；还没发请求",
+    (await evaluate("const d = document.querySelector('[data-ask-swap]'); const t = d.textContent.replace(/\\s+/g, ' '); return d.querySelector('h3').textContent === 'Ask Lizzie to swap?' && t.includes('You give') && t.includes('You take') && t.includes(\"Lizzie will work your Tue 11/3 Mid. You will work Lizzie's Mon 11/2 Open. Lizzie gets a notice and an email to agree or decline. Nothing changes until Tessa approves it.\") && getComputedStyle(d.querySelector('[data-ask-send]')).backgroundColor === 'rgb(59, 130, 246)';"))
+      && (await since(sfrom, (e) => e.method === "POST")).length === 0,
+    await evaluate("return document.querySelector('[data-ask-swap]')?.textContent ?? 'none';"),
+  );
+  await evaluate("document.querySelector('[data-ask-send]').click();");
+  await waitFor("!document.querySelector('[data-ask-swap]') && document.querySelector('[data-swap-mine]')");
+  const sw = (await since(sfrom, (e) => e.path === "/api/schedule/confirmation/changes" && e.method === "POST"))[0];
+  check(
+    "Send request：POST …/changes 一条 swap {my_slot_id 101, their_slot_id 105}；Your swaps 写 Waiting for Lizzie + Withdraw",
+    JSON.stringify(sw?.body?.requests) === JSON.stringify([{ kind: "swap", my_slot_id: 101, their_slot_id: 105 }]) &&
+      (await evaluate("const r = document.querySelector('[data-swap-mine=awaiting_peer]'); return !!r && r.textContent.includes(\"⇄ Your Tue 11/3 Mid ↔ Lizzie's Mon 11/2 Open\") && r.textContent.includes('Waiting for Lizzie') && !!r.querySelector('[data-withdraw]');")),
+    JSON.stringify(sw?.body) + " | " + (await evaluate("return document.querySelector('[data-swap-list]')?.textContent ?? 'none';")),
+  );
+  await evaluate("document.querySelector('[data-withdraw]').click();");
+  await waitFor("document.querySelector('[data-withdraw-confirm]')");
+  check("Withdraw 先问一次：Withdraw this swap request? Lizzie and Tessa will be told.", await evaluate("return document.querySelector('[data-withdraw-confirm]').textContent.replace(/\\s+/g, ' ').includes('Withdraw this swap request? Lizzie and Tessa will be told.');"));
+  sfrom = (await mockLog()).length;
+  await evaluate("document.querySelector('[data-withdraw-yes]').click();");
+  await waitFor("document.querySelector('[data-swap-mine=withdrawn]')");
+  check(
+    "确认撤回：POST …/requests/{id}/withdraw；那条写灰字 Withdrawn、没有 Withdraw 键",
+    (await since(sfrom, (e) => /^\/api\/schedule\/confirmation\/requests\/\d+\/withdraw$/.test(e.path) && e.method === "POST")).length === 1 &&
+      (await evaluate("const r = document.querySelector('[data-swap-mine=withdrawn]'); return r.textContent.includes('Withdrawn') && !r.querySelector('[data-withdraw]');")),
+  );
+  sfrom = (await mockLog()).length;
+  await evaluate("window.$drop(103, $slot(118));");
+  await waitFor("document.querySelector('[data-drop-error]')");
+  check(
+    "晚接早：Sat Close 换 Veronica 的 Fri Open ⇒ 我 Thu Close、Fri Open，红字写规则、让换一天，不弹框、不发请求",
+    (await evaluate("return document.querySelector('[data-drop-error]').textContent === \"You can't work Open on Fri 11/6 after a Close on Thu 11/5. A Close shift can't be followed by an Open or Morning shift the next day. Pick another day.\" && !document.querySelector('[data-ask-swap]');")) &&
+      (await since(sfrom, (e) => e.method === "POST")).length === 0,
+    await evaluate("return document.querySelector('[data-drop-error]')?.textContent ?? 'none';"),
+  );
+  await evaluate("window.$drop(103, $slot(120));");
+  await sleep(200);
+  check(
+    "晚接早 Close → Morning：Sat Close 换 Lizzie 的 Fri Morning ⇒ 红字 You can't work Morning on Fri 11/6 after a Close on Thu 11/5. …（同后端原话）",
+    await evaluate("return document.querySelector('[data-drop-error]')?.textContent === \"You can't work Morning on Fri 11/6 after a Close on Thu 11/5. A Close shift can't be followed by an Open or Morning shift the next day. Pick another day.\" && !document.querySelector('[data-ask-swap]');"),
+    await evaluate("return document.querySelector('[data-drop-error]')?.textContent ?? 'none';"),
+  );
+  await evaluate("window.$drop(101, $cell('Jing|2026-11-02'));");
+  await sleep(200);
+  check("拖到自己没班的那天：红字 You can only swap with a coworker's shift.（发布后不能改天）", await evaluate("return document.querySelector('[data-drop-error]')?.textContent === \"You can only swap with a coworker's shift.\" && !document.querySelector('[data-ask-swap]');"));
+  await evaluate("window.$drop(100, $slot(105));");
+  await waitFor("document.querySelector('[data-ask-swap]')");
+  await evaluate("document.querySelector('[data-ask-send]').click();");
+  await waitFor("document.querySelector('[data-ask-error]')");
+  check(
+    "后端挡（同一天已有班）：确认框里红字照后端原话，框不关",
+    await evaluate("return document.querySelector('[data-ask-error]').textContent === \"Lizzie already works Sun 11/1 and can't take your shift that day.\" && !!document.querySelector('[data-ask-swap]');"),
+    await evaluate("return document.querySelector('[data-ask-error]')?.textContent ?? 'none';"),
+  );
+  await evaluate("[...document.querySelectorAll('[data-ask-swap] button')].find((b) => b.textContent === 'Cancel').click();");
+  await sleep(200);
+  // 手机：点自己的班 → 黄框提示 → 点同事的班 → 同一个确认框
+  await evaluate("$slot(101).click();");
+  await waitFor("document.querySelector('[data-swap-pick]')");
+  check("手机做法：点自己的班出黄框 Now tap the coworker's shift you want. + Cancel", await evaluate("const p = document.querySelector('[data-swap-pick]'); return p.textContent.includes(\"Now tap the coworker's shift you want.\") && !!$btn('Cancel', p);"));
+  await evaluate("$slot(109).click();");
+  await waitFor("document.querySelector('[data-ask-swap]')");
+  check("再点 Nadia 的 Mon Mid：弹 Ask Nadia to swap?", await evaluate("return document.querySelector('[data-ask-swap] h3').textContent === 'Ask Nadia to swap?';"));
+  await evaluate("[...document.querySelectorAll('[data-ask-swap] button')].find((b) => b.textContent === 'Cancel').click();");
+
+  // 同事找我换：Agree（蓝）在前；会晚接早的那条 Agree 灰掉、红字
+  await ctl({ reset: true, swapAsks: true });
+  await open();
+  await waitFor("document.querySelectorAll('[data-peer-ask]').length === 2");
+  check(
+    "Veronica 那条（我会 Thu Close、Fri Open）：红字规则 + You can still decline.，Agree 灰掉，Decline 能点",
+    await evaluate("const a = document.querySelectorAll('[data-peer-ask]')[0]; return a.querySelector('[data-rest-blocked]')?.textContent === \"You can't work Open on Fri 11/6 after a Close on Thu 11/5. A Close shift can't be followed by an Open or Morning shift the next day. Pick another day. You can still decline.\" && a.querySelector('[data-peer-accept]').disabled && a.querySelector('[data-peer-accept]').textContent === 'Agree' && !a.querySelector('[data-peer-decline]').disabled;"),
+    await evaluate("return document.querySelectorAll('[data-peer-ask]')[0]?.textContent ?? 'none';"),
+  );
+  await ctl({ acceptRest409: true });
+  await evaluate("document.querySelectorAll('[data-peer-ask]')[1].querySelector('[data-peer-accept]').click();");
+  await waitFor("[...document.querySelectorAll('[role=alert]')].some((e) => e.textContent.includes('Pick another day.') && !e.closest('[data-peer-ask]'))");
+  check(
+    "Agree 时后端再挡（409，中间排班变了）：红字照后端原话，黄框还在",
+    await evaluate("return [...document.querySelectorAll('[role=alert]')].some((e) => e.textContent === \"You can't work Morning on Fri 11/6 after a Close on Thu 11/5. A Close shift can't be followed by an Open or Morning shift the next day. Pick another day.\") && document.querySelectorAll('[data-peer-ask]').length === 2;"),
+  );
+  await ctl({ acceptRest409: false });
+  sfrom = (await mockLog()).length;
+  await evaluate("const a = document.querySelectorAll('[data-peer-ask]')[1]; [...a.querySelectorAll('button')].map((b) => b.textContent).join('/') === 'Agree/Decline' && a.querySelector('[data-peer-accept]').click();");
+  await waitFor("document.querySelector('[data-swap-for-me=pending]')");
+  check(
+    "Nadia 那条 Agree：POST …/requests/961/answer {accept}；Your swaps 写 Sent to Tessa, waiting for approval",
+    (await since(sfrom, (e) => e.path === "/api/schedule/confirmation/requests/961/answer"))[0]?.body?.answer === "accept" &&
+      (await evaluate("const r = document.querySelector('[data-swap-for-me=pending]'); return r.textContent.includes(\"⇄ Your Tue 11/3 Mid ↔ Nadia's Mon 11/2 Mid\") && r.textContent.includes('Sent to Tessa, waiting for approval');")),
+    await evaluate("return document.querySelector('[data-swap-list]')?.textContent ?? 'none';"),
+  );
+
+  // 各种状态的字（照 8e 合同）
+  await ctl({ reset: true, swapAsks: false, swapSamples: true });
+  await open();
+  await waitFor("document.querySelector('[data-swap-list]')");
+  const stx = (s) => `(document.querySelector('[data-swap-mine=${s}]')?.textContent ?? '')`;
+  check(
+    "状态：等批写 Lizzie agreed. Sent to Tessa…（能 Withdraw）；Approved 绿；Not approved / Nadia declined 红；到期 / 被换走灰字",
+    await evaluate(`const g = (s) => document.querySelectorAll('[data-swap-mine=' + s + ']'); return ${stx("pending")}.includes('Lizzie agreed. Sent to Tessa, waiting for approval') && !!document.querySelector('[data-swap-mine=pending] [data-withdraw]') && ${stx("approved")}.includes('Approved') && !document.querySelector('[data-swap-mine=approved] [data-withdraw]') && document.querySelector('[data-swap-mine=approved] span + span').className.includes('text-emerald-300') && ${stx("declined")}.includes('Not approved') && ${stx("peer_declined")}.includes('Nadia declined') && g('closed')[0].textContent.includes('Closed: the week started') && g('closed')[1].textContent.includes('Closed: one of the shifts was swapped with someone else');`),
+    await evaluate("return document.querySelector('[data-swap-list]')?.innerText ?? 'none';"),
+  );
+  check(
+    "How to use — Your schedule：有换班做法、Withdraw、晚接早规则",
+    await evaluate("const t = [...document.querySelectorAll('details')].find((d) => d.textContent.includes('How to use — Your schedule'))?.textContent ?? ''; return t.includes(\"drag your shift onto a coworker's shift\") && t.includes('Press Withdraw') && t.includes(\"A Close shift can't be followed by an Open or Morning shift the next day.\") && t.includes('Requests that aren\\'t finished when the week starts are closed');"),
+  );
+  await ctl({ reset: true, swapWeek: false, swapSamples: false });
+
   // ── 接口没上线 / 没登录 / 邮件链接 ──
   await ctl({ unavail: true });
   await goto(CONFIRM);

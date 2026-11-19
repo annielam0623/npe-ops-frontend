@@ -50,7 +50,6 @@ import {
   TC_LM_EMAIL_FIELDS,
   TC_SMS_FIELDS,
   TC_TOURS,
-  tcGuestFields,
   type TextField,
   TIX_EMAIL_FIELDS,
   TIX_GLOBAL_FIELDS,
@@ -86,6 +85,7 @@ import {
   TeamMessagesPreview,
   type TeamTab,
 } from "./team-messages";
+import { TcGuestEditor } from "./tc-guest-editor";
 import { TixTourPicker } from "./tix-tour-picker";
 
 type Module = "tc" | "tix" | "bc" | "fo" | "shuttle" | "team";
@@ -398,6 +398,7 @@ export function ContentStudioView() {
     <Shell
       dirtyCount={dirtyCount}
       phonePreview={!!mod}
+      wide={module === "tc" && tabName === "Guest Page"}
       preview={
         module === "team" ? (
           <TeamMessagesPreview tab={tabName as TeamTab} studio={studio} />
@@ -571,24 +572,13 @@ export function ContentStudioView() {
               ))
             : null}
           {module === "tc" && tabName === "Guest Page" ? (
-            <>
-              <div className="mb-2 text-[13px] font-bold text-[#3a8c45]">
-                Tour Confirmation
-              </div>
-              <div className={SECTION_HINT_CLASS}>
-                Select a tour to edit. Changes only apply to the selected tour.
-                To apply a change to all tours, edit the Global section above.
-              </div>
-              <TourPills
-                tours={TC_TOURS}
-                value={tcTour}
-                onChange={setTcTour}
-                activeClass="border-[#3a8c45] bg-[#3a8c45] text-white"
-              />
-              {tcGuestFields(tcTour).map((f) => (
-                <FieldBlock key={f.key} field={f} studio={studio} />
-              ))}
-            </>
+            // 128：整页画出来、在页面上改（Annie 2026-11-12 / 11-13「动手」）。原来一条一条的表单在 List view 里。
+            <TcGuestEditor
+              studio={studio}
+              tour={tcTour}
+              onTourChange={setTcTour}
+              onUnauthorized={redirectToLogin}
+            />
           ) : null}
           {module === "tix" && tabName === "Email"
             ? TIX_EMAIL_FIELDS.map((f) => (
@@ -689,44 +679,6 @@ function FieldBlock({
       )}
       {after ? <PickupOrderCard studio={studio} /> : null}
     </>
-  );
-}
-
-/** .tour-selector / .tour-pill */
-function TourPills({
-  tours,
-  value,
-  onChange,
-  activeClass,
-}: {
-  tours: readonly { key: string; label: string }[];
-  value: string;
-  onChange: (k: string) => void;
-  activeClass: string;
-}) {
-  return (
-    <div
-      role="group"
-      aria-label="Tour"
-      className="mb-3.5 flex flex-wrap items-start gap-1.5"
-    >
-      {tours.map((t) => (
-        <button
-          key={t.key}
-          type="button"
-          aria-pressed={value === t.key}
-          onClick={() => onChange(t.key)}
-          className={cn(
-            "cursor-pointer rounded-[20px] border px-[11px] py-1 text-[11px] font-medium transition-all",
-            value === t.key
-              ? activeClass
-              : "border-black/15 bg-paper text-[#1a1a1a] hover:border-[#1a1a1a] hover:text-[#1a1a1a] night:border-white/10 night:bg-white/[.04] night:text-white/75 night:hover:border-white/40 night:hover:text-white/90",
-          )}
-        >
-          {t.label}
-        </button>
-      ))}
-    </div>
   );
 }
 
@@ -978,10 +930,13 @@ function Shell({
   dirtyCount = 0,
   preview,
   phonePreview = true,
+  wide = false,
 }: {
   children: ReactNode;
   dirtyCount?: number;
   preview?: ReactNode;
+  /** 整页编辑（TC Guest Page）：不分栏，右边的 Preview 不放（整页本身就是预览）。 */
+  wide?: boolean;
   /** 手机上还没选模块时不放空的预览框。 */
   phonePreview?: boolean;
 }) {
@@ -991,7 +946,14 @@ function Shell({
     // 编辑区拆开（contents），预览排在编辑内容下面、How to use 和 Action Log 上面。
     <main className="-m-4 flex h-[calc(100vh-64px)] overflow-hidden text-stone-800 max-sm:m-0 max-sm:h-auto max-sm:flex-col max-sm:overflow-visible sm:-m-7 night:text-white/90">
       {/* .studio-editor */}
-      <div className="w-[55%] min-w-[380px] overflow-y-auto border-r border-black/[.08] px-6 py-5 max-sm:contents night:border-white/10">
+      <div
+        className={cn(
+          "overflow-y-auto px-6 py-5 max-sm:contents",
+          wide
+            ? "w-full"
+            : "w-[55%] min-w-[380px] border-r border-black/[.08] night:border-white/10",
+        )}
+      >
         {/* 只有 ops 有：线上生效的提醒和未保存计数（旧页面没有这一行）。 */}
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2 text-[11px] text-[#94a3b8] max-sm:mb-3 night:text-white/45">
           <PhoneOneLine className="min-w-0 max-sm:flex-1">
@@ -1045,6 +1007,7 @@ function Shell({
         className={cn(
           "flex w-[45%] flex-col overflow-y-auto bg-[#e8e4de] max-sm:order-1 max-sm:mt-4 max-sm:w-full max-sm:overflow-visible max-sm:rounded-[12px] night:bg-white/[.03]",
           !phonePreview && "max-sm:hidden",
+          wide && "hidden",
         )}
       >
         <div className="sticky top-0 z-10 flex shrink-0 items-center justify-between border-b border-black/[.08] bg-[#e8e4de] px-4 py-2.5 night:border-white/10 night:bg-[#0b1724]">
@@ -1068,5 +1031,6 @@ const HOW_TO_ITEMS = [
   "Click Save on the card. A green ✓ Saved next to the button means it is stored; unsaved changes are lost when you leave.",
   "Cancel only undoes changes you have not saved.",
   "Tickets Reminder → ✎ Edit tour: tick No Cfm # needed for a tour whose guests don't get a confirmation number (for example the two Hogan Upper Antelope tours). Its orders are sent without a Cfm #, and the reminder email shows the check-in instructions instead. Click Save.",
+  "Tour Confirmation → Guest Page: the page is drawn exactly as guests see it. Click Edit, then click any outlined text to change it in the small box and click Apply. Amber outlines are shared by all tours. + Add line adds up to 2 lines to a part (this tour only or all tours); ↑↓ changes the order of the pick-up steps. Click Save once to store every change; Discard throws them away. List view shows the same text as a list.",
   "Team Messages: texts to drivers, guides, restaurants and staff. Driver and guide texts must fit in one SMS with the link filled in, keep exactly one {link}, and use plain characters only. Subjects, the texts and link text can't be empty; the other lines can be left empty to drop them.",
 ];

@@ -6,6 +6,7 @@
 const PAGE_TITLES: readonly [prefix: string, title: string][] = [
   ["/manifests", "Manifests"],
   ["/orders", "Orders"],
+  ["/bus-manifests", "Bus Manifests"],
   ["/dispatch/imports", "Dispatch Imports"],
   ["/dispatch/work-sheet", "Dispatch — Work Sheet"],
   ["/dispatch/guide-sheet", "Dispatch — Guide Sheet"],
@@ -25,6 +26,7 @@ const PAGE_TITLES: readonly [prefix: string, title: string][] = [
   ["/task-board", "Task Board"],
   ["/settings/products", "Products"],
   ["/settings/content-studio", "Content Studio"],
+  ["/settings/test-send", "Test send"],
   ["/settings/pickup-locations", "Pickup Locations"],
   ["/settings/vehicles", "Vehicles"],
   ["/settings/quick-replies", "Driver Quick Replies"],
@@ -42,6 +44,8 @@ const PAGE_TITLES: readonly [prefix: string, title: string][] = [
   ["/settings/transfer-charter", "Transfer & Charter settings"],
   // 定时自动发送（后端 auto-send G76，Annie 2026-10-15）。
   ["/settings/auto-send", "Auto Send"],
+  // 145 电话 AI 调用记录（Annie 2026-11-15）。
+  ["/settings/phone-ai-calls", "Phone AI Calls"],
   // 自动通知统一开关页（Annie 2026-10-24）。
   ["/settings/notifications", "Notifications"],
   // Team 权限 v2（Annie 2026-10-25）。

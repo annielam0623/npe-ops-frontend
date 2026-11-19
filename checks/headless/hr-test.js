@@ -661,8 +661,8 @@ async function runWorkingRecord() {
   check("Working Record：卡片底色 Driver #dbeafe / Guide #ede9fe / Driver & Guide #ccfbf1", await evaluate(`
     const bg = (id, d) => getComputedStyle(document.querySelector('[data-wr-cell="' + id + '|' + d + '"] [data-wr-job]')).backgroundColor;
     return bg(101, '${d1}') === 'rgb(219, 234, 254)' && bg(103, '${d1}') === 'rgb(237, 233, 254)' && bg(102, '${d1}') === 'rgb(204, 251, 241)';`));
-  check("Working Record：live 卡也上底色，橙色虚线框照旧", await evaluate(`
-    const j = document.querySelector('[data-wr-cell="101|${d3}"] [data-wr-job][data-wr-live]'); const cs = getComputedStyle(j);
+  check("Working Record：Not completed 卡也上底色，橙色虚线框", await evaluate(`
+    const j = document.querySelector('[data-wr-cell="101|${d3}"] [data-wr-job][data-wr-not-completed]'); const cs = getComputedStyle(j);
     return cs.backgroundColor === 'rgb(219, 234, 254)' && cs.borderTopStyle === 'dashed' && cs.borderTopColor === 'rgb(180, 83, 9)';`));
   check("Working Record：night 角色字换浅色 #93c5fd / #c4b5fd / #5eead4、卡不是白底", await evaluate(`
     const root = document.documentElement, prev = root.getAttribute('data-theme'); root.setAttribute('data-theme', 'night');
@@ -675,9 +675,20 @@ async function runWorkingRecord() {
   check("Working Record：一天两段写两行；relay 写第几轮", await evaluate(`
     const jobs = [...${cell(101, d2)}.querySelectorAll('[data-wr-job]')].map((j) => j.textContent);
     return jobs.length === 2 && jobs[0].endsWith('Hotel pickups to Treasure Island · 1st round · Van 12') && jobs[1].endsWith('Bus tour Bryce & Zion · 2610');`));
-  check("Working Record：没存档 ⇒ 虚线框 + live、没有 📷", await evaluate(`
+  // 136（Annie 2026-11-13「3个问题都是A」「动手」）：虚线框只看 status，卡上不写 live；Not completed 每天写一次在日期下面。
+  check("Working Record：没点 Completed ⇒ 虚线框、卡上不写 live、没有 📷", await evaluate(`
     const c = ${cell(101, d3)}; const j = c.querySelector('[data-wr-job]');
-    return j.hasAttribute('data-wr-live') && getComputedStyle(j).borderTopStyle === 'dashed' && j.textContent.includes('live') && !c.querySelector('[data-wr-cam]');`));
+    return j.hasAttribute('data-wr-not-completed') && getComputedStyle(j).borderTopStyle === 'dashed' && !/live|Not completed/.test(j.textContent) && !c.querySelector('[data-wr-cam]');`));
+  check("Working Record：点过 Completed（source live、status completed）⇒ 实线框、不写 live", await evaluate(`
+    const j = ${cell(103, d1)}.querySelector('[data-wr-job]'); const cs = getComputedStyle(j);
+    return !j.hasAttribute('data-wr-not-completed') && cs.borderTopStyle === 'solid' && !j.textContent.includes('live');`));
+  check("Working Record：Not completed 每节只在那天日期下写一次，橙棕字、不是胶囊", await evaluate(`
+    const s = document.querySelector('[data-wr-section="drivers"]');
+    const ths = [...s.querySelectorAll('th')]; const ls = [...s.querySelectorAll('[data-wr-nc-label]')]; const cs = ls[0] && getComputedStyle(ls[0]);
+    return ls.length === 1 && ths.indexOf(ls[0].closest('th')) === 4 && ls[0].closest('th').textContent.endsWith('Not completed')
+      && cs.color === 'rgb(180, 83, 9)' && cs.backgroundColor === 'rgba(0, 0, 0, 0)' && cs.display === 'block'
+      && !s.querySelector('td [data-wr-nc-label]');`),
+    await evaluate("return [...document.querySelectorAll('th [data-wr-nc-label]')].map((x) => x.closest('th').textContent).join('|');"));
   check("Working Record：车号没填写 no van；团名没填写 no tour name；没快照没有 📷", await evaluate(`
     return ${cell(101, d0)}.textContent.includes('Private Tour · no van') && ${cell(104, d0)}.textContent.includes('no tour name · no van') && !${cell(104, d0)}.querySelector('[data-wr-cam]');`));
   check("Working Record：同一段又开车又带团 ⇒ 一张 Driver & Guide", await evaluate(`
@@ -732,8 +743,10 @@ async function runWorkingRecord() {
   const file1 = await evaluate("return window.__downloads[0];");
   check("Working Record：周表 ⬇ Export for payroll ⇒ 另读整月、文件名带月份", ex?.query === `?from=${monthFrom}&to=${monthTo}` && file1 === `working-record_${monthFrom}_${monthTo}.csv`, `${ex?.query} ${file1}`);
   const csv = await evaluate("return await window.__blobs.at(-1).text();");
-  check("Working Record：Export 每人每天一行 + 合计行，没有 Start / End / Hours 列", csv.startsWith("Name,Date,Role,Tours,Vans,Saved") && !/Hours|Start|Samsara/.test(csv)
-    && (d2 < monthFrom || csv.includes(`ZZ Test Dan,${d2},Driver,Hotel pickups to Treasure Island · 1st round / Bus tour Bryce & Zion,Van 12 / 2610,Saved`))
+  check("Working Record：Export 每人每天一行 + 合计行，没有 Start / End / Hours 列", csv.startsWith("Name,Date,Role,Tours,Vans,Status") && !/Hours|Start|Samsara/.test(csv)
+    && (d2 < monthFrom || csv.includes(`ZZ Test Dan,${d2},Driver,Hotel pickups to Treasure Island · 1st round / Bus tour Bryce & Zion,Van 12 / 2610,Completed`))
+    && (d3 < monthFrom || csv.includes(`ZZ Test Dan,${d3},Driver,Bus tour South Rim,2622,Not completed`))
+    && !/Saved|live/.test(csv)
     && csv.includes(`ZZ Test Dan — total,${monthFrom} to ${monthTo}`), csv.slice(0, 600));
 
   // 点名字 ⇒ 月历 + 合计
@@ -745,12 +758,13 @@ async function runWorkingRecord() {
   check("Working Record：月历抬头写人名 · 职位、月份", await evaluate("return document.querySelector('[data-wr-person]').textContent === 'ZZ Test Dan · Driver' && /^[A-Z][a-z]+ \\d{4}$/.test(document.querySelector('[data-wr-title]').textContent);"));
   const inMonth = [d0, d1, d2, d3].filter((d) => d >= monthFrom && d <= monthTo);
   const totalsText = await evaluate("return document.querySelector('[data-wr-totals]').textContent;");
-  check("Working Record：当月合计（天数、各团、live），没有 Hours / 要核对的天",
+  check("Working Record：当月合计（天数、各团、几天没点 Completed），没有 Hours / 要核对的天",
     totalsText.includes(`Days as Driver${inMonth.length}`) && totalsText.includes("Days as Guide0") && totalsText.includes("By tour")
       && !/Hours|Samsara|⚠/.test(totalsText)
-      && (!inMonth.includes(d3) || totalsText.includes("includes 1 live day")), totalsText);
+      && (!inMonth.includes(d3) || totalsText.includes("includes 1 day not completed")), totalsText);
   check("Working Record：月历格子同周表（📷、两段）", await evaluate(`
     return (${!inMonth.includes(d2)} || ${cell(101, d2)}.querySelectorAll('[data-wr-job]').length === 2) && (${!inMonth.includes(d1)} || !!${cell(101, d1)}.querySelector('[data-wr-cam]'));`));
+  check("Working Record：月历 Not completed 写在那天号码旁（136 题 2 A）", await evaluate(`    const ls = [...document.querySelectorAll('[data-wr-month] [data-wr-nc-label]')];    return ${!inMonth.includes(d3)} ? ls.length === 0 : (ls.length === 1 && !!${cell(101, d3)}.contains(ls[0]) && ls[0].parentElement.textContent === String(Number('${d3}'.slice(8))) + 'Not completed');`));
   await evaluate("document.querySelector('[data-wr-export]').click();");
   await waitFor("window.__downloads.length === 2");
   const file2 = await evaluate("return window.__downloads[1];");

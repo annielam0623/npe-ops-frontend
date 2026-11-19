@@ -23,7 +23,15 @@ const KIND_LABEL: Record<string, string> = {
   operation_report: "Incident logged",
   // 同事在 Today's team 点名字发来的站内消息（Annie 2026-10-30「两件都动手」）。
   message: "Message",
+  // G297（Annie 2026-11-12「我们还是在notice里吧，同时发给当班的人」）：团确认因酒店空着没发，红色；
+  // 点进去到那张订单（href = /orders/<单号>?tour_date=…），补好酒店发成功后后端自动标已读。
+  pickup_missing: "Pickup location missing",
 };
+
+/** 要马上处理的类型：标签红字、卡片左边一条红边。 */
+export function noticeUrgent(notice: ApiNotice): boolean {
+  return notice.type === "pickup_missing";
+}
 
 const CLOCK = new Intl.DateTimeFormat("en-US", {
   timeZone: LA_TIME_ZONE,
@@ -135,7 +143,9 @@ export function noticeLinkLabel(notice: ApiNotice): string {
       ? "See my schedule →"
       : notice.type === "operation_report"
         ? "Open report →"
-        : "Open →";
+        : notice.type === "pickup_missing"
+          ? "Open order →"
+          : "Open →";
 }
 
 /** 右上角「Check history」（白边框普通按钮，不是蓝色：蓝色只给提交键）。 */
@@ -290,7 +300,16 @@ export function NoticePanel({
           <li
             key={item.key}
             data-notice-kind={item.type}
-            className="grid w-[330px] shrink-0 grid-cols-[minmax(0,1fr)_auto] content-start gap-x-3 gap-y-[3px] rounded-xl border border-white/[.14] bg-white/[.03] px-3.5 py-3"
+            data-notice-urgent={
+              (item.type !== "handover" && noticeUrgent(item.notice)) ||
+              undefined
+            }
+            className={cn(
+              "grid w-[330px] shrink-0 grid-cols-[minmax(0,1fr)_auto] content-start gap-x-3 gap-y-[3px] rounded-xl border border-white/[.14] bg-white/[.03] px-3.5 py-3",
+              item.type !== "handover" &&
+                noticeUrgent(item.notice) &&
+                "border-l-[3px] border-l-[#f87171]",
+            )}
           >
             {item.type === "handover" ? (
               <HandoverRow
@@ -309,9 +328,20 @@ export function NoticePanel({
   );
 }
 
-function Kind({ children }: { children: string }) {
+function Kind({
+  children,
+  urgent = false,
+}: {
+  children: string;
+  urgent?: boolean;
+}) {
   return (
-    <p className="text-[10.5px] font-bold tracking-[.06em] text-[#fbbf24] uppercase">
+    <p
+      className={cn(
+        "text-[10.5px] font-bold tracking-[.06em] uppercase",
+        urgent ? "text-[#f87171]" : "text-[#fbbf24]",
+      )}
+    >
       {children}
     </p>
   );
@@ -377,7 +407,7 @@ function ScheduleRow({
   return (
     <>
       <div className="min-w-0">
-        <Kind>{noticeKindLabel(notice)}</Kind>
+        <Kind urgent={noticeUrgent(notice)}>{noticeKindLabel(notice)}</Kind>
         <p className="text-[13.5px] leading-[1.4] font-semibold">
           {shown.title}
         </p>

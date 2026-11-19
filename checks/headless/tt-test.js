@@ -521,7 +521,7 @@ async function run() {
   await evaluate(`${pk("MGM Grand")}.querySelector('input').click();`);
   await evaluate(`${pk("Somewhere Odd")}.querySelector('input').click();`);
   await waitFor(`${dialog}.textContent.includes('4 recipient(s)')`);
-  check("选两个站点：4 人，名单上每人写哪个团、几点接", await evaluate(`const t = ${dialog}.querySelector('[data-recipient-list]').textContent; return t.includes('ZZ One') && t.includes('AC-U · 6:30 AM') && t.includes('ZZ Four') && !t.includes('ZZ Three');`), await evaluate(`return ${dialog}.querySelector('[data-recipient-list]').textContent;`));
+  check("选两个站点：4 人，名单上每人写哪个团、几点接", await evaluate(`const t = ${dialog}.querySelector('[data-recipient-list]').textContent; return t.includes('ZZ One') && t.includes('Upper Antelope Canyon Bus Tour · 6:30 AM') && t.includes('ZZ Four') && !t.includes('ZZ Three');`), await evaluate(`return ${dialog}.querySelector('[data-recipient-list]').textContent;`));
   before = (await mockLog()).length;
   await evaluate(`$btn('📣 Send broadcast', ${dialog}).click();`);
   await waitFor(`$btn('Yes, send now', ${dialog})`);
@@ -534,8 +534,44 @@ async function run() {
   await evaluate("$btn('📣 Broadcast').click();");
   await waitFor(`${dialog} && ${dialog}.textContent.includes('Step 2')`);
   check("再打开：回到 By tour（不记上一次用的方式）", await evaluate(`return ${modeRadio("tour")}.checked && !${dialog}.querySelector('[data-pickup-checks]');`));
+  // ── Broadcast 订单行标签（Annie 2026-11-17「按tour选的时候，每个订单带上它的pick up location，选loction的订单带上tour的名字」，1A / 2A / 3A）──
+  {
+    const lbl = (name) => `[...${dialog}.querySelectorAll('[data-recipient-list] label')].find(l => l.textContent.includes('${name}'))?.querySelector('[data-recipient-label]')`;
+    const tourBtn = (t) => `[...${dialog}.querySelectorAll('label')].find(l => l.textContent.trim() === '${t}').querySelector('input').click();`;
+    await evaluate(tourBtn("AC-U"));
+    await evaluate(tourBtn("West"));
+    await waitFor(`${dialog}.querySelector('[data-recipient-label]')`, 3000);
+    const got = await evaluate(`return [...${dialog}.querySelectorAll('[data-recipient-list] label')].map(l => l.textContent).join(' | ');`);
+    check("By tour：每行写接站点 · 接客时间（对上 Settings 的写站点名）", await evaluate(`return ${lbl("ZZ One")}?.textContent === 'MGM Grand · 6:30 AM' && ${lbl("ZZ One")}.dataset.recipientLabel === 'pickup';`), got);
+    check("By tour：对不上 Settings 的写客人原文", await evaluate(`return ${lbl("ZZ Four")}?.textContent === 'Somewhere Odd · 6:30 AM';`), got);
+    check("By tour：没填接站点 ⇒ 灰色斜体 No pickup on file", await evaluate(`const e = ${lbl("ZZ Five")}; return e?.textContent === 'No pickup on file' && e.classList.contains('italic');`), got);
+    check("How to use：Broadcast 那条最后写名单每行带接站点 / 团名", await evaluate("return document.body.textContent.includes('Each guest in the list shows their pickup location and time when you pick by tour, and their tour and pickup time when you pick by pickup location.');"));
+    check("标签排在名字后、电话 / 邮箱前", await evaluate(`const e = ${lbl("ZZ One")}; return e.previousElementSibling.textContent === 'ZZ One' && e.nextElementSibling.textContent === '+15550000000';`));
+  }
   await evaluate(`$btn('Cancel', ${dialog}).click();`);
   await sleep(200);
+  // By pickup location：shuttle 写产品名（没有就写代码），没设团写 No tour set。
+  await ctl({ shuttle: true, noTourRow: true });
+  await evaluate("$btn('↻ Refresh').click();");
+  await sleep(800);
+  await waitFor(`!${dialog}`);
+  await evaluate("$btn('📣 Broadcast').click();");
+  await waitFor(`${dialog} && ${dialog}.textContent.includes('Step 2')`);
+  await evaluate(`${modeRadio("pickup")}.click();`);
+  await waitFor(`${dialog}.querySelector('[data-pickup-checks]')`);
+  await evaluate(`${pk("MGM Grand")}.querySelector('input').click();`);
+  await waitFor(`${dialog}.querySelector('[data-recipient-label]')`, 3000);
+  {
+    const lbl = (name) => `[...${dialog}.querySelectorAll('[data-recipient-list] label')].find(l => l.textContent.includes('${name}'))?.querySelector('[data-recipient-label]')`;
+    const got = await evaluate(`return [...${dialog}.querySelectorAll('[data-recipient-list] label')].map(l => l.textContent).join(' | ');`);
+    check("By pickup location：shuttle 写产品名 · 时间，没产品名写代码", await evaluate(`return ${lbl("ZZ Shuttle A")}?.textContent === 'One-way Shuttle: Las Vegas to Page · 6:30 AM' && ${lbl("ZZ Shuttle B")}?.textContent === 'BCRT · 6:30 AM' && ${lbl("ZZ Shuttle A")}.dataset.recipientLabel === 'tour';`), got);
+    check("By pickup location：没设团 ⇒ 灰色斜体 No tour set", await evaluate(`const e = ${lbl("ZZ No Tour")}; return e?.textContent === 'No tour set' && e.classList.contains('italic');`), got);
+  }
+  await evaluate(`$btn('Cancel', ${dialog}).click();`);
+  await sleep(200);
+  await ctl({ shuttle: false, noTourRow: false });
+  await evaluate("$btn('↻ Refresh').click();");
+  await sleep(800);
 
   // ── 短信 300 字 / 特殊字符（Annie 2026-10-15）：客人名字里的特殊字符不算，staff 写的（含签名）才算 ──
   await ctl({ specialName: true });
@@ -974,6 +1010,7 @@ async function run() {
     await ctl({ syncMode: "off" });
     await open();
     await waitFor(sw);
+    check("置顶 95：电脑上只有一个 Main manifest sync 框（不再两个一样的），靠右", await evaluate(`const all = document.querySelectorAll('[data-sync-switch]'); const r = all[0].getBoundingClientRect(); const row = all[0].parentElement.closest('div').getBoundingClientRect(); return all.length === 1 && document.querySelectorAll('select[aria-label="Main manifest sync"]').length === 1 && row.right - r.right < 40;`), await evaluate(`return document.querySelectorAll('[data-sync-switch]').length;`));
     check("置顶 95：Super Admin ⇒ 日期那一行最右边「Main manifest sync」下拉 Off / Super Admin only / Staff，当前 Off，旁边小字", await evaluate(`const s = ${sel}; return [...s.options].map((o) => o.textContent).join('|') === 'Off|Super Admin only|Staff' && s.value === 'off' && ${sw}.textContent.includes('Only Super Admins see this setting.') && !!${sw}.closest('.mb-4');`));
     check("置顶 95：Off 的说明原文", (await evaluate(`return ${help};`)) === "Off: orders that have not been sent yet don't show here, and there is no Order Status column. The page works as before.");
     let b = (await mockLog()).length;
@@ -999,6 +1036,21 @@ async function run() {
     check("置顶 95：存不上 ⇒ 红字照原话、下拉退回原档", (await evaluate(`return ${sw}.querySelector('[role=alert]').textContent;`)) === "Only a Super Admin can change this." && (await evaluate(`return ${sel}.value;`)) === "staff");
     check("置顶 95：How to use 不提开关", !(await evaluate("return document.body.textContent.includes('Main manifest sync') && [...document.querySelectorAll('details')].some((d) => d.textContent.includes('Main manifest sync'));")));
     await ctl({ superadmin: false, syncMode: "off", syncFail: "" });
+  }
+
+  // ── Open chat →（订单生命周期 Chat history，Annie「全部同意推荐。动手」）：?chat=单号 打开对话框 ──
+  {
+    await goto(`${APP}/tour-confirmation/tracking?date=${D}&q=T01&chat=T01`);
+    const opened = await waitFor("document.querySelector('[role=dialog]')", 30000);
+    check("?chat=单号：这天有这单（T01）⇒ 直接打开它的对话框；地址栏的 chat 拿掉", opened && !(await evaluate("return location.search.includes('chat=');")), await evaluate("return location.search;"));
+    await evaluate("document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); return 1;");
+    await sleep(200);
+    await goto(`${APP}/tour-confirmation/tracking?date=${D}&q=ZZNOPE9&chat=ZZNOPE9`);
+    const nf = await waitFor("document.querySelector('[data-chat-not-found]')", 30000);
+    check("?chat=单号：这天没有这单 ⇒ 黄字「This order is not on this day's list.」、不开对话框", nf && (await evaluate("return document.querySelector('[data-chat-not-found] span').textContent === \"This order is not on this day's list.\" && !document.querySelector('[role=dialog]');")));
+    await evaluate("[...document.querySelectorAll('[data-chat-not-found] button')].find(b => b.textContent === 'Dismiss').click(); return 1;");
+    await sleep(150);
+    check("?chat=单号：Dismiss 收起黄字", await evaluate("return !document.querySelector('[data-chat-not-found]');"));
   }
 
   await ctl({ fail401: true });

@@ -846,6 +846,20 @@ async function run() {
   await evaluate("$btn('Done', $dialog()).click();");
   await waitFor("!$dialog()");
 
+  // G297 第二版：酒店空着的单后端留下（skipped no_pickup_location）⇒ 结果里这一行标红、红字标签（同 Tour send 页）
+  await ctl({ noHotel: ["CHD1002"] });
+  await evaluate("$box('CHD1002').click();");
+  await evaluate("$btn('Send tour confirmation', $bar()).click();");
+  await waitFor("$dialog() && $dialog().querySelectorAll('select option').length > 2");
+  await evaluate("$pick($dialog().querySelector('select'), 'grand_canyon_west');");
+  await evaluate("$dialog().querySelector('[data-again=\"CHD1002\"]').click();");
+  await evaluate("$btn('✉️ Send', $dialog().lastElementChild).click();");
+  await waitFor("!!$dialog()?.querySelector('tr[data-no-hotel]')", 8000);
+  check("G297 Manifests 弹窗：酒店空着被留下的 CHD1002 整行标红、标签红字「Pickup location is empty in Rezdy」、没有 Send anyway", await evaluate("const tr = $dialog().querySelector('tr[data-no-hotel]'); const b = tr.querySelector('span'); return tr.dataset.skipped === 'CHD1002' && getComputedStyle(tr).backgroundColor === 'rgb(253, 236, 236)' && b.textContent === 'Pickup location is empty in Rezdy' && getComputedStyle(b).color === 'rgb(163, 45, 45)' && !tr.querySelector('[data-anyway]');"), await evaluate("const tr = $dialog().querySelector('tr[data-no-hotel]'); const b = tr.querySelector('span'); return JSON.stringify({ sk: tr.dataset.skipped, bg: getComputedStyle(tr).backgroundColor, b: b && b.textContent, c: b && getComputedStyle(b).color, cls: b && b.className });"));
+  await ctl({ noHotel: [] });
+  await evaluate("$btn('Done', $dialog()).click();");
+  await waitFor("!$dialog()");
+
   // 置顶 109：新后端（每行带 outcome / *_outcome）——CHD1002 没邮箱、短信号码错 ⇒ Failed（有东西可修），Email 灰字 No email。
   await evaluate("$box('CHD1002').click();");
   await evaluate("$btn('Send tour confirmation', $bar()).click();");
@@ -928,6 +942,7 @@ async function run() {
   await evaluate("if (!document.querySelector('thead th input').checked) document.querySelector('thead th input').click();");
   await evaluate("$btn('Send message', $bar()).click();");
   await waitFor("$dialog()");
+  check("问候只留后端那一个（ae 2026-11-18）：默认正文不再以 Hi {first_name}, 开头", (await evaluate("return $dialog().querySelector('textarea').value;")) === "This is National Park Express about your tour on {tour_date}. ", await evaluate("return $dialog().querySelector('textarea').value;"));
   check("自定义消息：写几位（一单一条）、占位符说明、记进 Broadcasting Log", await evaluate("const t = $dialog().textContent; return t.includes('2 orders (one message per order)') && t.includes('{first_name}') && t.includes('Broadcasting Log');"));
   await evaluate("[...$dialog().querySelectorAll('input[type=checkbox]')].forEach(c => c.click());");
   from = (await mockLog()).length;
@@ -1640,7 +1655,7 @@ async function run() {
   await evaluate("$btn('Send tour confirmation', $bar()).click();");
   await waitFor("$dialog() && $dialog().querySelector('[data-shuttle-template]') && $dialog().querySelectorAll('select option').length > 2");
   const shutGroup = "$dialog().querySelector('[data-group=\"SHUTTLE: LAS VEGAS → PAGE\"]')";
-  check("G189：shuttle 节只读 Shuttle template (from Content Studio) + 产品名、没有下拉；员工能勾 shuttle 行；团节照旧有下拉；没有开关控件", await evaluate(`const g = ${shutGroup}; const n = g.querySelector('[data-shuttle-template]').textContent; return !g.querySelector('select') && n.includes('Shuttle template (from Content Studio)') && n.length > 'Shuttle template (from Content Studio)'.length && $dialog().querySelector('[data-pick="CHD1002"]').checked && !$dialog().querySelector('[data-pick="CHD1002"]').disabled && !!$dialog().querySelector('[data-group="UPPER ANTELOPE"] select') && !$dialog().querySelector('[data-visibility-control]') && $dialog().textContent.includes("use the shared Shuttle text from Content Studio");`), await evaluate(`return ${shutGroup}.textContent;`));
+  check("G189 / 148：shuttle 节只读绿框 Shuttle · 产品名 + 绿字 From Content Studio、没有下拉；员工能勾 shuttle 行；团节照旧有下拉；没有开关控件", await evaluate(`const g = ${shutGroup}; const n = g.querySelector('[data-shuttle-template]').textContent; return !g.querySelector('select') && /^Shuttle · .+/.test(g.querySelector('[data-shuttle-template] > div').textContent) && g.querySelector('[data-shuttle-source]').textContent === 'From Content Studio' && getComputedStyle(g.querySelector('[data-shuttle-template] > div')).color === 'rgb(21, 128, 61)' && getComputedStyle(g.querySelector('[data-shuttle-template] > div')).borderTopStyle === 'solid' && !n.includes('Shuttle template') && $dialog().querySelector('[data-pick="CHD1002"]').checked && !$dialog().querySelector('[data-pick="CHD1002"]').disabled && !!$dialog().querySelector('[data-group="UPPER ANTELOPE"] select') && !$dialog().querySelector('[data-visibility-control]') && $dialog().textContent.includes("use the shared Shuttle text from Content Studio");`), await evaluate(`return ${shutGroup}.textContent;`));
   await evaluate("$pick($dialog().querySelector('[data-group=\"UPPER ANTELOPE\"] select'), 'upper_antelope');");
   from = (await mockLog()).length;
   await evaluate("$btn('✉️ Send', $dialog().lastElementChild).click();");
@@ -1720,8 +1735,10 @@ async function run() {
     const B = 'A Cfm # with fewer than 6 digits (for example "1" or "TBA") counts as no Cfm #. The scheduled send skips these orders and the daily report lists them as "Cfm # is too short (under 6 digits)". When you send by hand you can still Send anyway; the number goes out as it is. Tour types ticked No Cfm # needed in Settings → Content Studio (such as the two Hogan Upper Antelope tours) are sent without a Cfm #.';
     const C = "If the saved Cfm # has fewer than 6 digits, Overwrite is ticked for you; untick it to keep the saved number.";
     const i = items.indexOf(A);
-    check("How to use 第 15 条（Cfm # 号短 + Send anyway）原句", i === 14, JSON.stringify(items[14]));
-    check("How to use 新第 16 条（号短算没号 / No Cfm # needed）原句", items[15] === B, JSON.stringify(items[15]));
+    // 152 在前面（Order lookup 那条后面）加了一条「Click an order number…」⇒ 这两条各往后挪一位（第 16、17 条）；
+    // 产品名标红（2026-11-17）在 sections 那条后面又加一条 ⇒ 再挪一位（第 17、18 条）。
+    check("How to use 第 17 条（Cfm # 号短 + Send anyway）原句", i === 16, JSON.stringify(items[16]));
+    check("How to use 第 18 条（号短算没号 / No Cfm # needed）原句", items[17] === B, JSON.stringify(items[17]));
     const up = items.find((x) => x.startsWith("↑ Upload confirmation #s")) || "";
     check("How to use 原第 21 条（↑ Upload confirmation #s，现第 22 条）末加 Overwrite 默认勾那句", up.endsWith(C), JSON.stringify(up));
   }
@@ -2021,6 +2038,11 @@ async function run() {
     check("tick=0（On Hold）：只标黄、不勾", await evaluate("return !$box('CHD2001').checked && !new URL(location.href).searchParams.has('tick');"));
   }
   await waiverChecks();
+  await orderLinkChecks();
+  await notesChecks();
+  await sessionChecks();
+  await relayTourChecks();
+  await redProductChecks();
 
   // ── 未登录：跳 ops 自己的登录页带 next ──
   await ctl({ fail401: true });
@@ -2072,7 +2094,402 @@ async function main() {
   process.exit(failed.length ? 1 : 0);
 }
 
+// ── 产品名标红（Annie 2026-11-17「产品标红同意全部推荐。动手」；preview Ksg4SKsz4RxtriyNK37xri）：
+//    后端 product_differs = true ⇒ Product 格整个深红字 #a32d2d，title 写这一节大多数产品；前端不自己比。──
+async function redProductChecks() {
+  const BUS = `${APP}/manifests?date=${today}&tab=bus&pill=g%3A3`;
+  const cell = (o) => `(() => { const tr = $box('${o}')?.closest('tr'); const i = $heads().indexOf('Product'); return tr && i >= 0 ? tr.querySelectorAll('td')[i + 2] : null; })()`;
+  const MOST = "Upper Antelope Canyon Tour with Lunch";
+  await ctl({ role: "staff", sessions: false, rezdyTix: false, cfmMix: false, sections: true, productDiffers: { CHD1001: MOST }, prefs: { bus: JSON.stringify(["order_number", "product", "guest_name", "pax"]), tickets: null } });
+  await openPage(BUS);
+  await waitFor(`${cell("CHD1001")}?.hasAttribute('data-product-differs')`, 20000);
+  check("产品标红：product_differs = true 的行，Product 格深红字 #a32d2d（字重不变）", await evaluate(`const c = ${cell("CHD1001")}; const st = getComputedStyle(c); return st.color === 'rgb(163, 45, 45)' && Number(st.fontWeight) < 600;`), await evaluate(`return ${cell("CHD1001")}?.outerHTML;`));
+  check("产品标红：鼠标停上去的提示照 Annie 定的原文", await evaluate(`return ${cell("CHD1001")}.title === ${JSON.stringify(`Different from most products in this section: ${MOST}`)};`), await evaluate(`return ${cell("CHD1001")}?.title;`));
+  check("产品标红：只红产品名，行底色不变、其他格照旧黑字", await evaluate(`const tr = $box('CHD1001').closest('tr'); return !tr.className.includes('bg-[#fdeceb]') && getComputedStyle(tr.querySelectorAll('td')[$heads().indexOf('Pax') + 2]).color !== 'rgb(163, 45, 45)';`));
+  check("产品标红：product_differs = false 的行（CHD1002）不红、没有提示", await evaluate(`const c = ${cell("CHD1002")}; return !!c && !c.hasAttribute('data-product-differs') && !c.title && getComputedStyle(c).color !== 'rgb(163, 45, 45)';`), await evaluate(`return ${cell("CHD1002")}?.outerHTML;`));
+  check("产品标红：How to use 写了红色产品名那句", await evaluate("const d = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Manifests')); return !!d && d.textContent.includes('A product name in red is different from most products in its section') && d.textContent.includes('Check the order in Order List before you count meals or tickets.');"));
+  // 旧后端（行上没有这两个键）⇒ 照旧，不报错
+  await ctl({ productDiffers: null });
+  await openPage(BUS);
+  await waitFor(`${cell("CHD1001")}`, 20000);
+  check("产品标红：旧后端没有 product_differs ⇒ 都不红、页面照常", await evaluate(`return !document.querySelector('[data-product-differs]') && getComputedStyle(${cell("CHD1001")}).color !== 'rgb(163, 45, 45)' && !document.body.textContent.includes('Something went wrong');`));
+  await ctl({ sections: false, prefs: { bus: null, tickets: null } });
+}
+
 // ── 置顶 74：Upper Antelope (Brenda) 每单 waiver link（Annie「那4提全部按推荐走，动手」；preview 5niqePBqxUsCBqKpLLKCnm）──
+// ── 150 Relay / Tour 只读两列（G321；Annie N6「就显示简单一点，直接是relay和tour的结果就好了」）──
+async function relayTourChecks() {
+  const cell = (o, col) => `(() => { const h = $heads(); const i = h.indexOf('${col}'); const tr = document.querySelector('tr[data-row^="${o}|"]'); return i < 0 || !tr ? null : tr.children[i + 2]; })()`;
+  const txt = (o, col) => evaluate(`const c = ${cell(o, col)}; return c ? c.textContent.trim() : null;`);
+  await ctl({ marks: false, sections: false, notes: false, prefs: { bus: null, tickets: null } });
+  await openPage(`${APP}/manifests?date=${today}&tab=bus&pill=g%3A3`);
+  await waitFor("$box('CHD1001')", 20000);
+  check("Relay / Tour：旧后端（行上没有 relay_mark）⇒ 不出这两列", await evaluate("const h = $heads(); return !h.includes('Relay') && !h.includes('Tour');"));
+
+  await ctl({ marks: true });
+  await openPage(`${APP}/manifests?date=${today}&tab=bus&pill=g%3A3`);
+  await waitFor("$heads().includes('Relay')", 20000);
+  const h = await evaluate("return $heads();");
+  const sent = h.includes("Morning pickup sent") ? "Morning pickup sent" : "Tour confirmation sent";
+  check("Relay / Tour：Bus 标签有这两列，紧跟 Morning pickup sent（没有就跟 Tour confirmation sent）", h.indexOf("Relay") === h.indexOf(sent) + 1 && h.indexOf("Tour") === h.indexOf("Relay") + 1, JSON.stringify(h));
+  check("Relay / Tour：只写后端的 label（Picked up / Boarded / No show）", (await txt("CHD1001", "Relay")) === "Picked up" && (await txt("CHD1001", "Tour")) === "Boarded" && (await txt("CHD1002", "Relay")) === "No show" && (await txt("CHD1002", "Tour")) === "Boarded", JSON.stringify([await txt("CHD1001", "Relay"), await txt("CHD1001", "Tour"), await txt("CHD1002", "Relay"), await txt("CHD1002", "Tour")]));
+  check("Relay / Tour：只读——格子里没有下拉 / 输入框 / 按钮，也没有 hover 提示", await evaluate(`return ['CHD1001', 'CHD1002'].every((o) => ['Relay', 'Tour'].every((c) => { const el = (() => { const h = $heads(); const i = h.indexOf(c); return document.querySelector('tr[data-row^="' + o + '|"]').children[i + 2]; })(); return !el.querySelector('select, input, button') && !el.querySelector('[title]') && !el.title; }));`));
+  check("Relay / Tour：fields= 请求里不带 _relay / _tour", (await since(0, (e) => e.path === "/api/manifests")).every((e) => { const f = (q(e).get("fields") || "").split(","); return !f.some((k) => k.startsWith("_") || k.startsWith("-")); }));
+
+  await openPage(`${APP}/manifests?date=${today}&tab=bus&pill=g%3A7`);
+  await waitFor("$heads().includes('Relay')", 20000);
+  check("Relay / Tour：没标（null）⇒ 两格都是「—」", (await txt("CHD1003", "Relay")) === "—" && (await txt("CHD1003", "Tour")) === "—");
+  await openPage(`${APP}/manifests?date=${today}&tab=bus&pill=g%3Anone`);
+  await waitFor("$heads().includes('Relay')", 20000);
+  check("Relay / Tour：relay_applicable=false ⇒ Relay 格「—」（就算有标记），Tour 照写", (await txt("CHD1004", "Relay")) === "—" && (await txt("CHD1004", "Tour")) === "No show");
+
+  // Tickets 标签没有
+  await openPage(`${APP}/manifests?date=${today}&tab=tickets&pill=t%3Aantelope`);
+  await waitFor("$box('CHD2001')", 20000);
+  check("Relay / Tour：Tickets 标签没有这两列", await evaluate("const h = $heads(); return !h.includes('Relay') && !h.includes('Tour');"));
+
+  // ☰ Columns 关掉
+  await openPage(`${APP}/manifests?date=${today}&tab=bus&pill=g%3A3`);
+  await waitFor("$heads().includes('Relay')", 20000);
+  await evaluate("$btn('☰ Columns').click();");
+  await waitFor("$dialog()");
+  check("Relay / Tour：☰ Columns 里有、默认勾着", await evaluate("return ['Relay', 'Tour'].every((t) => { const l = [...$dialog().querySelectorAll('label')].find((x) => x.textContent.trim() === t); return !!l && l.querySelector('input').checked; });"));
+  await evaluate("$tick('Relay', false);");
+  const from = (await mockLog()).length;
+  await evaluate("$btn('Apply for all', $dialog()).click();");
+  await waitFor("!$dialog()");
+  await waitFor("!$heads().includes('Relay')", 10000);
+  const put = (await since(from, (e) => e.path === "/api/user-prefs/manifest_cols_bus" && e.method === "PUT"))[0];
+  const shared = put ? JSON.parse(put.body.value).shared : [];
+  check("Relay / Tour：关掉 Relay ⇒ 列没了、存 -_relay，Tour 还在", shared.includes("-_relay") && !shared.includes("-_tour") && (await evaluate("return $heads().includes('Tour');")), JSON.stringify(shared));
+  await ctl({ marks: false, prefs: { bus: null, tickets: null } });
+}
+
+// ── 153 Tickets 按场次分组（Annie「我要这样的，类似antelope bus的分支，然后可以折叠，可以全选可以选session，也可以单独选订单」「动手」）──
+async function sessionChecks() {
+  const ANT = `${APP}/manifests?date=${today}&tab=tickets&pill=t%3Aantelope`;
+  const heads = "[...document.querySelectorAll('tr[data-session]')]";
+  const head = (t) => `${heads}.find((tr) => tr.textContent.includes('${t}'))`;
+  const box = (t) => `${head(t)}.querySelector('input[type=checkbox]')`;
+  const fold = (t) => `${head(t)}.querySelector('[data-fold]')`;
+  const tools = "document.querySelector('[data-session-tools]')";
+  // 存的列里没有 Start time / Product / Pax breakdown ⇒ 也照样分组（前端多要这几列，只用来分组）。
+  await ctl({ sessions: true, rezdyTix: true, cfmMix: true, notes: false, prefs: { bus: null, tickets: JSON.stringify(["order_number", "guest_name", "pax"]) } });
+  await openPage(ANT);
+  await waitFor(`${heads}.length >= 3`, 20000);
+
+  // 电脑上显示的组标题（label 里第一个 span；手机短写的那个藏着）。
+  const titles = await evaluate(`return ${heads}.map((tr) => (tr.querySelector('label span') || tr.querySelector('label')).textContent.replace(/\\s+/g, ' ').trim());`);
+  check("153 Tickets 按开始时间 + 产品分组，从早到晚，没有时间的放最后一组 No time", JSON.stringify(titles) === JSON.stringify(["7:00 AM — Antelope Tickets", "8:00 AM — Antelope Tickets", "8:30 AM — Antelope Tickets", "No time"]), JSON.stringify(titles));
+  check("153 Start time 列没显示（存的列里没有）也照样分组；fields= 多要 start_time / product / pax_breakdown", (await evaluate("return !$heads().includes('Start time');")) && (await since(0, (e) => e.path === "/api/manifests" && e.query.includes("tab=tickets") && e.query.includes("fields="))).some((e) => ["start_time", "product", "pax_breakdown"].every((k) => q(e).get("fields").split(",").includes(k))));
+  check("153 组头：「7:00 AM — 产品 · 2 orders · 5 pax (3 Adult / 1 Infant / 1 Child)」", await evaluate(`return ${head("7:00 AM")}.textContent.replace(/\\s+/g, ' ').includes('2 orders · 5 pax (3 Adult / 1 Infant / 1 Child)');`), await evaluate(`return ${head("7:00 AM")}.textContent;`));
+  check("153 组头底色照 Antelope bus 节标题轮流（第一组淡紫）；No time 灰", await evaluate(`const bg = (t) => ${head("__")}.querySelector('td').style.background.replace(/\\s/g, ''); return true;`.replace(`${head("__")}`, "x")) && (await evaluate(`return ${head("7:00 AM")}.querySelector('td').style.background.replace(/\\s/g, '') === 'rgb(239,227,247)' && ${head("No time")}.querySelector('td').style.background.replace(/\\s/g, '') === 'rgb(236,239,243)';`)), await evaluate(`return ${heads}.map((tr) => tr.querySelector('td').style.background).join(' | ');`));
+  check("153 每组的 # 从 1 排", await evaluate(`const h = ${head("8:00 AM")}; return h.nextElementSibling.querySelector('[data-count]').textContent.trim() === '1';`));
+  check("153 默认全部展开（题 2 A）：没有收起的组，Expand all 灰着、Collapse all 能按", await evaluate(`return !document.querySelector('tr[data-folded]') && ${tools}.textContent.includes('3 start times') && [...${tools}.querySelectorAll('button')].find((b) => b.textContent === 'Expand all').disabled && ![...${tools}.querySelectorAll('button')].find((b) => b.textContent === 'Collapse all').disabled;`));
+
+  // 折叠 / 展开
+  await evaluate(`${fold("7:00 AM")}.click();`);
+  await sleep(150);
+  check("153 点 ▾ 收起这一组：那组的单不显示，别的组照旧", await evaluate(`return ${fold("7:00 AM")}.getAttribute('aria-expanded') === 'false' && ${fold("7:00 AM")}.textContent === '▸' && !$box('CHD2001') && !$box('CHD2006') && !!$box('CHD2004');`));
+  await evaluate(`[...${tools}.querySelectorAll('button')].find((b) => b.textContent === 'Collapse all').click();`);
+  await sleep(150);
+  check("153 Collapse all：全部收起，只剩组头", await evaluate(`return document.querySelectorAll('tr[data-folded]').length === ${heads}.length && !document.querySelector('tbody tr[data-row]');`));
+  await evaluate(`[...${tools}.querySelectorAll('button')].find((b) => b.textContent === 'Expand all').click();`);
+  await sleep(150);
+  check("153 Expand all：全部展开", await evaluate("return !document.querySelector('tr[data-folded]') && ['CHD2001', 'CHD2006', 'CHD2004', 'CHD2005', 'CHD2007'].every((o) => !!$box(o));"));
+
+  // 三层勾选：组头整场、单行、半选、Select all
+  await evaluate(`${box("7:00 AM")}.click();`);
+  await sleep(100);
+  check("153 勾组头 = 勾整场（两单都勾上），组头 ☑", await evaluate(`return $box('CHD2001').checked && $box('CHD2006').checked && ${box("7:00 AM")}.checked && !${box("7:00 AM")}.indeterminate && !$box('CHD2004').checked;`));
+  await evaluate("$box('CHD2006').click();");
+  await sleep(100);
+  check("153 只剩一单勾着 ⇒ 组头半选", await evaluate(`return ${box("7:00 AM")}.indeterminate && !${box("7:00 AM")}.checked;`));
+  await evaluate(`${box("7:00 AM")}.click();`);
+  await sleep(100);
+  check("153 半选时点组头 ⇒ 整场勾上", await evaluate(`return $box('CHD2001').checked && $box('CHD2006').checked && !${box("7:00 AM")}.indeterminate;`));
+  await evaluate("$btn('Clear', $bar()).click();");
+  await sleep(100);
+  await evaluate("const l = [...document.querySelectorAll('thead label')].find((x) => x.textContent.includes('Select all')); l.querySelector('input').click();");
+  await sleep(100);
+  check("153 表头 Select all：每一组每一单都勾上，组头都 ☑", await evaluate(`return ['CHD2001', 'CHD2006', 'CHD2004', 'CHD2005', 'CHD2007'].every((o) => $box(o).checked) && ${heads}.every((tr) => tr.querySelector('input').checked);`));
+  await evaluate("$btn('Clear', $bar()).click();");
+  await sleep(100);
+
+  // 收起的组里勾了的照样发（题 1 A）
+  await evaluate("$box('CHD2005').click();");
+  await evaluate(`${fold("8:30 AM")}.click();`);
+  await sleep(150);
+  check("153 收起的组里勾了的：组头写「· 1 ticked」", await evaluate(`return ${head("8:30 AM")}.querySelector('[data-folded-ticked]')?.textContent.trim() === '· 1 ticked';`), await evaluate(`return ${head("8:30 AM")}.textContent;`));
+  check("153 发送条写「1 order selected · 1 pax (1 in a collapsed group)」", await evaluate("return $bar().textContent.includes('1 order selected · 1 pax (1 in a collapsed group)');"), await evaluate("return $bar().textContent;"));
+  await evaluate("$btn('Send reminder', $bar()).click();");
+  await waitFor("$dialog()");
+  check("153 收起的组里勾了的照样发：发送弹窗里有 CHD2005", await evaluate("return $dialog().textContent.includes('CHD2005');"));
+  await evaluate("$btn('Cancel', $dialog().lastElementChild).click();");
+  await waitFor("!$dialog()");
+  await evaluate("$btn('Clear', $bar()).click();");
+
+  // 不记（题 3 A）：换团胶囊再回来 ⇒ 全部展开
+  await evaluate(`${fold("7:00 AM")}.click();`);
+  await openPage(`${APP}/manifests?date=${today}&tab=tickets&pill=t%3Anone`);
+  await waitFor("$box('CHD2002')", 20000);
+  await openPage(ANT);
+  await waitFor(`${heads}.length >= 3`, 20000);
+  check("153 折叠不记：换胶囊 / 重开回到全部展开", await evaluate("return !document.querySelector('tr[data-folded]') && !!$box('CHD2001');"));
+
+  // CSV 多一列 Section
+  await evaluate("window.__blob = null; const o = URL.createObjectURL; URL.createObjectURL = (b) => { window.__blob = b; return o(b); }; HTMLAnchorElement.prototype.click = function () {};");
+  await evaluate("$btn('↓ Export CSV').click();");
+  await waitFor("window.__blob");
+  const lines = (await evaluate("return await window.__blob.text();")).replace(/^﻿/, "").split("\r\n");
+  check("153 Export CSV：第一列 Section 写组标题，行按组排", lines[0].startsWith("Section,") && lines[1].startsWith("7:00 AM — Antelope Tickets,") && lines.some((l) => l.startsWith("No time,CHD2007")), JSON.stringify(lines.slice(0, 7)));
+
+  // How to use
+  check("153 How to use 加了那一句（原文，不含 Groups start folded）", await evaluate("const d = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Manifests')); return [...d.querySelectorAll('li')].some(l => l.textContent.replace(/\\s+/g, ' ').trim() === 'Tickets are grouped by session (start time). Each group shows the start time, the product, and how many orders and pax (with the Adult / Child / Infant split). Click ▸ / ▾ on a group to fold or open it, or use Expand all / Collapse all. Tick Select all for every order, the box on a group for the whole session, or the box on a row for one order. Folding only hides the rows: ticked orders in a folded group stay ticked and are sent, and the group shows how many are ticked. Orders without a start time are in the last group, No time.');"));
+
+  // 手机 390px：组头短写、钉左、整页不晃
+  await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+  await openPage(ANT);
+  await waitFor(`${heads}.length >= 3`, 20000);
+  await sleep(300);
+  check("153 手机：组头只写「7:00 AM」+ 几单几人（产品名、细分收掉）", await evaluate(`const h = ${head("7:00 AM")}; const vis = (e) => e.getBoundingClientRect().width > 0; const spans = [...h.querySelectorAll('label span')]; const shown = spans.filter(vis).map((s) => s.textContent.trim()); return shown.includes('7:00 AM') && !shown.some((t) => t.includes('Antelope Tickets')) && !h.innerText.includes('Adult');`), await evaluate(`return ${head("7:00 AM")}.innerText;`));
+  check("153 手机：组头钉在左边（sticky）", await evaluate(`return getComputedStyle(${head("7:00 AM")}.querySelector('td > span')).position === 'sticky';`));
+  check("153 手机 390px：整页不左右晃", await evaluate("return document.documentElement.scrollWidth <= window.innerWidth + 1;"));
+  await cdp("Emulation.clearDeviceMetricsOverride");
+
+  // Bus 节标题照旧（没有折叠、没有 data-session）
+  await ctl({ sessions: false, rezdyTix: false, cfmMix: false, sections: true, prefs: { bus: null, tickets: null } });
+  await openPage(`${APP}/manifests?date=${today}&tab=bus&pill=g%3A3`);
+  await waitFor("document.querySelector('tr[data-section]')", 20000);
+  check("153 Bus 节标题照旧：没有 ▸ / ▾、没有 Expand all", await evaluate("return !document.querySelector('[data-fold]') && !document.querySelector('[data-session-tools]') && !document.querySelector('tr[data-session]');"));
+  await ctl({ sections: false });
+}
+
+// ── 150 Notes（G321 v171；Annie「notes可以先上」「动手」；样子先按推荐：单行、Bus + Tickets、CSV 带）──
+async function notesChecks() {
+  const note = (o, leg = "") => `document.querySelector('tr[data-row^="${o}|"]${leg ? `[data-row$="|return"]` : `:not([data-row$="|return"])`} input[data-note]')`;
+  const noteRow = (o) => `document.querySelector('tr[data-row^="${o}|"]:not([data-row$="|return"])')`;
+  const saveBtn = (o) => `${noteRow(o)}.querySelector('[data-note-save]')`;
+  await ctl({ sections: false, notes: false, prefs: { bus: null, tickets: null } });
+
+  // 旧后端（行上没有 note）：没有 Notes 列。
+  await openPage(`${APP}/manifests?date=${today}&tab=bus`);
+  await waitFor("$box('CHD1001')", 20000);
+  check("Notes：旧后端（行上没有 note）⇒ 没有 Notes 列", await evaluate("return !$heads().includes('Notes') && !document.querySelector('input[data-note]');"));
+
+  await ctl({ notes: true, noteTwin: true });
+  await openPage(`${APP}/manifests?date=${today}&tab=bus`);
+  await waitFor(`${note("CHD1001")}`, 20000);
+  check("Notes：Bus 标签有 Notes 列，放最后（题 4 A）", await evaluate("const h = $heads(); return h[h.length - 1] === 'Notes';"), await evaluate("return $heads().join('|');"));
+  check("Notes：单行输入框（题 7 A），灰字 Add note，没改时没有 Save", await evaluate(`const i = ${note("CHD1001")}; return i.type === 'text' && i.placeholder === 'Add note' && i.maxLength === 1000 && !${saveBtn("CHD1001")};`));
+  let from = (await mockLog()).length;
+  check("Notes：fields= 请求里不带前端自己的 _note 列", (await since(0, (e) => e.path === "/api/manifests")).every((e) => !e.query.includes("_note")));
+
+  // 改了 → Save（蓝）→ PUT → 绿字 Saved；往返两段一起变。
+  await evaluate(`$setValue(${note("CHD1002")}, '  Took a cab to TI  ');`);
+  await waitFor(`${saveBtn("CHD1002")}`);
+  check("Notes：改了旁边出蓝色 Save（提交键 #3b82f6）、还没发请求", (await evaluate(`return getComputedStyle(${saveBtn("CHD1002")}).backgroundColor;`)) === "rgb(59, 130, 246)" && !(await since(from, (e) => e.path === "/api/manifests/notes")).length);
+  await evaluate(`${saveBtn("CHD1002")}.click();`);
+  await waitFor(`${noteRow("CHD1002")}.querySelector('[data-note-saved]')`, 10000);
+  const put = (await since(from, (e) => e.path === "/api/manifests/notes"))[0];
+  check("Notes：按 Save ⇒ PUT /api/manifests/notes {order_number, product_code, tour_date, note}（去掉首尾空格）", put?.method === "PUT" && put.body.order_number === "CHD1002" && !!put.body.product_code && put.body.tour_date === today && put.body.note === "Took a cab to TI" && Object.keys(put.body).length === 4, JSON.stringify(put?.body));
+  check("Notes：存好绿字 Saved（#047857）", (await evaluate(`return getComputedStyle(${noteRow("CHD1002")}.querySelector('[data-note-saved]')).color;`)) === "rgb(4, 120, 87)");
+  check("Notes：往返 shuttle 回程那一行同一条，跟着一起变", await evaluate(`return ${note("CHD1002", "return")}?.value === 'Took a cab to TI';`), await evaluate(`return ${note("CHD1002", "return")}?.value;`));
+  check("Notes：鼠标移上去写全文 + 谁、几点改的", await evaluate(`const t = ${note("CHD1002")}.title; return t.startsWith('Took a cab to TI') && t.includes('ZZ Test Staff');`), await evaluate(`return ${note("CHD1002")}.title;`));
+
+  // Enter 存、Esc 还原。
+  from = (await mockLog()).length;
+  await evaluate(`$setValue(${note("CHD1001")}, 'Sits front row');`);
+  await evaluate(`${note("CHD1001")}.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));`);
+  await waitFor(`${noteRow("CHD1001")}.querySelector('[data-note-saved]')`, 10000);
+  check("Notes：Enter 也存", (await since(from, (e) => e.path === "/api/manifests/notes")).some((e) => e.body.note === "Sits front row"));
+  await evaluate(`$setValue(${note("CHD1001")}, 'typo');`);
+  await evaluate(`${note("CHD1001")}.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));`);
+  await sleep(200);
+  check("Notes：Esc 还原成存着的、Save 收起", await evaluate(`return ${note("CHD1001")}.value === 'Sits front row' && !${saveBtn("CHD1001")};`));
+
+  // 重新打开还在（后端存了）。
+  await openPage(`${APP}/manifests?date=${today}&tab=bus`);
+  await waitFor(`${note("CHD1001")}?.value === 'Sits front row'`, 20000);
+  check("Notes：重新打开页面还在", true);
+
+  // SA-4：备注是 staff 自由文本，只当纯文字——HTML 不执行、不变成元素；title 也是原样字符串。
+  const XSS = `<img src=x onerror="window.__xss=1"><b>bold</b>`;
+  await evaluate(`window.__xss = undefined; $setValue(${note("CHD1003")} || ${note("CHD1001")}, ${JSON.stringify(XSS)});`);
+  const xssOrder = (await evaluate(`return !!${note("CHD1003")};`)) ? "CHD1003" : "CHD1001";
+  await evaluate(`${saveBtn(xssOrder)}.click();`);
+  await waitFor(`${noteRow(xssOrder)}.querySelector('[data-note-saved]')`, 10000);
+  await openPage(`${APP}/manifests?date=${today}&tab=bus`);
+  await waitFor(`${note(xssOrder)}?.value === ${JSON.stringify(XSS)}`, 20000);
+  await sleep(500);
+  check("SA-4：HTML 样的备注原样当文字显示（输入框值、title 都是原字符串），页面上没有多出 img / b，onerror 没执行", await evaluate(`const r = ${noteRow(xssOrder)}; const i = ${note(xssOrder)}; return i.value === ${JSON.stringify(XSS)} && i.title.startsWith(${JSON.stringify(XSS)}) && !r.querySelector('img') && !r.querySelector('b') && window.__xss === undefined;`));
+  // 以公式字符开头的备注导出 CSV 前面加 '（lib/csv.ts 的防公式注入，同其他文字列）。
+  await evaluate(`$setValue(${note(xssOrder)}, '=HYPERLINK("x")');`);
+  await evaluate(`${saveBtn(xssOrder)}.click();`);
+  await waitFor(`${noteRow(xssOrder)}.querySelector('[data-note-saved]')`, 10000);
+  await evaluate("window.__blob = null; const o = URL.createObjectURL; URL.createObjectURL = (b) => { window.__blob = b; return o(b); }; HTMLAnchorElement.prototype.click = function () {};");
+  if (await evaluate("return !!$btn('↓ Export CSV');")) {
+    await evaluate("$btn('↓ Export CSV').click();");
+    await waitFor("window.__blob");
+    const csvText = await evaluate("return await window.__blob.text();");
+    check("SA-4：= 开头的备注导出 CSV 时前面加 '（不会被 Excel 当公式）", csvText.includes(`"'=HYPERLINK(""x"")"`), csvText.split("\r\n").find((l) => l.includes(xssOrder)));
+  }
+  // 还原（CHD1001 后面的检查要它是 Sits front row）。
+  await evaluate(`$setValue(${note(xssOrder)}, ${JSON.stringify(xssOrder === "CHD1001" ? "Sits front row" : "")});`);
+  await evaluate(`${saveBtn(xssOrder)}.click();`);
+  await waitFor(`${noteRow(xssOrder)}.querySelector('[data-note-saved]')`, 10000);
+  await openPage(`${APP}/manifests?date=${today}&tab=bus`);
+  await waitFor(`${note("CHD1001")}?.value === 'Sits front row'`, 20000);
+
+  // 存失败：红字照后端原话，输入保留。
+  await ctl({ note404: true });
+  await evaluate(`$setValue(${note("CHD1001")}, 'Paid balance at desk');`);
+  await evaluate(`${saveBtn("CHD1001")}.click();`);
+  await waitFor(`${noteRow("CHD1001")}.querySelector('[role=alert]')`, 10000);
+  check("Notes：存不上 ⇒ 红字「Not saved: 后端原话」、输入保留", await evaluate(`const a = ${noteRow("CHD1001")}.querySelector('[role=alert]'); return a.textContent.trim() === 'Not saved: That booking is no longer on this date. Reload the page.' && getComputedStyle(a).color === 'rgb(163, 45, 45)' && ${note("CHD1001")}.value === 'Paid balance at desk';`), await evaluate(`return ${noteRow("CHD1001")}.querySelector('[role=alert]')?.textContent;`));
+  await ctl({ note404: false });
+
+  // 没存的备注：点站内链接先问（同 Cfm #）。
+  await evaluate("window.__confirmMsg = null; window.confirm = (m) => { window.__confirmMsg = m; return false; };");
+  await evaluate("const a = [...document.querySelectorAll('a[href^=\"/\"]')].find((x) => !x.target && !x.closest('table')); a.click();");
+  await sleep(300);
+  check("Notes：有没存的备注时跳页先问「A note you typed is not saved yet. Leave without saving?」", (await evaluate("return window.__confirmMsg;")) === "A note you typed is not saved yet. Leave without saving?" && (await evaluate("return location.pathname;")) === "/manifests", await evaluate("return window.__confirmMsg;"));
+  await evaluate(`${note("CHD1001")}.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));`);
+
+  // Export CSV 带 Notes（照屏幕上的列）。
+  await evaluate("window.__blob = null; const orig = URL.createObjectURL; URL.createObjectURL = (b) => { window.__blob = b; return orig(b); }; HTMLAnchorElement.prototype.click = function () {};");
+  const exp = await evaluate("return !!$btn('↓ Export CSV');");
+  if (exp) {
+    await evaluate("$btn('↓ Export CSV').click();");
+    await waitFor("window.__blob");
+    const lines = (await evaluate("return await window.__blob.text();")).replace(/^﻿/, "").split("\r\n");
+    const head = lines[0].split(",");
+    const col = head.indexOf("Notes");
+    const r1 = lines.find((l) => l.includes("CHD1001"));
+    check("Notes：Export CSV 带 Notes 列（题 6 推荐），值对", col === head.length - 2 && !!r1 && r1.includes("Sits front row"), `${lines[0]} / ${r1}`);
+  }
+
+  // ☰ Columns：Notes 在 Our fields 里、默认勾着；关掉 ⇒ 列没了、记 -_note。
+  await openPage(`${APP}/manifests?date=${today}&tab=bus`);
+  await waitFor(`${note("CHD1001")}`, 20000);
+  await evaluate("$btn('☰ Columns').click();");
+  await waitFor("$dialog()");
+  check("Notes：☰ Columns 里有 Notes、默认勾着", await evaluate("const l = [...$dialog().querySelectorAll('label')].find((x) => x.textContent.trim() === 'Notes'); return !!l && l.querySelector('input').checked;"));
+  await evaluate("$tick('Notes', false);");
+  from = (await mockLog()).length;
+  await evaluate("$btn('Apply for all', $dialog()).click();");
+  await waitFor("!$dialog()");
+  await waitFor("!$heads().includes('Notes')", 10000);
+  const pput = (await since(from, (e) => e.path === "/api/user-prefs/manifest_cols_bus" && e.method === "PUT"))[0];
+  const sharedCols = pput ? JSON.parse(pput.body.value).shared : [];
+  check("Notes：关掉 ⇒ 列没了，存的列里记 -_note（以后不再自动加）", sharedCols.includes("-_note") && !sharedCols.includes("_note"), JSON.stringify(sharedCols));
+  const reqs = await since(from, (e) => e.path === "/api/manifests");
+  check("Notes：存过的列请求里也不带 _note / -_note", reqs.every((e) => !e.query.includes("_note")), JSON.stringify(reqs.map((e) => e.query)));
+  await ctl({ prefs: { bus: null, tickets: null } });
+
+  // Tickets 有；Admin fee、Show hidden rows 没有（题 9 推荐）。
+  await openPage(`${APP}/manifests?date=${today}&tab=tickets&pill=t%3Aantelope`);
+  await waitFor(`${note("CHD2001")}`, 20000);
+  check("Notes：Tickets 标签也有 Notes 列", await evaluate("return $heads().includes('Notes');"));
+  await openPage(`${APP}/manifests?date=${today}&tab=bus`);
+  await waitFor("$box('CHD1001')", 20000);
+  await evaluate("document.querySelector('input[aria-label=\"Show hidden rows\"]').click();");
+  await waitFor("document.querySelector('[data-hidden-pill]')");
+  await evaluate("document.querySelector('[data-hidden-pill]').click();");
+  await waitFor("document.querySelector('[data-hidden-section]')");
+  check("Notes：Show hidden rows 的表里没有 Notes", await evaluate("const t = document.querySelector('[data-hidden-section]'); return ![...t.querySelectorAll('th')].some((th) => th.textContent.trim() === 'Notes') && !t.querySelector('input[data-note]');"));
+  await ctl({ adminFee: true, superAdmin: true });
+  await openPage(`${APP}/manifests?tab=admin_fee&pill=p%3APLU3N8`);
+  await waitFor("document.querySelector('tr[data-row^=\"CHD-88057\"]')", 20000);
+  check("Notes：Admin fee 标签没有 Notes", await evaluate("return !$heads().includes('Notes') && !document.querySelector('input[data-note]');"));
+  await ctl({ adminFee: false, superAdmin: false });
+
+  // 只读（没勾 manifests.edit）：看得到，不能改。
+  await ctl({ staffPerms: ["manifests.view", "manifests.send"] });
+  await openPage(`${APP}/manifests?date=${today}&tab=bus`);
+  await waitFor(`${note("CHD1001")}`, 20000);
+  check("Notes：没有 manifests.edit ⇒ 只读、看得到内容、没有 Add note", await evaluate(`const i = ${note("CHD1001")}; return i.readOnly && i.value === 'Sits front row' && i.placeholder === '';`));
+  await ctl({ staffPerms: null });
+
+  check("Notes：How to use 加了 Notes 那一句（原文）", await evaluate("const d = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Manifests')); return [...d.querySelectorAll('li')].some(l => l.textContent.replace(/\\s+/g, ' ').trim() === 'Notes (Bus Tour and Tickets): a note for staff, one per row. It isn’t printed and isn’t sent to guests. Type the note, then click Save next to it (or press Enter). Press Esc to undo before saving.');"));
+  await ctl({ notes: false, noteTwin: false });
+}
+
+// ── 152（Annie「152 同意推荐，动手」）：点订单号在新标签页打开 Order details ──
+async function orderLinkChecks() {
+  const link = (o) => `document.querySelector('tr[data-row^="${o}|"] a[data-order-link], tr[data-hidden-row^="${o}|"] a[data-order-link]')`;
+  const linkOk = (o) =>
+    evaluate(`const a = ${link(o)}; return !!a && a.getAttribute('href') === '/orders/' + encodeURIComponent('${o}') && a.target === '_blank' && (a.rel || '').includes('noopener') && a.title === 'Open order details in a new tab' && a.textContent.trim() === '${o}';`);
+  // 整个格子都能点：格子的两个角都落在链接上（::after 铺满 td）。
+  const fillsCell = (o) =>
+    evaluate(`const a = ${link(o)}; const td = a.closest('td'); const r = td.getBoundingClientRect(); const pts = [[r.left + 3, r.top + 3], [r.right - 3, r.bottom - 3]]; return pts.every(([x, y]) => { const e = document.elementFromPoint(x, y); return e === a || a.contains(e); });`);
+  await ctl({ sections: false, hiddenMode: "today" });
+
+  // Bus
+  await openPage(`${APP}/manifests?date=${today}&tab=bus`);
+  await waitFor(`${link("CHD1001")}`, 20000);
+  check("152 Bus：订单号是链接 /orders/<encodeURIComponent>、新标签页、noopener、提示 Open order details in a new tab", await linkOk("CHD1001"));
+  check("152 Bus：样子照 Order List——蓝字不变、平时没下划线、不是按钮（没有底色）", await evaluate(`const a = ${link("CHD1001")}; const s = getComputedStyle(a); const td = getComputedStyle(a.closest('td')); return s.textDecorationLine === 'none' && s.color === td.color && (td.color === 'rgb(55, 138, 221)' || td.color === 'rgb(125, 211, 252)') && s.backgroundColor === 'rgba(0, 0, 0, 0)' && a.tagName === 'A';`), await evaluate(`return getComputedStyle(${link("CHD1001")}).color;`));
+  check("152 勾选框还是单独一格：订单号格子里没有勾选框", await evaluate(`return !${link("CHD1001")}.closest('td').querySelector('input');`));
+
+  // 152 回退修（Annie「…弄成还是可以复制，而不是复制链接」）：电脑上字能拖选 / 双击选中，复制到的是纯单号。
+  check("152 复制：电脑上不再铺满整格（::after 没了），链接不能拖、字可以选", await evaluate(`const a = ${link("CHD1001")}; const after = getComputedStyle(a, '::after'); return (after.content === 'none' || after.content === 'normal' || after.position !== 'absolute') && a.draggable === false && getComputedStyle(a).userSelect !== 'none';`), await evaluate(`const a = ${link("CHD1001")}; const s = getComputedStyle(a, '::after'); return JSON.stringify({ content: s.content, position: s.position, draggable: a.draggable, userSelect: getComputedStyle(a).userSelect });`));
+  const copied = await evaluate(`const a = ${link("CHD1001")}; const r = document.createRange(); r.selectNodeContents(a); const s = getSelection(); s.removeAllRanges(); s.addRange(r); let out = null; const spy = (e) => { out = { text: e.clipboardData.getData('text/plain'), html: e.clipboardData.getData('text/html'), prevented: e.defaultPrevented }; }; window.addEventListener('copy', spy); const ev = new ClipboardEvent('copy', { bubbles: true, cancelable: true, clipboardData: new DataTransfer() }); a.dispatchEvent(ev); window.removeEventListener('copy', spy); s.removeAllRanges(); return out;`);
+  check("152 复制：选中订单号 Ctrl+C ⇒ 剪贴板只有纯单号 CHD1001（没有链接 / HTML）", !!copied && copied.text === "CHD1001" && copied.html === "" && copied.prevented === true, JSON.stringify(copied));
+  const selClick = await evaluate(`const a = ${link("CHD1001")}; const r = document.createRange(); r.selectNodeContents(a); getSelection().removeAllRanges(); getSelection().addRange(r); let prevented = null; const spy = (e) => { if (e.target.closest && e.target.closest('a[data-order-link]')) prevented = e.defaultPrevented; }; window.addEventListener('click', spy); a.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, detail: 1 })); window.removeEventListener('click', spy); getSelection().removeAllRanges(); return prevented;`);
+  check("152 复制：已经选中了单号时松开 / 点一下 ⇒ 不开新标签页", selClick === true, String(selClick));
+  const dbl = await evaluate(`const a = ${link("CHD1001")}; let prevented = null; const spy = (e) => { if (e.target.closest && e.target.closest('a[data-order-link]')) prevented = e.defaultPrevented; }; window.addEventListener('click', spy); a.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, detail: 2 })); window.removeEventListener('click', spy); return prevented;`);
+  check("152 复制：双击的第二下 ⇒ 不再开一个标签页", dbl === true, String(dbl));
+  const single = await evaluate(`const a = ${link("CHD1001")}; getSelection().removeAllRanges(); let prevented = null; const spy = (e) => { if (e.target.closest && e.target.closest('a[data-order-link]')) { prevented = e.defaultPrevented; e.preventDefault(); } }; window.addEventListener('click', spy); a.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, detail: 1 })); window.removeEventListener('click', spy); return prevented;`);
+  check("152 复制：没选字时单击照旧（页面不拦，交给浏览器开新标签页）", single === false, String(single));
+
+  // 勾选、没存的改动不受影响：勾上一行、改 Cfm # 不存，再点订单号——页面不跳、不拦、都还在。
+  await evaluate("$box('CHD1001').click();");
+  await waitFor("$box('CHD1001').checked");
+  const cfmBox = await evaluate("return !!$cfm('CHD1001');");
+  if (cfmBox) await evaluate("$setValue($cfm('CHD1001'), 'ZZ-152');");
+  const before = await evaluate("return location.href;");
+  // 点一下订单号（JS 点击：浏览器把新标签页当弹窗挡掉，正好不会真开；真鼠标点在 headless 里开新标签页后会卡住后面的检查）。
+  // 看两件事：页面自己没有拦这次点击（离开拦截放过 target=_blank，defaultPrevented 为 false），而且这一页没跳。
+  const clickRes = await evaluate(`const a = ${link("CHD1001")}; let prevented = null; const spy = (e) => { if (e.target.closest && e.target.closest('a[data-order-link]')) prevented = e.defaultPrevented; }; window.addEventListener('click', spy); a.click(); window.removeEventListener('click', spy); await new Promise((r) => setTimeout(r, 800)); return { prevented, href: location.href };`);
+  check("152 点订单号：页面不拦这次点击（交给浏览器开新标签页）", clickRes.prevented === false, JSON.stringify(clickRes));
+  check(`152 点订单号：这一页没跳、没有离开拦截框，勾选还在${cfmBox ? "、没存的 Cfm # 还在" : ""}`, (await evaluate("return location.href;")) === before && (await evaluate(`return $box('CHD1001').checked && !document.querySelector('[role=alertdialog]')${cfmBox ? " && $cfm('CHD1001').value === 'ZZ-152'" : ""};`)));
+
+  // Tickets
+  await openPage(`${APP}/manifests?date=${today}&tab=tickets&pill=t%3Aantelope`);
+  await waitFor(`${link("CHD2001")}`, 20000);
+  check("152 Tickets：订单号是链接（同 Bus）", await linkOk("CHD2001"));
+
+  // Show hidden rows
+  await openPage(`${APP}/manifests?date=${today}&tab=bus`);
+  await waitFor("$box('CHD1001')", 20000);
+  await evaluate("document.querySelector('input[aria-label=\"Show hidden rows\"]').click();");
+  await waitFor("document.querySelector('[data-hidden-pill]')");
+  await evaluate("document.querySelector('[data-hidden-pill]').click();");
+  await waitFor("document.querySelector('[data-hidden-section]')");
+  check("152 Hidden rows：订单号也是链接（同 Bus）", await linkOk("CHD-88057"));
+
+  // Admin fee
+  await ctl({ adminFee: true, superAdmin: true });
+  await openPage(`${APP}/manifests?tab=admin_fee&pill=p%3APLU3N8`);
+  await waitFor(`${link("CHD-88057")}`, 20000);
+  check("152 Admin fee：订单号也是链接，单号里的 - 照原样（encodeURIComponent）", await linkOk("CHD-88057"));
+  await ctl({ adminFee: false, superAdmin: false });
+
+  // How to use
+  check("152 How to use 加了那一句（原文）", await evaluate("const d = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Manifests')); return [...d.querySelectorAll('li')].some(l => l.textContent.replace(/\\s+/g, ' ').trim() === 'Click an order number to open that order’s Order details in a new tab. This page stays as it is, with your ticked rows and unsaved changes. On Order details, Open in Main manifest → brings you back to that order’s rows here.');"));
+
+  // 手机 390px：点得到
+  await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+  await openPage(`${APP}/manifests?date=${today}&tab=bus`);
+  await waitFor(`${link("CHD1001")}`, 20000);
+  await evaluate(`${link("CHD1001")}.scrollIntoView({ block: 'center', inline: 'center' });`);
+  await sleep(300);
+  check("152 手机 390px：订单号是链接、整个格子都能点", (await linkOk("CHD1001")) && (await fillsCell("CHD1001")));
+  check("152 手机 390px：整页不左右晃", await evaluate("return document.documentElement.scrollWidth <= window.innerWidth + 1;"));
+  await cdp("Emulation.clearDeviceMetricsOverride");
+}
+
 async function waiverChecks() {
   const BRENDA = `${APP}/manifests?date=${today}&tab=tickets&pill=t%3Abrenda`;
   const ANT = `${APP}/manifests?date=${today}&tab=tickets&pill=t%3Aantelope`;

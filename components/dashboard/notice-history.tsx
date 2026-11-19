@@ -13,6 +13,7 @@ import {
   formatNoticeWhen,
   noticeDisplay,
   noticeKindLabel,
+  noticeUrgent,
   noticeLinkLabel,
 } from "./notice-panel";
 
@@ -197,7 +198,11 @@ function HistoryRow({
         {formatNoticeWhen(notice.created_at)}
       </span>
       <span className="col-start-2 col-end-4 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-white/70">
-        <span>{noticeKindLabel(notice)}</span>
+        <span
+          className={cn(noticeUrgent(notice) && "font-semibold text-[#f87171]")}
+        >
+          {noticeKindLabel(notice)}
+        </span>
         {shown.body ? (
           <span className="whitespace-pre-line">· {shown.body}</span>
         ) : null}

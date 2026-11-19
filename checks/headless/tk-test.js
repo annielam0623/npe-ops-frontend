@@ -669,6 +669,110 @@ async function run() {
     await evaluate("document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));");
   }
 
+  // ── G281 Main manifest 同步（Annie「G281 同意推荐，动手」，样稿 XE73jtwD5dMNBbCH1PTUTn）──
+  {
+    await ctl({ superAdmin: true, staffPerms: null, sync: false, syncMode: "off" });
+    await openPage(`${APP}/tickets-reminder/tracking?date=${today}`);
+    await waitFor("document.querySelector('[data-sync-switch] select')");
+    await helpers();
+    check("G281 开关：Super Admin 看得到「Main manifest sync」三档 Off / Super Admin only / Staff，现在 Off",
+      await evaluate("const s = document.querySelector('[data-sync-switch] select'); return [...s.options].map(o => o.text).join('|') === 'Off|Super Admin only|Staff' && s.value === 'off' && document.querySelector('[data-sync-switch]').textContent.includes('Main manifest sync');"));
+    check("G281 关着（没有同步字段）：没有 Order Status 列、灰行说明、to notify、How to use 新句",
+      await evaluate("return !$heads().includes('Order Status') && !document.querySelector('[data-unsent-note]') && !document.querySelector('[data-to-notify]') && !document.body.textContent.includes('When Main manifest sync is on');"));
+    let before = (await mockLog()).length;
+    await selectValue("[data-sync-switch] select", "super_admin_only");
+    await waitFor("document.querySelector('[data-sync-result]')");
+    let puts = await since(before, (e) => e.path === "/api/settings/tickets-sync" && e.method === "PUT");
+    check("G281 开关：选 Super Admin only ⇒ PUT /api/settings/tickets-sync {mode}，绿字 Saved，页面重读",
+      puts.length === 1 && puts[0].body.mode === "super_admin_only" && (await evaluate("const r = document.querySelector('[data-sync-result]'); return r.textContent === 'Saved' && getComputedStyle(r).color === 'rgb(21, 128, 61)';")) &&
+      (await since(before, (e) => e.path === "/api/notifications/tickets-reminder/tracking")).length >= 1, JSON.stringify(puts));
+    check("G281 开关：不动 Tour Tracking 的开关（没有 PUT /api/settings/tracking-sync）", (await since(before, (e) => e.path === "/api/settings/tracking-sync")).length === 0);
+    before = (await mockLog()).length;
+    await selectValue("[data-sync-switch] select", "staff");
+    await sleep(300);
+    check("G281 开关：切到 Staff 先出黄框确认、不直接存", !!(await evaluate("return !!document.querySelector('[data-sync-confirm]');")) && (await since(before, (e) => e.path === "/api/settings/tickets-sync" && e.method === "PUT")).length === 0);
+    await evaluate("$btn('Cancel', document.querySelector('[data-sync-confirm]')).click();");
+
+    await ctl({ sync: true });
+    await openPage(`${APP}/tickets-reminder/tracking?date=${today}`);
+    await waitFor("document.querySelectorAll('tbody tr[data-unsent]').length === 2");
+    await helpers();
+    const gh = await evaluate("return $heads();");
+    const gcol = (label) => gh.findIndex((h) => h.replace(/^[●■]\s*/, "").startsWith(label));
+    const grows = await evaluate("return $rows();");
+    const gby = (o) => grows.find((r) => r[gcol("CHD#")].startsWith(o));
+    check("G281 题 2 A：Order Status 列紧跟 CHD#", gcol("Order Status") === gcol("CHD#") + 1, gh.join("|"));
+    const gorder = grows.map((r) => r[gcol("CHD#")].replace("Contact changed", ""));
+    check("G281 题 4 A：灰行排最后（各自先后不变），其余顺序同前", gorder.slice(-2).join(",") === "CHDZZ7,CHDZZ8" && gorder.length === 7, gorder.join(","));
+    check("G281 灰行整行灰底 #e1e4e8、不跟斑马纹",
+      await evaluate("const t = [...document.querySelectorAll('tbody tr[data-unsent]')]; return t.length === 2 && t.every(tr => getComputedStyle(tr).backgroundColor === 'rgb(225, 228, 232)');"));
+    check("G281 灰行 Email / SMS / Status 写「—」、不出下拉",
+      ["CHDZZ7", "CHDZZ8"].every((o) => gby(o)[gcol("Email")] === "—" && gby(o)[gcol("SMS")] === "—" && gby(o)[gcol("Status")] === "—") &&
+      (await evaluate("return [...document.querySelectorAll('tbody tr[data-unsent]')].every(tr => !tr.querySelector('select'));")),
+      JSON.stringify(["CHDZZ7", "CHDZZ8"].map((o) => [gby(o)[gcol("Email")], gby(o)[gcol("SMS")], gby(o)[gcol("Status")]])));
+    check("G281 发过的行照旧有状态下拉（5 个）", (await evaluate("return document.querySelectorAll('tbody select').length;")) === 5);
+    const os = await evaluate(`const ci = ${gcol("Order Status")}; return [...document.querySelectorAll('tbody tr')].map(tr => { const td = tr.children[ci]; const cs = getComputedStyle(td); return [tr.children[${gcol("CHD#")}].textContent.slice(0, 6), td.textContent.trim(), cs.color, cs.fontWeight]; });`);
+    const osBy = (o) => os.find((x) => x[0] === o);
+    check("G281 Order Status：On hold 橙粗 #b45309、Cancelled 红粗 #b91c1c（灰行也照写）、其余 Confirmed",
+      osBy("CHDZZ1")[1] === "On hold" && osBy("CHDZZ1")[2] === "rgb(180, 83, 9)" && Number(osBy("CHDZZ1")[3]) >= 700 &&
+      osBy("CHDZZ8")[1] === "Cancelled" && osBy("CHDZZ8")[2] === "rgb(185, 28, 28)" && Number(osBy("CHDZZ8")[3]) >= 700 &&
+      osBy("CHDZZ7")[1] === "Confirmed" && osBy("CHDZZ2")[1] === "Confirmed", JSON.stringify(os));
+    check("G281 题 3 A：CHD# 旁淡黄「Contact changed」+ title，只在 CHDZZ2",
+      await evaluate("const t = [...document.querySelectorAll('[data-contact-changed]')]; return t.length === 1 && t[0].closest('td').textContent.startsWith('CHDZZ2') && t[0].textContent === 'Contact changed' && t[0].title === \"The guest's phone or email changed after the reminder was sent. Send the reminder again from Main manifest.\" && getComputedStyle(t[0]).backgroundColor === 'rgb(254, 243, 199)';"));
+    const gstats = await evaluate("return $t('section[aria-label=Summary] > div').join('|');");
+    check("G281 题 4 A：上面数字不算灰行（还是 5 单）", gstats.startsWith("5Total Orders|"), gstats);
+    const gpills = await evaluate("return $t('[aria-label=\"Filter by tour\"] button');");
+    check("G281 产品按钮人数也不算灰行（Total 还是 /12）", gpills[0].startsWith("Total Guests") && gpills[0].endsWith("/12"), gpills[0]);
+    check("G281「· 2 to notify」", (await evaluate("return document.querySelector('[data-to-notify]')?.textContent.replace(/\\s+/g, ' ').trim();")) === "· 2 to notify");
+    check("G281 表格上面灰色小方块说明（样稿原文）",
+      await evaluate("const n = document.querySelector('[data-unsent-note]'); return !!n && n.querySelector('[data-phone-oneline] > span').textContent.trim() === \"Grey rows: ticket orders in the Main manifest whose reminder hasn't been sent yet.\" && getComputedStyle(n.querySelector('span[aria-hidden]')).backgroundColor === 'rgb(225, 228, 232)';"));
+    const howTo = await evaluate("const h = [...document.querySelectorAll('li')].map(l => l.textContent.trim()); return h;");
+    const i1 = howTo.findIndex((t) => t.startsWith("When Main manifest sync is on, every ticket order in the Main manifest for the day shows here, one row per ticket type."));
+    const iPick = howTo.findIndex((t) => t.startsWith("Pick the service date."));
+    check("G281 题 5 A：How to use 第一条（原文）在最前",
+      i1 >= 0 && i1 === iPick - 1 && howTo[i1].endsWith("Contact changed means the guest's phone or email changed after the reminder was sent; send the reminder again from Main manifest."), String(i1) + "/" + String(iPick));
+    check("G281 题 5 A：How to use Broadcast 那条（原文）",
+      howTo.includes("Broadcast: the list includes guests in grey rows too. On hold and Cancelled orders are left out. Once it is sent, those rows are no longer grey."));
+    // 群发名单：灰行在、On hold / Cancelled 不在。CHDZZ1 On hold、CHDZZ3 改期、CHDZZ8 Cancelled 都不在 ⇒ CHDZZ2/4/5/7 = 4。
+    await evaluate("$btn('📣 Broadcast').click();");
+    await waitFor(`${dialog} && ${dialog}.querySelectorAll('input[type=radio]').length >= 3`);
+    await evaluate(`[...${dialog}.querySelectorAll('label')].find(l => l.textContent.trim() === 'All')?.querySelector('input').click();`);
+    await sleep(150);
+    const gGroup = await evaluate(`return [...${dialog}.querySelectorAll('input[type=radio]')].map(r => r.closest('label').textContent);`);
+    check("G281 Broadcast 名单：含灰行 CHDZZ7、不含 On hold CHDZZ1 / Cancelled CHDZZ8 ⇒ All 4", gGroup[0].endsWith("4 guests"), gGroup.join(" | "));
+    await evaluate("document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));");
+
+    // 手机：整页不左右晃。
+    await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+    await openPage(`${APP}/tickets-reminder/tracking?date=${today}`);
+    await waitFor("document.querySelectorAll('tbody tr[data-unsent]').length === 2");
+    await sleep(500);
+    check("G281 手机：开着同步整页不左右晃", await evaluate("return document.documentElement.scrollWidth <= innerWidth + 1;"), await evaluate("return document.documentElement.scrollWidth + ' > ' + innerWidth;"));
+    await cdp("Emulation.clearDeviceMetricsOverride");
+
+    // 员工（看不到开关）：开关不出。
+    await ctl({ superAdmin: false, staffPerms: ["tickets.view", "broadcast.send"] });
+    await openPage(`${APP}/tickets-reminder/tracking?date=${today}`);
+    await sleep(1200);
+    check("G281 员工：看不到 Main manifest sync 开关", !(await evaluate("return !!document.querySelector('[data-sync-switch]');")));
+    await ctl({ sync: false, superAdmin: false, staffPerms: null, syncMode: "off" });
+  }
+
+  // ── Open chat →（订单生命周期 Chat history，Annie「全部同意推荐。动手」）：?chat=单号 打开对话框 ──
+  {
+    await goto(`${APP}/tickets-reminder/tracking?date=${today}&q=CHDZZ1&chat=CHDZZ1`);
+    const opened = await waitFor("document.querySelector('[role=dialog]')", 30000);
+    check("?chat=单号：这天有这单（CHDZZ1）⇒ 直接打开它的对话框；地址栏的 chat 拿掉", opened && !(await evaluate("return location.search.includes('chat=');")), await evaluate("return location.search;"));
+    await evaluate("document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); return 1;");
+    await sleep(200);
+    await goto(`${APP}/tickets-reminder/tracking?date=${today}&q=ZZNOPE9&chat=ZZNOPE9`);
+    const nf = await waitFor("document.querySelector('[data-chat-not-found]')", 30000);
+    check("?chat=单号：这天没有这单 ⇒ 黄字「This order is not on this day's list.」、不开对话框", nf && (await evaluate("return document.querySelector('[data-chat-not-found] span').textContent === \"This order is not on this day's list.\" && !document.querySelector('[role=dialog]');")));
+    await evaluate("[...document.querySelectorAll('[data-chat-not-found] button')].find(b => b.textContent === 'Dismiss').click(); return 1;");
+    await sleep(150);
+    check("?chat=单号：Dismiss 收起黄字", await evaluate("return !document.querySelector('[data-chat-not-found]');"));
+  }
+
   // ── 链接、未登录 ──
   await goto(`${APP}/tickets-reminder/send`);
   await waitFor("[...document.querySelectorAll('a')].some(a => a.textContent.includes('View Tracking'))");

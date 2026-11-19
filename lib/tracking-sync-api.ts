@@ -11,16 +11,21 @@ export interface TrackingSyncSetting {
   enabled?: boolean;
 }
 
-const API = "/api/settings/tracking-sync";
+/** Tour Tracking 的开关（G180）。 */
+export const TOUR_SYNC_API = "/api/settings/tracking-sync";
+/** G281：Ticket Tracking 的开关，跟 Tour 的是两个独立开关，三档、权限、回包同一个样子。 */
+export const TICKETS_SYNC_API = "/api/settings/tickets-sync";
 
 export function fetchTrackingSync(
   signal?: AbortSignal,
+  api: string = TOUR_SYNC_API,
 ): Promise<TrackingSyncSetting> {
-  return apiFetch<TrackingSyncSetting>(API, { cache: "no-store", signal });
+  return apiFetch<TrackingSyncSetting>(api, { cache: "no-store", signal });
 }
 
 export function saveTrackingSync(
   mode: TrackingSyncMode,
+  api: string = TOUR_SYNC_API,
 ): Promise<TrackingSyncSetting> {
-  return apiFetch<TrackingSyncSetting>(API, { method: "PUT", body: { mode } });
+  return apiFetch<TrackingSyncSetting>(api, { method: "PUT", body: { mode } });
 }

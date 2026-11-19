@@ -67,7 +67,8 @@ function wrPeople() {
       { date: d3, role: "driver", source: "live", snapshot: false, runs: [run("relay_2", "Hotel pickups to Treasure Island", "Van 7", "driver")] },
     ] },
     { hr_id: 103, name: "ZZ Test Lankun", position: "guide", days: [
-      { date: d1, role: "guide", source: "completed", snapshot: true, runs: [run("bus_tour", "Bus tour Antelope Canyon", "2356", "guide")] },
+      // 136：点过 Completed 的日子后端也回 source live（读现在的 Dispatch），但 status completed ⇒ 不画虚线框。
+      { date: d1, role: "guide", source: "live", snapshot: true, runs: [run("bus_tour", "Bus tour Antelope Canyon", "2356", "guide")] },
     ] },
     { hr_id: 104, name: "ZZ Test Lee", position: "guide", days: [
       { date: d0, role: "guide", source: "completed", snapshot: false, runs: [run("bus_tour", "", "", "guide", { tour_name: "" })] },
@@ -75,7 +76,7 @@ function wrPeople() {
     { hr_id: 105, name: "ZZ Test Nopos", position: "", days: [
       { date: d2, role: "driver", source: "completed", snapshot: false, runs: [run("bus_tour", "Bus tour West Rim", "2400", "driver")] },
     ] },
-  ];
+  ].map((p) => ({ ...p, days: p.days.map((d) => ({ ...d, status: d.date === d3 ? "not_completed" : "completed" })) })); // 136：status 按天（d3 没点 Completed）
 }
 function wrSnapshots() {
   const d1 = weekDay(1);
@@ -152,10 +153,10 @@ http.createServer(async (req, res) => {
     const hrId = url.searchParams.get("hr_id");
     if (hrId) {
       const one = wrPeople().find((x) => x.hr_id === Number(hrId));
-      return send(res, 200, { ...inRange(one), from, to });
+      return send(res, 200, { ...inRange(one), from, to, through: to });
     }
     // 同后端 G249（c1b5a06f）：不带 hr_id 只列这段时间有排班的人，按名字排。
-    return send(res, 200, { from, to, people: wrPeople().map(inRange).filter((x) => x.days.length).sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()) || a.hr_id - b.hr_id) });
+    return send(res, 200, { from, to, through: to, people: wrPeople().map(inRange).filter((x) => x.days.length).sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()) || a.hr_id - b.hr_id) });
   }
   const fs = /^\/api\/field-snapshots\/(\d+)$/.exec(p);
   if (fs) {

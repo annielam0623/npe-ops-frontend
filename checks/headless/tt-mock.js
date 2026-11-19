@@ -90,6 +90,8 @@ http.createServer(async (req, res) => {
     if (ctl.shuttle) out = [...out,
       row({ id: 8, order_number: "S08", guest_name: "ZZ Shuttle A", tour_type: "shuttle:LVPG", shuttle_product_name: "One-way Shuttle: Las Vegas to Page", confirmation_status: "yes", lunch_turkey: 0, lunch_veggie: 0, lunch_beef: 0 }),
       row({ id: 9, order_number: "S09", guest_name: "ZZ Shuttle B", tour_type: "shuttle:BCRT", shuttle_product_name: "", lunch_turkey: 0, lunch_veggie: 0, lunch_beef: 0 })];
+    // noTourRow：Main manifest 同步来、section 没设默认团的单（tour_type 空），Broadcast 名单写 No tour set。
+    if (ctl.noTourRow) out = [...out, row({ id: 10, order_number: "T10", guest_name: "ZZ No Tour", tour_type: "" })];
     // specialName：T01 的名字带 í（短信 300 字 / 特殊字符：客人名字里的不算，Annie 2026-10-15）。
     if (ctl.specialName) out = out.map((r) => (r.id === 1 ? { ...r, first_name: "Joaquín", guest_name: "Joaquín ZZ" } : r));
     // G180 Main manifest 同步（37 冻结形状）：每行带 send_state / order_state；N201–N203 从 Main manifest 进来、还没发（排在中间，前端要挪到下面）。

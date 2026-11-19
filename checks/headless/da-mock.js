@@ -6,6 +6,10 @@ const staffPerm = require("./staff-perm-mock");
 const DRIVER_PAGE_OFF = "Driver page is off. Turn it on in Page visibility before sending.";
 const GUIDE_PAGE_OFF = "Guide page is off. Turn it on in Page visibility before sending.";
 const GUIDE_EXTRA_MAX = 60;
+// 135（后端 14，暂定字段 confirm_date）：日子不是「今天」（ctl.mockToday，默认 2026-10-05）又没带对得上的 confirm_date ⇒ 400 字符串 detail。
+// detail 原文照后端 b645fe97（docs/interfaces/send-other-day-confirm-2026-11-13.md）。
+const NOT_TODAY = (d) => { const t = new Date(d + "T12:00:00Z"); return `This send is for ${t.toLocaleDateString("en-US", { timeZone: "UTC", weekday: "long", month: "long", day: "numeric" })} (${d}), not today. Confirm that date to send.`; };
+function notToday(b) { return b.date !== (ctl.mockToday || "2026-10-05") && b.confirm_date !== b.date; }
 const ctl = { marks: false, noticeMarks: {}, completed: false, saveErr: "", fail401: false, pullStatus: "nothing", dayDelay: 0, failDay: false, altMeta: false, noMeta: false, relaySent: [], relayExtra: false, relayHotels: false, relayLater: [], relayRace: [], relayGone: [], relay409: false, relay502: false, driverFail: false, saveDelay: 0, driverAlt: false, relayBlocked: false, relayOnlyBad: false, relayBlockLate: false, foDraft: false, driverAllOk: false, emptyHoover: false,
   // G118 tour_car 轮（Hoover Dam）：tourCar = 这个团当天排了 bus_tour 车、有客人；tourCarNoCar = 排了团但当天一台 bus_tour 车都没排（整块挡住）；
   // tourCarBlocked = 排了车但没司机（这台车挡住，客人进 blocked_cars）。
@@ -312,6 +316,7 @@ const prefills = {
 // 存的时候按送来的 ccl_line_id 保留关联。默认关 = 旧后端（存过就没有 ccl）。
 const cclLines = Object.fromEntries(Object.values(prefills).flatMap((p) => p.rows.map((r) => r.ccl)).filter(Boolean).map((c) => [c.line_id, c]));
 const slimCcl = (id) => { const c = ctl.dayCcl && id != null ? cclLines[id] : null; return c ? { line_id: c.line_id, driver_text: c.driver_text, guide_text: c.guide_text, vehicle_text: c.vehicle_text, is_driver_guide: c.is_driver_guide } : undefined; };
+let pmId = 9000;
 http.createServer(async (req, res) => {
   const url = new URL(req.url, "http://x");
   const p = url.pathname;
@@ -347,7 +352,8 @@ http.createServer(async (req, res) => {
     if (p === "/api/me/permissions") return send(res, 200, { is_superadmin: false, permissions: (ctl.partnerPerms || ["dispatch.view", "dispatch.edit", "dispatch.send", "manifests.view"]).map((code) => ({ code, module: code.split(".")[0], wired: true })), default_home: "/dispatch" });
   }
   // 置顶 83：ctl.loggedInAt = 这次会话的登录时间（ISO UTC，后端 94 拟的 logged_in_at）；不设或 false = 旧后端没有这个字段。
-  if (p === "/api/me") return send(res, 200, { id: 1, username: "annie", display_name: "Annie", initials: "AZ", role: "admin", is_admin: true, is_superadmin: !!ctl.superAdmin, ...(ctl.loggedInAt !== undefined && ctl.loggedInAt !== false ? { logged_in_at: ctl.loggedInAt } : {}) });
+  if (p === "/api/me") return send(res, 200, { id: 1, username: "annie", display_name: "Annie", initials: "AZ", role: "admin", is_admin: true, is_superadmin: !!ctl.superAdmin, ...(ctl.loggedInAt !== undefined && ctl.loggedInAt !== false ? { logged_in_at: ctl.loggedInAt } : {}), ...(typeof ctl.openToday === "boolean" ? { dispatch_open_today: ctl.openToday } : {}) });
+  // 147：ctl.openToday = 后端 dispatch_open_today（今天 Open 班并在时间窗内）；不是 true / false = 旧后端没有这个键。
   if (p === "/api/settings/dashboard-widgets") {
     if (!ctl.foVis && !ctl.rosterVis) return send(res, 404, { detail: "Not Found" });
     return send(res, 200, { readable: true, widgets: [
@@ -541,6 +547,7 @@ http.createServer(async (req, res) => {
   }
   if (p === "/api/dispatch/relay-send") {
     const b = JSON.parse(await readRaw(req)); entry.body = b;
+    if (notToday(b)) return send(res, 400, { detail: NOT_TODAY(b.date) });
     if (ctl.relay409) return send(res, 409, { detail: "Someone is already sending this round. Wait a minute and pull again." });
     if (ctl.relay502) return send(res, 502, { detail: "Bad gateway" });
     // 同后端：order_numbers 不传 = 这一轮全部；发过的跳过，除非在 send_anyway 里（带了 preview_at）。
@@ -577,7 +584,9 @@ http.createServer(async (req, res) => {
              // driverAlt：排车存过之后多了一位能发的司机（测 Send texts now 先重读名单）。
              ...(ctl.driverAlt ? [{ key: "typed:PAM", name: "PAM", phone: "+17025550102", can_send: true, why: "", cars: [{ shift: "relay_2", van: "1328", tour: null }] }] : [])] });
   if (p === "/api/dispatch/driver-notice/send") {
-    const b = JSON.parse(await readRaw(req)); entry.body = b; ctl.driverSentAt = true;
+    const b = JSON.parse(await readRaw(req)); entry.body = b;
+    if (notToday(b)) return send(res, 400, { detail: NOT_TODAY(b.date) });
+    ctl.driverSentAt = true;
     if (ctl.marks && !ctl.driver502 && !ctl.driver400) for (const k of b.recipients || []) ctl.noticeMarks[k] = { sent_at: "2026-10-05T04:53:00+00:00", sent_by: "Annie", failed_at: null };
     if (ctl.driver502) return send(res, 502, { detail: "Bad gateway" });
     if (ctl.driver400) return send(res, 400, { detail: DRIVER_PAGE_OFF });
@@ -606,6 +615,7 @@ http.createServer(async (req, res) => {
   }
   if (p === "/api/dispatch/guide-notice/send") {
     const b = JSON.parse(await readRaw(req)); entry.body = b;
+    if (notToday(b)) return send(res, 400, { detail: NOT_TODAY(b.date) });
     if (ctl.guide400) return send(res, 400, { detail: GUIDE_PAGE_OFF });
     // 后端 78 的三种 400 原话（纯字符串）：非 GSM 字符 / 超长 / 换行。
     // 原话照后端 76992dd3 guide_notice.py（1 character / N characters）。
@@ -664,6 +674,8 @@ http.createServer(async (req, res) => {
     }
     if (p === "/api/farm-out/notices/send") {
       const b = JSON.parse(await readRaw(req)); entry.body = b;
+      // 135（后端 14 task/farm-out-confirm-date 8974847e）：ctl.foToday 设了才查——日子不是 foToday 又没带对得上的 confirm_date ⇒ 400（同 Dispatch 三个接口的原文）。
+      if (ctl.foToday && b.date !== ctl.foToday && b.confirm_date !== b.date) return send(res, 400, { detail: NOT_TODAY(b.date) });
       if (ctl.foSendErr) return send(res, 500, { detail: "Farm out notice failed" });
       // G129：缺资料（没选酒店）默认不发，进 blocked（can_override: true）；订单号在 send_anyway 里就照发。
       const sa = new Set(b.send_anyway ?? []);
@@ -733,6 +745,42 @@ http.createServer(async (req, res) => {
   //   ctl.shuttleFalse = outbound、外地 shuttle 站（St George，false）；ctl.shuttleIn = inbound、外地站（Page，false）；
   //   ctl.shuttleNull = outbound、上车点空 / OFFICE 对不上（null）；ctl.shuttleLegacy = outbound、旧后端没有这个键。
   // 团客（tour 节）一律 TI true 以外的随便写，不算。都没给 = 404，排车页不出 Shuttle 提示。
+  // 147 第二部分：Open 班时间段（后端 dispatch_open_today.py）。只 Super Admin（别人 403）；坏值 400 字符串 detail；ctl.owBad = PUT 一律 400。
+  if (p === "/api/settings/dispatch-open-today") {
+    if (!ctl.superAdmin) return send(res, 403, { detail: "Super Admin only." });
+    if (req.method === "GET") return send(res, 200, ctl.openWin || { start: "00:00", end: "10:00" });
+    if (req.method === "PUT") {
+      const b = JSON.parse(await readRaw(req)); entry.body = b;
+      if (ctl.owBad) return send(res, 400, { detail: "Time must be HH:MM (24-hour), like 07:30." });
+      if (!(b.start < b.end)) return send(res, 400, { detail: "Start time must be earlier than end time." });
+      ctl.openWin = { start: b.start, end: b.end };
+      return send(res, 200, ctl.openWin);
+    }
+  }
+  // Nov 18–22 改接客点（pickup-move）：2026-11-18 两个团（West Rim 3、Hoover Dam 4）的名单；Refresh 走单张重拉。
+  if (p === "/api/dispatch/manifest" && q.date === "2026-11-18") {
+    const g = (order_number, name, pax, pickup_location, extra = {}) => ({ id: pmId++, order_number, name, first_name: name, last_name: "", pax, product: "x", pickup_location, hotel_short: "", pickup_location_id: 1, pickup_is_vegas: true, ...extra });
+    if (q.tour === "4") return send(res, 200, { run_date: q.date, tour: { id: 4, name: "Hoover Dam" }, blocks: [{ sections: [{ kind: "tour", pax: 2, guests: [g("CHDPM9", "ZZ Test Hoover", 2, "Bellagio")] }] }], unplaced: { sections: [] } });
+    if (q.tour !== "3") return send(res, 404, { detail: "mock: not found" });
+    return send(res, 200, { run_date: q.date, tour: { id: 3, name: "West Rim Bus Tour" }, blocks: [{ sections: [{ kind: "tour", pax: 16, guests: [
+      g("CHDPM1", "ZZ Test TI", 2, "Treasure Island (TI) Tour Bus Lobby", { hotel_short: "TI" }),
+      g("CHDPM2", "ZZ Test Bellagio", 3, "Bellagio"),
+      g("CHDPM3", "ZZ Test Aria", 2, "ARIA Resort"),
+      g("CHDPM4", "ZZ Test MGM", 4, "MGM Grand"),
+      g("CHDPM5", "ZZ Test Private", 15, "8:30 Aria Tour Bus Lobby", { hotel_short: "Aria" }),
+      g("CHDPM10", "ZZ Test ParkMGM", 2, "Park MGM", { hotel_short: "Park MGM" }),
+      g("CHDPM11", "ZZ Test IMAX", 2, "Grand Canyon IMAX", { pickup_location_id: null, pickup_is_vegas: null }),
+    ] }, { kind: "outbound", pax: 1, guests: [g("CHDPM6", "ZZ Test StG", 1, "St George – Main St", { pickup_is_vegas: false })] }] }],
+      unplaced: { sections: [{ kind: "tour", pax: 3, guests: [g("CHDPM7", "ZZ Test Empty", 1, "", { pickup_location_id: null, pickup_is_vegas: null }), g("CHDPM8", "ZZ Test Venetian", 2, "The Venetian"), g("CHDPM2", "ZZ Test Bellagio", 3, "Bellagio")] }] } });
+  }
+  const pmRefresh = p.match(/^\/api\/operations\/orders\/([^/]+)\/refresh-from-rezdy$/);
+  if (pmRefresh && req.method === "POST") {
+    const n = decodeURIComponent(pmRefresh[1]);
+    if (ctl.pmBusy && n === "CHDPM3") return send(res, 503, { detail: "Rezdy is busy right now. Try again in a minute." });
+    if (n === "CHDPM4") return send(res, 404, { detail: "Order CHDPM4 was not found in Rezdy." });
+    const changed = n === "CHDPM2" ? [{ field: "Pickup location (P0WR)", before: "Bellagio", after: "Treasure Island" }] : [];
+    return send(res, 200, { order_number: n, result: "updated", rezdy_status: "CONFIRMED", message: changed.length ? "Updated from Rezdy." : "Already up to date.", changed, kept: [] });
+  }
   if (p === "/api/dispatch/manifest") {
     const keys = ["shuttleVegas", "shuttleVegasIn", "shuttleFalse", "shuttleIn", "shuttleNull", "shuttleLegacy"];
     if (!keys.some((k) => ctl[k]) || q.tour !== "3") return send(res, 404, { detail: "mock: not found" });
@@ -760,6 +808,10 @@ http.createServer(async (req, res) => {
     // 2026-10-09（Check the bus 改版 cb3887d）：3 车够但还有人没分到车 ⇒ Seat guests；4 要多开一台车 ⇒ Check the bus 实心。
     // guests_per_bus 5 / 3（不是 4 / 2）：2026-10-16 开车窗改按已选车的座位数算，这两台存着的车（11、12）没填 seats、
     // 退回 guests_per_bus 当容量——数要能让「2 台已经够坐」这件事仍然成立（9 ≤ 5+5、5 ≤ 3+3），不然会多冒出一台。
+    if (q.date === "2026-11-18") return sendM({ run_date: q.date, cards: [
+      { ...card(3, "West Rim Bus Tour"), uploaded: true, pax: 16, guests: 6, buses: 0, mode: "none", not_on_bus: 16, buses_needed: 1, guests_per_bus: 54, bus_pax: {} },
+      { ...card(4, "Hoover Dam"), uploaded: true, pax: 2, guests: 1, buses: 0, mode: "none", not_on_bus: 2, buses_needed: 1, guests_per_bus: 54, bus_pax: {} },
+    ] });
     if (q.date === "2026-10-09") return sendM({ run_date: q.date, cards: [
       { ...card(3, "West Rim Bus Tour"), uploaded: true, pax: 9, guests: 4, buses: 2, mode: "lettered", not_on_bus: 2, buses_needed: 2, guests_per_bus: 5 },
       { ...card(4, "Hoover Dam"), uploaded: true, pax: 5, guests: 2, buses: 1, mode: "single", not_on_bus: 3, buses_needed: 2, guests_per_bus: 3 },
@@ -785,6 +837,8 @@ http.createServer(async (req, res) => {
       { ...card(4, "Hoover Dam"), uploaded: true, pax: 3, guests: 1, buses: 0, mode: "none", not_on_bus: 3, buses_needed: 1, guests_per_bus: 50, bus_pax: {} },
     ] });
     // emptyHoover：Hoover Dam 也有卡片、没客人（没排车）⇒ Step 2 收起来（Annie 2026-10-15）。
+    // closedHoover（数字 = 名单上的人数）：Hoover Dam 有卡片、没排车、1 张取消 / 改期留在名单上；2026-10-06 的 CCL 关了这个团（prefill closures）。
+    if (ctl.closedHoover != null) return sendM({ run_date: q.date, cards: [{ ...card(3, "West Rim Bus Tour"), uploaded: true, pax: 9, guests: 4, buses: 2, mode: "lettered", not_on_bus: 0, buses_needed: 2, guests_per_bus: 5 }, { ...card(4, "Hoover Dam"), uploaded: true, pax: ctl.closedHoover, guests: ctl.closedHoover ? 1 : 0, buses: 0, mode: "none", not_on_bus: ctl.closedHoover, buses_needed: ctl.closedHoover ? 1 : 0, guests_per_bus: 50, gone_orders: 1 }] });
     return sendM({ run_date: q.date, cards: [card(3, "West Rim Bus Tour"), card(9, "Ghost Tour"), ...(ctl.emptyHoover ? [card(4, "Hoover Dam")] : [])] });
   }
   send(res, 404, { detail: "mock: not found" });

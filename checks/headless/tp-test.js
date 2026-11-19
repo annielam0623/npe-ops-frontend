@@ -168,7 +168,7 @@ async function fill(page, label, value) {
   check("Logs: view + export, no delete → Custom: 2 of 3, no option pressed", lg.custom === "Custom: 2 of 3" && lg.on === null, JSON.stringify(lg));
   check("Dashboard / Broadcast only None / Full access", (await access(page, "Dashboard")).options.join() === "None,Full access" && (await access(page, "Broadcast")).options.join() === "None,Full access");
   check("My Workspace = Full access (two options)", JSON.stringify(await access(page, "My Workspace / Quotation")) === JSON.stringify({ options: ["None", "Full access"], on: "Full access", custom: null }));
-  check("Settings folded: 1 of 13 pages", d.includes("1 of 13 pages"));
+  check("Settings folded: 1 of 14 pages", d.includes("1 of 14 pages"));
   check("selected option is dark grey, not blue", await page.evaluate(() => {
     const b = document.querySelector('[role="group"][aria-label="Forms access"] button[aria-pressed="true"]');
     return getComputedStyle(b).backgroundColor === "rgb(55, 65, 81)";
@@ -188,10 +188,13 @@ async function fill(page, label, value) {
   await page.evaluate(() => [...document.querySelectorAll('[role="dialog"] button[aria-expanded]')].find((x) => x.innerText.includes("pages")).click());
   await page.waitForSelector('[role="group"][aria-label="Human Resource (HR profiles) access"]');
   check("HR row: Read only now", (await access(page, "Human Resource (HR profiles)")).on === "Read only");
+  // 138 Payroll（V4 题 2 A）：两项合成一行；supervisor 账号除了 None 都灰掉、Admin only
+  check("Payroll row: None / Read only / Read & edit, None now", JSON.stringify((await access(page, "Payroll"))?.options) === JSON.stringify(["None", "Read only", "Read & edit"]) && (await access(page, "Payroll")).on === "None", JSON.stringify(await access(page, "Payroll")));
+  check("Settings group: no separate Payroll: View / Payroll: Edit rows", !(await access(page, "Payroll: View")) && !(await access(page, "Payroll: Edit")));
   check("Quotation rates row in Settings: None / Full access, None now", JSON.stringify(await access(page, "Quotation rates (rate card and event calendar)")) === JSON.stringify({ options: ["None", "Full access"], on: "None", custom: null }));
   await choose(page, "Human Resource (HR profiles)", "Read & edit");
   await choose(page, "Quotation rates (rate card and event calendar)", "Full access");
-  check("Settings group now 2 of 13 pages", (await dialogText(page)).includes("2 of 13 pages"));
+  check("Settings group now 2 of 14 pages", (await dialogText(page)).includes("2 of 14 pages"));
   await tick(page, "Refunds");
   await tick(page, "Tickets");
   await page.select('select[aria-label="Home page"]', "");
@@ -212,7 +215,7 @@ async function fill(page, label, value) {
   check("staff Tasks = Read only (own tasks)", (await access(page, "Tasks")).on === "Read only");
   check("staff DOR = Custom 2 of 3 (view + log, cannot change yet)", (await access(page, "Daily Operation Report")).custom === "Custom: 2 of 3");
   check("staff My Workspace = Full access (no Custom)", (await access(page, "My Workspace / Quotation")).on === "Full access");
-  check("staff Settings 0 of 13 pages", (await dialogText(page)).includes("0 of 13 pages"));
+  check("staff Settings 0 of 14 pages", (await dialogText(page)).includes("0 of 14 pages"));
   // 照某人复制，取消不保存
   await page.evaluate(() => {
     const s = document.querySelector('[role="dialog"] select');
@@ -239,7 +242,7 @@ async function fill(page, label, value) {
   });
   await click(page, "Copy", "dialog");
   await waitText(page, "Copied access for 21 modules from Annie");
-  check("copy from Super Admin = everything", (await dialogText(page)).includes("13 of 13 pages"));
+  check("copy from Super Admin = everything (list without role: Payroll not blocked, backend 400 backs it up)", (await dialogText(page)).includes("14 of 14 pages"));
   await page.keyboard.press("Escape");
   await waitNoText(page, "Copy access from");
 
@@ -1110,6 +1113,63 @@ async function fill(page, label, value) {
         (await page.evaluate(() => [...document.querySelectorAll('[role="dialog"] button')].some((b) => b.innerText.trim() === "Deactivate instead"))));
     await page.keyboard.press("Escape");
     await ctl("reset=1");
+  }
+
+  // ── 138 Payroll（V4 题 2 A）：名单带 role（G212）时只有 Admin / Super Admin 能给 ──
+  {
+    await ctl("reset=1&g212=1");
+    await page.goto(PAGE, { waitUntil: "domcontentloaded" });
+    await waitText(page, "Grace Liu", 60000);
+    const openPages = async () => {
+      await page.evaluate(() => [...document.querySelectorAll('[role="dialog"] button[aria-expanded]')].find((x) => x.innerText.includes("pages")).click());
+      await page.waitForSelector('[role="group"][aria-label="Payroll access"]');
+    };
+    await click(page, "Edit", "@daniel");
+    await page.waitForSelector('[role="group"][aria-label="Logs access"]');
+    await openPages();
+    check("Payroll row (supervisor): Read only / Read & edit disabled, Admin only tag + grey line", await page.evaluate(() => {
+      const g = document.querySelector('[role="dialog"] [role="group"][aria-label="Payroll access"]');
+      const b = [...g.querySelectorAll("button")];
+      const d = document.querySelector('[role="dialog"]').innerText;
+      return !b[0].disabled && b[1].disabled && b[2].disabled && !!document.querySelector('[role="dialog"] [data-admin-only="settings.payroll"]') && d.includes("Only Admin accounts can be given Payroll.");
+    }));
+    await page.evaluate(() => {
+      const s = document.querySelector('[role="dialog"] select');
+      s.value = [...s.options].find((o) => o.text.startsWith("Annie")).value;
+      s.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    await click(page, "Copy", "dialog");
+    await waitText(page, "Copied access for");
+    check("copy from Super Admin into a supervisor: Payroll left out (13 of 14 pages, Payroll None)", (await dialogText(page)).includes("13 of 14 pages") && (await access(page, "Payroll")).on === "None", JSON.stringify(await access(page, "Payroll")));
+    await page.keyboard.press("Escape");
+    await waitNoText(page, "Copy access from");
+    // 138 Payroll：Admin 账号三档都能选；Read only 只勾 view，Read & edit 两项都勾 ──
+    await click(page, "Edit", "@grace");
+    await page.waitForSelector('[role="group"][aria-label="Logs access"]');
+    await openPages();
+    check("Payroll row (admin): all three levels enabled, no Admin only line", await page.evaluate(() => {
+      const g = document.querySelector('[role="dialog"] [role="group"][aria-label="Payroll access"]');
+      return [...g.querySelectorAll("button")].every((b) => !b.disabled) && !document.querySelector('[role="dialog"] [data-admin-only="settings.payroll"]');
+    }));
+    await choose(page, "Payroll", "Read only");
+    check("Payroll → Read only", (await access(page, "Payroll")).on === "Read only");
+    await click(page, "Save", "dialog");
+    await waitNoText(page, "Copy access from");
+    let pb = await lastBody("PUT /api/team/members/2");
+    check("PUT (Read only): settings.payroll.view only", pb?.items?.includes("settings.payroll.view") && !pb.items.includes("settings.payroll.edit"));
+    await click(page, "Edit", "@grace");
+    await page.waitForSelector('[role="group"][aria-label="Logs access"]');
+    await openPages();
+    check("Payroll reopens as Read only", (await access(page, "Payroll")).on === "Read only");
+    // 刚存完重开：名单刷新会把弹窗的勾重读一次，等它落地再点（不等会被重读冲掉，跟 Payroll 无关）。
+    await sleep(1500);
+    await choose(page, "Payroll", "Read & edit");
+    check("Payroll → Read & edit", (await access(page, "Payroll")).on === "Read & edit");
+    await click(page, "Save", "dialog");
+    await waitNoText(page, "Copy access from");
+    pb = await lastBody("PUT /api/team/members/2");
+    check("PUT (Read & edit): settings.payroll.view + settings.payroll.edit", pb?.items?.includes("settings.payroll.view") && pb.items.includes("settings.payroll.edit"), JSON.stringify(pb?.items?.filter((c) => c.startsWith("settings."))));
+
   }
 
   // ── 置顶 88（Annie 2026-11-05 选 A「按推荐，动手」）：待注册行也能 Edit；改了权限 / 账号类型 ⇒ 后端换新链接（G212 SA-8），

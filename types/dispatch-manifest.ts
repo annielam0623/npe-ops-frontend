@@ -1,5 +1,7 @@
 /** Dispatch → Tour manifest（后端 app/routers/tour_manifest.py）。全部 require_staff。 */
 
+import type { TrackingMark } from "./morning-tracking";
+
 export type ManifestMode = "none" | "single" | "lettered" | "unlettered";
 
 /** GET /api/dispatch/manifests?date= 的一张卡（排车页上的一个 bus tour 区块）。 */
@@ -56,8 +58,16 @@ export interface ManifestGuest {
   pickup_location: string;
   special_requirements: string;
   bus_label: string | null;
-  /** 司机在手机上标的。 */
+  /**
+   * 导游在手机上标的；No show 改方向（Annie 2026-11-17「动手」，N5 A）后是最终值：staff 在 Morning Tracking 改过就是 staff 的。
+   */
   boarding: "boarded" | "no_show" | null;
+  /** 最终那份的明细（谁、身份、车号、时间）；旧后端没有。⚠️ 字段名以后端合同为准。 */
+  boarding_mark?: TrackingMark | null;
+  /** staff 改过（显示「Edited by …」）；没有这个键时按 boarding_mark.role === "staff" 判。 */
+  boarding_staff_changed?: boolean;
+  /** 导游原来标的；没标为 null。 */
+  boarding_original?: TrackingMark | null;
   name: string;
   lunch_text: string;
   /** Quantities 的票种说明（例 "2 Adult, 1 Child (0-1 yrs)"）。 */

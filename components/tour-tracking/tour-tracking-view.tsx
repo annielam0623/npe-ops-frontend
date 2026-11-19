@@ -1,6 +1,13 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import {
   TrackingBanner,
@@ -28,6 +35,8 @@ import { usePermissions } from "@/lib/staff-permissions";
 import { useTick } from "@/lib/use-tick";
 import { fetchUserPref, saveUserPref } from "@/lib/user-prefs-api";
 import { cn, takeSearchParam } from "@/lib/utils";
+import { ChatNotFound } from "@/components/tracking-ui/chat-not-found";
+import { useOpenChatFromUrl } from "@/lib/open-chat-param";
 import type {
   BroadcastLogEntry,
   TourTracking,
@@ -362,6 +371,10 @@ export function TourTrackingView() {
 
   const data = state.kind === "ready" ? state.data : null;
   const allRows = useMemo(() => data?.rows ?? [], [data]);
+  // 订单生命周期「Open chat →」：?chat=单号 ⇒ 这天有这单就打开对话框，没有就黄字（Annie「全部同意推荐。动手」）。
+  const chatParam = useOpenChatFromUrl(data ? allRows : null, (row) =>
+    setConversationId(row.id),
+  );
   const meta = useMemo(() => tourMeta(tourTypes), [tourTypes]);
   // G180（灰底版，Annie 2026-11-05「同意全部推荐，动手」）：旧后端没有 send_state / order_state ⇒ 页面跟现在一样。
   const sync = useMemo(() => hasSyncFields(allRows), [allRows]);
@@ -532,6 +545,12 @@ export function TourTrackingView() {
                 Could not load the tour list for this date: {state.message}
               </TrackingBanner>
             ) : null}
+            {chatParam.notFound ? (
+              <ChatNotFound
+                text={chatParam.notFound}
+                onDismiss={chatParam.dismiss}
+              />
+            ) : null}
             {refreshError ? (
               <TrackingBanner
                 actionLabel="Retry"
@@ -607,7 +626,9 @@ export function TourTrackingView() {
                     onClick={() => setStatusFilter(filter)}
                     className={cn(
                       "cursor-pointer rounded-[5px] px-0.5 whitespace-nowrap",
-                      filter && statusFilter === filter && "bg-[#d4e8d8] font-semibold",
+                      filter &&
+                        statusFilter === filter &&
+                        "bg-[#d4e8d8] font-semibold",
                     )}
                   >
                     <b className={cn("font-extrabold tabular-nums", color)}>
@@ -622,8 +643,8 @@ export function TourTrackingView() {
                   className="whitespace-nowrap text-[#5b6470]"
                   title="Grey rows: orders from the Main manifest with nothing sent yet"
                 >
-                  · <b className="tabular-nums">{data ? unsentCount : "—"}</b> to
-                  notify
+                  · <b className="tabular-nums">{data ? unsentCount : "—"}</b>{" "}
+                  to notify
                 </span>
               ) : null}
               <span
@@ -642,7 +663,10 @@ export function TourTrackingView() {
               </span>
               {stats?.lunch.length ? lunchInfo.button : null}
               {stats?.lunch.length && lunchInfo.open ? (
-                <div data-phone-lunch className="flex basis-full flex-wrap gap-1">
+                <div
+                  data-phone-lunch
+                  className="flex basis-full flex-wrap gap-1"
+                >
                   {stats.lunch.map((g) => (
                     <span
                       key={g.label}
@@ -663,7 +687,7 @@ export function TourTrackingView() {
               // 手机上 7 格排一行（午餐那块自己一行）；G180 多一张 To notify 卡时 8 格一行。
               // 置顶 115 题 8 A：手机上换成上面那行小字，这里收起。
               className={cn(
-                "mb-4 flex flex-wrap items-stretch gap-2.5 max-sm:hidden max-sm:mb-2.5 max-sm:grid max-sm:gap-1",
+                "mb-4 flex flex-wrap items-stretch gap-2.5 max-sm:mb-2.5 max-sm:grid max-sm:hidden max-sm:gap-1",
                 sync ? "max-sm:grid-cols-8" : "max-sm:grid-cols-7",
               )}
             >
@@ -956,7 +980,7 @@ export function TourTrackingView() {
                 "⬇ Download CSV saves everything for this date, whatever columns are showing: every column of the uploaded manifest, then the status columns. Older orders have no manifest columns, so those cells are blank.",
                 "⬆ Upload adds orders that were not sent from this system. Choose the tour, then the CSV or .xlsx file. Orders already in the list are skipped unless you tick Insert anyway. Nothing is sent to guests.",
                 // 照旧页面（`a5b3bfd`）这一条替换了原来 ops 自己写的「📣 Broadcast sends … Untick anyone」那句。
-                `Broadcast sends one message to many guests at once. By tour picks guests from the tours you check. By pickup location ignores tour and groups today’s guests by where they get picked up — pick one or more locations, review the names, then send. Guests whose pickup spot is not in Settings → Pickup Locations show up under “Not found” so you can still message them; add an alias there later to merge the spelling.${sync ? ` ${SYNC_BROADCAST_HOW_TO}` : ""}`,
+                `Broadcast sends one message to many guests at once. By tour picks guests from the tours you check. By pickup location ignores tour and groups today’s guests by where they get picked up — pick one or more locations, review the names, then send. Guests whose pickup spot is not in Settings → Pickup Locations show up under “Not found” so you can still message them; add an alias there later to merge the spelling.${sync ? ` ${SYNC_BROADCAST_HOW_TO}` : ""} Each guest in the list shows their pickup location and time when you pick by tour, and their tour and pickup time when you pick by pickup location.`,
               ]}
               warning="If the list does not load, click ↻ Refresh or reload the page. If it still fails, take a screenshot and tell Annie."
             />
@@ -974,7 +998,7 @@ export function TourTrackingView() {
           tourDate={date}
           tours={toursOnDate(broadcastRows(allRows), meta)}
           // G180：灰行也在名单里，On hold / Cancelled 不在；发完重读，那些行不再是灰的。
-          candidates={broadcastCandidates(broadcastRows(allRows))}
+          candidates={broadcastCandidates(broadcastRows(allRows), meta)}
           onClose={() => setBroadcastOpen(false)}
           onSent={() => void load(dateRef.current, true)}
           onUnauthorized={redirectToLogin}

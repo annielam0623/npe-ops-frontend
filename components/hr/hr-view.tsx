@@ -39,6 +39,7 @@ import {
   SPELLINGS_COLUMN,
   parseLayout,
 } from "./fields";
+import { Payroll } from "./payroll";
 import { HRLog } from "./hr-log";
 import { ScheduleExample } from "./schedule-example";
 import { ImportPanel } from "./import-panel";
@@ -109,7 +110,24 @@ export function HRView() {
   const [view, setView] = useState<ViewState>({ kind: "loading" });
   /** 主管只读（Annie 2026-10-17）：增删改 / 批量 / 导入 / 导出只有 admin，主管看不到这些键。 */
   const [canEdit, setCanEdit] = useState(false);
-  const [tab, setTab] = useState<"people" | "schedule" | "record">("people");
+  const [tab, setTabRaw] = useState<
+    "people" | "schedule" | "record" | "payroll"
+  >("people");
+  /** 138：Payroll 页签有没存的改动（换页签先问，同离开页面）。 */
+  const payrollDirty = useRef(false);
+  const setTab = (next: "people" | "schedule" | "record" | "payroll") => {
+    if (
+      tab === "payroll" &&
+      next !== "payroll" &&
+      payrollDirty.current &&
+      !window.confirm(
+        "You have changes that are not saved. Leave without saving?",
+      )
+    )
+      return;
+    if (next !== "payroll") payrollDirty.current = false;
+    setTabRaw(next);
+  };
   /** Working Record 的 📷：morning.view（同 Live drivers），Super Admin 一律有。 */
   const [canMorning, setCanMorning] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
@@ -169,6 +187,11 @@ export function HRView() {
 
   // 全部按照勾选（Annie 2026-10-30 置顶 10c）：改 HR 开关开着按勾（settings.hr.edit，同后端 settings_hr.py），关着照旧按角色。
   const tickPerms = usePermissions();
+  // 138 Payroll 页签：只有给了 Payroll（settings.payroll.view）的 Admin 和 Super Admin；没有页面开关（合同 v2）。
+  const showPayroll =
+    tickPerms.ready &&
+    tickPerms.can("settings.payroll.view") &&
+    (pageVisibility.isSuperAdmin || pageVisibility.me?.is_admin === true);
   const tickPermsRef = useRef(tickPerms);
   tickPermsRef.current = tickPerms;
   useEffect(() => {
@@ -643,8 +666,30 @@ export function HRView() {
                 ) : null}
               </button>
             ) : null}
+            {showPayroll ? (
+              <button
+                type="button"
+                role="tab"
+                aria-selected={tab === "payroll"}
+                data-hr-tab="payroll"
+                onClick={() => setTab("payroll")}
+                className={
+                  tab === "payroll" ? HR_BTN_PRIMARY_CLASS : HR_BTN_CLASS
+                }
+              >
+                Payroll
+              </button>
+            ) : null}
           </div>
           {tab === "schedule" ? <ScheduleExample /> : null}
+          {tab === "payroll" && showPayroll ? (
+            <Payroll
+              onUnauthorized={redirectToLogin}
+              onDirtyChange={(d) => {
+                payrollDirty.current = d;
+              }}
+            />
+          ) : null}
           {tab === "record" && showRecord ? (
             <>
               <WorkingRecord
@@ -924,7 +969,8 @@ function BannerLine({
  * 置顶 86 Q7 A 的原文（preview v2）。Hours 那句已去掉（Annie 2026-11-05：上下班是打卡，不做 Hours）。
  */
 const WORKING_RECORD_HOW_TO = [
-  "Working Record: what each driver and guide did each day, for payroll. The week view shows everyone: role (Driver, Guide, or Driver & Guide), tour and van. Click a name to see that person's month and the month's totals (days as Driver, Guide and Driver & Guide, and how many times each tour). 📷 opens that day's snapshot. A dashed box marked live means that day is not saved yet and follows Dispatch as it is now; once saved, later changes in Dispatch do not change it. ⬇ Export for payroll downloads the month as a CSV.",
+  // 136（Annie 2026-11-13「3个问题都是A」「动手」，preview LWH8e8T6tDUJKEXRmU5dA9 的原文）。
+  "Working Record: what each driver and guide did each day, for payroll. It shows days up to today; later days stay blank. The week view shows everyone: role (Driver, Guide, or Driver & Guide), tour and van. Click a name to see that person's month and the month's totals (days as Driver, Guide and Driver & Guide, and how many times each tour). 📷 opens that day's snapshot. Not completed means nobody has clicked Completed on Dispatch for that day yet, so the record may still change. Those days have a dashed box. Days where Completed was clicked also show later changes made in Dispatch. ⬇ Export for payroll downloads the month as a CSV, with a Status column (Completed or Not completed).",
 ];
 
 /** Annie 2026-11-03 题 4 选 A 的原文。 */

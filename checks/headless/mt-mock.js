@@ -34,6 +34,8 @@ const LIVE_MARKS = {
   A1002: { status: "no_show", at: laIso("06:03"), driver: "Mike", van: "Van 12" },
   A1003: { status: "boarded", at: laIso("07:02"), driver: "Ana", van: "Bus A" },
 };
+/** staff 改的标记（No show 改方向）：「订单:relay|bus」→ 标记。 */
+const OVERRIDES = {};
 const relayGuest = (id, first, last, pax, order) => {
   const mk = LIVE_MARKS[order];
   const st = mk && mk.driver === "Mike" ? mk : null;
@@ -282,6 +284,10 @@ http
         LIVE_MARKS[ctl.addNoShow] = { status: "no_show", at: laIso("07:05"), driver: "Ana", van: "Bus A" };
         delete ctl.addNoShow;
       }
+      if (ctl.resetSplit) {
+        for (const k of Object.keys(OVERRIDES)) delete OVERRIDES[k];
+        delete ctl.resetSplit;
+      }
       if (ctl.clearMark) {
         delete LIVE_MARKS[ctl.clearMark];
         delete ctl.clearMark;
@@ -373,11 +379,23 @@ http
         if (!mk) return { ...r, live_status: null, live_status_at: null, live_driver: "", live_van: "", ns_unhandled: false };
         return { ...r, live_status: mk.status, live_status_at: mk.at, live_driver: mk.driver, live_van: mk.van, ns_unhandled: mk.status === "no_show" && !r.action_taken_by };
       };
+      // No show 改方向（ctl.split，后端 G321 返工的形状，6f 给）：Relay / Bus 各两份 + relay_applicable；A1004 是 TI 客人（不走 relay）。
+      const withSplit = (r0) => {
+        const r = withLive(r0);
+        if (!ctl.split) return r;
+        const mk = LIVE_MARKS[r.order_number];
+        const relayOrig = mk && mk.driver === "Mike" ? { value: mk.status, label: "", by: "Mike", role: "relay", vehicle: "Van 12", at: mk.at } : null;
+        const busOrig = mk && mk.driver === "Ana" ? { value: mk.status, label: "", by: "Ana", role: "guide", vehicle: "Bus A", at: mk.at } : null;
+        const relayMark = OVERRIDES[r.order_number + ":relay"] || relayOrig;
+        const busMark = OVERRIDES[r.order_number + ":bus"] || busOrig;
+        const ns = (relayMark && relayMark.value === "no_show") || (busMark && busMark.value === "no_show");
+        return { ...r, relay_mark: relayMark, relay_original: relayOrig, bus_mark: busMark, bus_original: busOrig, relay_applicable: r.order_number !== "A1004", ns_unhandled: !!ns && !r.action_taken_by };
+      };
       return send(res, 200, {
         date,
         tracking_window: { end_minute: ctl.endMinute, end_label: ctl.endMinute === 0 ? "12:00 AM" : "11:59 PM" },
         rows: date !== today ? [] : [
-          ...(ctl.staleAction ? rows.map((r) => (r.id === 5 ? { ...r, notes_unhandled: true } : r)) : rows).map(withLive),
+          ...(ctl.staleAction ? rows.map((r) => (r.id === 5 ? { ...r, notes_unhandled: true } : r)) : rows).map(withSplit),
           // 有电话、没邮箱：测对话框「短信最多两段」没邮箱时的提示（Annie 2026-10-15）。
           ...(ctl.noEmailRow ? [noEmailRow] : []),
         ],
@@ -395,6 +413,36 @@ http
             shuttles: [{ label: "Shuttle outbound", kind: "outbound", time: "6:30 AM", hotel: "ZZ Test Shuttle Stop", product: "ZZ Test Shuttle", pax: 5, bookings: 2 }] } }],
       };
       return send(res, 200, { date, people: date === today ? [...livePeople(), ...(ctl.liveCompact ? [compact] : [])] : [] });
+    }
+    // No show 改方向：staff 改 Relay / Bus（PUT，value null = 回原始）；同一次写入记成已处理（action_taken）。
+    if (p === "/api/notifications/morning-pickup/tracking/mark" && req.method === "PUT") {
+      const body = (await readBody(req)) || {};
+      entry.body = body;
+      if (ctl.markFail) return send(res, 400, { detail: "This row changed since the page loaded. Refresh and try again." });
+      // 照后端 G321 合同（docs/interfaces/g321-relay-bus-tracking-2026-11-17.md 第 1 节）。
+      const r = rows.find((x) => x.id === body.booking_id);
+      if (!r) return send(res, 404, { detail: "Booking not found." });
+      if (r.order_number !== body.order_number) return send(res, 400, { detail: "This row changed since the page loaded. Refresh and try again." });
+      if (body.col !== "relay" && body.col !== "bus") return send(res, 400, { detail: "col must be relay or bus" });
+      const allowed = body.col === "relay" ? ["picked_up", "no_show"] : ["boarded", "no_show"];
+      if (body.value !== null && body.value !== "" && !allowed.includes(body.value))
+        return send(res, 400, { detail: body.col === "relay" ? "The Relay column can only be set to Picked up or No show, or cleared." : "The Bus column can only be set to Boarded or No show, or cleared." });
+      if (body.col === "relay" && r.order_number === "A1004") // 同 GET：A1004 是 TI 客人，relay_applicable false
+        return send(res, 400, { detail: "This guest is not on a relay van that day, so there is no Relay mark to change." });
+      const k = body.order_number + ":" + body.col;
+      const before = OVERRIDES[k] ? OVERRIDES[k].value : null;
+      const value = body.value || null;
+      if (value === null) delete OVERRIDES[k];
+      else OVERRIDES[k] = { value, label: value === "no_show" ? "No show" : value === "boarded" ? "Boarded" : "Picked up", by: "ZZ Staff", role: "staff", vehicle: "", at: laIso("09:15") };
+      const changed = before !== value;
+      if (changed) r.action_taken_by = "ZZ Staff";
+      const rk = r.order_number + ":relay", bk = r.order_number + ":bus";
+      return send(res, 200, {
+        relay_mark: OVERRIDES[rk] ?? r.relay_original ?? null, relay_original: r.relay_original ?? null,
+        bus_mark: OVERRIDES[bk] ?? r.bus_original ?? null, bus_original: r.bus_original ?? null,
+        relay_applicable: r.order_number !== "A1004", changed,
+        ...(changed ? { action_taken_by: "zzstaff", action_taken_at: laIso("09:15") } : {}),
+      });
     }
     let m = p.match(/^\/api\/bookings\/(\d+)\/take-action$/);
     if (m && req.method === "PUT") {
@@ -494,14 +542,15 @@ http
       if (ctl.morningVan)
         return send(res, 200, { total: vanRows.length, rows: vanRows, preview_at: GUARD_PREVIEW_AT, van_invalid_count: vanRows.filter((r) => r.van_invalid).length });
       if (ctl.morningGuard) return send(res, 200, { total: guardRows.length, rows: guardRows, preview_at: GUARD_PREVIEW_AT });
-      return send(res, 200, { total: morningRows.length, rows: morningRows });
+      // 140（G311）：ctl.fileDate = 预览带 file_date（文件团期）；没设 = 旧后端，没有这个键。
+      return send(res, 200, { total: morningRows.length, rows: morningRows, ...(ctl.fileDate !== undefined && ctl.fileDate !== "absent" ? { file_date: ctl.fileDate } : {}) });
     }
     if (p === "/send/morning-pickup" && req.method === "POST") {
       const raw = await readRaw(req);
       const field = (n) => (raw.match(new RegExp(`name="${n}"\\r\\n\\r\\n([^\\r]*)`)) || [])[1];
       const orders = JSON.parse(field("selected_orders") || "[]");
       const sendType = field("send_type");
-      entry.body = { orders, send_type: sendType, send_anyway: field("send_anyway"), van_anyway: field("van_anyway"), preview_at: field("preview_at") };
+      entry.body = { orders, send_type: sendType, send_anyway: field("send_anyway"), van_anyway: field("van_anyway"), preview_at: field("preview_at"), confirm_date: field("confirm_date") };
       if (ctl.morning400) return send(res, 400, { detail: ctl.morning400 });
       if (ctl.morningDelay) await new Promise((ok) => setTimeout(ok, ctl.morningDelay));
       if (ctl.morningVan) {

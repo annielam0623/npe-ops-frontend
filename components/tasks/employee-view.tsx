@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import type { BlockGate } from "@/components/dashboard/widget-gates";
 import { describeError, isStatus } from "@/lib/api-errors";
@@ -22,6 +22,12 @@ import {
   PriorityDot,
   YesterdayTag,
 } from "./shared";
+import {
+  canStaffEdit,
+  EditTaskButton,
+  TaskEditForm,
+  useEditLeaveGuard,
+} from "./task-edit";
 import { TaskTimeline } from "./timeline";
 
 const COPY_HIDDEN_KEY = "ops.myTasks.copyHidden";
@@ -58,6 +64,19 @@ export function EmployeeTasks({
   }
   const [togglingId, setTogglingId] = useState<number | null>(null);
   const [passOverTarget, setPassOverTarget] = useState<DailyTask | null>(null);
+  // 139：员工只能改自己名下的标题、优先级（Annie 2026-11-14 题 1 B +「照推荐」）。
+  const [editingIds, setEditingIds] = useState<ReadonlySet<number>>(
+    () => new Set(),
+  );
+  const dirtyReporter = useEditLeaveGuard();
+  function setEditing(id: number, on: boolean) {
+    setEditingIds((prev) => {
+      const next = new Set(prev);
+      if (on) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }
   const [error, setError] = useState("");
 
   const { done, total } = summarizeDone(tasks);
@@ -167,6 +186,26 @@ export function EmployeeTasks({
                 busy={togglingId === task.id}
                 onToggle={() => void toggle(task)}
                 onPassOver={() => setPassOverTarget(task)}
+                edit={
+                  canStaffEdit(task, me.username)
+                    ? {
+                        open: editingIds.has(task.id),
+                        onOpen: () => setEditing(task.id, true),
+                        form: (
+                          <TaskEditForm
+                            task={task}
+                            shifts={shifts}
+                            canAssign={false}
+                            onSaved={onChanged}
+                            onClose={() => setEditing(task.id, false)}
+                            onUnauthorized={onUnauthorized}
+                            onDirtyChange={dirtyReporter(task.id)}
+                            className="basis-full pl-[27px] max-sm:pl-0"
+                          />
+                        ),
+                      }
+                    : null
+                }
               />
             )}
           />
@@ -196,6 +235,7 @@ function TaskRow({
   busy,
   onToggle,
   onPassOver,
+  edit,
 }: {
   task: DailyTask;
   now: string;
@@ -204,6 +244,8 @@ function TaskRow({
   busy: boolean;
   onToggle: () => void;
   onPassOver: () => void;
+  /** 139：自己名下的才有 Edit（Everyone on shift 的没有）。 */
+  edit: { open: boolean; onOpen: () => void; form: ReactNode } | null;
 }) {
   // 我自己交出去、还没被接受的：灰掉，不能再勾 / 再交一次。
   const pendingMine =
@@ -218,7 +260,9 @@ function TaskRow({
       data-due-status={status}
       className={cn(
         "db-emboss flex flex-wrap items-start gap-x-3 gap-y-1.5 rounded-lg border px-3.5 py-2.5",
-        task.done
+        edit?.open
+          ? "border-[#3b82f6]/55 bg-[#3b82f6]/[.06]"
+          : task.done
           ? "border-white/[.08] opacity-70"
           : status === "overdue"
             ? "border-[#f87171]/40 bg-[#f87171]/[.05]"
@@ -264,6 +308,14 @@ function TaskRow({
           Pass over
         </button>
       ) : null}
+      {edit && !edit.open ? (
+        <EditTaskButton
+          task={task}
+          onClick={edit.onOpen}
+          className="px-3 py-1 text-[12px]"
+        />
+      ) : null}
+      {edit?.open ? edit.form : null}
     </li>
   );
 }

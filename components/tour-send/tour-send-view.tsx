@@ -207,6 +207,12 @@ function HowToUse() {
         and upload it.
       </li>
       <li>
+        If a row has no Pickup Location, it turns red. That order is not sent;
+        the others are sent as usual. Staff on shift get a Notice for it. Open
+        the Notice, add the pickup location to the order in Rezdy, click Refresh
+        from Rezdy, then click Send tour confirmation.
+      </li>
+      <li>
         Any orders already sent will be flagged as{" "}
         <span className="rounded bg-[#FAEEDA] px-1.5 py-px text-[11px] text-[#BA7517]">
           Already Sent
@@ -304,6 +310,12 @@ function HowToUseLastMinute() {
         Review the preview. If a row shows ? in Qty and turns red, nothing can
         be sent: fix the quantity in Rezdy, download the CSV again and upload
         it.
+      </li>
+      <li>
+        If a row has no Pickup Location, it turns red. That order is not sent;
+        the others are sent as usual. Staff on shift get a Notice for it. Open
+        the Notice, add the pickup location to the order in Rezdy, click Refresh
+        from Rezdy, then click Send tour confirmation.
       </li>
       <li>
         If this tour and date already have last minute orders in the system, a

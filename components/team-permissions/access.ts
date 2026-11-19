@@ -21,6 +21,11 @@ export interface AccessRow {
   read: string[];
   /** Read & edit / Full access 包含的项。 */
   all: string[];
+  /**
+   * 只有 Admin / Super Admin 账号能给（138 Payroll，后端 ADMIN_UP_ONLY_ITEMS；Annie V4 题 2 A）：
+   * 别的账号这一行除了 None 都灰掉、标「Admin only」，后端也 400。
+   */
+  adminOnly?: boolean;
 }
 
 export interface AccessGroup {
@@ -53,6 +58,12 @@ export const ACCESS_NOTES: Readonly<Record<string, string>> = {
   report:
     "Everyone can edit the report entries they logged themselves. Read & edit adds Edit report entries: edit everyone's report entries.",
 };
+
+/** 导游工资两项合成一行 Payroll（None / Read only / Read & edit），只有 Admin 能给。 */
+const PAYROLL_PREFIX = "settings.payroll.";
+/** 只有 Admin / Super Admin 账号能给的项（Payroll 两项）。 */
+export const isAdminOnlyCode = (code: string) =>
+  code.startsWith(PAYROLL_PREFIX);
 
 const isView = (code: string) => /\.view(_own|_all)?$/.test(code);
 
@@ -99,7 +110,21 @@ export function buildAccessGroups(modules: PermModule[]): AccessGroup[] {
           all: hr,
         });
       }
+      const payroll = codes.filter((c) => c.startsWith(PAYROLL_PREFIX));
       for (const item of mod.items) {
+        if (item.code.startsWith(PAYROLL_PREFIX)) {
+          if (item.code !== payroll[0]) continue;
+          rows.push({
+            key: "settings.payroll",
+            module: "settings",
+            label: "Payroll",
+            kind: payroll.length > 1 ? "read-edit" : "on-off",
+            read: payroll.length > 1 ? payroll.filter(isView) : [],
+            all: payroll,
+            adminOnly: true,
+          });
+          continue;
+        }
         if (!item.code.startsWith("settings.hr.")) {
           rows.push({
             key: item.code,

@@ -29,8 +29,17 @@ export type RequestStatus =
   | "awaiting_peer"
   /** 换班：原来那个人不同意，结束。 */
   | "peer_declined"
-  /** 第一次 Publish 时还没处理完，关掉了。 */
-  | "closed";
+  /** 关掉了：第一次 Publish 时还没处理完（G138），或发布后换班到期 / 被别的换班占了（G298，看 closed_reason）。 */
+  | "closed"
+  /** G298：提请求的人在批准前撤回了。 */
+  | "withdrawn";
+
+/**
+ * G298 请求关掉的原因（只 status = closed 有；8e 合同 2026-11-18）：published = 第一次 Publish（G138）；
+ * week_started = 那一周开始了（题 4 A）；other_swap = 里面的班被别的换班换走了（题 3 B）。旧后端没有 ⇒ 当 published。
+ * 排班的人手动改过这两个班：不关，Agree / Approve 回 409「This shift changed after the request — look again.」。
+ */
+export type RequestClosedReason = "published" | "week_started" | "other_swap";
 
 export type RequestKind = "swap" | "move" | "add";
 
@@ -81,6 +90,9 @@ export interface ConfirmRequest {
   peer_timed_out?: boolean;
   created_at: string;
   decided_at: string | null;
+  closed_reason?: RequestClosedReason | null;
+  /** G298：发布后提的换班（Approve / Decline 要先记、按 Save 才生效）；旧后端没有。 */
+  after_publish?: boolean;
 }
 
 export type ClosedReason = "past_deadline" | "published" | "started";
@@ -210,6 +222,37 @@ export function answerPeerRequest(opts: {
     }),
   );
 }
+
+/**
+ * G298 发布后换班：提请求的人在批准前撤回（题 5 A；awaiting_peer / pending 才能撤）。返回同 GET。
+ * 后端会通知对方和 Annie、Tessa。
+ */
+export function withdrawRequest(opts: {
+  id: number;
+  token?: string;
+}): Promise<MyConfirmation> {
+  return withColors(
+    apiFetch<MyConfirmation>(
+      `${base(opts.token)}/requests/${opts.id}/withdraw`,
+      { method: "POST" },
+    ),
+  );
+}
+
+/**
+ * G298：已发布、还没开始的周 = 只能换班（open = true 且 week_status = published）。
+ * 旧后端已发布周一律 open = false ⇒ 照旧只读。
+ */
+export function isSwapWeek(
+  d: Pick<MyConfirmation, "week_status" | "open">,
+): boolean {
+  return d.week_status === "published" && d.open;
+}
+
+/**
+ * 发布后换班批准的人（Annie 原话「Sent to Tessa, waiting for approval」：员工那边只写 Tessa，Annie 也能批）。
+ */
+export const SWAP_APPROVER = "Tessa";
 
 export function fetchWeekConfirmations(
   weekStart: string,

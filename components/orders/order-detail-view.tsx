@@ -1,13 +1,21 @@
 "use client";
 
 import {
+  isValidElement,
   type ReactNode,
   useCallback,
   useEffect,
   useRef,
   useState,
 } from "react";
+import { useSearchParams } from "next/navigation";
 import { ManifestLinks } from "@/components/order-lookup/manifest-links";
+import {
+  LifecycleCard,
+  OrderChatHistory,
+} from "@/components/order-lookup/lifecycle";
+import { CHAT_HOW_TO, LIFECYCLE_HOW_TO } from "@/lib/order-lifecycle";
+import { usePageVisibility } from "@/lib/page-visibility";
 
 import { FarmOutViewCard } from "@/components/farm-out/farm-out-view-card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -23,7 +31,18 @@ import { usePermissions } from "@/lib/staff-permissions";
 import { useTick } from "@/lib/use-tick";
 import { cn } from "@/lib/utils";
 import { PageLink } from "@/components/ui/page-link";
-import type { OrderDetail, OrderPatch } from "@/types";
+import type {
+  DayOfTourLeg,
+  OrderDetail,
+  OrderPatch,
+  TrackingMark,
+  TrackingMarkCol,
+} from "@/types";
+import {
+  isStaffMark,
+  markLabel,
+  markWho,
+} from "@/components/morning-tracking/config";
 
 import {
   RefreshButton,
@@ -31,6 +50,14 @@ import {
   type RefreshState,
   useOrderRefresh,
 } from "./refresh-from-rezdy";
+import {
+  sendDateFor,
+  type SendOrderState,
+  PickupMissingAlert,
+  SendTourButton,
+  SendTourResultCard,
+  useSendTourOrder,
+} from "./send-tour-confirmation";
 
 // 样子照旧后台 admin/order_detail.html（Annie 2026-10-07：和旧版一模一样）。
 /** .od-input */
@@ -127,6 +154,13 @@ export function OrderDetailView({ orderNumber }: { orderNumber: string }) {
   const refresh = useOrderRefresh(orderNumber, quietReload, redirectToLogin);
   // 只在新 Rezdy 表的单（后端原始 editable = false）、有 orders.edit 时出；partner 不出（后端 3e：挂 orders.edit）。
   // G280：TripGuru 的单不出（这个键是去 Rezdy 重拉）。
+  // G297：「Send tour confirmation」——有 manifests.send 的员工；partner 不出。日期优先网址的 tour_date（Notice 链接带的）。
+  const canSendTour = useTick("manifests.send") && !partner;
+  // 订单生命周期开关（order_lifecycle，默认只 Super Admin）：How to use 多 6 条。
+  const vis = usePageVisibility();
+  const lifecycleOn = vis.loaded && vis.visible("order_lifecycle") && !partner;
+  const urlDate = useSearchParams().get("tour_date");
+  const sendTour = useSendTourOrder(orderNumber, redirectToLogin);
   const canRefresh =
     state.kind === "ready" &&
     !partner &&
@@ -143,7 +177,13 @@ export function OrderDetailView({ orderNumber }: { orderNumber: string }) {
         ← Back to Orders
       </PageLink>
       {partner ? null : (
-        <HowToUse money={perms.canSeeMoney} refresh={canRefresh} />
+        <HowToUse
+          money={perms.canSeeMoney}
+          refresh={canRefresh}
+          sendTour={canSendTour}
+          lifecycle={lifecycleOn}
+          lifecycleChat={lifecycleOn && perms.canMessages("messages.view")}
+        />
       )}
       {state.kind === "loading" ? (
         <div className={OD_LOADING}>Loading…</div>
@@ -170,6 +210,7 @@ export function OrderDetailView({ orderNumber }: { orderNumber: string }) {
           partner={partner}
           storedReadOnly={!state.order.editable}
           refresh={canRefresh ? refresh : null}
+          sendTour={canSendTour ? { ...sendTour, urlDate } : null}
           onSaved={() => void reload(undefined, true)}
           onUnauthorized={redirectToLogin}
         />
@@ -183,10 +224,17 @@ function OrderBody({
   partner,
   storedReadOnly,
   refresh,
+  sendTour,
   onSaved,
   onUnauthorized,
 }: {
   order: OrderDetail;
+  /** null = 不出 Send tour confirmation 键。 */
+  sendTour: {
+    state: SendOrderState;
+    run: (date: string) => Promise<void>;
+    urlDate: string | null;
+  } | null;
   partner: boolean;
   /** null = 不出 Refresh from Rezdy 键。 */
   refresh: { state: RefreshState; run: () => Promise<void> } | null;
@@ -198,10 +246,29 @@ function OrderBody({
   const type = o.booking_type !== "—" ? o.booking_type : o.product.type;
   // 没勾 See prices, agent & commission（orders.money_view，题 8「除了客人的基本信息，CCL看不到任何有价格的信息」）：
   // 价格卡、Agent & Commission、票价、Raw Rezdy 都不出。后端这时 price = null、order_detail / items_detail 去掉代理商 / 付款 / 金额。
-  const seeMoney = usePermissions().canSeeMoney && o.price !== null;
+  const bodyPerms = usePermissions();
+  const seeMoney = bodyPerms.canSeeMoney && o.price !== null;
+  // Chat history（C3 A / C4 A）：跟生命周期开关走 + 要有 messages.view；看得到时对话挪到页面最下面，Notes 卡只留 Special req. / Note。
+  const bodyVis = usePageVisibility();
+  const canChat =
+    !partner &&
+    bodyVis.loaded &&
+    bodyVis.visible("order_lifecycle") &&
+    bodyPerms.canMessages("messages.view");
   // G280：TripGuru 来的单（后端 26fdfa29）：只读，order_detail / items_detail 是 TripGuru 的键名。
   const tripguru = o.source === "tripguru";
   const raw = tripguru ? "TripGuru" : "Rezdy";
+  const sendDate = sendTour
+    ? sendDateFor(sendTour.urlDate, o.product.tour_date)
+    : null;
+  // G297：酒店空着——照后端 send_guard.no_pickup_location_orders：原始字段去掉空格后为空才算（「TBD」「—」都当有值，
+  // 「—」只是页面显示空值的占位、库里没有）；门票单不算（没有接客）。
+  // 有发送键的人才看到红字提醒、键灰掉；Rezdy 补好、Refresh from Rezdy 后重读，红字自动消失、键能按。
+  const hotelMissing =
+    sendTour !== null &&
+    o.product.type !== "ticket" &&
+    o.booking_type !== "ticket" &&
+    !String(o.product.pickup_location ?? "").trim();
   return (
     <>
       {/* .od-head：订单号直接在深色底上，旧页的 #1a1a1a 看不见，改用旧后台正文色 #f8fafc。 */}
@@ -237,14 +304,30 @@ function OrderBody({
         >
           {o.source === "rezdy" ? "Rezdy" : tripguru ? "TripGuru" : o.source}
         </span>
-        {refresh ? (
-          <RefreshButton
-            busy={refresh.state.kind === "busy"}
-            onClick={() => void refresh.run()}
-          />
+        {refresh || sendTour ? (
+          <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+            {sendTour ? (
+              <SendTourButton
+                busy={sendTour.state.kind === "busy"}
+                date={sendDate}
+                hotelMissing={hotelMissing}
+                onClick={() => {
+                  if (sendDate) void sendTour.run(sendDate);
+                }}
+              />
+            ) : null}
+            {refresh ? (
+              <RefreshButton
+                busy={refresh.state.kind === "busy"}
+                onClick={() => void refresh.run()}
+              />
+            ) : null}
+          </div>
         ) : null}
       </header>
       {refresh ? <RefreshResultCard state={refresh.state} /> : null}
+      {hotelMissing ? <PickupMissingAlert /> : null}
+      {sendTour ? <SendTourResultCard state={sendTour.state} /> : null}
       {/* 置顶 51 B：一点跳到 Main manifest 的那一单（标黄、预勾）。 */}
       <ManifestLinks order={o} className="mt-2 mb-3" />
       {storedReadOnly && !partner ? (
@@ -288,7 +371,19 @@ function OrderBody({
               ["Tour date", o.product.tour_date],
               ["Tour time", o.product.tour_time],
               ["Pickup", o.product.pickup_time],
-              ["Location", o.product.pickup_location],
+              [
+                "Location",
+                hotelMissing ? (
+                  <span
+                    data-order-location-missing
+                    className="font-semibold text-[#A32D2D] night:text-red-300"
+                  >
+                    Missing — add it in Rezdy
+                  </span>
+                ) : (
+                  o.product.pickup_location
+                ),
+              ],
               ...(o.product.item_count > 1
                 ? ([
                     [
@@ -308,6 +403,13 @@ function OrderBody({
           />
         ) : null}
         <OpsCard order={o} onSaved={onSaved} onUnauthorized={onUnauthorized} />
+        {o.day_of_tour && !partner ? (
+          <DayOfTourCard
+            legs={o.day_of_tour}
+            orderNumber={o.order_number}
+            tourDate={o.product.tour_date}
+          />
+        ) : null}
         {/* TripGuru 的代理商现在是空的（后端：等第一张 TEST 单看到真实数据再接），不出 Agent 卡。 */}
         {partner || !seeMoney || tripguru ? null : (
           <AgentCard detail={o.order_detail} />
@@ -327,7 +429,7 @@ function OrderBody({
               ["Note", o.notes],
             ]}
           />
-          {o.booking_notes.length ? (
+          {canChat ? null : o.booking_notes.length ? (
             <ul>
               {o.booking_notes.map((n) => (
                 <li
@@ -347,6 +449,8 @@ function OrderBody({
             <div className={OD_LOADING_IN_CARD}>No notes.</div>
           )}
         </Card>
+        {/* 订单生命周期（Annie 2026-11-18 题 1 A：Activity 卡上面；开关 order_lifecycle，partner 不出）。 */}
+        {partner ? null : <LifecycleCard order={o} />}
         <Card title="Activity">
           {o.activity_log.length ? (
             <ul>
@@ -386,6 +490,7 @@ function OrderBody({
           <RawBlock title={`Raw ${raw} order`} value={o.order_detail} />
         </>
       )}
+      {canChat ? <OrderChatHistory order={o} /> : null}
     </>
   );
 }
@@ -445,13 +550,17 @@ function Rows({ rows }: { rows: [string, unknown][] }) {
     <div>
       {rows.map(([k, v]) => (
         <OdRow key={k} k={k}>
-          <span
-            className={
-              isEmpty(v) ? "text-[#1a1a1a] night:text-white/35" : undefined
-            }
-          >
-            {show(v)}
-          </span>
+          {isValidElement(v) ? (
+            v
+          ) : (
+            <span
+              className={
+                isEmpty(v) ? "text-[#1a1a1a] night:text-white/35" : undefined
+              }
+            >
+              {show(v)}
+            </span>
+          )}
         </OdRow>
       ))}
     </div>
@@ -1116,6 +1225,176 @@ function InternalNoteCard({ note }: { note: string }) {
   );
 }
 
+/** "2026-11-17" → "11/17/2026"（订单页的团期写法），对不上原样返回。 */
+function ymdToMdy(ymd: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd);
+  return m ? `${m[2]}/${m[3]}/${m[1]}` : ymd;
+}
+
+/** "2026-11-17" → "Tue, Nov 17, 2026"。 */
+function ymdLong(ymd: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return ymd || "—";
+  return new Date(`${ymd}T12:00:00`).toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+/**
+ * Day of tour 卡（No show 改方向，Annie 2026-11-17「动手」，N3 A / N8 A）：只看。按团期 + leg 分段，每段 Relay、Bus 两行，
+ * 写结果、谁、哪台车、几点；staff 改过的下面灰字写原来的。改期后旧团期那段照样显示、标 Old tour date
+ * （Annie：「该日期原来的标记还是要显示，就在旧订单旧日期这里」）。改只在 Morning Tracking。
+ */
+function DayOfTourCard({
+  legs,
+  orderNumber,
+  tourDate,
+}: {
+  legs: DayOfTourLeg[];
+  orderNumber: string;
+  tourDate: string;
+}) {
+  const sorted = [...legs].sort(
+    (a, b) =>
+      b.tour_date.localeCompare(a.tour_date) ||
+      (a.leg === "return" ? 1 : 0) - (b.leg === "return" ? 1 : 0),
+  );
+  const hasReturn = legs.some((l) => l.leg === "return");
+  const current =
+    sorted.find((l) => ymdToMdy(l.tour_date) === tourDate)?.tour_date ??
+    sorted[0]?.tour_date ??
+    "";
+  const trackingHref = `/morning-pickup/tracking?${new URLSearchParams({
+    ...(current ? { date: current } : {}),
+    q: orderNumber,
+  }).toString()}`;
+  return (
+    <Card
+      title="Day of tour"
+      actions={
+        <PageLink
+          href={trackingHref}
+          data-day-of-tour-open
+          className="ml-auto text-[11.5px] font-normal tracking-normal text-[#6b7280] normal-case underline night:text-white/55"
+        >
+          Open in Morning Tracking →
+        </PageLink>
+      }
+    >
+      <div data-day-of-tour>
+        {sorted.length === 0 ? (
+          <div className={OD_LOADING_IN_CARD}>No relay or bus marks yet.</div>
+        ) : (
+          sorted.map((l) => {
+            const old = !!tourDate && ymdToMdy(l.tour_date) !== tourDate;
+            // G321：product_code 可能是 ""（对不上）⇒ 用 product_name 当键；同一天有几个产品时标题带产品名。
+            const productKey = l.product_code || l.product_name || "";
+            const manyProducts =
+              new Set(
+                legs
+                  .filter((x) => x.tour_date === l.tour_date)
+                  .map((x) => x.product_code || x.product_name || ""),
+              ).size > 1;
+            return (
+              <div
+                key={`${l.tour_date}|${productKey}|${l.leg}`}
+                data-day-of-tour-leg={`${l.tour_date}|${l.leg}`}
+                className="mb-2 last:mb-0"
+              >
+                <div className="mb-0.5 flex flex-wrap items-baseline gap-1.5 text-[11.5px] font-semibold text-[#374151] night:text-white/70">
+                  {ymdLong(l.tour_date)}
+                  {manyProducts && (l.product_name || l.product_code)
+                    ? ` · ${l.product_name || l.product_code}`
+                    : ""}
+                  {/* 去程照旧写「· Outbound」（有回程时）；回程那条挂小标签「Return」（N8：按团期 + 去 / 回程分行，ae 核时提）。 */}
+                  {l.leg !== "return" && hasReturn ? " · Outbound" : ""}
+                  {l.leg === "return" ? (
+                    <span
+                      data-return-leg
+                      className="rounded-[4px] bg-[#e0f2fe] px-[5px] text-[10.5px] text-[#075985]"
+                    >
+                      Return
+                    </span>
+                  ) : null}
+                  {old ? (
+                    <span
+                      data-old-tour-date
+                      className="rounded-[4px] bg-[#fef3c7] px-[5px] text-[10.5px] text-[#92400e]"
+                    >
+                      Old tour date
+                    </span>
+                  ) : null}
+                </div>
+                <MarkRow
+                  label="Relay"
+                  col="relay"
+                  mark={l.relay_mark}
+                  original={l.relay_original}
+                />
+                <MarkRow
+                  label="Bus"
+                  col="bus"
+                  mark={l.bus_mark}
+                  original={l.bus_original}
+                />
+              </div>
+            );
+          })
+        )}
+      </div>
+    </Card>
+  );
+}
+
+function MarkRow({
+  label,
+  col,
+  mark,
+  original,
+}: {
+  label: string;
+  col: TrackingMarkCol;
+  mark: TrackingMark | null;
+  original: TrackingMark | null;
+}) {
+  return (
+    <OdRow k={label}>
+      {mark ? (
+        <>
+          <span
+            data-mark-value={mark.value}
+            className={cn(
+              "font-semibold",
+              mark.value === "no_show" ? "text-[#a32d2d]" : "text-[#047857]",
+            )}
+          >
+            {markLabel(mark)}
+          </span>
+          <span className="block text-[11px] text-[#6b7280] night:text-white/45">
+            {markWho(mark, col)}
+          </span>
+          {isStaffMark(mark) ? (
+            <span
+              data-mark-original
+              className="block text-[11px] text-[#6b7280] night:text-white/45"
+            >
+              {original
+                ? `Original: ${markLabel(original)} · ${markWho(original, col)}`
+                : "Original: not marked"}
+            </span>
+          ) : null}
+        </>
+      ) : (
+        <span className="text-[#9ca3af]">
+          {col === "relay" ? "—" : "Not marked"}
+        </span>
+      )}
+    </OdRow>
+  );
+}
+
 const RAW_LIMIT = 20000;
 
 function RawBlock({ title, value }: { title: string; value: unknown }) {
@@ -1141,7 +1420,21 @@ function RawBlock({ title, value }: { title: string; value: unknown }) {
 }
 
 /** money = false（没勾 orders.money_view）：不提价格卡、代理商和 Raw Rezdy。 */
-function HowToUse({ money, refresh }: { money: boolean; refresh: boolean }) {
+function HowToUse({
+  money,
+  refresh,
+  sendTour,
+  lifecycle,
+  lifecycleChat = false,
+}: {
+  money: boolean;
+  refresh: boolean;
+  sendTour: boolean;
+  /** 订单生命周期开关看得到：多那 6 条（题 6 A 原文）。 */
+  lifecycle: boolean;
+  /** 看得到 Chat history（开关 + messages.view）：多 Chat history 那句。 */
+  lifecycleChat?: boolean;
+}) {
   return (
     // 旧页这里是一直展开的蓝框（不是可折叠的 details），样式照 send_morning.html。
     <div className="mb-4 rounded-[10px] border border-[#b5d4f4] bg-[#e8f3fc] px-5 py-3.5 text-[12px] leading-[1.8] text-[#0c3a6b] night:border-sky-400/20 night:bg-sky-400/[.08] night:text-sky-300">
@@ -1184,6 +1477,18 @@ function HowToUse({ money, refresh }: { money: boolean; refresh: boolean }) {
             shows in red and nothing is changed.
           </li>
         ) : null}
+        {sendTour ? (
+          <li>
+            Send tour confirmation (next to the order number): sends this
+            order&apos;s tour confirmation by SMS and email, for the tour date
+            of this order. If the pickup location is missing, a red message says
+            what to fix and the button stays grey: add the pickup location to
+            the order in Rezdy, then click Refresh from Rezdy. When the red
+            message is gone, click Send tour confirmation. Once it is sent, the
+            Pickup location missing notice goes away for everyone. If it is not
+            sent, the reason shows in red.
+          </li>
+        ) : null}
         <li>
           Orders from TripGuru open read-only. Items shows each product with its
           option, date, quantities and booking fields; Internal note (TripGuru)
@@ -1195,6 +1500,11 @@ function HowToUse({ money, refresh }: { money: boolean; refresh: boolean }) {
             ? " Raw Rezdy items and Raw Rezdy order at the bottom open the original data Rezdy sent."
             : ""}
         </li>
+        {lifecycle
+          ? [...LIFECYCLE_HOW_TO, ...(lifecycleChat ? [CHAT_HOW_TO] : [])].map(
+              (t) => <li key={t}>{t}</li>,
+            )
+          : null}
       </ol>
       <div className="mt-2 border-t border-[#b5d4f4] pt-2 night:border-sky-400/20">
         Some orders are read-only: a red note under the order number says so and

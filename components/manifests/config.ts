@@ -2,6 +2,7 @@ import { LA_TIME_ZONE } from "@/lib/la-date";
 import type {
   ManifestField,
   ManifestHidden,
+  ManifestListSection,
   ManifestPage,
   ManifestRow,
   ManifestTabKey,
@@ -53,6 +54,10 @@ const HELPER_FIELDS: Record<ManifestTabKey, readonly string[]> = {
     WAIVER_STATUS_KEY,
     "waiver_link_by",
     "waiver_link_at",
+    // 153：场次分组要用（开始时间、产品、人数细分），staff 在 ☰ Columns 关掉了也照样分组。
+    "start_time",
+    "product",
+    "pax_breakdown",
   ],
   admin_fee: ["pax"],
 };
@@ -63,9 +68,172 @@ export function requestFields(
   tab: ManifestTabKey,
 ): string[] | null {
   if (!saved) return null;
-  // 「-键」只是前端记的「这一列我关掉了」，不发给后端。
-  const keys = saved.filter((k) => !k.startsWith("-"));
+  // 「-键」只是前端记的「这一列我关掉了」，不发给后端；Notes 是前端自己的列（值在行上，不在 catalog），也不发。
+  // Relay / Tour（_relay / _tour）同理。
+  const keys = saved.filter((k) => !k.startsWith("-") && !k.startsWith("_"));
   return [...keys, ...HELPER_FIELDS[tab].filter((k) => !keys.includes(k))];
+}
+
+/**
+ * 150 Relay / Tour 两列（G321，Annie N6「就显示简单一点，直接是relay和tour的结果就好了」）：Bus 标签只读，
+ * 只写后端的 label（Picked up / Boarded / No show），没标 ⇒ 空（格子画「—」）；relay_applicable=false ⇒ Relay 也是「—」。
+ * 不要 hover、不能改。默认紧跟 Morning pickup sent（没有那列就跟 Tour confirmation sent，再没有放 Notes 前 / 最后）。
+ * ☰ Columns 能关（-_relay / -_tour）、能拖；后端没给 relay_mark ⇒ 不出（旧后端）。列名「Tour」Annie 还没最后确认。
+ */
+export const RELAY_KEY = "_relay";
+export const TOUR_KEY = "_tour";
+const MARK_FIELDS: ManifestField[] = [
+  { key: RELAY_KEY, label: "Relay", group: "ours", type: "text" },
+  { key: TOUR_KEY, label: "Tour", group: "ours", type: "text" },
+];
+
+export function marksOn(page: ManifestPage): boolean {
+  return page.tab === "bus" && page.rows.some((r) => "relay_mark" in r);
+}
+
+export function withMarks(page: ManifestPage): ManifestPage {
+  if (!marksOn(page)) return page;
+  const have = new Set(page.catalog.map((f) => f.key));
+  return {
+    ...page,
+    catalog: [...page.catalog, ...MARK_FIELDS.filter((f) => !have.has(f.key))],
+    rows: page.rows.map((r) => ({
+      ...r,
+      values: {
+        ...r.values,
+        [RELAY_KEY]:
+          r.relay_applicable === false ? "" : (r.relay_mark?.label ?? ""),
+        [TOUR_KEY]: r.bus_mark?.label ?? "",
+      },
+    })),
+  };
+}
+
+/** 显示 / ☰ Columns 用的列加上 Relay、Tour（规则同 withNoteColumn，默认位置见上）。 */
+export function withMarkColumns(
+  fields: string[],
+  page: ManifestPage,
+  saved: readonly string[] | null | undefined,
+): string[] {
+  let keys = fields.filter((k) => k !== `-${RELAY_KEY}` && k !== `-${TOUR_KEY}`);
+  for (const key of [RELAY_KEY, TOUR_KEY]) {
+    if (!marksOn(page) || saved?.includes(`-${key}`)) {
+      keys = keys.filter((k) => k !== key);
+      continue;
+    }
+    if (keys.includes(key)) continue;
+    const at = saved ? saved.indexOf(key) : -1;
+    let pos: number;
+    if (at >= 0) {
+      const before = saved!
+        .slice(0, at)
+        .reverse()
+        .find((k) => keys.includes(k));
+      pos = before === undefined ? 0 : keys.indexOf(before) + 1;
+    } else {
+      const anchor = [
+        ...(key === TOUR_KEY ? [RELAY_KEY] : []),
+        "sent_morning_at",
+        "sent_tour_at",
+      ].find((k) => keys.includes(k));
+      pos =
+        anchor !== undefined
+          ? keys.indexOf(anchor) + 1
+          : keys.includes(NOTE_KEY)
+            ? keys.indexOf(NOTE_KEY)
+            : keys.length;
+    }
+    keys = [...keys.slice(0, pos), key, ...keys.slice(pos)];
+  }
+  return keys;
+}
+
+/** ☰ Columns / 拖表头存之前：这页有 Relay / Tour、staff 没勾 ⇒ 记 -_relay / -_tour。 */
+export function rememberMarkChoice(
+  fields: string[],
+  page: ManifestPage,
+): string[] {
+  const keys = fields.filter(
+    (k) => k !== `-${RELAY_KEY}` && k !== `-${TOUR_KEY}`,
+  );
+  if (!marksOn(page)) return keys;
+  return [
+    ...keys,
+    ...[RELAY_KEY, TOUR_KEY]
+      .filter((k) => !keys.includes(k))
+      .map((k) => `-${k}`),
+  ];
+}
+
+/**
+ * 150 Notes（G321 v171，Annie「notes可以先上」）：后端把备注放在每行的 `note` 上，不在 catalog / fields 里。
+ * 前端把它当成一列（键 NOTE_KEY），Bus、Tickets 两个标签有（题 9 A）：默认放最后（题 4 A）；
+ * ☰ Columns 里能关（关掉记 NOTE_OFF，同 Waiver link 的 WAIVER_OFF）、能拖位置；Export CSV 照屏幕上的列带出。
+ */
+export const NOTE_KEY = "_note";
+export const NOTE_OFF = "-_note";
+export const NOTE_FIELD: ManifestField = {
+  key: NOTE_KEY,
+  label: "Notes",
+  group: "ours",
+  type: "text",
+};
+
+/** 这一页出不出 Notes 列：Bus、Tickets 标签，而且后端给了 note（旧后端没有 ⇒ 不出）。 */
+export function notesOn(page: ManifestPage): boolean {
+  return (
+    (page.tab === "bus" || page.tab === "tickets") &&
+    page.rows.some((r) => typeof r.note === "string")
+  );
+}
+
+/** 把 Notes 放进这一页：catalog 多一项（表头、☰ Columns、CSV 都用它的名字），每行 values 多一格（CSV 照常导）。 */
+export function withNotes(page: ManifestPage): ManifestPage {
+  if (!notesOn(page)) return page;
+  return {
+    ...page,
+    catalog: page.catalog.some((f) => f.key === NOTE_KEY)
+      ? page.catalog
+      : [...page.catalog, NOTE_FIELD],
+    rows: page.rows.map((r) => ({
+      ...r,
+      values: { ...r.values, [NOTE_KEY]: r.note ?? "" },
+    })),
+  };
+}
+
+/**
+ * 显示 / ☰ Columns 用的列加上 Notes：这页没有 ⇒ 去掉；staff 关掉过（NOTE_OFF）⇒ 不加；已经在 ⇒ 不动；
+ * 存的列里有它（拖过位置）⇒ 插回存的位置；都没有 ⇒ 放最后。
+ */
+export function withNoteColumn(
+  fields: string[],
+  page: ManifestPage,
+  saved: readonly string[] | null | undefined,
+): string[] {
+  const keys = fields.filter((k) => k !== NOTE_OFF);
+  if (!notesOn(page) || saved?.includes(NOTE_OFF))
+    return keys.filter((k) => k !== NOTE_KEY);
+  if (keys.includes(NOTE_KEY)) return keys;
+  const at = saved ? saved.indexOf(NOTE_KEY) : -1;
+  if (at < 0) return [...keys, NOTE_KEY];
+  // 存的顺序里 Notes 前面最近一个还在显示的列，插在它后面；前面没有就放第一个。
+  const before = saved!
+    .slice(0, at)
+    .reverse()
+    .find((k) => keys.includes(k));
+  const pos = before === undefined ? 0 : keys.indexOf(before) + 1;
+  return [...keys.slice(0, pos), NOTE_KEY, ...keys.slice(pos)];
+}
+
+/** ☰ Columns / 拖表头存之前：这页有 Notes、staff 没勾 ⇒ 记 NOTE_OFF；勾了 ⇒ 去掉以前记的 NOTE_OFF。 */
+export function rememberNoteChoice(
+  fields: string[],
+  page: ManifestPage,
+): string[] {
+  const keys = fields.filter((k) => k !== NOTE_OFF);
+  if (!notesOn(page) || keys.includes(NOTE_KEY)) return keys;
+  return [...keys, NOTE_OFF];
 }
 
 /** 这一页有没有要 waiver link 的单（列和上传键都看它）。 */
@@ -260,12 +428,87 @@ export function paxOf(row: ManifestRow): number {
   return typeof v === "number" ? v : Number(v) || 0;
 }
 
+// ── 153 Tickets 按场次分组（Annie「我要这样的，类似antelope bus的分支，然后可以折叠，可以全选可以选session，也可以单独选订单」「动手」）──
+
+/** 后端 start_time 是 Rezdy 的当地时间原文「2026-11-17 09:00:00」；取出时分写成「9:00 AM」。读不出 ⇒ ""。 */
+export function sessionTime(value: ManifestValue | undefined): string {
+  const m = /(\d{1,2}):(\d{2})/.exec(String(value ?? ""));
+  if (!m) return "";
+  const h = Number(m[1]);
+  if (h > 23) return "";
+  return `${h % 12 || 12}:${m[2]} ${h < 12 ? "AM" : "PM"}`;
+}
+
+/** 后端 pax_breakdown「2 Adult, 1 Child」：一组里各单加起来「13 Adult / 1 Infant」（按第一次出现的顺序）；一单都读不出 ⇒ ""。 */
+function sumBreakdown(rows: readonly ManifestRow[]): string {
+  const total = new Map<string, number>();
+  for (const r of rows) {
+    for (const part of String(r.values.pax_breakdown ?? "").split(",")) {
+      const m = /^\s*(\d+)\s+(.+?)\s*$/.exec(part);
+      if (m) total.set(m[2], (total.get(m[2]) ?? 0) + Number(m[1]));
+    }
+  }
+  return [...total].map(([label, n]) => `${n} ${label}`).join(" / ");
+}
+
+/** 这一行的场次组键：开始时间原文 + 产品；没有开始时间 ⇒ No time 组。 */
+export const NO_TIME_KEY = "no_time";
+function sessionKeyOf(row: ManifestRow): string {
+  const t = String(row.values.start_time ?? "").trim();
+  if (!sessionTime(t)) return NO_TIME_KEY;
+  return `session:${t}|${String(row.values.product ?? row.product_code)}`;
+}
+
+/**
+ * Tickets 标签：后端不分节 ⇒ 前端按「开始时间 + 产品」分成场次组，套进现成的分节显示（同 Antelope bus 节标题：
+ * 淡色底、勾整节的框、每节 # 从 1 排、CSV 多一列 Section）。从早到晚排，没有时间的放最后一组 No time。
+ * 组里的行照后端原来的先后（发过的在后）。别的标签、后端已经给了 sections 的，原样返回。
+ */
+export function withTicketSessions(page: ManifestPage): ManifestPage {
+  if (page.tab !== "tickets" || page.sections?.length || !page.rows.length)
+    return page;
+  const groups = new Map<string, ManifestRow[]>();
+  for (const r of page.rows) {
+    const k = sessionKeyOf(r);
+    groups.set(k, [...(groups.get(k) ?? []), r]);
+  }
+  const keys = [...groups.keys()].sort((a, b) =>
+    a === NO_TIME_KEY ? 1 : b === NO_TIME_KEY ? -1 : a.localeCompare(b),
+  );
+  const sections: ManifestListSection[] = keys.map((k) => {
+    const rows = groups.get(k)!;
+    const first = rows[0];
+    const time = k === NO_TIME_KEY ? "" : sessionTime(first.values.start_time);
+    const product = String(first.values.product ?? first.product_code ?? "");
+    return {
+      key: k,
+      title: k === NO_TIME_KEY ? "No time" : `${time} — ${product}`,
+      short_title: k === NO_TIME_KEY ? "No time" : time,
+      kind: k === NO_TIME_KEY ? "no_time" : "session",
+      rows: rows.length,
+      orders: new Set(rows.map((r) => r.order_number)).size,
+      pax: rows.reduce((n, r) => n + paxOf(r), 0),
+      breakdown: sumBreakdown(rows),
+    };
+  });
+  return {
+    ...page,
+    sections,
+    rows: keys.flatMap((k) =>
+      groups.get(k)!.map((r) => ({ ...r, section: k })),
+    ),
+  };
+}
+
 /**
  * 节标题行的底色（后端说颜色前端自定）：去程 / 回程的 shuttle 一个颜色；团按节的先后轮流
  * （同 Annie 看过的样稿：紫 / 绿 / 粉）。
  */
 const TOUR_SECTION_BG = ["#efe3f7", "#e2f2da", "#fbe3eb", "#e3eef6"];
 export function sectionBg(kind: string, tourIndex: number): string {
+  // 153：门票场次组跟团节一样轮流上色；No time 组灰。
+  if (kind === "session") return TOUR_SECTION_BG[tourIndex % TOUR_SECTION_BG.length];
+  if (kind === "no_time") return "#eceff3";
   return kind === "tour"
     ? TOUR_SECTION_BG[tourIndex % TOUR_SECTION_BG.length]
     : "#fdebd9";

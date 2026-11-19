@@ -364,6 +364,18 @@ async function run() {
   check("operation_report：标签 Incident logged，链接 Open report → 去 /daily-report?id=12，有 Got it", await evaluate(`const li = [...${NOTICE}.querySelectorAll('li')].find(l => l.textContent.includes('Accident logged')); if (!li) return false; const a = li.querySelector('a'); return li.textContent.includes('Incident logged') && !!a && a.textContent.includes('Open report') && a.getAttribute('href') === '/daily-report?id=12' && !!$btn('Got it', li);`), await evaluate(`return ${NOTICE}.textContent;`));
   check("不认识的类型、缺 body / link / actions：不崩，标签 Notice + 标题，有 Got it，没有链接", await evaluate(`const li = [...${NOTICE}.querySelectorAll('li')].find(l => l.textContent.includes('ZZ Unknown kind notice')); if (!li) return false; return li.textContent.includes('Notice') && !li.querySelector('a') && !!$btn('Got it', li);`), await evaluate(`return ${NOTICE}.textContent;`));
 
+  // ── G297：pickup_missing 红色（标签红字、左边红边），Open order → 去订单页带 tour_date ──
+  await ctl({ reset: true, me: "lizzie", supervisor: false, fail401: false, failGet: false, notReady: false, notices: true, confirmNotices: true, pickupNotice: true });
+  await goto(`${APP}/dashboard`);
+  await waitFor(`${NOTICE} && ${NOTICE}.textContent.includes('CHDZZ8J8VYD')`);
+  await helpers();
+  const pm = await evaluate(`const li = [...${NOTICE}.querySelectorAll('li')].find(l => l.textContent.includes('CHDZZ8J8VYD')); if (!li) return null; const kind = li.querySelector('p'); const a = [...li.querySelectorAll('a')].find(x => x.textContent.includes('Open order')); const cs = getComputedStyle(li);
+    return { urgent: li.dataset.noticeUrgent, kind: kind.textContent, kindColor: getComputedStyle(kind).color, left: cs.borderLeftWidth + ' ' + cs.borderLeftColor, href: a?.getAttribute('href'), gotIt: [...li.querySelectorAll('button')].some(b => b.textContent.trim() === 'Got it') };`);
+  check("G297 pickup_missing：标签 Pickup location missing 红字、左边 3px 红边、Open order → 去 /orders/CHDZZ8J8VYD?tour_date=2026-11-13、有 Got it", !!pm && pm.urgent === "true" && /pickup location missing/i.test(pm.kind) && pm.kindColor === "rgb(248, 113, 113)" && pm.left === "3px rgb(248, 113, 113)" && pm.href === "/orders/CHDZZ8J8VYD?tour_date=2026-11-13" && pm.gotIt, JSON.stringify(pm));
+  check("G297：title / body 当纯文本显示（body 里的 <b>x</b> 原样显示成文字，不变粗体）", await evaluate(`const li = [...${NOTICE}.querySelectorAll('li')].find(l => l.textContent.includes('CHDZZ8J8VYD')); return li.textContent.includes('Pickup location missing: CHDZZ8J8VYD') && li.textContent.includes('click Send tour confirmation.<b>x</b>') && !li.querySelector('b');`));
+  check("G297：别的 Notice 标签照旧黄字、没有红边", await evaluate(`const li = [...${NOTICE}.querySelectorAll('li')].find(l => l.textContent.includes('Accident logged')); return !!li && !li.dataset.noticeUrgent && getComputedStyle(li.querySelector('p')).color === 'rgb(251, 191, 36)';`));
+  if (process.env.SHOT_DIR) { const fsx = require("fs"), px = require("path"); fsx.mkdirSync(process.env.SHOT_DIR, { recursive: true }); for (const [w, h, mobile, name] of [[1440, 900, false, "notice-desk"], [390, 844, true, "notice-phone"]]) { await cdp("Emulation.setDeviceMetricsOverride", { width: w, height: h, deviceScaleFactor: 2, mobile }); await sleep(600); await evaluate(`${NOTICE}.scrollIntoView({ block: 'start' }); window.scrollBy(0, -20);`); await sleep(300); const r = await cdp("Page.captureScreenshot", { format: "png" }); fsx.writeFileSync(px.join(process.env.SHOT_DIR, name + ".png"), Buffer.from(r.data, "base64")); } await cdp("Emulation.setDeviceMetricsOverride", { width: 1440, height: 900, deviceScaleFactor: 2, mobile: false }); await goto(`${APP}/dashboard?theme=night`); await waitFor(`${NOTICE} && ${NOTICE}.textContent.includes('CHDZZ8J8VYD')`); await sleep(600); await evaluate(`${NOTICE}.scrollIntoView({ block: 'start' }); window.scrollBy(0, -20);`); await sleep(300); const r2 = await cdp("Page.captureScreenshot", { format: "png" }); fsx.writeFileSync(px.join(process.env.SHOT_DIR, "notice-night.png"), Buffer.from(r2.data, "base64")); await goto(`${APP}/dashboard?theme=day`); await cdp("Emulation.clearDeviceMetricsOverride"); }
+
   // ── 主管视角、有 Notice：Notice 只占左半，右半先留空；整行任务框在 Messages 下面 ──
   await ctl({ reset: true, me: "annie", supervisor: true, fail401: false, failGet: false, notReady: false, notices: true, confirmNotices: true });
   await goto(`${APP}/dashboard`);
@@ -612,6 +624,232 @@ async function run() {
   check("401 跳登录页，带 next", await evaluate("return location.href.includes('/auth/login') && location.href.includes('next=');"), await evaluate("return location.href;"));
 }
 
+// ── 139 = G269 Daily task list（Annie 2026-11-14「B, A, A, A 动手」，preview ②）──
+async function runDailyTaskList() {
+  // 员工：没有 Daily task list 键
+  await ctl({ reset: true, me: "lizzie", supervisor: false, admin: false, superadmin: false, notices: false, gates: "open" });
+  await openDashboard();
+  check("139 · 员工（My tasks）没有 Daily task list 键", await evaluate("return !!$tasksSection() && !document.querySelector('[data-daily-task-list-open]');"));
+
+  await ctl({ reset: true, me: "annie", supervisor: true, admin: false, superadmin: false, notices: false, gates: "open" });
+  await openDashboard();
+  await waitFor("document.querySelector('[data-daily-task-list-open]')");
+  check("139 · 主管：Today's tasks 标题行右边有 Daily task list 键，不是蓝色（ghost）", await evaluate("const b = document.querySelector('[data-daily-task-list-open]'); const h = $tasksSection().querySelector('h2').getBoundingClientRect(); const r = b.getBoundingClientRect(); return $tasksSection().contains(b) && b.textContent === 'Daily task list' && r.left > h.right && Math.abs(r.top - h.top) < 20 && getComputedStyle(b).backgroundColor === 'rgba(0, 0, 0, 0)';"));
+  let from = (await mockLog()).length;
+  await evaluate("document.querySelector('[data-daily-task-list-open]').click();");
+  await waitFor("document.querySelectorAll('[data-daily-task-list] tr[data-template-id]').length === 4");
+  let reqs = await since(from, (e) => e.method === "GET" && e.path === "/api/tasks/templates");
+  check("139 · 点键打开窗口：标题 Daily task list，GET /api/tasks/templates，列出 4 条", reqs.length === 1 && (await evaluate("const d = document.querySelector('[data-daily-task-list]'); return d.getAttribute('role') === 'dialog' && d.querySelector('h2').textContent === 'Daily task list' && d.textContent.includes('Changes start from tomorrow’s list.');")));
+  const row = (id) => `document.querySelector('[data-daily-task-list] tr[data-template-id="${id}"]')`;
+  check("139 · 列：Task / Priority / Time / How often / Opens；8:00 – 10:00 AM、Every day、Dispatch", await evaluate(`const h = [...document.querySelectorAll('[data-daily-task-list] th')].map(x => x.textContent.trim()); const c = [...${row(1)}.cells].map(x => x.textContent); return h.slice(0,5).join('|') === 'Task|Priority|Time|How often|Opens' && c[1] === 'High' && c[2] === '8:00 – 10:00 AM' && c[3] === 'Every day' && c[4] === 'Dispatch';`), await evaluate(`return [...${row(1)}.cells].map(x => x.textContent).join('|');`));
+  check("139 · 跨上下午写全（8:00 AM – 9:30 PM）、Every hour", await evaluate(`const c = [...${row(2)}.cells].map(x => x.textContent); return c[2] === '8:00 AM – 9:30 PM' && c[3] === 'Every hour';`), await evaluate(`return [...${row(2)}.cells].map(x => x.textContent).join('|');`));
+  check("139 · 停用的：灰色、标 OFF，All shift、Every 7 days", await evaluate(`const r = ${row(4)}; const c = [...r.cells].map(x => x.textContent); return r.dataset.templateOff === 'true' && c[0].endsWith('OFF') && c[2] === 'All shift' && c[3] === 'Every 7 days' && getComputedStyle(r).color !== 'rgb(255, 255, 255)';`));
+  check("139 · 窗口里有 How to use — Daily task list（5 条）", await evaluate("const d = document.querySelector('[data-daily-task-list] details'); return d.textContent.includes('How to use — Daily task list') && d.querySelectorAll('li').length === 5;"));
+
+  // 编辑：只发改了的字段
+  await evaluate(`${row(2)}.querySelector('button').click();`);
+  await waitFor("document.querySelector('[data-template-form]')");
+  const f = (k) => `document.querySelector('[data-template-form] [data-field="${k}"]')`;
+  const setSel = (k, v) => evaluate(`const s = ${f(k)}; Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, '${v}'); s.dispatchEvent(new Event('change', { bubbles: true }));`);
+  check("139 · Edit：表单在这一行下面展开，带原值（标题、Every hour、08:00–21:30、Tour Tracking、Note、Active 勾着）", await evaluate(`return ${row(2)}.nextElementSibling.contains(document.querySelector('[data-template-form]')) && ${f("title")}.value === 'Reply to guest messages in Tracking' && ${f("frequency")}.value === 'hourly' && ${f("from")}.value === '08:00' && ${f("to")}.value === '21:30' && ${f("link")}.value === '/tour-confirmation/tracking' && ${f("note")}.value.startsWith('Reply within') && ${f("active")}.checked;`));
+  const saveBtn = "[...document.querySelectorAll('[data-template-form] button')].find(b => b.textContent === 'Save')";
+  check("139 · Save 是蓝色 #3b82f6（提交键）", await evaluate(`return getComputedStyle(${saveBtn}).backgroundColor === 'rgb(59, 130, 246)';`));
+  await evaluate(`$setValue(${f("title")}, 'ZZ Test reply to guests');`);
+  await setSel("priority", "high");
+  from = (await mockLog()).length;
+  await sleep(200);
+  check("139 · 改了还没按 Save：不发请求（先暂存）", (await since(from, (e) => e.method === "PATCH")).length === 0);
+  await evaluate(`${saveBtn}.click();`);
+  await waitFor("document.querySelector('[data-template-form] [role=status]')");
+  reqs = await since(from, (e) => e.method === "PATCH");
+  check("139 · Save：PATCH /api/tasks/templates/2 只带改了的 title、priority", reqs.length === 1 && reqs[0].path === "/api/tasks/templates/2" && JSON.stringify(Object.keys(reqs[0].body).sort()) === '["priority","title"]' && reqs[0].body.title === "ZZ Test reply to guests" && reqs[0].body.priority === "high", JSON.stringify(reqs));
+  check("139 · 存好：绿字 Saved — starts from tomorrow’s list；表格这一行跟着变", await evaluate(`const s = document.querySelector('[data-template-form] [role=status]'); return s.textContent === 'Saved — starts from tomorrow’s list' && getComputedStyle(s).color === 'rgb(74, 222, 128)' && ${row(2)}.cells[0].textContent === 'ZZ Test reply to guests' && ${row(2)}.cells[1].textContent === 'High';`));
+
+  // 前端先挡：Every hour 没有 From
+  await evaluate(`$setValue(${f("from")}, '');`);
+  from = (await mockLog()).length;
+  await evaluate(`${saveBtn}.click();`);
+  await sleep(300);
+  check("139 · Every hour 清空 From：红字 Every hour needs a From and To.，不发请求", (await since(from, (e) => e.method === "PATCH")).length === 0 && (await evaluate("const a = document.querySelector('[data-template-form] [role=alert]'); return a?.textContent === 'Every hour needs a From and To.' && getComputedStyle(a).color === 'rgb(248, 113, 113)';")));
+
+  // 有没存的改动：Close 先问；选「留下」窗口还在
+  await evaluate("window.__asked = 0; window.confirm = () => { window.__asked++; return false; };");
+  await evaluate("[...document.querySelectorAll('[data-daily-task-list] button')].find(b => b.textContent === 'Close').click();");
+  await sleep(200);
+  check("139 · 没存的改动点 Close：先问，选留下窗口还在、改动还在", await evaluate(`return window.__asked === 1 && !!document.querySelector('[data-daily-task-list]') && ${f("from")}.value === '';`));
+  await evaluate("[...document.querySelectorAll('[data-template-form] button')].find(b => b.textContent === 'Cancel').click();");
+  await sleep(150);
+  check("139 · Cancel：表单收起，不存", await evaluate("return !document.querySelector('[data-template-form]');"));
+
+  // 停用：取消 Active ⇒ PATCH {is_active:false}，这一行变灰标 OFF
+  await evaluate(`${row(1)}.querySelector('button').click();`);
+  await waitFor("document.querySelector('[data-template-form]')");
+  await evaluate(`${f("active")}.click();`);
+  from = (await mockLog()).length;
+  await evaluate(`${saveBtn}.click();`);
+  await waitFor("document.querySelector('[data-template-form] [role=status]')");
+  reqs = await since(from, (e) => e.method === "PATCH");
+  check("139 · 取消 Active 再 Save：PATCH /api/tasks/templates/1 {is_active:false}，这一行灰色标 OFF", reqs.length === 1 && reqs[0].path === "/api/tasks/templates/1" && JSON.stringify(reqs[0].body) === '{"is_active":false}' && (await evaluate(`return ${row(1)}.dataset.templateOff === 'true' && ${row(1)}.cells[0].textContent.endsWith('OFF');`)), JSON.stringify(reqs));
+  await evaluate("[...document.querySelectorAll('[data-template-form] button')].find(b => b.textContent === 'Cancel').click();");
+
+  // 后端 400：原话红字，表单内容留着
+  await evaluate(`${row(3)}.querySelector('button').click();`);
+  await waitFor("document.querySelector('[data-template-form]')");
+  await evaluate(`$setValue(${f("title")}, 'ZZ Test too long');`);
+  await evaluate(`${saveBtn}.click();`);
+  await waitFor("document.querySelector('[data-template-form] [role=alert]')");
+  check("139 · 后端 400：红字后端原话，表单里的字留着", await evaluate(`return document.querySelector('[data-template-form] [role=alert]').textContent === 'title must be at most 200 characters' && ${f("title")}.value === 'ZZ Test too long' && ${row(3)}.cells[0].textContent === 'Print the Morning Relay list';`));
+  await evaluate("window.__asked = 0; window.confirm = () => { window.__asked++; return true; };");
+
+  // + Add task：只打开表单（ghost 键），Save 才 POST
+  from = (await mockLog()).length;
+  await evaluate("document.querySelector('[data-template-add]').click();");
+  await waitFor("document.querySelector('[data-template-form] strong')?.textContent === 'New task'");
+  check("139 · 有没存的改动点 + Add task：先问一句；表单 New task 在表格上面，键不是蓝色，没发请求", (await evaluate("const form = document.querySelector('[data-template-form]'); const t = document.querySelector('[data-daily-task-list] table'); return window.__asked === 1 && !!(form.compareDocumentPosition(t) & Node.DOCUMENT_POSITION_FOLLOWING) && getComputedStyle(document.querySelector('[data-template-add]')).backgroundColor === 'rgba(0, 0, 0, 0)';")) && (await since(from, (e) => e.method !== "GET")).length === 0);
+  await evaluate(`$setValue(${f("title")}, 'ZZ Test daily check');`);
+  await evaluate(`$setValue(${f("from")}, '09:00');`);
+  await evaluate(`$setValue(${f("to")}, '11:00');`);
+  await setSel("frequency", "every_n_days");
+  await sleep(100);
+  await evaluate(`$setValue(${f("every-n")}, '3');`);
+  await setSel("link", "/manifests");
+  await evaluate(`${saveBtn}.click();`);
+  await waitFor("document.querySelector('[data-template-form] [role=status]')");
+  reqs = await since(from, (e) => e.method === "POST" && e.path === "/api/tasks/templates");
+  const b = reqs[0]?.body ?? {};
+  check("139 · 新加 Save：POST 带 title、every_n_days 3、09:00–11:00、Manifests、排在最后（sort_order 5）", reqs.length === 1 && b.title === "ZZ Test daily check" && b.frequency === "every_n_days" && b.frequency_every_n_days === 3 && b.window_start_time === "09:00" && b.window_end_time === "11:00" && b.link_href === "/manifests" && b.link_label === "Manifests" && b.sort_order === 5, JSON.stringify(reqs));
+  check("139 · 新的一条出现在表格最后：9:00 – 11:00 AM、Every 3 days；绿字 Saved", await evaluate("const rows = [...document.querySelectorAll('[data-daily-task-list] tr[data-template-id]')]; const c = [...rows[rows.length - 1].cells].map(x => x.textContent); return rows.length === 5 && c[0] === 'ZZ Test daily check' && c[2] === '9:00 – 11:00 AM' && c[3] === 'Every 3 days' && c[4] === 'Manifests' && !!document.querySelector('[data-template-form] [role=status]');"), await evaluate("const rows = [...document.querySelectorAll('[data-daily-task-list] tr[data-template-id]')]; return [...rows[rows.length - 1].cells].map(x => x.textContent).join('|');"));
+
+  // 手机宽：窗口在屏幕内、整页不左右晃（表格自己横滚），How to use 排到最下面
+  await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+  await sleep(500);
+  check("139 · 手机宽 390：整页不左右晃，窗口在屏幕内；How to use 排在表格下面", await evaluate("const d = document.querySelector('[data-daily-task-list]'); const r = d.getBoundingClientRect(); const det = d.querySelector('details').parentElement; const tbl = d.querySelector('table').parentElement; return document.documentElement.scrollWidth <= innerWidth && r.left >= 0 && r.right <= innerWidth + 1 && det.getBoundingClientRect().top > tbl.getBoundingClientRect().top;"), await evaluate("const d = document.querySelector('[data-daily-task-list]').getBoundingClientRect(); return JSON.stringify([document.documentElement.scrollWidth, innerWidth, d.left, d.right]);"));
+  await cdp("Emulation.clearDeviceMetricsOverride");
+  await sleep(300);
+
+  // 没改动时 Close 不问
+  await evaluate("window.__asked = 0;");
+  await evaluate("[...document.querySelectorAll('[data-daily-task-list] button')].find(b => b.textContent === 'Close').click();");
+  await sleep(200);
+  check("139 · 没改动点 Close：不问，直接关", await evaluate("return window.__asked === 0 && !document.querySelector('[data-daily-task-list]');"));
+}
+
+// ── 139 = G269 今天任务的 Edit（preview ①；PATCH /api/tasks/today/{id} 按后端 25 草稿，mock）──
+async function runTodayEdit() {
+  const f = (id, k) => `document.querySelector('[data-task-edit-form="${id}"] [data-field="${k}"]')`;
+  const btnIn = (id, text) => `[...document.querySelector('[data-task-edit-form="${id}"]').querySelectorAll('button')].find(b => b.textContent === '${text}')`;
+  const idOf = (title) => evaluate(`return Number($row(${JSON.stringify(title)}).dataset.taskId);`);
+  const setSel = (sel, v) => evaluate(`const s = ${sel}; Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, ${JSON.stringify(v)}); s.dispatchEvent(new Event('change', { bubbles: true }));`);
+
+  // ── 主管：三项都能改 ──
+  await ctl({ reset: true, me: "annie", supervisor: true, admin: false, superadmin: false, notices: false, gates: "open" });
+  await openDashboard();
+  await waitFor("$row('BZ Lunch')");
+  check("139 编辑 · 主管：每一行都有 Edit（ghost，不是蓝色）", await evaluate("const rows = [...$tasksSection().querySelectorAll('li[data-task-id]')]; return rows.length > 5 && rows.every(li => li.querySelector('[data-task-edit]')) && getComputedStyle(rows[0].querySelector('[data-task-edit]')).backgroundColor === 'rgba(0, 0, 0, 0)';"));
+  const bz = await idOf("BZ Lunch");
+  await evaluate(`$row('BZ Lunch').querySelector('[data-task-edit]').click();`);
+  await waitFor(`document.querySelector('[data-task-edit-form="${bz}"]')`);
+  check("139 编辑 · 点 Edit：这一行里展开 Task / Priority / For，带原值（For = Everyone on shift today），Edit 键收起，行框变蓝", await evaluate(`const li = $row('BZ Lunch'); return li.contains(document.querySelector('[data-task-edit-form="${bz}"]')) && ${f(bz, "title")}.value === 'BZ Lunch' && ${f(bz, "priority")}.value === 'high' && ${f(bz, "for")}.value === '' && ${f(bz, "for")}.options[0].textContent === 'Everyone on shift today' && !li.querySelector('[data-task-edit]') && li.className.includes('border-[#3b82f6]');`));
+  check("139 编辑 · 表单下写 Changes this task for today only. Tomorrow’s comes from the Daily task list.；Save 蓝色", await evaluate(`const fm = document.querySelector('[data-task-edit-form="${bz}"]'); return fm.textContent.includes('Changes this task for today only. Tomorrow’s comes from the Daily task list.') && getComputedStyle(${btnIn(bz, "Save")}).backgroundColor === 'rgb(59, 130, 246)';`));
+  const lizzieVal = await evaluate(`return [...${f(bz, "for")}.options].find(o => o.textContent.startsWith('Lizzie')).value;`);
+  await evaluate(`$setValue(${f(bz, "title")}, 'ZZ Test BZ Lunch');`);
+  await setSel(f(bz, "for"), lizzieVal);
+  let from = (await mockLog()).length;
+  await sleep(200);
+  check("139 编辑 · 改了没按 Save：不发请求", (await since(from, (e) => e.method === "PATCH")).length === 0);
+  await evaluate(`${btnIn(bz, "Save")}.click();`);
+  await waitFor(`document.querySelector('[data-task-edit-form="${bz}"] [role=status]')`);
+  let reqs = await since(from, (e) => e.method === "PATCH");
+  check("139 编辑 · Save：PATCH /api/tasks/today/{id} 只带 title + assigned_admin_user_id（Lizzie 的 id）", reqs.length === 1 && reqs[0].path === `/api/tasks/today/${bz}` && JSON.stringify(Object.keys(reqs[0].body).sort()) === '["assigned_admin_user_id","title"]' && reqs[0].body.title === "ZZ Test BZ Lunch" && `u:${reqs[0].body.assigned_admin_user_id}` === lizzieVal, JSON.stringify(reqs));
+  await sleep(400);
+  check("139 编辑 · 存好：绿字 Saved，Cancel 变 Close；行里标题、负责人跟着变", await evaluate(`const s = document.querySelector('[data-task-edit-form="${bz}"] [role=status]'); const li = $row('ZZ Test BZ Lunch'); return s.textContent === 'Saved' && getComputedStyle(s).color === 'rgb(74, 222, 128)' && !!${btnIn(bz, "Close")} && !!li && li.querySelector('[data-task-who]').textContent === 'Lizzie';`));
+  await evaluate(`${btnIn(bz, "Close")}.click();`);
+  await sleep(150);
+  check("139 编辑 · Close：表单收起，Edit 键回来", await evaluate(`return !document.querySelector('[data-task-edit-form="${bz}"]') && !!$row('ZZ Test BZ Lunch').querySelector('[data-task-edit]');`));
+
+  // 交接没接受：换人 409，红字原话，表单留着
+  const sh = await idOf("Check Shuttle and remind Tour Guide for Shuttle Pickup");
+  await evaluate(`$row('Check Shuttle and remind Tour Guide for Shuttle Pickup').querySelector('[data-task-edit]').click();`);
+  await waitFor(`document.querySelector('[data-task-edit-form="${sh}"]')`);
+  await setSel(f(sh, "for"), "");
+  await evaluate(`${btnIn(sh, "Save")}.click();`);
+  await waitFor(`document.querySelector('[data-task-edit-form="${sh}"] [role=alert]')`);
+  check("139 编辑 · 交接还没 Accept 时换人：409 红字后端原话 This task has a pass over waiting to be accepted…，表单选择留着", await evaluate(`const a = document.querySelector('[data-task-edit-form="${sh}"] [role=alert]'); return a.textContent === 'This task has a pass over waiting to be accepted. Change who it is assigned to after it is accepted.' && getComputedStyle(a).color === 'rgb(248, 113, 113)' && ${f(sh, "for")}.value === '';`));
+
+  // 可以同时开几条；有没存的改动按 Cancel 先问
+  await evaluate(`$row('Manifest').querySelector('[data-task-edit]').click();`);
+  await sleep(200);
+  check("139 编辑 · 再开另一条：两条都开着，前一条没存的改动还在", await evaluate(`return document.querySelectorAll('[data-task-edit-form]').length === 2 && ${f(sh, "for")}.value === '';`));
+  await evaluate("window.__asked = 0; window.confirm = () => { window.__asked++; return false; };");
+  await evaluate(`${btnIn(sh, "Cancel")}.click();`);
+  await sleep(150);
+  check("139 编辑 · 有没存的改动按 Cancel：先问，选留下表单还在", await evaluate(`return window.__asked === 1 && !!document.querySelector('[data-task-edit-form="${sh}"]');`));
+  await evaluate("window.confirm = () => { window.__asked++; return true; };");
+  await evaluate(`${btnIn(sh, "Cancel")}.click();`);
+  await sleep(150);
+  check("139 编辑 · 选放弃：表单收起，没发请求改负责人", await evaluate(`return !document.querySelector('[data-task-edit-form="${sh}"]') && $row('Check Shuttle and remind Tour Guide for Shuttle Pickup').querySelector('[data-task-who]').textContent === 'Veronica';`));
+
+  // ── 员工：只改自己名下的标题、优先级 ──
+  await ctl({ reset: true, mineTask: true, me: "lizzie", supervisor: false, admin: false, superadmin: false, notices: false, gates: "open" });
+  await openDashboard();
+  await waitFor("$row('Antelope Lunch putting on Excel')");
+  check("139 编辑 · 员工：自己名下的（Antelope Lunch）有 Edit；Everyone on shift 的（Send Last mins Confirmation）没有", await evaluate("return !!$row('Antelope Lunch putting on Excel').querySelector('[data-task-edit]') && !$row('Send Last mins Confirmation').querySelector('[data-task-edit]');"));
+  const al = await idOf("Antelope Lunch putting on Excel");
+  await evaluate(`$row('Antelope Lunch putting on Excel').querySelector('[data-task-edit]').click();`);
+  await waitFor(`document.querySelector('[data-task-edit-form="${al}"]')`);
+  check("139 编辑 · 员工表单：只有 Task、Priority，没有 For；提示只写 Changes this task for today only.", await evaluate(`const fm = document.querySelector('[data-task-edit-form="${al}"]'); return !!${f(al, "title")} && !!${f(al, "priority")} && !${f(al, "for")} && fm.textContent.includes('Changes this task for today only.') && !fm.textContent.includes('Daily task list');`));
+  await setSel(f(al, "priority"), "low");
+  from = (await mockLog()).length;
+  await evaluate(`${btnIn(al, "Save")}.click();`);
+  await waitFor(`document.querySelector('[data-task-edit-form="${al}"] [role=status]')`);
+  reqs = await since(from, (e) => e.method === "PATCH");
+  check("139 编辑 · 员工 Save：PATCH 只带 priority（不带 assigned_admin_user_id），绿字 Saved", reqs.length === 1 && JSON.stringify(reqs[0].body) === '{"priority":"low"}', JSON.stringify(reqs));
+  // 空标题：前端先挡
+  await evaluate(`$setValue(${f(al, "title")}, '   ');`);
+  from = (await mockLog()).length;
+  await evaluate(`${btnIn(al, "Save")}.click();`);
+  await sleep(250);
+  check("139 编辑 · 标题清空：红字 Write the task first.，不发请求", (await since(from, (e) => e.method === "PATCH")).length === 0 && (await evaluate(`return document.querySelector('[data-task-edit-form="${al}"] [role=alert]')?.textContent === 'Write the task first.';`)));
+
+  // 手机宽：表单在框里、整页不左右晃
+  await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+  await sleep(500);
+  check("139 编辑 · 手机宽 390：整页不左右晃，表单不超出任务框", await evaluate(`const fm = document.querySelector('[data-task-edit-form="${al}"]').getBoundingClientRect(); const sec = $tasksSection().getBoundingClientRect(); return document.documentElement.scrollWidth <= innerWidth && fm.right <= sec.right + 1 && fm.left >= sec.left - 1;`), await evaluate(`return JSON.stringify([document.documentElement.scrollWidth, innerWidth]);`));
+  await cdp("Emulation.clearDeviceMetricsOverride");
+
+  // carry-over（前几天带过来的，work_date 不是今天）：Annie 2026-11-16 定也能改，规则同今天的任务（后端 37a796b9）。
+  // 后端 1d064c1f：主管给 carry-over 换负责人（别人或整班）时挪到今天（work_date 变今天）；只改标题 / 优先级不挪。前端存好后重读列表。
+  await ctl({ reset: true, mineTask: true, carryOver: true, me: "lizzie", supervisor: false, admin: false, superadmin: false, notices: false, gates: "open" });
+  await openDashboard();
+  await waitFor("$row('ZZ Test Carry over task')");
+  check("139 编辑 · 员工：前几天带过来的（ZZ Test Carry over task）也有 Edit", await evaluate("return !!$row('ZZ Test Carry over task').querySelector('[data-task-edit]') && !!$row('Antelope Lunch putting on Excel').querySelector('[data-task-edit]');"));
+  await evaluate("$row('ZZ Test Carry over task').querySelector('[data-task-edit]').click();");
+  await waitFor(`document.querySelector('[data-task-edit-form="900"]')`);
+  await evaluate(`$setValue(${f(900, "title")}, 'ZZ Test Carry over task edited');`);
+  from = (await mockLog()).length;
+  await evaluate(`${btnIn(900, "Save")}.click();`);
+  await waitFor(`document.querySelector('[data-task-edit-form="900"] [role=status]')`);
+  await sleep(400);
+  reqs = await since(from, (e) => e.method === "PATCH");
+  let after = await evaluate("const r = await fetch('/api/tasks/today'); const d = await r.json(); const t = d.tasks.find(x => x.id === 900); return t ? [t.work_date, t.title] : null;");
+  check("139 编辑 · 员工只改 carry-over 的标题：PATCH /api/tasks/today/900 只带 title，绿字 Saved，存后 work_date 还是 2026-10-15、行还在", reqs.length === 1 && reqs[0].path === "/api/tasks/today/900" && JSON.stringify(reqs[0].body) === '{"title":"ZZ Test Carry over task edited"}' && JSON.stringify(after) === '["2026-10-15","ZZ Test Carry over task edited"]' && (await evaluate("return !!$row('ZZ Test Carry over task edited');")), JSON.stringify([reqs, after]));
+  await ctl({ me: "annie", supervisor: true });
+  await openDashboard();
+  await waitFor("$row('ZZ Test Carry over task edited')");
+  await evaluate("$row('ZZ Test Carry over task edited').querySelector('[data-task-edit]').click();");
+  await waitFor(`document.querySelector('[data-task-edit-form="900"]')`);
+  check("139 编辑 · 主管：carry-over 那一行也有 Edit，表单有 For（现在是 Lizzie）", await evaluate(`return !!${f(900, "for")} && ${f(900, "for")}.selectedOptions[0].textContent.startsWith('Lizzie');`));
+  await setSel(f(900, "for"), "");
+  from = (await mockLog()).length;
+  await evaluate(`${btnIn(900, "Save")}.click();`);
+  await waitFor(`document.querySelector('[data-task-edit-form="900"] [role=status]')`);
+  await sleep(400);
+  const log = await since(from, () => true);
+  const pi = log.findIndex((e) => e.method === "PATCH");
+  after = await evaluate("const r = await fetch('/api/tasks/today'); const d = await r.json(); const t = d.tasks.find(x => x.id === 900); return t ? [t.work_date, t.assigned_to_username] : null;");
+  check("139 编辑 · 主管把 carry-over 改成整班：PATCH 只带 assigned_admin_user_id: null，存后重读 GET /api/tasks/today，这条 work_date 变成今天 2026-10-16", pi >= 0 && JSON.stringify(log[pi].body) === '{"assigned_admin_user_id":null}' && log.slice(pi + 1).some((e) => e.method === "GET" && e.path === "/api/tasks/today") && JSON.stringify(after) === '["2026-10-16",null]', JSON.stringify([log.map((e) => e.method + " " + e.path), after]));
+}
+
 async function main() {
   const chrome = spawn(CHROME, [
     "--headless=new",
@@ -646,6 +884,8 @@ async function main() {
   try {
     await run();
     await runMessaging();
+    await runDailyTaskList();
+    await runTodayEdit();
   } finally {
     ws.close();
     chrome.kill();

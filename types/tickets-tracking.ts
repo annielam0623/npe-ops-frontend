@@ -4,6 +4,13 @@ export type TicketConfirmation =
 
 /** GET /api/notifications/tickets-reminder/tracking 的一行（一张门票单）。空值多为空字符串。 */
 export interface TicketsTrackingRow {
+  /**
+   * G281（Main manifest 同步，开关让这个人看得到时才有这三个键；看不到 / 旧后端没有 ⇒ 当发过、Confirmed、没变）：
+   * send_state "unsent" = 灰行（还没发门票提醒）；order_state = Order List 的订单状态；contact_changed = 发过以后电话 / 邮箱改了。
+   */
+  send_state?: "sent" | "unsent";
+  order_state?: "confirmed" | "on_hold" | "cancelled";
+  contact_changed?: boolean;
   /** tickets_reminders.id：对话、Take action 都用它（不是 bookings.id）。 */
   id: number;
   /** CHD 号。 */

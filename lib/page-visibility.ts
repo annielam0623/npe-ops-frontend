@@ -169,6 +169,13 @@ export const VISIBILITY_KEYS = {
     where: "Whole site: sidebar, pages, Dashboard blocks",
     default: "super_admin_only",
   },
+  // 订单生命周期（Annie 2026-11-18 题 5 A：新格子和 Changes 块先只 Super Admin；键名暂定，等后端确认）。
+  order_lifecycle: {
+    label: "Order lookup · Order lifecycle",
+    where:
+      "Search bar results and the order page (Booked, Received, Changes, Sent, Relay / Bus, Tour ended)",
+    default: "super_admin_only",
+  },
 } as const satisfies Record<string, VisibilityKeyInfo>;
 
 export type VisibilityKey = keyof typeof VISIBILITY_KEYS;

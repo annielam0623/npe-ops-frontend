@@ -41,8 +41,8 @@ import {
   followUpdatedText,
   hasFollowNews,
 } from "@/lib/driver-follow";
-import { fetchCurrentUser } from "@/lib/auth-api";
-import { isYmd, loginDefaultDate, shiftYmd } from "@/lib/la-date";
+import { fetchCurrentUserFresh } from "@/lib/auth-api";
+import { isYmd, laToday, loginDefaultDate, shiftYmd } from "@/lib/la-date";
 import { resolveTourColor } from "@/lib/tour-colors";
 import { usePageVisibility } from "@/lib/page-visibility";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
@@ -132,6 +132,9 @@ import {
 import { StepBox, useStepInfoHide } from "./step-box";
 import { PhoneMore, usePhoneInfo } from "@/components/ui/phone";
 import { lockedByText, useEditLock } from "./use-edit-lock";
+import { OpenWindowLink, useOpenTodayWindow } from "./open-window-setting";
+import { PickupMoveBox } from "./pickup-move";
+import { fmtHhmm, type OpenTodayWindow } from "@/lib/dispatch-open-today-api";
 import { PrivateOrderCards } from "./private-orders";
 import { RelayRow, VanBlock } from "./vehicle-row";
 
@@ -312,6 +315,8 @@ export function DispatchView() {
   // 员工也按勾（Annie 2026-10-30 置顶 10c「全部按照勾选」「动手」）：总开关对他开着时，没勾 dispatch.edit 就是只看、
   // 没勾 dispatch.send 就没有 Send 标签；关着照旧全给（legacy）。Super Admin 全给。partner 照旧只看、不发。
   const isSuperAdmin = usePageVisibility().isSuperAdmin;
+  /** 147 第二部分：Open 班进 Dispatch 是 today 的时间段（只 Super Admin 读得到；读不到 = null，不出链接）。 */
+  const openWin = useOpenTodayWindow(isSuperAdmin);
   const tick = (code: string) =>
     byTick(perms, code, { superAdmin: isSuperAdmin });
   const viewOnly =
@@ -590,7 +595,8 @@ export function DispatchView() {
       if (!left.length) continue;
       const pax = left.reduce((k, o) => k + o.pax, 0);
       const sec = day.sections.find(
-        (x) => x.shift === META.bus_tour_shift && x.manifest_id === t.manifest_id,
+        (x) =>
+          x.shift === META.bus_tour_shift && x.manifest_id === t.manifest_id,
       );
       out.push({
         title: `${sec?.title || t.title || t.name}: ${left.length} order${left.length === 1 ? "" : "s"} not on a bus`,
@@ -606,7 +612,9 @@ export function DispatchView() {
       if (!t?.uploaded || t.mode !== "lettered") continue;
       const label = base.find((b) => b.id === r.id)?.bus_label;
       if (label == null || !t.buses.some((b) => b.label === label)) continue;
-      const orders = t.orders.filter((o) => o.bus_label === label && o.farm_out);
+      const orders = t.orders.filter(
+        (o) => o.bus_label === label && o.farm_out,
+      );
       const noHotel = orders.filter(
         (o) => o.farm_out!.partner_location_id == null,
       ).length;
@@ -628,7 +636,8 @@ export function DispatchView() {
       ].filter(Boolean) as string[];
       if (!parts.length) continue;
       const sec = day.sections.find(
-        (x) => x.shift === META.bus_tour_shift && x.manifest_id === t.manifest_id,
+        (x) =>
+          x.shift === META.bus_tour_shift && x.manifest_id === t.manifest_id,
       );
       out.push({
         title: `${sec?.title || t.title || t.name}: farm-out Bus ${label} is not finished`,
@@ -662,6 +671,14 @@ export function DispatchView() {
       if (s.manifest_id != null) m[s.manifest_id] = s.color ?? null;
     return m;
   }, [day]);
+  /** CCL 当天关掉的巴士团（manifest_id → CCL 的说明或 null）：Step 1 卡写 Closed（Annie 2026-11-18「动手」）。 */
+  const closedTours = useMemo(() => {
+    const m: Record<number, string | null> = {};
+    for (const c of closures)
+      if (c.shift === META.bus_tour_shift && c.manifest_id != null)
+        m[c.manifest_id] = c.note || null;
+    return m;
+  }, [closures]);
   /**
    * 按人数开车窗（2026-10-16 紧急）要看页面上**当前选的车**，不等存：staff 换车但没点别的（没改 need /
    * closures），车窗该不该开也要跟着变。只取巴士团每行的 manifest_id:vehicle_id，字段以外的改动（备注、酒店……）
@@ -706,7 +723,19 @@ export function DispatchView() {
 
   /** CCL：预填（没存过的一天）/ 改版（存过的一天）/ 关闭的线。动过手就不碰。 */
   const prefillInner = useCallback(async (date: string) => {
-    if (viewOnlyRef.current) return;
+    if (viewOnlyRef.current) {
+      // 只看的人（Annie 2026-11-18 关团题 2 A）：只拿 CCL 关团（Step 1 / Step 2 都写 Closed），不预填、不列改版、不改东西。
+      // 接口只要 dispatch.view。拿不到就当没关团。
+      setClosures([]);
+      try {
+        const p = await fetchDispatchPrefill(date);
+        if (p && stateRef.current.day?.run_date === date)
+          setClosures(p.closures ?? []);
+      } catch {
+        // 拿不到不影响看排班。
+      }
+      return;
+    }
     setBanner("none");
     setRevisionLater(false);
     setPrefill(null);
@@ -912,12 +941,17 @@ export function DispatchView() {
     const fromUrl = params.get("date");
     if (params.get("tab") === "send" && canSend) setTab("send");
     void (async () => {
-      // 置顶 83：网址没带日期时，凌晨 2:00–8:30（洛杉矶）登录的默认看今天（直到再次登录）；
-      // 其余照旧由后端默认明天。读不到登录时间不挡页面。staff 自己换了日期就写进网址，刷新照网址。
+      // 默认看哪天，依次：网址里的 date → 147 今天 Open 班并在时间窗内（后端 dispatch_open_today，每次打开现问）⇒ 今天
+      // → 置顶 83 / 134：12:00 AM–8:30 AM（洛杉矶）登录的看今天（直到再次登录）→ 照旧由后端默认明天。
+      // 读不到 /api/me 不挡页面。staff 自己换了日期就写进网址，刷新照网址，不跳回。
       let d = isYmd(fromUrl) ? fromUrl : null;
       if (!d) {
         try {
-          d = loginDefaultDate((await fetchCurrentUser()).logged_in_at);
+          const me = await fetchCurrentUserFresh();
+          d =
+            me.dispatch_open_today === true
+              ? laToday()
+              : loginDefaultDate(me.logged_in_at);
         } catch {
           d = null;
         }
@@ -1977,6 +2011,13 @@ export function DispatchView() {
                 >
                   Guide page preview ↗
                 </a>
+                {openWin.window ? (
+                  <OpenWindowLink
+                    value={openWin.window}
+                    onSaved={openWin.setWindow}
+                    onUnauthorized={redirectToLogin}
+                  />
+                ) : null}
               </span>
             ) : null}
           </div>
@@ -2071,6 +2112,24 @@ export function DispatchView() {
               </div>
             ) : null}
 
+            {/* Nov 18–22 临时：只在 3 家酒店接客（Annie 2026-11-17「动手」）。过了这几天自动不出；partner 不出。 */}
+            {!perms.isPartner ? (
+              <PickupMoveBox
+                date={day.run_date}
+                tourIds={
+                  tourCards?.date === day.run_date
+                    ? Object.entries(tourCards.byId)
+                        .filter(([, c]) => c.uploaded && c.pax > 0)
+                        .map(([id]) => Number(id))
+                    : null
+                }
+                onRefreshed={() => {
+                  if (!viewOnly) void runSync(day.run_date);
+                }}
+                onUnauthorized={redirectToLogin}
+              />
+            ) : null}
+
             {(banner === "revision" || revisionLater) &&
             prefill?.changes?.length &&
             day ? (
@@ -2138,6 +2197,7 @@ export function DispatchView() {
                 key={day.run_date}
                 date={day.run_date}
                 colorByManifestId={colorByManifestId}
+                closedTours={closedTours}
                 // 三个都只会变大：存好 / 重读、点过 Completed、后台名单同步有变化（syncTick）都让卡片重读。
                 version={manifestVersion + doneTick + syncTick}
                 sync={syncInfo?.date === day.run_date ? syncInfo : null}
@@ -2211,44 +2271,44 @@ export function DispatchView() {
                     </button>
                     {/* 置顶 115 题 8 A：手机上 Import history、Drivers & guides、Copy 收进 ⋯，只留 Pull from Discord。 */}
                     <PhoneMore label="More Step 2 actions">
-                    {/* Dispatch Imports 合进 Dispatch、侧栏不再单列（Annie 2026-10-11）：入口放在用得着它的地方——
+                      {/* Dispatch Imports 合进 Dispatch、侧栏不再单列（Annie 2026-10-11）：入口放在用得着它的地方——
                     拉 Discord 旁边，看拉过哪些、读没读懂。 */}
-                    <PageLink
-                      href="/dispatch/imports"
-                      className={cn(
-                        BTN_GHOST,
-                        "inline-flex items-center no-underline",
-                      )}
-                    >
-                      Import history →
-                    </PageLink>
-                    {roster ? (
-                      <RosterButton onClick={() => setRosterOpen(true)} />
-                    ) : null}
-                    {day.copy_from ? (
-                      <button
-                        type="button"
-                        disabled={disabled}
-                        onClick={() =>
-                          rows.length
-                            ? setPending({ kind: "copy" })
-                            : void copy()
-                        }
-                        className={BTN_GHOST}
+                      <PageLink
+                        href="/dispatch/imports"
+                        className={cn(
+                          BTN_GHOST,
+                          "inline-flex items-center no-underline",
+                        )}
                       >
-                        Copy {fmtShort(day.copy_from)}
-                      </button>
-                    ) : null}
-                    {/* 置顶 115 P2（Annie「115全部同意推荐，动手」）：手机上只写「Last pull from Discord: …」那句时收进 ⋯；
+                        Import history →
+                      </PageLink>
+                      {roster ? (
+                        <RosterButton onClick={() => setRosterOpen(true)} />
+                      ) : null}
+                      {day.copy_from ? (
+                        <button
+                          type="button"
+                          disabled={disabled}
+                          onClick={() =>
+                            rows.length
+                              ? setPending({ kind: "copy" })
+                              : void copy()
+                          }
+                          className={BTN_GHOST}
+                        >
+                          Copy {fmtShort(day.copy_from)}
+                        </button>
+                      ) : null}
+                      {/* 置顶 115 P2（Annie「115全部同意推荐，动手」）：手机上只写「Last pull from Discord: …」那句时收进 ⋯；
                         拉的结果 / 报错照旧露在外面。电脑上这份不出（外面那句照旧）。 */}
-                    {pullMsgLastOnly ? (
-                      <span
-                        data-phone-last-pull
-                        className="px-1 text-[11.5px] text-[#94a3b8] sm:hidden"
-                      >
-                        {pullMsg}
-                      </span>
-                    ) : null}
+                      {pullMsgLastOnly ? (
+                        <span
+                          data-phone-last-pull
+                          className="px-1 text-[11.5px] text-[#94a3b8] sm:hidden"
+                        >
+                          {pullMsg}
+                        </span>
+                      ) : null}
                     </PhoneMore>
                     {/* Save schedule 键去掉了（Annie 2026-10-15）：这里写自动保存的状态。 */}
                     <span
@@ -2290,7 +2350,12 @@ export function DispatchView() {
                   </div>
                 )}
 
-                {viewOnly ? null : <HowToUse />}
+                {viewOnly ? null : (
+                  <HowToUse
+                    farmOut={farmOutVisible}
+                    openWindow={openWin.window}
+                  />
+                )}
 
                 {banner !== "none" && prefill ? (
                   <div
@@ -3309,7 +3374,10 @@ function Stat({
         <span className="text-[17px] font-bold whitespace-nowrap text-white tabular-nums max-sm:text-[14px]">
           {value}
         </span>
-        <span className="truncate text-[11.5px] text-[#94a3b8] max-sm:text-[10.5px]" title={label}>
+        <span
+          className="truncate text-[11.5px] text-[#94a3b8] max-sm:text-[10.5px]"
+          title={label}
+        >
           {label}
         </span>
       </span>
@@ -3403,9 +3471,18 @@ function DiscordIcon() {
   );
 }
 
-function HowToUse() {
+function HowToUse({
+  farmOut,
+  openWindow,
+}: {
+  farmOut: boolean;
+  /** 147：Super Admin 读得到时写存着的时间段；别人读不到 ⇒ 写默认 12:00 AM–10:00 AM（同 preview ④ 原文）。 */
+  openWindow: OpenTodayWindow | null;
+}) {
   // 手机上跟着 Step 2 标题后的「i」显示 / 收起。
   const stepHide = useStepInfoHide();
+  const winStart = openWindow ? fmtHhmm(openWindow.start) : "12:00 AM";
+  const winEnd = openWindow ? fmtHhmm(openWindow.end) : "10:00 AM";
   return (
     <details className={cn(HOWTO, stepHide)}>
       <summary className={HOWTO_SUMMARY}>
@@ -3413,10 +3490,14 @@ function HowToUse() {
       </summary>
       <ol className={HOWTO_OL}>
         <li>
-          Which day opens: if you signed in between 2:00 AM and 8:30 AM (Las
-          Vegas time), Dispatch opens on today until you sign in again;
-          otherwise it opens on tomorrow. Change the day any time &mdash; the
-          page stays on the day you picked.
+          Which day opens: If you are on today&rsquo;s Open shift in the
+          published Staff Schedule, Dispatch opens on today each time you open
+          it between <span data-howto-window>{winStart}</span> and{" "}
+          <span data-howto-window-end>{winEnd}</span> (Las Vegas time; Super
+          Admin can change these times). Everyone else: if you signed in between 12:00 AM
+          and 8:30 AM (Las Vegas time), Dispatch opens on today until you sign
+          in again; otherwise it opens on tomorrow. Change the day any time
+          &mdash; the page stays on the day you picked.
         </li>
         <li>
           CCL&rsquo;s schedule fills in the buses and drivers. Orange text means
@@ -3433,8 +3514,8 @@ function HowToUse() {
           Schedule check (right side) lists everything not done yet: a vehicle
           with no driver, guide, vehicle or hotel, a tour or round with guests
           but no vehicle, orders in Need a look, and more. Fix › takes you
-          there. It shows &#10003; All good only when nothing is left. Nothing in
-          it stops you from saving.
+          there. It shows &#10003; All good only when nothing is left. Nothing
+          in it stops you from saving.
         </li>
         <li>
           Morning Relay: pick each car&rsquo;s hotels in Add hotel. 2nd Round:
@@ -3450,6 +3531,16 @@ function HowToUse() {
           again to untick; you can pick several), then pick the bus under the
           lists and click Move selected orders.
         </li>
+        {/* 135 题 2 B（Annie 2026-11-13「135  -1A 2B」「动手」）：跟 Farm out 键一起显示（看不到 Farm out 就不写这一句）。 */}
+        {farmOut ? (
+          <li data-howto-farm-out-other-day>
+            Send farm out notice: if the day is not today (Los Angeles time), a
+            box shows that day in large red letters. Click &ldquo;Yes, I need to
+            send for &hellip;&rdquo; only if you really mean to send for that
+            day; Cancel sends nothing. Farm out notices are usually sent the day
+            before, so the box shows almost every time.
+          </li>
+        ) : null}
         <li>
           A yellow bar means CCL posted a change: Apply changes puts it on the
           page.

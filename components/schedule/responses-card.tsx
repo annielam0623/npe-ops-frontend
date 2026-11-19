@@ -8,6 +8,8 @@ import {
   useState,
 } from "react";
 
+import { DARK_PRIMARY_BUTTON_CLASS } from "@/components/ui/buttons";
+import { HowToUse } from "@/components/ui/how-to-use";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { shiftYmd } from "@/lib/la-date";
 import {
@@ -19,7 +21,9 @@ import {
   type RequestSlot,
   type WeekConfirmations,
 } from "@/lib/schedule-confirm-api";
+import { swapRestProblem } from "@/lib/schedule-swap-rest";
 import { formatRange } from "@/lib/schedule-time";
+import { useLeaveGuard } from "@/lib/use-leave-guard";
 import { cn } from "@/lib/utils";
 import type {
   ScheduleEmployee,
@@ -116,8 +120,15 @@ export function ResponsesCard({
   reloadKey = 0,
   onAnswers,
   onOpenRequests,
+  published = false,
 }: {
   weekStart: string;
+  /**
+   * G298 / 前端 142（Annie 2026-11-18「1A 2A 3B 4A 5A 6A，动手」）：已发布的周 = 员工发布后换班。
+   * Approve / Decline 先记在页面上，按蓝色 Save 才生效（题 6 A：直接换、不用 Publish again），没存离开要问；
+   * 批准前再挡一次晚接早。上面多一张「Swap requests」表（周三确认的人表可能是空的）。
+   */
+  published?: boolean;
   /**
    * 变了就重拉回应（G217 ef：Send to confirm 发送成功后，原来点 Looks good 的人被后端重置成 No answer；
    * 整周重拉不会重建这张卡，所以要单独通知）。
@@ -147,6 +158,23 @@ export function ResponsesCard({
   const [actionError, setActionError] = useState<string | null>(null);
   /** Approve / Decline 之后 +1：每行的 History 重读（多了一条处理记录）。 */
   const [historyBump, setHistoryBump] = useState(0);
+  /** G298：发布周里点了、还没 Save 的 Approve / Decline。 */
+  const [staged, setStaged] = useState<
+    ReadonlyMap<number, "approve" | "decline">
+  >(new Map());
+  const [saving, setSaving] = useState(false);
+  const [savedAt, setSavedAt] = useState<string | null>(null);
+  const [saveErrors, setSaveErrors] = useState<string[]>([]);
+  useLeaveGuard(
+    staged.size > 0,
+    "Your swap approvals haven't been saved. Leave this page anyway?",
+  );
+  // 换了一周：没存的不带过去。
+  useEffect(() => {
+    setStaged(new Map());
+    setSavedAt(null);
+    setSaveErrors([]);
+  }, [weekStart]);
 
   const load = useCallback(
     async (signal?: AbortSignal) => {
@@ -203,7 +231,9 @@ export function ResponsesCard({
   const requestText = useCallback(
     (r: ConfirmRequest) => {
       const slotText = (s: RequestSlot | null) =>
-        s ? `${DAY_LABELS[shiftDays(weekStart, s.date)] ?? md(s.date)} ${shiftTypes.find((t) => t.key === s.shift_type)?.label ?? s.shift_type}` : "";
+        s
+          ? `${DAY_LABELS[shiftDays(weekStart, s.date)] ?? md(s.date)} ${shiftTypes.find((t) => t.key === s.shift_type)?.label ?? s.shift_type}`
+          : "";
       const day = (d: string | null) =>
         d ? (DAY_LABELS[shiftDays(weekStart, d)] ?? md(d)) : "";
       const type = (k: string | null) =>
@@ -236,6 +266,28 @@ export function ResponsesCard({
   const typeLabel = useCallback(
     (k: string) => shiftTypes.find((t) => t.key === k)?.label ?? k,
     [shiftTypes],
+  );
+
+  /** G298：批准前再挡一次晚接早（排班可能中间改过）。只看发布周的换班。 */
+  const restFor = useCallback(
+    (r: ConfirmRequest): string | null => {
+      if (!r.after_publish || r.kind !== "swap" || !r.my_slot || !r.their_slot)
+        return null;
+      const problem = swapRestProblem(slots, r.my_slot.id, r.their_slot.id, {
+        typeLabel,
+        dayText: (ymd) => `${dayOf(ymd)} ${md(ymd)}`,
+        nameOf: (id) =>
+          employees.find((e) => e.id === id)?.name ??
+          (r.from.employee_id === id ? r.from.name : (r.peer?.name ?? "")),
+      });
+      return problem
+        ? problem.replace(
+            " Pick another day.",
+            " Decline it, or change the schedule first.",
+          )
+        : null;
+    },
+    [slots, typeLabel, dayOf, employees],
   );
 
   const view = useMemo(() => {
@@ -311,7 +363,16 @@ export function ResponsesCard({
       </p>
     );
   if (!data || !view) return null;
-  if (!data.sent_at && data.people.length === 0 && !data.empty_draft)
+  // G298：发布周里有换班请求就要出（周三确认可能没发过、人表是空的）。
+  const swaps = published
+    ? view.requests.filter((r) => r.kind === "swap" && r.after_publish === true)
+    : [];
+  if (
+    !data.sent_at &&
+    data.people.length === 0 &&
+    !data.empty_draft &&
+    !swaps.length
+  )
     return null;
 
   const deadline = (() => {
@@ -320,9 +381,101 @@ export function ResponsesCard({
     return Number.isNaN(t) ? data.deadline : DEADLINE_FMT.format(t);
   })();
 
+  const toggle = (id: number, what: "approve" | "decline") => {
+    setSavedAt(null);
+    setStaged((m) => {
+      const n = new Map(m);
+      if (n.get(id) === what) n.delete(id);
+      else n.set(id, what);
+      return n;
+    });
+  };
+
+  /** G298 Save：逐条调现有的 approve / decline；失败的留着、红字写哪一条。 */
+  const save = async () => {
+    if (!staged.size || saving) return;
+    if (beforeEdit && !(await beforeEdit())) return;
+    setSaving(true);
+    setSaveErrors([]);
+    setSavedAt(null);
+    const errs: string[] = [];
+    const left = new Map(staged);
+    for (const [id, what] of staged) {
+      const r = data.requests.find((x) => x.id === id);
+      try {
+        await (what === "approve" ? approveRequest : declineRequest)(id);
+        left.delete(id);
+      } catch (e) {
+        if (isStatus(e, 401)) {
+          setSaving(false);
+          onUnauthorized();
+          return;
+        }
+        errs.push(`${r ? swapLine(r) : `Request ${id}`}: ${describeError(e)}`);
+      }
+    }
+    setStaged(left);
+    setSaveErrors(errs);
+    if (!errs.length) setSavedAt(SAVED_FMT.format(new Date()));
+    onEdited?.();
+    setHistoryBump((n) => n + 1);
+    await load();
+    onChanged();
+    setSaving(false);
+  };
+
+  const sText = (s: RequestSlot | null) =>
+    s ? `${dayOf(s.date)} ${md(s.date)} ${typeLabel(s.shift_type)}` : "";
+  const swapLine = (r: ConfirmRequest) =>
+    `${r.from.name}'s ${sText(r.my_slot)} ⇄ ${r.peer?.name ?? ""}'s ${sText(r.their_slot)}`;
+
+  const stagedButtons = (r: ConfirmRequest) => {
+    const st = staged.get(r.id);
+    const blocked = restFor(r);
+    return (
+      <span className="inline-flex shrink-0 gap-1">
+        <button
+          type="button"
+          data-approve={r.id}
+          data-staged={st === "approve" ? "1" : undefined}
+          disabled={saving || (!!blocked && st !== "approve")}
+          title={blocked ?? undefined}
+          onClick={() => toggle(r.id, "approve")}
+          className={cn(
+            SMALL_BTN,
+            st === "approve"
+              ? "border-emerald-300 bg-emerald-400/20 text-emerald-200"
+              : "border-white/40 text-white",
+          )}
+        >
+          {st === "approve" ? "✓ Approve" : "Approve"}
+        </button>
+        <button
+          type="button"
+          data-decline={r.id}
+          data-staged={st === "decline" ? "1" : undefined}
+          disabled={saving}
+          onClick={() => toggle(r.id, "decline")}
+          className={cn(
+            SMALL_BTN,
+            st === "decline"
+              ? "border-red-300 bg-red-400/15 text-red-200"
+              : "border-white/40 text-white",
+          )}
+        >
+          {st === "decline" ? "✕ Decline" : "Decline"}
+        </button>
+      </span>
+    );
+  };
 
   const buttons = (r: ConfirmRequest) =>
-    canEdit && r.status === "pending" ? (
+    canEdit &&
+    r.status === "pending" &&
+    r.kind === "swap" &&
+    r.after_publish === true ? (
+      stagedButtons(r)
+    ) : canEdit && r.status === "pending" ? (
       <span className="inline-flex shrink-0 gap-1">
         <button
           type="button"
@@ -374,7 +527,111 @@ export function ResponsesCard({
           empty.
         </p>
       ) : null}
-      <div className="overflow-x-auto">
+      {swaps.length ? (
+        <div className="border-b border-white/10" data-swap-requests>
+          <h3 className="px-4 pt-3 text-[13px] font-semibold text-white">
+            Swap requests
+          </h3>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px] border-collapse text-[13px]">
+              <thead>
+                <tr className="text-left text-[11px] tracking-[.04em] text-white/55 uppercase">
+                  <th className="border-b border-white/10 px-3 py-2">Swap</th>
+                  <th className="border-b border-white/10 px-3 py-2">Status</th>
+                  <th className="border-b border-white/10 px-3 py-2">Asked</th>
+                  <th className="border-b border-white/10 px-3 py-2">
+                    <span className="sr-only">Approve or decline</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {swaps.map((r) => {
+                  const blocked = r.status === "pending" ? restFor(r) : null;
+                  return (
+                    <tr key={r.id} data-swap-row={r.status} data-swap-id={r.id}>
+                      <td className="border-b border-white/10 px-3 py-2">
+                        {swapLine(r)}
+                      </td>
+                      <td className="border-b border-white/10 px-3 py-2">
+                        <span className={statusClass(r)}>{statusText(r)}</span>
+                        {blocked ? (
+                          <div
+                            role="alert"
+                            data-rest-blocked
+                            className="mt-0.5 text-[12px] font-semibold text-red-300"
+                          >
+                            {blocked}
+                          </div>
+                        ) : null}
+                      </td>
+                      <td className="border-b border-white/10 px-3 py-2 text-[12px] text-white/55">
+                        {when(r.created_at)}
+                      </td>
+                      <td className="border-b border-white/10 px-3 py-2">
+                        {r.status === "awaiting_peer" ? (
+                          <span className="text-[12px] text-white/50">
+                            Not yours to approve yet
+                          </span>
+                        ) : (
+                          buttons(r)
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          {canEdit ? (
+            <div className="flex flex-wrap items-center gap-2.5 px-4 py-2.5">
+              {staged.size ? (
+                <span
+                  className="text-[12.5px] text-amber-200"
+                  data-swap-unsaved
+                >
+                  {staged.size} change{staged.size === 1 ? "" : "s"}, not saved
+                  yet
+                </span>
+              ) : null}
+              {savedAt && !staged.size ? (
+                <span
+                  role="status"
+                  data-swap-saved
+                  className="text-[12.5px] font-semibold text-emerald-300"
+                >
+                  ✓ Saved · {savedAt}
+                </span>
+              ) : null}
+              <span className="flex-1" />
+              <button
+                type="button"
+                data-swap-save
+                disabled={!staged.size || saving}
+                onClick={() => void save()}
+                className={DARK_PRIMARY_BUTTON_CLASS}
+              >
+                {saving ? "Saving…" : "Save"}
+              </button>
+            </div>
+          ) : null}
+          {saveErrors.map((e) => (
+            <p
+              key={e}
+              role="alert"
+              data-swap-save-error
+              className="px-4 pb-2 text-[13px] text-red-300"
+            >
+              Not saved: {e}
+            </p>
+          ))}
+        </div>
+      ) : null}
+      <div
+        className={cn(
+          "overflow-x-auto",
+          published && data.people.length === 0 && "hidden",
+        )}
+      >
         <table className="w-full border-collapse text-[13px]">
           <thead>
             <tr className="text-left text-[11px] tracking-[.04em] text-white/55 uppercase">
@@ -487,9 +744,29 @@ export function ResponsesCard({
           </div>
         </div>
       ) : null}
+      {swaps.length ? (
+        <div className="px-4 pb-3">
+          <HowToUse
+            dark
+            title="How to use — Swap requests"
+            items={[
+              "Swaps your staff asked for in published weeks show here and as yellow split cells on the table below.",
+              '"Waiting for (name)" means the coworker hasn\'t answered yet. You can approve only after they agree.',
+              "Press Approve or Decline, then press Save. Nothing changes until you save. Saving swaps the two shifts in the published week (no Publish again), and both people are told.",
+              "A Close shift can't be followed by an Open or Morning shift the next day. A swap that would do that can't be approved.",
+            ]}
+          />
+        </div>
+      ) : null}
     </section>
   );
 }
+
+const SAVED_FMT = new Intl.DateTimeFormat("en-US", {
+  hour: "numeric",
+  minute: "2-digit",
+  timeZone: "America/Los_Angeles",
+});
 
 function ResponsesRow({
   employee,
@@ -609,7 +886,9 @@ function ResponsesRow({
                   <small className="text-[10px] font-bold">{c.note}</small>
                 </div>
                 {c.request ? (
-                  <div className="flex justify-center">{buttons(c.request)}</div>
+                  <div className="flex justify-center">
+                    {buttons(c.request)}
+                  </div>
                 ) : null}
               </div>
             ))}
@@ -636,8 +915,14 @@ function statusText(r: ConfirmRequest): string {
       return "Declined";
     case "peer_declined":
       return `${peer} declined`;
+    case "withdrawn":
+      return `${r.from.name} withdrew it`;
     case "closed":
-      return "Closed when published";
+      return r.closed_reason === "week_started"
+        ? "Closed: the week started"
+        : r.closed_reason === "other_swap"
+          ? "Closed: one of the shifts was swapped with someone else"
+          : "Closed when published";
   }
 }
 
@@ -645,7 +930,7 @@ function statusClass(r: ConfirmRequest): string {
   if (r.status === "approved") return "font-semibold text-emerald-300";
   if (r.status === "declined" || r.status === "peer_declined")
     return "font-semibold text-red-300";
-  if (r.status === "closed") return "text-white/50";
+  if (r.status === "closed" || r.status === "withdrawn") return "text-white/50";
   return "font-semibold text-amber-200";
 }
 

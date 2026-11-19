@@ -107,7 +107,7 @@ export interface TourSkipped {
   order?: string;
   order_number?: string;
   name: string;
-  /** 服务端跳过的才有：already_sent / listed_twice。 */
+  /** 服务端跳过的才有：already_sent / listed_twice / no_pickup_location（G297，酒店空着）。 */
   reason?: string;
   message: string;
 }

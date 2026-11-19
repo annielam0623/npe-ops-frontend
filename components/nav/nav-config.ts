@@ -49,6 +49,7 @@ export const NAV_MODULE_IDS = [
   "orders",
   "quotation",
   "dispatch",
+  "bus_manifests",
   "forms",
   "schedule",
   "daily_report",
@@ -145,6 +146,13 @@ const MODULES: readonly NavModule[] = [
     dot: "#22d3ee",
   },
   {
+    // 151 题 ⑧ A（Annie 2026-11-16「全部同意推荐」）：当天各团各车的 Bus Manifest，点车进 View only（全屏打印纸样）。
+    id: "bus_manifests",
+    group: "Operations",
+    label: "Bus Manifests",
+    href: "/bus-manifests",
+  },
+  {
     id: "forms",
     group: "Operations",
     label: "Forms",
@@ -164,7 +172,7 @@ const MODULES: readonly NavModule[] = [
     group: "Operations",
     label: "Daily Operation Report",
     href: "/daily-report",
-    upcoming: true,
+    // Annie 2026-11-18「我做过测试了，可以去掉soon」：去掉 Soon。可见性仍按 daily_operation_report 开关。
   },
   {
     // Farm out 转单报表（Annie 2026-10-15 看预览同意，侧栏 Operations 组），旧后台没有。
@@ -407,6 +415,8 @@ export const NAV_SETTINGS: { label: string; items: NavItem[] } = {
     // 系统自己发的通知的统一开关页（Annie 2026-10-24 看过 preview 后「自动开关：动手」），admin 可看。
     { label: "Notifications", href: "/settings/notifications" },
     { label: "Content Studio", href: "/settings/content-studio" },
+    // 测试发送页（Annie 2026-11-18「1A…动手」：Content Studio 下面、叫 Test send）：后端只给 admin / Super Admin，同 Settings 组默认只 admin。
+    { label: "Test send", href: "/settings/test-send" },
     { label: "Pickup Locations", href: "/settings/pickup-locations" },
     // Farm out Partners / Timetable 搬进下面的 Supplier 组（G199，Annie 2026-10-27「Supplier preview 动手」）。
     { label: "Vehicles", href: "/settings/vehicles" },
@@ -419,6 +429,12 @@ export const NAV_SETTINGS: { label: string; items: NavItem[] } = {
     { label: "My Workspace", href: "/settings/workspace" },
     { label: "Transfer & Charter", href: "/settings/transfer-charter" },
     { label: "Navigation", href: "/settings/navigation", superadminOnly: true },
+    // 145 电话 AI 调用记录（后端 G178 ③，Annie 2026-11-15「直接动手」，Q1 A）：接口只给 superadmin，入口也只有 Super Admin 看得到。
+    {
+      label: "Phone AI Calls",
+      href: "/settings/phone-ai-calls",
+      superadminOnly: true,
+    },
   ],
 };
 

@@ -25,6 +25,17 @@ export const MESSAGE_PREVIEW_TABS: readonly PreviewTab[] = [
   { key: "guest_page", label: "🖥️ Guest Page", kind: "html" },
 ];
 
+/**
+ * G297（Annie 2026-11-12「可以发送已经有的，但是没有的这个就标红留下来」）：接客酒店空着（或只有空白）的单不发，其余照发。
+ * 页面不另拦：这几行照样送给后端，后端逐行留下、记进 skipped（reason no_pickup_location），并给当班的人发 Notice。
+ * 预览里先标红、黄框列出来。已发过的（没勾 Send anyway 本来就不发）、文件里第二次出现的不算。
+ */
+export function noHotelRow(r: TourManifestRow): boolean {
+  return (
+    !String(r.pickup_location ?? "").trim() && !r.duplicate && !r.listed_twice
+  );
+}
+
 /** 两块各自的文案和颜色（同旧页面：Regular 绿、Last Minute 棕）。 */
 export const LANES: Record<
   TourLane,

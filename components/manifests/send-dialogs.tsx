@@ -91,8 +91,9 @@ import {
 
 /** 消息正文上限（Annie 2026-10-25「设为5000字」，邮件也管）；后端 BROADCAST_MAX_CHARS 是 20,000，比这宽。SMS 另有 300 字的限制。 */
 const MESSAGE_MAX = 5000;
+// 不写 "Hi {first_name}, "：后端 broadcast_send.sms_message 每条短信自动加（G151），写了客人收到两遍（ae 2026-11-18）。
 const DEFAULT_MESSAGE =
-  "Hi {first_name}, this is National Park Express about your tour on {tour_date}. ";
+  "This is National Park Express about your tour on {tour_date}. ";
 
 // 格式和发送页统一（Annie 2026-10-12：整个系统的发送页面格式必须一样）：框、名单表、标签、结果数字
 // 都用发送页的 components/tickets-send/legacy-ui（照旧 send_tour.html），不在这里另写一套。
@@ -1322,12 +1323,30 @@ function AnywayPicker({
             <tr
               key={`${order}-${s.reason ?? ""}`}
               data-skipped={order}
-              className={cn(TR, "bg-[#fff8e1]")}
+              // G297（同 Tour send 页）：酒店空着被后端留下的标红。
+              data-no-hotel={s.reason === "no_pickup_location" || undefined}
+              className={cn(
+                TR,
+                s.reason === "no_pickup_location"
+                  ? "bg-[#fdecec]"
+                  : "bg-[#fff8e1]",
+              )}
             >
               <td className={TD}>{order}</td>
               <td className={TD}>{s.name}</td>
               <td className={TD}>
-                <span className={DUP_BADGE}>{s.message}</span>
+                <span
+                  className={
+                    s.reason === "no_pickup_location"
+                      ? DUP_BADGE.replace(
+                          "bg-[#FAEEDA]",
+                          "bg-[#fdecec]",
+                        ).replace("text-[#BA7517]", "text-[#A32D2D]")
+                      : DUP_BADGE
+                  }
+                >
+                  {s.message}
+                </span>
               </td>
               <td className={TD}>
                 {canPick ? (
@@ -1986,7 +2005,12 @@ export function TourConfirmDialog({
   );
 }
 
-/** shuttle 节代替 tour type 下拉的只读一格（G189）。 */
+/**
+ * shuttle 节代替 tour type 下拉的只读一格（G189）。
+ * 148（Annie 2026-11-16「用A但是用绿色标注」「动手」，preview https://claude.ai/artifact/2PEn6nVhe1nbjAqWYanut2 v2）：
+ * 照其他团节的下拉框一样大小、位置，整框绿色（原来的琥珀像标错了），下面绿字 From Content Studio（对应 From Products）。
+ * Last Minute 弹窗的灰色提示不变。
+ */
 function ShuttleTemplateNote({
   title,
   products,
@@ -1996,32 +2020,29 @@ function ShuttleTemplateNote({
   products: string[];
   lastMinute: boolean;
 }) {
+  if (lastMinute) {
+    return (
+      <div
+        role="note"
+        data-shuttle-template={title}
+        className="rounded-md border border-dashed border-stone-300 bg-[#f3f4f6] px-2 py-1.5 text-[12px] text-[#4b5563]"
+      >
+        Not sent as Last Minute. Use <b>Send tour confirmation</b> for shuttle
+        guests.
+      </div>
+    );
+  }
   return (
-    <div
-      role="note"
-      data-shuttle-template={title}
-      className={cn(
-        "rounded-md border border-dashed px-2 py-1.5 text-[12px]",
-        !lastMinute
-          ? "border-[#fdba74] bg-[#fff7ed] text-[#9a3412]"
-          : "border-stone-300 bg-[#f3f4f6] text-[#4b5563]",
-      )}
-    >
-      {lastMinute ? (
-        <>
-          Not sent as Last Minute. Use <b>Send tour confirmation</b> for shuttle
-          guests.
-        </>
-      ) : (
-        <>
-          <b className="block">Shuttle template (from Content Studio)</b>
-          {products.map((p) => (
-            <span key={p} className="block">
-              {p}
-            </span>
-          ))}
-        </>
-      )}
+    <div role="note" data-shuttle-template={title}>
+      <div className="w-full rounded-md border border-[#86efac] bg-[#f0fdf4] px-2 py-1.5 text-[13px] font-semibold text-[#15803d]">
+        Shuttle · {products.join(", ")}
+      </div>
+      <small
+        data-shuttle-source
+        className="mt-0.5 block text-[11px] text-[#15803d]"
+      >
+        From Content Studio
+      </small>
     </div>
   );
 }

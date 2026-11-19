@@ -1,0 +1,1012 @@
+<title>Guide Payroll Preview</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout (v3, Annie's reference layout): title + period line + Export; 4 stat tiles; "Payroll by person" card with expandable rows;
+   "Needs review" card; collapsible "Pay rates" card; CSV example. Colors: ops site own — dark frame, white cards, blue only on Save, green only on Saved. */
+:root {
+  color-scheme: dark;
+  --frame: #06101c; --frame-2: #0d1b2c; --frame-line: rgba(255,255,255,.12); --frame-text: rgba(255,255,255,.9); --frame-dim: rgba(255,255,255,.55);
+  --paper: #ffffff; --ink: #1a1a1a; --ink-2: #4b5563; --ink-3: #888888; --line: rgba(0,0,0,.10); --line-2: #f0f1f3; --head: #fafafa; --sub: #f6f7f9;
+  --blue: #3b82f6; --green: #1e6b43; --red: #b3261e; --chg: #fef3c7; --warn: #8a5a00; --warn-bg: #fdf6e7; --warn-line: #e7b75a; --late: #b45309;
+  --font: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: ui-monospace, "SFMono-Regular", Consolas, monospace;
+}
+* { box-sizing: border-box; }
+body { background: var(--frame); color: var(--frame-text); font-family: var(--font); font-size: 14px; }
+.wrap { max-width: 1180px; margin: 0 auto; padding-block: 20px 60px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1.pv { font-size: 18px; margin: 0 0 4px; font-weight: 650; text-wrap: balance; }
+.lede { color: var(--frame-dim); font-size: 12.5px; margin: 0 0 14px; line-height: 1.55; max-width: 80ch; }
+.lede b { color: var(--frame-text); }
+.ctl { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; padding: 10px 12px; border: 1px dashed var(--frame-line); border-radius: 10px; margin-bottom: 18px; font-size: 12.5px; }
+.ctl b { color: var(--frame-dim); font-weight: 600; margin-right: 6px; }
+.seg { display: inline-flex; border: 1px solid var(--frame-line); border-radius: 8px; overflow: hidden; }
+.seg button { background: transparent; color: var(--frame-text); border: 0; padding: 5px 11px; font: inherit; cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--frame-line); }
+.seg button[aria-pressed="true"] { background: rgba(255,255,255,.9); color: #06101c; font-weight: 600; }
+.section-h { font-size: 13px; font-weight: 650; color: var(--frame-dim); text-transform: uppercase; letter-spacing: .06em; margin: 34px 0 10px; }
+
+/* ---- the app ---- */
+.stage { container-type: inline-size; margin: 0 auto; }
+.stage.phone { max-width: 390px; border: 1px solid var(--frame-line); border-radius: 18px; padding: 10px; background: var(--frame-2); }
+.tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
+.btn { cursor: pointer; border-radius: 7px; border: .5px solid rgba(0,0,0,.2); padding: 7px 13px; font: inherit; font-size: 12.5px; background: var(--paper); color: var(--ink); }
+.btn:hover { background: #f4f4f2; }
+.btn.dark { background: #1a1a1a; border-color: #1a1a1a; color: #fff; }
+.btn.save { background: var(--blue); border-color: var(--blue); color: #fff; font-weight: 600; }
+.btn.save:disabled { opacity: .45; cursor: not-allowed; }
+.btn:disabled { cursor: not-allowed; opacity: .5; }
+.btn:focus-visible, .seg button:focus-visible, input:focus-visible, .ph:focus-visible, .person:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.pagehead { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+.pagehead h1 { margin: 0; font-size: 34px; font-weight: 700; letter-spacing: -.01em; color: var(--frame-text); line-height: 1.1; }
+.pagehead .line { margin-top: 6px; font-size: 13px; color: var(--frame-dim); display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; }
+.pagehead .line b { color: var(--frame-text); font-weight: 650; }
+.pnav { display: inline-flex; gap: 4px; }
+.pnav .btn { padding: 2px 9px; font-size: 13px; }
+.tiles { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; background: var(--paper); color: var(--ink); border-radius: 12px; overflow: hidden; margin-bottom: 18px; border: .5px solid var(--line); }
+.tile { padding: 14px 18px; border-left: 1px solid var(--line-2); }
+.tile:first-child { border-left: 0; background: var(--sub); }
+.tile .k { font-size: 12px; color: var(--ink-2); }
+.tile .v { font-size: 22px; font-weight: 700; margin-top: 4px; font-variant-numeric: tabular-nums; }
+.tile:first-child .v { font-size: 26px; }
+.tile .v.warn { color: var(--late); }
+.card { background: var(--paper); color: var(--ink); border: .5px solid var(--line); border-radius: 12px; margin-bottom: 18px; overflow: hidden; }
+.card-h { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; padding: 14px 16px; border-bottom: .5px solid rgba(0,0,0,.08); }
+.ttl { font-size: 15px; font-weight: 650; display: inline-flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.ttl .cnt { font-size: 12.5px; font-weight: 600; color: var(--late); }
+.ttl .sub { font-size: 12.5px; font-weight: 400; color: var(--ink-2); }
+.hint { font-size: 12px; color: var(--ink-2); line-height: 1.5; }
+button.ttl { background: none; border: 0; padding: 0; color: var(--ink); cursor: pointer; font-family: inherit; }
+.savebar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 12px 16px; border-top: .5px solid rgba(0,0,0,.08); }
+.savebar .grow { flex: 1; }
+.st-red { color: var(--red); font-weight: 600; font-size: 12.5px; }
+.st-green { color: var(--green); font-weight: 600; font-size: 12.5px; }
+.st-dim { color: var(--ink-2); font-size: 12.5px; }
+.tblwrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th { text-align: left; font-size: 11.5px; font-weight: 600; color: var(--ink-2); padding: 9px 14px; border-bottom: 1px solid #e5e7eb; white-space: nowrap; background: var(--head); }
+td { padding: 10px 14px; border-bottom: 1px solid var(--line-2); vertical-align: middle; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+tr.person { cursor: pointer; }
+tr.person:hover > td { background: #f8fafc; }
+tr.person > td:first-child { font-weight: 650; }
+tr.total > td { font-weight: 700; background: var(--head); border-bottom: 0; }
+.caret { display: inline-block; width: 14px; color: var(--ink-2); font-size: 10px; }
+tr.detail > td { background: var(--sub); padding: 4px 14px 10px 30px; }
+tr.detail table th { background: transparent; border-bottom-color: #e5e7eb; }
+tr.detail table td { border-bottom-color: #e8eaee; }
+tr.detail table tr:last-child td { border-bottom: 0; }
+td.nihnote, .nihnote { font-size: 12px; color: var(--ink-2); padding: 8px 0 4px; }
+td.chg { background: var(--chg) !important; }
+/* 题 3 B: small amber tag (the design image) */
+.tag { display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 4px; background: var(--warn-bg); color: var(--warn); border: 1px solid var(--warn-line); white-space: nowrap; }
+.tag.late { color: var(--late); }
+/* 题 3 A: plain amber text, no box */
+.flag { font-size: 12px; font-weight: 650; color: var(--late); white-space: nowrap; }
+/* Not in HR, 题 3 ② 甲: grey small text */
+.nih { font-size: 11.5px; font-weight: 500; color: var(--ink-2); white-space: nowrap; margin-left: 6px; }
+.nihwrap { margin-left: 6px; }
+.dt { white-space: nowrap; }
+.who b { display: inline; font-weight: 650; }
+.who span.t { display: block; font-size: 12px; color: var(--ink-2); }
+.next { font-size: 12px; color: var(--ink-2); margin-top: 4px; line-height: 1.45; max-width: 28ch; }
+.tipbox { display: inline-flex; align-items: center; gap: 6px; }
+input.money { width: 86px; padding: 5px 8px; border: 1px solid #cbd2dc; border-radius: 6px; font: inherit; font-size: 13px; text-align: right; font-variant-numeric: tabular-nums; background: #fff; color: var(--ink); }
+input.money.bad { border-color: var(--red); }
+input.date { padding: 5px 8px; border: 1px solid #cbd2dc; border-radius: 6px; font: inherit; font-size: 13px; background: #fff; color: var(--ink); }
+input[type=checkbox] { width: 16px; height: 16px; accent-color: #374151; vertical-align: middle; cursor: pointer; margin: 0; }
+.ck { display: inline-flex; gap: 6px; align-items: center; white-space: nowrap; }
+.ro { color: var(--ink-3); }
+.empty { padding: 28px 16px; text-align: center; color: var(--ink-2); font-size: 13px; }
+.guard { margin: 12px 16px; padding: 10px 12px; border: 1px solid #fcd34d; background: #fffbeb; border-radius: 8px; font-size: 12.5px; color: #78350f; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.howto { background: var(--paper); color: var(--ink); border-radius: 12px; padding: 14px 18px; font-size: 13px; line-height: 1.6; }
+.howto h3 { margin: 0 0 8px; font-size: 13px; }
+.howto ul { margin: 0; padding-left: 18px; }
+.howto li + li { margin-top: 6px; }
+.howto li.new { background: var(--chg); border-radius: 4px; padding: 0 4px; }
+.csvcard { background: var(--paper); color: var(--ink); border-radius: 12px; overflow: hidden; }
+.csvcard .card-h { font-size: 12.5px; color: var(--ink-2); }
+pre.csv { margin: 0; padding: 12px 16px; font-family: var(--mono); font-size: 12px; line-height: 1.6; overflow-x: auto; color: var(--ink); }
+pre.csv .hl { background: var(--chg); }
+/* v4: every table is a grid — header row, vertical + horizontal lines, money right-aligned */
+table.grid { border: 1px solid #cfd4dc; color: var(--ink); }
+table.grid th { background: #f1f3f6; border: 1px solid #cfd4dc; color: #374151; }
+table.grid td { border: 1px solid #e1e5ea; }
+table.grid tr.subt > td { background: #f6f7f9; font-weight: 700; border-top: 1.5px solid #9aa3af; }
+table.grid tr.total > td { background: #eef0f3; border-top: 1.5px solid #9aa3af; }
+table.grid td.nihcell { background: #f8fafc; font-size: 12px; color: var(--ink-2); padding: 7px 14px; }
+table.grid td.st { white-space: nowrap; }
+tr.detail > td { background: var(--sub); padding: 8px 12px 12px 30px; }
+tr.detail table.grid { background: #fff; }
+.pcards { display: none; }
+@container (max-width: 640px) {
+  /* 题 4 甲 (default): tables stay tables and scroll sideways inside the card; first column stays put. The page itself never scrolls sideways. */
+  .stage:not(.pm-cards) .tblwrap > table.grid { min-width: 620px; }
+  .stage:not(.pm-cards) tr.detail table.grid { min-width: 640px; }
+  .stage:not(.pm-cards) table.grid th:first-child, .stage:not(.pm-cards) table.grid td:first-child:not([colspan]) { position: sticky; left: 0; z-index: 1; background: #fff; box-shadow: 1px 0 0 #cfd4dc; }
+  .stage:not(.pm-cards) table.grid th:first-child { background: #f1f3f6; }
+  .stage:not(.pm-cards) tr.detail > td { padding: 6px; }
+  .stage:not(.pm-cards) .tblwrap { overscroll-behavior-x: contain; }
+  .stage:not(.pm-cards) .tblnote { display: block; }
+  /* 题 4 乙: cards instead of tables */
+  .stage.pm-cards .tbl-desktop { display: none; }
+  .stage.pm-cards .pcards { display: block; }
+  .pagehead h1 { font-size: 26px; }
+  .tiles { grid-template-columns: 1fr 1fr; }
+  .tile:nth-child(3) { border-left: 0; }
+  .tile:nth-child(n+3) { border-top: 1px solid var(--line-2); }
+  .tile .v { font-size: 18px; } .tile:first-child .v { font-size: 20px; }
+  .card-h, .savebar { padding-left: 12px; padding-right: 12px; }
+  .desk-only { display: none; }
+  .pc { border-bottom: 1px solid var(--line-2); }
+  .ph { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 12px; cursor: pointer; }
+  .ph b { font-size: 14px; }
+  .ph .num { font-weight: 700; font-variant-numeric: tabular-nums; }
+  .pr { margin: 0 12px 8px; padding: 9px 10px; background: var(--sub); border-radius: 8px; font-size: 12.5px; display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; }
+  .pr .r { text-align: right; font-variant-numeric: tabular-nums; }
+  .pr .full { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; }
+  .pr.chg { background: var(--chg); }
+  .pc .nihnote { padding: 0 12px 8px; }
+  .pc.tot .ph { background: var(--head); }
+  .btn { padding: 6px 10px; font-size: 12px; }
+  .rcards .rr { display: grid; grid-template-columns: 1fr auto auto; gap: 6px 8px; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--line-2); font-size: 12.5px; }
+  .rcards .rr .k { grid-column: 1 / -1; font-weight: 650; }
+  .rcards input.money { width: 76px; }
+}
+.rcards { display: none; }
+.tblnote { display: none; font-size: 11.5px; color: var(--ink-2); padding: 6px 12px 0; }
+@container (max-width: 640px) { .stage.pm-cards .rcards { display: block; } }
+
+/* ---- team page mock ---- */
+.dlg { background: var(--paper); color: var(--ink); border-radius: 12px; overflow: hidden; }
+.dlg-h { padding: 12px 16px; border-bottom: 1px solid #e5e7eb; font-weight: 650; font-size: 14px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.acct { font-size: 11px; font-weight: 700; border-radius: 6px; padding: 1px 7px; border: 1px solid #d1d5db; color: #374151; }
+.grp { padding: 8px 12px; font-size: 13.5px; font-weight: 600; color: #1a1a2e; border-bottom: 1px solid #f3f4f6; }
+.arow { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 6px 14px; align-items: center; padding: 8px 12px 8px 30px; border-bottom: 1px solid #f3f4f6; background: #fafafa; }
+.arow .lbl { font-size: 13.5px; font-weight: 600; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.arow .note { grid-column: 1 / -1; margin: 0; font-size: 12px; color: var(--ink-2); }
+.lvl { display: inline-flex; border: 1px solid #d1d5db; border-radius: 8px; overflow: hidden; }
+.lvl button { border: 0; background: #fff; color: #374151; padding: 5px 11px; font: inherit; font-size: 12.5px; cursor: pointer; white-space: nowrap; }
+.lvl button + button { border-left: 1px solid #d1d5db; }
+.lvl button.on { background: #374151; color: #fff; font-weight: 600; }
+.lvl button.none.on { background: #e5e7eb; color: #374151; }
+.lvl button:disabled { background: #f8f9fa; color: #c0c4cc; cursor: not-allowed; }
+.lock { display: inline-flex; gap: 4px; align-items: center; border: 1px dashed #cbd5e1; background: #f3f4f6; border-radius: 6px; padding: 1px 7px; font-size: 11px; font-weight: 600; color: #6b7280; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 760px) { .two { grid-template-columns: 1fr; } .arow { grid-template-columns: 1fr; padding-left: 16px; } }
+
+/* ---- questions ---- */
+.qs { background: var(--paper); color: var(--ink); border-radius: 12px; padding: 6px 18px 14px; }
+.q { padding: 14px 0; border-bottom: 1px solid #eee; line-height: 1.65; font-size: 13.5px; }
+.q:last-child { border-bottom: 0; }
+.q h3 { margin: 0 0 6px; font-size: 14px; }
+.q ul { margin: 4px 0 0; padding-left: 20px; }
+.noteblk { background: var(--frame-2); border: 1px solid var(--frame-line); border-radius: 10px; padding: 12px 14px; font-size: 13px; line-height: 1.6; }
+code { font-size: 12px; background: rgba(0,0,0,.06); padding: 1px 4px; border-radius: 4px; }
+.noteblk code { background: rgba(255,255,255,.1); }
+/* v6 */
+.btn.add { background: #6b8e74; border-color: #6b8e74; color: #fff; font-weight: 600; }
+.btn.sm { padding: 2px 8px; font-size: 11.5px; }
+.src { display: block; font-size: 11px; color: var(--ink-2); white-space: nowrap; }
+.src.ed { color: var(--late); font-weight: 650; }
+.lock { font-size: 11px; color: var(--ink-2); white-space: nowrap; }
+td.lk { background: #f3f4f6 !important; }
+.subh { padding: 14px 16px 2px; font-size: 13px; font-weight: 650; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 12px; align-items: baseline; }
+.subh .hint { font-weight: 400; }
+.formrow { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: end; padding: 10px 16px; background: #f8fafc; border-top: 1px solid #e5e7eb; border-bottom: 1px solid #e5e7eb; font-size: 12.5px; }
+.formrow label { display: flex; flex-direction: column; gap: 3px; color: var(--ink-2); font-weight: 600; font-size: 11.5px; }
+.formrow select, .formrow input:not([type=checkbox]) { padding: 5px 8px; border: 1px solid #cbd2dc; border-radius: 6px; font: inherit; font-size: 13px; background: #fff; color: var(--ink); }
+.who-pick { display: flex; flex-wrap: wrap; gap: 4px 10px; font-weight: 400; color: var(--ink); font-size: 12.5px; }
+.pconfirm { margin: 10px 16px; padding: 10px 12px; border: 1px solid #fcd34d; background: #fffbeb; border-radius: 8px; font-size: 12.5px; color: #78350f; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.pconfirm span { flex: 1 1 260px; }
+.lockline { margin: 0 0 14px; padding: 8px 12px; border-radius: 8px; background: rgba(148,163,184,.16); color: var(--frame-text); font-size: 12.5px; }
+tr.pend > td { background: var(--chg); }
+/* v9: edit like Main manifest — click the cell; "edited" pill; blue underlined reset link; Done / Cancel white */
+.cellbtn { display: block; cursor: text; border-radius: 4px; padding: 2px 4px; margin: -2px -4px; }
+.cellbtn:hover { background: #eef4ff; box-shadow: inset 0 0 0 1px #bfdbfe; }
+.edpill { margin-left: 6px; border-radius: 999px; background: #fed7aa; color: #7c2d12; font-size: 10px; font-weight: 700; padding: 0 6px; white-space: nowrap; }
+.lnk { background: none; border: 0; padding: 0; font: inherit; font-size: 11.5px; color: #1d4ed8; text-decoration: underline; cursor: pointer; }
+.btn.xs { padding: 1px 9px; font-size: 11px; font-weight: 700; border-color: #888; color: #333; }
+.edrow { display: flex; gap: 6px; align-items: center; justify-content: flex-end; margin-top: 4px; flex-wrap: wrap; }
+.acts { display: inline-flex; gap: 10px; white-space: nowrap; }
+tr.grp > td { background: #f1f3f6; font-size: 12.5px; }
+tr.gone > td { background: #fde8e8; text-decoration: line-through; color: var(--ink-3); }
+.hist td { font-size: 12.5px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <h1 class="pv">138 · Guide payroll — preview (Version 9)</h1>
+  <p class="lede"><b>第 9 版（Annie：「138上面的edit键太难看了，你还是改成像其他可以编辑的那种格式吧」）</b>：每趟 Fee 格去掉白键「Edit」，改成 ops 里已有的改格子样子（题 11，上面可切 A / B）；手改过的标橙色小标签「edited」，下面一行灰字 "Price $260.00 · Use the price"（Use the price 是蓝色下划线字）。价格表、Extras 表的「Edit / Remove」和锁的「Unlock」也从白键改成蓝色下划线字。其他跟第 8 版一样。</p>
+  <p class="lede"><b>第 8 版（Annie 答「要」：加购项金额也能对选定的人设）</b>：只改了 Pay rates 里的 Extras——表多一列 Applies to（Everyone 或人名）；「+ Add extra」表单多一行 Applies to（Everyone / Only these people，可多选，手打名字的导游也能选），跟价格表单一样；同一天这个人有自己的金额就用他的，没有就用对所有人的。样例：Paul Rivera Jr 11 月的 ANT relay 是 $80，别人 $66。其他跟第 7 版一样。</p>
+  <p class="lede"><b>第 7 版（照后端合同 v2 改，取代第 6 版；Annie 直接答这一版）</b>：版式同第 4 版。和第 6 版比：① 价格是<b>一张表</b>：一行 = 团 + 从哪天 + 到哪天（空 = 一直用）+ 对谁（所有人 / 选定的人）+ 两种费用 + 能不能勾 ANT relay；默认价、期间价、个人价、手打团名的团都在这张表里。② 加购项改叫 <b>Extras</b>，不绑团：ANT relay 只能勾在价格写了 ANT relay 的团上，其他加购项（如 Long day）任何一趟都能勾；加购项金额也分时段。③ 团费仍叫 <b>Fee</b>，每趟可以手改（私人团、No rate 的也可以）。④ 锁按日期范围，加 Note。⑤ Change history 照其他页的改动记录，分页。⑥ 红字全部照后端原句。新题是题 5、7–10；题 6 已定。模拟数据，可以点着试。</p>
+  <p class="lede"><b>第 4 版（Annie：「138我觉得排列得太乱了，把每一个人的明细做成带格子的表格」）</b>：整页四张表都改成带格线的表格（表头底色 + 横竖格线 + 金额右对齐）。① 每个人展开后的明细：每趟一行，列 Date / Tour / Role / Fee / ANT relay / Tips / Total / Status，最后一行是这个人这一期的合计；Not in HR 那句是表里第一行（整行一格），Private Tour 小费框、ANT relay 勾都在自己的格子里；Not completed 从日期下面挪到 Status 列。② Payroll by person 名单：同样加格线。③ Needs review：原来「Person / Tour」挤一格、「Issue &amp; next step」挤一格，拆成 Person、Tour、Status、Next step 四列。④ Pay rates：加格线。四格数字（Period total 等）、Save 条、CSV 不变。手机怎么放见题 4（最上面「题 4 手机」可切）。</p>
+  <p class="lede"><b>第 3 版（跟后端 11-14 改动）</b>：Annie 原话「手打名字的导游也要算进去的」⇒ 去掉 Not linked；Dispatch 上手打名字的导游照样算钱，名字后标「Not in HR」（按人行、展开行、Needs review、手机卡片、CSV 都有）；同一趟手打司机和导游同名 ⇒ 算 Driver + Guide。样例：Jake、Jimmy Vegas 是手打的。排版同第 2 版（照 Annie 的设计图，用网站自己的颜色）。模拟数据，不是真页面；上面的切换只为看不同情况。问题在最下面（中文）。</p>
+
+  <div class="ctl" role="group" aria-label="Preview controls">
+    <span><b>宽度</b><span class="seg" id="c-width"><button aria-pressed="true" data-v="desktop">Desktop</button><button aria-pressed="false" data-v="phone">Phone</button></span></span>
+    <span><b>账号</b><span class="seg" id="c-perm"><button aria-pressed="true" data-v="edit">Payroll: Edit</button><button aria-pressed="false" data-v="view">Payroll: View only</button></span></span>
+    <span><b>题 3 ① 状态</b><span class="seg" id="c-st"><button aria-pressed="true" data-v="A">A · Plain amber text</button><button aria-pressed="false" data-v="B">B · Small tags</button></span></span>
+    <span><b>题 4 手机</b><span class="seg" id="c-pm"><button aria-pressed="true" data-v="table">甲 · Tables, swipe sideways</button><button aria-pressed="false" data-v="cards">乙 · Cards</button></span></span>
+    <span><b>题 11 改 Fee</b><span class="seg" id="c-fe"><button aria-pressed="true" data-v="click">A · Click the cell (Main manifest)</button><button aria-pressed="false" data-v="box">B · Always a box (Farm out prices)</button></span></span>
+    <span><b>题 5 价格表</b><span class="seg" id="c-pv"><button aria-pressed="true" data-v="tour">A · One table, by tour</button><button aria-pressed="false" data-v="kind">B · By kind</button></span></span>
+    <span><b>题 9 改动记录</b><span class="seg" id="c-hs"><button aria-pressed="true" data-v="show">A · On the page</button><button aria-pressed="false" data-v="hide">B · Not on the page</button></span></span>
+    <span><b>题 3 ② Not in HR</b><span class="seg" id="c-nih"><button aria-pressed="true" data-v="grey">甲 · Grey text</button><button aria-pressed="false" data-v="same">乙 · Same as ①</button></span></span>
+  </div>
+
+  <div class="stage" id="stage"></div>
+
+  <div class="section-h">Export CSV · example (this period)</div>
+  <div class="csvcard"><div class="card-h">guide-payroll-<span id="csv-name"></span>.csv — columns (backend contract v2): Person, Date, Tour, Role, Fee, Fee changed by hand, Extras, Extras total, Tips, Total, Status, Day. Highlighted: names typed on Dispatch.</div><pre class="csv" id="csv"></pre></div>
+
+  <div class="section-h">How to use (English, shown under the page)</div>
+  <div class="howto">
+    <h3>How to use — Payroll</h3>
+    <ul>
+      <li>Payroll adds up what each guide and driver-guide earned in one pay period: the 1st–15th, or the 16th to the last day of the month. Use ‹ › next to the dates to move between periods.</li>
+      <li>Each tour run pays one fee. A guide gets the Guide fee; a driver who also guides the run gets the Driver + Guide fee. Two tours on one day pay two fees. Relay runs and bus tours without a guide are not on this page.</li>
+      <li>Days are counted up to today. A day marked Not completed has not been marked Completed on Dispatch yet; it is still counted, so check it before paying.</li>
+      <li class="new">Which price a run gets: the newest price for that guide that covers the day; if there is none, the newest price for everyone that covers it. A price with no end date keeps going, so a price for November 1–30 wins only in November. The line under the fee says when a date-range price or a price for that guide was used.</li>
+      <li class="new">Click a name to see that person's runs. Click a run’s fee to type a different fee for that run only, then click Done; it shows edited, with the price under it. Use the price puts the price back. Extras and tips are still added on top.</li>
+      <li class="new">Extras are paid per ticked run. ANT relay can be ticked only on tours whose price has ANT relay; other extras, like Long day, can be ticked on any run. On Private Tour runs, type the tips; they are paid to that run's guide.</li>
+      <li>Changes stay on the page until you click Save payroll changes. If you leave the page or change the period first, you are asked whether to save.</li>
+      <li class="new">Needs review lists runs that are left out of the period total: No rate (no price covers that run — add a price under Pay rates, or type a fee for the run) and No guide (nobody is picked as guide on Dispatch).</li>
+      <li>A guide whose name was typed by hand on Dispatch is paid under that name and shows Not in HR. Add the person in Human Resource so their details are on file, and pick them from the list on Dispatch next time. The same person typed with two spellings shows as two people.</li>
+      <li class="new">Pay rates: click + Add price to add a price for a tour from a start date, with or without an end date, for everyone or only for the people you tick. For a tour name typed on Dispatch, pick Type a tour name… and type it the same way. Click + Add extra for a new extra or a new amount for an existing one; like prices, an extra amount can be for everyone or only for the people you tick. Nothing is kept until you click Save rates.</li>
+      <li class="new">Locked dates: once pay for some days is final, pick the dates, add a note if you like, and click Lock dates. Fees, extras and tips on locked days can’t be changed, and prices or extra amounts that cover them can’t be changed or removed — add a new price that starts after the locked days instead. Unlock to change them again. Locking and unlocking are saved right away.</li>
+      <li class="new">Change history lists every change to prices, extras, fees, tips and locks: when, who, what, before and after.</li>
+      <li class="new">Export CSV downloads the period: each person's runs with a total line, then the runs that need review. It shows whether a fee was changed by hand and which extras were ticked.</li>
+      <li class="new">Only Admin accounts given Payroll on the Team page can open this page. Payroll: View can look, export and see the change history; Payroll: Edit can also change prices, extras, fees and tips, and lock or unlock dates.</li>
+    </ul>
+  </div>
+
+  <div class="section-h">Red error text (from the backend, shown word for word)</div>
+  <div class="howto"><ul>
+    <li>Saving into a locked range: <span class="st-red">Pay from 2026-11-01 to 2026-11-05 is locked. Unlock it first, then save.</span></li>
+    <li>New lock overlaps: <span class="st-red">2026-11-01 to 2026-11-05 is already locked. Pick dates that don't overlap.</span></li>
+    <li>Dates: <span class="st-red">Use a date like 2026-11-16 for 'from'.</span> (or 'to') · <span class="st-red">'To' can't be before 'from'.</span></li>
+    <li>Amounts: <span class="st-red">Enter an amount.</span> · <span class="st-red">Enter an amount like 230 or 66.50.</span> · <span class="st-red">Enter an amount from 0 to 100000, at most two decimals.</span></li>
+    <li>Price for picked people with nobody ticked: <span class="st-red">Pick at least one person.</span></li>
+    <li>Same price twice: <span class="st-red">Antelope Canyon already has a price for everyone starting 2026-11-01. Change that one instead.</span> (or "for Paul Rivera Jr") · <span class="st-red">Long day already has an amount starting 2026-11-01. Change that one instead.</span> (the backend's exact words for a per-person amount come with contract v3)</li>
+    <li>New extra without a name: <span class="st-red">Type a name for the extra, like Long day.</span></li>
+    <li>Only if two people change the page at once (the page normally prevents these): <span class="st-red">Tips are only for private tours.</span> · <span class="st-red">ANT relay is not used on this tour.</span> · <span class="st-red">That extra isn't available on this date.</span> · <span class="st-red">Price not found.</span> / Extra / Run / Lock / Tour not found · <span class="st-red">Person not found in HR.</span> · <span class="st-red">Could not reach the database. Try again.</span></li>
+    <li>Page only (not from the backend): <span class="st-red">Save or discard your changes first.</span> (Lock dates while changes are not saved) · <span class="st-red">Type the tour name as it is on Dispatch.</span> (Type a tour name… left empty)</li>
+  </ul></div>
+
+  <div class="section-h">Team page · Payroll access (题 2)</div>
+  <div class="ctl" role="group" aria-label="Team option"><span><b>题 2 写法</b><span class="seg" id="c-team"><button aria-pressed="true" data-v="A">A · One Payroll row</button><button aria-pressed="false" data-v="B">B · Two rows</button></span></span></div>
+  <div class="two" id="team"></div>
+
+  <div class="section-h">Dispatch · Private Tour guide</div>
+  <div class="noteblk">已核：ops Dispatch 的 Private Tour 车卡本来就有 Guide 下拉（Driver Guide / 名单 / 手填），和 bus tour 一样，没有藏，Dispatch 不用改。<b>改了（11-14）</b>：手填的导游名字在 Payroll 上照样算钱，名字后标 <b>Not in HR</b>，提醒以后在 HR 补资料；同一个人手打两种写法会算成两个人，所以能从名单里选还是从名单选。</div>
+
+  <div class="section-h">问题（给 Annie）</div>
+  <div class="qs">
+    <div class="q"><h3>题 5 · 价格表怎么排（Pay rates › Prices）</h3>
+      现在：后端只有一张价格表，一行 = 团 + From + To（空 = 一直用）+ Applies to（Everyone 或选定的人，可以多选，手打名字的导游也能选）+ Guide / Driver + Guide 两种费用 + ANT relay（这个团能不能勾 ANT relay）。新加：白键「+ Add price」打开一行表单，填好按灰绿「Add」（只加在页面上，淡黄底），已有的行有蓝色下划线字「Edit」「Remove」，改完都要按蓝「Save rates」才存。Tour 下拉最后一项「Type a tour name…」给 Dispatch 上手打团名的团（照团名对，不分大小写）。最上面「题 5 价格表」可切 A / B。
+      <ul>
+        <li><b>A 按团排成一张表（推荐）</b>：每个团一个灰色小标题，下面是这个团的几行：Default（一直用、对所有人）、Date range（有起止日、对所有人）、Picked people（对选定的人）。同一个团的几种价格放在一起，一眼看到这个团现在怎么算。还没有价格的团标题后面写琥珀字「No rate · no price yet」。</li>
+        <li><b>B 按种类分三段</b>：Default prices (no end) / Date-range prices for everyone / Prices for picked people，每行写团名。</li>
+      </ul>
+      碰到锁住日子的行（例如从 9/1 起一直用的默认价，后面只要有锁就碰到）不能改、不能删，「Edit / Remove」换成灰字「🔒 Locked」；要改以后的价格，就加一行从锁住的日子之后开始的新价格。表下面原文："Prices or extras that cover locked days can’t be changed or removed. To change a price from now on, add a new one starting after the locked days."
+      表上方说明原文："A run uses the newest price for that guide that covers the day; if none, the newest price for everyone. No end date = keeps going."
+    </div>
+    <div class="q"><h3>题 6 · 锁住的日子（已定，不用答）</h3>
+      后端已经按 A 写死：锁住的日子，Fee、Extras、Tips 都不能改；起止日碰到锁的价格、加购项金额也不能新加、改或删。页头一行原文："🔒 Locked in this period: Nov 1–5, 2026. Fees, extras and tips on these days can’t be changed." 要 B（小费、加购项还能改）得后端另改。
+    </div>
+    <div class="q"><h3>题 7 · 锁 / 解锁的样子</h3>
+      位置：Pay rates 下面一张卡片「Locked dates」。列表：Dates / Note / Locked by / 白键 Unlock（后端没有存「什么时候锁的」，所以没有这一列）。下面 From、To、Note（可不填，例 "Paid Nov 9"）+ 蓝键「Lock dates」（点了就直接存，照规矩蓝色）。一次最长锁一年，锁的日子不能重叠。卡片说明原文："Lock days after their pay is final. Locking or unlocking is saved right away."
+      <ul>
+        <li><b>A 锁和解锁都先出黄框确认（推荐）</b>。锁："Lock Nov 6–8, 2026? Fees, extras and tips on these days, and prices or extra amounts that cover them, can’t be changed until you unlock." 解锁："Unlock Oct 16–31, 2026? Pay on these days can be changed again." 黄框里蓝「Lock」/「Unlock」+ 白「Cancel」；成功绿字「Saved」。</li>
+        <li><b>B 不确认，点了直接锁 / 解锁。</b></li>
+      </ul>
+      有没存的改动时按 Lock dates ⇒ 红字 "Save or discard your changes first."（页面自己的提示）。
+    </div>
+    <div class="q"><h3>题 11（新）· 每趟 Fee 怎么改（第 9 版，你说 Edit 键太难看）</h3>
+      ops 里能直接改的格子有两种常用样子，最上面「题 11 改 Fee」可切：
+      <ul>
+        <li><b>A 照 Main manifest 的 Special Requirements 格（推荐）</b>：平常就是金额；鼠标移上去格子变淡蓝、光标变成打字的样子、提示 "Click to edit"；点一下变输入框，下面白色小键「Done」「Cancel」（按 Enter = Done，Esc = Cancel）。改过的金额后面橙色小标签「edited」（同 Main manifest 改过的格子），下面灰字 "Price $260.00 · Use the price"，Use the price 是蓝色下划线字（同 Main manifest 的 "Reset to Rezdy"）。没存的改动仍是淡黄底，按蓝「Save payroll changes」才存。Main manifest 是大家每天在用的页，最熟。</li>
+        <li><b>B 照 Farm out › Tour products 的价格格</b>：每趟 Fee 一直是一个输入框（跟这页的小费框一样），直接改；改过的同样有「edited」和 "Price $260.00 · Use the price"。不用多点一下，但整张表都是框，比较密。</li>
+      </ul>
+      两种都一样：锁住的日子、只读账号、没导游的趟只显示金额，不能点。价格表、Extras 表每行的「Edit / Remove」和 Locked dates 的「Unlock」改成蓝色下划线字，不再是白键。
+    </div>
+    <div class="q"><h3>题 8 · 每趟手改团费</h3>
+      后端定了：只改这趟的团费（Fee），Extras 和 Tips 照旧另外加；清掉就回到价格表。私人团也能手改（加在小费上），No rate 的那趟手改了就算钱、离开 Needs review。
+      样子（第 9 版）：展开某人后，每趟 Fee 格可以直接改，怎么改见题 11；改过的金额后面橙色小标签「edited」，下面灰字 "Price $260.00 · Use the price"（没有价格时写 "Price none"）。Needs review 里 No rate 那行的 Fee 格也能这样改，Next step 原文改成 "Add a rate under Pay rates, or type a fee for this run."。改动先淡黄底暂存，按蓝「Save payroll changes」才存。
+      <ul>
+        <li><b>A 照这样（推荐）。</b></li>
+        <li><b>B 明细里不能改</b>，只在 Needs review 里手改（平常的趟一律用价格表）。</li>
+      </ul>
+    </div>
+    <div class="q"><h3>题 9 · 改动记录要不要在页面上看得到</h3>
+      后端：价格、加购项、手改团费、勾加购项、小费、锁 / 解锁都记 action_log，有给页面读的接口（跟其他页面的改动记录同一套，分页）。最上面「题 9 改动记录」可切。
+      <ul>
+        <li><b>A 页面最下面一张可展开的卡片「Change history」（推荐）</b>：When / Who / What / Before / After，最新的在上面，先显示 5 条，白键「Show more」再看更早的。例：What "Kevin Tran · Nov 2 · Grand Canyon West Rim · fee"，Before "$260.00 (price)"，After "$300.00 (by hand)"。Payroll: View 也能看。</li>
+        <li><b>B 页面上不显示</b>，只在后端记着。</li>
+      </ul>
+    </div>
+    <div class="q"><h3>题 10 · Extras（加购项）的样子</h3>
+      后端定了：加购项不绑团。ANT relay 只能勾在价格写了 ANT relay 的团上；其他加购项（例 Long day）任何一趟都能勾，包括私人团。每个加购项的金额也有 From / To，改金额 = 从某天起新加一行。
+      第 8 版加：加购项金额也能对选定的人设（Annie 答「要」），规则跟价格一样——这个导游有自己的金额就用他的，没有就用对所有人的。
+      样子：Pay rates 里「Extras」一张表：Extra / Dates / Applies to / Amount / Can be ticked on（ANT relay 写 "Tours whose price has ANT relay = Yes"，其他写 "Any run"）。白键「+ Add extra」打开表单：Extra 下拉选「New extra…」（填名字）或已有加购项「— new amount」，再填 From、To、Amount、Applies to（Everyone 或勾选的人），按灰绿「Add」，最后按蓝「Save rates」。明细里每趟的 Extras 格列出这天能勾的加购项，打勾才付。
+      <ul>
+        <li><b>A 照这样（推荐）。</b>注意：有了 Long day 这类「任何一趟都能勾」的加购项，每一趟的 Extras 格都会出一个勾（样稿就是这样），表会长一点。</li>
+        <li><b>B 同上，但没勾的加购项收起来</b>，每趟只出一个小白键「+ Extra」，点了才列出能勾的。表短，但多点一下。</li>
+      </ul>
+    </div>
+    <div class="q"><h3>手机</h3>
+      照第 4 版题 4：表格在卡片里左右滑（甲）或改成卡片（乙）。价格、Extras、Locked dates、Change history 也是表格，手机上同样左右滑；加价格 / 加购项的表单在手机上竖着排；Lock dates 的三个框和键挤不下就换行。整页不左右晃。
+    </div>
+    <div class="q"><h3>名字统一（照后端和 CSV）</h3>
+      团费叫 Fee、加购项叫 Extras（第 6 版写的 Pay / Add-ons 不用了）。CSV 列照后端：Person, Date, Tour, Role, Fee, Fee changed by hand, Extras, Extras total, Tips, Total, Status, Day。
+    </div>
+    <div class="q"><h3>第 4 版的题 1–4 还要答（跟新方向不冲突）</h3>
+      题 1 Quote tips、题 2 Team 页权限、题 3 状态字样子、题 4 手机表格：照旧，原文在下面。题 2：后端两项是 Payroll: View / Payroll: Edit，只能给 Admin；Edit 现在包括改价格、加购项、手改团费、锁 / 解锁。
+    </div>
+    <div class="q"><h3>第 4 版改了什么（Annie：「排列得太乱了，把每一个人的明细做成带格子的表格」）</h3>
+      <ul>
+        <li>每个人展开后的明细：带格线的表格，每趟一行；列 Date / Tour / Role / Fee / ANT relay / Tips / Total / Status；金额右对齐；最后一行加粗「Total · 名字 · N runs」是这个人这一期的合计。</li>
+        <li>放进格子：Not in HR 那句是表里第一行（整行一格，灰底）；Private Tour 小费框在 Tips 格；ANT relay 勾和金额在 ANT relay 格；「Archived — can't be changed」在 Tour 格；Not completed 从日期下面挪到 Status 格（平常写灰字 Paid）。</li>
+        <li>整页别的表一起统一：Payroll by person 名单、Needs review、Pay rates 都加了表头底色和横竖格线。Needs review 原来「人名 + 团名」挤在一格、「问题 + 下一步」挤在一格，拆成 Person / Tour / Status / Next step 四列。</li>
+        <li>没改：页头、四格数字、Save 条、Pay rates 的 Effective date、CSV、颜色。</li>
+        <li>手机：新题 4。</li>
+      </ul>
+    </div>
+    <div class="q"><h3>第 3 版改了什么（跟后端 11-14）</h3>
+      <ul>
+        <li>你在后端说「手打名字的导游也要算进去的」：Not linked 这个状态删了。Dispatch 上手打名字的导游（没从 HR 名单选）照样算钱，按名字归成一个人（名字前后空格、大小写不同算同一人）。</li>
+        <li>这种人名字后面标「Not in HR」：Payroll by person 那一行、展开后顶上一句提示、Needs review 表、手机卡片；CSV 里写成「Jake (not in HR)」。</li>
+        <li>同一趟车手打的司机名 = 手打的导游名 ⇒ 算 Driver + Guide（样例：11/9 West Rim「Jimmy Vegas」）。</li>
+        <li>巴士团上手打的导游以前没进工资，后端修了，现在算（样例：11/5 Hoover Dam 的 Jake 现在在 Payroll by person 里）。</li>
+        <li>Needs review 只剩两种：No rate、No guide。How to use 改了两句（上面淡黄底的两条）。</li>
+      </ul>
+    </div>
+    <div class="q"><h3>已按设计图定下的（第 1 版的题 1、题 2 不用再答）</h3>
+      <ul>
+        <li>第 1 版题 1（按人排还是按日期排）：设计图是按人排（Payroll by person，点名字展开），就照这个做。</li>
+        <li>第 1 版题 2（改费率默认从哪天起）：设计图 Effective date 默认 11/01/2026 = 正在看的这一期第一天，就照这个做；日期可以改。</li>
+      </ul>
+    </div>
+    <div class="q"><h3>题 1 · 设计图里的「Quote tips: $200.00」要不要做</h3>
+      位置：Private Tour 那一趟的小费框下面（设计图在 Needs review 和 Kevin 展开那里都有一行灰字「Quote tips: $…」）。现在后端 Payroll 接口只有手填的小费（tips），没有「报价里的小费」这个数；订单 / Private Tour 报价里有没有单独的小费金额也要后端查。
+      <ul>
+        <li><b>A 先不做（推荐）</b>：小费框照样手填，下面不出这行字。等后端确认报价里有小费金额再加。</li>
+        <li><b>B 要做</b>：小费框下面显示报价里的小费当参考（不自动填）。要写进「需要后端」交 25：Payroll 每个 Private Tour run 带上报价小费金额；后端查不到就做不了。</li>
+      </ul>
+      样稿现在按 A 画（没有这行字）。
+    </div>
+    <div class="q"><h3>题 2 · Team 页两个权限勾的样子</h3>
+      页面：Settings › Team › 编辑某人 › Settings 那一组。后端新加两项 Payroll: View、Payroll: Edit，只有 Admin 账号能勾（Annie：「这个是admin以上的才是被勾选的对象」），给 staff / supervisor / partner 勾后端会拒（400）。现在 Team 页会把它们画成两行，各自 None / Full access。
+      <ul>
+        <li><b>A 合成一行「Payroll」（推荐）</b>：None / Read only / Read &amp; edit，跟上面「Human Resource (HR profiles)」一行同样写法。非 Admin 账号这一行灰掉，旁边灰标签「Admin only」，下面一句 "Only Admin accounts can be given Payroll."。</li>
+        <li><b>B 两行分开</b>：「Payroll: View」「Payroll: Edit」各一行 None / Full access，非 Admin 同样灰掉 + 同一句。</li>
+      </ul>
+      「Team page」那一节可切 A / B。
+    </div>
+    <div class="q"><h3>题 3 · 状态字的样子（① No rate / No guide / Not completed；② 新的 Not in HR）</h3>
+      页面：Payroll 页的 Needs review 表、展开后的日期格、Pay rates 表、手机卡片。设计图把这些画成小方框标签；我们的规矩（10-11）是计数、进度、状态不做成胶囊，免得像按钮。第 3 版去掉了 Not linked，加了 Not in HR。最上面「题 3 ①」「题 3 ②」可以切着看。
+      <ul>
+        <li><b>① No rate / No guide / Not completed</b>（要处理或要核对的：不进总数 / 当天还没 Completed）
+          <ul>
+            <li><b>A 照规矩用普通琥珀字（推荐）</b>：琥珀色加粗小字，没有框，跟「Needs review 3 runs」的「3 runs」一个样子。</li>
+            <li><b>B 照设计图用小标签，算规矩的例外</b>：淡黄底 + 琥珀框的小方块（Dispatch「Needs …」那种颜色）。</li>
+          </ul></li>
+        <li><b>② Not in HR</b>：它<b>不算状态</b>——这趟照样算钱、进总数，只是提醒以后去 HR 补这个人的资料。
+          <ul>
+            <li><b>甲 灰色小字（推荐）</b>：名字后面灰字「Not in HR」，比 ① 弱一级；琥珀只留给真要处理 / 核对的东西，staff 一眼分得清哪些不进总数。</li>
+            <li><b>乙 跟 ① 一样</b>：选 A 就是琥珀字，选 B 就是小标签，跟 No rate 等同样醒目。</li>
+          </ul></li>
+      </ul>
+      推荐 ① A + ② 甲。
+    </div>
+    <div class="q"><h3>题 4（新）· 手机上这些表格怎么放</h3>
+      页面：Payroll 页在手机上（屏宽 &lt; 640px）。第 4 版电脑上四张表都是带格子的表格：名单 6 列、每人明细 8 列、Needs review 8 列、Pay rates 5 列，手机屏放不下所有列。第 3 版手机上是卡片（每趟一张小卡）。不管选哪种，整页都不会左右晃。把最上面「宽度」切到 Phone、再切「题 4 手机」就能看到两种。
+      <ul>
+        <li><b>甲 照样是表格，表格在卡片里左右滑（推荐）</b>：跟电脑一样的格子和列，第一列（名字 / 日期 / 团名）钉在左边不动，其他列手指左右滑着看；表格上面一行小字 "Swipe the table sideways to see every column."。你要的是带格子的表格，手机上也一样，staff 对账时电脑、手机看到的是同一个样子。</li>
+        <li><b>乙 手机上改成卡片</b>（第 3 版的样子）：每人一张卡，点开每趟一张小卡，不用左右滑，但没有格子，就是你说「太乱」的那种排法。</li>
+      </ul>
+    </div>
+    <div class="q"><h3>和设计图不一样的地方（颜色以外）</h3>
+      <ul>
+        <li>页签用我们 HR 页现有的按钮（Profile / Schedule example / Working Record / Payroll），没用设计图顶上那条带下划线的导航，免得 HR 页四个标签长得不一样。</li>
+        <li>大标题「Payroll」用网站自己的字体（无衬线），不用设计图的衬线字。</li>
+        <li>期间旁边加了 ‹ › 换期（设计图没画换期的地方）。</li>
+        <li>「Needs review 3 runs」的「3 runs」用普通琥珀字，不做胶囊（规矩：计数不做成胶囊）。状态字的样子见题 3。</li>
+        <li>Save payroll changes / Save rates 是蓝色（提交键），有改动才亮；改过的格子淡黄底，旁边红字「Not saved yet · N changes」，存好绿字「Saved」。</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const $ = (s, r = document) => r.querySelector(s);
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  const money = (n) => "$" + Number(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const fmtDay = (ymd) => { const d = new Date(ymd + "T12:00:00"); return `${DOW[d.getDay()]}, ${MON[d.getMonth()]} ${d.getDate()}`; };
+  const fmtShort = (ymd) => { const d = new Date(ymd + "T12:00:00"); return `${MON[d.getMonth()]} ${d.getDate()}`; };
+  const fmtLong = (ymd) => fmtShort(ymd) + ", 2026";
+  const norm = (s) => String(s ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+  const TODAY = "2026-11-13";
+  const FAR = "9999-12-31";
+
+  const TOURS = ["Grand Canyon South Rim", "Antelope Canyon", "Bryce & Zion", "Grand Canyon West Rim", "Hoover Dam", "Valley of Fire Half Day"];
+  // v7 = backend contract v2: ONE price table. A row = tour + from + to (null = no end) + who (all / people) + fees + ANT relay.
+  let pid = 1;
+  const P_ = (tour, from, to, applies, people, g, dg, ant = false, custom = false) => ({ id: pid++, tour, custom, from, to, applies, people, g, dg, ant });
+  let prices = [
+    P_("Grand Canyon South Rim", "2026-09-01", null, "all", [], 230, 250),
+    P_("Antelope Canyon", "2026-09-01", null, "all", [], 230, 280, true),
+    P_("Bryce & Zion", "2026-09-01", null, "all", [], 230, 250),
+    P_("Grand Canyon West Rim", "2026-09-01", null, "all", [], 200, 260),
+    P_("Hoover Dam", "2026-09-01", null, "all", [], 120, 120),
+    P_("Grand Canyon South Rim", "2026-11-08", "2026-11-10", "all", [], 260, 280),
+    P_("Antelope Canyon", "2026-11-01", "2026-11-30", "people", ["Paul Rivera Jr"], 240, 300, true),
+    P_("Valley of Fire Half Day", "2026-11-12", null, "all", [], 110, 130),
+    P_("Lake Mead Sunset", "2026-11-06", null, "all", [], 150, 180, false, true),
+  ];
+  // Extras: amount rows with from / to. ANT relay only on tours whose price row has ANT relay; other extras on any run.
+  let xid = 1;
+  let extras = [
+    { id: xid++, code: "ant_relay", name: "ANT relay", from: "2026-09-01", to: null, amount: 66, applies: "all", people: [] },
+    { id: xid++, code: "long_day", name: "Long day", from: "2026-11-01", to: null, amount: 50, applies: "all", people: [] },
+    { id: xid++, code: "ant_relay", name: "ANT relay", from: "2026-11-01", to: "2026-11-30", amount: 80, applies: "people", people: ["Paul Rivera Jr"] },
+  ];
+  let lid = 1;
+  let locks = [{ id: lid++, from: "2026-10-16", to: "2026-10-31", note: "Paid Nov 2", by: "annie" }, { id: lid++, from: "2026-11-01", to: "2026-11-05", note: "Paid Nov 6", by: "annie" }];
+  // Change history = GET /api/payroll/action-log (G203 shape: at, by, what, from, to; paged).
+  let hist = [
+    { at: "Nov 16, 3:12 PM", by: "annie", what: "Locked Nov 1–5, 2026", from: "", to: "Note: Paid Nov 6" },
+    { at: "Nov 16, 3:10 PM", by: "annie", what: "Locked Oct 16–31, 2026", from: "", to: "Note: Paid Nov 2" },
+    { at: "Nov 15, 4:02 PM", by: "linda", what: "Kevin Tran · Nov 2 · Grand Canyon West Rim · fee", from: "$260.00 (price)", to: "$300.00 (by hand)" },
+    { at: "Nov 15, 9:40 AM", by: "linda", what: "New extra: Long day", from: "", to: "$50.00 from Nov 1, 2026" },
+    { at: "Nov 14, 10:20 AM", by: "linda", what: "New price: Antelope Canyon, Nov 1–30, 2026, Paul Rivera Jr", from: "", to: "Guide $240.00 · Driver + Guide $300.00 · ANT relay" },
+    { at: "Nov 14, 10:05 AM", by: "annie", what: "New price: Grand Canyon South Rim, Nov 8–10, 2026, everyone", from: "", to: "Guide $260.00 · Driver + Guide $280.00" },
+    { at: "Nov 13, 5:30 PM", by: "annie", what: "New price: Valley of Fire Half Day, from Nov 12, 2026, everyone", from: "", to: "Guide $110.00 · Driver + Guide $130.00" },
+  ];
+  const inR = (d, a, b) => d >= a && d <= (b || FAR);
+  const isLocked = (d) => locks.some((l) => inR(d, l.from, l.to));
+  const lockOf = (from, to) => locks.find((l) => from <= l.to && (to || FAR) >= l.from);
+  const rangeName = (a, b) => (a.slice(0, 7) === b.slice(0, 7) ? `${fmtShort(a)}–${new Date(b + "T12:00:00").getDate()}, 2026` : `${fmtShort(a)} – ${fmtShort(b)}, 2026`);
+  const datesOf = (r) => (r.to ? rangeName(r.from, r.to) : `From ${fmtLong(r.from)} · no end`);
+  const newest = (arr) => [...arr].sort((a, b) => (a.from < b.from ? 1 : a.from > b.from ? -1 : b.id - a.id))[0] || null;
+  const lockSentence = (l) => `Pay from ${l.from} to ${l.to} is locked. Unlock it first, then save.`;
+
+  let nid = 1;
+  // inHr: false = guide name typed by hand on Dispatch (guide_in_hr: false). Paid like everyone else.
+  const R = (date, tour, guide, driver, extra = {}) => ({ id: nid++, date, tour, guide, driver, shift: tour === "Private Tour" ? "private_tour" : "bus_tour", ex: {}, fee: null, tips: null, inHr: true, archived: false, ...extra });
+  const PERIODS = {
+    "2026-10-16": { from: "2026-10-16", to: "2026-10-31", through: "2026-10-31", runs: [
+      R("2026-10-17", "Antelope Canyon", "Paul Rivera Jr", "Paul Rivera Jr", { ex: { ant_relay: true } }),
+      R("2026-10-18", "Grand Canyon South Rim", "Maria Lopez", "Tom Baker"),
+      R("2026-10-20", "Antelope Canyon", "Paul Rivera Jr", "Paul Rivera Jr", { ex: { ant_relay: true }, archived: true }),
+      R("2026-10-22", "Grand Canyon West Rim", "Kevin Tran", "Kevin Tran"),
+      R("2026-10-24", "Hoover Dam", "Jake", "Luis Ortega", { inHr: false, archived: true }),
+      R("2026-10-25", "Bryce & Zion", "Sophie Chen", "Tom Baker"),
+      R("2026-10-27", "Private Tour", "Sophie Chen", "Luis Ortega", { tips: 180 }),
+      R("2026-10-30", "Grand Canyon South Rim", "Maria Lopez", "Tom Baker"),
+    ] },
+    "2026-11-01": { from: "2026-11-01", to: "2026-11-15", through: TODAY, notCompleted: ["2026-11-12"], runs: [
+      R("2026-11-01", "Grand Canyon South Rim", "Maria Lopez", "Tom Baker"),
+      R("2026-11-02", "Grand Canyon South Rim", "Maria Lopez", "Tom Baker"),
+      R("2026-11-02", "Grand Canyon West Rim", "Kevin Tran", "Kevin Tran", { fee: 300 }),
+      R("2026-11-03", "Antelope Canyon", "Paul Rivera Jr", "Paul Rivera Jr", { ex: { ant_relay: true } }),
+      R("2026-11-04", "Bryce & Zion", "Sophie Chen", "Tom Baker"),
+      R("2026-11-04", "Grand Canyon South Rim", "Maria Lopez", "Luis Ortega"),
+      R("2026-11-05", "Antelope Canyon", "Paul Rivera Jr", "Paul Rivera Jr", { ex: { ant_relay: true } }),
+      R("2026-11-05", "Hoover Dam", "Jake", "Luis Ortega", { inHr: false }),
+      R("2026-11-06", "Grand Canyon West Rim", "Kevin Tran", "Kevin Tran"),
+      R("2026-11-06", "Hoover Dam", "jake ", "Tom Baker", { inHr: false }),
+      R("2026-11-07", "Hoover Dam", "Kevin Tran", "Kevin Tran"),
+      R("2026-11-07", "Private Tour", "Kevin Tran", "Kevin Tran", { tips: 150 }),
+      R("2026-11-08", "Antelope Canyon", "Paul Rivera Jr", "Paul Rivera Jr"),
+      R("2026-11-08", "Bryce & Zion", "Sophie Chen", "Tom Baker"),
+      R("2026-11-09", "Antelope Canyon", "Daniel Kim", "Luis Ortega"),
+      R("2026-11-09", "Grand Canyon South Rim", "Maria Lopez", "Tom Baker"),
+      R("2026-11-09", "Grand Canyon West Rim", "Jimmy Vegas", "jimmy vegas", { inHr: false }),
+      R("2026-11-10", "Private Tour", null, "Luis Ortega", { tips: 200 }),
+      R("2026-11-10", "Grand Canyon West Rim", "Kevin Tran", "Kevin Tran", { ex: { long_day: true } }),
+      R("2026-11-11", "Antelope Canyon", "Paul Rivera Jr", "Paul Rivera Jr", { ex: { ant_relay: true } }),
+      R("2026-11-11", "Valley of Fire Half Day", "Maria Lopez", "Tom Baker"),
+      R("2026-11-12", "Antelope Canyon", "Paul Rivera Jr", "Paul Rivera Jr"),
+      R("2026-11-12", "Bryce & Zion", "Sophie Chen", "Tom Baker"),
+      R("2026-11-12", "Valley of Fire Half Day", "Jake", "Luis Ortega", { inHr: false }),
+      R("2026-11-13", "Grand Canyon South Rim", "Maria Lopez", "Tom Baker"),
+      R("2026-11-13", "Private Tour", "Sophie Chen", "Luis Ortega"),
+      R("2026-11-13", "Lake Mead Sunset", "Daniel Kim", "Tom Baker"),
+    ] },
+    "2026-11-16": { from: "2026-11-16", to: "2026-11-30", through: null, runs: [] },
+  };
+  const ORDER = Object.keys(PERIODS);
+  // Person key: HR people by hr_id (here: name), typed names by trimmed, any-case name.
+  const keyOf = (run) => (run.inHr ? "hr:" + run.guide : "typed:" + norm(run.guide));
+
+  const S = { width: "desktop", perm: "edit", team: "A", st: "A", nih: "grey", pm: "table", period: "2026-11-01", open: new Set(["hr:Kevin Tran", "typed:jake"]), ratesOpen: true,
+    hs: "show", pv: "tour", fe: "click", feVal: "", pf: null, pfErr: null, priceDraft: [], priceEdits: {}, priceGone: [], xf: null, xfErr: null, extraDraft: [], extraGone: [],
+    lockForm: { from: "2026-11-06", to: "2026-11-08", note: "" }, lockConfirm: null, lockMsg: null, lockErr: null, editing: null, histOpen: false, histAll: false,
+    draft: {}, runStatus: null, runErr: null, rateDraft: {}, antDraft: null, rateFrom: null, rateStatus: null, rateErr: null, guard: null };
+
+  const allRuns = () => PERIODS[S.period].runs;
+  // Contract: newest price for THIS guide covering the date; else newest price for everyone covering it. Newest = latest from.
+  function priceFor(run) {
+    const name = norm(run.guide);
+    const cov = prices.filter((p) => norm(p.tour) === norm(run.tour) && inR(run.date, p.from, p.to));
+    const mine = newest(cov.filter((p) => p.applies === "people" && p.people.some((n) => norm(n) === name)));
+    if (mine) return { p: mine, src: `Price for ${mine.people.length === 1 ? mine.people[0] : "picked people"}${mine.to ? ", " + rangeName(mine.from, mine.to) : ""}` };
+    const all = newest(cov.filter((p) => p.applies === "all"));
+    if (all) return { p: all, src: all.to ? `Date-range price, ${rangeName(all.from, all.to)}` : "" };
+    return null;
+  }
+  function extrasAllowed(run, pr) {
+    const codes = [...new Set(extras.map((x) => x.code))];
+    // v8: same rule as prices — newest amount for this guide covering the day; else newest amount for everyone.
+    const name = norm(run.guide);
+    return codes.map((code) => { const cov = extras.filter((x) => x.code === code && inR(run.date, x.from, x.to)); return newest(cov.filter((x) => x.applies === "people" && x.people.some((n) => norm(n) === name))) || newest(cov.filter((x) => x.applies === "all")); }).filter(Boolean)
+      .filter((x) => x.code !== "ant_relay" || (pr && pr.p.ant));
+  }
+  function computed(run) {
+    const d = S.draft[run.id] || {};
+    const ex = { ...run.ex, ...(d.ex || {}) };
+    const tips = d.tips !== undefined ? d.tips : run.tips;
+    const fo = d.fee !== undefined ? d.fee : run.fee;
+    const isPT = run.shift === "private_tour";
+    const pr = isPT ? null : priceFor(run);
+    const role = run.guide && run.driver && norm(run.guide) === norm(run.driver) ? "driver_guide" : "guide";
+    const rateFee = pr ? (role === "driver_guide" ? pr.p.dg : pr.p.g) : null;
+    const edited = fo !== null && fo !== "" && isFinite(Number(fo));
+    const fee = edited ? Number(fo) : rateFee ?? 0;
+    let status = "paid";
+    if (!run.guide) status = "no_guide";
+    else if (!isPT && rateFee === null && !edited) status = "no_rate";
+    const allowed = extrasAllowed(run, pr);
+    const exTotal = allowed.filter((x) => ex[x.code]).reduce((a, x) => a + x.amount, 0);
+    const tipsNum = tips === null || tips === "" || !isFinite(Number(tips)) ? 0 : Number(tips);
+    return { role, status, fee, rateFee, edited, isPT, src: pr ? pr.src : "", allowed, ex, exTotal, antAmt: exTotal, tips, tipsNum, total: fee + exTotal + tipsNum, fo,
+      chgAnt: !!d.ex && Object.keys(d.ex).some((k) => !!d.ex[k] !== !!run.ex[k]),
+      chgTips: d.tips !== undefined && String(d.tips ?? "") !== String(run.tips ?? ""),
+      chgPay: d.fee !== undefined && String(d.fee ?? "") !== String(run.fee ?? "") };
+  }
+  const dirtyRuns = () => Object.keys(S.draft).filter((id) => { const c = computed(allRuns().find((r) => r.id === +id)); return c.chgAnt || c.chgTips || c.chgPay; });
+  const rateDirtyCount = () => S.priceDraft.length + Object.keys(S.priceEdits).length + S.priceGone.length + S.extraDraft.length + S.extraGone.length;
+
+  const ROLE = { guide: "Guide", driver_guide: "Driver + Guide" };
+  const STATUS = { no_rate: ["No rate", "Add a rate under Pay rates, or type a fee for this run."], no_guide: ["No guide", "Assign a guide in Dispatch to pay the tips."] };
+  const flag = (text, late) => (S.st === "A" ? `<span class="flag">${text}</span>` : `<span class="tag${late ? " late" : ""}">${text}</span>`);
+  const nihMark = () => (S.nih === "grey" ? `<span class="nih">Not in HR</span>` : `<span class="nihwrap">${flag("Not in HR")}</span>`);
+  const nameOf = (name, inHr) => `${esc(name)}${inHr ? "" : nihMark()}`;
+  const nihNote = (name) => `Not in HR: ${esc(name)} was typed by hand on Dispatch. Add this person in Human Resource so their details are on file.`;
+  const canEdit = () => S.perm === "edit";
+  // 题 6: A = a locked day is read-only everywhere; B = pay rates and per-run pay locked, tips / add-ons still editable.
+  const tipsLocked = (run) => isLocked(run.date); // 题 6 decided: a locked day is read-only (backend refuses fee / extras / tips).
+  const isNC = (date) => (PERIODS[S.period].notCompleted || []).includes(date);
+  const dateCell = (date) => `<span class="dt">${esc(fmtDay(date))}</span>${isLocked(date) ? `<span class="lock">🔒 Locked</span>` : ""}`;
+  // v4: status has its own column. Paid runs: "Paid", plus "Not completed" when that day was not marked Completed on Dispatch.
+  const paidStatus = (run) => `<span class="ro">Paid</span>${isNC(run.date) ? `<br>${flag("Not completed", true)}` : ""}`;
+  const roleOf = (run, c) => run.shift === "private_tour" ? "Private Tour guide" : ROLE[c.role];
+
+  function antCell(run, c) {
+    if (!c.allowed.length) return `<span class="ro">—</span>`;
+    const ro = !canEdit() || run.archived || isLocked(run.date);
+    const out = c.allowed.map((x) => {
+      const on = !!c.ex[x.code];
+      if (ro) return on ? `<div>${esc(x.name)} ${money(x.amount)}</div>` : "";
+      return `<div><label class="ck"><input type="checkbox" data-ex="${run.id}|${x.code}" ${on ? "checked" : ""} aria-label="${esc(x.name)} ${esc(fmtShort(run.date))}">${esc(x.name)} ${on ? money(x.amount) : `<span class="ro">${money(x.amount)}</span>`}</label></div>`;
+    }).join("");
+    return out || `<span class="ro">—</span>`;
+  }
+  // v9 题 11: A "click" = Main manifest Special Requirements (components/dispatch-manifest/manifest-view.tsx ~1942–2080): click the cell, edit, Done / Cancel;
+  // B "box" = always an input box (Farm out › Tour products price, components/farm-out/tour-products.tsx ~423; this page's Tips box).
+  function feeCell(run, c) {
+    const ro = !canEdit() || run.archived || isLocked(run.date) || !run.guide;
+    const amt = c.edited || c.rateFee !== null ? money(c.fee) : `<span class="ro">—</span>`;
+    const pill = c.edited ? `<span class="edpill">edited</span>` : "";
+    const sub = c.edited ? `<span class="src">Price ${c.rateFee === null ? "none" : money(c.rateFee)}${ro ? "" : ` · <button class="lnk" data-act="reset-fee" data-id="${run.id}">Use the price</button>`}</span>` : c.src ? `<span class="src">${esc(c.src)}</span>` : "";
+    if (ro) return amt + pill + sub;
+    const cur = c.edited ? Number(c.fo).toFixed(2) : c.rateFee !== null ? c.rateFee.toFixed(2) : "";
+    if (S.fe === "box") return `<input class="money" inputmode="decimal" data-fee="${run.id}" value="${esc(cur)}" placeholder="0.00" aria-label="Fee ${esc(fmtShort(run.date))}">${pill}${sub}`;
+    if (S.editing === run.id) return `<input class="money" inputmode="decimal" data-feeval value="${esc(S.feeVal)}" placeholder="0.00" aria-label="Fee ${esc(fmtShort(run.date))}" autofocus>
+      <div class="edrow"><button class="btn xs" data-act="fee-done" data-id="${run.id}">Done</button><button class="btn xs" data-act="fee-cancel">Cancel</button></div>`;
+    return `<span class="cellbtn" data-act="edit-fee" data-id="${run.id}" title="Click to edit">${amt}${pill}${sub}</span>`;
+  }
+  function tipsCell(run, c) {
+    if (run.shift !== "private_tour") return `<span class="ro">—</span>`;
+    if (!canEdit() || run.archived || tipsLocked(run)) return c.tips === null || c.tips === "" ? `<span class="ro">—</span>` : money(c.tipsNum);
+    const bad = c.tips !== null && c.tips !== "" && !(isFinite(Number(c.tips)) && Number(c.tips) >= 0);
+    const v = c.tips === null || c.tips === "" ? "" : (isFinite(Number(c.tips)) && S.draft[run.id]?.tips === undefined ? Number(c.tips).toFixed(2) : c.tips);
+    return `<span class="tipbox">$ <input class="money${bad ? " bad" : ""}" inputmode="decimal" placeholder="0.00" data-tips="${run.id}" id="tips-${run.id}" value="${esc(v)}" aria-label="Tips ${esc(fmtShort(run.date))}"></span>`;
+  }
+  const tourText = (run) => esc(run.tour) + (run.archived ? `<div class="ro" style="font-size:11.5px">Archived — can't be changed</div>` : "");
+
+  function detailRows(runs) {
+    return runs.map((run) => { const c = computed(run); return `<tr>
+      <td>${dateCell(run.date)}</td><td>${tourText(run)}</td><td>${roleOf(run, c)}</td>
+      <td class="num${c.chgPay ? " chg" : ""}${isLocked(run.date) ? " lk" : ""}">${feeCell(run, c)}</td>
+      <td class="${c.chgAnt ? "chg" : ""}">${antCell(run, c)}</td>
+      <td class="num${c.chgTips ? " chg" : ""}">${tipsCell(run, c)}</td>
+      <td class="num"><b>${money(c.total)}</b></td>
+      <td class="st">${paidStatus(run)}</td></tr>`; }).join("");
+  }
+  const DETAIL_HEAD = `<tr><th>Date</th><th>Tour</th><th>Role</th><th class="num">Fee</th><th>Extras</th><th class="num">Tips</th><th class="num">Total</th><th>Status</th></tr>`;
+  function detailTable(p) {
+    return `<table class="grid"><thead>${DETAIL_HEAD}</thead><tbody>
+      ${p.inHr ? "" : `<tr><td colspan="8" class="nihcell">${nihNote(p.name)}</td></tr>`}
+      ${detailRows(p.runs)}
+      <tr class="subt"><td colspan="3">Total · ${esc(p.name)} · ${p.runs.length} run${p.runs.length === 1 ? "" : "s"}</td><td class="num">${money(p.fee)}</td><td class="num">${dash(p.ant)}</td><td class="num">${dash(p.tips)}</td><td class="num">${money(p.total)}</td><td></td></tr>
+    </tbody></table>`;
+  }
+  function phoneRun(run, needs) {
+    const c = computed(run);
+    return `<div class="pr${c.chgAnt || c.chgTips ? " chg" : ""}">
+      <div><b>${esc(fmtDay(run.date))}</b>${isNC(run.date) ? ` ${flag("Not completed", true)}` : ""}<br>${needs ? `<b>${run.guide ? nameOf(run.guide.trim(), run.inHr) : "Unassigned"}</b> · ` : ""}${tourText(run)}</div>
+      <div class="r">${needs ? "" : `<b>${money(c.total)}</b><br>`}<span class="ro">${roleOf(run, c)}</span></div>
+      <div class="full"><span class="ro">Fee ${c.edited || c.rateFee !== null ? money(c.fee) : "—"}${c.edited ? " · changed by hand" : ""}</span>
+        ${c.allowed.length ? `<span>Extras ${antCell(run, c)}</span>` : ""}
+        ${run.shift === "private_tour" ? `<span>Tips ${tipsCell(run, c)}</span>` : ""}</div>
+      ${needs ? `<div class="full">${flag(STATUS[c.status][0])}<span class="next" style="margin:0">${STATUS[c.status][1]}</span></div>` : ""}
+    </div>`;
+  }
+
+  function people() {
+    const map = new Map();
+    for (const run of allRuns()) {
+      const c = computed(run);
+      if (c.status !== "paid") continue;
+      const k = keyOf(run);
+      if (!map.has(k)) map.set(k, { key: k, name: run.guide.trim(), inHr: run.inHr, runs: [], fee: 0, ant: 0, tips: 0, total: 0 });
+      const p = map.get(k);
+      p.runs.push(run); p.fee += c.fee; p.ant += c.antAmt; p.tips += c.tipsNum; p.total += c.total;
+    }
+    return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
+  }
+  const dash = (n) => (n ? money(n) : "—");
+
+  function render() {
+    const P = PERIODS[S.period];
+    const idx = ORDER.indexOf(S.period);
+    const ppl = people();
+    const un = allRuns().filter((r) => computed(r).status !== "paid");
+    const sum = (k) => ppl.reduce((a, p) => a + p[k], 0);
+    const total = sum("total");
+    const nRuns = ppl.reduce((a, p) => a + p.runs.length, 0);
+    const nDirty = dirtyRuns().length;
+    const periodName = `${fmtShort(P.from)}–${new Date(P.to + "T12:00:00").getDate()}, 2026`;
+
+    const head = `<div class="pagehead"><div><h1>Payroll</h1>
+      <div class="line"><span class="pnav"><button class="btn" data-act="prev" ${idx === 0 ? "disabled" : ""} aria-label="Previous period">‹</button><button class="btn" data-act="next" ${idx === ORDER.length - 1 ? "disabled" : ""} aria-label="Next period">›</button></span>
+      <b>${esc(periodName)}</b><span>· ${!P.through ? "Not started yet" : P.through === P.to ? "Whole period counted" : `Counted through ${esc(fmtDay(P.through))}`}</span></div></div>
+      ${P.through ? `<button class="btn" data-act="export">↓ Export CSV</button>` : ""}</div>`;
+    const guard = S.guard ? `<div class="guard"><span>You have changes that are not saved. Save them before going to ${esc(S.guard.label)}?</span><button class="btn save" data-act="guard-save">Save</button><button class="btn" data-act="guard-discard">Discard</button><button class="btn" data-act="guard-stay">Stay</button></div>` : "";
+
+    let main = "";
+    if (!P.through) main = `<div class="card"><div class="empty">This period has not started yet. Runs show up here day by day from ${esc(fmtLong(P.from))}.</div></div>`;
+    else {
+      const tiles = `<div class="tiles"><div class="tile"><div class="k">Period total</div><div class="v">${money(total)}</div></div><div class="tile"><div class="k">People</div><div class="v">${ppl.length}</div></div><div class="tile"><div class="k">Counted runs</div><div class="v">${nRuns}</div></div><div class="tile"><div class="k">Needs review</div><div class="v${un.length ? " warn" : ""}">${un.length}</div></div></div>`;
+      const byPerson = `<div class="card"><div class="card-h"><span class="ttl">Payroll by person</span>${S.width === "desktop" ? `<span class="hint">Click a name to see the runs.</span>` : ""}</div>
+        <div class="tblnote tbl-desktop">Swipe the table sideways to see every column.</div>
+        <div class="tblwrap tbl-desktop" style="padding:12px 16px 0"><table class="grid"><thead><tr><th>Person</th><th class="num">Runs</th><th class="num">Fees</th><th class="num">Extras</th><th class="num">Tips</th><th class="num">Total</th></tr></thead><tbody>
+        ${ppl.map((p) => { const o = S.open.has(p.key); return `<tr class="person" data-person="${esc(p.key)}" tabindex="0" aria-expanded="${o}"><td><span class="caret">${o ? "▼" : "▶"}</span>${nameOf(p.name, p.inHr)}</td><td class="num">${p.runs.length}</td><td class="num">${money(p.fee)}</td><td class="num">${dash(p.ant)}</td><td class="num">${dash(p.tips)}</td><td class="num"><b>${money(p.total)}</b></td></tr>
+          ${o ? `<tr class="detail"><td colspan="6"><div class="tblwrap">${detailTable(p)}</div></td></tr>` : ""}`; }).join("")}
+        <tr class="total"><td>Period total</td><td class="num">${nRuns}</td><td class="num">${money(sum("fee"))}</td><td class="num">${money(sum("ant"))}</td><td class="num">${money(sum("tips"))}</td><td class="num">${money(total)}</td></tr>
+        </tbody></table></div><div style="height:12px" class="tbl-desktop"></div>
+        <div class="pcards">${ppl.map((p) => { const o = S.open.has(p.key); return `<div class="pc"><div class="ph" data-person="${esc(p.key)}" tabindex="0" aria-expanded="${o}"><span><span class="caret">${o ? "▼" : "▶"}</span><b>${nameOf(p.name, p.inHr)}</b> <span class="ro">· ${p.runs.length} runs</span></span><span class="num">${money(p.total)}</span></div>${o ? (p.inHr ? "" : `<div class="nihnote">${nihNote(p.name)}</div>`) + p.runs.map((r) => phoneRun(r, false)).join("") : ""}</div>`; }).join("")}
+          <div class="pc tot"><div class="ph"><b>Period total</b><span class="num">${money(total)}</span></div></div></div>
+        ${canEdit() ? `<div class="savebar"><span class="st-dim">Fees changed by hand, extras and Private Tour tips are saved together.</span><span class="grow"></span>
+          ${S.runErr ? `<span class="st-red">${esc(S.runErr)}</span>` : nDirty ? `<span class="st-red">Not saved yet · ${nDirty} change${nDirty === 1 ? "" : "s"}</span>` : S.runStatus === "saved" ? `<span class="st-green">Saved</span>` : S.runStatus === "saving" ? `<span class="st-dim">Saving…</span>` : ""}
+          ${nDirty ? `<button class="btn" data-act="discard-runs">Discard</button>` : ""}
+          <button class="btn save" data-act="save-runs" ${nDirty && S.runStatus !== "saving" ? "" : "disabled"}>Save payroll changes</button></div>` : ""}
+      </div>`;
+      const needs = un.length ? `<div class="card"><div class="card-h"><span class="ttl">Needs review <span class="cnt">${un.length} run${un.length === 1 ? "" : "s"}</span></span><span class="hint">Excluded from the period total until resolved.</span></div>
+        <div class="tblwrap tbl-desktop" style="padding:12px 16px"><table class="grid"><thead><tr><th>Date</th><th>Person</th><th>Tour</th><th>Role</th><th class="num">Fee</th><th class="num">Tips</th><th>Status</th><th>Next step</th></tr></thead><tbody>
+        ${un.map((run) => { const c = computed(run); return `<tr><td>${dateCell(run.date)}</td><td class="who"><b>${run.guide ? esc(run.guide.trim()) : "Unassigned"}</b>${run.guide && !run.inHr ? nihMark() : ""}</td><td>${esc(run.tour)}</td><td>${roleOf(run, c)}</td>
+          <td class="num${c.chgPay ? " chg" : ""}">${feeCell(run, c)}</td><td class="num${c.chgTips ? " chg" : ""}">${tipsCell(run, c)}</td>
+          <td class="st">${flag(STATUS[c.status][0])}${isNC(run.date) ? `<br>${flag("Not completed", true)}` : ""}</td><td><div class="next" style="margin:0">${STATUS[c.status][1]}</div></td></tr>`; }).join("")}
+        </tbody></table></div>
+        <div class="pcards" style="padding-top:10px">${un.map((r) => phoneRun(r, true)).join("")}</div></div>` : "";
+      main = tiles + byPerson + needs;
+    }
+
+    $("#stage").className = "stage" + (S.width === "phone" ? " phone" : "") + (S.pm === "cards" ? " pm-cards" : "");
+    $("#stage").innerHTML = `
+      <div class="tabs" role="tablist"><button class="btn" role="tab">Profile</button><button class="btn" role="tab">Schedule example</button><button class="btn" role="tab">Working Record</button><button class="btn dark" role="tab" aria-selected="true">Payroll</button></div>
+      ${head}${lockLine()}${guard}${main}<div id="export-msg"></div>${ratesCard()}${locksCard()}${histCard()}`;
+    renderCsv();
+  }
+
+  function renderCsv() {
+    const P = PERIODS[S.period];
+    $("#csv-name").textContent = `${P.from}-${P.to}`;
+    if (!P.through) { $("#csv").textContent = "(This period has not started yet — no CSV.)"; return; }
+    const q = (v) => (/[",]/.test(v) ? `"${String(v).replace(/"/g, '""')}"` : v);
+    const n2 = (n) => Number(n).toFixed(2);
+    const label = { paid: "Paid", no_rate: "No rate", no_guide: "No guide" };
+    const line = (who, run, c, hl) => {
+      const ticked = c.allowed.filter((x) => c.ex[x.code]);
+      const cells = [who, run.date, run.tour, roleOf(run, c), c.edited || c.rateFee !== null ? n2(c.fee) : "", c.edited ? "Yes" : "", ticked.map((x) => x.name).join("; "), c.exTotal ? n2(c.exTotal) : "", c.tips === null || c.tips === "" ? "" : n2(c.tipsNum), c.status === "paid" ? n2(c.total) : "", label[c.status], isNC(run.date) ? "Not completed" : "Completed"];
+      const t = esc(cells.map(q).join(","));
+      return hl ? `<span class="hl">${t}</span>` : t;
+    };
+    const out = ["Person,Date,Tour,Role,Fee,Fee changed by hand,Extras,Extras total,Tips,Total,Status,Day"];
+    for (const p of people()) {
+      const who = p.inHr ? p.name : `${p.name} (not in HR)`;
+      for (const r of p.runs) out.push(line(who, r, computed(r), !p.inHr));
+      out.push(esc([q(who), "Period total", "", "", "", "", "", "", "", n2(p.total), "", ""].join(",")));
+    }
+    for (const r of allRuns().filter((x) => computed(x).status !== "paid")) {
+      const who = !r.guide ? "Unassigned" : r.inHr ? r.guide.trim() : `${r.guide.trim()} (not in HR)`;
+      out.push(line(who, r, computed(r), r.guide && !r.inHr));
+    }
+    $("#csv").innerHTML = out.join("\n");
+  }
+
+  const kindOf = (p) => (p.applies === "people" ? "Picked people" : p.to ? "Date range" : "Default");
+  const guideNames = () => {
+    const m = new Map();
+    for (const P of Object.values(PERIODS)) for (const r of P.runs) if (r.guide) { const k = norm(r.guide); if (!m.has(k)) m.set(k, { name: r.guide.trim(), inHr: r.inHr }); }
+    return [...m.values()].sort((a, b) => a.name.localeCompare(b.name));
+  };
+  function ratesCard() {
+    const n = rateDirtyCount();
+    const rows = [...prices.map((p) => ({ ...(S.priceEdits[p.id] || p), saved: true, edited: !!S.priceEdits[p.id] })), ...S.priceDraft];
+    const act = (p) => {
+      if (!canEdit()) return "";
+      if (!p.saved) return `<button class="lnk" data-act="pd-undo" data-id="${p.id}">Remove</button>`;
+      if (lockOf(p.from, p.to)) return `<span class="lock" title="This price covers locked days">🔒 Locked</span>`;
+      const gone = S.priceGone.includes(p.id);
+      return `<span class="acts"><button class="lnk" data-act="pe" data-id="${p.id}">Edit</button><button class="lnk" data-act="pg" data-id="${p.id}">${gone ? "Keep" : "Remove"}</button></span>`;
+    };
+    const cls = (p) => (!p.saved || p.edited ? "pend" : S.priceGone.includes(p.id) ? "gone" : "");
+    const who = (p) => (p.applies === "all" ? "Everyone" : p.people.map((x) => esc(x)).join(", "));
+    const cells = (p) => `<td>${esc(datesOf(p))}</td><td>${who(p)}</td><td class="num">${money(p.g)}</td><td class="num">${money(p.dg)}</td><td>${p.ant ? "Yes" : "—"}</td><td>${act(p)}</td>`;
+    const tourCell = (p) => `${esc(p.tour)}${p.custom ? `<span class="src">Tour name typed on Dispatch</span>` : ""}`;
+    let table;
+    if (S.pv === "tour") {
+      const tours = [...TOURS, ...[...new Set(rows.filter((p) => p.custom).map((p) => p.tour))]];
+      const order = { Default: 0, "Date range": 1, "Picked people": 2 };
+      table = `<table class="grid"><thead><tr><th>Kind</th><th>Dates</th><th>Applies to</th><th class="num">Guide</th><th class="num">Driver + Guide</th><th>ANT relay</th><th></th></tr></thead><tbody>${tours.map((t) => {
+        const rs = rows.filter((p) => p.tour === t).sort((a, b) => order[kindOf(a)] - order[kindOf(b)] || (a.from < b.from ? -1 : 1));
+        const head = `<tr class="grp"><td colspan="7"><b>${esc(t)}</b>${rs.some((p) => p.custom) ? ` <span class="ro">· tour name typed on Dispatch</span>` : ""}${rs.length ? "" : ` ${flag("No rate")} <span class="ro">· no price yet</span>`}</td></tr>`;
+        return head + rs.map((p) => `<tr class="${cls(p)}"><td>${kindOf(p)}</td>${cells(p)}</tr>`).join("");
+      }).join("")}</tbody></table>`;
+    } else {
+      const sect = (k, title) => { const rs = rows.filter((p) => kindOf(p) === k); return `<tr class="grp"><td colspan="7"><b>${title}</b></td></tr>` + rs.map((p) => `<tr class="${cls(p)}"><td>${tourCell(p)}</td>${cells(p)}</tr>`).join(""); };
+      table = `<table class="grid"><thead><tr><th>Tour</th><th>Dates</th><th>Applies to</th><th class="num">Guide</th><th class="num">Driver + Guide</th><th>ANT relay</th><th></th></tr></thead><tbody>${sect("Default", "Default prices (no end)")}${sect("Date range", "Date-range prices for everyone")}${sect("Picked people", "Prices for picked people")}<tr class="grp"><td colspan="7"><b>Valley of Fire Half Day</b> has no price before Nov 12 — runs then show No rate.</td></tr></tbody></table>`;
+    }
+    const f0 = S.pf;
+    const allTours = [...TOURS, ...new Set(prices.filter((p) => p.custom).map((p) => p.tour))];
+    const pform = !canEdit() ? "" : f0 ? `<div class="formrow">
+        <label>Tour <select data-pf="tour" ${f0.id ? "disabled" : ""}>${allTours.map((t) => `<option${t === f0.tour ? " selected" : ""}>${esc(t)}</option>`).join("")}<option value="__typed"${f0.tour === "__typed" ? " selected" : ""}>Type a tour name…</option></select></label>
+        ${f0.tour === "__typed" ? `<label>Tour name (as typed on Dispatch) <input data-pf="typed" value="${esc(f0.typed)}" placeholder="Lake Mead Sunset"></label>` : ""}
+        <label>From <input type="date" data-pf="from" value="${esc(f0.from)}"></label>
+        <label>To (empty = no end) <input type="date" data-pf="to" value="${esc(f0.to)}"></label>
+        <label>Guide <input class="money" inputmode="decimal" data-pf="g" value="${esc(f0.g)}" placeholder="0.00"></label>
+        <label>Driver + Guide <input class="money" inputmode="decimal" data-pf="dg" value="${esc(f0.dg)}" placeholder="0.00"></label>
+        <label class="ck" style="flex-direction:row;align-self:center"><input type="checkbox" data-pfant ${f0.ant ? "checked" : ""}> ANT relay can be ticked</label>
+        <label style="flex-basis:100%">Applies to <span class="who-pick"><label class="ck"><input type="radio" name="pfap" data-pfap="all" ${f0.applies === "all" ? "checked" : ""}> Everyone</label><label class="ck"><input type="radio" name="pfap" data-pfap="people" ${f0.applies === "people" ? "checked" : ""}> Only these people:</label>
+          ${f0.applies === "people" ? guideNames().map((g) => `<label class="ck"><input type="checkbox" data-pfwho="${esc(g.name)}" ${f0.people.includes(g.name) ? "checked" : ""}> ${esc(g.name)}${g.inHr ? "" : nihMark()}</label>`).join("") : ""}</span></label>
+        <button class="btn add" data-act="pf-add">${f0.id ? "Update" : "Add"}</button><button class="btn" data-act="pf-close">Cancel</button>${S.pfErr ? `<span class="st-red">${esc(S.pfErr)}</span>` : ""}</div>`
+      : `<div style="padding:10px 16px 0"><button class="btn" data-act="pf-open">+ Add price</button></div>`;
+    // extras
+    const xrows = [...extras.map((x) => ({ ...x, saved: true })), ...S.extraDraft];
+    const xact = (x) => !canEdit() ? "" : !x.saved ? `<button class="lnk" data-act="xd-undo" data-id="${x.id}">Remove</button>` : lockOf(x.from, x.to) ? `<span class="lock">🔒 Locked</span>` : `<button class="lnk" data-act="xg" data-id="${x.id}">${S.extraGone.includes(x.id) ? "Keep" : "Remove"}</button>`;
+    const xtable = `<table class="grid"><thead><tr><th>Extra</th><th>Dates</th><th>Applies to</th><th class="num">Amount</th><th>Can be ticked on</th><th></th></tr></thead><tbody>${xrows.map((x) => `<tr class="${!x.saved ? "pend" : S.extraGone.includes(x.id) ? "gone" : ""}"><td>${esc(x.name)}</td><td>${esc(datesOf(x))}</td><td>${x.applies === "all" ? "Everyone" : x.people.map((n) => esc(n)).join(", ")}</td><td class="num">${money(x.amount)}</td><td>${x.code === "ant_relay" ? "Tours whose price has ANT relay = Yes" : "Any run"}</td><td>${xact(x)}</td></tr>`).join("")}</tbody></table>`;
+    const x0 = S.xf;
+    const xform = !canEdit() ? "" : x0 ? `<div class="formrow">
+        <label>Extra <select data-xf="code"><option value="__new"${x0.code === "__new" ? " selected" : ""}>New extra…</option>${[...new Map(extras.map((x) => [x.code, x.name])).entries()].map(([c, nm]) => `<option value="${c}"${x0.code === c ? " selected" : ""}>${esc(nm)} — new amount</option>`).join("")}</select></label>
+        ${x0.code === "__new" ? `<label>Name <input data-xf="name" value="${esc(x0.name)}" placeholder="Long day"></label>` : ""}
+        <label>From <input type="date" data-xf="from" value="${esc(x0.from)}"></label>
+        <label>To (empty = no end) <input type="date" data-xf="to" value="${esc(x0.to)}"></label>
+        <label>Amount <input class="money" inputmode="decimal" data-xf="amount" value="${esc(x0.amount)}" placeholder="0.00"></label>
+        <label style="flex-basis:100%">Applies to <span class="who-pick"><label class="ck"><input type="radio" name="xfap" data-xfap="all" ${x0.applies === "all" ? "checked" : ""}> Everyone</label><label class="ck"><input type="radio" name="xfap" data-xfap="people" ${x0.applies === "people" ? "checked" : ""}> Only these people:</label>
+          ${x0.applies === "people" ? guideNames().map((g) => `<label class="ck"><input type="checkbox" data-xfwho="${esc(g.name)}" ${x0.people.includes(g.name) ? "checked" : ""}> ${esc(g.name)}${g.inHr ? "" : nihMark()}</label>`).join("") : ""}</span></label>
+        <button class="btn add" data-act="xf-add">Add</button><button class="btn" data-act="xf-close">Cancel</button>${S.xfErr ? `<span class="st-red">${esc(S.xfErr)}</span>` : ""}</div>`
+      : `<div style="padding:10px 16px 0"><button class="btn" data-act="xf-open">+ Add extra</button></div>`;
+    const body = S.ratesOpen ? `
+      <div class="subh">Prices <span class="hint">A run uses the newest price for that guide that covers the day; if none, the newest price for everyone. No end date = keeps going.</span></div>
+      <div class="tblwrap" style="padding:8px 16px 0">${table}</div>${pform}
+      <div class="subh" style="margin-top:14px">Extras <span class="hint">Paid per ticked run. ANT relay only on tours whose price says ANT relay; other extras on any run. Like prices, an amount for that guide beats an amount for everyone.</span></div>
+      <div class="tblwrap" style="padding:8px 16px 0">${xtable}</div>${xform}
+      ${canEdit() ? `<div class="savebar"><span class="hint">Prices or extras that cover locked days can’t be changed or removed. To change a price from now on, add a new one starting after the locked days.</span><span class="grow"></span>
+        ${S.rateErr ? `<span class="st-red">${esc(S.rateErr)}</span>` : n ? `<span class="st-red">Not saved yet · ${n} change${n === 1 ? "" : "s"}</span>` : S.rateStatus === "saved" ? `<span class="st-green">Saved</span>` : S.rateStatus === "saving" ? `<span class="st-dim">Saving…</span>` : ""}
+        ${n ? `<button class="btn" data-act="discard-rates">Discard</button>` : ""}
+        <button class="btn save" data-act="save-rates" ${n ? "" : "disabled"}>Save rates</button></div>` : ""}` : "";
+    return `<div class="card"><div class="card-h"><button class="ttl" data-act="rates" aria-expanded="${S.ratesOpen}"><span class="caret">${S.ratesOpen ? "▼" : "▶"}</span>Pay rates <span class="sub">· Prices and extras</span></button></div>${body}</div>`;
+  }
+  function lockLine() {
+    const P = PERIODS[S.period];
+    const hit = locks.filter((l) => l.to >= P.from && l.from <= P.to);
+    if (!hit.length) return "";
+    return `<div class="lockline">🔒 Locked in this period: ${hit.map((l) => esc(rangeName(l.from < P.from ? P.from : l.from, l.to > P.to ? P.to : l.to))).join(", ")}. Fees, extras and tips on these days can’t be changed.</div>`;
+  }
+  function locksCard() {
+    const rows = locks.map((l) => `<tr><td>${esc(rangeName(l.from, l.to))}</td><td>${l.note ? esc(l.note) : `<span class="ro">—</span>`}</td><td>${esc(l.by)}</td><td>${canEdit() ? `<button class="lnk" data-act="unlock" data-id="${l.id}">Unlock</button>` : ""}</td></tr>`).join("");
+    const c = S.lockConfirm;
+    const conf = c ? `<div class="pconfirm"><span>${c.kind === "lock" ? `Lock ${esc(rangeName(c.from, c.to))}? Fees, extras and tips on these days, and prices or extra amounts that cover them, can’t be changed until you unlock.` : `Unlock ${esc(rangeName(c.from, c.to))}? Pay on these days can be changed again.`}</span><button class="btn save" data-act="lock-yes">${c.kind === "lock" ? "Lock" : "Unlock"}</button><button class="btn" data-act="lock-no">Cancel</button></div>` : "";
+    const form = canEdit() ? `<div class="savebar"><label style="display:inline-flex;gap:6px;align-items:center;font-size:13px">From <input type="date" class="date" data-lf="from" value="${esc(S.lockForm.from)}"></label><label style="display:inline-flex;gap:6px;align-items:center;font-size:13px">To <input type="date" class="date" data-lf="to" value="${esc(S.lockForm.to)}"></label><label style="display:inline-flex;gap:6px;align-items:center;font-size:13px">Note <input class="date" data-lf="note" value="${esc(S.lockForm.note)}" placeholder="Optional, like Paid Nov 9"></label><button class="btn save" data-act="lock">Lock dates</button><span class="grow"></span>${S.lockErr ? `<span class="st-red">${esc(S.lockErr)}</span>` : S.lockMsg ? `<span class="st-green">${esc(S.lockMsg)}</span>` : ""}</div>` : "";
+    return `<div class="card"><div class="card-h"><span class="ttl">Locked dates</span><span class="hint">Lock days after their pay is final. Locking or unlocking is saved right away.</span></div>
+      ${locks.length ? `<div class="tblwrap" style="padding:12px 16px 0"><table class="grid"><thead><tr><th>Dates</th><th>Note</th><th>Locked by</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>` : `<div class="empty">No dates are locked.</div>`}
+      ${conf}${form}</div>`;
+  }
+  function histCard() {
+    if (S.hs !== "show") return "";
+    const list = S.histAll ? hist : hist.slice(0, 5);
+    return `<div class="card"><div class="card-h"><button class="ttl" data-act="hist" aria-expanded="${S.histOpen}"><span class="caret">${S.histOpen ? "▼" : "▶"}</span>Change history <span class="sub">· prices, extras, fees, tips and locks</span></button></div>
+      ${S.histOpen ? `<div class="tblwrap" style="padding:12px 16px 4px"><table class="grid hist"><thead><tr><th>When</th><th>Who</th><th>What</th><th>Before</th><th>After</th></tr></thead><tbody>${list.map((h) => `<tr><td class="dt">${esc(h.at)}</td><td>${esc(h.by)}</td><td>${esc(h.what)}</td><td>${h.from ? esc(h.from) : `<span class="ro">—</span>`}</td><td>${h.to ? esc(h.to) : `<span class="ro">—</span>`}</td></tr>`).join("")}</tbody></table></div>
+        ${!S.histAll && hist.length > 5 ? `<div style="padding:4px 16px 14px"><button class="btn" data-act="hist-more">Show more</button></div>` : `<div style="height:10px"></div>`}` : ""}</div>`;
+  }
+  const nowStr = () => "Nov 16, 4:20 PM";
+  const logIt = (what, from, to) => hist.unshift({ at: nowStr(), by: "annie", what, from, to });
+  function renderTeam() {
+    const row = (label, opts, onIdx, disabled, note) => `<div class="arow"><div class="lbl">${label}${disabled ? ` <span class="lock">Admin only</span>` : ""}</div>
+      <div class="lvl" role="group" aria-label="${label} access">${opts.map((o, i) => `<button type="button" class="${i === 0 ? "none" : ""}${i === onIdx ? " on" : ""}" ${disabled && i !== 0 ? "disabled" : ""}>${o}</button>`).join("")}</div>
+      ${note ? `<p class="note">${note}</p>` : ""}</div>`;
+    const dlg = (who, type, admin) => {
+      const note = admin ? "" : "Only Admin accounts can be given Payroll.";
+      const pay = S.team === "A" ? row("Payroll", ["None", "Read only", "Read &amp; edit"], admin ? 2 : 0, !admin, note)
+        : row("Payroll: View", ["None", "Full access"], admin ? 1 : 0, !admin, note) + row("Payroll: Edit", ["None", "Full access"], admin ? 1 : 0, !admin, note);
+      return `<div class="dlg"><div class="dlg-h">Edit ${who} <span class="acct">${type}</span></div><div class="grp">▾ Settings</div>${row("Human Resource (HR profiles)", ["None", "Read only", "Read &amp; edit"], admin ? 2 : 1, false, "")}${pay}</div>`;
+    };
+    $("#team").innerHTML = dlg("Linda Park", "Admin", true) + dlg("Ricky Wu", "Staff", false);
+  }
+
+  function goPeriod(dir) {
+    const idx = ORDER.indexOf(S.period) + dir;
+    if (idx < 0 || idx >= ORDER.length) return;
+    if (dirtyRuns().length || rateDirtyCount()) { S.guard = { label: dir < 0 ? "the previous period" : "the next period", dir }; render(); return; }
+    S.period = ORDER[idx]; S.runStatus = null; S.rateStatus = null; S.rateFrom = null; S.editing = null; render();
+  }
+  function amountErr(v) {
+    const t = String(v ?? "").trim();
+    if (t === "") return "Enter an amount.";
+    if (!/^\d+(\.\d+)?$/.test(t)) return "Enter an amount like 230 or 66.50.";
+    if (Number(t) > 100000 || /\.\d{3,}$/.test(t)) return "Enter an amount from 0 to 100000, at most two decimals.";
+    return null;
+  }
+  function saveRuns(then) {
+    for (const id of dirtyRuns()) {
+      const d = S.draft[id];
+      if (d.tips !== undefined && d.tips !== "" && amountErr(d.tips)) { S.runErr = amountErr(d.tips); render(); return; }
+      if (d.fee !== undefined && d.fee !== null && d.fee !== "" && amountErr(d.fee)) { S.runErr = amountErr(d.fee); render(); return; }
+    }
+    S.runErr = null; S.runStatus = "saving"; render();
+    setTimeout(() => {
+      for (const id of Object.keys(S.draft)) {
+        const run = allRuns().find((r) => r.id === +id); const d = S.draft[id]; const c0 = computed({ ...run, fee: run.fee });
+        const label = `${run.guide ? run.guide.trim() : "Unassigned"} · ${fmtShort(run.date)} · ${run.tour}`;
+        if (d.fee !== undefined && String(d.fee ?? "") !== String(run.fee ?? "")) logIt(`${label} · fee`, run.fee === null ? "price" : money(run.fee) + " (by hand)", d.fee === null || d.fee === "" ? "price" : money(Number(d.fee)) + " (by hand)");
+        if (d.ex) for (const [k, v] of Object.entries(d.ex)) if (!!v !== !!run.ex[k]) logIt(`${label} · ${(extras.find((x) => x.code === k) || {}).name}`, run.ex[k] ? "ticked" : "not ticked", v ? "ticked" : "not ticked");
+        if (d.tips !== undefined && String(d.tips ?? "") !== String(run.tips ?? "")) logIt(`${label} · tips`, run.tips === null ? "" : money(run.tips), d.tips === "" ? "" : money(Number(d.tips)));
+        if (d.ex) run.ex = { ...run.ex, ...d.ex };
+        if (d.fee !== undefined) run.fee = d.fee === null || d.fee === "" ? null : Number(d.fee);
+        if (d.tips !== undefined) run.tips = d.tips === "" ? null : Number(d.tips);
+      }
+      S.draft = {}; S.editing = null; S.runStatus = "saved"; render(); then && then();
+    }, 600);
+  }
+  function saveRates(then) {
+    S.rateErr = null; S.rateStatus = "saving"; render();
+    setTimeout(() => {
+      const fees = (p) => `Guide ${money(p.g)} · Driver + Guide ${money(p.dg)}${p.ant ? " · ANT relay" : ""}`;
+      const desc = (p) => `${p.tour}, ${p.to ? rangeName(p.from, p.to) : "from " + fmtLong(p.from)}, ${p.applies === "all" ? "everyone" : p.people.join(", ")}`;
+      for (const p of S.priceDraft) { prices.push({ ...p, id: pid++, saved: undefined }); logIt(`New price: ${desc(p)}`, "", fees(p)); }
+      for (const [id, p] of Object.entries(S.priceEdits)) { const i = prices.findIndex((x) => x.id === +id); logIt(`Price changed: ${desc(prices[i])}`, fees(prices[i]), fees(p)); prices[i] = { ...p, id: +id }; }
+      for (const id of S.priceGone) { const p = prices.find((x) => x.id === id); prices = prices.filter((x) => x.id !== id); logIt(`Price removed: ${desc(p)}`, fees(p), ""); }
+      for (const x of S.extraDraft) { extras.push({ ...x, id: xid++, saved: undefined }); logIt(`${x.isNew ? "New extra" : "New amount"}: ${x.name}, ${x.applies === "all" ? "everyone" : x.people.join(", ")}`, "", `${money(x.amount)} ${x.to ? rangeName(x.from, x.to) : "from " + fmtLong(x.from)}`); }
+      for (const id of S.extraGone) { const x = extras.find((y) => y.id === id); extras = extras.filter((y) => y.id !== id); logIt(`Extra amount removed: ${x.name}`, money(x.amount), ""); }
+      S.priceDraft = []; S.priceEdits = {}; S.priceGone = []; S.extraDraft = []; S.extraGone = [];
+      S.rateStatus = "saved"; render(); then && then();
+    }, 600);
+  }
+
+  const stage = $("#stage");
+  const clearRateDrafts = () => { S.priceDraft = []; S.priceEdits = {}; S.priceGone = []; S.extraDraft = []; S.extraGone = []; S.pf = null; S.xf = null; S.rateErr = null; };
+  function checkPrice(f0) {
+    const tour = f0.tour === "__typed" ? f0.typed.trim() : f0.tour;
+    if (!tour) return { err: "Type the tour name as it is on Dispatch." };
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(f0.from)) return { err: "Use a date like 2026-11-16 for 'from'." };
+    if (f0.to && f0.to < f0.from) return { err: "'To' can't be before 'from'." };
+    const ae = amountErr(f0.g) || amountErr(f0.dg); if (ae) return { err: ae };
+    if (f0.applies === "people" && !f0.people.length) return { err: "Pick at least one person." };
+    const l = lockOf(f0.from, f0.to || null); if (l) return { err: lockSentence(l) };
+    const dup = [...prices, ...S.priceDraft].find((p) => p.id !== f0.id && norm(p.tour) === norm(tour) && p.from === f0.from && p.applies === f0.applies && (f0.applies === "all" || p.people.some((n) => f0.people.includes(n))));
+    if (dup) return { err: `${tour} already has a price for ${f0.applies === "all" ? "everyone" : dup.people.find((n) => f0.people.includes(n))} starting ${f0.from}. Change that one instead.` };
+    return { p: { id: f0.id || "d" + pid++, tour, custom: f0.tour === "__typed" || (prices.find((p) => p.tour === tour) || {}).custom || false, from: f0.from, to: f0.to || null, applies: f0.applies, people: f0.applies === "all" ? [] : [...f0.people], g: Number(f0.g), dg: Number(f0.dg), ant: !!f0.ant } };
+  }
+  stage.addEventListener("click", (e) => {
+    if (e.target.matches("input, select, option, label")) return;
+    const t = e.target.closest("[data-act],[data-person]");
+    if (!t) return;
+    if (t.dataset.person) { S.open.has(t.dataset.person) ? S.open.delete(t.dataset.person) : S.open.add(t.dataset.person); render(); return; }
+    const a = t.dataset.act, id = t.dataset.id;
+    if (a === "prev") goPeriod(-1);
+    else if (a === "next") goPeriod(1);
+    else if (a === "save-runs") saveRuns();
+    else if (a === "discard-runs") { S.draft = {}; S.runErr = null; S.editing = null; render(); }
+    else if (a === "save-rates") saveRates();
+    else if (a === "discard-rates") { clearRateDrafts(); render(); }
+    else if (a === "rates") { S.ratesOpen = !S.ratesOpen; render(); }
+    else if (a === "export") { const P = PERIODS[S.period]; $("#export-msg").innerHTML = `<div class="card"><div class="savebar"><span class="st-dim">(Preview) Would download guide-payroll-${P.from}-${P.to}.csv — see the CSV example below.</span></div></div>`; }
+    else if (a === "guard-stay") { S.guard = null; render(); }
+    else if (a === "guard-discard") { const d = S.guard.dir; S.guard = null; S.draft = {}; clearRateDrafts(); goPeriod(d); }
+    else if (a === "guard-save") { const d = S.guard.dir; S.guard = null; const fin = () => goPeriod(d); if (dirtyRuns().length) saveRuns(rateDirtyCount() ? () => saveRates(fin) : fin); else saveRates(fin); }
+    else if (a === "edit-fee") { const run = allRuns().find((r) => r.id === +id); const c = computed(run); S.feeVal = c.edited ? Number(c.fo).toFixed(2) : c.rateFee !== null ? c.rateFee.toFixed(2) : ""; S.editing = +id; render(); }
+    else if (a === "fee-cancel") { S.editing = null; render(); }
+    else if (a === "fee-done") {
+      const run = allRuns().find((r) => r.id === +id); const v = S.feeVal.trim(); const c = computed(run);
+      const backToPrice = v === "" || (!c.edited && c.rateFee !== null && Number(v) === c.rateFee);
+      const d = (S.draft[id] ||= {});
+      if (backToPrice) { if (run.fee === null) delete d.fee; else d.fee = null; } else d.fee = v;
+      S.editing = null; S.runStatus = null; S.runErr = null; render();
+    }
+    else if (a === "reset-fee") { (S.draft[id] ||= {}).fee = null; S.editing = null; S.runStatus = null; render(); }
+    else if (a === "pf-open") { S.pf = { tour: TOURS[0], typed: "", from: PERIODS[S.period].from, to: "", applies: "all", people: [], g: "", dg: "", ant: false }; S.pfErr = null; render(); }
+    else if (a === "pe") { const p = S.priceEdits[id] || prices.find((x) => x.id === +id); S.pf = { id: +id, tour: p.tour, typed: "", from: p.from, to: p.to || "", applies: p.applies, people: [...p.people], g: p.g.toFixed(2), dg: p.dg.toFixed(2), ant: p.ant }; S.pfErr = null; render(); }
+    else if (a === "pf-close") { S.pf = null; render(); }
+    else if (a === "pf-add") { const r = checkPrice(S.pf); if (r.err) { S.pfErr = r.err; render(); return; } if (S.pf.id) S.priceEdits[S.pf.id] = r.p; else S.priceDraft.push(r.p); S.pf = null; S.pfErr = null; S.rateStatus = null; render(); }
+    else if (a === "pd-undo") { S.priceDraft = S.priceDraft.filter((x) => String(x.id) !== id); render(); }
+    else if (a === "pg") { const n = +id; S.priceGone = S.priceGone.includes(n) ? S.priceGone.filter((x) => x !== n) : [...S.priceGone, n]; S.rateStatus = null; render(); }
+    else if (a === "xf-open") { S.xf = { code: "__new", name: "", from: PERIODS[S.period].from, to: "", amount: "", applies: "all", people: [] }; S.xfErr = null; render(); }
+    else if (a === "xf-close") { S.xf = null; render(); }
+    else if (a === "xf-add") {
+      const x = S.xf; const isNew = x.code === "__new"; const name = isNew ? x.name.trim() : extras.find((y) => y.code === x.code).name;
+      let err = null;
+      if (isNew && !name) err = "Type a name for the extra, like Long day.";
+      else if (!/^\d{4}-\d{2}-\d{2}$/.test(x.from)) err = "Use a date like 2026-11-16 for 'from'.";
+      else if (x.to && x.to < x.from) err = "'To' can't be before 'from'.";
+      else if (amountErr(x.amount)) err = amountErr(x.amount);
+      else if (x.applies === "people" && !x.people.length) err = "Pick at least one person.";
+      else if (lockOf(x.from, x.to || null)) err = lockSentence(lockOf(x.from, x.to || null));
+      else if (!isNew && [...extras, ...S.extraDraft].some((y) => y.code === x.code && y.from === x.from && y.applies === x.applies && (x.applies === "all" || y.people.some((n) => x.people.includes(n))))) err = `${name} already has an amount${x.applies === "all" ? "" : " for " + [...extras, ...S.extraDraft].find((y) => y.code === x.code && y.from === x.from && y.people.some((n) => x.people.includes(n))).people.find((n) => x.people.includes(n))} starting ${x.from}. Change that one instead.`;
+      if (err) { S.xfErr = err; render(); return; }
+      S.extraDraft.push({ id: "x" + xid++, code: isNew ? norm(name).replace(/[^a-z0-9]+/g, "_") : x.code, name, from: x.from, to: x.to || null, amount: Number(x.amount), applies: x.applies, people: x.applies === "all" ? [] : [...x.people], isNew });
+      S.xf = null; S.xfErr = null; S.rateStatus = null; render();
+    }
+    else if (a === "xd-undo") { S.extraDraft = S.extraDraft.filter((x) => String(x.id) !== id); render(); }
+    else if (a === "xg") { const n = +id; S.extraGone = S.extraGone.includes(n) ? S.extraGone.filter((x) => x !== n) : [...S.extraGone, n]; S.rateStatus = null; render(); }
+    else if (a === "lock") {
+      const { from, to } = S.lockForm; S.lockMsg = null;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(from)) { S.lockErr = "Use a date like 2026-11-16 for 'from'."; render(); return; }
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(to)) { S.lockErr = "Use a date like 2026-11-16 for 'to'."; render(); return; }
+      if (to < from) { S.lockErr = "'To' can't be before 'from'."; render(); return; }
+      const ov = lockOf(from, to); if (ov) { S.lockErr = `${ov.from} to ${ov.to} is already locked. Pick dates that don't overlap.`; render(); return; }
+      if (dirtyRuns().length || rateDirtyCount()) { S.lockErr = "Save or discard your changes first."; render(); return; }
+      S.lockErr = null; S.lockConfirm = { kind: "lock", from, to, note: S.lockForm.note.trim() }; render();
+    }
+    else if (a === "unlock") { const l = locks.find((x) => x.id === +id); S.lockMsg = null; S.lockErr = null; S.lockConfirm = { kind: "unlock", from: l.from, to: l.to, id: l.id }; render(); }
+    else if (a === "lock-no") { S.lockConfirm = null; render(); }
+    else if (a === "lock-yes") {
+      const c = S.lockConfirm; S.lockConfirm = null;
+      if (c.kind === "lock") { locks.push({ id: lid++, from: c.from, to: c.to, note: c.note, by: "annie" }); locks.sort((x, y) => (x.from < y.from ? -1 : 1)); logIt(`Locked ${rangeName(c.from, c.to)}`, "", c.note ? "Note: " + c.note : ""); S.lockForm = { from: "", to: "", note: "" }; }
+      else { locks = locks.filter((l) => l.id !== c.id); logIt(`Unlocked ${rangeName(c.from, c.to)}`, "", ""); }
+      S.lockMsg = "Saved"; render();
+    }
+    else if (a === "hist") { S.histOpen = !S.histOpen; render(); }
+    else if (a === "hist-more") { S.histAll = true; render(); }
+  });
+  stage.addEventListener("input", (e) => { if (e.target.dataset && e.target.dataset.feeval !== undefined) S.feeVal = e.target.value; });
+  stage.addEventListener("keydown", (e) => {
+    if (!(e.target.dataset && e.target.dataset.feeval !== undefined)) return;
+    if (e.key === "Enter") { e.preventDefault(); const b = stage.querySelector("[data-act=fee-done]"); if (b) b.click(); }
+    else if (e.key === "Escape") { S.editing = null; render(); }
+  });
+  stage.addEventListener("keydown", (e) => { if ((e.key === "Enter" || e.key === " ") && e.target.dataset && e.target.dataset.person) { e.preventDefault(); e.target.click(); } });
+  stage.addEventListener("change", (e) => {
+    const el = e.target;
+    if (el.dataset.ex) { const [rid, code] = el.dataset.ex.split("|"); ((S.draft[rid] ||= {}).ex ||= {})[code] = el.checked; S.runStatus = null; render(); }
+    else if (el.dataset.tips) { (S.draft[el.dataset.tips] ||= {}).tips = el.value.trim(); S.runStatus = null; S.runErr = null; render(); }
+    else if (el.dataset.feeval !== undefined) { S.feeVal = el.value; }
+    else if (el.dataset.fee) { (S.draft[el.dataset.fee] ||= {}).fee = el.value.trim(); S.editing = null; S.runStatus = null; S.runErr = null; render(); }
+    else if (el.dataset.pf) { S.pf[el.dataset.pf] = el.value; if (el.dataset.pf === "tour") render(); }
+    else if (el.dataset.pfant !== undefined) { S.pf.ant = el.checked; }
+    else if (el.dataset.pfap) { S.pf.applies = el.dataset.pfap; render(); }
+    else if (el.dataset.pfwho) { const nm = el.dataset.pfwho; S.pf.people = el.checked ? [...S.pf.people, nm] : S.pf.people.filter((x) => x !== nm); }
+    else if (el.dataset.xf) { S.xf[el.dataset.xf] = el.value; if (el.dataset.xf === "code") render(); }
+    else if (el.dataset.xfap) { S.xf.applies = el.dataset.xfap; render(); }
+    else if (el.dataset.xfwho) { const nm = el.dataset.xfwho; S.xf.people = el.checked ? [...S.xf.people, nm] : S.xf.people.filter((x) => x !== nm); }
+    else if (el.dataset.lf) { S.lockForm[el.dataset.lf] = el.value; }
+  });
+  const seg = (id, key, after) => $(id).addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; S[key] = b.dataset.v; $(id).querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", String(x === b))); after(); });
+  seg("#c-width", "width", render); seg("#c-perm", "perm", render); seg("#c-st", "st", render); seg("#c-nih", "nih", render); seg("#c-pm", "pm", render); seg("#c-pv", "pv", render); seg("#c-fe", "fe", render); seg("#c-hs", "hs", render); seg("#c-team", "team", renderTeam);
+  render(); renderTeam();
+})();
+</script>
