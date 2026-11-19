@@ -212,8 +212,11 @@ http.createServer(async (req, res) => {
 // mode：one（一处）/ hold（On Hold，一处）/ cancel（已取消、不在上面）/ 其他 = 404（旧后端 / 读不到）。
 function orderDetail132(on, mode) {
   const link = { date: "2026-10-10", tab: "tour", tab_label: "Tour confirmation", pill: "t:grand", pill_label: "Grand Canyon", row_keys: [`${on}|T1|2026-10-10`] };
-  if (mode === "one") return { order_number: on, status: "Confirmed", manifest_links: [link] };
-  if (mode === "hold") return { order_number: on, status: "On Hold", manifest_links: [link] };
-  if (mode === "cancel") return { order_number: on, status: "Cancelled", manifest_links: [] };
+  // 132 产品名：one = 一个产品；hold = 往返两个产品（+1 more）；long = 很长的名字（最多两行）；cancel = 没有产品名（标题只写单号）。
+  const one = { product: { code: "GCW", name: "Grand Canyon West Rim", item_count: 1 }, items_detail: [{ productName: "Grand Canyon West Rim" }] };
+  if (mode === "one") return { order_number: on, status: "Confirmed", manifest_links: [link], ...one };
+  if (mode === "hold") return { order_number: on, status: "On Hold", manifest_links: [link], product: { code: "SHL", name: "Zion Shuttle Outbound", item_count: 2 }, items_detail: [{ productName: "Zion Shuttle Outbound" }, { productName: "Zion Shuttle Return" }] };
+  if (mode === "long") return { order_number: on, status: "Confirmed", manifest_links: [link], product: { code: "LNG", name: "Las Vegas to Grand Canyon South Rim and Hoover Dam Deluxe Day Tour with Lunch and Hotel Pickup Included for All Guests", item_count: 1 }, items_detail: [] };
+  if (mode === "cancel") return { order_number: on, status: "Cancelled", manifest_links: [], product: { code: "", name: "", item_count: 0 } };
   return null;
 }

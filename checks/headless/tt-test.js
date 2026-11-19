@@ -370,8 +370,12 @@ async function run() {
       await sleep(400);
       return b0;
     };
+    const prod = `document.getElementById('conversation-title').querySelector('[data-conversation-product]')`;
     check("132 读不到订单详情（旧后端 / 404）：对话框没有 Main manifest 那一行，照常能用", !(await evaluate(`return !!${strip};`)) && (await evaluate(`return !!${dialog}.querySelector('textarea');`)));
+    check("132 读不到订单详情：标题只写 Order 单号，没有产品名", await evaluate(`return !${prod} && document.getElementById('conversation-title').textContent.trim() === 'Order T02';`));
     let b0 = await reopen("one");
+    await waitFor(prod, 10000);
+    check("132 产品名：标题「Order T02」同一行后面接产品名，浅白普通字，没有 +more，鼠标提示是全名", await evaluate(`const h = document.getElementById('conversation-title'); const p = ${prod}; const o = h.firstElementChild; return o.textContent === 'Order T02' && p.textContent === 'Grand Canyon West Rim' && Math.abs(p.getBoundingClientRect().top - o.getBoundingClientRect().top) < 6 && getComputedStyle(p).fontWeight === '400' && getComputedStyle(p).color === getComputedStyle(h.parentElement.querySelector('p')).color && !p.querySelector('[data-conversation-product-more]') && p.title === 'Grand Canyon West Rim';`), await evaluate(`return ${prod}?.outerHTML;`));
     check("132 打开对话框：读一次这单的订单详情（搜索栏同一个接口）", (await since(b0, (e) => e.path === "/api/operations/orders/T02")).length === 1);
     await waitFor(strip, 10000);
     check("132 标题正下方一行「Main manifest: Open in Main manifest →」", await evaluate(`const s = ${strip}; const head = document.getElementById('conversation-title').closest('div.flex'); return head.nextElementSibling === s && s.textContent.includes('Main manifest:') && s.querySelector('[data-open-in-manifest]').textContent.trim() === 'Open in Main manifest →';`));
@@ -380,8 +384,13 @@ async function run() {
     b0 = await reopen("hold");
     await waitFor(strip, 10000);
     check("132 On Hold：照给键但网址带 tick=0，旁边深黄字", await evaluate(`const s = ${strip}; const a = s.querySelector('[data-open-in-manifest]'); const h = s.querySelector('[data-manifest-hold]'); return new URL(a.href).searchParams.get('tick') === '0' && h.textContent.includes('On Hold — it will not be pre-ticked. Check Order List before sending.') && getComputedStyle(h).color === 'rgb(138, 90, 0)';`));
+    check("132 Q5 A 一单两个产品：写最早那个 + 灰字「+1 more」，鼠标提示列出全部产品名", await evaluate(`const p = ${prod}; const m = p.querySelector('[data-conversation-product-more]'); return p.firstElementChild.textContent === 'Zion Shuttle Outbound' && m && m.textContent === '+1 more' && getComputedStyle(m).color !== getComputedStyle(p).color && p.title === 'Zion Shuttle Outbound\\nZion Shuttle Return';`), await evaluate(`return ${prod}?.outerHTML;`));
+    b0 = await reopen("long");
+    await waitFor(prod, 10000);
+    check("132 Q6 B 名字太长：最多两行再「…」，鼠标提示是全名，单号不被挤", await evaluate(`const p = ${prod}; const n = p.firstElementChild; const cs = getComputedStyle(n); const lh = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.3; const h = n.getBoundingClientRect().height; const full = n.cloneNode(true); full.style.webkitLineClamp = 'unset'; full.style.display = 'block'; n.parentElement.appendChild(full); const fh = full.getBoundingClientRect().height; full.remove(); return cs.webkitLineClamp === '2' && h > lh * 1.5 && h < lh * 2.5 && fh > h + lh * 0.5 && p.title.startsWith('Las Vegas to Grand Canyon South Rim') && document.getElementById('conversation-title').firstElementChild.textContent === 'Order T02' && document.getElementById('conversation-title').firstElementChild.getBoundingClientRect().width > 50;`), await evaluate(`const n = ${prod}.firstElementChild; return JSON.stringify({ clamp: getComputedStyle(n).webkitLineClamp, lh: getComputedStyle(n).lineHeight, h: n.getBoundingClientRect().height, sh: n.scrollHeight, ch: n.clientHeight });`));
     b0 = await reopen("cancel");
     await waitFor(strip, 10000);
+    check("132 订单详情没有产品名：标题只写 Order 单号", await evaluate(`return !${prod};`));
     check("132 已取消：灰字 + Open Order List →（带单号、开新标签、蓝键）", await evaluate(`const s = ${strip}; const a = [...s.querySelectorAll('a')].find(x => x.textContent.includes('Open Order List')); return s.querySelector('[data-manifest-none]').textContent === 'Cancelled orders are not on Main manifest. Check Order List.' && new URL(a.href).pathname === '/orders' && new URL(a.href).searchParams.get('q') === 'T02' && a.target === '_blank' && getComputedStyle(a).backgroundColor === 'rgb(59, 130, 246)';`));
     await reopen(false);
   }
