@@ -4,7 +4,17 @@
 
 > 6d 交接（下面「2026-10-27 交接：前端主窗口 6d」那节）的后端需求已于 10/27 晚由 ad 转给家里后端主窗口 17。
 
-> **下一个主窗口：先读下面「2026-11-19」08 当天记录和「2026-11-18 深夜 收工交接：4d」，开工照 CLAUDE.md 开工必做第 4 条先列「Annie 提过没做完的」问她。**
+> **下一个主窗口：先读下面「2026-11-19 收工交接：08」和当天记录，开工照 CLAUDE.md 开工必做第 4 条先列「Annie 提过没做完的」问她。**
+
+## 2026-11-19 收工交接：前端主窗口 `前端主窗口-08`[895bc9 / 2d5e11]（公司电脑，14:30 下班）
+- **今天上 main（都已过检查，📌 等 Annie 线上验）**：第 1 件 No show 第 3 版 22228fe5；第 4 件选餐 第一段 + 第二段 G364 be402f1c；第 5 件 SMS 超字数 ce84ad75；第 7 件 132 产品名 + 蓝键 f878f9d1；第 19 件 G307 064e41f5；preview 链接所有人可见 5ca95915；Dispatch Driver / Guide 按键 ebb73273；G351 解析 dddc4039；Tickets 组头灰 + 两种看法 b19e8c69、默认 By order time 481389bf；G362 HR 三个到期日 e1927aeb；Live drivers WhatsApp、Bus map 勾选、TOUR ENDED、排班页提示字只给排班人（8abeab40）、Rezdy Internal notes 小 bug（见上面当天记录）。
+- **没做完（明天接）**：
+  - 第 11 件 TI 单 CHD0SNQKE：等 Annie 在主页 search bar 点「Open tracking →」看 11/17 那行在不在；不在就要截图、派窗口。
+  - My schedule（d6，task/my-schedule）：6 题 A + Dashboard 按键 + 统一配色，已「动手」；SHA / 进度见 d6 回报（下面补）。
+  - 全站 Save 类按钮统一蓝（f4 转，Annie 截图 HR Edit list「Save changes」黑色）：63 只做了第一轮 grep，推 **task/blue-save-sweep 5fbc4c4a**（worktree C:\Code\ops-wt-63d），交接在 notes/blue-save-sweep.md。新发现：components/ui/buttons.ts:3 共用主按钮 bg-stone-800（老页面 teams / users 等多半在用）；待核 tickets-send/legacy-ui.tsx:135、farm-out-button.tsx:39、hr/payroll-cards-shared.ts:118 C_BTN、send-log/legacy.tsx:15/19/39 + f4 那几条。下一步：按按钮文字再查一遍 → 逐条清单 → preview → 给 Annie → 「动手」后改。
+- **📌 等 Annie**：Dispatch Driver / Guide 键只改边框（Driver 蓝 #3b82f6 38%、Guide 绿 #22c55e 38%，样稿 v2 https://claude.ai/artifact/Aot6cngarzBxtDyGzQZKcc ，c1 没写代码）等「动手」。F1 Keep it 已撤销。
+- **等后端**：G361 DOR No show + case 管理（后端 3f 给 Annie 一份合并的开工确认，前端等）；G363 按车型算工资（前端等合同，Vehicles How to use 可能加一句）。
+- 今天新写进 CLAUDE.md 的规矩：3 个关键输入 + 数据从哪来到哪去；讲「现在」先查代码；新功能开关 / 勾选也先选后存。
 
 ## 2026-11-19（周四）前端主窗口 `npe-ops-frontend-08`[895bc9]（公司电脑；只分工和汇报，不写代码；14:30 下班）
 - 开工：origin/main 1ce0faa2。主窗口改 PROGRESS 用 worktree C:\Code\ops-wt-4d（detached，4d 让出）。资源：空闲内存 46.5 / 62 GB，node 0、chrome 39。
