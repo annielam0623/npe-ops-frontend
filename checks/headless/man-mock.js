@@ -51,6 +51,15 @@ const log = [];
 const cfm = new Map(); // row_key → {confirmation_no, updated_by, updated_at}
 // 150 Notes（G321 v171）：ctl.notes 开着 = 新后端，每行（所有标签、hidden 行）带 note / note_updated_by / note_updated_at。
 // 键 = 订单号|产品码|团期（往返 shuttle 两段同一条）。ctl.noteTwin：Bus 的 CHD1002 多一行回程（同单同产品同团期）。
+// 150 Relay / Tour（G321）：ctl.marks 开着 = 新后端，Bus 行带 relay_mark / bus_mark / relay_applicable。
+const mk = (value, label) => ({ value, label, by: "ZZ Test Driver", role: "relay", vehicle: "2101", at: "2026-11-17T13:00:00+00:00" });
+const MARKS = {
+  CHD1001: { relay_mark: mk("picked_up", "Picked up"), bus_mark: mk("boarded", "Boarded"), relay_applicable: true },
+  CHD1002: { relay_mark: mk("no_show", "No show"), bus_mark: mk("boarded", "Boarded"), relay_applicable: true },
+  CHD1003: { relay_mark: null, bus_mark: null, relay_applicable: true },
+  CHD1004: { relay_mark: mk("picked_up", "Picked up"), bus_mark: mk("no_show", "No show"), relay_applicable: false },
+};
+const marksOf = (r) => (ctl.marks && r.tab === "bus" ? (MARKS[r.order_number] ?? { relay_mark: null, bus_mark: null, relay_applicable: true }) : {});
 const notes = new Map(); // "order|code|date" → {note, updated_by, updated_at}
 const noteOf = (o, code, date) => {
   const n = notes.get(`${o}|${code}|${date}`);
@@ -385,7 +394,7 @@ function page(url) {
       if (ctl.msgNames?.[r.order_number] && "guest_name" in values) values.guest_name = ctl.msgNames[r.order_number];
       if (ctl.msgEmails && r.order_number in ctl.msgEmails) values.email = ctl.msgEmails[r.order_number];
       return { row_key: key, order_number: r.order_number, product_code: r.product_code, tour_date: date, lane_source: r.lane_source,
-        section: sectionsOn ? SECTION_OF[r.order_number] : null, values, ...noteOf(r.order_number, r.product_code, date),
+        section: sectionsOn ? SECTION_OF[r.order_number] : null, values, ...noteOf(r.order_number, r.product_code, date), ...marksOf(r),
         ...(ctl.waiver ? { waiver_link_required: !!r.waiver } : {}),
         ...(ctl.mismatch ? { cfm_mismatch: mismatchOf(r.order_number, key) } : {}),
         // 产品名标红：ctl.productDiffers = { 订单号: 大多数产品的主要文字 }；开着时每行都带两个键，不在里面的 false / null；没设 = 旧后端，不带。
