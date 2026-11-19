@@ -946,7 +946,7 @@ export function MorningTrackingView() {
                       ]
                     : []),
                   "Only guests who were sent the morning pickup text are listed here. A guest who was not sent it has no row, so you can't change their mark on this page. The guide's Bus mark for that guest still shows on Main manifest, the Bus Manifest page and the order page.",
-                  "When a driver or guide marks No show, that order moves to the top of Tracking in red, with ⚠️ Take action under the mark. Click it once you have dealt with it. Changing that row's Relay or Bus mark and saving also counts as dealt with. The red number on the tabs counts the No shows nobody has handled; a green dot means all are handled.",
+                  "When a driver or guide marks No show, that order moves to the top of Tracking in red, with ⚠️ Take action under the mark. Click it once you have dealt with it. Marking No show in the Bus column and saving also counts as dealt with. The red number on the tabs counts the No shows nobody has handled; a green dot means all are handled.",
                 ]
               : canLive
                 ? [
