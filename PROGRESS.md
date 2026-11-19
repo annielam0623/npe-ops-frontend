@@ -37,6 +37,8 @@
 - ✅ **preview 链接所有人可见上 main 5ca95915**（63；功能 9ec0360c，后端 G358；ow 24 / pm 33 / nav 39 / da 610 无失败）。📌 请 Annie 用员工账号验 Dispatch 页头两个链接能打开；Open shift ⚙ 只 SA。
 - ✅ **第 1 件 No show 第 3 版上 main 22228fe5**（c1；功能 f0a63520 + How to use 第 4 条 9dc718fd；mt 329 / orders 113 / mf 343 / man 511 / nav 39，tsc / eslint / build）。📌 请 Annie 线上验 Morning Tracking（只 ZZ Test 真写）。
 - ✅ **第 19 件 G307 上 main 064e41f5**（63；功能 dba20b9f + 同步修 abb493d5（effect 加 manifestVersion + RelayPanel onPulled）+ 检查 9924cb78；da 620 无失败、ow 24 / nav 39，tsc / eslint / build）。📌 请 Annie 线上验 Dispatch › Send：有 Need a look 单时顶上橙黄提醒 + View › 滚过去；处理 / ↻ Refresh 后数字跟着变；0 单不出。
+- **G361 DOR No show + No Show 处理流程**（后端 f4 转：Annie 对 ChatGPT 规格说「做」，跟清单第 2 件 DOR 加 No show 6 题合并，后端 3f [c2996b] 出合并方案，一次问 Annie「开工确认」）⇒ 前端不再单独问那 6 题；已把 6 题 + 来由 + DOR 前端文件发 3f，c1 只读整理 DOR 页现状发 3f。Annie 确认后前端再开工。
+- Dispatch 手机 ⚙ 补题：③ 选 B 时 B1 ⚙ 一起收 ⋯ / B2 ⚙ 留原位（推荐）。
 - **生命周期 ⑦ TOUR ENDED**：Annie 在后端窗口批（原话）「可以，团结束时间就这样做」，后端 a3 做 G360：live_by_day[] 加 tour_ended_at / tour_ended_where / last_stop_at / last_stop_where；显示「6:36 PM Treasure Island · last stop 6:57 PM Excalibur」。派 70 task/lifecycle-tour-ended 先 mock，等 G360 上 main + PASS 再合（跟 d6 lifecycle-lunch-pick 同文件，后合的解冲突）。
 - Dispatch 链接改按键样稿 https://claude.ai/artifact/8JrSpmyzU3YmnsAiGKRhvG（63，12 个入口清单 + 4 题）。Annie（原话，非动手）「只改driver和guide那个链接吧，把preview这个字拿掉就好」⇒ 只改 Driver / Guide 两个：按键、字「Driver page」「Guide page」；其余不动。📌 还问 ② 样式 A 同 Today 灰描边 ③ 手机 B 收进 ⋯ ④ ↗ A 留 + 动手。
 - **新：Dispatch 上面的链接都改成按键**（Annie 原话，非动手）「另外，把dispatch上面所有的链接都改成按键」⇒ 派 63（G307 之后，同文件）先列清所有链接再出 preview（范围 / 样式推荐同 Today 灰描边 / 手机 / 图标）。
