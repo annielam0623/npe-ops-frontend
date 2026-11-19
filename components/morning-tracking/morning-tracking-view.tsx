@@ -338,7 +338,7 @@ export function MorningTrackingView() {
   >(new Map());
   const unsaved = staged.size > 0;
   const UNSAVED_MSG =
-    "You have Relay / Bus marks you haven't saved. Leave without saving them?";
+    "You have No show marks you haven't saved. Leave without saving them?";
   useLeaveGuard(unsaved, UNSAVED_MSG);
 
   /** 有没存的改动时先问；答应丢掉就清空暂存。 */
@@ -935,17 +935,18 @@ export function MorningTrackingView() {
                   "Live drivers shows each driver's and guide's phone page side by side, read-only. Picked up, Boarded and No show show the time they were marked. It refreshes every 30 seconds. Tap Text, or a guest in Messages, to reply: SMS and email go together from the company number, and the driver sees your reply in their conversation. Tap WhatsApp next to Call to open a chat with the guest in your own WhatsApp. A guest has no WhatsApp button when their number looks wrong.",
                 ]
               : []),
-            // No show 改方向（Annie 2026-11-17「动手」，样稿第 2 版原文）：后端带了 Relay / Bus 分开的标记才写这几条。
+            // No show 改方向（Annie 2026-11-17「动手」）：后端带了 Relay / Bus 分开的标记才写这几条。
+            // 第 3 版（Annie 2026-11-19「no show那个同意推荐，动手」，样稿 SvK1sLi1jFefZN2naHa6y5 原文）：staff 只在 Bus 列点 No show。
             ...(canLive && showSplit
               ? [
                   'Relay shows what the relay driver marked: Picked up or No show. Bus shows what the guide marked when guests got on the bus: Boarded or No show. Guests who board at Treasure Island have no relay, so Relay shows "—". The Bus mark is the final word on a No show.',
                   ...(canTakeMorning
                     ? [
-                        "If a driver or guide didn't mark a guest, or marked the wrong thing, click the mark, pick the right one and click Save next to it. Your change shows on Main manifest, the Bus Manifest page and the order page. The driver's or guide's own mark is kept: hover over the mark to see it. Their own phone pages and Live drivers still show their original mark. To undo your change, pick Reset to driver/guide mark and click Save.",
+                        "If a guest did not show up, click No show in the Bus column so it turns red, then click Save next to it. To take it back, click the red No show and click Save. Your change shows on Main manifest, the Bus Manifest page and the order page. The guide's own mark is kept: hover over the mark to see it.",
                       ]
                     : []),
                   "Only guests who were sent the morning pickup text are listed here. A guest who was not sent it has no row, so you can't change their mark on this page. The guide's Bus mark for that guest still shows on Main manifest, the Bus Manifest page and the order page.",
-                  "When a driver or guide marks No show, that order moves to the top of Tracking in red, with ⚠️ Take action under the mark. Click it once you have dealt with it. Changing that row's Relay or Bus mark and saving also counts as dealt with. The red number on the tabs counts the No shows nobody has handled; a green dot means all are handled.",
+                  "When a driver or guide marks No show, that order moves to the top of Tracking in red, with ⚠️ Take action under the mark. Click it once you have dealt with it. Marking No show in the Bus column and saving also counts as dealt with. The red number on the tabs counts the No shows nobody has handled; a green dot means all are handled.",
                 ]
               : canLive
                 ? [

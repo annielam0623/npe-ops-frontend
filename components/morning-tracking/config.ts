@@ -296,12 +296,6 @@ export function markLabel(mark: TrackingMark): string {
   return mark.label?.trim() || markText(mark.value);
 }
 
-/** 每列能选的结果（Relay：Picked up / No show；Bus：Boarded / No show）。 */
-export const MARK_CHOICES: Record<TrackingMarkCol, TrackingMarkValue[]> = {
-  relay: ["picked_up", "no_show"],
-  bus: ["boarded", "no_show"],
-};
-
 /** staff 改过（显示的那份是 staff 写的）。 */
 export function isStaffMark(mark: TrackingMark | null | undefined): boolean {
   return mark?.role === "staff";
