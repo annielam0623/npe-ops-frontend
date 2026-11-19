@@ -172,7 +172,7 @@ const MODULES: readonly NavModule[] = [
     group: "Operations",
     label: "Daily Operation Report",
     href: "/daily-report",
-    upcoming: true,
+    // Annie 2026-11-18「我做过测试了，可以去掉soon」：去掉 Soon。可见性仍按 daily_operation_report 开关。
   },
   {
     // Farm out 转单报表（Annie 2026-10-15 看预览同意，侧栏 Operations 组），旧后台没有。
