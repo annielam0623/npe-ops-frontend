@@ -26,7 +26,12 @@ import { HowToUse } from "@/components/ui/how-to-use";
 import { PageLink } from "@/components/ui/page-link";
 import { usePhoneCollapse } from "@/components/ui/phone";
 import { ManifestLinks } from "./manifest-links";
-import { ChangeLine, sendsOf, useOrderLifecycle } from "./lifecycle";
+import {
+  ChangeLine,
+  ChatHistoryBlock,
+  sendsOf,
+  useOrderLifecycle,
+} from "./lifecycle";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { isInbound } from "@/lib/channels";
 import {
@@ -619,6 +624,10 @@ function LookupResultView({ result }: { result: LookupResult }) {
           )}
         </>
       )}
+      {/* Chat history（C1 C / C4 A）：最下面、How to use 上面；跟生命周期开关走 + 要有 messages.view。 */}
+      {life && perms.canMessages("messages.view") ? (
+        <ChatHistoryBlock notes={order.booking_notes ?? []} frame={frame} />
+      ) : null}
       {/* 题 6 A：How to use 6 条原文，放最底（手机版规则同）。 */}
       {life ? (
         <HowToUse

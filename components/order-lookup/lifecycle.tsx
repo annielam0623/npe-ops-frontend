@@ -8,14 +8,11 @@ import {
   bookedAt,
   type ChangeEntry,
   CHANGES_SHOWN,
-  dayOfTourFor,
   fetchOrderSends,
   LIFECYCLE_FRAME,
   latestSend,
   liveFor,
   lunchFor,
-  markText,
-  markTone,
   meaningfulChanges,
   receivedAt,
   replyFor,
@@ -118,9 +115,6 @@ export function LifecycleCard({ order }: { order: OrderDetail }) {
   const rows = sendsOf(sends);
   const changes = meaningfulChanges(order);
   const everything = allChanges(order);
-  const day = dayOfTourFor(order, date);
-  const relay = day?.relay_mark ?? null;
-  const bus = day?.bus_mark ?? null;
   const reply = replyFor(order, date);
   const lunch = lunchFor(order, date);
   const live = liveFor(order, date);
@@ -193,32 +187,7 @@ export function LifecycleCard({ order }: { order: OrderDetail }) {
         <DField label="Van at hotel" tone={van ? undefined : "muted"}>
           {van ?? "—"}
         </DField>
-        <DField
-          label="Relay"
-          tone={
-            relay
-              ? markTone(relay) === "plain"
-                ? undefined
-                : (markTone(relay) as "good" | "bad")
-              : "muted"
-          }
-          sub={relay ? markText(relay).sub : undefined}
-        >
-          {relay ? markText(relay).main : "—"}
-        </DField>
-        <DField
-          label="Bus"
-          tone={
-            bus
-              ? markTone(bus) === "plain"
-                ? undefined
-                : (markTone(bus) as "good" | "bad")
-              : "muted"
-          }
-          sub={bus ? markText(bus).sub : undefined}
-        >
-          {bus ? markText(bus).main : "—"}
-        </DField>
+        {/* Relay / Bus 不在这里写（Annie 2026-11-18「全部同意推荐」）：订单详情页已有「Day of tour」卡，同一份 day_of_tour。 */}
         {/* 题 4 B：后端还没有回程到站，先写「—」。 */}
         <DField label="Tour ended" tone="muted">
           —
@@ -371,5 +340,120 @@ export function ChangeLine({
           : c.text}
       </span>
     </li>
+  );
+}
+
+// ── Chat history（Annie 2026-11-18「全部同意推荐。动手」，样稿第 8 版 C1–C4 全 A）──────────────
+
+/** 订单详情接口的 booking_notes 一条（ASC）。 */
+type Note = OrderDetail["booking_notes"][number];
+
+const CHAT_SHOWN = 3;
+
+/** 「Guest · SMS」「kevin · Email」「Guest · Voice message」。 */
+export function chatWho(n: Note): { who: string; guest: boolean } {
+  switch (n.direction) {
+    case "sms_in":
+      return { who: "Guest · SMS", guest: true };
+    case "email_in":
+      return { who: "Guest · Email", guest: true };
+    case "guest_reply":
+      return { who: "Guest · Web", guest: true };
+    case "voice_in":
+      return { who: "Guest · Voice message", guest: true };
+    case "sms_out":
+      return { who: `${n.author || "Staff"} · SMS`, guest: false };
+    case "email_out":
+      return { who: `${n.author || "Staff"} · Email`, guest: false };
+    default:
+      return { who: `${n.author || "Staff"} · Note`, guest: false };
+  }
+}
+
+/**
+ * 搜索结果最下面的「Chat history」块（三个 Tracking 块下面、How to use 上面）：新 → 旧，默认 3 条，Show all ⇄ Show less；
+ * 手机上默认收起。只给看得到生命周期、又有 messages.view 的人（调用方判断）。
+ */
+export function ChatHistoryBlock({
+  notes,
+  frame,
+}: {
+  notes: readonly Note[];
+  frame: string;
+}) {
+  const [all, setAll] = useState(false);
+  const collapse = usePhoneCollapse();
+  const newest = [...notes].reverse();
+  const shown = all ? newest : newest.slice(0, CHAT_SHOWN);
+  const more = newest.length > CHAT_SHOWN;
+  return (
+    <div
+      className={cn("rounded-[12px] border bg-white/[.025] px-4 py-3", frame)}
+      data-lookup-block="chat"
+    >
+      <div className="flex items-baseline gap-3">
+        <button
+          type="button"
+          onClick={collapse.toggle}
+          className="text-left text-[13.5px] font-semibold"
+        >
+          Chat history
+        </button>
+        {more ? (
+          <button
+            type="button"
+            data-chat-toggle
+            onClick={() => {
+              setAll((v) => !v);
+              collapse.setOpen(true);
+            }}
+            className="ml-auto cursor-pointer text-[12.5px] font-semibold text-white/60 hover:text-white"
+          >
+            {all ? "Show less ▴" : `Show all ${newest.length} ▾`}
+          </button>
+        ) : (
+          <span className="ml-auto" />
+        )}
+        {collapse.caret}
+      </div>
+      <div className={collapse.hide}>
+        {shown.length ? (
+          <ul className="mt-2 grid gap-1.5">
+            {shown.map((n) => {
+              const { who, guest } = chatWho(n);
+              return (
+                <li
+                  key={n.id}
+                  data-chat={n.direction}
+                  className="grid grid-cols-[minmax(0,150px)_minmax(0,150px)_minmax(0,1fr)] gap-x-3 gap-y-0.5 text-[12.5px] text-white/85 max-sm:grid-cols-1"
+                >
+                  <span className="text-white/40 tabular-nums">
+                    {n.created_at}
+                  </span>
+                  <span
+                    className={cn(
+                      "font-semibold",
+                      guest ? "text-[#4ade80]" : "text-[#a78bfa]",
+                    )}
+                  >
+                    {who}
+                  </span>
+                  <span className="line-clamp-2 min-w-0 [overflow-wrap:anywhere]">
+                    {n.body}
+                    {n.direction === "voice_in" ? (
+                      <span className="text-white/45"> (transcript)</span>
+                    ) : null}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <p className="mt-2 text-[12.5px] text-white/45" data-chat-empty>
+            No messages yet.
+          </p>
+        )}
+      </div>
+    </div>
   );
 }
