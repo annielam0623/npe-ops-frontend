@@ -52,7 +52,7 @@ import {
   receivedAt,
   type SendModule,
   sentSub,
-  tourEnded,
+  tourEndedFor,
   vanAtHotel,
 } from "@/lib/order-lifecycle";
 import {
@@ -627,7 +627,7 @@ function LookupResultView({ result }: { result: LookupResult }) {
                         {markFact("Bus", day?.bus_mark ?? null)}
                         {/* ⑦ G360：按单 live_by_day 的回程到站；没有 / 旧后端 ⇒「—」。 */}
                         {(() => {
-                          const ended = tourEnded(liveFor(order, date));
+                          const ended = tourEndedFor(order);
                           return (
                             <Fact
                               label="Tour ended"

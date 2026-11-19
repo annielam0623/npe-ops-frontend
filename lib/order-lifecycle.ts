@@ -589,6 +589,23 @@ export function tourEnded(
   return last === first ? first : `${first} · last stop ${last}`;
 }
 
+/**
+ * 这单的 Tour ended：不按团期取行（多日团第 1 天大巴不回 LV、那天是 null，回程那天才有；后端 G360 每个运行日一行），
+ * 取 live_by_day 里 tour_ended_at 不是 null 的最晚一行（按 tour_date，同一天几行取有值那行）；都没有 ⇒ null（「—」）。
+ */
+export function tourEndedFor(order: OrderDetail): string | null {
+  const done = (order.live_by_day ?? []).filter((x) => x.tour_ended_at);
+  if (!done.length) return null;
+  const latest = done.reduce((a, b) =>
+    b.tour_date > a.tour_date ||
+    (b.tour_date === a.tour_date &&
+      (b.tour_ended_at ?? "") > (a.tour_ended_at ?? ""))
+      ? b
+      : a,
+  );
+  return tourEnded(latest);
+}
+
 // ── How to use（题 6 A：第 3 版那 6 条原文）──────────────────────────────────
 
 export const LIFECYCLE_HOW_TO: readonly string[] = [

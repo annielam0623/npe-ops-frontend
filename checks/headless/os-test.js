@@ -604,6 +604,8 @@ async function run() {
       ["one", "6:36 PM Treasure Island", "只有一站（最后一站同第一站）：只写那一站"],
       ["firstOnly", "6:36 PM Treasure Island", "last_stop 是 null：只写第一站"],
       ["none", "—", "都是 null：写「—」"],
+      ["multiDay", "6:10 PM Excalibur Hotel", "2 日团第 1 天空、第 2 天有：显示第 2 天（最晚有值的那天），地名照原样"],
+      ["sameDay", "6:36 PM Treasure Island · last stop 6:57 PM Excalibur", "同一天两行一空一有：取有值那行"],
     ]) {
       await ctl({ sa: true, lifeVis: null, lifeVisible: false, tourEnd: mode });
       await openDashboard();

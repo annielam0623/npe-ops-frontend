@@ -19,7 +19,7 @@ import {
   replyFor,
   type SendModule,
   sentSub,
-  tourEnded,
+  tourEndedFor,
   vanAtHotel,
 } from "@/lib/order-lifecycle";
 import { orderDateToYmd } from "@/lib/order-lookup-api";
@@ -132,7 +132,7 @@ export function LifecycleCard({ order }: { order: OrderDetail }) {
   const lunch = lunchFor(order, date);
   const live = liveFor(order, date);
   const van = live ? vanAtHotel(live.arrived_at, live.left_at) : null;
-  const ended = tourEnded(live);
+  const ended = tourEndedFor(order);
   return (
     <section
       aria-label="Order lifecycle"

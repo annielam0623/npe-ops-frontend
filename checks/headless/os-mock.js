@@ -260,6 +260,14 @@ http
       const o = { ...ORDERS[on], ...(ctl.hold && on === "ZZTEST2" ? { status: "On Hold" } : {}) };
       // ⑦ G360：每次请求按 ctl.tourEnd 给 live_by_day 加回程到站（ORDERS 是启动时建好的）。
       if (o.live_by_day) o.live_by_day = o.live_by_day.map((x) => ({ ...x, ...tourEnd(ctl.tourEnd) }));
+      // multiDay：2 日团第 1 天大巴不回 LV（null），第 2 天回程才有；sameDay：同一天两行，一行空、一行有（空的在前）。
+      if (o.live_by_day && (ctl.tourEnd === "multiDay" || ctl.tourEnd === "sameDay")) {
+        const d1 = { ...o.live_by_day[0], ...tourEnd("none") };
+        const back = { ...o.live_by_day[0], ...tourEnd("two") };
+        o.live_by_day = ctl.tourEnd === "multiDay"
+          ? [{ ...back, tour_date: "2026-10-21", tour_ended_at: "2026-10-22T01:10:00Z", tour_ended_where: "Excalibur Hotel", last_stop_at: null, last_stop_where: "" }, d1]
+          : [d1, back];
+      }
       // G351（后端 4aea93a5）：Refresh 的 activity_log 对 partner 不能看的字段只写「Internal notes (Rezdy): changed」。
       // 这两条没配上 rezdy_changes（partner 那份去掉了），照 activity_log 文字解析：changed 在最后 / 在前面两种。
       // 后端（PASS 时建议）：按「: changed」后缀认、不按字段名 ⇒ 另放一条假字段 Foo。
