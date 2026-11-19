@@ -671,6 +671,14 @@ export function DispatchView() {
       if (s.manifest_id != null) m[s.manifest_id] = s.color ?? null;
     return m;
   }, [day]);
+  /** CCL 当天关掉的巴士团（manifest_id → CCL 的说明或 null）：Step 1 卡写 Closed（Annie 2026-11-18「动手」）。 */
+  const closedTours = useMemo(() => {
+    const m: Record<number, string | null> = {};
+    for (const c of closures)
+      if (c.shift === META.bus_tour_shift && c.manifest_id != null)
+        m[c.manifest_id] = c.note || null;
+    return m;
+  }, [closures]);
   /**
    * 按人数开车窗（2026-10-16 紧急）要看页面上**当前选的车**，不等存：staff 换车但没点别的（没改 need /
    * closures），车窗该不该开也要跟着变。只取巴士团每行的 manifest_id:vehicle_id，字段以外的改动（备注、酒店……）
@@ -715,7 +723,19 @@ export function DispatchView() {
 
   /** CCL：预填（没存过的一天）/ 改版（存过的一天）/ 关闭的线。动过手就不碰。 */
   const prefillInner = useCallback(async (date: string) => {
-    if (viewOnlyRef.current) return;
+    if (viewOnlyRef.current) {
+      // 只看的人（Annie 2026-11-18 关团题 2 A）：只拿 CCL 关团（Step 1 / Step 2 都写 Closed），不预填、不列改版、不改东西。
+      // 接口只要 dispatch.view。拿不到就当没关团。
+      setClosures([]);
+      try {
+        const p = await fetchDispatchPrefill(date);
+        if (p && stateRef.current.day?.run_date === date)
+          setClosures(p.closures ?? []);
+      } catch {
+        // 拿不到不影响看排班。
+      }
+      return;
+    }
     setBanner("none");
     setRevisionLater(false);
     setPrefill(null);
@@ -2177,6 +2197,7 @@ export function DispatchView() {
                 key={day.run_date}
                 date={day.run_date}
                 colorByManifestId={colorByManifestId}
+                closedTours={closedTours}
                 // 三个都只会变大：存好 / 重读、点过 Completed、后台名单同步有变化（syncTick）都让卡片重读。
                 version={manifestVersion + doneTick + syncTick}
                 sync={syncInfo?.date === day.run_date ? syncInfo : null}

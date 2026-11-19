@@ -1428,6 +1428,45 @@ async function run() {
   check("自动存：整天送，多了一行 relay_2（新行、司机 / 车 / 酒店照 1st Round）", c2.length === 1 && c2[0].id == null && c2[0].driver_hr_id === 1 && c2[0].vehicle_id === 10 && JSON.stringify(c2[0].location_ids) === "[100]", JSON.stringify(cs?.rows));
   check("How to use 写了 Copy 1st Round", await evaluate("return document.body.textContent.replace(/\\s+/g, ' ').includes('2nd Round: Copy 1st Round copies the cars, drivers and hotels.');"));
 
+  // ── CCL 关掉的团：Step 1 卡不再要求保存（Annie 2026-11-18「south bus的那个close同意推荐，动手」，样稿 4DBfnaUmsSMFaGd9FZhqac 4 题全 A）──
+  {
+    const hc = `document.querySelector('[data-card="4"]')`;
+    const cardsOrder = `[...document.querySelector('section[aria-label="Guest lists"]').querySelectorAll('[data-card]')].map(c => c.dataset.card).join(',')`;
+    const openClosedDay = async () => {
+      await goto(`${APP}/dispatch?date=2026-10-06`);
+      await waitFor(`${hc} && ${hc}.hasAttribute('data-card-closed')`, 30000);
+      await helpers();
+    };
+    // 能编辑的人，名单上 0 人（只有 1 张取消 / 改期）。
+    await ctl({ closedHoover: 0, superAdmin: true, staffPerms: null });
+    await openClosedDay();
+    const t0 = await evaluate(`return ${hc}.textContent.replace(/\\s+/g, ' ');`);
+    check("关团 · 编辑：Step 1 Hoover Dam 卡写 Closed（用 CCL 说明「Closed due to weather」）、车行「Closed by CCL · 0 guests loaded」、取消灰字照旧",
+      t0.includes("Closed due to weather") && t0.includes("Closed by CCL · 0 guests loaded") && t0.includes("1 cancelled / moved") && !t0.includes("No bus assigned"), t0);
+    check("关团 · 编辑：没有 Needs saving、没有 Assign Bus，只有白色 Check the bus", !t0.includes("Needs saving") && !(await evaluate(`return !!$btn('Assign Bus', ${hc});`)) && (await evaluate(`const b = $btn('Check the bus', ${hc}); return !!b && getComputedStyle(b).backgroundColor !== 'rgb(59, 130, 246)';`)), t0);
+    check("关团 · 编辑：卡底色灰 #f3f3f1、排在最后（West Rim 在前）", (await evaluate(`return getComputedStyle(${hc}).backgroundColor;`)) === "rgb(243, 243, 241)" && (await evaluate(`return ${cardsOrder};`)).endsWith(",4"), await evaluate(`return ${cardsOrder};`));
+    check("关团 · 编辑：Step 2 照旧写 CCL closed this tour", await evaluate(`return ${sec("Hoover Dam")}.textContent.includes('CCL closed this tour for the day');`));
+    check("关团 · How to use — Guest lists 加一条", await evaluate(`return document.body.textContent.includes('A tour that CCL closed for the day shows Closed. It does not need saving and has no bus.');`));
+    await evaluate("window.__scrolled = []; const orig = Element.prototype.scrollIntoView; Element.prototype.scrollIntoView = function (o) { window.__scrolled.push(this.id || this.getAttribute('data-sec') || this.tagName); return orig.call(this, o); }; return 1;");
+    await evaluate(`$btn('Check the bus', ${hc}).click();`);
+    await sleep(400);
+    check("关团 · 点 Check the bus：滚到 Step 2 这个团", await evaluate("return window.__scrolled.includes('bus_tour:4');"), await evaluate("return JSON.stringify(window.__scrolled);"));
+    // 名单上还有客人（题 4 A）：橙字 + 排前。
+    await ctl({ closedHoover: 3 });
+    await openClosedDay();
+    const t3 = await evaluate(`return ${hc}.textContent.replace(/\\s+/g, ' ');`);
+    check("关团 · 还有 3 位客人：橙字「Closed by CCL, but 3 guests are still on the list. Check them in Order List.」、仍写 Closed、没有 Needs saving",
+      t3.includes("Closed by CCL, but 3 guests are still on the list. Check them in Order List.") && t3.includes("Closed due to weather") && !t3.includes("Needs saving") && !(await evaluate(`return !!$btn('Assign Bus', ${hc});`)), t3);
+    check("关团 · 还有客人：这张卡排到前面", (await evaluate(`return ${cardsOrder};`)).startsWith("4,"), await evaluate(`return ${cardsOrder};`));
+    // 只能看的人（题 2 A）：也读 CCL 关团，两处都写 Closed。
+    await ctl({ closedHoover: 0, superAdmin: false, staffPerms: ["dispatch.view", "manifests.view"] });
+    await openClosedDay();
+    const tv = await evaluate(`return ${hc}.textContent.replace(/\\s+/g, ' ');`);
+    check("关团 · 只看的人：Step 1 也写 Closed、Closed by CCL，没有 Needs saving", tv.includes("Closed due to weather") && tv.includes("Closed by CCL · 0 guests loaded") && !tv.includes("Needs saving"), tv);
+    check("关团 · 只看的人：Step 2 也写 CCL closed this tour；页面没有 CCL 预填蓝条", (await evaluate(`return ${sec("Hoover Dam")}.textContent.includes('CCL closed this tour for the day');`)) && !(await evaluate("return !!document.querySelector('section[aria-label=CCL]');")));
+    await ctl({ closedHoover: null, superAdmin: false, staffPerms: null });
+  }
+
   // ── 没客人的团收起来、有客人的写人数、Save 后滚到 Completed（Annie 2026-10-15）──
   // Completed 键只给 Super Admin（Annie 2026-11-08 选 A），这一段按 Super Admin 跑。
   await ctl({ emptyHoover: true, superAdmin: true });

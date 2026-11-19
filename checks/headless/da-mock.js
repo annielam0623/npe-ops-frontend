@@ -837,6 +837,8 @@ http.createServer(async (req, res) => {
       { ...card(4, "Hoover Dam"), uploaded: true, pax: 3, guests: 1, buses: 0, mode: "none", not_on_bus: 3, buses_needed: 1, guests_per_bus: 50, bus_pax: {} },
     ] });
     // emptyHoover：Hoover Dam 也有卡片、没客人（没排车）⇒ Step 2 收起来（Annie 2026-10-15）。
+    // closedHoover（数字 = 名单上的人数）：Hoover Dam 有卡片、没排车、1 张取消 / 改期留在名单上；2026-10-06 的 CCL 关了这个团（prefill closures）。
+    if (ctl.closedHoover != null) return sendM({ run_date: q.date, cards: [{ ...card(3, "West Rim Bus Tour"), uploaded: true, pax: 9, guests: 4, buses: 2, mode: "lettered", not_on_bus: 0, buses_needed: 2, guests_per_bus: 5 }, { ...card(4, "Hoover Dam"), uploaded: true, pax: ctl.closedHoover, guests: ctl.closedHoover ? 1 : 0, buses: 0, mode: "none", not_on_bus: ctl.closedHoover, buses_needed: ctl.closedHoover ? 1 : 0, guests_per_bus: 50, gone_orders: 1 }] });
     return sendM({ run_date: q.date, cards: [card(3, "West Rim Bus Tour"), card(9, "Ghost Tour"), ...(ctl.emptyHoover ? [card(4, "Hoover Dam")] : [])] });
   }
   send(res, 404, { detail: "mock: not found" });
