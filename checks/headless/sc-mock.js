@@ -6,7 +6,7 @@
 //      swapSamples = 我已有几条各种状态的换班（看字）。
 const http = require("http");
 
-const ctl = { unavail: false, fail401: false, past: false, published: false, peerAsk: false, swapWeek: false, swapAsks: false, swapSamples: false };
+const ctl = { unavail: false, fail401: false, past: false, published: false, peerAsk: false, swapWeek: false, swapAsks: false, swapSamples: false, acceptRest409: false };
 const swapAnswers = {};
 const log = [];
 const WEEK = "2026-11-01";
@@ -22,7 +22,7 @@ const EMPLOYEES = [
   { employee_id: 3, name: "Nadia" },
   { employee_id: 4, name: "Veronica" },
 ];
-const TIMES = { open: ["02:00", "12:00"], mid: ["10:00", "18:00"], close: ["11:30", "21:30"] };
+const TIMES = { open: ["02:00", "12:00"], mid: ["10:00", "18:00"], close: ["11:30", "21:30"], morning: ["05:00", "13:00"] };
 // [员工, 周几(0=Sun), 班次]；员工 null = 空班
 const PLAN = [
   [1, 0, "open"], [1, 2, "mid"], [1, 4, "close"], [1, 6, "close"],
@@ -30,7 +30,10 @@ const PLAN = [
   [3, 0, "close"], [3, 1, "mid"], [3, 2, "close"], [3, 3, "close"], [3, 5, "mid"], [3, 6, "open"],
   [4, 1, "close"], [4, 2, "open"], [4, 3, "mid"], [4, 4, "mid"], [4, 5, "open"],
   [null, 5, "close"],
+  // G298（只在 swapWeek 出）：Lizzie Fri Morning，id 120——拿我 Sat Close 换它 ⇒ 我 Thu Close、Fri Morning = 晚接早（Close → Morning）。
+  [2, 5, "morning"],
 ];
+const MORNING_SLOT = 120;
 
 function day(i) {
   const [y, m, d] = WEEK.split("-").map(Number);
@@ -79,9 +82,10 @@ function data() {
       { key: "open", label: "Open", default_start_time: "02:00", default_end_time: "12:00" },
       { key: "mid", label: "Mid", default_start_time: "10:00", default_end_time: "18:00" },
       { key: "close", label: "Close", default_start_time: "11:30", default_end_time: "21:30" },
+      ...(ctl.swapWeek ? [{ key: "morning", label: "Morning", default_start_time: "05:00", default_end_time: "13:00" }] : []),
     ],
     employees: EMPLOYEES,
-    slots: SLOTS,
+    slots: ctl.swapWeek ? SLOTS : SLOTS.filter((s) => s.id !== MORNING_SLOT),
     time_off: [{ employee_id: 4, date: day(6), kind: null }],
     my_response: response,
     my_requests: [...myRequests, ...(ctl.swapWeek && ctl.swapSamples ? samples() : [])],
@@ -208,7 +212,7 @@ http
         const b = entry.body?.requests?.[0];
         if (!b || b.kind !== "swap") return send(res, 400, { detail: "After the schedule is published, you can only swap a shift with a coworker." });
         // 后端同一天两个班的 400（照 8e 合同原话）：拿我 Sun Open 换 Lizzie 的 Mon Open ⇒ Lizzie 周日已有班。
-        if (b.my_slot_id === 100 && b.their_slot_id === 105) return send(res, 400, { detail: "Lizzie already works Sun 11/1, so she can't take your shift that day." });
+        if (b.my_slot_id === 100 && b.their_slot_id === 105) return send(res, 400, { detail: "Lizzie already works Sun 11/1 and can't take your shift that day." });
         myRequests = [...myRequests, toRequest(b)];
         return send(res, 200, data());
       }
@@ -218,6 +222,9 @@ http
         return send(res, 200, data());
       }
       if (m[3] && req.method === "POST" && ctl.swapWeek) {
+        // 后端 Agree 时再查一次（8e：409 + 同样的话）；ctl.acceptRest409 = 中间排班变了、这时才违反。
+        if (entry.body?.answer === "accept" && ctl.acceptRest409)
+          return send(res, 409, { detail: "You can't work Morning on Fri 11/6 after a Close on Thu 11/5. A Close shift can't be followed by an Open or Morning shift the next day. Pick another day." });
         swapAnswers[m[3]] = entry.body?.answer === "accept" ? "pending" : "peer_declined";
         return send(res, 200, data());
       }

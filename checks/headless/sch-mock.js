@@ -546,7 +546,7 @@ http
       if (!ctl.confirm) return send(res, 404, { detail: "Not Found" });
       if (pubState[am[1]]) {
         if (pubState[am[1]] !== "pending") return send(res, 409, { detail: "This request has already been decided." });
-        if (am[2] === "approve" && am[1] === "951") return send(res, 409, { detail: "Veronica can't work Open on Mon 9/28 after a Close on Sun 9/27. A Close shift can't be followed by an Open shift the next day. Pick another day." });
+        if (am[2] === "approve" && am[1] === "951") return send(res, 409, { detail: "Veronica can't work Open on Mon 9/28 after a Close on Sun 9/27. A Close shift can't be followed by an Open or Morning shift the next day. Pick another day." });
         pubState[am[1]] = am[2] === "approve" ? "approved" : "declined";
         return send(res, 200, { ok: true });
       }

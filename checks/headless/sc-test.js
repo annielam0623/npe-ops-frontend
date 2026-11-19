@@ -325,6 +325,13 @@ async function run() {
       (await since(sfrom, (e) => e.method === "POST")).length === 0,
     await evaluate("return document.querySelector('[data-drop-error]')?.textContent ?? 'none';"),
   );
+  await evaluate("window.$drop(103, $slot(120));");
+  await sleep(200);
+  check(
+    "晚接早 Close → Morning：Sat Close 换 Lizzie 的 Fri Morning ⇒ 红字 You can't work Morning on Fri 11/6 after a Close on Thu 11/5. …（同后端原话）",
+    await evaluate("return document.querySelector('[data-drop-error]')?.textContent === \"You can't work Morning on Fri 11/6 after a Close on Thu 11/5. A Close shift can't be followed by an Open or Morning shift the next day. Pick another day.\" && !document.querySelector('[data-ask-swap]');"),
+    await evaluate("return document.querySelector('[data-drop-error]')?.textContent ?? 'none';"),
+  );
   await evaluate("window.$drop(101, $cell('Jing|2026-11-02'));");
   await sleep(200);
   check("拖到自己没班的那天：红字 You can only swap with a coworker's shift.（发布后不能改天）", await evaluate("return document.querySelector('[data-drop-error]')?.textContent === \"You can only swap with a coworker's shift.\" && !document.querySelector('[data-ask-swap]');"));
@@ -334,7 +341,7 @@ async function run() {
   await waitFor("document.querySelector('[data-ask-error]')");
   check(
     "后端挡（同一天已有班）：确认框里红字照后端原话，框不关",
-    await evaluate("return document.querySelector('[data-ask-error]').textContent === \"Lizzie already works Sun 11/1, so she can't take your shift that day.\" && !!document.querySelector('[data-ask-swap]');"),
+    await evaluate("return document.querySelector('[data-ask-error]').textContent === \"Lizzie already works Sun 11/1 and can't take your shift that day.\" && !!document.querySelector('[data-ask-swap]');"),
     await evaluate("return document.querySelector('[data-ask-error]')?.textContent ?? 'none';"),
   );
   await evaluate("[...document.querySelectorAll('[data-ask-swap] button')].find((b) => b.textContent === 'Cancel').click();");
@@ -357,6 +364,14 @@ async function run() {
     await evaluate("const a = document.querySelectorAll('[data-peer-ask]')[0]; return a.querySelector('[data-rest-blocked]')?.textContent === \"You can't work Open on Fri 11/6 after a Close on Thu 11/5. A Close shift can't be followed by an Open or Morning shift the next day. Pick another day. You can still decline.\" && a.querySelector('[data-peer-accept]').disabled && a.querySelector('[data-peer-accept]').textContent === 'Agree' && !a.querySelector('[data-peer-decline]').disabled;"),
     await evaluate("return document.querySelectorAll('[data-peer-ask]')[0]?.textContent ?? 'none';"),
   );
+  await ctl({ acceptRest409: true });
+  await evaluate("document.querySelectorAll('[data-peer-ask]')[1].querySelector('[data-peer-accept]').click();");
+  await waitFor("[...document.querySelectorAll('[role=alert]')].some((e) => e.textContent.includes('Pick another day.') && !e.closest('[data-peer-ask]'))");
+  check(
+    "Agree 时后端再挡（409，中间排班变了）：红字照后端原话，黄框还在",
+    await evaluate("return [...document.querySelectorAll('[role=alert]')].some((e) => e.textContent === \"You can't work Morning on Fri 11/6 after a Close on Thu 11/5. A Close shift can't be followed by an Open or Morning shift the next day. Pick another day.\") && document.querySelectorAll('[data-peer-ask]').length === 2;"),
+  );
+  await ctl({ acceptRest409: false });
   sfrom = (await mockLog()).length;
   await evaluate("const a = document.querySelectorAll('[data-peer-ask]')[1]; [...a.querySelectorAll('button')].map((b) => b.textContent).join('/') === 'Agree/Decline' && a.querySelector('[data-peer-accept]').click();");
   await waitFor("document.querySelector('[data-swap-for-me=pending]')");
