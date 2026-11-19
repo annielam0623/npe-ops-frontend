@@ -33,6 +33,8 @@
 - **新（后端转）：G349 Settings › Driver quick replies 加「Bus map」勾选**：后端上 main（7d5cab83 / 5d59f4a5，v178）；合同 docs/interfaces/bus-map-link-2026-11-18.md（add_bus_map bool，PATCH 单独或带 body / active，400「add_bus_map must be true or false.」）。How to use 3 条 Annie 已批原文。默认都不勾，Annie 测完自己勾「can't find you」= 开关。新功能 ⇒ 派 c1（No show 后）先查同页存法再出 preview，等 Annie 动手。
 - ✅ **第 5 件 SMS 超字数上 main ce84ad75**（70；tt 201 / tk 161 / mt 320 / man 511 / mf 343 / nav 39，tsc / eslint / build）。📌 请 Annie 线上验：Tickets / Tour / Morning 对话框和群发写超 306 字（含 Δ 时 134），SMS 灰、只走 Email；删短后能重新勾 SMS（只看不发，或只发 ZZ Test）。
 - ✅ Annie 再确认（原话）「Order details 整页上的「Open in Main manifest →」键要不要也变蓝？A 三处一起蓝（推荐）--同意，动手」⇒ 132 照 A，70 在合 main。
+- ✅ **第 7 件 132 上 main f878f9d1**（70；功能 a806fc8d 接 b114f83d；Order details 键一起蓝；tt 213 / mt 321 / os 138 / orders 113 / tk 161，tsc / eslint / build）。📌 请 Annie 线上验：Tour / Tickets / Morning 对话框标题「Order 单号」后产品名（多产品「+N more」+ hover 全部、长名两行截）；「Open in Main manifest →」蓝实心（对话框 / 搜索卡 / Order details）。70 三件做完，待命。
+- G307 9924cb78 后端 PASS；后端提提醒数字处理后不刷新（effect 只按 run_date）⇒ 63 加 manifestVersion 依赖再合。
 - 🔴 **G298 发布后换班拖不动**（Annie 线上验，原话）「完全拖不了，可以看到蓝色的提示字，但是排好了的班完全就拖不了」⇒ 派 d6 修 bug（task/fix-g298-drag，先 mock 复现，查前端判断 / 真数据形状）。
 - 📌 第 4 件新方向：后端 3f 估 (a) Main / Bus manifest 编辑页只显示客人选餐 + 不一样标记（显示层新服务读 bookings，份数不变，5–7 h，Risk B，推荐）/ (b) D Bus manifest 按客人选的算（影响 10 处、推翻三条规矩，1.5–2 天，不推荐）。已发 Annie 一套 6 题：1 做法 A / B；2 放哪 A Main / B Bus / C 两处（推荐）；3 不读 Tour Confirmation 那份开显示例外 A 同意；4 partner A 看不到；5 发送前 A 只提醒不拦；6 搜索橙字 A 留。d6 不再单独问。
 - ✅ G358 上后端 main（04483b6c / d979e439 / d4804895，dispatch.view 含 partner）⇒ 63 合 preview 链接 9ec0360c。
