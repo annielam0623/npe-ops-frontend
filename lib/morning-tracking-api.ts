@@ -1,6 +1,38 @@
 import { apiFetch } from "@/lib/api-client";
 import { buildQueryString } from "@/lib/utils";
-import type { LiveDrivers, MorningTracking } from "@/types";
+import type {
+  LiveDrivers,
+  MorningTracking,
+  TrackingMarkCol,
+  TrackingMarkValue,
+} from "@/types";
+
+/**
+ * No show 改方向（Annie 2026-11-17「动手」，N2 A / N7 A）：staff 在 Tracking 表改 Relay / Bus 标记。
+ * 按订单 + leg + 列写一条 staff 值，value = null ⇒ 删掉 staff 值、回到司机 / 导游原来标的（Reset）。
+ * 后端每次写记 action_log，并在同一次写入里把这单记成已处理（action_taken），前端不另调 take-action。
+ * ⚠️ 地址和字段名先按后端主窗口 6f 给的形状写（合同未出），合同到了按合同改。
+ */
+export function saveTrackingMark(input: {
+  date: string;
+  bookingId: number;
+  orderNumber: string;
+  col: TrackingMarkCol;
+  value: TrackingMarkValue | null;
+}): Promise<unknown> {
+  return apiFetch<unknown>("/api/notifications/morning-pickup/tracking/mark", {
+    method: "PUT",
+    body: {
+      date: input.date,
+      booking_id: input.bookingId,
+      order_number: input.orderNumber,
+      // 早班追踪只有去程。
+      leg: "",
+      col: input.col,
+      value: input.value,
+    },
+  });
+}
 
 /** staff 及以上可调；纯读。date 为洛杉矶日期 YYYY-MM-DD。 */
 export function fetchMorningTracking(

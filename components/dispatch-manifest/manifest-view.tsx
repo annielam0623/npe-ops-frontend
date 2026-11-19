@@ -128,6 +128,26 @@ import type {
   ManifestVersion,
   ManifestView as ManifestData,
 } from "@/types";
+import {
+  isStaffMark,
+  markLabel,
+  markWho,
+} from "@/components/morning-tracking/config";
+
+/** ✓ 列：staff 在 Morning Tracking 改过（No show 改方向，N5 A）。 */
+function boardingStaffChanged(g: ManifestGuest): boolean {
+  return g.boarding_staff_changed ?? isStaffMark(g.boarding_mark);
+}
+
+/** ✓ 列鼠标移上去：一行「Boarded · by Joe (guide) · …」；staff 改过加第二行「Original: …」。 */
+function boardingHover(g: ManifestGuest): string {
+  const mark = g.boarding_mark;
+  if (!mark) return "";
+  const first = `${markLabel(mark)} · ${markWho(mark, "bus")}`;
+  if (!boardingStaffChanged(g)) return first;
+  const o = g.boarding_original;
+  return `${first}\nOriginal: ${o ? `${markLabel(o)} · ${markWho(o, "bus")}` : "not marked"}`;
+}
 
 type ViewState =
   | { kind: "loading" }
@@ -2472,7 +2492,13 @@ function SectionRows({
             </td>
           ) : null}
           {boarding ? (
-            <td className={cn(TD, boardingClass)}>
+            <td
+              className={cn(TD, boardingClass)}
+              // No show 改方向（Annie 2026-11-17「动手」，N5 A）：后端给最终值（staff 在 Morning Tracking 改过就是 staff 的）；
+              // 鼠标移上去：staff 改过两行（staff 的 + 导游原来的），没改过一行。导游手机页照旧只看他自己标的。
+              title={boardingHover(g) || undefined}
+              data-boarding={g.boarding ?? ""}
+            >
               {g.boarding === "boarded" ? (
                 <span className="rounded-full bg-[#e6f4ec] px-[7px] py-px text-[11px] font-bold whitespace-nowrap text-[#1e6b43]">
                   ✓
@@ -2480,6 +2506,14 @@ function SectionRows({
               ) : g.boarding === "no_show" ? (
                 <span className="rounded-full bg-[#fdeceb] px-[7px] py-px text-[11px] font-bold whitespace-nowrap text-[#b3261e]">
                   No show
+                </span>
+              ) : null}
+              {boardingStaffChanged(g) ? (
+                <span
+                  data-boarding-edited
+                  className="mt-0.5 block text-[10px] whitespace-nowrap text-[#8a6d00] print:hidden"
+                >
+                  Edited by {g.boarding_mark?.by || "staff"}
                 </span>
               ) : null}
             </td>

@@ -8,6 +8,7 @@ import { usePageVisibility } from "@/lib/page-visibility";
 import {
   fetchTrackingSync,
   saveTrackingSync,
+  TOUR_SYNC_API,
   type TrackingSyncMode,
 } from "@/lib/tracking-sync-api";
 
@@ -35,7 +36,11 @@ export const SYNC_HELP: Record<TrackingSyncMode, string> = {
 const SELECT =
   "cursor-pointer rounded-lg border border-[#d0e0d4] bg-paper px-2 py-[4px] font-[inherit] text-[12.5px] font-semibold text-[#1f2d25] outline-none focus:border-[#2f5e46] disabled:opacity-60";
 
-export function useTrackingSyncSwitch(onChanged: () => void): {
+/** api：哪个开关（默认 Tour Tracking 的；Ticket Tracking 传 TICKETS_SYNC_API，G281 题 1 A 同一个样子）。 */
+export function useTrackingSyncSwitch(
+  onChanged: () => void,
+  api: string = TOUR_SYNC_API,
+): {
   control: ReactNode;
   below: ReactNode;
 } {
@@ -50,7 +55,7 @@ export function useTrackingSyncSwitch(onChanged: () => void): {
   useEffect(() => {
     if (!loaded || !isSuperAdmin) return;
     const ac = new AbortController();
-    fetchTrackingSync(ac.signal)
+    fetchTrackingSync(ac.signal, api)
       .then((s) => {
         if (s && s.mode in LABEL) setMode(s.mode);
       })
@@ -58,13 +63,13 @@ export function useTrackingSyncSwitch(onChanged: () => void): {
         // 403 / 404（旧后端）⇒ 不出下拉。
       });
     return () => ac.abort();
-  }, [loaded, isSuperAdmin]);
+  }, [loaded, isSuperAdmin, api]);
 
   async function save(next: TrackingSyncMode) {
     setSaving(true);
     setResult(null);
     try {
-      const s = await saveTrackingSync(next);
+      const s = await saveTrackingSync(next, api);
       setMode(s.mode in LABEL ? s.mode : next);
       setResult({ ok: true, text: "Saved" });
       onChanged();
@@ -108,7 +113,7 @@ export function useTrackingSyncSwitch(onChanged: () => void): {
   const inner = (
     <span
       data-sync-switch
-      className="inline-flex flex-wrap items-center gap-2 rounded-[10px] border border-dashed border-[#b9c9bd] bg-paper px-2.5 py-1"
+      className="inline-flex flex-wrap items-center gap-2 rounded-[10px] border border-dashed sm:ml-auto border-[#b9c9bd] bg-paper px-2.5 py-1"
     >
       <span className="text-[12.5px] font-bold text-[#2f5e46]">
         Main manifest sync
@@ -136,8 +141,9 @@ export function useTrackingSyncSwitch(onChanged: () => void): {
   return {
     control: (
       <>
-        <span className="ml-auto max-sm:hidden">{inner}</span>
-        <PhoneMore className="ml-auto sm:hidden" label="Main manifest sync">
+        {/* PhoneMore 自己在电脑上就原样显示 children（手机上才收进「⋯」），外面不能再放一份电脑版，
+            否则电脑上出两个一样的框（Annie 2026-11-17 截图）。 */}
+        <PhoneMore className="ml-auto" label="Main manifest sync">
           {inner}
         </PhoneMore>
       </>

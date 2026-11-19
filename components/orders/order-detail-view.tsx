@@ -25,7 +25,18 @@ import { usePermissions } from "@/lib/staff-permissions";
 import { useTick } from "@/lib/use-tick";
 import { cn } from "@/lib/utils";
 import { PageLink } from "@/components/ui/page-link";
-import type { OrderDetail, OrderPatch } from "@/types";
+import type {
+  DayOfTourLeg,
+  OrderDetail,
+  OrderPatch,
+  TrackingMark,
+  TrackingMarkCol,
+} from "@/types";
+import {
+  isStaffMark,
+  markLabel,
+  markWho,
+} from "@/components/morning-tracking/config";
 
 import {
   RefreshButton,
@@ -373,6 +384,13 @@ function OrderBody({
           />
         ) : null}
         <OpsCard order={o} onSaved={onSaved} onUnauthorized={onUnauthorized} />
+        {o.day_of_tour && !partner ? (
+          <DayOfTourCard
+            legs={o.day_of_tour}
+            orderNumber={o.order_number}
+            tourDate={o.product.tour_date}
+          />
+        ) : null}
         {/* TripGuru 的代理商现在是空的（后端：等第一张 TEST 单看到真实数据再接），不出 Agent 卡。 */}
         {partner || !seeMoney || tripguru ? null : (
           <AgentCard detail={o.order_detail} />
@@ -1182,6 +1200,176 @@ function InternalNoteCard({ note }: { note: string }) {
         {note}
       </div>
     </Card>
+  );
+}
+
+/** "2026-11-17" → "11/17/2026"（订单页的团期写法），对不上原样返回。 */
+function ymdToMdy(ymd: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd);
+  return m ? `${m[2]}/${m[3]}/${m[1]}` : ymd;
+}
+
+/** "2026-11-17" → "Tue, Nov 17, 2026"。 */
+function ymdLong(ymd: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return ymd || "—";
+  return new Date(`${ymd}T12:00:00`).toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+/**
+ * Day of tour 卡（No show 改方向，Annie 2026-11-17「动手」，N3 A / N8 A）：只看。按团期 + leg 分段，每段 Relay、Bus 两行，
+ * 写结果、谁、哪台车、几点；staff 改过的下面灰字写原来的。改期后旧团期那段照样显示、标 Old tour date
+ * （Annie：「该日期原来的标记还是要显示，就在旧订单旧日期这里」）。改只在 Morning Tracking。
+ */
+function DayOfTourCard({
+  legs,
+  orderNumber,
+  tourDate,
+}: {
+  legs: DayOfTourLeg[];
+  orderNumber: string;
+  tourDate: string;
+}) {
+  const sorted = [...legs].sort(
+    (a, b) =>
+      b.tour_date.localeCompare(a.tour_date) ||
+      (a.leg === "return" ? 1 : 0) - (b.leg === "return" ? 1 : 0),
+  );
+  const hasReturn = legs.some((l) => l.leg === "return");
+  const current =
+    sorted.find((l) => ymdToMdy(l.tour_date) === tourDate)?.tour_date ??
+    sorted[0]?.tour_date ??
+    "";
+  const trackingHref = `/morning-pickup/tracking?${new URLSearchParams({
+    ...(current ? { date: current } : {}),
+    q: orderNumber,
+  }).toString()}`;
+  return (
+    <Card
+      title="Day of tour"
+      actions={
+        <PageLink
+          href={trackingHref}
+          data-day-of-tour-open
+          className="ml-auto text-[11.5px] font-normal tracking-normal text-[#6b7280] normal-case underline night:text-white/55"
+        >
+          Open in Morning Tracking →
+        </PageLink>
+      }
+    >
+      <div data-day-of-tour>
+        {sorted.length === 0 ? (
+          <div className={OD_LOADING_IN_CARD}>No relay or bus marks yet.</div>
+        ) : (
+          sorted.map((l) => {
+            const old = !!tourDate && ymdToMdy(l.tour_date) !== tourDate;
+            // G321：product_code 可能是 ""（对不上）⇒ 用 product_name 当键；同一天有几个产品时标题带产品名。
+            const productKey = l.product_code || l.product_name || "";
+            const manyProducts =
+              new Set(
+                legs
+                  .filter((x) => x.tour_date === l.tour_date)
+                  .map((x) => x.product_code || x.product_name || ""),
+              ).size > 1;
+            return (
+              <div
+                key={`${l.tour_date}|${productKey}|${l.leg}`}
+                data-day-of-tour-leg={`${l.tour_date}|${l.leg}`}
+                className="mb-2 last:mb-0"
+              >
+                <div className="mb-0.5 flex flex-wrap items-baseline gap-1.5 text-[11.5px] font-semibold text-[#374151] night:text-white/70">
+                  {ymdLong(l.tour_date)}
+                  {manyProducts && (l.product_name || l.product_code)
+                    ? ` · ${l.product_name || l.product_code}`
+                    : ""}
+                  {/* 去程照旧写「· Outbound」（有回程时）；回程那条挂小标签「Return」（N8：按团期 + 去 / 回程分行，ae 核时提）。 */}
+                  {l.leg !== "return" && hasReturn ? " · Outbound" : ""}
+                  {l.leg === "return" ? (
+                    <span
+                      data-return-leg
+                      className="rounded-[4px] bg-[#e0f2fe] px-[5px] text-[10.5px] text-[#075985]"
+                    >
+                      Return
+                    </span>
+                  ) : null}
+                  {old ? (
+                    <span
+                      data-old-tour-date
+                      className="rounded-[4px] bg-[#fef3c7] px-[5px] text-[10.5px] text-[#92400e]"
+                    >
+                      Old tour date
+                    </span>
+                  ) : null}
+                </div>
+                <MarkRow
+                  label="Relay"
+                  col="relay"
+                  mark={l.relay_mark}
+                  original={l.relay_original}
+                />
+                <MarkRow
+                  label="Bus"
+                  col="bus"
+                  mark={l.bus_mark}
+                  original={l.bus_original}
+                />
+              </div>
+            );
+          })
+        )}
+      </div>
+    </Card>
+  );
+}
+
+function MarkRow({
+  label,
+  col,
+  mark,
+  original,
+}: {
+  label: string;
+  col: TrackingMarkCol;
+  mark: TrackingMark | null;
+  original: TrackingMark | null;
+}) {
+  return (
+    <OdRow k={label}>
+      {mark ? (
+        <>
+          <span
+            data-mark-value={mark.value}
+            className={cn(
+              "font-semibold",
+              mark.value === "no_show" ? "text-[#a32d2d]" : "text-[#047857]",
+            )}
+          >
+            {markLabel(mark)}
+          </span>
+          <span className="block text-[11px] text-[#6b7280] night:text-white/45">
+            {markWho(mark, col)}
+          </span>
+          {isStaffMark(mark) ? (
+            <span
+              data-mark-original
+              className="block text-[11px] text-[#6b7280] night:text-white/45"
+            >
+              {original
+                ? `Original: ${markLabel(original)} · ${markWho(original, col)}`
+                : "Original: not marked"}
+            </span>
+          ) : null}
+        </>
+      ) : (
+        <span className="text-[#9ca3af]">
+          {col === "relay" ? "—" : "Not marked"}
+        </span>
+      )}
+    </OdRow>
   );
 }
 

@@ -316,6 +316,7 @@ const prefills = {
 // 存的时候按送来的 ccl_line_id 保留关联。默认关 = 旧后端（存过就没有 ccl）。
 const cclLines = Object.fromEntries(Object.values(prefills).flatMap((p) => p.rows.map((r) => r.ccl)).filter(Boolean).map((c) => [c.line_id, c]));
 const slimCcl = (id) => { const c = ctl.dayCcl && id != null ? cclLines[id] : null; return c ? { line_id: c.line_id, driver_text: c.driver_text, guide_text: c.guide_text, vehicle_text: c.vehicle_text, is_driver_guide: c.is_driver_guide } : undefined; };
+let pmId = 9000;
 http.createServer(async (req, res) => {
   const url = new URL(req.url, "http://x");
   const p = url.pathname;
@@ -744,6 +745,42 @@ http.createServer(async (req, res) => {
   //   ctl.shuttleFalse = outbound、外地 shuttle 站（St George，false）；ctl.shuttleIn = inbound、外地站（Page，false）；
   //   ctl.shuttleNull = outbound、上车点空 / OFFICE 对不上（null）；ctl.shuttleLegacy = outbound、旧后端没有这个键。
   // 团客（tour 节）一律 TI true 以外的随便写，不算。都没给 = 404，排车页不出 Shuttle 提示。
+  // 147 第二部分：Open 班时间段（后端 dispatch_open_today.py）。只 Super Admin（别人 403）；坏值 400 字符串 detail；ctl.owBad = PUT 一律 400。
+  if (p === "/api/settings/dispatch-open-today") {
+    if (!ctl.superAdmin) return send(res, 403, { detail: "Super Admin only." });
+    if (req.method === "GET") return send(res, 200, ctl.openWin || { start: "00:00", end: "10:00" });
+    if (req.method === "PUT") {
+      const b = JSON.parse(await readRaw(req)); entry.body = b;
+      if (ctl.owBad) return send(res, 400, { detail: "Time must be HH:MM (24-hour), like 07:30." });
+      if (!(b.start < b.end)) return send(res, 400, { detail: "Start time must be earlier than end time." });
+      ctl.openWin = { start: b.start, end: b.end };
+      return send(res, 200, ctl.openWin);
+    }
+  }
+  // Nov 18–22 改接客点（pickup-move）：2026-11-18 两个团（West Rim 3、Hoover Dam 4）的名单；Refresh 走单张重拉。
+  if (p === "/api/dispatch/manifest" && q.date === "2026-11-18") {
+    const g = (order_number, name, pax, pickup_location, extra = {}) => ({ id: pmId++, order_number, name, first_name: name, last_name: "", pax, product: "x", pickup_location, hotel_short: "", pickup_location_id: 1, pickup_is_vegas: true, ...extra });
+    if (q.tour === "4") return send(res, 200, { run_date: q.date, tour: { id: 4, name: "Hoover Dam" }, blocks: [{ sections: [{ kind: "tour", pax: 2, guests: [g("CHDPM9", "ZZ Test Hoover", 2, "Bellagio")] }] }], unplaced: { sections: [] } });
+    if (q.tour !== "3") return send(res, 404, { detail: "mock: not found" });
+    return send(res, 200, { run_date: q.date, tour: { id: 3, name: "West Rim Bus Tour" }, blocks: [{ sections: [{ kind: "tour", pax: 16, guests: [
+      g("CHDPM1", "ZZ Test TI", 2, "Treasure Island (TI) Tour Bus Lobby", { hotel_short: "TI" }),
+      g("CHDPM2", "ZZ Test Bellagio", 3, "Bellagio"),
+      g("CHDPM3", "ZZ Test Aria", 2, "ARIA Resort"),
+      g("CHDPM4", "ZZ Test MGM", 4, "MGM Grand"),
+      g("CHDPM5", "ZZ Test Private", 15, "8:30 Aria Tour Bus Lobby", { hotel_short: "Aria" }),
+      g("CHDPM10", "ZZ Test ParkMGM", 2, "Park MGM", { hotel_short: "Park MGM" }),
+      g("CHDPM11", "ZZ Test IMAX", 2, "Grand Canyon IMAX", { pickup_location_id: null, pickup_is_vegas: null }),
+    ] }, { kind: "outbound", pax: 1, guests: [g("CHDPM6", "ZZ Test StG", 1, "St George – Main St", { pickup_is_vegas: false })] }] }],
+      unplaced: { sections: [{ kind: "tour", pax: 3, guests: [g("CHDPM7", "ZZ Test Empty", 1, "", { pickup_location_id: null, pickup_is_vegas: null }), g("CHDPM8", "ZZ Test Venetian", 2, "The Venetian"), g("CHDPM2", "ZZ Test Bellagio", 3, "Bellagio")] }] } });
+  }
+  const pmRefresh = p.match(/^\/api\/operations\/orders\/([^/]+)\/refresh-from-rezdy$/);
+  if (pmRefresh && req.method === "POST") {
+    const n = decodeURIComponent(pmRefresh[1]);
+    if (ctl.pmBusy && n === "CHDPM3") return send(res, 503, { detail: "Rezdy is busy right now. Try again in a minute." });
+    if (n === "CHDPM4") return send(res, 404, { detail: "Order CHDPM4 was not found in Rezdy." });
+    const changed = n === "CHDPM2" ? [{ field: "Pickup location (P0WR)", before: "Bellagio", after: "Treasure Island" }] : [];
+    return send(res, 200, { order_number: n, result: "updated", rezdy_status: "CONFIRMED", message: changed.length ? "Updated from Rezdy." : "Already up to date.", changed, kept: [] });
+  }
   if (p === "/api/dispatch/manifest") {
     const keys = ["shuttleVegas", "shuttleVegasIn", "shuttleFalse", "shuttleIn", "shuttleNull", "shuttleLegacy"];
     if (!keys.some((k) => ctl[k]) || q.tour !== "3") return send(res, 404, { detail: "mock: not found" });
@@ -771,6 +808,10 @@ http.createServer(async (req, res) => {
     // 2026-10-09（Check the bus 改版 cb3887d）：3 车够但还有人没分到车 ⇒ Seat guests；4 要多开一台车 ⇒ Check the bus 实心。
     // guests_per_bus 5 / 3（不是 4 / 2）：2026-10-16 开车窗改按已选车的座位数算，这两台存着的车（11、12）没填 seats、
     // 退回 guests_per_bus 当容量——数要能让「2 台已经够坐」这件事仍然成立（9 ≤ 5+5、5 ≤ 3+3），不然会多冒出一台。
+    if (q.date === "2026-11-18") return sendM({ run_date: q.date, cards: [
+      { ...card(3, "West Rim Bus Tour"), uploaded: true, pax: 16, guests: 6, buses: 0, mode: "none", not_on_bus: 16, buses_needed: 1, guests_per_bus: 54, bus_pax: {} },
+      { ...card(4, "Hoover Dam"), uploaded: true, pax: 2, guests: 1, buses: 0, mode: "none", not_on_bus: 2, buses_needed: 1, guests_per_bus: 54, bus_pax: {} },
+    ] });
     if (q.date === "2026-10-09") return sendM({ run_date: q.date, cards: [
       { ...card(3, "West Rim Bus Tour"), uploaded: true, pax: 9, guests: 4, buses: 2, mode: "lettered", not_on_bus: 2, buses_needed: 2, guests_per_bus: 5 },
       { ...card(4, "Hoover Dam"), uploaded: true, pax: 5, guests: 2, buses: 1, mode: "single", not_on_bus: 3, buses_needed: 2, guests_per_bus: 3 },

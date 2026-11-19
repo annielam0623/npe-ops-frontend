@@ -96,6 +96,7 @@ export type {
 } from "./hr";
 export type { OrderLogPage, OrderLogQuery, OrderLogRecord } from "./order-log";
 export type {
+  DayOfTourLeg,
   OrderDetail,
   OrderListPage,
   OrderListQuery,
@@ -145,6 +146,9 @@ export type {
   BookingNotes,
   MorningTracking,
   MorningTrackingRow,
+  TrackingMark,
+  TrackingMarkCol,
+  TrackingMarkValue,
   NoteCreate,
   NoteLine,
   TakeActionResult,

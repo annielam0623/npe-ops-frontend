@@ -1,4 +1,19 @@
 import type { FarmOutView } from "./farm-out";
+import type { TrackingMark } from "./morning-tracking";
+
+/** 订单页 Day of tour 卡的一段：某个团期、某个产品、去程（leg ""）或回程（"return"）。 */
+export interface DayOfTourLeg {
+  tour_date: string;
+  leg: string;
+  /** 对不上订单产品时是 ""（G321 合同），这时用 product_name。 */
+  product_code: string;
+  /** G321 合同第 4 节：Main manifest 上的产品名（旧后端没有）。 */
+  product_name?: string;
+  relay_mark: TrackingMark | null;
+  relay_original: TrackingMark | null;
+  bus_mark: TrackingMark | null;
+  bus_original: TrackingMark | null;
+}
 
 /** GET /api/operations/orders 的一行。缺的值是字符串 "—"（不是 null），日期是显示用的文字。 */
 export interface OrderRow {
@@ -60,6 +75,12 @@ export interface OrderDetail {
     pill_label?: string;
     row_keys: string[];
   }[];
+  /**
+   * No show 改方向（Annie 2026-11-17「动手」，N3 A / N8 A）：Day of tour 卡，按团期 + 产品 + leg 一段一条。
+   * 后端按订单号单独存（manifest_mark_overrides + 司机 / 导游原始标记），Rezdy 同步 / 改期 / 取消 / 重建 manifest 都不删改；
+   * 改期后旧团期那段照样给。旧后端没有这个字段 ⇒ 不出卡。⚠️ 字段名以后端合同为准。
+   */
+  day_of_tour?: DayOfTourLeg[];
   source: string;
   booking_type: string;
   /** false：订单在新的 Rezdy 表里，暂时只读。 */

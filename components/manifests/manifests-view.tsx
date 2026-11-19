@@ -1718,11 +1718,23 @@ function ManifestTable({
         {fields.map((k, i) => (
           <td
             key={k}
+            // 产品名和同节大多数不一样 ⇒ 整个产品名红字（后端比，前端只认 product_differs）；
+            // 电脑上停鼠标看这一节大多数产品叫什么（Annie 2026-11-17 题 2 A，手机上只有红字）。
+            data-product-differs={
+              k === "product" && r.product_differs ? "" : undefined
+            }
+            title={
+              k === "product" && r.product_differs && r.product_majority
+                ? `Different from most products in this section: ${r.product_majority}`
+                : undefined
+            }
             className={cn(
               "px-2.5 py-2",
               k === "order_number"
                 ? "relative text-[#378ADD] night:text-sky-300"
-                : "text-[#1a1a1a] night:text-white/85",
+                : k === "product" && r.product_differs
+                  ? "text-[#a32d2d] night:text-red-300"
+                  : "text-[#1a1a1a] night:text-white/85",
               (byKey.get(k)?.type === "number" ||
                 byKey.get(k)?.type === "money") &&
                 "text-right tabular-nums",
@@ -2375,6 +2387,14 @@ function ManifestsHowToUse() {
           <b>Select all</b> at the top left of the table to select everyone. A
           group with sections set in Settings → Products → Manifest setup (for
           example UPPER / LOWER / X for Antelope) is split into those sections.
+        </>,
+        // 产品名标红（Annie 2026-11-17「产品标红同意全部推荐。动手」，题 4 A 原文）。
+        <>
+          A product name in red is different from most products in its section
+          (the agent name in brackets and the pickup part don&apos;t count), for
+          example missing &quot;with Lunch&quot;. Hover over it to see what most
+          of the section booked. Check the order in Order List before you count
+          meals or tickets.
         </>,
         <>
           <b>Bus Tour</b>: <b>Send tour confirmation</b>. Pick the tour type for

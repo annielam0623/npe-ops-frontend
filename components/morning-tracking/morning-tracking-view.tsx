@@ -30,20 +30,29 @@ import {
   buildMorningExportUrl,
   fetchLiveDrivers,
   fetchMorningTracking,
+  saveTrackingMark,
 } from "@/lib/morning-tracking-api";
 import { usePageVisibility } from "@/lib/page-visibility";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
 import { usePermissions } from "@/lib/staff-permissions";
 import { fetchUserPref, saveUserPref } from "@/lib/user-prefs-api";
 import { cn, takeSearchParam } from "@/lib/utils";
-import type { LiveDrivers, MorningTracking, MorningTrackingRow } from "@/types";
+import type {
+  LiveDrivers,
+  MorningTracking,
+  MorningTrackingRow,
+  TrackingMarkCol,
+  TrackingMarkValue,
+} from "@/types";
 
 import {
   type ColumnKey,
   computeStats,
+  type TrackingStats,
   DEFAULT_COLUMN_ORDER,
   emailBadgeOf,
   hasLiveMarks,
+  hasSplitMarks,
   LOCAL_COLUMN_ORDER_KEY,
   matchesSearch,
   noShowBadge,
@@ -54,10 +63,17 @@ import {
   summarizeDrivers,
 } from "./config";
 import { PageShortcutBar } from "@/components/nav/page-shortcut-bar";
-import { PhoneShortcutStar } from "@/components/ui/phone";
+import { PhoneMore, PhoneShortcutStar } from "@/components/ui/phone";
 import { useIsPhone } from "@/lib/phone";
 import { LiveDriversBoard } from "./live-drivers";
+import { PhoneTrackingList } from "./phone-tracking-list";
 import { TrackingTable } from "./tracking-table";
+import {
+  type MarkEditing,
+  markKey,
+  type MarkSaveStatus,
+} from "./mark-cell";
+import { replaceUrl, useLeaveGuard } from "@/lib/use-leave-guard";
 import { setVisibleInterval } from "@/lib/visible-poll";
 
 type LoadState =
@@ -99,7 +115,8 @@ function writeLocalOrder(order: ColumnKey[]) {
 }
 
 export function MorningTrackingView() {
-  const { partnerView, canSeeMoney } = usePermissions();
+  const { partnerView, canSeeMoney, canRowTakeAction } = usePermissions();
+  const canTakeMorning = canRowTakeAction("morning");
   // date 为空表示还没在浏览器里算出要看哪天（避免服务端 / 浏览器不一致）。
   const [date, setDate] = useState("");
   const [state, setState] = useState<LoadState>({ kind: "loading" });
@@ -256,7 +273,7 @@ export function MorningTrackingView() {
     // 地址栏跟着日期走，刷新 / 分享链接还是这一天。
     const url = new URL(window.location.href);
     url.searchParams.set("date", date);
-    window.history.replaceState(null, "", url);
+    replaceUrl(url);
     void load(date, false);
   }, [date, load]);
 
@@ -313,10 +330,95 @@ export function MorningTrackingView() {
     });
   }
 
+  // ── Relay / Bus 标记的编辑（No show 改方向，Annie 2026-11-17「动手」，N2 A / N7 A）──
+  // 改的先暂存在页面上，按每格的 Save 才存（站内规矩：不改一点存一点）；每分钟刷新不冲掉暂存。
+  const [staged, setStaged] = useState<
+    ReadonlyMap<string, TrackingMarkValue | null>
+  >(new Map());
+  const [markStatus, setMarkStatus] = useState<
+    ReadonlyMap<string, MarkSaveStatus>
+  >(new Map());
+  const unsaved = staged.size > 0;
+  const UNSAVED_MSG =
+    "You have Relay / Bus marks you haven't saved. Leave without saving them?";
+  useLeaveGuard(unsaved, UNSAVED_MSG);
+
+  /** 有没存的改动时先问；答应丢掉就清空暂存。 */
+  function confirmDiscard(): boolean {
+    if (!unsaved) return true;
+    if (!window.confirm(UNSAVED_MSG)) return false;
+    setStaged(new Map());
+    setMarkStatus(new Map());
+    return true;
+  }
+
+  function stageMark(
+    row: MorningTrackingRow,
+    col: TrackingMarkCol,
+    value: TrackingMarkValue | null | undefined,
+  ) {
+    const key = markKey(row.id, col);
+    setStaged((m) => {
+      const next = new Map(m);
+      if (value === undefined) next.delete(key);
+      else next.set(key, value);
+      return next;
+    });
+    // 又改了：上一次的 Saved / 报错不再算数。
+    setMarkStatus((m) => {
+      if (!m.has(key)) return m;
+      const next = new Map(m);
+      next.delete(key);
+      return next;
+    });
+  }
+
+  async function saveMark(row: MorningTrackingRow, col: TrackingMarkCol) {
+    const key = markKey(row.id, col);
+    if (!staged.has(key) || markStatus.get(key)?.kind === "saving") return;
+    const value = staged.get(key) ?? null;
+    const setStatus = (s: MarkSaveStatus | null) =>
+      setMarkStatus((m) => {
+        const next = new Map(m);
+        if (s) next.set(key, s);
+        else next.delete(key);
+        return next;
+      });
+    setStatus({ kind: "saving" });
+    try {
+      await saveTrackingMark({
+        date: dateRef.current,
+        bookingId: row.id,
+        orderNumber: row.order_number,
+        col,
+        value,
+      });
+      setStaged((m) => {
+        const next = new Map(m);
+        next.delete(key);
+        return next;
+      });
+      setStatus({ kind: "saved" });
+      // 后端同一次写入已记成「已处理」：重拉一次拿新标记和「✓ 谁」。
+      await load(dateRef.current, true);
+    } catch (error) {
+      if (isStatus(error, 401)) redirectToLogin();
+      else setStatus({ kind: "error", message: describeError(error) });
+    }
+  }
+
+  function changeTab(next: "tracking" | "live") {
+    if (next === tab) return;
+    if (!confirmDiscard()) return;
+    setTab(next);
+  }
+
   function changeDate(next: string) {
     if (!isYmd(next) || next === date) {
       return;
     }
+    if (!confirmDiscard()) return;
+    setMarkStatus(new Map());
     setDriver("");
     setRefreshError(null);
     setLive({ kind: "idle" });
@@ -349,16 +451,21 @@ export function MorningTrackingView() {
   // 司机标记（Driver mark 列、No show 置顶 / 红底 / 页签数字）跟 Live drivers 同一个开关：开关没对我开时表跟以前一样。
   const allRows = useMemo(
     () =>
-      (data?.rows ?? []).map((r) =>
-        canLive
-          ? r
-          : {
-              ...r,
-              live_status: undefined,
-              live_status_at: undefined,
-              ns_unhandled: false,
-            },
-      ),
+      (data?.rows ?? []).map((r) => {
+        if (canLive) return r;
+        // 开关没对我开：Relay / Bus 新键也拿掉（hasSplitMarks 按键在不在判）。
+        const rest = { ...r };
+        delete rest.relay_mark;
+        delete rest.relay_original;
+        delete rest.bus_mark;
+        delete rest.bus_original;
+        return {
+          ...rest,
+          live_status: undefined,
+          live_status_at: undefined,
+          ns_unhandled: false,
+        };
+      }),
     [data, canLive],
   );
   const drivers = useMemo(() => summarizeDrivers(allRows), [allRows]);
@@ -387,8 +494,26 @@ export function MorningTrackingView() {
     [nsSeen, now],
   );
   const showMarks = hasLiveMarks(allRows);
+  // No show 改方向（N9 A）：后端带了 Relay / Bus 分开的标记 ⇒ 出这两列、不出 Driver mark。
+  const showSplit = hasSplitMarks(allRows);
+  const markEditing: MarkEditing = {
+    canEdit: canTakeMorning && showSplit,
+    staged,
+    status: markStatus,
+    onStage: stageMark,
+    onSave: (row, col) => void saveMark(row, col),
+  };
   // 置顶 58：后端带了到 / 离时间才出 Arrived at / Left at 两列（旧后端没有这两个键）。
   const showArrivals = allRows.some((r) => "arrived_at" in r);
+  const visibleColumns = columnOrder.filter(
+    (k) =>
+      // 没勾 See prices, agent & commission（orders.money_view，题 8）：Agent 列整列不出（后端给的是空字符串）。
+      (canSeeMoney || k !== "agent_name") &&
+      // 后端还没带司机标记（旧版）：Driver mark 列不出；带了 Relay / Bus 分开的新键（G321）：只出这两列。
+      ((showMarks && !showSplit) || k !== "driver_mark") &&
+      (showSplit || (k !== "relay_mark" && k !== "bus_mark")) &&
+      (showArrivals || (k !== "arrived_at" && k !== "left_at")),
+  );
   const livePeople = useMemo(() => {
     const people = live.kind === "ready" ? live.data.people : [];
     if (!activeDriver) return people;
@@ -434,6 +559,29 @@ export function MorningTrackingView() {
         : // 窗口内旧页面这里是空的（只有别的日期 / 过了截止才写一句），照旧。
           "";
 
+  /** 顶栏状态灯（Annie 2026-11-17 整合样稿第 2 题 A）：刷新中 = 绿点闪，过了截止 = 灰点，别的日子 = 灰点 OFF；整句放 title。 */
+  const refreshLight: {
+    kind: "live" | "stopped" | "off";
+    text: string;
+    full: string;
+  } | null =
+    !data || !date
+      ? null
+      : date !== today
+        ? { kind: "off", text: "Auto-refresh off", full: pollNotice }
+        : endMinute === null
+          ? null
+          : laMinuteOfDay(new Date(now)) >= endMinute
+            ? { kind: "stopped", text: `Stopped ${endLabel}`, full: pollNotice }
+            : {
+                kind: "live",
+                text:
+                  tab === "live" && canLive
+                    ? "Live · every 30 sec"
+                    : "Live · every 1 min",
+                full: `Refreshing automatically until ${endLabel || "the cut-off"}.`,
+              };
+
   const placeholder =
     state.kind === "loading"
       ? "Loading…"
@@ -463,18 +611,16 @@ export function MorningTrackingView() {
         </div>
         <div className="flex items-center gap-2">
           {/* 自动刷新停了要说一声（同旧页面 #poll-notice）。 */}
-          {pollNotice ? (
-            <span className="max-w-[320px] text-[12px] text-[#8fb4d4]">
-              {pollNotice}
-            </span>
-          ) : null}
-          <a
-            href={date ? buildMorningExportUrl(date) : undefined}
-            title="Excel of the morning messages sent for this date"
-            className={BTN}
-          >
-            ⬇ Export
-          </a>
+          {refreshLight ? <RefreshLight {...refreshLight} /> : null}
+          <PhoneMore label="More actions">
+            <a
+              href={date ? buildMorningExportUrl(date) : undefined}
+              title="Excel of the morning messages sent for this date"
+              className={BTN}
+            >
+              ⬇ Export
+            </a>
+          </PhoneMore>
           <button
             type="button"
             onClick={() => date && void load(date, false)}
@@ -497,50 +643,56 @@ export function MorningTrackingView() {
           </TrackingNotice>
         ) : (
           <>
-            {/* 手机上不出日期切换，只写今天。 */}
-            <p
-              data-phone-today
-              className="mb-2 text-[14px] font-semibold text-[#7ab3e0] sm:hidden"
-            >
-              Today · {phoneDay(today)}
-            </p>
-            <div className="mb-[18px] flex items-center gap-2 max-sm:hidden">
-              <button
-                type="button"
-                aria-label="Previous day"
-                onClick={() => changeDate(shiftYmd(date, -1))}
-                disabled={!date}
-                className={NAV_BTN}
-              >
-                ‹
-              </button>
-              <input
-                type="date"
-                aria-label="Date"
-                value={date}
-                onChange={(event) => changeDate(event.target.value)}
-                className="min-w-[140px] cursor-pointer rounded-[7px] border border-white/15 bg-[#1a2f4a] px-2.5 py-1.5 text-center font-[inherit] text-[14px] font-semibold text-white [color-scheme:dark] outline-none focus:border-[#185FA5]"
+            {/* Annie 2026-11-17「这个页面也要整合一下，空白的地方太多了，搞得有高科技感一些」，样稿 1/2/3/5 A、页签不动：
+                日期 + 一行数字（原来 4 张大卡）；司机按钮 + 搜索并成一行，窗口窄了才折行。 */}
+            <div className="mb-3 flex flex-wrap items-center gap-x-2 gap-y-2 max-sm:mb-2">
+              <div className="flex items-center gap-2 max-sm:hidden">
+                <button
+                  type="button"
+                  aria-label="Previous day"
+                  onClick={() => changeDate(shiftYmd(date, -1))}
+                  disabled={!date}
+                  className={NAV_BTN}
+                >
+                  ‹
+                </button>
+                <input
+                  type="date"
+                  aria-label="Date"
+                  value={date}
+                  onChange={(event) => changeDate(event.target.value)}
+                  className="min-w-[140px] cursor-pointer rounded-[7px] border border-white/15 bg-[#1a2f4a] px-2.5 py-1.5 text-center font-[inherit] text-[14px] font-semibold text-white [color-scheme:dark] outline-none focus:border-[#185FA5]"
+                />
+                <button
+                  type="button"
+                  aria-label="Next day"
+                  onClick={() => changeDate(shiftYmd(date, 1))}
+                  disabled={!date}
+                  className={NAV_BTN}
+                >
+                  ›
+                </button>
+                <button
+                  type="button"
+                  onClick={() => changeDate(laToday())}
+                  disabled={!date || date === today}
+                  className={cn(
+                    BTN,
+                    "border-[#c47a12] bg-[#c47a12] font-semibold text-white hover:bg-[#a86510] hover:text-white disabled:cursor-default disabled:hover:bg-[#c47a12]",
+                  )}
+                >
+                  Today
+                </button>
+              </div>
+              <span
+                aria-hidden
+                className="mx-1.5 h-[18px] w-px bg-white/[.12] max-sm:hidden"
               />
-              <button
-                type="button"
-                aria-label="Next day"
-                onClick={() => changeDate(shiftYmd(date, 1))}
-                disabled={!date}
-                className={NAV_BTN}
-              >
-                ›
-              </button>
-              <button
-                type="button"
-                onClick={() => changeDate(laToday())}
-                disabled={!date || date === today}
-                className={cn(
-                  BTN,
-                  "border-[#c47a12] bg-[#c47a12] font-semibold text-white hover:bg-[#a86510] hover:text-white disabled:cursor-default disabled:hover:bg-[#c47a12]",
-                )}
-              >
-                Today
-              </button>
+              {/* 手机上不出日期切换，只写今天；「Today · …」并进数字那一行（手机简化题 5 A）。 */}
+              <SummaryStrip
+                stats={stats}
+                phoneToday={isPhone ? phoneDay(today) : null}
+              />
             </div>
 
             {canLive ? (
@@ -556,7 +708,7 @@ export function MorningTrackingView() {
                     role="tab"
                     aria-selected={tab === t}
                     data-mt-tab={t}
-                    onClick={() => setTab(t)}
+                    onClick={() => changeTab(t)}
                     className={cn(
                       "relative",
                       tab === t
@@ -620,70 +772,63 @@ export function MorningTrackingView() {
             ) : null}
 
             {/* 旧页面永远有 All（没有司机、还没加载完也有），照旧。 */}
-            <div
-              role="group"
-              aria-label="Filter by driver"
-              className="mb-3 flex flex-wrap gap-1.5 sm:mb-[18px]"
-            >
-              <DriverPill active={!activeDriver} onClick={() => setDriver("")}>
-                {/* 加载完之前只写 All，加载后带人数（同旧页面）。 */}
-                All
-                {data ? (
-                  <>
-                    {" "}
-                    <span className="text-[11px] opacity-70">
-                      {allRows.length}
-                    </span>
-                  </>
-                ) : null}
-              </DriverPill>
-              {drivers.map((d) => (
+            <div className="mb-3.5 flex flex-wrap items-center gap-1.5 max-sm:mb-2.5 max-sm:flex-nowrap">
+              <div
+                role="group"
+                aria-label="Filter by driver"
+                className="flex flex-wrap gap-1.5 max-sm:min-w-0 max-sm:flex-1 max-sm:flex-nowrap max-sm:overflow-x-auto"
+              >
                 <DriverPill
-                  key={d.driver}
-                  active={activeDriver === d.driver}
-                  onClick={() => setDriver(d.driver)}
+                  active={!activeDriver}
+                  onClick={() => setDriver("")}
                 >
-                  {d.driver}: {d.checkedIn}/{d.total}
+                  {/* 加载完之前只写 All，加载后带人数（同旧页面）。 */}
+                  All
+                  {data ? (
+                    <>
+                      {" "}
+                      <span className="text-[11px] opacity-70">
+                        {allRows.length}
+                      </span>
+                    </>
+                  ) : null}
                 </DriverPill>
-              ))}
+                {drivers.map((d) => (
+                  <DriverPill
+                    key={d.driver}
+                    active={activeDriver === d.driver}
+                    onClick={() => setDriver(d.driver)}
+                    share={d.total ? d.checkedIn / d.total : 0}
+                  >
+                    {d.driver} {d.checkedIn}/{d.total}
+                  </DriverPill>
+                ))}
+              </div>
+
+              <div className="ml-2 flex flex-1 items-center gap-2 max-sm:hidden">
+                <input
+                  type="search"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Search order #, name, phone…"
+                  aria-label="Search"
+                  className="w-[220px] rounded-[7px] border border-white/15 bg-[#1a2f4a] px-3 py-[5px] text-[13px] text-[#e0eaf6] outline-none placeholder:text-[#5a7a9a] focus:border-[#185FA5] max-sm:hidden [&::-webkit-search-cancel-button]:appearance-none"
+                />
+                <span className="ml-auto font-mono text-[11.5px] tracking-[.06em] text-[#5a7a9a] uppercase">
+                  {data ? `${filtered.length} records` : "— records"}
+                </span>
+              </div>
             </div>
-
-            <section
-              aria-label="Summary"
-              className="mb-3 flex flex-wrap gap-2.5 max-sm:flex-nowrap max-sm:gap-1.5 sm:mb-5"
-            >
-              <StatCard label="Total" value={stats ? stats.total : "—"} />
-              <StatCard
-                label="Checked In"
-                value={stats ? stats.checkedIn : "—"}
-                valueClass="text-[#2ecc71]"
-              />
-              <StatCard
-                label="Pending"
-                value={stats ? stats.pending : "—"}
-                valueClass="text-[#e67e22]"
-              />
-              <StatCard
-                label="Check-in Rate"
-                title="Checked in / successfully sent SMS"
-                value={
-                  stats ? (stats.rate === null ? "—" : `${stats.rate}%`) : "—"
-                }
-              />
-            </section>
-
-            <div className="mb-3.5 flex items-center gap-2.5">
+            {/* 手机：搜索单独一行（司机按钮那行横着滑）。 */}
+            <div className="mb-2.5 sm:hidden">
               <input
                 type="search"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Search order #, name, phone…"
                 aria-label="Search"
-                className="w-[220px] rounded-[7px] border border-white/15 bg-[#1a2f4a] px-3 py-[7px] text-[13px] text-[#e0eaf6] outline-none placeholder:text-[#5a7a9a] focus:border-[#185FA5] [&::-webkit-search-cancel-button]:appearance-none"
+                className="w-full rounded-[7px] border border-white/15 bg-[#1a2f4a] px-3 py-[5px] text-[13px] text-[#e0eaf6] outline-none placeholder:text-[#5a7a9a] focus:border-[#185FA5] [&::-webkit-search-cancel-button]:appearance-none"
               />
-              <span className="ml-auto text-[12px] text-[#5a7a9a]">
-                {data ? `${filtered.length} records` : "— records"}
-              </span>
             </div>
 
             {tab === "live" && canLive ? (
@@ -710,6 +855,19 @@ export function MorningTrackingView() {
               ) : (
                 <p className="p-7 text-center text-[#4a6a8a]">Loading…</p>
               )
+            ) : // 手机（< 640px）：不要 Check-in Log 标题和表头，每位客人一行、点开看详情（Annie 2026-11-17「全部按推荐，动手」，
+            // 样稿 2Tt9qzDzCYENfiAeEpdjn7）。电脑版照旧是整张表。
+            isPhone ? (
+              <PhoneTrackingList
+                rows={filtered}
+                columns={visibleColumns}
+                onOpenConversation={(row) => openConversation(row, false)}
+                newNoShow={newNoShow}
+                onToggleAction={(row, want) => void toggleAction(row, want)}
+                togglingId={togglingId}
+                now={now}
+                placeholder={placeholder}
+              />
             ) : (
               <section className="overflow-hidden rounded-[12px] border border-white/[.08] bg-[#1a2f4a]">
                 <div className="flex items-center justify-between border-b border-white/[.08] bg-[#0f2035] px-4 py-3">
@@ -730,18 +888,11 @@ export function MorningTrackingView() {
                   </div>
                   <TrackingTable
                     rows={filtered}
-                    columnOrder={columnOrder.filter(
-                      (k) =>
-                        // 没勾 See prices, agent & commission（orders.money_view，题 8）：Agent 列整列不出（后端给的是空字符串）。
-                        (canSeeMoney || k !== "agent_name") &&
-                        // 后端还没带司机标记（旧版）：Driver mark 列不出。
-                        (showMarks || k !== "driver_mark") &&
-                        (showArrivals ||
-                          (k !== "arrived_at" && k !== "left_at")),
-                    )}
+                    columnOrder={visibleColumns}
                     onReorder={reorderColumns}
                     onOpenConversation={(row) => openConversation(row, false)}
                     newNoShow={newNoShow}
+                    marks={markEditing}
                     onToggleAction={(row, want) => void toggleAction(row, want)}
                     togglingId={togglingId}
                     now={now}
@@ -756,7 +907,8 @@ export function MorningTrackingView() {
           dark
           title="How to use — Morning Pickup Tracking"
           items={[
-            "Pick the date (‹ ›, the date box or Today). Click a driver to see only their guests. The search box finds an order #, name or phone.",
+            "Pick the date (‹ ›, the date box or Today). The numbers next to the date are for the guests you are looking at; the bar shows the check-in rate. Click a driver to see only their guests; the thin green line under each driver shows how many of their guests have checked in. The search box finds an order #, name or phone.",
+            "On a phone, each guest is one line: a green dot means checked in, a red dot means not checked in yet. ⚠️ means something needs you (a No show or a message). Tap the line to see the guest's details, Chat and Take action; tap it again to close.",
             "Check-in shows ✓ Checked In or ⏳ Pending.",
             "Click a number in Bus # to see where that bus is now. Samsara opens in a new tab. A number you cannot click has no live map: it is not in Settings → Vehicles, or that vehicle has no Samsara link.",
             "Click a Driver name to see where that driver is right now, even if they switched buses after dispatch. A name you cannot click means we could not match that driver to a live vehicle.",
@@ -766,15 +918,31 @@ export function MorningTrackingView() {
             "Click a Notes or WhatsApp cell to read and reply: tick SMS to guest or Email to guest, click Send →. SMS can be at most 300 characters, plain characters only (no emoji, curly quotes or long dashes); if it is longer, send it by email.",
             "When your reply goes out to the guest (SMS or email sent), the message counts as handled and shows ✓ with your name. If no reply is needed, click ✓ Mark as actioned (or Take action in the table). If a new message comes in afterward, the cell goes back to ⚠️ Take action — clicking it once does not clear later messages too.",
             "A Phone AI message means a guest called and did not get their confirmation, or said our email or phone is wrong. The message says what the AI promised the guest, usually that it will be sent within 15 minutes: check any new email or phone with the guest, resend it, then click ✓ Mark as actioned. The same message also goes to reservations@.",
-            "The whole list refreshes every minute until the cut-off. Click ↻ Refresh any time. ⬇ Export downloads the day.",
+            "The whole list refreshes every minute until the cut-off. The light in the top bar shows LIVE (green, blinking) while it refreshes and STOPPED after the cut-off; point at it for details. Click ↻ Refresh any time. ⬇ Export downloads the day (on a phone it is under ⋯).",
             "Drag a column header to move it. The order is saved to your account and is the same as on the old admin page. Drag its right edge to make it wider or narrower; widths go back to normal when you reload the page.",
             // 司机实时页（开关对我开时才写）。
             ...(canLive
               ? [
                   "Live drivers shows each driver's and guide's phone page side by side, read-only. Picked up, Boarded and No show show the time they were marked. It refreshes every 30 seconds. Tap Text, or a guest in Messages, to reply: SMS and email go together from the company number, and the driver sees your reply in their conversation.",
-                  "When a driver or guide marks No show, that order moves to the top of Tracking in red, with ⚠️ Take action under Driver mark. Click it once you have dealt with it. The red number on the tabs counts the No shows nobody has handled; a green dot means all are handled.",
                 ]
               : []),
+            // No show 改方向（Annie 2026-11-17「动手」，样稿第 2 版原文）：后端带了 Relay / Bus 分开的标记才写这几条。
+            ...(canLive && showSplit
+              ? [
+                  'Relay shows what the relay driver marked: Picked up or No show. Bus shows what the guide marked when guests got on the bus: Boarded or No show. Guests who board at Treasure Island have no relay, so Relay shows "—". The Bus mark is the final word on a No show.',
+                  ...(canTakeMorning
+                    ? [
+                        "If a driver or guide didn't mark a guest, or marked the wrong thing, click the mark, pick the right one and click Save next to it. Your change shows on Main manifest, the Bus Manifest page and the order page. The driver's or guide's own mark is kept: hover over the mark to see it. Their own phone pages and Live drivers still show their original mark. To undo your change, pick Reset to driver/guide mark and click Save.",
+                      ]
+                    : []),
+                  "Only guests who were sent the morning pickup text are listed here. A guest who was not sent it has no row, so you can't change their mark on this page. The guide's Bus mark for that guest still shows on Main manifest, the Bus Manifest page and the order page.",
+                  "When a driver or guide marks No show, that order moves to the top of Tracking in red, with ⚠️ Take action under the mark. Click it once you have dealt with it. Changing that row's Relay or Bus mark and saving also counts as dealt with. The red number on the tabs counts the No shows nobody has handled; a green dot means all are handled.",
+                ]
+              : canLive
+                ? [
+                    "When a driver or guide marks No show, that order moves to the top of Tracking in red, with ⚠️ Take action under Driver mark. Click it once you have dealt with it. The red number on the tabs counts the No shows nobody has handled; a green dot means all are handled.",
+                  ]
+                : []),
           ]}
           warning={
             <>
@@ -828,10 +996,13 @@ const NAV_BTN =
   "flex size-8 cursor-pointer items-center justify-center rounded-[7px] border border-white/15 bg-[#1a2f4a] text-[16px] text-[#a0c0e0] hover:bg-[#1e3a5f] hover:text-white disabled:opacity-60";
 
 function DriverPill({
+  share,
   active,
   onClick,
   children,
 }: {
+  /** 0–1：这个司机的客人签到了多少；All 不传。 */
+  share?: number;
   active: boolean;
   onClick: () => void;
   children: ReactNode;
@@ -842,44 +1013,135 @@ function DriverPill({
       aria-pressed={active}
       onClick={onClick}
       className={cn(
-        "cursor-pointer rounded-[20px] border px-3.5 py-1 text-[12px] font-semibold whitespace-nowrap",
+        "relative cursor-pointer overflow-hidden rounded-[5px] border px-2.5 pt-[3px] pb-1 font-mono text-[11.5px] font-semibold whitespace-nowrap tabular-nums",
         active
-          ? "border-[#185FA5] bg-[#185FA5] text-white"
-          : "border-white/[.12] bg-[#1a2f4a] text-[#7a9bbe] hover:border-white/30 hover:text-white",
+          ? "border-[#38bdf8] bg-[#38bdf8]/10 text-white"
+          : "border-white/[.12] bg-[#13263d] text-[#b8cde4] hover:border-white/30 hover:text-white",
       )}
     >
       {children}
+      {/* 这个司机的客人签到了多少（样稿第 3 题 A）。 */}
+      {share !== undefined ? (
+        <span
+          aria-hidden
+          data-driver-bar
+          className="absolute bottom-0 left-0 h-[2px] bg-[#2ecc71]"
+          style={{ width: `${Math.round(share * 100)}%` }}
+        />
+      ) : null}
     </button>
   );
 }
 
-function StatCard({
-  label,
-  value,
-  valueClass,
-  title,
+/**
+ * 原来 4 张大卡换成一行控制台数字（Annie 2026-11-17 整合样稿第 1、5 题 A）：等宽字、淡光，签到率后面一根细进度条；
+ * 手机上进度条单独占一行。数字不能点（同原来的卡）。
+ */
+function SummaryStrip({
+  stats,
+  phoneToday,
 }: {
-  label: string;
-  value: number | string;
-  valueClass?: string;
-  title?: string;
+  stats: TrackingStats | null;
+  /** 手机上「Today · Tue, Nov 17」放在这一行最前面，标签缩短成 In / Rate（手机简化题 5 A）；电脑 null。 */
+  phoneToday: string | null;
 }) {
-  return (
-    <div
-      title={title}
-      className="min-w-[100px] rounded-[10px] border border-white/[.08] bg-[#1a2f4a] px-5 py-3 text-center max-sm:min-w-0 max-sm:flex-1 max-sm:px-1 max-sm:py-1.5"
-    >
-      <div
+  const item = (
+    key: string,
+    label: string,
+    value: string | number,
+    cls = "text-white [text-shadow:0_0_10px_rgba(56,189,248,.35)]",
+  ) => (
+    <span data-stat={key} className="whitespace-nowrap">
+      {label}
+      <b
         className={cn(
-          "text-[26px] font-bold text-white tabular-nums max-sm:text-[18px]",
-          valueClass,
+          "ml-1.5 text-[15px] font-bold tracking-normal max-sm:text-[13px]",
+          cls,
         )}
       >
         {value}
-      </div>
-      <div className="mt-0.5 text-[11px] text-[#7a9bbe] max-sm:text-[10px] max-sm:leading-tight">
-        {label}
-      </div>
-    </div>
+      </b>
+    </span>
+  );
+  const rate = stats?.rate ?? null;
+  return (
+    <section
+      aria-label="Summary"
+      data-mt-stats
+      className="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[11px] tracking-[.06em] text-[#5a7a9a] uppercase tabular-nums max-sm:w-full max-sm:gap-x-3 max-sm:text-[10px]"
+    >
+      {phoneToday ? (
+        <span
+          data-phone-today
+          className="font-sans text-[13px] font-semibold tracking-normal whitespace-nowrap text-[#7ab3e0] normal-case"
+        >
+          Today · {phoneToday}
+        </span>
+      ) : null}
+      {item("total", "Total", stats ? stats.total : "—")}
+      {item(
+        "in",
+        phoneToday ? "In" : "Checked in",
+        stats ? stats.checkedIn : "—",
+        "text-[#2ecc71] [text-shadow:0_0_10px_rgba(46,204,113,.35)]",
+      )}
+      {item(
+        "pending",
+        "Pending",
+        stats ? stats.pending : "—",
+        "text-[#e67e22]",
+      )}
+      <span title="Checked in / successfully sent SMS" className="contents">
+        {item(
+          "rate",
+          phoneToday ? "Rate" : "Check-in rate",
+          stats ? (rate === null ? "—" : `${rate}%`) : "—",
+        )}
+      </span>
+      <span
+        data-rate-bar
+        aria-hidden
+        className="h-[5px] w-[120px] overflow-hidden rounded-[3px] bg-white/[.08] max-sm:w-full max-sm:basis-full"
+      >
+        <span
+          className="block h-full bg-[linear-gradient(90deg,#22c55e,#38bdf8)] shadow-[0_0_8px_rgba(56,189,248,.65)]"
+          style={{ width: `${rate ?? 0}%` }}
+        />
+      </span>
+    </section>
+  );
+}
+
+/** 顶栏状态灯（样稿第 2 题 A）：live = 绿点闪；stopped / off = 灰点。整句在 title 和读屏文字里。 */
+function RefreshLight({
+  kind,
+  text,
+  full,
+}: {
+  kind: "live" | "stopped" | "off";
+  text: string;
+  full: string;
+}) {
+  return (
+    <span
+      data-refresh-light={kind}
+      title={full}
+      className="inline-flex items-center gap-1.5 rounded-[6px] border border-[#38bdf8]/20 bg-[#38bdf8]/[.06] px-2 py-0.5 font-mono text-[11px] tracking-[.06em] whitespace-nowrap text-[#7ab3e0] uppercase max-sm:px-1.5 max-sm:text-[10px]"
+    >
+      <span
+        aria-hidden
+        className={cn(
+          "size-[7px] rounded-full",
+          kind === "live"
+            ? "bg-[#2ecc71] motion-safe:animate-[mt-pulse_1.8s_infinite]"
+            : "bg-[#64748b]",
+        )}
+      />
+      <span className="max-sm:hidden">{text}</span>
+      <span className="sm:hidden">
+        {kind === "live" ? "Live" : kind === "stopped" ? "Stopped" : "Off"}
+      </span>
+      <span className="sr-only">{full}</span>
+    </span>
   );
 }

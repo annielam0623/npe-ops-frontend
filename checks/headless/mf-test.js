@@ -381,6 +381,22 @@ async function run() {
   check("G65：页头总数不含取消 / 改期（仍是 4 orders, 8 pax）、How to use 写了只增不删、不再写「check Rezdy」那条（Annie 2026-10-30）", await evaluate("const t = document.body.textContent; return t.includes('4 orders, 8 pax') && t.includes('Orders are never taken off the list by an update.') && !t.includes('means the order is gone from the main manifest but we') && !t.includes('check Rezdy');"));
   check("没分车的客人：Not on a bus yet 区块、下拉标橙", await evaluate("const s = document.querySelector('section[aria-label=\"Not on a bus yet\"]'); return s && s.textContent.includes('Not on a bus yet · 2 pax') && s.querySelector('select').className.includes('e0a63a');"));
   check("Footer 格子：照接口顺序画、null 显示 —、Extra 的 SEATS LEFT 格另一种底色", await evaluate("const b = document.querySelector('section[aria-label=\"Bus 2041=A\"]'); return b.textContent.includes('AVAILABLE SEATS LEFT—') && b.textContent.indexOf('Heli SEATS LEFT') > b.textContent.indexOf('AVAILABLE SEATS LEFT') && b.textContent.indexOf('INBOUND') > b.textContent.indexOf('Heli SEATS LEFT') && [...b.querySelectorAll('span')].some(s => s.textContent === 'Heli SEATS LEFT' && s.className.includes('ddd0f0'));"), await evaluate("return document.querySelector('section[aria-label=\"Bus 2041=A\"]').textContent.slice(-200);"));
+  // ── No show 改方向（Annie 2026-11-17「动手」，N5 A）：✓ 列显示最终值；staff 在 Morning Tracking 改过写「Edited by …」，鼠标移上去两行；纸样不动 ──
+  await ctl({ staffBoard: true });
+  await goto(`${APP}/dispatch/manifest?date=2026-10-05&tour=3`);
+  await waitFor("document.querySelector('section[aria-label=\"Bus 2041=A\"]')", 30000);
+  check("staff 改过：CHD3 ✓ 列显示最终的 No show（红）+ 小字「Edited by Lizzie」", await evaluate("const td = [...document.querySelector('tr[data-guest=CHD3]').children].at(-1); return td.dataset.boarding === 'no_show' && td.textContent === 'No showEdited by Lizzie' && !!td.querySelector('[data-boarding-edited]');"), await evaluate("return [...document.querySelector('tr[data-guest=CHD3]').children].at(-1).textContent;"));
+  check("鼠标移上去两行：No show · changed by Lizzie (staff) · 9:15 AM / Original: Boarded · by Ana (guide) · Bus A (2041) · 7:02 AM", (await evaluate("return [...document.querySelector('tr[data-guest=CHD3]').children].at(-1).title;")) === "No show · changed by Lizzie (staff) · 9:15 AM\nOriginal: Boarded · by Ana (guide) · Bus A (2041) · 7:02 AM", await evaluate("return [...document.querySelector('tr[data-guest=CHD3]').children].at(-1).title;"));
+  check("这一页不能改 ✓ 列（格子里没有下拉 / 按钮）", await evaluate("return !document.querySelector('tr[data-guest=CHD3]').lastElementChild.querySelector('select,button,input');"));
+  await cdp("Emulation.setEmulatedMedia", { media: "print" });
+  await sleep(200);
+  check("打印时「Edited by …」不印", await evaluate("return getComputedStyle(document.querySelector('[data-boarding-edited]')).display === 'none';"));
+  await cdp("Emulation.setEmulatedMedia", { media: "" });
+  await ctl({ staffBoard: false });
+  await goto(`${APP}/dispatch/manifest?date=2026-10-05&tour=3`);
+  await waitFor("document.querySelector('section[aria-label=\"Bus 2041=A\"]')", 30000);
+  await helpers();
+  check("staff 没改过：照旧只有 ✓，没有 Edited by", await evaluate("const td = [...document.querySelector('tr[data-guest=CHD3]').children].at(-1); return td.textContent === '✓' && !document.querySelector('[data-boarding-edited]');"));
   // ── G198 第 1 步（不靠后端）：纸本字号、酒店隔组标色、合计行改名 ──
   check("合计行照后端给的字画（Antelope 那套：AVAILABLE SEATS LEFT / SEATS USED / No Lunch (including shuttle)），每格带 key", await evaluate("const b = document.querySelector('section[aria-label=\"Bus 2041=A\"]'); const spans = [...b.querySelectorAll('span')].map(s => s.textContent); return spans.includes('AVAILABLE SEATS LEFT') && spans.includes('SEATS USED') && spans.includes('No Lunch (including shuttle)') && !!b.querySelector('[data-footer-key=seats_left]');"));
   // 照纸本按团写死（Annie「全部同意。动手」，后端 36）：South 那套前端不改名，照印 BUS SEATS LEFT / BUS SEATS USED；分不进的人有 OTHER 格（Annie「要吧」）。
