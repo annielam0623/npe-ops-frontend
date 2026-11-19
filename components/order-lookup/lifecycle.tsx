@@ -231,7 +231,12 @@ export function LifecycleCard({ order }: { order: OrderDetail }) {
           canMore={
             !all && everything.length > Math.min(changes.length, CHANGES_SHOWN)
           }
+          // Annie「但凡可以展开的页面一定要能折叠」：展开后 Show less，回到最近 3 条。
+          canLess={
+            all && everything.length > Math.min(changes.length, CHANGES_SHOWN)
+          }
           onAll={() => setAll(true)}
+          onLess={() => setAll(false)}
         />
       ) : null}
     </section>
@@ -242,12 +247,16 @@ function DetailChanges({
   shown,
   total,
   canMore,
+  canLess,
   onAll,
+  onLess,
 }: {
   shown: ChangeEntry[];
   total: number;
   canMore: boolean;
+  canLess: boolean;
   onAll: () => void;
+  onLess: () => void;
 }) {
   const collapse = usePhoneCollapse();
   return (
@@ -281,6 +290,15 @@ function DetailChanges({
             className="mt-1.5 cursor-pointer text-[12px] font-semibold text-[#2563eb] night:text-white/60"
           >
             Show all {total} ▾
+          </button>
+        ) : canLess ? (
+          <button
+            type="button"
+            data-changes-less
+            onClick={onLess}
+            className="mt-1.5 cursor-pointer text-[12px] font-semibold text-[#2563eb] night:text-white/60"
+          >
+            Show less ▴
           </button>
         ) : null}
       </div>

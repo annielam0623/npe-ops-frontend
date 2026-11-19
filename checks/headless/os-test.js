@@ -471,6 +471,12 @@ async function run() {
     lines = await evaluate(`return [...document.querySelectorAll('[data-lookup-block="changes"] li')].map(li => li.textContent.replace(/\\s+/g, ' ').trim());`);
     check("生命周期 · 点 Show all：6 条，Rezdy 推送写 Updated by Rezdy、系统记录也在，Show all 收起",
       lines.length === 6 && lines.some((t) => t.includes("Updated by Rezdy")) && lines.some((t) => t.includes("Marked handled")) && !(await evaluate(`return !!document.querySelector('[data-lookup-block="changes"] [data-changes-all]');`)), lines.join(" | "));
+    // Annie「但凡可以展开的页面一定要能折叠」：展开后键变 Show less ▴，点了回到最近 3 条。
+    check("生命周期 · 展开后右上写「Show less ▴」", (await evaluate(`return document.querySelector('[data-lookup-block="changes"] [data-changes-less]')?.textContent.trim();`)) === "Show less ▴");
+    await evaluate(`document.querySelector('[data-lookup-block="changes"] [data-changes-less]').click(); return 1;`);
+    await sleep(200);
+    check("生命周期 · 点 Show less：回到最近 3 条，键变回 Show all 6 ▾",
+      (await evaluate(`return document.querySelectorAll('[data-lookup-block="changes"] li').length;`)) === 3 && (await evaluate(`return document.querySelector('[data-lookup-block="changes"] [data-changes-all]')?.textContent.trim();`)) === "Show all 6 ▾" && !(await evaluate(`return !!document.querySelector('[data-lookup-block="changes"] [data-changes-less]');`)));
     const sent = await ev(factOf("Tour Confirmation", "Sent"));
     check("生命周期 · Tour Confirmation Sent：最近一次、精确单号、这天的团（不是 ZZTEST10 / 改期前）+ by veronica · Delivered · Opened（delivered_at / opened_at）", sent && /^10\/18\/2026 2:05 PM ?by veronica · Delivered · Opened$/.test(sent.text), JSON.stringify(sent));
     const lm = await ev(factOf("Tour Confirmation", "Last Minute"));
@@ -520,6 +526,14 @@ async function run() {
     check("生命周期 · 订单详情页：Activity 卡上面一块，Booked / Confirmation sent / Last Minute / Relay / Tour ended、蓝框、Changes 3 条",
       card && card.next === "Activity" && /^10\/1\/2026 9:57 AM ?In Rezdy$/.test(card.booked) && /^10\/18\/2026 2:05 PM ?by veronica · Delivered · Opened$/.test(card.sent) && /^10\/18\/2026 7:30 PM ?by kevin$/.test(card.lm) && card.tix === "Not sent" && /^Picked up 5:50 AM ?Jane D\. · Bus 2101$/.test(card.relay) && card.ended === "—" &&
       /^YES ?10\/18\/2026 3:31 PM$/.test(card.reply) && card.lunch === "1 Turkey, 1 Veggie" && card.rest === "ZZ Test Diner" && card.van === "5:44 AM – 5:53 AM" && card.border === "rgba(96, 165, 250, 0.55)" && card.lines === 3, JSON.stringify(card));
+    await evaluate(`document.querySelector('[data-lifecycle-changes] [data-changes-all]').click(); return 1;`);
+    await sleep(200);
+    const dOpen = await evaluate(`return { n: document.querySelectorAll('[data-lifecycle-changes] li').length, less: document.querySelector('[data-lifecycle-changes] [data-changes-less]')?.textContent.trim() };`);
+    await evaluate(`document.querySelector('[data-lifecycle-changes] [data-changes-less]')?.click(); return 1;`);
+    await sleep(200);
+    const dShut = await evaluate(`return { n: document.querySelectorAll('[data-lifecycle-changes] li').length, all: document.querySelector('[data-lifecycle-changes] [data-changes-all]')?.textContent.trim() };`);
+    check("生命周期 · 订单详情页 Changes：Show all 展开 6 条 + Show less ▴，点 Show less 回到 3 条 + Show all 6 ▾",
+      dOpen.n === 6 && dOpen.less === "Show less ▴" && dShut.n === 3 && dShut.all === "Show all 6 ▾", JSON.stringify([dOpen, dShut]));
     check("生命周期 · 订单详情页 How to use 多 6 条", await evaluate("return document.body.textContent.includes('Booked is when the order was made in Rezdy. Received is when it first came into our Order List.');"));
     await ctl({ sa: false, lifeVis: null, lifeVisible: false });
     await goto(`${APP}/orders/ZZTEST1`);
