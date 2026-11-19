@@ -74,6 +74,8 @@ async function run() {
   await waitFor("document.querySelector('[data-howto-window]')", 20000);
   await sleep(800);
   check("不是 Super Admin：没有 Open shift opens today 链接", await evaluate(`return !${link};`));
+  // Annie 2026-11-19「把这两个preview链接改成所有人可见」：同一个 span 里的两个 preview 链接照出。
+  check("不是 Super Admin：Driver / Guide page preview 照出", await evaluate("return !!document.querySelector('[data-driver-preview]') && !!document.querySelector('[data-guide-preview]');"));
   check("不是 Super Admin：How to use 写 12:00 AM–10:00 AM", (await evaluate(`return ${howto};`)) === "12:00 AM–10:00 AM");
 
   // 2. Super Admin ⇒ 链接 + 弹窗。

@@ -2527,15 +2527,31 @@ async function run() {
     await sleep(300);
   }
 
-  // ── 置顶 21：司机页预览入口（Annie 2026-10-30「让前端加入口」）：只给 Super Admin，带当前日期，新标签页 ──
+  // ── 置顶 21：司机页预览入口（Annie 2026-10-30「让前端加入口」），带当前日期，新标签页 ──
+  // Annie 2026-11-19「把这两个preview链接改成所有人可见」：能开 Dispatch 的都有（admin、只看的员工、CCL partner）；
+  // 旁边的「Open shift opens today ⚙」照旧只 Super Admin。
   {
     const link = "document.querySelector('[data-driver-preview]')";
     const glink = "document.querySelector('[data-guide-preview]')";
-    await goto(`${APP}/dispatch?date=2026-10-18`);
-    await waitFor("document.querySelector('.vrow')", 60000);
-    await sleep(1500);
-    check("不是 Super Admin（admin）：没有 Driver page preview", !(await evaluate(`return !!${link};`)));
-    check("不是 Super Admin（admin）：没有 Guide page preview", !(await evaluate(`return !!${glink};`)));
+    const ow = "document.querySelector('[data-open-window-link]')";
+    const both = (d) => evaluate(`const a = ${link}, g = ${glink}; return !!a && !!g && a.getAttribute('href') === '/driver/preview?date=${d}' && g.getAttribute('href') === '/guide/preview?date=${d}' && a.target === '_blank' && g.target === '_blank' && !!a.closest('header');`);
+    for (const [who, opts] of [
+      ["不是 Super Admin（admin）", {}],
+      ["员工只勾 dispatch.view（只看）", { staffPerms: ["dispatch.view", "manifests.view"] }],
+      ["CCL partner（只勾 dispatch.view）", { partner: true, partnerPerms: ["dispatch.view", "manifests.view"] }],
+      ["CCL partner（勾了 dispatch.edit）", { partner: true, partnerPerms: ["dispatch.view", "dispatch.edit", "manifests.view"] }],
+    ]) {
+      await goto("about:blank");
+      await ctl({ superAdmin: false, staffPerms: null, partner: false, partnerPerms: null, ...opts });
+      await goto(`${APP}/dispatch?date=2026-10-18`);
+      await waitFor("document.querySelector('.vrow')", 60000);
+      const got = await waitFor(`${link} && ${glink}`, 15000);
+      check(`${who}：有 Driver page preview ↗ 和 Guide page preview ↗，带当前日期、新标签页`, got && (await both("2026-10-18")), await evaluate(`return ${link}?.outerHTML + ' | ' + ${glink}?.outerHTML;`));
+      await sleep(800);
+      check(`${who}：没有 Open shift opens today ⚙`, !(await evaluate(`return !!${ow};`)));
+    }
+    await goto("about:blank");
+    await ctl({ staffPerms: null, partner: false, partnerPerms: null });
     await ctl({ superAdmin: true });
     await goto(`${APP}/dispatch?date=2026-10-18`);
     await waitFor(link, 20000);
