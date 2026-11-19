@@ -19,6 +19,10 @@ export interface HRProfile {
   license_class: string;
   license_expires: string;
   medical_card_expires: string;
+  /** G362（Annie 2026-11-19）：急救证 / CPR / 营业执照到期日，同驾照、医疗卡："" 或 YYYY-MM-DD；只显示，过期不挡任何东西。 */
+  first_aid_expires: string;
+  cpr_expires: string;
+  business_license_expires: string;
   company: string;
   employment_status: string;
   job_class: string;
@@ -38,6 +42,9 @@ export interface HRProfile {
   /** 后端按洛杉矶的今天算好的（30 天内为 soon），前端不要自己算。 */
   license_expiry_state: ExpiryState;
   medical_expiry_state: ExpiryState;
+  first_aid_expiry_state: ExpiryState;
+  cpr_expiry_state: ExpiryState;
+  business_license_expiry_state: ExpiryState;
   /**
    * 「Other spellings」（后端 G234 续）：早上 Excel / CCL 里这个人名字的其他写法，大写、排好序。
    * 后端还没上线时没有这个键 ⇒ 页面不出这一格 / 这一列。

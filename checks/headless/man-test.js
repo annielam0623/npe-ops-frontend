@@ -1730,8 +1730,9 @@ async function run() {
     const i = items.indexOf(A);
     // 152 在前面（Order lookup 那条后面）加了一条「Click an order number…」⇒ 这两条各往后挪一位（第 16、17 条）；
     // 产品名标红（2026-11-17）在 sections 那条后面又加一条 ⇒ 再挪一位（第 17、18 条）。
-    check("How to use 第 17 条（Cfm # 号短 + Send anyway）原句", i === 16, JSON.stringify(items[16]));
-    check("How to use 第 18 条（号短算没号 / No Cfm # needed）原句", items[17] === B, JSON.stringify(items[17]));
+    // G364（2026-11-19）在 Bus Tour / Tickets 那条后面加了 Lunch 那条 ⇒ 再挪一位（第 18、19 条）。
+    check("How to use 第 18 条（Cfm # 号短 + Send anyway）原句", i === 17, JSON.stringify(items[17]));
+    check("How to use 第 19 条（号短算没号 / No Cfm # needed）原句", items[18] === B, JSON.stringify(items[18]));
     const up = items.find((x) => x.startsWith("↑ Upload confirmation #s")) || "";
     check("How to use 原第 21 条（↑ Upload confirmation #s，现第 22 条）末加 Overwrite 默认勾那句", up.endsWith(C), JSON.stringify(up));
   }
@@ -2036,6 +2037,7 @@ async function run() {
   await sessionChecks();
   await relayTourChecks();
   await redProductChecks();
+  await guestLunchChecks();
 
   // ── 未登录：跳 ops 自己的登录页带 next ──
   await ctl({ fail401: true });
@@ -2109,6 +2111,37 @@ async function redProductChecks() {
   await ctl({ sections: false, prefs: { bus: null, tickets: null } });
 }
 
+// ── G364 Q1 A（Annie 2026-11-19「动手」，preview DvpZMobvhQz74oWUsm1psL 第 7 版）：后端 guest_lunch_differs = true ⇒
+//    Special requirements 格原文下面一行橙字「Guest picked … in the tour confirmation — check Rezdy」；不提 Bus manifest；列关了不出。──
+async function guestLunchChecks() {
+  const BUS = `${APP}/manifests?date=${today}&tab=bus&pill=g%3A3`;
+  const cols = ["order_number", "guest_name", "pax", "special_requirements"];
+  const cell = (o) => `(() => { const tr = $box('${o}')?.closest('tr'); const i = $heads().indexOf('Special requirements'); return tr && i >= 0 ? tr.querySelectorAll('td')[i + 2] : null; })()`;
+  await ctl({ role: "staff", sessions: false, rezdyTix: false, cfmMix: false, sections: false, g364: true, prefs: { bus: JSON.stringify(cols), tickets: null } });
+  await openPage(BUS);
+  await waitFor(`${cell("CHD1001")}?.querySelector('[data-guest-lunch-differs]')`, 20000);
+  const one = await evaluate(`const c = ${cell("CHD1001")}; const n = c?.querySelector('[data-guest-lunch-differs]'); return n ? { text: n.textContent, color: getComputedStyle(n).color, cell: c.textContent } : null;`);
+  check("G364 Main manifest：不一样的单，Special requirements 原文下面一行橙字（原文照旧在上面）",
+    one && one.cell.startsWith("2 Turkey") && one.text === "Guest picked 1 Turkey, 1 Veggie in the tour confirmation — check Rezdy" && one.color === "rgb(194, 65, 12)", JSON.stringify(one));
+  check("G364 Main manifest：橙字不提 Bus manifest（Annie：Rezdy 改了一系列都改了）", one && !one.text.includes("Bus manifest"));
+  check("G364 Main manifest：一样的单（CHD1002，guest_lunch_differs = false）没有橙字", await evaluate(`const c = ${cell("CHD1002")}; return !!c && !c.querySelector('[data-guest-lunch-differs]') && c.textContent === '2 Turkey, 2 Beef';`), await evaluate(`return ${cell("CHD1002")}?.outerHTML;`));
+  check("G364 Main manifest：页面上只有一条橙字", (await evaluate("return document.querySelectorAll('[data-guest-lunch-differs]').length;")) === 1);
+  check("G364 How to use — Manifests 加了那条（第 7 版原文）", await evaluate("const d = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Manifests')); return !!d && d.textContent.replace(/\\s+/g, ' ').includes('Lunch comes from Special requirements in Rezdy. Orange “Guest picked … — check Rezdy” under Special requirements means the guest picked a different lunch in the tour confirmation, so the lunch in Rezdy is probably wrong. Check it and fix Special Requirements in Rezdy.');"));
+  // Special requirements 列关了 ⇒ 橙字跟着不出（不另找地方放）。
+  await ctl({ prefs: { bus: JSON.stringify(["order_number", "guest_name", "pax"]), tickets: null } });
+  await openPage(BUS);
+  await waitFor(`$box('CHD1001')`, 20000);
+  await sleep(300);
+  check("G364 Main manifest：Special requirements 列关了 ⇒ 没有橙字", await evaluate("return !$heads().includes('Special requirements') && !document.querySelector('[data-guest-lunch-differs]');"));
+  // 旧后端 / partner（行上没有这几个键）⇒ 照旧，不报错。
+  await ctl({ g364: false, prefs: { bus: JSON.stringify(cols), tickets: null } });
+  await openPage(BUS);
+  await waitFor(`$box('CHD1001')`, 20000);
+  await sleep(300);
+  check("G364 Main manifest：旧后端 / partner 没有这几个键 ⇒ 没有橙字、页面照常", await evaluate("return !document.querySelector('[data-guest-lunch-differs]') && !document.body.textContent.includes('Something went wrong');"));
+  await ctl({ g364: false, prefs: { bus: null, tickets: null } });
+}
+
 // ── 置顶 74：Upper Antelope (Brenda) 每单 waiver link（Annie「那4提全部按推荐走，动手」；preview 5niqePBqxUsCBqKpLLKCnm）──
 // ── 150 Relay / Tour 只读两列（G321；Annie N6「就显示简单一点，直接是relay和tour的结果就好了」）──
 async function relayTourChecks() {
@@ -2166,9 +2199,17 @@ async function sessionChecks() {
   const box = (t) => `${head(t)}.querySelector('input[type=checkbox]')`;
   const fold = (t) => `${head(t)}.querySelector('[data-fold]')`;
   const tools = "document.querySelector('[data-session-tools]')";
+  const sw = "document.querySelector('[data-ticket-view]')";
+  const swBtn = (t) => `[...${sw}.querySelectorAll('button')].find((b) => b.textContent === '${t}')`;
   // 存的列里没有 Start time / Product / Pax breakdown ⇒ 也照样分组（前端多要这几列，只用来分组）。
   await ctl({ sessions: true, rezdyTix: true, cfmMix: true, notes: false, prefs: { bus: null, tickets: JSON.stringify(["order_number", "guest_name", "pax"]) } });
   await openPage(ANT);
+  // 默认 By order time（Annie 2026-11-19「默认order time」「B」「order time在前。动手」）：今天之前存在旧键里的 By session 不再读。
+  await evaluate("localStorage.removeItem('ops.manifests.ticketsView.v2'); localStorage.setItem('ops.manifests.ticketsView', 'session'); return true;");
+  await openPage(ANT);
+  await waitFor(`!!${sw}`, 20000);
+  check("默认 By order time：没选过（旧键存的 By session 不算）⇒ By order time 选中、不分组；按钮顺序 By order time | By session", await evaluate(`return ${sw}.dataset.ticketView === 'time' && !document.querySelector('tr[data-session]') && [...${sw}.querySelectorAll('button')].map((b) => b.textContent).join('|') === 'By order time|By session' && ${swBtn("By order time")}.getAttribute('aria-checked') === 'true';`), await evaluate(`return ${sw}?.dataset.ticketView + ' ' + [...${sw}.querySelectorAll('button')].map((b) => b.textContent).join('|');`));
+  await evaluate(`${swBtn("By session")}.click();`);
   await waitFor(`${heads}.length >= 3`, 20000);
 
   // 电脑上显示的组标题（label 里第一个 span；手机短写的那个藏着）。
@@ -2176,7 +2217,7 @@ async function sessionChecks() {
   check("153 Tickets 按开始时间 + 产品分组，从早到晚，没有时间的放最后一组 No time", JSON.stringify(titles) === JSON.stringify(["7:00 AM — Antelope Tickets", "8:00 AM — Antelope Tickets", "8:30 AM — Antelope Tickets", "No time"]), JSON.stringify(titles));
   check("153 Start time 列没显示（存的列里没有）也照样分组；fields= 多要 start_time / product / pax_breakdown", (await evaluate("return !$heads().includes('Start time');")) && (await since(0, (e) => e.path === "/api/manifests" && e.query.includes("tab=tickets") && e.query.includes("fields="))).some((e) => ["start_time", "product", "pax_breakdown"].every((k) => q(e).get("fields").split(",").includes(k))));
   check("153 组头：「7:00 AM — 产品 · 2 orders · 5 pax (3 Adult / 1 Infant / 1 Child)」", await evaluate(`return ${head("7:00 AM")}.textContent.replace(/\\s+/g, ' ').includes('2 orders · 5 pax (3 Adult / 1 Infant / 1 Child)');`), await evaluate(`return ${head("7:00 AM")}.textContent;`));
-  check("153 组头底色照 Antelope bus 节标题轮流（第一组淡紫）；No time 灰", await evaluate(`const bg = (t) => ${head("__")}.querySelector('td').style.background.replace(/\\s/g, ''); return true;`.replace(`${head("__")}`, "x")) && (await evaluate(`return ${head("7:00 AM")}.querySelector('td').style.background.replace(/\\s/g, '') === 'rgb(239,227,247)' && ${head("No time")}.querySelector('td').style.background.replace(/\\s/g, '') === 'rgb(236,239,243)';`)), await evaluate(`return ${heads}.map((tr) => tr.querySelector('td').style.background).join(' | ');`));
+  check("组头一律浅灰 #eceff3（Annie 2026-11-19「同意推荐，动手」1A，取代 153 轮流上色）；No time 同色", await evaluate(`return ${heads}.length >= 3 && ${heads}.every((tr) => getComputedStyle(tr.querySelector('td')).backgroundColor === 'rgb(236, 239, 243)');`), await evaluate(`return ${heads}.map((tr) => getComputedStyle(tr.querySelector('td')).backgroundColor).join(' | ');`));
   check("153 每组的 # 从 1 排", await evaluate(`const h = ${head("8:00 AM")}; return h.nextElementSibling.querySelector('[data-count]').textContent.trim() === '1';`));
   check("153 默认全部展开（题 2 A）：没有收起的组，Expand all 灰着、Collapse all 能按", await evaluate(`return !document.querySelector('tr[data-folded]') && ${tools}.textContent.includes('3 start times') && [...${tools}.querySelectorAll('button')].find((b) => b.textContent === 'Expand all').disabled && ![...${tools}.querySelectorAll('button')].find((b) => b.textContent === 'Collapse all').disabled;`));
 
@@ -2239,6 +2280,36 @@ async function sessionChecks() {
 
   // How to use
   check("153 How to use 加了那一句（原文，不含 Groups start folded）", await evaluate("const d = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Manifests')); return [...d.querySelectorAll('li')].some(l => l.textContent.replace(/\\s+/g, ' ').trim() === 'Tickets are grouped by session (start time). Each group shows the start time, the product, and how many orders and pax (with the Adult / Child / Infant split). Click ▸ / ▾ on a group to fold or open it, or use Expand all / Collapse all. Tick Select all for every order, the box on a group for the whole session, or the box on a row for one order. Folding only hides the rows: ticked orders in a folded group stay ticked and are sent, and the group shows how many are ticked. Orders without a start time are in the last group, No time.');"));
+
+  // ── Tickets 两种看法（Annie 2026-11-19「同意推荐，动手」：By session | By order time，默认 By session，P1 A 后端原顺序，P3 A localStorage）──
+  const orderSeq = "[...document.querySelectorAll('tbody input[aria-label^=\"Select CHD\"]')].map((i) => i.getAttribute('aria-label').slice(7))";
+  check("视图切换：点了 By session ⇒ By session 选中（深底白字，不是蓝色）", await evaluate(`const s = ${sw}; const on = ${swBtn("By session")}; return !!s && s.dataset.ticketView === 'session' && on.getAttribute('aria-checked') === 'true' && ${swBtn("By order time")}.getAttribute('aria-checked') === 'false' && getComputedStyle(on).backgroundColor === 'rgb(26, 26, 26)';`));
+  const sessionOrder = await evaluate(`return ${orderSeq};`);
+  await evaluate(`${box("7:00 AM")}.click();`);
+  await waitFor("$box('CHD2001').checked && $box('CHD2006').checked");
+  await evaluate(`${swBtn("By order time")}.click();`);
+  await waitFor(`${sw}.dataset.ticketView === 'time'`);
+  const flatOrder = await evaluate(`return ${orderSeq};`);
+  check("By order time：不分组（没有组头、没有 start times / Expand all 那一行），全部摊开", await evaluate(`return !document.querySelector('tr[data-session]') && !${tools} && !!$box('CHD2001') && !!$box('CHD2007');`), JSON.stringify(flatOrder));
+  check("By order time：照后端给的行序（同一批单，不按场次排），跟分组时的顺序不同", flatOrder.length === sessionOrder.length && flatOrder.length > 0 && JSON.stringify([...flatOrder].sort()) === JSON.stringify([...sessionOrder].sort()) && JSON.stringify(flatOrder) !== JSON.stringify(sessionOrder), JSON.stringify({ flatOrder, sessionOrder }));
+  check("By order time：# 从 1 连续排到底", await evaluate("const n = [...document.querySelectorAll('tbody [data-count]')].map((x) => x.textContent.trim()); return n.length > 0 && n.every((v, i) => v === String(i + 1));"));
+  check("切换时勾选保留：By session 里勾的整场（CHD2001、CHD2006）在 By order time 里还勾着", await evaluate("return $box('CHD2001').checked && $box('CHD2006').checked;"));
+  await evaluate("window.__blob = null; $btn('↓ Export CSV').click();");
+  await waitFor("window.__blob");
+  const flatLines = (await evaluate("return await window.__blob.text();")).replace(/^﻿/, "").split("\r\n");
+  check("By order time：Export CSV 没有 Section 列", !flatLines[0].startsWith("Section,") && flatLines[0].length > 0, flatLines[0]);
+  await openPage(ANT);
+  await waitFor(`${sw}?.dataset.ticketView === 'time'`, 20000);
+  check("记在这台电脑这个浏览器：重开页面还是 By order time", await evaluate(`return ${sw}.dataset.ticketView === 'time' && !document.querySelector('tr[data-session]');`));
+  await evaluate(`${swBtn("By session")}.click();`);
+  await waitFor(`${heads}.length >= 3`);
+  check("切回 By session：组头回来", await evaluate(`return ${sw}.dataset.ticketView === 'session' && ${heads}.length >= 3;`));
+  check("How to use 加了切换那一句（原文）", await evaluate("const d = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Manifests')); return [...d.querySelectorAll('li')].some(l => l.textContent.replace(/\\s+/g, ' ').trim() === 'On Tickets, switch between By order time (the default: one list, no groups, in the order the bookings came in; orders already sent go to the bottom) and By session (grouped by start time). Ticked orders stay ticked when you switch. This computer remembers your choice.');"));
+  // night：组头深灰（不是浅色）
+  await evaluate("document.documentElement.setAttribute('data-theme', 'night');");
+  await sleep(200);
+  check("night：Tickets 组头深灰（不是浅灰 / 彩色）", await evaluate(`const bg = getComputedStyle(${head("7:00 AM")}.querySelector('td')).backgroundColor; return bg !== 'rgb(236, 239, 243)' && bg !== 'rgba(0, 0, 0, 0)' && !/^rgb\\(2[0-5]\\d, 2[0-5]\\d/.test(bg);`), await evaluate(`return getComputedStyle(${head("7:00 AM")}.querySelector('td')).backgroundColor;`));
+  await evaluate("document.documentElement.removeAttribute('data-theme');");
 
   // 手机 390px：组头短写、钉左、整页不晃
   await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });

@@ -239,6 +239,8 @@ export type {
   ManifestPaperColors,
   ManifestGoneGuest,
   ManifestGuest,
+  ManifestGuestLunchDiffers,
+  LunchCounts,
   ManifestLunch,
   ManifestLunchMismatch,
   ManifestLunchRow,
