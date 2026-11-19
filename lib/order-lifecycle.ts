@@ -478,11 +478,27 @@ export function lunchPick(order: OrderDetail, date: string | null) {
     rows.find((x) => x.lunch) ??
     null;
   const g = row?.lunch ?? null;
-  const bus = lunchFor(order, date);
+  // lunch_by_day 按 (run_date, manifest_id) 分组：同一天两个 manifest 会有 2 条以上 ⇒ 合起来（后端 25 / ae 2026-11-19）。
+  const days = (order.lunch_by_day ?? []).filter(
+    (x) => !date || x.tour_date === date,
+  );
+  const hasLunch = days.some((x) => x.has_lunch);
+  const lunchDays = days.filter((x) => x.has_lunch);
+  // 三个数：每条都带才算（旧后端没有 ⇒ null，不比较）；没午餐的那条不计。
   const busCounts =
-    bus && typeof bus.turkey === "number"
-      ? { turkey: bus.turkey, veggie: bus.veggie, beef: bus.beef }
+    lunchDays.length && lunchDays.every((x) => typeof x.turkey === "number")
+      ? SANDWICHES.reduce(
+          (acc, [k]) => ({
+            ...acc,
+            [k]: lunchDays.reduce((s, x) => s + Number(x[k] || 0), 0),
+          }),
+          {} as Required<LunchCounts>,
+        )
       : null;
+  const uniq = (xs: (string | null | undefined)[]) => [
+    ...new Set(xs.filter((x): x is string => Boolean(x && x.trim()))),
+  ];
+  const restaurants = uniq(days.map((x) => x.restaurant));
   return {
     guest: g
       ? {
@@ -490,17 +506,22 @@ export function lunchPick(order: OrderDetail, date: string | null) {
           at: g.updated_at ? formatLaDateTime(g.updated_at) : null,
         }
       : null,
-    bus: bus
+    bus: days.length
       ? {
-          text: bus.has_lunch ? bus.text || "—" : "No lunch",
-          has_lunch: bus.has_lunch,
-          restaurant: bus.restaurant,
+          // 合计写法同 lunch_text；没给三个数时把各条 text 连起来。
+          text: !hasLunch
+            ? "No lunch"
+            : (busCounts ? lunchText(busCounts) : "") ||
+              uniq(lunchDays.map((x) => x.text)).join(" + ") ||
+              "—",
+          has_lunch: hasLunch,
+          restaurant: restaurants.length ? restaurants.join(" · ") : null,
         }
       : null,
     mismatch: Boolean(
       g &&
-      bus?.has_lunch &&
-      !bus.changed &&
+      hasLunch &&
+      !days.some((x) => x.changed) &&
       busCounts &&
       !sameLunch(g, busCounts),
     ),

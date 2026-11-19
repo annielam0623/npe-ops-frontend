@@ -258,6 +258,9 @@ http
             r.module !== "tour_confirmation" ? r
               : c === "same" ? { ...r, lunch: { turkey: 1, veggie: 1, beef: 0, updated_at: "2026-10-18T22:31:00Z" } }
               : c === "nullguest" ? { ...r, lunch: null }
+              : c === "twobus_same" ? { ...r, lunch: { turkey: 2, veggie: 1, beef: 0, updated_at: "2026-10-18T22:31:00Z" } }
+              // 多日团：bookings 行只在开始那天（这里放到 10/19），10/20 这天没有客人选的。
+              : c === "multiday" ? { ...r, tour_date: "2026-10-19" }
               : r),
           lunch_by_day: o.lunch_by_day.map((d) =>
             c === "changed" ? { ...d, changed: true }
@@ -265,6 +268,17 @@ http
               : c === "oldkeys" ? { tour_date: d.tour_date, product: d.product, bus_label: d.bus_label, has_lunch: d.has_lunch, text: d.text, restaurant: d.restaurant }
               : d),
         };
+        // 同一天两个 manifest（lunch_by_day 按 run_date + manifest_id 分组 ⇒ 同日 2 条），外加别的日子一条（不该算进来）。
+        if (c.startsWith("twobus")) {
+          const second = c === "twobus_onelunch"
+            ? { has_lunch: false, turkey: 0, veggie: 0, beef: 0, text: "", restaurant: null, changed: false }
+            : { has_lunch: true, turkey: 1, veggie: 0, beef: 0, text: "1 Turkey", restaurant: "ZZ Test Cafe", changed: c === "twobus_changed" };
+          o.lunch_by_day = [
+            ...o.lunch_by_day,
+            { tour_date: "2026-10-20", product: "PBZ", bus_label: "B", defaulted: false, check: false, ...second },
+            { tour_date: "2026-10-21", product: "PBZ", bus_label: "A", has_lunch: true, turkey: 5, veggie: 0, beef: 0, defaulted: false, check: false, changed: false, text: "5 Turkey", restaurant: "WRONG DAY" },
+          ];
+        }
       }
       return send(res, 200, ctl.mlinks ? { ...o, manifest_links: MLINKS[on] ?? [] } : o);
     }

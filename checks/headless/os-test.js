@@ -601,6 +601,17 @@ async function run() {
     check("第 4 件 · 客人那份 null ⇒「—」、不出橙字", !lc.orange && lc.pick === "—", JSON.stringify(lc));
     lc = await lunchCaseAt("oldkeys");
     check("第 4 件 · 后端没给 Bus 三个数（旧键）⇒ 照写 text、不出橙字", !lc.orange && nosp(lc.bus) === nosp("1 Turkey, 1 Veggie Restaurant: ZZ Test Diner"), JSON.stringify(lc));
+    // 同一天两个 manifest（lunch_by_day 同日 2 条）：Bus 那格写合计、餐厅都列；橙字用合计比；别的日子那条不算。
+    lc = await lunchCaseAt("twobus");
+    check("第 4 件 · 同日两条：Bus 写合计「2 Turkey, 1 Veggie」+ 两家餐厅，客人 2 Turkey ≠ 合计 ⇒ 橙字（10/21 那条不算）", lc.orange && nosp(lc.bus) === nosp("2 Turkey, 1 Veggie Restaurant: ZZ Test Diner · ZZ Test Cafe"), JSON.stringify(lc));
+    lc = await lunchCaseAt("twobus_same");
+    check("第 4 件 · 同日两条：客人 2 Turkey 1 Veggie = 合计 ⇒ 不出橙字", !lc.orange && nosp(lc.bus) === nosp("2 Turkey, 1 Veggie Restaurant: ZZ Test Diner · ZZ Test Cafe"), JSON.stringify(lc));
+    lc = await lunchCaseAt("twobus_changed");
+    check("第 4 件 · 同日两条、其中一条导游改过 ⇒ 不出橙字", !lc.orange, JSON.stringify(lc));
+    lc = await lunchCaseAt("twobus_onelunch");
+    check("第 4 件 · 同日两条、只一条有午餐 ⇒ 不写 No lunch，合计只算有午餐那条（1 Turkey, 1 Veggie ≠ 客人 2 Turkey ⇒ 橙字）", lc.orange && nosp(lc.bus) === nosp("1 Turkey, 1 Veggie Restaurant: ZZ Test Diner"), JSON.stringify(lc));
+    lc = await lunchCaseAt("multiday");
+    check("第 4 件 · 多日团：这天没有 bookings 行（只在开始那天）⇒ 客人格「—」、不出橙字", !lc.orange && lc.pick === "—", JSON.stringify(lc));
     await ctl({ lunchCase: null });
     await goto(`${APP}/orders/ZZTEST1`);
     await waitFor(`document.querySelector('[data-lifecycle-changes] [data-changes-all]')`, 60000);
