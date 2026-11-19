@@ -10,8 +10,11 @@ import {
 } from "react";
 import { useSearchParams } from "next/navigation";
 import { ManifestLinks } from "@/components/order-lookup/manifest-links";
-import { LifecycleCard } from "@/components/order-lookup/lifecycle";
-import { LIFECYCLE_HOW_TO } from "@/lib/order-lifecycle";
+import {
+  LifecycleCard,
+  OrderChatHistory,
+} from "@/components/order-lookup/lifecycle";
+import { CHAT_HOW_TO, LIFECYCLE_HOW_TO } from "@/lib/order-lifecycle";
 import { usePageVisibility } from "@/lib/page-visibility";
 
 import { FarmOutViewCard } from "@/components/farm-out/farm-out-view-card";
@@ -179,6 +182,7 @@ export function OrderDetailView({ orderNumber }: { orderNumber: string }) {
           refresh={canRefresh}
           sendTour={canSendTour}
           lifecycle={lifecycleOn}
+          lifecycleChat={lifecycleOn && perms.canMessages("messages.view")}
         />
       )}
       {state.kind === "loading" ? (
@@ -242,7 +246,15 @@ function OrderBody({
   const type = o.booking_type !== "—" ? o.booking_type : o.product.type;
   // 没勾 See prices, agent & commission（orders.money_view，题 8「除了客人的基本信息，CCL看不到任何有价格的信息」）：
   // 价格卡、Agent & Commission、票价、Raw Rezdy 都不出。后端这时 price = null、order_detail / items_detail 去掉代理商 / 付款 / 金额。
-  const seeMoney = usePermissions().canSeeMoney && o.price !== null;
+  const bodyPerms = usePermissions();
+  const seeMoney = bodyPerms.canSeeMoney && o.price !== null;
+  // Chat history（C3 A / C4 A）：跟生命周期开关走 + 要有 messages.view；看得到时对话挪到页面最下面，Notes 卡只留 Special req. / Note。
+  const bodyVis = usePageVisibility();
+  const canChat =
+    !partner &&
+    bodyVis.loaded &&
+    bodyVis.visible("order_lifecycle") &&
+    bodyPerms.canMessages("messages.view");
   // G280：TripGuru 来的单（后端 26fdfa29）：只读，order_detail / items_detail 是 TripGuru 的键名。
   const tripguru = o.source === "tripguru";
   const raw = tripguru ? "TripGuru" : "Rezdy";
@@ -417,7 +429,7 @@ function OrderBody({
               ["Note", o.notes],
             ]}
           />
-          {o.booking_notes.length ? (
+          {canChat ? null : o.booking_notes.length ? (
             <ul>
               {o.booking_notes.map((n) => (
                 <li
@@ -478,6 +490,7 @@ function OrderBody({
           <RawBlock title={`Raw ${raw} order`} value={o.order_detail} />
         </>
       )}
+      {canChat ? <OrderChatHistory order={o} /> : null}
     </>
   );
 }
@@ -1412,12 +1425,15 @@ function HowToUse({
   refresh,
   sendTour,
   lifecycle,
+  lifecycleChat = false,
 }: {
   money: boolean;
   refresh: boolean;
   sendTour: boolean;
   /** 订单生命周期开关看得到：多那 6 条（题 6 A 原文）。 */
   lifecycle: boolean;
+  /** 看得到 Chat history（开关 + messages.view）：多 Chat history 那句。 */
+  lifecycleChat?: boolean;
 }) {
   return (
     // 旧页这里是一直展开的蓝框（不是可折叠的 details），样式照 send_morning.html。
@@ -1485,7 +1501,9 @@ function HowToUse({
             : ""}
         </li>
         {lifecycle
-          ? LIFECYCLE_HOW_TO.map((t) => <li key={t}>{t}</li>)
+          ? [...LIFECYCLE_HOW_TO, ...(lifecycleChat ? [CHAT_HOW_TO] : [])].map(
+              (t) => <li key={t}>{t}</li>,
+            )
           : null}
       </ol>
       <div className="mt-2 border-t border-[#b5d4f4] pt-2 night:border-sky-400/20">

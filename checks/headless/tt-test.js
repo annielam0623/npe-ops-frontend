@@ -1009,6 +1009,21 @@ async function run() {
     await ctl({ superadmin: false, syncMode: "off", syncFail: "" });
   }
 
+  // ── Open chat →（订单生命周期 Chat history，Annie「全部同意推荐。动手」）：?chat=单号 打开对话框 ──
+  {
+    await goto(`${APP}/tour-confirmation/tracking?date=${D}&q=T01&chat=T01`);
+    const opened = await waitFor("document.querySelector('[role=dialog]')", 30000);
+    check("?chat=单号：这天有这单（T01）⇒ 直接打开它的对话框；地址栏的 chat 拿掉", opened && !(await evaluate("return location.search.includes('chat=');")), await evaluate("return location.search;"));
+    await evaluate("document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); return 1;");
+    await sleep(200);
+    await goto(`${APP}/tour-confirmation/tracking?date=${D}&q=ZZNOPE9&chat=ZZNOPE9`);
+    const nf = await waitFor("document.querySelector('[data-chat-not-found]')", 30000);
+    check("?chat=单号：这天没有这单 ⇒ 黄字「This order is not on this day's list.」、不开对话框", nf && (await evaluate("return document.querySelector('[data-chat-not-found] span').textContent === \"This order is not on this day's list.\" && !document.querySelector('[role=dialog]');")));
+    await evaluate("[...document.querySelectorAll('[data-chat-not-found] button')].find(b => b.textContent === 'Dismiss').click(); return 1;");
+    await sleep(150);
+    check("?chat=单号：Dismiss 收起黄字", await evaluate("return !document.querySelector('[data-chat-not-found]');"));
+  }
+
   await ctl({ fail401: true });
   await goto(`${APP}/tour-confirmation/tracking?date=${D}`);
   await waitFor("location.pathname === '/auth/login'");

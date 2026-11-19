@@ -2,6 +2,7 @@
 
 import { type ReactNode, useEffect, useState } from "react";
 
+import { PageLink } from "@/components/ui/page-link";
 import { usePhoneCollapse } from "@/components/ui/phone";
 import {
   allChanges,
@@ -513,5 +514,130 @@ export function ChatHistoryBlock({
         )}
       </div>
     </div>
+  );
+}
+
+const CHAT_PATH = {
+  tour_confirmation: { path: "/tour-confirmation/tracking", label: "Tour" },
+  tickets_reminder: { path: "/tickets-reminder/tracking", label: "Tickets" },
+  morning_pickup: { path: "/morning-pickup/tracking", label: "Morning" },
+} as const;
+type ChatModule = keyof typeof CHAT_PATH;
+
+/** 这单这天有哪些 Tracking 线（confirmations 有就照它；旧后端按订单类型猜：门票 ⇒ Tickets，其余 ⇒ Tour）。 */
+function chatLines(order: OrderDetail, date: string | null): ChatModule[] {
+  if (!date) return [];
+  const mods = [
+    ...new Set(
+      (order.confirmations ?? [])
+        .filter((c) => c.tour_date === date && c.module in CHAT_PATH)
+        .map((c) => c.module as ChatModule),
+    ),
+  ];
+  if (mods.length) return mods;
+  return [
+    order.booking_type === "ticket" ? "tickets_reminder" : "tour_confirmation",
+  ];
+}
+
+/**
+ * 订单详情页最下面的「Chat history」（C3 A：原 Notes 卡里的对话挪到这里、改名，写法同搜索结果），
+ * 右上「Open chat →」（几条线各一个：Open chat · Tour → / · Morning →）。调用方判断开关 + messages.view。
+ */
+export function OrderChatHistory({ order }: { order: OrderDetail }) {
+  const [all, setAll] = useState(false);
+  const collapse = usePhoneCollapse();
+  const date = orderDateToYmd(order.product.tour_date);
+  const newest = [...(order.booking_notes ?? [])].reverse();
+  const shown = all ? newest : newest.slice(0, CHAT_SHOWN);
+  const lines = chatLines(order, date);
+  const on = encodeURIComponent(order.order_number);
+  return (
+    <section
+      aria-label="Chat history"
+      data-order-chat
+      className={cn(
+        "mt-3 rounded-[10px] border bg-paper px-4 py-3.5 night:bg-white/[.04]",
+        LIFECYCLE_FRAME,
+      )}
+    >
+      <div className="mb-2 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <button
+          type="button"
+          onClick={collapse.toggle}
+          className="text-left text-[11px] font-semibold tracking-[0.6px] text-[#1a1a1a] uppercase night:text-white/35"
+        >
+          Chat history
+        </button>
+        {collapse.caret}
+        <span className="ml-auto flex flex-wrap gap-3">
+          {date
+            ? lines.map((m) => (
+                <PageLink
+                  key={m}
+                  data-open-chat={m}
+                  href={`${CHAT_PATH[m].path}?date=${date}&q=${on}&chat=${on}`}
+                  className="text-[12px] font-semibold text-[#2563eb] night:text-white/60"
+                >
+                  {lines.length > 1
+                    ? `Open chat · ${CHAT_PATH[m].label} →`
+                    : "Open chat →"}
+                </PageLink>
+              ))
+            : null}
+          {newest.length > CHAT_SHOWN ? (
+            <button
+              type="button"
+              data-chat-toggle
+              onClick={() => {
+                setAll((v) => !v);
+                collapse.setOpen(true);
+              }}
+              className="cursor-pointer text-[12px] font-semibold text-[#2563eb] night:text-white/60"
+            >
+              {all ? "Show less ▴" : `Show all ${newest.length} ▾`}
+            </button>
+          ) : null}
+        </span>
+      </div>
+      <div className={collapse.hide}>
+        {shown.length ? (
+          <ul className="grid gap-1.5">
+            {shown.map((n) => {
+              const { who, guest } = chatWho(n);
+              return (
+                <li
+                  key={n.id}
+                  data-chat={n.direction}
+                  className="grid grid-cols-[minmax(0,150px)_minmax(0,150px)_minmax(0,1fr)] gap-x-3 gap-y-0.5 text-[12.5px] text-[#1a1a1a] max-sm:grid-cols-1 night:text-white/85"
+                >
+                  <span className="text-[#6b7280] tabular-nums night:text-white/40">
+                    {n.created_at}
+                  </span>
+                  <span
+                    className={cn(
+                      "font-semibold",
+                      guest ? "text-[#15803d]" : "text-[#6d28d9]",
+                    )}
+                  >
+                    {who}
+                  </span>
+                  <span className="min-w-0 [overflow-wrap:anywhere] whitespace-pre-wrap">
+                    {n.body}
+                    {n.direction === "voice_in" ? (
+                      <span className="text-[#6b7280]"> (transcript)</span>
+                    ) : null}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <p className="text-[12px] text-[#6b7280]" data-chat-empty>
+            No messages yet.
+          </p>
+        )}
+      </div>
+    </section>
   );
 }

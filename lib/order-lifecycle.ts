@@ -144,6 +144,41 @@ const EVENT_LABELS: Record<string, string> = {
   action_taken: "Action Taken",
 };
 
+/**
+ * 员工改字段（activity_log field_updated「lunch_turkey: '0' → '1'」）里的内部字段名 → 人看得懂的英文（Annie 2026-11-18「要不要改成人看得懂的写法。改」）。
+ * 后端会写的只有订单详情 PATCH 的 8 个（orders.py _ALLOWED_FIELDS）；其余是常见字段，以防旧记录。不认识的照原样。
+ */
+export const FIELD_LABELS: Record<string, string> = {
+  confirmation_no: "Confirmation #",
+  lunch_turkey: "Lunch · Turkey",
+  lunch_veggie: "Lunch · Veggie",
+  lunch_beef: "Lunch · Beef",
+  total_amount: "Total amount",
+  currency: "Currency",
+  total_paid: "Paid",
+  total_due: "Due",
+  first_name: "First name",
+  last_name: "Last name",
+  customer_phone: "Phone",
+  phone: "Phone",
+  customer_email: "Email",
+  email: "Email",
+  status: "Status",
+  tour_date: "Tour date",
+  pickup_time: "Pickup time",
+  pickup_location: "Pickup location",
+  quantities: "Pax",
+  pax: "Pax",
+  special_requirements: "Special requirements",
+  notes: "Note",
+  agent_name: "Agent",
+  tt_number: "TT #",
+};
+
+export function fieldLabel(field: string): string {
+  return FIELD_LABELS[field.trim()] ?? field;
+}
+
 export function toChange(a: Activity): ChangeEntry {
   const { source, who } = sourceOf(a);
   const detail = a.detail || "";
@@ -157,7 +192,7 @@ export function toChange(a: Activity): ChangeEntry {
     : detail || a.event_type;
   if (a.event_type === "field_updated") {
     const d = parseDiff(detail);
-    if (d) items = [d];
+    if (d) items = [{ ...d, field: fieldLabel(d.field) }];
   } else if (a.event_type === "refreshed_from_rezdy") {
     const body = detail.replace(/^Refreshed from Rezdy\s*[—-]\s*/, "");
     items = body
@@ -208,7 +243,9 @@ function fieldRank(field: string): number {
     .replace(/\s*#\d+\s*$/, "")
     .replace(/\s*\([^)]*\)\s*$/, "")
     .trim();
-  const i = FIELD_ORDER.findIndex((f) => base === f || base.startsWith(`${f} `));
+  const i = FIELD_ORDER.findIndex(
+    (f) => base === f || base.startsWith(`${f} `),
+  );
   return i < 0 ? FIELD_ORDER.length : i;
 }
 
@@ -525,6 +562,10 @@ export const LIFECYCLE_HOW_TO: readonly string[] = [
   "Tour ended is the time the bus reached its first hotel stop back in Las Vegas. A — means there is no record yet.",
   "Order status comes from the Order List. To fix something, open the order in Main manifest or the Order List.",
 ];
+
+/** How to use 加一条（Chat history 第 7 版原文；看得到 Chat history 的人才出）。 */
+export const CHAT_HOW_TO =
+  "Chat history lists the messages between the guest and staff for this order, newest first. Voice messages show what the phone assistant wrote down. Click Open chat → on a block to open that conversation on its Tracking page and reply there.";
 
 /** 框 1：各块外框实线蓝（底色 / 格子 / 字不变），跟开关走。 */
 export const LIFECYCLE_FRAME = "border-[rgba(96,165,250,.55)]";

@@ -15,7 +15,7 @@ export const CHAT_NOT_ON_LIST = "This order is not on this day's list.";
 export function useOpenChatFromUrl<R extends { order_number: string }>(
   rows: readonly R[] | null,
   open: (row: R) => void,
-): string | null {
+): { notFound: string | null; dismiss: () => void } {
   const wantRef = useRef<string | null>(null);
   const [notFound, setNotFound] = useState<string | null>(null);
   const openRef = useRef(open);
@@ -41,5 +41,5 @@ export function useOpenChatFromUrl<R extends { order_number: string }>(
     }
   }, [rows]);
 
-  return notFound;
+  return { notFound, dismiss: () => setNotFound(null) };
 }

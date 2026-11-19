@@ -41,6 +41,7 @@ import {
   CHANGES_SHOWN,
   dayOfTourFor,
   LIFECYCLE_FRAME,
+  CHAT_HOW_TO,
   LIFECYCLE_HOW_TO,
   sentFor,
   liveFor,
@@ -366,6 +367,7 @@ function LookupResultView({ result }: { result: LookupResult }) {
   // 订单生命周期（Annie 2026-11-18 排法 A + 框 1）：开关 order_lifecycle 看得到才有新格子和蓝框；partner 一律不出。
   const lifecycle = useOrderLifecycle(on);
   const life = lifecycle.on && !partner;
+  const canChat = life && perms.canMessages("messages.view");
   const sends = sendsOf(lifecycle.sends);
   const sendsLoading = lifecycle.sends === null;
   const changes = life ? meaningfulChanges(order) : [];
@@ -416,10 +418,7 @@ function LookupResultView({ result }: { result: LookupResult }) {
     <div className="grid gap-3.5" data-lookup-result>
       {/* 订单 */}
       <div
-        className={cn(
-          "rounded-[12px] border bg-white/[.025] px-4 py-3",
-          frame,
-        )}
+        className={cn("rounded-[12px] border bg-white/[.025] px-4 py-3", frame)}
         data-lookup-block="order"
       >
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
@@ -471,7 +470,10 @@ function LookupResultView({ result }: { result: LookupResult }) {
           )}
           {life ? (
             <>
-              <Field label="Booked" sub={bookedAt(order) ? "In Rezdy" : undefined}>
+              <Field
+                label="Booked"
+                sub={bookedAt(order) ? "In Rezdy" : undefined}
+              >
                 {bookedAt(order) ?? "—"}
               </Field>
               <Field
@@ -481,9 +483,7 @@ function LookupResultView({ result }: { result: LookupResult }) {
                 {receivedAt(order) ?? "—"}
               </Field>
               <Field label="Changes" tone={changes.length ? "warn" : "muted"}>
-                {changes.length
-                  ? `${changes.length} — see below`
-                  : "None"}
+                {changes.length ? `${changes.length} — see below` : "None"}
               </Field>
             </>
           ) : null}
@@ -524,6 +524,11 @@ function LookupResultView({ result }: { result: LookupResult }) {
             <LaneBlock
               title="Tour Confirmation"
               href={trackHref("/tour-confirmation/tracking", date, on)}
+              chatHref={
+                canChat
+                  ? chatHref("/tour-confirmation/tracking", date, on)
+                  : undefined
+              }
               lane={result.tour}
               frame={frame}
               render={(r) => (
@@ -537,7 +542,11 @@ function LookupResultView({ result }: { result: LookupResult }) {
                         {/* bf 合同草稿：lunch_by_day.restaurant；没有 ⇒「—」。 */}
                         <Fact
                           label="Restaurant"
-                          tone={lunchFor(order, date)?.restaurant ? "plain" : "muted"}
+                          tone={
+                            lunchFor(order, date)?.restaurant
+                              ? "plain"
+                              : "muted"
+                          }
                         >
                           {lunchFor(order, date)?.restaurant || "—"}
                         </Fact>
@@ -552,6 +561,11 @@ function LookupResultView({ result }: { result: LookupResult }) {
             <LaneBlock
               title="Ticket Reminder"
               href={trackHref("/tickets-reminder/tracking", date, on)}
+              chatHref={
+                canChat
+                  ? chatHref("/tickets-reminder/tracking", date, on)
+                  : undefined
+              }
               lane={result.tickets}
               frame={frame}
               render={(r) => (
@@ -577,6 +591,11 @@ function LookupResultView({ result }: { result: LookupResult }) {
             <LaneBlock
               title="Morning Pickup"
               href={trackHref("/morning-pickup/tracking", date, on)}
+              chatHref={
+                canChat
+                  ? chatHref("/morning-pickup/tracking", date, on)
+                  : undefined
+              }
               lane={result.morning}
               frame={frame}
               render={(r) => (
@@ -625,7 +644,7 @@ function LookupResultView({ result }: { result: LookupResult }) {
         </>
       )}
       {/* Chat history（C1 C / C4 A）：最下面、How to use 上面；跟生命周期开关走 + 要有 messages.view。 */}
-      {life && perms.canMessages("messages.view") ? (
+      {canChat ? (
         <ChatHistoryBlock notes={order.booking_notes ?? []} frame={frame} />
       ) : null}
       {/* 题 6 A：How to use 6 条原文，放最底（手机版规则同）。 */}
@@ -633,7 +652,7 @@ function LookupResultView({ result }: { result: LookupResult }) {
         <HowToUse
           dark
           title="How to use — Order lookup"
-          items={[...LIFECYCLE_HOW_TO]}
+          items={[...LIFECYCLE_HOW_TO, ...(canChat ? [CHAT_HOW_TO] : [])]}
         />
       ) : null}
     </div>
@@ -648,6 +667,11 @@ function usDate(ymd: string): string {
 
 function trackHref(path: string, date: string, orderNumber: string): string {
   return `${path}?date=${date}&q=${encodeURIComponent(orderNumber)}`;
+}
+
+/** 「Open chat →」：同一个 Tracking 页，多带 chat=单号 ⇒ 页面直接打开这单的对话框（lib/open-chat-param）。 */
+function chatHref(path: string, date: string, orderNumber: string): string {
+  return `${trackHref(path, date, orderNumber)}&chat=${encodeURIComponent(orderNumber)}`;
 }
 
 function orderStatusTone(status: string): string {
@@ -711,7 +735,8 @@ function ChangesBlock({
   const shown = all ? everything : changes.slice(0, CHANGES_SHOWN);
   const canMore = !all && everything.length > shown.length;
   // Annie 2026-11-18「但凡可以展开的页面一定要能折叠」：展开后键变 Show less，点了回到最近 3 条。
-  const canLess = all && everything.length > Math.min(changes.length, CHANGES_SHOWN);
+  const canLess =
+    all && everything.length > Math.min(changes.length, CHANGES_SHOWN);
   return (
     <div
       className={cn("rounded-[12px] border bg-white/[.025] px-4 py-3", frame)}
@@ -769,6 +794,7 @@ function LaneBlock<Row extends { id: number }>({
   href,
   lane,
   frame,
+  chatHref: chatLink,
   render,
 }: {
   title: string;
@@ -776,6 +802,8 @@ function LaneBlock<Row extends { id: number }>({
   lane: LaneResult<Row>;
   /** 外框颜色（框 1：生命周期开着时蓝框）。 */
   frame: string;
+  /** Chat history 的「Open chat →」（C1 C）；没有 = 不出。 */
+  chatHref?: string;
   render: (row: Row) => ReactNode;
 }) {
   if (lane.kind === "ok" && lane.rows.length === 0) {
@@ -792,9 +820,21 @@ function LaneBlock<Row extends { id: number }>({
     >
       <div className="mb-2 flex items-baseline gap-3">
         <h3 className="text-[13.5px] font-semibold">{title}</h3>
+        {chatLink && lane.kind === "ok" ? (
+          <PageLink
+            href={chatLink}
+            data-open-chat
+            className="ml-auto text-[12.5px] font-semibold text-white/60 hover:text-white"
+          >
+            Open chat →
+          </PageLink>
+        ) : null}
         <PageLink
           href={href}
-          className="ml-auto text-[12.5px] font-semibold text-white/60 hover:text-white"
+          className={cn(
+            "text-[12.5px] font-semibold text-white/60 hover:text-white",
+            !(chatLink && lane.kind === "ok") && "ml-auto",
+          )}
         >
           Open tracking →
         </PageLink>
