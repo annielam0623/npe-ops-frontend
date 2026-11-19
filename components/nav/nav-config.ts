@@ -415,6 +415,8 @@ export const NAV_SETTINGS: { label: string; items: NavItem[] } = {
     // 系统自己发的通知的统一开关页（Annie 2026-10-24 看过 preview 后「自动开关：动手」），admin 可看。
     { label: "Notifications", href: "/settings/notifications" },
     { label: "Content Studio", href: "/settings/content-studio" },
+    // 测试发送页（Annie 2026-11-18「1A…动手」：Content Studio 下面、叫 Test send）：后端只给 admin / Super Admin，同 Settings 组默认只 admin。
+    { label: "Test send", href: "/settings/test-send" },
     { label: "Pickup Locations", href: "/settings/pickup-locations" },
     // Farm out Partners / Timetable 搬进下面的 Supplier 组（G199，Annie 2026-10-27「Supplier preview 动手」）。
     { label: "Vehicles", href: "/settings/vehicles" },
