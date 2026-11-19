@@ -45,6 +45,7 @@ export function useOrderRefresh(
   return { state, run };
 }
 
+/** 琥珀黄、深色字（Annie 2026-11-19（样稿 X7VrqrYfLnnxz2Vr4KM2uJ，「把send tour cofirmation这个按键从Refresh from rezdy旁边挪到Open in Main manifest旁边，让refresh from rezdy键单独在那边以防按错」「把refresh键换成黄色的吧」「动手」））：单独在订单号那一行右边，跟蓝色的发送键分开。 */
 export function RefreshButton({
   busy,
   onClick,
@@ -58,7 +59,7 @@ export function RefreshButton({
       data-order-refresh
       disabled={busy}
       onClick={onClick}
-      className="ml-auto h-[26px] cursor-pointer rounded-md bg-[#3b82f6] px-3 text-[12px] font-semibold text-white disabled:cursor-default disabled:opacity-60"
+      className="ml-auto h-[26px] cursor-pointer rounded-md bg-[#f59e0b] px-3 text-[12px] font-semibold text-[#1a1a1a] hover:bg-[#d97706] disabled:cursor-default disabled:opacity-60"
     >
       {busy ? "Refreshing…" : "Refresh from Rezdy"}
     </button>

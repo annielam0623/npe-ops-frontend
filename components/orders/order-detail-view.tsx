@@ -304,18 +304,10 @@ function OrderBody({
         >
           {o.source === "rezdy" ? "Rezdy" : tripguru ? "TripGuru" : o.source}
         </span>
-        {refresh || sendTour ? (
+        {/* Annie 2026-11-19（样稿 X7VrqrYfLnnxz2Vr4KM2uJ，「把send tour cofirmation这个按键从Refresh from rezdy旁边挪到Open in Main manifest旁边，让refresh from rezdy键单独在那边以防按错」「把refresh键换成黄色的吧」「动手」）：
+            Refresh from Rezdy 单独留在这里（黄色）；Send tour confirmation 挪到下面「Open in Main manifest →」那一行最后。 */}
+        {refresh ? (
           <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
-            {sendTour ? (
-              <SendTourButton
-                busy={sendTour.state.kind === "busy"}
-                date={sendDate}
-                hotelMissing={hotelMissing}
-                onClick={() => {
-                  if (sendDate) void sendTour.run(sendDate);
-                }}
-              />
-            ) : null}
             {refresh ? (
               <RefreshButton
                 busy={refresh.state.kind === "busy"}
@@ -327,9 +319,24 @@ function OrderBody({
       </header>
       {refresh ? <RefreshResultCard state={refresh.state} /> : null}
       {hotelMissing ? <PickupMissingAlert /> : null}
+      {/* 置顶 51 B：一点跳到 Main manifest 的那一单（标黄、预勾）；行尾是 Send tour confirmation（见上）。 */}
+      <ManifestLinks
+        order={o}
+        className="mt-2 mb-3"
+        extra={
+          sendTour ? (
+            <SendTourButton
+              busy={sendTour.state.kind === "busy"}
+              date={sendDate}
+              hotelMissing={hotelMissing}
+              onClick={() => {
+                if (sendDate) void sendTour.run(sendDate);
+              }}
+            />
+          ) : null
+        }
+      />
       {sendTour ? <SendTourResultCard state={sendTour.state} /> : null}
-      {/* 置顶 51 B：一点跳到 Main manifest 的那一单（标黄、预勾）。 */}
-      <ManifestLinks order={o} className="mt-2 mb-3" />
       {storedReadOnly && !partner ? (
         // 旧页 .od-warn 是 #B3261E，深色底上看不清，用浅一点的红。
         <p data-read-only className="mt-1.5 mb-4 text-[11px] text-[#f87171]">
@@ -1436,12 +1443,15 @@ function HowToUse({
   lifecycleChat?: boolean;
 }) {
   return (
-    // 旧页这里是一直展开的蓝框（不是可折叠的 details），样式照 send_morning.html。
-    <div className="mb-4 rounded-[10px] border border-[#b5d4f4] bg-[#e8f3fc] px-5 py-3.5 text-[12px] leading-[1.8] text-[#0c3a6b] night:border-sky-400/20 night:bg-sky-400/[.08] night:text-sky-300">
-      <div className="mb-1.5 font-semibold text-[#185FA5] night:text-sky-300">
+    // 样式照 send_morning.html 的蓝框；Annie 2026-11-19「然后how to use默认折叠」「动手」：改成 details，默认收起，点标题展开。
+    <details
+      data-order-howto
+      className="mb-4 rounded-[10px] border border-[#b5d4f4] bg-[#e8f3fc] px-5 py-3.5 text-[12px] leading-[1.8] text-[#0c3a6b] night:border-sky-400/20 night:bg-sky-400/[.08] night:text-sky-300"
+    >
+      <summary className="cursor-pointer font-semibold text-[#185FA5] night:text-sky-300">
         📖 How to use — Order Detail
-      </div>
-      <ol className="list-decimal pl-[18px]">
+      </summary>
+      <ol className="mt-1.5 list-decimal pl-[18px]">
         <li>
           {money
             ? "This page shows one order: guest, product, price, operations, agent and commission, tickets, notes and activity."
@@ -1468,25 +1478,25 @@ function HowToUse({
         ) : null}
         {refresh ? (
           <li>
-            Refresh from Rezdy (next to the order number): gets this order from
-            Rezdy again and updates Order List right away. Use it when a
-            guest&apos;s details were changed in Rezdy but did not come through.
-            The result shows under the order number: what changed (before →
-            after), or that nothing changed. If Rezdy has no phone or email for
-            the order, the one we have is kept. If it does not work, the reason
-            shows in red and nothing is changed.
+            Refresh from Rezdy (the yellow button next to the order number):
+            gets this order from Rezdy again and updates Order List right away.
+            Use it when a guest&apos;s details were changed in Rezdy but did not
+            come through. The result shows under the order number: what changed
+            (before → after), or that nothing changed. If Rezdy has no phone or
+            email for the order, the one we have is kept. If it does not work,
+            the reason shows in red and nothing is changed.
           </li>
         ) : null}
         {sendTour ? (
           <li>
-            Send tour confirmation (next to the order number): sends this
-            order&apos;s tour confirmation by SMS and email, for the tour date
-            of this order. If the pickup location is missing, a red message says
-            what to fix and the button stays grey: add the pickup location to
-            the order in Rezdy, then click Refresh from Rezdy. When the red
-            message is gone, click Send tour confirmation. Once it is sent, the
-            Pickup location missing notice goes away for everyone. If it is not
-            sent, the reason shows in red.
+            Send tour confirmation (after Open in Main manifest →, on the Main
+            manifest line): sends this order&apos;s tour confirmation by SMS and
+            email, for the tour date of this order. If the pickup location is
+            missing, a red message says what to fix and the button stays grey:
+            add the pickup location to the order in Rezdy, then click Refresh
+            from Rezdy. When the red message is gone, click Send tour
+            confirmation. Once it is sent, the Pickup location missing notice
+            goes away for everyone. If it is not sent, the reason shows in red.
           </li>
         ) : null}
         <li>
@@ -1511,6 +1521,6 @@ function HowToUse({
         the Edit buttons are not shown. If a save does not work, the reason
         shows in red under the Save button and nothing is changed.
       </div>
-    </div>
+    </details>
   );
 }
