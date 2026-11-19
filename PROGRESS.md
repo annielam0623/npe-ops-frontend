@@ -36,6 +36,7 @@
 - ✅ **第 7 件 132 上 main f878f9d1**（70；功能 a806fc8d 接 b114f83d；Order details 键一起蓝；tt 213 / mt 321 / os 138 / orders 113 / tk 161，tsc / eslint / build）。📌 请 Annie 线上验：Tour / Tickets / Morning 对话框标题「Order 单号」后产品名（多产品「+N more」+ hover 全部、长名两行截）；「Open in Main manifest →」蓝实心（对话框 / 搜索卡 / Order details）。70 三件做完，待命。
 - ✅ **preview 链接所有人可见上 main 5ca95915**（63；功能 9ec0360c，后端 G358；ow 24 / pm 33 / nav 39 / da 610 无失败）。📌 请 Annie 用员工账号验 Dispatch 页头两个链接能打开；Open shift ⚙ 只 SA。
 - ✅ **第 1 件 No show 第 3 版上 main 22228fe5**（c1；功能 f0a63520 + How to use 第 4 条 9dc718fd；mt 329 / orders 113 / mf 343 / man 511 / nav 39，tsc / eslint / build）。📌 请 Annie 线上验 Morning Tracking（只 ZZ Test 真写）。
+- **新：Dispatch 上面的链接都改成按键**（Annie 原话，非动手）「另外，把dispatch上面所有的链接都改成按键」⇒ 派 63（G307 之后，同文件）先列清所有链接再出 preview（范围 / 样式推荐同 Today 灰描边 / 手机 / 图标）。
 - 📌 My schedule 第 2 版 https://claude.ai/artifact/LEM11L3J5ee97e4KGsk5J4 6 题（1 页内容 A 班 + My leave；2 Leave 标签 A 只给批假的人；3 入口 A 侧栏 + 总表页头键 + Dashboard；4 网址 A /my-schedule + 旧网址跳；5 键色 A 白；6 A 所有人）。Annie（原话，非动手）「Dashboard Schedule 块「My schedule →」链接  --- 我不要链接，就要一个按键」⇒ Dashboard 入口改按键，d6 更新 preview。
 - 📌 My schedule：Annie（原话，非动手）「如果my schedule里专门是处理自己的班次和申请假期的话，单独设立一个my schedule就make sence」⇒ d6 出第 2 版：My schedule 独立页 = 自己的班（现 /schedule/confirm）+ My leave（申请 + 记录），批假留排班人 Leave 标签；入口 / 网址 / Dashboard 链接 / 原 5 题要不要改。
 - ✅ **G298 那句只给 canEdit 上 main 8abeab40**（d6；修复 a74f0b1d；sc 62 / sch 532 / nav 39，tsc / eslint / build）。📌 请 Annie 验：Veronica 账号看 11/22–28 页头没有那句；Super Admin 照旧有。
