@@ -142,6 +142,8 @@ export interface OrderDetail {
     sms_status: string;
     email_status: string;
     created_at: string;
+    /** bf 第 2 项（后端 bde07c1a）："whatsapp" = 走 WhatsApp（收 sms_in / 回 sms_out）；null = 旧行 / 邮件 / 备注；旧后端没有。 */
+    channel?: "sms" | "whatsapp" | null;
   }[];
   /** 转给合作公司的订单才有：两套上车资料 + 谁放前面（后端算）。 */
   farm_out_view?: FarmOutView;

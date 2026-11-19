@@ -354,7 +354,10 @@ const CHAT_SHOWN = 3;
 export function chatWho(n: Note): { who: string; guest: boolean } {
   switch (n.direction) {
     case "sms_in":
-      return { who: "Guest · SMS", guest: true };
+      return {
+        who: n.channel === "whatsapp" ? "Guest · WhatsApp" : "Guest · SMS",
+        guest: true,
+      };
     case "email_in":
       return { who: "Guest · Email", guest: true };
     case "guest_reply":
@@ -362,7 +365,10 @@ export function chatWho(n: Note): { who: string; guest: boolean } {
     case "voice_in":
       return { who: "Guest · Voice message", guest: true };
     case "sms_out":
-      return { who: `${n.author || "Staff"} · SMS`, guest: false };
+      return {
+        who: `${n.author || "Staff"} · ${n.channel === "whatsapp" ? "WhatsApp" : "SMS"}`,
+        guest: false,
+      };
     case "email_out":
       return { who: `${n.author || "Staff"} · Email`, guest: false };
     default:

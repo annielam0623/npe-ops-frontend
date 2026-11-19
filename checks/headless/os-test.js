@@ -501,8 +501,8 @@ async function run() {
     const chatLines = () => evaluate(`return [...${chat}.querySelectorAll('li')].map(li => li.textContent.replace(/\\s+/g, ' ').trim());`);
     check("Chat history · 放在最下面：Morning Pickup 块后面、How to use 前面", await evaluate(`const c = ${chat}; return !!c && c.previousElementSibling?.getAttribute('data-lane') === 'Morning Pickup' && c.nextElementSibling?.tagName === 'DETAILS';`));
     let cl = await chatLines();
-    check("Chat history · 默认 3 条、新的在前：annie · Email / Guest · SMS / Guest · Voice message（transcript）",
-      cl.length === 3 && cl[0].includes("annie · Email") && cl[0].includes("Yes, strollers are fine.") && cl[1].includes("Guest · SMS") && cl[2].includes("Guest · Voice message") && cl[2].endsWith("(transcript)"), cl.join(" | "));
+    check("Chat history · 默认 3 条、新的在前：annie · Email / Guest · WhatsApp（channel whatsapp）/ Guest · Voice message（transcript）",
+      cl.length === 3 && cl[0].includes("annie · Email") && cl[0].includes("Yes, strollers are fine.") && cl[1].includes("Guest · WhatsApp") && cl[2].includes("Guest · Voice message") && cl[2].endsWith("(transcript)"), cl.join(" | "));
     check("Chat history · 右上 Show all 4 ▾", (await evaluate(`return ${chat}.querySelector('[data-chat-toggle]')?.textContent.trim();`)) === "Show all 4 ▾");
     await evaluate(`${chat}.querySelector('[data-chat-toggle]').click(); return 1;`);
     await sleep(150);
