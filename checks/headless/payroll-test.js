@@ -106,6 +106,16 @@ async function clickFee(id) {
   return waitFor(`${run_(id)}.querySelector('[data-payroll-fee-editor] input')`, 3000);
 }
 
+const FAKE_NOW = `(() => {
+  const Real = Date;
+  const off = Real.parse("2026-11-05T20:00:00Z") - Real.now();
+  class FakeDate extends Real {
+    constructor(...a) { if (a.length) super(...a); else super(Real.now() + off); }
+    static now() { return Real.now() + off; }
+  }
+  globalThis.Date = FakeDate;
+})();`;
+
 async function run() {
   // ① Admin 没勾 Payroll：没有页签
   await ctl({ superadmin: false, codes: [], runFail: null, periodFail: false });
@@ -118,6 +128,10 @@ async function run() {
   await ctl({ superadmin: true });
   check("Super Admin：Payroll 页签、打开是 Nov 1–15, 2026", await openPayroll());
   check("页头：Counted through Tue, Nov 10", (await text(q("[data-payroll]"))).includes("Counted through Tue, Nov 10"));
+  // 期间箭头在日期两边（Annie 2026-11-16「一般不是日期在中间，箭头在两边么」）：‹ 日期 ›，键照 Staff Schedule 的周切换
+  check("页头：‹ Nov 1–15, 2026 ›——日期在两个箭头中间，后面才是 · Counted through", await evaluate(`const p = ${q("[data-payroll-prev]")}, d = ${q("[data-payroll-period]")}, n = ${q("[data-payroll-next]")}; const F = Node.DOCUMENT_POSITION_FOLLOWING; return p.nextElementSibling === d && d.nextElementSibling === n && p.getBoundingClientRect().right <= d.getBoundingClientRect().left && d.getBoundingClientRect().right <= n.getBoundingClientRect().left && !!(n.compareDocumentPosition([...document.querySelectorAll('[data-payroll] span')].find((s) => s.textContent.includes('Counted through'))) & F);`));
+  check("页头：箭头 28×28、圆角 8px（同 Staff Schedule）", await evaluate(`const r = ${q("[data-payroll-prev]")}.getBoundingClientRect(); const cs = getComputedStyle(${q("[data-payroll-next]")}); return Math.round(r.width) === 28 && Math.round(r.height) === 28 && cs.borderTopLeftRadius === '8px';`));
+  check("How to use：Use ‹ and › on either side of the dates to move between periods.", await evaluate(`return document.body.textContent.includes('Use ‹ and › on either side of the dates to move between periods.') && !document.body.textContent.includes('next to the dates');`));
   const csv = await evaluate(`return ${q("[data-payroll-export]")}?.getAttribute('href');`);
   check("Export CSV 链到 period.csv?date=2026-11-01", csv === "/api/payroll/period.csv?date=2026-11-01", csv);
   const lockline = await text(q("[data-payroll-lockline]"));
@@ -130,6 +144,14 @@ async function run() {
   await expand("Kevin Tran");
   check("锁住的 811：没有点格子改、写 🔒 Locked", await evaluate(`const r = ${run_(811)}; return !!r && !r.querySelector('[data-payroll-fee-cell]') && r.textContent.includes('🔒 Locked') && !r.querySelector('input');`));
   check("812：ANT relay 勾着、Long day 没勾", await evaluate(`return document.querySelector('[data-payroll-extra="812|ant_relay"]').checked && !document.querySelector('[data-payroll-extra="812|long_day"]').checked;`));
+  // 状态格（Annie 2026-11-17「选A」「留空，动手」）：paid 没锁 ⇒ 留空；锁住的日子 ⇒ 灰字 Paid · locked；No rate / Not completed 照旧琥珀字
+  {
+    const st = (id) => evaluate(`return ${run_(id)}.querySelector('[data-payroll-status]').textContent;`);
+    check("状态：锁住的 811 写 Paid · locked（灰字）", (await st(811)) === "Paid · locked" && (await evaluate(`return getComputedStyle(${run_(811)}.querySelector('[data-payroll-status] span')).color === 'rgb(136, 136, 136)';`)), await st(811));
+    check("状态：没锁的 812 留空（不写 Paid）", (await st(812)) === "", await st(812));
+    check("状态：没锁、没 Completed 的 813 只写 Not completed（前面不空一行）", (await st(813)) === "Not completed" && !(await evaluate(`return !!${run_(813)}.querySelector('[data-payroll-status] br');`)), await st(813));
+    check("状态：Needs review 里 816 照旧 No rate", (await st(816)) === "No rate", await st(816));
+  }
   check("813：Not completed 琥珀字", (await text(run_(813))).includes("Not completed"));
   check("非私人团没有 Tips 框；私人团 814 有框 150.00", await evaluate(`return !${run_(813)}.querySelector('[data-payroll-tips]') && ${run_(814)}.querySelector('[data-payroll-tips]').value === '150.00';`));
 
@@ -225,6 +247,51 @@ async function run() {
   check("存好重拉：816 手改后挪出 Needs review（Needs review 1）", await waitFor(`${tile("Needs review")}.textContent.endsWith('1')`, 5000));
   check("没改动时 Save 灰掉", await evaluate(`return ${q("[data-payroll-save]")}.disabled;`));
 
+  // ⑨a + Add extra 的 Extra 下拉：已有的加购项都要在里面（Annie 2026-11-17「你只给了那一个选项啊」）
+  {
+    await evaluate(`document.querySelector('[data-add-extra]').click();`);
+    await waitFor(q("[data-extra-form]"), 3000);
+    const opts = await evaluate(`return [...document.querySelectorAll('[data-xf="code"] option')].map((o) => o.value + '=' + o.textContent).join('|');`);
+    const rowsNow = await evaluate(`return [...document.querySelectorAll('[data-payroll-extras] tr[data-extra-row]')].map((tr) => tr.children[0].textContent).join('|');`);
+    check("+ Add extra：Extra 下拉 = New extra… + 表里每个已有加购项的「— new amount」", opts.includes("ant_relay=ANT relay — new amount") && opts.includes("long_day=Long day — new amount"), `options: ${opts} · table: ${rowsNow}`);
+    await evaluate(`[...document.querySelectorAll('[data-extra-form] button')].find((b) => b.textContent.trim() === 'Cancel').click();`);
+    await sleep(100);
+  }
+  // ⑨b Extras 新加项名字跟已有的只差大小写 / 符号（Annie 2026-11-17「还给我显示个any 润」）：后端会当成另一个加购项（ant_relay_2）、任何趟都能勾 ⇒ 页面先挡
+  {
+    const pickNew = `const s = document.querySelector('[data-xf="code"]'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, '__new'); s.dispatchEvent(new Event('change', { bubbles: true }));`;
+    const rowsBefore = await evaluate(`return document.querySelectorAll('[data-payroll-extras] tr[data-extra-row]').length;`);
+    await evaluate(`document.querySelector('[data-add-extra]').click();`);
+    await waitFor(q("[data-extra-form]"), 3000);
+    await evaluate(pickNew);
+    await evaluate(`$setValue(document.querySelector('[data-xf="name"]'), 'ANT Relay'); $setValue(document.querySelector('[data-xf="from"]'), '2026-07-16'); $setValue(document.querySelector('[data-xf="amount"]'), '66');`);
+    await evaluate(`document.querySelector('[data-xf="add"]').click();`);
+    await sleep(150);
+    const e1 = await text(q("[data-xf-err]"));
+    check("Extras：New extra 打「ANT Relay」（已有 ANT relay）⇒ 红字叫人选已有的，不加行", e1 === 'ANT relay already exists. Pick "ANT relay — new amount" under Extra instead.' && (await evaluate(`return document.querySelectorAll('[data-payroll-extras] tr[data-extra-row]').length;`)) === rowsBefore, e1);
+    await evaluate(`$setValue(document.querySelector('[data-xf="name"]'), ' long-day ');`);
+    await evaluate(`document.querySelector('[data-xf="add"]').click();`);
+    await sleep(150);
+    const e2 = await text(q("[data-xf-err]"));
+    check("Extras：打「 long-day 」（已有 Long day，只差大小写 / 符号）⇒ 同样挡下", e2 === 'Long day already exists. Pick "Long day — new amount" under Extra instead.', e2);
+    // 7/16 起没有结束日会碰到锁住的 11/1–2：换成锁之后的日子。
+    await evaluate(`$setValue(document.querySelector('[data-xf="name"]'), 'ZZ Test Night'); $setValue(document.querySelector('[data-xf="from"]'), '2026-11-20');`);
+    await evaluate(`document.querySelector('[data-xf="add"]').click();`);
+    await sleep(150);
+    check("Extras：真正的新名字照旧能加（淡黄、Can be ticked on Any run）", await evaluate(`const r = [...document.querySelectorAll('[data-payroll-extras] tr[data-extra-row="new"][data-pending]')].find((tr) => tr.textContent.includes('ZZ Test Night')); return !!r && r.textContent.includes('Any run');`));
+    await evaluate(`document.querySelector('[data-add-extra]').click();`);
+    await waitFor(q("[data-extra-form]"), 3000);
+    await evaluate(pickNew);
+    await evaluate(`$setValue(document.querySelector('[data-xf="name"]'), 'zz test NIGHT'); $setValue(document.querySelector('[data-xf="from"]'), '2026-11-20'); $setValue(document.querySelector('[data-xf="amount"]'), '10');`);
+    await evaluate(`document.querySelector('[data-xf="add"]').click();`);
+    await sleep(150);
+    const e3 = await text(q("[data-xf-err]"));
+    check("Extras：跟页面上还没存的新加项只差大小写 ⇒ 红字 already in the list, not saved yet.", e3 === "ZZ Test Night is already in the list, not saved yet.", e3);
+    // 收掉，不影响后面的 Save rates
+    await evaluate(`[...document.querySelectorAll('[data-extra-form] button')].find((b) => b.textContent.trim() === 'Cancel').click();`);
+    await evaluate(`const b = [...document.querySelectorAll('[data-payroll-extras] tr[data-extra-row="new"] button')][0]; b && b.click();`);
+    await sleep(150);
+  }
   // ⑩ 换期：有改动 Discard；将来的期
   await evaluate(`document.querySelector('[data-payroll-extra="813|long_day"]').click();`);
   await evaluate(`${q("[data-payroll-prev]")}.click();`);
@@ -240,7 +307,7 @@ async function run() {
   await evaluate(`${q("[data-payroll-prev]")}.click();`);
   await waitFor(`${q("[data-payroll-period]")}?.textContent === 'Nov 1–15, 2026'`, 5000);
   check("Pay rates / Locked dates / Change history 依次在名单下面", await waitFor(`(() => { const a = ['[data-payroll-by-person]','[data-payroll-rates]','[data-payroll-locks]','[data-payroll-history]'].map(s => document.querySelector(s)); return a.every(Boolean) && a.every((e, i) => i === 0 || (a[i-1].compareDocumentPosition(e) & Node.DOCUMENT_POSITION_FOLLOWING)); })()`, 5000));
-  check("How to use — Payroll：14 条、照 V9", await evaluate(`const d = [...document.querySelectorAll('details')].find(x => x.textContent.includes('How to use — Payroll')); const li = d ? d.querySelectorAll('li') : []; return li.length === 14 && li[4].textContent.startsWith('Click a name to see that person') && li[13].textContent.startsWith('Only Admin accounts given Payroll');`));
+  check("How to use — Payroll：15 条、照 V9（第 8 条是状态格那句）", await evaluate(`const d = [...document.querySelectorAll('details')].find(x => x.textContent.includes('How to use — Payroll')); const li = d ? d.querySelectorAll('li') : []; return li.length === 15 && li[4].textContent.startsWith('Click a name to see that person') && li[7].textContent === 'The Status column is blank for runs that are counted in the total. Runs on locked days show Paid · locked. No rate, No guide and Not completed need a look.' && li[14].textContent.startsWith('Only Admin accounts given Payroll');`));
 
   // ⑫ Locked dates 卡（5a）：有改动时 Lock 先挡；锁 / 解锁黄框
   check("Locked dates：Nov 1–2, 2026 一行、Note、Locked by", (await text(`document.querySelector('[data-lock-row="1"]')`))?.includes("Nov 1–2, 2026Paid Nov 1–2Annie"), await text(`document.querySelector('[data-lock-row="1"]')`));
@@ -286,6 +353,187 @@ async function run() {
   const rp = await since(before, (e) => e.method === "PUT" && e.path === "/api/payroll/rates");
   check("Pay rates：PUT /api/payroll/rates 带 custom_tour、from、to null、两种费用", rp.length === 1 && rp[0].body.custom_tour === "ZZ Test Tour" && rp[0].body.from === "2026-11-20" && rp[0].body.to === null && rp[0].body.guide_fee === "200.00" && rp[0].body.driver_guide_fee === "250.00" && rp[0].body.applies_to === "all", JSON.stringify(rp[0]?.body));
   check("Pay rates：存好后期间页重拉", (await since(before, (e) => e.path === "/api/payroll/period")).length >= 1);
+
+  // ⑬c ANT relay 的金额行全被 Remove + Save 以后（后端 GET rates 不再回它）：下拉里照样有「ANT relay — new amount」，
+  // New extra 打「ANT Relay」照样挡下；选它加一段新金额 ⇒ PUT 带 code ant_relay（不会变成 ant_relay_2）。Annie 2026-11-17「你只给了那一个选项啊」
+  {
+    // 旧后端（没有 extras 名单）才靠前端钉住 ANT relay。
+    await ctl({ antRemoved: true, noCatalog: true });
+    await openPayroll();
+    await waitFor(q("[data-payroll-extras]"), 5000);
+    check("ANT relay 全删了：Extras 表里没有 ANT relay 行", await evaluate(`return ![...document.querySelectorAll('[data-payroll-extras] tr[data-extra-row]')].some((tr) => tr.textContent.includes('ANT relay'));`));
+    await evaluate(`document.querySelector('[data-add-extra]').click();`);
+    await waitFor(q("[data-extra-form]"), 3000);
+    const opts = await evaluate(`return [...document.querySelectorAll('[data-xf="code"] option')].map((o) => o.value + '=' + o.textContent).join('|');`);
+    check("ANT relay 全删了：下拉里照样有 ant_relay「ANT relay — new amount」", opts.includes("ant_relay=ANT relay — new amount"), opts);
+    const pickNew = `const s = document.querySelector('[data-xf="code"]'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, '__new'); s.dispatchEvent(new Event('change', { bubbles: true }));`;
+    await evaluate(pickNew);
+    await evaluate(`$setValue(document.querySelector('[data-xf="name"]'), 'ANT Relay'); $setValue(document.querySelector('[data-xf="from"]'), '2026-11-20'); $setValue(document.querySelector('[data-xf="amount"]'), '66');`);
+    await evaluate(`document.querySelector('[data-xf="add"]').click();`);
+    await sleep(150);
+    const e1 = await text(q("[data-xf-err]"));
+    check("ANT relay 全删了：New extra 打「ANT Relay」照样挡下", e1 === 'ANT relay already exists. Pick "ANT relay — new amount" under Extra instead.', e1);
+    await evaluate(`const s = document.querySelector('[data-xf="code"]'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, 'ant_relay'); s.dispatchEvent(new Event('change', { bubbles: true }));`);
+    await sleep(100);
+    await evaluate(`$setValue(document.querySelector('[data-xf="from"]'), '2026-11-20'); $setValue(document.querySelector('[data-xf="amount"]'), '66');`);
+    await evaluate(`document.querySelector('[data-xf="add"]').click();`);
+    await sleep(150);
+    check("选 ANT relay — new amount 加：淡黄行 ANT relay、Can be ticked on「Tours whose price has ANT relay = Yes」", await evaluate(`const r = document.querySelector('[data-payroll-extras] tr[data-extra-row="new"][data-pending]'); return !!r && r.children[0].textContent === 'ANT relay' && r.textContent.includes('Tours whose price has ANT relay = Yes');`));
+    const before = (await mockLog()).length;
+    await evaluate(`document.querySelector('[data-rates-save]').click();`);
+    await waitFor(`${q("[data-rates-saved]")}?.textContent === 'Saved'`, 5000);
+    const xp = await since(before, (e) => e.method === "PUT" && e.path === "/api/payroll/extra-rates");
+    check("Save rates：PUT /api/payroll/extra-rates 带 code ant_relay、不带 name", xp.length === 1 && xp[0].body.code === "ant_relay" && !("name" in xp[0].body) && xp[0].body.amount === "66.00", JSON.stringify(xp[0]?.body));
+    await ctl({ antRemoved: false, noCatalog: false });
+  }
+
+  // ⑬d 加购项名单（后端 558e1176 extras，含全删了的）：Long day 的行全删了也在下拉里；选它加金额 PUT 带 code、不带 name；New extra 打同名被挡
+  {
+    await ctl({ longDayRemoved: true, noCatalog: false });
+    await openPayroll();
+    await waitFor(q("[data-payroll-extras]"), 5000);
+    check("名单：Long day 全删了 ⇒ Extras 表里没有 Long day 行", await evaluate(`return ![...document.querySelectorAll('[data-payroll-extras] tr[data-extra-row]')].some((tr) => tr.textContent.includes('Long day'));`));
+    await evaluate(`document.querySelector('[data-add-extra]').click();`);
+    await waitFor(q("[data-extra-form]"), 3000);
+    const opts = await evaluate(`return [...document.querySelectorAll('[data-xf="code"] option')].map((o) => o.value + '=' + o.textContent).join('|');`);
+    check("名单：下拉 = New extra… / ANT relay / Long day（停用的也列，按名单顺序）", opts === "__new=New extra…|ant_relay=ANT relay — new amount|long_day=Long day — new amount", opts);
+    const pick = (v) => `const s = document.querySelector('[data-xf="code"]'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, '${v}'); s.dispatchEvent(new Event('change', { bubbles: true }));`;
+    await evaluate(pick("__new"));
+    await evaluate(`$setValue(document.querySelector('[data-xf="name"]'), 'LONG DAY'); $setValue(document.querySelector('[data-xf="from"]'), '2026-11-20'); $setValue(document.querySelector('[data-xf="amount"]'), '40');`);
+    await evaluate(`document.querySelector('[data-xf="add"]').click();`);
+    await sleep(150);
+    const e1 = await text(q("[data-xf-err]"));
+    check("名单：New extra 打「LONG DAY」（Long day 已全删）⇒ 挡下，叫人选 Long day — new amount", e1 === 'Long day already exists. Pick "Long day — new amount" under Extra instead.', e1);
+    await evaluate(pick("long_day"));
+    await sleep(100);
+    await evaluate(`$setValue(document.querySelector('[data-xf="from"]'), '2026-11-20'); $setValue(document.querySelector('[data-xf="amount"]'), '40');`);
+    await evaluate(`document.querySelector('[data-xf="add"]').click();`);
+    await sleep(150);
+    check("名单：选 Long day — new amount 加 ⇒ 淡黄行 Long day、Any run", await evaluate(`const r = document.querySelector('[data-payroll-extras] tr[data-extra-row="new"][data-pending]'); return !!r && r.children[0].textContent === 'Long day' && r.textContent.includes('Any run');`));
+    const before = (await mockLog()).length;
+    await evaluate(`document.querySelector('[data-rates-save]').click();`);
+    await waitFor(`${q("[data-rates-saved]")}?.textContent === 'Saved'`, 5000);
+    const xp = await since(before, (e) => e.method === "PUT" && e.path === "/api/payroll/extra-rates");
+    check("名单：Save rates ⇒ PUT /api/payroll/extra-rates 带 code long_day、不带 name（不会变成 long_day_2）", xp.length === 1 && xp[0].body.code === "long_day" && !("name" in xp[0].body), JSON.stringify(xp[0]?.body));
+    await ctl({ longDayRemoved: false });
+  }
+
+  // ⑬e Extras 的 Edit + 选人弹窗（Annie 2026-11-17「Extras 的 Edit、选人弹窗…一起动手」，样稿 LtGwyr8qAUxYhXfSVnL1VL 第 2 版）
+  {
+    await ctl({ extraEditable: true });
+    await openPayroll();
+    await waitFor(`document.querySelector('[data-extra-edit="3"]')`, 5000);
+    await evaluate(`document.querySelector('[data-extra-edit="3"]').click();`);
+    await waitFor(q("[data-extra-form]"), 3000);
+    check("Extras Edit：表单带出 Long day 这一行（Extra 下拉灰掉、Amount 40.00、键写 Update）", await evaluate(`const s = document.querySelector('[data-xf="code"]'); return s.disabled && s.value === 'long_day' && document.querySelector('[data-xf="amount"]').value === '40.00' && document.querySelector('[data-xf="add"]').textContent.trim() === 'Update';`));
+    await evaluate(`$setValue(document.querySelector('[data-xf="amount"]'), '45'); $setValue(document.querySelector('[data-xf="from"]'), '2026-11-20');`);
+    await evaluate(`document.querySelector('[data-extra-form] [data-applies="people"]').click();`);
+    check("选 Only these people：出白键 Choose people… (0)，表单上不再直接排勾选框", await waitFor(`document.querySelector('[data-extra-form] [data-who-open]')?.textContent.trim() === 'Choose people… (0)' && !document.querySelector('[data-extra-form] [data-who-picker] > span input[type=checkbox]')`, 3000));
+    await evaluate(`document.querySelector('[data-extra-form] [data-who-open]').click();`);
+    await waitFor(q("[data-who-dialog]"), 3000);
+    check("弹窗：Choose people、Search name 框、名单、0 selected、Done / Cancel", await evaluate(`const d = document.querySelector('[data-who-dialog]'); return d.textContent.includes('Choose people') && !!d.querySelector('[data-who-search]') && d.querySelectorAll('[data-who-row]').length >= 2 && d.querySelector('[data-who-count]').textContent === '0 selected' && !!d.querySelector('[data-who-done]') && !!d.querySelector('[data-who-cancel]');`), await evaluate(`return [...document.querySelectorAll('[data-who-row]')].map((r) => r.textContent).join('|');`));
+    check("弹窗名单读后端 rates.guides：本期没出车的 ZZ Test Lan 也在，Kevin Tran 只出一次", await evaluate(`const n = [...document.querySelectorAll('[data-who-row]')].map((r) => r.getAttribute('data-who-row')); return n.includes('ZZ Test Lan') && n.filter((x) => x === 'Kevin Tran').length === 1;`), await evaluate(`return [...document.querySelectorAll('[data-who-row]')].map((r) => r.getAttribute('data-who-row')).join('|');`));
+    await evaluate(`$setValue(document.querySelector('[data-who-search]'), 'zzz');`);
+    check("弹窗：搜不到 ⇒ No one matches.", await waitFor(`document.querySelector('[data-who-none]')?.textContent === 'No one matches.'`, 2000));
+    await evaluate(`$setValue(document.querySelector('[data-who-search]'), 'KEV');`);
+    check("弹窗：搜「KEV」（不分大小写）只留 Kevin Tran", await waitFor(`(() => { const r = [...document.querySelectorAll('[data-who-row]')]; return r.length === 1 && r[0].textContent.startsWith('Kevin Tran'); })()`, 2000));
+    await evaluate(`document.querySelector('[data-who-row="Kevin Tran"] input').click();`);
+    check("弹窗：勾了 ⇒ 1 selected", await waitFor(`document.querySelector('[data-who-count]').textContent === '1 selected'`, 2000));
+    await evaluate(`document.querySelector('[data-who-cancel]').click();`);
+    check("弹窗 Cancel：不改（还是 Choose people… (0)）", await waitFor(`!document.querySelector('[data-who-dialog]') && document.querySelector('[data-extra-form] [data-who-open]').textContent.trim() === 'Choose people… (0)'`, 2000));
+    await evaluate(`document.querySelector('[data-extra-form] [data-who-open]').click();`);
+    await waitFor(q("[data-who-dialog]"), 3000);
+    await evaluate(`document.querySelector('[data-who-row="Kevin Tran"] input').click(); document.querySelector('[data-who-done]').click();`);
+    check("弹窗 Done：回表单，键写 (1)，下面灰字 Kevin Tran", await waitFor(`!document.querySelector('[data-who-dialog]') && document.querySelector('[data-extra-form] [data-who-open]').textContent.trim() === 'Choose people… (1)' && document.querySelector('[data-extra-form] [data-who-names]').textContent === 'Kevin Tran'`, 2000));
+    await evaluate(`document.querySelector('[data-xf="add"]').click();`);
+    await sleep(150);
+    check("Update：Long day 那一行变淡黄、$45.00、Kevin Tran，底下 Not saved yet · 1 change", await evaluate(`const r = document.querySelector('[data-payroll-extras] tr[data-extra-row="3"]'); return r.className.includes('fef3c7') && r.textContent.includes('$45.00') && r.textContent.includes('Kevin Tran');`) && (await text(q("[data-rates-unsaved]")))?.startsWith("Not saved yet · 1 change"), await text(`document.querySelector('[data-payroll-extras] tr[data-extra-row="3"]')`));
+    const before = (await mockLog()).length;
+    await evaluate(`document.querySelector('[data-rates-save]').click();`);
+    await waitFor(`${q("[data-rates-saved]")}?.textContent === 'Saved'`, 5000);
+    const xp = await since(before, (e) => e.method === "PUT" && e.path === "/api/payroll/extra-rates");
+    check("Save rates：PUT extra-rates 带 id 3、amount 45.00、applies_to people、people [{hr_id 201}]，不带 code / name", xp.length === 1 && xp[0].body.id === 3 && xp[0].body.amount === "45.00" && xp[0].body.applies_to === "people" && JSON.stringify(xp[0].body.people) === '[{"hr_id":201}]' && !("code" in xp[0].body) && !("name" in xp[0].body), JSON.stringify(xp[0]?.body));
+    await ctl({ extraEditable: false });
+    check("Extras：碰到锁住日子的行没有 Edit（照旧 🔒 Locked）", await evaluate(`return !document.querySelector('[data-extra-edit="2"]') && document.querySelector('[data-payroll-extras] tr[data-extra-row="2"]').textContent.includes('🔒 Locked');`));
+    check("How to use：Pay rates 那条写 Choose people… / Search name / Edit", await evaluate(`return document.body.textContent.includes('pick Only these people, click Choose people…, tick them and click Done; type in Search name to find someone.') && document.body.textContent.includes('Click Edit on a price or an extra to change its dates, amount or who it applies to.');`));
+  }
+
+  // ⑬f Locked dates 每行 Edit（Annie 2026-11-17「改锁的日期和备注」动手；小题 1 A 直接存）
+  {
+    await openPayroll();
+    await waitFor(`document.querySelector('[data-lock-edit="1"]')`, 5000);
+    await evaluate(`document.querySelector('[data-lock-edit="1"]').click();`);
+    check("锁 Edit：这一行就地变成 From / To / Note + 蓝 Save + Cancel", await waitFor(`(() => { const r = document.querySelector('tr[data-lock-editing]'); return !!r && r.querySelector('[data-le="from"]').value === '2026-11-01' && r.querySelector('[data-le="to"]').value === '2026-11-02' && !!r.querySelector('[data-lock-edit-save="1"]'); })()`, 3000));
+    await evaluate(`$setValue(document.querySelector('[data-le="to"]'), '2026-11-07');`);
+    await evaluate(`document.querySelector('[data-lock-edit-save="1"]').click();`);
+    await sleep(150);
+    const e1 = await text(q("[data-lock-err]"));
+    check("锁 Edit：改到跟别的锁重叠 ⇒ 红字，不出确认", (e1 ?? "").includes("is already locked. Pick dates that don't overlap.") || !(await evaluate(`return !!document.querySelector('[data-lock-confirm]');`)), e1);
+    await evaluate(`$setValue(document.querySelector('[data-le="to"]'), '2026-11-03'); $setValue(document.querySelector('[data-le="note"]'), 'Paid Nov 4');`);
+    await evaluate(`document.querySelector('[data-lock-edit-save="1"]').click();`);
+    const conf = await waitFor(`document.querySelector('[data-lock-confirm="edit"]')`, 3000) && (await text(q('[data-lock-confirm="edit"]')));
+    check("锁 Edit：Save 先出黄框「Change the lock Nov 1–2, 2026 to Nov 1–3, 2026? …」", (conf || "").startsWith("Change the lock Nov 1–2, 2026 to Nov 1–3, 2026?"), conf);
+    const before = (await mockLog()).length;
+    await evaluate(`document.querySelector('[data-lock-yes]').click();`);
+    await waitFor(`${q("[data-lock-saved]")}?.textContent === 'Saved'`, 5000);
+    const lp = await since(before, (e) => e.method === "PUT" && e.path === "/api/payroll/locks/1");
+    check("锁 Edit：确认 ⇒ 直接存 PUT /api/payroll/locks/1 {from 11-01, to 11-03, note Paid Nov 4}，绿字 Saved", lp.length === 1 && lp[0].body.from === "2026-11-01" && lp[0].body.to === "2026-11-03" && lp[0].body.note === "Paid Nov 4", JSON.stringify(lp[0]?.body));
+    // 后端拒（别处刚加了重叠的锁、页面没刷新）⇒ 红字照后端原句，不出 Saved
+    await ctl({ lockPutErr: { status: 400, detail: "2026-11-05 to 2026-11-06 is already locked. Pick dates that don't overlap." } });
+    await waitFor(`document.querySelector('[data-lock-edit="1"]')`, 5000);
+    await evaluate(`document.querySelector('[data-lock-edit="1"]').click();`);
+    await waitFor(`document.querySelector('tr[data-lock-editing] [data-le="note"]')`, 3000);
+    await evaluate(`$setValue(document.querySelector('[data-le="note"]'), 'Paid Nov 5');`);
+    await evaluate(`document.querySelector('[data-lock-edit-save="1"]').click();`);
+    await waitFor(`document.querySelector('[data-lock-confirm="edit"]')`, 3000);
+    await evaluate(`document.querySelector('[data-lock-yes]').click();`);
+    const e2 = await waitFor(`${q("[data-lock-err]")}?.textContent === "2026-11-05 to 2026-11-06 is already locked. Pick dates that don't overlap."`, 5000);
+    check("锁 Edit：后端 400 重叠 ⇒ 红字照后端原句", e2, await text(q("[data-lock-err]")));
+    await ctl({ lockPutErr: { status: 400, detail: "Send from, to or note." } });
+    await evaluate(`document.querySelector('[data-lock-edit-save="1"]')?.click();`);
+    await waitFor(`document.querySelector('[data-lock-confirm="edit"]')`, 3000);
+    await evaluate(`document.querySelector('[data-lock-yes]')?.click();`);
+    check("锁 Edit：后端 400「Send from, to or note.」⇒ 红字原句", await waitFor(`${q("[data-lock-err]")}?.textContent === 'Send from, to or note.'`, 5000), await text(q("[data-lock-err]")));
+    await ctl({ lockPutErr: null });
+    check("How to use：Locked dates 那条写 Edit", await evaluate(`return document.body.textContent.includes('Click Edit on a lock to change its dates or note, or Unlock to change pay on those days again. Locking, editing a lock and unlocking are saved right away.');`));
+    // 还原，不影响后面的检查
+    await fetch(`${MOCK}/api/payroll/locks/1`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ from: "2026-11-01", to: "2026-11-02", note: "Paid Nov 1–2" }) });
+  }
+
+  // ⑬g Auto-lock 开关（Annie 2026-11-17「问题2是5号发，其他同意推荐，动手」；合同 d8a4f4b5）：默认关、只有 Super Admin 看得到
+  {
+    await ctl({ autoRow: true, autoLockReset: true });
+    await openPayroll();
+    await waitFor(`document.querySelector('[data-auto-lock-select]')`, 5000);
+    check("Auto-lock：Super Admin 看得到，默认 Off，写 Only Super Admins see this setting.", await evaluate(`const b = document.querySelector('[data-auto-lock]'); return document.querySelector('[data-auto-lock-select]').value === 'off' && b.textContent.includes('Only Super Admins see this setting.') && b.textContent.includes('Off: nothing locks by itself.');`));
+    check("Auto-lock：系统自动锁的行 Locked by 写灰字 Auto（不写 system）", await evaluate(`const r = document.querySelector('tr[data-lock-row="50"]'); return !!r && !!r.querySelector('[data-lock-auto]') && !r.textContent.includes('system') && r.textContent.includes('Auto lock');`), await evaluate(`return [...document.querySelectorAll('tr[data-lock-row]')].map(r => r.getAttribute('data-lock-row') + ':' + r.textContent).join(' | ');`));
+    await evaluate(`{ const el = document.querySelector('[data-auto-lock-select]'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(el, 'on'); el.dispatchEvent(new Event('change', { bubbles: true })); }`);
+    check("Auto-lock：选 On 先出黄框确认，不直接存", await waitFor(`document.querySelector('[data-auto-lock-confirm]')?.textContent.includes('Turn on auto-lock?')`, 3000) && !(await since(0, (e) => e.method === "PUT" && e.path === "/api/payroll/auto-lock")).length);
+    const b0 = (await mockLog()).length;
+    await evaluate(`[...document.querySelectorAll('[data-auto-lock-confirm] button')].find(b => b.textContent.trim() === 'Turn on').click();`);
+    await waitFor(`document.querySelector('[data-auto-lock-result]')?.textContent === 'Saved'`, 5000);
+    const put = await since(b0, (e) => e.method === "PUT" && e.path === "/api/payroll/auto-lock");
+    check("Auto-lock：Turn on ⇒ PUT {enabled: true}，绿字 Saved，说明换成 On 那句", put.length === 1 && put[0].body.enabled === true && (await evaluate(`return document.querySelector('[data-auto-lock-help]').textContent.startsWith('On: the 1st–15th lock on the 20th at 11:59 PM');`)), JSON.stringify(put[0]?.body));
+    await ctl({ autoLockFail: true });
+    await evaluate(`{ const el = document.querySelector('[data-auto-lock-select]'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(el, 'off'); el.dispatchEvent(new Event('change', { bubbles: true })); }`);
+    check("Auto-lock：存不了 ⇒ 红字照后端原句", await waitFor(`document.querySelector('[data-auto-lock-result]')?.textContent === 'Could not save. Try again.'`, 5000));
+    const offAgain = `{ const el = document.querySelector('[data-auto-lock-select]'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(el, 'off'); el.dispatchEvent(new Event('change', { bubbles: true })); }`;
+    await ctl({ autoLockFail: false, autoLock403: true });
+    await evaluate(offAgain);
+    check("Auto-lock：后端 403（页面没刷新就不是 Super Admin 了）⇒ 红字照后端原句", await waitFor(`document.querySelector('[data-auto-lock-result]')?.textContent === 'Superadmin access required'`, 5000), await text(q("[data-auto-lock-result]")));
+    check("Auto-lock：失败后开关仍显示原来的 On", await evaluate(`return document.querySelector('[data-auto-lock-select]').value === 'on';`));
+    await ctl({ autoLock403: false, autoLock400: true });
+    await evaluate(offAgain);
+    check("Auto-lock：后端 400 ⇒ 红字「Send enabled: true or false.」", await waitFor(`document.querySelector('[data-auto-lock-result]')?.textContent === 'Send enabled: true or false.'`, 5000), await text(q("[data-auto-lock-result]")));
+    await ctl({ autoLock400: false, superadmin: false, codes: ["settings.payroll.view", "settings.payroll.edit"] });
+    const b1 = (await mockLog()).length;
+    await openPayroll();
+    await sleep(800);
+    check("Auto-lock：不是 Super Admin（can_edit false）⇒ 不出开关", await evaluate(`return !document.querySelector('[data-auto-lock]');`));
+    check("Auto-lock：不是 Super Admin 也看得到自动锁的行（灰字 Auto），不会发 PUT auto-lock", await evaluate(`const r = document.querySelector('tr[data-lock-row="50"]'); return !!r && !!r.querySelector('[data-lock-auto]');`) && !(await since(b1, (e) => e.method === "PUT" && e.path === "/api/payroll/auto-lock")).length);
+    check("How to use：Locked dates 那条有 Edit 和 Auto-lock 两句", await evaluate(`return document.body.textContent.includes('Click Edit on a lock to change its dates or note') && document.body.textContent.includes('When Auto-lock is on, the 1st–15th lock by themselves on the 20th at 11:59 PM');`));
+    await ctl({ superadmin: true, codes: [], autoRow: false, autoLockReset: true });
+  }
 
   // ⑭ Payroll: View only：不能改
   await ctl({ superadmin: false, codes: ["settings.payroll.view"] });
@@ -347,6 +595,9 @@ async function main() {
   };
   await cdp("Page.enable");
   await cdp("Runtime.enable");
+  // 浏览器的「今天」固定在 2026-11-05（洛杉矶中午，秒针照走）：模拟数据按这一天写的（Nov 1–15 这一期、11/16 起是将来的期）。
+  // 以前模拟后端把「真实的今天」当成 11/05，真实日期一过 11/16，翻期算出来的日子正好撞上真实今天就翻不过去（2026-11-17 起 3 项失败）。
+  await cdp("Page.addScriptToEvaluateOnNewDocument", { source: FAKE_NOW });
   try {
     await run();
   } catch (e) {

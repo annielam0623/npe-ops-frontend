@@ -110,7 +110,17 @@ export interface PayrollExtraRate {
 export interface PayrollRates {
   rates: PayrollPrice[];
   extra_rates: PayrollExtraRate[];
+  /**
+   * 加购项名单（后端 558e1176，2026-11-17 只加不改）：每个 code 一条，含行全删了的（active=false），
+   * name = 该 code 最新一行的名字，按 code A→Z。+ Add extra 下拉用它；旧后端没有这个键。
+   */
+  extras?: { code: string; name: string; active: boolean }[];
   locks: PayrollLock[];
+  /**
+   * 选人名单（后端 d8a4f4b5，2026-11-17 晚只加不改）：HR 里职位 Guide / Driver + Guide 的所有人，按名字排，
+   * 同 Dispatch 导游下拉（nickname 优先）。Applies to 选人用，回传 {hr_id}；手打导游不在里面。旧后端没有这个键。
+   */
+  guides?: { hr_id: number; name: string }[];
 }
 
 /** PUT /api/payroll/rates：不带 id = 新增，带 id = 改（团不能改）。 */

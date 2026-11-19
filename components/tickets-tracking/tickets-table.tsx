@@ -11,8 +11,13 @@ import type { TicketsTrackingRow } from "@/types";
 
 import {
   type ColumnKey,
+  CONTACT_CHANGED_TITLE,
   type DeliveryTone,
   emailLabel,
+  isUnsent,
+  ORDER_STATE_LABEL,
+  orderStateOf,
+  UNSENT_ROW_BG,
   formatSubmitted,
   isFileColumn,
   notesHeaderCount,
@@ -42,6 +47,13 @@ function statusClass(s: { label: string; tone: DeliveryTone }): string {
     ? "text-[12px] text-[#6B6B6B]"
     : TONE_CLASS[s.tone];
 }
+
+/** G281 灰行 Email / SMS / Status 的「—」（样稿淡灰字）。 */
+const UNSENT_DASH = (
+  <span data-unsent-dash className="text-[12px] text-[#5b6470]">
+    —
+  </span>
+);
 
 /** 旧页面表头 th 的样子。 */
 const TH =
@@ -195,7 +207,15 @@ export function TicketsTable({
             rows.map((row) => (
               <tr
                 key={row.id}
-                className="group even:bg-[#fafbfc] [&:last-child>*]:border-b-0"
+                // G281 题 4 A：还没发提醒的整行灰底（同 Tour Tracking），不跟 even 斑马纹。
+                data-unsent={isUnsent(row) ? "" : undefined}
+                style={
+                  isUnsent(row) ? { background: UNSENT_ROW_BG } : undefined
+                }
+                className={cn(
+                  "group [&:last-child>*]:border-b-0",
+                  !isUnsent(row) && "even:bg-[#fafbfc]",
+                )}
               >
                 {columns.map((key, index) => (
                   <Cell
@@ -359,9 +379,34 @@ function Cell({
       content = row.tour_date;
       break;
     case "order_number":
-      content = row.order_number;
-      className = "font-semibold";
+      content = (
+        <>
+          {row.order_number}
+          {/* G281 题 3 A：发过提醒以后电话 / 邮箱改了。 */}
+          {row.contact_changed ? (
+            <span
+              data-contact-changed
+              title={CONTACT_CHANGED_TITLE}
+              className="ml-1.5 inline-block rounded-[10px] bg-[#fef3c7] px-[7px] text-[11px] font-semibold whitespace-nowrap text-[#92400e]"
+            >
+              Contact changed
+            </span>
+          ) : null}
+        </>
+      );
+      className = "font-semibold whitespace-nowrap";
       break;
+    case "order_status": {
+      // G281 题 2 A：Order List 的订单状态，灰行也照写。
+      const state = orderStateOf(row);
+      content = ORDER_STATE_LABEL[state];
+      className = cn(
+        "whitespace-nowrap",
+        state === "on_hold" && "font-bold text-[#b45309]",
+        state === "cancelled" && "font-bold text-[#b91c1c]",
+      );
+      break;
+    }
     case "quantities":
       content = row.quantities;
       className = "text-center";
@@ -371,16 +416,30 @@ function Cell({
       className = "text-[11px]";
       break;
     case "email": {
+      // G281 题 4 A：灰行没发过，Email / SMS / Status 写「—」。
+      if (isUnsent(row)) {
+        content = UNSENT_DASH;
+        break;
+      }
       const status = emailLabel(row);
       content = <span className={statusClass(status)}>{status.label}</span>;
       break;
     }
     case "sms": {
+      if (isUnsent(row)) {
+        content = UNSENT_DASH;
+        break;
+      }
       const status = smsLabel(row.sms_status);
       content = <span className={statusClass(status)}>{status.label}</span>;
       break;
     }
     case "status":
+      // 不出下拉：客人还没收到提醒。
+      if (isUnsent(row)) {
+        content = UNSENT_DASH;
+        break;
+      }
       content = (
         <StatusSelect
           row={row}

@@ -49,6 +49,8 @@ export interface BroadcastCandidate {
   pickupLocation?: string;
   pickupHotelName?: string;
   pickupTime?: string;
+  /** Tour 页名单每行写的团全名（shuttle = 产品名；"" = 没设团）。 */
+  tourName?: string;
 }
 
 /** 没填接站点的客人归进这一组，不丢（同旧页面 `_pickupKeyFor()` 的固定文案）。 */
@@ -117,22 +119,23 @@ type Channel = "both" | "sms" | "email";
 /**
  * 模板接口挂了时的兜底（同旧页面那份内置副本）。用的时候弹窗里会明说。
  * ⚠️ Content Studio 里是空就是空，不能拿它顶上——只有接口失败才用。
+ * 正文不写问候：后端 broadcast_send.sms_message 每条短信自动加 "Hi {first_name}, "（G151），写了客人会收到两遍（ae 2026-11-18）。
  */
 const FALLBACK_TEMPLATES: BroadcastTemplate[] = [
   {
     name: "tour_cancelled",
     label: "Tour cancelled",
-    body: "Hi {first_name}, your National Park Express tour on {tour_date} has been cancelled. Please contact us at 702-948-4190 for assistance.",
+    body: "Your National Park Express tour on {tour_date} has been cancelled. Please contact us at 702-948-4190 for assistance.",
   },
   {
     name: "time_changed",
     label: "Pickup time updated",
-    body: "Hi {first_name}, your pickup time for your National Park Express tour on {tour_date} has been updated. Please contact us at 702-948-4190 for details.",
+    body: "Your pickup time for your National Park Express tour on {tour_date} has been updated. Please contact us at 702-948-4190 for details.",
   },
   {
     name: "weather_delay",
     label: "Weather delay",
-    body: "Hi {first_name}, due to weather conditions your National Park Express tour on {tour_date} may experience delays. We will keep you updated.",
+    body: "Due to weather conditions your National Park Express tour on {tour_date} may experience delays. We will keep you updated.",
   },
   { name: "custom", label: "Custom message", body: "" },
 ];
@@ -269,8 +272,6 @@ export function BroadcastDialog({
   // 产品按钮也用打开时那份，和候选人对得上。
   const [tours] = useState(toursProp);
 
-  const tourLabel = (value: string) =>
-    tours.find((t) => t.value === value)?.label ?? value;
   const pickups = useMemo(
     () =>
       byPickup
@@ -833,7 +834,7 @@ export function BroadcastDialog({
                   <label
                     key={c.key}
                     className={cn(
-                      "flex items-center gap-2 rounded border px-1.5 py-[3px] text-[12px]",
+                      "flex items-center gap-2 rounded border px-1.5 py-[3px] text-[12px] max-sm:flex-wrap max-sm:gap-y-0",
                       skin.listItem,
                     )}
                   >
@@ -854,13 +855,10 @@ export function BroadcastDialog({
                     <span className={cn("flex-1 font-medium", skin.listName)}>
                       {c.name || "—"}
                     </span>
-                    {/* By pickup location 不分团：每人多写哪个团、几点接（同旧页面，Annie 定）。 */}
-                    {mode === "pickup" ? (
-                      <span className="text-[11px] whitespace-nowrap text-[#8a6d1f]">
-                        {tourLabel(c.tourType) || "—"}
-                        {c.pickupTime ? ` · ${c.pickupTime}` : ""}
-                      </span>
-                    ) : null}
+                    {/* Tour 页每行多一段（Annie 2026-11-17「按tour选的时候，每个订单带上它的pick up location，选loction的订单带上tour的名字」，
+                        样稿 1A / 2A / 3A）：By tour 写接站点 · 时间，By pickup location 写团全名 · 时间；空的灰色斜体。
+                        电脑上排在联系方式前面；手机上挪到名字下面第二行，不截断。 */}
+                    {byPickup ? <RecipientLabel c={c} mode={mode} /> : null}
                     <span className={cn("text-[11px]", skin.listContact)}>
                       {c.phone || c.email || "—"}
                     </span>
@@ -1108,6 +1106,35 @@ export function BroadcastDialog({
         </>
       )}
     </ModalShell>
+  );
+}
+
+/** 名单一行的接站点（By tour）或团名（By pickup location）+ 接客时间。 */
+function RecipientLabel({
+  c,
+  mode,
+}: {
+  c: BroadcastCandidate;
+  mode: string;
+}) {
+  const main =
+    mode === "pickup"
+      ? (c.tourName ?? "")
+      : c.pickupHotelName || (c.pickupLocation ?? "").trim();
+  return (
+    <span
+      data-recipient-label={mode === "pickup" ? "tour" : "pickup"}
+      className={cn(
+        "text-[11px] whitespace-nowrap max-sm:order-last max-sm:basis-full max-sm:pl-[21px] max-sm:whitespace-normal",
+        main ? "text-[#8a6d1f]" : "text-[#a08a64] italic",
+      )}
+    >
+      {main
+        ? `${main}${c.pickupTime ? ` · ${c.pickupTime}` : ""}`
+        : mode === "pickup"
+          ? "No tour set"
+          : "No pickup on file"}
+    </span>
   );
 }
 

@@ -1267,14 +1267,25 @@ function DayOfTourCard({
         ) : (
           sorted.map((l) => {
             const old = !!tourDate && ymdToMdy(l.tour_date) !== tourDate;
+            // G321：product_code 可能是 ""（对不上）⇒ 用 product_name 当键；同一天有几个产品时标题带产品名。
+            const productKey = l.product_code || l.product_name || "";
+            const manyProducts =
+              new Set(
+                legs
+                  .filter((x) => x.tour_date === l.tour_date)
+                  .map((x) => x.product_code || x.product_name || ""),
+              ).size > 1;
             return (
               <div
-                key={`${l.tour_date}|${l.product_code}|${l.leg}`}
+                key={`${l.tour_date}|${productKey}|${l.leg}`}
                 data-day-of-tour-leg={`${l.tour_date}|${l.leg}`}
                 className="mb-2 last:mb-0"
               >
                 <div className="mb-0.5 flex flex-wrap items-baseline gap-1.5 text-[11.5px] font-semibold text-[#374151] night:text-white/70">
                   {ymdLong(l.tour_date)}
+                  {manyProducts && (l.product_name || l.product_code)
+                    ? ` · ${l.product_name || l.product_code}`
+                    : ""}
                   {l.leg === "return"
                     ? " · Return"
                     : hasReturn

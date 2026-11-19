@@ -125,6 +125,8 @@ interface PriceForm {
 }
 
 interface ExtraForm {
+  /** 改哪一行（Edit，Annie 2026-11-17「Extras 的 Edit…一起动手」）；null = 新加。 */
+  id: number | null;
   code: string;
   name: string;
   from: string;
@@ -136,6 +138,17 @@ interface ExtraForm {
 
 const TYPED = "__typed";
 const NEW_EXTRA = "__new";
+/** 系统自带的 ANT relay（后端按这个 code 判断「只能在价格 ANT relay = Yes 的团上勾」）。 */
+const ANT_RELAY_CODE = "ant_relay";
+
+/** 同后端 save_extra_rate 由名字生成 code 的写法（小写、非字母数字换成 _、去头尾 _）：比名字是不是同一个加购项。 */
+function extraSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 24);
+}
 
 const norm = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
 const tourKeyOf = (manifestId: number | null, name: string) =>
@@ -236,6 +249,8 @@ export function PayrollRates({
   const [priceGone, setPriceGone] = useState<number[]>([]);
   const [extraDraft, setExtraDraft] = useState<ExtraRow[]>([]);
   const [extraGone, setExtraGone] = useState<number[]>([]);
+  /** 改过、还没存的已存加购项行（照 priceEdits）。 */
+  const [extraEdits, setExtraEdits] = useState<Record<number, ExtraRow>>({});
 
   const [pf, setPf] = useState<PriceForm | null>(null);
   const [pfErr, setPfErr] = useState<string | null>(null);
@@ -278,6 +293,7 @@ export function PayrollRates({
     Object.keys(priceEdits).length +
     priceGone.length +
     extraDraft.length +
+    Object.keys(extraEdits).length +
     extraGone.length;
 
   useEffect(() => {
@@ -319,6 +335,14 @@ export function PayrollRates({
 
   const personOpts: PersonOpt[] = useMemo(() => {
     const m = new Map<string, PersonOpt>();
+    // 名单 = HR 所有 Guide / Driver + Guide（后端 rates.guides）+ 本期手打名字的导游 + 已存个人价的人
+    // （Annie 样稿第 1 版「3题都全部同意推荐」）。同一 hr_id 只出一次。
+    for (const g of data?.guides ?? []) {
+      if (!g.name?.trim()) continue;
+      const key = personKey(g.hr_id, g.name);
+      if (!m.has(key))
+        m.set(key, { key, hr_id: g.hr_id, name: g.name.trim(), in_hr: true });
+    }
     for (const p of people ?? []) {
       if (!p.name?.trim()) continue;
       const key = personKey(p.hr_id, p.name);
@@ -334,7 +358,7 @@ export function PayrollRates({
       for (const p of r.people) if (!m.has(p.key)) m.set(p.key, p);
     }
     return [...m.values()].sort((a, b) => a.name.localeCompare(b.name));
-  }, [people, savedPrices, savedExtras]);
+  }, [data?.guides, people, savedPrices, savedExtras]);
 
   const priceRows: (PriceRow & { saved: boolean; edited: boolean })[] = [
     ...savedPrices.map((p) => ({
@@ -344,9 +368,13 @@ export function PayrollRates({
     })),
     ...priceDraft.map((p) => ({ ...p, saved: false, edited: false })),
   ];
-  const extraRows: (ExtraRow & { saved: boolean })[] = [
-    ...savedExtras.map((x) => ({ ...x, saved: true })),
-    ...extraDraft.map((x) => ({ ...x, saved: false })),
+  const extraRows: (ExtraRow & { saved: boolean; edited: boolean })[] = [
+    ...savedExtras.map((x) => ({
+      ...(x.id !== null && extraEdits[x.id] ? extraEdits[x.id] : x),
+      saved: true,
+      edited: x.id !== null && !!extraEdits[x.id],
+    })),
+    ...extraDraft.map((x) => ({ ...x, saved: false, edited: false })),
   ];
 
   const touched = () => {
@@ -465,9 +493,15 @@ export function PayrollRates({
   // ── 加购项表单 ────────────────────────────────────────
   const extraCodes = useMemo(() => {
     const m = new Map<string, string>();
+    // 后端的加购项名单（含行全删了的）：给已有加购项加金额要带 code，不然同名会生成 long_day_2（Annie 2026-11-17）。
+    for (const x of data?.extras ?? [])
+      if (!m.has(x.code)) m.set(x.code, x.name);
     for (const x of savedExtras) if (!m.has(x.code)) m.set(x.code, x.name);
+    // 旧后端（没有 extras 名单）兜底：ANT relay 是系统自带的加购项（v168 种的 code ant_relay，算钱按这个 code 认），
+    // 行全被 Remove 以后 GET rates 不再回它，下拉里也要有；PUT 带 code ant_relay 后端会照旧加一段新金额。
+    if (!m.has(ANT_RELAY_CODE)) m.set(ANT_RELAY_CODE, "ANT relay");
     return [...m.entries()];
-  }, [savedExtras]);
+  }, [data, savedExtras]);
 
   function addExtra() {
     if (!xf) return;
@@ -477,6 +511,20 @@ export function PayrollRates({
       : (extraCodes.find(([c]) => c === xf.code)?.[1] ?? xf.code);
     const err = (() => {
       if (isNew && !name) return "Type a name for the extra, like Long day.";
+      if (isNew) {
+        // 后端按名字生成 code（小写、非字母数字换成 _）：「ANT Relay」会变成另一个加购项 ant_relay_2，
+        // 任何趟都能勾、钱会算重（Annie 2026-11-17「还给我显示个any 润」）。跟已有的只差大小写 / 符号 ⇒ 挡下，叫人选已有的。
+        const slug = extraSlug(name);
+        const same =
+          extraCodes.find(([c, n]) => c === slug || extraSlug(n) === slug) ??
+          extraDraft
+            .filter((d) => d.isNew && extraSlug(d.name) === slug)
+            .map((d) => [d.code, d.name] as [string, string])[0];
+        if (same)
+          return extraCodes.some(([c]) => c === same[0])
+            ? `${same[1]} already exists. Pick "${same[1]} — new amount" under Extra instead.`
+            : `${same[1]} is already in the list, not saved yet.`;
+      }
       const de = dateError(xf.from, "from");
       if (de) return de;
       if (xf.to) {
@@ -494,6 +542,7 @@ export function PayrollRates({
         const dup = extraRows.find(
           (y) =>
             y.code === xf.code &&
+            y.id !== xf.id &&
             y.from === xf.from &&
             y.applies_to === xf.applies &&
             !(y.id !== null && extraGone.includes(y.id)) &&
@@ -514,24 +563,27 @@ export function PayrollRates({
       setXfErr(err);
       return;
     }
-    setExtraDraft((d) => [
-      ...d,
-      {
-        key: `xd${++draftSeq}`,
-        id: null,
-        code: isNew ? NEW_EXTRA : xf.code,
-        name,
-        from: xf.from,
-        to: xf.to || null,
-        amount: two(xf.amount),
-        applies_to: xf.applies,
-        people:
-          xf.applies === "all"
-            ? []
-            : personOpts.filter((p) => xf.people.includes(p.key)),
-        isNew,
-      },
-    ]);
+    const row: ExtraRow = {
+      key: xf.id !== null ? `x${xf.id}` : `xd${++draftSeq}`,
+      id: xf.id,
+      code: isNew ? NEW_EXTRA : xf.code,
+      name,
+      from: xf.from,
+      to: xf.to || null,
+      amount: two(xf.amount),
+      applies_to: xf.applies,
+      people:
+        xf.applies === "all"
+          ? []
+          : personOpts.filter((p) => xf.people.includes(p.key)),
+      isNew,
+    };
+    if (xf.id !== null) {
+      const id = xf.id;
+      setExtraEdits((m) => ({ ...m, [id]: row }));
+    } else {
+      setExtraDraft((d) => [...d, row]);
+    }
     setXf(null);
     setXfErr(null);
     touched();
@@ -542,6 +594,7 @@ export function PayrollRates({
     setPriceEdits({});
     setPriceGone([]);
     setExtraDraft([]);
+    setExtraEdits({});
     setExtraGone([]);
     setPf(null);
     setXf(null);
@@ -591,6 +644,23 @@ export function PayrollRates({
         await deletePayrollPrice(id);
         changed = true;
         setPriceGone((g) => g.filter((x) => x !== id));
+      }
+      for (const [id, row] of Object.entries(extraEdits)) {
+        // 改一行：带 id，不带 code / name（加购项不能换、名字不改，Annie 小题 3 A）；applies_to / people 要原样再发。
+        await savePayrollExtraRate({
+          id: Number(id),
+          from: row.from,
+          to: row.to,
+          amount: row.amount,
+          applies_to: row.applies_to,
+          people: row.applies_to === "all" ? [] : peopleBody(row.people),
+        });
+        changed = true;
+        setExtraEdits((m) => {
+          const next = { ...m };
+          delete next[Number(id)];
+          return next;
+        });
       }
       for (const row of extraDraft) {
         // 合同 v3：applies_to / people 跟价格一样；旧后端不认识也不碍事。
@@ -924,19 +994,43 @@ export function PayrollRates({
     const id = x.id as number;
     const gone = extraGone.includes(id);
     return (
-      <button
-        type="button"
-        className={C_LINK}
-        data-extra-remove={id}
-        onClick={() => {
-          setExtraGone((g) =>
-            g.includes(id) ? g.filter((y) => y !== id) : [...g, id],
-          );
-          touched();
-        }}
-      >
-        {gone ? "Keep" : "Remove"}
-      </button>
+      <span className="inline-flex gap-2.5 whitespace-nowrap no-underline">
+        {gone ? null : (
+          <button
+            type="button"
+            className={C_LINK}
+            data-extra-edit={id}
+            onClick={() => {
+              setXf({
+                id,
+                code: x.code,
+                name: x.name,
+                from: x.from,
+                to: x.to ?? "",
+                amount: x.amount,
+                applies: x.applies_to,
+                people: x.people.map((p) => p.key),
+              });
+              setXfErr(null);
+            }}
+          >
+            Edit
+          </button>
+        )}
+        <button
+          type="button"
+          className={C_LINK}
+          data-extra-remove={id}
+          onClick={() => {
+            setExtraGone((g) =>
+              g.includes(id) ? g.filter((y) => y !== id) : [...g, id],
+            );
+            touched();
+          }}
+        >
+          {gone ? "Keep" : "Remove"}
+        </button>
+      </span>
     );
   }
 
@@ -961,7 +1055,7 @@ export function PayrollRates({
               data-extra-row={x.id ?? "new"}
               data-pending={!x.saved || undefined}
               data-gone={gone || undefined}
-              className={rowClass(!x.saved, gone)}
+              className={rowClass(!x.saved || x.edited, gone)}
             >
               <td className={cn(C_TD, C_STICKY)}>{x.name}</td>
               <td className={cn(C_TD, "whitespace-nowrap")}>
@@ -997,14 +1091,22 @@ export function PayrollRates({
           className={C_INPUT}
           value={xf.code}
           data-xf="code"
+          // Edit 一行：加购项不能换（换 = + Add extra 新加），下拉灰掉（Annie 小题 3 A）。
+          disabled={xf.id !== null}
           onChange={(e) => setXf({ ...xf, code: e.target.value })}
         >
-          <option value={NEW_EXTRA}>New extra…</option>
-          {extraCodes.map(([code, name]) => (
-            <option key={code} value={code}>
-              {name} — new amount
-            </option>
-          ))}
+          {xf.id !== null ? (
+            <option value={xf.code}>{xf.name}</option>
+          ) : (
+            <>
+              <option value={NEW_EXTRA}>New extra…</option>
+              {extraCodes.map(([code, name]) => (
+                <option key={code} value={code}>
+                  {name} — new amount
+                </option>
+              ))}
+            </>
+          )}
         </select>
       </label>
       {xf.code === NEW_EXTRA ? (
@@ -1066,7 +1168,7 @@ export function PayrollRates({
           data-xf="add"
           onClick={addExtra}
         >
-          Add
+          {xf.id !== null ? "Update" : "Add"}
         </button>
         <button
           type="button"
@@ -1093,6 +1195,7 @@ export function PayrollRates({
         data-add-extra
         onClick={() => {
           setXf({
+            id: null,
             code: NEW_EXTRA,
             name: "",
             from: defaultFrom ?? "",
@@ -1219,7 +1322,12 @@ export function PayrollRates({
   );
 }
 
-/** Applies to：Everyone / Only these people（含手打名字的导游，标 Not in HR）。价格、加购项两个表单共用。 */
+/**
+ * Applies to：Everyone / Only these people。价格、加购项两个表单共用。
+ * 选人改成弹窗（Annie 2026-11-17「小题2，改成弹窗吧，放多少人都ok了」，样稿 LtGwyr8qAUxYhXfSVnL1VL 第 2 版，动手）：
+ * 表单上一个白键「Choose people… (N)」+ 一行灰字已选名字；弹窗里 Search name + 一列勾选框（已勾的排最前面，
+ * 手打名字的标 Not in HR），灰绿 Done 回表单（只是选好，还要按 Save rates），Cancel 不改。
+ */
 function WhoPicker({
   name,
   applies,
@@ -1233,10 +1341,12 @@ function WhoPicker({
   options: PersonOpt[];
   onChange: (applies: "all" | "people", people: string[]) => void;
 }) {
+  const [open, setOpen] = useState(false);
+  const picked = options.filter((p) => people.includes(p.key));
   return (
     <div className={cn(C_FLABEL, "basis-full")} data-who-picker={name}>
       Applies to
-      <span className="flex flex-wrap gap-x-3.5 gap-y-1.5">
+      <span className="flex flex-wrap items-center gap-x-3.5 gap-y-1.5">
         <label className={C_CK}>
           <input
             type="radio"
@@ -1255,21 +1365,105 @@ function WhoPicker({
             data-applies="people"
             onChange={() => onChange("people", people)}
           />
-          Only these people:
+          Only these people
         </label>
-        {applies === "people"
-          ? options.map((p) => (
-              <label key={p.key} className={C_CK}>
+        {applies === "people" ? (
+          <button
+            type="button"
+            className={cn(C_BTN, "px-2.5 py-[3px]")}
+            data-who-open
+            onClick={() => setOpen(true)}
+          >
+            Choose people… ({picked.length})
+          </button>
+        ) : null}
+      </span>
+      {applies === "people" && picked.length ? (
+        <span className="text-[12px] font-normal text-[#4b5563]" data-who-names>
+          {picked.map((p) => p.name).join(", ")}
+        </span>
+      ) : null}
+      {open ? (
+        <PeopleDialog
+          options={options}
+          initial={people}
+          onDone={(next) => {
+            onChange("people", next);
+            setOpen(false);
+          }}
+          onCancel={() => setOpen(false)}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function PeopleDialog({
+  options,
+  initial,
+  onDone,
+  onCancel,
+}: {
+  options: PersonOpt[];
+  initial: string[];
+  onDone: (people: string[]) => void;
+  onCancel: () => void;
+}) {
+  const [sel, setSel] = useState<string[]>(initial);
+  const [q, setQ] = useState("");
+  // 打开时已勾的排最前面（之后勾 / 取消不跳动）。
+  const [order] = useState(() => [
+    ...options.filter((p) => initial.includes(p.key)),
+    ...options.filter((p) => !initial.includes(p.key)),
+  ]);
+  const needle = q.trim().toLowerCase();
+  const shown = needle
+    ? order.filter((p) => p.name.toLowerCase().includes(needle))
+    : order;
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4 max-sm:p-2"
+      onKeyDown={(e) => {
+        if (e.key === "Escape") onCancel();
+      }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Choose people"
+        data-who-dialog
+        className="flex max-h-[85vh] w-[420px] max-w-full flex-col rounded-[12px] bg-white text-[#1a1a1a] shadow-[0_10px_30px_rgba(0,0,0,.35)]"
+      >
+        <div className="px-4 pt-3.5 pb-2 text-[14px] font-semibold">
+          Choose people
+        </div>
+        <div className="px-4 pb-2">
+          <input
+            className={cn(C_INPUT, "w-full")}
+            placeholder="Search name"
+            value={q}
+            autoFocus
+            data-who-search
+            onChange={(e) => setQ(e.target.value)}
+          />
+        </div>
+        <div className="flex min-h-0 flex-col gap-[7px] overflow-auto border-y border-[#e5e7eb] px-4 py-2.5 text-[13px] font-normal">
+          {shown.length ? (
+            shown.map((p) => (
+              <label
+                key={p.key}
+                className="flex items-center gap-1.5"
+                data-who-row={p.name}
+              >
                 <input
                   type="checkbox"
                   data-who={p.name}
-                  checked={people.includes(p.key)}
+                  checked={sel.includes(p.key)}
                   onChange={(e) =>
-                    onChange(
-                      "people",
+                    setSel((s) =>
                       e.target.checked
-                        ? [...people, p.key]
-                        : people.filter((k) => k !== p.key),
+                        ? [...s, p.key]
+                        : s.filter((k) => k !== p.key),
                     )
                   }
                 />
@@ -1281,8 +1475,35 @@ function WhoPicker({
                 )}
               </label>
             ))
-          : null}
-      </span>
+          ) : (
+            <span className="text-[#888]" data-who-none>
+              No one matches.
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2 px-4 py-3">
+          <span className="text-[12.5px] text-[#4b5563]" data-who-count>
+            {sel.length} selected
+          </span>
+          <span className="flex-1" />
+          <button
+            type="button"
+            className={C_BTN_ADD}
+            data-who-done
+            onClick={() => onDone(sel)}
+          >
+            Done
+          </button>
+          <button
+            type="button"
+            className={C_BTN}
+            data-who-cancel
+            onClick={onCancel}
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

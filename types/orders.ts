@@ -5,7 +5,10 @@ import type { TrackingMark } from "./morning-tracking";
 export interface DayOfTourLeg {
   tour_date: string;
   leg: string;
+  /** 对不上订单产品时是 ""（G321 合同），这时用 product_name。 */
   product_code: string;
+  /** G321 合同第 4 节：Main manifest 上的产品名（旧后端没有）。 */
+  product_name?: string;
   relay_mark: TrackingMark | null;
   relay_original: TrackingMark | null;
   bus_mark: TrackingMark | null;

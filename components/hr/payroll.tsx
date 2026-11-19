@@ -16,6 +16,7 @@ import { usePermissions } from "@/lib/staff-permissions";
 import { useLeaveGuard } from "@/lib/use-leave-guard";
 import { cn } from "@/lib/utils";
 import type {
+  PayrollLock,
   PayrollPeriod,
   PayrollPerson,
   PayrollRun,
@@ -85,6 +86,10 @@ const STATUS: Record<string, [string, string]> = {
 
 const LEAVE_MESSAGE =
   "You have changes that are not saved. Leave without saving?";
+
+/** 期间的 ‹ ›：同 Staff Schedule 周切换的 HEAD_ICON（components/schedule/schedule-view.tsx）。 */
+const PERIOD_ARROW =
+  "inline-flex h-[28px] w-[28px] cursor-pointer items-center justify-center rounded-[8px] border border-white/10 bg-white/[.04] text-white/80 transition hover:bg-white/[.08] max-sm:h-[26px]! max-sm:w-[26px]! max-sm:p-0!";
 
 /** 这一期的第一天（1 号或 16 号），前一期 / 后一期的任何一天都行，后端按这天找期。 */
 function shiftPeriod(from: string, dir: -1 | 1): string {
@@ -414,7 +419,14 @@ type RowApi = {
   editingId: number | null;
   setEditingId: (id: number | null) => void;
   patch: (run: PayrollRun, p: RunDraft) => void;
+  /** 这一期碰到的锁：状态格判断「Paid · locked」用（后端的 run.locked 之外再按日期对一次）。 */
+  locks: PayrollLock[];
 };
+
+/** 这一趟的日子锁住了：后端标了 locked，或落在某个锁的日期里。 */
+function isLockedDay(run: PayrollRun, locks: PayrollLock[]): boolean {
+  return run.locked || locks.some((l) => l.from <= run.date && run.date <= l.to);
+}
 
 function RunRows({
   runs,
@@ -511,15 +523,21 @@ function RunRows({
             {needs ? null : (
               <td className={cn(TD, NUM, "font-bold")}>{money(s.total)}</td>
             )}
-            <td className={cn(TD, "whitespace-nowrap")}>
+            <td className={cn(TD, "whitespace-nowrap")} data-payroll-status>
+              {/* Annie 2026-11-17「选A」「留空，动手」：paid 只表示算进合计，不是「已付」——没锁的留空，
+                  锁住的日子写 Paid · locked（灰字）；No rate / No guide / Not completed 照旧琥珀字。 */}
               {run.status === "paid" ? (
-                <span className="text-[#888]">Paid</span>
+                isLockedDay(run, api.locks) ? (
+                  <span className="text-[#888]">Paid · locked</span>
+                ) : null
               ) : (
                 <span className={FLAG}>{STATUS[run.status]?.[0]}</span>
               )}
               {run.day_status === "not_completed" ? (
                 <>
-                  <br />
+                  {run.status === "paid" && !isLockedDay(run, api.locks) ? null : (
+                    <br />
+                  )}
                   <span className={FLAG}>Not completed</span>
                 </>
               ) : null}
@@ -562,17 +580,18 @@ function sumRuns(runs: PayrollRun[], drafts: Drafts): PersonSum {
 const STICKY = "max-sm:sticky max-sm:left-0 max-sm:z-[1]";
 
 export const PAYROLL_HOW_TO = [
-  "Payroll adds up what each guide and driver-guide earned in one pay period: the 1st–15th, or the 16th to the last day of the month. Use ‹ › next to the dates to move between periods.",
+  "Payroll adds up what each guide and driver-guide earned in one pay period: the 1st–15th, or the 16th to the last day of the month. Use ‹ and › on either side of the dates to move between periods.",
   "Each tour run pays one fee. A guide gets the Guide fee; a driver who also guides the run gets the Driver + Guide fee. Two tours on one day pay two fees. Relay runs and bus tours without a guide are not on this page.",
   "Days are counted up to today. A day marked Not completed has not been marked Completed on Dispatch yet; it is still counted, so check it before paying.",
   "Which price a run gets: the newest price for that guide that covers the day; if there is none, the newest price for everyone that covers it. A price with no end date keeps going, so a price for November 1–30 wins only in November. The line under the fee says when a date-range price or a price for that guide was used.",
   "Click a name to see that person's runs. Click a run’s fee to type a different fee for that run only, then click Done; it shows edited, with the price under it. Use the price puts the price back. Extras and tips are still added on top.",
   "Extras are paid per ticked run. ANT relay can be ticked only on tours whose price has ANT relay; other extras, like Long day, can be ticked on any run. On Private Tour runs, type the tips; they are paid to that run's guide.",
   "Changes stay on the page until you click Save payroll changes. If you leave the page or change the period first, you are asked whether to save.",
+  "The Status column is blank for runs that are counted in the total. Runs on locked days show Paid · locked. No rate, No guide and Not completed need a look.",
   "Needs review lists runs that are left out of the period total: No rate (no price covers that run — add a price under Pay rates, or type a fee for the run) and No guide (nobody is picked as guide on Dispatch).",
   "A guide whose name was typed by hand on Dispatch is paid under that name and shows Not in HR. Add the person in Human Resource so their details are on file, and pick them from the list on Dispatch next time. The same person typed with two spellings shows as two people.",
-  "Pay rates: click + Add price to add a price for a tour from a start date, with or without an end date, for everyone or only for the people you tick. For a tour name typed on Dispatch, pick Type a tour name… and type it the same way. Click + Add extra for a new extra or a new amount for an existing one; like prices, an extra amount can be for everyone or only for the people you tick. Nothing is kept until you click Save rates.",
-  "Locked dates: once pay for some days is final, pick the dates, add a note if you like, and click Lock dates. Fees, extras and tips on locked days can’t be changed, and prices or extra amounts that cover them can’t be changed or removed — add a new price that starts after the locked days instead. Unlock to change them again. Locking and unlocking are saved right away.",
+  "Pay rates: click + Add price to add a price for a tour from a start date, with or without an end date, for everyone or only for some people: pick Only these people, click Choose people…, tick them and click Done; type in Search name to find someone. For a tour name typed on Dispatch, pick Type a tour name… and type it the same way. Click + Add extra for a new extra or a new amount for an existing one; like prices, an extra amount can be for everyone or only for some people. Click Edit on a price or an extra to change its dates, amount or who it applies to. Nothing is kept until you click Save rates.",
+  "Locked dates: once pay for some days is final, pick the dates, add a note if you like, and click Lock dates. Fees, extras and tips on locked days can’t be changed, and prices or extra amounts that cover them can’t be changed or removed — add a new price that starts after the locked days instead. Click Edit on a lock to change its dates or note, or Unlock to change pay on those days again. Locking, editing a lock and unlocking are saved right away. When Auto-lock is on, the 1st–15th lock by themselves on the 20th at 11:59 PM and the 16th–end of month on the 5th of the next month at 11:59 PM (Los Angeles time); those locks show Auto under Locked by and can be unlocked like any other.",
   "Change history lists every change to prices, extras, fees, tips and locks: when, who, what, before and after.",
   "Export CSV downloads the period: each person's runs with a total line, then the runs that need review. It shows whether a fee was changed by hand and which extras were ticked.",
   "Only Admin accounts given Payroll on the Team page can open this page. Payroll: View can look, export and see the change history; Payroll: Edit can also change prices, extras, fees and tips, and lock or unlock dates.",
@@ -773,7 +792,14 @@ export function Payroll({
   const keyOf = (p: PayrollPerson) =>
     p.in_hr ? `hr:${p.hr_id}` : `typed:${p.name.trim().toLowerCase()}`;
   const hitLocks = P.locks.filter((l) => l.to >= P.from && l.from <= P.to);
-  const api: RowApi = { canEdit, drafts, editingId, setEditingId, patch };
+  const api: RowApi = {
+    canEdit,
+    drafts,
+    editingId,
+    setEditingId,
+    patch,
+    locks: P.locks,
+  };
   const nDirty = dirtyRuns.length;
   const saving = saveState === "saving";
 
@@ -785,29 +811,33 @@ export function Payroll({
             Payroll
           </h2>
           <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-white/55">
-            <span className="inline-flex gap-1">
+            {/* 日期在两个箭头中间（Annie 2026-11-16「一般不是日期在中间，箭头在两边么」，11-17 当动手）；键和间距照 Staff Schedule 的周切换。 */}
+            <span className="inline-flex items-center gap-1.5">
               <button
                 type="button"
                 aria-label="Previous period"
                 data-payroll-prev
-                className={cn(HR_BTN_CLASS, "px-[9px] py-0.5")}
+                className={PERIOD_ARROW}
                 onClick={() => goPeriod(-1)}
               >
                 ‹
               </button>
+              <b
+                className="px-1 text-center text-[13.5px] font-semibold whitespace-nowrap text-white max-sm:text-[13px]"
+                data-payroll-period
+              >
+                {periodName(P.from, P.to)}
+              </b>
               <button
                 type="button"
                 aria-label="Next period"
                 data-payroll-next
-                className={cn(HR_BTN_CLASS, "px-[9px] py-0.5")}
+                className={PERIOD_ARROW}
                 onClick={() => goPeriod(1)}
               >
                 ›
               </button>
             </span>
-            <b className="text-white/90" data-payroll-period>
-              {periodName(P.from, P.to)}
-            </b>
             <span>
               ·{" "}
               {!P.through

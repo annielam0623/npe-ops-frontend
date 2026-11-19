@@ -1,9 +1,10 @@
 // 模拟后端：Settings → Human Resource › Payroll（138 / G309，合同 v2 + Extras 选人 v3）。控制：POST /__ctl；GET /__log。
 // 只连 localhost，绝不连真实后端。
-// 期间：页面第一次按「洛杉矶今天」请求；这里把今天当成 2026-11-05（固定数据，不随真实日期变）。
+// 期间：页面第一次不带 date（= 今天）；这里把今天当成 2026-11-05（固定数据，不随真实日期变）。
 const http = require("http");
 const { STANDARD, permsBody } = require("./role-standard");
 
+const autoLock = { enabled: false, enabled_at: null };
 const ctl = {
   superadmin: true,
   /** 不是 Super Admin 时，在 Admin 标准权限上加的勾（例如 ["settings.payroll.view"]）。 */
@@ -14,9 +15,6 @@ const ctl = {
 };
 const log = [];
 
-function laToday() {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Los_Angeles", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
-}
 function send(res, status, body, headers = {}) {
   res.statusCode = status;
   res.setHeader("Content-Type", "application/json");
@@ -70,7 +68,9 @@ const runsNov = [
 const runsOct = [mk({ ...KEVIN, date: "2026-10-20", assignment_id: 701, rate_id: 1, rate_fee: "230.00" })];
 
 function periodOf(date) {
-  const d = date === laToday() ? "2026-11-05" : date;
+  // 页面第一次不带 date（= 今天）：固定当成 2026-11-05。带了 date 就照用——不能拿「真实的今天」比，
+  // 不然真实今天正好是翻期算出来的那一天（例：11/1 + 16 = 11/17）时会被当成 11/05、翻不过去。
+  const d = date || "2026-11-05";
   const [y, m, dd] = d.split("-").map(Number);
   const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
   const pad = (n) => String(n).padStart(2, "0");
@@ -120,7 +120,15 @@ http.createServer(async (req, res) => {
   const url = new URL(req.url, "http://x");
   const p = url.pathname;
   if (p === "/__log") return send(res, 200, log);
-  if (p === "/__ctl") { Object.assign(ctl, await readBody(req)); return send(res, 200, ctl); }
+  if (p === "/__ctl") {
+    const b = await readBody(req);
+    // autoRow: true ⇒ 多一条系统自动锁（created_by "system"、note "Auto lock"）；false ⇒ 拿掉。autoLockReset ⇒ 开关回到关。
+    if (b.autoRow === true && !locks.some((l) => l.id === 50)) locks.push({ id: 50, from: "2026-11-10", to: "2026-11-12", note: "Auto lock", created_by: "system" });
+    if (b.autoRow === false) { const i = locks.findIndex((l) => l.id === 50); if (i >= 0) locks.splice(i, 1); }
+    if (b.autoLockReset) Object.assign(autoLock, { enabled: false, enabled_at: null });
+    Object.assign(ctl, b);
+    return send(res, 200, ctl);
+  }
   if (p === "/auth/login") { res.setHeader("Content-Type", "text/html"); return res.end("LOGIN"); }
   const entry = { method: req.method, path: p, query: url.search };
   log.push(entry);
@@ -132,13 +140,24 @@ http.createServer(async (req, res) => {
 
   if (p === "/api/payroll/period") {
     if (ctl.periodFail) return send(res, 500, { detail: "Could not reach the database. Try again." });
-    return send(res, 200, period(url.searchParams.get("date") || laToday()));
+    return send(res, 200, period(url.searchParams.get("date") || null));
   }
   if (p === "/api/payroll/period.csv") {
     res.setHeader("Content-Type", "text/csv");
     return res.end("Person,Date,Tour,Role,Fee,Fee changed by hand,Extras,Extras total,Tips,Total,Status,Day\n");
   }
-  if (p === "/api/payroll/rates" && req.method === "GET") return send(res, 200, { rates, extra_rates: extraRates, locks });
+  // ctl.antRemoved：ANT relay 的金额行都被 Remove 了——同后端 GET rates 只回启用的行，整个加购项不出现（Annie 2026-11-17）。
+  // ctl.longDayRemoved 同理。extras = 加购项名单（后端 558e1176）：每个 code 一条、含全删了的（active false）；ctl.noCatalog = 旧后端没有这个键。
+  if (p === "/api/payroll/rates" && req.method === "GET") {
+    const gone = new Set([...(ctl.antRemoved ? ["ant_relay"] : []), ...(ctl.longDayRemoved ? ["long_day"] : [])]);
+    const codes = [...new Map(extraRates.map((x) => [x.code, x.name])).entries()].sort((x, y) => x[0].localeCompare(y[0]));
+    // ctl.extraEditable：多一行锁之后的 Long day（id 3，Dec 1 起），给 Extras 的 Edit 检查用（另外两行都碰到锁住的 11/1–2）。
+    const extra3 = ctl.extraEditable ? [{ id: 3, code: "long_day", name: "Long day", from: "2026-12-01", to: null, amount: "40.00", active: true, applies_to: "all", people: [] }] : [];
+    return send(res, 200, { rates, extra_rates: [...extraRates, ...extra3].filter((x) => !gone.has(x.code)), locks,
+      ...(ctl.noCatalog ? {} : { extras: codes.map(([code, name]) => ({ code, name, active: !gone.has(code) })) }),
+      // guides = HR 里 Guide / Driver + Guide 所有人（合同 d8a4f4b5）；ZZ Test Lan 本期没出车。ctl.noGuides = 旧后端没有这个键。
+      ...(ctl.noGuides ? {} : { guides: [{ hr_id: 201, name: "Kevin Tran" }, { hr_id: 305, name: "ZZ Test Lan" }] }) });
+  }
   if (p === "/api/payroll/rates" && req.method === "PUT") { entry.body = await readBody(req); return send(res, 200, { changed: true, rate: { ...rates[0], ...entry.body } }); }
   if (p === "/api/payroll/extra-rates" && req.method === "PUT") { entry.body = await readBody(req); return send(res, 200, { changed: true, extra_rate: { ...extraRates[0], ...entry.body } }); }
   if (/^\/api\/payroll\/(rates|extra-rates)\/\d+$/.test(p) && req.method === "DELETE") return send(res, 200, { changed: true });
@@ -168,10 +187,39 @@ http.createServer(async (req, res) => {
     return send(res, 200, { lock });
   }
   const lm = /^\/api\/payroll\/locks\/(\d+)$/.exec(p);
+  if (lm && req.method === "PUT") {
+    entry.body = await readBody(req);
+    const l = locks.find((x) => x.id === Number(lm[1]));
+    if (!l) return send(res, 404, { detail: "Lock not found." });
+    // ctl.lockPutErr = {status, detail}：后端拒（例如别的窗口刚加了重叠的锁、页面还没刷新），前端要照原句红字。
+    if (ctl.lockPutErr) return send(res, ctl.lockPutErr.status, { detail: ctl.lockPutErr.detail });
+    const eb = entry.body;
+    if (!("from" in eb) && !("to" in eb) && !("note" in eb)) return send(res, 400, { detail: "Send from, to or note." });
+    // 同后端：不能跟**别的**锁重叠（自己的旧范围不算）。
+    const nf = eb.from ?? l.from, nt = eb.to ?? l.to;
+    const ov = locks.find((x) => x.id !== l.id && nf <= x.to && nt >= x.from);
+    if (ov) return send(res, 400, { detail: `${ov.from} to ${ov.to} is already locked. Pick dates that don't overlap.` });
+    Object.assign(l, { from: nf, to: nt, note: "note" in eb ? eb.note : l.note });
+    return send(res, 200, { changed: true, lock: l });
+  }
   if (lm && req.method === "DELETE") {
     const i = locks.findIndex((l) => l.id === Number(lm[1]));
     const [gone] = i >= 0 ? locks.splice(i, 1) : [null];
     return gone ? send(res, 200, { unlocked: gone }) : send(res, 404, { detail: "Lock not found." });
+  }
+  // 自动锁开关（合同 d8a4f4b5）：GET（view）回 {enabled, enabled_at, can_edit}，can_edit 只有 Super Admin；PUT 只有 Super Admin，别人 403。
+  if (p === "/api/payroll/auto-lock" && req.method === "GET") return send(res, 200, { enabled: autoLock.enabled, enabled_at: autoLock.enabled_at, can_edit: !!ctl.superadmin });
+  if (p === "/api/payroll/auto-lock" && req.method === "PUT") {
+    const b = await readBody(req);
+    entry.body = b;
+    // 后端 require_superadmin 的原句。ctl.autoLock403：前端还当自己是 Super Admin（页面没刷新就被降级），后端拒。
+    if (!ctl.superadmin || ctl.autoLock403) return send(res, 403, { detail: "Superadmin access required" });
+    if (typeof b.enabled !== "boolean" || ctl.autoLock400) return send(res, 400, { detail: "Send enabled: true or false." });
+    if (ctl.autoLockFail) return send(res, 500, { detail: "Could not save. Try again." });
+    const changed = b.enabled !== autoLock.enabled;
+    autoLock.enabled = b.enabled;
+    autoLock.enabled_at = b.enabled ? "2026-11-17T22:30:00-08:00" : null;
+    return send(res, 200, { ...autoLock, changed, can_edit: true });
   }
   if (p === "/api/payroll/action-log") return send(res, 200, { entries: history, next_cursor: null });
   send(res, 404, { detail: "mock: not found" });

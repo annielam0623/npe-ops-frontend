@@ -415,14 +415,30 @@ http
       const body = (await readBody(req)) || {};
       entry.body = body;
       if (ctl.markFail) return send(res, 400, { detail: "This row changed since the page loaded. Refresh and try again." });
+      // 照后端 G321 合同（docs/interfaces/g321-relay-bus-tracking-2026-11-17.md 第 1 节）。
       const r = rows.find((x) => x.id === body.booking_id);
-      if (!r || r.order_number !== body.order_number) return send(res, 404, { detail: "Booking not found" });
-      if (body.col !== "relay" && body.col !== "bus") return send(res, 422, { detail: "col must be relay or bus" });
+      if (!r) return send(res, 404, { detail: "Booking not found." });
+      if (r.order_number !== body.order_number) return send(res, 400, { detail: "This row changed since the page loaded. Refresh and try again." });
+      if (body.col !== "relay" && body.col !== "bus") return send(res, 400, { detail: "col must be relay or bus" });
+      const allowed = body.col === "relay" ? ["picked_up", "no_show"] : ["boarded", "no_show"];
+      if (body.value !== null && body.value !== "" && !allowed.includes(body.value))
+        return send(res, 400, { detail: body.col === "relay" ? "The Relay column can only be set to Picked up or No show, or cleared." : "The Bus column can only be set to Boarded or No show, or cleared." });
+      if (body.col === "relay" && r.order_number === "A1004") // 同 GET：A1004 是 TI 客人，relay_applicable false
+        return send(res, 400, { detail: "This guest is not on a relay van that day, so there is no Relay mark to change." });
       const k = body.order_number + ":" + body.col;
-      if (body.value === null) delete OVERRIDES[k];
-      else OVERRIDES[k] = { value: body.value, label: "", by: "ZZ Staff", role: "staff", vehicle: null, at: laIso("09:15") };
-      r.action_taken_by = "ZZ Staff";
-      return send(res, 200, { ok: true });
+      const before = OVERRIDES[k] ? OVERRIDES[k].value : null;
+      const value = body.value || null;
+      if (value === null) delete OVERRIDES[k];
+      else OVERRIDES[k] = { value, label: value === "no_show" ? "No show" : value === "boarded" ? "Boarded" : "Picked up", by: "ZZ Staff", role: "staff", vehicle: "", at: laIso("09:15") };
+      const changed = before !== value;
+      if (changed) r.action_taken_by = "ZZ Staff";
+      const rk = r.order_number + ":relay", bk = r.order_number + ":bus";
+      return send(res, 200, {
+        relay_mark: OVERRIDES[rk] ?? r.relay_original ?? null, relay_original: r.relay_original ?? null,
+        bus_mark: OVERRIDES[bk] ?? r.bus_original ?? null, bus_original: r.bus_original ?? null,
+        relay_applicable: r.order_number !== "A1004", changed,
+        ...(changed ? { action_taken_by: "zzstaff", action_taken_at: laIso("09:15") } : {}),
+      });
     }
     let m = p.match(/^\/api\/bookings\/(\d+)\/take-action$/);
     if (m && req.method === "PUT") {

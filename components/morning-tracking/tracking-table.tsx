@@ -307,6 +307,42 @@ function Cell({
     );
   }
 
+  const [content, className] = cellBody(columnKey, row, {
+    isNew,
+    canTake,
+    toggling,
+    onToggleAction,
+    marks,
+  });
+  return (
+    <td style={style} className={cn(base, className)}>
+      {content}
+    </td>
+  );
+}
+
+/**
+ * 一格里显示什么（Notes / WhatsApp 除外，那两列用 ConversationPreview）。电脑版表格和手机版点开的详情（mt-phone-compact）共用，
+ * 两边写法一样。返回 [内容, 这一格文字的 className]。
+ */
+export function cellBody(
+  columnKey: ColumnKey,
+  row: MorningTrackingRow,
+  {
+    isNew,
+    canTake,
+    toggling,
+    onToggleAction,
+    marks,
+  }: {
+    isNew: boolean;
+    canTake: boolean;
+    toggling: boolean;
+    onToggleAction: (row: MorningTrackingRow, want: "on" | "off") => void;
+    /** G321：Relay / Bus 两列能不能改、暂存的值（手机详情不传 ⇒ 只看）。 */
+    marks?: MarkEditing;
+  },
+): [ReactNode, string] {
   let content: ReactNode;
   let className = "";
   switch (columnKey) {
@@ -484,13 +520,10 @@ function Cell({
       className = "text-[12px] text-[#a0c0e0]";
       break;
     default:
-      content = row[columnKey] || "—";
+      // name；Notes / WhatsApp 不走这里（ConversationPreview）。
+      content = columnKey === "name" ? row.name || "—" : "—";
   }
-  return (
-    <td style={style} className={cn(base, className)}>
-      {content}
-    </td>
-  );
+  return [content, className];
 }
 
 /**
