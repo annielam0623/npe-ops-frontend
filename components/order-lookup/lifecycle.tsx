@@ -345,9 +345,9 @@ export function ChangeLine({
                     light ? "text-[#6b7280]" : "text-white/45",
                   )}
                 >
-                  {it.before || "(empty)"}
+                  {it.before === null ? "—" : it.before || "(empty)"}
                 </span>{" "}
-                → {it.after || "(empty)"}
+                → {it.after === null ? "—" : it.after || "(empty)"}
               </span>
             ))
           : c.text}

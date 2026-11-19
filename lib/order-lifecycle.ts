@@ -79,10 +79,22 @@ export interface ChangeEntry {
   source: ChangeSource;
   /** 来源那一格写的字：Rezdy / Guest / 员工名 / System。 */
   who: string;
-  /** 一条记录可能改了几项（Refresh from Rezdy 一次改几项）。 */
-  items: { field: string; before: string; after: string }[];
+  /** 一条记录可能改了几项（Refresh from Rezdy 一次改几项）。null = 没有这一项（加 / 删项目，显示「—」）。 */
+  items: { field: string; before: string | null; after: string | null }[];
   /** 没有前后值时写的话。 */
   text: string;
+  /** 排序用（毫秒；读不出 = 0）。 */
+  sortKey: number;
+}
+
+/** 「11/18/2026 7:05 AM」（订单详情接口 fmt_dt，洛杉矶）→ 毫秒，只用来排先后（不换算时区，两边都按洛杉矶墙上时间比）。 */
+function wallClockKey(s: string): number {
+  const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4}) (\d{1,2}):(\d{2}) ([AP]M)$/.exec(
+    s.trim(),
+  );
+  if (!m) return 0;
+  const h = (Number(m[4]) % 12) + (m[6] === "PM" ? 12 : 0);
+  return Date.UTC(+m[3], +m[1] - 1, +m[2], h, +m[5]);
 }
 
 /** 有意义的改动（题 2 A）：Rezdy 改了、员工改了、客人要求改；其余是系统记录，收在 Show all 里。 */
@@ -157,19 +169,73 @@ export function toChange(a: Activity): ChangeEntry {
   } else if (a.event_type === "booking_cancelled" && source === "rezdy") {
     text = "Cancelled in Rezdy";
   }
-  return { id: a.id, at: a.created_at, source, who, items, text };
+  return {
+    id: a.id,
+    at: a.created_at,
+    source,
+    who,
+    items,
+    text,
+    sortKey: wallClockKey(a.created_at),
+  };
 }
 
-/** 新 → 旧（同接口），只留有意义的改动。 */
-export function meaningfulChanges(order: OrderDetail): ChangeEntry[] {
-  return order.activity_log
-    .filter((a) => MEANINGFUL.has(a.event_type))
+/**
+ * 生命周期第 2 项（bf 合同：rezdy_changes，从上线起记）：Rezdy 推送 / Refresh from Rezdy 改了什么。
+ * source rezdy_push ⇒ 来源 Rezdy；refresh_from_rezdy ⇒ 来源是按键的员工名。
+ */
+function rezdyEntries(order: OrderDetail): ChangeEntry[] {
+  return (order.rezdy_changes ?? []).map((r, i) => {
+    const at = formatLaDateTime(r.at);
+    const push = r.source === "rezdy_push";
+    return {
+      id: -(i + 1),
+      at,
+      source: push ? "rezdy" : "staff",
+      who: push ? "Rezdy" : r.by || "Staff",
+      items: (r.changes ?? []).map((c) => ({
+        field: c.field,
+        before: c.before,
+        after: c.after,
+      })),
+      text: push ? "Updated by Rezdy" : "Refreshed from Rezdy",
+      sortKey: wallClockKey(at),
+    };
+  });
+}
+
+/**
+ * activity_log 里跟 rezdy_changes 重复的那条（以 rezdy_changes 为准）：
+ * 同一分钟的 refreshed_from_rezdy（对 refresh_from_rezdy）/ Rezdy 的 booking_updated（对 rezdy_push）。
+ */
+function duplicatedByRezdy(
+  a: Activity,
+  rezdy: readonly ChangeEntry[],
+): boolean {
+  if (a.event_type === "refreshed_from_rezdy")
+    return rezdy.some((r) => r.source === "staff" && r.at === a.created_at);
+  if (a.event_type === "booking_updated" && sourceOf(a).source === "rezdy")
+    return rezdy.some((r) => r.source === "rezdy" && r.at === a.created_at);
+  return false;
+}
+
+function merged(order: OrderDetail, only: (a: Activity) => boolean) {
+  const rezdy = rezdyEntries(order);
+  const fromLog = order.activity_log
+    .filter((a) => only(a) && !duplicatedByRezdy(a, rezdy))
     .map(toChange);
+  // 新 → 旧；同一分钟的照接口原来的先后（stable sort）。
+  return [...rezdy, ...fromLog].sort((x, y) => y.sortKey - x.sortKey);
 }
 
-/** Show all：全部记录（含系统记录），新 → 旧。 */
+/** 新 → 旧，只留有意义的改动（含 rezdy_changes）。 */
+export function meaningfulChanges(order: OrderDetail): ChangeEntry[] {
+  return merged(order, (a) => MEANINGFUL.has(a.event_type));
+}
+
+/** Show all：全部记录（含系统记录、rezdy_changes），新 → 旧。 */
 export function allChanges(order: OrderDetail): ChangeEntry[] {
-  return order.activity_log.map(toChange);
+  return merged(order, () => true);
 }
 
 /** Changes 块默认列几条（题 2 A：超过 3 条右上 Show all N）。 */

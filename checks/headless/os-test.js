@@ -469,8 +469,13 @@ async function run() {
     await evaluate(`document.querySelector('[data-lookup-block="changes"] [data-changes-all]').click(); return 1;`);
     await sleep(200);
     lines = await evaluate(`return [...document.querySelectorAll('[data-lookup-block="changes"] li')].map(li => li.textContent.replace(/\\s+/g, ' ').trim());`);
-    check("生命周期 · 点 Show all：6 条，Rezdy 推送写 Updated by Rezdy、系统记录也在，Show all 收起",
-      lines.length === 6 && lines.some((t) => t.includes("Updated by Rezdy")) && lines.some((t) => t.includes("Marked handled")) && !(await evaluate(`return !!document.querySelector('[data-lookup-block="changes"] [data-changes-all]');`)), lines.join(" | "));
+    check("生命周期 · 点 Show all：6 条（activity_log 6 条去掉跟 rezdy_changes 重复的 2 条 + rezdy_changes 2 条）、系统记录也在，Show all 收起",
+      lines.length === 6 && lines.some((t) => t.includes("Marked handled")) && !lines.some((t) => t.includes("Updated by Rezdy")) && lines.filter((t) => t.startsWith("10/10/2026 11:02 AM")).length === 1 && !(await evaluate(`return !!document.querySelector('[data-lookup-block="changes"] [data-changes-all]');`)), lines.join(" | "));
+    check("生命周期 · rezdy_changes：Rezdy 推送一行，来源 Rezdy、每项旧值（划线）→ 新值，null 写「—」",
+      lines.some((t) => t.startsWith("10/10/2026 11:02 AM") && t.includes("Rezdy") && t.includes("Tour date (PBZ) 10/19/2026 → 10/20/2026") && t.includes("Item PXTRA — → PXTRA")), lines.join(" | "));
+    check("生命周期 · rezdy_changes：Refresh 那次来源写员工名、只出一次（activity_log 那条去重）",
+      lines.filter((t) => t.includes("Phone +1 555 0000 → +1 555 0100")).length === 1 && lines.some((t) => t.startsWith("10/11/2026 9:00 AM") && t.includes("Annie Z")), lines.join(" | "));
+    check("生命周期 · 按时间混排（新 → 旧）", JSON.stringify(lines.map((t) => t.slice(0, 10).trim())) === JSON.stringify(["10/18/2026", "10/12/2026", "10/11/2026", "10/10/2026", "10/2/2026", "10/1/2026"]), lines.map((t) => t.slice(0, 12)).join(" | "));
     const sent = await ev(factOf("Tour Confirmation", "Sent"));
     check("生命周期 · Tour Confirmation Sent：最近一次、精确单号、这天的团（不是 ZZTEST10 / 改期前）+ by veronica · Delivered · Opened（delivered_at / opened_at）", sent && /^10\/18\/2026 2:05 PM ?by veronica · Delivered · Opened$/.test(sent.text), JSON.stringify(sent));
     const lm = await ev(factOf("Tour Confirmation", "Last Minute"));

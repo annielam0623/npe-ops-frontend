@@ -171,6 +171,16 @@ export interface OrderDetail {
     arrived_at: string | null;
     left_at: string | null;
   }[];
+  /**
+   * 生命周期第 2 项（bf 合同，从上线起记）：Rezdy 推送 / Refresh from Rezdy 改了什么，新 → 旧。
+   * by：push 是 ""、Refresh 是员工名。field 例「Phone」「Tour date (PRTSET)」「Item PRTSET」（加 / 删项目时 before 或 after 为 null）。
+   */
+  rezdy_changes?: {
+    at: string;
+    source: "rezdy_push" | "refresh_from_rezdy";
+    by: string;
+    changes: { field: string; before: string | null; after: string | null }[];
+  }[];
 }
 
 /** PATCH 的字段：只传要改的；null = 清空。 */
