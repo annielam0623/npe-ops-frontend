@@ -281,7 +281,7 @@ async function run() {
   check("denied / unknown：表格照常、只显示能看的列", (await evaluate("return $heads().join('|');")) === "Order #|Guest");
   reqs = await since(from, isList);
   check("存的列里没有 Pax / Tour confirmation sent：请求时补上（勾选发送要用），表格不显示、也不算进「存着但用不了」", q(reqs[0]).get("fields") === "order_number,order_total,q:9999999999,guest_name,pax,sent_tour_at", q(reqs[0])?.get("fields"));
-  check("提示 1 列要 admin、1 列今天没有、都留在选择里", await evaluate("const t = document.body.textContent; return t.includes('1 saved column need admin access and is hidden') && t.includes(\"1 saved column doesn't appear on this day and is hidden\") && t.includes('They stay in your column choice.');"));
+  check("提示 1 列要 admin、1 列今天没有、都留在选择里", await evaluate("const t = document.body.textContent; return t.includes('1 saved column needs admin access and is hidden') && t.includes(\"1 saved column doesn't appear on this day and is hidden\") && t.includes('They stay in your column choice.');"));
   await evaluate("$btn('☰ Columns').click();");
   await waitFor("$dialog()");
   check("弹窗写明有 2 列存着但这页用不了", await evaluate("return $dialog().textContent.includes('2 saved columns not available on this page today');"));

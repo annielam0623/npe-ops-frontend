@@ -582,6 +582,22 @@ async function run() {
       oc && oc.after === 0 && oc.lines.length === 3 && oc.lines[0].includes("annie · Email") && oc.lines[1].includes("Guest · WhatsApp") && oc.toggle === "Show all 4 ▾" && !oc.notesHasChat, JSON.stringify(oc));
     check("Chat history · 订单详情页：这天有三条线 ⇒ Open chat · Tour / Tickets / Morning →，带 date + q + chat",
       oc && JSON.stringify(oc.links.map((l) => l[0])) === JSON.stringify(["Open chat · Tour →", "Open chat · Tickets →", "Open chat · Morning →"]) && oc.links[0][1] === "/tour-confirmation/tracking?date=2026-10-20&q=ZZTEST1&chat=ZZTEST1" && oc.links[2][1] === "/morning-pickup/tracking?date=2026-10-20&q=ZZTEST1&chat=ZZTEST1", JSON.stringify(oc && oc.links));
+    // G351：Refresh 的 activity_log「Internal notes (Rezdy): changed」（没有前后值）不吞掉前后那一项，自己写一行「字段: changed」。
+    await ctl({ sa: true, lifeVis: null, lifeVisible: false, g351: true });
+    await openDashboard();
+    await search("ZZTEST1", `document.querySelector('[data-lookup-block="changes"] li')`);
+    await sleep(400);
+    {
+      const ls = await evaluate(`return [...document.querySelectorAll('[data-lookup-block="changes"] li')].map(li => li.textContent.replace(/\\s+/g, ' ').trim());`);
+      const late = ls.find((t) => t.startsWith("10/19/2026 9:00 AM")) || "";
+      const early = ls.find((t) => t.startsWith("10/19/2026 8:00 AM")) || "";
+      check("G351「Status: 'A' → 'B'; Internal notes (Rezdy): changed」：两项都出（Status 不被吞掉）", early.includes("Status CONFIRMED → ON_HOLD") && early.includes("Internal notes (Rezdy): changed"), ls.join(" | "));
+      check("G351「Internal notes (Rezdy): changed; Phone: 'a' → 'b'」：两项都出", late.includes("Internal notes (Rezdy): changed") && late.includes("Phone +1 555 0100 → +1 555 0200"), ls.join(" | "));
+      const foo = ls.find((t) => t.startsWith("10/19/2026 10:00 AM")) || "";
+      check("G351 按「: changed」后缀认、不按字段名：假字段「Foo: changed」也解析，前一项 Email 照出", foo.includes("Email a@example.com → b@example.com") && foo.includes("Foo: changed"), ls.join(" | "));
+      check("G351 changed 那一项一行、不画划线旧值、不写 —", await evaluate(`const s = [...document.querySelectorAll('[data-lookup-block="changes"] [data-change-only]')]; return s.length === 3 && s.every(e => !e.querySelector('[data-change-old]') && !e.textContent.includes('—'));`));
+    }
+    await ctl({ g351: false });
     await ctl({ sa: false, lifeVis: null, lifeVisible: false });
     await goto(`${APP}/orders/ZZTEST1`);
     await waitFor(`document.querySelector('section[aria-label="Activity"]')`, 60000);

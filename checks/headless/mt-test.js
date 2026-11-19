@@ -1397,6 +1397,28 @@ async function run() {
     check("只看数字的团车（tour_compact）：40 pax on this bus、团名、Guide: Ana、TI 12 / relay 26 / No show 2、3 orders 没分到车的提醒、Shuttle outbound 块（时间、接人点、产品、5 人 2 单）",
       await waitFor(`${sam} && ${sam}.textContent.includes('40pax on this bus') && ${sam}.textContent.includes('ZZ Test West Rim') && ${sam}.textContent.includes('Guide: Ana') && ${sam}.textContent.includes('3 orders on this tour have no bus yet and are not counted here. Call dispatch.') && !!${sam}.querySelector('[data-compact-shuttle]') && ['6:30 AM', 'ZZ Test Shuttle Stop', 'Shuttle outbound', 'ZZ Test Shuttle', '52 bookings'].every((t) => ${sam}.querySelector('[data-compact-shuttle]').textContent.includes(t)) && ['12Board at Treasure Island', '26Brought to TI by relay', '2No show (from guide)'].every((t) => ${sam}.textContent.includes(t))`),
       await evaluate(`return ${sam}?.textContent;`));
+    // G357：Live drivers 加 WhatsApp 键（Annie「A，WhatsApp 能点」）——按后端 wa_url 画，前端不判号码；Call 照旧灰。
+    {
+      const waOf = (who, o) => `${who}.querySelector('[data-live-guest="${o}"] [data-live-wa]')`;
+      check("G357 旧后端（没有 wa_url 键）：Live drivers 不出 WhatsApp 键", await evaluate("return !document.querySelector('[data-live-wa]');"));
+      await ctl({ liveCompact: false, wa: true });
+      await openTracking();
+      await evaluate("document.querySelector('[data-mt-tab=\"live\"]').click();");
+      await waitFor("document.querySelectorAll('[data-live-person]').length === 2");
+      check("G357 有 wa_url：A1001（司机）、A1003（导游）出 WhatsApp 键，href = wa_url、target _blank、rel noopener，是能点的链接",
+        await evaluate(`const a = ${waOf(mike, "A1001")}, b = ${waOf(ana, "A1003")}; return !!a && !!b && a.tagName === 'A' && a.getAttribute('href') === 'https://wa.me/15550000000' && b.getAttribute('href') === 'https://wa.me/447700900123' && a.target === '_blank' && a.rel === 'noopener' && a.textContent === 'WhatsApp' && getComputedStyle(a).pointerEvents !== 'none';`),
+        await evaluate(`return ${waOf(mike, "A1001")}?.outerHTML;`));
+      check("G357 wa_url 为 \"\"（A1002 司机、A1004 导游）：不出 WhatsApp 键", await evaluate(`return !${waOf(mike, "A1002")} && !${waOf(ana, "A1004")};`));
+      check("G357 样子照司机页 .b-wa：绿字 #4ade80、绿边，放在 Call 和 Text 中间；Call 照旧灰（不是链接）",
+        await evaluate(`const g = ${mike}.querySelector('[data-live-guest="A1001"]'); const a = g.querySelector('[data-live-wa]'); const kids = [...a.parentElement.children]; const call = kids.find((k) => k.textContent === 'Call'); return getComputedStyle(a).color === 'rgb(74, 222, 128)' && getComputedStyle(a).borderTopColor === 'rgba(37, 211, 102, 0.55)' && kids.indexOf(call) === kids.indexOf(a) - 1 && kids[kids.indexOf(a) + 1].hasAttribute('data-live-text') && call.tagName === 'SPAN' && Number(getComputedStyle(call).opacity) < 0.5;`),
+        await evaluate(`const g = ${mike}.querySelector('[data-live-guest="A1001"] [data-live-wa]'); return g ? getComputedStyle(g).color + ' / ' + getComputedStyle(g).borderTopColor : 'none';`));
+      check("G357 How to use 写了 WhatsApp", await evaluate("return document.body.textContent.includes('Tap WhatsApp next to Call to open a chat with the guest in your own WhatsApp. A guest has no WhatsApp button when their number looks wrong.');"));
+      await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+      await sleep(500);
+      check("G357 手机：WhatsApp 键照样出、能点，整页不左右晃", await evaluate(`const a = ${waOf(mike, "A1001")}; const r = a?.getBoundingClientRect(); return !!a && r.width > 0 && r.right <= innerWidth + 1 && document.documentElement.scrollWidth <= innerWidth + 1;`));
+      await cdp("Emulation.clearDeviceMetricsOverride");
+      await ctl({ wa: false });
+    }
     await ctl({ liveCompact: false, live: false });
     await openTracking();
     check("旧后端（没有 live_* 键）：Super Admin 也没有 Driver mark 列，表照旧", await evaluate("return ![...document.querySelectorAll('main thead th')].some((th) => th.textContent.includes('Driver mark'));"));
