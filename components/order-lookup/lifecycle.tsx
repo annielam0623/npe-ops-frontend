@@ -11,7 +11,7 @@ import {
   dayOfTourFor,
   fetchOrderSends,
   LIFECYCLE_FRAME,
-  latestSend,
+  sentFor,
   liveFor,
   lunchFor,
   markText,
@@ -110,6 +110,16 @@ function DField({
   );
 }
 
+function replyTone(status: string): "good" | "bad" | "warn" | "muted" {
+  return status === "yes"
+    ? "good"
+    : status === "cancel"
+      ? "bad"
+      : status === "pending"
+        ? "muted"
+        : "warn";
+}
+
 export function LifecycleCard({ order }: { order: OrderDetail }) {
   const { on, sends } = useOrderLifecycle(order.order_number);
   const [all, setAll] = useState(false);
@@ -122,6 +132,7 @@ export function LifecycleCard({ order }: { order: OrderDetail }) {
   const relay = day?.relay_mark ?? null;
   const bus = day?.bus_mark ?? null;
   const reply = replyFor(order, date);
+  const ticketReply = replyFor(order, date, "tickets_reminder");
   const lunch = lunchFor(order, date);
   const live = liveFor(order, date);
   const van = live ? vanAtHotel(live.arrived_at, live.left_at) : null;
@@ -151,7 +162,7 @@ export function LifecycleCard({ order }: { order: OrderDetail }) {
           {changes.length ? String(changes.length) : "None"}
         </DField>
         {SEND_ROWS.map(({ module, label }) => {
-          const s = latestSend(rows, module, date);
+          const s = sentFor(order, rows, module, date);
           return (
             <DField
               key={module}
@@ -166,21 +177,21 @@ export function LifecycleCard({ order }: { order: OrderDetail }) {
         {/* Annie (a) A：后端按单接口到了再补——bf 合同草稿 confirmations / lunch_by_day / live_by_day；旧后端没有 ⇒「—」。 */}
         <DField
           label="Guest reply"
-          tone={
-            !reply
-              ? "muted"
-              : reply.status === "yes"
-                ? "good"
-                : reply.status === "cancel"
-                  ? "bad"
-                  : reply.status === "pending"
-                    ? "muted"
-                    : "warn"
-          }
+          tone={reply ? replyTone(reply.status) : "muted"}
           sub={reply?.submitted ?? undefined}
         >
           {reply ? reply.label : "—"}
         </DField>
+        {/* 门票的答复（bf 第 2 项：confirmations 带 tickets_reminder 行）：有才出。 */}
+        {ticketReply ? (
+          <DField
+            label="Ticket reply"
+            tone={replyTone(ticketReply.status)}
+            sub={ticketReply.submitted ?? undefined}
+          >
+            {ticketReply.label}
+          </DField>
+        ) : null}
         <DField label="Lunch" tone={lunch?.text ? undefined : "muted"}>
           {lunch?.text || "—"}
         </DField>
@@ -320,6 +331,23 @@ const SOURCE_CLASS_LIGHT = {
 } as const;
 
 /** 一条改动：时间 · 来源 · 旧值划线 → 新值（没有前后值就写那句话）。 */
+/** 「Tour date, Phone, Email」；多于 3 个写前两个 +N（照 4d 转的例子「Tour date, Phone +2 more」）。「Tour date (PBZ)」去掉产品码，同名只写一次。 */
+function changedSummary(fields: string[]): string {
+  const names = [
+    ...new Set(
+      fields.map((f) =>
+        f
+          .replace(/\s*#\d+\s*$/, "")
+          .replace(/\s*\([^)]*\)\s*$/, "")
+          .trim(),
+      ),
+    ),
+  ];
+  return names.length > 3
+    ? `${names.slice(0, 2).join(", ")} +${names.length - 2} more`
+    : names.join(", ");
+}
+
 export function ChangeLine({
   c,
   light = false,
@@ -327,9 +355,28 @@ export function ChangeLine({
   c: ChangeEntry;
   light?: boolean;
 }) {
+  // Annie「rezdy的内容也需要可以展开和收起」：rezdy_changes 那几条默认收成一行「Changed: 字段名 ▸」，点开看旧 → 新，再点 ▴ 收回。
+  const [open, setOpen] = useState(false);
+  const foldable = !!c.fromRezdy && c.items.length > 0;
+  const diffs = c.items.map((it, i) => (
+    <span key={i} className="block">
+      {it.field}{" "}
+      <span
+        data-change-old
+        className={cn(
+          "line-through",
+          light ? "text-[#6b7280]" : "text-white/45",
+        )}
+      >
+        {it.before === null ? "—" : it.before || "(empty)"}
+      </span>{" "}
+      → {it.after === null ? "—" : it.after || "(empty)"}
+    </span>
+  ));
   return (
     <li
       data-change={c.source}
+      data-change-open={foldable ? (open ? "" : undefined) : undefined}
       className={cn(
         "grid grid-cols-[minmax(0,150px)_minmax(0,90px)_minmax(0,1fr)] gap-x-3 gap-y-0.5 text-[12.5px] max-sm:grid-cols-1",
         light ? "text-[#1a1a1a] night:text-white/85" : "text-white/85",
@@ -352,23 +399,28 @@ export function ChangeLine({
         {c.who}
       </span>
       <span className="min-w-0 [overflow-wrap:anywhere]">
-        {c.items.length
-          ? c.items.map((it, i) => (
-              <span key={i} className="block">
-                {it.field}{" "}
-                <span
-                  data-change-old
-                  className={cn(
-                    "line-through",
-                    light ? "text-[#6b7280]" : "text-white/45",
-                  )}
-                >
-                  {it.before || "(empty)"}
-                </span>{" "}
-                → {it.after || "(empty)"}
-              </span>
-            ))
-          : c.text}
+        {foldable ? (
+          <>
+            <button
+              type="button"
+              data-change-toggle
+              aria-expanded={open}
+              onClick={() => setOpen((v) => !v)}
+              className={cn(
+                "cursor-pointer text-left",
+                light ? "text-[#1a1a1a] night:text-white/85" : "text-white/85",
+              )}
+            >
+              Changed: {changedSummary(c.items.map((it) => it.field))}{" "}
+              {open ? "▴" : "▸"}
+            </button>
+            {open ? <span className="mt-0.5 block">{diffs}</span> : null}
+          </>
+        ) : c.items.length ? (
+          diffs
+        ) : (
+          c.text
+        )}
       </span>
     </li>
   );

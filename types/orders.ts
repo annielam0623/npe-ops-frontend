@@ -151,6 +151,15 @@ export interface OrderDetail {
     tour_date: string;
     status: string;
     submitted_at: string | null;
+    /**
+     * bf 第 2 项（固定状态，Annie 同意）：Tracking 行上发没发、最新发送时间（ISO）、送达状态、谁发的（同单同日同模块最新 send_log；
+     * tour_confirmation 也算 last_minute；没有 = ""）。旧后端没有这些键。
+     */
+    send_state?: "sent" | "unsent";
+    sent_at?: string | null;
+    email_status?: string | null;
+    sms_status?: string | null;
+    sent_by?: string;
   }[];
   /** 按单的餐（text 例 "2 Turkey, 1 Veggie"）和餐厅。 */
   lunch_by_day?: {
@@ -170,6 +179,16 @@ export interface OrderDetail {
     live_van: string;
     arrived_at: string | null;
     left_at: string | null;
+  }[];
+  /**
+   * 生命周期第 2 项（bf 合同，从上线起记）：Rezdy 推送 / Refresh from Rezdy 改了什么，新 → 旧。
+   * by：push 是 ""、Refresh 是员工名。field 例「Phone」「Tour date (PRTSET)」「Item PRTSET」（加 / 删项目时 before 或 after 为 null）。
+   */
+  rezdy_changes?: {
+    at: string;
+    source: "rezdy_push" | "refresh_from_rezdy";
+    by: string;
+    changes: { field: string; before: string | null; after: string | null }[];
   }[];
 }
 

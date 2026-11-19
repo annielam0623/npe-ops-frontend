@@ -37,7 +37,7 @@ import {
   dayOfTourFor,
   LIFECYCLE_FRAME,
   LIFECYCLE_HOW_TO,
-  latestSend,
+  sentFor,
   liveFor,
   lunchFor,
   markText,
@@ -367,7 +367,7 @@ function LookupResultView({ result }: { result: LookupResult }) {
   const frame = life ? LIFECYCLE_FRAME : "border-white/10";
   const day = life ? dayOfTourFor(order, date) : null;
   const sentFact = (module: SendModule, label: string) => {
-    const s = latestSend(sends, module, date);
+    const s = sentFor(order, sends, module, date);
     return (
       <Fact
         label={label}

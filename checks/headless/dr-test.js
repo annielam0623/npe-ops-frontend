@@ -231,9 +231,9 @@ async function run() {
   await openDashboard();
   await openNav();
   check(
-    // Quotation 现在仅 Super Admin 可见，staff 的侧栏里没有这一项了，这里只还看 Daily Operation Report。
-    "Daily Operation Report 标 SOON，照样是链接（Staff Schedule 已上线，不再标）",
-    await evaluate(`return ['daily_report'].every(id => { const r = ${nav}.querySelector('[data-module=' + id + ']'); return r && r.textContent.includes('SOON') && r.querySelector('a[href]'); }) && !${row("orders")}.textContent.includes('SOON') && !${nav}.querySelector('[data-module=quotation]');`),
+    // Quotation 现在仅 Super Admin 可见，staff 的侧栏里没有这一项。Daily Operation Report Annie 2026-11-18 验收过，去掉 SOON。
+    "Daily Operation Report 不再标 SOON，是链接（Staff Schedule 也不标）",
+    await evaluate(`return ['daily_report'].every(id => { const r = ${nav}.querySelector('[data-module=' + id + ']'); return r && !r.textContent.includes('SOON') && r.querySelector('a[href]'); }) && !${row("orders")}.textContent.includes('SOON') && !${nav}.querySelector('[data-module=quotation]');`),
   );
   check(
     "每个条目都能拖（draggable）、有钉子（Morning / Tour / Tickets 除外）",
@@ -367,7 +367,7 @@ async function run() {
     (await evaluate(`return ${tiles};`)) === "manifests,forms,dispatch,forecast,workspace,schedule,orders,daily_report",
     await evaluate(`return ${tiles};`),
   );
-  check("SOON 的条目也能拖进来、显示 SOON", await evaluate(`return ${sc}.querySelector('[data-shortcut=daily_report]').textContent.includes('SOON');`));
+  check("Daily Operation Report 拖进来后不显示 SOON（2026-11-18 已去掉）", await evaluate(`return !${sc}.querySelector('[data-shortcut=daily_report]').textContent.includes('SOON');`));
   await evaluate(`$drag(${sc}.querySelector('[data-shortcut=orders]'), ${sc}.querySelector('[data-shortcut=manifests]'));`);
   await waitSaved();
   check(
