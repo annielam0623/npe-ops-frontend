@@ -18,6 +18,7 @@
 - 今晚上 main：noshow c4ab4018、150 Relay / Tour 6a90bc27、Test send b1d5a79f、Dispatch 关团 23c2c5d6、生命周期第一批 e8878386、Show less 51b86305。规则：CLAUDE.md 开工必做第 4 条 c3b0bd4c。
 - 23：**task/order-lifecycle-rezdy a07eafcd**（第 2 项 + SENT 照固定状态 + 每条可展开收起；os 126 / orders 113 / nav 39）⇒ 已转 bf PASS，PASS 后合。**task/lifecycle-chat 32ee5187 WIP 别合**：已做搜索结果 Chat history 块（3 条 + Show all ⇄ less、WhatsApp 照 channel、跟开关 + messages.view）、详情页生命周期块去掉 Relay / Bus；还要做：① 三个 Tracking 页 ?chat=单号 打开对话框（没有这单黄字「This order is not on this day's list.」）+ tt / tk / mt 检查；② 各块「Open chat →」；③ 订单详情 Notes 改名 Chat history、挪最下、加 Open chat →；④ How to use 那句；⑤ send-log 偶发拉两次修成一次。
 - 4a：G298 样稿 6 题等 Annie（8e 合同未到）。8d 待命。
+- ✅ Annie（原话）「「lunch_turkey 0 → 1」要不要改成人看得懂的写法。改 / 今晚要不要做完 Chat history 再收工。要」⇒ 照开工必做第 4 条今晚做完：23 继续 lifecycle-chat ①–⑤ + ⑥ 员工改字段名换成人能看懂的（lunch_turkey → Lunch · Turkey 等）。
 - 📌 等 Annie：G298 6 题；lunch_turkey 写法 A / B；客人选餐 B1 / B2；No show 手机说明；F1 黄框 4 题（ae 问的）；「Tour」列名；SMS 超字数显示文字；Tickets 页头改灰 6 题；蓝键；Content Studio smsCheck；DOR 去 Soon 标签（她验收后）。
 
 ## 2026-11-18 收工交接：前端主窗口 `前端主窗口4d`[9f187b]（公司电脑，14:30 下班）
