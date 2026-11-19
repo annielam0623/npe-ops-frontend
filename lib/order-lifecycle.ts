@@ -79,10 +79,24 @@ export interface ChangeEntry {
   source: ChangeSource;
   /** 来源那一格写的字：Rezdy / Guest / 员工名 / System。 */
   who: string;
-  /** 一条记录可能改了几项（Refresh from Rezdy 一次改几项）。 */
-  items: { field: string; before: string; after: string }[];
+  /** 一条记录可能改了几项（Refresh from Rezdy 一次改几项）。null = 没有这一项（加 / 删项目，显示「—」）。 */
+  items: { field: string; before: string | null; after: string | null }[];
   /** 没有前后值时写的话。 */
   text: string;
+  /** 排序用（毫秒；读不出 = 0）。 */
+  sortKey: number;
+  /** 来自 rezdy_changes（Annie：这几条默认收成一行，点开看旧 → 新）。 */
+  fromRezdy?: boolean;
+}
+
+/** 「11/18/2026 7:05 AM」（订单详情接口 fmt_dt，洛杉矶）→ 毫秒，只用来排先后（不换算时区，两边都按洛杉矶墙上时间比）。 */
+function wallClockKey(s: string): number {
+  const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4}) (\d{1,2}):(\d{2}) ([AP]M)$/.exec(
+    s.trim(),
+  );
+  if (!m) return 0;
+  const h = (Number(m[4]) % 12) + (m[6] === "PM" ? 12 : 0);
+  return Date.UTC(+m[3], +m[1] - 1, +m[2], h, +m[5]);
 }
 
 /** 有意义的改动（题 2 A）：Rezdy 改了、员工改了、客人要求改；其余是系统记录，收在 Show all 里。 */
@@ -157,19 +171,126 @@ export function toChange(a: Activity): ChangeEntry {
   } else if (a.event_type === "booking_cancelled" && source === "rezdy") {
     text = "Cancelled in Rezdy";
   }
-  return { id: a.id, at: a.created_at, source, who, items, text };
+  return {
+    id: a.id,
+    at: a.created_at,
+    source,
+    who,
+    items,
+    text,
+    sortKey: wallClockKey(a.created_at),
+  };
 }
 
-/** 新 → 旧（同接口），只留有意义的改动。 */
-export function meaningfulChanges(order: OrderDetail): ChangeEntry[] {
-  return order.activity_log
-    .filter((a) => MEANINGFUL.has(a.event_type))
+/**
+ * 生命周期第 2 项（bf 合同：rezdy_changes，从上线起记）：Rezdy 推送 / Refresh from Rezdy 改了什么。
+ * source rezdy_push ⇒ 来源 Rezdy；refresh_from_rezdy ⇒ 来源是按键的员工名。
+ */
+/** Rezdy 改动里字段的固定顺序（bf 2026-11-18 建议）；不认识的排最后，同名按原来先后。 */
+const FIELD_ORDER = [
+  "First name",
+  "Last name",
+  "Phone",
+  "Email",
+  "Status",
+  "Product",
+  "Tour date",
+  "Pickup time",
+  "Pickup location",
+  "Pax",
+  "Special requirements",
+  "Item",
+];
+
+function fieldRank(field: string): number {
+  // 「Tour date (PRTSET)」「Pax (PRTSET) #2」「Item PRTSET」⇒ 取开头的标签。
+  const base = field
+    .replace(/\s*#\d+\s*$/, "")
+    .replace(/\s*\([^)]*\)\s*$/, "")
+    .trim();
+  const i = FIELD_ORDER.findIndex((f) => base === f || base.startsWith(`${f} `));
+  return i < 0 ? FIELD_ORDER.length : i;
+}
+
+function byFieldOrder(a: { field: string }, b: { field: string }): number {
+  return fieldRank(a.field) - fieldRank(b.field);
+}
+
+function rezdyEntries(order: OrderDetail): ChangeEntry[] {
+  return (order.rezdy_changes ?? []).map((r, i) => {
+    const at = formatLaDateTime(r.at);
+    const push = r.source === "rezdy_push";
+    return {
+      id: -(i + 1),
+      at,
+      source: push ? "rezdy" : "staff",
+      who: push ? "Rezdy" : r.by || "Staff",
+      // 后端按标签字母序存 ⇒ 前端排成固定顺序（bf 建议的顺序）。
+      items: [...(r.changes ?? [])].sort(byFieldOrder).map((c) => ({
+        field: c.field,
+        before: c.before,
+        after: c.after,
+      })),
+      text: push ? "Updated by Rezdy" : "Refreshed from Rezdy",
+      sortKey: wallClockKey(at),
+      fromRezdy: true,
+    };
+  });
+}
+
+/**
+ * activity_log 里跟 rezdy_changes 重复的那条（以 rezdy_changes 为准）：
+ * 同一分钟的 refreshed_from_rezdy（对 refresh_from_rezdy）/ Rezdy 的 booking_updated（对 rezdy_push）。
+ */
+/** 两边配对的最大时间差（bf：两处分开写，通常差不到 1 秒，但可能跨分钟）。 */
+const PAIR_WINDOW_MS = 120_000;
+
+/** activity_log 这条跟 rezdy_changes 的哪一类是同一件事；不是这两类 = null。 */
+function pairKind(a: Activity): ChangeSource | null {
+  if (a.event_type === "refreshed_from_rezdy") return "staff";
+  if (a.event_type === "booking_updated" && sourceOf(a).source === "rezdy")
+    return "rezdy";
+  return null;
+}
+
+/**
+ * 跟 rezdy_changes 重复的 activity_log（以 rezdy_changes 为准）：同一类（Rezdy 推送 ↔ actor rezdy 的 booking_updated；
+ * Refresh ↔ refreshed_from_rezdy）、时间差 ≤ 120 秒，每条 rezdy_changes 只配最近的一条（bf 2026-11-18）。
+ * 时间都按「M/D/YYYY h:mm AM」到分钟比。
+ */
+function pairedLogIds(order: OrderDetail, rezdy: readonly ChangeEntry[]) {
+  const used = new Set<number>();
+  for (const r of rezdy) {
+    let best: { id: number; diff: number } | null = null;
+    for (const a of order.activity_log) {
+      if (used.has(a.id) || pairKind(a) !== r.source) continue;
+      const diff = Math.abs(wallClockKey(a.created_at) - r.sortKey);
+      if (diff <= PAIR_WINDOW_MS && (!best || diff < best.diff))
+        best = { id: a.id, diff };
+    }
+    if (best) used.add(best.id);
+  }
+  return used;
+}
+
+function merged(order: OrderDetail, only: (a: Activity) => boolean) {
+  const rezdy = rezdyEntries(order);
+  const paired = pairedLogIds(order, rezdy);
+  const fromLog = order.activity_log
+    .filter((a) => only(a) && !paired.has(a.id))
     .map(toChange);
+  // 新 → 旧；同一分钟的照接口原来的先后（stable sort）。
+  return [...rezdy, ...fromLog].sort((x, y) => y.sortKey - x.sortKey);
 }
 
-/** Show all：全部记录（含系统记录），新 → 旧。 */
+/** 新 → 旧，只留有意义的改动（含 rezdy_changes）。 */
+export function meaningfulChanges(order: OrderDetail): ChangeEntry[] {
+  return merged(order, (a) => MEANINGFUL.has(a.event_type));
+}
+
+/** Show all：全部记录（含系统记录、rezdy_changes），新 → 旧。 */
 export function allChanges(order: OrderDetail): ChangeEntry[] {
-  return order.activity_log.map(toChange);
+  return merged(order, () => true);
 }
 
 /** Changes 块默认列几条（题 2 A：超过 3 条右上 Show all N）。 */
@@ -217,13 +338,28 @@ export interface SentSummary {
   delivery: string;
 }
 
+/**
+ * 一个词，照后端阶梯（notifications.py email_state）：Clicked > Opened > Delivered > (Sent，不写) > Failed；
+ * 短信算 delivered_at / sms_status delivered，失败 failed / undelivered；邮件 bounce / spam 算 Failed。WhatsApp 发的前面加 WhatsApp。
+ */
 function deliveryOf(r: SendLogRow): string {
-  return [
-    r.sms_channel === "whatsapp" ? "WhatsApp" : "",
-    r.delivered_at || r.email_delivered_at ? "Delivered" : "",
-    r.opened_at ? "Opened" : "",
-    r.clicked_at ? "Clicked" : "",
-  ]
+  const sms = (r.sms_status || "").toLowerCase();
+  const email = (r.email_status || "").toLowerCase();
+  const word = r.clicked_at
+    ? "Clicked"
+    : r.opened_at
+      ? "Opened"
+      : r.delivered_at ||
+          r.email_delivered_at ||
+          email === "delivered" ||
+          sms.startsWith("delivered")
+        ? "Delivered"
+        : sms.startsWith("sent") || email.startsWith("sent")
+          ? ""
+          : /fail|undeliver|bounce|spam/.test(`${sms} ${email}`)
+            ? "Failed"
+            : "";
+  return [r.sms_channel === "whatsapp" ? "WhatsApp" : "", word]
     .filter(Boolean)
     .join(" · ");
 }
@@ -244,12 +380,14 @@ const REPLY_LABEL: Record<string, string> = {
   cancel: "Cancel",
 };
 
+/** module：tour_confirmation（Tour 确认）/ tickets_reminder（门票，bf 第 2 项起 confirmations 也带门票行）。 */
 export function replyFor(
   order: OrderDetail,
   date: string | null,
+  module: "tour_confirmation" | "tickets_reminder" = "tour_confirmation",
 ): { label: string; status: string; submitted: string | null } | null {
   const c = (order.confirmations ?? []).find(
-    (x) => !date || x.tour_date === date,
+    (x) => x.module === module && (!date || x.tour_date === date),
   );
   if (!c) return null;
   return {
@@ -294,6 +432,34 @@ export function latestSend(
     sms: r.sms_status || "",
     email: r.email_status || "",
     delivery: deliveryOf(r),
+  };
+}
+
+/**
+ * SENT / REMINDER SENT（bf 第 2 项，Annie 同意照固定状态）：发没发看 confirmations[].send_state，时间 = sent_at、谁 = sent_by。
+ * 送达一律看 send-log（行上的 email_status / sms_status 只在发送当时写一次，bf 2026-11-18 更正，不用）。
+ * 这一行没有 send_state（旧后端）或是 last_minute ⇒ 照旧整格用 send-log。返回 null = 没发。
+ */
+export function sentFor(
+  order: OrderDetail,
+  sends: readonly SendLogRow[],
+  module: SendModule,
+  date: string | null,
+): SentSummary | null {
+  const fromLog = latestSend(sends, module, date);
+  if (module === "last_minute") return fromLog;
+  const row = (order.confirmations ?? []).find(
+    (x) => x.module === module && (!date || x.tour_date === date),
+  );
+  // 后端 COALESCE(send_state, '')：空 = 这行没有固定状态（旧行），跟旧后端一样照 send-log。
+  if (!row || !row.send_state) return fromLog;
+  if (row.send_state !== "sent") return null;
+  return {
+    at: formatLaDateTime(row.sent_at ?? null),
+    by: row.sent_by?.trim() || "—",
+    sms: fromLog?.sms ?? "",
+    email: fromLog?.email ?? "",
+    delivery: fromLog?.delivery ?? "",
   };
 }
 

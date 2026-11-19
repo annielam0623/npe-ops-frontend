@@ -66,6 +66,8 @@ const ORDERS = {
       { id: 6, event_type: "guest_modify_requested", detail: "Guest asked to change pickup", actor: "Guest", actor_type: "guest", created_at: "10/18/2026 5:12 PM" },
       { id: 5, event_type: "field_updated", detail: "lunch_turkey: '0' → '1'", actor: "Annie Z", actor_type: "staff", created_at: "10/12/2026 3:40 PM" },
       { id: 4, event_type: "refreshed_from_rezdy", detail: "Refreshed from Rezdy — Phone: '+1 555 0000' → '+1 555 0100'; Email: '' → 'zz@example.com'", actor: "Annie Z", actor_type: "staff", created_at: "10/11/2026 9:00 AM" },
+      // id 7：两分钟后又一次 Rezdy 推送（rezdy_changes 里没有）；rezdy_changes 那条 push 只配最近的 id 3，id 7 照旧出「Updated by Rezdy」。
+      { id: 7, event_type: "booking_updated", detail: "Rezdy sync (webhook) — 1 item row(s), status CONFIRMED", actor: "rezdy", actor_type: "system", created_at: "10/10/2026 11:04 AM" },
       { id: 3, event_type: "booking_updated", detail: "Rezdy sync (webhook) — 1 item row(s), status CONFIRMED", actor: "rezdy", actor_type: "system", created_at: "10/10/2026 11:02 AM" },
       { id: 2, event_type: "booking_handled", detail: "Marked handled", actor: "system", actor_type: "system", created_at: "10/2/2026 8:00 AM" },
       { id: 1, event_type: "booking_created", detail: "Rezdy sync (webhook) — 1 item row(s), status CONFIRMED", actor: "rezdy", actor_type: "system", created_at: "10/1/2026 9:58 AM" },
@@ -80,9 +82,21 @@ const ORDERS = {
         bus_mark: { value: "boarded", label: "Boarded", by: "WRONG", role: "guide", vehicle: "9999", at: "2026-10-21T02:00:00Z" }, bus_original: null },
     ],
     // bf 合同草稿：按单的答复 / 餐 + 餐厅 / 到站（ctl.noLifeKeys 模拟旧后端没有这三个键）。
-    confirmations: [{ module: "tour_confirmation", tour_date: "2026-10-20", status: "yes", submitted_at: "2026-10-18T22:31:00Z" }],
+    // bf 第 2 项：confirmations 也带门票行（module tickets_reminder）。
+    confirmations: [
+      // bf 第 2 项固定状态：send_state / sent_at / email_status / sms_status / sent_by。morning 行故意跟 send-log 不一样（kim 6:30）⇒ 看得出读的是这里。
+      { module: "tour_confirmation", tour_date: "2026-10-20", status: "yes", submitted_at: "2026-10-18T22:31:00Z", lunch: null, lunch_by_guest: false, send_state: "sent", sent_at: "2026-10-18T21:05:00Z", email_status: "opened", sms_status: "delivered", sent_by: "veronica" },
+      { module: "tickets_reminder", tour_date: "2026-10-20", status: "reschedule_req", submitted_at: "2026-10-19T17:00:00Z", lunch: null, lunch_by_guest: false, send_state: "unsent", sent_at: null, email_status: "", sms_status: "", sent_by: "" },
+      { module: "morning_pickup", tour_date: "2026-10-20", status: "", submitted_at: null, lunch: null, lunch_by_guest: false, send_state: "sent", sent_at: "2026-10-20T01:30:00Z", email_status: "", sms_status: "delivered", sent_by: "kim" },
+    ],
     lunch_by_day: [{ tour_date: "2026-10-20", product: "PBZ", bus_label: "A", has_lunch: true, turkey: 1, veggie: 1, beef: 0, defaulted: false, check: false, changed: false, text: "1 Turkey, 1 Veggie", restaurant: "ZZ Test Diner" }],
     live_by_day: [{ tour_date: "2026-10-20", live_status: "picked_up", live_status_at: "2026-10-20T12:50:00Z", live_driver: "Jane D.", live_van: "2101", arrived_at: "2026-10-20T12:44:00Z", left_at: "2026-10-20T12:53:00Z" }],
+    // 生命周期第 2 项（bf 合同 rezdy_changes）：跨分钟也配（refresh 9:01:30 ↔ activity 9:00）。同一件事的 activity_log 那两条（id 4 refreshed_from_rezdy、id 3 booking_updated）是重复的，前端以这里为准。
+    rezdy_changes: [
+      { at: "2026-10-11T16:01:30Z", source: "refresh_from_rezdy", by: "Annie Z", changes: [{ field: "Email", before: "", after: "zz@example.com" }, { field: "Phone", before: "+1 555 0000", after: "+1 555 0100" }] },
+      // 后端一条里按标签字母序存（Email < Phone、Item < Tour date）；前端排成固定顺序（Phone, Email / Tour date, Item）。
+      { at: "2026-10-10T18:02:40Z", source: "rezdy_push", by: "", changes: [{ field: "Item PXTRA", before: null, after: "PXTRA" }, { field: "Tour date (PBZ)", before: "10/19/2026", after: "10/20/2026" }] },
+    ],
   }),
   ZZTEST2: (() => {
     const o = order("ZZTEST2", { booking_type: "ticket" });
