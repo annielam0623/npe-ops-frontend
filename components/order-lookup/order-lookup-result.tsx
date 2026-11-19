@@ -701,6 +701,8 @@ function ChangesBlock({
   const everything = allChanges(order);
   const shown = all ? everything : changes.slice(0, CHANGES_SHOWN);
   const canMore = !all && everything.length > shown.length;
+  // Annie 2026-11-18「但凡可以展开的页面一定要能折叠」：展开后键变 Show less，点了回到最近 3 条。
+  const canLess = all && everything.length > Math.min(changes.length, CHANGES_SHOWN);
   return (
     <div
       className={cn("rounded-[12px] border bg-white/[.025] px-4 py-3", frame)}
@@ -728,6 +730,15 @@ function ChangesBlock({
             className="ml-auto cursor-pointer text-[12.5px] font-semibold text-white/60 hover:text-white"
           >
             Show all {everything.length} ▾
+          </button>
+        ) : canLess ? (
+          <button
+            type="button"
+            data-changes-less
+            onClick={() => setAll(false)}
+            className="ml-auto cursor-pointer text-[12.5px] font-semibold text-white/60 hover:text-white"
+          >
+            Show less ▴
           </button>
         ) : (
           <span className="ml-auto" />
