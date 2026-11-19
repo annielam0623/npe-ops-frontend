@@ -441,6 +441,72 @@ export function lunchFor(order: OrderDetail, date: string | null) {
   );
 }
 
+/** 三明治写法跟后端 tour_manifest.lunch_text 一样：「1 Turkey, 2 Veggie, 1 Roast Beef」，0 份不写。 */
+const SANDWICHES = [
+  ["turkey", "Turkey"],
+  ["veggie", "Veggie"],
+  ["beef", "Roast Beef"],
+] as const;
+
+type LunchCounts = { turkey?: number; veggie?: number; beef?: number };
+
+export function lunchText(c: LunchCounts): string {
+  return SANDWICHES.filter(([k]) => Number(c[k] || 0) > 0)
+    .map(([k, label]) => `${Number(c[k])} ${label}`)
+    .join(", ");
+}
+
+const sameLunch = (a: LunchCounts, b: LunchCounts) =>
+  SANDWICHES.every(([k]) => Number(a[k] || 0) === Number(b[k] || 0));
+
+/** 两份不一样时客人那格下面的橙字（Annie 2026-11-19「全部动手」，题 B2 B）。 */
+export const LUNCH_NOT_IN_BUS =
+  "Not in the bus manifest yet. Copy the guest's pick to the Rezdy order (special requirements).";
+
+/**
+ * 第 4 件：客人选的餐（tracking 行 confirmations[].lunch）vs Bus Manifest 的餐（lunch_by_day），按同一个团期对。
+ * - guest：tour_confirmation 那行的餐（没有再看同一天别的 Tour 车道行，门票行不算）；灰字只写时间——后端 lunch.source 没做之前不写来源。
+ * - mismatch：两份份数不一样才算；这个团没有三明治午餐（has_lunch=false）、导游改过（changed=true）、客人那份是 null、
+ *   旧后端没给 Bus 的三个数，都不算。tracking 那份本来就是「客人 / Rezdy 谁新留谁」，不一样 = 客人新选的还没抄进 Rezdy（Bus 读 Rezdy special）。
+ */
+export function lunchPick(order: OrderDetail, date: string | null) {
+  const rows = (order.confirmations ?? []).filter(
+    (x) => x.module !== "tickets_reminder" && (!date || x.tour_date === date),
+  );
+  const row =
+    rows.find((x) => x.module === "tour_confirmation" && x.lunch) ??
+    rows.find((x) => x.lunch) ??
+    null;
+  const g = row?.lunch ?? null;
+  const bus = lunchFor(order, date);
+  const busCounts =
+    bus && typeof bus.turkey === "number"
+      ? { turkey: bus.turkey, veggie: bus.veggie, beef: bus.beef }
+      : null;
+  return {
+    guest: g
+      ? {
+          text: lunchText(g) || "—",
+          at: g.updated_at ? formatLaDateTime(g.updated_at) : null,
+        }
+      : null,
+    bus: bus
+      ? {
+          text: bus.has_lunch ? bus.text || "—" : "No lunch",
+          has_lunch: bus.has_lunch,
+          restaurant: bus.restaurant,
+        }
+      : null,
+    mismatch: Boolean(
+      g &&
+      bus?.has_lunch &&
+      !bus.changed &&
+      busCounts &&
+      !sameLunch(g, busCounts),
+    ),
+  };
+}
+
 export function liveFor(order: OrderDetail, date: string | null) {
   return (
     (order.live_by_day ?? []).find((x) => !date || x.tour_date === date) ?? null

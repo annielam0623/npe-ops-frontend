@@ -162,8 +162,20 @@ export interface OrderDetail {
     email_status?: string | null;
     sms_status?: string | null;
     sent_by?: string;
+    /**
+     * 这一行 tracking 上存的三明治份数（第 4 件「客人选的餐」）：客人在确认页选的，或 tracking_sync 从 Rezdy 抄来的，谁新留谁；
+     * 三格都 0 ⇒ null。旧后端没有。
+     */
+    lunch?: {
+      turkey: number;
+      veggie: number;
+      beef: number;
+      updated_at: string | null;
+    } | null;
+    /** 这张单有没有过客人选餐的记录（activity_log lunch_selected）；⚠️ 整张单一个值，不是每行（后端 lunch.source 还没做）。 */
+    lunch_by_guest?: boolean;
   }[];
-  /** 按单的餐（text 例 "2 Turkey, 1 Veggie"）和餐厅。 */
+  /** 按单的餐（text 例 "2 Turkey, 1 Veggie"）和餐厅——Bus Manifest 的数（Rezdy 文字 + 导游改过的）。 */
   lunch_by_day?: {
     tour_date: string;
     product: string;
@@ -171,6 +183,15 @@ export interface OrderDetail {
     has_lunch: boolean;
     text: string;
     restaurant: string | null;
+    turkey?: number;
+    veggie?: number;
+    beef?: number;
+    /** 没写三明治，按默认算 Turkey。 */
+    defaulted?: boolean;
+    /** 合计 ≠ pax。 */
+    check?: boolean;
+    /** 导游改过的餐。 */
+    changed?: boolean;
   }[];
   /** 按单的接客到站（只 relay 接客才有）。 */
   live_by_day?: {

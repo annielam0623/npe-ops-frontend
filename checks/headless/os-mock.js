@@ -85,7 +85,7 @@ const ORDERS = {
     // bf 第 2 项：confirmations 也带门票行（module tickets_reminder）。
     confirmations: [
       // bf 第 2 项固定状态：send_state / sent_at / email_status / sms_status / sent_by。morning 行故意跟 send-log 不一样（kim 6:30）⇒ 看得出读的是这里。
-      { module: "tour_confirmation", tour_date: "2026-10-20", status: "yes", submitted_at: "2026-10-18T22:31:00Z", lunch: null, lunch_by_guest: false, send_state: "sent", sent_at: "2026-10-18T21:05:00Z", email_status: "opened", sms_status: "delivered", sent_by: "veronica" },
+      { module: "tour_confirmation", tour_date: "2026-10-20", status: "yes", submitted_at: "2026-10-18T22:31:00Z", lunch: { turkey: 2, veggie: 0, beef: 0, updated_at: "2026-10-18T22:31:00Z" }, lunch_by_guest: true, send_state: "sent", sent_at: "2026-10-18T21:05:00Z", email_status: "opened", sms_status: "delivered", sent_by: "veronica" },
       { module: "tickets_reminder", tour_date: "2026-10-20", status: "reschedule_req", submitted_at: "2026-10-19T17:00:00Z", lunch: null, lunch_by_guest: false, send_state: "unsent", sent_at: null, email_status: "", sms_status: "", sent_by: "" },
       { module: "morning_pickup", tour_date: "2026-10-20", status: "", submitted_at: null, lunch: null, lunch_by_guest: false, send_state: "sent", sent_at: "2026-10-20T01:30:00Z", email_status: "", sms_status: "delivered", sent_by: "kim" },
     ],
@@ -248,7 +248,24 @@ http
       const on = decodeURIComponent(m[1]);
       if (on === "ZZFAIL") return send(res, 500, { detail: "mock order failure" });
       if (!ORDERS[on]) return send(res, 404, { detail: "Order not found" });
-      const o = { ...ORDERS[on], ...(ctl.hold && on === "ZZTEST2" ? { status: "On Hold" } : {}) };
+      let o = { ...ORDERS[on], ...(ctl.hold && on === "ZZTEST2" ? { status: "On Hold" } : {}) };
+      // 第 4 件：ctl.lunchCase 改 ZZTEST1 客人选的餐 / Bus 的餐（默认 = 客人 2 Turkey、Bus 1 Turkey 1 Veggie ⇒ 不一样、出橙字）。
+      if (on === "ZZTEST1" && ctl.lunchCase && o.confirmations) {
+        const c = ctl.lunchCase;
+        o = {
+          ...o,
+          confirmations: o.confirmations.map((r) =>
+            r.module !== "tour_confirmation" ? r
+              : c === "same" ? { ...r, lunch: { turkey: 1, veggie: 1, beef: 0, updated_at: "2026-10-18T22:31:00Z" } }
+              : c === "nullguest" ? { ...r, lunch: null }
+              : r),
+          lunch_by_day: o.lunch_by_day.map((d) =>
+            c === "changed" ? { ...d, changed: true }
+              : c === "nolunch" ? { ...d, has_lunch: false, turkey: 0, veggie: 0, beef: 0, text: "" }
+              : c === "oldkeys" ? { tour_date: d.tour_date, product: d.product, bus_label: d.bus_label, has_lunch: d.has_lunch, text: d.text, restaurant: d.restaurant }
+              : d),
+        };
+      }
       return send(res, 200, ctl.mlinks ? { ...o, manifest_links: MLINKS[on] ?? [] } : o);
     }
     const date = url.searchParams.get("date");
