@@ -1617,6 +1617,43 @@ async function run() {
     await waitFor("(() => { const p = document.getElementById('panel-send'); const b = p && p.querySelector('[aria-label=\"Need a look\"]'); if (!b || !b.offsetParent) return false; const r = b.getBoundingClientRect(); return r.top < innerHeight && r.bottom > 0; })()", 10000);
     check("G308 Need a look Fix ›：切到 Send 标签、滚到 Need a look 那一块", await evaluate("const p = document.getElementById('panel-send'); const b = p && p.querySelector('[aria-label=\"Need a look\"]'); if (!b) return false; const r = b.getBoundingClientRect(); return !!b.offsetParent && r.top < innerHeight && r.bottom > 0 && new URL(location.href).searchParams.get('tab') === 'send';"));
 
+    // ── G307（Annie 11-13「need a look放得太朝下了，没人会注意」，11-19 选 B「0单时就不出现」+「动手」）：
+    // Send 标签最上面橙色提醒 + View ›；Need a look 那一块原位不动；0 单不出。
+    {
+      const al = "document.querySelector('#panel-send [data-need-look-alert]')";
+      const nlBox = "document.querySelector('#panel-send [aria-label=\"Need a look\"]')";
+      const inView = (sel) => `(() => { const b = ${sel}; if (!b || !b.offsetParent) return false; const r = b.getBoundingClientRect(); return r.top < innerHeight && r.bottom > 0; })()`;
+      check("G307 有 1 单：Send 标签有橙色提醒，原文「⚠ 1 order in Need a look — these guests will not get the morning reminder until each one is sorted out.」+ View ›",
+        await evaluate(`const a = ${al}; return !!a && a.textContent.replace(/\\s+/g, ' ').trim() === '⚠ 1 order in Need a look — these guests will not get the morning reminder until each one is sorted out. View ›' && a.querySelector('[data-need-look-view]').textContent === 'View ›';`),
+        await evaluate(`return ${al}?.textContent;`));
+      check("G307 提醒在 Send 标签最上面（Step 1 前面），Need a look 那一块还在下面原位",
+        await evaluate(`const a = ${al}, b = ${nlBox}, p = document.getElementById('panel-send'); const s = [...p.children], i = s.indexOf(a), nx = s[i + 1]; return i >= 0 && !!nx && nx.textContent.includes('Send to drivers') && a.getBoundingClientRect().bottom <= nx.getBoundingClientRect().top + 1 && s.slice(0, i).every(e => !e.contains(b)) && s.slice(i + 2).some(e => e.contains(b));`),
+        await evaluate(`const p = document.getElementById('panel-send'); return [...p.children].map(e => e.tagName + ':' + e.textContent.slice(0, 30)).join(' | ');`));
+      check("G307 提醒是橙黄底（同 Assign not saved 黄条），View › 是蓝字链接不是蓝底按钮",
+        await evaluate(`const a = ${al}, v = a.querySelector('[data-need-look-view]'); const cs = getComputedStyle(v); return getComputedStyle(a).backgroundColor === 'rgb(253, 241, 221)' && cs.backgroundColor === 'rgba(0, 0, 0, 0)' && cs.textDecorationLine.includes('underline');`));
+      await evaluate("window.scrollTo(0, 0);");
+      await sleep(300);
+      check("G307 滚回顶上：电脑第一屏看得到提醒、看不到 Need a look 那一块", await evaluate(`return ${inView(al)} && !${inView(nlBox)};`));
+      await evaluate(`${al}.querySelector('[data-need-look-view]').click();`);
+      check("G307 点 View ›：滚到 Need a look 那一块", await waitFor(inView(nlBox), 10000));
+      // 手机第一屏
+      await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+      await sleep(600);
+      await evaluate("window.scrollTo(0, 0);");
+      await sleep(300);
+      const phoneTop = await evaluate(`return Math.round(${al}.getBoundingClientRect().top);`);
+      check("G307 手机：页面最上面往下一屏之内就是提醒（top < 844）、没有左右晃", phoneTop >= 0 && phoneTop < 844 && (await evaluate("return document.documentElement.scrollWidth <= innerWidth + 1;")), String(phoneTop));
+      await cdp("Emulation.clearDeviceMetricsOverride");
+      await sleep(300);
+      // 0 单：不出
+      await ctl({ needRoundEmpty: true, needRound: false });
+      await openPage(`${APP}/dispatch?date=2026-10-05&tab=send`);
+      await waitFor(nlBox, 20000);
+      await sleep(1200);
+      check("G307 0 单：没有提醒；Need a look 那一块照旧在", await evaluate(`return !${al} && !!${nlBox};`));
+      await ctl({ needRoundEmpty: false });
+    }
+
     await openDay("2026-10-06");
     check("G308 Relay 车没酒店：「Morning Relay · 1st Round: vehicle 768 has no hotel」+ Needs a hotel.", await evaluate(`const l = ${li("vehicle 768 has no hotel")}; return !!l && l.textContent.includes('Morning Relay · 1st Round: vehicle 768 has no hotel') && l.textContent.includes('Needs a hotel.');`), await evaluate("return document.getElementById('schedule-check').textContent;"));
     await fixOf("vehicle 768 has no hotel");

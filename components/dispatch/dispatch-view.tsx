@@ -123,6 +123,7 @@ import {
 import { UnitError, UnitStatus } from "./unit-save";
 import {
   ArrangeBoard,
+  plural,
   seatNotes,
   type SeatDayState,
   type SeatMove,
@@ -3146,6 +3147,30 @@ export function DispatchView() {
                       className={TM_BTN}
                     >
                       Back to Assign
+                    </button>
+                  </div>
+                ) : null}
+                {/* G307（Annie 2026-11-13「need a look放得太朝下了，没人会注意」，11-19 选 B「0单时就不出现」+「动手」）：
+                    Need a look 那一块位置不动（Step 2 最下面），Send 标签最上面加一条橙色提醒，View › 滚过去（同 Schedule check 的 Fix ›）。
+                    数字同 Schedule check（同一次 relay-pull 读）；0 单 / 读不到不出。不能发送的人没有 Send 标签，自然看不到。 */}
+                {needLook?.date === day.run_date && needLook.n > 0 ? (
+                  <div
+                    role="status"
+                    data-need-look-alert
+                    className={cn(BANNER, "flex flex-wrap items-center gap-3")}
+                  >
+                    <span className="mr-auto">
+                      ⚠ {plural(needLook.n, "order")} in Need a look — these
+                      guests will not get the morning reminder until each one
+                      is sorted out.
+                    </span>
+                    <button
+                      type="button"
+                      data-need-look-view
+                      onClick={goNeedLook}
+                      className="cursor-pointer border-0 bg-transparent p-0 text-[13px] font-semibold text-[#1d4ed8] underline underline-offset-2 hover:text-[#1e40af]"
+                    >
+                      View ›
                     </button>
                   </div>
                 ) : null}
