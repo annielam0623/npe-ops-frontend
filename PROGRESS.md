@@ -14,6 +14,12 @@
 - F1 黄框（ae 转）：在 ops components/dispatch/pickup-move.tsx（main b745ce67，只在 11-18…22 出），已回 ae 现行原文；ae 问了 Annie 4 题（5 家改到哪、哪些产品算 5:15am、昨天改的要不要改回、结束日期），等答再出 preview。
 - Dispatch bug（ae 转，Annie 截图「最上面的bus card还在打开着要求保存」）：11-19 South Rim 在 Assign Bus 是 Closed（CCL closed），Step 1 卡却橙「Needs saving」+ Assign Bus 键。4d 开只读子任务查是前端还是后端。⇒ **前端**：manifests-panel.tsx warnState（uploaded && buses===0 ⇒ Needs saving）不读 closures；Closed 来自 DispatchPrefill.closures（GET /api/dispatch/imports/day），view-only 用户不加载。已回 ae；派 23（task/dispatch-closed-step1）先出 preview（含 view-only 题：前端读 closures / 后端 ManifestCard 加 closed）。📌 样稿 https://claude.ai/artifact/4DBfnaUmsSMFaGd9FZhqac 4 题（原文在 4d 回复）：1 键 A 白「Check the bus」（推荐）/ B 不出；2 view-only A 前端也读 closures（推荐，接口只要 dispatch.view）/ B 后端加字段；3 排序 A 排最后（推荐）/ B 不动；4 关了还有客人 A 橙字提醒 + 排前（推荐）/ B 只 Closed。How to use 加一条。✅ Annie（ae 窗口原话）「south bus的那个close同意推荐，动手」⇒ 1A 2A 3A 4A，后端不用加字段；23 写 task/dispatch-closed-step1，过检查直接合。✅ **上 main 23c2c5d6**（da 640 含关团 10 项、nav 39，tsc / eslint / build）。📌 请 Annie 线上验 Dispatch 11/19：Step 1 South Rim 灰底「Closed」、「Closed by CCL · 0 guests loaded」、没有 Needs saving / Assign Bus、白「Check the bus」跳 Step 2、排后面；只看账号也看到 Closed；How to use 多一条。
 
+### 11-18 晚 收工状态（4d 记，23 交接）
+- 今晚上 main：noshow c4ab4018、150 Relay / Tour 6a90bc27、Test send b1d5a79f、Dispatch 关团 23c2c5d6、生命周期第一批 e8878386、Show less 51b86305。规则：CLAUDE.md 开工必做第 4 条 c3b0bd4c。
+- 23：**task/order-lifecycle-rezdy a07eafcd**（第 2 项 + SENT 照固定状态 + 每条可展开收起；os 126 / orders 113 / nav 39）⇒ 已转 bf PASS，PASS 后合。**task/lifecycle-chat 32ee5187 WIP 别合**：已做搜索结果 Chat history 块（3 条 + Show all ⇄ less、WhatsApp 照 channel、跟开关 + messages.view）、详情页生命周期块去掉 Relay / Bus；还要做：① 三个 Tracking 页 ?chat=单号 打开对话框（没有这单黄字「This order is not on this day's list.」）+ tt / tk / mt 检查；② 各块「Open chat →」；③ 订单详情 Notes 改名 Chat history、挪最下、加 Open chat →；④ How to use 那句；⑤ send-log 偶发拉两次修成一次。
+- 4a：G298 样稿 6 题等 Annie（8e 合同未到）。8d 待命。
+- 📌 等 Annie：G298 6 题；lunch_turkey 写法 A / B；客人选餐 B1 / B2；No show 手机说明；F1 黄框 4 题（ae 问的）；「Tour」列名；SMS 超字数显示文字；Tickets 页头改灰 6 题；蓝键；Content Studio smsCheck；DOR 去 Soon 标签（她验收后）。
+
 ## 2026-11-18 收工交接：前端主窗口 `前端主窗口4d`[9f187b]（公司电脑，14:30 下班）
 **一、今天上 main（都请 Annie 线上验，步骤在下面当天记录）**：Morning Tracking 顶部整合 + 手机版简化 **296561bc**（36 / 4d 合）；工资改锁 + 自动锁 **db395e64**（8d）；G281 Ticket Tracking 从 Main manifest 自动填 **391faae5**（23）；群发 SMS 问候只一次 **83697c9c**（4a；后端模板 bf[484954] 还在改）。
 **二、在分支、没合 main**
