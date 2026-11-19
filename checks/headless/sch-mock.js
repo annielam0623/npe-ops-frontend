@@ -32,6 +32,11 @@ function historyOf(week, id) {
       { id: 39, at: "2026-10-31T18:02:00+00:00", kind: "approved", by: "Max", by_kind: "staff", lines: [], channels: [], request_kind: "swap", from_slot: slot(0, "close"), request: slot(4, "close"), peer: "Veronica", requester: "Nadia" },
       { id: 40, at: "2026-10-31T18:03:00+00:00", kind: "declined", by: "Max", by_kind: "staff", lines: [], channels: [], request_kind: "move", from_slot: slot(4, "close"), request: slot(5, "close") },
       { id: 41, at: "2026-10-31T18:04:00+00:00", kind: "request_closed_on_publish", by_kind: "system", request_kind: "swap", from_slot: slot(0, "close"), request: slot(4, "close"), peer: "Veronica", requester: "Nadia" },
+      // G298（8e 2026-11-18）：撤回（by 发起人、只带 peer）、那周开始了系统关、被别的换班换走主管关；最后一条没带全字段
+      { id: 42, at: "2026-10-31T18:05:00+00:00", kind: "swap_withdrawn", by: "Nadia", by_kind: "employee", lines: [], channels: [], via: "login", request_kind: "swap", from_slot: slot(0, "close"), request: slot(4, "close"), peer: "Veronica" },
+      { id: 43, at: "2026-10-31T18:06:00+00:00", kind: "request_closed_week_started", by_kind: "system", request_kind: "swap", from_slot: slot(0, "close"), request: slot(4, "close"), peer: "Veronica", requester: "Nadia" },
+      { id: 44, at: "2026-10-31T18:07:00+00:00", kind: "request_closed_other_swap", by: "Max", by_kind: "staff", lines: [], channels: [], request_kind: "swap", from_slot: slot(0, "close"), request: slot(4, "close"), peer: "Veronica", requester: "Nadia" },
+      { id: 45, at: "2026-10-31T18:08:00+00:00", kind: "request_closed_week_started", by_kind: "system", request_kind: "swap" },
     ], { g138: true });
   }
   if (!histories[key]) {

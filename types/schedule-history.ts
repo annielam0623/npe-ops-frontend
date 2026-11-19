@@ -22,7 +22,11 @@ export type ScheduleHistoryKind =
   /** 对方不同意换班（结束）。 */
   | "swap_declined_by_peer"
   /** 第一次 Publish 时还没处理完，关掉了。 */
-  | "request_closed_on_publish";
+  | "request_closed_on_publish"
+  // G298 发布后换班（8e 2026-11-18）
+  | "swap_withdrawn"
+  | "request_closed_week_started"
+  | "request_closed_other_swap";
 
 export interface ScheduleHistoryEvent {
   id: number;
