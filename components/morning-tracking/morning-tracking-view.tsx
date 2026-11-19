@@ -932,7 +932,7 @@ export function MorningTrackingView() {
             // 司机实时页（开关对我开时才写）。
             ...(canLive
               ? [
-                  "Live drivers shows each driver's and guide's phone page side by side, read-only. Picked up, Boarded and No show show the time they were marked. It refreshes every 30 seconds. Tap Text, or a guest in Messages, to reply: SMS and email go together from the company number, and the driver sees your reply in their conversation.",
+                  "Live drivers shows each driver's and guide's phone page side by side, read-only. Picked up, Boarded and No show show the time they were marked. It refreshes every 30 seconds. Tap Text, or a guest in Messages, to reply: SMS and email go together from the company number, and the driver sees your reply in their conversation. Tap WhatsApp next to Call to open a chat with the guest in your own WhatsApp. A guest has no WhatsApp button when their number looks wrong.",
                 ]
               : []),
             // No show 改方向（Annie 2026-11-17「动手」）：后端带了 Relay / Bus 分开的标记才写这几条。
