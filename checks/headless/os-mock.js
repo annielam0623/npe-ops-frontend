@@ -54,6 +54,13 @@ function order(on, over = {}) {
 const ORDERS = {
   ZZTEST1: order("ZZTEST1", {
     order_detail: { dateCreated: "2026-10-01T16:57:02Z" },
+    // Chat history（订单详情接口 booking_notes，旧 → 新）：4 条 ⇒ 默认列最新 3 条 + Show all 4。
+    booking_notes: [
+      { id: 801, author: "kevin", direction: "sms_out", body: "Hi, your pickup tomorrow is 5:45 AM at the ZZ Hotel Lobby.", sms_status: "delivered", email_status: "", created_at: "10/19/2026 6:00 PM" },
+      { id: 802, author: "", direction: "voice_in", body: "Hi, calling about tomorrow's pickup, can we bring a stroller?", sms_status: "", email_status: "", created_at: "10/19/2026 6:58 PM" },
+      { id: 803, author: "", direction: "sms_in", channel: "whatsapp", body: "Can we bring a stroller?", sms_status: "", email_status: "", created_at: "10/19/2026 7:10 PM" },
+      { id: 804, author: "annie", direction: "email_out", body: "Yes, strollers are fine.", sms_status: "", email_status: "sent", created_at: "10/19/2026 7:30 PM" },
+    ],
     // 接口按时间新 → 旧。有意义的 4 条（guest_modify_requested / field_updated / refreshed_from_rezdy / booking_updated），系统记录 2 条。
     activity_log: [
       { id: 6, event_type: "guest_modify_requested", detail: "Guest asked to change pickup", actor: "Guest", actor_type: "guest", created_at: "10/18/2026 5:12 PM" },

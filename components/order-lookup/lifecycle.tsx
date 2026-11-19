@@ -2,20 +2,18 @@
 
 import { type ReactNode, useEffect, useState } from "react";
 
+import { PageLink } from "@/components/ui/page-link";
 import { usePhoneCollapse } from "@/components/ui/phone";
 import {
   allChanges,
   bookedAt,
   type ChangeEntry,
   CHANGES_SHOWN,
-  dayOfTourFor,
   fetchOrderSends,
   LIFECYCLE_FRAME,
   sentFor,
   liveFor,
   lunchFor,
-  markText,
-  markTone,
   meaningfulChanges,
   receivedAt,
   replyFor,
@@ -128,9 +126,6 @@ export function LifecycleCard({ order }: { order: OrderDetail }) {
   const rows = sendsOf(sends);
   const changes = meaningfulChanges(order);
   const everything = allChanges(order);
-  const day = dayOfTourFor(order, date);
-  const relay = day?.relay_mark ?? null;
-  const bus = day?.bus_mark ?? null;
   const reply = replyFor(order, date);
   const ticketReply = replyFor(order, date, "tickets_reminder");
   const lunch = lunchFor(order, date);
@@ -204,32 +199,7 @@ export function LifecycleCard({ order }: { order: OrderDetail }) {
         <DField label="Van at hotel" tone={van ? undefined : "muted"}>
           {van ?? "—"}
         </DField>
-        <DField
-          label="Relay"
-          tone={
-            relay
-              ? markTone(relay) === "plain"
-                ? undefined
-                : (markTone(relay) as "good" | "bad")
-              : "muted"
-          }
-          sub={relay ? markText(relay).sub : undefined}
-        >
-          {relay ? markText(relay).main : "—"}
-        </DField>
-        <DField
-          label="Bus"
-          tone={
-            bus
-              ? markTone(bus) === "plain"
-                ? undefined
-                : (markTone(bus) as "good" | "bad")
-              : "muted"
-          }
-          sub={bus ? markText(bus).sub : undefined}
-        >
-          {bus ? markText(bus).main : "—"}
-        </DField>
+        {/* Relay / Bus 不在这里写（Annie 2026-11-18「全部同意推荐」）：订单详情页已有「Day of tour」卡，同一份 day_of_tour。 */}
         {/* 题 4 B：后端还没有回程到站，先写「—」。 */}
         <DField label="Tour ended" tone="muted">
           —
@@ -423,5 +393,251 @@ export function ChangeLine({
         )}
       </span>
     </li>
+  );
+}
+
+// ── Chat history（Annie 2026-11-18「全部同意推荐。动手」，样稿第 8 版 C1–C4 全 A）──────────────
+
+/** 订单详情接口的 booking_notes 一条（ASC）。 */
+type Note = OrderDetail["booking_notes"][number];
+
+const CHAT_SHOWN = 3;
+
+/** 「Guest · SMS」「kevin · Email」「Guest · Voice message」。 */
+export function chatWho(n: Note): { who: string; guest: boolean } {
+  switch (n.direction) {
+    case "sms_in":
+      return {
+        who: n.channel === "whatsapp" ? "Guest · WhatsApp" : "Guest · SMS",
+        guest: true,
+      };
+    case "email_in":
+      return { who: "Guest · Email", guest: true };
+    case "guest_reply":
+      return { who: "Guest · Web", guest: true };
+    case "voice_in":
+      return { who: "Guest · Voice message", guest: true };
+    case "sms_out":
+      return {
+        who: `${n.author || "Staff"} · ${n.channel === "whatsapp" ? "WhatsApp" : "SMS"}`,
+        guest: false,
+      };
+    case "email_out":
+      return { who: `${n.author || "Staff"} · Email`, guest: false };
+    default:
+      return { who: `${n.author || "Staff"} · Note`, guest: false };
+  }
+}
+
+/**
+ * 搜索结果最下面的「Chat history」块（三个 Tracking 块下面、How to use 上面）：新 → 旧，默认 3 条，Show all ⇄ Show less；
+ * 手机上默认收起。只给看得到生命周期、又有 messages.view 的人（调用方判断）。
+ */
+export function ChatHistoryBlock({
+  notes,
+  frame,
+}: {
+  notes: readonly Note[];
+  frame: string;
+}) {
+  const [all, setAll] = useState(false);
+  const collapse = usePhoneCollapse();
+  const newest = [...notes].reverse();
+  const shown = all ? newest : newest.slice(0, CHAT_SHOWN);
+  const more = newest.length > CHAT_SHOWN;
+  return (
+    <div
+      className={cn("rounded-[12px] border bg-white/[.025] px-4 py-3", frame)}
+      data-lookup-block="chat"
+    >
+      <div className="flex items-baseline gap-3">
+        <button
+          type="button"
+          onClick={collapse.toggle}
+          className="text-left text-[13.5px] font-semibold"
+        >
+          Chat history
+        </button>
+        {more ? (
+          <button
+            type="button"
+            data-chat-toggle
+            onClick={() => {
+              setAll((v) => !v);
+              collapse.setOpen(true);
+            }}
+            className="ml-auto cursor-pointer text-[12.5px] font-semibold text-white/60 hover:text-white"
+          >
+            {all ? "Show less ▴" : `Show all ${newest.length} ▾`}
+          </button>
+        ) : (
+          <span className="ml-auto" />
+        )}
+        {collapse.caret}
+      </div>
+      <div className={collapse.hide}>
+        {shown.length ? (
+          <ul className="mt-2 grid gap-1.5">
+            {shown.map((n) => {
+              const { who, guest } = chatWho(n);
+              return (
+                <li
+                  key={n.id}
+                  data-chat={n.direction}
+                  className="grid grid-cols-[minmax(0,150px)_minmax(0,150px)_minmax(0,1fr)] gap-x-3 gap-y-0.5 text-[12.5px] text-white/85 max-sm:grid-cols-1"
+                >
+                  <span className="text-white/40 tabular-nums">
+                    {n.created_at}
+                  </span>
+                  <span
+                    className={cn(
+                      "font-semibold",
+                      guest ? "text-[#4ade80]" : "text-[#a78bfa]",
+                    )}
+                  >
+                    {who}
+                  </span>
+                  <span className="line-clamp-2 min-w-0 [overflow-wrap:anywhere]">
+                    {n.body}
+                    {n.direction === "voice_in" ? (
+                      <span className="text-white/45"> (transcript)</span>
+                    ) : null}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <p className="mt-2 text-[12.5px] text-white/45" data-chat-empty>
+            No messages yet.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+const CHAT_PATH = {
+  tour_confirmation: { path: "/tour-confirmation/tracking", label: "Tour" },
+  tickets_reminder: { path: "/tickets-reminder/tracking", label: "Tickets" },
+  morning_pickup: { path: "/morning-pickup/tracking", label: "Morning" },
+} as const;
+type ChatModule = keyof typeof CHAT_PATH;
+
+/** 这单这天有哪些 Tracking 线（confirmations 有就照它；旧后端按订单类型猜：门票 ⇒ Tickets，其余 ⇒ Tour）。 */
+function chatLines(order: OrderDetail, date: string | null): ChatModule[] {
+  if (!date) return [];
+  const mods = [
+    ...new Set(
+      (order.confirmations ?? [])
+        .filter((c) => c.tour_date === date && c.module in CHAT_PATH)
+        .map((c) => c.module as ChatModule),
+    ),
+  ];
+  if (mods.length) return mods;
+  return [
+    order.booking_type === "ticket" ? "tickets_reminder" : "tour_confirmation",
+  ];
+}
+
+/**
+ * 订单详情页最下面的「Chat history」（C3 A：原 Notes 卡里的对话挪到这里、改名，写法同搜索结果），
+ * 右上「Open chat →」（几条线各一个：Open chat · Tour → / · Morning →）。调用方判断开关 + messages.view。
+ */
+export function OrderChatHistory({ order }: { order: OrderDetail }) {
+  const [all, setAll] = useState(false);
+  const collapse = usePhoneCollapse();
+  const date = orderDateToYmd(order.product.tour_date);
+  const newest = [...(order.booking_notes ?? [])].reverse();
+  const shown = all ? newest : newest.slice(0, CHAT_SHOWN);
+  const lines = chatLines(order, date);
+  const on = encodeURIComponent(order.order_number);
+  return (
+    <section
+      aria-label="Chat history"
+      data-order-chat
+      className={cn(
+        "mt-3 rounded-[10px] border bg-paper px-4 py-3.5 night:bg-white/[.04]",
+        LIFECYCLE_FRAME,
+      )}
+    >
+      <div className="mb-2 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <button
+          type="button"
+          onClick={collapse.toggle}
+          className="text-left text-[11px] font-semibold tracking-[0.6px] text-[#1a1a1a] uppercase night:text-white/35"
+        >
+          Chat history
+        </button>
+        {collapse.caret}
+        <span className="ml-auto flex flex-wrap gap-3">
+          {date
+            ? lines.map((m) => (
+                <PageLink
+                  key={m}
+                  data-open-chat={m}
+                  href={`${CHAT_PATH[m].path}?date=${date}&q=${on}&chat=${on}`}
+                  className="text-[12px] font-semibold text-[#2563eb] night:text-white/60"
+                >
+                  {lines.length > 1
+                    ? `Open chat · ${CHAT_PATH[m].label} →`
+                    : "Open chat →"}
+                </PageLink>
+              ))
+            : null}
+          {newest.length > CHAT_SHOWN ? (
+            <button
+              type="button"
+              data-chat-toggle
+              onClick={() => {
+                setAll((v) => !v);
+                collapse.setOpen(true);
+              }}
+              className="cursor-pointer text-[12px] font-semibold text-[#2563eb] night:text-white/60"
+            >
+              {all ? "Show less ▴" : `Show all ${newest.length} ▾`}
+            </button>
+          ) : null}
+        </span>
+      </div>
+      <div className={collapse.hide}>
+        {shown.length ? (
+          <ul className="grid gap-1.5">
+            {shown.map((n) => {
+              const { who, guest } = chatWho(n);
+              return (
+                <li
+                  key={n.id}
+                  data-chat={n.direction}
+                  className="grid grid-cols-[minmax(0,150px)_minmax(0,150px)_minmax(0,1fr)] gap-x-3 gap-y-0.5 text-[12.5px] text-[#1a1a1a] max-sm:grid-cols-1 night:text-white/85"
+                >
+                  <span className="text-[#6b7280] tabular-nums night:text-white/40">
+                    {n.created_at}
+                  </span>
+                  <span
+                    className={cn(
+                      "font-semibold",
+                      guest ? "text-[#15803d]" : "text-[#6d28d9]",
+                    )}
+                  >
+                    {who}
+                  </span>
+                  <span className="min-w-0 [overflow-wrap:anywhere] whitespace-pre-wrap">
+                    {n.body}
+                    {n.direction === "voice_in" ? (
+                      <span className="text-[#6b7280]"> (transcript)</span>
+                    ) : null}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <p className="text-[12px] text-[#6b7280]" data-chat-empty>
+            No messages yet.
+          </p>
+        )}
+      </div>
+    </section>
   );
 }

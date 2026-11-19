@@ -37,6 +37,8 @@ import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
 import { usePermissions } from "@/lib/staff-permissions";
 import { fetchUserPref, saveUserPref } from "@/lib/user-prefs-api";
 import { cn, takeSearchParam } from "@/lib/utils";
+import { ChatNotFound } from "@/components/tracking-ui/chat-not-found";
+import { useOpenChatFromUrl } from "@/lib/open-chat-param";
 import type {
   LiveDrivers,
   MorningTracking,
@@ -68,11 +70,7 @@ import { useIsPhone } from "@/lib/phone";
 import { LiveDriversBoard } from "./live-drivers";
 import { PhoneTrackingList } from "./phone-tracking-list";
 import { TrackingTable } from "./tracking-table";
-import {
-  type MarkEditing,
-  markKey,
-  type MarkSaveStatus,
-} from "./mark-cell";
+import { type MarkEditing, markKey, type MarkSaveStatus } from "./mark-cell";
 import { replaceUrl, useLeaveGuard } from "@/lib/use-leave-guard";
 import { setVisibleInterval } from "@/lib/visible-poll";
 
@@ -468,6 +466,10 @@ export function MorningTrackingView() {
       }),
     [data, canLive],
   );
+  // 订单生命周期「Open chat →」：?chat=单号 ⇒ 这天有这单就打开对话框，没有就黄字（Annie「全部同意推荐。动手」）。
+  const chatParam = useOpenChatFromUrl(data ? allRows : null, (row) =>
+    openConversation(row, false),
+  );
   const drivers = useMemo(() => summarizeDrivers(allRows), [allRows]);
   // 刷新以后这位司机没有单了，就回到 All（不能出现「All 亮着、其实还在按司机筛」）。
   const activeDriver = drivers.some((d) => d.driver === driver) ? driver : "";
@@ -751,6 +753,13 @@ export function MorningTrackingView() {
               >
                 Could not load check-ins: {state.message}
               </TrackingBanner>
+            ) : null}
+            {chatParam.notFound ? (
+              <ChatNotFound
+                dark
+                text={chatParam.notFound}
+                onDismiss={chatParam.dismiss}
+              />
             ) : null}
             {refreshError ? (
               <TrackingBanner
