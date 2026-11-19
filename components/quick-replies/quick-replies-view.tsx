@@ -31,6 +31,7 @@ import {
   updateQuickReply,
 } from "@/lib/quick-replies-api";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
+import { useLeaveGuard } from "@/lib/use-leave-guard";
 import { cn } from "@/lib/utils";
 import type { QuickReply } from "@/types";
 
@@ -68,7 +69,30 @@ export function QuickRepliesView() {
   const [busyId, setBusyId] = useState<number | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<QuickReply | null>(null);
+  /** Bus map 勾刚存好的那一行（绿字 Saved，3 秒后消失）。 */
+  const [busMapSaved, setBusMapSaved] = useState<number | null>(null);
+  /** Bus map 勾先暂存在页面上（reply id → 要存的值），按那一行的 Save 才存（Annie 2026-11-19「BAA」「动手」）。 */
+  const [busMapStaged, setBusMapStaged] = useState<
+    ReadonlyMap<number, boolean>
+  >(new Map());
+  /** Bus map 存失败的那一行和后端原话（红字在那一行下面，暂存留着）。 */
+  const [busMapError, setBusMapError] = useState<{
+    id: number;
+    text: string;
+  } | null>(null);
+  useLeaveGuard(
+    busMapStaged.size > 0,
+    "You have Bus map changes you haven't saved. Leave without saving them?",
+  );
   const redirectingRef = useRef(false);
+  const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(
+    () => () => {
+      if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+    },
+    [],
+  );
 
   const redirectToLogin = useCallback(() => {
     if (!redirectingRef.current) {
@@ -191,6 +215,53 @@ export function QuickRepliesView() {
     }
   }
 
+  /**
+   * Bus map 勾（G349，Annie 2026-11-19「bus map那个BAA」「我们现在的网站上全都都用先选后存的模式来设计了」「动手」）：
+   * 点勾只暂存在页面上（再点回原样 = 撤掉），那一行出蓝色 Save + 「Not saved yet」，按了才 PATCH。
+   */
+  function stageBusMap(reply: QuickReply) {
+    const current = busMapStaged.get(reply.id) ?? !!reply.add_bus_map;
+    const next = !current;
+    setBusMapStaged((m) => {
+      const copy = new Map(m);
+      if (next === !!reply.add_bus_map) copy.delete(reply.id);
+      else copy.set(reply.id, next);
+      return copy;
+    });
+    setBusMapSaved(null);
+    if (busMapError?.id === reply.id) setBusMapError(null);
+  }
+
+  /** 存好绿字 Saved（3 秒）、勾照后端回的 add_bus_map；失败红字照后端原话，暂存留着可再按 Save。 */
+  async function saveBusMap(reply: QuickReply) {
+    const value = busMapStaged.get(reply.id);
+    if (busyId !== null || value === undefined) return;
+    setBusyId(reply.id);
+    setBusMapError(null);
+    setBusMapSaved(null);
+    try {
+      const saved = await updateQuickReply(reply.id, { add_bus_map: value });
+      setReplies(replies.map((r) => (r.id === saved.id ? saved : r)));
+      setBusMapStaged((m) => {
+        const copy = new Map(m);
+        copy.delete(reply.id);
+        return copy;
+      });
+      setBusMapSaved(saved.id);
+      if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+      savedTimerRef.current = setTimeout(() => setBusMapSaved(null), 3000);
+    } catch (error) {
+      const text = failText(error);
+      if (text)
+        setBusMapError({
+          id: reply.id,
+          text: `Could not change Bus map for “${reply.body}”: ${text}`,
+        });
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   async function move(index: number, by: -1 | 1) {
     const to = index + by;
     if (busyId !== null || to < 0 || to >= replies.length) return;
@@ -223,6 +294,12 @@ export function QuickRepliesView() {
     }
     setReplies(replies.filter((r) => r.id !== reply.id));
     if (editing?.id === reply.id) setEditing(null);
+    setBusMapStaged((m) => {
+      if (!m.has(reply.id)) return m;
+      const copy = new Map(m);
+      copy.delete(reply.id);
+      return copy;
+    });
     setDeleting(null);
     return { status: "ok" };
   }
@@ -256,7 +333,8 @@ export function QuickRepliesView() {
         </ErrorBanner>
       ) : (
         <>
-          <LegacyHowTo title="How to use">
+          {/* G349 2A：原来 4 条 + Annie 批的 3 条（原文照抄），标题照她批的。 */}
+          <LegacyHowTo title="How to use — Driver quick replies">
             <li>
               These are the one-tap texts relay and tour drivers can send to a
               guest. Drivers can only send these, not their own words.
@@ -269,6 +347,18 @@ export function QuickRepliesView() {
             <li>
               Up to {QUICK_REPLY_MAX} characters, plain text only: no emoji and
               no {"{ }"}. Each reply must be different.
+            </li>
+            <li>
+              Tick &quot;Bus map&quot; on a reply to add a link to the bus&apos;s
+              location at the end of that text.
+            </li>
+            <li>
+              The guest can open the link for 90 minutes after the driver sends
+              it.
+            </li>
+            <li>
+              Only the &quot;can&apos;t find you&quot; reply needs it. Untick it
+              to stop adding the link.
             </li>
           </LegacyHowTo>
 
@@ -334,6 +424,13 @@ export function QuickRepliesView() {
                       onUp={() => void move(i, -1)}
                       onDown={() => void move(i, 1)}
                       onToggle={() => void toggle(r)}
+                      busMapSaved={busMapSaved === r.id}
+                      busMapStaged={busMapStaged.get(r.id)}
+                      busMapError={
+                        busMapError?.id === r.id ? busMapError.text : null
+                      }
+                      onBusMap={() => stageBusMap(r)}
+                      onBusMapSave={() => void saveBusMap(r)}
                       onEdit={() =>
                         setEditing({ id: r.id, text: r.body, error: null })
                       }
@@ -453,6 +550,11 @@ function ReplyRow({
   onUp,
   onDown,
   onToggle,
+  busMapSaved,
+  busMapStaged,
+  busMapError,
+  onBusMap,
+  onBusMapSave,
   onEdit,
   onEditText,
   onSave,
@@ -469,6 +571,14 @@ function ReplyRow({
   onUp: () => void;
   onDown: () => void;
   onToggle: () => void;
+  /** Bus map 勾刚存好（绿字 Saved）。 */
+  busMapSaved: boolean;
+  /** 暂存的值；undefined = 没改。 */
+  busMapStaged: boolean | undefined;
+  /** 这一行 Bus map 存失败的红字。 */
+  busMapError: string | null;
+  onBusMap: () => void;
+  onBusMapSave: () => void;
   onEdit: () => void;
   onEditText: (text: string) => void;
   onSave: () => void;
@@ -556,6 +666,53 @@ function ReplyRow({
             <span className="text-[11.5px] whitespace-nowrap text-[#1a1a1a] tabular-nums night:text-white/55">
               {charCount(r.body)} / {QUICK_REPLY_MAX}
             </span>
+            {/* G349 Bus map：字数后、开关前；绿勾（同开关的绿，不用蓝）；先选后存，改了出 Save。 */}
+            <label
+              data-bus-map={r.id}
+              className={cn(
+                "inline-flex items-center gap-[5px] text-[12px] whitespace-nowrap text-[#1a1a1a] night:text-white/80",
+                busy ? "cursor-not-allowed opacity-60" : "cursor-pointer",
+              )}
+            >
+              <input
+                type="checkbox"
+                id={`bus-map-${r.id}`}
+                checked={busMapStaged ?? !!r.add_bus_map}
+                disabled={busy}
+                onChange={onBusMap}
+                aria-label={`Bus map link on “${r.body}”`}
+                className="m-0 size-[15px] accent-[#16a34a]"
+              />
+              Bus map
+            </label>
+            {busMapStaged !== undefined ? (
+              <>
+                <button
+                  type="button"
+                  data-bus-map-save={r.id}
+                  disabled={busy}
+                  onClick={onBusMapSave}
+                  className={cn(SUBMIT_CLASS, "h-[26px] px-3 text-[11px]")}
+                >
+                  {saving ? "Saving…" : "Save"}
+                </button>
+                <span
+                  data-bus-map-unsaved
+                  className="text-[11px] text-[#6b6b66] night:text-white/55"
+                >
+                  Not saved yet
+                </span>
+              </>
+            ) : null}
+            {busMapSaved ? (
+              <span
+                data-bus-map-saved
+                role="status"
+                className="text-[11.5px] font-semibold text-[#15803d] night:text-emerald-300"
+              >
+                Saved
+              </span>
+            ) : null}
             {/* 开 / 关：绿 / 灰的开关（不用蓝色，同 preview）。 */}
             <button
               type="button"
@@ -595,6 +752,11 @@ function ReplyRow({
           </>
         )}
       </div>
+      {busMapError ? (
+        <p role="alert" className={cn(resultClass("error"), "mt-1.5")}>
+          {busMapError}
+        </p>
+      ) : null}
       {editing?.error ? (
         <p role="alert" className={cn(resultClass("error"), "mt-1.5")}>
           {editing.error}

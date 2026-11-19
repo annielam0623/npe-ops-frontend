@@ -45,7 +45,8 @@ import {
   LIFECYCLE_HOW_TO,
   sentFor,
   liveFor,
-  lunchFor,
+  LUNCH_NOT_IN_BUS,
+  lunchPick,
   markText,
   markTone,
   meaningfulChanges,
@@ -536,24 +537,10 @@ function LookupResultView({ result }: { result: LookupResult }) {
                 <TourStatus
                   row={r}
                   lead={life ? sentFact("tour_confirmation", "Sent") : null}
-                  tail={
-                    life ? (
-                      <>
-                        {sentFact("last_minute", "Last Minute")}
-                        {/* bf 合同草稿：lunch_by_day.restaurant；没有 ⇒「—」。 */}
-                        <Fact
-                          label="Restaurant"
-                          tone={
-                            lunchFor(order, date)?.restaurant
-                              ? "plain"
-                              : "muted"
-                          }
-                        >
-                          {lunchFor(order, date)?.restaurant || "—"}
-                        </Fact>
-                      </>
-                    ) : null
+                  lunch={
+                    life ? <LunchPickFacts order={order} date={date} /> : null
                   }
+                  tail={life ? sentFact("last_minute", "Last Minute") : null}
                 />
               )}
             />
@@ -720,6 +707,56 @@ function Field({
   );
 }
 
+/**
+ * 第 4 件（Annie 2026-11-19「全部动手」，B1 A + B2 B）：客人选的餐 + Bus Manifest 的餐两格并排，取代原来那格 Lunch 和 Restaurant；
+ * 两份不一样（不算没午餐 / 导游改过 / 客人那份空）⇒ 客人那格下面橙字。
+ */
+function LunchPickFacts({
+  order,
+  date,
+}: {
+  order: OrderDetail;
+  date: string | null;
+}) {
+  const pick = lunchPick(order, date);
+  return (
+    <>
+      <Fact
+        label="Guest's lunch pick"
+        tone={pick.guest ? "plain" : "muted"}
+        sub={
+          pick.guest?.at || pick.mismatch ? (
+            <>
+              {pick.guest?.at}
+              {pick.mismatch ? (
+                <span
+                  data-lunch-mismatch
+                  className="block font-semibold text-[#fb923c]"
+                >
+                  {LUNCH_NOT_IN_BUS}
+                </span>
+              ) : null}
+            </>
+          ) : undefined
+        }
+      >
+        {pick.guest?.text ?? "—"}
+      </Fact>
+      <Fact
+        label="Bus manifest lunch"
+        tone={pick.bus?.has_lunch ? "plain" : "muted"}
+        sub={
+          pick.bus?.restaurant
+            ? `Restaurant: ${pick.bus.restaurant}`
+            : undefined
+        }
+      >
+        {pick.bus?.text ?? "—"}
+      </Fact>
+    </>
+  );
+}
+
 function SubLine({ children }: { children: ReactNode }) {
   return (
     <span className="block text-[11.5px] font-normal text-white/45">
@@ -883,7 +920,7 @@ function Fact({
   /** 占满一整行（长地址）。 */
   wide?: boolean;
   /** 第二行灰字（生命周期：by veronica / Jane D. · Bus 3001 等）。 */
-  sub?: string;
+  sub?: ReactNode;
   children: ReactNode;
 }) {
   return (
@@ -923,11 +960,14 @@ const TOUR_STATUS: Record<string, { label: string; tone: Tone }> = {
 function TourStatus({
   row,
   lead = null,
+  lunch: lunchCells = null,
   tail = null,
 }: {
   row: TourTrackingRow;
   /** 生命周期加在最前面的格子（Sent / Reminder sent）。 */
   lead?: ReactNode;
+  /** 生命周期开着时取代原来那格 Lunch（第 4 件：Guest's lunch pick + Bus manifest lunch）。 */
+  lunch?: ReactNode;
   /** 生命周期加在最后的格子。 */
   tail?: ReactNode;
 }) {
@@ -955,11 +995,12 @@ function TourStatus({
           {row.submitted_at || "—"}
           {row.submission_count > 1 ? ` (${row.submission_count}×)` : ""}
         </Fact>
-        {lunch > 0 && (
-          <Fact label="Lunch">
-            🦃 {row.lunch_turkey} 🥗 {row.lunch_veggie} 🥩 {row.lunch_beef}
-          </Fact>
-        )}
+        {lunchCells ??
+          (lunch > 0 && (
+            <Fact label="Lunch">
+              🦃 {row.lunch_turkey} 🥗 {row.lunch_veggie} 🥩 {row.lunch_beef}
+            </Fact>
+          ))}
         {mtlv.kind !== "none" && (
           <Fact
             label="MTLV tickets"

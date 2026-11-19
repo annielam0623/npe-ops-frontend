@@ -30,7 +30,7 @@ export async function createQuickReply(body: string): Promise<QuickReply> {
 
 export async function updateQuickReply(
   id: number,
-  patch: { body?: string; active?: boolean },
+  patch: { body?: string; active?: boolean; add_bus_map?: boolean },
 ): Promise<QuickReply> {
   const result = await apiFetch<{ reply: QuickReply }>(`${API}/${id}`, {
     method: "PATCH",

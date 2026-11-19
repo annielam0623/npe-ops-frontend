@@ -13,7 +13,8 @@ import {
   LIFECYCLE_FRAME,
   sentFor,
   liveFor,
-  lunchFor,
+  LUNCH_NOT_IN_BUS,
+  lunchPick,
   meaningfulChanges,
   receivedAt,
   replyFor,
@@ -129,7 +130,7 @@ export function LifecycleCard({ order }: { order: OrderDetail }) {
   const everything = allChanges(order);
   const reply = replyFor(order, date);
   const ticketReply = replyFor(order, date, "tickets_reminder");
-  const lunch = lunchFor(order, date);
+  const pick = lunchPick(order, date);
   const live = liveFor(order, date);
   const van = live ? vanAtHotel(live.arrived_at, live.left_at) : null;
   const ended = tourEndedFor(order);
@@ -189,14 +190,38 @@ export function LifecycleCard({ order }: { order: OrderDetail }) {
             {ticketReply.label}
           </DField>
         ) : null}
-        <DField label="Lunch" tone={lunch?.text ? undefined : "muted"}>
-          {lunch?.text || "—"}
+        {/* 第 4 件（Annie 2026-11-19「全部动手」，B1 A）：客人选的 + Bus Manifest 的两格并排，Restaurant 进 Bus 那格灰字。 */}
+        <DField
+          label="Guest's lunch pick"
+          tone={pick.guest ? undefined : "muted"}
+          sub={
+            pick.guest?.at || pick.mismatch ? (
+              <>
+                {pick.guest?.at}
+                {pick.mismatch ? (
+                  <span
+                    data-lunch-mismatch
+                    className="block font-semibold text-[#c2410c] night:text-[#fb923c]"
+                  >
+                    {LUNCH_NOT_IN_BUS}
+                  </span>
+                ) : null}
+              </>
+            ) : undefined
+          }
+        >
+          {pick.guest?.text ?? "—"}
         </DField>
         <DField
-          label="Restaurant"
-          tone={lunch?.restaurant ? undefined : "muted"}
+          label="Bus manifest lunch"
+          tone={pick.bus?.has_lunch ? undefined : "muted"}
+          sub={
+            pick.bus?.restaurant
+              ? `Restaurant: ${pick.bus.restaurant}`
+              : undefined
+          }
         >
-          {lunch?.restaurant || "—"}
+          {pick.bus?.text ?? "—"}
         </DField>
         <DField label="Van at hotel" tone={van ? undefined : "muted"}>
           {van ?? "—"}
