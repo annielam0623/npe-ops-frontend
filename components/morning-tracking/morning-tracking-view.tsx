@@ -30,13 +30,22 @@ import {
   buildMorningExportUrl,
   fetchLiveDrivers,
   fetchMorningTracking,
+  saveTrackingMark,
 } from "@/lib/morning-tracking-api";
 import { usePageVisibility } from "@/lib/page-visibility";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
 import { usePermissions } from "@/lib/staff-permissions";
 import { fetchUserPref, saveUserPref } from "@/lib/user-prefs-api";
 import { cn, takeSearchParam } from "@/lib/utils";
-import type { LiveDrivers, MorningTracking, MorningTrackingRow } from "@/types";
+import { ChatNotFound } from "@/components/tracking-ui/chat-not-found";
+import { useOpenChatFromUrl } from "@/lib/open-chat-param";
+import type {
+  LiveDrivers,
+  MorningTracking,
+  MorningTrackingRow,
+  TrackingMarkCol,
+  TrackingMarkValue,
+} from "@/types";
 
 import {
   type ColumnKey,
@@ -45,6 +54,7 @@ import {
   DEFAULT_COLUMN_ORDER,
   emailBadgeOf,
   hasLiveMarks,
+  hasSplitMarks,
   LOCAL_COLUMN_ORDER_KEY,
   matchesSearch,
   noShowBadge,
@@ -60,6 +70,8 @@ import { useIsPhone } from "@/lib/phone";
 import { LiveDriversBoard } from "./live-drivers";
 import { PhoneTrackingList } from "./phone-tracking-list";
 import { TrackingTable } from "./tracking-table";
+import { type MarkEditing, markKey, type MarkSaveStatus } from "./mark-cell";
+import { replaceUrl, useLeaveGuard } from "@/lib/use-leave-guard";
 import { setVisibleInterval } from "@/lib/visible-poll";
 
 type LoadState =
@@ -101,7 +113,8 @@ function writeLocalOrder(order: ColumnKey[]) {
 }
 
 export function MorningTrackingView() {
-  const { partnerView, canSeeMoney } = usePermissions();
+  const { partnerView, canSeeMoney, canRowTakeAction } = usePermissions();
+  const canTakeMorning = canRowTakeAction("morning");
   // date 为空表示还没在浏览器里算出要看哪天（避免服务端 / 浏览器不一致）。
   const [date, setDate] = useState("");
   const [state, setState] = useState<LoadState>({ kind: "loading" });
@@ -258,7 +271,7 @@ export function MorningTrackingView() {
     // 地址栏跟着日期走，刷新 / 分享链接还是这一天。
     const url = new URL(window.location.href);
     url.searchParams.set("date", date);
-    window.history.replaceState(null, "", url);
+    replaceUrl(url);
     void load(date, false);
   }, [date, load]);
 
@@ -315,10 +328,95 @@ export function MorningTrackingView() {
     });
   }
 
+  // ── Relay / Bus 标记的编辑（No show 改方向，Annie 2026-11-17「动手」，N2 A / N7 A）──
+  // 改的先暂存在页面上，按每格的 Save 才存（站内规矩：不改一点存一点）；每分钟刷新不冲掉暂存。
+  const [staged, setStaged] = useState<
+    ReadonlyMap<string, TrackingMarkValue | null>
+  >(new Map());
+  const [markStatus, setMarkStatus] = useState<
+    ReadonlyMap<string, MarkSaveStatus>
+  >(new Map());
+  const unsaved = staged.size > 0;
+  const UNSAVED_MSG =
+    "You have Relay / Bus marks you haven't saved. Leave without saving them?";
+  useLeaveGuard(unsaved, UNSAVED_MSG);
+
+  /** 有没存的改动时先问；答应丢掉就清空暂存。 */
+  function confirmDiscard(): boolean {
+    if (!unsaved) return true;
+    if (!window.confirm(UNSAVED_MSG)) return false;
+    setStaged(new Map());
+    setMarkStatus(new Map());
+    return true;
+  }
+
+  function stageMark(
+    row: MorningTrackingRow,
+    col: TrackingMarkCol,
+    value: TrackingMarkValue | null | undefined,
+  ) {
+    const key = markKey(row.id, col);
+    setStaged((m) => {
+      const next = new Map(m);
+      if (value === undefined) next.delete(key);
+      else next.set(key, value);
+      return next;
+    });
+    // 又改了：上一次的 Saved / 报错不再算数。
+    setMarkStatus((m) => {
+      if (!m.has(key)) return m;
+      const next = new Map(m);
+      next.delete(key);
+      return next;
+    });
+  }
+
+  async function saveMark(row: MorningTrackingRow, col: TrackingMarkCol) {
+    const key = markKey(row.id, col);
+    if (!staged.has(key) || markStatus.get(key)?.kind === "saving") return;
+    const value = staged.get(key) ?? null;
+    const setStatus = (s: MarkSaveStatus | null) =>
+      setMarkStatus((m) => {
+        const next = new Map(m);
+        if (s) next.set(key, s);
+        else next.delete(key);
+        return next;
+      });
+    setStatus({ kind: "saving" });
+    try {
+      await saveTrackingMark({
+        date: dateRef.current,
+        bookingId: row.id,
+        orderNumber: row.order_number,
+        col,
+        value,
+      });
+      setStaged((m) => {
+        const next = new Map(m);
+        next.delete(key);
+        return next;
+      });
+      setStatus({ kind: "saved" });
+      // 后端同一次写入已记成「已处理」：重拉一次拿新标记和「✓ 谁」。
+      await load(dateRef.current, true);
+    } catch (error) {
+      if (isStatus(error, 401)) redirectToLogin();
+      else setStatus({ kind: "error", message: describeError(error) });
+    }
+  }
+
+  function changeTab(next: "tracking" | "live") {
+    if (next === tab) return;
+    if (!confirmDiscard()) return;
+    setTab(next);
+  }
+
   function changeDate(next: string) {
     if (!isYmd(next) || next === date) {
       return;
     }
+    if (!confirmDiscard()) return;
+    setMarkStatus(new Map());
     setDriver("");
     setRefreshError(null);
     setLive({ kind: "idle" });
@@ -351,17 +449,26 @@ export function MorningTrackingView() {
   // 司机标记（Driver mark 列、No show 置顶 / 红底 / 页签数字）跟 Live drivers 同一个开关：开关没对我开时表跟以前一样。
   const allRows = useMemo(
     () =>
-      (data?.rows ?? []).map((r) =>
-        canLive
-          ? r
-          : {
-              ...r,
-              live_status: undefined,
-              live_status_at: undefined,
-              ns_unhandled: false,
-            },
-      ),
+      (data?.rows ?? []).map((r) => {
+        if (canLive) return r;
+        // 开关没对我开：Relay / Bus 新键也拿掉（hasSplitMarks 按键在不在判）。
+        const rest = { ...r };
+        delete rest.relay_mark;
+        delete rest.relay_original;
+        delete rest.bus_mark;
+        delete rest.bus_original;
+        return {
+          ...rest,
+          live_status: undefined,
+          live_status_at: undefined,
+          ns_unhandled: false,
+        };
+      }),
     [data, canLive],
+  );
+  // 订单生命周期「Open chat →」：?chat=单号 ⇒ 这天有这单就打开对话框，没有就黄字（Annie「全部同意推荐。动手」）。
+  const chatParam = useOpenChatFromUrl(data ? allRows : null, (row) =>
+    openConversation(row, false),
   );
   const drivers = useMemo(() => summarizeDrivers(allRows), [allRows]);
   // 刷新以后这位司机没有单了，就回到 All（不能出现「All 亮着、其实还在按司机筛」）。
@@ -389,14 +496,24 @@ export function MorningTrackingView() {
     [nsSeen, now],
   );
   const showMarks = hasLiveMarks(allRows);
+  // No show 改方向（N9 A）：后端带了 Relay / Bus 分开的标记 ⇒ 出这两列、不出 Driver mark。
+  const showSplit = hasSplitMarks(allRows);
+  const markEditing: MarkEditing = {
+    canEdit: canTakeMorning && showSplit,
+    staged,
+    status: markStatus,
+    onStage: stageMark,
+    onSave: (row, col) => void saveMark(row, col),
+  };
   // 置顶 58：后端带了到 / 离时间才出 Arrived at / Left at 两列（旧后端没有这两个键）。
   const showArrivals = allRows.some((r) => "arrived_at" in r);
   const visibleColumns = columnOrder.filter(
     (k) =>
       // 没勾 See prices, agent & commission（orders.money_view，题 8）：Agent 列整列不出（后端给的是空字符串）。
       (canSeeMoney || k !== "agent_name") &&
-      // 后端还没带司机标记（旧版）：Driver mark 列不出。
-      (showMarks || k !== "driver_mark") &&
+      // 后端还没带司机标记（旧版）：Driver mark 列不出；带了 Relay / Bus 分开的新键（G321）：只出这两列。
+      ((showMarks && !showSplit) || k !== "driver_mark") &&
+      (showSplit || (k !== "relay_mark" && k !== "bus_mark")) &&
       (showArrivals || (k !== "arrived_at" && k !== "left_at")),
   );
   const livePeople = useMemo(() => {
@@ -593,7 +710,7 @@ export function MorningTrackingView() {
                     role="tab"
                     aria-selected={tab === t}
                     data-mt-tab={t}
-                    onClick={() => setTab(t)}
+                    onClick={() => changeTab(t)}
                     className={cn(
                       "relative",
                       tab === t
@@ -636,6 +753,13 @@ export function MorningTrackingView() {
               >
                 Could not load check-ins: {state.message}
               </TrackingBanner>
+            ) : null}
+            {chatParam.notFound ? (
+              <ChatNotFound
+                dark
+                text={chatParam.notFound}
+                onDismiss={chatParam.dismiss}
+              />
             ) : null}
             {refreshError ? (
               <TrackingBanner
@@ -777,6 +901,7 @@ export function MorningTrackingView() {
                     onReorder={reorderColumns}
                     onOpenConversation={(row) => openConversation(row, false)}
                     newNoShow={newNoShow}
+                    marks={markEditing}
                     onToggleAction={(row, want) => void toggleAction(row, want)}
                     togglingId={togglingId}
                     now={now}
@@ -808,9 +933,25 @@ export function MorningTrackingView() {
             ...(canLive
               ? [
                   "Live drivers shows each driver's and guide's phone page side by side, read-only. Picked up, Boarded and No show show the time they were marked. It refreshes every 30 seconds. Tap Text, or a guest in Messages, to reply: SMS and email go together from the company number, and the driver sees your reply in their conversation.",
-                  "When a driver or guide marks No show, that order moves to the top of Tracking in red, with ⚠️ Take action under Driver mark. Click it once you have dealt with it. The red number on the tabs counts the No shows nobody has handled; a green dot means all are handled.",
                 ]
               : []),
+            // No show 改方向（Annie 2026-11-17「动手」，样稿第 2 版原文）：后端带了 Relay / Bus 分开的标记才写这几条。
+            ...(canLive && showSplit
+              ? [
+                  'Relay shows what the relay driver marked: Picked up or No show. Bus shows what the guide marked when guests got on the bus: Boarded or No show. Guests who board at Treasure Island have no relay, so Relay shows "—". The Bus mark is the final word on a No show.',
+                  ...(canTakeMorning
+                    ? [
+                        "If a driver or guide didn't mark a guest, or marked the wrong thing, click the mark, pick the right one and click Save next to it. Your change shows on Main manifest, the Bus Manifest page and the order page. The driver's or guide's own mark is kept: hover over the mark to see it. Their own phone pages and Live drivers still show their original mark. To undo your change, pick Reset to driver/guide mark and click Save.",
+                      ]
+                    : []),
+                  "Only guests who were sent the morning pickup text are listed here. A guest who was not sent it has no row, so you can't change their mark on this page. The guide's Bus mark for that guest still shows on Main manifest, the Bus Manifest page and the order page.",
+                  "When a driver or guide marks No show, that order moves to the top of Tracking in red, with ⚠️ Take action under the mark. Click it once you have dealt with it. Changing that row's Relay or Bus mark and saving also counts as dealt with. The red number on the tabs counts the No shows nobody has handled; a green dot means all are handled.",
+                ]
+              : canLive
+                ? [
+                    "When a driver or guide marks No show, that order moves to the top of Tracking in red, with ⚠️ Take action under Driver mark. Click it once you have dealt with it. The red number on the tabs counts the No shows nobody has handled; a green dot means all are handled.",
+                  ]
+                : []),
           ]}
           warning={
             <>

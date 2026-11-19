@@ -25,6 +25,12 @@ export interface SendLogRow {
   sent_by: string | null;
   /** 发送时记下的 MTLV 资格（send_log.mtlv_eligible，空值算 false）。 */
   mtlv_eligible: boolean;
+  /** 订单生命周期（bf 合同草稿 2026-11-18，旧后端没有）：短信走哪条线、送达 / 打开 / 点击时间（ISO）。 */
+  sms_channel?: "sms" | "whatsapp" | null;
+  delivered_at?: string | null;
+  email_delivered_at?: string | null;
+  opened_at?: string | null;
+  clicked_at?: string | null;
 }
 
 export interface SendLogPage {

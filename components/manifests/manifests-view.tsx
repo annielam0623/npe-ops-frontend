@@ -82,6 +82,9 @@ import {
   WAIVER_OFF,
   withWaiverColumn,
   withTicketSessions,
+  rememberMarkChoice,
+  withMarkColumns,
+  withMarks,
   NOTE_KEY,
   rememberNoteChoice,
   withNoteColumn,
@@ -453,7 +456,10 @@ export function ManifestsView() {
   async function reorderFields(moved: string[]) {
     const before = colsHere ?? EMPTY_COLS;
     const next = shown
-      ? rememberNoteChoice(rememberWaiverChoice(moved, shown.rows), shown)
+      ? rememberMarkChoice(
+          rememberNoteChoice(rememberWaiverChoice(moved, shown.rows), shown),
+          shown,
+        )
       : moved;
     const after: SavedCols = ownHere
       ? { ...before, pages: { ...before.pages, [pill]: next } }
@@ -558,7 +564,9 @@ export function ManifestsView() {
   const shown =
     data && data.tab === tab
       ? withTicketSessions(
-          withNotes(perms.canSeeMoney ? data : withoutManifestMoney(data)),
+          withMarks(
+            withNotes(perms.canSeeMoney ? data : withoutManifestMoney(data)),
+          ),
         )
       : null;
   // 搜索跳过来的行到了：滚到屏幕中间（每次跳转只滚一次，后面重拉不再拽视线）。
@@ -603,7 +611,8 @@ export function ManifestsView() {
   // 置顶 74：Waiver link 列这一页有要 waiver 的单才自动出（题 1 A），☰ Columns 里关掉就不加。
   // 150 Notes：默认放最后，☰ Columns 里关掉就不加（withNoteColumn）。
   const fields = shown
-    ? withNoteColumn(
+    ? withMarkColumns(
+        withNoteColumn(
         tab === "tickets"
           ? withWaiverColumn(
               shownFields(shown, savedHere ?? ticketDefaults),
@@ -611,6 +620,9 @@ export function ManifestsView() {
               savedHere,
             )
           : shownFields(shown, savedHere),
+        shown,
+        savedHere,
+        ),
         shown,
         savedHere,
       )
@@ -795,7 +807,7 @@ export function ManifestsView() {
                       const csv = buildHiddenCsv(
                         shown,
                         hidden,
-                        fields.filter((k) => k !== NOTE_KEY),
+                        fields.filter((k) => !k.startsWith("_")),
                       );
                       downloadCsv(
                         `manifest_${shown.date}_hidden-rows.csv`,
@@ -1237,7 +1249,7 @@ export function ManifestsView() {
                 data={shown}
                 hidden={hidden}
                 rows={hiddenRows}
-                fields={fields.filter((k) => k !== NOTE_KEY)}
+                fields={fields.filter((k) => !k.startsWith("_"))}
                 loading={loading}
               />
             ) : null}
@@ -1330,7 +1342,8 @@ export function ManifestsView() {
             onUseShared={ownHere ? useSharedCols : undefined}
             catalog={shown.catalog}
             groups={shown.groups}
-            selected={withNoteColumn(
+            selected={withMarkColumns(
+              withNoteColumn(
               tab === "tickets"
                 ? withWaiverColumn(
                     (savedHere ?? shown.default_fields).filter(
@@ -1342,15 +1355,21 @@ export function ManifestsView() {
                 : (savedHere ?? shown.default_fields),
               shown,
               savedHere,
+              ),
+              shown,
+              savedHere,
             )}
             defaults={shown.default_fields}
             onApply={(next, scope) =>
               applyFields(
                 next
-                  ? rememberNoteChoice(
-                      tab === "tickets"
-                        ? rememberWaiverChoice(next, shown.rows)
-                        : next,
+                  ? rememberMarkChoice(
+                      rememberNoteChoice(
+                        tab === "tickets"
+                          ? rememberWaiverChoice(next, shown.rows)
+                          : next,
+                        shown,
+                      ),
                       shown,
                     )
                   : next,

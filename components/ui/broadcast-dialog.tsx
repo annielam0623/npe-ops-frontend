@@ -125,22 +125,23 @@ type Channel = "both" | "sms" | "email";
 /**
  * 模板接口挂了时的兜底（同旧页面那份内置副本）。用的时候弹窗里会明说。
  * ⚠️ Content Studio 里是空就是空，不能拿它顶上——只有接口失败才用。
+ * 正文不写问候：后端 broadcast_send.sms_message 每条短信自动加 "Hi {first_name}, "（G151），写了客人会收到两遍（ae 2026-11-18）。
  */
 const FALLBACK_TEMPLATES: BroadcastTemplate[] = [
   {
     name: "tour_cancelled",
     label: "Tour cancelled",
-    body: "Hi {first_name}, your National Park Express tour on {tour_date} has been cancelled. Please contact us at 702-948-4190 for assistance.",
+    body: "Your National Park Express tour on {tour_date} has been cancelled. Please contact us at 702-948-4190 for assistance.",
   },
   {
     name: "time_changed",
     label: "Pickup time updated",
-    body: "Hi {first_name}, your pickup time for your National Park Express tour on {tour_date} has been updated. Please contact us at 702-948-4190 for details.",
+    body: "Your pickup time for your National Park Express tour on {tour_date} has been updated. Please contact us at 702-948-4190 for details.",
   },
   {
     name: "weather_delay",
     label: "Weather delay",
-    body: "Hi {first_name}, due to weather conditions your National Park Express tour on {tour_date} may experience delays. We will keep you updated.",
+    body: "Due to weather conditions your National Park Express tour on {tour_date} may experience delays. We will keep you updated.",
   },
   { name: "custom", label: "Custom message", body: "" },
 ];

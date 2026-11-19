@@ -36,6 +36,8 @@ import {
   updateTicketStatus,
 } from "@/lib/tickets-tracking-api";
 import { cn, takeSearchParam } from "@/lib/utils";
+import { ChatNotFound } from "@/components/tracking-ui/chat-not-found";
+import { useOpenChatFromUrl } from "@/lib/open-chat-param";
 import type {
   BroadcastLogEntry,
   TicketsTracking,
@@ -402,6 +404,10 @@ export function TicketsTrackingView() {
 
   const data = state.kind === "ready" ? state.data : null;
   const allRows = useMemo(() => data?.rows ?? [], [data]);
+  // 订单生命周期「Open chat →」：?chat=单号 ⇒ 这天有这单就打开对话框，没有就黄字（Annie「全部同意推荐。动手」）。
+  const chatParam = useOpenChatFromUrl(data ? allRows : null, (row) =>
+    setConversationId(row.id),
+  );
   // G281：旧后端 / 看不到同步的人没有 send_state ⇒ 页面跟现在一样（没有 Order Status 列、灰行说明、To notify）。
   const sync = useMemo(() => hasSyncFields(allRows), [allRows]);
   // 产品按钮上的 YES / 总人数也只算发过的（题 4 A，同 Tour Tracking 的团胶囊）。
@@ -432,7 +438,9 @@ export function TicketsTrackingView() {
     [allRows, product, search],
   );
   // G281 题 4 A：灰行（还没发提醒）不算进上面的数字和回复率。
-  const stats = data ? computeStats(filtered.filter((r) => !isUnsent(r))) : null;
+  const stats = data
+    ? computeStats(filtered.filter((r) => !isUnsent(r)))
+    : null;
   reloadRef.current = () => {
     if (date) void load(date, false);
   };
@@ -539,7 +547,10 @@ export function TicketsTrackingView() {
           </div>
           {syncSwitch.below}
 
-          {state.kind === "error" || refreshError || actionError ? (
+          {state.kind === "error" ||
+          refreshError ||
+          actionError ||
+          chatParam.notFound ? (
             <div className="px-5 pt-3">
               {state.kind === "error" ? (
                 <TrackingBanner
@@ -548,6 +559,12 @@ export function TicketsTrackingView() {
                 >
                   Could not load tickets: {state.message}
                 </TrackingBanner>
+              ) : null}
+              {chatParam.notFound ? (
+                <ChatNotFound
+                  text={chatParam.notFound}
+                  onDismiss={chatParam.dismiss}
+                />
               ) : null}
               {refreshError ? (
                 <TrackingBanner
@@ -719,7 +736,9 @@ export function TicketsTrackingView() {
                 className="inline-block h-3.5 w-3.5 shrink-0 rounded-[3px] border border-[#c7cad1]"
                 style={{ background: UNSENT_ROW_BG }}
               />
-              <PhoneOneLine className="min-w-0 flex-1">{UNSENT_NOTE}</PhoneOneLine>
+              <PhoneOneLine className="min-w-0 flex-1">
+                {UNSENT_NOTE}
+              </PhoneOneLine>
             </p>
           ) : null}
 

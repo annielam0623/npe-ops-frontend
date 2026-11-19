@@ -4,7 +4,9 @@
 // noMoney：这个员工没勾 orders.money_view（后端不按 agent ref 搜、不给号码；/api/me/permissions 只给 orders.view）。
 const http = require("http");
 
-const ctl = { unauth: false, mlinks: false, hold: false, noMoney: false };
+const ctl = { unauth: false, mlinks: false, hold: false, noMoney: false, sa: false, lifeVis: null, lifeVisible: false };
+// 订单生命周期（Annie 2026-11-18 排法 A + 框 1）：sa = 这个人是 Super Admin（没登记开关 ⇒ 默认 super_admin_only 看得到）；
+// lifeVis / lifeVisible = 后端登记了 order_lifecycle（visibility + visible_to_me）。都没设 ⇒ 普通员工、开关没登记 ⇒ 看不到（页面同以前）。
 // 置顶 51 B：mlinks 开着 = 新后端，订单详情带 manifest_links（ZZTEST1 分在两处、ZZTEST2 一处、其余 []）；hold = ZZTEST2 是 On Hold。
 const MLINKS = {
   ZZTEST1: [
@@ -50,7 +52,52 @@ function order(on, over = {}) {
   };
 }
 const ORDERS = {
-  ZZTEST1: order("ZZTEST1"),
+  ZZTEST1: order("ZZTEST1", {
+    order_detail: { dateCreated: "2026-10-01T16:57:02Z" },
+    // Chat history（订单详情接口 booking_notes，旧 → 新）：4 条 ⇒ 默认列最新 3 条 + Show all 4。
+    booking_notes: [
+      { id: 801, author: "kevin", direction: "sms_out", body: "Hi, your pickup tomorrow is 5:45 AM at the ZZ Hotel Lobby.", sms_status: "delivered", email_status: "", created_at: "10/19/2026 6:00 PM" },
+      { id: 802, author: "", direction: "voice_in", body: "Hi, calling about tomorrow's pickup, can we bring a stroller?", sms_status: "", email_status: "", created_at: "10/19/2026 6:58 PM" },
+      { id: 803, author: "", direction: "sms_in", channel: "whatsapp", body: "Can we bring a stroller?", sms_status: "", email_status: "", created_at: "10/19/2026 7:10 PM" },
+      { id: 804, author: "annie", direction: "email_out", body: "Yes, strollers are fine.", sms_status: "", email_status: "sent", created_at: "10/19/2026 7:30 PM" },
+    ],
+    // 接口按时间新 → 旧。有意义的 4 条（guest_modify_requested / field_updated / refreshed_from_rezdy / booking_updated），系统记录 2 条。
+    activity_log: [
+      { id: 6, event_type: "guest_modify_requested", detail: "Guest asked to change pickup", actor: "Guest", actor_type: "guest", created_at: "10/18/2026 5:12 PM" },
+      { id: 5, event_type: "field_updated", detail: "lunch_turkey: '0' → '1'", actor: "Annie Z", actor_type: "staff", created_at: "10/12/2026 3:40 PM" },
+      { id: 4, event_type: "refreshed_from_rezdy", detail: "Refreshed from Rezdy — Phone: '+1 555 0000' → '+1 555 0100'; Email: '' → 'zz@example.com'", actor: "Annie Z", actor_type: "staff", created_at: "10/11/2026 9:00 AM" },
+      // id 7：两分钟后又一次 Rezdy 推送（rezdy_changes 里没有）；rezdy_changes 那条 push 只配最近的 id 3，id 7 照旧出「Updated by Rezdy」。
+      { id: 7, event_type: "booking_updated", detail: "Rezdy sync (webhook) — 1 item row(s), status CONFIRMED", actor: "rezdy", actor_type: "system", created_at: "10/10/2026 11:04 AM" },
+      { id: 3, event_type: "booking_updated", detail: "Rezdy sync (webhook) — 1 item row(s), status CONFIRMED", actor: "rezdy", actor_type: "system", created_at: "10/10/2026 11:02 AM" },
+      { id: 2, event_type: "booking_handled", detail: "Marked handled", actor: "system", actor_type: "system", created_at: "10/2/2026 8:00 AM" },
+      { id: 1, event_type: "booking_created", detail: "Rezdy sync (webhook) — 1 item row(s), status CONFIRMED", actor: "rezdy", actor_type: "system", created_at: "10/1/2026 9:58 AM" },
+    ],
+    day_of_tour: [
+      { tour_date: "2026-10-20", leg: "", product_code: "PBZ", product_name: "Bryce & Zion Day Tour",
+        relay_mark: { value: "picked_up", label: "Picked up", by: "Jane D.", role: "relay", vehicle: "2101", at: "2026-10-20T12:50:00Z" }, relay_original: null,
+        bus_mark: { value: "no_show", label: "No show", by: "Mike R.", role: "guide", vehicle: "3001", at: "2026-10-20T13:30:00Z" }, bus_original: null },
+      // 回程那条不能用在 Relay / Bus 格子里。
+      { tour_date: "2026-10-20", leg: "return", product_code: "PBZ", product_name: "Bryce & Zion Day Tour",
+        relay_mark: null, relay_original: null,
+        bus_mark: { value: "boarded", label: "Boarded", by: "WRONG", role: "guide", vehicle: "9999", at: "2026-10-21T02:00:00Z" }, bus_original: null },
+    ],
+    // bf 合同草稿：按单的答复 / 餐 + 餐厅 / 到站（ctl.noLifeKeys 模拟旧后端没有这三个键）。
+    // bf 第 2 项：confirmations 也带门票行（module tickets_reminder）。
+    confirmations: [
+      // bf 第 2 项固定状态：send_state / sent_at / email_status / sms_status / sent_by。morning 行故意跟 send-log 不一样（kim 6:30）⇒ 看得出读的是这里。
+      { module: "tour_confirmation", tour_date: "2026-10-20", status: "yes", submitted_at: "2026-10-18T22:31:00Z", lunch: null, lunch_by_guest: false, send_state: "sent", sent_at: "2026-10-18T21:05:00Z", email_status: "opened", sms_status: "delivered", sent_by: "veronica" },
+      { module: "tickets_reminder", tour_date: "2026-10-20", status: "reschedule_req", submitted_at: "2026-10-19T17:00:00Z", lunch: null, lunch_by_guest: false, send_state: "unsent", sent_at: null, email_status: "", sms_status: "", sent_by: "" },
+      { module: "morning_pickup", tour_date: "2026-10-20", status: "", submitted_at: null, lunch: null, lunch_by_guest: false, send_state: "sent", sent_at: "2026-10-20T01:30:00Z", email_status: "", sms_status: "delivered", sent_by: "kim" },
+    ],
+    lunch_by_day: [{ tour_date: "2026-10-20", product: "PBZ", bus_label: "A", has_lunch: true, turkey: 1, veggie: 1, beef: 0, defaulted: false, check: false, changed: false, text: "1 Turkey, 1 Veggie", restaurant: "ZZ Test Diner" }],
+    live_by_day: [{ tour_date: "2026-10-20", live_status: "picked_up", live_status_at: "2026-10-20T12:50:00Z", live_driver: "Jane D.", live_van: "2101", arrived_at: "2026-10-20T12:44:00Z", left_at: "2026-10-20T12:53:00Z" }],
+    // 生命周期第 2 项（bf 合同 rezdy_changes）：跨分钟也配（refresh 9:01:30 ↔ activity 9:00）。同一件事的 activity_log 那两条（id 4 refreshed_from_rezdy、id 3 booking_updated）是重复的，前端以这里为准。
+    rezdy_changes: [
+      { at: "2026-10-11T16:01:30Z", source: "refresh_from_rezdy", by: "Annie Z", changes: [{ field: "Email", before: "", after: "zz@example.com" }, { field: "Phone", before: "+1 555 0000", after: "+1 555 0100" }] },
+      // 后端一条里按标签字母序存（Email < Phone、Item < Tour date）；前端排成固定顺序（Phone, Email / Tour date, Item）。
+      { at: "2026-10-10T18:02:40Z", source: "rezdy_push", by: "", changes: [{ field: "Item PXTRA", before: null, after: "PXTRA" }, { field: "Tour date (PBZ)", before: "10/19/2026", after: "10/20/2026" }] },
+    ],
+  }),
   ZZTEST2: (() => {
     const o = order("ZZTEST2", { booking_type: "ticket" });
     o.guest = { ...o.guest, name: "ZZ Test Ticketholder", phone: "(702) 555-0199" };
@@ -121,10 +168,10 @@ const DAYS = {
         latest_note_channel: "sms", notes_unhandled: true,
       }),
     ],
-    morning: [morningRow("ZZTEST1")],
+    morning: [morningRow("ZZTEST1", { arrived_at: "2026-10-20T12:45:00Z", left_at: "2026-10-20T12:52:00Z" })],
   },
   "2026-10-21": {
-    tickets: [ticketRow("ZZTEST2", { guest_notes: "Arriving late", notes_count: 0, checkin_location: "Tse Bighanilini Tours, Highway 98, Milepost 299.8, Page, AZ 86040 (Between 299 and 300)" })],
+    tickets: [ticketRow("ZZTEST2", { contact_changed: true, guest_notes: "Arriving late", notes_count: 0, checkin_location: "Tse Bighanilini Tours, Highway 98, Milepost 299.8, Page, AZ 86040 (Between 299 and 300)" })],
   },
 };
 
@@ -140,7 +187,28 @@ http
     }
     log.push({ method: req.method, path: p, query: url.search });
     if (p === "/auth/login") { res.setHeader("Content-Type", "text/html"); return res.end("<h1>LEGACY LOGIN</h1>"); }
-    if (p === "/api/me") return send(res, 200, { id: 1, username: "zztest", display_name: "ZZ Test", initials: "ZT", role: "staff", is_admin: false, is_superadmin: false });
+    if (p === "/api/me") return send(res, 200, { id: 1, username: "zztest", display_name: "ZZ Test", initials: "ZT", role: ctl.sa ? "admin" : "staff", is_admin: !!ctl.sa, is_superadmin: !!ctl.sa });
+    if (p === "/api/settings/dashboard-widgets" && ctl.lifeVis)
+      return send(res, 200, { readable: true, widgets: [{ key: "order_lifecycle", label: "Order lifecycle", visibility: ctl.lifeVis, default: "super_admin_only", visible_to_me: !!ctl.lifeVisible }] });
+    // 生命周期：send-log 按单号是「包含」匹配（ZZTEST10 也会回来，前端要精确过滤）；tour_date 不是这天的（改期前）不算。
+    if (p === "/api/notifications/send-log") {
+      const q = (url.searchParams.get("order_number") || "").toUpperCase();
+      const all = [
+        { sent_at: "2026-10-17T20:00:00Z", module: "tour_confirmation", order_number: "ZZTEST1", tour_date: "2026-10-20", sent_by: "kevin", sms_status: "delivered", email_status: "sent" },
+        { sent_at: "2026-10-18T21:05:00Z", module: "tour_confirmation", order_number: "ZZTEST1", tour_date: "2026-10-20", sent_by: "veronica", sms_status: "delivered", email_status: "opened", sms_channel: "sms", delivered_at: "2026-10-18T21:05:30Z", opened_at: "2026-10-18T22:00:00Z" },
+        { sent_at: "2026-10-19T00:00:00Z", module: "tour_confirmation", order_number: "ZZTEST1", tour_date: "2026-10-15", sent_by: "OLDDATE", sms_status: "delivered", email_status: "sent" },
+        { sent_at: "2026-10-19T23:00:00Z", module: "tour_confirmation", order_number: "ZZTEST10", tour_date: "2026-10-20", sent_by: "WRONGORDER", sms_status: "delivered", email_status: "sent" },
+        { sent_at: "2026-10-19T02:30:00Z", module: "last_minute", order_number: "ZZTEST1", tour_date: "2026-10-20", sent_by: "kevin", sms_status: "delivered", email_status: "" },
+        { sent_at: "2026-10-20T01:00:00Z", module: "morning_pickup", order_number: "ZZTEST1", tour_date: "2026-10-20", sent_by: "scheduler", sms_status: "delivered", email_status: "sent" },
+        { sent_at: "2026-10-19T16:00:00Z", module: "tickets_reminder", order_number: "ZZTEST2", tour_date: "2026-10-21", sent_by: "scheduler", sms_status: "delivered", email_status: "sent" },
+      ].map((r) => ({ first_name: "ZZ", last_name: "Test", email: "", phone: "", tour_type: "", error_msg: null, mtlv_eligible: false, ...r }));
+      // 同后端：sent_at 新 → 旧，按 page_size 截。
+      // order_exact=true（bf 合同草稿）⇒ 精确匹配；ctl.containsOnly 模拟还没上的后端（照旧「包含」）。
+      const exact = url.searchParams.get("order_exact") === "true" && !ctl.containsOnly;
+      const matched = all.filter((r) => (exact ? r.order_number.toUpperCase() === q : r.order_number.toUpperCase().includes(q))).sort((a, b) => b.sent_at.localeCompare(a.sent_at));
+      const rows = matched.slice(0, Number(url.searchParams.get("page_size")) || 100);
+      return send(res, 200, { total: matched.length, page: 1, stats: {}, rows });
+    }
     if (p === "/api/me/permissions" && ctl.noMoney) return send(res, 200, { is_superadmin: false, permissions: [{ code: "orders.view", module: "orders", wired: true }], default_home: null });
     if (p.startsWith("/api/user-prefs/")) return send(res, 200, { key: p.split("/").pop(), value: null });
     if (p === "/api/notifications/unhandled") return send(res, 200, { today: "2026-10-20", window_end: "10:30 AM", count: 0, lanes: { morning: [], tour: [], tickets: [], multi: [] } });

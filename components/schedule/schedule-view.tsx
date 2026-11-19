@@ -1363,6 +1363,7 @@ export function ScheduleView() {
                 reloadKey={responsesKey}
                 onAnswers={setResponseAnswers}
                 onOpenRequests={setOpenRequests}
+                published={readyWeek.status === "published"}
                 onChanged={() => void loadWeek(undefined, true)}
                 onUnauthorized={redirectToLogin}
                 beforeEdit={guardEdit}
