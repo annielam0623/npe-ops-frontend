@@ -35,6 +35,7 @@
 - ✅ Annie 再确认（原话）「Order details 整页上的「Open in Main manifest →」键要不要也变蓝？A 三处一起蓝（推荐）--同意，动手」⇒ 132 照 A，70 在合 main。
 - ✅ **第 7 件 132 上 main f878f9d1**（70；功能 a806fc8d 接 b114f83d；Order details 键一起蓝；tt 213 / mt 321 / os 138 / orders 113 / tk 161，tsc / eslint / build）。📌 请 Annie 线上验：Tour / Tickets / Morning 对话框标题「Order 单号」后产品名（多产品「+N more」+ hover 全部、长名两行截）；「Open in Main manifest →」蓝实心（对话框 / 搜索卡 / Order details）。70 三件做完，待命。
 - ✅ **preview 链接所有人可见上 main 5ca95915**（63；功能 9ec0360c，后端 G358；ow 24 / pm 33 / nav 39 / da 610 无失败）。📌 请 Annie 用员工账号验 Dispatch 页头两个链接能打开；Open shift ⚙ 只 SA。
+- 🔴 G298 规则（Annie 原话）「你要设置的可以拖动的格子永远是下一周，也就是今天要改的话是从11/22开始的任何一天，只要排出来的都可以申请调」⇒ 现规则（后端 open = 已发布且没开始；草稿过周四中午关）跟她要的不一样，多半是 11/22 这周仍是草稿 + 已过周四中午 ⇒ open=false。已请 d6 只读查表是哪个组件 / 员工在上面拖是改排班还是发申请；请后端查 11/22 周状态、Veronica 权限、改开放规则的大小。
 - 🔴 G298 更正：Annie 截图是排班管理页 Staff Schedule › Schedule（11/22–28 草稿周，页头蓝字「Started from last week's schedule — drag people to change it.」），原话「所有格子都不动」，在 Veronica 电脑上 ⇒ d6 改查排班页周表整表拖拽（9f531e9a 是否误伤草稿周 / Veronica 权限 / 只读时提示字不该出）。
 - G307 9924cb78 后端 PASS；后端提提醒数字处理后不刷新（effect 只按 run_date）⇒ 63 加 manifestVersion 依赖再合。
 - 🔴 **G298 发布后换班拖不动**（Annie 线上验，原话）「完全拖不了，可以看到蓝色的提示字，但是排好了的班完全就拖不了」⇒ 派 d6 修 bug（task/fix-g298-drag，先 mock 复现，查前端判断 / 真数据形状）。
