@@ -338,13 +338,28 @@ export interface SentSummary {
   delivery: string;
 }
 
+/**
+ * 一个词，照后端阶梯（notifications.py email_state）：Clicked > Opened > Delivered > (Sent，不写) > Failed；
+ * 短信算 delivered_at / sms_status delivered，失败 failed / undelivered；邮件 bounce / spam 算 Failed。WhatsApp 发的前面加 WhatsApp。
+ */
 function deliveryOf(r: SendLogRow): string {
-  return [
-    r.sms_channel === "whatsapp" ? "WhatsApp" : "",
-    r.delivered_at || r.email_delivered_at ? "Delivered" : "",
-    r.opened_at ? "Opened" : "",
-    r.clicked_at ? "Clicked" : "",
-  ]
+  const sms = (r.sms_status || "").toLowerCase();
+  const email = (r.email_status || "").toLowerCase();
+  const word = r.clicked_at
+    ? "Clicked"
+    : r.opened_at
+      ? "Opened"
+      : r.delivered_at ||
+          r.email_delivered_at ||
+          email === "delivered" ||
+          sms.startsWith("delivered")
+        ? "Delivered"
+        : sms.startsWith("sent") || email.startsWith("sent")
+          ? ""
+          : /fail|undeliver|bounce|spam/.test(`${sms} ${email}`)
+            ? "Failed"
+            : "";
+  return [r.sms_channel === "whatsapp" ? "WhatsApp" : "", word]
     .filter(Boolean)
     .join(" · ");
 }
@@ -420,15 +435,10 @@ export function latestSend(
   };
 }
 
-/** 送达状态里算「送到了」的值（SMS delivered / read；Email delivered / opened / clicked）。 */
-const isDelivered = (s: string | null | undefined) =>
-  /^(delivered|read|opened|clicked)/i.test((s || "").trim());
-
 /**
- * SENT / REMINDER SENT（bf 第 2 项，Annie 同意照固定状态）：发没发看 confirmations[].send_state，时间 = sent_at、谁 = sent_by、
- * 送达 = email_status / sms_status；send-log（最近 10 条）只补 Opened / Clicked / WhatsApp。
- * 这一行没有 send_state（旧后端）或是 last_minute（没有自己的 Tracking 行）⇒ 照旧用 send-log。
- * 返回 null = 没发。
+ * SENT / REMINDER SENT（bf 第 2 项，Annie 同意照固定状态）：发没发看 confirmations[].send_state，时间 = sent_at、谁 = sent_by。
+ * 送达一律看 send-log（行上的 email_status / sms_status 只在发送当时写一次，bf 2026-11-18 更正，不用）。
+ * 这一行没有 send_state（旧后端）或是 last_minute ⇒ 照旧整格用 send-log。返回 null = 没发。
  */
 export function sentFor(
   order: OrderDetail,
@@ -444,23 +454,12 @@ export function sentFor(
   // 后端 COALESCE(send_state, '')：空 = 这行没有固定状态（旧行），跟旧后端一样照 send-log。
   if (!row || !row.send_state) return fromLog;
   if (row.send_state !== "sent") return null;
-  const extra = fromLog
-    ? fromLog.delivery
-        .split(" · ")
-        .filter((w) => w === "WhatsApp" || w === "Opened" || w === "Clicked")
-    : [];
-  const delivered =
-    isDelivered(row.sms_status) || isDelivered(row.email_status);
   return {
     at: formatLaDateTime(row.sent_at ?? null),
     by: row.sent_by?.trim() || "—",
-    sms: row.sms_status || "",
-    email: row.email_status || "",
-    delivery: [
-      ...extra.filter((w) => w === "WhatsApp"),
-      ...(delivered ? ["Delivered"] : []),
-      ...extra.filter((w) => w !== "WhatsApp"),
-    ].join(" · "),
+    sms: fromLog?.sms ?? "",
+    email: fromLog?.email ?? "",
+    delivery: fromLog?.delivery ?? "",
   };
 }
 

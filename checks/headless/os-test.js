@@ -499,9 +499,9 @@ async function run() {
     check("生命周期 · 点 Show less：回到最近 3 条，键变回 Show all 7 ▾",
       (await evaluate(`return document.querySelectorAll('[data-lookup-block="changes"] li').length;`)) === 3 && (await evaluate(`return document.querySelector('[data-lookup-block="changes"] [data-changes-all]')?.textContent.trim();`)) === "Show all 7 ▾" && !(await evaluate(`return !!document.querySelector('[data-lookup-block="changes"] [data-changes-less]');`)));
     const sent = await ev(factOf("Tour Confirmation", "Sent"));
-    check("生命周期 · Tour Confirmation Sent：最近一次、精确单号、这天的团（不是 ZZTEST10 / 改期前）+ by veronica · Delivered · Opened（delivered_at / opened_at）", sent && /^10\/18\/2026 2:05 PM ?by veronica · Delivered · Opened$/.test(sent.text), JSON.stringify(sent));
+    check("生命周期 · Tour Confirmation Sent：最近一次、精确单号、这天的团（不是 ZZTEST10 / 改期前）+ by veronica · Opened（send-log 阶梯：opened 胜过 delivered）", sent && /^10\/18\/2026 2:05 PM ?by veronica · Opened$/.test(sent.text), JSON.stringify(sent));
     const lm = await ev(factOf("Tour Confirmation", "Last Minute"));
-    check("生命周期 · Last Minute：10/18/2026 7:30 PM by kevin", lm && /^10\/18\/2026 7:30 PM ?by kevin$/.test(lm.text), JSON.stringify(lm));
+    check("生命周期 · Last Minute：10/18/2026 7:30 PM by kevin · Delivered", lm && /^10\/18\/2026 7:30 PM ?by kevin · Delivered$/.test(lm.text), JSON.stringify(lm));
     check("生命周期 · Restaurant ← lunch_by_day.restaurant", (await ev(factOf("Tour Confirmation", "Restaurant")))?.text === "ZZ Test Diner");
     const rs = await ev(factOf("Morning Pickup", "Reminder sent"));
     check("生命周期 · Morning Reminder sent：照固定状态（confirmations morning_pickup 行 sent_at / sent_by / sms_status），不是 send-log 的 6:00 Auto send", rs && /^10\/19\/2026 6:30 PM ?by kim · Delivered$/.test(rs.text), JSON.stringify(rs));
@@ -520,7 +520,7 @@ async function run() {
     // 门票单：Sent + Contact changed。
     await search("ZZTEST2", `document.querySelector('[data-fact="Contact changed"]') && document.querySelector('[data-lane="Ticket Reminder"] [data-fact="Sent"] dd') && !document.querySelector('[data-lane="Ticket Reminder"] [data-fact="Sent"] dd').textContent.includes('…')`);
     const ts = await ev(factOf("Ticket Reminder", "Sent"));
-    check("生命周期 · 门票 Sent：10/19/2026 9:00 AM by Auto send", ts && /^10\/19\/2026 9:00 AM ?by Auto send$/.test(ts.text), JSON.stringify(ts));
+    check("生命周期 · 门票 Sent：10/19/2026 9:00 AM by Auto send · Delivered", ts && /^10\/19\/2026 9:00 AM ?by Auto send · Delivered$/.test(ts.text), JSON.stringify(ts));
     const cc = await ev(factOf("Ticket Reminder", "Contact changed"));
     check("生命周期 · 门票 Contact changed：Yes（黄）+ 说明", cc && /^Yes ?After the reminder was sent\. Send it again from Main manifest\.$/.test(cc.text) && cc.color === "rgb(251, 191, 36)", JSON.stringify(cc));
     check("生命周期 · 没改动的单：没有 Changes 块、Changes 写 None", (await ev(fieldOf("Changes"))) === "None" && !(await evaluate(`return !!document.querySelector('[data-lookup-block="changes"]');`)));
@@ -545,7 +545,7 @@ async function run() {
     await waitFor(`document.querySelector('[data-lifecycle-card] [data-lifecycle-field="Relay"]') && !document.querySelector('[data-lifecycle-card]').textContent.includes('…')`, 60000);
     const card = await evaluate(`const c = document.querySelector('[data-lifecycle-card]'); if (!c) return null; const f = (l) => c.querySelector('[data-lifecycle-field="' + l + '"] dd')?.textContent.replace(/\\s+/g, ' ').trim(); return { next: c.nextElementSibling?.getAttribute('aria-label'), booked: f('Booked'), sent: f('Confirmation sent'), lm: f('Last Minute'), tix: f('Ticket reminder sent'), relay: f('Relay'), ended: f('Tour ended'), reply: f('Guest reply'), tixReply: f('Ticket reply'), lunch: f('Lunch'), rest: f('Restaurant'), van: f('Van at hotel'), border: getComputedStyle(c).borderTopColor, lines: c.querySelectorAll('[data-lifecycle-changes] li').length };`);
     check("生命周期 · 订单详情页：Activity 卡上面一块，Booked / Confirmation sent / Last Minute / Relay / Tour ended、蓝框、Changes 3 条",
-      card && card.next === "Activity" && /^10\/1\/2026 9:57 AM ?In Rezdy$/.test(card.booked) && /^10\/18\/2026 2:05 PM ?by veronica · Delivered · Opened$/.test(card.sent) && /^10\/18\/2026 7:30 PM ?by kevin$/.test(card.lm) && card.tix === "Not sent" && /^Picked up 5:50 AM ?Jane D\. · Bus 2101$/.test(card.relay) && card.ended === "—" &&
+      card && card.next === "Activity" && /^10\/1\/2026 9:57 AM ?In Rezdy$/.test(card.booked) && /^10\/18\/2026 2:05 PM ?by veronica · Opened$/.test(card.sent) && /^10\/18\/2026 7:30 PM ?by kevin · Delivered$/.test(card.lm) && card.tix === "Not sent" && /^Picked up 5:50 AM ?Jane D\. · Bus 2101$/.test(card.relay) && card.ended === "—" &&
       /^YES ?10\/18\/2026 3:31 PM$/.test(card.reply) && /^Reschedule requested ?10\/19\/2026 10:00 AM$/.test(card.tixReply) && card.lunch === "1 Turkey, 1 Veggie" && card.rest === "ZZ Test Diner" && card.van === "5:44 AM – 5:53 AM" && card.border === "rgba(96, 165, 250, 0.55)" && card.lines === 3, JSON.stringify(card));
     await evaluate(`document.querySelector('[data-lifecycle-changes] [data-changes-all]').click(); return 1;`);
     await sleep(200);
