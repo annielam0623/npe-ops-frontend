@@ -4,7 +4,14 @@
 
 > 6d 交接（下面「2026-10-27 交接：前端主窗口 6d」那节）的后端需求已于 10/27 晚由 ad 转给家里后端主窗口 17。
 
-> **下一个主窗口：先读下面「2026-11-18 收工交接：4d」，再看下面 4d 当天记录（原话、题目原文都在那里）。**
+> **下一个主窗口：先读下面「2026-11-18 深夜 收工交接：4d」，开工照 CLAUDE.md 开工必做第 4 条先列「Annie 提过没做完的」问她。**
+
+## 2026-11-18 深夜 收工交接：前端主窗口 `前端主窗口4d`[b0c20a]（Annie 收工）
+**一、今晚上 main**：No show 改方向 c4ab4018；Main manifest Relay / Tour 两列 6a90bc27；Test send b1d5a79f；Dispatch 关团 23c2c5d6；订单生命周期第一批 e8878386；Show less 51b86305；Rezdy 改了什么 + 固定状态 002f268f；Chat history + 字段名 98588b9b；DOR 去 Soon 19d73c80；G298 发布后换班 9f531e9a（后端 91253a06，v177 已跑）。规则：CLAUDE.md 开工必做第 4 条 c3b0bd4c。Annie 已把 daily_operation_report 开给 staff。
+**二、在分支没合**：4a task/sms-over-limit-email-only 4ac12912（ae PASS，等 Annie 看显示文字；合前先查 tk 那一项）。其他窗口没有没推的改动。
+**三、📌 等 Annie（原文在下面当天记录）**：Morning Tracking No show 第 3 版（N1 三条 / N2 胶囊还是字，样稿 SvK1sLi1jFefZN2naHa6y5）；DOR 加 No show 6 题（N8XZn83rVNBUM7ASLkNsit）；客人选餐 B1 / B2；Rezdy Recent actions B / C（推荐 B = 记在 DOR Updates）；后端要不要也挡 booking_notes（messages.view）；「Tour」列名；No show 手机说明；SMS 超字数显示文字；Tickets 页头改灰 6 题；Open in Main manifest 蓝键；Content Studio smsCheck；F1 黄框 4 题（ae 问的）。
+**四、后端**：ae[3923c1]。bf 在做 rezdy-internal-notes（internalNotes 进 _ORDER_FIELDS + 对 partner 各处隐藏），SHA 到了看前端要不要配合。
+**五、窗口**：23、4a、8d 都已收（dev server / Chrome 关）。主窗口 worktree C:\Code\ops-wt-4d、C:\Code\ops-wt-4d-mt（可删）。
 
 ## 2026-11-18 晚 继续：前端主窗口 `前端主窗口4d`[b0c20a]（Annie「回到家了，继续到9：30pm」）
 - 窗口重开：前端只有 `23`[1a6349]；后端 ae[3923c1]、bf、8e、b9、09。资源：空闲 47 / 62 GB，node 0、chrome 0。
