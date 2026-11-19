@@ -752,7 +752,12 @@ async function run() {
   log = await mockLog();
   const replyReq = log.filter((e) => e.path === "/booking-notes/multi/reply").pop();
   check("Send 请求体带 address / body", replyReq && replyReq.body.address === MULTI_ONE && replyReq.body.body === "When can you refund me?", JSON.stringify(replyReq));
-  const afterReply = log.filter((e) => e.path === "/api/notifications/unhandled").length;
+  // 重拉在面板收起之后异步发出；最多等 3 秒（以前直接读偶尔抢在请求前面）。
+  let afterReply = log.filter((e) => e.path === "/api/notifications/unhandled").length;
+  for (let i = 0; i < 30 && afterReply <= before; i++) {
+    await sleep(100);
+    afterReply = (await mockLog()).filter((e) => e.path === "/api/notifications/unhandled").length;
+  }
   check("发送成功后立即重拉 /unhandled（不等 60 秒）", afterReply > before, `${before} → ${afterReply}`);
 
   // 发送失败（服务端返回 status !== sent）：卡片留着、字也留着。

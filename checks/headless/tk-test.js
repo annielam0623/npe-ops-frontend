@@ -367,7 +367,15 @@ async function run() {
     bc.recipients.length === 4 && bc.send_sms && bc.send_email && !("send_anyway" in bc) && !("preview_at" in bc), JSON.stringify(bc));
   check("first_name 去掉前导空格（Echo 的名字前有空格）", bc && bc.recipients.find((r) => r.order_number === "CHDZZ5").first_name === "ZZ", JSON.stringify(bc?.recipients));
   check("结果：Email 3 sent, 1 failed", (await evaluate(`return ${dialog}.textContent;`)).includes("Email: 3 sent, 1 failed"));
-  check("发完重拉群发记录", (await since(before, (e) => e.path === "/api/broadcasting-log")).length >= 1);
+  // 重拉是 onSent 之后异步发的，结果字先出来；最多等 3 秒（以前直接读会偶尔抢在请求前面）。
+  {
+    let reloaded = 0;
+    for (let i = 0; i < 30 && !reloaded; i++) {
+      reloaded = (await since(before, (e) => e.path === "/api/broadcasting-log")).length;
+      if (!reloaded) await sleep(100);
+    }
+    check("发完重拉群发记录", reloaded >= 1);
+  }
   await evaluate(`$btn('Done', ${dialog}).click();`);
   await sleep(150);
   // 取消勾选 + 超长
