@@ -10,6 +10,9 @@
 - 窗口重开：前端只有 `23`[1a6349]；后端 ae[3923c1]、bf、8e、b9、09。资源：空闲 47 / 62 GB，node 0、chrome 0。
 - 派 23：task/noshow-tracking ed0cf996 接 G321 1eac398a（5 处差异 + 09 审查三条），交 ae PASS 后合。
 - 待开窗口：150-relay-tour a822df5f、Test send（Annie 已动手）。
+- 23 交 **task/noshow-tracking 9d4c4566**（合 main 解了 morning-tracking-view.tsx visibleColumns 冲突；mt 315 / orders 112 / mf 343 / man 500 / nav 39，tsc / eslint / build）：5 处差异逐条核过（PUT mark 存完重拉、relay_applicable=false「—」、day_of_tour product_name / 旧日期黄标签、不调 /api/manifests/no-show、✓ 列 boarding 最终值 + Edited by、底部合计不重算）。另：手机版 Morning Tracking 列表点开显示 Relay / Bus 只读（手机不能改）。⇒ 已转 ae PASS。📌 问 Annie：手机上只看不改要不要写进 How to use。✅ ae PASS（另提 day_of_tour 有 leg ""|"return"）⇒ 23 补「Return」小标签（照样稿 N8 去 / 回程分行）后直接合 main。
+- F1 黄框（ae 转）：在 ops components/dispatch/pickup-move.tsx（main b745ce67，只在 11-18…22 出），已回 ae 现行原文；ae 问了 Annie 4 题（5 家改到哪、哪些产品算 5:15am、昨天改的要不要改回、结束日期），等答再出 preview。
+- Dispatch bug（ae 转，Annie 截图「最上面的bus card还在打开着要求保存」）：11-19 South Rim 在 Assign Bus 是 Closed（CCL closed），Step 1 卡却橙「Needs saving」+ Assign Bus 键。4d 开只读子任务查是前端还是后端。⇒ **前端**：manifests-panel.tsx warnState（uploaded && buses===0 ⇒ Needs saving）不读 closures；Closed 来自 DispatchPrefill.closures（GET /api/dispatch/imports/day），view-only 用户不加载。已回 ae；派 23（task/dispatch-closed-step1）先出 preview（含 view-only 题：前端读 closures / 后端 ManifestCard 加 closed）。
 
 ## 2026-11-18 收工交接：前端主窗口 `前端主窗口4d`[9f187b]（公司电脑，14:30 下班）
 **一、今天上 main（都请 Annie 线上验，步骤在下面当天记录）**：Morning Tracking 顶部整合 + 手机版简化 **296561bc**（36 / 4d 合）；工资改锁 + 自动锁 **db395e64**（8d）；G281 Ticket Tracking 从 Main manifest 自动填 **391faae5**（23）；群发 SMS 问候只一次 **83697c9c**（4a；后端模板 bf[484954] 还在改）。
