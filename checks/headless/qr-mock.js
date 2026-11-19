@@ -5,9 +5,9 @@ const log = [];
 let nextId = 4;
 let nextLog = 3;
 const replies = [
-  { id: 1, body: "2 minutes away", sort_order: 1, active: true, updated_at: null },
-  { id: 2, body: "Stay where you are", sort_order: 2, active: true, updated_at: null },
-  { id: 3, body: "I can't find you, call me", sort_order: 3, active: false, updated_at: "2026-10-28T17:00:00+00:00" },
+  { id: 1, body: "2 minutes away", sort_order: 1, active: true, add_bus_map: false, updated_at: null },
+  { id: 2, body: "Stay where you are", sort_order: 2, active: true, add_bus_map: false, updated_at: null },
+  { id: 3, body: "I can't find you, call me", sort_order: 3, active: false, add_bus_map: false, updated_at: "2026-10-28T17:00:00+00:00" },
 ];
 const entries = [
   { id: 2, entity_id: "3", label: "I can't find you, call me", action: "update", before: { body: "I can't find you", active: true, sort_order: 3 }, after: { body: "I can't find you, call me", active: false, sort_order: 3 }, actor: "annie", actor_name: "Annie Z", created_at: "2026-10-28T17:00:00+00:00" },
@@ -28,8 +28,8 @@ function addLog(action, label, before, after) {
   entries.unshift({ id: nextLog++, entity_id: null, label, action, before, after, actor: "zztest", actor_name: "ZZ Test", created_at: new Date().toISOString() });
 }
 /** 旧形状 entries 拆成共用读接口的逐字段行（同后端 B1：一处改动一行）。 */
-const WHAT = { body: "Reply", sort_order: "Position", active: "Shown to drivers" };
-const showV = (k, v) => (v === null || v === undefined ? null : k === "active" ? (v ? "On" : "Off") : String(v));
+const WHAT = { body: "Reply", sort_order: "Position", active: "Shown to drivers", add_bus_map: "Bus map link" };
+const showV = (k, v) => (v === null || v === undefined ? null : k === "active" ? (v ? "On" : "Off") : k === "add_bus_map" ? (v ? "Yes" : "No") : String(v));
 function sharedRows() {
   const out = [{ id: "0-1", at: "2026-10-20T17:00:00+00:00", by: "Max", action: "update", label: "Ancient reply", what: "Reply", from: null, to: null }];
   for (const e of [...entries].reverse()) {
@@ -66,7 +66,7 @@ http.createServer(async (req, res) => {
     const b = await readBody(req); entry.body = b;
     const why = problem(b.body);
     if (why) return send(res, 400, { detail: why });
-    const reply = { id: nextId++, body: b.body.trim(), sort_order: Math.max(0, ...replies.map((r) => r.sort_order)) + 1, active: true, updated_at: new Date().toISOString() };
+    const reply = { id: nextId++, body: b.body.trim(), sort_order: Math.max(0, ...replies.map((r) => r.sort_order)) + 1, active: true, add_bus_map: false, updated_at: new Date().toISOString() };
     replies.push(reply);
     addLog("create", reply.body, null, { body: reply.body, active: true, sort_order: reply.sort_order });
     return send(res, 200, { ok: true, reply });
@@ -86,13 +86,16 @@ http.createServer(async (req, res) => {
     if (!r) return send(res, 404, { detail: "That reply no longer exists." });
     if (req.method === "PATCH") {
       const b = await readBody(req); entry.body = b;
-      if (!("body" in b) && !("active" in b)) return send(res, 400, { detail: "Nothing to change." });
+      if (!("body" in b) && !("active" in b) && !("add_bus_map" in b)) return send(res, 400, { detail: "Nothing to change." });
+      // G349：add_bus_map 只收布尔；ctl.busMap400 模拟后端拒收。
+      if ("add_bus_map" in b && (ctl.busMap400 || typeof b.add_bus_map !== "boolean")) return send(res, 400, { detail: "add_bus_map must be true or false." });
       if ("body" in b) { const why = problem(b.body, r.id); if (why) return send(res, 400, { detail: why }); }
-      const before = { body: r.body, active: r.active, sort_order: r.sort_order };
+      const before = { body: r.body, active: r.active, sort_order: r.sort_order, add_bus_map: r.add_bus_map };
+      if ("add_bus_map" in b) r.add_bus_map = b.add_bus_map;
       if ("body" in b) r.body = b.body.trim();
       if ("active" in b) r.active = !!b.active;
       r.updated_at = new Date().toISOString();
-      addLog("update", r.body, before, { body: r.body, active: r.active, sort_order: r.sort_order });
+      addLog("update", r.body, before, { body: r.body, active: r.active, sort_order: r.sort_order, add_bus_map: r.add_bus_map });
       return send(res, 200, { ok: true, reply: r });
     }
     if (req.method === "DELETE") {

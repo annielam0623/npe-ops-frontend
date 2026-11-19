@@ -68,7 +68,17 @@ export function QuickRepliesView() {
   const [busyId, setBusyId] = useState<number | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<QuickReply | null>(null);
+  /** Bus map 勾刚存好的那一行（绿字 Saved，3 秒后消失）。 */
+  const [busMapSaved, setBusMapSaved] = useState<number | null>(null);
   const redirectingRef = useRef(false);
+  const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(
+    () => () => {
+      if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+    },
+    [],
+  );
 
   const redirectToLogin = useCallback(() => {
     if (!redirectingRef.current) {
@@ -191,6 +201,32 @@ export function QuickRepliesView() {
     }
   }
 
+  /**
+   * Bus map 勾（G349，Annie 2026-11-19「全部同意推荐，动手」1A）：同这页的开关，点一下马上存；
+   * 存好绿字 Saved（3 秒），失败红字照后端原话、勾回原样（勾跟着 reply.add_bus_map 走，没存成就不变）。
+   */
+  async function toggleBusMap(reply: QuickReply) {
+    if (busyId !== null) return;
+    setBusyId(reply.id);
+    setActionError(null);
+    setBusMapSaved(null);
+    try {
+      const saved = await updateQuickReply(reply.id, {
+        add_bus_map: !reply.add_bus_map,
+      });
+      setReplies(replies.map((r) => (r.id === saved.id ? saved : r)));
+      setBusMapSaved(saved.id);
+      if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+      savedTimerRef.current = setTimeout(() => setBusMapSaved(null), 3000);
+    } catch (error) {
+      const text = failText(error);
+      if (text)
+        setActionError(`Could not change Bus map for “${reply.body}”: ${text}`);
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   async function move(index: number, by: -1 | 1) {
     const to = index + by;
     if (busyId !== null || to < 0 || to >= replies.length) return;
@@ -256,7 +292,8 @@ export function QuickRepliesView() {
         </ErrorBanner>
       ) : (
         <>
-          <LegacyHowTo title="How to use">
+          {/* G349 2A：原来 4 条 + Annie 批的 3 条（原文照抄），标题照她批的。 */}
+          <LegacyHowTo title="How to use — Driver quick replies">
             <li>
               These are the one-tap texts relay and tour drivers can send to a
               guest. Drivers can only send these, not their own words.
@@ -269,6 +306,18 @@ export function QuickRepliesView() {
             <li>
               Up to {QUICK_REPLY_MAX} characters, plain text only: no emoji and
               no {"{ }"}. Each reply must be different.
+            </li>
+            <li>
+              Tick &quot;Bus map&quot; on a reply to add a link to the bus&apos;s
+              location at the end of that text.
+            </li>
+            <li>
+              The guest can open the link for 90 minutes after the driver sends
+              it.
+            </li>
+            <li>
+              Only the &quot;can&apos;t find you&quot; reply needs it. Untick it
+              to stop adding the link.
             </li>
           </LegacyHowTo>
 
@@ -334,6 +383,8 @@ export function QuickRepliesView() {
                       onUp={() => void move(i, -1)}
                       onDown={() => void move(i, 1)}
                       onToggle={() => void toggle(r)}
+                      busMapSaved={busMapSaved === r.id}
+                      onBusMap={() => void toggleBusMap(r)}
                       onEdit={() =>
                         setEditing({ id: r.id, text: r.body, error: null })
                       }
@@ -453,6 +504,8 @@ function ReplyRow({
   onUp,
   onDown,
   onToggle,
+  busMapSaved,
+  onBusMap,
   onEdit,
   onEditText,
   onSave,
@@ -469,6 +522,9 @@ function ReplyRow({
   onUp: () => void;
   onDown: () => void;
   onToggle: () => void;
+  /** Bus map 勾刚存好（绿字 Saved）。 */
+  busMapSaved: boolean;
+  onBusMap: () => void;
   onEdit: () => void;
   onEditText: (text: string) => void;
   onSave: () => void;
@@ -556,6 +612,34 @@ function ReplyRow({
             <span className="text-[11.5px] whitespace-nowrap text-[#1a1a1a] tabular-nums night:text-white/55">
               {charCount(r.body)} / {QUICK_REPLY_MAX}
             </span>
+            {/* G349 Bus map：字数后、开关前；绿勾（同开关的绿，不用蓝），点一下马上存。 */}
+            <label
+              data-bus-map={r.id}
+              className={cn(
+                "inline-flex items-center gap-[5px] text-[12px] whitespace-nowrap text-[#1a1a1a] night:text-white/80",
+                busy ? "cursor-not-allowed opacity-60" : "cursor-pointer",
+              )}
+            >
+              <input
+                type="checkbox"
+                id={`bus-map-${r.id}`}
+                checked={!!r.add_bus_map}
+                disabled={busy}
+                onChange={onBusMap}
+                aria-label={`Bus map link on “${r.body}”`}
+                className="m-0 size-[15px] accent-[#16a34a]"
+              />
+              Bus map
+            </label>
+            {busMapSaved ? (
+              <span
+                data-bus-map-saved
+                role="status"
+                className="text-[11.5px] font-semibold text-[#15803d] night:text-emerald-300"
+              >
+                Saved
+              </span>
+            ) : null}
             {/* 开 / 关：绿 / 灰的开关（不用蓝色，同 preview）。 */}
             <button
               type="button"

@@ -218,6 +218,33 @@ async function run() {
   await waitFor(`${rowOf(1)}.hasAttribute('data-off')`);
   check("关掉：PATCH {active:false}、司机那排少一句", JSON.stringify((await since(before, (e) => e.method === "PATCH"))[0]?.body) === JSON.stringify({ active: false }) && !(await driverSees()).includes("2 minutes away"));
 
+  // ── G349 Bus map 勾（Annie 2026-11-19「全部同意推荐，动手」：1A 点一下马上存、2A How to use 7 条、3A 司机那排不变）──
+  check("G349 每行一个 Bus map 勾，默认不勾，放在字数后、开关前；绿色勾（不是蓝）", await evaluate(`const rows = [...document.querySelectorAll('li[data-reply-id]')]; return rows.length > 0 && rows.every((li) => { const l = li.querySelector('[data-bus-map]'); if (!l) return false; const kids = [...l.parentElement.children]; const i = kids.indexOf(l); return !l.querySelector('input').checked && l.textContent.trim() === 'Bus map' && kids[i - 1]?.textContent.includes('/ 80') && kids.slice(i + 1).some((k) => k.getAttribute('role') === 'switch') && getComputedStyle(l.querySelector('input')).accentColor === 'rgb(22, 163, 74)'; });`));
+  before = (await mockLog()).length;
+  await evaluate(`${rowOf(3)}.querySelector('[data-bus-map] input').click();`);
+  const bm = (await waitReq(before, (e) => e.method === "PATCH"))[0];
+  await waitFor(`!!${rowOf(3)}.querySelector('[data-bus-map-saved]')`);
+  check("G349 勾上：马上 PATCH /3 只带 {add_bus_map:true}，勾着、旁边绿字 Saved", bm?.path === "/api/driver-quick-replies/3" && JSON.stringify(bm.body) === JSON.stringify({ add_bus_map: true }) && (await evaluate(`const r = ${rowOf(3)}; const sv = r.querySelector('[data-bus-map-saved]'); return r.querySelector('[data-bus-map] input').checked && sv.textContent === 'Saved' && getComputedStyle(sv).color === 'rgb(21, 128, 61)';`)), JSON.stringify(bm?.body));
+  check("G349 What the driver sees 不变（不标链接）", !(await evaluate("return document.querySelector('[data-driver-preview]').textContent.toLowerCase().includes('bus map');")));
+  check("G349 Saved 3 秒后消失", await waitFor(`!${rowOf(3)}.querySelector('[data-bus-map-saved]')`, 5000));
+  await ctl({ busMap400: true });
+  before = (await mockLog()).length;
+  await evaluate(`${rowOf(3)}.querySelector('[data-bus-map] input').click();`);
+  await waitFor(`${alertText()}.includes('Bus map')`);
+  check("G349 存失败：红字「Could not change Bus map for “I can't find you, call me”: add_bus_map must be true or false.」，勾回原样（还勾着）、没有 Saved", (await evaluate(`return ${alertText()};`)).includes("Could not change Bus map for “I can't find you, call me”: add_bus_map must be true or false.") && (await evaluate(`const r = ${rowOf(3)}; return r.querySelector('[data-bus-map] input').checked && !r.querySelector('[data-bus-map-saved]');`)), await evaluate(`return ${alertText()};`));
+  await ctl({ busMap400: false });
+  before = (await mockLog()).length;
+  await evaluate(`${rowOf(3)}.querySelector('[data-bus-map] input').click();`);
+  await waitFor(`!${rowOf(3)}.querySelector('[data-bus-map] input').checked`);
+  check("G349 再点：PATCH {add_bus_map:false}、不勾了、红字清掉", JSON.stringify((await since(before, (e) => e.method === "PATCH"))[0]?.body) === JSON.stringify({ add_bus_map: false }) && !(await evaluate(`return ${alertText()};`)).includes("Bus map"));
+  await evaluate(`${rowOf(3)}.querySelector('[data-bus-map] input').click();`);
+  await waitFor(`${rowOf(3)}.querySelector('[data-bus-map] input').checked`);
+  check("G349 How to use：标题「📖 How to use — Driver quick replies」，原来 4 条 + 新 3 条（原文）共 7 条", await evaluate(`const d = [...document.querySelectorAll('details')].find((x) => x.textContent.includes('How to use')); const items = [...d.querySelectorAll('li')].map((li) => li.textContent.replace(/\\s+/g, ' ').trim()); return d.querySelector('summary').textContent.trim() === '📖 How to use — Driver quick replies' && items.length === 7 && JSON.stringify(items.slice(4)) === ${JSON.stringify(JSON.stringify([
+    'Tick "Bus map" on a reply to add a link to the bus\'s location at the end of that text.',
+    "The guest can open the link for 90 minutes after the driver sends it.",
+    'Only the "can\'t find you" reply needs it. Untick it to stop adding the link.',
+  ]))};`), await evaluate("return [...document.querySelectorAll('details li')].map((li) => li.textContent).join(' || ');"));
+
   // ── 排序 ──
   check("第一行 ↑、最后一行 ↓ 灰着", await evaluate(`return $btn('↑', ${rowOf(1)}).disabled && $btn('↓', [...document.querySelectorAll('li[data-reply-id]')].pop()).disabled;`));
   before = (await mockLog()).length;
@@ -251,7 +278,7 @@ async function run() {
   await waitFor("document.querySelector('[data-action-log] tbody tr')");
   const rows = await evaluate("return [...document.querySelectorAll('[data-action-log] tbody tr')].map(r => [...r.children].map(c => c.textContent.trim().replace(/\\s+/g, ' ')));");
   check("Action Log 展开才拉 /api/driver-quick-replies/action-log?limit=50，不再拉旧的 /log", (await since(before, (e) => e.path === "/api/driver-quick-replies/action-log")).some((e) => e.query === "?limit=50") && (await mockLog()).every((e) => e.path !== "/api/driver-quick-replies/log"));
-  check("日志：Reply 旧 → 新、Shown to drivers On → Off、删除只有旧值、旧条目 No before / after recorded", rows.some((r) => r[2].endsWith("· Reply") && r[3] === "I can't find you → I can't find you, call me") && rows.some((r) => r[2].endsWith("· Shown to drivers") && r[3] === "On → Off") && rows.some((r) => r[2].includes("Old reply") && r[2].endsWith("· Reply") && r[3] === "Old reply") && rows.some((r) => r[2].includes("Ancient reply") && r[3] === "No before / after recorded"), JSON.stringify(rows));
+  check("日志：Reply 旧 → 新、Shown to drivers On → Off、Bus map link No → Yes、删除只有旧值、旧条目 No before / after recorded", rows.some((r) => r[2].endsWith("· Reply") && r[3] === "I can't find you → I can't find you, call me") && rows.some((r) => r[2].endsWith("· Shown to drivers") && r[3] === "On → Off") && rows.some((r) => r[2].includes("Old reply") && r[2].endsWith("· Reply") && r[3] === "Old reply") && rows.some((r) => r[2].includes("Ancient reply") && r[3] === "No before / after recorded") && rows.some((r) => r[2].endsWith("· Bus map link") && r[3] === "No → Yes"), JSON.stringify(rows));
   // 后端 403：一句灰字，不报错
   await ctl({ log403: true });
   await goto(`${APP}/settings/quick-replies`);
