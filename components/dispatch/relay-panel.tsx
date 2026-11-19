@@ -348,6 +348,7 @@ export function RelayPanel({
   onCopyFirstRound,
   onSave,
   tourColors,
+  onPulled,
 }: {
   date: string;
   /** Send 标签正显示着：第一次显示（以及显示着时重建）就自动列名单、取客人。 */
@@ -363,6 +364,8 @@ export function RelayPanel({
   onSave?: () => Promise<boolean>;
   /** 131：团色（manifest_id → Bus Manifest 的颜色，同 Assign 团卡片），Tour bus pick up 每个团的节头用。 */
   tourColors?: Record<number, string | null>;
+  /** G307：每次拉到名单（自动 / ↻ Refresh）都告诉排车页，顶上的 Need a look 提醒和 Schedule check 跟着这一份数。 */
+  onPulled?: (pull: RelayPull) => void;
 }) {
   const [data, setData] = useState<RelayPull | null>(null);
   const [pulling, setPulling] = useState(false);
@@ -454,7 +457,9 @@ export function RelayPanel({
     setPulling(true);
     setError(null);
     try {
-      setData(await fetchRelayPull(date));
+      const got = await fetchRelayPull(date);
+      setData(got);
+      onPulled?.(got);
       // 每次拉名单都从默认开始：没发过的全勾、Send anyway 全不勾（同其他发送页每次预览）。
       setGuestOff(new Set());
       setGuestAgain(new Set());

@@ -31,6 +31,7 @@ import {
   moveSeating,
   pullFromDiscord,
   RELAY_REASON_NO_CAR,
+  type RelayPull,
   saveDispatchDay,
   saveDispatchSection,
 } from "@/lib/dispatch-api";
@@ -435,37 +436,42 @@ export function DispatchView() {
     null,
   );
   const noCarDate = day?.run_date;
+  /** 一份 relay-pull ⇒ Need a look 数（Schedule check、G307 Send 顶上提醒）+ 每轮没车停的酒店。 */
+  const applyRelayPull = useCallback((date: string, pull: RelayPull) => {
+    const list = pull.need_a_look ?? [];
+    setNeedLook({ date, n: list.length });
+    if (list.length && !list.some((g) => g.round)) {
+      setRelayNoCar(null);
+      return;
+    }
+    const byRound: RelayNoCar = {};
+    for (const g of list) {
+      if (g.reason !== RELAY_REASON_NO_CAR || !g.round) continue;
+      if (g.location_id == null) continue;
+      const hs = (byRound[g.round] ??= []);
+      const h = hs.find((x) => x.location_id === g.location_id);
+      if (h) h.pax += g.pax ?? 0;
+      else
+        hs.push({
+          location_id: g.location_id,
+          name: g.hotel || g.pickup_location,
+          pax: g.pax ?? 0,
+        });
+    }
+    for (const hs of Object.values(byRound))
+      hs.sort((a, b) =>
+        a.name.localeCompare(b.name, "en", { sensitivity: "base" }),
+      );
+    setRelayNoCar({ date, byRound });
+  }, []);
+  // G307（后端 PASS 时提）：跟 Send 标签的面板同一个触发（manifestVersion：换天 / 存好 / 复制以后重读）；
+  // 面板自己再拉（自动 / ↻ Refresh）时由 onPulled 同步，两个数跟 Need a look 那一块一样。
   useEffect(() => {
     if (!noCarDate) return;
     let gone = false;
     fetchRelayPull(noCarDate).then(
       (pull) => {
-        if (gone) return;
-        const list = pull.need_a_look ?? [];
-        setNeedLook({ date: noCarDate, n: list.length });
-        if (list.length && !list.some((g) => g.round)) {
-          setRelayNoCar(null);
-          return;
-        }
-        const byRound: RelayNoCar = {};
-        for (const g of list) {
-          if (g.reason !== RELAY_REASON_NO_CAR || !g.round) continue;
-          if (g.location_id == null) continue;
-          const hs = (byRound[g.round] ??= []);
-          const h = hs.find((x) => x.location_id === g.location_id);
-          if (h) h.pax += g.pax ?? 0;
-          else
-            hs.push({
-              location_id: g.location_id,
-              name: g.hotel || g.pickup_location,
-              pax: g.pax ?? 0,
-            });
-        }
-        for (const hs of Object.values(byRound))
-          hs.sort((a, b) =>
-            a.name.localeCompare(b.name, "en", { sensitivity: "base" }),
-          );
-        setRelayNoCar({ date: noCarDate, byRound });
+        if (!gone) applyRelayPull(noCarDate, pull);
       },
       () => {
         if (gone) return;
@@ -476,7 +482,7 @@ export function DispatchView() {
     return () => {
       gone = true;
     };
-  }, [noCarDate, base]);
+  }, [noCarDate, base, manifestVersion, applyRelayPull]);
   /** 没客人的团展开没有：Step 1、Step 2 同一个开关。 */
   const [showEmpty, setShowEmpty] = useState(false);
   /** G82：点 Re-match 加 1，重新给 Private 车配订单。 */
@@ -3192,6 +3198,7 @@ export function DispatchView() {
                   onSave={viewOnly ? undefined : () => saveRef.current()}
                   // 131：Tour bus pick up 每个团的节头用团色（同 Assign 团卡片 / Bus Manifest）。
                   tourColors={colorByManifestId}
+                  onPulled={(pull) => applyRelayPull(day.run_date, pull)}
                 />
               </div>
             ) : null}

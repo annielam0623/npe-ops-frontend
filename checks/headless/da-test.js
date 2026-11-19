@@ -1651,6 +1651,40 @@ async function run() {
       await waitFor(nlBox, 20000);
       await sleep(1200);
       check("G307 0 单：没有提醒；Need a look 那一块照旧在", await evaluate(`return !${al} && !!${nlBox};`));
+      // 后端 PASS 时提：处理完单、面板重拉（↻ Refresh）以后，提醒和 Schedule check 的数跟着变，减到 0 不出。
+      const alText = `${al}?.querySelector('span').textContent.replace(/\\s+/g, ' ').trim() || ''`;
+      const scText = "document.getElementById('schedule-check')?.textContent || ''";
+      // Schedule check 在 Assign 标签（窄屏收成右下角胶囊）：切过去、打开，读完再回 Send。
+      const readSC = async () => {
+        await evaluate("document.getElementById('tab-assign').click();");
+        await sleep(300);
+        await evaluate("document.querySelector('[data-schedule-pill]')?.click();");
+        await sleep(300);
+        const t = await evaluate(`return ${scText};`);
+        await evaluate("document.getElementById('tab-send').click();");
+        await waitFor("!document.getElementById('panel-send').hidden", 5000);
+        return t;
+      };
+      const refresh = async () => {
+        await evaluate("document.querySelector('#panel-send [data-refresh-guests]').click();");
+        await waitFor("document.querySelector('#panel-send [data-refresh-guests]').textContent.trim() === '↻ Refresh'", 15000);
+        await sleep(400);
+      };
+      await ctl({ needRoundEmpty: false, needRound: true });
+      await openPage(`${APP}/dispatch?date=2026-10-05&tab=send`);
+      check("G307 重拉前：6 单 ⇒ 提醒写 6 orders", await waitFor(`${alText}.startsWith('⚠ 6 orders in Need a look')`, 20000), await evaluate(`return ${alText};`));
+      await ctl({ needRound: false });
+      await refresh();
+      const a1 = await evaluate(`return ${alText};`);
+      const s1 = await readSC();
+      check("G307 处理掉 5 单、点 ↻ Refresh：提醒跟着变 1 order，Schedule check 也是 1 order in Need a look",
+        a1.startsWith("⚠ 1 order in Need a look") && s1.includes("1 order in Need a look"), `${a1} | ${s1.slice(0, 300)}`);
+      await ctl({ needRoundEmpty: true });
+      await refresh();
+      const gone = await evaluate(`return !${al};`);
+      const s0 = await readSC();
+      check("G307 减到 0、点 ↻ Refresh：提醒没了，Schedule check 也没有 Need a look 那条",
+        gone && !!s0 && !s0.includes("in Need a look"), s0.slice(0, 300));
       await ctl({ needRoundEmpty: false });
     }
 
