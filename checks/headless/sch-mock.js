@@ -432,6 +432,13 @@ http
     if (p === "/__sends") return send(res, 200, sendLog);
     if (p === "/__ctl") {
       Object.assign(ctl, await readBody(req));
+      // G298（2026-11-19）：ctl.futurePublished = "YYYY-MM-DD" ⇒ 那周是已发布、还没开始、从上周复制来的（员工去 Your schedule 换班那行字）。
+      if (ctl.futurePublished) {
+        const fw = ctl.futurePublished;
+        setWeek(fw, "published", [slot(fw, "open", "02:00", "10:00", 1), slot(fw, "mid", "10:00", "18:00", 4)], { at: "2026-11-18T17:12:00+00:00", by: 1 });
+        weeks.get(fw).copied_from = addDays(fw, -7);
+        delete ctl.futurePublished;
+      }
       // ctl.resetShiftTypes：班次类型回到种子的 Open / Mid / Close（置顶 85 的用例加过、改过之后）。
       if (ctl.resetShiftTypes) {
         settings.shift_types = JSON.parse(INITIAL_SHIFT_TYPES);

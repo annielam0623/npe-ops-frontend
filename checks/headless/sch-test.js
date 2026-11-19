@@ -51,6 +51,33 @@ async function waitFor(expr, timeout = 15000) {
   }
   return false;
 }
+// 真鼠标拖（不是合成 DragEvent）：CDP 拦下 Chrome 自己起的拖拽，再在目标上 dragEnter → dragOver → drop。
+// 合成事件会跳过 dragstart / 浏览器自己的判断，线上「拖不动」那种问题测不出来（G298 2026-11-19）。
+const cdpEvents = [];
+async function realDrag(fromSel, toSel) {
+  const box = (sel) => evaluate(`const r = document.querySelector(${JSON.stringify(sel)}).getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 };`);
+  const a = await box(fromSel);
+  const b = await box(toSel);
+  await cdp("Input.setInterceptDrags", { enabled: true });
+  cdpEvents.length = 0;
+  await cdp("Input.dispatchMouseEvent", { type: "mouseMoved", x: a.x, y: a.y });
+  await cdp("Input.dispatchMouseEvent", { type: "mousePressed", x: a.x, y: a.y, button: "left", buttons: 1, clickCount: 1 });
+  for (let i = 1; i <= 10; i++)
+    await cdp("Input.dispatchMouseEvent", { type: "mouseMoved", x: a.x + ((b.x - a.x) * i) / 10, y: a.y + ((b.y - a.y) * i) / 10, button: "left", buttons: 1 });
+  let drag = null;
+  for (let i = 0; i < 20 && !drag; i++) { drag = cdpEvents.find((e) => e.method === "Input.dragIntercepted"); if (!drag) await sleep(50); }
+  if (!drag) {
+    await cdp("Input.dispatchMouseEvent", { type: "mouseReleased", x: b.x, y: b.y, button: "left", buttons: 0, clickCount: 1 });
+    await cdp("Input.setInterceptDrags", { enabled: false });
+    return false;
+  }
+  const data = drag.params.data;
+  for (const type of ["dragEnter", "dragOver", "drop"]) await cdp("Input.dispatchDragEvent", { type, x: b.x, y: b.y, data });
+  await cdp("Input.dispatchMouseEvent", { type: "mouseReleased", x: b.x, y: b.y, button: "left", buttons: 0, clickCount: 1 });
+  await cdp("Input.setInterceptDrags", { enabled: false });
+  return true;
+}
+
 async function goto(url) {
   await cdp("Page.navigate", { url });
   await sleep(300);
@@ -98,6 +125,7 @@ async function main() {
   await new Promise((r) => (ws.onopen = r));
   ws.onmessage = (ev) => {
     const msg = JSON.parse(ev.data);
+    if (msg.method) cdpEvents.push(msg);
     // 有没存的改动时跳页，浏览器自己的「离开此页？」：检查里一律放行（页面里的 Save / Don't save 框另外测）。
     if (msg.method === "Page.javascriptDialogOpening") {
       void cdp("Page.handleJavaScriptDialog", { accept: true });
@@ -378,6 +406,11 @@ async function run() {
   `);
   check("拖到 Lizzie 的格子：换回 Lizzie", await waitFor(`${cell("2|2026-10-05")}.textContent.includes('Mid')`));
   await saveWeek();
+  // 真鼠标拖（G298 线上「排好了的班完全就拖不了」2026-11-19）：浏览器自己起拖拽，拖到 Unassigned 再拖回 Lizzie。
+  const dragged1 = await realDrag(`[data-cell="2|2026-10-05"] [data-slot-id="${lizMidId}"]`, '[data-cell="needs|2026-10-05"]');
+  check("真鼠标拖 Lizzie 的 Mid 到 Unassigned：拖得动、这个时段清空", dragged1 && (await waitFor(`${cell("needs|2026-10-05")}.querySelector('[data-slot-id="${lizMidId}"]')`, 3000)), "dragged=" + dragged1);
+  const dragged2 = await realDrag(`[data-cell="needs|2026-10-05"] [data-slot-id="${lizMidId}"]`, '[data-cell="2|2026-10-05"]');
+  check("真鼠标拖回 Lizzie：回到 Lizzie 的格子", dragged2 && (await waitFor(`${cell("2|2026-10-05")}.querySelector('[data-slot-id="${lizMidId}"]')`, 3000)), "dragged=" + dragged2);
   // 拖到别的天：不动。
   await evaluate(`
     const dt = new DataTransfer();
@@ -1032,6 +1065,17 @@ async function run() {
   check("自己（Jing）这一行固定在最上面，只写名字、没有 You", firstRow.startsWith("Jing") && !firstRow.includes("You"));
   check("staff 点时间不能改（时间按钮是 disabled）", await evaluate(`return document.querySelector('[data-slot-id] button.font-mono').disabled;`));
   check("staff 有 This week / Next week 键", await evaluate("return !!$btn('This week') && !!$btn('Next week');"));
+  // G298（2026-11-19 线上 Veronica「排好了的班完全就拖不了」）：只读员工拖不动这张表 ⇒ 不出「drag people to change it」。
+  await ctl({ futurePublished: "2027-01-03" });
+  await openPage(`${APP}/schedule?week=2027-01-03`);
+  await waitFor(`${cell("1|2027-01-03")}`);
+  check("G298 · staff 看已发布、从上周复制来的周：没有「Started from last week… drag people to change it.」，卡片不能拖",
+    await evaluate("return !document.body.innerText.includes('drag people to change it') && ![...document.querySelectorAll('[data-slot-id]')].some((e) => e.draggable);"));
+  await ctl({ role: "supervisor", meName: "" });
+  await openPage(`${APP}/schedule?week=2027-01-03`);
+  await waitFor(`${cell("1|2027-01-03")}`);
+  check("G298 · 排班人看同一周：照旧「Started from last week… drag people to change it.」", (await text()).includes("drag people to change it"));
+  await ctl({ role: "staff", meName: "Jing" });
 
   await openPage(`${APP}/schedule?week=2026-10-11`);
   await waitFor("document.body.innerText.includes('hasn')");

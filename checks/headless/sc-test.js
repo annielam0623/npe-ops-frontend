@@ -52,6 +52,33 @@ async function waitFor(expr, timeout = 15000) {
   }
   return false;
 }
+// 真鼠标拖（不是合成 DragEvent）：CDP 拦下 Chrome 自己起的拖拽，再在目标上 dragEnter → dragOver → drop。
+// 合成事件会跳过 dragstart / 浏览器自己的判断，线上「拖不动」那种问题测不出来（G298 2026-11-19）。
+const cdpEvents = [];
+async function realDrag(fromSel, toSel) {
+  const box = (sel) => evaluate(`const r = document.querySelector(${JSON.stringify(sel)}).getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 };`);
+  const a = await box(fromSel);
+  const b = await box(toSel);
+  await cdp("Input.setInterceptDrags", { enabled: true });
+  cdpEvents.length = 0;
+  await cdp("Input.dispatchMouseEvent", { type: "mouseMoved", x: a.x, y: a.y });
+  await cdp("Input.dispatchMouseEvent", { type: "mousePressed", x: a.x, y: a.y, button: "left", buttons: 1, clickCount: 1 });
+  for (let i = 1; i <= 10; i++)
+    await cdp("Input.dispatchMouseEvent", { type: "mouseMoved", x: a.x + ((b.x - a.x) * i) / 10, y: a.y + ((b.y - a.y) * i) / 10, button: "left", buttons: 1 });
+  let drag = null;
+  for (let i = 0; i < 20 && !drag; i++) { drag = cdpEvents.find((e) => e.method === "Input.dragIntercepted"); if (!drag) await sleep(50); }
+  if (!drag) {
+    await cdp("Input.dispatchMouseEvent", { type: "mouseReleased", x: b.x, y: b.y, button: "left", buttons: 0, clickCount: 1 });
+    await cdp("Input.setInterceptDrags", { enabled: false });
+    return false;
+  }
+  const data = drag.params.data;
+  for (const type of ["dragEnter", "dragOver", "drop"]) await cdp("Input.dispatchDragEvent", { type, x: b.x, y: b.y, data });
+  await cdp("Input.dispatchMouseEvent", { type: "mouseReleased", x: b.x, y: b.y, button: "left", buttons: 0, clickCount: 1 });
+  await cdp("Input.setInterceptDrags", { enabled: false });
+  return true;
+}
+
 async function goto(url) {
   await cdp("Page.navigate", { url });
   await sleep(300);
@@ -94,6 +121,7 @@ async function main() {
   await new Promise((r) => (ws.onopen = r));
   ws.onmessage = (ev) => {
     const msg = JSON.parse(ev.data);
+    if (msg.method) cdpEvents.push(msg);
     if (msg.id && pending.has(msg.id)) {
       const p = pending.get(msg.id);
       pending.delete(msg.id);
@@ -287,6 +315,11 @@ async function run() {
     "只能换班：没有 Looks good / Send my changes / 期限，没有 + Work this day；自己的卡片能拖",
     await evaluate("const vis = (s) => { const e = document.querySelector(s); return !!e && e.offsetParent !== null; }; return !vis('[data-confirm-accept]') && !vis('[data-confirm-send]') && !vis('[data-confirm-deadline]') && !document.querySelector('[data-add-day]') && $slot(101).draggable;"),
   );
+  // 真鼠标拖一次（线上 Annie 用 Veronica 的电脑「完全拖不了」）：拖得动 ⇒ 出 Ask Lizzie to swap?，Cancel 掉再走下面的合成拖。
+  const dragged = await realDrag('[data-slot="101"]', '[data-slot="105"]');
+  check("真鼠标拖 Tue Mid 到 Lizzie 的 Mon Open：浏览器起得了拖拽、松手出 Ask Lizzie to swap?", dragged && (await waitFor("document.querySelector('[data-ask-swap]')", 3000)), "dragged=" + dragged);
+  await evaluate("const b = [...document.querySelectorAll('[data-ask-swap] button')].find((b) => b.textContent === 'Cancel'); if (b) b.click(); return 1;");
+  await waitFor("!document.querySelector('[data-ask-swap]')", 3000);
   let sfrom = (await mockLog()).length;
   await evaluate("window.$drop(101, $slot(105));");
   await waitFor("document.querySelector('[data-ask-swap]')");
