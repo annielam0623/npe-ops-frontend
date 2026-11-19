@@ -504,7 +504,7 @@ async function run() {
     check("生命周期 · Last Minute：10/18/2026 7:30 PM by kevin", lm && /^10\/18\/2026 7:30 PM ?by kevin$/.test(lm.text), JSON.stringify(lm));
     check("生命周期 · Restaurant ← lunch_by_day.restaurant", (await ev(factOf("Tour Confirmation", "Restaurant")))?.text === "ZZ Test Diner");
     const rs = await ev(factOf("Morning Pickup", "Reminder sent"));
-    check("生命周期 · Morning Reminder sent：scheduler 写 Auto send", rs && /^10\/19\/2026 6:00 PM ?by Auto send$/.test(rs.text), JSON.stringify(rs));
+    check("生命周期 · Morning Reminder sent：照固定状态（confirmations morning_pickup 行 sent_at / sent_by / sms_status），不是 send-log 的 6:00 Auto send", rs && /^10\/19\/2026 6:30 PM ?by kim · Delivered$/.test(rs.text), JSON.stringify(rs));
     const van = await ev(factOf("Morning Pickup", "Van at hotel"));
     check("生命周期 · Van at hotel：按单 live_by_day 优先（不是 Tracking 行的 5:45）", van?.text === "5:44 AM – 5:53 AM", JSON.stringify(van));
     const relay = await ev(factOf("Morning Pickup", "Relay"));

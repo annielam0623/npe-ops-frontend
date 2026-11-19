@@ -151,6 +151,15 @@ export interface OrderDetail {
     tour_date: string;
     status: string;
     submitted_at: string | null;
+    /**
+     * bf 第 2 项（固定状态，Annie 同意）：Tracking 行上发没发、最新发送时间（ISO）、送达状态、谁发的（同单同日同模块最新 send_log；
+     * tour_confirmation 也算 last_minute；没有 = ""）。旧后端没有这些键。
+     */
+    send_state?: "sent" | "unsent";
+    sent_at?: string | null;
+    email_status?: string | null;
+    sms_status?: string | null;
+    sent_by?: string;
   }[];
   /** 按单的餐（text 例 "2 Turkey, 1 Veggie"）和餐厅。 */
   lunch_by_day?: {

@@ -77,8 +77,10 @@ const ORDERS = {
     // bf 合同草稿：按单的答复 / 餐 + 餐厅 / 到站（ctl.noLifeKeys 模拟旧后端没有这三个键）。
     // bf 第 2 项：confirmations 也带门票行（module tickets_reminder）。
     confirmations: [
-      { module: "tour_confirmation", tour_date: "2026-10-20", status: "yes", submitted_at: "2026-10-18T22:31:00Z", lunch: null, lunch_by_guest: false },
-      { module: "tickets_reminder", tour_date: "2026-10-20", status: "reschedule_req", submitted_at: "2026-10-19T17:00:00Z", lunch: null, lunch_by_guest: false },
+      // bf 第 2 项固定状态：send_state / sent_at / email_status / sms_status / sent_by。morning 行故意跟 send-log 不一样（kim 6:30）⇒ 看得出读的是这里。
+      { module: "tour_confirmation", tour_date: "2026-10-20", status: "yes", submitted_at: "2026-10-18T22:31:00Z", lunch: null, lunch_by_guest: false, send_state: "sent", sent_at: "2026-10-18T21:05:00Z", email_status: "opened", sms_status: "delivered", sent_by: "veronica" },
+      { module: "tickets_reminder", tour_date: "2026-10-20", status: "reschedule_req", submitted_at: "2026-10-19T17:00:00Z", lunch: null, lunch_by_guest: false, send_state: "unsent", sent_at: null, email_status: "", sms_status: "", sent_by: "" },
+      { module: "morning_pickup", tour_date: "2026-10-20", status: "", submitted_at: null, lunch: null, lunch_by_guest: false, send_state: "sent", sent_at: "2026-10-20T01:30:00Z", email_status: "", sms_status: "delivered", sent_by: "kim" },
     ],
     lunch_by_day: [{ tour_date: "2026-10-20", product: "PBZ", bus_label: "A", has_lunch: true, turkey: 1, veggie: 1, beef: 0, defaulted: false, check: false, changed: false, text: "1 Turkey, 1 Veggie", restaurant: "ZZ Test Diner" }],
     live_by_day: [{ tour_date: "2026-10-20", live_status: "picked_up", live_status_at: "2026-10-20T12:50:00Z", live_driver: "Jane D.", live_van: "2101", arrived_at: "2026-10-20T12:44:00Z", left_at: "2026-10-20T12:53:00Z" }],

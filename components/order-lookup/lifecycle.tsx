@@ -11,7 +11,7 @@ import {
   dayOfTourFor,
   fetchOrderSends,
   LIFECYCLE_FRAME,
-  latestSend,
+  sentFor,
   liveFor,
   lunchFor,
   markText,
@@ -162,7 +162,7 @@ export function LifecycleCard({ order }: { order: OrderDetail }) {
           {changes.length ? String(changes.length) : "None"}
         </DField>
         {SEND_ROWS.map(({ module, label }) => {
-          const s = latestSend(rows, module, date);
+          const s = sentFor(order, rows, module, date);
           return (
             <DField
               key={module}

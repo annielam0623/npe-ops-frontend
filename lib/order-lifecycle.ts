@@ -389,6 +389,49 @@ export function latestSend(
   };
 }
 
+/** 送达状态里算「送到了」的值（SMS delivered / read；Email delivered / opened / clicked）。 */
+const isDelivered = (s: string | null | undefined) =>
+  /^(delivered|read|opened|clicked)/i.test((s || "").trim());
+
+/**
+ * SENT / REMINDER SENT（bf 第 2 项，Annie 同意照固定状态）：发没发看 confirmations[].send_state，时间 = sent_at、谁 = sent_by、
+ * 送达 = email_status / sms_status；send-log（最近 10 条）只补 Opened / Clicked / WhatsApp。
+ * 这一行没有 send_state（旧后端）或是 last_minute（没有自己的 Tracking 行）⇒ 照旧用 send-log。
+ * 返回 null = 没发。
+ */
+export function sentFor(
+  order: OrderDetail,
+  sends: readonly SendLogRow[],
+  module: SendModule,
+  date: string | null,
+): SentSummary | null {
+  const fromLog = latestSend(sends, module, date);
+  if (module === "last_minute") return fromLog;
+  const row = (order.confirmations ?? []).find(
+    (x) => x.module === module && (!date || x.tour_date === date),
+  );
+  if (!row || row.send_state === undefined) return fromLog;
+  if (row.send_state !== "sent") return null;
+  const extra = fromLog
+    ? fromLog.delivery
+        .split(" · ")
+        .filter((w) => w === "WhatsApp" || w === "Opened" || w === "Clicked")
+    : [];
+  const delivered =
+    isDelivered(row.sms_status) || isDelivered(row.email_status);
+  return {
+    at: formatLaDateTime(row.sent_at ?? null),
+    by: row.sent_by?.trim() || "—",
+    sms: row.sms_status || "",
+    email: row.email_status || "",
+    delivery: [
+      ...extra.filter((w) => w === "WhatsApp"),
+      ...(delivered ? ["Delivered"] : []),
+      ...extra.filter((w) => w !== "WhatsApp"),
+    ].join(" · "),
+  };
+}
+
 /** 「by veronica」：scheduler 写成 Auto send。 */
 export function sentByLabel(by: string): string {
   if (!by || by === "—") return "";
