@@ -1988,10 +1988,13 @@ export function DispatchView() {
             >
               Today
             </button>
-            {/* 置顶 21（Annie 2026-10-30「让前端加入口」）：只给 Super Admin。后端 /driver/preview 只读、只认 Super Admin；
+            {/* 置顶 21（Annie 2026-10-30「让前端加入口」）：Driver / Guide page preview 两个链接。
+                Annie 2026-11-19「把这两个preview链接改成所有人可见」「司机基本都是CCL派的，他们可以看关于车和司机的所有信息」：
+                能开 Dispatch 的人都出（staff、只看账号、CCL partner），后端 /driver/preview、/guide/preview 改成 require_perm("dispatch.view")。
                 ops 自己没有 /driver，经 next.config 的 fallback 原样转给后端（同 Bus Manifest 打印，用的是 ops 这一个登录）。
-                导游页同理：后端 /guide/preview（be1f4447）不带 hr_id 是选人页，写法和司机那个一样。 */}
-            {isSuperAdmin && day ? (
+                导游页同理：后端 /guide/preview（be1f4447）不带 hr_id 是选人页，写法和司机那个一样。
+                「Open shift opens today ⚙」照旧只 Super Admin（openWin 只给 Super Admin 读），留在同一个 span 里紧跟 Guide 链接。 */}
+            {day ? (
               <span className="contents max-sm:order-3 max-sm:flex max-sm:basis-full max-sm:gap-3">
                 <a
                   href={`/driver/preview?date=${day.run_date}`}
@@ -2011,7 +2014,7 @@ export function DispatchView() {
                 >
                   Guide page preview ↗
                 </a>
-                {openWin.window ? (
+                {isSuperAdmin && openWin.window ? (
                   <OpenWindowLink
                     value={openWin.window}
                     onSaved={openWin.setWindow}
