@@ -23,6 +23,8 @@
 - 窗口名被换过：本窗口 [895bc9] 开工叫 npe-ops-frontend-08，中途叫过「前端主窗口-f4」，现叫「前端主窗口-08」；后端主窗口 [e47e8b] 开工叫 npe-confirmation-service-f4，中途叫过「后端主窗口-08」，现叫「后端主窗口-f4」。认窗口看 ref。
 - preview 链接：Annie 在后端窗口答（原话）「司机基本都是CCL派的，他们可以看关于车和司机的所有信息」⇒ 题 1 B（partner 也能看）、题 2 B（Messages 照显示，后端这样理解，Annie 没纠正前照此）。等动手。Live drivers WhatsApp：Annie 原话「A，WhatsApp 能点」，后端只加 wa_url（https://wa.me/<digits>，无预填，新标签打开，开的是点键人自己的 WhatsApp），phone_ok 不加。前端规矩等 Annie 动手（已问）。
 - 派工（都先准备、Annie 动手后写，worktree 各自开，端口错开）：`70`[d87d3e] = 第 5 件 SMS（合最新 main + 查 tk 157/158，不改显示文字）→ 第 7 件 132（b114f83d，核 Q5 / Q6 现状）；`c1`[16c5b2] = 第 1 件 No show 第 3 版（task/mt-noshow-v3），之后可能接 Live drivers WhatsApp；`d6`[161623] = 第 4 件客人选餐（task/lifecycle-lunch-pick，先查数据缺什么）；`63`[bcd10a] = 第 19 件 G307（task/g307-need-a-look）+ preview 链接（task/dispatch-preview-links-all，Open shift ⚙ 照旧 SA）。第 11 件 TI 等 Annie 搜 CHD0SNQKE。
+- 第 19 件 G307：✅ Annie（原话，非动手）「19 选B， 0单时就不出现可以么」⇒ B（Send 标签顶上橙色提醒 + View ›，Need a look 块原位），0 单不出（已回可以）。📌 还问 19a 不能发送的人 A 不出（推荐）/ B 出，+ 动手。第 1 件另问离开提示原文「You have No show marks you haven't saved. Leave without saving them?」A 照用。
+- G351 Rezdy internalNotes 上后端 main（4aea93a5 / 43a1d4f4）：partner 4 处去掉 internalNotes，staff 不变；前端派 63 只读核 Main manifest 列是否随 catalog 隐藏、Changes 标签。
 - 后端在线：后端主窗口 [e47e8b]、npe-confirmation-service-a3 [10cb8c]、3f [c2996b]、后端主窗口ae [51c879]（早上在）。
 
 ## 2026-11-18 深夜 收工交接：前端主窗口 `前端主窗口4d`[b0c20a]（Annie 收工）
