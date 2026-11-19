@@ -81,8 +81,8 @@ export function LunchMismatchDialog({
           {n && d ? (
             <>
               <br />
-              <b>{differsHead.slice(0, -1)}</b> The lunch in Rezdy is probably
-              wrong: check it and fix Special Requirements in Rezdy.
+              <b>{differsHead}</b> The lunch in Rezdy is probably wrong: check
+              it and fix Special Requirements in Rezdy.
             </>
           ) : null}
           {!n && d ? (

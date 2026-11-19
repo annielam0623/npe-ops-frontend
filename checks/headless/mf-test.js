@@ -897,9 +897,9 @@ async function run() {
   await waitFor("document.querySelector('[data-lunch-mismatch-dialog] [data-guest-lunch-table]')", 3000);
   {
     const both = await evaluate("const d = document.querySelector('[data-lunch-mismatch-dialog]'); const tables = [...d.querySelectorAll('table')]; return { yellow: d.querySelector('[data-mismatch-yellow]').innerText.replace(/\\s+/g, ' ').trim(), order: tables.map(t => !!t.closest('[data-guest-lunch-table]')), mismatch: d.querySelectorAll('tr[data-mismatch-row]').length, differs: d.querySelectorAll('tr[data-guest-lunch-row]').length };");
-    check("G364 两种都有：一个框，餐不符表在上、客人选的表在下；黄框原来两句后面接「1 booking: the guest’s lunch pick differs from the Bus manifest The lunch in Rezdy is probably wrong: check it and fix Special Requirements in Rezdy.」",
+    check("G364 两种都有：一个框，餐不符表在上、客人选的表在下；黄框原来两句后面接「1 booking: the guest’s lunch pick differs from the Bus manifest. The lunch in Rezdy is probably wrong: check it and fix Special Requirements in Rezdy.」",
       both && JSON.stringify(both.order) === "[false,true]" && both.mismatch === 2 && both.differs === 1 &&
-        both.yellow === "2 bookings: lunch doesn’t match pax. Check them before you print, or print anyway. 1 booking: the guest’s lunch pick differs from the Bus manifest The lunch in Rezdy is probably wrong: check it and fix Special Requirements in Rezdy.", JSON.stringify(both));
+        both.yellow === "2 bookings: lunch doesn’t match pax. Check them before you print, or print anyway. 1 booking: the guest’s lunch pick differs from the Bus manifest. The lunch in Rezdy is probably wrong: check it and fix Special Requirements in Rezdy.", JSON.stringify(both));
   }
   await evaluate("$btn('Cancel', document.querySelector('[data-lunch-mismatch-dialog]')).click(); return 1;");
   await sleep(150);
