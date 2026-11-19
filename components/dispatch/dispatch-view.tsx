@@ -2000,34 +2000,44 @@ export function DispatchView() {
                 能开 Dispatch 的人都出（staff、只看账号、CCL partner），后端 /driver/preview、/guide/preview 改成 require_perm("dispatch.view")。
                 ops 自己没有 /driver，经 next.config 的 fallback 原样转给后端（同 Bus Manifest 打印，用的是 ops 这一个登录）。
                 导游页同理：后端 /guide/preview（be1f4447）不带 hr_id 是选人页，写法和司机那个一样。
-                「Open shift opens today ⚙」照旧只 Super Admin（openWin 只给 Super Admin 读），留在同一个 span 里紧跟 Guide 链接。 */}
+                Annie 2026-11-19（样稿 8JrSpmyzU3YmnsAiGKRhvG，「只改driver和guide那个链接吧，把preview这个字拿掉就好」「全部同意推荐，动手」）：
+                这两个改成按键「Driver page ↗」「Guide page ↗」，样子同 Today（BTN_GHOST）；手机上收进 Today 旁边的 ⋯（PhoneMore）。
+                「Open shift opens today ⚙」照旧只 Super Admin（openWin 只给 Super Admin 读），样子、位置都不动（手机上照旧在日期下面单独一行）。 */}
             {day ? (
-              <span className="contents max-sm:order-3 max-sm:flex max-sm:basis-full max-sm:gap-3">
+              <PhoneMore label="Driver and guide pages">
                 <a
                   href={`/driver/preview?date=${day.run_date}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   data-driver-preview
-                  className="ml-1 text-[13px] font-semibold text-[#cbd5e1] underline-offset-2 hover:text-white hover:underline"
+                  className={cn(
+                    BTN_GHOST,
+                    "inline-flex items-center no-underline",
+                  )}
                 >
-                  Driver page preview ↗
+                  Driver page ↗
                 </a>
                 <a
                   href={`/guide/preview?date=${day.run_date}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   data-guide-preview
-                  className="ml-1 text-[13px] font-semibold text-[#cbd5e1] underline-offset-2 hover:text-white hover:underline"
+                  className={cn(
+                    BTN_GHOST,
+                    "inline-flex items-center no-underline",
+                  )}
                 >
-                  Guide page preview ↗
+                  Guide page ↗
                 </a>
-                {isSuperAdmin && openWin.window ? (
-                  <OpenWindowLink
-                    value={openWin.window}
-                    onSaved={openWin.setWindow}
-                    onUnauthorized={redirectToLogin}
-                  />
-                ) : null}
+              </PhoneMore>
+            ) : null}
+            {day && isSuperAdmin && openWin.window ? (
+              <span className="contents max-sm:order-3 max-sm:flex max-sm:basis-full max-sm:gap-3">
+                <OpenWindowLink
+                  value={openWin.window}
+                  onSaved={openWin.setWindow}
+                  onUnauthorized={redirectToLogin}
+                />
               </span>
             ) : null}
           </div>

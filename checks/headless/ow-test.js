@@ -74,8 +74,8 @@ async function run() {
   await waitFor("document.querySelector('[data-howto-window]')", 20000);
   await sleep(800);
   check("不是 Super Admin：没有 Open shift opens today 链接", await evaluate(`return !${link};`));
-  // Annie 2026-11-19「把这两个preview链接改成所有人可见」：同一个 span 里的两个 preview 链接照出。
-  check("不是 Super Admin：Driver / Guide page preview 照出", await evaluate("return !!document.querySelector('[data-driver-preview]') && !!document.querySelector('[data-guide-preview]');"));
+  // Annie 2026-11-19「把这两个preview链接改成所有人可见」：两个按键（Driver page ↗ / Guide page ↗）照出。
+  check("不是 Super Admin：Driver page / Guide page 按键照出", await evaluate("return !!document.querySelector('[data-driver-preview]') && !!document.querySelector('[data-guide-preview]');"));
   check("不是 Super Admin：How to use 写 12:00 AM–10:00 AM", (await evaluate(`return ${howto};`)) === "12:00 AM–10:00 AM");
 
   // 2. Super Admin ⇒ 链接 + 弹窗。
@@ -83,7 +83,8 @@ async function run() {
   await goto(`${APP}/dispatch?date=2026-10-05`);
   check("Super Admin：出链接", await waitFor(link, 20000));
   check("链接原文", (await evaluate(`return ${link}.textContent;`)) === "Open shift opens today ⚙");
-  check("链接跟在 Guide page preview 后面", await evaluate("return !!document.querySelector('[data-guide-preview] ~ [data-open-window-link]');"));
+  // 11-19 Driver / Guide 改成按键、手机收进 ⋯ 以后不再是同一个 span 里的兄弟，按页面先后比。
+  check("链接跟在 Guide page ↗ 后面", await evaluate("const g = document.querySelector('[data-guide-preview]'), o = document.querySelector('[data-open-window-link]'); return !!g && !!o && !!(g.compareDocumentPosition(o) & Node.DOCUMENT_POSITION_FOLLOWING);"));
   await evaluate(`${link}.click();`);
   check("点了出弹窗", await waitFor(dlg, 3000));
   check("弹窗标题", (await evaluate("return document.getElementById('open-window-title').textContent;")) === "Open shift opens today");

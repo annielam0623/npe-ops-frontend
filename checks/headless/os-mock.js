@@ -94,7 +94,7 @@ const ORDERS = {
     // bf 第 2 项：confirmations 也带门票行（module tickets_reminder）。
     confirmations: [
       // bf 第 2 项固定状态：send_state / sent_at / email_status / sms_status / sent_by。morning 行故意跟 send-log 不一样（kim 6:30）⇒ 看得出读的是这里。
-      { module: "tour_confirmation", tour_date: "2026-10-20", status: "yes", submitted_at: "2026-10-18T22:31:00Z", lunch: null, lunch_by_guest: false, send_state: "sent", sent_at: "2026-10-18T21:05:00Z", email_status: "opened", sms_status: "delivered", sent_by: "veronica" },
+      { module: "tour_confirmation", tour_date: "2026-10-20", status: "yes", submitted_at: "2026-10-18T22:31:00Z", lunch: { turkey: 2, veggie: 0, beef: 0, updated_at: "2026-10-18T22:31:00Z" }, lunch_by_guest: true, send_state: "sent", sent_at: "2026-10-18T21:05:00Z", email_status: "opened", sms_status: "delivered", sent_by: "veronica" },
       { module: "tickets_reminder", tour_date: "2026-10-20", status: "reschedule_req", submitted_at: "2026-10-19T17:00:00Z", lunch: null, lunch_by_guest: false, send_state: "unsent", sent_at: null, email_status: "", sms_status: "", sent_by: "" },
       { module: "morning_pickup", tour_date: "2026-10-20", status: "", submitted_at: null, lunch: null, lunch_by_guest: false, send_state: "sent", sent_at: "2026-10-20T01:30:00Z", email_status: "", sms_status: "delivered", sent_by: "kim" },
     ],
@@ -257,7 +257,38 @@ http
       const on = decodeURIComponent(m[1]);
       if (on === "ZZFAIL") return send(res, 500, { detail: "mock order failure" });
       if (!ORDERS[on]) return send(res, 404, { detail: "Order not found" });
-      const o = { ...ORDERS[on], ...(ctl.hold && on === "ZZTEST2" ? { status: "On Hold" } : {}) };
+      let o = { ...ORDERS[on], ...(ctl.hold && on === "ZZTEST2" ? { status: "On Hold" } : {}) };
+      // 第 4 件：ctl.lunchCase 改 ZZTEST1 客人选的餐 / Bus 的餐（默认 = 客人 2 Turkey、Bus 1 Turkey 1 Veggie ⇒ 不一样、出橙字）。
+      if (on === "ZZTEST1" && ctl.lunchCase && o.confirmations) {
+        const c = ctl.lunchCase;
+        o = {
+          ...o,
+          confirmations: o.confirmations.map((r) =>
+            r.module !== "tour_confirmation" ? r
+              : c === "same" ? { ...r, lunch: { turkey: 1, veggie: 1, beef: 0, updated_at: "2026-10-18T22:31:00Z" } }
+              : c === "nullguest" ? { ...r, lunch: null }
+              : c === "twobus_same" ? { ...r, lunch: { turkey: 2, veggie: 1, beef: 0, updated_at: "2026-10-18T22:31:00Z" } }
+              // 多日团：bookings 行只在开始那天（这里放到 10/19），10/20 这天没有客人选的。
+              : c === "multiday" ? { ...r, tour_date: "2026-10-19" }
+              : r),
+          lunch_by_day: o.lunch_by_day.map((d) =>
+            c === "changed" ? { ...d, changed: true }
+              : c === "nolunch" ? { ...d, has_lunch: false, turkey: 0, veggie: 0, beef: 0, text: "" }
+              : c === "oldkeys" ? { tour_date: d.tour_date, product: d.product, bus_label: d.bus_label, has_lunch: d.has_lunch, text: d.text, restaurant: d.restaurant }
+              : d),
+        };
+        // 同一天两个 manifest（lunch_by_day 按 run_date + manifest_id 分组 ⇒ 同日 2 条），外加别的日子一条（不该算进来）。
+        if (c.startsWith("twobus")) {
+          const second = c === "twobus_onelunch"
+            ? { has_lunch: false, turkey: 0, veggie: 0, beef: 0, text: "", restaurant: null, changed: false }
+            : { has_lunch: true, turkey: 1, veggie: 0, beef: 0, text: "1 Turkey", restaurant: "ZZ Test Cafe", changed: c === "twobus_changed" };
+          o.lunch_by_day = [
+            ...o.lunch_by_day,
+            { tour_date: "2026-10-20", product: "PBZ", bus_label: "B", defaulted: false, check: false, ...second },
+            { tour_date: "2026-10-21", product: "PBZ", bus_label: "A", has_lunch: true, turkey: 5, veggie: 0, beef: 0, defaulted: false, check: false, changed: false, text: "5 Turkey", restaurant: "WRONG DAY" },
+          ];
+        }
+      }
       // ⑦ G360：每次请求按 ctl.tourEnd 给 live_by_day 加回程到站（ORDERS 是启动时建好的）。
       if (o.live_by_day) o.live_by_day = o.live_by_day.map((x) => ({ ...x, ...tourEnd(ctl.tourEnd) }));
       // multiDay：2 日团第 1 天大巴不回 LV（null），第 2 天回程才有；sameDay：同一天两行，一行空、一行有（空的在前）。
