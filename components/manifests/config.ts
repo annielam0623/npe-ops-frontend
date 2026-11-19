@@ -69,8 +69,100 @@ export function requestFields(
 ): string[] | null {
   if (!saved) return null;
   // 「-键」只是前端记的「这一列我关掉了」，不发给后端；Notes 是前端自己的列（值在行上，不在 catalog），也不发。
-  const keys = saved.filter((k) => !k.startsWith("-") && k !== NOTE_KEY);
+  // Relay / Tour（_relay / _tour）同理。
+  const keys = saved.filter((k) => !k.startsWith("-") && !k.startsWith("_"));
   return [...keys, ...HELPER_FIELDS[tab].filter((k) => !keys.includes(k))];
+}
+
+/**
+ * 150 Relay / Tour 两列（G321，Annie N6「就显示简单一点，直接是relay和tour的结果就好了」）：Bus 标签只读，
+ * 只写后端的 label（Picked up / Boarded / No show），没标 ⇒ 空（格子画「—」）；relay_applicable=false ⇒ Relay 也是「—」。
+ * 不要 hover、不能改。默认紧跟 Morning pickup sent（没有那列就跟 Tour confirmation sent，再没有放 Notes 前 / 最后）。
+ * ☰ Columns 能关（-_relay / -_tour）、能拖；后端没给 relay_mark ⇒ 不出（旧后端）。列名「Tour」Annie 还没最后确认。
+ */
+export const RELAY_KEY = "_relay";
+export const TOUR_KEY = "_tour";
+const MARK_FIELDS: ManifestField[] = [
+  { key: RELAY_KEY, label: "Relay", group: "ours", type: "text" },
+  { key: TOUR_KEY, label: "Tour", group: "ours", type: "text" },
+];
+
+export function marksOn(page: ManifestPage): boolean {
+  return page.tab === "bus" && page.rows.some((r) => "relay_mark" in r);
+}
+
+export function withMarks(page: ManifestPage): ManifestPage {
+  if (!marksOn(page)) return page;
+  const have = new Set(page.catalog.map((f) => f.key));
+  return {
+    ...page,
+    catalog: [...page.catalog, ...MARK_FIELDS.filter((f) => !have.has(f.key))],
+    rows: page.rows.map((r) => ({
+      ...r,
+      values: {
+        ...r.values,
+        [RELAY_KEY]:
+          r.relay_applicable === false ? "" : (r.relay_mark?.label ?? ""),
+        [TOUR_KEY]: r.bus_mark?.label ?? "",
+      },
+    })),
+  };
+}
+
+/** 显示 / ☰ Columns 用的列加上 Relay、Tour（规则同 withNoteColumn，默认位置见上）。 */
+export function withMarkColumns(
+  fields: string[],
+  page: ManifestPage,
+  saved: readonly string[] | null | undefined,
+): string[] {
+  let keys = fields.filter((k) => k !== `-${RELAY_KEY}` && k !== `-${TOUR_KEY}`);
+  for (const key of [RELAY_KEY, TOUR_KEY]) {
+    if (!marksOn(page) || saved?.includes(`-${key}`)) {
+      keys = keys.filter((k) => k !== key);
+      continue;
+    }
+    if (keys.includes(key)) continue;
+    const at = saved ? saved.indexOf(key) : -1;
+    let pos: number;
+    if (at >= 0) {
+      const before = saved!
+        .slice(0, at)
+        .reverse()
+        .find((k) => keys.includes(k));
+      pos = before === undefined ? 0 : keys.indexOf(before) + 1;
+    } else {
+      const anchor = [
+        ...(key === TOUR_KEY ? [RELAY_KEY] : []),
+        "sent_morning_at",
+        "sent_tour_at",
+      ].find((k) => keys.includes(k));
+      pos =
+        anchor !== undefined
+          ? keys.indexOf(anchor) + 1
+          : keys.includes(NOTE_KEY)
+            ? keys.indexOf(NOTE_KEY)
+            : keys.length;
+    }
+    keys = [...keys.slice(0, pos), key, ...keys.slice(pos)];
+  }
+  return keys;
+}
+
+/** ☰ Columns / 拖表头存之前：这页有 Relay / Tour、staff 没勾 ⇒ 记 -_relay / -_tour。 */
+export function rememberMarkChoice(
+  fields: string[],
+  page: ManifestPage,
+): string[] {
+  const keys = fields.filter(
+    (k) => k !== `-${RELAY_KEY}` && k !== `-${TOUR_KEY}`,
+  );
+  if (!marksOn(page)) return keys;
+  return [
+    ...keys,
+    ...[RELAY_KEY, TOUR_KEY]
+      .filter((k) => !keys.includes(k))
+      .map((k) => `-${k}`),
+  ];
 }
 
 /**
