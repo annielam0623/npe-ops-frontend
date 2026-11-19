@@ -12,7 +12,13 @@ import {
   sendBroadcast,
 } from "@/lib/broadcast-api";
 import { LA_TIME_ZONE } from "@/lib/la-date";
-import { smsCheck, smsProblem, tourDateText } from "@/lib/sms-limit";
+import { SmsProblem } from "@/components/ui/sms-problem";
+import {
+  broadcastSmsText,
+  smsFirstName,
+  smsVerdict,
+  toPlainSms,
+} from "@/lib/sms-limit";
 import {
   type ChannelOutcome,
   type GuestOutcome,
@@ -170,8 +176,6 @@ type Phase =
   /** 问后端谁已经收过这条一模一样的消息（G62）。 */
   | { kind: "checking" }
   | { kind: "confirm"; check: BroadcastCheckResult }
-  /** 选了 SMS 但超过短信上限：建议改发 Email，问 staff 愿不愿意（Annie 2026-10-14）。 */
-  | { kind: "tooLong" }
   | { kind: "sending"; check: BroadcastCheckResult }
   | { kind: "done"; result: BroadcastSendResult };
 
@@ -316,23 +320,27 @@ export function BroadcastDialog({
 
   const trimmed = body.trim();
   const finalBody = signature ? `${trimmed}\n${signature}` : trimmed;
-  // 按最坏情况算短信字数：签名 + 选中收件人里最长的名字 + 展开后的日期。
-  const longestFirst = picked.reduce(
-    (longest, c) =>
-      (c.firstName || "Guest").length > longest.length
-        ? c.firstName || "Guest"
-        : longest,
-    "Guest",
-  );
-  const smsText = finalBody
-    .split("{first_name}")
-    .join(longestFirst)
-    .split("{tour_date}")
-    .join(tourDateText(tourDate));
-  // 短信最多 300 个字符、不能有特殊字符（Annie 2026-10-15），超了建议改发 Email。特殊字符只查 staff 写的（含签名）。
-  const sms = smsCheck(smsText, "Email", finalBody);
-  const smsTooLong = wantSms && sms.over;
-  const smsCounterText = sms.text;
+  // 照后端 broadcast_send.sms_overflow 算：每位有手机号的客人实际收到的短信（"Hi 名字, " + 展开 + 签名）取最紧的那条，
+  // 坏字只查 staff 写的（含签名，挖掉 {first_name} {tour_date}）。
+  const sms = smsVerdict({
+    typed: finalBody,
+    finals: picked
+      .filter((c) => c.phone)
+      .map((c) =>
+        broadcastSmsText(
+          finalBody,
+          smsFirstName(c.firstName, c.name),
+          tourDate,
+        ),
+      ),
+    placeholders: true,
+    display: broadcastSmsText(finalBody, "Guest", tourDate),
+  });
+  // 超了 / 有坏字 ⇒ Both、SMS only 灰掉，自动改选 Email only；改回限内不自动选回去
+  // （Annie 2026-11-17「同意全部推荐，动手」，样稿 KnNXFz77T9jQerCUYBMrNz 题 2 A）。
+  const smsBlocked = trimmed !== "" && sms.over;
+  if (smsBlocked && channel !== "email") setChannel("email");
+  const smsCounterText = `${sms.length.toLocaleString("en-US")} / ${sms.limit} chars`;
 
   function productLabel(): string {
     // By pickup location：存勾选的站点 / 原始写法，不是产品名（同旧页面，Annie 定）。
@@ -758,8 +766,9 @@ export function BroadcastDialog({
                 Supports {"{first_name}"} and {"{tour_date}"}
                 {signature ? " · the signature is added automatically" : ""}
               </p>
-              {wantSms && trimmed ? (
+              {trimmed ? (
                 <p
+                  data-sms-count
                   className={cn(
                     "mt-1 text-[11px]",
                     sms.over ? "font-semibold text-[#c0392b]" : skin.counter,
@@ -777,19 +786,42 @@ export function BroadcastDialog({
                     key={c.value}
                     type="button"
                     aria-pressed={channel === c.value}
-                    disabled={phase.kind !== "edit"}
+                    disabled={
+                      phase.kind !== "edit" ||
+                      (smsBlocked && c.value !== "email")
+                    }
                     onClick={() => setChannel(c.value)}
                     className={cn(
-                      "cursor-pointer rounded-md px-4 py-[7px] text-[12px]",
+                      "cursor-pointer rounded-md px-4 py-[7px] text-[12px] disabled:cursor-not-allowed",
                       channel === c.value
                         ? cn("border border-transparent font-bold", skin.active)
                         : cn("border font-semibold", skin.idle),
+                      smsBlocked && c.value !== "email" && "opacity-40",
                     )}
                   >
                     {c.label}
                   </button>
                 ))}
               </div>
+              {smsBlocked ? (
+                <SmsProblem
+                  typed={finalBody}
+                  verdict={sms}
+                  placeholders
+                  counted={'counting the "Hi (name)," greeting, the signature and the longest guest name'}
+                  tail={
+                    picked.length - emailReach
+                      ? `${picked.length - emailReach} selected guest(s) have no email and will not get it.`
+                      : null
+                  }
+                  onReplace={
+                    phase.kind === "edit"
+                      ? () => setBody((b) => toPlainSms(b))
+                      : undefined
+                  }
+                  dark={theme === "tickets"}
+                />
+              ) : null}
             </Step>
 
             <div
@@ -917,32 +949,6 @@ export function BroadcastDialog({
                 {phase.error}
               </p>
             ) : null}
-            {phase.kind === "tooLong" ? (
-              <div
-                data-too-long
-                className={cn(
-                  "rounded-md border px-3 py-2 text-[13px]",
-                  skin.warnBox,
-                )}
-              >
-                <p className="font-semibold">
-                  {smsProblem(
-                    sms,
-                    ", counting the signature and the expanded {first_name} / {tour_date}",
-                  )}
-                </p>
-                <p>
-                  We suggest sending it by Email only. Would you like to switch
-                  to Email only?
-                </p>
-                {picked.length - emailReach ? (
-                  <p className="mt-1">
-                    {picked.length - emailReach} selected guest(s) have no email
-                    and will not receive it.
-                  </p>
-                ) : null}
-              </div>
-            ) : null}
             {checked ? (
               <div
                 className={cn(
@@ -1049,32 +1055,11 @@ export function BroadcastDialog({
                     onClick={() => {
                       const problem = validate();
                       if (problem) setPhase({ kind: "edit", error: problem });
-                      else if (smsTooLong) setPhase({ kind: "tooLong" });
                       else void check();
                     }}
                     className={skin.sendBtn}
                   >
                     📣 Send broadcast
-                  </button>
-                </>
-              ) : phase.kind === "tooLong" ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => setPhase({ kind: "edit", error: null })}
-                    className={skin.cancelBtn}
-                  >
-                    No, edit the message
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setChannel("email");
-                      void check();
-                    }}
-                    className={skin.sendBtn}
-                  >
-                    Yes, use Email only
                   </button>
                 </>
               ) : (

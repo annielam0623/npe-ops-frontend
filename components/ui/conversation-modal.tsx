@@ -19,7 +19,8 @@ import {
 } from "@/lib/booking-notes-api";
 import { isInbound } from "@/lib/channels";
 import { backendChannel, type ChannelOutcome } from "@/lib/send-outcome";
-import { SMS_CHAR_LIMIT, smsCheck, smsProblem } from "@/lib/sms-limit";
+import { SmsProblem } from "@/components/ui/sms-problem";
+import { smsVerdict, toPlainSms } from "@/lib/sms-limit";
 import { LA_TIME_ZONE } from "@/lib/la-date";
 import { usePermissions } from "@/lib/staff-permissions";
 import { cn } from "@/lib/utils";
@@ -382,8 +383,6 @@ function ConversationModalInner({
   const [submitting, setSubmitting] = useState(false);
   const [toggling, setToggling] = useState(false);
   const [notice, setNotice] = useState<Notice>(null);
-  /** 点了 Send 但短信超过两段：在输入框上面问要不要只发 email。 */
-  const [tooLong, setTooLong] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
   // 输入框随内容自动长高，最矮 70px（同旧页面 `_noteAutoGrow`）；清空后缩回去。
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -400,6 +399,19 @@ function ConversationModalInner({
   const hasEmail = !!target.email.trim();
   const sendSms = smsChecked && hasPhone;
   const sendEmail = emailChecked && hasEmail;
+  // 超了 / 有坏字 ⇒ SMS to guest 灰掉、取消勾选、改勾 Email；改回限内不自动勾回；没邮箱 ⇒ Send 灰掉、红字写怎么改，
+  // Save note 照常（Annie 2026-11-17「同意全部推荐，动手」，样稿 KnNXFz77T9jQerCUYBMrNz 题 2 A / 3 A）。
+  // 照后端 booking_notes.py 单条回复：原文换排版符号后算段数；没有模板替换，{first_name} 的花括号也算坏字。
+  const smsLength = smsVerdict({
+    typed: text.trim(),
+    finals: [text.trim()],
+    placeholders: false,
+  });
+  const smsBlocked = !noReply && hasPhone && !!text.trim() && smsLength.over;
+  if (smsBlocked && (smsChecked || (hasEmail && !emailChecked))) {
+    setSmsChecked(false);
+    if (hasEmail) setEmailChecked(true);
+  }
 
   const loadNotes = useCallback(
     async (signal?: AbortSignal) => {
@@ -468,11 +480,7 @@ function ConversationModalInner({
     }
   }, [noteCount]);
 
-  /** emailOnly：刚在「太长」提示里选了只发 email（勾选的 state 还没更新）。 */
-  async function submit(
-    kind: "staff_note" | "sms_out",
-    opts: { emailOnly?: boolean } = {},
-  ) {
+  async function submit(kind: "staff_note" | "sms_out") {
     const body = text.trim();
     if (!body || submitting) {
       return;
@@ -481,8 +489,8 @@ function ConversationModalInner({
       return;
     }
     const toGuest = kind === "sms_out";
-    const useSms = opts.emailOnly ? false : sendSms;
-    const useEmail = opts.emailOnly ? hasEmail : sendEmail;
+    const useSms = sendSms;
+    const useEmail = sendEmail;
     if (toGuest && !useSms && !useEmail) {
       setNotice({
         tone: "error",
@@ -490,12 +498,6 @@ function ConversationModalInner({
       });
       return;
     }
-    // 短信最多 300 个字符、不能有特殊字符（Annie 2026-10-15）：超了先问要不要只发 email，不直接发。
-    if (toGuest && useSms && smsCheck(body).over) {
-      setTooLong(true);
-      return;
-    }
-    setTooLong(false);
     setSubmitting(true);
     setNotice(null);
     setResults(null);
@@ -675,10 +677,6 @@ function ConversationModalInner({
   }
 
   const titleId = "conversation-title";
-  const smsLength = smsCheck(text.trim(), "email");
-  /** 勾着 SMS、太长或有特殊字符：有邮箱的点了 Send 才问；没邮箱的一直提示、Send 灰掉（只能改字）。 */
-  const smsOver = sendSms && smsLength.over;
-  const showTooLong = !noReply && smsOver && (tooLong || !hasEmail);
   const skin = skinOf(theme);
   const dark = theme === "morning";
 
@@ -809,69 +807,13 @@ function ConversationModalInner({
             {notice.text}
           </p>
         ) : null}
-        {showTooLong ? (
-          <div
-            role="alert"
-            data-too-long
-            className={cn("mb-2 rounded-md px-3 py-2 text-[12px]", skin.error)}
-          >
-            <p className="font-semibold">{smsProblem(smsLength)}</p>
-            {hasEmail ? (
-              <>
-                <p>Send it by email only?</p>
-                <div className="mt-1.5 flex flex-wrap justify-end gap-2">
-                  <button
-                    type="button"
-                    disabled={submitting}
-                    onClick={() => {
-                      setTooLong(false);
-                      inputRef.current?.focus();
-                    }}
-                    className={cn(
-                      "cursor-pointer rounded-md px-3 py-1 text-[12px] disabled:opacity-50",
-                      skin.save,
-                    )}
-                  >
-                    No, edit the message
-                  </button>
-                  <button
-                    type="button"
-                    disabled={submitting}
-                    onClick={() => {
-                      setSmsChecked(false);
-                      setEmailChecked(true);
-                      void submit("sms_out", { emailOnly: true });
-                    }}
-                    className={cn(
-                      "cursor-pointer rounded-md px-3 py-1 text-[12px] disabled:opacity-50",
-                      skin.send,
-                    )}
-                  >
-                    Yes, send by email only
-                  </button>
-                </div>
-              </>
-            ) : (
-              <p>
-                This guest has no email.{" "}
-                {smsLength.bad.length
-                  ? "Remove those characters to send it by SMS."
-                  : `Shorten the message to ${SMS_CHAR_LIMIT} characters.`}
-              </p>
-            )}
-          </div>
-        ) : null}
         {/* 没有 messages.reply（partner 永远没有）：不能写备注、也不能发给客人，只看往来。 */}
         {noReply ? null : (
           <>
             <textarea
               ref={inputRef}
               value={text}
-              onChange={(event) => {
-                setText(event.target.value);
-                // 改了字就收起「太长」的提问，下次点 Send 再按新字数判断。
-                setTooLong(false);
-              }}
+              onChange={(event) => setText(event.target.value)}
               placeholder={
                 theme === "tickets"
                   ? "Write a note or reply to guest..."
@@ -886,7 +828,7 @@ function ConversationModalInner({
                 skin.textarea,
               )}
             />
-            {sendSms ? (
+            {hasPhone ? (
               <p
                 data-sms-count
                 className={cn(
@@ -898,8 +840,19 @@ function ConversationModalInner({
                       : "text-[#1a1a1a]",
                 )}
               >
-                {smsLength.text}
+                {smsLength.length.toLocaleString("en-US")} / {smsLength.limit}{" "}
+                chars
               </p>
+            ) : null}
+            {smsBlocked ? (
+              <SmsProblem
+                typed={text.trim()}
+                verdict={smsLength}
+                placeholders={false}
+                noEmail={!hasEmail}
+                onReplace={submitting ? undefined : () => setText((t) => toPlainSms(t))}
+                dark={dark}
+              />
             ) : null}
             <div
               className={cn(
@@ -912,7 +865,7 @@ function ConversationModalInner({
                 dot="#f97316"
                 className={skin.check}
                 checked={smsChecked}
-                disabled={!hasPhone}
+                disabled={!hasPhone || smsBlocked}
                 onChange={setSmsChecked}
               />
               <ChannelCheckbox
@@ -945,7 +898,7 @@ function ConversationModalInner({
                   }
                   onClick={() => void submit("sms_out")}
                   disabled={
-                    submitting || !text.trim() || (smsOver && !hasEmail)
+                    submitting || !text.trim() || (smsBlocked && !hasEmail)
                   }
                   className={cn(
                     "cursor-pointer rounded-md px-3.5 py-1.5 text-[12px] disabled:cursor-default disabled:opacity-50",

@@ -328,7 +328,13 @@ export function ChangeLine({
   // Annie「rezdy的内容也需要可以展开和收起」：rezdy_changes 那几条默认收成一行「Changed: 字段名 ▸」，点开看旧 → 新，再点 ▴ 收回。
   const [open, setOpen] = useState(false);
   const foldable = !!c.fromRezdy && c.items.length > 0;
-  const diffs = c.items.map((it, i) => (
+  const diffs = c.items.map((it, i) =>
+    it.changedOnly ? (
+      // G351：只知道改了、没有前后值（partner 看到的 Internal notes (Rezdy)），照后端原文一行。
+      <span key={i} className="block" data-change-only>
+        {it.field}: changed
+      </span>
+    ) : (
     <span key={i} className="block">
       {it.field}{" "}
       <span
@@ -342,7 +348,8 @@ export function ChangeLine({
       </span>{" "}
       → {it.after === null ? "—" : it.after || "(empty)"}
     </span>
-  ));
+    ),
+  );
   return (
     <li
       data-change={c.source}
