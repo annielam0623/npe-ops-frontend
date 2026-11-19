@@ -181,6 +181,12 @@ export interface OrderDetail {
     live_van: string;
     arrived_at: string | null;
     left_at: string | null;
+    /** G360：大巴回程第一个 Las Vegas 下客站（团结束时间，Annie「以bus回到拉斯维加斯停在第一家酒店为准」）；没有 ⇒ null / ""。旧后端没有这几个键。 */
+    tour_ended_at?: string | null;
+    tour_ended_where?: string;
+    /** G360：回程最后一站。 */
+    last_stop_at?: string | null;
+    last_stop_where?: string;
   }[];
   /**
    * 生命周期第 2 项（bf 合同，从上线起记）：Rezdy 推送 / Refresh from Rezdy 改了什么，新 → 旧。

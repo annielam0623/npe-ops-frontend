@@ -19,6 +19,7 @@ import {
   replyFor,
   type SendModule,
   sentSub,
+  tourEnded,
   vanAtHotel,
 } from "@/lib/order-lifecycle";
 import { orderDateToYmd } from "@/lib/order-lookup-api";
@@ -131,6 +132,7 @@ export function LifecycleCard({ order }: { order: OrderDetail }) {
   const lunch = lunchFor(order, date);
   const live = liveFor(order, date);
   const van = live ? vanAtHotel(live.arrived_at, live.left_at) : null;
+  const ended = tourEnded(live);
   return (
     <section
       aria-label="Order lifecycle"
@@ -200,9 +202,9 @@ export function LifecycleCard({ order }: { order: OrderDetail }) {
           {van ?? "—"}
         </DField>
         {/* Relay / Bus 不在这里写（Annie 2026-11-18「全部同意推荐」）：订单详情页已有「Day of tour」卡，同一份 day_of_tour。 */}
-        {/* 题 4 B：后端还没有回程到站，先写「—」。 */}
-        <DField label="Tour ended" tone="muted">
-          —
+        {/* ⑦ G360：回程第一个 Las Vegas 下客站 + 最后一站；没有 / 旧后端 ⇒「—」。 */}
+        <DField label="Tour ended" tone={ended ? undefined : "muted"}>
+          {ended ?? "—"}
         </DField>
       </dl>
       {changes.length || everything.length ? (

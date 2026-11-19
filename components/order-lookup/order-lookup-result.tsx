@@ -52,6 +52,7 @@ import {
   receivedAt,
   type SendModule,
   sentSub,
+  tourEnded,
   vanAtHotel,
 } from "@/lib/order-lifecycle";
 import {
@@ -624,10 +625,18 @@ function LookupResultView({ result }: { result: LookupResult }) {
                         })()}
                         {markFact("Relay", day?.relay_mark ?? null)}
                         {markFact("Bus", day?.bus_mark ?? null)}
-                        {/* 题 4 B：后端还没有回程到站，先写「—」。 */}
-                        <Fact label="Tour ended" tone="muted">
-                          —
-                        </Fact>
+                        {/* ⑦ G360：按单 live_by_day 的回程到站；没有 / 旧后端 ⇒「—」。 */}
+                        {(() => {
+                          const ended = tourEnded(liveFor(order, date));
+                          return (
+                            <Fact
+                              label="Tour ended"
+                              tone={ended ? "plain" : "muted"}
+                            >
+                              {ended ?? "—"}
+                            </Fact>
+                          );
+                        })()}
                       </>
                     ) : null
                   }

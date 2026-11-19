@@ -4,6 +4,15 @@
 // noMoney：这个员工没勾 orders.money_view（后端不按 agent ref 搜、不给号码；/api/me/permissions 只给 orders.view）。
 const http = require("http");
 
+// ⑦ G360 Tour ended：ctl.tourEnd = two（两站）/ one（只有一站，last_stop 同第一站）/ firstOnly（last_stop 是 null）/ none（都是 null）/ 没设 = 旧后端没这几个键。
+function tourEnd(mode) {
+  const ti = { tour_ended_at: "2026-10-21T01:36:00Z", tour_ended_where: "Treasure Island" };
+  if (mode === "two") return { ...ti, last_stop_at: "2026-10-21T01:57:00Z", last_stop_where: "Excalibur" };
+  if (mode === "one") return { ...ti, last_stop_at: ti.tour_ended_at, last_stop_where: ti.tour_ended_where };
+  if (mode === "firstOnly") return { ...ti, last_stop_at: null, last_stop_where: "" };
+  if (mode === "none") return { tour_ended_at: null, tour_ended_where: "", last_stop_at: null, last_stop_where: "" };
+  return {};
+}
 const ctl = { unauth: false, mlinks: false, hold: false, noMoney: false, sa: false, lifeVis: null, lifeVisible: false };
 // 订单生命周期（Annie 2026-11-18 排法 A + 框 1）：sa = 这个人是 Super Admin（没登记开关 ⇒ 默认 super_admin_only 看得到）；
 // lifeVis / lifeVisible = 后端登记了 order_lifecycle（visibility + visible_to_me）。都没设 ⇒ 普通员工、开关没登记 ⇒ 看不到（页面同以前）。
@@ -249,6 +258,8 @@ http
       if (on === "ZZFAIL") return send(res, 500, { detail: "mock order failure" });
       if (!ORDERS[on]) return send(res, 404, { detail: "Order not found" });
       const o = { ...ORDERS[on], ...(ctl.hold && on === "ZZTEST2" ? { status: "On Hold" } : {}) };
+      // ⑦ G360：每次请求按 ctl.tourEnd 给 live_by_day 加回程到站（ORDERS 是启动时建好的）。
+      if (o.live_by_day) o.live_by_day = o.live_by_day.map((x) => ({ ...x, ...tourEnd(ctl.tourEnd) }));
       // G351（后端 4aea93a5）：Refresh 的 activity_log 对 partner 不能看的字段只写「Internal notes (Rezdy): changed」。
       // 这两条没配上 rezdy_changes（partner 那份去掉了），照 activity_log 文字解析：changed 在最后 / 在前面两种。
       // 后端（PASS 时建议）：按「: changed」后缀认、不按字段名 ⇒ 另放一条假字段 Foo。

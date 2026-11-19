@@ -565,6 +565,30 @@ export function vanAtHotel(
   return left ? `${a} – ${formatLaTime(left)}` : a;
 }
 
+/**
+ * ⑦ Tour ended（G360，Annie「可以，团结束时间就这样做」）：回程第一个 Las Vegas 下客站，例「6:36 PM Treasure Island · last stop 6:57 PM Excalibur」。
+ * 最后一站跟第一站一样（只有一站）或没有 ⇒ 只写第一站；tour_ended_at 是 null / 旧后端没键 ⇒ null（格子写「—」）。
+ */
+export function tourEnded(
+  live:
+    | {
+        tour_ended_at?: string | null;
+        tour_ended_where?: string;
+        last_stop_at?: string | null;
+        last_stop_where?: string;
+      }
+    | null
+    | undefined,
+): string | null {
+  if (!live?.tour_ended_at) return null;
+  const stop = (at: string, where: string | undefined) =>
+    [formatLaTime(at), (where ?? "").trim()].filter(Boolean).join(" ");
+  const first = stop(live.tour_ended_at, live.tour_ended_where);
+  if (!live.last_stop_at) return first;
+  const last = stop(live.last_stop_at, live.last_stop_where);
+  return last === first ? first : `${first} · last stop ${last}`;
+}
+
 // ── How to use（题 6 A：第 3 版那 6 条原文）──────────────────────────────────
 
 export const LIFECYCLE_HOW_TO: readonly string[] = [

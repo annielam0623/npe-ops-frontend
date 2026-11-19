@@ -598,6 +598,35 @@ async function run() {
       check("G351 changed 那一项一行、不画划线旧值、不写 —", await evaluate(`const s = [...document.querySelectorAll('[data-lookup-block="changes"] [data-change-only]')]; return s.length === 3 && s.every(e => !e.querySelector('[data-change-old]') && !e.textContent.includes('—'));`));
     }
     await ctl({ g351: false });
+    // ⑦ G360 Tour ended（Annie「可以，团结束时间就这样做」）：回程第一个 Las Vegas 下客站 + 最后一站，洛杉矶时间。
+    for (const [mode, want, name] of [
+      ["two", "6:36 PM Treasure Island · last stop 6:57 PM Excalibur", "两站：第一站 · last stop 最后一站"],
+      ["one", "6:36 PM Treasure Island", "只有一站（最后一站同第一站）：只写那一站"],
+      ["firstOnly", "6:36 PM Treasure Island", "last_stop 是 null：只写第一站"],
+      ["none", "—", "都是 null：写「—」"],
+    ]) {
+      await ctl({ sa: true, lifeVis: null, lifeVisible: false, tourEnd: mode });
+      await openDashboard();
+      await search("ZZTEST1", factOf("Morning Pickup", "Tour ended"));
+      await sleep(300);
+      const te = await ev(factOf("Morning Pickup", "Tour ended"));
+      check(`生命周期 · Tour ended 搜索栏 · ${name}`, te?.text === want, JSON.stringify(te));
+      await goto(`${APP}/orders/ZZTEST1`);
+      await waitFor(`document.querySelector('[data-lifecycle-card] [data-lifecycle-field="Tour ended"]') && !document.querySelector('[data-lifecycle-card]').textContent.includes('…')`, 60000);
+      const de = await evaluate(`return document.querySelector('[data-lifecycle-card] [data-lifecycle-field="Tour ended"] dd')?.textContent.replace(/\\s+/g, ' ').trim();`);
+      check(`生命周期 · Tour ended 订单详情页 · ${name}`, de === want, de);
+    }
+    {
+      // 有值时字色同 Van at hotel；「—」是灰的（同其他空格子）。
+      await ctl({ sa: true, lifeVis: null, lifeVisible: false, tourEnd: "two" });
+      await openDashboard();
+      await search("ZZTEST1", factOf("Morning Pickup", "Tour ended"));
+      await sleep(300);
+      const te = await ev(factOf("Morning Pickup", "Tour ended"));
+      const van = await ev(factOf("Morning Pickup", "Van at hotel"));
+      check("生命周期 · Tour ended 有值：字色同 Van at hotel（不是灰的「—」）", te && van && te.color === van.color, JSON.stringify([te, van]));
+    }
+    await ctl({ tourEnd: null });
     await ctl({ sa: false, lifeVis: null, lifeVisible: false });
     await goto(`${APP}/orders/ZZTEST1`);
     await waitFor(`document.querySelector('section[aria-label="Activity"]')`, 60000);
