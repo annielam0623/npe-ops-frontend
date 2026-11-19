@@ -31,7 +31,17 @@ const BMV = {
   CHD3: { hotel_short: "MGM", lunch_slots: ["1 B", "", "2 V"], lunch_mismatch: true },
   CHD9: { hotel_short: "Excalibur", lunch_slots: null, lunch_mismatch: false },
 };
-const bmvGuest = (g) => (ctl.bmv ? { ...g, pickup_time_short: g.pickup_time.replace(/\s*[AP]M$/i, ""), ...(BMV[g.order_number] || {}) } : g);
+// G364（ctl.g364）：客人在确认页选的餐 / Bus manifest 的餐 / 后端算好的不一样。CHD1 客人选 1 T 1 V、车上 2 T ⇒ 不一样；CHD3 一样；其余 guest_lunch null。
+const G364 = {
+  CHD1: { guest_lunch: { turkey: 1, veggie: 1, beef: 0 }, manifest_lunch: { turkey: 2, veggie: 0, beef: 0 }, guest_lunch_differs: true },
+  CHD3: { guest_lunch: { turkey: 0, veggie: 2, beef: 1 }, manifest_lunch: { turkey: 0, veggie: 2, beef: 1 }, guest_lunch_differs: false },
+};
+const g364Of = (on) => G364[on] ?? { guest_lunch: null, manifest_lunch: null, guest_lunch_differs: false };
+const differsOrders = (gs, label) => gs.filter((g) => G364[g.order_number]?.guest_lunch_differs).map((g) => ({ order_number: g.order_number, guest: g.name, pax: g.pax, guest_lunch: G364[g.order_number].guest_lunch, manifest_lunch: G364[g.order_number].manifest_lunch, bus_label: label, tour: "Antelope Canyon" }));
+const bmvGuest = (g0) => {
+  const g = ctl.bmv ? { ...g0, pickup_time_short: g0.pickup_time.replace(/\s*[AP]M$/i, ""), ...(BMV[g0.order_number] || {}) } : g0;
+  return ctl.g364 ? { ...g, ...g364Of(g.order_number) } : g;
+};
 const mismatchOrders = (gs, label) => ctl.bmvClean ? [] : gs.filter((g) => BMV[g.order_number]?.lunch_mismatch).map((g) => ({ order_number: g.order_number, guest: g.name, pax: g.pax, lunch_text: BMV[g.order_number].lunch_slots ? BMV[g.order_number].lunch_slots.filter(Boolean).join(" ") : "-", bus_label: label, tour: "Antelope Canyon" }));
 // 二期（Special Requirements 可编辑）：后端上线后客人才带 notes_edited / rezdy_notes。
 const pub = (g0) => { const g = bmvGuest(g0); return ctl.notesEdit && g._rezdy !== undefined ? { ...g, notes_edited: !!g._edited, rezdy_notes: g._rezdy } : ctl.notesEdit ? { ...g, notes_edited: false, rezdy_notes: g.notes } : g; };
@@ -103,6 +113,7 @@ function view0() {
       : [{ key: "seats", label: "TOTAL # OF PAX", value: 56, custom: false }, { key: "seats_left", label: "AVAILABLE SEATS LEFT", value: null, custom: false }, { key: "extra", label: "Heli SEATS LEFT", value: 4, custom: true }, { key: "inbound", label: "INBOUND", value: 0, custom: false }, { key: "seats_used", label: "SEATS USED", value: 6, custom: false }, { key: "no_lunch", label: "No Lunch (including shuttle)", value: 2, custom: false }], empty_notes: false,
     ...(ctl.g198 ? { lunch: label === "A" ? { sections: [{ title: "LOWER ANTELOPE 1:00P - 4 PAX", rows: [{ name: "ZZ Test1", pax: 2, turkey: 2, veggie: 0, beef: 0, defaulted: true, ...(ctl.lunchNotes ? { notes: "", notes_check: false } : {}) }, { name: "ZZ Test3", pax: 2, turkey: 1, veggie: 1, beef: 0, defaulted: false, ...(ctl.lunchNotes ? { notes: "NO FETA", notes_check: false } : {}) }, ...(ctl.lunchNotes ? [{ name: "ZZ Test5", pax: 1, turkey: 0, veggie: 0, beef: 0, defaulted: false, notes: "2 turkey?? 1 veg", notes_check: true }] : [])] }], totals: { pax: 4, turkey: 3, veggie: 1, beef: 0 }, note: "(TEXT) POC: ZZ TEST 555-0100\nCALL no later than 7pm, night before  555-0101", title: "NPE Lunch Box - ZZ Test Bee's", restaurant: "ZZ Test Bee's" } : null } : {}),
     ...(ctl.textSize ? { text_size: state.textSize[label], text_size_history: state.textHistory } : {}),
+    ...(ctl.g364 ? { guest_lunch_differs_orders: differsOrders(gs, label) } : {}),
     ...(ctl.bmv ? { lunch_mismatch_orders: mismatchOrders(gs, label),
       restaurant: state.version === "lankun" ? { name: "ZZ Test Bee's", title: "NPE Lunch Box - ZZ Test Bee's", footer_lines: ["(TEXT) POC: ZZ TEST 555-0100", "CALL no later than 7pm, night before"], totals: { beef: 1, turkey: 2, veggie: 2, total: 5 } } : null } : {}) });
   return { run_date: "2026-10-05", date_label: "Mon, Oct 5, 2026",

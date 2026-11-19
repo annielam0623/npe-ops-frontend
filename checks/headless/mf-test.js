@@ -851,7 +851,69 @@ async function run() {
   await evaluate("[...document.querySelectorAll('main button')].find(b => b.textContent.trim() === 'Download').click(); return 1;");
   await sleep(300);
   check("没有餐不符：Download 不弹提醒，表单照常交", await evaluate("const l = window.__links.at(-1); return !document.querySelector('[data-lunch-mismatch-dialog]') && !!l && l.form && !l.prevented;"), await evaluate("return JSON.stringify(window.__links);"));
-  await ctl({ g198: false, textSize: false, bmv: false, bmvClean: false, version: "general" });
+
+  // ── G364（Annie 2026-11-19「动手」，preview DvpZMobvhQz74oWUsm1psL 第 7 版）：Q2 (a) Special Requirements 格只显示橙字；
+  //    Q3 A 只有「客人选的不一样」也弹框（只提醒，Print anyway / Download anyway 照常）。接着上面：bmvClean = 没有餐不符。──
+  await ctl({ g364: true });
+  await goto(`${APP}/dispatch/manifest?date=2026-10-05&tour=3`);
+  await waitFor("document.querySelector('tr[data-guest=CHD1] [data-guest-lunch-differs]')", 20000);
+  await helpers();
+  {
+    const one = await evaluate("const c = document.querySelector('tr[data-guest=CHD1] [data-notes-cell]'); const n = c?.querySelector('[data-guest-lunch-differs]'); return n ? { text: n.textContent, color: getComputedStyle(n).color } : null;");
+    check("G364 Bus manifest：不一样的单（CHD1），Lunch 旁边的 Special Requirements 格里橙字「Guest picked: 1 T 1 V — check Rezdy」",
+      one && one.text === "Guest picked: 1 T 1 V — check Rezdy" && one.color === "rgb(194, 65, 12)", JSON.stringify(one));
+    check("G364 Bus manifest：一样的单（CHD3）、没选的单都没有橙字；整页只有 1 条", await evaluate("return !document.querySelector('tr[data-guest=CHD3] [data-guest-lunch-differs]') && document.querySelectorAll('[data-guest-lunch-differs]').length === 1;"));
+    check("G364 Bus manifest：Lunch 格的份数不变（CHD1 照旧 2 T，不按客人选的改）", await evaluate("return document.querySelector('tr[data-guest=CHD1] [data-lunch-cell]').textContent.replace(/\\s+/g, ' ').trim() === '2 T';"), await evaluate("return document.querySelector('tr[data-guest=CHD1] [data-lunch-cell]')?.textContent;"));
+    check("G364 How to use — Tour manifest：Lunch 那条照第 7 版原文", await evaluate("return document.body.textContent.replace(/\\s+/g, ' ').includes('A red Lunch cell means the sandwiches don’t add up to the pax, or could not be read (-). Orange “Guest picked: …” in Special Requirements means the guest picked a different lunch in the tour confirmation, so the lunch in Rezdy is probably wrong. Check it and fix Special Requirements in Rezdy. Before you print or download, the page lists these bookings; check them, or print / download anyway.');"));
+  }
+  await evaluate(TRAP);
+  await evaluate("[...document.querySelectorAll('main a')].find(a => a.textContent.trim().startsWith('Print all buses')).click(); return 1;");
+  await waitFor("document.querySelector('[data-lunch-mismatch-dialog]')", 3000);
+  {
+    const dl = await evaluate("const d = document.querySelector('[data-lunch-mismatch-dialog]'); if (!d) return null; const t = d.querySelector('[data-guest-lunch-table]'); return { yellow: d.querySelector('[data-mismatch-yellow]').innerText.replace(/\\s+/g, ' ').trim(), mismatchRows: d.querySelectorAll('tr[data-mismatch-row]').length, head: t?.firstElementChild.textContent, cols: t ? [...t.querySelectorAll('th')].map(th => th.textContent) : null, rows: t ? [...t.querySelectorAll('tr[data-guest-lunch-row]')].map(r => [...r.children].map(td => td.textContent)) : null, go: d.querySelector('[data-mismatch-go]').textContent.trim(), opened: window.__opened.length };");
+    check("G364 只有客人选的不一样（没有餐不符）：Print all 也弹框（Q3 A），不开打印页", dl && dl.opened === 0 && dl.mismatchRows === 0, JSON.stringify(dl));
+    check("G364 提醒框黄框照第 7 版原文：「1 booking: the guest’s lunch pick differs from the Bus manifest. The lunch in Rezdy is probably wrong. Check it and fix Special Requirements in Rezdy, or print anyway.」",
+      dl && dl.yellow === "1 booking: the guest’s lunch pick differs from the Bus manifest. The lunch in Rezdy is probably wrong. Check it and fix Special Requirements in Rezdy, or print anyway.", dl?.yellow);
+    check("G364 提醒框第二张表：标题 Guest’s lunch pick differs from the Bus manifest；列 Bus / Tour、Order #、Guest、Pax、Guest picked、Bus manifest；CHD1 1 T 1 V / 2 T",
+      dl && dl.head === "Guest’s lunch pick differs from the Bus manifest" && JSON.stringify(dl.cols) === JSON.stringify(["Bus / Tour", "Order #", "Guest", "Pax", "Guest picked", "Bus manifest"]) &&
+        JSON.stringify(dl.rows) === JSON.stringify([["A · Antelope Canyon", "CHD1", "ZZ Test1", "2", "1 T 1 V", "2 T"]]) && dl.go === "Print anyway", JSON.stringify(dl));
+  }
+  await evaluate("document.querySelector('[data-mismatch-go]').click(); return 1;");
+  await sleep(200);
+  check("G364 Print anyway：照常开整团打印页（只提醒，不拦）", await evaluate("return window.__opened.length === 1 && window.__opened[0].includes('/admin/dispatch/manifest/print?date=2026-10-05&tour=3') && !document.querySelector('[data-lunch-mismatch-dialog]');"), await evaluate("return JSON.stringify(window.__opened);"));
+  await evaluate("[...document.querySelectorAll('main button')].find(b => b.textContent.trim() === 'Download').click(); return 1;");
+  await waitFor("document.querySelector('[data-mismatch-go]')", 3000);
+  check("G364 Download：同样弹框，按钮 Download anyway、黄框写 or download anyway", await evaluate("const d = document.querySelector('[data-lunch-mismatch-dialog]'); return d.querySelector('[data-mismatch-go]').textContent.trim() === 'Download anyway' && d.querySelector('[data-mismatch-yellow]').textContent.includes('or download anyway.') && window.__submitted === 0;"));
+  await evaluate("document.querySelector('[data-mismatch-go]').click(); return 1;");
+  await sleep(200);
+  check("G364 Download anyway：照常交下载表单", await evaluate("return window.__submitted === 1;"));
+  // 两种都有：同一个框，原来的表在上、客人选的表在下，黄框两句。
+  await ctl({ bmvClean: false });
+  await goto(`${APP}/dispatch/manifest?date=2026-10-05&tour=3`);
+  await waitFor("document.querySelector('[data-version-select]')");
+  await helpers();
+  await evaluate(TRAP);
+  await evaluate("[...document.querySelectorAll('main a')].find(a => a.textContent.trim().startsWith('Print all buses')).click(); return 1;");
+  await waitFor("document.querySelector('[data-lunch-mismatch-dialog] [data-guest-lunch-table]')", 3000);
+  {
+    const both = await evaluate("const d = document.querySelector('[data-lunch-mismatch-dialog]'); const tables = [...d.querySelectorAll('table')]; return { yellow: d.querySelector('[data-mismatch-yellow]').innerText.replace(/\\s+/g, ' ').trim(), order: tables.map(t => !!t.closest('[data-guest-lunch-table]')), mismatch: d.querySelectorAll('tr[data-mismatch-row]').length, differs: d.querySelectorAll('tr[data-guest-lunch-row]').length };");
+    check("G364 两种都有：一个框，餐不符表在上、客人选的表在下；黄框原来两句后面接「1 booking: the guest’s lunch pick differs from the Bus manifest The lunch in Rezdy is probably wrong: check it and fix Special Requirements in Rezdy.」",
+      both && JSON.stringify(both.order) === "[false,true]" && both.mismatch === 2 && both.differs === 1 &&
+        both.yellow === "2 bookings: lunch doesn’t match pax. Check them before you print, or print anyway. 1 booking: the guest’s lunch pick differs from the Bus manifest The lunch in Rezdy is probably wrong: check it and fix Special Requirements in Rezdy.", JSON.stringify(both));
+  }
+  await evaluate("$btn('Cancel', document.querySelector('[data-lunch-mismatch-dialog]')).click(); return 1;");
+  await sleep(150);
+  // 旧后端 / partner（没有这几个键）⇒ 不出橙字、不多出第二张表。
+  await ctl({ g364: false, bmvClean: true });
+  await goto(`${APP}/dispatch/manifest?date=2026-10-05&tour=3`);
+  await waitFor("document.querySelector('[data-version-select]')");
+  await helpers();
+  await evaluate(TRAP);
+  check("G364 旧后端 / partner 没有这几个键：没有橙字", await evaluate("return !document.querySelector('[data-guest-lunch-differs]');"));
+  await evaluate("[...document.querySelectorAll('main a')].find(a => a.textContent.trim().startsWith('Print all buses')).click(); return 1;");
+  await sleep(300);
+  check("G364 旧后端：没有餐不符 ⇒ Print all 照旧不弹框", await evaluate("const l = window.__links.at(-1); return !document.querySelector('[data-lunch-mismatch-dialog]') && !!l && !l.prevented;"));
+  await ctl({ g198: false, textSize: false, bmv: false, bmvClean: false, g364: false, version: "general" });
 
   // 后端上线后别的团（没开格）：每个 tour 节都带 show_cfm false，confirm_box true ⇒ 黄框照旧、节标题照旧。
   await ctl({ g198Plain: true });

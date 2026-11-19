@@ -116,6 +116,30 @@ export interface ManifestGuest {
   lunch_slots?: [string, string, string] | null;
   /** 这单的餐份数和 Pax 对不上（含读不出、没写按默认算的）：屏幕上整格 Lunch 标红。 */
   lunch_mismatch?: boolean;
+  /** G364：客人在 Tour Confirmation 确认页选的餐（这单这天）；没选 = null。partner / 旧后端没有这几个键。 */
+  guest_lunch?: LunchCounts | null;
+  /** G364：这单当天所有 Bus Manifest 的餐合计（含导游改）；没午餐 = null。 */
+  manifest_lunch?: LunchCounts | null;
+  /** G364：后端算好的「客人选的跟 Bus manifest 不一样」（前端不自己算）。true ⇒ Special Requirements 格出橙字。 */
+  guest_lunch_differs?: boolean;
+}
+
+/** G364：三种三明治的份数（整数）。 */
+export interface LunchCounts {
+  turkey: number;
+  veggie: number;
+  beef: number;
+}
+
+/** G364：客人选的跟 Bus manifest 不一样的一单（每车 `guest_lunch_differs_orders`）：打印 / 下载前提醒，不拦。 */
+export interface ManifestGuestLunchDiffers {
+  order_number: string;
+  guest: string;
+  pax: number;
+  guest_lunch: LunchCounts | null;
+  manifest_lunch: LunchCounts | null;
+  bus_label: string;
+  tour: string;
 }
 
 /** G65：取消 / 改期、留在名单上的单（不在车上、不算总数）。pickup_time 已减 15。 */
@@ -308,6 +332,8 @@ export interface ManifestBlock {
   lunch?: ManifestLunch | null;
   /** 这台车餐不符的单（三版式；团没排餐厅时是 []）。没带 = 后端没上线，不提醒。 */
   lunch_mismatch_orders?: ManifestLunchMismatch[];
+  /** G364：这台车客人选的餐跟 Bus manifest 不一样的单；没带 / 查失败 = []，不提醒。 */
+  guest_lunch_differs_orders?: ManifestGuestLunchDiffers[];
   /** Lankun 版且排了餐厅才有；其余 null / 不带。 */
   restaurant?: ManifestRestaurant | null;
   /** G197：存好的字号（只存这一天、这个团、这台车）；没有这个键 = 后端没上线（不出 Text size 键，照纸本默认画）。 */

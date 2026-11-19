@@ -1,4 +1,5 @@
 import type { OutcomeFields } from "@/lib/send-outcome";
+import type { LunchCounts } from "./dispatch-manifest";
 /**
  * Manifests 页（`GET /api/manifests`，后端 `task/manifests-fields` 的接口契约 A–D，提交 04f3fa0）。
  * 标签 / 胶囊 / 字段目录全由后端下发，前端不写死；字段键跨天稳定，账号里存的列选择就存这些键。
@@ -102,6 +103,13 @@ export interface ManifestRow {
   cfm_not_needed?: boolean;
   /** 有号、但整串里的数字不到 6 个（「1」「TBA」）⇒ 发送当没号挡（可 Send anyway 照发原值）。只看门票。 */
   cfm_short?: boolean;
+  /**
+   * G364（只 Bus 标签；partner / 别的标签 / 旧后端没有这几个键）：客人在确认页选的餐、这单当天 Bus Manifest 的餐、
+   * 后端算好的「不一样」（前端不自己算）。true ⇒ Special requirements 格下面一行橙字提醒去 Rezdy 查。
+   */
+  guest_lunch?: LunchCounts | null;
+  manifest_lunch?: LunchCounts | null;
+  guest_lunch_differs?: boolean;
   reason?: string | null;
   /** 不能发的原因，例如 "Admin fee - not sent, not dispatched"。 */
   reason_label?: string | null;

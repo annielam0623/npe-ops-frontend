@@ -120,6 +120,7 @@ import type {
   ManifestPaperColors,
   ManifestGoneGuest,
   ManifestGuest,
+  ManifestGuestLunchDiffers,
   ManifestLunch,
   ManifestLunchMismatch,
   ManifestRestaurant,
@@ -128,6 +129,14 @@ import type {
   ManifestVersion,
   ManifestView as ManifestData,
 } from "@/types";
+import { busManifestGuestLunchNote } from "@/lib/guest-lunch";
+
+/** 打印 / 下载前要提醒的单：餐和人数对不上（原来的）+ G364 客人选的不一样（只提醒，不拦）。 */
+type OutputReminders = {
+  mismatch: ManifestLunchMismatch[];
+  differs: ManifestGuestLunchDiffers[];
+};
+const NO_REMINDERS: OutputReminders = { mismatch: [], differs: [] };
 import {
   isStaffMark,
   markLabel,
@@ -311,7 +320,7 @@ export function ManifestView() {
   const [saveFirst, setSaveFirst] = useState<{
     /** view = 151 的 View only（看的是库里存好的，先存）。 */
     action: MismatchAction | "view";
-    ordersOf: (d: ManifestData) => ManifestLunchMismatch[];
+    ordersOf: (d: ManifestData) => OutputReminders;
     go: () => void;
   } | null>(null);
   /** 离开页面时的三个键（Save / Don't save / Cancel）；resolve(true) = 走。 */
@@ -321,6 +330,7 @@ export function ManifestView() {
   const [mismatch, setMismatch] = useState<{
     action: MismatchAction;
     orders: ManifestLunchMismatch[];
+    differs: ManifestGuestLunchDiffers[];
     go: () => void;
   } | null>(null);
   const downloadRef = useRef<HTMLFormElement>(null);
@@ -702,11 +712,12 @@ export function ManifestView() {
    */
   function guardMismatch(
     action: MismatchAction,
-    orders: ManifestLunchMismatch[],
+    { mismatch: orders, differs }: OutputReminders,
     go: () => void,
   ): boolean {
-    if (!orders.length) return false;
-    setMismatch({ action, orders, go });
+    // G364 Q3 A：只有「客人选的不一样」也弹框（只提醒，按「… anyway」照常继续）。
+    if (!orders.length && !differs.length) return false;
+    setMismatch({ action, orders, differs, go });
     return true;
   }
 
@@ -716,7 +727,7 @@ export function ManifestView() {
    */
   function guardOutput(
     action: MismatchAction,
-    ordersOf: (d: ManifestData) => ManifestLunchMismatch[],
+    ordersOf: (d: ManifestData) => OutputReminders,
     go: () => void,
   ): boolean {
     if (dirty) {
@@ -725,10 +736,13 @@ export function ManifestView() {
     }
     return data ? guardMismatch(action, ordersOf(data), go) : false;
   }
-  const allOrders = (d: ManifestData) =>
-    d.blocks.flatMap((b) => b.lunch_mismatch_orders ?? []);
+  const remindersOf = (blocks: ManifestData["blocks"]): OutputReminders => ({
+    mismatch: blocks.flatMap((b) => b.lunch_mismatch_orders ?? []),
+    differs: blocks.flatMap((b) => b.guest_lunch_differs_orders ?? []),
+  });
+  const allOrders = (d: ManifestData) => remindersOf(d.blocks);
   const busOrders = (busKey: string) => (d: ManifestData) =>
-    d.blocks.find((b) => b.bus_key === busKey)?.lunch_mismatch_orders ?? [];
+    remindersOf(d.blocks.filter((b) => b.bus_key === busKey));
 
   /** 网址上的 ?view=（只改地址，保留离开提醒的记号）。 */
   function setViewParam(key: string | null) {
@@ -749,7 +763,7 @@ export function ManifestView() {
     if (dirty) {
       setSaveFirst({
         action: "view",
-        ordersOf: () => [],
+        ordersOf: () => NO_REMINDERS,
         // 存完再开：刚点过「Save and view」，浏览器多半还让请求真全屏；不让就是页面内全屏。
         go: () => {
           enterFullscreen();
@@ -1358,6 +1372,7 @@ export function ManifestView() {
                     action={mismatch.action}
                     dateLabel={data.date_label}
                     orders={mismatch.orders}
+                    differs={mismatch.differs}
                     onCancel={() => setMismatch(null)}
                     onConfirm={() => {
                       const { go } = mismatch;
@@ -1399,6 +1414,7 @@ export function ManifestView() {
                 action={mismatch.action}
                 dateLabel={data.date_label}
                 orders={mismatch.orders}
+                differs={mismatch.differs}
                 onCancel={() => setMismatch(null)}
                 onConfirm={() => {
                   const { go } = mismatch;
@@ -2213,6 +2229,15 @@ function NotesCell({
       {staged ? (
         <span data-notes-staged className={cn(UNSAVED_TAG, "ml-1.5")}>
           not saved
+        </span>
+      ) : null}
+      {/* G364 Q2 (a)：后端说客人选的不一样 ⇒ 一行橙字提醒去 Rezdy 查。只显示，不存、不印（View only = 纸上的样子，不出）。 */}
+      {!viewOnly && g.guest_lunch_differs === true && g.guest_lunch ? (
+        <span
+          data-guest-lunch-differs
+          className="block text-[11.5px] leading-[1.25] font-semibold whitespace-nowrap text-[#c2410c]"
+        >
+          {busManifestGuestLunchNote(g.guest_lunch)}
         </span>
       ) : null}
     </td>
@@ -3103,8 +3128,12 @@ function HowToUse({ layout, columns }: { layout: boolean; columns: boolean }) {
         <li>
           Tours with a lunch place have a Lunch column (B = Beef, T = Turkey, V
           = Veggie). A red Lunch cell means the sandwiches don&rsquo;t add up to
-          the pax, or could not be read (-). Before you print or download, the
-          page lists these bookings; check them, or print / download anyway.
+          the pax, or could not be read (-). Orange &ldquo;Guest picked:
+          …&rdquo; in Special Requirements means the guest picked a different
+          lunch in the tour confirmation, so the lunch in Rezdy is probably
+          wrong. Check it and fix Special Requirements in Rezdy. Before you
+          print or download, the page lists these bookings; check them, or
+          print / download anyway.
         </li>
         <li>
           Click Print on a bus (or Print all buses), then Print in the new tab.

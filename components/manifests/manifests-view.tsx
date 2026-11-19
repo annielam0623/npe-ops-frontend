@@ -19,6 +19,7 @@ import { HowToUse } from "@/components/ui/how-to-use";
 import { ErrorBanner } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { downloadCsv } from "@/lib/csv";
+import { mainManifestGuestLunchNote } from "@/lib/guest-lunch";
 import { isYmd, laToday, shiftYmd } from "@/lib/la-date";
 import {
   fetchManifestPage,
@@ -2197,19 +2198,41 @@ function Cell({
   fieldKey: string;
 }) {
   const text = formatValue(field, row.values[fieldKey], row);
+  // G364 Q1 A：Special requirements 格下面一行橙字（只在后端说不一样的单；这一列关了就不出）。
+  const guestLunch =
+    fieldKey === "special_requirements" &&
+    row.guest_lunch_differs === true &&
+    row.guest_lunch ? (
+      <span
+        data-guest-lunch-differs
+        className="mt-0.5 block max-w-xs min-w-48 text-[11.5px] leading-[1.35] whitespace-normal text-[#c2410c] night:text-orange-300"
+      >
+        {mainManifestGuestLunchNote(row.guest_lunch)}
+      </span>
+    ) : null;
   if (!text)
-    return <span className="text-[#1a1a1a] night:text-white/25">—</span>;
+    return (
+      <>
+        <span className="text-[#1a1a1a] night:text-white/25">—</span>
+        {guestLunch}
+      </>
+    );
   const long = text.length > 40;
   return (
-    <span
-      className={cn(
-        long
-          ? "block max-w-xs min-w-48 [overflow-wrap:anywhere] whitespace-pre-line"
-          : "whitespace-nowrap",
-      )}
-    >
-      {text}
-    </span>
+    <>
+      <span
+        className={cn(
+          long
+            ? "block max-w-xs min-w-48 [overflow-wrap:anywhere] whitespace-pre-line"
+            : guestLunch
+              ? "block whitespace-nowrap"
+              : "whitespace-nowrap",
+        )}
+      >
+        {text}
+      </span>
+      {guestLunch}
+    </>
   );
 }
 
@@ -2430,6 +2453,14 @@ function ManifestsHowToUse() {
           each pill shows its pax. &ldquo;No group yet&rdquo; / &ldquo;No tour
           type yet&rdquo; collects products that haven&apos;t been set up in
           Settings → Products.
+        </>,
+        // G364 Q4 A（preview 第 7 版原文）。
+        <>
+          Lunch comes from Special requirements in Rezdy. Orange &ldquo;Guest
+          picked … — check Rezdy&rdquo; under Special requirements means the
+          guest picked a different lunch in the tour confirmation, so the lunch
+          in Rezdy is probably wrong. Check it and fix Special Requirements in
+          Rezdy.
         </>,
         <>
           Click <b>☰ Columns</b> to choose which fields to show. Every field

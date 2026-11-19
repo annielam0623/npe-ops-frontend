@@ -1730,8 +1730,9 @@ async function run() {
     const i = items.indexOf(A);
     // 152 在前面（Order lookup 那条后面）加了一条「Click an order number…」⇒ 这两条各往后挪一位（第 16、17 条）；
     // 产品名标红（2026-11-17）在 sections 那条后面又加一条 ⇒ 再挪一位（第 17、18 条）。
-    check("How to use 第 17 条（Cfm # 号短 + Send anyway）原句", i === 16, JSON.stringify(items[16]));
-    check("How to use 第 18 条（号短算没号 / No Cfm # needed）原句", items[17] === B, JSON.stringify(items[17]));
+    // G364（2026-11-19）在 Bus Tour / Tickets 那条后面加了 Lunch 那条 ⇒ 再挪一位（第 18、19 条）。
+    check("How to use 第 18 条（Cfm # 号短 + Send anyway）原句", i === 17, JSON.stringify(items[17]));
+    check("How to use 第 19 条（号短算没号 / No Cfm # needed）原句", items[18] === B, JSON.stringify(items[18]));
     const up = items.find((x) => x.startsWith("↑ Upload confirmation #s")) || "";
     check("How to use 原第 21 条（↑ Upload confirmation #s，现第 22 条）末加 Overwrite 默认勾那句", up.endsWith(C), JSON.stringify(up));
   }
@@ -2036,6 +2037,7 @@ async function run() {
   await sessionChecks();
   await relayTourChecks();
   await redProductChecks();
+  await guestLunchChecks();
 
   // ── 未登录：跳 ops 自己的登录页带 next ──
   await ctl({ fail401: true });
@@ -2107,6 +2109,37 @@ async function redProductChecks() {
   await waitFor(`${cell("CHD1001")}`, 20000);
   check("产品标红：旧后端没有 product_differs ⇒ 都不红、页面照常", await evaluate(`return !document.querySelector('[data-product-differs]') && getComputedStyle(${cell("CHD1001")}).color !== 'rgb(163, 45, 45)' && !document.body.textContent.includes('Something went wrong');`));
   await ctl({ sections: false, prefs: { bus: null, tickets: null } });
+}
+
+// ── G364 Q1 A（Annie 2026-11-19「动手」，preview DvpZMobvhQz74oWUsm1psL 第 7 版）：后端 guest_lunch_differs = true ⇒
+//    Special requirements 格原文下面一行橙字「Guest picked … in the tour confirmation — check Rezdy」；不提 Bus manifest；列关了不出。──
+async function guestLunchChecks() {
+  const BUS = `${APP}/manifests?date=${today}&tab=bus&pill=g%3A3`;
+  const cols = ["order_number", "guest_name", "pax", "special_requirements"];
+  const cell = (o) => `(() => { const tr = $box('${o}')?.closest('tr'); const i = $heads().indexOf('Special requirements'); return tr && i >= 0 ? tr.querySelectorAll('td')[i + 2] : null; })()`;
+  await ctl({ role: "staff", sessions: false, rezdyTix: false, cfmMix: false, sections: false, g364: true, prefs: { bus: JSON.stringify(cols), tickets: null } });
+  await openPage(BUS);
+  await waitFor(`${cell("CHD1001")}?.querySelector('[data-guest-lunch-differs]')`, 20000);
+  const one = await evaluate(`const c = ${cell("CHD1001")}; const n = c?.querySelector('[data-guest-lunch-differs]'); return n ? { text: n.textContent, color: getComputedStyle(n).color, cell: c.textContent } : null;`);
+  check("G364 Main manifest：不一样的单，Special requirements 原文下面一行橙字（原文照旧在上面）",
+    one && one.cell.startsWith("2 Turkey") && one.text === "Guest picked 1 Turkey, 1 Veggie in the tour confirmation — check Rezdy" && one.color === "rgb(194, 65, 12)", JSON.stringify(one));
+  check("G364 Main manifest：橙字不提 Bus manifest（Annie：Rezdy 改了一系列都改了）", one && !one.text.includes("Bus manifest"));
+  check("G364 Main manifest：一样的单（CHD1002，guest_lunch_differs = false）没有橙字", await evaluate(`const c = ${cell("CHD1002")}; return !!c && !c.querySelector('[data-guest-lunch-differs]') && c.textContent === '2 Turkey, 2 Beef';`), await evaluate(`return ${cell("CHD1002")}?.outerHTML;`));
+  check("G364 Main manifest：页面上只有一条橙字", (await evaluate("return document.querySelectorAll('[data-guest-lunch-differs]').length;")) === 1);
+  check("G364 How to use — Manifests 加了那条（第 7 版原文）", await evaluate("const d = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Manifests')); return !!d && d.textContent.replace(/\\s+/g, ' ').includes('Lunch comes from Special requirements in Rezdy. Orange “Guest picked … — check Rezdy” under Special requirements means the guest picked a different lunch in the tour confirmation, so the lunch in Rezdy is probably wrong. Check it and fix Special Requirements in Rezdy.');"));
+  // Special requirements 列关了 ⇒ 橙字跟着不出（不另找地方放）。
+  await ctl({ prefs: { bus: JSON.stringify(["order_number", "guest_name", "pax"]), tickets: null } });
+  await openPage(BUS);
+  await waitFor(`$box('CHD1001')`, 20000);
+  await sleep(300);
+  check("G364 Main manifest：Special requirements 列关了 ⇒ 没有橙字", await evaluate("return !$heads().includes('Special requirements') && !document.querySelector('[data-guest-lunch-differs]');"));
+  // 旧后端 / partner（行上没有这几个键）⇒ 照旧，不报错。
+  await ctl({ g364: false, prefs: { bus: JSON.stringify(cols), tickets: null } });
+  await openPage(BUS);
+  await waitFor(`$box('CHD1001')`, 20000);
+  await sleep(300);
+  check("G364 Main manifest：旧后端 / partner 没有这几个键 ⇒ 没有橙字、页面照常", await evaluate("return !document.querySelector('[data-guest-lunch-differs]') && !document.body.textContent.includes('Something went wrong');"));
+  await ctl({ g364: false, prefs: { bus: null, tickets: null } });
 }
 
 // ── 置顶 74：Upper Antelope (Brenda) 每单 waiver link（Annie「那4提全部按推荐走，动手」；preview 5niqePBqxUsCBqKpLLKCnm）──

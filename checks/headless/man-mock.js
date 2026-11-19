@@ -127,6 +127,13 @@ const BASE_CATALOG = [
   // 后端 auto-send（2026-10-15）：产品默认的 tour type 键，没配是 ""。Send tour confirmation 弹窗补拉它来预填。
   { key: "bus_tour_type", label: "Bus tour type", group: "ours", type: "text" },
 ];
+// G364: ctl.g364 on = new backend (Bus rows carry guest_lunch / manifest_lunch / guest_lunch_differs; catalog has Special requirements).
+// CHD1001 guest picked 1 T 1 V, Rezdy says 2 Turkey => differs; CHD1002 same; other Bus rows guest_lunch null. Tickets rows: no keys.
+const SPECIAL_REQ = { key: "special_requirements", label: "Special requirements", group: "booking", type: "text" };
+const G364 = {
+  CHD1001: { sr: "2 Turkey", guest_lunch: { turkey: 1, veggie: 1, beef: 0 }, manifest_lunch: { turkey: 2, veggie: 0, beef: 0 }, guest_lunch_differs: true },
+  CHD1002: { sr: "2 Turkey, 2 Beef", guest_lunch: { turkey: 2, veggie: 0, beef: 2 }, manifest_lunch: { turkey: 2, veggie: 0, beef: 2 }, guest_lunch_differs: false },
+};
 const MONEY = [
   { key: "order_total", label: "Order total", group: "money", type: "money" },
   { key: "currency", label: "Currency", group: "money", type: "text" },
@@ -368,7 +375,7 @@ function page(url) {
   const questions = [];
   if (tabRows.some((r) => "q:0123456789" in r.v)) questions.push(BUS_QUESTION);
   if (tabRows.some((r) => "pq:abcdef0123" in r.v)) questions.push(PAX_QUESTION);
-  const catalog = [...BASE_CATALOG, ...(ctl.minus15 ? [GUEST_PICKUP] : []), ...(ctl.waiver ? WAIVER_FIELDS : []), ...questions, ...(moneyOpen ? MONEY : [])];
+  const catalog = [...BASE_CATALOG, ...(ctl.g364 ? [SPECIAL_REQ] : []), ...(ctl.minus15 ? [GUEST_PICKUP] : []), ...(ctl.waiver ? WAIVER_FIELDS : []), ...questions, ...(moneyOpen ? MONEY : [])];
   const known = new Set(catalog.map((f) => f.key));
   const moneyKeys = new Set(MONEY.map((f) => f.key));
   const asked_fields = url.searchParams.get("fields");
@@ -385,6 +392,7 @@ function page(url) {
       const all = { ...r.v, order_number: r.order_number, staff_cfm: c?.confirmation_no ?? null, staff_cfm_by: c?.updated_by ?? null, staff_cfm_at: c?.updated_at ?? null,
         sent_tour_at: sentTour.get(key) ?? null, sent_tickets_at: sentTickets.get(key) ?? null,
         sent_tour_by: sentTour.has(key) ? "ZZ Test Staff" : null, sent_tickets_by: sentTickets.has(key) ? "ZZ Test Staff" : null,
+        special_requirements: G364[r.order_number]?.sr ?? null,
         guest_pickup_time: minus15(r.v.pickup_time, r.order_number), bus_tour_type: ctl.busTour[r.order_number] ?? "",
         ...(ctl.waiver ? { waiver_link: r.waiver ? (waiver.get(key)?.waiver_link ?? "") : "", waiver_status: waiverStatus(r, key),
           waiver_link_by: r.waiver ? (waiver.get(key)?.updated_by ?? "") : "", waiver_link_at: r.waiver ? (waiver.get(key)?.updated_at ?? null) : null } : {}) };
@@ -396,6 +404,9 @@ function page(url) {
       return { row_key: key, order_number: r.order_number, product_code: r.product_code, tour_date: date, lane_source: r.lane_source,
         section: sectionsOn ? SECTION_OF[r.order_number] : null, values, ...noteOf(r.order_number, r.product_code, date), ...marksOf(r),
         ...(ctl.waiver ? { waiver_link_required: !!r.waiver } : {}),
+        ...(ctl.g364 && r.tab === "bus"
+          ? (() => { const g = G364[r.order_number]; return { guest_lunch: g?.guest_lunch ?? null, manifest_lunch: g?.manifest_lunch ?? null, guest_lunch_differs: !!g?.guest_lunch_differs }; })()
+          : {}),
         ...(ctl.mismatch ? { cfm_mismatch: mismatchOf(r.order_number, key) } : {}),
         // 产品名标红：ctl.productDiffers = { 订单号: 大多数产品的主要文字 }；开着时每行都带两个键，不在里面的 false / null；没设 = 旧后端，不带。
         ...(ctl.productDiffers
