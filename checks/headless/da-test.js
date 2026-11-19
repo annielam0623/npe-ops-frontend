@@ -1624,7 +1624,7 @@ async function run() {
       const nlBox = "document.querySelector('#panel-send [aria-label=\"Need a look\"]')";
       const inView = (sel) => `(() => { const b = ${sel}; if (!b || !b.offsetParent) return false; const r = b.getBoundingClientRect(); return r.top < innerHeight && r.bottom > 0; })()`;
       check("G307 有 1 单：Send 标签有橙色提醒，原文「⚠ 1 order in Need a look — these guests will not get the morning reminder until each one is sorted out.」+ View ›",
-        await evaluate(`const a = ${al}; return !!a && a.textContent.replace(/\\s+/g, ' ').trim() === '⚠ 1 order in Need a look — these guests will not get the morning reminder until each one is sorted out. View ›' && a.querySelector('[data-need-look-view]').textContent === 'View ›';`),
+        await evaluate(`const a = ${al}; return !!a && a.querySelector('span').textContent.replace(/\\s+/g, ' ').trim() === '⚠ 1 order in Need a look — these guests will not get the morning reminder until each one is sorted out.' && a.querySelector('[data-need-look-view]').textContent === 'View ›';`),
         await evaluate(`return ${al}?.textContent;`));
       check("G307 提醒在 Send 标签最上面（Step 1 前面），Need a look 那一块还在下面原位",
         await evaluate(`const a = ${al}, b = ${nlBox}, p = document.getElementById('panel-send'); const s = [...p.children], i = s.indexOf(a), nx = s[i + 1]; return i >= 0 && !!nx && nx.textContent.includes('Send to drivers') && a.getBoundingClientRect().bottom <= nx.getBoundingClientRect().top + 1 && s.slice(0, i).every(e => !e.contains(b)) && s.slice(i + 2).some(e => e.contains(b));`),
