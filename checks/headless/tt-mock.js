@@ -94,6 +94,8 @@ http.createServer(async (req, res) => {
     if (ctl.noTourRow) out = [...out, row({ id: 10, order_number: "T10", guest_name: "ZZ No Tour", tour_type: "" })];
     // specialName：T01 的名字带 í（短信 300 字 / 特殊字符：客人名字里的不算，Annie 2026-10-15）。
     if (ctl.specialName) out = out.map((r) => (r.id === 1 ? { ...r, first_name: "Joaquín", guest_name: "Joaquín ZZ" } : r));
+    // wideName：T01 的名字带 Ł（> U+00FF）⇒ 整条短信按 UCS-2 算，两段最多 134 字（后端 sms_segments，ae 2026-11-18）。
+    if (ctl.wideName) out = out.map((r) => (r.id === 1 ? { ...r, first_name: "Łukasz", guest_name: "Łukasz ZZ" } : r));
     // G180 Main manifest 同步（37 冻结形状）：每行带 send_state / order_state；N201–N203 从 Main manifest 进来、还没发（排在中间，前端要挪到下面）。
     // T02 / N203 在 Order List 里 On hold，T04 Cancelled。没开 sync = 旧后端，两个键都没有。
     if (ctl.sync) {
