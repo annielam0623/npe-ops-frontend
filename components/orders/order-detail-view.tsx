@@ -1286,11 +1286,16 @@ function DayOfTourCard({
                   {manyProducts && (l.product_name || l.product_code)
                     ? ` · ${l.product_name || l.product_code}`
                     : ""}
-                  {l.leg === "return"
-                    ? " · Return"
-                    : hasReturn
-                      ? " · Outbound"
-                      : ""}
+                  {/* 去程照旧写「· Outbound」（有回程时）；回程那条挂小标签「Return」（N8：按团期 + 去 / 回程分行，ae 核时提）。 */}
+                  {l.leg !== "return" && hasReturn ? " · Outbound" : ""}
+                  {l.leg === "return" ? (
+                    <span
+                      data-return-leg
+                      className="rounded-[4px] bg-[#e0f2fe] px-[5px] text-[10.5px] text-[#075985]"
+                    >
+                      Return
+                    </span>
+                  ) : null}
                   {old ? (
                     <span
                       data-old-tour-date
