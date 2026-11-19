@@ -506,9 +506,8 @@ export function withTicketSessions(page: ManifestPage): ManifestPage {
  */
 const TOUR_SECTION_BG = ["#efe3f7", "#e2f2da", "#fbe3eb", "#e3eef6"];
 export function sectionBg(kind: string, tourIndex: number): string {
-  // 153：门票场次组跟团节一样轮流上色；No time 组灰。
-  if (kind === "session") return TOUR_SECTION_BG[tourIndex % TOUR_SECTION_BG.length];
-  if (kind === "no_time") return "#eceff3";
+  // Tickets 场次组头一律浅灰（Annie 2026-11-19「同意推荐，动手」1A，取代 153 的轮流上色）；No time 组同色。Bus 团节照旧轮流。
+  if (kind === "session" || kind === "no_time") return "#eceff3";
   return kind === "tour"
     ? TOUR_SECTION_BG[tourIndex % TOUR_SECTION_BG.length]
     : "#fdebd9";
