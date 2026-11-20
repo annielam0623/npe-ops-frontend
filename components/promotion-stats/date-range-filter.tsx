@@ -25,6 +25,9 @@ const INPUT_CLASS =
 /** 旧后台 base.html 的 .btn（Apply / Clear 都是它，高 32px）。 */
 const BTN_CLASS =
   "inline-flex h-8 cursor-pointer items-center justify-center rounded-[10px] border border-white/10 bg-white/[.04] px-3.5 text-[13px] font-[650] text-white transition hover:bg-white/[.08]";
+/** Apply 是提交键：蓝色（Annie 2026-11-20「apply算」）。 */
+const APPLY_CLASS =
+  "inline-flex h-8 cursor-pointer items-center justify-center rounded-[10px] border border-[#3b82f6] bg-[#3b82f6] px-3.5 text-[13px] font-[650] text-white transition hover:bg-[#2f76e8]";
 
 export function DateRangeFilter({
   value,
@@ -70,7 +73,7 @@ export function DateRangeFilter({
           className={INPUT_CLASS}
         />
       </label>
-      <button type="submit" className={BTN_CLASS}>
+      <button type="submit" className={APPLY_CLASS}>
         Apply
       </button>
       <button type="button" onClick={onClear} className={BTN_CLASS}>

@@ -106,7 +106,7 @@ export function RowSave({
         className={cn(
           "h-[34px] rounded-[7px] px-3.5 text-[13px] font-semibold",
           on
-            ? "cursor-pointer bg-[#2563eb] text-white hover:bg-[#1d4ed8]"
+            ? "cursor-pointer bg-[#3b82f6] text-white hover:bg-[#2f76e8]"
             : "cursor-not-allowed bg-[#e9e9e6] text-[#6b7280]",
         )}
       >

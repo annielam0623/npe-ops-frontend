@@ -1371,6 +1371,7 @@ export function RelayPanel({
               : `Preview & send · ${confirm.title}`
           }
           confirmLabel={`Send to ${plural(confirm.orders.length + anyRows.length, "guest")}`}
+          submit
           busyLabel="Sending…"
           wide
           sendFor={{
@@ -1484,6 +1485,7 @@ export function RelayPanel({
         <ConfirmDialog
           title="Text the drivers?"
           confirmLabel={`Text ${plural(confirm.names.length, "driver")}`}
+          submit
           busyLabel="Sending…"
           sendFor={{
             date,
@@ -1881,6 +1883,7 @@ function GuideBox({
         <ConfirmDialog
           title="Text the guides?"
           confirmLabel={`Text ${plural(confirm.names.length, "guide")}`}
+          submit
           busyLabel="Sending…"
           sendFor={{
             date,

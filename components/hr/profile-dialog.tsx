@@ -19,7 +19,7 @@ import {
 import {
   HR_BTN_CLASS,
   HR_BTN_DANGER_CLASS,
-  HR_BTN_PRIMARY_CLASS,
+  HR_BTN_SAVE_CLASS,
 } from "./legacy-ui";
 
 type FormValues = Record<string, string | string[]>;
@@ -316,7 +316,7 @@ export function ProfileDialog({
               <button
                 type="submit"
                 disabled={saving}
-                className={HR_BTN_PRIMARY_CLASS}
+                className={HR_BTN_SAVE_CLASS}
               >
                 {saving ? "Saving…" : "Save"}
               </button>

@@ -55,6 +55,9 @@ const PLAIN_BUTTON =
   "rounded-[9px] border border-white/15 px-3.5 py-2 text-[13px] font-semibold whitespace-nowrap text-white/85 hover:bg-white/[.07] disabled:opacity-50";
 const SMALL_BUTTON =
   "rounded-[8px] border border-white/15 px-2.5 py-1 text-[12px] font-semibold whitespace-nowrap text-white/85 hover:bg-white/[.07] disabled:opacity-50";
+/** 先加到草稿、还要按 Save draft 才存的「+ Add …」：灰绿（Annie 2026-10-30 添加键规矩）。 */
+const ADD_SMALL_BUTTON =
+  "rounded-[8px] border border-[#6b8e74] bg-[#6b8e74] px-2.5 py-1 text-[12px] font-semibold whitespace-nowrap text-white hover:bg-[#5d7d66] disabled:opacity-50";
 const DEBOUNCE_MS = 450;
 
 const LA_TODAY = () =>
@@ -357,7 +360,7 @@ export function TcqReview({
             ) : null}
             <button
               type="button"
-              className={SMALL_BUTTON}
+              className={ADD_SMALL_BUTTON}
               onClick={() => addService()}
             >
               + Add a service
@@ -420,7 +423,7 @@ export function TcqReview({
                     </span>
                     <button
                       type="button"
-                      className={SMALL_BUTTON}
+                      className={ADD_SMALL_BUTTON}
                       onClick={() => addService(line, i)}
                     >
                       + Add as a service
@@ -441,7 +444,7 @@ export function TcqReview({
         aside={
           <button
             type="button"
-            className={SMALL_BUTTON}
+            className={ADD_SMALL_BUTTON}
             onClick={() =>
               setDraft((d) => ({
                 ...d,

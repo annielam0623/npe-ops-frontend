@@ -7,6 +7,7 @@ import {
   BTN_EDIT_CLASS,
   BTN_OFF_CLASS,
   BTN_ON_CLASS,
+  BTN_SAVE_XS_CLASS,
   CARD_CLASS,
   CARD_HEADER_CLASS,
   CARD_TITLE_CLASS,
@@ -182,7 +183,7 @@ export function ExtraColumns({
                       type="button"
                       disabled={busy !== null}
                       onClick={() => void update(c, { label: r })}
-                      className={BTN_ON_CLASS}
+                      className={BTN_SAVE_XS_CLASS}
                     >
                       Save
                     </button>

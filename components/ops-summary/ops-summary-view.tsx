@@ -195,7 +195,7 @@ export function OpsSummaryView() {
             <button
               type="button"
               onClick={applyCustom}
-              className="inline-flex h-8 cursor-pointer items-center justify-center rounded-[10px] border border-white/10 bg-white/[.04] px-3.5 text-[13px] font-[650] text-white transition hover:bg-white/[.08]"
+              className="inline-flex h-8 cursor-pointer items-center justify-center rounded-[10px] border border-[#3b82f6] bg-[#3b82f6] px-3.5 text-[13px] font-[650] text-white transition hover:bg-[#2f76e8]"
             >
               Apply
             </button>

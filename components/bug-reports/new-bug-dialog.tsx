@@ -27,7 +27,11 @@ const INPUT =
 const LABEL = "mb-[3px] block text-[11px] text-[#1a1a1a] night:text-white/50";
 
 /** 旧页面的 Submit：深色、6px 圆角。 */
+/** 提交键：蓝色（Annie 2026-11-19 Save 类一律蓝）。 */
 const SUBMIT =
+  "cursor-pointer rounded-[6px] border-0 bg-[#3b82f6] px-[18px] py-2 text-[13px] font-semibold text-white hover:bg-[#2f76e8] disabled:cursor-not-allowed disabled:opacity-60";
+/** 关闭键（Done）：不是提交，照旧深色。 */
+const CLOSE_DARK =
   "cursor-pointer rounded-[6px] border-0 bg-[#0f172a] px-[18px] py-2 text-[13px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60";
 
 /**
@@ -184,7 +188,7 @@ export function NewBugDialog({
             ✓ Bug submitted to ClickUp
           </p>
           <div className="mt-5 flex justify-end">
-            <button type="button" onClick={onClose} className={SUBMIT}>
+            <button type="button" onClick={onClose} className={CLOSE_DARK}>
               Done
             </button>
           </div>

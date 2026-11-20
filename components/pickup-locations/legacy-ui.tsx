@@ -31,11 +31,9 @@ export const BTN_SUBMIT_CLASS =
 /** 先加在页面上、还要按 Save 的小号添加键（+ Add location / + Add time / + Add season）：灰绿。 */
 export const BTN_ADD_GREEN_SMALL_CLASS =
   "cursor-pointer rounded-[6px] border-[0.5px] border-[#6b8e74] bg-[#6b8e74] text-white hover:bg-[#5d7d66] px-2.5 py-[3px] text-[11px] whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50";
-/** 表格编辑行里的 Save（旧模板行内 style：11px、4px 12px、高 30px）。 */
-export const BTN_ADD_SMALL_CLASS = cn(
-  BTN_ADD_BASE,
-  "h-[30px] px-3 py-1 text-[11px]",
-);
+/** 表格编辑行里的 Save（旧模板行内 style：11px、4px 12px、高 30px）：蓝色提交键（Annie 2026-11-19 Save 类一律蓝）。 */
+export const BTN_ADD_SMALL_CLASS =
+  "h-[30px] cursor-pointer rounded-[7px] border-none bg-[#3b82f6] px-3 py-1 text-[11px] font-semibold whitespace-nowrap text-white hover:bg-[#2f76e8] disabled:cursor-not-allowed disabled:opacity-60";
 
 const SMALL_BTN =
   "cursor-pointer rounded-[6px] border-[0.5px] px-2.5 py-[3px] text-[11px] disabled:cursor-not-allowed disabled:opacity-50";
@@ -53,6 +51,11 @@ export const BTN_DELETE_CLASS = cn(
 export const BTN_OFF_CLASS = cn(
   SMALL_BTN,
   "border-[#fed7aa] night:border-amber-400/30 bg-[#fff4e5] night:bg-amber-400/10 text-[#c2410c] night:text-amber-200 hover:bg-[#ffe9cc] night:hover:bg-amber-400/10",
+);
+/** 小号保存键（Vehicles 行内 Save / Save all、Extra columns 改名 Save）：蓝色提交键（Annie 2026-11-19）。 */
+export const BTN_SAVE_XS_CLASS = cn(
+  SMALL_BTN,
+  "border-[#3b82f6] bg-[#3b82f6] text-white hover:bg-[#2f76e8]",
 );
 /** .btn-on：恢复 / 保存（绿） */
 export const BTN_ON_CLASS = cn(

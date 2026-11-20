@@ -3,11 +3,11 @@
 import { createContext, useContext, useState } from "react";
 
 import { Modal } from "@/components/ui/modal";
-import {
-  LIGHT_BUTTON,
-  sendButtonClass,
-  YELLOW_BOX,
-} from "@/components/tickets-send/legacy-ui";
+import { LIGHT_BUTTON, YELLOW_BOX } from "@/components/tickets-send/legacy-ui";
+
+/** Save / Save and … 是提交键：统一蓝 #3b82f6（Annie 2026-11-19 Save 类一律蓝；形状同发送键）。 */
+const SAVE_KEY =
+  "inline-flex cursor-pointer items-center gap-1.5 rounded-[7px] border-none bg-[#3b82f6] px-6 py-[9px] text-[13px] font-semibold text-white no-underline hover:bg-[#2f76e8] disabled:cursor-not-allowed disabled:bg-[#aaa]";
 import type {
   ManifestGuest,
   ManifestSection,
@@ -390,7 +390,7 @@ export function LeaveDialog({
               setBusy(false);
               if (err) setError(err);
             }}
-            className={sendButtonClass("blue")}
+            className={SAVE_KEY}
           >
             {busy ? "Saving…" : "Save"}
           </button>
@@ -470,7 +470,7 @@ export function SaveFirstDialog({
               setBusy(false);
               if (err) setError(err);
             }}
-            className={sendButtonClass("blue")}
+            className={SAVE_KEY}
           >
             {busy ? "Saving…" : `Save and ${verb}`}
           </button>

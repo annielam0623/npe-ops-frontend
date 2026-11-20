@@ -40,6 +40,7 @@ export function useRelayListOpener({
       <ConfirmDialog
         title="Save before opening the Relay list?"
         confirmLabel="Save and open"
+        submit
         busyLabel="Saving…"
         onClose={() => setAsk(undefined)}
         onConfirm={async () => {

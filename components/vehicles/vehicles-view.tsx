@@ -10,6 +10,7 @@ import {
   BTN_EDIT_CLASS,
   BTN_OFF_CLASS,
   BTN_ON_CLASS,
+  BTN_SAVE_XS_CLASS,
   CARD_CLASS,
   CARD_HEADER_CLASS,
   CARD_TITLE_CLASS,
@@ -622,7 +623,7 @@ export function VehiclesView() {
                       type="button"
                       disabled={bulkSaving}
                       onClick={saveAll}
-                      className={BTN_ON_CLASS}
+                      className={BTN_SAVE_XS_CLASS}
                     >
                       {bulkSaving ? "Saving…" : "Save all"}
                     </button>
@@ -769,6 +770,7 @@ export function VehiclesView() {
         <ConfirmDialog
           title={`Change vehicle ${rename.list.join(", ")}?`}
           confirmLabel="Save all"
+          submit
           busyLabel="Saving…"
           onConfirm={() => doSaveAll(rename.rows)}
           onClose={() => setRename(null)}
@@ -980,7 +982,7 @@ function VehicleRow({
                 type="button"
                 disabled={dis}
                 onClick={onSave}
-                className={BTN_ON_CLASS}
+                className={BTN_SAVE_XS_CLASS}
               >
                 {edit.saving ? "Saving…" : "Save"}
               </button>

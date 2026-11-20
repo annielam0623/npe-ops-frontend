@@ -28,6 +28,11 @@ export const HR_BTN_PRIMARY_CLASS = cn(
   HR_BTN_BASE,
   "border-[#1a1a1a] night:border-white/40 bg-[#1a1a1a] text-white hover:bg-[#333]",
 );
+/** 保存键：蓝色提交键（Annie 2026-11-19 Save 类一律蓝）。HR_BTN_PRIMARY_CLASS 兼作选中页签，所以另开一个。 */
+export const HR_BTN_SAVE_CLASS = cn(
+  HR_BTN_BASE,
+  "border-[#3b82f6] bg-[#3b82f6] text-white hover:bg-[#2f76e8]",
+);
 /** .btn.btn-danger */
 export const HR_BTN_DANGER_CLASS = cn(
   HR_BTN_BASE,

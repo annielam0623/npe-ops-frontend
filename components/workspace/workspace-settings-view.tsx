@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
-  BTN_ADD_CLASS,
   BTN_ADD_SMALL_CLASS,
+  BTN_SUBMIT_CLASS,
   CARD_CLASS,
   CARD_HEADER_CLASS,
   CARD_TITLE_CLASS,
@@ -548,7 +548,7 @@ function General({
                 },
               )
             }
-            className={BTN_ADD_CLASS}
+            className={BTN_SUBMIT_CLASS}
           >
             {busy ? "Saving…" : "Save"}
           </button>

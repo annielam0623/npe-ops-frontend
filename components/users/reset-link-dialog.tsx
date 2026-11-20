@@ -6,7 +6,7 @@ import type { ActionFailure } from "@/components/ui/action-result";
 import { Modal } from "@/components/ui/modal";
 import {
   LEGACY_CANCEL_BUTTON_CLASS,
-  LEGACY_SAVE_BUTTON_CLASS,
+  LEGACY_NAVY_BUTTON_CLASS,
 } from "@/components/teams/legacy-styles";
 import { copyText } from "@/lib/clipboard";
 import type { AdminUser } from "@/types";
@@ -167,7 +167,7 @@ function ResetLinkField({ url }: { url: string }) {
         <button
           type="button"
           onClick={handleCopy}
-          className={`${LEGACY_SAVE_BUTTON_CLASS} !px-4 !py-2.5 !text-[13px] whitespace-nowrap`}
+          className={`${LEGACY_NAVY_BUTTON_CLASS} !px-4 !py-2.5 !text-[13px] whitespace-nowrap`}
         >
           {copyState === "copied" ? "✓ Copied" : "Copy link"}
         </button>

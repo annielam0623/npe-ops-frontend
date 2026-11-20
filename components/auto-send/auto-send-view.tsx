@@ -566,6 +566,7 @@ function EnabledSwitch({
         <ConfirmDialog
           title={enabled ? `Turn off ${label}?` : `Turn on ${label}?`}
           confirmLabel={enabled ? "Turn off" : "Turn on"}
+          submit={!enabled}
           busyLabel="Saving…"
           danger={enabled}
           onClose={() => setConfirming(false)}
