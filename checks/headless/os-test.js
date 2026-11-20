@@ -376,6 +376,10 @@ async function run() {
   await sleep(2500);
   await waitFor("document.querySelector('[data-top-order-search] input')", 60000);
   await helpers();
+  // 11-19 Order details 标题蓝 #1d4ed8；生命周期开关没开 ⇒ 不出 Updated 标签。
+  check("11-19 订单详情：卡片标题深蓝 #1d4ed8；生命周期开关没开 ⇒ 没有 Updated 标签",
+    await evaluate("const h = document.querySelector('section[aria-label=\"Guest\"] h3'); return !!h && getComputedStyle(h).color === 'rgb(29, 78, 216)' && !document.querySelector('[data-order-updated-tag]');"),
+    await evaluate("const h = document.querySelector('section[aria-label=\"Guest\"] h3'); return (h && getComputedStyle(h).color) + ' tags=' + document.querySelectorAll('[data-order-updated-tag]').length;"));
   await search("ZZTEST1", "document.querySelector('[data-lookup-result]')");
   await evaluate("[...$box().querySelectorAll('a')].find(a => a.getAttribute('href') === '/orders/ZZTEST1').click(); return 1;");
   check("同一页的链接（订单详情页里点 Order details）：浮窗关上、搜索框清空", await waitFor("location.pathname === '/orders/ZZTEST1' && !document.querySelector('[data-order-lookup]') && $input().value === ''", 30000));
@@ -580,6 +584,13 @@ async function run() {
     check("生命周期 · 订单详情页：Activity 卡上面一块，Booked / Confirmation sent / Last Minute / Tour ended、蓝框、Changes 3 条；没有 Relay / Bus（Day of tour 卡有，Annie「全部同意推荐」）",
       card && card.next === "Activity" && /^10\/1\/2026 9:57 AM ?In Rezdy$/.test(card.booked) && /^10\/18\/2026 2:05 PM ?by veronica · Opened$/.test(card.sent) && /^10\/18\/2026 7:30 PM ?by kevin · Delivered$/.test(card.lm) && card.tix === "Not sent" && card.relay === undefined && card.ended === "—" &&
       /^YES ?10\/18\/2026 3:31 PM$/.test(card.reply) && /^Reschedule requested ?10\/19\/2026 10:00 AM$/.test(card.tixReply) && card.lunch === undefined && card.rest === undefined && card.van === "5:44 AM – 5:53 AM" && card.border === "rgba(96, 165, 250, 0.55)" && card.lines === 3, JSON.stringify(card));
+    // 11-19 Updated 标签：只标 rezdy_changes 最新一批（10/11 Refresh by Annie Z：Email、Phone），旧那批的 Tour date (PBZ) 不标；值照常黑字，琥珀标签。
+    const upd = await evaluate(`const row = (k) => [...document.querySelectorAll('section[aria-label]')].flatMap(s => [...s.querySelectorAll('*')]).find(e => e.children.length === 0 && e.textContent.trim() === k)?.parentElement; const info = (k) => { const r = row(k); const t = r?.querySelector('[data-order-updated-tag]'); const v = r?.querySelector('[data-order-updated] > span[title]'); return t ? { tip: t.title, bg: getComputedStyle(t).backgroundColor, fg: getComputedStyle(t).color, text: t.textContent.trim(), vColor: v && getComputedStyle(v).color } : null; }; return { phone: info('Phone'), email: info('Email'), date: info('Tour date'), name: info('Name'), n: document.querySelectorAll('[data-order-updated-tag]').length, howto: document.querySelector('[data-order-howto]')?.textContent.includes('An Updated tag marks a value changed by the latest Rezdy sync; hover to see when and the old value.') };`);
+    check("11-19 Updated 标签：最新一批 Phone、Email 有、Tour date / Name 没有，共 2 个；琥珀 #f59e0b 底、#1a1a1a 字；值照常黑字",
+      upd.phone && upd.email && !upd.date && !upd.name && upd.n === 2 && upd.phone.bg === "rgb(245, 158, 11)" && upd.phone.fg === "rgb(26, 26, 26)" && upd.phone.text === "Updated" && upd.phone.vColor === "rgb(26, 26, 26)", JSON.stringify(upd));
+    check("11-19 Updated 悬停：Refresh 写员工名、时间、旧值（空旧值写 —）",
+      upd.phone && upd.phone.tip === "Updated by Refresh from Rezdy (Annie Z) 10/11/2026 9:01 AM · was +1 555 0000" && upd.email && upd.email.tip === "Updated by Refresh from Rezdy (Annie Z) 10/11/2026 9:01 AM · was —", JSON.stringify(upd));
+    check("11-19 How to use 多一句 Updated 标签说明", upd.howto === true);
     // 第 4 件 · 订单详情页：两格放 Guest reply 后面；各种情况出不出橙字。
     const lunchCard = () => evaluate(`const c = document.querySelector('[data-lifecycle-card]'); const f = (l) => c.querySelector('[data-lifecycle-field="' + l + '"] dd')?.textContent.replace(/\\s+/g, ' ').trim(); const keys = [...c.querySelectorAll('[data-lifecycle-field]')].map(x => x.getAttribute('data-lifecycle-field')); return { pick: f("Guest's lunch pick"), bus: f('Bus manifest lunch'), orange: !!c.querySelector('[data-lunch-mismatch]'), afterReply: keys.indexOf("Guest's lunch pick") > keys.indexOf('Guest reply') && keys.indexOf('Bus manifest lunch') === keys.indexOf("Guest's lunch pick") + 1 };`);
     const NOT_IN = "Not in the bus manifest yet. Copy the guest's pick to the Rezdy order (special requirements).";

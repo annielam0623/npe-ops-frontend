@@ -14,7 +14,12 @@ import {
   LifecycleCard,
   OrderChatHistory,
 } from "@/components/order-lookup/lifecycle";
-import { CHAT_HOW_TO, LIFECYCLE_HOW_TO } from "@/lib/order-lifecycle";
+import {
+  CHAT_HOW_TO,
+  LIFECYCLE_HOW_TO,
+  latestRezdyUpdates,
+  type RezdyCell,
+} from "@/lib/order-lifecycle";
 import { usePageVisibility } from "@/lib/page-visibility";
 
 import { FarmOutViewCard } from "@/components/farm-out/farm-out-view-card";
@@ -269,6 +274,16 @@ function OrderBody({
     o.product.type !== "ticket" &&
     o.booking_type !== "ticket" &&
     !String(o.product.pickup_location ?? "").trim();
+  // 刚同步的格子标「Updated」（Annie 2026-11-19 preview 第 3 版「全部推荐，动手」）：只看 rezdy_changes 最新一批，
+  // 跟 Order lifecycle 同一个开关（同一份数据）；partner 不出。
+  const updates =
+    !partner && bodyVis.loaded && bodyVis.visible("order_lifecycle")
+      ? latestRezdyUpdates(o)
+      : new Map<RezdyCell, string>();
+  const u = (cell: RezdyCell, v: unknown) => {
+    const tip = updates.get(cell);
+    return tip ? <Updated tip={tip}>{v}</Updated> : v;
+  };
   return (
     <>
       {/* .od-head：订单号直接在深色底上，旧页的 #1a1a1a 看不见，改用旧后台正文色 #f8fafc。 */}
@@ -292,6 +307,9 @@ function OrderBody({
             ? o.status.charAt(0).toUpperCase() + o.status.slice(1)
             : o.status}
         </span>
+        {updates.has("Status") ? (
+          <UpdatedTag tip={updates.get("Status") ?? ""} />
+        ) : null}
         <span
           className={cn(
             SP,
@@ -362,22 +380,22 @@ function OrderBody({
         <Card title="Guest">
           <Rows
             rows={[
-              ["Name", o.guest.name],
-              ["Email", o.guest.email],
-              ["Phone", o.guest.phone],
-              ["Pax", o.guest.pax],
+              ["Name", u("Name", o.guest.name)],
+              ["Email", u("Email", o.guest.email)],
+              ["Phone", u("Phone", o.guest.phone)],
+              ["Pax", u("Pax", o.guest.pax)],
             ]}
           />
         </Card>
         <Card title="Product">
           <Rows
             rows={[
-              ["Product", o.product.name],
+              ["Product", u("Product", o.product.name)],
               ["Code", o.product.code],
               ["Type", type],
-              ["Tour date", o.product.tour_date],
+              ["Tour date", u("Tour date", o.product.tour_date)],
               ["Tour time", o.product.tour_time],
-              ["Pickup", o.product.pickup_time],
+              ["Pickup", u("Pickup", o.product.pickup_time)],
               [
                 "Location",
                 hotelMissing ? (
@@ -388,7 +406,7 @@ function OrderBody({
                     Missing — add it in Rezdy
                   </span>
                 ) : (
-                  o.product.pickup_location
+                  u("Location", o.product.pickup_location)
                 ),
               ],
               ...(o.product.item_count > 1
@@ -432,7 +450,7 @@ function OrderBody({
         <Card title="Notes">
           <Rows
             rows={[
-              ["Special req.", o.special_requirements],
+              ["Special req.", u("Special req.", o.special_requirements)],
               ["Note", o.notes],
             ]}
           />
@@ -517,7 +535,7 @@ function Card({
       className="rounded-[10px] border-[0.5px] border-black/10 bg-paper px-4 py-3.5 night:border-white/10 night:bg-white/[.04]"
     >
       {/* .od-card h3；按钮放在右边（.od-actions） */}
-      <h3 className="mb-2.5 flex items-center gap-2 text-[11px] font-semibold tracking-[0.6px] text-[#1a1a1a] uppercase night:text-white/35">
+      <h3 className="mb-2.5 flex items-center gap-2 text-[11px] font-semibold tracking-[0.6px] text-[#1d4ed8] uppercase night:text-[#93c5fd]">
         {title}
         {actions}
       </h3>
@@ -549,6 +567,33 @@ function OdRow({
         {children}
       </span>
     </Tag>
+  );
+}
+
+/**
+ * 「Updated」小标签：琥珀底 + 深字，同 Refresh from Rezdy 键（refresh-from-rezdy.tsx），大小同 SOON、方角；
+ * 不是按钮。值照常黑字，悬停看时间和旧值。
+ */
+function UpdatedTag({ tip }: { tip: string }) {
+  return (
+    <span
+      data-order-updated-tag
+      title={tip}
+      className="ml-1.5 inline-block cursor-help rounded-[3px] bg-[#f59e0b] px-[5px] align-[1px] text-[9.5px] leading-[15px] font-bold tracking-[.06em] whitespace-nowrap text-[#1a1a1a] uppercase"
+    >
+      Updated
+    </span>
+  );
+}
+
+function Updated({ tip, children }: { tip: string; children: unknown }) {
+  return (
+    <span data-order-updated>
+      <span title={tip} className="cursor-help">
+        {isValidElement(children) ? children : show(children)}
+      </span>
+      <UpdatedTag tip={tip} />
+    </span>
   );
 }
 
@@ -1410,7 +1455,7 @@ function RawBlock({ title, value }: { title: string; value: unknown }) {
   return (
     // details.od-raw
     <details className="mt-3.5 rounded-[10px] border-[0.5px] border-black/10 bg-paper px-4 py-3 night:border-white/10 night:bg-white/[.04]">
-      <summary className="cursor-pointer text-[11px] font-semibold tracking-[0.6px] text-[#1a1a1a] uppercase night:text-white/35">
+      <summary className="cursor-pointer text-[11px] font-semibold tracking-[0.6px] text-[#1d4ed8] uppercase night:text-[#93c5fd]">
         {title}
       </summary>
       {text.length > RAW_LIMIT ? (
@@ -1485,6 +1530,12 @@ function HowToUse({
             (before → after), or that nothing changed. If Rezdy has no phone or
             email for the order, the one we have is kept. If it does not work,
             the reason shows in red and nothing is changed.
+          </li>
+        ) : null}
+        {lifecycle ? (
+          <li>
+            An Updated tag marks a value changed by the latest Rezdy sync; hover
+            to see when and the old value.
           </li>
         ) : null}
         {sendTour ? (
