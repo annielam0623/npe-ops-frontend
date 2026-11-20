@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/buttons";
 import { CenteredPage } from "@/components/ui/centered-page";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { PageLink } from "@/components/ui/page-link";
 import { ErrorBanner, Panel } from "@/components/ui/panel";
 import { PhoneMore } from "@/components/ui/phone";
 import { usePageVisibilityControl } from "@/components/ui/page-visibility-gate";
@@ -82,7 +83,7 @@ import { EmployeesDialog } from "./employees-dialog";
 import { RulesView } from "./rules-view";
 import { OverviewView } from "./overview-view";
 import { LeaveView } from "./leave-view";
-import { CARD, CARD_HEADER, MUTED } from "./config";
+import { CARD, CARD_HEADER, MUTED, MY_SCHEDULE_KEY } from "./config";
 import { type PublishNotice, publishNotice } from "./publish-notice";
 import { DayTimeline } from "./day-timeline";
 import { ScheduleLockedPanel } from "./lock-panel";
@@ -210,11 +211,17 @@ export function ScheduleView() {
   >("schedule");
   // G282 Leave 标签上的「N waiting」：待我批的条数（接口没上 / 出错 ⇒ null，只写 Leave）。
   const [leavePending, setLeavePending] = useState<number | null>(null);
+  // My schedule 2A（Annie 2026-11-19）：Leave 标签只给批假的人（后端 is_approver，或 Super Admin）；员工的请假在 My schedule。
+  // 还没读到 ⇒ null（先不出标签）。
+  const [leaveApprover, setLeaveApprover] = useState<boolean | null>(null);
   useEffect(() => {
     const ctl = new AbortController();
     fetchLeaveQueue("pending", ctl.signal).then(
-      (q) => setLeavePending(q.pending_count),
-      () => {},
+      (q) => {
+        setLeavePending(q.pending_count);
+        setLeaveApprover(q.is_approver);
+      },
+      () => setLeaveApprover(false),
     );
     return () => ctl.abort();
   }, []);
@@ -373,6 +380,11 @@ export function ScheduleView() {
     if (new URLSearchParams(window.location.search).get("tab") === "leave")
       setTab("leave");
   }, []);
+  // My schedule 2A：不批假的人点了旧的休假通知（/schedule?tab=leave）⇒ 去 My schedule 看自己的请假。
+  useEffect(() => {
+    if (tab === "leave" && leaveApprover === false && me && !me.is_superadmin)
+      window.location.replace("/my-schedule");
+  }, [tab, leaveApprover, me]);
 
   // 身份 + 设置 + 名单：和具体哪一周无关，只在打开页面 / 手动重试时加载一次。
   useEffect(() => {
@@ -1021,8 +1033,8 @@ export function ScheduleView() {
     "overview" as const,
     ...(periodVisible ? (["period"] as const) : []),
     ...(rules !== null ? (["rules"] as const) : []),
-    // G282（Annie 2026-11-11「同意全部推荐。动手」）：人人都有，员工申请 + 批复人批。
-    "leave" as const,
+    // G282 Leave 标签；My schedule 2A（Annie 2026-11-19）起只给批假的人，员工的请假在 My schedule。
+    ...(superAdmin || leaveApprover ? (["leave"] as const) : []),
   ];
 
   // 页签（127，Annie 2026-11-12）：选中的不用蓝底（蓝色只给提交键），白框 + 浅底 + 粗字；键 28px 跟 Relay list 页头一样。
@@ -1159,6 +1171,18 @@ export function ScheduleView() {
               weekStart={weekStart}
               onChange={(next) => void changeWeek(next)}
               canEdit={canEdit}
+              myScheduleKey={
+                // My schedule 3A / 5A（Annie 2026-11-19）：第一排最右，白底醒目键；打开正在看的这一周。
+                pageVisibility.visible("schedule_confirm_page") ? (
+                  <PageLink
+                    href={`/my-schedule?week=${weekStart}`}
+                    data-my-schedule-key
+                    className={MY_SCHEDULE_KEY}
+                  >
+                    My schedule →
+                  </PageLink>
+                ) : null
+              }
               tabBar={tabBar}
               visControl={visControl}
               saveControls={
@@ -1894,8 +1918,11 @@ function WeekNav({
   saveControls,
   tabBar,
   visControl,
+  myScheduleKey,
 }: {
   weekStart: string;
+  /** My schedule →（Annie 2026-11-19 3A）：第一排最右。 */
+  myScheduleKey?: React.ReactNode;
   onChange: (weekStart: string) => void;
   canEdit: boolean;
   /** 页签（127：跟操作键同一行，前面）。 */
@@ -1954,8 +1981,16 @@ function WeekNav({
         >
           Next week
         </button>
+        {myScheduleKey ? (
+          <span className="ml-auto">{myScheduleKey}</span>
+        ) : null}
         {visControl ? (
-          <span className="ml-auto max-sm:order-first max-sm:flex max-sm:w-full max-sm:justify-end">
+          <span
+            className={cn(
+              "max-sm:order-first max-sm:flex max-sm:w-full max-sm:justify-end",
+              myScheduleKey ? "ml-2" : "ml-auto",
+            )}
+          >
             {visControl}
           </span>
         ) : null}

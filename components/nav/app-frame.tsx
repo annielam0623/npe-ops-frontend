@@ -160,13 +160,13 @@ function Frame({
           data-app-topbar
           className="sticky top-0 z-30 shrink-0 backdrop-blur-[18px] print:hidden"
         >
-          <header className="flex h-12 items-center sm:h-16 justify-between gap-3 border-b border-white/[.06] bg-[rgba(5,11,19,.56)] px-4 sm:px-7 print:hidden">
+          <header className="flex h-12 items-center justify-between gap-3 border-b border-white/[.06] bg-[rgba(5,11,19,.56)] px-4 sm:h-16 sm:px-7 print:hidden">
             <span className="flex min-w-0 items-center gap-3">
               <button
                 type="button"
                 aria-label="Open menu"
                 onClick={() => setOpen(true)}
-                className="rounded-[10px] border border-white/10 bg-white/[.04] px-2.5 py-1 text-sm text-white lg:hidden max-sm:inline-flex max-sm:size-[26px] max-sm:items-center max-sm:justify-center max-sm:rounded-[7px] max-sm:p-0 max-sm:text-[13px]"
+                className="rounded-[10px] border border-white/10 bg-white/[.04] px-2.5 py-1 text-sm text-white max-sm:inline-flex max-sm:size-[26px] max-sm:items-center max-sm:justify-center max-sm:rounded-[7px] max-sm:p-0 max-sm:text-[13px] lg:hidden"
               >
                 ☰
               </button>
@@ -205,10 +205,7 @@ function Frame({
             </PhoneShortcutsSlot>
           )}
         </div>
-        <div
-          data-phone-compact
-          className="min-w-0 flex-1 p-3 sm:p-7 print:p-0"
-        >
+        <div data-phone-compact className="min-w-0 flex-1 p-3 sm:p-7 print:p-0">
           <PermissionGate pathname={pathname}>{children}</PermissionGate>
         </div>
       </div>
@@ -328,9 +325,15 @@ function OpenNav({
             className="flex flex-col gap-1.5"
           >
             <GroupLabel>{g.label}</GroupLabel>
-            {g.items.map((m) => (
-              <ModuleRow key={m.id} module={m} pathname={pathname} />
-            ))}
+            {g.items.map((m) =>
+              m.sub ? (
+                <div key={m.id} data-nav-sub={m.id} className="pl-4">
+                  <ModuleRow module={m} pathname={pathname} />
+                </div>
+              ) : (
+                <ModuleRow key={m.id} module={m} pathname={pathname} />
+              ),
+            )}
           </section>
         ))}
         {supplierSections.length > 0 ? (
@@ -421,7 +424,7 @@ function FloatButton({
       aria-label={`Scroll to ${label.toLowerCase()}`}
       onClick={onClick}
       // 蓝色粗箭头（Annie 2026-10-11：「反正也是功能键」，照旧页面 cb3887d 的 .float-btn）。
-      className="flex size-[34px] items-center justify-center rounded-full max-sm:size-[30px] border border-white/10 bg-[rgba(15,23,42,.84)] text-[#3b82f6] backdrop-blur-[10px] hover:bg-white/[.08] hover:text-[#60a5fa]"
+      className="flex size-[34px] items-center justify-center rounded-full border border-white/10 bg-[rgba(15,23,42,.84)] text-[#3b82f6] backdrop-blur-[10px] hover:bg-white/[.08] hover:text-[#60a5fa] max-sm:size-[30px]"
     >
       {children}
     </button>

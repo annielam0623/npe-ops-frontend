@@ -34,6 +34,8 @@ export const MODULE_VISIBILITY_KEY: Partial<
   Record<NavModuleId, VisibilityKey>
 > = {
   schedule: "schedule_page",
+  // My schedule（Annie 2026-11-19 6A）：跟 Confirm your schedule 同一个开关。
+  my_schedule: "schedule_confirm_page",
   farm_out_report: "farm_out_report",
   sales_report: "sales_report",
   quotation: "quotation",
@@ -52,6 +54,7 @@ export const NAV_MODULE_IDS = [
   "bus_manifests",
   "forms",
   "schedule",
+  "my_schedule",
   "daily_report",
   "farm_out_report",
   "morning",
@@ -89,6 +92,10 @@ export interface NavModule extends NavItem {
   internal?: boolean;
   /** 侧栏里不高亮这一项（Broadcast 和 Broadcast Log 指向同一页，只让 Broadcast Log 亮）。 */
   neverActive?: boolean;
+  /** 配置里还没有这一项时，放在同组哪一项后面（没写 ⇒ 放组末尾）。 */
+  after?: NavModuleId;
+  /** 侧栏里缩进一格（挂在上一项下面，例：Staff Schedule › My schedule）。 */
+  sub?: boolean;
 }
 
 /** My shortcuts 里的 Tracking 小部件（三个圆标：Morning / Tour / Tickets 的 Tracking 页），Annie 2026-10-19。 */
@@ -166,6 +173,16 @@ const MODULES: readonly NavModule[] = [
     label: "Staff Schedule",
     href: "/schedule",
     dot: "#c4b5fd",
+  },
+  {
+    // My schedule（Annie 2026-11-19「全部同意推荐，动手」3A）：Staff Schedule 下面一项普通菜单项，员工自己的班 + 请假。
+    id: "my_schedule",
+    group: "Operations",
+    label: "My schedule",
+    href: "/my-schedule",
+    match: ["/schedule/confirm"],
+    after: "schedule",
+    sub: true,
   },
   {
     id: "daily_report",
@@ -383,7 +400,9 @@ export function resolveNav(config: NavConfig): ResolvedGroup[] {
       g = { label: m.group, items: [] };
       groups.push(g);
     }
-    g.items.push(m);
+    const at = m.after ? g.items.findIndex((x) => x.id === m.after) : -1;
+    if (at >= 0) g.items.splice(at + 1, 0, m);
+    else g.items.push(m);
   }
   return groups.filter((g) => g.items.length > 0);
 }

@@ -1,5 +1,7 @@
 "use client";
 
+import type { ReactNode } from "react";
+
 import { PageLink } from "@/components/ui/page-link";
 import { usePermissions } from "@/lib/staff-permissions";
 import { cn } from "@/lib/utils";
@@ -52,16 +54,27 @@ export function ManifestLinks({
   className,
   tone = "dark",
   newTab = false,
+  extra,
 }: {
   order: OrderDetail;
   className?: string;
   tone?: "dark" | "light";
   /** 对话框里（132 Q3 选 B）：开新标签，Tracking 页和对话框留在原来的标签。搜索栏照旧本页跳。 */
   newTab?: boolean;
+  /**
+   * 放在这一行最后（订单详情页的 Send tour confirmation，Annie 2026-11-19（样稿 X7VrqrYfLnnxz2Vr4KM2uJ，「把send tour cofirmation这个按键从Refresh from rezdy旁边挪到Open in Main manifest旁边，让refresh from rezdy键单独在那边以防按错」「把refresh键换成黄色的吧」「动手」））。
+   * 后端没带 manifest_links ⇒ 没有「Main manifest:」那一行，只出它自己一行。
+   */
+  extra?: ReactNode;
 }) {
   const partner = usePermissions().partnerView;
   const links = order.manifest_links;
-  if (partner || !Array.isArray(links)) return null;
+  if (partner || !Array.isArray(links))
+    return extra ? (
+      <div className={cn("flex flex-wrap items-center gap-2", className)}>
+        {extra}
+      </div>
+    ) : null;
   const hold = isOnHold(order.status);
   const orderList = `/orders?q=${encodeURIComponent(order.order_number)}`;
   const many = links.length > 1;
@@ -107,6 +120,7 @@ export function ManifestLinks({
           </PageLink>
         </>
       )}
+      {extra}
     </div>
   );
 }

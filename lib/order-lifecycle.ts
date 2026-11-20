@@ -125,7 +125,9 @@ function parseDiff(s: string): ChangeEntry["items"][number] | null {
   const m = /^\s*(.+?):\s*'([\s\S]*?)'\s*→\s*'([\s\S]*?)'\s*$/.exec(s);
   if (m) return { field: m[1], before: m[2], after: m[3] };
   const c = /^\s*(.+?):\s*changed\s*$/.exec(s);
-  return c ? { field: c[1], before: null, after: null, changedOnly: true } : null;
+  return c
+    ? { field: c[1], before: null, after: null, changedOnly: true }
+    : null;
 }
 
 type Activity = OrderDetail["activity_log"][number];
@@ -710,3 +712,67 @@ export const CHAT_HOW_TO =
 
 /** 框 1：各块外框实线蓝（底色 / 格子 / 字不变），跟开关走。 */
 export const LIFECYCLE_FRAME = "border-[rgba(96,165,250,.55)]";
+
+/**
+ * Order details 格子上的「Updated」小标签（Annie 2026-11-19「然后更新的那条信息就出一个小tag标上updated」，
+ * preview 第 3 版「全部推荐，动手」）：只看 rezdy_changes 里时间最新的那一批（Rezdy 推送、Refresh 都算），
+ * 到下一次同步前一直标。只用后端给的改动记录，不自己比前后值。
+ * 字段名对到页面的格子；带产品代码后缀的（「Tour date (PRTSET)」）只在代码就是页面显示的产品时才标；
+ * 「Item …」（加 / 删项目）没有对应格子，不标（照旧在 Order lifecycle 卡里看）。
+ */
+export type RezdyCell =
+  | "Name"
+  | "Phone"
+  | "Email"
+  | "Pax"
+  | "Product"
+  | "Tour date"
+  | "Pickup"
+  | "Location"
+  | "Special req."
+  | "Status";
+
+const CELL_OF_FIELD: Record<string, RezdyCell> = {
+  "First name": "Name",
+  "Last name": "Name",
+  Phone: "Phone",
+  Email: "Email",
+  Pax: "Pax",
+  Product: "Product",
+  "Tour date": "Tour date",
+  "Pickup time": "Pickup",
+  "Pickup location": "Location",
+  "Special requirements": "Special req.",
+  Status: "Status",
+};
+
+/** 格子 → 悬停文字「Updated from Rezdy <时间> · was <旧值>」；Refresh 的写按键的员工。 */
+export function latestRezdyUpdates(order: OrderDetail): Map<RezdyCell, string> {
+  const out = new Map<RezdyCell, string>();
+  let latest: NonNullable<OrderDetail["rezdy_changes"]>[number] | null = null;
+  for (const r of order.rezdy_changes ?? []) {
+    if (!latest || Date.parse(r.at) > Date.parse(latest.at)) latest = r;
+  }
+  if (!latest) return out;
+  const at = formatLaDateTime(latest.at);
+  const head =
+    latest.source === "rezdy_push"
+      ? `Updated from Rezdy ${at}`
+      : `Updated by Refresh from Rezdy (${latest.by || "Staff"}) ${at}`;
+  const was = new Map<RezdyCell, string[]>();
+  for (const c of [...(latest.changes ?? [])].sort(byFieldOrder)) {
+    const m = /^(.*?)\s*(?:\(([^)]*)\))?\s*(?:#\d+)?\s*$/.exec(c.field);
+    const base = (m?.[1] ?? c.field).trim();
+    const code = m?.[2]?.trim();
+    const cell = CELL_OF_FIELD[base];
+    if (!cell) continue;
+    if (code && code !== order.product.code) continue;
+    const list = was.get(cell) ?? [];
+    list.push(c.before === null || c.before === "" ? "—" : c.before);
+    was.set(cell, list);
+  }
+  for (const [cell, befores] of was) {
+    out.set(cell, `${head} · was ${befores.join(" ")}`);
+  }
+  return out;
+}

@@ -134,6 +134,17 @@ async function openLeave() {
   await waitFor("document.querySelector('[data-leave-view]')");
   await waitFor("!document.body.innerText.includes('Loading…')");
 }
+// My schedule（Annie 2026-11-19 1A / 2A）：员工自己的请假在 /my-schedule 的 My leave 块；表单默认收起。
+async function openMyLeave({ openForm = true } = {}) {
+  await goto(`${APP}/my-schedule`);
+  await waitFor("document.querySelector('[data-leave-section=my-leave]')", 20000);
+  await waitFor("!document.querySelector('[data-leave-section=my-leave]').innerText.includes('Loading…')");
+  await helpers();
+  if (openForm && (await evaluate("return !!document.querySelector('[data-leave-form-toggle]') && !document.querySelector('[data-leave-form]');"))) {
+    await evaluate("document.querySelector('[data-leave-form-toggle]').click(); return 1;");
+    await waitFor("document.querySelector('[data-leave-form]')");
+  }
+}
 const click = (sel) => evaluate(`const el = document.querySelector(${JSON.stringify(sel)}); if (!el) return false; el.click(); return true;`);
 async function setField(sel, value) {
   await evaluate(`const el = document.querySelector(${JSON.stringify(sel)});
@@ -151,12 +162,17 @@ async function run() {
   // ── 员工 Nadia ──
   await openSchedule();
   const tabs = await evaluate("return $t('[role=tab]');");
-  check("标签里有 Leave（员工也有）", tabs.includes("Leave"), JSON.stringify(tabs));
-  check("员工不是批复人：标签只写 Leave，没有 waiting", !tabs.some((t) => t.includes("waiting")), JSON.stringify(tabs));
-  await openLeave();
-  check("?tab=leave 直接打开 Leave 标签", await evaluate("return !!document.querySelector('[data-leave-view]');"));
-  check("员工看不到 Waiting for approval / Handled", await evaluate("return !document.querySelector('[data-leave-section=waiting]') && !document.querySelector('[data-leave-section=handled]');"));
-  check("有 Request leave 表单和 My leave requests", await evaluate("return !!document.querySelector('[data-leave-form]') && !!document.querySelector('[data-leave-section=mine]');"));
+  check("My schedule 2A · 员工不批假：没有 Leave 标签", !tabs.some((t) => t.startsWith("Leave")), JSON.stringify(tabs));
+  await goto(`${APP}/schedule?tab=leave`);
+  check("My schedule 2A · 员工点旧的休假通知 /schedule?tab=leave ⇒ 跳到 /my-schedule", await waitFor("location.pathname === '/my-schedule'", 20000), await evaluate("return location.href;").catch(() => ""));
+  await openMyLeave({ openForm: false });
+  check("My schedule 1A · My leave 一块：标题 My leave，表单默认收起，右上 + Request leave", await evaluate("const b = document.querySelector('[data-leave-section=my-leave]'); return b.querySelector('h2').textContent.startsWith('My leave') && !b.querySelector('[data-leave-form]') && b.querySelector('[data-leave-form-toggle]').textContent === '+ Request leave';"));
+  check("My schedule 1A · My leave 在班表下面、How to use 上面，How to use 有请假那几条", await evaluate("const b = document.querySelector('[data-leave-section=my-leave]'); const h = [...document.querySelectorAll('details')].find((d) => d.textContent.includes('How to use — My schedule')); return !!h && (b.compareDocumentPosition(h) & Node.DOCUMENT_POSITION_FOLLOWING) && h.textContent.includes('My leave: click + Request leave');"));
+  await click("[data-leave-form-toggle]");
+  await waitFor("document.querySelector('[data-leave-form]')");
+  check("点 + Request leave ⇒ 出表单，键变 Hide form", (await evaluate("return document.querySelector('[data-leave-form-toggle]').textContent;")) === "Hide form");
+  check("My schedule 页没有批假的块（Waiting for approval / Handled）", await evaluate("return !document.querySelector('[data-leave-section=waiting]') && !document.querySelector('[data-leave-section=handled]');"));
+  check("有 Request leave 表单和我的申请列表", await evaluate("return !!document.querySelector('[data-leave-form]') && !!document.querySelector('[data-leave-section=mine]');"));
   const rows = await evaluate("return [...document.querySelectorAll('[data-leave-mine]')].map(tr => tr.innerText.replace(/\\s+/g,' '));");
   check("My leave requests 三条，新的在前", rows.length === 3 && rows[0].includes("Nov 24") && rows[0].includes("Pending"), JSON.stringify(rows));
   check("驳回那条写 by Tessa 和理由", rows.some((r) => r.includes("Rejected") && r.includes("by Tessa") && r.includes("Short-staffed")), JSON.stringify(rows));
@@ -212,8 +228,8 @@ async function run() {
 
   // 不在排班名单上
   await ctl({ notOnSchedule: true });
-  await openLeave();
-  check("不在排班名单上：不出表单，显示提示", await evaluate("return !document.querySelector('[data-leave-form]') && !!document.querySelector('[data-leave-not-on-schedule]');"));
+  await openMyLeave();
+  check("不在排班名单上：不出表单、没有 + Request leave，显示提示", await evaluate("return !document.querySelector('[data-leave-form]') && !document.querySelector('[data-leave-form-toggle]') && !!document.querySelector('[data-leave-not-on-schedule]');"));
   await ctl({ notOnSchedule: false });
 
   // ── 批复人 Tessa ──
@@ -222,9 +238,9 @@ async function run() {
   await waitFor("$t('[role=tab]').some(t => t.includes('waiting'))");
   check("批复人标签写 Leave · 3 waiting（Nadia、Lizzie、Jing）", (await evaluate("return $t('[role=tab]');")).includes("Leave · 3 waiting"));
   await openLeave();
-  check("批复人有 Waiting for approval 和 Handled，在申请表单上面", await evaluate(`
-    const w = document.querySelector('[data-leave-section=waiting]'), h = document.querySelector('[data-leave-section=handled]'), r = document.querySelector('[data-leave-section=request]');
-    return !!w && !!h && (w.compareDocumentPosition(r) & Node.DOCUMENT_POSITION_FOLLOWING);`));
+  check("批复人：Leave 标签有 Waiting for approval 和 Handled，没有申请表单；写一句自己的请假在 My schedule（链到 /my-schedule）", await evaluate(`
+    const w = document.querySelector('[data-leave-section=waiting]'), h = document.querySelector('[data-leave-section=handled]'), own = document.querySelector('[data-leave-own] a');
+    return !!w && !!h && !document.querySelector('[data-leave-form]') && !document.querySelector('[data-leave-section=my-leave]') && own && own.getAttribute('href') === '/my-schedule';`));
   const q = await evaluate("return [...document.querySelectorAll('[data-leave-queue]')].map(tr => tr.innerText.replace(/\\s+/g,' '));");
   check("待批三条：Nadia、Lizzie、Jing，都写 You are their manager", q.filter((r) => r.includes("Approve Reject")).length === 3 && ["Nadia", "Lizzie", "Jing"].every((n) => q.some((r) => r.startsWith(n) && r.includes("You are their manager"))), JSON.stringify(q));
   check("Lizzie 那天有班：红框写班名和时间、先挪班再批", await evaluate("const w = document.querySelector(\"[data-leave-queue='11'] [data-leave-shift-warn=block]\"); return !!w && w.textContent.includes('Close 14:00–22:00') && w.textContent.includes('before approving') && w.className.includes('red');"));
@@ -268,12 +284,12 @@ async function run() {
   // ── 手机 ──
   await ctl({ reset: true, viewer: "staff", sch: { role: "staff", meName: "Nadia" } });
   await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
-  await openLeave();
+  await openMyLeave({ openForm: false });
   check("手机：申请表单默认收起，有 + Request leave", (await evaluate(`return ${visible("[data-leave-form]")};`)) === false && (await evaluate(`return ${visible("[data-leave-form-toggle]")};`)));
   await click("[data-leave-form-toggle]");
   await sleep(200);
   check("手机：点开后出表单", await evaluate(`return ${visible("[data-leave-form]")};`));
-  check("手机：说明收进 i", await evaluate("return !!document.querySelector('[data-leave-section=request] [data-phone-info]');"));
+  check("手机：说明收进 i", await evaluate("return !!document.querySelector('[data-leave-section=my-leave] [data-phone-info]');"));
   check("手机：My leave requests 是卡片，不是表格", (await evaluate(`return ${visible("[data-leave-mine-card]")};`)) && !(await evaluate(`return ${visible("[data-leave-mine]")};`)));
   check("手机：整页不左右晃", await evaluate("return document.documentElement.scrollWidth <= window.innerWidth + 1;"));
   await ctl({ viewer: "approver", sch: { role: "admin", meName: "Tessa" } });

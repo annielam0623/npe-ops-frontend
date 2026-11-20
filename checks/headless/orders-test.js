@@ -384,8 +384,8 @@ async function refreshChecks() {
   // 新 Rezdy 表的单出键（权限总开关关着 = 照旧都有）
   await openDetail("CHDNEW");
   const b = await evaluate(`const b = ${btn}; const h = b?.closest('header'); return b ? { text: b.textContent, bg: getComputedStyle(b).backgroundColor, inHead: !!h && h.querySelector('h1').textContent === 'CHDNEW', last: h?.lastElementChild === b || h?.lastElementChild === b.parentElement && b.parentElement.lastElementChild === b } : null;`);
-  check("Refresh：新 Rezdy 表的单 ⇒ 订单号那一行最右边蓝色「Refresh from Rezdy」", b && b.text === "Refresh from Rezdy" && b.bg === "rgb(59, 130, 246)" && b.inHead && b.last, JSON.stringify(b));
-  check("Refresh：How to use 多一句（原文）", await evaluate("return document.body.textContent.includes(\"Refresh from Rezdy (next to the order number): gets this order from Rezdy again and updates Order List right away.\");"));
+  check("Refresh：新 Rezdy 表的单 ⇒ 订单号那一行最右边琥珀黄「Refresh from Rezdy」（Annie 2026-11-19「把refresh键换成黄色的吧」）", b && b.text === "Refresh from Rezdy" && b.bg === "rgb(245, 158, 11)" && b.inHead && b.last, JSON.stringify(b));
+  check("Refresh：How to use 多一句（原文）", await evaluate("return document.body.textContent.includes(\"Refresh from Rezdy (the yellow button next to the order number): gets this order from Rezdy again and updates Order List right away.\");"));
   check("Refresh：按之前没有结果卡", !(await evaluate(`return !!${card};`)));
 
   // updated：不弹确认，Refreshing…，绿字 + 表，静默重读
@@ -493,7 +493,7 @@ async function g297() {
   const SHOT = process.env.SHOT_DIR;
   const fsx = require("fs"), px = require("path");
   const shot = async (name, sel) => { if (!SHOT) return; fsx.mkdirSync(SHOT, { recursive: true }); if (sel) { await evaluate(`document.querySelector('${sel}')?.scrollIntoView({ block: 'center' });`); await sleep(200); } const r = await cdp("Page.captureScreenshot", { format: "png" }); fsx.writeFileSync(px.join(SHOT, name + ".png"), Buffer.from(r.data, "base64")); };
-  await ctl({ staffPerms: null, partner: null, superAdmin: false, sendTour: "sent", sendDelay: 0, resetHotel: true });
+  await ctl({ staffPerms: null, partner: null, superAdmin: false, sendTour: "sent", sendDelay: 0, resetHotel: true, mlinks: true });
   await goto(`${APP}/orders/CHDZZ8J8VYD?tour_date=2026-11-13`);
   await waitFor("document.querySelector('[data-order-send-tour]')", 30000);
   // Annie 2026-11-12「他点进订单后应该看到提醒这单缺少的信息是什么然后怎样解决…看到红字消失了才可以发」
@@ -506,14 +506,31 @@ async function g297() {
   check("G297 酒店空着：点灰着的 Send 不发请求", (await mockLog()).slice(before).every((e) => e.path !== "/api/manifests/send-tour-order"));
   await evaluate("document.querySelector('[data-order-refresh]').click();");
   await waitFor("!document.querySelector('[data-order-pickup-missing]')", 8000);
-  const b = await evaluate("const b = document.querySelector('[data-order-send-tour]'); const r = document.querySelector('[data-order-refresh]'); return { text: b.textContent, bg: getComputedStyle(b).backgroundColor, disabled: b.disabled, sameRow: !!r && Math.abs(b.getBoundingClientRect().top - r.getBoundingClientRect().top) < 4, header: !!b.closest('header'), howto: document.querySelector('main').textContent.includes('If the pickup location is missing, a red message says what to fix and the button stays grey'), loc: !document.querySelector('[data-order-location-missing]') && document.querySelector('main').textContent.includes('Excalibur'), why: !document.querySelector('[data-order-send-no-hotel]') };");
-  check("G297 Refresh from Rezdy 补上酒店后：红字消失、Location 写 Excalibur、蓝色 Send tour confirmation 能按（跟 Refresh 同一行）；How to use 有一句", b.text === "Send tour confirmation" && b.bg === "rgb(59, 130, 246)" && !b.disabled && b.sameRow && b.header && b.howto && b.loc && b.why, JSON.stringify(b));
+  const b = await evaluate("const b = document.querySelector('[data-order-send-tour]'); const r = document.querySelector('[data-order-refresh]'); return { text: b.textContent, bg: getComputedStyle(b).backgroundColor, disabled: b.disabled, row: !!b.closest('[data-manifest-links]'), afterOpen: (() => { const row = b.closest('[data-manifest-links]'); const opens = row ? [...row.querySelectorAll('[data-open-in-manifest]')] : []; return opens.length > 0 && !!(opens[opens.length - 1].compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING); })(), header: !!b.closest('header'), refreshAlone: !!r.closest('header') && !r.closest('header').querySelector('[data-order-send-tour]'), refreshBg: getComputedStyle(r).backgroundColor, refreshColor: getComputedStyle(r).color, resultBelow: true, howto: document.querySelector('main').textContent.includes('If the pickup location is missing, a red message says what to fix and the button stays grey'), loc: !document.querySelector('[data-order-location-missing]') && document.querySelector('main').textContent.includes('Excalibur'), why: !document.querySelector('[data-order-send-no-hotel]') };");
+  check("G297 Refresh from Rezdy 补上酒店后：红字消失、Location 写 Excalibur、蓝色 Send tour confirmation 能按；How to use 有一句", b.text === "Send tour confirmation" && b.bg === "rgb(59, 130, 246)" && !b.disabled && b.howto && b.loc && b.why, JSON.stringify(b));
+  // Annie 2026-11-19（样稿 X7VrqrYfLnnxz2Vr4KM2uJ，「挪到Open in Main manifest旁边，让refresh from rezdy键单独在那边以防按错」「把refresh键换成黄色的吧」「动手」）
+  check("11-19 Send tour confirmation 在「Main manifest:」那一行、Open in Main manifest → 后面，不在订单号那一行", !!b.row && b.afterOpen && !b.header, JSON.stringify({ afterOpen: b.afterOpen, header: b.header }));
+  check("11-19 Refresh from Rezdy 单独在订单号那一行，琥珀黄 #f59e0b、深色字 #1a1a1a", b.refreshAlone && b.refreshBg === "rgb(245, 158, 11)" && b.refreshColor === "rgb(26, 26, 26)", JSON.stringify({ alone: b.refreshAlone, bg: b.refreshBg, color: b.refreshColor }));
+  check("11-19 How to use — Order Detail 默认收起（details 没有 open），标题看得见、内容看不见", await evaluate("const d = document.querySelector('[data-order-howto]'); return !!d && d.tagName === 'DETAILS' && !d.open && d.querySelector('summary').textContent.includes('How to use — Order Detail') && !d.querySelector('ol').checkVisibility();"), await evaluate("const d = document.querySelector('[data-order-howto]'); return JSON.stringify({ tag: d?.tagName, open: d?.open, sum: d?.querySelector('summary')?.textContent, ol: d?.querySelector('ol') ? d.querySelector('ol').offsetParent?.tagName ?? null : 'none' });"));
+  await evaluate("document.querySelector('[data-order-howto] summary').click();");
+  check("11-19 点 How to use 标题展开", await waitFor("document.querySelector('[data-order-howto]').open && document.querySelector('[data-order-howto] ol').checkVisibility()", 3000));
+  check("11-19 How to use 两句位置说法跟着改", await evaluate("const t = document.querySelector('[data-order-howto]').textContent.replace(/\\s+/g, ' '); return t.includes('Send tour confirmation (after Open in Main manifest →, on the Main manifest line): sends this') && t.includes('Refresh from Rezdy (the yellow button next to the order number)');"));
+  await evaluate("document.querySelector('[data-order-howto] summary').click();");
+  // 旧后端没带 manifest_links：没有「Main manifest:」那一行，Send 自己一行，照样在订单号那一行下面。
+  await ctl({ mlinks: false });
+  await goto(`${APP}/orders/CHDZZ8J8VYD?tour_date=2026-11-13`);
+  await waitFor("document.querySelector('[data-order-send-tour]')", 30000);
+  check("11-19 旧后端（没有 Main manifest 那一行）：Send tour confirmation 还在，不在订单号那一行", await evaluate("return !document.querySelector('[data-manifest-links]') && !document.querySelector('[data-order-send-tour]').closest('header');"));
+  await ctl({ mlinks: true });
+  await goto(`${APP}/orders/CHDZZ8J8VYD?tour_date=2026-11-13`);
+  await waitFor("document.querySelector('[data-order-send-tour]')", 30000);
   await shot("order-refreshed");
   before = (await mockLog()).length;
   await evaluate("document.querySelector('[data-order-send-tour]').click();");
   await waitFor("document.querySelector('[data-order-send-result]')", 8000);
   const req = (await mockLog()).slice(before).find((e) => e.path === "/api/manifests/send-tour-order");
   check("G297 Order 页：POST /api/manifests/send-tour-order {date: 网址 tour_date, order_number}", req?.body?.date === "2026-11-13" && req?.body?.order_number === "CHDZZ8J8VYD", JSON.stringify(req?.body));
+  check("11-19 发送结果在「Main manifest:」那一行下面", await evaluate("const r = document.querySelector('[data-order-send-result]'), row = document.querySelector('[data-manifest-links]'); return !!r && !!row && !!(row.compareDocumentPosition(r) & Node.DOCUMENT_POSITION_FOLLOWING) && r.getBoundingClientRect().top >= row.getBoundingClientRect().bottom - 1;"));
   check("G297 发成功：绿字「✓ Tour confirmation sent.」，Email / SMS 两格绿字 Sent", await evaluate("const c = document.querySelector('[data-order-send-result]'); const h = c.querySelector('[data-order-send-headline]'); const tds = [...c.querySelectorAll('tr[data-outcome] td')]; return h.textContent === '✓ Tour confirmation sent.' && getComputedStyle(h).color === 'rgb(21, 128, 61)' && tds[2].textContent === 'Sent' && tds[3].textContent === 'Sent';"));
   await shot("order-sent", "[data-order-send-result]");
   await ctl({ sendTour: "nohotel" });

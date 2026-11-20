@@ -143,7 +143,7 @@ export function LifecycleCard({ order }: { order: OrderDetail }) {
         LIFECYCLE_FRAME,
       )}
     >
-      <h3 className="mb-2.5 text-[11px] font-semibold tracking-[0.6px] text-[#1a1a1a] uppercase night:text-white/35">
+      <h3 className="mb-2.5 text-[11px] font-semibold tracking-[0.6px] text-[#1d4ed8] uppercase night:text-[#93c5fd]">
         Order lifecycle
       </h3>
       <dl className="grid grid-cols-[repeat(auto-fill,minmax(170px,1fr))] gap-x-5 gap-y-2 max-sm:grid-cols-2">
@@ -275,7 +275,7 @@ function DetailChanges({
       <button
         type="button"
         onClick={collapse.toggle}
-        className="flex w-full items-center gap-2 text-left text-[11px] font-semibold tracking-[0.6px] text-[#1a1a1a] uppercase night:text-white/35"
+        className="flex w-full items-center gap-2 text-left text-[11px] font-semibold tracking-[0.6px] text-[#1d4ed8] uppercase night:text-[#93c5fd]"
       >
         Changes
         {collapse.caret}
@@ -362,19 +362,19 @@ export function ChangeLine({
         {it.field}: changed
       </span>
     ) : (
-    <span key={i} className="block">
-      {it.field}{" "}
-      <span
-        data-change-old
-        className={cn(
-          "line-through",
-          light ? "text-[#6b7280]" : "text-white/45",
-        )}
-      >
-        {it.before === null ? "—" : it.before || "(empty)"}
-      </span>{" "}
-      → {it.after === null ? "—" : it.after || "(empty)"}
-    </span>
+      <span key={i} className="block">
+        {it.field}{" "}
+        <span
+          data-change-old
+          className={cn(
+            "line-through",
+            light ? "text-[#6b7280]" : "text-white/45",
+          )}
+        >
+          {it.before === null ? "—" : it.before || "(empty)"}
+        </span>{" "}
+        → {it.after === null ? "—" : it.after || "(empty)"}
+      </span>
     ),
   );
   return (
@@ -599,7 +599,7 @@ export function OrderChatHistory({ order }: { order: OrderDetail }) {
         <button
           type="button"
           onClick={collapse.toggle}
-          className="text-left text-[11px] font-semibold tracking-[0.6px] text-[#1a1a1a] uppercase night:text-white/35"
+          className="text-left text-[11px] font-semibold tracking-[0.6px] text-[#1d4ed8] uppercase night:text-[#93c5fd]"
         >
           Chat history
         </button>

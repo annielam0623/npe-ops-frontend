@@ -14,7 +14,12 @@ import {
   LifecycleCard,
   OrderChatHistory,
 } from "@/components/order-lookup/lifecycle";
-import { CHAT_HOW_TO, LIFECYCLE_HOW_TO } from "@/lib/order-lifecycle";
+import {
+  CHAT_HOW_TO,
+  LIFECYCLE_HOW_TO,
+  latestRezdyUpdates,
+  type RezdyCell,
+} from "@/lib/order-lifecycle";
 import { usePageVisibility } from "@/lib/page-visibility";
 
 import { FarmOutViewCard } from "@/components/farm-out/farm-out-view-card";
@@ -269,6 +274,16 @@ function OrderBody({
     o.product.type !== "ticket" &&
     o.booking_type !== "ticket" &&
     !String(o.product.pickup_location ?? "").trim();
+  // 刚同步的格子标「Updated」（Annie 2026-11-19 preview 第 3 版「全部推荐，动手」）：只看 rezdy_changes 最新一批，
+  // 跟 Order lifecycle 同一个开关（同一份数据）；partner 不出。
+  const updates =
+    !partner && bodyVis.loaded && bodyVis.visible("order_lifecycle")
+      ? latestRezdyUpdates(o)
+      : new Map<RezdyCell, string>();
+  const u = (cell: RezdyCell, v: unknown) => {
+    const tip = updates.get(cell);
+    return tip ? <Updated tip={tip}>{v}</Updated> : v;
+  };
   return (
     <>
       {/* .od-head：订单号直接在深色底上，旧页的 #1a1a1a 看不见，改用旧后台正文色 #f8fafc。 */}
@@ -292,6 +307,9 @@ function OrderBody({
             ? o.status.charAt(0).toUpperCase() + o.status.slice(1)
             : o.status}
         </span>
+        {updates.has("Status") ? (
+          <UpdatedTag tip={updates.get("Status") ?? ""} />
+        ) : null}
         <span
           className={cn(
             SP,
@@ -304,18 +322,10 @@ function OrderBody({
         >
           {o.source === "rezdy" ? "Rezdy" : tripguru ? "TripGuru" : o.source}
         </span>
-        {refresh || sendTour ? (
+        {/* Annie 2026-11-19（样稿 X7VrqrYfLnnxz2Vr4KM2uJ，「把send tour cofirmation这个按键从Refresh from rezdy旁边挪到Open in Main manifest旁边，让refresh from rezdy键单独在那边以防按错」「把refresh键换成黄色的吧」「动手」）：
+            Refresh from Rezdy 单独留在这里（黄色）；Send tour confirmation 挪到下面「Open in Main manifest →」那一行最后。 */}
+        {refresh ? (
           <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
-            {sendTour ? (
-              <SendTourButton
-                busy={sendTour.state.kind === "busy"}
-                date={sendDate}
-                hotelMissing={hotelMissing}
-                onClick={() => {
-                  if (sendDate) void sendTour.run(sendDate);
-                }}
-              />
-            ) : null}
             {refresh ? (
               <RefreshButton
                 busy={refresh.state.kind === "busy"}
@@ -327,9 +337,24 @@ function OrderBody({
       </header>
       {refresh ? <RefreshResultCard state={refresh.state} /> : null}
       {hotelMissing ? <PickupMissingAlert /> : null}
+      {/* 置顶 51 B：一点跳到 Main manifest 的那一单（标黄、预勾）；行尾是 Send tour confirmation（见上）。 */}
+      <ManifestLinks
+        order={o}
+        className="mt-2 mb-3"
+        extra={
+          sendTour ? (
+            <SendTourButton
+              busy={sendTour.state.kind === "busy"}
+              date={sendDate}
+              hotelMissing={hotelMissing}
+              onClick={() => {
+                if (sendDate) void sendTour.run(sendDate);
+              }}
+            />
+          ) : null
+        }
+      />
       {sendTour ? <SendTourResultCard state={sendTour.state} /> : null}
-      {/* 置顶 51 B：一点跳到 Main manifest 的那一单（标黄、预勾）。 */}
-      <ManifestLinks order={o} className="mt-2 mb-3" />
       {storedReadOnly && !partner ? (
         // 旧页 .od-warn 是 #B3261E，深色底上看不清，用浅一点的红。
         <p data-read-only className="mt-1.5 mb-4 text-[11px] text-[#f87171]">
@@ -355,22 +380,22 @@ function OrderBody({
         <Card title="Guest">
           <Rows
             rows={[
-              ["Name", o.guest.name],
-              ["Email", o.guest.email],
-              ["Phone", o.guest.phone],
-              ["Pax", o.guest.pax],
+              ["Name", u("Name", o.guest.name)],
+              ["Email", u("Email", o.guest.email)],
+              ["Phone", u("Phone", o.guest.phone)],
+              ["Pax", u("Pax", o.guest.pax)],
             ]}
           />
         </Card>
         <Card title="Product">
           <Rows
             rows={[
-              ["Product", o.product.name],
+              ["Product", u("Product", o.product.name)],
               ["Code", o.product.code],
               ["Type", type],
-              ["Tour date", o.product.tour_date],
+              ["Tour date", u("Tour date", o.product.tour_date)],
               ["Tour time", o.product.tour_time],
-              ["Pickup", o.product.pickup_time],
+              ["Pickup", u("Pickup", o.product.pickup_time)],
               [
                 "Location",
                 hotelMissing ? (
@@ -381,7 +406,7 @@ function OrderBody({
                     Missing — add it in Rezdy
                   </span>
                 ) : (
-                  o.product.pickup_location
+                  u("Location", o.product.pickup_location)
                 ),
               ],
               ...(o.product.item_count > 1
@@ -425,7 +450,7 @@ function OrderBody({
         <Card title="Notes">
           <Rows
             rows={[
-              ["Special req.", o.special_requirements],
+              ["Special req.", u("Special req.", o.special_requirements)],
               ["Note", o.notes],
             ]}
           />
@@ -510,7 +535,7 @@ function Card({
       className="rounded-[10px] border-[0.5px] border-black/10 bg-paper px-4 py-3.5 night:border-white/10 night:bg-white/[.04]"
     >
       {/* .od-card h3；按钮放在右边（.od-actions） */}
-      <h3 className="mb-2.5 flex items-center gap-2 text-[11px] font-semibold tracking-[0.6px] text-[#1a1a1a] uppercase night:text-white/35">
+      <h3 className="mb-2.5 flex items-center gap-2 text-[11px] font-semibold tracking-[0.6px] text-[#1d4ed8] uppercase night:text-[#93c5fd]">
         {title}
         {actions}
       </h3>
@@ -542,6 +567,33 @@ function OdRow({
         {children}
       </span>
     </Tag>
+  );
+}
+
+/**
+ * 「Updated」小标签：琥珀底 + 深字，同 Refresh from Rezdy 键（refresh-from-rezdy.tsx），大小同 SOON、方角；
+ * 不是按钮。值照常黑字，悬停看时间和旧值。
+ */
+function UpdatedTag({ tip }: { tip: string }) {
+  return (
+    <span
+      data-order-updated-tag
+      title={tip}
+      className="ml-1.5 inline-block cursor-help rounded-[3px] bg-[#f59e0b] px-[5px] align-[1px] text-[9.5px] leading-[15px] font-bold tracking-[.06em] whitespace-nowrap text-[#1a1a1a] uppercase"
+    >
+      Updated
+    </span>
+  );
+}
+
+function Updated({ tip, children }: { tip: string; children: unknown }) {
+  return (
+    <span data-order-updated>
+      <span title={tip} className="cursor-help">
+        {isValidElement(children) ? children : show(children)}
+      </span>
+      <UpdatedTag tip={tip} />
+    </span>
   );
 }
 
@@ -1403,7 +1455,7 @@ function RawBlock({ title, value }: { title: string; value: unknown }) {
   return (
     // details.od-raw
     <details className="mt-3.5 rounded-[10px] border-[0.5px] border-black/10 bg-paper px-4 py-3 night:border-white/10 night:bg-white/[.04]">
-      <summary className="cursor-pointer text-[11px] font-semibold tracking-[0.6px] text-[#1a1a1a] uppercase night:text-white/35">
+      <summary className="cursor-pointer text-[11px] font-semibold tracking-[0.6px] text-[#1d4ed8] uppercase night:text-[#93c5fd]">
         {title}
       </summary>
       {text.length > RAW_LIMIT ? (
@@ -1436,12 +1488,15 @@ function HowToUse({
   lifecycleChat?: boolean;
 }) {
   return (
-    // 旧页这里是一直展开的蓝框（不是可折叠的 details），样式照 send_morning.html。
-    <div className="mb-4 rounded-[10px] border border-[#b5d4f4] bg-[#e8f3fc] px-5 py-3.5 text-[12px] leading-[1.8] text-[#0c3a6b] night:border-sky-400/20 night:bg-sky-400/[.08] night:text-sky-300">
-      <div className="mb-1.5 font-semibold text-[#185FA5] night:text-sky-300">
+    // 样式照 send_morning.html 的蓝框；Annie 2026-11-19「然后how to use默认折叠」「动手」：改成 details，默认收起，点标题展开。
+    <details
+      data-order-howto
+      className="mb-4 rounded-[10px] border border-[#b5d4f4] bg-[#e8f3fc] px-5 py-3.5 text-[12px] leading-[1.8] text-[#0c3a6b] night:border-sky-400/20 night:bg-sky-400/[.08] night:text-sky-300"
+    >
+      <summary className="cursor-pointer font-semibold text-[#185FA5] night:text-sky-300">
         📖 How to use — Order Detail
-      </div>
-      <ol className="list-decimal pl-[18px]">
+      </summary>
+      <ol className="mt-1.5 list-decimal pl-[18px]">
         <li>
           {money
             ? "This page shows one order: guest, product, price, operations, agent and commission, tickets, notes and activity."
@@ -1468,25 +1523,31 @@ function HowToUse({
         ) : null}
         {refresh ? (
           <li>
-            Refresh from Rezdy (next to the order number): gets this order from
-            Rezdy again and updates Order List right away. Use it when a
-            guest&apos;s details were changed in Rezdy but did not come through.
-            The result shows under the order number: what changed (before →
-            after), or that nothing changed. If Rezdy has no phone or email for
-            the order, the one we have is kept. If it does not work, the reason
-            shows in red and nothing is changed.
+            Refresh from Rezdy (the yellow button next to the order number):
+            gets this order from Rezdy again and updates Order List right away.
+            Use it when a guest&apos;s details were changed in Rezdy but did not
+            come through. The result shows under the order number: what changed
+            (before → after), or that nothing changed. If Rezdy has no phone or
+            email for the order, the one we have is kept. If it does not work,
+            the reason shows in red and nothing is changed.
+          </li>
+        ) : null}
+        {lifecycle ? (
+          <li>
+            An Updated tag marks a value changed by the latest Rezdy sync; hover
+            to see when and the old value.
           </li>
         ) : null}
         {sendTour ? (
           <li>
-            Send tour confirmation (next to the order number): sends this
-            order&apos;s tour confirmation by SMS and email, for the tour date
-            of this order. If the pickup location is missing, a red message says
-            what to fix and the button stays grey: add the pickup location to
-            the order in Rezdy, then click Refresh from Rezdy. When the red
-            message is gone, click Send tour confirmation. Once it is sent, the
-            Pickup location missing notice goes away for everyone. If it is not
-            sent, the reason shows in red.
+            Send tour confirmation (after Open in Main manifest →, on the Main
+            manifest line): sends this order&apos;s tour confirmation by SMS and
+            email, for the tour date of this order. If the pickup location is
+            missing, a red message says what to fix and the button stays grey:
+            add the pickup location to the order in Rezdy, then click Refresh
+            from Rezdy. When the red message is gone, click Send tour
+            confirmation. Once it is sent, the Pickup location missing notice
+            goes away for everyone. If it is not sent, the reason shows in red.
           </li>
         ) : null}
         <li>
@@ -1511,6 +1572,6 @@ function HowToUse({
         the Edit buttons are not shown. If a save does not work, the reason
         shows in red under the Save button and nothing is changed.
       </div>
-    </div>
+    </details>
   );
 }

@@ -16,7 +16,7 @@ import { CenteredPage } from "@/components/ui/centered-page";
 import { HowToUse } from "@/components/ui/how-to-use";
 import { Panel } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
-import { shiftYmd } from "@/lib/la-date";
+import { laToday, shiftYmd, weekStartYmd } from "@/lib/la-date";
 import {
   acceptMyConfirmation,
   answerPeerRequest,
@@ -138,7 +138,17 @@ function md(ymd: string): string {
  * 同一个班可以同时在几条请求里（题 3 B，谁先批准用谁的）。晚接早（前一天 Close、第二天 Open / Morning）拖的时候、
  * 确认框、Agree 时都挡，红字写规则让她换一天。草稿周的流程不变。
  */
-export function ConfirmView({ token }: { token?: string }) {
+export function ConfirmView({
+  token,
+  extra,
+  extraHowTo = [],
+}: {
+  token?: string;
+  /** My schedule 页（Annie 2026-11-19 1A）：班表下面再放的块（My leave）。邮件免登录链接页不放。 */
+  extra?: ReactNode;
+  /** 跟 extra 一起的 How to use 条目（接在 Your schedule 那几条后面）。 */
+  extraHowTo?: readonly string[];
+}) {
   const [state, setState] = useState<State>({ kind: "loading" });
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [armed, setArmed] = useState<number | null>(null);
@@ -808,7 +818,9 @@ export function ConfirmView({ token }: { token?: string }) {
     state.kind === "ready" ? (
       <HowToUse
         dark
-        title="How to use — Your schedule"
+        title={
+          token ? "How to use — Your schedule" : "How to use — My schedule"
+        }
         items={[
           "Draft weeks: press Looks good, or drag your shifts and press Send my changes before the deadline.",
           "Weeks that are published but haven't started yet can still be swapped. This week can't.",
@@ -818,8 +830,12 @@ export function ConfirmView({ token }: { token?: string }) {
           "Changed your mind? Press Withdraw next to the request before it's approved.",
           `${REST_RULE_TEXT} A swap that would do that is blocked, so pick another day.`,
           "Requests that aren't finished when the week starts are closed, and nothing changes.",
+          ...(token ? [] : extraHowTo),
         ]}
       />
+    ) : !token && extraHowTo.length ? (
+      // 班表读不到（这周没有排班 / 出错）时 My leave 照样能用，How to use 只写请假那几条。
+      <HowToUse dark title="How to use — My schedule" items={[...extraHowTo]} />
     ) : null;
 
   if (token)
@@ -835,12 +851,65 @@ export function ConfirmView({ token }: { token?: string }) {
     <main className="text-white/90">
       <CenteredPage className="flex flex-col gap-5">
         <h1 className="text-[29px] font-bold tracking-[-.02em] text-white">
-          Staff Schedule
+          My schedule
         </h1>
+        {state.kind === "ready" ? (
+          <MyWeekNav weekStart={state.data.week_start} />
+        ) : null}
         {body}
+        {extra}
         {howTo}
       </CenteredPage>
     </main>
+  );
+}
+
+/**
+ * My schedule 的换周（Annie 2026-11-19 preview 第 2 版）：‹ 日期 › This week / Next week。换周 = 换网址整页重开
+ * （还没发的改动由 useLeaveGuard 拦下问）。
+ */
+function MyWeekNav({ weekStart }: { weekStart: string }) {
+  const thisWeek = weekStartYmd(laToday());
+  const nextWeek = shiftYmd(thisWeek, 7);
+  const href = (w: string) => `/my-schedule?week=${w}`;
+  const btn = cn(
+    DARK_SECONDARY_BUTTON_CLASS,
+    "inline-flex h-[28px] items-center px-2.5 py-0 text-[12.5px]",
+  );
+  return (
+    <div data-my-week-nav className="-mt-2 flex flex-wrap items-center gap-1.5">
+      <a
+        href={href(shiftYmd(weekStart, -7))}
+        aria-label="Previous week"
+        className={btn}
+      >
+        ‹
+      </a>
+      <span className="px-1 text-[13.5px] font-semibold whitespace-nowrap text-white">
+        {md(weekStart)} – {md(shiftYmd(weekStart, 6))}
+      </span>
+      <a
+        href={href(shiftYmd(weekStart, 7))}
+        aria-label="Next week"
+        className={btn}
+      >
+        ›
+      </a>
+      <a
+        href={href(thisWeek)}
+        aria-current={weekStart === thisWeek ? "true" : undefined}
+        className={cn(btn, "ml-1")}
+      >
+        This week
+      </a>
+      <a
+        href={href(nextWeek)}
+        aria-current={weekStart === nextWeek ? "true" : undefined}
+        className={btn}
+      >
+        Next week
+      </a>
+    </div>
   );
 }
 

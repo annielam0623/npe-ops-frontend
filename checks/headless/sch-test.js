@@ -1069,12 +1069,16 @@ async function run() {
   await ctl({ futurePublished: "2027-01-03" });
   await openPage(`${APP}/schedule?week=2027-01-03`);
   await waitFor(`${cell("1|2027-01-03")}`);
+  check("My schedule 3A / 5A · staff：页头第一排最右白底醒目键 My schedule →，链到 /my-schedule?week=2027-01-03",
+    await evaluate("const k = document.querySelector('[data-my-schedule-key]'); const cs = k && getComputedStyle(k); return !!k && k.textContent === 'My schedule →' && k.getAttribute('href') === '/my-schedule?week=2027-01-03' && cs.backgroundColor === 'rgb(255, 255, 255)' && cs.color === 'rgb(11, 23, 39)';"),
+    await evaluate("return document.querySelector('[data-my-schedule-key]')?.outerHTML ?? 'none';"));
   check("G298 · staff 看已发布、从上周复制来的周：没有「Started from last week… drag people to change it.」，卡片不能拖",
     await evaluate("return !document.body.innerText.includes('drag people to change it') && ![...document.querySelectorAll('[data-slot-id]')].some((e) => e.draggable);"));
   await ctl({ role: "supervisor", meName: "" });
   await openPage(`${APP}/schedule?week=2027-01-03`);
   await waitFor(`${cell("1|2027-01-03")}`);
   check("G298 · 排班人看同一周：照旧「Started from last week… drag people to change it.」", (await text()).includes("drag people to change it"));
+  check("My schedule 6A · 排班人也有 My schedule → 键", await evaluate("return document.querySelector('[data-my-schedule-key]')?.getAttribute('href') === '/my-schedule?week=2027-01-03';"));
   await ctl({ role: "staff", meName: "Jing" });
 
   await openPage(`${APP}/schedule?week=2026-10-11`);

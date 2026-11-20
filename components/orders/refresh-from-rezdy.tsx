@@ -45,6 +45,7 @@ export function useOrderRefresh(
   return { state, run };
 }
 
+/** 琥珀黄、深色字（Annie 2026-11-19（样稿 X7VrqrYfLnnxz2Vr4KM2uJ，「把send tour cofirmation这个按键从Refresh from rezdy旁边挪到Open in Main manifest旁边，让refresh from rezdy键单独在那边以防按错」「把refresh键换成黄色的吧」「动手」））：单独在订单号那一行右边，跟蓝色的发送键分开。 */
 export function RefreshButton({
   busy,
   onClick,
@@ -58,7 +59,7 @@ export function RefreshButton({
       data-order-refresh
       disabled={busy}
       onClick={onClick}
-      className="ml-auto h-[26px] cursor-pointer rounded-md bg-[#3b82f6] px-3 text-[12px] font-semibold text-white disabled:cursor-default disabled:opacity-60"
+      className="ml-auto h-[26px] cursor-pointer rounded-md bg-[#f59e0b] px-3 text-[12px] font-semibold text-[#1a1a1a] hover:bg-[#d97706] disabled:cursor-default disabled:opacity-60"
     >
       {busy ? "Refreshing…" : "Refresh from Rezdy"}
     </button>
@@ -166,7 +167,7 @@ export function RefreshResultCard({ state }: { state: RefreshState }) {
       data-order-refresh-result
       className="mt-3 mb-3 rounded-[10px] border-[0.5px] border-black/10 bg-paper px-4 py-3 night:border-white/10 night:bg-white/[.04]"
     >
-      <h3 className="mb-2 flex items-center gap-2 text-[11px] font-semibold tracking-[0.6px] text-[#1a1a1a] uppercase night:text-white/35">
+      <h3 className="mb-2 flex items-center gap-2 text-[11px] font-semibold tracking-[0.6px] text-[#1d4ed8] uppercase night:text-[#93c5fd]">
         Refresh from Rezdy
         <span className="font-normal tracking-normal text-[#6b6b6b] normal-case night:text-white/45">
           · {time}

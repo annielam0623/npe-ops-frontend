@@ -57,6 +57,8 @@ const ROUTE_PERMISSIONS: readonly (readonly [
   ["/bus-manifests", ["dispatch.view"]],
   ["/forms", ["forms.view"]],
   ["/schedule", ["schedule.view"]],
+  // My schedule（Annie 2026-11-19）：员工自己的班 + 请假。
+  ["/my-schedule", ["schedule.view"]],
   // 周三确认排班的邮件链接页：不用登录，不拦。
   ["/schedule/confirm/link", null],
   ["/schedule/confirm/period", null],

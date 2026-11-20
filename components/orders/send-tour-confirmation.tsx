@@ -229,7 +229,7 @@ export function SendTourResultCard({ state }: { state: SendOrderState }) {
       data-order-send-result
       className="mt-3 mb-3 rounded-[10px] border-[0.5px] border-black/10 bg-paper px-4 py-3 night:border-white/10 night:bg-white/[.04]"
     >
-      <h3 className="mb-2 flex items-center gap-2 text-[11px] font-semibold tracking-[0.6px] text-[#1a1a1a] uppercase night:text-white/35">
+      <h3 className="mb-2 flex items-center gap-2 text-[11px] font-semibold tracking-[0.6px] text-[#1d4ed8] uppercase night:text-[#93c5fd]">
         Send tour confirmation
         <span className="font-normal tracking-normal text-[#6b6b6b] normal-case night:text-white/45">
           · {time}
