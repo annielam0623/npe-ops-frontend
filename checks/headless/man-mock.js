@@ -412,6 +412,10 @@ function page(url) {
         ...(ctl.productDiffers
           ? { product_differs: r.order_number in ctl.productDiffers, product_majority: ctl.productDiffers[r.order_number] ?? null }
           : {}),
+        // product_actual：ctl.productActual = { 订单号: 这一单实际产品名 }；只给标红的行，其余 null；没设 = 后端还没这个键，不带。
+        ...(ctl.productDiffers && ctl.productActual
+          ? { product_actual: r.order_number in ctl.productDiffers ? (ctl.productActual[r.order_number] ?? null) : null }
+          : {}),
         ...(ctl.cfmRule && r.tab === "tickets"
           ? (() => {
               const nn = (ctl.cfmRule.notNeeded ?? []).includes(r.order_number);

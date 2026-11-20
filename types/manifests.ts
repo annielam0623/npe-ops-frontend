@@ -134,6 +134,11 @@ export interface ManifestRow {
   /** 这一节大多数产品的主要文字，给悬停提示用；没标的行 null。 */
   product_majority?: string | null;
   /**
+   * 这一单实际订的产品名（订单上的原名，只折叠空白；agent 部分保留），给悬停第一行用
+   * （Annie 2026-11-20 选 A）。product_differs=false 的行和 hidden.rows[] 为 null；旧后端没有 ⇒ 悬停照旧一行。
+   */
+  product_actual?: string | null;
+  /**
    * G321 Relay / Tour（只 Bus 标签）：relay 司机 / 导游标的结果，没标 = null；旧后端没有这几个键 ⇒ 不出这两列。
    * relay_applicable=false = 这单不走 relay（Relay 格画「—」）。
    */
