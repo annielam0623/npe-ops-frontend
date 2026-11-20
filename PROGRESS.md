@@ -10,7 +10,9 @@
 - 开工：main 72d48c43。fc [9f9912] 交接：11-17 晚后没再接活，那晚 6 条分支都已合 main，手上无事，已停手；以 08 的 11-19 收工交接为准。空闲内存 11 / 32 GB。现在没有工作窗口。
 - 开工必做第 4 条：已把最近 7 天 Annie 提过没做完的列给 Annie（08 清单 3、8、10、11、12–18、20、21、产品名红字悬停「Antelope」、全站 Save 蓝；等后端 2/G361、24、25、26、G363；没人接 27–29），等她选今晚做哪几件。
 - ✅ **第 11 件 TI 单 CHD0SNQKE 结案**：Annie（原话）「这个昨天就已经结束了」。
-- 后端今晚主窗口 `今晚后端主窗口-94`：转 Annie 11-19 三条原则（3 个关键输入 / 数据从哪来到哪去 / 讲现状先查代码）⇒ 前端 CLAUDE.md:96、:99 已有（f9a7e92b、f239a77b），已回 94。
+- 后端今晚主窗口 `今晚后端主窗口-94`：转 Annie 11-19 三条原则（3 个关键输入 / 数据从哪来到哪去 / 讲现状先查代码）⇒ 前端 CLAUDE.md:96、:99 已有（f9a7e92b、f239a77b），已回 94。后端写进它的 CLAUDE.md e5506216。
+- G298 换班拖不动：Annie（原话）「今天我在公司测试了拖不了，前端跟我说是bug」「不是，我要的是建一个明显的点击可进入的my schedule键，然后进入员工个人schedule的界面」⇒ 就是已上 main 的 My schedule bc811a83（总表页头 / Dashboard / 侧栏三处键 → /my-schedule）。task/fix-g298-drag 没有未合提交（根因是进错页）。📌 请 Annie 用 Veronica 账号验三处键 + 11/22 周拖班出「Ask … to swap?」框。
+- 派 `npe-ops-frontend-4a`[70565a]：全站 Save 蓝色排查 + preview（不改代码）。4a 交 **origin/task/blue-save-sweep bea69a10**（worktree D:/ops-wt-4a-blue），详见 notes/blue-save-sweep.md「4a progress」：ui/buttons.ts:3 只 2 处用（field-picker Apply、confirm-dialog 确定键 → 蓝）；⚠️ HR_BTN_PRIMARY_CLASS 兼作选中标签，要另开 Save 常量（hr-view:841、profile-dialog:319 → 蓝；Add person 待核）；order-detail :920 Save → 蓝；pickup-locations Add 待核。拿不准要问 Annie（还没写成原文）：日期筛选「Apply」黑键算不算提交；「Pull from Discord」算不算提交。**下一步**：查白 / 透明底的 Save / Send / Upload / Confirm + confirm-dialog 用处 → 改前 / 改后 preview → 两题原文给 Annie → 动手才改。
 
 ## 2026-11-19 收工交接：前端主窗口 `前端主窗口-08`[895bc9 / 2d5e11]（公司电脑，14:30 下班）
 - **今天上 main（都已过检查，📌 等 Annie 线上验）**：第 1 件 No show 第 3 版 22228fe5；第 4 件选餐 第一段 + 第二段 G364 be402f1c；第 5 件 SMS 超字数 ce84ad75；第 7 件 132 产品名 + 蓝键 f878f9d1；第 19 件 G307 064e41f5；preview 链接所有人可见 5ca95915；Dispatch Driver / Guide 按键 ebb73273；G351 解析 dddc4039；Tickets 组头灰 + 两种看法 b19e8c69、默认 By order time 481389bf；G362 HR 三个到期日 e1927aeb；Live drivers WhatsApp、Bus map 勾选、TOUR ENDED、排班页提示字只给排班人（8abeab40）、Rezdy Internal notes 小 bug（见上面当天记录）。
