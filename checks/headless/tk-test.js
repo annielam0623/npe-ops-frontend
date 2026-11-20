@@ -181,12 +181,12 @@ async function run() {
   const pills = await evaluate("return $t('[aria-label=\"Filter by tour\"] button');");
   check("产品按钮：Total 5/12、U-TC 3/5、L-KT 2/6，另有 Brenda 免费 0/1",
     pills[0] === "Total Guests5/12" && pills.includes("U-TC3/5") && pills.includes("L-KT2/6") && pills.includes("Upper Antelope Canyon – Brenda — No Permit Fee0/1"), pills.join(" | "));
-  let stats = await evaluate("return $t('section[aria-label=Summary] > div').join('|');");
-  check("统计：5 单 / YES 2 / 改期 1 / Pending 2 / 取消 0 / 回复率 67%", stats === "5Total Orders|2YES|1Reschedule|2Pending|0Cancelled|67%Response Rate", stats);
+  let stats = await evaluate("return $t('section[aria-label=Summary] [data-stat]').map((x) => x.replace(/[\\s·]+/g, '')).join('|');");
+  check("统计（4⑥ B 一行数字）：5 单 / YES 2 / 改期 1 / Pending 2 / 取消 0 / 67% replied", stats === "5TotalOrders|2YES|1Reschedule|2Pending|0Cancelled|67%replied", stats);
   await evaluate("$btn('L-KT').click();");
   await sleep(200);
-  stats = await evaluate("return $t('section[aria-label=Summary] > div').join('|');");
-  check("按产品 L-KT 筛选，统计跟着变", (await evaluate("return $rows().length;")) === 2 && stats.startsWith("2Total Orders|1YES|1Reschedule"), stats);
+  stats = await evaluate("return $t('section[aria-label=Summary] [data-stat]').map((x) => x.replace(/[\\s·]+/g, '')).join('|');");
+  check("按产品 L-KT 筛选，统计跟着变", (await evaluate("return $rows().length;")) === 2 && stats.startsWith("2TotalOrders|1YES|1Reschedule"), stats);
   await evaluate("$btn('Total Guests').click();");
   await evaluate("$setValue(document.querySelector('input[type=search],input[inputmode=search]'), 'bravo');");
   await sleep(200);
@@ -196,8 +196,17 @@ async function run() {
   await sleep(200);
 
   // ── 群发记录 ──
-  const panel = await evaluate("return document.body.textContent;");
-  check("当天群发记录", panel.includes("📣 Broadcasts sent for this date (1)") && panel.includes("Weather delay"));
+  const bcWrap = "document.querySelector('[data-broadcast-wrap=desktop]')";
+  check("4⑥ B / 4③ A：没有群发黄框；📣 Broadcast 键上小数字 1", await evaluate(`return !document.querySelector('[data-broadcast-panel]') && !document.body.textContent.includes('Broadcasts sent for this date') && ${bcWrap}.querySelector('[data-broadcast-count]').textContent === '1';`));
+  await evaluate(`${bcWrap}.querySelector('[data-broadcast-count]').click();`);
+  await waitFor("document.querySelector('[data-broadcast-panel]')");
+  const panel = await evaluate("return document.querySelector('[data-broadcast-panel]').textContent;");
+  check("4③ A：点小数字 ⇒ 键下展开当天列表、不开发送窗", panel.includes("📣 Broadcasts sent for this date (1)") && panel.includes("Weather delay") && !(await evaluate("return !!document.querySelector('[role=dialog]');")), panel);
+  await evaluate(`${bcWrap}.querySelector('[data-broadcast-count]').click();`);
+  await sleep(150);
+  check("4③ A：再点小数字 ⇒ 收起", !(await evaluate("return !!document.querySelector('[data-broadcast-panel]');")));
+  check("4⑥ B：团按钮一行小长方形（圆角 5px）；数字一行和日期同一行；没有大卡片", await evaluate("const p = [...document.querySelectorAll('[aria-label=\"Filter by tour\"] button')]; const s = document.querySelector('section[aria-label=Summary]'); const d = document.querySelector('input[aria-label=\"Service date\"]'); return p.every(b => getComputedStyle(b).borderRadius === '5px' && b.getBoundingClientRect().height < 30) && Math.abs(s.getBoundingClientRect().top - d.getBoundingClientRect().top) < 14 && s.querySelectorAll('[data-stat]').length === 6;"));
+  check("4⑥ B How to use：⬇ CSV、Broadcast 小数字那句；没有 Upload 那句", await evaluate("const d = [...document.querySelectorAll('details')].find(x => x.textContent.includes('How to use — Tickets Reminder Tracking')).textContent; return d.includes('⬇ CSV saves everything for this date') && !d.includes('Download CSV') && !d.includes('⬆ Upload') && d.includes('The small number on 📣 Broadcast is how many broadcasts were sent for this date; click the number to see what was sent, when and by whom.');"));
 
   // ── 拖列宽、自动列宽、窗口底部浮条（Annie 2026-10-14）──
   await resizeChecks({ evaluate, check, sleep, page: "tk", refresh: async () => { await evaluate("$btn('↻ Refresh').click();"); await sleep(1200); }, skipWidths: { Notes: "200px", WhatsApp: "180px" } });
@@ -221,7 +230,7 @@ async function run() {
   let posts = await statusPosts(before);
   check("按 ✓：POST update-status（CHD 号 + 服务日期 + yes）", posts.length === 1 && posts[0].body.chd_number === "CHDZZ2" && posts[0].body.service_date === today && posts[0].body.confirmation === "yes", JSON.stringify(posts));
   check("存好：✓ / ✕ 收起、旁边绿字 Saved", await evaluate(`const s = document.querySelectorAll('tbody tr')[2].querySelector('[data-status-saved]'); return !${okBtn} && !!s && s.textContent === 'Saved' && getComputedStyle(s).color === 'rgb(4, 120, 87)';`));
-  stats = await evaluate("return $t('section[aria-label=Summary] > div').join('|');");
+  stats = await evaluate("return $t('section[aria-label=Summary] [data-stat]').map((x) => x.replace(/[\\s·]+/g, '')).join('|');");
   check("改完统计跟着变（YES 3）", stats.includes("3YES"), stats);
   // 存失败：红字写原因，改动留着、✓ 还在
   await ctl({ statusFail: "That order is locked by another user." });
@@ -238,7 +247,7 @@ async function run() {
   posts = await statusPosts(before);
   check("再按 ✓：Cancel 存上（后端已支持 2026-10-06，POST 带 confirmation=cancel）", posts.length === 1 && posts[0].body.confirmation === "cancel", JSON.stringify(posts));
   check("Cancel 存好：下拉显示 Cancel、✓ 收起", (await evaluate("const s=document.querySelectorAll('tbody select')[2]; return s.value;")) === "cancel" && !(await evaluate(`return !!${okBtn};`)));
-  stats = await evaluate("return $t('section[aria-label=Summary] > div').join('|');");
+  stats = await evaluate("return $t('section[aria-label=Summary] [data-stat]').map((x) => x.replace(/[\\s·]+/g, '')).join('|');");
   check("改完统计跟着变（Cancelled 1）", stats.includes("1Cancelled"), stats);
   // 改回 yes：后面的群发 / 人群计数检查都按这一单仍是 yes 写的，不在这里扩大范围。
   before = (await mockLog()).length;
@@ -591,61 +600,15 @@ async function run() {
     await waitFor(`!${dialog}`);
   }
 
-  // ── 补录 ──
-  await evaluate("$btn('⬆ Upload').click();");
-  await waitFor(dialog);
-  check("第一步同旧页：标题 Select Tour / Operator", (await evaluate(`return ${dialog}.querySelector('h2').textContent;`)) === "Select Tour / Operator");
-  await evaluate(`$btn('Continue', ${dialog}).click();`);
-  await sleep(150);
-  check("没选产品点 Continue：写 Select a tour type.、不往下走", await evaluate(`return ${dialog}.querySelector('[role=alert]')?.textContent === 'Select a tour type.';`));
-  const chooseFile = async (file) => {
-    await evaluate("$btn('⬆ Upload').click();");
-    await waitFor(dialog);
-    await selectValue("[role=dialog] select", "lower_antelope_kens");
-    await sleep(100);
-    await evaluate(`$btn('Continue', ${dialog}).click();`);
-    await sleep(150);
-    await setFile('input[aria-label="Manifest file"]', file);
-  };
-  await evaluate(`$btn('Cancel', ${dialog}).click();`);
-  await sleep(100);
-  await chooseFile("BADFILE.csv");
-  await waitFor(`${dialog} && ${dialog}.querySelector('[role=alert]')`);
-  check("解析失败：同旧页红字写在预览表里", await evaluate(`return ${dialog}.querySelector('h2').textContent === 'Upload to List' && ${dialog}.querySelector('tbody [role=alert]').textContent.includes('Missing column: CHD Number');`));
-  await evaluate(`$btn('Cancel', ${dialog}).click();`);
-  await sleep(100);
-  before = (await mockLog()).length;
-  await chooseFile("manifest.csv");
-  await waitFor(`${dialog} && ${dialog}.textContent.includes('already in list')`);
-  log = await since(before, (e) => e.path === "/api/tickets-reminder/tracking-import-preview");
-  check("预览请求：multipart 带文件、产品、服务日期", log[0] && log[0].hasFile && log[0].tourType === "lower_antelope_kens" && log[0].serviceDate === today, JSON.stringify(log));
-  let up = await evaluate(`return ${dialog}.textContent;`);
-  check("预览：3 行 · 2 新 · 1 已在列表，显示编码提示；标题后写所选产品（同旧页，不带分组名）", up.includes("Ken's Tours · 3 row(s) · 2 new · 1 already in list") && !up.includes("Lower Antelope Canyon – Ken's") && up.includes("Encoding guessed"));
-  check("已在列表的行整行淡黄（同旧页 .dup-row）", await evaluate(`return [...${dialog}.querySelectorAll('tbody tr')].filter(tr => tr.textContent.includes('Already in list')).every(tr => getComputedStyle(tr).backgroundColor === 'rgb(255, 248, 225)');`));
-  check("默认跳过已在列表的单：2 row(s) will be inserted", up.includes("2 row(s) will be inserted"));
-  await evaluate(`[...${dialog}.querySelectorAll('label')].find(l => l.textContent.trim() === 'Insert anyway (all)').querySelector('input').click();`);
-  await sleep(100);
-  check("Insert anyway (all) → 3", (await evaluate(`return ${dialog}.textContent;`)).includes("3 row(s) will be inserted"));
-  before = (await mockLog()).length;
-  await evaluate(`$btn('Insert', ${dialog}).click();`);
-  await waitFor(`${dialog}.textContent.includes('Inserted 3 order(s).')`);
-  log = await since(before, (e) => e.path === "/api/tickets-reminder/tracking-import-commit");
-  check("提交：3 行原样传回 + 产品 + 服务日期", log[0] && log[0].body.guests.length === 3 && log[0].body.tour_type === "lower_antelope_kens" && log[0].body.service_date === today && log[0].body.guests[0].upload_row, JSON.stringify(log[0]?.body).slice(0, 200));
-  check("插入后表格重拉", (await since(before, (e) => e.path === "/api/notifications/tickets-reminder/tracking")).length >= 1);
-  await evaluate(`$btn('Done', ${dialog}).click();`);
-  await sleep(100);
-  await chooseFile("BADPAX.csv");
-  await waitFor(`${dialog} && ${dialog}.textContent.includes('already in list')`);
-  check("算不出人数：整批不能插入", (await evaluate(`return ${dialog}.textContent;`)).includes("Guest count not found in Quantities: CHDZZ8") && (await evaluate(`return $btn('Insert', ${dialog}).disabled;`)));
-  await evaluate(`$btn('Cancel', ${dialog}).click();`);
-  await sleep(100);
+  // ── ⬆ Upload 藏了（同 Tour Tracking 题 7「所有人都隐藏」，4⑥ B 门票页一起改）：电脑和手机 ⋯ 里都没有；弹窗代码留着 ──
+  check("4⑥ B：页面上没有 ⬆ Upload 键", await evaluate("return ![...document.querySelectorAll('button')].some(b => b.textContent.includes('Upload'));"));
 
   // ── 日期 ──
-  check("Download CSV 链接", (await evaluate("return [...document.querySelectorAll('a')].find(a => a.textContent.includes('Download CSV')).getAttribute('href');")) === `/api/notifications/tickets-reminder/export-csv?date=${today}`);
+  check("4⑤ A：⬇ CSV 链接（原 Download CSV）", (await evaluate("return [...document.querySelectorAll('a')].find(a => a.textContent.trim() === '⬇ CSV').getAttribute('href');")) === `/api/notifications/tickets-reminder/export-csv?date=${today}`);
   await evaluate("$btn('Tomorrow').click();");
   await waitFor(`location.search === '?date=${tomorrow}'`);
   await waitFor("$rows()[0] && $rows()[0][0] === 'No records for this date.'");
-  check("Tomorrow：换到明天、没有记录、群发记录隐藏", !(await evaluate("return document.body.textContent.includes('Broadcasts sent for this date');")));
+  check("Tomorrow：换到明天、没有记录、Broadcast 键上没有小数字", !(await evaluate("return !!document.querySelector('[data-broadcast-count]') || document.body.textContent.includes('Broadcasts sent for this date');")));
   await evaluate("$btn('Today').click();");
   await waitFor("document.querySelectorAll('tbody tr').length === 5");
   check("Today 回到今天", (await evaluate("return location.search;")) === `?date=${today}`);
@@ -736,13 +699,14 @@ async function run() {
       osBy("CHDZZ7")[1] === "Confirmed" && osBy("CHDZZ2")[1] === "Confirmed", JSON.stringify(os));
     check("G281 题 3 A：CHD# 旁淡黄「Contact changed」+ title，只在 CHDZZ2",
       await evaluate("const t = [...document.querySelectorAll('[data-contact-changed]')]; return t.length === 1 && t[0].closest('td').textContent.startsWith('CHDZZ2') && t[0].textContent === 'Contact changed' && t[0].title === \"The guest's phone or email changed after the reminder was sent. Send the reminder again from Main manifest.\" && getComputedStyle(t[0]).backgroundColor === 'rgb(254, 243, 199)';"));
-    const gstats = await evaluate("return $t('section[aria-label=Summary] > div').join('|');");
-    check("G281 题 4 A：上面数字不算灰行（还是 5 单）", gstats.startsWith("5Total Orders|"), gstats);
+    const gstats = await evaluate("return $t('section[aria-label=Summary] [data-stat]').map((x) => x.replace(/[\\s·]+/g, '')).join('|');");
+    check("G281 题 4 A：上面数字不算灰行（还是 5 单）", gstats.startsWith("5TotalOrders|"), gstats);
     const gpills = await evaluate("return $t('[aria-label=\"Filter by tour\"] button');");
     check("G281 产品按钮人数也不算灰行（Total 还是 /12）", gpills[0].startsWith("Total Guests") && gpills[0].endsWith("/12"), gpills[0]);
     check("G281「· 2 to notify」", (await evaluate("return document.querySelector('[data-to-notify]')?.textContent.replace(/\\s+/g, ' ').trim();")) === "· 2 to notify");
-    check("G281 表格上面灰色小方块说明（样稿原文）",
-      await evaluate("const n = document.querySelector('[data-unsent-note]'); return !!n && n.querySelector('[data-phone-oneline] > span').textContent.trim() === \"Grey rows: ticket orders in the Main manifest whose reminder hasn't been sent yet.\" && getComputedStyle(n.querySelector('span[aria-hidden]')).backgroundColor === 'rgb(225, 228, 232)';"));
+    check("4⑤ A：灰色图例进工具行「Grey = not sent yet」+ 灰色小方块，全句（样稿原文）停上去看",
+      await evaluate("const n = document.querySelector('[data-unsent-note]'); return !!n && n.textContent.trim() === 'Grey = not sent yet' && n.title === \"Grey rows: ticket orders in the Main manifest whose reminder hasn't been sent yet.\" && !!n.closest('[data-tools-row]') && getComputedStyle(n.querySelector('span[aria-hidden]')).backgroundColor === 'rgb(225, 228, 232)';"));
+    check("4④ A：门票页 Main manifest sync 也是「下拉 (i)」，没有虚线框和小字", await evaluate("const w = document.querySelector('[data-sync-switch]'); return !!w.querySelector('[data-sync-help]') && !w.textContent.includes('Only Super Admins') && getComputedStyle(w).borderStyle !== 'dashed';"));
     const howTo = await evaluate("const h = [...document.querySelectorAll('li')].map(l => l.textContent.trim()); return h;");
     const i1 = howTo.findIndex((t) => t.startsWith("When Main manifest sync is on, every ticket order in the Main manifest for the day shows here, one row per ticket type."));
     const iPick = howTo.findIndex((t) => t.startsWith("Pick the service date."));
@@ -813,8 +777,9 @@ async function run() {
   await waitFor("document.querySelector('thead th') && document.querySelector('[aria-label=\"Filter by tour\"]')", 30000);
   await sleep(600);
   check("手机：Tickets Tracking 整页不左右晃", await evaluate(`const vis = (el) => !!el && el.getBoundingClientRect().height > 0 && el.getBoundingClientRect().width > 0; const noSway = document.documentElement.scrollWidth <= innerWidth + 1; const btn = (t, root = document) => [...root.querySelectorAll('button, a')].find((b) => b.textContent.trim().startsWith(t)); return noSway;`), await evaluate("return document.documentElement.scrollWidth + ' > ' + innerWidth;"));
-  check("手机：6 张统计卡一行、团按钮一行", await evaluate(`const c = [...document.querySelector('section[aria-label="Summary"]').children]; const p = [...document.querySelector('[aria-label="Filter by tour"]').children]; return c.length === 6 && new Set(c.map((x) => Math.round(x.getBoundingClientRect().top))).size === 1 && new Set(p.map((x) => Math.round(x.getBoundingClientRect().top))).size === 1;`));
-  check("手机：Download CSV / Upload 不在外面、有 ⋯；拖动提示不显示", await evaluate(`const vis = (el) => !!el && el.getBoundingClientRect().height > 0 && el.getBoundingClientRect().width > 0; const noSway = document.documentElement.scrollWidth <= innerWidth + 1; const btn = (t, root = document) => [...root.querySelectorAll('button, a')].find((b) => b.textContent.trim().startsWith(t)); const out = [...document.querySelectorAll('main a, main button')].filter((b) => /Download CSV|⬆ Upload/.test(b.textContent) && vis(b) && !b.closest('[data-phone-more-menu]')); const drag = [...document.querySelectorAll('span')].find((s) => s.textContent.includes('Drag to reorder')); return out.length === 0 && vis(document.querySelector('[data-phone-more]')) && !vis(drag);`));
+  check("手机：数字一行小字、团按钮一行", await evaluate(`const s = document.querySelector('section[aria-label="Summary"]'); const p = [...document.querySelector('[aria-label="Filter by tour"]').children]; return s.getBoundingClientRect().height > 0 && s.getBoundingClientRect().height < 60 && s.querySelectorAll('[data-stat]').length === 6 && new Set(p.map((x) => Math.round(x.getBoundingClientRect().top))).size === 1;`));
+  check("4③ 手机：⋯ 上标当天群发条数 1", await evaluate("return document.querySelector('[data-phone-more-badge]')?.textContent === '1';"));
+  check("手机：⬇ CSV 不在外面、有 ⋯；拖动提示不显示", await evaluate(`const vis = (el) => !!el && el.getBoundingClientRect().height > 0 && el.getBoundingClientRect().width > 0; const noSway = document.documentElement.scrollWidth <= innerWidth + 1; const btn = (t, root = document) => [...root.querySelectorAll('button, a')].find((b) => b.textContent.trim().startsWith(t)); const out = [...document.querySelectorAll('main a, main button')].filter((b) => /⬇ CSV|⬆ Upload/.test(b.textContent) && vis(b) && !b.closest('[data-phone-more-menu]')); const drag = [...document.querySelectorAll('span')].find((s) => s.textContent.includes('Drag to reorder')); return out.length === 0 && vis(document.querySelector('[data-phone-more]')) && !vis(drag);`));
   await cdp("Emulation.clearDeviceMetricsOverride");
 
   await ctl({ fail401: true });

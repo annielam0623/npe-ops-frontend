@@ -13,6 +13,11 @@ import {
   TrackingBanner,
   TrackingNotice,
 } from "@/components/tracking-ui/banners";
+import {
+  BROADCAST_COUNT_HOW_TO,
+  BroadcastButton,
+  BroadcastCountDot,
+} from "@/components/tracking-ui/broadcast-button";
 import { trackingFont } from "@/components/tracking-ui/font";
 import { BroadcastDialog } from "@/components/ui/broadcast-dialog";
 import { ColumnPicker } from "@/components/ui/column-picker";
@@ -82,7 +87,6 @@ import { TourTable } from "./tour-table";
 import { PageShortcutBar } from "@/components/nav/page-shortcut-bar";
 import {
   PhoneMore,
-  PhoneOneLine,
   PhoneShortcutStar,
   usePhoneInfo,
 } from "@/components/ui/phone";
@@ -101,6 +105,8 @@ type LoadState =
 const CLOCK_TICK_MS = 30_000;
 /** 新消息提示条最多直接列几单。 */
 const BANNER_MAX = 3;
+/** ⬆ Upload 键（Annie 2026-11-17「把upload隐藏吧」，题 7「所有人都隐藏」）：false = 不出；弹窗和代码留着。 */
+const SHOW_UPLOAD = false;
 
 const STATUS_FILTERS: readonly { value: string; label: string }[] = [
   { value: "", label: "All Statuses" },
@@ -484,7 +490,10 @@ export function TourTrackingView() {
           </TrackingNotice>
         ) : (
           <>
-            <div className="mb-4 flex items-center gap-2 max-sm:mb-2.5 max-sm:gap-1.5">
+            {/* 顶部压缩（Annie 2026-11-17 提，11-20 Excel 4①–⑤ A「动手」，样稿 v5 https://claude.ai/artifact/XkJzYXepzr6Yog9ciiFszr ）：
+                第一行 = 日期 + 一行数字（点数字筛选，原来 8 张大卡）+ 午餐数 + 最右 Main manifest sync；
+                第二行 = 团按钮（小长方形）+ 工具，同一行，窗口窄了才自己折成两行。 */}
+            <div className="mb-2 flex flex-wrap items-center gap-x-1.5 gap-y-1.5">
               <button
                 type="button"
                 aria-label="Previous day"
@@ -499,7 +508,7 @@ export function TourTrackingView() {
                 aria-label="Tour date"
                 value={date}
                 onChange={(e) => changeDate(e.target.value)}
-                className="min-w-[130px] cursor-pointer rounded-lg border border-[#d0e0d4] bg-paper px-3 py-[5px] text-center font-[inherit] text-[13px] font-semibold shadow-[0_1px_4px_rgba(26,58,42,0.07)] outline-none focus:border-[#2f5e46] max-sm:w-[124px] max-sm:min-w-0 max-sm:px-1.5"
+                className="min-w-[124px] cursor-pointer rounded-[7px] border border-[#d0e0d4] bg-paper px-2.5 py-[3px] text-center font-[inherit] text-[12.5px] font-semibold shadow-[0_1px_4px_rgba(26,58,42,0.07)] outline-none focus:border-[#2f5e46] max-sm:w-[124px] max-sm:min-w-0 max-sm:px-1.5"
               />
               <button
                 type="button"
@@ -526,7 +535,118 @@ export function TourTrackingView() {
               >
                 Tomorrow
               </button>
-              {/* 置顶 95：G180 三档开关，只给 Super Admin（读不到就不出）。 */}
+
+              {/* 4① A：数字一行，点数字照旧筛选（手机上本来就是这一行）；4② A：午餐数接在后面（手机上收进 i）。 */}
+              <section
+                aria-label="Summary"
+                data-phone-stats
+                className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-[12.5px] text-[#1a1a1a] sm:ml-2.5 max-sm:order-last max-sm:basis-full max-sm:text-[12px]"
+              >
+                {(
+                  [
+                    ["Total", stats?.total, "", ""],
+                    ["YES", stats?.yes, "text-[#1e7a45]", "yes"],
+                    ["Modify", stats?.modify, "text-[#c97a00]", "modify_req"],
+                    ["Modified", stats?.modified, "text-[#4c3da8]", "modified"],
+                    ["Pending", stats?.pending, "text-[#185FA5]", "pending"],
+                    ["Cancel", stats?.cancel, "text-[#c94040]", "cancel"],
+                  ] as const
+                ).map(([label, value, color, filter], i) => (
+                  <Fragment key={label}>
+                    {i ? (
+                      <span aria-hidden className="text-[#9aa6a0]">
+                        ·
+                      </span>
+                    ) : null}
+                    <button
+                      type="button"
+                      data-phone-keep
+                      data-phone-stat={label}
+                      aria-pressed={!!filter && statusFilter === filter}
+                      title={filter ? `Filter ${label}` : "Show all"}
+                      onClick={() => setStatusFilter(filter)}
+                      className={cn(
+                        "cursor-pointer rounded-[4px] px-0.5 whitespace-nowrap",
+                        filter &&
+                          statusFilter === filter &&
+                          "bg-[#d4e8d8] font-semibold",
+                      )}
+                    >
+                      <b className={cn("font-extrabold tabular-nums", color)}>
+                        {value ?? "—"}
+                      </b>{" "}
+                      {label}
+                    </button>
+                  </Fragment>
+                ))}
+                {sync ? (
+                  <span
+                    data-to-notify
+                    className="whitespace-nowrap text-[#5b6470]"
+                    title="Grey rows: orders from the Main manifest with nothing sent yet"
+                  >
+                    · <b className="tabular-nums">{data ? unsentCount : "—"}</b>{" "}
+                    to notify
+                  </span>
+                ) : null}
+                <span
+                  className="whitespace-nowrap"
+                  title="Replied (non-pending) / successfully sent"
+                >
+                  ·{" "}
+                  <b className="tabular-nums">
+                    {stats
+                      ? stats.responseRate === null
+                        ? "—"
+                        : `${stats.responseRate}%`
+                      : "—"}
+                  </b>{" "}
+                  replied
+                </span>
+                {stats?.lunch.length ? (
+                  <>
+                    <span aria-hidden className="text-[#9aa6a0] max-sm:hidden">
+                      |
+                    </span>
+                    {stats.lunch.map((g) => (
+                      <span
+                        key={g.label}
+                        data-lunch={g.label}
+                        className="font-semibold whitespace-nowrap max-sm:hidden"
+                      >
+                        <b className="text-[10.5px] font-bold tracking-[.04em] text-[#2f5e46] uppercase">
+                          {g.label}
+                        </b>{" "}
+                        {/* 同旧页面：数字之间空两格，不用中点。 */}
+                        🦃 {g.turkey}&nbsp; 🥗 {g.veggie}
+                        {g.hasBeef ? <>&nbsp; 🥩 {g.beef}</> : null}
+                      </span>
+                    ))}
+                    {lunchInfo.button}
+                  </>
+                ) : null}
+                {stats?.lunch.length && lunchInfo.open ? (
+                  <div
+                    data-phone-lunch
+                    className="flex basis-full flex-wrap gap-1 sm:hidden"
+                  >
+                    {stats.lunch.map((g) => (
+                      <span
+                        key={g.label}
+                        className="rounded-[7px] border border-[#d0e0d4] bg-white/90 px-2 py-0.5 text-[11.5px] font-semibold whitespace-nowrap"
+                      >
+                        <b className="text-[10.5px] text-[#2f5e46] uppercase">
+                          {g.label}
+                        </b>{" "}
+                        🦃 {g.turkey}&nbsp; 🥗 {g.veggie}
+                        {g.hasBeef ? <>&nbsp; 🥩 {g.beef}</> : null}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
+              </section>
+
+              {/* 置顶 95：G180 三档开关，只给 Super Admin（读不到就不出）；4④ A：日期行最右「Main manifest sync [下拉] (i)」。 */}
               {syncSwitch.control}
             </div>
             {syncSwitch.below}
@@ -568,328 +688,154 @@ export function TourTrackingView() {
               </TrackingBanner>
             ) : null}
 
-            {data ? (
-              <div
-                role="group"
-                aria-label="Filter by tour"
-                // 手机上排成一行、左右滑（手机版规则：统计一行）。
-                className="mb-4 flex flex-wrap gap-1.5 max-sm:mb-2.5 max-sm:flex-nowrap max-sm:overflow-x-auto"
-              >
-                <TourPillButton
-                  active={!tourFilter}
-                  label="All"
-                  replied={allReplied}
-                  total={sentRows.length}
-                  onClick={() => setTourFilter("")}
-                />
-                {pills.map((p) => (
+            {/* 团按钮 + 工具并一行（Annie「这两行合并一行，屏幕缩窄了才转成两行」）；手机上照旧分两行。 */}
+            <div className="mb-2.5 flex flex-wrap items-center gap-x-2.5 gap-y-1.5 max-sm:block">
+              {data ? (
+                <div
+                  role="group"
+                  aria-label="Filter by tour"
+                  // 手机上排成一行、左右滑（手机版规则：统计一行）。
+                  className="flex flex-wrap gap-[5px] max-sm:mb-2 max-sm:flex-nowrap max-sm:overflow-x-auto"
+                >
                   <TourPillButton
-                    key={p.key}
-                    active={tourFilter === p.key}
-                    label={p.label}
-                    replied={p.replied}
-                    total={p.total}
-                    onClick={() => setTourFilter(p.key)}
+                    active={!tourFilter}
+                    label="All"
+                    replied={allReplied}
+                    total={sentRows.length}
+                    onClick={() => setTourFilter("")}
                   />
-                ))}
-              </div>
-            ) : null}
+                  {pills.map((p) => (
+                    <TourPillButton
+                      key={p.key}
+                      active={tourFilter === p.key}
+                      label={p.label}
+                      replied={p.replied}
+                      total={p.total}
+                      onClick={() => setTourFilter(p.key)}
+                    />
+                  ))}
+                </div>
+              ) : null}
 
-            {/* 置顶 115 题 8 A（Annie「114，115，107全选A。动手」）：手机上统计格换成一行小字，点一下照旧筛选；
-                午餐小卡收进 i；电脑版照旧是格子。 */}
-            <div
-              data-phone-stats
-              className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[12px] text-[#1a1a1a] sm:hidden"
-            >
-              {(
-                [
-                  ["Total", stats?.total, "", ""],
-                  ["YES", stats?.yes, "text-[#1e7a45]", "yes"],
-                  ["Modify", stats?.modify, "text-[#c97a00]", "modify_req"],
-                  ["Modified", stats?.modified, "text-[#4c3da8]", "modified"],
-                  ["Pending", stats?.pending, "text-[#185FA5]", "pending"],
-                  ["Cancel", stats?.cancel, "text-[#c94040]", "cancel"],
-                ] as const
-              ).map(([label, value, color, filter], i) => (
-                <Fragment key={label}>
-                  {i ? (
-                    <span aria-hidden className="text-[#9aa6a0]">
-                      ·
-                    </span>
-                  ) : null}
-                  <button
-                    type="button"
-                    data-phone-keep
-                    data-phone-stat={label}
-                    aria-pressed={!!filter && statusFilter === filter}
-                    title={filter ? `Filter ${label}` : "Show all"}
-                    onClick={() => setStatusFilter(filter)}
+              <div
+                data-tools-row
+                className="flex grow flex-wrap items-center gap-1.5"
+              >
+                <span className="text-[12px] whitespace-nowrap text-[#1a1a1a] max-sm:hidden">
+                  {data ? `${filtered.length} records` : "— records"}
+                </span>
+                <input
+                  type="search"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search order #, name, phone…"
+                  aria-label="Search"
+                  className="w-[190px] rounded-[7px] border border-[#d0e0d4] bg-white/90 px-[9px] py-[3px] font-[inherit] text-[12px] shadow-[0_1px_4px_rgba(26,58,42,0.06)] outline-none focus:border-[#2f5e46] max-sm:order-first max-sm:w-auto max-sm:min-w-0 max-sm:flex-1 [&::-webkit-search-cancel-button]:appearance-none"
+                />
+                <select
+                  aria-label="Status"
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="cursor-pointer rounded-[7px] border border-[#d0e0d4] bg-white/90 px-2 py-[3px] font-[inherit] text-[12px] shadow-[0_1px_4px_rgba(26,58,42,0.06)]"
+                >
+                  {STATUS_FILTERS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+                {/* 手机上 Columns / CSV / Broadcast 收进「⋯」（手机版规则：次要按钮）；浅色页，⋯ 用深色字和边。
+                    4③：当天发过群发 ⇒ ⋯ 上也标条数。 */}
+                <PhoneMore
+                  label="More actions"
+                  className="[&_[data-phone-more]]:border-[#d0e0d4] [&_[data-phone-more]]:bg-paper [&_[data-phone-more]]:text-[#1a3a2a]"
+                  badge={
+                    !noBroadcast && broadcasts.length ? (
+                      <BroadcastCountDot count={broadcasts.length} />
+                    ) : undefined
+                  }
+                >
+                  <ColumnPicker
+                    columns={
+                      sync
+                        ? SYSTEM_COLUMNS
+                        : SYSTEM_COLUMNS.filter((c) => c.key !== "order_status")
+                    }
+                    prefs={vis}
+                    headers={headers}
+                    note="Hidden columns and uploaded-file columns are saved in this browser only. Column order (drag the headers) is saved to your account."
+                    onChange={updateVis}
+                    onReset={() => updateVis({ hide: [], file: [] })}
+                    buttonClassName={BTN}
+                    menuTop={28}
+                  />
+                  {/* 4⑤ A：Download CSV ⇒「⬇ CSV」。 */}
+                  <a
+                    href={date ? buildTourExportUrl(date) : undefined}
+                    title="Download CSV: everything for this date — every column of the uploaded manifest, then the status columns"
                     className={cn(
-                      "cursor-pointer rounded-[5px] px-0.5 whitespace-nowrap",
-                      filter &&
-                        statusFilter === filter &&
-                        "bg-[#d4e8d8] font-semibold",
+                      BTN,
+                      "border-[#378ADD] text-[#185fa5] hover:border-[#378ADD] hover:bg-[#eaf3fc]",
                     )}
                   >
-                    <b className={cn("font-extrabold tabular-nums", color)}>
-                      {value ?? "—"}
-                    </b>{" "}
-                    {label}
-                  </button>
-                </Fragment>
-              ))}
-              {sync ? (
-                <span
-                  className="whitespace-nowrap text-[#5b6470]"
-                  title="Grey rows: orders from the Main manifest with nothing sent yet"
-                >
-                  · <b className="tabular-nums">{data ? unsentCount : "—"}</b>{" "}
-                  to notify
-                </span>
-              ) : null}
-              <span
-                className="whitespace-nowrap"
-                title="Replied (non-pending) / successfully sent"
-              >
-                ·{" "}
-                <b className="tabular-nums">
-                  {stats
-                    ? stats.responseRate === null
-                      ? "—"
-                      : `${stats.responseRate}%`
-                    : "—"}
-                </b>{" "}
-                replied
-              </span>
-              {stats?.lunch.length ? lunchInfo.button : null}
-              {stats?.lunch.length && lunchInfo.open ? (
-                <div
-                  data-phone-lunch
-                  className="flex basis-full flex-wrap gap-1"
-                >
-                  {stats.lunch.map((g) => (
-                    <span
-                      key={g.label}
-                      className="rounded-[7px] border border-[#d0e0d4] bg-white/90 px-2 py-0.5 text-[11.5px] font-semibold whitespace-nowrap"
+                    ⬇ CSV
+                  </a>
+                  {/* Annie 2026-11-17「把upload隐藏吧，现在不需要了」+ 题 7「所有人都隐藏」：键不出，弹窗和代码留着，以后改 SHOW_UPLOAD 就能放回。 */}
+                  {SHOW_UPLOAD ? (
+                    <button
+                      type="button"
+                      onClick={() => setUploadOpen(true)}
+                      disabled={!date || !tourTypes.length}
+                      title="Add orders that were not sent from this system"
+                      className="inline-flex cursor-pointer items-center gap-[5px] rounded-[7px] border-none bg-[#378ADD] px-[9px] py-[3px] font-[inherit] text-[11.5px] font-semibold text-white shadow-[0_1px_4px_rgba(26,58,42,0.07)] hover:bg-[#2b74c0] disabled:opacity-60"
                     >
-                      <b className="text-[10.5px] text-[#2f5e46] uppercase">
-                        {g.label}
-                      </b>{" "}
-                      🦃 {g.turkey}&nbsp; 🥗 {g.veggie}
-                      {g.hasBeef ? <>&nbsp; 🥩 {g.beef}</> : null}
-                    </span>
-                  ))}
-                </div>
-              ) : null}
-            </div>
-            <section
-              aria-label="Summary"
-              // 手机上 7 格排一行（午餐那块自己一行）；G180 多一张 To notify 卡时 8 格一行。
-              // 置顶 115 题 8 A：手机上换成上面那行小字，这里收起。
-              className={cn(
-                "mb-4 flex flex-wrap items-stretch gap-2.5 max-sm:mb-2.5 max-sm:grid max-sm:hidden max-sm:gap-1",
-                sync ? "max-sm:grid-cols-8" : "max-sm:grid-cols-7",
-              )}
-            >
-              <StatCard
-                label="Total"
-                value={stats?.total}
-                title="Show all"
-                active={false}
-                onClick={() => setStatusFilter("")}
-              />
-              <StatCard
-                label="YES"
-                value={stats?.yes}
-                valueClass="text-[#1e7a45]"
-                title="Filter YES"
-                active={statusFilter === "yes"}
-                onClick={() => setStatusFilter("yes")}
-              />
-              <StatCard
-                label="Modify"
-                value={stats?.modify}
-                valueClass="text-[#c97a00]"
-                title="Filter Modify"
-                active={statusFilter === "modify_req"}
-                onClick={() => setStatusFilter("modify_req")}
-              />
-              <StatCard
-                label="Modified"
-                value={stats?.modified}
-                valueClass="text-[#4c3da8]"
-                title="Filter Modified"
-                active={statusFilter === "modified"}
-                onClick={() => setStatusFilter("modified")}
-              />
-              <StatCard
-                label="Pending"
-                value={stats?.pending}
-                valueClass="text-[#185FA5]"
-                title="Filter Pending"
-                active={statusFilter === "pending"}
-                onClick={() => setStatusFilter("pending")}
-              />
-              <StatCard
-                label="Cancel"
-                value={stats?.cancel}
-                valueClass="text-[#c94040]"
-                title="Filter Cancel"
-                active={statusFilter === "cancel"}
-                onClick={() => setStatusFilter("cancel")}
-              />
-              {sync ? (
-                <StatCard
-                  label="To notify"
-                  value={data ? unsentCount : undefined}
-                  title="Grey rows: orders from the Main manifest with nothing sent yet"
-                  grey
-                />
-              ) : null}
-              <StatCard
-                label="Response Rate"
-                title="Replied (non-pending) / successfully sent"
-                value={
-                  stats
-                    ? stats.responseRate === null
-                      ? "—"
-                      : `${stats.responseRate}%`
-                    : undefined
-                }
-              />
-              {stats?.lunch.length ? (
-                <div className="flex flex-wrap gap-2 max-sm:col-span-full max-sm:gap-1">
-                  {stats.lunch.map((g) => (
-                    <div
-                      key={g.label}
-                      data-lunch={g.label}
-                      className="flex flex-col justify-center rounded-[12px] border border-[#d0e0d4] bg-white/90 px-4 py-2.5 shadow-[0_2px_8px_rgba(26,58,42,0.07)]"
-                    >
-                      <div className="mb-1 text-[11px] font-bold tracking-[.04em] text-[#2f5e46] uppercase">
-                        {g.label}
-                      </div>
-                      <div className="flex gap-2.5 text-[13px] font-semibold whitespace-nowrap">
-                        {/* 同旧页面：数字之间空两格，不用中点。 */}
-                        🦃 {g.turkey}&nbsp; 🥗 {g.veggie}
-                        {g.hasBeef ? <>&nbsp; 🥩 {g.beef}</> : null}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : null}
-            </section>
-
-            <div className="mb-3.5 flex flex-wrap items-center gap-2.5 max-sm:mb-2 max-sm:flex-nowrap max-sm:gap-1.5">
-              <span className="text-[12px] whitespace-nowrap text-[#1a1a1a] max-sm:hidden">
-                {data ? `${filtered.length} records` : "— records"}
-              </span>
-              <input
-                type="search"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search order #, name, phone…"
-                aria-label="Search"
-                className="w-[220px] rounded-lg border border-[#d0e0d4] bg-white/90 px-3 py-1.5 font-[inherit] text-[13px] shadow-[0_1px_4px_rgba(26,58,42,0.06)] outline-none focus:border-[#2f5e46] max-sm:order-first max-sm:w-auto max-sm:min-w-0 max-sm:flex-1 [&::-webkit-search-cancel-button]:appearance-none"
-              />
-              <select
-                aria-label="Status"
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="cursor-pointer rounded-lg border border-[#d0e0d4] bg-white/90 px-2.5 py-1.5 font-[inherit] text-[13px] shadow-[0_1px_4px_rgba(26,58,42,0.06)]"
-              >
-                {STATUS_FILTERS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-              {/* 手机上 Columns / Download CSV / Upload 收进「⋯」（手机版规则：次要按钮）；浅色页，⋯ 用深色字和边。 */}
-              <PhoneMore
-                label="More actions"
-                className="[&_[data-phone-more]]:border-[#d0e0d4] [&_[data-phone-more]]:bg-paper [&_[data-phone-more]]:text-[#1a3a2a]"
-              >
-                <ColumnPicker
-                  columns={
-                    sync
-                      ? SYSTEM_COLUMNS
-                      : SYSTEM_COLUMNS.filter((c) => c.key !== "order_status")
-                  }
-                  prefs={vis}
-                  headers={headers}
-                  note="Hidden columns and uploaded-file columns are saved in this browser only. Column order (drag the headers) is saved to your account."
-                  onChange={updateVis}
-                  onReset={() => updateVis({ hide: [], file: [] })}
-                  buttonClassName={BTN}
-                  menuTop={34}
-                />
-                <a
-                  href={date ? buildTourExportUrl(date) : undefined}
-                  title="Everything for this date: every column of the uploaded manifest, then the status columns"
-                  className={cn(
-                    BTN,
-                    "border-[#378ADD] text-[#185fa5] hover:border-[#378ADD] hover:bg-[#eaf3fc]",
+                      ⬆ Upload
+                    </button>
+                  ) : null}
+                  {noBroadcast ? null : (
+                    <BroadcastButton
+                      phone
+                      items={broadcasts}
+                      onOpen={() => setBroadcastOpen(true)}
+                      disabled={!data}
+                      className="self-start sm:hidden"
+                    />
                   )}
-                >
-                  ⬇ Download CSV
-                </a>
+                </PhoneMore>
                 <button
                   type="button"
-                  onClick={() => setUploadOpen(true)}
-                  disabled={!date || !tourTypes.length}
-                  title="Add orders that were not sent from this system"
-                  className="inline-flex cursor-pointer items-center gap-[5px] rounded-lg border-none bg-[#378ADD] px-[13px] py-[5px] font-[inherit] text-[12px] font-semibold text-white shadow-[0_1px_4px_rgba(26,58,42,0.07)] hover:bg-[#2b74c0] disabled:opacity-60"
+                  onClick={() => date && void load(date, false)}
+                  disabled={!date || state.kind === "loading"}
+                  className={GREEN_BTN}
                 >
-                  ⬆ Upload
+                  ↻ Refresh
                 </button>
-                {noBroadcast ? null : (
-                  <button
-                    type="button"
-                    data-phone-broadcast
-                    onClick={() => setBroadcastOpen(true)}
-                    disabled={!data}
-                    className="flex cursor-pointer items-center gap-[5px] rounded-[7px] border-none bg-[linear-gradient(135deg,#ffce21,#ee8e00)] px-3.5 py-[5px] text-[12px] font-bold text-[#1a1a1a] disabled:cursor-not-allowed disabled:opacity-60 sm:hidden"
+                {/* 4⑤ A：灰色图例进工具行，全句停上去看。 */}
+                {sync ? (
+                  <span
+                    data-unsent-note
+                    title={UNSENT_NOTE}
+                    className="inline-flex items-center gap-1.5 text-[12px] whitespace-nowrap text-[#1a1a1a] max-sm:order-last max-sm:basis-full"
                   >
-                    📣 Broadcast
-                  </button>
+                    <span
+                      aria-hidden
+                      className="inline-block h-3 w-3 shrink-0 rounded-[3px] border border-[#c7cad1]"
+                      style={{ background: UNSENT_ROW_BG }}
+                    />
+                    Grey = not sent yet
+                  </span>
+                ) : null}
+                {/* 4③ A：键上标当天已发条数（0 不标），点小数字在键下展开当天列表；点键本身照旧开发送窗。 */}
+                {noBroadcast ? null : (
+                  <BroadcastButton
+                    items={broadcasts}
+                    onOpen={() => setBroadcastOpen(true)}
+                    disabled={!data}
+                    className="ml-auto max-sm:hidden"
+                  />
                 )}
-              </PhoneMore>
-              <button
-                type="button"
-                onClick={() => date && void load(date, false)}
-                disabled={!date || state.kind === "loading"}
-                className={GREEN_BTN}
-              >
-                ↻ Refresh
-              </button>
-              {noBroadcast ? null : (
-                <button
-                  type="button"
-                  onClick={() => setBroadcastOpen(true)}
-                  disabled={!data}
-                  className="ml-auto flex cursor-pointer items-center gap-[5px] rounded-[7px] border-none bg-[linear-gradient(135deg,#ffce21,#ee8e00)] px-3.5 py-[5px] text-[12px] font-bold text-[#1a1a1a] disabled:cursor-not-allowed disabled:opacity-60 max-sm:hidden"
-                >
-                  📣 Broadcast
-                </button>
-              )}
+              </div>
             </div>
-
-            {broadcasts.length ? <BroadcastPanel items={broadcasts} /> : null}
-
-            {sync ? (
-              <p
-                data-unsent-note
-                className="mb-2 flex items-center gap-1.5 text-[12.5px] text-[#1a1a1a]"
-              >
-                <span
-                  aria-hidden
-                  className="inline-block h-3.5 w-3.5 shrink-0 rounded-[3px] border border-[#c7cad1]"
-                  style={{ background: UNSENT_ROW_BG }}
-                />
-                <PhoneOneLine className="min-w-0 flex-1">
-                  {UNSENT_NOTE}
-                </PhoneOneLine>
-              </p>
-            ) : null}
 
             <section className="overflow-hidden rounded-[14px] border border-[#d0e0d4] bg-white/[.92] shadow-[0_4px_20px_rgba(26,58,42,0.08)]">
               <div className="flex items-center border-b border-[#d0e0d4] bg-[linear-gradient(180deg,#e8f2ea_0%,#ddeae0_100%)] px-[18px] py-[11px]">
@@ -968,7 +914,8 @@ export function TourTrackingView() {
               items={[
                 ...(sync ? [SYNC_HOW_TO] : []),
                 "Pick the tour date with the arrows, the date box, Today or Tomorrow. Click a tour button to see one tour only.",
-                "Click a number box (YES, Modify, Modified, Pending, Cancel) to see only those guests. Click Total to see everyone. The search box finds an order #, name or phone.",
+                // 顶部压缩 4① A：数字卡换成一行数字。
+                "Click a number at the top (YES, Modify, Modified, Pending, Cancel) to see only those guests. Click Total to see everyone. The search box finds an order #, name or phone.",
                 // 「Once you’ve called …」一句照旧页面（后端 `7c03bd3`）；Cancel 那句是 ops 原有的。
                 "To change a guest’s status, pick it in the Status column, then click ✓ to save or ✕ to undo. Cancel also clears the lunch and the MTLV tickets. Once you’ve called the guest and locked in their new date, set the status to Modified — it keeps the order on this page as a record, but takes it off the orange Modify list. It does not change the headcount or lunch count for any tour: those only change once the date is actually updated in Rezdy.",
                 "Click a lunch number (🦃 🥗 🥩) to edit the lunch selection. Only YES guests on tours with lunch have one.",
@@ -977,10 +924,10 @@ export function TourTrackingView() {
                 "A Phone AI message means a guest called and did not get the confirmation, or said our email or phone is wrong. The message says what the AI promised the guest, usually that it will be sent within 15 minutes, so do it right away: check the details with the guest if they gave a new email or phone, resend the confirmation, then click Take action. The same message also goes to reservations@.",
                 "☰ Columns chooses what shows on the page. Untick a page column to hide it. Under From the uploaded file, tick any column of the manifest you uploaded to show it. Reset to default brings back the normal page. This choice is kept in this browser only.",
                 "Drag a column header to move it. Drag its right edge to make it wider. The order is saved to your account and is the same as on the old admin page.",
-                "⬇ Download CSV saves everything for this date, whatever columns are showing: every column of the uploaded manifest, then the status columns. Older orders have no manifest columns, so those cells are blank.",
-                "⬆ Upload adds orders that were not sent from this system. Choose the tour, then the CSV or .xlsx file. Orders already in the list are skipped unless you tick Insert anyway. Nothing is sent to guests.",
+                // 4⑤ A 改名「⬇ CSV」；⬆ Upload 藏了（题 7 A），那句删掉。
+                "⬇ CSV saves everything for this date, whatever columns are showing: every column of the uploaded manifest, then the status columns. Older orders have no manifest columns, so those cells are blank.",
                 // 照旧页面（`a5b3bfd`）这一条替换了原来 ops 自己写的「📣 Broadcast sends … Untick anyone」那句。
-                `Broadcast sends one message to many guests at once. By tour picks guests from the tours you check. By pickup location ignores tour and groups today’s guests by where they get picked up — pick one or more locations, review the names, then send. Guests whose pickup spot is not in Settings → Pickup Locations show up under “Not found” so you can still message them; add an alias there later to merge the spelling.${sync ? ` ${SYNC_BROADCAST_HOW_TO}` : ""} Each guest in the list shows their pickup location and time when you pick by tour, and their tour and pickup time when you pick by pickup location.`,
+                `Broadcast sends one message to many guests at once. By tour picks guests from the tours you check. By pickup location ignores tour and groups today’s guests by where they get picked up — pick one or more locations, review the names, then send. Guests whose pickup spot is not in Settings → Pickup Locations show up under “Not found” so you can still message them; add an alias there later to merge the spelling.${sync ? ` ${SYNC_BROADCAST_HOW_TO}` : ""} Each guest in the list shows their pickup location and time when you pick by tour, and their tour and pickup time when you pick by pickup location. ${BROADCAST_COUNT_HOW_TO}`,
               ]}
               warning="If the list does not load, click ↻ Refresh or reload the page. If it still fails, take a screenshot and tell Annie."
             />
@@ -1061,15 +1008,15 @@ const TOPBAR_BTN =
 
 /** 旧页面 .btn：白底绿字。 */
 const BTN =
-  "inline-flex cursor-pointer items-center gap-[5px] rounded-lg border border-[#d0e0d4] bg-paper px-[13px] py-[5px] font-[inherit] text-[12px] font-semibold text-[#2f5e46] no-underline shadow-[0_1px_4px_rgba(26,58,42,0.07)] hover:border-[#4f7f62] hover:bg-[#d4e8d8] disabled:opacity-60";
+  "inline-flex cursor-pointer items-center gap-[5px] rounded-[7px] border border-[#d0e0d4] bg-paper px-[9px] py-[3px] font-[inherit] text-[11.5px] font-semibold text-[#2f5e46] no-underline shadow-[0_1px_4px_rgba(26,58,42,0.07)] hover:border-[#4f7f62] hover:bg-[#d4e8d8] disabled:opacity-60";
 
 /** 旧页面 .btn.btn-green：深绿渐变白字。 */
 const GREEN_BTN =
-  "inline-flex cursor-pointer items-center gap-[5px] rounded-lg border-none bg-[linear-gradient(135deg,#2f5e46,#1a3a2a)] px-[13px] py-[5px] font-[inherit] text-[12px] font-semibold text-white shadow-[0_4px_12px_rgba(47,94,70,0.25)] hover:bg-[linear-gradient(135deg,#286645,#162e20)] disabled:opacity-60";
+  "inline-flex cursor-pointer items-center gap-[5px] rounded-[7px] border-none bg-[linear-gradient(135deg,#2f5e46,#1a3a2a)] px-[9px] py-[3px] font-[inherit] text-[11.5px] font-semibold text-white shadow-[0_4px_12px_rgba(47,94,70,0.25)] hover:bg-[linear-gradient(135deg,#286645,#162e20)] disabled:opacity-60";
 
 /** 旧页面 .btn-nav：30px 白色方块的 ‹ ›。 */
 const NAV_BTN =
-  "flex size-[30px] cursor-pointer items-center justify-center rounded-lg border border-[#d0e0d4] bg-paper text-[15px] text-[#2f5e46] shadow-[0_1px_4px_rgba(26,58,42,0.07)] hover:bg-[#d4e8d8] disabled:opacity-60";
+  "flex size-[26px] cursor-pointer items-center justify-center rounded-[7px] border border-[#d0e0d4] bg-paper text-[14px] text-[#2f5e46] shadow-[0_1px_4px_rgba(26,58,42,0.07)] hover:bg-[#d4e8d8] disabled:opacity-60";
 
 function TourPillButton({
   active,
@@ -1091,7 +1038,7 @@ function TourPillButton({
       onClick={onClick}
       title="Orders that replied / all orders"
       className={cn(
-        "cursor-pointer rounded-full border px-[13px] py-[5px] text-[12px] font-semibold whitespace-nowrap max-sm:shrink-0",
+        "cursor-pointer rounded-[5px] border px-[9px] py-[2px] text-[11.5px] font-semibold whitespace-nowrap max-sm:shrink-0",
         active
           ? "border-transparent bg-[linear-gradient(135deg,#2f5e46,#1a3a2a)] text-white shadow-[0_3px_10px_rgba(47,94,70,0.25)]"
           : "border-[#d0e0d4] bg-white/85 text-[#2f5e46] shadow-[0_1px_3px_rgba(26,58,42,0.06)] hover:border-[#4f7f62] hover:bg-[#d4e8d8]",
@@ -1107,116 +1054,5 @@ function TourPillButton({
         {replied}/{total}
       </span>
     </button>
-  );
-}
-
-function StatCard({
-  label,
-  value,
-  valueClass,
-  title,
-  active,
-  onClick,
-  grey,
-}: {
-  label: string;
-  value: number | string | undefined;
-  valueClass?: string;
-  title?: string;
-  active?: boolean;
-  onClick?: () => void;
-  /** G180 To notify 卡：灰底（同灰行）。 */
-  grey?: boolean;
-}) {
-  const body = (
-    <>
-      <div
-        className={cn(
-          "text-[22px] leading-[1.2] font-extrabold text-[#1f2d25] max-sm:text-[16px]",
-          valueClass,
-        )}
-      >
-        {value ?? "—"}
-      </div>
-      <div className="mt-0.5 text-[11px] font-medium text-[#1a1a1a] max-sm:text-[9px] max-sm:leading-tight">
-        {label}
-      </div>
-    </>
-  );
-  const cls = cn(
-    "flex min-w-[80px] cursor-pointer flex-col justify-center rounded-[12px] border px-5 py-2.5 text-center shadow-[0_2px_8px_rgba(26,58,42,0.07)] transition-[box-shadow,border-color] duration-150 hover:border-[#4f7f62] hover:shadow-[0_4px_14px_rgba(26,58,42,0.12)] max-sm:min-w-0 max-sm:rounded-[9px] max-sm:px-0.5 max-sm:py-1",
-    grey
-      ? "cursor-default border-[#c7cad1] bg-[#e1e4e8] hover:border-[#c7cad1]"
-      : active
-        ? "border-[1.5px] border-[#2f5e46] bg-[#d4e8d8]"
-        : "border-[#d0e0d4] bg-white/90",
-  );
-  return onClick ? (
-    <button
-      type="button"
-      aria-pressed={!!active}
-      title={title ?? `Show ${label}`}
-      onClick={onClick}
-      className={cls}
-    >
-      {body}
-    </button>
-  ) : (
-    <div title={title} className={cls}>
-      {body}
-    </div>
-  );
-}
-
-/** 当天发过的群发（同旧页面 #broadcast-panel：奶油色框，点一条展开正文）。 */
-function BroadcastPanel({ items }: { items: BroadcastLogEntry[] }) {
-  // 置顶 115 题 8 A：手机上默认收成标题一行，点标题展开；电脑上一直展开。
-  const [open, setOpen] = useState(false);
-  return (
-    <section
-      data-broadcast-panel
-      className="mb-2.5 overflow-hidden rounded-lg border border-[#f0d080] bg-[#fffbea]"
-    >
-      <h2 className="bg-[#fff3cd] px-3 py-1.5 text-[11px] font-bold text-[#7a4f00]">
-        <span className="max-sm:hidden">
-          📣 Broadcasts sent for this date ({items.length})
-        </span>
-        <button
-          type="button"
-          data-phone-keep
-          data-broadcast-panel-toggle
-          aria-expanded={open}
-          onClick={() => setOpen((v) => !v)}
-          className="cursor-pointer text-left sm:hidden"
-        >
-          <span aria-hidden className="mr-1.5">
-            {open ? "▾" : "▸"}
-          </span>
-          📣 Broadcasts sent for this date ({items.length})
-        </button>
-      </h2>
-      {items.map((b) => (
-        <details
-          key={b.id}
-          className={cn(
-            "group border-t border-[#f0dfae]",
-            !open && "max-sm:hidden",
-          )}
-        >
-          <summary className="flex cursor-pointer list-none flex-wrap items-baseline gap-2 px-3 py-[7px] text-[10px] text-[#8a6d1f] [&::-webkit-details-marker]:hidden">
-            <span className="text-[9px] group-open:hidden">▶</span>
-            <span className="hidden text-[9px] group-open:inline">▼</span>
-            <span className="text-[11px] font-bold text-[#7a4f00]">
-              {b.template_name || "Custom message"}
-            </span>
-            <span>{b.created_at}</span>
-            <span>· {b.sent_by}</span>
-          </summary>
-          <p className="px-3 pb-2 text-[11px] leading-[1.5] whitespace-pre-wrap text-[#4a3a1a]">
-            {b.message_body}
-          </p>
-        </details>
-      ))}
-    </section>
   );
 }

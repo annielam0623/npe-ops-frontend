@@ -34,7 +34,7 @@ export const SYNC_HELP: Record<TrackingSyncMode, string> = {
 };
 
 const SELECT =
-  "cursor-pointer rounded-lg border border-[#d0e0d4] bg-paper px-2 py-[4px] font-[inherit] text-[12.5px] font-semibold text-[#1f2d25] outline-none focus:border-[#2f5e46] disabled:opacity-60";
+  "cursor-pointer rounded-[7px] border border-[#d0e0d4] bg-paper px-1.5 py-[2px] font-[inherit] text-[12px] font-semibold text-[#1f2d25] outline-none focus:border-[#2f5e46] disabled:opacity-60";
 
 /** api：哪个开关（默认 Tour Tracking 的；Ticket Tracking 传 TICKETS_SYNC_API，G281 题 1 A 同一个样子）。 */
 export function useTrackingSyncSwitch(
@@ -48,6 +48,7 @@ export function useTrackingSyncSwitch(
   const [mode, setMode] = useState<TrackingSyncMode | null>(null);
   const [asking, setAsking] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; text: string } | null>(
     null,
   );
@@ -110,18 +111,38 @@ export function useTrackingSyncSwitch(
       ))}
     </select>
   );
+  // Tracking 顶部压缩 4④ A（Annie 2026-11-20「动手」）：不要虚线框，只留「Main manifest sync [下拉] (i)」，
+  // 原来框里那句和下面那一行说明都收进 (i)（停上去看、点一下也能展开）。
+  const helpText = `${SYNC_HELP[mode]} Only Super Admins see this setting.`;
   const inner = (
     <span
       data-sync-switch
-      className="inline-flex flex-wrap items-center gap-2 rounded-[10px] border border-dashed sm:ml-auto border-[#b9c9bd] bg-paper px-2.5 py-1"
+      className="relative inline-flex flex-wrap items-center gap-1.5 sm:ml-auto"
     >
-      <span className="text-[12.5px] font-bold text-[#2f5e46]">
+      <span className="text-[11.5px] font-bold whitespace-nowrap text-[#2f5e46]">
         Main manifest sync
       </span>
       {select}
-      <span className="text-[11.5px] text-[#6b7a70]">
-        Only Super Admins see this setting.
-      </span>
+      <button
+        type="button"
+        data-sync-help
+        data-phone-keep
+        aria-label="About Main manifest sync"
+        aria-expanded={helpOpen}
+        title={helpText}
+        onClick={() => setHelpOpen((v) => !v)}
+        className="inline-grid size-4 shrink-0 cursor-pointer place-items-center rounded-full border border-[#9aa6a0] font-serif text-[10px] leading-none font-bold text-[#5b6470] italic"
+      >
+        i
+      </button>
+      {helpOpen ? (
+        <span
+          data-sync-help-text
+          className="absolute top-[calc(100%+4px)] right-0 z-30 w-[280px] max-w-[calc(100vw-24px)] rounded-lg border border-[#d0e0d4] bg-paper px-2.5 py-2 text-[12px] font-normal text-[#1f2d25] shadow-[0_6px_18px_rgba(26,58,42,0.15)]"
+        >
+          {helpText}
+        </span>
+      ) : null}
       {result ? (
         <span
           role={result.ok ? "status" : "alert"}
@@ -150,12 +171,6 @@ export function useTrackingSyncSwitch(
     ),
     below: (
       <>
-        <p
-          data-sync-help
-          className="-mt-2 mb-3 text-right text-[12px] text-[#55645a] max-sm:hidden"
-        >
-          {SYNC_HELP[mode]}
-        </p>
         {asking ? (
           <div
             data-sync-confirm
