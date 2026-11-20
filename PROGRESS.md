@@ -9,6 +9,10 @@
 ## 2026-11-20（周五）前端主窗口 `npe-ops-frontend-5e`[614588]（公司电脑；只分工和汇报，不写代码；14:30 下班）
 - 开工：origin/main 9ab99466（主目录 detached 改 PROGRESS）。资源：空闲内存 38.2 / 61.8 GB，node 0、chrome 71。现在没有工作窗口；后端在线 `npe-confirmation-service-bb`[282016]。
 - 开工必做第 4 条：已把 11-13～11-19 Annie 提过没做完的列给 Annie（08 清单 3、8、10、12–17、21、产品名红字悬停「Antelope」、全站 Save 蓝；等后端 2/G361、24、25、26、G363；没人接 27–29；另 18、20 是 11-12 提的、刚满 7 天），等她选今天做哪几件。待验：My schedule、11-19 上 main 各件。
+- ✅ Annie（原话）「1、2今天做完。 apply算，但是pull from rezdy是我指定的颜色，所以以后我指定的颜色不用再问了」⇒ 今天必须做完：
+  - 第 1 件 全站 Save 蓝（task/blue-save-sweep bea69a10）：日期筛选「Apply」算提交键 ⇒ 改蓝；Annie 指定过颜色的键（Refresh from Rezdy 琥珀黄等）一律保留、以后不再问（已记 memory）。📌 「Pull from Discord」（Dispatch › Imports，imports-view.tsx:204 黑 #1a1a1a）她答的是 Rezdy，已再问一次。下一步：工作窗口出改前 / 改后 preview → Annie「动手」→ 改、检查、合 main。
+  - 第 2 件 产品名红字悬停：选 A ⇒ 悬停改两行「This order: <实际产品名>」/「Most of this section: <大多数>」。已发后端 bb [282016] 要 rows[] 顶层字段（暂名 product_actual）。前端照合同 mock 写，等后端 PASS + 上 main 再合。
+  - 已请 Annie 开 2 个工作窗口。
 
 ## 2026-11-19 晚 收工交接：前端主窗口 `npe-ops-frontend-95`[793b72]（Annie「你做完直接push上线，然后收工」「我睡觉去了，不用你汇报给我了，就按照我们谈好的做」）
 - ✅ **Order details 标题蓝 + Updated 标签上 main 3d8c4d32**（4a；功能 94018ec4，task/order-detail-blue-headers）：卡片标题 #1d4ed8（night #93c5fd），同页 Raw Rezdy / Refresh 结果 / Send 结果 / Order lifecycle 卡（含 Changes、Chat history 小标题）一起变；How to use 不动；Order lookup 搜索结果不动（共用的 lifecycle 卡跟着变）。最近一次 Rezdy 同步（推送 + Refresh）改过的值后加琥珀「Updated」小标签（#f59e0b 底 #1a1a1a 字，同 SOON），值黑字，悬停「Updated by … <时间> · was <旧值>」；只用 rezdy_changes（lib/order-lifecycle.ts latestRezdyUpdates）。⚠️ 标签跟 Order lifecycle 共用 order_lifecycle 开关，开关没给员工开时员工看不到；partner 看不到。How to use 加（开关开时出现）「An Updated tag marks a value changed by the latest Rezdy sync; hover to see when and the old value.」。检查：tsc / eslint 0、build；os 170（新 5 项）/ orders 120 / mt 329 / tt 213（首跑 212 偶发，重跑全过）。📌 请 Annie 线上验：Order details 标题深蓝；对一张 ZZ Test 单按 Refresh from Rezdy 看改过的项出 Updated。
