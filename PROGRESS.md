@@ -19,6 +19,20 @@
 - 后端 bb：product_actual 上后端 main（bab9a946 / 16f49062 / 26678e28，code-reviewer PASS），已转 2c。
 - bb 交第 1 件 preview https://claude.ai/artifact/SvbDoNGWTZeiqjyY9tHRUJ （origin/task/blue-save-sweep-bb f6733250，只改 notes，worktree C:\Code\ops-wt-bb-blue）：改蓝 16 组 + 5 处蓝色值统一 #3b82f6；TCQ 三个 + Add 改灰绿；保留 Annie 指定 / 非提交键。📌 待 Annie：1a（Excel）、S1 发送页按类型配色的键（A 保留 推荐 / B 全改 #3b82f6 / C 只改深蓝 #185FA5）+ 动手。顺带发现 task-board/new-task-dialog.tsx 按键有中文（窗口自己发现，没派）。
 - ✅ **第 2 件 产品名红字悬停两行上 ops main 5db8a4bc**（2c；功能 28145491，后端 bb PASS；悬停「This order: <product_actual>」/「Most of this section: <product_majority>」，product_actual 缺时回退旧一行；How to use 不改；tsc / eslint 0 错、build、man 532 / mf 356 / nav 40）。📌 请 Annie 线上验 11-26 Main manifest › Bus Tours › Antelope 的 PYZF0H 悬停。2c 待命，worktree C:\Code\ops-wt-2c-red 留着。
+- ✅ **Annie 填回 Excel**（11:54，在 2c 窗口说「填完了」；表 C:\Users\annzh\Downloads\Annie_待答题_2026-11-20.xlsx）。逐题原文（你的选择 | 备注）：
+  - 1a「apply键用蓝色，pull from rezdy 用我选的颜色」| 动手 ⇒ Pull from Discord 保持现色（= A）；第 1 件 Save 蓝动手。S1（发送键配色）没在表里，按 A 不动。
+  - 3「B」| 动手 ⇒ 员工备注记在我们自己系统（DOR Updates / 订单时间线），要后端。
+  - 4①「A」4②「A」4③「A」4④「A」4⑤「A」4⑥「B」| 都 动手 ⇒ Tour Tracking 顶部照 v5 推荐，门票页一起改。
+  - 5-1「跟ticket一样做两个视觉的吧，一个是按照下单时间，一个是按照接客时间」| 动手；5-2「A」| 动手 ⇒ Main manifest Bus / Admin fee 加两种看法（By order time / By pickup time），Tickets 发过的沉底保留。
+  - 6「将来要做个whitelabel给Gray Line」| 动手 ⇒ 记为将来 whitelabel，现在先存着。
+  - 7a「你可以先放这些内容，把它设置成可以edit就好了，内容可以以后再改」| 动手；7b「A」7c「A」7d「A」7e「A」| 动手 ⇒ 6 句先放进去（可编辑）；号码：电话 702-948-4190、短信 / WhatsApp 统一 725-777-1698（后端）；快捷回复管理搬进 Content Studio、旧网址跳、拖拽暂存按 Save order、Action Log 放标签下。
+  - 8-Q7–Q11 都「A」| 动手 ⇒ Farm out 列表页 + 单家页照第 2 版推荐。
+  - 9-1「A」9-2「A」| 动手 ⇒ 全部变量标出、发送页预览一起改（后端 guest.py）。
+  - 10「A」| 动手 ⇒ 停用（OFF）就够，不加删除 ⇒ 结案。
+  - 11-Q3a「B」| 动手 ⇒ 挡司机 / 导游通知 + 客人短信（relay 各轮、Tour bus pick up），前后端一起。
+  - 11-Q3d「其他的必须满足要么导游要么driver&guide」| 动手。
+  - 11-V6「导游标签其实容易混的就是driver和driver guide，所以我把DG放进driver那边，如果那天他开车并键guide的话，导游那边就选driver&Guide不变了」| 动手。
+  - 12「private tour晚一点在设计」| （空）⇒ 暂缓。
 
 ## 2026-11-19 晚 收工交接：前端主窗口 `npe-ops-frontend-95`[793b72]（Annie「你做完直接push上线，然后收工」「我睡觉去了，不用你汇报给我了，就按照我们谈好的做」）
 - ✅ **Order details 标题蓝 + Updated 标签上 main 3d8c4d32**（4a；功能 94018ec4，task/order-detail-blue-headers）：卡片标题 #1d4ed8（night #93c5fd），同页 Raw Rezdy / Refresh 结果 / Send 结果 / Order lifecycle 卡（含 Changes、Chat history 小标题）一起变；How to use 不动；Order lookup 搜索结果不动（共用的 lifecycle 卡跟着变）。最近一次 Rezdy 同步（推送 + Refresh）改过的值后加琥珀「Updated」小标签（#f59e0b 底 #1a1a1a 字，同 SOON），值黑字，悬停「Updated by … <时间> · was <旧值>」；只用 rezdy_changes（lib/order-lifecycle.ts latestRezdyUpdates）。⚠️ 标签跟 Order lifecycle 共用 order_lifecycle 开关，开关没给员工开时员工看不到；partner 看不到。How to use 加（开关开时出现）「An Updated tag marks a value changed by the latest Rezdy sync; hover to see when and the old value.」。检查：tsc / eslint 0、build；os 170（新 5 项）/ orders 120 / mt 329 / tt 213（首跑 212 偶发，重跑全过）。📌 请 Annie 线上验：Order details 标题深蓝；对一张 ZZ Test 单按 Refresh from Rezdy 看改过的项出 Updated。
