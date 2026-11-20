@@ -4,7 +4,12 @@
 
 > 6d 交接（下面「2026-10-27 交接：前端主窗口 6d」那节）的后端需求已于 10/27 晚由 ad 转给家里后端主窗口 17。
 
-> **下一个主窗口：先读下面「2026-11-19 收工交接：08」和当天记录，开工照 CLAUDE.md 开工必做第 4 条先列「Annie 提过没做完的」问她。**
+> **下一个主窗口：先读下面「2026-11-19 晚 收工交接：95」，再读「2026-11-19 收工交接：08」和当天记录，开工照 CLAUDE.md 开工必做第 4 条先列「Annie 提过没做完的」问她。**
+
+## 2026-11-19 晚 收工交接：前端主窗口 `npe-ops-frontend-95`[793b72]（Annie「你做完直接push上线，然后收工」「我睡觉去了，不用你汇报给我了，就按照我们谈好的做」）
+- ✅ **Order details 标题蓝 + Updated 标签上 main 3d8c4d32**（4a；功能 94018ec4，task/order-detail-blue-headers）：卡片标题 #1d4ed8（night #93c5fd），同页 Raw Rezdy / Refresh 结果 / Send 结果 / Order lifecycle 卡（含 Changes、Chat history 小标题）一起变；How to use 不动；Order lookup 搜索结果不动（共用的 lifecycle 卡跟着变）。最近一次 Rezdy 同步（推送 + Refresh）改过的值后加琥珀「Updated」小标签（#f59e0b 底 #1a1a1a 字，同 SOON），值黑字，悬停「Updated by … <时间> · was <旧值>」；只用 rezdy_changes（lib/order-lifecycle.ts latestRezdyUpdates）。⚠️ 标签跟 Order lifecycle 共用 order_lifecycle 开关，开关没给员工开时员工看不到；partner 看不到。How to use 加（开关开时出现）「An Updated tag marks a value changed by the latest Rezdy sync; hover to see when and the old value.」。检查：tsc / eslint 0、build；os 170（新 5 项）/ orders 120 / mt 329 / tt 213（首跑 212 偶发，重跑全过）。📌 请 Annie 线上验：Order details 标题深蓝；对一张 ZZ Test 单按 Refresh from Rezdy 看改过的项出 Updated。
+- **明天接**：① 全站 Save 蓝排查（task/blue-save-sweep bea69a10，notes/blue-save-sweep.md「4a progress」）→ preview → 两题（日期筛选 Apply、Pull from Discord）原文给 Annie；② 开工必做第 4 条清单 Annie 今晚没选（只第 11 件结案），明天重列问她；③ 📌 等 Annie 验 My schedule（Veronica 账号三处键 + 拖班出 Ask … to swap? 框）。
+- 窗口：4a [70565a] 已关自己的 dev server / Chrome，worktree D:/ops-wt-4a-blue、D:/ops-wt-4a-odb。后端 94 已收工（aab0e32a）。
 
 ## 2026-11-19 晚 家里：前端主窗口 `npe-ops-frontend-95`[793b72]（只分工和汇报，不写代码；Annie 22:00 收工）
 - 开工：main 72d48c43。fc [9f9912] 交接：11-17 晚后没再接活，那晚 6 条分支都已合 main，手上无事，已停手；以 08 的 11-19 收工交接为准。空闲内存 11 / 32 GB。现在没有工作窗口。
