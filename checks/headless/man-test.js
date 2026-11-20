@@ -2103,6 +2103,19 @@ async function redProductChecks() {
   check("产品标红：只红产品名，行底色不变、其他格照旧黑字", await evaluate(`const tr = $box('CHD1001').closest('tr'); return !tr.className.includes('bg-[#fdeceb]') && getComputedStyle(tr.querySelectorAll('td')[$heads().indexOf('Pax') + 2]).color !== 'rgb(163, 45, 45)';`));
   check("产品标红：product_differs = false 的行（CHD1002）不红、没有提示", await evaluate(`const c = ${cell("CHD1002")}; return !!c && !c.hasAttribute('data-product-differs') && !c.title && getComputedStyle(c).color !== 'rgb(163, 45, 45)';`), await evaluate(`return ${cell("CHD1002")}?.outerHTML;`));
   check("产品标红：How to use 写了红色产品名那句", await evaluate("const d = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Manifests')); return !!d && d.textContent.includes('A product name in red is different from most products in its section') && d.textContent.includes('Check the order in Order List before you count meals or tickets.');"));
+  // Annie 2026-11-20 选 A：后端给 product_actual ⇒ 悬停两行「This order / Most of this section」
+  const ACTUAL = "Lower Antelope Canyon & Horseshoe Bend Tour from Las Vegas (Groupon)";
+  await ctl({ productActual: { CHD1001: ACTUAL } });
+  await openPage(BUS);
+  await waitFor(`${cell("CHD1001")}?.title.startsWith('This order:')`, 20000);
+  check("产品标红：有 product_actual ⇒ 悬停两行（This order / Most of this section）", await evaluate(`return ${cell("CHD1001")}.title === ${JSON.stringify(`This order: ${ACTUAL}\nMost of this section: ${MOST}`)};`), await evaluate(`return ${cell("CHD1001")}?.title;`));
+  check("产品标红：有 product_actual 时红字照旧、不红的行仍没有提示", await evaluate(`return getComputedStyle(${cell("CHD1001")}).color === 'rgb(163, 45, 45)' && !${cell("CHD1002")}.title;`));
+  // product_actual 为 null（后端给了键但是空）⇒ 回退一行原文
+  await ctl({ productActual: { CHD1001: null } });
+  await openPage(BUS);
+  await waitFor(`${cell("CHD1001")}?.hasAttribute('data-product-differs')`, 20000);
+  check("产品标红：product_actual = null ⇒ 悬停回退一行原文", await evaluate(`return ${cell("CHD1001")}.title === ${JSON.stringify(`Different from most products in this section: ${MOST}`)};`), await evaluate(`return ${cell("CHD1001")}?.title;`));
+  await ctl({ productActual: null });
   // 旧后端（行上没有这两个键）⇒ 照旧，不报错
   await ctl({ productDiffers: null });
   await openPage(BUS);

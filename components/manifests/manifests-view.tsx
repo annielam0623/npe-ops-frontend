@@ -1752,9 +1752,12 @@ function ManifestTable({
             data-product-differs={
               k === "product" && r.product_differs ? "" : undefined
             }
+            // Annie 2026-11-20 选 A：后端给了这一单实际产品名 ⇒ 悬停两行；没给（旧后端）照旧一行。
             title={
               k === "product" && r.product_differs && r.product_majority
-                ? `Different from most products in this section: ${r.product_majority}`
+                ? r.product_actual
+                  ? `This order: ${r.product_actual}\nMost of this section: ${r.product_majority}`
+                  : `Different from most products in this section: ${r.product_majority}`
                 : undefined
             }
             className={cn(
