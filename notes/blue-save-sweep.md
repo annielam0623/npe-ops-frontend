@@ -21,3 +21,15 @@ Status: started 14:18, only a first grep done. No code changed. Next window: fin
 1. grep by text too (`>Save`, `Submit`, `Send`, `Upload`, `Insert`, `Apply`, `Confirm`) and check each button's class, not only colour constants.
 2. Table: page › where › text, colour (file:line), recommendation; unclear ones in a separate list for Annie.
 3. Preview artifact: before / after per page, disabled look kept.
+
+## 4a progress (2026-11-19 21:50) — still inventory, no code changed, no preview yet
+Verified so far (dark button -> text -> recommendation):
+- ui/buttons.ts:3 PRIMARY_BUTTON_CLASS stone-800: only 2 users — manifests/field-picker.tsx:383 "Apply" (saves picked fields) -> blue; ui/confirm-dialog.tsx:116 (shared confirm OK key, non-danger) -> blue (check each caller's wording).
+- ui/filter-bar.tsx:30 FILTER_PRIMARY_BUTTON_CLASS stone-800 "Apply / Pull" — no direct users found by name yet; check spread usage.
+- hr/legacy-ui.ts:29 HR_BTN_PRIMARY_CLASS #1a1a1a — WARNING: also used as SELECTED TAB state (hr-view.tsx:634/644/657/677 People/Schedule/Record/Payroll tabs, working-record.tsx:272 span toggle). Do NOT just recolour the constant; split into a Save constant. Save users: hr-view.tsx:841 "Save changes" -> blue; profile-dialog.tsx:319 "Save" -> blue; hr-view.tsx:602 "Add person" (opens dialog?) -> check, likely not counted / or blue if creates directly.
+- orders/order-detail-view.tsx:71 OD_BTN_PRIMARY -> :920 "Save" (and :709 same) -> blue.
+- pickup-locations/legacy-ui.tsx:25 BTN_ADD_BASE -> BTN_ADD_CLASS used workspace-settings-view.tsx:551 -> check if adds-to-page (sage) or saves (blue).
+- "Apply" date-range buttons #1a1a1a: broadcasting-log-view.tsx:335, orders-list-view.tsx:342, ui/date-range-presets.tsx:230 — filter Apply, not a save. UNCLEAR -> ask Annie (is a filter "Apply" a submit?).
+- dispatch-imports/imports-view.tsx:204 "Pull from Discord" #1a1a1a — fetch action, UNCLEAR -> ask Annie.
+- Not buttons (selected-state chips / table totals, leave): manifests-view.tsx:2079, ops-summary-view.tsx:165, print-layout/layout-panels.tsx:713, products/forecast-setup.tsx:264/437, products/legacy-ui.ts:55 (bar), sales-report breakdown-table.tsx:91 / breakdown-view.tsx:107, date-range-presets.tsx:169/190, filter-bar.tsx:84.
+Still to do: text grep (Save/Submit/Send/Upload/Insert/Confirm/Create) for non-dark buttons (white / ghost: tickets-send legacy-ui:135, farm-out-button:39, payroll-cards-shared:118, send-log legacy 15/19/39, layout-dialog:47, relay-settings-dialog:50, bug-reports legacy-styles); confirm-dialog callers; then preview artifact.
