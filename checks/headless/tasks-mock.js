@@ -599,8 +599,8 @@ http
         const ref = (o) => ({ kind: "mention", note_id: 9002, order_number: "CHDSN1", product_code: "GCW01", from_user_id: 7, from_display_name: "ZZ Test Annie", to_team_id: null, to_team_name: null, ...o });
         items = [
           { ...base, id: 81, type: "mention", title: "ZZ Test Annie mentioned you on CHDSN1", body: "Bus 3 is full, @ZZ Test Lily please move this order to Bus 4.", link: "/orders/CHDSN1?product=GCW01", ref: ref({ guest_name: "ZZ Test Guest A", tour_date: "2026-11-22", source: "order_details" }) },
-          { ...base, id: 82, type: "mention", title: "ZZ Test Annie mentioned ZZ Test Dispatch on CHDSN1", body: "@ZZ Test Dispatch guest moved to 7:00 AM pickup.", link: "/orders/CHDSN1?product=GCW01", ref: ref({ to_team_id: 31, to_team_name: "ZZ Test Dispatch", guest_name: "ZZ Test Guest A" }) },
-          { ...base, id: 83, type: "mention", title: "ZZ Test Max mentioned you on CHDSN2", body: "ZZ plain mention", link: "/orders/CHDSN2?product=UAC01", ref: ref({ order_number: "CHDSN2" }) },
+          { ...base, id: 82, type: "mention", title: "ZZ Test Annie mentioned ZZ Test Dispatch on CHDSN1", body: "@ZZ Test Dispatch guest moved to 7:00 AM pickup.", link: "/orders/CHDSN1?product=GCW01", ref: ref({ to_team_id: 31, to_team_name: "ZZ Test Dispatch", guest_name: "ZZ Test Guest A", tour_date: null, source: "migrated" }) },
+          { ...base, id: 83, type: "mention", title: "ZZ Test Max mentioned you on CHDSN2", body: "ZZ plain mention", link: "/orders/CHDSN2?product=UAC01", ref: ref({ order_number: "CHDSN2", guest_name: "", tour_date: null }) },
           ...items,
         ];
       }

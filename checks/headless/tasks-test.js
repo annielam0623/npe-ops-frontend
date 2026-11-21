@@ -389,8 +389,8 @@ async function run() {
   check("★ @ 个人：灰字「客人 · Tour date MM/DD/YYYY · from Order details」", mn && mn.detail === "ZZ Test Guest A · Tour date 11/22/2026 · from Order details", JSON.stringify(mn && mn.detail));
   const mt = await evaluate(`const li = ${mli("mentioned ZZ Test Dispatch")}; if (!li) return null; return { chip: li.querySelector('[data-notice-team]')?.textContent, detail: li.querySelector('[data-mention-detail]')?.textContent, title: li.textContent.includes('ZZ Test Annie mentioned ZZ Test Dispatch on CHDSN1') };`);
   check("★ @ team：标题写 team、Mention 旁边 team 小标签", !!mt && mt.title && mt.chip === "ZZ Test Dispatch", JSON.stringify(mt));
-  check("★ @ team：ref 缺 tour_date / source ⇒ 那两段不写，只有客人 + Sent to your team", mt && mt.detail === "ZZ Test Guest A · Sent to your team ZZ Test Dispatch", JSON.stringify(mt && mt.detail));
-  check("★ ref 一段都没有 ⇒ 不出灰字", await evaluate(`const li = ${mli("ZZ plain mention")}; return !!li && !li.querySelector('[data-mention-detail]');`));
+  check("★ @ team：tour_date null ⇒ 那段不写；source migrated 写 from old Notes；末尾 Sent to your team", mt && mt.detail === "ZZ Test Guest A · from old Notes · Sent to your team ZZ Test Dispatch", JSON.stringify(mt && mt.detail));
+  check("★ guest_name \"\" / tour_date null / 没 source ⇒ 不出灰字", await evaluate(`const li = ${mli("ZZ plain mention")}; return !!li && !li.querySelector('[data-mention-detail]');`));
 
   // ── 主管视角、有 Notice：Notice 只占左半，右半先留空；整行任务框在 Messages 下面 ──
   await ctl({ reset: true, me: "annie", supervisor: true, fail401: false, failGet: false, notReady: false, notices: true, confirmNotices: true });

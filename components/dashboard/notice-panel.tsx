@@ -41,6 +41,8 @@ const MENTION_SOURCE: Record<string, string> = {
   tracking: "Tracking",
   manifest: "Main manifest",
   order_details: "Order details",
+  // 搬过来的旧 Main manifest Notes（preview 名单里写「Moved from old Notes」）。
+  migrated: "old Notes",
 };
 
 /**
