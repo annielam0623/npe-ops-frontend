@@ -42,6 +42,11 @@
 - 更正：bb [ce92ba] 没走（会话重启），✅ **第 1 件 Save 蓝上 ops main 7834041e**（bb 推；功能 e8ffc6ed 31 文件只改颜色 + 检查 5b5ac6f8 da 每台车 Save 期望 #3b82f6）。确认框加 submit 属性 → 只给提交类确定键（Order details Save、Auto-send Turn on、Save and open、Send to N guests、Text N drivers / guides、Morning Send to N orders、Vehicles 确认框 Save all）；HR 页签 / Add person、Users Copy link、Bug / Task Done、导入 Done 保持原色；没碰 Pull from Discord、发送页按类型颜色（S1 按 A）、Send broadcast、ConversationModal、task-board 中文。检查：tsc / eslint 0、build；nav 40、hr 138、orders 120、pl 129、veh 53、ws 63、teams 54、users 80、perm 54、man 532、mf 356、tcq 86、as 112、blog 31、catchup 58、ops 12、bugs 40、tb 28、mt 329、tt 213、imp 25、dr 89、products 237；da 首跑 620/622（1 条颜色期望 + 1 条 720 秒超时）→ 改期望、放宽 1200 秒重跑 665/665。📌 请 Annie 线上验 HR Edit list「Save changes」、日期 Apply、Order details Save 等变蓝；TCQ「+ Add a service」灰绿。c9 撤回（没接活）。
 - 82 第 5 件 preview 没开始（14:07 收到，来不及），读到的现状交给下一个窗口：manifests-view.tsx TicketViewSwitch 约 2051–2090（radiogroup，By order time 在前，选中深底白字）；状态 565–582（默认 "time"，localStorage ops.manifests.ticketsView.v2）；583–595 By session = withTicketSessions，By order time = 后端原序；How to use 2657–2662 原句。未核：Bus 标签前端怎么排 / 小节怎么分、Admin fee 与 hidden 行。推荐方向：「By pickup time | By order time」，默认 By pickup time，小节里也照排，新键 ops.manifests.busView.v1。
 
+## 2026-11-21（周六）前端主窗口 `今天前端主窗口-5e`[4a3a41]（接着昨天的会话）
+- 开工：origin/main 98444a14。工作窗口：bb [01f67c]、2c [721148]（worktree ops-wt-2c-red，task/tt-compact-toolbar-v5 3db14bde 干净）。后端主窗口来要 7 天清单，前端部分已发（见下）。
+- 8 题 Excel（Annie_待答题_2026-11-20_第3和第5件.xlsx）**还没填**；3-Q1–Q4 被 ★ Note 打通取代，只剩第 5 件 4 题。
+- 派工：bb = ★ Note 打通 + @ preview（照 fb2d8b8c 计划，不写代码）；2c 待命（第 5 件等 Excel、第 4 件等 Annie 看门票截图 + How to use 7 处）。
+- 前端 7 天没做完（Annie 提的）：★ Note 打通（11-20，preview 中）；第 4 件（等 Annie 看）；第 5 件（等 Excel）；第 8 件 Farm out 每家一页（动手、没开始）；7c–e 快捷回复搬 Content Studio（动手、没开始）；第 11 件导游必填前端（等后端）；第 10 件删固定任务 139d（答 A，进度未核）；没人接：151 Bus Manifest 编辑页手机一屏、151 David H 账号 A/B、146 Farm out 上传收图片 + 表格格式。
 ## 📌 2026-11-20 17:15 Annie 新提：staff 备注几个入口打通（记录，未动手）
 
 - Annie（原话）「我们在tracking页面的notes里除了跟客人对话之外，还有一个staff notes的功能，是否可以把几个入口打通，比如在那个弹窗里的interal notes，可以在mainifest里看到，如果写了@staff的话，被@的人的notice里会有出现，然后main manifest和order detail里的notes里都会出现」
