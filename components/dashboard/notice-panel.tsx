@@ -49,7 +49,7 @@ const MENTION_SOURCE: Record<string, string> = {
  */
 export function mentionDetailLine(notice: ApiNotice): string | null {
   if (notice.type !== "mention") return null;
-  const ref = notice.ref ?? {};
+  const ref: Record<string, unknown> = notice.ref ?? {};
   const str = (v: unknown) => (typeof v === "string" ? v.trim() : "");
   const guest = str(ref.guest_name);
   const date = str(ref.tour_date);
