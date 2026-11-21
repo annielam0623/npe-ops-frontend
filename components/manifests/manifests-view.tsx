@@ -87,6 +87,7 @@ import {
   WAIVER_KEY,
   WAIVER_OFF,
   withWaiverColumn,
+  withBookedOrder,
   withTicketSessions,
   rememberMarkChoice,
   withMarkColumns,
@@ -617,6 +618,24 @@ export function ManifestsView() {
       // 记不住也照样切换。
     }
   }
+  // Bus / Admin fee 两种看法（Annie 2026-11-21 第 5 件「其他问题全部同意推荐，动手」，题 1–4 都 A）：
+  // 默认 By pickup time（= 后端原来的顺序）；记在这台电脑这个浏览器，Bus 和 Admin fee 共用一个键，跟 Tickets 分开。
+  const [busView, setBusView] = useState<BusView>("pickup");
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(BUS_VIEW_KEY) === "order") setBusView("order");
+    } catch {
+      // 隐私模式 / 被挡：照默认。
+    }
+  }, []);
+  function changeBusView(next: BusView) {
+    setBusView(next);
+    try {
+      localStorage.setItem(BUS_VIEW_KEY, next);
+    } catch {
+      // 记不住也照样切换。
+    }
+  }
   // Tickets 两种看法（Annie 2026-11-19「同意推荐，动手」）：By session = 按场次分组（153）；
   // By order time = 不分组，照后端原来的先后（门票提醒发过的沉底 → 下单先后，P1 A）。勾选按 row_key 记，切换不清。
   const shownBase =
@@ -625,10 +644,15 @@ export function ManifestsView() {
           withNotes(perms.canSeeMoney ? data : withoutManifestMoney(data)),
         )
       : null;
-  const shown =
-    shownBase && ticketView === "session"
-      ? withTicketSessions(shownBase)
-      : shownBase;
+  const shown = !shownBase
+    ? null
+    : shownBase.tab === "tickets"
+      ? ticketView === "session"
+        ? withTicketSessions(shownBase)
+        : shownBase
+      : busView === "order"
+        ? withBookedOrder(shownBase)
+        : shownBase;
   // 搜索跳过来的行到了：滚到屏幕中间（每次跳转只滚一次，后面重拉不再拽视线）。
   const highlightShown =
     !!highlight && !!shown?.rows.some((r) => r.row_key === highlight);
@@ -1352,6 +1376,17 @@ export function ManifestsView() {
                   <TicketViewSwitch
                     value={ticketView}
                     onChange={changeTicketView}
+                  />
+                ) : shown.rows.length ? (
+                  <ViewSwitch
+                    label="Bus view"
+                    data={{ "data-bus-view": busView }}
+                    options={[
+                      ["pickup", "By pickup time"],
+                      ["order", "By order time"],
+                    ]}
+                    value={busView}
+                    onChange={changeBusView}
                   />
                 ) : null}
                 <ManifestTable
@@ -2107,18 +2142,46 @@ function TicketViewSwitch({
   value: TicketView;
   onChange: (next: TicketView) => void;
 }) {
-  const options: [TicketView, string][] = [
-    ["time", "By order time"],
-    ["session", "By session"],
-  ];
+  return (
+    <ViewSwitch
+      label="Tickets view"
+      data={{ "data-ticket-view": value }}
+      options={[
+        ["time", "By order time"],
+        ["session", "By session"],
+      ]}
+      value={value}
+      onChange={onChange}
+    />
+  );
+}
+
+/** Bus / Admin fee 两种看法的键（第 5 件）。 */
+type BusView = "pickup" | "order";
+const BUS_VIEW_KEY = "ops.manifests.busView.v1";
+
+/** 看法切换的一组键（Tickets、Bus / Admin fee 共用一个样子）：选中深底白字，不是提交键所以不用蓝色。 */
+function ViewSwitch<V extends string>({
+  label,
+  data,
+  options,
+  value,
+  onChange,
+}: {
+  label: string;
+  data: Record<string, string>;
+  options: readonly (readonly [V, string])[];
+  value: V;
+  onChange: (next: V) => void;
+}) {
   return (
     <div
       role="radiogroup"
-      aria-label="Tickets view"
-      data-ticket-view={value}
+      aria-label={label}
+      {...data}
       className="flex flex-wrap items-center gap-1 px-3.5 pt-2.5 text-[12px]"
     >
-      {options.map(([key, label]) => (
+      {options.map(([key, text]) => (
         <button
           key={key}
           type="button"
@@ -2132,7 +2195,7 @@ function TicketViewSwitch({
               : "border-black/20 text-[#1a1a1a] hover:bg-black/[.04] night:border-white/25 night:text-white/80 night:hover:bg-white/[.08]",
           )}
         >
-          {label}
+          {text}
         </button>
       ))}
     </div>
@@ -2708,6 +2771,14 @@ function ManifestsHowToUse() {
           orders already sent go to the bottom) and <b>By session</b> (grouped
           by start time). Ticked orders stay ticked when you switch. This
           computer remembers your choice.
+        </>,
+        <>
+          On <b>Bus Tours</b> and <b>Admin fees</b>, switch between{" "}
+          <b>By pickup time</b> (the default: earliest pickup first) and{" "}
+          <b>By order time</b> (in the order the bookings came in; orders with
+          no booking time go last). Sections stay the same in both views.
+          Ticked orders stay ticked when you switch. This computer remembers
+          your choice.
         </>,
       ]}
     />

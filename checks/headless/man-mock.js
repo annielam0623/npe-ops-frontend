@@ -246,7 +246,24 @@ const SESSION_ROWS = [
   { tab: "tickets", pill: "t:antelope", order_number: "CHD2007", product_code: "TIX01", lane_source: "rezdy_bookings",
     v: { guest_name: "ZZ Ticket NoTime", pax: 2, product: "Antelope Tickets", start_time: "", pax_breakdown: "2 Adult" } },
 ];
-const allRows = () => (ctl.bulk ? [...ROWS, ...BULK] : ROWS).concat(ctl.sessions ? SESSION_ROWS : []).concat(ctl.cfmMix ? MIXED : []).concat(ctl.rezdyTix ? REZDY_ONLY : []).concat(ctl.waiver ? WAIVER_ROWS : []);
+// 第 5 件 Bus / Admin fee 两种看法（Annie 2026-11-21）：ctl.busOrder 开着 ⇒ Antelope（g:3）多 3 单（CHD1012 两行 = 同一单两个产品），
+// 每行（Bus / Tickets / Admin fee / hidden）带 booked_at（BOOKED，没列的 null）；行照后端规矩按节 → 接客时间排好。没开 = 旧后端，不带 booked_at。
+const BUS_ORDER_ROWS = [
+  { tab: "bus", pill: "g:3", order_number: "CHD1011", product_code: "ANT01", lane_source: "rezdy_bookings",
+    v: { guest_name: "ZZ Test Eleven", pax: 1, product: "Antelope Bus", pickup_time: "6:30 AM", pickup_location: "Bellagio" } },
+  { tab: "bus", pill: "g:3", order_number: "CHD1012", product_code: "ANT01", lane_source: "rezdy_bookings",
+    v: { guest_name: "ZZ Test Twelve", pax: 2, product: "Antelope Bus", pickup_time: "7:30 AM", pickup_location: "Luxor" } },
+  { tab: "bus", pill: "g:3", order_number: "CHD1012", product_code: "ANT02", lane_source: "rezdy_bookings",
+    v: { guest_name: "ZZ Test Twelve", pax: 1, product: "Antelope Lunch add-on", pickup_time: "7:30 AM", pickup_location: "Luxor" } },
+  { tab: "bus", pill: "g:3", order_number: "CHD1013", product_code: "ANT01", lane_source: "rezdy_bookings",
+    v: { guest_name: "ZZ Test Thirteen", pax: 2, product: "Antelope Shuttle", pickup_time: "6:45 AM", pickup_location: "Excalibur" } },
+];
+const BOOKED = {
+  CHD1001: "2026-10-01T17:30:00Z", CHD1011: "2026-11-10T08:00:00Z", CHD1012: "2026-09-15T12:00:00Z", CHD1002: "2026-08-01T09:00:00Z", CHD1013: null,
+  "CHD-88041": "2026-11-02T10:00:00Z", "CHD-88057": "2026-10-20T10:00:00Z", "CHD-88063": null, "CHD-88102": "2026-09-01T10:00:00Z", "CHD-88110": "2026-11-01T10:00:00Z",
+};
+const bookedOf = (o) => (ctl.busOrder ? { booked_at: BOOKED[o] ?? null } : {});
+const allRows = () => (ctl.bulk ? [...ROWS, ...BULK] : ROWS).concat(ctl.busOrder ? BUS_ORDER_ROWS : []).concat(ctl.sessions ? SESSION_ROWS : []).concat(ctl.cfmMix ? MIXED : []).concat(ctl.rezdyTix ? REZDY_ONLY : []).concat(ctl.waiver ? WAIVER_ROWS : []);
 let sendCalls = 0;
 const PILL_LABEL = {
   "g:3": "Antelope Bus Tour",
@@ -261,7 +278,8 @@ const PILL_LABEL = {
 // g:7 故意不配（null），验证没配时照旧按团名猜（west → 橙）；门票 / none 恒 null，同接口文档。
 const PILL_COLOR = { "g:3": "#111827", "g:7": null, "g:none": null, "t:antelope": null, "t:brenda": null, "t:none": null };
 const rowKey = (r, date) => `${r.order_number}|${r.product_code}|${date}`;
-const SECTION_OF = { CHD1001: "tour:UPPER ANTELOPE", CHD1002: "outbound:SHUTTLE: LAS VEGAS → PAGE" };
+const SECTION_OF = { CHD1001: "tour:UPPER ANTELOPE", CHD1002: "outbound:SHUTTLE: LAS VEGAS → PAGE",
+  CHD1011: "tour:UPPER ANTELOPE", CHD1012: "tour:UPPER ANTELOPE", CHD1013: "outbound:SHUTTLE: LAS VEGAS → PAGE" };
 // 实际要发的号：staff 填的优先，没有再用 Rezdy 自带的（同后端 cfm_value）。
 const cfmOf = (r, key) => (cfm.get(key)?.confirmation_no ?? "").trim() || String(r?.v?.rezdy_cfm ?? "").trim();
 const byKey = (key) => allRows().find((r) => rowKey(r, today) === key);
@@ -367,7 +385,7 @@ function adminFeePage(url, date) {
     const values = {};
     for (const k of fields) values[k] = all[k] ?? null;
     return { row_key: `${r.o}|${r.code}|${date}`, order_number: r.o, product_code: r.code, tour_date: date, lane_source: "rezdy_bookings", leg: null, section: null,
-      sendable: false, reason: "unmapped_group", reason_label: r.reason_label, shown_on: r.shown_on, values, ...noteOf(r.o, r.code, date) };
+      sendable: false, reason: "unmapped_group", reason_label: r.reason_label, shown_on: r.shown_on, values, ...noteOf(r.o, r.code, date), ...bookedOf(r.o) };
   });
   const tabs = ["bus", "tickets"].map((k) => ({ key: k, label: k === "bus" ? "Bus Tour" : "Tickets - SelfDrive", sendable: true, ...counts(allRows().filter((r) => r.tab === k)) }));
   if (date === today) tabs.push(adminFeeTab());
@@ -422,7 +440,7 @@ function page(url) {
       if (ctl.msgNames?.[r.order_number] && "guest_name" in values) values.guest_name = ctl.msgNames[r.order_number];
       if (ctl.msgEmails && r.order_number in ctl.msgEmails) values.email = ctl.msgEmails[r.order_number];
       return { row_key: key, order_number: r.order_number, product_code: r.product_code, tour_date: date, lane_source: r.lane_source,
-        section: sectionsOn ? SECTION_OF[r.order_number] : null, values, ...noteOf(r.order_number, r.product_code, date), ...marksOf(r),
+        section: sectionsOn ? SECTION_OF[r.order_number] : null, values, ...noteOf(r.order_number, r.product_code, date), ...marksOf(r), ...bookedOf(r.order_number),
         ...(ctl.waiver ? { waiver_link_required: !!r.waiver } : {}),
         ...(ctl.g364 && r.tab === "bus"
           ? (() => { const g = G364[r.order_number]; return { guest_lunch: g?.guest_lunch ?? null, manifest_lunch: g?.manifest_lunch ?? null, guest_lunch_differs: !!g?.guest_lunch_differs }; })()
@@ -453,6 +471,13 @@ function page(url) {
             : { sendable: true }
           : {}) };
     });
+  if (ctl.busOrder && tab === "bus") {
+    // 后端 sort_key + 分节：节（UPPER 在前、去程 shuttle 在后）→ 接客时间。
+    const secIdx = (r) => (r.section || "").startsWith("outbound:") ? 1 : 0;
+    const mins = (t) => { const m = /(\d+):(\d+)\s*(AM|PM)/i.exec(t || ""); return m ? ((+m[1] % 12) + (/pm/i.test(m[3]) ? 12 : 0)) * 60 + +m[2] : 9999; };
+    const pt = (r) => mins(allRows().find((x) => x.order_number === r.order_number && x.product_code === r.product_code)?.v.pickup_time);
+    rows.sort((a, b) => secIdx(a) - secIdx(b) || pt(a) - pt(b));
+  }
   if (ctl.noteTwin) {
     const i = rows.findIndex((r) => r.order_number === "CHD1002");
     if (i >= 0) rows.splice(i + 1, 0, { ...rows[i], row_key: rows[i].row_key + "|return", leg: "return" });
@@ -481,7 +506,7 @@ function page(url) {
       const values = {};
       for (const k of fields) values[k] = all[k] ?? null;
       return { row_key: `${o}|${code}|${date}`, order_number: o, product_code: code, tour_date: date, lane_source: "rezdy_bookings", leg: null,
-        group_name: grp, group_type: gtype, category_code: cat, reason, reason_label: label, values, ...noteOf(o, code, date) };
+        group_name: grp, group_type: gtype, category_code: cat, reason, reason_label: label, values, ...noteOf(o, code, date), ...bookedOf(o) };
     });
     out.hidden = { pill: { key: "hidden", label: "Hidden rows", color: null, sendable: false, rows: hrows.length, orders: new Set(hrows.map((r) => r.order_number)).size, pax: H.reduce((n, h) => n + h[7], 0) }, rows: hrows };
   }

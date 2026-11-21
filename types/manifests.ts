@@ -147,6 +147,11 @@ export interface ManifestRow {
    */
   product_actual?: string | null;
   /**
+   * 下单时间（Rezdy dateCreated，ISO 原文，字面序就是时间序；后端 a7c80414，Annie 2026-11-20 第 5 件）。
+   * Bus / Admin fee 的「By order time」看法用它排；没有 ⇒ null，排最后。旧后端没有这个键 ⇒ 当 null。
+   */
+  booked_at?: string | null;
+  /**
    * G321 Relay / Tour（只 Bus 标签）：relay 司机 / 导游标的结果，没标 = null；旧后端没有这几个键 ⇒ 不出这两列。
    * relay_applicable=false = 这单不走 relay（Relay 格画「—」）。
    */
@@ -248,6 +253,8 @@ export interface ManifestHiddenRow {
   category_code: string | null;
   reason: ManifestHiddenReason;
   reason_label: string;
+  /** 同 ManifestRow.booked_at。 */
+  booked_at?: string | null;
   /** 取法和主表一样（按本次 fields 参数 / 默认字段）。 */
   values: Record<string, ManifestValue>;
 }

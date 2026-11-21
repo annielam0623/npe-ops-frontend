@@ -509,6 +509,66 @@ export function withTicketSessions(page: ManifestPage): ManifestPage {
 }
 
 /**
+ * Bus / Admin fee 的「By order time」看法（Annie 2026-11-21 第 5 件「其他问题全部同意推荐，动手」，
+ * 样稿 https://claude.ai/artifact/6FwfiTd9yQ6T3oTTfqZdBM 题 2 A）：节照旧（后端给的节和节的先后不动），
+ * 每节里按下单时间（booked_at）早的在前，没有的排最后；一样的照原来（接客时间）的先后；同一单的几行挨在一起。
+ * 藏起来的行（hidden.rows）同样排。Tickets 不走这里（它有自己的两种看法）。只排显示，不改数据。
+ */
+export function withBookedOrder(page: ManifestPage): ManifestPage {
+  if (page.tab === "tickets") return page;
+  return {
+    ...page,
+    rows: sortByBooked(page.rows, (r) => r.section ?? ""),
+    ...(page.hidden
+      ? { hidden: { ...page.hidden, rows: sortByBooked(page.hidden.rows, () => "") } }
+      : {}),
+  };
+}
+
+function sortByBooked<
+  R extends { order_number: string; booked_at?: string | null },
+>(rows: readonly R[], sectionOf: (r: R) => string): R[] {
+  const sectionAt = new Map<string, number>();
+  const orderAt = new Map<string, number>();
+  const orderBooked = new Map<string, string>();
+  rows.forEach((r, i) => {
+    const sec = sectionOf(r);
+    if (!sectionAt.has(sec)) sectionAt.set(sec, i);
+    const k = `${sec} ${r.order_number}`;
+    if (!orderAt.has(k)) orderAt.set(k, i);
+    if (r.booked_at && !orderBooked.has(k)) orderBooked.set(k, r.booked_at);
+  });
+  return rows
+    .map((r, i) => {
+      const sec = sectionOf(r);
+      const k = `${sec} ${r.order_number}`;
+      return {
+        r,
+        i,
+        sec: sectionAt.get(sec)!,
+        booked: orderBooked.get(k) ?? "",
+        first: orderAt.get(k)!,
+      };
+    })
+    .sort(
+      (a, b) =>
+        a.sec - b.sec ||
+        (a.booked === b.booked
+          ? 0
+          : !a.booked
+            ? 1
+            : !b.booked
+              ? -1
+              : a.booked < b.booked
+                ? -1
+                : 1) ||
+        a.first - b.first ||
+        a.i - b.i,
+    )
+    .map((x) => x.r);
+}
+
+/**
  * 节标题行的底色（后端说颜色前端自定）：去程 / 回程的 shuttle 一个颜色；团按节的先后轮流
  * （同 Annie 看过的样稿：紫 / 绿 / 粉）。
  */
