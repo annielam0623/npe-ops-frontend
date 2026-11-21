@@ -378,6 +378,20 @@ async function run() {
   check("G297：别的 Notice 标签照旧黄字、没有红边", await evaluate(`const li = [...${NOTICE}.querySelectorAll('li')].find(l => l.textContent.includes('Accident logged')); return !!li && !li.dataset.noticeUrgent && getComputedStyle(li.querySelector('p')).color === 'rgb(251, 191, 36)';`));
   if (process.env.SHOT_DIR) { const fsx = require("fs"), px = require("path"); fsx.mkdirSync(process.env.SHOT_DIR, { recursive: true }); for (const [w, h, mobile, name] of [[1440, 900, false, "notice-desk"], [390, 844, true, "notice-phone"]]) { await cdp("Emulation.setDeviceMetricsOverride", { width: w, height: h, deviceScaleFactor: 2, mobile }); await sleep(600); await evaluate(`${NOTICE}.scrollIntoView({ block: 'start' }); window.scrollBy(0, -20);`); await sleep(300); const r = await cdp("Page.captureScreenshot", { format: "png" }); fsx.writeFileSync(px.join(process.env.SHOT_DIR, name + ".png"), Buffer.from(r.data, "base64")); } await cdp("Emulation.setDeviceMetricsOverride", { width: 1440, height: 900, deviceScaleFactor: 2, mobile: false }); await goto(`${APP}/dashboard?theme=night`); await waitFor(`${NOTICE} && ${NOTICE}.textContent.includes('CHDZZ8J8VYD')`); await sleep(600); await evaluate(`${NOTICE}.scrollIntoView({ block: 'start' }); window.scrollBy(0, -20);`); await sleep(300); const r2 = await cdp("Page.captureScreenshot", { format: "png" }); fsx.writeFileSync(px.join(process.env.SHOT_DIR, "notice-night.png"), Buffer.from(r2.data, "base64")); await goto(`${APP}/dashboard?theme=day`); await cdp("Emulation.clearDeviceMetricsOverride"); }
 
+  // ── ★ Note @（Annie 2026-11-21 动手；后端合同 v1 第 4 点；灰字 5e 同日：ref 有哪段写哪段，都没有不出）──
+  await ctl({ reset: true, me: "lizzie", supervisor: false, fail401: false, failGet: false, notReady: false, notices: true, confirmNotices: false, pickupNotice: false, mentionNotices: true });
+  await goto(`${APP}/dashboard`);
+  await waitFor(`${NOTICE} && ${NOTICE}.textContent.includes('CHDSN1')`);
+  await helpers();
+  const mli = (t) => `[...${NOTICE}.querySelectorAll('li')].find(l => l.textContent.includes(${JSON.stringify(t)}))`;
+  const mn = await evaluate(`const li = ${mli("mentioned you on CHDSN1")}; if (!li) return null; const a = [...li.querySelectorAll('a')].find(x => x.textContent.includes('Open order')); return { kind: li.querySelector('p').textContent, team: !!li.querySelector('[data-notice-team]'), detail: li.querySelector('[data-mention-detail]')?.textContent, href: a?.getAttribute('href'), gotIt: !!$btn('Got it', li), body: li.textContent.includes('Bus 3 is full') };`);
+  check("★ @ 个人：标签 Mention、没有 team 小标签、正文、Open order → 去 /orders/CHDSN1?product=GCW01、有 Got it", !!mn && /mention/i.test(mn.kind) && !mn.team && mn.body && mn.href === "/orders/CHDSN1?product=GCW01" && mn.gotIt, JSON.stringify(mn));
+  check("★ @ 个人：灰字「客人 · Tour date MM/DD/YYYY · from Order details」", mn && mn.detail === "ZZ Test Guest A · Tour date 11/22/2026 · from Order details", JSON.stringify(mn && mn.detail));
+  const mt = await evaluate(`const li = ${mli("mentioned ZZ Test Dispatch")}; if (!li) return null; return { chip: li.querySelector('[data-notice-team]')?.textContent, detail: li.querySelector('[data-mention-detail]')?.textContent, title: li.textContent.includes('ZZ Test Annie mentioned ZZ Test Dispatch on CHDSN1') };`);
+  check("★ @ team：标题写 team、Mention 旁边 team 小标签", !!mt && mt.title && mt.chip === "ZZ Test Dispatch", JSON.stringify(mt));
+  check("★ @ team：ref 缺 tour_date / source ⇒ 那两段不写，只有客人 + Sent to your team", mt && mt.detail === "ZZ Test Guest A · Sent to your team ZZ Test Dispatch", JSON.stringify(mt && mt.detail));
+  check("★ ref 一段都没有 ⇒ 不出灰字", await evaluate(`const li = ${mli("ZZ plain mention")}; return !!li && !li.querySelector('[data-mention-detail]');`));
+
   // ── 主管视角、有 Notice：Notice 只占左半，右半先留空；整行任务框在 Messages 下面 ──
   await ctl({ reset: true, me: "annie", supervisor: true, fail401: false, failGet: false, notReady: false, notices: true, confirmNotices: true });
   await goto(`${APP}/dashboard`);

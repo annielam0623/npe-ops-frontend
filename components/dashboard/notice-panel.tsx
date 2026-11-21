@@ -37,6 +37,34 @@ export function mentionTeamName(notice: ApiNotice): string | null {
   return typeof name === "string" && name.trim() ? name.trim() : null;
 }
 
+const MENTION_SOURCE: Record<string, string> = {
+  tracking: "Tracking",
+  manifest: "Main manifest",
+  order_details: "Order details",
+};
+
+/**
+ * @ 的灰字（preview 第 3 节，Annie 同意；后端 ref 加 guest_name / tour_date / source）：
+ * 「ZZ Test Guest A · Tour date 11/22/2026 · from Order details · Sent to your team X」，缺哪段不写哪段；一段都没有 ⇒ null。
+ */
+export function mentionDetailLine(notice: ApiNotice): string | null {
+  if (notice.type !== "mention") return null;
+  const ref = notice.ref ?? {};
+  const str = (v: unknown) => (typeof v === "string" ? v.trim() : "");
+  const guest = str(ref.guest_name);
+  const date = str(ref.tour_date);
+  const ymd = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
+  const source = str(ref.source);
+  const team = mentionTeamName(notice);
+  const parts = [
+    guest,
+    date ? `Tour date ${ymd ? `${ymd[2]}/${ymd[3]}/${ymd[1]}` : date}` : "",
+    source ? `from ${MENTION_SOURCE[source] ?? source}` : "",
+    team ? `Sent to your team ${team}` : "",
+  ].filter(Boolean);
+  return parts.length ? parts.join(" · ") : null;
+}
+
 /** 要马上处理的类型：标签红字、卡片左边一条红边。 */
 export function noticeUrgent(notice: ApiNotice): boolean {
   return notice.type === "pickup_missing";
@@ -441,9 +469,12 @@ function ScheduleRow({
           {shown.body}
         </p>
       ) : null}
-      {team ? (
-        <p className="col-span-2 text-[11.5px] text-[#9fb0c4]">
-          Sent to your team {team}
+      {mentionDetailLine(notice) ? (
+        <p
+          data-mention-detail
+          className="col-span-2 text-[11.5px] text-[#9fb0c4]"
+        >
+          {mentionDetailLine(notice)}
         </p>
       ) : null}
       <div className="col-span-2 mt-0.5 flex items-center gap-3.5">

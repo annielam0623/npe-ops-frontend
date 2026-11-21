@@ -407,7 +407,7 @@ function noticesWire(list, url) {
       if ("body" in n) o.body = n.body;
       if ("link" in n) o.href = n.link;
       // DG-4（后端 21，98 2026-11-01 转）：每条都带 ref——消息类是 {kind: "message", message_id, …}（Reply 用），其余一律 null。
-      o.ref = n.type === "message" ? n.ref : null;
+      o.ref = n.type === "message" || n.type === "mention" ? n.ref : null;
       return o;
     }),
   };
@@ -430,6 +430,7 @@ http
         schedNotices = freshSchedNotices();
         nextId = Math.max(...tasks.map((t) => t.id)) + 1;
         ctl.g202 = false; // 每次 reset 回到「后端 G202 没上线」，要测的套自己带 g202: true
+        ctl.mentionNotices = false; // ★ Note @：要测的那段自己带 mentionNotices: true
         delete b.reset;
       }
       // edge：加几条边界任务（AM / PM 分界 12:00 洛杉矶、每小时重复、没有截止时间），测 AM / PM 两张卡和 Anytime 条。
@@ -591,6 +592,18 @@ http
       let items = ctl.directMsg ? [...base, ...directMsgNotices.filter((n) => !n.is_read)] : base;
       // G297：ctl.pickupNotice ⇒ 最前面一条「酒店空着、团确认没发」（category pickup_missing，href 到订单页带 tour_date）。
       if (ctl.pickupNotice) items = [{ id: 97, type: "pickup_missing", title: "Pickup location missing: CHDZZ8J8VYD", body: "The tour confirmation for CHDZZ8J8VYD (Fri Nov 13, 2026) was not sent: the pickup location is empty in Rezdy. Add the pickup location to the order in Rezdy, click Refresh from Rezdy on the order, then click Send tour confirmation.<b>x</b>", created_at: new Date(Date.now() - 120 * 1000).toISOString(), is_read: false, read_at: null, ref: null, link: "/orders/CHDZZ8J8VYD?tour_date=2026-11-13" }, ...items];
+      // ★ Note @（后端合同 v1 第 4 点 + 5e 2026-11-21：ref 加 guest_name / tour_date / source）：ctl.mentionNotices ⇒ 三条 mention。
+      if (ctl.mentionNotices) {
+        const at = new Date(Date.now() - 60 * 1000).toISOString();
+        const base = { body: "", is_read: false, read_at: null, actions: [], created_at: at };
+        const ref = (o) => ({ kind: "mention", note_id: 9002, order_number: "CHDSN1", product_code: "GCW01", from_user_id: 7, from_display_name: "ZZ Test Annie", to_team_id: null, to_team_name: null, ...o });
+        items = [
+          { ...base, id: 81, type: "mention", title: "ZZ Test Annie mentioned you on CHDSN1", body: "Bus 3 is full, @ZZ Test Lily please move this order to Bus 4.", link: "/orders/CHDSN1?product=GCW01", ref: ref({ guest_name: "ZZ Test Guest A", tour_date: "2026-11-22", source: "order_details" }) },
+          { ...base, id: 82, type: "mention", title: "ZZ Test Annie mentioned ZZ Test Dispatch on CHDSN1", body: "@ZZ Test Dispatch guest moved to 7:00 AM pickup.", link: "/orders/CHDSN1?product=GCW01", ref: ref({ to_team_id: 31, to_team_name: "ZZ Test Dispatch", guest_name: "ZZ Test Guest A" }) },
+          { ...base, id: 83, type: "mention", title: "ZZ Test Max mentioned you on CHDSN2", body: "ZZ plain mention", link: "/orders/CHDSN2?product=UAC01", ref: ref({ order_number: "CHDSN2" }) },
+          ...items,
+        ];
+      }
       return send(res, 200, noticesWire(items, url));
     }
     const readMatch = p.match(/^\/api\/notices\/(\d+)\/read$/);

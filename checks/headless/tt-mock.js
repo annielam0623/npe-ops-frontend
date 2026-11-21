@@ -1,6 +1,15 @@
 // 模拟后端：Tour Confirmation Tracking。控制：POST /__ctl；GET /__log。
 const http = require("http");
 const staffPerm = require("./staff-perm-mock");
+const staffNotes = require("./staff-notes-mock");
+// ★ Note 打通（后端合同 v1 第 7 点）：ctl.sn ⇒ /api/staff-notes 有；T02 两个产品、T01 一个产品。
+// 对话框的混合列表照旧走 /booking-notes/by-order，★ Note 也在里面（同一张 booking_notes，id 相同）。
+staffNotes.SN_ORDERS.T02 = {
+  products: [{ code: "GCW01", name: "Grand Canyon West Rim" }, { code: "SKY01", name: "Skywalk Ticket" }],
+  notes: [{ id: 9301, order_number: "T02", product_code: "GCW01", product_name: "Grand Canyon West Rim", body: "@ZZ Test Lily please call the guest", source: "order_details", author: { username: "zzannie", display_name: "ZZ Test Annie" }, created_at: "2026-10-09T16:40:00Z", mentions: [{ user_id: 41, name: "ZZ Test Lily", notified: true }], mention_teams: [] }],
+};
+staffNotes.SN_ORDERS.T01 = { products: [{ code: "UAC01", name: "Upper Antelope" }], notes: [] };
+const snAsBooking = (o) => (ctl.sn ? (staffNotes.SN_ORDERS[o]?.notes ?? []).map((n) => ({ id: n.id, booking_id: 0, author_username: n.author.display_name, direction: "staff_note", body: n.body, sms_status: null, email_status: null, created_at: "2026-10-09 09:40" })) : []);
 // notesActionBy：对话接口回的处理人（模拟读所有线时回的是别的线）；slowTake：take-action 延迟毫秒；extraRow：多一行 T07。
 // staleAction：T04 点过 Take action 之后客人又来了留言（notes_unhandled）；modifyMsg：T02 改期之后又有一条对话。
 // 置顶 109 W3 一单的结果（同后端 send_outcome.py 判据）：kind = "failed"（短信号码错、没邮箱）/ "no_contact"（两边都没地址）/
@@ -56,6 +65,7 @@ http.createServer(async (req, res) => {
   log.push(entry);
   if (ctl.fail401) return send(res, 401, { detail: "Authentication required" });
   if (staffPerm(ctl, p, res, send)) return; // 10c：模拟员工权限总开关开着的员工 / Super Admin（staff-perm-mock.js）
+  if (await staffNotes(ctl, req, url, res, send, (r) => readRaw(r).then((t) => (t ? JSON.parse(t) : null)), log)) return;
   if (p.startsWith("/api/operations/orders/")) {
     const o = orderDetail132(decodeURIComponent(p.split("/").pop()), ctl.mlinks);
     return o ? send(res, 200, o) : send(res, 404, { detail: "Not found" });
@@ -168,7 +178,7 @@ http.createServer(async (req, res) => {
       (notes[o] ||= []).push(note);
       return send(res, 200, { note });
     }
-    return send(res, 200, { notes: [{ id: 1, booking_id: 0, author_username: "", direction: "sms_in", body: "Hi from guest", sms_status: null, email_status: null, created_at: "2026-10-09 09:00" }, { id: 2, booking_id: 0, author_username: "voice_agent", direction: "voice_in", body: "Guest called: no confirmation yet", sms_status: null, email_status: null, created_at: "2026-10-09 09:30" }, ...(notes[o] || [])], guest_note: "", action_taken_by: ctl.notesActionBy || "" });
+    return send(res, 200, { notes: [{ id: 1, booking_id: 0, author_username: "", direction: "sms_in", body: "Hi from guest", sms_status: null, email_status: null, created_at: "2026-10-09 09:00" }, { id: 2, booking_id: 0, author_username: "voice_agent", direction: "voice_in", body: "Guest called: no confirmation yet", sms_status: null, email_status: null, created_at: "2026-10-09 09:30" }, ...snAsBooking(o), ...(notes[o] || [])], guest_note: "", action_taken_by: ctl.notesActionBy || "" });
   }
   if (p === "/api/broadcast-templates") return send(res, 200, { tour: { templates: [{ name: "t1", label: "Weather delay", body: "Hi {first_name}, weather on {tour_date}." }], signature: "- NPE" }, tix: { templates: [], signature: "" } });
   // G62 群发查重（只读）：ctl.bcAlready = 这个团期已收过这条消息的订单号；ctl.bcCheckFail = 状态码。

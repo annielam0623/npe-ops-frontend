@@ -116,6 +116,7 @@ async function main() {
 
   try {
     await run();
+    await staffNoteDialogChecks();
   } finally {
     ws.close();
     chrome.kill();
@@ -160,6 +161,92 @@ async function open(qs = `?date=${D}`) {
   if (qs) await waitFor(`location.search === ${JSON.stringify(qs)}`);
   await waitFor("document.querySelector('tr[data-id]') || document.body.textContent.includes('No records found')");
   await helpers();
+}
+
+// ── ★ Note 打通 + @（Annie 2026-11-21 动手；后端合同 v1 第 7 / 8 点；Q6 A 客人消息不能 @）──
+async function staffNoteDialogChecks() {
+  await ctl({ partner: false, partnerCodes: null, staffPerms: null, sn: true, snFail: null, autoAction: false, w3Note: "" });
+  await open();
+  await evaluate(`${cell(2, "notes")}.querySelector('[role=button]').click();`);
+  await waitFor(`${dialog} && ${dialog}.textContent.includes('please call the guest')`);
+  await sleep(600);
+  check("★ 对话框：★ Note 气泡带产品标签、@名字高亮", await evaluate(`const b = [...${dialog}.querySelectorAll('[data-note-product]')].map(e => e.textContent); const m = ${dialog}.querySelector('[data-mention=person]'); return b.includes('Grand Canyon West Rim') && !!m && m.textContent === '@ZZ Test Lily';`));
+  check("★ 对话框：多产品出「For」选产品", await waitFor(`${dialog}.querySelector('[data-staff-note-product]')?.options.length === 3`, 5000));
+  const ta = `${dialog}.querySelector('textarea')`;
+  // 打 @ 出下拉。
+  await evaluate(`const t = ${ta}; t.focus(); $setValue(t, 'Ask @lil'); t.setSelectionRange(t.value.length, t.value.length); t.dispatchEvent(new Event('select', { bubbles: true }));`);
+  await sleep(200);
+  check("★ 对话框：打 @ 出下拉，过滤到 ZZ Test Lily", await evaluate("const o = [...document.querySelectorAll('[data-mention-option]')]; return o.length === 1 && o[0].textContent.includes('ZZ Test Lily');"));
+  await evaluate("document.querySelector('[data-mention-option]').dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));");
+  await sleep(200);
+  // 带 @ 按 Send →：前端先挡，不发请求。
+  let before = (await mockLog()).length;
+  await evaluate(`$btn('Send →', ${dialog}).click();`);
+  await sleep(400);
+  check("★ Q6 A：带 @ 按 Send → ⇒ 红字、不发请求", (await evaluate(`return ${dialog}.textContent.includes('Not sent. @mentions are for ★ Notes only. Use Save note, or remove the @mention before sending to the guest.');`)) && !(await since(before, (e) => e.method === "POST")).length);
+  // 邮箱不算 @。
+  await evaluate(`$setValue(${ta}, 'Email me at zz@example.test');`);
+  before = (await mockLog()).length;
+  await evaluate(`$btn('Send →', ${dialog}).click();`);
+  await waitReq(before, (e) => e.method === "POST" && e.path === "/booking-notes/by-order/T02");
+  await waitFor(`${ta}.value === ''`, 8000);
+  await sleep(400);
+  check("★ 邮箱里的 @ 不算：照常发给客人", (await since(before, (e) => e.method === "POST" && e.path === "/booking-notes/by-order/T02")).length === 1);
+  // Save note 多产品没选：先挡。
+  await evaluate(`const t = ${ta}; t.focus(); $setValue(t, 'Ask @lil'); t.setSelectionRange(t.value.length, t.value.length); t.dispatchEvent(new Event('select', { bubbles: true }));`);
+  await sleep(200);
+  await evaluate("document.querySelector('[data-mention-option]').dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));");
+  await sleep(200);
+  before = (await mockLog()).length;
+  await evaluate(`$btn('Save note', ${dialog}).click();`);
+  await sleep(400);
+  check("★ 对话框 Save note 多产品没选：红字 Choose which product、不发请求", (await evaluate(`return ${dialog}.textContent.includes('Not saved. Choose which product this note is for.');`)) && !(await since(before, (e) => e.method === "POST")).length);
+  await evaluate(`const s = ${dialog}.querySelector('[data-staff-note-product]'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, 'SKY01'); s.dispatchEvent(new Event('change', { bubbles: true }));`);
+  before = (await mockLog()).length;
+  await evaluate(`$btn('Save note', ${dialog}).click();`);
+  const posts = await waitReq(before, (e) => e.method === "POST" && e.path === "/api/staff-notes");
+  const b = posts[0]?.body;
+  check("★ 对话框 Save note ⇒ POST /api/staff-notes（source tracking、选的产品、@ 的人），不走旧接口", b && b.order_number === "T02" && b.product_code === "SKY01" && b.source === "tracking" && JSON.stringify(b.mentions) === "[41]" && b.body === "Ask @ZZ Test Lily" && !(await since(before, (e) => e.method === "POST" && e.path.startsWith("/booking-notes"))).length, JSON.stringify(b));
+  await waitFor(`[...${dialog}.querySelectorAll('[data-note-product]')].some(e => e.textContent === 'Skywalk Ticket')`, 8000);
+  check("★ 存好：框清空，新的 ★ Note 出在对话里、带 Skywalk Ticket 标签", (await evaluate(`return ${ta}.value;`)) === "");
+  await evaluate(`${dialog}.querySelector('[aria-label=Close]').click();`);
+  await waitFor(`!${dialog}`);
+  // 单产品：不出 For，自动带产品。
+  await goto(`${APP}/tour-confirmation/tracking?date=${D}&chat=T01`);
+  await helpers();
+  if (await waitFor(`${dialog} && ${dialog}.textContent.includes('Hi from guest')`, 8000)) {
+    await sleep(600);
+    check("★ 单产品：不出「For」", await evaluate(`return !${dialog}.querySelector('[data-staff-note-product]');`));
+    await evaluate(`$setValue(${ta}, 'ZZ Test single');`);
+    before = (await mockLog()).length;
+    await evaluate(`$btn('Save note', ${dialog}).click();`);
+    const p1 = (await waitReq(before, (e) => e.method === "POST" && e.path === "/api/staff-notes"))[0];
+    check("★ 单产品：自动带这个产品", p1 && p1.body.product_code === "UAC01" && p1.body.order_number === "T01", JSON.stringify(p1 && p1.body));
+    await evaluate(`${dialog}.querySelector('[aria-label=Close]').click();`);
+    await waitFor(`!${dialog}`);
+  } else check("★ 单产品：T01 对话框打得开", false);
+  // 旧后端（没有 /api/staff-notes）：Save note 照旧走 /booking-notes。
+  await ctl({ sn: false });
+  await open();
+  await evaluate(`${cell(2, "notes")}.querySelector('[role=button]').click();`);
+  await waitFor(`${dialog} && ${dialog}.textContent.includes('Hi from guest')`);
+  await sleep(600);
+  check("★ 旧后端：没有「For」、没有 @ 下拉", await evaluate(`const t = ${ta}; t.focus(); $setValue(t, 'Ask @lil'); return !${dialog}.querySelector('[data-staff-note-product]');`) && (await evaluate("return !document.querySelector('[data-mention-list]');")));
+  await evaluate(`$setValue(${ta}, 'ZZ Test old path');`);
+  before = (await mockLog()).length;
+  await evaluate(`$btn('Save note', ${dialog}).click();`);
+  const old = await waitReq(before, (e) => e.method === "POST" && e.path === "/booking-notes/by-order/T02");
+  check("★ 旧后端：Save note 照旧 POST /booking-notes（direction staff_note）", old.length === 1 && old[0].body.direction === "staff_note");
+  await evaluate(`${dialog}.querySelector('[aria-label=Close]').click();`);
+  // 没勾 messages.reply 的员工（Q3）：能写 ★ Note（Save note），没有 SMS / Email 勾、没有 Send →。
+  await ctl({ sn: true, staffPerms: ["tour.view", "messages.view"] });
+  await open();
+  await evaluate(`${cell(2, "notes")}.querySelector('[role=button]').click();`);
+  await waitFor(`${dialog} && ${dialog}.textContent.includes('Hi from guest')`);
+  await sleep(600);
+  check("★ Q3 没勾 messages.reply 的员工：有输入框 + Save note，没有 Send → / SMS / Email 勾", await evaluate(`const t = [...${dialog}.querySelectorAll('button')].map((b) => b.textContent.trim()); return !!${ta} && t.some((x) => x.includes('Save note')) && !t.some((x) => x.includes('Send →')) && !${dialog}.textContent.includes('SMS to guest') && !${dialog}.textContent.includes('Email to guest');`), await evaluate(`return JSON.stringify([...${dialog}.querySelectorAll('button')].map((b) => b.textContent.trim()));`));
+  await evaluate(`${dialog}.querySelector('[aria-label=Close]').click();`);
+  await ctl({ sn: false, staffPerms: null });
 }
 
 async function run() {

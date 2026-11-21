@@ -2034,6 +2034,7 @@ async function run() {
   await waiverChecks();
   await orderLinkChecks();
   await notesChecks();
+  await staffNoteManifestChecks();
   await sessionChecks();
   await relayTourChecks();
   await redProductChecks();
@@ -2750,6 +2751,59 @@ async function waiverChecks() {
   await waitFor(`${wCell("CHD2102")}`, 20000);
   check("只读：没有输入框、只显示链接和 Open ↗；没有 Upload waiver links", await evaluate(`return !${wInput("CHD2102")} && ${wCell("CHD2102")}.textContent.includes('https://waiver.example.com/s/B2') && !!${wCell("CHD2102")}.querySelector('[data-waiver-open]') && (!$btn('↑ Upload waiver links') || $btn('↑ Upload waiver links').hidden);`));
   await ctl({ staffPerms: null, waiver: false, prefs: { bus: null, tickets: null } });
+}
+
+// ── ★ Note 打通（Annie 2026-11-21 动手，preview 9BLMZq2ShCAZeVpbQ1j21A v3 第 1 节；后端合同 v1 第 5 点）──
+async function staffNoteManifestChecks() {
+  const row = (o) => `document.querySelector('tr[data-row^="${o}|"]:not([data-row$="|return"])')`;
+  const pop = "document.querySelector('[data-staff-note-popover]')";
+  await ctl({ sections: false, notes: true, noteTwin: false, sn: true, snFail: null, prefs: { bus: null, tickets: null } });
+  await openPage(`${APP}/manifests?date=${today}&tab=bus`);
+  await waitFor(`${row("CHD1001")}?.querySelector('[data-staff-note-latest]')`, 20000);
+  check("★ 有 staff_notes ⇒ Notes 列用 ★ Note，不再出旧的单行框", await evaluate("const h = $heads(); return h[h.length - 1] === 'Notes' && !document.querySelector('input[data-note]');"), await evaluate("return $heads().join('|');"));
+  check("★ 格子里最新一条（★ + @ 高亮），一行截断（宽 ≤ 240px）", await evaluate(`const l = ${row("CHD1001")}.querySelector('[data-staff-note-latest]'); return l.textContent.includes('guest will be 10 min late') && !!l.querySelector('[data-mention=person]') && getComputedStyle(l).whiteSpace === 'nowrap' && getComputedStyle(l).textOverflow === 'ellipsis' && l.getBoundingClientRect().width <= 241;`));
+  check("★ 多条 ⇒「+2 more」·「Add」", await evaluate(`return ${row("CHD1001")}.querySelector('[data-staff-note-more]')?.textContent === '+2 more' && ${row("CHD1001")}.querySelector('[data-staff-note-open]')?.textContent === 'Add';`));
+  check("★ 没有备注 ⇒ 只有灰字「Add note」", await evaluate(`return !${row("CHD1002")}.querySelector('[data-staff-note-latest]') && ${row("CHD1002")}.querySelector('[data-staff-note-open]')?.textContent === 'Add note';`));
+  await evaluate(`${row("CHD1001")}.querySelector('[data-staff-note-more]').click();`);
+  await waitFor(pop, 5000);
+  const items = await evaluate(`return [...${pop}.querySelectorAll('[data-staff-note]')].map(li => li.textContent);`);
+  check("★ 点开小窗：这个产品的 + 整单的，最新在上，写谁 · 几点 · 从哪写的", items.length === 3 && items[0].includes("ZZ Test Lily") && items[0].includes("Main manifest") && items[1].includes("Tracking") && items[2].includes("Moved from old Notes"), JSON.stringify(items));
+  check("★ 小窗里只有整单的那条标「Order note」，不出「For」选产品", (await evaluate(`return [...${pop}.querySelectorAll('[data-note-product]')].map(e => e.textContent).join('|');`)) === "Order note" && (await evaluate(`return !${pop}.querySelector('[data-staff-note-product]');`)));
+  await evaluate(`const t = ${pop}.querySelector('textarea'); t.focus(); $setValue(t, 'ZZ Test from manifest');`);
+  await sleep(200);
+  // 打了字没加：点外面不关。
+  await evaluate("document.querySelector('thead th').dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));");
+  await sleep(200);
+  check("★ 框里打了字：点外面不关小窗", await evaluate(`return !!${pop};`));
+  const from = (await mockLog()).length;
+  await evaluate(`${pop}.querySelector('[data-staff-note-add]').click();`);
+  await waitFor(`${pop}.querySelector('[data-staff-note-added]')`, 8000);
+  const post = (await since(from, (e) => e.method === "POST" && e.path === "/api/staff-notes"))[0];
+  check("★ 写的 ⇒ POST /api/staff-notes：这一行的单号、产品、source manifest", post && post.body.order_number === "CHD1001" && post.body.product_code === "ANT01" && post.body.source === "manifest" && post.body.body === "ZZ Test from manifest", JSON.stringify(post && post.body));
+  check("★ 加好：格子换成新的一条、「+3 more」", await evaluate(`return ${row("CHD1001")}.querySelector('[data-staff-note-latest]').textContent.includes('ZZ Test from manifest') && ${row("CHD1001")}.querySelector('[data-staff-note-more]').textContent === '+3 more';`));
+  await evaluate(`${pop}.querySelector('[data-staff-note-close]').click();`);
+  await sleep(200);
+  check("★ × 关小窗", await evaluate(`return !${pop};`));
+
+  // Export CSV：Notes 用后端拼好的 staff_notes_csv（Q4 A）。
+  await evaluate("window.__blob = null; const orig = URL.createObjectURL; URL.createObjectURL = (b) => { window.__blob = b; return orig(b); }; HTMLAnchorElement.prototype.click = function () {};");
+  if (await evaluate("return !!$btn('↓ Export CSV');")) {
+    await evaluate("$btn('↓ Export CSV').click();");
+    await waitFor("window.__blob");
+    const lines = (await evaluate("return await window.__blob.text();")).replace(/^﻿/, "").split("\r\n");
+    const r1 = lines.find((l) => l.includes("CHD1001"));
+    check("★ Export CSV：Notes 格是全部 ★ Note「名字 时间: 内容 | …」最新在前", !!r1 && /ZZ Test Staff [A-Z][a-z]{2} \d+ \d+:\d\d [AP]M: ZZ Test from manifest \| ZZ Test Lily .*: @ZZ Test Max guest will be 10 min late, please wait \| ZZ Test Max .*Guest asked for vegetarian lunch\. \| ZZ Test Annie .*Pickup at main lobby\./.test(r1), r1);
+  }
+
+  // 手机：小窗是从底部升起的面板，整页不左右晃。
+  await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
+  await openPage(`${APP}/manifests?date=${today}&tab=bus`);
+  await waitFor(`${row("CHD1001")}?.querySelector('[data-staff-note-more]')`, 20000);
+  await evaluate(`${row("CHD1001")}.querySelector('[data-staff-note-more]').click();`);
+  await waitFor(pop, 5000);
+  check("★ 手机：小窗固定在底部、整宽", await evaluate(`const r = ${pop}.getBoundingClientRect(); return getComputedStyle(${pop}).position === 'fixed' && Math.abs(r.bottom - window.innerHeight) < 2 && r.width >= window.innerWidth - 1;`), await evaluate(`return JSON.stringify(${pop}.getBoundingClientRect());`));
+  await cdp("Emulation.clearDeviceMetricsOverride");
+  await ctl({ sn: false, notes: false });
 }
 
 main();

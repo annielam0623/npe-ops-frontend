@@ -5,6 +5,7 @@
 // role: admin（默认，有金额组）| staff（没有金额组）| driver（403）。
 const http = require("http");
 const staffPerm = require("./staff-perm-mock");
+const staffNotes = require("./staff-notes-mock");
 const outcomeMock = require("./outcome-mock");
 // sections：Antelope（g:3）分两节；sendFail：发送接口回 "400" / "502"；sendOf：记下每次发送的请求体。
 // minus15：后端 7c 减 15 上线后（有 guest_pickup_time，CHD1002 当成 Rezdy 时间读不出 ⇒ 空）。
@@ -61,9 +62,18 @@ const MARKS = {
 };
 const marksOf = (r) => (ctl.marks && r.tab === "bus" ? (MARKS[r.order_number] ?? { relay_mark: null, bus_mark: null, relay_applicable: true }) : {});
 const notes = new Map(); // "order|code|date" → {note, updated_by, updated_at}
+// ★ Note 打通（后端合同 v1 第 5 点）：ctl.sn ⇒ 每行带 staff_notes（这个产品的 + 整单的，最新在前）和 staff_notes_csv。
+// 数据放在 staff-notes-mock 的 SN_ORDERS 里（POST /api/staff-notes 加的也在那里）。
+const snAuthor = (n) => n.author?.display_name || n.author?.username || "";
+const snTime = (iso) => new Intl.DateTimeFormat("en-US", { timeZone: "America/Los_Angeles", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(iso)).replace(",", "");
+function snOf(o, code) {
+  if (!ctl.sn) return {};
+  const list = (staffNotes.SN_ORDERS[o]?.notes ?? []).filter((n) => n.product_code === code || n.product_code === null);
+  return { staff_notes: list, staff_notes_csv: list.map((n) => `${snAuthor(n)} ${snTime(n.created_at)}: ${n.body}`).join(" | ") };
+}
 const noteOf = (o, code, date) => {
   const n = notes.get(`${o}|${code}|${date}`);
-  return ctl.notes ? { note: n?.note ?? "", note_updated_by: n?.updated_by ?? "", note_updated_at: n?.updated_at ?? null } : {};
+  return { ...(ctl.notes ? { note: n?.note ?? "", note_updated_by: n?.updated_by ?? "", note_updated_at: n?.updated_at ?? null } : {}), ...snOf(o, code) };
 };
 // G245（置顶 82）：ctl.mismatch = 这几单 Rezdy 的 Cfm # 跟产品不符（staff 填了 Cfm # 就不算）；ctl.mismatchLate = 页面上没标、发的那一刻后端才挡。
 const MISMATCH = { other_label: "Antelope Canyon X Confirmation #", other_value: "387826855" };
@@ -166,6 +176,16 @@ const ROWS = [
   { tab: "tickets", pill: "t:none", order_number: "CHD2002", product_code: "TIX99", lane_source: "rezdy_bookings",
     v: { guest_name: "ZZ Ticket Two", pax: 1, product: "ZZ Ticket NoType", start_time: "2026-10-07 09:30:00" } },
 ];
+// ★ Note：每单的产品照 ROWS；CHD1001 先有两条这个产品的 + 一条整单的（Order note）。
+for (const r of ROWS) {
+  const o = (staffNotes.SN_ORDERS[r.order_number] ??= { products: [], notes: [] });
+  if (!o.products.some((x) => x.code === r.product_code)) o.products.push({ code: r.product_code, name: r.v.product || r.product_code });
+}
+staffNotes.SN_ORDERS.CHD1001.notes.push(
+  { id: 9501, order_number: "CHD1001", product_code: "ANT01", product_name: "Antelope Bus", body: "@ZZ Test Max guest will be 10 min late, please wait", source: "manifest", author: { username: "zzlily", display_name: "ZZ Test Lily" }, created_at: "2026-11-21T16:02:00Z", mentions: [{ user_id: 42, name: "ZZ Test Max", notified: true }], mention_teams: [] },
+  { id: 9500, order_number: "CHD1001", product_code: "ANT01", product_name: "Antelope Bus", body: "Guest asked for vegetarian lunch.", source: "tracking", author: { username: "zzmax", display_name: "ZZ Test Max" }, created_at: "2026-11-20T23:12:00Z", mentions: [], mention_teams: [] },
+  { id: 9499, order_number: "CHD1001", product_code: null, product_name: null, body: "Pickup at main lobby.", source: "migrated", author: { username: "zzannie", display_name: "ZZ Test Annie" }, created_at: "2026-11-18T18:30:00Z", mentions: [], mention_teams: [] },
+);
 // bulk：Grand Canyon West（g:7）多 12 单，测超过 10 位时分批发。
 const BULK = Array.from({ length: 12 }, (_, i) => {
   const n = String(i + 1).padStart(2, "0");
@@ -538,6 +558,7 @@ http
     if (p === "/api/manifests/action-log") return send(res, 200, { next_cursor: null, entries: [{ id: "2-1", at: "2026-10-28T17:00:00+00:00", by: "Annie Z", action: "update", label: "ZZ Test item", what: "Name", from: "Old", to: "New" }, { id: "1-1", at: "2026-10-27T17:00:00+00:00", by: "Max", action: "create", label: "ZZ Test item", what: "Name", from: null, to: "Old" }] });
     if (ctl.fail401) return send(res, 401, { detail: "Authentication required" });
     if (staffPerm(ctl, p, res, send)) return; // 10c：模拟员工权限总开关开着的员工 / Super Admin（staff-perm-mock.js）
+    if (await staffNotes(ctl, req, url, res, send, readBody, log)) return;
     // partner（CCL）：按勾显示（后端 G177 P2 已按勾放行 manifests.edit / send）；partnerCodes 不给时只勾 manifests.view。
     if (ctl.partner) {
       if (p === "/api/me") return send(res, 200, { id: 90, username: "ccl_ops", display_name: "CCL", initials: "CC", role: "partner", is_admin: false, is_superadmin: false, is_supervisor: false });
