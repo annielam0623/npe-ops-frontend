@@ -2,6 +2,7 @@
 // partner = 勾了的项数组：/api/me 回 role=partner（ZZ Test Partner），/api/me/permissions 回这些项；null = 照旧（这些接口 404）。
 const http = require("http");
 const staffPerm = require("./staff-perm-mock");
+const staffNotes = require("./staff-notes-mock");
 const ctl = { fail401: false, failExport: false, partner: null };
 const log = [];
 const row = (i, o = {}) => ({ order_number: `CHDZZ${i}`, lane: "legacy", name: `ZZ Guest ${i}`, email: `g${i}@x`, phone: i % 2 ? "—" : `+1555${i}`, product_name: "Upper Antelope Bus Tour With Lunch And More", product_type: i % 3 === 0 ? "ticket" : "bus_tour", tour_date: "10/05/2026", pickup_time: "7:00 AM", pickup_location: "Aria", quantities: "2", agent_name: "Viator", source: "rezdy", created_at: "10/1/2026 9:00 AM", updated_at: "10/2/2026 9:00 AM", status: ["confirmed", "pending", "cancelled", "WEIRD"][i % 4], ...o });
@@ -52,6 +53,19 @@ const FV = { partner_pickup: { hotel: "Bellagio South Tour Lobby", checkin_time:
 detail.CHDFOP = { ...detail.CHDTESTORDER1, order_number: "CHDFOP", editable: false, farm_out_view: { ...FV, lead_with: "partner", notice_sent_at: "2026-10-15T18:12:00-07:00", notice_sent_by: "Annie" } };
 detail.CHDFOO = { ...detail.CHDTESTORDER1, order_number: "CHDFOO", editable: false, farm_out_view: { ...FV, lead_with: "ours" } };
 
+// ★ Note 打通（后端合同 v1）：CHDSN1 两个产品（Bus + Skywalk），CHDSN2 一个产品；对话里一条客人短信 + 一条 ★ Note。
+// ctl.sn = 新后端（详情带 staff_notes，/api/staff-notes 有）；没设 = 旧后端（不带 staff_notes，Chat history 照旧混着）。
+const SN_BOOKING_NOTES = [
+  { id: 8001, author: "", direction: "sms_in", body: "ZZ guest: running late, sorry!", sms_status: null, email_status: null, created_at: "2026-11-21 07:58" },
+  { id: 9002, author: "ZZ Test Annie", direction: "staff_note", body: "Bus 3 is full, @ZZ Test Lily please move this order to Bus 4.", sms_status: null, email_status: null, created_at: "2026-11-21 09:14" },
+];
+detail.CHDSN1 = { ...detail.CHDTESTORDER1, order_number: "CHDSN1", editable: false, product: { ...detail.CHDTESTORDER1.product, code: "GCW01", name: "Grand Canyon West Bus", item_count: 2 }, booking_notes: SN_BOOKING_NOTES };
+detail.CHDSN2 = { ...detail.CHDTESTORDER1, order_number: "CHDSN2", editable: false, product: { ...detail.CHDTESTORDER1.product, item_count: 1 }, booking_notes: SN_BOOKING_NOTES };
+function withStaffNotes(id, body) {
+  if (!ctl.sn || ctl.partner || !staffNotes.SN_ORDERS[id]) return body;
+  return { ...body, staff_notes: staffNotes.SN_ORDERS[id].notes };
+}
+
 function send(res, status, body) {
   res.statusCode = status;
   res.setHeader("Content-Type", "application/json");
@@ -96,6 +110,7 @@ http.createServer(async (req, res) => {
   log.push(entry);
   if (ctl.fail401) return send(res, 401, { detail: "Authentication required" });
   if (staffPerm(ctl, p, res, send)) return; // 10c：模拟员工权限总开关开着的员工 / Super Admin（staff-perm-mock.js）
+  if (await staffNotes(ctl, req, url, res, send, readBody, log)) return;
   const q = url.searchParams;
   if (ctl.partner && p === "/api/me") {
     return send(res, 200, { id: 9, username: "zzpartner", display_name: "ZZ Test Partner", initials: "ZP", role: "partner", is_admin: false, is_superadmin: false, is_supervisor: false });
@@ -147,7 +162,7 @@ http.createServer(async (req, res) => {
       empty: [],
     };
     if (ctl.dayOfTour) ml.day_of_tour = DOT[ctl.dayOfTour];
-    if (req.method === "GET") return d ? send(res, 200, { ...(lacksMoney() ? { ...forPartner(d), price: null } : ctl.partner ? forPartner(d) : d), ...ml }) : send(res, 404, { detail: "Order not found" });
+    if (req.method === "GET") return d ? send(res, 200, withStaffNotes(id, { ...(lacksMoney() ? { ...forPartner(d), price: null } : ctl.partner ? forPartner(d) : d), ...ml })) : send(res, 404, { detail: "Order not found" });
     const body = await readBody(req);
     entry.body = body;
     if (!d.editable) return send(res, 409, { detail: "This order is stored in the new Rezdy table, which is read-only for now." });

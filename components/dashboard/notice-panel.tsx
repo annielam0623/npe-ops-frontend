@@ -26,7 +26,16 @@ const KIND_LABEL: Record<string, string> = {
   // G297（Annie 2026-11-12「我们还是在notice里吧，同时发给当班的人」）：团确认因酒店空着没发，红色；
   // 点进去到那张订单（href = /orders/<单号>?tour_date=…），补好酒店发成功后后端自动标已读。
   pickup_missing: "Pickup location missing",
+  // ★ Note @（Annie 2026-11-21 动手；后端合同 v1 第 4 点）：只站内、不发邮件，点进 Order details。
+  mention: "Mention",
 };
+
+/** @ team 的那条：ref.to_team_name（@ 个人时 null）。 */
+export function mentionTeamName(notice: ApiNotice): string | null {
+  if (notice.type !== "mention") return null;
+  const name = notice.ref?.to_team_name;
+  return typeof name === "string" && name.trim() ? name.trim() : null;
+}
 
 /** 要马上处理的类型：标签红字、卡片左边一条红边。 */
 export function noticeUrgent(notice: ApiNotice): boolean {
@@ -143,7 +152,7 @@ export function noticeLinkLabel(notice: ApiNotice): string {
       ? "See my schedule →"
       : notice.type === "operation_report"
         ? "Open report →"
-        : notice.type === "pickup_missing"
+        : notice.type === "pickup_missing" || notice.type === "mention"
           ? "Open order →"
           : "Open →";
 }
@@ -404,10 +413,21 @@ function ScheduleRow({
     return <MessageRow notice={notice} onGotIt={onGotIt} />;
   }
   const shown = noticeDisplay(notice);
+  const team = mentionTeamName(notice);
   return (
     <>
       <div className="min-w-0">
-        <Kind urgent={noticeUrgent(notice)}>{noticeKindLabel(notice)}</Kind>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <Kind urgent={noticeUrgent(notice)}>{noticeKindLabel(notice)}</Kind>
+          {team ? (
+            <span
+              data-notice-team
+              className="rounded-[4px] bg-[#1e3a5f] px-1.5 text-[10.5px] font-bold text-[#cfe0f5]"
+            >
+              {team}
+            </span>
+          ) : null}
+        </div>
         <p className="text-[13.5px] leading-[1.4] font-semibold">
           {shown.title}
         </p>
@@ -419,6 +439,11 @@ function ScheduleRow({
         // body 是纯文本、行与行之间 \n：当文本显示，不当 HTML。
         <p className="col-span-2 text-[12.5px] leading-[1.55] whitespace-pre-line">
           {shown.body}
+        </p>
+      ) : null}
+      {team ? (
+        <p className="col-span-2 text-[11.5px] text-[#9fb0c4]">
+          Sent to your team {team}
         </p>
       ) : null}
       <div className="col-span-2 mt-0.5 flex items-center gap-3.5">

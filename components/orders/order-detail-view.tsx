@@ -36,6 +36,7 @@ import { usePermissions } from "@/lib/staff-permissions";
 import { useTick } from "@/lib/use-tick";
 import { cn } from "@/lib/utils";
 import { PageLink } from "@/components/ui/page-link";
+import { OrderStaffNotesCard } from "@/components/staff-notes/order-staff-notes-card";
 import type {
   DayOfTourLeg,
   OrderDetail,
@@ -260,6 +261,12 @@ function OrderBody({
     bodyVis.loaded &&
     bodyVis.visible("order_lifecycle") &&
     bodyPerms.canMessages("messages.view");
+  // ★ Note 打通（Annie 2026-11-21 动手，Q5 B）：后端给了 staff_notes ⇒ 出「★ Notes」卡，
+  // Notes 卡 / Chat history 只放客人对话（staff_note 挪到 ★ Notes 卡）；旧后端没有 ⇒ 照旧混着显示。partner 不出。
+  const staffNotes = partner ? null : (o.staff_notes ?? null);
+  const chatNotes = staffNotes
+    ? o.booking_notes.filter((n) => n.direction !== "staff_note")
+    : o.booking_notes;
   // G280：TripGuru 来的单（后端 26fdfa29）：只读，order_detail / items_detail 是 TripGuru 的键名。
   const tripguru = o.source === "tripguru";
   const raw = tripguru ? "TripGuru" : "Rezdy";
@@ -454,9 +461,9 @@ function OrderBody({
               ["Note", o.notes],
             ]}
           />
-          {canChat ? null : o.booking_notes.length ? (
+          {canChat ? null : chatNotes.length ? (
             <ul>
-              {o.booking_notes.map((n) => (
+              {chatNotes.map((n) => (
                 <li
                   key={n.id}
                   className="border-b-[0.5px] border-black/[.04] py-2 text-[12px] last:border-b-0 night:border-white/10"
@@ -474,6 +481,13 @@ function OrderBody({
             <div className={OD_LOADING_IN_CARD}>No notes.</div>
           )}
         </Card>
+        {staffNotes ? (
+          <OrderStaffNotesCard
+            order={o}
+            notes={staffNotes}
+            onUnauthorized={onUnauthorized}
+          />
+        ) : null}
         {/* 订单生命周期（Annie 2026-11-18 题 1 A：Activity 卡上面；开关 order_lifecycle，partner 不出）。 */}
         {partner ? null : <LifecycleCard order={o} />}
         <Card title="Activity">
@@ -515,7 +529,7 @@ function OrderBody({
           <RawBlock title={`Raw ${raw} order`} value={o.order_detail} />
         </>
       )}
-      {canChat ? <OrderChatHistory order={o} /> : null}
+      {canChat ? <OrderChatHistory order={o} guestOnly={!!staffNotes} /> : null}
     </>
   );
 }

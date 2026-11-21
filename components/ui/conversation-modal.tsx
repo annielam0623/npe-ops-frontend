@@ -31,6 +31,20 @@ import { ManifestLinks } from "@/components/order-lookup/manifest-links";
 import { fetchOrder } from "@/lib/orders-api";
 import type { OrderDetail } from "@/types";
 import { setVisibleInterval } from "@/lib/visible-poll";
+import {
+  effectiveMentions,
+  MentionTextarea,
+  NoteText,
+  useMentionDirectory,
+  type PickedMention,
+} from "@/components/staff-notes/mentions";
+import { ProductTag } from "@/components/staff-notes/staff-notes";
+import {
+  createStaffNote,
+  fetchOrderStaffNotes,
+  type OrderStaffNotes,
+  type StaffNote,
+} from "@/lib/staff-notes-api";
 
 /** 弹窗开着时每 20 秒重拉一次对话（与旧页面一致）。 */
 const NOTES_POLL_MS = 20_000;
@@ -299,6 +313,11 @@ function skinOf(theme: ConversationTheme) {
 const GRIP_IMAGE =
   "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M14 2 L2 14 M14 7 L7 14 M14 12 L12 14' stroke='%236c8f6f' stroke-width='1.6' fill='none' stroke-linecap='round'/></svg>\")";
 
+/** 发给客人的话里有 @（开头或空格后的 @ + 字母；邮箱不算）：同后端合同 v1 第 8 点，前端先挡（Q6 A）。 */
+export function guestTextHasMention(text: string): boolean {
+  return /(^|\s)@[A-Za-z]/.test(text);
+}
+
 /** info：没号码 / 没邮箱这类不算失败的结果（置顶 109，灰字）。 */
 type Notice = { tone: "error" | "warn" | "info"; text: string } | null;
 
@@ -370,6 +389,9 @@ function ConversationModalInner({
   // （Annie 2026-10-27「发送只能是我们内部员工发送」）⇒ 只看往来。
   const perms = usePermissions();
   const noReply = !perms.canMessages("messages.reply");
+  // ★ Note 打通（Annie 2026-11-21 动手，Q3）：能打开页面的 staff 都能写 ★ Note（Save note），不看 messages.reply；
+  // 发给客人照旧按 messages.reply。partner 两样都没有。
+  const canNote = !perms.isPartner;
   // ✓ Mark as actioned 是单行 Take action（PUT /api/bookings/{id}/take-action），按这一页的发送项，不按 messages.reply（后端 d7）。
   const canTake = perms.canRowTakeAction(theme);
   const [notes, setNotes] = useState<BookingNote[] | null>(null);
@@ -394,6 +416,15 @@ function ConversationModalInner({
   }, [toggled, target.actionTakenBy]);
   const [loadFailed, setLoadFailed] = useState(false);
   const [text, setText] = useState("");
+  /** ★ Note：这单的产品 + ★ Note（GET /api/staff-notes）；读不到（旧后端）⇒ null，Save note 走旧接口。 */
+  const [staffInfo, setStaffInfo] = useState<OrderStaffNotes | null>(null);
+  const [picked, setPicked] = useState<PickedMention[]>([]);
+  const [noteProduct, setNoteProduct] = useState("");
+  const directory = useMentionDirectory();
+  const staffById = new Map<number, StaffNote>(
+    (staffInfo?.notes ?? []).map((n) => [n.id, n]),
+  );
+  const noteProducts = staffInfo?.products ?? [];
   const [smsChecked, setSmsChecked] = useState(true);
   // 短信和邮件默认都勾（Annie 2026-11-02「那你把他们都改成两个勾选」）：所有用这个回复框的页面一样；没邮箱的那一格勾不上、不发。
   const [emailChecked, setEmailChecked] = useState(true);
@@ -479,6 +510,24 @@ function ConversationModalInner({
     ],
   );
 
+  const loadStaffInfo = useCallback(
+    async (signal?: AbortSignal) => {
+      try {
+        const info = await fetchOrderStaffNotes(orderNumber, signal);
+        if (!signal?.aborted) setStaffInfo(info);
+      } catch {
+        // 旧后端没有这个接口 / 这单不在 Order List：Save note 走旧接口，气泡不带产品标签。
+      }
+    },
+    [orderNumber],
+  );
+  useEffect(() => {
+    if (!canNote) return;
+    const controller = new AbortController();
+    void loadStaffInfo(controller.signal);
+    return () => controller.abort();
+  }, [loadStaffInfo, canNote]);
+
   useEffect(() => {
     const controller = new AbortController();
     void loadNotes(controller.signal);
@@ -506,10 +555,24 @@ function ConversationModalInner({
     if (!body || submitting) {
       return;
     }
-    if (noReply) {
+    const toGuest = kind === "sms_out";
+    if (toGuest ? noReply : !canNote) {
       return;
     }
-    const toGuest = kind === "sms_out";
+    if (toGuest && guestTextHasMention(body)) {
+      setNotice({
+        tone: "error",
+        text: "Not sent. @mentions are for ★ Notes only. Use Save note, or remove the @mention before sending to the guest.",
+      });
+      return;
+    }
+    if (!toGuest && staffInfo) {
+      await saveStaffNote(body);
+      return;
+    }
+    if (!toGuest && noReply) {
+      return;
+    }
     const useSms = sendSms;
     const useEmail = sendEmail;
     if (toGuest && !useSms && !useEmail) {
@@ -656,6 +719,47 @@ function ConversationModalInner({
       setNotice({
         tone: "error",
         text: `Not sent (${describeError(error)}). Your message has been kept — please try again.`,
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  /** ★ Note（后端合同 v1 POST /api/staff-notes，source tracking）：多产品要先选「For」。 */
+  async function saveStaffNote(body: string) {
+    const multi = noteProducts.length > 1;
+    if (multi && !noteProduct) {
+      setNotice({
+        tone: "error",
+        text: "Not saved. Choose which product this note is for.",
+      });
+      return;
+    }
+    setSubmitting(true);
+    setNotice(null);
+    setResults(null);
+    try {
+      await createStaffNote({
+        order_number: orderNumber,
+        product_code: multi ? noteProduct : (noteProducts[0]?.code ?? null),
+        body,
+        source: "tracking",
+        ...effectiveMentions(body, picked),
+      });
+      setText("");
+      setPicked([]);
+      await Promise.all([loadNotes(), loadStaffInfo()]);
+      onChanged();
+    } catch (error) {
+      if (isStatus(error, 401)) {
+        onUnauthorized();
+        return;
+      }
+      setNotice({
+        tone: "error",
+        text: isStatus(error, 404)
+          ? "Not saved. This order isn't in Order List yet, so notes can't be added."
+          : `Not saved. ${describeError(error)}`,
       });
     } finally {
       setSubmitting(false);
@@ -824,7 +928,16 @@ function ConversationModalInner({
           </p>
         ) : (
           notes.map((note) => (
-            <NoteBubble key={note.id} note={note} theme={theme} />
+            <NoteBubble
+              key={note.id}
+              note={note}
+              theme={theme}
+              staff={
+                note.direction === "staff_note"
+                  ? staffById.get(note.id)
+                  : undefined
+              }
+            />
           ))
         )}
       </div>
@@ -869,13 +982,18 @@ function ConversationModalInner({
             {notice.text}
           </p>
         ) : null}
-        {/* 没有 messages.reply（partner 永远没有）：不能写备注、也不能发给客人，只看往来。 */}
-        {noReply ? null : (
+        {/* 没有 messages.reply：不能发给客人，但能写 ★ Note（Q3）；partner 两样都没有，只看往来。 */}
+        {noReply && !canNote ? null : (
           <>
-            <textarea
-              ref={inputRef}
+            <MentionTextarea
+              textareaRef={inputRef}
               value={text}
-              onChange={(event) => setText(event.target.value)}
+              onChange={setText}
+              picked={picked}
+              onPickedChange={setPicked}
+              directory={staffInfo ? directory : null}
+              dark={dark}
+              ariaLabel="Write a note or message to guest"
               placeholder={
                 theme === "tickets"
                   ? "Write a note or reply to guest..."
@@ -890,7 +1008,7 @@ function ConversationModalInner({
                 skin.textarea,
               )}
             />
-            {hasPhone ? (
+            {hasPhone && !noReply ? (
               <p
                 data-sms-count
                 className={cn(
@@ -922,22 +1040,57 @@ function ConversationModalInner({
                 dark ? "gap-2.5" : "gap-2",
               )}
             >
-              <ChannelCheckbox
-                label="SMS to guest"
-                dot="#f97316"
-                className={skin.check}
-                checked={smsChecked}
-                disabled={!hasPhone || smsBlocked}
-                onChange={setSmsChecked}
-              />
-              <ChannelCheckbox
-                label="Email to guest"
-                dot="#3b82f6"
-                className={skin.check}
-                checked={emailChecked}
-                disabled={!hasEmail}
-                onChange={setEmailChecked}
-              />
+              {noReply ? null : (
+                <>
+                  <ChannelCheckbox
+                    label="SMS to guest"
+                    dot="#f97316"
+                    className={skin.check}
+                    checked={smsChecked}
+                    disabled={!hasPhone || smsBlocked}
+                    onChange={setSmsChecked}
+                  />
+                  <ChannelCheckbox
+                    label="Email to guest"
+                    dot="#3b82f6"
+                    className={skin.check}
+                    checked={emailChecked}
+                    disabled={!hasEmail}
+                    onChange={setEmailChecked}
+                  />
+                </>
+              )}
+              {noteProducts.length > 1 ? (
+                <label
+                  className={cn(
+                    "flex items-center gap-1.5 text-[11px]",
+                    skin.info,
+                  )}
+                >
+                  For
+                  <select
+                    data-staff-note-product
+                    value={noteProduct}
+                    onChange={(e) => {
+                      setNoteProduct(e.target.value);
+                      setNotice(null);
+                    }}
+                    className={cn(
+                      "h-7 max-w-[180px] rounded-md border px-1.5 text-[12px]",
+                      dark
+                        ? "border-white/15 bg-[#0f2035] text-[#e0eaf6]"
+                        : "border-[#dee2e6] bg-paper text-[#1f2d25]",
+                    )}
+                  >
+                    <option value="">Choose a product…</option>
+                    {noteProducts.map((p) => (
+                      <option key={p.code} value={p.code}>
+                        {p.name || p.code}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
               <div className="ml-auto flex gap-2">
                 <button
                   type="button"
@@ -951,24 +1104,26 @@ function ConversationModalInner({
                 >
                   {theme === "tickets" ? "★ Save note" : "Save note"}
                 </button>
-                <button
-                  type="button"
-                  title={
-                    dark
-                      ? "Send to guest via the selected channels"
-                      : "Send to guest via selected channels"
-                  }
-                  onClick={() => void submit("sms_out")}
-                  disabled={
-                    submitting || !text.trim() || (smsBlocked && !hasEmail)
-                  }
-                  className={cn(
-                    "cursor-pointer rounded-md px-3.5 py-1.5 text-[12px] disabled:cursor-default disabled:opacity-50",
-                    skin.send,
-                  )}
-                >
-                  {submitting ? "Sending…" : "Send →"}
-                </button>
+                {noReply ? null : (
+                  <button
+                    type="button"
+                    title={
+                      dark
+                        ? "Send to guest via the selected channels"
+                        : "Send to guest via selected channels"
+                    }
+                    onClick={() => void submit("sms_out")}
+                    disabled={
+                      submitting || !text.trim() || (smsBlocked && !hasEmail)
+                    }
+                    className={cn(
+                      "cursor-pointer rounded-md px-3.5 py-1.5 text-[12px] disabled:cursor-default disabled:opacity-50",
+                      skin.send,
+                    )}
+                  >
+                    {submitting ? "Sending…" : "Send →"}
+                  </button>
+                )}
               </div>
             </div>
           </>
@@ -1031,9 +1186,12 @@ const OUTBOUND = new Set(["staff_note", "sms_out", "email_out"]);
 function NoteBubble({
   note,
   theme,
+  staff,
 }: {
   note: BookingNote;
   theme: ConversationTheme;
+  /** ★ Note 的产品 / @（同一条 booking_notes，按 id 对上 GET /api/staff-notes）；对不上 = 照旧。 */
+  staff?: StaffNote;
 }) {
   const style = noteLabel(note, theme);
   const inbound = isInbound(note.direction);
@@ -1080,7 +1238,16 @@ function NoteBubble({
           bubbleClass,
         )}
       >
-        {note.body}
+        {staff ? (
+          <NoteText
+            text={note.body}
+            mentions={staff.mentions}
+            teams={staff.mention_teams}
+            dark={theme === "morning"}
+          />
+        ) : (
+          note.body
+        )}
       </div>
       <div
         className={cn(
@@ -1102,6 +1269,7 @@ function NoteBubble({
         {meta.map((part, index) => (
           <span key={index}> · {part}</span>
         ))}
+        {staff ? <ProductTag note={staff} dark={theme === "morning"} /> : null}
       </div>
     </div>
   );

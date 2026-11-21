@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import {
   formatNoticeWhen,
   noticeDisplay,
+  mentionTeamName,
   noticeKindLabel,
   noticeUrgent,
   noticeLinkLabel,
@@ -202,6 +203,7 @@ function HistoryRow({
           className={cn(noticeUrgent(notice) && "font-semibold text-[#f87171]")}
         >
           {noticeKindLabel(notice)}
+          {mentionTeamName(notice) ? ` · ${mentionTeamName(notice)}` : ""}
         </span>
         {shown.body ? (
           <span className="whitespace-pre-line">· {shown.body}</span>

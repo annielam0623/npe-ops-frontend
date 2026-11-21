@@ -112,6 +112,7 @@ async function main() {
   try {
     await run();
     await refreshChecks();
+    await staffNoteChecks();
   } finally {
     ws.close();
     chrome.kill();
@@ -608,6 +609,118 @@ async function g297() {
     await goto(`${APP}/orders/CHDZZ8J8VYD?theme=day`);
     await cdp("Emulation.clearDeviceMetricsOverride");
   }
+}
+
+// ── ★ Note 打通 + @（Annie 2026-11-21 动手，preview 9BLMZq2ShCAZeVpbQ1j21A v3；后端合同 v1） ──
+async function openSn(order) {
+  await goto(`${APP}/orders/${order}`);
+  await waitFor("document.querySelector('main h1')", 30000);
+  await sleep(400);
+  await helpers();
+  await evaluate(SEL);
+}
+const CARD = "document.querySelector('[data-staff-notes-card]')";
+async function typeNote(text) {
+  await evaluate(`const t = ${CARD}.querySelector('textarea'); t.focus(); $setValue(t, ${JSON.stringify(text)}); t.setSelectionRange(t.value.length, t.value.length); t.dispatchEvent(new Event('select', { bubbles: true }));`);
+  await sleep(150);
+}
+async function pickOption(kind, name) {
+  await evaluate(`const o = [...document.querySelectorAll('[data-mention-option=${kind}]')].find(b => b.textContent.includes(${JSON.stringify(name)})); o.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));`);
+  await sleep(200);
+}
+async function staffNoteChecks() {
+  await ctl({ sn: false, snFail: null, partner: null, staffPerms: null });
+  await openSn("CHDSN1");
+  check("★ 旧后端（没有 staff_notes）：不出 ★ Notes 卡", await evaluate(`return !${CARD};`));
+  check("★ 旧后端：Notes 卡照旧混着显示 ★ Note", await evaluate("return $card('Notes').textContent.includes('Bus 3 is full');"));
+
+  await ctl({ sn: true });
+  await openSn("CHDSN1");
+  check("★ 新后端：出 ★ Notes 卡", await waitFor(CARD, 8000));
+  const items = await evaluate(`return [...${CARD}.querySelectorAll('[data-staff-note]')].map(li => li.textContent);`);
+  check("★ 名单最新在上（3 条）", items.length === 3 && items[0].includes("Guest wants to upgrade") && items[2].includes("Pickup at main lobby"), JSON.stringify(items));
+  const tags = await evaluate(`return [...${CARD}.querySelectorAll('[data-note-product]')].map(e => e.textContent);`);
+  check("★ 每条带产品标签，整单的写 Order note", JSON.stringify(tags) === JSON.stringify(["Skywalk Ticket", "Grand Canyon West Bus", "Order note"]), JSON.stringify(tags));
+  check("★ 来源写在时间后面（Main manifest / Order details / Moved from old Notes）", items[0].includes("Main manifest") && items[1].includes("Order details") && items[2].includes("Moved from old Notes"));
+  check("★ 正文里的 @名字 高亮（人 = 蓝底）", await evaluate(`const m = ${CARD}.querySelector('[data-mention=person]'); return !!m && m.textContent === '@ZZ Test Lily' && getComputedStyle(m).backgroundColor === 'rgb(219, 234, 254)';`));
+  check("★ 有 @ 的那条下面写 Notified", await evaluate(`return ${CARD}.querySelector('[data-staff-note-notified]')?.textContent === 'Notified: ZZ Test Lily';`));
+  check("★ Q5 B：Notes 卡只放客人对话（★ Note 挪走了）", await evaluate("const t = $card('Notes').textContent; return t.includes('running late') && !t.includes('Bus 3 is full');"));
+  check("★ Add note 是蓝色 #3b82f6，没打字时按不了", await evaluate(`const b = ${CARD}.querySelector('[data-staff-note-add]'); return b.disabled && getComputedStyle(b).backgroundColor === 'rgb(59, 130, 246)';`));
+  check("★ 多产品：出「For」选产品（Choose + 2 个产品）", await waitFor(`${CARD}.querySelector('[data-staff-note-product]')?.options.length === 3`, 8000));
+
+  // 多产品没选产品：前端先挡，不发请求。
+  let before = (await mockLog()).length;
+  await typeNote("ZZ Test note without product");
+  await evaluate(`${CARD}.querySelector('[data-staff-note-add]').click();`);
+  await sleep(300);
+  check("★ 多产品没选：红字 Choose which product，不发请求", (await evaluate(`return ${CARD}.querySelector('[data-staff-note-error]')?.textContent;`)) === "Not saved. Choose which product this note is for." && !(await since(before, (e) => e.method === "POST" && e.path === "/api/staff-notes")).length);
+
+  // @ 下拉。
+  await typeNote("Hi @zz");
+  check("★ 打 @ 出下拉", await waitFor("document.querySelector('[data-mention-list]')", 5000));
+  const groups = await evaluate("return [...document.querySelector('[data-mention-list]').children].map(e => e.textContent.trim()).filter(t => t === 'Teams' || t === 'People');");
+  check("★ 下拉分两组：Teams 在上、People 在下", JSON.stringify(groups) === '["Teams","People"]', JSON.stringify(groups));
+  check("★ team 写人数，人写 team + online", await evaluate("const t = document.querySelector('[data-mention-option=team]').textContent; const p = document.querySelector('[data-mention-option=person]').textContent; return t.includes('@ZZ Test Dispatch') && t.includes('6 people') && p.includes('ZZ Test Lily') && p.includes('online');"));
+  await pickOption("team", "ZZ Test Dispatch");
+  check("★ 选 team：正文换成「@ZZ Test Dispatch 」", (await evaluate(`return ${CARD}.querySelector('textarea').value;`)) === "Hi @ZZ Test Dispatch ");
+  await typeNote("Hi @ZZ Test Dispatch and @max");
+  check("★ 接着打字过滤：只剩 ZZ Test Max", await evaluate("const o = [...document.querySelectorAll('[data-mention-option]')]; return o.length === 1 && o[0].textContent.includes('ZZ Test Max');"));
+  await pickOption("person", "ZZ Test Max");
+  await typeNote("Hi @ZZ Test Dispatch and @ZZ Test Max please check @nobody");
+  check("★ 没对上：No teammate or team matches", await evaluate("return document.querySelector('[data-mention-empty]')?.textContent.includes('No teammate or team matches');"));
+  await evaluate("const t = document.querySelector('[data-staff-notes-card] textarea'); t.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));");
+  await sleep(150);
+  check("★ Esc 收起下拉", await evaluate("return !document.querySelector('[data-mention-list]');"));
+  await typeNote("Hi @ZZ Test Dispatch and @ZZ Test Max please check.");
+  await evaluate(`$sel(${CARD}.querySelector('[data-staff-note-product]'), 'SKY01');`);
+  before = (await mockLog()).length;
+  await evaluate(`${CARD}.querySelector('[data-staff-note-add]').click();`);
+  await waitFor(`${CARD}.querySelector('[data-staff-note-added]')`, 8000);
+  const post = (await since(before, (e) => e.method === "POST" && e.path === "/api/staff-notes"))[0];
+  check("★ POST /api/staff-notes：单号 + 选的产品 + source + @ 的人和 team", post && post.body.order_number === "CHDSN1" && post.body.product_code === "SKY01" && post.body.source === "order_details" && JSON.stringify(post.body.mentions) === "[42]" && JSON.stringify(post.body.mention_team_ids) === "[31]" && post.body.body === "Hi @ZZ Test Dispatch and @ZZ Test Max please check.", JSON.stringify(post && post.body));
+  check("★ 加好：绿字 Added. + Notified", (await evaluate(`return ${CARD}.querySelector('[data-staff-note-added]').textContent;`)) === "Added. Notified: ZZ Test Max, ZZ Test Dispatch (6 people)");
+  check("★ 加好：框清空，新的一条在最上面，team = 白底蓝框", await evaluate(`const li = ${CARD}.querySelector('[data-staff-note]'); const t = li.querySelector('[data-mention=team]'); return ${CARD}.querySelector('textarea').value === '' && li.textContent.includes('please check.') && !!t && getComputedStyle(t).borderTopColor === 'rgb(29, 78, 216)';`));
+
+  // 超长。
+  await typeNote("x".repeat(2001));
+  check("★ 超过 2000 字：数字变红、Add note 按不了", await evaluate(`const c = ${CARD}.querySelector('[data-staff-note-count]'); return c.textContent === '2001 / 2000 — 1 over the limit' && ${CARD}.querySelector('[data-staff-note-add]').disabled;`));
+
+  // 单产品：不出 For；404 / 400 照原话，字留着。
+  await openSn("CHDSN2");
+  await waitFor(CARD, 8000);
+  await sleep(500);
+  check("★ 单产品：不出「For」", await evaluate(`return !${CARD}.querySelector('[data-staff-note-product]');`));
+  await ctl({ snFail: 404 });
+  await typeNote("ZZ Test single product note");
+  await evaluate(`${CARD}.querySelector('[data-staff-note-add]').click();`);
+  await waitFor(`${CARD}.querySelector('[data-staff-note-error]')`, 8000);
+  check("★ 404：红框 isn't in Order List，字留着", (await evaluate(`return ${CARD}.querySelector('[data-staff-note-error]').textContent;`)) === "Not saved. This order isn't in Order List yet, so notes can't be added." && (await evaluate(`return ${CARD}.querySelector('textarea').value;`)) === "ZZ Test single product note");
+  await ctl({ snFail: 400 });
+  await evaluate(`${CARD}.querySelector('[data-staff-note-add]').click();`);
+  await sleep(600);
+  check("★ 400：Not saved. + 后端原话", (await evaluate(`return ${CARD}.querySelector('[data-staff-note-error]').textContent;`)) === "Not saved. Pick which product this note is about.");
+  await ctl({ snFail: null });
+  before = (await mockLog()).length;
+  await evaluate(`${CARD}.querySelector('[data-staff-note-add]').click();`);
+  await waitFor(`${CARD}.querySelector('[data-staff-note-added]')`, 8000);
+  const p2 = (await since(before, (e) => e.method === "POST" && e.path === "/api/staff-notes"))[0];
+  check("★ 单产品：自动带这个产品，没 @ 就空数组", p2 && p2.body.product_code === "UAC01" && JSON.stringify(p2.body.mentions) === "[]" && JSON.stringify(p2.body.mention_team_ids) === "[]", JSON.stringify(p2 && p2.body));
+  check("★ 没 @：绿字只写 Added.", (await evaluate(`return ${CARD}.querySelector('[data-staff-note-added]').textContent;`)) === "Added.");
+
+  // 手机。
+  await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
+  await openSn("CHDSN1");
+  await waitFor(CARD, 8000);
+  await sleep(400);
+  check("★ 手机：说明收进「i」，整页不左右晃", await evaluate(`return !!${CARD}.querySelector('[data-phone-info]') && document.documentElement.scrollWidth <= window.innerWidth + 1;`));
+  await cdp("Emulation.clearDeviceMetricsOverride");
+
+  // partner：不出。
+  await ctl({ partner: ["orders.view"] });
+  await openSn("CHDSN1");
+  await sleep(600);
+  check("★ partner：不出 ★ Notes 卡", await evaluate(`return !${CARD};`));
+  await ctl({ partner: null, sn: false });
 }
 
 main().catch((e) => {

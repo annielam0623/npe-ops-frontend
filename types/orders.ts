@@ -1,3 +1,5 @@
+import type { StaffNote } from "@/lib/staff-notes-api";
+
 import type { FarmOutView } from "./farm-out";
 import type { TrackingMark } from "./morning-tracking";
 
@@ -145,6 +147,12 @@ export interface OrderDetail {
     /** bf 第 2 项（后端 bde07c1a）："whatsapp" = 走 WhatsApp（收 sms_in / 回 sms_out）；null = 旧行 / 邮件 / 备注；旧后端没有。 */
     channel?: "sms" | "whatsapp" | null;
   }[];
+  /**
+   * ★ Note 打通（Annie 2026-11-21 动手，preview 9BLMZq2ShCAZeVpbQ1j21A v3；后端合同 v1 第 6 点）：这单全部 ★ Note，
+   * 最新在前，每条带 product_code / 产品名 / 来源 / @。booking_notes 不变（照旧含 staff_note，前端自己从 Chat history 里滤掉，Q5 B）。
+   * partner 不回；旧后端没有 ⇒ 不出 ★ Notes 卡，Chat history 照旧混着显示。
+   */
+  staff_notes?: StaffNote[];
   /** 转给合作公司的订单才有：两套上车资料 + 谁放前面（后端算）。 */
   farm_out_view?: FarmOutView;
   /** 订单生命周期（bf 合同草稿 2026-11-18，旧后端没有这三个键）：按单的客人答复。 */

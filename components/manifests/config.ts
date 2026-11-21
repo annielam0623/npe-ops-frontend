@@ -183,7 +183,9 @@ export const NOTE_FIELD: ManifestField = {
 export function notesOn(page: ManifestPage): boolean {
   return (
     (page.tab === "bus" || page.tab === "tickets") &&
-    page.rows.some((r) => typeof r.note === "string")
+    page.rows.some(
+      (r) => typeof r.note === "string" || Array.isArray(r.staff_notes),
+    )
   );
 }
 
@@ -197,7 +199,13 @@ export function withNotes(page: ManifestPage): ManifestPage {
       : [...page.catalog, NOTE_FIELD],
     rows: page.rows.map((r) => ({
       ...r,
-      values: { ...r.values, [NOTE_KEY]: r.note ?? "" },
+      // ★ Note（后端合同 v1）：CSV 用后端拼好的 staff_notes_csv；旧后端照旧那一条 note。
+      values: {
+        ...r.values,
+        [NOTE_KEY]: Array.isArray(r.staff_notes)
+          ? (r.staff_notes_csv ?? "")
+          : (r.note ?? ""),
+      },
     })),
   };
 }

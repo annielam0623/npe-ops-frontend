@@ -34,6 +34,11 @@ import { usePageVisibility } from "@/lib/page-visibility";
 import { byTick } from "@/lib/permissions";
 import { withoutManifestMoney } from "@/lib/money-view";
 import { usePermissions } from "@/lib/staff-permissions";
+import {
+  formatCsvNoteTime,
+  noteAuthor,
+  type StaffNote,
+} from "@/lib/staff-notes-api";
 import { cn } from "@/lib/utils";
 import { useViewOnly, ViewOnly } from "@/components/ui/view-only";
 import type {
@@ -92,6 +97,7 @@ import {
   withNotes,
 } from "./config";
 import { NoteInput } from "./note-cell";
+import { StaffNoteCell } from "./staff-note-cell";
 import { FieldPicker } from "./field-picker";
 import { ManifestSearch } from "./manifest-search";
 import { SectionCfm } from "./section-cfm";
@@ -533,6 +539,37 @@ export function ManifestsView() {
                     note: note.note,
                     note_updated_by: note.by,
                     note_updated_at: note.at,
+                  }
+                : r,
+            ),
+          }
+        : d,
+    );
+  }
+
+  /**
+   * ★ Note 加好（后端合同 v1）：同单、同产品的行都加上（往返 shuttle 两段 / 别的团期同一产品）；
+   * 整单的（product_code null）同单每一行都加。CSV 那一格先在前面补上，下次读页面以后端拼的为准。
+   */
+  function onStaffNoteAdded(row: ManifestRow, note: StaffNote) {
+    const body = note.body.replace(/\s*[\r\n]+\s*/g, " ");
+    const line = `${noteAuthor(note)} ${formatCsvNoteTime(note.created_at)}: ${body}`;
+    setData((d) =>
+      d
+        ? {
+            ...d,
+            rows: d.rows.map((r) =>
+              r.order_number === row.order_number &&
+              Array.isArray(r.staff_notes) &&
+              (note.product_code === null ||
+                r.product_code === note.product_code) &&
+              !r.staff_notes.some((n) => n.id === note.id)
+                ? {
+                    ...r,
+                    staff_notes: [note, ...r.staff_notes],
+                    staff_notes_csv: r.staff_notes_csv
+                      ? `${line} | ${r.staff_notes_csv}`
+                      : line,
                   }
                 : r,
             ),
@@ -1333,6 +1370,7 @@ export function ManifestsView() {
                   onWaiverDirty={onWaiverDirty}
                   onNoteSaved={onNoteSaved}
                   onNoteDirty={onNoteDirty}
+                  onStaffNoteAdded={onStaffNoteAdded}
                   folded={folded}
                   onFold={setFolded}
                   onUnauthorized={redirectToLogin}
@@ -1623,6 +1661,7 @@ function ManifestTable({
   onWaiverDirty,
   onNoteSaved,
   onNoteDirty,
+  onStaffNoteAdded,
   folded,
   onFold,
   onUnauthorized,
@@ -1648,6 +1687,8 @@ function ManifestTable({
   /** 150 Notes：存好了（同单同产品同团期的行一起换）/ 改了没存。 */
   onNoteSaved: Parameters<typeof NoteInput>[0]["onSaved"];
   onNoteDirty: (rowKey: string, dirty: boolean) => void;
+  /** ★ Note 加好了（同单同产品的行一起加）。 */
+  onStaffNoteAdded: (row: ManifestRow, note: StaffNote) => void;
   /** 153：收起的 Tickets 场次组（节键）；收 / 展开几个组。 */
   folded: ReadonlySet<string>;
   onFold: (keys: readonly string[], on: boolean) => void;
@@ -1788,6 +1829,14 @@ function ManifestTable({
               />
             ) : k === REZDY_CFM_KEY && cfmMismatch(r, tab) ? (
               <CfmMismatchCell row={r} />
+            ) : k === NOTE_KEY && Array.isArray(r.staff_notes) ? (
+              <StaffNoteCell
+                row={r}
+                notes={r.staff_notes}
+                onAdded={onStaffNoteAdded}
+                onDirty={onNoteDirty}
+                onUnauthorized={onUnauthorized}
+              />
             ) : k === NOTE_KEY ? (
               <NoteInput
                 row={r}

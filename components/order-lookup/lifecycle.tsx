@@ -578,11 +578,20 @@ function chatLines(order: OrderDetail, date: string | null): ChatModule[] {
  * 订单详情页最下面的「Chat history」（C3 A：原 Notes 卡里的对话挪到这里、改名，写法同搜索结果），
  * 右上「Open chat →」（几条线各一个：Open chat · Tour → / · Morning →）。调用方判断开关 + messages.view。
  */
-export function OrderChatHistory({ order }: { order: OrderDetail }) {
+export function OrderChatHistory({
+  order,
+  guestOnly = false,
+}: {
+  order: OrderDetail;
+  /** ★ Note 打通（Q5 B）：订单页有「★ Notes」卡时，这里只放客人对话。 */
+  guestOnly?: boolean;
+}) {
   const [all, setAll] = useState(false);
   const collapse = usePhoneCollapse();
   const date = orderDateToYmd(order.product.tour_date);
-  const newest = [...(order.booking_notes ?? [])].reverse();
+  const newest = [...(order.booking_notes ?? [])]
+    .filter((n) => !guestOnly || n.direction !== "staff_note")
+    .reverse();
   const shown = all ? newest : newest.slice(0, CHAT_SHOWN);
   const lines = chatLines(order, date);
   const on = encodeURIComponent(order.order_number);

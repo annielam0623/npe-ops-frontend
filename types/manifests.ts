@@ -1,4 +1,5 @@
 import type { OutcomeFields } from "@/lib/send-outcome";
+import type { StaffNote } from "@/lib/staff-notes-api";
 import type { LunchCounts } from "./dispatch-manifest";
 /**
  * Manifests 页（`GET /api/manifests`，后端 `task/manifests-fields` 的接口契约 A–D，提交 04f3fa0）。
@@ -125,6 +126,13 @@ export interface ManifestRow {
   note?: string;
   note_updated_by?: string;
   note_updated_at?: string | null;
+  /**
+   * ★ Note 打通（Annie 2026-11-21 动手；后端合同 v1 第 5 点）：这一行产品的 ★ Note + 整单的（product_code null），最新在前。
+   * 有这个键 ⇒ Notes 列改用 ★ Note（只加不改）；旧的 note / PUT /api/manifests/notes 过渡期还在，Annie 验收后后端删。partner 不回。
+   */
+  staff_notes?: StaffNote[];
+  /** Export CSV 的 Notes 格：「name time: text | …」，最新在前（Q4 A），后端拼好。 */
+  staff_notes_csv?: string;
   /**
    * 产品名标红（Annie 2026-11-17「产品标红同意全部推荐。动手」）：后端在同一节里比产品名的主要文字
    * （去掉括号里的代理商、SB:DP、逗号后的上车点），跟这一节大多数不一样 ⇒ true，Product 格整个红字。
