@@ -4,7 +4,6 @@ import { useState } from "react";
 
 import {
   DARK_PRIMARY_BUTTON_CLASS,
-  PRIMARY_BUTTON_CLASS,
   SECONDARY_BUTTON_CLASS,
 } from "@/components/ui/buttons";
 import { FilterSearch } from "@/components/ui/filter-bar";
@@ -380,7 +379,7 @@ export function FieldPicker({
               data-apply="all"
               disabled={!!busy || pickedHere === 0}
               onClick={() => void apply(draft, "all")}
-              className={PRIMARY_BUTTON_CLASS}
+              className={DARK_PRIMARY_BUTTON_CLASS}
             >
               {busy === "all" ? "Saving…" : "Apply"}
             </button>

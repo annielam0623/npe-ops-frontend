@@ -479,7 +479,7 @@ export function NavigationSettingsView() {
               type="button"
               disabled={!dirty || !!problem || saving}
               onClick={() => void save()}
-              className="h-9 rounded-[9px] bg-[#2563eb] px-4 text-[13px] font-semibold text-white hover:bg-[#1d4ed8] disabled:cursor-not-allowed disabled:opacity-50"
+              className="h-9 rounded-[9px] bg-[#3b82f6] px-4 text-[13px] font-semibold text-white hover:bg-[#2f76e8] disabled:cursor-not-allowed disabled:opacity-50"
             >
               {saving ? "Saving…" : "Save"}
             </button>

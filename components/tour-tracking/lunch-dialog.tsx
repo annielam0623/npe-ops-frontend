@@ -109,7 +109,7 @@ export function LunchDialog({
           <button
             type="submit"
             disabled={saving}
-            className="flex-1 cursor-pointer rounded-lg border-none bg-[linear-gradient(135deg,#2f5e46,#1a3a2a)] p-2.5 text-[14px] font-semibold text-white hover:bg-[linear-gradient(135deg,#286645,#162e20)] disabled:opacity-60"
+            className="flex-1 cursor-pointer rounded-lg border-none bg-[#3b82f6] p-2.5 text-[14px] font-semibold text-white hover:bg-[#2f76e8] disabled:opacity-60"
           >
             {saving ? "Saving…" : "Save"}
           </button>

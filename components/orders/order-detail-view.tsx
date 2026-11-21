@@ -73,7 +73,7 @@ const OD_BTN =
   "h-[26px] cursor-pointer rounded-md border-[0.5px] border-black/[.18] night:border-white/10 bg-paper night:bg-white/[.04] px-2.5 text-[11px] font-normal tracking-normal text-[#1a1a1a] night:text-white/75 normal-case hover:border-black/40 disabled:cursor-default disabled:opacity-45";
 /** .od-btn.od-btn-primary */
 const OD_BTN_PRIMARY =
-  "h-[26px] cursor-pointer rounded-md border-[0.5px] border-[#1a1a1a] night:border-white/40 bg-[#1a1a1a] px-2.5 text-[11px] text-white hover:bg-[#333] disabled:cursor-default disabled:opacity-45";
+  "h-[26px] cursor-pointer rounded-md border-[0.5px] border-[#3b82f6] bg-[#3b82f6] px-2.5 text-[11px] text-white hover:bg-[#2f76e8] disabled:cursor-default disabled:opacity-45";
 /** .od-loading：直接写在深色底上。 */
 const OD_LOADING =
   "p-10 text-center text-[13px] text-[#ccc] night:text-white/35";
@@ -809,6 +809,7 @@ function PriceCard({
         <ConfirmDialog
           title="Save the price?"
           confirmLabel="Save"
+          submit
           busyLabel="Saving…"
           onConfirm={() => save(confirm)}
           onClose={() => setConfirm(null)}

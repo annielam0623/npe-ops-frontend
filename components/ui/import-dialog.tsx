@@ -428,7 +428,7 @@ export function ImportDialog<R extends ImportRowBase>({
                   bad.length > 0 ||
                   selected === 0
                 }
-                className={IMP_PRIMARY}
+                className={IMP_SUBMIT}
               >
                 {inserting ? "Inserting…" : "Insert"}
               </button>
@@ -452,5 +452,8 @@ const IMP_CHECK_LABEL =
 /** 旧页面上传弹窗（.imp-foot）的两个按钮：Cancel 白底、确认蓝底。 */
 const IMP_SECONDARY =
   "cursor-pointer rounded-[7px] border border-[#d3d1c7] bg-paper px-3.5 py-[7px] text-[12px] text-[#1a1a1a] disabled:cursor-not-allowed disabled:opacity-60";
+/** Insert 是提交键：统一蓝 #3b82f6（Annie 2026-11-19 Save 类一律蓝）。Done 关闭键照旧 IMP_PRIMARY。 */
+const IMP_SUBMIT =
+  "cursor-pointer rounded-[7px] border-none bg-[#3b82f6] px-4 py-[7px] text-[12px] font-semibold text-white hover:bg-[#2f76e8] disabled:cursor-not-allowed disabled:opacity-60";
 const IMP_PRIMARY =
   "cursor-pointer rounded-[7px] border-none bg-[#378ADD] px-4 py-[7px] text-[12px] font-semibold text-white hover:bg-[#2b74c0] disabled:cursor-not-allowed disabled:opacity-60";

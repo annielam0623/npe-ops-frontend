@@ -46,6 +46,7 @@ import { ImportPanel } from "./import-panel";
 import {
   HR_BTN_CLASS,
   HR_BTN_PRIMARY_CLASS,
+  HR_BTN_SAVE_CLASS,
   HR_CARD_CLASS,
   HR_CARD_HEADER_CLASS,
   HR_CARD_TITLE_CLASS,
@@ -838,7 +839,7 @@ export function HRView() {
                     type="button"
                     disabled={bulkSaving || changeCount === 0}
                     onClick={() => void saveList()}
-                    className={HR_BTN_PRIMARY_CLASS}
+                    className={HR_BTN_SAVE_CLASS}
                   >
                     {bulkSaving ? "Saving…" : "Save changes"}
                   </button>

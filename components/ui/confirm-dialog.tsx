@@ -5,6 +5,7 @@ import { useId, useState, type ReactNode } from "react";
 import type { ActionResult } from "./action-result";
 import {
   DANGER_BUTTON_CLASS,
+  DARK_PRIMARY_BUTTON_CLASS,
   PRIMARY_BUTTON_CLASS,
   SECONDARY_BUTTON_CLASS,
 } from "./buttons";
@@ -22,6 +23,8 @@ interface ConfirmDialogProps {
   danger?: boolean;
   /** 里面有逐单名单表格时用：弹窗放宽、太高就在框里滚动。 */
   wide?: boolean;
+  /** 提交类确定键（Save / Send / Text / Turn on…）：蓝色 #3b82f6（Annie 2026-11-19 Save 类一律蓝）。不给 = 深灰，用于 Replace / Discard / Deactivate 这类不是提交的。 */
+  submit?: boolean;
   /** 确认键换样式（例如蓝色提交键）；不给照旧。 */
   confirmClassName?: string;
   onConfirm: () => Promise<ActionResult>;
@@ -40,6 +43,7 @@ export function ConfirmDialog({
   confirmLabel,
   busyLabel,
   danger = false,
+  submit = false,
   wide = false,
   confirmClassName,
   onConfirm,
@@ -113,7 +117,11 @@ export function ConfirmDialog({
             disabled={busy}
             className={
               confirmClassName ??
-              (danger ? DANGER_BUTTON_CLASS : PRIMARY_BUTTON_CLASS)
+              (danger
+                ? DANGER_BUTTON_CLASS
+                : submit
+                  ? DARK_PRIMARY_BUTTON_CLASS
+                  : PRIMARY_BUTTON_CLASS)
             }
           >
             {busy ? busyLabel : confirmLabel}

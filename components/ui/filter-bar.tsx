@@ -27,7 +27,7 @@ export const FILTER_TEXT_BUTTON_CLASS =
 
 /** 筛选条里需要强调的操作（Apply、Pull 等）：深色小按钮。 */
 export const FILTER_PRIMARY_BUTTON_CLASS =
-  "inline-flex h-[26px] items-center rounded-md bg-stone-800 px-3 text-xs font-medium whitespace-nowrap text-white hover:bg-stone-700 disabled:cursor-not-allowed disabled:opacity-60 night:border night:border-white/20 night:bg-white/[.12] night:hover:bg-white/[.18]";
+  "inline-flex h-[26px] items-center rounded-md bg-[#3b82f6] px-3 text-xs font-medium whitespace-nowrap text-white hover:bg-[#2f76e8] disabled:cursor-not-allowed disabled:opacity-60";
 
 /** 带边框的 26px 小按钮（非文字按钮的次要操作）。 */
 export const FILTER_BUTTON_CLASS =

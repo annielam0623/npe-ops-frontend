@@ -332,7 +332,7 @@ export function BroadcastingLogView() {
                 <button
                   type="button"
                   onClick={applyCustom}
-                  className="h-7 cursor-pointer rounded-md bg-[#1a1a1a] px-3 text-[12px] text-white hover:bg-[#333]"
+                  className="h-7 cursor-pointer rounded-md bg-[#3b82f6] px-3 text-[12px] text-white hover:bg-[#2f76e8]"
                 >
                   Apply
                 </button>

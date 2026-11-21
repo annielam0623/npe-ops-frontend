@@ -14,7 +14,12 @@ export const LEGACY_INPUT_CLASS =
 export const LEGACY_ERROR_CLASS =
   "mb-3 text-[13px] text-[#c0392b] night:text-red-300";
 
+/** 保存键：蓝色提交键（Annie 2026-11-19 Save 类一律蓝）。 */
 export const LEGACY_SAVE_BUTTON_CLASS =
+  "cursor-pointer rounded-[8px] border-0 bg-[#3b82f6] px-5 py-2.5 text-[14px] font-semibold text-white hover:bg-[#2f76e8] disabled:cursor-not-allowed disabled:opacity-60";
+
+/** 旧页面藏青实心键（Reset link 的 Copy link，不是提交键，照旧）。 */
+export const LEGACY_NAVY_BUTTON_CLASS =
   "cursor-pointer rounded-[8px] border-0 bg-[#1a3a5c] px-5 py-2.5 text-[14px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60";
 
 export const LEGACY_CANCEL_BUTTON_CLASS =

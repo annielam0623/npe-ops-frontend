@@ -172,7 +172,7 @@ export function UploadComparePanel<
                 type="button"
                 disabled={apply.kind === "saving"}
                 onClick={onApply}
-                className="cursor-pointer rounded-[7px] border-none bg-[#185FA5] px-4 py-[7px] text-[12px] font-semibold text-white disabled:cursor-not-allowed disabled:bg-[#aaa]"
+                className="cursor-pointer rounded-[7px] border-none bg-[#3b82f6] px-4 py-[7px] text-[12px] font-semibold text-white hover:bg-[#2f76e8] disabled:cursor-not-allowed disabled:bg-[#aaa]"
               >
                 Apply {nApply} change{nApply === 1 ? "" : "s"}
               </button>

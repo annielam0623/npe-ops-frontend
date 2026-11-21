@@ -375,6 +375,7 @@ export function MorningSendView() {
         <ConfirmDialog
           title="Send morning pickup reminders?"
           confirmLabel={`Send to ${pendingOrders.length} order${pendingOrders.length === 1 ? "" : "s"}`}
+          submit
           busyLabel="Starting…"
           onClose={closeConfirm}
           sendFor={
