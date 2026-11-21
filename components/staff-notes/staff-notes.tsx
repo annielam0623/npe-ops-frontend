@@ -277,8 +277,8 @@ export function StaffNoteComposer({
             >
               <option value="">Choose a product…</option>
               {products.map((p) => (
-                <option key={p.code} value={p.code}>
-                  {p.name || p.code}
+                <option key={p.code ?? p.name} value={p.code ?? ""}>
+                  {p.name || p.code || "—"}
                 </option>
               ))}
             </select>

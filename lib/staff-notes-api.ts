@@ -48,7 +48,8 @@ export function noteAuthor(n: StaffNote): string {
 }
 
 export interface StaffNoteProduct {
-  code: string;
+  /** 旧 lane 没有产品码的单：null（写的时候照样传 null，后端取这单唯一的产品）。 */
+  code: string | null;
   name: string;
 }
 
