@@ -112,6 +112,8 @@ http.createServer(async (req, res) => {
     if (q.get("q")?.startsWith("TA-")) rows = ctl.partner || lacksMoney() ? [] : [{ ...all[0], reseller_reference: "TA-55001", matched_agent_ref: true }];
     else if (q.get("q")) rows = rows.filter((r) => r.order_number.includes(q.get("q")) || r.name.toLowerCase().includes(q.get("q").toLowerCase()));
     if (q.get("date_to") === "2000-01-01") rows = [];
+    // Source 筛选（后端 source=rezdy|tripguru；rezdy 含旧表的单 = 行上 source "rezdy"）。
+    if (q.get("source")) rows = rows.filter((r) => r.source === q.get("source"));
     const page = Number(q.get("page") || 1);
     let records = rows.slice((page - 1) * 50, page * 50);
     if (ctl.partner || lacksMoney()) records = records.map((r) => ({ ...r, agent_name: "—" }));
