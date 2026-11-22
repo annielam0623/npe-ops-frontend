@@ -1789,6 +1789,15 @@ function ManifestTable({
               checked={selected.has(r.row_key)}
               onChange={(e) => onToggle([r.row_key], e.target.checked)}
             />
+            {/* preview：还没发过的门票单在框旁边标 NEW（Annie 2026-11-21「还没有的订单在打勾的框旁边加个tag，new」）。 */}
+            {tab === "tickets" && !sentTickets ? (
+              <span
+                data-new-tag
+                className="ml-1 rounded-full border border-black/30 px-1 text-[9.5px] leading-[15px] font-bold tracking-[.04em] whitespace-nowrap text-[#5f5e5a] night:border-white/30 night:text-white/75"
+              >
+                NEW
+              </span>
+            ) : null}
           </label>
         </td>
         <td
@@ -2019,7 +2028,7 @@ function ManifestTable({
                       data-session-head={session ? "" : undefined}
                       className={cn(
                         "px-2.5 py-1.5 text-[12px] font-semibold tracking-[.02em] text-[#1a1a1a] night:text-white/90",
-                        session && "bg-[#eceff3] night:bg-white/[.09]",
+                        session && "bg-[#bdbdbd] night:bg-white/[.09]",
                       )}
                     >
                       {/* 手机上组头钉在左边，表格左右滑时不跟着跑（题 4 A）。 */}
