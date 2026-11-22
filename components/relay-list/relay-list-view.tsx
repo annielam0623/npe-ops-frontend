@@ -27,6 +27,7 @@ import {
 import { isYmd } from "@/lib/la-date";
 import {
   busBar,
+  busKey,
   busLegend,
   busName,
   buildRound,
@@ -527,7 +528,7 @@ function todayTours(data: RelayPull): {
         if (tb.manifest_id != null) ids.add(tb.manifest_id);
         names.add(tb.tour);
         const who = `${(b.car.driver || "No driver").trim()} - ${b.car.van || "No vehicle"}`;
-        const k = `${tb.manifest_id}|${tb.tour}|${tb.label}|${who}`;
+        const k = `${tb.manifest_id}|${tb.tour}|${tb.id ?? tb.label ?? ""}|${who}`;
         if (seen.has(k)) continue;
         seen.add(k);
         also.push({
@@ -889,7 +890,7 @@ function CarSheet({
           <div className="mt-5">
             {car.buses.map((b) => (
               <div
-                key={`${b.tour}-${b.label}-${b.van}`}
+                key={busKey(b)}
                 data-relay-bus
                 className="rl-bar"
                 style={b.color ? { background: b.color } : undefined}

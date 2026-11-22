@@ -277,6 +277,11 @@ export interface RelayGuest {
 
 /** 当天一辆大巴（Bus Tour 排车）：Relay list 底部色条、总表图例用。 */
 export interface RelayBus {
+  /**
+   * 排车页那一行（dispatch_assignment.id，同 Bus Manifest 一页一台车）。后端 5dde636d 起带；
+   * 两台都没字母的车只能靠它分开。旧后端没有 ⇒ 按 团|字母|车号 去重。
+   */
+  id?: number;
   /** 这个团当天分车时的字母（A / B…）；只有一台车 = null。 */
   label: string | null;
   tour: string;

@@ -120,6 +120,19 @@ function relayPull(date) {
           guests: [rich({ id: 8, order_number: "CHDZZR01", name: "Rita Ray", pickup_time: "4:45 AM", pickup_location: "Bellagio", location_id: 16, hotel: "Bellagio", tour: "Antelope Canyon" }, { phone: "+15550100008", manifest_id: 3, product_short: "Lower", short_tag: "Lower", hotel_short: "Bellagio", bus: BUS.antA })],
         }]
       : []),
+    // ctl.noLetter（后端 5dde636d：只有一台车 / 没字母的团也带 bus，并带 id）：1726 的客人去 3 台没字母的大巴——
+    // BZ 一台车（2415，Annie 纸本 11/18 Relay 1 那张）、Hoover 两台都没字母也还没排车号（旧键 团|字母|车号 会并成一条，要按 id 分开）。
+    ...(ctl.noLetter && !ctl.old
+      ? [{
+          car: { id: 951, van: "1726", driver: "ZZ Bruce", location_ids: [17], tour_buses: [] },
+          guests: [
+            rich({ id: 41, order_number: "CHDZZB41", name: "Bo Banks", pickup_time: "4:55 AM", pickup_location: "Venetian", location_id: 17, hotel: "Venetian", tour: "Bryce&Zion" }, { phone: "+15550100041", manifest_id: 7, product_short: "BZ", short_tag: "BZ", hotel_short: "Venetian", bus: { id: 703, label: null, tour: "Bryce&Zion", tour_short: "BZ", sections: [], driver: "ZZ Jimmy", guide: null, van: "2415", color: "#f4938e" } }),
+            rich({ id: 42, order_number: "CHDZZH42", name: "Hal Hart", pickup_time: "4:55 AM", pickup_location: "Venetian", location_id: 17, hotel: "Venetian", tour: "Hoover Dam" }, { phone: "+15550100042", manifest_id: 8, product_short: "Hoover", short_tag: "", hotel_short: "Venetian", bus: { id: 701, label: null, tour: "Hoover Dam", tour_short: "Hoover", sections: [], driver: "ZZ Yan", guide: "ZZ Lankun", van: "", color: "#ffe08a" } }),
+            rich({ id: 43, order_number: "CHDZZH43", name: "Ida Hart", pickup_time: "4:55 AM", pickup_location: "Venetian", location_id: 17, hotel: "Venetian", tour: "Hoover Dam" }, { phone: "+15550100043", manifest_id: 8, product_short: "Hoover", short_tag: "", hotel_short: "Venetian", bus: { id: 702, label: null, tour: "Hoover Dam", tour_short: "Hoover", sections: [], driver: "ZZ Mia", guide: null, van: "", color: "#ffe08a" } }),
+            rich({ id: 44, order_number: "CHDZZH44", name: "Jo Hart", pickup_time: "4:55 AM", pickup_location: "Venetian", location_id: 17, hotel: "Venetian", tour: "Hoover Dam" }, { phone: "+15550100044", manifest_id: 8, product_short: "Hoover", short_tag: "", hotel_short: "Venetian", bus: { id: 701, label: null, tour: "Hoover Dam", tour_short: "Hoover", sections: [], driver: "ZZ Yan", guide: "ZZ Lankun", van: "", color: "#ffe08a" } }),
+          ],
+        }]
+      : []),
   ];
   // ctl.many：true = 40 家酒店各 1 单；数字 = 这么多家（置顶 112 自动压的检查用）。
   const nMany = ctl.many === true ? 40 : Number(ctl.many) || 0;

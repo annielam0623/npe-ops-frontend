@@ -93,12 +93,13 @@ export function tourText(g: RelayGuest): string {
 
 const firstName = (g: RelayGuest) => (g.name || "").trim().toLowerCase();
 
-/** 车号=字母（纸本「2056=A」）；没字母只写车号。 */
+/** 车号=字母（纸本「2056=A」）；没字母只写车号；还没排车号 ⇒ ""（不出单独的「=A」）。 */
 export function vanText(b: {
   van: string | null;
   label: string | null;
 }): string {
-  const van = b.van || "";
+  const van = (b.van || "").trim();
+  if (!van) return "";
   return b.label ? `${van}=${b.label}` : van;
 }
 
@@ -136,25 +137,30 @@ export function busName(b: {
   return b.label ? `${t} ${b.label}` : t;
 }
 
-/** 底部色条一句：「Antelope Bus A: LOWER & UPPER - Luis R + Scarlett - 2056=A」。 */
+/**
+ * 底部色条一句，照纸本：「BZ: Jimmy - 2415=B」；没字母（团当天一台车）⇒「Antelope: Yan + Lankun - 2457」。
+ * 不写节、团名后面不写 Bus X，字母只在车号后面（Annie 2026-11-22「其实不用，这里显示的都是在一台巴士上」→「动手」）。
+ * 还没排车号 ⇒ 不写「 - 车号」那段（同后端 bus_bars）。
+ */
 export function busBar(b: RelayBus): string {
-  const t = b.tour_short || b.tour;
-  const head = b.label ? `${t} Bus ${b.label}` : t;
-  const secs = (b.sections || []).map((s) => s.short || s.name).filter(Boolean);
-  return `${head}${secs.length ? `: ${secs.join(" & ")}` : ""} - ${crewText(b)} - ${vanText(b)}`;
+  const van = vanText(b);
+  return `${b.tour_short || b.tour}: ${crewText(b)}${van ? ` - ${van}` : ""}`;
 }
 
-/** 图例里大巴那一格：「Luis R + Scarlett - 2056=A (LOWER+UPPER)」。 */
+/** 图例里大巴那一格：「Luis R + Scarlett - 2056=A」（同色条，不写节）；没排车号 ⇒「Luis R + Scarlett」。 */
 export function busLegend(b: RelayBus): string {
-  const secs = (b.sections || []).map((s) => s.short || s.name).filter(Boolean);
-  return `${crewText(b)} - ${vanText(b)}${secs.length ? ` (${secs.join("+")})` : ""}`;
+  const van = vanText(b);
+  return `${crewText(b)}${van ? ` - ${van}` : ""}`;
 }
 
-const busKey = (b: {
+/** 一台大巴的去重键：按排车页那一行 id（两台都没字母的车不会并成一条）；旧后端没有 id ⇒ 团|字母|车号。 */
+export const busKey = (b: {
+  id?: number;
   tour: string;
   label: string | null;
   van: string | null;
-}) => `${b.tour}|${b.label ?? ""}|${b.van ?? ""}`;
+}) =>
+  b.id != null ? `id:${b.id}` : `${b.tour}|${b.label ?? ""}|${b.van ?? ""}`;
 
 /** 去重、按团名再按字母排（同一个团的车排在一起，总表图例按团分栏）。 */
 function uniqueBuses(list: (RelayBus | null | undefined)[]): RelayBus[] {
