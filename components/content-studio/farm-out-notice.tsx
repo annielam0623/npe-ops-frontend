@@ -11,6 +11,7 @@ import type { FarmOutPartner } from "@/types/farm-out";
 import {
   type FarmOutField,
   FO_DEFAULTS,
+  FO_SUBJECT_NOTE,
   FO_VAR_INFO,
   FO_SAMPLE,
   foFields,
@@ -24,8 +25,9 @@ type Partners =
   | { kind: "loading" }
   | { kind: "ready"; list: FarmOutPartner[]; note: string | null };
 
+// Email subject 不在这里：框藏了，Copy from Default / same as Default 都不碰它，已存的值原样留着（G302）。
 const TAB_FIELDS: Record<Tab, FarmOutField[]> = {
-  Email: ["email_subject", "email_body"],
+  Email: ["email_body"],
   SMS: ["sms_body"],
 };
 
@@ -109,6 +111,7 @@ export function FarmOutNoticePanel({
   useEffect(() => {
     if (!available) return;
     for (const f of Object.keys(FO_DEFAULTS) as FarmOutField[]) {
+      if (f === "email_subject") continue; // 框藏了，不补草稿
       const k = foKey("default", f);
       if (!studio.savedValue(k) && !studio.draft(k)) {
         studio.setDraft(k, FO_DEFAULTS[f]);
@@ -245,6 +248,14 @@ export function FarmOutNoticePanel({
                   : `${current.name} has its own wording.`}
               </span>
             </div>
+          ) : null}
+          {tab === "Email" ? (
+            <p
+              data-fo-subject-note
+              className="mb-2.5 text-[11px] leading-[1.5] text-[#6B5E57] night:text-white/65"
+            >
+              {FO_SUBJECT_NOTE}
+            </p>
           ) : null}
           {foFields(current.slug, tab, longestNote).map((f) => (
             <TextFieldCard key={f.key} field={f} studio={studio} />

@@ -100,6 +100,7 @@
 - ✅ **Relay 色条（bug 修复 + 纸本写法）上前端 main cc20c174**（2c，功能 320e0ef1，配合后端 5dde636d + adce9d9d）：RelayBus 加 id、按 id 去重；色条「Antelope: Yan + Lankun - 2457」「BZ: Jimmy - 2415=B」不写节 / Bus X；总表图例去节，左格车名不变；车号空时不写「 - 车号」也不写「=字母」（2c 自定：字母只在总表左格看得到）。tsc / eslint / build、rl 165/165、da 665/665。SHA 已回后端主窗口-bb。📌 Annie 早上看 /dispatch Relay list：每台 relay 车单子底部色条 + RELAY SPLITS 总表下大巴图例。
 - Annie（原话）「A 动手」（G302 配套：Content Studio farm-out 编辑器藏 Email subject 框，换「Subject is set automatically: tour name, date, order number.」，旧数据保留）⇒ 派 bb 做完直接合 main。
 - Annie（原话）「P-Q1 选A，动手」⇒ Tickets 标签的产品胶囊 / 组标题圆点 / 左边条不用团色，胶囊回 10-14 前白色（git 历史照原样）；Bus / Admin fee 不动。派 2c，过检查直接合 main。排班 Rules 两张 Trello 卡（G272）后端说 Annie 还没答要不要查，不派。
+- ✅ G302 配套上 main ab25c399（bb，功能 e0682eb3）：Content Studio › Farm out Notice › Email 藏 Email subject，换「Subject is set automatically: tour name, date, order number.」，右侧预览 Subject 行同改；旧 tmpl__farmout__*__email_subject 不清不写；cs 242/242、tsc / eslint / build。SHA 已回后端。别处仍可手填 subject（不在 G302）：Team Messages 7 个、Tickets Staff email subject。bb 顺看到（main 原有，未修、非 Annie 提）：Farm out Email 页 Variables 表白天字太暗、深色下 Insert 那排看不清。
 - 答后端：95 G371 旧发送入口盘点（三个 tracking 已切 ops；utilities / test-orders ops 没页面没入口；ops 直接调 /booking-notes/multi/reply、不调 /resend）；bb 7a 8 句原文 + 号码 grep（ops 代码没写死旧号码）。
 ## 📌 2026-11-20 17:15 Annie 新提：staff 备注几个入口打通（记录，未动手）
 
