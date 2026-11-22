@@ -95,6 +95,8 @@ export function ProductsTable({
   picked,
   busyId,
   placeholder,
+  folded,
+  onFold,
   allVisiblePicked,
   onPick,
   onPickAll,
@@ -115,6 +117,9 @@ export function ProductsTable({
   picked: Set<number>;
   busyId: number | null;
   placeholder: string | null;
+  /** 收起的组（section.key）。收起只是藏起来，行还在（没存的改动不丢）。 */
+  folded: ReadonlySet<string>;
+  onFold: (key: string) => void;
   allVisiblePicked: boolean;
   onPick: (id: number, on: boolean) => void;
   onPickAll: (on: boolean) => void;
@@ -182,8 +187,8 @@ export function ProductsTable({
             <th className={cn(PROD_TH_CLASS, "w-[12%]")}>Status</th>
           </tr>
         </thead>
+        {placeholder ? (
         <tbody className={TBODY_CLASS}>
-          {placeholder ? (
             <tr>
               <td
                 colSpan={colSpan}
@@ -192,19 +197,36 @@ export function ProductsTable({
                 {placeholder}
               </td>
             </tr>
+        </tbody>
           ) : (
-            sections.map((section) => (
+            sections.map((section) => {
+              const isFolded = folded.has(section.key);
+              return (
               <Fragment key={section.key}>
+              <tbody className={TBODY_CLASS}>
                 <tr className={TR_CLASS}>
-                  <td colSpan={colSpan} className={GROUP_ROW_TD_CLASS}>
-                    {section.title}{" "}
-                    <span className={GROUP_COUNT_CLASS}>
-                      {section.rows.length === section.total
-                        ? section.total
-                        : `${section.rows.length} of ${section.total}`}
-                    </span>
+                  <td colSpan={colSpan} className={cn(GROUP_ROW_TD_CLASS, "p-0")}>
+                    <button
+                      type="button"
+                      data-section-toggle={section.key}
+                      aria-expanded={!isFolded}
+                      onClick={() => onFold(section.key)}
+                      className="flex w-full cursor-pointer items-center gap-1.5 px-3 py-[7px] text-left font-semibold hover:bg-black/[.03] night:hover:bg-white/[.04]"
+                    >
+                      <span aria-hidden className="inline-block w-3 text-[11px]">
+                        {isFolded ? "▸" : "▾"}
+                      </span>
+                      {section.title}{" "}
+                      <span className={GROUP_COUNT_CLASS}>
+                        {section.rows.length === section.total
+                          ? section.total
+                          : `${section.rows.length} of ${section.total}`}
+                      </span>
+                    </button>
                   </td>
                 </tr>
+              </tbody>
+              <tbody className={TBODY_CLASS} hidden={isFolded}>
                 {section.rows.map((p) => (
                   <Fragment key={p.id}>
                     <ProductRow
@@ -229,10 +251,11 @@ export function ProductsTable({
                     ) : null}
                   </Fragment>
                 ))}
+              </tbody>
               </Fragment>
-            ))
+              );
+            })
           )}
-        </tbody>
       </table>
     </div>
   );
