@@ -62,7 +62,11 @@ export interface ProductSection {
   rows: Product[];
 }
 
-/** 后端已按组排好序；按组切段，筛选后没有行的组不显示。 */
+/**
+ * 后端已按组排好序；按组切段，筛选后没有行的组不显示。
+ * 「No group」（没分组的）一律放最前面（Annie 2026-10-23「所有没有被分组的产品都应该被放到页面最上方提醒管理员去处理」，
+ * 2026-11-21 再说「放到页首」），其余组照后端的顺序。
+ */
 export function groupSections(
   all: Product[],
   visible: Set<number>,
@@ -80,7 +84,9 @@ export function groupSections(
       section.rows.push(p);
     }
   }
-  return sections.filter((s) => s.rows.length > 0);
+  const none = sections.filter((s) => s.key === "none");
+  const rest = sections.filter((s) => s.key !== "none");
+  return [...none, ...rest].filter((s) => s.rows.length > 0);
 }
 
 const DATE_FORMAT = new Intl.DateTimeFormat("en-US", {
