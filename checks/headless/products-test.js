@@ -52,9 +52,17 @@ async function waitFor(expr, timeout = 15000) {
   }
   return false;
 }
+// 大项折叠（Annie 2026-11-21「动手」）：Products 页默认收起。除了专门测折叠的那几项，其余检查打开页面后先全部展开。
+let autoExpand = false;
 async function goto(url) {
   await cdp("Page.navigate", { url });
   await sleep(300);
+  if (autoExpand && url.includes("/settings/products")) await expandAll();
+}
+async function expandAll() {
+  if (!(await waitFor("document.querySelector('[data-fold-tools]')", 5000))) return;
+  await evaluate("const t = document.querySelector('[data-setup-toggle]'); if (t && t.getAttribute('aria-expanded') === 'false') t.click(); const b = [...document.querySelectorAll('[data-fold-tools] button')].find((x) => x.textContent.trim() === 'Expand all'); if (b && !b.disabled) b.click(); return 1;");
+  await sleep(150);
 }
 
 // 页面里用的小工具（每次导航后重新注入）。
@@ -154,6 +162,39 @@ async function run() {
   await waitFor("document.body.textContent.includes('All Products') && document.body.textContent.includes('not in this list yet')");
   await h();
 
+  // ── 大项折叠（Annie 2026-11-21「Products 大项折叠可以，动手」；Q1–Q3 都选 A）──
+  const foldState = () => evaluate("return [...document.querySelectorAll('[data-section-toggle]')].map((b) => b.dataset.sectionToggle + ':' + b.getAttribute('aria-expanded') + ':' + (b.closest('tbody').nextElementSibling.hidden ? 'hidden' : 'shown')).join('|');");
+  check("折叠：打开页面时 No group 展开、其余组收起（行藏起来）", (await foldState()) === "none:true:shown|1:false:hidden|2:false:hidden", await foldState());
+  check("折叠：表格上面写 3 groups · Expand all · Collapse all", await evaluate("return [...document.querySelector('[data-fold-tools]').children].map((e) => e.textContent.trim()).join('|') === '3 groups|Expand all|Collapse all';"), await evaluate("return document.querySelector('[data-fold-tools]').textContent;"));
+  await waitFor("/[0-9]+ tours/.test(document.querySelector('[data-setup-toggle]')?.textContent || '')");
+  check("折叠：Bus Manifest setup 默认收起、标题后写 N tours、团下拉不显示", await evaluate("const t = document.querySelector('[data-setup-toggle]'); return t.getAttribute('aria-expanded') === 'false' && /[0-9]+ tours/.test(t.textContent) && !document.querySelector('[aria-label=\"Tour group\"]') && t.closest('section').querySelector(':scope > div[hidden]') !== null;"));
+  check("折叠：两个提醒块照旧展开（Q2=A）", await evaluate("const m = document.querySelector('[data-missing-card]'); return !!m && m.getBoundingClientRect().height > 0 && m.textContent.includes('not in this list yet');"));
+  await evaluate("document.querySelector('[data-section-toggle=\"1\"]').click(); return 1;");
+  await sleep(150);
+  check("折叠：点组标题 ▸ 展开那一组", (await foldState()) === "none:true:shown|1:true:shown|2:false:hidden", await foldState());
+  await evaluate("[...document.querySelectorAll('[data-fold-tools] button')].find((x) => x.textContent.trim() === 'Collapse all').click(); return 1;");
+  await sleep(150);
+  check("折叠：Collapse all 全部收起（No group 也收）", (await foldState()) === "none:false:hidden|1:false:hidden|2:false:hidden", await foldState());
+  await evaluate("[...document.querySelectorAll('[data-fold-tools] button')].find((x) => x.textContent.trim() === 'Expand all').click(); return 1;");
+  await sleep(150);
+  check("折叠：Expand all 全部展开", (await foldState()) === "none:true:shown|1:true:shown|2:true:shown", await foldState());
+  await evaluate("[...document.querySelectorAll('[data-fold-tools] button')].find((x) => x.textContent.trim() === 'Collapse all').click(); return 1;");
+  await sleep(150);
+  await evaluate("const i = document.querySelector('input[aria-label=Search]'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(i, 'Antelope'); i.dispatchEvent(new Event('input', { bubbles: true })); return 1;");
+  await sleep(300);
+  check("折叠：搜索时有结果的组自动展开，Expand all / Collapse all 灰掉", (await foldState()).includes("1:true:shown") && (await evaluate("return [...document.querySelectorAll('[data-fold-tools] button')].every((b) => b.disabled);")), await foldState());
+  await evaluate("const i = document.querySelector('input[aria-label=Search]'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(i, ''); i.dispatchEvent(new Event('input', { bubbles: true })); return 1;");
+  await sleep(300);
+  check("折叠：清掉搜索回到原来的（都收起）", (await foldState()) === "none:false:hidden|1:false:hidden|2:false:hidden", await foldState());
+  await evaluate("document.querySelector('[data-setup-toggle]').click(); return 1;");
+  await sleep(200);
+  check("折叠：点 Bus Manifest setup 展开、团下拉出来", await evaluate("const t = document.querySelector('[data-setup-toggle]'); return t.getAttribute('aria-expanded') === 'true' && !!document.querySelector('[aria-label=\"Tour group\"]');"));
+  await goto(`${APP}/settings/products`);
+  await waitFor("document.querySelector('[data-section-toggle]')");
+  check("折叠：不记住（Q3=A）——重开页面又回到默认", (await foldState()) === "none:true:shown|1:false:hidden|2:false:hidden" && (await evaluate("return document.querySelector('[data-setup-toggle]').getAttribute('aria-expanded');")) === "false", await foldState());
+  autoExpand = true;
+  await expandAll();
+
   // ── 来源小标签（Annie 2026-11-21：TripGuru 的产品不能写死 REZDY）──
   const tagsOf = (code) => evaluate(`const tr = [...document.querySelectorAll("tbody tr")].find((r) => r.querySelector("td:nth-child(2)")?.textContent.trim() === ${JSON.stringify(code)}); return tr ? [...tr.querySelectorAll("[data-product-source]")].map((e) => e.textContent.trim()).join("+") : null;`);
   check("来源：旧后端（没有 source）⇒ 名字旁不出 REZDY / TRIPGURU", (await evaluate("return document.querySelectorAll('[data-product-source]').length;")) === 0 && !(await evaluate("return [...document.querySelectorAll('tbody td')].some((td) => td.textContent.includes('REZDY'));")));
@@ -163,7 +204,7 @@ async function run() {
   await h();
   const src = { UAC01: await tagsOf("UAC01"), UAC02: await tagsOf("UAC02"), SHT01: await tagsOf("SHT01"), LEG01: await tagsOf("LEG01") };
   check("来源：rezdy ⇒ REZDY、tripguru ⇒ TRIPGURU、both ⇒ 两个、没有 source ⇒ 不出", src.UAC01 === "REZDY" && src.UAC02 === "TRIPGURU" && src.SHT01 === "REZDY+TRIPGURU" && src.LEG01 === "", JSON.stringify(src));
-  check("来源：TRIPGURU 跟 REZDY 同一个样子（字号 / 底色）", await evaluate("const [a, b] = [document.querySelector('[data-product-source=rezdy]'), document.querySelector('[data-product-source=tripguru]')]; const s = (e) => { const c = getComputedStyle(e); return [c.fontSize, c.backgroundColor, c.fontWeight].join(); }; return !!a && !!b && s(a) === s(b) && getComputedStyle(a).fontSize === '9px';"));
+  check("来源：TRIPGURU 蓝（同 Order List 的 TripGuru：底 #E6F1FB、字 #185FA5），REZDY 照旧灰（#f0f0ee），字号一样 9px", await evaluate("const [a, b] = [document.querySelector('[data-product-source=rezdy]'), document.querySelector('[data-product-source=tripguru]')]; const c = (e) => getComputedStyle(e); return !!a && !!b && c(b).backgroundColor === 'rgb(230, 241, 251)' && c(b).color === 'rgb(24, 95, 165)' && c(a).backgroundColor === 'rgb(240, 240, 238)' && c(a).fontSize === '9px' && c(b).fontSize === '9px';"), await evaluate("return [...document.querySelectorAll('[data-product-source]')].map((e) => e.dataset.productSource + ' ' + getComputedStyle(e).backgroundColor + ' ' + getComputedStyle(e).color).join(' | ');"));
   await ctl({ source: false });
   await goto(`${APP}/settings/products`);
   await waitFor("document.body.textContent.includes('All Products') && document.body.textContent.includes('not in this list yet')");
@@ -171,8 +212,8 @@ async function run() {
 
   // ── 列表 ──
   check("计数：5 products · 1 inactive", await evaluate("return document.body.textContent.includes('5 products · 1 inactive');"));
-  const headings = await evaluate("return [...document.querySelectorAll('section:not([data-missing-card]) tbody tr td[colspan=\"7\"]')].map(td => td.textContent);");
-  check("按组分段：Upper Antelope 2 / LV Shuttle 1 / No group 2", headings.join("|") === "Upper Antelope 2|LV Shuttle 1|No group 2", headings.join("|"));
+  const headings = await evaluate("return [...document.querySelectorAll('section:not([data-missing-card]) tbody tr td[colspan=\"7\"]')].map(td => td.textContent.replace(/[▸▾]/g, ''));");
+  check("按组分段：No group 放最前（Annie 2026-10-23 / 11-21「放到页首」），其余照后端顺序：No group 2 / Upper Antelope 2 / LV Shuttle 1", headings.join("|") === "No group 2|Upper Antelope 2|LV Shuttle 1", headings.join("|"));
   check("Rezdy 名照原样显示（不当 HTML）", await evaluate("return $prodRow('SHT01').children[2].textContent.startsWith('LV Shuttle <b>x</b>');"));
   check("没名字显示 (no name yet)", await evaluate("return $prodRow('PFYF01').children[2].textContent.includes('(no name yet)');"));
   check("库里有、清单里没有的分类照实显示", (await evaluate("return $prodRow('LEG01').querySelector('[aria-label^=\"Category for\"]').value;")) === "weird_old");
@@ -230,10 +271,10 @@ async function run() {
   before = (await mockLog()).length;
   await evaluate(`$sel(${rowQ("SHT01", '[aria-label^="Group for"]')}, '1');`);
   await sleep(400);
-  check("改组：按 Save 之前不发请求、行不挪", (await since(before, (e) => e.path === "/api/settings/products/12")).length === 0 && (await evaluate("return document.querySelectorAll('section:not([data-missing-card]) tbody tr td[colspan=\"7\"]')[0].textContent;")) === "Upper Antelope 2");
+  check("改组：按 Save 之前不发请求、行不挪", (await since(before, (e) => e.path === "/api/settings/products/12")).length === 0 && (await evaluate("return document.querySelectorAll('section:not([data-missing-card]) tbody tr td[colspan=\"7\"]')[1].textContent.replace(/[▸▾]/g, '');")) === "Upper Antelope 2");
   await evaluate(`${rowQ("SHT01", "[data-save-btn]")}.click();`);
   put = await waitPut(before, "/api/settings/products/12");
-  await waitFor("document.querySelectorAll('section:not([data-missing-card]) tbody tr td[colspan=\"7\"]')[0].textContent === 'Upper Antelope 3'");
+  await waitFor("document.querySelectorAll('section:not([data-missing-card]) tbody tr td[colspan=\"7\"]')[1].textContent.replace(/[▸▾]/g, '') === 'Upper Antelope 3'");
   check("改组：PUT manifest_id=1，行挪到新组下", put && put.body.manifest_id === 1, JSON.stringify(put?.body));
   await sleep(300);
   check("改组：挪到新组下以后仍显示绿字 ✓ Saved", await evaluate(`return !!${rowQ("SHT01", "[data-save-ok]")};`));

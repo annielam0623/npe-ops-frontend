@@ -3,6 +3,7 @@
 import { type ReactNode, useEffect, useState } from "react";
 
 import { PhoneMore } from "@/components/ui/phone";
+import { SelectMenu } from "@/components/ui/select-menu";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { usePageVisibility } from "@/lib/page-visibility";
 import {
@@ -34,7 +35,7 @@ export const SYNC_HELP: Record<TrackingSyncMode, string> = {
 };
 
 const SELECT =
-  "cursor-pointer rounded-[7px] border border-[#d0e0d4] bg-paper px-1.5 py-[2px] font-[inherit] text-[12px] font-semibold text-[#1f2d25] outline-none focus:border-[#2f5e46] disabled:opacity-60";
+  "rounded-[7px] border border-[#d0e0d4] bg-paper px-1.5 py-[2px] font-semibold text-[#1f2d25] outline-none focus:border-[#2f5e46] disabled:opacity-60";
 
 /** api：哪个开关（默认 Tour Tracking 的；Ticket Tracking 传 TICKETS_SYNC_API，G281 题 1 A 同一个样子）。 */
 export function useTrackingSyncSwitch(
@@ -88,12 +89,15 @@ export function useTrackingSyncSwitch(
   if (!isSuperAdmin || mode === null) return { control: null, below: null };
 
   const select = (
-    <select
+    <SelectMenu
       aria-label="Main manifest sync"
       value={asking ? "staff" : mode}
       disabled={saving}
-      onChange={(e) => {
-        const next = e.target.value as TrackingSyncMode;
+      options={(Object.keys(LABEL) as TrackingSyncMode[]).map((m) => ({
+        value: m,
+        label: LABEL[m],
+      }))}
+      onChange={(next) => {
         setResult(null);
         if (next === mode) return;
         if (next === "staff") setAsking(true);
@@ -103,13 +107,7 @@ export function useTrackingSyncSwitch(
         }
       }}
       className={SELECT}
-    >
-      {(Object.keys(LABEL) as TrackingSyncMode[]).map((m) => (
-        <option key={m} value={m}>
-          {LABEL[m]}
-        </option>
-      ))}
-    </select>
+    />
   );
   // Tracking 顶部压缩 4④ A（Annie 2026-11-20「动手」）：不要虚线框，只留「Main manifest sync [下拉] (i)」，
   // 原来框里那句和下面那一行说明都收进 (i)（停上去看、点一下也能展开）。
