@@ -165,7 +165,7 @@ export function ManifestSetupPanel({
 
   // 手机上标题后的灰字收进「i」（Annie 2026-11-01 手机版规则）。
   const headInfo = usePhoneInfo("About Bus Manifest setup");
-  // 大项折叠（preview）：默认收起；收起只藏，不卸载（没存的改动不丢）。跳到 Forecast 那一项时自动展开。
+  // 大项折叠（Annie 2026-11-21「动手」）：默认收起；收起只藏，不卸载（没存的改动不丢）。跳到 Forecast 那一项时自动展开。
   const [open, setOpen] = useState(false);
   useEffect(() => {
     if (jumpTo) setOpen(true);

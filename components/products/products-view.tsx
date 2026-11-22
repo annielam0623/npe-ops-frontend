@@ -90,7 +90,7 @@ function ProductsPage() {
   const [missing, setMissing] = useState<MissingProduct[] | null>(null);
   const [search, setSearch] = useState("");
   const [needsOnly, setNeedsOnly] = useState(false);
-  /** 展开着的组（preview：默认只有 No group 展开）。 */
+  /** 展开着的组（默认只有 No group 展开，Annie 2026-11-21 Q1=A）。 */
   const [opened, setOpened] = useState<Set<string>>(() => new Set(["none"]));
   const [picked, setPicked] = useState<Set<number>>(new Set());
   const [bulkGroup, setBulkGroup] = useState(KEEP);
@@ -464,7 +464,7 @@ function ProductsPage() {
   );
   const visibleIds = new Set(visibleList.map((p) => p.id));
   const sections = groupSections(products, visibleIds);
-  // 大项折叠（preview）：默认都收起，No group 展开；搜索 / 只看没分类的时，有结果的组自动展开。不记住。
+  // 大项折叠（Annie 2026-11-21）：默认都收起，No group 展开；搜索 / 只看没分类的时，有结果的组自动展开。不记住。
   const searching = !!search.trim() || showNeedsOnly;
   const folded = new Set(
     searching ? [] : sections.map((s) => s.key).filter((k) => !opened.has(k)),
