@@ -564,7 +564,10 @@ export function FarmOutGuests({
                 </span>
               ) : null}
               {productUnpicked ? (
-                <span data-no-product className="text-[12px] text-[#8a5a00]">
+                <span
+                  data-no-product
+                  className="text-[12px] text-[#8a5a00]"
+                >
                   Product is not picked for {plural(productUnpicked, "order")}.
                 </span>
               ) : null}

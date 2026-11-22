@@ -400,15 +400,25 @@ export function ManifestsView() {
     });
   }
 
-  /** Select unsent（Annie 2026-10-18）：勾上当前页面里还没发过的订单，其余取消（门票缺 Cfm # 的也算没发）。 */
-  function selectUnsent() {
-    setSelected(
-      new Set(
-        (shown?.rows ?? [])
-          .filter((row) => canSend(row) && !sentAt(row, tab))
-          .map((row) => row.row_key),
-      ),
-    );
+  /** 当前页面里还没发过的订单（门票缺 Cfm # 的也算没发）。 */
+  function unsentKeysOf(): string[] {
+    return (shown?.rows ?? [])
+      .filter((row) => canSend(row) && !sentAt(row, tab))
+      .map((row) => row.row_key);
+  }
+  /**
+   * 表头「unsent」框（Annie 2026-10-18 Select unsent；2026-11-21 改成框）：勾上 = 只勾没发过的、其余取消（同以前）；
+   * 取消 = 把没发过的那些取消，别的不动。
+   */
+  function toggleUnsent(on: boolean) {
+    const unsentKeys = unsentKeysOf();
+    if (on) setSelected(new Set(unsentKeys));
+    else
+      setSelected((prev) => {
+        const next = new Set(prev);
+        for (const k of unsentKeys) next.delete(k);
+        return next;
+      });
   }
 
   /** 存这个标签的列选择（整个 {shared, pages}）；失败 reject，原因原样给弹窗显示红字。 */
@@ -1359,7 +1369,8 @@ export function ManifestsView() {
                   highlight={highlight}
                   selectable={!noSend && tabSendable}
                   onToggle={toggleRows}
-                  onSelectUnsent={selectUnsent}
+                  unsentKeys={unsentKeysOf()}
+                  onToggleUnsent={toggleUnsent}
                   onReorder={
                     noFeatures ? undefined : (next) => void reorderFields(next)
                   }
@@ -1651,7 +1662,8 @@ function ManifestTable({
   highlight,
   selectable,
   onToggle,
-  onSelectUnsent,
+  unsentKeys,
+  onToggleUnsent,
   onReorder,
   onCfmSaved,
   onCfmDirty,
@@ -1672,7 +1684,9 @@ function ManifestTable({
   selectable: boolean;
   onToggle: (rowKeys: readonly string[], on: boolean) => void;
   /** 只勾还没发过的订单。 */
-  onSelectUnsent: () => void;
+  /** 这一页还没发过的行（表头 unsent 框的勾 / 半勾按它算）。 */
+  unsentKeys: string[];
+  onToggleUnsent: (on: boolean) => void;
   /** 拖表头换了顺序：新的整列顺序。没有 = 表头不能拖（partner）。 */
   onReorder?: (fields: string[]) => void;
   onCfmSaved: (rowKey: string, values: ManifestRow["values"]) => void;
@@ -1709,6 +1723,10 @@ function ManifestTable({
   const pickable = data.rows.filter(canSend);
   const allOn =
     pickable.length > 0 && pickable.every((r) => selected.has(r.row_key));
+  // unsent 框：没发过的都勾了 = 勾；勾了一部分 = 半勾；一个没勾 = 空。
+  const unsentOn =
+    unsentKeys.length > 0 && unsentKeys.every((k) => selected.has(k));
+  const unsentSome = unsentKeys.some((k) => selected.has(k));
   const sections = data.sections ?? [];
   // 团胶囊「g:<id>」里的 id，存节的 Cfm # 用（G198）。
   const pillGroupId = /^g:(\d+)$/.exec(data.pill ?? "")?.[1];
@@ -1757,12 +1775,12 @@ function ManifestTable({
                 : "hover:bg-[#fafaf8] night:hover:bg-white/[.03]",
         )}
       >
-        <td className="w-9 p-0">
+        <td className="w-px p-0">
           {/* 整个单元格都能点（Annie 2026-10-18：勾选框太小太难点中）。 */}
           {/* 不能发的行（CHD 组）没有勾选框，同 Show hidden rows 里的行。 */}
           <label
             hidden={viewOnly || !canSend(r)}
-            className="flex min-h-9 cursor-pointer items-center justify-center px-2.5 py-1.5"
+            className="flex min-h-9 cursor-pointer items-center justify-start py-1.5 pr-3 pl-2.5"
           >
             <input
               type="checkbox"
@@ -1771,6 +1789,17 @@ function ManifestTable({
               checked={selected.has(r.row_key)}
               onChange={(e) => onToggle([r.row_key], e.target.checked)}
             />
+            {/* 还没发过的门票单在框旁边标 NEW（Annie 2026-11-21「还没有的订单在打勾的框旁边加个tag，new」；「全部同意推荐，new的样式选B,动手」）：
+                浅绿底深绿字、方角；Bus Tours 也加（「T-Q3 Bus Tours 要不要也加 NEW  要」）。
+                判断同表头 unsent 框：Tickets 看 sent_tickets_at、Bus 看 sent_tour_at；Admin fee 不标；不能撑宽勾选列。 */}
+            {(tab === "tickets" || tab === "bus") && !sentAt(r, tab) ? (
+              <span
+                data-new-tag
+                className="ml-1 rounded-[3px] bg-[#e3f1e6] px-1 text-[9.5px] leading-[15px] font-bold tracking-[.04em] whitespace-nowrap text-[#2f6b3f] night:bg-emerald-400/15 night:text-emerald-300"
+              >
+                NEW
+              </span>
+            ) : null}
           </label>
         </td>
         <td
@@ -1868,35 +1897,46 @@ function ManifestTable({
       <table className="w-full min-w-[800px] border-collapse text-[12px]">
         <thead className="border-b-[0.5px] border-black/[.08] text-left text-[11px] font-medium text-[#1a1a1a] night:border-white/10 night:text-white/45">
           <tr>
-            {/* 表头左上角「Select all」（带文字，Annie 2026-10-09：不能只是一个框）。 */}
-            <th className="bg-paper px-2.5 py-[7px] font-medium whitespace-nowrap night:bg-transparent">
-              <label
-                hidden={viewOnly}
-                className="inline-flex cursor-pointer items-center gap-1.5 text-[#1a1a1a] night:text-white/85"
-              >
-                <input
-                  type="checkbox"
-                  className={CHECK_BIG}
-                  checked={allOn}
-                  disabled={!pickable.length}
-                  onChange={(e) =>
-                    onToggle(
-                      pickable.map((r) => r.row_key),
-                      e.target.checked,
-                    )
-                  }
-                />
-                Select all
-              </label>
-              <button
-                type="button"
-                hidden={viewOnly}
-                disabled={!pickable.length}
-                onClick={onSelectUnsent}
-                className="ml-2 cursor-pointer text-[#1a1a1a] disabled:cursor-not-allowed disabled:opacity-50 night:text-white/85"
-              >
-                Select all unsent tours
-              </button>
+            {/* 表头左上角两个框上下排（Annie 2026-11-21「我要上下两个框啊」）：ALL / unsent，跟每行的框同一竖线。 */}
+            <th className="w-px bg-paper py-1.5 pr-3 pl-2.5 align-middle font-medium whitespace-nowrap night:bg-transparent">
+              <div hidden={viewOnly} className="flex flex-col gap-1">
+                <label
+                  title="Select all"
+                  className="flex cursor-pointer items-center gap-1.5 text-[10.5px] leading-5 font-semibold tracking-[.04em] text-[#1a1a1a] night:text-white/85"
+                >
+                  <input
+                    type="checkbox"
+                    data-select-all
+                    className={CHECK_BIG}
+                    checked={allOn}
+                    disabled={!pickable.length}
+                    onChange={(e) =>
+                      onToggle(
+                        pickable.map((r) => r.row_key),
+                        e.target.checked,
+                      )
+                    }
+                  />
+                  ALL
+                </label>
+                <label
+                  title="Select all unsent tours"
+                  className="flex cursor-pointer items-center gap-1.5 text-[10.5px] leading-5 font-semibold text-[#1a1a1a] has-disabled:cursor-not-allowed has-disabled:opacity-50 night:text-white/85"
+                >
+                  <input
+                    type="checkbox"
+                    data-select-unsent
+                    className={CHECK_BIG}
+                    checked={unsentOn}
+                    ref={(el) => {
+                      if (el) el.indeterminate = unsentSome && !unsentOn;
+                    }}
+                    disabled={!unsentKeys.length}
+                    onChange={(e) => onToggleUnsent(e.target.checked)}
+                  />
+                  unsent
+                </label>
+              </div>
             </th>
             <th
               aria-label="Count"
@@ -1990,7 +2030,7 @@ function ManifestTable({
                       data-session-head={session ? "" : undefined}
                       className={cn(
                         "px-2.5 py-1.5 text-[12px] font-semibold tracking-[.02em] text-[#1a1a1a] night:text-white/90",
-                        session && "bg-[#eceff3] night:bg-white/[.09]",
+                        session && "bg-[#bdbdbd] night:bg-white/[.09]", // Annie 2026-11-21：白天 #bdbdbd 深字；夜间照旧深灰（Q4 A）
                       )}
                     >
                       {/* 手机上组头钉在左边，表格左右滑时不跟着跑（题 4 A）。 */}
@@ -2562,8 +2602,11 @@ function ManifestsHowToUse() {
         </>,
         <>
           Tick orders. Tick a section header to select that section, or{" "}
-          <b>Select all</b> at the top left of the table to select everyone. A
-          group with sections set in Settings → Products → Manifest setup (for
+          <b>ALL</b> at the top left of the table to select everyone. Tick{" "}
+          <b>unsent</b> under it to select only the orders not sent yet;
+          untick it to clear them. Orders not sent yet show a green{" "}
+          <b>NEW</b> tag next to their box. A group with sections set in
+          Settings → Products → Manifest setup (for
           example UPPER / LOWER / X for Antelope) is split into those sections.
         </>,
         // 产品名标红（Annie 2026-11-17「产品标红同意全部推荐。动手」，题 4 A 原文）。
@@ -2710,7 +2753,7 @@ function ManifestsHowToUse() {
           the start time, the product, and how many orders and pax (with the
           Adult / Child / Infant split). Click ▸ / ▾ on a group to fold or open
           it, or use <b>Expand all</b> / <b>Collapse all</b>. Tick{" "}
-          <b>Select all</b> for every order, the box on a group for the whole
+          <b>ALL</b> for every order, the box on a group for the whole
           session, or the box on a row for one order. Folding only hides the
           rows: ticked orders in a folded group stay ticked and are sent, and
           the group shows how many are ticked. Orders without a start time are
