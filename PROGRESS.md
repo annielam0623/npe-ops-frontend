@@ -75,6 +75,7 @@
 - bb 交 Products 大项折叠 preview https://claude.ai/artifact/7Fxpr9WTLkegzDbZrAWadY （真页面截图；WIP 本地 f3ce92ee）：Bus Manifest setup 改可收、默认收；All Products 每组可收、默认收，表格上方 N groups · Expand all · Collapse all；搜索 / Show only these 有结果的组自动展开；How to use / Groups / Categories / Action Log 本来就默认收不动。📌 3 题等 Annie：Q1 No group 默认展开 A（推荐）/ B 收；Q2 两个提醒块 A 照旧展开（推荐）/ B 也收；Q3 A 不记（推荐）/ B 记。
 - 2c 下拉第 4 批 origin/task/select-menu-b4 cb283944（叠 b3；DOR / Daily tasks / Task board / HR / TCQ / Sales 32 个 16 文件；dor 78 / tasks 194 / tb 28 / hr 138 / payroll 122 / tcq 86 / sales 59 / dr 89 / orders 141）。修了 codemod 吞空格的问题。进度 55 / 128；下一批 Dispatch + Bus manifest + Farm out。全部没上 main，📌 等 Annie 对第 1 批点头。
 - 2c 下拉第 5 批 origin/task/select-menu-b5 531c7f90（Dispatch / Bus manifest / Farm out 18 个；保留 Who CCL meant 分组、Add hotel 的蓝色 Shuttle Pick up 分隔线；顺修 Schedule check「Fix ›」对新组件聚焦不到的问题）；第 6 批（Products / Schedule / Auto send 等 56 个，做完 components 里 0 个原生 select）在跑检查。合 main 前会再查第 3/4 批有没有 prettier 顺手改了无关代码。全部没上 main，📌 等 Annie 点头。
+- Annie（原话）「Products 大项折叠可以，动手」⇒ 3 题按推荐（Q1 No group 默认展开 A / Q2 提醒块照旧展开 A / Q3 不记 A）；已派 bb 照 preview 7Fxpr9WTLkegzDbZrAWadY 做完、合最新 main、跑检查后上 main。
 - 答后端：95 G371 旧发送入口盘点（三个 tracking 已切 ops；utilities / test-orders ops 没页面没入口；ops 直接调 /booking-notes/multi/reply、不调 /resend）；bb 7a 8 句原文 + 号码 grep（ops 代码没写死旧号码）。
 ## 📌 2026-11-20 17:15 Annie 新提：staff 备注几个入口打通（记录，未动手）
 
