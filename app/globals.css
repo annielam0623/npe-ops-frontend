@@ -50,6 +50,14 @@ body {
   }
 }
 
+/* 全站下拉（components/ui/select-menu.tsx，Annie 2026-11-21 全站下拉题 1 A「只统一字体字号」）：合起来的按钮保留各页的形状和
+ * 状态颜色，字体、字号全站一样。不进 @layer，盖过页面写在按钮上的 text-[..]。 */
+button[data-select-menu] {
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.25;
+}
+
 /* 输入框点进去，提示字就消失（Annie 2026-10-15，先从搜索框提的；全站单行输入框一起）。 */
 input:focus::placeholder {
   color: transparent;
@@ -195,7 +203,8 @@ table.afm .col-resizer {
  * （Annie「把pill的框再缩小，改了以后的还是很大，太占地方了」）。这里不进 @layer，盖过组件里的 Tailwind 尺寸；
  * 个别不要缩的加 data-phone-keep。输入框字号不动（iOS 小于 16px 会在点进去时放大整页）。 */
 @media (max-width: 639.98px) {
-  [data-phone-compact] :is(button, [role="tab"]):not([data-phone-keep]) {
+  [data-phone-compact]
+    :is(button, [role="tab"]):not([data-phone-keep]):not([data-select-menu]) {
     padding-top: 3px;
     padding-bottom: 3px;
     padding-left: 10px;
@@ -207,7 +216,8 @@ table.afm .col-resizer {
   [data-phone-compact]
     :is(
       input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
-      select
+      select,
+      button[data-select-menu]
     ):not([data-phone-keep]) {
     padding-top: 4px;
     padding-bottom: 4px;

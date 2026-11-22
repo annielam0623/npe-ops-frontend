@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { HowToUse } from "@/components/ui/how-to-use";
+import { SelectMenu } from "@/components/ui/select-menu";
 import { ErrorBanner } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { isYmd, laToday, shiftYmd } from "@/lib/la-date";
@@ -63,6 +64,9 @@ const LEGACY_BTN_CLASS =
 /** 旧页 .dr-date-wrap input[type=date]。 */
 const DR_DATE_CLASS =
   "h-7 cursor-pointer rounded-md border-[0.5px] border-black/15 night:border-white/10 bg-paper night:bg-white/[.04] px-2 text-[12px] text-[#1a1a1a] night:text-white/90 focus:border-[#1a1a1a] night:focus:border-white/40 focus:outline-none";
+/** 旧页 .dr-trigger：Tour date / Source 两个筛选下拉合起来的样子（SelectMenu 的按钮）。 */
+const FILTER_BTN_CLASS =
+  "h-8 rounded-[7px] border-[0.5px] border-black/[.18] bg-paper px-3 whitespace-nowrap text-[#1a1a1a] select-none hover:border-black/35 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3b82f6] night:border-white/10 night:bg-white/[.04] night:text-white/90";
 /** 旧页 .ord-pagination button。 */
 const PAGE_BTN_CLASS =
   "h-7 cursor-pointer rounded-md border-[0.5px] border-black/15 night:border-white/10 bg-paper night:bg-white/[.04] px-2.5 text-[12px] text-[#1a1a1a] night:text-white/90 disabled:cursor-default disabled:opacity-40";
@@ -235,20 +239,21 @@ export function OrdersListView() {
     );
   }
 
-  function applyCustom() {
+  function applyCustom(): boolean {
     if (!isYmd(custom.from) || !isYmd(custom.to)) {
       setCustomError("Please select both dates.");
-      return;
+      return false;
     }
     if (custom.from > custom.to) {
       setCustomError("The start date is after the end date.");
-      return;
+      return false;
     }
     setCustomError(null);
     setRangeLabel(`${custom.from} – ${custom.to}`);
     setQuery((q) =>
       q ? { ...q, dateFrom: custom.from, dateTo: custom.to, page: 1 } : q,
     );
+    return true;
   }
 
   async function runExport() {
@@ -312,93 +317,87 @@ export function OrdersListView() {
               onChange={(e) => setSearch(e.target.value)}
               className="h-8 w-72 min-w-[200px] rounded-[7px] border-[0.5px] border-black/15 bg-paper px-2.5 text-[13px] text-[#1a1a1a] focus:outline-none night:border-white/10 night:bg-white/[.04] night:text-white/90 night:placeholder:text-white/35"
             />
-            {/* 旧页 .dr-trigger「📅 Tour date · Upcoming ▾」；ops 里是原生下拉，样子照旧。 */}
-            <label className="relative flex h-8 cursor-pointer items-center gap-1.5 rounded-[7px] border-[0.5px] border-black/[.18] bg-paper px-3 text-[13px] whitespace-nowrap text-[#1a1a1a] select-none hover:border-black/35 night:border-white/10 night:bg-white/[.04] night:text-white/90">
-              <span aria-hidden>📅</span>
-              <span className="text-[#1a1a1a] night:text-white/55">
-                Tour date ·
-              </span>
-              <select
-                aria-label="Tour date"
-                value={range}
-                onChange={(e) => chooseRange(e.target.value as Range)}
-                className="cursor-pointer appearance-none bg-transparent text-[13px] text-[#1a1a1a] focus:outline-none night:text-white/90"
-              >
-                {RANGES.map((r) => (
-                  <option key={r.value} value={r.value}>
-                    {r.label}
-                  </option>
-                ))}
-              </select>
-              <span
-                aria-hidden
-                className="text-[10px] text-[#1a1a1a] night:text-white/35"
-              >
-                ▾
-              </span>
-            </label>
-            <label className="relative flex h-8 cursor-pointer items-center gap-1.5 rounded-[7px] border-[0.5px] border-black/[.18] bg-paper px-3 text-[13px] whitespace-nowrap text-[#1a1a1a] select-none hover:border-black/35 night:border-white/10 night:bg-white/[.04] night:text-white/90">
-              <span className="text-[#1a1a1a] night:text-white/55">
-                Source ·
-              </span>
-              <select
-                aria-label="Source"
-                value={query?.source ?? ""}
-                onChange={(e) =>
-                  chooseSource(e.target.value as "" | OrderSource)
-                }
-                className="cursor-pointer appearance-none bg-transparent text-[13px] text-[#1a1a1a] focus:outline-none night:text-white/90"
-              >
-                {SOURCES.map((s) => (
-                  <option key={s.value} value={s.value}>
-                    {s.label}
-                  </option>
-                ))}
-              </select>
-              <span
-                aria-hidden
-                className="text-[10px] text-[#1a1a1a] night:text-white/35"
-              >
-                ▾
-              </span>
-            </label>
+            {/* 旧页 .dr-trigger「📅 Tour date · Upcoming ▾」。全站下拉（Annie 2026-11-21）：换成 SelectMenu，
+                合起来的样子照旧；Custom 的两个日期 + Apply 放在菜单下面（preview NBeBrZJELNg1Y8vJcb5pxa ①）。 */}
+            <SelectMenu
+              aria-label="Tour date"
+              value={range}
+              options={RANGES}
+              onChange={(next) => chooseRange(next)}
+              stayOpenOn={(v) => v === "custom"}
+              renderValue={(o) => (
+                <>
+                  <span aria-hidden>📅</span>{" "}
+                  <span className="text-[#1a1a1a] night:text-white/55">
+                    Tour date ·
+                  </span>{" "}
+                  {o?.label}
+                </>
+              )}
+              footer={
+                range === "custom"
+                  ? (close) => (
+                      <div className="flex flex-wrap items-center gap-1.5 text-[12px] text-[#94a3b8] night:text-white/45">
+                        <input
+                          type="date"
+                          aria-label="From"
+                          value={custom.from}
+                          onChange={(e) =>
+                            setCustom((c) => ({ ...c, from: e.target.value }))
+                          }
+                          className={DR_DATE_CLASS}
+                        />
+                        –
+                        <input
+                          type="date"
+                          aria-label="To"
+                          value={custom.to}
+                          onChange={(e) =>
+                            setCustom((c) => ({ ...c, to: e.target.value }))
+                          }
+                          className={DR_DATE_CLASS}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (applyCustom()) close();
+                          }}
+                          className="h-7 rounded-md bg-[#3b82f6] px-3 text-[12px] text-white hover:bg-[#2f76e8]"
+                        >
+                          Apply
+                        </button>
+                        {customError ? (
+                          <span
+                            role="alert"
+                            className="basis-full text-[12px] text-[#f87171]"
+                          >
+                            {customError}
+                          </span>
+                        ) : null}
+                      </div>
+                    )
+                  : undefined
+              }
+              className={FILTER_BTN_CLASS}
+            />
+            <SelectMenu
+              aria-label="Source"
+              value={query?.source ?? ""}
+              options={SOURCES}
+              onChange={(next) => chooseSource(next)}
+              renderValue={(o) => (
+                <>
+                  <span className="text-[#1a1a1a] night:text-white/55">
+                    Source ·
+                  </span>{" "}
+                  {o?.label}
+                </>
+              )}
+              className={FILTER_BTN_CLASS}
+            />
             {range === "custom" ? (
-              <span className="flex flex-wrap items-center gap-1.5 text-[12px] text-[#aaa] night:text-white/35">
-                <input
-                  type="date"
-                  aria-label="From"
-                  value={custom.from}
-                  onChange={(e) =>
-                    setCustom((c) => ({ ...c, from: e.target.value }))
-                  }
-                  className={DR_DATE_CLASS}
-                />
-                –
-                <input
-                  type="date"
-                  aria-label="To"
-                  value={custom.to}
-                  onChange={(e) =>
-                    setCustom((c) => ({ ...c, to: e.target.value }))
-                  }
-                  className={DR_DATE_CLASS}
-                />
-                <button
-                  type="button"
-                  onClick={applyCustom}
-                  className="h-7 rounded-md bg-[#3b82f6] px-3 text-[12px] text-white hover:bg-[#2f76e8]"
-                >
-                  Apply
-                </button>
-                {customError ? (
-                  <span role="alert" className="text-[12px] text-[#f87171]">
-                    {customError}
-                  </span>
-                ) : (
-                  <span className="text-[12px] text-[#94a3b8] night:text-white/45">
-                    Showing: {rangeLabel}
-                  </span>
-                )}
+              <span className="text-[12px] text-[#94a3b8] night:text-white/45">
+                Showing: {rangeLabel}
               </span>
             ) : null}
             <button
