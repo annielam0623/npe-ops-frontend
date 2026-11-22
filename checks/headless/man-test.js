@@ -687,7 +687,7 @@ async function run() {
   await sleep(100);
   check("Select unsent：没发过的 CHD1001 勾上、已发过的 CHD1002 不勾；操作条 1 order selected", await evaluate("return $box('CHD1001').checked && !$box('CHD1002').checked && $bar().textContent.includes('1 order selected');"));
   // Bus Tours 也加 NEW（Annie 2026-11-21「T-Q3 Bus Tours 要不要也加 NEW  要，  new的颜色选B，动手」）：按 sent_tour_at，同 unsent 框。
-  check("Bus NEW：没发过的 CHD1001 有 NEW、发过的 CHD1002 没有", await evaluate("const t = (o) => !!(o).closest('tr').querySelector('[data-new-tag]'); return t('CHD1001') && !t('CHD1002');"));
+  check("Bus NEW：没发过的 CHD1001 有 NEW、发过的 CHD1002 没有", await evaluate("const t = (o) => !!$box(o).closest('tr').querySelector('[data-new-tag]'); return t('CHD1001') && !t('CHD1002');"));
   check("Bus NEW：勾选列不被撑宽", await evaluate("const w = () => document.querySelector('thead th').getBoundingClientRect().width; const a = w(); const st = document.createElement('style'); st.textContent = '[data-new-tag]{display:none!important}'; document.head.appendChild(st); await new Promise((r) => setTimeout(r, 50)); const b = w(); st.remove(); return Math.abs(a - b) < 0.5;"));
   check("勾选框 20px（行、表头 Select all）", await evaluate("const w = (el) => Math.round(el.getBoundingClientRect().width); return w($box('CHD1001')) === 20 && w(document.querySelector('thead th input')) === 20;"));
   check("整个单元格可点：点勾选框外面的单元格也能勾上 CHD1002", await evaluate("const lab = $box('CHD1002').closest('label'); const r = lab.getBoundingClientRect(); return r.width >= 30 && r.height >= 34;") && (await evaluate("$box('CHD1002').closest('label').click(); return $box('CHD1002').checked;")));
