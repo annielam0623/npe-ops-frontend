@@ -144,7 +144,7 @@ async function upload(scenario, extra = {}) {
   await helpers();
   await evaluate(`
     const sel = document.querySelector('select, [data-select-menu]');
-    return $sel(sel, 'upper_antelope_tsosie');
+    await $sel(sel, 'upper_antelope_tsosie');
     const d = document.querySelector('input[type=date]');
     Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(d, '${DATE}');
     d.dispatchEvent(new Event('input', { bubbles: true }));

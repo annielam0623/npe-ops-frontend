@@ -566,7 +566,7 @@ async function run() {
   await waitFor("document.querySelector('[data-block=tour] [data-direction-select]')");
   check("72：✏ Edit 出下拉 Not set / North / South / Flexible，照现在的值", await evaluate("const s = document.querySelector('[data-block=tour] [data-direction-select]'); return s.value === '' && [...s.options].map(o => o.textContent).join('|') === 'Not set|North|South|Flexible';"));
   let before72 = (await mockLog()).length;
-  await evaluate("$pickDir('north');");
+  await evaluate("await $pickDir('north');");
   await sleep(300);
   check("72：改了下拉先不存（没发请求）", (await since(before72, (e) => e.method !== "GET")).length === 0);
   await evaluate("$btn('Save', document.querySelector('[data-block=tour] [data-edit-row]')).click();");
@@ -584,7 +584,7 @@ async function run() {
   await ctl({ dirFail: true });
   await evaluate(dirRow("Aria") + ".querySelector('button').click();");
   await waitFor("document.querySelector('[data-block=tour] [data-direction-select]')");
-  await evaluate("$pickDir('flexible');");
+  await evaluate("await $pickDir('flexible');");
   await evaluate("$btn('Save', document.querySelector('[data-block=tour] [data-edit-row]')).click();");
   check("72：PATCH 被拒 ⇒ 行留着、红字写原因 + 其他已存", await waitFor("document.querySelector('[data-block=tour] [data-edit-row]')?.textContent.includes('Could not save Direction: Direction must be North, South, Flexible, or Not set. The other boxes were saved.')"));
   await ctl({ dirFail: false });

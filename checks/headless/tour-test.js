@@ -141,7 +141,7 @@ async function fill(l, type, date) {
   await evaluate(`
     const root = ${lane(l)};
     const sel = root.querySelector('select, [data-select-menu]');
-    return $sel(sel, '${type}');
+    await $sel(sel, '${type}');
     const d = root.querySelector('input[type=date]');
     Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(d, '${date}');
     d.dispatchEvent(new Event('input', { bubbles: true }));

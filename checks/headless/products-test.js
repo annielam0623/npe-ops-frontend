@@ -137,9 +137,6 @@ async function since(before, filter) {
   return (await mockLog()).slice(before).filter(filter);
 }
 const SEL_HELPER = `
-window.$sel = (el, value) => {
-  return $sel(el, value);
-};
 window.$q = (s) => document.querySelector(s);
 window.$blur = (el) => el.dispatchEvent(new FocusEvent('focusout', { bubbles: true }));
 window.$prodCount = () => [...document.querySelectorAll('section:not([data-missing-card]) [aria-label^="Internal name for"]')].length;

@@ -1146,7 +1146,7 @@ async function run() {
   check("Rules 标签：空状态写 No rules yet", await evaluate("return document.querySelector('[data-rules-view]').textContent.includes('No rules yet');"));
   await evaluate("$btn('Add rule').click();");
   await waitFor(`${dlg} && ${dlg}.textContent.includes('Add rule')`);
-  check("Add rule 弹窗里下拉框的选项背景色和文字色不同（不是白底白字）", await evaluate(`const sels = [...${dlg}.querySelectorAll('select, [data-select-menu]')]; return sels.length > 0 && sels.every(s => { const o = s.querySelector('option'); const c = getComputedStyle(o); return c.backgroundColor !== c.color && getComputedStyle(s).colorScheme.includes('dark'); });`));
+  check("Add rule 弹窗里下拉框的选项背景色和文字色不同（不是白底白字）", await evaluate(`const sels = [...${dlg}.querySelectorAll('select, [data-select-menu]')]; if (!sels.length) return false; for (const s of sels) { if (!$isSelectMenu(s)) { const o = s.querySelector('option'); const c = getComputedStyle(o); if (c.backgroundColor === c.color || !getComputedStyle(s).colorScheme.includes('dark')) return false; continue; } const list = await $selOpen(s); const o = list.querySelector('[role=option]'); const ok = !!o && getComputedStyle(o).color !== getComputedStyle(list).backgroundColor; await $selClose(s); if (!ok) return false; } return true;`));
   await evaluate(`await $setValue(${dlg}.querySelector(':is(select,[data-select-menu])[aria-label="Rule type"]'), 'min_rest');`);
   await waitFor(`${dlg}.querySelector('input[aria-label="hours"]')`);
   check("Rest between shifts：预览句子写 At least 12 hours between two shifts", await evaluate(`return ${dlg}.querySelector('[data-rule-preview]').textContent.includes('At least 12 hours between two shifts');`));

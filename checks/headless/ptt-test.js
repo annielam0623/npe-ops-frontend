@@ -60,9 +60,6 @@ async function goto(url) {
   await sleep(300);
 }
 const HELPERS = SELECT_HELPERS + `
-window.$sel = (el, value) => {
-  return $sel(el, value);
-};
 window.$q = (s) => document.querySelector(s);
 window.$ro = (code) => { const r = $row(code); return r ? r.querySelector('[data-bus-tour-readonly]') : null; };
 window.$tour = (code) => document.querySelector(':is(select,[data-select-menu])[aria-label="Tour type for ' + code + '"]');
