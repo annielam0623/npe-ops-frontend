@@ -98,6 +98,7 @@
 - Annie（原话）「你直接上线吧，样式以前就有了，逻辑我也讲得很清楚了，不要再问我了，我要去睡觉了」⇒ Relay 色条（修复 + 纸本写法）前后端过检查直接上 main，不再出题；已转 2c 和后端主窗口-bb。
 - ✅ 后端 Relay 色条纸本写法上后端 main adce9d9d（ab；司机页色条和 Relay Excel 都走 relay_excel.bus_bar()，总表图例去掉节）；ab 跟 2c 直接核过一字不差。等前端 2c 合 main 回 SHA 给后端。
 - ✅ **Relay 色条（bug 修复 + 纸本写法）上前端 main cc20c174**（2c，功能 320e0ef1，配合后端 5dde636d + adce9d9d）：RelayBus 加 id、按 id 去重；色条「Antelope: Yan + Lankun - 2457」「BZ: Jimmy - 2415=B」不写节 / Bus X；总表图例去节，左格车名不变；车号空时不写「 - 车号」也不写「=字母」（2c 自定：字母只在总表左格看得到）。tsc / eslint / build、rl 165/165、da 665/665。SHA 已回后端主窗口-bb。📌 Annie 早上看 /dispatch Relay list：每台 relay 车单子底部色条 + RELAY SPLITS 总表下大巴图例。
+- Annie（原话）「A 动手」（G302 配套：Content Studio farm-out 编辑器藏 Email subject 框，换「Subject is set automatically: tour name, date, order number.」，旧数据保留）⇒ 派 bb 做完直接合 main。
 - 答后端：95 G371 旧发送入口盘点（三个 tracking 已切 ops；utilities / test-orders ops 没页面没入口；ops 直接调 /booking-notes/multi/reply、不调 /resend）；bb 7a 8 句原文 + 号码 grep（ops 代码没写死旧号码）。
 ## 📌 2026-11-20 17:15 Annie 新提：staff 备注几个入口打通（记录，未动手）
 
