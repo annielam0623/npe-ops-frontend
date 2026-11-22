@@ -93,6 +93,7 @@
 - 后端主窗口-bb：G302 第二批（邮件标题由代码生成）上后端 main 1dfdd399（合并 0a97b332）：早班「Your Pickup Reminder: <tour> – <date> [order]」（不再放接客时间）、Broadcast「Important update: …」、Farm out「Your Pickup Details: …」。要前端：Content Studio farm-out 编辑器隐藏「Email subject」框（发送已不读），换一行「Subject is set automatically: tour name, date, order number.」，旧数据保留。已问后端 Annie 的 G302 动手原话；派工被权限拦下，📌 等 Annie 确认能不能做。
 - 后端 Relay 色条修上后端 main 5dde636d（合并 c781ba66）：relay-pull guests[].bus 照 Bus Manifest 页头带团 / 司机+导游 / 车号 / 字母，单车团也有，新增 bus.id。前端配合（今晚必须上，Annie 早上用）派 2c：RelayBus.label string|null + id；label 空只写车号（不出 =null / Bus null）；按 bus.id 去重；rl-mock 补单车团 / 两台无字母。
 - G302 补：后端转 Annie 原话「1. 一个订单回复接到它标题的那个订单去…2 改  动手」；隐藏 Email subject 框是连带修，Annie 没单独说过 ⇒ 已问 Annie A 藏框换说明（推荐）/ B 不改，📌 等答。
+- 2c 报 Relay 色条前端已改（RelayBus 加 id、按 id 去重、车号空不留「 - 」、rl-mock 补单车团 / 两台无字母），在跑检查。格式题：现格式「团 Bus 字母: 节 - 司机 + 导游 - 车号=字母」（前端 busBar + 后端 bus_bars 同）；纸本是「Antelope: Yan + Lankun - 2457=A」不写节。Annie（原话）「其实不用，这里显示的都是在一台巴士上」⇒ 记为选纸本写法（团: 司机 + 导游 - 车号[=字母]，不写节、不写 Bus X），前后端 + Excel / 司机页一起改；📌 已问是否现在动手。色条修复先按现格式上线。
 - 答后端：95 G371 旧发送入口盘点（三个 tracking 已切 ops；utilities / test-orders ops 没页面没入口；ops 直接调 /booking-notes/multi/reply、不调 /resend）；bb 7a 8 句原文 + 号码 grep（ops 代码没写死旧号码）。
 ## 📌 2026-11-20 17:15 Annie 新提：staff 备注几个入口打通（记录，未动手）
 
