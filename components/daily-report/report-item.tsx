@@ -217,6 +217,7 @@ export function ReportItem({
                 value={String(followUpId ? String(followUpId) : "")}
                 options={[
                   { value: "", label: "Not assigned" },
+                  // 跟进人已停用 / 不在下拉里时，也要有这一项，否则看起来像没指定。
                   ...(followUpId && !assignees.some((u) => u.id === followUpId)
                     ? [
                         {

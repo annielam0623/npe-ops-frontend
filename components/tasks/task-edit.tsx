@@ -148,10 +148,7 @@ export function TaskEditForm({
     const box = li?.closest<HTMLElement>("[data-timeline-scroll]");
     if (li && box) {
       requestAnimationFrame(() => {
-        if (
-          li.offsetTop < box.scrollTop ||
-          li.offsetTop + li.offsetHeight > box.scrollTop + box.clientHeight
-        )
+        if (li.offsetTop < box.scrollTop || li.offsetTop + li.offsetHeight > box.scrollTop + box.clientHeight)
           box.scrollTop = li.offsetTop;
       });
     }
@@ -181,11 +178,7 @@ export function TaskEditForm({
     const changes: UpdateTodayTaskInput = {};
     if (title !== base.title) changes.title = title;
     if (draft.priority !== base.priority) changes.priority = draft.priority;
-    if (
-      canAssign &&
-      draft.assignee !== base.assignee &&
-      draft.assignee !== CURRENT
-    )
+    if (canAssign && draft.assignee !== base.assignee && draft.assignee !== CURRENT)
       changes.assigned_admin_user_id =
         draft.assignee === EVERYONE ? null : Number(draft.assignee.slice(2));
     if (Object.keys(changes).length === 0) {
@@ -217,8 +210,7 @@ export function TaskEditForm({
     }
   }
 
-  const label =
-    "flex min-w-0 flex-col gap-1 text-[12px] font-semibold text-white/70";
+  const label = "flex min-w-0 flex-col gap-1 text-[12px] font-semibold text-white/70";
   const input =
     "w-full min-w-0 rounded-[7px] border border-white/15 bg-white/[.04] px-[9px] py-1.5 text-[13px] font-normal text-white [color-scheme:dark] [&>option]:bg-[#0f1b2d] [&>option]:text-white outline-none focus:border-[#185FA5] disabled:opacity-60";
 

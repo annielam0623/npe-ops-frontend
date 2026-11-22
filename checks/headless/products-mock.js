@@ -109,7 +109,9 @@ http.createServer(async (req, res) => {
   const B = "/api/settings/products";
   if (p === B && req.method === "GET") {
     const sorted = [...products].map(withGroup).sort((a, b) => (a.group_sort ?? 99) - (b.group_sort ?? 99) || a.product_name.localeCompare(b.product_name));
-    return send(res, 200, { products: sorted });
+    // 产品来源标签（后端 95 加 source）：ctl.source ⇒ UAC01 rezdy、UAC02 tripguru、SHT01 both，其余不带（看缺字段不出标签）。
+    const SRC = { UAC01: "rezdy", UAC02: "tripguru", SHT01: "both" };
+    return send(res, 200, { products: ctl.source ? sorted.map((x) => (SRC[x.product_code] ? { ...x, source: SRC[x.product_code] } : x)) : sorted });
   }
   // Categories（后端 G141 实际形状）：清单随 GET /groups 下发（见下）；code 正则同后端；内置四个不能停用；没有删除。
   if (p === `${B}/categories` && req.method === "POST") {

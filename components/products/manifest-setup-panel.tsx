@@ -166,14 +166,35 @@ export function ManifestSetupPanel({
 
   // 手机上标题后的灰字收进「i」（Annie 2026-11-01 手机版规则）。
   const headInfo = usePhoneInfo("About Bus Manifest setup");
+  // 大项折叠（Annie 2026-11-21「动手」）：默认收起；收起只藏，不卸载（没存的改动不丢）。跳到 Forecast 那一项时自动展开。
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (jumpTo) setOpen(true);
+  }, [jumpTo]);
 
   return (
     // .ms-card
     <section className="mb-4 overflow-hidden rounded-[12px] border-[0.5px] border-black/10 bg-paper text-[#1a1a1a] night:border-white/10 night:bg-white/[.04] night:text-white/90">
       <div className="flex flex-wrap items-center gap-3 border-b-[0.5px] border-black/[.08] bg-paper px-4 py-[11px] night:border-white/10 night:bg-white/[.03]">
-        <h2 className="text-[14.5px] font-bold">Bus Manifest setup</h2>
+        <button
+          type="button"
+          data-setup-toggle
+          aria-expanded={open}
+          onClick={() => setOpen((v) => !v)}
+          className="flex cursor-pointer items-center gap-1.5 text-left"
+        >
+          <span aria-hidden className="inline-block w-3 text-[12px]">
+            {open ? "▾" : "▸"}
+          </span>
+          <h2 className="text-[14.5px] font-bold">Bus Manifest setup</h2>
+          {!open && data ? (
+            <span className="text-[12px] font-medium opacity-70">
+              {data.groups.length} tours
+            </span>
+          ) : null}
+        </button>
         {headInfo.button}
-        {data && data.groups.length ? (
+        {open && data && data.groups.length ? (
           <SelectMenu
             aria-label="Tour group"
             value={String(groupId ?? "")}
@@ -199,7 +220,7 @@ export function ManifestSetupPanel({
           </span>
         ) : null}
       </div>
-      <div className="flex flex-col gap-3.5 px-4 pt-3 pb-4">
+      <div hidden={!open} className="flex flex-col gap-3.5 px-4 pt-3 pb-4">
         {!data ? (
           loadError ? null : (
             <span className={HINT}>Loading…</span>
