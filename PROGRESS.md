@@ -71,6 +71,7 @@
 - Annie（原话）「你给我的灰色都太浅太偏红了，我要真正的灰色」⇒ 色板小节头改深一档的纯中性灰（约 #bdbdbd–#808080，R=G=B），另加 2–3 个略偏冷的中性灰对比；实心不透明，深灰配白字。
 - ✅ **TRIPGURU 改蓝上 ops main 3a19c062**（bb；products 240）。📌 Annie 线上：Settings › Products 的 PHSU5Q6F / PNFT59ME / PPU4WY9C 是浅蓝底蓝字。
 - bb 交 Tickets 色板 v2 https://claude.ai/artifact/EfcKRm5zRN438mVScV3yAm （组头纯中性灰 #bdbdbd–#808080 + 微冷 3 个，推荐 #a3a3a3；字自动 / 黑 / 白；headless 逐个取像素核对与色号一致；新单底色、胶囊两排照旧；底部固定条显示所选）。📌 等 Annie 选。
+- 2c 下拉组件按 Annie 改：不打勾（选中只加粗、左对齐）、行高电脑 28px / 手机 32px。分支叠放：第 1 批 origin/task/select-menu 4ea6e517（Order List + 组件）、第 2 批 -b2 78aeb866（Tour / Tickets Tracking）、第 3 批 -b3 96182f43（Users / Team 权限 / Bug reports 16 个）；orders 141、tt 215、tk 157、users、perm 54、bugs 40 过。截图重截（主窗口看过）。📌 等 Annie 看截图点头 → 按批合 main。
 - 答后端：95 G371 旧发送入口盘点（三个 tracking 已切 ops；utilities / test-orders ops 没页面没入口；ops 直接调 /booking-notes/multi/reply、不调 /resend）；bb 7a 8 句原文 + 号码 grep（ops 代码没写死旧号码）。
 ## 📌 2026-11-20 17:15 Annie 新提：staff 备注几个入口打通（记录，未动手）
 
