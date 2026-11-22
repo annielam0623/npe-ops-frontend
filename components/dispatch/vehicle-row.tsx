@@ -324,6 +324,7 @@ function VehicleSelect({
         ...L.day.vehicles.map((v) => ({
           value: String(v.id),
           label: String(
+            // 没定位的车在下拉里就写出来（Annie 2026-11-03 No tracking 题 2 选 A）。
             v.has_tracking ? v.van_no : `${v.van_no} · No tracking`,
           ),
         })),

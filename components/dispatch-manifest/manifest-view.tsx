@@ -2600,6 +2600,7 @@ function BusSelect({
             : []),
           ...labels.map((l) => ({ value: String(l), label: String(l) })),
         ]}
+        // 换车先放在页面上（客人马上挪到新车），整页 Save 才存（Q4）。
         onChange={(next) => onChange(guest, next)}
         className={cn(
           // .mf-card select.bus（.unset 橙框）
@@ -3129,8 +3130,8 @@ function HowToUse({ layout, columns }: { layout: boolean; columns: boolean }) {
           …&rdquo; in Special Requirements means the guest picked a different
           lunch in the tour confirmation, so the lunch in Rezdy is probably
           wrong. Check it and fix Special Requirements in Rezdy. Before you
-          print or download, the page lists these bookings; check them, or print
-          / download anyway.
+          print or download, the page lists these bookings; check them, or
+          print / download anyway.
         </li>
         <li>
           Click Print on a bus (or Print all buses), then Print in the new tab.
