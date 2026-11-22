@@ -118,7 +118,9 @@ export function ProfileDialog({
   const [askDiscard, setAskDiscard] = useState(false);
 
   const dirty =
-    !sameValues(values, initial) || userId !== initialUser || spellingsChanged;
+    !sameValues(values, initial) ||
+    userId !== initialUser ||
+    spellingsChanged;
 
   function dismiss() {
     if (saving) return;
@@ -408,6 +410,7 @@ function FieldInput({
         id={id}
         value={String(text)}
         options={[
+          // 库里有不认识的值时照样列出来：旧页面会悄悄变成空、一保存就清掉。
           ...(!known && text
             ? [{ value: String(text), label: String(text) }]
             : []),

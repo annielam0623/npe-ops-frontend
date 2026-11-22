@@ -102,7 +102,7 @@ export function AddTaskRow({
             ]}
             onChange={(next) => setAssignee(next)}
             disabled={busy || shifts.length === 0}
-            className="max-w-full min-w-0 rounded-md border border-white/15 bg-white/[.04] px-2 py-1 text-[12.5px] text-white [color-scheme:dark] outline-none focus:border-[#185FA5] disabled:opacity-50 [&>option]:bg-[#0f1b2d] [&>option]:text-white"
+            className="max-w-full min-w-0 rounded-md border border-white/15 bg-white/[.04] px-2 py-1 text-[12.5px] text-white [color-scheme:dark] [&>option]:bg-[#0f1b2d] [&>option]:text-white outline-none focus:border-[#185FA5] disabled:opacity-50"
           />
         </label>
         <span className="ml-auto flex items-center gap-1.5 text-[12px] text-white/50">

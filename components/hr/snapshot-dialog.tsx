@@ -6,10 +6,7 @@ import { Modal } from "@/components/ui/modal";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchFieldSnapshot } from "@/lib/hr-working-record-api";
 import { cn } from "@/lib/utils";
-import type {
-  FieldGuestStatus,
-  FieldSnapshot,
-} from "@/types/hr-working-record";
+import type { FieldGuestStatus, FieldSnapshot } from "@/types/hr-working-record";
 
 import { clock, dayHeader, hasText, roundLabel } from "./working-record-utils";
 import { SelectMenu } from "@/components/ui/select-menu";
