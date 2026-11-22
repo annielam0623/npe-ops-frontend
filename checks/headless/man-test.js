@@ -157,6 +157,7 @@ async function run() {
     await evaluate("return $btn('Antelope Bus Tour').style.getPropertyValue('--c') === '#111827' && getComputedStyle(document.querySelector('section h2').closest('section')).getPropertyValue('--c').trim() === '#111827';"),
     await evaluate("return $btn('Antelope Bus Tour').style.getPropertyValue('--c');"),
   );
+  check("P-Q1：Bus Tours 照旧团色——胶囊带团色、左边团色条 5px、标题有团色圆点", await evaluate("const sec = document.querySelector('section h2').closest('section'); return $btn('Antelope Bus Tour').hasAttribute('data-tour-color') && getComputedStyle($btn('Antelope Bus Tour')).backgroundColor !== 'rgba(0, 0, 0, 0)' && getComputedStyle(sec).borderLeftWidth === '5px' && !!sec.querySelector('h2 [data-tour-dot]');"));
   const rows = await evaluate("return $rows();");
   check("行内容：值按 fields 顺序；空值显示 —", rows[0][0] === "CHD1001" && rows[0][1] === "ZZ Test One" && rows[0][2] === "2" && rows[0][5] === "RZ-1" && rows[1][5] === "—", JSON.stringify(rows));
   check("老数据行标 Legacy（只标在第一列）", rows[1][0] === "CHD1002Legacy" && rows[0][0] === "CHD1001");
@@ -458,6 +459,13 @@ async function run() {
   check("Tickets 胶囊：tour type、No tour type yet 在最后", (await evaluate("return $pills().map(p => p.text).join('|');")) === "Antelope Canyon 2 pax|No tour type yet 1 pax");
   check("start_time 是 Rezdy 当地时间原文，不换时区", (await evaluate("return $rows()[0][3];")) === "2026-10-07 07:00:00", await evaluate("return $rows()[0][3];"));
   check("地址栏 tab=tickets", await evaluate("return location.search.includes('tab=tickets') && location.search.includes('pill=t%3Aantelope');"));
+  // P-Q1 A（Annie 2026-11-22「P-Q1 选A，动手」）：Tickets 不用团色——胶囊回 10-14 之前的白色、没有左边团色条和标题圆点；Bus Tours 照旧团色。
+  {
+    const tix = await evaluate("const b = $btn('Antelope Canyon'); const s = getComputedStyle(b); const sec = document.querySelector('section h2').closest('section'); return { c: b.style.getPropertyValue('--c'), tc: b.hasAttribute('data-tour-color'), bg: s.backgroundImage, border: s.borderTopColor, left: getComputedStyle(sec).borderLeftWidth, dot: !!document.querySelector('section h2 [data-tour-dot]') };");
+    check("P-Q1：Tickets 胶囊不是团色（没有 --c、不是 #7a6ba8 紫），白色渐变 #dedcd3→#d3d0c6（选中）、边 #8f8c82；没有左边团色条、标题没有团色圆点", !tix.c && !tix.tc && tix.bg.includes("rgb(222, 220, 211)") && tix.bg.includes("rgb(211, 208, 198)") && tix.border === "rgb(143, 140, 130)" && tix.left !== "5px" && !tix.dot, JSON.stringify(tix));
+    const other = await evaluate("const b = $btn('No tour type yet'); const s = getComputedStyle(b); return { bg: s.backgroundImage, border: s.borderTopColor };");
+    check("P-Q1：Tickets 没选中的胶囊白色渐变（paper→#e8e6de）、边 #b5b2a8", other.bg.includes("rgb(232, 230, 222)") && other.border === "rgb(181, 178, 168)", JSON.stringify(other));
+  }
   await openPage(`${APP}/manifests?date=${today}&tab=tickets&pill=t%3Anone`);
   check("按地址栏打开 Tickets 的指定胶囊", await evaluate("return document.querySelector('section h2')?.textContent === 'No tour type yet' && document.querySelector('[role=tab][aria-selected=true]').textContent.startsWith('Tickets');"));
 

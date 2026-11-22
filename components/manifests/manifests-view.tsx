@@ -1004,19 +1004,27 @@ export function ManifestsView() {
                     }
                     // 团色认 Settings → Products → Manifest setup（G142，`p.color`）；没配颜色时按团名猜
                     // （Antelope 紫、West 橙、Bryce 蓝、South Rim 绿，lib/tour-colors.ts），和 Dispatch 团卡片统一；其他和「还没分组」灰色。
+                    // Tickets 不用团色（团色是给 bus 流程的）：回到 10-14 之前的白色胶囊（Annie 2026-11-22 P-Q1 选 A）。
+                    data-tour-color={tab === "tickets" ? undefined : ""}
                     style={
-                      {
-                        "--c": p.key.endsWith(":none")
-                          ? OTHER_TOUR_COLOR
-                          : resolveTourColor(p.color, p.label),
-                      } as CSSProperties
+                      tab === "tickets"
+                        ? undefined
+                        : ({
+                            "--c": p.key.endsWith(":none")
+                              ? OTHER_TOUR_COLOR
+                              : resolveTourColor(p.color, p.label),
+                          } as CSSProperties)
                     }
                     className={cn(
                       // Annie 2026-10-14：像游戏里的按钮——平涂（中间不做高光）、有厚度（底下一道同色系的阴影边），悬停微微抬起，选中是「按下去」的样子（颜色更深、加粗）。黑字。
                       "rounded-[8px] border px-3.5 py-[5px] text-[12.5px] font-semibold whitespace-nowrap text-[#1a1a1a] transition-[transform,box-shadow,background] duration-100",
-                      p.key === shown.pill
-                        ? "translate-y-[3px] border-[var(--c)] bg-[color-mix(in_srgb,var(--c)_54%,var(--paper))] font-bold shadow-[inset_0_2px_3px_rgba(0,0,0,.22)] night:border-white/70 night:bg-white/[.14] night:text-white"
-                        : "border-[color-mix(in_srgb,var(--c)_60%,#b5b2a8)] bg-[color-mix(in_srgb,var(--c)_30%,var(--paper))] shadow-[0_3px_0_color-mix(in_srgb,var(--c)_70%,#555),0_4px_7px_rgba(0,0,0,.28)] hover:-translate-y-px hover:shadow-[0_4px_0_color-mix(in_srgb,var(--c)_70%,#555),0_6px_9px_rgba(0,0,0,.3)] active:translate-y-[3px] active:shadow-none night:border-white/15 night:bg-white/[.04] night:text-white/70 night:hover:border-white/10 night:hover:bg-white/[.08] night:hover:text-white",
+                      tab === "tickets"
+                        ? p.key === shown.pill
+                          ? "translate-y-[3px] border-[#8f8c82] bg-linear-to-b from-[#dedcd3] to-[#d3d0c6] font-bold shadow-[inset_0_2px_3px_rgba(0,0,0,.22),0_0_0_#a9a69c] night:border-white/70 night:bg-white/[.14] night:bg-none night:text-white"
+                          : "border-[#b5b2a8] bg-linear-to-b from-paper to-[#e8e6de] shadow-[0_3px_0_#a9a69c,0_4px_7px_rgba(0,0,0,.28)] hover:-translate-y-px hover:shadow-[0_4px_0_#a9a69c,0_6px_9px_rgba(0,0,0,.3)] active:translate-y-[3px] active:shadow-[0_0_0_#a9a69c] night:border-white/15 night:bg-white/[.04] night:bg-none night:text-white/70 night:hover:border-white/10 night:hover:bg-white/[.08] night:hover:text-white"
+                        : p.key === shown.pill
+                          ? "translate-y-[3px] border-[var(--c)] bg-[color-mix(in_srgb,var(--c)_54%,var(--paper))] font-bold shadow-[inset_0_2px_3px_rgba(0,0,0,.22)] night:border-white/70 night:bg-white/[.14] night:text-white"
+                          : "border-[color-mix(in_srgb,var(--c)_60%,#b5b2a8)] bg-[color-mix(in_srgb,var(--c)_30%,var(--paper))] shadow-[0_3px_0_color-mix(in_srgb,var(--c)_70%,#555),0_4px_7px_rgba(0,0,0,.28)] hover:-translate-y-px hover:shadow-[0_4px_0_color-mix(in_srgb,var(--c)_70%,#555),0_6px_9px_rgba(0,0,0,.3)] active:translate-y-[3px] active:shadow-none night:border-white/15 night:bg-white/[.04] night:text-white/70 night:hover:border-white/10 night:hover:bg-white/[.08] night:hover:text-white",
                       p.key.endsWith(":none") &&
                         p.key !== shown.pill &&
                         "border-dashed",
@@ -1315,28 +1323,35 @@ export function ManifestsView() {
               <section
                 // 团色条：同一个团在 Main manifest → Dispatch → Bus manifest 一路同一个颜色（认 Products
                 // → Manifest setup 配的颜色，G142；没配时按团名猜，lib/tour-colors.ts）。
+                // Tickets 不用团色：没有左边团色条、标题前没有团色圆点（Annie 2026-11-22 P-Q1 选 A）。
                 style={
-                  {
-                    "--c":
-                      !currentPill || currentPill.key.endsWith(":none")
-                        ? OTHER_TOUR_COLOR
-                        : resolveTourColor(
-                            currentPill.color,
-                            currentPill.label,
-                          ),
-                  } as CSSProperties
+                  tab === "tickets"
+                    ? undefined
+                    : ({
+                        "--c":
+                          !currentPill || currentPill.key.endsWith(":none")
+                            ? OTHER_TOUR_COLOR
+                            : resolveTourColor(
+                                currentPill.color,
+                                currentPill.label,
+                              ),
+                      } as CSSProperties)
                 }
                 className={cn(
-                  "mb-4 overflow-hidden rounded-[10px] border-[0.5px] border-l-[5px] border-black/10 border-l-[var(--c)] bg-paper transition-opacity night:border-white/10 night:bg-white/[.032]",
+                  "mb-4 overflow-hidden rounded-[10px] border-[0.5px] border-black/10 bg-paper transition-opacity night:border-white/10 night:bg-white/[.032]",
+                  tab !== "tickets" && "border-l-[5px] border-l-[var(--c)]",
                   loading && "opacity-50",
                 )}
               >
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b-[0.5px] border-black/[.08] bg-paper px-3.5 py-[9px] night:border-white/10 night:bg-white/[.03]">
                   <h2 className="flex items-center gap-2 text-[13px] font-semibold text-[#1a1a1a] night:text-white/90">
-                    <span
-                      aria-hidden
-                      className="size-2.5 rounded-full bg-[var(--c)]"
-                    />
+                    {tab === "tickets" ? null : (
+                      <span
+                        aria-hidden
+                        data-tour-dot
+                        className="size-2.5 rounded-full bg-[var(--c)]"
+                      />
+                    )}
                     {currentPill?.label ?? ""}
                   </h2>
                   <span className="text-[11px] text-[#1a1a1a] tabular-nums night:text-white/50">
