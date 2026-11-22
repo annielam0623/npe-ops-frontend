@@ -675,17 +675,20 @@ async function run() {
   check("G198 后端没上线（节上没有 show_cfm）：节标题没有 Cfm # 格、不写 Tour time", await evaluate("return !document.querySelector('[data-section-cfm]') && !document.querySelector('tr[data-section]').textContent.includes('Tour time');"));
   check("节标题有底色、团和 shuttle 不同色", await evaluate("const c = [...document.querySelectorAll('tr[data-section] td')].map(td => td.style.background); return c[0] && c[1] && c[0] !== c[1];"));
   check("单号左边有计数列（表头 #）：每节各自从 1 排（Annie 2026-10-15）", await evaluate("const th = document.querySelectorAll('thead th')[1]; const s = [...document.querySelectorAll('tr[data-section]')]; const first = (t) => t.nextElementSibling.querySelector('[data-count]').textContent; return th.textContent.trim() === '#' && first(s[0]) === '1' && first(s[1]) === '1' && s.every(t => t.querySelector('td').colSpan === document.querySelectorAll('thead th').length);"), await evaluate("return [...document.querySelectorAll('[data-count]')].map(c => c.textContent).join(',');"));
-  check("表头左上角是带文字的 Select all；操作条 0 selected、按钮关着", await evaluate("return document.querySelector('thead th label').textContent.trim() === 'Select all' && document.querySelector('thead th button').textContent.trim() === 'Select all unsent tours' && $bar().textContent.includes('0 orders selected · 0 pax') && $btn('Send tour confirmation', $bar()).disabled && $btn('Send message', $bar()).disabled;"));
+  check("表头左上角上下两个框 ALL / unsent（Annie 2026-11-21「我要上下两个框啊」「ALL / unsent」）；操作条 0 selected、按钮关着", await evaluate("return [...document.querySelectorAll('thead th label')].slice(0, 2).map((l) => l.textContent.trim()).join('|') === 'ALL|unsent' && !!document.querySelector('thead th [data-select-all]') && !!document.querySelector('thead th [data-select-unsent]') && $bar().textContent.includes('0 orders selected · 0 pax') && $btn('Send tour confirmation', $bar()).disabled && $btn('Send message', $bar()).disabled;"));
   await evaluate("document.querySelector('tr[data-section] input').click();");
   check("勾节标题 = 全选这一节", await evaluate("return $bar().textContent.includes('1 order selected · 2 pax') && $box('CHD1001').checked && !$box('CHD1002').checked;"));
   await evaluate("document.querySelector('thead th input').click();");
   check("Select all = 全选整张表，两个节标题也都勾上", await evaluate("return $bar().textContent.includes('2 orders selected · 6 pax') && [...document.querySelectorAll('tr[data-section] input')].every(c => c.checked);"));
   await evaluate("$btn('Clear', $bar()).click();");
   check("Clear 清空", await evaluate("return $bar().textContent.includes('0 orders selected') && !$box('CHD1001').checked;"));
-  // Select unsent + 大勾选框（Annie 2026-10-18）
-  await evaluate("document.querySelector('thead th button').click();");
+  // Select unsent + 大勾选框（Annie 2026-10-18）；2026-11-21 改成 unsent 框
+  await evaluate("document.querySelector('thead th [data-select-unsent]').click();");
   await sleep(100);
   check("Select unsent：没发过的 CHD1001 勾上、已发过的 CHD1002 不勾；操作条 1 order selected", await evaluate("return $box('CHD1001').checked && !$box('CHD1002').checked && $bar().textContent.includes('1 order selected');"));
+  // Bus Tours 也加 NEW（Annie 2026-11-21「T-Q3 Bus Tours 要不要也加 NEW  要，  new的颜色选B，动手」）：按 sent_tour_at，同 unsent 框。
+  check("Bus NEW：没发过的 CHD1001 有 NEW、发过的 CHD1002 没有", await evaluate("const t = (o) => !!$box(o).closest('tr').querySelector('[data-new-tag]'); return t('CHD1001') && !t('CHD1002');"));
+  check("Bus NEW：勾选列不被撑宽", await evaluate("const w = () => document.querySelector('thead th').getBoundingClientRect().width; const a = w(); const st = document.createElement('style'); st.textContent = '[data-new-tag]{display:none!important}'; document.head.appendChild(st); await new Promise((r) => setTimeout(r, 50)); const b = w(); st.remove(); return Math.abs(a - b) < 0.5;"));
   check("勾选框 20px（行、表头 Select all）", await evaluate("const w = (el) => Math.round(el.getBoundingClientRect().width); return w($box('CHD1001')) === 20 && w(document.querySelector('thead th input')) === 20;"));
   check("整个单元格可点：点勾选框外面的单元格也能勾上 CHD1002", await evaluate("const lab = $box('CHD1002').closest('label'); const r = lab.getBoundingClientRect(); return r.width >= 30 && r.height >= 34;") && (await evaluate("$box('CHD1002').closest('label').click(); return $box('CHD1002').checked;")));
   await evaluate("$btn('Clear', $bar()).click();");
@@ -703,7 +706,7 @@ async function run() {
   await ctl({ clearTour: true });
   await openPage(`${APP}/manifests`);
   await waitFor("$box('CHD1001')");
-  await evaluate("document.querySelector('thead th button').click();");
+  await evaluate("document.querySelector('thead th [data-select-unsent]').click();");
   await sleep(100);
   check("Select unsent 不带不能发的行（CHD1002 没发过也不勾）", await evaluate("return $box('CHD1001').checked && $bar().textContent.includes('1 order selected · 2 pax');"));
   await evaluate("$btn('Send tour confirmation', $bar()).click();");
@@ -722,7 +725,7 @@ async function run() {
   await evaluate("[...document.querySelectorAll('[role=tab]')][2].click();");
   await waitFor("document.querySelector('tr[data-row^=\"CHD-88041\"]')");
   check("CHD 标签（按组一个胶囊）：5 行费用单，默认列含 Status / Paid / Due", await evaluate("const h = [...document.querySelectorAll('thead th')].map(th => th.textContent.trim()); return document.querySelectorAll('tr[data-row]').length === 5 && ['Status', 'Paid', 'Due', 'Amount (this item)', 'Order total'].every(x => h.includes(x));"));
-  check("CHD 标签：没有勾选框、没有 Select all / Select all unsent、没有发送条", await evaluate("return [...document.querySelectorAll('tr[data-row] label')].every(l => l.hidden) && document.querySelector('thead th label').hidden && document.querySelector('thead th button').hidden && !$bar();"));
+  check("CHD 标签：没有勾选框、没有 Select all / Select all unsent、没有发送条", await evaluate("return [...document.querySelectorAll('tr[data-row] label')].every(l => l.hidden) && document.querySelector('thead th > div').hidden && !$bar();"));
   check("CHD 标签：没有灰色说明条（Annie 题 3「不要说明」）", await evaluate("return !document.body.textContent.includes('Admin fees, for tracking only.');"));
   check("CHD 标签：默认列有 Fee item；没有团日期、放在下单日的行（shown_on=order_date）在 Product 下面写 reason_label，有团日期的不写", await evaluate("const h = [...document.querySelectorAll('thead th')].map(th => th.textContent.trim()); const note = (o) => document.querySelector('tr[data-row^=\"' + o + '\"] [data-shown-on]'); const pi = h.indexOf('Product'); const cell = document.querySelector('tr[data-row^=\"CHD-88041\"]').children[pi]; return h.includes('Fee item') && note('CHD-88041')?.textContent === 'Admin fee - no tour date, shown on order date (Nov 2)' && cell.contains(note('CHD-88041')) && !note('CHD-88102');"));
   check("CHD 标签：地址栏带 tab=admin_fee", await evaluate("return new URLSearchParams(location.search).get('tab') === 'admin_fee';"));
@@ -1440,7 +1443,7 @@ async function run() {
   );
   check(
     "How to use 写了新的门票流程（能勾缺号行，发送时才拦）",
-    await evaluate("const t = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Manifests')).textContent; return t.includes('Select all') && t.includes('Send tour confirmation') && t.includes('highlighted in red; you can still tick them') && t.includes('Send message');"),
+    await evaluate("const t = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Manifests')).textContent; return t.includes('ALL at the top left') && t.includes('Tick unsent under it to select only the orders not sent yet') && t.includes('Orders not sent yet show a green NEW tag next to their box') && t.includes('Send tour confirmation') && t.includes('highlighted in red; you can still tick them') && t.includes('Send message');"),
   );
 
   // G129（Annie 2026-10-19「G129 动手」）：确认条里多一个 Send anyway：缺 Cfm # 的也照发，确认号栏留空，订单号进 send_anyway。
@@ -1637,7 +1640,11 @@ async function run() {
   await waitFor("document.querySelector('input[aria-label^=\"Select \"]')");
   await evaluate("document.querySelector('input[aria-label^=\"Select \"]').click();");
   check("门票标签：没有 Last Minute 键", await evaluate("return !!$bar() && ![...$bar().querySelectorAll('button')].some((b) => b.textContent.trim() === 'Last Minute Order');"));
-  check("门票标签：Select unsent 勾上所有没发过的（含没填 Cfm # 的）", (await evaluate("document.querySelector('thead th button').click(); return 1;")) === 1 && (await evaluate("const boxes = [...document.querySelectorAll('input[aria-label^=\"Select CHD\"]')]; return boxes.length >= 2 && boxes.every((b) => b.checked);")));
+  check("门票标签：Select unsent 勾上所有没发过的（含没填 Cfm # 的）", (await evaluate("document.querySelector('thead th [data-select-unsent]').click(); return 1;")) === 1 && (await evaluate("const boxes = [...document.querySelectorAll('input[aria-label^=\"Select CHD\"]')]; return boxes.length >= 2 && boxes.every((b) => b.checked);")));
+  // NEW 标签（Annie 2026-11-21「全部同意推荐，new的样式选B,动手」）：没发过的门票行框旁边 NEW，发过的（淡黄）不标；浅绿底深绿字；勾选列不变宽。
+  check("门票 NEW：没发过的行都有 NEW、发过的（淡黄）没有", await evaluate("const rows = [...document.querySelectorAll('tr[data-row]')].filter((r) => !r.querySelector('label').hidden); return rows.length >= 2 && rows.some((r) => r.querySelector('[data-new-tag]')) && rows.every((r) => !!r.querySelector('[data-new-tag]') === !r.className.includes('fff8e1'));"), await evaluate("return [...document.querySelectorAll('tr[data-row]')].map((r) => r.dataset.row + ':' + !!r.querySelector('[data-new-tag]') + ':' + r.className.includes('fff8e1')).join(' | ');"));
+  check("门票 NEW：字是 NEW，浅绿底 #e3f1e6、深绿字 #2f6b3f（样式 B，不是蓝色）", await evaluate("const t = document.querySelector('[data-new-tag]'); const c = getComputedStyle(t); return t.textContent.trim() === 'NEW' && c.backgroundColor === 'rgb(227, 241, 230)' && c.color === 'rgb(47, 107, 63)';"));
+  check("门票 NEW：勾选列不被撑宽（有没有 NEW 一样宽）", await evaluate("const w = () => document.querySelector('thead th').getBoundingClientRect().width; const a = w(); const st = document.createElement('style'); st.textContent = '[data-new-tag]{display:none!important}'; document.head.appendChild(st); await new Promise((r) => setTimeout(r, 50)); const b = w(); st.remove(); return Math.abs(a - b) < 0.5;"));
   await ctl({ resetSent: true, resetCalls: true });
 
   // ── G189 shuttle（Annie 2026-10-26 preview 第 3 版「动手」；开关那题经后端 17 改成不加）：后端每行带 shuttle ──
@@ -2310,7 +2317,7 @@ async function sessionChecks() {
   check("153 Tickets 按开始时间 + 产品分组，从早到晚，没有时间的放最后一组 No time", JSON.stringify(titles) === JSON.stringify(["7:00 AM — Antelope Tickets", "8:00 AM — Antelope Tickets", "8:30 AM — Antelope Tickets", "No time"]), JSON.stringify(titles));
   check("153 Start time 列没显示（存的列里没有）也照样分组；fields= 多要 start_time / product / pax_breakdown", (await evaluate("return !$heads().includes('Start time');")) && (await since(0, (e) => e.path === "/api/manifests" && e.query.includes("tab=tickets") && e.query.includes("fields="))).some((e) => ["start_time", "product", "pax_breakdown"].every((k) => q(e).get("fields").split(",").includes(k))));
   check("153 组头：「7:00 AM — 产品 · 2 orders · 5 pax (3 Adult / 1 Infant / 1 Child)」", await evaluate(`return ${head("7:00 AM")}.textContent.replace(/\\s+/g, ' ').includes('2 orders · 5 pax (3 Adult / 1 Infant / 1 Child)');`), await evaluate(`return ${head("7:00 AM")}.textContent;`));
-  check("组头一律浅灰 #eceff3（Annie 2026-11-19「同意推荐，动手」1A，取代 153 轮流上色）；No time 同色", await evaluate(`return ${heads}.length >= 3 && ${heads}.every((tr) => getComputedStyle(tr.querySelector('td')).backgroundColor === 'rgb(236, 239, 243)');`), await evaluate(`return ${heads}.map((tr) => getComputedStyle(tr.querySelector('td')).backgroundColor).join(' | ');`));
+  check("组头一律灰 #bdbdbd、深字（Annie 2026-11-21「ticket的小节用第二个色bdbdbd」，取代 11-19 的 #eceff3）；No time 同色", await evaluate(`return ${heads}.length >= 3 && ${heads}.every((tr) => { const c = getComputedStyle(tr.querySelector('td')); return c.backgroundColor === 'rgb(189, 189, 189)' && c.color === 'rgb(26, 26, 26)'; });`), await evaluate(`return ${heads}.map((tr) => getComputedStyle(tr.querySelector('td')).backgroundColor).join(' | ');`));
   check("153 每组的 # 从 1 排", await evaluate(`const h = ${head("8:00 AM")}; return h.nextElementSibling.querySelector('[data-count]').textContent.trim() === '1';`));
   check("153 默认全部展开（题 2 A）：没有收起的组，Expand all 灰着、Collapse all 能按", await evaluate(`return !document.querySelector('tr[data-folded]') && ${tools}.textContent.includes('3 start times') && [...${tools}.querySelectorAll('button')].find((b) => b.textContent === 'Expand all').disabled && ![...${tools}.querySelectorAll('button')].find((b) => b.textContent === 'Collapse all').disabled;`));
 
@@ -2337,7 +2344,7 @@ async function sessionChecks() {
   check("153 半选时点组头 ⇒ 整场勾上", await evaluate(`return $box('CHD2001').checked && $box('CHD2006').checked && !${box("7:00 AM")}.indeterminate;`));
   await evaluate("$btn('Clear', $bar()).click();");
   await sleep(100);
-  await evaluate("const l = [...document.querySelectorAll('thead label')].find((x) => x.textContent.includes('Select all')); l.querySelector('input').click();");
+  await evaluate("const l = [...document.querySelectorAll('thead label')].find((x) => x.textContent.trim() === 'ALL'); l.querySelector('input').click();");
   await sleep(100);
   check("153 表头 Select all：每一组每一单都勾上，组头都 ☑", await evaluate(`return ['CHD2001', 'CHD2006', 'CHD2004', 'CHD2005', 'CHD2007'].every((o) => $box(o).checked) && ${heads}.every((tr) => tr.querySelector('input').checked);`));
   await evaluate("$btn('Clear', $bar()).click();");
@@ -2372,7 +2379,7 @@ async function sessionChecks() {
   check("153 Export CSV：第一列 Section 写组标题，行按组排", lines[0].startsWith("Section,") && lines[1].startsWith("7:00 AM — Antelope Tickets,") && lines.some((l) => l.startsWith("No time,CHD2007")), JSON.stringify(lines.slice(0, 7)));
 
   // How to use
-  check("153 How to use 加了那一句（原文，不含 Groups start folded）", await evaluate("const d = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Manifests')); return [...d.querySelectorAll('li')].some(l => l.textContent.replace(/\\s+/g, ' ').trim() === 'Tickets are grouped by session (start time). Each group shows the start time, the product, and how many orders and pax (with the Adult / Child / Infant split). Click ▸ / ▾ on a group to fold or open it, or use Expand all / Collapse all. Tick Select all for every order, the box on a group for the whole session, or the box on a row for one order. Folding only hides the rows: ticked orders in a folded group stay ticked and are sent, and the group shows how many are ticked. Orders without a start time are in the last group, No time.');"));
+  check("153 How to use 加了那一句（原文，不含 Groups start folded）", await evaluate("const d = [...document.querySelectorAll('details')].find(d => d.textContent.includes('How to use — Manifests')); return [...d.querySelectorAll('li')].some(l => l.textContent.replace(/\\s+/g, ' ').trim() === 'Tickets are grouped by session (start time). Each group shows the start time, the product, and how many orders and pax (with the Adult / Child / Infant split). Click ▸ / ▾ on a group to fold or open it, or use Expand all / Collapse all. Tick ALL for every order, the box on a group for the whole session, or the box on a row for one order. Folding only hides the rows: ticked orders in a folded group stay ticked and are sent, and the group shows how many are ticked. Orders without a start time are in the last group, No time.');"));
 
   // ── Tickets 两种看法（Annie 2026-11-19「同意推荐，动手」：By session | By order time，默认 By session，P1 A 后端原顺序，P3 A localStorage）──
   const orderSeq = "[...document.querySelectorAll('tbody input[aria-label^=\"Select CHD\"]')].map((i) => i.getAttribute('aria-label').slice(7))";
@@ -2401,7 +2408,7 @@ async function sessionChecks() {
   // night：组头深灰（不是浅色）
   await evaluate("document.documentElement.setAttribute('data-theme', 'night');");
   await sleep(200);
-  check("night：Tickets 组头深灰（不是浅灰 / 彩色）", await evaluate(`const bg = getComputedStyle(${head("7:00 AM")}.querySelector('td')).backgroundColor; return bg !== 'rgb(236, 239, 243)' && bg !== 'rgba(0, 0, 0, 0)' && !/^rgb\\(2[0-5]\\d, 2[0-5]\\d/.test(bg);`), await evaluate(`return getComputedStyle(${head("7:00 AM")}.querySelector('td')).backgroundColor;`));
+  check("night：Tickets 组头深灰（不是浅灰 / 彩色）", await evaluate(`const bg = getComputedStyle(${head("7:00 AM")}.querySelector('td')).backgroundColor; return bg !== 'rgb(236, 239, 243)' && bg !== 'rgb(189, 189, 189)' && bg !== 'rgba(0, 0, 0, 0)' && !/^rgb\\(2[0-5]\\d, 2[0-5]\\d/.test(bg);`), await evaluate(`return getComputedStyle(${head("7:00 AM")}.querySelector('td')).backgroundColor;`));
   await evaluate("document.documentElement.removeAttribute('data-theme');");
 
   // 手机 390px：组头短写、钉左、整页不晃
