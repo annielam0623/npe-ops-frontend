@@ -5,6 +5,12 @@
 //   await $selOptions(el)  ⇒ [{ value, label }]（新下拉：点开读完再关上）。
 //   $isSelectMenu(el)      ⇒ 是不是新下拉。
 const SELECT_HELPERS = `
+if (!Object.getOwnPropertyDescriptor(HTMLButtonElement.prototype, 'options')) {
+  const opts = (el) => JSON.parse(el.dataset.options || '[]').map(([value, label, dis]) => ({ value, label, text: label, textContent: label, disabled: !!dis }));
+  Object.defineProperty(HTMLButtonElement.prototype, 'options', { configurable: true, get() { return this.matches('[data-select-menu]') ? opts(this) : undefined; } });
+  Object.defineProperty(HTMLButtonElement.prototype, 'selectedOptions', { configurable: true, get() { return this.matches('[data-select-menu]') ? opts(this).filter((o) => o.value === this.dataset.value) : undefined; } });
+  Object.defineProperty(HTMLButtonElement.prototype, 'selectedIndex', { configurable: true, get() { return this.matches('[data-select-menu]') ? opts(this).findIndex((o) => o.value === this.dataset.value) : undefined; } });
+}
 window.$isSelectMenu = (el) => !!el && el.matches && el.matches('button[data-select-menu]');
 window.$selWait = async (fn, ms = 3000) => { const end = Date.now() + ms; while (Date.now() < end) { const v = fn(); if (v) return v; await new Promise((r) => setTimeout(r, 30)); } return null; };
 window.$selList = (btn) => { const id = btn.getAttribute('aria-controls'); return id ? document.getElementById(id) : null; };

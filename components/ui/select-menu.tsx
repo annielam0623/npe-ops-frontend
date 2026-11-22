@@ -445,6 +445,9 @@ export function SelectMenu<V extends string = string>(props: SelectMenuProps<V>)
         value={value}
         data-value={value}
         data-label={selected?.label ?? ""}
+        data-options={JSON.stringify(
+          flat.map((o) => [o.value, o.label, o.disabled ? 1 : 0]),
+        )}
         {...dataAttrs}
         onClick={() => (open ? close(false) : openMenu())}
         onKeyDown={onKey}

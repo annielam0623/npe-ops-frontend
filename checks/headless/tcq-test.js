@@ -3,6 +3,7 @@
 // 前提：mock（tcq-mock.js）在 8799，next dev 在 3198（API_PROXY_TARGET 指向 mock）。
 const { spawn } = require("child_process");
 const path = require("path");
+const { SELECT_HELPERS } = require("./select-menu-helper");
 
 const CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe";
 const APP = process.env.APP_URL || "http://localhost:3198";
@@ -49,10 +50,11 @@ async function goto(url) {
   await cdp("Page.navigate", { url });
   await sleep(300);
 }
-const HELPERS = `
+const HELPERS = SELECT_HELPERS + `
 window.$txt = () => document.querySelector('main').textContent;
 window.$btn = (text, root = document) => [...root.querySelectorAll('button')].find(b => b.textContent.trim() === text);
 window.$set = (el, value) => {
+  if ($isSelectMenu(el)) return $sel(el, value);
   const proto = el.tagName === 'TEXTAREA' ? HTMLTextAreaElement.prototype : el.tagName === 'SELECT' ? HTMLSelectElement.prototype : HTMLInputElement.prototype;
   Object.getOwnPropertyDescriptor(proto, 'value').set.call(el, value);
   el.dispatchEvent(new Event(el.tagName === 'SELECT' ? 'change' : 'input', { bubbles: true }));
@@ -106,15 +108,15 @@ async function run() {
   check("没读出来的行：当文字显示（HTML 不执行）", await evaluate("const u = document.querySelector('[data-unread]'); return u.textContent.includes('Not read from the email (2)') && u.textContent.includes('<img src=x') && !u.querySelector('img') && !window.__xss;"));
 
   // 改价
-  await evaluate("$set($veh(2,'Mini bus (22)').querySelector('input[aria-label=\"Mini bus (22) price\"]'), '150');");
+  await evaluate("await $set($veh(2,'Mini bus (22)').querySelector('input[aria-label=\"Mini bus (22) price\"]'), '150');");
   await waitFor("$block('Mini bus (22) - 22 seats')?.textContent.includes('Changed by staff')");
   check("改价：卡片写 Changed · rate card $160，报价单写 Changed by staff", await evaluate("return $veh(2,'Mini bus (22)').querySelector('[data-changed]').textContent.includes('Changed · rate card $160') && $block('Mini bus (22) - 22 seats').textContent.includes('Changed by staff · rate card $160') && $block('Mini bus (22) - 22 seats').textContent.includes('$150');"));
   let req = (await posts(/tcq-quote\/preview$/)).filter((l) => !l.body.services[0]?.description.startsWith("#probe-")).pop()?.body;
   check("preview 请求：改过的价 15000 分、没改的 null", req.services[1].vehicles[0].price_cents === 15000 && req.services[0].vehicles[0].price_cents === null, JSON.stringify(req?.services?.slice(0, 2)));
-  await evaluate("$set($veh(2,'Mini bus (22)').querySelector('input[aria-label=\"Mini bus (22) price\"]'), 'abc');");
+  await evaluate("await $set($veh(2,'Mini bus (22)').querySelector('input[aria-label=\"Mini bus (22) price\"]'), 'abc');");
   await sleep(200);
   check("价格写错：红框 + 下面列出问题、Generate 关着", await evaluate("return document.querySelector('[data-problems]').textContent.includes('“abc” is not a price') && $btn('Generate quote').disabled;"));
-  await evaluate("[...$veh(2,'Mini bus (22)').querySelectorAll('button')].find(b => b.textContent === 'undo')?.click(); $set($veh(2,'Mini bus (22)').querySelector('input[aria-label=\"Mini bus (22) price\"]'), '160'); $veh(2,'Mini bus (22)').querySelector('input[aria-label=\"Mini bus (22) price\"]').dispatchEvent(new FocusEvent('blur')); return 1;");
+  await evaluate("[...$veh(2,'Mini bus (22)').querySelectorAll('button')].find(b => b.textContent === 'undo')?.click(); await $set($veh(2,'Mini bus (22)').querySelector('input[aria-label=\"Mini bus (22) price\"]'), '160'); $veh(2,'Mini bus (22)').querySelector('input[aria-label=\"Mini bus (22) price\"]').dispatchEvent(new FocusEvent('blur')); return 1;");
   await evaluate("const i = $veh(2,'Mini bus (22)').querySelector('input[aria-label=\"Mini bus (22) price\"]'); i.focus(); i.blur(); return 1;");
   await sleep(300);
   check("改回和价目表一样：不算改过", await evaluate("return !$veh(2,'Mini bus (22)').querySelector('[data-changed]') && !document.querySelector('[data-problems]');"));
@@ -134,17 +136,17 @@ async function run() {
   check("取消勾：那块没了", await evaluate("return !$block('Executive Sprinter (16) - 16 seats');"));
 
   // 国际 / 国内
-  await evaluate("$set($svc(1).querySelector('select[aria-label=\"International or domestic\"]'), 'dom'); return 1;");
+  await evaluate("await $set($svc(1).querySelector(':is(select,[data-select-menu])[aria-label=\"International or domestic\"]'), 'dom'); return 1;");
   await waitFor("$veh(1,'SUV').querySelector('input[aria-label=\"SUV price\"]').value === '$190'");
   check("接机改国内：SUV $190（180 + 10）", await evaluate("return $veh(1,'SUV').querySelector('input[aria-label=\"SUV price\"]').value === '$190';"));
-  await evaluate("$set($svc(1).querySelector('select[aria-label=\"International or domestic\"]'), 'intl'); return 1;");
+  await evaluate("await $set($svc(1).querySelector(':is(select,[data-select-menu])[aria-label=\"International or domestic\"]'), 'intl'); return 1;");
 
   // 没读出来的行加成服务
   await evaluate("[...document.querySelectorAll('[data-unread] button')][0].click(); return 1;");
   await sleep(200);
   check("Add as a service：多一项、编辑框打开、原文在、Not read 剩 1 行", await evaluate("return document.querySelectorAll('[data-service]').length === 6 && !!$svc(6).querySelector('[data-edit-row]') && $svc(6).textContent.includes('送机需求') && document.querySelector('[data-unread]').textContent.includes('(1)');"));
   check("新服务没日期 / 类型：写原因、Generate 关着", await evaluate("return $svc(6).querySelector('[data-service-problem]').textContent.includes('needs a date') && document.querySelector('[data-problems]').textContent.includes('Service 6 needs a date') && $btn('Generate quote').disabled;"));
-  await evaluate("$set($svc(6).querySelector('input[aria-label=Date]'), '2026-06-05'); $set($svc(6).querySelector('select[aria-label=Service]'), 'departure'); $set($svc(6).querySelector('input[aria-label=Pax]'), '30'); return 1;");
+  await evaluate("await $set($svc(6).querySelector('input[aria-label=Date]'), '2026-06-05'); await $set($svc(6).querySelector(':is(select,[data-select-menu])[aria-label=Service]'), 'departure'); await $set($svc(6).querySelector('input[aria-label=Pax]'), '30'); return 1;");
   await waitFor("$svc(6).querySelectorAll('[data-vehicle]').length === 2");
   check("填好日期、类型、人数：列出 40 / 56 座、没有勾、问题清单没了", await evaluate("return [...$svc(6).querySelectorAll('[data-vehicle]')].map(e => e.dataset.vehicle).join('|') === 'Mid-size coach (40)|Full-size coach (56)' && !$svc(6).querySelector('input[type=checkbox]:checked') && !document.querySelector('[data-problems]');"));
   await evaluate("$btn('Remove', $svc(6)).click(); return 1;");
@@ -154,7 +156,7 @@ async function run() {
   // 手动行
   await evaluate("$btn('+ Add a line').click(); return 1;");
   await sleep(150);
-  await evaluate("const r = document.querySelector('[data-manual-line]'); $set(r.querySelector('[aria-label=\"Group name\"]'), 'Admission tickets'); $set(r.querySelector('[aria-label=Date]'), '2026-05-31'); $set(r.querySelector('[aria-label=Description]'), 'Grand Canyon West'); $set(r.querySelector('[aria-label=Quantity]'), '4'); $set(r.querySelector('[aria-label=\"Unit price\"]'), '64.50'); r.querySelector('[aria-label=Taxed]').click(); return 1;");
+  await evaluate("const r = document.querySelector('[data-manual-line]'); await $set(r.querySelector('[aria-label=\"Group name\"]'), 'Admission tickets'); await $set(r.querySelector('[aria-label=Date]'), '2026-05-31'); await $set(r.querySelector('[aria-label=Description]'), 'Grand Canyon West'); await $set(r.querySelector('[aria-label=Quantity]'), '4'); await $set(r.querySelector('[aria-label=\"Unit price\"]'), '64.50'); r.querySelector('[aria-label=Taxed]').click(); return 1;");
   await waitFor("$block('Admission tickets')");
   check("手动行自己一块、排在最前、4 × $64.50 = $258、不计税（税 $0）", await evaluate("const b = $block('Admission tickets'); return document.querySelector('[data-quote-block]') === b && b.textContent.includes('$258') && b.textContent.includes('$0') && b.textContent.includes('Sun 5/31/2026');"));
   req = (await posts(/tcq-quote\/preview$/)).filter((l) => !l.body.services[0]?.description.startsWith("#probe-")).pop()?.body;
@@ -172,15 +174,15 @@ async function run() {
 
   // 三段条款
   check("三段条款默认文字来自设置", await evaluate("return document.getElementById('tcq-inclusions').value === 'Professional English-speaking driver\\nDriver wages, standard driving hours and fuel' && $txt().includes('· default');"));
-  await evaluate("$set(document.getElementById('tcq-not_included'), 'Tour guide services\\nZZ Test parking'); return 1;");
+  await evaluate("await $set(document.getElementById('tcq-not_included'), 'Tour guide services\\nZZ Test parking'); return 1;");
   await waitFor("$sheet().includes('- ZZ Test parking')");
   check("改这张单的 Not included：报价单跟着变、出现 Reset 键", await evaluate("return $sheet().includes('- ZZ Test parking') && !!$btn('Reset the three to the defaults');"));
 
   // PDF 印不出来的字
-  await evaluate("$set(document.getElementById('tcq-client'), 'ZZ Test 麦当劳'); return 1;");
+  await evaluate("await $set(document.getElementById('tcq-client'), 'ZZ Test 麦当劳'); return 1;");
   await waitFor("document.querySelector('[data-pdf-problems]')");
   check("客户名有中文：红框列出字、Generate 关着", await evaluate("return document.querySelector('[data-pdf-problems]').textContent.includes('麦 当 劳') && $btn('Generate quote').disabled;"));
-  await evaluate("$set(document.getElementById('tcq-client'), 'ZZ Test Convention'); return 1;");
+  await evaluate("await $set(document.getElementById('tcq-client'), 'ZZ Test Convention'); return 1;");
   await waitFor("!document.querySelector('[data-pdf-problems]') && !$btn('Generate quote').disabled");
 
   // Save draft
@@ -233,14 +235,14 @@ async function run() {
   check("设置页打开", await open(SET, "document.querySelector('[data-vehicle-row]')"));
   check("车型 6 行、美元显示、Mini bus 小费 115、SUV 小费空", await evaluate("const r = (n) => document.querySelector('[data-vehicle-row=\"' + n + '\"]'); return document.querySelectorAll('[data-vehicle-row]').length === 6 && r('SUV').querySelector('[aria-label=\"Pickup intl\"]').value === '200' && r('Mini bus (22)').querySelector('[aria-label=\"Gratuity / day\"]').value === '115' && r('SUV').querySelector('[aria-label=\"Gratuity / day\"]').value === '';"));
   check("Save 键蓝色、没改时关着", await evaluate("const b = $btn('Save', document.querySelector('[data-vehicle-row=SUV]')); return b.disabled && getComputedStyle(b).backgroundColor === 'rgb(59, 130, 246)';"));
-  await evaluate("$set(document.querySelector('[data-vehicle-row=SUV] [aria-label=\"Pickup intl\"]'), '205'); $btn('Save', document.querySelector('[data-vehicle-row=SUV]')).click(); return 1;");
+  await evaluate("await $set(document.querySelector('[data-vehicle-row=SUV] [aria-label=\"Pickup intl\"]'), '205'); $btn('Save', document.querySelector('[data-vehicle-row=SUV]')).click(); return 1;");
   await waitFor("document.querySelector('[data-vehicle-row=SUV]').textContent.includes('Saved.')");
   const vput = await lastOf("PUT", /\/api\/settings\/tcq\/vehicles\/1$/);
   check("改 SUV 国际接机价：PUT 20500 分、其余字段齐、小费 null", vput?.body?.arrival_intl_cents === 20500 && vput.body.charter_min_hours === 2 && vput.body.gratuity_per_day_cents === null && vput.body.name === "SUV", JSON.stringify(vput?.body));
   await evaluate("const r = document.querySelector('[data-vehicle-row=\"Mini bus (22)\"]'); r.querySelector('[aria-label=\"On the rate card\"]').click(); $btn('Save', r).click(); return 1;");
   await waitFor("document.querySelector('[data-vehicle-row=\"Mini bus (22)\"]').textContent.includes('Saved.')");
   check("停用 Mini bus：PUT is_active false、这一行变灰", (await lastOf("PUT", /vehicles\/4$/))?.body?.is_active === false && await evaluate("return getComputedStyle(document.querySelector('[data-vehicle-row=\"Mini bus (22)\"]')).color === 'rgb(143, 140, 130)';"));
-  await evaluate("$set(document.querySelector('[data-vehicle-row=SUV] [aria-label=\"Min price\"]'), 'abc'); $btn('Save', document.querySelector('[data-vehicle-row=SUV]')).click(); return 1;");
+  await evaluate("await $set(document.querySelector('[data-vehicle-row=SUV] [aria-label=\"Min price\"]'), 'abc'); $btn('Save', document.querySelector('[data-vehicle-row=SUV]')).click(); return 1;");
   await sleep(150);
   check("价格写错：不发请求、写原因", await evaluate("return document.querySelector('[data-vehicle-row=SUV]').textContent.includes('Every price must be a number');"));
   await evaluate("$btn('+ Add vehicle').click(); return 1;");
@@ -254,7 +256,7 @@ async function run() {
   check("活动：NASCAR 写 No dates yet", await evaluate("return document.querySelector('[data-event-row=NASCAR]').textContent.includes('No dates yet');"));
   await evaluate("$btn('+ Add event').click(); return 1;");
   await sleep(150);
-  await evaluate("const r = document.querySelector('[data-event-row=new]'); $set(r.querySelector('[aria-label=\"Event name\"]'), 'ZZ Test Expo'); $set(r.querySelector('[aria-label=Start]'), '2026-05-29'); $set(r.querySelector('[aria-label=End]'), '2026-06-01'); $btn('Add', r).click(); return 1;");
+  await evaluate("const r = document.querySelector('[data-event-row=new]'); await $set(r.querySelector('[aria-label=\"Event name\"]'), 'ZZ Test Expo'); await $set(r.querySelector('[aria-label=Start]'), '2026-05-29'); await $set(r.querySelector('[aria-label=End]'), '2026-06-01'); $btn('Add', r).click(); return 1;");
   await waitFor("document.querySelector('[data-event-row=\"ZZ Test Expo\"]')");
   const epost = await lastOf("POST", /\/api\/settings\/tcq\/events$/);
   check("加活动：POST 名称 / 日期 / 默认取消 30 天", epost?.body?.name === "ZZ Test Expo" && epost.body.start_date === "2026-05-29" && epost.body.cancel_days === 30 && epost.body.min_days === null, JSON.stringify(epost?.body));
@@ -266,7 +268,7 @@ async function run() {
   check("确认后删掉：DELETE", (await lastOf("DELETE", /\/events\/2$/)) != null);
 
   // 条款
-  await evaluate("$set(document.querySelector('[data-term=tax_pct] input'), '5'); return 1;");
+  await evaluate("await $set(document.querySelector('[data-term=tax_pct] input'), '5'); return 1;");
   await sleep(100);
   check("改税率：键写 Save 1 change", await evaluate("return !!$btn('Save 1 change');"));
   await evaluate("$btn('Save 1 change').click(); return 1;");
@@ -275,21 +277,21 @@ async function run() {
   check("条款句子旁边写占位", await evaluate("return document.querySelector('[data-term=deposit_text]').textContent.includes('{deposit_pct} {deposit_min}');"));
 
   // 读取词
-  await evaluate("const k = document.querySelector('[data-word-kind=charter]'); $set(k.querySelector('input'), 'ZZ shuttle'); $btn('Add', k).click(); return 1;");
+  await evaluate("const k = document.querySelector('[data-word-kind=charter]'); await $set(k.querySelector('input'), 'ZZ shuttle'); $btn('Add', k).click(); return 1;");
   await waitFor("document.querySelector('[data-word-kind=charter] [data-word=\"ZZ shuttle\"]')");
   check("加词：POST {kind: charter, term}、出现小块", JSON.stringify((await lastOf("POST", /\/dictionary$/))?.body) === JSON.stringify({ kind: "charter", term: "ZZ shuttle" }));
   await evaluate("document.querySelector('[data-word=\"ZZ shuttle\"] button').click(); return 1;");
   await waitFor("!document.querySelector('[data-word=\"ZZ shuttle\"]')");
   check("删词：DELETE、小块没了", (await lastOf("DELETE", /\/dictionary\/\d+$/)) != null);
-  await evaluate("const k = document.querySelector('[data-word-kind=pax]'); $set(k.querySelector('input'), 'pax'); $btn('Add', k).click(); return 1;");
+  await evaluate("const k = document.querySelector('[data-word-kind=pax]'); await $set(k.querySelector('input'), 'pax'); $btn('Add', k).click(); return 1;");
   await waitFor("document.querySelector('[data-word-kind=pax]').textContent.includes('already in the list')");
   check("重复的词：写后端原话", await evaluate("return document.querySelector('[data-word-kind=pax]').textContent.includes('This word is already in the list.');"));
 
   // 航空公司
-  await evaluate("const s = document.querySelector('section[aria-label=Airlines]'); $set(s.querySelector('[aria-label=\"Airline code\"]'), 'zz'); $set(s.querySelector('[aria-label=\"New airline type\"]'), 'dom'); $btn('Add', s).click(); return 1;");
+  await evaluate("const s = document.querySelector('section[aria-label=Airlines]'); await $set(s.querySelector('[aria-label=\"Airline code\"]'), 'zz'); await $set(s.querySelector('[aria-label=\"New airline type\"]'), 'dom'); $btn('Add', s).click(); return 1;");
   await waitFor("document.querySelector('[data-airline=ZZ]')");
   check("加航空公司：PUT /airlines/ZZ 国内、按代码排序", (await lastOf("PUT", /\/airlines\/ZZ$/))?.body?.is_international === false && await evaluate("return [...document.querySelectorAll('[data-airline]')].map(r => r.dataset.airline).join('|') === 'AA|KE|ZZ';"));
-  await evaluate("$set(document.querySelector('[data-airline=ZZ] select'), 'intl'); return 1;");
+  await evaluate("await $set(document.querySelector('[data-airline=ZZ] :is(select,[data-select-menu])'), 'intl'); return 1;");
   await waitFor("document.querySelector('[data-airline=ZZ]').textContent.includes('Saved.')");
   check("改类型马上存", (await lastOf("PUT", /\/airlines\/ZZ$/))?.body?.is_international === true);
   await evaluate("$btn('Delete', document.querySelector('[data-airline=ZZ]')).click(); return 1;");
@@ -297,10 +299,10 @@ async function run() {
   check("删航空公司", (await lastOf("DELETE", /\/airlines\/ZZ$/)) != null);
 
   // 地点
-  await evaluate("$set(document.querySelector('[aria-label=\"Search places\"]'), 'lvcc'); return 1;");
+  await evaluate("await $set(document.querySelector('[aria-label=\"Search places\"]'), 'lvcc'); return 1;");
   await sleep(150);
   check("搜地点：按别名也找得到", await evaluate("return [...document.querySelectorAll('[data-place-row]')].map(r => r.dataset.placeRow).join('|') === 'Las Vegas Convention Center';"));
-  await evaluate("const r = document.querySelector('[data-place-row=\"Las Vegas Convention Center\"]'); $set(r.querySelector('[aria-label=\"Other names\"]'), 'LVCC, convention center'); $btn('Save', r).click(); return 1;");
+  await evaluate("const r = document.querySelector('[data-place-row=\"Las Vegas Convention Center\"]'); await $set(r.querySelector('[aria-label=\"Other names\"]'), 'LVCC, convention center'); $btn('Save', r).click(); return 1;");
   await waitFor("document.querySelector('[data-place-row=\"Las Vegas Convention Center\"]').textContent.includes('Saved.')");
   check("改别名：PUT aliases 数组", JSON.stringify((await lastOf("PUT", /\/places\/2$/))?.body) === JSON.stringify({ name: "Las Vegas Convention Center", kind: "venue", aliases: ["LVCC", "convention center"] }));
 
@@ -319,7 +321,7 @@ async function run() {
   check("请求里没有停用的车（id 4）", lastPrev && !JSON.stringify(lastPrev.services.map((s) => s.vehicles)).includes('"vehicle_id":4'));
   await evaluate("$btn('Edit', $svc(1)).click(); return 1;");
   await sleep(150);
-  await evaluate("$set($svc(1).querySelector('input[aria-label=Pax]'), '8'); return 1;");
+  await evaluate("await $set($svc(1).querySelector('input[aria-label=Pax]'), '8'); return 1;");
   await waitFor("$veh(1,'SUV')?.querySelector('[data-too-small]')");
   check("人数改大、勾着的 SUV 坐不下：照样列出、写 Only 6 seats for 8 guests（能取消）", await evaluate("return $veh(1,'SUV').querySelector('[data-too-small]').textContent === 'Only 6 seats for 8 guests' && $veh(1,'SUV').querySelector('input[type=checkbox]').checked;"));
   check("税率改 5%：Add 5% tax", await evaluate("return $txt().includes('Add 5% tax to each block');"));

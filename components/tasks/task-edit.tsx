@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import type { DailyTask, StaffShiftToday, TaskPriority } from "@/types";
 
 import { shiftOptionLabel } from "./add-task-row";
+import { SelectMenu } from "@/components/ui/select-menu";
 
 /**
  * 今天任务的 Edit（前端 139 = 后端 G269，preview ① https://claude.ai/artifact/3aVYWfWYk4RgntEaBjovTh）。
@@ -147,7 +148,10 @@ export function TaskEditForm({
     const box = li?.closest<HTMLElement>("[data-timeline-scroll]");
     if (li && box) {
       requestAnimationFrame(() => {
-        if (li.offsetTop < box.scrollTop || li.offsetTop + li.offsetHeight > box.scrollTop + box.clientHeight)
+        if (
+          li.offsetTop < box.scrollTop ||
+          li.offsetTop + li.offsetHeight > box.scrollTop + box.clientHeight
+        )
           box.scrollTop = li.offsetTop;
       });
     }
@@ -177,7 +181,11 @@ export function TaskEditForm({
     const changes: UpdateTodayTaskInput = {};
     if (title !== base.title) changes.title = title;
     if (draft.priority !== base.priority) changes.priority = draft.priority;
-    if (canAssign && draft.assignee !== base.assignee && draft.assignee !== CURRENT)
+    if (
+      canAssign &&
+      draft.assignee !== base.assignee &&
+      draft.assignee !== CURRENT
+    )
       changes.assigned_admin_user_id =
         draft.assignee === EVERYONE ? null : Number(draft.assignee.slice(2));
     if (Object.keys(changes).length === 0) {
@@ -209,7 +217,8 @@ export function TaskEditForm({
     }
   }
 
-  const label = "flex min-w-0 flex-col gap-1 text-[12px] font-semibold text-white/70";
+  const label =
+    "flex min-w-0 flex-col gap-1 text-[12px] font-semibold text-white/70";
   const input =
     "w-full min-w-0 rounded-[7px] border border-white/15 bg-white/[.04] px-[9px] py-1.5 text-[13px] font-normal text-white [color-scheme:dark] [&>option]:bg-[#0f1b2d] [&>option]:text-white outline-none focus:border-[#185FA5] disabled:opacity-60";
 
@@ -238,48 +247,54 @@ export function TaskEditForm({
         </label>
         <label className={label}>
           Priority
-          <select
+          <SelectMenu
             data-field="priority"
-            value={draft.priority}
-            onChange={(e) => {
-              setDraft({ ...draft, priority: e.target.value as TaskPriority });
+            value={String(draft.priority)}
+            options={[
+              ...(["high", "moderate", "low"] as const).map((p) => ({
+                value: String(p),
+                label: String(PRIORITY_TEXT[p]),
+              })),
+            ]}
+            onChange={(next) => {
+              setDraft({ ...draft, priority: next as TaskPriority });
               setSaved(false);
             }}
             disabled={busy}
             className={input}
-          >
-            {(["high", "moderate", "low"] as const).map((p) => (
-              <option key={p} value={p}>
-                {PRIORITY_TEXT[p]}
-              </option>
-            ))}
-          </select>
+          />
         </label>
         {canAssign ? (
           <label className={label}>
             For
-            <select
+            <SelectMenu
               data-field="for"
-              value={draft.assignee}
-              onChange={(e) => {
-                setDraft({ ...draft, assignee: e.target.value });
+              value={String(draft.assignee)}
+              options={[
+                { value: String(EVERYONE), label: "Everyone on shift today" },
+                ...(base.assignee === CURRENT
+                  ? [
+                      {
+                        value: String(CURRENT),
+                        label: String(
+                          task.assigned_to_display_name ??
+                            task.assigned_to_username,
+                        ),
+                      },
+                    ]
+                  : []),
+                ...people.map((s) => ({
+                  value: `u:${s.admin_user_id}`,
+                  label: String(shiftOptionLabel(s, people)),
+                })),
+              ]}
+              onChange={(next) => {
+                setDraft({ ...draft, assignee: next });
                 setSaved(false);
               }}
               disabled={busy}
               className={input}
-            >
-              <option value={EVERYONE}>Everyone on shift today</option>
-              {base.assignee === CURRENT ? (
-                <option value={CURRENT}>
-                  {task.assigned_to_display_name ?? task.assigned_to_username}
-                </option>
-              ) : null}
-              {people.map((s) => (
-                <option key={s.username} value={`u:${s.admin_user_id}`}>
-                  {shiftOptionLabel(s, people)}
-                </option>
-              ))}
-            </select>
+            />
           </label>
         ) : null}
       </div>

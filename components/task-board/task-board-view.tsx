@@ -43,6 +43,7 @@ import {
 import { Markdown } from "./markdown";
 import { NewTaskDialog } from "./new-task-dialog";
 import { TaskCard } from "./task-card";
+import { SelectMenu } from "@/components/ui/select-menu";
 
 type TaskData = {
   kind: "tasks";
@@ -277,18 +278,18 @@ export function TaskBoardView() {
               />
             ) : null}
             {tab === "sprint" && lists.sprints.length ? (
-              <select
+              <SelectMenu
                 aria-label="Sprint"
-                value={sprintId ?? ""}
-                onChange={(e) => setSprintId(e.target.value)}
+                value={String(sprintId ?? "")}
+                options={[
+                  ...lists.sprints.map((s) => ({
+                    value: String(s.id),
+                    label: String(s.name),
+                  })),
+                ]}
+                onChange={(next) => setSprintId(next)}
                 className={cn(TOOLBAR_INPUT_CLASS, "cursor-pointer")}
-              >
-                {lists.sprints.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
+              />
             ) : null}
             {tab !== "docs" ? (
               <label className="flex cursor-pointer items-center gap-1.5 text-[13px] text-[#1a1a1a] select-none night:text-white/75">

@@ -37,6 +37,7 @@ import {
   subjectLabel,
   type ReportForm,
 } from "./config";
+import { SelectMenu } from "@/components/ui/select-menu";
 
 const FIELD_CLASS =
   "w-full rounded-lg border border-white/20 bg-black/[.28] px-[9px] py-[7px] text-[13px] text-[#f8fafc] placeholder:text-white/35 [color-scheme:dark] focus:border-white/50 focus:outline-none";
@@ -375,40 +376,42 @@ export function LogIncidentDialog({
                   />
                 </Field>
                 <Field label="Police report" htmlFor={`${id}-pol`} required>
-                  <select
+                  <SelectMenu
                     id={`${id}-pol`}
-                    value={form.police}
-                    onChange={(e) =>
-                      set("police", e.target.value as "" | PoliceReport)
+                    value={String(form.police)}
+                    options={[
+                      { value: "", label: "Choose…" },
+                      ...(Object.keys(POLICE_LABEL) as PoliceReport[]).map(
+                        (p) => ({
+                          value: String(p),
+                          label: String(POLICE_LABEL[p]),
+                        }),
+                      ),
+                    ]}
+                    onChange={(next) =>
+                      set("police", next as "" | PoliceReport)
                     }
                     className={FIELD_CLASS}
-                  >
-                    <option value="">Choose…</option>
-                    {(Object.keys(POLICE_LABEL) as PoliceReport[]).map((p) => (
-                      <option key={p} value={p}>
-                        {POLICE_LABEL[p]}
-                      </option>
-                    ))}
-                  </select>
+                  />
                 </Field>
               </div>
             </fieldset>
           ) : null}
 
           <Field label="Follow-up" htmlFor={`${id}-fu`}>
-            <select
+            <SelectMenu
               id={`${id}-fu`}
-              value={form.followUpId}
-              onChange={(e) => set("followUpId", e.target.value)}
+              value={String(form.followUpId)}
+              options={[
+                { value: "", label: "Not assigned — whoever is on shift" },
+                ...assignees.map((u) => ({
+                  value: String(String(u.id)),
+                  label: String(u.display_name),
+                })),
+              ]}
+              onChange={(next) => set("followUpId", next)}
               className={FIELD_CLASS}
-            >
-              <option value="">Not assigned — whoever is on shift</option>
-              {assignees.map((u) => (
-                <option key={u.id} value={String(u.id)}>
-                  {u.display_name}
-                </option>
-              ))}
-            </select>
+            />
           </Field>
 
           {error ? (

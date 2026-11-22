@@ -6,9 +6,13 @@ import { Modal } from "@/components/ui/modal";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { fetchFieldSnapshot } from "@/lib/hr-working-record-api";
 import { cn } from "@/lib/utils";
-import type { FieldGuestStatus, FieldSnapshot } from "@/types/hr-working-record";
+import type {
+  FieldGuestStatus,
+  FieldSnapshot,
+} from "@/types/hr-working-record";
 
 import { clock, dayHeader, hasText, roundLabel } from "./working-record-utils";
+import { SelectMenu } from "@/components/ui/select-menu";
 
 /** 点 📷 要开的那一天（Q6 A：只有也能看 Live drivers 的人有 📷）。 */
 export interface SnapshotTarget {
@@ -130,22 +134,21 @@ export function SnapshotDialog({
           ) : null}
           {snap ? (
             <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[12px]">
-              <select
+              <SelectMenu
                 aria-label="Version"
                 data-wr-version
-                value={snap.version}
-                onChange={(e) => setVersion(Number(e.target.value))}
+                value={String(snap.version)}
+                options={[
+                  ...[...snap.versions]
+                    .sort((a, b) => b.version - a.version)
+                    .map((v) => ({
+                      value: String(v.version),
+                      label: `${TRIGGER_LABEL[v.trigger] ?? v.trigger} ·${" "}${clock(v.created_at) ?? ""}`,
+                    })),
+                ]}
+                onChange={(next) => setVersion(Number(next))}
                 className="rounded-[6px] border border-white/25 bg-[#0b1727] px-2 py-0.5 text-[12px] text-white"
-              >
-                {[...snap.versions]
-                  .sort((a, b) => b.version - a.version)
-                  .map((v) => (
-                    <option key={v.version} value={v.version}>
-                      {TRIGGER_LABEL[v.trigger] ?? v.trigger} ·{" "}
-                      {clock(v.created_at) ?? ""}
-                    </option>
-                  ))}
-              </select>
+              />
               <span className="text-white/60">
                 Version {snap.version} of {snap.versions.length}
               </span>
