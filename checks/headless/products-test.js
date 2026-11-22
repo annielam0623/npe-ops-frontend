@@ -172,7 +172,7 @@ async function run() {
   // ── 列表 ──
   check("计数：5 products · 1 inactive", await evaluate("return document.body.textContent.includes('5 products · 1 inactive');"));
   const headings = await evaluate("return [...document.querySelectorAll('section:not([data-missing-card]) tbody tr td[colspan=\"7\"]')].map(td => td.textContent);");
-  check("按组分段：Upper Antelope 2 / LV Shuttle 1 / No group 2", headings.join("|") === "Upper Antelope 2|LV Shuttle 1|No group 2", headings.join("|"));
+  check("按组分段：No group 放最前（Annie 2026-10-23 / 11-21「放到页首」），其余照后端顺序：No group 2 / Upper Antelope 2 / LV Shuttle 1", headings.join("|") === "No group 2|Upper Antelope 2|LV Shuttle 1", headings.join("|"));
   check("Rezdy 名照原样显示（不当 HTML）", await evaluate("return $prodRow('SHT01').children[2].textContent.startsWith('LV Shuttle <b>x</b>');"));
   check("没名字显示 (no name yet)", await evaluate("return $prodRow('PFYF01').children[2].textContent.includes('(no name yet)');"));
   check("库里有、清单里没有的分类照实显示", (await evaluate("return $prodRow('LEG01').querySelector('[aria-label^=\"Category for\"]').value;")) === "weird_old");
@@ -230,10 +230,10 @@ async function run() {
   before = (await mockLog()).length;
   await evaluate(`$sel(${rowQ("SHT01", '[aria-label^="Group for"]')}, '1');`);
   await sleep(400);
-  check("改组：按 Save 之前不发请求、行不挪", (await since(before, (e) => e.path === "/api/settings/products/12")).length === 0 && (await evaluate("return document.querySelectorAll('section:not([data-missing-card]) tbody tr td[colspan=\"7\"]')[0].textContent;")) === "Upper Antelope 2");
+  check("改组：按 Save 之前不发请求、行不挪", (await since(before, (e) => e.path === "/api/settings/products/12")).length === 0 && (await evaluate("return document.querySelectorAll('section:not([data-missing-card]) tbody tr td[colspan=\"7\"]')[1].textContent;")) === "Upper Antelope 2");
   await evaluate(`${rowQ("SHT01", "[data-save-btn]")}.click();`);
   put = await waitPut(before, "/api/settings/products/12");
-  await waitFor("document.querySelectorAll('section:not([data-missing-card]) tbody tr td[colspan=\"7\"]')[0].textContent === 'Upper Antelope 3'");
+  await waitFor("document.querySelectorAll('section:not([data-missing-card]) tbody tr td[colspan=\"7\"]')[1].textContent === 'Upper Antelope 3'");
   check("改组：PUT manifest_id=1，行挪到新组下", put && put.body.manifest_id === 1, JSON.stringify(put?.body));
   await sleep(300);
   check("改组：挪到新组下以后仍显示绿字 ✓ Saved", await evaluate(`return !!${rowQ("SHT01", "[data-save-ok]")};`));
