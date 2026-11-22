@@ -1789,11 +1789,13 @@ function ManifestTable({
               checked={selected.has(r.row_key)}
               onChange={(e) => onToggle([r.row_key], e.target.checked)}
             />
-            {/* preview：还没发过的门票单在框旁边标 NEW（Annie 2026-11-21「还没有的订单在打勾的框旁边加个tag，new」）。 */}
-            {tab === "tickets" && !sentTickets ? (
+            {/* 还没发过的门票单在框旁边标 NEW（Annie 2026-11-21「还没有的订单在打勾的框旁边加个tag，new」；「全部同意推荐，new的样式选B,动手」）：
+                浅绿底深绿字、方角；Bus Tours 也加（「T-Q3 Bus Tours 要不要也加 NEW  要」）。
+                判断同表头 unsent 框：Tickets 看 sent_tickets_at、Bus 看 sent_tour_at；Admin fee 不标；不能撑宽勾选列。 */}
+            {(tab === "tickets" || tab === "bus") && !sentAt(r, tab) ? (
               <span
                 data-new-tag
-                className="ml-1 rounded-full border border-black/30 px-1 text-[9.5px] leading-[15px] font-bold tracking-[.04em] whitespace-nowrap text-[#5f5e5a] night:border-white/30 night:text-white/75"
+                className="ml-1 rounded-[3px] bg-[#e3f1e6] px-1 text-[9.5px] leading-[15px] font-bold tracking-[.04em] whitespace-nowrap text-[#2f6b3f] night:bg-emerald-400/15 night:text-emerald-300"
               >
                 NEW
               </span>
@@ -2028,7 +2030,7 @@ function ManifestTable({
                       data-session-head={session ? "" : undefined}
                       className={cn(
                         "px-2.5 py-1.5 text-[12px] font-semibold tracking-[.02em] text-[#1a1a1a] night:text-white/90",
-                        session && "bg-[#bdbdbd] night:bg-white/[.09]",
+                        session && "bg-[#bdbdbd] night:bg-white/[.09]", // Annie 2026-11-21：白天 #bdbdbd 深字；夜间照旧深灰（Q4 A）
                       )}
                     >
                       {/* 手机上组头钉在左边，表格左右滑时不跟着跑（题 4 A）。 */}
@@ -2600,8 +2602,11 @@ function ManifestsHowToUse() {
         </>,
         <>
           Tick orders. Tick a section header to select that section, or{" "}
-          <b>Select all</b> at the top left of the table to select everyone. A
-          group with sections set in Settings → Products → Manifest setup (for
+          <b>ALL</b> at the top left of the table to select everyone. Tick{" "}
+          <b>unsent</b> under it to select only the orders not sent yet;
+          untick it to clear them. Orders not sent yet show a green{" "}
+          <b>NEW</b> tag next to their box. A group with sections set in
+          Settings → Products → Manifest setup (for
           example UPPER / LOWER / X for Antelope) is split into those sections.
         </>,
         // 产品名标红（Annie 2026-11-17「产品标红同意全部推荐。动手」，题 4 A 原文）。
@@ -2748,7 +2753,7 @@ function ManifestsHowToUse() {
           the start time, the product, and how many orders and pax (with the
           Adult / Child / Infant split). Click ▸ / ▾ on a group to fold or open
           it, or use <b>Expand all</b> / <b>Collapse all</b>. Tick{" "}
-          <b>Select all</b> for every order, the box on a group for the whole
+          <b>ALL</b> for every order, the box on a group for the whole
           session, or the box on a row for one order. Folding only hides the
           rows: ticked orders in a folded group stay ticked and are sent, and
           the group shows how many are ticked. Orders without a start time are
