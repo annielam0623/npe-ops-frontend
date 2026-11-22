@@ -1,5 +1,10 @@
 // Team 权限 v2：Settings › Team 页 + Users 页的四处小改。配 tp-mock.js。
 const puppeteer = require("puppeteer-core");
+const { SELECT_HELPERS } = require("./select-menu-helper");
+async function pickSel(page, selector, v) {
+  await page.evaluate(SELECT_HELPERS);
+  await page.evaluate((sel, val) => window.$sel(document.querySelector(sel), val), selector, v);
+}
 
 const BASE = process.env.APP_URL || "http://localhost:3198";
 const MOCK_PORT = Number(process.env.MOCK_PORT) || 8799;
@@ -96,6 +101,7 @@ async function fill(page, label, value) {
   });
   await browser.defaultBrowserContext().overridePermissions(BASE, ["clipboard-read", "clipboard-write", "clipboard-sanitized-write"]);
   const page = await browser.newPage();
+  await page.evaluateOnNewDocument(SELECT_HELPERS);
   await page.setViewport({ width: 1400, height: 900 });
   const consoleErrors = [];
   page.on("pageerror", (e) => consoleErrors.push(String(e)));
@@ -173,7 +179,7 @@ async function fill(page, label, value) {
     const b = document.querySelector('[role="group"][aria-label="Forms access"] button[aria-pressed="true"]');
     return getComputedStyle(b).backgroundColor === "rgb(55, 65, 81)";
   }));
-  check("home page select shows Manifests", await page.$eval('select[aria-label="Home page"]', (s) => s.value === "/manifests"));
+  check("home page select shows Manifests", await page.$eval(':is(select,[data-select-menu])[aria-label="Home page"]', (s) => s.value === "/manifests"));
   // what's included（Reports 带 reports.export 的说明）
   await page.evaluate(() => {
     const g = document.querySelector('[role="group"][aria-label="Reports access"]');
@@ -197,7 +203,7 @@ async function fill(page, label, value) {
   check("Settings group now 2 of 14 pages", (await dialogText(page)).includes("2 of 14 pages"));
   await tick(page, "Refunds");
   await tick(page, "Tickets");
-  await page.select('select[aria-label="Home page"]', "");
+  await pickSel(page, ':is(select,[data-select-menu])[aria-label="Home page"]', "");
   await click(page, "Save", "dialog");
   await waitNoText(page, "Copy access from");
   let b = await lastBody("PUT /api/team/members/5");
@@ -218,11 +224,10 @@ async function fill(page, label, value) {
   check("staff Settings 0 of 14 pages", (await dialogText(page)).includes("0 of 14 pages"));
   // 照某人复制，取消不保存
   await page.evaluate(() => {
-    const s = document.querySelector('[role="dialog"] select');
-    s.value = [...s.options].find((o) => o.text.startsWith("Grace Liu")).value;
-    s.dispatchEvent(new Event("change", { bubbles: true }));
+    const s = document.querySelector('[role="dialog"] :is(select,[data-select-menu])');
+    return window.$sel(s, [...s.options].find((o) => o.text.startsWith("Grace Liu")).value);
   });
-  check("copy list shows module counts", await page.evaluate(() => [...document.querySelector('[role="dialog"] select').options].some((o) => o.text === "Grace Liu (21 modules)")));
+  check("copy list shows module counts", await page.evaluate(() => [...document.querySelector('[role="dialog"] :is(select,[data-select-menu])').options].some((o) => o.text === "Grace Liu (21 modules)")));
   await click(page, "Copy", "dialog");
   await waitText(page, "Copied access for 21 modules from Grace Liu");
   check("copy fills Grace's levels, says nothing saved", (await access(page, "Logs")).on === "Read & edit" && (await dialogText(page)).includes("Nothing is saved until you click Save"));
@@ -236,9 +241,8 @@ async function fill(page, label, value) {
   await click(page, "Edit", "@ben");
   await page.waitForSelector('[role="group"][aria-label="Logs access"]');
   await page.evaluate(() => {
-    const s = document.querySelector('[role="dialog"] select');
-    s.value = [...s.options].find((o) => o.text.startsWith("Annie")).value;
-    s.dispatchEvent(new Event("change", { bubbles: true }));
+    const s = document.querySelector('[role="dialog"] :is(select,[data-select-menu])');
+    return window.$sel(s, [...s.options].find((o) => o.text.startsWith("Annie")).value);
   });
   await click(page, "Copy", "dialog");
   await waitText(page, "Copied access for 21 modules from Annie");
@@ -413,7 +417,7 @@ async function fill(page, label, value) {
   await waitNoText(page, "How will they sign in?");
   await click(page, "Edit", "@kevin");
   await page.waitForSelector('[role="group"][aria-label="Logs access"]');
-  check("edit still reads home from detail", await page.$eval('select[aria-label="Home page"]', (s) => s.value === "/dispatch"));
+  check("edit still reads home from detail", await page.$eval(':is(select,[data-select-menu])[aria-label="Home page"]', (s) => s.value === "/dispatch"));
   check("backend without account_type: Edit has no Account type line", !(await dialogText(page)).includes("Account type"));
   await page.keyboard.press("Escape");
   await waitNoText(page, "Copy access from");
@@ -434,7 +438,7 @@ async function fill(page, label, value) {
     const lab = [...document.querySelectorAll('[role="dialog"] label')].find((l) => l.innerText.trim() === label);
     lab.querySelector("input").click();
   }, label);
-  const homeValue = () => page.$eval('[role="dialog"] select[aria-label="Home page"]', (x) => x.value);
+  const homeValue = () => page.$eval('[role="dialog"] :is(select,[data-select-menu])[aria-label="Home page"]', (x) => x.value);
   await click(page, "+ Add person");
   await waitText(page, "How will they sign in?");
   d = await dialogText(page);
@@ -448,16 +452,15 @@ async function fill(page, label, value) {
     /\b0 modules\b/.test(d) && (d.match(/Not for external partners/g) || []).length === 2 && d.includes("New external partner account"));
   check("partner: duties block greyed out, disabled, nothing ticked", await page.evaluate(() => { const f = document.querySelector('[role="dialog"] fieldset[aria-label="Notification duties"]'); return !!f && f.disabled && [...f.querySelectorAll('input')].every((i) => !i.checked) && Number(getComputedStyle(f).opacity) < 1; }));
   check("partner note: asked to change the password on first sign-in", d.includes("They'll be asked to change the password on first sign-in."));
-  check("partner: no Home page section (home is fixed to the partner home)", !(await page.$('[role="dialog"] select[aria-label="Home page"]')) && !d.includes("The page they see after signing in"));
+  check("partner: no Home page section (home is fixed to the partner home)", !(await page.$('[role="dialog"] :is(select,[data-select-menu])[aria-label="Home page"]')) && !d.includes("The page they see after signing in"));
   await pickRadio("Staff");
   await waitText(page, "A normal back-office account");
   check("back to Staff: default set and duties come back", (await dialogText(page)).includes("19 modules") && (await dialogText(page)).includes("Guest messages") && (await homeValue()) === "");
   await pickRadio("External partner");
   await waitText(page, "they can open only the pages ticked below");
   await page.evaluate(() => {
-    const sel = document.querySelector('[role="dialog"] select');
-    Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value").set.call(sel, "29");
-    sel.dispatchEvent(new Event("change", { bubbles: true }));
+    const sel = document.querySelector('[role="dialog"] :is(select,[data-select-menu])');
+    return window.$sel(sel, "29");
   });
   await click(page, "Copy", "dialog");
   await waitText(page, "Copied access");
@@ -475,9 +478,8 @@ async function fill(page, label, value) {
   await pickRadio("External partner");
   await waitText(page, "they can open only the pages ticked below");
   await page.evaluate(() => {
-    const sel = document.querySelector('[role="dialog"] select');
-    Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value").set.call(sel, "7");
-    sel.dispatchEvent(new Event("change", { bubbles: true }));
+    const sel = document.querySelector('[role="dialog"] :is(select,[data-select-menu])');
+    return window.$sel(sel, "7");
   });
   await click(page, "Copy", "dialog");
   await waitText(page, "Copied access");
@@ -767,21 +769,19 @@ async function fill(page, label, value) {
   // 改角色确认框
   await page.evaluate(() => {
     const tr = [...document.querySelectorAll("tr")].find((r) => r.innerText.includes("Kevin Ho"));
-    const s = tr.querySelector("select");
-    s.value = "staff";
-    s.dispatchEvent(new Event("change", { bubbles: true }));
+    const s = tr.querySelector("select, [data-select-menu]");
+    return window.$sel(s, "staff");
   });
   await page.waitForSelector('[role="dialog"]');
   check("role confirm says the ticks stay", (await dialogText(page)).includes("Their permissions ticked under Edit stay as they are."));
-  const roleOptions = await page.$$eval('tbody select[aria-label^="Role for"] option', (o) => o.map((x) => x.value));
+  const roleOptions = await page.$$eval('tbody :is(select,[data-select-menu])[aria-label^="Role for"] option', (o) => o.map((x) => x.value));
   check("role dropdown never offers Super Admin", !roleOptions.includes("superadmin"));
   await page.keyboard.press("Escape");
   await waitNoText(page, "stay as they are");
   // 改成外勤角色：只有原来的警告，不写「勾选不变」那句。
   await page.evaluate(() => {
-    const s = [...document.querySelectorAll("tr")].find((r) => r.innerText.includes("Kevin Ho")).querySelector("select");
-    s.value = "driver";
-    s.dispatchEvent(new Event("change", { bubbles: true }));
+    const s = [...document.querySelectorAll("tr")].find((r) => r.innerText.includes("Kevin Ho")).querySelector("select, [data-select-menu]");
+    return window.$sel(s, "driver");
   });
   await page.waitForSelector('[role="dialog"]');
   check("field role confirm: warning only", (await dialogText(page)).includes("LOSE access") && !(await dialogText(page)).includes("stay as they are"));
@@ -1029,12 +1029,12 @@ async function fill(page, label, value) {
     const kevin = (await rowText(page, "@kevin")) || "";
     check("G212 admin: other admin row — only 🔒 + backend reason, no Edit / Deactivate / role menu",
       kevin.includes("🔒 Only a Super Admin can change another admin.") && !/\bEdit\b|Deactivate|Reset password/.test(kevin) &&
-        !(await page.evaluate(() => [...document.querySelectorAll("tbody tr")].find((r) => r.innerText.includes("@kevin")).querySelector("select"))), kevin);
+        !(await page.evaluate(() => [...document.querySelectorAll("tbody tr")].find((r) => r.innerText.includes("@kevin")).querySelector("select, [data-select-menu]"))), kevin);
     const self = (await rowText(page, "@grace")) || "";
     check("G212 admin: own row — no Edit (Qb), Reset password (greyed) + ✏️ Name (preview v3 ②), no lock text", !/\bEdit\b/.test(self) && self.includes("Reset password") && self.includes("✏️ Name") && !self.includes("🔒"), self);
     const ben = (await rowText(page, "@ben")) || "";
     check("G212 admin: staff row — Edit · Reset password · ✏️ Name · Deactivate", /Edit[\s\S]*Reset password[\s\S]*✏️ Name[\s\S]*Deactivate/.test(ben), ben);
-    const opts = await page.evaluate(() => [...[...document.querySelectorAll("tbody tr")].find((r) => r.innerText.includes("@ben")).querySelectorAll("select option")].map((o) => o.textContent.trim()));
+    const opts = await page.evaluate(() => [...[...document.querySelectorAll("tbody tr")].find((r) => r.innerText.includes("@ben")).querySelectorAll("select, [data-select-menu]")].flatMap((x) => [...x.options]).map((o) => o.textContent.trim()));
     check("G212 admin: role menu only roles below admin (Qc: no Admin / Super Admin)", opts.length > 0 && !opts.includes("Admin") && !opts.includes("Super Admin") && opts.includes("Supervisor"), opts.join(","));
     const pend = await pendingRows();
     check("G212 admin: pending invites — normal ones keep Copy Link + Cancel invite; SA-6 admin invite and SA-2 out-of-range invite show 🔒 reason, no Copy Link, no Cancel",
@@ -1071,10 +1071,8 @@ async function fill(page, label, value) {
     // 改角色：Supervisor（下一层）能改
     const roleLog = (await ctl("log=1")).length;
     await page.evaluate(() => {
-      const s = [...document.querySelectorAll("tbody tr")].find((r) => r.innerText.includes("@ben")).querySelector("select");
-      const set = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value").set;
-      set.call(s, "supervisor");
-      s.dispatchEvent(new Event("change", { bubbles: true }));
+      const s = [...document.querySelectorAll("tbody tr")].find((r) => r.innerText.includes("@ben")).querySelector("select, [data-select-menu]");
+      return window.$sel(s, "supervisor");
     });
     await waitText(page, "Change Role");
     await click(page, "Change Role", "dialog");
@@ -1098,7 +1096,7 @@ async function fill(page, label, value) {
     check("G212 SA: own row unchanged (Reset password), mailbox row still there, driver row added", await rowHas("@annie", "Reset password") && t.includes("Department mailbox") && t.includes("@zz.driver"));
     const kevinSa = (await rowText(page, "@kevin")) || "";
     check("G212 SA: other admins fully editable (Edit · Deactivate · role menu incl. Admin)", /Edit[\s\S]*Deactivate/.test(kevinSa) &&
-      (await page.evaluate(() => [...[...document.querySelectorAll("tbody tr")].find((r) => r.innerText.includes("@kevin")).querySelectorAll("select option")].map((o) => o.textContent.trim()).includes("Admin"))), kevinSa);
+      (await page.evaluate(() => [...[...document.querySelectorAll("tbody tr")].find((r) => r.innerText.includes("@kevin")).querySelectorAll("select, [data-select-menu]")].flatMap((x) => [...x.options]).map((o) => o.textContent.trim()).includes("Admin"))), kevinSa);
     check("G212 SA: all pending invites have Copy Link + Cancel invite", (await pendingRows()).every((r) => r.copy && r.cancel && !r.lock));
     await click(page, "Edit", "@zz.test");
     await page.waitForSelector("[data-delete-person]");
@@ -1134,9 +1132,8 @@ async function fill(page, label, value) {
       return !b[0].disabled && b[1].disabled && b[2].disabled && !!document.querySelector('[role="dialog"] [data-admin-only="settings.payroll"]') && d.includes("Only Admin accounts can be given Payroll.");
     }));
     await page.evaluate(() => {
-      const s = document.querySelector('[role="dialog"] select');
-      s.value = [...s.options].find((o) => o.text.startsWith("Annie")).value;
-      s.dispatchEvent(new Event("change", { bubbles: true }));
+      const s = document.querySelector('[role="dialog"] :is(select,[data-select-menu])');
+      return window.$sel(s, [...s.options].find((o) => o.text.startsWith("Annie")).value);
     });
     await click(page, "Copy", "dialog");
     await waitText(page, "Copied access for");

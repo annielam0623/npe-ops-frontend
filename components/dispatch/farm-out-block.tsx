@@ -11,6 +11,7 @@ import {
   type Loaded,
 } from "./use-farm-out";
 import type { FarmOutPartner } from "@/types/farm-out";
+import { SelectMenu } from "@/components/ui/select-menu";
 
 /**
  * Farm out 车（G40，Annie 2026-10-15 定：第二台车才有键；灰蓝色 #475569，不用淡紫）。
@@ -110,11 +111,18 @@ export function FarmOutBlock({
           >
             Farm out to
           </label>
-          <select
+          <SelectMenu
             id={`fo-partner-${row.bus_label ?? "x"}`}
-            value={row.partner_id ?? ""}
-            onChange={(e) => {
-              const id = e.target.value ? Number(e.target.value) : null;
+            value={String(row.partner_id ?? "")}
+            options={[
+              { value: "", label: "Choose a partner…" },
+              ...active.map((p) => ({
+                value: String(p.id),
+                label: String(p.name),
+              })),
+            ]}
+            onChange={(next) => {
+              const id = next ? Number(next) : null;
               onChange({
                 ...row,
                 partner_id: id,
@@ -127,14 +135,7 @@ export function FarmOutBlock({
                 ? "border-dashed border-[#e7b75a] bg-[#fdf6e7]"
                 : "border-[#cbd2dc]",
             )}
-          >
-            <option value="">Choose a partner…</option>
-            {active.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
+          />
         </div>
         {partners.state === "ready" && active.length === 0 ? (
           <p

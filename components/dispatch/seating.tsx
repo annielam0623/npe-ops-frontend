@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import type { SeatingBus, SeatingOrder, SeatingTour } from "@/types";
 import { CHECK_BIG } from "@/components/manifests/config";
 import { useViewOnly } from "@/components/ui/view-only";
+import { SelectMenu } from "@/components/ui/select-menu";
 
 /**
  * Seat guests（G29 第 4 条）——Annie 2026-10-11 定：不单设 Step 3，每台车装了哪些订单放在 Step 2 **那台车的下面**，
@@ -228,44 +229,39 @@ function OrderLine({
       <span className="font-bold tabular-nums">{order.pax}</span>
       <span className="truncate text-[11.5px] text-[#1a1a1a]">{where}</span>
       {viewOnly ? null : day.completed ? (
-        <select
+        <SelectMenu
           aria-label={`Bus for ${order.name || order.order_number || "this order"}`}
           disabled={disabled}
-          value={order.bus_label ?? ""}
-          onChange={(e) => {
-            if (e.target.value) onMove({ order, to: e.target.value });
+          value={String(order.bus_label ?? "")}
+          options={[
+            ...(order.bus_label
+              ? []
+              : [{ value: "", label: "Choose a bus…", disabled: true }]),
+            ...buses.map((b) => ({
+              value: String(b.label),
+              label: `${b.farm_out ? "Farm out" : `Bus ${b.label}`} (${b.capacity == null ? b.pax : `${b.pax} / ${b.capacity}`})`,
+            })),
+          ]}
+          onChange={(next) => {
+            if (next) onMove({ order, to: next });
           }}
           className="h-6 rounded-md border-[0.5px] border-black/25 bg-paper px-1 text-[11.5px] disabled:opacity-60"
-        >
-          {order.bus_label ? null : (
-            <option value="" disabled>
-              Choose a bus…
-            </option>
-          )}
-          {buses.map((b) => (
-            <option key={b.label} value={b.label}>
-              {b.farm_out ? "Farm out" : `Bus ${b.label}`} (
-              {b.capacity == null ? b.pax : `${b.pax} / ${b.capacity}`})
-            </option>
-          ))}
-        </select>
+        />
       ) : (
-        <select
+        <SelectMenu
           aria-label={`Bus for ${order.name || order.order_number || "this order"}`}
           disabled={disabled}
-          value={order.staff ? (order.bus_label ?? "") : ""}
-          onChange={(e) =>
-            onMove({ order, to: e.target.value ? e.target.value : null })
-          }
+          value={String(order.staff ? (order.bus_label ?? "") : "")}
+          options={[
+            { value: "", label: "Auto" },
+            ...buses.map((b) => ({
+              value: String(b.label),
+              label: String(b.farm_out ? "Farm out" : `Bus ${b.label}`),
+            })),
+          ]}
+          onChange={(next) => onMove({ order, to: next ? next : null })}
           className="h-6 rounded-md border-[0.5px] border-black/25 bg-paper px-1 text-[11.5px] disabled:opacity-60"
-        >
-          <option value="">Auto</option>
-          {buses.map((b) => (
-            <option key={b.label} value={b.label}>
-              {b.farm_out ? "Farm out" : `Bus ${b.label}`}
-            </option>
-          ))}
-        </select>
+        />
       )}
       {isNew ? (
         <span className="col-span-2">
@@ -591,25 +587,28 @@ export function ArrangeBoard({
         hidden={viewOnly}
         className="mt-2.5 flex flex-wrap items-center gap-2 border-t-[0.5px] border-black/[.09] pt-2.5 text-[12.5px]"
       >
-        <select
+        <SelectMenu
           aria-label="Move selected orders to"
           data-move-target
           disabled={disabled || !picked.length}
-          value={target}
-          onChange={(e) => setTarget(e.target.value)}
+          value={String(target)}
+          options={[
+            {
+              value: "",
+              label: String(
+                picked.length
+                  ? `Move selected (${picked.length}) to…`
+                  : "Tick orders to move",
+              ),
+            },
+            ...buses.map((b) => ({
+              value: String(b.label),
+              label: String(b.farm_out ? "Farm out" : `Bus ${b.label}`),
+            })),
+          ]}
+          onChange={(next) => setTarget(next)}
           className="h-[30px] min-w-[170px] rounded-[7px] border border-[#cbd2dc] bg-white px-2 text-[12.5px] disabled:opacity-50"
-        >
-          <option value="">
-            {picked.length
-              ? `Move selected (${picked.length}) to…`
-              : "Tick orders to move"}
-          </option>
-          {buses.map((b) => (
-            <option key={b.label} value={b.label}>
-              {b.farm_out ? "Farm out" : `Bus ${b.label}`}
-            </option>
-          ))}
-        </select>
+        />
         <button
           type="button"
           data-move-selected

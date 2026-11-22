@@ -38,6 +38,8 @@ export interface SelectMenuOption<V extends string = string> {
   value: V;
   label: string;
   disabled?: boolean;
+  /** 这一项文字的额外样子（只用来保留 Annie 指定过的样子，例如 Dispatch Add hotel 里蓝色的「~~~~~ Shuttle Pick up ~~~~~」）。 */
+  className?: string;
 }
 
 export interface SelectMenuGroup<V extends string = string> {
@@ -47,10 +49,11 @@ export interface SelectMenuGroup<V extends string = string> {
 }
 
 export type SelectMenuItem<V extends string = string> =
-  | SelectMenuOption<V>
-  | SelectMenuGroup<V>;
+  SelectMenuOption<V> | SelectMenuGroup<V>;
 
-type DataAttrs = { [key: `data-${string}`]: string | number | boolean | undefined };
+type DataAttrs = {
+  [key: `data-${string}`]: string | number | boolean | undefined;
+};
 
 export type SelectMenuProps<V extends string = string> = {
   value: V;
@@ -80,6 +83,8 @@ export type SelectMenuProps<V extends string = string> = {
   /** 菜单最下面的一块（例如 Custom 的两个日期 + Apply）；close() 关菜单。 */
   footer?: (close: () => void) => ReactNode;
   title?: string;
+  /** 按钮的 style（例如原来 select 用背景图画的箭头）。 */
+  style?: CSSProperties;
 } & DataAttrs;
 
 function isGroup<V extends string>(
@@ -99,7 +104,9 @@ const EDGE = 16;
 const GAP = 4;
 const MAX_HEIGHT = 360;
 
-export function SelectMenu<V extends string = string>(props: SelectMenuProps<V>) {
+export function SelectMenu<V extends string = string>(
+  props: SelectMenuProps<V>,
+) {
   const {
     value,
     onChange,
@@ -115,6 +122,7 @@ export function SelectMenu<V extends string = string>(props: SelectMenuProps<V>)
     stayOpenOn,
     footer,
     title,
+    style,
   } = props;
   const dataAttrs: DataAttrs = {};
   for (const [k, v] of Object.entries(props))
@@ -205,7 +213,8 @@ export function SelectMenu<V extends string = string>(props: SelectMenuProps<V>)
     if (!open) return;
     const onDown = (e: MouseEvent) => {
       const t = e.target as Node;
-      if (buttonRef.current?.contains(t) || menuRef.current?.contains(t)) return;
+      if (buttonRef.current?.contains(t) || menuRef.current?.contains(t))
+        return;
       close(false);
     };
     const onMove = () => place();
@@ -226,7 +235,9 @@ export function SelectMenu<V extends string = string>(props: SelectMenuProps<V>)
   // 键盘移到的那项滚进可见范围。
   useEffect(() => {
     if (!open || active < 0) return;
-    document.getElementById(optId(active))?.scrollIntoView({ block: "nearest" });
+    document
+      .getElementById(optId(active))
+      ?.scrollIntoView({ block: "nearest" });
     // optId 只依赖 autoId
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, active]);
@@ -282,14 +293,24 @@ export function SelectMenu<V extends string = string>(props: SelectMenuProps<V>)
     } else if (e.key === "Enter" || (e.key === " " && !searchable)) {
       e.preventDefault();
       if (active >= 0) choose(active);
-    } else if (!searchable && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    } else if (
+      !searchable &&
+      e.key.length === 1 &&
+      !e.ctrlKey &&
+      !e.metaKey &&
+      !e.altKey
+    ) {
       // 打字跳：1 秒内连着打的字拼起来找开头。
       const now = Date.now();
       const t = typeRef.current;
-      t.text = now - t.at < 1000 ? t.text + e.key.toLowerCase() : e.key.toLowerCase();
+      t.text =
+        now - t.at < 1000 ? t.text + e.key.toLowerCase() : e.key.toLowerCase();
       t.at = now;
       const hit = pickable.find(({ o }) =>
-        o.label.replace(/^[^\p{L}\p{N}]+/u, "").toLowerCase().startsWith(t.text),
+        o.label
+          .replace(/^[^\p{L}\p{N}]+/u, "")
+          .toLowerCase()
+          .startsWith(t.text),
       );
       if (hit) setActive(hit.i);
     }
@@ -301,8 +322,21 @@ export function SelectMenu<V extends string = string>(props: SelectMenuProps<V>)
   const rows: ReactNode[] = [];
   let flatIndex = 0;
   const shown = new Set(visible.map((v) => v.i));
+  let afterGroup = false;
   for (const item of options) {
     const group = isGroup(item) ? item : null;
+    if (!group && afterGroup && !q && shown.has(flatIndex))
+      rows.push(
+        <div
+          key={`sep-${flatIndex}`}
+          role="presentation"
+          className={cn(
+            "mx-2 my-[3px] h-px",
+            tone === "dark" ? "bg-white/15" : "bg-black/[.1] night:bg-white/15",
+          )}
+        />,
+      );
+    afterGroup = !!group;
     const list = group ? group.options : [item as SelectMenuOption<V>];
     const start = flatIndex;
     flatIndex += list.length;
@@ -343,6 +377,7 @@ export function SelectMenu<V extends string = string>(props: SelectMenuProps<V>)
             "flex min-h-[28px] cursor-pointer items-center rounded-[5px] py-1 pr-[18px] pl-3 text-left max-sm:min-h-[32px]",
             on && "font-semibold",
             o.disabled && "cursor-default opacity-45",
+            o.className,
             i === active &&
               !o.disabled &&
               (tone === "dark"
@@ -383,7 +418,9 @@ export function SelectMenu<V extends string = string>(props: SelectMenuProps<V>)
                   setQuery(e.target.value);
                   const ql = e.target.value.trim().toLowerCase();
                   const first = flat.findIndex(
-                    (o) => !o.disabled && (!ql || o.label.toLowerCase().includes(ql)),
+                    (o) =>
+                      !o.disabled &&
+                      (!ql || o.label.toLowerCase().includes(ql)),
                   );
                   setActive(first);
                 }}
@@ -400,12 +437,16 @@ export function SelectMenu<V extends string = string>(props: SelectMenuProps<V>)
               id={listId}
               role="listbox"
               aria-label={props["aria-label"]}
-              aria-labelledby={props["aria-label"] ? undefined : props["aria-labelledby"]}
+              aria-labelledby={
+                props["aria-label"] ? undefined : props["aria-labelledby"]
+              }
             >
               {rows.length ? (
                 rows
               ) : (
-                <div className="px-2.5 py-2 text-[12.5px] opacity-60">No matches</div>
+                <div className="px-2.5 py-2 text-[12.5px] opacity-60">
+                  No matches
+                </div>
               )}
             </div>
             {footer ? (
@@ -413,7 +454,9 @@ export function SelectMenu<V extends string = string>(props: SelectMenuProps<V>)
                 data-select-footer
                 className={cn(
                   "mt-[3px] border-t p-1.5",
-                  tone === "dark" ? "border-white/15" : "border-black/[.14] night:border-white/15",
+                  tone === "dark"
+                    ? "border-white/15"
+                    : "border-black/[.14] night:border-white/15",
                 )}
               >
                 {footer(() => close())}
@@ -434,7 +477,9 @@ export function SelectMenu<V extends string = string>(props: SelectMenuProps<V>)
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={open ? listId : undefined}
-        aria-activedescendant={open && !searchable && active >= 0 ? optId(active) : undefined}
+        aria-activedescendant={
+          open && !searchable && active >= 0 ? optId(active) : undefined
+        }
         aria-label={props["aria-label"]}
         aria-labelledby={props["aria-labelledby"]}
         aria-describedby={props["aria-describedby"]}
@@ -449,6 +494,7 @@ export function SelectMenu<V extends string = string>(props: SelectMenuProps<V>)
           flat.map((o) => [o.value, o.label, o.disabled ? 1 : 0]),
         )}
         {...dataAttrs}
+        style={style}
         onClick={() => (open ? close(false) : openMenu())}
         onKeyDown={onKey}
         className={cn(

@@ -2,6 +2,7 @@
 // 前提：mock 在 8799，next dev 在 3198（API_PROXY_TARGET 和 LEGACY 都指向 mock）。
 const { spawn } = require("child_process");
 const path = require("path");
+const { SELECT_HELPERS } = require("./select-menu-helper");
 
 const CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe";
 const APP = process.env.APP_URL || "http://localhost:3198";
@@ -107,6 +108,7 @@ async function main() {
     }
   };
   await cdp("Page.enable");
+  await cdp("Page.addScriptToEvaluateOnNewDocument", { source: SELECT_HELPERS });
   await cdp("Runtime.enable");
 
   try {
@@ -125,7 +127,7 @@ async function main() {
 async function since(before, filter) {
   return (await mockLog()).slice(before).filter(filter);
 }
-const SEL = `window.$sel = (el, v) => { Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(el, v); el.dispatchEvent(new Event('change', { bubbles: true })); };`;
+const SEL = `${SELECT_HELPERS}`;
 const reportQuery = (e) => e.path === "/api/farm-out/report";
 
 async function run() {
@@ -153,7 +155,7 @@ async function run() {
   check("没改过的行没有 ✎", await evaluate("return !document.querySelectorAll('tbody tr')[0].children[10].textContent.includes('✎');"));
   check("合计行：3 orders、成人 5、儿童 1、实付 $895.00、应付 $505.00、差额 $240.00", JSON.stringify(rows[3].filter(Boolean)) === JSON.stringify(["Total · 3 orders", "5", "1", "$895.00", "$505.00", "$240.00"]), JSON.stringify(rows[3]));
   check("3 orders 计数是普通文字、不是按钮", await evaluate("return document.body.textContent.includes('3 orders') && ![...document.querySelectorAll('button')].some(b => b.textContent.includes('orders'));"));
-  check("合作公司下拉：All partners + 启用的公司", JSON.stringify(await evaluate("return [...document.querySelector('select[aria-label=Partner]').options].map(o => o.textContent);")) === JSON.stringify(["All partners", "Partner A", "Partner B"]));
+  check("合作公司下拉：All partners + 启用的公司", JSON.stringify(await evaluate("return [...document.querySelector(':is(select,[data-select-menu])[aria-label=Partner]').options].map(o => o.textContent);")) === JSON.stringify(["All partners", "Partner A", "Partner B"]));
   check("Export CSV 是下载链接：format=csv、日期范围", await evaluate(`const a = [...document.querySelectorAll('a')].find(a => a.textContent.trim() === 'Export CSV'); return !!a && a.hasAttribute('download') && a.getAttribute('href').startsWith('/api/farm-out/report?') && a.getAttribute('href').includes('format=csv') && a.getAttribute('href').includes('from=${monthStart}') && !a.getAttribute('href').includes('partner_id');`));
 
   // G263 v3：后端带 product ⇒ Tour 后面多一列 Product（全名，同 CSV 的列序）；没选产品的写灰「—」；合计行跟着往后挪一格
@@ -175,7 +177,7 @@ async function run() {
   await evaluate(SEL);
 
   let before = (await mockLog()).length;
-  await evaluate("$sel(document.querySelector('select[aria-label=Partner]'), '1');");
+  await evaluate("await $sel(document.querySelector(':is(select,[data-select-menu])[aria-label=Partner]'), '1');");
   await waitFor("document.querySelectorAll('tbody tr').length === 3");
   check("选 Partner A：partner_id=1，只剩 A 的 2 单 + 合计", (await since(before, (e) => reportQuery(e) && e.query.includes("partner_id=1"))).length >= 1 && (await evaluate("return document.querySelectorAll('tbody tr').length;")) === 3);
   check("Export CSV 跟着带 partner_id=1", await evaluate("const a = [...document.querySelectorAll('a')].find(a => a.textContent.trim() === 'Export CSV'); return a.getAttribute('href').includes('partner_id=1');"));

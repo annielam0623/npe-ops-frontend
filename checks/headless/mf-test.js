@@ -2,6 +2,7 @@
 // 前提：mock 在 8799，next dev 在 3198（API_PROXY_TARGET 和 LEGACY 都指向 mock）。
 const { spawn } = require("child_process");
 const path = require("path");
+const { SELECT_HELPERS } = require("./select-menu-helper");
 
 const CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe";
 const APP = process.env.APP_URL || "http://localhost:3198";
@@ -58,7 +59,7 @@ async function goto(url) {
 }
 
 // 页面里用的小工具（每次导航后重新注入）。
-const HELPERS = `
+const HELPERS = SELECT_HELPERS + `
 window.$t = (sel) => [...document.querySelectorAll(sel)].map(e => e.textContent.trim());
 window.$rows = () => [...document.querySelectorAll('tbody tr')].map(tr => [...tr.children].map(td => td.textContent.trim()));
 window.$heads = () => [...document.querySelectorAll('thead th')].map(th => th.textContent.replace('⠿','').trim());
@@ -107,6 +108,7 @@ async function main() {
     }
   };
   await cdp("Page.enable");
+  await cdp("Page.addScriptToEvaluateOnNewDocument", { source: SELECT_HELPERS });
   await cdp("Runtime.enable");
 
   try {
@@ -379,7 +381,7 @@ async function run() {
   check("G65：主 Manifest 找不到的单，单号下不再写橙字「Not in main manifest — check Rezdy」（Annie 2026-10-30「4 全按推荐 动手」：订单流固定，不再叫人去 Rezdy），人数照算（仍在车上）", await evaluate("const r = document.querySelector('tr[data-guest=CHD3]'); return !!r && !r.querySelector('[data-sync-missing]') && !document.body.textContent.includes('check Rezdy') && r.closest('section').getAttribute('aria-label') === 'Bus 2041=A';"));
   check("G65：取消 / 改期单独一块在最下面（How to use 之前）：0 (was N)、原来的车、原因；不在车上和 Not on a bus 里", await evaluate("const s = document.querySelector('section[data-gone]'); if (!s) return false; const c = s.querySelector('tr[data-gone-row=CHD21]'); const m = s.querySelector('tr[data-gone-row=CHD22]'); const after = [...document.querySelectorAll('section[aria-label^=\"Bus\"], section[aria-label=\"Not on a bus yet\"]')].every(x => x.compareDocumentPosition(s) & Node.DOCUMENT_POSITION_FOLLOWING); return s.textContent.includes('Cancelled / moved · 2 orders') && s.textContent.includes('0 pax — not counted, not printed') && c.textContent.includes('0(was 3)') && c.textContent.includes('Cancelled in Rezdy (Oct 14, 8:12 PM)') && [...c.children][5].textContent === 'A' && m.textContent.includes('Moved to 10/15 South Rim') && [...m.children][5].textContent === '—' && !document.querySelector('tr[data-guest=CHD21], tr[data-guest=CHD22]') && after;"), await evaluate("return document.querySelector('section[data-gone]')?.textContent;"));
   check("G65：页头总数不含取消 / 改期（仍是 4 orders, 8 pax）、How to use 写了只增不删、不再写「check Rezdy」那条（Annie 2026-10-30）", await evaluate("const t = document.body.textContent; return t.includes('4 orders, 8 pax') && t.includes('Orders are never taken off the list by an update.') && !t.includes('means the order is gone from the main manifest but we') && !t.includes('check Rezdy');"));
-  check("没分车的客人：Not on a bus yet 区块、下拉标橙", await evaluate("const s = document.querySelector('section[aria-label=\"Not on a bus yet\"]'); return s && s.textContent.includes('Not on a bus yet · 2 pax') && s.querySelector('select').className.includes('e0a63a');"));
+  check("没分车的客人：Not on a bus yet 区块、下拉标橙", await evaluate("const s = document.querySelector('section[aria-label=\"Not on a bus yet\"]'); return s && s.textContent.includes('Not on a bus yet · 2 pax') && s.querySelector('select, [data-select-menu]').className.includes('e0a63a');"));
   check("Footer 格子：照接口顺序画、null 显示 —、Extra 的 SEATS LEFT 格另一种底色", await evaluate("const b = document.querySelector('section[aria-label=\"Bus 2041=A\"]'); return b.textContent.includes('AVAILABLE SEATS LEFT—') && b.textContent.indexOf('Heli SEATS LEFT') > b.textContent.indexOf('AVAILABLE SEATS LEFT') && b.textContent.indexOf('INBOUND') > b.textContent.indexOf('Heli SEATS LEFT') && [...b.querySelectorAll('span')].some(s => s.textContent === 'Heli SEATS LEFT' && s.className.includes('ddd0f0'));"), await evaluate("return document.querySelector('section[aria-label=\"Bus 2041=A\"]').textContent.slice(-200);"));
   // ── No show 改方向（Annie 2026-11-17「动手」，N5 A）：✓ 列显示最终值；staff 在 Morning Tracking 改过写「Edited by …」，鼠标移上去两行；纸样不动 ──
   await ctl({ staffBoard: true });
@@ -442,14 +444,13 @@ async function run() {
   check("整页 Save 在工具条最前面（Print all 左边）", await evaluate("const b = document.querySelector('[data-page-save]'); const p = [...document.querySelectorAll('main a')].find(a => a.textContent.trim().startsWith('Print all buses')); return !p || !!(b.compareDocumentPosition(p) & Node.DOCUMENT_POSITION_FOLLOWING);"));
   before = (await mockLog()).length;
   await evaluate(`
-    const sel = document.querySelector('section[aria-label="Not on a bus yet"] select');
-    Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(sel, 'B');
-    sel.dispatchEvent(new Event('change', { bubbles: true }));`);
+    const sel = document.querySelector('section[aria-label="Not on a bus yet"] :is(select,[data-select-menu])');
+    return $sel(sel, 'B');`);
   await sleep(200);
   check("选车：不发请求（先放在页面上）", (await since(before, "/api/dispatch/manifests/guest-bus")).length === 0);
   check(
     "选车：客人马上挪到 B 车（Q4），Not on a bus yet 空了就不见；下拉标琥珀色、写 from no bus · not saved",
-    await evaluate("const b = document.querySelector('section[aria-label=\"Bus 2042=B\"]'); const r = b && b.querySelector('tr[data-guest=CHD2]'); return !document.querySelector('section[aria-label=\"Not on a bus yet\"]') && !!r && r.querySelector('select').value === 'B' && r.querySelector('[data-moved-from]').textContent === 'from no bus · not saved';"),
+    await evaluate("const b = document.querySelector('section[aria-label=\"Bus 2042=B\"]'); const r = b && b.querySelector('tr[data-guest=CHD2]'); return !document.querySelector('section[aria-label=\"Not on a bus yet\"]') && !!r && r.querySelector('select, [data-select-menu]').value === 'B' && r.querySelector('[data-moved-from]').textContent === 'from no bus · not saved';"),
   );
   check(
     "工具条下面琥珀色一句写清哪样没存，整页 Save 变能点",
@@ -465,22 +466,19 @@ async function run() {
   );
   // 换回原车 = 没改
   await evaluate(`
-    const sel = document.querySelector('tr[data-guest=CHD2] select');
-    Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(sel, 'A');
-    sel.dispatchEvent(new Event('change', { bubbles: true }));`);
+    const sel = document.querySelector('tr[data-guest=CHD2] :is(select,[data-select-menu])');
+    return $sel(sel, 'A');`);
   await sleep(150);
   await evaluate(`
-    const sel = document.querySelector('tr[data-guest=CHD2] select');
-    Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(sel, 'B');
-    sel.dispatchEvent(new Event('change', { bubbles: true }));`);
+    const sel = document.querySelector('tr[data-guest=CHD2] :is(select,[data-select-menu])');
+    return $sel(sel, 'B');`);
   await sleep(150);
   check("换走又换回原来那辆：算没改（没有琥珀色、Save 灰着）", await evaluate("return !document.querySelector('[data-moved-from]') && !document.querySelector('[data-page-unsaved]') && document.querySelector('[data-page-save]').disabled;"));
   // 存失败：后端原话红字，没存上的继续标
   await ctl({ busFail: "That guest is no longer on the list. Reload the page." });
   await evaluate(`
-    const sel = document.querySelector('tr[data-guest=CHD2] select');
-    Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(sel, 'A');
-    sel.dispatchEvent(new Event('change', { bubbles: true }));`);
+    const sel = document.querySelector('tr[data-guest=CHD2] :is(select,[data-select-menu])');
+    return $sel(sel, 'A');`);
   await sleep(150);
   await evaluate("document.querySelector('[data-page-save]').click(); return 1;");
   check(
@@ -490,9 +488,8 @@ async function run() {
   );
   await ctl({ busFail: "" });
   await evaluate(`
-    const sel = document.querySelector('tr[data-guest=CHD2] select');
-    Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(sel, 'B');
-    sel.dispatchEvent(new Event('change', { bubbles: true }));`);
+    const sel = document.querySelector('tr[data-guest=CHD2] :is(select,[data-select-menu])');
+    return $sel(sel, 'B');`);
   await sleep(150);
 
   // 黄框
@@ -572,9 +569,8 @@ async function run() {
   await evaluate(`${TA}.querySelector('[aria-label=Bigger]').click(); return 1;`);
   await sleep(150);
   await evaluate(`
-    const sel = document.querySelector('tr[data-guest=CHD3] select');
-    Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(sel, 'B');
-    sel.dispatchEvent(new Event('change', { bubbles: true }));`);
+    const sel = document.querySelector('tr[data-guest=CHD3] :is(select,[data-select-menu])');
+    return $sel(sel, 'B');`);
   await sleep(200);
   await evaluate(`[...${TB}.querySelectorAll('button')].find(b => b.textContent === 'Row').click(); return 1;`);
   await sleep(150);
@@ -669,9 +665,8 @@ async function run() {
   // 打印 / 下载前：有没存的改动先问（Q3「Save before printing?」）
   await evaluate(TRAP);
   await evaluate(`
-    const sel = document.querySelector('tr[data-guest=CHD3] select');
-    Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(sel, 'B');
-    sel.dispatchEvent(new Event('change', { bubbles: true }));`);
+    const sel = document.querySelector('tr[data-guest=CHD3] :is(select,[data-select-menu])');
+    return $sel(sel, 'B');`);
   await sleep(150);
   await evaluate("[...document.querySelectorAll('main a')].find(a => a.textContent.trim().startsWith('Print all buses')).click(); return 1;");
   await waitFor("document.querySelector('[data-save-first-dialog]')", 3000);
@@ -694,9 +689,8 @@ async function run() {
   await sleep(200);
   check("Print anyway：开整团打印页（这时库里已经是存好的）", await evaluate("return window.__opened.length === 1 && window.__opened[0].includes('/admin/dispatch/manifest/print?date=2026-10-05&tour=3');"), await evaluate("return JSON.stringify(window.__opened);"));
   await evaluate(`
-    const sel = document.querySelector('tr[data-guest=CHD3] select');
-    Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(sel, 'A');
-    sel.dispatchEvent(new Event('change', { bubbles: true }));`);
+    const sel = document.querySelector('tr[data-guest=CHD3] :is(select,[data-select-menu])');
+    return $sel(sel, 'A');`);
   await sleep(150);
   await evaluate("[...document.querySelectorAll('main button')].find(b => b.textContent.trim() === 'Download').click(); return 1;");
   await waitFor("document.querySelector('[data-save-first-dialog]')", 3000);
@@ -708,7 +702,7 @@ async function run() {
   check("Save and download → Download anyway：存好后交下载表单", await evaluate("return window.__submitted === 1 && !document.querySelector('[data-moved-from]');"));
   // 换成 Lankun：页面马上照 Lankun 画，整页 Save 才 PUT {tour, version}
   before = (await mockLog()).length;
-  await evaluate("const s = document.querySelector('[data-version-select]'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, 'lankun'); s.dispatchEvent(new Event('change', { bubbles: true })); return 1;");
+  await evaluate("const s = document.querySelector('[data-version-select]'); return $sel(s, 'lankun'); return 1;");
   await sleep(200);
   check("选 Lankun：不发请求，下拉框琥珀色写 Unsaved，工具条写 version General → Lankun",
     (await since(before, "/api/dispatch/manifest/version")).length === 0 && (await evaluate("const l = document.querySelector('[data-version-select]').closest('label'); return !!document.querySelector('[data-version-unsaved]') && getComputedStyle(l).borderTopColor === 'rgb(245, 158, 11)' && document.querySelector('[data-page-unsaved]').textContent.includes('version General → Lankun');")));
@@ -737,7 +731,7 @@ async function run() {
     await evaluate("return document.querySelector('[data-restaurant]')?.textContent;"));
   // Marcello：字大的 General
   before = (await mockLog()).length;
-  await evaluate("const s = document.querySelector('[data-version-select]'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, 'marcello'); s.dispatchEvent(new Event('change', { bubbles: true })); return 1;");
+  await evaluate("const s = document.querySelector('[data-version-select]'); return $sel(s, 'marcello'); return 1;");
   await sleep(150);
   await evaluate("document.querySelector('[data-page-save]').click(); return 1;");
   await waitReq(before, "/api/dispatch/manifest/version");
@@ -763,7 +757,7 @@ async function run() {
   await waitFor("!!document.querySelector('[data-page-saved]')");
   // 改版式失败：红字写后端原话，没存上的继续标（下拉留在 General、还写 Unsaved）
   await ctl({ versionFail: "That tour is not in the bus tour list." });
-  await evaluate("const s = document.querySelector('[data-version-select]'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, 'general'); s.dispatchEvent(new Event('change', { bubbles: true })); return 1;");
+  await evaluate("const s = document.querySelector('[data-version-select]'); return $sel(s, 'general'); return 1;");
   await sleep(150);
   await evaluate("document.querySelector('[data-page-save]').click(); return 1;");
   check("改版式失败：红字「Could not save: Version: 后端原话」，下拉留在 General、还写 Unsaved",
@@ -772,7 +766,7 @@ async function run() {
   await ctl({ versionFail: "" });
   // West Rim（Annie 10-29 定西峡用，后端 20 加的第四种）：列序 Order # / Time / Hotel / Phone / Last / First / Pax / Quantities / (Lunch) / Special Requirements，没有 ✓
   before = (await mockLog()).length;
-  await evaluate("const s = document.querySelector('[data-version-select]'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, 'west'); s.dispatchEvent(new Event('change', { bubbles: true })); return 1;");
+  await evaluate("const s = document.querySelector('[data-version-select]'); return $sel(s, 'west'); return 1;");
   await sleep(150);
   // 存完到重读回来之间（mock 让重读慢 1.2 秒）：每次页面变动都记一下 A 车的列头，看有没有闪回旧版式。
   await ctl({ manifestDelayMs: 1200 });
@@ -796,9 +790,8 @@ async function run() {
 
   // 有没存的改动离开页面：Save / Don't save / Cancel
   await evaluate(`
-    const sel = document.querySelector('tr[data-guest=CHD3] select');
-    Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(sel, 'B');
-    sel.dispatchEvent(new Event('change', { bubbles: true }));`);
+    const sel = document.querySelector('tr[data-guest=CHD3] :is(select,[data-select-menu])');
+    return $sel(sel, 'B');`);
   await sleep(150);
   const dispatchLink = "[...document.querySelectorAll('nav[aria-label=Back] a')].find(a => a.textContent.startsWith('Dispatch'))";
   await evaluate(`${dispatchLink}.click(); return 1;`);
@@ -820,9 +813,8 @@ async function run() {
   await waitFor("document.querySelector('[data-version-select]')");
   await helpers();
   await evaluate(`
-    const sel = document.querySelector('tr[data-guest=CHD3] select');
-    Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(sel, 'A');
-    sel.dispatchEvent(new Event('change', { bubbles: true }));`);
+    const sel = document.querySelector('tr[data-guest=CHD3] :is(select,[data-select-menu])');
+    return $sel(sel, 'A');`);
   await sleep(150);
   before = (await mockLog()).length;
   await evaluate(`${dispatchLink}.click(); return 1;`);
@@ -834,9 +826,8 @@ async function run() {
   await waitFor("document.querySelector('[data-version-select]')");
   await helpers();
   await evaluate(`
-    const sel = document.querySelector('tr[data-guest=CHD3] select');
-    Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(sel, 'A');
-    sel.dispatchEvent(new Event('change', { bubbles: true }));`);
+    const sel = document.querySelector('tr[data-guest=CHD3] :is(select,[data-select-menu])');
+    return $sel(sel, 'A');`);
   await sleep(150);
   await evaluate("document.querySelector('[data-page-save]').click(); return 1;");
   await waitFor("!!document.querySelector('[data-page-saved]')");
@@ -1022,12 +1013,11 @@ async function run() {
   await evaluate("$setValue(document.querySelector('[data-notes-editor] textarea'), 'x'); document.querySelector('[data-notes-done]').click();");
   await sleep(200);
   // 和换车一起存：先换车、后备注（主窗口 eb 2026-10-30；换车先于字号，e6 65972c5）
-  const cur3 = await evaluate("return document.querySelector('tr[data-guest=CHD3] select').value;");
+  const cur3 = await evaluate("return document.querySelector('tr[data-guest=CHD3] :is(select,[data-select-menu])').value;");
   const to3 = cur3 === "B" ? "A" : "B";
   await evaluate(`
-    const sel = document.querySelector('tr[data-guest=CHD3] select');
-    Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(sel, '${to3}');
-    sel.dispatchEvent(new Event('change', { bubbles: true }));`);
+    const sel = document.querySelector('tr[data-guest=CHD3] :is(select,[data-select-menu])');
+    return $sel(sel, '${to3}');`);
   await sleep(200);
   before = (await mockLog()).length;
   await evaluate(pageSave);
@@ -1057,7 +1047,7 @@ async function run() {
   check("开关开着：只有第二辆车（Bus B）色条上有 ⇄ Farm out，第一辆没有；不是蓝色", await evaluate(`const b = ${foBtn}; return document.querySelectorAll('[data-farm-out-button]').length === 1 && ${busB}.contains(b) && b.textContent.trim() === '⇄ Farm out' && getComputedStyle(b).backgroundColor !== 'rgb(59, 130, 246)';`));
   await evaluate(`${foBtn}.click();`);
   await waitFor("document.querySelector('[data-farm-out-dialog]')");
-  check("点了弹框 Farm out Bus 2042=B?：只有一家（启用的）合作公司时已选好、停用的不列；写几单几人、司机会被拿掉；黄框提醒去 Dispatch；Farm out 是蓝色", await evaluate("const d = document.querySelector('[data-farm-out-dialog]'); const s = d.querySelector('select'); const go = d.querySelector('[data-farm-out-go]'); return d.querySelector('h2').textContent === 'Farm out Bus 2042=B?' && s.options.length === 1 && s.value === '5' && d.textContent.includes('go to the partner') && d.textContent.includes('Driver FREDDY will be taken off this bus.') && d.textContent.includes('Next, on Dispatch: pick each order’s hotel and send the farm out notice.') && ['rgb(59, 130, 246)', 'rgb(24, 95, 165)'].includes(getComputedStyle(go).backgroundColor) && !go.disabled;"));
+  check("点了弹框 Farm out Bus 2042=B?：只有一家（启用的）合作公司时已选好、停用的不列；写几单几人、司机会被拿掉；黄框提醒去 Dispatch；Farm out 是蓝色", await evaluate("const d = document.querySelector('[data-farm-out-dialog]'); const s = d.querySelector('select, [data-select-menu]'); const go = d.querySelector('[data-farm-out-go]'); return d.querySelector('h2').textContent === 'Farm out Bus 2042=B?' && s.options.length === 1 && s.value === '5' && d.textContent.includes('go to the partner') && d.textContent.includes('Driver FREDDY will be taken off this bus.') && d.textContent.includes('Next, on Dispatch: pick each order’s hotel and send the farm out notice.') && ['rgb(59, 130, 246)', 'rgb(24, 95, 165)'].includes(getComputedStyle(go).backgroundColor) && !go.disabled;"));
   before = (await mockLog()).length;
   await evaluate("$btn('Cancel', document.querySelector('[data-farm-out-dialog]')).click();");
   await sleep(300);
@@ -1097,8 +1087,8 @@ async function run() {
   await sleep(150);
   check("点 × 黄条收起", await evaluate("return !document.querySelector('[data-farm-out-done]');"));
   // 页面上有没存的改动：键灰着（先存再转）
-  const was3 = await evaluate("return document.querySelector('tr[data-guest=CHD3] select').value;");
-  const pick3 = (v) => `const sel = document.querySelector('tr[data-guest=CHD3] select'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(sel, '${v}'); sel.dispatchEvent(new Event('change', { bubbles: true }));`;
+  const was3 = await evaluate("return document.querySelector('tr[data-guest=CHD3] :is(select,[data-select-menu])').value;");
+  const pick3 = (v) => `const sel = document.querySelector('tr[data-guest=CHD3] :is(select,[data-select-menu])'); return $sel(sel, '${v}');`;
   await evaluate(pick3(was3 === "B" ? "A" : "B"));
   await sleep(200);
   check("有没存的改动时 Farm out 键灰着、鼠标提示 Save your changes first.", await evaluate(`const b = ${foBtn}; return b.disabled && b.title === 'Save your changes first.';`));
@@ -1257,7 +1247,7 @@ async function run() {
     await goto(`${APP}/dispatch/manifest?date=2026-10-05&tour=3`);
     await waitFor("document.querySelector('section[aria-label^=\"Bus\"]')", 60000);
     await helpers();
-    const st = await evaluate("return { select: !!document.querySelector('section[aria-label^=\"Bus\"] select'), save: !!document.querySelector('[data-page-save]') };");
+    const st = await evaluate("return { select: !!document.querySelector('section[aria-label^=\"Bus\"] :is(select,[data-select-menu])'), save: !!document.querySelector('[data-page-save]') };");
     check(`${label}：Bus Manifest ${canEdit ? "能改（有换车下拉、整页 Save）" : "只看（没有换车下拉、没有整页 Save）"}`, st.select === canEdit && st.save === canEdit, JSON.stringify(st));
   }
   await ctl({ staffPerms: null, superAdmin: false });
@@ -1660,7 +1650,7 @@ async function runViewOnly() {
   await sleep(200);
   check("✕：关掉", !(await evaluate(`return !!${PV};`)));
 
-  await evaluate("const s = document.querySelector('[data-version-select]'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, 'marcello'); s.dispatchEvent(new Event('change', { bubbles: true })); return 1;");
+  await evaluate("const s = document.querySelector('[data-version-select]'); return $sel(s, 'marcello'); return 1;");
   await sleep(200);
   await evaluate("document.querySelector('[data-view-only=all]').click(); return 1;");
   check("有没存的改动点 View only：先问 Save before viewing?（Save and view），不开全屏层",

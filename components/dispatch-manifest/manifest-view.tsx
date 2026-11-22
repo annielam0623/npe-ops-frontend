@@ -142,6 +142,7 @@ import {
   markLabel,
   markWho,
 } from "@/components/morning-tracking/config";
+import { SelectMenu } from "@/components/ui/select-menu";
 
 /** ✓ 列：staff 在 Morning Tracking 改过（No show 改方向，N5 A）。 */
 function boardingStaffChanged(g: ManifestGuest): boolean {
@@ -1801,20 +1802,20 @@ function VersionPicker({
       )}
     >
       Version:
-      <select
+      <SelectMenu
         data-version-select
         data-phone-keep
         aria-label="Bus Manifest version"
-        value={version}
-        onChange={(e) => onChange(e.target.value as ManifestVersion)}
+        value={String(version)}
+        options={[
+          ...VERSIONS.map((v) => ({
+            value: String(v.value),
+            label: String(v.label),
+          })),
+        ]}
+        onChange={(next) => onChange(next as ManifestVersion)}
         className="h-6 cursor-pointer rounded-md border-0 bg-transparent px-1 py-0 text-[11.5px] leading-none font-semibold text-white disabled:opacity-50 [&>option]:text-[#111]"
-      >
-        {VERSIONS.map((v) => (
-          <option key={v.value} value={v.value}>
-            {v.label}
-          </option>
-        ))}
-      </select>
+      />
       {unsaved ? (
         <span
           data-version-unsaved
@@ -2589,11 +2590,17 @@ function BusSelect({
     );
   return (
     <span className="inline-flex flex-col items-start gap-0.5">
-      <select
+      <SelectMenu
         aria-label={`Bus for ${guest.name}`}
-        value={value}
-        // 换车先放在页面上（客人马上挪到新车），整页 Save 才存（Q4）。
-        onChange={(e) => onChange(guest, e.target.value)}
+        value={String(value)}
+        options={[
+          { value: "", label: "—" },
+          ...(value && !labels.includes(value)
+            ? [{ value: String(value), label: String(value) }]
+            : []),
+          ...labels.map((l) => ({ value: String(l), label: String(l) })),
+        ]}
+        onChange={(next) => onChange(guest, next)}
         className={cn(
           // .mf-card select.bus（.unset 橙框）
           "h-[26px] rounded-md px-1 font-[inherit] text-[12px] text-[#111]",
@@ -2603,17 +2610,7 @@ function BusSelect({
               ? "border border-[#e0a63a] bg-[#fffaf0]"
               : "border-[0.5px] border-black/25 bg-paper",
         )}
-      >
-        <option value="">—</option>
-        {value && !labels.includes(value) ? (
-          <option value={value}>{value}</option>
-        ) : null}
-        {labels.map((l) => (
-          <option key={l} value={l}>
-            {l}
-          </option>
-        ))}
-      </select>
+      />
       {moved ? (
         <span data-moved-from className={UNSAVED_TAG}>
           from {movedFrom.get(guest.id) || "no bus"} · not saved
@@ -3132,8 +3129,8 @@ function HowToUse({ layout, columns }: { layout: boolean; columns: boolean }) {
           …&rdquo; in Special Requirements means the guest picked a different
           lunch in the tour confirmation, so the lunch in Rezdy is probably
           wrong. Check it and fix Special Requirements in Rezdy. Before you
-          print or download, the page lists these bookings; check them, or
-          print / download anyway.
+          print or download, the page lists these bookings; check them, or print
+          / download anyway.
         </li>
         <li>
           Click Print on a bus (or Print all buses), then Print in the new tab.

@@ -1335,9 +1335,10 @@ export function DispatchView() {
       setTimeout(() => {
         box.style.boxShadow = "";
       }, 2000);
+      // 全站下拉（SelectMenu）：酒店下拉是 button[data-select-menu]，值在 value / data-value 上。
       const empty = [
-        ...box.querySelectorAll<HTMLSelectElement>(
-          'select[aria-label^="Pick-up hotel"]',
+        ...box.querySelectorAll<HTMLButtonElement>(
+          '[data-select-menu][aria-label^="Pick-up hotel"]',
         ),
       ].find((x) => x.value === "");
       empty?.focus({ preventScroll: true });

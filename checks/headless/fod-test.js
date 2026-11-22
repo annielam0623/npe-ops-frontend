@@ -2,6 +2,7 @@
 // 前提：mock 在 8799，next dev 在 3198（API_PROXY_TARGET 和 LEGACY 都指向 mock）。
 const { spawn } = require("child_process");
 const path = require("path");
+const { SELECT_HELPERS } = require("./select-menu-helper");
 
 const CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe";
 const APP = process.env.APP_URL || "http://localhost:3198";
@@ -58,7 +59,7 @@ async function goto(url) {
 }
 
 // 页面里用的小工具（每次导航后重新注入）。
-const HELPERS = `
+const HELPERS = SELECT_HELPERS + `
 window.$t = (sel) => [...document.querySelectorAll(sel)].map(e => e.textContent.trim());
 window.$rows = () => [...document.querySelectorAll('tbody tr')].map(tr => [...tr.children].map(td => td.textContent.trim()));
 window.$heads = () => [...document.querySelectorAll('thead th')].map(th => th.textContent.replace('⠿','').trim());
@@ -107,6 +108,7 @@ async function main() {
     }
   };
   await cdp("Page.enable");
+  await cdp("Page.addScriptToEvaluateOnNewDocument", { source: SELECT_HELPERS });
   await cdp("Runtime.enable");
   // 自动保存（Annie 2026-10-15）：检查里默认等很久、不自己存；要存的地方用 saveNow() / trySave()。
   await cdp("Page.addScriptToEvaluateOnNewDocument", { source: AUTOSAVE_OFF });
@@ -138,8 +140,7 @@ let dialogCount = 0;
 async function pick(selExpr, value) {
   await evaluate(`
     const el = ${selExpr};
-    Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(el, ${JSON.stringify(String(value))});
-    el.dispatchEvent(new Event('change', { bubbles: true }));`);
+    return $sel(el, ${JSON.stringify(String(value))});`);
   await sleep(150);
 }
 const opts = (selExpr) => `[...${selExpr}.options].map(o => o.text + (o.disabled ? '[x]' : '')).join('|')`;
@@ -220,10 +221,10 @@ async function run() {
   await waitFor(`document.querySelector('[data-farm-out-bus="B"]')`);
   check("点 Farm out：这台车变成 Farm out 车（灰蓝），写 no driver or vehicle needed，没有司机 / 车 / 导游下拉", await evaluate(`const b = document.querySelector('[data-farm-out-bus="B"]'); return b.textContent.includes('no driver or vehicle needed') && !b.querySelector('[data-f=driver]') && !b.querySelector('[data-f=vehicle]') && /475569/.test(b.firstElementChild.className);`));
   check("两家合作公司时不预选：写 Pick a partner；不报 Needs driver", await evaluate(`const b = document.querySelector('[data-farm-out-bus="B"]'); return b.textContent.includes('Pick a partner') && !document.body.textContent.includes('Needs driver');`));
-  await pick(`document.querySelector('[data-farm-out-bus="B"] select')`, "2");
+  await pick(`document.querySelector('[data-farm-out-bus="B"] :is(select,[data-select-menu])')`, "2");
   await waitFor("document.querySelector('[data-no-timetable]')");
   check("选的公司时刻表里没有这个团：写 This tour has no timetable …type the departure time（不灰键、不阻止）", await evaluate(`const t = document.querySelector('[data-no-timetable]').textContent; return t.includes('has no timetable at') && t.includes('type the departure time') && !document.querySelector('[data-farm-out-on]')?.disabled;`));
-  await pick(`document.querySelector('[data-farm-out-bus="B"] select')`, "1");
+  await pick(`document.querySelector('[data-farm-out-bus="B"] :is(select,[data-select-menu])')`, "1");
   await sleep(300);
   check("换成有时刻表的公司：提示消失、Pick a partner 消失", await evaluate(`const b = document.querySelector('[data-farm-out-bus="B"]'); return !document.querySelector('[data-no-timetable]') && !b.textContent.includes('Pick a partner') && b.textContent.includes('Farmed out to');`));
   let r = (await saveNow())[0]?.body;
@@ -262,13 +263,13 @@ async function run() {
     await evaluate("document.activeElement?.blur(); window.scrollTo(0, 0);");
     await evaluate(`${foLi}.querySelector('[data-issue-fix]').click();`);
     await sleep(1200);
-    check("G308 Farm out 那条的 Fix ›：名单开着，光标到 CHDF003 的 Pick-up hotel 下拉", await evaluate(`const a = document.activeElement; return a?.tagName === 'SELECT' && a.getAttribute('aria-label').startsWith('Pick-up hotel') && !!a.closest('[data-farm-order="CHDF003"]');`), await evaluate("return document.activeElement?.outerHTML.slice(0, 200);"));
+    check("G308 Farm out 那条的 Fix ›：名单开着，光标到 CHDF003 的 Pick-up hotel 下拉", await evaluate(`const a = document.activeElement; return (a?.tagName === 'SELECT' || a?.matches('[data-select-menu]')) && a.getAttribute('aria-label').startsWith('Pick-up hotel') && !!a.closest('[data-farm-order="CHDF003"]');`), await evaluate("return document.activeElement?.outerHTML.slice(0, 200);"));
   }
   check("名单三行；OTA 确认号 / 成人儿童婴儿数", await evaluate(`const f = (n) => document.querySelector('[data-farm-order="' + n + '"]').textContent; return document.querySelectorAll('[data-farm-order]').length === 3 && f('CHDF001').includes('GYG-7731042') && f('CHDF001').includes('2 / 1 / 0') && f('CHDF002').includes('2 / 0 / 1');`));
   check("已发过的行淡黄 + Notice sent by Annie on …", await evaluate(`const r = ${farmOrder("CHDF001")}; return /fff8e1/.test(r.className) && /Notice sent by Annie on/.test(r.textContent);`));
   check("时间 / 应付显示：6:40 AM / 6:50 AM / $305.00；staff 改过的框蓝边", await evaluate(`const v = (n, l) => document.querySelector('[aria-label="' + l + ' ZZ Test ' + n + '"]'); return v('Sent', 'Check-in time for').value === '6:40 AM' && v('Sent', 'Departure time for').value === '6:50 AM' && v('Sent', 'Payable for').value === '$305.00' && /1d4ed8/.test(v('Two', 'Departure time for').className) && !/1d4ed8/.test(v('Sent', 'Departure time for').className);`));
-  check("没选酒店的单：下拉标黄虚线，时间显示 —，红字写 choose a pick-up hotel before sending", await evaluate(`const r = ${farmOrder("CHDF003")}; const s = r.querySelector('select'); return s.value === '' && /e7b75a/.test(s.className) && !r.querySelector('input[aria-label^="Departure"]') && document.querySelector('[data-farm-out-guests]').textContent.includes('choose a pick-up hotel before sending');`));
-  check("车下面的 Bus 下拉里这台车写 Farm out", await evaluate(`const s = ${farmOrder("CHDF002")}.querySelector('select[aria-label^="Bus for"]'); return [...s.options].map(o => o.text).join('|') === 'Bus A|Farm out';`));
+  check("没选酒店的单：下拉标黄虚线，时间显示 —，红字写 choose a pick-up hotel before sending", await evaluate(`const r = ${farmOrder("CHDF003")}; const s = r.querySelector('select, [data-select-menu]'); return s.value === '' && /e7b75a/.test(s.className) && !r.querySelector('input[aria-label^="Departure"]') && document.querySelector('[data-farm-out-guests]').textContent.includes('choose a pick-up hotel before sending');`));
+  check("车下面的 Bus 下拉里这台车写 Farm out", await evaluate(`const s = ${farmOrder("CHDF002")}.querySelector(':is(select,[data-select-menu])[aria-label^="Bus for"]'); return [...s.options].map(o => o.text).join('|') === 'Bus A|Farm out';`));
 
   // 「谁看得到」开关（Annie 2026-10-25「farm out要加开关……功能还在讨论中」→「Farm out都还没有开始，你就加吧」；
   // 2026-10-26「还没有做好……就仅 super admin 可见」）：farm_out_dispatch 没登记时按默认只 Super Admin。
@@ -278,10 +279,10 @@ async function run() {
   await openDay(D_FO, `document.querySelectorAll('[data-sec="bus_tour:3"] .vrow').length === 2`);
   await sleep(800);
   check("开关没登记 · admin：已转出去的车画成普通车——没有 Farm out 名单、没有 Farm out 车行、没有 Send farm out notice", await evaluate(`return !document.querySelector('[data-farm-out-guests]') && !document.querySelector('[data-farm-out-bus]') && !document.querySelector('[data-farm-out-send]') && document.querySelectorAll('[data-sec="bus_tour:3"] .vrow').length === 2;`));
-  check("开关没登记 · admin：人数不拆 ours / Farm out，Bus 下拉里没有 Farm out", await evaluate(`return !document.querySelector('[data-pax-split]') && [...document.querySelectorAll('select[aria-label^="Bus for"] option')].every((o) => o.text !== 'Farm out');`));
+  check("开关没登记 · admin：人数不拆 ours / Farm out，Bus 下拉里没有 Farm out", await evaluate(`return !document.querySelector('[data-pax-split]') && [...document.querySelectorAll(':is(select,[data-select-menu])[aria-label^="Bus for"]')].flatMap((s) => [...s.options]).every((o) => o.text !== 'Farm out');`));
   check("开关没登记 · admin：页面不崩", !(await evaluate("return document.body.textContent.includes('Application error');")));
   {
-    const vsel = `(() => { const el = ${vrow(0)}.querySelector('[data-f=vehicle]'); return el && (el.tagName === 'SELECT' ? el : el.querySelector('select')); })()`;
+    const vsel = `(() => { const el = ${vrow(0)}.querySelector('[data-f=vehicle]'); return el && (el.matches('select, [data-select-menu]') ? el : el.querySelector('select, [data-select-menu]')); })()`;
     const next = await evaluate(`const s = ${vsel}; return s ? [...s.options].map((o) => o.value).find((v) => v && v !== s.value) ?? null : null;`);
     if (next) await pick(vsel, next);
     const saved = next ? (await saveNow())[0]?.body : null;
@@ -307,7 +308,7 @@ async function run() {
   // ── G263 v3（Annie「同意推荐，动手」，题 a A）：每单选产品；后端带 product_options 才出 Product 列 ──
   {
     const WIDGET = [{ key: "farm_out_dispatch", label: "Dispatch · Farm out", visibility: "staff", default: "super_admin_only", visible_to_me: true }];
-    const pick = (label, v) => `const el = document.querySelector('[aria-label="${label}"]'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(el, '${v}'); el.dispatchEvent(new Event('change', { bubbles: true }));`;
+    const pick = (label, v) => `const el = document.querySelector('[aria-label="${label}"]'); return $sel(el, '${v}');`;
     const headsOf = "return [...document.querySelector('[data-farm-out-guests]').querySelectorAll('thead th')].map(t => t.textContent.trim());";
     const openGuests = async () => {
       await openDay(D_FO, `document.querySelector('[data-farm-out-guests]')`);
@@ -484,7 +485,7 @@ async function run() {
 
   // 撤销：把已发过通知的单挪回 Bus A ⇒ 提醒，不自动补发
   b = (await mockLog()).length;
-  await pick(`${farmOrder("CHDF001")}.querySelector('select[aria-label^="Bus for"]')`, "A");
+  await pick(`${farmOrder("CHDF001")}.querySelector(':is(select,[data-select-menu])[aria-label^="Bus for"]')`, "A");
   await waitFor("document.querySelector('[data-farm-out-remind]')");
   check("已发过通知的单挪回 Bus A：页面提醒 already received a farm out notice，Nothing was re-sent", await evaluate(`const t = document.querySelector('[data-farm-out-remind]').textContent; return t.includes('CHDF001') && t.includes('already received a farm out notice') && t.includes('Nothing was re-sent');`));
   check("挪回后没有自动发任何通知", (await since(b, foSend)).length === 0);

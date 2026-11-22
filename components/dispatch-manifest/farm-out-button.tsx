@@ -25,6 +25,7 @@ import { fetchPartners } from "@/lib/farm-out-api";
 import { cn } from "@/lib/utils";
 import type { DispatchRow, ManifestBlock } from "@/types";
 import type { FarmOutPartner } from "@/types/farm-out";
+import { SelectMenu } from "@/components/ui/select-menu";
 
 /**
  * Bus Manifest 页第二辆车的「⇄ Farm out」键（Annie 2026-10-28「要」；preview https://claude.ai/artifact/7uRp5FHfFTsnRYemrrm1Wf ，
@@ -243,24 +244,22 @@ function FarmOutDialog({
         </h2>
         <label className="flex flex-wrap items-center gap-2.5 text-[13px] text-[#1a1a1a]">
           <span className="font-semibold">Farm out to</span>
-          <select
+          <SelectMenu
             aria-label="Farm out to"
-            value={partnerId ?? ""}
+            value={String(partnerId ?? "")}
+            options={[
+              ...(partners.length > 1
+                ? [{ value: "", label: "— pick a partner —" }]
+                : []),
+              ...partners.map((p) => ({
+                value: String(p.id),
+                label: String(p.name),
+              })),
+            ]}
             disabled={busy}
-            onChange={(e) =>
-              setPartnerId(e.target.value ? Number(e.target.value) : null)
-            }
+            onChange={(next) => setPartnerId(next ? Number(next) : null)}
             className="min-h-[34px] w-[230px] rounded-[7px] border border-[#cbd2dc] bg-white px-2 text-[13.5px] text-[#111]"
-          >
-            {partners.length > 1 ? (
-              <option value="">— pick a partner —</option>
-            ) : null}
-            {partners.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
+          />
         </label>
         <p className="text-[12.5px] leading-[1.55] text-[#475569]">
           {orders} order{orders === 1 ? "" : "s"} ({pax} pax) on Bus {bus} go to
