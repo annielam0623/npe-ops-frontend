@@ -81,6 +81,8 @@
 - 🐞 Annie（原话）「我记得我们原来设计的relay split单里是会把这台车去接的客人最后上哪台bus，哪个司机和导游，都显示出来…现在怎么没有了」（附 11/18 Relay 1 Bruce 图，底部 Antelope / BZ 色条）⇒ 查：前端画色条还在（relay-list-view.tsx:888-897，来自 guests[].bus）；后端 relay_pull.py:626-635 只在客人有 bus_label 且大巴 label 非空时给 bus ⇒ 单车团（label=null）/ 没分字母时色条不出。已转后端主窗口-bb 查实际返回、当 bug 修。
 - ✅ 全站下拉第 1 批上 main 3714494f（2c，合并 d7ffa1cf；Order List Tour date + Source 2 个，新组件 select-menu.tsx；Source 筛选 37b88b17：列表 / Export 带 source=rezdy|tripguru，All 不带）。tsc / eslint / build、orders 141/141、nav 40/40。Source SHA 已转后端主窗口-bb。Annie 线上看 /orders。2c 接着合 b2。
 - ✅ 全站下拉第 2 批上 main 2f92760a（2c；Tour Tracking 3 + Sync 1 + Tickets Tracking 1 = 5 个；diff 无 prettier 重排；tsc / eslint / build、tt 215/215、tk 157/157、orders 141/141）。Source 筛选：后端 95 核 87,485 = rezdy 87,356 + tripguru 129 不重不漏；5e 核代码 Export 与列表同一 listQuery（orders-test 489 项过）。
+- ✅ Products 大项折叠上 main f22ab339（bb，功能 0c63800d，task/products-collapse；Q1–Q3 = A）。tsc / eslint / build；products 251/251（新 11 项折叠检查）、ptt 44/44、fc 199/199、perm 54/54；截图同 preview 7Fxpr9WTLkegzDbZrAWadY。Annie 线上看 Settings › Products。bb 接着出 Tickets #bdbdbd + New 标签 preview。
+- bb 交 Tickets 组头 #bdbdbd + NEW 标签 preview https://claude.ai/artifact/67xPNFqwJkisFfPpkYZCq6 （WIP 本地 1bae2604，task/tickets-new-tag-preview，含勾选列 v2；主窗口看过截图；勾选列有无 NEW 都 80.3px）。累计 7 题 ⇒ Excel C:\Users\annzh\Downloads\Annie_待答题_2026-11-21_Tickets.xlsx：T-Q0 NEW 标没发的单 / T-Q1 样式照 SOON / T-Q2 没发行底色保留米色 / T-Q3 只做 Tickets / T-Q4 夜间照旧深灰 / C-Q1 勾选列 How to use 改 ALL + 补 unsent / P-Q1 Tickets 胶囊回白色不用团色，均推荐 A。📌 等 Annie 填 + 动手。
 - 答后端：95 G371 旧发送入口盘点（三个 tracking 已切 ops；utilities / test-orders ops 没页面没入口；ops 直接调 /booking-notes/multi/reply、不调 /resend）；bb 7a 8 句原文 + 号码 grep（ops 代码没写死旧号码）。
 ## 📌 2026-11-20 17:15 Annie 新提：staff 备注几个入口打通（记录，未动手）
 

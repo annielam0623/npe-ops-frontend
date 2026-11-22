@@ -75,6 +75,7 @@ import {
   supportsAccountType,
 } from "./config";
 import { TeamChip } from "./team-chip";
+import { SelectMenu } from "@/components/ui/select-menu";
 
 export type MemberFormMode =
   { kind: "edit"; member: TeamMemberUser } | { kind: "add" };
@@ -637,24 +638,25 @@ export function MemberFormDialog({
                     >
                       Copy access from
                     </label>
-                    <select
+                    <SelectMenu
                       id={`${titleId}-copy`}
-                      value={copyFrom}
-                      onChange={(e) => setCopyFrom(e.target.value)}
+                      value={String(copyFrom)}
+                      options={[
+                        { value: "", label: "Choose a person…" },
+                        ...copyCandidates.map((m) => ({
+                          value: String(m.id),
+                          label: `${memberName(m)}${
+                            m.is_superadmin
+                              ? " (Super Admin, all modules)"
+                              : summaries?.has(m.id)
+                                ? ` (${summaries.get(m.id)?.modules} modules)`
+                                : ""
+                          }`,
+                        })),
+                      ]}
+                      onChange={(next) => setCopyFrom(next)}
                       className="max-w-full rounded-[8px] border border-[#ddd] bg-paper px-2.5 py-1.5 text-[14px] text-black"
-                    >
-                      <option value="">Choose a person…</option>
-                      {copyCandidates.map((m) => (
-                        <option key={m.id} value={m.id}>
-                          {memberName(m)}
-                          {m.is_superadmin
-                            ? " (Super Admin, all modules)"
-                            : summaries?.has(m.id)
-                              ? ` (${summaries.get(m.id)?.modules} modules)`
-                              : ""}
-                        </option>
-                      ))}
-                    </select>
+                    />
                     <button
                       type="button"
                       onClick={handleCopy}
@@ -796,24 +798,27 @@ export function MemberFormDialog({
                       title="Home page"
                       aux="The page they see after signing in"
                     >
-                      <select
+                      <SelectMenu
                         aria-label="Home page"
-                        value={form.home}
-                        onChange={(e) =>
-                          setForm({ ...form, home: e.target.value })
-                        }
+                        value={String(form.home)}
+                        options={[
+                          ...HOME_PAGES.map((p) => ({
+                            value: String(p.path),
+                            label: String(p.label),
+                          })),
+                          ...(form.home &&
+                          !HOME_PAGES.some((p) => p.path === form.home)
+                            ? [
+                                {
+                                  value: String(form.home),
+                                  label: String(form.home),
+                                },
+                              ]
+                            : []),
+                        ]}
+                        onChange={(next) => setForm({ ...form, home: next })}
                         className="max-w-full rounded-[8px] border border-[#ddd] bg-paper px-2.5 py-2 text-[14px] text-black"
-                      >
-                        {HOME_PAGES.map((p) => (
-                          <option key={p.path} value={p.path}>
-                            {p.label}
-                          </option>
-                        ))}
-                        {form.home &&
-                        !HOME_PAGES.some((p) => p.path === form.home) ? (
-                          <option value={form.home}>{form.home}</option>
-                        ) : null}
-                      </select>
+                      />
                     </Section>
                   )}
                 </div>
@@ -1176,26 +1181,23 @@ function ManagerSection({
   return (
     <Section title="Manager" aux="Approves this person's leave requests">
       {canEdit ? (
-        <select
+        <SelectMenu
           id="member-manager"
           data-member-manager
-          value={value === null ? "" : String(value)}
-          onChange={(e) =>
-            onChange(e.target.value ? Number(e.target.value) : null)
-          }
+          value={String(value === null ? "" : String(value))}
+          options={[
+            { value: "", label: "No manager (use team lead)" },
+            ...(value !== null && !candidates.some((c) => c.user_id === value)
+              ? [{ value: String(String(value)), label: String(current) }]
+              : []),
+            ...candidates.map((c) => ({
+              value: String(String(c.user_id)),
+              label: String(c.name),
+            })),
+          ]}
+          onChange={(next) => onChange(next ? Number(next) : null)}
           className="max-w-full rounded-[8px] border border-[#ddd] bg-paper px-2.5 py-1.5 text-[14px] text-black"
-        >
-          <option value="">No manager (use team lead)</option>
-          {/* 原来选的人已不在候选里（停用等）也留着，免得一打开就被改掉。 */}
-          {value !== null && !candidates.some((c) => c.user_id === value) ? (
-            <option value={String(value)}>{current}</option>
-          ) : null}
-          {candidates.map((c) => (
-            <option key={c.user_id} value={String(c.user_id)}>
-              {c.name}
-            </option>
-          ))}
-        </select>
+        />
       ) : (
         <p data-member-manager-ro className="m-0 text-[13px] text-[#1a1a1a]">
           {current ?? "No manager"}
