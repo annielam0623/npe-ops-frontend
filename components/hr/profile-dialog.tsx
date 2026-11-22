@@ -21,6 +21,7 @@ import {
   HR_BTN_DANGER_CLASS,
   HR_BTN_SAVE_CLASS,
 } from "./legacy-ui";
+import { SelectMenu } from "@/components/ui/select-menu";
 
 type FormValues = Record<string, string | string[]>;
 
@@ -182,25 +183,28 @@ export function ProfileDialog({
               <label htmlFor={`${idPrefix}-user`} className={LABEL_CLASS}>
                 Linked account
               </label>
-              <select
+              <SelectMenu
                 id={`${idPrefix}-user`}
-                value={userId}
+                value={String(userId)}
+                options={[
+                  { value: "", label: "— not linked —" },
+                  ...(linkedMissing
+                    ? [
+                        {
+                          value: String(String(profile.user_id)),
+                          label: "(currently linked account)",
+                        },
+                      ]
+                    : []),
+                  ...linkableUsers.map((u) => ({
+                    value: String(String(u.id)),
+                    label: `${u.label} (${u.role})`,
+                  })),
+                ]}
                 disabled={saving}
-                onChange={(e) => setUserId(e.target.value)}
+                onChange={(next) => setUserId(next)}
                 className={INPUT_CLASS}
-              >
-                <option value="">— not linked —</option>
-                {linkedMissing ? (
-                  <option value={String(profile.user_id)}>
-                    (currently linked account)
-                  </option>
-                ) : null}
-                {linkableUsers.map((u) => (
-                  <option key={u.id} value={String(u.id)}>
-                    {u.label} ({u.role})
-                  </option>
-                ))}
-              </select>
+              />
               <span className={HINT_CLASS}>
                 Only driver and guide accounts appear here. Leave it empty if
                 the account has not been created yet — the record works either
@@ -402,21 +406,23 @@ function FieldInput({
   if (field.kind === "choice") {
     const known = field.choices?.some(([v]) => v === text);
     control = (
-      <select
+      <SelectMenu
         id={id}
-        value={text}
+        value={String(text)}
+        options={[
+          // 库里有不认识的值时照样列出来：旧页面会悄悄变成空、一保存就清掉。
+          ...(!known && text
+            ? [{ value: String(text), label: String(text) }]
+            : []),
+          ...(field.choices ?? []).map(([v, t]) => ({
+            value: String(v),
+            label: String(t),
+          })),
+        ]}
         disabled={disabled}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(next) => onChange(next)}
         className={INPUT_CLASS}
-      >
-        {/* 库里有不认识的值时照样列出来：旧页面会悄悄变成空、一保存就清掉。 */}
-        {!known && text ? <option value={text}>{text}</option> : null}
-        {field.choices?.map(([v, t]) => (
-          <option key={v} value={v}>
-            {t}
-          </option>
-        ))}
-      </select>
+      />
     );
   } else if (field.key === "notes") {
     control = (

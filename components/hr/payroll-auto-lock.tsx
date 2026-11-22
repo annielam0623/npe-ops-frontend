@@ -11,6 +11,7 @@ import { usePageVisibility } from "@/lib/page-visibility";
 import { cn } from "@/lib/utils";
 
 import { C_BTN, C_BTN_SAVE, C_CONFIRM } from "./payroll-cards-shared";
+import { SelectMenu } from "@/components/ui/select-menu";
 
 /**
  * Locked dates 卡上的「Auto-lock」开关（Annie 2026-11-17「…20号23：59才需要锁上」「问题2是5号发，其他同意推荐，动手」）：
@@ -81,13 +82,17 @@ export function PayrollAutoLock({
         <span className="text-[12.5px] font-bold text-[#1a1a1a]">
           Auto-lock
         </span>
-        <select
+        <SelectMenu
           aria-label="Auto-lock"
           data-auto-lock-select
-          value={asking ? "on" : enabled ? "on" : "off"}
+          value={String(asking ? "on" : enabled ? "on" : "off")}
+          options={[
+            { value: "off", label: "Off" },
+            { value: "on", label: "On" },
+          ]}
           disabled={saving}
-          onChange={(e) => {
-            const next = e.target.value === "on";
+          onChange={(picked) => {
+            const next = picked === "on";
             setResult(null);
             if (next === enabled) {
               setAsking(false);
@@ -97,10 +102,7 @@ export function PayrollAutoLock({
             else void save(false);
           }}
           className={SELECT}
-        >
-          <option value="off">Off</option>
-          <option value="on">On</option>
-        </select>
+        />
         <span className="text-[11.5px] text-[#4b5563]">
           Only Super Admins see this setting.
         </span>

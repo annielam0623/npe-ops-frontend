@@ -48,6 +48,7 @@ import {
   type TcqDraft,
 } from "./config";
 import { QuoteSheet } from "./quote-sheet";
+import { SelectMenu } from "@/components/ui/select-menu";
 
 const FIELD =
   "rounded-[8px] border border-white/15 bg-[#081624] px-2 py-[5px] text-[13px] text-[#f8fafc] outline-none focus:border-white/35 disabled:opacity-50";
@@ -487,21 +488,21 @@ export function TcqReview({
                 {draft.manual_lines.map((m) => (
                   <tr key={m.key} data-manual-line className="align-middle">
                     <td className="px-2 py-1.5">
-                      <select
+                      <SelectMenu
                         aria-label="Put it in"
-                        value={m.vehicle_id}
-                        onChange={(e) =>
-                          patchLine(m.key, { vehicle_id: e.target.value })
+                        value={String(m.vehicle_id)}
+                        options={[
+                          { value: "", label: "Its own block" },
+                          ...(rateCard ?? []).map((v) => ({
+                            value: String(String(v.id)),
+                            label: `${v.name} block`,
+                          })),
+                        ]}
+                        onChange={(next) =>
+                          patchLine(m.key, { vehicle_id: next })
                         }
                         className={FIELD}
-                      >
-                        <option value="">Its own block</option>
-                        {(rateCard ?? []).map((v) => (
-                          <option key={v.id} value={String(v.id)}>
-                            {v.name} block
-                          </option>
-                        ))}
-                      </select>
+                      />
                     </td>
                     <td className="px-2 py-1.5">
                       <input
@@ -1045,19 +1046,20 @@ function ServiceCard({
           </label>
           <label className="flex items-center gap-1.5">
             Service
-            <select
+            <SelectMenu
               aria-label="Service"
-              value={s.service}
-              onChange={(e) =>
-                onChange({ service: e.target.value as TcqServiceKind | "" })
+              value={String(s.service)}
+              options={[
+                { value: "", label: "Pick…" },
+                { value: "arrival", label: "Airport pickup" },
+                { value: "departure", label: "Airport drop-off" },
+                { value: "charter", label: "Hourly charter" },
+              ]}
+              onChange={(next) =>
+                onChange({ service: next as TcqServiceKind | "" })
               }
               className={FIELD}
-            >
-              <option value="">Pick…</option>
-              <option value="arrival">Airport pickup</option>
-              <option value="departure">Airport drop-off</option>
-              <option value="charter">Hourly charter</option>
-            </select>
+            />
           </label>
           <label className="flex items-center gap-1.5">
             Pax
@@ -1132,30 +1134,30 @@ function ServiceCard({
           {kind === "arrival" ? (
             <label className="flex items-center gap-1.5">
               Price
-              <select
+              <SelectMenu
                 aria-label="International or domestic"
-                value={
+                value={String(
                   s.international === null
                     ? ""
                     : s.international
                       ? "intl"
-                      : "dom"
-                }
-                onChange={(e) =>
+                      : "dom",
+                )}
+                options={[
+                  { value: "", label: "Airline not known — domestic price" },
+                  { value: "intl", label: "International flight" },
+                  { value: "dom", label: "Domestic flight" },
+                ]}
+                onChange={(next) =>
                   onChange({
-                    international:
-                      e.target.value === "" ? null : e.target.value === "intl",
+                    international: next === "" ? null : next === "intl",
                   })
                 }
                 className={cn(
                   FIELD,
                   s.international === null && "border-[rgba(251,191,36,.6)]",
                 )}
-              >
-                <option value="">Airline not known — domestic price</option>
-                <option value="intl">International flight</option>
-                <option value="dom">Domestic flight</option>
-              </select>
+              />
             </label>
           ) : (
             <>

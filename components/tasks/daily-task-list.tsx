@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import type { TaskFrequency, TaskPriority, TaskTemplate } from "@/types";
 
 import { formatHHMM, PRIORITY_DOT_CLASS } from "./config";
+import { SelectMenu } from "@/components/ui/select-menu";
 
 /**
  * Daily task list（前端 139 = 后端 G269，Annie 2026-11-14「B, A, A, A 动手」，preview ②
@@ -558,37 +559,37 @@ function TemplateForm({
         </label>
         <label className={FIELD_LABEL}>
           Priority
-          <select
+          <SelectMenu
             data-field="priority"
-            value={draft.priority}
-            onChange={(e) => set("priority", e.target.value as TaskPriority)}
+            value={String(draft.priority)}
+            options={[
+              ...(["high", "moderate", "low"] as const).map((p) => ({
+                value: String(p),
+                label: String(PRIORITY_TEXT[p]),
+              })),
+            ]}
+            onChange={(next) => set("priority", next as TaskPriority)}
             disabled={busy}
             className={FIELD_INPUT}
-          >
-            {(["high", "moderate", "low"] as const).map((p) => (
-              <option key={p} value={p}>
-                {PRIORITY_TEXT[p]}
-              </option>
-            ))}
-          </select>
+          />
         </label>
         <label className={FIELD_LABEL}>
           How often
-          <select
+          <SelectMenu
             data-field="frequency"
-            value={draft.frequency}
-            onChange={(e) => set("frequency", e.target.value as TaskFrequency)}
+            value={String(draft.frequency)}
+            options={[
+              ...(
+                ["daily", "hourly", "every_n_days", "when_free"] as const
+              ).map((f) => ({
+                value: String(f),
+                label: String(FREQUENCY_TEXT[f]),
+              })),
+            ]}
+            onChange={(next) => set("frequency", next as TaskFrequency)}
             disabled={busy}
             className={FIELD_INPUT}
-          >
-            {(["daily", "hourly", "every_n_days", "when_free"] as const).map(
-              (f) => (
-                <option key={f} value={f}>
-                  {FREQUENCY_TEXT[f]}
-                </option>
-              ),
-            )}
-          </select>
+          />
         </label>
         {draft.frequency === "every_n_days" ? (
           <label className={FIELD_LABEL}>
@@ -641,20 +642,20 @@ function TemplateForm({
         </label>
         <label className={FIELD_LABEL}>
           Opens page (optional)
-          <select
+          <SelectMenu
             data-field="link"
-            value={draft.link}
-            onChange={(e) => set("link", e.target.value)}
+            value={String(draft.link)}
+            options={[
+              { value: "", label: "None" },
+              ...links.map((l) => ({
+                value: String(l.href),
+                label: String(l.label),
+              })),
+            ]}
+            onChange={(next) => set("link", next)}
             disabled={busy}
             className={FIELD_INPUT}
-          >
-            <option value="">None</option>
-            {links.map((l) => (
-              <option key={l.href} value={l.href}>
-                {l.label}
-              </option>
-            ))}
-          </select>
+          />
         </label>
         <label className={cn(FIELD_LABEL, "col-span-full")}>
           Note (optional)

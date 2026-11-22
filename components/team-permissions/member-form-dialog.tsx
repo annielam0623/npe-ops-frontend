@@ -1187,6 +1187,7 @@ function ManagerSection({
           value={String(value === null ? "" : String(value))}
           options={[
             { value: "", label: "No manager (use team lead)" },
+            // 原来选的人已不在候选里（停用等）也留着，免得一打开就被改掉。
             ...(value !== null && !candidates.some((c) => c.user_id === value)
               ? [{ value: String(String(value)), label: String(current) }]
               : []),

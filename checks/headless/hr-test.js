@@ -2,6 +2,7 @@
 // 前提：mock 在 8799，next dev 在 3198（API_PROXY_TARGET 和 LEGACY 都指向 mock）。
 const { spawn } = require("child_process");
 const path = require("path");
+const { SELECT_HELPERS } = require("./select-menu-helper");
 const { STANDARD } = require("./role-standard");
 
 const CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe";
@@ -59,7 +60,7 @@ async function goto(url) {
 }
 
 // 页面里用的小工具（每次导航后重新注入）。
-const HELPERS = `
+const HELPERS = SELECT_HELPERS + `
 window.$t = (sel) => [...document.querySelectorAll(sel)].map(e => e.textContent.trim());
 window.$rows = () => [...document.querySelectorAll('tbody tr')].map(tr => [...tr.children].map(td => td.textContent.trim()));
 window.$heads = () => [...document.querySelectorAll('thead th')].map(th => th.textContent.replace('⠿','').trim());
@@ -140,10 +141,9 @@ async function setFile(selector, file) {
 async function selectValue(expr, value) {
   await evaluate(`
     const el = ${expr};
-    Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(el, ${JSON.stringify(value)});
-    el.dispatchEvent(new Event('change', { bubbles: true }));`);
+    return $sel(el, ${JSON.stringify(value)});`);
 }
-const fieldIn = (label) => `[...${dialog}.querySelectorAll('label')].filter(l => l.textContent.trim().startsWith(${JSON.stringify(label)})).map(l => l.querySelector('input,select,textarea') || document.getElementById(l.htmlFor))[0]`;
+const fieldIn = (label) => `[...${dialog}.querySelectorAll('label')].filter(l => l.textContent.trim().startsWith(${JSON.stringify(label)})).map(l => l.querySelector('input,select,textarea,[data-select-menu]') || document.getElementById(l.htmlFor))[0]`;
 async function waitReq(before, filter, n = 1) {
   for (let i = 0; i < 40; i++) {
     const s = await since(before, filter);
@@ -254,7 +254,7 @@ async function run() {
   await evaluate(`$setValue(${nick("Carl Unknown")}, '');`);
   await sleep(100);
   check("改回原值不算改动；改过的格子标黄", await evaluate(`return document.body.textContent.includes('2 unsaved changes') && ${nick("Bob Guide")}.className.includes('8a5a00') && !${nick("Carl Unknown")}.className.includes('8a5a00');`));
-  check("Edit list：Edit 按钮禁用、Position 下拉按原顺序", await evaluate(`return $btn('Edit', ${rowE("Bob Guide")}).disabled && [...${rowE("Bob Guide")}.querySelector('select').options].map(o => o.text).join('|') === '—|Driver|Guide|Driver + Guide';`));
+  check("Edit list：Edit 按钮禁用、Position 下拉按原顺序", await evaluate(`return $btn('Edit', ${rowE("Bob Guide")}).disabled && [...${rowE("Bob Guide")}.querySelector('select, [data-select-menu]').options].map(o => o.text).join('|') === '—|Driver|Guide|Driver + Guide';`));
   await ctl({ bulkErr: true });
   await evaluate("$btn('Save changes').click();");
   await waitFor("document.body.textContent.includes('Untick one of them')");

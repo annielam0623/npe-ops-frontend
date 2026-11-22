@@ -61,6 +61,7 @@ import {
   lockCovering,
   lockSentence,
 } from "./payroll-cards-shared";
+import { SelectMenu } from "@/components/ui/select-menu";
 
 /**
  * Payroll › Pay rates 卡（138 乙，5a）：价格按团排一张表（V9 题 5 A）+ Extras 表。
@@ -848,20 +849,20 @@ export function PayrollRates({
     <div className={C_FORMROW} data-price-form>
       <label className={C_FLABEL}>
         Tour
-        <select
+        <SelectMenu
           className={C_INPUT}
-          value={pf.tourKey}
+          value={String(pf.tourKey)}
+          options={[
+            ...tourOpts.map((t) => ({
+              value: String(t.key),
+              label: String(t.tour),
+            })),
+            { value: String(TYPED), label: "Type a tour name…" },
+          ]}
           disabled={pf.id !== null}
           data-pf="tour"
-          onChange={(e) => setPf({ ...pf, tourKey: e.target.value })}
-        >
-          {tourOpts.map((t) => (
-            <option key={t.key} value={t.key}>
-              {t.tour}
-            </option>
-          ))}
-          <option value={TYPED}>Type a tour name…</option>
-        </select>
+          onChange={(next) => setPf({ ...pf, tourKey: next })}
+        />
       </label>
       {pf.tourKey === TYPED ? (
         <label className={C_FLABEL}>
@@ -1087,27 +1088,24 @@ export function PayrollRates({
     <div className={C_FORMROW} data-extra-form>
       <label className={C_FLABEL}>
         Extra
-        <select
+        <SelectMenu
           className={C_INPUT}
-          value={xf.code}
+          value={String(xf.code)}
+          options={[
+            ...(xf.id !== null
+              ? [{ value: String(xf.code), label: String(xf.name) }]
+              : [
+                  { value: String(NEW_EXTRA), label: "New extra…" },
+                  ...extraCodes.map(([code, name]) => ({
+                    value: String(code),
+                    label: `${name} — new amount`,
+                  })),
+                ]),
+          ]}
           data-xf="code"
-          // Edit 一行：加购项不能换（换 = + Add extra 新加），下拉灰掉（Annie 小题 3 A）。
           disabled={xf.id !== null}
-          onChange={(e) => setXf({ ...xf, code: e.target.value })}
-        >
-          {xf.id !== null ? (
-            <option value={xf.code}>{xf.name}</option>
-          ) : (
-            <>
-              <option value={NEW_EXTRA}>New extra…</option>
-              {extraCodes.map(([code, name]) => (
-                <option key={code} value={code}>
-                  {name} — new amount
-                </option>
-              ))}
-            </>
-          )}
-        </select>
+          onChange={(next) => setXf({ ...xf, code: next })}
+        />
       </label>
       {xf.code === NEW_EXTRA ? (
         <label className={C_FLABEL}>

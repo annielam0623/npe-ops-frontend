@@ -31,6 +31,7 @@ import {
   toggleMulti,
 } from "./fields";
 import { HR_BTN_CLASS, HR_EMPTY_CLASS, HR_PILL_CLASS } from "./legacy-ui";
+import { SelectMenu } from "@/components/ui/select-menu";
 
 /** Edit list 的草稿：id → 列 → 输入框里的原样文字（多选是逗号串）。 */
 export type ListEdits = Record<number, Record<string, string>>;
@@ -418,21 +419,23 @@ function EditCell({
   if (field.kind === "choice") {
     const known = field.choices?.some(([v]) => v === value);
     return (
-      <select
+      <SelectMenu
         aria-label={label}
-        value={value}
+        value={String(value)}
+        options={[
+          ...(!known && value
+            ? [{ value: String(value), label: String(value) }]
+            : []),
+          // 按选项原顺序（旧页面这里的顺序是乱的）。
+          ...(field.choices ?? []).map(([v, t]) => ({
+            value: String(v),
+            label: String(t),
+          })),
+        ]}
         disabled={disabled}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(next) => onChange(next)}
         className={inputClass}
-      >
-        {!known && value ? <option value={value}>{value}</option> : null}
-        {/* 按选项原顺序（旧页面这里的顺序是乱的）。 */}
-        {field.choices?.map(([v, t]) => (
-          <option key={v} value={v}>
-            {t}
-          </option>
-        ))}
-      </select>
+      />
     );
   }
   if (field.key === SPELLINGS_COLUMN) {

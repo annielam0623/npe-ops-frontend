@@ -2,6 +2,7 @@
 // 前提：mock 在 8799，next dev 在 3198（API_PROXY_TARGET 和 LEGACY 都指向 mock）。
 const { spawn } = require("child_process");
 const path = require("path");
+const { SELECT_HELPERS } = require("./select-menu-helper");
 
 const CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe";
 const APP = process.env.APP_URL || "http://localhost:3198";
@@ -57,7 +58,7 @@ async function goto(url) {
 }
 
 // 页面里用的小工具（每次导航后重新注入）。
-const HELPERS = `
+const HELPERS = SELECT_HELPERS + `
 window.$t = (sel) => [...document.querySelectorAll(sel)].map(e => e.textContent.trim());
 window.$rows = () => [...document.querySelectorAll('tbody tr')].map(tr => [...tr.children].map(td => td.textContent.trim()));
 window.$heads = () => [...document.querySelectorAll('thead th')].map(th => th.textContent.replace('⠿','').trim());
@@ -251,7 +252,7 @@ async function run() {
   {
     await evaluate(`document.querySelector('[data-add-extra]').click();`);
     await waitFor(q("[data-extra-form]"), 3000);
-    const opts = await evaluate(`return [...document.querySelectorAll('[data-xf="code"] option')].map((o) => o.value + '=' + o.textContent).join('|');`);
+    const opts = await evaluate(`return [...document.querySelectorAll('[data-xf="code"]')].flatMap((s) => [...s.options]).map((o) => o.value + '=' + o.textContent).join('|');`);
     const rowsNow = await evaluate(`return [...document.querySelectorAll('[data-payroll-extras] tr[data-extra-row]')].map((tr) => tr.children[0].textContent).join('|');`);
     check("+ Add extra：Extra 下拉 = New extra… + 表里每个已有加购项的「— new amount」", opts.includes("ant_relay=ANT relay — new amount") && opts.includes("long_day=Long day — new amount"), `options: ${opts} · table: ${rowsNow}`);
     await evaluate(`[...document.querySelectorAll('[data-extra-form] button')].find((b) => b.textContent.trim() === 'Cancel').click();`);
@@ -259,7 +260,7 @@ async function run() {
   }
   // ⑨b Extras 新加项名字跟已有的只差大小写 / 符号（Annie 2026-11-17「还给我显示个any 润」）：后端会当成另一个加购项（ant_relay_2）、任何趟都能勾 ⇒ 页面先挡
   {
-    const pickNew = `const s = document.querySelector('[data-xf="code"]'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, '__new'); s.dispatchEvent(new Event('change', { bubbles: true }));`;
+    const pickNew = `const s = document.querySelector('[data-xf="code"]'); return $sel(s, '__new');`;
     const rowsBefore = await evaluate(`return document.querySelectorAll('[data-payroll-extras] tr[data-extra-row]').length;`);
     await evaluate(`document.querySelector('[data-add-extra]').click();`);
     await waitFor(q("[data-extra-form]"), 3000);
@@ -338,7 +339,7 @@ async function run() {
   check("Pay rates：按团排（Antelope Canyon 一组）", await evaluate(`return !!document.querySelector('[data-payroll-prices] tr[data-price-tour="Antelope Canyon"]');`));
   await evaluate(`document.querySelector('[data-add-price]').click();`);
   await waitFor(q("[data-price-form]"), 3000);
-  await evaluate(`const s = document.querySelector('[data-pf="tour"]'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, '__typed'); s.dispatchEvent(new Event('change', { bubbles: true }));`);
+  await evaluate(`const s = document.querySelector('[data-pf="tour"]'); return $sel(s, '__typed');`);
   await waitFor(q('[data-pf="typed"]'), 2000);
   await evaluate(`document.querySelector('[data-pf="add"]').click();`);
   await sleep(150);
@@ -364,16 +365,16 @@ async function run() {
     check("ANT relay 全删了：Extras 表里没有 ANT relay 行", await evaluate(`return ![...document.querySelectorAll('[data-payroll-extras] tr[data-extra-row]')].some((tr) => tr.textContent.includes('ANT relay'));`));
     await evaluate(`document.querySelector('[data-add-extra]').click();`);
     await waitFor(q("[data-extra-form]"), 3000);
-    const opts = await evaluate(`return [...document.querySelectorAll('[data-xf="code"] option')].map((o) => o.value + '=' + o.textContent).join('|');`);
+    const opts = await evaluate(`return [...document.querySelectorAll('[data-xf="code"]')].flatMap((s) => [...s.options]).map((o) => o.value + '=' + o.textContent).join('|');`);
     check("ANT relay 全删了：下拉里照样有 ant_relay「ANT relay — new amount」", opts.includes("ant_relay=ANT relay — new amount"), opts);
-    const pickNew = `const s = document.querySelector('[data-xf="code"]'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, '__new'); s.dispatchEvent(new Event('change', { bubbles: true }));`;
+    const pickNew = `const s = document.querySelector('[data-xf="code"]'); return $sel(s, '__new');`;
     await evaluate(pickNew);
     await evaluate(`$setValue(document.querySelector('[data-xf="name"]'), 'ANT Relay'); $setValue(document.querySelector('[data-xf="from"]'), '2026-11-20'); $setValue(document.querySelector('[data-xf="amount"]'), '66');`);
     await evaluate(`document.querySelector('[data-xf="add"]').click();`);
     await sleep(150);
     const e1 = await text(q("[data-xf-err]"));
     check("ANT relay 全删了：New extra 打「ANT Relay」照样挡下", e1 === 'ANT relay already exists. Pick "ANT relay — new amount" under Extra instead.', e1);
-    await evaluate(`const s = document.querySelector('[data-xf="code"]'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, 'ant_relay'); s.dispatchEvent(new Event('change', { bubbles: true }));`);
+    await evaluate(`const s = document.querySelector('[data-xf="code"]'); return $sel(s, 'ant_relay');`);
     await sleep(100);
     await evaluate(`$setValue(document.querySelector('[data-xf="from"]'), '2026-11-20'); $setValue(document.querySelector('[data-xf="amount"]'), '66');`);
     await evaluate(`document.querySelector('[data-xf="add"]').click();`);
@@ -395,9 +396,9 @@ async function run() {
     check("名单：Long day 全删了 ⇒ Extras 表里没有 Long day 行", await evaluate(`return ![...document.querySelectorAll('[data-payroll-extras] tr[data-extra-row]')].some((tr) => tr.textContent.includes('Long day'));`));
     await evaluate(`document.querySelector('[data-add-extra]').click();`);
     await waitFor(q("[data-extra-form]"), 3000);
-    const opts = await evaluate(`return [...document.querySelectorAll('[data-xf="code"] option')].map((o) => o.value + '=' + o.textContent).join('|');`);
+    const opts = await evaluate(`return [...document.querySelectorAll('[data-xf="code"]')].flatMap((s) => [...s.options]).map((o) => o.value + '=' + o.textContent).join('|');`);
     check("名单：下拉 = New extra… / ANT relay / Long day（停用的也列，按名单顺序）", opts === "__new=New extra…|ant_relay=ANT relay — new amount|long_day=Long day — new amount", opts);
-    const pick = (v) => `const s = document.querySelector('[data-xf="code"]'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, '${v}'); s.dispatchEvent(new Event('change', { bubbles: true }));`;
+    const pick = (v) => `const s = document.querySelector('[data-xf="code"]'); return $sel(s, '${v}');`;
     await evaluate(pick("__new"));
     await evaluate(`$setValue(document.querySelector('[data-xf="name"]'), 'LONG DAY'); $setValue(document.querySelector('[data-xf="from"]'), '2026-11-20'); $setValue(document.querySelector('[data-xf="amount"]'), '40');`);
     await evaluate(`document.querySelector('[data-xf="add"]').click();`);
@@ -507,7 +508,7 @@ async function run() {
     await waitFor(`document.querySelector('[data-auto-lock-select]')`, 5000);
     check("Auto-lock：Super Admin 看得到，默认 Off，写 Only Super Admins see this setting.", await evaluate(`const b = document.querySelector('[data-auto-lock]'); return document.querySelector('[data-auto-lock-select]').value === 'off' && b.textContent.includes('Only Super Admins see this setting.') && b.textContent.includes('Off: nothing locks by itself.');`));
     check("Auto-lock：系统自动锁的行 Locked by 写灰字 Auto（不写 system）", await evaluate(`const r = document.querySelector('tr[data-lock-row="50"]'); return !!r && !!r.querySelector('[data-lock-auto]') && !r.textContent.includes('system') && r.textContent.includes('Auto lock');`), await evaluate(`return [...document.querySelectorAll('tr[data-lock-row]')].map(r => r.getAttribute('data-lock-row') + ':' + r.textContent).join(' | ');`));
-    await evaluate(`{ const el = document.querySelector('[data-auto-lock-select]'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(el, 'on'); el.dispatchEvent(new Event('change', { bubbles: true })); }`);
+    await evaluate(`{ const el = document.querySelector('[data-auto-lock-select]'); return $sel(el, 'on'); }`);
     check("Auto-lock：选 On 先出黄框确认，不直接存", await waitFor(`document.querySelector('[data-auto-lock-confirm]')?.textContent.includes('Turn on auto-lock?')`, 3000) && !(await since(0, (e) => e.method === "PUT" && e.path === "/api/payroll/auto-lock")).length);
     const b0 = (await mockLog()).length;
     await evaluate(`[...document.querySelectorAll('[data-auto-lock-confirm] button')].find(b => b.textContent.trim() === 'Turn on').click();`);
@@ -515,9 +516,9 @@ async function run() {
     const put = await since(b0, (e) => e.method === "PUT" && e.path === "/api/payroll/auto-lock");
     check("Auto-lock：Turn on ⇒ PUT {enabled: true}，绿字 Saved，说明换成 On 那句", put.length === 1 && put[0].body.enabled === true && (await evaluate(`return document.querySelector('[data-auto-lock-help]').textContent.startsWith('On: the 1st–15th lock on the 20th at 11:59 PM');`)), JSON.stringify(put[0]?.body));
     await ctl({ autoLockFail: true });
-    await evaluate(`{ const el = document.querySelector('[data-auto-lock-select]'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(el, 'off'); el.dispatchEvent(new Event('change', { bubbles: true })); }`);
+    await evaluate(`{ const el = document.querySelector('[data-auto-lock-select]'); return $sel(el, 'off'); }`);
     check("Auto-lock：存不了 ⇒ 红字照后端原句", await waitFor(`document.querySelector('[data-auto-lock-result]')?.textContent === 'Could not save. Try again.'`, 5000));
-    const offAgain = `{ const el = document.querySelector('[data-auto-lock-select]'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(el, 'off'); el.dispatchEvent(new Event('change', { bubbles: true })); }`;
+    const offAgain = `{ const el = document.querySelector('[data-auto-lock-select]'); return $sel(el, 'off'); }`;
     await ctl({ autoLockFail: false, autoLock403: true });
     await evaluate(offAgain);
     check("Auto-lock：后端 403（页面没刷新就不是 Super Admin 了）⇒ 红字照后端原句", await waitFor(`document.querySelector('[data-auto-lock-result]')?.textContent === 'Superadmin access required'`, 5000), await text(q("[data-auto-lock-result]")));

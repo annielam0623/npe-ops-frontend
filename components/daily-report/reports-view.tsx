@@ -32,6 +32,7 @@ import { LogIncidentDialog } from "./log-incident-dialog";
 import { ReportItem } from "./report-item";
 import { useDorVisible } from "./use-dor-visible";
 import { canEditReport, useReportEditor } from "./use-report-editor";
+import { SelectMenu } from "@/components/ui/select-menu";
 
 const PAGE_SIZE = 50;
 
@@ -316,33 +317,33 @@ function Reports({
             </button>
           ))}
         </div>
-        <select
+        <SelectMenu
           aria-label="Type filter"
-          value={filters.type}
-          onChange={(e) => setFilter("type", e.target.value as "" | ReportType)}
+          value={String(filters.type)}
+          options={[
+            { value: "", label: "All types" },
+            ...REPORT_TYPES.map((t) => ({
+              value: String(t),
+              label: String(TYPE_LABEL[t]),
+            })),
+          ]}
+          onChange={(next) => setFilter("type", next as "" | ReportType)}
           className={INPUT_CLASS}
-        >
-          <option value="">All types</option>
-          {REPORT_TYPES.map((t) => (
-            <option key={t} value={t}>
-              {TYPE_LABEL[t]}
-            </option>
-          ))}
-        </select>
-        <select
+        />
+        <SelectMenu
           aria-label="Follow-up filter"
-          value={filters.followUp}
-          onChange={(e) => setFilter("followUp", e.target.value)}
+          value={String(filters.followUp)}
+          options={[
+            { value: "", label: "Anyone" },
+            { value: "none", label: "Not assigned" },
+            ...assignees.map((u) => ({
+              value: String(String(u.id)),
+              label: String(u.display_name),
+            })),
+          ]}
+          onChange={(next) => setFilter("followUp", next)}
           className={INPUT_CLASS}
-        >
-          <option value="">Anyone</option>
-          <option value="none">Not assigned</option>
-          {assignees.map((u) => (
-            <option key={u.id} value={String(u.id)}>
-              {u.display_name}
-            </option>
-          ))}
-        </select>
+        />
         <input
           type="date"
           aria-label="From date"

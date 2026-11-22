@@ -7,6 +7,7 @@ import { addTask } from "@/lib/tasks-api";
 import type { DailyTask, StaffShiftToday } from "@/types";
 
 import { formatHHMM, laWallClockToIso } from "./config";
+import { SelectMenu } from "@/components/ui/select-menu";
 
 /** 下拉里「没指定人」那一项的值（真实用户名不会是空串）。 */
 const EVERYONE = "";
@@ -89,20 +90,20 @@ export function AddTaskRow({
       <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
         <label className="flex min-w-0 items-center gap-1.5 text-[12px] text-white/50">
           For
-          <select
+          <SelectMenu
             aria-label="For"
-            value={assignee}
-            onChange={(event) => setAssignee(event.target.value)}
+            value={String(assignee)}
+            options={[
+              { value: String(EVERYONE), label: "Everyone on shift today" },
+              ...shifts.map((shift) => ({
+                value: String(shift.username),
+                label: String(shiftOptionLabel(shift, shifts)),
+              })),
+            ]}
+            onChange={(next) => setAssignee(next)}
             disabled={busy || shifts.length === 0}
             className="max-w-full min-w-0 rounded-md border border-white/15 bg-white/[.04] px-2 py-1 text-[12.5px] text-white [color-scheme:dark] [&>option]:bg-[#0f1b2d] [&>option]:text-white outline-none focus:border-[#185FA5] disabled:opacity-50"
-          >
-            <option value={EVERYONE}>Everyone on shift today</option>
-            {shifts.map((shift) => (
-              <option key={shift.username} value={shift.username}>
-                {shiftOptionLabel(shift, shifts)}
-              </option>
-            ))}
-          </select>
+          />
         </label>
         <span className="ml-auto flex items-center gap-1.5 text-[12px] text-white/50">
           Finish by

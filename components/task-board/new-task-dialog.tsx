@@ -14,6 +14,7 @@ import {
   fetchTaskBoardMembers,
 } from "@/lib/task-board-api";
 import { cn } from "@/lib/utils";
+import { SelectMenu } from "@/components/ui/select-menu";
 
 /** 旧页面弹窗里的输入框 / 下拉框（8px 10px、6px 圆角、13px）。 */
 const INPUT =
@@ -194,38 +195,42 @@ export function NewTaskDialog({
           <div className="mb-2.5 flex gap-2.5">
             <label className="block flex-1">
               <span className={LABEL}>Priority</span>
-              <select
+              <SelectMenu
                 className={INPUT}
-                value={priority}
+                value={String(priority)}
+                options={[
+                  { value: "", label: "— Select —" },
+                  { value: "1", label: "🔴 Urgent" },
+                  { value: "2", label: "🟡 High" },
+                  { value: "3", label: "🔵 Normal" },
+                  { value: "4", label: "⚪ Low" },
+                ]}
                 disabled={locked}
-                onChange={(e) => setPriority(e.target.value)}
-              >
-                <option value="">— Select —</option>
-                <option value="1">🔴 Urgent</option>
-                <option value="2">🟡 High</option>
-                <option value="3">🔵 Normal</option>
-                <option value="4">⚪ Low</option>
-              </select>
+                onChange={(next) => setPriority(next)}
+              />
             </label>
             <label className="block flex-1">
               <span className={LABEL}>Assignee</span>
-              <select
+              <SelectMenu
                 className={INPUT}
-                value={assignee}
+                value={String(assignee)}
+                options={[
+                  {
+                    value: "",
+                    label: String(
+                      membersFailed
+                        ? "（取不到成员名单，可先不指派）"
+                        : "— Select —",
+                    ),
+                  },
+                  ...(members ?? []).map((m) => ({
+                    value: String(String(m.id)),
+                    label: String(m.username),
+                  })),
+                ]}
                 disabled={locked || !members}
-                onChange={(e) => setAssignee(e.target.value)}
-              >
-                <option value="">
-                  {membersFailed
-                    ? "（取不到成员名单，可先不指派）"
-                    : "— Select —"}
-                </option>
-                {(members ?? []).map((m) => (
-                  <option key={m.id} value={String(m.id)}>
-                    {m.username}
-                  </option>
-                ))}
-              </select>
+                onChange={(next) => setAssignee(next)}
+              />
             </label>
           </div>
           <div className="mb-2.5 flex gap-2.5">

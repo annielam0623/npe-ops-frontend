@@ -24,6 +24,7 @@ import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
 import { cn } from "@/lib/utils";
 
 import { BreakdownTable, type Layout, METRIC_LABEL } from "./breakdown-table";
+import { SelectMenu } from "@/components/ui/select-menu";
 
 type MetricChoice = BreakdownMetric | "all";
 type Mode = PeriodSpec["mode"];
@@ -374,52 +375,52 @@ export function BreakdownView() {
           mode === "year" ? (
             <label className="flex flex-col gap-0.5 text-[11px] text-[#6b5e57]">
               {mode === "year" ? "Last year" : "Year"}
-              <select
+              <SelectMenu
                 aria-label="Year"
-                value={year}
-                onChange={(e) => setYear(Number(e.target.value))}
+                value={String(year)}
+                options={[
+                  ...yearOptions.map((y) => ({
+                    value: String(y),
+                    label: String(y),
+                  })),
+                ]}
+                onChange={(next) => setYear(Number(next))}
                 className={SELECT}
-              >
-                {yearOptions.map((y) => (
-                  <option key={y} value={y}>
-                    {y}
-                  </option>
-                ))}
-              </select>
+              />
             </label>
           ) : null}
           {mode === "week" ? (
             <label className="flex flex-col gap-0.5 text-[11px] text-[#6b5e57]">
               Month
-              <select
+              <SelectMenu
                 aria-label="Month"
-                value={month}
-                onChange={(e) => setMonth(Number(e.target.value))}
+                value={String(month)}
+                options={[
+                  ...MONTHS.map((m, i) => ({
+                    value: String(i + 1),
+                    label: String(m),
+                  })),
+                ]}
+                onChange={(next) => setMonth(Number(next))}
                 className={SELECT}
-              >
-                {MONTHS.map((m, i) => (
-                  <option key={m} value={i + 1}>
-                    {m}
-                  </option>
-                ))}
-              </select>
+              />
             </label>
           ) : null}
           {mode === "year" ? (
             <label className="flex flex-col gap-0.5 text-[11px] text-[#6b5e57]">
               Years shown
-              <select
+              <SelectMenu
                 aria-label="Years shown"
-                value={years}
-                onChange={(e) => setYears(Number(e.target.value))}
+                value={String(years)}
+                options={[
+                  ...[1, 3, 5, 10].map((n) => ({
+                    value: String(n),
+                    label: String(n),
+                  })),
+                ]}
+                onChange={(next) => setYears(Number(next))}
                 className={SELECT}
-              >
-                {[1, 3, 5, 10].map((n) => (
-                  <option key={n} value={n}>
-                    {n}
-                  </option>
-                ))}
-              </select>
+              />
             </label>
           ) : null}
           {mode === "custom" ? (
@@ -446,18 +447,19 @@ export function BreakdownView() {
               </label>
               <label className="flex flex-col gap-0.5 text-[11px] text-[#6b5e57]">
                 Columns
-                <select
+                <SelectMenu
                   aria-label="Columns"
-                  value={bucket}
-                  onChange={(e) =>
-                    setBucket(e.target.value as "none" | "week" | "month")
+                  value={String(bucket)}
+                  options={[
+                    { value: "none", label: "One Total column" },
+                    { value: "week", label: "By week (W1–W5 of each month)" },
+                    { value: "month", label: "By month" },
+                  ]}
+                  onChange={(next) =>
+                    setBucket(next as "none" | "week" | "month")
                   }
                   className={SELECT}
-                >
-                  <option value="none">One Total column</option>
-                  <option value="week">By week (W1–W5 of each month)</option>
-                  <option value="month">By month</option>
-                </select>
+                />
               </label>
               <button
                 type="button"

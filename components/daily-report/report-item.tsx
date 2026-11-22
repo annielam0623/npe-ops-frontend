@@ -24,6 +24,7 @@ import {
   TYPE_LABEL,
   formatWhen,
 } from "./config";
+import { SelectMenu } from "@/components/ui/select-menu";
 
 const SELECT_CLASS =
   "rounded-md border border-white/25 bg-[#0f2238] px-1.5 py-0.5 text-xs text-[#f8fafc] [color-scheme:dark] disabled:opacity-60";
@@ -193,50 +194,51 @@ export function ReportItem({
           <>
             <label className="flex items-center gap-1">
               Status
-              <select
+              <SelectMenu
                 aria-label={`Status of report ${report.id}`}
-                value={report.status}
+                value={String(report.status)}
+                options={[
+                  ...STATUSES.map((s) => ({
+                    value: String(s),
+                    label: String(STATUS_LABEL[s]),
+                  })),
+                ]}
                 disabled={busy}
-                onChange={(e) =>
-                  void patch({ status: e.target.value as ReportStatus })
+                onChange={(next) =>
+                  void patch({ status: next as ReportStatus })
                 }
                 className={SELECT_CLASS}
-              >
-                {STATUSES.map((s) => (
-                  <option key={s} value={s}>
-                    {STATUS_LABEL[s]}
-                  </option>
-                ))}
-              </select>
+              />
             </label>
             <label className="flex items-center gap-1">
               Follow-up
-              <select
+              <SelectMenu
                 aria-label={`Follow-up of report ${report.id}`}
-                value={followUpId ? String(followUpId) : ""}
+                value={String(followUpId ? String(followUpId) : "")}
+                options={[
+                  { value: "", label: "Not assigned" },
+                  // 跟进人已停用 / 不在下拉里时，也要有这一项，否则看起来像没指定。
+                  ...(followUpId && !assignees.some((u) => u.id === followUpId)
+                    ? [
+                        {
+                          value: String(String(followUpId)),
+                          label: String(report.follow_up?.display_name),
+                        },
+                      ]
+                    : []),
+                  ...assignees.map((u) => ({
+                    value: String(String(u.id)),
+                    label: String(u.display_name),
+                  })),
+                ]}
                 disabled={busy}
-                onChange={(e) =>
+                onChange={(next) =>
                   void patch({
-                    follow_up_user_id: e.target.value
-                      ? Number(e.target.value)
-                      : null,
+                    follow_up_user_id: next ? Number(next) : null,
                   })
                 }
                 className={SELECT_CLASS}
-              >
-                <option value="">Not assigned</option>
-                {/* 跟进人已停用 / 不在下拉里时，也要有这一项，否则看起来像没指定。 */}
-                {followUpId && !assignees.some((u) => u.id === followUpId) ? (
-                  <option value={String(followUpId)}>
-                    {report.follow_up?.display_name}
-                  </option>
-                ) : null}
-                {assignees.map((u) => (
-                  <option key={u.id} value={String(u.id)}>
-                    {u.display_name}
-                  </option>
-                ))}
-              </select>
+              />
             </label>
           </>
         ) : (

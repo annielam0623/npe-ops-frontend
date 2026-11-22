@@ -61,6 +61,7 @@ import type {
 } from "@/types/tcq";
 
 import { parseDollars } from "./config";
+import { SelectMenu } from "@/components/ui/select-menu";
 
 type View =
   | { kind: "loading" }
@@ -1126,15 +1127,16 @@ function Airlines({
             onChange={(e) => setCode(e.target.value)}
             className={cn(INLINE_INPUT_BASE, "w-[110px] uppercase")}
           />
-          <select
+          <SelectMenu
             aria-label="New airline type"
-            value={intl ? "intl" : "dom"}
-            onChange={(e) => setIntl(e.target.value === "intl")}
+            value={String(intl ? "intl" : "dom")}
+            options={[
+              { value: "intl", label: "International" },
+              { value: "dom", label: "Domestic" },
+            ]}
+            onChange={(next) => setIntl(next === "intl")}
             className={INLINE_INPUT_BASE}
-          >
-            <option value="intl">International</option>
-            <option value="dom">Domestic</option>
-          </select>
+          />
           <button
             type="submit"
             disabled={busy || !code.trim()}
@@ -1192,21 +1194,19 @@ function AirlineRow({
     <tr className={cn(TR_CLASS, TR_HOVER)} data-airline={row.code}>
       <td className={cn(TD_CLASS, "font-semibold")}>{row.code}</td>
       <td className={TD_CLASS}>
-        <select
+        <SelectMenu
           aria-label={`${row.code} type`}
-          value={row.is_international ? "intl" : "dom"}
+          value={String(row.is_international ? "intl" : "dom")}
+          options={[
+            { value: "intl", label: "International" },
+            { value: "dom", label: "Domestic" },
+          ]}
           disabled={busy}
-          onChange={(e) =>
-            void run(
-              () => saveAirline(row.code, e.target.value === "intl"),
-              onSaved,
-            )
+          onChange={(next) =>
+            void run(() => saveAirline(row.code, next === "intl"), onSaved)
           }
           className={INLINE_INPUT_BASE}
-        >
-          <option value="intl">International</option>
-          <option value="dom">Domestic</option>
-        </select>
+        />
       </td>
       <td className={cn(TD_CLASS, "whitespace-nowrap")}>
         <button
@@ -1357,18 +1357,18 @@ function PlaceRow({
         />
       </td>
       <td className={TD_CLASS}>
-        <select
+        <SelectMenu
           aria-label="Kind"
-          value={f.kind}
-          onChange={(e) => setF({ ...f, kind: e.target.value })}
+          value={String(f.kind)}
+          options={[
+            ...kinds.map((k) => ({
+              value: String(k),
+              label: String(capital(k)),
+            })),
+          ]}
+          onChange={(next) => setF({ ...f, kind: next })}
           className={INLINE_INPUT_BASE}
-        >
-          {kinds.map((k) => (
-            <option key={k} value={k}>
-              {capital(k)}
-            </option>
-          ))}
-        </select>
+        />
       </td>
       <td className={TD_CLASS}>
         <input
