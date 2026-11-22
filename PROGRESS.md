@@ -95,6 +95,7 @@
 - G302 补：后端转 Annie 原话「1. 一个订单回复接到它标题的那个订单去…2 改  动手」；隐藏 Email subject 框是连带修，Annie 没单独说过 ⇒ 已问 Annie A 藏框换说明（推荐）/ B 不改，📌 等答。
 - 2c 报 Relay 色条前端已改（RelayBus 加 id、按 id 去重、车号空不留「 - 」、rl-mock 补单车团 / 两台无字母），在跑检查。格式题：现格式「团 Bus 字母: 节 - 司机 + 导游 - 车号=字母」（前端 busBar + 后端 bus_bars 同）；纸本是「Antelope: Yan + Lankun - 2457=A」不写节。Annie（原话）「其实不用，这里显示的都是在一台巴士上」⇒ 记为选纸本写法（团: 司机 + 导游 - 车号[=字母]，不写节、不写 Bus X），前后端 + Excel / 司机页一起改；📌 已问是否现在动手。色条修复先按现格式上线。
 - Annie「动手」（Relay 色条改纸本写法）⇒ 派 2c 改 busBar / busLegend / rl 套为「团: 司机 + 导游 - 车号[=字母]」，接在色条修复后今晚上 main；后端主窗口-bb 同步改 bus_bars（司机页 + Excel）。
+- Annie（原话）「你直接上线吧，样式以前就有了，逻辑我也讲得很清楚了，不要再问我了，我要去睡觉了」⇒ Relay 色条（修复 + 纸本写法）前后端过检查直接上 main，不再出题；已转 2c 和后端主窗口-bb。
 - 答后端：95 G371 旧发送入口盘点（三个 tracking 已切 ops；utilities / test-orders ops 没页面没入口；ops 直接调 /booking-notes/multi/reply、不调 /resend）；bb 7a 8 句原文 + 号码 grep（ops 代码没写死旧号码）。
 ## 📌 2026-11-20 17:15 Annie 新提：staff 备注几个入口打通（记录，未动手）
 
