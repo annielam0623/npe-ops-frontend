@@ -69,6 +69,8 @@
 - 2c 全站下拉第 2 批（Tour / Tickets Tracking 5 个）origin/task/select-menu-b2 **4c9761e4**（叠在第 1 批 ff59ece1 上，分开合；tsc 0 / tt 215 / tk 157），截图 select-menu-screens\tk-status-open.png、tk-sync-open.png。📌 1 题等 Annie：Tickets Reminder Tracking 每行 Status 选项本身带图标「✓ YES / ⌛ Pending / ✕ Cancel」（tickets-tracking/config.ts:329-333），新菜单选中再加 ✓ ⇒ 出现「✓ ⌛ Pending」、「✓ YES」像被选中。⇒ Annie（原话）「我不要打勾，我就要点击那个选项就好了」⇒ 全站下拉菜单去掉选中项前的 ✓，选中只加粗；Status 选项自带图标照旧。2c 改第 1 批组件、重截图。Annie 又（原话）「然后行间距别做那么宽」「A，下拉菜单，你给我看的样例里太宽了」⇒ 菜单行高电脑 34→约 26–28px、手机 40→约 32px，一起改。第 1 批仍等 Annie 点头。
 - ✅ **No group 放页首上 ops main 1b7c4e9b**（bb；products/config.ts groupSections 把 No group 段挪第一；products 240）。顶部提醒区只列 active 且没点 Leave as is 的（attention-banner.tsx:76-79），停用 / 点过 Leave as is 的现在在表格第一段看得到。别处没组排最后（没改）：Main manifest 胶囊「No group yet」（后端 manifest_list.py:36）、Sales report Breakdown（后端排）。📌 Annie 线上：Settings › Products 表第一段是 No group。
 - Annie（原话）「你给我的灰色都太浅太偏红了，我要真正的灰色」⇒ 色板小节头改深一档的纯中性灰（约 #bdbdbd–#808080，R=G=B），另加 2–3 个略偏冷的中性灰对比；实心不透明，深灰配白字。
+- ✅ **TRIPGURU 改蓝上 ops main 3a19c062**（bb；products 240）。📌 Annie 线上：Settings › Products 的 PHSU5Q6F / PNFT59ME / PPU4WY9C 是浅蓝底蓝字。
+- bb 交 Tickets 色板 v2 https://claude.ai/artifact/EfcKRm5zRN438mVScV3yAm （组头纯中性灰 #bdbdbd–#808080 + 微冷 3 个，推荐 #a3a3a3；字自动 / 黑 / 白；headless 逐个取像素核对与色号一致；新单底色、胶囊两排照旧；底部固定条显示所选）。📌 等 Annie 选。
 - 答后端：95 G371 旧发送入口盘点（三个 tracking 已切 ops；utilities / test-orders ops 没页面没入口；ops 直接调 /booking-notes/multi/reply、不调 /resend）；bb 7a 8 句原文 + 号码 grep（ops 代码没写死旧号码）。
 ## 📌 2026-11-20 17:15 Annie 新提：staff 备注几个入口打通（记录，未动手）
 
