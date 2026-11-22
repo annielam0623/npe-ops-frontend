@@ -42,6 +42,7 @@ import type {
   AutoSendRun,
   AutoSendSettings,
 } from "@/types/auto-send";
+import { SelectMenu } from "@/components/ui/select-menu";
 
 type View =
   | { kind: "loading" }
@@ -1323,35 +1324,32 @@ function LeadGroupsField({
               days before
             </div>
             <div className="flex min-w-0 flex-col gap-1.5 max-sm:col-span-2 max-sm:row-start-2">
-              <select
+              <SelectMenu
                 data-f="addtype"
                 aria-label="Add ticket type"
                 value=""
-                onChange={(e) =>
-                  e.target.value &&
+                options={[
+                  { value: "", label: "Add ticket type" },
+                  ...all
+                    .filter((k) => !g.ticket_types.includes(k))
+                    .map((k) => ({
+                      value: k,
+                      label: `${nameOf(k)}${takenBy.has(k) ? ` - ${takenBy.get(k)} days before` : ""}`,
+                      disabled: takenBy.has(k),
+                      className: takenBy.has(k) ? undefined : "text-black",
+                    })),
+                ]}
+                onChange={(next) =>
+                  next &&
                   set(i, {
                     ...g,
-                    ticket_types: [...g.ticket_types, e.target.value],
+                    ticket_types: [...g.ticket_types, next],
                   })
                 }
+                caret={false}
                 className={ADD_TYPE}
                 style={{ backgroundImage: ADD_TYPE_CARET }}
-              >
-                <option value="">Add ticket type</option>
-                {all
-                  .filter((k) => !g.ticket_types.includes(k))
-                  .map((k) => (
-                    <option
-                      key={k}
-                      value={k}
-                      disabled={takenBy.has(k)}
-                      className={takenBy.has(k) ? undefined : "text-black"}
-                    >
-                      {nameOf(k)}
-                      {takenBy.has(k) ? ` - ${takenBy.get(k)} days before` : ""}
-                    </option>
-                  ))}
-              </select>
+              />
               {g.ticket_types.length ? (
                 <div className="flex min-w-0 flex-wrap items-center gap-1.5">
                   {g.ticket_types.map((k) => (
@@ -1490,20 +1488,19 @@ function DailyReport({
         <div className="flex flex-col gap-1">
           <div className="flex flex-wrap items-center gap-2 text-[12.5px] text-[#1a1a1a] night:text-white/80">
             <label htmlFor={selectId}>Send the report after</label>
-            <select
+            <SelectMenu
               id={selectId}
-              value={rt.effective ?? ""}
+              value={String(rt.effective ?? "")}
+              options={[
+                ...rt.sorted.map((t) => ({
+                  value: String(t),
+                  label: `${clock(t)}${t === rt.last ? " (last batch)" : ""}`,
+                })),
+              ]}
               disabled={!rt.sorted.length}
-              onChange={(e) => onAfterTime(e.target.value)}
+              onChange={(next) => onAfterTime(next)}
               className={cn(INLINE_INPUT_BASE, "w-auto cursor-pointer")}
-            >
-              {rt.sorted.map((t) => (
-                <option key={t} value={t}>
-                  {clock(t)}
-                  {t === rt.last ? " (last batch)" : ""}
-                </option>
-              ))}
-            </select>
+            />
             <span className={NOTE}>{REPORT_DESC[kind]}</span>
           </div>
           {rt.fellBack ? (
@@ -1645,22 +1642,22 @@ function TemplatesField({
     value: string,
     set: (v: string) => void,
   ) => (
-    <select
+    <SelectMenu
       id={id}
       aria-label={label}
-      value={value}
-      onChange={(e) => set(e.target.value)}
+      value={String(value)}
+      options={[
+        ...(options.some((o) => o.key === value)
+          ? []
+          : [{ value: String(value), label: String(value) }]),
+        ...options.map((o) => ({
+          value: String(o.key),
+          label: String(o.label),
+        })),
+      ]}
+      onChange={(next) => set(next)}
       className={cn(INLINE_INPUT_BASE, "w-[200px] max-w-full cursor-pointer")}
-    >
-      {options.some((o) => o.key === value) ? null : (
-        <option value={value}>{value}</option>
-      )}
-      {options.map((o) => (
-        <option key={o.key} value={o.key}>
-          {o.label}
-        </option>
-      ))}
-    </select>
+    />
   );
   return (
     <div className="flex flex-col gap-1.5" data-field="tour-templates">

@@ -64,6 +64,7 @@ import { MissingCard } from "./missing-card";
 import { ProductLog } from "./product-log";
 import { ProductsTable, type RowDraft } from "./products-table";
 import { savedAt, type SaveState, UnsavedProvider } from "./unsaved";
+import { SelectMenu } from "@/components/ui/select-menu";
 
 type ViewState =
   | { kind: "loading" }
@@ -653,55 +654,58 @@ function ProductsPage() {
                 ) : null
               }
             >
-              <select
+              <SelectMenu
                 aria-label="Group for selected"
-                value={bulkGroup}
-                onChange={(event) => setBulkGroup(event.target.value)}
+                value={String(bulkGroup)}
+                options={[
+                  { value: String(KEEP), label: "— group: leave as is —" },
+                  { value: "", label: "— no group —" },
+                  ...selectableGroups(groups, null).map((g) => ({
+                    value: String(String(g.id)),
+                    label: String(groupLabel(g)),
+                  })),
+                ]}
+                onChange={(next) => setBulkGroup(next)}
                 className={BULK_SELECT_CLASS}
-              >
-                <option value={KEEP}>— group: leave as is —</option>
-                <option value="">— no group —</option>
-                {selectableGroups(groups, null).map((g) => (
-                  <option key={g.id} value={String(g.id)}>
-                    {groupLabel(g)}
-                  </option>
-                ))}
-              </select>
-              <select
+              />
+              <SelectMenu
                 aria-label="Category for selected"
-                value={bulkType}
-                onChange={(event) => setBulkType(event.target.value)}
+                value={String(bulkType)}
+                options={[
+                  { value: String(KEEP), label: "— category: leave as is —" },
+                  { value: "", label: "— blank (falls back) —" },
+                  ...bookingTypes.map((t) => ({
+                    value: String(t),
+                    label: String(typeLabel(t)),
+                  })),
+                ]}
+                onChange={(next) => setBulkType(next)}
                 className={BULK_SELECT_CLASS}
-              >
-                <option value={KEEP}>— category: leave as is —</option>
-                <option value="">— blank (falls back) —</option>
-                {bookingTypes.map((t) => (
-                  <option key={t} value={t}>
-                    {typeLabel(t)}
-                  </option>
-                ))}
-              </select>
+              />
               {tourTypes || busTourTypes ? (
-                <select
+                <SelectMenu
                   aria-label="Tour type for selected"
-                  value={bulkTour}
+                  value={String(bulkTour)}
+                  options={[
+                    {
+                      value: String(KEEP),
+                      label: "— tour type: leave as is —",
+                    },
+                    { value: "", label: "— no tour type —" },
+                    ...(bulkTourTypes ?? []).map((t) => ({
+                      value: String(t.key),
+                      label: String(t.label),
+                    })),
+                  ]}
                   disabled={kind === "bus"}
                   title={
                     kind === "bus"
                       ? "Tour type of bus products is set per section in Bus Manifest setup."
                       : undefined
                   }
-                  onChange={(event) => setBulkTour(event.target.value)}
+                  onChange={(next) => setBulkTour(next)}
                   className={BULK_SELECT_CLASS}
-                >
-                  <option value={KEEP}>— tour type: leave as is —</option>
-                  <option value="">— no tour type —</option>
-                  {(bulkTourTypes ?? []).map((t) => (
-                    <option key={t.key} value={t.key}>
-                      {t.label}
-                    </option>
-                  ))}
-                </select>
+                />
               ) : null}
             </BulkBar>
           )}

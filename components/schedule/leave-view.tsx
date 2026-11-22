@@ -36,6 +36,7 @@ import { cn } from "@/lib/utils";
 import { ApiError } from "@/types";
 
 import { CARD, CARD_HEADER, INPUT, MUTED } from "./config";
+import { SelectMenu } from "@/components/ui/select-menu";
 
 /*
  * Staff Schedule › Leave 标签（G282，Annie 2026-11-11「同意全部推荐。动手」，preview v3 Q1–Q10 全 A）。
@@ -346,21 +347,21 @@ function RequestForm({ onSent }: { onSent: () => void }) {
       </label>
       <label className="flex min-w-0 flex-col gap-1 text-[12px] text-white/60">
         Type
-        <select
+        <SelectMenu
           id="leave-kind"
-          value={kind}
-          onChange={(e) => {
-            setKind(e.target.value as LeaveKind);
+          value={String(kind)}
+          options={[
+            ...LEAVE_KINDS.map((k) => ({
+              value: String(k.value),
+              label: String(k.label),
+            })),
+          ]}
+          onChange={(next) => {
+            setKind(next as LeaveKind);
             touch();
           }}
           className={INPUT}
-        >
-          {LEAVE_KINDS.map((k) => (
-            <option key={k.value} value={k.value}>
-              {k.label}
-            </option>
-          ))}
-        </select>
+        />
       </label>
       <span
         data-leave-days

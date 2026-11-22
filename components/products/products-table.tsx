@@ -37,6 +37,7 @@ import {
   PROD_TH_CLASS,
   REZDY_NAME_CLASS,
 } from "./legacy-ui";
+import { SelectMenu } from "@/components/ui/select-menu";
 
 /** 一格的样子：改了没存（琥珀）/ 已保存（绿）/ 存不上（红）。 */
 export type CellState = "saving" | "saved" | "failed";
@@ -342,72 +343,75 @@ function ProductRow({
         />
       </td>
       <td className={PROD_TD_CLASS}>
-        <select
+        <SelectMenu
           aria-label={`Group for ${p.product_code}`}
-          value={draft.manifest_id === null ? "" : String(draft.manifest_id)}
+          value={String(
+            draft.manifest_id === null ? "" : String(draft.manifest_id),
+          )}
+          options={[
+            { value: "", label: "— no group —" },
+            ...selectableGroups(groups, p.manifest_id).map((g) => ({
+              value: String(String(g.id)),
+              label: String(groupLabel(g)),
+            })),
+          ]}
           disabled={saving}
-          onChange={(event) =>
+          onChange={(next) =>
             edit({
-              manifest_id: event.target.value
-                ? Number(event.target.value)
-                : null,
+              manifest_id: next ? Number(next) : null,
             })
           }
           className={cellInClass(cell(changed("manifest_id")))}
-        >
-          <option value="">— no group —</option>
-          {selectableGroups(groups, p.manifest_id).map((g) => (
-            <option key={g.id} value={String(g.id)}>
-              {groupLabel(g)}
-            </option>
-          ))}
-        </select>
+        />
       </td>
       <td className={PROD_TD_CLASS}>
-        <select
+        <SelectMenu
           aria-label={`Category for ${p.product_code}`}
-          value={draft.booking_type}
+          value={String(draft.booking_type)}
+          options={[
+            { value: "", label: "— blank (falls back) —" },
+            ...bookingTypes.map((t) => ({
+              value: String(t),
+              label: String(typeLabel(t)),
+            })),
+            // 库里有、但后端清单里没有的旧值照实显示，不让下拉落到别的选项上。
+            ...(p.booking_type && !bookingTypes.includes(p.booking_type)
+              ? [
+                  {
+                    value: String(p.booking_type),
+                    label: String(typeLabel(p.booking_type)),
+                  },
+                ]
+              : []),
+          ]}
           disabled={saving}
-          onChange={(event) => edit({ booking_type: event.target.value })}
+          onChange={(next) => edit({ booking_type: next })}
           className={cellInClass(cell(changed("booking_type")), need)}
-        >
-          <option value="">— blank (falls back) —</option>
-          {bookingTypes.map((t) => (
-            <option key={t} value={t}>
-              {typeLabel(t)}
-            </option>
-          ))}
-          {/* 库里有、但后端清单里没有的旧值照实显示，不让下拉落到别的选项上。 */}
-          {p.booking_type && !bookingTypes.includes(p.booking_type) ? (
-            <option value={p.booking_type}>{typeLabel(p.booking_type)}</option>
-          ) : null}
-        </select>
+        />
       </td>
       {showTour ? (
         <td className={PROD_TD_CLASS}>
           {isTicket ? (
             tourTypes ? (
-              <select
+              <SelectMenu
                 aria-label={`Tour type for ${p.product_code}`}
                 data-tour-field="ticket_tour_type"
-                value={tourType}
+                value={String(tourType)}
+                options={[
+                  { value: "", label: "— no tour type —" },
+                  ...tourTypes.map((t) => ({
+                    value: String(t.key),
+                    label: String(t.label),
+                  })),
+                  // 后端清单里已经没有的旧键照实显示，不让下拉落到别的选项上。
+                  ...(tourType && !tourTypes.some((t) => t.key === tourType)
+                    ? [{ value: String(tourType), label: String(tourType) }]
+                    : []),
+                ]}
                 disabled={saving}
-                onChange={(event) =>
-                  edit({ ticket_tour_type: event.target.value || null })
-                }
+                onChange={(next) => edit({ ticket_tour_type: next || null })}
                 className={cellInClass(cell(tourChanged), false)}
-              >
-                <option value="">— no tour type —</option>
-                {tourTypes.map((t) => (
-                  <option key={t.key} value={t.key}>
-                    {t.label}
-                  </option>
-                ))}
-                {/* 后端清单里已经没有的旧键照实显示，不让下拉落到别的选项上。 */}
-                {tourType && !tourTypes.some((t) => t.key === tourType) ? (
-                  <option value={tourType}>{tourType}</option>
-                ) : null}
-              </select>
+              />
             ) : null
           ) : (
             // 巴士团等：tour type 改成按节设（后端 G130，Annie「按节」），这里只读显示所在节的默认值；去 Bus Manifest setup 改。

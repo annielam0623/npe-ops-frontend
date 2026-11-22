@@ -13,6 +13,7 @@ import {
 import { useTourTypeGroups } from "./use-tour-type-groups";
 import { usePhoneInfo } from "@/components/ui/phone";
 import { cn } from "@/lib/utils";
+import { SelectMenu } from "@/components/ui/select-menu";
 
 /** 样子照旧页面 send_tickets.html 的 .send-card（Step 1）。 */
 export function UploadForm({
@@ -55,22 +56,23 @@ export function UploadForm({
       <div className={FORM_ROW}>
         <label className={FORM_GROUP}>
           Tour Type
-          <select
-            value={tourType}
-            onChange={(e) => onTourTypeChange(e.target.value)}
+          <SelectMenu
+            value={String(tourType)}
+            options={[
+              { value: "", label: "— Select tour type —" },
+              ...tourTypeGroups.map((group) => ({
+                group: group.label,
+                options: [
+                  ...group.options.map((o) => ({
+                    value: String(o.value),
+                    label: String(o.label),
+                  })),
+                ],
+              })),
+            ]}
+            onChange={(next) => onTourTypeChange(next)}
             className={input}
-          >
-            <option value="">— Select tour type —</option>
-            {tourTypeGroups.map((group) => (
-              <optgroup key={group.label} label={group.label}>
-                {group.options.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </optgroup>
-            ))}
-          </select>
+          />
         </label>
         <label className={FORM_GROUP}>
           Service Date

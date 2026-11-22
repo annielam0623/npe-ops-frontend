@@ -32,6 +32,19 @@ window.$sel = async (el, v) => {
   return true;
 };
 window.$selLabel = (el) => ($isSelectMenu(el) ? el.dataset.label : el.options[el.selectedIndex]?.text);
+window.$selGroups = async (el) => {
+  if (!$isSelectMenu(el)) return [...el.children].map((c) => c.tagName === 'OPTGROUP' ? { group: c.label, options: [...c.children].map((o) => ({ value: o.value, label: o.textContent })) } : { value: c.value, label: c.textContent });
+  const wasOpen = el.getAttribute('aria-expanded') === 'true';
+  const list = await $selOpen(el);
+  const out = []; let g = null;
+  for (const k of list.children) {
+    if (k.matches('[data-select-group]')) { g = { group: k.textContent, options: [] }; out.push(g); }
+    else if (k.matches('[role=option]')) { const o = { value: k.dataset.value, label: k.textContent.trim() }; if (g) g.options.push(o); else out.push(o); }
+    else g = null;
+  }
+  if (!wasOpen) await $selClose(el);
+  return out;
+};
 window.$selValue = (el) => ($isSelectMenu(el) ? el.dataset.value : el.value);
 window.$selOptions = async (el) => {
   if (!$isSelectMenu(el)) return [...el.options].map((o) => ({ value: o.value, label: o.textContent, text: o.text, textContent: o.textContent }));

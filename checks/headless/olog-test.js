@@ -2,6 +2,7 @@
 // 前提：mock 在 8799，next dev 在 3198（API_PROXY_TARGET 和 LEGACY 都指向 mock）。
 const { spawn } = require("child_process");
 const path = require("path");
+const { SELECT_HELPERS } = require("./select-menu-helper");
 
 const CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe";
 const APP = process.env.APP_URL || "http://localhost:3198";
@@ -107,6 +108,7 @@ async function main() {
     }
   };
   await cdp("Page.enable");
+  await cdp("Page.addScriptToEvaluateOnNewDocument", { source: SELECT_HELPERS });
   await cdp("Runtime.enable");
 
   try {
@@ -125,7 +127,7 @@ async function main() {
 async function since(before, filter) {
   return (await mockLog()).slice(before).filter(filter);
 }
-const SEL = `window.$sel = (el, v) => { Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(el, v); el.dispatchEvent(new Event('change', { bubbles: true })); };`;
+const SEL = `${SELECT_HELPERS}`;
 
 async function run() {
   const today = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Los_Angeles", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
@@ -152,10 +154,10 @@ async function run() {
   await waitFor("document.body.textContent.includes('Page 2 of 3')");
   check("Next：page=2", (await since(before, (e) => e.query.includes("page=2&"))).length >= 1);
   before = (await mockLog()).length;
-  await evaluate("$sel([...document.querySelectorAll('select')][0], 'action_taken');");
+  await evaluate("await $sel([...document.querySelectorAll('select, [data-select-menu]')][0], 'action_taken');");
   await sleep(500);
   check("改筛选回到第 1 页（旧页面不回）", (await since(before, (e) => e.query.includes("event_type=action_taken") && e.query.includes("page=1&"))).length >= 1);
-  check("事件下拉没有 Guest Confirmed（永远是空的）", !(await evaluate("return [...document.querySelectorAll('select')][0].textContent.includes('Guest Confirmed');")));
+  check("事件下拉没有 Guest Confirmed（永远是空的）", !(await evaluate("return [...document.querySelectorAll('select, [data-select-menu]')][0].textContent.includes('Guest Confirmed');")));
   before = (await mockLog()).length;
   // 10-05 起订单号是边打边查（停 400ms）、不限日期，没有 Filter 按钮（task/log-search-compact）。
   await evaluate("$setValue(document.getElementById('order-number'), 'CHDZZ12');");

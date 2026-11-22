@@ -1,7 +1,10 @@
 "use client";
 
 import {
+  Children,
   type CSSProperties,
+  Fragment,
+  isValidElement,
   type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
   useCallback,
@@ -98,6 +101,51 @@ export function flattenSelectOptions<V extends string>(
   items: readonly SelectMenuItem<V>[],
 ): SelectMenuOption<V>[] {
   return items.flatMap((i) => (isGroup(i) ? i.options : [i]));
+}
+
+/** 字（React 子节点里的文字、数字）拼起来。 */
+function textOfNode(node: ReactNode): string {
+  if (node === null || node === undefined || typeof node === "boolean")
+    return "";
+  if (typeof node === "string" || typeof node === "number") return String(node);
+  if (Array.isArray(node)) return node.map(textOfNode).join("");
+  if (isValidElement<{ children?: ReactNode }>(node))
+    return textOfNode(node.props.children);
+  return "";
+}
+
+/**
+ * 共用小件（LegacySelect、导入弹窗等）由外面传进 <option> / <optgroup>：照原样读成 SelectMenu 的选项，调用的页面不用改。
+ * 文字照 JSX 拼起来（多个空白并成一个、去掉头尾空白）。
+ */
+export function optionsFromChildren(children: ReactNode): SelectMenuItem[] {
+  const out: SelectMenuItem[] = [];
+  Children.forEach(children, (child) => {
+    if (!isValidElement<Record<string, unknown>>(child)) return;
+    const p = child.props as {
+      value?: string | number;
+      disabled?: boolean;
+      label?: string;
+      className?: string;
+      children?: ReactNode;
+    };
+    if (child.type === Fragment) {
+      out.push(...optionsFromChildren(p.children));
+    } else if (child.type === "optgroup") {
+      out.push({
+        group: String(p.label ?? ""),
+        options: flattenSelectOptions(optionsFromChildren(p.children)),
+      });
+    } else if (child.type === "option") {
+      const label = textOfNode(p.children).replace(/\s+/g, " ").trim();
+      out.push({
+        value: String(p.value ?? label),
+        label,
+        ...(p.disabled ? { disabled: true } : {}),
+      });
+    }
+  });
+  return out;
 }
 
 const EDGE = 16;

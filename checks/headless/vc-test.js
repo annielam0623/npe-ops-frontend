@@ -2,6 +2,7 @@
 // 前提：vc-mock 在 8799，next dev 在 3198（API_PROXY_TARGET 和 LEGACY 都指向 mock）。
 const { spawn } = require("child_process");
 const path = require("path");
+const { SELECT_HELPERS } = require("./select-menu-helper");
 
 const CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe";
 const APP = process.env.APP_URL || "http://localhost:3198";
@@ -53,7 +54,7 @@ async function goto(url) {
   await sleep(300);
 }
 
-const HELPERS = `
+const HELPERS = SELECT_HELPERS + `
 window.$btn = (text, root=document) => [...root.querySelectorAll('button')].find(b => b.textContent.trim().startsWith(text));
 window.$rows = () => [...document.querySelectorAll('tbody tr[data-call-id]')];
 window.$row = (time) => $rows().find(tr => tr.children[0].textContent.trim().endsWith(time));
@@ -153,7 +154,7 @@ async function run() {
 
   // ── 按 Request 筛 ──
   from = (await mockLog()).length;
-  await evaluate("const s = [...document.querySelectorAll('select')].find(x => x.getAttribute('aria-label') === 'Request'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, 'lookup-by-order'); s.dispatchEvent(new Event('change', { bubbles: true }));");
+  await evaluate("const s = [...document.querySelectorAll('select, [data-select-menu]')].find(x => x.getAttribute('aria-label') === 'Request'); return $sel(s, 'lookup-by-order');");
   await waitFor("$rows().length === 2");
   {
     const gets = await since(from, isList);
@@ -297,6 +298,7 @@ async function main() {
     }
   };
   await cdp("Page.enable");
+  await cdp("Page.addScriptToEvaluateOnNewDocument", { source: SELECT_HELPERS });
   await cdp("Runtime.enable");
 
   try {

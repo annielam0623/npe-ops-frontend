@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
+import { optionsFromChildren, SelectMenu } from "@/components/ui/select-menu";
 
 /**
  * 旧后台 send_log.html 的样子（Annie 2026-10-07：和旧版一模一样）。数值照旧模板 extra_styles 抄。
@@ -59,14 +60,13 @@ export function LegacySelect({
       <span className="mr-1 text-[12px] text-[#1a1a1a] night:text-white/55">
         {label}
       </span>
-      <select
+      <SelectMenu
         aria-label={label}
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        options={optionsFromChildren(children)}
+        onChange={(next) => onChange(next)}
         className={SELECT_CLASS}
-      >
-        {children}
-      </select>
+      />
     </label>
   );
 }

@@ -34,6 +34,7 @@ import {
   type RangePreset,
   statusTone,
 } from "./config";
+import { SelectMenu } from "@/components/ui/select-menu";
 
 type LoadState =
   | { kind: "loading"; previous: BroadcastLogEntry[] | null }
@@ -295,18 +296,18 @@ export function BroadcastingLogView() {
               )}
             >
               <span aria-hidden>📅</span>
-              <select
+              <SelectMenu
                 aria-label="Sent"
-                value={preset}
-                onChange={(e) => choosePreset(e.target.value as RangePreset)}
+                value={String(preset)}
+                options={[
+                  ...RANGE_OPTIONS.map((o) => ({
+                    value: String(o.value),
+                    label: String(o.label),
+                  })),
+                ]}
+                onChange={(next) => choosePreset(next as RangePreset)}
                 className="h-full cursor-pointer rounded-[7px] bg-transparent pr-2 font-[inherit] text-[13px] text-[#1a1a1a] focus:outline-none night:text-white/90"
-              >
-                {RANGE_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
+              />
             </span>
             {preset === "custom" ? (
               <span className="flex flex-wrap items-center gap-1.5 text-[12px] text-[#94a3b8] night:text-white/45">
@@ -361,34 +362,30 @@ export function BroadcastingLogView() {
                 Searching all dates
               </span>
             ) : null}
-            <select
+            <SelectMenu
               aria-label="Module"
-              value={query.module}
-              onChange={(e) =>
-                setQuery((q) => ({ ...q, module: e.target.value }))
-              }
+              value={String(query.module)}
+              options={[
+                ...MODULE_OPTIONS.map((o) => ({
+                  value: String(o.value),
+                  label: String(o.label),
+                })),
+              ]}
+              onChange={(next) => setQuery((q) => ({ ...q, module: next }))}
               className={SELECT}
-            >
-              {MODULE_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-            <select
+            />
+            <SelectMenu
               aria-label="Group"
-              value={query.group}
-              onChange={(e) =>
-                setQuery((q) => ({ ...q, group: e.target.value }))
-              }
+              value={String(query.group)}
+              options={[
+                ...GROUP_OPTIONS.map((o) => ({
+                  value: String(o.value),
+                  label: String(o.label),
+                })),
+              ]}
+              onChange={(next) => setQuery((q) => ({ ...q, group: next }))}
               className={SELECT}
-            >
-              {GROUP_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
+            />
             {/* 旧后台 base.html 的 .btn（深色底上的按钮）。 */}
             <button
               type="button"

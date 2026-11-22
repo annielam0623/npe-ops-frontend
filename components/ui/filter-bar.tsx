@@ -1,8 +1,9 @@
 "use client";
 
-import type { ChangeEvent, ReactNode } from "react";
+import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
+import { optionsFromChildren, SelectMenu } from "@/components/ui/select-menu";
 
 /**
  * 列表页顶部筛选条的紧凑样式（Annie 2026-10-05 定：按钮太大，全站换成小一号）。
@@ -104,7 +105,7 @@ export function FilterSelect({
 }: {
   label: string;
   value: string;
-  onChange: (value: string, event: ChangeEvent<HTMLSelectElement>) => void;
+  onChange: (value: string) => void;
   children: ReactNode;
   disabled?: boolean;
   /** 变灰但仍可选（例如订单搜索时日期不起作用，选了由外面清掉搜索）。 */
@@ -122,16 +123,15 @@ export function FilterSelect({
       )}
     >
       <span className="text-[#1a1a1a] night:text-white/45">{label}</span>
-      <select
+      <SelectMenu
         // 外面 label 里还有选中项的字，读屏 / 检查脚本按名字找时只认这个名字。
         aria-label={label}
         value={value}
         disabled={disabled}
-        onChange={(e) => onChange(e.target.value, e)}
-        className="h-full cursor-pointer rounded-md bg-transparent pr-1 text-xs text-stone-800 focus:outline-none disabled:cursor-not-allowed night:text-white"
-      >
-        {children}
-      </select>
+        options={optionsFromChildren(children)}
+        onChange={(next) => onChange(next)}
+        className="h-full cursor-pointer rounded-md bg-transparent pr-1 text-stone-800 focus:outline-none disabled:cursor-not-allowed night:text-white"
+      />
     </label>
   );
 }

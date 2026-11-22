@@ -49,6 +49,7 @@ import { type TourBatch, TourPreview } from "./tour-preview";
 import { TourResults, type TourSendStop } from "./tour-results";
 import { usePhoneInfo } from "@/components/ui/phone";
 import { cn } from "@/lib/utils";
+import { SelectMenu } from "@/components/ui/select-menu";
 
 type Step =
   | { kind: "form" }
@@ -450,21 +451,26 @@ export function TourLaneSection({
             <div className={FORM_ROW}>
               <label className={FORM_GROUP}>
                 Tour Type
-                <select
-                  value={tourType}
+                <SelectMenu
+                  value={String(tourType)}
+                  options={[
+                    {
+                      value: "",
+                      label: String(
+                        tourTypes
+                          ? "— Select tour type —"
+                          : "Loading tour types…",
+                      ),
+                    },
+                    ...(tourTypes ?? []).map((t) => ({
+                      value: String(t.key),
+                      label: String(t.label),
+                    })),
+                  ]}
                   disabled={!tourTypes}
-                  onChange={(e) => pickType(e.target.value)}
+                  onChange={(next) => pickType(next)}
                   className={INPUT}
-                >
-                  <option value="">
-                    {tourTypes ? "— Select tour type —" : "Loading tour types…"}
-                  </option>
-                  {(tourTypes ?? []).map((t) => (
-                    <option key={t.key} value={t.key}>
-                      {t.label}
-                    </option>
-                  ))}
-                </select>
+                />
               </label>
               <label className={FORM_GROUP}>
                 Tour Date

@@ -32,6 +32,7 @@ import type {
 } from "@/types";
 
 import { describeHistory, formatBytes, formatFull } from "./config";
+import { SelectMenu } from "@/components/ui/select-menu";
 
 type View =
   | { kind: "loading" }
@@ -287,18 +288,18 @@ function Ready({
           </label>
           <label className="flex flex-col gap-1 text-[11.5px] font-semibold text-white/70">
             Status
-            <select
+            <SelectMenu
               id="ws-status"
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
+              value={String(status)}
+              options={[
+                ...statusOptions.map((s) => ({
+                  value: String(s.code),
+                  label: String(s.name),
+                })),
+              ]}
+              onChange={(next) => setStatus(next)}
               className={cn(FIELD, "font-normal")}
-            >
-              {statusOptions.map((s) => (
-                <option key={s.code} value={s.code}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
+            />
           </label>
           <label className="flex flex-col gap-1 text-[11.5px] font-semibold text-white/70">
             Next step
@@ -334,21 +335,26 @@ function Ready({
           <span className="mx-1 h-6 w-px bg-white/15" aria-hidden />
           <label className="flex items-center gap-2 text-white/70">
             Owner
-            <select
+            <SelectMenu
               id="ws-owner"
-              value={owner}
-              onChange={(e) => setOwner(e.target.value)}
+              value={String(owner)}
+              options={[
+                ...(!people.has(item.owner_id)
+                  ? [
+                      {
+                        value: String(String(item.owner_id)),
+                        label: String(item.owner_name),
+                      },
+                    ]
+                  : []),
+                ...colleagues.map((c) => ({
+                  value: String(String(c.id)),
+                  label: String(c.name),
+                })),
+              ]}
+              onChange={(next) => setOwner(next)}
               className={FIELD}
-            >
-              {!people.has(item.owner_id) ? (
-                <option value={String(item.owner_id)}>{item.owner_name}</option>
-              ) : null}
-              {colleagues.map((c) => (
-                <option key={c.id} value={String(c.id)}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
+            />
           </label>
           <button
             type="button"

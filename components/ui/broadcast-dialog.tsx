@@ -34,6 +34,7 @@ import {
 import { cn } from "@/lib/utils";
 
 import { ModalShell } from "@/components/tracking-ui/modal-shell";
+import { SelectMenu } from "@/components/ui/select-menu";
 
 /**
  * 群发候选人（一张单一行）。
@@ -723,33 +724,34 @@ export function BroadcastDialog({
                   <b>not</b> shown here. You can still type a message and send.
                 </p>
               ) : null}
-              <select
+              <SelectMenu
                 aria-label="Template"
-                value={templateName}
+                value={String(templateName)}
+                options={[
+                  {
+                    value: "",
+                    label: String(
+                      templates === null
+                        ? "Loading templates…"
+                        : "— Select template —",
+                    ),
+                  },
+                  ...(templates ?? []).map((t) => ({
+                    value: String(t.name),
+                    label: String(t.label),
+                  })),
+                ]}
                 disabled={phase.kind !== "edit" || templates === null}
-                onChange={(event) => {
-                  setTemplateName(event.target.value);
-                  const t = templates?.find(
-                    (x) => x.name === event.target.value,
-                  );
+                onChange={(next) => {
+                  setTemplateName(next);
+                  const t = templates?.find((x) => x.name === next);
                   if (t) setBody(t.body);
                 }}
                 className={cn(
                   "mb-2 w-full rounded-md border px-2.5 py-[7px] text-[13px]",
                   skin.select,
                 )}
-              >
-                <option value="">
-                  {templates === null
-                    ? "Loading templates…"
-                    : "— Select template —"}
-                </option>
-                {(templates ?? []).map((t) => (
-                  <option key={t.name} value={t.name}>
-                    {t.label}
-                  </option>
-                ))}
-              </select>
+              />
               <textarea
                 aria-label="Message"
                 value={body}

@@ -24,6 +24,7 @@ import {
   BTN_ADD_SMALL_CLASS,
   BTN_EDIT_CLASS,
 } from "./legacy-ui";
+import { SelectMenu } from "@/components/ui/select-menu";
 
 /**
  * Shuttle 站的接人时间（preview v3 https://claude.ai/artifact/HTezuw3d3VnNSyo63VJEzN ，
@@ -360,29 +361,33 @@ export function TimesEditor({
                 className={r.isNew ? "bg-amber-500/10" : undefined}
               >
                 <td className="px-2 py-1">
-                  <select
+                  <SelectMenu
                     aria-label="Route"
-                    value={r.product_id ?? ""}
+                    value={String(r.product_id ?? "")}
+                    options={[
+                      { value: "", label: "Choose a route…" },
+                      ...[...names].map(([id, label]) => ({
+                        value: String(id),
+                        label: String(label),
+                      })),
+                      ...(routes.length === 0 && names.size === 0
+                        ? [
+                            {
+                              value: "No shuttle products found",
+                              label: "No shuttle products found",
+                              disabled: true,
+                            },
+                          ]
+                        : []),
+                    ]}
                     disabled={disabled}
-                    onChange={(e) =>
+                    onChange={(next) =>
                       setRow(r.key, {
-                        product_id: e.target.value
-                          ? Number(e.target.value)
-                          : null,
+                        product_id: next ? Number(next) : null,
                       })
                     }
                     className="h-8 w-[220px] rounded-[7px] border border-black/25 bg-white px-2 text-[12.5px] text-[#111] night:border-white/20 night:bg-white/[.04] night:text-white/90"
-                  >
-                    <option value="">Choose a route…</option>
-                    {[...names].map(([id, label]) => (
-                      <option key={id} value={id}>
-                        {label}
-                      </option>
-                    ))}
-                    {routes.length === 0 && names.size === 0 ? (
-                      <option disabled>No shuttle products found</option>
-                    ) : null}
-                  </select>
+                  />
                 </td>
                 {seasons.map((s) => {
                   const c = r.cells[s.id] ?? { time: "", noService: false };

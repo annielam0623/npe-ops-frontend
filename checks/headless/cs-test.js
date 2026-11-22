@@ -2,6 +2,7 @@
 // 前提：mock 在 8799，next dev 在 3198（API_PROXY_TARGET 和 LEGACY 都指向 mock）。
 const { spawn } = require("child_process");
 const path = require("path");
+const { SELECT_HELPERS } = require("./select-menu-helper");
 
 const CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe";
 const APP = process.env.APP_URL || "http://localhost:3198";
@@ -58,7 +59,7 @@ async function goto(url) {
 }
 
 // 页面里用的小工具（每次导航后重新注入）。
-const HELPERS = `
+const HELPERS = SELECT_HELPERS + `
 window.$t = (sel) => [...document.querySelectorAll(sel)].map(e => e.textContent.trim());
 window.$rows = () => [...document.querySelectorAll('tbody tr')].map(tr => [...tr.children].map(td => td.textContent.trim()));
 window.$heads = () => [...document.querySelectorAll('thead th')].map(th => th.textContent.replace('⠿','').trim());
@@ -107,6 +108,7 @@ async function main() {
     }
   };
   await cdp("Page.enable");
+  await cdp("Page.addScriptToEvaluateOnNewDocument", { source: SELECT_HELPERS });
   await cdp("Runtime.enable");
   // 记下页面里的 console.error（检查「不再静默」）。
   await cdp("Page.addScriptToEvaluateOnNewDocument", { source: "window.__csErrors = []; const e = console.error.bind(console); console.error = (...a) => { window.__csErrors.push(a.map(String).join(' ')); e(...a); };" });
@@ -135,8 +137,7 @@ window.$tab = (t) => [...document.querySelectorAll('[role=tab]')].find(b => b.te
 // 受控 <select>：直接改 DOM 的 .value 不会触发 React 的 onChange（和原生 input 不一样），要走原型 setter + 派发 change。
 window.$setSelect = (el, optionText) => {
   const opt = [...el.options].find(o => o.textContent === optionText);
-  Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(el, opt.value);
-  el.dispatchEvent(new Event('change', { bubbles: true }));
+  return $sel(el, opt.value);
 };
 `;
 async function h() {
@@ -615,7 +616,7 @@ async function run() {
       "const t = document.body.textContent; return t.includes('Boulder City Shuttle — Outbound') && t.includes('Boulder City Shuttle — Inbound') && t.includes('Boulder City Shuttle · outbound') && t.includes('Boulder City Shuttle · inbound');",
     ),
   );
-  check("Add route 表单：group 下拉里有 2 个 shuttle group", await evaluate("return [...document.querySelectorAll('select[aria-label=\"Shuttle group\"] option')].map(o => o.textContent);").then((v) => JSON.stringify(v) === JSON.stringify(["Boulder City Shuttle", "Page Shuttle"])));
+  check("Add route 表单：group 下拉里有 2 个 shuttle group", await evaluate("return [...document.querySelectorAll(':is(select,[data-select-menu])[aria-label=\"Shuttle group\"]')].flatMap((s) => [...s.options]).map(o => o.textContent);").then((v) => JSON.stringify(v) === JSON.stringify(["Boulder City Shuttle", "Page Shuttle"])));
   check(
     "Templates 区块：路线药丸 2 个，outbound 默认选中",
     await evaluate(
@@ -698,7 +699,7 @@ async function run() {
   before = (await mockLog()).length;
   check("Add route 是蓝色提交键", await evaluate("return $btn('Add').className.includes('bg-[#3b82f6]');"));
   await evaluate(
-    "window.$setSelect(document.querySelector('select[aria-label=\"Shuttle group\"]'), 'Page Shuttle'); window.$setValue(document.querySelector('input[aria-label=\"Route label\"]'), 'Page Shuttle — Outbound'); $btn('Add').click();",
+    "await window.$setSelect(document.querySelector(':is(select,[data-select-menu])[aria-label=\"Shuttle group\"]'), 'Page Shuttle'); window.$setValue(document.querySelector('input[aria-label=\"Route label\"]'), 'Page Shuttle — Outbound'); $btn('Add').click();",
   );
   let posts = [];
   for (let i = 0; i < 30 && !posts.length; i++) {
@@ -715,7 +716,7 @@ async function run() {
   // 重复的 group+方向：后端拒绝，错误原话显示在 Add 表单下面
   before = (await mockLog()).length;
   await evaluate(
-    "window.$setSelect(document.querySelector('select[aria-label=\"Shuttle group\"]'), 'Boulder City Shuttle'); window.$setSelect(document.querySelector('select[aria-label=\"Direction\"]'), 'Outbound'); window.$setValue(document.querySelector('input[aria-label=\"Route label\"]'), 'dup'); $btn('Add').click();",
+    "await window.$setSelect(document.querySelector(':is(select,[data-select-menu])[aria-label=\"Shuttle group\"]'), 'Boulder City Shuttle'); await window.$setSelect(document.querySelector(':is(select,[data-select-menu])[aria-label=\"Direction\"]'), 'Outbound'); window.$setValue(document.querySelector('input[aria-label=\"Route label\"]'), 'dup'); $btn('Add').click();",
   );
   await sleep(300);
   check("重复 group+方向：Add 表单下面显示后端原话，没有多出一条路线", await evaluate("return document.body.textContent.includes('A route for this group and direction already exists.') && [...document.querySelectorAll('[aria-label=Route] button')].length === 3;"));

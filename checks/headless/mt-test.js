@@ -2,6 +2,7 @@
 // 前提：mock 在 8799，next dev 在 3198（API_PROXY_TARGET 和 LEGACY 都指向 mock）。
 const { spawn } = require("child_process");
 const path = require("path");
+const { SELECT_HELPERS } = require("./select-menu-helper");
 const { resizeChecks } = require("./resize-checks");
 
 const CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe";
@@ -59,7 +60,7 @@ async function goto(url) {
 }
 
 // 页面里用的小工具（每次导航后重新注入）。
-const HELPERS = `
+const HELPERS = SELECT_HELPERS + `
 window.$t = (sel) => [...document.querySelectorAll(sel)].map(e => e.textContent.trim());
 window.$rows = () => [...document.querySelectorAll('tbody tr')].map(tr => [...tr.children].map(td => td.textContent.trim()));
 window.$heads = () => [...document.querySelectorAll('thead th')].map(th => th.textContent.replace('⠿','').trim());
@@ -108,6 +109,7 @@ async function main() {
     }
   };
   await cdp("Page.enable");
+  await cdp("Page.addScriptToEvaluateOnNewDocument", { source: SELECT_HELPERS });
   await cdp("Runtime.enable");
 
   try {
@@ -1435,7 +1437,7 @@ async function run() {
   // N9 A Driver mark 拆成 Relay / Bus；存了算处理过；hover 两行。第 3 版（11-19）起只在 Bus 列点 No show（见下）。
   {
     const LIVE_ON = [{ key: "morning_live_drivers", label: "Live drivers", visibility: "super_admin_only", default: "super_admin_only", visible_to_me: true }];
-    const SEL = `window.$pick = (sel, v) => { const el = document.querySelector(sel); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(el, v); el.dispatchEvent(new Event('change', { bubbles: true })); };
+    const SEL = `window.$pick = (sel, v) => { const el = document.querySelector(sel); return $sel(el, v); };
       window.$row = (o) => [...document.querySelectorAll('main tbody tr')].find((tr) => tr.textContent.includes(o));
       window.$cell = (o, col) => $row(o)?.querySelector('[data-mark-cell="' + col + '"]');`;
     const open = async () => {
@@ -1456,7 +1458,7 @@ async function run() {
     // 淡灰虚线「No show」→ 点了红字 + Save → 存好红字带时间 + Edited；点红字 + Save 取消（staff 标的回导游原标记、导游标的 No show 存 Boarded）。
     const FAINT = "rgb(90, 122, 154)", RED = "rgb(231, 76, 60)";
     check("N1 ①：Relay 列只看——Relay 格里没有按钮（只有 ⚠️ Take action）、A1002 的 Relay 胶囊不是按钮", await evaluate("return ![...document.querySelectorAll('[data-mark-cell=relay] button')].some((b) => !b.hasAttribute('data-ns-take-action')) && $cell('A1002', 'relay').querySelector('[data-mark-pill]').tagName === 'SPAN';"));
-    check("没标的 Bus（A1002）：只有一个淡灰虚线「No show」（同原来 Not marked 的颜色），没有下拉", await evaluate(`const b = $cell('A1002', 'bus').querySelector('[data-ns-button=off]'); const cs = b && getComputedStyle(b); return !!b && b.textContent === 'No show' && cs.color === '${FAINT}' && cs.textDecorationStyle === 'dotted' && !document.querySelector('main tbody select');`), await evaluate("return $cell('A1002', 'bus')?.outerHTML;"));
+    check("没标的 Bus（A1002）：只有一个淡灰虚线「No show」（同原来 Not marked 的颜色），没有下拉", await evaluate(`const b = $cell('A1002', 'bus').querySelector('[data-ns-button=off]'); const cs = b && getComputedStyle(b); return !!b && b.textContent === 'No show' && cs.color === '${FAINT}' && cs.textDecorationStyle === 'dotted' && !document.querySelector('main tbody :is(select,[data-select-menu])');`), await evaluate("return $cell('A1002', 'bus')?.outerHTML;"));
     check("N1 ②：导游标了 Boarded（A1003）⇒ 绿胶囊照旧，旁边仍有淡灰 No show", await evaluate("const c = $cell('A1003', 'bus'); return c.querySelector('[data-mark-pill]').textContent.includes('✓ Boarded 7:02 AM') && !!c.querySelector('[data-ns-button=off]');"));
     // 点一下 ⇒ 红字（只暂存）
     let from = (await mockLog()).length;

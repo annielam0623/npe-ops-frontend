@@ -2,6 +2,7 @@
 // 前提：testsend-mock 在 8799，next dev 在 3198（API_PROXY_TARGET 和 LEGACY 都指向 mock）。
 const { spawn } = require("child_process");
 const path = require("path");
+const { SELECT_HELPERS } = require("./select-menu-helper");
 
 const CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe";
 const APP = process.env.APP_URL || "http://localhost:3198";
@@ -53,10 +54,11 @@ async function goto(url) {
   await sleep(300);
 }
 
-const HELPERS = `
+const HELPERS = SELECT_HELPERS + `
 window.$q = (s) => document.querySelector(s);
 window.$t = (s) => document.querySelector(s)?.textContent.replace(/\\s+/g, ' ').trim() ?? null;
 window.$set = (el, value) => {
+  if ($isSelectMenu(el)) return $sel(el, value);
   const proto = el.tagName === 'SELECT' ? HTMLSelectElement.prototype : HTMLInputElement.prototype;
   Object.getOwnPropertyDescriptor(proto, 'value').set.call(el, value);
   el.dispatchEvent(new Event(el.tagName === 'SELECT' ? 'change' : 'input', { bubbles: true }));
@@ -105,7 +107,7 @@ async function run() {
   check("红字是红色（#A32D2D）", await evaluate(`return getComputedStyle($q('[data-ts-error] [role=alert]')).color === 'rgb(163, 45, 45)';`));
 
   // ── 选了 Preview ──
-  await evaluate(`$set($q('[data-ts=choice]'), 'GCW');`);
+  await evaluate(`await $set($q('[data-ts=choice]'), 'GCW');`);
   check("改了选项 ⇒ 红字清掉", await waitFor(`!$q('[data-ts-error]')`, 2000));
   from = (await mockLog()).length;
   await evaluate(`$q('[data-ts-preview]').click();`);
@@ -140,13 +142,13 @@ async function run() {
   check("↩ Send another ⇒ 结果卡收起，表单保留", await waitFor(`!$q('[data-ts-result]') && $q('[data-ts=choice]').value === 'GCW'`, 2000));
 
   // ── 422：勾了 SMS 没电话 / 邮箱不对 ──
-  await evaluate(`$set($q('[data-ts=phone]'), '');`);
+  await evaluate(`await $set($q('[data-ts=phone]'), '');`);
   await evaluate(`$q('[data-ts-send]').click();`);
   check("勾了 SMS、电话空 ⇒ 红字「Enter a phone number to send the SMS.」，没有结果卡", await waitFor(`$err() === 'Enter a phone number to send the SMS.'`, 5000) && !(await evaluate(`return !!$q('[data-ts-result]');`)));
-  await evaluate(`$set($q('[data-ts=phone]'), '7025550100'); $set($q('[data-ts=email]'), 'zz.test');`);
+  await evaluate(`await $set($q('[data-ts=phone]'), '7025550100'); await $set($q('[data-ts=email]'), 'zz.test');`);
   await evaluate(`$q('[data-ts-send]').click();`);
   check("邮箱不对 ⇒ 红字「This email address does not look right.」", await waitFor(`$err() === 'This email address does not look right.'`, 5000), await evaluate(`return $err();`));
-  await evaluate(`$set($q('[data-ts=email]'), 'zz.test@example.com');`);
+  await evaluate(`await $set($q('[data-ts=email]'), 'zz.test@example.com');`);
 
   // ── 只发 Email ──
   await evaluate(`$q('[data-ts-channel=sms]').click();`);
@@ -171,7 +173,7 @@ async function run() {
   // ── 换模块：Morning Pickup 没下拉 ──
   await evaluate(`$q('[data-ts-preview]').click();`);
   await waitFor(`$q('[data-ts-preview-card]') && !$q('[data-ts-preview]').disabled`, 5000);
-  await evaluate(`$set($q('[data-ts=module]'), 'morning_pickup');`);
+  await evaluate(`await $set($q('[data-ts=module]'), 'morning_pickup');`);
   check("换模块 ⇒ 旧预览、结果、红字都清掉", await waitFor(`!$q('[data-ts-preview-card]') && !$q('[data-ts-result]') && !$q('[data-ts-error]')`, 2000), await evaluate(`return [!!$q('[data-ts-preview-card]'), !!$q('[data-ts-result]'), $err()].join(',');`));
   check("Morning Pickup：没有第二个下拉", await evaluate(`return !$q('[data-ts=choice]');`));
   from = (await mockLog()).length;
@@ -186,18 +188,18 @@ async function run() {
   await ctl({ previewDelay: 800 });
   await evaluate(`$q('[data-ts-preview]').click();`);
   await sleep(100);
-  await evaluate(`$set($q('[data-ts=module]'), 'last_minute');`);
+  await evaluate(`await $set($q('[data-ts=module]'), 'last_minute');`);
   await sleep(1200);
   check("Preview 还没回来就换了模块 ⇒ 旧预览不贴回来", await evaluate(`return !$q('[data-ts-preview-card]') && !$q('[data-ts-error]');`));
   await ctl({ previewDelay: 0 });
 
   // ── Broadcasting / Shuttle / Farm out 的下拉名 ──
-  await evaluate(`$set($q('[data-ts=module]'), 'broadcast');`);
+  await evaluate(`await $set($q('[data-ts=module]'), 'broadcast');`);
   await waitFor(`$q('[data-ts=choice]')`, 2000);
   check("Broadcasting：下拉叫 Template，选项照后端标签（Bus tour · 3 · …）", await evaluate(`const s = $q('[data-ts=choice]'); return s.closest('label').firstChild.textContent === 'Template' && [...s.options].map(o => o.text).slice(1).join('|') === 'Bus tour · 3 · Weather delay|Tickets · 2 · Gate change';`));
-  await evaluate(`$set($q('[data-ts=module]'), 'shuttle');`);
+  await evaluate(`await $set($q('[data-ts=module]'), 'shuttle');`);
   check("Shuttle：下拉叫 Product、日期叫 Shuttle date", await waitFor(`$q('[data-ts=choice]')?.closest('label').firstChild.textContent === 'Product' && $q('[data-ts=date]').closest('label').firstChild.textContent === 'Shuttle date'`, 2000));
-  await evaluate(`$set($q('[data-ts=module]'), 'farm_out');`);
+  await evaluate(`await $set($q('[data-ts=module]'), 'farm_out');`);
   check("Farm out guest notice：下拉叫 Partner", await waitFor(`$q('[data-ts=choice]')?.closest('label').firstChild.textContent === 'Partner'`, 2000));
   check("Module 下拉 7 项，顺序照后端", await evaluate(`return [...$q('[data-ts=module]').options].map(o => o.text).join('|') === 'Tour Confirmation|Last Minute|Shuttle|Tickets Reminder|Morning Pickup|Farm out guest notice|Broadcasting';`));
 
@@ -224,7 +226,7 @@ async function run() {
   check("手机：整页不左右晃（没有横向滚动）", await evaluate(`return document.documentElement.scrollWidth <= window.innerWidth + 1;`), await evaluate(`return document.documentElement.scrollWidth + ' > ' + window.innerWidth;`));
   check("手机：页头说明收进「i」，点开才显示", await evaluate(`return getComputedStyle($q('[data-ts-intro]')).display === 'none' && !!$q('[data-ts-form] [data-phone-info]');`) && (await evaluate(`$q('[data-ts-form] [data-phone-info]').click(); return true;`)) && (await waitFor(`getComputedStyle($q('[data-ts-intro]')).display !== 'none'`, 2000)));
   check("手机：表单排成一列（Module、Tour type、日期上下排）", await evaluate(`const a = $q('[data-ts=module]').getBoundingClientRect(), b = $q('[data-ts=choice]').getBoundingClientRect(), c = $q('[data-ts=date]').getBoundingClientRect(); return b.top > a.bottom && c.top > b.bottom && Math.abs(a.left - b.left) < 2;`));
-  await evaluate(`$set($q('[data-ts=choice]'), 'ANT');`);
+  await evaluate(`await $set($q('[data-ts=choice]'), 'ANT');`);
   await evaluate(`$q('[data-ts-preview]').click();`);
   await waitFor(`$q('[data-ts-preview-card]')`, 5000);
   await evaluate(`$q('[data-ts-send]').click();`);
@@ -270,6 +272,7 @@ async function main() {
     }
   };
   await cdp("Page.enable");
+  await cdp("Page.addScriptToEvaluateOnNewDocument", { source: SELECT_HELPERS });
   await cdp("Runtime.enable");
 
   try {

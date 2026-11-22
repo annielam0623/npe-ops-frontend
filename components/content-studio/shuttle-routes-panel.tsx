@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 
 import { SHUTTLE_SUBJECT_NOTE, SHUTTLE_VARS } from "./fields";
 import { type Studio, TextFieldCard } from "./studio-cards";
+import { SelectMenu } from "@/components/ui/select-menu";
 
 type LoadState =
   { kind: "loading" } | { kind: "error"; message: string } | { kind: "ready" };
@@ -400,29 +401,30 @@ function AddRouteForm({
       </div>
       {groups.length ? (
         <div className="flex flex-wrap items-center gap-2">
-          <select
+          <SelectMenu
             aria-label="Shuttle group"
-            value={groupId}
+            value={String(groupId)}
+            options={[
+              ...groups.map((g) => ({
+                value: String(g.id),
+                label: String(g.display_name),
+              })),
+            ]}
             disabled={busy}
-            onChange={(e) => setGroupId(e.target.value)}
+            onChange={(next) => setGroupId(next)}
             className={SELECT}
-          >
-            {groups.map((g) => (
-              <option key={g.id} value={g.id}>
-                {g.display_name}
-              </option>
-            ))}
-          </select>
-          <select
+          />
+          <SelectMenu
             aria-label="Direction"
-            value={direction}
+            value={String(direction)}
+            options={[
+              { value: "outbound", label: "Outbound" },
+              { value: "inbound", label: "Inbound" },
+            ]}
             disabled={busy}
-            onChange={(e) => setDirection(e.target.value as ShuttleDirection)}
+            onChange={(next) => setDirection(next as ShuttleDirection)}
             className={SELECT}
-          >
-            <option value="outbound">Outbound</option>
-            <option value="inbound">Inbound</option>
-          </select>
+          />
           <input
             type="text"
             aria-label="Route label"

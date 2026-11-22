@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import type { ScheduleEmployee, ScheduleWeek } from "@/types";
 
 import { CARD, CARD_HEADER, DAY_LABELS, MUTED, TIME_OFF_LABEL } from "./config";
+import { SelectMenu } from "@/components/ui/select-menu";
 
 /** Period 最多看几周（preview 题：1–8 周）。 */
 export const PERIOD_MAX_WEEKS = 8;
@@ -172,22 +173,18 @@ export function PeriodView({
           </label>
           <label className="flex items-center gap-1.5">
             Weeks
-            <select
+            <SelectMenu
               data-period-weeks
-              value={weeks}
-              onChange={(event) =>
-                onChangeRange(start, Number(event.target.value))
-              }
+              value={String(weeks)}
+              options={[
+                ...Array.from(
+                  { length: PERIOD_MAX_WEEKS },
+                  (_, i) => i + 1,
+                ).map((n) => ({ value: String(n), label: String(n) })),
+              ]}
+              onChange={(next) => onChangeRange(start, Number(next))}
               className="rounded-md border border-white/15 bg-white/[.05] px-2 py-1 text-[12.5px] text-white [color-scheme:dark]"
-            >
-              {Array.from({ length: PERIOD_MAX_WEEKS }, (_, i) => i + 1).map(
-                (n) => (
-                  <option key={n} value={n}>
-                    {n}
-                  </option>
-                ),
-              )}
-            </select>
+            />
           </label>
           {onAutoFill ? (
             <button

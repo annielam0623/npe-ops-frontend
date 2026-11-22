@@ -2,6 +2,7 @@
 // 前提：mock（ws-mock.js）在 8799，next dev 在 3198（API_PROXY_TARGET 指向 mock）。
 const { spawn } = require("child_process");
 const path = require("path");
+const { SELECT_HELPERS } = require("./select-menu-helper");
 
 const CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe";
 const APP = process.env.APP_URL || "http://localhost:3198";
@@ -58,10 +59,11 @@ async function goto(url) {
 }
 
 // 页面里用的小工具（每次导航后重新注入）。
-const HELPERS = `
+const HELPERS = SELECT_HELPERS + `
 window.$txt = () => document.querySelector('main').textContent;
 window.$btn = (text, root = document) => [...root.querySelectorAll('button')].find(b => b.textContent.trim() === text);
 window.$set = (el, value) => {
+  if ($isSelectMenu(el)) return $sel(el, value);
   const proto = el.tagName === 'TEXTAREA' ? HTMLTextAreaElement.prototype : el.tagName === 'SELECT' ? HTMLSelectElement.prototype : HTMLInputElement.prototype;
   Object.getOwnPropertyDescriptor(proto, 'value').set.call(el, value);
   el.dispatchEvent(new Event(el.tagName === 'SELECT' ? 'change' : 'input', { bubbles: true }));
@@ -154,7 +156,7 @@ async function run() {
 
   // 粘贴 Generate
   await open(`${APP}/workspace`, "document.querySelector('[data-item]')");
-  await evaluate("$set(document.getElementById('ws-text'), 'ZZ Test pasted email'); return 1;");
+  await evaluate("await $set(document.getElementById('ws-text'), 'ZZ Test pasted email'); return 1;");
   await ctl({});
   await evaluate("$btn('Generate').click(); return 1;");
   check("粘贴 Generate：跳到新工作项", await waitFor("/^\\/workspace\\/\\d+$/.test(location.pathname) && !!document.querySelector('[data-raw-text]')", 20000));
@@ -166,7 +168,7 @@ async function run() {
 
   // 出错
   await open(`${APP}/workspace`, "document.querySelector('[data-item]')");
-  await evaluate("$set(document.getElementById('ws-text'), 'ZZ Test'); return 1;");
+  await evaluate("await $set(document.getElementById('ws-text'), 'ZZ Test'); return 1;");
   await ctl({ failCreate: true });
   await evaluate("$btn('Generate').click(); return 1;");
   check("Generate 400：原样显示后端的话、留在本页", await waitFor("document.querySelector('[role=alert]') && document.querySelector('[role=alert]').textContent.includes('Save it as .xlsx and upload again.')") && (await evaluate("return location.pathname === '/workspace';")));
@@ -184,7 +186,7 @@ async function run() {
   check("条目页内容区左右各留约 10%", await evaluate(`const el = document.querySelector('[data-centered-page]'); if (!el) return false; const par = el.parentElement; const ps = getComputedStyle(par); const w = par.clientWidth - parseFloat(ps.paddingLeft) - parseFloat(ps.paddingRight); const cs = getComputedStyle(el); return Math.abs(parseFloat(cs.paddingLeft) / w - 0.1) < 0.005 && Math.abs(parseFloat(cs.paddingRight) / w - 0.1) < 0.005;`));
   check("标题行：编号、去向、状态", await evaluate("const h = document.querySelector('main header').textContent; return h.includes('WS-1042') && h.includes('Transfer & Charter Quotation') && h.includes('Draft');"));
   check("没改时 Save / Reassign 灰着", await evaluate("return $btn('Save').disabled && $btn('Reassign').disabled;"));
-  await evaluate("$set(document.getElementById('ws-status'), 'review'); $set(document.getElementById('ws-next'), 'ZZ Test next'); return 1;");
+  await evaluate("await $set(document.getElementById('ws-status'), 'review'); await $set(document.getElementById('ws-next'), 'ZZ Test next'); return 1;");
   await sleep(100);
   await evaluate("$btn('Save').click(); return 1;");
   await waitFor("$txt().includes('Saved.')");
@@ -193,7 +195,7 @@ async function run() {
   await waitFor("document.querySelector('[data-history]') && document.querySelector('[data-history]').textContent.includes('Status: Draft → Waiting for review')");
   check("Save 后：历史多一条 Status: Draft → Waiting for review", await evaluate("return document.querySelector('[data-history]').textContent.includes('Status: Draft → Waiting for review');"));
   check("Save 后：标题行状态跟着变", await evaluate("return document.querySelector('main header').textContent.includes('Waiting for review');"));
-  await evaluate("$set(document.getElementById('ws-owner'), '2'); return 1;");
+  await evaluate("await $set(document.getElementById('ws-owner'), '2'); return 1;");
   await sleep(100);
   await evaluate("$btn('Reassign').click(); return 1;");
   await waitFor("$txt().includes('Handed to ZZ Test Jing.')");
@@ -214,13 +216,13 @@ async function run() {
   // ── 设置 ──
   check("设置页打开（admin）", await open(`${APP}/settings/workspace`, "document.querySelector('[data-dest-row]')"));
   check("Draft 的在用 / 已关闭不能改", await evaluate("const r = document.querySelector('[data-status-row=draft]'); return [...r.querySelectorAll('input[type=checkbox]')].every(c => c.disabled);"));
-  await evaluate("$set(document.getElementById('dest-name-1'), 'ZZ Test Transfers'); return 1;");
+  await evaluate("await $set(document.getElementById('dest-name-1'), 'ZZ Test Transfers'); return 1;");
   await sleep(100);
   await evaluate("$btn('Save', document.querySelector('[data-dest-row=tcq]')).click(); return 1;");
   await waitFor("document.querySelector('[data-dest-row=tcq]').textContent.includes('Saved.')");
   const dput = await lastBody("PUT", "/api/settings/workspace/destinations/1");
   check("去向 Save：PUT 带改过的名字和其余字段", !!dput && dput.body.name === "ZZ Test Transfers" && dput.body.is_enabled === true && dput.body.sort_order === 10);
-  await evaluate("$set(document.getElementById('ws-prefix'), 'ZZ'); $set(document.getElementById('ws-max-mb'), '5'); return 1;");
+  await evaluate("await $set(document.getElementById('ws-prefix'), 'ZZ'); await $set(document.getElementById('ws-max-mb'), '5'); return 1;");
   await sleep(100);
   await evaluate("$btn('Save', document.querySelector('section[aria-label=General]')).click(); return 1;");
   await waitFor("document.querySelector('section[aria-label=General]').textContent.includes('Saved.')");
@@ -288,6 +290,7 @@ async function main() {
     }
   };
   await cdp("Page.enable");
+  await cdp("Page.addScriptToEvaluateOnNewDocument", { source: SELECT_HELPERS });
   await cdp("Runtime.enable");
 
   try {

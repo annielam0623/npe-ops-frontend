@@ -2,6 +2,7 @@
 // 前提：mock 在 8799，next dev 在 3198（API_PROXY_TARGET 和 LEGACY 都指向 mock）。
 const { spawn } = require("child_process");
 const path = require("path");
+const { SELECT_HELPERS } = require("./select-menu-helper");
 
 const CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe";
 const APP = process.env.APP_URL || "http://localhost:3198";
@@ -107,6 +108,7 @@ async function main() {
     }
   };
   await cdp("Page.enable");
+  await cdp("Page.addScriptToEvaluateOnNewDocument", { source: SELECT_HELPERS });
   await cdp("Runtime.enable");
 
   try {
@@ -125,7 +127,7 @@ async function main() {
 async function since(before, filter) {
   return (await mockLog()).slice(before).filter(filter);
 }
-const SEL = `window.$sel = (el, v) => { Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(el, v); el.dispatchEvent(new Event('change', { bubbles: true })); };`;
+const SEL = `${SELECT_HELPERS}`;
 
 async function run() {
   const today = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Los_Angeles", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
@@ -181,30 +183,30 @@ async function run() {
 
   // ── 筛选 ──
   before = (await mockLog()).length;
-  await evaluate("$sel(document.querySelector('[aria-label=Module]'), 'tour');");
+  await evaluate("await $sel(document.querySelector('[aria-label=Module]'), 'tour');");
   await waitFor("document.querySelectorAll('tbody > tr').length >= 1 && !document.body.textContent.includes('U-TC, L-KT')");
   check("模块筛选：module=tour", (await since(before, (e) => e.query === "?module=tour")).length === 1);
   before = (await mockLog()).length;
-  await evaluate("$sel(document.querySelector('[aria-label=Group]'), 'mtlv');");
+  await evaluate("await $sel(document.querySelector('[aria-label=Group]'), 'mtlv');");
   await sleep(400);
   check("人群筛选叠加", (await since(before, (e) => e.query === "?module=tour&group=mtlv")).length === 1);
-  await evaluate("$sel(document.querySelector('[aria-label=Module]'), ''); $sel(document.querySelector('[aria-label=Group]'), '');");
+  await evaluate("await $sel(document.querySelector('[aria-label=Module]'), ''); await $sel(document.querySelector('[aria-label=Group]'), '');");
   before = (await mockLog()).length;
-  await evaluate("$sel(document.querySelector('[aria-label=Sent]'), 'today');");
+  await evaluate("await $sel(document.querySelector('[aria-label=Sent]'), 'today');");
   await sleep(400);
   check("Today：sent_from = sent_to = 洛杉矶今天", (await since(before, (e) => e.query === `?sent_from=${today}&sent_to=${today}`)).length === 1);
   before = (await mockLog()).length;
-  await evaluate("$sel(document.querySelector('[aria-label=Sent]'), 'month');");
+  await evaluate("await $sel(document.querySelector('[aria-label=Sent]'), 'month');");
   await sleep(400);
   check("This Month：从 1 号到今天", (await since(before, (e) => e.query === `?sent_from=${today.slice(0, 8)}01&sent_to=${today}`)).length === 1);
   before = (await mockLog()).length;
-  await evaluate("$sel(document.querySelector('[aria-label=Sent]'), 'week');");
+  await evaluate("await $sel(document.querySelector('[aria-label=Sent]'), 'week');");
   await sleep(400);
   const week = (await since(before, (e) => e.path === "/api/broadcasting-log"))[0];
   const from = new URLSearchParams(week?.query).get("sent_from");
   check("This Week：从本周日开始", from && new Date(from + "T12:00:00Z").getUTCDay() === 0, week?.query);
   before = (await mockLog()).length;
-  await evaluate("$sel(document.querySelector('[aria-label=Sent]'), 'custom');");
+  await evaluate("await $sel(document.querySelector('[aria-label=Sent]'), 'custom');");
   await sleep(200);
   check("选 Custom 不立刻查、写明还没应用", (await since(before, () => true)).length === 0 && (await evaluate("return document.body.textContent.includes('Not applied yet');")));
   await evaluate("$btn('Apply').click();");
@@ -220,7 +222,7 @@ async function run() {
   check("Custom 应用：按输入的范围查", (await since(before, (e) => e.query === "?sent_from=2026-09-10&sent_to=2026-09-30")).length === 1 && (await evaluate("return document.body.textContent.includes('2026-09-10 – 2026-09-30');")));
 
   // ── 导出 ──
-  await evaluate("$sel(document.querySelector('[aria-label=Sent]'), 'all');");
+  await evaluate("await $sel(document.querySelector('[aria-label=Sent]'), 'all');");
   await waitFor("document.querySelectorAll('tbody > tr').length === 2");
   await evaluate(`
     window.__blob = null;

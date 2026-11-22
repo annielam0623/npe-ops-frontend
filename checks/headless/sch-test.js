@@ -5,6 +5,7 @@
 const { spawn } = require("child_process");
 const STANDARD_SUP = require("./role-standard").STANDARD.supervisor;
 const path = require("path");
+const { SELECT_HELPERS } = require("./select-menu-helper");
 
 const CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe";
 const APP = process.env.APP_URL || "http://localhost:3198";
@@ -83,11 +84,12 @@ async function goto(url) {
   await sleep(300);
 }
 
-const HELPERS = `
+const HELPERS = SELECT_HELPERS + `
 window.$t = (sel) => [...document.querySelectorAll(sel)].map(e => e.textContent.trim());
 window.$btn = (text, root=document) => [...root.querySelectorAll('button')].find(b => b.textContent.trim().includes(text));
 window.$btns = (text, root=document) => [...root.querySelectorAll('button')].filter(b => b.textContent.trim().includes(text));
 window.$setValue = (el, value) => {
+  if ($isSelectMenu(el)) return $sel(el, value);
   const proto = el.tagName === 'TEXTAREA' ? HTMLTextAreaElement.prototype : (el.tagName === 'SELECT' ? HTMLSelectElement.prototype : HTMLInputElement.prototype);
   Object.getOwnPropertyDescriptor(proto, 'value').set.call(el, value);
   el.dispatchEvent(new Event('input', { bubbles: true }));
@@ -138,6 +140,7 @@ async function main() {
     }
   };
   await cdp("Page.enable");
+  await cdp("Page.addScriptToEvaluateOnNewDocument", { source: SELECT_HELPERS });
   await cdp("Runtime.enable");
   // 空档只算洛杉矶「现在以后」（Annie 2026-10-30）：模拟数据的周都在过去，每次打开页面先把「现在」固定在 2026-09-01 0:00。
   await cdp("Page.addScriptToEvaluateOnNewDocument", { source: "window.__scheduleNow = '2026-09-01T00:00';" });
@@ -176,8 +179,8 @@ async function saveWeek() {
 async function setTime(slotExpr, start, end) {
   await evaluate(`${slotExpr}.querySelector('button.font-mono').click();`);
   await waitFor("document.querySelector('[data-time-popup]')");
-  if (start) await evaluate(`$setValue(document.querySelector('[data-time-popup] input[aria-label="Start time"]'), '${start}');`);
-  if (end) await evaluate(`$setValue(document.querySelector('[data-time-popup] input[aria-label="End time"]'), '${end}');`);
+  if (start) await evaluate(`await $setValue(document.querySelector('[data-time-popup] input[aria-label="Start time"]'), '${start}');`);
+  if (end) await evaluate(`await $setValue(document.querySelector('[data-time-popup] input[aria-label="End time"]'), '${end}');`);
   await evaluate("document.querySelector('[data-time-popup-done]').click();");
   await waitFor("!document.querySelector('[data-time-popup]')");
   // 第一次动手要先占锁（一个请求），改动落到页面上要等一下。
@@ -455,7 +458,7 @@ async function run() {
   await evaluate(`${anitaSat}.querySelector('button[aria-label="Add a shift"]').click();`);
   await waitFor(`${dlg} && ${dlg}.textContent.includes('Anita')`);
   await evaluate(`[...${dlg}.querySelectorAll('button[role=radio]')].find(b => b.textContent.trim() === 'Close').click();`);
-  await evaluate(`const t = ${dlg}.querySelectorAll('input[data-time-input]'); $setValue(t[0], '08:00'); $setValue(t[1], '17:00');`);
+  await evaluate(`const t = ${dlg}.querySelectorAll('input[data-time-input]'); await $setValue(t[0], '08:00'); await $setValue(t[1], '17:00');`);
   await evaluate(`$btn('Add shift', ${dlg}).click();`);
   check("在 Anita 的格子里加的 Close 直接是她的、时间是自己填的 8:00 AM – 5:00 PM", await waitFor(`${anitaSat}.querySelectorAll('[data-slot-id]').length === 2 && ${anitaSat}.textContent.includes('8:00 AM – 5:00 PM')`));
   check("两个新班都没存：Not saved yet: 2 changes (2 shifts added)", await evaluate("return document.querySelector('[data-unsaved-summary]')?.textContent === 'Not saved yet: 2 changes (2 shifts added)';"));
@@ -550,7 +553,7 @@ async function run() {
   await waitFor(`${empRow(5)}`);
   await evaluate(`$btn('Edit', ${empRow(5)}).click();`);
   await waitFor("document.querySelector('[role=dialog] [data-employee-edit]')");
-  await evaluate(`$setValue(document.querySelector('[role=dialog] [data-employee-edit] input[type=email]'), '');`);
+  await evaluate(`await $setValue(document.querySelector('[role=dialog] [data-employee-edit] input[type=email]'), '');`);
   await evaluate("$btn('Save', document.querySelector('[role=dialog] [data-employee-edit]')).click();");
   check("Anita 清掉邮箱：这一行出现 No email 提示", await waitFor(`${empRow(5)} && ${empRow(5)}.querySelector('[data-no-email]')`));
   let emps = (await (await fetch(`${MOCK}/api/schedule/employees`)).json()).employees;
@@ -558,8 +561,8 @@ async function run() {
   // 加人
   await evaluate(`
     const f = document.querySelector('[role=dialog] [data-employee-add]');
-    $setValue(f.querySelector('input[aria-label="New employee name"]'), 'ZZ Test Dlg');
-    $setValue(f.querySelector('input[aria-label="New employee email"]'), 'zzdlg@example.com');
+    await $setValue(f.querySelector('input[aria-label="New employee name"]'), 'ZZ Test Dlg');
+    await $setValue(f.querySelector('input[aria-label="New employee email"]'), 'zzdlg@example.com');
   `);
   await evaluate("$btn('Add', document.querySelector('[role=dialog] [data-employee-add]')).click();");
   check("在窗口里加人：新的一行出现", await waitFor(`[...document.querySelectorAll('[role=dialog] [data-employee-row]')].some(r => r.textContent.includes('ZZ Test Dlg') && r.textContent.includes('zzdlg@example.com'))`));
@@ -574,7 +577,7 @@ async function run() {
   // 重复邮箱：后端原话
   await evaluate(`$btn('Edit', ${empRow(zzId)}).click();`);
   await waitFor("document.querySelector('[role=dialog] [data-employee-edit]')");
-  await evaluate(`$setValue(document.querySelector('[role=dialog] [data-employee-edit] input[type=email]'), 'veronica@nationalparkexpress.com');`);
+  await evaluate(`await $setValue(document.querySelector('[role=dialog] [data-employee-edit] input[type=email]'), 'veronica@nationalparkexpress.com');`);
   await evaluate("$btn('Save', document.querySelector('[role=dialog] [data-employee-edit]')).click();");
   check("邮箱重复：显示后端原话、编辑框还在", await waitFor("document.querySelector('[role=dialog] [role=alert]')?.textContent.includes('already on the schedule roster') && !!document.querySelector('[role=dialog] [data-employee-edit]')"));
   await evaluate("$btn('Cancel', document.querySelector('[role=dialog] [data-employee-edit]')).click();");
@@ -1102,7 +1105,7 @@ async function run() {
   await waitFor("$btn('Add employee')");
   await evaluate("$btn('Add employee').click();");
   await waitFor("document.querySelector('[role=dialog]')");
-  await evaluate(`$setValue(document.querySelector('[role=dialog] input[type=text]'), 'ZZ Test Helper');`);
+  await evaluate(`await $setValue(document.querySelector('[role=dialog] input[type=text]'), 'ZZ Test Helper');`);
   await evaluate("document.querySelector('[role=dialog] button[type=submit]').click();");
   await waitFor("!document.querySelector('[role=dialog]')");
   check("新加的员工出现在表里（多一行）", await waitFor(`${rowNames}.some(t => t.startsWith('ZZ Test Helper'))`));
@@ -1119,7 +1122,7 @@ async function run() {
   await waitFor("document.querySelector('[data-open-settings]')");
   await evaluate("document.querySelector('[data-open-settings]').click();");
   await waitFor("document.querySelector('[data-schedule-settings] input[aria-label=\"Working hours start\"]')");
-  await evaluate(`$setValue(document.querySelector('[data-schedule-settings] input[aria-label="Working hours start"]'), '03:00');`);
+  await evaluate(`await $setValue(document.querySelector('[data-schedule-settings] input[aria-label="Working hours start"]'), '03:00');`);
   await waitFor("!document.querySelector('[data-settings-save]').disabled");
   await evaluate("document.querySelector('[data-settings-save]').click();");
   await waitFor("!!document.querySelector('[data-settings-saved]')");
@@ -1143,8 +1146,8 @@ async function run() {
   check("Rules 标签：空状态写 No rules yet", await evaluate("return document.querySelector('[data-rules-view]').textContent.includes('No rules yet');"));
   await evaluate("$btn('Add rule').click();");
   await waitFor(`${dlg} && ${dlg}.textContent.includes('Add rule')`);
-  check("Add rule 弹窗里下拉框的选项背景色和文字色不同（不是白底白字）", await evaluate(`const sels = [...${dlg}.querySelectorAll('select')]; return sels.length > 0 && sels.every(s => { const o = s.querySelector('option'); const c = getComputedStyle(o); return c.backgroundColor !== c.color && getComputedStyle(s).colorScheme.includes('dark'); });`));
-  await evaluate(`$setValue(${dlg}.querySelector('select[aria-label="Rule type"]'), 'min_rest');`);
+  check("Add rule 弹窗里下拉框的选项背景色和文字色不同（不是白底白字）", await evaluate(`const sels = [...${dlg}.querySelectorAll('select, [data-select-menu]')]; return sels.length > 0 && sels.every(s => { const o = s.querySelector('option'); const c = getComputedStyle(o); return c.backgroundColor !== c.color && getComputedStyle(s).colorScheme.includes('dark'); });`));
+  await evaluate(`await $setValue(${dlg}.querySelector(':is(select,[data-select-menu])[aria-label="Rule type"]'), 'min_rest');`);
   await waitFor(`${dlg}.querySelector('input[aria-label="hours"]')`);
   check("Rest between shifts：预览句子写 At least 12 hours between two shifts", await evaluate(`return ${dlg}.querySelector('[data-rule-preview]').textContent.includes('At least 12 hours between two shifts');`));
   await evaluate(`$btn('Save rule', ${dlg}).click();`);
@@ -1157,7 +1160,7 @@ async function run() {
   check("服务端 enabled 真的变 false", rulesDoc.rules[0].enabled === false);
   await evaluate("$btn('Edit', document.querySelector('[data-rule-row]')).click();");
   await waitFor(`${dlg} && ${dlg}.textContent.includes('Edit rule')`);
-  await evaluate(`$setValue(${dlg}.querySelector('input[aria-label="hours"]'), '10');`);
+  await evaluate(`await $setValue(${dlg}.querySelector('input[aria-label="hours"]'), '10');`);
   await evaluate(`$btn('Save rule', ${dlg}).click();`);
   check("编辑：改成 10 小时", await waitFor("document.querySelector('[data-rules-view]').textContent.includes('At least 10 hours between two shifts')"));
   await evaluate("$btn('Delete', document.querySelector('[data-rule-row]')).click();");
@@ -1200,9 +1203,9 @@ async function run() {
   // ① 新规则 Max people on a shift：Every shift、最多 1 人 ⇒ 存的是 {max: 1}（不带 shift_type，后端 40 核过的形状）
   await evaluate("$btn('Add rule').click();");
   await waitFor(`${dlg} && ${dlg}.textContent.includes('Add rule')`);
-  await evaluate(`$setValue(${dlg}.querySelector('select[aria-label="Rule type"]'), 'max_per_shift_day');`);
+  await evaluate(`await $setValue(${dlg}.querySelector(':is(select,[data-select-menu])[aria-label="Rule type"]'), 'max_per_shift_day');`);
   await waitFor(`${dlg}.querySelector('input[aria-label="max"]')`);
-  check("110 ①：类型下拉有 Max people on a shift；Shift 默认 Every shift、At most 1；预览 Every shift: at most 1 person a day, every day", await evaluate(`const sh = ${dlg}.querySelector('select[aria-label="Shift"]'); return sh.options[sh.selectedIndex].text === 'Every shift' && ${dlg}.querySelector('input[aria-label="max"]').value === '1' && ${dlg}.querySelector('[data-rule-preview]').textContent === 'Every shift: at most 1 person a day, every day';`), await evaluate(`return ${dlg}.querySelector('[data-rule-preview]')?.textContent;`));
+  check("110 ①：类型下拉有 Max people on a shift；Shift 默认 Every shift、At most 1；预览 Every shift: at most 1 person a day, every day", await evaluate(`const sh = ${dlg}.querySelector(':is(select,[data-select-menu])[aria-label="Shift"]'); return sh.options[sh.selectedIndex].text === 'Every shift' && ${dlg}.querySelector('input[aria-label="max"]').value === '1' && ${dlg}.querySelector('[data-rule-preview]').textContent === 'Every shift: at most 1 person a day, every day';`), await evaluate(`return ${dlg}.querySelector('[data-rule-preview]')?.textContent;`));
   await evaluate(`$btn('Save rule', ${dlg}).click();`);
   await waitFor(`!${dlg} && document.querySelector('[data-rules-view]').textContent.includes('Every shift: at most 1 person a day')`);
   let saved = (await getRules()).find((r) => r.type === "max_per_shift_day");
@@ -1225,10 +1228,10 @@ async function run() {
   await rulesTab();
   await evaluate("$btn('Add rule').click();");
   await waitFor(`${dlg} && ${dlg}.textContent.includes('Add rule')`);
-  await evaluate(`$setValue(${dlg}.querySelector('select[aria-label="Rule type"]'), 'min_days_on_shift');`);
-  await waitFor(`${dlg}.querySelector('select[aria-label="Who"]')`);
-  check("题 7 A：Who 下拉 Everyone / Only these people / Everyone except", await evaluate(`return [...${dlg}.querySelector('select[aria-label="Who"]').options].map(o => o.text).join('|') === 'Everyone|Only these people|Everyone except';`));
-  await evaluate(`$setValue(${dlg}.querySelector('select[aria-label="Who"]'), 'except');`);
+  await evaluate(`await $setValue(${dlg}.querySelector(':is(select,[data-select-menu])[aria-label="Rule type"]'), 'min_days_on_shift');`);
+  await waitFor(`${dlg}.querySelector(':is(select,[data-select-menu])[aria-label="Who"]')`);
+  check("题 7 A：Who 下拉 Everyone / Only these people / Everyone except", await evaluate(`return [...${dlg}.querySelector(':is(select,[data-select-menu])[aria-label="Who"]').options].map(o => o.text).join('|') === 'Everyone|Only these people|Everyone except';`));
+  await evaluate(`await $setValue(${dlg}.querySelector(':is(select,[data-select-menu])[aria-label="Who"]'), 'except');`);
   await waitFor(`${dlg}.textContent.includes('Leave out')`);
   await evaluate(`$btn('Save rule', ${dlg}).click();`);
   check("题 7：Everyone except 但一个都没点 ⇒ 红字 Pick at least one person.，不发请求", await waitFor(`${dlg}?.querySelector('[role=alert]')?.textContent === 'Pick at least one person.'`));
@@ -1244,8 +1247,8 @@ async function run() {
   check("（存一条旧写法的 min_days_on_shift）", await putRules([...fullRules, R("k9", "min_days_on_shift", { employee_id: 2, shift_type: "close", n: 2, per: "week" })]));
   await rulesTab();
   await evaluate(`$btn('Edit', document.querySelector('[data-rule-row="k9"]')).click();`);
-  await waitFor(`${dlg} && ${dlg}.querySelector('select[aria-label="Who"]')`);
-  check("旧规则 employee_id：打开是 Only these people、Lizzie 选上", await evaluate(`return ${dlg}.querySelector('select[aria-label="Who"]').value === 'only' && [...${dlg}.querySelectorAll('button[aria-pressed=true]')].some(b => b.textContent === 'Lizzie');`));
+  await waitFor(`${dlg} && ${dlg}.querySelector(':is(select,[data-select-menu])[aria-label="Who"]')`);
+  check("旧规则 employee_id：打开是 Only these people、Lizzie 选上", await evaluate(`return ${dlg}.querySelector(':is(select,[data-select-menu])[aria-label="Who"]').value === 'only' && [...${dlg}.querySelectorAll('button[aria-pressed=true]')].some(b => b.textContent === 'Lizzie');`));
   await evaluate(`$btn('Save rule', ${dlg}).click();`);
   await waitFor(`!${dlg}`);
   saved = (await getRules()).find((r) => r.id === "k9");
@@ -1272,10 +1275,10 @@ async function run() {
   const before118 = (await getRules()).length;
   await evaluate("$btn('Add rule').click();");
   await waitFor(`${dlg} && ${dlg}.textContent.includes('Add rule')`);
-  check("118：Rule type 下拉里有 Maximum days on a shift", await evaluate(`return [...${dlg}.querySelector('select[aria-label="Rule type"]').options].some(o => o.value === 'max_days_on_shift' && o.textContent.startsWith('Maximum days on a shift'));`));
-  await evaluate(`$setValue(${dlg}.querySelector('select[aria-label="Rule type"]'), 'max_days_on_shift');`);
+  check("118：Rule type 下拉里有 Maximum days on a shift", await evaluate(`return [...${dlg}.querySelector(':is(select,[data-select-menu])[aria-label="Rule type"]').options].some(o => o.value === 'max_days_on_shift' && o.textContent.startsWith('Maximum days on a shift'));`));
+  await evaluate(`await $setValue(${dlg}.querySelector(':is(select,[data-select-menu])[aria-label="Rule type"]'), 'max_days_on_shift');`);
   await sleep(150);
-  check("118：选了 Maximum days 以后 Who 默认 Only（一个人），不是 Everyone", await evaluate(`return ${dlg}.querySelector('select[aria-label="Who"]')?.value === 'only';`), await evaluate(`return ${dlg}.querySelector('select[aria-label="Who"]')?.value;`));
+  check("118：选了 Maximum days 以后 Who 默认 Only（一个人），不是 Everyone", await evaluate(`return ${dlg}.querySelector(':is(select,[data-select-menu])[aria-label="Who"]')?.value === 'only';`), await evaluate(`return ${dlg}.querySelector(':is(select,[data-select-menu])[aria-label="Who"]')?.value;`));
   await evaluate(`$btn('Save rule', ${dlg}).click();`);
   check("118：后端没加白名单 ⇒ 弹窗红字原样是后端原话（Rule N (id …): type must be one of: …）、不关", await waitFor(`((t) => t.startsWith('Rule ') && t.includes(' (id "') && t.includes('"): type must be one of: shift_times, ') && t.endsWith('weekly_hours_alert.'))(${dlg}?.querySelector('[role=alert]')?.textContent ?? '') &&${dlg}.querySelector('[role=alert]').className.includes('text-red')`), await evaluate(`return ${dlg}?.querySelector('[role=alert]')?.textContent;`));
   check("118：400 时没存", (await getRules()).length === before118);
@@ -1296,7 +1299,7 @@ async function run() {
   await waitFor(`${dlg}.querySelectorAll('[data-exception-row]').length === 2`);
   await evaluate(`$btn('Save rule', ${dlg}).click();`);
   check("例外没填日期 ⇒ 红字 Exception 2: pick the date.，不存", await waitFor(`${dlg}?.querySelector('[role=alert]')?.textContent === 'Exception 2: pick the date.'`));
-  await evaluate(`const row = ${dlg}.querySelector('[data-exception-row="1"]'); $setValue(row.querySelector('select[aria-label="Exception shift"]'), 'close'); $setValue(row.querySelector('input[aria-label="Exception from"]'), '2026-12-08');`);
+  await evaluate(`const row = ${dlg}.querySelector('[data-exception-row="1"]'); await $setValue(row.querySelector(':is(select,[data-select-menu])[aria-label="Exception shift"]'), 'close'); await $setValue(row.querySelector('input[aria-label="Exception from"]'), '2026-12-08');`);
   await sleep(150);
   // 1a 11-10：后端 G272 回 400 ⇒ 弹窗里红字原样是后端原话，弹窗不关、没存
   const EXC400 = 'Rule 14 (max_per_shift_day, id "m1"): params.exceptions item 2: to must be on or after from.';
@@ -1699,8 +1702,8 @@ async function run() {
     check("Period：Super Admin 有 Schedule / Overview / Period / Rules（119 Overview 在 Schedule 后面）", await evaluate(`return ${tabNames}.slice(0, 4).join('|') === 'Schedule|Overview|Period|Rules';`), await evaluate(`return ${tabNames}.join('|');`));
     await evaluate("[...document.querySelectorAll('[role=tab]')].find(b => b.textContent.trim() === 'Period').click();");
     await waitFor("document.querySelector('[data-period]')");
-    await evaluate("$setValue(document.querySelector('[data-period-start]'), '2026-10-07');");
-    await evaluate("$setValue(document.querySelector('[data-period-weeks]'), '3');");
+    await evaluate("await $setValue(document.querySelector('[data-period-start]'), '2026-10-07');");
+    await evaluate("await $setValue(document.querySelector('[data-period-weeks]'), '3');");
     await waitFor("document.querySelectorAll('[data-period-week]').length === 3 && document.querySelector('[data-period-grid]')", 30000);
     check("Period：Start 选 10/7（周三）⇒ 对齐到周日 10/4；3 周 ⇒ 标题 Oct 4 – Oct 24, 2026 · 3 weeks、三个周头", await evaluate("return document.querySelector('[data-period-title]').textContent.trim() === 'Oct 4 – Oct 24, 2026 · 3 weeks' && document.querySelector('[data-period-start]').value === '2026-10-04' && [...document.querySelectorAll('[data-period-week]')].map(t => t.dataset.periodWeek).join() === '2026-10-04,2026-10-11,2026-10-18';"), await evaluate("return document.querySelector('[data-period-title]').textContent;"));
     check("Period：每周写 Published / Draft（10/4 已发布）", await evaluate("return document.querySelector('[data-period-week=\"2026-10-04\"] [data-period-status]').dataset.periodStatus === 'published' && document.querySelector('[data-period-week=\"2026-10-04\"]').textContent.includes('Published');"));
@@ -1720,7 +1723,7 @@ async function run() {
     check("列出会收到的人（2 staff will get it: Veronica, Lizzie）和没邮箱的（置顶 109 Q1 / Q6：灰字 No email: Anita.，不进红字 Not sent）", await evaluate("const d = document.querySelector('[data-share-period]'); const g = d.querySelector('[data-share-no-email]'); return d.querySelector('[data-share-recipients]').textContent.includes('2 staff will get it:') && d.querySelector('[data-share-recipients]').textContent.includes('Veronica, Lizzie') && !!g && g.textContent === 'No email: Anita.' && getComputedStyle(g).color === 'rgb(107, 107, 107)' && !d.querySelector('[data-share-not-reached]');"));
     await evaluate("$btn('Cancel', document.querySelector('[data-share-period]')).click();");
     // 只看已发布的 10/4 那一周 ⇒ 能发
-    await evaluate("$setValue(document.querySelector('[data-period-weeks]'), '1');");
+    await evaluate("await $setValue(document.querySelector('[data-period-weeks]'), '1');");
     await waitFor("document.querySelectorAll('[data-period-week]').length === 1", 30000);
     await evaluate("document.querySelector('[data-period-share]').click();");
     await waitFor("document.querySelector('[data-share-send]') && !document.querySelector('[data-share-send]').disabled", 30000);
@@ -1746,7 +1749,7 @@ async function run() {
     await evaluate("$btn('Cancel', document.querySelector('[data-share-period]')).click();");
     await ctl({ periodFailed: false, periodLegacy: false });
     await ctl({ periodShare: false, periodShared: false });
-    await evaluate("$setValue(document.querySelector('[data-period-weeks]'), '3');");
+    await evaluate("await $setValue(document.querySelector('[data-period-weeks]'), '3');");
     await waitFor("document.querySelectorAll('[data-period-week]').length === 3", 30000);
     check("Period：How to use 写了 Auto-fill 只管这一次、Rules 标签不变、Share 先发布每周", await evaluate("const t = document.querySelector('[data-period]').textContent; return t.includes('Unticking a rule here only affects this fill. The Rules tab does not change.') && t.includes('Publish every week first. Then click Share with staff');"));
 
@@ -1802,7 +1805,7 @@ async function run() {
   check("二期：点 Mid 自动填 Mid 的默认时间 08:00|17:00", (await timeVals()) === "08:00|17:00", await timeVals());
   await evaluate(`$btn('Close', ${dlg}).click();`);
   check("二期：点 Close 自动填 13:30|21:30", (await timeVals()) === "13:30|21:30", await timeVals());
-  await evaluate(`$btn('Open', ${dlg}).click(); $setValue(${dlg}.querySelector('[data-note-input]'), 'Train open w/Veronica');`);
+  await evaluate(`$btn('Open', ${dlg}).click(); await $setValue(${dlg}.querySelector('[data-note-input]'), 'Train open w/Veronica');`);
   check("二期：有可选 Note 输入框、最多 120 字", await evaluate(`const n = ${dlg}.querySelector('[data-note-input]'); return n && n.maxLength === 120 && n.value === 'Train open w/Veronica';`));
   check("二期：有 Shift | Time off 切换（排到具体的人才有）", await evaluate(`return !!${dlg}.querySelector('[data-mode=off]') && !!${dlg}.querySelector('[data-mode=shift]');`));
   await evaluate(`$btn('Add shift', ${dlg}).click();`);
@@ -1815,7 +1818,7 @@ async function run() {
   // 改备注：点备注文字 → 输入框 → 存
   await evaluate(`${cell("1|2026-12-07")}.querySelector('[data-slot-note]').click();`);
   await waitFor(`${cell("1|2026-12-07")}.querySelector('[data-note-editor]')`);
-  await evaluate(`const i = ${cell("1|2026-12-07")}.querySelector('[data-note-editor]'); $setValue(i, 'Standby'); ${cell("1|2026-12-07")}.querySelector('[data-note-save]').click();`);
+  await evaluate(`const i = ${cell("1|2026-12-07")}.querySelector('[data-note-editor]'); await $setValue(i, 'Standby'); ${cell("1|2026-12-07")}.querySelector('[data-note-save]').click();`);
   check("二期：改备注 ⇒ 格子显示新备注 Standby、标琥珀色 note（键叫 Done，白色）", (await waitFor(`${hasText(`${cell("1|2026-12-07")}.querySelector('[data-slot-note]')`, "Standby")}`)) && (await evaluate(`return ${cell("1|2026-12-07")}.querySelector('[data-slot-id]').dataset.mark === 'note';`)));
   await saveWeek();
   const noteOps = (await changesLog()).at(-1)?.body.ops;
@@ -1823,14 +1826,14 @@ async function run() {
   // 清空 = 删除
   await evaluate(`${cell("1|2026-12-07")}.querySelector('[data-slot-note]').click();`);
   await waitFor(`${cell("1|2026-12-07")}.querySelector('[data-note-editor]')`);
-  await evaluate(`const i = ${cell("1|2026-12-07")}.querySelector('[data-note-editor]'); $setValue(i, ''); ${cell("1|2026-12-07")}.querySelector('[data-note-save]').click();`);
+  await evaluate(`const i = ${cell("1|2026-12-07")}.querySelector('[data-note-editor]'); await $setValue(i, ''); ${cell("1|2026-12-07")}.querySelector('[data-note-save]').click();`);
   check("二期：清空再 Done ⇒ 备注没了，出现「+ note」", await waitFor(`!${cell("1|2026-12-07")}.querySelector('[data-slot-note]') && !!${cell("1|2026-12-07")}.querySelector('[data-add-note]')`));
   await saveWeek();
   check("二期：清空存的是 note:null", (await changesLog()).at(-1)?.body.ops[0]?.note === null);
   // + note
   await evaluate(`${cell("1|2026-12-07")}.querySelector('[data-add-note]').click();`);
   await waitFor(`${cell("1|2026-12-07")}.querySelector('[data-note-editor]')`);
-  await evaluate(`const i = ${cell("1|2026-12-07")}.querySelector('[data-note-editor]'); $setValue(i, 'Pre close'); i.dispatchEvent(new KeyboardEvent('keydown', {key: 'Enter', bubbles: true}));`);
+  await evaluate(`const i = ${cell("1|2026-12-07")}.querySelector('[data-note-editor]'); await $setValue(i, 'Pre close'); i.dispatchEvent(new KeyboardEvent('keydown', {key: 'Enter', bubbles: true}));`);
   check("二期：+ note → Enter ⇒ 显示 Pre close", await waitFor(`${hasText(`${cell("1|2026-12-07")}.querySelector('[data-slot-note]')`, "Pre close")}`));
   await saveWeek();
 
@@ -1839,7 +1842,7 @@ async function run() {
   await waitFor(`${dlg} && ${dlg}.querySelector('[data-mode=off]')`);
   await evaluate(`${dlg}.querySelector('[data-mode=off]').click();`);
   check("二期 / 117：Time off 模式：标题 Add time off、只有一种 Leave（今晚不分 PTO / Sick / Personal）", await evaluate(`return ${dlg}.textContent.includes('Add time off') && !!$btn('Leave', ${dlg}) && !$btn('PTO', ${dlg}) && !$btn('Sick', ${dlg}) && !$btn('Personal', ${dlg}) && ${dlg}.querySelectorAll('[data-kind]').length === 1 && !${dlg}.querySelector('input[data-time-input]');`));
-  await evaluate(`${dlg}.querySelector('[data-kind=pto]').click(); $setValue(${dlg}.querySelector('[data-note-input]'), 'Back Thursday');`);
+  await evaluate(`${dlg}.querySelector('[data-kind=pto]').click(); await $setValue(${dlg}.querySelector('[data-note-input]'), 'Back Thursday');`);
   check("Add day off 直接存进系统 ⇒ 照旧蓝色提交键（Annie 2026-10-30）", await evaluate(`return getComputedStyle($btn('Add day off', ${dlg})).backgroundColor === 'rgb(59, 130, 246)';`));
   await evaluate(`$btn('Add day off', ${dlg}).click();`);
   check("二期 / 117：录好 ⇒ 格子写 Leave + 备注 Back Thursday，窗口关了", await waitFor(`${hasText(`${cell("2|2026-12-08")}.querySelector('[data-time-off=pto]')`, "Leave")} && ${hasText(`${cell("2|2026-12-08")}.querySelector('[data-time-off=pto]')`, "Back Thursday")} && !${dlg}`));
@@ -1916,17 +1919,17 @@ async function run() {
   await openSettings();
   check("能改的人：两块时间都是输入框，Save 灰着（没改）", await evaluate(`return !!${SD}.querySelector('input[aria-label="Working hours start"]') && !!${SD}.querySelector('input[aria-label="Open start"]') && ${SD}.querySelector('[data-settings-save]').disabled;`));
   let setFrom = (await mockLog()).length;
-  await evaluate(`const f = ${SD}; $setValue(f.querySelector('input[aria-label="Open start"]'), '03:00'); $setValue(f.querySelector('input[aria-label="Open end"]'), '11:00');`);
+  await evaluate(`const f = ${SD}; await $setValue(f.querySelector('input[aria-label="Open start"]'), '03:00'); await $setValue(f.querySelector('input[aria-label="Open end"]'), '11:00');`);
   check("改了 Open：先暂存，黄字 Not saved yet: default times for Open changed，没发请求", (await waitFor(`${SD}.querySelector('[data-settings-unsaved]')?.textContent === 'Not saved yet: default times for Open changed'`)) && (await since(setFrom, (e) => e.method === "PUT")).length === 0, await evaluate(`return ${SD}.querySelector('[data-settings-unsaved]')?.textContent;`));
   await evaluate(`${SD}.querySelector('[data-settings-save]').click();`);
   check("按 Save：绿字 Saved；只发了 open 一个 PUT（03:00 / 11:00），没碰 work-window", (await waitFor(`!!${SD}.querySelector('[data-settings-saved]')`)) && JSON.stringify((await since(setFrom, (e) => e.method === "PUT")).map((e) => [e.path, e.body.default_start_time, e.body.default_end_time])) === JSON.stringify([["/api/settings/schedule/shift-types/open", "03:00", "11:00"]]), JSON.stringify((await since(setFrom, (e) => e.method === "PUT")).map((e) => [e.path, e.body])));
   setFrom = (await mockLog()).length;
-  await evaluate(`$setValue(${SD}.querySelector('input[aria-label="Working hours end"]'), '21:00');`);
+  await evaluate(`await $setValue(${SD}.querySelector('input[aria-label="Working hours end"]'), '21:00');`);
   await waitFor(`${SD}.querySelector('[data-settings-unsaved]')?.textContent === 'Not saved yet: working hours changed'`);
   await evaluate(`${SD}.querySelector('[data-settings-save]').click();`);
   check("改 Working hours 结束 9:00 PM 按 Save：PUT work-window {03:00, 21:00}，卡头那一行跟着变 9:00 PM", (await waitFor(`!!${SD}.querySelector('[data-settings-saved]')`)) && JSON.stringify((await since(setFrom, (e) => e.method === "PUT"))[0]?.body) === JSON.stringify({ start_time: "03:00", end_time: "21:00" }) && (await waitFor("document.querySelector('[data-working-hours]')?.textContent.includes('9:00 PM')")), JSON.stringify((await since(setFrom, (e) => e.method === "PUT"))[0]?.body));
   // 没存就关：先问
-  await evaluate(`$setValue(${SD}.querySelector('input[aria-label="Open end"]'), '12:00');`);
+  await evaluate(`await $setValue(${SD}.querySelector('input[aria-label="Open end"]'), '12:00');`);
   await waitFor(`!!${SD}.querySelector('[data-settings-unsaved]')`);
   await evaluate(`${SD}.querySelector('button[aria-label="Close"]').click();`);
   check("有没存的改动时点 ×：不关，问 Keep editing / Discard / Save", await waitFor(`!!${SD}?.querySelector('[data-settings-ask-close]')`));
@@ -1937,14 +1940,14 @@ async function run() {
   // 后端 400：红字写哪一块、后端原话，改动留在页面上
   setFrom = (await mockLog()).length;
   // 清空要按 Enter / 离开输入框才生效（TimePicker：读不懂 / 清空等收起时再整理）
-  await evaluate(`const el = ${SD}.querySelector('input[aria-label="Mid start"]'); el.focus(); $setValue(el, ''); el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));`);
+  await evaluate(`const el = ${SD}.querySelector('input[aria-label="Mid start"]'); el.focus(); await $setValue(el, ''); el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));`);
   await waitFor(`!!${SD}.querySelector('[data-settings-unsaved]')`);
   await evaluate(`${SD}.querySelector('[data-settings-save]').click();`);
   // 置顶 85 起页面上先查（默认时间只填一个），不送后端。
   check("只清了 Mid 的开始：红字「Enter both default times for Mid, or leave both empty.」，没发请求，没存的还在（输入框还是空的、Save 能按）", (await waitFor(`${SD}.querySelector('[data-settings-error]')?.textContent === 'Enter both default times for Mid, or leave both empty.'`)) && (await since(setFrom, (e) => e.method === "PUT")).length === 0 && (await evaluate(`return ${SD}.querySelector('input[aria-label="Mid start"]').value === '' && !${SD}.querySelector('[data-settings-save]').disabled;`)), await evaluate(`return ${SD}.querySelector('[data-settings-error]')?.textContent;`));
   // 后端 400：红字写哪一种、后端原话，改动留在页面上
-  await evaluate(`$setValue(${SD}.querySelector('input[aria-label="Mid start"]'), '08:00');`);
-  await evaluate(`$setValue(${SD}.querySelector('input[aria-label="Mid end"]'), '08:00');`);
+  await evaluate(`await $setValue(${SD}.querySelector('input[aria-label="Mid start"]'), '08:00');`);
+  await evaluate(`await $setValue(${SD}.querySelector('input[aria-label="Mid end"]'), '08:00');`);
   await waitFor(`!!${SD}.querySelector('[data-settings-unsaved]')`);
   await ctl({ shiftTypePutFail: "mid" });
   await evaluate(`${SD}.querySelector('[data-settings-save]').click();`);
@@ -1967,7 +1970,7 @@ async function run() {
   await waitFor(`${SD}.querySelectorAll('[data-work-day]').length === 7`);
   check("点 Different by day：Mon–Sun 七行都先填上那一组，每行一个 No coverage needed，下面 Copy Monday to all days；换了方式也算改动（黄字 Not saved yet）", await evaluate(`return ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].every((d) => ${SD}.querySelector('input[aria-label="' + d + ' start"]').value === '3:00 AM' && ${SD}.querySelector('input[aria-label="' + d + ' end"]').value === '9:30 PM') && ${SD}.querySelectorAll('[data-day-off]').length === 7 && !!${SD}.querySelector('[data-copy-monday]') && ${SD}.querySelector('[data-settings-unsaved]')?.textContent === 'Not saved yet: working hours changed';`));
   let whFrom = (await mockLog()).length;
-  await evaluate(`$setValue(${SD}.querySelector('input[aria-label="Sat start"]'), '04:00'); $setValue(${SD}.querySelector('input[aria-label="Sat end"]'), '21:00'); ${SD}.querySelector('[data-day-off="6"]').click();`);
+  await evaluate(`await $setValue(${SD}.querySelector('input[aria-label="Sat start"]'), '04:00'); await $setValue(${SD}.querySelector('input[aria-label="Sat end"]'), '21:00'); ${SD}.querySelector('[data-day-off="6"]').click();`);
   await waitFor(`${SD}.querySelector('[data-settings-unsaved]')?.textContent === 'Not saved yet: working hours changed'`);
   await evaluate(`${SD}.querySelector('[data-settings-save]').click();`);
   await waitFor(`!!${SD}.querySelector('[data-settings-saved]') || !!${SD}.querySelector('[data-settings-error]')`);
@@ -1994,11 +1997,11 @@ async function run() {
   await openSettings();
   check("再打开：Different by day 选着，Sat 4:00 AM、Sun 勾着", await evaluate(`return ${SD}.querySelector('[data-hours-mode="by-day"]').checked && ${SD}.querySelector('input[aria-label="Sat start"]').value === '4:00 AM' && ${SD}.querySelector('[data-day-off="6"]').checked;`));
   // 400：后端原话红字
-  await evaluate(`$setValue(${SD}.querySelector('input[aria-label="Mon end"]'), '03:00');`);
+  await evaluate(`await $setValue(${SD}.querySelector('input[aria-label="Mon end"]'), '03:00');`);
   await waitFor(`!!${SD}.querySelector('[data-settings-unsaved]')`);
   await evaluate(`${SD}.querySelector('[data-settings-save]').click();`);
   check("Mon 开始 = 结束：后端 400，红字「Working hours not saved — Monday: start and end time cannot be the same.」，改动留着", await waitFor(`${SD}.querySelector('[data-settings-error]')?.textContent.includes('Working hours not saved — Monday: start and end time cannot be the same.')`), await evaluate(`return ${SD}.querySelector('[data-settings-error]')?.textContent;`));
-  await evaluate(`$setValue(${SD}.querySelector('input[aria-label="Mon end"]'), '21:30');`);
+  await evaluate(`await $setValue(${SD}.querySelector('input[aria-label="Mon end"]'), '21:30');`);
   // Copy Monday + 切回 Same every day
   await evaluate(`${SD}.querySelector('[data-copy-monday]').click();`);
   check("Copy Monday to all days：Sat 变回 3:00 AM – 9:30 PM（Sun 的勾不动）", await waitFor(`${SD}.querySelector('input[aria-label="Sat start"]').value === '3:00 AM' && ${SD}.querySelector('input[aria-label="Sat end"]').value === '9:30 PM' && ${SD}.querySelector('[data-day-off="6"]').checked`));
@@ -2059,7 +2062,7 @@ async function run() {
     await evaluate(`${SD}.querySelector('[data-add-shift-type]').click();`);
     await waitFor(`!!${newRow}`);
     check("85 旧后端没 color：新加的一行是灰白色块", await evaluate(`return ${newRow}.querySelector('[data-shift-type-color]').dataset.shiftTypeColor === 'grey';`));
-    await evaluate(`$setValue(${newRow}.querySelector('input[data-shift-type-name]'), 'ZZ Test Nocolor');`);
+    await evaluate(`await $setValue(${newRow}.querySelector('input[data-shift-type-name]'), 'ZZ Test Nocolor');`);
     await evaluate(`${SD}.querySelector('[data-settings-save]').click();`);
     await waitSaved();
     let ncw = await writes(ncFrom);
@@ -2091,7 +2094,7 @@ async function run() {
       await errText(),
     );
     // 重名挡住
-    await evaluate(`$setValue(${newRow}.querySelector('input[data-shift-type-name]'), 'open');`);
+    await evaluate(`await $setValue(${newRow}.querySelector('input[data-shift-type-name]'), 'open');`);
     await evaluate(`${SD}.querySelector('[data-settings-save]').click();`);
     check(
       "85 跟已有的重名（不分大小写）：红字「There is already a shift type called “open”.」，没发请求",
@@ -2099,7 +2102,7 @@ async function run() {
       await errText(),
     );
     // 填好：名字、颜色、默认时间
-    await evaluate(`$setValue(${newRow}.querySelector('input[data-shift-type-name]'), 'ZZ Test Training');`);
+    await evaluate(`await $setValue(${newRow}.querySelector('input[data-shift-type-name]'), 'ZZ Test Training');`);
     await evaluate(`${newRow}.querySelector('[data-shift-type-color]').click();`);
     check(
       "85 点色块：出 8 种颜色（绿蓝紫黄粉青橙灰），标题 Colour for ZZ Test Training",
@@ -2107,7 +2110,7 @@ async function run() {
         (await evaluate(`const p = ${SD}.querySelector('[data-shift-color-pop]'); return [...p.querySelectorAll('[data-pick-color]')].map((b) => b.dataset.pickColor).join(',') === 'open,mid,close,amber,rose,teal,orange,grey' && p.textContent.includes('Colour for ZZ Test Training');`)),
     );
     await evaluate(`${SD}.querySelector('[data-shift-color-pop] [data-pick-color="teal"]').click();`);
-    await evaluate(`const r = ${newRow}; $setValue(r.querySelector('input[aria-label="ZZ Test Training start"]'), '13:00'); $setValue(r.querySelector('input[aria-label="ZZ Test Training end"]'), '16:00');`);
+    await evaluate(`const r = ${newRow}; await $setValue(r.querySelector('input[aria-label="ZZ Test Training start"]'), '13:00'); await $setValue(r.querySelector('input[aria-label="ZZ Test Training end"]'), '16:00');`);
     check(
       "85 选了青色、填了 1:00 PM – 4:00 PM：小窗收起，黄字 Not saved yet: new shift type ZZ Test Training added",
       (await waitFor(`!${SD}.querySelector('[data-shift-color-pop]') && ${newRow}.querySelector('[data-shift-type-color]').dataset.shiftTypeColor === 'teal'`)) &&
@@ -2134,7 +2137,7 @@ async function run() {
     stFrom = (await mockLog()).length;
     await evaluate(`${SD}.querySelector('[data-add-shift-type]').click();`);
     await waitFor(`!!${newRow}`);
-    await evaluate(`$setValue(${newRow}.querySelector('input[data-shift-type-name]'), 'ZZ Test  Training!');`);
+    await evaluate(`await $setValue(${newRow}.querySelector('input[data-shift-type-name]'), 'ZZ Test  Training!');`);
     await evaluate(`${SD}.querySelector('[data-settings-save]').click();`);
     await waitSaved();
     w = await writes(stFrom);
@@ -2145,7 +2148,7 @@ async function run() {
     );
     // 改名
     stFrom = (await mockLog()).length;
-    await evaluate(`$setValue(${rowOf("mid")}.querySelector('input[data-shift-type-name]'), 'Midday');`);
+    await evaluate(`await $setValue(${rowOf("mid")}.querySelector('input[data-shift-type-name]'), 'Midday');`);
     check(
       "85 改名 Mid → Midday：名字框黄框，下面黄字「Was “Mid” — not saved yet」，页脚 Not saved yet: Mid renamed",
       (await waitFor(`${rowOf("mid")}.querySelector('[data-shift-type-was]')?.textContent === 'Was “Mid” — not saved yet'`)) &&
@@ -2567,14 +2570,14 @@ async function run() {
   check("没改就点外面：小窗直接收起，不发请求", (await waitFor(`!${popup}`)) && (await anyWrite(from)).length === 0);
 
   await openTime(slotA);
-  await evaluate(`$setValue(${startIn}, '09:15');`);
+  await evaluate(`await $setValue(${startIn}, '09:15');`);
   await evaluate(`${popup}.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));`);
   check("改过按 Esc（同点外面）：不关，出黄框 Unsaved changes", await waitFor(`${popup} && ${popup}.querySelector('[data-time-popup-unsaved]')`));
   await evaluate(`${popup}.querySelector('[data-time-popup-cancel]').click();`);
   check("Discard：小窗收起，时间不变、没标记、不发请求", (await waitFor(`!${popup}`)) && (await evaluate(`return !${slotA}.textContent.includes('9:15 AM') && !${slotA}.dataset.mark;`)) && (await anyWrite(from)).length === 0);
 
   await openTime(slotA);
-  await evaluate(`$setValue(${startIn}, '07:00');`);
+  await evaluate(`await $setValue(${startIn}, '07:00');`);
   await evaluate(`${popup}.querySelector('[data-time-popup-cancel]').click();`);
   check("没点外面、直接按 Cancel：放弃，时间不变", (await waitFor(`!${popup}`)) && (await evaluate(`return !${slotA}.textContent.includes('7:00 AM');`)));
 
@@ -2614,13 +2617,13 @@ async function run() {
   check("Done：格子写 8:30 AM、标 time；不发请求（等整周 Save）", (await waitFor(`!${popup} && ${slotA}.textContent.includes('8:30 AM') && ${slotA}.dataset.mark === 'time'`)) && (await anyWrite(from)).length === 0);
   // 直接打字
   await openTime(slotA);
-  await evaluate(`$setValue(${startIn}, '9:45 pm');`);
+  await evaluate(`await $setValue(${startIn}, '9:45 pm');`);
   check("打字 9:45 pm：值立刻变 21:45", await evaluate(`return ${startIn}.dataset.value === '21:45';`));
   await evaluate(`${popup}.querySelector('[data-time-popup-done]').click();`);
   await waitFor(`!${popup} && ${slotA}.textContent.includes('9:45 PM')`);
   // 读不懂的字：退回原来的时间
   await openTime(slotA);
-  await evaluate(`${startIn}.click(); $setValue(${startIn}, 'abc');`);
+  await evaluate(`${startIn}.click(); await $setValue(${startIn}, 'abc');`);
   await evaluate(`${popup}.querySelector('div').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));`);
   await sleep(150);
   check("打了读不懂的字：输入框退回 9:45 PM，值不变", await evaluate(`return ${startIn}.dataset.value === '21:45' && ${startIn}.value === '9:45 PM';`), await evaluate(`return ${startIn}.dataset.value + ' / ' + ${startIn}.value;`));

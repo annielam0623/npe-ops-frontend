@@ -33,6 +33,7 @@ import {
 import { MapImageInputs } from "./location-fields";
 import { AlsoTag, TypeChecks } from "./location-type";
 import { TimesCell, TimesEditor } from "./shuttle-times";
+import { SelectMenu } from "@/components/ui/select-menu";
 
 /** 一行正在编辑的状态：草稿、保存中、保存失败的原因。 */
 export interface EditState {
@@ -539,26 +540,23 @@ function EditRow({
         </td>
         {showDirection ? (
           <td className={TD_CLASS}>
-            <select
+            <SelectMenu
               aria-label="Direction"
               data-direction-select
-              value={draft.direction ?? ""}
+              value={String(draft.direction ?? "")}
+              options={[
+                { value: "", label: "Not set" },
+                ...DIRECTION_OPTIONS.map((o) => ({
+                  value: String(o.value),
+                  label: String(o.label),
+                })),
+              ]}
               disabled={saving}
-              onChange={(event) =>
-                set(
-                  "direction",
-                  (event.target.value || null) as LocationDraft["direction"],
-                )
+              onChange={(next) =>
+                set("direction", (next || null) as LocationDraft["direction"])
               }
               className={INLINE_INPUT_CLASS}
-            >
-              <option value="">Not set</option>
-              {DIRECTION_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
+            />
           </td>
         ) : null}
         {variant === "shuttle" ? (

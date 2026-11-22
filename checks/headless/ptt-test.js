@@ -2,6 +2,7 @@
 // 前提：mock 在 8799，next dev 在 3198（API_PROXY_TARGET 和 LEGACY 都指向 mock）。
 const { spawn } = require("child_process");
 const path = require("path");
+const { SELECT_HELPERS } = require("./select-menu-helper");
 
 const CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe";
 const APP = process.env.APP_URL || "http://localhost:3198";
@@ -58,14 +59,13 @@ async function goto(url) {
   await cdp("Page.navigate", { url });
   await sleep(300);
 }
-const HELPERS = `
+const HELPERS = SELECT_HELPERS + `
 window.$sel = (el, value) => {
-  Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(el, value);
-  el.dispatchEvent(new Event('change', { bubbles: true }));
+  return $sel(el, value);
 };
 window.$q = (s) => document.querySelector(s);
 window.$ro = (code) => { const r = $row(code); return r ? r.querySelector('[data-bus-tour-readonly]') : null; };
-window.$tour = (code) => document.querySelector('select[aria-label="Tour type for ' + code + '"]');
+window.$tour = (code) => document.querySelector(':is(select,[data-select-menu])[aria-label="Tour type for ' + code + '"]');
 window.$all = () => [...document.querySelectorAll('section')].find(s => s.querySelector('h2')?.textContent === 'All Products');
 window.$row = (code) => [...$all().querySelectorAll('tbody tr')].find(tr => tr.children[1] && tr.children[1].textContent === code);
 window.$btn = (text, root=document) => [...root.querySelectorAll('button')].find(b => b.textContent.trim().startsWith(text));
@@ -83,7 +83,7 @@ const isBulk = (e) => e.path === "/api/settings/products/bulk";
 async function run() {
   await ctl({ fail401: false, failTour: false });
   await goto(`${APP}/settings/products`);
-  await waitFor("document.querySelector('select[aria-label^=\"Tour type for\"]')");
+  await waitFor("document.querySelector(':is(select,[data-select-menu])[aria-label^=\"Tour type for\"]')");
   await helpers();
 
   // ── 列和下拉 ──
@@ -101,7 +101,7 @@ async function run() {
 
   // ── 单个保存：选了先放在这一行，按这一行的 Save 走 PATCH /tour-type，不碰整体覆盖的 PUT（Annie 2026-10-29「所有的下拉…都是先缓存」）──
   let from = (await mockLog()).length;
-  await evaluate("$sel($tour('TIX02'), 'brenda_b');");
+  await evaluate("await $sel($tour('TIX02'), 'brenda_b');");
   await sleep(400);
   check("选了先不存：这一行出 Save、下拉描琥珀色", (await since(from, isTour)).length === 0 && (await evaluate("return !!$row('TIX02').querySelector('[data-save-btn]') && $tour('TIX02').className.includes('fed7aa');")));
   await evaluate("$row('TIX02').querySelector('[data-save-btn]').click();");
@@ -113,14 +113,14 @@ async function run() {
   check("存好绿字 ✓ Saved、值留着", await evaluate("return $tour('TIX02').value === 'brenda_b' && $row('TIX02').querySelector('[data-save-ok]').textContent.startsWith('✓ Saved');"));
 
   // ── Bus Manifest setup：每节一行下拉（后端 G130），选了先放着，这一项的 Save 一起存 ──
-  const stt = (sec) => `document.querySelector('select[aria-label="Tour type for ${sec}"]')`;
+  const stt = (sec) => `document.querySelector(':is(select,[data-select-menu])[aria-label="Tour type for ${sec}"]')`;
   await waitFor(`${stt("BUS TOUR")}`);
   check("Bus Manifest setup 有 Default tour type per section：主块用默认节名 BUS TOUR，另一行 LOWER；选项是 tour_types", await evaluate(`const o = [...${stt("LOWER")}.options].map(o => o.textContent).join('|'); return document.body.textContent.includes('Default tour type per section') && ${stt("BUS TOUR")}.value === 'upper_antelope' && ${stt("LOWER")}.value === '' && o === '(not set)|Grand Canyon West Rim Bus Tour|Upper Antelope Canyon Bus Tour';`), await evaluate(`return [...${stt("LOWER")}.options].map(o => o.textContent).join('|');`));
   check("班车节不列（只有两行）", await evaluate("return document.querySelectorAll('tr[data-section-tour-type]').length === 2;"));
   const sttSave = "document.querySelector('tr[data-section-tour-type]').closest('[data-field]').querySelector('[data-save-btn]')";
   const sttSaved = "!!document.querySelector('tr[data-section-tour-type]').closest('[data-field]').querySelector('[data-save-ok]')";
   from = (await mockLog()).length;
-  await evaluate(`$sel(${stt("LOWER")}, 'grand_canyon_west');`);
+  await evaluate(`await $sel(${stt("LOWER")}, 'grand_canyon_west');`);
   await sleep(300);
   check("选了先不存", (await since(from, (e) => /section-tour-type$/.test(e.path))).length === 0);
   await evaluate(`${sttSave}.click();`);
@@ -131,52 +131,52 @@ async function run() {
   check("绿字 Saved、值留着", await evaluate(`return ${stt("LOWER")}.value === 'grand_canyon_west' && !${stt("LOWER")}.disabled;`));
   check("Products 表里 BUS02 跟着变：Grand Canyon West Rim Bus Tour", await evaluate("return $ro('BUS02')?.textContent === 'Grand Canyon West Rim Bus Tour';"), await evaluate("return $ro('BUS02')?.textContent;"));
   from = (await mockLog()).length;
-  await evaluate(`$sel(${stt("LOWER")}, '');`);
+  await evaluate(`await $sel(${stt("LOWER")}, '');`);
   await evaluate(`${sttSave}.click();`);
   await waitFor(`!${stt("LOWER")}.disabled && $ro('BUS02')?.textContent === '—'`);
   reqs = await since(from, (e) => /section-tour-type$/.test(e.path));
   check("清空：PUT tour_type null，Products 表回到 —", reqs.length === 1 && reqs[0].body.tour_type === null && reqs[0].body.section === "LOWER", JSON.stringify(reqs));
   await ctl({ failSection: true });
-  await evaluate(`$sel(${stt("BUS TOUR")}, 'grand_canyon_west');`);
+  await evaluate(`await $sel(${stt("BUS TOUR")}, 'grand_canyon_west');`);
   await evaluate(`${sttSave}.click();`);
   const sttErr = "document.querySelector('tr[data-section-tour-type]').closest('[data-field]').querySelector('[data-save-error]')";
   await waitFor(sttErr);
   check("失败：红字写哪一节、后端原话，下拉留着选的值，Products 表不变", await evaluate(`return ${sttErr}.textContent === 'BUS TOUR: This section has no Tour products in this group.' && ${stt("BUS TOUR")}.value === 'grand_canyon_west' && $ro('UAC01').textContent === 'Upper Antelope Canyon Bus Tour';`), await evaluate(`return ${sttErr}?.textContent;`));
   await ctl({ failSection: false });
-  await evaluate(`$sel(${stt("BUS TOUR")}, 'upper_antelope');`);
+  await evaluate(`await $sel(${stt("BUS TOUR")}, 'upper_antelope');`);
   await sleep(150);
   check("整个过程没有发 PATCH /bus-tour-type（旧列已无效）", !(await mockLog()).some(isBusTour));
 
   // ── 失败：改回原值、写原因 ──
   await ctl({ failTour: true });
-  await evaluate("$sel($tour('TIX01'), 'brenda_a');");
+  await evaluate("await $sel($tour('TIX01'), 'brenda_a');");
   await evaluate("$row('TIX01').querySelector('[data-save-btn]').click();");
   await waitFor("document.body.textContent.includes('Could not save the tour type')");
   check("失败：这一行红字写原因、下拉留着选的值、红框", await evaluate("return $tour('TIX01').value === 'brenda_a' && $tour('TIX01').className.includes('fff5f5') && $row('TIX01').querySelector('[data-save-error]').textContent.includes('Tour type rejected (mock).');"));
   await ctl({ failTour: false });
   // 选回已存的值：不算改动（后面的批量、换页不受影响）。
-  await evaluate("$sel($tour('TIX01'), 'antelope');");
+  await evaluate("await $sel($tour('TIX01'), 'antelope');");
   await sleep(150);
 
   // ── 批量 ──
   await evaluate("$pick('TIX01', true); $pick('TIX02', true);");
-  await waitFor("$q('select[aria-label=\"Tour type for selected\"]')");
-  check("批量工具条有 Tour type 下拉", await evaluate("return [...$q('select[aria-label=\"Tour type for selected\"]').options].map(o => o.textContent).join('|') === '— tour type: leave as is —|— no tour type —|Antelope Canyon|Brenda (Lower)|Brenda (Upper)';"));
-  await evaluate("$sel($q('select[aria-label=\"Tour type for selected\"]'), 'antelope'); $sel($q('select[aria-label=\"Group for selected\"]'), '5');");
+  await waitFor("$q(':is(select,[data-select-menu])[aria-label=\"Tour type for selected\"]')");
+  check("批量工具条有 Tour type 下拉", await evaluate("return [...$q(':is(select,[data-select-menu])[aria-label=\"Tour type for selected\"]').options].map(o => o.textContent).join('|') === '— tour type: leave as is —|— no tour type —|Antelope Canyon|Brenda (Lower)|Brenda (Upper)';"));
+  await evaluate("await $sel($q(':is(select,[data-select-menu])[aria-label=\"Tour type for selected\"]'), 'antelope'); await $sel($q(':is(select,[data-select-menu])[aria-label=\"Group for selected\"]'), '5');");
   await sleep(100);
   check("和组 / 分类同一次改：Apply 禁用、写明要单独改", await evaluate("return $btn('Apply').disabled && document.body.textContent.includes('Change tour type on its own');"));
-  await evaluate("$sel($q('select[aria-label=\"Group for selected\"]'), '__keep__');");
+  await evaluate("await $sel($q(':is(select,[data-select-menu])[aria-label=\"Group for selected\"]'), '__keep__');");
   await sleep(100);
   check("只改 tour type：Apply 可点", await evaluate("return !$btn('Apply').disabled;"));
   await evaluate("$pick('UAC01', true);");
   await sleep(100);
   const MIXED_HINT = "Select only ticket products or only non-ticket products to change the tour type.";
   check("门票和非门票混着选、设某个值：Apply 禁用、写明只能选一种；旧提示没了", await evaluate(`return $btn('Apply').disabled && document.body.textContent.includes('${MIXED_HINT}') && !document.body.textContent.includes('Tour type is for ticket products only');`));
-  check("混着选：批量 Tour type 下拉只剩 leave as is / no tour type", await evaluate("return [...$q('select[aria-label=\"Tour type for selected\"]').options].map(o => o.textContent).join('|') === '— tour type: leave as is —|— no tour type —';"), await evaluate("return [...$q('select[aria-label=\"Tour type for selected\"]').options].map(o => o.textContent).join('|');"));
-  await evaluate("$sel($q('select[aria-label=\"Tour type for selected\"]'), '');");
+  check("混着选：批量 Tour type 下拉只剩 leave as is / no tour type", await evaluate("return [...$q(':is(select,[data-select-menu])[aria-label=\"Tour type for selected\"]').options].map(o => o.textContent).join('|') === '— tour type: leave as is —|— no tour type —';"), await evaluate("return [...$q(':is(select,[data-select-menu])[aria-label=\"Tour type for selected\"]').options].map(o => o.textContent).join('|');"));
+  await evaluate("await $sel($q(':is(select,[data-select-menu])[aria-label=\"Tour type for selected\"]'), '');");
   await sleep(100);
   check("混着选、清空也不行（两种 tour type 不能一次改）：Apply 禁用", await evaluate(`return $btn('Apply').disabled && document.body.textContent.includes('${MIXED_HINT}');`));
-  await evaluate("$pick('UAC01', false); $sel($q('select[aria-label=\"Tour type for selected\"]'), 'antelope');");
+  await evaluate("$pick('UAC01', false); await $sel($q(':is(select,[data-select-menu])[aria-label=\"Tour type for selected\"]'), 'antelope');");
   await sleep(100);
   await evaluate("$btn('Apply').click();");
   await waitFor("$dialog()");
@@ -192,19 +192,19 @@ async function run() {
   // ── 批量（巴士团）：非门票产品的 Tour type 按节设了，批量条里这个下拉灰掉（后端 G130） ──
   await waitFor("!document.body.textContent.includes('product(s) selected')", 4000);
   await evaluate("$pick('UAC01', true); $pick('BUS02', true);");
-  await waitFor("$q('select[aria-label=\"Tour type for selected\"]')");
-  check("全选非门票：批量条的 Tour type 下拉灰掉、悬停说明去 Bus Manifest setup", await evaluate("const s = $q('select[aria-label=\"Tour type for selected\"]'); return s.disabled && s.title.includes('Bus Manifest setup');"));
+  await waitFor("$q(':is(select,[data-select-menu])[aria-label=\"Tour type for selected\"]')");
+  check("全选非门票：批量条的 Tour type 下拉灰掉、悬停说明去 Bus Manifest setup", await evaluate("const s = $q(':is(select,[data-select-menu])[aria-label=\"Tour type for selected\"]'); return s.disabled && s.title.includes('Bus Manifest setup');"));
   check("全选非门票：Apply 灰着（没有可改的）", await evaluate("return $btn('Apply').disabled;"));
   // 先在门票上选了值，再换成只剩非门票：值不带过来，也没有「重新选」的提示卡住
   await evaluate("$pick('UAC01', false); $pick('BUS02', false);");
   await sleep(100);
   await evaluate("$pick('TIX01', true); $pick('TIX02', true);");
-  await waitFor("$q('select[aria-label=\"Tour type for selected\"]') && !$q('select[aria-label=\"Tour type for selected\"]').disabled");
-  await evaluate("$sel($q('select[aria-label=\"Tour type for selected\"]'), 'antelope');");
+  await waitFor("$q(':is(select,[data-select-menu])[aria-label=\"Tour type for selected\"]') && !$q(':is(select,[data-select-menu])[aria-label=\"Tour type for selected\"]').disabled");
+  await evaluate("await $sel($q(':is(select,[data-select-menu])[aria-label=\"Tour type for selected\"]'), 'antelope');");
   await sleep(100);
   await evaluate("$pick('UAC01', true); $pick('BUS02', true); $pick('TIX01', false); $pick('TIX02', false);");
   await sleep(100);
-  check("门票上选过的值换成只剩非门票后不带过来：下拉灰着、Apply 灰着、没有 The selection changed 提示", await evaluate("const s = $q('select[aria-label=\"Tour type for selected\"]'); return s.disabled && s.value === '__keep__' && $btn('Apply').disabled && !document.body.textContent.includes('The selection changed');"));
+  check("门票上选过的值换成只剩非门票后不带过来：下拉灰着、Apply 灰着、没有 The selection changed 提示", await evaluate("const s = $q(':is(select,[data-select-menu])[aria-label=\"Tour type for selected\"]'); return s.disabled && s.value === '__keep__' && $btn('Apply').disabled && !document.body.textContent.includes('The selection changed');"));
   await evaluate("$pick('UAC01', false); $pick('BUS02', false);");
   await sleep(100);
 
@@ -221,28 +221,28 @@ async function run() {
   // ── 后端还没上 G130（manifest-setup 没有 section_tour_types / tour_types）：面板里不出这一块，Products 表非门票显示 — ──
   await ctl({ noSectionTT: true });
   await goto(`${APP}/settings/products`);
-  await waitFor("document.querySelector('select[aria-label^=\"Tour type for\"]')");
+  await waitFor("document.querySelector(':is(select,[data-select-menu])[aria-label^=\"Tour type for\"]')");
   await helpers();
   await waitFor("$ro('UAC01')?.textContent === '—'");
-  check("旧后端（没有 section_tour_types）：面板没有 Default tour type per section；非门票显示 —", await evaluate("return !document.querySelector('[data-section-tour-type]') && !document.querySelector('select[aria-label=\"Tour type for LOWER\"]') && $ro('UAC01')?.textContent === '—';"));
+  check("旧后端（没有 section_tour_types）：面板没有 Default tour type per section；非门票显示 —", await evaluate("return !document.querySelector('[data-section-tour-type]') && !document.querySelector(':is(select,[data-select-menu])[aria-label=\"Tour type for LOWER\"]') && $ro('UAC01')?.textContent === '—';"));
   await ctl({ noSectionTT: false });
 
   // ── 后端只有巴士团清单（没有 ticket_tour_types）：列照样显示，门票那一格空着 ──
   await ctl({ noTicket: true });
   await goto(`${APP}/settings/products`);
-  await waitFor("document.querySelector('select[aria-label^=\"Tour type for\"]')");
+  await waitFor("document.querySelector(':is(select,[data-select-menu])[aria-label^=\"Tour type for\"]')");
   await helpers();
   check("只有 bus_tour_types：有 Tour type 列；非门票是只读文字、门票没有下拉", await evaluate("return [...document.querySelectorAll('thead th')].some(th => th.textContent.trim() === 'Tour type') && !$tour('UAC01') && !!$ro('UAC01') && !$tour('TIX01');"));
   await ctl({ noTicket: false, noBus: true });
 
   // ── 后端还没上 auto-send（没有 bus_tour_types）：门票照旧，不是门票的那一格空着 ──
   await goto(`${APP}/settings/products`);
-  await waitFor("document.querySelector('select[aria-label^=\"Tour type for\"]')");
+  await waitFor("document.querySelector(':is(select,[data-select-menu])[aria-label^=\"Tour type for\"]')");
   await helpers();
   check("没有 bus_tour_types：门票照旧有下拉，非门票没有下拉", await evaluate("return $tour('TIX01')?.dataset.tourField === 'ticket_tour_type' && !$tour('UAC01') && !$tour('NOCAT');"));
   await evaluate("$pick('UAC01', true); $pick('BUS02', true);");
-  await waitFor("$q('select[aria-label=\"Tour type for selected\"]')");
-  check("没有 bus_tour_types、只勾非门票：批量下拉只有 leave as is / no tour type", await evaluate("return [...$q('select[aria-label=\"Tour type for selected\"]').options].map(o => o.textContent).join('|') === '— tour type: leave as is —|— no tour type —';"));
+  await waitFor("$q(':is(select,[data-select-menu])[aria-label=\"Tour type for selected\"]')");
+  check("没有 bus_tour_types、只勾非门票：批量下拉只有 leave as is / no tour type", await evaluate("return [...$q(':is(select,[data-select-menu])[aria-label=\"Tour type for selected\"]').options].map(o => o.textContent).join('|') === '— tour type: leave as is —|— no tour type —';"));
   await ctl({ noBus: false });
 }
 
@@ -275,6 +275,7 @@ async function main() {
     }
   };
   await cdp("Page.enable");
+  await cdp("Page.addScriptToEvaluateOnNewDocument", { source: SELECT_HELPERS });
   await cdp("Runtime.enable");
 
   try {

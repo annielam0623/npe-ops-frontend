@@ -27,6 +27,7 @@ import {
   PROD_TH_CLASS,
   REZDY_NAME_CLASS,
 } from "./legacy-ui";
+import { SelectMenu } from "@/components/ui/select-menu";
 
 /** 一行的选择和结果。 */
 interface RowState {
@@ -174,34 +175,34 @@ export function MissingCard({
         onClear={() => setPicked(new Set())}
         hint="Internal name is taken from each row."
       >
-        <select
+        <SelectMenu
           aria-label="Group for selected"
-          value={bulkGroup}
-          onChange={(event) => setBulkGroup(event.target.value)}
+          value={String(bulkGroup)}
+          options={[
+            { value: String(KEEP), label: "— group: leave as is —" },
+            { value: "", label: "— no group —" },
+            ...selectableGroups(groups, null).map((g) => ({
+              value: String(String(g.id)),
+              label: String(groupLabel(g)),
+            })),
+          ]}
+          onChange={(next) => setBulkGroup(next)}
           className={BULK_SELECT_CLASS}
-        >
-          <option value={KEEP}>— group: leave as is —</option>
-          <option value="">— no group —</option>
-          {selectableGroups(groups, null).map((g) => (
-            <option key={g.id} value={String(g.id)}>
-              {groupLabel(g)}
-            </option>
-          ))}
-        </select>
-        <select
+        />
+        <SelectMenu
           aria-label="Category for selected"
-          value={bulkType}
-          onChange={(event) => setBulkType(event.target.value)}
+          value={String(bulkType)}
+          options={[
+            { value: String(KEEP), label: "— category: leave as is —" },
+            { value: "", label: "— blank (falls back) —" },
+            ...bookingTypes.map((t) => ({
+              value: String(t),
+              label: String(typeLabel(t)),
+            })),
+          ]}
+          onChange={(next) => setBulkType(next)}
           className={BULK_SELECT_CLASS}
-        >
-          <option value={KEEP}>— category: leave as is —</option>
-          <option value="">— blank (falls back) —</option>
-          {bookingTypes.map((t) => (
-            <option key={t} value={t}>
-              {typeLabel(t)}
-            </option>
-          ))}
-        </select>
+        />
       </BulkBar>
     </BulkBarRow>
   );
@@ -480,43 +481,43 @@ function MissingRow({
         {added ? (
           groupName(row.groupId) || "No group"
         ) : (
-          <select
+          <SelectMenu
             aria-label={`Group for ${m.product_code}`}
-            value={row.groupId}
+            value={String(row.groupId)}
+            options={[
+              { value: "", label: "— no group —" },
+              ...selectableGroups(
+                groups,
+                row.groupId ? Number(row.groupId) : null,
+              ).map((g) => ({
+                value: String(String(g.id)),
+                label: String(groupLabel(g)),
+              })),
+            ]}
             disabled={adding}
-            onChange={(event) => onChange({ groupId: event.target.value })}
+            onChange={(next) => onChange({ groupId: next })}
             className={CELL_SELECT}
-          >
-            <option value="">— no group —</option>
-            {selectableGroups(
-              groups,
-              row.groupId ? Number(row.groupId) : null,
-            ).map((g) => (
-              <option key={g.id} value={String(g.id)}>
-                {groupLabel(g)}
-              </option>
-            ))}
-          </select>
+          />
         )}
       </td>
       <td className={PROD_TD_CLASS}>
         {added ? (
           typeLabel(row.type) || "Blank"
         ) : (
-          <select
+          <SelectMenu
             aria-label={`Category for ${m.product_code}`}
-            value={row.type}
+            value={String(row.type)}
+            options={[
+              { value: "", label: "— blank (falls back) —" },
+              ...bookingTypes.map((t) => ({
+                value: String(t),
+                label: String(typeLabel(t)),
+              })),
+            ]}
             disabled={adding}
-            onChange={(event) => onChange({ type: event.target.value })}
+            onChange={(next) => onChange({ type: next })}
             className={CELL_SELECT}
-          >
-            <option value="">— blank (falls back) —</option>
-            {bookingTypes.map((t) => (
-              <option key={t} value={t}>
-                {typeLabel(t)}
-              </option>
-            ))}
-          </select>
+          />
         )}
       </td>
       <td className={PROD_TD_CLASS}>

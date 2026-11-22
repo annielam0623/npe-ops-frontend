@@ -2,6 +2,7 @@
 // 前提：mock 在 8799，next dev 在 3198（API_PROXY_TARGET 和 LEGACY 都指向 mock）。
 const { spawn } = require("child_process");
 const path = require("path");
+const { SELECT_HELPERS } = require("./select-menu-helper");
 
 const CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe";
 const APP = process.env.APP_URL || "http://localhost:3198";
@@ -58,7 +59,7 @@ async function goto(url) {
 }
 
 // 页面里用的小工具（每次导航后重新注入）。
-const HELPERS = `
+const HELPERS = SELECT_HELPERS + `
 window.$t = (sel) => [...document.querySelectorAll(sel)].map(e => e.textContent.trim());
 window.$rows = () => [...document.querySelectorAll('tbody tr')].map(tr => [...tr.children].map(td => td.textContent.trim()));
 window.$heads = () => [...document.querySelectorAll('thead th')].map(th => th.textContent.replace('⠿','').trim());
@@ -107,6 +108,7 @@ async function main() {
     }
   };
   await cdp("Page.enable");
+  await cdp("Page.addScriptToEvaluateOnNewDocument", { source: SELECT_HELPERS });
   await cdp("Runtime.enable");
 
   try {
@@ -273,7 +275,7 @@ async function run() {
   check("清掉搜索：回到按日期、全部收起", await evaluate("return [...document.querySelectorAll('tbody[data-batch] > tr:first-child button')].every(b => b.getAttribute('aria-expanded') === 'false') && !document.querySelector('[data-match]');"));
 
   // 题 3 甲：Status 筛选 → 组只列有失败的，默认收起；点开只放失败那条，不标黄（不是搜单号）。
-  await evaluate("const s = [...document.querySelectorAll('select')].find(x => [...x.options].some(o => o.value === 'undelivered')); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, 'failed'); s.dispatchEvent(new Event('change', { bubbles: true }));");
+  await evaluate("const s = [...document.querySelectorAll('select, [data-select-menu]')].find(x => [...x.options].some(o => o.value === 'undelivered')); return $sel(s, 'failed');");
   await waitFor("document.querySelectorAll('tbody[data-batch]').length === 1");
   q = await lastQ("/api/notifications/send-log/groups");
   check("Status = Failed：按组查带 status、只剩 701、默认收起、组头「1 of 11 in this send match」", q.status === "failed" && (await evaluate(`return ${head(701)}.getAttribute('aria-expanded') === 'false' && ${head(701)}.querySelector('[data-match]').textContent === '1 of 11 in this send match';`)), JSON.stringify(q));

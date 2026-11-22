@@ -27,6 +27,7 @@ import {
 } from "./legacy-ui";
 import type { CellState } from "./products-table";
 import { SaveControl, useBlockSave } from "./unsaved";
+import { SelectMenu } from "@/components/ui/select-menu";
 
 /**
  * Settings → Products 的「Groups」一块（后端 2026-10-11 `85a5d95`，照旧 settings_products.html 的 #groups-card）：
@@ -385,19 +386,19 @@ function AddGroupRow({
           />
         </td>
         <td className={PROD_TD_CLASS}>
-          <select
+          <SelectMenu
             aria-label="Category for the new group"
-            value={type}
-            onChange={(e) => setType(e.target.value)}
+            value={String(type)}
+            options={[
+              { value: "", label: "— pick —" },
+              ...bookingTypes.map((t) => ({
+                value: String(t),
+                label: String(typeLabel(t)),
+              })),
+            ]}
+            onChange={(next) => setType(next)}
             className={cellInClass()}
-          >
-            <option value="">— pick —</option>
-            {bookingTypes.map((t) => (
-              <option key={t} value={t}>
-                {typeLabel(t)}
-              </option>
-            ))}
-          </select>
+          />
         </td>
         <td className={PROD_TD_CLASS} />
         <td className={PROD_TD_CLASS}>
