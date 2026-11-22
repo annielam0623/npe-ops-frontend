@@ -442,7 +442,9 @@ export function SelectMenu<V extends string = string>(props: SelectMenuProps<V>)
         disabled={disabled}
         title={title ?? selected?.label}
         data-select-menu=""
+        value={value}
         data-value={value}
+        data-label={selected?.label ?? ""}
         {...dataAttrs}
         onClick={() => (open ? close(false) : openMenu())}
         onKeyDown={onKey}

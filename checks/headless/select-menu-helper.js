@@ -25,12 +25,13 @@ window.$sel = async (el, v) => {
   await $selWait(() => el.dataset.value === String(v) || el.getAttribute('aria-expanded') === 'true');
   return true;
 };
+window.$selLabel = (el) => ($isSelectMenu(el) ? el.dataset.label : el.options[el.selectedIndex]?.text);
 window.$selValue = (el) => ($isSelectMenu(el) ? el.dataset.value : el.value);
 window.$selOptions = async (el) => {
-  if (!$isSelectMenu(el)) return [...el.options].map((o) => ({ value: o.value, label: o.textContent }));
+  if (!$isSelectMenu(el)) return [...el.options].map((o) => ({ value: o.value, label: o.textContent, text: o.text, textContent: o.textContent }));
   const wasOpen = el.getAttribute('aria-expanded') === 'true';
   const list = await $selOpen(el);
-  const out = [...list.querySelectorAll('[role=option]')].map((o) => ({ value: o.dataset.value, label: o.textContent.trim() }));
+  const out = [...list.querySelectorAll('[role=option]')].map((o) => { const l = o.textContent.trim(); return { value: o.dataset.value, label: l, text: l, textContent: l }; });
   if (!wasOpen) await $selClose(el);
   return out;
 };

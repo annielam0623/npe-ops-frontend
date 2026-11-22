@@ -2,6 +2,7 @@
 // 前提：mock 在 8799，next dev 在 3198（API_PROXY_TARGET 和 LEGACY 都指向 mock）。
 const { spawn } = require("child_process");
 const path = require("path");
+const { SELECT_HELPERS } = require("./select-menu-helper");
 const { resizeChecks } = require("./resize-checks");
 
 const CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe";
@@ -63,7 +64,7 @@ async function goto(url) {
 }
 
 // 页面里用的小工具（每次导航后重新注入）。
-const HELPERS = `
+const HELPERS = SELECT_HELPERS + `
 window.$t = (sel) => [...document.querySelectorAll(sel)].map(e => e.textContent.trim());
 window.$rows = () => [...document.querySelectorAll('tbody tr')].map(tr => [...tr.children].map(td => td.textContent.trim()));
 window.$heads = () => [...document.querySelectorAll('thead th')].map(th => th.textContent.replace('⠿','').trim());
@@ -146,7 +147,7 @@ async function reloadAfterTake(before) {
 }
 const heads = () => evaluate("return [...document.querySelectorAll('thead th')].map(th => th.textContent.replace('⠿','').trim());");
 async function pick(selExpr, value) {
-  await evaluate(`const el = ${selExpr}; Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(el, ${JSON.stringify(value)}); el.dispatchEvent(new Event('change', { bubbles: true }));`);
+  await evaluate(`return $sel(${selExpr}, ${JSON.stringify(value)});`);
   await sleep(200);
 }
 async function setFile(selector, file) {
@@ -222,7 +223,7 @@ async function run() {
   check("团名缩写；接口里没有的团显示代码", await evaluate(`return ${cell(1, "tour")}.textContent === 'AC-U' && ${cell(6, "tour")}.textContent === 'mystery_tour';`));
 
   // ── 后端 `7c03bd3`：Modified 状态、Actioned 按 notes_unhandled、Notes 预览先写改期内容 ──
-  check("Modified：统计卡（紫字）、状态下拉、筛选下拉都有", await evaluate(`const card = [...document.querySelectorAll('section[aria-label=Summary] button')].find(b => b.textContent.replace(/\\s+/g, '') === '0Modified'); return !!card && card.firstElementChild.className.includes('4c3da8') && [...${cell(2, "status")}.querySelectorAll('option')].map(o => o.value).join(',') === 'yes,modify_req,modified,pending,cancel' && [...document.querySelectorAll('select[aria-label=Status] option')].some(o => o.value === 'modified');`));
+  check("Modified：统计卡（紫字）、状态下拉、筛选下拉都有", await evaluate(`const card = [...document.querySelectorAll('section[aria-label=Summary] button')].find(b => b.textContent.replace(/\\s+/g, '') === '0Modified'); return !!card && card.firstElementChild.className.includes('4c3da8') && (await $selOptions(${cell(2, "status")}.querySelector('select, [data-select-menu]'))).map(o => o.value).join(',') === 'yes,modify_req,modified,pending,cancel' && (await $selOptions(document.querySelector(':is(select,[data-select-menu])[aria-label=Status]'))).some(o => o.value === 'modified');`));
   check("点过 Take action、之后没新留言：✓ Annie", await evaluate(`return ${cell(4, "notes")}.textContent.includes('✓ Annie');`));
   await ctl({ staleAction: true, modifyMsg: true });
   await evaluate("$btn('↻ Refresh').click();");
@@ -238,18 +239,18 @@ async function run() {
   check("G47：处理过又来新留言的 ⚠️ Take action，点一下带 want=on，还是记着 ✓ Annie（不会被清掉）", g47?.q.want === "on" && (await evaluate(`return ${cell(4, "notes")}.textContent.includes('✓ Annie');`)), JSON.stringify(g47?.q));
   await ctl({ staleAction: true });
   check("Modify 的单有新对话：预览先写改期请求，再接最新一条（同旧页面 notesBody）", await evaluate(`return ${cell(2, "notes")}.textContent.includes('Can we move to 7am? — Thanks, see you');`), await evaluate(`return ${cell(2, "notes")}.textContent;`));
-  await pick(`${cell(2, "status")}.querySelector('select')`, "modified");
+  await pick(`${cell(2, "status")}.querySelector('select, [data-select-menu]')`, "modified");
   before = (await mockLog()).length;
   await evaluate(`${cell(2, "status")}.querySelector('[aria-label="Save status for T02"]').click();`);
   const mdf = (await waitReq(before, (e) => e.path === "/api/bookings/2/confirmation"))[0]?.body;
   await waitFor("[...document.querySelectorAll('section[aria-label=Summary] button')].some(b => b.textContent.replace(/\\s+/g, '') === '1Modified')");
-  check("改成 Modified：PUT confirmation=modified、统计 Modify 0 / Modified 1、紫字、预览仍先写改期请求", mdf?.confirmation === "modified" && (await evaluate(`const t = document.querySelector('section[aria-label=Summary]').textContent.replace(/\\s+/g, ''); return t.includes('0Modify') && t.includes('1Modified') && ${cell(2, "status")}.querySelector('select').className.includes('4c3da8') && ${cell(2, "notes")}.textContent.includes('Can we move to 7am? — Thanks, see you');`)), JSON.stringify(mdf));
+  check("改成 Modified：PUT confirmation=modified、统计 Modify 0 / Modified 1、紫字、预览仍先写改期请求", mdf?.confirmation === "modified" && (await evaluate(`const t = document.querySelector('section[aria-label=Summary]').textContent.replace(/\\s+/g, ''); return t.includes('0Modify') && t.includes('1Modified') && ${cell(2, "status")}.querySelector('select, [data-select-menu]').className.includes('4c3da8') && ${cell(2, "notes")}.textContent.includes('Can we move to 7am? — Thanks, see you');`)), JSON.stringify(mdf));
   await evaluate("[...document.querySelectorAll('section[aria-label=Summary] button')].find(b => b.textContent.replace(/\\s+/g, '') === '1Modified').click();");
   await sleep(200);
-  check("点 Modified 卡片：只剩 T02", await evaluate("return document.querySelectorAll('tr[data-id]').length === 1 && !!document.querySelector('tr[data-id=\"2\"]') && document.querySelector('select[aria-label=Status]').value === 'modified';"));
+  check("点 Modified 卡片：只剩 T02", await evaluate("return document.querySelectorAll('tr[data-id]').length === 1 && !!document.querySelector('tr[data-id=\"2\"]') && document.querySelector(':is(select,[data-select-menu])[aria-label=Status]').value === 'modified';"));
   await evaluate("[...document.querySelectorAll('section[aria-label=Summary] button')].find(b => b.textContent.endsWith('Total')).click();");
   // 改回 Modify，后面的检查照原数据。
-  await pick(`${cell(2, "status")}.querySelector('select')`, "modify_req");
+  await pick(`${cell(2, "status")}.querySelector('select, [data-select-menu]')`, "modify_req");
   await evaluate(`${cell(2, "status")}.querySelector('[aria-label="Save status for T02"]').click();`);
   await ctl({ staleAction: false, modifyMsg: false });
   await waitFor("[...document.querySelectorAll('section[aria-label=Summary] button')].some(b => b.textContent.replace(/\\s+/g, '') === '0Modified')");
@@ -259,7 +260,7 @@ async function run() {
   // 筛选
   await evaluate("[...document.querySelectorAll('section[aria-label=Summary] button')].find(b => b.textContent.endsWith('YES')).click();");
   await sleep(200);
-  check("点 YES 卡片：只剩 YES、状态下拉跟着变", await evaluate("return document.querySelectorAll('tr[data-id]').length === 2 && document.querySelector('select[aria-label=Status]').value === 'yes';"));
+  check("点 YES 卡片：只剩 YES、状态下拉跟着变", await evaluate("return document.querySelectorAll('tr[data-id]').length === 2 && document.querySelector(':is(select,[data-select-menu])[aria-label=Status]').value === 'yes';"));
   await evaluate("[...document.querySelectorAll('section[aria-label=Summary] button')].find(b => b.textContent.endsWith('Total')).click();");
   await evaluate("[...document.querySelectorAll('[aria-label=\"Filter by tour\"] button')].find(b => b.textContent.startsWith('South')).click();");
   await sleep(200);
@@ -275,22 +276,22 @@ async function run() {
   await resizeChecks({ evaluate, check, sleep, page: "tt", refresh: async () => { await evaluate("$btn('↻ Refresh').click();"); await sleep(1200); }, skipWidths: { Notes: "200px", WhatsApp: "180px" } });
 
   // ── 状态：✓ 存 / ✕ 撤销 ──
-  await pick(`${cell(2, "status")}.querySelector('select')`, "yes");
+  await pick(`${cell(2, "status")}.querySelector('select, [data-select-menu]')`, "yes");
   check("改状态：出现 ✓ ✕，不发请求", await evaluate(`return !!${cell(2, "status")}.querySelector('[aria-label="Save status for T02"]');`));
   await evaluate(`${cell(2, "status")}.querySelector('[aria-label="Undo status for T02"]').click();`);
   await sleep(150);
-  check("✕ 撤销：回到 Modify", await evaluate(`return ${cell(2, "status")}.querySelector('select').value === 'modify_req' && !${cell(2, "status")}.querySelector('[aria-label="Save status for T02"]');`));
+  check("✕ 撤销：回到 Modify", await evaluate(`return ${cell(2, "status")}.querySelector('select, [data-select-menu]').value === 'modify_req' && !${cell(2, "status")}.querySelector('[aria-label="Save status for T02"]');`));
   await ctl({ confFail: true });
-  await pick(`${cell(2, "status")}.querySelector('select')`, "yes");
+  await pick(`${cell(2, "status")}.querySelector('select, [data-select-menu]')`, "yes");
   await evaluate(`${cell(2, "status")}.querySelector('[aria-label="Save status for T02"]').click();`);
   await waitFor("document.body.textContent.includes('was not saved')");
-  check("存失败：写原因、改动留着可再存", await evaluate(`return document.body.textContent.includes('Order T02: the status was not saved. Invalid confirmation: maybe') && ${cell(2, "status")}.querySelector('select').value === 'yes';`));
+  check("存失败：写原因、改动留着可再存", await evaluate(`return document.body.textContent.includes('Order T02: the status was not saved. Invalid confirmation: maybe') && ${cell(2, "status")}.querySelector('select, [data-select-menu]').value === 'yes';`));
   await ctl({ confFail: false });
   await evaluate(`${cell(2, "status")}.querySelector('[aria-label="Undo status for T02"]').click();`);
 
   // ── MTLV 票 ──
   before = (await mockLog()).length;
-  await pick(`${cell(1, "tickets")}.querySelector('select')`, "sent");
+  await pick(`${cell(1, "tickets")}.querySelector('select, [data-select-menu]')`, "sent");
   const tk = (await waitReq(before, (e) => e.path === "/api/bookings/1/mtlv-ticket-status"))[0]?.body;
   await waitFor(`${cell(1, "tickets")}.textContent.includes('Annie Z')`);
   check("MTLV 票改 Sent：PUT、重拉后写谁和时间、Tickets 表头变 1 绿", tk?.mtlv_ticket_status === "sent" && (await evaluate(`return ${cell(1, "tickets")}.textContent.includes('✓ Annie Z') && document.querySelector('[data-bubble=tickets]').className.includes('28a745');`)));
@@ -308,7 +309,7 @@ async function run() {
   check("午餐保存：送三个数（没牛肉的团送 0）、关窗、表格更新", lu?.lunch_turkey === 3 && lu?.lunch_veggie === 0 && lu?.lunch_beef === 0 && (await evaluate(`return ${cell(3, "turkey")}.textContent === '3';`)), JSON.stringify(lu));
 
   // ── 改成 Cancel：连带清零 ──
-  await pick(`${cell(1, "status")}.querySelector('select')`, "cancel");
+  await pick(`${cell(1, "status")}.querySelector('select, [data-select-menu]')`, "cancel");
   before = (await mockLog()).length;
   await evaluate(`${cell(1, "status")}.querySelector('[aria-label="Save status for T01"]').click();`);
   const cf = (await waitReq(before, (e) => e.path === "/api/bookings/1/confirmation"))[0]?.body;
@@ -513,7 +514,7 @@ async function run() {
   await sleep(200);
   check("群发：人群是 General / MTLV（不是 All / Pending / Confirmed），AC-U General 2、MTLV 1", await evaluate(`const t = ${dialog}.textContent; return t.includes('General') && t.includes('MTLV eligible guests only') && !t.includes('Confirmed') && /General.*2 guests/.test(t) && /MTLV eligible guests only.*1 guests/.test(t);`), await evaluate(`return ${dialog}.textContent;`));
   await evaluate(`[...${dialog}.querySelectorAll('input[type=radio]')].find(r => r.value === 'mtlv').click();`);
-  await pick(`${dialog}.querySelector('select')`, "t1");
+  await pick(`${dialog}.querySelector('select, [data-select-menu]')`, "t1");
   await evaluate(`$btn('📣 Send', ${dialog})?.click() ?? [...${dialog}.querySelectorAll('button')].find(b => b.textContent.includes('Send')).click();`);
   // G62：确认框要等查重（/booking-notes/broadcast/check）回来才出现。
   await waitFor(`$btn('Yes, send now', ${dialog})`);
@@ -538,7 +539,7 @@ async function run() {
   const pk = (n) => `${dialog}.querySelector('[data-pickup="${n}"]')`;
   check("按接站点分组：对上 Settings 的按站点名排序，同一家的不同写法合并、写 Also written as", await evaluate(`const names = [...${dialog}.querySelectorAll('[data-pickup-checks] > div:nth-child(2) [data-pickup]')].map(l => l.getAttribute('data-pickup')).join('|'); const m = ${pk("MGM Grand")}.textContent; return names === 'MGM Grand|Treasure Island' && m.includes('3 guest(s) · AC-U') && m.includes('Also written as: MGM, MGM Grand Hotel') && !${pk("Treasure Island")}.textContent.includes('Also written as');`), await evaluate(`return ${dialog}.querySelector('[data-pickup-checks]').textContent;`));
   check("对不上的列在 Not found in Settings → Pickup Locations 下；没填的归 (no pickup location on file)", await evaluate(`const u = ${dialog}.querySelector('[data-pickup-unknown]'); return !!u && u.textContent.includes('Not found in Settings → Pickup Locations') && [...u.querySelectorAll('[data-pickup]')].map(l => l.getAttribute('data-pickup')).join('|') === '(no pickup location on file)|Somewhere Odd';`), await evaluate(`return ${dialog}.querySelector('[data-pickup-unknown]')?.textContent;`));
-  await pick(`${dialog}.querySelector('select')`, "t1");
+  await pick(`${dialog}.querySelector('select, [data-select-menu]')`, "t1");
   await evaluate(`$btn('📣 Send broadcast', ${dialog}).click();`);
   await sleep(150);
   check("没选站点就发：Please select at least one pickup location.", await evaluate(`return ${dialog}.querySelector('[role=alert]')?.textContent.includes('Please select at least one pickup location.');`));
@@ -606,7 +607,7 @@ async function run() {
   await waitFor(`${dialog} && ${dialog}.textContent.includes('Step 2')`);
   await evaluate(`[...${dialog}.querySelectorAll('label')].find(l => l.textContent.trim() === 'AC-U').querySelector('input').click();`);
   await waitFor(`${dialog}.textContent.includes('2 recipient(s)')`);
-  await pick(`${dialog}.querySelector('select')`, "t1");
+  await pick(`${dialog}.querySelector('select, [data-select-menu]')`, "t1");
   await waitFor(`${dialog}.querySelector('textarea').value !== ''`);
   {
     const counter = () => evaluate(`const p = ${dialog}.querySelector('[data-sms-count]'); return p ? { text: p.textContent.trim(), red: p.className.includes('c0392b') } : null;`);
@@ -711,7 +712,7 @@ async function run() {
   await waitFor("!!document.querySelector('tr[data-id=\"7\"]')");
   check("（前提）弹窗开着时表格已重拉出 T07", await evaluate("return !!document.querySelector('tr[data-id=\"7\"]');"));
   check("群发弹窗用打开时的名单：仍是 2 人、没有 ZZ Seven", await evaluate(`const t = ${dialog}.textContent; return t.includes('2 recipient(s)') && !t.includes('ZZ Seven');`), await evaluate(`return ${dialog}.textContent.slice(-300);`));
-  await pick(`${dialog}.querySelector('select')`, "t1");
+  await pick(`${dialog}.querySelector('select, [data-select-menu]')`, "t1");
   before = (await mockLog()).length;
   await evaluate(`$btn('📣 Send broadcast', ${dialog}).click();`);
   await waitFor(`$btn('Yes, send now', ${dialog})`);
@@ -749,8 +750,8 @@ async function run() {
     await evaluate(`[...${dialog}.querySelectorAll('label')].find(l => l.textContent.trim() === 'AC-U').querySelector('input').click();`);
     await waitFor(`${dialog}.textContent.includes('2 recipient(s)')`);
     // 模板是弹窗打开时才拉的：等选项到了、下拉能用再选（不等的话有时选不上，正文空着 ⇒「Please enter a message.」）。
-    await waitFor(`${dialog}.querySelector('select option[value="t1"]') && !${dialog}.querySelector('select').disabled`);
-    await pick(`${dialog}.querySelector('select')`, "t1");
+    await waitFor(`${dialog}.querySelector('select option[value="t1"]') && !${dialog}.querySelector('select, [data-select-menu]').disabled`);
+    await pick(`${dialog}.querySelector('select, [data-select-menu]')`, "t1");
     await waitFor(`${dialog}.querySelector('textarea').value.startsWith('Hi {first_name}')`);
   };
   const already = `${dialog}.querySelector('[data-broadcast-already]')`;
@@ -963,7 +964,7 @@ async function run() {
   const ids = await evaluate("return [...document.querySelectorAll('tbody tr[data-id]')].map((r) => r.dataset.id + (r.hasAttribute('data-unsent') ? 'u' : ''));");
   check("G180：没发过的 N201–N203 排在发过的下面（接口里夹在中间），两组里面顺序照旧", ids.slice(-3).join(",") === "21u,22u,23u" && ids.slice(0, -3).every((x) => !x.endsWith("u")), ids.join(","));
   check("G180：灰行整行底色 #e1e4e8，发过的行不是灰的", await evaluate(`return getComputedStyle(${tr(21)}).backgroundColor === 'rgb(225, 228, 232)' && getComputedStyle(${tr(23)}).backgroundColor === 'rgb(225, 228, 232)' && getComputedStyle(${tr(6)}).backgroundColor !== 'rgb(225, 228, 232)';`));
-  check("G180：灰行 Status 写「—」、没有下拉；发过的照旧有下拉", await evaluate(`return ${cell(21, "status")}.textContent === '—' && !${cell(21, "status")}.querySelector('select') && !!${cell(6, "status")}.querySelector('select');`));
+  check("G180：灰行 Status 写「—」、没有下拉；发过的照旧有下拉", await evaluate(`return ${cell(21, "status")}.textContent === '—' && !${cell(21, "status")}.querySelector('select, [data-select-menu]') && !!${cell(6, "status")}.querySelector('select, [data-select-menu]');`));
   check("G180：Order Status 照 order_state 写（灰行也照写）：T02 On hold 橙、T04 Cancelled 红、N203 On hold、N201 Confirmed", await evaluate(`const t = (id) => ${tr("' + id + '")}; const os = (id) => document.querySelector('tr[data-id="' + id + '"] td[data-c="order_status"]'); return os(2).textContent === 'On hold' && getComputedStyle(os(2)).color === 'rgb(180, 83, 9)' && os(4).textContent === 'Cancelled' && getComputedStyle(os(4)).color === 'rgb(185, 28, 28)' && os(23).textContent === 'On hold' && os(21).textContent === 'Confirmed' && os(6).textContent === 'Confirmed';`));
   const syncSummary = await summaryOf();
   check("G180：数字只算发过的（和旧后端一样）+ 灰字 · 3 to notify", syncSummary.replace("·3tonotify", "") === oldSummary && syncSummary.includes("·3tonotify·"), `${oldSummary}  ⇒  ${syncSummary}`);
@@ -1037,9 +1038,9 @@ async function run() {
   // ── 置顶 95：G180 三档开关（Annie「全按推荐，动手」，preview 7DDLeUsSSczzovwb2pncrb 三题全 A）──
   {
     const sw = "document.querySelector('[data-sync-switch]')";
-    const sel = "document.querySelector('select[aria-label=\"Main manifest sync\"]')";
+    const sel = "document.querySelector(':is(select,[data-select-menu])[aria-label=\"Main manifest sync\"]')";
     const help = "document.querySelector('[data-sync-help]')?.title.replace(' Only Super Admins see this setting.', '')";
-    const pick = (v) => evaluate(`const s = ${sel}; Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, '${v}'); s.dispatchEvent(new Event('change', { bubbles: true }));`);
+    const pick = (v) => evaluate(`const s = ${sel}; return $sel(s, '${v}');`);
     const isPut = (e) => e.path === "/api/settings/tracking-sync" && e.method === "PUT";
     const isGetTracking = (e) => e.path === "/api/notifications/tour-confirmation/tracking" && e.method === "GET";
     await ctl({ superadmin: false, syncMode: "off", syncFail: "", sync: false });
@@ -1052,8 +1053,8 @@ async function run() {
     await ctl({ syncMode: "off" });
     await open();
     await waitFor(sw);
-    check("置顶 95：电脑上只有一个 Main manifest sync 框（不再两个一样的），靠右", await evaluate(`const all = document.querySelectorAll('[data-sync-switch]'); const r = all[0].getBoundingClientRect(); const row = all[0].parentElement.closest('div').getBoundingClientRect(); return all.length === 1 && document.querySelectorAll('select[aria-label="Main manifest sync"]').length === 1 && row.right - r.right < 40;`), await evaluate(`return document.querySelectorAll('[data-sync-switch]').length;`));
-    check("置顶 95 + 4④ A：Super Admin ⇒「Main manifest sync [下拉] (i)」Off / Super Admin only / Staff，当前 Off；没有虚线框、小字收进 (i)", await evaluate(`const s = ${sel}; return [...s.options].map((o) => o.textContent).join('|') === 'Off|Super Admin only|Staff' && s.value === 'off' && ${sw}.querySelector('[data-sync-help]').title.endsWith('Only Super Admins see this setting.') && !${sw}.textContent.includes('Only Super Admins') && getComputedStyle(${sw}).borderStyle !== 'dashed' && !document.querySelector('[data-sync-help-text]');`));
+    check("置顶 95：电脑上只有一个 Main manifest sync 框（不再两个一样的），靠右", await evaluate(`const all = document.querySelectorAll('[data-sync-switch]'); const r = all[0].getBoundingClientRect(); const row = all[0].parentElement.closest('div').getBoundingClientRect(); return all.length === 1 && document.querySelectorAll(':is(select,[data-select-menu])[aria-label="Main manifest sync"]').length === 1 && row.right - r.right < 40;`), await evaluate(`return document.querySelectorAll('[data-sync-switch]').length;`));
+    check("置顶 95 + 4④ A：Super Admin ⇒「Main manifest sync [下拉] (i)」Off / Super Admin only / Staff，当前 Off；没有虚线框、小字收进 (i)", await evaluate(`const s = ${sel}; return (await $selOptions(s)).map((o) => o.textContent).join('|') === 'Off|Super Admin only|Staff' && s.value === 'off' && ${sw}.querySelector('[data-sync-help]').title.endsWith('Only Super Admins see this setting.') && !${sw}.textContent.includes('Only Super Admins') && getComputedStyle(${sw}).borderStyle !== 'dashed' && !document.querySelector('[data-sync-help-text]');`));
     await evaluate("document.querySelector('[data-sync-help]').click();");
     await sleep(150);
     check("4④ A：点 (i) ⇒ 展开两句说明", (await evaluate("return document.querySelector('[data-sync-help-text]')?.textContent;")) === "Off: orders that have not been sent yet don't show here, and there is no Order Status column. The page works as before. Only Super Admins see this setting.");

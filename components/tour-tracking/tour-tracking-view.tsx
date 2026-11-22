@@ -23,6 +23,7 @@ import { BroadcastDialog } from "@/components/ui/broadcast-dialog";
 import { ColumnPicker } from "@/components/ui/column-picker";
 import { ConversationModal } from "@/components/ui/conversation-modal";
 import { HowToUse } from "@/components/ui/how-to-use";
+import { SelectMenu } from "@/components/ui/select-menu";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { toggleTakeAction } from "@/lib/booking-notes-api";
 import { isYmd, laToday, shiftYmd } from "@/lib/la-date";
@@ -732,18 +733,13 @@ export function TourTrackingView() {
                   aria-label="Search"
                   className="w-[190px] rounded-[7px] border border-[#d0e0d4] bg-white/90 px-[9px] py-[3px] font-[inherit] text-[12px] shadow-[0_1px_4px_rgba(26,58,42,0.06)] outline-none focus:border-[#2f5e46] max-sm:order-first max-sm:w-auto max-sm:min-w-0 max-sm:flex-1 [&::-webkit-search-cancel-button]:appearance-none"
                 />
-                <select
+                <SelectMenu
                   aria-label="Status"
                   value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="cursor-pointer rounded-[7px] border border-[#d0e0d4] bg-white/90 px-2 py-[3px] font-[inherit] text-[12px] shadow-[0_1px_4px_rgba(26,58,42,0.06)]"
-                >
-                  {STATUS_FILTERS.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
+                  options={STATUS_FILTERS}
+                  onChange={(next) => setStatusFilter(next)}
+                  className="rounded-[7px] border border-[#d0e0d4] bg-white/90 px-2 py-[3px] shadow-[0_1px_4px_rgba(26,58,42,0.06)]"
+                />
                 {/* 手机上 Columns / CSV / Broadcast 收进「⋯」（手机版规则：次要按钮）；浅色页，⋯ 用深色字和边。
                     4③：当天发过群发 ⇒ ⋯ 上也标条数。 */}
                 <PhoneMore

@@ -6,6 +6,7 @@ import { type DragEvent, type ReactNode, useRef, useState } from "react";
 import { ChannelIcon, WHATSAPP_GREEN } from "@/components/ui/channel-icon";
 import { ColResizer, useColumnSizing } from "@/components/ui/column-sizing";
 import { ConversationPreview } from "@/components/ui/conversation-preview";
+import { SelectMenu } from "@/components/ui/select-menu";
 import { cn } from "@/lib/utils";
 import type { TicketsTrackingRow } from "@/types";
 
@@ -505,30 +506,29 @@ function StatusSelect({
   const known = STATUS_OPTIONS.some((o) => o.value === value);
   return (
     <span className="inline-flex items-center gap-1 whitespace-nowrap">
-      <select
+      <SelectMenu
         aria-label={`Status for ${row.order_number}`}
         value={value}
         disabled={disabled}
-        onChange={(event) =>
-          onDraft(event.target.value === saved ? null : event.target.value)
-        }
+        options={[
+          // 下拉里没有的现值（改期申请等）照实显示，只读，不能选回去。
+          ...(!known
+            ? [
+                {
+                  value,
+                  label: value === "reschedule_req" ? "↻ Reschedule" : value,
+                  disabled: true,
+                },
+              ]
+            : []),
+          ...STATUS_OPTIONS,
+        ]}
+        onChange={(next) => onDraft(next === saved ? null : next)}
         className={cn(
-          "cursor-pointer rounded border-none bg-transparent px-1 py-0.5 font-[inherit] text-[13px] font-bold tracking-[.3px] focus:outline-1 focus:outline-[#1a3a5c] disabled:opacity-60",
+          "cursor-pointer rounded border-none bg-transparent px-1 py-0.5 font-bold tracking-[.3px] focus:outline-1 focus:outline-[#1a3a5c] disabled:opacity-60",
           STATUS_CLASS[value] ?? "text-[#2a3a4a]",
         )}
-      >
-        {/* 下拉里没有的现值（改期申请等）照实显示，只读，不能选回去。 */}
-        {!known ? (
-          <option value={value} disabled>
-            {value === "reschedule_req" ? "↻ Reschedule" : value}
-          </option>
-        ) : null}
-        {STATUS_OPTIONS.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
+      />
       {draft !== undefined ? (
         <>
           <button
