@@ -13,6 +13,7 @@ import { FarmOutViewCard } from "@/components/farm-out/farm-out-view-card";
 import { ChannelIcon, WHATSAPP_GREEN } from "@/components/ui/channel-icon";
 import { ColResizer, useColumnSizing } from "@/components/ui/column-sizing";
 import { ConversationPreview } from "@/components/ui/conversation-preview";
+import { SelectMenu } from "@/components/ui/select-menu";
 import { cn } from "@/lib/utils";
 import type { TourTrackingRow } from "@/types";
 
@@ -619,15 +620,17 @@ function Cell({
         const value = ticketValue(row);
         content = (
           <span className="flex flex-col items-start gap-0.5">
-            <select
+            <SelectMenu
               aria-label={`MTLV tickets for ${row.order_number}`}
               value={value}
               disabled={locked}
-              onChange={(e) =>
-                onTicketStatus(
-                  row,
-                  e.target.value as "pending_send" | "sent" | "cancel",
-                )
+              options={[
+                { value: "pending_send", label: "Pending" },
+                { value: "sent", label: "Sent" },
+                { value: "cancel", label: "Cancel" },
+              ]}
+              onChange={(next) =>
+                onTicketStatus(row, next as "pending_send" | "sent" | "cancel")
               }
               className={cn(
                 "cursor-pointer rounded border-none bg-transparent px-1 py-0.5 text-[11px] font-semibold outline-none focus:outline-1 focus:outline-[#2f5e46] disabled:opacity-60",
@@ -637,11 +640,7 @@ function Cell({
                     ? "text-[#aaa] line-through"
                     : "text-[#185FA5]",
               )}
-            >
-              <option value="pending_send">Pending</option>
-              <option value="sent">Sent</option>
-              <option value="cancel">Cancel</option>
-            </select>
+            />
             {m.kind === "qty" && m.sent && row.mtlv_ticket_sent_by ? (
               <span className="text-[10px] leading-tight whitespace-nowrap">
                 <span className="font-semibold text-[#2F7851]">
@@ -689,29 +688,20 @@ function StatusCell({
   const known = STATUS_OPTIONS.some((o) => o.value === value);
   return (
     <span className="inline-flex items-center gap-1 whitespace-nowrap">
-      <select
+      <SelectMenu
         aria-label={`Status for ${row.order_number}`}
         value={value}
         disabled={busy}
-        onChange={(e) =>
-          onDraft(row, e.target.value === saved ? null : e.target.value)
-        }
+        options={[
+          ...(!known ? [{ value, label: value, disabled: true }] : []),
+          ...STATUS_OPTIONS,
+        ]}
+        onChange={(next) => onDraft(row, next === saved ? null : next)}
         className={cn(
-          "cursor-pointer rounded border-none bg-transparent px-1 py-0.5 text-[11px] font-bold outline-none focus:outline-1 focus:outline-[#2f5e46] disabled:opacity-60",
+          "cursor-pointer rounded border-none bg-transparent px-1 py-0.5 font-bold outline-none focus:outline-1 focus:outline-[#2f5e46] disabled:opacity-60",
           STATUS_CLASS[value] ?? "text-[#1f2d25]",
         )}
-      >
-        {!known ? (
-          <option value={value} disabled>
-            {value}
-          </option>
-        ) : null}
-        {STATUS_OPTIONS.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
+      />
       {row.submission_count > 1 ? (
         <span
           title="The guest submitted the form more than once"

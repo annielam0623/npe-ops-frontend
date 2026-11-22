@@ -2,6 +2,7 @@
 // 前提：mock 在 8799，next dev 在 3198（API_PROXY_TARGET 和 LEGACY 都指向 mock）。
 const { spawn } = require("child_process");
 const path = require("path");
+const { SELECT_HELPERS } = require("./select-menu-helper");
 const { resizeChecks } = require("./resize-checks");
 
 const CHROME = "C:/Program Files/Google/Chrome/Application/chrome.exe";
@@ -59,7 +60,7 @@ async function goto(url) {
 }
 
 // 页面里用的小工具（每次导航后重新注入）。
-const HELPERS = `
+const HELPERS = SELECT_HELPERS + `
 window.$t = (sel) => [...document.querySelectorAll(sel)].map(e => e.textContent.trim());
 window.$rows = () => [...document.querySelectorAll('tbody tr')].map(tr => [...tr.children].map(td => td.textContent.trim()));
 window.$heads = () => [...document.querySelectorAll('thead th')].map(th => th.textContent.replace('⠿','').trim());
@@ -134,9 +135,7 @@ async function setFile(selector, file) {
 }
 async function selectValue(selector, value) {
   await evaluate(`
-    const el = document.querySelector(${JSON.stringify(selector)});
-    Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(el, ${JSON.stringify(value)});
-    el.dispatchEvent(new Event('change', { bubbles: true }));`);
+    return $sel(document.querySelector(${JSON.stringify(selector)}), ${JSON.stringify(value)});`);
 }
 async function since(before, filter) {
   return (await mockLog()).slice(before).filter(filter);
@@ -171,9 +170,9 @@ async function run() {
   check("Email 列：email_state 优先，没有用原值", by("CHDZZ1")[col("Email")] === "✓ Opened" && by("CHDZZ2")[col("Email")] === "✓ Sent" && by("CHDZZ3")[col("Email")] === "✗ Failed", JSON.stringify(["CHDZZ1", "CHDZZ2", "CHDZZ3"].map((o) => by(o)[col("Email")])));
   check("SMS 列精确对照", [by("CHDZZ1"), by("CHDZZ2"), by("CHDZZ3"), by("CHDZZ4"), by("CHDZZ5")].map((r) => r[col("SMS")]).join("|") === "✓ Delivered|✓ Sent|✗ Undelivered|✗ Failed|✓ Sent", [by("CHDZZ1"), by("CHDZZ2"), by("CHDZZ3"), by("CHDZZ4"), by("CHDZZ5")].map((r) => r[col("SMS")]).join("|"));
   check("重复提交的单 Submit Time 带 ★", by("CHDZZ1")[col("Submit Time")].endsWith("★") && by("CHDZZ2")[col("Submit Time")] === "—");
-  const statusVals = await evaluate("return [...document.querySelectorAll('tbody select')].map(s => s.options[s.selectedIndex].text);");
+  const statusVals = await evaluate("return [...document.querySelectorAll('tbody :is(select,[data-select-menu])')].map(s => $selLabel(s));");
   check("状态下拉：改期单显示只读的 Reschedule", statusVals.join("|") === "⌛ Pending|✓ YES|⌛ Pending|↻ Reschedule|✓ YES", statusVals.join("|"));
-  check("状态下拉选项 YES / Pending / Cancel", (await evaluate("return [...document.querySelectorAll('tbody select')][1].textContent;")).includes("✕ Cancel"));
+  check("状态下拉选项 YES / Pending / Cancel", (await evaluate("return (await $selOptions([...document.querySelectorAll('tbody :is(select,[data-select-menu])')][1])).map((o) => o.label).join(' ');")).includes("✕ Cancel"));
   check("Notes 预览：只有确认页留言时显示留言（门票旧页面只画图标、不写 Guest）", by("CHDZZ1")[col("Notes")].includes("We will be 10 min late"), by("CHDZZ1")[col("Notes")]);
   check("Notes 表头数字 = 未处理的有对话单数（2）", heads[col("Notes")].endsWith("2"), heads[col("Notes")]);
 
@@ -217,13 +216,13 @@ async function run() {
   const statusPosts = async (from) => since(from, (e) => e.path === "/api/tickets-reminder/update-status");
   let before = (await mockLog()).length;
   check("没改：没有 ✓ / ✕", await evaluate(`return !${okBtn} && !${undoBtn};`));
-  await selectValue(`tbody tr:nth-child(3) select`, "yes");
+  await selectValue(`tbody tr:nth-child(3) :is(select,[data-select-menu])`, "yes");
   await sleep(400);
   check("选了 Yes：不发请求（先放着），旁边出 ✓ / ✕", (await statusPosts(before)).length === 0 && (await evaluate(`return !!${okBtn} && !!${undoBtn};`)));
   await evaluate(`${undoBtn}.click();`);
   await sleep(200);
-  check("✕：撤回原来的状态、✓ / ✕ 收起、不发请求", (await statusPosts(before)).length === 0 && (await evaluate(`return document.querySelectorAll('tbody select')[2].value !== 'yes' && !${okBtn};`)));
-  await selectValue(`tbody tr:nth-child(3) select`, "yes");
+  check("✕：撤回原来的状态、✓ / ✕ 收起、不发请求", (await statusPosts(before)).length === 0 && (await evaluate(`return document.querySelectorAll('tbody :is(select,[data-select-menu])')[2].value !== 'yes' && !${okBtn};`)));
+  await selectValue(`tbody tr:nth-child(3) :is(select,[data-select-menu])`, "yes");
   await sleep(200);
   await evaluate(`${okBtn}.click();`);
   await sleep(600);
@@ -235,23 +234,23 @@ async function run() {
   // 存失败：红字写原因，改动留着、✓ 还在
   await ctl({ statusFail: "That order is locked by another user." });
   before = (await mockLog()).length;
-  await selectValue(`tbody tr:nth-child(3) select`, "cancel");
+  await selectValue(`tbody tr:nth-child(3) :is(select,[data-select-menu])`, "cancel");
   await sleep(200);
   await evaluate(`${okBtn}.click();`);
   await sleep(600);
-  check("存失败：上面红字写原因，下拉还是 Cancel、✓ 还在可以再按", await evaluate(`const a = document.querySelector('[role=alert]'); return !!a && a.textContent.includes('That order is locked by another user.') && document.querySelectorAll('tbody select')[2].value === 'cancel' && !!${okBtn};`));
+  check("存失败：上面红字写原因，下拉还是 Cancel、✓ 还在可以再按", await evaluate(`const a = document.querySelector('[role=alert]'); return !!a && a.textContent.includes('That order is locked by another user.') && document.querySelectorAll('tbody :is(select,[data-select-menu])')[2].value === 'cancel' && !!${okBtn};`));
   await ctl({ statusFail: "" });
   before = (await mockLog()).length;
   await evaluate(`${okBtn}.click();`);
   await sleep(600);
   posts = await statusPosts(before);
   check("再按 ✓：Cancel 存上（后端已支持 2026-10-06，POST 带 confirmation=cancel）", posts.length === 1 && posts[0].body.confirmation === "cancel", JSON.stringify(posts));
-  check("Cancel 存好：下拉显示 Cancel、✓ 收起", (await evaluate("const s=document.querySelectorAll('tbody select')[2]; return s.value;")) === "cancel" && !(await evaluate(`return !!${okBtn};`)));
+  check("Cancel 存好：下拉显示 Cancel、✓ 收起", (await evaluate("const s=document.querySelectorAll('tbody :is(select,[data-select-menu])')[2]; return s.value;")) === "cancel" && !(await evaluate(`return !!${okBtn};`)));
   stats = await evaluate("return $t('section[aria-label=Summary] [data-stat]').map((x) => x.replace(/[\\s·]+/g, '')).join('|');");
   check("改完统计跟着变（Cancelled 1）", stats.includes("1Cancelled"), stats);
   // 改回 yes：后面的群发 / 人群计数检查都按这一单仍是 yes 写的，不在这里扩大范围。
   before = (await mockLog()).length;
-  await selectValue(`tbody tr:nth-child(3) select`, "yes");
+  await selectValue(`tbody tr:nth-child(3) :is(select,[data-select-menu])`, "yes");
   await sleep(200);
   await evaluate(`${okBtn}.click();`);
   await sleep(600);
@@ -349,8 +348,8 @@ async function run() {
   check("人群计数：All 4（不含改期单）/ Pending 1 / Confirmed 3",
     groupText[0].endsWith("4 guests") && groupText[1].endsWith("1 guests") && groupText[2].endsWith("3 guests"), groupText.join(" | "));
   // 模板是弹窗打开时才拉的：等选项到了再选（同 tt 的修法，2026-10-28）。
-  await waitFor("document.querySelector('[role=dialog] select option[value=\"t1\"]') && !document.querySelector('[role=dialog] select').disabled");
-  await selectValue("[role=dialog] select", "t1");
+  await waitFor("document.querySelector('[role=dialog] :is(select,[data-select-menu]) option[value=\"t1\"]') && !document.querySelector('[role=dialog] :is(select,[data-select-menu])').disabled");
+  await selectValue("[role=dialog] :is(select,[data-select-menu])", "t1");
   await waitFor(`${dialog}.querySelector('textarea').value !== ''`);
   check("套模板填入正文", (await evaluate(`return ${dialog}.querySelector('textarea').value;`)) === "Hi {first_name}, wind on {tour_date}.");
   let summary = await evaluate(`return ${dialog}.textContent;`);
@@ -507,8 +506,8 @@ async function run() {
   check("（前提）弹窗开着时表格已重拉出 CHDZZ6", await evaluate(`return !!${rowOf("CHDZZ6")};`));
   check("群发弹窗用打开时的名单：U-TC 仍是 2 人、没有 Foxtrot", await evaluate(`const t = ${dialog}.textContent; return t.includes('2 recipient(s)') && !t.includes('Foxtrot');`), await evaluate(`return ${dialog}.textContent.slice(-300);`));
   // 模板是弹窗打开时才拉的：等选项到了再选（同 tt 的修法，2026-10-28）。
-  await waitFor("document.querySelector('[role=dialog] select option[value=\"t1\"]') && !document.querySelector('[role=dialog] select').disabled");
-  await selectValue("[role=dialog] select", "t1");
+  await waitFor("document.querySelector('[role=dialog] :is(select,[data-select-menu]) option[value=\"t1\"]') && !document.querySelector('[role=dialog] :is(select,[data-select-menu])').disabled");
+  await selectValue("[role=dialog] :is(select,[data-select-menu])", "t1");
   await waitFor(`${dialog}.querySelector('textarea').value !== ''`);
   before = (await mockLog()).length;
   await evaluate(`$btn('📣 Send broadcast', ${dialog}).click();`);
@@ -535,8 +534,8 @@ async function run() {
       await evaluate(`[...${dialog}.querySelectorAll('label')].find(l => l.textContent.trim() === 'U-TC').querySelector('input').click();`);
       await waitFor(`${dialog}.textContent.includes('2 recipient(s)')`);
       // 模板是弹窗打开时才拉的：等选项到了再选（同 tt 的修法，2026-10-28）。
-      await waitFor("document.querySelector('[role=dialog] select option[value=\"t1\"]') && !document.querySelector('[role=dialog] select').disabled");
-      await selectValue("[role=dialog] select", "t1");
+      await waitFor("document.querySelector('[role=dialog] :is(select,[data-select-menu]) option[value=\"t1\"]') && !document.querySelector('[role=dialog] :is(select,[data-select-menu])').disabled");
+      await selectValue("[role=dialog] :is(select,[data-select-menu])", "t1");
       await waitFor(`${dialog}.querySelector('textarea').value !== ''`);
     };
     const already = `${dialog}.querySelector('[data-broadcast-already]')`;
@@ -653,14 +652,14 @@ async function run() {
   {
     await ctl({ superAdmin: true, staffPerms: null, sync: false, syncMode: "off" });
     await openPage(`${APP}/tickets-reminder/tracking?date=${today}`);
-    await waitFor("document.querySelector('[data-sync-switch] select')");
+    await waitFor("document.querySelector('[data-sync-switch] :is(select,[data-select-menu])')");
     await helpers();
     check("G281 开关：Super Admin 看得到「Main manifest sync」三档 Off / Super Admin only / Staff，现在 Off",
-      await evaluate("const s = document.querySelector('[data-sync-switch] select'); return [...s.options].map(o => o.text).join('|') === 'Off|Super Admin only|Staff' && s.value === 'off' && document.querySelector('[data-sync-switch]').textContent.includes('Main manifest sync');"));
+      await evaluate("const s = document.querySelector('[data-sync-switch] :is(select,[data-select-menu])'); return (await $selOptions(s)).map(o => o.text).join('|') === 'Off|Super Admin only|Staff' && s.value === 'off' && document.querySelector('[data-sync-switch]').textContent.includes('Main manifest sync');"));
     check("G281 关着（没有同步字段）：没有 Order Status 列、灰行说明、to notify、How to use 新句",
       await evaluate("return !$heads().includes('Order Status') && !document.querySelector('[data-unsent-note]') && !document.querySelector('[data-to-notify]') && !document.body.textContent.includes('When Main manifest sync is on');"));
     let before = (await mockLog()).length;
-    await selectValue("[data-sync-switch] select", "super_admin_only");
+    await selectValue("[data-sync-switch] :is(select,[data-select-menu])", "super_admin_only");
     await waitFor("document.querySelector('[data-sync-result]')");
     let puts = await since(before, (e) => e.path === "/api/settings/tickets-sync" && e.method === "PUT");
     check("G281 开关：选 Super Admin only ⇒ PUT /api/settings/tickets-sync {mode}，绿字 Saved，页面重读",
@@ -668,7 +667,7 @@ async function run() {
       (await since(before, (e) => e.path === "/api/notifications/tickets-reminder/tracking")).length >= 1, JSON.stringify(puts));
     check("G281 开关：不动 Tour Tracking 的开关（没有 PUT /api/settings/tracking-sync）", (await since(before, (e) => e.path === "/api/settings/tracking-sync")).length === 0);
     before = (await mockLog()).length;
-    await selectValue("[data-sync-switch] select", "staff");
+    await selectValue("[data-sync-switch] :is(select,[data-select-menu])", "staff");
     await sleep(300);
     check("G281 开关：切到 Staff 先出黄框确认、不直接存", !!(await evaluate("return !!document.querySelector('[data-sync-confirm]');")) && (await since(before, (e) => e.path === "/api/settings/tickets-sync" && e.method === "PUT")).length === 0);
     await evaluate("$btn('Cancel', document.querySelector('[data-sync-confirm]')).click();");
@@ -688,9 +687,9 @@ async function run() {
       await evaluate("const t = [...document.querySelectorAll('tbody tr[data-unsent]')]; return t.length === 2 && t.every(tr => getComputedStyle(tr).backgroundColor === 'rgb(225, 228, 232)');"));
     check("G281 灰行 Email / SMS / Status 写「—」、不出下拉",
       ["CHDZZ7", "CHDZZ8"].every((o) => gby(o)[gcol("Email")] === "—" && gby(o)[gcol("SMS")] === "—" && gby(o)[gcol("Status")] === "—") &&
-      (await evaluate("return [...document.querySelectorAll('tbody tr[data-unsent]')].every(tr => !tr.querySelector('select'));")),
+      (await evaluate("return [...document.querySelectorAll('tbody tr[data-unsent]')].every(tr => !tr.querySelector('select, [data-select-menu]'));")),
       JSON.stringify(["CHDZZ7", "CHDZZ8"].map((o) => [gby(o)[gcol("Email")], gby(o)[gcol("SMS")], gby(o)[gcol("Status")]])));
-    check("G281 发过的行照旧有状态下拉（5 个）", (await evaluate("return document.querySelectorAll('tbody select').length;")) === 5);
+    check("G281 发过的行照旧有状态下拉（5 个）", (await evaluate("return document.querySelectorAll('tbody :is(select,[data-select-menu])').length;")) === 5);
     const os = await evaluate(`const ci = ${gcol("Order Status")}; return [...document.querySelectorAll('tbody tr')].map(tr => { const td = tr.children[ci]; const cs = getComputedStyle(td); return [tr.children[${gcol("CHD#")}].textContent.slice(0, 6), td.textContent.trim(), cs.color, cs.fontWeight]; });`);
     const osBy = (o) => os.find((x) => x[0] === o);
     check("G281 Order Status：On hold 橙粗 #b45309、Cancelled 红粗 #b91c1c（灰行也照写）、其余 Confirmed",
