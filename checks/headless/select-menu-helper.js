@@ -30,7 +30,7 @@ window.$selOptions = async (el) => {
   if (!$isSelectMenu(el)) return [...el.options].map((o) => ({ value: o.value, label: o.textContent }));
   const wasOpen = el.getAttribute('aria-expanded') === 'true';
   const list = await $selOpen(el);
-  const out = [...list.querySelectorAll('[role=option]')].map((o) => ({ value: o.dataset.value, label: o.textContent.replace(/^✓/, '').trim() }));
+  const out = [...list.querySelectorAll('[role=option]')].map((o) => ({ value: o.dataset.value, label: o.textContent.trim() }));
   if (!wasOpen) await $selClose(el);
   return out;
 };

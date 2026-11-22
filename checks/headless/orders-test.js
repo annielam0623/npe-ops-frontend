@@ -505,8 +505,9 @@ async function refreshChecks() {
   await waitFor("document.querySelector('[data-select-menu-list]')", 3000);
   const geo = await evaluate(`const b = ${tdSel}.getBoundingClientRect(); const m = document.querySelector('[data-select-menu-list]').getBoundingClientRect(); return { dx: Math.round(m.left - b.left), dy: Math.round(m.top - b.bottom), mw: m.width, bw: b.width };`);
   check("下拉：菜单从按钮正下方 4px 展开、左对齐、不比按钮窄", geo.dx === 0 && geo.dy === 4 && geo.mw >= geo.bw - 0.5, JSON.stringify(geo));
-  const look = await evaluate(`const m = document.querySelector('[data-select-menu-list]'); const on = m.querySelector('[role=option][aria-selected=true]'); const cs = getComputedStyle(on); return { ck: on.textContent.trim().startsWith('✓'), bg: cs.backgroundColor, fw: cs.fontWeight, fs: getComputedStyle(m).fontSize, menuBg: getComputedStyle(m).backgroundColor, others: [...m.querySelectorAll('[role=option][aria-selected=false]')].every((o) => !o.textContent.includes('✓')) };`);
-  check("下拉：选中项打 ✓、加粗，没有蓝底；菜单白底 13px；没选的不打 ✓", look.ck && look.others && !/rgb\(\s*(30|0|59|37), (111|120|130|99|102)/.test(look.bg) && Number(look.fw) >= 600 && look.fs === "13px" && look.menuBg === "rgb(255, 255, 255)", JSON.stringify(look));
+  const look = await evaluate(`const m = document.querySelector('[data-select-menu-list]'); const on = m.querySelector('[role=option][aria-selected=true]'); const cs = getComputedStyle(on); const lefts = [...m.querySelectorAll('[role=option]')].map((o) => Math.round(o.querySelector('span').getBoundingClientRect().left)); return { ck: !m.textContent.includes('✓'), bg: cs.backgroundColor, fw: cs.fontWeight, fs: getComputedStyle(m).fontSize, menuBg: getComputedStyle(m).backgroundColor, others: new Set(lefts).size === 1 };`);
+  check("下拉：电脑每行 28px 高（Annie「行间距别做那么宽」）", (await evaluate("return Math.round(document.querySelector('[data-select-menu-list] [role=option]').getBoundingClientRect().height);")) === 28, await evaluate("return document.querySelector('[data-select-menu-list] [role=option]').getBoundingClientRect().height;"));
+  check("下拉：选中项只加粗，不打 ✓、没有蓝底；各项文字左边对齐；菜单白底 13px", look.ck && look.others && !/rgb\(\s*(30|0|59|37), (111|120|130|99|102)/.test(look.bg) && Number(look.fw) >= 600 && look.fs === "13px" && look.menuBg === "rgb(255, 255, 255)", JSON.stringify(look));
   await evaluate("const o = [...document.querySelectorAll('[data-select-menu-list] [role=option]')].find((x) => x.dataset.value === 'today'); o.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })); o.dispatchEvent(new MouseEvent('mouseenter'));");
   check("下拉：鼠标停留的那项浅灰底 #f1f2f4", await waitFor("getComputedStyle([...document.querySelectorAll('[data-select-menu-list] [role=option]')].find((x) => x.dataset.value === 'today')).backgroundColor === 'rgb(241, 242, 244)'", 2000));
   const key = (k) => `${tdSel}.dispatchEvent(new KeyboardEvent('keydown', { key: '${k}', bubbles: true }));`;
@@ -538,7 +539,7 @@ async function refreshChecks() {
   await evaluate(`${srcSel}.scrollIntoView(); ${srcSel}.click();`);
   await waitFor("document.querySelector('[data-select-menu-list]')", 3000);
   const ph = await evaluate("const m = document.querySelector('[data-select-menu-list]').getBoundingClientRect(); const o = document.querySelector('[data-select-menu-list] [role=option]').getBoundingClientRect(); return { l: m.left, r: m.right, vw: document.documentElement.clientWidth, h: o.height };");
-  check("下拉 手机：菜单在屏幕里（左右离边 ≥ 16px），每行 40px 高", ph.l >= 15.5 && ph.r <= ph.vw - 15.5 && Math.round(ph.h) === 40, JSON.stringify(ph));
+  check("下拉 手机：菜单在屏幕里（左右离边 ≥ 16px），每行 32px 高", ph.l >= 15.5 && ph.r <= ph.vw - 15.5 && Math.round(ph.h) === 32, JSON.stringify(ph));
   await evaluate(`${srcSel}.click();`);
   await cdp("Emulation.clearDeviceMetricsOverride");
   // 详情

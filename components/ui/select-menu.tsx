@@ -24,10 +24,11 @@ import { cn } from "@/lib/utils";
  * - 合起来的按钮：保留各页原来的 className（形状、大小、状态颜色），字体字号由 globals.css 的 [data-select-menu] 统一（题 1 A）。
  * - 点开的菜单：从按钮正下方 4px 展开、左对齐、至少跟按钮一样宽；宽度跟着最长的选项撑开，不截断、不加「…」，
  *   只受屏幕限制（离边 16px，靠右往左挪）；比屏幕还长的那一项才在菜单里换行（题 2）。每行一样高、左对齐。
- * - 选中项打 ✓、加粗，没有蓝底；停留 / 键盘移到的那项浅灰底。night 主题深底白字。
+ * - 选中项只加粗，不打 ✓、没有蓝底、不另留一列（Annie 2026-11-21「我不要打勾，我就要点击那个选项就好了」）：
+ *   每项就是它自己的文字，和别的项左边对齐；停留 / 键盘移到的那项浅灰底。night 主题深底白字。
  * - 键盘：Enter / 空格 / ↑ / ↓ 打开，↑ ↓ 移动，Enter 选，Esc 关（不连带关弹窗），Tab 关，打字跳到那个字开头的项。
  * - 选项超过 searchThreshold（默认 15）个：菜单顶上出搜索框（题 4 A）。
- * - 手机上也用这个菜单（题 3 A），行高 40px。
+ * - 手机上也用这个菜单（题 3 A）。行距收紧（Annie「然后行间距别做那么宽」「A，下拉菜单」）：电脑每行 28px、手机 32px。
  * - 菜单挂在 document.body（fixed），表格的 overflow、弹窗都挡不住它。
  *
  * 只换样子：value / onChange 的意思跟原来的 <select> 一样（字符串值），选了以后做什么由页面决定。
@@ -313,7 +314,7 @@ export function SelectMenu<V extends string = string>(props: SelectMenuProps<V>)
           role="presentation"
           data-select-group
           className={cn(
-            "px-[18px] pt-2 pb-[3px] pl-[34px] text-[11px] font-semibold tracking-[.04em] uppercase",
+            "px-3 pt-1.5 pb-0.5 text-[11px] font-semibold tracking-[.04em] uppercase",
             tone === "dark"
               ? "text-white/50"
               : "text-[#6b7280] night:text-white/50",
@@ -339,7 +340,7 @@ export function SelectMenu<V extends string = string>(props: SelectMenuProps<V>)
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => choose(i)}
           className={cn(
-            "flex min-h-[34px] cursor-pointer items-center gap-2.5 rounded-[6px] py-[7px] pr-[18px] pl-2.5 text-left max-sm:min-h-[40px]",
+            "flex min-h-[28px] cursor-pointer items-center rounded-[5px] py-1 pr-[18px] pl-3 text-left max-sm:min-h-[32px]",
             on && "font-semibold",
             o.disabled && "cursor-default opacity-45",
             i === active &&
@@ -349,9 +350,6 @@ export function SelectMenu<V extends string = string>(props: SelectMenuProps<V>)
                 : "bg-[#f1f2f4] night:bg-white/[.08]"),
           )}
         >
-          <span aria-hidden className="w-3.5 flex-none text-center font-bold">
-            {on ? "✓" : ""}
-          </span>
           <span className="min-w-0 [overflow-wrap:anywhere]">{o.label}</span>
         </div>,
       );
@@ -366,7 +364,7 @@ export function SelectMenu<V extends string = string>(props: SelectMenuProps<V>)
             data-select-menu-list
             style={pos ?? { position: "fixed", left: -9999, top: 0 }}
             className={cn(
-              "z-[1100] box-border w-max overflow-y-auto rounded-lg border p-1 text-[13px] leading-[1.35] whitespace-normal",
+              "z-[1100] box-border w-max overflow-y-auto rounded-lg border p-[3px] text-[13px] leading-[1.35] whitespace-normal",
               tone === "dark"
                 ? "border-white/15 bg-[#0f1c2d] text-white/90 shadow-[0_10px_28px_rgba(0,0,0,.55)]"
                 : "border-black/[.14] bg-white text-[#1a1a1a] shadow-[0_8px_24px_rgba(15,23,42,.16)] night:border-white/15 night:bg-[#0f1c2d] night:text-white/90 night:shadow-[0_10px_28px_rgba(0,0,0,.55)]",
@@ -391,7 +389,7 @@ export function SelectMenu<V extends string = string>(props: SelectMenuProps<V>)
                 }}
                 onKeyDown={onKey}
                 className={cn(
-                  "mb-1 box-border h-8 w-full rounded-[6px] border px-2.5 text-[13px] outline-none",
+                  "mb-[3px] box-border h-7 w-full rounded-[5px] border px-2.5 text-[13px] outline-none",
                   tone === "dark"
                     ? "border-white/15 bg-transparent text-white placeholder:text-white/40"
                     : "border-black/15 bg-transparent text-[#1a1a1a] placeholder:text-[#9ca3af] night:border-white/15 night:text-white night:placeholder:text-white/40",
@@ -414,7 +412,7 @@ export function SelectMenu<V extends string = string>(props: SelectMenuProps<V>)
               <div
                 data-select-footer
                 className={cn(
-                  "mt-1 border-t p-2",
+                  "mt-[3px] border-t p-1.5",
                   tone === "dark" ? "border-white/15" : "border-black/[.14] night:border-white/15",
                 )}
               >
