@@ -22,6 +22,7 @@ function listQuery(q: OrderListQuery) {
     date_field: hasDate ? "tour" : undefined,
     date_from: q.dateFrom || undefined,
     date_to: q.dateTo || undefined,
+    source: q.source || undefined,
   };
 }
 

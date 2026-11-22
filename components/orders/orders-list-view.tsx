@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { HowToUse } from "@/components/ui/how-to-use";
+import { SelectMenu } from "@/components/ui/select-menu";
 import { ErrorBanner } from "@/components/ui/panel";
 import { describeError, isStatus } from "@/lib/api-errors";
 import { isYmd, laToday, shiftYmd } from "@/lib/la-date";
@@ -12,7 +13,12 @@ import { downloadOrdersExport, fetchOrders } from "@/lib/orders-api";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
 import { usePermissions } from "@/lib/staff-permissions";
 import { cn } from "@/lib/utils";
-import type { OrderListPage, OrderListQuery, OrderRow } from "@/types";
+import type {
+  OrderListPage,
+  OrderListQuery,
+  OrderRow,
+  OrderSource,
+} from "@/types";
 
 type Range = "upcoming" | "today" | "next7" | "month" | "all" | "custom";
 
@@ -58,6 +64,9 @@ const LEGACY_BTN_CLASS =
 /** 旧页 .dr-date-wrap input[type=date]。 */
 const DR_DATE_CLASS =
   "h-7 cursor-pointer rounded-md border-[0.5px] border-black/15 night:border-white/10 bg-paper night:bg-white/[.04] px-2 text-[12px] text-[#1a1a1a] night:text-white/90 focus:border-[#1a1a1a] night:focus:border-white/40 focus:outline-none";
+/** 旧页 .dr-trigger：Tour date / Source 两个筛选下拉合起来的样子（SelectMenu 的按钮）。 */
+const FILTER_BTN_CLASS =
+  "h-8 rounded-[7px] border-[0.5px] border-black/[.18] bg-paper px-3 whitespace-nowrap text-[#1a1a1a] select-none hover:border-black/35 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3b82f6] night:border-white/10 night:bg-white/[.04] night:text-white/90";
 /** 旧页 .ord-pagination button。 */
 const PAGE_BTN_CLASS =
   "h-7 cursor-pointer rounded-md border-[0.5px] border-black/15 night:border-white/10 bg-paper night:bg-white/[.04] px-2.5 text-[12px] text-[#1a1a1a] night:text-white/90 disabled:cursor-default disabled:opacity-40";
@@ -122,6 +131,17 @@ const SOURCE_TAG: Record<string, { label: string; className: string }> = {
       "bg-[#E6F1FB] night:bg-sky-400/[.08] text-[#185FA5] night:text-sky-300",
   },
 };
+
+/**
+ * Source 筛选（Annie 2026-11-21「全部同意推荐，动手」，preview Pg75scdcQoVKohB775PpXe 题 1 A / 题 2 A）：
+ * 放 Tour date 后面、样子同它；选了马上查、回第 1 页；Clear 回到 All；不记（每次打开都是 All）。
+ * Rezdy 含旧表的单（后端 orders.py _LANE_SOURCE）。列表、条数、⬇ Export 都跟着。
+ */
+const SOURCES: readonly { value: "" | OrderSource; label: string }[] = [
+  { value: "", label: "All" },
+  { value: "rezdy", label: "Rezdy" },
+  { value: "tripguru", label: "TripGuru" },
+];
 
 const EXPORT_CONFIRM_OVER = 5000;
 
@@ -213,20 +233,27 @@ export function OrdersListView() {
     setQuery((q) => (q ? { ...q, dateFrom: from, dateTo: to, page: 1 } : q));
   }
 
-  function applyCustom() {
+  function chooseSource(next: "" | OrderSource) {
+    setQuery((q) =>
+      q ? { ...q, source: next || undefined, page: 1 } : q,
+    );
+  }
+
+  function applyCustom(): boolean {
     if (!isYmd(custom.from) || !isYmd(custom.to)) {
       setCustomError("Please select both dates.");
-      return;
+      return false;
     }
     if (custom.from > custom.to) {
       setCustomError("The start date is after the end date.");
-      return;
+      return false;
     }
     setCustomError(null);
     setRangeLabel(`${custom.from} – ${custom.to}`);
     setQuery((q) =>
       q ? { ...q, dateFrom: custom.from, dateTo: custom.to, page: 1 } : q,
     );
+    return true;
   }
 
   async function runExport() {
@@ -290,68 +317,87 @@ export function OrdersListView() {
               onChange={(e) => setSearch(e.target.value)}
               className="h-8 w-72 min-w-[200px] rounded-[7px] border-[0.5px] border-black/15 bg-paper px-2.5 text-[13px] text-[#1a1a1a] focus:outline-none night:border-white/10 night:bg-white/[.04] night:text-white/90 night:placeholder:text-white/35"
             />
-            {/* 旧页 .dr-trigger「📅 Tour date · Upcoming ▾」；ops 里是原生下拉，样子照旧。 */}
-            <label className="relative flex h-8 cursor-pointer items-center gap-1.5 rounded-[7px] border-[0.5px] border-black/[.18] bg-paper px-3 text-[13px] whitespace-nowrap text-[#1a1a1a] select-none hover:border-black/35 night:border-white/10 night:bg-white/[.04] night:text-white/90">
-              <span aria-hidden>📅</span>
-              <span className="text-[#1a1a1a] night:text-white/55">
-                Tour date ·
-              </span>
-              <select
-                aria-label="Tour date"
-                value={range}
-                onChange={(e) => chooseRange(e.target.value as Range)}
-                className="cursor-pointer appearance-none bg-transparent text-[13px] text-[#1a1a1a] focus:outline-none night:text-white/90"
-              >
-                {RANGES.map((r) => (
-                  <option key={r.value} value={r.value}>
-                    {r.label}
-                  </option>
-                ))}
-              </select>
-              <span
-                aria-hidden
-                className="text-[10px] text-[#1a1a1a] night:text-white/35"
-              >
-                ▾
-              </span>
-            </label>
+            {/* 旧页 .dr-trigger「📅 Tour date · Upcoming ▾」。全站下拉（Annie 2026-11-21）：换成 SelectMenu，
+                合起来的样子照旧；Custom 的两个日期 + Apply 放在菜单下面（preview NBeBrZJELNg1Y8vJcb5pxa ①）。 */}
+            <SelectMenu
+              aria-label="Tour date"
+              value={range}
+              options={RANGES}
+              onChange={(next) => chooseRange(next)}
+              stayOpenOn={(v) => v === "custom"}
+              renderValue={(o) => (
+                <>
+                  <span aria-hidden>📅</span>{" "}
+                  <span className="text-[#1a1a1a] night:text-white/55">
+                    Tour date ·
+                  </span>{" "}
+                  {o?.label}
+                </>
+              )}
+              footer={
+                range === "custom"
+                  ? (close) => (
+                      <div className="flex flex-wrap items-center gap-1.5 text-[12px] text-[#94a3b8] night:text-white/45">
+                        <input
+                          type="date"
+                          aria-label="From"
+                          value={custom.from}
+                          onChange={(e) =>
+                            setCustom((c) => ({ ...c, from: e.target.value }))
+                          }
+                          className={DR_DATE_CLASS}
+                        />
+                        –
+                        <input
+                          type="date"
+                          aria-label="To"
+                          value={custom.to}
+                          onChange={(e) =>
+                            setCustom((c) => ({ ...c, to: e.target.value }))
+                          }
+                          className={DR_DATE_CLASS}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (applyCustom()) close();
+                          }}
+                          className="h-7 rounded-md bg-[#3b82f6] px-3 text-[12px] text-white hover:bg-[#2f76e8]"
+                        >
+                          Apply
+                        </button>
+                        {customError ? (
+                          <span
+                            role="alert"
+                            className="basis-full text-[12px] text-[#f87171]"
+                          >
+                            {customError}
+                          </span>
+                        ) : null}
+                      </div>
+                    )
+                  : undefined
+              }
+              className={FILTER_BTN_CLASS}
+            />
+            <SelectMenu
+              aria-label="Source"
+              value={query?.source ?? ""}
+              options={SOURCES}
+              onChange={(next) => chooseSource(next)}
+              renderValue={(o) => (
+                <>
+                  <span className="text-[#1a1a1a] night:text-white/55">
+                    Source ·
+                  </span>{" "}
+                  {o?.label}
+                </>
+              )}
+              className={FILTER_BTN_CLASS}
+            />
             {range === "custom" ? (
-              <span className="flex flex-wrap items-center gap-1.5 text-[12px] text-[#aaa] night:text-white/35">
-                <input
-                  type="date"
-                  aria-label="From"
-                  value={custom.from}
-                  onChange={(e) =>
-                    setCustom((c) => ({ ...c, from: e.target.value }))
-                  }
-                  className={DR_DATE_CLASS}
-                />
-                –
-                <input
-                  type="date"
-                  aria-label="To"
-                  value={custom.to}
-                  onChange={(e) =>
-                    setCustom((c) => ({ ...c, to: e.target.value }))
-                  }
-                  className={DR_DATE_CLASS}
-                />
-                <button
-                  type="button"
-                  onClick={applyCustom}
-                  className="h-7 rounded-md bg-[#3b82f6] px-3 text-[12px] text-white hover:bg-[#2f76e8]"
-                >
-                  Apply
-                </button>
-                {customError ? (
-                  <span role="alert" className="text-[12px] text-[#f87171]">
-                    {customError}
-                  </span>
-                ) : (
-                  <span className="text-[12px] text-[#94a3b8] night:text-white/45">
-                    Showing: {rangeLabel}
-                  </span>
-                )}
+              <span className="text-[12px] text-[#94a3b8] night:text-white/45">
+                Showing: {rangeLabel}
               </span>
             ) : null}
             <button
@@ -527,6 +573,7 @@ export function OrdersListView() {
             items={[
               "The list shows upcoming tours. Search by order #, name, email, phone or product.",
               "Click 📅 Tour date to change the range (Custom: pick both dates, then Apply).",
+              "Use Source to show only Rezdy orders or only TripGuru orders; All shows both. The list, the record count and ⬇ Export all follow it. Clear sets it back to All.",
               "Click an Order # to open the order.",
               "The Source column shows where an order came from: Rezdy or TripGuru. TripGuru orders open read-only. Pickup time, pickup location and agent are blank for TripGuru orders for now.",
               ...(perms.canSeeMoney
