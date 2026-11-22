@@ -38,6 +38,34 @@ import {
   REZDY_NAME_CLASS,
 } from "./legacy-ui";
 
+/** 名字旁的来源小标签（样子同以前写死的 REZDY）：rezdy / tripguru 各一个，both 两个都出；没有 source 不出。 */
+function SourceTags({ source }: { source: Product["source"] }) {
+  const tags =
+    source === "rezdy"
+      ? ["REZDY"]
+      : source === "tripguru"
+        ? ["TRIPGURU"]
+        : source === "both"
+          ? ["REZDY", "TRIPGURU"]
+          : [];
+  return tags.map((t) => (
+    <span
+      key={t}
+      data-product-source={t.toLowerCase()}
+      className={cn(
+        "ml-1.5 inline-block rounded-[4px] px-[5px] align-[1px] text-[9px] font-semibold whitespace-nowrap",
+        // TRIPGURU 蓝（Annie 2026-11-21「把product里tripguru的标记改成蓝色」）：同 Order List Source 列的 TripGuru
+        // （components/orders/orders-list-view.tsx SOURCE_TAG.tripguru），全站一个 TripGuru 蓝。REZDY 照旧灰。
+        t === "TRIPGURU"
+          ? "bg-[#E6F1FB] text-[#185FA5] night:bg-sky-400/[.08] night:text-sky-300"
+          : "bg-[#f0f0ee] text-[#1a1a1a] night:bg-white/[.03] night:text-white/35",
+      )}
+    >
+      {t}
+    </span>
+  ));
+}
+
 /** 一格的样子：改了没存（琥珀）/ 已保存（绿）/ 存不上（红）。 */
 export type CellState = "saving" | "saved" | "failed";
 
@@ -322,9 +350,7 @@ function ProductRow({
         {p.product_name || (
           <i className="text-[#1a1a1a] night:text-white/35">(no name yet)</i>
         )}
-        <span className="ml-1.5 inline-block rounded-[4px] bg-[#f0f0ee] px-[5px] align-[1px] text-[9px] font-semibold whitespace-nowrap text-[#1a1a1a] night:bg-white/[.03] night:text-white/35">
-          REZDY
-        </span>
+        <SourceTags source={p.source} />
       </td>
       <td className={PROD_TD_CLASS}>
         <input
