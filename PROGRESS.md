@@ -83,6 +83,8 @@
 - ✅ 全站下拉第 2 批上 main 2f92760a（2c；Tour Tracking 3 + Sync 1 + Tickets Tracking 1 = 5 个；diff 无 prettier 重排；tsc / eslint / build、tt 215/215、tk 157/157、orders 141/141）。Source 筛选：后端 95 核 87,485 = rezdy 87,356 + tripguru 129 不重不漏；5e 核代码 Export 与列表同一 listQuery（orders-test 489 项过）。
 - ✅ Products 大项折叠上 main f22ab339（bb，功能 0c63800d，task/products-collapse；Q1–Q3 = A）。tsc / eslint / build；products 251/251（新 11 项折叠检查）、ptt 44/44、fc 199/199、perm 54/54；截图同 preview 7Fxpr9WTLkegzDbZrAWadY。Annie 线上看 Settings › Products。bb 接着出 Tickets #bdbdbd + New 标签 preview。
 - bb 交 Tickets 组头 #bdbdbd + NEW 标签 preview https://claude.ai/artifact/67xPNFqwJkisFfPpkYZCq6 （WIP 本地 1bae2604，task/tickets-new-tag-preview，含勾选列 v2；主窗口看过截图；勾选列有无 NEW 都 80.3px）。累计 7 题 ⇒ Excel C:\Users\annzh\Downloads\Annie_待答题_2026-11-21_Tickets.xlsx：T-Q0 NEW 标没发的单 / T-Q1 样式照 SOON / T-Q2 没发行底色保留米色 / T-Q3 只做 Tickets / T-Q4 夜间照旧深灰 / C-Q1 勾选列 How to use 改 ALL + 补 unsent / P-Q1 Tickets 胶囊回白色不用团色，均推荐 A。📌 等 Annie 填 + 动手。
+- ✅ 全站下拉第 3 批上 main c232b2d6（2c；Users 列表 / 筛选、Reporting lines、Team permissions 成员表单、Bug reports 筛选、New bug 表单共 16 个；diff 逐行核无 prettier 重排；tsc / eslint / build、users 83、perm 54/54、bugs 40/40、bugs401 1/1、orders 141/141；合进 Products 折叠后重跑 products 251/251）。2c 接 b4（先改回 5 个文件的 prettier 重排）。
+- Annie（原话）「T-Q3 Bus Tours 要不要也加 NEW  要，  new的颜色选B，动手」⇒ T-Q3 = B（Bus 也加，按 sent_tour_at）、T-Q1 = B（浅绿底深绿字方角）；没单独答的 T-Q0 / T-Q2 / T-Q4 / C-Q1 照推荐 A 一起做（同一个 preview）；P-Q1 Tickets 胶囊回白色另一件，未答不做，仍等。派 bb 在 1bae2604 上做完合 main（含勾选列 ALL / unsent v2）。
 - 答后端：95 G371 旧发送入口盘点（三个 tracking 已切 ops；utilities / test-orders ops 没页面没入口；ops 直接调 /booking-notes/multi/reply、不调 /resend）；bb 7a 8 句原文 + 号码 grep（ops 代码没写死旧号码）。
 ## 📌 2026-11-20 17:15 Annie 新提：staff 备注几个入口打通（记录，未动手）
 
