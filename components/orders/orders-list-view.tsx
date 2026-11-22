@@ -12,7 +12,12 @@ import { downloadOrdersExport, fetchOrders } from "@/lib/orders-api";
 import { buildLegacyLoginRedirectUrl } from "@/lib/safe-redirect";
 import { usePermissions } from "@/lib/staff-permissions";
 import { cn } from "@/lib/utils";
-import type { OrderListPage, OrderListQuery, OrderRow } from "@/types";
+import type {
+  OrderListPage,
+  OrderListQuery,
+  OrderRow,
+  OrderSource,
+} from "@/types";
 
 type Range = "upcoming" | "today" | "next7" | "month" | "all" | "custom";
 
@@ -123,6 +128,17 @@ const SOURCE_TAG: Record<string, { label: string; className: string }> = {
   },
 };
 
+/**
+ * Source 筛选（Annie 2026-11-21「全部同意推荐，动手」，preview Pg75scdcQoVKohB775PpXe 题 1 A / 题 2 A）：
+ * 放 Tour date 后面、样子同它；选了马上查、回第 1 页；Clear 回到 All；不记（每次打开都是 All）。
+ * Rezdy 含旧表的单（后端 orders.py _LANE_SOURCE）。列表、条数、⬇ Export 都跟着。
+ */
+const SOURCES: readonly { value: "" | OrderSource; label: string }[] = [
+  { value: "", label: "All" },
+  { value: "rezdy", label: "Rezdy" },
+  { value: "tripguru", label: "TripGuru" },
+];
+
 const EXPORT_CONFIRM_OVER = 5000;
 
 export function OrdersListView() {
@@ -211,6 +227,12 @@ export function OrdersListView() {
     const { from, to } = rangeDates(next);
     setRangeLabel(RANGES.find((r) => r.value === next)?.label ?? next);
     setQuery((q) => (q ? { ...q, dateFrom: from, dateTo: to, page: 1 } : q));
+  }
+
+  function chooseSource(next: "" | OrderSource) {
+    setQuery((q) =>
+      q ? { ...q, source: next || undefined, page: 1 } : q,
+    );
   }
 
   function applyCustom() {
@@ -305,6 +327,31 @@ export function OrdersListView() {
                 {RANGES.map((r) => (
                   <option key={r.value} value={r.value}>
                     {r.label}
+                  </option>
+                ))}
+              </select>
+              <span
+                aria-hidden
+                className="text-[10px] text-[#1a1a1a] night:text-white/35"
+              >
+                ▾
+              </span>
+            </label>
+            <label className="relative flex h-8 cursor-pointer items-center gap-1.5 rounded-[7px] border-[0.5px] border-black/[.18] bg-paper px-3 text-[13px] whitespace-nowrap text-[#1a1a1a] select-none hover:border-black/35 night:border-white/10 night:bg-white/[.04] night:text-white/90">
+              <span className="text-[#1a1a1a] night:text-white/55">
+                Source ·
+              </span>
+              <select
+                aria-label="Source"
+                value={query?.source ?? ""}
+                onChange={(e) =>
+                  chooseSource(e.target.value as "" | OrderSource)
+                }
+                className="cursor-pointer appearance-none bg-transparent text-[13px] text-[#1a1a1a] focus:outline-none night:text-white/90"
+              >
+                {SOURCES.map((s) => (
+                  <option key={s.value} value={s.value}>
+                    {s.label}
                   </option>
                 ))}
               </select>
@@ -527,6 +574,7 @@ export function OrdersListView() {
             items={[
               "The list shows upcoming tours. Search by order #, name, email, phone or product.",
               "Click 📅 Tour date to change the range (Custom: pick both dates, then Apply).",
+              "Use Source to show only Rezdy orders or only TripGuru orders; All shows both. The list, the record count and ⬇ Export all follow it. Clear sets it back to All.",
               "Click an Order # to open the order.",
               "The Source column shows where an order came from: Rezdy or TripGuru. TripGuru orders open read-only. Pickup time, pickup location and agent are blank for TripGuru orders for now.",
               ...(perms.canSeeMoney

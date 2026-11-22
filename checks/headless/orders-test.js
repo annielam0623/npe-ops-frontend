@@ -464,6 +464,35 @@ async function refreshChecks() {
   check("G280 Source：TripGuru 单写 TripGuru、Rezdy 单写 Rezdy（不再是小写 rezdy）", (await evaluate(`return ${cellOf("NPE-ZZ1001", "Source")};`)) === "TripGuru" && (await evaluate(`return ${cellOf("CHDZZ1", "Source")};`)) === "Rezdy");
   check("G280 TripGuru 状态首字母大写、同 Rezdy 标签：confirmed ⇒ Confirmed、pending ⇒ Pending", (await evaluate(`return ${cellOf("NPE-ZZ1001", "Status")};`)) === "Confirmed" && (await evaluate(`return ${cellOf("NPE-ZZ1002", "Status")};`)) === "Pending");
   check("G280 How to use 加了 Source 那句（原文）", await evaluate("return document.body.textContent.includes('The Source column shows where an order came from: Rezdy or TripGuru. TripGuru orders open read-only. Pickup time, pickup location and agent are blank for TripGuru orders for now.');"));
+  // ── Order List Source 筛选（Annie 2026-11-21「全部同意推荐，动手」，preview Pg75scdcQoVKohB775PpXe 题 1 A / 题 2 A）──
+  const srcSel = "document.querySelector('select[aria-label=\"Source\"]')";
+  const tdSel = "document.querySelector('select[aria-label=\"Tour date\"]')";
+  check("Source：在 Tour date 后面，「Source · All ▾」，选项 All / Rezdy / TripGuru，默认 All", await evaluate(`const s = ${srcSel}; const lab = s.closest('label'); const td = ${tdSel}.closest('label'); return !!s && s.value === '' && [...s.options].map((o) => o.textContent).join('|') === 'All|Rezdy|TripGuru' && lab.querySelector('span').textContent.trim() === 'Source ·' && lab.textContent.trim().endsWith('▾') && td.nextElementSibling === lab;`), await evaluate(`return ${srcSel}?.closest('label')?.outerHTML.slice(0, 200);`));
+  check("Source All：两种单都有，请求不带 source", (await evaluate("return document.body.textContent.includes('NPE-ZZ1001') && document.body.textContent.includes('CHDZZ1');")) && (await mockLog()).filter((e) => e.path === "/api/operations/orders").every((e) => !e.query.includes("source=")));
+  await evaluate(SEL);
+  let sb = (await mockLog()).length;
+  await evaluate(`$sel(${srcSel}, 'tripguru');`);
+  await waitFor("!document.body.textContent.includes('CHDZZ1') && document.body.textContent.includes('NPE-ZZ1001')", 15000);
+  let sreq = await since(sb, (e) => e.path === "/api/operations/orders");
+  check("Source TripGuru：选了马上查（不用 Save），请求带 source=tripguru、回第 1 页；只剩 TripGuru 单，条数和 Export 跟着变", sreq.length >= 1 && sreq.every((e) => e.query.includes("source=tripguru") && e.query.includes("page=1")) && (await evaluate("const t = document.body.textContent; return t.includes('2 records') && t.includes('⬇ Export (2)') && !t.includes('CHDZZ1');")), JSON.stringify(sreq.map((e) => e.query)));
+  sb = (await mockLog()).length;
+  await evaluate("[...document.querySelectorAll('button')].find(b => b.textContent.startsWith('⬇ Export')).click();");
+  await waitFor("!document.body.textContent.includes('Preparing...')");
+  const sexp = await since(sb, (e) => e.path === "/api/operations/orders/export");
+  check("Source TripGuru：⬇ Export 也带 source=tripguru", sexp.length === 1 && sexp[0].query.includes("source=tripguru"), JSON.stringify(sexp.map((e) => e.query)));
+  await evaluate(`$sel(${srcSel}, 'rezdy');`);
+  await waitFor("document.body.textContent.includes('CHDZZ1') && !document.body.textContent.includes('NPE-ZZ1001')", 15000);
+  check("Source Rezdy：只剩 Rezdy 单（含旧表的单）", await evaluate("return !document.body.textContent.includes('NPE-ZZ1002') && document.body.textContent.includes('70 records');"), await evaluate("return document.querySelector('main').textContent.slice(0, 300);"));
+  await evaluate("[...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'Clear').click();");
+  await waitFor(`${srcSel}.value === '' && document.body.textContent.includes('NPE-ZZ1001')`, 15000);
+  check("题 1 A：Clear 把 Source 放回 All", await evaluate(`return ${srcSel}.value === '' && ${tdSel}.value === 'upcoming';`));
+  await evaluate(`$sel(${srcSel}, 'tripguru');`);
+  await waitFor("!document.body.textContent.includes('CHDZZ1')", 15000);
+  await goto(`${APP}/orders`);
+  await waitFor("document.body.textContent.includes('NPE-ZZ1001')", 30000);
+  await evaluate(SEL);
+  check("题 2 A：不记，重开页面回到 All", await evaluate(`return ${srcSel}.value === '' && document.body.textContent.includes('CHDZZ1');`));
+  check("How to use 加了 Source 筛选那句（原文），在 Tour date 那句后面", await evaluate("const lis = [...[...document.querySelectorAll('details')].find((d) => d.textContent.includes('How to use — Orders')).querySelectorAll('li')].map((l) => l.textContent.trim()); const i = lis.indexOf('Use Source to show only Rezdy orders or only TripGuru orders; All shows both. The list, the record count and ⬇ Export all follow it. Clear sets it back to All.'); return i > 0 && lis[i - 1].startsWith('Click 📅 Tour date');"));
   // 详情
   await goto(`${APP}/orders/NPE-ZZ1001`);
   await waitFor("document.querySelector('[data-tripguru-items]')", 30000);
