@@ -79,6 +79,7 @@
 - Annie（原话）「ticket的小节用第二个色bdbdbd。然后还没有的订单在打勾的框旁边加个tag，new」⇒ 记录：Tickets 组头选色板 v2 第二色 #bdbdbd；未发（无 Sent by）的单打勾框旁加 New 标签。派 bb 出 preview（与打勾列 ALL/unsent v2 合出图，不撑宽列；题：标签样式 / 未发底色是否保留 / Bus 是否同做），等动手。
 - Annie（原话）「全站下拉可以，动手」⇒ 派 2c 按 b1→b6 逐批合最新 main、跑检查后上 main（b3/b4 先核无 prettier 重排；任一批不过就停）；b1 上线后把 Source 筛选 SHA 转后端。
 - 🐞 Annie（原话）「我记得我们原来设计的relay split单里是会把这台车去接的客人最后上哪台bus，哪个司机和导游，都显示出来…现在怎么没有了」（附 11/18 Relay 1 Bruce 图，底部 Antelope / BZ 色条）⇒ 查：前端画色条还在（relay-list-view.tsx:888-897，来自 guests[].bus）；后端 relay_pull.py:626-635 只在客人有 bus_label 且大巴 label 非空时给 bus ⇒ 单车团（label=null）/ 没分字母时色条不出。已转后端主窗口-bb 查实际返回、当 bug 修。
+- ✅ 全站下拉第 1 批上 main 3714494f（2c，合并 d7ffa1cf；Order List Tour date + Source 2 个，新组件 select-menu.tsx；Source 筛选 37b88b17：列表 / Export 带 source=rezdy|tripguru，All 不带）。tsc / eslint / build、orders 141/141、nav 40/40。Source SHA 已转后端主窗口-bb。Annie 线上看 /orders。2c 接着合 b2。
 - 答后端：95 G371 旧发送入口盘点（三个 tracking 已切 ops；utilities / test-orders ops 没页面没入口；ops 直接调 /booking-notes/multi/reply、不调 /resend）；bb 7a 8 句原文 + 号码 grep（ops 代码没写死旧号码）。
 ## 📌 2026-11-20 17:15 Annie 新提：staff 备注几个入口打通（记录，未动手）
 
