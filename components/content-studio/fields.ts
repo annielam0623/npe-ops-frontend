@@ -745,6 +745,10 @@ export function fillFarmOut(
  * longestNote：所有团里最长的 PLEASE NOTE（读不到就不传，按空算）。
  * 短信字数按它算，注意事项再长也不会把短信顶过 300。
  */
+/** Farm out 邮件标题框的位置换成这一行（后端 G302 起标题由代码生成）。 */
+export const FO_SUBJECT_NOTE =
+  "Subject is set automatically: tour name, date, order number.";
+
 export function foFields(
   slug: string,
   tab: "Email" | "SMS",
@@ -770,15 +774,8 @@ export function foFields(
       },
     ];
   }
+  // Email subject 不再出框：标题由后端代码生成（G302），已存的值不动（Annie 2026-11-22「A 动手」）。
   return [
-    {
-      key: foKey(slug, "email_subject"),
-      label: "Email subject",
-      rows: 1,
-      vars: FO_VARS,
-      strictVars: true,
-      resetKey: resetFor("email_subject"),
-    },
     {
       key: foKey(slug, "email_body"),
       label: "Email body",
