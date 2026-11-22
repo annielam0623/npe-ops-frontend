@@ -52,7 +52,14 @@ function SourceTags({ source }: { source: Product["source"] }) {
     <span
       key={t}
       data-product-source={t.toLowerCase()}
-      className="ml-1.5 inline-block rounded-[4px] bg-[#f0f0ee] px-[5px] align-[1px] text-[9px] font-semibold whitespace-nowrap text-[#1a1a1a] night:bg-white/[.03] night:text-white/35"
+      className={cn(
+        "ml-1.5 inline-block rounded-[4px] px-[5px] align-[1px] text-[9px] font-semibold whitespace-nowrap",
+        // TRIPGURU 蓝（Annie 2026-11-21「把product里tripguru的标记改成蓝色」）：同 Order List Source 列的 TripGuru
+        // （components/orders/orders-list-view.tsx SOURCE_TAG.tripguru），全站一个 TripGuru 蓝。REZDY 照旧灰。
+        t === "TRIPGURU"
+          ? "bg-[#E6F1FB] text-[#185FA5] night:bg-sky-400/[.08] night:text-sky-300"
+          : "bg-[#f0f0ee] text-[#1a1a1a] night:bg-white/[.03] night:text-white/35",
+      )}
     >
       {t}
     </span>

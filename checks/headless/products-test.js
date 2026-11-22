@@ -163,7 +163,7 @@ async function run() {
   await h();
   const src = { UAC01: await tagsOf("UAC01"), UAC02: await tagsOf("UAC02"), SHT01: await tagsOf("SHT01"), LEG01: await tagsOf("LEG01") };
   check("来源：rezdy ⇒ REZDY、tripguru ⇒ TRIPGURU、both ⇒ 两个、没有 source ⇒ 不出", src.UAC01 === "REZDY" && src.UAC02 === "TRIPGURU" && src.SHT01 === "REZDY+TRIPGURU" && src.LEG01 === "", JSON.stringify(src));
-  check("来源：TRIPGURU 跟 REZDY 同一个样子（字号 / 底色）", await evaluate("const [a, b] = [document.querySelector('[data-product-source=rezdy]'), document.querySelector('[data-product-source=tripguru]')]; const s = (e) => { const c = getComputedStyle(e); return [c.fontSize, c.backgroundColor, c.fontWeight].join(); }; return !!a && !!b && s(a) === s(b) && getComputedStyle(a).fontSize === '9px';"));
+  check("来源：TRIPGURU 蓝（同 Order List 的 TripGuru：底 #E6F1FB、字 #185FA5），REZDY 照旧灰（#f0f0ee），字号一样 9px", await evaluate("const [a, b] = [document.querySelector('[data-product-source=rezdy]'), document.querySelector('[data-product-source=tripguru]')]; const c = (e) => getComputedStyle(e); return !!a && !!b && c(b).backgroundColor === 'rgb(230, 241, 251)' && c(b).color === 'rgb(24, 95, 165)' && c(a).backgroundColor === 'rgb(240, 240, 238)' && c(a).fontSize === '9px' && c(b).fontSize === '9px';"), await evaluate("return [...document.querySelectorAll('[data-product-source]')].map((e) => e.dataset.productSource + ' ' + getComputedStyle(e).backgroundColor + ' ' + getComputedStyle(e).color).join(' | ');"));
   await ctl({ source: false });
   await goto(`${APP}/settings/products`);
   await waitFor("document.body.textContent.includes('All Products') && document.body.textContent.includes('not in this list yet')");
