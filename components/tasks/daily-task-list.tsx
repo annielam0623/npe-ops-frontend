@@ -116,8 +116,7 @@ function checkDraft(d: Draft): string | null {
   if (!d.title.trim()) return "Write the task first.";
   if (d.frequency === "every_n_days") {
     const n = Number(d.everyN);
-    if (!Number.isInteger(n) || n < 1)
-      return "Every … days needs a whole number.";
+    if (!Number.isInteger(n) || n < 1) return "Every … days needs a whole number.";
   }
   if (d.frequency === "hourly" && (!d.from || !d.to))
     return "Every hour needs a From and To.";
@@ -484,10 +483,7 @@ function DailyTaskListDialog({
                               aria-label={`Edit ${t.title}`}
                               disabled={busy || isEditing}
                               onClick={() =>
-                                startEdit(
-                                  { kind: "edit", id: t.id },
-                                  draftOf(t),
-                                )
+                                startEdit({ kind: "edit", id: t.id }, draftOf(t))
                               }
                               className="rounded-lg border border-white/20 bg-transparent px-2 py-px text-[11.5px] font-semibold text-white hover:border-white/40 disabled:opacity-40"
                             >

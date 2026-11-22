@@ -426,6 +426,7 @@ function EditCell({
           ...(!known && value
             ? [{ value: String(value), label: String(value) }]
             : []),
+          // 按选项原顺序（旧页面这里的顺序是乱的）。
           ...(field.choices ?? []).map(([v, t]) => ({
             value: String(v),
             label: String(t),
