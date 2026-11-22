@@ -154,6 +154,21 @@ async function run() {
   await waitFor("document.body.textContent.includes('All Products') && document.body.textContent.includes('not in this list yet')");
   await h();
 
+  // ── 来源小标签（Annie 2026-11-21：TripGuru 的产品不能写死 REZDY）──
+  const tagsOf = (code) => evaluate(`const tr = [...document.querySelectorAll("tbody tr")].find((r) => r.querySelector("td:nth-child(2)")?.textContent.trim() === ${JSON.stringify(code)}); return tr ? [...tr.querySelectorAll("[data-product-source]")].map((e) => e.textContent.trim()).join("+") : null;`);
+  check("来源：旧后端（没有 source）⇒ 名字旁不出 REZDY / TRIPGURU", (await evaluate("return document.querySelectorAll('[data-product-source]').length;")) === 0 && !(await evaluate("return [...document.querySelectorAll('tbody td')].some((td) => td.textContent.includes('REZDY'));")));
+  await ctl({ source: true });
+  await goto(`${APP}/settings/products`);
+  await waitFor("document.querySelector('[data-product-source]')");
+  await h();
+  const src = { UAC01: await tagsOf("UAC01"), UAC02: await tagsOf("UAC02"), SHT01: await tagsOf("SHT01"), LEG01: await tagsOf("LEG01") };
+  check("来源：rezdy ⇒ REZDY、tripguru ⇒ TRIPGURU、both ⇒ 两个、没有 source ⇒ 不出", src.UAC01 === "REZDY" && src.UAC02 === "TRIPGURU" && src.SHT01 === "REZDY+TRIPGURU" && src.LEG01 === "", JSON.stringify(src));
+  check("来源：TRIPGURU 跟 REZDY 同一个样子（字号 / 底色）", await evaluate("const [a, b] = [document.querySelector('[data-product-source=rezdy]'), document.querySelector('[data-product-source=tripguru]')]; const s = (e) => { const c = getComputedStyle(e); return [c.fontSize, c.backgroundColor, c.fontWeight].join(); }; return !!a && !!b && s(a) === s(b) && getComputedStyle(a).fontSize === '9px';"));
+  await ctl({ source: false });
+  await goto(`${APP}/settings/products`);
+  await waitFor("document.body.textContent.includes('All Products') && document.body.textContent.includes('not in this list yet')");
+  await h();
+
   // ── 列表 ──
   check("计数：5 products · 1 inactive", await evaluate("return document.body.textContent.includes('5 products · 1 inactive');"));
   const headings = await evaluate("return [...document.querySelectorAll('section:not([data-missing-card]) tbody tr td[colspan=\"7\"]')].map(td => td.textContent);");
