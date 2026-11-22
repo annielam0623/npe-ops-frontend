@@ -39,6 +39,7 @@ import {
   TRUNCATED_CLASS,
 } from "./legacy-styles";
 import { NewBugDialog } from "./new-bug-dialog";
+import { SelectMenu } from "@/components/ui/select-menu";
 
 interface BugList {
   tasks: ClickUpTask[];
@@ -391,95 +392,97 @@ export function BugReportsView() {
               onChange={(v) => set("search", v)}
               widthClass="w-[220px]"
             />
-            <select
+            <SelectMenu
               aria-label="Severity"
               className={SELECT}
-              value={filters.severity}
-              onChange={(e) => set("severity", e.target.value)}
-            >
-              <option value="">{text.allSeverity}</option>
-              <option value="P0">P0</option>
-              <option value="P1">P1</option>
-              <option value="P2">P2</option>
-            </select>
-            <select
+              value={String(filters.severity)}
+              options={[
+                { value: "", label: String(text.allSeverity) },
+                { value: "P0", label: "P0" },
+                { value: "P1", label: "P1" },
+                { value: "P2", label: "P2" },
+              ]}
+              onChange={(next) => set("severity", next)}
+            />
+            <SelectMenu
               aria-label="Status filter"
               className={SELECT}
-              value={filters.status}
-              onChange={(e) => {
-                set("status", e.target.value);
+              value={String(filters.status)}
+              options={[
+                { value: "", label: String(text.allStatus) },
+                ...(["new", "in progress", "complete"] as const).map((v) => ({
+                  value: String(v),
+                  label: String(text.statusOptions[v]),
+                })),
+              ]}
+              onChange={(next) => {
+                set("status", next);
                 setPill(null);
               }}
-            >
-              <option value="">{text.allStatus}</option>
-              {(["new", "in progress", "complete"] as const).map((v) => (
-                <option key={v} value={v}>
-                  {text.statusOptions[v]}
-                </option>
-              ))}
-            </select>
-            <select
+            />
+            <SelectMenu
               aria-label="Reason"
               className={SELECT}
-              value={filters.reason}
-              onChange={(e) => set("reason", e.target.value)}
-            >
-              <option value="">{text.allReasons}</option>
-              {REASONS.map((r) => (
-                <option key={r.value} value={r.value}>
-                  {lang === "zh" ? r.value : r.en}
-                </option>
-              ))}
-            </select>
-            <select
+              value={String(filters.reason)}
+              options={[
+                { value: "", label: String(text.allReasons) },
+                ...REASONS.map((r) => ({
+                  value: String(r.value),
+                  label: String(lang === "zh" ? r.value : r.en),
+                })),
+              ]}
+              onChange={(next) => set("reason", next)}
+            />
+            <SelectMenu
               aria-label="Workstream"
               className={SELECT}
-              value={filters.workstream}
-              onChange={(e) => set("workstream", e.target.value)}
-            >
-              <option value="">{text.allWorkstreams}</option>
-              {WORKSTREAMS.map((w) => (
-                <option key={w} value={w}>
-                  {w}
-                </option>
-              ))}
-            </select>
-            <select
+              value={String(filters.workstream)}
+              options={[
+                { value: "", label: String(text.allWorkstreams) },
+                ...WORKSTREAMS.map((w) => ({
+                  value: String(w),
+                  label: String(w),
+                })),
+              ]}
+              onChange={(next) => set("workstream", next)}
+            />
+            <SelectMenu
               aria-label="Assignee"
               className={SELECT}
-              value={filters.assignee}
-              onChange={(e) => set("assignee", e.target.value)}
-            >
-              <option value="">{text.allAssignees}</option>
-              {assigneeNames.map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </select>
-            <select
+              value={String(filters.assignee)}
+              options={[
+                { value: "", label: String(text.allAssignees) },
+                ...assigneeNames.map((n) => ({
+                  value: String(n),
+                  label: String(n),
+                })),
+              ]}
+              onChange={(next) => set("assignee", next)}
+            />
+            <SelectMenu
               aria-label="Reporter"
               className={SELECT}
-              value={filters.reporter}
-              onChange={(e) => set("reporter", e.target.value)}
-            >
-              <option value="">{text.allReporters}</option>
-              {reporters.map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </select>
-            <select
+              value={String(filters.reporter)}
+              options={[
+                { value: "", label: String(text.allReporters) },
+                ...reporters.map((n) => ({
+                  value: String(n),
+                  label: String(n),
+                })),
+              ]}
+              onChange={(next) => set("reporter", next)}
+            />
+            <SelectMenu
               aria-label="Sort"
               className={SELECT}
-              value={filters.sort}
-              onChange={(e) => set("sort", e.target.value as SortKey)}
-            >
-              <option value="priority">{text.sortPriority}</option>
-              <option value="days-desc">{text.sortOldest}</option>
-              <option value="updated-desc">{text.sortUpdated}</option>
-            </select>
+              value={String(filters.sort)}
+              options={[
+                { value: "priority", label: String(text.sortPriority) },
+                { value: "days-desc", label: String(text.sortOldest) },
+                { value: "updated-desc", label: String(text.sortUpdated) },
+              ]}
+              onChange={(next) => set("sort", next as SortKey)}
+            />
           </div>
 
           {list?.truncated ? (

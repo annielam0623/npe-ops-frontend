@@ -99,6 +99,7 @@ import { RoleLegend } from "./role-legend";
 import { TeamImportPanel } from "./team-import-panel";
 import { ReportingLinesPanel } from "./reporting-lines-panel";
 import { UsersTable, type RowExtras } from "./users-table";
+import { SelectMenu } from "@/components/ui/select-menu";
 
 /** Super Admin 才读的 /api/team 那一份（权限、职责、首页、部门邮箱）。 */
 interface TeamData {
@@ -857,20 +858,18 @@ export function TeamView() {
               />
               <label className="flex items-center gap-1.5 text-[13px] text-[#cbd5e1]">
                 Show:
-                <select
+                <SelectMenu
                   aria-label="Show"
-                  value={show}
-                  onChange={(event) =>
-                    setShow(event.target.value as ShowFilter)
-                  }
+                  value={String(show)}
+                  options={[
+                    ...SHOW_OPTIONS.map((o) => ({
+                      value: String(o.value),
+                      label: String(o.label),
+                    })),
+                  ]}
+                  onChange={(next) => setShow(next as ShowFilter)}
                   className="h-8 rounded-[7px] border border-[#d1d5db] bg-paper px-1.5 text-[13px] text-[#1a1a1a] night:border-white/10 night:bg-white/[.04] night:text-white/90"
-                >
-                  {SHOW_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
+                />
               </label>
               {counts ? (
                 // 普通文字，不是胶囊（Annie 2026-10-11）。

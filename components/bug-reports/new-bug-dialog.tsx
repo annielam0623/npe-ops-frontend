@@ -18,6 +18,7 @@ import {
   WORKSTREAM_OPTION_IDS,
 } from "./config";
 import { WORKSTREAMS } from "./i18n";
+import { SelectMenu } from "@/components/ui/select-menu";
 
 /** 旧页面弹窗里的输入框 / 下拉框（8px 10px、6px 圆角、13px）。 */
 const INPUT =
@@ -208,54 +209,54 @@ export function NewBugDialog({
           <div className="mt-3 grid grid-cols-2 gap-3">
             <label className="mb-2 block">
               <span className={LABEL}>Severity</span>
-              <select
+              <SelectMenu
                 aria-label="Severity"
                 className={INPUT}
-                value={severity}
+                value={String(severity)}
+                options={[
+                  { value: "", label: "— Select —" },
+                  ...(severityField?.options ?? []).map((o) => ({
+                    value: String(o.id),
+                    label: String(o.name),
+                  })),
+                ]}
                 disabled={created || !!busy || !severityField}
-                onChange={(e) => setSeverity(e.target.value)}
-              >
-                <option value="">— Select —</option>
-                {(severityField?.options ?? []).map((o) => (
-                  <option key={o.id} value={o.id}>
-                    {o.name}
-                  </option>
-                ))}
-              </select>
+                onChange={(next) => setSeverity(next)}
+              />
             </label>
             <label className="mb-2 block">
               <span className={LABEL}>Workstream</span>
-              <select
+              <SelectMenu
                 className={INPUT}
-                value={workstream}
+                value={String(workstream)}
+                options={[
+                  { value: "", label: "— Select —" },
+                  ...WORKSTREAMS.map((w) => ({
+                    value: String(w),
+                    label: String(w),
+                  })),
+                ]}
                 disabled={created || !!busy}
-                onChange={(e) => setWorkstream(e.target.value)}
-              >
-                <option value="">— Select —</option>
-                {WORKSTREAMS.map((w) => (
-                  <option key={w} value={w}>
-                    {w}
-                  </option>
-                ))}
-              </select>
+                onChange={(next) => setWorkstream(next)}
+              />
             </label>
           </div>
           <div className="mt-3 grid grid-cols-2 gap-3">
             <label className="mb-2 block">
               <span className={LABEL}>Assignee</span>
-              <select
+              <SelectMenu
                 className={INPUT}
-                value={assignee}
+                value={String(assignee)}
+                options={[
+                  { value: "", label: "— Select —" },
+                  ...assignees.map((a) => ({
+                    value: String(String(a.id)),
+                    label: String(a.username),
+                  })),
+                ]}
                 disabled={created || !!busy}
-                onChange={(e) => setAssignee(e.target.value)}
-              >
-                <option value="">— Select —</option>
-                {assignees.map((a) => (
-                  <option key={a.id} value={String(a.id)}>
-                    {a.username}
-                  </option>
-                ))}
-              </select>
+                onChange={(next) => setAssignee(next)}
+              />
             </label>
             <label className="mb-2 block">
               <span className={LABEL}>Due Date</span>

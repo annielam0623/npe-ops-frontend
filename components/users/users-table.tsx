@@ -31,6 +31,7 @@ import {
   type TeamLayout,
   defaultTeamLayout,
 } from "./layout";
+import { SelectMenu } from "@/components/ui/select-menu";
 
 export interface UserRowActions {
   onEditName: (user: AdminUser) => void;
@@ -491,11 +492,17 @@ function RoleSelect({
   const role = normalizeRole(user.role);
   return (
     // 受控：值始终是后端的当前角色；选了新值只打开确认框，取消后自然回到原值。
-    <select
+    <SelectMenu
       aria-label={`Role for ${displayNameOf(user)}`}
-      value={role}
-      onChange={(event) => {
-        const next = event.target.value;
+      value={String(role)}
+      options={[
+        ...roles.map((option) => ({
+          value: String(option),
+          label: String(ROLE_STYLES[option].label),
+        })),
+      ]}
+      onChange={(picked) => {
+        const next = picked;
         if (isAssignableRole(next) && roles.includes(next) && next !== role) {
           onChange(user, next);
         }
@@ -504,13 +511,7 @@ function RoleSelect({
         "cursor-pointer rounded-[20px] border border-[#d1d5db] bg-paper px-2 py-[3px] text-[12px] font-semibold night:border-white/10 night:bg-white/[.04]",
         ROLE_STYLES[role].textClass,
       )}
-    >
-      {roles.map((option) => (
-        <option key={option} value={option}>
-          {ROLE_STYLES[option].label}
-        </option>
-      ))}
-    </select>
+    />
   );
 }
 
