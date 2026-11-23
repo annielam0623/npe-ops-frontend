@@ -41,6 +41,7 @@ import { usePermissions } from "@/lib/staff-permissions";
 import { useTick } from "@/lib/use-tick";
 import { fetchUserPref, saveUserPref } from "@/lib/user-prefs-api";
 import { cn, takeSearchParam } from "@/lib/utils";
+import { useAnyDateSearch } from "@/components/tracking-ui/any-date-search";
 import { ChatNotFound } from "@/components/tracking-ui/chat-not-found";
 import { useOpenChatFromUrl } from "@/lib/open-chat-param";
 import type {
@@ -60,7 +61,10 @@ import {
   emailBadgeOf,
   hasSyncFields,
   isUnsent,
+  isShuttleTourType,
   matchesSearch,
+  SHUTTLE_PILL,
+  shuttleProductLabel,
   matchesTourPill,
   ORDER_STATUS_AFTER_KEY,
   orderRows,
@@ -183,6 +187,8 @@ export function TourTrackingView() {
   const lastCountsRef = useRef<Map<number, number> | null>(null);
   /** 这次打开后拖过列：账号里的列顺序晚到时不再覆盖。 */
   const orderTouchedRef = useRef(false);
+  /** 搜索不限日期：页面一打开就要用（hook 在下面才建好）。 */
+  const arriveRef = useRef<(order: string, from: string, target: string) => void>(() => {});
 
   const redirectToLogin = useCallback(() => {
     if (!redirectingRef.current) {
@@ -193,9 +199,15 @@ export function TourTrackingView() {
 
   useEffect(() => {
     const fromUrl = new URLSearchParams(window.location.search).get("date");
-    setDate(isYmd(fromUrl) ? fromUrl : laToday());
+    const startDate = isYmd(fromUrl) ? fromUrl : laToday();
+    setDate(startDate);
     // dashboard 订单查询的「Open tracking →」带 ?q=单号：搜索框预填这一单。
-    setSearch(takeSearchParam("q") ?? "");
+    const q = takeSearchParam("q");
+    setSearch(q ?? "");
+    // 搜索不限日期（Q4 A）：从 Tickets Tracking 带过来的还带 ?from=原来那天 ⇒ 读到这一天就定位、蓝条给 ← Back。
+    const cameFrom = takeSearchParam("from");
+    if (q && cameFrom && isYmd(cameFrom))
+      arriveRef.current(q, cameFrom, startDate);
     setVis(parseVis(readLocal(COLUMN_VIS_KEY)));
     // G180：账号里只有 17 个旧列；Order Status 排在哪一列后面另记在本机。
     const statusAfter = readLocal(ORDER_STATUS_AFTER_KEY);
@@ -383,6 +395,29 @@ export function TourTrackingView() {
     setConversationId(row.id),
   );
   const meta = useMemo(() => tourMeta(tourTypes), [tourTypes]);
+  // 搜索不限日期（Annie 2026-11-23「Tracking搜索全部同意推荐，动手」）：按 Enter、这一天没有 ⇒ 去别的日子找、跳过去。
+  const anyDate = useAnyDateSearch({
+    page: "tour",
+    date,
+    data,
+    rows: data ? data.rows : null,
+    search,
+    setSearch,
+    changeDate,
+    matches: matchesSearch,
+    onLocate: (row) => {
+      setStatusFilter("");
+      setTourFilter(
+        isShuttleTourType(row.tour_type) ? SHUTTLE_PILL : row.tour_type,
+      );
+    },
+    productOf: (row) =>
+      isShuttleTourType(row.tour_type)
+        ? shuttleProductLabel(row)
+        : meta.label(row.tour_type),
+    onUnauthorized: redirectToLogin,
+  });
+  arriveRef.current = anyDate.arrive;
   // G180（灰底版，Annie 2026-11-05「同意全部推荐，动手」）：旧后端没有 send_state / order_state ⇒ 页面跟现在一样。
   const sync = useMemo(() => hasSyncFields(allRows), [allRows]);
   /** 团胶囊、数字卡只算发过的（11/03 题 2 A）。 */
@@ -728,11 +763,14 @@ export function TourTrackingView() {
                 <input
                   type="search"
                   value={search}
-                  onChange={(e) => setSearch(e.target.value)}
+                  onChange={(e) => anyDate.onType(e.target.value)}
+                  onKeyDown={anyDate.onKeyDown}
                   placeholder="Search order #, name, phone…"
                   aria-label="Search"
                   className="w-[190px] rounded-[7px] border border-[#d0e0d4] bg-white/90 px-[9px] py-[3px] font-[inherit] text-[12px] shadow-[0_1px_4px_rgba(26,58,42,0.06)] outline-none focus:border-[#2f5e46] max-sm:order-first max-sm:w-auto max-sm:min-w-0 max-sm:flex-1 [&::-webkit-search-cancel-button]:appearance-none"
                 />
+                {/* 搜索不限日期：搜索框下面那一行（找不到 / 取消了 / Search all dates）。 */}
+                {anyDate.note}
                 <SelectMenu
                   aria-label="Status"
                   value={statusFilter}
@@ -877,8 +915,12 @@ export function TourTrackingView() {
                   ⇆ Drag to reorder · ↔ Drag to resize
                 </span>
               </div>
+              {anyDate.banner ? (
+                <div className="px-3 pt-2">{anyDate.banner}</div>
+              ) : null}
               <div className="relative max-h-[calc(100vh-64px-180px)] overflow-x-auto overflow-y-visible">
                 <TourTable
+                  hitOrder={anyDate.hitOrder}
                   rows={filtered}
                   columns={columns}
                   meta={meta}
@@ -911,7 +953,8 @@ export function TourTrackingView() {
                 ...(sync ? [SYNC_HOW_TO] : []),
                 "Pick the tour date with the arrows, the date box, Today or Tomorrow. Click a tour button to see one tour only.",
                 // 顶部压缩 4① A：数字卡换成一行数字。
-                "Click a number at the top (YES, Modify, Modified, Pending, Cancel) to see only those guests. Click Total to see everyone. The search box finds an order #, name or phone.",
+                "Click a number at the top (YES, Modify, Modified, Pending, Cancel) to see only those guests. Click Total to see everyone.",
+                "The search box finds an order #, name or phone on this day. To find an order on any day, type the whole order # and press Enter: the page moves to that day and tour, shows the order and marks it. Click ← Back to return to the day you were on. If the order is cancelled or is not on this page, a line under the search box says so. For a name or phone that is not on this day, click Search all dates.",
                 // 「Once you’ve called …」一句照旧页面（后端 `7c03bd3`）；Cancel 那句是 ops 原有的。
                 "To change a guest’s status, pick it in the Status column, then click ✓ to save or ✕ to undo. Cancel also clears the lunch and the MTLV tickets. Once you’ve called the guest and locked in their new date, set the status to Modified — it keeps the order on this page as a record, but takes it off the orange Modify list. It does not change the headcount or lunch count for any tour: those only change once the date is actually updated in Rezdy.",
                 "Click a lunch number (🦃 🥗 🥩) to edit the lunch selection. Only YES guests on tours with lunch have one.",

@@ -79,6 +79,8 @@ const TH =
   "relative border-b border-[#d0e0d4] px-2.5 py-[9px] text-left text-[11px] font-bold tracking-[.02em] whitespace-nowrap select-none";
 
 export interface TourTableProps {
+  /** 搜索不限日期跳过来的那一单（整行描黄，Q6 A）；null = 没有。 */
+  hitOrder?: string | null;
   rows: TourTrackingRow[];
   columns: ColumnKey[];
   meta: TourMeta;
@@ -100,6 +102,13 @@ export interface TourTableProps {
   placeholder: string | null;
 }
 
+/** 搜索不限日期跳过来的那一单：整行淡黄 + 橙黄描边（同页面上「改了没存」的橙黄）。 */
+const HIT_ROW_STYLE = {
+  background: "#fff7e0",
+  outline: "2px solid #f59e0b",
+  outlineOffset: "-2px",
+} as const;
+
 export function TourTable({
   rows,
   columns,
@@ -115,6 +124,7 @@ export function TourTable({
   busyId,
   now,
   placeholder,
+  hitOrder = null,
 }: TourTableProps) {
   // 转单订单点「⇄ Farmed out」展开两套上车资料（按行 id）。
   const [farmOpen, setFarmOpen] = useState<ReadonlySet<number>>(new Set());
@@ -264,8 +274,13 @@ export function TourTable({
                   data-id={row.id}
                   // G180：还没发过的整行灰底（取代 preview 早先的粉红），字 #1a1a1a；发过的照旧。
                   data-unsent={isUnsent(row) ? "" : undefined}
+                  data-anydate-hit={hitOrder && row.order_number.trim().toUpperCase() === hitOrder.trim().toUpperCase() ? "" : undefined}
                   style={
-                    isUnsent(row) ? { background: UNSENT_ROW_BG } : undefined
+                    hitOrder && row.order_number.trim().toUpperCase() === hitOrder.trim().toUpperCase()
+                      ? HIT_ROW_STYLE
+                      : isUnsent(row)
+                        ? { background: UNSENT_ROW_BG }
+                        : undefined
                   }
                   className={cn(
                     "border-b border-[rgba(208,224,212,0.5)] last:border-b-0",
