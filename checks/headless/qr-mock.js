@@ -69,10 +69,12 @@ http.createServer(async (req, res) => {
     const b = await readBody(req); entry.body = b;
     const why = problem(b.body);
     if (why) return send(res, 400, { detail: why });
-    const reply = { id: nextId++, body: b.body.trim(), sort_order: Math.max(0, ...replies.map((r) => r.sort_order)) + 1, active: true, add_bus_map: false, updated_at: new Date().toISOString() };
+    const reply = { id: nextId++, body: b.body.trim(), sort_order: Math.max(0, ...replies.map((r) => r.sort_order)) + 1, active: true, add_bus_map: false, updated_at: null };
     replies.push(reply);
+    // 同后端（G369 核对 2026-11-23）：POST 回包没有 updated_at，只有 id / body / sort_order / active / add_bus_map。
+    const { updated_at: _u, ...out } = reply;
     addLog("create", reply.body, null, { body: reply.body, active: true, sort_order: reply.sort_order });
-    return send(res, 200, { ok: true, reply });
+    return send(res, 200, { ok: true, reply: out });
   }
   if (p === "/api/driver-quick-replies/order" && req.method === "PUT") {
     const b = await readBody(req); entry.body = b;
