@@ -64,6 +64,7 @@
 - 📌 Mirror 前端（9b，占位形状）task/order-mirror **3c208b70**（未合）：Order List Mirror 列放 Source 后、对方渠道单号做成小胶囊（TripGuru 蓝 / Rezdy 灰）、多个上下排、没有写「—」、点开 /orders/<单号>；顶栏搜索多结果加 Mirror 列、单结果卡加 Mirror 字段；How to use 一句。orders 184（+10）、os +5、nav 40。截图 C:\Users\annzh\Downloads\order-mirror\，📌 给 Annie 看（列位置 / 胶囊 / 不写渠道字）。占位形状 rows[].mirror=[{order_number, source}] 已发 95 核。
 - Tracking 不限日期搜索后端上 main（47：27ba952c / b72ec854 / 3bfd9440；合同 docs/interfaces/tracking-find-order-2026-11-23.md）：GET /api/notifications/tracking/find-order?order=（完整单号，products[] 带 tour_date / status / page tour|tickets|null）、GET …/search-all-dates?q=（电话 ≥4 位 / 名字 ≥2 字，最多 20 行 + truncated）；权限 tour.view 或 tickets.view，不要 orders.view。已转 bb 对齐。
 - Mirror 后端上 main（95：95281e41 / 1d2be8dc）：records[].mirror=[{order_number, source, matched_by[]}]（[] 无），订单详情顶层 mirror 同形；60 秒缓存；Export 第 14 列 Mirror 最右（Annie「Export 选 A，加在最右边」）。已转 9b 对齐；合前等 Annie 看截图 + 95 PASS。
+- Mirror 前端 c95da628（9b，已对齐合同）：95 回 PASS。📌 只等 Annie 看截图（C:\Users\annzh\Downloads\order-mirror\）说可以就合。
 
 ## 2026-11-20（周五）前端主窗口 `npe-ops-frontend-5e`[614588]（公司电脑；只分工和汇报，不写代码；14:30 下班）
 - 开工：origin/main 9ab99466（主目录 detached 改 PROGRESS）。资源：空闲内存 38.2 / 61.8 GB，node 0、chrome 71。现在没有工作窗口；后端在线 `npe-confirmation-service-bb`[282016]。
