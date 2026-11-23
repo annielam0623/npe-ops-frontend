@@ -44,6 +44,12 @@ import {
   parseTimeInput,
 } from "./config";
 import {
+  checkUploadFile,
+  TIMETABLE_UPLOAD_ACCEPT,
+  uploadFileKind,
+} from "./timetable-upload/file-kind";
+import { PhotoPane } from "./timetable-upload/photo-pane";
+import {
   BTN_BLUE,
   BTN_PLAIN,
   CELL_INPUT,
@@ -55,6 +61,8 @@ import {
 type Result = { tone: "ok" | "error"; text: string } | null;
 interface Upload {
   fileName: string;
+  /** 146：留着本地文件只为黄框里显示照片（Q7 不存原件）。 */
+  file: File;
   diff: FarmOutTimetableDiff;
   parsed: FarmOutTimetable;
 }
@@ -217,12 +225,24 @@ export function TimetableView({ partnerId: fixedId }: { partnerId: number }) {
 
   async function onFile(file: File | undefined) {
     if (!file || partnerId == null) return;
+    const bad = checkUploadFile(file);
+    if (bad) {
+      setUpload(null);
+      setUploadError(bad);
+      if (fileRef.current) fileRef.current.value = "";
+      return;
+    }
     setUploading(true);
     setUploadError(null);
     setUpload(null);
     try {
       const res = await parsePartnerTimetable(partnerId, file);
-      setUpload({ fileName: file.name, diff: res.diff, parsed: res.parsed });
+      setUpload({
+        fileName: file.name,
+        file,
+        diff: res.diff,
+        parsed: res.parsed,
+      });
     } catch (error) {
       if (isStatus(error, 401)) redirectToLogin();
       else setUploadError(describeError(error));
@@ -337,12 +357,12 @@ export function TimetableView({ partnerId: fixedId }: { partnerId: number }) {
                   disabled={partnerId == null || uploading}
                   onClick={() => fileRef.current?.click()}
                 >
-                  {uploading ? "Reading…" : "⬆ Upload CSV / xlsx"}
+                  {uploading ? "Reading…" : "⬆ Upload file or photo"}
                 </button>
                 <input
                   ref={fileRef}
                   type="file"
-                  accept=".csv,.xlsx,text/csv"
+                  accept={TIMETABLE_UPLOAD_ACCEPT}
                   aria-label="Timetable file"
                   className="hidden"
                   onChange={(e) => void onFile(e.target.files?.[0])}
@@ -556,6 +576,7 @@ function UploadBox({
   const changedFor = (hotel: { hotel_name: string }, tour: string) =>
     diff.changed.find((c) => c.tour === tour && c.hotel === hotel.hotel_name);
   const isNew = (hotelName: string) => diff.new_hotels.includes(hotelName);
+  const isPhoto = uploadFileKind(upload.file) === "photo";
 
   return (
     <div
@@ -582,65 +603,77 @@ function UploadBox({
           {diff.unmatched_tours.map((t) => `“${t}”`).join(", ")}
         </div>
       ) : null}
-      <div className="mt-2 overflow-x-auto">
-        <table className="w-full min-w-[640px] border-collapse text-[12px] tabular-nums">
-          <thead>
-            <tr className="text-left">
-              <th className="border-b border-[#e5d9b5] px-2 py-1">Hotel</th>
-              {parsed.tours.map((t) => (
-                <th
-                  key={t.manifest_id}
-                  className="border-b border-[#e5d9b5] px-2 py-1"
-                >
-                  {t.tour_name}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {parsed.hotels.map((h, hi) => (
-              <tr key={h.id ?? `new${hi}`}>
-                <td className="px-2 py-1">
-                  <b>{h.hotel_name}</b>
-                  {isNew(h.hotel_name) ? (
-                    <span className="ml-1 font-bold text-[#15803d]">
-                      new hotel
-                    </span>
-                  ) : null}
-                </td>
-                {parsed.tours.map((t) => {
-                  // 新酒店（id 为 null）的格子 key 是 new<序号>_<团>。
-                  const now = formatTime(
-                    parsed.cells[
-                      h.id != null
-                        ? cellKey(h.id, t.manifest_id)
-                        : `new${hi}_${t.manifest_id}`
-                    ],
-                  );
-                  const ch = changedFor(h, t.tour_name);
-                  return (
-                    <td key={t.manifest_id} className="px-2 py-1">
-                      {ch ? (
-                        <>
-                          {ch.from ? (
-                            <s className="text-[#999]">{formatTime(ch.from)}</s>
-                          ) : null}{" "}
-                          <b className="text-[#1d4ed8]">
-                            {formatTime(ch.to) || "—"}
-                          </b>
-                        </>
-                      ) : isNew(h.hotel_name) ? (
-                        <span className="text-[#15803d]">{now}</span>
-                      ) : (
-                        now
-                      )}
-                    </td>
-                  );
-                })}
+      <div
+        className={cn("mt-2", isPhoto && "grid gap-3 min-[640px]:grid-cols-2")}
+      >
+        {isPhoto ? <PhotoPane file={upload.file} /> : null}
+        <div className="min-w-0 overflow-x-auto">
+          <table
+            className={cn(
+              "w-full border-collapse text-[12px] tabular-nums",
+              isPhoto ? "min-w-0" : "min-w-[640px]",
+            )}
+          >
+            <thead>
+              <tr className="text-left">
+                <th className="border-b border-[#e5d9b5] px-2 py-1">Hotel</th>
+                {parsed.tours.map((t) => (
+                  <th
+                    key={t.manifest_id}
+                    className="border-b border-[#e5d9b5] px-2 py-1"
+                  >
+                    {t.tour_name}
+                  </th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {parsed.hotels.map((h, hi) => (
+                <tr key={h.id ?? `new${hi}`}>
+                  <td className="px-2 py-1">
+                    <b>{h.hotel_name}</b>
+                    {isNew(h.hotel_name) ? (
+                      <span className="ml-1 font-bold text-[#15803d]">
+                        new hotel
+                      </span>
+                    ) : null}
+                  </td>
+                  {parsed.tours.map((t) => {
+                    // 新酒店（id 为 null）的格子 key 是 new<序号>_<团>。
+                    const now = formatTime(
+                      parsed.cells[
+                        h.id != null
+                          ? cellKey(h.id, t.manifest_id)
+                          : `new${hi}_${t.manifest_id}`
+                      ],
+                    );
+                    const ch = changedFor(h, t.tour_name);
+                    return (
+                      <td key={t.manifest_id} className="px-2 py-1">
+                        {ch ? (
+                          <>
+                            {ch.from ? (
+                              <s className="text-[#999]">
+                                {formatTime(ch.from)}
+                              </s>
+                            ) : null}{" "}
+                            <b className="text-[#1d4ed8]">
+                              {formatTime(ch.to) || "—"}
+                            </b>
+                          </>
+                        ) : isNew(h.hotel_name) ? (
+                          <span className="text-[#15803d]">{now}</span>
+                        ) : (
+                          now
+                        )}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
       <div className="mt-2 flex gap-2">
         <button
@@ -685,9 +718,13 @@ function HowToUse() {
       </li>
       <li>
         Download as CSV saves the table shown, which is also a blank template
-        for a new partner. Upload CSV / xlsx reads a file and shows what would
-        change before anything is saved. Review it, then Apply to replace this
-        partner&apos;s whole table, or Discard to drop the file.
+        for a new partner. <b>Upload file or photo</b> reads a partner&apos;s
+        own Excel, CSV, PDF, photo or screenshot. The first time, match their
+        tour and hotel names to ours (and say which way round the table is);
+        tick Remember and their next file is read the same way. A photo is read
+        automatically: check every orange cell against the photo. Nothing is
+        saved until you click Apply, which replaces this partner&apos;s whole
+        table; Discard drops the file.
       </li>
       <li>
         Return time &amp; notes below apply to a tour for every partner. Leave

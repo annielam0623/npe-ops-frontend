@@ -505,6 +505,31 @@ async function timetableChecks() {
   check("上传只解析、没存（还没 apply）", (await calls("POST", /timetable\/apply$/)).length === applyBefore);
   await evaluate("$btn('Discard').click(); return 1;");
   check("Discard：黄框消失、仍没 apply", (await waitFor("!document.querySelector('[data-upload-box]')")) && (await calls("POST", /timetable\/apply$/)).length === applyBefore);
+
+  // 146：上传收照片 / PDF（Q3 A），键名改、超 10 MB 前端拦、照片在黄框里显示（Q2 / Q7 只本地 blob）
+  check("146 上传键改名「⬆ Upload file or photo」、不是蓝色", await evaluate("const b = $btn('⬆ Upload file or photo'); return !!b && $bg(b) !== 'rgb(59, 130, 246)' && !$txt().includes('Upload CSV / xlsx');"));
+  check("146 accept 收 Excel / CSV / jpg / png / heic / PDF", await evaluate("const a = document.querySelector('input[type=file]').accept; return ['.csv','.xlsx','.pdf','.jpg','.jpeg','.png','.heic'].every(x => a.split(',').includes(x));"));
+  check("146 How to use 第 3 条换成新文字", await evaluate("return $txt().includes('reads a partner') && $txt().includes('check every orange cell against the photo') && $txt().includes('tick Remember');"));
+  const parseBefore = (await calls("POST", /timetable\/parse$/)).length;
+  const bigJpg = path.join(os.tmpdir(), "fo-settings-test-big.jpg");
+  fs.writeFileSync(bigJpg, Buffer.alloc(10 * 1024 * 1024 + 1, 0));
+  await uploadFile(bigJpg);
+  check("146 照片超 10 MB：红字报错、没发 parse", (await waitFor("$txt().includes('can be up to 10 MB')")) && (await calls("POST", /timetable\/parse$/)).length === parseBefore && !(await evaluate("return !!document.querySelector('[data-upload-box]');")));
+  const pngFile = path.join(os.tmpdir(), "fo-settings-test-photo.png");
+  fs.writeFileSync(pngFile, Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=", "base64"));
+  await uploadFile(pngFile);
+  check("146 传照片：发 parse、报错消失、黄框左边显示这张照片（blob，不上传别处）", (await waitFor("document.querySelector('[data-upload-box] [data-photo-pane] img')")) && (await evaluate("const i = document.querySelector('[data-photo-pane] img'); return i.src.startsWith('blob:') && !$txt().includes('can be up to 10 MB');")) && (await lastCall("POST", /timetable\/parse$/))?.rawText.includes("fo-settings-test-photo.png"));
+  const heic = path.join(os.tmpdir(), "fo-settings-test-photo.heic");
+  fs.writeFileSync(heic, Buffer.from("heic"));
+  await uploadFile(heic);
+  check("146 heic：浏览器显示不了，写「check against the photo on your phone」", await waitFor("document.querySelector('[data-photo-pane]') && document.querySelector('[data-photo-pane]').textContent.includes('check against the photo on your phone') && !document.querySelector('[data-photo-pane] img')"));
+  await evaluate("$btn('Discard').click(); return 1;");
+  await waitFor("!document.querySelector('[data-upload-box]')");
+  await uploadFile(csv);
+  await waitFor("document.querySelector('[data-upload-box]')");
+  check("146 CSV 上传：黄框里没有照片栏", await evaluate("return !document.querySelector('[data-photo-pane]');"));
+  await evaluate("$btn('Discard').click(); return 1;");
+  await waitFor("!document.querySelector('[data-upload-box]')");
   await uploadFile(csv);
   await waitFor("document.querySelector('[data-upload-box]')");
   await evaluate("$btn('Apply to Partner A').click(); return 1;");
