@@ -27,6 +27,7 @@
 - ✅ Annie（原话）「2 同意推荐，动手」⇒ G363 前端 Q1 A（Model from 日期框编辑时一直有、默认今天、只改日期也算改动）、Q2 B（Fee 只写价格，加 Vehicle 列「2041 · Sprinter」+「+$50.00」，人员表加 Vehicle extras 列，跟 CSV 一致）、Q3 B（Model 框打字提示用过的车型）。派 a2 task/g363-vehicle-extra（后端已上 08c8f5f8；交 commit + 对照表 ⇒ 后端 PASS 才合）。导游页手机版 A / B / C 仍等 Annie。
 - 9b（原 a2，[be8556]）接 G363 前端 task/g363-vehicle-extra。G374 加 400「name to show cannot start with =」已转 bb。
 - Annie 截图 Staff Schedule 半屏（约 950 宽，只看到 SUN–THU、要横滑；Anita 名字一字一行），原话「有个页面交互的问题，像这样半屏的显示，页面上的小窗也应该调整比例来适配，而不是显示需要移动滑条来看」⇒ 记录，不是动手。派 2c 出 preview：核现状（列宽 / min-width）、列全站同类宽表、Staff Schedule 全屏 / 半屏 / 手机改前改后、题（范围 A 只排班 / B 全站宽表、多窄才允许横滑、手机照旧否）；名字被挤一并当 bug 修。
+- Annie 改 G363 Q1（原话）「不需要这么复杂，车型是不会变的，不会就那天是mini bus后天就变van的，这个日期没有必要」⇒ Vehicles 不放 Model from 日期框、导入模板不加该列、不做 Model history 链接；Q2 B / Q3 B 不变。已转 9b；已问后端：不送 model_from 时以前日子的趟拿不拿得到补贴（要不要车型对所有日子生效）。
 
 ## 2026-11-20（周五）前端主窗口 `npe-ops-frontend-5e`[614588]（公司电脑；只分工和汇报，不写代码；14:30 下班）
 - 开工：origin/main 9ab99466（主目录 detached 改 PROGRESS）。资源：空闲内存 38.2 / 61.8 GB，node 0、chrome 71。现在没有工作窗口；后端在线 `npe-confirmation-service-bb`[282016]。
